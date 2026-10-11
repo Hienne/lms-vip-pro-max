@@ -20,10 +20,14 @@ const THEME_ATTRIBUTE = 'data-theme';
 const SYSTEM_DARK_QUERY_TEXT = '(prefers-color-scheme: dark)';
 
 export type ThemeStorage = Pick<Storage, 'getItem' | 'setItem' | 'removeItem'>;
-export type SystemDarkQuery = Pick<
-  MediaQueryList,
-  'matches' | 'addEventListener' | 'removeEventListener'
->;
+type SystemDarkListener = (event: { readonly matches: boolean }) => void;
+
+/** The part of `MediaQueryList` the store uses. */
+export interface SystemDarkQuery {
+  readonly matches: boolean;
+  addEventListener(type: 'change', listener: SystemDarkListener): void;
+  removeEventListener(type: 'change', listener: SystemDarkListener): void;
+}
 
 /** Browser storage, or `null` when the browser blocks it (the getter itself can throw). */
 export const THEME_STORAGE = new InjectionToken<ThemeStorage | null>(
@@ -105,7 +109,7 @@ export class ThemeStore {
   private readonly followSystem = effect((onCleanup) => {
     const query = this.systemQuery;
     if (!query) return;
-    const onChange = (event: { matches: boolean }) =>
+    const onChange: SystemDarkListener = (event) =>
       this.setSystemDark(event.matches);
     query.addEventListener('change', onChange);
     onCleanup(() => query.removeEventListener('change', onChange));

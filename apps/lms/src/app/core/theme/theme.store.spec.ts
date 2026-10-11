@@ -31,12 +31,18 @@ const blockedStorage: ThemeStorage = {
 class FakeMediaQuery implements SystemDarkQuery {
   private readonly listeners = new Set<(event: { matches: boolean }) => void>();
   constructor(public matches: boolean) {}
-  addEventListener = (_type: 'change', listener: (event: never) => void) =>
-    void this.listeners.add(listener as (event: { matches: boolean }) => void);
-  removeEventListener = (_type: 'change', listener: (event: never) => void) =>
-    void this.listeners.delete(
-      listener as (event: { matches: boolean }) => void,
-    );
+  addEventListener(
+    _type: 'change',
+    listener: (event: { matches: boolean }) => void,
+  ) {
+    this.listeners.add(listener);
+  }
+  removeEventListener(
+    _type: 'change',
+    listener: (event: { matches: boolean }) => void,
+  ) {
+    this.listeners.delete(listener);
+  }
   /** The operating system switches theme. */
   switchTo(dark: boolean) {
     this.matches = dark;
