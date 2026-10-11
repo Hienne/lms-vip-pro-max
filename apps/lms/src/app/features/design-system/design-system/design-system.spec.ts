@@ -160,6 +160,39 @@ describe('/design-system', () => {
     });
   });
 
+  describe('forms section', () => {
+    it('demos every control and keeps the molecule demos as placeholders', async () => {
+      const { page } = await openDesignSystem();
+      const section = page.querySelector('#ds-forms') as HTMLElement;
+      expect(section.querySelectorAll('input.input')).toHaveLength(5);
+      expect(section.querySelectorAll('select.select')).toHaveLength(2);
+      expect(section.querySelectorAll('textarea.textarea')).toHaveLength(1);
+      expect(section.querySelectorAll('input.check')).toHaveLength(3);
+      expect(
+        section.querySelectorAll('input.switch[role="switch"]'),
+      ).toHaveLength(2);
+      expect(
+        section
+          .querySelector('input[aria-invalid="true"]')
+          ?.getAttribute('type'),
+      ).toBe('email');
+      const placeholders = Array.from(
+        section.querySelectorAll('[data-placeholder]'),
+      );
+      expect(placeholders).toHaveLength(4);
+      const ids = placeholders.flatMap((p) =>
+        Array.from(p.querySelectorAll('code')).map((c) => c.textContent),
+      );
+      expect(ids).toEqual([
+        'field',
+        'option-card',
+        'dropzone',
+        'search',
+        'badge-chip',
+      ]);
+    });
+  });
+
   describe('navigation section', () => {
     it('demos the segmented control', async () => {
       const { page } = await openDesignSystem();

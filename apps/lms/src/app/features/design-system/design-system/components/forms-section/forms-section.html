@@ -1,18 +1,111 @@
 <app-ds-section section="forms" title="Form &amp; nhập liệu">
-  <app-ds-demo
-    label="Field: nhãn luôn hiển thị · lỗi dưới trường (aria-describedby) · error summary có link"
-    [needs]="['field','text-controls','button']"
-  ></app-ds-demo>
-  <app-ds-demo
-    label="Checkbox · switch · option card"
-    [needs]="['check-switch','option-card']"
-  ></app-ds-demo>
-  <app-ds-demo
-    label="Dropzone &amp; trạng thái upload"
-    [needs]="['dropzone','icon']"
-  ></app-ds-demo>
-  <app-ds-demo
-    label="Tìm kiếm · bộ lọc · chip"
-    [needs]="['search','text-controls','badge-chip']"
-  ></app-ds-demo>
+  <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+    <div class="flex flex-col gap-4">
+      <app-ds-demo
+        label="Field: nhãn luôn hiển thị · lỗi dưới trường (aria-describedby) · error summary có link"
+        [needs]="['field', 'text-controls', 'button']"
+      ></app-ds-demo>
+
+      <app-ds-demo
+        label="Ô nhập · chọn · vùng văn bản"
+        [needs]="['text-controls']"
+      >
+        <div class="flex flex-col gap-3 text-sm font-semibold">
+          <label class="flex flex-col gap-2">
+            Tên khóa học
+            <input uiInput name="ds1" placeholder="Ví dụ: Quy trình đối soát" />
+          </label>
+          <label class="flex flex-col gap-2">
+            Nhỏ
+            <input
+              uiInput
+              size="sm"
+              name="ds-small"
+              placeholder="Tìm theo mã"
+            />
+          </label>
+          <label class="flex flex-col gap-2">
+            Email (không hợp lệ)
+            <input
+              uiInput
+              type="email"
+              name="ds2"
+              value="sai-dinh-dang"
+              aria-invalid="true"
+            />
+          </label>
+          <label class="flex flex-col gap-2">
+            Vô hiệu
+            <input
+              uiInput
+              name="ds-disabled"
+              value="Không chỉnh sửa được"
+              disabled
+            />
+          </label>
+          <label class="flex flex-col gap-2">
+            Chỉ đọc
+            <input
+              uiInput
+              name="ds5"
+              value="Ban QL&amp;PT Core Banking"
+              readonly
+            />
+          </label>
+          <label class="flex flex-col gap-2">
+            Chương trình
+            <select uiSelect name="ds3">
+              <option value="">— Chọn —</option>
+              <option value="1">Nền tảng nghiệp vụ Core Banking</option>
+            </select>
+          </label>
+          <label class="flex flex-col gap-2">
+            Chương trình (nhỏ)
+            <select uiSelect size="sm" name="ds-select-small">
+              <option value="">— Chọn —</option>
+              <option value="1">Nền tảng nghiệp vụ Core Banking</option>
+            </select>
+          </label>
+          <label class="flex flex-col gap-2">
+            Mô tả
+            <textarea uiTextarea name="ds4" rows="2"></textarea>
+          </label>
+        </div>
+      </app-ds-demo>
+    </div>
+
+    <div class="flex flex-col gap-4">
+      <app-ds-demo label="Checkbox · switch" [needs]="['check-switch']">
+        <div class="flex flex-col gap-3">
+          <label class="inline-flex items-start gap-2 text-sm"
+            ><input type="checkbox" uiCheckbox checked /> Trộn thứ tự câu
+            hỏi</label
+          >
+          <label class="inline-flex items-start gap-2 text-sm"
+            ><input type="checkbox" uiCheckbox /> Trộn đáp án</label
+          >
+          <label class="inline-flex items-start gap-2 text-sm"
+            ><input type="checkbox" uiCheckbox disabled /> Không thể chọn</label
+          >
+          <label class="inline-flex items-center gap-3 text-sm"
+            ><input type="checkbox" uiSwitch checked /> Nhắc học trước
+            hạn</label
+          >
+          <label class="inline-flex items-center gap-3 text-sm"
+            ><input type="checkbox" uiSwitch /> Gửi bản tin hằng tuần</label
+          >
+        </div>
+      </app-ds-demo>
+
+      <app-ds-demo label="Option card" [needs]="['option-card']"></app-ds-demo>
+      <app-ds-demo
+        label="Dropzone &amp; trạng thái upload"
+        [needs]="['dropzone', 'icon']"
+      ></app-ds-demo>
+      <app-ds-demo
+        label="Tìm kiếm · bộ lọc · chip"
+        [needs]="['search', 'text-controls', 'badge-chip']"
+      ></app-ds-demo>
+    </div>
+  </div>
 </app-ds-section>

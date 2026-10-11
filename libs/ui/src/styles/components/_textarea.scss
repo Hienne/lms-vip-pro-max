@@ -1,0 +1,13 @@
+@use 'control';
+
+// Multi-line input: ported from the mockup's `.textarea` (components.css). Applied by `uiTextarea`.
+@layer components {
+  .textarea {
+    @include control.control;
+
+    min-height: 96px;
+    padding: var(--spacing-2) var(--spacing-3);
+    line-height: var(--leading-normal);
+    resize: vertical;
+  }
+}

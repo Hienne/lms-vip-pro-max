@@ -2,8 +2,13 @@
 // Loaded globally after tailwind.css; every rule sits inside `@layer components`
 // (docs/conventions/ui-library.md → Styling).
 @use 'components/btn';
+@use 'components/check';
 @use 'components/icon';
 @use 'components/icon-btn';
+@use 'components/input';
 @use 'components/link-btn';
 @use 'components/mai';
 @use 'components/segmented';
+@use 'components/select';
+@use 'components/switch';
+@use 'components/textarea';

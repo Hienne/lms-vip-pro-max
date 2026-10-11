@@ -62,7 +62,14 @@ export const MIGRATION_ENTRIES = [
     level: 'atom',
     targets: ['Input', 'Select', 'Textarea'],
     checklist: ['H'],
-    status: 'todo',
+    status: 'done',
+    owner: 'Hienne',
+    verify: {
+      lightDark: 'done',
+      widths: 'done',
+      keyboard: 'done',
+      errorStates: 'n/a',
+    },
   },
   {
     id: 'check-switch',
@@ -71,7 +78,14 @@ export const MIGRATION_ENTRIES = [
     level: 'atom',
     targets: ['Checkbox', 'Switch'],
     checklist: ['H'],
-    status: 'todo',
+    status: 'done',
+    owner: 'Hienne',
+    verify: {
+      lightDark: 'done',
+      widths: 'done',
+      keyboard: 'done',
+      errorStates: 'n/a',
+    },
   },
   {
     id: 'badge-chip',

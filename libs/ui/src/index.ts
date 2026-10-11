@@ -19,3 +19,9 @@ export {
   type IconButtonVariant,
 } from './lib/atoms/icon-button/icon-button.directive';
 export { LinkButton } from './lib/atoms/link-button/link-button.directive';
+export { Checkbox } from './lib/atoms/checkbox/checkbox.directive';
+export type { ControlSize } from './lib/atoms/control-size';
+export { Input } from './lib/atoms/input/input.directive';
+export { Select } from './lib/atoms/select/select.directive';
+export { Switch } from './lib/atoms/switch/switch.directive';
+export { Textarea } from './lib/atoms/textarea/textarea.directive';
