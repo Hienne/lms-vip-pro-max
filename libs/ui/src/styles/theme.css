@@ -59,6 +59,8 @@
   --color-ring: #006b68;
   --color-overlay: rgba(10, 20, 19, 0.48);
   --color-white: #ffffff; /* constant in both themes: thumbs, buttons on dark */
+  --color-black: #000000; /* constant: pressed-state shading */
+  --color-on-dark-hover: #e6f2f1; /* hover of the on-dark button, which sits on a dark panel in both themes */
 
   /* ---- Colour: hero banner (a dark teal panel in both themes, so its text is constant) ---- */
   --color-hero-from: #014744;

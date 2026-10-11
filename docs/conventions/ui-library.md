@@ -79,7 +79,15 @@ export class Button {
 ```
 
 Icon-only actions use `button[uiIconButton]`, whose required `label` input
-sets `aria-label` and the tooltip, so an unnamed icon button does not compile.
+sets `aria-label` and the tooltip, so an unnamed icon button does not compile
+(Angular reports `NG8008: Required input 'label'`). It is the round 44px touch target
+(`.icon-btn`); the mockup's square icon-only `btn--icon` is not ported.
+
+`uiButton` details: icon and text go where the markup puts them
+(`<button uiButton><ui-icon name="play" size="sm" /> Bắt đầu</button>`); `busy` shows a spinner,
+sets `aria-busy` and swallows activation while the button stays focusable; `disabled` is native
+on a button and `aria-disabled` + `tabindex="-1"` + swallowed activation on a link; `type`
+defaults to `button`, so write `type="submit"` for a form's submit button.
 
 ## Styling
 

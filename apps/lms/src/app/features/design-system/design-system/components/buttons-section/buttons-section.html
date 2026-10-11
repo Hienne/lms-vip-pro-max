@@ -1,7 +1,73 @@
 <app-ds-section section="buttons" title="Nút bấm">
-  <app-ds-demo [needs]="['button']"></app-ds-demo>
+  <app-ds-demo [needs]="['button']">
+    <div class="overflow-x-auto">
+      <table class="w-full text-sm">
+        <caption class="sr-only">
+          Các biến thể nút theo trạng thái
+        </caption>
+        <thead>
+          <tr
+            class="bg-surface-2 text-left text-xs tracking-wide text-text-secondary uppercase"
+          >
+            <th class="px-4 py-3 font-semibold" scope="col">Biến thể</th>
+            <th class="px-4 py-3 font-semibold" scope="col">Mặc định</th>
+            <th class="px-4 py-3 font-semibold" scope="col">Nhỏ</th>
+            <th class="px-4 py-3 font-semibold" scope="col">Có icon</th>
+            <th class="px-4 py-3 font-semibold" scope="col">Vô hiệu</th>
+            <th class="px-4 py-3 font-semibold" scope="col">Đang xử lý</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (row of rows; track row.variant) {
+          <tr class="border-b border-border last:border-b-0">
+            <th class="px-4 py-3 text-left" scope="row">
+              <code>{{ row.variant }}</code>
+            </th>
+            <td class="px-4 py-3">
+              <button uiButton [variant]="row.variant">{{ row.label }}</button>
+            </td>
+            <td class="px-4 py-3">
+              <button uiButton size="sm" [variant]="row.variant">
+                {{ row.label }}
+              </button>
+            </td>
+            <td class="px-4 py-3">
+              <button uiButton [variant]="row.variant">
+                <ui-icon [name]="row.icon" />{{ row.label }}
+              </button>
+            </td>
+            <td class="px-4 py-3">
+              <button uiButton disabled [variant]="row.variant">
+                {{ row.label }}
+              </button>
+            </td>
+            <td class="px-4 py-3">
+              <button uiButton busy [variant]="row.variant">
+                {{ row.label }}
+              </button>
+            </td>
+          </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  </app-ds-demo>
+
   <app-ds-demo
     label="Nút icon (luôn có aria-label) · vùng chạm ≥ 44px"
-    [needs]="['icon-button','link-button']"
-  ></app-ds-demo>
+    [needs]="['icon-button', 'link-button']"
+  >
+    <div class="flex flex-wrap items-center gap-3">
+      <button uiIconButton label="Sửa"><ui-icon name="pen-line" /></button>
+      <button uiIconButton label="Xóa" variant="danger">
+        <ui-icon name="trash-2" />
+      </button>
+      <button uiIconButton label="Thông báo" dot>
+        <ui-icon name="bell" />
+      </button>
+      <button uiLinkButton>
+        Liên kết hành động <ui-icon name="arrow-right" size="sm" />
+      </button>
+    </div>
+  </app-ds-demo>
 </app-ds-section>

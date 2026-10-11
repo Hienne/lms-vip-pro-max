@@ -1,0 +1,157 @@
+// Button: ported from the mockup's `.btn` block (components.css). Applied by `uiButton`.
+@layer components {
+  .btn {
+    --btn-bg: var(--color-surface);
+    --btn-fg: var(--color-text);
+    --btn-bd: var(--color-border-strong);
+
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--spacing-2);
+    min-height: var(--spacing-control);
+    padding: 0 var(--spacing-4);
+    border: 1px solid var(--btn-bd);
+    border-radius: var(--radius-sm);
+    background: var(--btn-bg);
+    color: var(--btn-fg);
+    cursor: pointer;
+    font-size: var(--text-sm);
+    font-weight: var(--font-weight-semibold);
+    text-decoration: none;
+    white-space: nowrap;
+    transition:
+      background var(--transition-duration-fast),
+      border-color var(--transition-duration-fast),
+      color var(--transition-duration-fast),
+      box-shadow var(--transition-duration-fast);
+
+    &:hover {
+      background: var(--color-surface-2);
+      color: var(--btn-fg);
+    }
+    &:active {
+      box-shadow: inset 0 1px 2px
+        color-mix(in srgb, var(--color-black) 12%, transparent);
+    }
+
+    .icon {
+      flex: none;
+    }
+  }
+
+  .btn--primary {
+    --btn-bg: var(--color-primary);
+    --btn-fg: var(--color-on-primary);
+    --btn-bd: var(--color-primary);
+
+    &:hover {
+      border-color: var(--color-primary-hover);
+      background: var(--color-primary-hover);
+    }
+  }
+
+  .btn--secondary {
+    --btn-bg: var(--color-primary-subtle);
+    --btn-fg: var(--color-primary);
+    --btn-bd: transparent;
+
+    &:hover {
+      background: color-mix(
+        in srgb,
+        var(--color-primary-subtle) 70%,
+        var(--color-primary) 12%
+      );
+    }
+  }
+
+  .btn--ghost {
+    --btn-bg: transparent;
+    --btn-fg: var(--color-text-secondary);
+    --btn-bd: transparent;
+
+    &:hover {
+      background: var(--color-surface-2);
+    }
+  }
+
+  .btn--danger {
+    --btn-bg: var(--color-danger);
+    --btn-fg: var(--color-on-danger);
+    --btn-bd: var(--color-danger);
+
+    &:hover {
+      background: color-mix(
+        in srgb,
+        var(--color-danger) 88%,
+        var(--color-black)
+      );
+    }
+  }
+
+  .btn--danger-ghost {
+    --btn-bg: transparent;
+    --btn-fg: var(--color-danger);
+    --btn-bd: transparent;
+
+    &:hover {
+      background: var(--color-danger-subtle);
+    }
+  }
+
+  .btn--on-dark {
+    --btn-bg: var(--color-white);
+    --btn-fg: var(--color-primary-strong);
+    --btn-bd: var(--color-white);
+
+    &:hover {
+      background: var(--color-on-dark-hover);
+      color: var(--btn-fg);
+    }
+  }
+
+  .btn--sm {
+    min-height: var(--spacing-control-sm);
+    padding: 0 var(--spacing-3);
+    font-size: var(--text-xs);
+
+    .icon {
+      width: 16px;
+      height: 16px;
+    }
+  }
+
+  .btn--lg {
+    min-height: var(--spacing-12);
+    padding: 0 var(--spacing-6);
+    font-size: var(--text-md);
+  }
+
+  .btn--block {
+    width: 100%;
+  }
+
+  .btn:disabled,
+  .btn[aria-disabled='true'] {
+    opacity: 0.5;
+    pointer-events: none;
+  }
+
+  // Busy: the label is hidden and a spinner takes its place; the button stays focusable.
+  .btn.is-loading {
+    position: relative;
+    color: transparent;
+    pointer-events: none;
+
+    &::after {
+      content: '';
+      position: absolute;
+      width: 16px;
+      height: 16px;
+      border: 2px solid var(--btn-fg);
+      border-right-color: transparent;
+      border-radius: 50%;
+      animation: var(--animate-spin);
+    }
+  }
+}

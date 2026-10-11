@@ -14,7 +14,14 @@ export const MIGRATION_ENTRIES = [
     level: 'atom',
     targets: ['Button'],
     checklist: ['H'],
-    status: 'todo',
+    status: 'done',
+    owner: 'Hienne',
+    verify: {
+      lightDark: 'done',
+      widths: 'done',
+      keyboard: 'done',
+      errorStates: 'n/a',
+    },
   },
   {
     id: 'icon-button',
@@ -23,7 +30,14 @@ export const MIGRATION_ENTRIES = [
     level: 'atom',
     targets: ['IconButton'],
     checklist: ['H'],
-    status: 'todo',
+    status: 'done',
+    owner: 'Hienne',
+    verify: {
+      lightDark: 'done',
+      widths: 'done',
+      keyboard: 'done',
+      errorStates: 'n/a',
+    },
   },
   {
     id: 'link-button',
@@ -32,7 +46,14 @@ export const MIGRATION_ENTRIES = [
     level: 'atom',
     targets: ['LinkButton'],
     checklist: ['H'],
-    status: 'todo',
+    status: 'done',
+    owner: 'Hienne',
+    verify: {
+      lightDark: 'done',
+      widths: 'done',
+      keyboard: 'done',
+      errorStates: 'n/a',
+    },
   },
   {
     id: 'text-controls',

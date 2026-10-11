@@ -138,6 +138,28 @@ describe('/design-system', () => {
     });
   });
 
+  describe('buttons section', () => {
+    it('shows the variant × state table and the icon-button row, no placeholder left', async () => {
+      const { page } = await openDesignSystem();
+      const section = page.querySelector('#ds-buttons') as HTMLElement;
+      expect(section.querySelector('[data-placeholder]')).toBeNull();
+      const rows = Array.from(section.querySelectorAll('tbody tr'));
+      expect(
+        rows.map((r) => r.querySelector('th')?.textContent?.trim()),
+      ).toEqual(['primary', 'secondary', 'ghost', 'danger', 'danger-ghost']);
+      const cells = rows[0].querySelectorAll('td button');
+      expect(cells).toHaveLength(5);
+      expect(cells[3].hasAttribute('disabled')).toBe(true);
+      expect(cells[4].getAttribute('aria-busy')).toBe('true');
+      const icons = Array.from(section.querySelectorAll('button.icon-btn'));
+      expect(icons.map((b) => b.getAttribute('aria-label'))).toEqual([
+        'Sửa',
+        'Xóa',
+        'Thông báo',
+      ]);
+    });
+  });
+
   describe('navigation section', () => {
     it('demos the segmented control', async () => {
       const { page } = await openDesignSystem();
@@ -268,15 +290,15 @@ describe('/design-system', () => {
   describe('migration placeholders', () => {
     it('shows "Chưa migrate" for a demo whose entries are not done', async () => {
       const { page } = await openDesignSystem();
-      const placeholder = page.querySelector('#ds-buttons [data-placeholder]');
+      const placeholder = page.querySelector('#ds-forms [data-placeholder]');
       expect(placeholder?.textContent).toContain('Chưa migrate');
-      expect(placeholder?.textContent).toContain('button');
+      expect(placeholder?.textContent).toContain('field');
     });
 
     it('shows the status only in production', async () => {
       const { page } = await openDesignSystem(false);
       const text = page.querySelector(
-        '#ds-buttons [data-placeholder]',
+        '#ds-forms [data-placeholder]',
       )?.textContent;
       expect(text).toContain('Chưa làm');
       expect(text).not.toContain('@');
