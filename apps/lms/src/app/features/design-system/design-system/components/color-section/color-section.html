@@ -1,0 +1,102 @@
+<app-ds-section
+  section="color"
+  title="Màu sắc"
+  description="Token semantic — component không bao giờ dùng mã hex trực tiếp. Dark mode tự đổi giá trị token."
+>
+  @for (group of store.swatchGroups$(); track group.group) {
+  <div class="flex flex-col gap-3">
+    <h3>{{ group.group }}</h3>
+    <ul class="swatches gap-3 p-0">
+      @for (swatch of group.tokens; track swatch.token) {
+      <li
+        class="list-none overflow-hidden rounded-md border border-border bg-surface"
+      >
+        <div
+          class="swatch-color"
+          [style.--swatch]="'var(' + swatch.token + ')'"
+        ></div>
+        <div class="p-3 text-xs">
+          <strong class="block text-sm">{{ swatch.name }}</strong>
+          <code>{{ swatch.token }}</code>
+          <div class="text-text-muted">{{ swatch.value }}</div>
+          @if (swatch.purpose) {
+          <div class="mt-2">{{ swatch.purpose }}</div>
+          }
+        </div>
+      </li>
+      }
+    </ul>
+  </div>
+  }
+
+  <section
+    class="rounded-lg border border-border bg-surface"
+    aria-labelledby="contrast-heading"
+  >
+    <div
+      class="flex flex-wrap items-center justify-between gap-3 border-b border-border px-5 py-4"
+    >
+      <h3 class="text-md font-semibold" id="contrast-heading">
+        Kiểm tra tương phản (tính trực tiếp theo theme hiện tại)
+      </h3>
+      <span class="text-xs text-text-muted">Đổi sáng/tối để kiểm tra lại</span>
+    </div>
+    <div class="overflow-x-auto">
+      <table class="w-full text-sm whitespace-nowrap">
+        <thead>
+          <tr
+            class="bg-surface-2 text-left text-xs tracking-wide text-text-secondary uppercase"
+          >
+            <th class="px-4 py-3 font-semibold" scope="col">Cặp chữ / nền</th>
+            <th class="px-4 py-3 font-semibold" scope="col">Mẫu</th>
+            <th class="px-4 py-3 font-semibold" scope="col">Tỷ lệ</th>
+            <th class="px-4 py-3 font-semibold" scope="col">WCAG</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (row of store.contrastRows$(); track row.foreground +
+          row.background) {
+          <tr class="border-b border-border last:border-b-0">
+            <td class="px-4 py-3">
+              <code>{{ row.foreground }}</code> /
+              <code>{{ row.background }}</code>
+            </td>
+            <td class="px-4 py-3">
+              <span
+                class="sample"
+                [style.--sample-fg]="'var(' + row.foreground + ')'"
+                [style.--sample-bg]="'var(' + row.background + ')'"
+                >Aa Tiến độ</span
+              >
+            </td>
+            <td class="px-4 py-3" data-ratio>{{ row.ratio }}</td>
+            <td class="px-4 py-3" data-grade>
+              @switch (row.grade) { @case ('AAA') {
+              <span
+                class="inline-flex h-6 items-center gap-1 rounded-full bg-success-subtle px-2 text-xs font-semibold text-success"
+                >AAA</span
+              >
+              } @case ('AA') {
+              <span
+                class="inline-flex h-6 items-center gap-1 rounded-full bg-success-subtle px-2 text-xs font-semibold text-success"
+                >AA</span
+              >
+              } @case ('ui') {
+              <span
+                class="inline-flex h-6 items-center gap-1 rounded-full bg-success-subtle px-2 text-xs font-semibold text-success"
+                >Đạt 3:1 (UI)</span
+              >
+              } @case ('fail') {
+              <span
+                class="inline-flex h-6 items-center gap-1 rounded-full bg-danger-subtle px-2 text-xs font-semibold text-danger"
+                >Chưa đạt</span
+              >
+              } @default { … } }
+            </td>
+          </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  </section>
+</app-ds-section>

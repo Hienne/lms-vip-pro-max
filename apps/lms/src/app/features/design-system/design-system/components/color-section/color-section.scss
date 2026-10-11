@@ -1,0 +1,18 @@
+.swatches {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+}
+
+// Swatch and contrast sample take their colours from a token reference bound as a CSS variable.
+.swatch-color {
+  height: 72px;
+  background: var(--swatch);
+}
+
+.sample {
+  padding: var(--spacing-1) 10px;
+  border-radius: var(--radius-sm);
+  background: var(--sample-bg);
+  color: var(--sample-fg);
+  font-weight: var(--font-weight-semibold);
+}

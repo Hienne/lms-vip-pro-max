@@ -86,17 +86,91 @@ sets `aria-label` and the tooltip, so an unnamed icon button does not compile.
 - **Tokens are the single source of truth.** `libs/ui/src/styles/theme.css`
   ports `lms-mockup/assets/css/tokens.css`: light values inside
   `@theme static { … }`, dark values in the same `:root[data-theme="dark"]` and
-  `prefers-color-scheme` blocks as the mockup. The mockup's token names already
-  match Tailwind v4 namespaces (`--color-*`, `--text-*`, `--radius-*`,
-  `--shadow-*`, `--font-*`, `--ease-*`), so utilities like `bg-primary`,
-  `text-text-muted`, `rounded-lg` resolve to project tokens.
-- The theme starts with `--color-*: initial;` so Tailwind's default palette does
-  not exist: `bg-red-500` simply produces nothing. `static` keeps every token
-  emitted even when no utility uses it, because component SCSS reads them via
-  `var()`.
-- Spacing utilities use the 4px scale (`--spacing: 4px`): use steps
-  1, 2, 3, 4, 5, 6, 8, 10, 12, matching `--space-*`. Arbitrary values
-  (`p-[13px]`, `text-[#fff]`) are out.
+  `prefers-color-scheme` blocks as the mockup. Every token has **one** name,
+  taken from a Tailwind v4 namespace, so utilities (`bg-primary`,
+  `text-text-muted`, `p-4`, `rounded-lg`, `fill-chart-1`) and SCSS
+  (`var(--color-primary)`) read the same variable. The mockup's names do **not**
+  all match Tailwind's namespaces; use the table below to translate.
+- The theme starts with `--*: initial;`, which removes Tailwind's whole default
+  theme (palette, spacing, font sizes, breakpoints…): `bg-red-500` and `p-7`
+  simply produce nothing. `static` keeps every token emitted even when no
+  utility uses it, because component SCSS reads them via `var()`.
+- Spacing utilities use the mockup's 4px steps only: 1, 2, 3, 4, 5, 6, 8, 10, 12
+  (`--spacing-N`, no base `--spacing` multiplier, so `p-7` is not a class).
+  Arbitrary values (`p-[13px]`, `text-[#fff]`) are out.
+
+### Mockup token → project token
+
+| Mockup (`tokens.css`)                                                           | Project token                                                   | Utility examples                                 |
+| ------------------------------------------------------------------------------- | --------------------------------------------------------------- | ------------------------------------------------ |
+| `--color-*` (brand, semantic, neutral)                                          | unchanged                                                       | `bg-primary`, `text-text-muted`, `border-border` |
+| `--chart-1` … `--chart-5`, `--chart-grid`                                       | `--color-chart-1` … `--color-chart-grid`                        | `fill-chart-1`, `stroke-chart-grid`              |
+| `--font-sans`, `--font-mono`                                                    | unchanged                                                       | `font-sans`, `font-mono`                         |
+| `--text-xs` … `--text-3xl`                                                      | unchanged                                                       | `text-sm`, `text-2xl`                            |
+| `--leading-tight/normal/relaxed`                                                | unchanged                                                       | `leading-tight`                                  |
+| `--weight-regular/medium/semibold/bold`                                         | `--font-weight-regular/medium/semibold/bold`                    | `font-semibold`                                  |
+| `--space-1` … `--space-12`                                                      | `--spacing-1` … `--spacing-12`                                  | `p-4`, `gap-3`, `mt-6`                           |
+| `--radius-*`, `--shadow-*`                                                      | unchanged                                                       | `rounded-lg`, `shadow-md`                        |
+| `--duration-fast/base/slow`                                                     | `--transition-duration-fast/base/slow`                          | `duration-fast`                                  |
+| `--ease-out`                                                                    | unchanged                                                       | `ease-out`                                       |
+| `@keyframes enter/reward-pop/shimmer/spin`, `.animate-enter`, `.animate-reward` | `--animate-enter/reward-pop/shimmer/spin`                       | `animate-enter`, `animate-reward-pop`            |
+| `--sidebar-width`, `--content-max`                                              | `--container-sidebar`, `--container-content`                    | `w-sidebar`, `max-w-content`                     |
+| `--header-height`, `--control-height(-sm)`, `--touch-min`                       | `--spacing-header`, `--spacing-control(-sm)`, `--spacing-touch` | `h-header`, `min-h-control`, `min-h-touch`       |
+| `--z-header/sidebar/drawer/modal/toast`                                         | `--z-index-header/sidebar/drawer/modal/toast`                   | `z-header` (or `var(--z-index-modal)`)           |
+
+Tokens added on top of the mockup (the mockup hard-coded these values): `--color-white`,
+`--color-on-danger` (dark: a dark ink, because white on the dark danger red is 2.4:1),
+`--color-hero-from/to/muted/subtle/accent/chip` (the hero panel is dark teal in both themes),
+`--tracking-tight/wide/wider`. Durations drop to `0ms` under `prefers-reduced-motion`.
+
+### Breakpoints
+
+Mobile-first, four steps: `sm` 640px · `md` 720px · `lg` 1100px · `xl` 1280px.
+Write the narrow layout as the base style and add `md:`, `lg:`… utilities; there
+are no `max-*` queries. The mockup's `max-width` queries map to the nearest step:
+
+| Mockup query | Step | Notes                                             |
+| ------------ | ---- | ------------------------------------------------- |
+| ≤ 640        | `sm` | `.hide-sm`, hero padding                          |
+| ≤ 720        | `md` | grids collapse, tables → cards, form grid         |
+| ≤ 900        | `md` | quiz layout, assignment row (nearest step is 720) |
+| ≤ 1000       | `lg` | instructor inbox (nearest step is 1100)           |
+| ≤ 1024       | `lg` | sidebar → drawer (nearest step is 1100)           |
+| ≤ 1100       | `lg` | dashboard grids, design-system TOC                |
+
+A screen may therefore differ slightly from the mockup between the old and new
+width; note each visible difference in the conversion report. SCSS media queries
+cannot read custom properties: write the literal width and comment the step it equals.
+
+### Mockup helper → Tailwind utility
+
+The mockup's `base.css` helpers are not ported. Use the utility on the right.
+
+| Mockup helper                                  | Tailwind                                                                                                  |
+| ---------------------------------------------- | --------------------------------------------------------------------------------------------------------- |
+| `.stack` (`--gap`)                             | `flex flex-col gap-4` (gap from the 4px scale)                                                            |
+| `.row` / `.row-between`                        | `flex flex-wrap items-center gap-3` / add `justify-between`                                               |
+| `.grow`                                        | `grow min-w-0`                                                                                            |
+| `.grid-2` / `.grid-3` / `.grid-4`              | `grid grid-cols-1 md:grid-cols-2` · `… md:grid-cols-2 lg:grid-cols-3` · `… md:grid-cols-2 lg:grid-cols-4` |
+| `.span-2`                                      | `md:col-span-2`                                                                                           |
+| `.mt-2/4/6`, `.mb-2/4`, `.w-full`, `.hidden`   | same names                                                                                                |
+| `.text-sm/xs/lg`, `.fw-600`, `.fw-700`         | `text-sm/xs/lg`, `font-semibold`, `font-bold`                                                             |
+| `.text-muted/secondary/success/danger/warning` | `text-text-muted`, `text-text-secondary`, `text-success`, …                                               |
+| `.text-accent`                                 | `text-accent-ink`                                                                                         |
+| `.eyebrow`                                     | `text-xs font-semibold tracking-wider text-text-muted uppercase`                                          |
+| `.num`                                         | `tabular-nums`                                                                                            |
+| `.mono`                                        | `font-mono text-sm`                                                                                       |
+| `.truncate` / `.clamp-2`                       | `truncate` / `line-clamp-2`                                                                               |
+| `.sr-only`                                     | `sr-only`                                                                                                 |
+| `.animate-enter` / `.animate-reward`           | `animate-enter` / `animate-reward-pop`                                                                    |
+| `.skip-link`                                   | `skip-link` (kept in `base.css`)                                                                          |
+
+Base rules that differ from Tailwind's preflight (headings, links, `kbd`,
+`:focus-visible`, skip link, tabular numbers in tables, reduced motion) live in
+`libs/ui/src/styles/base.css`. Two deliberate deviations from the mockup: the
+focus ring does not force `border-radius: 4px` (it follows the element's own
+radius), and lists keep preflight's reset (use `list-disc pl-5` for prose lists).
+
 - **Atom look = one SCSS partial per BEM block**, ported from the mockup's
   `components.css` into `libs/ui/src/styles/components/_<block>.scss`, wrapped in
   `@layer components`, and applied only by the owning atom's `host` class.
