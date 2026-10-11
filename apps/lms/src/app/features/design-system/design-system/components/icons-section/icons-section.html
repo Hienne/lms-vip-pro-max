@@ -5,12 +5,12 @@
 >
   <app-ds-demo frame="card" [needs]="['icon']">
     <ul class="grid">
-      @for (icon of icons; track icon.mockup) {
+      @for (icon of icons; track icon.name + icon.mockup) {
       <li class="tile">
         <ui-icon [name]="icon.name" size="lg" />
         <code class="name text-center text-xs">{{ icon.name }}</code>
         <span class="name text-center text-xs text-text-muted"
-          >mockup: {{ icon.mockup }}</span
+          >{{ icon.mockup ? 'mockup: ' + icon.mockup : 'thêm cho app' }}</span
         >
       </li>
       }

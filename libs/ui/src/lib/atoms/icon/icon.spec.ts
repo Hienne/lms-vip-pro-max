@@ -77,15 +77,18 @@ describe('Icon', () => {
 });
 
 describe('icon registry', () => {
-  it('registers every mockup icon', () => {
-    expect(ICON_CATALOG).toHaveLength(89);
+  it('registers every mockup icon, plus the ones the app added', () => {
+    expect(ICON_CATALOG.filter((icon) => icon.mockup)).toHaveLength(89);
+    expect(
+      ICON_CATALOG.filter((icon) => !icon.mockup).map((i) => i.name),
+    ).toEqual(['monitor']);
     for (const { name } of ICON_CATALOG) {
       expect(ICONS[name]).toBeDefined();
     }
   });
 
   it('has no mockup name twice', () => {
-    const names = ICON_CATALOG.map((icon) => icon.mockup);
+    const names = ICON_CATALOG.map((icon) => icon.mockup).filter(Boolean);
     expect(new Set(names).size).toBe(names.length);
   });
 

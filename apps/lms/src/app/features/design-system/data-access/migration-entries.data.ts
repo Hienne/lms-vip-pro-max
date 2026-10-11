@@ -172,7 +172,14 @@ export const MIGRATION_ENTRIES = [
     level: 'molecule',
     targets: ['Segmented'],
     checklist: ['H'],
-    status: 'todo',
+    status: 'done',
+    owner: 'Hienne',
+    verify: {
+      lightDark: 'done',
+      widths: 'done',
+      keyboard: 'done',
+      errorStates: 'n/a',
+    },
   },
   {
     id: 'breadcrumb',

@@ -133,6 +133,17 @@ describe('template scan', () => {
     expect(offenders.map((file) => relative(root, file))).toEqual([]);
   });
 
+  it('writes the theme attribute in ThemeStore only', () => {
+    const offenders = [...appFiles, ...uiFiles].filter(
+      (file) =>
+        // index.html carries the pre-boot script that applies the stored choice.
+        !file.endsWith('theme.store.ts') &&
+        !file.endsWith('index.html') &&
+        readFileSync(file, 'utf8').includes('data-theme'),
+    );
+    expect(offenders.map((file) => relative(root, file))).toEqual([]);
+  });
+
   it('writes no design-system block class outside @lms/ui', () => {
     const blocks = uiBlocks();
     const offenders = appFiles.flatMap((file) =>

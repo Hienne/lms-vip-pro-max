@@ -8,6 +8,7 @@ import {
   sectionHeadingId,
   type DesignSystemSectionId,
 } from '../data-access/design-system-sections';
+import { ThemeSwitch } from './components/theme-switch/theme-switch';
 import { Hero } from './components/hero/hero';
 import { PrinciplesSection } from './components/principles-section/principles-section';
 import { ColorSection } from './components/color-section/color-section';
@@ -31,6 +32,7 @@ const MAIN_ID = 'ds-main';
     RouterLink,
     Mai,
     Hero,
+    ThemeSwitch,
     PrinciplesSection,
     ColorSection,
     TypeSection,

@@ -183,7 +183,7 @@ radius), and lists keep preflight's reset (use `list-disc pl-5` for prose lists)
 - Runtime values go through a CSS variable binding (`[style.--value]="pct() + '%'"`),
   never an inline literal. Inline `style="color:#fff"` in mockup markup becomes a
   token (`text-on-primary`).
-- Dark mode comes from tokens only. Nothing outside `theme.css` mentions a theme.
+- Dark mode comes from tokens only: see [Theme and dark mode](#theme-and-dark-mode).
 
 ### Tailwind + SCSS wiring (gotchas)
 
@@ -198,6 +198,32 @@ radius), and lists keep preflight's reset (use `list-disc pl-5` for prose lists)
   utility, so every global rule sits inside a layer.
 - Component `.scss` files use `var(--token)`. Use `@apply` only after
   `@reference "<path>/tailwind.css";`, and prefer utilities in the template.
+
+## Theme and dark mode
+
+Three choices, **Hệ thống / Sáng / Tối** (`system | light | dark`), remembered per browser.
+
+- **Tokens carry the theme.** `theme.css` holds the light values and the dark values behind two
+  conditions: `:root[data-theme="dark"]`, and `prefers-color-scheme: dark` unless
+  `data-theme="light"`. A screen that uses tokens supports both themes with no extra work.
+  `system` means no attribute at all.
+- **Nothing else mentions a theme.** Components, templates and SCSS never branch on the theme, and
+  never write `dark:` utilities. The variant exists in the theme (matching the same two conditions)
+  only so a stray one is not silently ignored; a spec (`template-scan.spec.ts`) fails on any
+  `dark:` in a template or component file, and on any file other than `ThemeStore` that writes the
+  `data-theme` attribute.
+- **`ThemeStore`** (`apps/lms/src/app/core/theme/theme.store.ts`, root-provided) owns the choice:
+  `preference$()`, `effective$()` (`light | dark`, following the OS live in `system`) and one
+  command, `setPreference()`. It is the only writer of the attribute, persists the choice under
+  `lms.theme` (absence = `system`) and tolerates blocked storage. Read `effective$()` when something
+  must react to the theme (the contrast table recomputes from it); never read the attribute.
+- **No flash.** An inline script in `apps/lms/src/index.html` applies the stored `light | dark`
+  before the app boots. If a strict Content-Security-Policy is introduced, add the script's hash to
+  `script-src`. It is not unit-tested: verify in the browser by reloading in each of the three
+  choices with the OS theme light and dark and watching the first paint.
+- **The control** is `ui-segmented` (a molecule on the `@angular/aria` listbox, one selected
+  option, arrow keys move and select, `value` is a two-way model). `/design-system` has the switch
+  in its table of contents; the app header will reuse the same store and control.
 
 ## Icons
 

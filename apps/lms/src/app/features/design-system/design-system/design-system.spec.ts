@@ -1,3 +1,4 @@
+import { ApplicationRef } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { provideRouter, Router } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
@@ -53,6 +54,8 @@ describe('/design-system', () => {
 
   afterEach(() => {
     document.documentElement.removeAttribute('style');
+    document.documentElement.removeAttribute('data-theme');
+    localStorage.removeItem('lms.theme');
   });
 
   it('opens publicly with a table of contents linking to every section', async () => {
@@ -76,6 +79,73 @@ describe('/design-system', () => {
     for (const section of DESIGN_SYSTEM_SECTIONS) {
       expect(page.querySelector(`#h-${section.id}`)?.tagName).toBe('H2');
     }
+  });
+
+  describe('theme switch', () => {
+    const option = (page: HTMLElement, label: string) =>
+      Array.from(
+        page.querySelectorAll<HTMLElement>('nav [role="option"]'),
+      ).find((o) => o.textContent?.trim() === label) as HTMLElement;
+
+    it('offers Hệ thống, Sáng and Tối as one group with the current choice selected', async () => {
+      const { page } = await openDesignSystem();
+      const group = page.querySelector('nav [role="listbox"]');
+      expect(group?.getAttribute('aria-label')).toBe('Giao diện');
+      const options = Array.from(page.querySelectorAll('nav [role="option"]'));
+      expect(options.map((o) => o.textContent?.trim())).toEqual([
+        'Hệ thống',
+        'Sáng',
+        'Tối',
+      ]);
+      expect(options.map((o) => o.getAttribute('aria-selected'))).toEqual([
+        'true',
+        'false',
+        'false',
+      ]);
+    });
+
+    it('changes the theme attribute on the root element and remembers the choice', async () => {
+      const { page } = await openDesignSystem();
+      option(page, 'Tối').click();
+      TestBed.tick();
+      expect(document.documentElement.getAttribute('data-theme')).toBe('dark');
+      expect(localStorage.getItem('lms.theme')).toBe('dark');
+
+      option(page, 'Sáng').click();
+      TestBed.tick();
+      expect(document.documentElement.getAttribute('data-theme')).toBe('light');
+
+      option(page, 'Hệ thống').click();
+      TestBed.tick();
+      expect(document.documentElement.hasAttribute('data-theme')).toBe(false);
+      expect(localStorage.getItem('lms.theme')).toBeNull();
+    });
+
+    it('recomputes the contrast table after the theme changes', async () => {
+      const { page } = await openDesignSystem();
+      const ratio = () =>
+        page.querySelector('#ds-color tbody tr [data-ratio]')?.textContent;
+      expect(ratio()).toBe('16.98:1');
+
+      option(page, 'Tối').click();
+      // The tokens take their dark values with the attribute; here the stylesheet is simulated.
+      document.documentElement.style.setProperty('--color-text', '#e7eeed');
+      document.documentElement.style.setProperty('--color-surface', '#151e1d');
+      TestBed.tick();
+      await TestBed.inject(ApplicationRef).whenStable();
+      expect(ratio()).not.toBe('16.98:1');
+      expect(Number.parseFloat(ratio() ?? '0')).toBeGreaterThan(12);
+    });
+  });
+
+  describe('navigation section', () => {
+    it('demos the segmented control', async () => {
+      const { page } = await openDesignSystem();
+      const demo = page.querySelector('#ds-nav [role="listbox"]');
+      expect(demo?.getAttribute('aria-label')).toBe('Kỳ');
+      const selected = demo?.querySelector('[aria-selected="true"]');
+      expect(selected?.textContent?.trim()).toBe('Tháng');
+    });
   });
 
   describe('brand', () => {

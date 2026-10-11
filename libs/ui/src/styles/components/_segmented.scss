@@ -1,0 +1,36 @@
+// Segmented control: ported from the mockup's `.segmented` block (components.css).
+// The options are `role="option"` elements of the aria listbox, selected by `aria-selected`.
+@layer components {
+  .segmented {
+    display: inline-flex;
+    padding: 3px;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    background: var(--color-surface-2);
+  }
+
+  .segmented__list {
+    display: inline-flex;
+  }
+
+  .segmented__option {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--spacing-2);
+    min-height: var(--spacing-control-sm);
+    padding: 0 var(--spacing-3);
+    border-radius: var(--radius-sm);
+    color: var(--color-text-secondary);
+    cursor: pointer;
+    font-size: var(--text-sm);
+    font-weight: var(--font-weight-semibold);
+    white-space: nowrap;
+    user-select: none;
+  }
+
+  .segmented__option[aria-selected='true'] {
+    background: var(--color-surface);
+    box-shadow: var(--shadow-sm);
+    color: var(--color-primary);
+  }
+}

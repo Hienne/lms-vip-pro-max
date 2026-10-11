@@ -52,6 +52,7 @@ import {
   LucideMaximize,
   LucideMenu,
   LucideMessageSquare,
+  LucideMonitor,
   LucideMinus,
   LucideMoon,
   LucideNetwork,
@@ -148,6 +149,7 @@ export const ICONS = {
   maximize: LucideMaximize.icon,
   menu: LucideMenu.icon,
   'message-square': LucideMessageSquare.icon,
+  monitor: LucideMonitor.icon,
   minus: LucideMinus.icon,
   moon: LucideMoon.icon,
   network: LucideNetwork.icon,
@@ -189,10 +191,11 @@ export type IconName = keyof typeof ICONS;
 
 /**
  * Mockup `icon(name)` → Lucide name (docs/migration/mockup-to-angular.md → Icon names). Two mockup
- * names can share a Lucide icon (`send2` is the mockup's plain arrow).
+ * names can share a Lucide icon (`send2` is the mockup's plain arrow). `mockup: null` marks an icon
+ * added for the Angular app that the mockup does not have.
  */
 export const ICON_CATALOG: readonly {
-  readonly mockup: string;
+  readonly mockup: string | null;
   readonly name: IconName;
 }[] = [
   { mockup: 'home', name: 'house' },
@@ -284,4 +287,5 @@ export const ICON_CATALOG: readonly {
   { mockup: 'palette', name: 'palette' },
   { mockup: 'rotate', name: 'rotate-ccw' },
   { mockup: 'printer', name: 'printer' },
+  { mockup: null, name: 'monitor' },
 ];
