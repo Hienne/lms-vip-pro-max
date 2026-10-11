@@ -7,7 +7,7 @@
     <div class="mb-4 flex items-center gap-2">
       <strong>Design System v2</strong>
     </div>
-    <ol class="m-0 flex list-none flex-row flex-wrap gap-1 p-0 lg:flex-col">
+    <ol class="flex list-none flex-row flex-wrap gap-1 lg:flex-col">
       @for (item of tocItems; track item.id) {
       <li>
         <a
@@ -24,11 +24,7 @@
     </ol>
   </nav>
 
-  <main
-    class="flex min-w-0 flex-col gap-12 outline-none"
-    [id]="mainId"
-    tabindex="-1"
-  >
+  <main class="flex flex-col gap-12 outline-none" [id]="mainId" tabindex="-1">
     <app-principles-section />
     <app-color-section />
     <app-type-section />

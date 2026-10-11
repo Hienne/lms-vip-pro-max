@@ -78,6 +78,59 @@ describe('/design-system', () => {
     }
   });
 
+  describe('principles section', () => {
+    it('shows the six principles and the v1 → v2 change log', async () => {
+      const { page } = await openDesignSystem();
+      const section = page.querySelector('#ds-principles') as HTMLElement;
+      expect(section.querySelector('#h-principles')?.textContent).toContain(
+        'Nguyên tắc & những gì đã sửa từ v1',
+      );
+      expect(section.querySelectorAll('ul > li')).toHaveLength(6);
+      expect(section.textContent).toContain('Một hành động chính');
+      expect(section.querySelectorAll('tbody tr')).toHaveLength(8);
+      expect(section.textContent).toContain('Success trùng Primary');
+    });
+  });
+
+  describe('typography section', () => {
+    it('shows the type scale from display to caption plus tabular numbers', async () => {
+      const { page } = await openDesignSystem();
+      const section = page.querySelector('#ds-type') as HTMLElement;
+      const labels = Array.from(
+        section.querySelectorAll('.sample > span:first-child'),
+      ).map((label) => label.textContent);
+      expect(labels).toEqual([
+        'Display · 36/700',
+        'H1 · 28/700',
+        'H2 · 22/600',
+        'H3 · 18/600',
+        'Body · 16/400 · lh 1.5',
+        'Small · 14/500',
+        'Caption · 12/600',
+        'Số liệu · tabular',
+      ]);
+      expect(section.querySelector('.text-3xl')?.textContent).toContain(
+        'Chào mừng bạn gia nhập Ban!',
+      );
+    });
+  });
+
+  describe('spacing, radius, shadow and motion section', () => {
+    it('shows the scales and replays the motion samples on demand', async () => {
+      const { page } = await openDesignSystem();
+      const section = page.querySelector('#ds-space') as HTMLElement;
+      expect(section.querySelectorAll('.step')).toHaveLength(7);
+      expect(section.textContent).toContain('--spacing-12');
+      expect(section.querySelectorAll('.swatch')).toHaveLength(4);
+      expect(section.querySelectorAll('.shadow-sample')).toHaveLength(3);
+
+      const before = section.querySelector('[data-motion] > *');
+      section.querySelector<HTMLButtonElement>('button.replay')?.click();
+      TestBed.tick();
+      expect(section.querySelector('[data-motion] > *')).not.toBe(before);
+    });
+  });
+
   describe('colour section', () => {
     it('shows a swatch with name, token, live value and purpose', async () => {
       const { page } = await openDesignSystem();
@@ -135,6 +188,16 @@ describe('/design-system', () => {
         .querySelector<HTMLAnchorElement>('nav a[href$="#ds-color"]')
         ?.click();
       expect(document.activeElement?.id).toBe('h-color');
+    });
+
+    it('reaches every section: its link moves focus to the heading', async () => {
+      const { page } = await openDesignSystem();
+      for (const { id } of DESIGN_SYSTEM_SECTIONS) {
+        page
+          .querySelector<HTMLAnchorElement>(`nav a[href$="#ds-${id}"]`)
+          ?.click();
+        expect(document.activeElement?.id).toBe(`h-${id}`);
+      }
     });
 
     it('offers a skip link that lands on the main content', async () => {

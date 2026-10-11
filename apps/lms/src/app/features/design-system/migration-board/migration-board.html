@@ -56,7 +56,7 @@
           >
             <th class="px-4 py-3 text-left font-semibold" scope="row">
               <code>{{ row.id }}</code>
-              <div class="text-xs font-normal text-text-muted">
+              <div class="text-xs font-regular text-text-muted">
                 {{ row.level }}
               </div>
             </th>
@@ -74,7 +74,7 @@
               } @else { — }
             </td>
             <td class="px-4 py-3">
-              <ul class="m-0 flex list-none flex-col gap-1 p-0">
+              <ul class="flex list-none flex-col gap-1">
                 @for (check of row.checks; track check.label) {
                 <li>
                   <span aria-hidden="true">{{ check.mark }}</span> {{

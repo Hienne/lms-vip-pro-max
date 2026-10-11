@@ -1,0 +1,40 @@
+// Label column beside the bar that shows the step.
+.step {
+  display: grid;
+  grid-template-columns: 84px auto;
+  align-items: center;
+  gap: var(--spacing-3);
+}
+
+// Samples of the radius and shadow scales: fixed-size tiles so the shapes compare.
+.swatch,
+.shadow-sample {
+  display: grid;
+  place-items: center;
+  font-size: var(--text-xs);
+}
+
+.swatch {
+  width: 64px;
+  height: 64px;
+  border: 1px solid var(--color-border);
+  background: var(--color-primary-subtle);
+}
+
+.shadow-sample {
+  width: 84px;
+  height: 56px;
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+}
+
+// Plain button until the button atom lands (docs/migration → Progress checklist).
+.replay {
+  min-height: var(--spacing-control-sm);
+  padding: 0 var(--spacing-3);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  font-size: var(--text-xs);
+  font-weight: var(--font-weight-semibold);
+}

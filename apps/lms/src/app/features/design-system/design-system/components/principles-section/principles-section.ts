@@ -1,10 +1,13 @@
 import { Component } from '@angular/core';
-import { DsDemo } from '../demo/demo';
 import { DsSection } from '../section/section';
+import { CHANGE_LOG, PRINCIPLES } from './data-access/principles';
 
 @Component({
   selector: 'app-principles-section',
-  imports: [DsSection, DsDemo],
+  imports: [DsSection],
   templateUrl: './principles-section.html',
 })
-export class PrinciplesSection {}
+export class PrinciplesSection {
+  protected readonly principles = PRINCIPLES;
+  protected readonly changeLog = CHANGE_LOG;
+}

@@ -2,9 +2,49 @@
   section="principles"
   title="Nguyên tắc &amp; những gì đã sửa từ v1"
 >
-  <app-ds-demo [needs]="['icon','card']"></app-ds-demo>
-  <app-ds-demo
-    label="Nhật ký thay đổi v1 → v2 (theo nhận xét review)"
-    [needs]="['card','table']"
-  ></app-ds-demo>
+  <ul class="grid list-none grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+    @for (principle of principles; track principle.title) {
+    <li
+      class="flex flex-col gap-2 rounded-lg border border-border bg-surface p-5"
+    >
+      <strong>{{ principle.title }}</strong>
+      <p class="text-sm text-text-secondary">{{ principle.description }}</p>
+    </li>
+    }
+  </ul>
+
+  <section
+    class="rounded-lg border border-border bg-surface"
+    aria-labelledby="change-log-heading"
+  >
+    <div class="border-b border-border px-5 py-4">
+      <h3 class="text-md font-semibold" id="change-log-heading">
+        Nhật ký thay đổi v1 → v2 (theo nhận xét review)
+      </h3>
+    </div>
+    <div class="overflow-x-auto">
+      <table class="w-full text-sm">
+        <thead>
+          <tr
+            class="bg-surface-2 text-left text-xs tracking-wide text-text-secondary uppercase"
+          >
+            <th class="px-4 py-3 font-semibold" scope="col">Vấn đề</th>
+            <th class="px-4 py-3 font-semibold" scope="col">v1</th>
+            <th class="px-4 py-3 font-semibold" scope="col">v2</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (row of changeLog; track row.issue) {
+          <tr class="border-b border-border align-top last:border-b-0">
+            <th class="px-4 py-3 text-left font-semibold" scope="row">
+              {{ row.issue }}
+            </th>
+            <td class="px-4 py-3 text-text-secondary">{{ row.v1 }}</td>
+            <td class="px-4 py-3">{{ row.v2 }}</td>
+          </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  </section>
 </app-ds-section>

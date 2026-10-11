@@ -14,7 +14,7 @@
     data-placeholder
   >
     <strong>Chưa migrate</strong>
-    <ul class="m-0 flex list-none flex-col gap-1 p-0 text-text-secondary">
+    <ul class="flex list-none flex-col gap-1 text-text-secondary">
       @for (item of pending(); track item.id) {
       <li>
         <code>{{ item.id }}</code> · {{ item.status }} @if (showDetails) { @if

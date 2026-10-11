@@ -6,7 +6,7 @@
   @for (group of store.swatchGroups$(); track group.group) {
   <div class="flex flex-col gap-3">
     <h3>{{ group.group }}</h3>
-    <ul class="swatches gap-3 p-0">
+    <ul class="swatches gap-3">
       @for (swatch of group.tokens; track swatch.token) {
       <li
         class="list-none overflow-hidden rounded-md border border-border bg-surface"
