@@ -2,3 +2,4 @@
 // Loaded globally after tailwind.css; every rule sits inside `@layer components`
 // (docs/conventions/ui-library.md → Styling).
 @use 'components/icon';
+@use 'components/mai';

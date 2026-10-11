@@ -78,6 +78,39 @@ describe('/design-system', () => {
     }
   });
 
+  describe('brand', () => {
+    it('shows the flower mark in the table of contents and the hero header', async () => {
+      const { page } = await openDesignSystem();
+      expect(
+        page.querySelector('nav ui-mai')?.getAttribute('aria-hidden'),
+      ).toBe('true');
+      const hero = page.querySelector('app-hero') as HTMLElement;
+      expect(hero.querySelector('h1')?.textContent).toContain(
+        'Flat, rõ ràng, đáng tin cậy — và dễ chuyển thành code.',
+      );
+      expect(hero.textContent).toContain(
+        'Core Banking Academy · Design System v2',
+      );
+      expect(hero.querySelectorAll('li')).toHaveLength(5);
+      expect(hero.querySelector('[aria-hidden="true"] ui-mai')).not.toBeNull();
+    });
+  });
+
+  describe('learning section', () => {
+    it('demos the reward badges and keeps the unbuilt demos as placeholders', async () => {
+      const { page } = await openDesignSystem();
+      const section = page.querySelector('#ds-learning') as HTMLElement;
+      const badges = Array.from(section.querySelectorAll('ui-mai-badge'));
+      expect(badges).toHaveLength(4);
+      expect(
+        badges.map((b) => b.textContent?.includes('Chưa mở khóa')),
+      ).toEqual([false, false, true, true]);
+      expect(
+        section.querySelectorAll('[data-placeholder]').length,
+      ).toBeGreaterThan(0);
+    });
+  });
+
   describe('principles section', () => {
     it('shows the six principles and the v1 → v2 change log', async () => {
       const { page } = await openDesignSystem();

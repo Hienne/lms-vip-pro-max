@@ -7,7 +7,19 @@
     label="Journey — bản đồ tuyến thay stepper (tên &amp; % luôn hiển thị)"
     [needs]="['domain-course-card']"
   ></app-ds-demo>
-  <app-ds-demo label="Huy hiệu cánh mai" [needs]="['mai']"></app-ds-demo>
+  <app-ds-demo label="Huy hiệu cánh mai" [needs]="['mai']">
+    <ul class="grid list-none grid-cols-2 gap-3 md:grid-cols-4">
+      @for (badge of badges; track badge.name) {
+      <li class="flex justify-center">
+        <ui-mai-badge
+          [name]="badge.name"
+          [description]="badge.description"
+          [earned]="badge.earned"
+        />
+      </li>
+      }
+    </ul>
+  </app-ds-demo>
   <app-ds-demo
     label="Đánh giá sao · hỏi đáp"
     [needs]="['rating','feature-misc','avatar']"

@@ -5,6 +5,7 @@
 <div class="layout">
   <nav class="toc" aria-label="Mục lục Design System">
     <div class="mb-4 flex items-center gap-2">
+      <ui-mai [size]="28" />
       <strong>Design System v2</strong>
     </div>
     <ol class="flex list-none flex-row flex-wrap gap-1 lg:flex-col">
@@ -25,6 +26,7 @@
   </nav>
 
   <main class="flex flex-col gap-12 outline-none" [id]="mainId" tabindex="-1">
+    <app-hero />
     <app-principles-section />
     <app-color-section />
     <app-type-section />

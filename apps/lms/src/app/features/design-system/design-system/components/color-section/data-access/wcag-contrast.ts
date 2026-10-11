@@ -43,10 +43,8 @@ export function contrastRatio(
   const fg = parseColor(foreground);
   const bg = parseColor(background);
   if (!fg || !bg) return undefined;
-  const [lighter, darker] = [luminance(fg), luminance(bg)].sort(
-    (a, b) => b - a,
-  );
-  return (lighter! + 0.05) / (darker! + 0.05);
+  const [a, b] = [luminance(fg), luminance(bg)];
+  return (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05);
 }
 
 export type WcagGrade = 'AAA' | 'AA' | 'ui' | 'fail';

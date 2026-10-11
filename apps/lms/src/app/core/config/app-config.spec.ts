@@ -35,7 +35,8 @@ describe('AppConfig', () => {
   });
 
   it('requires devTools', () => {
-    const { devTools: _omitted, ...withoutDevTools } = valid;
+    const withoutDevTools: Partial<AppConfigInput> = { ...valid };
+    delete withoutDevTools.devTools;
     expect(AppConfigSchema.safeParse(withoutDevTools).success).toBe(false);
   });
 
