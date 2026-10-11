@@ -1,0 +1,7 @@
+# Code owners: every change to these paths asks the owners for review.
+# Only the repository owner for now: add reviewers here as the team grows,
+# e.g. `/libs/ui/ @Hienne @teammate`.
+
+/libs/ui/ @Hienne
+/libs/contracts/ @Hienne
+/docs/ @Hienne

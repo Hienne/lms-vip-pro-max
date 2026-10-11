@@ -1,0 +1,29 @@
+<div
+  class="flex flex-col gap-3 rounded-lg border border-dashed border-border-strong bg-surface p-5"
+>
+  @if (label()) {
+  <span class="text-xs font-semibold tracking-wider text-text-muted uppercase"
+    >{{ label() }}</span
+  >
+  } @if (pending().length === 0) {
+  <ng-content />
+  } @else {
+  <div
+    class="flex flex-col gap-2 rounded-md bg-surface-2 p-4 text-sm"
+    role="note"
+    data-placeholder
+  >
+    <strong>Chưa migrate</strong>
+    <ul class="m-0 flex list-none flex-col gap-1 p-0 text-text-secondary">
+      @for (item of pending(); track item.id) {
+      <li>
+        <code>{{ item.id }}</code> · {{ item.status }} @if (showDetails) { @if
+        (item.owner) { · &#64;{{ item.owner }} } @if (item.pullRequest) { ·
+        <a [href]="item.pullRequest">Pull request</a>
+        } }
+      </li>
+      }
+    </ul>
+  </div>
+  }
+</div>

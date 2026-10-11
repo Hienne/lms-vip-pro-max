@@ -5,16 +5,18 @@ import {
 import { provideHttpClient, withInterceptors } from '@angular/common/http';
 import { provideRouter, withInMemoryScrolling } from '@angular/router';
 import { environment } from '../environments/environment';
-import { appRoutes } from './app.routes';
-import { provideAppConfig } from './core/config/app-config';
+import { createAppRoutes } from './app.routes';
+import { parseAppConfig, provideAppConfig } from './core/config/app-config';
 import { apiBaseUrlInterceptor } from './core/http/api-base-url.interceptor';
+
+const config = parseAppConfig(environment);
 
 export const appConfig: ApplicationConfig = {
   providers: [
     provideBrowserGlobalErrorListeners(),
-    provideAppConfig(environment),
+    provideAppConfig(config),
     provideRouter(
-      appRoutes,
+      createAppRoutes(config),
       withInMemoryScrolling({ anchorScrolling: 'enabled' }),
     ),
     provideHttpClient(withInterceptors([apiBaseUrlInterceptor])),

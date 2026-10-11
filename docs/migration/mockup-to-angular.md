@@ -152,6 +152,32 @@ rows marked `*` compare with the mockup's SVG path in `src/core/icons.js`.
 | key           | key                | palette     | palette           | rotate       | rotate-ccw \*   |
 | printer       | printer            |             |                   |              |                 |
 
+## Progress checklist
+
+The single record of migration progress is the typed registry
+`apps/lms/src/app/features/design-system/data-access/migration-entries.data.ts`
+(schema: `migration-entry.schema.ts`). There is no Markdown copy. It has one entry per row of
+the component inventory above and one per route of the mockup router. Each entry has a
+`status` (`todo` · `in-progress` · `done`), an `owner` (GitHub username), a `pullRequest`
+link, the README checklist codes it serves, and four verify checks (`lightDark`, `widths`
+375/768/1280, `keyboard`, `errorStates`).
+
+- **Claim** an entry before you start: set `status: 'in-progress'` and `owner: '<your GitHub
+username>'` in a one-line change, merged on its own so teammates see it. Do not start an entry
+  somebody else owns.
+- **Complete** it in the same pull request as the work: `status: 'done'`, the pull request link,
+  and each verify check `'done'` only after you performed it, or `'n/a'` when it does not
+  apply (a UI atom has no error states).
+- The schema rejects an owner-less `in-progress`/`done` entry and a `done` entry with a
+  pending check. Specs fail when an `@lms/ui` export or an app route has no entry, and when a
+  `done` entry targets an export or route that does not exist. `todo` and `in-progress` entries
+  may name planned exports and routes.
+- **See it**: the progress board is at `/dev/migration` in development and staging (not in
+  production). Demos on `/design-system` show "Chưa migrate" until every entry they `need` is
+  `done`, so finishing an atom is: build it, flip its entry, write its demo inside the
+  `app-ds-demo` that waits for it.
+- A piece that matches no inventory row: add a row to the table above **and** an entry.
+
 ## Order of work
 
 1. **Foundation**: theme (tokens), atoms,

@@ -7,13 +7,40 @@ import {
   sectionHeadingId,
   type DesignSystemSectionId,
 } from '../data-access/design-system-sections';
+import { PrinciplesSection } from './components/principles-section/principles-section';
 import { ColorSection } from './components/color-section/color-section';
+import { TypeSection } from './components/type-section/type-section';
+import { SpaceSection } from './components/space-section/space-section';
+import { IconsSection } from './components/icons-section/icons-section';
+import { ButtonsSection } from './components/buttons-section/buttons-section';
+import { FormsSection } from './components/forms-section/forms-section';
+import { StatusSection } from './components/status-section/status-section';
+import { DataSection } from './components/data-section/data-section';
+import { NavSection } from './components/nav-section/nav-section';
+import { FeedbackSection } from './components/feedback-section/feedback-section';
+import { LearningSection } from './components/learning-section/learning-section';
+import { ChartsSection } from './components/charts-section/charts-section';
 
 const MAIN_ID = 'ds-main';
 
 @Component({
   selector: 'app-design-system',
-  imports: [RouterLink, ColorSection],
+  imports: [
+    RouterLink,
+    PrinciplesSection,
+    ColorSection,
+    TypeSection,
+    SpaceSection,
+    IconsSection,
+    ButtonsSection,
+    FormsSection,
+    StatusSection,
+    DataSection,
+    NavSection,
+    FeedbackSection,
+    LearningSection,
+    ChartsSection,
+  ],
   templateUrl: './design-system.html',
   styleUrl: './design-system.scss',
 })

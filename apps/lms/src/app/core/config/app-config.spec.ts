@@ -14,6 +14,7 @@ const valid: AppConfigInput = {
   production: false,
   apiBaseUrl: '',
   mockScenarios: true,
+  devTools: true,
 };
 
 describe('AppConfig', () => {
@@ -23,6 +24,19 @@ describe('AppConfig', () => {
     ['production', production],
   ])('accepts the %s environment file', (_name, env) => {
     expect(AppConfigSchema.safeParse(env).success).toBe(true);
+  });
+
+  it.each([
+    ['development', development, true],
+    ['staging', staging, true],
+    ['production', production, false],
+  ])('sets devTools for the %s environment', (_name, env, expected) => {
+    expect(AppConfigSchema.parse(env).devTools).toBe(expected);
+  });
+
+  it('requires devTools', () => {
+    const { devTools: _omitted, ...withoutDevTools } = valid;
+    expect(AppConfigSchema.safeParse(withoutDevTools).success).toBe(false);
   });
 
   it('accepts an https origin as apiBaseUrl', () => {

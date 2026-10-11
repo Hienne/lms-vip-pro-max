@@ -115,6 +115,11 @@ project run the Nx target directly (`npx nx test ui`).
   `AppConfigSchema` (`apps/lms/src/app/core/config/app-config.ts`) at bootstrap
   and provides `APP_CONFIG`. A new setting is added to the schema first, then to
   every environment file; the spec checks all three parse.
+- `devTools` turns on internal tooling for the team: the migration progress board route
+  (`/dev/migration`, registered by `createAppRoutes` only when true) and owner / pull request
+  details in the `/design-system` placeholders. True in development and staging, false in
+  production, so internal names and pull request links never reach end users. It is separate
+  from `mockScenarios`, which stays development-only because Prism exists only there.
 - `apiBaseUrl` is the API origin per environment (`''` = same origin).
   `apiBaseUrlInterceptor` prefixes it to every `/api/...` request, so endpoint
   paths in `@lms/contracts` stay environment-free and XApi services never read
