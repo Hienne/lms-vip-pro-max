@@ -22,25 +22,21 @@
         Nhật ký thay đổi v1 → v2 (theo nhận xét review)
       </h3>
     </div>
-    <div class="overflow-x-auto">
-      <table class="w-full text-sm">
+    <div uiTableWrap>
+      <table uiTable responsive>
         <thead>
-          <tr
-            class="bg-surface-2 text-left text-xs tracking-wide text-text-secondary uppercase"
-          >
-            <th class="px-4 py-3 font-semibold" scope="col">Vấn đề</th>
-            <th class="px-4 py-3 font-semibold" scope="col">v1</th>
-            <th class="px-4 py-3 font-semibold" scope="col">v2</th>
+          <tr>
+            <th scope="col">Vấn đề</th>
+            <th scope="col">v1</th>
+            <th scope="col">v2</th>
           </tr>
         </thead>
         <tbody>
           @for (row of changeLog; track row.issue) {
-          <tr class="border-b border-border align-top last:border-b-0">
-            <th class="px-4 py-3 text-left font-semibold" scope="row">
-              {{ row.issue }}
-            </th>
-            <td class="px-4 py-3 text-text-secondary">{{ row.v1 }}</td>
-            <td class="px-4 py-3">{{ row.v2 }}</td>
+          <tr>
+            <th scope="row">{{ row.issue }}</th>
+            <td data-label="v1">{{ row.v1 }}</td>
+            <td data-label="v2">{{ row.v2 }}</td>
           </tr>
           }
         </tbody>

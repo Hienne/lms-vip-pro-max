@@ -19,6 +19,14 @@ Imports point **down** the table only. An atom importing a molecule, or
 `libs/ui` mentioning `Course`, is a level violation: move the piece to the
 level where its dependencies live.
 
+One deliberate exception: an atom that is a specialisation of a sibling atom may compose it
+(`ui-mai-badge` and `ui-ring` use `ui-mai`, `ui-avatar-group` wraps `ui-avatar`s). A molecule or
+organism never imports upward.
+
+Class names that Tailwind also uses as utilities cannot be block names: the mockup's `.ring`
+is `.progress-ring` here, because Tailwind's `ring` utility would draw a border on it
+(`table` is harmless, both mean `display: table`).
+
 Every `@lms/ui` export is presentational (inputs, outputs, content projection,
 no store, no HTTP) and is exported from `libs/ui/src/index.ts`.
 

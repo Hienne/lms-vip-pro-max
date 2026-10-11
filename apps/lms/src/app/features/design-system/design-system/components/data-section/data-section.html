@@ -1,10 +1,123 @@
 <app-ds-section section="data" title="Hiển thị dữ liệu">
   <app-ds-demo label="KPI" [needs]="['kpi']"></app-ds-demo>
-  <app-ds-demo label="Progress bar" [needs]="['progress-ring']"></app-ds-demo>
-  <app-ds-demo label="Progress ring" [needs]="['progress-ring']"></app-ds-demo>
-  <app-ds-demo label="List" [needs]="['icon']"></app-ds-demo>
+
+  <div class="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+    <app-ds-demo label="Progress bar" [needs]="['progress-ring']">
+      <div class="flex flex-col gap-3">
+        <ui-progress [value]="68" />
+        <ui-progress [value]="100" tone="success" />
+        <ui-progress [value]="30" tone="warning" />
+        <ui-progress [value]="12" tone="danger" size="sm" />
+        <ui-progress [value]="45" tone="reward" label="Điểm thưởng" />
+      </div>
+    </app-ds-demo>
+
+    <app-ds-demo label="Progress ring" [needs]="['progress-ring']">
+      <div class="flex flex-wrap items-center gap-6">
+        <ui-ring [value]="68" />
+        <ui-ring [value]="100" />
+      </div>
+      <p class="text-xs text-text-muted">
+        Ring đạt 100% nở thành cánh mai vàng.
+      </p>
+    </app-ds-demo>
+
+    <app-ds-demo label="List" [needs]="['icon', 'card']">
+      <ul uiCard class="list-none overflow-hidden">
+        @for (item of listItems; track item.title) {
+        <li class="border-b border-border last:border-b-0">
+          <a
+            class="flex items-center gap-3 px-4 py-3 text-text no-underline hover:bg-surface-2"
+            [routerLink]="[]"
+            fragment="ds-data"
+          >
+            <span
+              class="grid h-8 w-8 place-items-center rounded-sm bg-primary-subtle text-primary"
+              ><ui-icon [name]="item.icon" size="sm"
+            /></span>
+            <span class="grow text-sm font-semibold">{{ item.title }}</span>
+            <ui-icon name="chevron-right" size="sm" />
+          </a>
+        </li>
+        }
+      </ul>
+    </app-ds-demo>
+  </div>
+
   <app-ds-demo
-    label="Bảng dữ liệu"
-    [needs]="['data-table','progress-ring','domain-status-badges']"
+    label="Bảng: native table trong card, responsive dưới 720px"
+    [needs]="['table', 'progress-ring', 'card', 'badge-chip']"
+  >
+    <section uiCard>
+      <div uiTableWrap>
+        <table uiTable responsive>
+          <caption class="sr-only">
+            Bảng mẫu
+          </caption>
+          <thead>
+            <tr>
+              <th scope="col">Mã</th>
+              <th scope="col">Khóa học</th>
+              <th scope="col">Tiến độ</th>
+              <th scope="col">Trạng thái</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (row of rows; track row.code) {
+            <tr>
+              <td data-label="Mã">
+                <span class="font-mono text-sm whitespace-nowrap"
+                  >{{ row.code }}</span
+                >
+              </td>
+              <td data-label="Khóa học" class="font-semibold">
+                {{ row.title }}
+              </td>
+              <td data-label="Tiến độ">
+                <div class="progress-cell flex items-center gap-2">
+                  <ui-progress
+                    class="grow"
+                    size="sm"
+                    [value]="row.pct"
+                    [label]="'Tiến độ ' + row.title"
+                  />
+                  <span class="text-xs whitespace-nowrap tabular-nums"
+                    >{{ row.pct }}%</span
+                  >
+                </div>
+              </td>
+              <td data-label="Trạng thái">
+                <span uiBadge dot [tone]="row.tone" [outline]="row.outline"
+                  >{{ row.status }}</span
+                >
+              </td>
+            </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </app-ds-demo>
+
+  <app-ds-demo
+    label="Bảng dữ liệu: sắp xếp theo cột (aria-sort) · chọn nhiều · phân trang"
+    [needs]="['data-table']"
   ></app-ds-demo>
+
+  <app-ds-demo label="Avatar: kích cỡ · nhóm chồng nhau" [needs]="['avatar']">
+    <div class="flex flex-wrap items-center gap-6">
+      <div class="flex items-center gap-3">
+        <ui-avatar [name]="people[0]" size="sm" />
+        <ui-avatar [name]="people[0]" />
+        <ui-avatar [name]="people[0]" size="lg" />
+        <ui-avatar [name]="people[0]" size="xl" />
+      </div>
+      <ui-avatar [name]="people[1]" top />
+      <div uiAvatarGroup aria-label="Nhóm Tổng hợp &amp; QA">
+        @for (person of people; track person) {
+        <ui-avatar [name]="person" />
+        }
+      </div>
+    </div>
+  </app-ds-demo>
 </app-ds-section>

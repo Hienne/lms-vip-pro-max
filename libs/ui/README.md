@@ -1,7 +1,12 @@
-# ui
+# @lms/ui
 
-This library was generated with [Nx](https://nx.dev).
+The design system: tokens, atoms and molecules, domain-agnostic. Public API: `src/index.ts`.
+Rules: [docs/conventions/ui-library.md](../../docs/conventions/ui-library.md). The living catalogue
+is the app's `/design-system` route; the progress of the conversion from the mockup is the
+migration checklist (`apps/lms/src/app/features/design-system/data-access/migration-entries.data.ts`).
 
-## Running unit tests
+- `src/styles/theme.css`: the tokens (Tailwind v4 `@theme`), `base.css`: base layer,
+  `components.scss`: one partial per atom in `components/`.
+- `src/lib/atoms/`, `src/lib/molecules/`: one folder per piece with its spec.
 
-Run `nx test ui` to execute the unit tests.
+Run `npx nx test ui` for the unit tests.

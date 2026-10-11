@@ -1,4 +1,5 @@
 import { Component } from '@angular/core';
+import { Table, TableWrap } from '@lms/ui';
 import { STATUS_LABEL, STATUS_ORDER } from '../data-access/migration-registry';
 import { buildBoard } from './data-access/board-view';
 
@@ -8,6 +9,7 @@ import { buildBoard } from './data-access/board-view';
  */
 @Component({
   selector: 'app-migration-board',
+  imports: [Table, TableWrap],
   templateUrl: './migration-board.html',
 })
 export class MigrationBoard {

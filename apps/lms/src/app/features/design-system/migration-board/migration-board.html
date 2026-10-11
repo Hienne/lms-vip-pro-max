@@ -28,52 +28,41 @@
     </div>
 
     @for (status of group.statuses; track status.status) {
-    <div class="overflow-x-auto rounded-lg border border-border bg-surface">
-      <table class="w-full text-sm">
-        <caption
-          class="border-b border-border bg-surface-2 px-4 py-3 text-left font-semibold"
-        >
+    <div uiTableWrap class="rounded-lg border border-border bg-surface">
+      <table uiTable>
+        <caption class="border-b border-border bg-surface-2 font-semibold">
           {{ status.label }} ({{ status.rows.length }})
         </caption>
         <thead>
-          <tr
-            class="text-left text-xs tracking-wide text-text-secondary uppercase"
-          >
-            <th class="px-4 py-3 font-semibold" scope="col">Mục</th>
-            <th class="px-4 py-3 font-semibold" scope="col">Mockup</th>
-            <th class="px-4 py-3 font-semibold" scope="col">Đích Angular</th>
-            <th class="px-4 py-3 font-semibold" scope="col">Checklist</th>
-            <th class="px-4 py-3 font-semibold" scope="col">Người làm</th>
-            <th class="px-4 py-3 font-semibold" scope="col">Pull request</th>
-            <th class="px-4 py-3 font-semibold" scope="col">Kiểm tra</th>
+          <tr>
+            <th scope="col">Mục</th>
+            <th scope="col">Mockup</th>
+            <th scope="col">Đích Angular</th>
+            <th scope="col">Checklist</th>
+            <th scope="col">Người làm</th>
+            <th scope="col">Pull request</th>
+            <th scope="col">Kiểm tra</th>
           </tr>
         </thead>
         <tbody>
           @for (row of status.rows; track row.id) {
-          <tr
-            class="border-t border-border align-top"
-            [attr.data-entry]="row.id"
-          >
-            <th class="px-4 py-3 text-left font-semibold" scope="row">
+          <tr [attr.data-entry]="row.id">
+            <th scope="row">
               <code>{{ row.id }}</code>
               <div class="text-xs font-regular text-text-muted">
                 {{ row.level }}
               </div>
             </th>
-            <td class="px-4 py-3 text-text-secondary">
-              {{ row.mockupSource }}
-            </td>
-            <td class="px-4 py-3"><code>{{ row.target }}</code></td>
-            <td class="px-4 py-3">{{ row.checklist }}</td>
-            <td class="px-4 py-3">
-              @if (row.owner) { &#64;{{ row.owner }} } @else { — }
-            </td>
-            <td class="px-4 py-3">
+            <td>{{ row.mockupSource }}</td>
+            <td><code>{{ row.target }}</code></td>
+            <td>{{ row.checklist }}</td>
+            <td>@if (row.owner) { &#64;{{ row.owner }} } @else { — }</td>
+            <td>
               @if (row.pullRequest) {
               <a [href]="row.pullRequest">Pull request</a>
               } @else { — }
             </td>
-            <td class="px-4 py-3">
+            <td>
               <ul class="flex list-none flex-col gap-1">
                 @for (check of row.checks; track check.label) {
                 <li>

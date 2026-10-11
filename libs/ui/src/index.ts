@@ -35,3 +35,13 @@ export {
   type SkeletonVariant,
 } from './lib/atoms/skeleton/skeleton.directive';
 export { Spinner } from './lib/atoms/spinner/spinner.directive';
+export { Avatar, type AvatarSize } from './lib/atoms/avatar/avatar';
+export { AvatarGroup } from './lib/atoms/avatar/avatar-group.directive';
+export {
+  Progress,
+  type ProgressSize,
+  type ProgressTone,
+} from './lib/atoms/progress/progress';
+export { Ring } from './lib/atoms/ring/ring';
+export { Table } from './lib/atoms/table/table.directive';
+export { TableWrap } from './lib/atoms/table/table-wrap.directive';

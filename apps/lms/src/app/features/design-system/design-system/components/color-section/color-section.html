@@ -36,27 +36,25 @@
       </h3>
       <span class="text-xs text-text-muted">Đổi sáng/tối để kiểm tra lại</span>
     </div>
-    <div class="overflow-x-auto">
-      <table class="w-full text-sm whitespace-nowrap">
+    <div uiTableWrap>
+      <table uiTable class="whitespace-nowrap">
         <thead>
-          <tr
-            class="bg-surface-2 text-left text-xs tracking-wide text-text-secondary uppercase"
-          >
-            <th class="px-4 py-3 font-semibold" scope="col">Cặp chữ / nền</th>
-            <th class="px-4 py-3 font-semibold" scope="col">Mẫu</th>
-            <th class="px-4 py-3 font-semibold" scope="col">Tỷ lệ</th>
-            <th class="px-4 py-3 font-semibold" scope="col">WCAG</th>
+          <tr>
+            <th scope="col">Cặp chữ / nền</th>
+            <th scope="col">Mẫu</th>
+            <th scope="col">Tỷ lệ</th>
+            <th scope="col">WCAG</th>
           </tr>
         </thead>
         <tbody>
           @for (row of store.contrastRows$(); track row.foreground +
           row.background) {
-          <tr class="border-b border-border last:border-b-0">
-            <td class="px-4 py-3">
+          <tr>
+            <td>
               <code>{{ row.foreground }}</code> /
               <code>{{ row.background }}</code>
             </td>
-            <td class="px-4 py-3">
+            <td>
               <span
                 class="sample"
                 [style.--sample-fg]="'var(' + row.foreground + ')'"
@@ -64,8 +62,8 @@
                 >Aa Tiến độ</span
               >
             </td>
-            <td class="px-4 py-3" data-ratio>{{ row.ratio }}</td>
-            <td class="px-4 py-3" data-grade>
+            <td data-ratio>{{ row.ratio }}</td>
+            <td data-grade>
               @switch (row.grade) { @case ('pending') { … } @case ('fail') {
               <span uiBadge tone="danger"
                 ><ui-icon name="x" />{{ row.gradeLabel }}</span

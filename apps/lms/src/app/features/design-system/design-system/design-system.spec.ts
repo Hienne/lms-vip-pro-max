@@ -256,6 +256,45 @@ describe('/design-system', () => {
     });
   });
 
+  describe('data display section', () => {
+    it('demos progress, ring, table in a card and avatars; the data table and KPI stay placeholders', async () => {
+      const { page } = await openDesignSystem();
+      const section = page.querySelector('#ds-data') as HTMLElement;
+
+      const bars = Array.from(
+        section.querySelectorAll('ui-progress[role="progressbar"]'),
+      );
+      expect(bars.length).toBeGreaterThanOrEqual(5);
+      expect(bars[0].getAttribute('aria-valuenow')).toBe('68');
+      expect(
+        section.querySelector('ui-progress.progress--success'),
+      ).not.toBeNull();
+
+      const rings = Array.from(section.querySelectorAll('ui-ring'));
+      expect(rings.map((r) => r.getAttribute('aria-label'))).toEqual([
+        '68% hoàn thành',
+        'Hoàn thành 100%',
+      ]);
+
+      const table = section.querySelector(
+        '.card .table-wrap table.table',
+      ) as HTMLTableElement;
+      expect(table.classList.contains('table--responsive')).toBe(true);
+      expect(table.tBodies[0].rows).toHaveLength(4);
+      expect(table.tHead?.rows[0].cells).toHaveLength(4);
+
+      const avatars = Array.from(section.querySelectorAll('ui-avatar'));
+      expect(avatars.length).toBeGreaterThan(4);
+      expect(avatars[0].getAttribute('role')).toBe('img');
+      expect(section.querySelector('.avatar-group')).not.toBeNull();
+
+      const pending = Array.from(
+        section.querySelectorAll('[data-placeholder] code'),
+      ).map((c) => c.textContent);
+      expect(pending).toEqual(['kpi', 'data-table']);
+    });
+  });
+
   describe('navigation section', () => {
     it('demos the segmented control', async () => {
       const { page } = await openDesignSystem();

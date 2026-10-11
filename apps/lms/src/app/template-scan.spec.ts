@@ -26,6 +26,7 @@ const MOCKUP_BLOCKS = [
   'avatar',
   'avatar-group',
   'progress',
+  'progress-ring',
   'ring',
   'tabs',
   'segmented',

@@ -1,0 +1,47 @@
+// Avatar: ported from the mockup's `.avatar` and `.avatar-group` blocks (components.css).
+// Applied by `ui-avatar` and `uiAvatarGroup`.
+@layer components {
+  .avatar {
+    --size: 36px;
+
+    display: inline-grid;
+    flex: none;
+    place-items: center;
+    width: var(--size);
+    height: var(--size);
+    border-radius: 50%;
+    background: var(--color-primary);
+    color: var(--color-on-primary);
+    font-size: calc(var(--size) * 0.36);
+    font-weight: var(--font-weight-bold);
+  }
+
+  .avatar--sm {
+    --size: 28px;
+  }
+  .avatar--lg {
+    --size: 56px;
+  }
+  .avatar--xl {
+    --size: 80px;
+  }
+
+  .avatar--top {
+    box-shadow:
+      0 0 0 2px var(--color-surface),
+      0 0 0 4px var(--color-accent);
+  }
+
+  .avatar-group {
+    display: flex;
+
+    .avatar {
+      margin-left: -8px;
+      box-shadow: 0 0 0 2px var(--color-surface);
+
+      &:first-child {
+        margin-left: 0;
+      }
+    }
+  }
+}

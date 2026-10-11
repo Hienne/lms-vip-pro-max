@@ -1,13 +1,13 @@
 import { DOCUMENT } from '@angular/common';
 import { afterRenderEffect, Component, inject, untracked } from '@angular/core';
-import { Badge, Card, CardHeader, Icon } from '@lms/ui';
+import { Badge, Card, CardHeader, Icon, Table, TableWrap } from '@lms/ui';
 import { ThemeStore } from '../../../../../core/theme/theme.store';
 import { DsSection } from '../section/section';
 import { ColorSectionStore } from './data-access/color-section.store';
 
 @Component({
   selector: 'app-color-section',
-  imports: [DsSection, Card, CardHeader, Badge, Icon],
+  imports: [DsSection, Card, CardHeader, Badge, Icon, Table, TableWrap],
   providers: [ColorSectionStore],
   templateUrl: './color-section.html',
   styleUrl: './color-section.scss',

@@ -1,0 +1,35 @@
+// Progress bar: ported from the mockup's `.progress` block (components.css). Applied by
+// `ui-progress`; the bar width is the `--value` custom property the component binds.
+@layer components {
+  .progress {
+    display: block;
+    height: 8px;
+    border-radius: var(--radius-full);
+    background: var(--color-surface-sunken);
+    overflow: hidden;
+  }
+
+  .progress__bar {
+    width: var(--value, 0%);
+    height: 100%;
+    border-radius: inherit;
+    background: var(--color-primary);
+    transition: width var(--transition-duration-slow) var(--ease-out);
+  }
+
+  .progress--sm {
+    height: 6px;
+  }
+  .progress--success .progress__bar {
+    background: var(--color-success);
+  }
+  .progress--warning .progress__bar {
+    background: var(--color-warning);
+  }
+  .progress--danger .progress__bar {
+    background: var(--color-danger);
+  }
+  .progress--reward .progress__bar {
+    background: var(--color-accent);
+  }
+}

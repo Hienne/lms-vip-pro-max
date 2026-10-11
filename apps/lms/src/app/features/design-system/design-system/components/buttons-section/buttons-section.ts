@@ -5,6 +5,8 @@ import {
   IconButton,
   LinkButton,
   type ButtonVariant,
+  Table,
+  TableWrap,
 } from '@lms/ui';
 import { DsDemo } from '../demo/demo';
 import { DsSection } from '../section/section';
@@ -24,7 +26,16 @@ const ROWS: readonly {
 
 @Component({
   selector: 'app-buttons-section',
-  imports: [DsSection, DsDemo, Button, Icon, IconButton, LinkButton],
+  imports: [
+    DsSection,
+    DsDemo,
+    Button,
+    Icon,
+    IconButton,
+    LinkButton,
+    Table,
+    TableWrap,
+  ],
   templateUrl: './buttons-section.html',
 })
 export class ButtonsSection {
