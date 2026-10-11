@@ -19,6 +19,8 @@ import {
 export class DsDemo {
   readonly needs = input.required<readonly MigrationEntryId[]>();
   readonly label = input('');
+  /** `dashed` is the mockup's demo frame; `card` is a plain card for sections the mockup lays out as one. */
+  readonly frame = input<'dashed' | 'card'>('dashed');
 
   protected readonly showDetails = inject(APP_CONFIG).devTools;
 

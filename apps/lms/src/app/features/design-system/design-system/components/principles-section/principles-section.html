@@ -7,6 +7,11 @@
     <li
       class="flex flex-col gap-2 rounded-lg border border-border bg-surface p-5"
     >
+      <span
+        class="grid h-touch w-touch place-items-center rounded-md bg-primary-subtle text-primary"
+      >
+        <ui-icon [name]="principle.icon" />
+      </span>
       <strong>{{ principle.title }}</strong>
       <p class="text-sm text-text-secondary">{{ principle.description }}</p>
     </li>

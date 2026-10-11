@@ -95,7 +95,14 @@ export const MIGRATION_ENTRIES = [
     level: 'atom',
     targets: ['Icon', 'ICON_CATALOG'],
     checklist: ['H'],
-    status: 'todo',
+    status: 'done',
+    owner: 'Hienne',
+    verify: {
+      lightDark: 'done',
+      widths: 'done',
+      keyboard: 'n/a',
+      errorStates: 'n/a',
+    },
   },
   {
     id: 'avatar',

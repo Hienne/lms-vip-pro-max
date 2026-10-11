@@ -1,32 +1,44 @@
+import type { IconName } from '@lms/ui';
+
 /** Copy of the mockup's "Nguyên tắc" cards and v1 → v2 change log (pages/design-system.js). */
-export const PRINCIPLES = [
+export const PRINCIPLES: readonly {
+  readonly icon: IconName;
+  readonly title: string;
+  readonly description: string;
+}[] = [
   {
+    icon: 'target',
     title: 'Một hành động chính',
     description:
       'Mỗi màn hình chỉ một nút primary; hành động phụ dùng secondary/ghost.',
   },
   {
+    icon: 'layers',
     title: 'Tối đa 2 cấp thông tin',
     description: 'Chi tiết ẩn sau click (progressive disclosure).',
   },
   {
+    icon: 'eye',
     title: 'Icon luôn có nhãn',
     description: 'Icon đứng một mình phải có aria-label/tooltip.',
   },
   {
+    icon: 'inbox',
     title: 'Empty state có lối đi tiếp',
     description: 'Không để màn trắng — luôn kèm hướng dẫn hành động.',
   },
   {
+    icon: 'shield',
     title: 'Không có nút giả',
     description: 'Mọi nút đều gọi API thật; quyền kiểm tra ở lớp dữ liệu.',
   },
   {
+    icon: 'history',
     title: 'Phản hồi mọi thao tác',
     description:
       'Đang tải → thành công/thất bại; xác nhận trước thao tác quan trọng.',
   },
-] as const;
+];
 
 export const CHANGE_LOG = [
   {

@@ -6,6 +6,7 @@
 
 .layout {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: var(--spacing-8);
   width: 100%;
   max-width: 1440px;

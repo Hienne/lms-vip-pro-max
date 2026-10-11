@@ -13,6 +13,9 @@ export default defineConfig(() => ({
     passWithNoTests: true,
     globals: true,
     environment: 'jsdom',
+    // The first test that touches an icon pays for JIT-linking @lucide/angular's ~1,900 icon
+    // components (about 15 s); later tests reuse the module.
+    testTimeout: 60_000,
     include: ['{src,tests}/**/*.{test,spec}.{js,mjs,cjs,ts,mts,cts,jsx,tsx}'],
     setupFiles: ['src/test-setup.ts'],
     reporters: ['default'],
