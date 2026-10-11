@@ -1,0 +1,21 @@
+{
+  "compileOnSave": false,
+  "compilerOptions": {
+    "rootDir": ".",
+    "sourceMap": true,
+    "declaration": false,
+    "moduleResolution": "bundler",
+    "module": "preserve",
+    "importHelpers": true,
+    "target": "es2022",
+    "lib": ["es2022", "dom"],
+    "skipLibCheck": true,
+    "skipDefaultLibCheck": true,
+    "paths": {
+      "@lms/ui": ["./libs/ui/src/index.ts"],
+      "@lms/contracts": ["./libs/contracts/src/index.ts"],
+      "@lms/mocks": ["./libs/mocks/src/index.ts"]
+    }
+  },
+  "exclude": ["node_modules", "tmp"]
+}

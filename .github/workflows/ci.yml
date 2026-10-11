@@ -1,0 +1,76 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read # nx-set-shas reads previous workflow runs
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  NX_NO_CLOUD: true
+
+jobs:
+  check:
+    name: Lint, typecheck, test, build (affected)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0 # nx affected compares against the base commit
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - run: npm ci
+
+      # Sets NX_BASE / NX_HEAD: PR base, or the last successful run on main.
+      - uses: nrwl/nx-set-shas@v5
+
+      - uses: actions/cache@v6
+        with:
+          path: .nx/cache
+          key: nx-${{ runner.os }}-${{ hashFiles('package-lock.json') }}-${{ github.sha }}
+          restore-keys: nx-${{ runner.os }}-${{ hashFiles('package-lock.json') }}-
+
+      - run: npm run format:check
+      - run: npm run ci:check
+
+  build:
+    name: Build artifacts (production + staging)
+    needs: check
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - run: npm ci
+      - run: npm run ci:build
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: lms-production-${{ github.sha }}
+          path: dist/apps/lms/browser
+          retention-days: 14
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: lms-staging-${{ github.sha }}
+          path: dist/apps/lms-staging/browser
+          retention-days: 14

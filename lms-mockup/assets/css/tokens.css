@@ -1,0 +1,186 @@
+/* ==========================================================================
+   DESIGN TOKENS — Core Banking Academy v2
+   Framework-agnostic: dùng nguyên file này cho React / Angular.
+   Quy tắc: component KHÔNG dùng mã hex trực tiếp, chỉ dùng biến semantic.
+   Mọi cặp chữ/nền đã kiểm tra WCAG AA (≥ 4.5:1 chữ, ≥ 3:1 viền điều khiển).
+   ========================================================================== */
+
+:root {
+  /* ---- Brand ---- */
+  --color-primary: #006B68;          /* 6.36:1 trên trắng */
+  --color-primary-hover: #005A57;
+  --color-primary-strong: #014744;   /* sidebar, hero */
+  --color-primary-subtle: #E6F2F1;
+  --color-on-primary: #FFFFFF;
+
+  /* Vàng hoa mai — CHỈ dùng làm NỀN/FILL cho phần thưởng (không dùng làm màu chữ trên nền sáng) */
+  --color-accent: #FFC62F;
+  --color-accent-subtle: #FFF6DC;
+  --color-accent-ink: #8A5A00;       /* chữ trên nền sáng / accent-subtle: 5.49:1 */
+  --color-on-accent: #3A2A00;
+
+  /* ---- Semantic (tách khỏi primary & accent) ---- */
+  --color-success: #1B7A43;          /* xanh lá — khác teal primary */
+  --color-success-subtle: #E8F5EC;
+  --color-warning: #B45309;          /* cam — khác vàng thưởng */
+  --color-warning-subtle: #FEF3E2;
+  --color-danger: #C2362F;
+  --color-danger-subtle: #FDECEA;
+  --color-info: #2563A6;
+  --color-info-subtle: #E8F0F9;
+
+  /* ---- Neutral ---- */
+  --color-bg: #F5F8F8;
+  --color-surface: #FFFFFF;
+  --color-surface-2: #F0F4F4;        /* hover, header bảng */
+  --color-surface-sunken: #E9EFEE;
+  --color-text: #1A1D1C;             /* 16.98:1 */
+  --color-text-secondary: #4A5553;   /* 7.73:1 */
+  --color-text-muted: #5F6B69;       /* 5.54:1 — mức nhạt nhất cho chữ */
+  --color-border: #E3EAE9;           /* viền trang trí */
+  --color-border-strong: #8A9694;    /* viền input/checkbox: 3.06:1 */
+  --color-ring: #006B68;
+  --color-overlay: rgba(10, 20, 19, 0.48);
+
+  /* ---- Data viz (đủ phân biệt + kèm ký hiệu, không dựa màu đơn thuần) ---- */
+  --chart-1: #006B68;
+  --chart-2: #2563A6;
+  --chart-3: #B45309;
+  --chart-4: #7C3AED;
+  --chart-5: #C2362F;
+  --chart-grid: #E3EAE9;
+
+  /* ---- Typography ---- */
+  --font-sans: "Be Vietnam Pro", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  --text-xs: 0.75rem;    /* 12 — chỉ cho nhãn phụ */
+  --text-sm: 0.875rem;   /* 14 */
+  --text-md: 1rem;       /* 16 — body */
+  --text-lg: 1.125rem;   /* 18 */
+  --text-xl: 1.375rem;   /* 22 — H2 */
+  --text-2xl: 1.75rem;   /* 28 — H1 */
+  --text-3xl: 2.25rem;   /* 36 — display */
+  --leading-tight: 1.25;
+  --leading-normal: 1.5;
+  --leading-relaxed: 1.65;
+  --weight-regular: 400;
+  --weight-medium: 500;
+  --weight-semibold: 600;
+  --weight-bold: 700;
+
+  /* ---- Spacing (thang 4px, mật độ "standard") ---- */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+
+  /* ---- Shape & elevation (flat: viền 1px thay shadow đậm) ---- */
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius-xl: 20px;
+  --radius-full: 999px;
+  --shadow-sm: 0 1px 2px rgba(16, 40, 38, 0.06);
+  --shadow-md: 0 4px 16px rgba(16, 40, 38, 0.08);
+  --shadow-lg: 0 16px 40px rgba(16, 40, 38, 0.18);
+
+  /* ---- Motion ---- */
+  --duration-fast: 120ms;
+  --duration-base: 200ms;
+  --duration-slow: 320ms;
+  --ease-out: cubic-bezier(0.2, 0.7, 0.2, 1);
+
+  /* ---- Layout ---- */
+  --sidebar-width: 256px;
+  --header-height: 64px;
+  --content-max: 1280px;
+  --control-height: 40px;
+  --control-height-sm: 32px;
+  --touch-min: 44px;
+  --z-header: 30;
+  --z-sidebar: 40;
+  --z-drawer: 60;
+  --z-modal: 70;
+  --z-toast: 80;
+
+  color-scheme: light;
+}
+
+/* ---- Dark mode: tự theo hệ thống, trừ khi người dùng chọn light ---- */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --color-primary: #3FB5AE;
+    --color-primary-hover: #5CC7C0;
+    --color-primary-strong: #0B2B29;
+    --color-primary-subtle: #12302E;
+    --color-on-primary: #04201F;
+    --color-accent-subtle: #2E2610;
+    --color-accent-ink: #FFD15C;
+    --color-success: #5BC98A;
+    --color-success-subtle: #12291C;
+    --color-warning: #F0A04B;
+    --color-warning-subtle: #2E2013;
+    --color-danger: #F28B82;
+    --color-danger-subtle: #2F1A18;
+    --color-info: #7DB3F0;
+    --color-info-subtle: #15233A;
+    --color-bg: #0F1716;
+    --color-surface: #151E1D;
+    --color-surface-2: #1C2726;
+    --color-surface-sunken: #111A19;
+    --color-text: #E7EEED;
+    --color-text-secondary: #C3D0CE;
+    --color-text-muted: #9FB0AD;
+    --color-border: #26332F;
+    --color-border-strong: #5C6E6B;
+    --color-ring: #5CC7C0;
+    --color-overlay: rgba(0, 0, 0, 0.6);
+    --chart-1: #3FB5AE; --chart-2: #7DB3F0; --chart-3: #F0A04B; --chart-4: #B79CF5; --chart-5: #F28B82;
+    --chart-grid: #2A3836;
+    --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.4);
+    --shadow-lg: 0 16px 40px rgba(0, 0, 0, 0.55);
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --color-primary: #3FB5AE;
+  --color-primary-hover: #5CC7C0;
+  --color-primary-strong: #0B2B29;
+  --color-primary-subtle: #12302E;
+  --color-on-primary: #04201F;
+  --color-accent-subtle: #2E2610;
+  --color-accent-ink: #FFD15C;
+  --color-success: #5BC98A;
+  --color-success-subtle: #12291C;
+  --color-warning: #F0A04B;
+  --color-warning-subtle: #2E2013;
+  --color-danger: #F28B82;
+  --color-danger-subtle: #2F1A18;
+  --color-info: #7DB3F0;
+  --color-info-subtle: #15233A;
+  --color-bg: #0F1716;
+  --color-surface: #151E1D;
+  --color-surface-2: #1C2726;
+  --color-surface-sunken: #111A19;
+  --color-text: #E7EEED;
+  --color-text-secondary: #C3D0CE;
+  --color-text-muted: #9FB0AD;
+  --color-border: #26332F;
+  --color-border-strong: #5C6E6B;
+  --color-ring: #5CC7C0;
+  --color-overlay: rgba(0, 0, 0, 0.6);
+  --chart-1: #3FB5AE; --chart-2: #7DB3F0; --chart-3: #F0A04B; --chart-4: #B79CF5; --chart-5: #F28B82;
+  --chart-grid: #2A3836;
+  --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.4);
+  --shadow-lg: 0 16px 40px rgba(0, 0, 0, 0.55);
+  color-scheme: dark;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root { --duration-fast: 0ms; --duration-base: 0ms; --duration-slow: 0ms; }
+}

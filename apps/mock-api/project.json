@@ -1,0 +1,35 @@
+{
+  "name": "mock-api",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "projectType": "application",
+  "sourceRoot": "apps/mock-api/src",
+  "tags": ["type:mock-server"],
+  "targets": {
+    "build-spec": {
+      "executor": "nx:run-commands",
+      "cache": true,
+      "inputs": ["default", "^production"],
+      "outputs": ["{workspaceRoot}/dist/apps/mock-api"],
+      "options": {
+        "command": "tsx --tsconfig apps/mock-api/tsconfig.json apps/mock-api/src/build-spec.ts dist/apps/mock-api/openapi.json"
+      }
+    },
+    "serve": {
+      "executor": "nx:run-commands",
+      "continuous": true,
+      "dependsOn": ["build-spec"],
+      "options": {
+        "command": "prism mock dist/apps/mock-api/openapi.json --host 127.0.0.1 --port 4010"
+      }
+    },
+    "typecheck": {
+      "executor": "nx:run-commands",
+      "cache": true,
+      "inputs": ["default", "^production"],
+      "options": {
+        "commands": ["tsc --noEmit -p apps/mock-api/tsconfig.json"],
+        "parallel": false
+      }
+    }
+  }
+}

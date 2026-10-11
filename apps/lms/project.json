@@ -1,0 +1,125 @@
+{
+  "name": "lms",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "projectType": "application",
+  "prefix": "app",
+  "sourceRoot": "apps/lms/src",
+  "tags": ["type:app"],
+  "targets": {
+    "build": {
+      "executor": "@angular/build:application",
+      "outputs": ["{options.outputPath}"],
+      "defaultConfiguration": "production",
+      "options": {
+        "outputPath": "dist/apps/lms",
+        "browser": "apps/lms/src/main.ts",
+        "tsConfig": "apps/lms/tsconfig.app.json",
+        "inlineStyleLanguage": "scss",
+        "assets": [
+          {
+            "glob": "**/*",
+            "input": "apps/lms/public"
+          }
+        ],
+        "styles": [
+          "@fontsource/be-vietnam-pro/400.css",
+          "@fontsource/be-vietnam-pro/500.css",
+          "@fontsource/be-vietnam-pro/600.css",
+          "@fontsource/be-vietnam-pro/700.css",
+          "apps/lms/src/tailwind.css",
+          "apps/lms/src/styles.scss"
+        ]
+      },
+      "configurations": {
+        "production": {
+          "budgets": [
+            {
+              "type": "initial",
+              "maximumWarning": "500kb",
+              "maximumError": "1mb"
+            },
+            {
+              "type": "anyComponentStyle",
+              "maximumWarning": "4kb",
+              "maximumError": "8kb"
+            }
+          ],
+          "outputHashing": "all",
+          "fileReplacements": [
+            {
+              "replace": "apps/lms/src/environments/environment.ts",
+              "with": "apps/lms/src/environments/environment.production.ts"
+            }
+          ]
+        },
+        "staging": {
+          "budgets": [
+            {
+              "type": "initial",
+              "maximumWarning": "500kb",
+              "maximumError": "1mb"
+            },
+            {
+              "type": "anyComponentStyle",
+              "maximumWarning": "4kb",
+              "maximumError": "8kb"
+            }
+          ],
+          "outputHashing": "all",
+          "fileReplacements": [
+            {
+              "replace": "apps/lms/src/environments/environment.ts",
+              "with": "apps/lms/src/environments/environment.staging.ts"
+            }
+          ],
+          "outputPath": "dist/apps/lms-staging"
+        },
+        "development": {
+          "optimization": false,
+          "extractLicenses": false,
+          "sourceMap": true
+        }
+      }
+    },
+    "serve": {
+      "continuous": true,
+      "executor": "@angular/build:dev-server",
+      "defaultConfiguration": "development",
+      "configurations": {
+        "production": {
+          "buildTarget": "lms:build:production"
+        },
+        "development": {
+          "buildTarget": "lms:build:development"
+        },
+        "staging": {
+          "buildTarget": "lms:build:staging"
+        }
+      },
+      "options": {
+        "proxyConfig": "apps/lms/proxy.conf.json"
+      }
+    },
+    "serve-static": {
+      "continuous": true,
+      "executor": "@nx/web:file-server",
+      "options": {
+        "buildTarget": "lms:build",
+        "staticFilePath": "dist/apps/lms/browser",
+        "spa": true
+      }
+    },
+    "typecheck": {
+      "executor": "nx:run-commands",
+      "cache": true,
+      "inputs": ["default", "^production"],
+      "options": {
+        "commands": [
+          "tsc --noEmit -p apps/lms/tsconfig.app.json",
+          "tsc --noEmit -p apps/lms/tsconfig.spec.json"
+        ],
+        "parallel": false
+      }
+    }
+  }
+}

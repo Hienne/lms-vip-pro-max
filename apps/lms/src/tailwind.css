@@ -1,0 +1,11 @@
+/*
+ * Tailwind v4 entry. Plain CSS on purpose: Tailwind cannot run through Sass.
+ * source(none) stops Tailwind scanning the whole repo (lms-mockup/ included);
+ * every folder that holds templates is listed explicitly.
+ * The project theme (tokens) is added here once libs/ui/src/styles/theme.css exists:
+ * see docs/conventions/ui-library.md → Styling.
+ */
+@import 'tailwindcss' source(none);
+
+@source './';
+@source '../../../libs/ui/src';

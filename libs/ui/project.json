@@ -1,0 +1,22 @@
+{
+  "name": "ui",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "libs/ui/src",
+  "prefix": "ui",
+  "projectType": "library",
+  "tags": ["type:ui"],
+  "targets": {
+    "typecheck": {
+      "executor": "nx:run-commands",
+      "cache": true,
+      "inputs": ["default", "^production"],
+      "options": {
+        "commands": [
+          "tsc --noEmit -p libs/ui/tsconfig.lib.json",
+          "tsc --noEmit -p libs/ui/tsconfig.spec.json"
+        ],
+        "parallel": false
+      }
+    }
+  }
+}

@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Core Banking Academy</title>
+  <meta name="description" content="Nền tảng đào tạo nội bộ Ban QL&PT Core Banking — mockup v2 (dữ liệu giả lập)">
+  <meta name="color-scheme" content="light dark">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Crect width='40' height='40' rx='9' fill='%23006B68'/%3E%3Cg fill='%23FFC62F' transform='translate(8 8) scale(.6)'%3E%3Ccircle cx='20' cy='8' r='6.5'/%3E%3Ccircle cx='31.4' cy='16.3' r='6.5'/%3E%3Ccircle cx='27.1' cy='29.7' r='6.5'/%3E%3Ccircle cx='12.9' cy='29.7' r='6.5'/%3E%3Ccircle cx='8.6' cy='16.3' r='6.5'/%3E%3C/g%3E%3C/svg%3E">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="assets/css/tokens.css">
+  <link rel="stylesheet" href="assets/css/base.css">
+  <link rel="stylesheet" href="assets/css/layout.css">
+  <link rel="stylesheet" href="assets/css/components.css">
+  <link rel="stylesheet" href="assets/css/pages.css">
+</head>
+<body>
+  <a class="skip-link" href="#outlet" onclick="event.preventDefault();document.getElementById('outlet').focus()">Bỏ qua tới nội dung chính</a>
+  <div id="app" class="app app--bare"><main id="outlet" tabindex="-1"><p style="padding:24px">Đang tải ứng dụng…</p></main></div>
+  <noscript><p style="padding:24px">Ứng dụng cần bật JavaScript.</p></noscript>
+
+  <!-- Thứ tự nạp: core → data → api → components → pages → main
+       Script thường (không ES module) để mở được trực tiếp bằng file:// khi review mockup. -->
+  <script src="src/core/html.js"></script>
+  <script src="src/core/icons.js"></script>
+  <script src="src/core/types.js"></script>
+  <script src="src/data/seed.js"></script>
+  <script src="src/core/store.js"></script>
+  <script src="src/api/core.js"></script>
+  <script src="src/api/auth.js"></script>
+  <script src="src/api/learner.js"></script>
+  <script src="src/api/admin.js"></script>
+  <script src="src/api/reports.js"></script>
+  <script src="src/core/ui.js"></script>
+  <script src="src/components/components.js"></script>
+  <script src="src/components/charts.js"></script>
+  <script src="src/components/viewers.js"></script>
+  <script src="src/components/ai.js"></script>
+  <script src="src/core/router.js"></script>
+  <script src="src/core/shell.js"></script>
+  <script src="src/pages/auth.js"></script>
+  <script src="src/pages/learner.js"></script>
+  <script src="src/pages/lesson.js"></script>
+  <script src="src/pages/quiz.js"></script>
+  <script src="src/pages/tools.js"></script>
+  <script src="src/pages/instructor.js"></script>
+  <script src="src/pages/admin-content.js"></script>
+  <script src="src/pages/admin-questions.js"></script>
+  <script src="src/pages/admin-org.js"></script>
+  <script src="src/pages/reports.js"></script>
+  <script src="src/pages/design-system.js"></script>
+  <script src="src/main.js"></script>
+</body>
+</html>
