@@ -4,9 +4,7 @@
 >
   <ul class="grid list-none grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
     @for (principle of principles; track principle.title) {
-    <li
-      class="flex flex-col gap-2 rounded-lg border border-border bg-surface p-5"
-    >
+    <li uiCard padded class="flex flex-col gap-2">
       <span
         class="grid h-touch w-touch place-items-center rounded-md bg-primary-subtle text-primary"
       >
@@ -18,12 +16,9 @@
     }
   </ul>
 
-  <section
-    class="rounded-lg border border-border bg-surface"
-    aria-labelledby="change-log-heading"
-  >
-    <div class="border-b border-border px-5 py-4">
-      <h3 class="text-md font-semibold" id="change-log-heading">
+  <section uiCard aria-labelledby="change-log-heading">
+    <div uiCardHeader>
+      <h3 id="change-log-heading">
         Nhật ký thay đổi v1 → v2 (theo nhận xét review)
       </h3>
     </div>

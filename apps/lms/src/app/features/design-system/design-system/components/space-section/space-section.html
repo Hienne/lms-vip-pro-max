@@ -3,9 +3,7 @@
   title="Spacing · bo góc · đổ bóng · chuyển động"
 >
   <div class="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
-    <div
-      class="flex flex-col gap-2 rounded-lg border border-border bg-surface p-5"
-    >
+    <div uiCard padded class="flex flex-col gap-2">
       <strong>Spacing (bước 4px)</strong>
       @for (item of steps; track item.step) {
       <div class="step">
@@ -15,9 +13,7 @@
       }
     </div>
 
-    <div
-      class="flex flex-col gap-2 rounded-lg border border-border bg-surface p-5"
-    >
+    <div uiCard padded class="flex flex-col gap-2">
       <strong>Bo góc &amp; bóng</strong>
       <div class="flex flex-wrap items-center gap-2">
         @for (radius of radii; track radius.name) {
@@ -36,9 +32,7 @@
       </p>
     </div>
 
-    <div
-      class="flex flex-col gap-2 rounded-lg border border-border bg-surface p-5"
-    >
+    <div uiCard padded class="flex flex-col gap-2">
       <strong>Chuyển động</strong>
       <p class="text-sm text-text-secondary">
         fast 120ms (hover) · base 200ms (xuất hiện: slide-up 8px + fade) · slow
@@ -46,12 +40,8 @@
       </p>
       <div class="flex flex-wrap items-center gap-3" data-motion>
         @for (run of [store.replay$()]; track run) {
-        <div
-          class="animate-enter rounded-lg border border-border bg-surface px-4 py-2"
-        >
-          Phần tử thường
-        </div>
-        <div class="animate-reward-pop rounded-lg bg-accent-subtle px-4 py-2">
+        <div uiCard class="animate-enter px-4 py-2">Phần tử thường</div>
+        <div uiCard variant="reward" class="animate-reward-pop px-4 py-2">
           <strong class="text-accent-ink">+50</strong> điểm
         </div>
         }

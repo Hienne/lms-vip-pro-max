@@ -1,4 +1,5 @@
 import { Component, inject } from '@angular/core';
+import { Card } from '@lms/ui';
 import { DsSection } from '../section/section';
 import { SpaceSectionStore } from './data-access/space-section.store';
 
@@ -28,7 +29,7 @@ const SHADOWS = [
 
 @Component({
   selector: 'app-space-section',
-  imports: [DsSection],
+  imports: [DsSection, Card],
   providers: [SpaceSectionStore],
   templateUrl: './space-section.html',
   styleUrl: './space-section.scss',

@@ -94,7 +94,14 @@ export const MIGRATION_ENTRIES = [
     level: 'atom',
     targets: ['Badge', 'Chip'],
     checklist: ['H'],
-    status: 'todo',
+    status: 'done',
+    owner: 'Hienne',
+    verify: {
+      lightDark: 'done',
+      widths: 'done',
+      keyboard: 'done',
+      errorStates: 'n/a',
+    },
   },
   {
     id: 'card',
@@ -103,7 +110,14 @@ export const MIGRATION_ENTRIES = [
     level: 'atom',
     targets: ['Card', 'CardHeader', 'CardBody'],
     checklist: ['H'],
-    status: 'todo',
+    status: 'done',
+    owner: 'Hienne',
+    verify: {
+      lightDark: 'done',
+      widths: 'done',
+      keyboard: 'done',
+      errorStates: 'n/a',
+    },
   },
   {
     id: 'skeleton-spinner',
@@ -112,7 +126,14 @@ export const MIGRATION_ENTRIES = [
     level: 'atom',
     targets: ['Skeleton', 'Spinner'],
     checklist: ['H'],
-    status: 'todo',
+    status: 'done',
+    owner: 'Hienne',
+    verify: {
+      lightDark: 'done',
+      widths: 'done',
+      keyboard: 'n/a',
+      errorStates: 'n/a',
+    },
   },
   {
     id: 'table',

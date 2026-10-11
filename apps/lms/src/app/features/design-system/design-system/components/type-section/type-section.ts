@@ -1,4 +1,5 @@
 import { Component } from '@angular/core';
+import { Card } from '@lms/ui';
 import { DsSection } from '../section/section';
 
 /** The type scale. Each sample's classes are written out so Tailwind finds them. */
@@ -42,7 +43,7 @@ const SAMPLES = [
 
 @Component({
   selector: 'app-type-section',
-  imports: [DsSection],
+  imports: [DsSection, Card],
   templateUrl: './type-section.html',
   styleUrl: './type-section.scss',
 })

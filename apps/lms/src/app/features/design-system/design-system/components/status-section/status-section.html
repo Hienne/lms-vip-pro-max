@@ -1,8 +1,74 @@
 <app-ds-section section="status" title="Badge &amp; trạng thái">
+  <app-ds-demo label="Badge: tone · chấm · viền" [needs]="['badge-chip']">
+    <div class="flex flex-col gap-4">
+      <div class="flex flex-wrap items-center gap-3">
+        @for (item of tones; track item.tone) {
+        <span uiBadge [tone]="item.tone">
+          @if (item.icon) {
+          <ui-icon [name]="item.icon" />
+          } {{ item.label }}
+        </span>
+        }
+      </div>
+      <div class="flex flex-wrap items-center gap-3">
+        <span uiBadge tone="success" dot>Hoạt động</span>
+        <span uiBadge tone="warning" dot>Tạm dừng</span>
+        <span uiBadge tone="danger" dot>Đã khóa</span>
+        <span uiBadge outline dot>Nháp</span>
+        <span uiBadge outline>Tự chọn</span>
+      </div>
+    </div>
+  </app-ds-demo>
   <app-ds-demo
-    label="Badge: tone · chấm · viền"
+    label="Chip: nhấn để bật / tắt (aria-pressed)"
     [needs]="['badge-chip']"
-  ></app-ds-demo>
+  >
+    <div class="flex flex-wrap items-center gap-3">
+      @for (chip of store.chips$(); track chip.id) {
+      <button
+        uiChip
+        [pressed]="chip.pressed"
+        (pressedChange)="store.setChip(chip.id, $event)"
+      >
+        {{ chip.label }}
+      </button>
+      }
+    </div>
+  </app-ds-demo>
+  <app-ds-demo
+    label="Card: tiêu đề · nội dung · tint · reward · tương tác"
+    [needs]="['card']"
+  >
+    <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+      <article uiCard>
+        <div uiCardHeader>
+          <h3>Tiến độ học tập</h3>
+          <span uiBadge tone="info">Đang học</span>
+        </div>
+        <div uiCardBody>
+          Hoàn thành 3/5 bài của khóa Tổng quan Core Banking.
+        </div>
+      </article>
+      <div uiCard variant="tint" padded>
+        Gợi ý: hoàn thành bài kiểm tra cuối chương để mở khóa chương tiếp theo.
+      </div>
+      <div uiCard variant="reward" padded>
+        <strong class="text-accent-ink">+50</strong> điểm cho bài kiểm tra đầu
+        tiên.
+      </div>
+      <a
+        uiCard
+        interactive
+        padded
+        [routerLink]="[]"
+        fragment="ds-status"
+        class="flex items-center justify-between gap-3"
+      >
+        Thẻ tương tác: cả thẻ là một liên kết
+        <ui-icon name="arrow-right" size="sm" />
+      </a>
+    </div>
+  </app-ds-demo>
   <app-ds-demo
     label="Trạng thái học tập (kèm icon, không dựa màu đơn thuần)"
     [needs]="['domain-status-badges']"

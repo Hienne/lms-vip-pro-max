@@ -183,12 +183,75 @@ describe('/design-system', () => {
       const ids = placeholders.flatMap((p) =>
         Array.from(p.querySelectorAll('code')).map((c) => c.textContent),
       );
-      expect(ids).toEqual([
-        'field',
-        'option-card',
-        'dropzone',
-        'search',
-        'badge-chip',
+      expect(ids).toEqual(['field', 'option-card', 'dropzone', 'search']);
+    });
+  });
+
+  describe('status section', () => {
+    it('demos every badge tone, the chips and the cards; domain status badges stay placeholders', async () => {
+      const { page } = await openDesignSystem();
+      const section = page.querySelector('#ds-status') as HTMLElement;
+      const tones = Array.from(section.querySelectorAll('.badge')).map(
+        (badge) => badge.className,
+      );
+      for (const tone of [
+        'primary',
+        'success',
+        'warning',
+        'danger',
+        'info',
+        'reward',
+      ]) {
+        expect(tones.some((c) => c.includes(`badge--${tone}`))).toBe(true);
+      }
+      expect(tones.some((c) => c.includes('badge--dot'))).toBe(true);
+      expect(tones.some((c) => c.includes('badge--outline'))).toBe(true);
+      // meaning is never colour alone: success has an icon and text
+      expect(section.querySelector('.badge--success ui-icon')).not.toBeNull();
+
+      const chips = Array.from(
+        section.querySelectorAll<HTMLElement>('button.chip'),
+      );
+      expect(chips.map((c) => c.getAttribute('aria-pressed'))).toEqual([
+        'true',
+        'false',
+        'false',
+      ]);
+      chips[1].click();
+      TestBed.tick();
+      expect(chips[1].getAttribute('aria-pressed')).toBe('true');
+
+      expect(
+        section.querySelector('article.card .card__header'),
+      ).not.toBeNull();
+      expect(section.querySelector('a.card--interactive')).not.toBeNull();
+
+      const pending = Array.from(
+        section.querySelectorAll('[data-placeholder] code'),
+      ).map((c) => c.textContent);
+      expect(pending).toContain('domain-status-badges');
+      expect(pending).toContain('domain-course-card');
+    });
+  });
+
+  describe('feedback section', () => {
+    it('shows the loading demo and keeps the other demos as placeholders', async () => {
+      const { page } = await openDesignSystem();
+      const section = page.querySelector('#ds-feedback') as HTMLElement;
+      expect(section.querySelectorAll('.skeleton')).toHaveLength(4);
+      expect(
+        section.querySelector('[role="status"]')?.getAttribute('aria-label'),
+      ).toBe('Đang tải');
+      const pending = Array.from(
+        section.querySelectorAll('[data-placeholder] code'),
+      ).map((c) => c.textContent);
+      expect(pending).toEqual([
+        'alert-tip',
+        'toast',
+        'modal',
+        'drawer',
+        'menu',
+        'empty-error-state',
       ]);
     });
   });

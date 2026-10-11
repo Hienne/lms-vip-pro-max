@@ -16,7 +16,16 @@ export interface ContrastRowView {
   readonly background: string;
   readonly ratio: string;
   readonly grade: WcagGrade | 'pending';
+  /** Text of the grade badge, e.g. `AA` or `Đạt 3:1 (UI)`. */
+  readonly gradeLabel: string;
 }
+
+const GRADE_LABEL: Readonly<Record<WcagGrade, string>> = {
+  AAA: 'AAA',
+  AA: 'AA',
+  ui: 'Đạt 3:1 (UI)',
+  fail: 'Chưa đạt',
+};
 
 const ALL_TOKENS: readonly string[] = [
   ...new Set([
@@ -55,13 +64,21 @@ export class ColorSectionStore {
         values[background] ?? '',
       );
       if (ratio === undefined) {
-        return { foreground, background, ratio: '…', grade: 'pending' };
+        return {
+          foreground,
+          background,
+          ratio: '…',
+          grade: 'pending',
+          gradeLabel: '…',
+        };
       }
+      const grade = wcagGrade(ratio, foreground.includes('border'));
       return {
         foreground,
         background,
         ratio: `${ratio.toFixed(2)}:1`,
-        grade: wcagGrade(ratio, foreground.includes('border')),
+        grade,
+        gradeLabel: GRADE_LABEL[grade],
       };
     }),
   );

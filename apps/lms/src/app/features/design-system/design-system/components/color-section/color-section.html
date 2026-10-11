@@ -29,14 +29,9 @@
   </div>
   }
 
-  <section
-    class="rounded-lg border border-border bg-surface"
-    aria-labelledby="contrast-heading"
-  >
-    <div
-      class="flex flex-wrap items-center justify-between gap-3 border-b border-border px-5 py-4"
-    >
-      <h3 class="text-md font-semibold" id="contrast-heading">
+  <section uiCard aria-labelledby="contrast-heading">
+    <div uiCardHeader>
+      <h3 id="contrast-heading">
         Kiểm tra tương phản (tính trực tiếp theo theme hiện tại)
       </h3>
       <span class="text-xs text-text-muted">Đổi sáng/tối để kiểm tra lại</span>
@@ -71,27 +66,15 @@
             </td>
             <td class="px-4 py-3" data-ratio>{{ row.ratio }}</td>
             <td class="px-4 py-3" data-grade>
-              @switch (row.grade) { @case ('AAA') {
-              <span
-                class="inline-flex h-6 items-center gap-1 rounded-full bg-success-subtle px-2 text-xs font-semibold text-success"
-                >AAA</span
+              @switch (row.grade) { @case ('pending') { … } @case ('fail') {
+              <span uiBadge tone="danger"
+                ><ui-icon name="x" />{{ row.gradeLabel }}</span
               >
-              } @case ('AA') {
-              <span
-                class="inline-flex h-6 items-center gap-1 rounded-full bg-success-subtle px-2 text-xs font-semibold text-success"
-                >AA</span
+              } @default {
+              <span uiBadge tone="success"
+                ><ui-icon name="check" />{{ row.gradeLabel }}</span
               >
-              } @case ('ui') {
-              <span
-                class="inline-flex h-6 items-center gap-1 rounded-full bg-success-subtle px-2 text-xs font-semibold text-success"
-                >Đạt 3:1 (UI)</span
-              >
-              } @case ('fail') {
-              <span
-                class="inline-flex h-6 items-center gap-1 rounded-full bg-danger-subtle px-2 text-xs font-semibold text-danger"
-                >Chưa đạt</span
-              >
-              } @default { … } }
+              } }
             </td>
           </tr>
           }

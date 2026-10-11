@@ -1,0 +1,28 @@
+// Chip: ported from the mockup's `.chip` block (components.css). Applied by `uiChip`.
+@layer components {
+  .chip {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--spacing-2);
+    min-height: 36px;
+    padding: 0 var(--spacing-3);
+    border: 1px solid var(--color-border-strong);
+    border-radius: var(--radius-full);
+    background: var(--color-surface);
+    color: var(--color-text-secondary);
+    cursor: pointer;
+    font-size: var(--text-sm);
+    font-weight: var(--font-weight-medium);
+
+    &:hover {
+      border-color: var(--color-primary);
+      color: var(--color-primary);
+    }
+
+    &[aria-pressed='true'] {
+      border-color: var(--color-primary);
+      background: var(--color-primary);
+      color: var(--color-on-primary);
+    }
+  }
+}
