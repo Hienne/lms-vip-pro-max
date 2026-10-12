@@ -64,3 +64,8 @@ export { TableWrap } from './lib/atoms/table/table-wrap.directive';
 // ConfirmDialog, confirm, Drawer (10)
 
 // Toaster (11)
+export {
+  Toaster,
+  type Toast,
+  type ToastKind,
+} from './lib/organisms/toaster/toaster';

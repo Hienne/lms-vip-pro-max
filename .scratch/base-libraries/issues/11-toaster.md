@@ -4,7 +4,7 @@
 
 **Blocked by:** None (can start immediately)
 
-**Status:** ready-for-agent
+**Status:** done
 
 - [ ] Look and placement match the mockup's toasts; stack order and max count defined
 - [ ] Auto-dismiss pauses on hover and focus; errors stay until closed
