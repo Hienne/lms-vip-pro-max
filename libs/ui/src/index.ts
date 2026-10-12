@@ -116,6 +116,15 @@ export {
   type ToastKind,
 } from './lib/organisms/toaster/toaster';
 
+// Sortable list
+export {
+  SortableItem,
+  SortableList,
+  type SortableAnnouncement,
+  type SortableDirection,
+  type SortableMove,
+} from './lib/molecules/sortable/sortable';
+
 // Tree
 export {
   Tree,

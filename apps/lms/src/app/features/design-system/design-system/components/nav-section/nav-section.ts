@@ -5,6 +5,8 @@ import {
   Button,
   PageHeader,
   Segmented,
+  SortableItem,
+  SortableList,
   Stepper,
   TabPanel,
   Tabs,
@@ -86,6 +88,9 @@ const CONTENT_TREE: readonly TreeNode<PublishStatus>[] = [
     Breadcrumb,
     PageHeader,
     Button,
+    SortableList,
+    SortableItem,
+
     Tree,
     Badge,
     Stepper,

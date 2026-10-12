@@ -319,6 +319,16 @@ describe('/design-system', () => {
   describe('navigation section', () => {
     it('demos the segmented control', async () => {
       const { page } = await openDesignSystem();
+      const lessons = page.querySelector('#ds-nav .sortable') as HTMLElement;
+      expect(
+        lessons.querySelectorAll('ui-sortable-item.sort-item'),
+      ).toHaveLength(4);
+      expect(
+        lessons.querySelector<HTMLButtonElement>(
+          'button[aria-label="Chuyển lên"]',
+        )?.disabled,
+      ).toBe(true);
+
       const stepper = page.querySelector('#ds-nav ui-stepper') as HTMLElement;
       expect(
         Array.from(stepper.querySelectorAll('.stepper__title')).map((t) =>
