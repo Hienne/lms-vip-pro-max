@@ -31,7 +31,8 @@ describe('design system dialog and drawer demos', () => {
     TestBed.tick();
     await vi.waitFor(() => expect(dialogPanel()).not.toBeNull());
 
-    buttonIn(document, 'Xuất bản')?.click();
+    const panel = dialogPanel() as HTMLElement;
+    buttonIn(panel, 'Xuất bản')?.click();
 
     await vi.waitFor(() => {
       TestBed.tick();

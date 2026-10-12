@@ -1,5 +1,29 @@
 <app-ds-section section="data" title="Hiển thị dữ liệu">
-  <app-ds-demo label="KPI" [needs]="['kpi']"></app-ds-demo>
+  <app-ds-demo label="KPI" [needs]="['kpi']">
+    <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <ui-kpi
+        icon="book-open"
+        [value]="6"
+        label="Khóa được giao"
+        delta="4 bắt buộc · 1 quá hạn"
+      />
+      <ui-kpi
+        icon="clipboard-check"
+        tone="info"
+        [value]="78"
+        suffix="%"
+        label="Điểm gần nhất"
+      />
+      <ui-kpi
+        icon="triangle-alert"
+        tone="danger"
+        [value]="3"
+        label="Quá hạn"
+        href="/design-system"
+      />
+      <ui-kpi icon="trophy" tone="reward" value="1.250" label="Điểm thưởng" />
+    </div>
+  </app-ds-demo>
 
   <div class="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
     <app-ds-demo label="Progress bar" [needs]="['progress-ring']">

@@ -1,5 +1,5 @@
-import { Component } from '@angular/core';
-import { MaiBadge } from '@lms/ui';
+import { Component, inject } from '@angular/core';
+import { MaiBadge, Rating, Stars } from '@lms/ui';
 import {
   CourseCard,
   type CourseCardView,
@@ -10,6 +10,7 @@ import {
 } from '../../../../../shared/course/journey';
 import { DsDemo } from '../demo/demo';
 import { DsSection } from '../section/section';
+import { LearningSectionStore } from './data-access/learning-section.store';
 
 /** Badges of the mockup's "Huy hiệu cánh mai" demo. */
 const BADGES = [
@@ -90,10 +91,12 @@ const JOURNEY: readonly JourneyStop[] = [
 
 @Component({
   selector: 'app-learning-section',
-  imports: [DsSection, DsDemo, MaiBadge, CourseCard, Journey],
+  imports: [DsSection, DsDemo, MaiBadge, Stars, Rating, CourseCard, Journey],
+  providers: [LearningSectionStore],
   templateUrl: './learning-section.html',
 })
 export class LearningSection {
+  protected readonly store = inject(LearningSectionStore);
   protected readonly badges = BADGES;
   protected readonly courses = COURSES;
   protected readonly journeyStops = JOURNEY;

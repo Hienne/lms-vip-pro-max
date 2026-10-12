@@ -1,0 +1,80 @@
+// KPI tile: ported from the mockup's `.kpi` block (components.css). Applied by `ui-kpi`.
+@layer components {
+  // The card (a `div` or an `a`) fills the host, so tiles in a grid row share one height.
+  .kpi-host {
+    display: flex;
+
+    > .card {
+      display: block;
+      flex: 1 1 auto;
+      min-width: 0;
+    }
+  }
+
+  .kpi {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-4);
+    padding: var(--spacing-5);
+  }
+
+  .kpi__icon {
+    display: grid;
+    flex: none;
+    place-items: center;
+    width: 44px;
+    height: 44px;
+    border-radius: var(--radius-md);
+    background: var(--color-primary-subtle);
+    color: var(--color-primary);
+  }
+
+  .kpi__icon--reward {
+    background: var(--color-accent);
+    color: var(--color-on-accent);
+  }
+
+  .kpi__icon--warning {
+    background: var(--color-warning-subtle);
+    color: var(--color-warning);
+  }
+
+  .kpi__icon--danger {
+    background: var(--color-danger-subtle);
+    color: var(--color-danger);
+  }
+
+  .kpi__icon--info {
+    background: var(--color-info-subtle);
+    color: var(--color-info);
+  }
+
+  .kpi__body {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+
+  .kpi__value {
+    font-size: var(--text-2xl);
+    font-weight: var(--font-weight-bold);
+    font-variant-numeric: tabular-nums;
+    line-height: 1.1;
+
+    small {
+      color: var(--color-text-muted);
+      font-size: var(--text-md);
+      font-weight: var(--font-weight-medium);
+    }
+  }
+
+  .kpi__label {
+    color: var(--color-text-secondary);
+    font-size: var(--text-sm);
+  }
+
+  .kpi__delta {
+    color: var(--color-text-muted);
+    font-size: var(--text-xs);
+    font-weight: var(--font-weight-semibold);
+  }
+}
