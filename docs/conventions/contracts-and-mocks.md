@@ -53,6 +53,13 @@ export const courseEndpoints = {
 - `defineEndpoint`, `toUrl(endpoint, params)` and `ApiErrorSchema`
   (`{ message, details? }`, matching the mockup's `ApiError`) live in
   `libs/contracts/src/lib/http/`.
+- `defineEndpoint` accepts `params`, `query` and `body` as optional; `toUrl`
+  requires the params argument only when the endpoint declares `params`, and
+  throws on a missing path segment. Declared `errors` are drawn from
+  `400 | 401 | 403 | 404 | 409 | 422 | 423 | 500`.
+- `libs/contracts` exports `endpointRegistries` (an array of every registry);
+  `build-spec` walks it, so a new domain registers its `xEndpoints` there.
+  The operation id is the registry key.
 - Each endpoint lists the error statuses it can return; those become documented
   responses in OpenAPI and the states the UI must render.
 
@@ -73,12 +80,18 @@ export class CourseApi {
 ```
 
 - Every response goes through `parseResponse(schema)` (an RxJS operator in
-  `apps/lms/src/app/core/http/`). A failed parse throws a `ContractError` with
-  the zod issues, and is reported, not swallowed.
+  `apps/lms/src/app/core/http/`). A failed parse throws a `ContractError` (same
+  folder) with the zod issues, and is reported, not swallowed: the global
+  `ErrorHandler` (`core/errors/app-error-handler.ts`, `provideAppErrorHandler()`)
+  logs every unexpected error.
 - `apps/lms/src/app/core/errors/app-error.ts` exports `toAppError(unknown): AppError`,
   the one place that maps `HttpErrorResponse`, `ContractError` and offline
   status 0 to `AppError`
-  (`offline | unauthorized | forbidden | not-found | invalid | contract | unknown`).
+  (`offline | unauthorized | forbidden | not-found | invalid | locked | contract | unknown`;
+  status 0 is `offline`, 423 is `locked` for blocked or suspended accounts).
+  `AppError` is `{ kind, message, details? }`: the message is the server's
+  `ApiError.message` when the body parses, else the mockup's Vietnamese default;
+  `details` (field to message) is kept on `invalid` only.
   Stores expose `toAppError(resource.error())`; components render it with retry.
 
 ## Forms
@@ -120,8 +133,12 @@ with `/api/` and never contain a host.
   attaches named examples from `@lms/mocks`, and writes
   `dist/apps/mock-api/openapi.json`. `serve` runs it first, then
   `prism mock` on port 4010 with static examples.
-- `build-spec` also keeps the infrastructure operation `GET /api/health`:
+- `GET /api/health` is a registered endpoint (`healthEndpoints`) like any other:
   Prism refuses to start on a document without operations.
+- Examples come from `@lms/mocks`: `endpointExamples[operationId]` (`default`
+  plus optional `roles`) and `errorExamples[status]` (generic `ApiError` bodies
+  using the mockup's messages). `build-spec` fails when an endpoint has no
+  example, and `libs/mocks/src/fixtures.spec.ts` parses all of them.
 - Every endpoint has a `default` success example plus one example per declared
   error status. Role-dependent endpoints add examples named after the role
   (`learner`, `admin`, `instructor`, `viewer`, `unit-admin`).

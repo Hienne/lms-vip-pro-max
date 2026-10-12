@@ -1,2 +1,3 @@
 // Public API of @lms/mocks. Export every public symbol from here.
-export {};
+export * from './lib/examples';
+export * from './lib/health/health.fixtures';
