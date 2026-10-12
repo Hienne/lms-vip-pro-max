@@ -407,7 +407,14 @@ export const MIGRATION_ENTRIES = [
     level: 'molecule',
     targets: ['Dropzone', 'UploadItem'],
     checklist: ['H'],
-    status: 'todo',
+    status: 'done',
+    owner: 'Hienne',
+    verify: {
+      lightDark: 'done',
+      widths: 'done',
+      keyboard: 'done',
+      errorStates: 'done',
+    },
   },
   {
     id: 'option-card',

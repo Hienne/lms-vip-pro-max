@@ -178,6 +178,14 @@ describe('/design-system', () => {
           ?.getAttribute('type'),
       ).toBe('email');
       expect(
+        section.querySelector('label.dropzone input[type="file"]'),
+      ).not.toBeNull();
+      expect(
+        Array.from(section.querySelectorAll('ui-upload-item')).map((i) =>
+          i.classList.contains('is-error'),
+        ),
+      ).toEqual([false, false, true]);
+      expect(
         section.querySelectorAll('ui-option-card label.option-card'),
       ).toHaveLength(4);
       expect(section.querySelectorAll('ui-option-card .answer')).toHaveLength(
