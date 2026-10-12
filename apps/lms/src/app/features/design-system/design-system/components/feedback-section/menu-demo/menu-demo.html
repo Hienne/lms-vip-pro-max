@@ -11,7 +11,7 @@
     [entries]="store.entries"
     (selected)="store.choose($event)"
   />
-  <span class="text-sm text-text-secondary" role="status">
+  <span class="text-sm text-text-secondary" aria-live="polite">
     @if (store.chosen$(); as action) { Đã chọn: {{ store.label(action) }} }
     @else { Chưa chọn thao tác nào. }
   </span>

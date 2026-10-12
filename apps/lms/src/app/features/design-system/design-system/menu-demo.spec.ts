@@ -32,7 +32,7 @@ describe('/design-system menu demo', () => {
     ).find((item) => item.textContent?.includes('Sao chép'));
     copy?.click();
     TestBed.tick();
-    expect(section.querySelector('[role="status"]')?.textContent).toContain(
+    expect(section.querySelector('[aria-live]')?.textContent).toContain(
       'Đã chọn: Sao chép',
     );
   });

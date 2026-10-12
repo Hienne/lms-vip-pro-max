@@ -6,9 +6,6 @@ import { MenuDemo } from './menu-demo/menu-demo';
 
 @Component({
   selector: 'app-feedback-section',
-<<<<<<< HEAD
-  imports: [DsSection, DsDemo, Skeleton, Spinner, MenuDemo],
-=======
   imports: [
     DsSection,
     DsDemo,
@@ -18,8 +15,8 @@ import { MenuDemo } from './menu-demo/menu-demo';
     Skeleton,
     Spinner,
     Tip,
+    MenuDemo,
   ],
->>>>>>> integration/base-libraries
   templateUrl: './feedback-section.html',
   styleUrl: './feedback-section.scss',
 })
