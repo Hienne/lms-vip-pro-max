@@ -53,6 +53,11 @@ export { TableWrap } from './lib/atoms/table/table-wrap.directive';
 export { Tooltip } from './lib/atoms/tooltip/tooltip.directive';
 
 // Field, ErrorSummary (05)
+export { Field } from './lib/molecules/field/field';
+export {
+  ErrorSummary,
+  type ErrorSummaryItem,
+} from './lib/molecules/field/error-summary';
 
 // Alert, Tip (06)
 export {

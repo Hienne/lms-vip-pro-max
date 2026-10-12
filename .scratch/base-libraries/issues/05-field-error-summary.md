@@ -4,7 +4,7 @@
 
 **Blocked by:** None (can start immediately)
 
-**Status:** ready-for-agent
+**Status:** done
 
 - [ ] Label always visible and associated; hint and errors referenced by `aria-describedby`; control gets `aria-invalid` when errors exist
 - [ ] Works with input, select, textarea and checkbox atoms

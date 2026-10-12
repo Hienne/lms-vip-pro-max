@@ -1,0 +1,52 @@
+// Form row and error summary: ported from the mockup's `.field` and `.error-summary` blocks
+// (components.css). Applied by `ui-field` and `ui-error-summary`.
+@layer components {
+  .field {
+    display: flex;
+    flex-direction: column;
+    gap: 6px; // between spacing-1 (4px) and spacing-2 (8px), as in the mockup
+  }
+
+  .field__label {
+    font-size: var(--text-sm);
+    font-weight: var(--font-weight-semibold);
+    color: var(--color-text);
+  }
+
+  .field__req {
+    margin-left: 2px;
+    color: var(--color-danger);
+  }
+
+  .field__help {
+    font-size: var(--text-xs);
+    color: var(--color-text-muted);
+  }
+
+  .field__error {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-1);
+    font-size: var(--text-xs);
+    font-weight: 500;
+    color: var(--color-danger);
+  }
+
+  .error-summary {
+    padding: var(--spacing-4);
+    border: 1px solid var(--color-danger);
+    border-radius: var(--radius-md);
+    background: var(--color-danger-subtle);
+    color: var(--color-danger);
+    font-size: var(--text-sm);
+
+    ul {
+      margin-top: var(--spacing-2);
+    }
+
+    a {
+      color: inherit;
+      font-weight: var(--font-weight-semibold);
+    }
+  }
+}
