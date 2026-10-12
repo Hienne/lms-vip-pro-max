@@ -274,7 +274,14 @@ export const MIGRATION_ENTRIES = [
     level: 'molecule',
     targets: ['Breadcrumb'],
     checklist: ['H'],
-    status: 'todo',
+    status: 'done',
+    owner: 'Hienne',
+    verify: {
+      lightDark: 'done',
+      widths: 'done',
+      keyboard: 'done',
+      errorStates: 'n/a',
+    },
   },
   {
     id: 'rating',
@@ -346,7 +353,14 @@ export const MIGRATION_ENTRIES = [
     level: 'organism',
     targets: ['PageHeader'],
     checklist: ['H'],
-    status: 'todo',
+    status: 'done',
+    owner: 'Hienne',
+    verify: {
+      lightDark: 'done',
+      widths: 'done',
+      keyboard: 'done',
+      errorStates: 'n/a',
+    },
   },
   {
     id: 'data-table',

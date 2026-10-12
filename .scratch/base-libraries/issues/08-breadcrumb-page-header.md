@@ -4,7 +4,7 @@
 
 **Blocked by:** None (can start immediately)
 
-**Status:** ready-for-agent
+**Status:** done
 
 - [ ] Breadcrumb semantics as above; long trails truncate without horizontal scroll at 375 px
 - [ ] Page header slots match the mockup's `UI.PageHeader`
