@@ -1,12 +1,17 @@
 <app-ds-section section="learning" title="Thành phần học tập">
-  <app-ds-demo
-    label="Thẻ khóa học"
-    [needs]="['domain-course-card']"
-  ></app-ds-demo>
+  <app-ds-demo label="Thẻ khóa học" [needs]="['domain-course-card']">
+    <div class="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+      @for (course of courses; track course.id) {
+      <app-course-card [course]="course" />
+      }
+    </div>
+  </app-ds-demo>
   <app-ds-demo
     label="Journey — bản đồ tuyến thay stepper (tên &amp; % luôn hiển thị)"
     [needs]="['domain-course-card']"
-  ></app-ds-demo>
+  >
+    <app-journey [stops]="journeyStops" />
+  </app-ds-demo>
   <app-ds-demo label="Huy hiệu cánh mai" [needs]="['mai']">
     <ul class="grid list-none grid-cols-2 gap-3 md:grid-cols-4">
       @for (badge of badges; track badge.name) {

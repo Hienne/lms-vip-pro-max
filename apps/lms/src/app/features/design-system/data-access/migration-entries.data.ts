@@ -540,7 +540,14 @@ export const MIGRATION_ENTRIES = [
       'app-required-mark',
     ],
     checklist: ['F.1', 'F.2'],
-    status: 'todo',
+    status: 'done',
+    owner: 'Hienne',
+    verify: {
+      lightDark: 'done',
+      widths: 'done',
+      keyboard: 'done',
+      errorStates: 'n/a',
+    },
   },
   {
     id: 'domain-markdown',

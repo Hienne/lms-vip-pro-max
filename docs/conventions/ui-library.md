@@ -137,6 +137,7 @@ defaults to `button`, so write `type="submit"` for a form's submit button.
 Tokens added on top of the mockup (the mockup hard-coded these values): `--color-white`,
 `--color-on-danger` (dark: a dark ink, because white on the dark danger red is 2.4:1),
 `--color-hero-from/to/muted/subtle/accent/chip` (the hero panel is dark teal in both themes),
+`--color-cover-layers/process/clock/building/database/shield` (course cover tints, with dark values),
 `--tracking-tight/wide/wider`. Durations drop to `0ms` under `prefers-reduced-motion`.
 
 ### Breakpoints

@@ -1,0 +1,49 @@
+<a uiCard interactive class="course-card" [routerLink]="course().link">
+  <div
+    class="course-card__cover"
+    [class]="'course-card__cover course-card__cover--' + course().cover"
+  >
+    <div class="course-card__badges">
+      <app-required-mark [required]="course().required" />
+      @if (completed()) {
+      <span uiBadge tone="success"><ui-icon name="check" /> Hoàn thành</span>
+      } @else if (course().overdue) {
+      <span uiBadge tone="danger"><ui-icon name="clock" /> Quá hạn</span>
+      }
+    </div>
+    <ui-icon [name]="coverIcon()" size="xl" />
+  </div>
+  <div class="course-card__body">
+    <span class="course-card__eyebrow"
+      >{{ course().domain }} · {{ course().module }}</span
+    >
+    <h3 class="course-card__title line-clamp-2">{{ course().title }}</h3>
+    <div class="course-card__meta">
+      <span><ui-icon name="clock" size="sm" />{{ duration() }}</span>
+      <span
+        ><ui-icon name="book-open" size="sm" />{{ course().lessons }} bài</span
+      >
+      <span><ui-icon name="target" size="sm" />{{ course().level }}</span>
+    </div>
+    <div class="course-card__foot">
+      <ui-progress
+        size="sm"
+        [value]="course().pct"
+        [tone]="progressTone()"
+        [label]="'Tiến độ ' + course().title"
+      />
+      <div class="course-card__line">
+        <span
+          class="course-card__status"
+          [class.text-danger]="course().status === 'failed'"
+          [class.font-semibold]="course().status === 'failed'"
+          >{{ statusText() }}</span
+        >
+        <strong class="course-card__pct">{{ course().pct }}%</strong>
+      </div>
+      @if (course().dueAt; as dueAt) {
+      <app-due-date [dueAt]="dueAt" [done]="completed()" />
+      }
+    </div>
+  </div>
+</a>

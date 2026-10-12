@@ -1,0 +1,26 @@
+<ol class="journey">
+  @for (stop of items(); track $index) {
+  <li
+    class="journey__stop"
+    [class.is-done]="stop.state === 'done'"
+    [class.is-current]="stop.state === 'current'"
+    [attr.aria-current]="stop.state === 'current' ? 'step' : null"
+  >
+    <span class="journey__dot">
+      @switch (stop.state) { @case ('done') {
+      <ui-icon name="check" size="sm" />
+      } @case ('current') {
+      <ui-mai [size]="16" petal="on-accent" core="accent" />
+      } @default {
+      <span class="text-xs">{{ stop.number }}</span>
+      } }
+    </span>
+    <div>
+      <div class="journey__name">{{ stop.name }}</div>
+      <div class="journey__pct">
+        {{ stop.progressText }} · {{ stop.courses }} khóa
+      </div>
+    </div>
+  </li>
+  }
+</ol>

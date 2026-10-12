@@ -229,7 +229,9 @@ describe('/design-system', () => {
         section.querySelectorAll('[data-placeholder] code'),
       ).map((c) => c.textContent);
       expect(pending).not.toContain('domain-status-badges');
-      expect(pending).toContain('domain-course-card');
+      expect(pending).not.toContain('domain-course-card');
+      expect(section.querySelectorAll('app-due-date')).toHaveLength(3);
+      expect(section.querySelectorAll('app-required-mark')).toHaveLength(2);
       expect(section.querySelectorAll('app-course-status')).toHaveLength(5);
       expect(section.querySelectorAll('app-publish-status')).toHaveLength(4);
       expect(section.querySelectorAll('app-account-status')).toHaveLength(3);
@@ -337,6 +339,12 @@ describe('/design-system', () => {
       expect(
         badges.map((b) => b.textContent?.includes('Chưa mở khóa')),
       ).toEqual([false, false, true, true]);
+      expect(
+        section.querySelectorAll('app-course-card a.course-card'),
+      ).toHaveLength(3);
+      expect(
+        section.querySelectorAll('app-journey .journey__stop'),
+      ).toHaveLength(4);
       expect(
         section.querySelectorAll('[data-placeholder]').length,
       ).toBeGreaterThan(0);

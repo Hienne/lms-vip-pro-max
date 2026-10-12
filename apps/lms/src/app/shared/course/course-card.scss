@@ -1,0 +1,112 @@
+// Course card: ported from the mockup's `.course-card` block (components.css). The cover tint is
+// a theme token per cover; the card itself is `uiCard interactive`, one link.
+:host {
+  display: block;
+  height: 100%;
+}
+
+.course-card {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+  color: inherit;
+  text-decoration: none;
+}
+
+.course-card__cover {
+  position: relative;
+  display: grid;
+  place-items: center;
+  height: 112px;
+  background: var(--color-primary-subtle);
+  color: var(--color-primary);
+}
+
+.course-card__cover--layers {
+  background: var(--color-cover-layers);
+}
+.course-card__cover--process {
+  background: var(--color-cover-process);
+}
+.course-card__cover--clock {
+  background: var(--color-cover-clock);
+}
+.course-card__cover--building {
+  background: var(--color-cover-building);
+}
+.course-card__cover--database {
+  background: var(--color-cover-database);
+}
+.course-card__cover--shield {
+  background: var(--color-cover-shield);
+}
+
+.course-card__badges {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  left: 10px;
+  display: flex;
+  justify-content: space-between;
+  gap: 6px;
+}
+
+.course-card__body {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: var(--spacing-2);
+  padding: var(--spacing-4);
+}
+
+.course-card__eyebrow {
+  color: var(--color-text-muted);
+  font-size: var(--text-xs);
+  font-weight: var(--font-weight-semibold);
+  letter-spacing: var(--tracking-wider);
+  text-transform: uppercase;
+}
+
+.course-card__title {
+  font-size: var(--text-md);
+  font-weight: var(--font-weight-semibold);
+  line-height: 1.35;
+}
+
+.course-card__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  color: var(--color-text-muted);
+  font-size: var(--text-xs);
+
+  span {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+  }
+}
+
+.course-card__foot {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: auto;
+  padding-top: var(--spacing-2);
+}
+
+.course-card__line {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: var(--text-xs);
+}
+
+.course-card__status {
+  color: var(--color-text-muted);
+}
+
+.course-card__pct {
+  font-variant-numeric: tabular-nums;
+}
