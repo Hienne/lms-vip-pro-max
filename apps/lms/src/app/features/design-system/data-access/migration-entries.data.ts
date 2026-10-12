@@ -301,7 +301,14 @@ export const MIGRATION_ENTRIES = [
     level: 'molecule',
     targets: ['Empty', 'ErrorState'],
     checklist: ['H'],
-    status: 'todo',
+    status: 'done',
+    owner: 'Hienne',
+    verify: {
+      lightDark: 'done',
+      widths: 'done',
+      keyboard: 'done',
+      errorStates: 'done',
+    },
   },
   {
     id: 'alert-tip',

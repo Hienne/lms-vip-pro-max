@@ -1,11 +1,20 @@
 import { Component } from '@angular/core';
-import { Skeleton, Spinner } from '@lms/ui';
+import { Button, Card, Empty, ErrorState, Skeleton, Spinner } from '@lms/ui';
 import { DsDemo } from '../demo/demo';
 import { DsSection } from '../section/section';
 
 @Component({
   selector: 'app-feedback-section',
-  imports: [DsSection, DsDemo, Skeleton, Spinner],
+  imports: [
+    DsSection,
+    DsDemo,
+    Button,
+    Card,
+    Empty,
+    ErrorState,
+    Skeleton,
+    Spinner,
+  ],
   templateUrl: './feedback-section.html',
   styleUrl: './feedback-section.scss',
 })

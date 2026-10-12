@@ -10,7 +10,37 @@
   <app-ds-demo
     label="Trạng thái rỗng, lỗi, không đủ quyền"
     [needs]="['empty-error-state']"
-  ></app-ds-demo>
+  >
+    <div class="grid grid-cols-1 gap-4 lg:grid-cols-3">
+      <div uiCard>
+        <ui-empty
+          icon="clipboard-check"
+          title="Chưa có bài thi nào"
+          description="Hoàn thành khóa học đầu tiên để mở bài thi."
+        >
+          <button uiButton variant="primary" size="sm">
+            Khám phá khóa học
+          </button>
+        </ui-empty>
+      </div>
+      <div uiCard>
+        <ui-error-state
+          icon="wifi-off"
+          tone="warning"
+          title="Mất kết nối"
+          message="Dữ liệu đang nhập được giữ nguyên."
+        />
+      </div>
+      <div uiCard>
+        <ui-error-state
+          icon="lock"
+          title="Không đủ quyền (403)"
+          message="Liên hệ quản trị viên đơn vị."
+          [retryable]="false"
+        />
+      </div>
+    </div>
+  </app-ds-demo>
   <app-ds-demo
     label="Trạng thái đang tải: skeleton giữ chỗ bố cục (không giật layout)"
     [needs]="['skeleton-spinner']"
