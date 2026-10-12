@@ -1,0 +1,23 @@
+// Countdown readout: ported from the mockup's `.timer` block (components.css). Applied by
+// `ui-timer`.
+@layer components {
+  .timer {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    height: 36px;
+    padding: 0 var(--spacing-3);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-full);
+    background: var(--color-surface-2);
+    color: var(--color-text);
+    font-variant-numeric: tabular-nums;
+    font-weight: var(--font-weight-bold);
+
+    &.is-low {
+      border-color: var(--color-danger);
+      background: var(--color-danger-subtle);
+      color: var(--color-danger);
+    }
+  }
+}

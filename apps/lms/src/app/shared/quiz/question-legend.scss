@@ -1,0 +1,37 @@
+// Question legend: ported from the mockup's `.q-legend` (components.css).
+.q-legend {
+  display: grid;
+  gap: 6px;
+  color: var(--color-text-secondary);
+  font-size: var(--text-xs);
+
+  span {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  i {
+    display: inline-block;
+    width: 14px;
+    height: 14px;
+    border: 1px solid var(--color-border-strong);
+    border-radius: 4px;
+  }
+}
+
+.q-legend__answered {
+  border-color: var(--color-primary);
+  background: var(--color-primary);
+}
+
+.q-legend__flagged {
+  border-color: var(--color-warning);
+  border-radius: 50%;
+  background: var(--color-warning);
+}
+
+.q-legend__current {
+  outline: 2px solid var(--color-text);
+  outline-offset: 1px;
+}

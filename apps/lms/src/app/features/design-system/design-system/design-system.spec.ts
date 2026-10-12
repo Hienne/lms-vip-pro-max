@@ -403,6 +403,17 @@ describe('/design-system', () => {
         section.querySelectorAll('app-journey .journey__stop'),
       ).toHaveLength(4);
       expect(
+        Array.from(section.querySelectorAll('ui-timer .timer__time')).map((t) =>
+          t.textContent?.trim(),
+        ),
+      ).toEqual(['12:48', '00:45']);
+      expect(
+        section.querySelectorAll('app-question-grid .q-cell'),
+      ).toHaveLength(10);
+      expect(
+        section.querySelectorAll('app-question-legend .q-legend'),
+      ).toHaveLength(1);
+      expect(
         section.querySelectorAll('[data-placeholder]').length,
       ).toBeGreaterThan(0);
     });

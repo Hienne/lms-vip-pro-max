@@ -1,0 +1,15 @@
+<div class="q-grid">
+  @for (cell of items(); track cell.number; let i = $index) {
+  <button
+    type="button"
+    class="q-cell"
+    [class.is-answered]="cell.answered"
+    [class.is-flagged]="cell.flagged"
+    [attr.aria-label]="cell.name"
+    [attr.aria-current]="i === current() ? 'true' : null"
+    (click)="goto.emit(i)"
+  >
+    {{ cell.number }}
+  </button>
+  }
+</div>
