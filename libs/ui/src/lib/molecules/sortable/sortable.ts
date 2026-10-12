@@ -5,7 +5,6 @@ import {
   Component,
   computed,
   contentChildren,
-  DestroyRef,
   Directive,
   ElementRef,
   forwardRef,
@@ -13,7 +12,6 @@ import {
   Injector,
   input,
   output,
-  signal,
   viewChildren,
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
@@ -119,7 +117,6 @@ export class SortableList {
   host: {
     class: 'sort-item',
     role: 'listitem',
-    '[class.is-dragging]': 'dragging()',
   },
   template: `
     <span class="drag-handle" cdkDragHandle aria-hidden="true">
@@ -153,22 +150,10 @@ export class SortableItem {
   readonly label = input.required<string>();
 
   protected readonly list = inject(SortableList);
-  protected readonly dragging = signal(false);
   protected readonly index = computed(() => this.list.items().indexOf(this));
 
   private readonly buttons =
     viewChildren<ElementRef<HTMLButtonElement>>('up, down');
-
-  constructor() {
-    const drag = inject(CdkDrag);
-    const destroyed = inject(DestroyRef);
-    const started = drag.started.subscribe(() => this.dragging.set(true));
-    const ended = drag.ended.subscribe(() => this.dragging.set(false));
-    destroyed.onDestroy(() => {
-      started.unsubscribe();
-      ended.unsubscribe();
-    });
-  }
 
   /** Focuses the button that was used, or the other one when it is now disabled. */
   focusMove(preferred: SortableDirection): void {

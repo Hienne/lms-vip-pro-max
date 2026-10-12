@@ -14,11 +14,12 @@
       margin-top: var(--spacing-2);
     }
 
-    &.is-dragging {
+    // The row being dragged (the mockup's `.is-dragging`; CDK sets the class).
+    &.cdk-drag-dragging {
       opacity: 0.5;
     }
 
-    // The slot the dragged row will drop into.
+    // The slot the dragged row will drop into: the mockup's `.is-over` look.
     &.cdk-drag-placeholder {
       border-color: var(--color-primary);
       box-shadow: 0 -2px 0 var(--color-primary);
