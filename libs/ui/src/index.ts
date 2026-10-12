@@ -77,6 +77,13 @@ export {
 export { PageHeader } from './lib/organisms/page-header/page-header';
 
 // Menu (09)
+export {
+  Menu,
+  type MenuEntry,
+  type MenuItemEntry,
+  type MenuLabelEntry,
+  type MenuSeparatorEntry,
+} from './lib/organisms/menu/menu';
 
 // ConfirmDialog, confirm, Drawer (10)
 

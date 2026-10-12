@@ -12,6 +12,7 @@ import {
 } from '@lms/ui';
 import { DsDemo } from '../demo/demo';
 import { DsSection } from '../section/section';
+import { MenuDemo } from './menu-demo/menu-demo';
 
 @Component({
   selector: 'app-feedback-section',
@@ -27,6 +28,7 @@ import { DsSection } from '../section/section';
     Skeleton,
     Spinner,
     Tip,
+    MenuDemo,
   ],
   templateUrl: './feedback-section.html',
   styleUrl: './feedback-section.scss',
