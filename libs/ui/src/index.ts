@@ -54,10 +54,21 @@ export { TableWrap } from './lib/atoms/table/table-wrap.directive';
 // Field, ErrorSummary (05)
 
 // Alert, Tip (06)
+export {
+  Alert,
+  AlertAction,
+  type AlertTone,
+} from './lib/molecules/alert/alert';
+export { Tip } from './lib/molecules/tip/tip';
 
 // Empty, ErrorState (07)
 
 // Breadcrumb, PageHeader (08)
+export {
+  Breadcrumb,
+  type BreadcrumbItem,
+} from './lib/molecules/breadcrumb/breadcrumb';
+export { PageHeader } from './lib/organisms/page-header/page-header';
 
 // Menu (09)
 export {
