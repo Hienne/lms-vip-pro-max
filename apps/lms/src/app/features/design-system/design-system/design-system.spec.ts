@@ -256,9 +256,16 @@ describe('/design-system', () => {
   });
 
   describe('data display section', () => {
-    it('demos progress, ring, table in a card and avatars; the data table and KPI stay placeholders', async () => {
+    it('demos progress, ring, table in a card and avatars; the data table stays a placeholder', async () => {
       const { page } = await openDesignSystem();
       const section = page.querySelector('#ds-data') as HTMLElement;
+
+      expect(
+        Array.from(section.querySelectorAll('ui-kpi .kpi__label')).map((l) =>
+          l.textContent?.trim(),
+        ),
+      ).toEqual(['Khóa được giao', 'Điểm gần nhất', 'Quá hạn', 'Điểm thưởng']);
+      expect(section.querySelectorAll('ui-kpi a')).toHaveLength(1);
 
       const bars = Array.from(
         section.querySelectorAll('ui-progress[role="progressbar"]'),

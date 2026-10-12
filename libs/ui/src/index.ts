@@ -116,6 +116,9 @@ export {
   type ToastKind,
 } from './lib/organisms/toaster/toaster';
 
+// Kpi (remaining-ui 04)
+export { Kpi, type KpiTone } from './lib/molecules/kpi/kpi';
+
 // Stars, Rating (remaining-ui 03)
 export { Stars } from './lib/molecules/rating/stars';
 export { Rating } from './lib/molecules/rating/rating';
