@@ -284,9 +284,16 @@ export const MIGRATION_ENTRIES = [
     kind: 'component',
     mockupSource: 'UI.Tabs',
     level: 'molecule',
-    targets: ['Tabs'],
+    targets: ['Tabs', 'TabPanel'],
     checklist: ['H'],
-    status: 'todo',
+    status: 'done',
+    owner: 'Hienne',
+    verify: {
+      lightDark: 'done',
+      widths: 'done',
+      keyboard: 'done',
+      errorStates: 'n/a',
+    },
   },
   {
     id: 'segmented',
