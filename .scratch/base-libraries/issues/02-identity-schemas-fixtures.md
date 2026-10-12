@@ -4,7 +4,7 @@
 
 **Blocked by:** 01 — Contract toolkit tracer bullet
 
-**Status:** ready-for-agent
+**Status:** done
 
 - [ ] Schemas mirror `core/types.js` (enums as `z.enum`, ISO date strings, nullable `adminScope`, `lastLoginAt`); types via `z.infer`
 - [ ] Fixtures hold the seed's units, groups and users with the mockup's ids, names and roles
