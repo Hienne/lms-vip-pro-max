@@ -1,5 +1,5 @@
 import { CdkStep, CdkStepHeader, CdkStepper } from '@angular/cdk/stepper';
-import { Component, input, model } from '@angular/core';
+import { Component, computed, input, model } from '@angular/core';
 import { Icon } from '../../atoms/icon/icon';
 
 export interface StepperItem {
@@ -22,53 +22,7 @@ export interface StepperItem {
 @Component({
   selector: 'ui-stepper',
   imports: [CdkStep, CdkStepHeader, CdkStepper, Icon],
-  template: `
-    <div
-      cdkStepper
-      #cdk="cdkStepper"
-      [linear]="linear()"
-      [selectedIndex]="selectedIndex()"
-      (selectedIndexChange)="selectedIndex.set($event)"
-    >
-      <ol class="stepper" [attr.aria-label]="label()">
-        @for (step of steps(); track $index; let i = $index) {
-          <li class="stepper__item">
-            <button
-              type="button"
-              cdkStepHeader
-              class="stepper__step"
-              [class.is-done]="isDone(step, i)"
-              [attr.aria-current]="cdk.selectedIndex === i ? 'step' : null"
-              [attr.aria-disabled]="
-                cdk.steps.get(i)?.isNavigable() === false ? 'true' : null
-              "
-              [attr.tabindex]="cdk._getFocusIndex() === i ? 0 : -1"
-              (click)="go(cdk, i)"
-              (keydown)="cdk._onKeydown($event)"
-            >
-              <span class="stepper__num">
-                @if (isDone(step, i) && cdk.selectedIndex !== i) {
-                  <ui-icon name="check" size="sm" />
-                  <span class="sr-only">{{ doneLabel() }}</span>
-                } @else {
-                  {{ i + 1 }}
-                }
-              </span>
-              <span class="stepper__text">
-                <span class="stepper__title">{{ step.label }}</span>
-                @if (step.subtitle) {
-                  <span class="stepper__sub">{{ step.subtitle }}</span>
-                }
-              </span>
-            </button>
-          </li>
-        }
-      </ol>
-      @for (step of steps(); track $index; let i = $index) {
-        <cdk-step [label]="step.label" [completed]="isDone(step, i)" />
-      }
-    </div>
-  `,
+  templateUrl: './stepper.html',
 })
 export class Stepper {
   readonly steps = input.required<readonly StepperItem[]>();
@@ -79,9 +33,13 @@ export class Stepper {
   readonly selectedIndex = model(0);
   readonly doneLabel = input('Đã hoàn thành');
 
-  protected isDone(step: StepperItem, index: number): boolean {
-    return step.completed ?? index < this.selectedIndex();
-  }
+  protected readonly items = computed(() => {
+    const current = this.selectedIndex();
+    return this.steps().map((step, index) => ({
+      ...step,
+      done: step.completed ?? index < current,
+    }));
+  });
 
   protected go(cdk: CdkStepper, index: number): void {
     cdk.selectedIndex = index;
