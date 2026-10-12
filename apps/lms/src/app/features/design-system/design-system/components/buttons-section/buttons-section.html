@@ -69,8 +69,15 @@
     </div>
   </app-ds-demo>
 
-  <app-ds-demo
-    label="Tooltip (hover, focus)"
-    [needs]="['tooltip']"
-  ></app-ds-demo>
+  <app-ds-demo label="Tooltip (hover, focus)" [needs]="['tooltip']">
+    <div class="flex flex-wrap items-center gap-3">
+      <button uiButton variant="secondary" uiTooltip="Mở danh mục khóa học">
+        Di chuột hoặc Tab vào đây
+      </button>
+      <p class="text-sm text-text-secondary">
+        Nút icon ở trên cũng dùng tooltip này. Esc để ẩn · gắn
+        <code>aria-describedby</code> khi đang hiện
+      </p>
+    </div>
+  </app-ds-demo>
 </app-ds-section>

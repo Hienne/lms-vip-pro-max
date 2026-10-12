@@ -50,6 +50,7 @@ export { TableWrap } from './lib/atoms/table/table-wrap.directive';
 // keep the marker comment, and do not touch the other blocks.
 
 // Tooltip (04)
+export { Tooltip } from './lib/atoms/tooltip/tooltip.directive';
 
 // Field, ErrorSummary (05)
 
