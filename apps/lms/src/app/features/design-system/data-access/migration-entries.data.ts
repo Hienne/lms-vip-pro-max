@@ -519,7 +519,14 @@ export const MIGRATION_ENTRIES = [
       'app-role-badge',
     ],
     checklist: ['F.2', 'B.2', 'B.8'],
-    status: 'todo',
+    status: 'done',
+    owner: 'Hienne',
+    verify: {
+      lightDark: 'done',
+      widths: 'done',
+      keyboard: 'n/a',
+      errorStates: 'n/a',
+    },
   },
   {
     id: 'domain-course-card',

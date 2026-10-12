@@ -1,5 +1,11 @@
 import { Component, inject } from '@angular/core';
 import { RouterLink } from '@angular/router';
+import type {
+  AccountStatus as AccountStatusValue,
+  CourseStatus as CourseStatusValue,
+  PublishStatus as PublishStatusValue,
+  Role,
+} from '@lms/contracts';
 import {
   Badge,
   Card,
@@ -10,6 +16,10 @@ import {
   type BadgeTone,
   type IconName,
 } from '@lms/ui';
+import { AccountStatus } from '../../../../../shared/status/account-status';
+import { CourseStatus } from '../../../../../shared/status/course-status';
+import { PublishStatus } from '../../../../../shared/status/publish-status';
+import { RoleBadge } from '../../../../../shared/status/role-badge';
 import { DsDemo } from '../demo/demo';
 import { DsSection } from '../section/section';
 import { StatusSectionStore } from './data-access/status-section.store';
@@ -41,6 +51,10 @@ const TONES: readonly {
     CardBody,
     Icon,
     RouterLink,
+    CourseStatus,
+    PublishStatus,
+    AccountStatus,
+    RoleBadge,
   ],
   providers: [StatusSectionStore],
   templateUrl: './status-section.html',
@@ -48,4 +62,27 @@ const TONES: readonly {
 export class StatusSection {
   protected readonly store = inject(StatusSectionStore);
   protected readonly tones = TONES;
+  protected readonly courseStatuses: readonly CourseStatusValue[] = [
+    'not_started',
+    'in_progress',
+    'completed',
+    'failed',
+  ];
+  protected readonly publishStatuses: readonly PublishStatusValue[] = [
+    'draft',
+    'published',
+    'paused',
+    'locked',
+  ];
+  protected readonly accountStatuses: readonly AccountStatusValue[] = [
+    'active',
+    'suspended',
+    'locked',
+  ];
+  protected readonly roles: readonly Role[] = [
+    'learner',
+    'instructor',
+    'admin',
+    'viewer',
+  ];
 }

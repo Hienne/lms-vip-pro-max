@@ -4,6 +4,7 @@ export * from './lib/http/endpoint';
 export * from './lib/health/health.schema';
 export * from './lib/health/health.endpoints';
 export * from './lib/identity/identity.schema';
+export * from './lib/learning/learning.schema';
 export * from './lib/auth/auth.schema';
 export * from './lib/auth/auth.endpoints';
 

@@ -187,7 +187,7 @@ describe('/design-system', () => {
   });
 
   describe('status section', () => {
-    it('demos every badge tone, the chips and the cards; domain status badges stay placeholders', async () => {
+    it('demos every badge tone, the chips, the cards and the domain status badges', async () => {
       const { page } = await openDesignSystem();
       const section = page.querySelector('#ds-status') as HTMLElement;
       const tones = Array.from(section.querySelectorAll('.badge')).map(
@@ -228,8 +228,12 @@ describe('/design-system', () => {
       const pending = Array.from(
         section.querySelectorAll('[data-placeholder] code'),
       ).map((c) => c.textContent);
-      expect(pending).toContain('domain-status-badges');
+      expect(pending).not.toContain('domain-status-badges');
       expect(pending).toContain('domain-course-card');
+      expect(section.querySelectorAll('app-course-status')).toHaveLength(5);
+      expect(section.querySelectorAll('app-publish-status')).toHaveLength(4);
+      expect(section.querySelectorAll('app-account-status')).toHaveLength(3);
+      expect(section.querySelectorAll('app-role-badge')).toHaveLength(5);
     });
   });
 
