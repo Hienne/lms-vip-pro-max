@@ -1,0 +1,53 @@
+// Sortable list rows: ported from the mockup's `.sort-item` and `.drag-handle` (components.css).
+// Applied by `uiSortableList` and `uiSortableItem`.
+@layer components {
+  .sort-item {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-3);
+    padding: var(--spacing-2) var(--spacing-3);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    background: var(--color-surface);
+
+    & + & {
+      margin-top: var(--spacing-2);
+    }
+
+    // The row being dragged (the mockup's `.is-dragging`; CDK sets the class).
+    &.cdk-drag-dragging {
+      opacity: 0.5;
+    }
+
+    // The slot the dragged row will drop into: the mockup's `.is-over` look.
+    &.cdk-drag-placeholder {
+      border-color: var(--color-primary);
+      box-shadow: 0 -2px 0 var(--color-primary);
+      opacity: 0.6;
+    }
+
+    // The row under the pointer while dragging.
+    &.cdk-drag-preview {
+      box-shadow: var(--shadow-md);
+    }
+  }
+
+  .sort-item__body {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+
+  .drag-handle {
+    display: grid;
+    place-items: center;
+    width: 28px;
+    height: 28px;
+    border-radius: var(--radius-sm);
+    color: var(--color-text-muted);
+    cursor: grab;
+
+    &:hover {
+      background: var(--color-surface-2);
+    }
+  }
+}
