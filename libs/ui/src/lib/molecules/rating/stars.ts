@@ -20,13 +20,13 @@ const STARS = [1, 2, 3, 4, 5] as const;
         </span>
       }
     </span>
-    <span class="stars__text">
+    <span class="stars__text" aria-hidden="true">
       <strong>{{ score() }}</strong>
       @if (count() !== undefined) {
         <span class="stars__count"> ({{ count() }} {{ countLabel() }})</span>
       }
     </span>
-    <span class="sr-only">{{ score() }} {{ scoreLabel() }}</span>
+    <span class="sr-only">{{ sentence() }}</span>
   `,
 })
 export class Stars {
@@ -40,6 +40,13 @@ export class Stars {
 
   protected readonly stars = STARS;
   protected readonly rounded = computed(() => Math.round(this.value()));
+  protected readonly sentence = computed(() => {
+    const count = this.count();
+    const base = `${this.score()} ${this.scoreLabel()}`;
+    return count === undefined
+      ? base
+      : `${base}, ${count} ${this.countLabel()}`;
+  });
   protected readonly score = computed(() =>
     (Math.round(this.value() * 10) / 10).toLocaleString('vi-VN'),
   );

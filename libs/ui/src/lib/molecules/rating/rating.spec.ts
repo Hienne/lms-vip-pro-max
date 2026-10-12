@@ -37,7 +37,9 @@ describe('Stars', () => {
     expect(
       root.querySelector('[aria-hidden="true"]')?.querySelectorAll('ui-icon'),
     ).toHaveLength(5);
-    expect(root.querySelector('.sr-only')?.textContent).toBe('4,3 trên 5 sao');
+    expect(root.querySelector('.sr-only')?.textContent).toBe(
+      '4,3 trên 5 sao, 18 đánh giá',
+    );
   });
 
   it('shows the rounded score and the review count', async () => {

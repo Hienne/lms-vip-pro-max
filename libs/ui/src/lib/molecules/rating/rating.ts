@@ -9,6 +9,7 @@ import {
 import { Icon } from '../../atoms/icon/icon';
 
 const STARS = [1, 2, 3, 4, 5] as const;
+const LAST = STARS.length;
 
 /**
  * Star rating input (the mockup's lesson rating): a radio group of five "n sao" radios with
@@ -59,12 +60,12 @@ export class Rating {
       this.buttons().findIndex((b) => b.nativeElement === event.currentTarget) +
       1;
     const next = {
-      ArrowRight: (current % 5) + 1,
-      ArrowDown: (current % 5) + 1,
-      ArrowLeft: current <= 1 ? 5 : current - 1,
-      ArrowUp: current <= 1 ? 5 : current - 1,
+      ArrowRight: (current % LAST) + 1,
+      ArrowDown: (current % LAST) + 1,
+      ArrowLeft: current <= 1 ? LAST : current - 1,
+      ArrowUp: current <= 1 ? LAST : current - 1,
       Home: 1,
-      End: 5,
+      End: LAST,
     }[event.key];
     if (next === undefined) return;
     event.preventDefault();
