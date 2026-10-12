@@ -4,8 +4,11 @@ import {
   Button,
   PageHeader,
   Segmented,
+  TabPanel,
+  Tabs,
   type BreadcrumbItem,
   type SegmentedOption,
+  type TabItem,
 } from '@lms/ui';
 import { DsDemo } from '../demo/demo';
 import { DsSection } from '../section/section';
@@ -13,7 +16,16 @@ import { NavSectionStore, type Period } from './data-access/nav-section.store';
 
 @Component({
   selector: 'app-nav-section',
-  imports: [DsSection, DsDemo, Segmented, Breadcrumb, PageHeader, Button],
+  imports: [
+    DsSection,
+    DsDemo,
+    Segmented,
+    Breadcrumb,
+    PageHeader,
+    Button,
+    Tabs,
+    TabPanel,
+  ],
   providers: [NavSectionStore],
   templateUrl: './nav-section.html',
 })
@@ -23,6 +35,11 @@ export class NavSection {
     { label: 'Khóa học', href: '/design-system' },
     { label: 'Nền tảng nghiệp vụ', href: '/design-system' },
     { label: 'Tổng quan Core Banking' },
+  ];
+  protected readonly tabItems: readonly TabItem[] = [
+    { id: 'overview', label: 'Tổng quan' },
+    { id: 'courses', label: 'Khóa học', count: 6 },
+    { id: 'exams', label: 'Bài thi' },
   ];
   protected readonly periods: readonly SegmentedOption<Period>[] = [
     { value: 'week', label: 'Tuần' },

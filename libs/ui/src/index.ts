@@ -115,3 +115,6 @@ export {
   type Toast,
   type ToastKind,
 } from './lib/organisms/toaster/toaster';
+
+// Tabs (remaining-ui 02)
+export { Tabs, TabPanel, type TabItem } from './lib/molecules/tabs/tabs';
