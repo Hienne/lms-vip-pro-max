@@ -115,3 +115,6 @@ export {
   type Toast,
   type ToastKind,
 } from './lib/organisms/toaster/toaster';
+
+// Search (remaining-ui 01)
+export { Search } from './lib/molecules/search/search';
