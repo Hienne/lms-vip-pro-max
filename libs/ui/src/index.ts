@@ -116,7 +116,7 @@ export {
   type ToastKind,
 } from './lib/organisms/toaster/toaster';
 
-// OptionCard (remaining-ui 05)
+// OptionCard
 export {
   OptionCard,
   type OptionCardTone,

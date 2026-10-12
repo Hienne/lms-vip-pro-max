@@ -25,17 +25,7 @@ const REVIEW_ICON: Record<OptionCardTone, IconName> = {
   template: `
     @if (tone(); as tone) {
       <div class="answer" [class]="answerModifier()">
-        <ui-icon
-          size="sm"
-          [name]="reviewIcon()"
-          [label]="
-            tone === 'correct'
-              ? correctIconLabel()
-              : tone === 'wrong'
-                ? wrongIconLabel()
-                : ''
-          "
-        />
+        <ui-icon size="sm" [name]="reviewIcon()" [label]="iconLabel()" />
         <span class="option-card__text">{{ title() }}</span>
         @if (chosen()) {
           <span class="answer__mark">{{ chosenLabel() }}</span>
@@ -81,6 +71,11 @@ export class OptionCard {
   protected readonly reviewIcon = computed(
     () => REVIEW_ICON[this.tone() ?? 'neutral'],
   );
+  protected readonly iconLabel = computed(() => {
+    const tone = this.tone();
+    if (tone === 'correct') return this.correctIconLabel();
+    return tone === 'wrong' ? this.wrongIconLabel() : '';
+  });
   protected readonly answerModifier = computed(() => {
     const tone = this.tone();
     return tone === 'correct' || tone === 'wrong' ? `answer--${tone}` : '';
