@@ -4,6 +4,8 @@ import {
   Button,
   PageHeader,
   Segmented,
+  SortableItem,
+  SortableList,
   type BreadcrumbItem,
   type SegmentedOption,
 } from '@lms/ui';
@@ -13,7 +15,16 @@ import { NavSectionStore, type Period } from './data-access/nav-section.store';
 
 @Component({
   selector: 'app-nav-section',
-  imports: [DsSection, DsDemo, Segmented, Breadcrumb, PageHeader, Button],
+  imports: [
+    DsSection,
+    DsDemo,
+    Segmented,
+    Breadcrumb,
+    PageHeader,
+    Button,
+    SortableList,
+    SortableItem,
+  ],
   providers: [NavSectionStore],
   templateUrl: './nav-section.html',
 })

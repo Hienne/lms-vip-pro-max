@@ -295,6 +295,15 @@ describe('/design-system', () => {
   describe('navigation section', () => {
     it('demos the segmented control', async () => {
       const { page } = await openDesignSystem();
+      const lessons = page.querySelector('#ds-nav .sortable') as HTMLElement;
+      expect(
+        lessons.querySelectorAll('ui-sortable-item.sort-item'),
+      ).toHaveLength(4);
+      expect(
+        lessons.querySelector<HTMLButtonElement>(
+          'button[aria-label="Chuyển lên"]',
+        )?.disabled,
+      ).toBe(true);
       const demo = page.querySelector('#ds-nav [role="listbox"]');
       expect(demo?.getAttribute('aria-label')).toBe('Kỳ');
       const selected = demo?.querySelector('[aria-selected="true"]');

@@ -382,6 +382,22 @@ export const MIGRATION_ENTRIES = [
     status: 'todo',
   },
   {
+    id: 'sortable',
+    kind: 'component',
+    mockupSource: '.sort-item, .drag-handle',
+    level: 'molecule',
+    targets: ['SortableList', 'SortableItem'],
+    checklist: ['H'],
+    status: 'done',
+    owner: 'Hienne',
+    verify: {
+      lightDark: 'done',
+      widths: 'done',
+      keyboard: 'done',
+      errorStates: 'n/a',
+    },
+  },
+  {
     id: 'option-card',
     kind: 'component',
     mockupSource: '.option-card, .answer',
@@ -574,7 +590,7 @@ export const MIGRATION_ENTRIES = [
   {
     id: 'feature-misc',
     kind: 'component',
-    mockupSource: '.certificate, .flashcard, .comment, .thread, .sort-item',
+    mockupSource: '.certificate, .flashcard, .comment, .thread',
     level: 'feature',
     targets: ['features/*/components'],
     checklist: ['E.4', 'G.2', 'C.2'],

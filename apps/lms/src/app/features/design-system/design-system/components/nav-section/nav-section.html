@@ -30,6 +30,19 @@
   <app-ds-demo label="Tree" [needs]="['tree']"></app-ds-demo>
   <app-ds-demo
     label="Sắp xếp: kéo thả + nút ↑↓ cho bàn phím"
-    [needs]="['feature-misc','icon-button']"
-  ></app-ds-demo>
+    [needs]="['sortable','icon-button']"
+  >
+    <div
+      uiSortableList
+      label="Bài học của chương"
+      (moved)="store.moveLesson($event)"
+    >
+      @for (lesson of store.lessons$(); track lesson.id) {
+      <ui-sortable-item [label]="lesson.title">
+        <div class="truncate text-sm font-semibold">{{ lesson.title }}</div>
+        <div class="text-xs text-text-muted">{{ lesson.meta }}</div>
+      </ui-sortable-item>
+      }
+    </div>
+  </app-ds-demo>
 </app-ds-section>
