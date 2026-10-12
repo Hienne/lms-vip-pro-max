@@ -1,0 +1,64 @@
+// Alert / callout: ported from the mockup's `.alert` block (components.css). Applied by `ui-alert`.
+// Tone colours come from the status tokens; the 25% border is the mockup's `color-mix`.
+@layer components {
+  .alert {
+    display: flex;
+    gap: var(--spacing-3);
+    padding: var(--spacing-3) var(--spacing-4);
+    border: 1px solid color-mix(in srgb, var(--color-info) 25%, transparent);
+    border-radius: var(--radius-md);
+    background: var(--color-info-subtle);
+    color: var(--color-text);
+    font-size: var(--text-sm);
+
+    > .icon {
+      flex: none;
+      margin-top: 1px;
+      color: var(--color-info);
+    }
+  }
+
+  .alert__body {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .alert__title {
+    display: block;
+    font-weight: var(--font-weight-semibold);
+  }
+
+  .alert__actions {
+    display: flex;
+    flex: none;
+    align-items: flex-start;
+    gap: var(--spacing-2);
+
+    &:empty {
+      display: none;
+    }
+  }
+
+  // Below sm (640px) the actions drop under the text, aligned with it (icon width + gap).
+  @media (max-width: 639px) {
+    .alert {
+      flex-wrap: wrap;
+    }
+
+    .alert__actions {
+      flex-basis: 100%;
+      padding-left: var(--spacing-8);
+    }
+  }
+
+  @each $tone in (success, warning, danger) {
+    .alert--#{$tone} {
+      border-color: color-mix(in srgb, var(--color-#{$tone}) 25%, transparent);
+      background: var(--color-#{$tone}-subtle);
+
+      > .icon {
+        color: var(--color-#{$tone});
+      }
+    }
+  }
+}

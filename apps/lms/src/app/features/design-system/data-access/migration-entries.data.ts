@@ -315,9 +315,16 @@ export const MIGRATION_ENTRIES = [
     kind: 'component',
     mockupSource: '.alert, .tip',
     level: 'molecule',
-    targets: ['Alert', 'Tip'],
+    targets: ['Alert', 'AlertAction', 'Tip'],
     checklist: ['H'],
-    status: 'todo',
+    status: 'done',
+    owner: 'Hienne',
+    verify: {
+      lightDark: 'done',
+      widths: 'done',
+      keyboard: 'n/a',
+      errorStates: 'n/a',
+    },
   },
   {
     id: 'pagination',

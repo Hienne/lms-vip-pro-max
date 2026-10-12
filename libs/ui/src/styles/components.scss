@@ -1,7 +1,7 @@
 // Atom looks, one partial per BEM block, applied only by the owning atom's host class.
 // Loaded globally after tailwind.css; every rule sits inside `@layer components`
 // (docs/conventions/ui-library.md → Styling).
-// @use 'components/alert'; // 06
+@use 'components/alert';
 @use 'components/avatar';
 @use 'components/badge';
 // @use 'components/breadcrumb'; // 08
@@ -29,6 +29,6 @@
 @use 'components/switch';
 @use 'components/table';
 @use 'components/textarea';
-// @use 'components/tip'; // 06
+@use 'components/tip';
 // @use 'components/toast'; // 11
 @use 'components/tooltip';
