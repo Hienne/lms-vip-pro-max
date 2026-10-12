@@ -25,9 +25,24 @@
     [needs]="['rating','feature-misc','avatar']"
   ></app-ds-demo>
   <app-ds-demo
-    label="Thi: đồng hồ (đỏ khi ≤ 60s) · lưới câu · đáp án nhiều lựa chọn"
-    [needs]="['feature-quiz-parts','option-card']"
-  ></app-ds-demo>
+    label="Thi: đồng hồ (đỏ khi ≤ 60s) · lưới câu"
+    [needs]="['timer','question-grid']"
+  >
+    <div class="flex flex-col gap-4">
+      <div class="flex flex-wrap items-center gap-3">
+        <ui-timer [seconds]="768" />
+        <ui-timer [seconds]="45" />
+      </div>
+      <div class="max-w-[260px]">
+        <app-question-grid
+          [cells]="quiz.cells$()"
+          [current]="quiz.current$()"
+          (goto)="quiz.goto($event)"
+        />
+      </div>
+      <app-question-legend />
+    </div>
+  </app-ds-demo>
   <app-ds-demo
     label="Trợ lý AI — luôn kèm trích dẫn nguồn"
     [needs]="['feature-assistant','avatar']"

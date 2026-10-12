@@ -1,7 +1,10 @@
-import { Component } from '@angular/core';
-import { MaiBadge } from '@lms/ui';
+import { Component, inject } from '@angular/core';
+import { MaiBadge, Timer } from '@lms/ui';
+import { QuestionGrid } from '../../../../../shared/quiz/question-grid';
+import { QuestionLegend } from '../../../../../shared/quiz/question-legend';
 import { DsDemo } from '../demo/demo';
 import { DsSection } from '../section/section';
+import { QuizDemoStore } from './data-access/quiz-demo.store';
 
 /** Badges of the mockup's "Huy hiệu cánh mai" demo. */
 const BADGES = [
@@ -17,9 +20,11 @@ const BADGES = [
 
 @Component({
   selector: 'app-learning-section',
-  imports: [DsSection, DsDemo, MaiBadge],
+  imports: [DsSection, DsDemo, MaiBadge, Timer, QuestionGrid, QuestionLegend],
+  providers: [QuizDemoStore],
   templateUrl: './learning-section.html',
 })
 export class LearningSection {
+  protected readonly quiz = inject(QuizDemoStore);
   protected readonly badges = BADGES;
 }

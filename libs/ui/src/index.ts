@@ -115,3 +115,6 @@ export {
   type Toast,
   type ToastKind,
 } from './lib/organisms/toaster/toaster';
+
+// Timer
+export { Timer } from './lib/molecules/timer/timer';

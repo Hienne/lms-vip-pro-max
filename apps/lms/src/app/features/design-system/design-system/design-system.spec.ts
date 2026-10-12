@@ -334,6 +334,17 @@ describe('/design-system', () => {
         badges.map((b) => b.textContent?.includes('Chưa mở khóa')),
       ).toEqual([false, false, true, true]);
       expect(
+        Array.from(section.querySelectorAll('ui-timer .timer__time')).map((t) =>
+          t.textContent?.trim(),
+        ),
+      ).toEqual(['12:48', '00:45']);
+      expect(
+        section.querySelectorAll('app-question-grid .q-cell'),
+      ).toHaveLength(10);
+      expect(
+        section.querySelectorAll('app-question-legend .q-legend'),
+      ).toHaveLength(1);
+      expect(
         section.querySelectorAll('[data-placeholder]').length,
       ).toBeGreaterThan(0);
     });
