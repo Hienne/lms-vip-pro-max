@@ -115,3 +115,9 @@ export {
   type Toast,
   type ToastKind,
 } from './lib/organisms/toaster/toaster';
+
+// OptionCard (remaining-ui 05)
+export {
+  OptionCard,
+  type OptionCardTone,
+} from './lib/molecules/option-card/option-card';

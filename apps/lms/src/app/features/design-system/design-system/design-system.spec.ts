@@ -177,6 +177,12 @@ describe('/design-system', () => {
           .querySelector('input[aria-invalid="true"]')
           ?.getAttribute('type'),
       ).toBe('email');
+      expect(
+        section.querySelectorAll('ui-option-card label.option-card'),
+      ).toHaveLength(4);
+      expect(section.querySelectorAll('ui-option-card .answer')).toHaveLength(
+        3,
+      );
       expectPlaceholdersFollowRegistry(section, [
         'field',
         'option-card',
