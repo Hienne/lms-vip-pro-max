@@ -4,7 +4,7 @@
 
 **Blocked by:** 02 — Identity schemas and fixtures
 
-**Status:** ready-for-agent
+**Status:** done
 
 - [ ] Endpoints, command and response schemas declared; names match `api/auth.js`
 - [ ] Examples: `default`, one per declared status, role-named examples for `profile`

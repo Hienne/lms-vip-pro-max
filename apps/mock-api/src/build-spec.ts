@@ -83,7 +83,7 @@ function operation(operationId: string, endpoint: AnyEndpoint): Json {
     responses[String(status)] = {
       description: `Error ${status}`,
       content: jsonContent(jsonSchema(ApiErrorSchema), {
-        default: errorExamples[status],
+        default: found.errors?.[status] ?? errorExamples[status],
       }),
     };
   }
