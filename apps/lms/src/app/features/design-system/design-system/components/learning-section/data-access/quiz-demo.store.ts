@@ -16,7 +16,11 @@ export class QuizDemoStore {
   readonly cells$ = signal(CELLS).asReadonly();
   readonly current$ = this.state.current.asReadonly();
 
-  goto(index: number): void {
+  setCurrent(index: number): void {
     this.state.current.set(index);
+  }
+
+  goto(index: number): void {
+    this.setCurrent(index);
   }
 }
