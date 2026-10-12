@@ -6,8 +6,8 @@
 
 **Status:** done
 
-- [ ] Layout and copy match the mockup's empty and error demos
-- [ ] Retry button emits `retry`; heading level configurable
-- [ ] Spec covers rendering and the output
-- [ ] Demo and checklist entry updated; light/dark checked
-- [ ] `npm run check` green; own pull request
+- [x] Layout and copy match the mockup's empty and error demos
+- [x] Retry button emits `retry`; heading level configurable
+- [x] Spec covers rendering and the output
+- [x] Demo and checklist entry updated; light/dark checked
+- [ ] `npm run check` green; own pull request (skipped: delivered on a local integration branch, no PR)

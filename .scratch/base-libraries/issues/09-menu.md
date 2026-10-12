@@ -6,8 +6,8 @@
 
 **Status:** done
 
-- [ ] `@angular/aria` exports checked first; our code adds only the look
-- [ ] Keyboard: arrows, Home/End, Enter/Space, Escape, typeahead; focus restored to the trigger
-- [ ] Spec covers opening, keyboard navigation, selection output and focus restore
-- [ ] Demo and checklist entry updated; light/dark checked
-- [ ] `npm run check` green; own pull request
+- [x] `@angular/aria` exports checked first; our code adds only the look
+- [x] Keyboard: arrows, Home/End, Enter/Space, Escape, typeahead; focus restored to the trigger
+- [x] Spec covers opening, keyboard navigation, selection output and focus restore
+- [x] Demo and checklist entry updated; light/dark checked
+- [ ] `npm run check` green; own pull request (skipped: delivered on a local integration branch, no PR)

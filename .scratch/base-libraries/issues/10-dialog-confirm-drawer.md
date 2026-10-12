@@ -11,4 +11,4 @@
 - [x] Drawer slides with the motion tokens, respects reduced motion, full width on narrow screens
 - [x] Specs cover results, focus trap and restore, ARIA labelling
 - [x] Demos and checklist entries updated; keyboard and light/dark checked
-- [x] `npm run check` green; own pull request (skipped: no PR, branch only)
+- [ ] `npm run check` green; own pull request (skipped: no PR, branch only) (skipped: delivered on a local integration branch, no PR)

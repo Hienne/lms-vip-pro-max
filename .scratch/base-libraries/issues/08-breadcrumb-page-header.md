@@ -6,8 +6,8 @@
 
 **Status:** done
 
-- [ ] Breadcrumb semantics as above; long trails truncate without horizontal scroll at 375 px
-- [ ] Page header slots match the mockup's `UI.PageHeader`
-- [ ] Specs cover ARIA, current item, slot projection
-- [ ] Demos and checklist entries updated; checked at 375/768/1280, light/dark
-- [ ] `npm run check` green; own pull request
+- [x] Breadcrumb semantics as above; long trails truncate without horizontal scroll at 375 px
+- [x] Page header slots match the mockup's `UI.PageHeader`
+- [x] Specs cover ARIA, current item, slot projection
+- [x] Demos and checklist entries updated; checked at 375/768/1280, light/dark
+- [ ] `npm run check` green; own pull request (skipped: delivered on a local integration branch, no PR)

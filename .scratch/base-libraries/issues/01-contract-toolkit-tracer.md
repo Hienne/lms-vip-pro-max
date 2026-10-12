@@ -4,14 +4,14 @@
 
 **Blocked by:** None (can start immediately)
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] `defineEndpoint` captures method, `/api/` path, summary, params/query/body/response schemas and declared error statuses; `toUrl` fills path params and rejects missing ones at type level
-- [ ] `ApiErrorSchema` is `{ message, details? }` with field-to-message details
-- [ ] `build-spec` emits operations from every registry (health included) with request/response schemas and `default` examples; Prism starts and answers `/api/health` through the proxy
-- [ ] `parseResponse` throws `ContractError` with zod issues on mismatch
-- [ ] `toAppError` maps status 0 → `offline`, 401 → `unauthorized`, 403 → `forbidden`, 404 → `not-found`, 422 → `invalid` (keeps details), 423 → `locked`, `ContractError` → `contract`, anything else → `unknown`, each with a Vietnamese default message from the mockup
-- [ ] Global error handler reports unexpected errors
-- [ ] Specs: `toUrl`, schema cases, `toAppError` table, health call success and contract mismatch with `HttpTestingController`
-- [ ] Contracts-and-mocks doc updated where the implementation differs
-- [ ] `npm run check` green; own pull request
+- [x] `defineEndpoint` captures method, `/api/` path, summary, params/query/body/response schemas and declared error statuses; `toUrl` fills path params and rejects missing ones at type level
+- [x] `ApiErrorSchema` is `{ message, details? }` with field-to-message details
+- [x] `build-spec` emits operations from every registry (health included) with request/response schemas and `default` examples; Prism starts and answers `/api/health` through the proxy
+- [x] `parseResponse` throws `ContractError` with zod issues on mismatch
+- [x] `toAppError` maps status 0 → `offline`, 401 → `unauthorized`, 403 → `forbidden`, 404 → `not-found`, 422 → `invalid` (keeps details), 423 → `locked`, `ContractError` → `contract`, anything else → `unknown`, each with a Vietnamese default message from the mockup
+- [x] Global error handler reports unexpected errors
+- [x] Specs: `toUrl`, schema cases, `toAppError` table, health call success and contract mismatch with `HttpTestingController`
+- [x] Contracts-and-mocks doc updated where the implementation differs
+- [ ] `npm run check` green; own pull request (skipped: delivered on a local integration branch, no PR)

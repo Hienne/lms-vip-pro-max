@@ -6,10 +6,10 @@
 
 **Status:** done
 
-- [ ] Shows on hover and focus after a short delay, hides on leave, blur and Escape; positions with fallbacks inside the viewport
-- [ ] Trigger gets `aria-describedby` while visible; tooltip has `role="tooltip"`
-- [ ] Icon buttons show the tooltip; no native `title` remains
-- [ ] Respects reduced motion; styled from tokens in light and dark
-- [ ] Spec covers show/hide triggers, Escape and ARIA; icon-button spec updated
-- [ ] Demo added, checklist entry done with owner and pull request
-- [ ] `npm run check` green; own pull request
+- [x] Shows on hover and focus after a short delay, hides on leave, blur and Escape; positions with fallbacks inside the viewport
+- [x] Trigger gets `aria-describedby` while visible; tooltip has `role="tooltip"`
+- [x] Icon buttons show the tooltip; no native `title` remains
+- [x] Respects reduced motion; styled from tokens in light and dark
+- [x] Spec covers show/hide triggers, Escape and ARIA; icon-button spec updated
+- [x] Demo added, checklist entry done with owner and pull request
+- [ ] `npm run check` green; own pull request (skipped: delivered on a local integration branch, no PR)

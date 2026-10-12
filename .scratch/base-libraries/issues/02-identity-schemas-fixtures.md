@@ -6,8 +6,8 @@
 
 **Status:** done
 
-- [ ] Schemas mirror `core/types.js` (enums as `z.enum`, ISO date strings, nullable `adminScope`, `lastLoginAt`); types via `z.infer`
-- [ ] Fixtures hold the seed's units, groups and users with the mockup's ids, names and roles
-- [ ] Fixtures spec parses every fixture and asserts the README demo accounts exist
-- [ ] Display labels (Vietnamese role names) stay out of contracts
-- [ ] `npm run check` green; own pull request
+- [x] Schemas mirror `core/types.js` (enums as `z.enum`, ISO date strings, nullable `adminScope`, `lastLoginAt`); types via `z.infer`
+- [x] Fixtures hold the seed's units, groups and users with the mockup's ids, names and roles
+- [x] Fixtures spec parses every fixture and asserts the README demo accounts exist
+- [x] Display labels (Vietnamese role names) stay out of contracts
+- [ ] `npm run check` green; own pull request (skipped: delivered on a local integration branch, no PR)

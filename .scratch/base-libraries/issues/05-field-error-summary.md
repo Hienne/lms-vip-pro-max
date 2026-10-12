@@ -6,10 +6,10 @@
 
 **Status:** done
 
-- [ ] Label always visible and associated; hint and errors referenced by `aria-describedby`; control gets `aria-invalid` when errors exist
-- [ ] Works with input, select, textarea and checkbox atoms
-- [ ] Error summary has a heading, receives focus when shown, and its links focus the matching field
-- [ ] Specs cover ARIA wiring, error display, summary focus and link behaviour, using a Signal Forms host
-- [ ] Demo matches the mockup's form demo (copy included); checklist entry done
-- [ ] Keyboard and light/dark checked in the browser
-- [ ] `npm run check` green; own pull request
+- [x] Label always visible and associated; hint and errors referenced by `aria-describedby`; control gets `aria-invalid` when errors exist
+- [x] Works with input, select, textarea and checkbox atoms
+- [x] Error summary has a heading, receives focus when shown, and its links focus the matching field
+- [x] Specs cover ARIA wiring, error display, summary focus and link behaviour, using a Signal Forms host
+- [x] Demo matches the mockup's form demo (copy included); checklist entry done
+- [x] Keyboard and light/dark checked in the browser
+- [ ] `npm run check` green; own pull request (skipped: delivered on a local integration branch, no PR)

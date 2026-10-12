@@ -10,4 +10,4 @@
 - [x] `role="alert"` for danger when announced, `status` otherwise, opt-out for static alerts
 - [x] Spec covers tone classes, icons and roles
 - [x] Demo and checklist entry updated; light/dark checked
-- [x] `npm run check` green; own pull request skipped by request
+- [ ] `npm run check` green; own pull request skipped by request (skipped: delivered on a local integration branch, no PR)

@@ -6,9 +6,9 @@
 
 **Status:** done
 
-- [ ] Look and placement match the mockup's toasts; stack order and max count defined
-- [ ] Auto-dismiss pauses on hover and focus; errors stay until closed
-- [ ] Every toast is announced (assertive for errors, polite otherwise)
-- [ ] Spec covers show, dismiss, timer pause and announcement (fake timers)
-- [ ] Demo and checklist entry updated; light/dark checked
-- [ ] `npm run check` green; own pull request
+- [x] Look and placement match the mockup's toasts; stack order and max count defined
+- [x] Auto-dismiss pauses on hover and focus; errors stay until closed
+- [x] Every toast is announced (assertive for errors, polite otherwise)
+- [x] Spec covers show, dismiss, timer pause and announcement (fake timers)
+- [x] Demo and checklist entry updated; light/dark checked
+- [ ] `npm run check` green; own pull request (skipped: delivered on a local integration branch, no PR)

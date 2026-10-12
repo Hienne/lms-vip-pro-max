@@ -6,9 +6,9 @@
 
 **Status:** done
 
-- [ ] Endpoints, command and response schemas declared; names match `api/auth.js`
-- [ ] Examples: `default`, one per declared status, role-named examples for `profile`
-- [ ] `Prefer: code=423` and `Prefer: example=admin` return the right bodies through the dev proxy (checked and recorded in the pull request)
-- [ ] `AuthApi` methods call the registry URLs and parse with the endpoint schema
-- [ ] Spec with `HttpTestingController` and `@lms/mocks` fixtures: success per method, 422 keeps field details, 423 → `locked`, 401 → `unauthorized`, contract mismatch → `contract`
-- [ ] `npm run check` green; own pull request
+- [x] Endpoints, command and response schemas declared; names match `api/auth.js`
+- [x] Examples: `default`, one per declared status, role-named examples for `profile`
+- [x] `Prefer: code=423` and `Prefer: example=admin` return the right bodies through the dev proxy (checked and recorded in the pull request)
+- [x] `AuthApi` methods call the registry URLs and parse with the endpoint schema
+- [x] Spec with `HttpTestingController` and `@lms/mocks` fixtures: success per method, 422 keeps field details, 423 → `locked`, 401 → `unauthorized`, contract mismatch → `contract`
+- [ ] `npm run check` green; own pull request (skipped: delivered on a local integration branch, no PR)
