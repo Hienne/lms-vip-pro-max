@@ -58,6 +58,16 @@ describe('Dropzone', () => {
     expect(zone.classList.contains('is-over')).toBe(false);
   });
 
+  it('keeps the mark while the pointer moves onto an element inside the zone', () => {
+    const { fixture, zone, input } = render();
+    zone.dispatchEvent(dragEvent('dragover'));
+    const leave = dragEvent('dragleave');
+    Object.defineProperty(leave, 'relatedTarget', { value: input });
+    zone.dispatchEvent(leave);
+    fixture.detectChanges();
+    expect(zone.classList.contains('is-over')).toBe(true);
+  });
+
   it('emits dropped files and prevents the browser from opening them', () => {
     const { zone, host } = render();
     const file = pdf();

@@ -2,7 +2,7 @@ import {
   booleanAttribute,
   Directive,
   ElementRef,
-  effect,
+  afterRenderEffect,
   inject,
   input,
   output,
@@ -25,7 +25,7 @@ import {
     '[class.is-over]': 'over()',
     '(dragenter)': 'enter($event)',
     '(dragover)': 'enter($event)',
-    '(dragleave)': 'over.set(false)',
+    '(dragleave)': 'leave($event)',
     '(drop)': 'drop($event)',
     '(change)': 'picked($event)',
     '(keydown.enter)': 'open($event)',
@@ -43,7 +43,7 @@ export class Dropzone {
     inject<ElementRef<HTMLElement>>(ElementRef).nativeElement;
 
   constructor() {
-    effect(() => {
+    afterRenderEffect(() => {
       const control = this.fileInput();
       if (!control) return;
       control.accept = this.accept();
@@ -58,6 +58,13 @@ export class Dropzone {
   protected enter(event: Event): void {
     event.preventDefault();
     this.over.set(true);
+  }
+
+  /** `dragleave` also fires when the pointer moves onto a child; only leaving the zone counts. */
+  protected leave(event: DragEvent): void {
+    const next = event.relatedTarget;
+    if (!(next instanceof Node && this.host.contains(next)))
+      this.over.set(false);
   }
 
   protected drop(event: Event): void {
