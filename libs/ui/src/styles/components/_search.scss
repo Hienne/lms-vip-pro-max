@@ -1,8 +1,9 @@
 // Input with a leading icon: ported from the mockup's `.input-icon` (components.css).
-// Applied by `ui-search`, whose host is a custom element and so needs `display: block`.
+// Applied by `ui-search`; `display: block` because its host is a custom element.
 @layer components {
   .input-icon {
     position: relative;
+    display: block;
 
     .icon {
       position: absolute;
@@ -16,9 +17,5 @@
     .input {
       padding-left: 38px;
     }
-  }
-
-  .search {
-    display: block;
   }
 }

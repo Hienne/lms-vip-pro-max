@@ -11,14 +11,14 @@ import { Input } from '../../atoms/input/input.directive';
 
 /**
  * Search box (the mockup's `UI.Search`): a native `input type="search"` with a decorative search
- * icon. `query` fires once per typing pause (`debounce` ms) and immediately on Enter or when the
+ * icon. `searched` fires once per typing pause (`debounce` ms) and immediately on Enter or when the
  * box is emptied, so a store receives one query per intent.
  */
 @Component({
   selector: 'ui-search',
   imports: [Icon, Input],
   host: {
-    class: 'input-icon search',
+    class: 'input-icon',
     '[style.width]': '"min(100%, " + width() + ")"',
   },
   template: `
@@ -44,7 +44,7 @@ export class Search {
   readonly width = input('280px');
   /** Pause in milliseconds before typing is emitted. */
   readonly debounce = input(300, { transform: numberAttribute });
-  readonly query = output<string>();
+  readonly searched = output<string>();
 
   private pending: ReturnType<typeof setTimeout> | undefined;
 
@@ -56,18 +56,18 @@ export class Search {
     const text = (event.target as HTMLInputElement).value;
     this.cancel();
     if (text === '') {
-      this.query.emit(text);
+      this.searched.emit(text);
       return;
     }
     this.pending = setTimeout(() => {
       this.pending = undefined;
-      this.query.emit(text);
+      this.searched.emit(text);
     }, this.debounce());
   }
 
   protected flush(event: Event): void {
     this.cancel();
-    this.query.emit((event.target as HTMLInputElement).value);
+    this.searched.emit((event.target as HTMLInputElement).value);
   }
 
   private cancel(): void {

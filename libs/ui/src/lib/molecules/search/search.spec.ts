@@ -8,7 +8,7 @@ import { Search } from './search';
     label="Tìm khóa học"
     [debounce]="300"
     [placeholder]="placeholder()"
-    (query)="queries.push($event)"
+    (searched)="queries.push($event)"
   />`,
 })
 class Host {

@@ -173,7 +173,7 @@
       >
         <div class="flex flex-col gap-4">
           <div class="flex flex-wrap items-center gap-3">
-            <ui-search (query)="store.setSearchQuery($event)" />
+            <ui-search (searched)="store.setSearchQuery($event)" />
             <select uiSelect aria-label="Lĩnh vực" class="w-auto">
               <option value="">Tất cả lĩnh vực</option>
               <option value="1">Nghiệp vụ</option>

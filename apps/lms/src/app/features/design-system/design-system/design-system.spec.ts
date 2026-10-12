@@ -162,7 +162,7 @@ describe('/design-system', () => {
   });
 
   describe('forms section', () => {
-    it('demos every control and keeps the molecule demos as placeholders', async () => {
+    it('demos every control, search included, and keeps the unfinished molecule demos as placeholders', async () => {
       const { page } = await openDesignSystem();
       const section = page.querySelector('#ds-forms') as HTMLElement;
       expect(section.querySelectorAll('input.input')).toHaveLength(9);
