@@ -62,5 +62,18 @@ export { TableWrap } from './lib/atoms/table/table-wrap.directive';
 // Menu (09)
 
 // ConfirmDialog, confirm, Drawer (10)
+export {
+  ConfirmDialog,
+  confirm,
+  type ConfirmOptions,
+  type ConfirmTone,
+} from './lib/organisms/confirm-dialog/confirm-dialog';
+export {
+  Drawer,
+  openDrawer,
+  type DrawerContext,
+  type DrawerOptions,
+  type DrawerSide,
+} from './lib/organisms/drawer/drawer';
 
 // Toaster (11)
