@@ -101,11 +101,16 @@
       <app-role-badge [role]="role" />
       }
       <app-role-badge role="admin" scoped />
+      <app-required-mark [required]="true" />
+      <app-required-mark [required]="false" />
       <span uiBadge tone="reward"><ui-icon name="star" /> +50 điểm</span>
     </div>
   </app-ds-demo>
-  <app-ds-demo
-    label="Hạn hoàn thành"
-    [needs]="['domain-course-card']"
-  ></app-ds-demo>
+  <app-ds-demo label="Hạn hoàn thành" [needs]="['domain-course-card']">
+    <div class="flex flex-wrap items-center gap-6">
+      @for (due of dueDates; track due) {
+      <app-due-date [dueAt]="due" />
+      }
+    </div>
+  </app-ds-demo>
 </app-ds-section>
