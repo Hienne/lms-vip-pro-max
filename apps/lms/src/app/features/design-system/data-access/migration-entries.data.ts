@@ -528,7 +528,14 @@ export const MIGRATION_ENTRIES = [
     level: 'organism',
     targets: ['Stepper'],
     checklist: ['H'],
-    status: 'todo',
+    status: 'done',
+    owner: 'Hienne',
+    verify: {
+      lightDark: 'done',
+      widths: 'done',
+      keyboard: 'done',
+      errorStates: 'n/a',
+    },
   },
   {
     id: 'tree',

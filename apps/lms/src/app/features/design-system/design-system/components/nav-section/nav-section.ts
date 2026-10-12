@@ -4,10 +4,12 @@ import {
   Button,
   PageHeader,
   Segmented,
+  Stepper,
   TabPanel,
   Tabs,
   type BreadcrumbItem,
   type SegmentedOption,
+  type StepperItem,
   type TabItem,
 } from '@lms/ui';
 import { DsDemo } from '../demo/demo';
@@ -23,6 +25,7 @@ import { NavSectionStore, type Period } from './data-access/nav-section.store';
     Breadcrumb,
     PageHeader,
     Button,
+    Stepper,
     Tabs,
     TabPanel,
   ],
@@ -35,6 +38,12 @@ export class NavSection {
     { label: 'Khóa học', href: '/design-system' },
     { label: 'Nền tảng nghiệp vụ', href: '/design-system' },
     { label: 'Tổng quan Core Banking' },
+  ];
+  protected readonly wizardSteps: readonly StepperItem[] = [
+    { label: 'Thông tin' },
+    { label: 'Nội dung' },
+    { label: 'Bài thi' },
+    { label: 'Xuất bản' },
   ];
   protected readonly tabItems: readonly TabItem[] = [
     { id: 'overview', label: 'Tổng quan' },

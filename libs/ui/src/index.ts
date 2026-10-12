@@ -116,6 +116,9 @@ export {
   type ToastKind,
 } from './lib/organisms/toaster/toaster';
 
+// Stepper
+export { Stepper, type StepperItem } from './lib/organisms/stepper/stepper';
+
 // Dropzone, UploadItem
 export { Dropzone } from './lib/molecules/upload/dropzone.directive';
 export {

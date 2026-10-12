@@ -319,6 +319,16 @@ describe('/design-system', () => {
   describe('navigation section', () => {
     it('demos the segmented control', async () => {
       const { page } = await openDesignSystem();
+      const stepper = page.querySelector('#ds-nav ui-stepper') as HTMLElement;
+      expect(
+        Array.from(stepper.querySelectorAll('.stepper__title')).map((t) =>
+          t.textContent?.trim(),
+        ),
+      ).toEqual(['Thông tin', 'Nội dung', 'Bài thi', 'Xuất bản']);
+      expect(
+        stepper.querySelector('[aria-current="step"] .stepper__title')
+          ?.textContent,
+      ).toBe('Nội dung');
       const demo = page.querySelector('#ds-nav [role="listbox"]');
       expect(demo?.getAttribute('aria-label')).toBe('Kỳ');
       const selected = demo?.querySelector('[aria-selected="true"]');
