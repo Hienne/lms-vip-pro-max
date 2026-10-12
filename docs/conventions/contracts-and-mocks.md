@@ -171,6 +171,21 @@ with `/api/` and never contain a host.
   "suspended" wording reaches the UI through the server's `message`, which
   `toAppError` already preserves.
 
+### Verified against Prism
+
+Smoke-tested with `npx nx serve mock-api` (Prism on `127.0.0.1:4010`):
+
+- `POST /api/auth/login` with `Prefer: code=423` answers 423 with the locked
+  message; `code=401` and `code=422` answer their examples.
+- `GET /api/auth/profile` with `Prefer: example=admin` answers user `a1`,
+  role `admin`.
+- `POST /api/auth/demo-accounts/{userId}/login` (`loginDemo`) answers 404 and
+  423 with `Prefer: code=404` / `code=423`.
+
+`apps/mock-api/src/openapi.spec.ts` guards the document itself: every endpoint
+of `endpointRegistries` is present with a `default` example for 200 and for each
+declared error status.
+
 ## Done criteria for a contract change
 
 - Schema, endpoint, fixture (success + each error) and XApi method all updated.

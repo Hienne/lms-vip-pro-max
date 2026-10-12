@@ -12,8 +12,8 @@
     (selected)="store.choose($event)"
   />
   <span class="text-sm text-text-secondary" aria-live="polite">
-    @if (store.chosen$(); as action) { Đã chọn: {{ store.label(action) }} }
-    @else { Chưa chọn thao tác nào. }
+    @if (store.chosenLabel$(); as label) { Đã chọn: {{ label }} } @else { Chưa
+    chọn thao tác nào. }
   </span>
 </div>
 <p class="mt-3 text-xs text-text-muted">

@@ -111,7 +111,7 @@ defaults to `button`, so write `type="submit"` for a form's submit button.
   theme (palette, spacing, font sizes, breakpoints…): `bg-red-500` and `p-7`
   simply produce nothing. `static` keeps every token emitted even when no
   utility uses it, because component SCSS reads them via `var()`.
-- Spacing utilities use the mockup's 4px steps only: 1, 2, 3, 4, 5, 6, 8, 10, 12
+- Spacing utilities use the mockup's 4px steps only: 1, 2, 3, 4, 5, 6, 8, 10, 12, 18
   (`--spacing-N`, no base `--spacing` multiplier, so `p-7` is not a class).
   Arbitrary values (`p-[13px]`, `text-[#fff]`) are out.
 

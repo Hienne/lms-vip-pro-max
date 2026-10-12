@@ -1,4 +1,4 @@
-import { Component, inject } from '@angular/core';
+import { Component, computed, inject } from '@angular/core';
 import { Icon } from '../../atoms/icon/icon';
 import type { IconName } from '../../atoms/icon/icon-registry';
 import { IconButton } from '../../atoms/icon-button/icon-button.directive';
@@ -20,5 +20,9 @@ const ICON_BY_KIND: Record<ToastKind, IconName> = {
 })
 export class ToastOutlet {
   protected readonly toaster = inject(Toaster);
-  protected readonly iconFor = (kind: ToastKind) => ICON_BY_KIND[kind];
+  protected readonly toasts = computed(() =>
+    this.toaster
+      .toasts()
+      .map((toast) => ({ ...toast, icon: ICON_BY_KIND[toast.kind] })),
+  );
 }

@@ -22,8 +22,8 @@
   }
 
   .empty__art {
-    width: 72px; // no token: 18 spacing steps
-    height: 72px;
+    width: var(--spacing-18);
+    height: var(--spacing-18);
     border-radius: var(--radius-full);
     display: grid;
     place-items: center;

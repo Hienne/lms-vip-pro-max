@@ -15,7 +15,7 @@ import { DsDemo } from '../demo/demo';
 import { DsSection } from '../section/section';
 import { ConfirmDemo } from './components/confirm-demo/confirm-demo';
 import { DrawerDemo } from './components/drawer-demo/drawer-demo';
-import { MenuDemo } from './menu-demo/menu-demo';
+import { MenuDemo } from './components/menu-demo/menu-demo';
 
 @Component({
   selector: 'app-feedback-section',

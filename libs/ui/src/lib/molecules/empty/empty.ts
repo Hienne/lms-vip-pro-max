@@ -1,4 +1,4 @@
-import { Component, input } from '@angular/core';
+import { Component, computed, input } from '@angular/core';
 import { Icon } from '../../atoms/icon/icon';
 import type { IconName } from '../../atoms/icon/icon-registry';
 
@@ -42,7 +42,7 @@ export class Empty {
   readonly tone = input<EmptyTone>('primary');
   readonly headingLevel = input<EmptyHeadingLevel>(3);
 
-  protected artClass(): string {
-    return this.tone() === 'primary' ? '' : `empty__art--${this.tone()}`;
-  }
+  protected readonly artClass = computed(() =>
+    this.tone() === 'primary' ? '' : `empty__art--${this.tone()}`,
+  );
 }

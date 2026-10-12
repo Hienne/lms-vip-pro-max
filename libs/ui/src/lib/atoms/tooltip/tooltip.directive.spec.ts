@@ -68,6 +68,15 @@ describe('Tooltip', () => {
     expect(bubble()).toBeNull();
   });
 
+  it('cancels a pending show when Escape is pressed on the trigger during the delay', () => {
+    const { trigger, bubble, settle } = render();
+    trigger.dispatchEvent(new MouseEvent('mouseenter'));
+    settle(100);
+    press(trigger, 'Escape');
+    settle();
+    expect(bubble()).toBeNull();
+  });
+
   it('never shows if the pointer leaves before the delay ends', () => {
     const { trigger, bubble, settle } = render();
     trigger.dispatchEvent(new MouseEvent('mouseenter'));

@@ -4,7 +4,7 @@
   .ui-tooltip {
     display: block;
     max-width: 20rem;
-    padding: 6px 10px;
+    padding: var(--spacing-2) var(--spacing-3);
     border-radius: var(--radius-sm);
     background: var(--color-text);
     color: var(--color-surface);

@@ -8,7 +8,7 @@
   .page-header {
     display: flex;
     flex-wrap: wrap;
-    align-items: flex-end;
+    align-items: flex-start;
     justify-content: space-between;
     gap: var(--spacing-4);
     margin-bottom: var(--spacing-6);
@@ -45,9 +45,10 @@
     display: none;
   }
 
-  @media (max-width: 640px) {
+  // sm (640px) and up: actions line up with the title's baseline.
+  @media (min-width: 640px) {
     .page-header {
-      align-items: flex-start;
+      align-items: flex-end;
     }
   }
 }

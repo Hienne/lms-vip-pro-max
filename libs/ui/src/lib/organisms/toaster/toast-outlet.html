@@ -1,4 +1,4 @@
-@for (toast of toaster.toasts(); track toast.id) {
+@for (toast of toasts(); track toast.id) {
 <div
   class="toast toast--{{ toast.kind }}"
   (mouseenter)="toaster.hold(toast.id, 'hover')"
@@ -6,7 +6,7 @@
   (focusin)="toaster.hold(toast.id, 'focus')"
   (focusout)="toaster.release(toast.id, 'focus')"
 >
-  <ui-icon [name]="iconFor(toast.kind)" />
+  <ui-icon [name]="toast.icon" />
   <div class="toast__body">
     <div class="toast__title">{{ toast.title }}</div>
     @if (toast.message) {

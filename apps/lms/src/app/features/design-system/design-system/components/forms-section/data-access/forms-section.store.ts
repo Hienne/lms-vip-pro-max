@@ -11,4 +11,12 @@ export class FormsSectionStore {
   setSummaryShown(shown: boolean): void {
     this.state.summaryShown.set(shown);
   }
+
+  showSummary(): void {
+    this.setSummaryShown(true);
+  }
+
+  hideSummary(): void {
+    this.setSummaryShown(false);
+  }
 }

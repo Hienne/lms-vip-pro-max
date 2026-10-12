@@ -6,7 +6,7 @@
   }
 
   .menu {
-    min-width: 220px; // no spacing token this wide: mockup value
+    min-width: var(--container-menu);
     padding: var(--spacing-1);
     border: 1px solid var(--color-border);
     border-radius: var(--radius-md);

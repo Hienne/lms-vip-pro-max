@@ -3,6 +3,7 @@
 @layer components {
   .alert {
     display: flex;
+    flex-wrap: wrap;
     gap: var(--spacing-3);
     padding: var(--spacing-3) var(--spacing-4);
     border: 1px solid color-mix(in srgb, var(--color-info) 25%, transparent);
@@ -13,7 +14,7 @@
 
     > .icon {
       flex: none;
-      margin-top: 1px;
+      margin-top: var(--spacing-1);
       color: var(--color-info);
     }
   }
@@ -30,24 +31,26 @@
 
   .alert__actions {
     display: flex;
-    flex: none;
+    flex: 1 0 100%;
     align-items: flex-start;
     gap: var(--spacing-2);
+    padding-left: var(--spacing-8);
 
     &:empty {
       display: none;
     }
   }
 
-  // Below sm (640px) the actions drop under the text, aligned with it (icon width + gap).
-  @media (max-width: 639px) {
+  // From sm (640px) the actions sit beside the text; narrower, they drop under it, aligned with
+  // it (icon width + gap).
+  @media (min-width: 640px) {
     .alert {
-      flex-wrap: wrap;
+      flex-wrap: nowrap;
     }
 
     .alert__actions {
-      flex-basis: 100%;
-      padding-left: var(--spacing-8);
+      flex: none;
+      padding-left: 0;
     }
   }
 

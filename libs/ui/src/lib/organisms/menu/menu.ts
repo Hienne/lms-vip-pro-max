@@ -74,6 +74,9 @@ const POSITIONS: ConnectedPosition[] = [
   },
 ];
 
+/** Minimum distance between the open panel and the viewport edge (`--spacing-2`). */
+const VIEWPORT_MARGIN = 8;
+
 /**
  * Dropdown menu (the mockup's `ui.menu`) on the `@angular/aria` menu pattern: the pattern owns
  * arrow/Home/End/typeahead navigation, Enter/Space, Escape and focus return to the trigger; this
@@ -107,6 +110,14 @@ export class Menu<V extends string = string> {
   readonly selected = output<V>();
 
   protected readonly positions = POSITIONS;
+  protected readonly viewportMargin = VIEWPORT_MARGIN;
+  /** Entries with a stable `@for` key: an item's value, else its kind and position. */
+  protected readonly rows = computed(() =>
+    this.entries().map((entry, index) => ({
+      entry,
+      key: entry.kind === 'item' ? entry.value : `${entry.kind}-${index}`,
+    })),
+  );
   protected readonly menu = viewChild<AriaMenu<V>>('menuRef');
   private readonly trigger = viewChild(MenuTrigger);
   protected readonly origin = viewChild(MenuTrigger, { read: ElementRef });

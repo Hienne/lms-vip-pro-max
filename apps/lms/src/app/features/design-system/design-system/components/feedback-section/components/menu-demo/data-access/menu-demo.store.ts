@@ -1,4 +1,4 @@
-import { Injectable, signal } from '@angular/core';
+import { computed, Injectable, signal } from '@angular/core';
 import type { MenuEntry } from '@lms/ui';
 
 export type MenuDemoAction = 'edit' | 'copy' | 'archive' | 'delete';
@@ -40,11 +40,16 @@ export class MenuDemoStore {
 
   readonly chosen$ = this.state.chosen.asReadonly();
 
-  choose(action: MenuDemoAction): void {
+  readonly chosenLabel$ = computed(() => {
+    const action = this.chosen$();
+    return action ? ACTION_LABEL[action] : null;
+  });
+
+  setChosen(action: MenuDemoAction | null): void {
     this.state.chosen.set(action);
   }
 
-  label(action: MenuDemoAction): string {
-    return ACTION_LABEL[action];
+  choose(action: MenuDemoAction): void {
+    this.setChosen(action);
   }
 }

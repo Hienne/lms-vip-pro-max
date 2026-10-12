@@ -5,15 +5,15 @@ import {
 } from '@angular/cdk/overlay';
 import { ComponentPortal } from '@angular/cdk/portal';
 import {
-  ChangeDetectionStrategy,
   Component,
-  type ComponentRef,
   DestroyRef,
   Directive,
   ElementRef,
-  effect,
+  Injector,
+  InjectionToken,
   inject,
   input,
+  type Signal,
   signal,
 } from '@angular/core';
 
@@ -57,16 +57,26 @@ const POSITIONS: ConnectedPosition[] = [
 
 let nextId = 0;
 
+/** What the directive hands its bubble: the live text and the id the trigger points at. */
+interface TooltipSource {
+  readonly text: Signal<string>;
+  readonly id: string;
+}
+const TOOLTIP_SOURCE = new InjectionToken<TooltipSource>('TOOLTIP_SOURCE');
+
 /** The bubble itself; rendered by `uiTooltip` inside a CDK overlay, never used directly. */
 @Component({
   selector: 'ui-tooltip',
-  changeDetection: ChangeDetectionStrategy.OnPush,
-  host: { class: 'ui-tooltip', role: 'tooltip', '[id]': 'id()' },
-  template: `{{ text() }}`,
+  host: {
+    class: 'ui-tooltip',
+    role: 'tooltip',
+    '[id]': 'source.id',
+    '[hidden]': '!source.text()',
+  },
+  template: `{{ source.text() }}`,
 })
 export class TooltipBubble {
-  readonly text = input('');
-  readonly id = input('');
+  protected readonly source = inject(TOOLTIP_SOURCE);
 }
 
 /**
@@ -84,13 +94,15 @@ export class TooltipBubble {
     '(mouseleave)': 'hide()',
     '(focus)': 'schedule()',
     '(blur)': 'hide()',
-    '[attr.aria-describedby]': 'visible() ? id : null',
+    '(keydown.escape)': 'hide()',
+    '[attr.aria-describedby]': 'visible() && text() ? id : null',
   },
 })
 export class Tooltip {
   readonly text = input('', { alias: 'uiTooltip' });
 
   private readonly overlay = inject(Overlay);
+  private readonly injector = inject(Injector);
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
 
   protected readonly id = `ui-tooltip-${nextId++}`;
@@ -98,17 +110,11 @@ export class Tooltip {
 
   private timer: ReturnType<typeof setTimeout> | undefined;
   private overlayRef: OverlayRef | undefined;
-  private bubble: ComponentRef<TooltipBubble> | undefined;
 
   constructor() {
     inject(DestroyRef).onDestroy(() => {
       this.hide();
       this.overlayRef?.dispose();
-    });
-    effect(() => {
-      const text = this.text();
-      if (!text) this.hide();
-      else this.bubble?.setInput('text', text);
     });
   }
 
@@ -121,17 +127,24 @@ export class Tooltip {
   protected hide(): void {
     clearTimeout(this.timer);
     this.overlayRef?.detach();
-    this.bubble = undefined;
     this.visible.set(false);
   }
 
   private show(): void {
     if (!this.text()) return;
     const ref = (this.overlayRef ??= this.createOverlay());
-    this.bubble = ref.attach(new ComponentPortal(TooltipBubble));
-    this.bubble.setInput('text', this.text());
-    this.bubble.setInput('id', this.id);
-    this.bubble.changeDetectorRef.detectChanges();
+    const injector = Injector.create({
+      parent: this.injector,
+      providers: [
+        {
+          provide: TOOLTIP_SOURCE,
+          useValue: { text: this.text, id: this.id } satisfies TooltipSource,
+        },
+      ],
+    });
+    ref
+      .attach(new ComponentPortal(TooltipBubble, null, injector))
+      .changeDetectorRef.detectChanges();
     this.visible.set(true);
   }
 
