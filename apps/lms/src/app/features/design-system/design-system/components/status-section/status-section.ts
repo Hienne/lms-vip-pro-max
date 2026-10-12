@@ -1,10 +1,10 @@
 import { Component, inject } from '@angular/core';
 import { RouterLink } from '@angular/router';
-import type {
-  AccountStatus as AccountStatusValue,
-  CourseStatus as CourseStatusValue,
-  PublishStatus as PublishStatusValue,
-  Role,
+import {
+  AccountStatusSchema,
+  CourseStatusSchema,
+  PublishStatusSchema,
+  RoleSchema,
 } from '@lms/contracts';
 import {
   Badge,
@@ -62,27 +62,8 @@ const TONES: readonly {
 export class StatusSection {
   protected readonly store = inject(StatusSectionStore);
   protected readonly tones = TONES;
-  protected readonly courseStatuses: readonly CourseStatusValue[] = [
-    'not_started',
-    'in_progress',
-    'completed',
-    'failed',
-  ];
-  protected readonly publishStatuses: readonly PublishStatusValue[] = [
-    'draft',
-    'published',
-    'paused',
-    'locked',
-  ];
-  protected readonly accountStatuses: readonly AccountStatusValue[] = [
-    'active',
-    'suspended',
-    'locked',
-  ];
-  protected readonly roles: readonly Role[] = [
-    'learner',
-    'instructor',
-    'admin',
-    'viewer',
-  ];
+  protected readonly courseStatuses = CourseStatusSchema.options;
+  protected readonly publishStatuses = PublishStatusSchema.options;
+  protected readonly accountStatuses = AccountStatusSchema.options;
+  protected readonly roles = RoleSchema.options;
 }
