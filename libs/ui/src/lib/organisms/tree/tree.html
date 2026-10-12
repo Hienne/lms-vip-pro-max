@@ -1,0 +1,59 @@
+<ul
+  ngTree
+  #tree="ngTree"
+  class="tree"
+  [attr.aria-label]="label()"
+  [value]="selection()"
+  (valueChange)="select($event)"
+>
+  <ng-container
+    *ngTemplateOutlet="level; context: { $implicit: nodes(), parent: tree }"
+  />
+</ul>
+
+<ng-template #level let-nodes let-parent="parent">
+  @for (node of nodes; track node.id) {
+  <li
+    ngTreeItem
+    #item="ngTreeItem"
+    class="tree__item"
+    [parent]="parent"
+    [value]="node.id"
+    [label]="node.label"
+    [expanded]="openIds().has(node.id)"
+    (expandedChange)="toggle(node.id, $event)"
+  >
+    <div class="tree__node">
+      <span class="tree__toggle" aria-hidden="true">
+        @if (node.children?.length) {
+        <ui-icon
+          size="sm"
+          [name]="openIds().has(node.id) ? 'chevron-down' : 'chevron-right'"
+        />
+        }
+      </span>
+      @if (node.icon) {
+      <ui-icon size="sm" [name]="node.icon" />
+      }
+      <span class="tree__label">{{ node.label }}</span>
+      @if (trailing(); as template) {
+      <ng-container
+        *ngTemplateOutlet="template; context: { $implicit: node }"
+      />
+      }
+    </div>
+    @if (node.children?.length) {
+    <ul class="tree tree--nested" role="group">
+      <ng-template ngTreeItemGroup [ownedBy]="item" #group="ngTreeItemGroup">
+        <ng-container
+          *ngTemplateOutlet="
+                level;
+                context: { $implicit: node.children, parent: group }
+              "
+        />
+      </ng-template>
+    </ul>
+    }
+  </li>
+  }
+</ng-template>
