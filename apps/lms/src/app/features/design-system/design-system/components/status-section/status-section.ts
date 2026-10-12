@@ -1,6 +1,12 @@
 import { Component, inject } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import {
+  AccountStatusSchema,
+  CourseStatusSchema,
+  PublishStatusSchema,
+  RoleSchema,
+} from '@lms/contracts';
+import {
   Badge,
   Card,
   CardBody,
@@ -10,6 +16,12 @@ import {
   type BadgeTone,
   type IconName,
 } from '@lms/ui';
+import { AccountStatus } from '../../../../../shared/status/account-status';
+import { CourseStatus } from '../../../../../shared/status/course-status';
+import { PublishStatus } from '../../../../../shared/status/publish-status';
+import { DueDate } from '../../../../../shared/course/due-date';
+import { RequiredMark } from '../../../../../shared/course/required-mark';
+import { RoleBadge } from '../../../../../shared/status/role-badge';
 import { DsDemo } from '../demo/demo';
 import { DsSection } from '../section/section';
 import { StatusSectionStore } from './data-access/status-section.store';
@@ -41,6 +53,12 @@ const TONES: readonly {
     CardBody,
     Icon,
     RouterLink,
+    CourseStatus,
+    PublishStatus,
+    AccountStatus,
+    RoleBadge,
+    RequiredMark,
+    DueDate,
   ],
   providers: [StatusSectionStore],
   templateUrl: './status-section.html',
@@ -48,4 +66,12 @@ const TONES: readonly {
 export class StatusSection {
   protected readonly store = inject(StatusSectionStore);
   protected readonly tones = TONES;
+  /** Overdue, soon, and far: the three phrasings of the mockup's demo. */
+  protected readonly dueDates = [-2, 2, 12].map((days) =>
+    new Date(Date.now() + days * 86_400_000).toISOString(),
+  );
+  protected readonly courseStatuses = CourseStatusSchema.options;
+  protected readonly publishStatuses = PublishStatusSchema.options;
+  protected readonly accountStatuses = AccountStatusSchema.options;
+  protected readonly roles = RoleSchema.options;
 }

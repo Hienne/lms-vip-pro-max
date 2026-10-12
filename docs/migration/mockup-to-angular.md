@@ -99,6 +99,7 @@ paths (without `#`) so the README's route table stays valid.
 | `.pagination`                                                             | molecule  | `ui-pagination`                                                                            |
 | `.dropzone`, `.upload-item`                                               | molecule  | `[uiDropzone]` behaviour + `ui-upload-item`                                                |
 | `.timer`                                                                  | molecule  | `ui-timer` (remaining seconds in; the clock lives in the quiz store)                       |
+| `.sort-item`, `.drag-handle`                                              | molecule  | `uiSortableList` + `ui-sortable-item` (CDK drag-drop; `moved` `{ from, to }`)              |
 | `.option-card`, `.answer`                                                 | molecule  | `ui-option-card` (selectable card; correct/wrong `tone`)                                   |
 | `UI.PageHeader`                                                           | organism  | `ui-page-header` (eyebrow, title, desc, actions slot, breadcrumb)                          |
 | `UI.DataTable`, `.bulk-bar`                                               | organism  | `ui-data-table` (sort, page, select emitted as outputs; state stays in the route store)    |
@@ -111,7 +112,7 @@ paths (without `#`) so the README's route table stays valid.
 | `viewers.js` (`PdfViewer`, `VideoPlayer`), `.pdf`, `.player`              | feature   | `features/lesson` child components, `@defer`                                               |
 | `ai.js`, `.ai-msg`, `.cite`, `.typing`                                    | feature   | `features/study-tools` (assistant) and lesson tab                                          |
 | `.q-grid`, `.q-cell`, `.q-legend`                                         | domain UI | `app-question-grid`, `app-question-legend` (`shared/quiz/`; stateless, `goto` output)      |
-| `.certificate`, `.flashcard`, `.comment`, `.thread`, `.sort-item`         | feature   | owning feature's `components/`                                                             |
+| `.certificate`, `.flashcard`, `.comment`, `.thread`                       | feature   | owning feature's `components/`                                                             |
 
 When a mockup page has markup that matches no row, decide its level with the
 `ui-library.md` table and add a row here.

@@ -46,6 +46,14 @@
   --color-info: #2563a6;
   --color-info-subtle: #e8f0f9;
 
+  /* ---- Colour: course cover tints (the mockup hard-coded these) ---- */
+  --color-cover-layers: #e6f2f1;
+  --color-cover-process: #e8f0f9;
+  --color-cover-clock: #fef3e2;
+  --color-cover-building: #fff6dc;
+  --color-cover-database: #ede9fe;
+  --color-cover-shield: #fdecea;
+
   /* ---- Colour: neutral ---- */
   --color-bg: #f5f8f8;
   --color-surface: #ffffff;
@@ -228,6 +236,12 @@
       --color-on-danger: #2f1a18;
       --color-info: #7db3f0;
       --color-info-subtle: #15233a;
+      --color-cover-layers: #12302e;
+      --color-cover-process: #15233a;
+      --color-cover-clock: #2e2013;
+      --color-cover-building: #2e2610;
+      --color-cover-database: #231d3a;
+      --color-cover-shield: #2f1a18;
       --color-bg: #0f1716;
       --color-surface: #151e1d;
       --color-surface-2: #1c2726;
@@ -269,6 +283,12 @@
     --color-on-danger: #2f1a18;
     --color-info: #7db3f0;
     --color-info-subtle: #15233a;
+    --color-cover-layers: #12302e;
+    --color-cover-process: #15233a;
+    --color-cover-clock: #2e2013;
+    --color-cover-building: #2e2610;
+    --color-cover-database: #231d3a;
+    --color-cover-shield: #2f1a18;
     --color-bg: #0f1716;
     --color-surface: #151e1d;
     --color-surface-2: #1c2726;
