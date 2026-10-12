@@ -5,9 +5,12 @@ import {
   PageHeader,
   Segmented,
   Stepper,
+  TabPanel,
+  Tabs,
   type BreadcrumbItem,
   type SegmentedOption,
   type StepperItem,
+  type TabItem,
 } from '@lms/ui';
 import { DsDemo } from '../demo/demo';
 import { DsSection } from '../section/section';
@@ -23,6 +26,8 @@ import { NavSectionStore, type Period } from './data-access/nav-section.store';
     PageHeader,
     Button,
     Stepper,
+    Tabs,
+    TabPanel,
   ],
   providers: [NavSectionStore],
   templateUrl: './nav-section.html',
@@ -39,6 +44,11 @@ export class NavSection {
     { label: 'Nội dung' },
     { label: 'Bài thi' },
     { label: 'Xuất bản' },
+  ];
+  protected readonly tabItems: readonly TabItem[] = [
+    { id: 'overview', label: 'Tổng quan' },
+    { id: 'courses', label: 'Khóa học', count: 6 },
+    { id: 'exams', label: 'Bài thi' },
   ];
   protected readonly periods: readonly SegmentedOption<Period>[] = [
     { value: 'week', label: 'Tuần' },
