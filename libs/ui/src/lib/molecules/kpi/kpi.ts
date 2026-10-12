@@ -54,7 +54,7 @@ export class Kpi {
   readonly suffix = input<string>();
   readonly delta = input<string>();
   readonly tone = input<KpiTone>('primary');
-  /** Router link target; makes the whole tile a link. */
+  /** In-app router path (not an external URL); makes the whole tile a link. */
   readonly href = input<string>();
 
   protected readonly iconModifier = computed(() =>
