@@ -115,3 +115,10 @@ export {
   type Toast,
   type ToastKind,
 } from './lib/organisms/toaster/toaster';
+
+// Tree
+export {
+  Tree,
+  type TreeNode,
+  type TreeTrailingContext,
+} from './lib/organisms/tree/tree';
