@@ -116,6 +116,12 @@ export {
   type ToastKind,
 } from './lib/organisms/toaster/toaster';
 
+// OptionCard
+export {
+  OptionCard,
+  type OptionCardTone,
+} from './lib/molecules/option-card/option-card';
+
 // Kpi (remaining-ui 04)
 export { Kpi, type KpiTone } from './lib/molecules/kpi/kpi';
 

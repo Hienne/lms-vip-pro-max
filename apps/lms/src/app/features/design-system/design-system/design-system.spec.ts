@@ -178,6 +178,12 @@ describe('/design-system', () => {
           ?.getAttribute('type'),
       ).toBe('email');
       expect(
+        section.querySelectorAll('ui-option-card label.option-card'),
+      ).toHaveLength(4);
+      expect(section.querySelectorAll('ui-option-card .answer')).toHaveLength(
+        3,
+      );
+      expect(
         section.querySelector('ui-search input[type="search"]'),
       ).not.toBeNull();
       expectPlaceholdersFollowRegistry(section, [
