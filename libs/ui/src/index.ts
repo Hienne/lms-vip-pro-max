@@ -122,3 +122,32 @@ export {
   type TreeNode,
   type TreeTrailingContext,
 } from './lib/organisms/tree/tree';
+
+// Stepper
+export { Stepper, type StepperItem } from './lib/organisms/stepper/stepper';
+
+// Dropzone, UploadItem
+export { Dropzone } from './lib/molecules/upload/dropzone.directive';
+export {
+  UploadItem,
+  type UploadState,
+} from './lib/molecules/upload/upload-item';
+
+// OptionCard
+export {
+  OptionCard,
+  type OptionCardTone,
+} from './lib/molecules/option-card/option-card';
+
+// Kpi (remaining-ui 04)
+export { Kpi, type KpiTone } from './lib/molecules/kpi/kpi';
+
+// Stars, Rating (remaining-ui 03)
+export { Stars } from './lib/molecules/rating/stars';
+export { Rating } from './lib/molecules/rating/rating';
+
+// Tabs (remaining-ui 02)
+export { Tabs, TabPanel, type TabItem } from './lib/molecules/tabs/tabs';
+
+// Search (remaining-ui 01)
+export { Search } from './lib/molecules/search/search';

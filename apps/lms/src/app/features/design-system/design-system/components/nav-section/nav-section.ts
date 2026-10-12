@@ -5,10 +5,15 @@ import {
   Button,
   PageHeader,
   Segmented,
+  Stepper,
+  TabPanel,
+  Tabs,
   Tree,
   type BadgeTone,
   type BreadcrumbItem,
   type SegmentedOption,
+  type StepperItem,
+  type TabItem,
   type TreeNode,
 } from '@lms/ui';
 import { DsDemo } from '../demo/demo';
@@ -83,6 +88,9 @@ const CONTENT_TREE: readonly TreeNode<PublishStatus>[] = [
     Button,
     Tree,
     Badge,
+    Stepper,
+    Tabs,
+    TabPanel,
   ],
   providers: [NavSectionStore],
   templateUrl: './nav-section.html',
@@ -94,6 +102,17 @@ export class NavSection {
     { label: 'Khóa học', href: '/design-system' },
     { label: 'Nền tảng nghiệp vụ', href: '/design-system' },
     { label: 'Tổng quan Core Banking' },
+  ];
+  protected readonly wizardSteps: readonly StepperItem[] = [
+    { label: 'Thông tin' },
+    { label: 'Nội dung' },
+    { label: 'Bài thi' },
+    { label: 'Xuất bản' },
+  ];
+  protected readonly tabItems: readonly TabItem[] = [
+    { id: 'overview', label: 'Tổng quan' },
+    { id: 'courses', label: 'Khóa học', count: 6 },
+    { id: 'exams', label: 'Bài thi' },
   ];
   protected readonly periods: readonly SegmentedOption<Period>[] = [
     { value: 'week', label: 'Tuần' },

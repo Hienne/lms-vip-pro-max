@@ -15,7 +15,24 @@
       </button>
     </ui-page-header>
   </app-ds-demo>
-  <app-ds-demo label="Tabs (← → để chuyển)" [needs]="['tabs']"></app-ds-demo>
+  <app-ds-demo label="Tabs (← → để chuyển)" [needs]="['tabs']">
+    <ui-tabs
+      label="Mục khóa học"
+      [tabs]="tabItems"
+      [selected]="store.tab$()"
+      (selectedChange)="store.setTab($event)"
+    >
+      <div uiTabPanel="overview">
+        <p class="pt-4 text-sm">Tổng quan: mô tả, mục tiêu và lộ trình.</p>
+      </div>
+      <div uiTabPanel="courses">
+        <p class="pt-4 text-sm">Khóa học: danh sách 6 khóa học.</p>
+      </div>
+      <div uiTabPanel="exams">
+        <p class="pt-4 text-sm">Bài thi: các bài kiểm tra của chương trình.</p>
+      </div>
+    </ui-tabs>
+  </app-ds-demo>
   <app-ds-demo label="Segmented" [needs]="['segmented']">
     <div>
       <ui-segmented
@@ -26,7 +43,35 @@
       />
     </div>
   </app-ds-demo>
-  <app-ds-demo label="Stepper (wizard)" [needs]="['stepper']"></app-ds-demo>
+  <app-ds-demo label="Stepper (wizard)" [needs]="['stepper']">
+    <div class="flex flex-col gap-4">
+      <ui-stepper
+        label="Các bước tạo khóa học"
+        [steps]="wizardSteps"
+        [selectedIndex]="store.step$()"
+        (selectedIndexChange)="store.setStep($event)"
+      />
+      <div class="flex gap-3">
+        <button
+          type="button"
+          uiButton
+          [disabled]="store.step$() === 0"
+          (click)="store.setStep(store.step$() - 1)"
+        >
+          Quay lại
+        </button>
+        <button
+          type="button"
+          uiButton
+          variant="primary"
+          [disabled]="store.step$() === wizardSteps.length - 1"
+          (click)="store.setStep(store.step$() + 1)"
+        >
+          Tiếp theo
+        </button>
+      </div>
+    </div>
+  </app-ds-demo>
   <app-ds-demo label="Tree" [needs]="['tree']">
     <ui-tree
       label="Cây nội dung"
