@@ -56,6 +56,15 @@ export const MIGRATION_ENTRIES = [
     },
   },
   {
+    id: 'tooltip',
+    kind: 'component',
+    mockupSource: '.tip, .tip__bubble',
+    level: 'atom',
+    targets: ['Tooltip'],
+    checklist: ['H'],
+    status: 'todo',
+  },
+  {
     id: 'text-controls',
     kind: 'component',
     mockupSource: '.input, .select, .textarea, UI.FilterSelect',

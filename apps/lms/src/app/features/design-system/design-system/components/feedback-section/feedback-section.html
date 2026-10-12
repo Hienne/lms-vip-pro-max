@@ -1,9 +1,12 @@
 <app-ds-section section="feedback" title="Phản hồi hệ thống">
   <app-ds-demo label="Alert" [needs]="['alert-tip']"></app-ds-demo>
+  <app-ds-demo label="Toast (bấm để thử)" [needs]="['toast']"></app-ds-demo>
   <app-ds-demo
-    label="Toast · modal · drawer · menu (bấm để thử)"
-    [needs]="['toast','modal','drawer','menu']"
+    label="Hộp xác nhận (bấm để thử)"
+    [needs]="['modal']"
   ></app-ds-demo>
+  <app-ds-demo label="Drawer (bấm để thử)" [needs]="['drawer']"></app-ds-demo>
+  <app-ds-demo label="Menu (bấm để thử)" [needs]="['menu']"></app-ds-demo>
   <app-ds-demo
     label="Trạng thái rỗng, lỗi, không đủ quyền"
     [needs]="['empty-error-state']"

@@ -45,3 +45,22 @@ export {
 export { Ring } from './lib/atoms/ring/ring';
 export { Table } from './lib/atoms/table/table.directive';
 export { TableWrap } from './lib/atoms/table/table-wrap.directive';
+
+// Insertion points for the base-libraries UI tickets: add your exports inside your own block,
+// keep the marker comment, and do not touch the other blocks.
+
+// Tooltip (04)
+
+// Field, ErrorSummary (05)
+
+// Alert, Tip (06)
+
+// Empty, ErrorState (07)
+
+// Breadcrumb, PageHeader (08)
+
+// Menu (09)
+
+// ConfirmDialog, confirm, Drawer (10)
+
+// Toaster (11)

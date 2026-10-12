@@ -6,6 +6,19 @@ import { createAppRoutes } from '../../../app.routes';
 import { provideAppConfig } from '../../../core/config/app-config';
 import { testAppConfig } from '../../../core/config/app-config.testing';
 import { DESIGN_SYSTEM_SECTIONS } from '../data-access/design-system-sections';
+import {
+  migrationEntry,
+  STATUS_LABEL,
+} from '../data-access/migration-registry';
+import {
+  openDesignSystem,
+  placeholderMismatches,
+} from './design-system.testing';
+
+const expectPlaceholdersFollowRegistry = (
+  root: ParentNode,
+  ids: Parameters<typeof placeholderMismatches>[1],
+) => expect(placeholderMismatches(root, ids)).toEqual([]);
 
 const LIGHT_TOKENS: Record<string, string> = {
   '--color-text': '#1a1d1c',
@@ -27,23 +40,6 @@ const LIGHT_TOKENS: Record<string, string> = {
   '--color-info-subtle': '#e8f0f9',
   '--color-border-strong': '#8a9694',
 };
-
-async function openDesignSystem(devTools = true) {
-  TestBed.configureTestingModule({
-    providers: [
-      provideAppConfig(testAppConfig({ devTools })),
-      provideRouter(createAppRoutes({ devTools })),
-    ],
-  });
-  const harness = await RouterTestingHarness.create();
-  await harness.navigateByUrl('/design-system');
-  TestBed.tick();
-  await harness.fixture.whenStable();
-  return {
-    page: harness.routeNativeElement as HTMLElement,
-    router: TestBed.inject(Router),
-  };
-}
 
 describe('/design-system', () => {
   beforeEach(() => {
@@ -139,10 +135,15 @@ describe('/design-system', () => {
   });
 
   describe('buttons section', () => {
-    it('shows the variant × state table and the icon-button row, no placeholder left', async () => {
+    it('shows the variant × state table and the icon-button row; only unfinished pieces keep a placeholder', async () => {
       const { page } = await openDesignSystem();
       const section = page.querySelector('#ds-buttons') as HTMLElement;
-      expect(section.querySelector('[data-placeholder]')).toBeNull();
+      expectPlaceholdersFollowRegistry(section, [
+        'button',
+        'icon-button',
+        'link-button',
+        'tooltip',
+      ]);
       const rows = Array.from(section.querySelectorAll('tbody tr'));
       expect(
         rows.map((r) => r.querySelector('th')?.textContent?.trim()),
@@ -176,14 +177,12 @@ describe('/design-system', () => {
           .querySelector('input[aria-invalid="true"]')
           ?.getAttribute('type'),
       ).toBe('email');
-      const placeholders = Array.from(
-        section.querySelectorAll('[data-placeholder]'),
-      );
-      expect(placeholders).toHaveLength(4);
-      const ids = placeholders.flatMap((p) =>
-        Array.from(p.querySelectorAll('code')).map((c) => c.textContent),
-      );
-      expect(ids).toEqual(['field', 'option-card', 'dropzone', 'search']);
+      expectPlaceholdersFollowRegistry(section, [
+        'field',
+        'option-card',
+        'dropzone',
+        'search',
+      ]);
     });
   });
 
@@ -242,10 +241,7 @@ describe('/design-system', () => {
       expect(
         section.querySelector('[role="status"]')?.getAttribute('aria-label'),
       ).toBe('Đang tải');
-      const pending = Array.from(
-        section.querySelectorAll('[data-placeholder] code'),
-      ).map((c) => c.textContent);
-      expect(pending).toEqual([
+      expectPlaceholdersFollowRegistry(section, [
         'alert-tip',
         'toast',
         'modal',
@@ -288,10 +284,7 @@ describe('/design-system', () => {
       expect(avatars[0].getAttribute('role')).toBe('img');
       expect(section.querySelector('.avatar-group')).not.toBeNull();
 
-      const pending = Array.from(
-        section.querySelectorAll('[data-placeholder] code'),
-      ).map((c) => c.textContent);
-      expect(pending).toEqual(['kpi', 'data-table']);
+      expectPlaceholdersFollowRegistry(section, ['kpi', 'data-table']);
     });
   });
 
@@ -302,6 +295,10 @@ describe('/design-system', () => {
       expect(demo?.getAttribute('aria-label')).toBe('Kỳ');
       const selected = demo?.querySelector('[aria-selected="true"]');
       expect(selected?.textContent?.trim()).toBe('Tháng');
+      expectPlaceholdersFollowRegistry(
+        page.querySelector('#ds-nav') as HTMLElement,
+        ['breadcrumb', 'page-header', 'tabs', 'stepper', 'tree'],
+      );
     });
   });
 
@@ -423,19 +420,25 @@ describe('/design-system', () => {
   });
 
   describe('migration placeholders', () => {
+    // Any pending demo will do: the first one on the page, whichever piece that is.
+    const firstPlaceholder = (page: HTMLElement) => {
+      const placeholder = page.querySelector('[data-placeholder]');
+      const id = placeholder?.querySelector('code')?.textContent ?? '';
+      return { placeholder, id };
+    };
+
     it('shows "Chưa migrate" for a demo whose entries are not done', async () => {
       const { page } = await openDesignSystem();
-      const placeholder = page.querySelector('#ds-forms [data-placeholder]');
+      const { placeholder, id } = firstPlaceholder(page);
       expect(placeholder?.textContent).toContain('Chưa migrate');
-      expect(placeholder?.textContent).toContain('field');
+      expect(migrationEntry(id as never).status).not.toBe('done');
     });
 
     it('shows the status only in production', async () => {
       const { page } = await openDesignSystem(false);
-      const text = page.querySelector(
-        '#ds-forms [data-placeholder]',
-      )?.textContent;
-      expect(text).toContain('Chưa làm');
+      const { placeholder, id } = firstPlaceholder(page);
+      const text = placeholder?.textContent;
+      expect(text).toContain(STATUS_LABEL[migrationEntry(id as never).status]);
       expect(text).not.toContain('@');
       expect(text).not.toContain('Pull request');
     });
