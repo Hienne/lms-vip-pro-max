@@ -72,15 +72,38 @@
   <app-ds-demo
     label="Trạng thái học tập (kèm icon, không dựa màu đơn thuần)"
     [needs]="['domain-status-badges']"
-  ></app-ds-demo>
+  >
+    <div class="flex flex-wrap items-center gap-3">
+      @for (status of courseStatuses; track status) {
+      <app-course-status [status]="status" />
+      }
+      <app-course-status status="in_progress" overdue />
+    </div>
+  </app-ds-demo>
   <app-ds-demo
     label="Trạng thái xuất bản · tài khoản"
     [needs]="['domain-status-badges']"
-  ></app-ds-demo>
+  >
+    <div class="flex flex-wrap items-center gap-3">
+      @for (status of publishStatuses; track status) {
+      <app-publish-status [status]="status" />
+      } @for (status of accountStatuses; track status) {
+      <app-account-status [status]="status" />
+      }
+    </div>
+  </app-ds-demo>
   <app-ds-demo
     label="Vai trò · loại khóa · phần thưởng"
     [needs]="['domain-status-badges','badge-chip']"
-  ></app-ds-demo>
+  >
+    <div class="flex flex-wrap items-center gap-3">
+      @for (role of roles; track role) {
+      <app-role-badge [role]="role" />
+      }
+      <app-role-badge role="admin" scoped />
+      <span uiBadge tone="reward"><ui-icon name="star" /> +50 điểm</span>
+    </div>
+  </app-ds-demo>
   <app-ds-demo
     label="Hạn hoàn thành"
     [needs]="['domain-course-card']"
