@@ -15,6 +15,14 @@ describe('fixtures match their contracts', () => {
     }
   });
 
+  it.each(endpoints)('%s endpoint-specific errors parse', (key, endpoint) => {
+    const overrides = endpointExamples[key]?.errors ?? {};
+    for (const [status, body] of Object.entries(overrides)) {
+      expect(endpoint.errors, `${key} ${status}`).toContain(Number(status));
+      expect(() => ApiErrorSchema.parse(body)).not.toThrow();
+    }
+  });
+
   it.each(Object.entries(errorExamples))('error %s parses', (_, body) => {
     expect(() => ApiErrorSchema.parse(body)).not.toThrow();
   });
