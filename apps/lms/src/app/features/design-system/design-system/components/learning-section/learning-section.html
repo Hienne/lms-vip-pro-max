@@ -20,9 +20,29 @@
       }
     </ul>
   </app-ds-demo>
+  <app-ds-demo label="Đánh giá sao" [needs]="['rating']">
+    <div class="flex flex-col gap-4">
+      <ui-stars [value]="4.26" [count]="18" />
+      <div class="flex flex-wrap items-center gap-3">
+        <span class="text-sm font-semibold"
+          >Bài học này hữu ích với bạn thế nào?</span
+        >
+        <ui-rating
+          label="Đánh giá từ 1 đến 5 sao"
+          [value]="store.lessonRating$()"
+          (valueChange)="store.setLessonRating($event)"
+        />
+        @if (store.lessonRating$() > 0) {
+        <span class="text-xs text-success" aria-live="polite"
+          >Đã ghi nhận {{ store.lessonRating$() }} sao</span
+        >
+        }
+      </div>
+    </div>
+  </app-ds-demo>
   <app-ds-demo
-    label="Đánh giá sao · hỏi đáp"
-    [needs]="['rating','feature-misc','avatar']"
+    label="Hỏi đáp"
+    [needs]="['feature-misc','avatar']"
   ></app-ds-demo>
   <app-ds-demo
     label="Thi: đồng hồ (đỏ khi ≤ 60s) · lưới câu · đáp án nhiều lựa chọn"

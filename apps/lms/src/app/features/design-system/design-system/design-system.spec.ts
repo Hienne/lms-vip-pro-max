@@ -162,11 +162,11 @@ describe('/design-system', () => {
   });
 
   describe('forms section', () => {
-    it('demos every control and keeps the molecule demos as placeholders', async () => {
+    it('demos every control, search included, and keeps the unfinished molecule demos as placeholders', async () => {
       const { page } = await openDesignSystem();
       const section = page.querySelector('#ds-forms') as HTMLElement;
-      expect(section.querySelectorAll('input.input')).toHaveLength(8);
-      expect(section.querySelectorAll('select.select')).toHaveLength(3);
+      expect(section.querySelectorAll('input.input')).toHaveLength(9);
+      expect(section.querySelectorAll('select.select')).toHaveLength(4);
       expect(section.querySelectorAll('textarea.textarea')).toHaveLength(2);
       expect(section.querySelectorAll('input.check')).toHaveLength(3);
       expect(
@@ -183,6 +183,9 @@ describe('/design-system', () => {
       expect(section.querySelectorAll('ui-option-card .answer')).toHaveLength(
         3,
       );
+      expect(
+        section.querySelector('ui-search input[type="search"]'),
+      ).not.toBeNull();
       expectPlaceholdersFollowRegistry(section, [
         'field',
         'option-card',
@@ -259,9 +262,16 @@ describe('/design-system', () => {
   });
 
   describe('data display section', () => {
-    it('demos progress, ring, table in a card and avatars; the data table and KPI stay placeholders', async () => {
+    it('demos progress, ring, table in a card and avatars; the data table stays a placeholder', async () => {
       const { page } = await openDesignSystem();
       const section = page.querySelector('#ds-data') as HTMLElement;
+
+      expect(
+        Array.from(section.querySelectorAll('ui-kpi .kpi__label')).map((l) =>
+          l.textContent?.trim(),
+        ),
+      ).toEqual(['Khóa được giao', 'Điểm gần nhất', 'Quá hạn', 'Điểm thưởng']);
+      expect(section.querySelectorAll('ui-kpi a')).toHaveLength(1);
 
       const bars = Array.from(
         section.querySelectorAll('ui-progress[role="progressbar"]'),
@@ -339,6 +349,12 @@ describe('/design-system', () => {
       expect(
         badges.map((b) => b.textContent?.includes('Chưa mở khóa')),
       ).toEqual([false, false, true, true]);
+      expect(section.querySelector('ui-stars .sr-only')?.textContent).toBe(
+        '4,3 trên 5 sao, 18 đánh giá',
+      );
+      expect(section.querySelectorAll('ui-rating [role="radio"]')).toHaveLength(
+        5,
+      );
       expect(
         section.querySelectorAll('[data-placeholder]').length,
       ).toBeGreaterThan(0);
