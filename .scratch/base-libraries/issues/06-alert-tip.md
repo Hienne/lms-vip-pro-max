@@ -4,10 +4,10 @@
 
 **Blocked by:** None (can start immediately)
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] Tones match the mockup, icon reinforces meaning (not colour alone)
-- [ ] `role="alert"` for danger when announced, `status` otherwise, opt-out for static alerts
-- [ ] Spec covers tone classes, icons and roles
-- [ ] Demo and checklist entry updated; light/dark checked
-- [ ] `npm run check` green; own pull request
+- [x] Tones match the mockup, icon reinforces meaning (not colour alone)
+- [x] `role="alert"` for danger when announced, `status` otherwise, opt-out for static alerts
+- [x] Spec covers tone classes, icons and roles
+- [x] Demo and checklist entry updated; light/dark checked
+- [x] `npm run check` green; own pull request skipped by request
