@@ -62,7 +62,14 @@ export const MIGRATION_ENTRIES = [
     level: 'atom',
     targets: ['Tooltip'],
     checklist: ['H'],
-    status: 'todo',
+    status: 'done',
+    owner: 'Hienne',
+    verify: {
+      lightDark: 'done',
+      widths: 'n/a',
+      keyboard: 'done',
+      errorStates: 'n/a',
+    },
   },
   {
     id: 'text-controls',

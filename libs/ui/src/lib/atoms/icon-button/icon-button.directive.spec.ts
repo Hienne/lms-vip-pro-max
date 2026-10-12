@@ -1,5 +1,7 @@
+import { OverlayContainer } from '@angular/cdk/overlay';
 import { Component, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
+import { vi } from 'vitest';
 import { Icon } from '../icon/icon';
 import { IconButton } from './icon-button.directive';
 
@@ -39,10 +41,28 @@ function render() {
 }
 
 describe('IconButton', () => {
-  it('uses the label as its accessible name and its tooltip', () => {
+  it('uses the label as its accessible name, with no native title', () => {
     const { button } = render();
     expect(button.getAttribute('aria-label')).toBe('Thông báo');
-    expect(button.getAttribute('title')).toBe('Thông báo');
+    expect(button.hasAttribute('title')).toBe(false);
+  });
+
+  it('shows the label as a tooltip on hover', () => {
+    vi.useFakeTimers();
+    try {
+      const { fixture, button } = render();
+      button.dispatchEvent(new MouseEvent('mouseenter'));
+      vi.advanceTimersByTime(400);
+      fixture.detectChanges();
+      const bubble = TestBed.inject(OverlayContainer)
+        .getContainerElement()
+        .querySelector('[role="tooltip"]');
+      expect(bubble?.textContent?.trim()).toBe('Thông báo');
+      expect(button.getAttribute('aria-describedby')).toBe(bubble?.id);
+    } finally {
+      vi.useRealTimers();
+      TestBed.inject(OverlayContainer).ngOnDestroy();
+    }
   });
 
   it('follows the label when it changes', () => {
@@ -50,7 +70,6 @@ describe('IconButton', () => {
     host.label.set('Sửa khóa học');
     fixture.detectChanges();
     expect(button.getAttribute('aria-label')).toBe('Sửa khóa học');
-    expect(button.getAttribute('title')).toBe('Sửa khóa học');
   });
 
   it('cannot be used without a label', () => {

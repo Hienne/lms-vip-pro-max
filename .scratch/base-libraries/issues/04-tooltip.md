@@ -4,7 +4,7 @@
 
 **Blocked by:** None (can start immediately)
 
-**Status:** ready-for-agent
+**Status:** done
 
 - [ ] Shows on hover and focus after a short delay, hides on leave, blur and Escape; positions with fallbacks inside the viewport
 - [ ] Trigger gets `aria-describedby` while visible; tooltip has `role="tooltip"`
