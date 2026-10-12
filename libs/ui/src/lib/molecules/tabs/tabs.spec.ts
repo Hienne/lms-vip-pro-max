@@ -110,15 +110,18 @@ describe('Tabs', () => {
   });
 
   it('keeps one tab in the tab order and moves with arrows, Home and End', async () => {
-    const { tabs, press, host } = await render();
+    const { tabs, panels, press, host } = await render();
     expect(
       tabs().filter((t) => t.getAttribute('tabindex') === '0'),
     ).toHaveLength(1);
     tabs()[0].focus();
     await press('ArrowRight');
     expect(host.selected()).toBe('courses');
+    expect(document.activeElement).toBe(tabs()[1]);
+    expect(visible(panels())).toEqual(['Nội dung khóa học']);
     await press('End');
     expect(host.selected()).toBe('exams');
+    expect(document.activeElement).toBe(tabs()[2]);
     await press('Home');
     expect(host.selected()).toBe('overview');
     await press('ArrowLeft');
