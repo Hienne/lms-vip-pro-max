@@ -116,6 +116,10 @@ export {
   type ToastKind,
 } from './lib/organisms/toaster/toaster';
 
+// Stars, Rating (remaining-ui 03)
+export { Stars } from './lib/molecules/rating/stars';
+export { Rating } from './lib/molecules/rating/rating';
+
 // Tabs (remaining-ui 02)
 export { Tabs, TabPanel, type TabItem } from './lib/molecules/tabs/tabs';
 
