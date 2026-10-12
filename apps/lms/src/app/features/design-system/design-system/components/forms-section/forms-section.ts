@@ -3,12 +3,15 @@ import { form, FormField, type FieldTree } from '@angular/forms/signals';
 import {
   Button,
   Checkbox,
+  Dropzone,
   ErrorSummary,
+  Icon,
   Field,
   Input,
   Select,
   Switch,
   Textarea,
+  UploadItem,
 } from '@lms/ui';
 import { DsDemo } from '../demo/demo';
 import { DsSection } from '../section/section';
@@ -33,6 +36,9 @@ import {
     Select,
     Textarea,
     Checkbox,
+    Dropzone,
+    Icon,
+    UploadItem,
     Switch,
   ],
   providers: [FormsSectionStore],

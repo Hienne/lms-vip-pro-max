@@ -166,7 +166,30 @@
       <app-ds-demo
         label="Dropzone &amp; trạng thái upload"
         [needs]="['dropzone', 'icon']"
-      ></app-ds-demo>
+      >
+        <div class="flex flex-col gap-3">
+          <label uiDropzone accept=".pdf" (files)="store.addFiles($event)">
+            <ui-icon name="upload" size="xl" />
+            <div class="font-semibold">
+              Kéo thả hoặc <span class="text-primary underline">chọn tệp</span>
+            </div>
+            <div class="text-xs">PDF · tối đa 20 MB</div>
+            <input type="file" hidden />
+          </label>
+          <p class="text-sm text-text-muted" aria-live="polite">
+            Đã nhận: {{ store.receivedFiles$() || '(chưa có tệp)' }}
+          </p>
+          <ui-upload-item
+            name="so-tay-su-co-eod.pdf"
+            state="uploading"
+            [progress]="64"
+          />
+          <ui-upload-item name="quy-trinh-doi-soat.pdf" [size]="2621440" />
+          <ui-upload-item name="bao-cao.exe" state="error" icon="file">
+            Sai định dạng: chỉ chấp nhận PDF.
+          </ui-upload-item>
+        </div>
+      </app-ds-demo>
       <app-ds-demo
         label="Tìm kiếm · bộ lọc · chip"
         [needs]="['search', 'text-controls', 'badge-chip']"

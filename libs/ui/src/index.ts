@@ -115,3 +115,10 @@ export {
   type Toast,
   type ToastKind,
 } from './lib/organisms/toaster/toaster';
+
+// Dropzone, UploadItem
+export { Dropzone } from './lib/molecules/upload/dropzone.directive';
+export {
+  UploadItem,
+  type UploadState,
+} from './lib/molecules/upload/upload-item';
