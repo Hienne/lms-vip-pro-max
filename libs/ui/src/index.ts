@@ -60,6 +60,13 @@ export { TableWrap } from './lib/atoms/table/table-wrap.directive';
 // Breadcrumb, PageHeader (08)
 
 // Menu (09)
+export {
+  Menu,
+  type MenuEntry,
+  type MenuItemEntry,
+  type MenuLabelEntry,
+  type MenuSeparatorEntry,
+} from './lib/organisms/menu/menu';
 
 // ConfirmDialog, confirm, Drawer (10)
 

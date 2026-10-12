@@ -4,7 +4,7 @@
 
 **Blocked by:** None (can start immediately)
 
-**Status:** ready-for-agent
+**Status:** done
 
 - [ ] `@angular/aria` exports checked first; our code adds only the look
 - [ ] Keyboard: arrows, Home/End, Enter/Space, Escape, typeahead; focus restored to the trigger

@@ -6,7 +6,9 @@
     [needs]="['modal']"
   ></app-ds-demo>
   <app-ds-demo label="Drawer (bấm để thử)" [needs]="['drawer']"></app-ds-demo>
-  <app-ds-demo label="Menu (bấm để thử)" [needs]="['menu']"></app-ds-demo>
+  <app-ds-demo label="Menu (bấm để thử)" [needs]="['menu']">
+    <app-menu-demo />
+  </app-ds-demo>
   <app-ds-demo
     label="Trạng thái rỗng, lỗi, không đủ quyền"
     [needs]="['empty-error-state']"
