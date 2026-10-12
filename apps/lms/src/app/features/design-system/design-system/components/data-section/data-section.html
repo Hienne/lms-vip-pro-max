@@ -22,25 +22,20 @@
       </p>
     </app-ds-demo>
 
-    <app-ds-demo label="List" [needs]="['icon', 'card']">
-      <ul uiCard class="list-none overflow-hidden">
-        @for (item of listItems; track item.title) {
-        <li class="border-b border-border last:border-b-0">
-          <a
-            class="flex items-center gap-3 px-4 py-3 text-text no-underline hover:bg-surface-2"
-            [routerLink]="[]"
-            fragment="ds-data"
-          >
-            <span
-              class="grid h-8 w-8 place-items-center rounded-sm bg-primary-subtle text-primary"
-              ><ui-icon [name]="item.icon" size="sm"
-            /></span>
-            <span class="grow text-sm font-semibold">{{ item.title }}</span>
-            <ui-icon name="chevron-right" size="sm" />
-          </a>
-        </li>
-        }
-      </ul>
+    <app-ds-demo label="List" [needs]="['icon', 'card', 'list']">
+      <div uiCard class="overflow-hidden">
+        <ul uiList>
+          @for (item of listItems; track item.title) {
+          <li>
+            <a uiListItem [routerLink]="[]" fragment="ds-data">
+              <span uiListIcon><ui-icon [name]="item.icon" size="sm" /></span>
+              <span class="grow text-sm font-semibold">{{ item.title }}</span>
+              <ui-icon name="chevron-right" size="sm" />
+            </a>
+          </li>
+          }
+        </ul>
+      </div>
     </app-ds-demo>
   </div>
 

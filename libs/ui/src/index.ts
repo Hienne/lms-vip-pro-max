@@ -30,6 +30,9 @@ export { Card, type CardVariant } from './lib/atoms/card/card.directive';
 export { CardBody } from './lib/atoms/card/card-body.directive';
 export { CardHeader } from './lib/atoms/card/card-header.directive';
 export { Chip } from './lib/atoms/chip/chip.directive';
+export { List } from './lib/atoms/list/list.directive';
+export { ListItem } from './lib/atoms/list/list-item.directive';
+export { ListIcon } from './lib/atoms/list/list-icon.directive';
 export {
   Skeleton,
   type SkeletonVariant,

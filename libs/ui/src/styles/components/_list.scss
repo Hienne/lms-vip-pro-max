@@ -1,0 +1,45 @@
+// List: ported from the mockup's `.list` block (components.css). Applied by `uiList`,
+// `uiListItem` and `uiListIcon`. Unlike the mockup, rows are separated by a top border on every
+// row but the first, because a row link inside an `<li>` is always its `:last-child`.
+@layer components {
+  .list {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+
+    > * + * {
+      border-top: 1px solid var(--color-border);
+    }
+  }
+
+  .list__item {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-3);
+    padding: var(--spacing-3) var(--spacing-5);
+  }
+
+  a.list__item,
+  button.list__item {
+    width: 100%;
+    color: inherit;
+    text-align: left;
+    text-decoration: none;
+
+    &:hover {
+      background: var(--color-surface-2);
+      color: inherit;
+    }
+  }
+
+  .list__icon {
+    display: grid;
+    flex: none;
+    width: 36px;
+    height: 36px;
+    place-items: center;
+    border-radius: var(--radius-sm);
+    background: var(--color-surface-2);
+    color: var(--color-text-secondary);
+  }
+}

@@ -136,6 +136,22 @@ export const MIGRATION_ENTRIES = [
     },
   },
   {
+    id: 'list',
+    kind: 'component',
+    mockupSource: '.list, .list__item, .list__icon',
+    level: 'atom',
+    targets: ['List', 'ListItem', 'ListIcon'],
+    checklist: ['H'],
+    status: 'done',
+    owner: 'Hienne',
+    verify: {
+      lightDark: 'done',
+      widths: 'done',
+      keyboard: 'done',
+      errorStates: 'n/a',
+    },
+  },
+  {
     id: 'skeleton-spinner',
     kind: 'component',
     mockupSource: 'UI.Skeleton, .skeleton, .spinner',
