@@ -25,7 +25,24 @@
       <ui-tip>Lưu nháp thường xuyên để không mất dữ liệu đã nhập.</ui-tip>
     </div>
   </app-ds-demo>
-  <app-ds-demo label="Toast (bấm để thử)" [needs]="['toast']"></app-ds-demo>
+  <app-ds-demo label="Toast (bấm để thử)" [needs]="['toast']">
+    <div class="flex flex-wrap items-center gap-3">
+      <button uiButton variant="ghost" (click)="toastSuccess()">
+        Toast thành công
+      </button>
+      <button uiButton variant="ghost" (click)="toastError()">Toast lỗi</button>
+      <button uiButton variant="ghost" (click)="toastWarning()">
+        Toast cảnh báo
+      </button>
+      <button uiButton variant="ghost" (click)="toastInfo()">
+        Toast thông tin
+      </button>
+    </div>
+    <p class="mt-3 text-xs text-text-muted">
+      Toast tự tắt sau vài giây (dừng khi rê chuột hoặc focus); toast lỗi ở lại
+      đến khi đóng. Mọi toast đều được đọc cho trình đọc màn hình.
+    </p>
+  </app-ds-demo>
   <app-ds-demo
     label="Hộp xác nhận (bấm để thử)"
     [needs]="['modal']"
