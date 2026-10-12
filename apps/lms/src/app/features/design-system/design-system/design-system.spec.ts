@@ -333,6 +333,12 @@ describe('/design-system', () => {
       expect(
         badges.map((b) => b.textContent?.includes('Chưa mở khóa')),
       ).toEqual([false, false, true, true]);
+      expect(section.querySelector('ui-stars .sr-only')?.textContent).toBe(
+        '4,3 trên 5 sao',
+      );
+      expect(section.querySelectorAll('ui-rating [role="radio"]')).toHaveLength(
+        5,
+      );
       expect(
         section.querySelectorAll('[data-placeholder]').length,
       ).toBeGreaterThan(0);

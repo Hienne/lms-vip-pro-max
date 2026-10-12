@@ -1,7 +1,8 @@
-import { Component } from '@angular/core';
-import { MaiBadge } from '@lms/ui';
+import { Component, inject } from '@angular/core';
+import { MaiBadge, Rating, Stars } from '@lms/ui';
 import { DsDemo } from '../demo/demo';
 import { DsSection } from '../section/section';
+import { LearningSectionStore } from './data-access/learning-section.store';
 
 /** Badges of the mockup's "Huy hiệu cánh mai" demo. */
 const BADGES = [
@@ -17,9 +18,11 @@ const BADGES = [
 
 @Component({
   selector: 'app-learning-section',
-  imports: [DsSection, DsDemo, MaiBadge],
+  imports: [DsSection, DsDemo, MaiBadge, Stars, Rating],
+  providers: [LearningSectionStore],
   templateUrl: './learning-section.html',
 })
 export class LearningSection {
+  protected readonly store = inject(LearningSectionStore);
   protected readonly badges = BADGES;
 }

@@ -115,3 +115,7 @@ export {
   type Toast,
   type ToastKind,
 } from './lib/organisms/toaster/toaster';
+
+// Stars, Rating (remaining-ui 03)
+export { Stars } from './lib/molecules/rating/stars';
+export { Rating } from './lib/molecules/rating/rating';
