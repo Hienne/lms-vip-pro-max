@@ -92,6 +92,19 @@ export {
 } from './lib/organisms/menu/menu';
 
 // ConfirmDialog, confirm, Drawer (10)
+export {
+  ConfirmDialog,
+  confirm,
+  type ConfirmOptions,
+  type ConfirmTone,
+} from './lib/organisms/confirm-dialog/confirm-dialog';
+export {
+  Drawer,
+  openDrawer,
+  type DrawerContext,
+  type DrawerOptions,
+  type DrawerSide,
+} from './lib/organisms/drawer/drawer';
 
 // Toaster (11)
 export {

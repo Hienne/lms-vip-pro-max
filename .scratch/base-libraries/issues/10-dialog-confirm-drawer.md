@@ -4,11 +4,11 @@
 
 **Blocked by:** None (can start immediately)
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] `confirm()` resolves true on confirm, false on cancel, Escape or backdrop
-- [ ] Dialog labelled by its title, described by its message; danger variant uses the danger button
-- [ ] Drawer slides with the motion tokens, respects reduced motion, full width on narrow screens
-- [ ] Specs cover results, focus trap and restore, ARIA labelling
-- [ ] Demos and checklist entries updated; keyboard and light/dark checked
-- [ ] `npm run check` green; own pull request
+- [x] `confirm()` resolves true on confirm, false on cancel, Escape or backdrop
+- [x] Dialog labelled by its title, described by its message; danger variant uses the danger button
+- [x] Drawer slides with the motion tokens, respects reduced motion, full width on narrow screens
+- [x] Specs cover results, focus trap and restore, ARIA labelling
+- [x] Demos and checklist entries updated; keyboard and light/dark checked
+- [x] `npm run check` green; own pull request (skipped: no PR, branch only)

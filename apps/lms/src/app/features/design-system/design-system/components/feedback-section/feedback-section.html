@@ -43,11 +43,12 @@
       đến khi đóng. Mọi toast đều được đọc cho trình đọc màn hình.
     </p>
   </app-ds-demo>
-  <app-ds-demo
-    label="Hộp xác nhận (bấm để thử)"
-    [needs]="['modal']"
-  ></app-ds-demo>
-  <app-ds-demo label="Drawer (bấm để thử)" [needs]="['drawer']"></app-ds-demo>
+  <app-ds-demo label="Hộp xác nhận (bấm để thử)" [needs]="['modal']">
+    <app-confirm-demo />
+  </app-ds-demo>
+  <app-ds-demo label="Drawer (bấm để thử)" [needs]="['drawer']">
+    <app-drawer-demo />
+  </app-ds-demo>
   <app-ds-demo label="Menu (bấm để thử)" [needs]="['menu']">
     <app-menu-demo />
   </app-ds-demo>

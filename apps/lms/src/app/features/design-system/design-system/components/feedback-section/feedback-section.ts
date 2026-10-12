@@ -13,6 +13,8 @@ import {
 } from '@lms/ui';
 import { DsDemo } from '../demo/demo';
 import { DsSection } from '../section/section';
+import { ConfirmDemo } from './components/confirm-demo/confirm-demo';
+import { DrawerDemo } from './components/drawer-demo/drawer-demo';
 import { MenuDemo } from './menu-demo/menu-demo';
 
 @Component({
@@ -30,6 +32,8 @@ import { MenuDemo } from './menu-demo/menu-demo';
     Spinner,
     Tip,
     MenuDemo,
+    ConfirmDemo,
+    DrawerDemo,
   ],
   templateUrl: './feedback-section.html',
   styleUrl: './feedback-section.scss',

@@ -1,0 +1,16 @@
+<div class="flex flex-wrap items-center gap-3">
+  <button uiButton (click)="store.confirmPublish()">
+    <ui-icon name="circle-help" size="sm" /> Hộp xác nhận
+  </button>
+  <button uiButton variant="danger-ghost" (click)="store.confirmDelete()">
+    <ui-icon name="trash-2" size="sm" /> Xác nhận xóa
+  </button>
+</div>
+<p class="mt-3 text-xs text-text-muted">
+  Bẫy focus, Esc để đóng, trả focus về nút mở.
+</p>
+@if (store.result$()) {
+<p class="mt-1 text-sm" role="status">
+  Kết quả: <strong>{{ store.result$() }}</strong>
+</p>
+}

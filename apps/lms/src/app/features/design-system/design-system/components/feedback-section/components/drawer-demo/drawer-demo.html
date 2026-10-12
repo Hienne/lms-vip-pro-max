@@ -1,0 +1,23 @@
+<div class="flex flex-wrap items-center gap-3">
+  <button uiButton (click)="open(body, footer, 'end')">
+    <ui-icon name="layers" size="sm" /> Mở drawer
+  </button>
+  <button uiButton variant="ghost" (click)="open(body, footer, 'start')">
+    <ui-icon name="layers" size="sm" /> Drawer bên trái
+  </button>
+</div>
+<p class="mt-3 text-xs text-text-muted">
+  Bẫy focus, Esc để đóng, trả focus về nút mở. Toàn chiều rộng trên màn hình
+  hẹp.
+</p>
+
+<ng-template #body>
+  <p class="text-sm">
+    Dùng cho form chỉnh sửa nhanh mà không rời trang danh sách.
+  </p>
+</ng-template>
+<ng-template #footer let-close="close">
+  <button uiButton variant="primary" cdkFocusInitial (click)="close()">
+    Đóng
+  </button>
+</ng-template>

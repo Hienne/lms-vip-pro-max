@@ -1,0 +1,79 @@
+// Dialog: ported from the mockup's `.modal` block (components.css). Applied by `ui-confirm-dialog`;
+// `.dialog-backdrop` is the shared scrim for dialogs and drawers (CDK `backdropClass`).
+@layer components {
+  .dialog-backdrop {
+    background: var(--color-overlay);
+  }
+
+  .dialog-pane {
+    z-index: var(--z-index-modal);
+  }
+
+  .dialog {
+    display: block;
+    // 480px, the mockup's modal width, with a margin to the viewport on narrow screens.
+    width: min(30rem, calc(100vw - var(--spacing-8)));
+    max-height: calc(100vh - var(--spacing-8));
+    overflow: auto;
+    background: var(--color-surface);
+    color: var(--color-text);
+    border-radius: var(--radius-xl);
+    box-shadow: var(--shadow-lg);
+    animation: var(--animate-enter);
+
+    @media (prefers-reduced-motion: reduce) {
+      animation: none;
+    }
+  }
+
+  .dialog__header {
+    display: flex;
+    gap: var(--spacing-3);
+    align-items: flex-start;
+    padding: var(--spacing-6) var(--spacing-6) 0;
+  }
+
+  .dialog__icon {
+    display: grid;
+    flex: none;
+    place-items: center;
+    width: 2.75rem; // 44px, the touch minimum
+    height: 2.75rem;
+    border-radius: var(--radius-full);
+    background: var(--color-primary-subtle);
+    color: var(--color-primary);
+  }
+
+  .dialog__icon--danger {
+    background: var(--color-danger-subtle);
+    color: var(--color-danger);
+  }
+
+  .dialog__icon--warning {
+    background: var(--color-warning-subtle);
+    color: var(--color-warning);
+  }
+
+  .dialog__title {
+    flex: 1;
+    align-self: center;
+    margin: 0;
+    font-size: var(--text-lg);
+    font-weight: var(--font-weight-semibold);
+  }
+
+  .dialog__body {
+    margin: 0;
+    padding: var(--spacing-4) var(--spacing-6);
+    color: var(--color-text-secondary);
+    font-size: var(--text-sm);
+  }
+
+  .dialog__footer {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: var(--spacing-2);
+    padding: var(--spacing-4) var(--spacing-6) var(--spacing-6);
+  }
+}
