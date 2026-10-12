@@ -1,8 +1,5 @@
 <a uiCard interactive class="course-card" [routerLink]="course().link">
-  <div
-    class="course-card__cover"
-    [class]="'course-card__cover course-card__cover--' + course().cover"
-  >
+  <div [class]="'course-card__cover course-card__cover--' + course().cover">
     <div class="course-card__badges">
       <app-required-mark [required]="course().required" />
       @if (completed()) {
