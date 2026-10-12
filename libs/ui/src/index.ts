@@ -119,3 +119,9 @@ export {
 // Stars, Rating (remaining-ui 03)
 export { Stars } from './lib/molecules/rating/stars';
 export { Rating } from './lib/molecules/rating/rating';
+
+// Tabs (remaining-ui 02)
+export { Tabs, TabPanel, type TabItem } from './lib/molecules/tabs/tabs';
+
+// Search (remaining-ui 01)
+export { Search } from './lib/molecules/search/search';

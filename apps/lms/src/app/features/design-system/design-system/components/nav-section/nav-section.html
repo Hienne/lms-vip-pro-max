@@ -15,7 +15,24 @@
       </button>
     </ui-page-header>
   </app-ds-demo>
-  <app-ds-demo label="Tabs (← → để chuyển)" [needs]="['tabs']"></app-ds-demo>
+  <app-ds-demo label="Tabs (← → để chuyển)" [needs]="['tabs']">
+    <ui-tabs
+      label="Mục khóa học"
+      [tabs]="tabItems"
+      [selected]="store.tab$()"
+      (selectedChange)="store.setTab($event)"
+    >
+      <div uiTabPanel="overview">
+        <p class="pt-4 text-sm">Tổng quan: mô tả, mục tiêu và lộ trình.</p>
+      </div>
+      <div uiTabPanel="courses">
+        <p class="pt-4 text-sm">Khóa học: danh sách 6 khóa học.</p>
+      </div>
+      <div uiTabPanel="exams">
+        <p class="pt-4 text-sm">Bài thi: các bài kiểm tra của chương trình.</p>
+      </div>
+    </ui-tabs>
+  </app-ds-demo>
   <app-ds-demo label="Segmented" [needs]="['segmented']">
     <div>
       <ui-segmented
