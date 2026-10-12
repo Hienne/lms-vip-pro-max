@@ -115,3 +115,6 @@ export {
   type Toast,
   type ToastKind,
 } from './lib/organisms/toaster/toaster';
+
+// Stepper
+export { Stepper, type StepperItem } from './lib/organisms/stepper/stepper';
