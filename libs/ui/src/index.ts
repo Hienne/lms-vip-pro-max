@@ -118,3 +118,6 @@ export {
 
 // Tabs (remaining-ui 02)
 export { Tabs, TabPanel, type TabItem } from './lib/molecules/tabs/tabs';
+
+// Search (remaining-ui 01)
+export { Search } from './lib/molecules/search/search';

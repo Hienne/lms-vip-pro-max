@@ -162,11 +162,11 @@ describe('/design-system', () => {
   });
 
   describe('forms section', () => {
-    it('demos every control and keeps the molecule demos as placeholders', async () => {
+    it('demos every control, search included, and keeps the unfinished molecule demos as placeholders', async () => {
       const { page } = await openDesignSystem();
       const section = page.querySelector('#ds-forms') as HTMLElement;
-      expect(section.querySelectorAll('input.input')).toHaveLength(8);
-      expect(section.querySelectorAll('select.select')).toHaveLength(3);
+      expect(section.querySelectorAll('input.input')).toHaveLength(9);
+      expect(section.querySelectorAll('select.select')).toHaveLength(4);
       expect(section.querySelectorAll('textarea.textarea')).toHaveLength(2);
       expect(section.querySelectorAll('input.check')).toHaveLength(3);
       expect(
@@ -177,6 +177,9 @@ describe('/design-system', () => {
           .querySelector('input[aria-invalid="true"]')
           ?.getAttribute('type'),
       ).toBe('email');
+      expect(
+        section.querySelector('ui-search input[type="search"]'),
+      ).not.toBeNull();
       expectPlaceholdersFollowRegistry(section, [
         'field',
         'option-card',
