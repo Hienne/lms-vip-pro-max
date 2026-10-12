@@ -64,6 +64,11 @@ export { Tip } from './lib/molecules/tip/tip';
 // Empty, ErrorState (07)
 
 // Breadcrumb, PageHeader (08)
+export {
+  Breadcrumb,
+  type BreadcrumbItem,
+} from './lib/molecules/breadcrumb/breadcrumb';
+export { PageHeader } from './lib/organisms/page-header/page-header';
 
 // Menu (09)
 
