@@ -7,6 +7,7 @@ import {
   type ButtonVariant,
   Table,
   TableWrap,
+  Tooltip,
 } from '@lms/ui';
 import { DsDemo } from '../demo/demo';
 import { DsSection } from '../section/section';
@@ -35,6 +36,7 @@ const ROWS: readonly {
     LinkButton,
     Table,
     TableWrap,
+    Tooltip,
   ],
   templateUrl: './buttons-section.html',
 })

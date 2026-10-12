@@ -1,0 +1,13 @@
+<label class="field__label" [attr.for]="controlId()"
+  >{{ label() }}@if (required()) {
+  <span class="field__req" aria-hidden="true">*</span>
+  }</label
+>
+<ng-content />
+@if (hint()) {
+<div class="field__help" [id]="hintId()">{{ hint() }}</div>
+} @for (item of errorItems(); track item.id) {
+<div class="field__error" [id]="item.id">
+  <ui-icon name="triangle-alert" size="sm" />{{ item.message }}
+</div>
+}

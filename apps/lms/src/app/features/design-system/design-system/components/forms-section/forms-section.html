@@ -4,7 +4,72 @@
       <app-ds-demo
         label="Field: nhãn luôn hiển thị · lỗi dưới trường (aria-describedby) · error summary có link"
         [needs]="['field', 'text-controls', 'button']"
-      ></app-ds-demo>
+      >
+        <form
+          class="flex flex-col gap-4"
+          novalidate
+          (submit)="$event.preventDefault()"
+        >
+          @if (store.summaryShown$() && summaryItems().length > 0) {
+          <ui-error-summary [items]="summaryItems()" />
+          }
+          <ui-field
+            label="Tên khóa học"
+            required
+            hint="Tối đa 120 ký tự."
+            [errors]="titleErrors()"
+          >
+            <input
+              uiInput
+              id="ds-title"
+              placeholder="Ví dụ: Quy trình đối soát"
+              [formField]="demoForm.title"
+            />
+          </ui-field>
+          <ui-field label="Email" required [errors]="emailErrors()">
+            <input
+              uiInput
+              id="ds-email"
+              type="email"
+              [formField]="demoForm.email"
+            />
+          </ui-field>
+          <ui-field label="Chương trình">
+            <select uiSelect [formField]="demoForm.program">
+              <option value="">— Chọn —</option>
+              <option value="1">Nền tảng nghiệp vụ Core Banking</option>
+            </select>
+          </ui-field>
+          <ui-field label="Mô tả">
+            <textarea
+              uiTextarea
+              rows="2"
+              [formField]="demoForm.description"
+            ></textarea>
+          </ui-field>
+          <ui-field label="Chỉ đọc">
+            <input uiInput readonly value="Ban QL&amp;PT Core Banking" />
+          </ui-field>
+          <div class="flex flex-wrap gap-2">
+            <button
+              uiButton
+              variant="primary"
+              type="button"
+              (click)="validate()"
+            >
+              Thử validate
+            </button>
+            <button
+              uiButton
+              variant="ghost"
+              type="button"
+              (click)="clearErrors()"
+            >
+              Xóa lỗi
+            </button>
+          </div>
+        </form>
+      </app-ds-demo>
 
       <app-ds-demo
         label="Ô nhập · chọn · vùng văn bản"

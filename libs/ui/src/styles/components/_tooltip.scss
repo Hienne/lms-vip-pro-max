@@ -1,0 +1,21 @@
+// Tooltip bubble: ported from the mockup's `.tip__bubble` (components.css). Rendered by `uiTooltip`
+// inside a CDK overlay; the fade uses the motion token, which is 0ms under reduced motion.
+@layer components {
+  .ui-tooltip {
+    display: block;
+    max-width: 20rem;
+    padding: var(--spacing-2) var(--spacing-3);
+    border-radius: var(--radius-sm);
+    background: var(--color-text);
+    color: var(--color-surface);
+    font-size: var(--text-xs);
+    line-height: 1.4;
+    pointer-events: none;
+    opacity: 1;
+    transition: opacity var(--transition-duration-fast);
+
+    @starting-style {
+      opacity: 0;
+    }
+  }
+}

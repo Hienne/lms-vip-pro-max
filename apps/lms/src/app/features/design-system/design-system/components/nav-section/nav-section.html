@@ -1,5 +1,20 @@
 <app-ds-section section="nav" title="Điều hướng">
-  <app-ds-demo label="Breadcrumb" [needs]="['breadcrumb']"></app-ds-demo>
+  <app-ds-demo label="Breadcrumb" [needs]="['breadcrumb']">
+    <ui-breadcrumb [items]="trail" />
+  </app-ds-demo>
+  <app-ds-demo label="Page header" [needs]="['page-header']">
+    <ui-page-header
+      eyebrow="Khóa học"
+      title="Nền tảng nghiệp vụ Core Banking"
+      description="Lộ trình nền tảng cho nhân sự mới của Ban QL&PT Core Banking."
+    >
+      <ui-breadcrumb slot="breadcrumb" [items]="trail" />
+      <button slot="actions" type="button" uiButton>Chia sẻ</button>
+      <button slot="actions" type="button" uiButton variant="primary">
+        Tiếp tục học
+      </button>
+    </ui-page-header>
+  </app-ds-demo>
   <app-ds-demo label="Tabs (← → để chuyển)" [needs]="['tabs']"></app-ds-demo>
   <app-ds-demo label="Segmented" [needs]="['segmented']">
     <div>

@@ -48,3 +48,70 @@ export {
 export { Ring } from './lib/atoms/ring/ring';
 export { Table } from './lib/atoms/table/table.directive';
 export { TableWrap } from './lib/atoms/table/table-wrap.directive';
+
+// Insertion points for the base-libraries UI tickets: add your exports inside your own block,
+// keep the marker comment, and do not touch the other blocks.
+
+// Tooltip (04)
+export { Tooltip } from './lib/atoms/tooltip/tooltip.directive';
+
+// Field, ErrorSummary (05)
+export { Field } from './lib/molecules/field/field';
+export {
+  ErrorSummary,
+  type ErrorSummaryItem,
+} from './lib/molecules/field/error-summary';
+
+// Alert, Tip (06)
+export {
+  Alert,
+  AlertAction,
+  type AlertTone,
+} from './lib/molecules/alert/alert';
+export { Tip } from './lib/molecules/tip/tip';
+
+// Empty, ErrorState (07)
+export {
+  Empty,
+  type EmptyHeadingLevel,
+  type EmptyTone,
+} from './lib/molecules/empty/empty';
+export { ErrorState } from './lib/molecules/error-state/error-state';
+
+// Breadcrumb, PageHeader (08)
+export {
+  Breadcrumb,
+  type BreadcrumbItem,
+} from './lib/molecules/breadcrumb/breadcrumb';
+export { PageHeader } from './lib/organisms/page-header/page-header';
+
+// Menu (09)
+export {
+  Menu,
+  type MenuEntry,
+  type MenuItemEntry,
+  type MenuLabelEntry,
+  type MenuSeparatorEntry,
+} from './lib/organisms/menu/menu';
+
+// ConfirmDialog, confirm, Drawer (10)
+export {
+  ConfirmDialog,
+  confirm,
+  type ConfirmOptions,
+  type ConfirmTone,
+} from './lib/organisms/confirm-dialog/confirm-dialog';
+export {
+  Drawer,
+  openDrawer,
+  type DrawerContext,
+  type DrawerOptions,
+  type DrawerSide,
+} from './lib/organisms/drawer/drawer';
+
+// Toaster (11)
+export {
+  Toaster,
+  type Toast,
+  type ToastKind,
+} from './lib/organisms/toaster/toaster';

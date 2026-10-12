@@ -1,0 +1,63 @@
+@if (iconOnly()) {
+<button
+  uiIconButton
+  ngMenuTrigger
+  [menu]="menu()"
+  [label]="label()"
+  [disabled]="disabled()"
+>
+  <ui-icon [name]="icon() ?? 'ellipsis'" />
+</button>
+} @else {
+<button
+  uiButton
+  ngMenuTrigger
+  [menu]="menu()"
+  [variant]="variant()"
+  [size]="size()"
+  [disabled]="disabled()"
+>
+  @if (icon(); as name) {
+  <ui-icon [name]="name" size="sm" />
+  } {{ label() }}
+</button>
+}
+
+<ng-template
+  [cdkConnectedOverlay]="{
+    origin: origin(),
+    positions: positions,
+    viewportMargin: viewportMargin,
+    push: true,
+    flexibleDimensions: false,
+  }"
+  [cdkConnectedOverlayOpen]="expanded()"
+>
+  <div
+    ngMenu
+    #menuRef="ngMenu"
+    class="menu"
+    [attr.aria-label]="label()"
+    (itemSelected)="choose($event)"
+  >
+    @for (row of rows(); track row.key) { @let entry = row.entry; @switch
+    (entry.kind) { @case ('separator') {
+    <div class="menu__sep" role="separator"></div>
+    } @case ('label') {
+    <div class="menu__label" role="presentation">{{ entry.label }}</div>
+    } @case ('item') {
+    <div
+      ngMenuItem
+      class="menu__item"
+      [class.is-danger]="entry.tone === 'danger'"
+      [value]="entry.value"
+      [disabled]="entry.disabled ?? false"
+      [searchTerm]="entry.label"
+    >
+      @if (entry.icon) {
+      <ui-icon [name]="entry.icon" size="sm" />
+      } {{ entry.label }}
+    </div>
+    } } }
+  </div>
+</ng-template>

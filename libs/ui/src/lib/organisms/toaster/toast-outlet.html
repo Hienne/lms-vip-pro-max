@@ -1,0 +1,25 @@
+@for (toast of toasts(); track toast.id) {
+<div
+  class="toast toast--{{ toast.kind }}"
+  (mouseenter)="toaster.hold(toast.id, 'hover')"
+  (mouseleave)="toaster.release(toast.id, 'hover')"
+  (focusin)="toaster.hold(toast.id, 'focus')"
+  (focusout)="toaster.release(toast.id, 'focus')"
+>
+  <ui-icon [name]="toast.icon" />
+  <div class="toast__body">
+    <div class="toast__title">{{ toast.title }}</div>
+    @if (toast.message) {
+    <div class="toast__msg">{{ toast.message }}</div>
+    }
+  </div>
+  <button
+    uiIconButton
+    size="sm"
+    label="Đóng thông báo"
+    (click)="toaster.dismiss(toast.id)"
+  >
+    <ui-icon name="x" size="sm" />
+  </button>
+</div>
+}

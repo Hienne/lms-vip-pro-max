@@ -1,0 +1,19 @@
+// Inline hint block, applied by `ui-tip`. Not in the mockup as a block: its `.tip` is the tooltip
+// bubble (ticket 04), so this one is named `tip-note` to stay distinct.
+@layer components {
+  .tip-note {
+    display: block;
+    padding: var(--spacing-3) var(--spacing-4);
+    border-left: var(--spacing-1) solid var(--color-accent);
+    border-radius: var(--radius-md);
+    background: var(--color-surface-2);
+    color: var(--color-text-secondary);
+    font-size: var(--text-sm);
+  }
+
+  .tip-note__label {
+    margin-right: var(--spacing-2);
+    color: var(--color-text);
+    font-weight: var(--font-weight-semibold);
+  }
+}

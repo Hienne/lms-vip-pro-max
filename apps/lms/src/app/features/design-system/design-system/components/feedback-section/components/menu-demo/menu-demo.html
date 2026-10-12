@@ -1,0 +1,22 @@
+<div class="flex flex-wrap items-center gap-3">
+  <ui-menu
+    label="Menu"
+    icon="ellipsis"
+    [entries]="store.entries"
+    (selected)="store.choose($event)"
+  />
+  <ui-menu
+    label="Thao tác khóa học"
+    iconOnly
+    [entries]="store.entries"
+    (selected)="store.choose($event)"
+  />
+  <span class="text-sm text-text-secondary" aria-live="polite">
+    @if (store.chosenLabel$(); as label) { Đã chọn: {{ label }} } @else { Chưa
+    chọn thao tác nào. }
+  </span>
+</div>
+<p class="mt-3 text-xs text-text-muted">
+  Phím mũi tên, Home/End, gõ chữ cái để nhảy, Enter chọn, Esc để đóng và trả
+  focus về nút mở.
+</p>

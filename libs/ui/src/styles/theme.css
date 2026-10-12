@@ -112,10 +112,12 @@
   --spacing-8: 32px;
   --spacing-10: 40px;
   --spacing-12: 48px;
+  --spacing-18: 72px; /* empty-state art */
 
   /* ---- Layout sizes ---- */
   --container-sidebar: 256px; /* w-sidebar */
   --container-content: 1280px; /* max-w-content */
+  --container-menu: 220px; /* min-w-menu: menu panel */
   --spacing-header: 64px; /* h-header */
   --spacing-control: 40px; /* min-h-control */
   --spacing-control-sm: 32px;

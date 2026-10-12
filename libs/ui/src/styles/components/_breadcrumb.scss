@@ -1,0 +1,55 @@
+// Breadcrumb: ported from the mockup's `.breadcrumb` block (components.css).
+// Long trails wrap and long labels truncate, so nothing scrolls sideways at 375px.
+@layer components {
+  .breadcrumb {
+    display: block;
+    margin-bottom: var(--spacing-4);
+    min-width: 0;
+  }
+
+  .breadcrumb__list {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--spacing-2);
+    margin: 0;
+    padding: 0;
+    color: var(--color-text-muted);
+    font-size: var(--text-sm);
+    list-style: none;
+  }
+
+  .breadcrumb__item {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-2);
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .breadcrumb__link,
+  .breadcrumb__text {
+    overflow: hidden;
+    max-width: 100%;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .breadcrumb__link {
+    color: var(--color-text-secondary);
+    text-decoration: none;
+  }
+
+  .breadcrumb__link:hover {
+    color: var(--color-primary);
+    text-decoration: underline;
+  }
+
+  .breadcrumb__text[aria-current='page'] {
+    color: var(--color-text-muted);
+  }
+
+  .breadcrumb__sep {
+    color: var(--color-border-strong);
+  }
+}

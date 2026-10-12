@@ -1,4 +1,5 @@
 import { booleanAttribute, computed, Directive, input } from '@angular/core';
+import { Tooltip } from '../tooltip/tooltip.directive';
 
 export type IconButtonVariant = 'default' | 'danger';
 export type IconButtonSize = 'md' | 'sm';
@@ -17,8 +18,8 @@ export type IconButtonSize = 'md' | 'sm';
     '[class]': 'modifiers()',
     type: 'button',
     '[attr.aria-label]': 'label()',
-    '[attr.title]': 'label()',
   },
+  hostDirectives: [{ directive: Tooltip, inputs: ['uiTooltip: label'] }],
 })
 export class IconButton {
   /** Accessible name and tooltip text. */

@@ -53,6 +53,13 @@ export const courseEndpoints = {
 - `defineEndpoint`, `toUrl(endpoint, params)` and `ApiErrorSchema`
   (`{ message, details? }`, matching the mockup's `ApiError`) live in
   `libs/contracts/src/lib/http/`.
+- `defineEndpoint` accepts `params`, `query` and `body` as optional; `toUrl`
+  requires the params argument only when the endpoint declares `params`, and
+  throws on a missing path segment. Declared `errors` are drawn from
+  `400 | 401 | 403 | 404 | 409 | 422 | 423 | 500`.
+- `libs/contracts` exports `endpointRegistries` (an array of every registry);
+  `build-spec` walks it, so a new domain registers its `xEndpoints` there.
+  The operation id is the registry key.
 - Each endpoint lists the error statuses it can return; those become documented
   responses in OpenAPI and the states the UI must render.
 
@@ -73,12 +80,18 @@ export class CourseApi {
 ```
 
 - Every response goes through `parseResponse(schema)` (an RxJS operator in
-  `apps/lms/src/app/core/http/`). A failed parse throws a `ContractError` with
-  the zod issues, and is reported, not swallowed.
+  `apps/lms/src/app/core/http/`). A failed parse throws a `ContractError` (same
+  folder) with the zod issues, and is reported, not swallowed: the global
+  `ErrorHandler` (`core/errors/app-error-handler.ts`, `provideAppErrorHandler()`)
+  logs every unexpected error.
 - `apps/lms/src/app/core/errors/app-error.ts` exports `toAppError(unknown): AppError`,
   the one place that maps `HttpErrorResponse`, `ContractError` and offline
   status 0 to `AppError`
-  (`offline | unauthorized | forbidden | not-found | invalid | contract | unknown`).
+  (`offline | unauthorized | forbidden | not-found | invalid | locked | contract | unknown`;
+  status 0 is `offline`, 423 is `locked` for blocked or suspended accounts).
+  `AppError` is `{ kind, message, details? }`: the message is the server's
+  `ApiError.message` when the body parses, else the mockup's Vietnamese default;
+  `details` (field to message) is kept on `invalid` only.
   Stores expose `toAppError(resource.error())`; components render it with retry.
 
 ## Forms
@@ -120,8 +133,13 @@ with `/api/` and never contain a host.
   attaches named examples from `@lms/mocks`, and writes
   `dist/apps/mock-api/openapi.json`. `serve` runs it first, then
   `prism mock` on port 4010 with static examples.
-- `build-spec` also keeps the infrastructure operation `GET /api/health`:
+- `GET /api/health` is a registered endpoint (`healthEndpoints`) like any other:
   Prism refuses to start on a document without operations.
+- Examples come from `@lms/mocks`: `endpointExamples[operationId]` (`default`,
+  optional `roles`, optional `errors` with endpoint-specific `ApiError` bodies)
+  and `errorExamples[status]` (generic bodies used when an endpoint has no
+  `errors` entry; both use the mockup's messages). `build-spec` fails when an endpoint has no
+  example, and `libs/mocks/src/fixtures.spec.ts` parses all of them.
 - Every endpoint has a `default` success example plus one example per declared
   error status. Role-dependent endpoints add examples named after the role
   (`learner`, `admin`, `instructor`, `viewer`, `unit-admin`).
@@ -135,6 +153,38 @@ with `/api/` and never contain a host.
   also the correct behaviour against the real backend.
 - Prism validates requests against the spec and answers 422 for a bad payload:
   treat that as a bug in the client, not in the mock.
+
+## Auth contract decisions
+
+- Display labels stay out of the contract: the mockup's `roleLabel` (on
+  `profile` and `demoAccounts`) is not returned; the app derives it from `role`
+  (and `adminScope` for the "unit admin" wording of demo accounts, which
+  therefore carry `adminScope`).
+- `profile` keeps server-evaluated values the app must not recompute: `perms`
+  (`PermissionSchema` enum), `unitName`, `groupName` and `scopeName`
+  (unit name, or the server's "Toàn hệ thống" for system-wide roles).
+- `logout` answers `true` (200), like the mockup; `login` and `loginDemo`
+  answer `{ id, role }`. The session token is a server concern (cookie), not
+  part of the payload.
+- `loginDemo` is `POST /api/auth/demo-accounts/{userId}/login`.
+- One 423 example per endpoint (the locked wording). The mockup's separate
+  "suspended" wording reaches the UI through the server's `message`, which
+  `toAppError` already preserves.
+
+### Verified against Prism
+
+Smoke-tested with `npx nx serve mock-api` (Prism on `127.0.0.1:4010`):
+
+- `POST /api/auth/login` with `Prefer: code=423` answers 423 with the locked
+  message; `code=401` and `code=422` answer their examples.
+- `GET /api/auth/profile` with `Prefer: example=admin` answers user `a1`,
+  role `admin`.
+- `POST /api/auth/demo-accounts/{userId}/login` (`loginDemo`) answers 404 and
+  423 with `Prefer: code=404` / `code=423`.
+
+`apps/mock-api/src/openapi.spec.ts` guards the document itself: every endpoint
+of `endpointRegistries` is present with a `default` example for 200 and for each
+declared error status.
 
 ## Done criteria for a contract change
 
