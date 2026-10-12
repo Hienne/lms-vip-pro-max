@@ -1,11 +1,28 @@
 import { Component, inject } from '@angular/core';
-import { Button, Skeleton, Spinner, Toaster } from '@lms/ui';
+import {
+  Alert,
+  AlertAction,
+  Button,
+  Skeleton,
+  Spinner,
+  Tip,
+  Toaster,
+} from '@lms/ui';
 import { DsDemo } from '../demo/demo';
 import { DsSection } from '../section/section';
 
 @Component({
   selector: 'app-feedback-section',
-  imports: [DsSection, DsDemo, Button, Skeleton, Spinner],
+  imports: [
+    DsSection,
+    DsDemo,
+    Alert,
+    AlertAction,
+    Button,
+    Skeleton,
+    Spinner,
+    Tip,
+  ],
   templateUrl: './feedback-section.html',
   styleUrl: './feedback-section.scss',
 })
