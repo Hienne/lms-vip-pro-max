@@ -29,13 +29,13 @@
   color: var(--color-text-muted);
 }
 
-.is-done .journey__dot {
+.journey__stop--done .journey__dot {
   border-color: var(--color-primary);
   background: var(--color-primary);
   color: var(--color-on-primary);
 }
 
-.is-current .journey__dot {
+.journey__stop--current .journey__dot {
   border-color: var(--color-accent-ink);
   background: var(--color-accent);
   color: var(--color-on-accent);
@@ -77,8 +77,8 @@
       display: none;
     }
 
-    &.is-done::before,
-    &.is-current::before {
+    &.journey__stop--done::before,
+    &.journey__stop--current::before {
       background: var(--color-primary);
     }
   }

@@ -2,8 +2,8 @@
   @for (stop of items(); track $index) {
   <li
     class="journey__stop"
-    [class.is-done]="stop.state === 'done'"
-    [class.is-current]="stop.state === 'current'"
+    [class.journey__stop--done]="stop.state === 'done'"
+    [class.journey__stop--current]="stop.state === 'current'"
     [attr.aria-current]="stop.state === 'current' ? 'step' : null"
   >
     <span class="journey__dot">

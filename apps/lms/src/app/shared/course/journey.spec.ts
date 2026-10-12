@@ -42,26 +42,23 @@ describe('Journey', () => {
 
   it('marks 100% stops done with a check, and the first started stop after them current', () => {
     const { stops } = render();
-    expect(stops()[0].classList.contains('is-done')).toBe(true);
+    expect(stops()[0].classList.contains('journey__stop--done')).toBe(true);
     expect(stops()[0].querySelector('.journey__dot ui-icon')).not.toBeNull();
-    expect(stops()[1].classList.contains('is-current')).toBe(true);
+    expect(stops()[1].classList.contains('journey__stop--current')).toBe(true);
   });
 
   it('shows the mai flower on a current stop, and the number on an upcoming one', () => {
     const { stops } = render();
     expect(stops()[1].querySelector('.journey__dot ui-mai')).not.toBeNull();
     expect(text(stops()[3].querySelector('.journey__dot'))).toBe('4');
-    expect(stops()[3].classList.contains('is-current')).toBe(false);
+    expect(stops()[3].classList.contains('journey__stop--current')).toBe(false);
   });
 
   it('treats every started stop as current, like the mockup', () => {
     const { stops } = render();
-    expect(stops().map((s) => s.classList.contains('is-current'))).toEqual([
-      false,
-      true,
-      true,
-      false,
-    ]);
+    expect(
+      stops().map((s) => s.classList.contains('journey__stop--current')),
+    ).toEqual([false, true, true, false]);
   });
 
   it('marks the current stops with aria-current="step"', () => {
