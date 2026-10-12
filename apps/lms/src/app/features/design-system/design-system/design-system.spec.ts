@@ -288,6 +288,10 @@ describe('/design-system', () => {
       expect(avatars[0].getAttribute('role')).toBe('img');
       expect(section.querySelector('.avatar-group')).not.toBeNull();
 
+      const list = section.querySelector('.card > ul.list') as HTMLElement;
+      expect(list.querySelectorAll('li > a.list__item')).toHaveLength(2);
+      expect(list.querySelectorAll('.list__icon ui-icon')).toHaveLength(2);
+
       const pending = Array.from(
         section.querySelectorAll('[data-placeholder] code'),
       ).map((c) => c.textContent);
@@ -385,7 +389,7 @@ describe('/design-system', () => {
       expect(section.querySelectorAll('.shadow-sample')).toHaveLength(3);
 
       const before = section.querySelector('[data-motion] > *');
-      section.querySelector<HTMLButtonElement>('button.replay')?.click();
+      section.querySelector<HTMLButtonElement>('button.btn')?.click();
       TestBed.tick();
       expect(section.querySelector('[data-motion] > *')).not.toBe(before);
     });
