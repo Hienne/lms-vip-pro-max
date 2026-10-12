@@ -329,6 +329,13 @@ describe('/design-system', () => {
         stepper.querySelector('[aria-current="step"] .stepper__title')
           ?.textContent,
       ).toBe('Nội dung');
+      const tree = page.querySelector('#ds-nav [role="tree"]') as HTMLElement;
+      expect(tree.getAttribute('aria-label')).toBe('Cây nội dung');
+      expect(
+        Array.from(tree.querySelectorAll('[role="treeitem"]')).map((i) =>
+          i.getAttribute('aria-level'),
+        ),
+      ).toEqual(['1', '2', '3', '3', '1']);
       const demo = page.querySelector('#ds-nav [role="listbox"]');
       expect(demo?.getAttribute('aria-label')).toBe('Kỳ');
       const selected = demo?.querySelector('[aria-selected="true"]');

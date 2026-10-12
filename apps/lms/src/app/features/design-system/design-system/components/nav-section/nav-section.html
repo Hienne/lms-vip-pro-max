@@ -72,7 +72,22 @@
       </div>
     </div>
   </app-ds-demo>
-  <app-ds-demo label="Tree" [needs]="['tree']"></app-ds-demo>
+  <app-ds-demo label="Tree" [needs]="['tree']">
+    <ui-tree
+      label="Cây nội dung"
+      [nodes]="contentTree"
+      [trailing]="status"
+      [expanded]="store.expanded$()"
+      (expandedChange)="store.setExpanded($event)"
+      [selected]="store.selectedNode$()"
+      (selectedChange)="store.setSelectedNode($event)"
+    />
+    <ng-template #status let-node>
+      @if (node.data; as data) {
+      <span uiBadge [tone]="data.tone">{{ data.label }}</span>
+      }
+    </ng-template>
+  </app-ds-demo>
   <app-ds-demo
     label="Sắp xếp: kéo thả + nút ↑↓ cho bàn phím"
     [needs]="['feature-misc','icon-button']"

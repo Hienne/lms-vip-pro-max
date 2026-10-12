@@ -116,6 +116,13 @@ export {
   type ToastKind,
 } from './lib/organisms/toaster/toaster';
 
+// Tree
+export {
+  Tree,
+  type TreeNode,
+  type TreeTrailingContext,
+} from './lib/organisms/tree/tree';
+
 // Stepper
 export { Stepper, type StepperItem } from './lib/organisms/stepper/stepper';
 
