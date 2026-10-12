@@ -115,3 +115,6 @@ export {
   type Toast,
   type ToastKind,
 } from './lib/organisms/toaster/toaster';
+
+// Kpi (remaining-ui 04)
+export { Kpi, type KpiTone } from './lib/molecules/kpi/kpi';
