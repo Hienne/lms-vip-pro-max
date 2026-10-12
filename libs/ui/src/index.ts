@@ -54,6 +54,12 @@ export { TableWrap } from './lib/atoms/table/table-wrap.directive';
 // Field, ErrorSummary (05)
 
 // Alert, Tip (06)
+export {
+  Alert,
+  AlertAction,
+  type AlertTone,
+} from './lib/molecules/alert/alert';
+export { Tip } from './lib/molecules/tip/tip';
 
 // Empty, ErrorState (07)
 
