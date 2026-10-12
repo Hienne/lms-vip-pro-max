@@ -1,0 +1,36 @@
+// Progress ring: ported from the mockup's `.ring` block (components.css), renamed `progress-ring`
+// because `.ring` is also a Tailwind utility (a box-shadow ring) that would draw a border. Applied by `ui-ring`;
+// the label scales with the `--ring-size` custom property the component binds.
+@layer components {
+  .progress-ring {
+    position: relative;
+    display: inline-grid;
+    place-items: center;
+
+    svg {
+      transform: rotate(-90deg);
+    }
+  }
+
+  .progress-ring__track {
+    stroke: var(--color-surface-sunken);
+  }
+
+  .progress-ring__bar {
+    stroke: var(--color-primary);
+    transition: stroke-dashoffset var(--transition-duration-slow)
+      var(--ease-out);
+  }
+
+  .progress-ring__label {
+    position: absolute;
+    line-height: 1.1;
+    text-align: center;
+  }
+
+  .progress-ring__value {
+    font-size: calc(var(--ring-size, 96px) * 0.22);
+    font-variant-numeric: tabular-nums;
+    font-weight: var(--font-weight-bold);
+  }
+}

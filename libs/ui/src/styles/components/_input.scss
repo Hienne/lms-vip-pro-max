@@ -1,0 +1,12 @@
+@use 'control';
+
+// Text input: ported from the mockup's `.input` (components.css). Applied by `uiInput`.
+@layer components {
+  .input {
+    @include control.control;
+  }
+
+  .input--sm {
+    @include control.control-sm;
+  }
+}

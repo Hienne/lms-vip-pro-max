@@ -1,0 +1,31 @@
+<app-ds-section section="feedback" title="Phản hồi hệ thống">
+  <app-ds-demo label="Alert" [needs]="['alert-tip']"></app-ds-demo>
+  <app-ds-demo
+    label="Toast · modal · drawer · menu (bấm để thử)"
+    [needs]="['toast','modal','drawer','menu']"
+  ></app-ds-demo>
+  <app-ds-demo
+    label="Trạng thái rỗng, lỗi, không đủ quyền"
+    [needs]="['empty-error-state']"
+  ></app-ds-demo>
+  <app-ds-demo
+    label="Trạng thái đang tải: skeleton giữ chỗ bố cục (không giật layout)"
+    [needs]="['skeleton-spinner']"
+  >
+    <div
+      class="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3"
+      aria-busy="true"
+    >
+      <div>
+        <div uiSkeleton variant="title" class="mb-2"></div>
+        <div uiSkeleton></div>
+        <div uiSkeleton class="skeleton-short"></div>
+      </div>
+      <div uiSkeleton variant="block"></div>
+      <div class="flex flex-wrap items-center gap-3">
+        <div uiSpinner></div>
+        <span class="text-sm text-text-muted">Đang tải…</span>
+      </div>
+    </div>
+  </app-ds-demo>
+</app-ds-section>

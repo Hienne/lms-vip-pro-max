@@ -1,0 +1,20 @@
+<app-ds-section
+  section="type"
+  title="Typography"
+  description='Be Vietnam Pro — thiết kế cho tiếng Việt (dấu chồng rõ). Skill gợi ý cặp "Financial Trust"; giữ Be Vietnam Pro vì hỗ trợ tiếng Việt tốt hơn. Body tối thiểu 16px, line-height 1.5.'
+>
+  <div uiCard padded class="flex flex-col gap-5">
+    @for (sample of samples; track sample.label) {
+    <div class="sample">
+      <span class="text-xs text-text-muted">{{ sample.label }}</span>
+      <span [class]="sample.classes + ' leading-tight'">{{ sample.text }}</span>
+    </div>
+    }
+    <div class="sample">
+      <span class="text-xs text-text-muted">Số liệu · tabular</span>
+      <span class="text-2xl font-bold tabular-nums"
+        >92% · 8,5 · +150 · 1.250</span
+      >
+    </div>
+  </div>
+</app-ds-section>

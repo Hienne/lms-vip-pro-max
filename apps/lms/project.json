@@ -27,7 +27,8 @@
           "@fontsource/be-vietnam-pro/600.css",
           "@fontsource/be-vietnam-pro/700.css",
           "apps/lms/src/tailwind.css",
-          "apps/lms/src/styles.scss"
+          "apps/lms/src/styles.scss",
+          "libs/ui/src/styles/components.scss"
         ]
       },
       "configurations": {

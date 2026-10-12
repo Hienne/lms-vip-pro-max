@@ -1,0 +1,19 @@
+// Link-looking action: ported from the mockup's `.link-btn` block (components.css). Applied by `uiLinkButton`.
+@layer components {
+  .link-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--spacing-1);
+    min-height: var(--spacing-control-sm);
+    color: var(--color-primary);
+    cursor: pointer;
+    font-size: var(--text-sm);
+    font-weight: var(--font-weight-semibold);
+    text-decoration: none;
+
+    &:hover {
+      color: var(--color-primary);
+      text-decoration: underline;
+    }
+  }
+}

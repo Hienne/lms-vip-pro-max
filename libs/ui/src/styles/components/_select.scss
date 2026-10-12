@@ -1,0 +1,37 @@
+@use 'control';
+
+// Dropdown: ported from the mockup's `.select` (components.css). Applied by `uiSelect`.
+// The mockup's arrow is an inline SVG with a hard-coded colour; here it is drawn with two
+// gradients in `--color-text-muted`, so it follows the theme.
+@layer components {
+  .select {
+    @include control.control;
+
+    padding-right: 36px;
+    appearance: none;
+    background-image:
+      linear-gradient(
+        to bottom left,
+        transparent calc(50% - 1px),
+        var(--color-text-muted) calc(50% - 1px),
+        var(--color-text-muted) calc(50% + 1px),
+        transparent calc(50% + 1px)
+      ),
+      linear-gradient(
+        to bottom right,
+        transparent calc(50% - 1px),
+        var(--color-text-muted) calc(50% - 1px),
+        var(--color-text-muted) calc(50% + 1px),
+        transparent calc(50% + 1px)
+      );
+    background-repeat: no-repeat;
+    background-position:
+      right 16px center,
+      right 10px center;
+    background-size: 6px 6px;
+  }
+
+  .select--sm {
+    @include control.control-sm;
+  }
+}

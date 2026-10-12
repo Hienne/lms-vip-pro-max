@@ -1,0 +1,56 @@
+<app-ds-section
+  section="space"
+  title="Spacing · bo góc · đổ bóng · chuyển động"
+>
+  <div class="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+    <div uiCard padded class="flex flex-col gap-2">
+      <strong>Spacing (bước 4px)</strong>
+      @for (item of steps; track item.step) {
+      <div class="step">
+        <code class="text-xs">--spacing-{{ item.step }}</code>
+        <span [class]="'h-2 rounded-sm bg-primary ' + item.bar"></span>
+      </div>
+      }
+    </div>
+
+    <div uiCard padded class="flex flex-col gap-2">
+      <strong>Bo góc &amp; bóng</strong>
+      <div class="flex flex-wrap items-center gap-2">
+        @for (radius of radii; track radius.name) {
+        <div [class]="'swatch ' + radius.classes">{{ radius.name }}</div>
+        }
+      </div>
+      <div class="mt-4 flex flex-wrap items-center gap-2">
+        @for (shadow of shadows; track shadow.name) {
+        <div [class]="'shadow-sample ' + shadow.classes">
+          shadow-{{ shadow.name }}
+        </div>
+        }
+      </div>
+      <p class="text-xs text-text-muted">
+        Flat: ưu tiên viền 1px; bóng chỉ cho lớp nổi (menu, modal, drawer).
+      </p>
+    </div>
+
+    <div uiCard padded class="flex flex-col gap-2">
+      <strong>Chuyển động</strong>
+      <p class="text-sm text-text-secondary">
+        fast 120ms (hover) · base 200ms (xuất hiện: slide-up 8px + fade) · slow
+        320ms (phần thưởng: scale nhẹ). Tôn trọng prefers-reduced-motion.
+      </p>
+      <div class="flex flex-wrap items-center gap-3" data-motion>
+        @for (run of [store.replay$()]; track run) {
+        <div uiCard class="animate-enter px-4 py-2">Phần tử thường</div>
+        <div uiCard variant="reward" class="animate-reward-pop px-4 py-2">
+          <strong class="text-accent-ink">+50</strong> điểm
+        </div>
+        }
+      </div>
+      <div>
+        <button type="button" class="replay" (click)="store.replayMotion()">
+          Phát lại
+        </button>
+      </div>
+    </div>
+  </div>
+</app-ds-section>

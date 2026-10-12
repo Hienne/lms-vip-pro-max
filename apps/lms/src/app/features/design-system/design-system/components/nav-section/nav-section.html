@@ -1,0 +1,20 @@
+<app-ds-section section="nav" title="Điều hướng">
+  <app-ds-demo label="Breadcrumb" [needs]="['breadcrumb']"></app-ds-demo>
+  <app-ds-demo label="Tabs (← → để chuyển)" [needs]="['tabs']"></app-ds-demo>
+  <app-ds-demo label="Segmented" [needs]="['segmented']">
+    <div>
+      <ui-segmented
+        label="Kỳ"
+        [options]="periods"
+        [value]="store.period$()"
+        (valueChange)="store.setPeriod($event)"
+      />
+    </div>
+  </app-ds-demo>
+  <app-ds-demo label="Stepper (wizard)" [needs]="['stepper']"></app-ds-demo>
+  <app-ds-demo label="Tree" [needs]="['tree']"></app-ds-demo>
+  <app-ds-demo
+    label="Sắp xếp: kéo thả + nút ↑↓ cho bàn phím"
+    [needs]="['feature-misc','icon-button']"
+  ></app-ds-demo>
+</app-ds-section>

@@ -1,0 +1,34 @@
+// Skeleton: ported from the mockup's `.skeleton` block (components.css). Applied by `uiSkeleton`.
+@layer components {
+  .skeleton {
+    border-radius: var(--radius-sm);
+    background: linear-gradient(
+      90deg,
+      var(--color-surface-2) 0,
+      var(--color-surface-sunken) 40%,
+      var(--color-surface-2) 80%
+    );
+    background-size: 800px 100%;
+    animation: var(--animate-shimmer);
+
+    // A shimmer is motion: under reduced motion the placeholder is simply still.
+    @media (prefers-reduced-motion: reduce) {
+      animation: none;
+    }
+  }
+
+  .skeleton--text {
+    height: 12px;
+    margin: 6px 0;
+  }
+
+  .skeleton--title {
+    width: 40%;
+    height: 22px;
+  }
+
+  .skeleton--block {
+    height: 120px;
+    border-radius: var(--radius-lg);
+  }
+}

@@ -7,6 +7,20 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="color-scheme" content="light dark" />
     <link rel="icon" type="image/x-icon" href="favicon.ico" />
+    <!--
+      Applies the stored theme choice before the app boots, so the page never flashes the wrong
+      theme. ThemeStore (core/theme) owns the preference afterwards. Absence of a stored choice
+      means "system": the tokens' prefers-color-scheme rules handle it. Key: lms.theme.
+      If a strict Content-Security-Policy is introduced, add this script's hash to script-src.
+    -->
+    <script>
+      try {
+        var theme = localStorage.getItem('lms.theme');
+        if (theme === 'light' || theme === 'dark') {
+          document.documentElement.setAttribute('data-theme', theme);
+        }
+      } catch (e) {}
+    </script>
   </head>
   <body>
     <app-root></app-root>

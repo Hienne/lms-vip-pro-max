@@ -1,0 +1,46 @@
+<app-ds-section
+  section="principles"
+  title="Nguyên tắc &amp; những gì đã sửa từ v1"
+>
+  <ul class="grid list-none grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+    @for (principle of principles; track principle.title) {
+    <li uiCard padded class="flex flex-col gap-2">
+      <span
+        class="grid h-touch w-touch place-items-center rounded-md bg-primary-subtle text-primary"
+      >
+        <ui-icon [name]="principle.icon" />
+      </span>
+      <strong>{{ principle.title }}</strong>
+      <p class="text-sm text-text-secondary">{{ principle.description }}</p>
+    </li>
+    }
+  </ul>
+
+  <section uiCard aria-labelledby="change-log-heading">
+    <div uiCardHeader>
+      <h3 id="change-log-heading">
+        Nhật ký thay đổi v1 → v2 (theo nhận xét review)
+      </h3>
+    </div>
+    <div uiTableWrap>
+      <table uiTable responsive>
+        <thead>
+          <tr>
+            <th scope="col">Vấn đề</th>
+            <th scope="col">v1</th>
+            <th scope="col">v2</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (row of changeLog; track row.issue) {
+          <tr>
+            <th scope="row">{{ row.issue }}</th>
+            <td data-label="v1">{{ row.v1 }}</td>
+            <td data-label="v2">{{ row.v2 }}</td>
+          </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  </section>
+</app-ds-section>

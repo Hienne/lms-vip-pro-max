@@ -1,0 +1,16 @@
+// Checkbox: ported from the mockup's `.check input` (components.css). Applied by `uiCheckbox`;
+// the wrapping label's layout is utilities in the template.
+@layer components {
+  .check {
+    flex: none;
+    width: 18px;
+    height: 18px;
+    margin-top: 2px;
+    accent-color: var(--color-primary);
+    cursor: pointer;
+
+    &:disabled {
+      cursor: not-allowed;
+    }
+  }
+}

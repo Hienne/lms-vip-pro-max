@@ -1,0 +1,12 @@
+// Watermark flower in the corner, as in the mockup's .hero__mai (6% opacity).
+.hero__mai {
+  position: absolute;
+  top: -70px;
+  right: -50px;
+  opacity: 0.06;
+  pointer-events: none;
+}
+
+.hero__main {
+  max-width: 640px;
+}

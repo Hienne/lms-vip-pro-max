@@ -1,0 +1,46 @@
+// Shared look of the text controls (`.input`, `.select`, `.textarea`): the mockup's
+// `.input, .select, .textarea` rules (components.css). Not emitted on its own.
+@mixin control {
+  width: 100%;
+  max-width: 100%;
+  min-height: var(--spacing-control);
+  padding: 0 var(--spacing-3);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-sm);
+  background-color: var(--color-surface);
+  color: var(--color-text);
+  transition:
+    border-color var(--transition-duration-fast),
+    box-shadow var(--transition-duration-fast);
+
+  &:hover {
+    border-color: var(--color-text-muted);
+  }
+
+  &:focus {
+    border-color: var(--color-primary);
+    outline: none;
+    box-shadow: 0 0 0 3px
+      color-mix(in srgb, var(--color-primary) 22%, transparent);
+  }
+
+  // Invalid is driven by the attribute, so a screen only sets `aria-invalid`.
+  &[aria-invalid='true'] {
+    border-color: var(--color-danger);
+  }
+
+  &:disabled,
+  &[readonly] {
+    background-color: var(--color-surface-2);
+    color: var(--color-text-muted);
+  }
+
+  &:disabled {
+    cursor: not-allowed;
+  }
+}
+
+@mixin control-sm {
+  min-height: var(--spacing-control-sm);
+  font-size: var(--text-sm);
+}

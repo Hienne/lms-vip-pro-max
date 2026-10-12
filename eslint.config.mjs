@@ -55,6 +55,24 @@ export default [
     },
   },
   {
+    // @lucide/angular is wrapped once, by ui-icon in libs/ui (docs/conventions/ui-library.md → Icons).
+    files: ['apps/**/*.ts', 'libs/contracts/**/*.ts', 'libs/mocks/**/*.ts'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          paths: [
+            {
+              name: '@lucide/angular',
+              message:
+                'Use <ui-icon> from @lms/ui; it is the only wrapper around @lucide/angular.',
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
     files: ['**/*.spec.ts', '**/test-setup.ts'],
     rules: {
       '@nx/enforce-module-boundaries': boundaries(specDepConstraints),

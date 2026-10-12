@@ -1,0 +1,71 @@
+<app-ds-section section="buttons" title="Nút bấm">
+  <app-ds-demo [needs]="['button']">
+    <div uiTableWrap>
+      <table uiTable>
+        <caption class="sr-only">
+          Các biến thể nút theo trạng thái
+        </caption>
+        <thead>
+          <tr>
+            <th scope="col">Biến thể</th>
+            <th scope="col">Mặc định</th>
+            <th scope="col">Nhỏ</th>
+            <th scope="col">Có icon</th>
+            <th scope="col">Vô hiệu</th>
+            <th scope="col">Đang xử lý</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (row of rows; track row.variant) {
+          <tr>
+            <th scope="row">
+              <code>{{ row.variant }}</code>
+            </th>
+            <td>
+              <button uiButton [variant]="row.variant">{{ row.label }}</button>
+            </td>
+            <td>
+              <button uiButton size="sm" [variant]="row.variant">
+                {{ row.label }}
+              </button>
+            </td>
+            <td>
+              <button uiButton [variant]="row.variant">
+                <ui-icon [name]="row.icon" />{{ row.label }}
+              </button>
+            </td>
+            <td>
+              <button uiButton disabled [variant]="row.variant">
+                {{ row.label }}
+              </button>
+            </td>
+            <td>
+              <button uiButton busy [variant]="row.variant">
+                {{ row.label }}
+              </button>
+            </td>
+          </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  </app-ds-demo>
+
+  <app-ds-demo
+    label="Nút icon (luôn có aria-label) · vùng chạm ≥ 44px"
+    [needs]="['icon-button', 'link-button']"
+  >
+    <div class="flex flex-wrap items-center gap-3">
+      <button uiIconButton label="Sửa"><ui-icon name="pen-line" /></button>
+      <button uiIconButton label="Xóa" variant="danger">
+        <ui-icon name="trash-2" />
+      </button>
+      <button uiIconButton label="Thông báo" dot>
+        <ui-icon name="bell" />
+      </button>
+      <button uiLinkButton>
+        Liên kết hành động <ui-icon name="arrow-right" size="sm" />
+      </button>
+    </div>
+  </app-ds-demo>
+</app-ds-section>

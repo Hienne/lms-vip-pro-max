@@ -25,8 +25,14 @@ export const AppConfigSchema = z.object({
     .refine((url) => !url.endsWith('/'), {
       error: 'apiBaseUrl must not end with "/"',
     }),
-  /** Shows the dev toolbar that drives Prism's `Prefer` header. Development only. */
+  /** Shows the dev toolbar that drives Prism's `Prefer` header. Development only: Prism exists only there. */
   mockScenarios: z.boolean(),
+  /**
+   * Internal tooling for the team: the migration progress board and owner/pull request details on
+   * the design-system placeholders. True in development and staging, false in production, so
+   * internal names and pull request links never reach end users.
+   */
+  devTools: z.boolean(),
 });
 
 export type AppConfig = z.infer<typeof AppConfigSchema>;
@@ -34,15 +40,20 @@ export type AppConfigInput = z.input<typeof AppConfigSchema>;
 
 export const APP_CONFIG = new InjectionToken<AppConfig>('APP_CONFIG');
 
-/** Parses the environment once and provides it as `APP_CONFIG`. Throws on invalid input. */
-export function provideAppConfig(input: AppConfigInput): EnvironmentProviders {
+/** Parses an environment file. Throws on invalid input, naming the offending field. */
+export function parseAppConfig(input: AppConfigInput): AppConfig {
   const result = AppConfigSchema.safeParse(input);
   if (!result.success) {
     throw new Error(
       `Invalid environment configuration:\n${z.prettifyError(result.error)}`,
     );
   }
+  return Object.freeze(result.data);
+}
+
+/** Parses the environment once and provides it as `APP_CONFIG`. Throws on invalid input. */
+export function provideAppConfig(input: AppConfigInput): EnvironmentProviders {
   return makeEnvironmentProviders([
-    { provide: APP_CONFIG, useValue: Object.freeze(result.data) },
+    { provide: APP_CONFIG, useValue: parseAppConfig(input) },
   ]);
 }

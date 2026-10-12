@@ -1,0 +1,47 @@
+<a class="skip-link" [routerLink]="[]" [fragment]="mainId" (click)="focusMain()"
+  >Bỏ qua tới nội dung chính</a
+>
+
+<div class="layout">
+  <nav class="toc" aria-label="Mục lục Design System">
+    <div class="mb-4 flex items-center gap-2">
+      <ui-mai [size]="28" />
+      <strong>Design System v2</strong>
+    </div>
+    <ol class="flex list-none flex-row flex-wrap gap-1 lg:flex-col">
+      @for (item of tocItems; track item.id) {
+      <li>
+        <a
+          class="toc__link"
+          [routerLink]="[]"
+          [fragment]="item.domId"
+          (click)="focusHeading(item.id)"
+        >
+          <span class="text-text-muted tabular-nums">{{ item.number }}</span>
+          {{ item.tocLabel }}
+        </a>
+      </li>
+      }
+    </ol>
+    <div class="mt-6">
+      <app-theme-switch />
+    </div>
+  </nav>
+
+  <main class="flex flex-col gap-12 outline-none" [id]="mainId" tabindex="-1">
+    <app-hero />
+    <app-principles-section />
+    <app-color-section />
+    <app-type-section />
+    <app-space-section />
+    <app-icons-section />
+    <app-buttons-section />
+    <app-forms-section />
+    <app-status-section />
+    <app-data-section />
+    <app-nav-section />
+    <app-feedback-section />
+    <app-learning-section />
+    <app-charts-section />
+  </main>
+</div>
