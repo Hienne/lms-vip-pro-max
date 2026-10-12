@@ -1,5 +1,15 @@
 import { Component } from '@angular/core';
-import { Alert, AlertAction, Button, Skeleton, Spinner, Tip } from '@lms/ui';
+import {
+  Alert,
+  AlertAction,
+  Button,
+  Card,
+  Empty,
+  ErrorState,
+  Skeleton,
+  Spinner,
+  Tip,
+} from '@lms/ui';
 import { DsDemo } from '../demo/demo';
 import { DsSection } from '../section/section';
 
@@ -11,6 +21,9 @@ import { DsSection } from '../section/section';
     Alert,
     AlertAction,
     Button,
+    Card,
+    Empty,
+    ErrorState,
     Skeleton,
     Spinner,
     Tip,

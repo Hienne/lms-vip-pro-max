@@ -62,6 +62,12 @@ export {
 export { Tip } from './lib/molecules/tip/tip';
 
 // Empty, ErrorState (07)
+export {
+  Empty,
+  type EmptyHeadingLevel,
+  type EmptyTone,
+} from './lib/molecules/empty/empty';
+export { ErrorState } from './lib/molecules/error-state/error-state';
 
 // Breadcrumb, PageHeader (08)
 export {
