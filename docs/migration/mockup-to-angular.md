@@ -81,6 +81,7 @@ paths (without `#`) so the README's route table stays valid.
 | `.check`, `.switch`                                                       | atom      | `input[type=checkbox][uiCheckbox]`, `input[type=checkbox][uiSwitch]`                       |
 | `UI.Badge`, `.badge`, `.chip`                                             | atom      | `[uiBadge]` (`tone`), `[uiChip]`                                                           |
 | `UI.Card`, `.card`                                                        | atom      | `[uiCard]` + `[uiCardHeader]`, `[uiCardBody]`                                              |
+| `.list`, `.list__item`, `.list__icon`                                     | atom      | `ul[uiList]` + `[uiListItem]`, `[uiListIcon]`                                              |
 | `UI.Skeleton`, `.skeleton`, `.spinner`                                    | atom      | `[uiSkeleton]`, `[uiSpinner]`                                                              |
 | `.table`                                                                  | atom      | `table[uiTable]`                                                                           |
 | `icon()`                                                                  | atom      | `ui-icon`                                                                                  |
