@@ -4,7 +4,7 @@
 
 **Blocked by:** None (can start immediately)
 
-**Status:** ready-for-agent
+**Status:** done
 
 - [ ] Layout and copy match the mockup's empty and error demos
 - [ ] Retry button emits `retry`; heading level configurable

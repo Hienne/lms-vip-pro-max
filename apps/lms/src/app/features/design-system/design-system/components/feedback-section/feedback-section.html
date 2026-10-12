@@ -1,5 +1,30 @@
 <app-ds-section section="feedback" title="Phản hồi hệ thống">
-  <app-ds-demo label="Alert" [needs]="['alert-tip']"></app-ds-demo>
+  <app-ds-demo label="Alert" [needs]="['alert-tip']">
+    <div class="grid grid-cols-1 gap-3 md:grid-cols-2">
+      <ui-alert [announce]="false"
+        >Thông tin: tiến độ được lưu tự động.</ui-alert
+      >
+      <ui-alert tone="success" [announce]="false"
+        >Đã xuất bản khóa học.</ui-alert
+      >
+      <ui-alert tone="warning" [announce]="false"
+        >Còn 3 câu chưa trả lời.</ui-alert
+      >
+      <ui-alert tone="danger" [announce]="false"
+        >Không tải được tài liệu.</ui-alert
+      >
+      <ui-alert
+        tone="warning"
+        heading="Khóa học đã quá hạn 2 ngày."
+        [announce]="false"
+        >Hoàn thành sớm để cập nhật trạng thái.
+        <a uiAlertAction uiButton size="sm" href="/design-system#ds-feedback"
+          >Xem khóa học</a
+        ></ui-alert
+      >
+      <ui-tip>Lưu nháp thường xuyên để không mất dữ liệu đã nhập.</ui-tip>
+    </div>
+  </app-ds-demo>
   <app-ds-demo label="Toast (bấm để thử)" [needs]="['toast']"></app-ds-demo>
   <app-ds-demo label="Hộp xác nhận (bấm để thử)" [needs]="['modal']">
     <app-confirm-demo />
@@ -7,11 +32,43 @@
   <app-ds-demo label="Drawer (bấm để thử)" [needs]="['drawer']">
     <app-drawer-demo />
   </app-ds-demo>
-  <app-ds-demo label="Menu (bấm để thử)" [needs]="['menu']"></app-ds-demo>
+  <app-ds-demo label="Menu (bấm để thử)" [needs]="['menu']">
+    <app-menu-demo />
+  </app-ds-demo>
   <app-ds-demo
     label="Trạng thái rỗng, lỗi, không đủ quyền"
     [needs]="['empty-error-state']"
-  ></app-ds-demo>
+  >
+    <div class="grid grid-cols-1 gap-4 lg:grid-cols-3">
+      <div uiCard>
+        <ui-empty
+          icon="clipboard-check"
+          title="Chưa có bài thi nào"
+          description="Hoàn thành khóa học đầu tiên để mở bài thi."
+        >
+          <button uiButton variant="primary" size="sm">
+            Khám phá khóa học
+          </button>
+        </ui-empty>
+      </div>
+      <div uiCard>
+        <ui-error-state
+          icon="wifi-off"
+          tone="warning"
+          title="Mất kết nối"
+          message="Dữ liệu đang nhập được giữ nguyên."
+        />
+      </div>
+      <div uiCard>
+        <ui-error-state
+          icon="lock"
+          title="Không đủ quyền (403)"
+          message="Liên hệ quản trị viên đơn vị."
+          [retryable]="false"
+        />
+      </div>
+    </div>
+  </app-ds-demo>
   <app-ds-demo
     label="Trạng thái đang tải: skeleton giữ chỗ bố cục (không giật layout)"
     [needs]="['skeleton-spinner']"

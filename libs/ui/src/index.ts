@@ -50,16 +50,41 @@ export { TableWrap } from './lib/atoms/table/table-wrap.directive';
 // keep the marker comment, and do not touch the other blocks.
 
 // Tooltip (04)
+export { Tooltip } from './lib/atoms/tooltip/tooltip.directive';
 
 // Field, ErrorSummary (05)
 
 // Alert, Tip (06)
+export {
+  Alert,
+  AlertAction,
+  type AlertTone,
+} from './lib/molecules/alert/alert';
+export { Tip } from './lib/molecules/tip/tip';
 
 // Empty, ErrorState (07)
+export {
+  Empty,
+  type EmptyHeadingLevel,
+  type EmptyTone,
+} from './lib/molecules/empty/empty';
+export { ErrorState } from './lib/molecules/error-state/error-state';
 
 // Breadcrumb, PageHeader (08)
+export {
+  Breadcrumb,
+  type BreadcrumbItem,
+} from './lib/molecules/breadcrumb/breadcrumb';
+export { PageHeader } from './lib/organisms/page-header/page-header';
 
 // Menu (09)
+export {
+  Menu,
+  type MenuEntry,
+  type MenuItemEntry,
+  type MenuLabelEntry,
+  type MenuSeparatorEntry,
+} from './lib/organisms/menu/menu';
 
 // ConfirmDialog, confirm, Drawer (10)
 export {

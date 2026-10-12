@@ -135,9 +135,10 @@ with `/api/` and never contain a host.
   `prism mock` on port 4010 with static examples.
 - `GET /api/health` is a registered endpoint (`healthEndpoints`) like any other:
   Prism refuses to start on a document without operations.
-- Examples come from `@lms/mocks`: `endpointExamples[operationId]` (`default`
-  plus optional `roles`) and `errorExamples[status]` (generic `ApiError` bodies
-  using the mockup's messages). `build-spec` fails when an endpoint has no
+- Examples come from `@lms/mocks`: `endpointExamples[operationId]` (`default`,
+  optional `roles`, optional `errors` with endpoint-specific `ApiError` bodies)
+  and `errorExamples[status]` (generic bodies used when an endpoint has no
+  `errors` entry; both use the mockup's messages). `build-spec` fails when an endpoint has no
   example, and `libs/mocks/src/fixtures.spec.ts` parses all of them.
 - Every endpoint has a `default` success example plus one example per declared
   error status. Role-dependent endpoints add examples named after the role
@@ -152,6 +153,23 @@ with `/api/` and never contain a host.
   also the correct behaviour against the real backend.
 - Prism validates requests against the spec and answers 422 for a bad payload:
   treat that as a bug in the client, not in the mock.
+
+## Auth contract decisions
+
+- Display labels stay out of the contract: the mockup's `roleLabel` (on
+  `profile` and `demoAccounts`) is not returned; the app derives it from `role`
+  (and `adminScope` for the "unit admin" wording of demo accounts, which
+  therefore carry `adminScope`).
+- `profile` keeps server-evaluated values the app must not recompute: `perms`
+  (`PermissionSchema` enum), `unitName`, `groupName` and `scopeName`
+  (unit name, or the server's "Toàn hệ thống" for system-wide roles).
+- `logout` answers `true` (200), like the mockup; `login` and `loginDemo`
+  answer `{ id, role }`. The session token is a server concern (cookie), not
+  part of the payload.
+- `loginDemo` is `POST /api/auth/demo-accounts/{userId}/login`.
+- One 423 example per endpoint (the locked wording). The mockup's separate
+  "suspended" wording reaches the UI through the server's `message`, which
+  `toAppError` already preserves.
 
 ## Done criteria for a contract change
 
