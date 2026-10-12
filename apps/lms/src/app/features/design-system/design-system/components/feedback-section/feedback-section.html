@@ -1,5 +1,30 @@
 <app-ds-section section="feedback" title="Phản hồi hệ thống">
-  <app-ds-demo label="Alert" [needs]="['alert-tip']"></app-ds-demo>
+  <app-ds-demo label="Alert" [needs]="['alert-tip']">
+    <div class="grid grid-cols-1 gap-3 md:grid-cols-2">
+      <ui-alert [announce]="false"
+        >Thông tin: tiến độ được lưu tự động.</ui-alert
+      >
+      <ui-alert tone="success" [announce]="false"
+        >Đã xuất bản khóa học.</ui-alert
+      >
+      <ui-alert tone="warning" [announce]="false"
+        >Còn 3 câu chưa trả lời.</ui-alert
+      >
+      <ui-alert tone="danger" [announce]="false"
+        >Không tải được tài liệu.</ui-alert
+      >
+      <ui-alert
+        tone="warning"
+        heading="Khóa học đã quá hạn 2 ngày."
+        [announce]="false"
+        >Hoàn thành sớm để cập nhật trạng thái.
+        <a uiAlertAction uiButton size="sm" href="/design-system#ds-feedback"
+          >Xem khóa học</a
+        ></ui-alert
+      >
+      <ui-tip>Lưu nháp thường xuyên để không mất dữ liệu đã nhập.</ui-tip>
+    </div>
+  </app-ds-demo>
   <app-ds-demo label="Toast (bấm để thử)" [needs]="['toast']"></app-ds-demo>
   <app-ds-demo
     label="Hộp xác nhận (bấm để thử)"
