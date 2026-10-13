@@ -1,0 +1,17 @@
+# Docker build context for the frontend artifact image (see Dockerfile).
+.git
+.github
+.vscode
+.idea
+.angular
+.nx
+node_modules
+dist
+tmp
+out-tsc
+coverage
+lms-mockup
+.env
+.env.*
+*.pem
+*.key

@@ -132,8 +132,18 @@ project run the Nx target directly (`npx nx test ui`).
 
 - **check** (every PR and push to `main`): `npm ci` → `nx-set-shas` →
   restore `.nx/cache` → `npm run format:check` → `npm run ci:check`.
-- **build** (push to `main`, after check): `npm run ci:build`, uploads the
-  production and staging bundles as artifacts. Deployment is not configured yet.
+- **image** (after check): `docker build` of the root `Dockerfile`, which runs
+  the production build and stamps `version.txt` with the commit. On push to
+  `main` the image is pushed to `ghcr.io/hienne/lms-vip-pro-max` and its
+  digest handed to deploy; PRs only build it.
+- **deploy** (push to `main`): SSH to the Ubuntu server with the
+  `UBUNTU_FE_DEPLOY_SSH_KEY` secret. The key's forced command runs the
+  root-owned FE deploy script, which copies the image's `/artifact` into the
+  Nginx web root, verifies it and rolls back on failure. The job then checks
+  that the public `/version.txt` equals the commit.
+
+PR runs are cancelled by newer pushes; `main` runs never are, so a deploy is
+not interrupted mid-copy.
 
 A new check belongs in a `package.json` script first, then in the workflow, so
 `npm run check` and CI never disagree.
