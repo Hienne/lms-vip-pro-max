@@ -10,12 +10,15 @@ permissions:
   contents: read
   actions: read # nx-set-shas reads previous workflow runs
 
+# Only PR runs are cancelled: cancelling a main run mid-deploy would leave the
+# live frontend half-copied.
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 env:
   NX_NO_CLOUD: true
+  IMAGE: ghcr.io/hienne/lms-vip-pro-max
 
 jobs:
   check:
@@ -26,6 +29,7 @@ jobs:
       - uses: actions/checkout@v7
         with:
           fetch-depth: 0 # nx affected compares against the base commit
+          persist-credentials: false
 
       - uses: actions/setup-node@v7
         with:
@@ -46,31 +50,82 @@ jobs:
       - run: npm run format:check
       - run: npm run ci:check
 
-  build:
-    name: Build artifacts (production + staging)
+  image:
+    name: Build frontend artifact image
     needs: check
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      packages: write
+    outputs:
+      image: ${{ steps.publish.outputs.image }}
     steps:
       - uses: actions/checkout@v7
-
-      - uses: actions/setup-node@v7
         with:
-          node-version-file: .nvmrc
-          cache: npm
+          persist-credentials: false
 
-      - run: npm ci
-      - run: npm run ci:build
+      - name: Build image
+        run: |
+          set -euo pipefail
+          docker build --pull \
+            --build-arg APP_REVISION="$GITHUB_SHA" \
+            --label org.opencontainers.image.source="https://github.com/$GITHUB_REPOSITORY" \
+            --label org.opencontainers.image.revision="$GITHUB_SHA" \
+            -t "$IMAGE:$GITHUB_SHA" .
 
-      - uses: actions/upload-artifact@v7
-        with:
-          name: lms-production-${{ github.sha }}
-          path: dist/apps/lms/browser
-          retention-days: 14
+      # Published by digest so the server deploys exactly the bytes built here.
+      - name: Publish immutable image
+        id: publish
+        if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+        env:
+          REGISTRY_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          trap 'docker logout ghcr.io >/dev/null 2>&1 || true' EXIT
+          printf '%s' "$REGISTRY_TOKEN" | docker login ghcr.io --username "$GITHUB_ACTOR" --password-stdin
+          docker push "$IMAGE:$GITHUB_SHA"
+          digest=$(docker image inspect "$IMAGE:$GITHUB_SHA" --format '{{index .RepoDigests 0}}')
+          [[ "$digest" =~ ^${IMAGE}@sha256:[a-f0-9]{64}$ ]]
+          printf 'image=%s\n' "$digest" >> "$GITHUB_OUTPUT"
 
-      - uses: actions/upload-artifact@v7
-        with:
-          name: lms-staging-${{ github.sha }}
-          path: dist/apps/lms-staging/browser
-          retention-days: 14
+  deploy:
+    name: Deploy frontend to Ubuntu
+    needs: image
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      packages: read
+    steps:
+      # The key's forced command on the server ignores the remote command; the
+      # deploy script reads exactly three stdin lines: image, actor, token.
+      - name: Deploy via restricted SSH
+        env:
+          SSH_KEY: ${{ secrets.UBUNTU_FE_DEPLOY_SSH_KEY }}
+          DEPLOY_IMAGE: ${{ needs.image.outputs.image }}
+          REGISTRY_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          test -n "$SSH_KEY"
+          test -n "$DEPLOY_IMAGE"
+          key=$(mktemp)
+          hosts=$(mktemp)
+          trap 'rm -f "$key" "$hosts"' EXIT
+          chmod 600 "$key" "$hosts"
+          printf '%s\n' "$SSH_KEY" > "$key"
+          printf '%s\n' '[103.121.90.119]:26266 ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIJA8LCy2wLBVZ6P1ROY45TDec9V29JO8JKa2z3D+HIGU' > "$hosts"
+          printf '%s\n%s\n%s\n' "$DEPLOY_IMAGE" "$GITHUB_ACTOR" "$REGISTRY_TOKEN" |
+            ssh -T -i "$key" -p 26266 \
+              -o BatchMode=yes -o IdentitiesOnly=yes \
+              -o StrictHostKeyChecking=yes -o UserKnownHostsFile="$hosts" \
+              -o ConnectTimeout=20 dev_user@103.121.90.119 deploy-fe
+
+      - name: Verify public frontend revision
+        run: |
+          set -euo pipefail
+          revision=$(curl --fail --silent --show-error --retry 3 --retry-delay 3 \
+            "http://103.121.90.119/version.txt?commit=$GITHUB_SHA")
+          test "$revision" = "$GITHUB_SHA"
+          curl --fail --silent --show-error --output /dev/null http://103.121.90.119/
