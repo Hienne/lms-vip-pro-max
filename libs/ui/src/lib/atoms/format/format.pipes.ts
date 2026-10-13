@@ -9,12 +9,19 @@ const LOCALE = 'vi-VN';
 const MINUTE_S = 60;
 const HOUR_S = 3600;
 const DAY_S = 86400;
-const BYTES_PER_MB = 1048576;
+const BYTES_PER_KB = 1024;
+const BYTES_PER_MB = BYTES_PER_KB * 1024;
+const RELATIVE_LIMIT_DAYS = 30;
+const DATE_OPTIONS = {
+  day: '2-digit',
+  month: '2-digit',
+  year: 'numeric',
+} as const;
 
 const numberFormat = new Intl.NumberFormat(LOCALE);
 
-function toTime(value: DateInput): number {
-  return new Date(value as Date | string | number).getTime();
+function toTime(value: NonNullable<DateInput>): number {
+  return new Date(value).getTime();
 }
 
 function formatDate(value: DateInput): string {
@@ -62,9 +69,7 @@ export class FmtDatetimePipe implements PipeTransform {
   transform(value: DateInput): string {
     return value
       ? new Date(value).toLocaleString(LOCALE, {
-          day: '2-digit',
-          month: '2-digit',
-          year: 'numeric',
+          ...DATE_OPTIONS,
           hour: '2-digit',
           minute: '2-digit',
         })
@@ -87,9 +92,9 @@ export class FmtTimePipe implements PipeTransform {
 export class FmtMinutesPipe implements PipeTransform {
   transform(value: number | null | undefined): string {
     const min = Math.round(value || 0);
-    if (min < 60) return `${min} phút`;
-    const h = Math.floor(min / 60);
-    const m = min % 60;
+    if (min < MINUTE_S) return `${min} phút`;
+    const h = Math.floor(min / MINUTE_S);
+    const m = min % MINUTE_S;
     return m ? `${h}g ${m}p` : `${h} giờ`;
   }
 }
@@ -100,7 +105,7 @@ export class FmtBytesPipe implements PipeTransform {
     const b = bytes || 0;
     return b > BYTES_PER_MB
       ? `${(b / BYTES_PER_MB).toFixed(1)} MB`
-      : `${Math.max(1, Math.round(b / 1024))} KB`;
+      : `${Math.max(1, Math.round(b / BYTES_PER_KB))} KB`;
   }
 }
 
@@ -115,7 +120,8 @@ export class FmtRelativePipe implements PipeTransform {
     if (diff < MINUTE_S) return 'vừa xong';
     if (diff < HOUR_S) return `${Math.floor(diff / MINUTE_S)} phút trước`;
     if (diff < DAY_S) return `${Math.floor(diff / HOUR_S)} giờ trước`;
-    if (diff < DAY_S * 30) return `${Math.floor(diff / DAY_S)} ngày trước`;
+    if (diff < DAY_S * RELATIVE_LIMIT_DAYS)
+      return `${Math.floor(diff / DAY_S)} ngày trước`;
     return formatDate(value);
   }
 }

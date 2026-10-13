@@ -121,6 +121,7 @@ describe('fmtMinutes', () => {
 describe('fmtBytes', () => {
   it.each([
     [0, '1 KB'],
+    [null, '1 KB'],
     [100, '1 KB'],
     [1536, '2 KB'],
     [1048576, '1024 KB'],

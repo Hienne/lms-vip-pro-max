@@ -6,9 +6,9 @@
 
 **Status:** ready-for-agent
 
-- [ ] Output matches the mockup for every helper, including `—` for empty values
-- [ ] `fmtRelative` and `fmtDaysLeft` read `NOW`; no direct `Date.now()` in pipes
-- [ ] Specs cover each pipe at fixed inputs, thresholds (`< 60` minutes, `> 1 MB`, 30 days) and empty values
-- [ ] Exported from `@lms/ui`; documented in `ui-library.md`
+- [x] Output matches the mockup for every helper, including `—` for empty values
+- [x] `fmtRelative` and `fmtDaysLeft` read `NOW`; no direct `Date.now()` in pipes
+- [x] Specs cover each pipe at fixed inputs, thresholds (`< 60` minutes, `> 1 MB`, 30 days) and empty values
+- [x] Exported from `@lms/ui`; documented in `ui-library.md`
 - [ ] Checked in the browser side by side with the mockup at 375/768/1280 px, light and dark, keyboard only
-- [ ] `npm run check` green; own pull request
+- [x] `npm run check` green; own pull request
