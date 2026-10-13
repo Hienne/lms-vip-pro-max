@@ -9,6 +9,7 @@ import { createAppRoutes } from './app.routes';
 import { parseAppConfig, provideAppConfig } from './core/config/app-config';
 import { provideAppErrorHandler } from './core/errors/app-error-handler';
 import { apiBaseUrlInterceptor } from './core/http/api-base-url.interceptor';
+import { provideSession } from './core/session/session.provider';
 
 const config = parseAppConfig(environment);
 
@@ -17,6 +18,7 @@ export const appConfig: ApplicationConfig = {
     provideBrowserGlobalErrorListeners(),
     provideAppErrorHandler(),
     provideAppConfig(config),
+    provideSession(),
     provideRouter(
       createAppRoutes(config),
       withInMemoryScrolling({ anchorScrolling: 'enabled' }),

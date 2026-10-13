@@ -1,7 +1,2 @@
-import { InjectionToken } from '@angular/core';
-
-/** The clock behind date phrasing ("Còn 3 ngày"): milliseconds since the epoch. Specs replace it. */
-export const NOW = new InjectionToken<() => number>('NOW', {
-  providedIn: 'root',
-  factory: () => () => Date.now(),
-});
+/** The clock behind date phrasing ("Còn 3 ngày"). One token, shared with the `fmt*` pipes. */
+export { NOW } from '@lms/ui';
