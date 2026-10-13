@@ -683,7 +683,14 @@ export const MIGRATION_ENTRIES = [
       'NOW',
     ],
     checklist: ['F.7'],
-    status: 'todo',
+    status: 'done',
+    owner: 'Hienne',
+    verify: {
+      lightDark: 'done',
+      widths: 'done',
+      keyboard: 'n/a',
+      errorStates: 'n/a',
+    },
   },
   {
     id: 'question-grid',
