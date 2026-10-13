@@ -1,6 +1,7 @@
-// Progress ring: ported from the mockup's `.ring` block (components.css), renamed `progress-ring`
-// because `.ring` is also a Tailwind utility (a box-shadow ring) that would draw a border. Applied by `ui-ring`;
-// the label scales with the `--ring-size` custom property the component binds.
+// Progress ring: ported from the mockup's `.ring` block (components.css) as `progress-ring`.
+// Applied by `ui-ring`; the label scales with the `--ring-size` custom property the component binds.
+@use 'ui';
+
 @layer components {
   .progress-ring {
     position: relative;
@@ -10,6 +11,10 @@
     svg {
       transform: rotate(-90deg);
     }
+  }
+
+  .progress-ring--complete {
+    @include ui.animate(reward-pop);
   }
 
   .progress-ring__track {
@@ -29,8 +34,12 @@
   }
 
   .progress-ring__value {
+    @include ui.num;
     font-size: calc(var(--ring-size, 96px) * 0.22);
-    font-variant-numeric: tabular-nums;
     font-weight: var(--font-weight-bold);
+  }
+
+  .progress-ring__caption {
+    @include ui.text(xs, muted);
   }
 }

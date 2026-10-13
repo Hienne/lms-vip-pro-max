@@ -1,6 +1,6 @@
 <app-ds-section section="feedback" title="Phản hồi hệ thống">
   <app-ds-demo label="Alert" [needs]="['alert-tip']">
-    <div class="grid grid-cols-1 gap-3 md:grid-cols-2">
+    <div class="grid-2 grid-2--gap-3">
       <ui-alert [announce]="false"
         >Thông tin: tiến độ được lưu tự động.</ui-alert
       >
@@ -26,7 +26,7 @@
     </div>
   </app-ds-demo>
   <app-ds-demo label="Toast (bấm để thử)" [needs]="['toast']">
-    <div class="flex flex-wrap items-center gap-3">
+    <div class="row">
       <button uiButton variant="ghost" (click)="toastSuccess()">
         Toast thành công
       </button>
@@ -38,7 +38,7 @@
         Toast thông tin
       </button>
     </div>
-    <p class="mt-3 text-xs text-text-muted">
+    <p class="feedback-section__note">
       Toast tự tắt sau vài giây (dừng khi rê chuột hoặc focus); toast lỗi ở lại
       đến khi đóng. Mọi toast đều được đọc cho trình đọc màn hình.
     </p>
@@ -56,7 +56,7 @@
     label="Trạng thái rỗng, lỗi, không đủ quyền"
     [needs]="['empty-error-state']"
   >
-    <div class="grid grid-cols-1 gap-4 lg:grid-cols-3">
+    <div class="feedback-section__states">
       <div uiCard>
         <ui-empty
           icon="clipboard-check"
@@ -90,19 +90,20 @@
     label="Trạng thái đang tải: skeleton giữ chỗ bố cục (không giật layout)"
     [needs]="['skeleton-spinner']"
   >
-    <div
-      class="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3"
-      aria-busy="true"
-    >
+    <div class="grid-3" aria-busy="true">
       <div>
-        <div uiSkeleton variant="title" class="mb-2"></div>
+        <div
+          uiSkeleton
+          variant="title"
+          class="feedback-section__skeleton-title"
+        ></div>
         <div uiSkeleton></div>
         <div uiSkeleton class="skeleton-short"></div>
       </div>
       <div uiSkeleton variant="block"></div>
-      <div class="flex flex-wrap items-center gap-3">
+      <div class="row">
         <div uiSpinner></div>
-        <span class="text-sm text-text-muted">Đang tải…</span>
+        <span class="feedback-section__loading">Đang tải…</span>
       </div>
     </div>
   </app-ds-demo>

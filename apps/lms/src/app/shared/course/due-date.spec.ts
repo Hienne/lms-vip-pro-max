@@ -35,7 +35,7 @@ describe('DueDate', () => {
   it('says "Còn n ngày · date" in a muted tone when the deadline is far', () => {
     const { text, el } = render();
     expect(text).toBe('Còn 12 ngày · 22/07/2026');
-    expect(el.classList.contains('text-text-muted')).toBe(true);
+    expect(el.classList.contains('due-date--muted')).toBe(true);
   });
 
   it.each([1, 3])(
@@ -43,14 +43,14 @@ describe('DueDate', () => {
     (days) => {
       const { text, el } = render((h) => h.dueAt.set(inDays(days)));
       expect(text).toBe(`Còn ${days} ngày`);
-      expect(el.classList.contains('text-warning')).toBe(true);
+      expect(el.classList.contains('due-date--warning')).toBe(true);
     },
   );
 
   it('says "Quá hạn n ngày" in the danger tone once past due', () => {
     const { text, el } = render((h) => h.dueAt.set(inDays(-2)));
     expect(text).toBe('Quá hạn 2 ngày');
-    expect(el.classList.contains('text-danger')).toBe(true);
+    expect(el.classList.contains('due-date--danger')).toBe(true);
   });
 
   it('shows only "Hạn date", muted, when the course is done', () => {
@@ -59,7 +59,7 @@ describe('DueDate', () => {
       h.done.set(true);
     });
     expect(text).toBe('Hạn 08/07/2026');
-    expect(el.classList.contains('text-text-muted')).toBe(true);
+    expect(el.classList.contains('due-date--muted')).toBe(true);
   });
 
   it('says "Không có hạn" when there is no deadline', () => {

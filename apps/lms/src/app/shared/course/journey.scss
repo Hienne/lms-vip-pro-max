@@ -1,5 +1,7 @@
 // Journey: ported from the mockup's `.journey` block (components.css). A row of stops joined by a
 // line from `md` up, a column of stops below it.
+@use 'ui';
+
 .journey {
   display: grid;
   gap: var(--spacing-3);
@@ -41,6 +43,10 @@
   color: var(--color-on-accent);
 }
 
+.journey__number {
+  @include ui.text(xs);
+}
+
 .journey__name {
   font-size: var(--text-sm);
   font-weight: var(--font-weight-semibold);
@@ -51,7 +57,7 @@
   font-size: var(--text-xs);
 }
 
-@media (min-width: 720px) {
+@include ui.bp(md) {
   .journey {
     grid-auto-columns: 1fr;
     grid-auto-flow: column;

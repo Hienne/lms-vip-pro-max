@@ -1,6 +1,35 @@
+@use 'ui';
+
 .swatches {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: ui.space(3);
+}
+
+.swatch {
+  overflow: hidden;
+  border: 1px solid ui.color(border);
+  border-radius: ui.radius(md);
+  background: ui.color(surface);
+  list-style: none;
+}
+
+.swatch__body {
+  padding: ui.space(3);
+  @include ui.text(xs);
+}
+
+.swatch__name {
+  display: block;
+  @include ui.text(sm);
+}
+
+.swatch__value {
+  color: ui.color(text-muted);
+}
+
+.swatch__purpose {
+  margin-top: ui.space(2);
 }
 
 // Swatch and contrast sample take their colours from a token reference bound as a CSS variable.
@@ -9,10 +38,18 @@
   background: var(--swatch);
 }
 
+.contrast__hint {
+  @include ui.text(xs, muted);
+}
+
+.contrast__table {
+  white-space: nowrap;
+}
+
 .sample {
-  padding: var(--spacing-1) 10px;
-  border-radius: var(--radius-sm);
+  padding: ui.space(1) 10px;
+  border-radius: ui.radius(sm);
   background: var(--sample-bg);
   color: var(--sample-fg);
-  font-weight: var(--font-weight-semibold);
+  font-weight: ui.weight(semibold);
 }

@@ -8,7 +8,7 @@ UI copy is Vietnamese, taken from the mockup. Code, identifiers, comments,
 commits and docs are English.
 
 **Stack:** Angular 22 (standalone, zoneless, signals, Signal Forms) · Nx ·
-zod · `@angular/aria` + `@angular/cdk` · SCSS + Tailwind CSS v4 ·
+zod · `@angular/aria` + `@angular/cdk` · SCSS only (the `ui` Sass module) ·
 `@lucide/angular` · Vitest · Stoplight Prism mock API. Node 24 (`.nvmrc`).
 
 Before using any API, check the installed version in `package.json` and its
@@ -33,7 +33,9 @@ matching doc before starting the work it covers:
 - **Zod is the contract.** Types come from `z.infer`; every HTTP response is
   parsed by its endpoint schema.
 - **Tokens only.** Colours, spacing, radius, type and motion come from the
-  theme; Tailwind has no default palette and no arbitrary values.
+  token maps through the `ui` Sass module (`ui.color(primary)`, `ui.space(3)`):
+  an unknown key fails the build and a colour literal outside the token source
+  fails the guard spec.
 - **Business rules stay on the server.** Scoring, progress %, permissions and
   unit scope in the mockup's `api/*.js` are backend spec; the app renders
   server results and uses roles only for navigation and display.

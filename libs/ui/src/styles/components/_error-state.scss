@@ -1,0 +1,9 @@
+// Actions row of `ui-error-state`: the retry button and the projected secondary action.
+@use 'ui';
+
+@layer components {
+  .error-state__actions {
+    @include ui.row(2);
+    justify-content: center;
+  }
+}

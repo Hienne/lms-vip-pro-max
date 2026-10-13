@@ -1,0 +1,101 @@
+// Base layer: the mockup's base.css rules that differ from the reset (headings, links, `kbd`,
+// :focus-visible, tabular numbers, reduced motion). The mockup's layout and text helpers are not
+// here: the layout ones are `_helpers.scss`, the rest are mixins of the `ui` module.
+// Two deliberate deviations from the mockup: the focus ring does not force `border-radius: 4px`
+// (it follows the element's own radius), and lists keep the reset (no bullets, no indent).
+@use '../ui';
+
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+    scroll-padding-top: calc(#{ui.layout(header)} + #{ui.space(4)});
+  }
+
+  body {
+    min-height: 100vh;
+    background: ui.color(bg);
+    color: ui.color(text);
+    font-family: ui.font(sans);
+    font-size: ui.text-size(md);
+    line-height: ui.leading(normal);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  p,
+  li {
+    max-width: 72ch;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4 {
+    font-weight: ui.weight(bold);
+    line-height: ui.leading(tight);
+    text-wrap: balance;
+  }
+  h1 {
+    font-size: ui.text-size(2xl);
+    letter-spacing: ui.tracking(tight);
+  }
+  h2 {
+    font-size: ui.text-size(xl);
+    font-weight: ui.weight(semibold);
+  }
+  h3 {
+    font-size: ui.text-size(lg);
+    font-weight: ui.weight(semibold);
+  }
+  h4 {
+    font-size: ui.text-size(md);
+    font-weight: ui.weight(semibold);
+  }
+
+  a {
+    color: ui.color(primary);
+    text-decoration-line: underline;
+    text-decoration-thickness: 1px;
+    text-underline-offset: 3px;
+  }
+  a:hover {
+    color: ui.color(primary-hover);
+  }
+
+  hr {
+    border-color: ui.color(border);
+  }
+
+  code,
+  kbd {
+    font-family: ui.font(mono);
+    font-size: 0.875em;
+  }
+  kbd {
+    padding: 1px 6px;
+    border: 1px solid ui.color(border-strong);
+    border-radius: 4px;
+    background: ui.color(surface-2);
+  }
+
+  // Numbers line up in columns and counters.
+  table,
+  output {
+    @include ui.num;
+  }
+
+  // Focus: always visible, never removed.
+  :focus-visible {
+    @include ui.focus-ring;
+  }
+
+  // Reduced motion: no animation or transition at all.
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0ms !important;
+    }
+  }
+}

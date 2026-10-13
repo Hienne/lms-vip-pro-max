@@ -1,0 +1,46 @@
+@use 'ui';
+
+.forms-section__fields {
+  @include ui.stack(3);
+  @include ui.text(sm);
+  font-weight: ui.weight(semibold);
+}
+
+.forms-section__field {
+  @include ui.stack(2);
+}
+
+.forms-section__option {
+  display: inline-flex;
+  align-items: flex-start;
+  gap: ui.space(2);
+  @include ui.text(sm);
+}
+
+.forms-section__toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: ui.space(3);
+  @include ui.text(sm);
+}
+
+.forms-section__drop-title {
+  font-weight: ui.weight(semibold);
+}
+
+.forms-section__drop-link {
+  color: ui.color(primary);
+  text-decoration-line: underline;
+}
+
+.forms-section__drop-hint {
+  @include ui.text(xs);
+}
+
+.forms-section__status {
+  @include ui.text(sm, muted);
+}
+
+.forms-section__select {
+  width: auto;
+}

@@ -3,29 +3,24 @@ import { Button, Card } from '@lms/ui';
 import { DsSection } from '../section/section';
 import { SpaceSectionStore } from './data-access/space-section.store';
 
-/** Spacing steps of the theme; the bar width classes are written out so Tailwind finds them. */
-const SPACING_STEPS = [
-  { step: 1, bar: 'w-1' },
-  { step: 2, bar: 'w-2' },
-  { step: 3, bar: 'w-3' },
-  { step: 4, bar: 'w-4' },
-  { step: 6, bar: 'w-6' },
-  { step: 8, bar: 'w-8' },
-  { step: 12, bar: 'w-12' },
-] as const;
+/**
+ * Samples of the theme's spacing steps, radii and shadows. Each carries a BEM modifier; the
+ * stylesheet generates one modifier per token with `@each`, so a name here must be a token key.
+ */
+const SPACING_STEPS = [1, 2, 3, 4, 6, 8, 12].map((step) => ({
+  step,
+  bar: `step__bar--${step}`,
+}));
 
-const RADII = [
-  { name: 'sm', classes: 'rounded-sm' },
-  { name: 'md', classes: 'rounded-md' },
-  { name: 'lg', classes: 'rounded-lg' },
-  { name: 'xl', classes: 'rounded-xl' },
-] as const;
+const RADII = ['sm', 'md', 'lg', 'xl'].map((name) => ({
+  name,
+  modifier: `radius-sample--${name}`,
+}));
 
-const SHADOWS = [
-  { name: 'sm', classes: 'shadow-sm' },
-  { name: 'md', classes: 'shadow-md' },
-  { name: 'lg', classes: 'shadow-lg' },
-] as const;
+const SHADOWS = ['sm', 'md', 'lg'].map((name) => ({
+  name,
+  modifier: `shadow-sample--${name}`,
+}));
 
 @Component({
   selector: 'app-space-section',

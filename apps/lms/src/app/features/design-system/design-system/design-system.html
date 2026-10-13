@@ -4,11 +4,11 @@
 
 <div class="layout">
   <nav class="toc" aria-label="Mục lục Design System">
-    <div class="mb-4 flex items-center gap-2">
+    <div class="toc__brand">
       <ui-mai [size]="28" />
       <strong>Design System v2</strong>
     </div>
-    <ol class="flex list-none flex-row flex-wrap gap-1 lg:flex-col">
+    <ol class="toc__list">
       @for (item of tocItems; track item.id) {
       <li>
         <a
@@ -17,18 +17,18 @@
           [fragment]="item.domId"
           (click)="focusHeading(item.id)"
         >
-          <span class="text-text-muted tabular-nums">{{ item.number }}</span>
+          <span class="toc__number">{{ item.number }}</span>
           {{ item.tocLabel }}
         </a>
       </li>
       }
     </ol>
-    <div class="mt-6">
+    <div class="toc__theme">
       <app-theme-switch />
     </div>
   </nav>
 
-  <main class="flex flex-col gap-12 outline-none" [id]="mainId" tabindex="-1">
+  <main class="layout__main" [id]="mainId" tabindex="-1">
     <app-hero />
     <app-principles-section />
     <app-color-section />

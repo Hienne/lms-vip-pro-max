@@ -1,0 +1,12 @@
+@use 'ui';
+
+.status-section__points {
+  color: ui.color(accent-ink);
+}
+
+.status-section__link {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: ui.space(3);
+}

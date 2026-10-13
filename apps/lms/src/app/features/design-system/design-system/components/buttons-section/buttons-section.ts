@@ -39,6 +39,7 @@ const ROWS: readonly {
     Tooltip,
   ],
   templateUrl: './buttons-section.html',
+  styleUrl: './buttons-section.scss',
 })
 export class ButtonsSection {
   protected readonly rows = ROWS;

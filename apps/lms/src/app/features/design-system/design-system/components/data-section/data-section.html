@@ -1,6 +1,6 @@
 <app-ds-section section="data" title="Hiển thị dữ liệu">
   <app-ds-demo label="KPI" [needs]="['kpi']">
-    <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+    <div class="data-section__kpis">
       <ui-kpi
         icon="book-open"
         [value]="6"
@@ -25,9 +25,9 @@
     </div>
   </app-ds-demo>
 
-  <div class="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+  <div class="grid-3">
     <app-ds-demo label="Progress bar" [needs]="['progress-ring']">
-      <div class="flex flex-col gap-3">
+      <div class="stack stack--gap-3">
         <ui-progress [value]="68" />
         <ui-progress [value]="100" tone="success" />
         <ui-progress [value]="30" tone="warning" />
@@ -37,23 +37,21 @@
     </app-ds-demo>
 
     <app-ds-demo label="Progress ring" [needs]="['progress-ring']">
-      <div class="flex flex-wrap items-center gap-6">
+      <div class="row row--gap-6">
         <ui-ring [value]="68" />
         <ui-ring [value]="100" />
       </div>
-      <p class="text-xs text-text-muted">
-        Ring đạt 100% nở thành cánh mai vàng.
-      </p>
+      <p class="data-section__note">Ring đạt 100% nở thành cánh mai vàng.</p>
     </app-ds-demo>
 
     <app-ds-demo label="List" [needs]="['icon', 'card', 'list']">
-      <div uiCard class="overflow-hidden">
+      <div uiCard class="data-section__list">
         <ul uiList>
           @for (item of listItems; track item.title) {
           <li>
             <a uiListItem [routerLink]="[]" fragment="ds-data">
               <span uiListIcon><ui-icon [name]="item.icon" size="sm" /></span>
-              <span class="grow text-sm font-semibold">{{ item.title }}</span>
+              <span class="data-section__item-title">{{ item.title }}</span>
               <ui-icon name="chevron-right" size="sm" />
             </a>
           </li>
@@ -85,24 +83,20 @@
             @for (row of rows; track row.code) {
             <tr>
               <td data-label="Mã">
-                <span class="font-mono text-sm whitespace-nowrap"
-                  >{{ row.code }}</span
-                >
+                <span class="data-section__code">{{ row.code }}</span>
               </td>
-              <td data-label="Khóa học" class="font-semibold">
+              <td data-label="Khóa học" class="data-section__course">
                 {{ row.title }}
               </td>
               <td data-label="Tiến độ">
-                <div class="progress-cell flex items-center gap-2">
+                <div class="progress-cell">
                   <ui-progress
-                    class="grow"
+                    class="progress-cell__bar"
                     size="sm"
                     [value]="row.pct"
                     [label]="'Tiến độ ' + row.title"
                   />
-                  <span class="text-xs whitespace-nowrap tabular-nums"
-                    >{{ row.pct }}%</span
-                  >
+                  <span class="progress-cell__pct">{{ row.pct }}%</span>
                 </div>
               </td>
               <td data-label="Trạng thái">
@@ -124,8 +118,8 @@
   ></app-ds-demo>
 
   <app-ds-demo label="Avatar: kích cỡ · nhóm chồng nhau" [needs]="['avatar']">
-    <div class="flex flex-wrap items-center gap-6">
-      <div class="flex items-center gap-3">
+    <div class="row row--gap-6">
+      <div class="row">
         <ui-avatar [name]="people[0]" size="sm" />
         <ui-avatar [name]="people[0]" />
         <ui-avatar [name]="people[0]" size="lg" />

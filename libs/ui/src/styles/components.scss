@@ -1,5 +1,5 @@
 // Atom looks, one partial per BEM block, applied only by the owning atom's host class.
-// Loaded globally after tailwind.css; every rule sits inside `@layer components`
+// Loaded by global.scss; every rule sits inside `@layer components`
 // (docs/conventions/ui-library.md → Styling).
 @use 'components/alert';
 @use 'components/avatar';
@@ -12,6 +12,7 @@
 @use 'components/dialog';
 @use 'components/drawer';
 @use 'components/empty';
+@use 'components/error-state';
 @use 'components/field';
 @use 'components/icon';
 @use 'components/icon-btn';

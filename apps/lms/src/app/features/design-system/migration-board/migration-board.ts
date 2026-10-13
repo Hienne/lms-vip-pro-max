@@ -11,6 +11,7 @@ import { buildBoard } from './data-access/board-view';
   selector: 'app-migration-board',
   imports: [Table, TableWrap],
   templateUrl: './migration-board.html',
+  styleUrl: './migration-board.scss',
 })
 export class MigrationBoard {
   protected readonly board = buildBoard();

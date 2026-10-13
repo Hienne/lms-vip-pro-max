@@ -13,7 +13,7 @@ export type EmptyHeadingLevel = 2 | 3 | 4;
 @Component({
   selector: 'ui-empty',
   imports: [Icon],
-  host: { class: 'empty animate-enter' },
+  host: { class: 'empty' },
   template: `
     <div class="empty__art" [class]="artClass()">
       <ui-icon [name]="icon()" size="xl" />

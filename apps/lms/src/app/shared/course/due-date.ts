@@ -12,12 +12,6 @@ const SOON_DAYS = 3;
 
 type DueTone = 'muted' | 'warning' | 'danger';
 
-const TONE_CLASS: Record<DueTone, string> = {
-  muted: 'text-text-muted',
-  warning: 'font-semibold text-warning',
-  danger: 'font-semibold text-danger',
-};
-
 const formatDate = (iso: string): string =>
   new Date(iso).toLocaleDateString('vi-VN', {
     day: '2-digit',
@@ -32,7 +26,8 @@ const formatDate = (iso: string): string =>
  */
 @Component({
   selector: 'app-due-date',
-  template: `<span class="text-sm" [class]="toneClass()">{{ text() }}</span>`,
+  template: `<span class="due-date" [class]="toneClass()">{{ text() }}</span>`,
+  styleUrl: './due-date.scss',
 })
 export class DueDate {
   /** ISO date-time of the deadline. */
@@ -52,5 +47,7 @@ export class DueDate {
     return { text: `Còn ${days} ngày · ${formatDate(dueAt)}`, tone: 'muted' };
   });
   protected readonly text = computed(() => this.view().text);
-  protected readonly toneClass = computed(() => TONE_CLASS[this.view().tone]);
+  protected readonly toneClass = computed(
+    () => `due-date--${this.view().tone}`,
+  );
 }

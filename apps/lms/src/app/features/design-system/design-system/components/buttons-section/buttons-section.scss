@@ -1,0 +1,5 @@
+@use 'ui';
+
+.buttons-section__note {
+  @include ui.text(sm, secondary);
+}

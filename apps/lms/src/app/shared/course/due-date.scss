@@ -1,0 +1,20 @@
+// Deadline text: small, in the tone of how close the deadline is.
+@use 'ui';
+
+.due-date {
+  @include ui.text(sm);
+}
+
+.due-date--muted {
+  color: ui.color(text-muted);
+}
+
+.due-date--warning {
+  color: ui.color(warning);
+  font-weight: ui.weight(semibold);
+}
+
+.due-date--danger {
+  color: ui.color(danger);
+  font-weight: ui.weight(semibold);
+}

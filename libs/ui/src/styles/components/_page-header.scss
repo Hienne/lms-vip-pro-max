@@ -1,5 +1,7 @@
 // Page header: ported from the mockup's `.page-header` block (layout.css).
 // Actions sit beside the title and wrap below it on narrow widths.
+@use 'ui';
+
 @layer components {
   .page-header-block {
     display: block;
@@ -45,8 +47,8 @@
     display: none;
   }
 
-  // sm (640px) and up: actions line up with the title's baseline.
-  @media (min-width: 640px) {
+  // sm and up: actions line up with the title's baseline.
+  @include ui.bp(sm) {
     .page-header {
       align-items: flex-end;
     }

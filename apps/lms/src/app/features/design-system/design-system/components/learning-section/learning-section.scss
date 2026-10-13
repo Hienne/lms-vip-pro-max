@@ -1,0 +1,30 @@
+@use 'ui';
+
+.learning-section__badges {
+  @include ui.grid(
+    (
+      base: 2,
+      md: 4,
+    ),
+    3
+  );
+  list-style: none;
+}
+
+.learning-section__badge {
+  display: flex;
+  justify-content: center;
+}
+
+.learning-section__prompt {
+  @include ui.text(sm);
+  font-weight: ui.weight(semibold);
+}
+
+.learning-section__thanks {
+  @include ui.text(xs, success);
+}
+
+.learning-section__grid {
+  max-width: 260px;
+}

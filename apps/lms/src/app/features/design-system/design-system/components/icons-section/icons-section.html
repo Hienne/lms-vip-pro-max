@@ -4,12 +4,12 @@
   description="Một họ icon nét 1.75px của Lucide, đăng ký theo tên Lucide trong @lms/ui. Icon trang trí có aria-hidden; icon đứng một mình có nhãn."
 >
   <app-ds-demo frame="card" [needs]="['icon']">
-    <ul class="grid">
+    <ul class="icon-tiles">
       @for (icon of icons; track icon.name + icon.mockup) {
-      <li class="tile">
+      <li class="icon-tiles__tile">
         <ui-icon [name]="icon.name" size="lg" />
-        <code class="name text-center text-xs">{{ icon.name }}</code>
-        <span class="name text-center text-xs text-text-muted"
+        <code class="icon-tiles__name">{{ icon.name }}</code>
+        <span class="icon-tiles__name icon-tiles__name--muted"
           >{{ icon.mockup ? 'mockup: ' + icon.mockup : 'thêm cho app' }}</span
         >
       </li>

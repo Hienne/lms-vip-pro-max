@@ -20,7 +20,7 @@ import { Empty, type EmptyHeadingLevel, type EmptyTone } from '../empty/empty';
       [description]="message()"
       [headingLevel]="headingLevel()"
     >
-      <div class="flex flex-wrap justify-center gap-2">
+      <div class="error-state__actions">
         @if (retryable()) {
           <button uiButton variant="primary" (click)="retry.emit()">
             <ui-icon name="refresh-cw" size="sm" />{{ retryLabel() }}

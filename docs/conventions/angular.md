@@ -39,7 +39,8 @@ older Angular versions or from memory.
   | Test          | `<file>.spec.ts` beside the file | — |
 
 - One component per file. Templates go in a separate `.html` file unless they
-  are a few lines. Add styles only when utilities/tokens are not enough.
+  are a few lines. A component with its own look has a `.scss` beside it that
+  starts with `@use 'ui';` (ui-library.md → Styling).
 - Selectors use the project prefix (`app-` by default), in kebab-case.
 - Signals and computed values are nouns (`course`, `isSaving`, `hasError`).
   Store selectors add a `$` suffix (`course$`, `isSaving$`). Store setters are
@@ -456,10 +457,14 @@ readonly total = computed(() => this.price() * this.quantity());
 
 ## 9. Styling
 
-- Use only the project's design tokens (CSS custom properties or token-mapped
-  utility classes). **Do not hardcode** color, spacing, radius, shadow, or font values.
-- If the project uses Tailwind, prefer utilities. Write component styles only
-  when utilities can't express the style.
+- Style with SCSS only. Read design tokens through the `ui` Sass module
+  (`@use 'ui';`, then `ui.color(primary)`, `ui.space(3)`, `@include ui.bp(md)`);
+  **do not hardcode** color, spacing, radius, shadow, or font values.
+- Templates carry semantic BEM class names styled in the component's `.scss`.
+  The only other classes are the closed set of layout helpers (`stack`, `row`,
+  `row-between`, `grow`, `grid-2/3/4`, `span-2`, `sr-only`, `skip-link`) and
+  their `--gap-<spacing key>` modifiers, for wrappers that only arrange children.
+  TypeScript returns modifier names (`due-date--danger`), never style values.
 - Keep default view encapsulation. Do not use `::ng-deep` or `!important`.
 - Do not add a pre-styled UI library (Material, PrimeNG, NG-ZORRO…) unless the
   project already declares it.

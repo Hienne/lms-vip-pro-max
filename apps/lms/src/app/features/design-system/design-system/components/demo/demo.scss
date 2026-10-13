@@ -1,0 +1,36 @@
+@use 'ui';
+
+.demo {
+  @include ui.stack(3);
+  padding: ui.space(5);
+  border: 1px solid ui.color(border);
+  border-radius: ui.radius(lg);
+  background: ui.color(surface);
+}
+
+.demo--dashed {
+  border-style: dashed;
+  border-color: ui.color(border-strong);
+}
+
+.demo--card {
+  border-color: ui.color(border);
+}
+
+.demo__label {
+  @include ui.eyebrow;
+}
+
+.demo__pending {
+  @include ui.stack(2);
+  @include ui.text(sm);
+  padding: ui.space(4);
+  border-radius: ui.radius(md);
+  background: ui.color(surface-2);
+}
+
+.demo__pending-list {
+  @include ui.stack(1);
+  color: ui.color(text-secondary);
+  list-style: none;
+}

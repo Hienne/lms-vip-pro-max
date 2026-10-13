@@ -1,3 +1,26 @@
+@use 'ui';
+
+.feedback-section__note {
+  margin-top: ui.space(3);
+  @include ui.text(xs, muted);
+}
+
+.feedback-section__states {
+  @include ui.grid(
+    (
+      lg: 3,
+    )
+  );
+}
+
+.feedback-section__skeleton-title {
+  margin-bottom: ui.space(2);
+}
+
+.feedback-section__loading {
+  @include ui.text(sm, muted);
+}
+
 // The second text line of the skeleton sample is shorter, as in the mockup.
 .skeleton-short {
   width: 70%;

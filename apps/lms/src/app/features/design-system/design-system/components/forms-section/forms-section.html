@@ -1,15 +1,11 @@
 <app-ds-section section="forms" title="Form &amp; nhập liệu">
-  <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
-    <div class="flex flex-col gap-4">
+  <div class="grid-2">
+    <div class="stack">
       <app-ds-demo
         label="Field: nhãn luôn hiển thị · lỗi dưới trường (aria-describedby) · error summary có link"
         [needs]="['field', 'text-controls', 'button']"
       >
-        <form
-          class="flex flex-col gap-4"
-          novalidate
-          (submit)="$event.preventDefault()"
-        >
+        <form class="stack" novalidate (submit)="$event.preventDefault()">
           @if (store.summaryShown$() && summaryItems().length > 0) {
           <ui-error-summary [items]="summaryItems()" />
           }
@@ -50,7 +46,7 @@
           <ui-field label="Chỉ đọc">
             <input uiInput readonly value="Ban QL&amp;PT Core Banking" />
           </ui-field>
-          <div class="flex flex-wrap gap-2">
+          <div class="row row--gap-2">
             <button
               uiButton
               variant="primary"
@@ -75,12 +71,12 @@
         label="Ô nhập · chọn · vùng văn bản"
         [needs]="['text-controls']"
       >
-        <div class="flex flex-col gap-3 text-sm font-semibold">
-          <label class="flex flex-col gap-2">
+        <div class="forms-section__fields">
+          <label class="forms-section__field">
             Tên khóa học
             <input uiInput name="ds1" placeholder="Ví dụ: Quy trình đối soát" />
           </label>
-          <label class="flex flex-col gap-2">
+          <label class="forms-section__field">
             Nhỏ
             <input
               uiInput
@@ -89,7 +85,7 @@
               placeholder="Tìm theo mã"
             />
           </label>
-          <label class="flex flex-col gap-2">
+          <label class="forms-section__field">
             Email (không hợp lệ)
             <input
               uiInput
@@ -99,7 +95,7 @@
               aria-invalid="true"
             />
           </label>
-          <label class="flex flex-col gap-2">
+          <label class="forms-section__field">
             Vô hiệu
             <input
               uiInput
@@ -108,7 +104,7 @@
               disabled
             />
           </label>
-          <label class="flex flex-col gap-2">
+          <label class="forms-section__field">
             Chỉ đọc
             <input
               uiInput
@@ -117,21 +113,21 @@
               readonly
             />
           </label>
-          <label class="flex flex-col gap-2">
+          <label class="forms-section__field">
             Chương trình
             <select uiSelect name="ds3">
               <option value="">— Chọn —</option>
               <option value="1">Nền tảng nghiệp vụ Core Banking</option>
             </select>
           </label>
-          <label class="flex flex-col gap-2">
+          <label class="forms-section__field">
             Chương trình (nhỏ)
             <select uiSelect size="sm" name="ds-select-small">
               <option value="">— Chọn —</option>
               <option value="1">Nền tảng nghiệp vụ Core Banking</option>
             </select>
           </label>
-          <label class="flex flex-col gap-2">
+          <label class="forms-section__field">
             Mô tả
             <textarea uiTextarea name="ds4" rows="2"></textarea>
           </label>
@@ -139,31 +135,31 @@
       </app-ds-demo>
     </div>
 
-    <div class="flex flex-col gap-4">
+    <div class="stack">
       <app-ds-demo label="Checkbox · switch" [needs]="['check-switch']">
-        <div class="flex flex-col gap-3">
-          <label class="inline-flex items-start gap-2 text-sm"
+        <div class="stack stack--gap-3">
+          <label class="forms-section__option"
             ><input type="checkbox" uiCheckbox checked /> Trộn thứ tự câu
             hỏi</label
           >
-          <label class="inline-flex items-start gap-2 text-sm"
+          <label class="forms-section__option"
             ><input type="checkbox" uiCheckbox /> Trộn đáp án</label
           >
-          <label class="inline-flex items-start gap-2 text-sm"
+          <label class="forms-section__option"
             ><input type="checkbox" uiCheckbox disabled /> Không thể chọn</label
           >
-          <label class="inline-flex items-center gap-3 text-sm"
+          <label class="forms-section__toggle"
             ><input type="checkbox" uiSwitch checked /> Nhắc học trước
             hạn</label
           >
-          <label class="inline-flex items-center gap-3 text-sm"
+          <label class="forms-section__toggle"
             ><input type="checkbox" uiSwitch /> Gửi bản tin hằng tuần</label
           >
         </div>
       </app-ds-demo>
 
       <app-ds-demo label="Option card" [needs]="['option-card']">
-        <div class="flex flex-col gap-3">
+        <div class="stack stack--gap-3">
           <ui-option-card
             title="Bắt buộc"
             description="Option card — radio lớn, dễ chạm"
@@ -188,16 +184,17 @@
         label="Dropzone &amp; trạng thái upload"
         [needs]="['dropzone', 'icon']"
       >
-        <div class="flex flex-col gap-3">
+        <div class="stack stack--gap-3">
           <label uiDropzone accept=".pdf" (files)="store.addFiles($event)">
             <ui-icon name="upload" size="xl" />
-            <div class="font-semibold">
-              Kéo thả hoặc <span class="text-primary underline">chọn tệp</span>
+            <div class="forms-section__drop-title">
+              Kéo thả hoặc
+              <span class="forms-section__drop-link">chọn tệp</span>
             </div>
-            <div class="text-xs">PDF · tối đa 20 MB</div>
+            <div class="forms-section__drop-hint">PDF · tối đa 20 MB</div>
             <input type="file" hidden />
           </label>
-          <p class="text-sm text-text-muted" aria-live="polite">
+          <p class="forms-section__status" aria-live="polite">
             Đã nhận: {{ store.receivedFiles$() || '(chưa có tệp)' }}
           </p>
           <ui-upload-item
@@ -215,18 +212,22 @@
         label="Tìm kiếm · bộ lọc · chip"
         [needs]="['search', 'text-controls', 'badge-chip']"
       >
-        <div class="flex flex-col gap-4">
-          <div class="flex flex-wrap items-center gap-3">
+        <div class="stack">
+          <div class="row">
             <ui-search (searched)="store.setSearchQuery($event)" />
-            <select uiSelect aria-label="Lĩnh vực" class="w-auto">
+            <select
+              uiSelect
+              aria-label="Lĩnh vực"
+              class="forms-section__select"
+            >
               <option value="">Tất cả lĩnh vực</option>
               <option value="1">Nghiệp vụ</option>
             </select>
           </div>
-          <p class="text-sm text-text-muted" aria-live="polite">
+          <p class="forms-section__status" aria-live="polite">
             Truy vấn gần nhất: {{ store.searchQuery$() || '(trống)' }}
           </p>
-          <div class="flex flex-wrap items-center gap-3">
+          <div class="row">
             <button uiChip [pressed]="true">Đang chọn</button>
             <button uiChip>Vận hành</button>
           </div>

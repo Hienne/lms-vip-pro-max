@@ -1,0 +1,10 @@
+@use 'ui';
+
+.drawer-demo__note {
+  margin-top: ui.space(3);
+  @include ui.text(xs, muted);
+}
+
+.drawer-demo__body {
+  @include ui.text(sm);
+}

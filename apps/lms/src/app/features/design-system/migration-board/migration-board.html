@@ -1,25 +1,18 @@
-<main
-  class="mx-auto flex w-full max-w-content flex-col gap-8 px-4 py-6 md:px-6"
->
-  <header class="flex flex-col gap-2">
-    <span class="text-xs font-semibold tracking-wider text-text-muted uppercase"
-      >Công cụ nội bộ</span
-    >
+<main class="board">
+  <header class="stack stack--gap-2">
+    <span class="board__eyebrow">Công cụ nội bộ</span>
     <h1>Tiến độ migrate từ mockup</h1>
-    <p class="text-text-secondary">
+    <p class="board__lead">
       Nguồn duy nhất là <code>migration-entries.data.ts</code>. Cập nhật dòng
       của phần bạn làm trong cùng pull request.
     </p>
   </header>
 
   @for (group of board; track group.kind) {
-  <section
-    class="flex flex-col gap-4"
-    [attr.aria-labelledby]="'board-' + group.kind"
-  >
-    <div class="flex flex-wrap items-baseline justify-between gap-3">
+  <section class="stack" [attr.aria-labelledby]="'board-' + group.kind">
+    <div class="board__heading">
       <h2 id="board-{{ group.kind }}">{{ group.label }}</h2>
-      <p class="text-sm text-text-secondary" data-summary>
+      <p class="board__summary" data-summary>
         {{ group.summary.total }} mục @for (status of statuses; track
         status.status) { · {{ status.label }}:
         <strong>{{ group.summary.byStatus[status.status] }}</strong>
@@ -28,9 +21,9 @@
     </div>
 
     @for (status of group.statuses; track status.status) {
-    <div uiTableWrap class="rounded-lg border border-border bg-surface">
+    <div uiTableWrap class="board__table">
       <table uiTable>
-        <caption class="border-b border-border bg-surface-2 font-semibold">
+        <caption class="board__caption">
           {{ status.label }} ({{ status.rows.length }})
         </caption>
         <thead>
@@ -49,9 +42,7 @@
           <tr [attr.data-entry]="row.id">
             <th scope="row">
               <code>{{ row.id }}</code>
-              <div class="text-xs font-regular text-text-muted">
-                {{ row.level }}
-              </div>
+              <div class="board__level">{{ row.level }}</div>
             </th>
             <td>{{ row.mockupSource }}</td>
             <td><code>{{ row.target }}</code></td>
@@ -63,7 +54,7 @@
               } @else { — }
             </td>
             <td>
-              <ul class="flex list-none flex-col gap-1">
+              <ul class="board__checks">
                 @for (check of row.checks; track check.label) {
                 <li>
                   <span aria-hidden="true">{{ check.mark }}</span> {{

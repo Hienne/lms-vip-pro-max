@@ -1,5 +1,5 @@
 // Switch: ported from the mockup's `.switch input` (components.css). Applied by `uiSwitch`;
-// the wrapping label's layout is utilities in the template.
+// the wrapping label's layout is the consumer's own BEM class.
 @layer components {
   .switch {
     position: relative;

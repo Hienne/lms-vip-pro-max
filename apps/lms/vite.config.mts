@@ -1,4 +1,5 @@
 /// <reference types='vitest' />
+import { join } from 'node:path';
 import { defineConfig } from 'vite';
 import angular from '@analogjs/vite-plugin-angular';
 
@@ -7,6 +8,14 @@ export default defineConfig(() => ({
   cacheDir: '../../node_modules/.vite/apps/lms',
   plugins: [angular()],
   resolve: { tsconfigPaths: true },
+  // `@use 'ui';` resolves through this include path, as in the app build (project.json).
+  css: {
+    preprocessorOptions: {
+      scss: {
+        loadPaths: [join(import.meta.dirname, '../../libs/ui/src/styles')],
+      },
+    },
+  },
   test: {
     name: 'lms',
     watch: false,

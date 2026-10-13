@@ -7,6 +7,7 @@ import { ConfirmDemoStore } from './data-access/confirm-demo.store';
   imports: [Button, Icon],
   providers: [ConfirmDemoStore],
   templateUrl: './confirm-demo.html',
+  styleUrl: './confirm-demo.scss',
 })
 export class ConfirmDemo {
   protected readonly store = inject(ConfirmDemoStore);

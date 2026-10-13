@@ -67,7 +67,7 @@ never from a relative path into another project.
 | Framework          | Angular 22, standalone, zoneless                                                                                                                                                                                    |
 | Monorepo           | Nx 23, npm; `lint` and `test` are inferred targets (`@nx/eslint/plugin`, `@nx/vitest`); `typecheck` is declared per project (`tsc --noEmit` on its lib/app and spec tsconfigs, because Vitest does not type-check)  |
 | Unit tests         | Vitest + jsdom. Angular projects use the Analog plugin (`vitest-analog`, ≥ 2.8 for Angular 22.2); plain TS libs use plain Vitest. The Angular `unit-test` builder is not used: it only supports buildable libraries |
-| Styles             | SCSS for component styles, Tailwind CSS v4 through PostCSS (`@tailwindcss/postcss`)                                                                                                                                 |
+| Styles             | SCSS only: the `ui` Sass module of `@lms/ui` (token maps, functions, mixins) on the Sass include path `libs/ui/src/styles`; no PostCSS step, no utility framework                                                   |
 | Accessible widgets | `@angular/aria`, `@angular/cdk`                                                                                                                                                                                     |
 | Icons              | `@lucide/angular` (successor of the deprecated `lucide-angular`)                                                                                                                                                    |
 | Validation / types | `zod` (v4 API)                                                                                                                                                                                                      |
@@ -75,7 +75,8 @@ never from a relative path into another project.
 | Font               | Be Vietnam Pro, self-hosted (`@fontsource/be-vietnam-pro`); internal networks may block Google Fonts                                                                                                                |
 
 Adding any other runtime dependency needs the user's approval. Pre-styled UI
-kits (Material, PrimeNG, Spartan…) are out.
+kits (Material, PrimeNG, Spartan…) are out. The style library's compile test uses the
+`sass` package that Angular's build already installs; it is not a declared dependency.
 
 Generator defaults live in `nx.json`. Generated files still drift between Nx
 versions: check them against angular.md §2 and delete generator samples before

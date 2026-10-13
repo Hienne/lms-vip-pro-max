@@ -1,6 +1,6 @@
 # Spec: Foundation, design system page, migration checklist and dark mode
 
-Status: ready for implementation · Labels: `ready-for-agent` (not yet published
+Status: implemented; the Tailwind parts are superseded by `scss-only.md` · Labels: `ready-for-agent` (not yet published
 to the issue tracker; the tracker is not configured).
 
 ## Problem Statement

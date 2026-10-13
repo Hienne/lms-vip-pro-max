@@ -15,6 +15,7 @@ import {
 @Component({
   selector: 'app-ds-demo',
   templateUrl: './demo.html',
+  styleUrl: './demo.scss',
 })
 export class DsDemo {
   readonly needs = input.required<readonly MigrationEntryId[]>();

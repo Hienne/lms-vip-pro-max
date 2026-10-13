@@ -1,7 +1,7 @@
 <app-ds-section section="status" title="Badge &amp; trạng thái">
   <app-ds-demo label="Badge: tone · chấm · viền" [needs]="['badge-chip']">
-    <div class="flex flex-col gap-4">
-      <div class="flex flex-wrap items-center gap-3">
+    <div class="stack">
+      <div class="row">
         @for (item of tones; track item.tone) {
         <span uiBadge [tone]="item.tone">
           @if (item.icon) {
@@ -10,7 +10,7 @@
         </span>
         }
       </div>
-      <div class="flex flex-wrap items-center gap-3">
+      <div class="row">
         <span uiBadge tone="success" dot>Hoạt động</span>
         <span uiBadge tone="warning" dot>Tạm dừng</span>
         <span uiBadge tone="danger" dot>Đã khóa</span>
@@ -23,7 +23,7 @@
     label="Chip: nhấn để bật / tắt (aria-pressed)"
     [needs]="['badge-chip']"
   >
-    <div class="flex flex-wrap items-center gap-3">
+    <div class="row">
       @for (chip of store.chips$(); track chip.id) {
       <button
         uiChip
@@ -39,7 +39,7 @@
     label="Card: tiêu đề · nội dung · tint · reward · tương tác"
     [needs]="['card']"
   >
-    <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+    <div class="grid-2">
       <article uiCard>
         <div uiCardHeader>
           <h3>Tiến độ học tập</h3>
@@ -53,8 +53,8 @@
         Gợi ý: hoàn thành bài kiểm tra cuối chương để mở khóa chương tiếp theo.
       </div>
       <div uiCard variant="reward" padded>
-        <strong class="text-accent-ink">+50</strong> điểm cho bài kiểm tra đầu
-        tiên.
+        <strong class="status-section__points">+50</strong> điểm cho bài kiểm
+        tra đầu tiên.
       </div>
       <a
         uiCard
@@ -62,7 +62,7 @@
         padded
         [routerLink]="[]"
         fragment="ds-status"
-        class="flex items-center justify-between gap-3"
+        class="status-section__link"
       >
         Thẻ tương tác: cả thẻ là một liên kết
         <ui-icon name="arrow-right" size="sm" />
@@ -73,7 +73,7 @@
     label="Trạng thái học tập (kèm icon, không dựa màu đơn thuần)"
     [needs]="['domain-status-badges']"
   >
-    <div class="flex flex-wrap items-center gap-3">
+    <div class="row">
       @for (status of courseStatuses; track status) {
       <app-course-status [status]="status" />
       }
@@ -84,7 +84,7 @@
     label="Trạng thái xuất bản · tài khoản"
     [needs]="['domain-status-badges']"
   >
-    <div class="flex flex-wrap items-center gap-3">
+    <div class="row">
       @for (status of publishStatuses; track status) {
       <app-publish-status [status]="status" />
       } @for (status of accountStatuses; track status) {
@@ -96,7 +96,7 @@
     label="Vai trò · loại khóa · phần thưởng"
     [needs]="['domain-status-badges','badge-chip']"
   >
-    <div class="flex flex-wrap items-center gap-3">
+    <div class="row">
       @for (role of roles; track role) {
       <app-role-badge [role]="role" />
       }
@@ -107,7 +107,7 @@
     </div>
   </app-ds-demo>
   <app-ds-demo label="Hạn hoàn thành" [needs]="['domain-course-card']">
-    <div class="flex flex-wrap items-center gap-6">
+    <div class="row row--gap-6">
       @for (due of dueDates; track due) {
       <app-due-date [dueAt]="due" />
       }

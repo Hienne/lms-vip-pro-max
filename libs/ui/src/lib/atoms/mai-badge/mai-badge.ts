@@ -10,19 +10,19 @@ import { Mai } from '../mai/mai';
   selector: 'ui-mai-badge',
   imports: [Mai],
   host: {
-    class: 'flex flex-col items-center gap-2 text-center',
+    class: 'mai-badge-host',
     '[attr.title]': 'description()',
   },
   template: `
     <div
       class="mai-badge"
       [class.is-locked]="!earned()"
-      [class.animate-reward-pop]="earned()"
+      [class.mai-badge--earned]="earned()"
     >
       <ui-mai [size]="40" />
     </div>
-    <div class="text-sm font-semibold">{{ name() }}</div>
-    <div class="mai-badge__desc text-xs text-text-muted">
+    <div class="mai-badge__name">{{ name() }}</div>
+    <div class="mai-badge__desc">
       @if (earned()) {
         <span class="sr-only">Đã mở khóa · </span>{{ description() }}
       } @else {
