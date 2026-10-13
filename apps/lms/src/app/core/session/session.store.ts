@@ -142,10 +142,14 @@ export class SessionStore {
     this.setSignOutRequest({});
   }
 
-  /** Resolves once the first restore has answered (signed in, anonymous or failed). */
-  async whenSettled(): Promise<void> {
+  /**
+   * Resolves once the profile is known (signed in or anonymous). A failed restore keeps guards
+   * waiting while the boot error shows, so a successful retry resumes the navigation the user
+   * asked for instead of sending them to the login page.
+   */
+  async whenReady(): Promise<void> {
     await firstValueFrom(
-      this.statusChanges.pipe(filter((status) => status !== 'loading')),
+      this.statusChanges.pipe(filter((status) => status === 'ready')),
     );
   }
 }

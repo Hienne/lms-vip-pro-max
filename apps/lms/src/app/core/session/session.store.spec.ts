@@ -196,9 +196,28 @@ describe('SessionStore', () => {
     expect(store.role$()).toBeNull();
   });
 
-  it('resolves whenSettled once restore has answered', async () => {
+  it('keeps whenReady pending after a failed restore until a retry succeeds', async () => {
+    let ready = false;
+    const waiting = store.whenReady().then(() => (ready = true));
+    store.restore();
+    await settle();
+    backend
+      .expectOne('/api/auth/profile')
+      .flush(null, { status: 500, statusText: 'Server Error' });
+    await settle();
+    expect(ready).toBe(false);
+
+    store.restore();
+    await settle();
+    backend.expectOne('/api/auth/profile').flush(profileFixtures['admin']);
+    await settle();
+    await waiting;
+    expect(ready).toBe(true);
+  });
+
+  it('resolves whenReady once restore has answered', async () => {
     let settled = false;
-    const waiting = store.whenSettled().then(() => (settled = true));
+    const waiting = store.whenReady().then(() => (settled = true));
     store.restore();
     await settle();
     expect(settled).toBe(false);

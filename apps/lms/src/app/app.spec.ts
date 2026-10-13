@@ -51,7 +51,7 @@ describe('App boot', () => {
     expect(el.querySelector('[role="status"]')).toBeNull();
   });
 
-  it('renders the error state with retry when restore fails but not with 401', async () => {
+  it('renders the error state with retry when restore fails', async () => {
     const fixture = TestBed.createComponent(App);
     const el = fixture.nativeElement as HTMLElement;
     await tick();

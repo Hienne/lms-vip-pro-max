@@ -7,7 +7,7 @@ import { SessionStore } from './session.store';
 export const homeGuard: CanActivateFn = async () => {
   const session = inject(SessionStore);
   const router = inject(Router);
-  await session.whenSettled();
+  await session.whenReady();
   const role = session.role$();
   return router.parseUrl(role ? HOME[role] : '/login');
 };
