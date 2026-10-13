@@ -450,7 +450,7 @@ describe('/design-system', () => {
         'Caption · 12/600',
         'Số liệu · tabular',
       ]);
-      expect(section.querySelector('.text-3xl')?.textContent).toContain(
+      expect(section.querySelector('.type-sample--3xl')?.textContent).toContain(
         'Chào mừng bạn gia nhập Ban!',
       );
     });
@@ -462,7 +462,7 @@ describe('/design-system', () => {
       const section = page.querySelector('#ds-space') as HTMLElement;
       expect(section.querySelectorAll('.step')).toHaveLength(7);
       expect(section.textContent).toContain('--spacing-12');
-      expect(section.querySelectorAll('.swatch')).toHaveLength(4);
+      expect(section.querySelectorAll('.radius-sample')).toHaveLength(4);
       expect(section.querySelectorAll('.shadow-sample')).toHaveLength(3);
 
       const before = section.querySelector('[data-motion] > *');

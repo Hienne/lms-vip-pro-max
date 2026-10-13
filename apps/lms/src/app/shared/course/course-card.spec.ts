@@ -58,7 +58,7 @@ describe('CourseCard', () => {
     expect(card.querySelectorAll('a, button')).toHaveLength(0);
   });
 
-  it('shows eyebrow, clamped title and the meta row', () => {
+  it('shows eyebrow, title and the meta row', () => {
     const { card } = render();
     expect(text(card.querySelector('.course-card__eyebrow'))).toBe(
       'Nghiệp vụ · Tổng quan',
@@ -66,11 +66,6 @@ describe('CourseCard', () => {
     expect(text(card.querySelector('.course-card__title'))).toBe(
       'Tổng quan hệ thống Core Banking',
     );
-    expect(
-      card
-        .querySelector('.course-card__title')
-        ?.classList.contains('line-clamp-2'),
-    ).toBe(true);
     expect(
       Array.from(card.querySelectorAll('.course-card__meta span')).map(text),
     ).toEqual(['1g 8p', '4 bài', 'Cơ bản']);
@@ -149,7 +144,7 @@ describe('CourseCard', () => {
     });
     const line = card.querySelector('.course-card__status') as HTMLElement;
     expect(text(line)).toBe('Chưa đạt');
-    expect(line.classList.contains('text-danger')).toBe(true);
+    expect(line.classList.contains('course-card__status--failed')).toBe(true);
   });
 
   it('shows the due date, or nothing without one', () => {

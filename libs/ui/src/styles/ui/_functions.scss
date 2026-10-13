@@ -1,0 +1,77 @@
+// Token accessors. Each returns `var(--<namespace>-<key>)` and fails the build, naming the
+// namespace and the valid keys, when the key is not a token. Keys are compared as text, so
+// `space(3)` and `text-size(2xl)` work however Sass parses them.
+@use 'sass:list';
+@use 'sass:map';
+@use 'tokens';
+
+@function keys($map) {
+  $found: ();
+  @each $key, $value in $map {
+    $found: list.append($found, '#{$key}', comma);
+  }
+  @return $found;
+}
+
+@function has-key($map, $key) {
+  @return list.index(keys($map), '#{$key}') != null;
+}
+
+// The value stored under `$key`; used to read the map-backed namespaces (breakpoints, layout).
+@function lookup($namespace, $map, $key) {
+  @each $name, $value in $map {
+    @if '#{$name}' == '#{$key}' {
+      @return $value;
+    }
+  }
+  @error 'ui.#{$namespace}: unknown key `#{$key}`. Valid keys: #{keys($map)}.';
+}
+
+@function token($namespace, $property-prefix, $map, $key) {
+  // Raises the unknown-key error; the value is not needed, the property name is.
+  $-found: lookup($namespace, $map, $key);
+  @return var(--#{$property-prefix}-#{$key});
+}
+
+@function color($key) {
+  @return token(color, color, tokens.$colors, $key);
+}
+@function chart($key) {
+  @return token(chart, color-chart, tokens.$chart, $key);
+}
+@function space($key) {
+  @return token(space, spacing, tokens.$spacing, $key);
+}
+@function radius($key) {
+  @return token(radius, radius, tokens.$radii, $key);
+}
+@function shadow($key) {
+  @return token(shadow, shadow, tokens.$shadows, $key);
+}
+@function text-size($key) {
+  @return token(text-size, text, tokens.$text-sizes, $key);
+}
+@function leading($key) {
+  @return token(leading, leading, tokens.$leadings, $key);
+}
+@function weight($key) {
+  @return token(weight, font-weight, tokens.$weights, $key);
+}
+@function tracking($key) {
+  @return token(tracking, tracking, tokens.$trackings, $key);
+}
+@function font($key) {
+  @return token(font, font, tokens.$font-families, $key);
+}
+@function duration($key) {
+  @return token(duration, transition-duration, tokens.$durations, $key);
+}
+@function ease($key) {
+  @return token(ease, ease, tokens.$easings, $key);
+}
+@function z($key) {
+  @return token(z, z-index, tokens.$z-indexes, $key);
+}
+@function layout($key) {
+  @return var(--#{map.get(lookup(layout, tokens.$layout, $key), property)});
+}

@@ -12,10 +12,7 @@
       "!{projectRoot}/vite.config.mts",
       "!{projectRoot}/vitest.config.mts"
     ],
-    "sharedGlobals": [
-      "{workspaceRoot}/tsconfig.base.json",
-      "{workspaceRoot}/.postcssrc.json"
-    ]
+    "sharedGlobals": ["{workspaceRoot}/tsconfig.base.json"]
   },
   "plugins": [
     {

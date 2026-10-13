@@ -1,5 +1,6 @@
 // Page layout of /design-system: the mockup's .ds-layout and .ds-toc (pages.css).
-// 1100px is --breakpoint-lg: media queries cannot read custom properties.
+@use 'ui';
+
 :host {
   display: block;
 }
@@ -12,6 +13,34 @@
   max-width: 1440px;
   margin: 0 auto;
   padding: var(--spacing-5) var(--spacing-4) var(--spacing-10);
+}
+
+.layout__main {
+  @include ui.stack(12);
+  outline-style: none;
+}
+
+.toc__brand {
+  display: flex;
+  align-items: center;
+  gap: ui.space(2);
+  margin-bottom: ui.space(4);
+}
+
+.toc__list {
+  display: flex;
+  flex-flow: row wrap;
+  gap: ui.space(1);
+  list-style: none;
+}
+
+.toc__number {
+  color: ui.color(text-muted);
+  @include ui.num;
+}
+
+.toc__theme {
+  margin-top: ui.space(6);
 }
 
 .toc__link {
@@ -29,13 +58,17 @@
   }
 }
 
-@media (min-width: 720px) {
+@include ui.bp(md) {
   .layout {
     padding: var(--spacing-6) var(--spacing-6) var(--spacing-12);
   }
 }
 
-@media (min-width: 1100px) {
+@include ui.bp(lg) {
+  .toc__list {
+    flex-direction: column;
+  }
+
   .layout {
     grid-template-columns: 220px minmax(0, 1fr);
     align-items: start;

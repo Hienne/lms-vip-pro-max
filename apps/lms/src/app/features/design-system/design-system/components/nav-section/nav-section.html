@@ -23,13 +23,17 @@
       (selectedChange)="store.setTab($event)"
     >
       <div uiTabPanel="overview">
-        <p class="pt-4 text-sm">Tổng quan: mô tả, mục tiêu và lộ trình.</p>
+        <p class="nav-section__panel-text">
+          Tổng quan: mô tả, mục tiêu và lộ trình.
+        </p>
       </div>
       <div uiTabPanel="courses">
-        <p class="pt-4 text-sm">Khóa học: danh sách 6 khóa học.</p>
+        <p class="nav-section__panel-text">Khóa học: danh sách 6 khóa học.</p>
       </div>
       <div uiTabPanel="exams">
-        <p class="pt-4 text-sm">Bài thi: các bài kiểm tra của chương trình.</p>
+        <p class="nav-section__panel-text">
+          Bài thi: các bài kiểm tra của chương trình.
+        </p>
       </div>
     </ui-tabs>
   </app-ds-demo>
@@ -44,14 +48,14 @@
     </div>
   </app-ds-demo>
   <app-ds-demo label="Stepper (wizard)" [needs]="['stepper']">
-    <div class="flex flex-col gap-4">
+    <div class="stack">
       <ui-stepper
         label="Các bước tạo khóa học"
         [steps]="wizardSteps"
         [selectedIndex]="store.step$()"
         (selectedIndexChange)="store.setStep($event)"
       />
-      <div class="flex gap-3">
+      <div class="row">
         <button
           type="button"
           uiButton
@@ -99,8 +103,8 @@
     >
       @for (lesson of store.lessons$(); track lesson.id) {
       <ui-sortable-item [label]="lesson.title">
-        <div class="truncate text-sm font-semibold">{{ lesson.title }}</div>
-        <div class="text-xs text-text-muted">{{ lesson.meta }}</div>
+        <div class="nav-section__lesson-title">{{ lesson.title }}</div>
+        <div class="nav-section__lesson-meta">{{ lesson.meta }}</div>
       </ui-sortable-item>
       }
     </div>

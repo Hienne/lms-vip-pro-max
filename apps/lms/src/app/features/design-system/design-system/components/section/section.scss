@@ -1,0 +1,14 @@
+@use 'ui';
+
+.ds-section__number {
+  @include ui.eyebrow;
+}
+
+.ds-section__title {
+  @include ui.text(2xl);
+}
+
+.ds-section__description {
+  margin-top: ui.space(2);
+  color: ui.color(text-secondary);
+}

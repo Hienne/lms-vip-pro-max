@@ -1,13 +1,47 @@
+@use 'sass:map';
+@use 'ui';
+
+.type-section__card {
+  @include ui.stack(5);
+}
+
+.type-section__label {
+  @include ui.text(xs, muted);
+}
+
+.type-section__figures {
+  @include ui.text(2xl);
+  @include ui.num;
+  font-weight: ui.weight(bold);
+}
+
 // A label column beside the sample; the label stacks above it on narrow screens.
 .sample {
   display: grid;
-  gap: var(--spacing-1);
+  gap: ui.space(1);
   align-items: baseline;
+
+  @include ui.bp(sm) {
+    grid-template-columns: 150px minmax(0, 1fr);
+    gap: ui.space(6);
+  }
 }
 
-@media (min-width: 640px) {
-  .sample {
-    grid-template-columns: 150px minmax(0, 1fr);
-    gap: var(--spacing-6);
+// One sample modifier per text-size token, with the weight the scale pairs it with.
+$-pairing: (
+  3xl: bold,
+  2xl: bold,
+  xl: semibold,
+  lg: semibold,
+  md: regular,
+  sm: medium,
+  xs: semibold,
+);
+
+@each $size, $value in ui.$text-sizes {
+  .type-sample--#{$size} {
+    font-size: ui.text-size($size);
+    font-weight: ui.weight(map.get($-pairing, $size));
+    line-height: ui.leading(tight);
   }
 }

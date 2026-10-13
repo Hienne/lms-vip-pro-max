@@ -1,5 +1,7 @@
 // Alert / callout: ported from the mockup's `.alert` block (components.css). Applied by `ui-alert`.
 // Tone colours come from the status tokens; the 25% border is the mockup's `color-mix`.
+@use 'ui';
+
 @layer components {
   .alert {
     display: flex;
@@ -41,9 +43,9 @@
     }
   }
 
-  // From sm (640px) the actions sit beside the text; narrower, they drop under it, aligned with
-  // it (icon width + gap).
-  @media (min-width: 640px) {
+  // From sm the actions sit beside the text; narrower, they drop under it, aligned with it (icon
+  // width + gap).
+  @include ui.bp(sm) {
     .alert {
       flex-wrap: nowrap;
     }

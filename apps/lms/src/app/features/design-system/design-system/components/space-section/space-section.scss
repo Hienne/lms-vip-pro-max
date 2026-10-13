@@ -1,29 +1,93 @@
+@use 'ui';
+
+.space-section__card {
+  @include ui.stack(2);
+}
+
+.space-section__shadows {
+  @include ui.row(2);
+  margin-top: ui.space(4);
+}
+
+.space-section__note {
+  @include ui.text(xs, muted);
+}
+
+.space-section__text {
+  @include ui.text(sm, secondary);
+}
+
+.space-section__motion {
+  padding: ui.space(2) ui.space(4);
+}
+
+.space-section__motion--enter {
+  @include ui.animate(enter);
+}
+
+.space-section__motion--reward {
+  @include ui.animate(reward-pop);
+}
+
+.space-section__points {
+  color: ui.color(accent-ink);
+}
+
 // Label column beside the bar that shows the step.
 .step {
   display: grid;
   grid-template-columns: 84px auto;
   align-items: center;
-  gap: var(--spacing-3);
+  gap: ui.space(3);
 }
 
-// Samples of the radius and shadow scales: fixed-size tiles so the shapes compare.
-.swatch,
+.step__token {
+  @include ui.text(xs);
+}
+
+.step__bar {
+  height: ui.space(2);
+  border-radius: ui.radius(sm);
+  background: ui.color(primary);
+}
+
+// Samples of the radius and shadow scales: fixed-size tiles so the shapes compare. One modifier
+// per token, generated from the token maps so the showcase always lists every token.
+.radius-sample,
 .shadow-sample {
   display: grid;
   place-items: center;
-  font-size: var(--text-xs);
+  @include ui.text(xs);
 }
 
-.swatch {
+.radius-sample {
   width: 64px;
   height: 64px;
-  border: 1px solid var(--color-border);
-  background: var(--color-primary-subtle);
+  border: 1px solid ui.color(border);
+  background: ui.color(primary-subtle);
 }
 
 .shadow-sample {
   width: 84px;
   height: 56px;
-  border-radius: var(--radius-md);
-  background: var(--color-surface);
+  border-radius: ui.radius(md);
+  background: ui.color(surface);
+}
+
+@each $key, $value in ui.$spacing {
+  .step__bar--#{$key} {
+    width: ui.space($key);
+  }
+}
+
+@each $key, $value in ui.$radii {
+  .radius-sample--#{$key} {
+    border-radius: ui.radius($key);
+  }
+}
+
+@each $key, $value in ui.$shadows {
+  .shadow-sample--#{$key} {
+    box-shadow: ui.shadow($key);
+  }
 }

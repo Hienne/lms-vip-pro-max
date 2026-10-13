@@ -99,6 +99,7 @@ const CONTENT_TREE: readonly TreeNode<PublishStatus>[] = [
   ],
   providers: [NavSectionStore],
   templateUrl: './nav-section.html',
+  styleUrl: './nav-section.scss',
 })
 export class NavSection {
   protected readonly store = inject(NavSectionStore);

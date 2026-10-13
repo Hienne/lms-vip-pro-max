@@ -1,0 +1,6 @@
+// The `ui` Sass module: `@use 'ui';` from any stylesheet. Tokens, accessor functions and
+// mixins only; using it emits no CSS. Resolved through the Sass include path
+// (libs/ui/src/styles), so no stylesheet needs a relative path to the library.
+@forward 'tokens';
+@forward 'functions' hide keys, has-key, lookup, token;
+@forward 'mixins';

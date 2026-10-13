@@ -7,6 +7,7 @@ import { CHANGE_LOG, PRINCIPLES } from './data-access/principles';
   selector: 'app-principles-section',
   imports: [DsSection, Icon, Card, CardHeader, Table, TableWrap],
   templateUrl: './principles-section.html',
+  styleUrl: './principles-section.scss',
 })
 export class PrinciplesSection {
   protected readonly principles = PRINCIPLES;

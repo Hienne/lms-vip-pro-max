@@ -1,27 +1,20 @@
-<header
-  class="hero animate-enter relative flex flex-wrap items-end justify-between gap-6 overflow-hidden rounded-xl bg-linear-135 from-hero-from to-hero-to px-5 py-6 text-white sm:p-8"
->
+<header class="hero">
   <div class="hero__mai" aria-hidden="true">
     <ui-mai [size]="360" petal="white" core="white" />
   </div>
-  <div class="relative flex hero__main flex-col gap-2">
-    <span
-      class="text-xs font-semibold tracking-wider text-hero-subtle uppercase"
-      >Core Banking Academy · Design System v2</span
-    >
-    <h1 class="text-3xl text-white">
+  <div class="hero__main">
+    <span class="hero__eyebrow">Core Banking Academy · Design System v2</span>
+    <h1 class="hero__title">
       Flat, rõ ràng, đáng tin cậy — và dễ chuyển thành code.
     </h1>
-    <p class="text-hero-muted">
+    <p class="hero__lead">
       Teal BIDV cho hệ thống &amp; hành động, vàng hoa mai chỉ cho thành tích.
       Mọi component trên trang này là component thật của ứng dụng, đọc token từ
-      <code class="text-hero-accent">theme.css</code>.
+      <code class="hero__code">_tokens.scss</code>.
     </p>
-    <ul class="mt-4 flex list-none flex-wrap items-center gap-3">
+    <ul class="hero__highlights">
       @for (highlight of highlights; track highlight) {
-      <li
-        class="inline-flex h-6 items-center gap-1 rounded-full bg-hero-chip px-2 text-xs font-semibold text-white"
-      >
+      <li class="hero__chip">
         <ui-icon name="check" size="sm" />{{ highlight }}
       </li>
       }

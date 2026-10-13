@@ -29,7 +29,7 @@ describe('MaiBadge', () => {
     const { badge } = render(true);
     const plate = badge.querySelector('.mai-badge');
     expect(plate?.classList.contains('is-locked')).toBe(false);
-    expect(plate?.classList.contains('animate-reward-pop')).toBe(true);
+    expect(plate?.classList.contains('mai-badge--earned')).toBe(true);
     expect(badge.textContent).toContain('Khởi đầu suôn sẻ');
     expect(badge.textContent).toContain('Hoàn thành khóa đầu tiên');
     expect(badge.textContent).not.toContain('Chưa mở khóa');
@@ -42,7 +42,7 @@ describe('MaiBadge', () => {
     const { badge } = render(false);
     const plate = badge.querySelector('.mai-badge');
     expect(plate?.classList.contains('is-locked')).toBe(true);
-    expect(plate?.classList.contains('animate-reward-pop')).toBe(false);
+    expect(plate?.classList.contains('mai-badge--earned')).toBe(false);
     expect(badge.textContent).toContain(
       'Chưa mở khóa · Hoàn thành khóa đầu tiên',
     );

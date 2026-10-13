@@ -1,5 +1,5 @@
 // Checkbox: ported from the mockup's `.check input` (components.css). Applied by `uiCheckbox`;
-// the wrapping label's layout is utilities in the template.
+// the wrapping label's layout is the consumer's own BEM class.
 @layer components {
   .check {
     flex: none;

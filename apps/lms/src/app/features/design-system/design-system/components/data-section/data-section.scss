@@ -1,4 +1,51 @@
+@use 'ui';
+
+.data-section__kpis {
+  @include ui.grid(
+    (
+      sm: 2,
+      lg: 4,
+    )
+  );
+}
+
+.data-section__note {
+  @include ui.text(xs, muted);
+}
+
+.data-section__list {
+  overflow: hidden;
+}
+
+.data-section__item-title {
+  @include ui.grow;
+  @include ui.text(sm);
+  font-weight: ui.weight(semibold);
+}
+
+.data-section__code {
+  @include ui.mono;
+  white-space: nowrap;
+}
+
+.data-section__course {
+  font-weight: ui.weight(semibold);
+}
+
 // The progress cell keeps a readable bar when the table collapses into cards.
 .progress-cell {
+  display: flex;
+  align-items: center;
+  gap: ui.space(2);
   min-width: 100px;
+}
+
+.progress-cell__bar {
+  @include ui.grow;
+}
+
+.progress-cell__pct {
+  @include ui.text(xs);
+  @include ui.num;
+  white-space: nowrap;
 }

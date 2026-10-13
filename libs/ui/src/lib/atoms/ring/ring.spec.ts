@@ -70,7 +70,7 @@ describe('Ring', () => {
     fixture.detectChanges();
     expect(ring.querySelector('ui-mai')).not.toBeNull();
     expect(ring.querySelector('.progress-ring__bar')).toBeNull();
-    expect(ring.classList.contains('animate-reward-pop')).toBe(true);
+    expect(ring.classList.contains('progress-ring--complete')).toBe(true);
     expect(ring.getAttribute('aria-label')).toBe('Hoàn thành 100%');
   });
 });

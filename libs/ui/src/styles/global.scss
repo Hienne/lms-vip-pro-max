@@ -1,0 +1,8 @@
+// The global stylesheet of the design system, loaded once by the app, in the order of the CSS:
+// layer order, tokens, reset, base, atom looks, layout helpers.
+@use 'global/layers';
+@use 'global/theme';
+@use 'global/reset';
+@use 'global/base';
+@use 'components';
+@use 'global/helpers';

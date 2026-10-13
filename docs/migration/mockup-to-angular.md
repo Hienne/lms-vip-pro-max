@@ -12,23 +12,23 @@ python3 -m http.server 8080 -d lms-mockup
 
 ## Layer mapping
 
-| Mockup                                                  | Angular target                                                                                |
-| ------------------------------------------------------- | --------------------------------------------------------------------------------------------- |
-| `assets/css/tokens.css`                                 | `libs/ui/src/styles/theme.css` (`ui-library.md` → Styling)                                    |
-| `assets/css/components.css` blocks                      | one `_<block>.scss` partial per atom in `libs/ui`                                             |
-| `assets/css/base.css`, `layout.css`, `pages.css`        | Tailwind utilities; layout → `app/layout/`; page rules → route component `.scss`              |
-| `core/types.js`                                         | zod schemas in `@lms/contracts`                                                               |
-| `data/seed.js`                                          | fixtures in `@lms/mocks`                                                                      |
-| `api/*.js` function                                     | endpoint in `@lms/contracts` + same-named XApi method; its body is the **backend** spec       |
-| `api/core.js` (`PERMS`, `unitScope`, scoring, progress) | backend only; the app uses roles for navigation and display, nothing more                     |
-| `core/router.js` `routes[]`                             | `app.routes.ts` + feature `*.routes.ts`, `canMatch: [roleGuard(...)]`                         |
-| `core/router.js` `layout: 'focus'` / `public`           | layout route in `app/layout/` (focus, bare) wrapping the children                             |
-| `core/store.js` session, prefs                          | `core/session/` store-like root service (session, theme), per angular.md §5.2 shape           |
-| `core/shell.js`                                         | `app/layout/app-shell` (template) + role-based nav config                                     |
-| `core/ui.js` toast/modal/drawer/menu                    | `@lms/ui` organisms on CDK / `@angular/aria` (`ui-library.md` table)                          |
-| Demo menu                                               | dev toolbar + Prism `Prefer` header (`contracts-and-mocks.md` → Prism)                        |
-| `UI.X(props)`                                           | atom/molecule/organism per the inventory below                                                |
-| `html\`…\`` auto-escaping                               | Angular interpolation; `UI.Markdown` becomes a component that builds nodes, never `innerHTML` |
+| Mockup                                                  | Angular target                                                                                            |
+| ------------------------------------------------------- | --------------------------------------------------------------------------------------------------------- |
+| `assets/css/tokens.css`                                 | token maps in `libs/ui/src/styles/ui/_tokens.scss` (`ui-library.md` → Styling)                            |
+| `assets/css/components.css` blocks                      | one `_<block>.scss` partial per atom in `libs/ui`                                                         |
+| `assets/css/base.css`, `layout.css`, `pages.css`        | layout helpers or `ui` mixins (`ui-library.md` table); layout → `app/layout/`; page rules → route `.scss` |
+| `core/types.js`                                         | zod schemas in `@lms/contracts`                                                                           |
+| `data/seed.js`                                          | fixtures in `@lms/mocks`                                                                                  |
+| `api/*.js` function                                     | endpoint in `@lms/contracts` + same-named XApi method; its body is the **backend** spec                   |
+| `api/core.js` (`PERMS`, `unitScope`, scoring, progress) | backend only; the app uses roles for navigation and display, nothing more                                 |
+| `core/router.js` `routes[]`                             | `app.routes.ts` + feature `*.routes.ts`, `canMatch: [roleGuard(...)]`                                     |
+| `core/router.js` `layout: 'focus'` / `public`           | layout route in `app/layout/` (focus, bare) wrapping the children                                         |
+| `core/store.js` session, prefs                          | `core/session/` store-like root service (session, theme), per angular.md §5.2 shape                       |
+| `core/shell.js`                                         | `app/layout/app-shell` (template) + role-based nav config                                                 |
+| `core/ui.js` toast/modal/drawer/menu                    | `@lms/ui` organisms on CDK / `@angular/aria` (`ui-library.md` table)                                      |
+| Demo menu                                               | dev toolbar + Prism `Prefer` header (`contracts-and-mocks.md` → Prism)                                    |
+| `UI.X(props)`                                           | atom/molecule/organism per the inventory below                                                            |
+| `html\`…\`` auto-escaping                               | Angular interpolation; `UI.Markdown` becomes a component that builds nodes, never `innerHTML`             |
 
 ### Page contract → route module
 

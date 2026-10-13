@@ -7,6 +7,7 @@ import { MenuDemoStore } from './data-access/menu-demo.store';
   imports: [Menu],
   providers: [MenuDemoStore],
   templateUrl: './menu-demo.html',
+  styleUrl: './menu-demo.scss',
 })
 export class MenuDemo {
   protected readonly store = inject(MenuDemoStore);

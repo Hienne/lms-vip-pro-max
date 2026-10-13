@@ -4,23 +4,21 @@
   description="Token semantic — component không bao giờ dùng mã hex trực tiếp. Dark mode tự đổi giá trị token."
 >
   @for (group of store.swatchGroups$(); track group.group) {
-  <div class="flex flex-col gap-3">
+  <div class="stack stack--gap-3">
     <h3>{{ group.group }}</h3>
-    <ul class="swatches gap-3">
+    <ul class="swatches">
       @for (swatch of group.tokens; track swatch.token) {
-      <li
-        class="list-none overflow-hidden rounded-md border border-border bg-surface"
-      >
+      <li class="swatch">
         <div
           class="swatch-color"
           [style.--swatch]="'var(' + swatch.token + ')'"
         ></div>
-        <div class="p-3 text-xs">
-          <strong class="block text-sm">{{ swatch.name }}</strong>
+        <div class="swatch__body">
+          <strong class="swatch__name">{{ swatch.name }}</strong>
           <code>{{ swatch.token }}</code>
-          <div class="text-text-muted">{{ swatch.value }}</div>
+          <div class="swatch__value">{{ swatch.value }}</div>
           @if (swatch.purpose) {
-          <div class="mt-2">{{ swatch.purpose }}</div>
+          <div class="swatch__purpose">{{ swatch.purpose }}</div>
           }
         </div>
       </li>
@@ -34,10 +32,10 @@
       <h3 id="contrast-heading">
         Kiểm tra tương phản (tính trực tiếp theo theme hiện tại)
       </h3>
-      <span class="text-xs text-text-muted">Đổi sáng/tối để kiểm tra lại</span>
+      <span class="contrast__hint">Đổi sáng/tối để kiểm tra lại</span>
     </div>
     <div uiTableWrap>
-      <table uiTable class="whitespace-nowrap">
+      <table uiTable class="contrast__table">
         <thead>
           <tr>
             <th scope="col">Cặp chữ / nền</th>

@@ -108,6 +108,7 @@ const JOURNEY: readonly JourneyStop[] = [
   ],
   providers: [LearningSectionStore, QuizDemoStore],
   templateUrl: './learning-section.html',
+  styleUrl: './learning-section.scss',
 })
 export class LearningSection {
   protected readonly store = inject(LearningSectionStore);

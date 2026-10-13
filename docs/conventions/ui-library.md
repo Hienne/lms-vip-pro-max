@@ -5,15 +5,15 @@ domain-aware presentational UI in `apps/lms/src/app/shared/` that composes it.
 
 ## Atomic levels
 
-| Level     | What it is                                                                 | Lives in                            | May use                                       |
-| --------- | -------------------------------------------------------------------------- | ----------------------------------- | --------------------------------------------- |
-| Tokens    | CSS custom properties: color, type, space, radius, shadow, motion, z-index | `libs/ui/src/styles/`               | —                                             |
-| Atom      | One native element with a look or a behaviour                              | `libs/ui/src/lib/atoms/<name>/`     | tokens                                        |
-| Molecule  | A few atoms doing one job (label + control + error)                        | `libs/ui/src/lib/molecules/<name>/` | atoms                                         |
-| Organism  | A self-contained section (data table, page header, dialog shell, chart)    | `libs/ui/src/lib/organisms/<name>/` | molecules, atoms                              |
-| Domain UI | Organism/molecule that knows LMS types (course card, role badge)           | `apps/lms/src/app/shared/<name>/`   | anything in `@lms/ui`, `@lms/contracts` types |
-| Template  | Page layout with slots (app shell, focus layout)                           | `apps/lms/src/app/layout/`          | all of the above                              |
-| Page      | Route module                                                               | `apps/lms/src/app/features/`        | all of the above                              |
+| Level     | What it is                                                                                      | Lives in                            | May use                                       |
+| --------- | ----------------------------------------------------------------------------------------------- | ----------------------------------- | --------------------------------------------- |
+| Tokens    | SCSS maps emitted as CSS custom properties: color, type, space, radius, shadow, motion, z-index | `libs/ui/src/styles/ui/`            | —                                             |
+| Atom      | One native element with a look or a behaviour                                                   | `libs/ui/src/lib/atoms/<name>/`     | tokens                                        |
+| Molecule  | A few atoms doing one job (label + control + error)                                             | `libs/ui/src/lib/molecules/<name>/` | atoms                                         |
+| Organism  | A self-contained section (data table, page header, dialog shell, chart)                         | `libs/ui/src/lib/organisms/<name>/` | molecules, atoms                              |
+| Domain UI | Organism/molecule that knows LMS types (course card, role badge)                                | `apps/lms/src/app/shared/<name>/`   | anything in `@lms/ui`, `@lms/contracts` types |
+| Template  | Page layout with slots (app shell, focus layout)                                                | `apps/lms/src/app/layout/`          | all of the above                              |
+| Page      | Route module                                                                                    | `apps/lms/src/app/features/`        | all of the above                              |
 
 Imports point **down** the table only. An atom importing a molecule, or
 `libs/ui` mentioning `Course`, is a level violation: move the piece to the
@@ -23,9 +23,7 @@ One deliberate exception: an atom that is a specialisation of a sibling atom may
 (`ui-mai-badge` and `ui-ring` use `ui-mai`, `ui-avatar-group` wraps `ui-avatar`s). A molecule or
 organism never imports upward.
 
-Class names that Tailwind also uses as utilities cannot be block names: the mockup's `.ring`
-is `.progress-ring` here, because Tailwind's `ring` utility would draw a border on it
-(`table` is harmless, both mean `display: table`).
+The mockup's `.ring` is `.progress-ring` here; it keeps that name.
 
 Every `@lms/ui` export is presentational (inputs, outputs, content projection,
 no store, no HTTP) and is exported from `libs/ui/src/index.ts`.
@@ -99,40 +97,71 @@ defaults to `button`, so write `type="submit"` for a form's submit button.
 
 ## Styling
 
-- **Tokens are the single source of truth.** `libs/ui/src/styles/theme.css`
-  ports `lms-mockup/assets/css/tokens.css`: light values inside
-  `@theme static { … }`, dark values in the same `:root[data-theme="dark"]` and
-  `prefers-color-scheme` blocks as the mockup. Every token has **one** name,
-  taken from a Tailwind v4 namespace, so utilities (`bg-primary`,
-  `text-text-muted`, `p-4`, `rounded-lg`, `fill-chart-1`) and SCSS
-  (`var(--color-primary)`) read the same variable. The mockup's names do **not**
-  all match Tailwind's namespaces; use the table below to translate.
-- The theme starts with `--*: initial;`, which removes Tailwind's whole default
-  theme (palette, spacing, font sizes, breakpoints…): `bg-red-500` and `p-7`
-  simply produce nothing. `static` keeps every token emitted even when no
-  utility uses it, because component SCSS reads them via `var()`.
-- Spacing utilities use the mockup's 4px steps only: 1, 2, 3, 4, 5, 6, 8, 10, 12, 18
-  (`--spacing-N`, no base `--spacing` multiplier, so `p-7` is not a class).
-  Arbitrary values (`p-[13px]`, `text-[#fff]`) are out.
+SCSS only. There is no PostCSS step and no utility framework; the Sass compiler is the only style tool.
+
+- **Tokens are declared once, as SCSS maps.** `libs/ui/src/styles/ui/_tokens.scss` ports
+  `lms-mockup/assets/css/tokens.css`: one map per namespace (colours, chart colours, spacing, text
+  sizes, leadings, weights, trackings, radii, shadows, durations, easings, animations, breakpoints,
+  layout sizes, z-indexes) and a dark map for the values that change. `global/_theme.scss` emits them
+  as CSS custom properties, light on `:root` and dark behind the mockup's two conditions. This file
+  is the only stylesheet that may contain a colour literal (a spec fails on a hex or `rgb()` anywhere
+  else). Custom property names are the contract with every stylesheet and with `ThemeStore`; the
+  table below maps the mockup's names to them.
+- **The `ui` Sass module** (`libs/ui/src/styles/ui/`) is what every stylesheet uses:
+  `@use 'ui';` at the top of any `.scss` in the app or the UI library, with no relative path
+  (the app's build and test targets put `libs/ui/src/styles` on the Sass include path). Using it
+  emits no CSS.
+  - **Functions** return `var(--<namespace>-<key>)` and fail the build on an unknown key, naming the
+    namespace and the valid keys: `ui.color`, `ui.chart`, `ui.space`, `ui.radius`, `ui.shadow`,
+    `ui.text-size`, `ui.leading`, `ui.weight`, `ui.tracking`, `ui.font`, `ui.duration`, `ui.ease`,
+    `ui.z`, `ui.layout`.
+  - **Breakpoints**: `@include ui.bp(md)` is a mobile-first `min-width` media query from the
+    `sm 640 / md 720 / lg 1100 / xl 1280` map, the only place widths are written. Write the narrow
+    layout as the base style. `ui.bp-below(md)` exists for the one narrow-only case (a responsive table
+    turning into cards).
+  - **Layout mixins**: `ui.stack($gap)`, `ui.row($gap)`, `ui.row-between($gap)`, `ui.grow`,
+    `ui.grid((md: 2, lg: 3), $gap)` (columns per breakpoint, `base` defaults to 1). Gaps are spacing
+    keys.
+  - **Typography mixins**: `ui.text($size, $tone)` (a tone is a colour key, or `muted`, `secondary`,
+    `accent`), `ui.eyebrow`, `ui.num`, `ui.mono`, `ui.truncate`, `ui.clamp($lines)`.
+  - **Accessibility and motion**: `ui.sr-only`, `ui.focus-ring`, `ui.animate(enter | reward-pop |
+shimmer | spin)` (reduced motion shows the end state).
+- **Spacing** uses the mockup's 4px steps only: 1, 2, 3, 4, 5, 6, 8, 10, 12, 18. The mockup's
+  off-scale gaps (10px, 14px…) round to the nearest step; note a visible snap in the pull request.
+- **Atom look = one SCSS partial per BEM block**, ported from the mockup's `components.css` into
+  `libs/ui/src/styles/components/_<block>.scss`, wrapped in `@layer components`, and applied only by
+  the owning atom's `host` class. Templates outside `libs/ui` never write block classes
+  (`class="btn btn--primary"`); they use the atom.
+- **Templates carry semantic class names.** A wrapper that only arranges its children uses a layout
+  helper. An element with its own role, any text or colour styling, or responsive behaviour outside
+  the helper presets gets a BEM class and is styled with mixins in the component's own `.scss`.
+  Route-specific styles from the mockup's `pages.css` go there too.
+- **Dynamic classes**: TypeScript maps and class bindings return BEM modifier names
+  (`due-date--danger`, `[class.course-card__status--failed]`), never style values. A sample that must
+  list every token (the `/design-system` spacing, radius, shadow and type samples) is a modifier
+  generated with `@each` over the token map, so the showcase never drifts from the tokens.
+- Runtime values go through a CSS variable binding (`[style.--value]="pct() + '%'"`), never an inline
+  literal. Inline `style="color:#fff"` in mockup markup becomes a token.
+- Dark mode comes from tokens only: see [Theme and dark mode](#theme-and-dark-mode).
 
 ### Mockup token → project token
 
-| Mockup (`tokens.css`)                                                           | Project token                                                   | Utility examples                                 |
-| ------------------------------------------------------------------------------- | --------------------------------------------------------------- | ------------------------------------------------ |
-| `--color-*` (brand, semantic, neutral)                                          | unchanged                                                       | `bg-primary`, `text-text-muted`, `border-border` |
-| `--chart-1` … `--chart-5`, `--chart-grid`                                       | `--color-chart-1` … `--color-chart-grid`                        | `fill-chart-1`, `stroke-chart-grid`              |
-| `--font-sans`, `--font-mono`                                                    | unchanged                                                       | `font-sans`, `font-mono`                         |
-| `--text-xs` … `--text-3xl`                                                      | unchanged                                                       | `text-sm`, `text-2xl`                            |
-| `--leading-tight/normal/relaxed`                                                | unchanged                                                       | `leading-tight`                                  |
-| `--weight-regular/medium/semibold/bold`                                         | `--font-weight-regular/medium/semibold/bold`                    | `font-semibold`                                  |
-| `--space-1` … `--space-12`                                                      | `--spacing-1` … `--spacing-12`                                  | `p-4`, `gap-3`, `mt-6`                           |
-| `--radius-*`, `--shadow-*`                                                      | unchanged                                                       | `rounded-lg`, `shadow-md`                        |
-| `--duration-fast/base/slow`                                                     | `--transition-duration-fast/base/slow`                          | `duration-fast`                                  |
-| `--ease-out`                                                                    | unchanged                                                       | `ease-out`                                       |
-| `@keyframes enter/reward-pop/shimmer/spin`, `.animate-enter`, `.animate-reward` | `--animate-enter/reward-pop/shimmer/spin`                       | `animate-enter`, `animate-reward-pop`            |
-| `--sidebar-width`, `--content-max`                                              | `--container-sidebar`, `--container-content`                    | `w-sidebar`, `max-w-content`                     |
-| `--header-height`, `--control-height(-sm)`, `--touch-min`                       | `--spacing-header`, `--spacing-control(-sm)`, `--spacing-touch` | `h-header`, `min-h-control`, `min-h-touch`       |
-| `--z-header/sidebar/drawer/modal/toast`                                         | `--z-index-header/sidebar/drawer/modal/toast`                   | `z-header` (or `var(--z-index-modal)`)           |
+| Mockup (`tokens.css`)                                                           | Project token                                                   | Accessor                                    |
+| ------------------------------------------------------------------------------- | --------------------------------------------------------------- | ------------------------------------------- |
+| `--color-*` (brand, semantic, neutral)                                          | unchanged                                                       | `ui.color(primary)`, `ui.color(text-muted)` |
+| `--chart-1` … `--chart-5`, `--chart-grid`                                       | `--color-chart-1` … `--color-chart-grid`                        | `ui.chart(1)`, `ui.chart(grid)`             |
+| `--font-sans`, `--font-mono`                                                    | unchanged                                                       | `ui.font(sans)`                             |
+| `--text-xs` … `--text-3xl`                                                      | unchanged                                                       | `ui.text-size(sm)`, `ui.text-size(2xl)`     |
+| `--leading-tight/normal/relaxed`                                                | unchanged                                                       | `ui.leading(tight)`                         |
+| `--weight-regular/medium/semibold/bold`                                         | `--font-weight-regular/medium/semibold/bold`                    | `ui.weight(semibold)`                       |
+| `--space-1` … `--space-12`                                                      | `--spacing-1` … `--spacing-12`                                  | `ui.space(4)`                               |
+| `--radius-*`, `--shadow-*`                                                      | unchanged                                                       | `ui.radius(lg)`, `ui.shadow(md)`            |
+| `--duration-fast/base/slow`                                                     | `--transition-duration-fast/base/slow`                          | `ui.duration(fast)`                         |
+| `--ease-out`                                                                    | unchanged                                                       | `ui.ease(out)`                              |
+| `@keyframes enter/reward-pop/shimmer/spin`, `.animate-enter`, `.animate-reward` | `--animate-enter/reward-pop/shimmer/spin`                       | `@include ui.animate(enter)`                |
+| `--sidebar-width`, `--content-max`                                              | `--container-sidebar`, `--container-content`                    | `ui.layout(sidebar)`, `ui.layout(content)`  |
+| `--header-height`, `--control-height(-sm)`, `--touch-min`                       | `--spacing-header`, `--spacing-control(-sm)`, `--spacing-touch` | `ui.layout(header)`, `ui.layout(touch)`     |
+| `--z-header/sidebar/drawer/modal/toast`                                         | `--z-index-header/sidebar/drawer/modal/toast`                   | `ui.z(modal)`                               |
 
 Tokens added on top of the mockup (the mockup hard-coded these values): `--color-white`,
 `--color-on-danger` (dark: a dark ink, because white on the dark danger red is 2.4:1),
@@ -142,9 +171,8 @@ Tokens added on top of the mockup (the mockup hard-coded these values): `--color
 
 ### Breakpoints
 
-Mobile-first, four steps: `sm` 640px · `md` 720px · `lg` 1100px · `xl` 1280px.
-Write the narrow layout as the base style and add `md:`, `lg:`… utilities; there
-are no `max-*` queries. The mockup's `max-width` queries map to the nearest step:
+Mobile-first, four steps: `sm` 640px · `md` 720px · `lg` 1100px · `xl` 1280px. The mockup's
+`max-width` queries map to the nearest step:
 
 | Mockup query | Step | Notes                                             |
 | ------------ | ---- | ------------------------------------------------- |
@@ -155,80 +183,71 @@ are no `max-*` queries. The mockup's `max-width` queries map to the nearest step
 | ≤ 1024       | `lg` | sidebar → drawer (nearest step is 1100)           |
 | ≤ 1100       | `lg` | dashboard grids, design-system TOC                |
 
-A screen may therefore differ slightly from the mockup between the old and new
-width; note each visible difference in the conversion report. SCSS media queries
-cannot read custom properties: write the literal width and comment the step it equals.
+A screen may therefore differ slightly from the mockup between the old and new width; note each
+visible difference in the conversion report.
 
-### Mockup helper → Tailwind utility
+### Mockup helper → helper or mixin
 
-The mockup's `base.css` helpers are not ported. Use the utility on the right.
+The layout helpers are a closed set in `global/_helpers.scss` (`@layer helpers`), each built from the
+mixin a component would use. Everything else in the mockup's `base.css` is a mixin in a component's
+`.scss`. Do not add helpers for margins, widths or text: write a BEM class.
 
-| Mockup helper                                  | Tailwind                                                                                                  |
-| ---------------------------------------------- | --------------------------------------------------------------------------------------------------------- |
-| `.stack` (`--gap`)                             | `flex flex-col gap-4` (gap from the 4px scale)                                                            |
-| `.row` / `.row-between`                        | `flex flex-wrap items-center gap-3` / add `justify-between`                                               |
-| `.grow`                                        | `grow min-w-0`                                                                                            |
-| `.grid-2` / `.grid-3` / `.grid-4`              | `grid grid-cols-1 md:grid-cols-2` · `… md:grid-cols-2 lg:grid-cols-3` · `… md:grid-cols-2 lg:grid-cols-4` |
-| `.span-2`                                      | `md:col-span-2`                                                                                           |
-| `.mt-2/4/6`, `.mb-2/4`, `.w-full`, `.hidden`   | same names                                                                                                |
-| `.text-sm/xs/lg`, `.fw-600`, `.fw-700`         | `text-sm/xs/lg`, `font-semibold`, `font-bold`                                                             |
-| `.text-muted/secondary/success/danger/warning` | `text-text-muted`, `text-text-secondary`, `text-success`, …                                               |
-| `.text-accent`                                 | `text-accent-ink`                                                                                         |
-| `.eyebrow`                                     | `text-xs font-semibold tracking-wider text-text-muted uppercase`                                          |
-| `.num`                                         | `tabular-nums`                                                                                            |
-| `.mono`                                        | `font-mono text-sm`                                                                                       |
-| `.truncate` / `.clamp-2`                       | `truncate` / `line-clamp-2`                                                                               |
-| `.sr-only`                                     | `sr-only`                                                                                                 |
-| `.animate-enter` / `.animate-reward`           | `animate-enter` / `animate-reward-pop`                                                                    |
-| `.skip-link`                                   | `skip-link` (kept in `base.css`)                                                                          |
+| Mockup helper                                  | Port                                                                                                                                              |
+| ---------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `.stack` (`--gap`)                             | helper `stack` (gap 4); `stack--gap-<key>` for another spacing key; mixin `ui.stack($gap)`                                                        |
+| `.row` / `.row-between`                        | helpers `row` / `row-between` (gap 3, wrap, centred); `row--gap-<key>`; mixins `ui.row`, `ui.row-between`                                         |
+| `.grow`                                        | helper `grow`; mixin `ui.grow`                                                                                                                    |
+| `.grid-2` / `.grid-3` / `.grid-4`              | helpers `grid-2` (1 → md 2), `grid-3` (1 → md 2 → lg 3), `grid-4` (1 → md 2 → lg 4); `grid-N--gap-<key>`; mixin `ui.grid` for other column counts |
+| `.span-2`                                      | helper `span-2` (from `md`)                                                                                                                       |
+| `.mt-2/4/6`, `.mb-2/4`, `.w-full`, `.hidden`   | `margin-top: ui.space(4)` etc. in the component's `.scss`                                                                                         |
+| `.text-sm/xs/lg`, `.fw-600`, `.fw-700`         | `@include ui.text(sm)`, `font-weight: ui.weight(semibold)`                                                                                        |
+| `.text-muted/secondary/success/danger/warning` | `@include ui.text(sm, muted)` (tone = colour key or alias), or `color: ui.color(success)`                                                         |
+| `.text-accent`                                 | `ui.text(sm, accent)` (the `accent-ink` colour)                                                                                                   |
+| `.eyebrow`                                     | `@include ui.eyebrow`                                                                                                                             |
+| `.num`                                         | `@include ui.num`                                                                                                                                 |
+| `.mono`                                        | `@include ui.mono`                                                                                                                                |
+| `.truncate` / `.clamp-2`                       | `@include ui.truncate` / `@include ui.clamp(2)`                                                                                                   |
+| `.sr-only`                                     | helper `sr-only`; mixin `ui.sr-only`                                                                                                              |
+| `.animate-enter` / `.animate-reward`           | `@include ui.animate(enter)` / `ui.animate(reward-pop)`                                                                                           |
+| `.skip-link`                                   | helper `skip-link`                                                                                                                                |
 
-Base rules that differ from Tailwind's preflight (headings, links, `kbd`,
-`:focus-visible`, skip link, tabular numbers in tables, reduced motion) live in
-`libs/ui/src/styles/base.css`. Two deliberate deviations from the mockup: the
-focus ring does not force `border-radius: 4px` (it follows the element's own
-radius), and lists keep preflight's reset (use `list-disc pl-5` for prose lists).
+### Global stylesheet and cascade layers
 
-- **Atom look = one SCSS partial per BEM block**, ported from the mockup's
-  `components.css` into `libs/ui/src/styles/components/_<block>.scss`, wrapped in
-  `@layer components`, and applied only by the owning atom's `host` class.
-  Templates outside `libs/ui` never write block classes (`class="btn btn--primary"`);
-  they use the atom.
-- **Layout and spacing in templates = Tailwind utilities.** The mockup's
-  `base.css` helpers (`row`, `stack`, `grid-4`, `mt-4`, `text-sm`) become their
-  Tailwind equivalents. Route-specific styles from `pages.css` go to the route
-  component's `.scss` using `var(--token)`.
-- Runtime values go through a CSS variable binding (`[style.--value]="pct() + '%'"`),
-  never an inline literal. Inline `style="color:#fff"` in mockup markup becomes a
-  token (`text-on-primary`).
-- Dark mode comes from tokens only: see [Theme and dark mode](#theme-and-dark-mode).
+`libs/ui/src/styles/global.scss` is the one global entry (the app's `styles` list in `project.json`).
+It declares `@layer reset, base, components, helpers;` and loads, in order: the token emission, the
+reset (Tailwind's preflight, MIT, attribution kept in the file, so the atoms keep the box model they
+were written against), the base rules (headings, links, `kbd`, `:focus-visible`, tabular numbers,
+reduced motion), the atom partials and the helpers. Component styles are unlayered, so they win over
+every global rule; this is why a helper loses to a component rule on the same element. Two deliberate
+deviations from the mockup: the focus ring does not force `border-radius: 4px` (it follows the
+element's own radius), and lists keep the reset (no bullets, no indent).
 
-### Tailwind + SCSS wiring (gotchas)
+### Style budgets
 
-- Tailwind v4 cannot run through Sass. The Tailwind entry is plain CSS:
-  `apps/lms/src/tailwind.css`, configured by `.postcssrc.json` at the root.
-- It imports Tailwind with `source(none)` and lists template folders with
-  `@source`; automatic detection would scan `lms-mockup/` too. A new folder of
-  templates outside `apps/lms/src` and `libs/ui/src` needs its own `@source` line.
-- Global styles order in the `lms` build: `tailwind.css` first (it declares the
-  layer order `theme, base, components, utilities`), then
-  `libs/ui/src/styles/components.scss`. Unlayered global CSS would outrank every
-  utility, so every global rule sits inside a layer.
-- Component `.scss` files use `var(--token)`. Use `@apply` only after
-  `@reference "<path>/tailwind.css";`, and prefer utilities in the template.
+`anyComponentStyle` stays at 4kb warning and 8kb error. Mixins copy their declarations into each
+component, so watch the warnings: a component that exceeds the budget moves its shared rules into a
+`@lms/ui` partial or an atom instead of raising the budget.
+
+### What the specs enforce
+
+`template-scan.spec.ts` fails when a template, class binding or class string in the app or the UI
+library uses anything but a BEM class some stylesheet defines, a layout helper, or a helper's gap
+modifier with a spacing key; when an app template writes a design-system block class; when a `.scss`
+outside the token source has a hex or `rgb()` colour; and when anything references Tailwind or
+PostCSS. `libs/ui/src/styles/styles.spec.ts` compiles the style library and locks its contract (see the
+spec for the list).
 
 ## Theme and dark mode
 
 Three choices, **Hệ thống / Sáng / Tối** (`system | light | dark`), remembered per browser.
 
-- **Tokens carry the theme.** `theme.css` holds the light values and the dark values behind two
+- **Tokens carry the theme.** `global/_theme.scss` emits the light values and the dark values behind two
   conditions: `:root[data-theme="dark"]`, and `prefers-color-scheme: dark` unless
   `data-theme="light"`. A screen that uses tokens supports both themes with no extra work.
   `system` means no attribute at all.
-- **Nothing else mentions a theme.** Components, templates and SCSS never branch on the theme, and
-  never write `dark:` utilities. The variant exists in the theme (matching the same two conditions)
-  only so a stray one is not silently ignored; a spec (`template-scan.spec.ts`) fails on any
-  `dark:` in a template or component file, and on any file other than `ThemeStore` that writes the
-  `data-theme` attribute.
+- **Nothing else mentions a theme.** Components, templates and SCSS never branch on the theme; a spec
+  (`template-scan.spec.ts`) fails on any file other than `ThemeStore` that writes the `data-theme`
+  attribute.
 - **`ThemeStore`** (`apps/lms/src/app/core/theme/theme.store.ts`, root-provided) owns the choice:
   `preference$()`, `effective$()` (`light | dark`, following the OS live in `system`) and one
   command, `setPreference()`. It is the only writer of the attribute, persists the choice under

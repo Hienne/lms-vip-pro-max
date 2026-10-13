@@ -1,0 +1,3 @@
+// Cascade layer order, lowest to highest. Component styles are unlayered, so they win over every
+// global rule. Loaded first so the order is fixed before any layer is used.
+@layer reset, base, components, helpers;

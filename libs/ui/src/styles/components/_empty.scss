@@ -1,6 +1,9 @@
 // Empty state: ported from the mockup's `.empty` block (components.css). Applied by `ui-empty`.
+@use 'ui';
+
 @layer components {
   .empty {
+    @include ui.animate(enter);
     display: flex;
     flex-direction: column;
     align-items: center;

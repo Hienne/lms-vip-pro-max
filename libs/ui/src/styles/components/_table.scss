@@ -1,5 +1,7 @@
 // Table: ported from the mockup's `.table` and `.table-wrap` blocks (components.css).
 // Applied by `uiTable` and `uiTableWrap`.
+@use 'ui';
+
 @layer components {
   .table-wrap {
     // The containing block of visually hidden text (`sr-only` is absolutely positioned), so it
@@ -74,9 +76,9 @@
     }
   }
 
-  // Below 720px (--breakpoint-md) a responsive table turns each row into a card:
-  // each cell shows its `data-label` before the value.
-  @media (width < 720px) {
+  // Below md a responsive table turns each row into a card: each cell shows its `data-label`
+  // before the value.
+  @include ui.bp-below(md) {
     .table--responsive {
       thead {
         display: none;

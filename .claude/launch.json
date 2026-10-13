@@ -4,7 +4,10 @@
     {
       "name": "lms",
       "runtimeExecutable": "bash",
-      "runtimeArgs": ["-c", "source ~/.nvm/nvm.sh && nvm use 24 >/dev/null && npx nx serve lms --port 4200"],
+      "runtimeArgs": [
+        "-c",
+        "source ~/.nvm/nvm.sh && nvm use 24 >/dev/null && npx nx serve lms --port 4200"
+      ],
       "port": 4200
     }
   ]

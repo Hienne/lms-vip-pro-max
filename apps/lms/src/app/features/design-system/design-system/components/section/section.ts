@@ -10,6 +10,7 @@ import {
 @Component({
   selector: 'app-ds-section',
   templateUrl: './section.html',
+  styleUrl: './section.scss',
 })
 export class DsSection {
   readonly section = input.required<DesignSystemSectionId>();

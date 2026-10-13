@@ -50,6 +50,7 @@ import {
   ],
   providers: [FormsSectionStore],
   templateUrl: './forms-section.html',
+  styleUrl: './forms-section.scss',
 })
 export class FormsSection {
   protected readonly store = inject(FormsSectionStore);

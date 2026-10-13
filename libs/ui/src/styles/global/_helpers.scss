@@ -1,0 +1,75 @@
+// Layout helpers: the closed set of mockup helpers for wrappers that only arrange their children.
+// Each is built from the mixin a component would include, so a helper and a mixin never drift.
+// Gap modifiers (`row--gap-2`) exist for spacing token keys only. Anything else is a BEM class in
+// the component that owns it. They sit in the top layer, below every component's own styles.
+@use 'sass:map';
+@use '../ui';
+
+@layer helpers {
+  .stack {
+    @include ui.stack;
+  }
+  .row {
+    @include ui.row;
+  }
+  .row-between {
+    @include ui.row-between;
+  }
+  .grow {
+    @include ui.grow;
+  }
+  .grid-2 {
+    @include ui.grid(
+      (
+        md: 2,
+      )
+    );
+  }
+  .grid-3 {
+    @include ui.grid(
+      (
+        md: 2,
+        lg: 3,
+      )
+    );
+  }
+  .grid-4 {
+    @include ui.grid(
+      (
+        md: 2,
+        lg: 4,
+      )
+    );
+  }
+  .span-2 {
+    @include ui.bp(md) {
+      grid-column: span 2 / span 2;
+    }
+  }
+  .sr-only {
+    @include ui.sr-only;
+  }
+
+  .skip-link {
+    position: absolute;
+    top: -48px;
+    left: ui.space(3);
+    z-index: 100;
+    padding: 10px ui.space(4);
+    border-radius: ui.radius(sm);
+    background: ui.color(primary);
+    color: ui.color(on-primary);
+
+    &:focus {
+      top: ui.space(3);
+    }
+  }
+
+  @each $helper in (stack, row, row-between, grid-2, grid-3, grid-4) {
+    @each $key, $value in ui.$spacing {
+      .#{$helper}--gap-#{$key} {
+        gap: ui.space($key);
+      }
+    }
+  }
+}

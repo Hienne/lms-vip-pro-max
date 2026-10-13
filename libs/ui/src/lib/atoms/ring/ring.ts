@@ -11,7 +11,7 @@ import { Mai } from '../mai/mai';
   imports: [Mai],
   host: {
     class: 'progress-ring',
-    '[class.animate-reward-pop]': 'complete()',
+    '[class.progress-ring--complete]': 'complete()',
     role: 'img',
     '[attr.aria-label]': 'description()',
     '[style.--ring-size]': 'sizePx()',
@@ -48,7 +48,7 @@ import { Mai } from '../mai/mai';
       </svg>
       <div class="progress-ring__label" aria-hidden="true">
         <div class="progress-ring__value">{{ rounded() }}%</div>
-        <div class="text-xs text-text-muted">{{ label() }}</div>
+        <div class="progress-ring__caption">{{ label() }}</div>
       </div>
     }
   `,

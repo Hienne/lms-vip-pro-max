@@ -1,0 +1,101 @@
+// Emits the tokens of `ui/_tokens.scss` as CSS custom properties: light on :root, dark behind the
+// mockup's two conditions (explicit dark; system dark unless light was chosen). The property names
+// are the contract with every stylesheet and with ThemeStore. Nothing else mentions a theme: the
+// only writer of the `data-theme` attribute is ThemeStore (apps/lms/src/app/core/theme).
+@use 'sass:map';
+@use '../ui';
+
+@mixin -emit($map, $prefix) {
+  @each $key, $value in $map {
+    --#{$prefix}-#{$key}: #{$value};
+  }
+}
+
+@mixin -dark-values {
+  @include -emit(ui.$colors-dark, color);
+  @include -emit(ui.$chart-dark, color-chart);
+  @include -emit(ui.$shadows-dark, shadow);
+  color-scheme: dark;
+}
+
+:root {
+  @include -emit(ui.$breakpoints, breakpoint);
+  @include -emit(ui.$colors, color);
+  @include -emit(ui.$chart, color-chart);
+  @include -emit(ui.$font-families, font);
+  --default-font-family: var(--font-sans);
+  --default-mono-font-family: var(--font-mono);
+  @include -emit(ui.$text-sizes, text);
+  @include -emit(ui.$leadings, leading);
+  @include -emit(ui.$weights, font-weight);
+  @include -emit(ui.$trackings, tracking);
+  @include -emit(ui.$spacing, spacing);
+  @each $key, $entry in ui.$layout {
+    --#{map.get($entry, property)}: #{map.get($entry, value)};
+  }
+  @include -emit(ui.$radii, radius);
+  @include -emit(ui.$shadows, shadow);
+  @include -emit(ui.$durations, transition-duration);
+  @include -emit(ui.$easings, ease);
+  --default-transition-duration: var(--transition-duration-base);
+  --default-transition-timing-function: var(--ease-out);
+  @include -emit(ui.$animations, animate);
+  @include -emit(ui.$z-indexes, z-index);
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    @include -dark-values;
+  }
+}
+:root[data-theme='dark'] {
+  @include -dark-values;
+}
+
+// Motion durations drop to zero under reduced motion.
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --transition-duration-fast: 0ms;
+    --transition-duration-base: 0ms;
+    --transition-duration-slow: 0ms;
+  }
+}
+
+// Keyframes of the `--animate-*` tokens, emitted once.
+@keyframes enter {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes reward-pop {
+  0% {
+    transform: scale(0.9);
+    opacity: 0;
+  }
+  60% {
+    transform: scale(1.04);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+@keyframes shimmer {
+  from {
+    background-position: -400px 0;
+  }
+  to {
+    background-position: 400px 0;
+  }
+}
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}

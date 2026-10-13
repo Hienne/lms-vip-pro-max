@@ -1,4 +1,6 @@
 // Hoa mai and its reward badge: ported from the mockup's `.mai` and `.mai-badge` blocks.
+@use 'ui';
+
 @layer components {
   .mai {
     display: inline-block;
@@ -10,6 +12,13 @@
     .mai__core {
       fill: var(--mai-core, var(--color-primary-strong));
     }
+  }
+
+  // Host of `ui-mai-badge`: the plate, its name and its description in a centred column.
+  .mai-badge-host {
+    @include ui.stack(2);
+    align-items: center;
+    text-align: center;
   }
 
   .mai-badge {
@@ -27,7 +36,17 @@
     opacity: 0.55;
   }
 
+  .mai-badge--earned {
+    @include ui.animate(reward-pop);
+  }
+
+  .mai-badge__name {
+    @include ui.text(sm);
+    font-weight: ui.weight(semibold);
+  }
+
   .mai-badge__desc {
+    @include ui.text(xs, muted);
     max-width: 16ch;
   }
 }

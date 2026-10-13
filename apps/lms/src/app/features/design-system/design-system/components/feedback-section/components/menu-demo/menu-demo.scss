@@ -1,0 +1,10 @@
+@use 'ui';
+
+.menu-demo__status {
+  @include ui.text(sm, secondary);
+}
+
+.menu-demo__note {
+  margin-top: ui.space(3);
+  @include ui.text(xs, muted);
+}

@@ -62,6 +62,7 @@ const TONES: readonly {
   ],
   providers: [StatusSectionStore],
   templateUrl: './status-section.html',
+  styleUrl: './status-section.scss',
 })
 export class StatusSection {
   protected readonly store = inject(StatusSectionStore);

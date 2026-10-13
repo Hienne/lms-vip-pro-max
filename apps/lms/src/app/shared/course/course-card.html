@@ -14,7 +14,7 @@
     <span class="course-card__eyebrow"
       >{{ course().domain }} · {{ course().module }}</span
     >
-    <h3 class="course-card__title line-clamp-2">{{ course().title }}</h3>
+    <h3 class="course-card__title">{{ course().title }}</h3>
     <div class="course-card__meta">
       <span><ui-icon name="clock" size="sm" />{{ duration() }}</span>
       <span
@@ -32,8 +32,7 @@
       <div class="course-card__line">
         <span
           class="course-card__status"
-          [class.text-danger]="course().status === 'failed'"
-          [class.font-semibold]="course().status === 'failed'"
+          [class.course-card__status--failed]="course().status === 'failed'"
           >{{ statusText() }}</span
         >
         <strong class="course-card__pct">{{ course().pct }}%</strong>

@@ -1,17 +1,53 @@
 import { readdirSync, readFileSync, statSync } from 'node:fs';
-import { join, relative } from 'node:path';
+import { dirname, join, relative } from 'node:path';
+import * as sass from 'sass';
 
 /**
- * Guards two rules that keep theme and look inside the design system:
- *  - nothing writes a `dark:` utility (dark mode is token values only);
- *  - nothing outside `@lms/ui` writes a design-system block class (`btn btn--primary`):
- *    templates use the atom instead.
- * docs/conventions/ui-library.md → Styling.
+ * Guards the styling rules (docs/conventions/ui-library.md → Styling):
+ *  - every class a template, class binding or class string writes is a BEM class defined by some
+ *    stylesheet, one of the layout helpers, or a helper's gap modifier;
+ *  - nothing outside `@lms/ui` writes a design-system block class (`btn btn--primary`): templates
+ *    use the atom instead;
+ *  - no stylesheet outside the token source writes a colour literal;
+ *  - nothing references Tailwind or PostCSS any more;
+ *  - only `ThemeStore` writes the theme attribute.
  */
 
 const root = join(import.meta.dirname, '../../../..');
 const appSource = join(root, 'apps/lms/src');
 const uiSource = join(root, 'libs/ui/src');
+const stylesRoot = join(uiSource, 'styles');
+const tokenSource = join(stylesRoot, 'ui/_tokens.scss');
+const helperSource = join(stylesRoot, 'global/_helpers.scss');
+
+/** The closed set of layout helpers (global/_helpers.scss), taken from the mockup. */
+const HELPERS = [
+  'stack',
+  'row',
+  'row-between',
+  'grow',
+  'grid-2',
+  'grid-3',
+  'grid-4',
+  'span-2',
+  'sr-only',
+  'skip-link',
+];
+/** Helpers that take a `--gap-<spacing key>` modifier. */
+const GAP_HELPERS = [
+  'stack',
+  'row',
+  'row-between',
+  'grid-2',
+  'grid-3',
+  'grid-4',
+];
+
+/**
+ * Classes that carry no style: markup hooks that specs query. Adding one here is a deliberate
+ * choice; a class that should look like something is defined in a stylesheet instead.
+ */
+const HOOKS = ['sortable', 'stars__star', 'timer__time', 'tip-note__body'];
 
 /** BEM blocks of the mockup's components.css. */
 const MOCKUP_BLOCKS = [
@@ -65,8 +101,8 @@ const MOCKUP_BLOCKS = [
   'mai-badge',
 ];
 
-/** Block names that are also Tailwind utilities: only their `--modifier` and `__element` forms are flagged. */
-const UTILITY_NAMES = new Set(['table', 'ring', 'progress', 'transition']);
+const BEM =
+  /^[a-z][a-z0-9]*(?:-[a-z0-9]+)*(?:__[a-z0-9]+(?:-[a-z0-9]+)*)?(?:--[a-z0-9]+(?:-[a-z0-9]+)*)?$/;
 
 function walk(dir: string): string[] {
   return readdirSync(dir).flatMap((name) => {
@@ -78,60 +114,157 @@ function walk(dir: string): string[] {
 const isSource = (file: string) =>
   /\.(html|ts)$/.test(file) && !file.endsWith('.spec.ts');
 
-function uiBlocks(): string[] {
-  const partials = join(uiSource, 'styles/components');
-  let found: string[] = [];
-  try {
-    found = walk(partials)
-      .filter((file) => file.endsWith('.scss'))
-      .flatMap((file) =>
-        [
-          ...readFileSync(file, 'utf8').matchAll(
-            /(?<![\w-])\.([a-z][a-z0-9-]*)/g,
-          ),
-        ]
-          .map((match) => match[1])
-          .filter((name) => !name.includes('--')),
-      );
-  } catch {
-    // no partials yet
+const loadPaths = [stylesRoot];
+
+/** Class names a compiled stylesheet defines, taken from its class selectors. */
+const definedClasses = (css: string): string[] =>
+  [...css.matchAll(/\.(-?[_a-zA-Z][\w-]*)/g)].map((match) => match[1]);
+
+/** Spacing token keys, read from the token source through Sass itself. */
+function spacingKeys(): string[] {
+  const css = sass.compileString(
+    "@use 'ui'; @each $key, $value in ui.$spacing { .k-#{$key} { a: b; } }",
+    { loadPaths, logger: sass.Logger.silent },
+  ).css;
+  return [...css.matchAll(/\.k-(\w+)/g)].map((match) => match[1]);
+}
+
+/**
+ * Classes the global entry defines (atoms, helpers) and, per folder, the classes of the component
+ * stylesheets beside the templates. View encapsulation scopes a component's own `.scss` to that
+ * component, so a template may use the global classes and the ones its own folder defines.
+ */
+function stylesheetClasses(): {
+  global: Set<string>;
+  byFolder: Map<string, Set<string>>;
+} {
+  const compile = (entry: string) =>
+    definedClasses(
+      sass.compile(entry, { loadPaths, logger: sass.Logger.silent }).css,
+    );
+  const global = new Set(compile(join(stylesRoot, 'global.scss')));
+  const byFolder = new Map<string, Set<string>>();
+  for (const file of [...walk(appSource), ...walk(uiSource)]) {
+    if (!file.endsWith('.scss') || file.startsWith(stylesRoot)) continue;
+    if (/[\\/]_[^\\/]*$/.test(file)) continue;
+    const folder = dirname(file);
+    const found = byFolder.get(folder) ?? new Set<string>();
+    compile(file).forEach((name) => found.add(name));
+    byFolder.set(folder, found);
   }
+  return { global, byFolder };
+}
+
+function uiBlocks(): string[] {
+  const partials = join(stylesRoot, 'components');
+  const found = walk(partials)
+    .filter((file) => file.endsWith('.scss'))
+    .flatMap((file) =>
+      [...readFileSync(file, 'utf8').matchAll(/(?<![\w-])\.([a-z][a-z0-9-]*)/g)]
+        .map((match) => match[1])
+        .filter((name) => !name.includes('--')),
+    );
   return [...new Set([...MOCKUP_BLOCKS, ...found])];
 }
 
 function violatesBlockClass(token: string, blocks: readonly string[]): boolean {
-  return blocks.some((block) => {
-    if (token.startsWith(`${block}--`) || token.startsWith(`${block}__`)) {
-      return true;
-    }
-    return token === block && !UTILITY_NAMES.has(block);
-  });
+  return blocks.some(
+    (block) =>
+      token === block ||
+      token.startsWith(`${block}--`) ||
+      token.startsWith(`${block}__`),
+  );
 }
 
-/** Class tokens written statically in `class="…"` attributes and `[class.x]` bindings. */
-function classTokens(text: string): string[] {
-  const attributes = [
-    ...text.matchAll(/\bclass\s*=\s*(?:"([^"]*)"|'([^']*)')/g),
-  ]
-    .flatMap((match) => (match[1] ?? match[2] ?? '').split(/\s+/))
+/**
+ * Why a class token is not allowed, or null when it is. `defined` is the set of classes some
+ * stylesheet defines. A token ending in `-` is the static prefix of a name built at runtime
+ * (`'btn--' + variant`): some defined class must start with it.
+ */
+function classProblem(
+  token: string,
+  defined: ReadonlySet<string>,
+  spacing: readonly string[],
+): string | null {
+  if (HELPERS.includes(token) || HOOKS.includes(token)) return null;
+  const gap = /^(.+)--gap-(.+)$/.exec(token);
+  if (gap && GAP_HELPERS.includes(gap[1])) {
+    return spacing.includes(gap[2])
+      ? null
+      : `\`${gap[2]}\` is not a spacing token (${spacing.join(', ')})`;
+  }
+  if (token.endsWith('-')) {
+    return [...defined].some((name) => name.startsWith(token))
+      ? null
+      : 'no stylesheet defines a class with this prefix';
+  }
+  if (!BEM.test(token)) return 'not a BEM class';
+  return defined.has(token) ? null : 'no stylesheet defines this class';
+}
+
+/** Whitespace-separated class tokens of a string, minus interpolations (`toast--{{ kind }}`). */
+const tokensOf = (text: string): string[] =>
+  text
+    .replace(/\{\{[^}]*\}\}|\$\{[^}]*\}/g, ' ')
+    .split(/\s+/)
     .filter(Boolean);
-  const bindings = [...text.matchAll(/\[class\.([\w-]+)\]/g)].map((m) => m[1]);
-  return [...attributes, ...bindings];
+
+/** Quoted string literals inside a binding expression; one followed by `+` ends in a runtime part. */
+function literalTokens(expression: string): string[] {
+  return [...expression.matchAll(/(["'`])((?:(?!\1).)*)\1(\s*\+)?/g)].flatMap(
+    (match) => {
+      const tokens = tokensOf(match[2]);
+      const last = tokens.length - 1;
+      if (
+        match[3] &&
+        last >= 0 &&
+        !match[2].endsWith(' ') &&
+        !tokens[last].endsWith('-')
+      ) {
+        tokens[last] += '-';
+      }
+      return tokens;
+    },
+  );
+}
+
+/**
+ * Class tokens written in `class="…"` attributes, `[class.x]` bindings, `[class]="…"` bindings,
+ * and the `class:` / `'[class]'` / `'[class.x]'` entries of host metadata.
+ */
+function classTokens(source: string): string[] {
+  // Doc comments show example markup; only real code counts.
+  const text = source
+    .replace(/<!--[\s\S]*?-->/g, '')
+    .replace(/\/\*[\s\S]*?\*\//g, '')
+    .replace(/^\s*\/\/.*$/gm, '');
+  const attributes = [
+    ...text.matchAll(/(?<![\w[-])class\s*=\s*(?:"([^"]*)"|'([^']*)')/g),
+  ].flatMap((match) => tokensOf(match[1] ?? match[2] ?? ''));
+  const bindings = [...text.matchAll(/\[class\.([\w-]+)\]/g)].map(
+    (match) => match[1],
+  );
+  const hostClass = [
+    ...text.matchAll(/(?<![\w[-])class:\s*(?:'([^']*)'|"([^"]*)")/g),
+  ].flatMap((match) => tokensOf(match[1] ?? match[2] ?? ''));
+  const dynamic = [
+    ...text.matchAll(/\[class\]\s*=\s*"([^"]*)"/g),
+    ...text.matchAll(/'\[class\]'\s*:\s*(?:'([^']*)'|"([^"]*)")/g),
+  ].flatMap((match) => literalTokens(match[1] ?? match[2] ?? ''));
+  return [...attributes, ...bindings, ...hostClass, ...dynamic];
 }
 
 describe('template scan', () => {
   const appFiles = walk(appSource).filter(isSource);
   const uiFiles = walk(uiSource).filter(isSource);
+  const scssFiles = [...walk(appSource), ...walk(uiSource)].filter((file) =>
+    file.endsWith('.scss'),
+  );
 
   it('finds the sources it is supposed to scan', () => {
     expect(appFiles.length).toBeGreaterThan(0);
-  });
-
-  it('has no `dark:` utility anywhere', () => {
-    const offenders = [...appFiles, ...uiFiles].filter((file) =>
-      /(?<![\w-])dark:[a-z[]/.test(readFileSync(file, 'utf8')),
-    );
-    expect(offenders.map((file) => relative(root, file))).toEqual([]);
+    expect(uiFiles.length).toBeGreaterThan(0);
+    expect(scssFiles.length).toBeGreaterThan(0);
   });
 
   it('writes the theme attribute in ThemeStore only', () => {
@@ -141,6 +274,39 @@ describe('template scan', () => {
         !file.endsWith('theme.store.ts') &&
         !file.endsWith('index.html') &&
         readFileSync(file, 'utf8').includes('data-theme'),
+    );
+    expect(offenders.map((file) => relative(root, file))).toEqual([]);
+  });
+
+  it('writes only BEM classes, layout helpers and their gap modifiers', () => {
+    const { global, byFolder } = stylesheetClasses();
+    const spacing = spacingKeys();
+    const offenders = [...appFiles, ...uiFiles].flatMap((file) => {
+      const defined = new Set([
+        ...global,
+        ...(byFolder.get(dirname(file)) ?? []),
+      ]);
+      return classTokens(readFileSync(file, 'utf8'))
+        .map((token) => ({
+          token,
+          problem: classProblem(token, defined, spacing),
+        }))
+        .filter(({ problem }) => problem !== null)
+        .map(
+          ({ token, problem }) =>
+            `${relative(root, file)}: ${token} (${problem})`,
+        );
+    });
+    expect(offenders).toEqual([]);
+  });
+
+  it('keeps style values out of TypeScript: modifier names only', () => {
+    // A data field of class strings (`classes: 'rounded-sm'`) or `ngClass` hides utilities from the
+    // scan above; return a BEM modifier name instead (`modifier: 'radius-sample--sm'`).
+    const offenders = [...appFiles, ...uiFiles].filter((file) =>
+      /\bngClass\b|\b(?:classes|classNames?|cssClass(?:es)?)\s*:/.test(
+        readFileSync(file, 'utf8'),
+      ),
     );
     expect(offenders.map((file) => relative(root, file))).toEqual([]);
   });
@@ -155,29 +321,127 @@ describe('template scan', () => {
     expect(offenders).toEqual([]);
   });
 
+  it('writes no colour literal outside the token source', () => {
+    const offenders = scssFiles
+      .filter((file) => file !== tokenSource)
+      .filter((file) =>
+        /#[0-9a-fA-F]{3,8}\b|\brgba?\(|\bhsla?\(/.test(
+          readFileSync(file, 'utf8')
+            // `//` comments may mention a colour or an issue number.
+            .replace(/^\s*\/\/.*$/gm, ''),
+        ),
+      );
+    expect(offenders.map((file) => relative(root, file))).toEqual([]);
+  });
+
+  it('references neither Tailwind nor PostCSS', () => {
+    const configs = [
+      'package.json',
+      'nx.json',
+      'tsconfig.base.json',
+      'eslint.config.mjs',
+      'vitest.config.mts',
+      'apps/lms/project.json',
+      'libs/ui/project.json',
+    ].map((file) => join(root, file));
+    const files = [...appFiles, ...uiFiles, ...scssFiles, ...configs].filter(
+      // The reset keeps the licence note of the preflight it copies.
+      (file) => !file.endsWith('_reset.scss'),
+    );
+    const offenders = files.filter((file) =>
+      /tailwind|postcss/i.test(readFileSync(file, 'utf8')),
+    );
+    expect(offenders.map((file) => relative(root, file))).toEqual([]);
+    const strays = readdirSync(root).filter((name) =>
+      /^(\.postcssrc|postcss\.config|tailwind\.config)/.test(name),
+    );
+    expect(strays).toEqual([]);
+  });
+
+  it('keeps the helper file and the spec list of helpers in step', () => {
+    const source = readFileSync(helperSource, 'utf8');
+    const written = [...source.matchAll(/^ {2}\.([a-z0-9-]+) \{/gm)].map(
+      (match) => match[1],
+    );
+    expect(written.sort()).toEqual([...HELPERS].sort());
+  });
+
   describe('the scanner', () => {
+    const defined = new Set([
+      'course-card',
+      'course-card__title',
+      'btn',
+      'btn--primary',
+      'skeleton--title',
+    ]);
+    const spacing = ['1', '2', '3'];
+    const problem = (token: string) => classProblem(token, defined, spacing);
+
+    it('lets BEM classes, helpers and gap modifiers through', () => {
+      expect(problem('course-card__title')).toBeNull();
+      expect(problem('row')).toBeNull();
+      expect(problem('grid-3')).toBeNull();
+      expect(problem('row--gap-2')).toBeNull();
+      expect(problem('stack--gap-3')).toBeNull();
+    });
+
+    it('fails a gap modifier whose key is not a spacing token', () => {
+      expect(problem('row--gap-7')).toMatch(/not a spacing token/);
+      expect(problem('grid-2--gap-14')).toMatch(/not a spacing token/);
+    });
+
+    it('fails a modifier on something that is not a gap helper', () => {
+      expect(problem('grow--gap-2')).toMatch(/not a BEM class|no stylesheet/);
+    });
+
+    it('fails a utility class', () => {
+      expect(problem('flex')).toMatch(/no stylesheet defines/);
+      expect(problem('text-sm')).toMatch(/no stylesheet defines/);
+      expect(problem('md:grid-cols-2')).toBe('not a BEM class');
+      expect(problem('w-[260px]')).toBe('not a BEM class');
+      expect(problem('Foo')).toBe('not a BEM class');
+    });
+
+    it('accepts the static prefix of a runtime-built class only when a class has it', () => {
+      expect(problem('skeleton--')).toBeNull();
+      expect(problem('flex-')).toMatch(
+        /no stylesheet defines a class with this prefix/,
+      );
+    });
+
     it('flags a block class, its modifiers and elements', () => {
       const blocks = uiBlocks();
       expect(violatesBlockClass('btn', blocks)).toBe(true);
       expect(violatesBlockClass('btn--primary', blocks)).toBe(true);
       expect(violatesBlockClass('card__header', blocks)).toBe(true);
-    });
-
-    it('leaves Tailwind utilities alone, including the ones named like a block', () => {
-      const blocks = uiBlocks();
-      expect(violatesBlockClass('table', blocks)).toBe(false);
-      expect(violatesBlockClass('ring', blocks)).toBe(false);
-      expect(violatesBlockClass('table--responsive', blocks)).toBe(true);
-      expect(violatesBlockClass('bg-primary', blocks)).toBe(false);
+      expect(violatesBlockClass('table', blocks)).toBe(true);
       expect(violatesBlockClass('skip-link', blocks)).toBe(false);
+      expect(violatesBlockClass('course-card', blocks)).toBe(false);
     });
 
-    it('reads classes from attributes and class bindings', () => {
+    it('reads classes from attributes, bindings and host metadata', () => {
       expect(classTokens('<a class="btn  x" [class.card--tint]="y">')).toEqual([
         'btn',
         'x',
         'card--tint',
       ]);
+      expect(
+        classTokens("host: { class: 'avatar', '[class.is-on]': 'on()' }"),
+      ).toEqual(['is-on', 'avatar']);
+    });
+
+    it('reads the literals of a class binding and marks runtime prefixes', () => {
+      expect(
+        classTokens(
+          `<div [class]="'course-card__cover course-card__cover--' + cover"></div>`,
+        ),
+      ).toEqual(['course-card__cover', 'course-card__cover--']);
+      expect(
+        classTokens(`<span class="toast--{{ kind }} toast__body"></span>`),
+      ).toEqual(['toast--', 'toast__body']);
+      expect(classTokens('/** <label class="demo"> */ const a = 1;')).toEqual(
+        [],
+      );
     });
   });
 });

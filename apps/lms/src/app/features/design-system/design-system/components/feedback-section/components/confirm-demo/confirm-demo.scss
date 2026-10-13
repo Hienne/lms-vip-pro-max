@@ -1,0 +1,11 @@
+@use 'ui';
+
+.confirm-demo__note {
+  margin-top: ui.space(3);
+  @include ui.text(xs, muted);
+}
+
+.confirm-demo__result {
+  margin-top: ui.space(1);
+  @include ui.text(sm);
+}

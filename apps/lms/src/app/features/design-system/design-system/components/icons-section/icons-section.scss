@@ -1,22 +1,29 @@
+@use 'ui';
+
 // The mockup's icon grid: auto-filled tiles of at least 104px.
-.grid {
+.icon-tiles {
+  display: grid;
   grid-template-columns: repeat(auto-fill, minmax(104px, 1fr));
-  gap: var(--spacing-2);
+  gap: ui.space(2);
 }
 
-.tile {
-  display: flex;
-  flex-direction: column;
+.icon-tiles__tile {
+  @include ui.stack(2);
   align-items: center;
-  gap: var(--spacing-2);
   padding: 10px;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
+  border: 1px solid ui.color(border);
+  border-radius: ui.radius(md);
   list-style: none;
 }
 
 // Long icon names wrap instead of being cut off.
-.name {
+.icon-tiles__name {
   max-width: 100%;
   overflow-wrap: anywhere;
+  @include ui.text(xs);
+  text-align: center;
+}
+
+.icon-tiles__name--muted {
+  color: ui.color(text-muted);
 }

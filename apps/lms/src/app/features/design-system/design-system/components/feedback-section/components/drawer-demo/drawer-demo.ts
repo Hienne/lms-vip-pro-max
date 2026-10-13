@@ -12,6 +12,7 @@ import {
   selector: 'app-drawer-demo',
   imports: [Button, Icon],
   templateUrl: './drawer-demo.html',
+  styleUrl: './drawer-demo.scss',
 })
 export class DrawerDemo {
   private readonly dialog = inject(Dialog);

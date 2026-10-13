@@ -1,0 +1,16 @@
+@use 'ui';
+
+.nav-section__panel-text {
+  padding-top: ui.space(4);
+  @include ui.text(sm);
+}
+
+.nav-section__lesson-title {
+  @include ui.truncate;
+  @include ui.text(sm);
+  font-weight: ui.weight(semibold);
+}
+
+.nav-section__lesson-meta {
+  @include ui.text(xs, muted);
+}

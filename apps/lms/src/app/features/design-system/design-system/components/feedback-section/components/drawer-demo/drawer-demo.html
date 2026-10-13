@@ -1,4 +1,4 @@
-<div class="flex flex-wrap items-center gap-3">
+<div class="row">
   <button uiButton (click)="open(body, footer, 'end')">
     <ui-icon name="layers" size="sm" /> Mở drawer
   </button>
@@ -6,13 +6,13 @@
     <ui-icon name="layers" size="sm" /> Drawer bên trái
   </button>
 </div>
-<p class="mt-3 text-xs text-text-muted">
+<p class="drawer-demo__note">
   Bẫy focus, Esc để đóng, trả focus về nút mở. Toàn chiều rộng trên màn hình
   hẹp.
 </p>
 
 <ng-template #body>
-  <p class="text-sm">
+  <p class="drawer-demo__body">
     Dùng cho form chỉnh sửa nhanh mà không rời trang danh sách.
   </p>
 </ng-template>

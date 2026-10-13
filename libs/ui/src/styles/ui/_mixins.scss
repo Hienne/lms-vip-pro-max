@@ -1,0 +1,142 @@
+// Layout, typography, accessibility and motion mixins. Loading this file emits no CSS; the
+// helpers in `global/_helpers.scss` are built from the same mixins a component includes.
+@use 'sass:list';
+@use 'sass:map';
+@use 'functions' as *;
+@use 'tokens';
+
+// ---- Breakpoints: mobile-first min-width media queries; the only place widths are written ----
+@mixin bp($key) {
+  @media (min-width: lookup(bp, tokens.$breakpoints, $key)) {
+    @content;
+  }
+}
+
+// The one exception to mobile-first: below a step, for styles that exist only on narrow screens
+// (a responsive table turning into cards).
+@mixin bp-below($key) {
+  @media (width < #{lookup(bp-below, tokens.$breakpoints, $key)}) {
+    @content;
+  }
+}
+
+// ---- Layout ----
+@mixin stack($gap: 4) {
+  display: flex;
+  flex-direction: column;
+  gap: space($gap);
+}
+
+@mixin row($gap: 3) {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: space($gap);
+}
+
+@mixin row-between($gap: 3) {
+  @include row($gap);
+  justify-content: space-between;
+}
+
+@mixin grow {
+  flex-grow: 1;
+  min-width: 0;
+}
+
+// A grid whose column count depends on the breakpoint: `grid((md: 2, lg: 3))` is one column,
+// two from `md`, three from `lg`. The base (narrow) count is `base` and defaults to 1.
+@mixin grid($columns: (), $gap: 4) {
+  $base: 1;
+  @if map.has-key($columns, base) {
+    $base: map.get($columns, base);
+  }
+  display: grid;
+  grid-template-columns: repeat($base, minmax(0, 1fr));
+  gap: space($gap);
+  // Breakpoints are walked in declaration order, so a wider step always wins.
+  @each $key, $width in tokens.$breakpoints {
+    @if map.has-key($columns, $key) {
+      @include bp($key) {
+        grid-template-columns: repeat(map.get($columns, $key), minmax(0, 1fr));
+      }
+    }
+  }
+}
+
+// ---- Typography ----
+// A tone is a colour key, or one of the aliases the mockup's text helpers used.
+$-tones: (
+  muted: text-muted,
+  secondary: text-secondary,
+  accent: accent-ink,
+);
+
+@mixin text($size, $tone: null) {
+  font-size: text-size($size);
+  @if $tone != null {
+    @if map.has-key($-tones, $tone) {
+      $tone: map.get($-tones, $tone);
+    }
+    color: color($tone);
+  }
+}
+
+@mixin eyebrow {
+  @include text(xs, muted);
+  font-weight: weight(semibold);
+  letter-spacing: tracking(wider);
+  text-transform: uppercase;
+}
+
+@mixin num {
+  font-variant-numeric: tabular-nums;
+}
+
+@mixin mono {
+  font-family: font(mono);
+  font-size: text-size(sm);
+}
+
+@mixin truncate {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@mixin clamp($lines) {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: $lines;
+  line-clamp: $lines;
+}
+
+// ---- Accessibility ----
+@mixin sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  border-width: 0;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+@mixin focus-ring {
+  outline: 2px solid color(ring);
+  outline-offset: 2px;
+}
+
+// ---- Motion: `$name` is enter | reward-pop | shimmer | spin; reduced motion shows the end state ----
+@mixin animate($name) {
+  @if not has-key(tokens.$animations, $name) {
+    @error 'ui.animate: unknown animation `#{$name}`. Valid names: #{keys(tokens.$animations)}.';
+  }
+  animation: var(--animate-#{$name});
+  @media (prefers-reduced-motion: reduce) {
+    animation: none;
+  }
+}
