@@ -6,56 +6,56 @@
     padding: 0;
     list-style: none;
     font-size: var(--text-sm);
-  }
 
-  .tree--nested {
-    margin-left: 14px;
-    padding-left: var(--spacing-5);
-    border-left: 1px dashed var(--color-border);
-  }
-
-  .tree__item {
-    outline: none;
-
-    &:focus-visible > .tree__node {
-      outline: 2px solid var(--color-ring);
-      outline-offset: 2px;
+    &--nested {
+      margin-left: 14px;
+      padding-left: var(--spacing-5);
+      border-left: 1px dashed var(--color-border);
     }
 
-    &[aria-selected='true'] > .tree__node {
-      background: var(--color-primary-subtle);
-      color: var(--color-primary);
-      font-weight: var(--font-weight-semibold);
+    &__item {
+      outline: none;
+
+      &:focus-visible > .tree__node {
+        outline: 2px solid var(--color-ring);
+        outline-offset: 2px;
+      }
+
+      &[aria-selected='true'] > .tree__node {
+        background: var(--color-primary-subtle);
+        color: var(--color-primary);
+        font-weight: var(--font-weight-semibold);
+      }
     }
-  }
 
-  .tree__node {
-    display: flex;
-    align-items: center;
-    gap: var(--spacing-2);
-    width: 100%;
-    min-height: 38px;
-    padding: 0 var(--spacing-2);
-    border-radius: var(--radius-sm);
-    color: var(--color-text);
-    cursor: pointer;
+    &__node {
+      display: flex;
+      align-items: center;
+      gap: var(--spacing-2);
+      width: 100%;
+      min-height: 38px;
+      padding: 0 var(--spacing-2);
+      border-radius: var(--radius-sm);
+      color: var(--color-text);
+      cursor: pointer;
 
-    &:hover {
-      background: var(--color-surface-2);
+      &:hover {
+        background: var(--color-surface-2);
+      }
     }
-  }
 
-  .tree__toggle {
-    display: grid;
-    place-items: center;
-    width: 20px;
-    color: var(--color-text-muted);
-  }
+    &__toggle {
+      display: grid;
+      place-items: center;
+      width: 20px;
+      color: var(--color-text-muted);
+    }
 
-  .tree__label {
-    flex: 1 1 auto;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+    &__label {
+      flex: 1 1 auto;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
   }
 }

@@ -24,56 +24,56 @@
     @media (prefers-reduced-motion: reduce) {
       animation: none;
     }
-  }
 
-  .dialog__header {
-    display: flex;
-    gap: var(--spacing-3);
-    align-items: flex-start;
-    padding: var(--spacing-6) var(--spacing-6) 0;
-  }
+    &__header {
+      display: flex;
+      gap: var(--spacing-3);
+      align-items: flex-start;
+      padding: var(--spacing-6) var(--spacing-6) 0;
+    }
 
-  .dialog__icon {
-    display: grid;
-    flex: none;
-    place-items: center;
-    width: 2.75rem; // 44px, the touch minimum
-    height: 2.75rem;
-    border-radius: var(--radius-full);
-    background: var(--color-primary-subtle);
-    color: var(--color-primary);
-  }
+    &__icon {
+      display: grid;
+      flex: none;
+      place-items: center;
+      width: 2.75rem; // 44px, the touch minimum
+      height: 2.75rem;
+      border-radius: var(--radius-full);
+      background: var(--color-primary-subtle);
+      color: var(--color-primary);
 
-  .dialog__icon--danger {
-    background: var(--color-danger-subtle);
-    color: var(--color-danger);
-  }
+      &--danger {
+        background: var(--color-danger-subtle);
+        color: var(--color-danger);
+      }
 
-  .dialog__icon--warning {
-    background: var(--color-warning-subtle);
-    color: var(--color-warning);
-  }
+      &--warning {
+        background: var(--color-warning-subtle);
+        color: var(--color-warning);
+      }
+    }
 
-  .dialog__title {
-    flex: 1;
-    align-self: center;
-    margin: 0;
-    font-size: var(--text-lg);
-    font-weight: var(--font-weight-semibold);
-  }
+    &__title {
+      flex: 1;
+      align-self: center;
+      margin: 0;
+      font-size: var(--text-lg);
+      font-weight: var(--font-weight-semibold);
+    }
 
-  .dialog__body {
-    margin: 0;
-    padding: var(--spacing-4) var(--spacing-6);
-    color: var(--color-text-secondary);
-    font-size: var(--text-sm);
-  }
+    &__body {
+      margin: 0;
+      padding: var(--spacing-4) var(--spacing-6);
+      color: var(--color-text-secondary);
+      font-size: var(--text-sm);
+    }
 
-  .dialog__footer {
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: flex-end;
-    gap: var(--spacing-2);
-    padding: var(--spacing-4) var(--spacing-6) var(--spacing-6);
+    &__footer {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+      gap: var(--spacing-2);
+      padding: var(--spacing-4) var(--spacing-6) var(--spacing-6);
+    }
   }
 }

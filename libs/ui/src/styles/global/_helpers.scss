@@ -3,21 +3,26 @@
 // Gap modifiers (`row--gap-2`) exist for spacing token keys only. Anything else is a BEM class in
 // the component that owns it. They sit in the top layer, below every component's own styles.
 @use 'sass:map';
+
 @use '../ui';
 
 @layer helpers {
   .stack {
     @include ui.stack;
   }
+
   .row {
     @include ui.row;
   }
+
   .row-between {
     @include ui.row-between;
   }
+
   .grow {
     @include ui.grow;
   }
+
   .grid-2 {
     @include ui.grid(
       (
@@ -25,6 +30,7 @@
       )
     );
   }
+
   .grid-3 {
     @include ui.grid(
       (
@@ -33,6 +39,7 @@
       )
     );
   }
+
   .grid-4 {
     @include ui.grid(
       (
@@ -41,11 +48,13 @@
       )
     );
   }
+
   .span-2 {
     @include ui.bp(md) {
       grid-column: span 2 / span 2;
     }
   }
+
   .sr-only {
     @include ui.sr-only;
   }

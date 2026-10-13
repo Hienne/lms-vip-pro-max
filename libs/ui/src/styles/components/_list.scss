@@ -10,13 +10,13 @@
     > * + * {
       border-top: 1px solid var(--color-border);
     }
-  }
 
-  .list__item {
-    display: flex;
-    align-items: center;
-    gap: var(--spacing-3);
-    padding: var(--spacing-3) var(--spacing-5);
+    &__item {
+      display: flex;
+      align-items: center;
+      gap: var(--spacing-3);
+      padding: var(--spacing-3) var(--spacing-5);
+    }
   }
 
   a.list__item,

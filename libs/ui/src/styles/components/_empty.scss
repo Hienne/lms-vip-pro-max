@@ -22,25 +22,25 @@
       max-width: 46ch;
       font-size: var(--text-sm);
     }
-  }
 
-  .empty__art {
-    width: var(--spacing-18);
-    height: var(--spacing-18);
-    border-radius: var(--radius-full);
-    display: grid;
-    place-items: center;
-    background: var(--color-primary-subtle);
-    color: var(--color-primary);
-  }
+    &__art {
+      width: var(--spacing-18);
+      height: var(--spacing-18);
+      border-radius: var(--radius-full);
+      display: grid;
+      place-items: center;
+      background: var(--color-primary-subtle);
+      color: var(--color-primary);
 
-  .empty__art--danger {
-    background: var(--color-danger-subtle);
-    color: var(--color-danger);
-  }
+      &--danger {
+        background: var(--color-danger-subtle);
+        color: var(--color-danger);
+      }
 
-  .empty__art--warning {
-    background: var(--color-warning-subtle);
-    color: var(--color-warning);
+      &--warning {
+        background: var(--color-warning-subtle);
+        color: var(--color-warning);
+      }
+    }
   }
 }

@@ -38,97 +38,97 @@
     .icon {
       flex: none;
     }
-  }
 
-  .btn--primary {
-    --btn-bg: var(--color-primary);
-    --btn-fg: var(--color-on-primary);
-    --btn-bd: var(--color-primary);
+    &--primary {
+      --btn-bg: var(--color-primary);
+      --btn-fg: var(--color-on-primary);
+      --btn-bd: var(--color-primary);
 
-    &:hover {
-      border-color: var(--color-primary-hover);
-      background: var(--color-primary-hover);
+      &:hover {
+        border-color: var(--color-primary-hover);
+        background: var(--color-primary-hover);
+      }
     }
-  }
 
-  .btn--secondary {
-    --btn-bg: var(--color-primary-subtle);
-    --btn-fg: var(--color-primary);
-    --btn-bd: transparent;
+    &--secondary {
+      --btn-bg: var(--color-primary-subtle);
+      --btn-fg: var(--color-primary);
+      --btn-bd: transparent;
 
-    &:hover {
-      background: color-mix(
-        in srgb,
-        var(--color-primary-subtle) 70%,
-        var(--color-primary) 12%
-      );
+      &:hover {
+        background: color-mix(
+          in srgb,
+          var(--color-primary-subtle) 70%,
+          var(--color-primary) 12%
+        );
+      }
     }
-  }
 
-  .btn--ghost {
-    --btn-bg: transparent;
-    --btn-fg: var(--color-text-secondary);
-    --btn-bd: transparent;
+    &--ghost {
+      --btn-bg: transparent;
+      --btn-fg: var(--color-text-secondary);
+      --btn-bd: transparent;
 
-    &:hover {
-      background: var(--color-surface-2);
+      &:hover {
+        background: var(--color-surface-2);
+      }
     }
-  }
 
-  .btn--danger {
-    --btn-bg: var(--color-danger);
-    --btn-fg: var(--color-on-danger);
-    --btn-bd: var(--color-danger);
+    &--danger {
+      --btn-bg: var(--color-danger);
+      --btn-fg: var(--color-on-danger);
+      --btn-bd: var(--color-danger);
 
-    &:hover {
-      background: color-mix(
-        in srgb,
-        var(--color-danger) 88%,
-        var(--color-black)
-      );
+      &:hover {
+        background: color-mix(
+          in srgb,
+          var(--color-danger) 88%,
+          var(--color-black)
+        );
+      }
     }
-  }
 
-  .btn--danger-ghost {
-    --btn-bg: transparent;
-    --btn-fg: var(--color-danger);
-    --btn-bd: transparent;
+    &--danger-ghost {
+      --btn-bg: transparent;
+      --btn-fg: var(--color-danger);
+      --btn-bd: transparent;
 
-    &:hover {
-      background: var(--color-danger-subtle);
+      &:hover {
+        background: var(--color-danger-subtle);
+      }
     }
-  }
 
-  .btn--on-dark {
-    --btn-bg: var(--color-white);
-    --btn-fg: var(--color-primary-strong);
-    --btn-bd: var(--color-white);
+    &--on-dark {
+      --btn-bg: var(--color-white);
+      --btn-fg: var(--color-primary-strong);
+      --btn-bd: var(--color-white);
 
-    &:hover {
-      background: var(--color-on-dark-hover);
-      color: var(--btn-fg);
+      &:hover {
+        background: var(--color-on-dark-hover);
+        color: var(--btn-fg);
+      }
     }
-  }
 
-  .btn--sm {
-    min-height: var(--spacing-control-sm);
-    padding: 0 var(--spacing-3);
-    font-size: var(--text-xs);
+    &--sm {
+      min-height: var(--spacing-control-sm);
+      padding: 0 var(--spacing-3);
+      font-size: var(--text-xs);
 
-    .icon {
-      width: 16px;
-      height: 16px;
+      .icon {
+        width: 16px;
+        height: 16px;
+      }
     }
-  }
 
-  .btn--lg {
-    min-height: var(--spacing-12);
-    padding: 0 var(--spacing-6);
-    font-size: var(--text-md);
-  }
+    &--lg {
+      min-height: var(--spacing-12);
+      padding: 0 var(--spacing-6);
+      font-size: var(--text-md);
+    }
 
-  .btn--block {
-    width: 100%;
+    &--block {
+      width: 100%;
+    }
   }
 
   .btn:disabled,

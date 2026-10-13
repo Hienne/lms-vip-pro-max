@@ -38,27 +38,27 @@
       border-color: var(--color-danger);
       background: var(--color-danger-subtle);
     }
-  }
 
-  .upload-item__body {
-    flex: 1 1 auto;
-    min-width: 0;
-  }
+    &__body {
+      flex: 1 1 auto;
+      min-width: 0;
+    }
 
-  .upload-item__name {
-    overflow: hidden;
-    font-size: var(--text-sm);
-    font-weight: var(--font-weight-semibold);
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
+    &__name {
+      overflow: hidden;
+      font-size: var(--text-sm);
+      font-weight: var(--font-weight-semibold);
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
 
-  .upload-item__message {
-    font-size: var(--text-sm);
-  }
+    &__message {
+      font-size: var(--text-sm);
+    }
 
-  .upload-item__size {
-    color: var(--color-text-muted);
-    font-size: var(--text-xs);
+    &__size {
+      color: var(--color-text-muted);
+      font-size: var(--text-xs);
+    }
   }
 }

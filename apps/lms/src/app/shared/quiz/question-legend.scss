@@ -18,20 +18,20 @@
     border: 1px solid var(--color-border-strong);
     border-radius: 4px;
   }
-}
 
-.q-legend__answered {
-  border-color: var(--color-primary);
-  background: var(--color-primary);
-}
+  &__answered {
+    border-color: var(--color-primary);
+    background: var(--color-primary);
+  }
 
-.q-legend__flagged {
-  border-color: var(--color-warning);
-  border-radius: 50%;
-  background: var(--color-warning);
-}
+  &__flagged {
+    border-color: var(--color-warning);
+    border-radius: 50%;
+    background: var(--color-warning);
+  }
 
-.q-legend__current {
-  outline: 2px solid var(--color-text);
-  outline-offset: 1px;
+  &__current {
+    outline: 2px solid var(--color-text);
+    outline-offset: 1px;
+  }
 }

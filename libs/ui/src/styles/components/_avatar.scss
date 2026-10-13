@@ -14,22 +14,24 @@
     color: var(--color-on-primary);
     font-size: calc(var(--size) * 0.36);
     font-weight: var(--font-weight-bold);
-  }
 
-  .avatar--sm {
-    --size: 28px;
-  }
-  .avatar--lg {
-    --size: 56px;
-  }
-  .avatar--xl {
-    --size: 80px;
-  }
+    &--sm {
+      --size: 28px;
+    }
 
-  .avatar--top {
-    box-shadow:
-      0 0 0 2px var(--color-surface),
-      0 0 0 4px var(--color-accent);
+    &--lg {
+      --size: 56px;
+    }
+
+    &--xl {
+      --size: 80px;
+    }
+
+    &--top {
+      box-shadow:
+        0 0 0 2px var(--color-surface),
+        0 0 0 4px var(--color-accent);
+    }
   }
 
   .avatar-group {

@@ -4,38 +4,38 @@
   .rating {
     display: inline-flex;
     gap: 2px;
-  }
 
-  .rating__star {
-    display: grid;
-    place-items: center;
-    width: 36px;
-    height: 36px;
-    border-radius: var(--radius-sm);
-    color: var(--color-border-strong);
+    &__star {
+      display: grid;
+      place-items: center;
+      width: 36px;
+      height: 36px;
+      border-radius: var(--radius-sm);
+      color: var(--color-border-strong);
 
-    &:hover {
-      background: var(--color-surface-2);
-    }
-
-    .icon {
-      fill: none;
-      stroke: currentColor;
-    }
-
-    &.is-on {
-      color: var(--color-accent);
+      &:hover {
+        background: var(--color-surface-2);
+      }
 
       .icon {
-        fill: var(--color-accent);
-        stroke: var(--color-accent-ink);
+        fill: none;
+        stroke: currentColor;
       }
-    }
 
-    // The icon's svg carries `fill="none"`, so the fill is passed down explicitly.
-    .icon svg {
-      fill: inherit;
-      stroke: inherit;
+      &.is-on {
+        color: var(--color-accent);
+
+        .icon {
+          fill: var(--color-accent);
+          stroke: var(--color-accent-ink);
+        }
+      }
+
+      // The icon's svg carries `fill="none"`, so the fill is passed down explicitly.
+      .icon svg {
+        fill: inherit;
+        stroke: inherit;
+      }
     }
   }
 
@@ -43,35 +43,35 @@
     display: inline-flex;
     align-items: center;
     gap: 6px;
-  }
 
-  .stars__row {
-    display: inline-flex;
-    gap: 1px;
-    color: var(--color-accent);
+    &__row {
+      display: inline-flex;
+      gap: 1px;
+      color: var(--color-accent);
 
-    .icon {
-      width: 14px;
-      height: 14px;
-      fill: currentColor;
-      stroke: var(--color-accent-ink);
+      .icon {
+        width: 14px;
+        height: 14px;
+        fill: currentColor;
+        stroke: var(--color-accent-ink);
+      }
+
+      .icon svg {
+        fill: inherit;
+        stroke: inherit;
+      }
     }
 
-    .icon svg {
-      fill: inherit;
-      stroke: inherit;
+    &__star--off {
+      opacity: 0.25;
     }
-  }
 
-  .stars__star--off {
-    opacity: 0.25;
-  }
+    &__text {
+      font-size: var(--text-sm);
+    }
 
-  .stars__text {
-    font-size: var(--text-sm);
-  }
-
-  .stars__count {
-    color: var(--color-text-muted);
+    &__count {
+      color: var(--color-text-muted);
+    }
   }
 }

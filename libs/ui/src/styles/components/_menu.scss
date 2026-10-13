@@ -13,22 +13,22 @@
     background: var(--color-surface);
     box-shadow: var(--shadow-lg);
     animation: var(--animate-enter);
-  }
 
-  .menu__item {
-    display: flex;
-    width: 100%;
-    align-items: center;
-    gap: var(--spacing-3);
-    min-height: var(--spacing-touch);
-    padding: 0 var(--spacing-3);
-    border-radius: var(--radius-sm);
-    color: var(--color-text);
-    cursor: pointer;
-    font-size: var(--text-sm);
-    outline: none;
-    text-align: left;
-    text-decoration: none;
+    &__item {
+      display: flex;
+      width: 100%;
+      align-items: center;
+      gap: var(--spacing-3);
+      min-height: var(--spacing-touch);
+      padding: 0 var(--spacing-3);
+      border-radius: var(--radius-sm);
+      color: var(--color-text);
+      cursor: pointer;
+      font-size: var(--text-sm);
+      outline: none;
+      text-align: left;
+      text-decoration: none;
+    }
   }
 
   .menu__item:hover,
