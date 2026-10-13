@@ -11,35 +11,35 @@
     svg {
       transform: rotate(-90deg);
     }
-  }
 
-  .progress-ring--complete {
-    @include ui.animate(reward-pop);
-  }
+    &--complete {
+      @include ui.animate(reward-pop);
+    }
 
-  .progress-ring__track {
-    stroke: var(--color-surface-sunken);
-  }
+    &__track {
+      stroke: var(--color-surface-sunken);
+    }
 
-  .progress-ring__bar {
-    stroke: var(--color-primary);
-    transition: stroke-dashoffset var(--transition-duration-slow)
-      var(--ease-out);
-  }
+    &__bar {
+      stroke: var(--color-primary);
+      transition: stroke-dashoffset var(--transition-duration-slow)
+        var(--ease-out);
+    }
 
-  .progress-ring__label {
-    position: absolute;
-    line-height: 1.1;
-    text-align: center;
-  }
+    &__label {
+      position: absolute;
+      line-height: 1.1;
+      text-align: center;
+    }
 
-  .progress-ring__value {
-    @include ui.num;
-    font-size: calc(var(--ring-size, 96px) * 0.22);
-    font-weight: var(--font-weight-bold);
-  }
+    &__value {
+      @include ui.num;
+      font-size: calc(var(--ring-size, 96px) * 0.22);
+      font-weight: var(--font-weight-bold);
+    }
 
-  .progress-ring__caption {
-    @include ui.text(xs, muted);
+    &__caption {
+      @include ui.text(xs, muted);
+    }
   }
 }

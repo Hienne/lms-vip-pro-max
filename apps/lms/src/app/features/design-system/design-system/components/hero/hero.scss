@@ -30,54 +30,54 @@
   @include ui.bp(sm) {
     padding: ui.space(8);
   }
-}
 
-// Watermark flower in the corner, as in the mockup's .hero__mai (6% opacity).
-.hero__mai {
-  position: absolute;
-  top: -70px;
-  right: -50px;
-  opacity: 0.06;
-  pointer-events: none;
-}
+  // Watermark flower in the corner, as in the mockup's .hero__mai (6% opacity).
+  &__mai {
+    position: absolute;
+    top: -70px;
+    right: -50px;
+    opacity: 0.06;
+    pointer-events: none;
+  }
 
-.hero__main {
-  @include ui.stack(2);
-  position: relative;
-  max-width: 640px;
-}
+  &__main {
+    @include ui.stack(2);
+    position: relative;
+    max-width: 640px;
+  }
 
-.hero__eyebrow {
-  @include ui.eyebrow;
-  color: ui.color(hero-subtle);
-}
+  &__eyebrow {
+    @include ui.eyebrow;
+    color: ui.color(hero-subtle);
+  }
 
-.hero__title {
-  @include ui.text(3xl, 'white');
-}
+  &__title {
+    @include ui.text(3xl, 'white');
+  }
 
-.hero__lead {
-  color: ui.color(hero-muted);
-}
+  &__lead {
+    color: ui.color(hero-muted);
+  }
 
-.hero__code {
-  color: ui.color(hero-accent);
-}
+  &__code {
+    color: ui.color(hero-accent);
+  }
 
-.hero__highlights {
-  @include ui.row;
-  margin-top: ui.space(4);
-  list-style: none;
-}
+  &__highlights {
+    @include ui.row;
+    margin-top: ui.space(4);
+    list-style: none;
+  }
 
-.hero__chip {
-  display: inline-flex;
-  align-items: center;
-  gap: ui.space(1);
-  height: ui.space(6);
-  padding-inline: ui.space(2);
-  border-radius: ui.radius(full);
-  background: ui.color(hero-chip);
-  @include ui.text(xs, 'white');
-  font-weight: ui.weight(semibold);
+  &__chip {
+    display: inline-flex;
+    align-items: center;
+    gap: ui.space(1);
+    height: ui.space(6);
+    padding-inline: ui.space(2);
+    border-radius: ui.radius(full);
+    background: ui.color(hero-chip);
+    @include ui.text(xs, 'white');
+    font-weight: ui.weight(semibold);
+  }
 }

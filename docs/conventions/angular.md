@@ -465,6 +465,9 @@ readonly total = computed(() => this.price() * this.quantity());
   `row-between`, `grow`, `grid-2/3/4`, `span-2`, `sr-only`, `skip-link`) and
   their `--gap-<spacing key>` modifiers, for wrappers that only arrange children.
   TypeScript returns modifier names (`due-date--danger`), never style values.
+- Write BEM nested: one root block per rule, with elements and modifiers as
+  `&__element` / `&--modifier` inside it (and states as `&:hover`), not as flat
+  sibling selectors.
 - Keep default view encapsulation. Do not use `::ng-deep` or `!important`.
 - Do not add a pre-styled UI library (Material, PrimeNG, NG-ZORRO…) unless the
   project already declares it.

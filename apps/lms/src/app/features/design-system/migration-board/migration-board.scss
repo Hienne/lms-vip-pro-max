@@ -10,46 +10,46 @@
   @include ui.bp(md) {
     padding-inline: ui.space(6);
   }
-}
 
-.board__eyebrow {
-  @include ui.eyebrow;
-}
+  &__eyebrow {
+    @include ui.eyebrow;
+  }
 
-.board__lead {
-  color: ui.color(text-secondary);
-}
+  &__lead {
+    color: ui.color(text-secondary);
+  }
 
-.board__heading {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: ui.space(3);
-}
+  &__heading {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: ui.space(3);
+  }
 
-.board__summary {
-  @include ui.text(sm, secondary);
-}
+  &__summary {
+    @include ui.text(sm, secondary);
+  }
 
-.board__table {
-  border: 1px solid ui.color(border);
-  border-radius: ui.radius(lg);
-  background: ui.color(surface);
-}
+  &__table {
+    border: 1px solid ui.color(border);
+    border-radius: ui.radius(lg);
+    background: ui.color(surface);
+  }
 
-.board__caption {
-  border-bottom: 1px solid ui.color(border);
-  background: ui.color(surface-2);
-  font-weight: ui.weight(semibold);
-}
+  &__caption {
+    border-bottom: 1px solid ui.color(border);
+    background: ui.color(surface-2);
+    font-weight: ui.weight(semibold);
+  }
 
-.board__level {
-  @include ui.text(xs, muted);
-  font-weight: ui.weight(regular);
-}
+  &__level {
+    @include ui.text(xs, muted);
+    font-weight: ui.weight(regular);
+  }
 
-.board__checks {
-  @include ui.stack(1);
-  list-style: none;
+  &__checks {
+    @include ui.stack(1);
+    list-style: none;
+  }
 }

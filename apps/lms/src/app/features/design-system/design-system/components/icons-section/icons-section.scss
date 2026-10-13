@@ -5,25 +5,25 @@
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(104px, 1fr));
   gap: ui.space(2);
-}
 
-.icon-tiles__tile {
-  @include ui.stack(2);
-  align-items: center;
-  padding: 10px;
-  border: 1px solid ui.color(border);
-  border-radius: ui.radius(md);
-  list-style: none;
-}
+  &__tile {
+    @include ui.stack(2);
+    align-items: center;
+    padding: 10px;
+    border: 1px solid ui.color(border);
+    border-radius: ui.radius(md);
+    list-style: none;
+  }
 
-// Long icon names wrap instead of being cut off.
-.icon-tiles__name {
-  max-width: 100%;
-  overflow-wrap: anywhere;
-  @include ui.text(xs);
-  text-align: center;
-}
+  // Long icon names wrap instead of being cut off.
+  &__name {
+    max-width: 100%;
+    overflow-wrap: anywhere;
+    @include ui.text(xs);
+    text-align: center;
 
-.icon-tiles__name--muted {
-  color: ui.color(text-muted);
+    &--muted {
+      color: ui.color(text-muted);
+    }
+  }
 }

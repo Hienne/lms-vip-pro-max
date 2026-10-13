@@ -4,9 +4,9 @@
 @layer components {
   .input {
     @include control.control;
-  }
 
-  .input--sm {
-    @include control.control-sm;
+    &--sm {
+      @include control.control-sm;
+    }
   }
 }

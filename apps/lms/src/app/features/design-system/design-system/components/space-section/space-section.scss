@@ -19,14 +19,14 @@
 
 .space-section__motion {
   padding: ui.space(2) ui.space(4);
-}
 
-.space-section__motion--enter {
-  @include ui.animate(enter);
-}
+  &--enter {
+    @include ui.animate(enter);
+  }
 
-.space-section__motion--reward {
-  @include ui.animate(reward-pop);
+  &--reward {
+    @include ui.animate(reward-pop);
+  }
 }
 
 .space-section__points {
@@ -39,16 +39,16 @@
   grid-template-columns: 84px auto;
   align-items: center;
   gap: ui.space(3);
-}
 
-.step__token {
-  @include ui.text(xs);
-}
+  &__token {
+    @include ui.text(xs);
+  }
 
-.step__bar {
-  height: ui.space(2);
-  border-radius: ui.radius(sm);
-  background: ui.color(primary);
+  &__bar {
+    height: ui.space(2);
+    border-radius: ui.radius(sm);
+    background: ui.color(primary);
+  }
 }
 
 // Samples of the radius and shadow scales: fixed-size tiles so the shapes compare. One modifier

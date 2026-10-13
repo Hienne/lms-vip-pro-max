@@ -3,18 +3,18 @@
 
 .due-date {
   @include ui.text(sm);
-}
 
-.due-date--muted {
-  color: ui.color(text-muted);
-}
+  &--muted {
+    color: ui.color(text-muted);
+  }
 
-.due-date--warning {
-  color: ui.color(warning);
-  font-weight: ui.weight(semibold);
-}
+  &--warning {
+    color: ui.color(warning);
+    font-weight: ui.weight(semibold);
+  }
 
-.due-date--danger {
-  color: ui.color(danger);
-  font-weight: ui.weight(semibold);
+  &--danger {
+    color: ui.color(danger);
+    font-weight: ui.weight(semibold);
+  }
 }

@@ -10,17 +10,20 @@
       width: 100%;
       height: 100%;
     }
-  }
-  .icon--sm {
-    width: 16px;
-    height: 16px;
-  }
-  .icon--lg {
-    width: 24px;
-    height: 24px;
-  }
-  .icon--xl {
-    width: 32px;
-    height: 32px;
+
+    &--sm {
+      width: 16px;
+      height: 16px;
+    }
+
+    &--lg {
+      width: 24px;
+      height: 24px;
+    }
+
+    &--xl {
+      width: 32px;
+      height: 32px;
+    }
   }
 }

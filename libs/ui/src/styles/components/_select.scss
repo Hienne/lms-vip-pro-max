@@ -29,9 +29,9 @@
       right 16px center,
       right 10px center;
     background-size: 6px 6px;
-  }
 
-  .select--sm {
-    @include control.control-sm;
+    &--sm {
+      @include control.control-sm;
+    }
   }
 }

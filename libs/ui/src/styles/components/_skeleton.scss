@@ -15,20 +15,20 @@
     @media (prefers-reduced-motion: reduce) {
       animation: none;
     }
-  }
 
-  .skeleton--text {
-    height: 12px;
-    margin: 6px 0;
-  }
+    &--text {
+      height: 12px;
+      margin: 6px 0;
+    }
 
-  .skeleton--title {
-    width: 40%;
-    height: 22px;
-  }
+    &--title {
+      width: 40%;
+      height: 22px;
+    }
 
-  .skeleton--block {
-    height: 120px;
-    border-radius: var(--radius-lg);
+    &--block {
+      height: 120px;
+      border-radius: var(--radius-lg);
+    }
   }
 }

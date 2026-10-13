@@ -30,11 +30,11 @@
     &.cdk-drag-preview {
       box-shadow: var(--shadow-md);
     }
-  }
 
-  .sort-item__body {
-    flex: 1 1 auto;
-    min-width: 0;
+    &__body {
+      flex: 1 1 auto;
+      min-width: 0;
+    }
   }
 
   .drag-handle {

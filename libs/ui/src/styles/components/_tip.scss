@@ -9,11 +9,11 @@
     background: var(--color-surface-2);
     color: var(--color-text-secondary);
     font-size: var(--text-sm);
-  }
 
-  .tip-note__label {
-    margin-right: var(--spacing-2);
-    color: var(--color-text);
-    font-weight: var(--font-weight-semibold);
+    &__label {
+      margin-right: var(--spacing-2);
+      color: var(--color-text);
+      font-weight: var(--font-weight-semibold);
+    }
   }
 }

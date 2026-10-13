@@ -7,53 +7,53 @@
     border-bottom: 1px solid var(--color-border);
     overflow-x: auto;
     scrollbar-width: none;
-  }
 
-  .tabs__tab {
-    position: relative;
-    display: inline-flex;
-    align-items: center;
-    gap: var(--spacing-2);
-    min-height: var(--spacing-touch);
-    padding: 0 var(--spacing-4);
-    color: var(--color-text-muted);
-    font-size: var(--text-sm);
-    font-weight: var(--font-weight-semibold);
-    white-space: nowrap;
+    &__tab {
+      position: relative;
+      display: inline-flex;
+      align-items: center;
+      gap: var(--spacing-2);
+      min-height: var(--spacing-touch);
+      padding: 0 var(--spacing-4);
+      color: var(--color-text-muted);
+      font-size: var(--text-sm);
+      font-weight: var(--font-weight-semibold);
+      white-space: nowrap;
 
-    &:hover {
-      color: var(--color-text);
-    }
+      &:hover {
+        color: var(--color-text);
+      }
 
-    &[aria-selected='true'] {
-      color: var(--color-primary);
+      &[aria-selected='true'] {
+        color: var(--color-primary);
 
-      &::after {
-        content: '';
-        position: absolute;
-        left: var(--spacing-2);
-        right: var(--spacing-2);
-        bottom: -1px;
-        height: 2px;
-        border-radius: 2px;
-        background: var(--color-primary);
+        &::after {
+          content: '';
+          position: absolute;
+          left: var(--spacing-2);
+          right: var(--spacing-2);
+          bottom: -1px;
+          height: 2px;
+          border-radius: 2px;
+          background: var(--color-primary);
+        }
       }
     }
-  }
 
-  .tabs__count {
-    padding: 0 6px;
-    border-radius: var(--radius-full);
-    background: var(--color-surface-2);
-    color: var(--color-text-secondary);
-    font-size: 11px;
-  }
+    &__count {
+      padding: 0 6px;
+      border-radius: var(--radius-full);
+      background: var(--color-surface-2);
+      color: var(--color-text-secondary);
+      font-size: 11px;
+    }
 
-  .tabs__panel {
-    display: block;
+    &__panel {
+      display: block;
 
-    &[inert] {
-      display: none;
+      &[inert] {
+        display: none;
+      }
     }
   }
 }
