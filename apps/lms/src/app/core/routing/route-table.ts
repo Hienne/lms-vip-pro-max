@@ -1,3 +1,4 @@
+import type { Route } from '@angular/router';
 import type { Role } from '@lms/contracts';
 
 export type Layout = 'app' | 'focus' | 'bare';
@@ -273,4 +274,10 @@ export function metaOf(def: RouteDef): RouteMeta {
     layout: def.layout ?? 'app',
     mockupPage: def.mockupPage,
   };
+}
+
+/** The roles a route's `data` allows, or `undefined` when any signed-in user may enter. */
+export function rolesOf(data: Route['data']): readonly Role[] | undefined {
+  const roles: unknown = data?.['roles'];
+  return Array.isArray(roles) ? (roles as Role[]) : undefined;
 }

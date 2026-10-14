@@ -11,6 +11,7 @@ import {
 } from '@angular/core';
 import type { Permission } from '@lms/contracts';
 import { SessionStore } from '../session/session.store';
+import { hasPermissions } from './has-permissions';
 
 /**
  * `<button *appCan="'content.write'">` shows its host only when the server granted that
@@ -26,12 +27,9 @@ export class Can {
   private readonly container = inject(ViewContainerRef);
   private view?: EmbeddedViewRef<unknown>;
 
-  private readonly allowed = computed(() => {
-    const required = this.appCan();
-    const needed = typeof required === 'string' ? [required] : required;
-    const granted = this.session.perms$();
-    return needed.every((permission) => granted.includes(permission));
-  });
+  private readonly allowed = computed(() =>
+    hasPermissions(this.session.perms$(), this.appCan()),
+  );
 
   private readonly render = effect(() => {
     const allowed = this.allowed();
