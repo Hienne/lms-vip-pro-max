@@ -22,6 +22,8 @@ export interface RouteDef {
   readonly layout?: Layout;
   /** Reachable without signing in. */
   readonly public?: boolean;
+  /** Only for visitors: a signed-in user is sent to their home (the login page). */
+  readonly guestOnly?: boolean;
 }
 
 const ALL: readonly Role[] = ['learner', 'instructor', 'admin', 'viewer'];
@@ -41,6 +43,7 @@ export const ROUTE_DEFS: readonly RouteDef[] = [
     title: 'Đăng nhập',
     layout: 'bare',
     public: true,
+    guestOnly: true,
   },
   {
     path: 'learn',

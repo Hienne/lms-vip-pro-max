@@ -22,6 +22,9 @@ class FakeSession {
   readonly role$ = () => this.user()?.role ?? null;
   readonly perms$ = (): readonly Permission[] => this.user()?.perms ?? [];
   readonly isSignedIn$ = () => this.user() !== null;
+  // What the login page reads; the shell tests only render it.
+  readonly isSigningIn$ = () => false;
+  readonly signInError$ = () => undefined;
   whenReady = () => Promise.resolve();
   signOut = vi.fn(() => this.user.set(null));
 }
@@ -63,6 +66,10 @@ describe('AppShell', () => {
       .match('/api/me/nav-counts')
       .filter((r) => !r.cancelled)
       .forEach((r) => r.flush(counts));
+    backend
+      .match('/api/auth/demo-accounts')
+      .filter((r) => !r.cancelled)
+      .forEach((r) => r.flush([]));
   }
 
   async function open(url: string, counts?: Counts) {
@@ -208,9 +215,7 @@ describe('AppShell', () => {
     const visitor = await open('/login');
     expect(visitor.querySelector('app-sidebar')).toBeNull();
     expect(visitor.querySelector('app-header')).toBeNull();
-    signInAs('learner');
-    const el = await open('/login');
-    expect(el.querySelector('app-sidebar')).toBeNull();
+    expect(visitor.querySelector('main')).not.toBeNull();
   });
 
   describe('below the lg breakpoint', () => {

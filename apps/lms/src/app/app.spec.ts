@@ -34,6 +34,11 @@ describe('App boot', () => {
       .match('/api/me/nav-counts')
       .filter((r) => !r.cancelled)
       .forEach((r) => r.flush({ notifications: 0, inbox: 0 }));
+    // The login page, where an anonymous visitor lands, offers the demo accounts.
+    backend
+      .match('/api/auth/demo-accounts')
+      .filter((r) => !r.cancelled)
+      .forEach((r) => r.flush([]));
     backend.verify();
   });
 

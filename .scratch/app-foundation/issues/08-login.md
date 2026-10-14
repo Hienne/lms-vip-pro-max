@@ -6,9 +6,9 @@
 
 **Status:** ready-for-agent
 
-- [ ] Signal Forms with the form schema derived from `LoginCommandSchema`
-- [ ] Submit button busy state; error summary focus on failure
-- [ ] Specs cover success, 422, 401, 423, `next` and demo sign-in
+- [x] Signal Forms with the form schema derived from `LoginCommandSchema`
+- [x] Submit button busy state; error summary focus on failure
+- [x] Specs cover success, 422, 401, 423, `next` and demo sign-in
 - [ ] Checklist entry `route-login` done
 - [ ] Checked in the browser side by side with the mockup at 375/768/1280 px, light and dark, keyboard only
 - [ ] `npm run check` green; own pull request

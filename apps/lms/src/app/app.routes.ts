@@ -11,6 +11,7 @@ import {
   type RouteDef,
   type RouteMeta,
 } from './core/routing/route-table';
+import { guestGuard } from './core/session/guest.guard';
 import { homeGuard } from './core/session/home.guard';
 
 type Loader = NonNullable<Route['loadComponent']>;
@@ -23,6 +24,7 @@ const placeholder: Loader = () =>
 
 /** Migrated screens by route path; every other route keeps the placeholder. */
 const SCREENS: Readonly<Record<string, Loader>> = {
+  login: () => import('./features/auth/login/login').then((m) => m.Login),
   '403': () =>
     import('./features/errors/forbidden/forbidden').then((m) => m.Forbidden),
 };
@@ -37,6 +39,7 @@ function toRoute(def: RouteDef): Route {
     title: def.title,
     data: routeData(metaOf(def)),
     canMatch: def.public ? [] : [authGuard, roleGuard],
+    canActivate: def.guestOnly ? [guestGuard] : [],
     canDeactivate: [unsavedChangesGuard],
     loadComponent: SCREENS[def.path] ?? placeholder,
   };
