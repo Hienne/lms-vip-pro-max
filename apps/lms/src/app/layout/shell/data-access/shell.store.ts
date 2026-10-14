@@ -22,6 +22,7 @@ import {
   NavigationEnd,
   Router,
 } from '@angular/router';
+import type { NavCounts } from '@lms/contracts';
 import { confirm, type DrawerContext, openDrawer, Toaster } from '@lms/ui';
 import { filter, switchMap, take, tap } from 'rxjs';
 import type { UserMenuValue } from '../../header/header';
@@ -37,7 +38,7 @@ import { SessionStore } from '../../../core/session/session.store';
 /** Which frame surrounds the page: sidebar and header, the plain focus frame, or nothing. */
 export type Chrome = 'app' | 'focus' | 'bare';
 
-const NO_COUNTS = { notifications: 0, inbox: 0 };
+const NO_COUNTS: NavCounts = { notifications: 0, inbox: 0 };
 
 function leaf(snapshot: ActivatedRouteSnapshot): ActivatedRouteSnapshot {
   return snapshot.firstChild ? leaf(snapshot.firstChild) : snapshot;
@@ -117,10 +118,7 @@ export class ShellStore {
   });
 
   /** Keeps the last counts while a reload runs, so badges do not blink on navigation. */
-  private readonly counts = linkedSignal<
-    { notifications: number; inbox: number } | undefined,
-    { notifications: number; inbox: number }
-  >({
+  private readonly counts = linkedSignal<NavCounts | undefined, NavCounts>({
     source: () => this.countsResource.value(),
     computation: (value, previous) =>
       value ??

@@ -4,7 +4,7 @@
 
 **Blocked by:** 03 — Route table, guards, appCan and placeholders
 
-**Status:** ready-for-agent
+**Status:** done (browser side-by-side and own PR criteria left unticked)
 
 - [x] Copy matches `pages/auth.js`
 - [x] Back action uses history; home goes to the role home

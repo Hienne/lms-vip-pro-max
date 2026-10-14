@@ -4,7 +4,7 @@
 
 **Blocked by:** 03 — Route table, guards, appCan and placeholders
 
-**Status:** ready-for-agent
+**Status:** done (browser side-by-side and own PR criteria left unticked)
 
 - [x] `NAV` copied from `core/shell.js` for all four roles; every link resolves to a route
 - [x] Drawer traps and restores focus; closes on navigation

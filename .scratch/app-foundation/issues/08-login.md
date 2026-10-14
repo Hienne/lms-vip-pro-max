@@ -4,7 +4,7 @@
 
 **Blocked by:** 03 — Route table, guards, appCan and placeholders
 
-**Status:** ready-for-agent
+**Status:** done (browser side-by-side and own PR criteria left unticked)
 
 - [x] Signal Forms with the form schema derived from `LoginCommandSchema`
 - [x] Submit button busy state; error summary focus on failure

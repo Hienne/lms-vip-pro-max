@@ -4,7 +4,7 @@
 
 **Blocked by:** 05 — App shell, sidebar and layouts
 
-**Status:** ready-for-agent
+**Status:** done (browser side-by-side and own PR criteria left unticked)
 
 - [x] Endpoint, schema, fixtures and examples follow `contracts-and-mocks.md`
 - [x] Sign-out confirmation copy and success toast match the mockup

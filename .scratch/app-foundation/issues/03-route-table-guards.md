@@ -4,7 +4,7 @@
 
 **Blocked by:** 02 — Session store, boot restore and role home
 
-**Status:** ready-for-agent
+**Status:** done (browser side-by-side and own PR criteria left unticked)
 
 - [x] Route list matches the mockup and the checklist route ids
 - [x] `*appCan` accepts one permission or a list (all required) and updates when the session changes

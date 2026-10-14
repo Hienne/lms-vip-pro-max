@@ -1,5 +1,15 @@
-import { inject, Injectable, Injector, signal } from '@angular/core';
-import { rxResource, toObservable } from '@angular/core/rxjs-interop';
+import {
+  DestroyRef,
+  inject,
+  Injectable,
+  Injector,
+  signal,
+} from '@angular/core';
+import {
+  rxResource,
+  takeUntilDestroyed,
+  toObservable,
+} from '@angular/core/rxjs-interop';
 import { Router } from '@angular/router';
 import type { DemoAccount } from '@lms/contracts';
 import { Toaster } from '@lms/ui';
@@ -28,6 +38,7 @@ export class DevToolbarStore {
   private readonly toaster = inject(Toaster);
   private readonly api = inject(AuthApi);
   private readonly injector = inject(Injector);
+  private readonly destroyRef = inject(DestroyRef);
 
   private readonly state = { wanted: signal(false) };
 
@@ -43,7 +54,11 @@ export class DevToolbarStore {
 
   /** Starts loading the demo accounts (idempotent). */
   load(): void {
-    this.state.wanted.set(true);
+    this.setWanted(true);
+  }
+
+  private setWanted(wanted: boolean): void {
+    this.state.wanted.set(wanted);
   }
 
   switchRole(account: DemoAccount): void {
@@ -53,6 +68,7 @@ export class DevToolbarStore {
       .pipe(
         filter((user) => user?.id === account.id),
         take(1),
+        takeUntilDestroyed(this.destroyRef),
       )
       .subscribe(() => {
         const label =

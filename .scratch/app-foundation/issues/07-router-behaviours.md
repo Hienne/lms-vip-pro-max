@@ -4,7 +4,7 @@
 
 **Blocked by:** 05 — App shell, sidebar and layouts
 
-**Status:** ready-for-agent
+**Status:** done (browser side-by-side and own PR criteria left unticked)
 
 - [x] Confirm copy: "Rời trang khi chưa lưu?", "Rời trang", "Ở lại", warning tone
 - [x] Banner copy and "Kết nối lại" match `core/shell.js`; announced with `role="alert"`

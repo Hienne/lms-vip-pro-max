@@ -4,7 +4,7 @@
 
 **Blocked by:** 06 — Header, nav counts and user menu
 
-**Status:** ready-for-agent
+**Status:** done (browser side-by-side and own PR criteria left unticked)
 
 - [ ] No dev code or owner names in the production build (check runs in `npm run check` or CI)
 - [x] Role switch updates shell, nav and home

@@ -4,7 +4,7 @@
 
 **Blocked by:** None (can start immediately)
 
-**Status:** ready-for-agent
+**Status:** done (browser side-by-side and own PR criteria left unticked)
 
 - [x] Role and permissions read only from the profile
 - [x] Boot shows a loading state, then the app; a non-401 failure renders `ui-error-state` with retry

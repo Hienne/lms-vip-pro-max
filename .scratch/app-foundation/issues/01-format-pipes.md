@@ -4,7 +4,7 @@
 
 **Blocked by:** None (can start immediately)
 
-**Status:** ready-for-agent
+**Status:** done (browser side-by-side and own PR criteria left unticked)
 
 - [x] Output matches the mockup for every helper, including `—` for empty values
 - [x] `fmtRelative` and `fmtDaysLeft` read `NOW`; no direct `Date.now()` in pipes
