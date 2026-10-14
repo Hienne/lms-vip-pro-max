@@ -3,9 +3,14 @@ import {
   Component,
   ElementRef,
   inject,
+  signal,
+  type Type,
   untracked,
 } from '@angular/core';
+import { NgComponentOutlet } from '@angular/common';
 import { RouterOutlet } from '@angular/router';
+import { APP_CONFIG } from '../../core/config/app-config';
+import { DEV_FEATURES } from '../../core/dev/dev-features';
 import { Header } from '../header/header';
 import { NetBanner } from '../net-banner/net-banner';
 import { Sidebar } from '../sidebar/sidebar';
@@ -18,7 +23,7 @@ import { ShellStore } from './data-access/shell.store';
  */
 @Component({
   selector: 'app-shell',
-  imports: [RouterOutlet, Sidebar, Header, NetBanner],
+  imports: [RouterOutlet, Sidebar, Header, NetBanner, NgComponentOutlet],
   host: { '(window:beforeunload)': 'warnBeforeUnload($event)' },
   providers: [ShellStore],
   templateUrl: './app-shell.html',
@@ -28,7 +33,12 @@ export class AppShell {
   protected readonly store = inject(ShellStore);
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
 
+  /** The dev toolbar once its chunk has loaded; stays null where the build has none. */
+  protected readonly devToolbar = signal<Type<unknown> | null>(null);
+
   constructor() {
+    const load = inject(APP_CONFIG).devTools ? DEV_FEATURES.toolbar : null;
+    void load?.().then((toolbar) => this.devToolbar.set(toolbar));
     // After each navigation the page heading takes focus, so a screen reader announces the new page.
     afterRenderEffect(() => {
       this.store.path$();

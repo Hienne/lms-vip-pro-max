@@ -144,10 +144,15 @@ with `/api/` and never contain a host.
   error status. Role-dependent endpoints add examples named after the role
   (`learner`, `admin`, `instructor`, `viewer`, `unit-admin`).
 - Pick a response from the client with Prism's `Prefer` header:
-  `Prefer: example=admin`, `Prefer: code=403`. A dev-only
-  `mockScenarioInterceptor` in `core/dev/` sets it from a small dev toolbar. That
-  toolbar replaces the mockup's "Demo" menu (switch role, offline, session
-  expired, forbidden) and is excluded from production builds.
+  `Prefer: example=admin`, `Prefer: code=403`. `mockScenarioInterceptor`
+  (`core/dev/`, used only when `mockScenarios` is true) sets
+  `Prefer: example=<role>` on the GET endpoints that have role examples
+  (`ROLE_EXAMPLE_ENDPOINTS`; a spec fails when it differs from the endpoints
+  with role examples in `@lms/mocks`) from the role chosen in the dev
+  toolbar, kept for the tab. While the toolbar simulates a lost connection it
+  also fails every request with status 0. The toolbar replaces the mockup's
+  "Demo" menu (switch role, offline, session expired, forbidden URL, design
+  system) and is not part of the production build.
 - Prism is stateless: a POST does not change what the next GET returns. Stores
   apply the mutation response to their own state (angular.md §5.2), which is
   also the correct behaviour against the real backend.

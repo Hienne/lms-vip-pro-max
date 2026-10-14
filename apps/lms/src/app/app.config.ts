@@ -11,6 +11,7 @@ import {
 import { environment } from '../environments/environment';
 import { createAppRoutes } from './app.routes';
 import { parseAppConfig, provideAppConfig } from './core/config/app-config';
+import { DEV_FEATURES } from './core/dev/dev-features';
 import { provideAppErrorHandler } from './core/errors/app-error-handler';
 import { apiBaseUrlInterceptor } from './core/http/api-base-url.interceptor';
 import { AppTitleStrategy } from './core/routing/page-title.strategy';
@@ -32,6 +33,11 @@ export const appConfig: ApplicationConfig = {
       }),
     ),
     { provide: TitleStrategy, useExisting: AppTitleStrategy },
-    provideHttpClient(withInterceptors([apiBaseUrlInterceptor])),
+    provideHttpClient(
+      withInterceptors([
+        apiBaseUrlInterceptor,
+        ...(config.mockScenarios ? DEV_FEATURES.interceptors : []),
+      ]),
+    ),
   ],
 };

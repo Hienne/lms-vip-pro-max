@@ -226,4 +226,11 @@ describe('SessionStore', () => {
     await waiting;
     expect(settled).toBe(true);
   });
+
+  it('forgets the user when the session expires', async () => {
+    await restoreAs('learner');
+    store.expire();
+    expect(store.isSignedIn$()).toBe(false);
+    expect(store.status$()).toBe('ready');
+  });
 });

@@ -142,6 +142,11 @@ export class SessionStore {
     this.setSignOutRequest({});
   }
 
+  /** The server ended the session: forget the user without calling it (the dev toolbar uses it). */
+  expire(): void {
+    this.profileResource.set(null);
+  }
+
   /**
    * Resolves once the profile is known (signed in or anonymous). A failed restore keeps guards
    * waiting while the boot error shows, so a successful retry resumes the navigation the user

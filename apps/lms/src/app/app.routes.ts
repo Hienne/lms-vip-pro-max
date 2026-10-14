@@ -11,6 +11,7 @@ import {
   type RouteDef,
   type RouteMeta,
 } from './core/routing/route-table';
+import { DEV_FEATURES } from './core/dev/dev-features';
 import { guestGuard } from './core/session/guest.guard';
 import { homeGuard } from './core/session/home.guard';
 
@@ -47,8 +48,8 @@ function toRoute(def: RouteDef): Route {
 
 /**
  * The app's routes: the mockup's route table, each route carrying `data.roles` and `data.layout`.
- * `devTools` registers the internal routes (the migration progress board); production builds do
- * not have them at all.
+ * `devTools` registers the internal routes (the migration progress board); the production build
+ * replaces `DEV_FEATURES` with an empty one, so it does not even contain them.
  */
 export function createAppRoutes(config: Pick<AppConfig, 'devTools'>): Routes {
   return [
@@ -66,18 +67,7 @@ export function createAppRoutes(config: Pick<AppConfig, 'devTools'>): Routes {
       loadChildren: () =>
         import('./features/design-system/design-system.routes'),
     },
-    ...(config.devTools
-      ? ([
-          {
-            path: 'dev/migration',
-            title: 'Tiến độ migrate',
-            loadComponent: () =>
-              import(
-                './features/design-system/migration-board/migration-board'
-              ).then((m) => m.MigrationBoard),
-          },
-        ] satisfies Routes)
-      : []),
+    ...(config.devTools ? DEV_FEATURES.routes : []),
     {
       path: '**',
       title: 'Không tìm thấy',

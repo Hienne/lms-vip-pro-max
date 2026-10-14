@@ -48,3 +48,7 @@
   />
   }
 </ng-template>
+
+@if (devToolbar(); as toolbar) {
+<ng-container *ngComponentOutlet="toolbar" />
+}
