@@ -12,13 +12,19 @@ import {
 } from './core/routing/route-table';
 import { homeGuard } from './core/session/home.guard';
 
+type Loader = NonNullable<Route['loadComponent']>;
+
 /** Until its screen is migrated, a route shows the placeholder naming the mockup page. */
-const placeholder = (): Pick<Route, 'loadComponent'> => ({
-  loadComponent: () =>
-    import('./features/errors/route-placeholder/route-placeholder').then(
-      (m) => m.RoutePlaceholder,
-    ),
-});
+const placeholder: Loader = () =>
+  import('./features/errors/route-placeholder/route-placeholder').then(
+    (m) => m.RoutePlaceholder,
+  );
+
+/** Migrated screens by route path; every other route keeps the placeholder. */
+const SCREENS: Readonly<Record<string, Loader>> = {
+  '403': () =>
+    import('./features/errors/forbidden/forbidden').then((m) => m.Forbidden),
+};
 
 const routeData = (meta: RouteMeta): Route['data'] => ({ ...meta });
 
@@ -30,7 +36,7 @@ function toRoute(def: RouteDef): Route {
     title: def.title,
     data: routeData(metaOf(def)),
     canMatch: def.public ? [] : [authGuard, roleGuard],
-    ...placeholder(),
+    loadComponent: SCREENS[def.path] ?? placeholder,
   };
 }
 
@@ -71,7 +77,8 @@ export function createAppRoutes(config: Pick<AppConfig, 'devTools'>): Routes {
       path: '**',
       title: 'Không tìm thấy',
       data: routeData({ ...NOT_FOUND_META }),
-      ...placeholder(),
+      loadComponent: () =>
+        import('./features/errors/not-found/not-found').then((m) => m.NotFound),
     },
   ];
 }

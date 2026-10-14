@@ -3,7 +3,7 @@ import { Icon } from '../../atoms/icon/icon';
 import type { IconName } from '../../atoms/icon/icon-registry';
 
 export type EmptyTone = 'primary' | 'warning' | 'danger';
-export type EmptyHeadingLevel = 2 | 3 | 4;
+export type EmptyHeadingLevel = 1 | 2 | 3 | 4;
 
 /**
  * A centred block for "nothing here" and for failures: a round icon, a title, an optional
@@ -19,6 +19,9 @@ export type EmptyHeadingLevel = 2 | 3 | 4;
       <ui-icon [name]="icon()" size="xl" />
     </div>
     @switch (headingLevel()) {
+      @case (1) {
+        <h1>{{ title() }}</h1>
+      }
       @case (2) {
         <h2>{{ title() }}</h2>
       }

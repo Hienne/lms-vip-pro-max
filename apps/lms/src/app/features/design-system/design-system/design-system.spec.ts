@@ -582,6 +582,6 @@ describe('progress board route', () => {
     const page = harness.routeNativeElement as HTMLElement | null;
     expect(page?.querySelector('[data-summary]') ?? null).toBeNull();
     // The unknown URL falls through to the not-found route.
-    expect(page?.textContent).toContain('“notFound”');
+    expect(page?.textContent).toContain('Mã lỗi 404');
   });
 });

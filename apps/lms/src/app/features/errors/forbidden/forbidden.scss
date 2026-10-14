@@ -1,0 +1,18 @@
+@use 'ui';
+
+.forbidden {
+  max-width: ui.layout(content);
+  margin-inline: auto;
+  padding: ui.space(4);
+
+  &__actions {
+    @include ui.row;
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+
+  &__note {
+    @include ui.text(xs, muted);
+    text-align: center;
+  }
+}

@@ -14,7 +14,7 @@ export const roleGuard: CanMatchFn = async (route, segments) => {
   if (!allowed || !role || allowed.includes(role)) return true;
   const state: ForbiddenState = {
     path: `/${segments.map((s) => s.path).join('/')}`,
-    roles: allowed,
+    roles: [...allowed],
   };
   return new RedirectCommand(router.parseUrl('/403'), { state });
 };

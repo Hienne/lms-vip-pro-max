@@ -11,6 +11,9 @@ const ROLE_VIEW: Record<Role, StatusView> = {
   viewer: { label: 'Lãnh đạo', tone: 'neutral', outline: true },
 };
 
+/** The role's Vietnamese name, for prose that cannot use the badge. */
+export const roleLabel = (role: Role): string => ROLE_VIEW[role].label;
+
 /** A user's role as a badge; `scoped` marks a role limited to one unit ("… đơn vị"). */
 @Component({
   selector: 'app-role-badge',
