@@ -175,11 +175,13 @@ link, the README checklist codes it serves, and four verify checks (`lightDark`,
 - **Claim** an entry before you start: set `status: 'in-progress'` and `owner: '<your GitHub
 username>'` in a one-line change, merged on its own so teammates see it. Do not start an entry
   somebody else owns.
-- **Complete** it in the same pull request as the work: `status: 'done'`, the pull request link,
+- **Complete** it in the same pull request as the work: `status: 'done'`, the `pullRequest` link
+  (open the pull request first, or fill the link right after it exists),
   and each verify check `'done'` only after you performed it, or `'n/a'` when it does not
   apply (a UI atom has no error states).
-- The schema rejects an owner-less `in-progress`/`done` entry and a `done` entry with a
-  pending check. Specs fail when an `@lms/ui` export or an app route has no entry, and when a
+- The schema rejects an owner-less `in-progress`/`done` entry, a `done` entry without a
+  `pullRequest` link (the merged pull request that delivered it; for work delivered in a
+  combined pull request, that pull request) and a `done` entry with a pending check. Specs fail when an `@lms/ui` export or an app route has no entry, and when a
   `done` entry targets an export or route that does not exist. `todo` and `in-progress` entries
   may name planned exports and routes.
 - **See it**: the progress board is at `/dev/migration` in development and staging (not in

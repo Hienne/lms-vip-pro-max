@@ -1,11 +1,15 @@
+import { BreakpointObserver } from '@angular/cdk/layout';
+import { toSignal } from '@angular/core/rxjs-interop';
 import {
   Component,
   computed,
+  inject,
   input,
   output,
   viewChild,
   type ElementRef,
 } from '@angular/core';
+import { map } from 'rxjs';
 import { RouterLink } from '@angular/router';
 import type { Profile } from '@lms/contracts';
 import { Icon, IconButton, Input, Menu, type MenuEntry } from '@lms/ui';
@@ -31,6 +35,14 @@ export class Header {
   readonly menu = output<void>();
   readonly searched = output<string>();
   readonly picked = output<UserMenuValue>();
+
+  /** On a phone the user menu is just its icon, so the search keeps room to be used. */
+  protected readonly compact = toSignal(
+    inject(BreakpointObserver)
+      .observe('(max-width: 639px)')
+      .pipe(map((state) => state.matches)),
+    { initialValue: false },
+  );
 
   protected readonly field = viewChild<ElementRef<HTMLInputElement>>('q');
 

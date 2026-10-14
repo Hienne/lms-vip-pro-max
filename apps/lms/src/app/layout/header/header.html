@@ -36,6 +36,7 @@
       [label]="me.name"
       icon="user"
       variant="ghost"
+      [iconOnly]="compact()"
       [entries]="entries()"
       (selected)="picked.emit($event)"
     />

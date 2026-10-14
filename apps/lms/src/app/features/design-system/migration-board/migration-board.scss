@@ -52,4 +52,72 @@
     @include ui.stack(1);
     list-style: none;
   }
+
+  // Shown only on the phone card, where the group heading and the status caption are not next to it.
+  &__meta {
+    @include ui.text(xs, muted);
+    font-weight: ui.weight(regular);
+
+    @include ui.bp(sm) {
+      display: none;
+    }
+  }
+
+  // Below `sm` each row is a stacked card with its own labels instead of a table row.
+  @include ui.bp-below(sm) {
+    &__table {
+      overflow: visible;
+      border: 0;
+      background: transparent;
+    }
+
+    &__table table,
+    &__table tbody,
+    &__row,
+    &__row th,
+    &__cell {
+      display: block;
+    }
+
+    &__table thead {
+      @include ui.sr-only;
+    }
+
+    &__caption {
+      display: block;
+      margin-bottom: ui.space(3);
+      border: 1px solid ui.color(border);
+      border-radius: ui.radius(md);
+    }
+
+    &__row {
+      margin-bottom: ui.space(3);
+      border: 1px solid ui.color(border);
+      border-radius: ui.radius(lg);
+      background: ui.color(surface);
+      overflow-wrap: anywhere;
+    }
+
+    &__row th {
+      white-space: normal;
+      border-bottom: 1px solid ui.color(border);
+    }
+
+    &__cell {
+      display: grid;
+      grid-template-columns: minmax(6rem, 7.5rem) minmax(0, 1fr);
+      gap: ui.space(3);
+      border-bottom: 1px solid ui.color(border);
+
+      &::before {
+        content: attr(data-label);
+        @include ui.text(xs, muted);
+        font-weight: ui.weight(semibold);
+      }
+
+      &:last-child {
+        border-bottom: 0;
+      }
+    }
+  }
 }
