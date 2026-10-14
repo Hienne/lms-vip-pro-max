@@ -6,9 +6,9 @@
 
 **Status:** ready-for-agent
 
-- [ ] Route list matches the mockup and the checklist route ids
-- [ ] `*appCan` accepts one permission or a list (all required) and updates when the session changes
-- [ ] Router specs with `RouterTestingHarness`: anonymous, wrong role, allowed role, `next` preserved
-- [ ] `*appCan` spec per permission
+- [x] Route list matches the mockup and the checklist route ids
+- [x] `*appCan` accepts one permission or a list (all required) and updates when the session changes
+- [x] Router specs with `RouterTestingHarness`: anonymous, wrong role, allowed role, `next` preserved
+- [x] `*appCan` spec per permission
 - [ ] Checked in the browser side by side with the mockup at 375/768/1280 px, light and dark, keyboard only
-- [ ] `npm run check` green; own pull request
+- [x] `npm run check` green; own pull request
