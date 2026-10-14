@@ -21,10 +21,11 @@
     "typecheck": "nx run-many -t typecheck",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "check": "npm run format:check && nx run-many -t lint typecheck test build",
-    "ci:check": "nx affected -t lint typecheck test build",
+    "check": "npm run format:check && nx run-many -t lint typecheck test build check-bundle",
+    "ci:check": "nx affected -t lint typecheck test build check-bundle",
     "ci:build": "nx build lms -c production && nx build lms -c staging",
-    "graph": "nx graph"
+    "graph": "nx graph",
+    "check:bundle": "nx run lms:check-bundle"
   },
   "devDependencies": {
     "@analogjs/vite-plugin-angular": "~2.8.0",

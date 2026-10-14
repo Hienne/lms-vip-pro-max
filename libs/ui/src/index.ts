@@ -163,3 +163,18 @@ export { Tabs, TabPanel, type TabItem } from './lib/molecules/tabs/tabs';
 
 // Search (remaining-ui 01)
 export { Search } from './lib/molecules/search/search';
+
+// Format pipes, NOW clock token (app-foundation 01)
+export {
+  FmtBytesPipe,
+  FmtDatePipe,
+  FmtDatetimePipe,
+  FmtDaysLeftPipe,
+  FmtMinutesPipe,
+  FmtNumPipe,
+  FmtPctPipe,
+  FmtRelativePipe,
+  FmtScorePipe,
+  FmtTimePipe,
+} from './lib/atoms/format/format.pipes';
+export { NOW } from './lib/atoms/format/now';

@@ -1,0 +1,26 @@
+@use 'ui';
+
+:host {
+  display: block;
+}
+
+.net-banner {
+  display: flex;
+  align-items: center;
+  gap: ui.space(3);
+  padding: ui.space(2) ui.space(6);
+  background: ui.color(warning-subtle);
+  color: ui.color(warning);
+  border-bottom: 1px solid
+    color-mix(in srgb, ui.color(warning) 30%, transparent);
+  font-size: ui.text-size(sm);
+  font-weight: ui.weight(medium);
+
+  @include ui.bp-below(lg) {
+    padding: ui.space(2) ui.space(4);
+  }
+
+  &__text {
+    flex: 1;
+  }
+}

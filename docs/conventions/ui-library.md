@@ -277,6 +277,28 @@ Three choices, **Hệ thống / Sáng / Tối** (`system | light | dark`), remem
 - Mockup icon names → Lucide names: see the icon table in
   `docs/migration/mockup-to-angular.md`.
 
+## Format pipes and the clock
+
+Pure pipes in `libs/ui/src/lib/atoms/format/` port the mockup's `fmt.*` one-for-one, all `vi-VN`,
+with `—` for empty values. The `fmt` prefix keeps them from shadowing Angular's `date`. Use them in
+templates instead of formatting in components.
+
+| Pipe          | Mockup `fmt.*` | Example output                                           |
+| ------------- | -------------- | -------------------------------------------------------- |
+| `fmtNum`      | `num`          | `1.234.567` (null → `0`)                                 |
+| `fmtPct`      | `pct`          | `72%`                                                    |
+| `fmtScore`    | `score`        | `8,6` (null → `—`)                                       |
+| `fmtDate`     | `date`         | `05/03/2026`                                             |
+| `fmtDatetime` | `datetime`     | `09:07 05/03/2026`                                       |
+| `fmtTime`     | `time`         | seconds → `01:05`                                        |
+| `fmtMinutes`  | `minutes`      | `45 phút` (< 60), `1g 30p`, `2 giờ`                      |
+| `fmtBytes`    | `bytes`        | `512 KB`, `1.5 MB` (above 1 MB)                          |
+| `fmtRelative` | `relative`     | `vừa xong`, `5 phút trước`, `3 ngày trước`, then a date  |
+| `fmtDaysLeft` | `daysLeft`     | whole days, rounded up, negative once past; `null` empty |
+
+`fmtRelative` and `fmtDaysLeft` read the `NOW` injection token (`() => number`, default `Date.now`)
+and never call `Date.now()` themselves. Specs provide `{ provide: NOW, useValue: () => fixed }`.
+
 ## Composite widgets and overlays
 
 | Mockup piece                                  | Build on                                                                                      |

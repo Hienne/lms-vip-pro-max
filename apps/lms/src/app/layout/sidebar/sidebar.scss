@@ -1,0 +1,139 @@
+@use 'ui';
+
+// The mockup's `.sidebar`, `.nav` and `.sidebar__*` (layout.css). Light text on the strong brand
+// teal; the translucent whites are the white token mixed in.
+:host {
+  display: block;
+}
+
+.sidebar {
+  display: flex;
+  flex-direction: column;
+  min-height: 100%;
+  background: ui.color(primary-strong);
+  color: ui.color(primary-subtle);
+
+  &__brand {
+    display: flex;
+    align-items: center;
+    gap: ui.space(3);
+    padding: ui.space(5) ui.space(5) ui.space(4);
+    color: ui.color(white);
+    text-decoration: none;
+
+    &:hover {
+      color: ui.color(white);
+    }
+  }
+
+  &__brand-name {
+    font-weight: ui.weight(bold);
+    line-height: ui.leading(tight);
+  }
+
+  &__brand-sub {
+    @include ui.text(xs);
+    color: ui.color(hero-subtle);
+  }
+
+  &__role {
+    @include ui.text(xs);
+    display: flex;
+    align-items: center;
+    gap: ui.space(2);
+    margin: 0 ui.space(4) ui.space(3);
+    padding: ui.space(2) ui.space(3);
+    border-radius: ui.radius(sm);
+    background: color-mix(in srgb, ui.color(white) 8%, transparent);
+    color: ui.color(hero-subtle);
+
+    strong {
+      color: ui.color(white);
+    }
+  }
+
+  &__section {
+    @include ui.eyebrow;
+    padding: ui.space(3) ui.space(5) ui.space(1);
+    color: ui.color(hero-subtle);
+  }
+
+  &__list {
+    display: flex;
+    flex-direction: column;
+    gap: ui.space(1);
+    margin: 0;
+    padding: 0 ui.space(3);
+    list-style: none;
+  }
+
+  &__link {
+    @include ui.text(sm);
+    display: flex;
+    align-items: center;
+    gap: ui.space(3);
+    min-height: ui.layout(touch);
+    padding: 0 ui.space(3);
+    border-radius: ui.radius(sm);
+    color: ui.color(hero-muted);
+    font-weight: ui.weight(medium);
+    text-decoration: none;
+    transition:
+      background ui.duration(fast),
+      color ui.duration(fast);
+
+    &:hover {
+      background: color-mix(in srgb, ui.color(white) 8%, transparent);
+      color: ui.color(white);
+    }
+
+    &[aria-current='page'] {
+      background: color-mix(in srgb, ui.color(white) 14%, transparent);
+      color: ui.color(white);
+      box-shadow: inset 3px 0 0 ui.color(accent);
+    }
+
+    &:focus-visible {
+      outline-color: ui.color(accent);
+    }
+  }
+
+  &__badge {
+    @include ui.text(xs);
+    @include ui.num;
+    min-width: ui.space(5);
+    height: ui.space(5);
+    margin-left: auto;
+    padding: 0 ui.space(1);
+    border-radius: ui.radius(full);
+    background: ui.color(accent);
+    color: ui.color(on-accent);
+    font-weight: ui.weight(bold);
+    display: inline-grid;
+    place-items: center;
+  }
+
+  &__footer {
+    margin-top: auto;
+    padding: ui.space(4);
+    border-top: 1px solid color-mix(in srgb, ui.color(white) 8%, transparent);
+  }
+
+  &__design-link {
+    @include ui.text(xs);
+    display: flex;
+    align-items: center;
+    gap: ui.space(2);
+    min-height: ui.space(8);
+    color: ui.color(hero-subtle);
+    text-decoration: none;
+
+    &:hover {
+      color: ui.color(white);
+    }
+
+    &:focus-visible {
+      outline-color: ui.color(accent);
+    }
+  }
+}

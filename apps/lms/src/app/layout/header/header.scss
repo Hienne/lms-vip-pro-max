@@ -1,0 +1,48 @@
+@use 'ui';
+
+:host {
+  display: block;
+}
+
+.header {
+  position: sticky;
+  top: 0;
+  z-index: ui.z(header);
+  display: flex;
+  align-items: center;
+  gap: ui.space(3);
+  height: ui.layout(header);
+  padding: 0 ui.space(6);
+  background: color-mix(in srgb, ui.color(surface) 92%, transparent);
+  backdrop-filter: saturate(1.4) blur(8px);
+  border-bottom: 1px solid ui.color(border);
+
+  @include ui.bp-below(lg) {
+    padding: 0 ui.space(4);
+  }
+
+  // Only below the point where the sidebar becomes a drawer.
+  &__menu {
+    display: none;
+
+    @include ui.bp-below(lg) {
+      display: inline-grid;
+    }
+  }
+
+  &__search {
+    display: flex;
+    flex: 1;
+    align-items: center;
+    gap: ui.space(2);
+    max-width: 420px;
+    min-width: 0;
+  }
+
+  &__actions {
+    display: flex;
+    align-items: center;
+    gap: ui.space(2);
+    margin-left: auto;
+  }
+}

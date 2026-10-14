@@ -1,0 +1,46 @@
+<div class="sidebar">
+  <a class="sidebar__brand" routerLink="/">
+    <ui-mai [size]="30" />
+    <span>
+      <span class="sidebar__brand-name">Core Banking Academy</span><br />
+      <span class="sidebar__brand-sub"
+        >Đào tạo nội bộ Ban QL&amp;PT Core Banking</span
+      >
+    </span>
+  </a>
+  <div class="sidebar__role">
+    <ui-icon name="shield" size="sm" />
+    <span>Vai trò: <strong>{{ roleText() }}</strong></span>
+  </div>
+  <nav aria-label="Điều hướng chính">
+    @for (section of sections(); track section.section) {
+    <div class="sidebar__section" aria-hidden="true">{{ section.section }}</div>
+    <ul class="sidebar__list" [attr.aria-label]="section.section">
+      @for (item of section.items; track item.href) {
+      <li>
+        <a
+          class="sidebar__link"
+          [routerLink]="item.href"
+          [attr.aria-current]="item.href === active() ? 'page' : null"
+        >
+          <ui-icon [name]="item.icon" />
+          <span>{{ item.label }}</span>
+          @if (item.badge === 'inbox' && inboxCount() > 0) {
+          <span
+            class="sidebar__badge"
+            [attr.aria-label]="inboxCount() + ' mục mới'"
+            >{{ inboxCount() }}</span
+          >
+          }
+        </a>
+      </li>
+      }
+    </ul>
+    }
+  </nav>
+  <div class="sidebar__footer">
+    <a class="sidebar__design-link" routerLink="/design-system">
+      <ui-icon name="palette" size="sm" />Design System v2
+    </a>
+  </div>
+</div>

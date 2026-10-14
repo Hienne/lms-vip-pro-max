@@ -5,6 +5,16 @@ import {
   AvatarGroup,
   Badge,
   Card,
+  FmtBytesPipe,
+  FmtDatePipe,
+  FmtDatetimePipe,
+  FmtDaysLeftPipe,
+  FmtMinutesPipe,
+  FmtNumPipe,
+  FmtPctPipe,
+  FmtRelativePipe,
+  FmtScorePipe,
+  FmtTimePipe,
   Icon,
   Kpi,
   List,
@@ -67,6 +77,9 @@ const LIST_ITEMS = [
   { title: 'Quy trình thay đổi', icon: 'workflow' },
 ] as const;
 
+const HOUR = 3600 * 1000;
+const DAY = 24 * HOUR;
+
 @Component({
   selector: 'app-data-section',
   imports: [
@@ -80,6 +93,16 @@ const LIST_ITEMS = [
     AvatarGroup,
     Badge,
     Card,
+    FmtBytesPipe,
+    FmtDatePipe,
+    FmtDatetimePipe,
+    FmtDaysLeftPipe,
+    FmtMinutesPipe,
+    FmtNumPipe,
+    FmtPctPipe,
+    FmtRelativePipe,
+    FmtScorePipe,
+    FmtTimePipe,
     Icon,
     Kpi,
     Progress,
@@ -93,6 +116,16 @@ const LIST_ITEMS = [
 export class DataSection {
   protected readonly rows = SAMPLE_ROWS;
   protected readonly listItems = LIST_ITEMS;
+  /** Sample timestamps for the format demo, relative to when the page opened. */
+  protected readonly samples = {
+    justNow: Date.now() - 10 * 1000,
+    minutes: Date.now() - 5 * 60 * 1000,
+    hours: Date.now() - 3 * HOUR,
+    days: Date.now() - 4 * DAY,
+    old: Date.now() - 45 * DAY,
+    due: Date.now() + 6.5 * DAY,
+    fixed: new Date(2026, 2, 5, 9, 7),
+  } as const;
   protected readonly people = [
     'Nguyễn Ngọc Anh',
     'Lê Hoàng Nam',

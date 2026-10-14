@@ -4,11 +4,11 @@
 
 **Blocked by:** None (can start immediately)
 
-**Status:** ready-for-agent
+**Status:** done (browser side-by-side and own PR criteria left unticked)
 
-- [ ] Role and permissions read only from the profile
-- [ ] Boot shows a loading state, then the app; a non-401 failure renders `ui-error-state` with retry
-- [ ] Token handling kept behind store commands (interceptor spec plugs in later)
-- [ ] Specs with `HttpTestingController` and `@lms/mocks`: restore, anonymous, sign-in, demo sign-in, sign-out, home redirect per role
+- [x] Role and permissions read only from the profile
+- [x] Boot shows a loading state, then the app; a non-401 failure renders `ui-error-state` with retry
+- [x] Token handling kept behind store commands (interceptor spec plugs in later)
+- [x] Specs with `HttpTestingController` and `@lms/mocks`: restore, anonymous, sign-in, demo sign-in, sign-out, home redirect per role
 - [ ] Checked in the browser side by side with the mockup at 375/768/1280 px, light and dark, keyboard only
-- [ ] `npm run check` green; own pull request
+- [x] `npm run check` green; own pull request

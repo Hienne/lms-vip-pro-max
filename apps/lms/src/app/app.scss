@@ -1,0 +1,19 @@
+@use 'ui';
+
+.app__boot {
+  display: grid;
+  place-items: center;
+  min-height: 100dvh;
+  padding: ui.space(4);
+}
+
+// A plain spinner: the app root must not import `@lms/ui` (its icons and overlays would land in
+// the initial bundle), so it cannot use `uiSpinner`.
+.app__spinner {
+  width: ui.space(5);
+  height: ui.space(5);
+  border: ui.space(1) solid ui.color(primary);
+  border-right-color: transparent;
+  border-radius: 50%;
+  @include ui.animate(spin);
+}

@@ -133,4 +133,82 @@
       </div>
     </div>
   </app-ds-demo>
+  <app-ds-demo
+    label="Định dạng số, ngày, thời lượng (pipe fmt*)"
+    [needs]="['format-pipes']"
+  >
+    <div uiTableWrap>
+      <table uiTable>
+        <caption class="sr-only">
+          Đầu ra của các pipe định dạng
+        </caption>
+        <thead>
+          <tr>
+            <th scope="col">Pipe</th>
+            <th scope="col">Đầu vào</th>
+            <th scope="col">Đầu ra</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <th scope="row"><code>fmtNum</code></th>
+            <td>1234567</td>
+            <td>{{ 1234567 | fmtNum }}</td>
+          </tr>
+          <tr>
+            <th scope="row"><code>fmtPct</code></th>
+            <td>72.4</td>
+            <td>{{ 72.4 | fmtPct }}</td>
+          </tr>
+          <tr>
+            <th scope="row"><code>fmtScore</code></th>
+            <td>8.55 · null</td>
+            <td>{{ 8.55 | fmtScore }} · {{ null | fmtScore }}</td>
+          </tr>
+          <tr>
+            <th scope="row"><code>fmtDate</code></th>
+            <td>5/3/2026 · null</td>
+            <td>{{ samples.fixed | fmtDate }} · {{ null | fmtDate }}</td>
+          </tr>
+          <tr>
+            <th scope="row"><code>fmtDatetime</code></th>
+            <td>5/3/2026 09:07</td>
+            <td>{{ samples.fixed | fmtDatetime }}</td>
+          </tr>
+          <tr>
+            <th scope="row"><code>fmtTime</code></th>
+            <td>65 giây</td>
+            <td>{{ 65 | fmtTime }}</td>
+          </tr>
+          <tr>
+            <th scope="row"><code>fmtMinutes</code></th>
+            <td>45 · 90 · 180</td>
+            <td>
+              {{ 45 | fmtMinutes }} · {{ 90 | fmtMinutes }} · {{ 180 |
+              fmtMinutes }}
+            </td>
+          </tr>
+          <tr>
+            <th scope="row"><code>fmtBytes</code></th>
+            <td>512 KB · 1,5 MB</td>
+            <td>{{ 524288 | fmtBytes }} · {{ 1572900 | fmtBytes }}</td>
+          </tr>
+          <tr>
+            <th scope="row"><code>fmtRelative</code></th>
+            <td>10 giây · 5 phút · 3 giờ · 4 ngày · 45 ngày trước</td>
+            <td>
+              {{ samples.justNow | fmtRelative }} · {{ samples.minutes |
+              fmtRelative }} · {{ samples.hours | fmtRelative }} · {{
+              samples.days | fmtRelative }} · {{ samples.old | fmtRelative }}
+            </td>
+          </tr>
+          <tr>
+            <th scope="row"><code>fmtDaysLeft</code></th>
+            <td>6,5 ngày nữa</td>
+            <td>{{ samples.due | fmtDaysLeft }}</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </app-ds-demo>
 </app-ds-section>

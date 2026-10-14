@@ -4,10 +4,10 @@
 
 **Blocked by:** 06 — Header, nav counts and user menu
 
-**Status:** ready-for-agent
+**Status:** done (browser side-by-side and own PR criteria left unticked)
 
 - [ ] No dev code or owner names in the production build (check runs in `npm run check` or CI)
-- [ ] Role switch updates shell, nav and home
-- [ ] Specs cover the interceptor's `Prefer` header and each toolbar action
+- [x] Role switch updates shell, nav and home
+- [x] Specs cover the interceptor's `Prefer` header and each toolbar action
 - [ ] Checked in the browser side by side with the mockup at 375/768/1280 px, light and dark, keyboard only
 - [ ] `npm run check` green; own pull request

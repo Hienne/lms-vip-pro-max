@@ -1,0 +1,22 @@
+<div class="forbidden">
+  <ui-empty
+    icon="lock"
+    tone="danger"
+    [headingLevel]="1"
+    title="Bạn không có quyền truy cập trang này"
+    [description]="description"
+  >
+    <div class="forbidden__actions">
+      <a uiButton variant="primary" routerLink="/">
+        <ui-icon name="house" size="sm" />Về trang chủ của tôi
+      </a>
+      <button uiButton type="button" (click)="back()">
+        <ui-icon name="arrow-left" size="sm" />Quay lại
+      </button>
+    </div>
+  </ui-empty>
+  <p class="forbidden__note">
+    Mã lỗi 403 · Ngoài chặn ở giao diện, mọi API cũng kiểm tra quyền và phạm vi
+    đơn vị — gọi trực tiếp vẫn bị từ chối.
+  </p>
+</div>

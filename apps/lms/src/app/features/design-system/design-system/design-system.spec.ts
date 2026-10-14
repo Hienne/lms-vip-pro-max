@@ -579,11 +579,9 @@ describe('progress board route', () => {
 
   it('is absent when devTools is false', async () => {
     const harness = await open(false);
-    expect(TestBed.inject(Router).url).not.toBe('/dev/migration');
-    expect(
-      (harness.routeNativeElement as HTMLElement | null)?.querySelector(
-        '[data-summary]',
-      ) ?? null,
-    ).toBeNull();
+    const page = harness.routeNativeElement as HTMLElement | null;
+    expect(page?.querySelector('[data-summary]') ?? null).toBeNull();
+    // The unknown URL falls through to the not-found route.
+    expect(page?.textContent).toContain('Mã lỗi 404');
   });
 });

@@ -1,9 +1,14 @@
-import { Component } from '@angular/core';
-import { RouterOutlet } from '@angular/router';
+import { Component, inject } from '@angular/core';
+import { AppShell } from './layout/shell/app-shell';
+import { BootError } from './features/errors/boot-error/boot-error';
+import { SessionStore } from './core/session/session.store';
 
 @Component({
   selector: 'app-root',
-  imports: [RouterOutlet],
+  imports: [AppShell, BootError],
   templateUrl: './app.html',
+  styleUrl: './app.scss',
 })
-export class App {}
+export class App {
+  protected readonly session = inject(SessionStore);
+}

@@ -1,0 +1,54 @@
+@let chrome = store.chrome$(); @let role = store.role$();
+<a class="skip-link" href="#main" (click)="skipToMain($event)"
+  >Bỏ qua tới nội dung chính</a
+>
+<div class="app-shell" [class.app-shell--framed]="chrome === 'app'">
+  @if (chrome === 'app' && role) {
+  <app-sidebar
+    class="app-shell__sidebar"
+    [role]="role"
+    [scoped]="store.isScoped$()"
+    [activePath]="store.path$()"
+    [inboxCount]="store.inboxCount$()"
+  />
+  }
+  <div class="app-shell__main">
+    @if (chrome === 'app') {
+    <app-header
+      [navOpen]="store.navOpen$()"
+      [user]="store.user$()"
+      [unread]="store.unread$()"
+      (menu)="store.openNav(drawerBody)"
+      (searched)="store.search($event)"
+      (picked)="store.pick($event)"
+    />
+    }
+    <app-net-banner />
+    <main
+      id="main"
+      class="app-shell__content"
+      [class.app-shell__content--focus]="chrome === 'focus'"
+      tabindex="-1"
+    >
+      <router-outlet
+        (activate)="store.activated($event)"
+        (deactivate)="store.deactivated()"
+      />
+    </main>
+  </div>
+</div>
+
+<ng-template #drawerBody>
+  @if (role) {
+  <app-sidebar
+    [role]="role"
+    [scoped]="store.isScoped$()"
+    [activePath]="store.path$()"
+    [inboxCount]="store.inboxCount$()"
+  />
+  }
+</ng-template>
+
+@if (devToolbar(); as toolbar) {
+<ng-container *ngComponentOutlet="toolbar" />
+}

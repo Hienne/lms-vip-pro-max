@@ -1,0 +1,12 @@
+@use 'ui';
+
+.not-found {
+  max-width: ui.layout(content);
+  margin-inline: auto;
+  padding: ui.space(4);
+
+  &__note {
+    @include ui.text(xs, muted);
+    text-align: center;
+  }
+}

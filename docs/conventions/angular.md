@@ -484,6 +484,22 @@ readonly total = computed(() => this.price() * this.quantity());
   from the current route and do not walk `route.parent`.
 - Every app has a wildcard / not-found route.
 
+### 10.1 Router behaviours every page gets
+
+- **Title.** Set `title` on the route; `AppTitleStrategy` (`core/routing/page-title.strategy.ts`)
+  makes it `"<title> · Core Banking Academy"`. Do not call `Title.setTitle` in a page.
+- **Focus.** After each navigation the shell focuses the page's `h1` (or `main` when there is
+  none), so a page needs exactly one `h1` and must not move focus on load. The skip link
+  "Bỏ qua tới nội dung chính" focuses `main#main`.
+- **Scroll.** `withInMemoryScrolling` restores the scroll position on back/forward and scrolls to
+  the top on a new page.
+- **Unsaved changes.** A routed component with a form implements
+  `hasUnsavedChanges(): boolean` (`HasUnsavedChanges`). Every table route has
+  `unsavedChangesGuard`, which asks "Rời trang khi chưa lưu?" (warning tone) when it returns true,
+  and the shell warns on reload or tab close through `beforeunload`. Nothing else is needed.
+- **Offline.** `NetworkStore` (root) follows the window `online`/`offline` events and the dev
+  toolbar; the shell shows the banner. Pages do not render their own offline notice.
+
 ## 11. HTTP & error handling
 
 - Configure HTTP with `provideHttpClient(withInterceptors([...]))` and functional

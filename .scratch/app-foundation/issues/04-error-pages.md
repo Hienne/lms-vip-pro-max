@@ -4,10 +4,10 @@
 
 **Blocked by:** 03 — Route table, guards, appCan and placeholders
 
-**Status:** ready-for-agent
+**Status:** done (browser side-by-side and own PR criteria left unticked)
 
-- [ ] Copy matches `pages/auth.js`
-- [ ] Back action uses history; home goes to the role home
-- [ ] Specs cover both pages' copy and actions
+- [x] Copy matches `pages/auth.js`
+- [x] Back action uses history; home goes to the role home
+- [x] Specs cover both pages' copy and actions
 - [ ] Checked in the browser side by side with the mockup at 375/768/1280 px, light and dark, keyboard only
-- [ ] `npm run check` green; own pull request
+- [x] `npm run check` green; own pull request

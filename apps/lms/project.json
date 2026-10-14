@@ -51,6 +51,10 @@
             {
               "replace": "apps/lms/src/environments/environment.ts",
               "with": "apps/lms/src/environments/environment.production.ts"
+            },
+            {
+              "replace": "apps/lms/src/app/core/dev/dev-features.ts",
+              "with": "apps/lms/src/app/core/dev/dev-features.production.ts"
             }
           ]
         },
@@ -121,6 +125,18 @@
           "tsc --noEmit -p apps/lms/tsconfig.spec.json"
         ],
         "parallel": false
+      }
+    },
+    "check-bundle": {
+      "executor": "nx:run-commands",
+      "dependsOn": ["build"],
+      "inputs": [
+        "{workspaceRoot}/tools/check-production-bundle.mjs",
+        "{workspaceRoot}/dist/apps/lms"
+      ],
+      "options": {
+        "command": "node tools/check-production-bundle.mjs dist/apps/lms",
+        "cwd": "{workspaceRoot}"
       }
     }
   }

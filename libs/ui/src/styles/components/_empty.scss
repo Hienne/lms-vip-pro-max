@@ -12,10 +12,16 @@
     padding: var(--spacing-10) var(--spacing-4);
     color: var(--color-text-secondary);
 
+    h1,
     h2,
     h3,
     h4 {
       color: var(--color-text);
+    }
+
+    // A page that is only this block still gets its `h1`, at the size of a section title.
+    h1 {
+      font-size: var(--text-xl);
     }
 
     p {

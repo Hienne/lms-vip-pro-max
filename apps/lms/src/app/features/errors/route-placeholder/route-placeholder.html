@@ -1,0 +1,16 @@
+<div class="route-placeholder">
+  <ui-empty
+    icon="layers"
+    [headingLevel]="2"
+    title="Trang đang được chuyển đổi"
+    [description]="
+      'Màn hình “' + mockupPage + '” của bản mockup chưa được chuyển sang Angular.'
+    "
+  >
+    @if (showBoard) {
+    <a uiButton variant="secondary" routerLink="/dev/migration">
+      <ui-icon name="clipboard-check" size="sm" />Xem tiến độ migrate
+    </a>
+    }
+  </ui-empty>
+</div>

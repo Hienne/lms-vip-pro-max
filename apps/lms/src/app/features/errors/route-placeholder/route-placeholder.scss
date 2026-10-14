@@ -1,0 +1,7 @@
+@use 'ui';
+
+.route-placeholder {
+  max-width: ui.layout(content);
+  margin-inline: auto;
+  padding: ui.space(8) ui.space(4);
+}

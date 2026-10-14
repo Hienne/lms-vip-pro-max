@@ -19,7 +19,7 @@ import { Empty, type EmptyTone } from './empty';
 class Host {
   readonly description = signal('Hoàn thành khóa học đầu tiên để mở bài thi.');
   readonly tone = signal<EmptyTone>('primary');
-  readonly level = signal<2 | 3 | 4>(3);
+  readonly level = signal<1 | 2 | 3 | 4>(3);
 }
 
 function render() {
@@ -31,7 +31,7 @@ function render() {
     host: fixture.componentInstance,
     empty: root.querySelector('ui-empty') as HTMLElement,
     art: () => root.querySelector('.empty__art') as HTMLElement,
-    heading: () => root.querySelector('h2, h3, h4') as HTMLElement,
+    heading: () => root.querySelector('h1, h2, h3, h4') as HTMLElement,
     description: () => root.querySelector('p'),
   };
 }
@@ -65,6 +65,9 @@ describe('Empty', () => {
     host.level.set(4);
     fixture.detectChanges();
     expect(heading().tagName).toBe('H4');
+    host.level.set(1);
+    fixture.detectChanges();
+    expect(heading().tagName).toBe('H1');
   });
 
   it('colours the art by tone and keeps the icon decorative', () => {

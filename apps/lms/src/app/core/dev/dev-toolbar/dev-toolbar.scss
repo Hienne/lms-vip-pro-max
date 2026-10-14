@@ -1,0 +1,13 @@
+@use 'ui';
+
+:host {
+  display: contents;
+}
+
+// Floats above the page in a corner, out of the way of the header and the sidebar.
+.dev-toolbar {
+  position: fixed;
+  right: ui.space(4);
+  bottom: ui.space(4);
+  z-index: ui.z(toast);
+}

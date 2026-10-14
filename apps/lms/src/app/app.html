@@ -1,1 +1,20 @@
-<router-outlet />
+@switch (session.status$()) { @case ('loading') {
+<div class="app__boot">
+  <span class="app__spinner" role="status" aria-label="Đang khởi động"></span>
+</div>
+} @case ('error') {
+<div class="app__boot">
+  @defer {
+  <app-boot-error
+    [message]="session.loadError$()?.message ?? ''"
+    (retry)="session.restore()"
+  />
+  }
+</div>
+} @default { @defer {
+<app-shell />
+} @placeholder {
+<div class="app__boot">
+  <span class="app__spinner" role="status" aria-label="Đang khởi động"></span>
+</div>
+} } }

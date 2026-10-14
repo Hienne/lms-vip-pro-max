@@ -121,6 +121,16 @@ project run the Nx target directly (`npx nx test ui`).
   details in the `/design-system` placeholders. True in development and staging, false in
   production, so internal names and pull request links never reach end users. It is separate
   from `mockScenarios`, which stays development-only because Prism exists only there.
+- Everything that exists only for the team (the migration board route, the dev toolbar, the
+  scenario interceptor) hangs off one object, `DEV_FEATURES` in
+  `apps/lms/src/app/core/dev/dev-features.ts`. The production build replaces that file with
+  `dev-features.production.ts` (empty) through `fileReplacements`, so none of it is bundled;
+  the config flags only decide whether staging and development use it. Add new team-only code
+  there, never behind a runtime `if` alone. `npm run check` runs `lms:check-bundle`
+  (`tools/check-production-bundle.mjs`), which fails if the production output contains the
+  toolbar, the interceptor or the board. Known gap: the migration registry data
+  (`migration-entries.data.ts`, with owner handles) still ships because the design-system
+  placeholders read statuses from it; it is hidden at runtime by `devTools`.
 - `apiBaseUrl` is the API origin per environment (`''` = same origin).
   `apiBaseUrlInterceptor` prefixes it to every `/api/...` request, so endpoint
   paths in `@lms/contracts` stay environment-free and XApi services never read

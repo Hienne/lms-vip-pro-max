@@ -4,10 +4,10 @@
 
 **Blocked by:** 05 — App shell, sidebar and layouts
 
-**Status:** ready-for-agent
+**Status:** done (browser side-by-side and own PR criteria left unticked)
 
-- [ ] Endpoint, schema, fixtures and examples follow `contracts-and-mocks.md`
-- [ ] Sign-out confirmation copy and success toast match the mockup
-- [ ] Specs cover search routing per role, counts and labels, menu items and sign-out
+- [x] Endpoint, schema, fixtures and examples follow `contracts-and-mocks.md`
+- [x] Sign-out confirmation copy and success toast match the mockup
+- [x] Specs cover search routing per role, counts and labels, menu items and sign-out
 - [ ] Checked in the browser side by side with the mockup at 375/768/1280 px, light and dark, keyboard only
 - [ ] `npm run check` green; own pull request

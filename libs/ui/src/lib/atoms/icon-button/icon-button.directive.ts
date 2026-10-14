@@ -1,4 +1,11 @@
-import { booleanAttribute, computed, Directive, input } from '@angular/core';
+import {
+  booleanAttribute,
+  computed,
+  Directive,
+  ElementRef,
+  inject,
+  input,
+} from '@angular/core';
 import { Tooltip } from '../tooltip/tooltip.directive';
 
 export type IconButtonVariant = 'default' | 'danger';
@@ -10,18 +17,27 @@ export type IconButtonSize = 'md' | 'sm';
  * touch minimum (44px).
  *
  * `<button uiIconButton label="Thông báo"><ui-icon name="bell" /></button>`
+ *
+ * It also decorates an `<a>` for an icon that navigates (`<a uiIconButton routerLink="…" label="…">`).
  */
 @Directive({
-  selector: 'button[uiIconButton]',
+  selector: 'button[uiIconButton], a[uiIconButton]',
   host: {
     class: 'icon-btn',
     '[class]': 'modifiers()',
-    type: 'button',
+    '[attr.type]': 'type',
     '[attr.aria-label]': 'label()',
   },
   hostDirectives: [{ directive: Tooltip, inputs: ['uiTooltip: label'] }],
 })
 export class IconButton {
+  /** `button` on a native button, none on a link. */
+  protected readonly type =
+    inject<ElementRef<HTMLElement>>(ElementRef).nativeElement.tagName ===
+    'BUTTON'
+      ? 'button'
+      : null;
+
   /** Accessible name and tooltip text. */
   readonly label = input.required<string>();
   readonly variant = input<IconButtonVariant>('default');
