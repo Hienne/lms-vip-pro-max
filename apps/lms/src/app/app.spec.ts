@@ -31,6 +31,13 @@ describe('App boot', () => {
   afterEach(() => backend.verify());
 
   const text = (el: Element) => el.textContent ?? '';
+  /** The shell is deferred, so the outlet appears once its chunk has loaded. */
+  const appRendered = (el: HTMLElement) =>
+    vi.waitFor(() => {
+      TestBed.tick();
+      expect(el.querySelector('router-outlet')).not.toBeNull();
+    });
+
   async function tick(): Promise<void> {
     TestBed.tick();
     await Promise.resolve();
@@ -46,8 +53,7 @@ describe('App boot', () => {
 
     backend.expectOne('/api/auth/profile').flush(profileFixtures['learner']);
     await tick();
-    await fixture.whenStable();
-    expect(el.querySelector('router-outlet')).not.toBeNull();
+    await appRendered(el);
     expect(el.querySelector('[role="status"]')).toBeNull();
   });
 
@@ -68,8 +74,7 @@ describe('App boot', () => {
     await tick();
     backend.expectOne('/api/auth/profile').flush(profileFixtures['learner']);
     await tick();
-    await fixture.whenStable();
-    expect(el.querySelector('router-outlet')).not.toBeNull();
+    await appRendered(el);
   });
 
   it.each([

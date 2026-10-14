@@ -1,0 +1,48 @@
+@use 'ui';
+
+:host {
+  display: block;
+}
+
+// The mockup's `.app` grid: sidebar column and main. Bare frames are a plain block.
+
+.app-shell {
+  display: block;
+
+  &--framed {
+    display: grid;
+    grid-template-columns: ui.layout(sidebar) minmax(0, 1fr);
+    min-height: 100dvh;
+
+    @include ui.bp-below(lg) {
+      grid-template-columns: minmax(0, 1fr);
+    }
+  }
+
+  &__sidebar {
+    position: sticky;
+    top: 0;
+    height: 100dvh;
+    overflow-y: auto;
+    z-index: ui.z(sidebar);
+
+    // Below `lg` the sidebar lives in the drawer instead.
+    @include ui.bp-below(lg) {
+      display: none;
+    }
+  }
+
+  &__main {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+  }
+
+  &__content {
+    flex: 1 1 auto;
+
+    &--focus {
+      min-height: 100dvh;
+    }
+  }
+}

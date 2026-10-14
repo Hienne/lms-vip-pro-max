@@ -1,11 +1,11 @@
 import { Component, inject } from '@angular/core';
-import { RouterOutlet } from '@angular/router';
+import { AppShell } from './layout/shell/app-shell';
 import { BootError } from './features/errors/boot-error/boot-error';
 import { SessionStore } from './core/session/session.store';
 
 @Component({
   selector: 'app-root',
-  imports: [RouterOutlet, BootError],
+  imports: [AppShell, BootError],
   templateUrl: './app.html',
   styleUrl: './app.scss',
 })

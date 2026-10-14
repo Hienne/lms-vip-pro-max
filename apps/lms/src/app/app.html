@@ -11,6 +11,10 @@
   />
   }
 </div>
-} @default {
-<router-outlet />
-} }
+} @default { @defer {
+<app-shell />
+} @placeholder {
+<div class="app__boot">
+  <span class="app__spinner" role="status" aria-label="Đang khởi động"></span>
+</div>
+} } }

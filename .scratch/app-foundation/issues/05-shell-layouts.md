@@ -6,8 +6,8 @@
 
 **Status:** ready-for-agent
 
-- [ ] `NAV` copied from `core/shell.js` for all four roles; every link resolves to a route
-- [ ] Drawer traps and restores focus; closes on navigation
-- [ ] Specs cover nav per role, active item, layout per route and the mobile drawer
+- [x] `NAV` copied from `core/shell.js` for all four roles; every link resolves to a route
+- [x] Drawer traps and restores focus; closes on navigation
+- [x] Specs cover nav per role, active item, layout per route and the mobile drawer
 - [ ] Checked in the browser side by side with the mockup at 375/768/1280 px, light and dark, keyboard only
-- [ ] `npm run check` green; own pull request
+- [x] `npm run check` green; own pull request

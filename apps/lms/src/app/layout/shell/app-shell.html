@@ -1,0 +1,37 @@
+@let chrome = store.chrome$(); @let role = store.role$();
+<div class="app-shell" [class.app-shell--framed]="chrome === 'app'">
+  @if (chrome === 'app' && role) {
+  <app-sidebar
+    class="app-shell__sidebar"
+    [role]="role"
+    [scoped]="store.isScoped$()"
+    [activePath]="store.path$()"
+  />
+  }
+  <div class="app-shell__main">
+    @if (chrome === 'app') {
+    <app-header
+      [navOpen]="store.navOpen$()"
+      (menu)="store.openNav(drawerBody)"
+    />
+    }
+    <main
+      id="main"
+      class="app-shell__content"
+      [class.app-shell__content--focus]="chrome === 'focus'"
+      tabindex="-1"
+    >
+      <router-outlet />
+    </main>
+  </div>
+</div>
+
+<ng-template #drawerBody>
+  @if (role) {
+  <app-sidebar
+    [role]="role"
+    [scoped]="store.isScoped$()"
+    [activePath]="store.path$()"
+  />
+  }
+</ng-template>

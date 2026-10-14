@@ -1,0 +1,12 @@
+<header class="header">
+  <button
+    uiIconButton
+    class="header__menu"
+    label="Mở menu điều hướng"
+    aria-haspopup="dialog"
+    [attr.aria-expanded]="navOpen()"
+    (click)="menu.emit()"
+  >
+    <ui-icon name="menu" />
+  </button>
+</header>
