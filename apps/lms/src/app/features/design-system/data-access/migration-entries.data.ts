@@ -16,6 +16,7 @@ export const MIGRATION_ENTRIES = [
     checklist: ['H'],
     status: 'done',
     owner: 'Hienne',
+    pullRequest: 'https://github.com/Hienne/lms-vip-pro-max/pull/1',
     verify: {
       lightDark: 'done',
       widths: 'done',
@@ -32,6 +33,7 @@ export const MIGRATION_ENTRIES = [
     checklist: ['H'],
     status: 'done',
     owner: 'Hienne',
+    pullRequest: 'https://github.com/Hienne/lms-vip-pro-max/pull/1',
     verify: {
       lightDark: 'done',
       widths: 'done',
@@ -48,6 +50,7 @@ export const MIGRATION_ENTRIES = [
     checklist: ['H'],
     status: 'done',
     owner: 'Hienne',
+    pullRequest: 'https://github.com/Hienne/lms-vip-pro-max/pull/1',
     verify: {
       lightDark: 'done',
       widths: 'done',
@@ -64,6 +67,7 @@ export const MIGRATION_ENTRIES = [
     checklist: ['H'],
     status: 'done',
     owner: 'Hienne',
+    pullRequest: 'https://github.com/Hienne/lms-vip-pro-max/pull/3',
     verify: {
       lightDark: 'done',
       widths: 'n/a',
@@ -80,6 +84,7 @@ export const MIGRATION_ENTRIES = [
     checklist: ['H'],
     status: 'done',
     owner: 'Hienne',
+    pullRequest: 'https://github.com/Hienne/lms-vip-pro-max/pull/1',
     verify: {
       lightDark: 'done',
       widths: 'done',
@@ -96,6 +101,7 @@ export const MIGRATION_ENTRIES = [
     checklist: ['H'],
     status: 'done',
     owner: 'Hienne',
+    pullRequest: 'https://github.com/Hienne/lms-vip-pro-max/pull/1',
     verify: {
       lightDark: 'done',
       widths: 'done',
@@ -112,6 +118,7 @@ export const MIGRATION_ENTRIES = [
     checklist: ['H'],
     status: 'done',
     owner: 'Hienne',
+    pullRequest: 'https://github.com/Hienne/lms-vip-pro-max/pull/1',
     verify: {
       lightDark: 'done',
       widths: 'done',
@@ -128,6 +135,7 @@ export const MIGRATION_ENTRIES = [
     checklist: ['H'],
     status: 'done',
     owner: 'Hienne',
+    pullRequest: 'https://github.com/Hienne/lms-vip-pro-max/pull/1',
     verify: {
       lightDark: 'done',
       widths: 'done',
@@ -144,6 +152,7 @@ export const MIGRATION_ENTRIES = [
     checklist: ['H'],
     status: 'done',
     owner: 'Hienne',
+    pullRequest: 'https://github.com/Hienne/lms-vip-pro-max/pull/3',
     verify: {
       lightDark: 'done',
       widths: 'done',
@@ -160,6 +169,7 @@ export const MIGRATION_ENTRIES = [
     checklist: ['H'],
     status: 'done',
     owner: 'Hienne',
+    pullRequest: 'https://github.com/Hienne/lms-vip-pro-max/pull/1',
     verify: {
       lightDark: 'done',
       widths: 'done',
@@ -176,6 +186,7 @@ export const MIGRATION_ENTRIES = [
     checklist: ['H'],
     status: 'done',
     owner: 'Hienne',
+    pullRequest: 'https://github.com/Hienne/lms-vip-pro-max/pull/1',
     verify: {
       lightDark: 'done',
       widths: 'done',
@@ -192,6 +203,7 @@ export const MIGRATION_ENTRIES = [
     checklist: ['H'],
     status: 'done',
     owner: 'Hienne',
+    pullRequest: 'https://github.com/Hienne/lms-vip-pro-max/pull/1',
     verify: {
       lightDark: 'done',
       widths: 'done',
@@ -208,6 +220,7 @@ export const MIGRATION_ENTRIES = [
     checklist: ['H'],
     status: 'done',
     owner: 'Hienne',
+    pullRequest: 'https://github.com/Hienne/lms-vip-pro-max/pull/1',
     verify: {
       lightDark: 'done',
       widths: 'done',
@@ -224,6 +237,7 @@ export const MIGRATION_ENTRIES = [
     checklist: ['H'],
     status: 'done',
     owner: 'Hienne',
+    pullRequest: 'https://github.com/Hienne/lms-vip-pro-max/pull/1',
     verify: {
       lightDark: 'done',
       widths: 'done',
@@ -240,6 +254,7 @@ export const MIGRATION_ENTRIES = [
     checklist: ['H'],
     status: 'done',
     owner: 'Hienne',
+    pullRequest: 'https://github.com/Hienne/lms-vip-pro-max/pull/1',
     verify: {
       lightDark: 'done',
       widths: 'done',
@@ -256,6 +271,7 @@ export const MIGRATION_ENTRIES = [
     checklist: ['H'],
     status: 'done',
     owner: 'Hienne',
+    pullRequest: 'https://github.com/Hienne/lms-vip-pro-max/pull/3',
     verify: {
       lightDark: 'done',
       widths: 'done',
@@ -272,6 +288,7 @@ export const MIGRATION_ENTRIES = [
     checklist: ['H'],
     status: 'done',
     owner: 'Hienne',
+    pullRequest: 'https://github.com/Hienne/lms-vip-pro-max/pull/4',
     verify: {
       lightDark: 'done',
       widths: 'done',
@@ -288,6 +305,7 @@ export const MIGRATION_ENTRIES = [
     checklist: ['H'],
     status: 'done',
     owner: 'Hienne',
+    pullRequest: 'https://github.com/Hienne/lms-vip-pro-max/pull/5',
     verify: {
       lightDark: 'done',
       widths: 'done',
@@ -304,6 +322,7 @@ export const MIGRATION_ENTRIES = [
     checklist: ['H'],
     status: 'done',
     owner: 'Hienne',
+    pullRequest: 'https://github.com/Hienne/lms-vip-pro-max/pull/1',
     verify: {
       lightDark: 'done',
       widths: 'done',
@@ -320,6 +339,7 @@ export const MIGRATION_ENTRIES = [
     checklist: ['H'],
     status: 'done',
     owner: 'Hienne',
+    pullRequest: 'https://github.com/Hienne/lms-vip-pro-max/pull/3',
     verify: {
       lightDark: 'done',
       widths: 'done',
@@ -336,6 +356,7 @@ export const MIGRATION_ENTRIES = [
     checklist: ['H'],
     status: 'done',
     owner: 'Hienne',
+    pullRequest: 'https://github.com/Hienne/lms-vip-pro-max/pull/6',
     verify: {
       lightDark: 'done',
       widths: 'done',
@@ -352,6 +373,7 @@ export const MIGRATION_ENTRIES = [
     checklist: ['H'],
     status: 'done',
     owner: 'Hienne',
+    pullRequest: 'https://github.com/Hienne/lms-vip-pro-max/pull/7',
     verify: {
       lightDark: 'done',
       widths: 'done',
@@ -368,6 +390,7 @@ export const MIGRATION_ENTRIES = [
     checklist: ['H'],
     status: 'done',
     owner: 'Hienne',
+    pullRequest: 'https://github.com/Hienne/lms-vip-pro-max/pull/3',
     verify: {
       lightDark: 'done',
       widths: 'done',
@@ -384,6 +407,7 @@ export const MIGRATION_ENTRIES = [
     checklist: ['H'],
     status: 'done',
     owner: 'Hienne',
+    pullRequest: 'https://github.com/Hienne/lms-vip-pro-max/pull/3',
     verify: {
       lightDark: 'done',
       widths: 'done',
@@ -409,6 +433,7 @@ export const MIGRATION_ENTRIES = [
     checklist: ['H'],
     status: 'done',
     owner: 'Hienne',
+    pullRequest: 'https://github.com/Hienne/lms-vip-pro-max/pull/9',
     verify: {
       lightDark: 'done',
       widths: 'done',
@@ -425,6 +450,7 @@ export const MIGRATION_ENTRIES = [
     checklist: ['H'],
     status: 'done',
     owner: 'Hienne',
+    pullRequest: 'https://github.com/Hienne/lms-vip-pro-max/pull/12',
     verify: {
       lightDark: 'done',
       widths: 'done',
@@ -441,6 +467,7 @@ export const MIGRATION_ENTRIES = [
     checklist: ['H'],
     status: 'done',
     owner: 'Hienne',
+    pullRequest: 'https://github.com/Hienne/lms-vip-pro-max/pull/8',
     verify: {
       lightDark: 'done',
       widths: 'done',
@@ -457,6 +484,7 @@ export const MIGRATION_ENTRIES = [
     checklist: ['H'],
     status: 'done',
     owner: 'Hienne',
+    pullRequest: 'https://github.com/Hienne/lms-vip-pro-max/pull/3',
     verify: {
       lightDark: 'done',
       widths: 'done',
@@ -482,6 +510,7 @@ export const MIGRATION_ENTRIES = [
     checklist: ['H'],
     status: 'done',
     owner: 'Hienne',
+    pullRequest: 'https://github.com/Hienne/lms-vip-pro-max/pull/3',
     verify: {
       lightDark: 'done',
       widths: 'done',
@@ -498,6 +527,7 @@ export const MIGRATION_ENTRIES = [
     checklist: ['H'],
     status: 'done',
     owner: 'Hienne',
+    pullRequest: 'https://github.com/Hienne/lms-vip-pro-max/pull/3',
     verify: {
       lightDark: 'done',
       widths: 'done',
@@ -514,6 +544,7 @@ export const MIGRATION_ENTRIES = [
     checklist: ['H'],
     status: 'done',
     owner: 'Hienne',
+    pullRequest: 'https://github.com/Hienne/lms-vip-pro-max/pull/3',
     verify: {
       lightDark: 'done',
       widths: 'done',
@@ -530,6 +561,7 @@ export const MIGRATION_ENTRIES = [
     checklist: ['H'],
     status: 'done',
     owner: 'Hienne',
+    pullRequest: 'https://github.com/Hienne/lms-vip-pro-max/pull/3',
     verify: {
       lightDark: 'done',
       widths: 'done',
@@ -546,6 +578,7 @@ export const MIGRATION_ENTRIES = [
     checklist: ['H'],
     status: 'done',
     owner: 'Hienne',
+    pullRequest: 'https://github.com/Hienne/lms-vip-pro-max/pull/10',
     verify: {
       lightDark: 'done',
       widths: 'done',
@@ -562,6 +595,7 @@ export const MIGRATION_ENTRIES = [
     checklist: ['H'],
     status: 'done',
     owner: 'Hienne',
+    pullRequest: 'https://github.com/Hienne/lms-vip-pro-max/pull/11',
     verify: {
       lightDark: 'done',
       widths: 'done',
@@ -593,6 +627,7 @@ export const MIGRATION_ENTRIES = [
     checklist: ['F.2', 'B.2', 'B.8'],
     status: 'done',
     owner: 'Hienne',
+    pullRequest: 'https://github.com/Hienne/lms-vip-pro-max/pull/13',
     verify: {
       lightDark: 'done',
       widths: 'done',
@@ -614,6 +649,7 @@ export const MIGRATION_ENTRIES = [
     checklist: ['F.1', 'F.2'],
     status: 'done',
     owner: 'Hienne',
+    pullRequest: 'https://github.com/Hienne/lms-vip-pro-max/pull/14',
     verify: {
       lightDark: 'done',
       widths: 'done',
@@ -657,6 +693,7 @@ export const MIGRATION_ENTRIES = [
     checklist: ['F.7'],
     status: 'done',
     owner: 'Hienne',
+    pullRequest: 'https://github.com/Hienne/lms-vip-pro-max/pull/15',
     verify: {
       lightDark: 'done',
       widths: 'done',
@@ -685,6 +722,7 @@ export const MIGRATION_ENTRIES = [
     checklist: ['F.7'],
     status: 'done',
     owner: 'Hienne',
+    pullRequest: 'https://github.com/Hienne/lms-vip-pro-max/pull/19',
     verify: {
       lightDark: 'done',
       widths: 'done',
@@ -701,6 +739,7 @@ export const MIGRATION_ENTRIES = [
     checklist: ['F.7'],
     status: 'done',
     owner: 'Hienne',
+    pullRequest: 'https://github.com/Hienne/lms-vip-pro-max/pull/15',
     verify: {
       lightDark: 'done',
       widths: 'done',
@@ -1021,6 +1060,7 @@ export const MIGRATION_ENTRIES = [
     checklist: ['H'],
     status: 'done',
     owner: 'Hienne',
+    pullRequest: 'https://github.com/Hienne/lms-vip-pro-max/pull/1',
     verify: {
       lightDark: 'done',
       widths: 'done',
@@ -1052,6 +1092,7 @@ export const MIGRATION_ENTRIES = [
     checklist: [],
     status: 'done',
     owner: 'Hienne',
+    pullRequest: 'https://github.com/Hienne/lms-vip-pro-max/pull/1',
     verify: {
       lightDark: 'done',
       widths: 'done',

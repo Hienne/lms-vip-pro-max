@@ -35,6 +35,7 @@ const baseShape = {
   status: MigrationStatusSchema,
   /** GitHub username of whoever claimed it. Required once the status is not `todo`. */
   owner: z.string().regex(GITHUB_USERNAME).optional(),
+  /** The pull request that delivered it. Required once the status is `done`. */
   pullRequest: z.url().optional(),
   verify: VerifyChecksSchema.default({
     lightDark: 'todo',
@@ -71,6 +72,13 @@ export const MigrationEntrySchema = z
         code: 'custom',
         path: ['owner'],
         message: `${entry.id}: an entry that is ${entry.status} needs an owner (GitHub username)`,
+      });
+    }
+    if (entry.status === 'done' && !entry.pullRequest) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['pullRequest'],
+        message: `${entry.id}: a done entry needs the link of the pull request that delivered it`,
       });
     }
     if (entry.status === 'done') {

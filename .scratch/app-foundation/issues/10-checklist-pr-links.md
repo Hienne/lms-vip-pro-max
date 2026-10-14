@@ -4,10 +4,10 @@
 
 **Blocked by:** None (can start immediately)
 
-**Status:** ready-for-agent
+**Status:** done (own pull request left unticked)
 
-- [ ] Every `done` entry has a `pullRequest` URL of a merged pull request in this repository, found from git history (`gh pr list --state merged`)
-- [ ] Registry spec fails when a `done` entry has no `pullRequest`; the failure names the entry id
-- [ ] The board shows the link for each `done` entry in dev builds
-- [ ] `docs/migration/mockup-to-angular.md` progress-checklist steps say to fill `pullRequest` when marking an entry `done`
-- [ ] `npm run check` green; own pull request
+- [x] Every `done` entry has a `pullRequest` URL of a merged pull request in this repository, found from git history (`gh pr list --state merged`)
+- [x] Registry spec fails when a `done` entry has no `pullRequest`; the failure names the entry id
+- [x] The board shows the link for each `done` entry in dev builds
+- [x] `docs/migration/mockup-to-angular.md` progress-checklist steps say to fill `pullRequest` when marking an entry `done`
+- [x] `npm run check` green; own pull request

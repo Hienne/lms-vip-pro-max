@@ -58,6 +58,7 @@ describe('migration entry schema', () => {
           status,
           verify,
           owner: 'Hienne',
+          pullRequest: 'https://github.com/Hienne/lms-vip-pro-max/pull/1',
         }).success,
       ).toBe(true);
     },
@@ -68,10 +69,37 @@ describe('migration entry schema', () => {
       ...entry,
       status: 'done',
       owner: 'Hienne',
+      pullRequest: 'https://github.com/Hienne/lms-vip-pro-max/pull/1',
       verify: { ...NO_CHECKS, lightDark: 'done' },
     });
     expect(result.success).toBe(false);
     expect(JSON.stringify(result.error?.issues)).toContain('widths');
+  });
+
+  it('requires the pull request link before done, and names the entry', () => {
+    const done = {
+      ...entry,
+      status: 'done',
+      owner: 'Hienne',
+      verify: {
+        ...NO_CHECKS,
+        lightDark: 'done',
+        widths: 'done',
+        keyboard: 'done',
+        errorStates: 'n/a',
+      },
+    };
+    const result = MigrationEntrySchema.safeParse(done);
+    expect(result.success).toBe(false);
+    expect(JSON.stringify(result.error?.issues)).toContain(
+      `${entry.id}: a done entry needs the link of the pull request`,
+    );
+    expect(
+      MigrationEntrySchema.safeParse({
+        ...done,
+        pullRequest: 'https://github.com/Hienne/lms-vip-pro-max/pull/1',
+      }).success,
+    ).toBe(true);
   });
 
   it('lets a check that does not apply be n/a', () => {
@@ -80,6 +108,7 @@ describe('migration entry schema', () => {
         ...entry,
         status: 'done',
         owner: 'Hienne',
+        pullRequest: 'https://github.com/Hienne/lms-vip-pro-max/pull/1',
         verify: {
           lightDark: 'done',
           widths: 'done',
