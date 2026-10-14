@@ -27,6 +27,10 @@ import { filter, switchMap, take, tap } from 'rxjs';
 import type { UserMenuValue } from '../../header/header';
 import { searchTarget } from '../../header/search-target';
 import { NavCountsApi } from './nav-counts.api';
+import {
+  hasUnsavedChanges,
+  LeavePrompt,
+} from '../../../core/routing/unsaved-changes.guard';
 import type { Layout } from '../../../core/routing/route-table';
 import { SessionStore } from '../../../core/session/session.store';
 
@@ -54,7 +58,22 @@ export class ShellStore {
   private readonly injector = inject(Injector);
   private readonly destroyRef = inject(DestroyRef);
 
+  constructor() {
+    inject(LeavePrompt).use(() =>
+      confirm(this.dialog, {
+        title: 'Rời trang khi chưa lưu?',
+        message: 'Các thay đổi chưa lưu sẽ bị mất nếu bạn rời khỏi trang này.',
+        confirmLabel: 'Rời trang',
+        cancelLabel: 'Ở lại',
+        tone: 'warning',
+      }),
+    );
+  }
+
   private readonly state = { navOpen: signal(false) };
+
+  /** The routed page component, for the unsaved-changes check on reload or tab close. */
+  private page: unknown;
 
   /** The CDK handle of the open drawer: an imperative UI object, not state. */
   private drawer?: { close(): void };
@@ -116,6 +135,19 @@ export class ShellStore {
     this.path$();
     untracked(() => this.drawer?.close());
   });
+
+  /** The router outlet's `activate` and `deactivate` events keep track of the current page. */
+  activated(page: unknown): void {
+    this.page = page;
+  }
+
+  deactivated(): void {
+    this.page = undefined;
+  }
+
+  hasUnsavedChanges(): boolean {
+    return hasUnsavedChanges(this.page);
+  }
 
   private setNavOpen(open: boolean): void {
     this.state.navOpen.set(open);

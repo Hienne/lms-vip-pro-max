@@ -1,4 +1,7 @@
 @let chrome = store.chrome$(); @let role = store.role$();
+<a class="skip-link" href="#main" (click)="skipToMain($event)"
+  >Bỏ qua tới nội dung chính</a
+>
 <div class="app-shell" [class.app-shell--framed]="chrome === 'app'">
   @if (chrome === 'app' && role) {
   <app-sidebar
@@ -20,13 +23,17 @@
       (picked)="store.pick($event)"
     />
     }
+    <app-net-banner />
     <main
       id="main"
       class="app-shell__content"
       [class.app-shell__content--focus]="chrome === 'focus'"
       tabindex="-1"
     >
-      <router-outlet />
+      <router-outlet
+        (activate)="store.activated($event)"
+        (deactivate)="store.deactivated()"
+      />
     </main>
   </div>
 </div>

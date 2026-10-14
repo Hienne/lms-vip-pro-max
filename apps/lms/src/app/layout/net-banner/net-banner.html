@@ -1,0 +1,10 @@
+@if (network.offline$()) {
+<div class="net-banner" role="alert">
+  <ui-icon name="wifi-off" />
+  <span class="net-banner__text"
+    >Mất kết nối mạng (mô phỏng). Dữ liệu đang nhập được giữ nguyên — thao tác
+    sẽ thực hiện được khi có mạng trở lại.</span
+  >
+  <button uiButton size="sm" (click)="reconnect()">Kết nối lại</button>
+</div>
+}

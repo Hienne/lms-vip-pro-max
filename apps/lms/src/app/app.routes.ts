@@ -1,6 +1,7 @@
 import { Route, Routes } from '@angular/router';
 import type { AppConfig } from './core/config/app-config';
 import { authGuard } from './core/routing/auth.guard';
+import { unsavedChangesGuard } from './core/routing/unsaved-changes.guard';
 import { roleGuard } from './core/routing/role.guard';
 import {
   HOME_META,
@@ -36,6 +37,7 @@ function toRoute(def: RouteDef): Route {
     title: def.title,
     data: routeData(metaOf(def)),
     canMatch: def.public ? [] : [authGuard, roleGuard],
+    canDeactivate: [unsavedChangesGuard],
     loadComponent: SCREENS[def.path] ?? placeholder,
   };
 }

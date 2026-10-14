@@ -13,6 +13,8 @@ import { parseAppConfig, provideAppConfig } from '../../core/config/app-config';
 import { testAppConfig } from '../../core/config/app-config.testing';
 import { SessionStore } from '../../core/session/session.store';
 import { AppShell } from './app-shell';
+import { LeavePrompt } from '../../core/routing/unsaved-changes.guard';
+import { ShellStore } from './data-access/shell.store';
 
 class FakeSession {
   readonly user = signal<Profile | null>(null);
@@ -428,6 +430,139 @@ describe('AppShell', () => {
         expect(session.signOut).not.toHaveBeenCalled();
         expect(router.url).toBe('/learn');
       });
+    });
+  });
+
+  describe('page behaviours', () => {
+    it('has a skip link that moves focus to the main content', async () => {
+      signInAs('learner');
+      const el = await open('/learn');
+      const skip = el.querySelector<HTMLAnchorElement>('a.skip-link');
+      expect(skip?.textContent?.trim()).toBe('Bỏ qua tới nội dung chính');
+      expect(skip?.getAttribute('href')).toBe('#main');
+      skip?.click();
+      expect(document.activeElement).toBe(el.querySelector('main#main'));
+    });
+
+    it('focuses the page heading after navigating, or main without one', async () => {
+      signInAs('learner');
+      const fixture = TestBed.createComponent(AppShell);
+      const root = fixture.nativeElement as HTMLElement;
+      document.body.append(root);
+      const go = async (url: string) => {
+        await router.navigateByUrl(url);
+        flushCounts();
+        await fixture.whenStable();
+        TestBed.tick();
+      };
+      await go('/learn');
+      expect(document.activeElement).toBe(root.querySelector('main'));
+      await go('/403');
+      const h1 = root.querySelector('main h1');
+      expect(h1).not.toBeNull();
+      expect(document.activeElement).toBe(h1);
+      root.remove();
+    });
+
+    it('asks "Rời trang khi chưa lưu?" in a warning dialog', async () => {
+      signInAs('learner');
+      await open('/learn');
+      const answers: boolean[] = [];
+      TestBed.inject(LeavePrompt)
+        .ask()
+        .subscribe((leave) => answers.push(leave));
+      const dialog = () =>
+        document.querySelector<HTMLElement>('[role="alertdialog"]');
+      await vi.waitFor(() => expect(dialog()).not.toBeNull());
+      expect(dialog()?.textContent).toContain('Rời trang khi chưa lưu?');
+      expect(dialog()?.querySelector('.dialog__icon--warning')).not.toBeNull();
+      const press = (label: string) =>
+        Array.from(dialog()?.querySelectorAll('button') ?? [])
+          .find((b) => b.textContent?.trim() === label)
+          ?.click();
+      expect(dialog()?.textContent).toContain('Ở lại');
+      press('Rời trang');
+      await vi.waitFor(() => expect(answers).toEqual([true]));
+    });
+
+    describe('before unload', () => {
+      const unload = () => {
+        const event = new Event('beforeunload', { cancelable: true });
+        window.dispatchEvent(event);
+        return event.defaultPrevented;
+      };
+
+      it('lets the tab close when the page has nothing unsaved', async () => {
+        signInAs('learner');
+        await open('/learn');
+        expect(unload()).toBe(false);
+      });
+
+      it('asks the browser to confirm when the page reports unsaved changes', async () => {
+        signInAs('learner');
+        const fixture = TestBed.createComponent(AppShell);
+        await router.navigateByUrl('/learn');
+        flushCounts();
+        await fixture.whenStable();
+        const store = fixture.debugElement.injector.get(ShellStore);
+        store.activated({ hasUnsavedChanges: () => true });
+        expect(unload()).toBe(true);
+        store.deactivated();
+        expect(unload()).toBe(false);
+      });
+    });
+  });
+
+  describe('offline banner', () => {
+    const banner = (el: HTMLElement) => el.querySelector('.net-banner');
+
+    it('is hidden while online', async () => {
+      signInAs('learner');
+      expect(banner(await open('/learn'))).toBeNull();
+    });
+
+    it.each([
+      ['an app page', 'learner', '/learn'],
+      ['a focus page', 'learner', '/lesson/c1/l1'],
+    ] as const)(
+      'shows on %s when the browser goes offline',
+      async (_, role, url) => {
+        signInAs(role);
+        const el = await open(url);
+        window.dispatchEvent(new Event('offline'));
+        TestBed.tick();
+        const alert = banner(el);
+        expect(alert?.getAttribute('role')).toBe('alert');
+        expect(alert?.textContent).toContain(
+          'Mất kết nối mạng (mô phỏng). Dữ liệu đang nhập được giữ nguyên',
+        );
+        expect(alert?.querySelector('button')?.textContent?.trim()).toBe(
+          'Kết nối lại',
+        );
+      },
+    );
+
+    it('goes away when the browser is back online', async () => {
+      signInAs('learner');
+      const el = await open('/learn');
+      window.dispatchEvent(new Event('offline'));
+      TestBed.tick();
+      window.dispatchEvent(new Event('online'));
+      TestBed.tick();
+      expect(banner(el)).toBeNull();
+    });
+
+    it('goes away and says so when the user reconnects', async () => {
+      signInAs('learner');
+      const el = await open('/learn');
+      window.dispatchEvent(new Event('offline'));
+      TestBed.tick();
+      el.querySelector<HTMLButtonElement>('.net-banner button')?.click();
+      TestBed.tick();
+      expect(banner(el)).toBeNull();
+      await vi.waitFor(() =>
+        expect(document.body.textContent).toContain('Đã kết nối lại'),
+      );
     });
   });
 });
