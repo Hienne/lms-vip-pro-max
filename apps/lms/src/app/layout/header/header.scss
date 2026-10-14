@@ -37,6 +37,11 @@
     gap: ui.space(2);
     max-width: 420px;
     min-width: 0;
+
+    input {
+      flex: 1;
+      min-width: 0;
+    }
   }
 
   &__actions {
