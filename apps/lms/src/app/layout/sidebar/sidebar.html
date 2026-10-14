@@ -13,11 +13,9 @@
     <span>Vai trò: <strong>{{ roleText() }}</strong></span>
   </div>
   <nav aria-label="Điều hướng chính">
-    @for (section of sections(); track section.section; let i = $index) {
-    <div class="sidebar__section" [id]="'nav-section-' + i">
-      {{ section.section }}
-    </div>
-    <ul class="sidebar__list" [attr.aria-labelledby]="'nav-section-' + i">
+    @for (section of sections(); track section.section) {
+    <div class="sidebar__section" aria-hidden="true">{{ section.section }}</div>
+    <ul class="sidebar__list" [attr.aria-label]="section.section">
       @for (item of section.items; track item.href) {
       <li>
         <a

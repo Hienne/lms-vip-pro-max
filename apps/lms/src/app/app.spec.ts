@@ -28,7 +28,14 @@ describe('App boot', () => {
     });
     backend = TestBed.inject(HttpTestingController);
   });
-  afterEach(() => backend.verify());
+  afterEach(() => {
+    // The shell loads its badge counts once a user is signed in; no test here is about them.
+    backend
+      .match('/api/me/nav-counts')
+      .filter((r) => !r.cancelled)
+      .forEach((r) => r.flush({ notifications: 0, inbox: 0 }));
+    backend.verify();
+  });
 
   const text = (el: Element) => el.textContent ?? '';
   /** The shell is deferred, so the outlet appears once its chunk has loaded. */

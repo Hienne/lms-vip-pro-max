@@ -11,6 +11,7 @@ import {
   profileUnauthorized,
 } from './auth/auth.fixtures';
 import { healthOk } from './health/health.fixtures';
+import { navCountsFixtures } from './shell/shell.fixtures';
 
 /** Named response examples of one endpoint; `default` is the 2xx body. */
 export interface EndpointExamples {
@@ -39,6 +40,10 @@ export const endpointExamples: Readonly<Record<string, EndpointExamples>> = {
     errors: { 401: profileUnauthorized },
   },
   demoAccounts: { default: demoAccountFixtures },
+  navCounts: {
+    default: navCountsFixtures['learner'],
+    roles: navCountsFixtures,
+  },
 };
 
 /** Generic error bodies (mockup `E.*` messages) used when an endpoint declares the status. */

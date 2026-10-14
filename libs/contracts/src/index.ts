@@ -7,9 +7,16 @@ export * from './lib/identity/identity.schema';
 export * from './lib/learning/learning.schema';
 export * from './lib/auth/auth.schema';
 export * from './lib/auth/auth.endpoints';
+export * from './lib/shell/shell.schema';
+export * from './lib/shell/shell.endpoints';
 
 import { authEndpoints } from './lib/auth/auth.endpoints';
 import { healthEndpoints } from './lib/health/health.endpoints';
+import { shellEndpoints } from './lib/shell/shell.endpoints';
 
 /** Every endpoint registry; `build-spec` walks this to emit OpenAPI. */
-export const endpointRegistries = [healthEndpoints, authEndpoints] as const;
+export const endpointRegistries = [
+  healthEndpoints,
+  authEndpoints,
+  shellEndpoints,
+] as const;

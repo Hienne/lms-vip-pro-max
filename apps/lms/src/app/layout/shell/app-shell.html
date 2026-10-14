@@ -6,13 +6,18 @@
     [role]="role"
     [scoped]="store.isScoped$()"
     [activePath]="store.path$()"
+    [inboxCount]="store.inboxCount$()"
   />
   }
   <div class="app-shell__main">
     @if (chrome === 'app') {
     <app-header
       [navOpen]="store.navOpen$()"
+      [user]="store.user$()"
+      [unread]="store.unread$()"
       (menu)="store.openNav(drawerBody)"
+      (searched)="store.search($event)"
+      (picked)="store.pick($event)"
     />
     }
     <main
@@ -32,6 +37,7 @@
     [role]="role"
     [scoped]="store.isScoped$()"
     [activePath]="store.path$()"
+    [inboxCount]="store.inboxCount$()"
   />
   }
 </ng-template>

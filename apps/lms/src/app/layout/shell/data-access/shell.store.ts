@@ -1,26 +1,39 @@
 import { Dialog } from '@angular/cdk/dialog';
 import {
   computed,
+  DestroyRef,
   effect,
   inject,
   Injectable,
+  Injector,
+  linkedSignal,
   signal,
   type TemplateRef,
   untracked,
 } from '@angular/core';
-import { toSignal } from '@angular/core/rxjs-interop';
+import {
+  rxResource,
+  takeUntilDestroyed,
+  toObservable,
+  toSignal,
+} from '@angular/core/rxjs-interop';
 import {
   type ActivatedRouteSnapshot,
   NavigationEnd,
   Router,
 } from '@angular/router';
-import { type DrawerContext, openDrawer } from '@lms/ui';
-import { filter } from 'rxjs';
+import { confirm, type DrawerContext, openDrawer, Toaster } from '@lms/ui';
+import { filter, switchMap, take, tap } from 'rxjs';
+import type { UserMenuValue } from '../../header/header';
+import { searchTarget } from '../../header/search-target';
+import { NavCountsApi } from './nav-counts.api';
 import type { Layout } from '../../../core/routing/route-table';
 import { SessionStore } from '../../../core/session/session.store';
 
 /** Which frame surrounds the page: sidebar and header, the plain focus frame, or nothing. */
 export type Chrome = 'app' | 'focus' | 'bare';
+
+const NO_COUNTS = { notifications: 0, inbox: 0 };
 
 function leaf(snapshot: ActivatedRouteSnapshot): ActivatedRouteSnapshot {
   return snapshot.firstChild ? leaf(snapshot.firstChild) : snapshot;
@@ -36,6 +49,10 @@ export class ShellStore {
   private readonly router = inject(Router);
   private readonly session = inject(SessionStore);
   private readonly dialog = inject(Dialog);
+  private readonly api = inject(NavCountsApi);
+  private readonly toaster = inject(Toaster);
+  private readonly injector = inject(Injector);
+  private readonly destroyRef = inject(DestroyRef);
 
   private readonly state = { navOpen: signal(false) };
 
@@ -67,8 +84,33 @@ export class ShellStore {
     return this.layout() === 'focus' ? 'focus' : 'app';
   });
 
+  readonly user$ = this.session.user$;
   readonly role$ = this.session.role$;
   readonly isScoped$ = computed(() => !!this.session.user$()?.adminScope);
+
+  /** Reloaded after sign-in and on every navigation, as the mockup refreshes its badges. */
+  private readonly countsResource = rxResource({
+    params: () => {
+      const user = this.session.user$();
+      return user ? { userId: user.id, path: this.path$() } : undefined;
+    },
+    stream: () => this.api.navCounts(),
+  });
+
+  /** Keeps the last counts while a reload runs, so badges do not blink on navigation. */
+  private readonly counts = linkedSignal<
+    { notifications: number; inbox: number } | undefined,
+    { notifications: number; inbox: number }
+  >({
+    source: () => this.countsResource.value(),
+    computation: (value, previous) =>
+      value ??
+      (this.session.isSignedIn$() ? previous?.value : undefined) ??
+      NO_COUNTS,
+  });
+
+  readonly unread$ = computed(() => this.counts().notifications);
+  readonly inboxCount$ = computed(() => this.counts().inbox);
 
   private readonly closeOnNavigation = effect(() => {
     this.path$();
@@ -91,5 +133,50 @@ export class ShellStore {
       this.drawer = undefined;
       this.setNavOpen(false);
     });
+  }
+
+  /** Header search: sends the query to the list a role searches (nothing for an empty query). */
+  search(text: string): void {
+    const role = this.session.role$();
+    const target = role ? searchTarget(role, text) : null;
+    if (target) {
+      void this.router.navigate([target.path], { queryParams: target.query });
+    }
+  }
+
+  /** Acts on a user-menu choice. */
+  pick(choice: UserMenuValue): void {
+    if (choice === 'sign-out') this.signOut();
+    else
+      void this.router.navigateByUrl(
+        choice === 'profile' ? '/profile' : '/notifications',
+      );
+  }
+
+  /** Confirms, signs out, then shows the login page with a toast (the mockup's `logout`). */
+  private signOut(): void {
+    confirm(this.dialog, {
+      title: 'Đăng xuất?',
+      message:
+        'Tiến độ học đã được lưu tự động. Bạn có thể tiếp tục trên thiết bị khác.',
+      confirmLabel: 'Đăng xuất',
+    })
+      .pipe(
+        filter(Boolean),
+        tap(() => this.session.signOut()),
+        switchMap(() =>
+          toObservable(this.session.isSignedIn$, {
+            injector: this.injector,
+          }).pipe(
+            filter((signedIn) => !signedIn),
+            take(1),
+          ),
+        ),
+        takeUntilDestroyed(this.destroyRef),
+      )
+      .subscribe(() => {
+        this.toaster.success('Đã đăng xuất');
+        void this.router.navigateByUrl('/login');
+      });
   }
 }

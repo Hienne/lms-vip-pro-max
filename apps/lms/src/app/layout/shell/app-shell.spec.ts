@@ -1,3 +1,8 @@
+import { provideHttpClient } from '@angular/common/http';
+import {
+  HttpTestingController,
+  provideHttpClientTesting,
+} from '@angular/common/http/testing';
 import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { provideRouter, Router } from '@angular/router';
@@ -16,6 +21,7 @@ class FakeSession {
   readonly perms$ = (): readonly Permission[] => this.user()?.perms ?? [];
   readonly isSignedIn$ = () => this.user() !== null;
   whenReady = () => Promise.resolve();
+  signOut = vi.fn(() => this.user.set(null));
 }
 
 describe('AppShell', () => {
@@ -28,18 +34,39 @@ describe('AppShell', () => {
       providers: [
         provideAppConfig(parseAppConfig(testAppConfig())),
         provideRouter(createAppRoutes({ devTools: true })),
+        provideHttpClient(),
+        provideHttpClientTesting(),
         { provide: SessionStore, useValue: session },
       ],
     });
     router = TestBed.inject(Router);
   });
 
+  afterEach(() =>
+    document
+      .querySelectorAll('.cdk-overlay-container')
+      .forEach((c) => (c.innerHTML = '')),
+  );
+
   const signInAs = (key: keyof typeof profileFixtures) =>
     session.user.set(profileFixtures[key]);
 
-  async function open(url: string) {
+  type Counts = { notifications: number; inbox: number };
+
+  /** Answers the nav-counts requests the shell makes once a user is signed in. */
+  function flushCounts(counts: Counts = { notifications: 0, inbox: 0 }) {
+    TestBed.tick();
+    const backend = TestBed.inject(HttpTestingController);
+    backend
+      .match('/api/me/nav-counts')
+      .filter((r) => !r.cancelled)
+      .forEach((r) => r.flush(counts));
+  }
+
+  async function open(url: string, counts?: Counts) {
     const fixture = TestBed.createComponent(AppShell);
     await router.navigateByUrl(url);
+    flushCounts(counts);
     await fixture.whenStable();
     TestBed.tick();
     return fixture.nativeElement as HTMLElement;
@@ -240,6 +267,167 @@ describe('AppShell', () => {
       TestBed.tick();
       await vi.waitFor(() => expect(dialog()).toBeNull());
       expect(document.activeElement).toBe(button);
+    });
+  });
+
+  describe('header', () => {
+    let backend: HttpTestingController;
+    beforeEach(() => (backend = TestBed.inject(HttpTestingController)));
+
+    it('placeholder and form follow the role', async () => {
+      signInAs('learner');
+      const el = await open('/learn');
+      const input = el.querySelector<HTMLInputElement>(
+        'form[role="search"] input',
+      );
+      expect(input?.placeholder).toBe('Tìm khóa học, bài học…');
+      signInAs('admin');
+      TestBed.tick();
+      expect(input?.placeholder).toBe('Tìm khóa học, người dùng, câu hỏi…');
+    });
+
+    it.each([
+      ['learner', '/catalog'],
+      ['viewer', '/reports/learners'],
+      ['admin', '/admin/courses'],
+    ] as const)('sends a %s search to %s', async (role, path) => {
+      signInAs(role);
+      const el = await open('/learn');
+      const input = el.querySelector<HTMLInputElement>('form input')!;
+      input.value = ' core ';
+      el.querySelector('form')!.dispatchEvent(new Event('submit'));
+      await vi.waitFor(() => expect(router.url).toBe(`${path}?q=core`));
+    });
+
+    it('ignores an empty search', async () => {
+      signInAs('learner');
+      const el = await open('/learn');
+      el.querySelector('form')!.dispatchEvent(new Event('submit'));
+      TestBed.tick();
+      expect(router.url).toBe('/learn');
+    });
+
+    it('labels the bell with the unread count and shows the dot', async () => {
+      signInAs('learner');
+      const el = await open('/learn', { notifications: 2, inbox: 0 });
+      await vi.waitFor(() => {
+        TestBed.tick();
+        const bell = el.querySelector('a[href="/notifications"]');
+        expect(bell?.getAttribute('aria-label')).toBe('Thông báo, 2 chưa đọc');
+        expect(bell?.classList).toContain('icon-btn--dot');
+      });
+    });
+
+    it('has a plain bell when nothing is unread', async () => {
+      signInAs('viewer');
+      const el = await open('/reports');
+      const bell = el.querySelector('a[href="/notifications"]');
+      expect(bell?.getAttribute('aria-label')).toBe('Thông báo');
+      expect(bell?.classList).not.toContain('icon-btn--dot');
+    });
+
+    it('badges the inbox item with the new-item count', async () => {
+      signInAs('admin');
+      const el = await open('/admin', { notifications: 1, inbox: 3 });
+      await vi.waitFor(() => {
+        TestBed.tick();
+        expect(
+          el.querySelector('.sidebar__badge')?.getAttribute('aria-label'),
+        ).toBe('3 mục mới');
+      });
+    });
+
+    it('reloads the counts after a navigation', async () => {
+      signInAs('learner');
+      await open('/learn', { notifications: 2, inbox: 0 });
+      await router.navigateByUrl('/catalog');
+      TestBed.tick();
+      const reload = backend
+        .match('/api/me/nav-counts')
+        .filter((r) => !r.cancelled);
+      expect(reload).toHaveLength(1);
+      reload[0].flush({ notifications: 0, inbox: 0 });
+    });
+
+    describe('user menu', () => {
+      const menu = () => document.querySelector<HTMLElement>('[role="menu"]');
+      const items = () =>
+        Array.from(
+          document.querySelectorAll<HTMLElement>('[role="menuitem"]'),
+        ).map((i) => i.textContent?.trim());
+
+      async function openMenu(el: HTMLElement) {
+        el.querySelector<HTMLButtonElement>('ui-menu button')?.click();
+        TestBed.tick();
+        await vi.waitFor(() => expect(menu()).not.toBeNull());
+      }
+
+      it('lists the profile, notifications and sign-out choices', async () => {
+        signInAs('learner');
+        const el = await open('/learn');
+        expect(el.querySelector('ui-menu button')?.textContent).toContain(
+          profileFixtures['learner'].name,
+        );
+        await openMenu(el);
+        expect(menu()?.textContent).toContain(
+          `${profileFixtures['learner'].name} · ${profileFixtures['learner'].email}`,
+        );
+        expect(items()).toEqual(['Hồ sơ cá nhân', 'Thông báo', 'Đăng xuất']);
+      });
+
+      it('opens the profile page', async () => {
+        signInAs('learner');
+        const el = await open('/learn');
+        await openMenu(el);
+        document.querySelectorAll<HTMLElement>('[role="menuitem"]')[0].click();
+        await vi.waitFor(() => expect(router.url).toBe('/profile'));
+      });
+
+      it('signs out only after the user confirms', async () => {
+        signInAs('learner');
+        const el = await open('/learn');
+        await openMenu(el);
+        document.querySelectorAll<HTMLElement>('[role="menuitem"]')[2].click();
+        await vi.waitFor(() =>
+          expect(
+            document.querySelector('[role="alertdialog"]')?.textContent,
+          ).toContain('Đăng xuất?'),
+        );
+        expect(session.signOut).not.toHaveBeenCalled();
+        Array.from(
+          document.querySelectorAll<HTMLButtonElement>(
+            '[role="alertdialog"] button',
+          ),
+        )
+          .find((b) => b.textContent?.trim() === 'Đăng xuất')
+          ?.click();
+        await vi.waitFor(() => expect(router.url).toBe('/login'));
+        expect(session.signOut).toHaveBeenCalledOnce();
+        await vi.waitFor(() =>
+          expect(document.body.textContent).toContain('Đã đăng xuất'),
+        );
+      });
+
+      it('stays signed in when the user cancels', async () => {
+        signInAs('learner');
+        const el = await open('/learn');
+        await openMenu(el);
+        document.querySelectorAll<HTMLElement>('[role="menuitem"]')[2].click();
+        await vi.waitFor(() =>
+          expect(document.querySelector('[role="alertdialog"]')).not.toBeNull(),
+        );
+        const cancel = Array.from(
+          document.querySelectorAll<HTMLButtonElement>(
+            '[role="alertdialog"] button',
+          ),
+        ).find((b) => b.textContent?.includes('Hủy'));
+        cancel?.click();
+        await vi.waitFor(() =>
+          expect(document.querySelector('[role="alertdialog"]')).toBeNull(),
+        );
+        expect(session.signOut).not.toHaveBeenCalled();
+        expect(router.url).toBe('/learn');
+      });
     });
   });
 });
