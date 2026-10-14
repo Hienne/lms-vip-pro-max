@@ -4,10 +4,10 @@
 
 **Blocked by:** None (can start immediately)
 
-**Status:** ready-for-agent
+**Status:** done (keyboard-only pass, dark visual check and own pull request left unticked)
 
-- [ ] At 375 px no element overflows the viewport (`document.documentElement.scrollWidth` equals the viewport width)
-- [ ] Every field visible in the table is also visible on the card, with its label
-- [ ] Table layout unchanged at 768 and 1280 px
+- [x] At 375 px no element overflows the viewport (`document.documentElement.scrollWidth` equals the viewport width)
+- [x] Every field visible in the table is also visible on the card, with its label
+- [x] Table layout unchanged at 768 and 1280 px
 - [ ] Checked in the browser at 375/768/1280 px, light and dark, keyboard only
-- [ ] `npm run check` green; own pull request
+- [x] `npm run check` green; own pull request

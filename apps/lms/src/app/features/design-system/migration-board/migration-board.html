@@ -39,21 +39,32 @@
         </thead>
         <tbody>
           @for (row of status.rows; track row.id) {
-          <tr [attr.data-entry]="row.id">
+          <tr class="board__row" [attr.data-entry]="row.id">
             <th scope="row">
               <code>{{ row.id }}</code>
               <div class="board__level">{{ row.level }}</div>
+              <div class="board__meta">
+                {{ group.label }} · {{ status.label }}
+              </div>
             </th>
-            <td>{{ row.mockupSource }}</td>
-            <td><code>{{ row.target }}</code></td>
-            <td>{{ row.checklist }}</td>
-            <td>@if (row.owner) { &#64;{{ row.owner }} } @else { — }</td>
-            <td>
+            <td class="board__cell" data-label="Mockup">
+              {{ row.mockupSource }}
+            </td>
+            <td class="board__cell" data-label="Đích Angular">
+              <code>{{ row.target }}</code>
+            </td>
+            <td class="board__cell" data-label="Checklist">
+              {{ row.checklist }}
+            </td>
+            <td class="board__cell" data-label="Người làm">
+              @if (row.owner) { &#64;{{ row.owner }} } @else { — }
+            </td>
+            <td class="board__cell" data-label="Pull request">
               @if (row.pullRequest) {
               <a [href]="row.pullRequest">Pull request</a>
               } @else { — }
             </td>
-            <td>
+            <td class="board__cell" data-label="Kiểm tra">
               <ul class="board__checks">
                 @for (check of row.checks; track check.label) {
                 <li>
