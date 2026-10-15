@@ -237,6 +237,7 @@ export const roleFixtures: readonly Role[] = [
       'learn.saved',
       'learn.certificates',
     ],
+    locked: false,
     userCount: 8,
   },
   {
@@ -245,6 +246,7 @@ export const roleFixtures: readonly Role[] = [
     description: 'Biên soạn nội dung, trả lời phản hồi và xem báo cáo.',
     system: true,
     menus: ['teach.home', 'teach.inbox', ...CONTENT_MENUS, 'reports'],
+    locked: false,
     userCount: 1,
   },
   {
@@ -264,6 +266,7 @@ export const roleFixtures: readonly Role[] = [
       'teach.inbox',
       'admin.system',
     ],
+    locked: true,
     userCount: 2,
   },
   {
@@ -272,6 +275,7 @@ export const roleFixtures: readonly Role[] = [
     description: 'Chỉ xem báo cáo đào tạo.',
     system: true,
     menus: ['reports'],
+    locked: false,
     userCount: 1,
   },
   {
@@ -280,6 +284,7 @@ export const roleFixtures: readonly Role[] = [
     description: 'Quản lý khóa học và câu hỏi, xem báo cáo.',
     system: false,
     menus: ['content.courses', 'content.questions', 'reports'],
+    locked: false,
     userCount: 0,
   },
 ];

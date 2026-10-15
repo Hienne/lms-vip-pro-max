@@ -235,3 +235,19 @@ export const deleteGroupInvalid: ApiError = {
   message: 'Nhóm còn thành viên — hãy chuyển thành viên sang nhóm khác trước.',
 };
 export const groupNotFound: ApiError = { message: 'Nhóm không tồn tại.' };
+
+export const saveRoleInvalid: ApiError = {
+  message: 'Vui lòng kiểm tra lại thông tin.',
+  details: { name: 'Tên vai trò đã tồn tại.' },
+};
+export const saveRoleLocked: ApiError = {
+  message: 'Vai trò hệ thống này bị khóa, không thể sửa.',
+};
+export const deleteRoleForbidden: ApiError = {
+  message: 'Không thể xóa vai trò hệ thống.',
+};
+export const deleteRoleInvalid: ApiError = {
+  message:
+    'Vai trò đang được gán cho người dùng — hãy chuyển họ sang vai trò khác trước.',
+};
+export const roleNotFound: ApiError = { message: 'Vai trò không tồn tại.' };

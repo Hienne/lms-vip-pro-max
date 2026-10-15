@@ -35,6 +35,8 @@ const SCREENS: Readonly<Record<string, Loader>> = {
       (m) => m.UserDetail,
     ),
   'admin/org': () => import('./features/admin-org/org/org').then((m) => m.Org),
+  'admin/roles': () =>
+    import('./features/admin-org/roles/roles').then((m) => m.Roles),
   '403': () =>
     import('./features/errors/forbidden/forbidden').then((m) => m.Forbidden),
 };

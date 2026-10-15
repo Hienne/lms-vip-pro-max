@@ -5,6 +5,8 @@ import {
   toUrl,
   type AdminMeta,
   type Group,
+  type Role,
+  type SaveRoleCommand,
   type OrgUnit,
   type SaveGroupCommand,
   type SaveUnitCommand,
@@ -104,6 +106,27 @@ export class AdminOrgApi {
     const endpoint = adminOrgEndpoints.deleteGroup;
     return this.http
       .delete<unknown>(toUrl(endpoint, { groupId }))
+      .pipe(parseResponse(endpoint.response));
+  }
+
+  roles(): Observable<Role[]> {
+    const endpoint = adminOrgEndpoints.roles;
+    return this.http
+      .get<unknown>(toUrl(endpoint))
+      .pipe(parseResponse(endpoint.response));
+  }
+
+  saveRole(command: SaveRoleCommand): Observable<Role> {
+    const endpoint = adminOrgEndpoints.saveRole;
+    return this.http
+      .post<unknown>(toUrl(endpoint), command)
+      .pipe(parseResponse(endpoint.response));
+  }
+
+  deleteRole(roleId: string): Observable<true> {
+    const endpoint = adminOrgEndpoints.deleteRole;
+    return this.http
+      .delete<unknown>(toUrl(endpoint, { roleId }))
       .pipe(parseResponse(endpoint.response));
   }
 }

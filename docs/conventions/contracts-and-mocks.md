@@ -212,6 +212,12 @@ declared error status.
   answers the same example).
 - Prism has role examples for `users`, `adminMeta` and `org` (`admin`, `unit-admin`); `user` answers one
   fixed user whatever `userId` is.
+- The roles screen (`roles`, `saveRole`, `deleteRole`) sits behind the `admin.roles` menu and has no
+  mockup page. `Role.system` and `Role.locked` are what the screen may rely on: the app hides edit
+  on a locked role and delete on a system one, and disables delete while `userCount` is above zero,
+  but the server enforces all three (and protects the last administrator), so a refusal arrives as
+  a 403/422 and is shown as a toast or a field message. A role is saved as a name, a description and
+  menu keys; there is nothing finer than the menu to grant.
 - The org screen (`org`, `saveUnit`, `setUnitStatus`, `saveGroup`, `deleteGroup`) sits behind the
   `admin.org` menu. `org` rows carry what the screen shows (admins, member counts, groups with
   members, shared courses) so the app computes none of it; `admins[].scope` is `unit` or `system`.

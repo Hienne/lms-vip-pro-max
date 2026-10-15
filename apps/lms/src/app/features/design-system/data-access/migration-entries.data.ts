@@ -1032,7 +1032,8 @@ export const MIGRATION_ENTRIES = [
     mockupSource: null,
     target: 'admin/roles',
     checklist: ['B.9'],
-    status: 'todo',
+    status: 'in-progress',
+    owner: 'Hienne',
   },
   {
     id: 'route-admin-assignments',

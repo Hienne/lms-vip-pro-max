@@ -2,6 +2,7 @@ import { toUrl } from '../http/endpoint';
 import { adminOrgEndpoints } from './admin-org.endpoints';
 import {
   SaveUserCommandSchema,
+  SaveRoleCommandSchema,
   SetUnitStatusCommandSchema,
   SetUserStatusCommandSchema,
   UserDetailSchema,
@@ -13,9 +14,12 @@ describe('admin-org endpoints', () => {
       [
         'adminMeta',
         'deleteGroup',
+        'deleteRole',
         'org',
         'resetPassword',
+        'roles',
         'saveGroup',
+        'saveRole',
         'saveUnit',
         'saveUser',
         'setUnitStatus',
@@ -38,6 +42,9 @@ describe('admin-org endpoints', () => {
     ['setUnitStatus', [401, 403, 404]],
     ['saveGroup', [401, 403, 422]],
     ['deleteGroup', [401, 403, 404, 422]],
+    ['roles', [401, 403]],
+    ['saveRole', [401, 403, 404, 422]],
+    ['deleteRole', [401, 403, 404, 422]],
   ] as const)('%s declares its error statuses', (key, statuses) => {
     expect(adminOrgEndpoints[key].errors).toEqual(statuses);
   });
@@ -59,6 +66,17 @@ describe('admin-org endpoints', () => {
       '/api/admin/groups/g4',
     );
     expect(adminOrgEndpoints.deleteGroup.method).toBe('delete');
+  });
+
+  it('saves a role as a name, a description and menu keys', () => {
+    const command = { name: 'Kiểm soát', description: '', menus: ['reports'] };
+    expect(SaveRoleCommandSchema.parse(command)).toEqual(command);
+    expect(() =>
+      SaveRoleCommandSchema.parse({ ...command, menus: ['admin.everything'] }),
+    ).toThrow();
+    expect(toUrl(adminOrgEndpoints.deleteRole, { roleId: 'x' })).toBe(
+      '/api/admin/roles/x',
+    );
   });
 
   it('only pauses or reactivates a unit', () => {

@@ -1,0 +1,46 @@
+@use 'ui';
+
+:host {
+  @include ui.page(wide);
+}
+
+.roles {
+  &__loading {
+    display: flex;
+    justify-content: center;
+    padding-block: ui.space(10);
+  }
+
+  &__note {
+    margin-bottom: ui.space(5);
+  }
+
+  &__name {
+    @include ui.text(md);
+  }
+
+  &__tags {
+    flex-wrap: wrap;
+    margin-top: ui.space(1);
+  }
+
+  &__actions {
+    gap: ui.space(1);
+  }
+
+  &__meta {
+    @include ui.text(xs, muted);
+  }
+
+  &__desc {
+    @include ui.text(sm);
+  }
+
+  &__menus {
+    @include ui.row(2);
+    flex-wrap: wrap;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+}

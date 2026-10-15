@@ -43,6 +43,8 @@ export const RoleSchema = z.object({
   description: z.string(),
   system: z.boolean(),
   menus: z.array(MenuKeySchema),
+  /** The server refuses to edit or delete the role (the `admin` system role). */
+  locked: z.boolean(),
   /** Users holding the role; a role in use cannot be deleted. */
   userCount: z.number().int().nonnegative(),
 });

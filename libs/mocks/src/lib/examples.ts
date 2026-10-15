@@ -1,6 +1,11 @@
 import type { ApiError, ErrorStatus } from '@lms/contracts';
 import {
   adminMetaFixture,
+  deleteRoleForbidden,
+  deleteRoleInvalid,
+  roleNotFound,
+  saveRoleInvalid,
+  saveRoleLocked,
   deleteGroupInvalid,
   groupNotFound,
   orgFixtures,
@@ -33,7 +38,11 @@ import {
   profileUnauthorized,
   updateProfileInvalid,
 } from './auth/auth.fixtures';
-import { groupFixtures, unitFixtures } from './identity/identity.fixtures';
+import {
+  groupFixtures,
+  roleFixtures,
+  unitFixtures,
+} from './identity/identity.fixtures';
 import { healthOk } from './health/health.fixtures';
 import { navCountsFixtures } from './shell/shell.fixtures';
 
@@ -119,6 +128,20 @@ export const endpointExamples: Readonly<Record<string, EndpointExamples>> = {
   deleteGroup: {
     default: true,
     errors: { 404: groupNotFound, 422: deleteGroupInvalid },
+  },
+  roles: { default: roleFixtures },
+  // Prism is stateless: the mutations answer a seed role, and the app reloads `roles` instead.
+  saveRole: {
+    default: roleFixtures[4],
+    errors: { 403: saveRoleLocked, 404: roleNotFound, 422: saveRoleInvalid },
+  },
+  deleteRole: {
+    default: true,
+    errors: {
+      403: deleteRoleForbidden,
+      404: roleNotFound,
+      422: deleteRoleInvalid,
+    },
   },
   navCounts: {
     default: navCountsFixtures['learner'],

@@ -2,6 +2,7 @@ import { z } from 'zod';
 import {
   AccountStatusSchema,
   GroupSchema,
+  MenuKeySchema,
   RoleSchema,
   UnitSchema,
   UserSchema,
@@ -175,3 +176,17 @@ export const SaveGroupCommandSchema = z.object({
 export type SaveGroupCommand = z.infer<typeof SaveGroupCommandSchema>;
 
 export const DeleteGroupResultSchema = z.literal(true);
+
+// The roles part of the access model (docs/conventions/contracts-and-mocks.md → Auth contract
+// decisions). The mockup had four fixed roles and a `PERMS` table; here a role is data.
+
+/** Create (no `id`) or update the role named by `id`: its name, description and the menus it grants. */
+export const SaveRoleCommandSchema = z.object({
+  id: z.string().optional(),
+  name: z.string(),
+  description: z.string(),
+  menus: z.array(MenuKeySchema),
+});
+export type SaveRoleCommand = z.infer<typeof SaveRoleCommandSchema>;
+
+export const DeleteRoleResultSchema = z.literal(true);

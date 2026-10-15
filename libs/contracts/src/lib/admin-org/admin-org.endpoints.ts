@@ -1,9 +1,15 @@
 import { z } from 'zod';
 import { defineEndpoint } from '../http/endpoint';
-import { GroupSchema, UnitSchema } from '../identity/identity.schema';
+import {
+  GroupSchema,
+  RoleSchema,
+  UnitSchema,
+} from '../identity/identity.schema';
 import {
   AdminMetaSchema,
   DeleteGroupResultSchema,
+  DeleteRoleResultSchema,
+  SaveRoleCommandSchema,
   OrgUnitSchema,
   SaveGroupCommandSchema,
   SaveUnitCommandSchema,
@@ -18,6 +24,7 @@ import {
 const userParams = z.object({ userId: z.string() });
 const unitParams = z.object({ unitId: z.string() });
 const groupParams = z.object({ groupId: z.string() });
+const roleParams = z.object({ roleId: z.string() });
 
 /** Function names follow `lms-mockup/src/api/admin.js`. */
 export const adminOrgEndpoints = {
@@ -107,6 +114,29 @@ export const adminOrgEndpoints = {
     summary: 'Delete a group that has no members',
     params: groupParams,
     response: DeleteGroupResultSchema,
+    errors: [401, 403, 404, 422],
+  }),
+  roles: defineEndpoint({
+    method: 'get',
+    path: '/api/admin/roles',
+    summary: 'Every role with the menus it grants and how many users hold it',
+    response: z.array(RoleSchema),
+    errors: [401, 403],
+  }),
+  saveRole: defineEndpoint({
+    method: 'post',
+    path: '/api/admin/roles',
+    summary: 'Create a role, or update the one named by `id`',
+    body: SaveRoleCommandSchema,
+    response: RoleSchema,
+    errors: [401, 403, 404, 422],
+  }),
+  deleteRole: defineEndpoint({
+    method: 'delete',
+    path: '/api/admin/roles/{roleId}',
+    summary: 'Delete a custom role that no user holds',
+    params: roleParams,
+    response: DeleteRoleResultSchema,
     errors: [401, 403, 404, 422],
   }),
 } as const;

@@ -1,0 +1,118 @@
+<ui-page-header
+  eyebrow="Tổ chức"
+  title="Vai trò & phân quyền"
+  description="Mỗi vai trò là một tập các menu. Người dùng có quyền vào menu nào thì được toàn quyền thao tác trên menu đó."
+>
+  <div slot="actions">
+    <button uiButton variant="primary" (click)="edit(null)">
+      <ui-icon name="plus" size="sm" />Thêm vai trò
+    </button>
+  </div>
+</ui-page-header>
+
+@if (store.loadError$(); as error) {
+<ui-error-state
+  title="Không tải được danh sách vai trò"
+  [message]="error.message"
+  (retry)="store.retryLoad()"
+/>
+} @else if (store.isLoading$()) {
+<div class="roles__loading"><span uiSpinner></span></div>
+} @else {
+<ui-alert tone="info" [announce]="false" class="roles__note">
+  Mỗi người dùng có đúng một vai trò. Phạm vi dữ liệu (toàn hệ thống hay một đơn
+  vị) đặt riêng cho từng người dùng và do máy chủ kiểm tra.
+</ui-alert>
+@if (store.roles$().length) {
+<div class="grid-2">
+  @for (role of store.roles$(); track role.id) {
+  <article uiCard>
+    <div uiCardHeader>
+      <div>
+        <h2 class="roles__name">{{ role.name }}</h2>
+        <div class="row roles__tags">
+          @if (role.system) {
+          <span uiBadge tone="primary">Hệ thống</span>
+          } @else {
+          <span uiBadge outline>Tùy chỉnh</span>
+          } @if (role.locked) {
+          <span uiBadge tone="warning"
+            ><ui-icon name="lock" size="sm" />Đã khóa</span
+          >
+          }
+          <span class="roles__meta">{{ role.userCount }} người dùng</span>
+        </div>
+      </div>
+      <div class="row roles__actions">
+        @if (!role.locked) {
+        <button
+          uiButton
+          size="sm"
+          variant="ghost"
+          [attr.aria-label]="'Sửa vai trò ' + role.name"
+          (click)="edit(role)"
+        >
+          <ui-icon name="pen-line" size="sm" />Sửa
+        </button>
+        } @if (!role.system) {
+        <button
+          uiButton
+          size="sm"
+          variant="danger-ghost"
+          [attr.aria-label]="'Xóa vai trò ' + role.name"
+          [disabled]="role.userCount > 0"
+          (click)="store.remove(role)"
+        >
+          <ui-icon name="trash-2" size="sm" />Xóa
+        </button>
+        }
+      </div>
+    </div>
+    <div uiCardBody class="stack">
+      @if (role.description) {
+      <p class="roles__desc">{{ role.description }}</p>
+      }
+      <ul class="roles__menus" [attr.aria-label]="'Menu của ' + role.name">
+        @for (key of role.menus; track key) {
+        <li>
+          <span uiBadge tone="primary">{{ menuLabel(key) }}</span>
+        </li>
+        } @empty {
+        <li class="roles__meta">Chưa được cấp menu nào.</li>
+        }
+      </ul>
+      @if (!role.system && role.userCount > 0) {
+      <p class="roles__meta">
+        Đang có {{ role.userCount }} người dùng giữ vai trò này nên chưa xóa
+        được.
+      </p>
+      }
+    </div>
+  </article>
+  }
+</div>
+} @else {
+<ui-empty icon="shield" title="Chưa có vai trò nào" />
+} }
+
+<ng-template #body>
+  @if (store.editing$(); as editing) {
+  <app-role-form
+    [role]="editing.role"
+    [serverErrors]="store.saveError$()?.details ?? {}"
+    (submitted)="store.save($event)"
+  />
+  }
+</ng-template>
+<ng-template #footer let-close="close">
+  <button uiButton variant="ghost" (click)="close()">Hủy</button>
+  <button
+    uiButton
+    variant="primary"
+    type="submit"
+    form="role-form"
+    [disabled]="store.isSaving$()"
+  >
+    Lưu
+  </button>
+</ng-template>

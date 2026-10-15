@@ -1,0 +1,26 @@
+@use 'ui';
+
+.role-form {
+  &__hint {
+    @include ui.text(sm, muted);
+  }
+
+  &__section {
+    @include ui.stack(2);
+    margin: 0;
+    padding: 0;
+    border: 0;
+
+    legend {
+      @include ui.text(xs, muted);
+      margin-bottom: ui.space(2);
+      padding: 0;
+      font-weight: ui.weight(semibold);
+    }
+  }
+
+  &__option {
+    @include ui.row(2);
+    @include ui.text(sm);
+  }
+}
