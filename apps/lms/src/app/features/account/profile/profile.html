@@ -1,0 +1,104 @@
+@if (store.user$(); as user) {
+<ui-page-header
+  eyebrow="Tài khoản"
+  title="Hồ sơ cá nhân"
+  description="Thông tin tổ chức và vai trò do quản trị viên quản lý — bạn chỉ sửa được thông tin cá nhân."
+/>
+<div class="stack stack--gap-5">
+  <section uiCard padded class="profile__summary">
+    <ui-avatar [name]="user.name" size="xl" />
+    <div class="grow stack stack--gap-2">
+      <h2>{{ user.name }}</h2>
+      <div class="row">
+        <app-role-badge
+          [roleId]="user.roleId"
+          [name]="user.roleName"
+          [scoped]="scopedAdmin()"
+        />
+        <app-account-status [status]="user.status" />
+        <span uiBadge outline
+          ><ui-icon name="key" size="sm" />Mã cán bộ {{ user.staffCode }}</span
+        >
+      </div>
+      <span class="profile__meta"
+        >{{ user.email }} · Tham gia {{ user.joinedAt | fmtDate }} · Đăng nhập
+        gần nhất {{ user.lastLoginAt | fmtRelative }}</span
+      >
+    </div>
+  </section>
+
+  <div class="grid-2">
+    <section uiCard>
+      <div uiCardHeader><h2>Thông tin cá nhân</h2></div>
+      <div uiCardBody>
+        <form class="stack" novalidate (submit)="onSubmit($event)">
+          <ui-field label="Họ và tên" required [errors]="nameErrors()">
+            <input uiInput [formField]="profileForm.name" />
+          </ui-field>
+          <ui-field label="Chức danh">
+            <input uiInput [formField]="profileForm.title" />
+          </ui-field>
+          <div class="profile__actions">
+            <button
+              uiButton
+              variant="primary"
+              type="submit"
+              [disabled]="store.isSaving$()"
+            >
+              Lưu thay đổi
+            </button>
+          </div>
+        </form>
+      </div>
+    </section>
+
+    <section uiCard>
+      <div uiCardHeader><h2>Tổ chức &amp; phân quyền</h2></div>
+      <div uiCardBody>
+        <dl class="stack stack--gap-3">
+          <div class="row-between">
+            <dt class="profile__term">Đơn vị</dt>
+            <dd class="profile__value">{{ user.unitName }}</dd>
+          </div>
+          <div class="row-between">
+            <dt class="profile__term">Phòng / nhóm</dt>
+            <dd class="profile__value">{{ user.groupName }}</dd>
+          </div>
+          <div class="row-between">
+            <dt class="profile__term">Vai trò</dt>
+            <dd class="profile__value">
+              {{ user.roleName }}{{ scopedAdmin() ? ' đơn vị' : '' }}
+            </dd>
+          </div>
+          <div class="row-between">
+            <dt class="profile__term">Phạm vi dữ liệu</dt>
+            <dd class="profile__value">{{ user.scopeName }}</dd>
+          </div>
+        </dl>
+        <hr class="profile__rule" />
+        <h3 class="profile__subhead">Menu được cấp</h3>
+        <ul class="profile__menus">
+          @for (label of menuLabels(); track label) {
+          <li><span uiBadge tone="primary">{{ label }}</span></li>
+          } @empty {
+          <li class="profile__term">Vai trò này chưa được cấp menu nào.</li>
+          }
+        </ul>
+      </div>
+    </section>
+  </div>
+
+  <section uiCard>
+    <div uiCardHeader><h2>Đổi mật khẩu</h2></div>
+    <div uiCardBody>
+      @for (round of [store.passwordChanges$()]; track round) {
+      <app-password-form
+        [busy]="store.isChangingPassword$()"
+        [serverErrors]="store.passwordError$()?.details ?? {}"
+        (submitted)="store.changePassword($event)"
+      />
+      }
+    </div>
+  </section>
+</div>
+}

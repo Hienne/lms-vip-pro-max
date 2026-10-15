@@ -1,0 +1,218 @@
+@if (store.loadError$(); as error) {
+<ui-error-state
+  title="Không tải được người dùng"
+  [message]="error.message"
+  [retryable]="error.kind !== 'not-found'"
+  (retry)="store.retryLoad()"
+/>
+} @else if (store.detail$(); as detail) { @let user = detail.user;
+<ui-breadcrumb
+  [items]="[
+    { label: 'Người dùng', href: '/admin/users' },
+    { label: user.name },
+  ]"
+/>
+<section uiCard padded class="user-detail__summary">
+  <ui-avatar [name]="user.name" size="xl" />
+  <div class="grow stack stack--gap-2">
+    <h1>{{ user.name }}</h1>
+    <div class="row">
+      <app-role-badge
+        [roleId]="user.roleId"
+        [name]="user.roleName"
+        [scoped]="isUnitAdmin(user)"
+      />
+      <app-account-status [status]="user.status" />
+      <span class="user-detail__meta"
+        >{{ user.email }} · {{ user.staffCode }} · {{ user.unitName }} / {{
+        user.groupName }}</span
+      >
+    </div>
+    <span class="user-detail__meta"
+      >Tham gia {{ user.joinedAt | fmtDate }} · Đăng nhập cuối @if
+      (user.lastLoginAt) { {{ user.lastLoginAt | fmtRelative }} } @else { chưa
+      }</span
+    >
+  </div>
+  <div class="row">
+    <button uiButton (click)="editor().open(user)">
+      <ui-icon name="pen-line" size="sm" />Sửa
+    </button>
+    @if (!store.isSelf$()) { @if (user.status === 'active') {
+    <button uiButton variant="danger-ghost" (click)="editor().toggleLock(user)">
+      <ui-icon name="lock" size="sm" />Khóa tài khoản
+    </button>
+    } @else {
+    <button uiButton (click)="editor().toggleLock(user)">
+      <ui-icon name="lock-open" size="sm" />Mở khóa
+    </button>
+    } }
+  </div>
+</section>
+
+<section uiCard class="user-detail__tabs">
+  <ui-tabs
+    label="Thông tin người dùng"
+    [tabs]="store.tabs$()"
+    [selected]="store.tab$()"
+    (selectedChange)="store.selectTab($event)"
+  >
+    <div uiTabPanel="courses">
+      @if (detail.courses.length) {
+      <div uiTableWrap>
+        <table uiTable responsive>
+          <caption class="sr-only">
+            Khóa học được giao
+          </caption>
+          <thead>
+            <tr>
+              <th scope="col">Khóa học</th>
+              <th scope="col">Tiến độ</th>
+              <th scope="col">Trạng thái</th>
+              <th scope="col">Hạn</th>
+              <th scope="col">Truy cập</th>
+              <th scope="col">Điểm cao nhất</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (course of detail.courses; track course.id) {
+            <tr>
+              <td data-label="Khóa học">
+                <div uiTablePrimary>{{ course.title }}</div>
+                <div uiTableSub>
+                  {{ course.code }} · {{ course.required ? 'Bắt buộc' : 'Tự
+                  chọn' }}
+                </div>
+              </td>
+              <td data-label="Tiến độ">
+                <div class="user-detail__progress">
+                  <ui-progress [value]="course.pct" size="sm" />
+                  <span class="user-detail__pct">{{ course.pct }}%</span>
+                </div>
+              </td>
+              <td data-label="Trạng thái">
+                <app-course-status
+                  [status]="course.status"
+                  [overdue]="course.overdue"
+                />
+              </td>
+              <td data-label="Hạn">
+                <app-due-date
+                  [dueAt]="course.dueAt"
+                  [done]="course.status === 'completed'"
+                />
+              </td>
+              <td data-label="Truy cập">
+                @if (course.lastAccessAt) { {{ course.lastAccessAt | fmtRelative
+                }} } @else { — }
+              </td>
+              <td data-label="Điểm cao nhất">
+                @if (course.quiz && course.quiz.best !== null) { {{
+                course.quiz.best }}%
+                <span uiTableSub
+                  >{{ course.quiz.attempts }}/{{ course.quiz.maxAttempts }}
+                  lượt</span
+                >
+                } @else { — }
+              </td>
+            </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+      } @else {
+      <ui-empty icon="book-open" title="Chưa được giao khóa học" />
+      }
+    </div>
+
+    <div uiTabPanel="attempts">
+      @if (detail.attempts.length) {
+      <div uiTableWrap>
+        <table uiTable responsive>
+          <caption class="sr-only">
+            Lịch sử thi
+          </caption>
+          <thead>
+            <tr>
+              <th scope="col">Bài kiểm tra</th>
+              <th scope="col">Ngày</th>
+              <th scope="col">Điểm</th>
+              <th scope="col">Kết quả</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (attempt of detail.attempts; track attempt.id) {
+            <tr>
+              <td data-label="Bài kiểm tra">
+                <!-- The result route is keyed by the attempt; the quiz segment is not used. -->
+                <a
+                  uiTablePrimary
+                  [routerLink]="['/quiz', 'x', 'result', attempt.id]"
+                  >{{ attempt.title }}</a
+                >
+              </td>
+              <td data-label="Ngày">{{ attempt.at | fmtDatetime }}</td>
+              <td data-label="Điểm">
+                <strong class="user-detail__pct">{{ attempt.score }}%</strong>
+              </td>
+              <td data-label="Kết quả">
+                <span uiBadge [tone]="attempt.passed ? 'success' : 'danger'"
+                  >{{ attempt.passed ? 'Đạt' : 'Chưa đạt' }}</span
+                >
+              </td>
+            </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+      } @else {
+      <ui-empty icon="clipboard-check" title="Chưa có lần thi" />
+      }
+    </div>
+
+    <div uiTabPanel="role">
+      <div class="stack user-detail__role">
+        <p>
+          Vai trò <strong>{{ detail.role.name }}</strong>@if
+          (detail.role.description) { — {{ detail.role.description }}} Phạm vi
+          dữ liệu: <strong>{{ store.scopeName$() }}</strong>.
+        </p>
+        <h2 class="user-detail__subhead">Menu được cấp</h2>
+        <ul class="user-detail__menus">
+          @for (label of store.menuLabels$(); track label) {
+          <li><span uiBadge tone="primary">{{ label }}</span></li>
+          } @empty {
+          <li class="user-detail__meta">Vai trò này chưa được cấp menu nào.</li>
+          }
+        </ul>
+        <p class="user-detail__meta">
+          Người dùng có toàn quyền thao tác trên các menu được cấp.
+        </p>
+      </div>
+    </div>
+
+    <div uiTabPanel="audit">
+      @if (detail.audit.length) {
+      <ul uiList>
+        @for (entry of detail.audit; track entry.id) {
+        <li uiListItem>
+          <span uiListIcon><ui-icon name="history" size="sm" /></span>
+          <span class="grow"
+            >{{ entry.detail }} —
+            <span class="user-detail__meta">{{ entry.target }}</span></span
+          >
+          <span class="user-detail__meta">{{ entry.at | fmtDatetime }}</span>
+        </li>
+        }
+      </ul>
+      } @else {
+      <ui-empty icon="history" title="Chưa có hoạt động" />
+      }
+    </div>
+  </ui-tabs>
+</section>
+} @else {
+<div class="user-detail__loading"><span uiSpinner></span></div>
+}
+
+<app-user-editor />

@@ -48,6 +48,8 @@ export {
 export { Ring } from './lib/atoms/ring/ring';
 export { Table } from './lib/atoms/table/table.directive';
 export { TableWrap } from './lib/atoms/table/table-wrap.directive';
+export { TablePrimary } from './lib/atoms/table/table-primary.directive';
+export { TableSub } from './lib/atoms/table/table-sub.directive';
 
 // Insertion points for the base-libraries UI tickets: add your exports inside your own block,
 // keep the marker comment, and do not touch the other blocks.
@@ -178,3 +180,15 @@ export {
   FmtTimePipe,
 } from './lib/atoms/format/format.pipes';
 export { NOW } from './lib/atoms/format/now';
+
+// Pagination, DataTable
+export { Pagination } from './lib/molecules/pagination/pagination';
+export {
+  DataTable,
+  type DataTableColumn,
+  type DataTableSort,
+} from './lib/organisms/data-table/data-table';
+export {
+  DataTableCell,
+  type DataTableCellContext,
+} from './lib/organisms/data-table/data-table-cell.directive';

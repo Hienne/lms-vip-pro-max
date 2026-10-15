@@ -48,7 +48,7 @@ export class Header {
 
   protected readonly placeholder = computed(() => {
     const user = this.user();
-    return searchPlaceholder(user ? user.role : 'learner');
+    return searchPlaceholder(user ? user.menus : []);
   });
 
   protected readonly bellLabel = computed(() =>

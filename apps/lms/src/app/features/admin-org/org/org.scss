@@ -1,0 +1,64 @@
+@use 'ui';
+
+:host {
+  @include ui.page(wide);
+}
+
+.org {
+  &__loading {
+    display: flex;
+    justify-content: center;
+    padding-block: ui.space(10);
+  }
+
+  &__split {
+    display: grid;
+    gap: ui.space(5);
+    align-items: start;
+
+    @include ui.bp(lg) {
+      grid-template-columns: 20rem minmax(0, 1fr);
+    }
+  }
+
+  &__unit {
+    &[aria-current='true'] {
+      background: ui.color(primary-subtle);
+    }
+  }
+
+  &__unit-name {
+    display: block;
+    @include ui.text(sm);
+    font-weight: ui.weight(semibold);
+  }
+
+  &__meta {
+    @include ui.text(xs, muted);
+  }
+
+  &__unit-head {
+    flex-wrap: wrap;
+    gap: ui.space(3);
+  }
+
+  &__eyebrow {
+    @include ui.eyebrow;
+  }
+
+  &__group-actions {
+    gap: ui.space(1);
+  }
+
+  &__shared {
+    @include ui.stack(2);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+
+    li {
+      @include ui.row(2);
+      @include ui.text(sm);
+    }
+  }
+}

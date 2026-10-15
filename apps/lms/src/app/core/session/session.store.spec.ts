@@ -56,15 +56,16 @@ describe('SessionStore', () => {
 
     expect(store.status$()).toBe('ready');
     expect(store.isSignedIn$()).toBe(true);
-    expect(store.role$()).toBe('admin');
+    expect(store.user$()?.roleId).toBe('admin');
     expect(store.user$()?.name).toBe(profileFixtures['admin'].name);
-    expect(store.perms$()).toEqual(profileFixtures['admin'].perms);
+    expect(store.menus$()).toEqual(profileFixtures['admin'].menus);
+    expect(store.homePath$()).toBe('/admin');
   });
 
-  it('reads role and permissions from the profile only', async () => {
+  it('reads the role and its menus from the profile only', async () => {
     await restoreAs('viewer');
-    expect(store.role$()).toBe('viewer');
-    expect(store.perms$()).toEqual(profileFixtures['viewer'].perms);
+    expect(store.user$()?.roleId).toBe('viewer');
+    expect(store.menus$()).toEqual(['reports']);
   });
 
   it('treats a 401 on restore as anonymous, not as an error', async () => {
@@ -77,8 +78,8 @@ describe('SessionStore', () => {
 
     expect(store.status$()).toBe('ready');
     expect(store.isSignedIn$()).toBe(false);
-    expect(store.role$()).toBeNull();
-    expect(store.perms$()).toEqual([]);
+    expect(store.homePath$()).toBeNull();
+    expect(store.menus$()).toEqual([]);
     expect(store.loadError$()).toBeUndefined();
   });
 
@@ -99,7 +100,7 @@ describe('SessionStore', () => {
     backend.expectOne('/api/auth/profile').flush(profileFixtures['learner']);
     await settle();
     expect(store.status$()).toBe('ready');
-    expect(store.role$()).toBe('learner');
+    expect(store.user$()?.roleId).toBe('learner');
   });
 
   it('signs in with email and password, then loads the profile', async () => {
@@ -113,13 +114,13 @@ describe('SessionStore', () => {
       email: 'quanly@demo.cb',
       password: 'abc123',
     });
-    login.flush({ id: 'a1', role: 'admin' });
+    login.flush({ id: 'a1', roleId: 'admin' });
     await settle();
     backend.expectOne('/api/auth/profile').flush(profileFixtures['admin']);
     await settle();
 
     expect(store.isSigningIn$()).toBe(false);
-    expect(store.role$()).toBe('admin');
+    expect(store.user$()?.roleId).toBe('admin');
     expect(store.signInError$()).toBeUndefined();
   });
 
@@ -163,11 +164,11 @@ describe('SessionStore', () => {
     await settle();
     const login = backend.expectOne('/api/auth/demo-accounts/a1/login');
     expect(login.request.method).toBe('POST');
-    login.flush({ id: 'a1', role: 'admin' });
+    login.flush({ id: 'a1', roleId: 'admin' });
     await settle();
     backend.expectOne('/api/auth/profile').flush(profileFixtures['admin']);
     await settle();
-    expect(store.role$()).toBe('admin');
+    expect(store.user$()?.roleId).toBe('admin');
   });
 
   it('reports a locked demo account', async () => {
@@ -193,7 +194,7 @@ describe('SessionStore', () => {
 
     expect(store.isSigningOut$()).toBe(false);
     expect(store.isSignedIn$()).toBe(false);
-    expect(store.role$()).toBeNull();
+    expect(store.homePath$()).toBeNull();
   });
 
   it('keeps whenReady pending after a failed restore until a retry succeeds', async () => {

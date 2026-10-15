@@ -3,7 +3,11 @@ import {
   type HttpInterceptorFn,
 } from '@angular/common/http';
 import { inject } from '@angular/core';
-import { authEndpoints, shellEndpoints } from '@lms/contracts';
+import {
+  adminOrgEndpoints,
+  authEndpoints,
+  shellEndpoints,
+} from '@lms/contracts';
 import { throwError } from 'rxjs';
 import { NetworkStore } from '../network/network.store';
 import { MockScenario } from './mock-scenario';
@@ -16,6 +20,9 @@ import { MockScenario } from './mock-scenario';
 export const ROLE_EXAMPLE_ENDPOINTS = {
   profile: authEndpoints.profile,
   navCounts: shellEndpoints.navCounts,
+  users: adminOrgEndpoints.users,
+  adminMeta: adminOrgEndpoints.adminMeta,
+  org: adminOrgEndpoints.org,
 } as const;
 
 const ROLE_PATHS: ReadonlySet<string> = new Set(

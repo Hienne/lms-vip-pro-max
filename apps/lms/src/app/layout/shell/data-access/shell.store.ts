@@ -34,6 +34,7 @@ import {
 } from '../../../core/routing/unsaved-changes.guard';
 import type { Layout } from '../../../core/routing/route-table';
 import { SessionStore } from '../../../core/session/session.store';
+import { roleText } from '../../../shared/status/role-badge';
 
 /** Which frame surrounds the page: sidebar and header, the plain focus frame, or nothing. */
 export type Chrome = 'app' | 'focus' | 'bare';
@@ -105,8 +106,10 @@ export class ShellStore {
   });
 
   readonly user$ = this.session.user$;
-  readonly role$ = this.session.role$;
-  readonly isScoped$ = computed(() => !!this.session.user$()?.adminScope);
+  readonly roleText$ = computed(() => {
+    const user = this.session.user$();
+    return user ? roleText(user) : '';
+  });
 
   /** Reloaded after sign-in and on every navigation, as the mockup refreshes its badges. */
   private readonly countsResource = rxResource({
@@ -165,10 +168,9 @@ export class ShellStore {
     });
   }
 
-  /** Header search: sends the query to the list a role searches (nothing for an empty query). */
+  /** Header search: sends the query to the list the user's menus allow (nothing for an empty query). */
   search(text: string): void {
-    const role = this.session.role$();
-    const target = role ? searchTarget(role, text) : null;
+    const target = searchTarget(this.session.menus$(), text);
     if (target) {
       void this.router.navigate([target.path], { queryParams: target.query });
     }

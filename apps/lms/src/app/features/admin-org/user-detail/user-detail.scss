@@ -1,0 +1,57 @@
+@use 'ui';
+
+:host {
+  @include ui.page;
+}
+
+.user-detail {
+  &__loading {
+    display: flex;
+    justify-content: center;
+    padding-block: ui.space(10);
+  }
+
+  &__summary {
+    display: flex;
+    align-items: center;
+    gap: ui.space(5);
+    flex-wrap: wrap;
+    margin-top: ui.space(4);
+  }
+
+  &__tabs {
+    margin-top: ui.space(6);
+  }
+
+  &__meta {
+    @include ui.text(sm, muted);
+  }
+
+  &__progress {
+    display: flex;
+    flex-direction: column;
+    gap: ui.space(1);
+    min-width: 110px;
+  }
+
+  &__pct {
+    @include ui.text(xs);
+    @include ui.num;
+  }
+
+  &__role {
+    padding: ui.space(5);
+  }
+
+  &__subhead {
+    @include ui.text(xs, muted);
+  }
+
+  &__menus {
+    @include ui.row(2);
+    flex-wrap: wrap;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+}

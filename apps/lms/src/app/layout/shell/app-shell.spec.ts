@@ -6,7 +6,7 @@ import {
 import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { provideRouter, Router } from '@angular/router';
-import type { Permission, Profile } from '@lms/contracts';
+import type { MenuKey, Profile } from '@lms/contracts';
 import { profileFixtures } from '@lms/mocks';
 import { createAppRoutes } from '../../app.routes';
 import { parseAppConfig, provideAppConfig } from '../../core/config/app-config';
@@ -19,8 +19,8 @@ import { ShellStore } from './data-access/shell.store';
 class FakeSession {
   readonly user = signal<Profile | null>(null);
   readonly user$ = this.user.asReadonly();
-  readonly role$ = () => this.user()?.role ?? null;
-  readonly perms$ = (): readonly Permission[] => this.user()?.perms ?? [];
+  readonly menus$ = (): readonly MenuKey[] => this.user()?.menus ?? [];
+  readonly homePath$ = () => this.user()?.homePath ?? null;
   readonly isSignedIn$ = () => this.user() !== null;
   // What the login page reads; the shell tests only render it.
   readonly isSigningIn$ = () => false;
@@ -99,29 +99,19 @@ describe('AppShell', () => {
         '/certificates',
       ],
     ],
-    [
-      'viewer',
-      '/reports',
-      [
-        '/reports',
-        '/reports/learners',
-        '/reports/courses',
-        '/reports/units',
-        '/reports/competency',
-      ],
-    ],
+    ['viewer', '/reports', ['/reports']],
     [
       'instructor',
       '/instructor',
       [
         '/instructor',
-        '/instructor/inbox',
         '/admin/catalog',
         '/admin/courses',
         '/admin/questions',
         '/admin/quizzes',
         '/admin/import',
         '/reports',
+        '/instructor/inbox',
       ],
     ],
     [
@@ -136,6 +126,7 @@ describe('AppShell', () => {
         '/admin/import',
         '/admin/users',
         '/admin/org',
+        '/admin/roles',
         '/admin/assignments',
         '/reports',
         '/instructor/inbox',
@@ -146,6 +137,25 @@ describe('AppShell', () => {
     signInAs(role);
     const el = await open(url);
     expect(hrefs(el)).toEqual([...expected]);
+  });
+
+  it('shows a custom role only the menus it holds, under the name the server sends', async () => {
+    session.user.set({
+      ...profileFixtures['viewer'],
+      roleId: 'content-lead',
+      roleName: 'Chuyên viên nội dung',
+      menus: ['content.courses', 'content.questions', 'reports'],
+      homePath: '/admin/courses',
+    });
+    const el = await open('/admin/courses');
+    expect(hrefs(el)).toEqual([
+      '/admin/courses',
+      '/admin/questions',
+      '/reports',
+    ]);
+    expect(el.querySelector('.sidebar__role')?.textContent).toContain(
+      'Chuyên viên nội dung',
+    );
   });
 
   it('names the role of the user', async () => {

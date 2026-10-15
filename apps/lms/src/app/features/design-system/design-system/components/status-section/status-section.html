@@ -97,10 +97,10 @@
     [needs]="['domain-status-badges','badge-chip']"
   >
     <div class="row">
-      @for (role of roles; track role) {
-      <app-role-badge [role]="role" />
+      @for (role of roles; track role.roleId) {
+      <app-role-badge [roleId]="role.roleId" [name]="role.name" />
       }
-      <app-role-badge role="admin" scoped />
+      <app-role-badge roleId="admin" name="Quản trị viên" scoped />
       <app-required-mark [required]="true" />
       <app-required-mark [required]="false" />
       <span uiBadge tone="reward"><ui-icon name="star" /> +50 điểm</span>

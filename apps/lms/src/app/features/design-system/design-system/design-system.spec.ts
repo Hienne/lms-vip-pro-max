@@ -252,7 +252,7 @@ describe('/design-system', () => {
       expect(section.querySelectorAll('app-course-status')).toHaveLength(5);
       expect(section.querySelectorAll('app-publish-status')).toHaveLength(4);
       expect(section.querySelectorAll('app-account-status')).toHaveLength(3);
-      expect(section.querySelectorAll('app-role-badge')).toHaveLength(5);
+      expect(section.querySelectorAll('app-role-badge')).toHaveLength(6);
     });
   });
 

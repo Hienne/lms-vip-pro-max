@@ -91,7 +91,9 @@ describe('DevToolbar', () => {
 
   it('switches role: remembers the example, signs in, then goes home and says so', async () => {
     await open();
-    const unitAdmin = demoAccountFixtures.find((a) => a.adminScope)!;
+    const unitAdmin = demoAccountFixtures.find(
+      (a) => a.roleId === 'admin' && a.scopeUnitId,
+    )!;
     item('Quản trị viên đơn vị').click();
     TestBed.tick();
     expect(TestBed.inject(MockScenario).role$()).toBe('unit-admin');

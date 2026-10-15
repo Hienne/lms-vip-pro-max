@@ -4,8 +4,11 @@ import {
   DemoAccountSchema,
   LoginCommandSchema,
   LoginResultSchema,
+  ChangePasswordCommandSchema,
+  ChangePasswordResultSchema,
   LogoutResultSchema,
   ProfileSchema,
+  UpdateProfileCommandSchema,
 } from './auth.schema';
 
 export const authEndpoints = {
@@ -35,9 +38,25 @@ export const authEndpoints = {
   profile: defineEndpoint({
     method: 'get',
     path: '/api/auth/profile',
-    summary: 'The signed-in user with unit, group, permissions and scope',
+    summary: 'The signed-in user with unit, group, role, menus and scope',
     response: ProfileSchema,
     errors: [401],
+  }),
+  updateProfile: defineEndpoint({
+    method: 'put',
+    path: '/api/auth/profile',
+    summary: 'Edit the personal fields of the signed-in user',
+    body: UpdateProfileCommandSchema,
+    response: ProfileSchema,
+    errors: [401, 422],
+  }),
+  changePassword: defineEndpoint({
+    method: 'post',
+    path: '/api/auth/change-password',
+    summary: 'Change the password of the signed-in user',
+    body: ChangePasswordCommandSchema,
+    response: ChangePasswordResultSchema,
+    errors: [401, 422],
   }),
   demoAccounts: defineEndpoint({
     method: 'get',

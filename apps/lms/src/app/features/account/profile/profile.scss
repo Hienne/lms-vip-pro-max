@@ -1,0 +1,52 @@
+@use 'ui';
+
+:host {
+  @include ui.page(narrow);
+}
+
+.profile {
+  &__summary {
+    display: flex;
+    align-items: center;
+    gap: ui.space(5);
+    flex-wrap: wrap;
+  }
+
+  &__meta {
+    @include ui.text(sm, muted);
+  }
+
+  &__actions {
+    display: flex;
+    justify-content: flex-end;
+  }
+
+  &__term {
+    @include ui.text(sm, muted);
+  }
+
+  &__value {
+    @include ui.text(sm);
+    font-weight: ui.weight(semibold);
+    text-align: right;
+  }
+
+  &__rule {
+    margin-block: ui.space(4);
+    border: 0;
+    border-top: 1px solid ui.color(border);
+  }
+
+  &__subhead {
+    @include ui.text(xs, muted);
+    margin-bottom: ui.space(2);
+  }
+
+  &__menus {
+    @include ui.row(2);
+    flex-wrap: wrap;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+}

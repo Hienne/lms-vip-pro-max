@@ -1,0 +1,165 @@
+<ui-page-header
+  eyebrow="Tổ chức"
+  title="Người dùng"
+  [description]="store.description$()"
+>
+  <div slot="actions" class="row">
+    <a uiButton routerLink="/admin/import" [queryParams]="{ type: 'users' }">
+      <ui-icon name="upload" size="sm" />Nhập danh sách
+    </a>
+    <button uiButton variant="primary" (click)="editor().open(null)">
+      <ui-icon name="plus" size="sm" />Thêm người dùng
+    </button>
+  </div>
+</ui-page-header>
+
+@if (store.loadError$(); as error) {
+<ui-error-state
+  title="Không tải được danh sách người dùng"
+  [message]="error.message"
+  (retry)="store.retryLoad()"
+/>
+} @else if (store.isLoading$()) {
+<div class="users__loading"><span uiSpinner></span></div>
+} @else {
+<section uiCard>
+  <div uiCardHeader class="users__toolbar">
+    <div class="row users__filters">
+      <ui-search
+        label="Tìm người dùng"
+        placeholder="Tên, email, mã cán bộ…"
+        [value]="store.query$()"
+        (searched)="store.search($event)"
+      />
+      <select
+        uiSelect
+        class="users__filter"
+        size="sm"
+        aria-label="Vai trò"
+        [value]="store.role$()"
+        (change)="store.filterRole(role.value)"
+        #role
+      >
+        <option value="">Tất cả vai trò</option>
+        @for (option of store.roleOptions$(); track option.value) {
+        <option [value]="option.value">{{ option.label }}</option>
+        }
+      </select>
+      @if ((store.meta$()?.units?.length ?? 0) > 1) {
+      <select
+        uiSelect
+        class="users__filter"
+        size="sm"
+        aria-label="Đơn vị"
+        [value]="store.unit$()"
+        (change)="store.filterUnit(unit.value)"
+        #unit
+      >
+        <option value="">Tất cả đơn vị</option>
+        @for (option of store.meta$()?.units; track option.id) {
+        <option [value]="option.id">{{ option.name }}</option>
+        }
+      </select>
+      }
+      <select
+        uiSelect
+        class="users__filter"
+        size="sm"
+        aria-label="Trạng thái"
+        [value]="store.status$()"
+        (change)="store.filterStatus(status.value)"
+        #status
+      >
+        <option value="">Tất cả trạng thái</option>
+        <option value="active">Hoạt động</option>
+        <option value="suspended">Tạm dừng</option>
+        <option value="locked">Đã khóa</option>
+      </select>
+    </div>
+    <span class="users__count">{{ store.total$() }} người dùng</span>
+  </div>
+
+  <ui-data-table
+    caption="Danh sách người dùng"
+    [columns]="[
+      { key: 'name', label: 'Người dùng' },
+      { key: 'roleName', label: 'Vai trò' },
+      { key: 'unitName', label: 'Đơn vị / nhóm' },
+      { key: 'status', label: 'Trạng thái' },
+      { key: 'lastLoginAt', label: 'Đăng nhập cuối' },
+      { key: 'actions', label: 'Thao tác', kind: 'actions' },
+    ]"
+    [rows]="store.rows$()"
+    [total]="store.total$()"
+    [sort]="store.sort$()"
+    [page]="store.page$()"
+    [pageSize]="pageSize"
+    (sortChange)="store.sortBy($event)"
+    (pageChange)="store.goToPage($event)"
+  >
+    <ui-empty
+      slot="empty"
+      icon="users"
+      title="Không có người dùng phù hợp"
+      description="Thử đổi từ khóa hoặc bỏ bớt bộ lọc."
+    />
+
+    <ng-template uiDataTableCell="name" [of]="store.rows$()" let-user>
+      <div class="users__person">
+        <ui-avatar [name]="user.name" size="sm" />
+        <div>
+          <a uiTablePrimary [routerLink]="['/admin/users', user.id]"
+            >{{ user.name }}</a
+          >
+          <div uiTableSub>{{ user.email }} · {{ user.staffCode }}</div>
+        </div>
+      </div>
+    </ng-template>
+    <ng-template uiDataTableCell="roleName" [of]="store.rows$()" let-user>
+      <app-role-badge
+        [roleId]="user.roleId"
+        [name]="user.roleName"
+        [scoped]="isUnitAdmin(user)"
+      />
+    </ng-template>
+    <ng-template uiDataTableCell="unitName" [of]="store.rows$()" let-user>
+      <div>{{ user.unitName }}</div>
+      <div uiTableSub>{{ user.groupName }}</div>
+    </ng-template>
+    <ng-template uiDataTableCell="status" [of]="store.rows$()" let-user>
+      <app-account-status [status]="user.status" />
+    </ng-template>
+    <ng-template uiDataTableCell="lastLoginAt" [of]="store.rows$()" let-user>
+      @if (user.lastLoginAt) { {{ user.lastLoginAt | fmtRelative }} } @else {
+      <span class="users__never">Chưa đăng nhập</span>
+      }
+    </ng-template>
+    <ng-template uiDataTableCell="actions" [of]="store.rows$()" let-user>
+      <button uiButton size="sm" variant="ghost" (click)="editor().open(user)">
+        <ui-icon name="pen-line" size="sm" />Sửa
+      </button>
+      @if (user.id !== store.me$()?.id) { @if (user.status === 'active') {
+      <button
+        uiButton
+        size="sm"
+        variant="danger-ghost"
+        (click)="editor().toggleLock(user)"
+      >
+        <ui-icon name="lock" size="sm" />Khóa
+      </button>
+      } @else {
+      <button
+        uiButton
+        size="sm"
+        variant="ghost"
+        (click)="editor().toggleLock(user)"
+      >
+        <ui-icon name="lock-open" size="sm" />Mở khóa
+      </button>
+      } }
+    </ng-template>
+  </ui-data-table>
+</section>
+}
+
+<app-user-editor />

@@ -140,3 +140,17 @@ $-tones: (
     animation: none;
   }
 }
+
+// A page's frame (the mockup's `.page`, `.page--narrow`, `.page--wide`): centred, padded, and
+// narrower padding on a phone. `$width` is a layout token key: content, narrow or wide.
+@mixin page($width: content) {
+  display: block;
+  width: 100%;
+  max-width: layout($width);
+  margin-inline: auto;
+  padding: space(5) space(4) space(10);
+
+  @include bp(md) {
+    padding: space(6) space(6) space(12);
+  }
+}

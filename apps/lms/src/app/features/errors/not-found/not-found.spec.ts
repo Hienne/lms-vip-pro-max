@@ -21,9 +21,8 @@ describe('404 page', () => {
         {
           provide: SessionStore,
           useValue: {
-            role$: signal('learner'),
             isSignedIn$: () => true,
-            perms$: signal([]),
+            menus$: signal([]),
             whenReady: () => Promise.resolve(),
           },
         },

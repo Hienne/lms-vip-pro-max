@@ -4,7 +4,8 @@ import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { provideRouter, Router } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
-import type { Permission, Role } from '@lms/contracts';
+import type { MenuKey, Profile } from '@lms/contracts';
+import { profileFixtures } from '@lms/mocks';
 import { createAppRoutes } from '../../app.routes';
 import { parseAppConfig, provideAppConfig } from '../config/app-config';
 import { testAppConfig } from '../config/app-config.testing';
@@ -14,13 +15,12 @@ import { ROUTE_DEFS } from './route-table';
 
 /** Just what the guards read from the session. */
 class FakeSession {
-  readonly role = signal<Role | null>(null);
-  readonly perms = signal<readonly Permission[]>([]);
-  readonly role$ = this.role.asReadonly();
-  readonly perms$ = this.perms.asReadonly();
-  readonly isSignedIn$ = () => this.role() !== null;
+  readonly user = signal<Profile | null>(null);
+  readonly user$ = this.user.asReadonly();
+  readonly menus$ = (): readonly MenuKey[] => this.user()?.menus ?? [];
+  readonly homePath$ = () => this.user()?.homePath ?? null;
+  readonly isSignedIn$ = () => this.user() !== null;
   // What the login page reads; these tests only render it.
-  readonly user$ = () => null;
   readonly isSigningIn$ = () => false;
   readonly signInError$ = () => undefined;
   whenReady = () => Promise.resolve();
@@ -46,7 +46,8 @@ describe('route table', () => {
     harness = await RouterTestingHarness.create();
   });
 
-  const signInAs = (role: Role) => session.role.set(role);
+  const signInAs = (key: keyof typeof profileFixtures) =>
+    session.user.set(profileFixtures[key]);
 
   it('lists every route of the mockup router except the ones with their own entry', () => {
     expect(ROUTE_DEFS.map((def) => def.path)).toEqual([
@@ -82,6 +83,7 @@ describe('route table', () => {
       'admin/users',
       'admin/users/:id',
       'admin/org',
+      'admin/roles',
       'admin/assignments',
       'admin/system',
       'reports',
@@ -104,23 +106,25 @@ describe('route table', () => {
     expect(router.url).toBe('/design-system');
   });
 
-  it('lets a role in and renders the placeholder naming the mockup page', async () => {
+  it('lets a role holding the menu in and renders the placeholder naming the mockup page', async () => {
     signInAs('admin');
-    await harness.navigateByUrl('/admin/users');
-    expect(router.url).toBe('/admin/users');
+    await harness.navigateByUrl('/admin/assignments');
+    expect(router.url).toBe('/admin/assignments');
     expect((harness.routeNativeElement as HTMLElement).textContent).toContain(
-      '“users”',
+      '“assignments”',
     );
   });
 
   it.each([
-    ['learner', '/admin/users', ['admin']],
-    ['viewer', '/learn', ['learner']],
-    ['learner', '/instructor', ['instructor', 'admin']],
-    ['viewer', '/admin/courses', ['admin', 'instructor']],
+    ['learner', '/admin/users', 'admin.users'],
+    ['viewer', '/learn', 'learn.home'],
+    ['learner', '/instructor', 'teach.home'],
+    ['viewer', '/admin/courses', 'content.courses'],
+    ['instructor', '/admin/roles', 'admin.roles'],
+    ['admin', '/instructor', 'teach.home'],
   ] as const)(
-    'sends %s from %s to /403 with the roles that may enter',
-    async (role, url, roles) => {
+    'sends %s from %s to /403 with the menu that grants it',
+    async (role, url, menu) => {
       signInAs(role);
       await harness.navigateByUrl(url);
       expect(router.url).toBe('/403');
@@ -128,13 +132,34 @@ describe('route table', () => {
         | ForbiddenState
         | undefined;
       expect(state?.path).toBe(url);
-      expect([...(state?.roles ?? [])]).toEqual([...roles]);
+      expect(state?.menu).toBe(menu);
     },
   );
 
   it('keeps next through an anonymous visit to a nested page', async () => {
     await harness.navigateByUrl('/quiz/q1/result/a1');
     expect(router.url).toBe('/login?next=%2Fquiz%2Fq1%2Fresult%2Fa1');
+  });
+
+  it('shows a custom role only the screens of its menus', async () => {
+    session.user.set({
+      ...profileFixtures['viewer'],
+      roleId: 'content-lead',
+      menus: ['content.courses'],
+      homePath: '/admin/courses',
+    });
+    await harness.navigateByUrl('/admin/courses/new');
+    expect(router.url).toBe('/admin/courses/new');
+    await harness.navigateByUrl('/admin/questions');
+    expect(router.url).toBe('/403');
+  });
+
+  it('lets any signed-in user open the screens that belong to no menu', async () => {
+    signInAs('viewer');
+    for (const url of ['/profile', '/notifications', '/quiz/q1/result/a1']) {
+      await harness.navigateByUrl(url);
+      expect(router.url).toBe(url);
+    }
   });
 
   it('serves 403 to any signed-in role, and to nobody anonymous', async () => {
@@ -145,13 +170,13 @@ describe('route table', () => {
     expect(router.url).toBe('/403');
   });
 
-  it('carries roles and layout in route data', () => {
+  it('carries the menu and layout in route data', () => {
     const learn = ROUTE_DEFS.find((def) => def.path === 'learn');
     const lesson = ROUTE_DEFS.find(
       (def) => def.path === 'lesson/:courseId/:lessonId',
     );
     const login = ROUTE_DEFS.find((def) => def.path === 'login');
-    expect(learn?.roles).toEqual(['learner']);
+    expect(learn?.menu).toBe('learn.home');
     expect(lesson?.layout).toBe('focus');
     expect(login?.layout).toBe('bare');
     expect(login?.public).toBe(true);

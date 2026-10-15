@@ -18,8 +18,8 @@ edited by hand; TypeScript types come from `z.infer`, never written twice.
 - Naming: schema `CourseSchema`, type `export type Course = z.infer<typeof CourseSchema>`.
   Commands and queries: `SaveCourseCommandSchema` / `SaveCourseCommand`,
   `CourseListQuerySchema` / `CourseListQuery`.
-- Unions are `z.enum([...])` (`RoleSchema = z.enum(['learner', 'instructor', 'admin', 'viewer'])`);
-  no TypeScript enums. Display labels (`'Học viên'`) live in the app, not in contracts.
+- Unions are `z.enum([...])` (`AccountStatusSchema = z.enum(['active', 'suspended', 'locked'])`);
+  no TypeScript enums. Display labels (`'Đang hoạt động'`) live in the app, not in contracts. Roles are data, not an enum: their names come from the server.
 - Dates cross the wire as ISO strings (`z.iso.datetime()`) and are formatted by a pipe.
 - `z.unknown()` and narrowing instead of `z.any()`. No `.passthrough()`.
 - **One schema per audience** when the server hides fields: the learner's
@@ -161,15 +161,22 @@ with `/api/` and never contain a host.
 
 ## Auth contract decisions
 
-- Display labels stay out of the contract: the mockup's `roleLabel` (on
-  `profile` and `demoAccounts`) is not returned; the app derives it from `role`
-  (and `adminScope` for the "unit admin" wording of demo accounts, which
-  therefore carry `adminScope`).
-- `profile` keeps server-evaluated values the app must not recompute: `perms`
-  (`PermissionSchema` enum), `unitName`, `groupName` and `scopeName`
-  (unit name, or the server's "Toàn hệ thống" for system-wide roles).
+- Access is granted **per menu**, not per action. A role is `{ id, name, description, system, menus[] }`
+  (`RoleSchema`); `MenuKeySchema` has one key per sidebar entry (`admin.users`, `reports`, ...).
+  Holding a menu allows its screen, its sub-routes and everything done on them. The mockup's
+  `PERMS` table is gone: there is no `Permission` type and no `*appCan`.
+- Each user has exactly one `roleId` and a separate `scopeUnitId` (`null` = whole system). The scope
+  limits **data** and is enforced by the server; the app only renders what it gets.
+- `profile` keeps server-evaluated values the app must not recompute: `roleName`, `menus`, `homePath`
+  (where `/` and the login page send the user), `unitName`, `groupName` and `scopeName`
+  (unit name, or the server's "Toàn hệ thống" for system-wide users).
+- `roleText` in the app adds "đơn vị" to the name of an `admin` limited to one unit (the mockup's
+  "Quản trị viên đơn vị"); the demo accounts therefore carry `roleName` and `scopeUnitId`.
+- Prism's role examples (`profile`, `navCounts`) exist for the four system roles and the unit admin
+  only (`learner`, `instructor`, `admin`, `viewer`, `unit-admin`). A custom role has no example, and
+  the mock cannot keep one across a reload because Prism is stateless.
 - `logout` answers `true` (200), like the mockup; `login` and `loginDemo`
-  answer `{ id, role }`. The session token is a server concern (cookie), not
+  answer `{ id, roleId }`. The session token is a server concern (cookie), not
   part of the payload.
 - `loginDemo` is `POST /api/auth/demo-accounts/{userId}/login`.
 - One 423 example per endpoint (the locked wording). The mockup's separate
@@ -190,6 +197,33 @@ Smoke-tested with `npx nx serve mock-api` (Prism on `127.0.0.1:4010`):
 `apps/mock-api/src/openapi.spec.ts` guards the document itself: every endpoint
 of `endpointRegistries` is present with a `default` example for 200 and for each
 declared error status.
+
+## Admin organisation contract decisions
+
+- Everything under `/api/admin/users` and `/api/admin/meta` is reached through the `admin.users`
+  menu; the server also cuts every answer to the caller's `scopeUnitId` and refuses what a
+  unit-limited caller may not do (grant the whole system, create a unit, assign a role holding
+  `admin.roles`). The app never decides this: it renders `adminMeta` (units, groups and **the roles
+  the caller may assign**) and shows the 403/422 the server sends.
+- `UserDetail` is `{ user, role, courses, attempts, audit }`. The mockup's `perms` matrix became
+  `role` (with its `menus`); its `competency` (the radar) is left out until the charts are migrated.
+- Mutations answer the changed record, but the list and detail stores **reload** instead of
+  patching it in, because the server is the source of truth and Prism is stateless (it always
+  answers the same example).
+- Prism has role examples for `users`, `adminMeta` and `org` (`admin`, `unit-admin`); `user` answers one
+  fixed user whatever `userId` is.
+- The roles screen (`roles`, `saveRole`, `deleteRole`) sits behind the `admin.roles` menu and has no
+  mockup page. `Role.system` and `Role.locked` are what the screen may rely on: the app hides edit
+  on a locked role and delete on a system one, and disables delete while `userCount` is above zero,
+  but the server enforces all three (and protects the last administrator), so a refusal arrives as
+  a 403/422 and is shown as a toast or a field message. A role is saved as a name, a description and
+  menu keys; there is nothing finer than the menu to grant.
+- The org screen (`org`, `saveUnit`, `setUnitStatus`, `saveGroup`, `deleteGroup`) sits behind the
+  `admin.org` menu. `org` rows carry what the screen shows (admins, member counts, groups with
+  members, shared courses) so the app computes none of it; `admins[].scope` is `unit` or `system`.
+  A unit-limited caller may edit its own unit but the server refuses `saveUnit` without an `id` and
+  decides who may pause a unit. Deleting a group that still has members is a 422 whose message the
+  app shows as a toast. The mutations answer one record and the store reloads `org`.
 
 ## Done criteria for a contract change
 

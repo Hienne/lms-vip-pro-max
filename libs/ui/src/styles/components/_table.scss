@@ -69,11 +69,38 @@
       }
     }
 
+    th button {
+      display: inline-flex;
+      align-items: center;
+      gap: var(--spacing-1);
+      font: inherit;
+      color: inherit;
+      letter-spacing: inherit;
+      text-transform: inherit;
+    }
+
+    .col-actions {
+      width: 1%;
+      text-align: right;
+      white-space: nowrap;
+    }
+
     caption {
       padding: var(--spacing-3) var(--spacing-4);
       color: var(--color-text-secondary);
       text-align: left;
     }
+  }
+
+  // Two lines in one cell: the main text and a muted line under it.
+  .table__primary {
+    color: var(--color-text);
+    font-weight: var(--font-weight-semibold);
+  }
+
+  .table__sub {
+    color: var(--color-text-muted);
+    font-size: var(--text-xs);
   }
 
   // Below md a responsive table turns each row into a card: each cell shows its `data-label`

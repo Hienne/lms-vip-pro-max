@@ -1,0 +1,41 @@
+@use 'ui';
+
+:host {
+  @include ui.page(wide);
+}
+
+.users {
+  &__loading {
+    display: flex;
+    justify-content: center;
+    padding-block: ui.space(10);
+  }
+
+  &__toolbar {
+    flex-wrap: wrap;
+    gap: ui.space(3);
+  }
+
+  &__filters {
+    flex-wrap: wrap;
+    flex: 1 1 auto;
+  }
+
+  &__filter {
+    width: auto;
+    min-width: 11rem;
+  }
+
+  &__count {
+    @include ui.text(sm, muted);
+  }
+
+  &__person {
+    @include ui.row(3);
+    flex-wrap: nowrap;
+  }
+
+  &__never {
+    color: ui.color(text-muted);
+  }
+}

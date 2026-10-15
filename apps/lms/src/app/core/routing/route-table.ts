@@ -1,12 +1,12 @@
 import type { Route } from '@angular/router';
-import type { Role } from '@lms/contracts';
+import type { MenuKey } from '@lms/contracts';
 
 export type Layout = 'app' | 'focus' | 'bare';
 
 /** What the router, the shell and the guards read from a route's `data`. */
 export interface RouteMeta {
-  /** Roles allowed in; absent means any signed-in user. */
-  readonly roles?: readonly Role[];
+  /** The menu that grants the screen; absent means any signed-in user. */
+  readonly menu?: MenuKey;
   readonly layout: Layout;
   /** The mockup page this route will become; the placeholder names it. */
   readonly mockupPage: string;
@@ -18,7 +18,7 @@ export interface RouteDef {
   readonly mockupPage: string;
   /** Static page title; screens with a data-dependent title replace it when migrated. */
   readonly title: string;
-  readonly roles?: readonly Role[];
+  readonly menu?: MenuKey;
   readonly layout?: Layout;
   /** Reachable without signing in. */
   readonly public?: boolean;
@@ -26,14 +26,8 @@ export interface RouteDef {
   readonly guestOnly?: boolean;
 }
 
-const ALL: readonly Role[] = ['learner', 'instructor', 'admin', 'viewer'];
-const LEARNER: readonly Role[] = ['learner'];
-const ADMIN: readonly Role[] = ['admin'];
-const CONTENT: readonly Role[] = ['admin', 'instructor'];
-const REPORTS: readonly Role[] = ['admin', 'viewer', 'instructor'];
-
 /**
- * The mockup's `routes[]` (core/router.js), the single source for navigation and role checks.
+ * The mockup's `routes[]` (core/router.js), the single source for navigation and menu checks.
  * `/` (role home) and `/design-system` have their own routes in `app.routes.ts`.
  */
 export const ROUTE_DEFS: readonly RouteDef[] = [
@@ -49,220 +43,222 @@ export const ROUTE_DEFS: readonly RouteDef[] = [
     path: 'learn',
     mockupPage: 'dashboard',
     title: 'Trang chủ học tập',
-    roles: LEARNER,
+    menu: 'learn.home',
   },
   {
     path: 'catalog',
     mockupPage: 'catalog',
     title: 'Danh mục khóa học',
-    roles: LEARNER,
+    menu: 'learn.catalog',
   },
   {
     path: 'course/:id',
     mockupPage: 'course',
     title: 'Chi tiết khóa học',
-    roles: LEARNER,
+    menu: 'learn.catalog',
   },
   {
     path: 'lesson/:courseId/:lessonId',
     mockupPage: 'lesson',
     title: 'Bài học',
-    roles: LEARNER,
+    menu: 'learn.catalog',
     layout: 'focus',
   },
   {
     path: 'quiz/:id',
     mockupPage: 'quizIntro',
     title: 'Bài kiểm tra',
-    roles: LEARNER,
+    menu: 'learn.catalog',
   },
   {
     path: 'quiz/:id/take',
     mockupPage: 'quizTake',
     title: 'Làm bài kiểm tra',
-    roles: LEARNER,
+    menu: 'learn.catalog',
     layout: 'focus',
   },
   {
     path: 'quiz/:id/result/:attemptId',
     mockupPage: 'quizResult',
     title: 'Kết quả bài kiểm tra',
-    roles: ALL,
   },
   {
     path: 'quiz/:id/attempts',
     mockupPage: 'quizAttempts',
     title: 'Lịch sử thi',
-    roles: LEARNER,
+    menu: 'learn.catalog',
   },
   {
     path: 'progress',
     mockupPage: 'progress',
     title: 'Tiến độ của tôi',
-    roles: LEARNER,
+    menu: 'learn.progress',
   },
   {
     path: 'leaderboard',
     mockupPage: 'leaderboard',
     title: 'Bảng xếp hạng',
-    roles: LEARNER,
+    menu: 'learn.leaderboard',
   },
   {
     path: 'certificates',
     mockupPage: 'certificates',
     title: 'Chứng nhận',
-    roles: LEARNER,
+    menu: 'learn.certificates',
   },
   {
     path: 'certificate/:id',
     mockupPage: 'certificate',
     title: 'Chứng nhận',
-    roles: LEARNER,
+    menu: 'learn.certificates',
   },
   {
     path: 'saved',
     mockupPage: 'saved',
     title: 'Đã lưu & ghi chú',
-    roles: LEARNER,
+    menu: 'learn.saved',
   },
   {
     path: 'flashcards',
     mockupPage: 'flashcards',
     title: 'Flashcard ôn tập',
-    roles: LEARNER,
+    menu: 'learn.flashcards',
   },
   {
     path: 'assistant',
     mockupPage: 'assistant',
     title: 'Trợ lý AI',
-    roles: LEARNER,
+    menu: 'learn.assistant',
   },
   {
     path: 'notifications',
     mockupPage: 'notifications',
     title: 'Thông báo',
-    roles: ALL,
   },
   {
     path: 'profile',
     mockupPage: 'profile',
     title: 'Hồ sơ cá nhân',
-    roles: ALL,
   },
   {
     path: 'instructor',
     mockupPage: 'instructor',
     title: 'Tổng quan giảng viên',
-    roles: ['instructor', 'admin'],
+    menu: 'teach.home',
   },
   {
     path: 'instructor/inbox',
     mockupPage: 'inbox',
     title: 'Hộp phản hồi',
-    roles: ['instructor', 'admin'],
+    menu: 'teach.inbox',
   },
   {
     path: 'admin',
     mockupPage: 'adminHome',
     title: 'Tổng quan quản trị',
-    roles: ADMIN,
+    menu: 'admin.home',
   },
   {
     path: 'admin/catalog',
     mockupPage: 'adminCatalog',
     title: 'Lĩnh vực & chương trình',
-    roles: CONTENT,
+    menu: 'content.catalog',
   },
   {
     path: 'admin/courses',
     mockupPage: 'adminCourses',
     title: 'Khóa học',
-    roles: CONTENT,
+    menu: 'content.courses',
   },
   {
     path: 'admin/courses/new',
     mockupPage: 'courseWizard',
     title: 'Tạo khóa học mới',
-    roles: CONTENT,
+    menu: 'content.courses',
   },
   {
     path: 'admin/courses/:id/edit',
     mockupPage: 'courseWizard',
     title: 'Sửa khóa học',
-    roles: CONTENT,
+    menu: 'content.courses',
   },
   {
     path: 'admin/questions',
     mockupPage: 'questions',
     title: 'Ngân hàng câu hỏi',
-    roles: CONTENT,
+    menu: 'content.questions',
   },
   {
     path: 'admin/quizzes',
     mockupPage: 'quizzes',
     title: 'Bài kiểm tra',
-    roles: CONTENT,
+    menu: 'content.quizzes',
   },
   {
     path: 'admin/quizzes/:id',
     mockupPage: 'quizConfig',
     title: 'Cấu hình bài kiểm tra',
-    roles: CONTENT,
+    menu: 'content.quizzes',
   },
   {
     path: 'admin/import',
     mockupPage: 'import',
     title: 'Nhập dữ liệu hàng loạt',
-    roles: CONTENT,
+    menu: 'content.import',
   },
   {
     path: 'admin/users',
     mockupPage: 'users',
     title: 'Người dùng',
-    roles: ADMIN,
+    menu: 'admin.users',
   },
   {
     path: 'admin/users/:id',
     mockupPage: 'userDetail',
     title: 'Người dùng',
-    roles: ADMIN,
+    menu: 'admin.users',
   },
   {
     path: 'admin/org',
     mockupPage: 'org',
     title: 'Đơn vị & nhóm',
-    roles: ADMIN,
+    menu: 'admin.org',
+  },
+  {
+    path: 'admin/roles',
+    mockupPage: 'roles',
+    title: 'Vai trò & phân quyền',
+    menu: 'admin.roles',
   },
   {
     path: 'admin/assignments',
     mockupPage: 'assignments',
     title: 'Giao học & hạn hoàn thành',
-    roles: ADMIN,
+    menu: 'admin.assignments',
   },
   {
     path: 'admin/system',
     mockupPage: 'system',
     title: 'Hệ thống & nhật ký',
-    roles: ADMIN,
+    menu: 'admin.system',
   },
   {
     path: 'reports',
     mockupPage: 'reports',
     title: 'Báo cáo đào tạo',
-    roles: REPORTS,
+    menu: 'reports',
   },
   {
     path: 'reports/:dim',
     mockupPage: 'reportDetail',
     title: 'Báo cáo',
-    roles: REPORTS,
+    menu: 'reports',
   },
-  { path: '403', mockupPage: 'forbidden', title: 'Không đủ quyền', roles: ALL },
+  { path: '403', mockupPage: 'forbidden', title: 'Không đủ quyền' },
 ];
 
 /** Role home and not-found: registered beside the table. */
 export const HOME_META: RouteMeta = {
-  roles: ALL,
   layout: 'app',
   mockupPage: 'home',
 };
@@ -273,14 +269,14 @@ export const NOT_FOUND_META: RouteMeta = {
 
 export function metaOf(def: RouteDef): RouteMeta {
   return {
-    ...(def.roles ? { roles: def.roles } : {}),
+    ...(def.menu ? { menu: def.menu } : {}),
     layout: def.layout ?? 'app',
     mockupPage: def.mockupPage,
   };
 }
 
-/** The roles a route's `data` allows, or `undefined` when any signed-in user may enter. */
-export function rolesOf(data: Route['data']): readonly Role[] | undefined {
-  const roles: unknown = data?.['roles'];
-  return Array.isArray(roles) ? (roles as Role[]) : undefined;
+/** The menu a route's `data` requires, or `undefined` when any signed-in user may enter. */
+export function menuOf(data: Route['data']): MenuKey | undefined {
+  const menu: unknown = data?.['menu'];
+  return typeof menu === 'string' ? (menu as MenuKey) : undefined;
 }

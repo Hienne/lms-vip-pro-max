@@ -1,0 +1,5 @@
+<form id="group-form" class="stack" novalidate (submit)="onSubmit($event)">
+  <ui-field label="Tên phòng/nhóm" required [errors]="nameErrors()">
+    <input uiInput [formField]="groupForm.name" />
+  </ui-field>
+</form>

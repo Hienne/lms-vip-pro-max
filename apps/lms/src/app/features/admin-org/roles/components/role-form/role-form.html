@@ -1,0 +1,31 @@
+<form id="role-form" class="stack" novalidate (submit)="onSubmit($event)">
+  <ui-field label="Tên vai trò" required [errors]="nameErrors()">
+    <input uiInput [formField]="roleForm.name" />
+  </ui-field>
+  <ui-field label="Mô tả">
+    <textarea uiTextarea rows="2" [formField]="roleForm.description"></textarea>
+  </ui-field>
+  <div class="stack">
+    <p class="role-form__hint">
+      Chọn các menu vai trò này được vào. Có menu nào thì được toàn quyền thao
+      tác trên menu đó.
+    </p>
+    @for (section of sections; track section.section) {
+    <fieldset class="role-form__section">
+      <legend>{{ section.section }}</legend>
+      @for (item of section.items; track item.key) {
+      <label class="role-form__option">
+        <input
+          type="checkbox"
+          uiCheckbox
+          #box
+          [checked]="chosen().has(item.key)"
+          (change)="toggle(item.key, box.checked)"
+        />
+        {{ item.label }}
+      </label>
+      }
+    </fieldset>
+    }
+  </div>
+</form>

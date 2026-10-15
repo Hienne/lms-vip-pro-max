@@ -58,8 +58,8 @@ describe('AuthApi', () => {
     const out = result(api.loginDemo('a1'));
     const req = backend.expectOne('/api/auth/demo-accounts/a1/login');
     expect(req.request.method).toBe('POST');
-    req.flush({ id: 'a1', role: 'admin' });
-    expect(out.value).toEqual({ id: 'a1', role: 'admin' });
+    req.flush({ id: 'a1', roleId: 'admin' });
+    expect(out.value).toEqual({ id: 'a1', roleId: 'admin' });
   });
 
   it('logout posts and returns true', () => {
@@ -76,6 +76,27 @@ describe('AuthApi', () => {
     expect(req.request.method).toBe('GET');
     req.flush(profileFixtures['admin']);
     expect(out.value).toEqual(profileFixtures['admin']);
+  });
+
+  it('updateProfile puts the personal fields and returns the profile', () => {
+    const out = result(
+      api.updateProfile({ name: 'Phạm Thu Trang', title: 'QTV' }),
+    );
+    const req = backend.expectOne('/api/auth/profile');
+    expect(req.request.method).toBe('PUT');
+    expect(req.request.body).toEqual({ name: 'Phạm Thu Trang', title: 'QTV' });
+    req.flush(profileFixtures['admin']);
+    expect(out.value).toEqual(profileFixtures['admin']);
+  });
+
+  it('changePassword posts the three fields and returns true', () => {
+    const command = { cur: 'abc123', next: 'Abcdef12', confirm: 'Abcdef12' };
+    const out = result(api.changePassword(command));
+    const req = backend.expectOne('/api/auth/change-password');
+    expect(req.request.method).toBe('POST');
+    expect(req.request.body).toEqual(command);
+    req.flush(true);
+    expect(out.value).toBe(true);
   });
 
   it('demoAccounts gets the list', () => {

@@ -21,7 +21,7 @@ import {
   LinkButton,
   Mai,
 } from '@lms/ui';
-import { roleLabel } from '../../../shared/status/role-badge';
+import { roleText } from '../../../shared/status/role-badge';
 import { LoginStore } from './data-access/login.store';
 
 const EMAIL_ID = 'login-email';
@@ -127,11 +127,8 @@ export class Login {
     };
   });
 
-  protected accountRole(account: {
-    role: Parameters<typeof roleLabel>[0];
-    adminScope: string | null;
-  }): string {
-    return roleLabel(account.role) + (account.adminScope ? ' đơn vị' : '');
+  protected accountRole(account: Parameters<typeof roleText>[0]): string {
+    return roleText(account);
   }
 
   protected togglePassword(): void {

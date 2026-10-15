@@ -3,13 +3,13 @@ import { Component, inject } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 import { Button, Empty, Icon } from '@lms/ui';
 import { ForbiddenStateSchema } from '../../../core/routing/forbidden-state';
-import { roleLabel } from '../../../shared/status/role-badge';
+import { menuLabel } from '../../../core/menu/menu-catalog';
 
-const FALLBACK_REASON = 'Chức năng này không thuộc vai trò của bạn.';
+const FALLBACK_REASON = 'Vai trò của bạn không có quyền vào chức năng này.';
 
 /**
- * The 403 page (the mockup's `forbidden`). The role guard passes the requested path and the roles
- * that may enter in navigation state; without it (a direct visit or a reload that lost it) the
+ * The 403 page (the mockup's `forbidden`). The menu guard passes the requested path and the menu
+ * that grants it in navigation state; without it (a direct visit or a reload that lost it) the
  * page falls back to the generic reason.
  */
 @Component({
@@ -33,6 +33,5 @@ function reasonFrom(router: Router): string {
     router.currentNavigation()?.extras.state ?? history.state,
   );
   if (!state.success) return FALLBACK_REASON;
-  const roles = state.data.roles.map(roleLabel).join(', ');
-  return `Trang "${state.data.path}" dành cho vai trò: ${roles}.`;
+  return `Trang "${state.data.path}" thuộc menu "${menuLabel(state.data.menu)}", vai trò của bạn chưa được cấp.`;
 }

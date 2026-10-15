@@ -11,7 +11,6 @@ import { Toaster } from '@lms/ui';
 import { filter, map } from 'rxjs';
 import { AuthApi } from '../../../../core/auth/auth.api';
 import { toAppError } from '../../../../core/errors/app-error';
-import { HOME } from '../../../../core/session/role-home';
 import { SessionStore } from '../../../../core/session/session.store';
 import { internalPath } from './internal-path';
 
@@ -69,7 +68,7 @@ export class LoginStore {
       )
       .subscribe((user) => {
         this.toaster.success('Đăng nhập thành công');
-        void this.router.navigateByUrl(this.next$() ?? HOME[user.role]);
+        void this.router.navigateByUrl(this.next$() ?? user.homePath);
       });
   }
 
