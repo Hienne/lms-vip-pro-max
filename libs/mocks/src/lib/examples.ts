@@ -1,6 +1,14 @@
 import type { ApiError, ErrorStatus } from '@lms/contracts';
 import {
   adminMetaFixture,
+  deleteGroupInvalid,
+  groupNotFound,
+  orgFixtures,
+  saveGroupInvalid,
+  saveUnitForbidden,
+  saveUnitInvalid,
+  unitAdminOrg,
+  unitNotFound,
   resetPasswordResult,
   saveUserForbidden,
   saveUserInvalid,
@@ -25,6 +33,7 @@ import {
   profileUnauthorized,
   updateProfileInvalid,
 } from './auth/auth.fixtures';
+import { groupFixtures, unitFixtures } from './identity/identity.fixtures';
 import { healthOk } from './health/health.fixtures';
 import { navCountsFixtures } from './shell/shell.fixtures';
 
@@ -89,6 +98,27 @@ export const endpointExamples: Readonly<Record<string, EndpointExamples>> = {
   adminMeta: {
     default: adminMetaFixture,
     roles: { admin: adminMetaFixture, 'unit-admin': unitAdminMetaFixture },
+  },
+  org: {
+    default: orgFixtures,
+    roles: { admin: orgFixtures, 'unit-admin': unitAdminOrg },
+  },
+  // Prism is stateless: the mutations answer a seed record, and the app reloads `org` instead.
+  saveUnit: {
+    default: unitFixtures[0],
+    errors: { 403: saveUnitForbidden, 422: saveUnitInvalid },
+  },
+  setUnitStatus: {
+    default: unitFixtures[0],
+    errors: { 404: unitNotFound },
+  },
+  saveGroup: {
+    default: groupFixtures[0],
+    errors: { 422: saveGroupInvalid },
+  },
+  deleteGroup: {
+    default: true,
+    errors: { 404: groupNotFound, 422: deleteGroupInvalid },
   },
   navCounts: {
     default: navCountsFixtures['learner'],

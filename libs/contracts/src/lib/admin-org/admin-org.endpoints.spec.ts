@@ -2,6 +2,7 @@ import { toUrl } from '../http/endpoint';
 import { adminOrgEndpoints } from './admin-org.endpoints';
 import {
   SaveUserCommandSchema,
+  SetUnitStatusCommandSchema,
   SetUserStatusCommandSchema,
   UserDetailSchema,
 } from './admin-org.schema';
@@ -11,8 +12,13 @@ describe('admin-org endpoints', () => {
     expect(Object.keys(adminOrgEndpoints).sort()).toEqual(
       [
         'adminMeta',
+        'deleteGroup',
+        'org',
         'resetPassword',
+        'saveGroup',
+        'saveUnit',
         'saveUser',
+        'setUnitStatus',
         'setUserStatus',
         'user',
         'users',
@@ -27,6 +33,11 @@ describe('admin-org endpoints', () => {
     ['setUserStatus', [401, 403, 404, 422]],
     ['resetPassword', [401, 403, 404]],
     ['adminMeta', [401, 403]],
+    ['org', [401, 403]],
+    ['saveUnit', [401, 403, 422]],
+    ['setUnitStatus', [401, 403, 404]],
+    ['saveGroup', [401, 403, 422]],
+    ['deleteGroup', [401, 403, 404, 422]],
   ] as const)('%s declares its error statuses', (key, statuses) => {
     expect(adminOrgEndpoints[key].errors).toEqual(statuses);
   });
@@ -38,6 +49,25 @@ describe('admin-org endpoints', () => {
     expect(toUrl(adminOrgEndpoints.setUserStatus, { userId: 'l1' })).toBe(
       '/api/admin/users/l1/status',
     );
+  });
+
+  it('builds the unit and group urls from their ids', () => {
+    expect(toUrl(adminOrgEndpoints.setUnitStatus, { unitId: 'u2' })).toBe(
+      '/api/admin/units/u2/status',
+    );
+    expect(toUrl(adminOrgEndpoints.deleteGroup, { groupId: 'g4' })).toBe(
+      '/api/admin/groups/g4',
+    );
+    expect(adminOrgEndpoints.deleteGroup.method).toBe('delete');
+  });
+
+  it('only pauses or reactivates a unit', () => {
+    expect(SetUnitStatusCommandSchema.parse({ status: 'paused' })).toEqual({
+      status: 'paused',
+    });
+    expect(() =>
+      SetUnitStatusCommandSchema.parse({ status: 'locked' }),
+    ).toThrow();
   });
 
   it('takes the role as an id and the scope as a unit id or null', () => {

@@ -108,10 +108,10 @@ describe('route table', () => {
 
   it('lets a role holding the menu in and renders the placeholder naming the mockup page', async () => {
     signInAs('admin');
-    await harness.navigateByUrl('/admin/org');
-    expect(router.url).toBe('/admin/org');
+    await harness.navigateByUrl('/admin/assignments');
+    expect(router.url).toBe('/admin/assignments');
     expect((harness.routeNativeElement as HTMLElement).textContent).toContain(
-      '“org”',
+      '“assignments”',
     );
   });
 

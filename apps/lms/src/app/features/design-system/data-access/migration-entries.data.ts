@@ -1023,7 +1023,8 @@ export const MIGRATION_ENTRIES = [
     mockupSource: 'src/pages/admin-org.js · org',
     target: 'admin/org',
     checklist: ['B.10'],
-    status: 'todo',
+    status: 'in-progress',
+    owner: 'Hienne',
   },
   {
     id: 'route-admin-roles',

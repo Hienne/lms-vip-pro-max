@@ -210,8 +210,14 @@ declared error status.
 - Mutations answer the changed record, but the list and detail stores **reload** instead of
   patching it in, because the server is the source of truth and Prism is stateless (it always
   answers the same example).
-- Prism has role examples for `users` and `adminMeta` (`admin`, `unit-admin`); `user` answers one
+- Prism has role examples for `users`, `adminMeta` and `org` (`admin`, `unit-admin`); `user` answers one
   fixed user whatever `userId` is.
+- The org screen (`org`, `saveUnit`, `setUnitStatus`, `saveGroup`, `deleteGroup`) sits behind the
+  `admin.org` menu. `org` rows carry what the screen shows (admins, member counts, groups with
+  members, shared courses) so the app computes none of it; `admins[].scope` is `unit` or `system`.
+  A unit-limited caller may edit its own unit but the server refuses `saveUnit` without an `id` and
+  decides who may pause a unit. Deleting a group that still has members is a 422 whose message the
+  app shows as a toast. The mutations answer one record and the store reloads `org`.
 
 ## Done criteria for a contract change
 

@@ -2,6 +2,7 @@ import type {
   AdminMeta,
   ApiError,
   AuditEntry,
+  OrgUnit,
   ResetPasswordResult,
   UserDetail,
   UserListItem,
@@ -160,3 +161,77 @@ export const userNotFound: ApiError = { message: 'Người dùng không tồn t�
 export const userForbidden: ApiError = {
   message: 'Bạn không có quyền xem người dùng thuộc đơn vị khác.',
 };
+
+/** Administrators of a unit: those limited to it, and whole-system ones placed in it. */
+function adminsOf(unitId: string): OrgUnit['admins'] {
+  return userFixtures
+    .filter(
+      (u) =>
+        u.roleId === 'admin' &&
+        (u.scopeUnitId === unitId ||
+          (u.scopeUnitId === null && u.unitId === unitId)),
+    )
+    .map((u) => ({
+      id: u.id,
+      name: u.name,
+      scope: u.scopeUnitId ? 'unit' : 'system',
+    }));
+}
+
+function orgUnit(unitId: string, shared: OrgUnit['sharedCourses']): OrgUnit {
+  const unit = unitFixtures.find((u) => u.id === unitId);
+  if (!unit) throw new Error(`No fixture "${unitId}"`);
+  return {
+    ...unit,
+    admins: adminsOf(unitId),
+    members: userFixtures.filter((u) => u.unitId === unitId).length,
+    groups: groupFixtures
+      .filter((g) => g.unitId === unitId)
+      .map((g) => ({
+        ...g,
+        members: userFixtures
+          .filter((u) => u.groupId === g.id)
+          .map((u) => ({
+            id: u.id,
+            name: u.name,
+            email: u.email,
+            roleId: u.roleId,
+            roleName: name(roleFixtures, u.roleId),
+            scopeUnitId: u.scopeUnitId,
+          })),
+      })),
+    sharedCourses: shared,
+  };
+}
+
+const sharedWithTtvh = [
+  { id: 'c4', title: 'Văn hóa doanh nghiệp & quy chế nội bộ' },
+];
+
+/** The whole-system admin sees every unit. */
+export const orgFixtures: readonly OrgUnit[] = [
+  orgUnit('u1', []),
+  orgUnit('u2', sharedWithTtvh),
+];
+
+/** The `unit-admin` example: its own unit only. */
+export const unitAdminOrg: readonly OrgUnit[] = orgFixtures.filter(
+  (u) => u.id === 'u2',
+);
+
+export const saveUnitInvalid: ApiError = {
+  message: 'Vui lòng kiểm tra lại thông tin.',
+  details: { code: 'Mã đơn vị đã tồn tại.' },
+};
+export const saveUnitForbidden: ApiError = {
+  message: 'Bạn không có quyền tạo đơn vị mới (chỉ quản trị toàn hệ thống).',
+};
+export const unitNotFound: ApiError = { message: 'Đơn vị không tồn tại.' };
+export const saveGroupInvalid: ApiError = {
+  message: 'Vui lòng kiểm tra lại thông tin.',
+  details: { name: 'Nhập tên phòng/nhóm.' },
+};
+export const deleteGroupInvalid: ApiError = {
+  message: 'Nhóm còn thành viên — hãy chuyển thành viên sang nhóm khác trước.',
+};
+export const groupNotFound: ApiError = { message: 'Nhóm không tồn tại.' };

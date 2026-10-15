@@ -111,3 +111,67 @@ export const AdminMetaSchema = z.object({
   roles: z.array(RoleSchema),
 });
 export type AdminMeta = z.infer<typeof AdminMetaSchema>;
+
+// The units and groups part of lms-mockup/src/api/admin.js (`org`, `saveUnit`, `setUnitStatus`,
+// `saveGroup`, `deleteGroup`). Who may call them is the `admin.org` menu; the server also cuts the
+// list to the caller's `scopeUnitId` and refuses to let a unit-limited caller create a unit.
+
+/** A member shown under a group (mockup `groups[].members`). */
+export const GroupMemberSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  email: z.string(),
+  roleId: z.string(),
+  roleName: z.string(),
+  /** Unit the member's data access is limited to; marks an administrator limited to one unit. */
+  scopeUnitId: z.string().nullable(),
+});
+export type GroupMember = z.infer<typeof GroupMemberSchema>;
+
+export const OrgGroupSchema = GroupSchema.extend({
+  members: z.array(GroupMemberSchema),
+});
+export type OrgGroup = z.infer<typeof OrgGroupSchema>;
+
+/** Who administers a unit: someone limited to it, or a whole-system administrator placed in it. */
+export const UnitAdminSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  scope: z.enum(['unit', 'system']),
+});
+export type UnitAdmin = z.infer<typeof UnitAdminSchema>;
+
+/** A unit with everything the org screen shows about it (mockup `org()` rows). */
+export const OrgUnitSchema = UnitSchema.extend({
+  admins: z.array(UnitAdminSchema),
+  /** People in the unit, across all its groups. */
+  members: z.number().int().nonnegative(),
+  groups: z.array(OrgGroupSchema),
+  /** Courses another unit owns and shared with this one. */
+  sharedCourses: z.array(z.object({ id: z.string(), title: z.string() })),
+});
+export type OrgUnit = z.infer<typeof OrgUnitSchema>;
+
+/** Create (no `id`) or rename the unit named by `id`. */
+export const SaveUnitCommandSchema = z.object({
+  id: z.string().optional(),
+  code: z.string(),
+  name: z.string(),
+});
+export type SaveUnitCommand = z.infer<typeof SaveUnitCommandSchema>;
+
+export const SetUnitStatusCommandSchema = z.object({
+  status: UnitSchema.shape.status,
+});
+export type SetUnitStatusCommand = z.infer<typeof SetUnitStatusCommandSchema>;
+
+/** Create (no `id`) or rename a group; the kind stays what it was when omitted (`team` for a new one). */
+export const SaveGroupCommandSchema = z.object({
+  id: z.string().optional(),
+  unitId: z.string(),
+  name: z.string(),
+  kind: GroupSchema.shape.kind.optional(),
+});
+export type SaveGroupCommand = z.infer<typeof SaveGroupCommandSchema>;
+
+export const DeleteGroupResultSchema = z.literal(true);

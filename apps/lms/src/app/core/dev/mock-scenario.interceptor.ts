@@ -22,6 +22,7 @@ export const ROLE_EXAMPLE_ENDPOINTS = {
   navCounts: shellEndpoints.navCounts,
   users: adminOrgEndpoints.users,
   adminMeta: adminOrgEndpoints.adminMeta,
+  org: adminOrgEndpoints.org,
 } as const;
 
 const ROLE_PATHS: ReadonlySet<string> = new Set(
