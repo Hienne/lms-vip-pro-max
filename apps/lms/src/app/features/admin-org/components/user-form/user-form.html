@@ -1,0 +1,54 @@
+<form id="user-form" class="stack" novalidate (submit)="onSubmit($event)">
+  <ui-field label="Họ và tên" required [errors]="nameErrors()">
+    <input uiInput [formField]="userForm.name" />
+  </ui-field>
+  <ui-field label="Email đăng nhập" required [errors]="emailErrors()">
+    <input uiInput type="email" [formField]="userForm.email" />
+  </ui-field>
+  <ui-field label="Chức danh">
+    <input uiInput [formField]="userForm.title" />
+  </ui-field>
+  <div class="grid-2">
+    <ui-field label="Đơn vị" required [errors]="unitErrors()">
+      <select uiSelect [formField]="userForm.unitId" (change)="onUnitChange()">
+        @for (unit of meta().units; track unit.id) {
+        <option [value]="unit.id">{{ unit.name }}</option>
+        }
+      </select>
+    </ui-field>
+    <ui-field label="Phòng / nhóm" required [errors]="groupErrors()">
+      <select uiSelect [formField]="userForm.groupId">
+        <option value="">— Chọn —</option>
+        @for (group of groups(); track group.id) {
+        <option [value]="group.id">{{ group.name }}</option>
+        }
+      </select>
+    </ui-field>
+  </div>
+  <ui-field
+    label="Vai trò"
+    required
+    [errors]="roleErrors()"
+    [hint]="isSelf() ? 'Bạn không thể đổi vai trò của chính mình.' : ''"
+  >
+    <select uiSelect [formField]="userForm.roleId">
+      @for (role of meta().roles; track role.id) {
+      <option [value]="role.id">{{ role.name }}</option>
+      }
+    </select>
+  </ui-field>
+  <ui-field
+    label="Phạm vi dữ liệu"
+    hint="Người dùng chỉ thấy dữ liệu trong phạm vi này, kể cả khi vai trò cho phép nhiều hơn."
+  >
+    <select uiSelect [formField]="userForm.scope">
+      @for (option of scopeOptions(); track option.value) {
+      <option [value]="option.value">{{ option.label }}</option>
+      }
+    </select>
+  </ui-field>
+  <ui-alert tone="info" [announce]="false">
+    Quyền được kiểm tra ở máy chủ. Quản trị viên đơn vị không thể tạo người dùng
+    ngoài đơn vị hoặc cấp phạm vi toàn hệ thống.
+  </ui-alert>
+</form>

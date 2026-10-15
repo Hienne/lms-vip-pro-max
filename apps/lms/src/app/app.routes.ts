@@ -28,6 +28,12 @@ const SCREENS: Readonly<Record<string, Loader>> = {
   login: () => import('./features/auth/login/login').then((m) => m.Login),
   profile: () =>
     import('./features/account/profile/profile').then((m) => m.Profile),
+  'admin/users': () =>
+    import('./features/admin-org/users/users').then((m) => m.Users),
+  'admin/users/:id': () =>
+    import('./features/admin-org/user-detail/user-detail').then(
+      (m) => m.UserDetail,
+    ),
   '403': () =>
     import('./features/errors/forbidden/forbidden').then((m) => m.Forbidden),
 };

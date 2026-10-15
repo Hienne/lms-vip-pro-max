@@ -1,0 +1,40 @@
+<ng-template #body>
+  @let meta = store.meta$(); @let me = store.me$(); @let editing =
+  store.editing$(); @if (meta && me && editing) {
+  <app-user-form
+    [user]="editing.user"
+    [meta]="meta"
+    [me]="me"
+    [serverErrors]="store.saveError$()?.details ?? {}"
+    (submitted)="store.save($event)"
+  />
+  } @else if (store.metaError$(); as error) {
+  <ui-alert tone="danger">{{ error.message }}</ui-alert>
+  } @else {
+  <span uiSpinner></span>
+  }
+</ng-template>
+
+<ng-template #footer let-close="close">
+  @if (store.editing$()?.user; as user) {
+  <button
+    uiButton
+    variant="ghost"
+    class="user-editor__reset"
+    [disabled]="store.isResetting$()"
+    (click)="store.resetPassword(user)"
+  >
+    <ui-icon name="key" size="sm" />Đặt lại mật khẩu
+  </button>
+  }
+  <button uiButton variant="ghost" (click)="close()">Hủy</button>
+  <button
+    uiButton
+    variant="primary"
+    type="submit"
+    form="user-form"
+    [disabled]="store.isSaving$() || !store.meta$()"
+  >
+    Lưu
+  </button>
+</ng-template>

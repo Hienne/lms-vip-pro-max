@@ -1,0 +1,59 @@
+@if (total() === 0) {
+<ng-content select="[slot=empty]" />
+} @else {
+<div uiTableWrap>
+  <table uiTable responsive>
+    <caption class="sr-only">
+      {{ caption() }}
+    </caption>
+    <thead>
+      <tr>
+        @for (column of columns(); track column.key) {
+        <th
+          scope="col"
+          [class.col-actions]="column.kind === 'actions'"
+          [attr.aria-sort]="ariaSort(column.key)"
+        >
+          @if (column.sortable === false || column.kind === 'actions') { {{
+          column.label }} } @else {
+          <button type="button" (click)="toggle(column.key)">
+            {{ column.label }} @if (sort()?.key === column.key) {
+            <ui-icon
+              size="sm"
+              [name]="sort()?.dir === 'asc' ? 'chevron-up' : 'chevron-down'"
+            />
+            }
+          </button>
+          }
+        </th>
+        }
+      </tr>
+    </thead>
+    <tbody>
+      @for (row of rows(); track row.id) {
+      <tr>
+        @for (column of columns(); track column.key) {
+        <td
+          [class.col-actions]="column.kind === 'actions'"
+          [attr.data-label]="column.label"
+        >
+          @if (templates().get(column.key); as template) {
+          <ng-container
+            [ngTemplateOutlet]="template"
+            [ngTemplateOutletContext]="{ $implicit: row }"
+          />
+          } @else { {{ valueOf(row, column.key) }} }
+        </td>
+        }
+      </tr>
+      }
+    </tbody>
+  </table>
+</div>
+<ui-pagination
+  [total]="total()"
+  [page]="page()"
+  [pageSize]="pageSize()"
+  (pageChange)="pageChange.emit($event)"
+/>
+}

@@ -1,5 +1,18 @@
 import type { ApiError, ErrorStatus } from '@lms/contracts';
 import {
+  adminMetaFixture,
+  resetPasswordResult,
+  saveUserForbidden,
+  saveUserInvalid,
+  setUserStatusInvalid,
+  unitAdminMetaFixture,
+  unitAdminUserList,
+  userDetailFixture,
+  userForbidden,
+  userListFixtures,
+  userNotFound,
+} from './admin-org/admin-org.fixtures';
+import {
   demoAccountFixtures,
   loginDemoLocked,
   loginDemoNotFound,
@@ -52,6 +65,31 @@ export const endpointExamples: Readonly<Record<string, EndpointExamples>> = {
     errors: { 401: profileUnauthorized, 422: changePasswordInvalid },
   },
   demoAccounts: { default: demoAccountFixtures },
+  users: {
+    default: userListFixtures,
+    roles: { admin: userListFixtures, 'unit-admin': unitAdminUserList },
+  },
+  // Prism is stateless: every user page answers with the seed's demo learner.
+  user: {
+    default: userDetailFixture,
+    errors: { 403: userForbidden, 404: userNotFound },
+  },
+  saveUser: {
+    default: userListFixtures[0],
+    errors: { 403: saveUserForbidden, 422: saveUserInvalid },
+  },
+  setUserStatus: {
+    default: userListFixtures[0],
+    errors: { 422: setUserStatusInvalid, 404: userNotFound },
+  },
+  resetPassword: {
+    default: resetPasswordResult,
+    errors: { 404: userNotFound },
+  },
+  adminMeta: {
+    default: adminMetaFixture,
+    roles: { admin: adminMetaFixture, 'unit-admin': unitAdminMetaFixture },
+  },
   navCounts: {
     default: navCountsFixtures['learner'],
     roles: navCountsFixtures,

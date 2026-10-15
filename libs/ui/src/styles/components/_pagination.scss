@@ -1,0 +1,41 @@
+// Pagination: ported from the mockup's `.pagination` block (components.css).
+// Applied by `ui-pagination`.
+@layer components {
+  .pagination {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--spacing-3);
+    padding: var(--spacing-3) var(--spacing-4);
+    border-top: 1px solid var(--color-border);
+    color: var(--color-text-muted);
+    font-size: var(--text-sm);
+
+    &__pages {
+      display: flex;
+      gap: var(--spacing-1);
+
+      button {
+        min-width: var(--spacing-control-sm);
+        height: var(--spacing-control-sm);
+        border-radius: var(--radius-sm);
+        color: var(--color-text-secondary);
+        font-weight: var(--font-weight-semibold);
+
+        &:hover:not(:disabled) {
+          background: var(--color-surface-2);
+        }
+
+        &:disabled {
+          opacity: 0.4;
+        }
+
+        &[aria-current='page'] {
+          background: var(--color-primary);
+          color: var(--color-on-primary);
+        }
+      }
+    }
+  }
+}

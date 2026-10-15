@@ -198,6 +198,21 @@ Smoke-tested with `npx nx serve mock-api` (Prism on `127.0.0.1:4010`):
 of `endpointRegistries` is present with a `default` example for 200 and for each
 declared error status.
 
+## Admin organisation contract decisions
+
+- Everything under `/api/admin/users` and `/api/admin/meta` is reached through the `admin.users`
+  menu; the server also cuts every answer to the caller's `scopeUnitId` and refuses what a
+  unit-limited caller may not do (grant the whole system, create a unit, assign a role holding
+  `admin.roles`). The app never decides this: it renders `adminMeta` (units, groups and **the roles
+  the caller may assign**) and shows the 403/422 the server sends.
+- `UserDetail` is `{ user, role, courses, attempts, audit }`. The mockup's `perms` matrix became
+  `role` (with its `menus`); its `competency` (the radar) is left out until the charts are migrated.
+- Mutations answer the changed record, but the list and detail stores **reload** instead of
+  patching it in, because the server is the source of truth and Prism is stateless (it always
+  answers the same example).
+- Prism has role examples for `users` and `adminMeta` (`admin`, `unit-admin`); `user` answers one
+  fixed user whatever `userId` is.
+
 ## Done criteria for a contract change
 
 - Schema, endpoint, fixture (success + each error) and XApi method all updated.
