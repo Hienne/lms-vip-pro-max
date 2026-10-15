@@ -104,3 +104,16 @@ export const loginDemoLocked: ApiError = {
 export const profileUnauthorized: ApiError = {
   message: 'Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.',
 };
+
+export const updateProfileInvalid: ApiError = {
+  message: 'Vui lòng kiểm tra lại thông tin.',
+  details: { name: 'Họ tên tối thiểu 2 ký tự.' },
+};
+export const changePasswordInvalid: ApiError = {
+  message: 'Vui lòng kiểm tra lại.',
+  details: {
+    cur: 'Nhập mật khẩu hiện tại.',
+    next: 'Tối thiểu 8 ký tự, gồm chữ hoa và chữ số.',
+    confirm: 'Mật khẩu nhập lại không khớp.',
+  },
+};

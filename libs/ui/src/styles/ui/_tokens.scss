@@ -202,6 +202,14 @@ $layout: (
     property: 'container-content',
     value: 1280px,
   ),
+  narrow: (
+    property: 'container-narrow',
+    value: 880px,
+  ),
+  wide: (
+    property: 'container-wide',
+    value: 1440px,
+  ),
   menu: (
     property: 'container-menu',
     value: 220px,

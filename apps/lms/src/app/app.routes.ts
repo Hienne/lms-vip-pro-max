@@ -26,6 +26,8 @@ const placeholder: Loader = () =>
 /** Migrated screens by route path; every other route keeps the placeholder. */
 const SCREENS: Readonly<Record<string, Loader>> = {
   login: () => import('./features/auth/login/login').then((m) => m.Login),
+  profile: () =>
+    import('./features/account/profile/profile').then((m) => m.Profile),
   '403': () =>
     import('./features/errors/forbidden/forbidden').then((m) => m.Forbidden),
 };

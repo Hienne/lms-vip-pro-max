@@ -10,7 +10,15 @@ import {
 describe('auth endpoints', () => {
   it('keeps the mockup function names as keys', () => {
     expect(Object.keys(authEndpoints).sort()).toEqual(
-      ['demoAccounts', 'login', 'loginDemo', 'logout', 'profile'].sort(),
+      [
+        'changePassword',
+        'demoAccounts',
+        'login',
+        'loginDemo',
+        'logout',
+        'profile',
+        'updateProfile',
+      ].sort(),
     );
   });
 
@@ -19,6 +27,8 @@ describe('auth endpoints', () => {
     ['loginDemo', [404, 423]],
     ['logout', []],
     ['profile', [401]],
+    ['updateProfile', [401, 422]],
+    ['changePassword', [401, 422]],
     ['demoAccounts', []],
   ] as const)('%s declares its error statuses', (key, statuses) => {
     expect(authEndpoints[key].errors).toEqual(statuses);

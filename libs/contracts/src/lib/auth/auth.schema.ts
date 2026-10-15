@@ -18,6 +18,24 @@ export const LoginResultSchema = z.object({
 });
 export type LoginResult = z.infer<typeof LoginResultSchema>;
 
+/** Personal fields only: role, unit and scope are managed by administrators and ignored here. */
+export const UpdateProfileCommandSchema = z.object({
+  name: z.string(),
+  title: z.string(),
+});
+export type UpdateProfileCommand = z.infer<typeof UpdateProfileCommandSchema>;
+
+export const ChangePasswordCommandSchema = z.object({
+  /** Current password. */
+  cur: z.string(),
+  next: z.string(),
+  confirm: z.string(),
+});
+export type ChangePasswordCommand = z.infer<typeof ChangePasswordCommandSchema>;
+
+/** `changePassword` answers `true`, as the mockup does. */
+export const ChangePasswordResultSchema = z.literal(true);
+
 /** The signed-in user with names resolved and menus evaluated by the server. */
 export const ProfileSchema = UserSchema.extend({
   unitName: z.string(),

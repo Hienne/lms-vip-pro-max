@@ -7,8 +7,10 @@ import {
   loginLocked,
   loginResult,
   loginUnauthorized,
+  changePasswordInvalid,
   profileFixtures,
   profileUnauthorized,
+  updateProfileInvalid,
 } from './auth/auth.fixtures';
 import { healthOk } from './health/health.fixtures';
 import { navCountsFixtures } from './shell/shell.fixtures';
@@ -38,6 +40,16 @@ export const endpointExamples: Readonly<Record<string, EndpointExamples>> = {
     default: profileFixtures['learner'],
     roles: profileFixtures,
     errors: { 401: profileUnauthorized },
+  },
+  // Prism is stateless and a PUT carries no role example, so the app reloads the profile (a GET
+  // with the role's example) instead of applying this body.
+  updateProfile: {
+    default: profileFixtures['learner'],
+    errors: { 401: profileUnauthorized, 422: updateProfileInvalid },
+  },
+  changePassword: {
+    default: true,
+    errors: { 401: profileUnauthorized, 422: changePasswordInvalid },
   },
   demoAccounts: { default: demoAccountFixtures },
   navCounts: {

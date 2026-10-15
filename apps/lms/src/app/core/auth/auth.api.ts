@@ -3,10 +3,12 @@ import { inject, Service } from '@angular/core';
 import {
   authEndpoints,
   toUrl,
+  type ChangePasswordCommand,
   type DemoAccount,
   type LoginCommand,
   type LoginResult,
   type Profile,
+  type UpdateProfileCommand,
 } from '@lms/contracts';
 import type { Observable } from 'rxjs';
 import { parseResponse } from '../http/parse-response';
@@ -41,6 +43,20 @@ export class AuthApi {
     const endpoint = authEndpoints.profile;
     return this.http
       .get<unknown>(toUrl(endpoint))
+      .pipe(parseResponse(endpoint.response));
+  }
+
+  updateProfile(command: UpdateProfileCommand): Observable<Profile> {
+    const endpoint = authEndpoints.updateProfile;
+    return this.http
+      .put<unknown>(toUrl(endpoint), command)
+      .pipe(parseResponse(endpoint.response));
+  }
+
+  changePassword(command: ChangePasswordCommand): Observable<true> {
+    const endpoint = authEndpoints.changePassword;
+    return this.http
+      .post<unknown>(toUrl(endpoint), command)
       .pipe(parseResponse(endpoint.response));
   }
 
