@@ -37,13 +37,20 @@ describe('auth endpoints', () => {
     expect(() => LoginCommandSchema.parse({ email: 'x' })).toThrow();
   });
 
-  it('rejects unknown roles in the login result', () => {
-    expect(() => LoginResultSchema.parse({ id: 'a1', role: 'boss' })).toThrow();
+  it('rejects a login result without a role id', () => {
+    expect(() => LoginResultSchema.parse({ id: 'a1' })).toThrow();
   });
 
-  it('keeps permissions and scope but no display labels in the profile', () => {
-    expect(ProfileSchema.shape).not.toHaveProperty('roleLabel');
-    expect(ProfileSchema.shape).toHaveProperty('perms');
+  it('rejects a menu key the app does not know', () => {
+    const profile = ProfileSchema.shape.menus;
+    expect(() => profile.parse(['learn.home'])).not.toThrow();
+    expect(() => profile.parse(['admin.secret'])).toThrow();
+  });
+
+  it('keeps menus, home path and scope in the profile, no per-action permissions', () => {
+    expect(ProfileSchema.shape).not.toHaveProperty('perms');
+    expect(ProfileSchema.shape).toHaveProperty('menus');
+    expect(ProfileSchema.shape).toHaveProperty('homePath');
     expect(ProfileSchema.shape).toHaveProperty('scopeName');
     expect(DemoAccountSchema.shape).not.toHaveProperty('roleLabel');
   });

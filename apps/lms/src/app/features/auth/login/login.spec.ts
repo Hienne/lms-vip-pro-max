@@ -277,7 +277,7 @@ describe('Login', () => {
       await settle();
       backend
         .expectOne(`/api/auth/demo-accounts/${target.id}/login`)
-        .flush({ id: target.id, role: target.role });
+        .flush({ id: target.id, roleId: target.roleId });
       await settle();
       backend
         .expectOne('/api/auth/profile')

@@ -4,9 +4,9 @@ import type {
   LoginResult,
   Profile,
 } from '@lms/contracts';
-import { userFixtures } from '../identity/identity.fixtures';
+import { roleFixtures, userFixtures } from '../identity/identity.fixtures';
 
-// Ported from lms-mockup/src/api/auth.js. Computed values (names, permissions,
+// Ported from lms-mockup/src/api/auth.js. Computed values (names, menus, home path,
 // scope) are fixed here, never recomputed.
 
 const BAN = 'Ban QL&PT Core Banking';
@@ -19,61 +19,45 @@ function user(id: string) {
   return found;
 }
 
-const INSTRUCTOR_PERMS: Profile['perms'] = [
-  'content.write',
-  'question.write',
-  'feedback.reply',
-  'reports.read',
-];
+function role(id: string) {
+  const found = roleFixtures.find((r) => r.id === id);
+  if (!found) throw new Error(`No role fixture "${id}"`);
+  return found;
+}
+
+/** The home path the server computes: the first granted menu's screen, else the profile. */
+const HOME_PATH: Readonly<Record<string, string>> = {
+  learner: '/learn',
+  instructor: '/instructor',
+  admin: '/admin',
+  viewer: '/reports',
+};
+
+function profile(
+  userId: string,
+  unitName: string,
+  groupName: string,
+  scopeName: string,
+): Profile {
+  const u = user(userId);
+  const r = role(u.roleId);
+  return {
+    ...u,
+    roleName: r.name,
+    unitName,
+    groupName,
+    menus: r.menus,
+    homePath: HOME_PATH[r.id] ?? '/profile',
+    scopeName,
+  };
+}
 
 export const profileFixtures: Readonly<Record<string, Profile>> = {
-  admin: {
-    ...user('a1'),
-    unitName: BAN,
-    groupName: 'Nhóm Tổng hợp & QA',
-    perms: [
-      ...INSTRUCTOR_PERMS,
-      'users.manage',
-      'org.manage',
-      'assign.manage',
-      'system.manage',
-    ],
-    scopeName: WHOLE_SYSTEM,
-  },
-  'unit-admin': {
-    ...user('a2'),
-    unitName: TTVH,
-    groupName: 'Phòng Vận hành hạ tầng',
-    perms: [
-      ...INSTRUCTOR_PERMS,
-      'users.manage',
-      'org.manage',
-      'assign.manage',
-      'system.manage',
-    ],
-    scopeName: TTVH,
-  },
-  instructor: {
-    ...user('i1'),
-    unitName: BAN,
-    groupName: 'Nhóm Quản trị hệ thống Core Banking',
-    perms: INSTRUCTOR_PERMS,
-    scopeName: BAN,
-  },
-  viewer: {
-    ...user('v1'),
-    unitName: BAN,
-    groupName: 'Nhóm Tổng hợp & QA',
-    perms: ['reports.read'],
-    scopeName: WHOLE_SYSTEM,
-  },
-  learner: {
-    ...user('l1'),
-    unitName: BAN,
-    groupName: 'Nhóm Quản trị hệ thống Core Banking',
-    perms: ['learn'],
-    scopeName: BAN,
-  },
+  admin: profile('a1', BAN, 'Nhóm Tổng hợp & QA', WHOLE_SYSTEM),
+  'unit-admin': profile('a2', TTVH, 'Phòng Vận hành hạ tầng', TTVH),
+  instructor: profile('i1', BAN, 'Nhóm Quản trị hệ thống Core Banking', BAN),
+  viewer: profile('v1', BAN, 'Nhóm Tổng hợp & QA', WHOLE_SYSTEM),
+  learner: profile('l1', BAN, 'Nhóm Quản trị hệ thống Core Banking', BAN),
 };
 
 export const demoAccountFixtures: readonly DemoAccount[] = [
@@ -89,13 +73,14 @@ export const demoAccountFixtures: readonly DemoAccount[] = [
     id: u.id,
     name: u.name,
     email: u.email,
-    role: u.role,
-    adminScope: u.adminScope,
+    roleId: u.roleId,
+    roleName: role(u.roleId).name,
+    scopeUnitId: u.scopeUnitId,
     unit: unit as string,
   };
 });
 
-export const loginResult: LoginResult = { id: 'l1', role: 'learner' };
+export const loginResult: LoginResult = { id: 'l1', roleId: 'learner' };
 
 export const loginInvalid: ApiError = {
   message: 'Vui lòng kiểm tra lại thông tin đăng nhập.',

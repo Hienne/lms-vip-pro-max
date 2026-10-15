@@ -1,5 +1,15 @@
-import { GroupSchema, UnitSchema, UserSchema } from '@lms/contracts';
-import { groupFixtures, unitFixtures, userFixtures } from './identity.fixtures';
+import {
+  GroupSchema,
+  RoleSchema,
+  UnitSchema,
+  UserSchema,
+} from '@lms/contracts';
+import {
+  groupFixtures,
+  roleFixtures,
+  unitFixtures,
+  userFixtures,
+} from './identity.fixtures';
 
 describe('identity fixtures', () => {
   it.each(unitFixtures)('unit $id parses', (unit) => {
@@ -12,6 +22,34 @@ describe('identity fixtures', () => {
 
   it.each(userFixtures)('user $id parses', (user) => {
     expect(() => UserSchema.parse(user)).not.toThrow();
+  });
+
+  it.each(roleFixtures)('role $id parses', (role) => {
+    expect(() => RoleSchema.parse(role)).not.toThrow();
+  });
+
+  it('seeds the four system roles and one custom role', () => {
+    expect(roleFixtures.filter((r) => r.system).map((r) => r.id)).toEqual([
+      'learner',
+      'instructor',
+      'admin',
+      'viewer',
+    ]);
+    expect(roleFixtures.filter((r) => !r.system)).toHaveLength(1);
+  });
+
+  it('counts the users of each role', () => {
+    for (const role of roleFixtures) {
+      expect(role.userCount).toBe(
+        userFixtures.filter((u) => u.roleId === role.id).length,
+      );
+    }
+  });
+
+  it('keeps the menu-managing role on admin', () => {
+    expect(roleFixtures.find((r) => r.id === 'admin')?.menus).toContain(
+      'admin.roles',
+    );
   });
 
   it('holds the seed counts', () => {
@@ -27,7 +65,8 @@ describe('identity fixtures', () => {
     for (const u of userFixtures) {
       expect(unitIds).toContain(u.unitId);
       expect(groupIds).toContain(u.groupId);
-      if (u.adminScope !== null) expect(unitIds).toContain(u.adminScope);
+      expect(roleFixtures.map((r) => r.id)).toContain(u.roleId);
+      if (u.scopeUnitId !== null) expect(unitIds).toContain(u.scopeUnitId);
     }
   });
 
@@ -35,17 +74,17 @@ describe('identity fixtures', () => {
   it.each([
     ['admin@demo.cb', 'a1', 'admin', 'active', null],
     ['qtdonvi@demo.cb', 'a2', 'admin', 'active', 'u2'],
-    ['giangvien@demo.cb', 'i1', 'instructor', 'active', null],
+    ['giangvien@demo.cb', 'i1', 'instructor', 'active', 'u1'],
     ['lanhdao@demo.cb', 'v1', 'viewer', 'active', null],
-    ['hocvien@demo.cb', 'l1', 'learner', 'active', null],
-    ['dung.bq@demo.cb', 'l4', 'learner', 'active', null],
-    ['long.pd@demo.cb', 'l8', 'learner', 'locked', null],
-  ])('demo account %s exists', (email, id, role, status, adminScope) => {
+    ['hocvien@demo.cb', 'l1', 'learner', 'active', 'u1'],
+    ['dung.bq@demo.cb', 'l4', 'learner', 'active', 'u1'],
+    ['long.pd@demo.cb', 'l8', 'learner', 'locked', 'u1'],
+  ])('demo account %s exists', (email, id, roleId, status, scopeUnitId) => {
     expect(userFixtures.find((u) => u.email === email)).toMatchObject({
       id,
-      role,
+      roleId,
       status,
-      adminScope,
+      scopeUnitId,
     });
   });
 

@@ -1,13 +1,13 @@
-@let chrome = store.chrome$(); @let role = store.role$();
+@let chrome = store.chrome$(); @let user = store.user$();
 <a class="skip-link" href="#main" (click)="skipToMain($event)"
   >Bỏ qua tới nội dung chính</a
 >
 <div class="app-shell" [class.app-shell--framed]="chrome === 'app'">
-  @if (chrome === 'app' && role) {
+  @if (chrome === 'app' && user) {
   <app-sidebar
     class="app-shell__sidebar"
-    [role]="role"
-    [scoped]="store.isScoped$()"
+    [menus]="user.menus"
+    [roleText]="store.roleText$()"
     [activePath]="store.path$()"
     [inboxCount]="store.inboxCount$()"
   />
@@ -16,7 +16,7 @@
     @if (chrome === 'app') {
     <app-header
       [navOpen]="store.navOpen$()"
-      [user]="store.user$()"
+      [user]="user"
       [unread]="store.unread$()"
       (menu)="store.openNav(drawerBody)"
       (searched)="store.search($event)"
@@ -39,10 +39,10 @@
 </div>
 
 <ng-template #drawerBody>
-  @if (role) {
+  @if (user) {
   <app-sidebar
-    [role]="role"
-    [scoped]="store.isScoped$()"
+    [menus]="user.menus"
+    [roleText]="store.roleText$()"
     [activePath]="store.path$()"
     [inboxCount]="store.inboxCount$()"
   />

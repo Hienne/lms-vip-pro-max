@@ -1,20 +1,39 @@
 import { booleanAttribute, Component, computed, input } from '@angular/core';
-import type { Role } from '@lms/contracts';
 import { Badge } from '@lms/ui';
 import type { StatusView } from './status-view';
 
-/** The mockup's `ROLE`; a missing enum value is a compile error. */
-const ROLE_VIEW: Record<Role, StatusView> = {
-  learner: { label: 'Học viên', tone: 'primary' },
-  instructor: { label: 'Giảng viên', tone: 'info' },
-  admin: { label: 'Quản trị viên', tone: 'warning' },
-  viewer: { label: 'Lãnh đạo', tone: 'neutral', outline: true },
+type Tone = Pick<StatusView, 'tone' | 'outline'>;
+
+/** The mockup's `ROLE` tones for the four system roles; any other role is a neutral outline. */
+const SYSTEM_TONE: Readonly<Record<string, Tone>> = {
+  learner: { tone: 'primary' },
+  instructor: { tone: 'info' },
+  admin: { tone: 'warning' },
+  viewer: { tone: 'neutral', outline: true },
 };
+const CUSTOM_TONE: Tone = { tone: 'neutral', outline: true };
 
-/** The role's Vietnamese name, for prose that cannot use the badge. */
-export const roleLabel = (role: Role): string => ROLE_VIEW[role].label;
+/**
+ * A role's name for prose that cannot use the badge. The "đơn vị" suffix marks an administrator
+ * limited to one unit (the mockup's "Quản trị viên đơn vị").
+ */
+export function roleText(account: {
+  roleId: string;
+  roleName: string;
+  scopeUnitId: string | null;
+}): string {
+  return account.roleName + (isUnitAdmin(account) ? ' đơn vị' : '');
+}
 
-/** A user's role as a badge; `scoped` marks a role limited to one unit ("… đơn vị"). */
+/** An `admin` limited to one unit; every other role's scope is just where its data comes from. */
+export function isUnitAdmin(account: {
+  roleId: string;
+  scopeUnitId: string | null;
+}): boolean {
+  return account.roleId === 'admin' && account.scopeUnitId !== null;
+}
+
+/** A user's role as a badge; `scoped` marks an administrator limited to one unit ("… đơn vị"). */
 @Component({
   selector: 'app-role-badge',
   imports: [Badge],
@@ -22,12 +41,15 @@ export const roleLabel = (role: Role): string => ROLE_VIEW[role].label;
     uiBadge
     [tone]="view().tone"
     [outline]="view().outline ?? false"
-    >{{ view().label }}{{ scoped() ? ' đơn vị' : '' }}</span
+    >{{ name() }}{{ scoped() ? ' đơn vị' : '' }}</span
   >`,
 })
 export class RoleBadge {
-  readonly role = input.required<Role>();
+  readonly roleId = input.required<string>();
+  readonly name = input.required<string>();
   readonly scoped = input(false, { transform: booleanAttribute });
 
-  protected readonly view = computed(() => ROLE_VIEW[this.role()]);
+  protected readonly view = computed(
+    () => SYSTEM_TONE[this.roleId()] ?? CUSTOM_TONE,
+  );
 }

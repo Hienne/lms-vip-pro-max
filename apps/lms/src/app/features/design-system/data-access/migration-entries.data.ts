@@ -1021,6 +1021,14 @@ export const MIGRATION_ENTRIES = [
     status: 'todo',
   },
   {
+    id: 'route-admin-roles',
+    kind: 'route',
+    mockupSource: null,
+    target: 'admin/roles',
+    checklist: ['B.9'],
+    status: 'todo',
+  },
+  {
     id: 'route-admin-assignments',
     kind: 'route',
     mockupSource: 'src/pages/admin-org.js · assignments',

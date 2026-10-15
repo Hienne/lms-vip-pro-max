@@ -2,7 +2,7 @@ import { Route, Routes } from '@angular/router';
 import type { AppConfig } from './core/config/app-config';
 import { authGuard } from './core/routing/auth.guard';
 import { unsavedChangesGuard } from './core/routing/unsaved-changes.guard';
-import { roleGuard } from './core/routing/role.guard';
+import { menuGuard } from './core/routing/menu.guard';
 import {
   HOME_META,
   metaOf,
@@ -39,7 +39,7 @@ function toRoute(def: RouteDef): Route {
     pathMatch: 'full',
     title: def.title,
     data: routeData(metaOf(def)),
-    canMatch: def.public ? [] : [authGuard, roleGuard],
+    canMatch: def.public ? [] : [authGuard, menuGuard],
     canActivate: def.guestOnly ? [guestGuard] : [],
     canDeactivate: [unsavedChangesGuard],
     loadComponent: SCREENS[def.path] ?? placeholder,
@@ -47,14 +47,14 @@ function toRoute(def: RouteDef): Route {
 }
 
 /**
- * The app's routes: the mockup's route table, each route carrying `data.roles` and `data.layout`.
+ * The app's routes: the mockup's route table, each route carrying `data.menu` and `data.layout`.
  * `devTools` registers the internal routes (the migration progress board); the production build
  * replaces `DEV_FEATURES` with an empty one, so it does not even contain them.
  */
 export function createAppRoutes(config: Pick<AppConfig, 'devTools'>): Routes {
   return [
     {
-      // Redirects by returning a UrlTree: the role home, or the login page for a visitor.
+      // Redirects by returning a UrlTree: the home path of the role, or the login page for a visitor.
       path: '',
       pathMatch: 'full',
       data: routeData(HOME_META),

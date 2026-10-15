@@ -4,7 +4,6 @@ import {
   AccountStatusSchema,
   CourseStatusSchema,
   PublishStatusSchema,
-  RoleSchema,
 } from '@lms/contracts';
 import {
   Badge,
@@ -74,5 +73,11 @@ export class StatusSection {
   protected readonly courseStatuses = CourseStatusSchema.options;
   protected readonly publishStatuses = PublishStatusSchema.options;
   protected readonly accountStatuses = AccountStatusSchema.options;
-  protected readonly roles = RoleSchema.options;
+  protected readonly roles = [
+    { roleId: 'learner', name: 'Học viên' },
+    { roleId: 'instructor', name: 'Giảng viên' },
+    { roleId: 'admin', name: 'Quản trị viên' },
+    { roleId: 'viewer', name: 'Lãnh đạo' },
+    { roleId: 'content-lead', name: 'Vai trò tùy chỉnh' },
+  ] as const;
 }

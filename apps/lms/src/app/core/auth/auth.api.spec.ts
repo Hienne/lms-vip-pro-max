@@ -58,8 +58,8 @@ describe('AuthApi', () => {
     const out = result(api.loginDemo('a1'));
     const req = backend.expectOne('/api/auth/demo-accounts/a1/login');
     expect(req.request.method).toBe('POST');
-    req.flush({ id: 'a1', role: 'admin' });
-    expect(out.value).toEqual({ id: 'a1', role: 'admin' });
+    req.flush({ id: 'a1', roleId: 'admin' });
+    expect(out.value).toEqual({ id: 'a1', roleId: 'admin' });
   });
 
   it('logout posts and returns true', () => {

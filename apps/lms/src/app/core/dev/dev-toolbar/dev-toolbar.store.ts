@@ -17,12 +17,12 @@ import { filter, take } from 'rxjs';
 import { AuthApi } from '../../auth/auth.api';
 import { NetworkStore } from '../../network/network.store';
 import { SessionStore } from '../../session/session.store';
-import { roleLabel } from '../../../shared/status/role-badge';
+import { isUnitAdmin, roleText } from '../../../shared/status/role-badge';
 import { MockScenario } from '../mock-scenario';
 
 /** The `@lms/mocks` example that stands for a demo account (a unit admin has its own). */
 export const exampleOf = (account: DemoAccount): string =>
-  account.adminScope ? 'unit-admin' : account.role;
+  isUnitAdmin(account) ? 'unit-admin' : account.roleId;
 
 /**
  * What the dev toolbar does, replacing the mockup's "Demo" menu: switch the signed-in role,
@@ -71,9 +71,7 @@ export class DevToolbarStore {
         takeUntilDestroyed(this.destroyRef),
       )
       .subscribe(() => {
-        const label =
-          roleLabel(account.role) + (account.adminScope ? ' đơn vị' : '');
-        this.toaster.info(`Đã chuyển sang ${label}`, account.email);
+        this.toaster.info(`Đã chuyển sang ${roleText(account)}`, account.email);
         void this.router.navigateByUrl('/');
       });
   }

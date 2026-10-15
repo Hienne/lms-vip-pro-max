@@ -1,6 +1,6 @@
 import { computed, inject, Injectable, signal } from '@angular/core';
 import { rxResource, toObservable } from '@angular/core/rxjs-interop';
-import type { LoginCommand, Permission, Profile, Role } from '@lms/contracts';
+import type { LoginCommand, MenuKey, Profile } from '@lms/contracts';
 import {
   catchError,
   filter,
@@ -19,11 +19,11 @@ type SignInRequest =
   | { readonly kind: 'password'; readonly command: LoginCommand }
   | { readonly kind: 'demo'; readonly userId: string };
 
-const NO_PERMISSIONS: readonly Permission[] = [];
+const NO_MENUS: readonly MenuKey[] = [];
 
 /**
- * Who is signed in. The profile from `AuthApi.profile()` is the only source of role and
- * permissions. The server keeps the session (a cookie today); how a token is stored, attached and
+ * Who is signed in. The profile from `AuthApi.profile()` is the only source of the role and
+ * the menus it grants. The server keeps the session (a cookie today); how a token is stored, attached and
  * refreshed is a separate spec that plugs in behind `signIn`, `signInDemo` and `signOut`.
  * Provided once for the whole app (`provideSession()`), not per component.
  */
@@ -92,10 +92,11 @@ export class SessionStore {
   readonly user$ = computed<Profile | null>(() =>
     this.profileResource.hasValue() ? this.profileResource.value() : null,
   );
-  readonly role$ = computed<Role | null>(() => this.user$()?.role ?? null);
-  readonly perms$ = computed<readonly Permission[]>(
-    () => this.user$()?.perms ?? NO_PERMISSIONS,
+  readonly menus$ = computed<readonly MenuKey[]>(
+    () => this.user$()?.menus ?? NO_MENUS,
   );
+  /** Where `/` and the login page send the signed-in user; `null` for a visitor. */
+  readonly homePath$ = computed(() => this.user$()?.homePath ?? null);
   readonly isSignedIn$ = computed(() => this.user$() !== null);
 
   readonly loadError$ = computed<AppError | undefined>(() =>

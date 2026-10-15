@@ -1,6 +1,6 @@
 import { Component, computed, inject } from '@angular/core';
 import { Menu, type MenuEntry } from '@lms/ui';
-import { roleLabel } from '../../../shared/status/role-badge';
+import { roleText } from '../../../shared/status/role-badge';
 import { DevToolbarStore } from './dev-toolbar.store';
 
 type Choice =
@@ -44,7 +44,7 @@ export class DevToolbar {
       (account): MenuEntry<Choice> => ({
         kind: 'item',
         value: `role:${account.id}`,
-        label: `${roleLabel(account.role)}${account.adminScope ? ' đơn vị' : ''} — ${account.name}`,
+        label: `${roleText(account)} — ${account.name}`,
         icon: 'user',
         disabled: account.id === this.store.currentId$(),
       }),

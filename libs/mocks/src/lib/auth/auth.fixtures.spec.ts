@@ -38,9 +38,14 @@ describe('auth fixtures', () => {
     expect(endpointExamples['profile']?.roles?.[name]).toBe(profile);
   });
 
-  it('admin has system permissions, learner only learns', () => {
-    expect(profileFixtures['admin']?.perms).toContain('system.manage');
-    expect(profileFixtures['learner']?.perms).toEqual(['learn']);
+  it('profiles carry the role name, its menus and a home path', () => {
+    expect(profileFixtures['admin']).toMatchObject({
+      roleName: 'Quản trị viên',
+      homePath: '/admin',
+    });
+    expect(profileFixtures['admin']?.menus).toContain('admin.roles');
+    expect(profileFixtures['learner']?.menus).not.toContain('admin.users');
+    expect(profileFixtures['viewer']?.menus).toEqual(['reports']);
   });
 
   it('every declared auth error status has a mockup message example', () => {

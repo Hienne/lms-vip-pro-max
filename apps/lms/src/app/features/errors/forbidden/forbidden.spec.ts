@@ -3,7 +3,7 @@ import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { provideRouter, Router } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
-import type { Role } from '@lms/contracts';
+import type { MenuKey } from '@lms/contracts';
 import { createAppRoutes } from '../../../app.routes';
 import {
   parseAppConfig,
@@ -13,11 +13,11 @@ import { testAppConfig } from '../../../core/config/app-config.testing';
 import { SessionStore } from '../../../core/session/session.store';
 
 describe('403 page', () => {
-  const role = signal<Role | null>('learner');
+  const menus = signal<readonly MenuKey[]>(['learn.home']);
   let harness: RouterTestingHarness;
 
   beforeEach(async () => {
-    role.set('learner');
+    menus.set(['learn.home']);
     TestBed.configureTestingModule({
       providers: [
         provideAppConfig(parseAppConfig(testAppConfig())),
@@ -25,9 +25,8 @@ describe('403 page', () => {
         {
           provide: SessionStore,
           useValue: {
-            role$: role,
-            isSignedIn$: () => role() !== null,
-            perms$: signal([]),
+            menus$: menus,
+            isSignedIn$: () => true,
             whenReady: () => Promise.resolve(),
           },
         },
@@ -39,27 +38,27 @@ describe('403 page', () => {
   const page = () => harness.routeNativeElement as HTMLElement;
   const text = () => page().textContent?.replace(/\s+/g, ' ') ?? '';
 
-  it('names the page and the roles that may enter after a wrong-role visit', async () => {
+  it('names the page and the menu that grants it after a visit without the menu', async () => {
     await harness.navigateByUrl('/admin/users');
     expect(TestBed.inject(Router).url).toBe('/403');
     expect(page().querySelector('h1')?.textContent).toContain(
       'Bạn không có quyền truy cập trang này',
     );
     expect(text()).toContain(
-      'Trang "/admin/users" dành cho vai trò: Quản trị viên. Nếu cần quyền, hãy liên hệ quản trị viên đơn vị.',
+      'Trang "/admin/users" thuộc menu "Người dùng", vai trò của bạn chưa được cấp. Nếu cần quyền, hãy liên hệ quản trị viên đơn vị.',
     );
     expect(text()).toContain('Mã lỗi 403');
   });
 
-  it('lists every allowed role in the mockup order', async () => {
-    await harness.navigateByUrl('/admin/courses');
-    expect(text()).toContain('dành cho vai trò: Quản trị viên, Giảng viên.');
+  it('names the menu of a sub-route', async () => {
+    await harness.navigateByUrl('/admin/courses/new');
+    expect(text()).toContain('thuộc menu "Khóa học"');
   });
 
   it('falls back to the generic reason without navigation state', async () => {
     await harness.navigateByUrl('/403');
     expect(text()).toContain(
-      'Chức năng này không thuộc vai trò của bạn. Nếu cần quyền',
+      'Vai trò của bạn không có quyền vào chức năng này. Nếu cần quyền',
     );
   });
 

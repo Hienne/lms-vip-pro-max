@@ -35,7 +35,7 @@ export const authEndpoints = {
   profile: defineEndpoint({
     method: 'get',
     path: '/api/auth/profile',
-    summary: 'The signed-in user with unit, group, permissions and scope',
+    summary: 'The signed-in user with unit, group, role, menus and scope',
     response: ProfileSchema,
     errors: [401],
   }),
