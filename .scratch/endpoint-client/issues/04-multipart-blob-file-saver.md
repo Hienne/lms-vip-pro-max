@@ -4,9 +4,9 @@
 
 **Blocked by:** 01 (client tracer)
 
-**Status:** open
+**Status:** done
 
-- [ ] `endpoint-client.spec.ts` covers multipart (flat values, arrays, skipped nulls, nested object throws, no manual `Content-Type`) and blob (request type, `Blob` result, mismatch reported), with endpoints declared inside the spec
-- [ ] Type test: `responseType: 'blob'` with a non-Blob response schema does not compile
-- [ ] `file-saver.spec.ts` with a stub `DOCUMENT`: object URL created, link clicked with the given name, URL revoked
-- [ ] `npm run check` green
+- [x] `endpoint-client.spec.ts` covers multipart (flat values, arrays, skipped nulls, nested object throws, no manual `Content-Type`) and blob (request type, `Blob` result, mismatch reported), with endpoints declared inside the spec
+- [x] Type test: `responseType: 'blob'` with a non-Blob response schema does not compile
+- [x] `file-saver.spec.ts` with a stub `DOCUMENT`: object URL created, link clicked with the given name, URL revoked
+- [x] `npm run check` green

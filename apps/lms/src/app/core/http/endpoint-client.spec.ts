@@ -42,6 +42,28 @@ const ping = defineEndpoint({
   response: z.literal(true),
 });
 
+const upload = defineEndpoint({
+  method: 'post',
+  path: '/api/files',
+  encoding: 'multipart',
+  body: z.object({
+    title: z.string(),
+    file: z.file(),
+    tags: z.array(z.string()).optional(),
+    size: z.number().optional(),
+    public: z.boolean().optional(),
+    note: z.string().nullable().optional(),
+  }),
+  response: z.object({ id: z.string() }),
+});
+
+const exportAll = defineEndpoint({
+  method: 'get',
+  path: '/api/export',
+  responseType: 'blob',
+  response: z.instanceof(Blob).refine((blob) => blob.type === 'text/csv'),
+});
+
 describe('EndpointClient', () => {
   let backend: HttpTestingController;
   let client: EndpointClient;
@@ -123,6 +145,77 @@ describe('EndpointClient', () => {
     const req = backend.expectOne('/api/ping');
     expect(req.request.context.get(ENDPOINT)).toBe(ping);
     req.flush(true);
+  });
+
+  describe('multipart', () => {
+    const file = new File(['abc'], 'a.txt', { type: 'text/plain' });
+
+    it('sends a flat typed body as FormData without setting Content-Type', () => {
+      client
+        .call(upload, {
+          body: {
+            title: 'T',
+            file,
+            tags: ['a', 'b'],
+            size: 3,
+            public: true,
+            note: null,
+          },
+        })
+        .subscribe();
+      const req = backend.expectOne('/api/files');
+      const form = req.request.body as FormData;
+      expect(form).toBeInstanceOf(FormData);
+      expect(form.get('title')).toBe('T');
+      expect(form.get('file')).toBeInstanceOf(File);
+      expect(form.getAll('tags')).toEqual(['a', 'b']);
+      expect(form.get('size')).toBe('3');
+      expect(form.get('public')).toBe('true');
+      expect(form.has('note')).toBe(false);
+      expect(req.request.headers.has('Content-Type')).toBe(false);
+      req.flush({ id: 'f1' });
+    });
+
+    it('throws on a nested object instead of guessing an encoding', () => {
+      expect(() =>
+        client.call(upload, {
+          body: { title: 'T', file, tags: [{ x: 1 }] as unknown as string[] },
+        }),
+      ).toThrow(/tags/);
+    });
+  });
+
+  describe('blob', () => {
+    it('requests a blob and returns it', () => {
+      let result: Blob | undefined;
+      client.call(exportAll).subscribe((blob) => (result = blob));
+      const req = backend.expectOne('/api/export');
+      expect(req.request.responseType).toBe('blob');
+      req.flush(new Blob(['a,b'], { type: 'text/csv' }));
+      expect(result).toBeInstanceOf(Blob);
+    });
+
+    it('still parses the blob: a mismatch is reported and errors the stream', () => {
+      let error: unknown;
+      client.call(exportAll).subscribe({ error: (e: unknown) => (error = e) });
+      backend
+        .expectOne('/api/export')
+        .flush(new Blob(['x'], { type: 'text/plain' }));
+      expect(error).toBeInstanceOf(ContractError);
+      expect(handled).toEqual([error]);
+    });
+
+    it('does not compile with a non-Blob response schema', () => {
+      const never = () =>
+        defineEndpoint({
+          method: 'get',
+          path: '/api/bad',
+          responseType: 'blob',
+          // @ts-expect-error a blob endpoint must declare a Blob response schema
+          response: z.string(),
+        });
+      expect(never).toBeTypeOf('function');
+    });
   });
 
   it('requires params and forbids a body on a GET at type level', () => {
