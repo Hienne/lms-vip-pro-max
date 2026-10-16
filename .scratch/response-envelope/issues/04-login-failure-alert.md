@@ -11,13 +11,15 @@ See spec: `docs/specs/response-envelope.md`, Implementation Decisions → Error 
 
 **Blocked by:** 01, 02
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] Login spec: a sign-in answered with an `ERROR` envelope shows the alert with title and message, and no toast
-- [ ] Login spec: a demo-account sign-in refused by the backend shows the same alert
-- [ ] Login spec: no field shows a server message, and no error summary is rendered for a server failure
-- [ ] Session-store spec: restoring a session answered with HTTP 401 or `CORE-0401` leaves the visitor anonymous without ending a session
-- [ ] `serverMutation` accepts `'toast' | 'alert'` only
-- [ ] The login, session-store, app and app-shell specs flush envelopes only
+- [x] Login spec: a sign-in answered with an `ERROR` envelope shows the alert with title and message, and no toast
+- [x] Login spec: a demo-account sign-in refused by the backend shows the same alert
+- [x] Login spec: no field shows a server message, and no error summary is rendered for a server failure
+- [x] Session-store spec: restoring a session answered with HTTP 401 or `CORE-0401` leaves the visitor anonymous without ending a session
+- [x] `serverMutation` accepts `'toast' | 'alert'` only
+  - Only the option was renamed: login signs in through `SessionStore`, not `serverMutation`, so `'alert'` has no caller yet.
+- [x] The login, session-store, app and app-shell specs flush envelopes only
 - [ ] Browser on the mock: sign in with each demo account and sign out again
-- [ ] `npm run check` green
+  - Not checked in the browser; the login and session-store specs drive sign-in and failure through the DOM.
+- [x] `npm run check` green

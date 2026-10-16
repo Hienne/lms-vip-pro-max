@@ -148,10 +148,10 @@ describe('serverMutation', () => {
     );
   });
 
-  it('with errors "inline" exposes the error and shows no toast', async () => {
+  it('with errors "alert" exposes the error and shows no toast', async () => {
     const { calls, run } = sources();
     const mutation = TestBed.runInInjectionContext(() =>
-      serverMutation(run, { errors: 'inline', success: () => 'ok' }),
+      serverMutation(run, { errors: 'alert', success: () => 'ok' }),
     );
 
     mutation.run('a');
@@ -176,7 +176,7 @@ describe('serverMutation', () => {
   it('calls the server again when the same input is resubmitted', async () => {
     const { calls, run } = sources();
     const mutation = TestBed.runInInjectionContext(() =>
-      serverMutation(run, { errors: 'inline', success: () => 'ok' }),
+      serverMutation(run, { errors: 'alert', success: () => 'ok' }),
     );
 
     mutation.run('same');
@@ -192,7 +192,7 @@ describe('serverMutation', () => {
   it('reset() clears the error', async () => {
     const { calls, run } = sources();
     const mutation = TestBed.runInInjectionContext(() =>
-      serverMutation(run, { errors: 'inline', success: () => 'ok' }),
+      serverMutation(run, { errors: 'alert', success: () => 'ok' }),
     );
     mutation.run('a');
     await settle();

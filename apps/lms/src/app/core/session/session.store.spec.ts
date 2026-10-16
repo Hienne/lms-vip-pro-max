@@ -1,18 +1,14 @@
-import { provideHttpClient } from '@angular/common/http';
-import {
-  HttpTestingController,
-  provideHttpClientTesting,
-} from '@angular/common/http/testing';
+import { HttpTestingController } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
-import {
-  loginDemoLocked,
-  loginInvalid,
-  loginLocked,
-  loginUnauthorized,
-  profileFixtures,
-  profileUnauthorized,
-} from '@lms/mocks';
+import { envelopeError, envelopeOk, profileFixtures } from '@lms/mocks';
+import { provideEnvelopeHttpClient } from '../http/http.testing';
 import { SessionStore } from './session.store';
+
+const anonymous = envelopeError(
+  'CORE-0401',
+  'Cần đăng nhập',
+  'Token không hợp lệ.',
+);
 
 describe('SessionStore', () => {
   let store: SessionStore;
@@ -20,11 +16,7 @@ describe('SessionStore', () => {
 
   beforeEach(() => {
     TestBed.configureTestingModule({
-      providers: [
-        provideHttpClient(),
-        provideHttpClientTesting(),
-        SessionStore,
-      ],
+      providers: [provideEnvelopeHttpClient(), SessionStore],
     });
     store = TestBed.inject(SessionStore);
     backend = TestBed.inject(HttpTestingController);
@@ -40,7 +32,9 @@ describe('SessionStore', () => {
   async function restoreAs(profile: keyof typeof profileFixtures) {
     store.restore();
     await settle();
-    backend.expectOne('/api/auth/profile').flush(profileFixtures[profile]);
+    backend
+      .expectOne('/api/auth/profile')
+      .flush(envelopeOk(profileFixtures[profile]));
     await settle();
   }
 
@@ -51,7 +45,9 @@ describe('SessionStore', () => {
     expect(store.status$()).toBe('loading');
     expect(store.isSignedIn$()).toBe(false);
 
-    backend.expectOne('/api/auth/profile').flush(profileFixtures['admin']);
+    backend
+      .expectOne('/api/auth/profile')
+      .flush(envelopeOk(profileFixtures['admin']));
     await settle();
 
     expect(store.status$()).toBe('ready');
@@ -68,20 +64,29 @@ describe('SessionStore', () => {
     expect(store.menus$()).toEqual(['reports']);
   });
 
-  it('treats a 401 on restore as anonymous, not as an error', async () => {
-    store.restore();
-    await settle();
-    backend
-      .expectOne('/api/auth/profile')
-      .flush(profileUnauthorized, { status: 401, statusText: 'Unauthorized' });
-    await settle();
+  it.each([
+    ['an HTTP 401', 'http'],
+    ['a CORE-0401 envelope', 'envelope'],
+  ] as const)(
+    'treats %s on restore as anonymous, not as an error',
+    async (_name, how) => {
+      store.restore();
+      await settle();
+      const request = backend.expectOne('/api/auth/profile');
+      if (how === 'http') {
+        request.flush({}, { status: 401, statusText: 'Unauthorized' });
+      } else {
+        request.flush(anonymous);
+      }
+      await settle();
 
-    expect(store.status$()).toBe('ready');
-    expect(store.isSignedIn$()).toBe(false);
-    expect(store.homePath$()).toBeNull();
-    expect(store.menus$()).toEqual([]);
-    expect(store.loadError$()).toBeUndefined();
-  });
+      expect(store.status$()).toBe('ready');
+      expect(store.isSignedIn$()).toBe(false);
+      expect(store.homePath$()).toBeNull();
+      expect(store.menus$()).toEqual([]);
+      expect(store.loadError$()).toBeUndefined();
+    },
+  );
 
   it('reports any other restore failure and retries on the next restore', async () => {
     store.restore();
@@ -97,7 +102,9 @@ describe('SessionStore', () => {
     store.restore();
     await settle();
     expect(store.status$()).toBe('loading');
-    backend.expectOne('/api/auth/profile').flush(profileFixtures['learner']);
+    backend
+      .expectOne('/api/auth/profile')
+      .flush(envelopeOk(profileFixtures['learner']));
     await settle();
     expect(store.status$()).toBe('ready');
     expect(store.user$()?.roleId).toBe('learner');
@@ -114,9 +121,11 @@ describe('SessionStore', () => {
       email: 'quanly@demo.cb',
       password: 'abc123',
     });
-    login.flush({ id: 'a1', roleId: 'admin' });
+    login.flush(envelopeOk({ id: 'a1', roleId: 'admin' }));
     await settle();
-    backend.expectOne('/api/auth/profile').flush(profileFixtures['admin']);
+    backend
+      .expectOne('/api/auth/profile')
+      .flush(envelopeOk(profileFixtures['admin']));
     await settle();
 
     expect(store.isSigningIn$()).toBe(false);
@@ -124,38 +133,31 @@ describe('SessionStore', () => {
     expect(store.signInError$()).toBeUndefined();
   });
 
-  it('exposes the sign-in failure and stays as before', async () => {
+  it('exposes a refused sign-in with the backend title and message, and stays anonymous', async () => {
     store.restore();
     await settle();
-    backend
-      .expectOne('/api/auth/profile')
-      .flush(profileUnauthorized, { status: 401, statusText: 'Unauthorized' });
+    backend.expectOne('/api/auth/profile').flush(anonymous);
     await settle();
 
     store.signIn({ email: 'x@demo.cb', password: 'bad' });
     await settle();
     backend
       .expectOne('/api/auth/login')
-      .flush(loginUnauthorized, { status: 401, statusText: 'Unauthorized' });
+      .flush(
+        envelopeError(
+          'CORE-0402',
+          'Đăng nhập thất bại',
+          'Email hoặc mật khẩu không đúng.',
+        ),
+      );
     await settle();
 
-    expect(store.signInError$()?.kind).toBe('unauthorized');
-    expect(store.signInError$()?.message).toBe(loginUnauthorized.message);
+    expect(store.signInError$()).toMatchObject({
+      kind: 'server',
+      title: 'Đăng nhập thất bại',
+      message: 'Email hoặc mật khẩu không đúng.',
+    });
     expect(store.isSignedIn$()).toBe(false);
-  });
-
-  it.each([
-    [422, loginInvalid, 'invalid'],
-    [423, loginLocked, 'locked'],
-  ] as const)('maps a %s sign-in failure to %s', async (status, body, kind) => {
-    await restoreAs('learner');
-    store.signIn({ email: 'a', password: 'b' });
-    await settle();
-    backend
-      .expectOne('/api/auth/login')
-      .flush(body, { status, statusText: 'Error' });
-    await settle();
-    expect(store.signInError$()?.kind).toBe(kind);
   });
 
   it('signs in as a demo account, then loads the profile', async () => {
@@ -164,9 +166,11 @@ describe('SessionStore', () => {
     await settle();
     const login = backend.expectOne('/api/auth/demo-accounts/a1/login');
     expect(login.request.method).toBe('POST');
-    login.flush({ id: 'a1', roleId: 'admin' });
+    login.flush(envelopeOk({ id: 'a1', roleId: 'admin' }));
     await settle();
-    backend.expectOne('/api/auth/profile').flush(profileFixtures['admin']);
+    backend
+      .expectOne('/api/auth/profile')
+      .flush(envelopeOk(profileFixtures['admin']));
     await settle();
     expect(store.user$()?.roleId).toBe('admin');
   });
@@ -177,9 +181,18 @@ describe('SessionStore', () => {
     await settle();
     backend
       .expectOne('/api/auth/demo-accounts/l7/login')
-      .flush(loginDemoLocked, { status: 423, statusText: 'Locked' });
+      .flush(
+        envelopeError(
+          'CORE-0423',
+          'Tài khoản bị khóa',
+          'Tài khoản đã bị khóa.',
+        ),
+      );
     await settle();
-    expect(store.signInError$()?.kind).toBe('locked');
+    expect(store.signInError$()).toMatchObject({
+      kind: 'server',
+      message: 'Tài khoản đã bị khóa.',
+    });
   });
 
   it('signs out and becomes anonymous, even when the server call fails', async () => {
@@ -210,7 +223,9 @@ describe('SessionStore', () => {
 
     store.restore();
     await settle();
-    backend.expectOne('/api/auth/profile').flush(profileFixtures['admin']);
+    backend
+      .expectOne('/api/auth/profile')
+      .flush(envelopeOk(profileFixtures['admin']));
     await settle();
     await waiting;
     expect(ready).toBe(true);
@@ -222,7 +237,9 @@ describe('SessionStore', () => {
     store.restore();
     await settle();
     expect(settled).toBe(false);
-    backend.expectOne('/api/auth/profile').flush(profileFixtures['admin']);
+    backend
+      .expectOne('/api/auth/profile')
+      .flush(envelopeOk(profileFixtures['admin']));
     await settle();
     await waiting;
     expect(settled).toBe(true);

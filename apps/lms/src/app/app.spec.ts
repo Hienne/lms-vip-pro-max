@@ -1,16 +1,13 @@
-import { provideHttpClient } from '@angular/common/http';
-import {
-  HttpTestingController,
-  provideHttpClientTesting,
-} from '@angular/common/http/testing';
+import { HttpTestingController } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 import { provideRouter, Router } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
-import { profileFixtures, profileUnauthorized } from '@lms/mocks';
+import { envelopeError, envelopeOk, profileFixtures } from '@lms/mocks';
 import { App } from './app';
 import { createAppRoutes } from './app.routes';
 import { provideAppConfig, parseAppConfig } from './core/config/app-config';
 import { testAppConfig } from './core/config/app-config.testing';
+import { provideEnvelopeHttpClient } from './core/http/http.testing';
 import { provideSession } from './core/session/session.provider';
 
 describe('App boot', () => {
@@ -19,8 +16,7 @@ describe('App boot', () => {
   beforeEach(() => {
     TestBed.configureTestingModule({
       providers: [
-        provideHttpClient(),
-        provideHttpClientTesting(),
+        provideEnvelopeHttpClient(),
         provideAppConfig(parseAppConfig(testAppConfig())),
         provideRouter(createAppRoutes({ devTools: true })),
         provideSession(),
@@ -33,12 +29,12 @@ describe('App boot', () => {
     backend
       .match('/api/me/nav-counts')
       .filter((r) => !r.cancelled)
-      .forEach((r) => r.flush({ notifications: 0, inbox: 0 }));
+      .forEach((r) => r.flush(envelopeOk({ notifications: 0, inbox: 0 })));
     // The login page, where an anonymous visitor lands, offers the demo accounts.
     backend
       .match('/api/auth/demo-accounts')
       .filter((r) => !r.cancelled)
-      .forEach((r) => r.flush([]));
+      .forEach((r) => r.flush(envelopeOk([])));
     backend.verify();
   });
 
@@ -63,7 +59,9 @@ describe('App boot', () => {
     expect(el.querySelector('[role="status"]')).not.toBeNull();
     expect(el.querySelector('router-outlet')).toBeNull();
 
-    backend.expectOne('/api/auth/profile').flush(profileFixtures['learner']);
+    backend
+      .expectOne('/api/auth/profile')
+      .flush(envelopeOk(profileFixtures['learner']));
     await tick();
     await appRendered(el);
     expect(el.querySelector('[role="status"]')).toBeNull();
@@ -84,7 +82,9 @@ describe('App boot', () => {
 
     el.querySelector<HTMLButtonElement>('button')?.click();
     await tick();
-    backend.expectOne('/api/auth/profile').flush(profileFixtures['learner']);
+    backend
+      .expectOne('/api/auth/profile')
+      .flush(envelopeOk(profileFixtures['learner']));
     await tick();
     await appRendered(el);
   });
@@ -99,7 +99,9 @@ describe('App boot', () => {
     TestBed.createComponent(App);
     const navigating = harness.navigateByUrl('/');
     await tick();
-    backend.expectOne('/api/auth/profile').flush(profileFixtures[role]);
+    backend
+      .expectOne('/api/auth/profile')
+      .flush(envelopeOk(profileFixtures[role]));
     await tick();
     await navigating;
     expect(TestBed.inject(Router).url).toBe(home);
@@ -112,7 +114,9 @@ describe('App boot', () => {
     await tick();
     backend
       .expectOne('/api/auth/profile')
-      .flush(profileUnauthorized, { status: 401, statusText: 'Unauthorized' });
+      .flush(
+        envelopeError('CORE-0401', 'Cần đăng nhập', 'Token không hợp lệ.'),
+      );
     await tick();
     await navigating;
     expect(TestBed.inject(Router).url).toBe('/login');

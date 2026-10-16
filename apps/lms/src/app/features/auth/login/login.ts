@@ -1,4 +1,4 @@
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, inject, signal } from '@angular/core';
 import {
   form,
   FormField,
@@ -11,8 +11,6 @@ import {
   Alert,
   Avatar,
   Button,
-  ErrorSummary,
-  type ErrorSummaryItem,
   Field,
   Icon,
   type IconName,
@@ -24,9 +22,8 @@ import {
 import { roleText } from '../../../shared/status/role-badge';
 import { LoginStore } from './data-access/login.store';
 
-const EMAIL_ID = 'login-email';
-const PASSWORD_ID = 'login-password';
-const SUMMARY_HEADING = 'Không đăng nhập được';
+/** The alert's heading when the backend sent no title for the failure. */
+const FAILURE_HEADING = 'Không đăng nhập được';
 
 /** The locked demo user of the seed, for the "try a locked account" shortcut. */
 const LOCKED_EMAIL = 'long.pd@demo.cb';
@@ -44,11 +41,6 @@ const BRAND_POINTS: readonly { icon: IconName; text: string }[] = [
   { icon: 'target', text: 'Theo dõi năng lực theo từng nhóm kiến thức' },
 ];
 
-interface Summary {
-  readonly heading: string;
-  readonly items: readonly ErrorSummaryItem[];
-}
-
 /** The sign-in page (the mockup's `login`), on the bare layout. */
 @Component({
   selector: 'app-login',
@@ -56,7 +48,6 @@ interface Summary {
     Alert,
     Avatar,
     Button,
-    ErrorSummary,
     Field,
     FormField,
     Icon,
@@ -74,57 +65,12 @@ export class Login {
   protected readonly store = inject(LoginStore);
 
   protected readonly brandPoints = BRAND_POINTS;
-  protected readonly emailId = EMAIL_ID;
-  protected readonly passwordId = PASSWORD_ID;
+  protected readonly failureHeading = FAILURE_HEADING;
   protected readonly showPassword = signal(false);
 
   private readonly model = signal<LoginCommand>({ email: '', password: '' });
   protected readonly loginForm = form(this.model, (path) => {
     validateStandardSchema(path, LoginCommandSchema);
-  });
-
-  /** Messages for the two fields, from what the server answered to the form. */
-  protected readonly fieldErrors = computed(() => {
-    const error = this.store.error$();
-    if (!error || this.store.source$() !== 'form') return NO_FIELD_ERRORS;
-    if (error.kind === 'invalid') {
-      const { email, password } = error.details ?? {};
-      return {
-        email: email ? [email] : [],
-        password: password ? [password] : [],
-      };
-    }
-    if (error.kind === 'unauthorized' || error.kind === 'locked') {
-      return { email: [], password: [error.message] };
-    }
-    return NO_FIELD_ERRORS;
-  });
-
-  protected readonly summary = computed<Summary | null>(() => {
-    const error = this.store.error$();
-    if (!error) return null;
-    const fields = this.fieldErrors();
-    if (error.kind === 'invalid' && this.store.source$() === 'form') {
-      return {
-        heading: error.message,
-        items: [
-          ...fields.email.map((message) => ({ controlId: EMAIL_ID, message })),
-          ...fields.password.map((message) => ({
-            controlId: PASSWORD_ID,
-            message,
-          })),
-        ],
-      };
-    }
-    return {
-      heading: SUMMARY_HEADING,
-      items: [
-        {
-          controlId: fields.password.length ? PASSWORD_ID : EMAIL_ID,
-          message: error.message,
-        },
-      ],
-    };
   });
 
   protected accountRole(account: Parameters<typeof roleText>[0]): string {
@@ -149,8 +95,3 @@ export class Login {
     });
   }
 }
-
-const NO_FIELD_ERRORS: {
-  readonly email: readonly string[];
-  readonly password: readonly string[];
-} = { email: [], password: [] };
