@@ -7,7 +7,7 @@ import type { Profile } from '@lms/contracts';
 
 /**
  * The profile forms: the contract's command schemas with the mockup's Vietnamese messages. Only
- * shape rules live here; password strength is a server rule and arrives as a 422 with field details.
+ * shape rules live here; password strength is a server rule and arrives as a refusal toast.
  */
 export const ProfileFormSchema = UpdateProfileCommandSchema.extend({
   name: UpdateProfileCommandSchema.shape.name

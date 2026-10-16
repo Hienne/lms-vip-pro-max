@@ -49,10 +49,9 @@ export const courseEndpoints = {
   `submitAttempt`, `saveProgress`); each `*.endpoints.ts` header names the
   mockup file, so every Angular call traces back to the function that specifies
   it. What an endpoint does goes in a `/** */` comment on its key.
-- `defineEndpoint`, `toUrl(endpoint, params)` and `ApiErrorSchema` live in
-  `libs/contracts/src/lib/http/`. `ApiErrorSchema` (`{ message, details? }`) is
-  **provisional**: it mirrors the mockup's `ApiError` until the backend
-  publishes its error schema.
+- `defineEndpoint`, `toUrl(endpoint, params)` and the response envelope
+  (`EnvelopeSchema`, `UNAUTHENTICATED_CODE`, `MESSAGE_CODE_KIND`) live in
+  `libs/contracts/src/lib/http/`.
 - `defineEndpoint` accepts `params`, `query` and `body` as optional; `toUrl`
   requires the params argument only when the endpoint declares `params`, and
   throws on a missing path segment.
@@ -97,15 +96,14 @@ File | Blob` or an array of those. Arrays repeat the key, numbers and booleans
 - `apps/lms/src/app/core/errors/app-error.ts` exports `toAppError(unknown): AppError`,
   the one place that maps `ApiError` (an `ERROR` envelope), `HttpErrorResponse`,
   `ContractError` and offline status 0 to `AppError`
-  (`offline | unauthorized | forbidden | not-found | invalid | locked | server | contract | unknown`;
-  status 0 is `offline`, 423 is `locked` for blocked or suspended accounts).
-  `AppError` is `{ kind, message, title?, messageCode?, details? }`. From an `ApiError` the
+  (`offline | unauthorized | server | contract | unknown`; status 0 is `offline`, status 401 is
+  `unauthorized`, any other HTTP status is `unknown` with the default message: the body of an
+  `HttpErrorResponse` is never read).
+  `AppError` is `{ kind, message, title?, messageCode? }`. From an `ApiError` the
   `message` and `title` are the backend's, verbatim (the Vietnamese default replaces only a
   missing `message`; a missing `title` stays absent), `messageCode` is kept, and the kind is
-  `server` unless the code is in `MESSAGE_CODE_KIND`. From an `HttpErrorResponse` the message
-  is the body's `ApiErrorSchema.message` when it parses, else the default; `details` (field to
-  message) is kept on `invalid` only. The old status-based kinds stay until the contract step
-  of the envelope work removes them.
+  `server` unless the code is in `MESSAGE_CODE_KIND`. A new kind is added only when a screen
+  must behave differently for a backend code, together with that code's entry in the table.
   `serverData` and `serverMutation` expose their error as an `AppError`; components render it with retry.
 - **Expired session.** `sessionExpiryInterceptor` (`core/http/`, first in the chain,
   all environments) treats a 401, or an `ApiError` with `CORE-0401`, from any endpoint except `authEndpoints.profile`,
@@ -174,8 +172,12 @@ with `/api/` and never contain a host.
   still describe the data.
 - `endpointExamples` (`lib/examples.ts`) lists, per endpoint key, a `default`
   success body, optional `roles` bodies (`learner`, `admin`, ...) and optional
-  `errors` (the mockup's specific `ApiError` bodies, such as `loginLocked` or
-  `saveUserInvalid` with field `details`). `MOCK_FIXTURES` is the same data
+  `errors`: `ERROR` envelopes keyed by scenario name (`wrongCredentials`,
+  `sessionExpired`, `rejected`…), never by HTTP status. The session-expired one carries the real
+  `CORE-0401`; every other uses the placeholder `MOCK_REFUSAL_CODE` (`lib/error-envelopes.ts`),
+  which is mock-only and unconfirmed with the backend. Messages are the mockup's; titles are
+  placeholders, and field hints the mockup sent as `details` are dropped (the forms validate
+  shape themselves). `MOCK_FIXTURES` is the same data
   keyed by the endpoint object, built from the registries that the mocks
   library lists itself. A new domain registers its `xEndpoints` there.
 - `libs/mocks/src/fixtures.spec.ts` parses every example with its schema. A
@@ -242,9 +244,9 @@ and no OpenAPI document.
   answer `{ id, roleId }`. The session token is a server concern (cookie), not
   part of the payload.
 - `loginDemo` is `POST /api/auth/demo-accounts/{userId}/login`.
-- One 423 example per endpoint (the locked wording). The mockup's separate
-  "suspended" wording reaches the UI through the server's `message`, which
-  `toAppError` already preserves.
+- One locked-account example per endpoint (the locked wording). The mockup's separate
+  "suspended" wording reaches the UI through the backend's `message`, which `toAppError`
+  keeps verbatim.
 
 ## Admin organisation contract decisions
 
@@ -252,7 +254,7 @@ and no OpenAPI document.
   menu; the server also cuts every answer to the caller's `scopeUnitId` and refuses what a
   unit-limited caller may not do (grant the whole system, create a unit, assign a role holding
   `admin.roles`). The app never decides this: it renders `adminMeta` (units, groups and **the roles
-  the caller may assign**) and shows the 403/422 the server sends.
+  the caller may assign**) and shows the refusal the backend sends as a toast.
 - `UserDetail` is `{ user, role, courses, attempts, audit }`. The mockup's `perms` matrix became
   `role` (with its `menus`); its `competency` (the radar) is left out until the charts are migrated.
 - Mutations answer the changed record, but the list and detail stores **reload** instead of
@@ -264,17 +266,17 @@ and no OpenAPI document.
   mockup page. `Role.system` and `Role.locked` are what the screen may rely on: the app hides edit
   on a locked role and delete on a system one, and disables delete while `userCount` is above zero,
   but the server enforces all three (and protects the last administrator), so a refusal arrives as
-  a 403/422 and is shown as a toast or a field message. A role is saved as a name, a description and
+  an `ERROR` envelope and is shown as a toast. A role is saved as a name, a description and
   menu keys; there is nothing finer than the menu to grant.
 - The org screen (`org`, `saveUnit`, `setUnitStatus`, `saveGroup`, `deleteGroup`) sits behind the
   `admin.org` menu. `org` rows carry what the screen shows (admins, member counts, groups with
   members, shared courses) so the app computes none of it; `admins[].scope` is `unit` or `system`.
   A unit-limited caller may edit its own unit but the server refuses `saveUnit` without an `id` and
-  decides who may pause a unit. Deleting a group that still has members is a 422 whose message the
+  decides who may pause a unit. Deleting a group that still has members is refused with a message the
   app shows as a toast. The mutations answer one record and the store reloads `org`.
 
 ## Done criteria for a contract change
 
-- Schema, endpoint (with its doc comment), fixture (success, plus the mockup's specific errors) all updated.
+- Schema, endpoint (with its doc comment), fixture (success, plus the mockup's specific errors as `ERROR` envelopes) all updated.
 - `npx nx test contracts mocks` green (fixtures parse).
 - `npm start` shows the endpoint answering its example in the app.

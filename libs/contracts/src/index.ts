@@ -1,5 +1,4 @@
 // Public API of @lms/contracts. Export every public symbol from here.
-export * from './lib/http/api-error';
 export * from './lib/http/envelope';
 export * from './lib/http/endpoint';
 export * from './lib/health/health.schema';

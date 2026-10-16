@@ -100,7 +100,7 @@ describe('serverMutation', () => {
     expect(toaster.success).toHaveBeenCalledWith('Saved role', 'as #7');
   });
 
-  it('with errors "toast" shows the server message as an error toast', async () => {
+  it('with errors "toast" shows the backend message as the toast when it sent no title', async () => {
     const { calls, run } = sources();
     const token = invalidation();
     const onSuccess = vi.fn();
@@ -116,10 +116,7 @@ describe('serverMutation', () => {
     mutation.run('a');
     await settle();
     calls[0].source.error(
-      new HttpErrorResponse({
-        status: 409,
-        error: { code: 'conflict', message: 'Vai trò đang được dùng' },
-      }),
+      new ApiError('CORE-0409', undefined, 'Vai trò đang được dùng'),
     );
     await settle();
 
@@ -157,19 +154,16 @@ describe('serverMutation', () => {
     mutation.run('a');
     await settle();
     calls[0].source.error(
-      new HttpErrorResponse({
-        status: 422,
-        error: {
-          code: 'invalid',
-          message: 'Sai',
-          details: { name: 'Bắt buộc' },
-        },
-      }),
+      new ApiError('CORE-0409', 'Trùng email', 'Email đã tồn tại.'),
     );
     await settle();
 
-    expect(mutation.error()?.kind).toBe('invalid');
-    expect(mutation.error()?.details).toEqual({ name: 'Bắt buộc' });
+    expect(mutation.error()).toEqual({
+      kind: 'server',
+      title: 'Trùng email',
+      message: 'Email đã tồn tại.',
+      messageCode: 'CORE-0409',
+    });
     expect(toaster.error).not.toHaveBeenCalled();
   });
 

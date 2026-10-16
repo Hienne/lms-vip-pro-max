@@ -10,7 +10,7 @@ export const WHOLE_SYSTEM = '';
 
 /**
  * The user form: the contract's command with the mockup's Vietnamese messages. Whether the caller
- * may grant a role or a scope is the server's rule and arrives as a 422 or 403.
+ * may grant a role or a scope is the server's rule and arrives as a refusal toast.
  */
 export const UserFormSchema = z.object({
   name: SaveUserCommandSchema.shape.name

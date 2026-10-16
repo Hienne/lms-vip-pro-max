@@ -14,11 +14,13 @@ See spec: `docs/specs/response-envelope.md`, Implementation Decisions → `AppEr
 
 **Blocked by:** 02, 03, 04
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] `app-error` spec covers the five kinds, verbatim title/message and the defaults when the backend omits them
-- [ ] Fixtures spec: every error example parses as an `ERROR` envelope, and no example is keyed by an HTTP status
-- [ ] No spec or source references `forbidden`, `not-found`, `invalid`, `locked`, `details` or `ApiErrorSchema`
-- [ ] Placeholder codes live in one place with the "mock-only" note
-- [ ] contracts-and-mocks.md matches the new contract
-- [ ] `npm run check` green
+- [x] `app-error` spec covers the five kinds, verbatim title/message and the defaults when the backend omits them
+- [x] Fixtures spec: every error example parses as an `ERROR` envelope, and no example is keyed by an HTTP status
+- [x] No spec or source references `forbidden`, `not-found`, `invalid`, `locked`, `details` or `ApiErrorSchema`
+- [x] Placeholder codes live in one place with the "mock-only" note
+- [x] contracts-and-mocks.md matches the new contract
+- [x] `npm run check` green
+
+Notes: fixtures were renamed to scenario names (`*Rejected`, `*Missing`, `*NotPermitted`); field hints the mockup sent as `details` are dropped, not folded; the "mock-only" placeholder code lives in `libs/mocks/src/lib/error-envelopes.ts`.

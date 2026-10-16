@@ -1,9 +1,5 @@
-import type {
-  ApiError,
-  DemoAccount,
-  LoginResult,
-  Profile,
-} from '@lms/contracts';
+import type { DemoAccount, LoginResult, Profile } from '@lms/contracts';
+import { refusal } from '../error-envelopes';
 import { roleFixtures, userFixtures } from '../identity/identity.fixtures';
 
 // Ported from lms-mockup/src/api/auth.js. Computed values (names, menus, home path,
@@ -82,38 +78,32 @@ export const demoAccountFixtures: readonly DemoAccount[] = [
 
 export const loginResult: LoginResult = { id: 'l1', roleId: 'learner' };
 
-export const loginInvalid: ApiError = {
-  message: 'Vui lòng kiểm tra lại thông tin đăng nhập.',
-  details: {
-    email: 'Nhập email đăng nhập.',
-    password: 'Mật khẩu tối thiểu 6 ký tự.',
-  },
-};
-export const loginUnauthorized: ApiError = {
-  message: 'Email hoặc mật khẩu không đúng.',
-};
-export const loginLocked: ApiError = {
-  message: 'Tài khoản đã bị khóa. Liên hệ quản trị viên đơn vị để được hỗ trợ.',
-};
-export const loginDemoNotFound: ApiError = {
-  message: 'Tài khoản không tồn tại hoặc đã bị xóa.',
-};
-export const loginDemoLocked: ApiError = {
-  message: 'Tài khoản đã bị khóa.',
-};
-export const profileUnauthorized: ApiError = {
-  message: 'Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.',
-};
+export const loginInvalid = refusal(
+  'Thông tin đăng nhập chưa hợp lệ',
+  'Vui lòng kiểm tra lại thông tin đăng nhập.',
+);
+export const loginUnauthorized = refusal(
+  'Không đăng nhập được',
+  'Email hoặc mật khẩu không đúng.',
+);
+export const loginLocked = refusal(
+  'Tài khoản bị khóa',
+  'Tài khoản đã bị khóa. Liên hệ quản trị viên đơn vị để được hỗ trợ.',
+);
+export const loginDemoNotFound = refusal(
+  'Không tìm thấy tài khoản',
+  'Tài khoản không tồn tại hoặc đã bị xóa.',
+);
+export const loginDemoLocked = refusal(
+  'Tài khoản bị khóa',
+  'Tài khoản đã bị khóa.',
+);
 
-export const updateProfileInvalid: ApiError = {
-  message: 'Vui lòng kiểm tra lại thông tin.',
-  details: { name: 'Họ tên tối thiểu 2 ký tự.' },
-};
-export const changePasswordInvalid: ApiError = {
-  message: 'Vui lòng kiểm tra lại.',
-  details: {
-    cur: 'Nhập mật khẩu hiện tại.',
-    next: 'Tối thiểu 8 ký tự, gồm chữ hoa và chữ số.',
-    confirm: 'Mật khẩu nhập lại không khớp.',
-  },
-};
+export const updateProfileInvalid = refusal(
+  'Không lưu được hồ sơ',
+  'Họ tên tối thiểu 2 ký tự.',
+);
+export const changePasswordInvalid = refusal(
+  'Không đổi được mật khẩu',
+  'Tối thiểu 8 ký tự, gồm chữ hoa và chữ số.',
+);
