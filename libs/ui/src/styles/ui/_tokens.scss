@@ -198,6 +198,11 @@ $layout: (
     property: 'container-sidebar',
     value: 256px,
   ),
+  // the collapsed sidebar: icons only
+  sidebar-rail: (
+      property: 'container-sidebar-rail',
+      value: 72px,
+    ),
   content: (
     property: 'container-content',
     value: 1280px,

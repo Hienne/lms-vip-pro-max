@@ -1,20 +1,29 @@
-<div class="sidebar">
-  <a class="sidebar__brand" routerLink="/">
+@let rail = collapsed();
+<div class="sidebar" [class.sidebar--collapsed]="rail">
+  <a
+    class="sidebar__brand"
+    routerLink="/"
+    [uiTooltip]="rail ? 'Core Banking Academy' : ''"
+  >
     <ui-mai [size]="30" />
-    <span>
+    <span class="sidebar__brand-text">
       <span class="sidebar__brand-name">Core Banking Academy</span><br />
       <span class="sidebar__brand-sub"
         >Đào tạo nội bộ Ban QL&amp;PT Core Banking</span
       >
     </span>
   </a>
-  <div class="sidebar__role">
+  <div class="sidebar__role" [uiTooltip]="rail ? 'Vai trò: ' + roleText() : ''">
     <ui-icon name="shield" size="sm" />
-    <span>Vai trò: <strong>{{ roleText() }}</strong></span>
+    <span class="sidebar__label"
+      >Vai trò: <strong>{{ roleText() }}</strong></span
+    >
   </div>
   <nav aria-label="Điều hướng chính">
     @for (section of sections(); track section.section) {
-    <div class="sidebar__section" aria-hidden="true">{{ section.section }}</div>
+    <div class="sidebar__section" aria-hidden="true">
+      <span class="sidebar__label">{{ section.section }}</span>
+    </div>
     <ul class="sidebar__list" [attr.aria-label]="section.section">
       @for (item of section.items; track item.href) {
       <li>
@@ -22,9 +31,10 @@
           class="sidebar__link"
           [routerLink]="item.href"
           [attr.aria-current]="item.href === active() ? 'page' : null"
+          [uiTooltip]="rail ? item.label : ''"
         >
           <ui-icon [name]="item.icon" />
-          <span>{{ item.label }}</span>
+          <span class="sidebar__label">{{ item.label }}</span>
           @if (item.badge === 'inbox' && inboxCount() > 0) {
           <span
             class="sidebar__badge"
@@ -39,8 +49,26 @@
     }
   </nav>
   <div class="sidebar__footer">
-    <a class="sidebar__design-link" routerLink="/design-system">
-      <ui-icon name="palette" size="sm" />Design System v2
+    <a
+      class="sidebar__design-link"
+      routerLink="/design-system"
+      [uiTooltip]="rail ? 'Design System v2' : ''"
+    >
+      <ui-icon name="palette" size="sm" /><span class="sidebar__label"
+        >Design System v2</span
+      >
     </a>
+    @if (collapsible()) {
+    <button
+      type="button"
+      class="sidebar__toggle"
+      [attr.aria-label]="toggleLabel()"
+      [attr.aria-expanded]="!rail"
+      [uiTooltip]="toggleLabel()"
+      (click)="collapseToggle.emit()"
+    >
+      <ui-icon [name]="rail ? 'chevron-right' : 'chevron-left'" size="sm" />
+    </button>
+    }
   </div>
 </div>

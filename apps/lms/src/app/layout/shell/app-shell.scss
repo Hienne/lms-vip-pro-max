@@ -13,9 +13,21 @@
     display: grid;
     grid-template-columns: ui.layout(sidebar) minmax(0, 1fr);
     min-height: 100dvh;
+    transition: grid-template-columns ui.duration(base) ui.ease(out);
+
+    @media (prefers-reduced-motion: reduce) {
+      transition: none;
+    }
 
     @include ui.bp-below(lg) {
       grid-template-columns: minmax(0, 1fr);
+    }
+  }
+
+  // The collapsed sidebar; below `lg` there is no sidebar column to narrow.
+  &--framed#{&}--rail {
+    @include ui.bp(lg) {
+      grid-template-columns: ui.layout(sidebar-rail) minmax(0, 1fr);
     }
   }
 

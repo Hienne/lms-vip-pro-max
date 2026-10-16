@@ -105,6 +105,7 @@ const LIGHT_PROPERTIES = [
   '--spacing-12',
   '--spacing-18',
   '--container-sidebar',
+  '--container-sidebar-rail',
   '--container-wide',
   '--container-content',
   '--container-menu',
