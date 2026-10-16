@@ -4,9 +4,9 @@
 
 **Blocked by:** None (can start immediately)
 
-**Status:** open
+**Status:** done
 
-- [ ] `endpoint-client.spec.ts` with endpoints declared inside the spec: verb from the registry; path params; query rule; JSON body passed through; response mismatch reaches `ErrorHandler` and errors the stream; `ENDPOINT` context set; `@ts-expect-error` for missing params and for a body on an endpoint without one
-- [ ] `ShellStore` uses the client; `NavCountsApi` and `nav-counts.api.spec.ts` deleted
-- [ ] App shell spec passes without edits beyond the injected service
-- [ ] `npm run check` green
+- [x] `endpoint-client.spec.ts` with endpoints declared inside the spec: verb from the registry; path params; query rule; JSON body passed through; response mismatch reaches `ErrorHandler` and errors the stream; `ENDPOINT` context set; `@ts-expect-error` for missing params and for a body on an endpoint without one
+- [x] `ShellStore` uses the client; `NavCountsApi` and `nav-counts.api.spec.ts` deleted
+- [x] App shell spec passes without edits beyond the injected service
+- [x] `npm run check` green
