@@ -25,7 +25,11 @@
 <div class="org__loading"><span uiSpinner></span></div>
 } @else { @let selected = store.selected$(); @if (selected) {
 <div class="org__split">
-  <section uiCard aria-label="Danh sách đơn vị">
+  <section uiCard class="org__units" aria-labelledby="org-units-title">
+    <div uiCardHeader>
+      <h3 id="org-units-title">Đơn vị</h3>
+      <span uiBadge>{{ store.units$().length }}</span>
+    </div>
     <ul uiList>
       @for (unit of store.units$(); track unit.id) {
       <li>
@@ -35,8 +39,10 @@
           [attr.aria-current]="unit.id === selected.id ? 'true' : null"
           (click)="store.pick(unit.id)"
         >
-          <span uiListIcon><ui-icon name="building-2" size="sm" /></span>
-          <span class="grow">
+          <span uiListIcon class="org__unit-icon"
+            ><ui-icon name="building-2" size="sm"
+          /></span>
+          <span class="org__unit-body">
             <span class="org__unit-name">{{ unit.name }}</span>
             <span class="org__meta"
               >{{ unit.code }} · {{ unit.members }} người · {{
@@ -52,55 +58,86 @@
     </ul>
   </section>
 
-  <section class="stack stack--gap-5">
-    <div uiCard padded class="row-between org__unit-head">
-      <div>
-        <span class="org__eyebrow">{{ selected.code }}</span>
-        <h2>{{ selected.name }}</h2>
-        <p class="org__meta">
-          Quản trị viên: @for (admin of selected.admins; track admin.id; let
-          last = $last) { {{ admin.name }} ({{ admin.scope === 'unit' ? 'Đơn vị'
-          : 'Toàn hệ thống' }}){{ last ? '' : ', ' }} } @empty { chưa gán }
-        </p>
+  <section class="org__detail">
+    <div uiCard class="org__head">
+      <div class="org__head-main">
+        <div class="org__head-text">
+          <div class="org__head-eyebrow">
+            <span class="org__eyebrow">{{ selected.code }}</span>
+            @if (selected.status !== 'active') {
+            <span uiBadge tone="warning">Tạm dừng</span>
+            }
+          </div>
+          <h2 class="org__title">{{ selected.name }}</h2>
+          <p class="org__admins">
+            <ui-icon name="shield" size="sm" />
+            <span
+              >Quản trị viên: @for (admin of selected.admins; track admin.id;
+              let last = $last) { {{ admin.name }} ({{ admin.scope === 'unit' ?
+              'Đơn vị' : 'Toàn hệ thống' }}){{ last ? '' : ', ' }} } @empty {
+              chưa gán }</span
+            >
+          </p>
+        </div>
+        <div class="org__head-actions">
+          <button uiButton (click)="store.editUnit(selected)">
+            <ui-icon name="pen-line" size="sm" />Sửa
+          </button>
+          @if (store.canManageUnits$()) { @if (selected.status === 'active') {
+          <button
+            uiButton
+            variant="ghost"
+            (click)="store.toggleUnitStatus(selected)"
+          >
+            <ui-icon name="circle-pause" size="sm" />Tạm dừng
+          </button>
+          } @else {
+          <button uiButton (click)="store.toggleUnitStatus(selected)">
+            <ui-icon name="check" size="sm" />Kích hoạt
+          </button>
+          } }
+        </div>
       </div>
-      <div class="row">
-        <button uiButton (click)="store.editUnit(selected)">
-          <ui-icon name="pen-line" size="sm" />Sửa
-        </button>
-        @if (store.canManageUnits$()) { @if (selected.status === 'active') {
-        <button
-          uiButton
-          variant="ghost"
-          (click)="store.toggleUnitStatus(selected)"
-        >
-          <ui-icon name="circle-pause" size="sm" />Tạm dừng
-        </button>
-        } @else {
-        <button uiButton (click)="store.toggleUnitStatus(selected)">
-          <ui-icon name="check" size="sm" />Kích hoạt
-        </button>
-        } }
-      </div>
+      <dl class="org__stats">
+        <div class="org__stat">
+          <dt>Thành viên</dt>
+          <dd>{{ selected.members }}</dd>
+        </div>
+        <div class="org__stat">
+          <dt>Phòng / nhóm</dt>
+          <dd>{{ selected.groups.length }}</dd>
+        </div>
+        <div class="org__stat">
+          <dt>Khóa học chia sẻ</dt>
+          <dd>{{ selected.sharedCourses.length }}</dd>
+        </div>
+      </dl>
     </div>
 
-    <div class="row-between">
+    <div class="org__section-head">
       <h3>Phòng / nhóm ({{ selected.groups.length }})</h3>
       <button uiButton size="sm" (click)="store.editGroup(null)">
         <ui-icon name="plus" size="sm" />Thêm phòng/nhóm
       </button>
     </div>
-    <div class="grid-2">
+    @if (selected.groups.length) {
+    <div class="org__groups">
       @for (group of selected.groups; track group.id) {
-      <article uiCard>
-        <div uiCardHeader>
-          <div>
-            <strong>{{ group.name }}</strong>
-            <div class="org__meta">
+      <article uiCard class="org__group">
+        <div class="org__group-head">
+          <span uiListIcon
+            ><ui-icon
+              [name]="group.kind === 'department' ? 'layers' : 'users'"
+              size="sm"
+          /></span>
+          <div class="org__group-title">
+            <strong [attr.title]="group.name">{{ group.name }}</strong>
+            <span class="org__meta">
               {{ group.kind === 'department' ? 'Phòng' : 'Nhóm' }} · {{
               group.members.length }} thành viên
-            </div>
+            </span>
           </div>
-          <div class="row org__group-actions">
+          <div class="org__group-actions">
             <button
               uiIconButton
               size="sm"
@@ -126,7 +163,7 @@
           <li>
             <a uiListItem [routerLink]="['/admin/users', member.id]">
               <ui-avatar [name]="member.name" size="sm" />
-              <span class="grow">{{ member.name }}</span>
+              <span class="org__member-name">{{ member.name }}</span>
               <app-role-badge
                 [roleId]="member.roleId"
                 [name]="member.roleName"
@@ -134,21 +171,26 @@
               />
             </a>
           </li>
-          } @if (group.members.length > shown) {
-          <li uiListItem class="org__meta">
-            +{{ group.members.length - shown }} người khác
-          </li>
           }
         </ul>
-        } @else {
-        <div uiCardBody class="org__meta">Chưa có thành viên.</div>
+        @if (group.members.length > shown) {
+        <p class="org__more">+{{ group.members.length - shown }} người khác</p>
+        } } @else {
+        <p class="org__no-members">Chưa có thành viên.</p>
         }
       </article>
       }
     </div>
+    } @else {
+    <div uiCard>
+      <ui-empty icon="users" title="Đơn vị chưa có phòng/nhóm nào" />
+    </div>
+    }
 
-    <section uiCard>
-      <div uiCardHeader><h3>Khóa học được chia sẻ cho đơn vị này</h3></div>
+    <section uiCard aria-labelledby="org-shared-title">
+      <div uiCardHeader>
+        <h3 id="org-shared-title">Khóa học được chia sẻ cho đơn vị này</h3>
+      </div>
       <div uiCardBody>
         @if (selected.sharedCourses.length) {
         <ul class="org__shared">

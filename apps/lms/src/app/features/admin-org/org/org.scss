@@ -11,24 +11,49 @@
     padding-block: ui.space(10);
   }
 
+  // Unit list beside the picked unit; both columns start on the same line.
   &__split {
     display: grid;
-    gap: ui.space(5);
+    gap: ui.space(6);
     align-items: start;
 
     @include ui.bp(lg) {
-      grid-template-columns: 20rem minmax(0, 1fr);
+      grid-template-columns: 18rem minmax(0, 1fr);
     }
+  }
+
+  &__units {
+    overflow: hidden;
   }
 
   &__unit {
+    position: relative;
+
     &[aria-current='true'] {
       background: ui.color(primary-subtle);
+
+      &::before {
+        position: absolute;
+        inset-block: 0;
+        inset-inline-start: 0;
+        width: 3px;
+        background: ui.color(primary);
+        content: '';
+      }
+
+      .org__unit-icon {
+        background: ui.color(surface);
+        color: ui.color(primary);
+      }
     }
   }
 
+  &__unit-body {
+    @include ui.grow;
+    @include ui.stack(1);
+  }
+
   &__unit-name {
-    display: block;
     @include ui.text(sm);
     font-weight: ui.weight(semibold);
   }
@@ -37,17 +62,154 @@
     @include ui.text(xs, muted);
   }
 
-  &__unit-head {
-    flex-wrap: wrap;
-    gap: ui.space(3);
+  &__detail {
+    @include ui.stack(5);
+    min-width: 0;
+  }
+
+  // Unit summary: name and actions on top, three equal stat cells below.
+  &__head {
+    overflow: hidden;
+  }
+
+  &__head-main {
+    @include ui.row-between(4);
+    align-items: flex-start;
+    padding: ui.space(5);
+
+    @include ui.bp(md) {
+      padding-inline: ui.space(6);
+    }
+  }
+
+  &__head-text {
+    @include ui.grow;
+    @include ui.stack(1);
+  }
+
+  &__head-eyebrow {
+    @include ui.row(2);
   }
 
   &__eyebrow {
     @include ui.eyebrow;
   }
 
+  &__title {
+    @include ui.text(xl);
+  }
+
+  &__admins {
+    @include ui.row(2);
+    @include ui.text(sm, muted);
+    flex-wrap: nowrap;
+    align-items: flex-start;
+    margin-top: ui.space(1);
+
+    ui-icon {
+      flex: none;
+      margin-top: 2px;
+    }
+  }
+
+  &__head-actions {
+    @include ui.row(2);
+    flex: none;
+  }
+
+  &__stats {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    margin: 0;
+    border-top: 1px solid ui.color(border);
+    background: ui.color(surface-2);
+  }
+
+  &__stat {
+    @include ui.stack(1);
+    padding: ui.space(3) ui.space(4);
+
+    @include ui.bp(md) {
+      padding: ui.space(4) ui.space(6);
+    }
+
+    & + & {
+      border-left: 1px solid ui.color(border);
+    }
+
+    dt {
+      @include ui.text(xs, muted);
+    }
+
+    dd {
+      @include ui.num;
+      margin: 0;
+      font-size: ui.text-size(xl);
+      font-weight: ui.weight(bold);
+    }
+  }
+
+  &__section-head {
+    @include ui.row-between(3);
+    margin-top: ui.space(2);
+  }
+
+  // As many columns as fit at a readable card width. Each card spans three shared rows (header,
+  // members, "+n"), so headers and member lists line up across a row.
+  &__groups {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 20rem), 1fr));
+    gap: ui.space(5);
+  }
+
+  &__group {
+    display: grid;
+    grid-row: span 3;
+    grid-template-rows: subgrid;
+    row-gap: 0;
+    min-width: 0;
+  }
+
+  &__group-head {
+    display: flex;
+    align-items: center;
+    gap: ui.space(3);
+    padding: ui.space(4) ui.space(5);
+    border-bottom: 1px solid ui.color(border);
+  }
+
+  &__group-title {
+    @include ui.grow;
+    @include ui.stack(1);
+
+    strong {
+      @include ui.clamp(2);
+    }
+  }
+
   &__group-actions {
+    display: flex;
+    flex: none;
     gap: ui.space(1);
+  }
+
+  &__member-name {
+    @include ui.grow;
+    @include ui.truncate;
+    @include ui.text(sm);
+  }
+
+  &__more {
+    @include ui.text(xs, muted);
+    padding: ui.space(3) ui.space(5);
+    border-top: 1px solid ui.color(border);
+  }
+
+  &__no-members {
+    @include ui.text(sm, muted);
+    display: grid;
+    place-items: center;
+    padding: ui.space(8) ui.space(5);
   }
 
   &__shared {
