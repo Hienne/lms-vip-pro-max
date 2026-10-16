@@ -1,10 +1,10 @@
 import { Dialog } from '@angular/cdk/dialog';
 import {
+  computed,
   DestroyRef,
   inject,
   Injectable,
   signal,
-  type TemplateRef,
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import {
@@ -13,7 +13,7 @@ import {
   type SaveUserCommand,
   type UserListItem,
 } from '@lms/contracts';
-import { confirm, openDrawer, type DrawerContext } from '@lms/ui';
+import { confirm } from '@lms/ui';
 import { filter } from 'rxjs';
 import {
   invalidation,
@@ -46,9 +46,6 @@ export class UserEditorStore {
     editing: signal<{ readonly user: UserListItem | null } | null>(null),
   };
 
-  /** The CDK handle of the open drawer: an imperative UI object, not state. */
-  private drawer?: { close(): void };
-
   private readonly changeSource = invalidation();
 
   /** The token other stores reload on; it cannot be bumped from outside. */
@@ -67,7 +64,7 @@ export class UserEditorStore {
       errors: 'inline',
       success: (command) =>
         command.id ? 'Đã cập nhật người dùng' : 'Đã thêm người dùng',
-      onSuccess: () => this.drawer?.close(),
+      onSuccess: () => this.setEditing(null),
       invalidates: this.changeSource,
     },
   );
@@ -106,7 +103,11 @@ export class UserEditorStore {
   readonly meta$ = this.metaData.value;
   readonly metaError$ = this.metaData.error;
   readonly isSaving$ = this.saveMutation.isPending;
-  readonly saveError$ = this.saveMutation.error;
+  readonly saveFieldErrors$ = this.saveMutation.fieldErrors;
+  readonly editorTitle$ = computed(() => {
+    const user = this.state.editing()?.user;
+    return user ? `Sửa ${user.name}` : 'Thêm người dùng';
+  });
   readonly isResetting$ = this.resetMutation.isPending;
   readonly isChangingStatus$ = this.statusMutation.isPending;
 
@@ -114,23 +115,14 @@ export class UserEditorStore {
     this.state.editing.set(editing);
   }
 
-  /** Opens the add (`user` null) or edit drawer; the templates come from the editor component. */
-  edit(
-    user: UserListItem | null,
-    body: TemplateRef<DrawerContext>,
-    footer: TemplateRef<DrawerContext>,
-  ): void {
-    const ref = openDrawer(this.dialog, body, {
-      title: user ? `Sửa ${user.name}` : 'Thêm người dùng',
-      footer,
-    });
-    this.drawer = ref;
+  /** Opens the add (`user` null) or edit drawer: the editor shows it while `editing$` is set. */
+  edit(user: UserListItem | null): void {
     this.saveMutation.reset();
     this.setEditing({ user });
-    ref.closed.subscribe(() => {
-      this.drawer = undefined;
-      this.setEditing(null);
-    });
+  }
+
+  cancelEdit(): void {
+    this.setEditing(null);
   }
 
   save(command: SaveUserCommand): void {

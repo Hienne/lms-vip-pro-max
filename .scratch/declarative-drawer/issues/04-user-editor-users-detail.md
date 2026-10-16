@@ -4,11 +4,11 @@
 
 **Blocked by:** 02
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] `UserEditorStore` imports neither `TemplateRef` nor `openDrawer`; `Dialog` remains only for `confirm()`
-- [ ] Neither page uses `viewChild(UserEditor)`; `UserEditor` has no public methods
-- [ ] Users and user-detail page specs pass without changed assertions
-- [ ] Both specs add: while a save is pending, Esc does not close the drawer, and it closes after the response
-- [ ] A pending password reset does not show the busy overlay
-- [ ] `npm run check` green
+- [x] `UserEditorStore` imports neither `TemplateRef` nor `openDrawer`; `Dialog` remains only for `confirm()`
+- [x] Neither page uses `viewChild(UserEditor)`; `UserEditor` has no public methods
+- [x] Users and user-detail page specs pass without changed assertions
+- [x] Both specs add: while a save is pending, Esc does not close the drawer, and it closes after the response
+- [x] A pending password reset does not show the busy overlay
+- [x] `npm run check` green
