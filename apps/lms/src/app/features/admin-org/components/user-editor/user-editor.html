@@ -12,7 +12,6 @@
     [user]="editing.user"
     [meta]="meta"
     [me]="me"
-    [serverErrors]="store.saveFieldErrors$()"
     (submitted)="store.save($event)"
   />
   } @else if (store.metaError$(); as error) {

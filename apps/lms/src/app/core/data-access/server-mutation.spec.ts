@@ -173,40 +173,6 @@ describe('serverMutation', () => {
     expect(toaster.error).not.toHaveBeenCalled();
   });
 
-  it('exposes the failure details as fieldErrors, {} otherwise', async () => {
-    const { calls, run } = sources();
-    const mutation = TestBed.runInInjectionContext(() =>
-      serverMutation(run, { errors: 'inline', success: () => 'ok' }),
-    );
-    expect(mutation.fieldErrors()).toEqual({});
-
-    mutation.run('a');
-    await settle();
-    calls[0].source.error(
-      new HttpErrorResponse({
-        status: 422,
-        error: {
-          code: 'invalid',
-          message: 'Sai',
-          details: { name: 'Bắt buộc' },
-        },
-      }),
-    );
-    await settle();
-    expect(mutation.fieldErrors()).toEqual({ name: 'Bắt buộc' });
-
-    mutation.reset();
-    await settle();
-    expect(mutation.fieldErrors()).toEqual({});
-
-    mutation.run('b');
-    await settle();
-    calls[1].source.next(1);
-    calls[1].source.complete();
-    await settle();
-    expect(mutation.fieldErrors()).toEqual({});
-  });
-
   it('calls the server again when the same input is resubmitted', async () => {
     const { calls, run } = sources();
     const mutation = TestBed.runInInjectionContext(() =>

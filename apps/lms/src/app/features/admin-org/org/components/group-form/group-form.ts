@@ -24,7 +24,6 @@ import { GroupFormSchema } from './group-form.schema';
 export class GroupForm {
   /** The group being renamed; `null` adds a new one. */
   readonly group = input.required<OrgGroup | null>();
-  readonly serverErrors = input<Readonly<Record<string, string>>>({});
   readonly submitted = output<Omit<SaveGroupCommand, 'unitId'>>();
 
   private readonly model = linkedSignal(() => ({
@@ -34,17 +33,15 @@ export class GroupForm {
     validateStandardSchema(path, GroupFormSchema);
   });
 
-  protected readonly nameErrors = computed(() => {
-    const own = this.groupForm.name().touched()
+  protected readonly nameErrors = computed(() =>
+    this.groupForm.name().touched()
       ? this.groupForm
           .name()
           .errors()
           .map((error) => error.message ?? '')
           .filter(Boolean)
-      : [];
-    const server = this.serverErrors()['name'];
-    return server ? [...own, server] : own;
-  });
+      : [],
+  );
 
   protected onSubmit(event: Event): void {
     event.preventDefault();

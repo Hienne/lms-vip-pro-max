@@ -12,14 +12,15 @@ See spec: `docs/specs/response-envelope.md`, Implementation Decisions → Error 
 
 **Blocked by:** 01
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] Users page spec: a save answered with an `ERROR` envelope shows a toast with title and message, the drawer stays open, and the form keeps its values
-- [ ] Org page spec: the same for unit save and group save; deleting a group refused by the backend shows its toast
-- [ ] Roles page spec: the same for role save
-- [ ] User-detail spec: a `server` error shows no retry button, an `unknown` error shows one
-- [ ] No admin-org form has a `serverErrors` input, and `serverMutation` has no `fieldErrors`
-- [ ] `serverMutation` spec drops its `fieldErrors` cases
-- [ ] The four admin-org page specs flush envelopes only; assertions about field-level server messages are removed, and any other changed assertion is listed in the PR
+- [x] Users page spec: a save answered with an `ERROR` envelope shows a toast with title and message, the drawer stays open, and the form keeps its values
+- [x] Org page spec: the same for unit save and group save; deleting a group refused by the backend shows its toast
+- [x] Roles page spec: the same for role save
+- [x] User-detail spec: a `server` error shows no retry button, an `unknown` error shows one
+- [x] No admin-org form has a `serverErrors` input, and `serverMutation` has no `fieldErrors`
+- [x] `serverMutation` spec drops its `fieldErrors` cases
+- [x] The four admin-org page specs flush envelopes only; assertions about field-level server messages are removed, and any other changed assertion is listed in the PR
 - [ ] Browser on the mock: as admin, add a user, a unit, a group and a role, each closing with its success toast
-- [ ] `npm run check` green
+  - Not checked in the browser; the same add flows are driven through the DOM by the four page specs.
+- [x] `npm run check` green

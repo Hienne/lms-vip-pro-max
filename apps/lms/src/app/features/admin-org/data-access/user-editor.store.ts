@@ -61,7 +61,7 @@ export class UserEditorStore {
     (command: SaveUserCommand) =>
       this.client.call(adminOrgEndpoints.saveUser, { body: command }),
     {
-      errors: 'inline',
+      errors: 'toast',
       success: (command) =>
         command.id ? 'Đã cập nhật người dùng' : 'Đã thêm người dùng',
       onSuccess: () => this.setEditing(null),
@@ -103,7 +103,6 @@ export class UserEditorStore {
   readonly meta$ = this.metaData.value;
   readonly metaError$ = this.metaData.error;
   readonly isSaving$ = this.saveMutation.isPending;
-  readonly saveFieldErrors$ = this.saveMutation.fieldErrors;
   readonly editorTitle$ = computed(() => {
     const user = this.state.editing()?.user;
     return user ? `Sửa ${user.name}` : 'Thêm người dùng';

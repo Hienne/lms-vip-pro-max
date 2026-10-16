@@ -1,15 +1,12 @@
-import { provideHttpClient } from '@angular/common/http';
-import {
-  HttpTestingController,
-  provideHttpClientTesting,
-} from '@angular/common/http/testing';
+import { HttpTestingController } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
 import {
   adminMetaFixture,
+  envelopeError,
+  envelopeOk,
   profileFixtures,
-  saveUserInvalid,
   unitAdminMetaFixture,
   unitAdminUserList,
   userListFixtures,
@@ -20,6 +17,7 @@ import {
   provideAppConfig,
 } from '../../../core/config/app-config';
 import { testAppConfig } from '../../../core/config/app-config.testing';
+import { provideEnvelopeHttpClient } from '../../../core/http/http.testing';
 import { SessionStore } from '../../../core/session/session.store';
 
 describe('Users', () => {
@@ -30,8 +28,7 @@ describe('Users', () => {
   beforeEach(() => {
     TestBed.configureTestingModule({
       providers: [
-        provideHttpClient(),
-        provideHttpClientTesting(),
+        provideEnvelopeHttpClient(),
         provideAppConfig(parseAppConfig(testAppConfig())),
         provideRouter(createAppRoutes({ devTools: true })),
         SessionStore,
@@ -59,13 +56,15 @@ describe('Users', () => {
   ) {
     TestBed.inject(SessionStore).restore();
     await settle();
-    backend.expectOne('/api/auth/profile').flush(profileFixtures[role]);
+    backend
+      .expectOne('/api/auth/profile')
+      .flush(envelopeOk(profileFixtures[role]));
     await settle();
     harness = await RouterTestingHarness.create();
     await harness.navigateByUrl('/admin/users');
     await settle();
-    backend.expectOne('/api/admin/users').flush(list);
-    backend.expectOne('/api/admin/meta').flush(meta);
+    backend.expectOne('/api/admin/users').flush(envelopeOk(list));
+    backend.expectOne('/api/admin/meta').flush(envelopeOk(meta));
     await settle();
     el = harness.routeNativeElement as HTMLElement;
   }
@@ -184,9 +183,9 @@ describe('Users', () => {
     const put = backend.expectOne(`/api/admin/users/${target.id}/status`);
     expect(put.request.method).toBe('PUT');
     expect(put.request.body).toEqual({ status: 'locked' });
-    put.flush({ ...target, status: 'locked' });
+    put.flush(envelopeOk({ ...target, status: 'locked' }));
     await settle();
-    backend.expectOne('/api/admin/users').flush(userListFixtures);
+    backend.expectOne('/api/admin/users').flush(envelopeOk(userListFixtures));
     await settle();
     expect(document.body.textContent).toContain('Đã khóa tài khoản');
   });
@@ -264,15 +263,15 @@ describe('Users', () => {
       roleId: 'learner',
       scopeUnitId: null,
     });
-    post.flush({ ...userListFixtures[4], id: 'new' });
+    post.flush(envelopeOk({ ...userListFixtures[4], id: 'new' }));
     await settle();
     expect(dialog()).toBeNull();
-    backend.expectOne('/api/admin/users').flush(userListFixtures);
+    backend.expectOne('/api/admin/users').flush(envelopeOk(userListFixtures));
     await settle();
     expect(document.body.textContent).toContain('Đã thêm người dùng');
   });
 
-  it('keeps the drawer open and shows the 422 message on the email', async () => {
+  it('keeps the drawer and its input open and toasts the backend message when a save is refused', async () => {
     await open('admin');
     button(el, 'Thêm người dùng').click();
     await settle();
@@ -292,9 +291,20 @@ describe('Users', () => {
     await settle();
     backend
       .expectOne('/api/admin/users')
-      .flush(saveUserInvalid, { status: 422, statusText: 'Invalid' });
+      .flush(
+        envelopeError(
+          'CORE-0409',
+          'Không lưu được người dùng',
+          'Email đã được dùng cho tài khoản khác.',
+        ),
+      );
     await settle();
-    expect(dialog()?.textContent).toContain(
+    expect(dialog()).not.toBeNull();
+    expect(field('Email đăng nhập').querySelector('input')?.value).toBe(
+      'trung@demo.cb',
+    );
+    expect(document.body.textContent).toContain('Không lưu được người dùng');
+    expect(document.body.textContent).toContain(
       'Email đã được dùng cho tài khoản khác.',
     );
   });
@@ -326,7 +336,7 @@ describe('Users', () => {
     const post = backend.expectOne(
       `/api/admin/users/${userListFixtures[1].id}/reset-password`,
     );
-    post.flush({ sentTo: userListFixtures[1].email });
+    post.flush(envelopeOk({ sentTo: userListFixtures[1].email }));
     await settle();
     expect(document.body.textContent).toContain(
       'Đã gửi liên kết đặt lại mật khẩu',
@@ -355,10 +365,10 @@ describe('Users', () => {
     await settle();
     expect(dialog()).not.toBeNull();
 
-    post.flush(userListFixtures[1]);
+    post.flush(envelopeOk(userListFixtures[1]));
     await settle();
     expect(dialog()).toBeNull();
-    backend.expectOne('/api/admin/users').flush(userListFixtures);
+    backend.expectOne('/api/admin/users').flush(envelopeOk(userListFixtures));
     await settle();
   });
 
@@ -377,7 +387,7 @@ describe('Users', () => {
       true,
     );
 
-    post.flush({ sentTo: userListFixtures[1].email });
+    post.flush(envelopeOk({ sentTo: userListFixtures[1].email }));
     await settle();
   });
 });

@@ -47,7 +47,7 @@ export class RolesStore {
     (command: SaveRoleCommand) =>
       this.client.call(adminOrgEndpoints.saveRole, { body: command }),
     {
-      errors: 'inline',
+      errors: 'toast',
       success: (command) =>
         command.id ? 'Đã cập nhật vai trò' : 'Đã thêm vai trò',
       onSuccess: () => this.setEditing(null),
@@ -70,7 +70,6 @@ export class RolesStore {
   readonly isLoading$ = this.rolesData.isLoading;
   readonly loadError$ = this.rolesData.error;
   readonly isSaving$ = this.saveMutation.isPending;
-  readonly saveFieldErrors$ = this.saveMutation.fieldErrors;
   readonly editorTitle$ = computed(() => {
     const role = this.state.editing()?.role;
     return role ? `Sửa vai trò ${role.name}` : 'Thêm vai trò';

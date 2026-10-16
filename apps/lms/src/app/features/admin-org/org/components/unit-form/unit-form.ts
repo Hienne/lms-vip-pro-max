@@ -28,8 +28,6 @@ import { UnitFormSchema } from './unit-form.schema';
 export class UnitForm {
   /** The unit being edited; `null` adds a new one. */
   readonly unit = input.required<OrgUnit | null>();
-  /** Per-field messages of the server's 422 (`code` when it is taken). */
-  readonly serverErrors = input<Readonly<Record<string, string>>>({});
   readonly submitted = output<SaveUnitCommand>();
 
   private readonly model = linkedSignal(() => ({
@@ -41,21 +39,19 @@ export class UnitForm {
   });
 
   protected readonly codeErrors = computed(() =>
-    this.messages(this.unitForm.code, 'code'),
+    this.messages(this.unitForm.code),
   );
   protected readonly nameErrors = computed(() =>
-    this.messages(this.unitForm.name, 'name'),
+    this.messages(this.unitForm.name),
   );
 
-  private messages(field: FieldTree<string>, key: string): readonly string[] {
-    const own = field().touched()
+  private messages(field: FieldTree<string>): readonly string[] {
+    return field().touched()
       ? field()
           .errors()
           .map((error) => error.message ?? '')
           .filter(Boolean)
       : [];
-    const server = this.serverErrors()[key];
-    return server ? [...own, server] : own;
   }
 
   protected onSubmit(event: Event): void {

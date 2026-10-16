@@ -2,7 +2,7 @@
 <ui-error-state
   title="Không tải được người dùng"
   [message]="error.message"
-  [retryable]="error.kind !== 'not-found'"
+  [retryable]="error.kind !== 'server'"
   (retry)="store.retryLoad()"
 />
 } @else if (store.detail$(); as detail) { @let user = detail.user;

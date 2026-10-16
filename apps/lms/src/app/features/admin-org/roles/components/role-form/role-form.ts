@@ -30,8 +30,6 @@ import { RoleFormSchema, toRoleFormValue } from './role-form.schema';
 export class RoleForm {
   /** The role being edited; `null` adds a new one. */
   readonly role = input.required<Role | null>();
-  /** Per-field messages of the server's 422 (`name` when it is taken). */
-  readonly serverErrors = input<Readonly<Record<string, string>>>({});
   readonly submitted = output<SaveRoleCommand>();
 
   protected readonly sections = allSections();
@@ -43,17 +41,15 @@ export class RoleForm {
 
   protected readonly chosen = computed(() => new Set(this.model().menus));
 
-  protected readonly nameErrors = computed(() => {
-    const own = this.roleForm.name().touched()
+  protected readonly nameErrors = computed(() =>
+    this.roleForm.name().touched()
       ? this.roleForm
           .name()
           .errors()
           .map((error) => error.message ?? '')
           .filter(Boolean)
-      : [];
-    const server = this.serverErrors()['name'];
-    return server ? [...own, server] : own;
-  });
+      : [],
+  );
 
   protected toggle(key: MenuKey, on: boolean): void {
     this.model.update((value) => ({

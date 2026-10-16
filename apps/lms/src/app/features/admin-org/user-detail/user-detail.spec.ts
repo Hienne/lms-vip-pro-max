@@ -1,17 +1,14 @@
-import { provideHttpClient } from '@angular/common/http';
-import {
-  HttpTestingController,
-  provideHttpClientTesting,
-} from '@angular/common/http/testing';
+import { HttpTestingController } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
 import {
   adminMetaFixture,
+  envelopeError,
+  envelopeOk,
   profileFixtures,
   userDetailFixture,
   userListFixtures,
-  userNotFound,
 } from '@lms/mocks';
 import { createAppRoutes } from '../../../app.routes';
 import {
@@ -19,6 +16,7 @@ import {
   provideAppConfig,
 } from '../../../core/config/app-config';
 import { testAppConfig } from '../../../core/config/app-config.testing';
+import { provideEnvelopeHttpClient } from '../../../core/http/http.testing';
 import { SessionStore } from '../../../core/session/session.store';
 
 describe('UserDetail', () => {
@@ -29,8 +27,7 @@ describe('UserDetail', () => {
   beforeEach(() => {
     TestBed.configureTestingModule({
       providers: [
-        provideHttpClient(),
-        provideHttpClientTesting(),
+        provideEnvelopeHttpClient(),
         provideAppConfig(parseAppConfig(testAppConfig())),
         provideRouter(createAppRoutes({ devTools: true })),
         SessionStore,
@@ -54,13 +51,15 @@ describe('UserDetail', () => {
   async function open(detail = userDetailFixture, id = detail.user.id) {
     TestBed.inject(SessionStore).restore();
     await settle();
-    backend.expectOne('/api/auth/profile').flush(profileFixtures['admin']);
+    backend
+      .expectOne('/api/auth/profile')
+      .flush(envelopeOk(profileFixtures['admin']));
     await settle();
     harness = await RouterTestingHarness.create();
     await harness.navigateByUrl(`/admin/users/${id}`);
     await settle();
-    backend.expectOne(`/api/admin/users/${id}`).flush(detail);
-    backend.expectOne('/api/admin/meta').flush(adminMetaFixture);
+    backend.expectOne(`/api/admin/users/${id}`).flush(envelopeOk(detail));
+    backend.expectOne('/api/admin/meta').flush(envelopeOk(adminMetaFixture));
     await settle();
     el = harness.routeNativeElement as HTMLElement;
   }
@@ -155,12 +154,14 @@ describe('UserDetail', () => {
       `/api/admin/users/${userDetailFixture.user.id}/status`,
     );
     expect(put.request.body).toEqual({ status: 'locked' });
-    put.flush({ ...userDetailFixture.user, status: 'locked' });
+    put.flush(envelopeOk({ ...userDetailFixture.user, status: 'locked' }));
     await settle();
-    backend.expectOne(`/api/admin/users/${userDetailFixture.user.id}`).flush({
-      ...userDetailFixture,
-      user: { ...userDetailFixture.user, status: 'locked' },
-    });
+    backend.expectOne(`/api/admin/users/${userDetailFixture.user.id}`).flush(
+      envelopeOk({
+        ...userDetailFixture,
+        user: { ...userDetailFixture.user, status: 'locked' },
+      }),
+    );
     await settle();
     expect(text()).toContain('Đã khóa');
     expect(button(el, 'Mở khóa')).toBeTruthy();
@@ -188,21 +189,48 @@ describe('UserDetail', () => {
     expect(name?.value).toBe(userDetailFixture.user.name);
   });
 
-  it('says the user does not exist', async () => {
+  it('offers a retry when the load failed for no reason the backend gave', async () => {
     TestBed.inject(SessionStore).restore();
     await settle();
-    backend.expectOne('/api/auth/profile').flush(profileFixtures['admin']);
+    backend
+      .expectOne('/api/auth/profile')
+      .flush(envelopeOk(profileFixtures['admin']));
     await settle();
     harness = await RouterTestingHarness.create();
     await harness.navigateByUrl('/admin/users/nobody');
     await settle();
     backend
       .expectOne('/api/admin/users/nobody')
-      .flush(userNotFound, { status: 404, statusText: 'Not Found' });
-    backend.expectOne('/api/admin/meta').flush(adminMetaFixture);
+      .flush('boom', { status: 500, statusText: 'Server Error' });
+    backend.expectOne('/api/admin/meta').flush(envelopeOk(adminMetaFixture));
     await settle();
     el = harness.routeNativeElement as HTMLElement;
-    expect(text()).toContain(userNotFound.message);
+    expect(button(el, 'Thử lại')).toBeDefined();
+  });
+
+  it('says the user does not exist', async () => {
+    TestBed.inject(SessionStore).restore();
+    await settle();
+    backend
+      .expectOne('/api/auth/profile')
+      .flush(envelopeOk(profileFixtures['admin']));
+    await settle();
+    harness = await RouterTestingHarness.create();
+    await harness.navigateByUrl('/admin/users/nobody');
+    await settle();
+    backend
+      .expectOne('/api/admin/users/nobody')
+      .flush(
+        envelopeError(
+          'CORE-0404',
+          'Không tìm thấy',
+          'Người dùng không tồn tại.',
+        ),
+      );
+    backend.expectOne('/api/admin/meta').flush(envelopeOk(adminMetaFixture));
+    await settle();
+    el = harness.routeNativeElement as HTMLElement;
+    expect(text()).toContain('Người dùng không tồn tại.');
     expect(button(el, 'Thử lại')).toBeUndefined();
   });
   const escape = () =>
@@ -228,12 +256,12 @@ describe('UserDetail', () => {
     await settle();
     expect(dialog()).not.toBeNull();
 
-    post.flush(userDetailFixture.user);
+    post.flush(envelopeOk(userDetailFixture.user));
     await settle();
     expect(dialog()).toBeNull();
     backend
       .expectOne(`/api/admin/users/${userDetailFixture.user.id}`)
-      .flush(userDetailFixture);
+      .flush(envelopeOk(userDetailFixture));
     await settle();
   });
 });

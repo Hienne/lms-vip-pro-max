@@ -1,16 +1,12 @@
-import { provideHttpClient } from '@angular/common/http';
-import {
-  HttpTestingController,
-  provideHttpClientTesting,
-} from '@angular/common/http/testing';
+import { HttpTestingController } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
 import {
-  deleteGroupInvalid,
+  envelopeError,
+  envelopeOk,
   orgFixtures,
   profileFixtures,
-  saveUnitInvalid,
   unitAdminOrg,
 } from '@lms/mocks';
 import type { OrgUnit } from '@lms/contracts';
@@ -20,6 +16,7 @@ import {
   provideAppConfig,
 } from '../../../core/config/app-config';
 import { testAppConfig } from '../../../core/config/app-config.testing';
+import { provideEnvelopeHttpClient } from '../../../core/http/http.testing';
 import { SessionStore } from '../../../core/session/session.store';
 
 describe('Org', () => {
@@ -30,8 +27,7 @@ describe('Org', () => {
   beforeEach(() => {
     TestBed.configureTestingModule({
       providers: [
-        provideHttpClient(),
-        provideHttpClientTesting(),
+        provideEnvelopeHttpClient(),
         provideAppConfig(parseAppConfig(testAppConfig())),
         provideRouter(createAppRoutes({ devTools: true })),
         SessionStore,
@@ -58,12 +54,14 @@ describe('Org', () => {
   ) {
     TestBed.inject(SessionStore).restore();
     await settle();
-    backend.expectOne('/api/auth/profile').flush(profileFixtures[role]);
+    backend
+      .expectOne('/api/auth/profile')
+      .flush(envelopeOk(profileFixtures[role]));
     await settle();
     harness = await RouterTestingHarness.create();
     await harness.navigateByUrl('/admin/org');
     await settle();
-    backend.expectOne('/api/admin/org').flush(org);
+    backend.expectOne('/api/admin/org').flush(envelopeOk(org));
     await settle();
     el = harness.routeNativeElement as HTMLElement;
   }
@@ -164,16 +162,18 @@ describe('Org', () => {
     await settle();
     const put = backend.expectOne(`/api/admin/units/${first.id}/status`);
     expect(put.request.body).toEqual({ status: 'paused' });
-    put.flush({
-      id: first.id,
-      code: first.code,
-      name: first.name,
-      status: 'paused',
-    });
+    put.flush(
+      envelopeOk({
+        id: first.id,
+        code: first.code,
+        name: first.name,
+        status: 'paused',
+      }),
+    );
     await settle();
     backend
       .expectOne('/api/admin/org')
-      .flush([{ ...first, status: 'paused' }, second]);
+      .flush(envelopeOk([{ ...first, status: 'paused' }, second]));
     await settle();
     expect(text()).toContain('Tạm dừng');
     expect(button(el, 'Kích hoạt')).toBeTruthy();
@@ -195,15 +195,22 @@ describe('Org', () => {
     const post = backend.expectOne('/api/admin/units');
     expect(post.request.method).toBe('POST');
     expect(post.request.body).toEqual({ code: 'CNTT', name: 'Khối CNTT' });
-    post.flush({ id: 'u9', code: 'CNTT', name: 'Khối CNTT', status: 'active' });
+    post.flush(
+      envelopeOk({
+        id: 'u9',
+        code: 'CNTT',
+        name: 'Khối CNTT',
+        status: 'active',
+      }),
+    );
     await settle();
     expect(dialog()).toBeNull();
-    backend.expectOne('/api/admin/org').flush(orgFixtures);
+    backend.expectOne('/api/admin/org').flush(envelopeOk(orgFixtures));
     await settle();
     expect(document.body.textContent).toContain('Đã lưu');
   });
 
-  it('keeps the drawer open and shows the 422 message on the code', async () => {
+  it('keeps the drawer open and toasts the backend message when a unit save is refused', async () => {
     await open();
     button(el, 'Thêm đơn vị')?.click();
     await settle();
@@ -213,9 +220,18 @@ describe('Org', () => {
     await settle();
     backend
       .expectOne('/api/admin/units')
-      .flush(saveUnitInvalid, { status: 422, statusText: 'Invalid' });
+      .flush(
+        envelopeError(
+          'CORE-0409',
+          'Không lưu được đơn vị',
+          'Mã đơn vị đã tồn tại.',
+        ),
+      );
     await settle();
-    expect(dialog()?.textContent).toContain('Mã đơn vị đã tồn tại.');
+    expect(dialog()).not.toBeNull();
+    expect(inputOf('Mã đơn vị').value).toBe(first.code);
+    expect(document.body.textContent).toContain('Không lưu được đơn vị');
+    expect(document.body.textContent).toContain('Mã đơn vị đã tồn tại.');
   });
 
   it('edits the picked unit with the form prefilled and sends its id', async () => {
@@ -233,9 +249,9 @@ describe('Org', () => {
       code: first.code,
       name: 'Tên mới',
     });
-    post.flush({ ...first, name: 'Tên mới' });
+    post.flush(envelopeOk({ ...first, name: 'Tên mới' }));
     await settle();
-    backend.expectOne('/api/admin/org').flush(orgFixtures);
+    backend.expectOne('/api/admin/org').flush(envelopeOk(orgFixtures));
     await settle();
   });
 
@@ -251,9 +267,9 @@ describe('Org', () => {
     await settle();
     const post = backend.expectOne('/api/admin/groups');
     expect(post.request.body).toEqual({ name: 'Nhóm mới', unitId: first.id });
-    post.flush(first.groups[0]);
+    post.flush(envelopeOk(first.groups[0]));
     await settle();
-    backend.expectOne('/api/admin/org').flush(orgFixtures);
+    backend.expectOne('/api/admin/org').flush(envelopeOk(orgFixtures));
     await settle();
   });
 
@@ -274,9 +290,9 @@ describe('Org', () => {
       name: 'Tên khác',
       unitId: first.id,
     });
-    post.flush(group);
+    post.flush(envelopeOk(group));
     await settle();
-    backend.expectOne('/api/admin/org').flush(orgFixtures);
+    backend.expectOne('/api/admin/org').flush(envelopeOk(orgFixtures));
     await settle();
   });
 
@@ -305,10 +321,17 @@ describe('Org', () => {
     await settle();
     expect(dialog()).not.toBeNull();
 
-    post.flush({ id: 'u9', code: 'CNTT', name: 'Khối CNTT', status: 'active' });
+    post.flush(
+      envelopeOk({
+        id: 'u9',
+        code: 'CNTT',
+        name: 'Khối CNTT',
+        status: 'active',
+      }),
+    );
     await settle();
     expect(dialog()).toBeNull();
-    backend.expectOne('/api/admin/org').flush(orgFixtures);
+    backend.expectOne('/api/admin/org').flush(envelopeOk(orgFixtures));
     await settle();
   });
 
@@ -326,10 +349,10 @@ describe('Org', () => {
     await settle();
     expect(dialog()).not.toBeNull();
 
-    post.flush(first.groups[0]);
+    post.flush(envelopeOk(first.groups[0]));
     await settle();
     expect(dialog()).toBeNull();
-    backend.expectOne('/api/admin/org').flush(orgFixtures);
+    backend.expectOne('/api/admin/org').flush(envelopeOk(orgFixtures));
     await settle();
   });
 
@@ -343,9 +366,9 @@ describe('Org', () => {
     await settle();
     const del = backend.expectOne(`/api/admin/groups/${group.id}`);
     expect(del.request.method).toBe('DELETE');
-    del.flush(true);
+    del.flush(envelopeOk(true));
     await settle();
-    backend.expectOne('/api/admin/org').flush(orgFixtures);
+    backend.expectOne('/api/admin/org').flush(envelopeOk(orgFixtures));
     await settle();
     expect(document.body.textContent).toContain('Đã xóa');
   });
@@ -359,9 +382,16 @@ describe('Org', () => {
     await settle();
     backend
       .expectOne(`/api/admin/groups/${group.id}`)
-      .flush(deleteGroupInvalid, { status: 422, statusText: 'Invalid' });
+      .flush(
+        envelopeError(
+          'CORE-0412',
+          'Không xóa được nhóm',
+          'Nhóm còn thành viên — hãy chuyển thành viên sang nhóm khác trước.',
+        ),
+      );
     await settle();
-    expect(document.body.textContent).toContain(deleteGroupInvalid.message);
+    expect(document.body.textContent).toContain('Không xóa được nhóm');
+    expect(document.body.textContent).toContain('Nhóm còn thành viên');
   });
 
   it('does not delete when the confirmation is cancelled', async () => {

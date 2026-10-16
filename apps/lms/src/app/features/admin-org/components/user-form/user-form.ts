@@ -43,8 +43,6 @@ export class UserForm {
   readonly user = input.required<UserListItem | null>();
   readonly meta = input.required<AdminMeta>();
   readonly me = input.required<Pick<Profile, 'id' | 'scopeUnitId'>>();
-  /** Per-field messages of the server's 422 (`email` is the usual one). */
-  readonly serverErrors = input<Readonly<Record<string, string>>>({});
   readonly submitted = output<SaveUserCommand>();
 
   /** The unit a new user starts in: the caller's own when limited to one, else the first allowed. */
@@ -89,30 +87,28 @@ export class UserForm {
   });
 
   protected readonly nameErrors = computed(() =>
-    this.messages(this.userForm.name, 'name'),
+    this.messages(this.userForm.name),
   );
   protected readonly emailErrors = computed(() =>
-    this.messages(this.userForm.email, 'email'),
+    this.messages(this.userForm.email),
   );
   protected readonly unitErrors = computed(() =>
-    this.messages(this.userForm.unitId, 'unitId'),
+    this.messages(this.userForm.unitId),
   );
   protected readonly groupErrors = computed(() =>
-    this.messages(this.userForm.groupId, 'groupId'),
+    this.messages(this.userForm.groupId),
   );
   protected readonly roleErrors = computed(() =>
-    this.messages(this.userForm.roleId, 'roleId'),
+    this.messages(this.userForm.roleId),
   );
 
-  private messages(field: FieldTree<string>, key: string): readonly string[] {
-    const own = field().touched()
+  private messages(field: FieldTree<string>): readonly string[] {
+    return field().touched()
       ? field()
           .errors()
           .map((error) => error.message ?? '')
           .filter(Boolean)
       : [];
-    const server = this.serverErrors()[key];
-    return server ? [...own, server] : own;
   }
 
   /** A different unit has different groups, so the chosen one no longer applies. */

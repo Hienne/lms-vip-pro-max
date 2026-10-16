@@ -178,11 +178,7 @@
   (uiDrawerDismiss)="store.cancelUnitEdit()"
 >
   @if (store.editingUnit$(); as editing) {
-  <app-unit-form
-    [unit]="editing.unit"
-    [serverErrors]="store.unitFieldErrors$()"
-    (submitted)="store.saveUnit($event)"
-  />
+  <app-unit-form [unit]="editing.unit" (submitted)="store.saveUnit($event)" />
   }
 </ng-template>
 <ng-template #unitFooter let-close="close">
@@ -206,7 +202,6 @@
   @if (store.editingGroup$(); as editing) {
   <app-group-form
     [group]="editing.group"
-    [serverErrors]="store.groupFieldErrors$()"
     (submitted)="store.saveGroup($event)"
   />
   }
