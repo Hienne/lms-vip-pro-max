@@ -1,5 +1,6 @@
 import type { Route } from '@angular/router';
 import type { MenuKey } from '@lms/contracts';
+import type { IconName } from '@lms/ui';
 import type { Layout, RouteMeta } from './route-table';
 
 /** Lazy `import()` of a screen's route component: the one place core names feature code. */
@@ -21,20 +22,32 @@ export interface Screen {
   readonly load?: ScreenLoad;
 }
 
-interface MenuGroup {
-  /** The first screen is the menu's entry route. */
+export interface MenuNav {
+  readonly icon: IconName;
+  readonly section: string;
+  /** Count shown beside the label; the shell fills it from the server's nav counts. */
+  readonly badge?: 'inbox';
+  /** Sidebar wording, where it differs from the title of the entry screen. */
+  readonly label?: string;
+}
+
+export interface MenuGroup {
+  readonly nav: MenuNav;
+  /** The first screen is the menu's entry route: the sidebar links to it. */
   readonly screens: readonly [Screen, ...Screen[]];
 }
 
 /**
  * Every screen with a path, declared once and grouped by the menu that grants it. A screen's menu
- * is the group it is written in; group order is sidebar order. The mockup's `routes[]`
+ * is the group it is written in; group order is sidebar order, and the first screen of a group is
+ * where its sidebar entry links to. The mockup's `routes[]`
  * (core/router.js) is the spec. `/` (role home), `/design-system`, the dev routes and the
  * not-found route have their own entries in `app.routes.ts`.
  */
 export const SCREEN_TABLE = {
   menus: {
     'learn.home': {
+      nav: { icon: 'house', section: 'Học tập' },
       screens: [
         {
           path: 'learn',
@@ -44,6 +57,7 @@ export const SCREEN_TABLE = {
       ],
     },
     'learn.catalog': {
+      nav: { icon: 'library', section: 'Học tập' },
       screens: [
         {
           path: 'catalog',
@@ -80,6 +94,7 @@ export const SCREEN_TABLE = {
       ],
     },
     'learn.progress': {
+      nav: { icon: 'chart-column', section: 'Học tập' },
       screens: [
         {
           path: 'progress',
@@ -89,6 +104,7 @@ export const SCREEN_TABLE = {
       ],
     },
     'learn.leaderboard': {
+      nav: { icon: 'trophy', section: 'Học tập' },
       screens: [
         {
           path: 'leaderboard',
@@ -98,6 +114,7 @@ export const SCREEN_TABLE = {
       ],
     },
     'learn.assistant': {
+      nav: { icon: 'sparkles', section: 'Công cụ học' },
       screens: [
         {
           path: 'assistant',
@@ -107,6 +124,7 @@ export const SCREEN_TABLE = {
       ],
     },
     'learn.flashcards': {
+      nav: { icon: 'layers', section: 'Công cụ học' },
       screens: [
         {
           path: 'flashcards',
@@ -116,6 +134,7 @@ export const SCREEN_TABLE = {
       ],
     },
     'learn.saved': {
+      nav: { icon: 'bookmark', section: 'Công cụ học' },
       screens: [
         {
           path: 'saved',
@@ -125,6 +144,7 @@ export const SCREEN_TABLE = {
       ],
     },
     'learn.certificates': {
+      nav: { icon: 'award', section: 'Công cụ học' },
       screens: [
         {
           path: 'certificates',
@@ -139,6 +159,7 @@ export const SCREEN_TABLE = {
       ],
     },
     'teach.home': {
+      nav: { icon: 'house', section: 'Giảng dạy' },
       screens: [
         {
           path: 'instructor',
@@ -148,6 +169,7 @@ export const SCREEN_TABLE = {
       ],
     },
     'admin.home': {
+      nav: { icon: 'house', section: 'Quản trị', label: 'Tổng quan' },
       screens: [
         {
           path: 'admin',
@@ -157,6 +179,7 @@ export const SCREEN_TABLE = {
       ],
     },
     'content.catalog': {
+      nav: { icon: 'network', section: 'Nội dung' },
       screens: [
         {
           path: 'admin/catalog',
@@ -166,6 +189,7 @@ export const SCREEN_TABLE = {
       ],
     },
     'content.courses': {
+      nav: { icon: 'book-open', section: 'Nội dung' },
       screens: [
         {
           path: 'admin/courses',
@@ -185,6 +209,7 @@ export const SCREEN_TABLE = {
       ],
     },
     'content.questions': {
+      nav: { icon: 'circle-help', section: 'Nội dung' },
       screens: [
         {
           path: 'admin/questions',
@@ -194,6 +219,7 @@ export const SCREEN_TABLE = {
       ],
     },
     'content.quizzes': {
+      nav: { icon: 'clipboard-check', section: 'Nội dung' },
       screens: [
         {
           path: 'admin/quizzes',
@@ -208,6 +234,7 @@ export const SCREEN_TABLE = {
       ],
     },
     'content.import': {
+      nav: { icon: 'upload', section: 'Nội dung', label: 'Nhập dữ liệu' },
       screens: [
         {
           path: 'admin/import',
@@ -217,6 +244,7 @@ export const SCREEN_TABLE = {
       ],
     },
     'admin.users': {
+      nav: { icon: 'users', section: 'Tổ chức' },
       screens: [
         {
           path: 'admin/users',
@@ -237,6 +265,7 @@ export const SCREEN_TABLE = {
       ],
     },
     'admin.org': {
+      nav: { icon: 'building-2', section: 'Tổ chức' },
       screens: [
         {
           path: 'admin/org',
@@ -248,6 +277,7 @@ export const SCREEN_TABLE = {
       ],
     },
     'admin.roles': {
+      nav: { icon: 'shield', section: 'Tổ chức' },
       screens: [
         {
           path: 'admin/roles',
@@ -259,6 +289,7 @@ export const SCREEN_TABLE = {
       ],
     },
     'admin.assignments': {
+      nav: { icon: 'calendar', section: 'Tổ chức', label: 'Giao học & hạn' },
       screens: [
         {
           path: 'admin/assignments',
@@ -268,6 +299,7 @@ export const SCREEN_TABLE = {
       ],
     },
     reports: {
+      nav: { icon: 'chart-column', section: 'Theo dõi', label: 'Báo cáo' },
       screens: [
         {
           path: 'reports',
@@ -282,6 +314,7 @@ export const SCREEN_TABLE = {
       ],
     },
     'teach.inbox': {
+      nav: { icon: 'inbox', section: 'Theo dõi', badge: 'inbox' },
       screens: [
         {
           path: 'instructor/inbox',
@@ -291,6 +324,7 @@ export const SCREEN_TABLE = {
       ],
     },
     'admin.system': {
+      nav: { icon: 'settings', section: 'Theo dõi' },
       screens: [
         {
           path: 'admin/system',
@@ -353,6 +387,12 @@ export type ScreenPath = (MenuScreens | OpenScreens)['path'];
 /** The paths without a `:param`, which are concrete URLs. */
 export type StaticScreenPath = Exclude<ScreenPath, `${string}:${string}`>;
 
+/** The menus in table order, which is sidebar order. */
+export const MENU_KEYS = Object.keys(SCREEN_TABLE.menus) as MenuKey[];
+
+/** The group of a menu, with the literal paths of the table widened to the `MenuGroup` shape. */
+export const menuGroup = (menu: MenuKey): MenuGroup => SCREEN_TABLE.menus[menu];
+
 /** A screen with the menu it is declared under (`undefined` for the open ones). */
 export interface ScreenEntry {
   readonly screen: Screen;
@@ -361,8 +401,8 @@ export interface ScreenEntry {
 
 /** The table flattened in declaration order. */
 export const SCREEN_ENTRIES: readonly ScreenEntry[] = [
-  ...(Object.keys(SCREEN_TABLE.menus) as MenuKey[]).flatMap((menu) =>
-    SCREEN_TABLE.menus[menu].screens.map((screen) => ({ screen, menu })),
+  ...MENU_KEYS.flatMap((menu) =>
+    menuGroup(menu).screens.map((screen) => ({ screen, menu })),
   ),
   ...SCREEN_TABLE.open.map((screen) => ({ screen })),
 ];

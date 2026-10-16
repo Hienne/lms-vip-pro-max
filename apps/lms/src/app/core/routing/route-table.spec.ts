@@ -11,7 +11,7 @@ import { parseAppConfig, provideAppConfig } from '../config/app-config';
 import { testAppConfig } from '../config/app-config.testing';
 import { SessionStore } from '../session/session.store';
 import type { ForbiddenState } from './forbidden-state';
-import { SCREEN_ENTRIES } from './screens';
+import { MENU_KEYS, menuGroup, SCREEN_ENTRIES } from './screens';
 
 /** Just what the guards read from the session. */
 class FakeSession {
@@ -97,6 +97,11 @@ describe('route table', () => {
   it('declares each path once', () => {
     const paths = SCREEN_ENTRIES.map(({ screen }) => screen.path);
     expect(paths.filter((path, i) => paths.indexOf(path) !== i)).toEqual([]);
+  });
+
+  it('starts every menu on a screen without a route parameter', () => {
+    const entries = MENU_KEYS.map((menu) => menuGroup(menu).screens[0].path);
+    expect(entries.filter((path) => path.includes(':'))).toEqual([]);
   });
 
   it('sends an anonymous visitor to the login page, remembering the page asked for', async () => {
