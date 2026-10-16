@@ -111,6 +111,10 @@ export {
   type DrawerSide,
 } from './lib/organisms/drawer/drawer';
 
+// Declarative drawer, FormActions
+export { DrawerOutlet } from './lib/organisms/drawer/drawer.directive';
+export { FormActions } from './lib/molecules/form-actions/form-actions';
+
 // Toaster (11)
 export {
   Toaster,

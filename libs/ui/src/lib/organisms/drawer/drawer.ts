@@ -1,7 +1,14 @@
 import { Dialog, DIALOG_DATA, DialogRef } from '@angular/cdk/dialog';
 import { createGlobalPositionStrategy } from '@angular/cdk/overlay';
 import { NgTemplateOutlet } from '@angular/common';
-import { Component, inject, Injector, type TemplateRef } from '@angular/core';
+import {
+  Component,
+  inject,
+  Injector,
+  signal,
+  type Signal,
+  type TemplateRef,
+} from '@angular/core';
 import { Icon } from '../../atoms/icon/icon';
 import { IconButton } from '../../atoms/icon-button/icon-button.directive';
 
@@ -19,11 +26,15 @@ export type DrawerOptions = {
   footer?: TemplateRef<DrawerContext>;
 };
 
-type DrawerData = {
-  title: string;
+/** The parts of an open drawer that may change while it is open. */
+export type DrawerLive = {
+  title: Signal<string>;
+  footer: Signal<TemplateRef<DrawerContext> | undefined>;
+};
+
+type DrawerData = DrawerLive & {
   titleId: string;
   body: TemplateRef<DrawerContext>;
-  footer: TemplateRef<DrawerContext> | undefined;
 };
 
 let nextId = 0;
@@ -59,13 +70,25 @@ export function openDrawer(
   body: TemplateRef<DrawerContext>,
   options: DrawerOptions,
 ): DialogRef<void, Drawer> {
-  const side = options.side ?? 'end';
+  return openLiveDrawer(dialog, body, options.side, {
+    title: signal(options.title),
+    footer: signal(options.footer),
+  });
+}
+
+/** {@link openDrawer} with a title and footer that follow signals while the drawer is open. */
+export function openLiveDrawer(
+  dialog: Dialog,
+  body: TemplateRef<DrawerContext>,
+  sideOption: DrawerSide | undefined,
+  live: DrawerLive,
+): DialogRef<void, Drawer> {
+  const side = sideOption ?? 'end';
   const position = createGlobalPositionStrategy(Injector.NULL);
   const data: DrawerData = {
-    title: options.title,
+    ...live,
     titleId: `ui-drawer-title-${++nextId}`,
     body,
-    footer: options.footer,
   };
   return dialog.open<void, DrawerData, Drawer>(Drawer, {
     data,

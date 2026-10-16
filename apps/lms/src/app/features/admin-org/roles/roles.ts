@@ -1,4 +1,4 @@
-import { Component, inject, type TemplateRef, viewChild } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import { menuLabel } from '../../../core/menu/menu-catalog';
 import {
   Alert,
@@ -7,9 +7,10 @@ import {
   Card,
   CardBody,
   CardHeader,
-  type DrawerContext,
+  DrawerOutlet,
   Empty,
   ErrorState,
+  FormActions,
   Icon,
   PageHeader,
   Spinner,
@@ -27,8 +28,10 @@ import { RolesStore } from './data-access/roles.store';
     Card,
     CardBody,
     CardHeader,
+    DrawerOutlet,
     Empty,
     ErrorState,
+    FormActions,
     Icon,
     PageHeader,
     RoleForm,
@@ -41,13 +44,4 @@ import { RolesStore } from './data-access/roles.store';
 export class Roles {
   protected readonly store = inject(RolesStore);
   protected readonly menuLabel = menuLabel;
-
-  private readonly body =
-    viewChild.required<TemplateRef<DrawerContext>>('body');
-  private readonly footer =
-    viewChild.required<TemplateRef<DrawerContext>>('footer');
-
-  protected edit(role: Parameters<RolesStore['edit']>[0]): void {
-    this.store.edit(role, this.body(), this.footer());
-  }
 }

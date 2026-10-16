@@ -4,7 +4,7 @@
   description="Mỗi vai trò là một tập các menu. Người dùng có quyền vào menu nào thì được toàn quyền thao tác trên menu đó."
 >
   <div slot="actions">
-    <button uiButton variant="primary" (click)="edit(null)">
+    <button uiButton variant="primary" (click)="store.edit(null)">
       <ui-icon name="plus" size="sm" />Thêm vai trò
     </button>
   </div>
@@ -50,7 +50,7 @@
           size="sm"
           variant="ghost"
           [attr.aria-label]="'Sửa vai trò ' + role.name"
-          (click)="edit(role)"
+          (click)="store.edit(role)"
         >
           <ui-icon name="pen-line" size="sm" />Sửa
         </button>
@@ -95,24 +95,26 @@
 <ui-empty icon="shield" title="Chưa có vai trò nào" />
 } }
 
-<ng-template #body>
+<ng-template
+  [uiDrawer]="store.editing$() !== null"
+  [uiDrawerTitle]="store.editorTitle$()"
+  [uiDrawerFooter]="footer"
+  (uiDrawerDismiss)="store.cancelEdit()"
+>
   @if (store.editing$(); as editing) {
   <app-role-form
     [role]="editing.role"
-    [serverErrors]="store.saveError$()?.details ?? {}"
+    [serverErrors]="store.saveFieldErrors$()"
     (submitted)="store.save($event)"
   />
   }
 </ng-template>
 <ng-template #footer let-close="close">
-  <button uiButton variant="ghost" (click)="close()">Hủy</button>
-  <button
-    uiButton
-    variant="primary"
-    type="submit"
-    form="role-form"
-    [disabled]="store.isSaving$()"
-  >
-    Lưu
-  </button>
+  <ui-form-actions
+    formId="role-form"
+    submitLabel="Lưu"
+    cancelLabel="Hủy"
+    [saving]="store.isSaving$()"
+    (cancel)="close()"
+  />
 </ng-template>

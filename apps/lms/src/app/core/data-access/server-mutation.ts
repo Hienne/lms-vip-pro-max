@@ -30,6 +30,8 @@ export interface ServerMutation<I> {
   readonly isPending: Signal<boolean>;
   /** The last failure; meaningful for `errors: 'inline'`. */
   readonly error: Signal<AppError | undefined>;
+  /** The last failure's `details` (field name to message), or `{}`: bind it to a form's `serverErrors`. */
+  readonly fieldErrors: Signal<Readonly<Record<string, string>>>;
   /** Forgets the last request and its error, e.g. when a drawer reopens. */
   reset(): void;
 }
@@ -67,14 +69,17 @@ export function serverMutation<I, R>(
       ),
   });
 
+  const error = computed(() => {
+    const failure = resource.error();
+    return failure ? toAppError(failure) : undefined;
+  });
+
   return {
     // A fresh object each time, so resubmitting the same input calls the server again.
     run: (input) => request.set({ input }),
     isPending: resource.isLoading,
-    error: computed(() => {
-      const error = resource.error();
-      return error ? toAppError(error) : undefined;
-    }),
+    error,
+    fieldErrors: computed(() => error()?.details ?? {}),
     reset: () => request.set(undefined),
   };
 }

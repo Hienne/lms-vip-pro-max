@@ -5,7 +5,6 @@ import {
   inject,
   Injectable,
   signal,
-  type TemplateRef,
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import {
@@ -13,7 +12,7 @@ import {
   type Role,
   type SaveRoleCommand,
 } from '@lms/contracts';
-import { confirm, openDrawer, type DrawerContext } from '@lms/ui';
+import { confirm } from '@lms/ui';
 import { filter } from 'rxjs';
 import { invalidation } from '../../../../core/data-access/invalidation';
 import { serverData } from '../../../../core/data-access/server-data';
@@ -35,9 +34,6 @@ export class RolesStore {
     editing: signal<{ readonly role: Role | null } | null>(null),
   };
 
-  /** The CDK handle of the open drawer: an imperative UI object, not state. */
-  private drawer?: { close(): void };
-
   private readonly changes = invalidation();
 
   private readonly rolesData = serverData(
@@ -54,7 +50,7 @@ export class RolesStore {
       errors: 'inline',
       success: (command) =>
         command.id ? 'Đã cập nhật vai trò' : 'Đã thêm vai trò',
-      onSuccess: () => this.drawer?.close(),
+      onSuccess: () => this.setEditing(null),
       invalidates: this.changes,
     },
   );
@@ -74,29 +70,24 @@ export class RolesStore {
   readonly isLoading$ = this.rolesData.isLoading;
   readonly loadError$ = this.rolesData.error;
   readonly isSaving$ = this.saveMutation.isPending;
-  readonly saveError$ = this.saveMutation.error;
+  readonly saveFieldErrors$ = this.saveMutation.fieldErrors;
+  readonly editorTitle$ = computed(() => {
+    const role = this.state.editing()?.role;
+    return role ? `Sửa vai trò ${role.name}` : 'Thêm vai trò';
+  });
 
   private setEditing(editing: { readonly role: Role | null } | null): void {
     this.state.editing.set(editing);
   }
 
-  /** Opens the add (`null`) or edit drawer; the templates come from the page. */
-  edit(
-    role: Role | null,
-    body: TemplateRef<DrawerContext>,
-    footer: TemplateRef<DrawerContext>,
-  ): void {
-    const ref = openDrawer(this.dialog, body, {
-      title: role ? `Sửa vai trò ${role.name}` : 'Thêm vai trò',
-      footer,
-    });
-    this.drawer = ref;
+  /** Opens the add (`null`) or edit drawer: the page shows it while `editing$` is set. */
+  edit(role: Role | null): void {
     this.saveMutation.reset();
     this.setEditing({ role });
-    ref.closed.subscribe(() => {
-      this.drawer = undefined;
-      this.setEditing(null);
-    });
+  }
+
+  cancelEdit(): void {
+    this.setEditing(null);
   }
 
   save(command: SaveRoleCommand): void {

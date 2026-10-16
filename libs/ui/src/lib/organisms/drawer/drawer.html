@@ -1,5 +1,5 @@
 <header class="drawer__header">
-  <h2 class="drawer__title" [id]="data.titleId">{{ data.title }}</h2>
+  <h2 class="drawer__title" [id]="data.titleId">{{ data.title() }}</h2>
   <button uiIconButton label="Đóng" (click)="close()">
     <ui-icon name="x" />
   </button>
@@ -10,7 +10,7 @@
     [ngTemplateOutletContext]="context"
   />
 </div>
-@if (data.footer; as footer) {
+@if (data.footer(); as footer) {
 <footer class="drawer__footer">
   <ng-container
     [ngTemplateOutlet]="footer"
