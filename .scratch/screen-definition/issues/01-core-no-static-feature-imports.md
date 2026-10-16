@@ -4,11 +4,11 @@
 
 **Blocked by:** None (can start immediately)
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] A static import from features in any core file fails lint (checked by temporarily adding one, then removing it)
-- [ ] A type-only import from features in core also fails lint
-- [ ] A dynamic `import()` of a feature component in core passes lint; the dev features module passes unchanged
-- [ ] Spec files in core follow the same rule, or the exception is deliberate and noted in angular.md §4
-- [ ] angular.md §4 describes the rule and the lazy-loader exception
-- [ ] `npm run check` green
+- [x] A static import from features in any core file fails lint (checked by temporarily adding one, then removing it)
+- [x] A type-only import from features in core also fails lint
+- [x] A dynamic `import()` of a feature component in core passes lint; the dev features module passes unchanged
+- [x] Spec files in core follow the same rule, or the exception is deliberate and noted in angular.md §4
+- [x] angular.md §4 describes the rule and the lazy-loader exception
+- [x] `npm run check` green

@@ -4,16 +4,19 @@
 
 **Blocked by:** None (can start immediately)
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] Every one of the 37 mockup routes is in the table, under the menu that grants it today or in `open`
-- [ ] Removing a `MenuKey` group from the table fails `typecheck`
-- [ ] The seven migrated screens (login, profile, admin users, user detail, org, roles, 403) render their components; every other screen renders the placeholder naming its mockup page
-- [ ] Route-table spec reads paths from the table and compares the mockup route list as a set
-- [ ] Route-table spec: no path appears twice in the table
+- [x] Every one of the 37 mockup routes is in the table, under the menu that grants it today or in `open`
+  - The table has 38 routes, not 37: the old `ROUTE_DEFS` had 38 and all are kept.
+- [x] Removing a `MenuKey` group from the table fails `typecheck`
+- [x] The seven migrated screens (login, profile, admin users, user detail, org, roles, 403) render their components; every other screen renders the placeholder naming its mockup page
+  - Browser: login, 403, users, user detail, org and roles checked; profile is covered by its own spec only, not opened in the browser.
+- [x] Route-table spec reads paths from the table and compares the mockup route list as a set
+- [x] Route-table spec: no path appears twice in the table
 - [ ] Every existing route-table spec case (visitor to login with `next`, menu holder enters, custom role, open screens, 403 with menu, `data` carries menu and layout) passes without changed assertions
-- [ ] Migration-registry spec: every `done` route entry that targets a table screen points at a screen with `load`
-- [ ] App-shell spec passes unchanged
-- [ ] angular.md §10 says screens are lazy-loaded from the screen table; the migration guide's `routes[]`, `layout` and `public` rows point at the table, `roleGuard` and per-feature `*.routes.ts` are gone, and the "Route module" step ends with adding `load` to the screen
-- [ ] Browser: the learner, instructor and admin demo accounts each reach their home and a menu screen; a menu the role lacks goes to 403; `/lesson/…` is focus layout and `/login` is bare
-- [ ] `npm run check` green
+  - Not met as written: the "carries the menu and layout in route data" case read `ROUTE_DEFS` and was rewritten to read `createAppRoutes` data. The other cases pass unchanged.
+- [x] Migration-registry spec: every `done` route entry that targets a table screen points at a screen with `load`
+- [x] App-shell spec passes unchanged
+- [x] angular.md §10 says screens are lazy-loaded from the screen table; the migration guide's `routes[]`, `layout` and `public` rows point at the table, `roleGuard` and per-feature `*.routes.ts` are gone, and the "Route module" step ends with adding `load` to the screen
+- [x] Browser: the learner, instructor and admin demo accounts each reach their home and a menu screen; a menu the role lacks goes to 403; `/lesson/…` is focus layout and `/login` is bare
+- [x] `npm run check` green

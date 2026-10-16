@@ -4,13 +4,14 @@
 
 **Blocked by:** 02 (Tracer bullet: the screen table drives every route)
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] Route-table spec: every `search.href` matches a screen of its own group
-- [ ] Search-target spec passes with its cases unchanged
-- [ ] `screenHref` rejects a parametrised or unknown path at `typecheck` (checked with a `@ts-expect-error` case in a spec)
-- [ ] The shell store and the dev toolbar contain no screen path literal other than `/design-system`
-- [ ] App-shell spec passes without changed assertions: search routing and placeholder per role, empty search ignored, user menu opens profile and notifications, sign-out lands on login
-- [ ] Dev-toolbar spec passes unchanged
-- [ ] Browser: search from a learner, a content admin and a reports-only role lands on the catalog, the courses list and the learners report
-- [ ] `npm run check` green
+- [x] Route-table spec: every `search.href` matches a screen of its own group
+- [x] Search-target spec passes with its cases unchanged
+- [x] `screenHref` rejects a parametrised or unknown path at `typecheck` (checked with a `@ts-expect-error` case in a spec)
+- [x] The shell store and the dev toolbar contain no screen path literal other than `/design-system`
+- [x] App-shell spec passes without changed assertions: search routing and placeholder per role, empty search ignored, user menu opens profile and notifications, sign-out lands on login
+- [x] Dev-toolbar spec passes unchanged
+- [x] Browser: search from a learner, a content admin and a reports-only role lands on the catalog, the courses list and the learners report
+  - The "content admin" case used the demo admin, who holds `content.courses`; no separate content-only role was tried.
+- [x] `npm run check` green

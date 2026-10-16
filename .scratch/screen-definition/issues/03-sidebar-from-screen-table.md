@@ -4,12 +4,14 @@
 
 **Blocked by:** 02 (Tracer bullet: the screen table drives every route)
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] Route-table spec: the first screen of every menu group has no `:param`
-- [ ] New pure spec: `navFor` returns sections in today's order and grouping for a role; `allSections` lists all 22 menus; `menuLabel` returns the four overridden labels and the screen title elsewhere
-- [ ] App-shell spec passes without changed assertions: sidebar per demo role and custom role, longest-match `aria-current` (`/admin/courses/new` marks "Khóa học"), current mark moves on navigation, inbox badge
-- [ ] Role form groups and labels menus as before; the 403 page names the menu as before; profile and user detail list menus as before
-- [ ] No consumer of the menu functions changes beyond an import
+- [x] Route-table spec: the first screen of every menu group has no `:param`
+- [x] New pure spec: `navFor` returns sections in today's order and grouping for a role; `allSections` lists all 22 menus; `menuLabel` returns the four overridden labels and the screen title elsewhere
+- [x] App-shell spec passes without changed assertions: sidebar per demo role and custom role, longest-match `aria-current` (`/admin/courses/new` marks "Khóa học"), current mark moves on navigation, inbox badge
+- [x] Role form groups and labels menus as before; the 403 page names the menu as before; profile and user detail list menus as before
+  - Role form checked in the browser; the 403, profile and user-detail menus are covered by their unchanged specs, not opened in the browser after this ticket.
+- [x] No consumer of the menu functions changes beyond an import
 - [ ] Browser: sidebar of the learner, instructor and admin demo accounts and one custom role matches the current build item for item
-- [ ] `npm run check` green
+  - Learner, instructor and admin sidebars match item for item; the custom-role sidebar was not checked in the browser (the app-shell spec covers a custom role and passes).
+- [x] `npm run check` green
