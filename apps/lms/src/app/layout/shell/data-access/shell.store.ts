@@ -2,14 +2,11 @@ import { Dialog } from '@angular/cdk/dialog';
 import {
   computed,
   DestroyRef,
-  effect,
   inject,
   Injectable,
   Injector,
   linkedSignal,
   signal,
-  type TemplateRef,
-  untracked,
 } from '@angular/core';
 import {
   rxResource,
@@ -23,7 +20,7 @@ import {
   Router,
 } from '@angular/router';
 import { type NavCounts, shellEndpoints } from '@lms/contracts';
-import { confirm, type DrawerContext, openDrawer, Toaster } from '@lms/ui';
+import { confirm, Toaster } from '@lms/ui';
 import { filter, switchMap, take, tap } from 'rxjs';
 import type { UserMenuValue } from '../../header/header';
 import { searchTarget } from '../../header/search-target';
@@ -72,13 +69,16 @@ export class ShellStore {
     );
   }
 
-  private readonly state = { navOpen: signal(false) };
+  private readonly state = {
+    /** Open until the path changes: navigating closes the navigation drawer. */
+    navOpen: linkedSignal<string, boolean>({
+      source: () => this.path$(),
+      computation: () => false,
+    }),
+  };
 
   /** The routed page component, for the unsaved-changes check on reload or tab close. */
   private page: unknown;
-
-  /** The CDK handle of the open drawer: an imperative UI object, not state. */
-  private drawer?: { close(): void };
 
   private readonly navigated = toSignal(
     this.router.events.pipe(filter((e) => e instanceof NavigationEnd)),
@@ -132,11 +132,6 @@ export class ShellStore {
   readonly unread$ = computed(() => this.counts().notifications);
   readonly inboxCount$ = computed(() => this.counts().inbox);
 
-  private readonly closeOnNavigation = effect(() => {
-    this.path$();
-    untracked(() => this.drawer?.close());
-  });
-
   /** The router outlet's `activate` and `deactivate` events keep track of the current page. */
   activated(page: unknown): void {
     this.page = page;
@@ -154,18 +149,13 @@ export class ShellStore {
     this.state.navOpen.set(open);
   }
 
-  /** Opens the navigation in a drawer; it closes on the next navigation. */
-  openNav(body: TemplateRef<DrawerContext>): void {
-    const ref = openDrawer(this.dialog, body, {
-      title: 'Điều hướng chính',
-      side: 'start',
-    });
-    this.drawer = ref;
+  /** Opens the navigation drawer; navigating closes it again. */
+  openNav(): void {
     this.setNavOpen(true);
-    ref.closed.subscribe(() => {
-      this.drawer = undefined;
-      this.setNavOpen(false);
-    });
+  }
+
+  closeNav(): void {
+    this.setNavOpen(false);
   }
 
   /** Header search: sends the query to the list the user's menus allow (nothing for an empty query). */

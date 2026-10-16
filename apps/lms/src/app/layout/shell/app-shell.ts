@@ -9,6 +9,7 @@ import {
 } from '@angular/core';
 import { NgComponentOutlet } from '@angular/common';
 import { RouterOutlet } from '@angular/router';
+import { DrawerOutlet } from '@lms/ui';
 import { APP_CONFIG } from '../../core/config/app-config';
 import { DEV_FEATURES } from '../../core/dev/dev-features';
 import { Header } from '../header/header';
@@ -23,7 +24,14 @@ import { ShellStore } from './data-access/shell.store';
  */
 @Component({
   selector: 'app-shell',
-  imports: [RouterOutlet, Sidebar, Header, NetBanner, NgComponentOutlet],
+  imports: [
+    DrawerOutlet,
+    RouterOutlet,
+    Sidebar,
+    Header,
+    NetBanner,
+    NgComponentOutlet,
+  ],
   host: { '(window:beforeunload)': 'warnBeforeUnload($event)' },
   providers: [ShellStore],
   templateUrl: './app-shell.html',

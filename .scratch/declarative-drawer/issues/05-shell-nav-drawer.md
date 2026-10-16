@@ -4,8 +4,8 @@
 
 **Blocked by:** 01
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] `ShellStore` imports neither `TemplateRef` nor `openDrawer`, and has no `effect` that closes the drawer
-- [ ] App shell spec passes without changed assertions (open from the menu button, close on navigation)
-- [ ] `npm run check` green
+- [x] `ShellStore` imports neither `TemplateRef` nor `openDrawer`, and has no `effect` that closes the drawer
+- [x] App shell spec passes without changed assertions (open from the menu button, close on navigation)
+- [x] `npm run check` green
