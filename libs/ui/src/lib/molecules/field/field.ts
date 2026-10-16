@@ -7,6 +7,7 @@ import {
   ElementRef,
   input,
 } from '@angular/core';
+import { FormField } from '@angular/forms/signals';
 import { Checkbox } from '../../atoms/checkbox/checkbox.directive';
 import { Icon } from '../../atoms/icon/icon';
 import { Input } from '../../atoms/input/input.directive';
@@ -17,13 +18,17 @@ let nextId = 0;
 
 /**
  * One form row: a visible label, the projected native control (`uiInput`, `uiSelect`,
- * `uiTextarea` or `uiCheckbox`), an optional hint and the error messages.
+ * `uiTextarea` or `uiCheckbox`) bound with `[formField]`, an optional hint and the control's
+ * validation messages.
+ *
+ * It reads the Signal Forms state of the projected `[formField]` itself, so a form declares no
+ * error plumbing: the validator and async-validator messages of the field show once it is touched
+ * (on blur, or after `submit()`). Server refusals are not field errors; the store reports them as a
+ * toast or an alert. This makes `@lms/ui` depend on `@angular/forms/signals` at runtime.
  *
  * It wires the control for you: the label's `for` and the control's `id` (an existing id is kept),
  * `aria-describedby` (hint and errors, appended to whatever the control already referenced),
- * `aria-required` and `aria-invalid` while there are errors. The field takes plain messages and
- * knows nothing about the form library; pass the messages you want shown (for Signal Forms, only
- * once the field is touched).
+ * `aria-required` and `aria-invalid` while there are errors.
  */
 @Component({
   selector: 'ui-field',
@@ -35,9 +40,9 @@ export class Field {
   readonly label = input.required<string>();
   readonly required = input(false, { transform: booleanAttribute });
   readonly hint = input('');
-  readonly errors = input<readonly string[]>([]);
 
   private readonly generatedId = `ui-field-${nextId++}`;
+  private readonly formField = contentChild(FormField);
   private readonly textInput = contentChild(Input, { read: ElementRef });
   private readonly select = contentChild(Select, { read: ElementRef });
   private readonly textarea = contentChild(Textarea, { read: ElementRef });
@@ -52,8 +57,16 @@ export class Field {
     () => this.control()?.id || this.generatedId,
   );
   protected readonly hintId = computed(() => `${this.controlId()}-hint`);
+  private readonly messages = computed(() => {
+    const state = this.formField()?.state();
+    if (!state?.touched()) return [];
+    return state
+      .errors()
+      .map((error) => error.message)
+      .filter((message): message is string => !!message);
+  });
   protected readonly errorItems = computed(() =>
-    this.errors().map((message, index) => ({
+    this.messages().map((message, index) => ({
       id: `${this.controlId()}-error-${index}`,
       message,
     })),

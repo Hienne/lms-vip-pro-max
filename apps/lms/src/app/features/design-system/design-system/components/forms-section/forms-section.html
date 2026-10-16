@@ -9,12 +9,7 @@
           @if (store.summaryShown$() && summaryItems().length > 0) {
           <ui-error-summary [items]="summaryItems()" />
           }
-          <ui-field
-            label="Tên khóa học"
-            required
-            hint="Tối đa 120 ký tự."
-            [errors]="titleErrors()"
-          >
+          <ui-field label="Tên khóa học" required hint="Tối đa 120 ký tự.">
             <input
               uiInput
               id="ds-title"
@@ -22,7 +17,7 @@
               [formField]="demoForm.title"
             />
           </ui-field>
-          <ui-field label="Email" required [errors]="emailErrors()">
+          <ui-field label="Email" required>
             <input
               uiInput
               id="ds-email"

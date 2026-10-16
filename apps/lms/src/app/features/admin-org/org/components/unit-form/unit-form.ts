@@ -1,12 +1,5 @@
+import { Component, input, linkedSignal, output } from '@angular/core';
 import {
-  Component,
-  computed,
-  input,
-  linkedSignal,
-  output,
-} from '@angular/core';
-import {
-  type FieldTree,
   form,
   FormField,
   submit,
@@ -37,22 +30,6 @@ export class UnitForm {
   protected readonly unitForm = form(this.model, (path) => {
     validateStandardSchema(path, UnitFormSchema);
   });
-
-  protected readonly codeErrors = computed(() =>
-    this.messages(this.unitForm.code),
-  );
-  protected readonly nameErrors = computed(() =>
-    this.messages(this.unitForm.name),
-  );
-
-  private messages(field: FieldTree<string>): readonly string[] {
-    return field().touched()
-      ? field()
-          .errors()
-          .map((error) => error.message ?? '')
-          .filter(Boolean)
-      : [];
-  }
 
   protected onSubmit(event: Event): void {
     event.preventDefault();

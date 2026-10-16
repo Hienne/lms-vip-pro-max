@@ -1,6 +1,5 @@
-import { Component, computed, input, output, signal } from '@angular/core';
+import { Component, input, output, signal } from '@angular/core';
 import {
-  type FieldTree,
   form,
   FormField,
   submit,
@@ -30,25 +29,6 @@ export class PasswordForm {
   protected readonly passwordForm = form(this.model, (path) => {
     validateStandardSchema(path, PasswordFormSchema);
   });
-
-  protected readonly curErrors = computed(() =>
-    this.messages(this.passwordForm.cur),
-  );
-  protected readonly nextErrors = computed(() =>
-    this.messages(this.passwordForm.next),
-  );
-  protected readonly confirmErrors = computed(() =>
-    this.messages(this.passwordForm.confirm),
-  );
-
-  private messages(field: FieldTree<string>): readonly string[] {
-    return field().touched()
-      ? field()
-          .errors()
-          .map((error) => error.message ?? '')
-          .filter(Boolean)
-      : [];
-  }
 
   protected onSubmit(event: Event): void {
     event.preventDefault();

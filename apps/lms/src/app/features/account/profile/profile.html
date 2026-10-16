@@ -32,7 +32,7 @@
       <div uiCardHeader><h2>Thông tin cá nhân</h2></div>
       <div uiCardBody>
         <form class="stack" novalidate (submit)="onSubmit($event)">
-          <ui-field label="Họ và tên" required [errors]="nameErrors()">
+          <ui-field label="Họ và tên" required>
             <input uiInput [formField]="profileForm.name" />
           </ui-field>
           <ui-field label="Chức danh">

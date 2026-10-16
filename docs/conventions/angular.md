@@ -340,8 +340,13 @@ export class CourseDetailStore {
 
 - The form model (`signal<T>`), `form()`, the validation schema, and submission
   all live in the **component that renders the form**.
-- Bind fields with the `FormField` directive (`[formField]`). Show errors only
-  after the field is touched.
+- Bind fields with the `FormField` directive (`[formField]`) inside `ui-field`.
+  `ui-field` reads the bound field's state and shows its validator and
+  async-validator messages once the field is touched (on blur, or after
+  `submit()`), so a form computes no error messages and passes none to the
+  field. Server refusals are not field errors: the store shows them as a toast
+  or an alert (see `serverMutation`). For a summary of every error, read
+  `form().errorSummary()`.
 - To prefill from server data, use a `linkedSignal` from the store's readonly
   signal as the form model.
 - On submit, validate with `submit()`, convert the value into a form-agnostic
@@ -371,12 +376,9 @@ export class CourseDetail {
 
 ```html
 <form (submit)="onSubmit($event)">
-  <input id="title" [formField]="courseForm.title" />
-  @if (courseForm.title().touched() && courseForm.title().invalid()) {
-    @for (error of courseForm.title().errors(); track error.kind) {
-      <p class="field-error">{{ error.message }}</p>
-    }
-  }
+  <ui-field label="Title" required>
+    <input uiInput [formField]="courseForm.title" />
+  </ui-field>
   <button type="submit" [disabled]="store.isSaving$()">Save</button>
 </form>
 ```

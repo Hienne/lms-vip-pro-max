@@ -7,7 +7,6 @@ import {
 } from '@angular/core';
 import {
   disabled,
-  type FieldTree,
   form,
   FormField,
   submit,
@@ -85,31 +84,6 @@ export class UserForm {
       })),
     ];
   });
-
-  protected readonly nameErrors = computed(() =>
-    this.messages(this.userForm.name),
-  );
-  protected readonly emailErrors = computed(() =>
-    this.messages(this.userForm.email),
-  );
-  protected readonly unitErrors = computed(() =>
-    this.messages(this.userForm.unitId),
-  );
-  protected readonly groupErrors = computed(() =>
-    this.messages(this.userForm.groupId),
-  );
-  protected readonly roleErrors = computed(() =>
-    this.messages(this.userForm.roleId),
-  );
-
-  private messages(field: FieldTree<string>): readonly string[] {
-    return field().touched()
-      ? field()
-          .errors()
-          .map((error) => error.message ?? '')
-          .filter(Boolean)
-      : [];
-  }
 
   /** A different unit has different groups, so the chosen one no longer applies. */
   protected onUnitChange(): void {

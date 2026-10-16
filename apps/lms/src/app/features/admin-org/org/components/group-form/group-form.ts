@@ -1,10 +1,4 @@
-import {
-  Component,
-  computed,
-  input,
-  linkedSignal,
-  output,
-} from '@angular/core';
+import { Component, input, linkedSignal, output } from '@angular/core';
 import {
   form,
   FormField,
@@ -32,16 +26,6 @@ export class GroupForm {
   protected readonly groupForm = form(this.model, (path) => {
     validateStandardSchema(path, GroupFormSchema);
   });
-
-  protected readonly nameErrors = computed(() =>
-    this.groupForm.name().touched()
-      ? this.groupForm
-          .name()
-          .errors()
-          .map((error) => error.message ?? '')
-          .filter(Boolean)
-      : [],
-  );
 
   protected onSubmit(event: Event): void {
     event.preventDefault();

@@ -41,16 +41,6 @@ export class RoleForm {
 
   protected readonly chosen = computed(() => new Set(this.model().menus));
 
-  protected readonly nameErrors = computed(() =>
-    this.roleForm.name().touched()
-      ? this.roleForm
-          .name()
-          .errors()
-          .map((error) => error.message ?? '')
-          .filter(Boolean)
-      : [],
-  );
-
   protected toggle(key: MenuKey, on: boolean): void {
     this.model.update((value) => ({
       ...value,

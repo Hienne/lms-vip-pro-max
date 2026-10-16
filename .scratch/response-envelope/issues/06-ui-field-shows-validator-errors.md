@@ -12,15 +12,17 @@ See spec: `docs/specs/response-envelope.md`, Implementation Decisions → `ui-fi
 
 **Blocked by:** 02, 03, 04
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] Field spec (host with Signal Forms): no messages before the field is touched
-- [ ] Field spec: messages appear after blur and after `submit()` on an untouched form
-- [ ] Field spec: an async validator's error is shown and wired the same way as a synchronous one
-- [ ] Field spec: `aria-invalid` and `aria-describedby` follow the messages and keep foreign `aria-describedby` tokens
-- [ ] No form component computes error messages, and `ui-field` has no `errors` input
-- [ ] Design-system forms section: "validate" shows the summary from `errorSummary()`, and each link focuses its control
-- [ ] Existing page specs for users, org, roles and profile pass without changed validation assertions
-- [ ] Browser on the mock: in the add-user drawer, a blurred empty name shows its message; pressing Save on an empty form shows every required message
-- [ ] angular.md §6, ui-library.md and the `Field` docstring match the new behaviour
-- [ ] `npm run check` green
+- [x] Field spec (host with Signal Forms): no messages before the field is touched
+- [x] Field spec: messages appear after blur and after `submit()` on an untouched form
+- [x] Field spec: an async validator's error is shown and wired the same way as a synchronous one
+- [x] Field spec: `aria-invalid` and `aria-describedby` follow the messages and keep foreign `aria-describedby` tokens
+- [x] No form component computes error messages, and `ui-field` has no `errors` input
+- [x] Design-system forms section: "validate" shows the summary from `errorSummary()`, and each link focuses its control
+- [x] Existing page specs for users, org, roles and profile pass without changed validation assertions
+- [x] Browser on the mock: in the add-user drawer, a blurred empty name shows its message; pressing Save on an empty form shows every required message
+- [x] angular.md §6, ui-library.md and the `Field` docstring match the new behaviour
+- [x] `npm run check` green
+
+Notes: the add-user drawer was checked in the browser (blurred empty name shows its message; Save on the empty form shows the name, email and group messages; unit and role have defaults). Field spec covers the async-validator case with `validateAsync`.

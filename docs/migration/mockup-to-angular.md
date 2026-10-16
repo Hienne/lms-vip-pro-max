@@ -72,47 +72,47 @@ paths (without `#`) so the README's route table stays valid.
 
 ## Component inventory
 
-| Mockup                                                                    | Level     | Target                                                                                     |
-| ------------------------------------------------------------------------- | --------- | ------------------------------------------------------------------------------------------ |
-| `UI.Button`, `.btn`                                                       | atom      | `button[uiButton], a[uiButton]`                                                            |
-| `.icon-btn`                                                               | atom      | `button[uiIconButton]` (required `label`)                                                  |
-| `.link-btn`                                                               | atom      | `button[uiLinkButton], a[uiLinkButton]`                                                    |
-| `.input`, `.select`, `.textarea`, `UI.FilterSelect`                       | atom      | `input[uiInput]`, `select[uiSelect]`, `textarea[uiTextarea]`                               |
-| `.check`, `.switch`                                                       | atom      | `input[type=checkbox][uiCheckbox]`, `input[type=checkbox][uiSwitch]`                       |
-| `UI.Badge`, `.badge`, `.chip`                                             | atom      | `[uiBadge]` (`tone`), `[uiChip]`                                                           |
-| `UI.Card`, `.card`                                                        | atom      | `[uiCard]` + `[uiCardHeader]`, `[uiCardBody]`                                              |
-| `.list`, `.list__item`, `.list__icon`                                     | atom      | `ul[uiList]` + `[uiListItem]`, `[uiListIcon]`                                              |
-| `UI.Skeleton`, `.skeleton`, `.spinner`                                    | atom      | `[uiSkeleton]`, `[uiSpinner]`                                                              |
-| `.table`                                                                  | atom      | `table[uiTable]`                                                                           |
-| `icon()`                                                                  | atom      | `ui-icon`                                                                                  |
-| `UI.Avatar`                                                               | atom      | `ui-avatar`                                                                                |
-| `UI.Progress`, `UI.Ring`                                                  | atom      | `ui-progress`, `ui-ring`                                                                   |
-| `mai()`, `UI.MaiBadge`                                                    | atom      | `ui-mai` (brand flower SVG), `ui-mai-badge`                                                |
-| `UI.Field`, `.field`, `.error-summary`                                    | molecule  | `ui-field` (label, control slot, hint, errors with `aria-describedby`), `ui-error-summary` |
-| `UI.Search`, `.input-icon`                                                | molecule  | `ui-search`                                                                                |
-| `UI.Tabs`, `UI.Segmented`                                                 | molecule  | `ui-tabs`, `ui-segmented` on `@angular/aria`                                               |
-| `UI.Breadcrumb`                                                           | molecule  | `ui-breadcrumb`                                                                            |
-| `UI.Stars`, `.rating`                                                     | molecule  | `ui-stars` (display), `ui-rating` (input)                                                  |
-| `UI.Kpi`                                                                  | molecule  | `ui-kpi`                                                                                   |
-| `UI.Empty`, `UI.ErrorState`                                               | molecule  | `ui-empty`, `ui-error-state` (`retry` output)                                              |
-| `.alert`, `.tip`                                                          | molecule  | `ui-alert` (`tone`), `ui-tip`                                                              |
-| `.pagination`                                                             | molecule  | `ui-pagination`                                                                            |
-| `.dropzone`, `.upload-item`                                               | molecule  | `[uiDropzone]` behaviour + `ui-upload-item`                                                |
-| `.timer`                                                                  | molecule  | `ui-timer` (remaining seconds in; the clock lives in the quiz store)                       |
-| `.sort-item`, `.drag-handle`                                              | molecule  | `uiSortableList` + `ui-sortable-item` (CDK drag-drop; `moved` `{ from, to }`)              |
-| `.option-card`, `.answer`                                                 | molecule  | `ui-option-card` (selectable card; correct/wrong `tone`)                                   |
-| `UI.PageHeader`                                                           | organism  | `ui-page-header` (eyebrow, title, desc, actions slot, breadcrumb)                          |
-| `UI.DataTable`, `.bulk-bar`                                               | organism  | `ui-data-table` (sort, page, select emitted as outputs; state stays in the route store)    |
-| `.modal`, `.drawer`, `.toasts`, `.menu`                                   | organism  | see `ui-library.md` → Composite widgets and overlays                                       |
-| `.stepper`, `.tree`                                                       | organism  | `ui-stepper`, `ui-tree`                                                                    |
-| `charts.js` (`Radar`, bars, `.chart-legend`)                              | organism  | `ui-radar-chart`, `ui-bar-chart`, `ui-chart-legend` (SVG, token colours)                   |
-| `UI.PublishStatus`, `UI.CourseStatus`, `UI.AccountStatus`, `UI.RoleBadge` | domain UI | `app-publish-status`, `app-course-status`, `app-account-status`, `app-role-badge`          |
-| `UI.CourseCard`, `UI.Journey`, `UI.Due`, `UI.Required`                    | domain UI | `app-course-card`, `app-journey`, `app-due-date`, `app-required-mark`                      |
-| `UI.Markdown`                                                             | domain UI | `app-markdown` (node-built, no `innerHTML`)                                                |
-| `viewers.js` (`PdfViewer`, `VideoPlayer`), `.pdf`, `.player`              | feature   | `features/lesson` child components, `@defer`                                               |
-| `ai.js`, `.ai-msg`, `.cite`, `.typing`                                    | feature   | `features/study-tools` (assistant) and lesson tab                                          |
-| `.q-grid`, `.q-cell`, `.q-legend`                                         | domain UI | `app-question-grid`, `app-question-legend` (`shared/quiz/`; stateless, `goto` output)      |
-| `.certificate`, `.flashcard`, `.comment`, `.thread`                       | feature   | owning feature's `components/`                                                             |
+| Mockup                                                                    | Level     | Target                                                                                                                   |
+| ------------------------------------------------------------------------- | --------- | ------------------------------------------------------------------------------------------------------------------------ |
+| `UI.Button`, `.btn`                                                       | atom      | `button[uiButton], a[uiButton]`                                                                                          |
+| `.icon-btn`                                                               | atom      | `button[uiIconButton]` (required `label`)                                                                                |
+| `.link-btn`                                                               | atom      | `button[uiLinkButton], a[uiLinkButton]`                                                                                  |
+| `.input`, `.select`, `.textarea`, `UI.FilterSelect`                       | atom      | `input[uiInput]`, `select[uiSelect]`, `textarea[uiTextarea]`                                                             |
+| `.check`, `.switch`                                                       | atom      | `input[type=checkbox][uiCheckbox]`, `input[type=checkbox][uiSwitch]`                                                     |
+| `UI.Badge`, `.badge`, `.chip`                                             | atom      | `[uiBadge]` (`tone`), `[uiChip]`                                                                                         |
+| `UI.Card`, `.card`                                                        | atom      | `[uiCard]` + `[uiCardHeader]`, `[uiCardBody]`                                                                            |
+| `.list`, `.list__item`, `.list__icon`                                     | atom      | `ul[uiList]` + `[uiListItem]`, `[uiListIcon]`                                                                            |
+| `UI.Skeleton`, `.skeleton`, `.spinner`                                    | atom      | `[uiSkeleton]`, `[uiSpinner]`                                                                                            |
+| `.table`                                                                  | atom      | `table[uiTable]`                                                                                                         |
+| `icon()`                                                                  | atom      | `ui-icon`                                                                                                                |
+| `UI.Avatar`                                                               | atom      | `ui-avatar`                                                                                                              |
+| `UI.Progress`, `UI.Ring`                                                  | atom      | `ui-progress`, `ui-ring`                                                                                                 |
+| `mai()`, `UI.MaiBadge`                                                    | atom      | `ui-mai` (brand flower SVG), `ui-mai-badge`                                                                              |
+| `UI.Field`, `.field`, `.error-summary`                                    | molecule  | `ui-field` (label, control slot, hint, the bound field's validator messages with `aria-describedby`), `ui-error-summary` |
+| `UI.Search`, `.input-icon`                                                | molecule  | `ui-search`                                                                                                              |
+| `UI.Tabs`, `UI.Segmented`                                                 | molecule  | `ui-tabs`, `ui-segmented` on `@angular/aria`                                                                             |
+| `UI.Breadcrumb`                                                           | molecule  | `ui-breadcrumb`                                                                                                          |
+| `UI.Stars`, `.rating`                                                     | molecule  | `ui-stars` (display), `ui-rating` (input)                                                                                |
+| `UI.Kpi`                                                                  | molecule  | `ui-kpi`                                                                                                                 |
+| `UI.Empty`, `UI.ErrorState`                                               | molecule  | `ui-empty`, `ui-error-state` (`retry` output)                                                                            |
+| `.alert`, `.tip`                                                          | molecule  | `ui-alert` (`tone`), `ui-tip`                                                                                            |
+| `.pagination`                                                             | molecule  | `ui-pagination`                                                                                                          |
+| `.dropzone`, `.upload-item`                                               | molecule  | `[uiDropzone]` behaviour + `ui-upload-item`                                                                              |
+| `.timer`                                                                  | molecule  | `ui-timer` (remaining seconds in; the clock lives in the quiz store)                                                     |
+| `.sort-item`, `.drag-handle`                                              | molecule  | `uiSortableList` + `ui-sortable-item` (CDK drag-drop; `moved` `{ from, to }`)                                            |
+| `.option-card`, `.answer`                                                 | molecule  | `ui-option-card` (selectable card; correct/wrong `tone`)                                                                 |
+| `UI.PageHeader`                                                           | organism  | `ui-page-header` (eyebrow, title, desc, actions slot, breadcrumb)                                                        |
+| `UI.DataTable`, `.bulk-bar`                                               | organism  | `ui-data-table` (sort, page, select emitted as outputs; state stays in the route store)                                  |
+| `.modal`, `.drawer`, `.toasts`, `.menu`                                   | organism  | see `ui-library.md` → Composite widgets and overlays                                                                     |
+| `.stepper`, `.tree`                                                       | organism  | `ui-stepper`, `ui-tree`                                                                                                  |
+| `charts.js` (`Radar`, bars, `.chart-legend`)                              | organism  | `ui-radar-chart`, `ui-bar-chart`, `ui-chart-legend` (SVG, token colours)                                                 |
+| `UI.PublishStatus`, `UI.CourseStatus`, `UI.AccountStatus`, `UI.RoleBadge` | domain UI | `app-publish-status`, `app-course-status`, `app-account-status`, `app-role-badge`                                        |
+| `UI.CourseCard`, `UI.Journey`, `UI.Due`, `UI.Required`                    | domain UI | `app-course-card`, `app-journey`, `app-due-date`, `app-required-mark`                                                    |
+| `UI.Markdown`                                                             | domain UI | `app-markdown` (node-built, no `innerHTML`)                                                                              |
+| `viewers.js` (`PdfViewer`, `VideoPlayer`), `.pdf`, `.player`              | feature   | `features/lesson` child components, `@defer`                                                                             |
+| `ai.js`, `.ai-msg`, `.cite`, `.typing`                                    | feature   | `features/study-tools` (assistant) and lesson tab                                                                        |
+| `.q-grid`, `.q-cell`, `.q-legend`                                         | domain UI | `app-question-grid`, `app-question-legend` (`shared/quiz/`; stateless, `goto` output)                                    |
+| `.certificate`, `.flashcard`, `.comment`, `.thread`                       | feature   | owning feature's `components/`                                                                                           |
 
 When a mockup page has markup that matches no row, decide its level with the
 `ui-library.md` table and add a row here.

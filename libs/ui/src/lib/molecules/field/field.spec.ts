@@ -1,11 +1,12 @@
-import { Component, computed, signal } from '@angular/core';
+import { Component, resource, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import {
   email,
   form,
   FormField,
   required,
-  type FieldTree,
+  submit,
+  validateAsync,
 } from '@angular/forms/signals';
 import { Checkbox } from '../../atoms/checkbox/checkbox.directive';
 import { Input } from '../../atoms/input/input.directive';
@@ -16,15 +17,10 @@ import { Field } from './field';
 @Component({
   imports: [Field, Input, Select, Textarea, Checkbox, FormField],
   template: `
-    <ui-field
-      label="Tên khóa học"
-      required
-      hint="Tối đa 120 ký tự."
-      [errors]="titleErrors()"
-    >
+    <ui-field label="Tên khóa học" required hint="Tối đa 120 ký tự.">
       <input uiInput [formField]="f.title" />
     </ui-field>
-    <ui-field label="Email" [errors]="emailErrors()">
+    <ui-field label="Email">
       <input
         uiInput
         id="email-input"
@@ -32,7 +28,7 @@ import { Field } from './field';
         [formField]="f.email"
       />
     </ui-field>
-    <ui-field label="Chương trình" [errors]="programErrors()">
+    <ui-field label="Chương trình">
       <select uiSelect [formField]="f.program">
         <option value="">— Chọn —</option>
         <option value="1">Nền tảng</option>
@@ -41,8 +37,11 @@ import { Field } from './field';
     <ui-field label="Mô tả">
       <textarea uiTextarea [formField]="f.description"></textarea>
     </ui-field>
-    <ui-field label="Trộn đáp án" [errors]="shuffleErrors()">
+    <ui-field label="Trộn đáp án">
       <input type="checkbox" uiCheckbox [formField]="f.shuffle" />
+    </ui-field>
+    <ui-field label="Mã khóa học">
+      <input uiInput [formField]="f.code" />
     </ui-field>
   `,
 })
@@ -53,26 +52,25 @@ class Host {
     program: '',
     description: '',
     shuffle: false,
+    code: '',
   });
   readonly f = form(this.model, (p) => {
     required(p.title, { message: 'Tên khóa học là bắt buộc.' });
     email(p.email, { message: 'Email không đúng định dạng.' });
     required(p.program, { message: 'Chọn một chương trình.' });
     required(p.shuffle, { message: 'Cần bật tùy chọn này.' });
+    validateAsync(p.code, {
+      params: ({ value }) => value() || undefined,
+      factory: (params) =>
+        resource({
+          params,
+          loader: async ({ params: code }) => code === 'TAKEN',
+        }),
+      onSuccess: (taken) =>
+        taken ? { kind: 'taken', message: 'Mã khóa học đã được dùng.' } : [],
+      onError: () => ({ kind: 'failed', message: 'Không kiểm tra được mã.' }),
+    });
   });
-  private messages<T>(field: FieldTree<T>) {
-    return computed(() =>
-      field().touched()
-        ? field()
-            .errors()
-            .map((e) => e.message ?? '')
-        : [],
-    );
-  }
-  readonly titleErrors = this.messages(this.f.title);
-  readonly emailErrors = this.messages(this.f.email);
-  readonly programErrors = this.messages(this.f.program);
-  readonly shuffleErrors = this.messages(this.f.shuffle);
 }
 
 async function render() {
@@ -127,6 +125,44 @@ describe('Field', () => {
     const hint = fields[0].querySelector('.field__help') as HTMLElement;
     expect(hint.textContent).toContain('Tối đa 120 ký tự.');
     expect(ids(controlOf(fields[0]))).toEqual([hint.id]);
+  });
+
+  it('shows no messages before the field is touched, even though it is invalid', async () => {
+    const { fields, host } = await render();
+    expect(host.f.title().errors().length).toBeGreaterThan(0);
+    expect(fields[0].querySelector('.field__error')).toBeNull();
+    expect(controlOf(fields[0]).hasAttribute('aria-invalid')).toBe(false);
+  });
+
+  it('shows the messages once the control is blurred', async () => {
+    const { fixture, fields } = await render();
+    controlOf(fields[0]).dispatchEvent(new Event('blur'));
+    await fixture.whenStable();
+    expect(fields[0].querySelector('.field__error')?.textContent).toContain(
+      'Tên khóa học là bắt buộc.',
+    );
+  });
+
+  it('shows every message after submit() on an untouched form', async () => {
+    const { fixture, fields, host } = await render();
+    await submit(host.f, async () => undefined);
+    await fixture.whenStable();
+    for (const index of [0, 1, 2, 4]) {
+      expect(fields[index].querySelector('.field__error')).not.toBeNull();
+    }
+    expect(fields[3].querySelector('.field__error')).toBeNull();
+  });
+
+  it('shows an async validator error and wires it like a synchronous one', async () => {
+    const { fixture, fields, host } = await render();
+    host.model.update((m) => ({ ...m, code: 'TAKEN' }));
+    host.f.code().markAsTouched();
+    await fixture.whenStable();
+    await fixture.whenStable();
+    const error = fields[5].querySelector('.field__error') as HTMLElement;
+    expect(error.textContent).toContain('Mã khóa học đã được dùng.');
+    expect(controlOf(fields[5]).getAttribute('aria-invalid')).toBe('true');
+    expect(ids(controlOf(fields[5]))).toEqual([error.id]);
   });
 
   it('shows no errors and no aria-invalid while there are none', async () => {
