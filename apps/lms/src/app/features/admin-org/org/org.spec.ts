@@ -280,6 +280,59 @@ describe('Org', () => {
     await settle();
   });
 
+  const escape = () =>
+    dialog()?.dispatchEvent(
+      new KeyboardEvent('keydown', {
+        key: 'Escape',
+        code: 'Escape',
+        keyCode: 27,
+        bubbles: true,
+      }),
+    );
+
+  it('keeps the unit drawer open on Escape while saving, and closes it after the response', async () => {
+    await open();
+    button(el, 'Thêm đơn vị')?.click();
+    await settle();
+    await type(inputOf('Mã đơn vị'), 'CNTT');
+    await type(inputOf('Tên đơn vị'), 'Khối CNTT');
+    button(dialog() as HTMLElement, 'Lưu')?.click();
+    await settle();
+    const post = backend.expectOne('/api/admin/units');
+    expect(dialog()?.textContent).toContain('Đang lưu…');
+
+    escape();
+    await settle();
+    expect(dialog()).not.toBeNull();
+
+    post.flush({ id: 'u9', code: 'CNTT', name: 'Khối CNTT', status: 'active' });
+    await settle();
+    expect(dialog()).toBeNull();
+    backend.expectOne('/api/admin/org').flush(orgFixtures);
+    await settle();
+  });
+
+  it('keeps the group drawer open on Escape while saving, and closes it after the response', async () => {
+    await open();
+    button(el, 'Thêm phòng/nhóm')?.click();
+    await settle();
+    await type(inputOf('Tên phòng/nhóm'), 'Nhóm mới');
+    button(dialog() as HTMLElement, 'Lưu')?.click();
+    await settle();
+    const post = backend.expectOne('/api/admin/groups');
+    expect(dialog()?.textContent).toContain('Đang lưu…');
+
+    escape();
+    await settle();
+    expect(dialog()).not.toBeNull();
+
+    post.flush(first.groups[0]);
+    await settle();
+    expect(dialog()).toBeNull();
+    backend.expectOne('/api/admin/org').flush(orgFixtures);
+    await settle();
+  });
+
   it('deletes a group after confirming, then reloads', async () => {
     await open();
     const group = first.groups[0];

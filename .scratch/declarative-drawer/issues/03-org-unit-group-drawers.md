@@ -4,9 +4,9 @@
 
 **Blocked by:** 02
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] `OrgStore` imports neither `TemplateRef` nor `openDrawer`; `Dialog` remains only for `confirm()`
-- [ ] Org page spec passes without changed assertions
-- [ ] Org page spec adds, for the unit drawer and the group drawer: while a save is pending, Esc does not close it, and it closes after the response
-- [ ] `npm run check` green
+- [x] `OrgStore` imports neither `TemplateRef` nor `openDrawer`; `Dialog` remains only for `confirm()`
+- [x] Org page spec passes without changed assertions
+- [x] Org page spec adds, for the unit drawer and the group drawer: while a save is pending, Esc does not close it, and it closes after the response
+- [x] `npm run check` green
