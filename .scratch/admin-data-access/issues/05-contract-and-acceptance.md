@@ -4,10 +4,10 @@
 
 **Blocked by:** 02 (org screen), 04 (user page)
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] §14 checklist updated; every remaining raw `rxResource` in the app (session, shell, login, profile) has a comment giving the reason, or is listed in the PR as out of scope
-- [ ] The four admin-org page specs are unchanged against `main`
-- [ ] Full smoke test against Prism over the roles, org, users and user pages
-- [ ] `npm run check` green and the angular.md §14 checklist passes
-- [ ] Pull request opened; it states the concurrency limitation and the hand-offs to architecture review #02 and #03
+- [x] §14 checklist updated; every remaining raw `rxResource` in the app (session, shell, login, profile) has a comment giving the reason, or is listed in the PR as out of scope
+- [x] The four admin-org page specs are unchanged against `main`
+- [x] Full smoke test against Prism over the roles, org, users and user pages
+- [x] `npm run check` green and the angular.md §14 checklist passes
+- [x] Pull request opened; it states the concurrency limitation and the hand-offs to architecture review #02 and #03

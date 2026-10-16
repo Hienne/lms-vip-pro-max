@@ -4,10 +4,10 @@
 
 **Blocked by:** 01 (primitives through the roles screen)
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] `UserEditorStore` and `UsersStore` use only the primitives for API calls; no change counter or `linkedSignal` left
-- [ ] A mutation in the editor reloads the users list through the shared token
-- [ ] Users page spec passes without edits
-- [ ] Smoke test against Prism: add and edit a user, lock and unlock, reset a password
-- [ ] `npm run check` green
+- [x] `UserEditorStore` and `UsersStore` use only the primitives for API calls; no change counter or `linkedSignal` left
+- [x] A mutation in the editor reloads the users list through the shared token
+- [x] Users page spec passes without edits
+- [x] Smoke test against Prism: add and edit a user, lock and unlock, reset a password
+- [x] `npm run check` green

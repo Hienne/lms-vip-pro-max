@@ -27,14 +27,15 @@ docs/
 
 ## Where does it go?
 
-| You are adding…                                                                     | Location                                                |
-| ----------------------------------------------------------------------------------- | ------------------------------------------------------- |
-| Token, atom, molecule, organism, generic pipe/directive (no LMS domain words)       | `libs/ui` — see `ui-library.md`                         |
-| UI that knows a domain type (`Course`, `Role`, `PublishStatus`…) but holds no state | `apps/lms/src/app/shared/`                              |
-| Wire schema, request/response type, endpoint definition                             | `libs/contracts` — see `contracts-and-mocks.md`         |
-| Fixture / example payload                                                           | `libs/mocks`                                            |
-| View model, command or adapter used by one route or one feature                     | narrowest `data-access/` in `features/` (angular.md §4) |
-| Interceptor, guard, global error handling, session                                  | `apps/lms/src/app/core/`                                |
+| You are adding…                                                                         | Location                                                |
+| --------------------------------------------------------------------------------------- | ------------------------------------------------------- |
+| Token, atom, molecule, organism, generic pipe/directive (no LMS domain words)           | `libs/ui` — see `ui-library.md`                         |
+| UI that knows a domain type (`Course`, `Role`, `PublishStatus`…) but holds no state     | `apps/lms/src/app/shared/`                              |
+| Wire schema, request/response type, endpoint definition                                 | `libs/contracts` — see `contracts-and-mocks.md`         |
+| Fixture / example payload                                                               | `libs/mocks`                                            |
+| View model, command or adapter used by one route or one feature                         | narrowest `data-access/` in `features/` (angular.md §4) |
+| Interceptor, guard, global error handling, session                                      | `apps/lms/src/app/core/`                                |
+| Data-access primitive every store uses (`serverData`, `serverMutation`, `invalidation`) | `apps/lms/src/app/core/data-access/`                    |
 
 The test for `libs/ui` versus `shared/`: if the code would make sense in a
 different product (a bank's HR app), it belongs in `libs/ui`.

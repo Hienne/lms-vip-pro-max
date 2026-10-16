@@ -1,16 +1,9 @@
-import {
-  computed,
-  inject,
-  Injectable,
-  linkedSignal,
-  signal,
-} from '@angular/core';
-import { rxResource, toSignal } from '@angular/core/rxjs-interop';
-import type { UserDetail } from '@lms/contracts';
+import { computed, inject, Injectable, signal } from '@angular/core';
+import { toSignal } from '@angular/core/rxjs-interop';
 import type { TabItem } from '@lms/ui';
 import { ActivatedRoute } from '@angular/router';
 import { map } from 'rxjs';
-import { toAppError } from '../../../../core/errors/app-error';
+import { serverData } from '../../../../core/data-access/server-data';
 import { menuLabel } from '../../../../core/menu/menu-catalog';
 import { AdminOrgApi } from '../../data-access/admin-org.api';
 import { UserEditorStore } from '../../data-access/user-editor.store';
@@ -32,42 +25,17 @@ export class UserDetailStore {
     this.route.paramMap.pipe(map((params) => params.get('id') ?? undefined)),
   );
 
-  /** Reads the editor's change counter, so an edit or a lock reloads the page. */
-  private readonly detailResource = rxResource({
-    params: () => {
-      const userId = this.userId();
-      return userId ? { userId, changes: this.editor.changes$() } : undefined;
-    },
-    stream: ({ params }) => this.api.user(params.userId),
-  });
-
-  /** The last detail the server sent for this user, kept on screen while a reload is under way. */
-  private readonly latest = linkedSignal<
-    { userId: string | undefined; detail: UserDetail | undefined },
-    UserDetail | undefined
-  >({
-    source: () => ({
-      userId: this.userId(),
-      detail: this.detailResource.hasValue()
-        ? this.detailResource.value()
-        : undefined,
-    }),
-    computation: (source, previous) =>
-      source.detail ??
-      (previous?.source.userId === source.userId ? previous?.value : undefined),
-  });
+  /** The viewed user; the editor's token reloads it in place after an edit or a lock. */
+  private readonly detailData = serverData(
+    (userId: string) => this.api.user(userId),
+    { params: () => this.userId(), reloadOn: this.editor.changes },
+  );
 
   readonly tab$ = this.state.tab.asReadonly();
-  readonly detail$ = this.latest.asReadonly();
+  readonly detail$ = this.detailData.value;
   readonly me$ = this.editor.me$;
-  readonly isLoading$ = computed(
-    () => this.detailResource.isLoading() && this.latest() === undefined,
-  );
-  readonly loadError$ = computed(() =>
-    this.detailResource.error()
-      ? toAppError(this.detailResource.error())
-      : undefined,
-  );
+  readonly isLoading$ = this.detailData.isLoading;
+  readonly loadError$ = this.detailData.error;
 
   /** The viewed user is the signed-in one: they cannot lock themselves out. */
   readonly isSelf$ = computed(
@@ -111,6 +79,6 @@ export class UserDetailStore {
   }
 
   retryLoad(): void {
-    this.detailResource.reload();
+    this.detailData.reload();
   }
 }

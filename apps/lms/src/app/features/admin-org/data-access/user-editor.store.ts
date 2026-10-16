@@ -1,21 +1,25 @@
 import { Dialog } from '@angular/cdk/dialog';
 import {
-  computed,
   DestroyRef,
   inject,
   Injectable,
   signal,
+  type TemplateRef,
 } from '@angular/core';
-import { takeUntilDestroyed, rxResource } from '@angular/core/rxjs-interop';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import type {
   AccountStatus,
   SaveUserCommand,
   UserListItem,
 } from '@lms/contracts';
-import { confirm, openDrawer, Toaster, type DrawerContext } from '@lms/ui';
-import type { TemplateRef } from '@angular/core';
-import { filter, tap } from 'rxjs';
-import { toAppError } from '../../../core/errors/app-error';
+import { confirm, openDrawer, type DrawerContext } from '@lms/ui';
+import { filter } from 'rxjs';
+import {
+  invalidation,
+  type ChangeToken,
+} from '../../../core/data-access/invalidation';
+import { serverData } from '../../../core/data-access/server-data';
+import { serverMutation } from '../../../core/data-access/server-mutation';
 import { SessionStore } from '../../../core/session/session.store';
 import { AdminOrgApi } from './admin-org.api';
 
@@ -26,123 +30,80 @@ type StatusRequest = {
 
 /**
  * The commands on one user that the users list and the user page share: the add/edit drawer, lock
- * and unlock, and the password reset. Each page provides its own instance. `changes$` counts the
- * accepted mutations; the page's own data resource reads it in `params` and so reloads, because
- * the server, not the response of a mutation, is the source of truth (Prism is stateless).
+ * and unlock, and the password reset. Each page provides its own instance. `changes` is bumped by
+ * every accepted mutation that alters a user; the page's own data read reloads on it, because the
+ * server, not the response of a mutation, is the source of truth (Prism is stateless).
  */
 @Injectable()
 export class UserEditorStore {
   private readonly api = inject(AdminOrgApi);
   private readonly session = inject(SessionStore);
   private readonly dialog = inject(Dialog);
-  private readonly toaster = inject(Toaster);
   private readonly destroyRef = inject(DestroyRef);
 
   private readonly state = {
     editing: signal<{ readonly user: UserListItem | null } | null>(null),
-    saveRequest: signal<SaveUserCommand | undefined>(undefined),
-    statusRequest: signal<StatusRequest | undefined>(undefined),
-    resetRequest: signal<{ readonly userId: string } | undefined>(undefined),
-    changes: signal(0),
   };
 
   /** The CDK handle of the open drawer: an imperative UI object, not state. */
   private drawer?: { close(): void };
 
-  private readonly metaResource = rxResource({
-    stream: () => this.api.adminMeta(),
-  });
+  private readonly changeSource = invalidation();
 
-  private readonly saveResource = rxResource({
-    params: () => this.state.saveRequest(),
-    stream: ({ params: command }) =>
-      this.api.saveUser(command).pipe(
-        tap(() => {
-          this.drawer?.close();
-          this.setChanges(this.state.changes() + 1);
-          this.toaster.success(
-            command.id ? 'Đã cập nhật người dùng' : 'Đã thêm người dùng',
-          );
-        }),
-      ),
-  });
+  /** The token other stores reload on; it cannot be bumped from outside. */
+  readonly changes: ChangeToken = {
+    version: this.changeSource.version,
+  };
 
-  private readonly statusResource = rxResource({
-    params: () => this.state.statusRequest(),
-    stream: ({ params: request }) =>
-      this.api.setUserStatus(request.userId, { status: request.status }).pipe(
-        tap({
-          next: () => {
-            this.setChanges(this.state.changes() + 1);
-            this.toaster.success(
-              request.status === 'locked'
-                ? 'Đã khóa tài khoản'
-                : 'Đã mở khóa tài khoản',
-            );
-          },
-          error: (error: unknown) =>
-            this.toaster.error(toAppError(error).message),
-        }),
-      ),
-  });
+  private readonly metaData = serverData(() => this.api.adminMeta());
 
-  private readonly resetResource = rxResource({
-    params: () => this.state.resetRequest(),
-    stream: ({ params: request }) =>
-      this.api.resetPassword(request.userId).pipe(
-        tap({
-          next: (result) =>
-            this.toaster.success(
-              'Đã gửi liên kết đặt lại mật khẩu',
-              result.sentTo,
-            ),
-          error: (error: unknown) =>
-            this.toaster.error(toAppError(error).message),
-        }),
-      ),
-  });
+  private readonly saveMutation = serverMutation(
+    (command: SaveUserCommand) => this.api.saveUser(command),
+    {
+      errors: 'inline',
+      success: (command) =>
+        command.id ? 'Đã cập nhật người dùng' : 'Đã thêm người dùng',
+      onSuccess: () => this.drawer?.close(),
+      invalidates: this.changeSource,
+    },
+  );
+
+  private readonly statusMutation = serverMutation(
+    (request: StatusRequest) =>
+      this.api.setUserStatus(request.userId, { status: request.status }),
+    {
+      errors: 'toast',
+      success: (request) =>
+        request.status === 'locked'
+          ? 'Đã khóa tài khoản'
+          : 'Đã mở khóa tài khoản',
+      invalidates: this.changeSource,
+    },
+  );
+
+  private readonly resetMutation = serverMutation(
+    (userId: string) => this.api.resetPassword(userId),
+    {
+      errors: 'toast',
+      success: (_userId, result) => ({
+        title: 'Đã gửi liên kết đặt lại mật khẩu',
+        detail: result.sentTo,
+      }),
+    },
+  );
 
   readonly me$ = this.session.user$;
   readonly editing$ = this.state.editing.asReadonly();
-  readonly changes$ = this.state.changes.asReadonly();
 
-  readonly meta$ = computed(() =>
-    this.metaResource.hasValue() ? this.metaResource.value() : undefined,
-  );
-  readonly metaError$ = computed(() =>
-    this.metaResource.error()
-      ? toAppError(this.metaResource.error())
-      : undefined,
-  );
-  readonly isSaving$ = this.saveResource.isLoading;
-  readonly saveError$ = computed(() =>
-    this.saveResource.error()
-      ? toAppError(this.saveResource.error())
-      : undefined,
-  );
-  readonly isResetting$ = this.resetResource.isLoading;
-  readonly isChangingStatus$ = this.statusResource.isLoading;
+  readonly meta$ = this.metaData.value;
+  readonly metaError$ = this.metaData.error;
+  readonly isSaving$ = this.saveMutation.isPending;
+  readonly saveError$ = this.saveMutation.error;
+  readonly isResetting$ = this.resetMutation.isPending;
+  readonly isChangingStatus$ = this.statusMutation.isPending;
 
   private setEditing(editing: { readonly user: UserListItem | null } | null) {
     this.state.editing.set(editing);
-  }
-
-  private setSaveRequest(command: SaveUserCommand | undefined): void {
-    this.state.saveRequest.set(command);
-  }
-
-  private setStatusRequest(request: StatusRequest | undefined): void {
-    this.state.statusRequest.set(request);
-  }
-
-  private setResetRequest(
-    request: { readonly userId: string } | undefined,
-  ): void {
-    this.state.resetRequest.set(request);
-  }
-
-  private setChanges(count: number): void {
-    this.state.changes.set(count);
   }
 
   /** Opens the add (`user` null) or edit drawer; the templates come from the editor component. */
@@ -156,7 +117,7 @@ export class UserEditorStore {
       footer,
     });
     this.drawer = ref;
-    this.setSaveRequest(undefined);
+    this.saveMutation.reset();
     this.setEditing({ user });
     ref.closed.subscribe(() => {
       this.drawer = undefined;
@@ -165,7 +126,7 @@ export class UserEditorStore {
   }
 
   save(command: SaveUserCommand): void {
-    this.setSaveRequest({ ...command });
+    this.saveMutation.run(command);
   }
 
   /** Asks first, then locks an active account or reopens a locked or suspended one. */
@@ -181,7 +142,7 @@ export class UserEditorStore {
     })
       .pipe(filter(Boolean), takeUntilDestroyed(this.destroyRef))
       .subscribe(() =>
-        this.setStatusRequest({
+        this.statusMutation.run({
           userId: user.id,
           status: locking ? 'locked' : 'active',
         }),
@@ -189,6 +150,6 @@ export class UserEditorStore {
   }
 
   resetPassword(user: UserListItem): void {
-    this.setResetRequest({ userId: user.id });
+    this.resetMutation.run(user.id);
   }
 }

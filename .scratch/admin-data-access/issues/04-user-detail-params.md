@@ -4,10 +4,10 @@
 
 **Blocked by:** 03 (user editor exposes its invalidation token)
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] Primitive spec extended: idle while params are undefined; value dropped on a params change; value kept on an invalidation reload with the same params
-- [ ] `UserDetailStore` uses only the primitives for API calls
-- [ ] User-detail page spec passes without edits
-- [ ] Smoke test against Prism: switch between two users' pages; lock the current user and see the page reload in place
-- [ ] `npm run check` green
+- [x] Primitive spec extended: idle while params are undefined; value dropped on a params change; value kept on an invalidation reload with the same params
+- [x] `UserDetailStore` uses only the primitives for API calls
+- [x] User-detail page spec passes without edits
+- [x] Smoke test against Prism: switch between two users' pages; lock the current user and see the page reload in place
+- [x] `npm run check` green

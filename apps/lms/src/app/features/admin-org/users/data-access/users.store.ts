@@ -1,14 +1,7 @@
-import {
-  computed,
-  inject,
-  Injectable,
-  linkedSignal,
-  signal,
-} from '@angular/core';
-import { rxResource } from '@angular/core/rxjs-interop';
+import { computed, inject, Injectable, signal } from '@angular/core';
 import type { UserListItem } from '@lms/contracts';
 import type { DataTableSort } from '@lms/ui';
-import { toAppError } from '../../../../core/errors/app-error';
+import { serverData } from '../../../../core/data-access/server-data';
 import { AdminOrgApi } from '../../data-access/admin-org.api';
 import { UserEditorStore } from '../../data-access/user-editor.store';
 
@@ -47,20 +40,9 @@ export class UsersStore {
     page: signal(1),
   };
 
-  /** Reads the editor's change counter, so every accepted mutation reloads the list. */
-  private readonly listResource = rxResource({
-    params: () => ({ changes: this.editor.changes$() }),
-    stream: () => this.api.users(),
-  });
-
-  /** The last list the server sent: it stays on screen while a reload is under way. */
-  private readonly latest = linkedSignal<
-    UserListItem[] | undefined,
-    UserListItem[] | undefined
-  >({
-    source: () =>
-      this.listResource.hasValue() ? this.listResource.value() : undefined,
-    computation: (value, previous) => value ?? previous?.value,
+  /** Reloads on the editor's token, so every accepted mutation refreshes the list. */
+  private readonly listData = serverData(() => this.api.users(), {
+    reloadOn: this.editor.changes,
   });
 
   readonly query$ = this.state.query.asReadonly();
@@ -71,14 +53,8 @@ export class UsersStore {
 
   readonly meta$ = this.editor.meta$;
   readonly me$ = this.editor.me$;
-  readonly isLoading$ = computed(
-    () => this.listResource.isLoading() && this.latest() === undefined,
-  );
-  readonly loadError$ = computed(() =>
-    this.listResource.error()
-      ? toAppError(this.listResource.error())
-      : undefined,
-  );
+  readonly isLoading$ = this.listData.isLoading;
+  readonly loadError$ = this.listData.error;
 
   /** Sentence under the title; a caller limited to one unit is told which. */
   readonly description$ = computed(() => {
@@ -92,7 +68,7 @@ export class UsersStore {
   /** Roles present in the list, for the role filter. */
   readonly roleOptions$ = computed(() => {
     const names = new Map(
-      (this.latest() ?? []).map((u) => [u.roleId, u.roleName]),
+      (this.listData.value() ?? []).map((u) => [u.roleId, u.roleName]),
     );
     return [...names]
       .map(([value, label]) => ({ value, label }))
@@ -104,7 +80,7 @@ export class UsersStore {
     const role = this.state.role();
     const unit = this.state.unit();
     const status = this.state.status();
-    return (this.latest() ?? []).filter(
+    return (this.listData.value() ?? []).filter(
       (u) =>
         (!query ||
           `${u.name} ${u.email} ${u.staffCode}`
@@ -192,6 +168,6 @@ export class UsersStore {
   }
 
   retryLoad(): void {
-    this.listResource.reload();
+    this.listData.reload();
   }
 }

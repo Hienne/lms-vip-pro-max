@@ -4,9 +4,9 @@
 
 **Blocked by:** 01 (primitives through the roles screen)
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] `OrgStore` uses only the primitives for API calls; `state` holds only screen state
-- [ ] Org page spec passes without edits
-- [ ] Smoke test against Prism: add and edit a unit and a group, pause/resume a unit, delete a group
-- [ ] `npm run check` green
+- [x] `OrgStore` uses only the primitives for API calls; `state` holds only screen state
+- [x] Org page spec passes without edits
+- [x] Smoke test against Prism: add and edit a unit and a group, pause/resume a unit, delete a group
+- [x] `npm run check` green
