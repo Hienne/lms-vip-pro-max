@@ -4,18 +4,14 @@ import { defineEndpoint, toUrl } from './endpoint';
 const getCourse = defineEndpoint({
   method: 'get',
   path: '/api/courses/{courseId}',
-  summary: 'Course detail',
   params: z.object({ courseId: z.string() }),
   response: z.object({ id: z.string() }),
-  errors: [401, 404],
 });
 
 const list = defineEndpoint({
   method: 'get',
   path: '/api/courses',
-  summary: 'Courses',
   response: z.array(z.string()),
-  errors: [],
 });
 
 describe('toUrl', () => {
@@ -40,6 +36,5 @@ describe('toUrl', () => {
 describe('defineEndpoint', () => {
   it('keeps the declaration as given', () => {
     expect(getCourse.method).toBe('get');
-    expect(getCourse.errors).toEqual([401, 404]);
   });
 });

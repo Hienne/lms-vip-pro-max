@@ -11,16 +11,3 @@ export * from './lib/shell/shell.schema';
 export * from './lib/shell/shell.endpoints';
 export * from './lib/admin-org/admin-org.schema';
 export * from './lib/admin-org/admin-org.endpoints';
-
-import { adminOrgEndpoints } from './lib/admin-org/admin-org.endpoints';
-import { authEndpoints } from './lib/auth/auth.endpoints';
-import { healthEndpoints } from './lib/health/health.endpoints';
-import { shellEndpoints } from './lib/shell/shell.endpoints';
-
-/** Every endpoint registry; `build-spec` walks this to emit OpenAPI. */
-export const endpointRegistries = [
-  healthEndpoints,
-  authEndpoints,
-  shellEndpoints,
-  adminOrgEndpoints,
-] as const;

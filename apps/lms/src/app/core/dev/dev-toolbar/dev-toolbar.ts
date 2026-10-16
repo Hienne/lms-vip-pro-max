@@ -1,4 +1,5 @@
 import { Component, computed, inject } from '@angular/core';
+import { APP_CONFIG } from '../../config/app-config';
 import { Menu, type MenuEntry } from '@lms/ui';
 import { roleText } from '../../../shared/status/role-badge';
 import { DevToolbarStore } from './dev-toolbar.store';
@@ -37,19 +38,29 @@ type Choice =
 })
 export class DevToolbar {
   protected readonly store = inject(DevToolbarStore);
+  private readonly mockApi = inject(APP_CONFIG).mockApi;
+
+  /** The role list drives the mock API, so it is only offered while `mockApi` is on. */
+  private readonly roleEntries = computed<MenuEntry<Choice>[]>(() =>
+    this.mockApi
+      ? [
+          { kind: 'label', label: 'Đăng nhập nhanh theo vai trò' },
+          ...this.store.accounts$().map(
+            (account): MenuEntry<Choice> => ({
+              kind: 'item',
+              value: `role:${account.id}`,
+              label: `${roleText(account)} — ${account.name}`,
+              icon: 'user',
+              disabled: account.id === this.store.currentId$(),
+            }),
+          ),
+          { kind: 'separator' },
+        ]
+      : [],
+  );
 
   protected readonly entries = computed<MenuEntry<Choice>[]>(() => [
-    { kind: 'label', label: 'Đăng nhập nhanh theo vai trò' },
-    ...this.store.accounts$().map(
-      (account): MenuEntry<Choice> => ({
-        kind: 'item',
-        value: `role:${account.id}`,
-        label: `${roleText(account)} — ${account.name}`,
-        icon: 'user',
-        disabled: account.id === this.store.currentId$(),
-      }),
-    ),
-    { kind: 'separator' },
+    ...this.roleEntries(),
     { kind: 'label', label: 'Mô phỏng sự cố' },
     {
       kind: 'item',

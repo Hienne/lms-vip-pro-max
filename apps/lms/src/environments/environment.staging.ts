@@ -1,3 +1,4 @@
+import type { HttpInterceptorFn } from '@angular/common/http';
 import type { AppConfigInput } from '../app/core/config/app-config';
 
 /**
@@ -9,6 +10,9 @@ export const environment: AppConfigInput = {
   name: 'staging',
   production: true,
   apiBaseUrl: '',
-  mockScenarios: false,
+  mockApi: false,
   devTools: true,
 };
+
+/** No mock API here: its fixtures must never reach this bundle. */
+export const mockInterceptors: readonly HttpInterceptorFn[] = [];

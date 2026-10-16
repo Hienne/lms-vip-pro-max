@@ -39,7 +39,7 @@ type StatusRequest = {
 /**
  * The org screen (the mockup's `org` page): the units the caller may see, the one picked, and the
  * commands on units and groups. Every accepted mutation bumps `changes`, which the list reloads
- * on, so the page shows the server's truth (Prism is stateless).
+ * on, so the page shows the server's truth (the mock API is stateless).
  */
 @Injectable()
 export class OrgStore {

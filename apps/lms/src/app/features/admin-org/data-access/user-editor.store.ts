@@ -33,7 +33,7 @@ type StatusRequest = {
  * The commands on one user that the users list and the user page share: the add/edit drawer, lock
  * and unlock, and the password reset. Each page provides its own instance. `changes` is bumped by
  * every accepted mutation that alters a user; the page's own data read reloads on it, because the
- * server, not the response of a mutation, is the source of truth (Prism is stateless).
+ * server, not the response of a mutation, is the source of truth (the mock API is stateless).
  */
 @Injectable()
 export class UserEditorStore {

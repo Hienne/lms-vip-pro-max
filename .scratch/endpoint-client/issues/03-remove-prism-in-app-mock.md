@@ -4,11 +4,21 @@
 
 **Blocked by:** 02 (every call goes through the client, so every request is tagged)
 
-**Status:** open
+**Status:** done
 
-- [ ] `mock-api.interceptor.spec.ts`: lookup by object; role example then default; unknown or untagged endpoint falls through with one warning; offline wins over the mock
-- [ ] Fixture schema specs still pass; removed checks are gone, not skipped
-- [ ] ESLint: only `environment.ts` and `core/dev/mock-api/**` may import `@lms/mocks` outside specs; `type:mock-server` constraint gone
-- [ ] Production and staging builds pass the bundle check with the fixture marker; a dev build fails it (the check is proven)
-- [ ] Smoke test with `npm start`: sign in, users, org, roles, switch role in the toolbar, offline simulation
-- [ ] `npm run check` green
+- [x] `mock-api.interceptor.spec.ts`: lookup by object; role example then default; unknown or untagged endpoint falls through with one warning; offline wins over the mock
+- [x] Fixture schema specs still pass; removed checks are gone, not skipped
+- [x] ESLint: only `environment.ts` and `core/dev/mock-api/**` may import `@lms/mocks` outside specs; `type:mock-server` constraint gone
+- [x] Production and staging builds pass the bundle check with the fixture marker; a dev build fails it (the check is proven)
+- [x] Smoke test with `npm start`: sign in, users, org, roles, switch role in the toolbar, offline simulation
+- [x] `npm run check` green
+
+## Notes and deviations
+
+- `proxy.conf.json` became `proxy.conf.mjs`: JSON cannot carry the `TODO(backend)` comment, and a `"//"` key would be read as a proxy context. `project.json` points at it. The target is a placeholder (`http://localhost:3000`).
+- The ESLint override uses `**/src/environments/environment.ts` and `**/src/app/core/dev/mock-api/**/*.ts`: flat-config `files` resolve relative to the project's own `eslint.config.mjs`, so root-relative paths never matched. A probe file in `core/` importing `@lms/mocks` still fails lint.
+- `DEV_FEATURES.interceptors` (the offline simulation) is now registered unconditionally (production's is empty), so the staging toolbar's offline switch works too; before it was tied to `mockScenarios`. Order: offline → mock (only when `mockApi`) → `apiBaseUrl`.
+- The toolbar's role list ("Đăng nhập nhanh theo vai trò") is hidden when `mockApi` is false; offline, session-expired and forbidden-URL entries stay.
+- Bundle check: `--fixtures-only` checks staging (which keeps the dev toolbar on purpose) for the fixture marker `admin@demo.cb` only; the `check-bundle` target builds staging and runs both checks. A development build fails the check (proven).
+- Fixtures: `endpointExamples` stays keyed by registry key (specs use it); `MOCK_FIXTURES` is derived from the registries `@lms/mocks` lists itself. A spec checks every example key belongs to a registered endpoint.
+- Smoke test (in-app mock, `npm start`): sign-in form, users, org, roles, role switch admin → unit admin (org shows one unit), offline simulation on/off, session-expired → `/login?next=`. No `/api` request left the browser. Pre-existing, not touched: while offline is simulated the shell's `inboxCount$` logs `ResourceValueError` from the nav-counts resource.

@@ -2,9 +2,6 @@ import type { z } from 'zod';
 
 export type HttpMethod = 'get' | 'post' | 'put' | 'patch' | 'delete';
 
-/** Error statuses an endpoint may declare; each becomes a documented response. */
-export type ErrorStatus = 400 | 401 | 403 | 404 | 409 | 422 | 423 | 500;
-
 export interface EndpointDefinition<
   Path extends string = string,
   Params extends z.ZodObject | undefined = z.ZodObject | undefined,
@@ -15,12 +12,10 @@ export interface EndpointDefinition<
   readonly method: HttpMethod;
   /** Always starts with `/api/`; `{name}` segments are filled from `params`. */
   readonly path: Path;
-  readonly summary: string;
   readonly params: Params;
   readonly query: Query;
   readonly body: Body;
   readonly response: Response;
-  readonly errors: readonly ErrorStatus[];
 }
 
 /** What `defineEndpoint` accepts: params, query and body are optional. */

@@ -7,7 +7,6 @@ describe('shell endpoints', () => {
     expect(Object.keys(shellEndpoints)).toEqual(['navCounts']);
     expect(shellEndpoints.navCounts.method).toBe('get');
     expect(toUrl(shellEndpoints.navCounts)).toBe('/api/me/nav-counts');
-    expect(shellEndpoints.navCounts.errors).toEqual([401]);
   });
 
   it('answers the unread notifications and the new inbox items', () => {

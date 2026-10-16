@@ -25,8 +25,12 @@ export const AppConfigSchema = z.object({
     .refine((url) => !url.endsWith('/'), {
       error: 'apiBaseUrl must not end with "/"',
     }),
-  /** Shows the dev toolbar that drives Prism's `Prefer` header. Development only: Prism exists only there. */
-  mockScenarios: z.boolean(),
+  /**
+   * Answers requests from the in-app mock API instead of a backend, and lets the dev toolbar
+   * pick the mocked role. Only the development environment file also supplies the mock
+   * interceptor (`mockInterceptors`), so staging and production bundles hold no fixtures.
+   */
+  mockApi: z.boolean(),
   /**
    * Internal tooling for the team: the migration progress board and owner/pull request details on
    * the design-system placeholders. True in development and staging, false in production, so

@@ -1,4 +1,3 @@
-import { authEndpoints } from '@lms/contracts';
 import { endpointExamples } from '../examples';
 import { userFixtures } from '../identity/identity.fixtures';
 import {
@@ -48,15 +47,7 @@ describe('auth fixtures', () => {
     expect(profileFixtures['viewer']?.menus).toEqual(['reports']);
   });
 
-  it('every declared auth error status has a mockup message example', () => {
-    for (const [key, endpoint] of Object.entries(authEndpoints)) {
-      for (const status of endpoint.errors) {
-        expect(
-          endpointExamples[key]?.errors?.[status],
-          `${key} ${status}`,
-        ).toBeDefined();
-      }
-    }
+  it('keeps the mockup error messages', () => {
     expect(loginInvalid.details).toEqual({
       email: 'Nhập email đăng nhập.',
       password: 'Mật khẩu tối thiểu 6 ký tự.',

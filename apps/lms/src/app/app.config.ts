@@ -8,7 +8,7 @@ import {
   TitleStrategy,
   withInMemoryScrolling,
 } from '@angular/router';
-import { environment } from '../environments/environment';
+import { environment, mockInterceptors } from '../environments/environment';
 import { createAppRoutes } from './app.routes';
 import { parseAppConfig, provideAppConfig } from './core/config/app-config';
 import { DEV_FEATURES } from './core/dev/dev-features';
@@ -35,8 +35,9 @@ export const appConfig: ApplicationConfig = {
     { provide: TitleStrategy, useExisting: AppTitleStrategy },
     provideHttpClient(
       withInterceptors([
+        ...DEV_FEATURES.interceptors,
+        ...(config.mockApi ? mockInterceptors : []),
         apiBaseUrlInterceptor,
-        ...(config.mockScenarios ? DEV_FEATURES.interceptors : []),
       ]),
     ),
   ],

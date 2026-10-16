@@ -1,21 +1,29 @@
 // Fails when the production build contains anything that exists only for the team.
 // Usage: node tools/check-production-bundle.mjs [dir]   (default: dist/apps/lms)
 //
-// The markers are strings that only the dev toolbar, the Prism scenario interceptor and the
-// migration board contain. `dist/apps/lms-staging` is built with them, so pointing the script at
-// it must fail: that is how the check itself is verified.
+// The markers are strings that only the dev toolbar, the offline simulation, the migration board
+// and the mock API fixtures contain. Production must hold none of them. Staging keeps the dev
+// tools on purpose, so it is checked with `--fixtures-only`: it must still hold no fixtures.
+// A development build holds everything, so pointing the script at one must fail: that is how the
+// check itself is verified.
 import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { join, relative } from 'node:path';
 
-const MARKERS = [
+const FIXTURE_MARKERS = [['mock API fixtures', 'admin@demo.cb']];
+const DEV_TOOL_MARKERS = [
   ['dev toolbar', 'Mô phỏng hết phiên đăng nhập'],
   ['dev toolbar', 'Đăng nhập nhanh theo vai trò'],
-  ['Prism scenario interceptor', 'lms.mockRole'],
+  ['mock role storage', 'lms.mockRole'],
   ['migration board', 'Tiến độ migrate'],
   ['migration board', 'migration-entries.data.ts'],
 ];
 
-const dir = process.argv[2] ?? 'dist/apps/lms';
+const args = process.argv.slice(2);
+const fixturesOnly = args.includes('--fixtures-only');
+const dir = args.find((a) => !a.startsWith('--')) ?? 'dist/apps/lms';
+const MARKERS = fixturesOnly
+  ? FIXTURE_MARKERS
+  : [...FIXTURE_MARKERS, ...DEV_TOOL_MARKERS];
 
 function* files(root) {
   for (const name of readdirSync(root)) {
@@ -52,5 +60,7 @@ if (found.length > 0) {
   process.exit(1);
 }
 console.log(
-  `${dir}: no dev toolbar, scenario interceptor or migration board (${scanned} files scanned).`,
+  fixturesOnly
+    ? `${dir}: no mock API fixtures (${scanned} files scanned).`
+    : `${dir}: no mock API fixtures, dev toolbar or migration board (${scanned} files scanned).`,
 );

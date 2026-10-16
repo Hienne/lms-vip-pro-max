@@ -8,6 +8,8 @@ import { TestBed } from '@angular/core/testing';
 import { provideRouter, Router } from '@angular/router';
 import type { Profile } from '@lms/contracts';
 import { demoAccountFixtures, profileFixtures } from '@lms/mocks';
+import { provideAppConfig } from '../../config/app-config';
+import { testAppConfig } from '../../config/app-config.testing';
 import { NetworkStore } from '../../network/network.store';
 import { SessionStore } from '../../session/session.store';
 import { MockScenario } from '../mock-scenario';
@@ -34,6 +36,7 @@ describe('DevToolbar', () => {
         provideHttpClient(),
         provideHttpClientTesting(),
         provideRouter([]),
+        provideAppConfig(testAppConfig({ mockApi: true })),
         { provide: SessionStore, useValue: session },
       ],
     });
@@ -160,5 +163,37 @@ describe('DevToolbar', () => {
     item('Mở Design System').click();
     TestBed.tick();
     expect(router.navigateByUrl).toHaveBeenCalledWith('/design-system');
+  });
+});
+
+describe('DevToolbar against a real backend', () => {
+  it('offers no role list, since the role only drives the mock API', async () => {
+    TestBed.configureTestingModule({
+      providers: [
+        provideHttpClient(),
+        provideHttpClientTesting(),
+        provideRouter([]),
+        provideAppConfig(testAppConfig({ mockApi: false })),
+        { provide: SessionStore, useValue: new FakeSession() },
+      ],
+    });
+    const el = TestBed.createComponent(DevToolbar).nativeElement as HTMLElement;
+    document.body.append(el);
+    TestBed.tick();
+    el.querySelector<HTMLButtonElement>('ui-menu button')?.click();
+    TestBed.tick();
+    await vi.waitFor(() => {
+      TestBed.tick();
+      expect(document.querySelector('[role="menu"]')?.textContent).toContain(
+        'Mô phỏng mất kết nối',
+      );
+    });
+    expect(document.querySelector('[role="menu"]')?.textContent).not.toContain(
+      'Đăng nhập nhanh theo vai trò',
+    );
+    el.remove();
+    document
+      .querySelectorAll('.cdk-overlay-container')
+      .forEach((c) => (c.innerHTML = ''));
   });
 });

@@ -8,7 +8,7 @@ export function testAppConfig(
     name: 'development',
     production: false,
     apiBaseUrl: '',
-    mockScenarios: false,
+    mockApi: false,
     devTools: true,
     ...overrides,
   };

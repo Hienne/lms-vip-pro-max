@@ -1,13 +1,12 @@
 import { defineEndpoint } from '../http/endpoint';
 import { HealthSchema } from './health.schema';
 
-/** Infrastructure endpoint: keeps the spec non-empty and checks the dev proxy. */
+/** Infrastructure endpoint: backend liveness. */
 export const healthEndpoints = {
+  /** Backend liveness. */
   health: defineEndpoint({
     method: 'get',
     path: '/api/health',
-    summary: 'Mock server liveness',
     response: HealthSchema,
-    errors: [],
   }),
 } as const;

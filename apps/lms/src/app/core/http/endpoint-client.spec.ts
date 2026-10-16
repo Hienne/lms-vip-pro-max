@@ -13,41 +13,33 @@ import { ENDPOINT, EndpointClient } from './endpoint-client';
 const getCourse = defineEndpoint({
   method: 'get',
   path: '/api/courses/{courseId}',
-  summary: 'Course',
   params: z.object({ courseId: z.string() }),
   response: z.object({ id: z.string() }),
-  errors: [],
 });
 
 const listCourses = defineEndpoint({
   method: 'get',
   path: '/api/courses',
-  summary: 'Courses',
   query: z.object({
     q: z.string().optional(),
     tag: z.array(z.string()).optional(),
     page: z.number().optional(),
   }),
   response: z.array(z.string()),
-  errors: [],
 });
 
 const saveCourse = defineEndpoint({
   method: 'put',
   path: '/api/courses/{courseId}',
-  summary: 'Save',
   params: z.object({ courseId: z.string() }),
   body: z.object({ title: z.string().trim() }),
   response: z.object({ id: z.string() }),
-  errors: [],
 });
 
 const ping = defineEndpoint({
   method: 'get',
   path: '/api/ping',
-  summary: 'Ping',
   response: z.literal(true),
-  errors: [],
 });
 
 describe('EndpointClient', () => {

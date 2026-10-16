@@ -14,7 +14,7 @@ import { SessionStore } from '../../../../core/session/session.store';
 /**
  * The profile page (the mockup's `profile`): the signed-in user, plus the two commands it offers.
  * The user comes from the session, which already holds the profile; after a save the session
- * reloads it, because Prism's PUT body is not the signed-in user (it is stateless).
+ * reloads it, because the mock's PUT body is not the signed-in user (it is stateless).
  */
 @Injectable()
 export class ProfileStore {
