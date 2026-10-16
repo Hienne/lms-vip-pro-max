@@ -11,10 +11,10 @@ import {
   toObservable,
 } from '@angular/core/rxjs-interop';
 import { Router } from '@angular/router';
-import type { DemoAccount } from '@lms/contracts';
+import { authEndpoints, type DemoAccount } from '@lms/contracts';
 import { Toaster } from '@lms/ui';
 import { filter, take } from 'rxjs';
-import { AuthApi } from '../../auth/auth.api';
+import { EndpointClient } from '../../http/endpoint-client';
 import { NetworkStore } from '../../network/network.store';
 import { SessionStore } from '../../session/session.store';
 import { isUnitAdmin, roleText } from '../../../shared/status/role-badge';
@@ -36,7 +36,7 @@ export class DevToolbarStore {
   private readonly scenario = inject(MockScenario);
   private readonly router = inject(Router);
   private readonly toaster = inject(Toaster);
-  private readonly api = inject(AuthApi);
+  private readonly client = inject(EndpointClient);
   private readonly injector = inject(Injector);
   private readonly destroyRef = inject(DestroyRef);
 
@@ -44,7 +44,7 @@ export class DevToolbarStore {
 
   private readonly accountsResource = rxResource({
     params: () => (this.state.wanted() ? {} : undefined),
-    stream: () => this.api.demoAccounts(),
+    stream: () => this.client.call(authEndpoints.demoAccounts),
   });
 
   readonly accounts$ = () =>

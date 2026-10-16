@@ -11,6 +11,7 @@ import {
   UpdateProfileCommandSchema,
 } from './auth.schema';
 
+/** Keys follow the function names of `lms-mockup/src/api/auth.js`. */
 export const authEndpoints = {
   login: defineEndpoint({
     method: 'post',

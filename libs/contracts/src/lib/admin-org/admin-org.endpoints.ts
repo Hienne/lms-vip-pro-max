@@ -26,7 +26,7 @@ const unitParams = z.object({ unitId: z.string() });
 const groupParams = z.object({ groupId: z.string() });
 const roleParams = z.object({ roleId: z.string() });
 
-/** Function names follow `lms-mockup/src/api/admin.js`. */
+/** Keys follow the function names of `lms-mockup/src/api/admin.js`. */
 export const adminOrgEndpoints = {
   users: defineEndpoint({
     method: 'get',

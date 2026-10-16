@@ -7,10 +7,11 @@ import {
   type TemplateRef,
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import type {
-  AccountStatus,
-  SaveUserCommand,
-  UserListItem,
+import {
+  adminOrgEndpoints,
+  type AccountStatus,
+  type SaveUserCommand,
+  type UserListItem,
 } from '@lms/contracts';
 import { confirm, openDrawer, type DrawerContext } from '@lms/ui';
 import { filter } from 'rxjs';
@@ -21,7 +22,7 @@ import {
 import { serverData } from '../../../core/data-access/server-data';
 import { serverMutation } from '../../../core/data-access/server-mutation';
 import { SessionStore } from '../../../core/session/session.store';
-import { AdminOrgApi } from './admin-org.api';
+import { EndpointClient } from '../../../core/http/endpoint-client';
 
 type StatusRequest = {
   readonly userId: string;
@@ -36,7 +37,7 @@ type StatusRequest = {
  */
 @Injectable()
 export class UserEditorStore {
-  private readonly api = inject(AdminOrgApi);
+  private readonly client = inject(EndpointClient);
   private readonly session = inject(SessionStore);
   private readonly dialog = inject(Dialog);
   private readonly destroyRef = inject(DestroyRef);
@@ -55,10 +56,13 @@ export class UserEditorStore {
     version: this.changeSource.version,
   };
 
-  private readonly metaData = serverData(() => this.api.adminMeta());
+  private readonly metaData = serverData(() =>
+    this.client.call(adminOrgEndpoints.adminMeta),
+  );
 
   private readonly saveMutation = serverMutation(
-    (command: SaveUserCommand) => this.api.saveUser(command),
+    (command: SaveUserCommand) =>
+      this.client.call(adminOrgEndpoints.saveUser, { body: command }),
     {
       errors: 'inline',
       success: (command) =>
@@ -70,7 +74,10 @@ export class UserEditorStore {
 
   private readonly statusMutation = serverMutation(
     (request: StatusRequest) =>
-      this.api.setUserStatus(request.userId, { status: request.status }),
+      this.client.call(adminOrgEndpoints.setUserStatus, {
+        params: { userId: request.userId },
+        body: { status: request.status },
+      }),
     {
       errors: 'toast',
       success: (request) =>
@@ -82,7 +89,8 @@ export class UserEditorStore {
   );
 
   private readonly resetMutation = serverMutation(
-    (userId: string) => this.api.resetPassword(userId),
+    (userId: string) =>
+      this.client.call(adminOrgEndpoints.resetPassword, { params: { userId } }),
     {
       errors: 'toast',
       success: (_userId, result) => ({

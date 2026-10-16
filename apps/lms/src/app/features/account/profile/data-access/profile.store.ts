@@ -1,12 +1,13 @@
 import { computed, inject, Injectable, signal } from '@angular/core';
 import { rxResource } from '@angular/core/rxjs-interop';
-import type {
-  ChangePasswordCommand,
-  UpdateProfileCommand,
+import {
+  authEndpoints,
+  type ChangePasswordCommand,
+  type UpdateProfileCommand,
 } from '@lms/contracts';
 import { Toaster } from '@lms/ui';
 import { tap } from 'rxjs';
-import { AuthApi } from '../../../../core/auth/auth.api';
+import { EndpointClient } from '../../../../core/http/endpoint-client';
 import { toAppError } from '../../../../core/errors/app-error';
 import { SessionStore } from '../../../../core/session/session.store';
 
@@ -17,7 +18,7 @@ import { SessionStore } from '../../../../core/session/session.store';
  */
 @Injectable()
 export class ProfileStore {
-  private readonly api = inject(AuthApi);
+  private readonly client = inject(EndpointClient);
   private readonly session = inject(SessionStore);
   private readonly toaster = inject(Toaster);
 
@@ -30,7 +31,7 @@ export class ProfileStore {
   private readonly saveResource = rxResource({
     params: () => this.state.saveRequest(),
     stream: ({ params: command }) =>
-      this.api.updateProfile(command).pipe(
+      this.client.call(authEndpoints.updateProfile, { body: command }).pipe(
         tap(() => {
           this.session.restore();
           this.toaster.success('Đã lưu hồ sơ');
@@ -41,7 +42,7 @@ export class ProfileStore {
   private readonly passwordResource = rxResource({
     params: () => this.state.passwordRequest(),
     stream: ({ params: command }) =>
-      this.api.changePassword(command).pipe(
+      this.client.call(authEndpoints.changePassword, { body: command }).pipe(
         tap(() => {
           this.setPasswordChanges(this.state.passwordChanges() + 1);
           this.toaster.success('Đã đổi mật khẩu');

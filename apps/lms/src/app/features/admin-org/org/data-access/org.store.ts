@@ -8,11 +8,12 @@ import {
   type TemplateRef,
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import type {
-  OrgGroup,
-  OrgUnit,
-  SaveGroupCommand,
-  SaveUnitCommand,
+import {
+  adminOrgEndpoints,
+  type OrgGroup,
+  type OrgUnit,
+  type SaveGroupCommand,
+  type SaveUnitCommand,
 } from '@lms/contracts';
 import { confirm, openDrawer, type DrawerContext } from '@lms/ui';
 import { filter } from 'rxjs';
@@ -20,7 +21,7 @@ import { invalidation } from '../../../../core/data-access/invalidation';
 import { serverData } from '../../../../core/data-access/server-data';
 import { serverMutation } from '../../../../core/data-access/server-mutation';
 import { SessionStore } from '../../../../core/session/session.store';
-import { AdminOrgApi } from '../../data-access/admin-org.api';
+import { EndpointClient } from '../../../../core/http/endpoint-client';
 
 type Editing =
   | { readonly kind: 'unit'; readonly unit: OrgUnit | null }
@@ -42,7 +43,7 @@ type StatusRequest = {
  */
 @Injectable()
 export class OrgStore {
-  private readonly api = inject(AdminOrgApi);
+  private readonly client = inject(EndpointClient);
   private readonly session = inject(SessionStore);
   private readonly dialog = inject(Dialog);
   private readonly destroyRef = inject(DestroyRef);
@@ -57,12 +58,16 @@ export class OrgStore {
 
   private readonly changes = invalidation();
 
-  private readonly orgData = serverData(() => this.api.org(), {
-    reloadOn: this.changes,
-  });
+  private readonly orgData = serverData(
+    () => this.client.call(adminOrgEndpoints.org),
+    {
+      reloadOn: this.changes,
+    },
+  );
 
   private readonly unitMutation = serverMutation(
-    (command: SaveUnitCommand) => this.api.saveUnit(command),
+    (command: SaveUnitCommand) =>
+      this.client.call(adminOrgEndpoints.saveUnit, { body: command }),
     {
       errors: 'inline',
       success: () => 'Đã lưu',
@@ -72,7 +77,8 @@ export class OrgStore {
   );
 
   private readonly groupMutation = serverMutation(
-    (command: SaveGroupCommand) => this.api.saveGroup(command),
+    (command: SaveGroupCommand) =>
+      this.client.call(adminOrgEndpoints.saveGroup, { body: command }),
     {
       errors: 'inline',
       success: () => 'Đã lưu',
@@ -83,7 +89,10 @@ export class OrgStore {
 
   private readonly statusMutation = serverMutation(
     (request: StatusRequest) =>
-      this.api.setUnitStatus(request.unitId, { status: request.status }),
+      this.client.call(adminOrgEndpoints.setUnitStatus, {
+        params: { unitId: request.unitId },
+        body: { status: request.status },
+      }),
     {
       errors: 'toast',
       success: () => 'Đã cập nhật',
@@ -92,7 +101,8 @@ export class OrgStore {
   );
 
   private readonly deleteMutation = serverMutation(
-    (groupId: string) => this.api.deleteGroup(groupId),
+    (groupId: string) =>
+      this.client.call(adminOrgEndpoints.deleteGroup, { params: { groupId } }),
     {
       errors: 'toast',
       success: () => 'Đã xóa',

@@ -1,6 +1,7 @@
 import { defineEndpoint } from '../http/endpoint';
 import { NavCountsSchema } from './shell.schema';
 
+/** Keys follow the function names of `lms-mockup/src/api/core.js`. */
 export const shellEndpoints = {
   navCounts: defineEndpoint({
     method: 'get',

@@ -1,8 +1,8 @@
 import { computed, inject, Injectable, signal } from '@angular/core';
-import type { UserListItem } from '@lms/contracts';
+import { adminOrgEndpoints, type UserListItem } from '@lms/contracts';
 import type { DataTableSort } from '@lms/ui';
 import { serverData } from '../../../../core/data-access/server-data';
-import { AdminOrgApi } from '../../data-access/admin-org.api';
+import { EndpointClient } from '../../../../core/http/endpoint-client';
 import { UserEditorStore } from '../../data-access/user-editor.store';
 
 export const USERS_PAGE_SIZE = 10;
@@ -28,7 +28,7 @@ function sortValue(user: UserListItem, key: string): string {
 /** The users list (the mockup's `users` page): filters, sorting and paging over the server's list. */
 @Injectable()
 export class UsersStore {
-  private readonly api = inject(AdminOrgApi);
+  private readonly client = inject(EndpointClient);
   private readonly editor = inject(UserEditorStore);
 
   private readonly state = {
@@ -41,9 +41,12 @@ export class UsersStore {
   };
 
   /** Reloads on the editor's token, so every accepted mutation refreshes the list. */
-  private readonly listData = serverData(() => this.api.users(), {
-    reloadOn: this.editor.changes,
-  });
+  private readonly listData = serverData(
+    () => this.client.call(adminOrgEndpoints.users),
+    {
+      reloadOn: this.editor.changes,
+    },
+  );
 
   readonly query$ = this.state.query.asReadonly();
   readonly role$ = this.state.role.asReadonly();

@@ -4,8 +4,8 @@
 
 **Blocked by:** 01 (client tracer)
 
-**Status:** open
+**Status:** done
 
-- [ ] No `*.api.ts` left under `apps/lms/src/app`
-- [ ] Session, login, profile, dev toolbar, users, org, roles and user-detail specs pass; any edit besides swapping the injected service is listed with its reason
-- [ ] `npm run check` green
+- [x] No `*.api.ts` left under `apps/lms/src/app`
+- [x] Session, login, profile, dev toolbar, users, org, roles and user-detail specs pass without edits (no spec injected an API service)
+- [x] `npm run check` green
