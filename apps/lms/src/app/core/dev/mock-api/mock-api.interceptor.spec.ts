@@ -10,7 +10,12 @@ import {
   provideHttpClientTesting,
 } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
-import { authEndpoints, defineEndpoint, shellEndpoints } from '@lms/contracts';
+import {
+  authEndpoints,
+  defineEndpoint,
+  EnvelopeSchema,
+  shellEndpoints,
+} from '@lms/contracts';
 import { navCountsFixtures, profileFixtures } from '@lms/mocks';
 import { z } from 'zod';
 import { ENDPOINT } from '../../http/endpoint-client';
@@ -57,8 +62,23 @@ describe('mockApiInterceptor', () => {
     ask(shellEndpoints.navCounts, '/api/me/nav-counts').subscribe(
       (b) => (body = b),
     );
-    expect(body).toEqual(navCountsFixtures['learner']);
+    expect(EnvelopeSchema.parse(body)).toMatchObject({
+      status: 'SUCCESS',
+      messageCode: 'CORE-0000',
+      data: navCountsFixtures['learner'],
+    });
     backend.expectNone('/api/me/nav-counts');
+  });
+
+  it('answers HTTP 200', () => {
+    let status: number | undefined;
+    http
+      .get('/api/me/nav-counts', {
+        observe: 'response',
+        context: new HttpContext().set(ENDPOINT, shellEndpoints.navCounts),
+      })
+      .subscribe((response) => (status = response.status));
+    expect(status).toBe(200);
   });
 
   it('answers with the example of the role chosen in the toolbar', () => {
@@ -67,7 +87,7 @@ describe('mockApiInterceptor', () => {
     ask(authEndpoints.profile, '/api/auth/profile').subscribe(
       (b) => (body = b),
     );
-    expect(body).toEqual(profileFixtures['admin']);
+    expect(EnvelopeSchema.parse(body).data).toEqual(profileFixtures['admin']);
   });
 
   it('falls back to the default when the role has no example', () => {
@@ -76,7 +96,7 @@ describe('mockApiInterceptor', () => {
     ask(authEndpoints.profile, '/api/auth/profile').subscribe(
       (b) => (body = b),
     );
-    expect(body).toEqual(profileFixtures['learner']);
+    expect(EnvelopeSchema.parse(body).data).toEqual(profileFixtures['learner']);
   });
 
   it('sends an endpoint without a fixture to the network and warns once', () => {

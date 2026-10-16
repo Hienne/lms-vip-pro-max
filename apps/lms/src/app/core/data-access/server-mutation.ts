@@ -62,7 +62,9 @@ export function serverMutation<I, R>(
           },
           error: (error: unknown) => {
             if (options.errors === 'toast') {
-              toaster.error(toAppError(error).message);
+              const { title, message } = toAppError(error);
+              if (title) toaster.error(title, message);
+              else toaster.error(message);
             }
           },
         }),

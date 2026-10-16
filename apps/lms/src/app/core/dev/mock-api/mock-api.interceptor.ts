@@ -1,6 +1,6 @@
 import { HttpResponse, type HttpInterceptorFn } from '@angular/common/http';
 import { inject } from '@angular/core';
-import { MOCK_FIXTURES } from '@lms/mocks';
+import { envelopeOk, MOCK_FIXTURES } from '@lms/mocks';
 import { of } from 'rxjs';
 import { ENDPOINT } from '../../http/endpoint-client';
 import { MockScenario } from '../mock-scenario';
@@ -16,7 +16,8 @@ function warnOnce(key: unknown, message: string): void {
 /**
  * Dev only: answers a request with its endpoint's fixture, `roles[role] ?? default`, where
  * `role` is the one chosen in the dev toolbar. The endpoint comes from the `ENDPOINT` context
- * `EndpointClient` sets, and is looked up by object. Stateless: no delay, no error simulation.
+ * `EndpointClient` sets, and is looked up by object. It answers in the backend's envelope
+ * (HTTP 200, `SUCCESS`), which `envelopeInterceptor` unwraps. Stateless: no delay, no error simulation.
  * A request without a fixture goes on to the network, with one warning per endpoint.
  */
 export const mockApiInterceptor: HttpInterceptorFn = (req, next) => {
@@ -31,5 +32,5 @@ export const mockApiInterceptor: HttpInterceptorFn = (req, next) => {
   }
   const role = inject(MockScenario).role$();
   const body = (role ? fixture.roles?.[role] : undefined) ?? fixture.default;
-  return of(new HttpResponse({ status: 200, body }));
+  return of(new HttpResponse({ status: 200, body: envelopeOk(body) }));
 };

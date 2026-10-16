@@ -1,5 +1,6 @@
 import { HttpErrorResponse } from '@angular/common/http';
-import { ApiErrorSchema } from '@lms/contracts';
+import { ApiErrorSchema, MESSAGE_CODE_KIND } from '@lms/contracts';
+import { ApiError } from '../http/api-error';
 import { ContractError } from '../http/contract-error';
 
 export type AppErrorKind =
@@ -9,6 +10,7 @@ export type AppErrorKind =
   | 'not-found'
   | 'invalid'
   | 'locked'
+  | 'server'
   | 'contract'
   | 'unknown';
 
@@ -16,6 +18,10 @@ export interface AppError {
   readonly kind: AppErrorKind;
   /** Vietnamese, ready to render. */
   readonly message: string;
+  /** The backend's heading for the failure, when it sent one. */
+  readonly title?: string;
+  /** The backend's `messageCode`, on failures that came from an `ERROR` envelope. */
+  readonly messageCode?: string;
   /** Field to message; only on `invalid`. */
   readonly details?: Readonly<Record<string, string>>;
 }
@@ -28,6 +34,7 @@ const DEFAULT_MESSAGE: Record<AppErrorKind, string> = {
   'not-found': 'Dữ liệu không tồn tại hoặc đã bị xóa.',
   invalid: 'Vui lòng kiểm tra lại thông tin.',
   locked: 'Tài khoản đã bị khóa.',
+  server: 'Có lỗi xảy ra. Vui lòng thử lại sau.',
   contract: 'Dữ liệu trả về không hợp lệ. Vui lòng thử lại sau.',
   unknown: 'Có lỗi xảy ra. Vui lòng thử lại sau.',
 };
@@ -46,6 +53,17 @@ const KIND_BY_STATUS: Record<number, AppErrorKind> = {
 
 /** The one place that turns transport and contract failures into an `AppError`. */
 export function toAppError(error: unknown): AppError {
+  if (error instanceof ApiError) {
+    const kind: AppErrorKind =
+      (MESSAGE_CODE_KIND as Record<string, AppErrorKind>)[error.messageCode] ??
+      'server';
+    return {
+      kind,
+      message: error.serverMessage || DEFAULT_MESSAGE[kind],
+      ...(error.title ? { title: error.title } : {}),
+      messageCode: error.messageCode,
+    };
+  }
   if (error instanceof ContractError) {
     return { kind: 'contract', message: DEFAULT_MESSAGE.contract };
   }

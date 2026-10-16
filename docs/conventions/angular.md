@@ -160,8 +160,8 @@ this.client.call(courseEndpoints.saveCourse, { body: command });
     changes, compared by value, the held value is dropped and `load(params)`
     runs again.
   - **`serverMutation(run, { errors, success, onSuccess, invalidates })`**:
-    runs a command. `errors` is required: `'toast'` shows the server message as
-    a toast, `'inline'` exposes it as `error` for the form. On success it runs
+    runs a command. `errors` is required: `'toast'` shows the server's `title`
+    (when it sent one) and message as a toast, `'inline'` exposes it as `error` for the form. On success it runs
     `onSuccess`, then bumps `invalidates`, then shows the `success(input,
     result)` toast. Exposes `run(input)`, `isPending`, `error` and `reset()`.
   - Use raw `rxResource` only where they do not fit, with a comment giving the
@@ -559,7 +559,7 @@ readonly total = computed(() => this.price() * this.quantity());
 - Test behavior through the DOM and public API, not internals or the number of
   times an effect runs.
 - **Endpoint calls:** `provideHttpClient()` + `provideHttpClientTesting()` +
-  `HttpTestingController`. The call mechanism is tested once, in
+  `HttpTestingController`; use `provideEnvelopeHttpClient()` (`core/http/http.testing.ts`) instead of `provideHttpClient()` when the spec flushes `envelopeOk(…)`/`envelopeError(…)`. The call mechanism is tested once, in
   `endpoint-client.spec.ts`; there is no spec per endpoint.
 - **Stores:** provide the store with `HttpTestingController` and `@lms/mocks` fixtures, call
   commands, flush with `TestBed.tick()` / `await fixture.whenStable()`, and

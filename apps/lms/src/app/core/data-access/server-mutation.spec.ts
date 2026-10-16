@@ -2,6 +2,7 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { Toaster } from '@lms/ui';
+import { ApiError } from '../http/api-error';
 import { Subject } from 'rxjs';
 import { invalidation, type Invalidation } from './invalidation';
 import { serverMutation } from './server-mutation';
@@ -126,6 +127,25 @@ describe('serverMutation', () => {
     expect(toaster.success).not.toHaveBeenCalled();
     expect(onSuccess).not.toHaveBeenCalled();
     expect(token.version()).toBe(0);
+  });
+
+  it('with errors "toast" shows the backend title as heading and its message as detail', async () => {
+    const { calls, run } = sources();
+    const mutation = TestBed.runInInjectionContext(() =>
+      serverMutation(run, { errors: 'toast', success: () => 'ok' }),
+    );
+
+    mutation.run('a');
+    await settle();
+    calls[0].source.error(
+      new ApiError('CORE-0409', 'Trùng email', 'Email đã tồn tại.'),
+    );
+    await settle();
+
+    expect(toaster.error).toHaveBeenCalledExactlyOnceWith(
+      'Trùng email',
+      'Email đã tồn tại.',
+    );
   });
 
   it('with errors "inline" exposes the error and shows no toast', async () => {
