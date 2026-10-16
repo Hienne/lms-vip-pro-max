@@ -21,8 +21,6 @@ import { EMPTY_PASSWORD_FORM, PasswordFormSchema } from '../../profile.form';
   styleUrl: './password-form.scss',
 })
 export class PasswordForm {
-  /** Per-field messages of the server's 422 (`cur`, `next`, `confirm`). */
-  readonly serverErrors = input<Readonly<Record<string, string>>>({});
   readonly busy = input(false);
   readonly submitted = output<ChangePasswordCommand>();
 
@@ -34,24 +32,22 @@ export class PasswordForm {
   });
 
   protected readonly curErrors = computed(() =>
-    this.messages(this.passwordForm.cur, 'cur'),
+    this.messages(this.passwordForm.cur),
   );
   protected readonly nextErrors = computed(() =>
-    this.messages(this.passwordForm.next, 'next'),
+    this.messages(this.passwordForm.next),
   );
   protected readonly confirmErrors = computed(() =>
-    this.messages(this.passwordForm.confirm, 'confirm'),
+    this.messages(this.passwordForm.confirm),
   );
 
-  private messages(field: FieldTree<string>, key: string): readonly string[] {
-    const own = field().touched()
+  private messages(field: FieldTree<string>): readonly string[] {
+    return field().touched()
       ? field()
           .errors()
           .map((error) => error.message ?? '')
           .filter(Boolean)
       : [];
-    const server = this.serverErrors()[key];
-    return server ? [...own, server] : own;
   }
 
   protected onSubmit(event: Event): void {

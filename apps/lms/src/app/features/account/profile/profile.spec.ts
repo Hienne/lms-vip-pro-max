@@ -1,22 +1,15 @@
-import { provideHttpClient } from '@angular/common/http';
-import {
-  HttpTestingController,
-  provideHttpClientTesting,
-} from '@angular/common/http/testing';
+import { HttpTestingController } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
-import {
-  changePasswordInvalid,
-  profileFixtures,
-  updateProfileInvalid,
-} from '@lms/mocks';
+import { envelopeError, envelopeOk, profileFixtures } from '@lms/mocks';
 import { createAppRoutes } from '../../../app.routes';
 import {
   parseAppConfig,
   provideAppConfig,
 } from '../../../core/config/app-config';
 import { testAppConfig } from '../../../core/config/app-config.testing';
+import { provideEnvelopeHttpClient } from '../../../core/http/http.testing';
 import { SessionStore } from '../../../core/session/session.store';
 
 describe('Profile', () => {
@@ -27,8 +20,7 @@ describe('Profile', () => {
   beforeEach(() => {
     TestBed.configureTestingModule({
       providers: [
-        provideHttpClient(),
-        provideHttpClientTesting(),
+        provideEnvelopeHttpClient(),
         provideAppConfig(parseAppConfig(testAppConfig())),
         provideRouter(createAppRoutes({ devTools: true })),
         SessionStore,
@@ -52,7 +44,9 @@ describe('Profile', () => {
   async function open(role: keyof typeof profileFixtures = 'admin') {
     TestBed.inject(SessionStore).restore();
     await settle();
-    backend.expectOne('/api/auth/profile').flush(profileFixtures[role]);
+    backend
+      .expectOne('/api/auth/profile')
+      .flush(envelopeOk(profileFixtures[role]));
     await settle();
     harness = await RouterTestingHarness.create();
     await harness.navigateByUrl('/profile');
@@ -111,11 +105,11 @@ describe('Profile', () => {
       name: 'Phạm Trang',
       title: 'Trưởng nhóm',
     });
-    put.flush(profileFixtures['admin']);
+    put.flush(envelopeOk(profileFixtures['admin']));
     await settle();
     backend
       .expectOne('/api/auth/profile')
-      .flush({ ...profileFixtures['admin'], name: 'Phạm Trang' });
+      .flush(envelopeOk({ ...profileFixtures['admin'], name: 'Phạm Trang' }));
     await settle();
     expect(input('Họ và tên').value).toBe('Phạm Trang');
     expect(document.body.textContent).toContain('Đã lưu hồ sơ');
@@ -130,16 +124,26 @@ describe('Profile', () => {
     expect(text()).toContain('Họ tên tối thiểu 2 ký tự.');
   });
 
-  it('shows the field messages of a 422 on the name', async () => {
+  it('toasts the backend message when a profile save is refused, and keeps the form', async () => {
     await open('admin');
     await type(input('Họ và tên'), 'Phạm Trang');
     submitOf('Thông tin cá nhân')?.click();
     await settle();
     backend
       .expectOne('/api/auth/profile')
-      .flush(updateProfileInvalid, { status: 422, statusText: 'Invalid' });
+      .flush(
+        envelopeError(
+          'CORE-0422',
+          'Không lưu được hồ sơ',
+          'Họ tên không hợp lệ.',
+        ),
+      );
     await settle();
-    expect(text()).toContain('Họ tên tối thiểu 2 ký tự.');
+    backend.expectNone('/api/auth/profile');
+    expect(document.body.textContent).toContain('Không lưu được hồ sơ');
+    expect(document.body.textContent).toContain('Họ tên không hợp lệ.');
+    expect(document.body.textContent).not.toContain('Đã lưu hồ sơ');
+    expect(input('Họ và tên').value).toBe('Phạm Trang');
   });
 
   it('checks the confirmation locally and sends the three fields otherwise', async () => {
@@ -161,14 +165,14 @@ describe('Profile', () => {
       next: 'Abcdef12',
       confirm: 'Abcdef12',
     });
-    post.flush(true);
+    post.flush(envelopeOk(true));
     await settle();
     expect(document.body.textContent).toContain('Đã đổi mật khẩu');
     expect(input('Mật khẩu hiện tại').value).toBe('');
     expect(input('Mật khẩu mới').value).toBe('');
   });
 
-  it('shows the strength rule the server rejects', async () => {
+  it('toasts the backend message when a password change is refused, and keeps the fields', async () => {
     await open('admin');
     await type(input('Mật khẩu hiện tại'), 'abc123');
     await type(input('Mật khẩu mới'), 'weak');
@@ -177,9 +181,21 @@ describe('Profile', () => {
     await settle();
     backend
       .expectOne('/api/auth/change-password')
-      .flush(changePasswordInvalid, { status: 422, statusText: 'Invalid' });
+      .flush(
+        envelopeError(
+          'CORE-0422',
+          'Không đổi được mật khẩu',
+          'Tối thiểu 8 ký tự, gồm chữ hoa và chữ số.',
+        ),
+      );
     await settle();
-    expect(text()).toContain('Tối thiểu 8 ký tự, gồm chữ hoa và chữ số.');
+    expect(document.body.textContent).toContain('Không đổi được mật khẩu');
+    expect(document.body.textContent).toContain(
+      'Tối thiểu 8 ký tự, gồm chữ hoa và chữ số.',
+    );
+    expect(document.body.textContent).not.toContain('Đã đổi mật khẩu');
+    expect(input('Mật khẩu hiện tại').value).toBe('abc123');
     expect(input('Mật khẩu mới').value).toBe('weak');
+    expect(input('Nhập lại mật khẩu mới').value).toBe('weak');
   });
 });

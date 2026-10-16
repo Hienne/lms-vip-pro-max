@@ -10,11 +10,12 @@ See spec: `docs/specs/response-envelope.md`, Implementation Decisions → Error 
 
 **Blocked by:** 01
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] Profile spec: a profile save answered with an `ERROR` envelope shows a toast with title and message, and the form keeps its values
-- [ ] Profile spec: a password change answered with an `ERROR` envelope shows a toast, and the password fields are not cleared
-- [ ] Profile spec: a successful save still restores the session and shows "Đã lưu hồ sơ"; a successful change still clears the password form and shows "Đã đổi mật khẩu"
-- [ ] `ProfileStore` has no raw `rxResource` mutation, and the password form has no `serverErrors` input
+- [x] Profile spec: a profile save answered with an `ERROR` envelope shows a toast with title and message, and the form keeps its values
+- [x] Profile spec: a password change answered with an `ERROR` envelope shows a toast, and the password fields are not cleared
+- [x] Profile spec: a successful save still restores the session and shows "Đã lưu hồ sơ"; a successful change still clears the password form and shows "Đã đổi mật khẩu"
+- [x] `ProfileStore` has no raw `rxResource` mutation, and the password form has no `serverErrors` input
 - [ ] Browser on the mock: save the profile and change the password, each with its success toast
-- [ ] `npm run check` green
+  - Not checked in the browser; the profile spec drives both commands through the DOM.
+- [x] `npm run check` green

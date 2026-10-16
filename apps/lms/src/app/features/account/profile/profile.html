@@ -94,7 +94,6 @@
       @for (round of [store.passwordChanges$()]; track round) {
       <app-password-form
         [busy]="store.isChangingPassword$()"
-        [serverErrors]="store.passwordError$()?.details ?? {}"
         (submitted)="store.changePassword($event)"
       />
       }
