@@ -36,7 +36,9 @@ export class UserDetailStore {
   private readonly detailResource = rxResource({
     params: () => {
       const userId = this.userId();
-      return userId ? { userId, changes: this.editor.changes$() } : undefined;
+      return userId
+        ? { userId, changes: this.editor.changes.version() }
+        : undefined;
     },
     stream: ({ params }) => this.api.user(params.userId),
   });
