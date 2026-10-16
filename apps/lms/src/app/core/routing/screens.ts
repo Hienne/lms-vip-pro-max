@@ -31,8 +31,15 @@ export interface MenuNav {
   readonly label?: string;
 }
 
+/** A list the header search can fill: the menu's entry screen, or `href` for a parametrised one. */
+export interface MenuSearch {
+  /** Path without a leading slash; must match a screen of the same group. */
+  readonly href?: string;
+}
+
 export interface MenuGroup {
   readonly nav: MenuNav;
+  readonly search?: MenuSearch;
   /** The first screen is the menu's entry route: the sidebar links to it. */
   readonly screens: readonly [Screen, ...Screen[]];
 }
@@ -58,6 +65,7 @@ export const SCREEN_TABLE = {
     },
     'learn.catalog': {
       nav: { icon: 'library', section: 'Học tập' },
+      search: {},
       screens: [
         {
           path: 'catalog',
@@ -190,6 +198,7 @@ export const SCREEN_TABLE = {
     },
     'content.courses': {
       nav: { icon: 'book-open', section: 'Nội dung' },
+      search: {},
       screens: [
         {
           path: 'admin/courses',
@@ -300,6 +309,7 @@ export const SCREEN_TABLE = {
     },
     reports: {
       nav: { icon: 'chart-column', section: 'Theo dõi', label: 'Báo cáo' },
+      search: { href: 'reports/learners' },
       screens: [
         {
           path: 'reports',
@@ -386,6 +396,9 @@ type OpenScreens = (typeof SCREEN_TABLE.open)[number];
 export type ScreenPath = (MenuScreens | OpenScreens)['path'];
 /** The paths without a `:param`, which are concrete URLs. */
 export type StaticScreenPath = Exclude<ScreenPath, `${string}:${string}`>;
+
+/** The URL of a screen with no route parameter. Renaming the screen breaks callers at build time. */
+export const screenHref = (path: StaticScreenPath): string => `/${path}`;
 
 /** The menus in table order, which is sidebar order. */
 export const MENU_KEYS = Object.keys(SCREEN_TABLE.menus) as MenuKey[];

@@ -30,6 +30,7 @@ import {
   LeavePrompt,
 } from '../../../core/routing/unsaved-changes.guard';
 import type { Layout } from '../../../core/routing/route-table';
+import { screenHref } from '../../../core/routing/screens';
 import { SessionStore } from '../../../core/session/session.store';
 import { roleText } from '../../../shared/status/role-badge';
 
@@ -171,7 +172,7 @@ export class ShellStore {
     if (choice === 'sign-out') this.signOut();
     else
       void this.router.navigateByUrl(
-        choice === 'profile' ? '/profile' : '/notifications',
+        screenHref(choice === 'profile' ? 'profile' : 'notifications'),
       );
   }
 
@@ -198,7 +199,7 @@ export class ShellStore {
       )
       .subscribe(() => {
         this.toaster.success('Đã đăng xuất');
-        void this.router.navigateByUrl('/login');
+        void this.router.navigateByUrl(screenHref('login'));
       });
   }
 }

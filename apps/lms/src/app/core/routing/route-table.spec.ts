@@ -11,7 +11,7 @@ import { parseAppConfig, provideAppConfig } from '../config/app-config';
 import { testAppConfig } from '../config/app-config.testing';
 import { SessionStore } from '../session/session.store';
 import type { ForbiddenState } from './forbidden-state';
-import { MENU_KEYS, menuGroup, SCREEN_ENTRIES } from './screens';
+import { MENU_KEYS, menuGroup, SCREEN_ENTRIES, screenHref } from './screens';
 
 /** Just what the guards read from the session. */
 class FakeSession {
@@ -102,6 +102,34 @@ describe('route table', () => {
   it('starts every menu on a screen without a route parameter', () => {
     const entries = MENU_KEYS.map((menu) => menuGroup(menu).screens[0].path);
     expect(entries.filter((path) => path.includes(':'))).toEqual([]);
+  });
+
+  it('sends every search target to a screen of its own menu', () => {
+    // `reports/learners` is a concrete URL of the screen `reports/:dim`.
+    const matches = (pattern: string, path: string) => {
+      const want = pattern.split('/');
+      const got = path.split('/');
+      return (
+        want.length === got.length &&
+        want.every((part, i) => part.startsWith(':') || part === got[i])
+      );
+    };
+    const targets = MENU_KEYS.flatMap((menu) => {
+      const { search, screens } = menuGroup(menu);
+      return search?.href ? [{ href: search.href, screens }] : [];
+    });
+    expect(targets.length).toBeGreaterThan(0);
+    for (const { href, screens } of targets) {
+      expect(screens.some((screen) => matches(screen.path, href))).toBe(true);
+    }
+  });
+
+  it('builds the URL of a static screen and refuses any other path at build time', () => {
+    expect(screenHref('admin/users')).toBe('/admin/users');
+    // @ts-expect-error a path with a route parameter is not a concrete URL
+    screenHref('admin/users/:id');
+    // @ts-expect-error there is no such screen
+    screenHref('admin/nowhere');
   });
 
   it('sends an anonymous visitor to the login page, remembering the page asked for', async () => {

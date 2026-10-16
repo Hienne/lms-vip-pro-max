@@ -20,6 +20,7 @@ import { SessionExpiry } from '../../session/session-expiry';
 import { SessionStore } from '../../session/session.store';
 import { isUnitAdmin, roleText } from '../../../shared/status/role-badge';
 import { MockScenario } from '../mock-scenario';
+import { screenHref } from '../../routing/screens';
 
 /** The `@lms/mocks` example that stands for a demo account (a unit admin has its own). */
 export const exampleOf = (account: DemoAccount): string =>
@@ -89,7 +90,7 @@ export class DevToolbarStore {
   }
 
   tryAdminUrl(): void {
-    void this.router.navigateByUrl('/admin/users');
+    void this.router.navigateByUrl(screenHref('admin/users'));
   }
 
   openDesignSystem(): void {
