@@ -9,7 +9,7 @@ import type { AppConfigInput } from '../app/core/config/app-config';
 export const environment: AppConfigInput = {
   name: 'production',
   production: true,
-  apiBaseUrl: '',
+  apiBaseUrl: 'http://103.121.90.119:8019',
   mockApi: false,
   devTools: false,
 };
