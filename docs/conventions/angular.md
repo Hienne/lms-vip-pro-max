@@ -71,7 +71,7 @@ older Angular versions or from memory.
 ```text
 src/app/
 ├── app.ts / app.html / app.config.ts / app.routes.ts
-├── core/                     # app-wide singletons: interceptors, guards, error handler
+├── core/                     # app-wide singletons: interceptors, guards, error handler, screen table
 ├── shared/                   # reusable presentational UI, pipes, directives; no feature state
 │   └── ui/
 └── features/
@@ -101,6 +101,10 @@ src/app/
   consumers. Promote them to the feature level only when ≥ 2 routes use them.
 - `shared/` must not depend on `features/`. A feature must not import from
   another feature's internals. Promote shared code to `shared/` or `core/` instead.
+- `core/` must not depend on `features/`. The one link is a lazy `import()` of a
+  feature component (the screen table's loaders, the dev features module).
+  ESLint blocks static imports from `features/` in every core file, specs
+  included, value or type-only; dynamic `import()` is not checked by the rule.
 - Do not model sibling routes as parent/child merely because their URLs share a prefix.
 
 ## 5. Data flow: EndpointClient → Store → Component
@@ -501,9 +505,13 @@ readonly total = computed(() => this.price() * this.quantity());
 
 ## 10. Routing
 
-- Lazy-load features in `app.routes.ts` with
-  `loadChildren: () => import('./features/course/course.routes')`, which loads
-  a default export. Load route components with `loadComponent`.
+- Every screen is declared once in the screen table
+  (`core/routing/screens.ts`), under the menu that grants it (or in `open`), and
+  is lazy-loaded from there: its `load` is a `() => import(...)` of the route
+  component, and `createAppRoutes` turns each entry into a route. A screen
+  without `load` shows the route placeholder. `app.routes.ts` keeps only the
+  entries that are not screens: the root redirect, `design-system`, the dev
+  routes and the wildcard.
 - Use functional guards and resolvers (`CanActivateFn`, `ResolveFn`), not class
   guards. Prefer store resources over resolvers for page data.
 - Put providers needed by a whole route subtree in the route's `providers`.

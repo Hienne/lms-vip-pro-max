@@ -1,23 +1,21 @@
 import type { MenuKey } from '@lms/contracts';
-
-/** The lists the header search can fill, best match first: what the user's menus open. */
-const SEARCH_PATHS: readonly (readonly [MenuKey, string])[] = [
-  ['learn.catalog', '/catalog'],
-  ['content.courses', '/admin/courses'],
-  ['reports', '/reports/learners'],
-];
+import { MENU_KEYS, menuGroup } from '../../core/routing/screens';
 
 /**
- * Where the header search sends a user (the mockup's `global-search` action): the first list their
- * menus open; null for no query or when no menu offers a list.
+ * Where the header search sends a user (the mockup's `global-search` action): the search target of
+ * the first menu in the screen table their menus hold; null for no query or when no menu offers a list.
  */
 export function searchTarget(
   menus: readonly MenuKey[],
   text: string,
 ): { path: string; query: { q: string } } | null {
   const q = text.trim();
-  const path = SEARCH_PATHS.find(([menu]) => menus.includes(menu))?.[1];
-  return q && path ? { path, query: { q } } : null;
+  const menu = MENU_KEYS.find(
+    (key) => menus.includes(key) && menuGroup(key).search,
+  );
+  if (!q || !menu) return null;
+  const { screens, search } = menuGroup(menu);
+  return { path: `/${search?.href ?? screens[0].path}`, query: { q } };
 }
 
 export function searchPlaceholder(menus: readonly MenuKey[]): string {

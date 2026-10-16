@@ -21,6 +21,12 @@ const specDepConstraints = depConstraints.map((c) =>
     : c,
 );
 
+const lucidePath = {
+  name: '@lucide/angular',
+  message:
+    'Use <ui-icon> from @lms/ui; it is the only wrapper around @lucide/angular.',
+};
+
 const boundaries = (constraints) => [
   'error',
   {
@@ -54,14 +60,24 @@ export default [
     // @lucide/angular is wrapped once, by ui-icon in libs/ui (docs/conventions/ui-library.md → Icons).
     files: ['apps/**/*.ts', 'libs/contracts/**/*.ts', 'libs/mocks/**/*.ts'],
     rules: {
+      'no-restricted-imports': ['error', { paths: [lucidePath] }],
+    },
+  },
+  {
+    // Core reaches features only through a lazy `import()` (angular.md §4); the rule does not
+    // look at dynamic imports. A later block replaces the rule's options, so the Lucide path is
+    // repeated.
+    files: ['apps/lms/src/app/core/**/*.ts'],
+    rules: {
       'no-restricted-imports': [
         'error',
         {
-          paths: [
+          paths: [lucidePath],
+          patterns: [
             {
-              name: '@lucide/angular',
+              group: ['**/features', '**/features/**'],
               message:
-                'Use <ui-icon> from @lms/ui; it is the only wrapper around @lucide/angular.',
+                'Core may name feature code only in a lazy import(); a static import couples core to a feature (angular.md §4).',
             },
           ],
         },

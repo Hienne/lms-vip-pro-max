@@ -57,7 +57,8 @@ The one other exception is the in-app mock API: `apps/lms/src/environments/envir
 `eslint.config.mjs`); no other app file may, and the staging and production environment files
 import nothing from the mock.
 Inside `apps/lms`, angular.md §4 import rules apply (features never import each
-other's internals; `shared/` never imports `features/`).
+other's internals; `shared/` never imports `features/`; `core/` imports `features/` only
+through a lazy `import()`, enforced by a `no-restricted-imports` block in `eslint.config.mjs`).
 
 Path aliases: `@lms/ui`, `@lms/contracts`, `@lms/mocks`. Import from the alias,
 never from a relative path into another project.
