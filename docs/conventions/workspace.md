@@ -52,6 +52,10 @@ different product (a bank's HR app), it belongs in `libs/ui`.
 
 `*.spec.ts` files in `type:app` and `type:ui` get an ESLint override that adds
 `type:mocks`, so tests reuse fixtures while production bundles never contain them.
+The one other exception is the in-app mock API: `apps/lms/src/environments/environment.ts` and
+`apps/lms/src/app/core/dev/mock-api/**` may depend on `type:mocks` too (a narrow override in
+`eslint.config.mjs`); no other app file may, and the staging and production environment files
+import nothing from the mock.
 Inside `apps/lms`, angular.md §4 import rules apply (features never import each
 other's internals; `shared/` never imports `features/`).
 
@@ -124,7 +128,9 @@ project run the Nx target directly (`npx nx test ui`).
   offline simulation) hangs off one object, `DEV_FEATURES` in
   `apps/lms/src/app/core/dev/dev-features.ts`. The production build replaces that file with
   `dev-features.production.ts` (empty) through `fileReplacements`, so none of it is bundled;
-  the config flags only decide whether staging and development use it. Add new team-only code
+  the config flags only decide whether staging and development use it (the offline simulation in
+  `DEV_FEATURES.interceptors` is registered whenever the object has one, and the mock API only
+  when `mockApi` is true). Add new team-only code
   there, never behind a runtime `if` alone. `npm run check` runs `lms:check-bundle`
   (`tools/check-production-bundle.mjs`), which fails if the production output contains the
   toolbar, the board or any mock fixture, and builds staging to check that it holds no fixtures. Known gap: the migration registry data
