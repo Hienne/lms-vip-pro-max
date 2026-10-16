@@ -1,11 +1,16 @@
 // List: ported from the mockup's `.list` block (components.css). Applied by `uiList`,
 // `uiListItem` and `uiListIcon`. Unlike the mockup, rows are separated by a top border on every
-// row but the first, because a row link inside an `<li>` is always its `:last-child`.
+// row but the first, because a row link inside an `<li>` is always its `:last-child`. Rows span
+// the list: the base `li` reading-width cap is for prose.
 @layer components {
   .list {
     margin: 0;
     padding: 0;
     list-style: none;
+
+    > * {
+      max-width: none;
+    }
 
     > * + * {
       border-top: 1px solid var(--color-border);
