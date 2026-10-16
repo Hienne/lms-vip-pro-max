@@ -5,12 +5,14 @@ import { unsavedChangesGuard } from './core/routing/unsaved-changes.guard';
 import { menuGuard } from './core/routing/menu.guard';
 import {
   HOME_META,
-  metaOf,
   NOT_FOUND_META,
-  ROUTE_DEFS,
-  type RouteDef,
   type RouteMeta,
 } from './core/routing/route-table';
+import {
+  metaOf,
+  SCREEN_ENTRIES,
+  type ScreenEntry,
+} from './core/routing/screens';
 import { DEV_FEATURES } from './core/dev/dev-features';
 import { guestGuard } from './core/session/guest.guard';
 import { homeGuard } from './core/session/home.guard';
@@ -23,42 +25,25 @@ const placeholder: Loader = () =>
     (m) => m.RoutePlaceholder,
   );
 
-/** Migrated screens by route path; every other route keeps the placeholder. */
-const SCREENS: Readonly<Record<string, Loader>> = {
-  login: () => import('./features/auth/login/login').then((m) => m.Login),
-  profile: () =>
-    import('./features/account/profile/profile').then((m) => m.Profile),
-  'admin/users': () =>
-    import('./features/admin-org/users/users').then((m) => m.Users),
-  'admin/users/:id': () =>
-    import('./features/admin-org/user-detail/user-detail').then(
-      (m) => m.UserDetail,
-    ),
-  'admin/org': () => import('./features/admin-org/org/org').then((m) => m.Org),
-  'admin/roles': () =>
-    import('./features/admin-org/roles/roles').then((m) => m.Roles),
-  '403': () =>
-    import('./features/errors/forbidden/forbidden').then((m) => m.Forbidden),
-};
-
 const routeData = (meta: RouteMeta): Route['data'] => ({ ...meta });
 
-function toRoute(def: RouteDef): Route {
+function toRoute(entry: ScreenEntry): Route {
+  const { screen } = entry;
   return {
-    path: def.path,
+    path: screen.path,
     // `full`, or `/admin/courses` would run the guards of the `admin` route first.
     pathMatch: 'full',
-    title: def.title,
-    data: routeData(metaOf(def)),
-    canMatch: def.public ? [] : [authGuard, menuGuard],
-    canActivate: def.guestOnly ? [guestGuard] : [],
+    title: screen.title,
+    data: routeData(metaOf(entry)),
+    canMatch: screen.public ? [] : [authGuard, menuGuard],
+    canActivate: screen.guestOnly ? [guestGuard] : [],
     canDeactivate: [unsavedChangesGuard],
-    loadComponent: SCREENS[def.path] ?? placeholder,
+    loadComponent: screen.load ?? placeholder,
   };
 }
 
 /**
- * The app's routes: the mockup's route table, each route carrying `data.menu` and `data.layout`.
+ * The app's routes: the screen table (`core/routing/screens.ts`), each route carrying `data.menu` and `data.layout`.
  * `devTools` registers the internal routes (the migration progress board); the production build
  * replaces `DEV_FEATURES` with an empty one, so it does not even contain them.
  */
@@ -72,7 +57,7 @@ export function createAppRoutes(config: Pick<AppConfig, 'devTools'>): Routes {
       canActivate: [homeGuard],
       children: [],
     },
-    ...ROUTE_DEFS.map(toRoute),
+    ...SCREEN_ENTRIES.map(toRoute),
     {
       path: 'design-system',
       loadChildren: () =>

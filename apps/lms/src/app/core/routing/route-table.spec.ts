@@ -11,7 +11,7 @@ import { parseAppConfig, provideAppConfig } from '../config/app-config';
 import { testAppConfig } from '../config/app-config.testing';
 import { SessionStore } from '../session/session.store';
 import type { ForbiddenState } from './forbidden-state';
-import { ROUTE_DEFS } from './route-table';
+import { SCREEN_ENTRIES } from './screens';
 
 /** Just what the guards read from the session. */
 class FakeSession {
@@ -50,46 +50,53 @@ describe('route table', () => {
     session.user.set(profileFixtures[key]);
 
   it('lists every route of the mockup router except the ones with their own entry', () => {
-    expect(ROUTE_DEFS.map((def) => def.path)).toEqual([
-      'login',
-      'learn',
-      'catalog',
-      'course/:id',
-      'lesson/:courseId/:lessonId',
-      'quiz/:id',
-      'quiz/:id/take',
-      'quiz/:id/result/:attemptId',
-      'quiz/:id/attempts',
-      'progress',
-      'leaderboard',
-      'certificates',
-      'certificate/:id',
-      'saved',
-      'flashcards',
-      'assistant',
-      'notifications',
-      'profile',
-      'instructor',
-      'instructor/inbox',
-      'admin',
-      'admin/catalog',
-      'admin/courses',
-      'admin/courses/new',
-      'admin/courses/:id/edit',
-      'admin/questions',
-      'admin/quizzes',
-      'admin/quizzes/:id',
-      'admin/import',
-      'admin/users',
-      'admin/users/:id',
-      'admin/org',
-      'admin/roles',
-      'admin/assignments',
-      'admin/system',
-      'reports',
-      'reports/:dim',
-      '403',
-    ]);
+    expect(new Set(SCREEN_ENTRIES.map(({ screen }) => screen.path))).toEqual(
+      new Set([
+        'login',
+        'learn',
+        'catalog',
+        'course/:id',
+        'lesson/:courseId/:lessonId',
+        'quiz/:id',
+        'quiz/:id/take',
+        'quiz/:id/result/:attemptId',
+        'quiz/:id/attempts',
+        'progress',
+        'leaderboard',
+        'certificates',
+        'certificate/:id',
+        'saved',
+        'flashcards',
+        'assistant',
+        'notifications',
+        'profile',
+        'instructor',
+        'instructor/inbox',
+        'admin',
+        'admin/catalog',
+        'admin/courses',
+        'admin/courses/new',
+        'admin/courses/:id/edit',
+        'admin/questions',
+        'admin/quizzes',
+        'admin/quizzes/:id',
+        'admin/import',
+        'admin/users',
+        'admin/users/:id',
+        'admin/org',
+        'admin/roles',
+        'admin/assignments',
+        'admin/system',
+        'reports',
+        'reports/:dim',
+        '403',
+      ]),
+    );
+  });
+
+  it('declares each path once', () => {
+    const paths = SCREEN_ENTRIES.map(({ screen }) => screen.path);
+    expect(paths.filter((path, i) => paths.indexOf(path) !== i)).toEqual([]);
   });
 
   it('sends an anonymous visitor to the login page, remembering the page asked for', async () => {
@@ -171,14 +178,25 @@ describe('route table', () => {
   });
 
   it('carries the menu and layout in route data', () => {
-    const learn = ROUTE_DEFS.find((def) => def.path === 'learn');
-    const lesson = ROUTE_DEFS.find(
-      (def) => def.path === 'lesson/:courseId/:lessonId',
+    const dataOf = (path: string) =>
+      createAppRoutes({ devTools: false }).find((r) => r.path === path)?.data;
+    expect(dataOf('learn')).toMatchObject({
+      menu: 'learn.home',
+      layout: 'app',
+    });
+    expect(dataOf('lesson/:courseId/:lessonId')).toMatchObject({
+      menu: 'learn.catalog',
+      layout: 'focus',
+    });
+    expect(dataOf('login')).toMatchObject({ layout: 'bare' });
+    expect(dataOf('login')).not.toHaveProperty('menu');
+  });
+
+  it('keeps login public and visitor-only', () => {
+    const login = createAppRoutes({ devTools: false }).find(
+      (r) => r.path === 'login',
     );
-    const login = ROUTE_DEFS.find((def) => def.path === 'login');
-    expect(learn?.menu).toBe('learn.home');
-    expect(lesson?.layout).toBe('focus');
-    expect(login?.layout).toBe('bare');
-    expect(login?.public).toBe(true);
+    expect(login?.canMatch).toEqual([]);
+    expect(login?.canActivate).toHaveLength(1);
   });
 });

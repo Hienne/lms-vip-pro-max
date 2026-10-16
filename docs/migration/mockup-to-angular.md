@@ -21,8 +21,8 @@ python3 -m http.server 8080 -d lms-mockup
 | `data/seed.js`                                          | fixtures in `@lms/mocks`                                                                                       |
 | `api/*.js` function                                     | endpoint in `@lms/contracts` with the same key, called with `EndpointClient`; its body is the **backend** spec |
 | `api/core.js` (`PERMS`, `unitScope`, scoring, progress) | backend only; the app uses roles for navigation and display, nothing more                                      |
-| `core/router.js` `routes[]`                             | `app.routes.ts` + feature `*.routes.ts`, `canMatch: [roleGuard(...)]`                                          |
-| `core/router.js` `layout: 'focus'` / `public`           | layout route in `app/layout/` (focus, bare) wrapping the children                                              |
+| `core/router.js` `routes[]`                             | a screen of the screen table (`core/routing/screens.ts`), under the menu that grants it                        |
+| `core/router.js` `layout: 'focus'` / `public`           | the screen's `layout` (`focus`, `bare`) and `public` fields in the screen table                                |
 | `core/store.js` session, prefs                          | `core/session/` store-like root service (session, theme), per angular.md §5.2 shape                            |
 | `core/shell.js`                                         | `app/layout/app-shell` (template) + role-based nav config                                                      |
 | `core/ui.js` toast/modal/drawer/menu                    | `@lms/ui` organisms on CDK / `@angular/aria` (`ui-library.md` table)                                           |
@@ -193,7 +193,7 @@ username>'` in a one-line change, merged on its own so teammates see it. Do not 
 ## Order of work
 
 1. **Foundation**: theme (tokens), atoms,
-   `/design-system` route, app shell + layouts, session, `roleGuard`, error
+   `/design-system` route, app shell + layouts, session, route guards, error
    handling, errors feature (403, 404), login.
 2. **Learner path**: learning → lesson → quiz → achievements → study-tools → account.
 3. **Instructor**, then **admin** (content, assessment, org), then **reports**.
@@ -215,8 +215,10 @@ Each step ends on its criterion; finish it before starting the next.
 3. **UI pieces.** Every inventory row the page uses exists in `@lms/ui` or
    `shared/`; build missing ones to `ui-library.md` done criteria.
 4. **Route module.** Store, component, template and child components per
-   angular.md §4–§6, mapped with the tables above. Done when every action from
-   step 1 has a store command and every state from step 1 renders.
+   angular.md §4–§6, mapped with the tables above. Register it by adding `load`
+   (a lazy `import()` of the component) to the screen's entry in the screen table.
+   Done when every action from step 1 has a store command, every state from
+   step 1 renders and the route shows the component instead of the placeholder.
 5. **Verify.**
    - angular.md §14 checklist passes; `npm run check` green.
    - Side by side with the mockup in the browser at 375, 768 and 1280 px, light

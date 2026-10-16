@@ -1,6 +1,7 @@
 import * as ui from '@lms/ui';
 import type { Route } from '@angular/router';
 import { createAppRoutes } from '../../../app.routes';
+import { SCREEN_ENTRIES } from '../../../core/routing/screens';
 import { MIGRATION_ENTRIES } from './migration-entries.data';
 import {
   MigrationEntrySchema,
@@ -237,6 +238,19 @@ describe('migration registry vs the code', () => {
       expect(paths).toEqual(
         expect.arrayContaining(['design-system', 'dev/migration']),
       );
+    });
+
+    it('has a loader for every screen of the table whose route entry is done', () => {
+      const withoutLoader = MIGRATION_REGISTRY.filter(
+        (e): e is RouteEntry => isRouteEntry(e) && e.status === 'done',
+      )
+        .filter((e) =>
+          SCREEN_ENTRIES.some(
+            ({ screen }) => screen.path === e.target && !screen.load,
+          ),
+        )
+        .map((e) => e.id);
+      expect(withoutLoader).toEqual([]);
     });
 
     it('has a route entry for every route of the app', async () => {
