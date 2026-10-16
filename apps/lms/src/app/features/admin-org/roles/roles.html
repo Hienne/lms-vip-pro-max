@@ -99,6 +99,8 @@
   [uiDrawer]="store.editing$() !== null"
   [uiDrawerTitle]="store.editorTitle$()"
   [uiDrawerFooter]="footer"
+  [uiDrawerBusy]="store.isSaving$()"
+  uiDrawerBusyLabel="Đang lưu…"
   (uiDrawerDismiss)="store.cancelEdit()"
 >
   @if (store.editing$(); as editing) {

@@ -4,11 +4,11 @@
 
 **Blocked by:** None (can start immediately)
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] `uiDrawer` spec through a host component: true opens with title, body and footer; false closes without dismiss; Esc, backdrop, close button and context `close()` each emit dismiss; a title change updates the open drawer; focus returns to the opener; destroying the host closes the dialog
-- [ ] `ui-form-actions` spec: labels; submit has `type="submit"` and `form` = `formId`; `saving` disables it; cancel emits; projected extra actions render first
-- [ ] `serverMutation` spec: `fieldErrors` is `{}` before a run and after success, holds `details` after an inline failure, `{}` after `reset()`
-- [ ] `RolesStore` imports neither `TemplateRef` nor `openDrawer`; `Dialog` remains only for `confirm()`
-- [ ] Roles page spec passes without changed assertions
-- [ ] `npm run check` green
+- [x] `uiDrawer` spec through a host component: true opens with title, body and footer; false closes without dismiss; Esc, backdrop, close button and context `close()` each emit dismiss; a title change updates the open drawer; focus returns to the opener; destroying the host closes the dialog
+- [x] `ui-form-actions` spec: labels; submit has `type="submit"` and `form` = `formId`; `saving` disables it; cancel emits; projected extra actions render first
+- [x] `serverMutation` spec: `fieldErrors` is `{}` before a run and after success, holds `details` after an inline failure, `{}` after `reset()`
+- [x] `RolesStore` imports neither `TemplateRef` nor `openDrawer`; `Dialog` remains only for `confirm()`
+- [x] Roles page spec passes without changed assertions
+- [x] `npm run check` green

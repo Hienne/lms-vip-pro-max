@@ -21,6 +21,9 @@ import {
  * is derived from state and never opened by a command. The template is the body; `close` is
  * available as `let-close="close"`.
  *
+ * While `uiDrawerBusy` is true every way the user can close it is blocked, but the state is not:
+ * `uiDrawer` turning false still closes it.
+ *
  * `uiDrawerDismiss` fires only when the user closes it (Esc, backdrop, the close button or
  * `close()`), never when `uiDrawer` turns false or the directive is destroyed: map it to the
  * command that clears the state `uiDrawer` reads.
@@ -40,6 +43,10 @@ export class DrawerOutlet {
   readonly uiDrawerFooter = input<TemplateRef<DrawerContext>>();
   /** Which edge it slides from, read when it opens. Defaults to `end`. */
   readonly uiDrawerSide = input<DrawerSide>();
+  /** While true the user cannot close the drawer and an overlay covers its body and footer. */
+  readonly uiDrawerBusy = input(false);
+  /** Text of the busy overlay, read by screen readers. The library ships no default copy. */
+  readonly uiDrawerBusyLabel = input<string>();
   /** The user closed the drawer. */
   readonly uiDrawerDismiss = output<void>();
 
@@ -59,6 +66,8 @@ export class DrawerOutlet {
     const ref = openLiveDrawer(this.dialog, this.body, this.uiDrawerSide(), {
       title: this.uiDrawerTitle,
       footer: this.uiDrawerFooter,
+      busy: this.uiDrawerBusy,
+      busyLabel: this.uiDrawerBusyLabel,
     });
     this.ref = ref;
     ref.closed.subscribe(() => {

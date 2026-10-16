@@ -3,6 +3,7 @@ import { createGlobalPositionStrategy } from '@angular/cdk/overlay';
 import { NgTemplateOutlet } from '@angular/common';
 import {
   Component,
+  effect,
   inject,
   Injector,
   signal,
@@ -30,6 +31,9 @@ export type DrawerOptions = {
 export type DrawerLive = {
   title: Signal<string>;
   footer: Signal<TemplateRef<DrawerContext> | undefined>;
+  /** While true the user cannot close the drawer and an overlay covers the body and footer. */
+  busy: Signal<boolean>;
+  busyLabel: Signal<string | undefined>;
 };
 
 type DrawerData = DrawerLive & {
@@ -47,7 +51,7 @@ let nextId = 0;
 @Component({
   selector: 'ui-drawer',
   imports: [Icon, IconButton, NgTemplateOutlet],
-  host: { class: 'drawer' },
+  host: { class: 'drawer', '[attr.aria-busy]': 'data.busy() ? "true" : null' },
   templateUrl: './drawer.html',
 })
 export class Drawer {
@@ -56,7 +60,16 @@ export class Drawer {
 
   protected readonly context: DrawerContext = { close: () => this.close() };
 
+  constructor() {
+    // `disableClose` blocks Escape and the backdrop only; the close button and `close()` are
+    // guarded below.
+    effect(() => {
+      this.ref.disableClose = this.data.busy();
+    });
+  }
+
   protected close(): void {
+    if (this.data.busy()) return;
     this.ref.close();
   }
 }
@@ -73,6 +86,8 @@ export function openDrawer(
   return openLiveDrawer(dialog, body, options.side, {
     title: signal(options.title),
     footer: signal(options.footer),
+    busy: signal(false),
+    busyLabel: signal(undefined),
   });
 }
 

@@ -11,6 +11,8 @@ import { DrawerOutlet } from './drawer.directive';
       [uiDrawer]="open()"
       [uiDrawerTitle]="title()"
       [uiDrawerFooter]="footer"
+      [uiDrawerBusy]="busy()"
+      uiDrawerBusyLabel="Đang lưu…"
       (uiDrawerDismiss)="dismissed.set(dismissed() + 1)"
       let-close="close"
     >
@@ -23,6 +25,7 @@ import { DrawerOutlet } from './drawer.directive';
 class Host {
   readonly open = signal(false);
   readonly title = signal('Drawer mẫu');
+  readonly busy = signal(false);
   readonly dismissed = signal(0);
 }
 
@@ -188,5 +191,88 @@ describe('uiDrawer', () => {
 
     await vi.waitFor(() => expect(panel()).toBeNull());
     expect(host.dismissed()).toBe(0);
+  });
+
+  describe('while busy', () => {
+    const escape = () =>
+      panel()?.dispatchEvent(
+        new KeyboardEvent('keydown', {
+          key: 'Escape',
+          code: 'Escape',
+          keyCode: 27,
+          bubbles: true,
+        }),
+      );
+
+    async function openBusy() {
+      const ctx = setup();
+      ctx.host.open.set(true);
+      await settle();
+      ctx.host.busy.set(true);
+      await settle();
+      return ctx;
+    }
+
+    it('shows the overlay with its label and marks the panel busy', async () => {
+      await openBusy();
+
+      const busy = document.querySelector('.drawer__busy');
+      expect(busy?.textContent).toContain('Đang lưu…');
+      expect(busy?.getAttribute('role')).toBe('status');
+      expect(document.querySelector('.drawer')?.getAttribute('aria-busy')).toBe(
+        'true',
+      );
+    });
+
+    it('ignores Escape and a backdrop click', async () => {
+      const { host } = await openBusy();
+
+      escape();
+      (document.querySelector('.dialog-backdrop') as HTMLElement).click();
+      await settle();
+
+      expect(panel()).not.toBeNull();
+      expect(host.dismissed()).toBe(0);
+    });
+
+    it('disables the close button and ignores close() from the template', async () => {
+      const { host } = await openBusy();
+
+      const button = document.querySelector<HTMLButtonElement>(
+        '[aria-label="Đóng"]',
+      ) as HTMLButtonElement;
+      expect(button.disabled).toBe(true);
+      button.click();
+      (document.getElementById('inner-close') as HTMLElement).click();
+      await settle();
+
+      expect(panel()).not.toBeNull();
+      expect(host.dismissed()).toBe(0);
+    });
+
+    it('still closes when the condition turns false', async () => {
+      const { host } = await openBusy();
+
+      host.open.set(false);
+      await settle();
+
+      await vi.waitFor(() => expect(panel()).toBeNull());
+      expect(host.dismissed()).toBe(0);
+    });
+
+    it('accepts closing again, and drops the overlay, when busy ends', async () => {
+      const { host } = await openBusy();
+
+      host.busy.set(false);
+      await settle();
+      expect(document.querySelector('.drawer__busy')).toBeNull();
+      expect(
+        document.querySelector('.drawer')?.getAttribute('aria-busy'),
+      ).toBeNull();
+
+      escape();
+      await vi.waitFor(() => expect(host.dismissed()).toBe(1));
+      expect(panel()).toBeNull();
+    });
   });
 });

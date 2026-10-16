@@ -4,9 +4,9 @@
 
 **Blocked by:** 01
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] `uiDrawer` spec: while busy, Esc, backdrop, close button and context `close()` are all blocked; overlay, `aria-busy` and the label are present; false still closes while busy; a busy change updates the open drawer
-- [ ] Roles page spec adds: while a save is pending, Esc does not close the drawer, and the drawer closes after the response
-- [ ] Existing roles assertions unchanged (including the 422 case that keeps the drawer open)
-- [ ] `npm run check` green
+- [x] `uiDrawer` spec: while busy, Esc, backdrop, close button and context `close()` are all blocked; overlay, `aria-busy` and the label are present; false still closes while busy; a busy change updates the open drawer
+- [x] Roles page spec adds: while a save is pending, Esc does not close the drawer, and the drawer closes after the response
+- [x] Existing roles assertions unchanged (including the 422 case that keeps the drawer open)
+- [x] `npm run check` green
