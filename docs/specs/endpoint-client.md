@@ -239,10 +239,8 @@ Prior art: `server-data.spec.ts`, `server-mutation.spec.ts`,
 
 ## Out of Scope
 
-- 401 in the middle of a session (end the session, go to `/login?next=`):
-  separate work together with architecture review #04 (return-to module).
-  It will be able to exempt `authEndpoints.profile` through the `ENDPOINT`
-  context.
+- 401 in the middle of a session: implemented afterwards, see
+  `contracts-and-mocks.md` ("Expired session").
 - A stateful mock, simulated latency, per-request error simulation.
 - Reading an error message out of a blob error body.
 - A screen that actually uploads or downloads. This change only builds the

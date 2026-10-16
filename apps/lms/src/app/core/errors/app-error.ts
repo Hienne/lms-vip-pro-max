@@ -32,6 +32,9 @@ const DEFAULT_MESSAGE: Record<AppErrorKind, string> = {
   unknown: 'Có lỗi xảy ra. Vui lòng thử lại sau.',
 };
 
+/** Shown once when the server ends the session mid-use. */
+export const SESSION_EXPIRED_MESSAGE = DEFAULT_MESSAGE.unauthorized;
+
 const KIND_BY_STATUS: Record<number, AppErrorKind> = {
   0: 'offline',
   401: 'unauthorized',

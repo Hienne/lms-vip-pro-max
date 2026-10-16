@@ -529,6 +529,7 @@ readonly total = computed(() => this.price() * this.quantity());
 - Map `HttpErrorResponse` to a typed app error in one place. Stores expose that
   error, and components render it with a retry action.
 - Provide a global `ErrorHandler` for unexpected errors. Never swallow errors silently.
+- A 401 while signed in ends the session in `sessionExpiryInterceptor`, not in stores: a store only renders the error. Build and read `?next=` with `core/routing/return-to.ts`, never by hand.
 
 ## 12. TypeScript & security
 

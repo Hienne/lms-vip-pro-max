@@ -1,5 +1,6 @@
 import { inject } from '@angular/core';
 import { type CanMatchFn, Router } from '@angular/router';
+import { returnToParams } from './return-to';
 import { SessionStore } from '../session/session.store';
 
 /** Anonymous visitors go to `/login?next=<url they asked for>`. */
@@ -10,6 +11,6 @@ export const authGuard: CanMatchFn = async () => {
   if (session.isSignedIn$()) return true;
   const requested = router.getCurrentNavigation()?.extractedUrl.toString();
   return router.createUrlTree(['/login'], {
-    queryParams: requested && requested !== '/' ? { next: requested } : {},
+    queryParams: returnToParams(requested),
   });
 };

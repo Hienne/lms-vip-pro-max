@@ -101,6 +101,17 @@ File | Blob` or an array of those. Arrays repeat the key, numbers and booleans
   `ApiError.message` when the body parses, else the mockup's Vietnamese default;
   `details` (field to message) is kept on `invalid` only.
   `serverData` and `serverMutation` expose their error as an `AppError`; components render it with retry.
+- **Expired session.** `sessionExpiryInterceptor` (`core/http/`, first in the chain,
+  all environments) treats a 401 from any endpoint except `authEndpoints.profile`,
+  `login` and `loginDemo` as the session ending (those mean anonymous visitor and
+  wrong credentials). It matches by endpoint identity through the `ENDPOINT` context
+  token, never by URL, and hands over to `SessionExpiry` (`core/session/`), which, only
+  while someone is signed in, forgets the user, shows the expiry message once and
+  navigates to `/login?next=<current url>`. The failing call still errors to its store
+  (a `serverMutation` with `errors: 'toast'` adds its own toast). The dev toolbar's
+  "session expired" uses `SessionExpiry` too. `core/routing/return-to.ts` builds
+  (`returnToParams`) and reads (`readReturnTo`, rejects external or unsafe paths)
+  `?next=`.
 - **Known limit:** an HTTP error on a `blob` endpoint arrives as a `Blob` body,
   so `toAppError` shows the default message for its kind.
 - **Extension rule:** a new transport kind (another body encoding, streaming…)
@@ -178,9 +189,7 @@ and no OpenAPI document.
 - The mock is stateless: a POST does not change what the next GET returns.
   Stores apply the mutation response to their own state or reload (angular.md
   §5.2), which is also the correct behaviour against the real backend.
-- Mid-session 401 handling (end the session, go to `/login?next=`) is separate
-  work with the return-to module; it will be able to exempt
-  `authEndpoints.profile` through the `ENDPOINT` context.
+- Mid-session 401: see "Expired session" under error handling.
 
 ## Auth contract decisions
 
