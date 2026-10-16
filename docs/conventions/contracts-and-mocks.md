@@ -92,7 +92,7 @@ export class CourseApi {
   `AppError` is `{ kind, message, details? }`: the message is the server's
   `ApiError.message` when the body parses, else the mockup's Vietnamese default;
   `details` (field to message) is kept on `invalid` only.
-  Stores expose `toAppError(resource.error())`; components render it with retry.
+  `serverData` and `serverMutation` expose their error as an `AppError`; components render it with retry.
 
 ## Forms
 

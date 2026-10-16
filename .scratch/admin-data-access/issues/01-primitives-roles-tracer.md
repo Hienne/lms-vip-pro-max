@@ -4,11 +4,11 @@
 
 **Blocked by:** None (can start immediately)
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] Primitive spec through `TestBed` injection context with `Subject` sources and a stub `Toaster`: first-load `isLoading`; value kept across an invalidation reload and `reload()`; load error as `AppError`; success order `onSuccess` → invalidation → toast; message from input and result; `'toast'` versus `'inline'` errors; same input resubmitted calls again; `reset()` clears the error; a second run cancels the first
-- [ ] `RolesStore` uses only the primitives for API calls; no `linkedSignal`, change counter or `toAppError` left in it
-- [ ] Roles page spec passes without edits
-- [ ] angular.md §5.2 (state holds screen state only; API calls through the primitives; raw `rxResource` only with a stated reason; example rewritten) and workspace.md updated
-- [ ] Smoke test on the app against Prism: add, edit and delete a role, including a failed save showing field errors and a failed delete showing a toast
-- [ ] `npm run check` green
+- [x] Primitive spec through `TestBed` injection context with `Subject` sources and a stub `Toaster`: first-load `isLoading`; value kept across an invalidation reload and `reload()`; load error as `AppError`; success order `onSuccess` → invalidation → toast; message from input and result; `'toast'` versus `'inline'` errors; same input resubmitted calls again; `reset()` clears the error; a second run cancels the first
+- [x] `RolesStore` uses only the primitives for API calls; no `linkedSignal`, change counter or `toAppError` left in it
+- [x] Roles page spec passes without edits
+- [x] angular.md §5.2 (state holds screen state only; API calls through the primitives; raw `rxResource` only with a stated reason; example rewritten) and workspace.md updated
+- [x] Smoke test on the app against Prism: add, edit and delete a role, including a failed save showing field errors and a failed delete showing a toast
+- [x] `npm run check` green

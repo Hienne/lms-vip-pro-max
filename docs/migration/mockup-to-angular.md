@@ -39,7 +39,7 @@ python3 -m http.server 8080 -d lms-mockup
 | `key`                                          | route-module folder name, kebab-case (`quizTake` → `quiz-take/`)                                                                    |
 | `title`                                        | route `title`                                                                                                                       |
 | `initState()`                                  | store `state` object                                                                                                                |
-| `load(ctx)`                                    | store `rxResource`(s) calling the XApi method(s)                                                                                    |
+| `load(ctx)`                                    | store `serverData`(s) calling the XApi method(s)                                                                                    |
 | filtering / sorting / grouping inside `view()` | store `computed()` selectors                                                                                                        |
 | markup in `view()`                             | component template built from `@lms/ui` + `shared/`                                                                                 |
 | `actions[name]`                                | store command (template handler is a one-liner)                                                                                     |

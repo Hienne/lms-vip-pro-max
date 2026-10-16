@@ -108,7 +108,7 @@ src/app/
 ## 5. Data flow: API service → Store → Component
 
 ```text
-HttpClient ─► XApi (service) ─► XStore (state + logic + rxResource) ─► Component (view)
+HttpClient ─► XApi (service) ─► XStore (state + logic + serverData/serverMutation) ─► Component (view)
 ```
 
 **Core principle: the store owns all state and all state logic.** The component
@@ -132,6 +132,10 @@ export class CourseApi {
     return this.http.get<Course>(`/api/courses/${id}`);
   }
 
+  getFeatured(): Observable<Course> {
+    return this.http.get<Course>('/api/courses/featured');
+  }
+
   update(command: SaveCourseCommand): Observable<Course> {
     return this.http.put<Course>(`/api/courses/${command.id}`, command);
   }
@@ -142,36 +146,54 @@ export class CourseApi {
 
 - Use `@Injectable()` **without `providedIn`**, provided at the component level
   (`providers: [XStore]`). **Never use `@Service()` or `providedIn: 'root'` for a store.**
-- All API calls are wrapped in **`rxResource`**, triggered by a private signal in
-  `params`. When `params` returns `undefined`, the resource stays idle.
+- Every API call goes through the core data-access primitives
+  (`core/data-access/`), called in field initializers like `rxResource`:
+  - **`invalidation()`**: a change token. The store that owns the data creates
+    it, mutations bump it, reads reload on it. Another store may receive it
+    as a read-only `ChangeToken`.
+  - **`serverData(load, { reloadOn })`**: reads one value. Exposes `value`,
+    `isLoading` (true only until the first value arrives), `error` (already an
+    `AppError`) and `reload()`. The last value stays on screen during a reload.
+  - **`serverMutation(run, { errors, success, onSuccess, invalidates })`**:
+    runs a command. `errors` is required: `'toast'` shows the server message as
+    a toast, `'inline'` exposes it as `error` for the form. On success it runs
+    `onSuccess`, then bumps `invalidates`, then shows the `success(input,
+    result)` toast. Exposes `run(input)`, `isPending`, `error` and `reset()`.
+  - Use raw `rxResource` only where they do not fit, with a comment giving the
+    reason. `serverData` has no `params` yet, so a read keyed by a signal (a
+    route param that can change while the component lives) is a raw
+    `rxResource`: `params` returns `undefined` to keep it idle, and its
+    `value()` is read behind `hasValue()`, because reading the value of an
+    errored resource throws.
 - **Store shape.** Organize every store in this order:
   1. **`private readonly state = { ... }`**: one object that holds **all**
-     writable signals of the store. Do not declare writable signals anywhere else
-     in the store.
-  2. **Resources**: private `rxResource` fields. Their `params` read from `state`.
+     writable signals of the store, and only **screen state** (editing, filters,
+     sort, page, tab). Requests, change counters and server values are not
+     state: the primitives own them. Do not declare writable signals anywhere
+     else in the store.
+  2. **Resources**: private `invalidation()`, `serverData()` and
+     `serverMutation()` fields. Their callbacks may read `state`.
   3. **Selectors**: public readonly signals with a **`$` suffix**. For each state
      key, write `readonly x$ = this.state.x.asReadonly()`. Derived values use
-     `computed()`, and resource signals are re-exposed as `$` fields too.
+     `computed()`, and primitive signals are re-exposed as `$` fields too.
   4. **Setters**: one `setX(value)` method per state key. A setter is the **only**
-     place that calls `.set()` / `.update()` on that key. Setters for internal
-     keys (e.g. request triggers) are `private`.
+     place that calls `.set()` / `.update()` on that key.
   5. **Commands**: intent-named methods (`save`, `selectLesson`, `retryLoad`) that
-     compose setters. Commands never call `.set()` on `state` directly.
+     compose setters and call `mutation.run(...)`. Commands never call `.set()`
+     on `state` directly. Confirm dialogs live in commands.
 - Because every write goes through a setter, one breakpoint or log line in
   `setX()` shows every change to `x`.
 - In this convention, `$` marks a **readonly signal exposed by a store**. Do not
   use `$` for observables or for anything else.
-- Never expose a writable signal, the `state` object, or a resource object.
-- Guard `value()` with `hasValue()`, because reading the value of an errored
-  resource throws.
-- **Mutations** (POST/PUT/DELETE) use the same pattern: a command sets a request
-  signal, and an `rxResource` performs the call.
-  - Set a **new object** on each command so that resubmitting the same payload
-    re-triggers the call.
-  - A new request cancels the in-flight one. Disable the trigger in the UI while
+- Never expose a writable signal, the `state` object, or a primitive itself.
+- **Mutations** (POST/PUT/DELETE) use `serverMutation`.
+  - `run(input)` always sets a fresh request, so resubmitting the same payload
+    calls the server again.
+  - A new run cancels the in-flight one. Disable the trigger in the UI while
     `isSaving$()` is true.
-  - Apply the server result to other state inside the stream (`tap` →
-    `resource.set(...)`), or call `reload()` in the command. Never use an `effect()` for this.
+  - Close a drawer or navigate from `onSuccess`, reload data through
+    `invalidates`. Never use an `effect()` for this.
+  - Call `reset()` when a form reopens, so an old error does not show.
 - The route store reads route params itself (`ActivatedRoute` + `toSignal`), so
   the component does not forward them.
 
@@ -179,46 +201,42 @@ export class CourseApi {
 @Injectable()
 export class CourseDetailStore {
   private readonly api = inject(CourseApi);
-  private readonly route = inject(ActivatedRoute);
 
-  // 1. State: every writable signal of this store
+  // 1. State: screen state only
   private readonly state = {
     selectedLessonId: signal<string | null>(null),
     editorOpen: signal(false),
-    saveRequest: signal<SaveCourseCommand | undefined>(undefined),
   };
 
-  // Route-derived input (readonly, not part of state)
-  private readonly courseId = toSignal(
-    this.route.paramMap.pipe(map((p) => p.get('courseId') ?? undefined)),
+  // 2. Resources: data-access primitives
+  private readonly changes = invalidation();
+
+  private readonly courseData = serverData(() => this.api.getFeatured(), {
+    reloadOn: this.changes,
+  });
+
+  private readonly saveMutation = serverMutation(
+    (command: SaveCourseCommand) => this.api.update(command),
+    {
+      errors: 'inline',
+      success: () => 'Course saved',
+      onSuccess: () => this.setEditorOpen(false),
+      invalidates: this.changes,
+    },
   );
-
-  // 2. Resources
-  private readonly courseResource = rxResource({
-    params: () => this.courseId(),
-    stream: ({ params: id }) => this.api.getById(id),
-  });
-
-  private readonly saveResource = rxResource({
-    params: () => this.state.saveRequest(),
-    stream: ({ params: command }) =>
-      this.api.update(command).pipe(tap((saved) => this.courseResource.set(saved))),
-  });
 
   // 3. Selectors
   readonly selectedLessonId$ = this.state.selectedLessonId.asReadonly();
   readonly editorOpen$ = this.state.editorOpen.asReadonly();
 
-  readonly course$ = computed(() =>
-    this.courseResource.hasValue() ? this.courseResource.value() : undefined,
-  );
+  readonly course$ = this.courseData.value;
   readonly selectedLesson$ = computed(() =>
     this.course$()?.lessons.find((l) => l.id === this.selectedLessonId$()),
   );
-  readonly isLoading$ = this.courseResource.isLoading;
-  readonly loadError$ = this.courseResource.error;
-  readonly isSaving$ = this.saveResource.isLoading;
-  readonly saveError$ = this.saveResource.error;
+  readonly isLoading$ = this.courseData.isLoading;
+  readonly loadError$ = this.courseData.error;
+  readonly isSaving$ = this.saveMutation.isPending;
+  readonly saveError$ = this.saveMutation.error;
 
   // 4. Setters: the only writers of state
   setSelectedLessonId(id: string | null): void {
@@ -229,10 +247,6 @@ export class CourseDetailStore {
     this.state.editorOpen.set(open);
   }
 
-  private setSaveRequest(command: SaveCourseCommand | undefined): void {
-    this.state.saveRequest.set(command);
-  }
-
   // 5. Commands: intent, composed from setters
   selectLesson(id: string): void {
     this.setSelectedLessonId(id);
@@ -240,11 +254,11 @@ export class CourseDetailStore {
   }
 
   save(command: SaveCourseCommand): void {
-    this.setSaveRequest({ ...command });
+    this.saveMutation.run(command);
   }
 
   retryLoad(): void {
-    this.courseResource.reload();
+    this.courseData.reload();
   }
 
   // Optional debug selector: whole state as one plain object
@@ -299,7 +313,7 @@ export class CourseDetailStore {
 
 ### 5.6 RxJS
 
-- RxJS belongs in API services and inside `rxResource` streams. Use `toSignal()`
+- RxJS belongs in API services and inside `serverData`/`serverMutation` (or `rxResource`) streams. Use `toSignal()`
   to bridge other observables (router, third-party) in stores.
 - No manual `subscribe()` in components. If a store must subscribe, use
   `takeUntilDestroyed()`.
@@ -357,7 +371,7 @@ APIs**. It is not a state-management tool. Pick the first option that fits:
 
 1. Readonly value derived from state → `computed()`
 2. Writable state that resets from or follows another signal → `linkedSignal()`
-3. Async data driven by signals → `rxResource()` in the store
+3. Async data in the store → `serverData()` / `serverMutation()` (`rxResource()` for a read keyed by a signal)
 4. Work triggered by a user action → a store command
 5. Sync with `localStorage`, analytics, a third-party widget, or another
    non-reactive boundary → `effect()`
@@ -541,8 +555,8 @@ readonly total = computed(() => this.price() * this.quantity());
 - [ ] Components hold no writable state or state logic (other than the form model), and handlers only call store commands?
 - [ ] Components never inject HttpClient or API services?
 - [ ] API services are stateless `@Service()`, and stores are `@Injectable()` provided at the component level?
-- [ ] Every API call is wrapped in `rxResource`?
-- [ ] All writable state is in one `private readonly state = {}` object, exposed as `x$` via `asReadonly()`/`computed()`, and written only through `setX()` setters that commands compose?
+- [ ] Every API call goes through `serverData`/`serverMutation` (or `rxResource` with a comment giving the reason), and every mutation declares `errors: 'toast' | 'inline'`?
+- [ ] All writable state (screen state only) is in one `private readonly state = {}` object, exposed as `x$` via `asReadonly()`/`computed()`, and written only through `setX()` setters that commands compose?
 - [ ] Loading, error + retry, and empty states are rendered?
 - [ ] Forms use Signal Forms, and the form plus submit logic stay in the component?
 - [ ] Every `effect()` crosses a non-reactive boundary, handles one concern, reads ≤ 3 triggers (or one combined `computed`), uses `untracked()` for everything else, and cleans up its work in `onCleanup`?
