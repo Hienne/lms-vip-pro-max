@@ -31,7 +31,6 @@ older Angular versions or from memory.
   | ------------- | ---------------------------- | --------------------- |
   | Component     | `course-detail.ts` + `.html` | `CourseDetail`        |
   | Store         | `course-detail.store.ts`     | `CourseDetailStore`   |
-  | API service   | `course.api.ts`              | `CourseApi`           |
   | Models        | `course.model.ts`            | `Course`, `SaveCourseCommand` |
   | Routes        | `course.routes.ts`           | default export `Routes` |
   | Guard / resolver / interceptor | `auth.guard.ts`, `error.interceptor.ts` | `authGuard`, `errorInterceptor` (functions) |
@@ -78,8 +77,7 @@ src/app/
 └── features/
     └── course/
         ├── course.routes.ts
-        ├── data-access/                 # API services + models used by ≥ 2 routes
-        │   ├── course.api.ts
+        ├── data-access/                 # models and stores used by ≥ 2 routes
         │   └── course.model.ts
         └── course-detail/               # one route module
             ├── course-detail.ts         # exactly one main component
@@ -105,38 +103,41 @@ src/app/
   another feature's internals. Promote shared code to `shared/` or `core/` instead.
 - Do not model sibling routes as parent/child merely because their URLs share a prefix.
 
-## 5. Data flow: API service → Store → Component
+## 5. Data flow: EndpointClient → Store → Component
 
 ```text
-HttpClient ─► XApi (service) ─► XStore (state + logic + serverData/serverMutation) ─► Component (view)
+EndpointClient ─► XStore (state + logic + serverData/serverMutation) ─► Component (view)
 ```
 
 **Core principle: the store owns all state and all state logic.** The component
 is a thin view layer. It renders signals from the store, and it forwards user
 events to store commands.
 
-### 5.1 API service layer
+### 5.1 Calling endpoints
 
-- Use `@Service()`, which is root-provided. **Stateless**: no signals, no caching
-  fields, no subscriptions.
-- One method per endpoint. Return `Observable<T>` from `HttpClient` with typed
-  request and response models. Map DTOs to domain models here when they differ.
-- Never subscribe inside a service. Never inject a store into a service.
+There is no API service per domain. Every endpoint is declared once in
+`@lms/contracts` (`contracts-and-mocks.md`), and a store calls it through
+`EndpointClient` (`core/http/endpoint-client.ts`, root-provided, stateless):
 
 ```ts
-@Service()
-export class CourseApi {
-  private readonly http = inject(HttpClient);
+private readonly client = inject(EndpointClient);
 
-  getById(id: string): Observable<Course> {
-    return this.http.get<Course>(`/api/courses/${id}`);
-  }
-
-  update(command: SaveCourseCommand): Observable<Course> {
-    return this.http.put<Course>(`/api/courses/${command.id}`, command);
-  }
-}
+// in a serverData / serverMutation / rxResource factory:
+this.client.call(courseEndpoints.getCourse, { params: { courseId } });
+this.client.call(courseEndpoints.saveCourse, { body: command });
 ```
+
+- The verb, URL, query, body encoding and response type come from the endpoint
+  definition. The second argument has `params`, `query` and `body`, each
+  required exactly when the endpoint declares it. The result is typed from the
+  endpoint's response schema and already parsed.
+- Never write a method per endpoint, and never inject `HttpClient` in a store
+  or component. A new kind of transport is a new field on `defineEndpoint` plus
+  a branch in `EndpointClient`, not a new service.
+- A downloaded file is a `responseType: 'blob'` endpoint; the store passes the
+  `Blob` and a file name to `FileSaver.save` (`core/files/`) in a mutation's
+  `onSuccess`.
+- Never subscribe inside the client or inject a store into it.
 
 ### 5.2 Store layer
 
@@ -199,7 +200,7 @@ export class CourseApi {
 ```ts
 @Injectable()
 export class CourseDetailStore {
-  private readonly api = inject(CourseApi);
+  private readonly client = inject(EndpointClient);
   private readonly route = inject(ActivatedRoute);
 
   // 1. State: screen state only
@@ -217,12 +218,12 @@ export class CourseDetailStore {
   private readonly changes = invalidation();
 
   private readonly courseData = serverData(
-    (courseId: string) => this.api.getById(courseId),
+    (courseId: string) => this.client.call(courseEndpoints.getCourse, { params: { courseId } }),
     { params: () => this.courseId(), reloadOn: this.changes },
   );
 
   private readonly saveMutation = serverMutation(
-    (command: SaveCourseCommand) => this.api.update(command),
+    (command: SaveCourseCommand) => this.client.call(courseEndpoints.saveCourse, { body: command }),
     {
       errors: 'inline',
       success: () => 'Course saved',
@@ -285,7 +286,7 @@ export class CourseDetailStore {
   logic about state, move that logic into the store.
 - Components may inject non-state UI services for navigation and presentation,
   such as `Router`, the CDK `Dialog`, or `LiveAnnouncer`. They must not inject
-  `HttpClient` or API services, because API calls belong to the store.
+  `HttpClient` or `EndpointClient`, because API calls belong to the store.
 - A component may use `computed()` over its own **inputs** for display-only
   formatting. Derivations of store state belong in the store.
 - The component renders loading, error (with retry), empty, and success states
@@ -319,7 +320,7 @@ export class CourseDetailStore {
 
 ### 5.6 RxJS
 
-- RxJS belongs in API services and inside `serverData`/`serverMutation` (or `rxResource`) streams. Use `toSignal()`
+- RxJS belongs in `EndpointClient` and inside `serverData`/`serverMutation` (or `rxResource`) streams. Use `toSignal()`
   to bridge other observables (router, third-party) in stores.
 - No manual `subscribe()` in components. If a store must subscribe, use
   `takeUntilDestroyed()`.
@@ -542,9 +543,10 @@ readonly total = computed(() => this.price() * this.quantity());
   spec next to the file it tests.
 - Test behavior through the DOM and public API, not internals or the number of
   times an effect runs.
-- **API services:** `provideHttpClient()` + `provideHttpClientTesting()` +
-  `HttpTestingController`.
-- **Stores:** provide the store with a fake API (or HttpTestingController), call
+- **Endpoint calls:** `provideHttpClient()` + `provideHttpClientTesting()` +
+  `HttpTestingController`. The call mechanism is tested once, in
+  `endpoint-client.spec.ts`; there is no spec per endpoint.
+- **Stores:** provide the store with `HttpTestingController` and `@lms/mocks` fixtures, call
   commands, flush with `TestBed.tick()` / `await fixture.whenStable()`, and
   assert the exposed signals for loading, success, error, and retry.
 - **Components:** replace the store through component providers
@@ -559,9 +561,9 @@ readonly total = computed(() => this.price() * this.quantity());
 - [ ] Files follow §2 naming (no `.component.ts`)?
 - [ ] Route has its own folder with one main component, and each child has its own folder?
 - [ ] Components hold no writable state or state logic (other than the form model), and handlers only call store commands?
-- [ ] Components never inject HttpClient or API services?
-- [ ] API services are stateless `@Service()`, and stores are `@Injectable()` provided at the component level?
-- [ ] Every API call goes through `serverData`/`serverMutation` (or `rxResource` with a comment giving the reason), and every mutation declares `errors: 'toast' | 'inline'`?
+- [ ] Components never inject `HttpClient` or `EndpointClient`?
+- [ ] Stores are `@Injectable()` provided at the component level, and no API service or direct `HttpClient` call exists?
+- [ ] Every API call is `client.call(endpoint, …)` inside `serverData`/`serverMutation` (or `rxResource` with a comment giving the reason), and every mutation declares `errors: 'toast' | 'inline'`?
 - [ ] All writable state (screen state only) is in one `private readonly state = {}` object, exposed as `x$` via `asReadonly()`/`computed()`, and written only through `setX()` setters that commands compose?
 - [ ] Loading, error + retry, and empty states are rendered?
 - [ ] Forms use Signal Forms, and the form plus submit logic stay in the component?
@@ -576,7 +578,7 @@ readonly total = computed(() => this.price() * this.quantity());
 - `ChangeDetectionStrategy.Eager`, zone.js, or `setTimeout` used to "refresh" the UI.
 - `@Service()` / `providedIn: 'root'` for a store. Exposing writable signals, the `state` object, or resource objects.
 - Writable signals outside the store's `state` object. Calling `.set()`/`.update()` on state anywhere except its `setX()` setter. Using `$` for anything other than a store's readonly signal.
-- Writable `signal()`/`linkedSignal()` or state logic in components (except the form model). HttpClient or API services in components. `subscribe()` in components.
+- Writable `signal()`/`linkedSignal()` or state logic in components (except the form model). `HttpClient` or `EndpointClient` in components. `subscribe()` in components.
 - `effect()` to copy, mirror, or propagate state, or to model a user command. `async` effect callbacks. ngxtension `explicitEffect`.
 - Form models inside stores. Multiple writable owners of one state aggregate. Sibling stores injecting each other.
 - Hand-rolled ARIA/keyboard behavior where `@angular/aria` provides it. Hardcoded design values

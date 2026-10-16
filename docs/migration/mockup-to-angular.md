@@ -12,23 +12,23 @@ python3 -m http.server 8080 -d lms-mockup
 
 ## Layer mapping
 
-| Mockup                                                  | Angular target                                                                                            |
-| ------------------------------------------------------- | --------------------------------------------------------------------------------------------------------- |
-| `assets/css/tokens.css`                                 | token maps in `libs/ui/src/styles/ui/_tokens.scss` (`ui-library.md` → Styling)                            |
-| `assets/css/components.css` blocks                      | one `_<block>.scss` partial per atom in `libs/ui`                                                         |
-| `assets/css/base.css`, `layout.css`, `pages.css`        | layout helpers or `ui` mixins (`ui-library.md` table); layout → `app/layout/`; page rules → route `.scss` |
-| `core/types.js`                                         | zod schemas in `@lms/contracts`                                                                           |
-| `data/seed.js`                                          | fixtures in `@lms/mocks`                                                                                  |
-| `api/*.js` function                                     | endpoint in `@lms/contracts` + same-named XApi method; its body is the **backend** spec                   |
-| `api/core.js` (`PERMS`, `unitScope`, scoring, progress) | backend only; the app uses roles for navigation and display, nothing more                                 |
-| `core/router.js` `routes[]`                             | `app.routes.ts` + feature `*.routes.ts`, `canMatch: [roleGuard(...)]`                                     |
-| `core/router.js` `layout: 'focus'` / `public`           | layout route in `app/layout/` (focus, bare) wrapping the children                                         |
-| `core/store.js` session, prefs                          | `core/session/` store-like root service (session, theme), per angular.md §5.2 shape                       |
-| `core/shell.js`                                         | `app/layout/app-shell` (template) + role-based nav config                                                 |
-| `core/ui.js` toast/modal/drawer/menu                    | `@lms/ui` organisms on CDK / `@angular/aria` (`ui-library.md` table)                                      |
-| Demo menu                                               | dev toolbar + Prism `Prefer` header (`contracts-and-mocks.md` → Prism)                                    |
-| `UI.X(props)`                                           | atom/molecule/organism per the inventory below                                                            |
-| `html\`…\`` auto-escaping                               | Angular interpolation; `UI.Markdown` becomes a component that builds nodes, never `innerHTML`             |
+| Mockup                                                  | Angular target                                                                                                 |
+| ------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
+| `assets/css/tokens.css`                                 | token maps in `libs/ui/src/styles/ui/_tokens.scss` (`ui-library.md` → Styling)                                 |
+| `assets/css/components.css` blocks                      | one `_<block>.scss` partial per atom in `libs/ui`                                                              |
+| `assets/css/base.css`, `layout.css`, `pages.css`        | layout helpers or `ui` mixins (`ui-library.md` table); layout → `app/layout/`; page rules → route `.scss`      |
+| `core/types.js`                                         | zod schemas in `@lms/contracts`                                                                                |
+| `data/seed.js`                                          | fixtures in `@lms/mocks`                                                                                       |
+| `api/*.js` function                                     | endpoint in `@lms/contracts` with the same key, called with `EndpointClient`; its body is the **backend** spec |
+| `api/core.js` (`PERMS`, `unitScope`, scoring, progress) | backend only; the app uses roles for navigation and display, nothing more                                      |
+| `core/router.js` `routes[]`                             | `app.routes.ts` + feature `*.routes.ts`, `canMatch: [roleGuard(...)]`                                          |
+| `core/router.js` `layout: 'focus'` / `public`           | layout route in `app/layout/` (focus, bare) wrapping the children                                              |
+| `core/store.js` session, prefs                          | `core/session/` store-like root service (session, theme), per angular.md §5.2 shape                            |
+| `core/shell.js`                                         | `app/layout/app-shell` (template) + role-based nav config                                                      |
+| `core/ui.js` toast/modal/drawer/menu                    | `@lms/ui` organisms on CDK / `@angular/aria` (`ui-library.md` table)                                           |
+| Demo menu                                               | dev toolbar + in-app mock API (`contracts-and-mocks.md` → In-app mock API)                                     |
+| `UI.X(props)`                                           | atom/molecule/organism per the inventory below                                                                 |
+| `html\`…\`` auto-escaping                               | Angular interpolation; `UI.Markdown` becomes a component that builds nodes, never `innerHTML`                  |
 
 ### Page contract → route module
 
@@ -39,7 +39,7 @@ python3 -m http.server 8080 -d lms-mockup
 | `key`                                          | route-module folder name, kebab-case (`quizTake` → `quiz-take/`)                                                                    |
 | `title`                                        | route `title`                                                                                                                       |
 | `initState()`                                  | store `state` object                                                                                                                |
-| `load(ctx)`                                    | store `serverData`(s) calling the XApi method(s)                                                                                    |
+| `load(ctx)`                                    | store `serverData`(s) calling `client.call(endpoint, …)`                                                                            |
 | filtering / sorting / grouping inside `view()` | store `computed()` selectors                                                                                                        |
 | markup in `view()`                             | component template built from `@lms/ui` + `shared/`                                                                                 |
 | `actions[name]`                                | store command (template handler is a one-liner)                                                                                     |
@@ -210,7 +210,7 @@ Each step ends on its criterion; finish it before starting the next.
    list every state (`load` result, loading, empty, each error the api function
    can throw) and every `data-action` / `data-input` / `data-submit` on the page.
 2. **Contract.** For every api function in that list: endpoint, schemas,
-   fixtures (success + each error), XApi method (`contracts-and-mocks.md`).
+   fixtures (success, plus the mockup's specific errors) (`contracts-and-mocks.md`).
    Done when its done criteria pass.
 3. **UI pieces.** Every inventory row the page uses exists in `@lms/ui` or
    `shared/`; build missing ones to `ui-library.md` done criteria.

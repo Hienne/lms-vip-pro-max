@@ -7,9 +7,8 @@
     "node": "^22.22.3 || ^24.15.0"
   },
   "scripts": {
-    "dev": "nx run-many -t serve -p mock-api lms",
+    "dev": "nx serve lms",
     "start": "nx serve lms",
-    "mock": "nx serve mock-api",
     "build": "nx build lms",
     "build:staging": "nx build lms -c staging",
     "build:dev": "nx build lms -c development",
@@ -46,7 +45,6 @@
     "@nx/web": "23.3.0",
     "@oxc-project/runtime": "^0.115.0",
     "@schematics/angular": "~22.2.0",
-    "@stoplight/prism-cli": "^5.16.0",
     "@swc/helpers": "~0.5.18",
     "@types/node": "^22.0.0",
     "@typescript-eslint/utils": "^8.58.0",

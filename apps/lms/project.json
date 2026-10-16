@@ -103,7 +103,7 @@
         }
       },
       "options": {
-        "proxyConfig": "apps/lms/proxy.conf.json"
+        "proxyConfig": "apps/lms/proxy.conf.mjs"
       }
     },
     "serve-static": {
@@ -135,7 +135,12 @@
         "{workspaceRoot}/dist/apps/lms"
       ],
       "options": {
-        "command": "node tools/check-production-bundle.mjs dist/apps/lms",
+        "commands": [
+          "node tools/check-production-bundle.mjs dist/apps/lms",
+          "nx build lms -c staging",
+          "node tools/check-production-bundle.mjs dist/apps/lms-staging --fixtures-only"
+        ],
+        "parallel": false,
         "cwd": "{workspaceRoot}"
       }
     }

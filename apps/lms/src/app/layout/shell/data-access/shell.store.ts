@@ -22,12 +22,12 @@ import {
   NavigationEnd,
   Router,
 } from '@angular/router';
-import type { NavCounts } from '@lms/contracts';
+import { type NavCounts, shellEndpoints } from '@lms/contracts';
 import { confirm, type DrawerContext, openDrawer, Toaster } from '@lms/ui';
 import { filter, switchMap, take, tap } from 'rxjs';
 import type { UserMenuValue } from '../../header/header';
 import { searchTarget } from '../../header/search-target';
-import { NavCountsApi } from './nav-counts.api';
+import { EndpointClient } from '../../../core/http/endpoint-client';
 import {
   hasUnsavedChanges,
   LeavePrompt,
@@ -55,7 +55,7 @@ export class ShellStore {
   private readonly router = inject(Router);
   private readonly session = inject(SessionStore);
   private readonly dialog = inject(Dialog);
-  private readonly api = inject(NavCountsApi);
+  private readonly client = inject(EndpointClient);
   private readonly toaster = inject(Toaster);
   private readonly injector = inject(Injector);
   private readonly destroyRef = inject(DestroyRef);
@@ -117,7 +117,7 @@ export class ShellStore {
       const user = this.session.user$();
       return user ? { userId: user.id, path: this.path$() } : undefined;
     },
-    stream: () => this.api.navCounts(),
+    stream: () => this.client.call(shellEndpoints.navCounts),
   });
 
   /** Keeps the last counts while a reload runs, so badges do not blink on navigation. */

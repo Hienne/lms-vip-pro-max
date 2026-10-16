@@ -1,15 +1,15 @@
-# Contracts, zod and the Prism mock API
+# Contracts, zod and the in-app mock API
 
-One chain keeps types, runtime validation and the mock server in sync:
+One chain keeps types, runtime validation and the dev mock in sync:
 
 ```text
 @lms/contracts (zod schemas + endpoint registry)
-   ├─► apps/lms XApi services      parse every response with the endpoint's schema
-   └─► apps/mock-api build-spec  ─► openapi.json (+ examples from @lms/mocks) ─► Prism :4010
+   ├─► apps/lms EndpointClient   sends each call as its endpoint says, parses the response with its schema
+   └─► @lms/mocks fixtures ─► in-app mock API (development only, answers the tagged request)
 ```
 
-Zod is the single source of truth. OpenAPI is generated from it and never
-edited by hand; TypeScript types come from `z.infer`, never written twice.
+Zod is the single source of truth. TypeScript types come from `z.infer`, never
+written twice.
 
 ## Schemas (`libs/contracts`)
 
@@ -31,59 +31,67 @@ edited by hand; TypeScript types come from `z.infer`, never written twice.
 
 ## Endpoint registry
 
-Each domain declares its endpoints once; the API service and the OpenAPI build
-both read the same object.
+Each domain declares its endpoints once; `EndpointClient` reads the same object.
 
 ```ts
 export const courseEndpoints = {
+  /** Course detail with chapters and lessons. */
   getCourse: defineEndpoint({
     method: 'get',
     path: '/api/courses/{courseId}',
-    summary: 'Course detail with chapters and lessons',
     params: z.object({ courseId: z.string() }),
     response: CourseDetailSchema,
-    errors: [401, 403, 404],
   }),
 } as const;
 ```
 
-- Endpoint keys and XApi method names keep the mockup's `api/*.js` function
-  names (`dashboard`, `submitAttempt`, `saveProgress`), so every Angular call
-  traces back to the mockup function that specifies it.
-- `defineEndpoint`, `toUrl(endpoint, params)` and `ApiErrorSchema`
-  (`{ message, details? }`, matching the mockup's `ApiError`) live in
-  `libs/contracts/src/lib/http/`.
+- Endpoint keys keep the mockup's `api/*.js` function names (`dashboard`,
+  `submitAttempt`, `saveProgress`); each `*.endpoints.ts` header names the
+  mockup file, so every Angular call traces back to the function that specifies
+  it. What an endpoint does goes in a `/** */` comment on its key.
+- `defineEndpoint`, `toUrl(endpoint, params)` and `ApiErrorSchema` live in
+  `libs/contracts/src/lib/http/`. `ApiErrorSchema` (`{ message, details? }`) is
+  **provisional**: it mirrors the mockup's `ApiError` until the backend
+  publishes its error schema.
 - `defineEndpoint` accepts `params`, `query` and `body` as optional; `toUrl`
   requires the params argument only when the endpoint declares `params`, and
-  throws on a missing path segment. Declared `errors` are drawn from
-  `400 | 401 | 403 | 404 | 409 | 422 | 423 | 500`.
-- `libs/contracts` exports `endpointRegistries` (an array of every registry);
-  `build-spec` walks it, so a new domain registers its `xEndpoints` there.
-  The operation id is the registry key.
-- Each endpoint lists the error statuses it can return; those become documented
-  responses in OpenAPI and the states the UI must render.
+  throws on a missing path segment.
+- An endpoint does not list its error statuses: a backend may answer any status
+  from any endpoint, and `toAppError` maps by status alone.
+- Two optional fields choose the transport; both default to `'json'`:
+  - `encoding: 'multipart'` sends the body as `FormData`. File fields use
+    `z.file()`.
+  - `responseType: 'blob'` receives a file. The response schema must be
+    `z.instanceof(Blob)`; the types reject any other schema.
 
-## API services (in the app)
+## Calling endpoints (in the app)
 
-The service from angular.md §5.1, with the URL and schema taken from the registry:
+Stores call `EndpointClient.call(endpoint, input)` (`core/http/endpoint-client.ts`);
+angular.md §5.1 shows the usage. There is no API service per domain.
 
-```ts
-@Service()
-export class CourseApi {
-  private readonly http = inject(HttpClient);
-
-  getCourse(courseId: string): Observable<CourseDetail> {
-    const endpoint = courseEndpoints.getCourse;
-    return this.http.get<unknown>(toUrl(endpoint, { courseId })).pipe(parseResponse(endpoint.response));
-  }
-}
-```
-
-- Every response goes through `parseResponse(schema)` (an RxJS operator in
-  `apps/lms/src/app/core/http/`). A failed parse throws a `ContractError` (same
-  folder) with the zod issues, and is reported, not swallowed: the global
-  `ErrorHandler` (`core/errors/app-error-handler.ts`, `provideAppErrorHandler()`)
-  logs every unexpected error.
+- **Types.** `input` has `params`, `query` and `body`, each required exactly
+  when the endpoint declares it and forbidden otherwise (an endpoint with none
+  takes no second argument). Types come from `z.input` of each schema; the
+  result is `z.output` of the response schema.
+- **Verb and URL** come from the registry only.
+- **Query** is not parsed. `null` and `undefined` are skipped, an array repeats
+  the key (`?tag=a&tag=b`), any other value goes through `String(v)`.
+- **Body, JSON** is sent exactly as passed, not parsed, so a schema transform
+  never rewrites a payload.
+- **Body, multipart** must be flat: each value is `string | number | boolean |
+File | Blob` or an array of those. Arrays repeat the key, numbers and booleans
+  become strings, `null`/`undefined` are skipped, and a nested object throws an
+  `Error` (a client bug). The client never sets `Content-Type` for multipart.
+- **Response.** Every response, a blob included, is parsed with the endpoint's
+  schema. A mismatch creates a `ContractError` with the zod issues, passes it to
+  the global `ErrorHandler` (`core/errors/app-error-handler.ts`,
+  `provideAppErrorHandler()`) so the console shows which field was wrong, then
+  rethrows it; `toAppError` still turns it into the usual Vietnamese message.
+- **Tag.** Every request carries its endpoint object in the `ENDPOINT`
+  `HttpContextToken` (exported by the client). Today only the dev mock reads it.
+- **Files.** A `blob` endpoint returns a `Blob`; the store names it and calls
+  `FileSaver.save(blob, filename)` (`core/files/`) from a mutation's `onSuccess`.
+  `Content-Disposition` is not read.
 - `apps/lms/src/app/core/errors/app-error.ts` exports `toAppError(unknown): AppError`,
   the one place that maps `HttpErrorResponse`, `ContractError` and offline
   status 0 to `AppError`
@@ -93,6 +101,11 @@ export class CourseApi {
   `ApiError.message` when the body parses, else the mockup's Vietnamese default;
   `details` (field to message) is kept on `invalid` only.
   `serverData` and `serverMutation` expose their error as an `AppError`; components render it with retry.
+- **Known limit:** an HTTP error on a `blob` endpoint arrives as a `Blob` body,
+  so `toAppError` shows the default message for its kind.
+- **Extension rule:** a new transport kind (another body encoding, streaming…)
+  is a new optional field on `defineEndpoint` plus a branch in `EndpointClient`,
+  never a new API service and never a direct `HttpClient` call in a store.
 
 ## Forms
 
@@ -117,7 +130,13 @@ with `/api/` and never contain a host.
   `libs/mocks/src/lib/<domain>/<domain>.fixtures.ts`. Keep the mockup's people,
   units, courses and the seven learner states, so the README's demo accounts
   still describe the data.
-- `libs/mocks/src/fixtures.spec.ts` parses every fixture with its schema. A
+- `endpointExamples` (`lib/examples.ts`) lists, per endpoint key, a `default`
+  success body, optional `roles` bodies (`learner`, `admin`, ...) and optional
+  `errors` (the mockup's specific `ApiError` bodies, such as `loginLocked` or
+  `saveUserInvalid` with field `details`). `MOCK_FIXTURES` is the same data
+  keyed by the endpoint object, built from the registries that the mocks
+  library lists itself. A new domain registers its `xEndpoints` there.
+- `libs/mocks/src/fixtures.spec.ts` parses every example with its schema. A
   fixture that drifts from the contract fails the test suite.
 - Store and component specs import fixtures from `@lms/mocks` instead of
   inventing inline data.
@@ -126,38 +145,42 @@ with `/api/` and never contain a host.
   that computation in the frontend: it is backend logic, and the mockup's
   `api/*.js` is its spec.
 
-## Prism (`apps/mock-api`)
+## In-app mock API (development only)
 
-- `build-spec` walks every endpoint registry, converts schemas to OpenAPI 3.1
-  (zod v4's `z.toJSONSchema`, which emits the JSON Schema dialect OpenAPI 3.1 uses),
-  attaches named examples from `@lms/mocks`, and writes
-  `dist/apps/mock-api/openapi.json`. `serve` runs it first, then
-  `prism mock` on port 4010 with static examples.
-- `GET /api/health` is a registered endpoint (`healthEndpoints`) like any other:
-  Prism refuses to start on a document without operations.
-- Examples come from `@lms/mocks`: `endpointExamples[operationId]` (`default`,
-  optional `roles`, optional `errors` with endpoint-specific `ApiError` bodies)
-  and `errorExamples[status]` (generic bodies used when an endpoint has no
-  `errors` entry; both use the mockup's messages). `build-spec` fails when an endpoint has no
-  example, and `libs/mocks/src/fixtures.spec.ts` parses all of them.
-- Every endpoint has a `default` success example plus one example per declared
-  error status. Role-dependent endpoints add examples named after the role
-  (`learner`, `admin`, `instructor`, `viewer`, `unit-admin`).
-- Pick a response from the client with Prism's `Prefer` header:
-  `Prefer: example=admin`, `Prefer: code=403`. `mockScenarioInterceptor`
-  (`core/dev/`, used only when `mockScenarios` is true) sets
-  `Prefer: example=<role>` on the GET endpoints that have role examples
-  (`ROLE_EXAMPLE_ENDPOINTS`; a spec fails when it differs from the endpoints
-  with role examples in `@lms/mocks`) from the role chosen in the dev
-  toolbar, kept for the tab. While the toolbar simulates a lost connection it
-  also fails every request with status 0. The toolbar replaces the mockup's
-  "Demo" menu (switch role, offline, session expired, forbidden URL, design
-  system) and is not part of the production build.
-- Prism is stateless: a POST does not change what the next GET returns. Stores
-  apply the mutation response to their own state (angular.md §5.2), which is
-  also the correct behaviour against the real backend.
-- Prism validates requests against the spec and answers 422 for a bad payload:
-  treat that as a bug in the client, not in the mock.
+`npm start` runs the app against a mock inside the browser; no second process
+and no OpenAPI document.
+
+- `mockApiInterceptor` (`core/dev/mock-api/`) reads the request's `ENDPOINT`
+  tag, finds the endpoint object in `MOCK_FIXTURES` and answers `200` with
+  `roles[role] ?? default`, where `role` is `MockScenario.role$()`, the role
+  chosen in the dev toolbar and kept for the tab. No delay, no state, no
+  per-request error simulation.
+- A request whose endpoint has no fixture (or no tag) goes on to the network,
+  with one `console.warn` per endpoint, so partial mocking is possible and visible.
+- **Wiring, so fixtures never ship:** only `environments/environment.ts`
+  imports the mock module (and through it `@lms/mocks`); it exports
+  `mockInterceptors`. The staging and production environment files export an
+  empty list and import nothing from the mock, so their builds cannot contain
+  it. `app.config.ts` registers `mockInterceptors` when `mockApi` is true, in
+  the order: offline simulation, mock API, `apiBaseUrlInterceptor`. A narrow
+  ESLint override lets only `environment.ts` and `core/dev/mock-api/**` depend
+  on `type:mocks` outside specs.
+- `tools/check-production-bundle.mjs` looks for a fixture marker
+  (`admin@demo.cb`): `npm run check` builds production and staging and fails if
+  either contains it (staging is checked with `--fixtures-only`, since it keeps
+  the dev toolbar on purpose). A development build fails the check.
+- To use a backend instead, set `mockApi` to false in `environment.ts` and put
+  the backend's dev origin in `apps/lms/proxy.conf.mjs`; no code changes. The
+  toolbar's role list is then hidden (it only drives the mock): switch role by
+  signing in with a demo account (`loginDemo`). The offline, session-expired
+  and forbidden-URL simulations stay. The toolbar replaces the mockup's "Demo"
+  menu and is not part of the production build.
+- The mock is stateless: a POST does not change what the next GET returns.
+  Stores apply the mutation response to their own state or reload (angular.md
+  §5.2), which is also the correct behaviour against the real backend.
+- Mid-session 401 handling (end the session, go to `/login?next=`) is separate
+  work with the return-to module; it will be able to exempt
+  `authEndpoints.profile` through the `ENDPOINT` context.
 
 ## Auth contract decisions
 
@@ -172,9 +195,9 @@ with `/api/` and never contain a host.
   (unit name, or the server's "Toàn hệ thống" for system-wide users).
 - `roleText` in the app adds "đơn vị" to the name of an `admin` limited to one unit (the mockup's
   "Quản trị viên đơn vị"); the demo accounts therefore carry `roleName` and `scopeUnitId`.
-- Prism's role examples (`profile`, `navCounts`) exist for the four system roles and the unit admin
-  only (`learner`, `instructor`, `admin`, `viewer`, `unit-admin`). A custom role has no example, and
-  the mock cannot keep one across a reload because Prism is stateless.
+- The mock's role examples (`profile`, `navCounts`) exist for the four system roles and the unit admin
+  only (`learner`, `instructor`, `admin`, `viewer`, `unit-admin`). A custom role has no example (the
+  default answers), and the mock cannot keep one across a reload because it is stateless.
 - `logout` answers `true` (200), like the mockup; `login` and `loginDemo`
   answer `{ id, roleId }`. The session token is a server concern (cookie), not
   part of the payload.
@@ -182,21 +205,6 @@ with `/api/` and never contain a host.
 - One 423 example per endpoint (the locked wording). The mockup's separate
   "suspended" wording reaches the UI through the server's `message`, which
   `toAppError` already preserves.
-
-### Verified against Prism
-
-Smoke-tested with `npx nx serve mock-api` (Prism on `127.0.0.1:4010`):
-
-- `POST /api/auth/login` with `Prefer: code=423` answers 423 with the locked
-  message; `code=401` and `code=422` answer their examples.
-- `GET /api/auth/profile` with `Prefer: example=admin` answers user `a1`,
-  role `admin`.
-- `POST /api/auth/demo-accounts/{userId}/login` (`loginDemo`) answers 404 and
-  423 with `Prefer: code=404` / `code=423`.
-
-`apps/mock-api/src/openapi.spec.ts` guards the document itself: every endpoint
-of `endpointRegistries` is present with a `default` example for 200 and for each
-declared error status.
 
 ## Admin organisation contract decisions
 
@@ -208,9 +216,9 @@ declared error status.
 - `UserDetail` is `{ user, role, courses, attempts, audit }`. The mockup's `perms` matrix became
   `role` (with its `menus`); its `competency` (the radar) is left out until the charts are migrated.
 - Mutations answer the changed record, but the list and detail stores **reload** instead of
-  patching it in, because the server is the source of truth and Prism is stateless (it always
+  patching it in, because the server is the source of truth and the mock is stateless (it always
   answers the same example).
-- Prism has role examples for `users`, `adminMeta` and `org` (`admin`, `unit-admin`); `user` answers one
+- The mock has role examples for `users`, `adminMeta` and `org` (`admin`, `unit-admin`); `user` answers one
   fixed user whatever `userId` is.
 - The roles screen (`roles`, `saveRole`, `deleteRole`) sits behind the `admin.roles` menu and has no
   mockup page. `Role.system` and `Role.locked` are what the screen may rely on: the app hides edit
@@ -227,6 +235,6 @@ declared error status.
 
 ## Done criteria for a contract change
 
-- Schema, endpoint, fixture (success + each error) and XApi method all updated.
+- Schema, endpoint (with its doc comment), fixture (success, plus the mockup's specific errors) all updated.
 - `npx nx test contracts mocks` green (fixtures parse).
-- `npx nx serve mock-api` serves the endpoint; a request returns the example.
+- `npm start` shows the endpoint answering its example in the app.

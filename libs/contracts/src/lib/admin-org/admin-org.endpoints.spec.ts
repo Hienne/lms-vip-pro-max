@@ -30,25 +30,6 @@ describe('admin-org endpoints', () => {
     );
   });
 
-  it.each([
-    ['users', [401, 403]],
-    ['user', [401, 403, 404]],
-    ['saveUser', [401, 403, 422]],
-    ['setUserStatus', [401, 403, 404, 422]],
-    ['resetPassword', [401, 403, 404]],
-    ['adminMeta', [401, 403]],
-    ['org', [401, 403]],
-    ['saveUnit', [401, 403, 422]],
-    ['setUnitStatus', [401, 403, 404]],
-    ['saveGroup', [401, 403, 422]],
-    ['deleteGroup', [401, 403, 404, 422]],
-    ['roles', [401, 403]],
-    ['saveRole', [401, 403, 404, 422]],
-    ['deleteRole', [401, 403, 404, 422]],
-  ] as const)('%s declares its error statuses', (key, statuses) => {
-    expect(adminOrgEndpoints[key].errors).toEqual(statuses);
-  });
-
   it('builds the per-user urls from the user id', () => {
     expect(toUrl(adminOrgEndpoints.user, { userId: 'l1' })).toBe(
       '/api/admin/users/l1',

@@ -1,6 +1,11 @@
 import { computed, inject, Injectable, signal } from '@angular/core';
 import { rxResource, toObservable } from '@angular/core/rxjs-interop';
-import type { LoginCommand, MenuKey, Profile } from '@lms/contracts';
+import {
+  authEndpoints,
+  type LoginCommand,
+  type MenuKey,
+  type Profile,
+} from '@lms/contracts';
 import {
   catchError,
   filter,
@@ -10,7 +15,7 @@ import {
   tap,
   throwError,
 } from 'rxjs';
-import { AuthApi } from '../auth/auth.api';
+import { EndpointClient } from '../http/endpoint-client';
 import { type AppError, toAppError } from '../errors/app-error';
 
 export type SessionStatus = 'loading' | 'ready' | 'error';
@@ -22,14 +27,14 @@ type SignInRequest =
 const NO_MENUS: readonly MenuKey[] = [];
 
 /**
- * Who is signed in. The profile from `AuthApi.profile()` is the only source of the role and
+ * Who is signed in. The profile from `authEndpoints.profile` is the only source of the role and
  * the menus it grants. The server keeps the session (a cookie today); how a token is stored, attached and
  * refreshed is a separate spec that plugs in behind `signIn`, `signInDemo` and `signOut`.
  * Provided once for the whole app (`provideSession()`), not per component.
  */
 @Injectable()
 export class SessionStore {
-  private readonly api = inject(AuthApi);
+  private readonly client = inject(EndpointClient);
 
   private readonly state = {
     restoreRequest: signal<object | undefined>(undefined),
@@ -44,8 +49,8 @@ export class SessionStore {
   >({
     params: () => this.state.restoreRequest(),
     stream: () =>
-      this.api
-        .profile()
+      this.client
+        .call(authEndpoints.profile)
         .pipe(
           catchError((error: unknown) =>
             toAppError(error).kind === 'unauthorized'
@@ -59,10 +64,12 @@ export class SessionStore {
     params: () => this.state.signInRequest(),
     stream: ({ params: request }) =>
       (request.kind === 'demo'
-        ? this.api.loginDemo(request.userId)
-        : this.api.login(request.command)
+        ? this.client.call(authEndpoints.loginDemo, {
+            params: { userId: request.userId },
+          })
+        : this.client.call(authEndpoints.login, { body: request.command })
       ).pipe(
-        switchMap(() => this.api.profile()),
+        switchMap(() => this.client.call(authEndpoints.profile)),
         tap((profile) => this.profileResource.set(profile)),
       ),
   });
@@ -70,7 +77,7 @@ export class SessionStore {
   private readonly signOutResource = rxResource({
     params: () => this.state.signOutRequest(),
     stream: () =>
-      this.api.logout().pipe(
+      this.client.call(authEndpoints.logout).pipe(
         catchError(() => of(true as const)),
         tap(() => this.profileResource.set(null)),
       ),

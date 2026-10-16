@@ -56,7 +56,7 @@ const audit: AuditEntry[] = [
   },
 ];
 
-/** Prism is stateless, so every user page answers with this one: the seed's demo learner `l1`. */
+/** The mock is stateless, so every user page answers with this one: the seed's demo learner `l1`. */
 export const userDetailFixture: UserDetail = {
   user: listItem('l1'),
   role: roleFixtures.find((r) => r.id === 'learner') ?? roleFixtures[0],

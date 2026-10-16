@@ -6,10 +6,14 @@ import {
   toSignal,
 } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router } from '@angular/router';
-import type { DemoAccount, LoginCommand } from '@lms/contracts';
+import {
+  authEndpoints,
+  type DemoAccount,
+  type LoginCommand,
+} from '@lms/contracts';
 import { Toaster } from '@lms/ui';
 import { filter, map } from 'rxjs';
-import { AuthApi } from '../../../../core/auth/auth.api';
+import { EndpointClient } from '../../../../core/http/endpoint-client';
 import { toAppError } from '../../../../core/errors/app-error';
 import { SessionStore } from '../../../../core/session/session.store';
 import { internalPath } from './internal-path';
@@ -27,7 +31,7 @@ export type SignInSource = 'form' | 'demo';
 @Injectable()
 export class LoginStore {
   private readonly session = inject(SessionStore);
-  private readonly api = inject(AuthApi);
+  private readonly client = inject(EndpointClient);
   private readonly router = inject(Router);
   private readonly toaster = inject(Toaster);
   private readonly route = inject(ActivatedRoute);
@@ -35,7 +39,7 @@ export class LoginStore {
   private readonly state = { source: signal<SignInSource>('form') };
 
   private readonly accountsResource = rxResource({
-    stream: () => this.api.demoAccounts(),
+    stream: () => this.client.call(authEndpoints.demoAccounts),
   });
 
   /** Where the visitor wanted to go, when the guards sent them here. */

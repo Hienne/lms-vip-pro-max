@@ -1,3 +1,4 @@
+import { adminOrgEndpoints } from '@lms/contracts';
 import { computed, inject, Injectable, signal } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import type { TabItem } from '@lms/ui';
@@ -5,7 +6,7 @@ import { ActivatedRoute } from '@angular/router';
 import { map } from 'rxjs';
 import { serverData } from '../../../../core/data-access/server-data';
 import { menuLabel } from '../../../../core/menu/menu-catalog';
-import { AdminOrgApi } from '../../data-access/admin-org.api';
+import { EndpointClient } from '../../../../core/http/endpoint-client';
 import { UserEditorStore } from '../../data-access/user-editor.store';
 
 export type UserDetailTab = 'courses' | 'attempts' | 'role' | 'audit';
@@ -13,7 +14,7 @@ export type UserDetailTab = 'courses' | 'attempts' | 'role' | 'audit';
 /** The user page (the mockup's `userDetail`): one user with the tab being read. */
 @Injectable()
 export class UserDetailStore {
-  private readonly api = inject(AdminOrgApi);
+  private readonly client = inject(EndpointClient);
   private readonly route = inject(ActivatedRoute);
   private readonly editor = inject(UserEditorStore);
 
@@ -27,7 +28,8 @@ export class UserDetailStore {
 
   /** The viewed user; the editor's token reloads it in place after an edit or a lock. */
   private readonly detailData = serverData(
-    (userId: string) => this.api.user(userId),
+    (userId: string) =>
+      this.client.call(adminOrgEndpoints.user, { params: { userId } }),
     { params: () => this.userId(), reloadOn: this.editor.changes },
   );
 

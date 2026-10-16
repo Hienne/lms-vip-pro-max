@@ -26,117 +26,102 @@ const unitParams = z.object({ unitId: z.string() });
 const groupParams = z.object({ groupId: z.string() });
 const roleParams = z.object({ roleId: z.string() });
 
-/** Function names follow `lms-mockup/src/api/admin.js`. */
+/** Keys follow the function names of `lms-mockup/src/api/admin.js`. */
 export const adminOrgEndpoints = {
+  /** Users in the scope of the caller. */
   users: defineEndpoint({
     method: 'get',
     path: '/api/admin/users',
-    summary: 'Users in the scope of the caller',
     response: z.array(UserListItemSchema),
-    errors: [401, 403],
   }),
+  /** One user with courses, attempts, role and activity. */
   user: defineEndpoint({
     method: 'get',
     path: '/api/admin/users/{userId}',
-    summary: 'One user with courses, attempts, role and activity',
     params: userParams,
     response: UserDetailSchema,
-    errors: [401, 403, 404],
   }),
+  /** Create a user, or update the one named by `id`. */
   saveUser: defineEndpoint({
     method: 'post',
     path: '/api/admin/users',
-    summary: 'Create a user, or update the one named by `id`',
     body: SaveUserCommandSchema,
     response: UserListItemSchema,
-    errors: [401, 403, 422],
   }),
+  /** Lock, suspend or reactivate an account. */
   setUserStatus: defineEndpoint({
     method: 'put',
     path: '/api/admin/users/{userId}/status',
-    summary: 'Lock, suspend or reactivate an account',
     params: userParams,
     body: SetUserStatusCommandSchema,
     response: UserListItemSchema,
-    errors: [401, 403, 404, 422],
   }),
+  /** Send the user a password reset link. */
   resetPassword: defineEndpoint({
     method: 'post',
     path: '/api/admin/users/{userId}/reset-password',
-    summary: 'Send the user a password reset link',
     params: userParams,
     response: ResetPasswordResultSchema,
-    errors: [401, 403, 404],
   }),
+  /** Units, groups and roles for the admin forms. */
   adminMeta: defineEndpoint({
     method: 'get',
     path: '/api/admin/meta',
-    summary: 'Units, groups and roles for the admin forms',
     response: AdminMetaSchema,
-    errors: [401, 403],
   }),
+  /** Units in the scope of the caller with their groups, members and admins. */
   org: defineEndpoint({
     method: 'get',
     path: '/api/admin/org',
-    summary:
-      'Units in the scope of the caller with their groups, members and admins',
     response: z.array(OrgUnitSchema),
-    errors: [401, 403],
   }),
+  /** Create a unit, or rename the one named by `id`. */
   saveUnit: defineEndpoint({
     method: 'post',
     path: '/api/admin/units',
-    summary: 'Create a unit, or rename the one named by `id`',
     body: SaveUnitCommandSchema,
     response: UnitSchema,
-    errors: [401, 403, 422],
   }),
+  /** Pause or reactivate a unit. */
   setUnitStatus: defineEndpoint({
     method: 'put',
     path: '/api/admin/units/{unitId}/status',
-    summary: 'Pause or reactivate a unit',
     params: unitParams,
     body: SetUnitStatusCommandSchema,
     response: UnitSchema,
-    errors: [401, 403, 404],
   }),
+  /** Create a department or team, or rename the one named by `id`. */
   saveGroup: defineEndpoint({
     method: 'post',
     path: '/api/admin/groups',
-    summary: 'Create a department or team, or rename the one named by `id`',
     body: SaveGroupCommandSchema,
     response: GroupSchema,
-    errors: [401, 403, 422],
   }),
+  /** Delete a group that has no members. */
   deleteGroup: defineEndpoint({
     method: 'delete',
     path: '/api/admin/groups/{groupId}',
-    summary: 'Delete a group that has no members',
     params: groupParams,
     response: DeleteGroupResultSchema,
-    errors: [401, 403, 404, 422],
   }),
+  /** Every role with the menus it grants and how many users hold it. */
   roles: defineEndpoint({
     method: 'get',
     path: '/api/admin/roles',
-    summary: 'Every role with the menus it grants and how many users hold it',
     response: z.array(RoleSchema),
-    errors: [401, 403],
   }),
+  /** Create a role, or update the one named by `id`. */
   saveRole: defineEndpoint({
     method: 'post',
     path: '/api/admin/roles',
-    summary: 'Create a role, or update the one named by `id`',
     body: SaveRoleCommandSchema,
     response: RoleSchema,
-    errors: [401, 403, 404, 422],
   }),
+  /** Delete a custom role that no user holds. */
   deleteRole: defineEndpoint({
     method: 'delete',
     path: '/api/admin/roles/{roleId}',
-    summary: 'Delete a custom role that no user holds',
     params: roleParams,
     response: DeleteRoleResultSchema,
-    errors: [401, 403, 404, 422],
   }),
 } as const;

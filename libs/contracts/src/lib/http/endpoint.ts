@@ -2,8 +2,16 @@ import type { z } from 'zod';
 
 export type HttpMethod = 'get' | 'post' | 'put' | 'patch' | 'delete';
 
-/** Error statuses an endpoint may declare; each becomes a documented response. */
-export type ErrorStatus = 400 | 401 | 403 | 404 | 409 | 422 | 423 | 500;
+/** How the request body travels: JSON (default) or multipart form data for file uploads. */
+export type BodyEncoding = 'json' | 'multipart';
+
+/** What the response carries: JSON (default) or a file, received as a `Blob`. */
+export type ResponseKind = 'json' | 'blob';
+
+/** The response schema an endpoint may declare: a `Blob` one when `responseType` is `'blob'`. */
+export type ResponseSchemaFor<R extends ResponseKind> = R extends 'blob'
+  ? z.ZodType<Blob>
+  : z.ZodType;
 
 export interface EndpointDefinition<
   Path extends string = string,
@@ -15,12 +23,14 @@ export interface EndpointDefinition<
   readonly method: HttpMethod;
   /** Always starts with `/api/`; `{name}` segments are filled from `params`. */
   readonly path: Path;
-  readonly summary: string;
   readonly params: Params;
   readonly query: Query;
   readonly body: Body;
   readonly response: Response;
-  readonly errors: readonly ErrorStatus[];
+  /** `'multipart'` sends a flat body as `FormData`; defaults to `'json'`. */
+  readonly encoding?: BodyEncoding;
+  /** `'blob'` receives a file (declare `response: z.instanceof(Blob)`); defaults to `'json'`. */
+  readonly responseType?: ResponseKind;
 }
 
 /** What `defineEndpoint` accepts: params, query and body are optional. */
@@ -30,10 +40,16 @@ export type EndpointInput<
   Query extends z.ZodObject | undefined,
   Body extends z.ZodType | undefined,
   Response extends z.ZodType,
+  Kind extends ResponseKind = ResponseKind,
 > = Omit<
   EndpointDefinition<Path, Params, Query, Body, Response>,
-  'params' | 'query' | 'body'
-> & { params?: Params; query?: Query; body?: Body };
+  'params' | 'query' | 'body' | 'responseType'
+> & {
+  params?: Params;
+  query?: Query;
+  body?: Body;
+  responseType?: Kind;
+};
 
 export type AnyEndpoint = EndpointDefinition<
   string,
@@ -48,9 +64,10 @@ export function defineEndpoint<
   Params extends z.ZodObject | undefined = undefined,
   Query extends z.ZodObject | undefined = undefined,
   Body extends z.ZodType | undefined = undefined,
-  Response extends z.ZodType = z.ZodType,
+  const Kind extends ResponseKind = 'json',
+  Response extends ResponseSchemaFor<Kind> = ResponseSchemaFor<Kind>,
 >(
-  endpoint: EndpointInput<Path, Params, Query, Body, Response>,
+  endpoint: EndpointInput<Path, Params, Query, Body, Response, Kind>,
 ): EndpointDefinition<Path, Params, Query, Body, Response> {
   return endpoint as EndpointDefinition<Path, Params, Query, Body, Response>;
 }

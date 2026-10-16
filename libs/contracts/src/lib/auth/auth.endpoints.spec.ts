@@ -22,18 +22,6 @@ describe('auth endpoints', () => {
     );
   });
 
-  it.each([
-    ['login', [401, 422, 423]],
-    ['loginDemo', [404, 423]],
-    ['logout', []],
-    ['profile', [401]],
-    ['updateProfile', [401, 422]],
-    ['changePassword', [401, 422]],
-    ['demoAccounts', []],
-  ] as const)('%s declares its error statuses', (key, statuses) => {
-    expect(authEndpoints[key].errors).toEqual(statuses);
-  });
-
   it('builds the loginDemo url from the user id', () => {
     expect(toUrl(authEndpoints.loginDemo, { userId: 'a1' })).toBe(
       '/api/auth/demo-accounts/a1/login',

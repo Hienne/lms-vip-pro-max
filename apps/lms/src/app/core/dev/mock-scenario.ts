@@ -11,15 +11,15 @@ function stored(): string | null {
 }
 
 /**
- * Which role's example Prism answers with for role-dependent endpoints. Prism is stateless, so
- * signing in as another demo user changes nothing on the next `GET profile` unless the request
- * says which example it wants; the choice is kept for the tab so a reload does not lose it.
+ * Which role's example the in-app mock API answers with. The mock is stateless, so signing in
+ * as another demo user changes nothing on the next `GET profile` unless the role is chosen here;
+ * the choice is kept for the tab so a reload does not lose it.
  */
 @Injectable({ providedIn: 'root' })
 export class MockScenario {
   private readonly state = { role: signal<string | null>(stored()) };
 
-  /** An example name of `@lms/mocks` (`learner`, `unit-admin`, ...), or null for Prism's default. */
+  /** An example name of `@lms/mocks` (`learner`, `unit-admin`, ...), or null for the default example. */
   readonly role$ = this.state.role.asReadonly();
 
   setRole(role: string | null): void {

@@ -9,10 +9,6 @@ const depConstraints = [
   { sourceTag: 'type:ui', onlyDependOnLibsWithTags: ['type:ui'] },
   { sourceTag: 'type:contracts', onlyDependOnLibsWithTags: [] },
   { sourceTag: 'type:mocks', onlyDependOnLibsWithTags: ['type:contracts'] },
-  {
-    sourceTag: 'type:mock-server',
-    onlyDependOnLibsWithTags: ['type:contracts', 'type:mocks'],
-  },
 ];
 
 /** Specs may also use fixtures from @lms/mocks; production code may not. */
@@ -70,6 +66,16 @@ export default [
           ],
         },
       ],
+    },
+  },
+  {
+    // The in-app mock API, and the one environment file that wires it, may use the fixtures.
+    files: [
+      '**/src/environments/environment.ts',
+      '**/src/app/core/dev/mock-api/**/*.ts',
+    ],
+    rules: {
+      '@nx/enforce-module-boundaries': boundaries(specDepConstraints),
     },
   },
   {

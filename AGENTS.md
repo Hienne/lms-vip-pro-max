@@ -9,7 +9,7 @@ commits and docs are English.
 
 **Stack:** Angular 22 (standalone, zoneless, signals, Signal Forms) · Nx ·
 zod · `@angular/aria` + `@angular/cdk` · SCSS only (the `ui` Sass module) ·
-`@lucide/angular` · Vitest · Stoplight Prism mock API. Node 24 (`.nvmrc`).
+`@lucide/angular` · Vitest · in-app mock API. Node 24 (`.nvmrc`).
 
 Before using any API, check the installed version in `package.json` and its
 local type definitions; these libraries change between majors.
@@ -19,10 +19,10 @@ local type definitions; these libraries change between majors.
 Project docs override `docs/conventions/angular.md` where they differ. Read the
 matching doc before starting the work it covers:
 
-- `docs/conventions/angular.md`: before writing any Angular code (component, store, API service, form, effect, route, test).
+- `docs/conventions/angular.md`: before writing any Angular code (component, store, form, effect, route, test).
 - `docs/conventions/workspace.md`: before creating a project, library, folder or Nx target, or adding a dependency.
 - `docs/conventions/ui-library.md`: before building or restyling reusable UI, tokens, icons or overlays.
-- `docs/conventions/contracts-and-mocks.md`: before touching an endpoint, schema, model, fixture, Prism or error handling.
+- `docs/conventions/contracts-and-mocks.md`: before touching an endpoint, schema, model, fixture, the mock API or error handling.
 - `docs/migration/mockup-to-angular.md`: before converting a mockup screen or component.
 
 ## Always

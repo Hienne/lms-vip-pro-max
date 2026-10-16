@@ -1,5 +1,5 @@
 import type { DevFeatures } from './dev-features.model';
-import { mockScenarioInterceptor } from './mock-scenario.interceptor';
+import { offlineSimulationInterceptor } from './offline-simulation.interceptor';
 
 export const DEV_FEATURES: DevFeatures = {
   routes: [
@@ -13,5 +13,5 @@ export const DEV_FEATURES: DevFeatures = {
     },
   ],
   toolbar: () => import('./dev-toolbar/dev-toolbar').then((m) => m.DevToolbar),
-  interceptors: [mockScenarioInterceptor],
+  interceptors: [offlineSimulationInterceptor],
 };

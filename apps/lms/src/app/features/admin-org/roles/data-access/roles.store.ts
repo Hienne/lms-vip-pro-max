@@ -8,22 +8,26 @@ import {
   type TemplateRef,
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import type { Role, SaveRoleCommand } from '@lms/contracts';
+import {
+  adminOrgEndpoints,
+  type Role,
+  type SaveRoleCommand,
+} from '@lms/contracts';
 import { confirm, openDrawer, type DrawerContext } from '@lms/ui';
 import { filter } from 'rxjs';
 import { invalidation } from '../../../../core/data-access/invalidation';
 import { serverData } from '../../../../core/data-access/server-data';
 import { serverMutation } from '../../../../core/data-access/server-mutation';
-import { AdminOrgApi } from '../../data-access/admin-org.api';
+import { EndpointClient } from '../../../../core/http/endpoint-client';
 
 /**
  * The roles screen: the roles the server holds, and the commands to add, change and delete one.
  * Every accepted mutation bumps `changes`, which the list reloads on, so the page shows the
- * server's truth (Prism is stateless).
+ * server's truth (the mock API is stateless).
  */
 @Injectable()
 export class RolesStore {
-  private readonly api = inject(AdminOrgApi);
+  private readonly client = inject(EndpointClient);
   private readonly dialog = inject(Dialog);
   private readonly destroyRef = inject(DestroyRef);
 
@@ -36,12 +40,16 @@ export class RolesStore {
 
   private readonly changes = invalidation();
 
-  private readonly rolesData = serverData(() => this.api.roles(), {
-    reloadOn: this.changes,
-  });
+  private readonly rolesData = serverData(
+    () => this.client.call(adminOrgEndpoints.roles),
+    {
+      reloadOn: this.changes,
+    },
+  );
 
   private readonly saveMutation = serverMutation(
-    (command: SaveRoleCommand) => this.api.saveRole(command),
+    (command: SaveRoleCommand) =>
+      this.client.call(adminOrgEndpoints.saveRole, { body: command }),
     {
       errors: 'inline',
       success: (command) =>
@@ -52,7 +60,8 @@ export class RolesStore {
   );
 
   private readonly deleteMutation = serverMutation(
-    (roleId: string) => this.api.deleteRole(roleId),
+    (roleId: string) =>
+      this.client.call(adminOrgEndpoints.deleteRole, { params: { roleId } }),
     {
       errors: 'toast',
       success: () => 'Đã xóa vai trò',

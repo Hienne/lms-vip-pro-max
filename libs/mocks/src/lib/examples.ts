@@ -1,4 +1,11 @@
-import type { ApiError, ErrorStatus } from '@lms/contracts';
+import {
+  adminOrgEndpoints,
+  type AnyEndpoint,
+  type ApiError,
+  authEndpoints,
+  healthEndpoints,
+  shellEndpoints,
+} from '@lms/contracts';
 import {
   adminMetaFixture,
   deleteRoleForbidden,
@@ -51,11 +58,11 @@ export interface EndpointExamples {
   readonly default: unknown;
   /** Role-dependent bodies, keyed `learner`, `admin`, ... */
   readonly roles?: Readonly<Record<string, unknown>>;
-  /** Bodies for this endpoint's declared error statuses; override `errorExamples`. */
-  readonly errors?: Readonly<Partial<Record<ErrorStatus, ApiError>>>;
+  /** The mockup's specific error bodies for this endpoint, keyed by status; for specs. */
+  readonly errors?: Readonly<Partial<Record<number, ApiError>>>;
 }
 
-/** Keyed by operation id, which is the endpoint key in its registry. */
+/** Keyed by the endpoint's key in its registry. */
 export const endpointExamples: Readonly<Record<string, EndpointExamples>> = {
   health: { default: healthOk },
   login: {
@@ -72,7 +79,7 @@ export const endpointExamples: Readonly<Record<string, EndpointExamples>> = {
     roles: profileFixtures,
     errors: { 401: profileUnauthorized },
   },
-  // Prism is stateless and a PUT carries no role example, so the app reloads the profile (a GET
+  // The mock is stateless and a PUT carries no role example, so the app reloads the profile (a GET
   // with the role's example) instead of applying this body.
   updateProfile: {
     default: profileFixtures['learner'],
@@ -87,7 +94,7 @@ export const endpointExamples: Readonly<Record<string, EndpointExamples>> = {
     default: userListFixtures,
     roles: { admin: userListFixtures, 'unit-admin': unitAdminUserList },
   },
-  // Prism is stateless: every user page answers with the seed's demo learner.
+  // The mock is stateless: every user page answers with the seed's demo learner.
   user: {
     default: userDetailFixture,
     errors: { 403: userForbidden, 404: userNotFound },
@@ -112,7 +119,7 @@ export const endpointExamples: Readonly<Record<string, EndpointExamples>> = {
     default: orgFixtures,
     roles: { admin: orgFixtures, 'unit-admin': unitAdminOrg },
   },
-  // Prism is stateless: the mutations answer a seed record, and the app reloads `org` instead.
+  // The mock is stateless: the mutations answer a seed record, and the app reloads `org` instead.
   saveUnit: {
     default: unitFixtures[0],
     errors: { 403: saveUnitForbidden, 422: saveUnitInvalid },
@@ -130,7 +137,7 @@ export const endpointExamples: Readonly<Record<string, EndpointExamples>> = {
     errors: { 404: groupNotFound, 422: deleteGroupInvalid },
   },
   roles: { default: roleFixtures },
-  // Prism is stateless: the mutations answer a seed role, and the app reloads `roles` instead.
+  // The mock is stateless: the mutations answer a seed role, and the app reloads `roles` instead.
   saveRole: {
     default: roleFixtures[4],
     errors: { 403: saveRoleLocked, 404: roleNotFound, 422: saveRoleInvalid },
@@ -149,17 +156,23 @@ export const endpointExamples: Readonly<Record<string, EndpointExamples>> = {
   },
 };
 
-/** Generic error bodies (mockup `E.*` messages) used when an endpoint declares the status. */
-export const errorExamples: Readonly<Record<ErrorStatus, ApiError>> = {
-  400: { message: 'Yêu cầu không hợp lệ.' },
-  401: { message: 'Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.' },
-  403: { message: 'Bạn không có quyền thực hiện thao tác này.' },
-  404: { message: 'Dữ liệu không tồn tại hoặc đã bị xóa.' },
-  409: { message: 'Dữ liệu đã thay đổi. Vui lòng tải lại và thử lại.' },
-  422: {
-    message: 'Vui lòng kiểm tra lại thông tin.',
-    details: { field: 'Giá trị không hợp lệ.' },
-  },
-  423: { message: 'Tài khoản đã bị khóa.' },
-  500: { message: 'Có lỗi xảy ra. Vui lòng thử lại sau.' },
-};
+const registries = [
+  healthEndpoints,
+  authEndpoints,
+  shellEndpoints,
+  adminOrgEndpoints,
+] as const;
+
+/**
+ * The examples of every endpoint that has some, keyed by the endpoint object itself, which is
+ * how the app's dev mock API looks a request up. An endpoint missing here is not mocked.
+ */
+export const MOCK_FIXTURES: ReadonlyMap<AnyEndpoint, EndpointExamples> =
+  new Map(
+    registries
+      .flatMap((registry) => Object.entries(registry))
+      .flatMap(([key, endpoint]) => {
+        const examples = endpointExamples[key];
+        return examples ? [[endpoint, examples] as const] : [];
+      }),
+  );
