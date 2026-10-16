@@ -132,10 +132,6 @@ export class CourseApi {
     return this.http.get<Course>(`/api/courses/${id}`);
   }
 
-  getFeatured(): Observable<Course> {
-    return this.http.get<Course>('/api/courses/featured');
-  }
-
   update(command: SaveCourseCommand): Observable<Course> {
     return this.http.put<Course>(`/api/courses/${command.id}`, command);
   }
@@ -151,28 +147,31 @@ export class CourseApi {
   - **`invalidation()`**: a change token. The store that owns the data creates
     it, mutations bump it, reads reload on it. Another store may receive it
     as a read-only `ChangeToken`.
-  - **`serverData(load, { reloadOn })`**: reads one value. Exposes `value`,
-    `isLoading` (true only until the first value arrives), `error` (already an
-    `AppError`) and `reload()`. The last value stays on screen during a reload.
+  - **`serverData(load, { params, reloadOn })`**: reads one value. Exposes
+    `value`, `isLoading` (true only until the first value arrives), `error`
+    (already an `AppError`) and `reload()`. The last value stays on screen
+    during an invalidation reload or `reload()`. `params` (a function, such as
+    a route id) keeps the read idle while it returns `undefined`; when it
+    changes, compared by value, the held value is dropped and `load(params)`
+    runs again.
   - **`serverMutation(run, { errors, success, onSuccess, invalidates })`**:
     runs a command. `errors` is required: `'toast'` shows the server message as
     a toast, `'inline'` exposes it as `error` for the form. On success it runs
     `onSuccess`, then bumps `invalidates`, then shows the `success(input,
     result)` toast. Exposes `run(input)`, `isPending`, `error` and `reset()`.
   - Use raw `rxResource` only where they do not fit, with a comment giving the
-    reason. `serverData` has no `params` yet, so a read keyed by a signal (a
-    route param that can change while the component lives) is a raw
-    `rxResource`: `params` returns `undefined` to keep it idle, and its
-    `value()` is read behind `hasValue()`, because reading the value of an
-    errored resource throws.
+    reason. Guard its `value()` with `hasValue()`, because reading the value of
+    an errored resource throws.
 - **Store shape.** Organize every store in this order:
   1. **`private readonly state = { ... }`**: one object that holds **all**
      writable signals of the store, and only **screen state** (editing, filters,
      sort, page, tab). Requests, change counters and server values are not
      state: the primitives own them. Do not declare writable signals anywhere
      else in the store.
-  2. **Resources**: private `invalidation()`, `serverData()` and
-     `serverMutation()` fields. Their callbacks may read `state`.
+  2. **Resources**: when a read is keyed by a route param, first the readonly
+     `toSignal` of that param (an input, not state); then private
+     `invalidation()`, `serverData()` and `serverMutation()` fields. Their
+     callbacks may read `state`.
   3. **Selectors**: public readonly signals with a **`$` suffix**. For each state
      key, write `readonly x$ = this.state.x.asReadonly()`. Derived values use
      `computed()`, and primitive signals are re-exposed as `$` fields too.
@@ -201,6 +200,7 @@ export class CourseApi {
 @Injectable()
 export class CourseDetailStore {
   private readonly api = inject(CourseApi);
+  private readonly route = inject(ActivatedRoute);
 
   // 1. State: screen state only
   private readonly state = {
@@ -208,12 +208,18 @@ export class CourseDetailStore {
     editorOpen: signal(false),
   };
 
+  // Route-derived input (readonly, not part of state)
+  private readonly courseId = toSignal(
+    this.route.paramMap.pipe(map((p) => p.get('courseId') ?? undefined)),
+  );
+
   // 2. Resources: data-access primitives
   private readonly changes = invalidation();
 
-  private readonly courseData = serverData(() => this.api.getFeatured(), {
-    reloadOn: this.changes,
-  });
+  private readonly courseData = serverData(
+    (courseId: string) => this.api.getById(courseId),
+    { params: () => this.courseId(), reloadOn: this.changes },
+  );
 
   private readonly saveMutation = serverMutation(
     (command: SaveCourseCommand) => this.api.update(command),
@@ -371,7 +377,7 @@ APIs**. It is not a state-management tool. Pick the first option that fits:
 
 1. Readonly value derived from state → `computed()`
 2. Writable state that resets from or follows another signal → `linkedSignal()`
-3. Async data in the store → `serverData()` / `serverMutation()` (`rxResource()` for a read keyed by a signal)
+3. Async data driven by signals → `serverData()` / `serverMutation()` in the store
 4. Work triggered by a user action → a store command
 5. Sync with `localStorage`, analytics, a third-party widget, or another
    non-reactive boundary → `effect()`
