@@ -18,6 +18,7 @@ import { DevToolbar } from './dev-toolbar';
 class FakeSession {
   readonly user = signal<Profile | null>(profileFixtures['learner']);
   readonly user$ = this.user.asReadonly();
+  readonly isSignedIn$ = () => this.user() !== null;
   signInDemo = vi.fn();
   expire = vi.fn(() => this.user.set(null));
 }

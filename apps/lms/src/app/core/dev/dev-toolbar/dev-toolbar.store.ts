@@ -16,6 +16,7 @@ import { Toaster } from '@lms/ui';
 import { filter, take } from 'rxjs';
 import { EndpointClient } from '../../http/endpoint-client';
 import { NetworkStore } from '../../network/network.store';
+import { SessionExpiry } from '../../session/session-expiry';
 import { SessionStore } from '../../session/session.store';
 import { isUnitAdmin, roleText } from '../../../shared/status/role-badge';
 import { MockScenario } from '../mock-scenario';
@@ -34,6 +35,7 @@ export class DevToolbarStore {
   private readonly session = inject(SessionStore);
   private readonly network = inject(NetworkStore);
   private readonly scenario = inject(MockScenario);
+  private readonly sessionExpiry = inject(SessionExpiry);
   private readonly router = inject(Router);
   private readonly toaster = inject(Toaster);
   private readonly client = inject(EndpointClient);
@@ -81,12 +83,9 @@ export class DevToolbarStore {
     else this.network.goOffline();
   }
 
-  /** The session ends now: the user is forgotten and the login page asks to come back here. */
+  /** The session ends now, exactly as when the server answers 401 (see `SessionExpiry`). */
   expireSession(): void {
-    const next = this.router.url;
-    this.session.expire();
-    this.toaster.info('Phiên đăng nhập đã hết hạn');
-    void this.router.navigate(['/login'], { queryParams: { next } });
+    this.sessionExpiry.end();
   }
 
   tryAdminUrl(): void {

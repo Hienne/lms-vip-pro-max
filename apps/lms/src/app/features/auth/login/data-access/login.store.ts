@@ -16,7 +16,7 @@ import { filter, map } from 'rxjs';
 import { EndpointClient } from '../../../../core/http/endpoint-client';
 import { toAppError } from '../../../../core/errors/app-error';
 import { SessionStore } from '../../../../core/session/session.store';
-import { internalPath } from './internal-path';
+import { readReturnTo } from '../../../../core/routing/return-to';
 
 const NO_ACCOUNTS: readonly DemoAccount[] = [];
 
@@ -44,9 +44,9 @@ export class LoginStore {
 
   /** Where the visitor wanted to go, when the guards sent them here. */
   readonly next$ = toSignal(
-    this.route.queryParamMap.pipe(map((q) => internalPath(q.get('next')))),
+    this.route.queryParamMap.pipe(map((q) => readReturnTo(q.get('next')))),
     {
-      initialValue: internalPath(this.route.snapshot.queryParamMap.get('next')),
+      initialValue: readReturnTo(this.route.snapshot.queryParamMap.get('next')),
     },
   );
 
