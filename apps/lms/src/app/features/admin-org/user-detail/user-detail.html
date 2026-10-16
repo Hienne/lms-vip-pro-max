@@ -35,15 +35,19 @@
     >
   </div>
   <div class="row">
-    <button uiButton (click)="editor().open(user)">
+    <button uiButton (click)="editorStore.edit(user)">
       <ui-icon name="pen-line" size="sm" />Sửa
     </button>
     @if (!store.isSelf$()) { @if (user.status === 'active') {
-    <button uiButton variant="danger-ghost" (click)="editor().toggleLock(user)">
+    <button
+      uiButton
+      variant="danger-ghost"
+      (click)="editorStore.toggleLock(user)"
+    >
       <ui-icon name="lock" size="sm" />Khóa tài khoản
     </button>
     } @else {
-    <button uiButton (click)="editor().toggleLock(user)">
+    <button uiButton (click)="editorStore.toggleLock(user)">
       <ui-icon name="lock-open" size="sm" />Mở khóa
     </button>
     } }

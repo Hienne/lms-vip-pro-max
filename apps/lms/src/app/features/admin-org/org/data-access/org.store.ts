@@ -5,7 +5,6 @@ import {
   inject,
   Injectable,
   signal,
-  type TemplateRef,
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import {
@@ -15,7 +14,7 @@ import {
   type SaveGroupCommand,
   type SaveUnitCommand,
 } from '@lms/contracts';
-import { confirm, openDrawer, type DrawerContext } from '@lms/ui';
+import { confirm } from '@lms/ui';
 import { filter } from 'rxjs';
 import { invalidation } from '../../../../core/data-access/invalidation';
 import { serverData } from '../../../../core/data-access/server-data';
@@ -23,13 +22,8 @@ import { serverMutation } from '../../../../core/data-access/server-mutation';
 import { SessionStore } from '../../../../core/session/session.store';
 import { EndpointClient } from '../../../../core/http/endpoint-client';
 
-type Editing =
-  | { readonly kind: 'unit'; readonly unit: OrgUnit | null }
-  | {
-      readonly kind: 'group';
-      readonly unit: OrgUnit;
-      readonly group: OrgGroup | null;
-    };
+type EditingUnit = { readonly unit: OrgUnit | null };
+type EditingGroup = { readonly unit: OrgUnit; readonly group: OrgGroup | null };
 
 type StatusRequest = {
   readonly unitId: string;
@@ -50,11 +44,9 @@ export class OrgStore {
 
   private readonly state = {
     selectedUnitId: signal<string | null>(null),
-    editing: signal<Editing | null>(null),
+    editingUnit: signal<EditingUnit | null>(null),
+    editingGroup: signal<EditingGroup | null>(null),
   };
-
-  /** The CDK handle of the open drawer: an imperative UI object, not state. */
-  private drawer?: { close(): void };
 
   private readonly changes = invalidation();
 
@@ -71,7 +63,7 @@ export class OrgStore {
     {
       errors: 'inline',
       success: () => 'Đã lưu',
-      onSuccess: () => this.drawer?.close(),
+      onSuccess: () => this.setEditingUnit(null),
       invalidates: this.changes,
     },
   );
@@ -82,7 +74,7 @@ export class OrgStore {
     {
       errors: 'inline',
       success: () => 'Đã lưu',
-      onSuccess: () => this.drawer?.close(),
+      onSuccess: () => this.setEditingGroup(null),
       invalidates: this.changes,
     },
   );
@@ -110,7 +102,8 @@ export class OrgStore {
     },
   );
 
-  readonly editing$ = this.state.editing.asReadonly();
+  readonly editingUnit$ = this.state.editingUnit.asReadonly();
+  readonly editingGroup$ = this.state.editingGroup.asReadonly();
   readonly units$ = computed(() => this.orgData.value() ?? []);
   readonly isLoading$ = this.orgData.isLoading;
   readonly loadError$ = this.orgData.error;
@@ -129,67 +122,57 @@ export class OrgStore {
   );
 
   readonly isSavingUnit$ = this.unitMutation.isPending;
-  readonly unitError$ = this.unitMutation.error;
+  readonly unitFieldErrors$ = this.unitMutation.fieldErrors;
   readonly isSavingGroup$ = this.groupMutation.isPending;
-  readonly groupError$ = this.groupMutation.error;
+  readonly groupFieldErrors$ = this.groupMutation.fieldErrors;
+
+  readonly unitEditorTitle$ = computed(() =>
+    this.state.editingUnit()?.unit ? 'Sửa đơn vị' : 'Thêm đơn vị',
+  );
+  readonly groupEditorTitle$ = computed(() => {
+    const editing = this.state.editingGroup();
+    if (!editing) return '';
+    return editing.group
+      ? 'Đổi tên phòng/nhóm'
+      : `Thêm phòng/nhóm vào ${editing.unit.name}`;
+  });
 
   private setSelectedUnitId(id: string | null): void {
     this.state.selectedUnitId.set(id);
   }
 
-  private setEditing(editing: Editing | null): void {
-    this.state.editing.set(editing);
+  private setEditingUnit(editing: EditingUnit | null): void {
+    this.state.editingUnit.set(editing);
   }
 
-  private openEditor(
-    editing: Editing,
-    title: string,
-    body: TemplateRef<DrawerContext>,
-    footer: TemplateRef<DrawerContext>,
-  ): void {
-    const ref = openDrawer(this.dialog, body, { title, footer });
-    this.drawer = ref;
-    this.unitMutation.reset();
-    this.groupMutation.reset();
-    this.setEditing(editing);
-    ref.closed.subscribe(() => {
-      this.drawer = undefined;
-      this.setEditing(null);
-    });
+  private setEditingGroup(editing: EditingGroup | null): void {
+    this.state.editingGroup.set(editing);
   }
 
   pick(unitId: string): void {
     this.setSelectedUnitId(unitId);
   }
 
-  /** Opens the add-unit (`null`) or the edit-unit drawer. */
-  editUnit(
-    unit: OrgUnit | null,
-    body: TemplateRef<DrawerContext>,
-    footer: TemplateRef<DrawerContext>,
-  ): void {
-    this.openEditor(
-      { kind: 'unit', unit },
-      unit ? 'Sửa đơn vị' : 'Thêm đơn vị',
-      body,
-      footer,
-    );
+  /** Opens the add-unit (`null`) or the edit-unit drawer: the page shows it while `editingUnit$` is set. */
+  editUnit(unit: OrgUnit | null): void {
+    this.unitMutation.reset();
+    this.setEditingUnit({ unit });
+  }
+
+  cancelUnitEdit(): void {
+    this.setEditingUnit(null);
   }
 
   /** Opens the add-group (`null`) or the rename-group drawer, for the picked unit. */
-  editGroup(
-    group: OrgGroup | null,
-    body: TemplateRef<DrawerContext>,
-    footer: TemplateRef<DrawerContext>,
-  ): void {
+  editGroup(group: OrgGroup | null): void {
     const unit = this.selected$();
     if (!unit) return;
-    this.openEditor(
-      { kind: 'group', unit, group },
-      group ? 'Đổi tên phòng/nhóm' : `Thêm phòng/nhóm vào ${unit.name}`,
-      body,
-      footer,
-    );
+    this.groupMutation.reset();
+    this.setEditingGroup({ unit, group });
+  }
+
+  cancelGroupEdit(): void {
+    this.setEditingGroup(null);
   }
 
   saveUnit(command: SaveUnitCommand): void {
@@ -197,8 +180,8 @@ export class OrgStore {
   }
 
   saveGroup(command: Omit<SaveGroupCommand, 'unitId'>): void {
-    const editing = this.state.editing();
-    if (editing?.kind !== 'group') return;
+    const editing = this.state.editingGroup();
+    if (!editing) return;
     this.groupMutation.run({ ...command, unitId: editing.unit.id });
   }
 

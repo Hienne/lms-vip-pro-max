@@ -332,4 +332,52 @@ describe('Users', () => {
       'Đã gửi liên kết đặt lại mật khẩu',
     );
   });
+  const escape = () =>
+    dialog()?.dispatchEvent(
+      new KeyboardEvent('keydown', {
+        key: 'Escape',
+        code: 'Escape',
+        keyCode: 27,
+        bubbles: true,
+      }),
+    );
+
+  it('keeps the drawer open on Escape while saving, and closes it after the response', async () => {
+    await open('admin');
+    button(rows()[1], 'Sửa').click();
+    await settle();
+    button(dialog() as HTMLElement, 'Lưu').click();
+    await settle();
+    const post = backend.expectOne('/api/admin/users');
+    expect(dialog()?.textContent).toContain('Đang lưu…');
+
+    escape();
+    await settle();
+    expect(dialog()).not.toBeNull();
+
+    post.flush(userListFixtures[1]);
+    await settle();
+    expect(dialog()).toBeNull();
+    backend.expectOne('/api/admin/users').flush(userListFixtures);
+    await settle();
+  });
+
+  it('does not cover the form while a password reset is pending', async () => {
+    await open('admin');
+    button(rows()[1], 'Sửa').click();
+    await settle();
+    button(dialog() as HTMLElement, 'Đặt lại mật khẩu').click();
+    await settle();
+    const post = backend.expectOne(
+      `/api/admin/users/${userListFixtures[1].id}/reset-password`,
+    );
+
+    expect(dialog()?.querySelector('.drawer__busy')).toBeNull();
+    expect(button(dialog() as HTMLElement, 'Đặt lại mật khẩu').disabled).toBe(
+      true,
+    );
+
+    post.flush({ sentTo: userListFixtures[1].email });
+    await settle();
+  });
 });

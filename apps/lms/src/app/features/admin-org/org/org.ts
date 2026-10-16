@@ -1,4 +1,4 @@
-import { Component, inject, type TemplateRef, viewChild } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import {
   Avatar,
@@ -7,9 +7,10 @@ import {
   Card,
   CardBody,
   CardHeader,
-  type DrawerContext,
+  DrawerOutlet,
   Empty,
   ErrorState,
+  FormActions,
   Icon,
   IconButton,
   List,
@@ -36,8 +37,10 @@ export const GROUP_MEMBERS_SHOWN = 5;
     Card,
     CardBody,
     CardHeader,
+    DrawerOutlet,
     Empty,
     ErrorState,
+    FormActions,
     GroupForm,
     Icon,
     IconButton,
@@ -58,21 +61,4 @@ export class Org {
   protected readonly store = inject(OrgStore);
   protected readonly shown = GROUP_MEMBERS_SHOWN;
   protected readonly isUnitAdmin = isUnitAdmin;
-
-  private readonly unitBody =
-    viewChild.required<TemplateRef<DrawerContext>>('unitBody');
-  private readonly unitFooter =
-    viewChild.required<TemplateRef<DrawerContext>>('unitFooter');
-  private readonly groupBody =
-    viewChild.required<TemplateRef<DrawerContext>>('groupBody');
-  private readonly groupFooter =
-    viewChild.required<TemplateRef<DrawerContext>>('groupFooter');
-
-  protected editUnit(unit: Parameters<OrgStore['editUnit']>[0]): void {
-    this.store.editUnit(unit, this.unitBody(), this.unitFooter());
-  }
-
-  protected editGroup(group: Parameters<OrgStore['editGroup']>[0]): void {
-    this.store.editGroup(group, this.groupBody(), this.groupFooter());
-  }
 }

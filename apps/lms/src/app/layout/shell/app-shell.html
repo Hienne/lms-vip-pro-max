@@ -18,7 +18,7 @@
       [navOpen]="store.navOpen$()"
       [user]="user"
       [unread]="store.unread$()"
-      (menu)="store.openNav(drawerBody)"
+      (menu)="store.openNav()"
       (searched)="store.search($event)"
       (picked)="store.pick($event)"
     />
@@ -38,7 +38,12 @@
   </div>
 </div>
 
-<ng-template #drawerBody>
+<ng-template
+  [uiDrawer]="store.navOpen$()"
+  uiDrawerTitle="Điều hướng chính"
+  uiDrawerSide="start"
+  (uiDrawerDismiss)="store.closeNav()"
+>
   @if (user) {
   <app-sidebar
     [menus]="user.menus"

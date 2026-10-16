@@ -1,8 +1,8 @@
 <div class="row">
-  <button uiButton (click)="open(body, footer, 'end')">
+  <button uiButton (click)="store.open('end')">
     <ui-icon name="layers" size="sm" /> Mở drawer
   </button>
-  <button uiButton variant="ghost" (click)="open(body, footer, 'start')">
+  <button uiButton variant="ghost" (click)="store.open('start')">
     <ui-icon name="layers" size="sm" /> Drawer bên trái
   </button>
 </div>
@@ -11,7 +11,13 @@
   hẹp.
 </p>
 
-<ng-template #body>
+<ng-template
+  [uiDrawer]="store.openSide$() !== null"
+  [uiDrawerSide]="store.openSide$() ?? 'end'"
+  uiDrawerTitle="Drawer mẫu"
+  [uiDrawerFooter]="footer"
+  (uiDrawerDismiss)="store.close()"
+>
   <p class="drawer-demo__body">
     Dùng cho form chỉnh sửa nhanh mà không rời trang danh sách.
   </p>

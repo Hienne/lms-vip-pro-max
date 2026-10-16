@@ -105,11 +105,13 @@ export {
 } from './lib/organisms/confirm-dialog/confirm-dialog';
 export {
   Drawer,
-  openDrawer,
   type DrawerContext,
-  type DrawerOptions,
   type DrawerSide,
 } from './lib/organisms/drawer/drawer';
+
+// Declarative drawer, FormActions
+export { DrawerOutlet } from './lib/organisms/drawer/drawer.directive';
+export { FormActions } from './lib/molecules/form-actions/form-actions';
 
 // Toaster (11)
 export {

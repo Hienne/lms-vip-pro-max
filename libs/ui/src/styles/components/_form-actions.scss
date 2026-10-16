@@ -1,0 +1,12 @@
+// Form actions: the cancel and submit buttons of a form (`ui-form-actions`). Extra projected
+// actions come first; the row fills its container, so it follows the drawer footer's alignment.
+@layer components {
+  .form-actions {
+    display: flex;
+    flex: 1;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: flex-end;
+    gap: var(--spacing-2);
+  }
+}

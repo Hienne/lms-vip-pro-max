@@ -223,6 +223,34 @@ describe('Roles', () => {
     expect(dialog()?.textContent).toContain('Tên vai trò đã tồn tại.');
   });
 
+  it('keeps the drawer open on Escape while saving, and closes it after the response', async () => {
+    await open();
+    button(el, 'Thêm vai trò')?.click();
+    await settle();
+    await type(inputOf('Tên vai trò'), 'Kiểm soát');
+    button(dialog() as HTMLElement, 'Lưu')?.click();
+    await settle();
+    const post = backend.expectOne('/api/admin/roles');
+    expect(dialog()?.textContent).toContain('Đang lưu…');
+
+    dialog()?.dispatchEvent(
+      new KeyboardEvent('keydown', {
+        key: 'Escape',
+        code: 'Escape',
+        keyCode: 27,
+        bubbles: true,
+      }),
+    );
+    await settle();
+    expect(dialog()).not.toBeNull();
+
+    post.flush(custom);
+    await settle();
+    expect(dialog()).toBeNull();
+    backend.expectOne('/api/admin/roles').flush(roleFixtures);
+    await settle();
+  });
+
   it('deletes a custom role after confirming, then reloads', async () => {
     await open();
     button(card(custom.name), 'Xóa')?.click();

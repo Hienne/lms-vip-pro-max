@@ -205,4 +205,35 @@ describe('UserDetail', () => {
     expect(text()).toContain(userNotFound.message);
     expect(button(el, 'Thử lại')).toBeUndefined();
   });
+  const escape = () =>
+    dialog()?.dispatchEvent(
+      new KeyboardEvent('keydown', {
+        key: 'Escape',
+        code: 'Escape',
+        keyCode: 27,
+        bubbles: true,
+      }),
+    );
+
+  it('keeps the drawer open on Escape while saving, and closes it after the response', async () => {
+    await open();
+    button(el, 'Sửa')?.click();
+    await settle();
+    button(dialog() as HTMLElement, 'Lưu')?.click();
+    await settle();
+    const post = backend.expectOne('/api/admin/users');
+    expect(dialog()?.textContent).toContain('Đang lưu…');
+
+    escape();
+    await settle();
+    expect(dialog()).not.toBeNull();
+
+    post.flush(userDetailFixture.user);
+    await settle();
+    expect(dialog()).toBeNull();
+    backend
+      .expectOne(`/api/admin/users/${userDetailFixture.user.id}`)
+      .flush(userDetailFixture);
+    await settle();
+  });
 });

@@ -8,7 +8,7 @@
       <ui-icon name="upload" size="sm" />Nhập từ tệp
     </a>
     @if (store.canManageUnits$()) {
-    <button uiButton variant="primary" (click)="editUnit(null)">
+    <button uiButton variant="primary" (click)="store.editUnit(null)">
       <ui-icon name="plus" size="sm" />Thêm đơn vị
     </button>
     }
@@ -64,7 +64,7 @@
         </p>
       </div>
       <div class="row">
-        <button uiButton (click)="editUnit(selected)">
+        <button uiButton (click)="store.editUnit(selected)">
           <ui-icon name="pen-line" size="sm" />Sửa
         </button>
         @if (store.canManageUnits$()) { @if (selected.status === 'active') {
@@ -85,7 +85,7 @@
 
     <div class="row-between">
       <h3>Phòng / nhóm ({{ selected.groups.length }})</h3>
-      <button uiButton size="sm" (click)="editGroup(null)">
+      <button uiButton size="sm" (click)="store.editGroup(null)">
         <ui-icon name="plus" size="sm" />Thêm phòng/nhóm
       </button>
     </div>
@@ -105,7 +105,7 @@
               uiIconButton
               size="sm"
               label="Đổi tên {{ group.name }}"
-              (click)="editGroup(group)"
+              (click)="store.editGroup(group)"
             >
               <ui-icon name="pen-line" size="sm" />
             </button>
@@ -169,46 +169,54 @@
 <ui-empty icon="building-2" title="Chưa có đơn vị nào" />
 } }
 
-<ng-template #unitBody>
-  @if (store.editing$(); as editing) { @if (editing.kind === 'unit') {
+<ng-template
+  [uiDrawer]="store.editingUnit$() !== null"
+  [uiDrawerTitle]="store.unitEditorTitle$()"
+  [uiDrawerFooter]="unitFooter"
+  [uiDrawerBusy]="store.isSavingUnit$()"
+  uiDrawerBusyLabel="Đang lưu…"
+  (uiDrawerDismiss)="store.cancelUnitEdit()"
+>
+  @if (store.editingUnit$(); as editing) {
   <app-unit-form
     [unit]="editing.unit"
-    [serverErrors]="store.unitError$()?.details ?? {}"
+    [serverErrors]="store.unitFieldErrors$()"
     (submitted)="store.saveUnit($event)"
   />
-  } }
+  }
 </ng-template>
 <ng-template #unitFooter let-close="close">
-  <button uiButton variant="ghost" (click)="close()">Hủy</button>
-  <button
-    uiButton
-    variant="primary"
-    type="submit"
-    form="unit-form"
-    [disabled]="store.isSavingUnit$()"
-  >
-    Lưu
-  </button>
+  <ui-form-actions
+    formId="unit-form"
+    submitLabel="Lưu"
+    cancelLabel="Hủy"
+    [saving]="store.isSavingUnit$()"
+    (cancel)="close()"
+  />
 </ng-template>
 
-<ng-template #groupBody>
-  @if (store.editing$(); as editing) { @if (editing.kind === 'group') {
+<ng-template
+  [uiDrawer]="store.editingGroup$() !== null"
+  [uiDrawerTitle]="store.groupEditorTitle$()"
+  [uiDrawerFooter]="groupFooter"
+  [uiDrawerBusy]="store.isSavingGroup$()"
+  uiDrawerBusyLabel="Đang lưu…"
+  (uiDrawerDismiss)="store.cancelGroupEdit()"
+>
+  @if (store.editingGroup$(); as editing) {
   <app-group-form
     [group]="editing.group"
-    [serverErrors]="store.groupError$()?.details ?? {}"
+    [serverErrors]="store.groupFieldErrors$()"
     (submitted)="store.saveGroup($event)"
   />
-  } }
+  }
 </ng-template>
 <ng-template #groupFooter let-close="close">
-  <button uiButton variant="ghost" (click)="close()">Hủy</button>
-  <button
-    uiButton
-    variant="primary"
-    type="submit"
-    form="group-form"
-    [disabled]="store.isSavingGroup$()"
-  >
-    Lưu
-  </button>
+  <ui-form-actions
+    formId="group-form"
+    submitLabel="Lưu"
+    cancelLabel="Hủy"
+    [saving]="store.isSavingGroup$()"
+    (cancel)="close()"
+  />
 </ng-template>

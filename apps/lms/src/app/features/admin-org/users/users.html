@@ -7,7 +7,7 @@
     <a uiButton routerLink="/admin/import" [queryParams]="{ type: 'users' }">
       <ui-icon name="upload" size="sm" />Nhập danh sách
     </a>
-    <button uiButton variant="primary" (click)="editor().open(null)">
+    <button uiButton variant="primary" (click)="editorStore.edit(null)">
       <ui-icon name="plus" size="sm" />Thêm người dùng
     </button>
   </div>
@@ -135,7 +135,12 @@
       }
     </ng-template>
     <ng-template uiDataTableCell="actions" [of]="store.rows$()" let-user>
-      <button uiButton size="sm" variant="ghost" (click)="editor().open(user)">
+      <button
+        uiButton
+        size="sm"
+        variant="ghost"
+        (click)="editorStore.edit(user)"
+      >
         <ui-icon name="pen-line" size="sm" />Sửa
       </button>
       @if (user.id !== store.me$()?.id) { @if (user.status === 'active') {
@@ -143,7 +148,7 @@
         uiButton
         size="sm"
         variant="danger-ghost"
-        (click)="editor().toggleLock(user)"
+        (click)="editorStore.toggleLock(user)"
       >
         <ui-icon name="lock" size="sm" />Khóa
       </button>
@@ -152,7 +157,7 @@
         uiButton
         size="sm"
         variant="ghost"
-        (click)="editor().toggleLock(user)"
+        (click)="editorStore.toggleLock(user)"
       >
         <ui-icon name="lock-open" size="sm" />Mở khóa
       </button>

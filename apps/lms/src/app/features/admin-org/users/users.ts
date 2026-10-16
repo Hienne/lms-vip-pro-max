@@ -1,4 +1,4 @@
-import { Component, inject, viewChild } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import {
   Avatar,
@@ -58,5 +58,5 @@ export class Users {
   protected readonly pageSize = USERS_PAGE_SIZE;
   protected readonly isUnitAdmin = isUnitAdmin;
 
-  protected readonly editor = viewChild.required(UserEditor);
+  protected readonly editorStore = inject(UserEditorStore);
 }

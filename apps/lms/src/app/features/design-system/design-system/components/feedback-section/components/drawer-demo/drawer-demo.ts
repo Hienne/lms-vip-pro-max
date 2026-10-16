@@ -1,27 +1,14 @@
-import { Dialog } from '@angular/cdk/dialog';
-import { Component, inject, type TemplateRef } from '@angular/core';
-import {
-  Button,
-  Icon,
-  openDrawer,
-  type DrawerContext,
-  type DrawerSide,
-} from '@lms/ui';
+import { Component, inject } from '@angular/core';
+import { Button, DrawerOutlet, Icon } from '@lms/ui';
+import { DrawerDemoStore } from './data-access/drawer-demo.store';
 
 @Component({
   selector: 'app-drawer-demo',
-  imports: [Button, Icon],
+  imports: [Button, DrawerOutlet, Icon],
+  providers: [DrawerDemoStore],
   templateUrl: './drawer-demo.html',
   styleUrl: './drawer-demo.scss',
 })
 export class DrawerDemo {
-  private readonly dialog = inject(Dialog);
-
-  protected open(
-    body: TemplateRef<DrawerContext>,
-    footer: TemplateRef<DrawerContext>,
-    side: DrawerSide,
-  ): void {
-    openDrawer(this.dialog, body, { title: 'Drawer mẫu', side, footer });
-  }
+  protected readonly store = inject(DrawerDemoStore);
 }
