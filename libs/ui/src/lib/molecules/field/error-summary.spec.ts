@@ -1,12 +1,6 @@
 import { Component, computed, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
-import {
-  form,
-  FormField,
-  required,
-  submit,
-  type FieldTree,
-} from '@angular/forms/signals';
+import { form, FormField, required, submit } from '@angular/forms/signals';
 import { Input } from '../../atoms/input/input.directive';
 import { ErrorSummary, type ErrorSummaryItem } from './error-summary';
 import { Field } from './field';
@@ -18,10 +12,10 @@ import { Field } from './field';
       @if (items().length > 0) {
         <ui-error-summary [items]="items()" />
       }
-      <ui-field label="Tên khóa học" [errors]="messages(f.title)">
+      <ui-field label="Tên khóa học">
         <input uiInput id="title" [formField]="f.title" />
       </ui-field>
-      <ui-field label="Email" [errors]="messages(f.email)">
+      <ui-field label="Email">
         <input uiInput id="email" [formField]="f.email" />
       </ui-field>
       <button type="submit">Lưu</button>
@@ -55,13 +49,6 @@ class Host {
         ]
       : [],
   );
-  messages(field: FieldTree<string>) {
-    return this.submitted()
-      ? field()
-          .errors()
-          .map((e) => e.message ?? '')
-      : [];
-  }
   onSubmit(event: Event) {
     event.preventDefault();
     void submit(this.f, async () => undefined);

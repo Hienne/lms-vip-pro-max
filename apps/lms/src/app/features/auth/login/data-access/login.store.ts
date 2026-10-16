@@ -20,7 +20,7 @@ import { readReturnTo } from '../../../../core/routing/return-to';
 
 const NO_ACCOUNTS: readonly DemoAccount[] = [];
 
-/** Where the last attempt came from: the form puts server messages on its fields, a demo card cannot. */
+/** Where the last attempt came from: only a form submit marks the form's button busy. */
 export type SignInSource = 'form' | 'demo';
 
 /**

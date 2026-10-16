@@ -65,18 +65,6 @@ export class Profile {
     validateStandardSchema(path, ProfileFormSchema);
   });
 
-  protected readonly nameErrors = computed(() => {
-    const own = this.profileForm.name().touched()
-      ? this.profileForm
-          .name()
-          .errors()
-          .map((error) => error.message ?? '')
-          .filter(Boolean)
-      : [];
-    const server = this.store.saveError$()?.details?.['name'];
-    return server ? [...own, server] : own;
-  });
-
   protected readonly scopedAdmin = computed(() => {
     const user = this.store.user$();
     return user ? isUnitAdmin(user) : false;

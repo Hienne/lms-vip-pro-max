@@ -1,19 +1,16 @@
-import { provideHttpClient } from '@angular/common/http';
-import {
-  HttpTestingController,
-  provideHttpClientTesting,
-} from '@angular/common/http/testing';
+import { HttpTestingController } from '@angular/common/http/testing';
 import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { provideRouter, Router } from '@angular/router';
 import type { Profile } from '@lms/contracts';
-import { demoAccountFixtures, profileFixtures } from '@lms/mocks';
+import { demoAccountFixtures, envelopeOk, profileFixtures } from '@lms/mocks';
 import { provideAppConfig } from '../../config/app-config';
 import { testAppConfig } from '../../config/app-config.testing';
 import { NetworkStore } from '../../network/network.store';
 import { SessionStore } from '../../session/session.store';
 import { MockScenario } from '../mock-scenario';
 import { DevToolbar } from './dev-toolbar';
+import { provideEnvelopeHttpClient } from '../../http/http.testing';
 
 class FakeSession {
   readonly user = signal<Profile | null>(profileFixtures['learner']);
@@ -34,8 +31,7 @@ describe('DevToolbar', () => {
     session = new FakeSession();
     TestBed.configureTestingModule({
       providers: [
-        provideHttpClient(),
-        provideHttpClientTesting(),
+        provideEnvelopeHttpClient(),
         provideRouter([]),
         provideAppConfig(testAppConfig({ mockApi: true })),
         { provide: SessionStore, useValue: session },
@@ -68,7 +64,9 @@ describe('DevToolbar', () => {
     const wrapper = el.querySelector('.dev-toolbar')!;
     wrapper.dispatchEvent(new Event('pointerenter'));
     TestBed.tick();
-    backend.expectOne('/api/auth/demo-accounts').flush(demoAccountFixtures);
+    backend
+      .expectOne('/api/auth/demo-accounts')
+      .flush(envelopeOk(demoAccountFixtures));
     el.querySelector<HTMLButtonElement>('ui-menu button')?.click();
     TestBed.tick();
     await vi.waitFor(() => {
@@ -171,8 +169,7 @@ describe('DevToolbar against a real backend', () => {
   it('offers no role list, since the role only drives the mock API', async () => {
     TestBed.configureTestingModule({
       providers: [
-        provideHttpClient(),
-        provideHttpClientTesting(),
+        provideEnvelopeHttpClient(),
         provideRouter([]),
         provideAppConfig(testAppConfig({ mockApi: false })),
         { provide: SessionStore, useValue: new FakeSession() },

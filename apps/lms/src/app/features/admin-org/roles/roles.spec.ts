@@ -1,16 +1,12 @@
-import { provideHttpClient } from '@angular/common/http';
-import {
-  HttpTestingController,
-  provideHttpClientTesting,
-} from '@angular/common/http/testing';
+import { HttpTestingController } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
 import {
-  deleteRoleInvalid,
+  envelopeError,
+  envelopeOk,
   profileFixtures,
   roleFixtures,
-  saveRoleInvalid,
 } from '@lms/mocks';
 import { createAppRoutes } from '../../../app.routes';
 import {
@@ -18,6 +14,7 @@ import {
   provideAppConfig,
 } from '../../../core/config/app-config';
 import { testAppConfig } from '../../../core/config/app-config.testing';
+import { provideEnvelopeHttpClient } from '../../../core/http/http.testing';
 import { SessionStore } from '../../../core/session/session.store';
 
 describe('Roles', () => {
@@ -28,8 +25,7 @@ describe('Roles', () => {
   beforeEach(() => {
     TestBed.configureTestingModule({
       providers: [
-        provideHttpClient(),
-        provideHttpClientTesting(),
+        provideEnvelopeHttpClient(),
         provideAppConfig(parseAppConfig(testAppConfig())),
         provideRouter(createAppRoutes({ devTools: true })),
         SessionStore,
@@ -53,12 +49,14 @@ describe('Roles', () => {
   async function open() {
     TestBed.inject(SessionStore).restore();
     await settle();
-    backend.expectOne('/api/auth/profile').flush(profileFixtures['admin']);
+    backend
+      .expectOne('/api/auth/profile')
+      .flush(envelopeOk(profileFixtures['admin']));
     await settle();
     harness = await RouterTestingHarness.create();
     await harness.navigateByUrl('/admin/roles');
     await settle();
-    backend.expectOne('/api/admin/roles').flush(roleFixtures);
+    backend.expectOne('/api/admin/roles').flush(envelopeOk(roleFixtures));
     await settle();
     el = harness.routeNativeElement as HTMLElement;
   }
@@ -132,14 +130,18 @@ describe('Roles', () => {
     const held = { ...custom, userCount: 2 };
     TestBed.inject(SessionStore).restore();
     await settle();
-    backend.expectOne('/api/auth/profile').flush(profileFixtures['admin']);
+    backend
+      .expectOne('/api/auth/profile')
+      .flush(envelopeOk(profileFixtures['admin']));
     await settle();
     harness = await RouterTestingHarness.create();
     await harness.navigateByUrl('/admin/roles');
     await settle();
     backend
       .expectOne('/api/admin/roles')
-      .flush(roleFixtures.map((r) => (r.id === held.id ? held : r)));
+      .flush(
+        envelopeOk(roleFixtures.map((r) => (r.id === held.id ? held : r))),
+      );
     await settle();
     el = harness.routeNativeElement as HTMLElement;
     expect(button(card(held.name), 'Xóa')?.disabled).toBe(true);
@@ -179,10 +181,10 @@ describe('Roles', () => {
       description: 'Xem báo cáo',
       menus: ['reports'],
     });
-    post.flush(custom);
+    post.flush(envelopeOk(custom));
     await settle();
     expect(dialog()).toBeNull();
-    backend.expectOne('/api/admin/roles').flush(roleFixtures);
+    backend.expectOne('/api/admin/roles').flush(envelopeOk(roleFixtures));
     await settle();
     expect(document.body.textContent).toContain('Đã thêm vai trò');
   });
@@ -203,13 +205,13 @@ describe('Roles', () => {
         'content.import',
       ].sort(),
     );
-    post.flush(custom);
+    post.flush(envelopeOk(custom));
     await settle();
-    backend.expectOne('/api/admin/roles').flush(roleFixtures);
+    backend.expectOne('/api/admin/roles').flush(envelopeOk(roleFixtures));
     await settle();
   });
 
-  it('keeps the drawer open and shows the 422 message on the name', async () => {
+  it('keeps the drawer open and toasts the backend message when a role save is refused', async () => {
     await open();
     button(el, 'Thêm vai trò')?.click();
     await settle();
@@ -218,9 +220,18 @@ describe('Roles', () => {
     await settle();
     backend
       .expectOne('/api/admin/roles')
-      .flush(saveRoleInvalid, { status: 422, statusText: 'Invalid' });
+      .flush(
+        envelopeError(
+          'CORE-0409',
+          'Không lưu được vai trò',
+          'Tên vai trò đã tồn tại.',
+        ),
+      );
     await settle();
-    expect(dialog()?.textContent).toContain('Tên vai trò đã tồn tại.');
+    expect(dialog()).not.toBeNull();
+    expect(inputOf('Tên vai trò').value).toBe(learner.name);
+    expect(document.body.textContent).toContain('Không lưu được vai trò');
+    expect(document.body.textContent).toContain('Tên vai trò đã tồn tại.');
   });
 
   it('keeps the drawer open on Escape while saving, and closes it after the response', async () => {
@@ -244,10 +255,10 @@ describe('Roles', () => {
     await settle();
     expect(dialog()).not.toBeNull();
 
-    post.flush(custom);
+    post.flush(envelopeOk(custom));
     await settle();
     expect(dialog()).toBeNull();
-    backend.expectOne('/api/admin/roles').flush(roleFixtures);
+    backend.expectOne('/api/admin/roles').flush(envelopeOk(roleFixtures));
     await settle();
   });
 
@@ -261,9 +272,9 @@ describe('Roles', () => {
     await settle();
     const del = backend.expectOne(`/api/admin/roles/${custom.id}`);
     expect(del.request.method).toBe('DELETE');
-    del.flush(true);
+    del.flush(envelopeOk(true));
     await settle();
-    backend.expectOne('/api/admin/roles').flush(roleFixtures);
+    backend.expectOne('/api/admin/roles').flush(envelopeOk(roleFixtures));
     await settle();
     expect(document.body.textContent).toContain('Đã xóa vai trò');
   });
@@ -276,9 +287,16 @@ describe('Roles', () => {
     await settle();
     backend
       .expectOne(`/api/admin/roles/${custom.id}`)
-      .flush(deleteRoleInvalid, { status: 422, statusText: 'Invalid' });
+      .flush(
+        envelopeError(
+          'CORE-0412',
+          'Không xóa được vai trò',
+          'Vai trò đang được gán cho người dùng — hãy chuyển họ sang vai trò khác trước.',
+        ),
+      );
     await settle();
-    expect(document.body.textContent).toContain(deleteRoleInvalid.message);
+    expect(document.body.textContent).toContain('Không xóa được vai trò');
+    expect(document.body.textContent).toContain('Vai trò đang được gán');
     expect(text()).toContain(custom.name);
   });
 

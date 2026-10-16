@@ -165,8 +165,7 @@ the session store spec in the app foundation.
   (architecture review #03).
 - Migrating `SessionStore`, `ShellStore`, the login and profile stores.
 - Small clean-ups noted in the review: the `UsersStore` pass-through
-  selectors, the hand-typed unit status union in the org store, a dedicated
-  error kind for 409.
+  selectors, the hand-typed unit status union in the org store.
 - Any change to copy, layout or server contracts.
 
 ## Further Notes

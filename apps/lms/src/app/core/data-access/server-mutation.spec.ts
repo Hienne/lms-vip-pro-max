@@ -2,6 +2,7 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { Toaster } from '@lms/ui';
+import { ApiError } from '../http/api-error';
 import { Subject } from 'rxjs';
 import { invalidation, type Invalidation } from './invalidation';
 import { serverMutation } from './server-mutation';
@@ -99,7 +100,7 @@ describe('serverMutation', () => {
     expect(toaster.success).toHaveBeenCalledWith('Saved role', 'as #7');
   });
 
-  it('with errors "toast" shows the server message as an error toast', async () => {
+  it('with errors "toast" shows the backend message as the toast when it sent no title', async () => {
     const { calls, run } = sources();
     const token = invalidation();
     const onSuccess = vi.fn();
@@ -115,10 +116,7 @@ describe('serverMutation', () => {
     mutation.run('a');
     await settle();
     calls[0].source.error(
-      new HttpErrorResponse({
-        status: 409,
-        error: { code: 'conflict', message: 'Vai trò đang được dùng' },
-      }),
+      new ApiError('CORE-0409', undefined, 'Vai trò đang được dùng'),
     );
     await settle();
 
@@ -128,69 +126,51 @@ describe('serverMutation', () => {
     expect(token.version()).toBe(0);
   });
 
-  it('with errors "inline" exposes the error and shows no toast', async () => {
+  it('with errors "toast" shows the backend title as heading and its message as detail', async () => {
     const { calls, run } = sources();
     const mutation = TestBed.runInInjectionContext(() =>
-      serverMutation(run, { errors: 'inline', success: () => 'ok' }),
+      serverMutation(run, { errors: 'toast', success: () => 'ok' }),
     );
 
     mutation.run('a');
     await settle();
     calls[0].source.error(
-      new HttpErrorResponse({
-        status: 422,
-        error: {
-          code: 'invalid',
-          message: 'Sai',
-          details: { name: 'Bắt buộc' },
-        },
-      }),
+      new ApiError('CORE-0409', 'Trùng email', 'Email đã tồn tại.'),
     );
     await settle();
 
-    expect(mutation.error()?.kind).toBe('invalid');
-    expect(mutation.error()?.details).toEqual({ name: 'Bắt buộc' });
-    expect(toaster.error).not.toHaveBeenCalled();
+    expect(toaster.error).toHaveBeenCalledExactlyOnceWith(
+      'Trùng email',
+      'Email đã tồn tại.',
+    );
   });
 
-  it('exposes the failure details as fieldErrors, {} otherwise', async () => {
+  it('with errors "alert" exposes the error and shows no toast', async () => {
     const { calls, run } = sources();
     const mutation = TestBed.runInInjectionContext(() =>
-      serverMutation(run, { errors: 'inline', success: () => 'ok' }),
+      serverMutation(run, { errors: 'alert', success: () => 'ok' }),
     );
-    expect(mutation.fieldErrors()).toEqual({});
 
     mutation.run('a');
     await settle();
     calls[0].source.error(
-      new HttpErrorResponse({
-        status: 422,
-        error: {
-          code: 'invalid',
-          message: 'Sai',
-          details: { name: 'Bắt buộc' },
-        },
-      }),
+      new ApiError('CORE-0409', 'Trùng email', 'Email đã tồn tại.'),
     );
     await settle();
-    expect(mutation.fieldErrors()).toEqual({ name: 'Bắt buộc' });
 
-    mutation.reset();
-    await settle();
-    expect(mutation.fieldErrors()).toEqual({});
-
-    mutation.run('b');
-    await settle();
-    calls[1].source.next(1);
-    calls[1].source.complete();
-    await settle();
-    expect(mutation.fieldErrors()).toEqual({});
+    expect(mutation.error()).toEqual({
+      kind: 'server',
+      title: 'Trùng email',
+      message: 'Email đã tồn tại.',
+      messageCode: 'CORE-0409',
+    });
+    expect(toaster.error).not.toHaveBeenCalled();
   });
 
   it('calls the server again when the same input is resubmitted', async () => {
     const { calls, run } = sources();
     const mutation = TestBed.runInInjectionContext(() =>
-      serverMutation(run, { errors: 'inline', success: () => 'ok' }),
+      serverMutation(run, { errors: 'alert', success: () => 'ok' }),
     );
 
     mutation.run('same');
@@ -206,7 +186,7 @@ describe('serverMutation', () => {
   it('reset() clears the error', async () => {
     const { calls, run } = sources();
     const mutation = TestBed.runInInjectionContext(() =>
-      serverMutation(run, { errors: 'inline', success: () => 'ok' }),
+      serverMutation(run, { errors: 'alert', success: () => 'ok' }),
     );
     mutation.run('a');
     await settle();

@@ -1,4 +1,4 @@
-import { ApiErrorSchema } from '@lms/contracts';
+import { EnvelopeSchema } from '@lms/contracts';
 import { endpointExamples, MOCK_FIXTURES } from './lib/examples';
 
 describe('fixtures match their contracts', () => {
@@ -16,10 +16,18 @@ describe('fixtures match their contracts', () => {
     '%# endpoint-specific errors parse',
     (_, examples) => {
       for (const body of Object.values(examples.errors ?? {})) {
-        expect(() => ApiErrorSchema.parse(body)).not.toThrow();
+        expect(EnvelopeSchema.parse(body).status).toBe('ERROR');
       }
     },
   );
+
+  it('error examples are keyed by scenario name, not by HTTP status', () => {
+    for (const examples of Object.values(endpointExamples)) {
+      for (const scenario of Object.keys(examples.errors ?? {})) {
+        expect(scenario).not.toMatch(/^\d+$/);
+      }
+    }
+  });
 
   it('every example belongs to a registered endpoint', () => {
     expect(MOCK_FIXTURES.size).toBe(Object.keys(endpointExamples).length);

@@ -1,6 +1,5 @@
-import { Component, computed, input, output, signal } from '@angular/core';
+import { Component, input, output, signal } from '@angular/core';
 import {
-  type FieldTree,
   form,
   FormField,
   submit,
@@ -21,8 +20,6 @@ import { EMPTY_PASSWORD_FORM, PasswordFormSchema } from '../../profile.form';
   styleUrl: './password-form.scss',
 })
 export class PasswordForm {
-  /** Per-field messages of the server's 422 (`cur`, `next`, `confirm`). */
-  readonly serverErrors = input<Readonly<Record<string, string>>>({});
   readonly busy = input(false);
   readonly submitted = output<ChangePasswordCommand>();
 
@@ -32,27 +29,6 @@ export class PasswordForm {
   protected readonly passwordForm = form(this.model, (path) => {
     validateStandardSchema(path, PasswordFormSchema);
   });
-
-  protected readonly curErrors = computed(() =>
-    this.messages(this.passwordForm.cur, 'cur'),
-  );
-  protected readonly nextErrors = computed(() =>
-    this.messages(this.passwordForm.next, 'next'),
-  );
-  protected readonly confirmErrors = computed(() =>
-    this.messages(this.passwordForm.confirm, 'confirm'),
-  );
-
-  private messages(field: FieldTree<string>, key: string): readonly string[] {
-    const own = field().touched()
-      ? field()
-          .errors()
-          .map((error) => error.message ?? '')
-          .filter(Boolean)
-      : [];
-    const server = this.serverErrors()[key];
-    return server ? [...own, server] : own;
-  }
 
   protected onSubmit(event: Event): void {
     event.preventDefault();

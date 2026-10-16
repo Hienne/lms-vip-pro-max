@@ -94,10 +94,10 @@ describe('serverData', () => {
     const data = TestBed.runInInjectionContext(() => serverData(load));
     await settle();
 
-    calls[0].error(new HttpErrorResponse({ status: 403 }));
+    calls[0].error(new HttpErrorResponse({ status: 401 }));
     await settle();
 
-    expect(data.error()?.kind).toBe('forbidden');
+    expect(data.error()?.kind).toBe('unauthorized');
     expect(data.isLoading()).toBe(false);
   });
 

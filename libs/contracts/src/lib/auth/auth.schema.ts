@@ -4,7 +4,7 @@ import { MenuKeySchema, UserSchema } from '../identity/identity.schema';
 // Mirrors lms-mockup/src/api/auth.js. Roles are data here (a named set of menus), so the profile
 // carries the role's name and the menus it grants instead of the mockup's fixed `PERMS`.
 
-/** Payload only; password and email rules are enforced by the server (422). */
+/** Payload only; password and email rules are enforced by the server. */
 export const LoginCommandSchema = z.object({
   email: z.string(),
   password: z.string(),

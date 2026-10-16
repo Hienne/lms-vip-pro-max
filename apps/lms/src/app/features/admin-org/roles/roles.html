@@ -104,11 +104,7 @@
   (uiDrawerDismiss)="store.cancelEdit()"
 >
   @if (store.editing$(); as editing) {
-  <app-role-form
-    [role]="editing.role"
-    [serverErrors]="store.saveFieldErrors$()"
-    (submitted)="store.save($event)"
-  />
+  <app-role-form [role]="editing.role" (submitted)="store.save($event)" />
   }
 </ng-template>
 <ng-template #footer let-close="close">

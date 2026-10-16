@@ -12,10 +12,11 @@ export type SuccessMessage =
 
 export interface ServerMutationOptions<I, R> {
   /**
-   * Where a failure goes: `'toast'` shows the server's message as an error toast, `'inline'`
-   * exposes it as `error` for the form that submitted. Required so the policy is always visible.
+   * Where a failure goes: `'toast'` shows the backend's title and message as an error toast,
+   * `'alert'` exposes it as `error` for the view to show in a `ui-alert`. Required so the policy
+   * is always visible.
    */
-  readonly errors: 'toast' | 'inline';
+  readonly errors: 'toast' | 'alert';
   /** The success toast, from what was sent and what came back. */
   readonly success: (input: I, result: R) => SuccessMessage;
   /** Runs first on success, before the invalidations and the toast: close a drawer, navigate. */
@@ -28,10 +29,8 @@ export interface ServerMutation<I> {
   /** Starts the call. A new run cancels the one in flight. */
   run(input: I): void;
   readonly isPending: Signal<boolean>;
-  /** The last failure; meaningful for `errors: 'inline'`. */
+  /** The last failure; meaningful for `errors: 'alert'`. */
   readonly error: Signal<AppError | undefined>;
-  /** The last failure's `details` (field name to message), or `{}`: bind it to a form's `serverErrors`. */
-  readonly fieldErrors: Signal<Readonly<Record<string, string>>>;
   /** Forgets the last request and its error, e.g. when a drawer reopens. */
   reset(): void;
 }
@@ -62,7 +61,9 @@ export function serverMutation<I, R>(
           },
           error: (error: unknown) => {
             if (options.errors === 'toast') {
-              toaster.error(toAppError(error).message);
+              const { title, message } = toAppError(error);
+              if (title) toaster.error(title, message);
+              else toaster.error(message);
             }
           },
         }),
@@ -79,7 +80,6 @@ export function serverMutation<I, R>(
     run: (input) => request.set({ input }),
     isPending: resource.isLoading,
     error,
-    fieldErrors: computed(() => error()?.details ?? {}),
     reset: () => request.set(undefined),
   };
 }

@@ -43,7 +43,10 @@ Choose the first form that fits:
 3. **Component** only when the piece owns DOM the consumer should not write:
    SVG (`ui-icon`, `ui-ring`, charts), generated structure (`ui-avatar`
    initials, `ui-data-table`), or several projection slots (`ui-field`,
-   `ui-page-header`).
+   `ui-page-header`). `ui-field` is the one component that depends on
+   `@angular/forms/signals` at runtime: it reads the state of its projected
+   `[formField]` and shows that field's validator messages once touched, so it
+   has no `errors` input.
 4. **Wrap `@angular/aria` / `@angular/cdk`** for composite widgets and overlays
    (table below). Our code adds the look; the library owns keyboard, focus and
    ARIA.

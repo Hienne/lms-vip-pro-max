@@ -1,14 +1,17 @@
 import { ErrorHandler } from '@angular/core';
-import { provideHttpClient } from '@angular/common/http';
+import { HttpClient, provideHttpClient } from '@angular/common/http';
 import {
   HttpTestingController,
   provideHttpClientTesting,
 } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 import { defineEndpoint } from '@lms/contracts';
+import { envelopeError, envelopeOk } from '@lms/mocks';
 import { z } from 'zod';
+import { toAppError } from '../errors/app-error';
 import { ContractError } from './contract-error';
 import { ENDPOINT, EndpointClient } from './endpoint-client';
+import { provideEnvelopeHttpClient } from './http.testing';
 
 const getCourse = defineEndpoint({
   method: 'get',
@@ -232,5 +235,99 @@ describe('EndpointClient', () => {
       client.call(saveCourse, { params: { courseId: 'c' } });
     };
     expect(never).toBeTypeOf('function');
+  });
+});
+
+describe('EndpointClient with the backend envelope', () => {
+  let backend: HttpTestingController;
+  let client: EndpointClient;
+
+  beforeEach(() => {
+    TestBed.configureTestingModule({
+      providers: [
+        provideEnvelopeHttpClient(),
+        { provide: ErrorHandler, useValue: { handleError: () => undefined } },
+      ],
+    });
+    backend = TestBed.inject(HttpTestingController);
+    client = TestBed.inject(EndpointClient);
+  });
+  afterEach(() => backend.verify());
+
+  const callGetCourse = () => {
+    const outcome: { value?: unknown; error?: unknown } = {};
+    client.call(getCourse, { params: { courseId: 'c1' } }).subscribe({
+      next: (value) => (outcome.value = value),
+      error: (error) => (outcome.error = error),
+    });
+    return { outcome, request: backend.expectOne('/api/courses/c1') };
+  };
+
+  it('returns the parsed data of a SUCCESS envelope', () => {
+    const { outcome, request } = callGetCourse();
+    request.flush(envelopeOk({ id: 'c1' }));
+    expect(outcome.value).toEqual({ id: 'c1' });
+  });
+
+  it('turns an ERROR envelope into a server error with the backend title and message', () => {
+    const { outcome, request } = callGetCourse();
+    request.flush(
+      envelopeError('CORE-0409', 'Trùng email', 'Email đã tồn tại.'),
+    );
+    expect(toAppError(outcome.error)).toEqual({
+      kind: 'server',
+      title: 'Trùng email',
+      message: 'Email đã tồn tại.',
+      messageCode: 'CORE-0409',
+    });
+  });
+
+  it('turns CORE-0401 into an unauthorized error', () => {
+    const { outcome, request } = callGetCourse();
+    request.flush(
+      envelopeError('CORE-0401', 'Authentication required', 'Token is invalid'),
+    );
+    expect(toAppError(outcome.error)).toMatchObject({
+      kind: 'unauthorized',
+      messageCode: 'CORE-0401',
+      message: 'Token is invalid',
+    });
+  });
+
+  it('reports a malformed envelope as a contract error', () => {
+    const { outcome, request } = callGetCourse();
+    request.flush({ id: 'c1' });
+    expect(outcome.error).toBeInstanceOf(ContractError);
+    expect(toAppError(outcome.error).kind).toBe('contract');
+  });
+
+  it('reports a SUCCESS envelope whose data breaks the endpoint schema as a contract error', () => {
+    const { outcome, request } = callGetCourse();
+    request.flush(envelopeOk({ id: 7 }));
+    expect(outcome.error).toBeInstanceOf(ContractError);
+  });
+
+  it('leaves a request without an endpoint alone', () => {
+    let body: unknown;
+    TestBed.inject(HttpClient)
+      .get('/assets/logo.json')
+      .subscribe((value) => (body = value));
+    backend.expectOne('/assets/logo.json').flush({ plain: true });
+    expect(body).toEqual({ plain: true });
+  });
+
+  it('still reports status 0 as offline', () => {
+    const { outcome, request } = callGetCourse();
+    request.error(new ProgressEvent('error'), { status: 0 });
+    expect(toAppError(outcome.error).kind).toBe('offline');
+  });
+
+  it('hands a blob endpoint its body without looking for an envelope', () => {
+    let blob: unknown;
+    client.call(exportAll).subscribe((value) => (blob = value));
+    backend
+      .expectOne('/api/export')
+      .flush(new Blob(['a,b'], { type: 'text/csv' }));
+    expect(blob).toBeInstanceOf(Blob);
   });
 });

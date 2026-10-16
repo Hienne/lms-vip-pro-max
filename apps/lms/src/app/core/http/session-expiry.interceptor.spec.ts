@@ -1,21 +1,15 @@
-import {
-  HttpClient,
-  provideHttpClient,
-  withInterceptors,
-} from '@angular/common/http';
-import {
-  HttpTestingController,
-  provideHttpClientTesting,
-} from '@angular/common/http/testing';
+import { HttpClient } from '@angular/common/http';
+import { HttpTestingController } from '@angular/common/http/testing';
 import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { provideRouter, Router } from '@angular/router';
 import { authEndpoints, type Profile } from '@lms/contracts';
-import { profileFixtures } from '@lms/mocks';
+import { envelopeError, profileFixtures } from '@lms/mocks';
 import { Toaster } from '@lms/ui';
 import { SESSION_EXPIRED_MESSAGE } from '../errors/app-error';
 import { SessionStore } from '../session/session.store';
 import { EndpointClient } from './endpoint-client';
+import { provideEnvelopeHttpClient } from './http.testing';
 import { sessionExpiryInterceptor } from './session-expiry.interceptor';
 
 class FakeSession {
@@ -35,8 +29,7 @@ describe('sessionExpiryInterceptor', async () => {
     session = new FakeSession();
     TestBed.configureTestingModule({
       providers: [
-        provideHttpClient(withInterceptors([sessionExpiryInterceptor])),
-        provideHttpClientTesting(),
+        provideEnvelopeHttpClient(sessionExpiryInterceptor),
         provideRouter([]),
         { provide: SessionStore, useValue: session },
       ],
@@ -70,6 +63,56 @@ describe('sessionExpiryInterceptor', async () => {
     expect(toaster.info).toHaveBeenCalledExactlyOnceWith(
       SESSION_EXPIRED_MESSAGE,
     );
+  });
+
+  it('ends the session on a 200 carrying the CORE-0401 envelope and still fails the caller', async () => {
+    const errors: unknown[] = [];
+    client
+      .call(authEndpoints.demoAccounts)
+      .subscribe({ error: (e) => errors.push(e) });
+    backend
+      .expectOne(() => true)
+      .flush(envelopeError('CORE-0401', 'Cần đăng nhập', 'Token không hợp lệ'));
+    await settle();
+
+    expect(errors).toHaveLength(1);
+    expect(session.expire).toHaveBeenCalledOnce();
+    expect(router.navigate).toHaveBeenCalledWith(['/login'], {
+      queryParams: { next: '/catalog?q=a' },
+    });
+    expect(toaster.info).toHaveBeenCalledExactlyOnceWith(
+      SESSION_EXPIRED_MESSAGE,
+    );
+  });
+
+  it.each([
+    ['profile', authEndpoints.profile],
+    ['login', authEndpoints.login],
+    ['loginDemo', authEndpoints.loginDemo],
+  ])('leaves a CORE-0401 envelope on %s alone', async (_name, endpoint) => {
+    client
+      .call(
+        ...([endpoint, { body: {}, params: { userId: 'u1' } }] as unknown as [
+          never,
+        ]),
+      )
+      .subscribe({ error: () => undefined });
+    backend
+      .expectOne(() => true)
+      .flush(envelopeError('CORE-0401', 'Sai thông tin', 'Sai mật khẩu'));
+    await settle();
+    expect(session.expire).not.toHaveBeenCalled();
+  });
+
+  it('ignores an ERROR envelope with any other code', async () => {
+    client
+      .call(authEndpoints.demoAccounts)
+      .subscribe({ error: () => undefined });
+    backend
+      .expectOne(() => true)
+      .flush(envelopeError('CORE-0500', 'Lỗi', 'Có lỗi'));
+    await settle();
+    expect(session.expire).not.toHaveBeenCalled();
   });
 
   it('reports a burst of 401s once', async () => {

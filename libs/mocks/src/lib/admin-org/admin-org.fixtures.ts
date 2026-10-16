@@ -1,12 +1,12 @@
 import type {
   AdminMeta,
-  ApiError,
   AuditEntry,
   OrgUnit,
   ResetPasswordResult,
   UserDetail,
   UserListItem,
 } from '@lms/contracts';
+import { refusal } from '../error-envelopes';
 import {
   groupFixtures,
   roleFixtures,
@@ -147,20 +147,26 @@ export const resetPasswordResult: ResetPasswordResult = {
   sentTo: 'hocvien@demo.cb',
 };
 
-export const saveUserInvalid: ApiError = {
-  message: 'Vui lòng kiểm tra lại thông tin.',
-  details: { email: 'Email đã được dùng cho tài khoản khác.' },
-};
-export const saveUserForbidden: ApiError = {
-  message: 'Bạn không có quyền tạo/sửa người dùng ngoài đơn vị bạn quản lý.',
-};
-export const setUserStatusInvalid: ApiError = {
-  message: 'Không thể tự khóa tài khoản của chính mình.',
-};
-export const userNotFound: ApiError = { message: 'Người dùng không tồn tại.' };
-export const userForbidden: ApiError = {
-  message: 'Bạn không có quyền xem người dùng thuộc đơn vị khác.',
-};
+export const saveUserRejected = refusal(
+  'Không lưu được người dùng',
+  'Email đã được dùng cho tài khoản khác.',
+);
+export const saveUserNotPermitted = refusal(
+  'Không đủ quyền',
+  'Bạn không có quyền tạo/sửa người dùng ngoài đơn vị bạn quản lý.',
+);
+export const setUserStatusRejected = refusal(
+  'Không đổi được trạng thái',
+  'Không thể tự khóa tài khoản của chính mình.',
+);
+export const userMissing = refusal(
+  'Không tìm thấy người dùng',
+  'Người dùng không tồn tại.',
+);
+export const userNotPermitted = refusal(
+  'Không đủ quyền',
+  'Bạn không có quyền xem người dùng thuộc đơn vị khác.',
+);
 
 /** Administrators of a unit: those limited to it, and whole-system ones placed in it. */
 function adminsOf(unitId: string): OrgUnit['admins'] {
@@ -219,35 +225,48 @@ export const unitAdminOrg: readonly OrgUnit[] = orgFixtures.filter(
   (u) => u.id === 'u2',
 );
 
-export const saveUnitInvalid: ApiError = {
-  message: 'Vui lòng kiểm tra lại thông tin.',
-  details: { code: 'Mã đơn vị đã tồn tại.' },
-};
-export const saveUnitForbidden: ApiError = {
-  message: 'Bạn không có quyền tạo đơn vị mới (chỉ quản trị toàn hệ thống).',
-};
-export const unitNotFound: ApiError = { message: 'Đơn vị không tồn tại.' };
-export const saveGroupInvalid: ApiError = {
-  message: 'Vui lòng kiểm tra lại thông tin.',
-  details: { name: 'Nhập tên phòng/nhóm.' },
-};
-export const deleteGroupInvalid: ApiError = {
-  message: 'Nhóm còn thành viên — hãy chuyển thành viên sang nhóm khác trước.',
-};
-export const groupNotFound: ApiError = { message: 'Nhóm không tồn tại.' };
+export const saveUnitRejected = refusal(
+  'Không lưu được đơn vị',
+  'Mã đơn vị đã tồn tại.',
+);
+export const saveUnitNotPermitted = refusal(
+  'Không đủ quyền',
+  'Bạn không có quyền tạo đơn vị mới (chỉ quản trị toàn hệ thống).',
+);
+export const unitMissing = refusal(
+  'Không tìm thấy đơn vị',
+  'Đơn vị không tồn tại.',
+);
+export const saveGroupRejected = refusal(
+  'Không lưu được nhóm',
+  'Nhập tên phòng/nhóm.',
+);
+export const deleteGroupRejected = refusal(
+  'Không xóa được nhóm',
+  'Nhóm còn thành viên — hãy chuyển thành viên sang nhóm khác trước.',
+);
+export const groupMissing = refusal(
+  'Không tìm thấy nhóm',
+  'Nhóm không tồn tại.',
+);
 
-export const saveRoleInvalid: ApiError = {
-  message: 'Vui lòng kiểm tra lại thông tin.',
-  details: { name: 'Tên vai trò đã tồn tại.' },
-};
-export const saveRoleLocked: ApiError = {
-  message: 'Vai trò hệ thống này bị khóa, không thể sửa.',
-};
-export const deleteRoleForbidden: ApiError = {
-  message: 'Không thể xóa vai trò hệ thống.',
-};
-export const deleteRoleInvalid: ApiError = {
-  message:
-    'Vai trò đang được gán cho người dùng — hãy chuyển họ sang vai trò khác trước.',
-};
-export const roleNotFound: ApiError = { message: 'Vai trò không tồn tại.' };
+export const saveRoleRejected = refusal(
+  'Không lưu được vai trò',
+  'Tên vai trò đã tồn tại.',
+);
+export const systemRoleLocked = refusal(
+  'Vai trò bị khóa',
+  'Vai trò hệ thống này bị khóa, không thể sửa.',
+);
+export const deleteRoleNotPermitted = refusal(
+  'Không xóa được vai trò',
+  'Không thể xóa vai trò hệ thống.',
+);
+export const deleteRoleRejected = refusal(
+  'Không xóa được vai trò',
+  'Vai trò đang được gán cho người dùng — hãy chuyển họ sang vai trò khác trước.',
+);
+export const roleMissing = refusal(
+  'Không tìm thấy vai trò',
+  'Vai trò không tồn tại.',
+);

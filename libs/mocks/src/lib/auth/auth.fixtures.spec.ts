@@ -48,10 +48,9 @@ describe('auth fixtures', () => {
   });
 
   it('keeps the mockup error messages', () => {
-    expect(loginInvalid.details).toEqual({
-      email: 'Nhập email đăng nhập.',
-      password: 'Mật khẩu tối thiểu 6 ký tự.',
-    });
+    expect(loginInvalid.message).toBe(
+      'Vui lòng kiểm tra lại thông tin đăng nhập.',
+    );
     expect(loginLocked.message).toBe(
       'Tài khoản đã bị khóa. Liên hệ quản trị viên đơn vị để được hỗ trợ.',
     );

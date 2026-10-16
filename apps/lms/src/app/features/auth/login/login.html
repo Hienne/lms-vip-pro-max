@@ -46,19 +46,19 @@
       <ui-alert [announce]="false">
         Vui lòng đăng nhập để tiếp tục tới trang bạn yêu cầu.
       </ui-alert>
-      } @let problem = summary(); @if (problem) { @for (shown of [problem];
-      track shown) {
-      <ui-error-summary [heading]="shown.heading" [items]="shown.items" />
-      } }
+      } @if (store.error$(); as failure) {
+      <ui-alert tone="danger" [heading]="failure.title ?? failureHeading"
+        >{{ failure.message }}</ui-alert
+      >
+      }
 
       <form class="login__fields" novalidate (submit)="onSubmit($event)">
-        <ui-field label="Email" required [errors]="fieldErrors().email">
+        <ui-field label="Email" required>
           <input
             uiInput
             type="email"
             autocomplete="username"
             placeholder="ten@demo.cb"
-            [id]="emailId"
             [formField]="loginForm.email"
           />
         </ui-field>
@@ -66,13 +66,11 @@
           label="Mật khẩu"
           required
           hint="Mockup: tài khoản demo chấp nhận mật khẩu bất kỳ từ 6 ký tự."
-          [errors]="fieldErrors().password"
         >
           <div class="login__password">
             <input
               uiInput
               autocomplete="current-password"
-              [id]="passwordId"
               [type]="showPassword() ? 'text' : 'password'"
               [formField]="loginForm.password"
             />

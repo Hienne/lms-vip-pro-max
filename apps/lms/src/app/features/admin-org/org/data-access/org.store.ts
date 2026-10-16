@@ -61,7 +61,7 @@ export class OrgStore {
     (command: SaveUnitCommand) =>
       this.client.call(adminOrgEndpoints.saveUnit, { body: command }),
     {
-      errors: 'inline',
+      errors: 'toast',
       success: () => 'Đã lưu',
       onSuccess: () => this.setEditingUnit(null),
       invalidates: this.changes,
@@ -72,7 +72,7 @@ export class OrgStore {
     (command: SaveGroupCommand) =>
       this.client.call(adminOrgEndpoints.saveGroup, { body: command }),
     {
-      errors: 'inline',
+      errors: 'toast',
       success: () => 'Đã lưu',
       onSuccess: () => this.setEditingGroup(null),
       invalidates: this.changes,
@@ -122,9 +122,7 @@ export class OrgStore {
   );
 
   readonly isSavingUnit$ = this.unitMutation.isPending;
-  readonly unitFieldErrors$ = this.unitMutation.fieldErrors;
   readonly isSavingGroup$ = this.groupMutation.isPending;
-  readonly groupFieldErrors$ = this.groupMutation.fieldErrors;
 
   readonly unitEditorTitle$ = computed(() =>
     this.state.editingUnit()?.unit ? 'Sửa đơn vị' : 'Thêm đơn vị',

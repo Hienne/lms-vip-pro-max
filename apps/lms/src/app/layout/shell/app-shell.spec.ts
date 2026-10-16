@@ -1,13 +1,9 @@
-import { provideHttpClient } from '@angular/common/http';
-import {
-  HttpTestingController,
-  provideHttpClientTesting,
-} from '@angular/common/http/testing';
+import { HttpTestingController } from '@angular/common/http/testing';
 import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { provideRouter, Router } from '@angular/router';
 import type { MenuKey, Profile } from '@lms/contracts';
-import { profileFixtures } from '@lms/mocks';
+import { envelopeOk, profileFixtures } from '@lms/mocks';
 import { createAppRoutes } from '../../app.routes';
 import { parseAppConfig, provideAppConfig } from '../../core/config/app-config';
 import { testAppConfig } from '../../core/config/app-config.testing';
@@ -16,6 +12,7 @@ import { AppShell } from './app-shell';
 import { LeavePrompt } from '../../core/routing/unsaved-changes.guard';
 import { LOCAL_STORAGE } from '../../core/storage/local-storage';
 import { SIDEBAR_COLLAPSED_KEY, ShellStore } from './data-access/shell.store';
+import { provideEnvelopeHttpClient } from '../../core/http/http.testing';
 
 class FakeSession {
   readonly user = signal<Profile | null>(null);
@@ -42,8 +39,7 @@ describe('AppShell', () => {
       providers: [
         provideAppConfig(parseAppConfig(testAppConfig())),
         provideRouter(createAppRoutes({ devTools: true })),
-        provideHttpClient(),
-        provideHttpClientTesting(),
+        provideEnvelopeHttpClient(),
         { provide: SessionStore, useValue: session },
         {
           provide: LOCAL_STORAGE,
@@ -76,11 +72,11 @@ describe('AppShell', () => {
     backend
       .match('/api/me/nav-counts')
       .filter((r) => !r.cancelled)
-      .forEach((r) => r.flush(counts));
+      .forEach((r) => r.flush(envelopeOk(counts)));
     backend
       .match('/api/auth/demo-accounts')
       .filter((r) => !r.cancelled)
-      .forEach((r) => r.flush([]));
+      .forEach((r) => r.flush(envelopeOk([])));
   }
 
   async function open(url: string, counts?: Counts) {
@@ -430,7 +426,7 @@ describe('AppShell', () => {
         .match('/api/me/nav-counts')
         .filter((r) => !r.cancelled);
       expect(reload).toHaveLength(1);
-      reload[0].flush({ notifications: 0, inbox: 0 });
+      reload[0].flush(envelopeOk({ notifications: 0, inbox: 0 }));
     });
 
     describe('user menu', () => {

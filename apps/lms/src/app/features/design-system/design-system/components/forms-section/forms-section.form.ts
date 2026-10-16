@@ -3,6 +3,7 @@ import {
   maxLength,
   required,
   type SchemaPathTree,
+  type ValidationError,
 } from '@angular/forms/signals';
 import type { ErrorSummaryItem } from '@lms/ui';
 
@@ -38,13 +39,14 @@ export function formsDemoSchema(
   email(path.email, { message: FORMS_DEMO_MESSAGES.emailInvalid });
 }
 
-/** Links each message to the control the error summary focuses. */
+/** Links each error of the form to the control its summary entry focuses. */
 export function toSummaryItems(
-  titleErrors: readonly string[],
-  emailErrors: readonly string[],
+  errors: readonly ValidationError.WithFieldTree[],
 ): ErrorSummaryItem[] {
-  return [
-    ...titleErrors.map((message) => ({ controlId: 'ds-title', message })),
-    ...emailErrors.map((message) => ({ controlId: 'ds-email', message })),
-  ];
+  return errors.flatMap((error) => {
+    const controlId = error.fieldTree().formFieldBindings()[0]?.element.id;
+    return controlId && error.message
+      ? [{ controlId, message: error.message }]
+      : [];
+  });
 }

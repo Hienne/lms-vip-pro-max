@@ -160,8 +160,8 @@ this.client.call(courseEndpoints.saveCourse, { body: command });
     changes, compared by value, the held value is dropped and `load(params)`
     runs again.
   - **`serverMutation(run, { errors, success, onSuccess, invalidates })`**:
-    runs a command. `errors` is required: `'toast'` shows the server message as
-    a toast, `'inline'` exposes it as `error` for the form. On success it runs
+    runs a command. `errors` is required: `'toast'` shows the server's `title`
+    (when it sent one) and message as a toast, `'alert'` exposes it as `error` for the view to show in a `ui-alert`. On success it runs
     `onSuccess`, then bumps `invalidates`, then shows the `success(input,
     result)` toast. Exposes `run(input)`, `isPending`, `error` and `reset()`.
   - Use raw `rxResource` only where they do not fit, with a comment giving the
@@ -235,7 +235,7 @@ export class CourseDetailStore {
   private readonly saveMutation = serverMutation(
     (command: SaveCourseCommand) => this.client.call(courseEndpoints.saveCourse, { body: command }),
     {
-      errors: 'inline',
+      errors: 'toast',
       success: () => 'Course saved',
       onSuccess: () => this.setEditorOpen(false),
       invalidates: this.changes,
@@ -340,8 +340,13 @@ export class CourseDetailStore {
 
 - The form model (`signal<T>`), `form()`, the validation schema, and submission
   all live in the **component that renders the form**.
-- Bind fields with the `FormField` directive (`[formField]`). Show errors only
-  after the field is touched.
+- Bind fields with the `FormField` directive (`[formField]`) inside `ui-field`.
+  `ui-field` reads the bound field's state and shows its validator and
+  async-validator messages once the field is touched (on blur, or after
+  `submit()`), so a form computes no error messages and passes none to the
+  field. Server refusals are not field errors: the store shows them as a toast
+  or an alert (see `serverMutation`). For a summary of every error, read
+  `form().errorSummary()`.
 - To prefill from server data, use a `linkedSignal` from the store's readonly
   signal as the form model.
 - On submit, validate with `submit()`, convert the value into a form-agnostic
@@ -371,12 +376,9 @@ export class CourseDetail {
 
 ```html
 <form (submit)="onSubmit($event)">
-  <input id="title" [formField]="courseForm.title" />
-  @if (courseForm.title().touched() && courseForm.title().invalid()) {
-    @for (error of courseForm.title().errors(); track error.kind) {
-      <p class="field-error">{{ error.message }}</p>
-    }
-  }
+  <ui-field label="Title" required>
+    <input uiInput [formField]="courseForm.title" />
+  </ui-field>
   <button type="submit" [disabled]="store.isSaving$()">Save</button>
 </form>
 ```
@@ -559,7 +561,7 @@ readonly total = computed(() => this.price() * this.quantity());
 - Test behavior through the DOM and public API, not internals or the number of
   times an effect runs.
 - **Endpoint calls:** `provideHttpClient()` + `provideHttpClientTesting()` +
-  `HttpTestingController`. The call mechanism is tested once, in
+  `HttpTestingController`; use `provideEnvelopeHttpClient()` (`core/http/http.testing.ts`) instead of `provideHttpClient()` when the spec flushes `envelopeOk(…)`/`envelopeError(…)`. The call mechanism is tested once, in
   `endpoint-client.spec.ts`; there is no spec per endpoint.
 - **Stores:** provide the store with `HttpTestingController` and `@lms/mocks` fixtures, call
   commands, flush with `TestBed.tick()` / `await fixture.whenStable()`, and
@@ -578,7 +580,7 @@ readonly total = computed(() => this.price() * this.quantity());
 - [ ] Components hold no writable state or state logic (other than the form model), and handlers only call store commands?
 - [ ] Components never inject `HttpClient` or `EndpointClient`?
 - [ ] Stores are `@Injectable()` provided at the component level, and no API service or direct `HttpClient` call exists?
-- [ ] Every API call is `client.call(endpoint, …)` inside `serverData`/`serverMutation` (or `rxResource` with a comment giving the reason), and every mutation declares `errors: 'toast' | 'inline'`?
+- [ ] Every API call is `client.call(endpoint, …)` inside `serverData`/`serverMutation` (or `rxResource` with a comment giving the reason), and every mutation declares `errors: 'toast' | 'alert'`?
 - [ ] All writable state (screen state only) is in one `private readonly state = {}` object, exposed as `x$` via `asReadonly()`/`computed()`, and written only through `setX()` setters that commands compose?
 - [ ] Loading, error + retry, and empty states are rendered?
 - [ ] Forms use Signal Forms, and the form plus submit logic stay in the component?

@@ -1,6 +1,7 @@
 import { HttpErrorResponse } from '@angular/common/http';
 import { z } from 'zod';
 import { ContractError } from '../http/contract-error';
+import { ApiError } from '../http/api-error';
 import { toAppError } from './app-error';
 
 function http(status: number, error?: unknown): HttpErrorResponse {
@@ -15,10 +16,7 @@ describe('toAppError', () => {
       'unauthorized',
       'Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.',
     ],
-    [403, 'forbidden', 'Bạn không có quyền thực hiện thao tác này.'],
-    [404, 'not-found', 'Dữ liệu không tồn tại hoặc đã bị xóa.'],
-    [422, 'invalid', 'Vui lòng kiểm tra lại thông tin.'],
-    [423, 'locked', 'Tài khoản đã bị khóa.'],
+    [403, 'unknown', 'Có lỗi xảy ra. Vui lòng thử lại sau.'],
     [500, 'unknown', 'Có lỗi xảy ra. Vui lòng thử lại sau.'],
   ] as const)(
     'maps status %s to %s with a default message',
@@ -27,30 +25,9 @@ describe('toAppError', () => {
     },
   );
 
-  it('uses the server message when the body is an ApiError', () => {
-    const error = toAppError(
-      http(401, { message: 'Email hoặc mật khẩu không đúng.' }),
-    );
-    expect(error).toEqual({
-      kind: 'unauthorized',
-      message: 'Email hoặc mật khẩu không đúng.',
-    });
-  });
-
-  it('keeps field details on 422', () => {
-    const error = toAppError(
-      http(422, { message: 'Sai.', details: { email: 'Nhập email.' } }),
-    );
-    expect(error).toEqual({
-      kind: 'invalid',
-      message: 'Sai.',
-      details: { email: 'Nhập email.' },
-    });
-  });
-
-  it('ignores a body that is not an ApiError', () => {
-    expect(toAppError(http(404, '<html>')).message).toBe(
-      'Dữ liệu không tồn tại hoặc đã bị xóa.',
+  it('ignores any HTTP response body', () => {
+    expect(toAppError(http(401, { message: 'Sai.' })).message).toBe(
+      'Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.',
     );
   });
 
@@ -66,5 +43,37 @@ describe('toAppError', () => {
   it('maps anything else to unknown', () => {
     expect(toAppError(new Error('boom')).kind).toBe('unknown');
     expect(toAppError(undefined).kind).toBe('unknown');
+  });
+
+  describe('an ERROR envelope', () => {
+    it('shows the backend title and message verbatim', () => {
+      expect(
+        toAppError(
+          new ApiError('CORE-0409', 'Trùng email', 'Email đã tồn tại.'),
+        ),
+      ).toEqual({
+        kind: 'server',
+        title: 'Trùng email',
+        message: 'Email đã tồn tại.',
+        messageCode: 'CORE-0409',
+      });
+    });
+
+    it('maps CORE-0401 to unauthorized', () => {
+      const error = toAppError(
+        new ApiError('CORE-0401', 'Cần đăng nhập', 'Hết phiên.'),
+      );
+      expect(error.kind).toBe('unauthorized');
+      expect(error.messageCode).toBe('CORE-0401');
+    });
+
+    it('falls back to the Vietnamese default when the backend sent no message', () => {
+      const error = toAppError(new ApiError('CORE-0500', undefined, undefined));
+      expect(error).toEqual({
+        kind: 'server',
+        message: 'Có lỗi xảy ra. Vui lòng thử lại sau.',
+        messageCode: 'CORE-0500',
+      });
+    });
   });
 });

@@ -1,12 +1,5 @@
+import { Component, input, linkedSignal, output } from '@angular/core';
 import {
-  Component,
-  computed,
-  input,
-  linkedSignal,
-  output,
-} from '@angular/core';
-import {
-  type FieldTree,
   form,
   FormField,
   submit,
@@ -28,8 +21,6 @@ import { UnitFormSchema } from './unit-form.schema';
 export class UnitForm {
   /** The unit being edited; `null` adds a new one. */
   readonly unit = input.required<OrgUnit | null>();
-  /** Per-field messages of the server's 422 (`code` when it is taken). */
-  readonly serverErrors = input<Readonly<Record<string, string>>>({});
   readonly submitted = output<SaveUnitCommand>();
 
   private readonly model = linkedSignal(() => ({
@@ -39,24 +30,6 @@ export class UnitForm {
   protected readonly unitForm = form(this.model, (path) => {
     validateStandardSchema(path, UnitFormSchema);
   });
-
-  protected readonly codeErrors = computed(() =>
-    this.messages(this.unitForm.code, 'code'),
-  );
-  protected readonly nameErrors = computed(() =>
-    this.messages(this.unitForm.name, 'name'),
-  );
-
-  private messages(field: FieldTree<string>, key: string): readonly string[] {
-    const own = field().touched()
-      ? field()
-          .errors()
-          .map((error) => error.message ?? '')
-          .filter(Boolean)
-      : [];
-    const server = this.serverErrors()[key];
-    return server ? [...own, server] : own;
-  }
 
   protected onSubmit(event: Event): void {
     event.preventDefault();

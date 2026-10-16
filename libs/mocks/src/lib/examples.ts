@@ -1,36 +1,36 @@
 import {
   adminOrgEndpoints,
   type AnyEndpoint,
-  type ApiError,
+  type Envelope,
   authEndpoints,
   healthEndpoints,
   shellEndpoints,
 } from '@lms/contracts';
 import {
   adminMetaFixture,
-  deleteRoleForbidden,
-  deleteRoleInvalid,
-  roleNotFound,
-  saveRoleInvalid,
-  saveRoleLocked,
-  deleteGroupInvalid,
-  groupNotFound,
+  deleteRoleNotPermitted,
+  deleteRoleRejected,
+  roleMissing,
+  saveRoleRejected,
+  systemRoleLocked,
+  deleteGroupRejected,
+  groupMissing,
   orgFixtures,
-  saveGroupInvalid,
-  saveUnitForbidden,
-  saveUnitInvalid,
+  saveGroupRejected,
+  saveUnitNotPermitted,
+  saveUnitRejected,
   unitAdminOrg,
-  unitNotFound,
+  unitMissing,
   resetPasswordResult,
-  saveUserForbidden,
-  saveUserInvalid,
-  setUserStatusInvalid,
+  saveUserNotPermitted,
+  saveUserRejected,
+  setUserStatusRejected,
   unitAdminMetaFixture,
   unitAdminUserList,
   userDetailFixture,
-  userForbidden,
+  userNotPermitted,
   userListFixtures,
-  userNotFound,
+  userMissing,
 } from './admin-org/admin-org.fixtures';
 import {
   demoAccountFixtures,
@@ -42,7 +42,6 @@ import {
   loginUnauthorized,
   changePasswordInvalid,
   profileFixtures,
-  profileUnauthorized,
   updateProfileInvalid,
 } from './auth/auth.fixtures';
 import {
@@ -50,6 +49,7 @@ import {
   roleFixtures,
   unitFixtures,
 } from './identity/identity.fixtures';
+import { sessionExpired } from './error-envelopes';
 import { healthOk } from './health/health.fixtures';
 import { navCountsFixtures } from './shell/shell.fixtures';
 
@@ -58,8 +58,8 @@ export interface EndpointExamples {
   readonly default: unknown;
   /** Role-dependent bodies, keyed `learner`, `admin`, ... */
   readonly roles?: Readonly<Record<string, unknown>>;
-  /** The mockup's specific error bodies for this endpoint, keyed by status; for specs. */
-  readonly errors?: Readonly<Partial<Record<number, ApiError>>>;
+  /** The `ERROR` envelopes this endpoint can answer, keyed by scenario name; for specs. */
+  readonly errors?: Readonly<Record<string, Envelope>>;
 }
 
 /** Keyed by the endpoint's key in its registry. */
@@ -67,27 +67,40 @@ export const endpointExamples: Readonly<Record<string, EndpointExamples>> = {
   health: { default: healthOk },
   login: {
     default: loginResult,
-    errors: { 401: loginUnauthorized, 422: loginInvalid, 423: loginLocked },
+    errors: {
+      wrongCredentials: loginUnauthorized,
+      invalidInput: loginInvalid,
+      accountLocked: loginLocked,
+    },
   },
   loginDemo: {
     default: loginResult,
-    errors: { 404: loginDemoNotFound, 423: loginDemoLocked },
+    errors: {
+      accountMissing: loginDemoNotFound,
+      accountLocked: loginDemoLocked,
+    },
   },
   logout: { default: true },
   profile: {
     default: profileFixtures['learner'],
     roles: profileFixtures,
-    errors: { 401: profileUnauthorized },
+    errors: { sessionExpired: sessionExpired },
   },
   // The mock is stateless and a PUT carries no role example, so the app reloads the profile (a GET
   // with the role's example) instead of applying this body.
   updateProfile: {
     default: profileFixtures['learner'],
-    errors: { 401: profileUnauthorized, 422: updateProfileInvalid },
+    errors: {
+      sessionExpired: sessionExpired,
+      rejected: updateProfileInvalid,
+    },
   },
   changePassword: {
     default: true,
-    errors: { 401: profileUnauthorized, 422: changePasswordInvalid },
+    errors: {
+      sessionExpired: sessionExpired,
+      rejected: changePasswordInvalid,
+    },
   },
   demoAccounts: { default: demoAccountFixtures },
   users: {
@@ -97,19 +110,19 @@ export const endpointExamples: Readonly<Record<string, EndpointExamples>> = {
   // The mock is stateless: every user page answers with the seed's demo learner.
   user: {
     default: userDetailFixture,
-    errors: { 403: userForbidden, 404: userNotFound },
+    errors: { notPermitted: userNotPermitted, missing: userMissing },
   },
   saveUser: {
     default: userListFixtures[0],
-    errors: { 403: saveUserForbidden, 422: saveUserInvalid },
+    errors: { notPermitted: saveUserNotPermitted, rejected: saveUserRejected },
   },
   setUserStatus: {
     default: userListFixtures[0],
-    errors: { 422: setUserStatusInvalid, 404: userNotFound },
+    errors: { rejected: setUserStatusRejected, missing: userMissing },
   },
   resetPassword: {
     default: resetPasswordResult,
-    errors: { 404: userNotFound },
+    errors: { missing: userMissing },
   },
   adminMeta: {
     default: adminMetaFixture,
@@ -122,32 +135,36 @@ export const endpointExamples: Readonly<Record<string, EndpointExamples>> = {
   // The mock is stateless: the mutations answer a seed record, and the app reloads `org` instead.
   saveUnit: {
     default: unitFixtures[0],
-    errors: { 403: saveUnitForbidden, 422: saveUnitInvalid },
+    errors: { notPermitted: saveUnitNotPermitted, rejected: saveUnitRejected },
   },
   setUnitStatus: {
     default: unitFixtures[0],
-    errors: { 404: unitNotFound },
+    errors: { missing: unitMissing },
   },
   saveGroup: {
     default: groupFixtures[0],
-    errors: { 422: saveGroupInvalid },
+    errors: { rejected: saveGroupRejected },
   },
   deleteGroup: {
     default: true,
-    errors: { 404: groupNotFound, 422: deleteGroupInvalid },
+    errors: { missing: groupMissing, rejected: deleteGroupRejected },
   },
   roles: { default: roleFixtures },
   // The mock is stateless: the mutations answer a seed role, and the app reloads `roles` instead.
   saveRole: {
     default: roleFixtures[4],
-    errors: { 403: saveRoleLocked, 404: roleNotFound, 422: saveRoleInvalid },
+    errors: {
+      locked: systemRoleLocked,
+      missing: roleMissing,
+      rejected: saveRoleRejected,
+    },
   },
   deleteRole: {
     default: true,
     errors: {
-      403: deleteRoleForbidden,
-      404: roleNotFound,
-      422: deleteRoleInvalid,
+      notPermitted: deleteRoleNotPermitted,
+      missing: roleMissing,
+      rejected: deleteRoleRejected,
     },
   },
   navCounts: {

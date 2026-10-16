@@ -1,27 +1,22 @@
-import { provideHttpClient } from '@angular/common/http';
-import {
-  HttpTestingController,
-  provideHttpClientTesting,
-} from '@angular/common/http/testing';
+import { HttpTestingController } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 import { provideRouter, Router } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
 import {
   demoAccountFixtures,
-  loginDemoLocked,
-  loginInvalid,
-  loginLocked,
+  envelopeError,
+  envelopeOk,
   loginResult,
-  loginUnauthorized,
   profileFixtures,
-  profileUnauthorized,
 } from '@lms/mocks';
+import { Toaster } from '@lms/ui';
 import { createAppRoutes } from '../../../app.routes';
 import {
   parseAppConfig,
   provideAppConfig,
 } from '../../../core/config/app-config';
 import { testAppConfig } from '../../../core/config/app-config.testing';
+import { provideEnvelopeHttpClient } from '../../../core/http/http.testing';
 import { SessionStore } from '../../../core/session/session.store';
 
 describe('Login', () => {
@@ -33,8 +28,7 @@ describe('Login', () => {
   beforeEach(() => {
     TestBed.configureTestingModule({
       providers: [
-        provideHttpClient(),
-        provideHttpClientTesting(),
+        provideEnvelopeHttpClient(),
         provideAppConfig(parseAppConfig(testAppConfig())),
         provideRouter(createAppRoutes({ devTools: true })),
         SessionStore,
@@ -62,18 +56,26 @@ describe('Login', () => {
     await settle();
     backend
       .expectOne('/api/auth/profile')
-      .flush(profileUnauthorized, { status: 401, statusText: 'Unauthorized' });
+      .flush(
+        envelopeError('CORE-0401', 'Cần đăng nhập', 'Token không hợp lệ.'),
+      );
     await settle();
     harness = await RouterTestingHarness.create();
     await harness.navigateByUrl(url);
     await settle();
-    backend.expectOne('/api/auth/demo-accounts').flush(demoAccountFixtures);
+    backend
+      .expectOne('/api/auth/demo-accounts')
+      .flush(envelopeOk(demoAccountFixtures));
     await settle();
     el = harness.routeNativeElement as HTMLElement;
   }
 
   const field = (name: 'email' | 'password') =>
-    el.querySelector<HTMLInputElement>(`#login-${name}`)!;
+    el.querySelector<HTMLInputElement>(
+      name === 'email'
+        ? 'input[autocomplete="username"]'
+        : 'input[autocomplete="current-password"]',
+    )!;
 
   async function type(email: string, password: string): Promise<void> {
     for (const [name, value] of [
@@ -92,13 +94,18 @@ describe('Login', () => {
     await settle();
   }
 
-  const fail = (url: string, body: object, status: number, text = 'Error') =>
-    backend.expectOne(url).flush(body, { status, statusText: text });
+  /** The backend refuses with an ERROR envelope; it still answers HTTP 200. */
+  const refuse = (url: string, title: string, message: string) =>
+    backend.expectOne(url).flush(envelopeError('CORE-0402', title, message));
+
+  const alert = () => el.querySelector('.login__card ui-alert[role="alert"]');
 
   async function signInSucceeds(role: keyof typeof profileFixtures) {
-    backend.expectOne('/api/auth/login').flush(loginResult);
+    backend.expectOne('/api/auth/login').flush(envelopeOk(loginResult));
     await settle();
-    backend.expectOne('/api/auth/profile').flush(profileFixtures[role]);
+    backend
+      .expectOne('/api/auth/profile')
+      .flush(envelopeOk(profileFixtures[role]));
     await settle();
   }
 
@@ -146,9 +153,11 @@ describe('Login', () => {
         email: 'hoc.vien@demo.cb',
         password: '123456',
       });
-      request.flush(loginResult);
+      request.flush(envelopeOk(loginResult));
       await settle();
-      backend.expectOne('/api/auth/profile').flush(profileFixtures['learner']);
+      backend
+        .expectOne('/api/auth/profile')
+        .flush(envelopeOk(profileFixtures['learner']));
       await vi.waitFor(() => {
         TestBed.tick();
         expect(router.url).toBe('/learn');
@@ -164,9 +173,11 @@ describe('Login', () => {
       await submit();
       const button = el.querySelector('button[type="submit"]');
       expect(button?.getAttribute('aria-busy')).toBe('true');
-      backend.expectOne('/api/auth/login').flush(loginResult);
+      backend.expectOne('/api/auth/login').flush(envelopeOk(loginResult));
       await settle();
-      backend.expectOne('/api/auth/profile').flush(profileFixtures['learner']);
+      backend
+        .expectOne('/api/auth/profile')
+        .flush(envelopeOk(profileFixtures['learner']));
       await settle();
     });
 
@@ -196,51 +207,44 @@ describe('Login', () => {
       });
     });
 
-    it('puts a 422 on the fields and focuses a summary of them', async () => {
+    it('shows a refused sign-in as one alert with the backend title and message, and no toast', async () => {
       await openLogin();
+      const toasts = vi.spyOn(TestBed.inject(Toaster), 'error');
+      await type('a@demo.cb', 'wrong-password');
       await submit();
-      fail('/api/auth/login', loginInvalid, 422, 'Unprocessable');
-      await settle();
-      const summary = el.querySelector('ui-error-summary');
-      expect(summary?.getAttribute('role')).toBe('alert');
-      expect(summary?.textContent).toContain(loginInvalid.message);
-      expect(summary?.querySelectorAll('li')).toHaveLength(2);
-      const messages = Array.from(el.querySelectorAll('.field__error')).map(
-        (e) => e.textContent?.trim(),
+      refuse(
+        '/api/auth/login',
+        'Đăng nhập thất bại',
+        'Email hoặc mật khẩu không đúng.',
       );
-      expect(messages).toEqual([
-        loginInvalid.details?.['email'],
-        loginInvalid.details?.['password'],
-      ]);
-      expect(field('email').getAttribute('aria-invalid')).toBe('true');
-      await vi.waitFor(() => expect(document.activeElement).toBe(summary));
+      await settle();
+      expect(alert()?.textContent).toContain('Đăng nhập thất bại');
+      expect(alert()?.textContent).toContain('Email hoặc mật khẩu không đúng.');
+      expect(toasts).not.toHaveBeenCalled();
+      expect(el.querySelector('ui-error-summary')).toBeNull();
+      expect(el.querySelector('.field__error')).toBeNull();
+      expect(field('password').getAttribute('aria-invalid')).toBeNull();
+      expect(router.url).toBe('/login');
     });
 
-    it.each([
-      [401, loginUnauthorized, 'Unauthorized'],
-      [423, loginLocked, 'Locked'],
-    ] as const)(
-      'puts a %s on the password field',
-      async (status, body, text) => {
-        await openLogin();
-        await type('a@demo.cb', 'wrong-password');
-        await submit();
-        fail('/api/auth/login', body, status, text);
-        await settle();
-        const summary = el.querySelector('ui-error-summary');
-        expect(summary?.textContent).toContain('Không đăng nhập được');
-        expect(summary?.textContent).toContain(body.message);
-        expect(field('password').getAttribute('aria-invalid')).toBe('true');
-        expect(field('email').getAttribute('aria-invalid')).toBeNull();
-        expect(router.url).toBe('/login');
-      },
-    );
+    it('falls back to a default heading when the backend sent no title', async () => {
+      await openLogin();
+      await type('a@demo.cb', 'wrong-password');
+      await submit();
+      backend.expectOne('/api/auth/login').flush({
+        ...envelopeError('CORE-0402', '', 'Sai thông tin.'),
+        messageTitle: null,
+      });
+      await settle();
+      expect(alert()?.textContent).toContain('Không đăng nhập được');
+      expect(alert()?.textContent).toContain('Sai thông tin.');
+    });
 
     it('lets the visitor try again after a failure', async () => {
       await openLogin();
       await type('a@demo.cb', 'wrong-password');
       await submit();
-      fail('/api/auth/login', loginUnauthorized, 401, 'Unauthorized');
+      refuse('/api/auth/login', 'Đăng nhập thất bại', 'Sai mật khẩu.');
       await settle();
       await submit();
       await signInSucceeds('learner');
@@ -259,11 +263,15 @@ describe('Login', () => {
         email: 'long.pd@demo.cb',
         password: '123456',
       });
-      request.flush(loginLocked, { status: 423, statusText: 'Locked' });
-      await settle();
-      expect(el.querySelector('ui-error-summary')?.textContent).toContain(
-        loginLocked.message,
+      request.flush(
+        envelopeError(
+          'CORE-0423',
+          'Tài khoản bị khóa',
+          'Tài khoản đã bị khóa.',
+        ),
       );
+      await settle();
+      expect(alert()?.textContent).toContain('Tài khoản đã bị khóa.');
     });
   });
 
@@ -277,11 +285,11 @@ describe('Login', () => {
       await settle();
       backend
         .expectOne(`/api/auth/demo-accounts/${target.id}/login`)
-        .flush({ id: target.id, roleId: target.roleId });
+        .flush(envelopeOk({ id: target.id, roleId: target.roleId }));
       await settle();
       backend
         .expectOne('/api/auth/profile')
-        .flush(profileFixtures['instructor']);
+        .flush(envelopeOk(profileFixtures['instructor']));
       await vi.waitFor(() => {
         TestBed.tick();
         expect(router.url).toBe('/instructor');
@@ -295,16 +303,13 @@ describe('Login', () => {
         el.querySelectorAll<HTMLButtonElement>('.login__account'),
       )[5].click();
       await settle();
-      fail(
+      refuse(
         `/api/auth/demo-accounts/${target.id}/login`,
-        loginDemoLocked,
-        423,
-        'Locked',
+        'Tài khoản bị khóa',
+        'Tài khoản demo này đã bị khóa.',
       );
       await settle();
-      expect(el.querySelector('ui-error-summary')?.textContent).toContain(
-        loginDemoLocked.message,
-      );
+      expect(alert()?.textContent).toContain('Tài khoản demo này đã bị khóa.');
       expect(field('password').getAttribute('aria-invalid')).toBeNull();
     });
   });
@@ -312,7 +317,9 @@ describe('Login', () => {
   it('sends a signed-in user from the login page to their home', async () => {
     TestBed.inject(SessionStore).restore();
     await settle();
-    backend.expectOne('/api/auth/profile').flush(profileFixtures['admin']);
+    backend
+      .expectOne('/api/auth/profile')
+      .flush(envelopeOk(profileFixtures['admin']));
     await settle();
     harness = await RouterTestingHarness.create();
     await harness.navigateByUrl('/login');
