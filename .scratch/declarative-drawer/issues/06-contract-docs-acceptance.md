@@ -4,10 +4,10 @@
 
 **Blocked by:** 03, 04, 05
 
-**Status:** ready-for-agent
+**Status:** done
 
-- [ ] No store in the app imports `TemplateRef` or `openDrawer`; `openDrawer` is absent from the `@lms/ui` public API
-- [ ] Design-system demo opens a drawer through `uiDrawer`
-- [ ] `angular.md` §5 and `ui-library.md` updated as above; §14 checklist passes
-- [ ] Browser smoke test with screenshots: add and edit on users, user detail, roles, units and groups; a failed save keeps the drawer open with inline errors; Esc is blocked during a save; the mobile navigation drawer opens and closes on navigation
-- [ ] `npm run check` green
+- [x] No store in the app imports `TemplateRef` or `openDrawer`; `openDrawer` is absent from the `@lms/ui` public API
+- [x] Design-system demo opens a drawer through `uiDrawer`
+- [x] `angular.md` §5 and `ui-library.md` updated as above; §14 checklist passes
+- [x] Browser smoke test with screenshots: add and edit on users, user detail, roles, units and groups; a failed save keeps the drawer open with inline errors; Esc is blocked during a save; the mobile navigation drawer opens and closes on navigation
+- [x] `npm run check` green

@@ -525,7 +525,7 @@ export const MIGRATION_ENTRIES = [
     kind: 'component',
     mockupSource: '.drawer, ui.drawer',
     level: 'organism',
-    targets: ['Drawer', 'DrawerOutlet', 'FormActions', 'openDrawer'],
+    targets: ['Drawer', 'DrawerOutlet', 'FormActions'],
     checklist: ['H'],
     status: 'done',
     owner: 'Hienne',

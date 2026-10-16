@@ -301,20 +301,28 @@ and never call `Date.now()` themselves. Specs provide `{ provide: NOW, useValue:
 
 ## Composite widgets and overlays
 
-| Mockup piece                                  | Build on                                                                                      |
-| --------------------------------------------- | --------------------------------------------------------------------------------------------- |
-| `UI.Tabs` (`.tabs`)                           | `@angular/aria` tabs                                                                          |
-| `UI.Segmented` (`.segmented`)                 | `@angular/aria` toolbar (toggle buttons) or listbox (single value)                            |
-| `ui.menu` (`.menu`), row "more" actions       | `@angular/aria` menu                                                                          |
-| Catalog tree (`.tree`)                        | `@angular/aria` tree                                                                          |
-| Searchable select / combobox                  | `@angular/aria` combobox                                                                      |
-| Accordions in lesson/quiz review              | `@angular/aria` accordion                                                                     |
-| `ui.modal`, `ui.confirm` (`.modal`)           | CDK `Dialog`; `ConfirmDialog` organism + a `confirm()` helper returning `Observable<boolean>` |
-| `ui.drawer` (`.drawer`), mobile sidebar       | CDK `Dialog` with side-panel position                                                         |
-| `ui.toast` (`.toasts`)                        | `Toaster` service (root, presentation-only) + CDK overlay; text also sent to `LiveAnnouncer`  |
-| Tooltip                                       | `uiTooltip` directive on CDK overlay                                                          |
-| Wizard stepper (`.stepper`)                   | CDK stepper                                                                                   |
-| Sortable lists (`.sort-item`, `.drag-handle`) | CDK drag-drop, with keyboard move buttons                                                     |
+| Mockup piece                                  | Build on                                                                                        |
+| --------------------------------------------- | ----------------------------------------------------------------------------------------------- |
+| `UI.Tabs` (`.tabs`)                           | `@angular/aria` tabs                                                                            |
+| `UI.Segmented` (`.segmented`)                 | `@angular/aria` toolbar (toggle buttons) or listbox (single value)                              |
+| `ui.menu` (`.menu`), row "more" actions       | `@angular/aria` menu                                                                            |
+| Catalog tree (`.tree`)                        | `@angular/aria` tree                                                                            |
+| Searchable select / combobox                  | `@angular/aria` combobox                                                                        |
+| Accordions in lesson/quiz review              | `@angular/aria` accordion                                                                       |
+| `ui.modal`, `ui.confirm` (`.modal`)           | CDK `Dialog`; `ConfirmDialog` organism + a `confirm()` helper returning `Observable<boolean>`   |
+| `ui.drawer` (`.drawer`), mobile sidebar       | `uiDrawer` directive on an `<ng-template>` (CDK `Dialog`, busy overlay, `uiDrawerDismiss`)      |
+| Form buttons in a drawer footer (Hủy + Lưu)   | `ui-form-actions` molecule: required `formId`, `submitLabel`, `cancelLabel`; extra actions slot |
+| `ui.toast` (`.toasts`)                        | `Toaster` service (root, presentation-only) + CDK overlay; text also sent to `LiveAnnouncer`    |
+| Tooltip                                       | `uiTooltip` directive on CDK overlay                                                            |
+| Wizard stepper (`.stepper`)                   | CDK stepper                                                                                     |
+| Sortable lists (`.sort-item`, `.drag-handle`) | CDK drag-drop, with keyboard move buttons                                                       |
+
+**Drawers.** `uiDrawer` opens the template it sits on while its condition is true and
+closes it when the condition turns false (even while busy). `uiDrawerBusy` blocks every way the
+user can close it and shows the `uiDrawerBusyLabel` overlay; `uiDrawerDismiss` fires only for a
+user close, and the page maps it to the store's cancel command. `openDrawer` is internal to
+`@lms/ui`: there is no imperative way to show a drawer. `@lms/ui` ships no screen copy, so the
+title, busy label and form-actions labels always come from the screen.
 
 Read the installed `@angular/aria` exports before using a pattern; names are
 not guessed from memory.

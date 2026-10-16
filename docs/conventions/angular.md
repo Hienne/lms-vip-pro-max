@@ -191,9 +191,15 @@ this.client.call(courseEndpoints.saveCourse, { body: command });
     calls the server again.
   - A new run cancels the in-flight one. Disable the trigger in the UI while
     `isSaving$()` is true.
-  - Close a drawer or navigate from `onSuccess`, reload data through
-    `invalidates`. Never use an `effect()` for this.
+  - Close a drawer by clearing its state in `onSuccess`, navigate from
+    `onSuccess`, reload data through `invalidates`. Never use an `effect()`
+    for this.
   - Call `reset()` when a form reopens, so an old error does not show.
+- **Drawers are derived from state.** A store holds an `editing…` state key
+  (`edit…` sets it, `cancel…` clears it, the save mutation clears it in
+  `onSuccess`), and the page shows the drawer through the `uiDrawer` directive
+  (`ui-library.md` → overlays). A store never takes a `TemplateRef` and never
+  holds an overlay handle; it injects `Dialog` only for `confirm()`.
 - The route store reads route params itself (`ActivatedRoute` + `toSignal`), so
   the component does not forward them.
 

@@ -105,9 +105,7 @@ export {
 } from './lib/organisms/confirm-dialog/confirm-dialog';
 export {
   Drawer,
-  openDrawer,
   type DrawerContext,
-  type DrawerOptions,
   type DrawerSide,
 } from './lib/organisms/drawer/drawer';
 
