@@ -31,6 +31,10 @@ import {
 } from '../../../core/routing/unsaved-changes.guard';
 import type { Layout } from '../../../core/routing/route-table';
 import { SessionStore } from '../../../core/session/session.store';
+import {
+  LOCAL_STORAGE,
+  type PreferenceStorage,
+} from '../../../core/storage/local-storage';
 import { roleText } from '../../../shared/status/role-badge';
 
 /** Which frame surrounds the page: sidebar and header, the plain focus frame, or nothing. */
@@ -38,14 +42,25 @@ export type Chrome = 'app' | 'focus' | 'bare';
 
 const NO_COUNTS: NavCounts = { notifications: 0, inbox: 0 };
 
+/** Remembers per browser that the desktop sidebar is collapsed to its icon rail. */
+export const SIDEBAR_COLLAPSED_KEY = 'lms.sidebar-collapsed';
+
+function readCollapsed(storage: PreferenceStorage | null): boolean {
+  try {
+    return storage?.getItem(SIDEBAR_COLLAPSED_KEY) === 'true';
+  } catch {
+    return false;
+  }
+}
+
 function leaf(snapshot: ActivatedRouteSnapshot): ActivatedRouteSnapshot {
   return snapshot.firstChild ? leaf(snapshot.firstChild) : snapshot;
 }
 
 /**
  * What the shell shows: the frame chosen from the active route's `data.layout` and the session
- * (the mockup's `shell.render`), the current path for the sidebar, and the navigation drawer
- * used below the `lg` breakpoint. One instance per shell, provided by the shell component.
+ * (the mockup's `shell.render`), the current path for the sidebar, whether the desktop sidebar
+ * is collapsed to an icon rail, and the navigation drawer used below the `lg` breakpoint. One instance per shell, provided by the shell component.
  */
 @Injectable()
 export class ShellStore {
@@ -56,6 +71,7 @@ export class ShellStore {
   private readonly toaster = inject(Toaster);
   private readonly injector = inject(Injector);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly storage = inject(LOCAL_STORAGE);
 
   constructor() {
     inject(LeavePrompt).use(() =>
@@ -75,6 +91,8 @@ export class ShellStore {
       source: () => this.path$(),
       computation: () => false,
     }),
+    /** The desktop sidebar shows icons only; the drawer below `lg` always shows the full menu. */
+    sidebarCollapsed: signal(readCollapsed(this.storage)),
   };
 
   /** The routed page component, for the unsaved-changes check on reload or tab close. */
@@ -86,6 +104,7 @@ export class ShellStore {
   );
 
   readonly navOpen$ = this.state.navOpen.asReadonly();
+  readonly sidebarCollapsed$ = this.state.sidebarCollapsed.asReadonly();
 
   readonly path$ = computed(() => {
     this.navigated();
@@ -156,6 +175,21 @@ export class ShellStore {
 
   closeNav(): void {
     this.setNavOpen(false);
+  }
+
+  private setSidebarCollapsed(collapsed: boolean): void {
+    this.state.sidebarCollapsed.set(collapsed);
+  }
+
+  /** Collapses the sidebar to its icon rail or expands it again, and remembers the choice. */
+  toggleSidebar(): void {
+    const collapsed = !this.sidebarCollapsed$();
+    this.setSidebarCollapsed(collapsed);
+    try {
+      this.storage?.setItem(SIDEBAR_COLLAPSED_KEY, String(collapsed));
+    } catch {
+      // Storage is blocked or full: the choice still applies for this page view.
+    }
   }
 
   /** Header search: sends the query to the list the user's menus allow (nothing for an empty query). */

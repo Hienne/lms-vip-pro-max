@@ -14,7 +14,8 @@ import { testAppConfig } from '../../core/config/app-config.testing';
 import { SessionStore } from '../../core/session/session.store';
 import { AppShell } from './app-shell';
 import { LeavePrompt } from '../../core/routing/unsaved-changes.guard';
-import { ShellStore } from './data-access/shell.store';
+import { LOCAL_STORAGE } from '../../core/storage/local-storage';
+import { SIDEBAR_COLLAPSED_KEY, ShellStore } from './data-access/shell.store';
 
 class FakeSession {
   readonly user = signal<Profile | null>(null);
@@ -32,9 +33,11 @@ class FakeSession {
 describe('AppShell', () => {
   let session: FakeSession;
   let router: Router;
+  let storage: Map<string, string>;
 
   beforeEach(() => {
     session = new FakeSession();
+    storage = new Map();
     TestBed.configureTestingModule({
       providers: [
         provideAppConfig(parseAppConfig(testAppConfig())),
@@ -42,6 +45,14 @@ describe('AppShell', () => {
         provideHttpClient(),
         provideHttpClientTesting(),
         { provide: SessionStore, useValue: session },
+        {
+          provide: LOCAL_STORAGE,
+          useValue: {
+            getItem: (key: string) => storage.get(key) ?? null,
+            setItem: (key: string, value: string) => storage.set(key, value),
+            removeItem: (key: string) => storage.delete(key),
+          },
+        },
       ],
     });
     router = TestBed.inject(Router);
@@ -228,6 +239,61 @@ describe('AppShell', () => {
     expect(visitor.querySelector('main')).not.toBeNull();
   });
 
+  describe('collapsing the sidebar', () => {
+    const toggle = (el: HTMLElement) =>
+      el.querySelector<HTMLButtonElement>(
+        '.app-shell__sidebar .sidebar__toggle',
+      );
+    const rail = (el: HTMLElement) =>
+      el.querySelector('.app-shell')?.classList.contains('app-shell--rail');
+
+    it('collapses to an icon rail and expands again', async () => {
+      signInAs('learner');
+      const el = await open('/learn');
+      expect(toggle(el)?.getAttribute('aria-label')).toBe('Thu gọn thanh bên');
+      expect(toggle(el)?.getAttribute('aria-expanded')).toBe('true');
+      expect(rail(el)).toBe(false);
+
+      toggle(el)?.click();
+      TestBed.tick();
+      expect(rail(el)).toBe(true);
+      expect(el.querySelector('.sidebar--collapsed')).not.toBeNull();
+      expect(toggle(el)?.getAttribute('aria-label')).toBe('Mở rộng thanh bên');
+      expect(toggle(el)?.getAttribute('aria-expanded')).toBe('false');
+
+      toggle(el)?.click();
+      TestBed.tick();
+      expect(rail(el)).toBe(false);
+      expect(el.querySelector('.sidebar--collapsed')).toBeNull();
+    });
+
+    it('keeps every link named while collapsed', async () => {
+      signInAs('learner');
+      const el = await open('/learn');
+      toggle(el)?.click();
+      TestBed.tick();
+      expect(hrefs(el)).toHaveLength(8);
+      expect(
+        el.querySelector('nav a[href="/catalog"]')?.textContent?.trim(),
+      ).toBe('Danh mục khóa học');
+    });
+
+    it('remembers the choice in this browser', async () => {
+      signInAs('learner');
+      const el = await open('/learn');
+      toggle(el)?.click();
+      expect(storage.get(SIDEBAR_COLLAPSED_KEY)).toBe('true');
+      toggle(el)?.click();
+      expect(storage.get(SIDEBAR_COLLAPSED_KEY)).toBe('false');
+    });
+
+    it('starts collapsed when the browser remembers it', async () => {
+      storage.set(SIDEBAR_COLLAPSED_KEY, 'true');
+      signInAs('learner');
+      expect(rail(await open('/learn'))).toBe(true);
+    });
+  });
+
   describe('below the lg breakpoint', () => {
     const dialog = () => document.querySelector<HTMLElement>('[role="dialog"]');
 
@@ -252,6 +318,7 @@ describe('AppShell', () => {
 
       await openDrawer(el);
       expect(dialog()?.querySelectorAll('nav a')).toHaveLength(8);
+      expect(dialog()?.querySelector('.sidebar__toggle')).toBeNull();
       expect(button?.getAttribute('aria-expanded')).toBe('true');
     });
 

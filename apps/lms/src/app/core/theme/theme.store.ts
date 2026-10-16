@@ -8,6 +8,7 @@ import {
   signal,
   untracked,
 } from '@angular/core';
+import { LOCAL_STORAGE } from '../storage/local-storage';
 
 /** What the user chose. Absence of a stored choice means `system`. */
 export type ThemePreference = 'system' | 'light' | 'dark';
@@ -34,13 +35,7 @@ export const THEME_STORAGE = new InjectionToken<ThemeStorage | null>(
   'THEME_STORAGE',
   {
     providedIn: 'root',
-    factory: () => {
-      try {
-        return inject(DOCUMENT).defaultView?.localStorage ?? null;
-      } catch {
-        return null;
-      }
-    },
+    factory: () => inject(LOCAL_STORAGE),
   },
 );
 

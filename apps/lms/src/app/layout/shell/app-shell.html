@@ -2,7 +2,11 @@
 <a class="skip-link" href="#main" (click)="skipToMain($event)"
   >Bỏ qua tới nội dung chính</a
 >
-<div class="app-shell" [class.app-shell--framed]="chrome === 'app'">
+<div
+  class="app-shell"
+  [class.app-shell--framed]="chrome === 'app'"
+  [class.app-shell--rail]="store.sidebarCollapsed$()"
+>
   @if (chrome === 'app' && user) {
   <app-sidebar
     class="app-shell__sidebar"
@@ -10,6 +14,9 @@
     [roleText]="store.roleText$()"
     [activePath]="store.path$()"
     [inboxCount]="store.inboxCount$()"
+    [collapsible]="true"
+    [collapsed]="store.sidebarCollapsed$()"
+    (collapseToggle)="store.toggleSidebar()"
   />
   }
   <div class="app-shell__main">
