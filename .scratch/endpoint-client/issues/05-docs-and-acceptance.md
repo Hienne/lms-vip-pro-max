@@ -4,9 +4,9 @@
 
 **Blocked by:** 03 (in-app mock), 04 (multipart, blob, FileSaver)
 
-**Status:** open
+**Status:** done
 
-- [ ] No doc mentions XApi, API service methods, Prism, OpenAPI, `errors` or `summary` as current practice (`grep` clean apart from history)
-- [ ] Full smoke test with the in-app mock, with screenshots
-- [ ] `npm run check` green and the angular.md §14 checklist passes
-- [ ] Pull request opened; it states the known limits and the hand-off of mid-session 401 to the return-to work
+- [x] No doc mentions XApi, API service methods, Prism, OpenAPI, `errors` or `summary` as current practice (`grep` clean apart from history)
+- [x] Full smoke test with the in-app mock, with screenshots
+- [x] `npm run check` green and the angular.md §14 checklist passes
+- [x] Pull request opened; it states the known limits and the hand-off of mid-session 401 to the return-to work
