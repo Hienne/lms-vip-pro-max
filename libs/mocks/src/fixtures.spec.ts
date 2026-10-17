@@ -1,4 +1,4 @@
-import { ApiErrorSchema } from '@lms/contracts';
+import { ApiErrorSchema, authEndpoints } from '@lms/contracts';
 import { endpointExamples, MOCK_FIXTURES } from './lib/examples';
 
 describe('fixtures match their contracts', () => {
@@ -23,5 +23,11 @@ describe('fixtures match their contracts', () => {
 
   it('every example belongs to a registered endpoint', () => {
     expect(MOCK_FIXTURES.size).toBe(Object.keys(endpointExamples).length);
+  });
+
+  it('answers the mock-only auth endpoints', () => {
+    for (const endpoint of Object.values(authEndpoints)) {
+      expect(MOCK_FIXTURES.has(endpoint)).toBe(true);
+    }
   });
 });

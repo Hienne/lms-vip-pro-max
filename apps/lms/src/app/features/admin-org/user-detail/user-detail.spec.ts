@@ -19,6 +19,10 @@ import {
   provideAppConfig,
 } from '../../../core/config/app-config';
 import { testAppConfig } from '../../../core/config/app-config.testing';
+import {
+  FakeSessionStore,
+  fakeSession,
+} from '../../../core/session/session.testing';
 import { SessionStore } from '../../../core/session/session.store';
 
 describe('UserDetail', () => {
@@ -33,7 +37,7 @@ describe('UserDetail', () => {
         provideHttpClientTesting(),
         provideAppConfig(parseAppConfig(testAppConfig())),
         provideRouter(createAppRoutes({ devTools: true })),
-        SessionStore,
+        { provide: SessionStore, useClass: FakeSessionStore },
       ],
     });
     backend = TestBed.inject(HttpTestingController);
@@ -52,10 +56,7 @@ describe('UserDetail', () => {
   }
 
   async function open(detail = userDetailFixture, id = detail.user.id) {
-    TestBed.inject(SessionStore).restore();
-    await settle();
-    backend.expectOne('/api/auth/profile').flush(profileFixtures['admin']);
-    await settle();
+    fakeSession().user.set(profileFixtures['admin']);
     harness = await RouterTestingHarness.create();
     await harness.navigateByUrl(`/admin/users/${id}`);
     await settle();
@@ -189,10 +190,7 @@ describe('UserDetail', () => {
   });
 
   it('says the user does not exist', async () => {
-    TestBed.inject(SessionStore).restore();
-    await settle();
-    backend.expectOne('/api/auth/profile').flush(profileFixtures['admin']);
-    await settle();
+    fakeSession().user.set(profileFixtures['admin']);
     harness = await RouterTestingHarness.create();
     await harness.navigateByUrl('/admin/users/nobody');
     await settle();

@@ -1,42 +1,11 @@
-import { toUrl } from '../http/endpoint';
 import { authEndpoints } from './auth.endpoints';
-import {
-  DemoAccountSchema,
-  LoginCommandSchema,
-  LoginResultSchema,
-  ProfileSchema,
-} from './auth.schema';
+import { DemoAccountSchema, ProfileSchema } from './auth.schema';
 
 describe('auth endpoints', () => {
-  it('keeps the mockup function names as keys', () => {
+  it('keeps only the mock-only endpoints; the backend ones are authV1Endpoints', () => {
     expect(Object.keys(authEndpoints).sort()).toEqual(
-      [
-        'changePassword',
-        'demoAccounts',
-        'login',
-        'loginDemo',
-        'logout',
-        'profile',
-        'updateProfile',
-      ].sort(),
+      ['changePassword', 'demoAccounts', 'updateProfile'].sort(),
     );
-  });
-
-  it('builds the loginDemo url from the user id', () => {
-    expect(toUrl(authEndpoints.loginDemo, { userId: 'a1' })).toBe(
-      '/api/auth/demo-accounts/a1/login',
-    );
-  });
-
-  it('types only the login payload, password rules stay on the server', () => {
-    expect(
-      LoginCommandSchema.parse({ email: 'x@demo.cb', password: '1' }),
-    ).toEqual({ email: 'x@demo.cb', password: '1' });
-    expect(() => LoginCommandSchema.parse({ email: 'x' })).toThrow();
-  });
-
-  it('rejects a login result without a role id', () => {
-    expect(() => LoginResultSchema.parse({ id: 'a1' })).toThrow();
   });
 
   it('rejects a menu key the app does not know', () => {

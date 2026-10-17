@@ -2,7 +2,7 @@ import { Component, computed, inject } from '@angular/core';
 import { APP_CONFIG } from '../../config/app-config';
 import { Menu, type MenuEntry } from '@lms/ui';
 import { roleText } from '../../../shared/status/role-badge';
-import { DevToolbarStore } from './dev-toolbar.store';
+import { DevToolbarStore, exampleOf } from './dev-toolbar.store';
 
 type Choice =
   | `role:${string}`
@@ -44,14 +44,14 @@ export class DevToolbar {
   private readonly roleEntries = computed<MenuEntry<Choice>[]>(() =>
     this.mockApi
       ? [
-          { kind: 'label', label: 'Đăng nhập nhanh theo vai trò' },
+          { kind: 'label', label: 'Đổi vai trò dữ liệu mô phỏng' },
           ...this.store.accounts$().map(
             (account): MenuEntry<Choice> => ({
               kind: 'item',
               value: `role:${account.id}`,
               label: `${roleText(account)} — ${account.name}`,
               icon: 'user',
-              disabled: account.id === this.store.currentId$(),
+              disabled: exampleOf(account) === this.store.currentRole$(),
             }),
           ),
           { kind: 'separator' },

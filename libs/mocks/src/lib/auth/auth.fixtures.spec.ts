@@ -1,15 +1,8 @@
-import { endpointExamples } from '../examples';
 import { userFixtures } from '../identity/identity.fixtures';
-import {
-  demoAccountFixtures,
-  loginDemoNotFound,
-  loginInvalid,
-  loginLocked,
-  profileFixtures,
-} from './auth.fixtures';
+import { demoAccountFixtures, profileFixtures } from './auth.fixtures';
 
 describe('auth fixtures', () => {
-  it('demo accounts are the six the login screen offers, from the seed', () => {
+  it('demo accounts are the six mock roles the dev toolbar offers, from the seed', () => {
     expect(demoAccountFixtures.map((a) => a.id)).toEqual([
       'a1',
       'a2',
@@ -34,7 +27,6 @@ describe('auth fixtures', () => {
   ])('profile example %s', (name, id, scopeName) => {
     const profile = profileFixtures[name];
     expect(profile).toMatchObject({ id, scopeName });
-    expect(endpointExamples['profile']?.roles?.[name]).toBe(profile);
   });
 
   it('profiles carry the role name, its menus and a home path', () => {
@@ -45,18 +37,5 @@ describe('auth fixtures', () => {
     expect(profileFixtures['admin']?.menus).toContain('admin.roles');
     expect(profileFixtures['learner']?.menus).not.toContain('admin.users');
     expect(profileFixtures['viewer']?.menus).toEqual(['reports']);
-  });
-
-  it('keeps the mockup error messages', () => {
-    expect(loginInvalid.details).toEqual({
-      email: 'Nhập email đăng nhập.',
-      password: 'Mật khẩu tối thiểu 6 ký tự.',
-    });
-    expect(loginLocked.message).toBe(
-      'Tài khoản đã bị khóa. Liên hệ quản trị viên đơn vị để được hỗ trợ.',
-    );
-    expect(loginDemoNotFound.message).toBe(
-      'Tài khoản không tồn tại hoặc đã bị xóa.',
-    );
   });
 });

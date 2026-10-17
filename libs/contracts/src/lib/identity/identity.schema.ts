@@ -50,7 +50,12 @@ export const RoleSchema = z.object({
 });
 export type Role = z.infer<typeof RoleSchema>;
 
-export const AccountStatusSchema = z.enum(['active', 'suspended', 'locked']);
+export const AccountStatusSchema = z.enum([
+  'active',
+  'suspended',
+  'locked',
+  'inactive',
+]);
 export type AccountStatus = z.infer<typeof AccountStatusSchema>;
 
 export const PublishStatusSchema = z.enum([

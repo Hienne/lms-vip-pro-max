@@ -1,4 +1,4 @@
-/** Dev-server proxy: `/api` goes to the backend; unused while `mockApi` is true. */
+/** Dev-server proxy: `/api` goes to the backend; unused while `apiBaseUrl` is set. */
 export default {
   '/api': {
     // TODO(backend): the backend's dev origin.

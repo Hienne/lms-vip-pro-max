@@ -10,8 +10,12 @@ import {
   provideHttpClientTesting,
 } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
-import { authEndpoints, defineEndpoint, shellEndpoints } from '@lms/contracts';
-import { navCountsFixtures, profileFixtures } from '@lms/mocks';
+import {
+  authV1Endpoints,
+  defineEndpoint,
+  shellEndpoints,
+} from '@lms/contracts';
+import { navCountsFixtures } from '@lms/mocks';
 import { z } from 'zod';
 import { ENDPOINT } from '../../http/endpoint-client';
 import { NetworkStore } from '../../network/network.store';
@@ -64,19 +68,19 @@ describe('mockApiInterceptor', () => {
   it('answers with the example of the role chosen in the toolbar', () => {
     TestBed.inject(MockScenario).setRole('admin');
     let body: unknown;
-    ask(authEndpoints.profile, '/api/auth/profile').subscribe(
+    ask(shellEndpoints.navCounts, '/api/me/nav-counts').subscribe(
       (b) => (body = b),
     );
-    expect(body).toEqual(profileFixtures['admin']);
+    expect(body).toEqual(navCountsFixtures['admin']);
   });
 
   it('falls back to the default when the role has no example', () => {
     TestBed.inject(MockScenario).setRole('custom-role');
     let body: unknown;
-    ask(authEndpoints.profile, '/api/auth/profile').subscribe(
+    ask(shellEndpoints.navCounts, '/api/me/nav-counts').subscribe(
       (b) => (body = b),
     );
-    expect(body).toEqual(profileFixtures['learner']);
+    expect(body).toEqual(navCountsFixtures['learner']);
   });
 
   it('sends an endpoint without a fixture to the network and warns once', () => {
@@ -85,6 +89,14 @@ describe('mockApiInterceptor', () => {
     for (const request of backend.match('/api/unmocked')) request.flush({});
     expect(warn).toHaveBeenCalledTimes(1);
   });
+
+  it.each(Object.entries(authV1Endpoints))(
+    'sends the backend auth endpoint %s to the network',
+    (_name, endpoint) => {
+      ask(endpoint, endpoint.path).subscribe({ error: () => undefined });
+      backend.expectOne(endpoint.path).flush({});
+    },
+  );
 
   it('sends an untagged request to the network and warns once', () => {
     http.get('/api/untagged').subscribe();
@@ -96,7 +108,7 @@ describe('mockApiInterceptor', () => {
   it('lets the offline simulation win over the mock', () => {
     TestBed.inject(NetworkStore).goOffline();
     let error: HttpErrorResponse | undefined;
-    ask(authEndpoints.profile, '/api/auth/profile').subscribe({
+    ask(shellEndpoints.navCounts, '/api/me/nav-counts').subscribe({
       error: (e) => (error = e),
     });
     expect(error?.status).toBe(0);
