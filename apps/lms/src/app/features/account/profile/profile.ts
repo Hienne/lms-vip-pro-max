@@ -2,10 +2,13 @@ import { Component, computed, inject, linkedSignal } from '@angular/core';
 import {
   form,
   FormField,
+  readonly,
   submit,
   validateStandardSchema,
 } from '@angular/forms/signals';
+import { isEmptyPatch } from '@lms/contracts';
 import {
+  Alert,
   Avatar,
   Badge,
   Button,
@@ -13,28 +16,31 @@ import {
   CardBody,
   CardHeader,
   Field,
-  FmtDatePipe,
-  FmtRelativePipe,
   Icon,
   Input,
   PageHeader,
 } from '@lms/ui';
-import { menuLabel } from '../../../core/menu/menu-catalog';
+import { PasswordChangeStore } from '../../../shared/account/password-change.store';
+import { PasswordForm } from '../../../shared/account/password-form/password-form';
 import { AccountStatus } from '../../../shared/status/account-status';
-import { isUnitAdmin, RoleBadge } from '../../../shared/status/role-badge';
-import { PasswordForm } from './components/password-form/password-form';
+import { RoleBadge } from '../../../shared/status/role-badge';
+import { scopeLabel } from '../../../shared/status/scope-label';
 import { ProfileStore } from './data-access/profile.store';
 import {
   ProfileFormSchema,
   toProfileFormValue,
-  toUpdateProfileCommand,
+  toUpdateMeCommand,
 } from './profile.form';
 
-/** The profile page (the mockup's `profile`): personal fields, organisation facts and password. */
+/**
+ * The profile page (the mockup's `profile`): the personal fields the user may edit, the
+ * organisation, grants and screens the backend manages (read-only), and the password change.
+ */
 @Component({
   selector: 'app-profile',
   imports: [
     AccountStatus,
+    Alert,
     Avatar,
     Badge,
     Button,
@@ -42,8 +48,6 @@ import {
     CardBody,
     CardHeader,
     Field,
-    FmtDatePipe,
-    FmtRelativePipe,
     FormField,
     Icon,
     Input,
@@ -51,34 +55,55 @@ import {
     PasswordForm,
     RoleBadge,
   ],
-  providers: [ProfileStore],
+  providers: [ProfileStore, PasswordChangeStore],
   templateUrl: './profile.html',
   styleUrl: './profile.scss',
 })
 export class Profile {
   protected readonly store = inject(ProfileStore);
+  protected readonly password = inject(PasswordChangeStore);
 
   private readonly model = linkedSignal(() =>
     toProfileFormValue(this.store.user$()),
   );
   protected readonly profileForm = form(this.model, (path) => {
     validateStandardSchema(path, ProfileFormSchema);
+    readonly(path, () => this.store.readOnly$());
   });
 
-  protected readonly scopedAdmin = computed(() => {
+  /** What a save would send; empty while the form still equals the signed-in user. */
+  private readonly patch = computed(() => {
     const user = this.store.user$();
-    return user ? isUnitAdmin(user) : false;
+    return user ? toUpdateMeCommand(user, this.model()) : {};
+  });
+  protected readonly unchanged = computed(() => isEmptyPatch(this.patch()));
+
+  /** One badge per distinct role, as a user with two grants of one role shows it once. */
+  protected readonly roles = computed(() => {
+    const seen = new Map<string, string>();
+    for (const grant of this.store.user$()?.grants ?? []) {
+      seen.set(grant.roleCode, grant.roleName);
+    }
+    return [...seen].map(([code, name]) => ({ code, name }));
   });
 
-  /** The menus the role grants, by their sidebar names (the mockup listed raw permission keys). */
-  protected readonly menuLabels = computed(() =>
-    (this.store.user$()?.menus ?? []).map(menuLabel),
-  );
+  protected readonly grants = computed(() => {
+    const user = this.store.user$();
+    return (user?.grants ?? []).map((grant) => ({
+      roleName: grant.roleName,
+      scope: scopeLabel(grant.scope, {
+        orgName: grant.scope.orgId === user?.org?.id ? user?.org?.name : null,
+        teamName:
+          grant.scope.teamId === user?.team?.id ? user?.team?.name : null,
+      }),
+    }));
+  });
 
   protected onSubmit(event: Event): void {
     event.preventDefault();
     void submit(this.profileForm, async () => {
-      this.store.save(toUpdateProfileCommand(this.model()));
+      const user = this.store.user$();
+      if (user && !this.unchanged()) this.store.save(this.patch());
     });
   }
 }

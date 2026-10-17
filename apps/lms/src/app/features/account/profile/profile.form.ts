@@ -1,46 +1,79 @@
-import {
-  ChangePasswordCommandSchema,
-  type UpdateProfileCommand,
-  UpdateProfileCommandSchema,
-} from '@lms/contracts';
-import type { Profile } from '@lms/contracts';
+import { PROFILE_LIMITS, type UpdateMeCommand, toPatch } from '@lms/contracts';
+import { z } from 'zod';
+import type { Profile } from '../../../core/session/profile';
 
-/**
- * The profile forms: the contract's command schemas with the mockup's Vietnamese messages. Only
- * shape rules live here; password strength is a server rule and arrives as a refusal toast.
- */
-export const ProfileFormSchema = UpdateProfileCommandSchema.extend({
-  name: UpdateProfileCommandSchema.shape.name
-    .trim()
-    .min(2, { error: 'Họ tên tối thiểu 2 ký tự.' }),
-});
-
-export const PasswordFormSchema = ChangePasswordCommandSchema.extend({
-  cur: ChangePasswordCommandSchema.shape.cur.min(1, {
-    error: 'Nhập mật khẩu hiện tại.',
-  }),
-  next: ChangePasswordCommandSchema.shape.next.min(1, {
-    error: 'Nhập mật khẩu mới.',
-  }),
-  confirm: ChangePasswordCommandSchema.shape.confirm.min(1, {
-    error: 'Nhập lại mật khẩu mới.',
-  }),
-}).refine((value) => value.next === value.confirm, {
-  path: ['confirm'],
-  error: 'Mật khẩu nhập lại không khớp.',
-});
-
-export const EMPTY_PASSWORD_FORM = { cur: '', next: '', confirm: '' } as const;
-
-/** Prefills the personal form from the signed-in user. */
-export function toProfileFormValue(
-  user: Pick<Profile, 'name' | 'title'> | null,
-): UpdateProfileCommand {
-  return { name: user?.name ?? '', title: user?.title ?? '' };
+/** What the personal form edits: three text fields, an empty optional one meaning "none". */
+export interface ProfileFormValue {
+  readonly fullName: string;
+  readonly email: string;
+  readonly positionName: string;
 }
 
-export function toUpdateProfileCommand(
-  value: UpdateProfileCommand,
-): UpdateProfileCommand {
-  return { name: value.name.trim(), title: value.title.trim() };
+/**
+ * The personal form: the backend's rules (`ProfileUpdateRequest`) with Vietnamese messages.
+ * `fullName` is 1 to 255 characters and not blank; `email` is optional, at most 100 characters
+ * and an address; `positionName` is optional, at most 255.
+ */
+export const ProfileFormSchema = z.object({
+  fullName: z
+    .string()
+    .trim()
+    .min(1, { error: 'Nhập họ và tên.' })
+    .max(PROFILE_LIMITS.fullName, {
+      error: `Họ tên tối đa ${PROFILE_LIMITS.fullName} ký tự.`,
+    }),
+  email: z
+    .string()
+    .trim()
+    .max(PROFILE_LIMITS.email, {
+      error: `Email tối đa ${PROFILE_LIMITS.email} ký tự.`,
+    })
+    .refine(
+      (value) => value === '' || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value),
+      {
+        error: 'Email không hợp lệ.',
+      },
+    ),
+  positionName: z
+    .string()
+    .trim()
+    .max(PROFILE_LIMITS.positionName, {
+      error: `Chức danh tối đa ${PROFILE_LIMITS.positionName} ký tự.`,
+    }),
+});
+
+const FIELDS = ['fullName', 'email', 'positionName'] as const;
+
+/** Prefills the personal form from the signed-in user. */
+export function toProfileFormValue(user: Profile | null): ProfileFormValue {
+  return {
+    fullName: user?.fullName ?? '',
+    email: user?.email ?? '',
+    positionName: user?.positionName ?? '',
+  };
+}
+
+/**
+ * The PATCH body: only what differs from the signed-in user, an emptied optional field as `null`
+ * (the backend clears it) and an untouched one left out (the backend keeps it).
+ */
+export function toUpdateMeCommand(
+  user: Profile,
+  value: ProfileFormValue,
+): UpdateMeCommand {
+  const blankToNull = (text: string) =>
+    text.trim() === '' ? null : text.trim();
+  return toPatch(
+    {
+      fullName: user.fullName,
+      email: user.email,
+      positionName: user.positionName,
+    },
+    {
+      fullName: value.fullName.trim(),
+      email: blankToNull(value.email),
+      positionName: blankToNull(value.positionName),
+    },
+    FIELDS,
+  );
 }
