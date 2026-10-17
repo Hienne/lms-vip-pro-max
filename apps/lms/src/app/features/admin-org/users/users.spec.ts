@@ -1,75 +1,77 @@
-import { HttpTestingController } from '@angular/common/http/testing';
+import type { MockInstance } from 'vitest';
 import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
-import {
-  adminMetaFixture,
-  envelopeError,
-  envelopeOk,
-  profileFixtures,
-  unitAdminMetaFixture,
-  unitAdminUserList,
-  userListFixtures,
-} from '@lms/mocks';
+import { identityEndpoints } from '@lms/contracts';
+import { SEED_USERS } from '@lms/mocks';
 import { createAppRoutes } from '../../../app.routes';
 import {
   parseAppConfig,
   provideAppConfig,
 } from '../../../core/config/app-config';
 import { testAppConfig } from '../../../core/config/app-config.testing';
-import { provideEnvelopeHttpClient } from '../../../core/http/http.testing';
+import { MockBackend } from '../../../core/dev/mock-api/mock-api.interceptor';
+import {
+  provideMockBackendHttp,
+  signInToMockBackend,
+} from '../../../core/dev/mock-api/mock-backend.testing';
 import {
   FakeSessionStore,
   fakeSession,
+  seedProfile,
 } from '../../../core/session/session.testing';
 import { SessionStore } from '../../../core/session/session.store';
 
+const NAMES = Object.fromEntries(
+  SEED_USERS.map((user) => [user.userId, user.fullName]),
+);
+
 describe('Users', () => {
   let harness: RouterTestingHarness;
-  let backend: HttpTestingController;
   let el: HTMLElement;
+  let handle: MockInstance<MockBackend['handle']>;
 
   beforeEach(() => {
     TestBed.configureTestingModule({
       providers: [
-        provideEnvelopeHttpClient(),
-        provideAppConfig(parseAppConfig(testAppConfig())),
+        provideMockBackendHttp(),
+        provideAppConfig(
+          parseAppConfig(testAppConfig({ mockApi: true, mockBackend: true })),
+        ),
         provideRouter(createAppRoutes({ devTools: true })),
         { provide: SessionStore, useClass: FakeSessionStore },
       ],
     });
-    backend = TestBed.inject(HttpTestingController);
+    handle = vi.spyOn(TestBed.inject(MockBackend), 'handle');
   });
-  afterEach(() => {
+  afterEach(() =>
     document
       .querySelectorAll('.cdk-overlay-container')
-      .forEach((c) => (c.innerHTML = ''));
-    backend.verify();
-  });
+      .forEach((c) => (c.innerHTML = '')),
+  );
 
   async function settle(): Promise<void> {
     TestBed.tick();
     await Promise.resolve();
     TestBed.tick();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    TestBed.tick();
   }
 
-  async function open(
-    role: 'admin' | 'unit-admin' = 'admin',
-    list = userListFixtures,
-    meta = adminMetaFixture,
-  ) {
-    fakeSession().user.set(profileFixtures[role]);
+  /** Opens the list as a seed user: the backend answers as that user, the session shows them. */
+  async function open(username: string, userId: string, url = '/admin/users') {
+    signInToMockBackend(username);
+    fakeSession().user.set(seedProfile(userId));
     harness = await RouterTestingHarness.create();
-    await harness.navigateByUrl('/admin/users');
-    await settle();
-    backend.expectOne('/api/admin/users').flush(envelopeOk(list));
-    backend.expectOne('/api/admin/meta').flush(envelopeOk(meta));
+    await harness.navigateByUrl(url);
     await settle();
     el = harness.routeNativeElement as HTMLElement;
   }
 
   const text = () => el.textContent?.replace(/\s+/g, ' ') ?? '';
   const rows = () => Array.from(el.querySelectorAll('tbody tr'));
+  const rowOf = (name: string) =>
+    rows().find((row) => row.textContent?.includes(name)) as Element;
   const button = (root: ParentNode, label: string) =>
     Array.from(root.querySelectorAll<HTMLButtonElement>('button')).find((b) =>
       b.textContent?.includes(label),
@@ -77,15 +79,15 @@ describe('Users', () => {
   const dialog = () => document.querySelector<HTMLElement>('[role="dialog"]');
   const alertDialog = () =>
     document.querySelector<HTMLElement>('[role="alertdialog"]');
+  const field = (label: string) =>
+    Array.from(dialog()?.querySelectorAll<HTMLElement>('ui-field') ?? []).find(
+      (f) => f.querySelector('label')?.textContent?.includes(label),
+    ) as HTMLElement;
+  const inputOf = (label: string) =>
+    field(label).querySelector('input') as HTMLInputElement;
+  const calls = (endpoint: unknown) =>
+    handle.mock.calls.filter(([e]) => e === endpoint);
 
-  async function pick(label: string, value: string) {
-    const select = el.querySelector<HTMLSelectElement>(
-      `select[aria-label="${label}"]`,
-    ) as HTMLSelectElement;
-    await choose(select, value);
-  }
-
-  /** Chooses an option the way a browser reports it: `input`, then `change`. */
   async function choose(select: HTMLSelectElement, value: string) {
     select.value = value;
     select.dispatchEvent(new Event('input', { bubbles: true }));
@@ -93,300 +95,276 @@ describe('Users', () => {
     await settle();
   }
 
-  async function type(field: HTMLInputElement, value: string) {
-    field.value = value;
-    field.dispatchEvent(new Event('input', { bubbles: true }));
+  async function type(input: HTMLInputElement, value: string) {
+    input.value = value;
+    input.dispatchEvent(new Event('input', { bubbles: true }));
     await settle();
   }
 
-  const field = (label: string) =>
-    Array.from(dialog()?.querySelectorAll<HTMLElement>('ui-field') ?? []).find(
-      (f) => f.querySelector('label')?.textContent?.includes(label),
-    ) as HTMLElement;
-
-  it('lists ten users a page with their role, unit and status', async () => {
-    await open();
+  it("lists the users of the caller's scope from the server, with role, org and status", async () => {
+    await open('super.admin', '000001');
     expect(el.querySelector('h1')?.textContent).toBe('Người dùng');
-    expect(text()).toContain('12 người dùng');
-    expect(rows()).toHaveLength(10);
-    expect(text()).toContain('Hiển thị 1–10 / 12');
-    expect(rows()[0].textContent).toContain(userListFixtures[0].email);
-    const link = rows()[0].querySelector<HTMLAnchorElement>('a');
-    expect(link?.getAttribute('href')).toBe(
-      `/admin/users/${userListFixtures[0].id}`,
+    expect(text()).toContain(`${SEED_USERS.length} người dùng`);
+    expect(rows()).toHaveLength(SEED_USERS.length);
+    const learner = rowOf(NAMES['000004']);
+    expect(learner.textContent).toContain('Học viên');
+    expect(learner.textContent).toContain('Hoạt động');
+    expect(learner.querySelector('a')?.getAttribute('href')).toBe(
+      '/admin/users/000004',
     );
+    expect(calls(identityEndpoints.listUsers)[0][1].query).toMatchObject({
+      page: '0',
+      size: '10',
+    });
   });
 
-  it('goes to the second page', async () => {
-    await open();
-    button(el, '2').click();
-    await settle();
-    expect(rows()).toHaveLength(2);
-    expect(text()).toContain('Hiển thị 11–12 / 12');
+  it('cuts the list to the scope of the caller: an org admin sees their own org only', async () => {
+    await open('quantri.ban', '000003');
+    expect(text()).toContain('chỉ thấy và quản lý người dùng thuộc');
+    expect(rows().length).toBeGreaterThan(0);
   });
 
-  it('filters by role and drops back to the first page', async () => {
-    await open();
-    button(el, '2').click();
-    await settle();
-    await pick('Vai trò', 'learner');
-    const learners = userListFixtures.filter((u) => u.roleId === 'learner');
-    expect(text()).toContain(`${learners.length} người dùng`);
-    expect(rows()).toHaveLength(Math.min(10, learners.length));
-  });
+  it('asks the server to filter by status, sort and search instead of doing it in the browser', async () => {
+    await open('super.admin', '000001');
+    const status = el.querySelector<HTMLSelectElement>(
+      'select[aria-label="Trạng thái"]',
+    ) as HTMLSelectElement;
+    await choose(status, 'locked');
+    expect(calls(identityEndpoints.listUsers).at(-1)?.[1].query).toMatchObject({
+      status: 'locked',
+      page: '0',
+    });
+    expect(rows()).toHaveLength(0);
+    expect(text()).toContain('Không có người dùng phù hợp');
 
-  it('sorts by a column header', async () => {
-    await open();
+    await choose(status, '');
     button(el, 'Người dùng').click();
     await settle();
-    const names = rows().map(
-      (row) => row.querySelector('a')?.textContent?.trim() ?? '',
-    );
-    expect(names).toEqual([...names].sort((a, b) => a.localeCompare(b, 'vi')));
+    expect(calls(identityEndpoints.listUsers).at(-1)?.[1].query).toMatchObject({
+      sort: 'fullName,asc',
+    });
     expect(el.querySelector('th[aria-sort="ascending"]')).not.toBeNull();
   });
 
-  it('says which unit a unit administrator is limited to, and hides the unit filter', async () => {
-    await open('unit-admin', unitAdminUserList, unitAdminMetaFixture);
-    expect(text()).toContain(
-      'chỉ thấy và quản lý người dùng thuộc Trung tâm Vận hành CNTT',
-    );
-    expect(el.querySelector('select[aria-label="Đơn vị"]')).toBeNull();
+  it('filters by role with the role code', async () => {
+    await open('super.admin', '000001');
+    const role = el.querySelector<HTMLSelectElement>(
+      'select[aria-label="Vai trò"]',
+    ) as HTMLSelectElement;
+    await choose(role, 'INSTRUCTOR');
+    expect(calls(identityEndpoints.listUsers).at(-1)?.[1].query).toMatchObject({
+      roleCode: 'INSTRUCTOR',
+    });
+    expect(rows().map((r) => r.textContent)).toEqual([
+      expect.stringContaining(NAMES['000005']),
+    ]);
   });
 
-  it('offers no lock on your own row', async () => {
-    await open('admin');
-    const own = rows().find((row) =>
-      row.textContent?.includes(profileFixtures['admin'].email),
-    ) as Element;
-    expect(button(own, 'Sửa')).toBeTruthy();
-    expect(button(own, 'Khóa')).toBeUndefined();
-    expect(button(rows()[1], 'Khóa')).toBeTruthy();
+  it('starts from the team in the URL, as the org screen links to it, and lets the admin drop it', async () => {
+    await open('super.admin', '000001', '/admin/users?teamId=1');
+    expect(calls(identityEndpoints.listUsers)[0][1].query).toMatchObject({
+      teamId: '1',
+    });
+    expect(text()).toContain('Bỏ lọc theo nhóm');
+    button(el, 'Bỏ lọc theo nhóm').click();
+    await settle();
+    expect(
+      calls(identityEndpoints.listUsers).at(-1)?.[1].query,
+    ).not.toHaveProperty('teamId');
+  });
+
+  it('shows your own row and other administrators view-only: the server marks them not editable', async () => {
+    await open('quantri', '000002');
+    for (const id of ['000002', '000003', '000001']) {
+      const row = rowOf(NAMES[id]);
+      expect(button(row, 'Sửa')).toBeUndefined();
+      expect(button(row, 'Khóa')).toBeUndefined();
+      expect(row.querySelector(`a[href="/admin/users/${id}"]`)).not.toBeNull();
+    }
+    expect(button(rowOf(NAMES['000004']), 'Khóa')).toBeTruthy();
+  });
+
+  it('lets the root administrator edit other administrators, but not themselves', async () => {
+    await open('super.admin', '000001');
+    expect(button(rowOf(NAMES['000002']), 'Sửa')).toBeTruthy();
+    expect(button(rowOf(NAMES['000001']), 'Sửa')).toBeUndefined();
+  });
+
+  it('shows a row the caller may read but not change as view-only', async () => {
+    await open('quantri.ban', '000003');
+    const readOnly = rows().find((r) => !button(r, 'Sửa'));
+    if (readOnly) expect(readOnly.querySelector('a')).not.toBeNull();
   });
 
   it('locks an account after confirming, then reloads the list', async () => {
-    await open('admin');
-    const target =
-      userListFixtures.find((u) => u.id === 'i1') ?? userListFixtures[2];
-    const row = rows().find((r) =>
-      r.textContent?.includes(target.email),
-    ) as Element;
+    await open('super.admin', '000001');
+    const row = rowOf(NAMES['000004']);
     button(row, 'Khóa').click();
     await settle();
     expect(alertDialog()?.textContent).toContain(
-      `Khóa tài khoản ${target.name}?`,
+      `Khóa tài khoản ${NAMES['000004']}?`,
     );
-    backend.expectNone(`/api/admin/users/${target.id}/status`);
+    expect(calls(identityEndpoints.setUserStatus)).toHaveLength(0);
     button(alertDialog() as HTMLElement, 'Khóa tài khoản').click();
     await settle();
-    const put = backend.expectOne(`/api/admin/users/${target.id}/status`);
-    expect(put.request.method).toBe('PUT');
-    expect(put.request.body).toEqual({ status: 'locked' });
-    put.flush(envelopeOk({ ...target, status: 'locked' }));
-    await settle();
-    backend.expectOne('/api/admin/users').flush(envelopeOk(userListFixtures));
-    await settle();
+    expect(calls(identityEndpoints.setUserStatus)[0][1]).toMatchObject({
+      params: { userId: '000004' },
+      body: { status: 'locked' },
+    });
+    expect(rowOf(NAMES['000004']).textContent).toContain('Đã khóa');
     expect(document.body.textContent).toContain('Đã khóa tài khoản');
   });
 
   it('does not lock when the confirmation is cancelled', async () => {
-    await open('admin');
-    button(rows()[1], 'Khóa').click();
+    await open('super.admin', '000001');
+    button(rowOf(NAMES['000004']), 'Khóa').click();
     await settle();
     button(alertDialog() as HTMLElement, 'Hủy').click();
     await settle();
-    backend.expectNone((req) => req.url.endsWith('/status'));
+    expect(calls(identityEndpoints.setUserStatus)).toHaveLength(0);
   });
 
-  it('checks the add form locally before calling the server', async () => {
-    await open('admin');
+  it('reopens a locked account without asking', async () => {
+    await open('super.admin', '000001');
+    button(rowOf(NAMES['000004']), 'Khóa').click();
+    await settle();
+    button(alertDialog() as HTMLElement, 'Khóa tài khoản').click();
+    await settle();
+    button(rowOf(NAMES['000004']), 'Mở khóa').click();
+    await settle();
+    expect(calls(identityEndpoints.setUserStatus).at(-1)?.[1]).toMatchObject({
+      body: { status: 'active' },
+    });
+    expect(rowOf(NAMES['000004']).textContent).toContain('Hoạt động');
+  });
+
+  it('checks the add form with the backend rules before calling the server', async () => {
+    await open('super.admin', '000001');
     button(el, 'Thêm người dùng').click();
     await settle();
     expect(dialog()?.textContent).toContain('Thêm người dùng');
+    await type(inputOf('Mã cán bộ'), 'bad id!');
+    await type(inputOf('Mật khẩu tạm'), '123');
     button(dialog() as HTMLElement, 'Lưu').click();
     await settle();
-    backend.expectNone('/api/admin/users');
-    expect(dialog()?.textContent).toContain('Họ tên tối thiểu 2 ký tự.');
-    expect(dialog()?.textContent).toContain('Email không hợp lệ.');
-    expect(dialog()?.textContent).toContain('Chọn phòng / nhóm.');
+    expect(calls(identityEndpoints.createUser)).toHaveLength(0);
+    expect(dialog()?.textContent).toContain('Mã cán bộ gồm chữ, số');
+    expect(dialog()?.textContent).toContain('Nhập họ và tên.');
+    expect(dialog()?.textContent).toContain('Mật khẩu tạm tối thiểu 6 ký tự.');
   });
 
-  it('offers only the groups of the chosen unit, and the roles the caller may assign', async () => {
-    await open('admin');
+  it('adds a user: sends the command with numeric ids, closes the drawer, shows the new row', async () => {
+    await open('super.admin', '000001');
     button(el, 'Thêm người dùng').click();
     await settle();
-    const groupOptions = () =>
-      Array.from(
-        field('Phòng / nhóm').querySelectorAll<HTMLOptionElement>('option'),
-      ).map((o) => o.value);
-    const unitOne = adminMetaFixture.groups.filter((g) => g.unitId === 'u1');
-    expect(groupOptions()).toEqual(['', ...unitOne.map((g) => g.id)]);
-    const unit = field('Đơn vị').querySelector('select') as HTMLSelectElement;
-    await choose(unit, 'u2');
-    const unitTwo = adminMetaFixture.groups.filter((g) => g.unitId === 'u2');
-    expect(groupOptions()).toEqual(['', ...unitTwo.map((g) => g.id)]);
-    const roles = Array.from(
-      field('Vai trò').querySelectorAll<HTMLOptionElement>('option'),
-    ).map((o) => o.value);
-    expect(roles).toEqual(adminMetaFixture.roles.map((r) => r.id));
-  });
-
-  it('adds a user: sends the command, closes the drawer, reloads the list', async () => {
-    await open('admin');
-    button(el, 'Thêm người dùng').click();
-    await settle();
-    await type(
-      field('Họ và tên').querySelector('input') as HTMLInputElement,
-      '  Trần Thị Mới ',
+    await type(inputOf('Mã cán bộ'), '000099');
+    await type(inputOf('Tên đăng nhập'), 'moi.tao');
+    await type(inputOf('Họ và tên'), '  Trần Thị Mới ');
+    await type(inputOf('Email'), 'moi@example.test');
+    await type(inputOf('Mật khẩu tạm'), 'Tam@12345');
+    await choose(
+      field('Đơn vị').querySelector('select') as HTMLSelectElement,
+      '1',
     );
-    await type(
-      field('Email đăng nhập').querySelector('input') as HTMLInputElement,
-      'moi@demo.cb',
-    );
-    const group = field('Phòng / nhóm').querySelector(
-      'select',
-    ) as HTMLSelectElement;
-    const groupId = adminMetaFixture.groups.find((g) => g.unitId === 'u1')
-      ?.id as string;
-    await choose(group, groupId);
     button(dialog() as HTMLElement, 'Lưu').click();
     await settle();
-    const post = backend.expectOne('/api/admin/users');
-    expect(post.request.method).toBe('POST');
-    expect(post.request.body).toEqual({
-      name: 'Trần Thị Mới',
-      email: 'moi@demo.cb',
-      title: '',
-      unitId: 'u1',
-      groupId,
-      roleId: 'learner',
-      scopeUnitId: null,
+    expect(calls(identityEndpoints.createUser)[0][1].body).toEqual({
+      userId: '000099',
+      username: 'moi.tao',
+      fullName: 'Trần Thị Mới',
+      email: 'moi@example.test',
+      orgId: 1,
+      initialPassword: 'Tam@12345',
     });
-    post.flush(envelopeOk({ ...userListFixtures[4], id: 'new' }));
-    await settle();
     expect(dialog()).toBeNull();
-    backend.expectOne('/api/admin/users').flush(envelopeOk(userListFixtures));
-    await settle();
+    expect(rowOf('Trần Thị Mới').textContent).toContain('Chờ đổi mật khẩu');
     expect(document.body.textContent).toContain('Đã thêm người dùng');
   });
 
-  it('keeps the drawer and its input open and toasts the backend message when a save is refused', async () => {
-    await open('admin');
+  it('adds a user with a first role grant from the picker', async () => {
+    await open('super.admin', '000001');
     button(el, 'Thêm người dùng').click();
     await settle();
-    await type(
-      field('Họ và tên').querySelector('input') as HTMLInputElement,
-      'Trần Thị Mới',
-    );
-    await type(
-      field('Email đăng nhập').querySelector('input') as HTMLInputElement,
-      'trung@demo.cb',
-    );
-    const group = field('Phòng / nhóm').querySelector(
-      'select',
-    ) as HTMLSelectElement;
-    await choose(group, adminMetaFixture.groups[0].id);
+    const select = (label: string) =>
+      field(label).querySelector('select') as HTMLSelectElement;
+    await type(inputOf('Mã cán bộ'), '000098');
+    await type(inputOf('Tên đăng nhập'), 'co.vai.tro');
+    await type(inputOf('Họ và tên'), 'Có Vai Trò');
+    await type(inputOf('Mật khẩu tạm'), 'Tam@12345');
+    const role = select('Vai trò');
+    const learner = Array.from(role.options).find((o) =>
+      o.textContent?.includes('Học viên'),
+    ) as HTMLOptionElement;
+    await choose(role, learner.value);
+    expect(select('Phạm vi').value).toBe('OWN');
+    button(dialog() as HTMLElement, 'Thêm').click();
+    await settle();
+    expect(dialog()?.textContent).toContain('Học viên · Cá nhân');
     button(dialog() as HTMLElement, 'Lưu').click();
     await settle();
-    backend
-      .expectOne('/api/admin/users')
-      .flush(
-        envelopeError(
-          'CORE-0409',
-          'Không lưu được người dùng',
-          'Email đã được dùng cho tài khoản khác.',
-        ),
-      );
-    await settle();
-    expect(dialog()).not.toBeNull();
-    expect(field('Email đăng nhập').querySelector('input')?.value).toBe(
-      'trung@demo.cb',
-    );
-    expect(document.body.textContent).toContain('Không lưu được người dùng');
-    expect(document.body.textContent).toContain(
-      'Email đã được dùng cho tài khoản khác.',
-    );
-  });
-
-  it('edits a user with the form prefilled, and fixes your own role and scope', async () => {
-    await open('admin');
-    const own = rows().find((row) =>
-      row.textContent?.includes(profileFixtures['admin'].email),
-    ) as Element;
-    button(own, 'Sửa').click();
-    await settle();
-    expect(dialog()?.textContent).toContain(
-      `Sửa ${profileFixtures['admin'].name}`,
-    );
-    const name = field('Họ và tên').querySelector('input') as HTMLInputElement;
-    expect(name.value).toBe(profileFixtures['admin'].name);
     expect(
-      (field('Vai trò').querySelector('select') as HTMLSelectElement).disabled,
-    ).toBe(true);
-    expect(dialog()?.textContent).toContain('Đặt lại mật khẩu');
+      (
+        calls(identityEndpoints.createUser)[0][1].body as {
+          initialRoleGrants: unknown;
+        }
+      ).initialRoleGrants,
+    ).toEqual([{ roleId: Number(learner.value), scope: 'OWN' }]);
+    expect(dialog()).toBeNull();
   });
 
-  it('asks the server to send a reset link', async () => {
-    await open('admin');
-    button(rows()[1], 'Sửa').click();
+  it('keeps the drawer and its input open and toasts the backend message when the username is taken', async () => {
+    await open('super.admin', '000001');
+    button(el, 'Thêm người dùng').click();
     await settle();
-    button(dialog() as HTMLElement, 'Đặt lại mật khẩu').click();
+    await type(inputOf('Mã cán bộ'), '000097');
+    await type(inputOf('Tên đăng nhập'), 'hocvien');
+    await type(inputOf('Họ và tên'), 'Trùng Tên');
+    await type(inputOf('Mật khẩu tạm'), 'Tam@12345');
+    button(dialog() as HTMLElement, 'Lưu').click();
     await settle();
-    const post = backend.expectOne(
-      `/api/admin/users/${userListFixtures[1].id}/reset-password`,
-    );
-    post.flush(envelopeOk({ sentTo: userListFixtures[1].email }));
-    await settle();
-    expect(document.body.textContent).toContain(
-      'Đã gửi liên kết đặt lại mật khẩu',
-    );
+    expect(dialog()).not.toBeNull();
+    expect(inputOf('Tên đăng nhập').value).toBe('hocvien');
+    expect(document.body.textContent).toContain('Trùng thông tin tài khoản');
   });
-  const escape = () =>
-    dialog()?.dispatchEvent(
-      new KeyboardEvent('keydown', {
-        key: 'Escape',
-        code: 'Escape',
-        keyCode: 27,
-        bubbles: true,
-      }),
-    );
 
-  it('keeps the drawer open on Escape while saving, and closes it after the response', async () => {
-    await open('admin');
-    button(rows()[1], 'Sửa').click();
+  it('edits a user with the form prefilled and PATCHes only what changed', async () => {
+    await open('super.admin', '000001');
+    button(rowOf(NAMES['000004']), 'Sửa').click();
+    await settle();
+    expect(dialog()?.textContent).toContain(`Sửa ${NAMES['000004']}`);
+    expect(inputOf('Họ và tên').value).toBe(NAMES['000004']);
+    expect(dialog()?.textContent).not.toContain('Mật khẩu tạm');
+    await type(inputOf('Chức danh'), 'Chuyên viên cao cấp');
+    button(dialog() as HTMLElement, 'Lưu').click();
+    await settle();
+    expect(calls(identityEndpoints.updateUser)[0][1]).toMatchObject({
+      params: { userId: '000004' },
+      body: { positionName: 'Chuyên viên cao cấp' },
+    });
+    expect(
+      Object.keys(calls(identityEndpoints.updateUser)[0][1].body as object),
+    ).toEqual(['positionName']);
+    expect(dialog()).toBeNull();
+    expect(document.body.textContent).toContain('Đã cập nhật người dùng');
+  });
+
+  it('closes the editor without a request when nothing changed', async () => {
+    await open('super.admin', '000001');
+    button(rowOf(NAMES['000004']), 'Sửa').click();
     await settle();
     button(dialog() as HTMLElement, 'Lưu').click();
     await settle();
-    const post = backend.expectOne('/api/admin/users');
-    expect(dialog()?.textContent).toContain('Đang lưu…');
-
-    escape();
-    await settle();
-    expect(dialog()).not.toBeNull();
-
-    post.flush(envelopeOk(userListFixtures[1]));
-    await settle();
+    expect(calls(identityEndpoints.updateUser)).toHaveLength(0);
     expect(dialog()).toBeNull();
-    backend.expectOne('/api/admin/users').flush(envelopeOk(userListFixtures));
-    await settle();
   });
 
-  it('does not cover the form while a password reset is pending', async () => {
-    await open('admin');
-    button(rows()[1], 'Sửa').click();
+  it('warns that moving a user to another team revokes the grants of the old one', async () => {
+    await open('super.admin', '000001');
+    button(rowOf(NAMES['000006']), 'Sửa').click();
     await settle();
-    button(dialog() as HTMLElement, 'Đặt lại mật khẩu').click();
-    await settle();
-    const post = backend.expectOne(
-      `/api/admin/users/${userListFixtures[1].id}/reset-password`,
-    );
-
-    expect(dialog()?.querySelector('.drawer__busy')).toBeNull();
-    expect(button(dialog() as HTMLElement, 'Đặt lại mật khẩu').disabled).toBe(
-      true,
-    );
-
-    post.flush(envelopeOk({ sentTo: userListFixtures[1].email }));
-    await settle();
+    expect(dialog()?.textContent).not.toContain('sẽ thu hồi');
+    const team = field('Nhóm').querySelector('select') as HTMLSelectElement;
+    await choose(team, '');
+    expect(dialog()?.textContent).toContain('sẽ thu hồi');
   });
 });

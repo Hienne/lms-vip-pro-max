@@ -1,70 +1,152 @@
 import {
-  type SaveUserCommand,
-  SaveUserCommandSchema,
-  type UserListItem,
+  PASSWORD_MAX_BYTES,
+  PASSWORD_MIN_LENGTH,
+  passwordByteLength,
+  toPatch,
+  USER_LIMITS,
+  type CreateUserCommand,
+  type GrantRequest,
+  type UpdateUserCommand,
+  type UserInfo,
 } from '@lms/contracts';
 import { z } from 'zod';
 
-/** The scope select's value for the whole system; the command carries `null` instead. */
-export const WHOLE_SYSTEM = '';
+/** The user being edited: the fields the edit form starts from. Both list rows and `/users/{id}` fit. */
+export type ManagedUser = Pick<
+  UserInfo,
+  | 'userId'
+  | 'username'
+  | 'fullName'
+  | 'email'
+  | 'positionName'
+  | 'orgId'
+  | 'teamId'
+>;
 
 /**
- * The user form: the contract's command with the mockup's Vietnamese messages. Whether the caller
- * may grant a role or a scope is the server's rule and arrives as a refusal toast.
+ * The add/edit form of a user: the backend's rules (`CreateUserRequest`, `UserUpdateRequest`) with
+ * Vietnamese messages. In edit mode the account fields (`userId`, `username`, `initialPassword`)
+ * are hidden, so their rules do not apply. `orgId` and `teamId` are select values: `''` means none.
  */
 export const UserFormSchema = z.object({
-  name: SaveUserCommandSchema.shape.name
+  userId: z.string().trim().regex(USER_LIMITS.userIdPattern, {
+    error:
+      'Mã cán bộ gồm chữ, số, dấu chấm, gạch dưới, gạch ngang (tối đa 20).',
+  }),
+  username: z.string().trim().regex(USER_LIMITS.usernamePattern, {
+    error:
+      'Tên đăng nhập gồm chữ, số, dấu chấm, gạch dưới, gạch ngang (tối đa 100).',
+  }),
+  fullName: z
+    .string()
     .trim()
-    .min(2, { error: 'Họ tên tối thiểu 2 ký tự.' }),
-  email: SaveUserCommandSchema.shape.email
+    .min(1, { error: 'Nhập họ và tên.' })
+    .max(USER_LIMITS.fullName, {
+      error: `Họ tên tối đa ${USER_LIMITS.fullName} ký tự.`,
+    }),
+  email: z
+    .string()
     .trim()
-    .regex(/^[^\s@]+@[^\s@]+\.[^\s@]+$/, { error: 'Email không hợp lệ.' }),
-  title: SaveUserCommandSchema.shape.title,
-  unitId: SaveUserCommandSchema.shape.unitId.min(1, {
-    error: 'Chọn đơn vị.',
-  }),
-  groupId: SaveUserCommandSchema.shape.groupId.min(1, {
-    error: 'Chọn phòng / nhóm.',
-  }),
-  roleId: SaveUserCommandSchema.shape.roleId.min(1, {
-    error: 'Chọn vai trò.',
-  }),
-  scope: z.string(),
+    .max(USER_LIMITS.email, {
+      error: `Email tối đa ${USER_LIMITS.email} ký tự.`,
+    })
+    .refine(
+      (value) => value === '' || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value),
+      { error: 'Email không hợp lệ.' },
+    ),
+  positionName: z
+    .string()
+    .trim()
+    .max(USER_LIMITS.positionName, {
+      error: `Chức danh tối đa ${USER_LIMITS.positionName} ký tự.`,
+    }),
+  orgId: z.string(),
+  teamId: z.string(),
+  initialPassword: z
+    .string()
+    .min(PASSWORD_MIN_LENGTH, {
+      error: `Mật khẩu tạm tối thiểu ${PASSWORD_MIN_LENGTH} ký tự.`,
+    })
+    .refine((value) => passwordByteLength(value) <= PASSWORD_MAX_BYTES, {
+      error: `Mật khẩu tối đa ${PASSWORD_MAX_BYTES} byte.`,
+    }),
 });
 export type UserFormValue = z.infer<typeof UserFormSchema>;
 
-/** Prefills the form from the user being edited, or from the caller's unit for a new one. */
+const idOf = (value: string): number | undefined =>
+  value === '' ? undefined : Number(value);
+
+/** Prefills the form from the user being edited; a new user starts in the caller's org, if any. */
 export function toUserFormValue(
-  user: UserListItem | null,
-  defaults: {
-    readonly unitId: string;
-    readonly roleId: string;
-    readonly scopeUnitId: string | null;
-  },
+  user: ManagedUser | null,
+  defaultOrgId: number | null,
 ): UserFormValue {
+  const orgId = user ? user.orgId : defaultOrgId;
   return {
-    name: user?.name ?? '',
+    userId: user?.userId ?? '',
+    username: user?.username ?? '',
+    fullName: user?.fullName ?? '',
     email: user?.email ?? '',
-    title: user?.title ?? '',
-    unitId: user?.unitId ?? defaults.unitId,
-    groupId: user?.groupId ?? '',
-    roleId: user?.roleId ?? defaults.roleId,
-    scope: (user ? user.scopeUnitId : defaults.scopeUnitId) ?? WHOLE_SYSTEM,
+    positionName: user?.positionName ?? '',
+    orgId: orgId == null ? '' : String(orgId),
+    teamId: user?.teamId == null ? '' : String(user.teamId),
+    initialPassword: '',
   };
 }
 
-export function toSaveUserCommand(
-  id: string | undefined,
+const blankToUndefined = (text: string) =>
+  text.trim() === '' ? undefined : text.trim();
+
+export function toCreateUserCommand(
   value: UserFormValue,
-): SaveUserCommand {
+  grants: readonly GrantRequest[],
+): CreateUserCommand {
   return {
-    ...(id ? { id } : {}),
-    name: value.name.trim(),
-    email: value.email.trim(),
-    title: value.title.trim(),
-    unitId: value.unitId,
-    groupId: value.groupId,
-    roleId: value.roleId,
-    scopeUnitId: value.scope === WHOLE_SYSTEM ? null : value.scope,
+    userId: value.userId.trim(),
+    username: value.username.trim(),
+    fullName: value.fullName.trim(),
+    email: blankToUndefined(value.email),
+    positionName: blankToUndefined(value.positionName),
+    orgId: idOf(value.orgId),
+    teamId: idOf(value.teamId),
+    initialPassword: value.initialPassword,
+    ...(grants.length ? { initialRoleGrants: [...grants] } : {}),
   };
+}
+
+const PATCH_FIELDS = [
+  'fullName',
+  'email',
+  'positionName',
+  'orgId',
+  'teamId',
+] as const;
+
+/**
+ * The PATCH body of an edit: only what differs from the user, an emptied optional field as `null`
+ * (the backend clears it). Moving to another org also clears the team the form dropped.
+ */
+export function toUpdateUserCommand(
+  user: ManagedUser,
+  value: UserFormValue,
+): UpdateUserCommand {
+  const blankToNull = (text: string) =>
+    text.trim() === '' ? null : text.trim();
+  return toPatch(
+    {
+      fullName: user.fullName,
+      email: user.email ?? null,
+      positionName: user.positionName ?? null,
+      orgId: user.orgId ?? null,
+      teamId: user.teamId ?? null,
+    },
+    {
+      fullName: value.fullName.trim(),
+      email: blankToNull(value.email),
+      positionName: blankToNull(value.positionName),
+      orgId: idOf(value.orgId) ?? null,
+      teamId: idOf(value.teamId) ?? null,
+    },
+    PATCH_FIELDS,
+  );
 }

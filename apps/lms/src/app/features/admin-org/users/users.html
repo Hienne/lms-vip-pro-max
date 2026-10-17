@@ -27,7 +27,7 @@
     <div class="row users__filters">
       <ui-search
         label="Tìm người dùng"
-        placeholder="Tên, email, mã cán bộ…"
+        placeholder="Tên, email, mã cán bộ, tên đăng nhập…"
         [value]="store.query$()"
         (searched)="store.search($event)"
       />
@@ -36,27 +36,27 @@
         class="users__filter"
         size="sm"
         aria-label="Vai trò"
-        [value]="store.role$()"
+        [value]="store.roleCode$()"
         (change)="store.filterRole(role.value)"
         #role
       >
         <option value="">Tất cả vai trò</option>
-        @for (option of store.roleOptions$(); track option.value) {
-        <option [value]="option.value">{{ option.label }}</option>
+        @for (option of store.roles$(); track option.roleId) {
+        <option [value]="option.code">{{ option.name }}</option>
         }
       </select>
-      @if ((store.meta$()?.units?.length ?? 0) > 1) {
+      @if (store.orgs$().length > 1) {
       <select
         uiSelect
         class="users__filter"
         size="sm"
         aria-label="Đơn vị"
-        [value]="store.unit$()"
-        (change)="store.filterUnit(unit.value)"
+        [value]="store.orgId$() ?? ''"
+        (change)="store.filterOrg(unit.value)"
         #unit
       >
         <option value="">Tất cả đơn vị</option>
-        @for (option of store.meta$()?.units; track option.id) {
+        @for (option of store.orgs$(); track option.id) {
         <option [value]="option.id">{{ option.name }}</option>
         }
       </select>
@@ -72,10 +72,14 @@
       >
         <option value="">Tất cả trạng thái</option>
         <option value="active">Hoạt động</option>
-        <option value="suspended">Tạm dừng</option>
+        <option value="inactive">Tạm dừng</option>
         <option value="locked">Đã khóa</option>
-        <option value="inactive">Ngừng hoạt động</option>
       </select>
+      @if (store.teamId$() !== undefined) {
+      <button uiButton size="sm" variant="ghost" (click)="store.clearTeam()">
+        <ui-icon name="x" size="sm" />Bỏ lọc theo nhóm
+      </button>
+      }
     </div>
     <span class="users__count">{{ store.total$() }} người dùng</span>
   </div>
@@ -83,11 +87,11 @@
   <ui-data-table
     caption="Danh sách người dùng"
     [columns]="[
-      { key: 'name', label: 'Người dùng' },
-      { key: 'roleName', label: 'Vai trò' },
-      { key: 'unitName', label: 'Đơn vị / nhóm' },
-      { key: 'status', label: 'Trạng thái' },
-      { key: 'lastLoginAt', label: 'Đăng nhập cuối' },
+      { key: 'fullName', label: 'Người dùng' },
+      { key: 'userId', label: 'Mã cán bộ' },
+      { key: 'roleCodes', label: 'Vai trò', sortable: false },
+      { key: 'orgName', label: 'Đơn vị / nhóm', sortable: false },
+      { key: 'status', label: 'Trạng thái', sortable: false },
       { key: 'actions', label: 'Thao tác', kind: 'actions' },
     ]"
     [rows]="store.rows$()"
@@ -105,37 +109,38 @@
       description="Thử đổi từ khóa hoặc bỏ bớt bộ lọc."
     />
 
-    <ng-template uiDataTableCell="name" [of]="store.rows$()" let-user>
+    <ng-template uiDataTableCell="fullName" [of]="store.rows$()" let-user>
       <div class="users__person">
-        <ui-avatar [name]="user.name" size="sm" />
+        <ui-avatar [name]="user.fullName" size="sm" />
         <div>
-          <a uiTablePrimary [routerLink]="['/admin/users', user.id]"
-            >{{ user.name }}</a
+          <a uiTablePrimary [routerLink]="['/admin/users', user.userId]"
+            >{{ user.fullName }}</a
           >
-          <div uiTableSub>{{ user.email }} · {{ user.staffCode }}</div>
+          <div uiTableSub>{{ user.email || user.username }}</div>
         </div>
       </div>
     </ng-template>
-    <ng-template uiDataTableCell="roleName" [of]="store.rows$()" let-user>
-      <app-role-badge
-        [roleId]="user.roleId"
-        [name]="user.roleName"
-        [scoped]="isUnitAdmin(user)"
-      />
+    <ng-template uiDataTableCell="roleCodes" [of]="store.rows$()" let-user>
+      <div class="users__roles">
+        @for (code of user.roleCodes; track code) {
+        <app-role-badge [code]="code" [name]="roleName(code)" />
+        } @empty {
+        <span class="users__never">Chưa có vai trò</span>
+        }
+      </div>
     </ng-template>
-    <ng-template uiDataTableCell="unitName" [of]="store.rows$()" let-user>
-      <div>{{ user.unitName }}</div>
-      <div uiTableSub>{{ user.groupName }}</div>
+    <ng-template uiDataTableCell="orgName" [of]="store.rows$()" let-user>
+      <div>{{ user.orgName || '—' }}</div>
+      <div uiTableSub>{{ user.teamName }}</div>
     </ng-template>
     <ng-template uiDataTableCell="status" [of]="store.rows$()" let-user>
       <app-account-status [status]="user.status" />
-    </ng-template>
-    <ng-template uiDataTableCell="lastLoginAt" [of]="store.rows$()" let-user>
-      @if (user.lastLoginAt) { {{ user.lastLoginAt | fmtRelative }} } @else {
-      <span class="users__never">Chưa đăng nhập</span>
+      @if (user.mustChangePassword) {
+      <div uiTableSub>Chờ đổi mật khẩu</div>
       }
     </ng-template>
     <ng-template uiDataTableCell="actions" [of]="store.rows$()" let-user>
+      @if (user.editable) {
       <button
         uiButton
         size="sm"
@@ -144,12 +149,13 @@
       >
         <ui-icon name="pen-line" size="sm" />Sửa
       </button>
-      @if (user.id !== store.me$()?.id) { @if (user.status === 'active') {
+      @if (user.userId !== store.me$()?.userId) { @if (user.status === 'active')
+      {
       <button
         uiButton
         size="sm"
         variant="danger-ghost"
-        (click)="editorStore.toggleLock(user)"
+        (click)="editorStore.setStatus(user, 'locked')"
       >
         <ui-icon name="lock" size="sm" />Khóa
       </button>
@@ -158,11 +164,19 @@
         uiButton
         size="sm"
         variant="ghost"
-        (click)="editorStore.toggleLock(user)"
+        (click)="editorStore.setStatus(user, 'active')"
       >
         <ui-icon name="lock-open" size="sm" />Mở khóa
       </button>
-      } }
+      } } } @else {
+      <a
+        uiButton
+        size="sm"
+        variant="ghost"
+        [routerLink]="['/admin/users', user.userId]"
+        >Xem</a
+      >
+      }
     </ng-template>
   </ui-data-table>
 </section>

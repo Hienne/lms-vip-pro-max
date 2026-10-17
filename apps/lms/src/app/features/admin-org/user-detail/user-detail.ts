@@ -8,7 +8,6 @@ import {
   Card,
   Empty,
   ErrorState,
-  FmtDatePipe,
   FmtDatetimePipe,
   FmtRelativePipe,
   Icon,
@@ -27,15 +26,16 @@ import {
 import { DueDate } from '../../../shared/course/due-date';
 import { AccountStatus } from '../../../shared/status/account-status';
 import { CourseStatus } from '../../../shared/status/course-status';
-import { isUnitAdmin, RoleBadge } from '../../../shared/status/role-badge';
+import { RoleBadge } from '../../../shared/status/role-badge';
+import { GrantPicker } from '../components/grant-picker/grant-picker';
 import { UserEditor } from '../components/user-editor/user-editor';
 import { UserEditorStore } from '../data-access/user-editor.store';
 import { UserDetailStore } from './data-access/user-detail.store';
 
 /**
- * One user (the mockup's `userDetail`): header with the edit and lock actions, then the courses
- * assigned, the quiz history, the role with the menus it grants, and the account's activity.
- * The competency tab and the extend-deadline button wait for the charts and the assignment screen.
+ * One user (the mockup's `userDetail`): header with the edit and status actions, then the info and
+ * the role grants (with the picker to add one) from the backend, and the courses, quiz history and
+ * activity tabs that exist only on the mock API.
  */
 @Component({
   selector: 'app-user-detail',
@@ -50,9 +50,9 @@ import { UserDetailStore } from './data-access/user-detail.store';
     DueDate,
     Empty,
     ErrorState,
-    FmtDatePipe,
     FmtDatetimePipe,
     FmtRelativePipe,
+    GrantPicker,
     Icon,
     List,
     ListIcon,
@@ -75,7 +75,6 @@ import { UserDetailStore } from './data-access/user-detail.store';
 })
 export class UserDetail {
   protected readonly store = inject(UserDetailStore);
-  protected readonly isUnitAdmin = isUnitAdmin;
 
   protected readonly editorStore = inject(UserEditorStore);
 }

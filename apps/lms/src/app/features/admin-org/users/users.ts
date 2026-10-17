@@ -9,7 +9,6 @@ import {
   DataTableCell,
   Empty,
   ErrorState,
-  FmtRelativePipe,
   Icon,
   PageHeader,
   Search,
@@ -19,7 +18,7 @@ import {
   TableSub,
 } from '@lms/ui';
 import { AccountStatus } from '../../../shared/status/account-status';
-import { isUnitAdmin, RoleBadge } from '../../../shared/status/role-badge';
+import { RoleBadge } from '../../../shared/status/role-badge';
 import { UserEditor } from '../components/user-editor/user-editor';
 import { UserEditorStore } from '../data-access/user-editor.store';
 import { USERS_PAGE_SIZE, UsersStore } from './data-access/users.store';
@@ -37,7 +36,6 @@ import { USERS_PAGE_SIZE, UsersStore } from './data-access/users.store';
     DataTableCell,
     Empty,
     ErrorState,
-    FmtRelativePipe,
     Icon,
     PageHeader,
     RoleBadge,
@@ -56,7 +54,10 @@ import { USERS_PAGE_SIZE, UsersStore } from './data-access/users.store';
 export class Users {
   protected readonly store = inject(UsersStore);
   protected readonly pageSize = USERS_PAGE_SIZE;
-  protected readonly isUnitAdmin = isUnitAdmin;
-
   protected readonly editorStore = inject(UserEditorStore);
+
+  /** A role's display name from the lookup; a role the caller cannot list keeps its code. */
+  protected roleName(code: string): string {
+    return this.store.roles$().find((role) => role.code === code)?.name ?? code;
+  }
 }

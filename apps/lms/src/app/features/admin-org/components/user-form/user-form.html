@@ -1,53 +1,86 @@
 <form id="user-form" class="stack" novalidate (submit)="onSubmit($event)">
+  @if (!isEdit()) {
+  <div class="grid-2">
+    <ui-field label="Mã cán bộ" required>
+      <input uiInput [formField]="userForm.userId" />
+    </ui-field>
+    <ui-field label="Tên đăng nhập" required>
+      <input uiInput autocomplete="off" [formField]="userForm.username" />
+    </ui-field>
+  </div>
+  }
   <ui-field label="Họ và tên" required>
-    <input uiInput [formField]="userForm.name" />
+    <input uiInput [formField]="userForm.fullName" />
   </ui-field>
-  <ui-field label="Email đăng nhập" required>
+  <ui-field label="Email">
     <input uiInput type="email" [formField]="userForm.email" />
   </ui-field>
   <ui-field label="Chức danh">
-    <input uiInput [formField]="userForm.title" />
+    <input uiInput [formField]="userForm.positionName" />
   </ui-field>
   <div class="grid-2">
-    <ui-field label="Đơn vị" required>
-      <select uiSelect [formField]="userForm.unitId" (change)="onUnitChange()">
-        @for (unit of meta().units; track unit.id) {
-        <option [value]="unit.id">{{ unit.name }}</option>
+    <ui-field label="Đơn vị">
+      <select uiSelect [formField]="userForm.orgId" (change)="onOrgChange()">
+        <option value="">— Chưa gắn đơn vị —</option>
+        @for (org of store.orgs$(); track org.id) {
+        <option [value]="org.id">{{ org.name }}</option>
         }
       </select>
     </ui-field>
-    <ui-field label="Phòng / nhóm" required>
-      <select uiSelect [formField]="userForm.groupId">
-        <option value="">— Chọn —</option>
-        @for (group of groups(); track group.id) {
-        <option [value]="group.id">{{ group.name }}</option>
+    <ui-field label="Nhóm">
+      <select uiSelect [formField]="userForm.teamId">
+        <option value="">— Chưa gắn nhóm —</option>
+        @for (team of store.formTeams$(); track team.id) {
+        <option [value]="team.id">{{ team.name }}</option>
         }
       </select>
     </ui-field>
   </div>
+  @if (moves()) {
+  <ui-alert tone="warning">
+    Đổi đơn vị hoặc nhóm sẽ thu hồi các vai trò đang gắn với đơn vị hoặc nhóm
+    cũ.
+  </ui-alert>
+  } @if (!isEdit()) {
   <ui-field
-    label="Vai trò"
+    label="Mật khẩu tạm"
     required
-    [hint]="isSelf() ? 'Bạn không thể đổi vai trò của chính mình.' : ''"
+    hint="Người dùng phải đổi mật khẩu ở lần đăng nhập đầu tiên."
   >
-    <select uiSelect [formField]="userForm.roleId">
-      @for (role of meta().roles; track role.id) {
-      <option [value]="role.id">{{ role.name }}</option>
-      }
-    </select>
+    <input
+      uiInput
+      type="password"
+      autocomplete="new-password"
+      [formField]="userForm.initialPassword"
+    />
   </ui-field>
-  <ui-field
-    label="Phạm vi dữ liệu"
-    hint="Người dùng chỉ thấy dữ liệu trong phạm vi này, kể cả khi vai trò cho phép nhiều hơn."
-  >
-    <select uiSelect [formField]="userForm.scope">
-      @for (option of scopeOptions(); track option.value) {
-      <option [value]="option.value">{{ option.label }}</option>
-      }
-    </select>
-  </ui-field>
+  <fieldset class="user-form__grants">
+    <legend>Vai trò ban đầu</legend>
+    @for (grant of pending(); track $index) {
+    <div class="user-form__pending">
+      <span>{{ grant.label }}</span>
+      <button
+        uiButton
+        type="button"
+        size="sm"
+        variant="ghost"
+        (click)="removeGrant($index)"
+      >
+        <ui-icon name="x" size="sm" />Bỏ
+      </button>
+    </div>
+    }
+    <app-grant-picker
+      [roles]="store.roles$()"
+      [orgs]="store.orgs$()"
+      [teams]="store.grantTeams$()"
+      (orgChosen)="store.pickGrantOrg($event)"
+      (added)="addGrant($event)"
+    />
+  </fieldset>
+  }
   <ui-alert tone="info" [announce]="false">
-    Quyền được kiểm tra ở máy chủ. Quản trị viên đơn vị không thể tạo người dùng
-    ngoài đơn vị hoặc cấp phạm vi toàn hệ thống.
+    Quyền được kiểm tra ở máy chủ: bạn chỉ thấy và cấp được những vai trò, phạm
+    vi nằm trong quyền của mình.
   </ui-alert>
 </form>

@@ -47,6 +47,22 @@
     @include ui.text(xs, muted);
   }
 
+  &__facts {
+    display: grid;
+    gap: ui.space(4);
+    grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+    margin: 0;
+    padding: ui.space(5);
+
+    dt {
+      @include ui.text(xs, muted);
+    }
+
+    dd {
+      margin: 0;
+    }
+  }
+
   &__menus {
     @include ui.row(2);
     flex-wrap: wrap;

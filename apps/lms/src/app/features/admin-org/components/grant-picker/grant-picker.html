@@ -1,0 +1,47 @@
+<div class="grant-picker">
+  <ui-field label="Vai trò">
+    <select uiSelect [formField]="pickerForm.roleId" (change)="onRoleChange()">
+      <option value="">— Chọn vai trò —</option>
+      @for (role of assignable(); track role.roleId) {
+      <option [value]="role.roleId">{{ role.name }}</option>
+      }
+    </select>
+  </ui-field>
+  <ui-field label="Phạm vi">
+    <select uiSelect [formField]="pickerForm.scope" (change)="onScopeChange()">
+      @for (scope of scopes(); track scope.value) {
+      <option [value]="scope.value">{{ scope.label }}</option>
+      } @empty {
+      <option value="">—</option>
+      }
+    </select>
+  </ui-field>
+  @if (needsOrg()) {
+  <ui-field label="Đơn vị">
+    <select uiSelect [formField]="pickerForm.orgId" (change)="onOrgChange()">
+      <option value="">— Chọn đơn vị —</option>
+      @for (org of orgs(); track org.id) {
+      <option [value]="org.id">{{ org.name }}</option>
+      }
+    </select>
+  </ui-field>
+  } @if (needsTeam()) {
+  <ui-field label="Nhóm">
+    <select uiSelect [formField]="pickerForm.teamId">
+      <option value="">— Chọn nhóm —</option>
+      @for (team of teams(); track team.id) {
+      <option [value]="team.id">{{ team.name }}</option>
+      }
+    </select>
+  </ui-field>
+  }
+  <button
+    uiButton
+    type="button"
+    class="grant-picker__add"
+    [disabled]="!request() || busy()"
+    (click)="add()"
+  >
+    <ui-icon name="plus" size="sm" />Thêm
+  </button>
+</div>
