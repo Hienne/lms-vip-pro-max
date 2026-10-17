@@ -4,36 +4,54 @@ import {
   DestroyRef,
   inject,
   Injectable,
+  linkedSignal,
   signal,
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import {
-  adminOrgEndpoints,
-  type OrgGroup,
-  type OrgUnit,
-  type SaveGroupCommand,
-  type SaveUnitCommand,
+  organizationEndpoints,
+  type CreateOrgCommand,
+  type CreateTeamCommand,
+  type OrganizationInfo,
+  type TeamInfo,
+  type UpdateOrgCommand,
+  type UpdateTeamCommand,
 } from '@lms/contracts';
 import { confirm } from '@lms/ui';
 import { filter } from 'rxjs';
 import { invalidation } from '../../../../core/data-access/invalidation';
 import { serverData } from '../../../../core/data-access/server-data';
 import { serverMutation } from '../../../../core/data-access/server-mutation';
-import { SessionStore } from '../../../../core/session/session.store';
 import { EndpointClient } from '../../../../core/http/endpoint-client';
+import { SessionStore } from '../../../../core/session/session.store';
+import { OrgTreeStore } from './org-tree.store';
 
-type EditingUnit = { readonly unit: OrgUnit | null };
-type EditingGroup = { readonly unit: OrgUnit; readonly group: OrgGroup | null };
+export const TEAMS_PAGE_SIZE = 6;
 
-type StatusRequest = {
-  readonly unitId: string;
-  readonly status: 'active' | 'paused';
-};
+type OrgSave =
+  | { readonly kind: 'create'; readonly command: CreateOrgCommand }
+  | {
+      readonly kind: 'update';
+      readonly orgId: number;
+      readonly patch: UpdateOrgCommand;
+    };
+
+type TeamSave =
+  | {
+      readonly kind: 'create';
+      readonly orgId: number;
+      readonly command: CreateTeamCommand;
+    }
+  | {
+      readonly kind: 'update';
+      readonly teamId: number;
+      readonly patch: UpdateTeamCommand;
+    };
 
 /**
- * The org screen (the mockup's `org` page): the units the caller may see, the one picked, and the
- * commands on units and groups. Every accepted mutation bumps `changes`, which the list reloads
- * on, so the page shows the server's truth (the mock API is stateless).
+ * The org screen (the mockup's `org` page): the picked org with its administrators and its teams,
+ * and the commands on orgs and teams. The tree itself is `OrgTreeStore`. Every accepted mutation
+ * bumps `changes` (the detail and the teams reload on it) and refreshes the tree.
  */
 @Injectable()
 export class OrgStore {
@@ -41,178 +59,208 @@ export class OrgStore {
   private readonly session = inject(SessionStore);
   private readonly dialog = inject(Dialog);
   private readonly destroyRef = inject(DestroyRef);
+  readonly tree = inject(OrgTreeStore);
 
   private readonly state = {
-    selectedUnitId: signal<string | null>(null),
-    editingUnit: signal<EditingUnit | null>(null),
-    editingGroup: signal<EditingGroup | null>(null),
+    editingOrg: signal<{ readonly org: OrganizationInfo | null } | null>(null),
+    editingTeam: signal<{ readonly team: TeamInfo | null } | null>(null),
   };
 
   private readonly changes = invalidation();
 
-  private readonly orgData = serverData(
-    () => this.client.call(adminOrgEndpoints.org),
+  private readonly selectedOrgId = computed(() => this.tree.selected$()?.id);
+  /** The team page being read; a different org starts again at the first. */
+  private readonly teamPage = linkedSignal<number | undefined, number>({
+    source: this.selectedOrgId,
+    computation: () => 0,
+  });
+
+  private readonly detailData = serverData(
+    (orgId: number) =>
+      this.client.call(organizationEndpoints.getOrg, { params: { orgId } }),
+    { params: () => this.selectedOrgId(), reloadOn: this.changes },
+  );
+  private readonly teamsData = serverData(
+    (read: { orgId: number; page: number }) =>
+      this.client.call(organizationEndpoints.listTeams, {
+        params: { orgId: read.orgId },
+        query: { page: read.page, size: TEAMS_PAGE_SIZE, sort: 'name,asc' },
+      }),
     {
+      params: () => {
+        const orgId = this.selectedOrgId();
+        return orgId === undefined
+          ? undefined
+          : { orgId, page: this.teamPage() };
+      },
       reloadOn: this.changes,
     },
   );
 
-  private readonly unitMutation = serverMutation(
-    (command: SaveUnitCommand) =>
-      this.client.call(adminOrgEndpoints.saveUnit, { body: command }),
+  private readonly orgMutation = serverMutation(
+    (save: OrgSave) =>
+      save.kind === 'create'
+        ? this.client.call(organizationEndpoints.createOrg, {
+            body: save.command,
+          })
+        : this.client.call(organizationEndpoints.updateOrg, {
+            params: { orgId: save.orgId },
+            body: save.patch,
+          }),
     {
       errors: 'toast',
       success: () => 'Đã lưu',
-      onSuccess: () => this.setEditingUnit(null),
-      invalidates: this.changes,
-    },
-  );
-
-  private readonly groupMutation = serverMutation(
-    (command: SaveGroupCommand) =>
-      this.client.call(adminOrgEndpoints.saveGroup, { body: command }),
-    {
-      errors: 'toast',
-      success: () => 'Đã lưu',
-      onSuccess: () => this.setEditingGroup(null),
+      onSuccess: (org) => {
+        this.state.editingOrg.set(null);
+        this.tree.refresh();
+        if (org.parentId) this.tree.reveal(org.parentId);
+      },
       invalidates: this.changes,
     },
   );
 
   private readonly statusMutation = serverMutation(
-    (request: StatusRequest) =>
-      this.client.call(adminOrgEndpoints.setUnitStatus, {
-        params: { unitId: request.unitId },
-        body: { status: request.status },
+    (org: OrganizationInfo) =>
+      this.client.call(organizationEndpoints.updateOrg, {
+        params: { orgId: org.id },
+        body: { status: org.status === 'active' ? 'inactive' : 'active' },
       }),
     {
       errors: 'toast',
       success: () => 'Đã cập nhật',
+      onSuccess: () => this.tree.refresh(),
+      invalidates: this.changes,
+    },
+  );
+
+  private readonly teamMutation = serverMutation(
+    (save: TeamSave) =>
+      save.kind === 'create'
+        ? this.client.call(organizationEndpoints.createTeam, {
+            params: { orgId: save.orgId },
+            body: save.command,
+          })
+        : this.client.call(organizationEndpoints.updateTeam, {
+            params: { teamId: save.teamId },
+            body: save.patch,
+          }),
+    {
+      errors: 'toast',
+      success: () => 'Đã lưu',
+      onSuccess: () => {
+        this.state.editingTeam.set(null);
+        this.tree.refresh();
+      },
       invalidates: this.changes,
     },
   );
 
   private readonly deleteMutation = serverMutation(
-    (groupId: string) =>
-      this.client.call(adminOrgEndpoints.deleteGroup, { params: { groupId } }),
+    (teamId: number) =>
+      this.client.call(organizationEndpoints.deleteTeam, {
+        params: { teamId },
+      }),
     {
       errors: 'toast',
-      success: () => 'Đã xóa',
+      success: () => 'Đã xóa nhóm',
+      onSuccess: () => this.tree.refresh(),
       invalidates: this.changes,
     },
   );
 
-  readonly editingUnit$ = this.state.editingUnit.asReadonly();
-  readonly editingGroup$ = this.state.editingGroup.asReadonly();
-  readonly units$ = computed(() => this.orgData.value() ?? []);
-  readonly isLoading$ = this.orgData.isLoading;
-  readonly loadError$ = this.orgData.error;
+  readonly editingOrg$ = this.state.editingOrg.asReadonly();
+  readonly editingTeam$ = this.state.editingTeam.asReadonly();
+  readonly detail$ = this.detailData.value;
+  readonly detailError$ = this.detailData.error;
+  readonly teams$ = computed(() => this.teamsData.value()?.items ?? []);
+  readonly teamsTotal$ = computed(
+    () => this.teamsData.value()?.totalElements ?? 0,
+  );
+  readonly teamPage$ = computed(() => this.teamPage() + 1);
+  readonly teamsLoading$ = this.teamsData.isLoading;
+  readonly teamsError$ = this.teamsData.error;
 
-  /** The picked unit, or the first one until the user picks. */
-  readonly selected$ = computed(() => {
-    const units = this.units$();
-    return (
-      units.find((unit) => unit.id === this.state.selectedUnitId()) ?? units[0]
-    );
-  });
-
-  /** Only a whole-system caller creates units and pauses them; a limited one edits its own. */
-  readonly canManageUnits$ = computed(
-    () => this.session.user$()?.scopeUnitId === null,
+  /** Creating an org and pausing one are for global administrators; the server enforces it. */
+  readonly canManageOrgs$ = computed(
+    () =>
+      this.session.user$()?.grants.some((g) => g.scope.type === 'GLOBAL') ??
+      false,
   );
 
-  readonly isSavingUnit$ = this.unitMutation.isPending;
-  readonly isSavingGroup$ = this.groupMutation.isPending;
-
-  readonly unitEditorTitle$ = computed(() =>
-    this.state.editingUnit()?.unit ? 'Sửa đơn vị' : 'Thêm đơn vị',
+  readonly isSavingOrg$ = this.orgMutation.isPending;
+  readonly isSavingTeam$ = this.teamMutation.isPending;
+  readonly orgEditorTitle$ = computed(() =>
+    this.state.editingOrg()?.org ? 'Sửa đơn vị' : 'Thêm đơn vị / phòng',
   );
-  readonly groupEditorTitle$ = computed(() => {
-    const editing = this.state.editingGroup();
-    if (!editing) return '';
-    return editing.group
-      ? 'Đổi tên phòng/nhóm'
-      : `Thêm phòng/nhóm vào ${editing.unit.name}`;
-  });
+  readonly teamEditorTitle$ = computed(() =>
+    this.state.editingTeam()?.team ? 'Sửa nhóm' : 'Thêm nhóm',
+  );
 
-  private setSelectedUnitId(id: string | null): void {
-    this.state.selectedUnitId.set(id);
+  /** Opens the add (`null`) or edit drawer of an org: the page shows it while `editingOrg$` is set. */
+  editOrg(org: OrganizationInfo | null): void {
+    this.orgMutation.reset();
+    this.state.editingOrg.set({ org });
   }
 
-  private setEditingUnit(editing: EditingUnit | null): void {
-    this.state.editingUnit.set(editing);
+  cancelOrgEdit(): void {
+    this.state.editingOrg.set(null);
   }
 
-  private setEditingGroup(editing: EditingGroup | null): void {
-    this.state.editingGroup.set(editing);
+  editTeam(team: TeamInfo | null): void {
+    this.teamMutation.reset();
+    this.state.editingTeam.set({ team });
   }
 
-  pick(unitId: string): void {
-    this.setSelectedUnitId(unitId);
+  cancelTeamEdit(): void {
+    this.state.editingTeam.set(null);
   }
 
-  /** Opens the add-unit (`null`) or the edit-unit drawer: the page shows it while `editingUnit$` is set. */
-  editUnit(unit: OrgUnit | null): void {
-    this.unitMutation.reset();
-    this.setEditingUnit({ unit });
+  goToTeamPage(page: number): void {
+    this.teamPage.set(page - 1);
   }
 
-  cancelUnitEdit(): void {
-    this.setEditingUnit(null);
+  createOrg(command: CreateOrgCommand): void {
+    this.orgMutation.run({ kind: 'create', command });
   }
 
-  /** Opens the add-group (`null`) or the rename-group drawer, for the picked unit. */
-  editGroup(group: OrgGroup | null): void {
-    const unit = this.selected$();
-    if (!unit) return;
-    this.groupMutation.reset();
-    this.setEditingGroup({ unit, group });
+  updateOrg(orgId: number, patch: UpdateOrgCommand): void {
+    this.orgMutation.run({ kind: 'update', orgId, patch });
   }
 
-  cancelGroupEdit(): void {
-    this.setEditingGroup(null);
+  createTeam(orgId: number, command: CreateTeamCommand): void {
+    this.teamMutation.run({ kind: 'create', orgId, command });
   }
 
-  saveUnit(command: SaveUnitCommand): void {
-    this.unitMutation.run(command);
+  updateTeam(teamId: number, patch: UpdateTeamCommand): void {
+    this.teamMutation.run({ kind: 'update', teamId, patch });
   }
 
-  saveGroup(command: Omit<SaveGroupCommand, 'unitId'>): void {
-    const editing = this.state.editingGroup();
-    if (!editing) return;
-    this.groupMutation.run({ ...command, unitId: editing.unit.id });
-  }
-
-  /** Asks first, then pauses an active unit or reactivates a paused one. */
-  toggleUnitStatus(unit: OrgUnit): void {
-    const pausing = unit.status === 'active';
+  /** Asks first, then pauses an active org or reactivates a paused one. */
+  toggleOrgStatus(org: OrganizationInfo): void {
+    const pausing = org.status === 'active';
     confirm(this.dialog, {
-      title: `${pausing ? 'Tạm dừng' : 'Kích hoạt'} đơn vị ${unit.name}?`,
+      title: `${pausing ? 'Tạm dừng' : 'Kích hoạt'} ${org.name}?`,
       message: 'Thay đổi áp dụng ngay cho mọi người dùng thuộc đơn vị.',
       tone: 'warning',
     })
       .pipe(filter(Boolean), takeUntilDestroyed(this.destroyRef))
-      .subscribe(() =>
-        this.statusMutation.run({
-          unitId: unit.id,
-          status: pausing ? 'paused' : 'active',
-        }),
-      );
+      .subscribe(() => this.statusMutation.run(org));
   }
 
-  /** Asks first; the server refuses a group that still has members. */
-  deleteGroup(group: OrgGroup): void {
+  /** Asks first; the server refuses a team that still has members or grants. */
+  deleteTeam(team: TeamInfo): void {
     confirm(this.dialog, {
-      title: 'Xóa phòng/nhóm?',
-      message: 'Chỉ xóa được nhóm không còn thành viên.',
+      title: `Xóa nhóm ${team.name}?`,
+      message:
+        'Chỉ xóa được nhóm không còn thành viên và không còn quyền gắn với nhóm.',
       confirmLabel: 'Xóa',
       tone: 'danger',
     })
       .pipe(filter(Boolean), takeUntilDestroyed(this.destroyRef))
-      .subscribe(() => this.deleteMutation.run(group.id));
+      .subscribe(() => this.deleteMutation.run(team.id));
   }
 
-  retryLoad(): void {
-    this.orgData.reload();
+  retryDetail(): void {
+    this.detailData.reload();
   }
 }

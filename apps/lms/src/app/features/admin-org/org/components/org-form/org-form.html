@@ -1,0 +1,35 @@
+<form id="org-form" class="stack" novalidate (submit)="onSubmit($event)">
+  @if (!isEdit()) {
+  <ui-field label="Loại" required>
+    <select uiSelect [formField]="orgForm.orgType">
+      <option value="UNIT">Đơn vị</option>
+      <option value="DEPARTMENT">Phòng</option>
+    </select>
+  </ui-field>
+  <ui-field label="Thuộc đơn vị">
+    <select uiSelect [formField]="orgForm.parentId">
+      <option value="">— Không (đơn vị gốc) —</option>
+      @for (parent of parents(); track parent.id) {
+      <option [value]="parent.id">{{ parent.name }}</option>
+      }
+    </select>
+  </ui-field>
+  }
+  <ui-field label="Mã" required>
+    <input uiInput [formField]="orgForm.code" />
+  </ui-field>
+  <ui-field label="Tên" required>
+    <input uiInput [formField]="orgForm.name" />
+  </ui-field>
+  <ui-field label="Thứ tự hiển thị">
+    <input uiInput inputmode="numeric" [formField]="orgForm.sortNo" />
+  </ui-field>
+  @if (isEdit() && store.canManageOrgs$()) {
+  <ui-field label="Trạng thái">
+    <select uiSelect [formField]="orgForm.status">
+      <option value="active">Hoạt động</option>
+      <option value="inactive">Tạm dừng</option>
+    </select>
+  </ui-field>
+  }
+</form>

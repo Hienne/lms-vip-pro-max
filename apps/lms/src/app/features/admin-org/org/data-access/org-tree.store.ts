@@ -1,0 +1,181 @@
+import {
+  computed,
+  DestroyRef,
+  inject,
+  Injectable,
+  signal,
+} from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { organizationEndpoints, type OrganizationInfo } from '@lms/contracts';
+import type { TreeNode } from '@lms/ui';
+import { toAppError, type AppError } from '../../../../core/errors/app-error';
+import { EndpointClient } from '../../../../core/http/endpoint-client';
+
+/** Orgs asked for per request; every level is paged, so a node can hold more than this. */
+const LEVEL_SIZE = 50;
+const ROOT = 'root';
+const MORE = 'more:';
+const WAIT = 'wait:';
+
+interface Level {
+  readonly items: readonly OrganizationInfo[];
+  /** The last page loaded (0-based). */
+  readonly page: number;
+  readonly totalPages: number;
+}
+
+/**
+ * The org tree, loaded lazily: the roots with `rootOnly`, a node's children with `parentId` when
+ * it is opened or picked, each level one page at a time ("Xem thêm" asks the next). Nothing is
+ * known about a UNIT's children until its level is read, so it carries a placeholder child that
+ * the tree shows as openable. Reads here are one level at a time and concurrent, which
+ * `serverData` (one value per store) does not model, so the store subscribes itself.
+ */
+@Injectable()
+export class OrgTreeStore {
+  private readonly client = inject(EndpointClient);
+  private readonly destroyRef = inject(DestroyRef);
+
+  private readonly state = {
+    levels: signal<Readonly<Record<string, Level>>>({}),
+    expanded: signal<readonly string[]>([]),
+    picked: signal<string | undefined>(undefined),
+    error: signal<AppError | undefined>(undefined),
+  };
+  private readonly inFlight = new Set<string>();
+
+  constructor() {
+    this.loadLevel(ROOT, 0);
+  }
+
+  readonly expanded$ = this.state.expanded.asReadonly();
+  readonly loadError$ = this.state.error.asReadonly();
+  readonly isLoading$ = computed(
+    () => this.state.levels()[ROOT] === undefined && !this.state.error(),
+  );
+
+  /** Every org read so far. */
+  private readonly known = computed(() =>
+    Object.values(this.state.levels()).flatMap((level) => level.items),
+  );
+
+  /** The picked org's id, or the first root until one is picked. */
+  readonly selectedId$ = computed(
+    () =>
+      this.state.picked() ?? this.state.levels()[ROOT]?.items[0]?.id.toString(),
+  );
+  readonly selected$ = computed(() =>
+    this.known().find((org) => String(org.id) === this.selectedId$()),
+  );
+  /** The UNIT orgs read so far: the candidates for a new org's parent. */
+  readonly units$ = computed(() =>
+    this.known().filter((org) => org.orgType === 'UNIT'),
+  );
+
+  readonly nodes$ = computed(() => this.nodesOf(ROOT));
+
+  private nodesOf(key: string): readonly TreeNode<OrganizationInfo>[] {
+    const level = this.state.levels()[key];
+    if (!level) return [];
+    const nodes = level.items.map((org): TreeNode<OrganizationInfo> => {
+      const children = this.state.levels()[String(org.id)]
+        ? this.nodesOf(String(org.id))
+        : org.orgType === 'UNIT'
+          ? [{ id: `${WAIT}${org.id}`, label: 'Đang tải…' }]
+          : [];
+      return {
+        id: String(org.id),
+        label: org.name,
+        icon: org.orgType === 'UNIT' ? 'building-2' : 'layers',
+        data: org,
+        children: children.length ? children : undefined,
+      };
+    });
+    return level.page + 1 < level.totalPages
+      ? [...nodes, { id: `${MORE}${key}`, label: 'Xem thêm…' }]
+      : nodes;
+  }
+
+  private loadLevel(key: string, page: number): void {
+    const flight = `${key}/${page}`;
+    if (this.inFlight.has(flight)) return;
+    this.inFlight.add(flight);
+    const parent =
+      key === ROOT ? { rootOnly: true } : { parentId: Number(key) };
+    this.client
+      .call(organizationEndpoints.listOrgs, {
+        query: { ...parent, page, size: LEVEL_SIZE, sort: 'sortNo,asc' },
+      })
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (result) => {
+          this.inFlight.delete(flight);
+          this.state.error.set(undefined);
+          this.state.levels.update((levels) => ({
+            ...levels,
+            [key]: {
+              items:
+                page === 0
+                  ? result.items
+                  : [...(levels[key]?.items ?? []), ...result.items],
+              page: result.page,
+              totalPages: result.totalPages,
+            },
+          }));
+        },
+        error: (error: unknown) => {
+          this.inFlight.delete(flight);
+          this.state.error.set(toAppError(error));
+        },
+      });
+  }
+
+  private ensureLevel(id: string): void {
+    if (this.state.levels()[id] === undefined) this.loadLevel(id, 0);
+  }
+
+  /** The tree opened or closed nodes: read the children of each newly opened one. */
+  setExpanded(ids: readonly string[]): void {
+    const opened = ids.filter((id) => !this.state.expanded().includes(id));
+    this.state.expanded.set(ids);
+    opened.forEach((id) => this.ensureLevel(id));
+  }
+
+  /** The tree picked a node; a "Xem thêm" row loads the next page instead of being picked. */
+  select(id: string | undefined): void {
+    if (id === undefined || id.startsWith(WAIT)) return;
+    if (id.startsWith(MORE)) {
+      const key = id.slice(MORE.length);
+      const level = this.state.levels()[key];
+      if (level) this.loadLevel(key, level.page + 1);
+      return;
+    }
+    this.state.picked.set(id);
+    const org = this.known().find((o) => String(o.id) === id);
+    if (org?.orgType === 'UNIT') {
+      this.ensureLevel(id);
+      if (!this.state.expanded().includes(id)) {
+        this.state.expanded.update((ids) => [...ids, id]);
+      }
+    }
+  }
+
+  /** Reads the loaded levels again (first page) after a change. */
+  refresh(): void {
+    Object.keys(this.state.levels()).forEach((key) => this.loadLevel(key, 0));
+  }
+
+  /** Opens a node whose children may not have been read yet, so a new child shows in the tree. */
+  reveal(id: number): void {
+    const key = String(id);
+    this.ensureLevel(key);
+    if (!this.state.expanded().includes(key)) {
+      this.state.expanded.update((ids) => [...ids, key]);
+    }
+  }
+
+  retry(): void {
+    this.state.error.set(undefined);
+    this.loadLevel(ROOT, 0);
+  }
+}
