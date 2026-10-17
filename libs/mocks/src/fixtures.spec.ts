@@ -1,5 +1,13 @@
-import { authEndpoints, EnvelopeSchema } from '@lms/contracts';
-import { endpointExamples, MOCK_FIXTURES } from './lib/examples';
+import {
+  adminOrgEndpoints,
+  authV1Endpoints,
+  EnvelopeSchema,
+  identityEndpoints,
+  organizationEndpoints,
+  shellEndpoints,
+} from '@lms/contracts';
+import { FakeBackend } from './lib/backend/fake-backend';
+import { MOCK_FIXTURES } from './lib/examples';
 
 describe('fixtures match their contracts', () => {
   it.each([...MOCK_FIXTURES])(
@@ -22,20 +30,32 @@ describe('fixtures match their contracts', () => {
   );
 
   it('error examples are keyed by scenario name, not by HTTP status', () => {
-    for (const examples of Object.values(endpointExamples)) {
+    for (const examples of MOCK_FIXTURES.values()) {
       for (const scenario of Object.keys(examples.errors ?? {})) {
         expect(scenario).not.toMatch(/^\d+$/);
       }
     }
   });
 
-  it('every example belongs to a registered endpoint', () => {
-    expect(MOCK_FIXTURES.size).toBe(Object.keys(endpointExamples).length);
+  it('answers exactly the endpoints the backend lacks', () => {
+    expect(
+      [...MOCK_FIXTURES.keys()].sort((a, b) => a.path.localeCompare(b.path)),
+    ).toEqual(
+      [...Object.values(adminOrgEndpoints), shellEndpoints.navCounts].sort(
+        (a, b) => a.path.localeCompare(b.path),
+      ),
+    );
   });
 
-  it('answers the mock-only auth endpoints', () => {
-    for (const endpoint of Object.values(authEndpoints)) {
-      expect(MOCK_FIXTURES.has(endpoint)).toBe(true);
+  it('keeps the backend endpoints out of the static fixtures and in the fake backend', () => {
+    const backend = new FakeBackend();
+    for (const endpoint of [
+      ...Object.values(authV1Endpoints),
+      ...Object.values(identityEndpoints),
+      ...Object.values(organizationEndpoints),
+    ]) {
+      expect(MOCK_FIXTURES.has(endpoint), endpoint.path).toBe(false);
+      expect(backend.answers(endpoint), endpoint.path).toBe(true);
     }
   });
 });

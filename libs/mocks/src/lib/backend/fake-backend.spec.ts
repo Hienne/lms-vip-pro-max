@@ -1,0 +1,601 @@
+import {
+  authV1Endpoints,
+  identityEndpoints,
+  organizationEndpoints,
+  type AnyEndpoint,
+  type Me,
+  type Page,
+  type UserSummary,
+} from '@lms/contracts';
+import { FakeBackend, type FakeReply } from './fake-backend';
+import {
+  SEED_FUNCTIONS,
+  SEED_GRANTS,
+  SEED_ORGS,
+  SEED_PASSWORD,
+  SEED_ROLES,
+  SEED_TEAMS,
+  SEED_USERS,
+} from './seed';
+import { seedMe } from './seed-me';
+
+interface Call {
+  params?: Record<string, string>;
+  query?: Record<string, string>;
+  body?: unknown;
+}
+
+describe('FakeBackend', () => {
+  let backend: FakeBackend;
+  beforeEach(() => (backend = new FakeBackend()));
+
+  const call = (
+    endpoint: AnyEndpoint,
+    token: string | null,
+    { params = {}, query = {}, body }: Call = {},
+  ): FakeReply =>
+    backend.handle(endpoint, { token, params, query, body }) as FakeReply;
+
+  const login = (username: string, password = SEED_PASSWORD): string => {
+    const reply = call(authV1Endpoints.login, null, {
+      body: { username, password },
+    });
+    expect(reply.status).toBe(200);
+    return (reply.body.data as { accessToken: string }).accessToken;
+  };
+
+  const code = (reply: FakeReply) => reply.body.messageCode;
+
+  describe('the seed', () => {
+    it('is the backend demo database', () => {
+      expect(SEED_ORGS).toHaveLength(1);
+      expect(SEED_TEAMS).toHaveLength(15);
+      expect(SEED_USERS).toHaveLength(7);
+      expect(SEED_GRANTS).toHaveLength(8);
+      expect(SEED_ROLES).toHaveLength(5);
+      expect(SEED_FUNCTIONS).toHaveLength(16);
+      expect(SEED_USERS.map((u) => u.userId)).toEqual([
+        '000001',
+        '000002',
+        '000003',
+        '000004',
+        '000005',
+        '000006',
+        '000007',
+      ]);
+    });
+
+    it('opens the screens of role_functions for each role', () => {
+      const functions = (id: string) => seedMe(id).functions;
+      expect(functions('000004')).toEqual([
+        'PROFILE',
+        'COURSE_LEARNING',
+        'LEARNING_PROGRESS',
+        'QUIZ_TAKING',
+        'KNOWLEDGE_HUB',
+        'ISSUE_HUB',
+      ]);
+      expect(functions('000006')).toEqual(['PROFILE', 'REPORTING']);
+      expect(functions('000001')).toContain('ROLE_MANAGEMENT');
+      expect(functions('000001')).not.toContain('COURSE_LEARNING');
+    });
+
+    it('gives the instructor both of their grants', () => {
+      const me: Me = seedMe('000005');
+      expect(me.roles).toEqual(['INSTRUCTOR', 'LEARNER']);
+      expect(me.roleGrants.map((g) => g.scope.type).sort()).toEqual([
+        'ORG',
+        'OWN',
+      ]);
+      expect(me.user.teamName).toBe('Nhóm phát triển Core Banking');
+    });
+  });
+
+  describe('sign in', () => {
+    it('refuses a wrong password with HTTP 401 and the backend message', () => {
+      const reply = call(authV1Endpoints.login, null, {
+        body: { username: 'super.admin', password: 'sai' },
+      });
+      expect(reply.status).toBe(401);
+      expect(code(reply)).toBe('IDENTITY-CREDENTIALS_INVALID');
+      expect(reply.body.message).toBe(
+        'Tên đăng nhập hoặc mật khẩu không đúng.',
+      );
+    });
+
+    it('takes the staff code or the username, case-insensitively', () => {
+      expect(login('000004')).toBeTruthy();
+      expect(login('HocVien')).toBeTruthy();
+    });
+
+    it('answers HTTP 401 CORE-UNAUTHENTICATED without a token', () => {
+      const reply = call(authV1Endpoints.me, null);
+      expect(reply.status).toBe(401);
+      expect(code(reply)).toBe('CORE-UNAUTHENTICATED');
+    });
+
+    it('does not let a locked account in', () => {
+      const root = login('super.admin');
+      call(identityEndpoints.setUserStatus, root, {
+        params: { userId: '000007' },
+        body: { status: 'locked' },
+      });
+      const reply = call(authV1Endpoints.login, null, {
+        body: { username: 'hocvien.tichhop', password: SEED_PASSWORD },
+      });
+      expect(code(reply)).toBe('IDENTITY-CREDENTIALS_INVALID');
+    });
+
+    it('revokes every token on logout', () => {
+      const token = login('hocvien');
+      expect(call(authV1Endpoints.logout, token).status).toBe(200);
+      expect(call(authV1Endpoints.me, token).status).toBe(401);
+    });
+  });
+
+  describe('forced password change', () => {
+    function newUserToken(root: string): string {
+      const created = call(identityEndpoints.createUser, root, {
+        body: {
+          userId: '000100',
+          username: 'moi',
+          fullName: 'Người mới',
+          initialPassword: 'Tam@1234',
+          initialRoleGrants: [{ roleId: 3, scope: 'OWN' }],
+        },
+      });
+      expect(created.status).toBe(201);
+      return login('moi', 'Tam@1234');
+    }
+
+    it('creates the account with mustChangePassword and refuses every screen but the password', () => {
+      const token = newUserToken(login('super.admin'));
+      const me = call(authV1Endpoints.me, token).body.data as Me;
+      expect(me.user.mustChangePassword).toBe(true);
+      const refused = call(identityEndpoints.listUsers, token);
+      expect(refused.status).toBe(403);
+      expect(code(refused)).toBe('IDENTITY-PASSWORD_CHANGE_REQUIRED');
+      expect(
+        call(authV1Endpoints.updateMe, token, { body: { fullName: 'x' } })
+          .status,
+      ).toBe(403);
+    });
+
+    it('changes the password, revokes the token and clears the flag', () => {
+      const token = newUserToken(login('super.admin'));
+      const changed = call(authV1Endpoints.changePassword, token, {
+        body: { currentPassword: 'Tam@1234', newPassword: 'Moi@5678' },
+      });
+      expect(changed.status).toBe(200);
+      expect(call(authV1Endpoints.me, token).status).toBe(401);
+      const fresh = login('moi', 'Moi@5678');
+      const me = call(authV1Endpoints.me, fresh).body.data as Me;
+      expect(me.user.mustChangePassword).toBe(false);
+    });
+
+    it('checks the current password, the length and that the new one differs', () => {
+      const token = login('hocvien');
+      const change = (currentPassword: string, newPassword: string) =>
+        call(authV1Endpoints.changePassword, token, {
+          body: { currentPassword, newPassword },
+        });
+      expect(code(change('sai', 'Moi@5678'))).toBe(
+        'IDENTITY-CURRENT_PASSWORD_INCORRECT',
+      );
+      expect(code(change(SEED_PASSWORD, '12345'))).toBe(
+        'CORE-VALIDATION_FAILED',
+      );
+      expect(code(change(SEED_PASSWORD, 'é'.repeat(37)))).toBe(
+        'CORE-VALIDATION_FAILED',
+      );
+      expect(code(change(SEED_PASSWORD, SEED_PASSWORD))).toBe(
+        'CORE-VALIDATION_FAILED',
+      );
+    });
+  });
+
+  describe('profile', () => {
+    it('keeps omitted fields, clears null ones and refuses an empty or unknown patch', () => {
+      const token = login('hocvien');
+      const patch = (body: unknown) =>
+        call(authV1Endpoints.updateMe, token, { body });
+      const first = patch({ email: null, positionName: 'Chuyên gia' });
+      const me = first.body.data as Me;
+      expect(me.user.email).toBeNull();
+      expect(me.user.positionName).toBe('Chuyên gia');
+      expect(me.user.fullName).toBe('Học viên tiền gửi Demo');
+      expect(code(patch({}))).toBe('CORE-VALIDATION_FAILED');
+      expect(patch({}).body.message).toContain('cung cấp thông tin');
+      expect(patch({ username: 'x' }).body.message).toContain('username');
+      expect(code(patch({ fullName: null }))).toBe('CORE-VALIDATION_FAILED');
+      expect(code(patch({ fullName: '   ' }))).toBe('CORE-VALIDATION_FAILED');
+      expect(code(patch({ email: 'khong-hop-le' }))).toBe(
+        'CORE-VALIDATION_FAILED',
+      );
+    });
+  });
+
+  describe('users', () => {
+    const list = (token: string, query: Record<string, string> = {}) =>
+      call(identityEndpoints.listUsers, token, { query });
+    const page = (reply: FakeReply) => reply.body.data as Page<UserSummary>;
+
+    it('lists every user for the root, sorted by name, 0-based pages', () => {
+      const body = page(list(login('super.admin')));
+      expect(body.totalElements).toBe(7);
+      expect(body.page).toBe(0);
+      expect(body.items.map((u) => u.fullName)).toEqual(
+        [...body.items.map((u) => u.fullName)].sort((a, b) =>
+          a.localeCompare(b, 'vi'),
+        ),
+      );
+    });
+
+    it('filters by q, status, role and team, and pages on the server', () => {
+      const token = login('super.admin');
+      expect(
+        page(list(token, { q: 'tích hợp' })).items.map((u) => u.userId),
+      ).toEqual(['000007']);
+      expect(page(list(token, { roleCode: 'LEARNER' })).totalElements).toBe(3);
+      expect(page(list(token, { teamId: '9' })).items[0]?.userId).toBe(
+        '000005',
+      );
+      const second = page(
+        list(token, { size: '3', page: '2', sort: 'id,asc' }),
+      );
+      expect(second.items.map((u) => u.userId)).toEqual(['000007']);
+      expect(second.totalPages).toBe(3);
+    });
+
+    it('rejects a bad size or sort field', () => {
+      const token = login('super.admin');
+      expect(code(list(token, { size: '101' }))).toBe('CORE-VALIDATION_FAILED');
+      expect(code(list(token, { sort: 'email,asc' }))).toBe(
+        'CORE-VALIDATION_FAILED',
+      );
+    });
+
+    it('refuses a learner with HTTP 403 CORE-ACCESS_DENIED', () => {
+      const reply = list(login('hocvien'));
+      expect(reply.status).toBe(403);
+      expect(code(reply)).toBe('CORE-ACCESS_DENIED');
+    });
+
+    it('shows an org admin only the users of their org, and does not let them edit admins', () => {
+      const token = login('quantri.ban');
+      const body = page(list(token));
+      expect(body.totalElements).toBe(7);
+      const root = body.items.find((u) => u.userId === '000001');
+      expect(root?.editable).toBe(false);
+      expect(body.items.find((u) => u.userId === '000004')?.editable).toBe(
+        true,
+      );
+    });
+
+    it('creates a user with a duplicate check on userId and username', () => {
+      const token = login('super.admin');
+      const body = {
+        userId: '000100',
+        username: 'Moi.Nguoi',
+        fullName: 'Người mới',
+        initialPassword: 'Tam@1234',
+      };
+      const created = call(identityEndpoints.createUser, token, { body });
+      expect(created.status).toBe(201);
+      expect(
+        (created.body.data as { user: { username: string } }).user.username,
+      ).toBe('moi.nguoi');
+      expect(
+        code(
+          call(identityEndpoints.createUser, token, {
+            body: { ...body, userId: '000101' },
+          }),
+        ),
+      ).toBe('IDENTITY-IDENTIFIER_EXISTS');
+      expect(
+        code(
+          call(identityEndpoints.createUser, token, {
+            body: {
+              ...body,
+              userId: '000101',
+              username: 'x',
+              initialPassword: '123',
+            },
+          }),
+        ),
+      ).toBe('CORE-VALIDATION_FAILED');
+    });
+
+    it('rolls back a user whose initial grant is invalid', () => {
+      const token = login('quantri.ban');
+      const reply = call(identityEndpoints.createUser, token, {
+        body: {
+          userId: '000100',
+          username: 'moi',
+          fullName: 'Người mới',
+          initialPassword: 'Tam@1234',
+          initialRoleGrants: [{ roleId: 1, scope: 'GLOBAL' }],
+        },
+      });
+      expect(code(reply)).toBe('IDENTITY-SCOPE_INVALID');
+      expect(
+        page(list(login('super.admin'))).items.some(
+          (u) => u.userId === '000100',
+        ),
+      ).toBe(false);
+    });
+
+    it('moves a user to another team and revokes their ORG/TEAM grants', () => {
+      const root = login('super.admin');
+      const moved = call(identityEndpoints.updateUser, root, {
+        params: { userId: '000005' },
+        body: { teamId: 11 },
+      });
+      const detail = moved.body.data as {
+        user: { teamId: number };
+        roleGrants: { scope: { type: string } }[];
+      };
+      expect(detail.user.teamId).toBe(11);
+      expect(detail.roleGrants.map((g) => g.scope.type)).toEqual(['OWN']);
+    });
+
+    it('checks that the team belongs to the org', () => {
+      const root = login('super.admin');
+      const created = call(organizationEndpoints.createOrg, root, {
+        body: { orgType: 'UNIT', code: 'KHAC', name: 'Đơn vị khác', sortNo: 1 },
+      });
+      const otherOrg = (created.body.data as { id: number }).id;
+      const reply = call(identityEndpoints.updateUser, root, {
+        params: { userId: '000004' },
+        body: { orgId: otherOrg, teamId: 7 },
+      });
+      expect(code(reply)).toBe('IDENTITY-MEMBERSHIP_INVALID');
+    });
+
+    it('locks an account and protects the last super admin', () => {
+      const root = login('super.admin');
+      const locked = call(identityEndpoints.setUserStatus, root, {
+        params: { userId: '000004' },
+        body: { status: 'locked' },
+      });
+      expect(
+        (locked.body.data as { user: { status: string } }).user.status,
+      ).toBe('locked');
+      // A second super admin may lock the first; nobody may lock the last one.
+      const rootId = SEED_USERS[0].userId;
+      call(identityEndpoints.grantRole, root, {
+        params: { userId: '000002' },
+        body: { roleId: 1, scope: 'GLOBAL' },
+      });
+      const second = login('quantri');
+      expect(
+        call(identityEndpoints.setUserStatus, second, {
+          params: { userId: rootId },
+          body: { status: 'inactive' },
+        }).status,
+      ).toBe(200);
+    });
+  });
+
+  describe('roles and grants', () => {
+    const roles = (token: string) =>
+      call(identityEndpoints.listRoles, token).body.data as {
+        code: string;
+        roleId: number;
+        assignableScopes: string[];
+        capabilities: string[];
+      }[];
+
+    it('offers the root every scope and an org admin no GLOBAL', () => {
+      const root = roles(login('super.admin'));
+      expect(
+        root.find((r) => r.code === 'SUPER_ADMIN')?.assignableScopes,
+      ).toEqual(['GLOBAL']);
+      expect(
+        root.find((r) => r.code === 'SUPER_ADMIN')?.capabilities,
+      ).toContain('ADMIN_ROLE_GRANT');
+      const orgAdmin = roles(login('quantri.ban'));
+      expect(
+        orgAdmin.find((r) => r.code === 'INSTRUCTOR')?.assignableScopes,
+      ).toEqual(['OWN', 'TEAM', 'ORG']);
+      expect(
+        orgAdmin.find((r) => r.code === 'ADMIN')?.assignableScopes,
+      ).toEqual([]);
+      const global = roles(login('quantri'));
+      expect(global.find((r) => r.code === 'ADMIN')?.assignableScopes).toEqual(
+        [],
+      );
+    });
+
+    it('grants a role with a scope, refuses a duplicate and a self grant, and revokes', () => {
+      const root = login('super.admin');
+      const grant = {
+        params: { userId: '000007' },
+        body: { roleId: 5, scope: 'TEAM', teamId: 11 },
+      };
+      const created = call(identityEndpoints.grantRole, root, grant);
+      expect(created.status).toBe(201);
+      const { grantId } = created.body.data as { grantId: number };
+      expect(code(call(identityEndpoints.grantRole, root, grant))).toBe(
+        'IDENTITY-ROLE_GRANT_EXISTS',
+      );
+      expect(
+        code(
+          call(identityEndpoints.grantRole, root, {
+            params: { userId: '000001' },
+            body: { roleId: 5, scope: 'GLOBAL' },
+          }),
+        ),
+      ).toBe('CORE-ACCESS_DENIED');
+      expect(
+        code(
+          call(identityEndpoints.grantRole, root, {
+            params: { userId: '000007' },
+            body: { roleId: 4, scope: 'ORG' },
+          }),
+        ),
+      ).toBe('IDENTITY-SCOPE_INVALID');
+      const revoked = call(identityEndpoints.revokeRole, root, {
+        params: { userId: '000007', grantId: String(grantId) },
+      });
+      expect(revoked.status).toBe(200);
+      expect(
+        code(
+          call(identityEndpoints.revokeRole, root, {
+            params: { userId: '000007', grantId: String(grantId) },
+          }),
+        ),
+      ).toBe('CORE-RESOURCE_NOT_FOUND');
+    });
+
+    it('keeps the administrator grants for the super admin only', () => {
+      const orgAdmin = login('quantri.ban');
+      const reply = call(identityEndpoints.grantRole, orgAdmin, {
+        params: { userId: '000004' },
+        body: { roleId: 2, scope: 'ORG', orgId: 1 },
+      });
+      expect(code(reply)).toBe('IDENTITY-SCOPE_INVALID');
+    });
+  });
+
+  describe('organisation', () => {
+    const orgs = (token: string, query: Record<string, string> = {}) =>
+      call(organizationEndpoints.listOrgs, token, { query });
+
+    it('lists the roots, then the children of a node', () => {
+      const root = login('super.admin');
+      const created = call(organizationEndpoints.createOrg, root, {
+        body: {
+          orgType: 'DEPARTMENT',
+          parentId: 1,
+          code: 'PB1',
+          name: 'Phòng 1',
+          sortNo: 1,
+        },
+      });
+      expect(created.status).toBe(201);
+      const roots = orgs(root, { rootOnly: 'true' }).body.data as Page<{
+        id: number;
+      }>;
+      expect(roots.items.map((o) => o.id)).toEqual([1]);
+      const children = orgs(root, { parentId: '1' }).body.data as Page<{
+        code: string;
+      }>;
+      expect(children.items.map((o) => o.code)).toEqual(['PB1']);
+    });
+
+    it('lets only a global admin create an org or change its status', () => {
+      const orgAdmin = login('quantri.ban');
+      const create = call(organizationEndpoints.createOrg, orgAdmin, {
+        body: { orgType: 'UNIT', code: 'X', name: 'X', sortNo: 0 },
+      });
+      expect(create.status).toBe(403);
+      const rename = call(organizationEndpoints.updateOrg, orgAdmin, {
+        params: { orgId: '1' },
+        body: { name: 'Tên mới' },
+      });
+      expect(rename.status).toBe(200);
+      const status = call(organizationEndpoints.updateOrg, orgAdmin, {
+        params: { orgId: '1' },
+        body: { status: 'inactive' },
+      });
+      expect(code(status)).toBe('CORE-ACCESS_DENIED');
+    });
+
+    it('checks the hierarchy and the unique code', () => {
+      const root = login('super.admin');
+      const dept = (body: object) =>
+        call(organizationEndpoints.createOrg, root, { body });
+      expect(
+        code(
+          dept({ orgType: 'DEPARTMENT', code: 'PB', name: 'Phòng', sortNo: 0 }),
+        ),
+      ).toBe('ORGANIZATION-HIERARCHY_INVALID');
+      expect(
+        code(
+          dept({
+            orgType: 'UNIT',
+            code: 'bidv110b803',
+            name: 'Trùng',
+            sortNo: 0,
+          }),
+        ),
+      ).toBe('ORGANIZATION-ORG_CODE_EXISTS');
+    });
+
+    it('administrators of a node are the ADMIN ORG grants held there', () => {
+      const detail = call(organizationEndpoints.getOrg, login('super.admin'), {
+        params: { orgId: '1' },
+      }).body.data as {
+        administrators: { userId: string }[];
+        organization: { memberCount: number; teamCount: number };
+      };
+      expect(detail.administrators.map((a) => a.userId)).toEqual(['000003']);
+      expect(detail.organization).toMatchObject({
+        memberCount: 7,
+        teamCount: 15,
+      });
+    });
+
+    it('previews five members of a team and counts them all', () => {
+      const root = login('super.admin');
+      const created = call(organizationEndpoints.createTeam, root, {
+        params: { orgId: '1' },
+        body: { name: 'Nhóm thử' },
+      });
+      const team = created.body.data as {
+        id: number;
+        code: string | null;
+        memberCount: number;
+      };
+      expect(team.code).toBeNull();
+      expect(team.memberCount).toBe(0);
+      const teams = call(organizationEndpoints.listTeams, root, {
+        params: { orgId: '1' },
+        query: { size: '100' },
+      }).body.data as Page<{ id: number }>;
+      expect(teams.totalElements).toBe(16);
+    });
+
+    it('deletes an empty team but not one with members or grants', () => {
+      const root = login('super.admin');
+      const created = call(organizationEndpoints.createTeam, root, {
+        params: { orgId: '1' },
+        body: { name: 'Nhóm thử' },
+      });
+      const { id } = created.body.data as { id: number };
+      expect(
+        call(organizationEndpoints.deleteTeam, root, {
+          params: { teamId: String(id) },
+        }).status,
+      ).toBe(200);
+      const inUse = call(organizationEndpoints.deleteTeam, root, {
+        params: { teamId: '7' },
+      });
+      expect(inUse.status).toBe(200);
+      expect(code(inUse)).toBe('ORGANIZATION-TEAM_IN_USE');
+      // Team 1 holds a (still active) REPORT_VIEWER grant and a member.
+      expect(
+        code(
+          call(organizationEndpoints.deleteTeam, root, {
+            params: { teamId: '1' },
+          }),
+        ),
+      ).toBe('ORGANIZATION-TEAM_IN_USE');
+    });
+
+    it('a team patch clears its code with null and rejects a duplicate code', () => {
+      const root = login('super.admin');
+      const patch = (teamId: string, body: unknown) =>
+        call(organizationEndpoints.updateTeam, root, {
+          params: { teamId },
+          body,
+        });
+      const cleared = patch('2', { code: null });
+      expect((cleared.body.data as { code: string | null }).code).toBeNull();
+      expect(code(patch('3', { code: 'bidv110b8031000' }))).toBe(
+        'ORGANIZATION-TEAM_CODE_EXISTS',
+      );
+    });
+  });
+});
