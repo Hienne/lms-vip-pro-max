@@ -53,20 +53,14 @@
       }
 
       <form class="login__fields" novalidate (submit)="onSubmit($event)">
-        <ui-field label="Email" required>
+        <ui-field label="Tên đăng nhập hoặc mã cán bộ" required>
           <input
             uiInput
-            type="email"
             autocomplete="username"
-            placeholder="ten@demo.cb"
-            [formField]="loginForm.email"
+            [formField]="loginForm.username"
           />
         </ui-field>
-        <ui-field
-          label="Mật khẩu"
-          required
-          hint="Mockup: tài khoản demo chấp nhận mật khẩu bất kỳ từ 6 ký tự."
-        >
+        <ui-field label="Mật khẩu" required>
           <div class="login__password">
             <input
               uiInput
@@ -92,42 +86,11 @@
           size="lg"
           block
           type="submit"
-          [busy]="store.isSigningIn$() && store.source$() === 'form'"
+          [busy]="store.isSigningIn$()"
         >
           Đăng nhập
         </button>
       </form>
-
-      <div class="login__demo">
-        <div class="login__demo-head">
-          <span class="login__eyebrow">Tài khoản kiểm thử theo vai trò</span>
-          <span class="login__demo-hint">Mỗi vai trò một tài khoản riêng</span>
-        </div>
-        @if (store.accountsError$(); as problem) {
-        <ui-alert tone="danger">{{ problem.message }}</ui-alert>
-        }
-        <div class="login__accounts">
-          @for (account of store.accounts$(); track account.id) {
-          <button
-            type="button"
-            class="login__account"
-            [disabled]="store.isSigningIn$()"
-            (click)="store.signInDemo(account.id)"
-          >
-            <ui-avatar [name]="account.name" size="sm" />
-            <span class="login__account-text">
-              <span class="login__account-role"
-                >{{ accountRole(account) }}</span
-              >
-              <span class="login__account-email">{{ account.email }}</span>
-            </span>
-          </button>
-          }
-        </div>
-        <button uiLinkButton type="button" (click)="tryLocked()">
-          <ui-icon name="lock" size="sm" />Thử đăng nhập tài khoản đã bị khóa
-        </button>
-      </div>
     </div>
   </section>
 </div>

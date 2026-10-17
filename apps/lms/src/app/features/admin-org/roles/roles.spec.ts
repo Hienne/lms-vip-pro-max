@@ -15,6 +15,10 @@ import {
 } from '../../../core/config/app-config';
 import { testAppConfig } from '../../../core/config/app-config.testing';
 import { provideEnvelopeHttpClient } from '../../../core/http/http.testing';
+import {
+  FakeSessionStore,
+  fakeSession,
+} from '../../../core/session/session.testing';
 import { SessionStore } from '../../../core/session/session.store';
 
 describe('Roles', () => {
@@ -28,7 +32,7 @@ describe('Roles', () => {
         provideEnvelopeHttpClient(),
         provideAppConfig(parseAppConfig(testAppConfig())),
         provideRouter(createAppRoutes({ devTools: true })),
-        SessionStore,
+        { provide: SessionStore, useClass: FakeSessionStore },
       ],
     });
     backend = TestBed.inject(HttpTestingController);
@@ -47,12 +51,7 @@ describe('Roles', () => {
   }
 
   async function open() {
-    TestBed.inject(SessionStore).restore();
-    await settle();
-    backend
-      .expectOne('/api/auth/profile')
-      .flush(envelopeOk(profileFixtures['admin']));
-    await settle();
+    fakeSession().user.set(profileFixtures['admin']);
     harness = await RouterTestingHarness.create();
     await harness.navigateByUrl('/admin/roles');
     await settle();
@@ -128,12 +127,7 @@ describe('Roles', () => {
 
   it('disables deleting a custom role that users still hold', async () => {
     const held = { ...custom, userCount: 2 };
-    TestBed.inject(SessionStore).restore();
-    await settle();
-    backend
-      .expectOne('/api/auth/profile')
-      .flush(envelopeOk(profileFixtures['admin']));
-    await settle();
+    fakeSession().user.set(profileFixtures['admin']);
     harness = await RouterTestingHarness.create();
     await harness.navigateByUrl('/admin/roles');
     await settle();

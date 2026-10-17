@@ -3,7 +3,7 @@ import { HttpTestingController } from '@angular/common/http/testing';
 import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { provideRouter, Router } from '@angular/router';
-import { authEndpoints, type Profile } from '@lms/contracts';
+import { authEndpoints, authV1Endpoints, type Profile } from '@lms/contracts';
 import { envelopeError, profileFixtures } from '@lms/mocks';
 import { Toaster } from '@lms/ui';
 import { SESSION_EXPIRED_MESSAGE } from '../errors/app-error';
@@ -86,16 +86,12 @@ describe('sessionExpiryInterceptor', async () => {
   });
 
   it.each([
-    ['profile', authEndpoints.profile],
-    ['login', authEndpoints.login],
-    ['loginDemo', authEndpoints.loginDemo],
+    ['me', authV1Endpoints.me],
+    ['login', authV1Endpoints.login],
+    ['logout', authV1Endpoints.logout],
   ])('leaves a CORE-0401 envelope on %s alone', async (_name, endpoint) => {
     client
-      .call(
-        ...([endpoint, { body: {}, params: { userId: 'u1' } }] as unknown as [
-          never,
-        ]),
-      )
+      .call(...([endpoint, { body: {} }] as unknown as [never]))
       .subscribe({ error: () => undefined });
     backend
       .expectOne(() => true)
@@ -130,8 +126,9 @@ describe('sessionExpiryInterceptor', async () => {
   });
 
   it.each([
-    ['profile', authEndpoints.profile],
-    ['login', authEndpoints.login],
+    ['me', authV1Endpoints.me],
+    ['login', authV1Endpoints.login],
+    ['logout', authV1Endpoints.logout],
   ])('leaves a 401 on %s alone', async (_name, endpoint) => {
     client
       .call(...([endpoint, { body: {} }] as unknown as [never]))

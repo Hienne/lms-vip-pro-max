@@ -11,7 +11,7 @@ const depConstraints = [
   { sourceTag: 'type:mocks', onlyDependOnLibsWithTags: ['type:contracts'] },
 ];
 
-/** Specs may also use fixtures from @lms/mocks; production code may not. */
+/** Specs and their `*.testing.ts` helpers may also use fixtures from @lms/mocks; production code may not. */
 const specDepConstraints = depConstraints.map((c) =>
   c.sourceTag === 'type:app' || c.sourceTag === 'type:ui'
     ? {
@@ -95,7 +95,7 @@ export default [
     },
   },
   {
-    files: ['**/*.spec.ts', '**/test-setup.ts'],
+    files: ['**/*.spec.ts', '**/*.testing.ts', '**/test-setup.ts'],
     rules: {
       '@nx/enforce-module-boundaries': boundaries(specDepConstraints),
     },

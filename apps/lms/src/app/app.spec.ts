@@ -2,13 +2,14 @@ import { HttpTestingController } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 import { provideRouter, Router } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
-import { envelopeError, envelopeOk, profileFixtures } from '@lms/mocks';
+import { envelopeOk } from '@lms/mocks';
 import { App } from './app';
 import { createAppRoutes } from './app.routes';
 import { provideAppConfig, parseAppConfig } from './core/config/app-config';
 import { testAppConfig } from './core/config/app-config.testing';
 import { provideEnvelopeHttpClient } from './core/http/http.testing';
 import { provideSession } from './core/session/session.provider';
+import { flushMe, ME_URL, storeToken } from './core/session/session.testing';
 
 describe('App boot', () => {
   let backend: HttpTestingController;
@@ -23,6 +24,7 @@ describe('App boot', () => {
       ],
     });
     backend = TestBed.inject(HttpTestingController);
+    storeToken();
   });
   afterEach(() => {
     // The shell loads its badge counts once a user is signed in; no test here is about them.
@@ -30,11 +32,6 @@ describe('App boot', () => {
       .match('/api/me/nav-counts')
       .filter((r) => !r.cancelled)
       .forEach((r) => r.flush(envelopeOk({ notifications: 0, inbox: 0 })));
-    // The login page, where an anonymous visitor lands, offers the demo accounts.
-    backend
-      .match('/api/auth/demo-accounts')
-      .filter((r) => !r.cancelled)
-      .forEach((r) => r.flush(envelopeOk([])));
     backend.verify();
   });
 
@@ -59,9 +56,7 @@ describe('App boot', () => {
     expect(el.querySelector('[role="status"]')).not.toBeNull();
     expect(el.querySelector('router-outlet')).toBeNull();
 
-    backend
-      .expectOne('/api/auth/profile')
-      .flush(envelopeOk(profileFixtures['learner']));
+    flushMe(backend);
     await tick();
     await appRendered(el);
     expect(el.querySelector('[role="status"]')).toBeNull();
@@ -72,7 +67,7 @@ describe('App boot', () => {
     const el = fixture.nativeElement as HTMLElement;
     await tick();
     backend
-      .expectOne('/api/auth/profile')
+      .expectOne(ME_URL)
       .flush(null, { status: 500, statusText: 'Server Error' });
     await tick();
     await vi.waitFor(() => {
@@ -82,41 +77,28 @@ describe('App boot', () => {
 
     el.querySelector<HTMLButtonElement>('button')?.click();
     await tick();
-    backend
-      .expectOne('/api/auth/profile')
-      .flush(envelopeOk(profileFixtures['learner']));
+    flushMe(backend);
     await tick();
     await appRendered(el);
   });
 
-  it.each([
-    ['learner', '/learn'],
-    ['instructor', '/instructor'],
-    ['admin', '/admin'],
-    ['viewer', '/reports'],
-  ] as const)('sends / to the home of %s', async (role, home) => {
+  // Every signed-in user lands on /learn until permissions are mapped (DEC-010).
+  it('sends / to /learn for a signed-in user', async () => {
     const harness = await RouterTestingHarness.create();
     TestBed.createComponent(App);
     const navigating = harness.navigateByUrl('/');
     await tick();
-    backend
-      .expectOne('/api/auth/profile')
-      .flush(envelopeOk(profileFixtures[role]));
+    flushMe(backend);
     await tick();
     await navigating;
-    expect(TestBed.inject(Router).url).toBe(home);
+    expect(TestBed.inject(Router).url).toBe('/learn');
   });
 
   it('sends / to the login page for an anonymous visitor', async () => {
+    localStorage.clear();
     const harness = await RouterTestingHarness.create();
     TestBed.createComponent(App);
     const navigating = harness.navigateByUrl('/');
-    await tick();
-    backend
-      .expectOne('/api/auth/profile')
-      .flush(
-        envelopeError('CORE-0401', 'Cần đăng nhập', 'Token không hợp lệ.'),
-      );
     await tick();
     await navigating;
     expect(TestBed.inject(Router).url).toBe('/login');

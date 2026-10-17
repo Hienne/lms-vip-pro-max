@@ -52,6 +52,7 @@ different product (a bank's HR app), it belongs in `libs/ui`.
 
 `*.spec.ts` files in `type:app` and `type:ui` get an ESLint override that adds
 `type:mocks`, so tests reuse fixtures while production bundles never contain them.
+`*.testing.ts` helpers, imported only by specs, get the same override.
 The one other exception is the in-app mock API: `apps/lms/src/environments/environment.ts` and
 `apps/lms/src/app/core/dev/mock-api/**` may depend on `type:mocks` too (a narrow override in
 `eslint.config.mjs`); no other app file may, and the staging and production environment files

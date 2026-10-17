@@ -3,16 +3,19 @@ import {
   type HttpInterceptorFn,
 } from '@angular/common/http';
 import { inject, Injector } from '@angular/core';
-import { authEndpoints, UNAUTHENTICATED_CODE } from '@lms/contracts';
+import { authV1Endpoints, UNAUTHENTICATED_CODE } from '@lms/contracts';
 import { catchError, throwError } from 'rxjs';
 import { ApiError } from './api-error';
 import { ENDPOINT } from './endpoint-client';
 
-/** A 401 here is not an expired session: the visitor is anonymous, or the credentials were wrong. */
+/**
+ * A 401 here is not an expired session: the visitor is anonymous, the credentials were wrong, or
+ * the token is already gone (a 401 on logout means signed out all the same).
+ */
 const EXEMPT = new Set<unknown>([
-  authEndpoints.profile,
-  authEndpoints.login,
-  authEndpoints.loginDemo,
+  authV1Endpoints.me,
+  authV1Endpoints.login,
+  authV1Endpoints.logout,
 ]);
 
 /** The backend refuses the session two ways: an HTTP 401, or a 200 with the `CORE-0401` envelope. */

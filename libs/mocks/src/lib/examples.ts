@@ -34,12 +34,6 @@ import {
 } from './admin-org/admin-org.fixtures';
 import {
   demoAccountFixtures,
-  loginDemoLocked,
-  loginDemoNotFound,
-  loginInvalid,
-  loginLocked,
-  loginResult,
-  loginUnauthorized,
   changePasswordInvalid,
   profileFixtures,
   updateProfileInvalid,
@@ -65,29 +59,8 @@ export interface EndpointExamples {
 /** Keyed by the endpoint's key in its registry. */
 export const endpointExamples: Readonly<Record<string, EndpointExamples>> = {
   health: { default: healthOk },
-  login: {
-    default: loginResult,
-    errors: {
-      wrongCredentials: loginUnauthorized,
-      invalidInput: loginInvalid,
-      accountLocked: loginLocked,
-    },
-  },
-  loginDemo: {
-    default: loginResult,
-    errors: {
-      accountMissing: loginDemoNotFound,
-      accountLocked: loginDemoLocked,
-    },
-  },
-  logout: { default: true },
-  profile: {
-    default: profileFixtures['learner'],
-    roles: profileFixtures,
-    errors: { sessionExpired: sessionExpired },
-  },
-  // The mock is stateless and a PUT carries no role example, so the app reloads the profile (a GET
-  // with the role's example) instead of applying this body.
+  // The mock is stateless and a PUT carries no role example, so the app reloads the user (`me`)
+  // instead of applying this body.
   updateProfile: {
     default: profileFixtures['learner'],
     errors: {

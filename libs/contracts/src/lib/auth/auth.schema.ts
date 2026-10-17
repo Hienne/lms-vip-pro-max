@@ -4,20 +4,6 @@ import { MenuKeySchema, UserSchema } from '../identity/identity.schema';
 // Mirrors lms-mockup/src/api/auth.js. Roles are data here (a named set of menus), so the profile
 // carries the role's name and the menus it grants instead of the mockup's fixed `PERMS`.
 
-/** Payload only; password and email rules are enforced by the server. */
-export const LoginCommandSchema = z.object({
-  email: z.string(),
-  password: z.string(),
-});
-export type LoginCommand = z.infer<typeof LoginCommandSchema>;
-
-/** Result of `login` and `loginDemo`. The session token travels as a cookie. */
-export const LoginResultSchema = z.object({
-  id: z.string(),
-  roleId: z.string(),
-});
-export type LoginResult = z.infer<typeof LoginResultSchema>;
-
 /** Personal fields only: role, unit and scope are managed by administrators and ignored here. */
 export const UpdateProfileCommandSchema = z.object({
   name: z.string(),
@@ -36,21 +22,21 @@ export type ChangePasswordCommand = z.infer<typeof ChangePasswordCommandSchema>;
 /** `changePassword` answers `true`, as the mockup does. */
 export const ChangePasswordResultSchema = z.literal(true);
 
-/** The signed-in user with names resolved and menus evaluated by the server. */
+/** The signed-in user as the app renders it; built from `/me` by `toProfile`. */
 export const ProfileSchema = UserSchema.extend({
   unitName: z.string(),
   groupName: z.string(),
   roleName: z.string(),
-  /** Menus the user's role grants; every other screen answers 403. */
+  /** Menus the user may open (every menu until permissions are mapped). */
   menus: z.array(MenuKeySchema),
-  /** Where `/` and the login page send the user: the first granted menu, else `/profile`. */
+  /** Where `/` and the login page send the user (`/learn` until permissions are mapped). */
   homePath: z.string(),
-  /** Unit name the user is limited to, or the server's "whole system" label. */
+  /** Label of the user's data scope (see `toProfile`). */
   scopeName: z.string(),
 });
 export type Profile = z.infer<typeof ProfileSchema>;
 
-/** One entry of the login screen's demo account list. */
+/** One entry of the dev toolbar's mock-role list (mock only; the backend has no such endpoint). */
 export const DemoAccountSchema = z.object({
   id: z.string(),
   name: z.string(),
@@ -63,6 +49,3 @@ export const DemoAccountSchema = z.object({
   unit: z.string(),
 });
 export type DemoAccount = z.infer<typeof DemoAccountSchema>;
-
-/** `logout` answers `true`, as the mockup does. */
-export const LogoutResultSchema = z.literal(true);

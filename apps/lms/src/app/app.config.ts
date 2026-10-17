@@ -15,6 +15,7 @@ import { DEV_FEATURES } from './core/dev/dev-features';
 import { provideAppErrorHandler } from './core/errors/app-error-handler';
 import { apiBaseUrlInterceptor } from './core/http/api-base-url.interceptor';
 import { envelopeInterceptor } from './core/http/envelope.interceptor';
+import { bearerInterceptor } from './core/http/bearer.interceptor';
 import { sessionExpiryInterceptor } from './core/http/session-expiry.interceptor';
 import { AppTitleStrategy } from './core/routing/page-title.strategy';
 import { provideSession } from './core/session/session.provider';
@@ -39,6 +40,7 @@ export const appConfig: ApplicationConfig = {
       withInterceptors([
         sessionExpiryInterceptor,
         envelopeInterceptor,
+        bearerInterceptor,
         ...DEV_FEATURES.interceptors,
         ...(config.mockApi ? mockInterceptors : []),
         apiBaseUrlInterceptor,

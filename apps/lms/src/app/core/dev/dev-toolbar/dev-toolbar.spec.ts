@@ -16,7 +16,6 @@ class FakeSession {
   readonly user = signal<Profile | null>(profileFixtures['learner']);
   readonly user$ = this.user.asReadonly();
   readonly isSignedIn$ = () => this.user() !== null;
-  signInDemo = vi.fn();
   expire = vi.fn(() => this.user.set(null));
 }
 
@@ -81,44 +80,35 @@ describe('DevToolbar', () => {
     expect(el.querySelector('ui-menu button')?.textContent).toContain('Demo');
   });
 
-  it('lists a quick sign-in per demo account and the incident simulations', async () => {
+  it('lists a mock role per demo account and the incident simulations', async () => {
     await open();
     expect(labels()).toHaveLength(demoAccountFixtures.length + 4);
     expect(labels()).toContain('Mô phỏng mất kết nối');
     expect(labels()).toContain('Mô phỏng hết phiên đăng nhập');
     expect(labels()).toContain('Mở Design System');
-    expect(menu()?.textContent).toContain('Đăng nhập nhanh theo vai trò');
+    expect(menu()?.textContent).toContain('Đổi vai trò dữ liệu mô phỏng');
     expect(item('Quản trị viên đơn vị')).toBeDefined();
   });
 
-  it('switches role: remembers the example, signs in, then goes home and says so', async () => {
+  it('switches the mock role only: remembers the example, keeps the user, goes home and says so', async () => {
     await open();
-    const unitAdmin = demoAccountFixtures.find(
-      (a) => a.roleId === 'admin' && a.scopeUnitId,
-    )!;
     item('Quản trị viên đơn vị').click();
     TestBed.tick();
     expect(TestBed.inject(MockScenario).role$()).toBe('unit-admin');
-    expect(session.signInDemo).toHaveBeenCalledWith(unitAdmin.id);
-    expect(router.navigateByUrl).not.toHaveBeenCalled();
-
-    session.user.set({ ...profileFixtures['unit-admin'], id: unitAdmin.id });
-    TestBed.tick();
-    await vi.waitFor(() =>
-      expect(router.navigateByUrl).toHaveBeenCalledWith('/'),
-    );
+    expect(session.expire).not.toHaveBeenCalled();
+    expect(session.user()).toBe(profileFixtures['learner']);
+    expect(router.navigateByUrl).toHaveBeenCalledWith('/');
     await vi.waitFor(() =>
       expect(document.body.textContent).toContain(
-        'Đã chuyển sang Quản trị viên đơn vị',
+        'Đã chuyển dữ liệu mô phỏng sang Quản trị viên đơn vị',
       ),
     );
   });
 
-  it('disables the account that is signed in', async () => {
+  it('disables the role whose mock data is in use', async () => {
+    TestBed.inject(MockScenario).setRole('learner');
     await open();
-    const current = demoAccountFixtures.find(
-      (a) => a.id === profileFixtures['learner'].id,
-    )!;
+    const current = demoAccountFixtures.find((a) => a.roleId === 'learner')!;
     const row = items().find((i) => i.textContent?.includes(current.name));
     expect(row?.getAttribute('aria-disabled')).toBe('true');
   });
@@ -187,7 +177,7 @@ describe('DevToolbar against a real backend', () => {
       );
     });
     expect(document.querySelector('[role="menu"]')?.textContent).not.toContain(
-      'Đăng nhập nhanh theo vai trò',
+      'Đổi vai trò dữ liệu mô phỏng',
     );
     el.remove();
     document

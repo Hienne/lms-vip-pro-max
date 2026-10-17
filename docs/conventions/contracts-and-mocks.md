@@ -18,7 +18,7 @@ written twice.
 - Naming: schema `CourseSchema`, type `export type Course = z.infer<typeof CourseSchema>`.
   Commands and queries: `SaveCourseCommandSchema` / `SaveCourseCommand`,
   `CourseListQuerySchema` / `CourseListQuery`.
-- Unions are `z.enum([...])` (`AccountStatusSchema = z.enum(['active', 'suspended', 'locked'])`);
+- Unions are `z.enum([...])` (`AccountStatusSchema = z.enum(['active', 'suspended', 'locked', 'inactive'])`);
   no TypeScript enums. Display labels (`'Đang hoạt động'`) live in the app, not in contracts. Roles are data, not an enum: their names come from the server.
 - Dates cross the wire as ISO strings (`z.iso.datetime()`) and are formatted by a pipe.
 - `z.unknown()` and narrowing instead of `z.any()`. No `.passthrough()`.
@@ -89,7 +89,7 @@ File | Blob` or an array of those. Arrays repeat the key, numbers and booleans
 - **Envelope.** See "Response envelope" below: `envelopeInterceptor` unwraps it before the
   parse above, so a schema describes the payload only.
 - **Tag.** Every request carries its endpoint object in the `ENDPOINT`
-  `HttpContextToken` (exported by the client). `envelopeInterceptor`, `sessionExpiryInterceptor` and the dev mock read it.
+  `HttpContextToken` (exported by the client). `envelopeInterceptor`, `sessionExpiryInterceptor`, `bearerInterceptor` and the dev mock read it.
 - **Files.** A `blob` endpoint returns a `Blob`; the store names it and calls
   `FileSaver.save(blob, filename)` (`core/files/`) from a mutation's `onSuccess`.
   `Content-Disposition` is not read.
@@ -106,9 +106,9 @@ File | Blob` or an array of those. Arrays repeat the key, numbers and booleans
   must behave differently for a backend code, together with that code's entry in the table.
   `serverData` and `serverMutation` expose their error as an `AppError`; components render it with retry.
 - **Expired session.** `sessionExpiryInterceptor` (`core/http/`, first in the chain,
-  all environments) treats a 401, or an `ApiError` with `CORE-0401`, from any endpoint except `authEndpoints.profile`,
-  `login` and `loginDemo` as the session ending (those mean anonymous visitor and
-  wrong credentials). It matches by endpoint identity through the `ENDPOINT` context
+  all environments) treats a 401, or an `ApiError` with `CORE-0401`, from any endpoint except
+  `authV1Endpoints.me`, `login` and `logout` as the session ending (those mean anonymous visitor,
+  wrong credentials, or a token already revoked at logout). It matches by endpoint identity through the `ENDPOINT` context
   token, never by URL, and hands over to `SessionExpiry` (`core/session/`), which, only
   while someone is signed in, forgets the user, shows the expiry message once and
   navigates to `/login?next=<current url>`. The failing call still errors to its store
@@ -205,8 +205,9 @@ and no OpenAPI document.
   imports the mock module (and through it `@lms/mocks`); it exports
   `mockInterceptors`. The staging and production environment files export an
   empty list and import nothing from the mock, so their builds cannot contain
-  it. `app.config.ts` registers `mockInterceptors` when `mockApi` is true, in
-  the order: offline simulation, mock API, `apiBaseUrlInterceptor`. A narrow
+  it. `app.config.ts` registers, in order: `sessionExpiryInterceptor`, `bearerInterceptor`,
+  the dev interceptors (offline simulation), `mockInterceptors` (only when `mockApi` is true),
+  `apiBaseUrlInterceptor`. A narrow
   ESLint override lets only `environment.ts` and `core/dev/mock-api/**` depend
   on `type:mocks` outside specs.
 - `tools/check-production-bundle.mjs` looks for a fixture marker
@@ -215,8 +216,8 @@ and no OpenAPI document.
   the dev toolbar on purpose). A development build fails the check.
 - To use a backend instead, set `mockApi` to false in `environment.ts` and put
   the backend's dev origin in `apps/lms/proxy.conf.mjs`; no code changes. The
-  toolbar's role list is then hidden (it only drives the mock): switch role by
-  signing in with a demo account (`loginDemo`). The offline, session-expired
+  toolbar's role list is then hidden (it only switches which mock examples answer): sign in
+  with a real account. The offline, session-expired
   and forbidden-URL simulations stay. The toolbar replaces the mockup's "Demo"
   menu and is not part of the production build.
 - The mock is stateless: a POST does not change what the next GET returns.
@@ -232,21 +233,32 @@ and no OpenAPI document.
   `PERMS` table is gone: there is no `Permission` type and no `*appCan`.
 - Each user has exactly one `roleId` and a separate `scopeUnitId` (`null` = whole system). The scope
   limits **data** and is enforced by the server; the app only renders what it gets.
-- `profile` keeps server-evaluated values the app must not recompute: `roleName`, `menus`, `homePath`
-  (where `/` and the login page send the user), `unitName`, `groupName` and `scopeName`
-  (unit name, or the server's "Toàn hệ thống" for system-wide users).
+- `Profile` (built from `me` by `toProfile`) is what the screens render. Until permissions are mapped,
+  `menus` is every menu, `homePath` is `/learn` and `scopeName` is the app's label for
+  `roleGrants[0].scope.type` (DEC-010, DEC-018); the mock's `profileFixtures` keep the
+  server-computed values.
 - `roleText` in the app adds "đơn vị" to the name of an `admin` limited to one unit (the mockup's
   "Quản trị viên đơn vị"); the demo accounts therefore carry `roleName` and `scopeUnitId`.
-- The mock's role examples (`profile`, `navCounts`) exist for the four system roles and the unit admin
+- The mock's role examples (`navCounts`) exist for the four system roles and the unit admin
   only (`learner`, `instructor`, `admin`, `viewer`, `unit-admin`). A custom role has no example (the
   default answers), and the mock cannot keep one across a reload because it is stateless.
-- `logout` answers `true` (200), like the mockup; `login` and `loginDemo`
-  answer `{ id, roleId }`. The session token is a server concern (cookie), not
-  part of the payload.
-- `loginDemo` is `POST /api/auth/demo-accounts/{userId}/login`.
-- One locked-account example per endpoint (the locked wording). The mockup's separate
-  "suspended" wording reaches the UI through the backend's `message`, which `toAppError`
-  keeps verbatim.
+- `authEndpoints` keeps only what the backend lacks, answered by the mock: `demoAccounts` (the dev
+  toolbar's role list), `updateProfile` and `changePassword`. Sign-in, sign-out and the current user
+  are `authV1Endpoints`; the session token is the v1 `login` bearer token, kept by `TokenStore`.
+  `profileFixtures` stay as the `Profile` data for specs and mock responses.
+- **v1 auth (backend).** `authV1Endpoints` (`login`, `logout`, `me` under `/api/v1/auth/`) are the
+  backend's contract. Like every endpoint, their response schemas describe the envelope's `data`;
+  `envelopeInterceptor` unwraps it. `MeSchema` follows the backend (nullable email and org/team
+  fields; `userId` is the staff code, keep it a string). Their fixtures (`auth-v1.fixtures.ts`) are
+  wire envelopes for specs and are **not** in `MOCK_FIXTURES`, so the mock API forwards these
+  endpoints to the network. `AccountStatus` includes `inactive` (neutral badge).
+- **Session.** The access token and its `expiresAt` live in `localStorage` behind `TokenStore`
+  (storage errors and malformed entries count as no token). `bearerInterceptor` adds
+  `Authorization: Bearer <token>` to `/api/` requests except `authV1Endpoints.login`, and runs before
+  `apiBaseUrlInterceptor` so the `/api/` test sees the relative path. At boot an unexpired token
+  restores the user through `me`; a missing or expired token is anonymous with no request. `me` is
+  adapted by `toProfile` (every menu, home `/learn`, until permissions are mapped; `SessionStore.expire()` also
+  removes the stored token).
 
 ## Admin organisation contract decisions
 

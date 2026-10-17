@@ -1,4 +1,4 @@
-import type { DemoAccount, LoginResult, Profile } from '@lms/contracts';
+import type { DemoAccount, Profile } from '@lms/contracts';
 import { refusal } from '../error-envelopes';
 import { roleFixtures, userFixtures } from '../identity/identity.fixtures';
 
@@ -76,8 +76,6 @@ export const demoAccountFixtures: readonly DemoAccount[] = [
   };
 });
 
-export const loginResult: LoginResult = { id: 'l1', roleId: 'learner' };
-
 export const loginInvalid = refusal(
   'Thông tin đăng nhập chưa hợp lệ',
   'Vui lòng kiểm tra lại thông tin đăng nhập.',
@@ -89,14 +87,6 @@ export const loginUnauthorized = refusal(
 export const loginLocked = refusal(
   'Tài khoản bị khóa',
   'Tài khoản đã bị khóa. Liên hệ quản trị viên đơn vị để được hỗ trợ.',
-);
-export const loginDemoNotFound = refusal(
-  'Không tìm thấy tài khoản',
-  'Tài khoản không tồn tại hoặc đã bị xóa.',
-);
-export const loginDemoLocked = refusal(
-  'Tài khoản bị khóa',
-  'Tài khoản đã bị khóa.',
 );
 
 export const updateProfileInvalid = refusal(

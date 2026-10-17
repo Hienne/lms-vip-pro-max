@@ -42,4 +42,13 @@ describe('AccountStatus', () => {
     expect(badge.classList.contains(tone)).toBe(true);
     expect(badge.classList.contains('badge--dot')).toBe(true);
   });
+
+  it('shows inactive as a neutral "Ngừng hoạt động" badge with a dot', () => {
+    const { badges, set } = render();
+    set((h) => h.status.set('inactive'));
+    const [badge] = badges();
+    expect(text(badge)).toBe('Ngừng hoạt động');
+    // Neutral is the base badge: no tone modifier.
+    expect(badge.className).toBe('badge badge--dot');
+  });
 });

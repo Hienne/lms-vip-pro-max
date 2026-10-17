@@ -17,6 +17,10 @@ import {
 } from '../../../core/config/app-config';
 import { testAppConfig } from '../../../core/config/app-config.testing';
 import { provideEnvelopeHttpClient } from '../../../core/http/http.testing';
+import {
+  FakeSessionStore,
+  fakeSession,
+} from '../../../core/session/session.testing';
 import { SessionStore } from '../../../core/session/session.store';
 
 describe('UserDetail', () => {
@@ -30,7 +34,7 @@ describe('UserDetail', () => {
         provideEnvelopeHttpClient(),
         provideAppConfig(parseAppConfig(testAppConfig())),
         provideRouter(createAppRoutes({ devTools: true })),
-        SessionStore,
+        { provide: SessionStore, useClass: FakeSessionStore },
       ],
     });
     backend = TestBed.inject(HttpTestingController);
@@ -49,12 +53,7 @@ describe('UserDetail', () => {
   }
 
   async function open(detail = userDetailFixture, id = detail.user.id) {
-    TestBed.inject(SessionStore).restore();
-    await settle();
-    backend
-      .expectOne('/api/auth/profile')
-      .flush(envelopeOk(profileFixtures['admin']));
-    await settle();
+    fakeSession().user.set(profileFixtures['admin']);
     harness = await RouterTestingHarness.create();
     await harness.navigateByUrl(`/admin/users/${id}`);
     await settle();
@@ -190,12 +189,7 @@ describe('UserDetail', () => {
   });
 
   it('offers a retry when the load failed for no reason the backend gave', async () => {
-    TestBed.inject(SessionStore).restore();
-    await settle();
-    backend
-      .expectOne('/api/auth/profile')
-      .flush(envelopeOk(profileFixtures['admin']));
-    await settle();
+    fakeSession().user.set(profileFixtures['admin']);
     harness = await RouterTestingHarness.create();
     await harness.navigateByUrl('/admin/users/nobody');
     await settle();
@@ -209,12 +203,7 @@ describe('UserDetail', () => {
   });
 
   it('says the user does not exist', async () => {
-    TestBed.inject(SessionStore).restore();
-    await settle();
-    backend
-      .expectOne('/api/auth/profile')
-      .flush(envelopeOk(profileFixtures['admin']));
-    await settle();
+    fakeSession().user.set(profileFixtures['admin']);
     harness = await RouterTestingHarness.create();
     await harness.navigateByUrl('/admin/users/nobody');
     await settle();
@@ -233,6 +222,7 @@ describe('UserDetail', () => {
     expect(text()).toContain('Người dùng không tồn tại.');
     expect(button(el, 'Thử lại')).toBeUndefined();
   });
+
   const escape = () =>
     dialog()?.dispatchEvent(
       new KeyboardEvent('keydown', {

@@ -10,6 +10,10 @@ import {
 } from '../../../core/config/app-config';
 import { testAppConfig } from '../../../core/config/app-config.testing';
 import { provideEnvelopeHttpClient } from '../../../core/http/http.testing';
+import {
+  FakeSessionStore,
+  fakeSession,
+} from '../../../core/session/session.testing';
 import { SessionStore } from '../../../core/session/session.store';
 
 describe('Profile', () => {
@@ -23,7 +27,7 @@ describe('Profile', () => {
         provideEnvelopeHttpClient(),
         provideAppConfig(parseAppConfig(testAppConfig())),
         provideRouter(createAppRoutes({ devTools: true })),
-        SessionStore,
+        { provide: SessionStore, useClass: FakeSessionStore },
       ],
     });
     backend = TestBed.inject(HttpTestingController);
@@ -42,12 +46,7 @@ describe('Profile', () => {
   }
 
   async function open(role: keyof typeof profileFixtures = 'admin') {
-    TestBed.inject(SessionStore).restore();
-    await settle();
-    backend
-      .expectOne('/api/auth/profile')
-      .flush(envelopeOk(profileFixtures[role]));
-    await settle();
+    fakeSession().user.set(profileFixtures[role]);
     harness = await RouterTestingHarness.create();
     await harness.navigateByUrl('/profile');
     await settle();
@@ -107,9 +106,8 @@ describe('Profile', () => {
     });
     put.flush(envelopeOk(profileFixtures['admin']));
     await settle();
-    backend
-      .expectOne('/api/auth/profile')
-      .flush(envelopeOk({ ...profileFixtures['admin'], name: 'Phạm Trang' }));
+    expect(fakeSession().restore).toHaveBeenCalledOnce();
+    fakeSession().user.set({ ...profileFixtures['admin'], name: 'Phạm Trang' });
     await settle();
     expect(input('Họ và tên').value).toBe('Phạm Trang');
     expect(document.body.textContent).toContain('Đã lưu hồ sơ');

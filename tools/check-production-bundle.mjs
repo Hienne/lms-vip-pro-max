@@ -12,7 +12,7 @@ import { join, relative } from 'node:path';
 const FIXTURE_MARKERS = [['mock API fixtures', 'admin@demo.cb']];
 const DEV_TOOL_MARKERS = [
   ['dev toolbar', 'Mô phỏng hết phiên đăng nhập'],
-  ['dev toolbar', 'Đăng nhập nhanh theo vai trò'],
+  ['dev toolbar', 'Đổi vai trò dữ liệu mô phỏng'],
   ['mock role storage', 'lms.mockRole'],
   ['migration board', 'Tiến độ migrate'],
   ['migration board', 'migration-entries.data.ts'],

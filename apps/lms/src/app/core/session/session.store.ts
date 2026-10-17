@@ -1,8 +1,8 @@
 import { computed, inject, Injectable, signal } from '@angular/core';
 import { rxResource, toObservable } from '@angular/core/rxjs-interop';
 import {
-  authEndpoints,
-  type LoginCommand,
+  authV1Endpoints,
+  type LoginV1Command,
   type MenuKey,
   type Profile,
 } from '@lms/contracts';
@@ -10,6 +10,7 @@ import {
   catchError,
   filter,
   firstValueFrom,
+  map,
   of,
   switchMap,
   tap,
@@ -17,69 +18,74 @@ import {
 } from 'rxjs';
 import { EndpointClient } from '../http/endpoint-client';
 import { type AppError, toAppError } from '../errors/app-error';
+import { toProfile } from './to-profile';
+import { TokenStore } from './token-store';
 
 export type SessionStatus = 'loading' | 'ready' | 'error';
-
-type SignInRequest =
-  | { readonly kind: 'password'; readonly command: LoginCommand }
-  | { readonly kind: 'demo'; readonly userId: string };
 
 const NO_MENUS: readonly MenuKey[] = [];
 
 /**
- * Who is signed in. The profile from `authEndpoints.profile` is the only source of the role and
- * the menus it grants. The server keeps the session (a cookie today); how a token is stored, attached and
- * refreshed is a separate spec that plugs in behind `signIn`, `signInDemo` and `signOut`.
+ * Who is signed in. `/me`, adapted by `toProfile`, is the only source of the user. The access
+ * token lives in `TokenStore` and is attached by `bearerInterceptor`; a missing or expired token
+ * means an anonymous visitor without asking the server.
  * Provided once for the whole app (`provideSession()`), not per component.
  */
 @Injectable()
 export class SessionStore {
   private readonly client = inject(EndpointClient);
+  private readonly tokens = inject(TokenStore);
 
   private readonly state = {
     restoreRequest: signal<object | undefined>(undefined),
-    signInRequest: signal<SignInRequest | undefined>(undefined),
+    signInRequest: signal<LoginV1Command | undefined>(undefined),
     signOutRequest: signal<object | undefined>(undefined),
   };
 
-  /** `null` is an anonymous visitor: the profile answered 401. */
+  /** `null` is an anonymous visitor: no valid token, or `/me` answered 401. */
   private readonly profileResource = rxResource<
     Profile | null,
     object | undefined
   >({
     params: () => this.state.restoreRequest(),
     stream: () =>
-      this.client
-        .call(authEndpoints.profile)
-        .pipe(
-          catchError((error: unknown) =>
-            toAppError(error).kind === 'unauthorized'
-              ? of(null)
-              : throwError(() => error),
+      this.tokens.read() === null
+        ? of(null)
+        : this.client.call(authV1Endpoints.me).pipe(
+            map(toProfile),
+            catchError((error: unknown) => {
+              if (toAppError(error).kind !== 'unauthorized') {
+                return throwError(() => error);
+              }
+              this.tokens.clear();
+              return of(null);
+            }),
           ),
-        ),
   });
 
   private readonly signInResource = rxResource({
     params: () => this.state.signInRequest(),
-    stream: ({ params: request }) =>
-      (request.kind === 'demo'
-        ? this.client.call(authEndpoints.loginDemo, {
-            params: { userId: request.userId },
-          })
-        : this.client.call(authEndpoints.login, { body: request.command })
-      ).pipe(
-        switchMap(() => this.client.call(authEndpoints.profile)),
+    stream: ({ params: command }) =>
+      this.client.call(authV1Endpoints.login, { body: command }).pipe(
+        tap((token) =>
+          this.tokens.save(token.accessToken, token.expiresInSeconds),
+        ),
+        switchMap(() => this.client.call(authV1Endpoints.me)),
+        map(toProfile),
         tap((profile) => this.profileResource.set(profile)),
+        catchError((error: unknown) => {
+          this.tokens.clear();
+          return throwError(() => error);
+        }),
       ),
   });
 
   private readonly signOutResource = rxResource({
     params: () => this.state.signOutRequest(),
     stream: () =>
-      this.client.call(authEndpoints.logout).pipe(
-        catchError(() => of(true as const)),
-        tap(() => this.profileResource.set(null)),
+      this.client.call(authV1Endpoints.logout).pipe(
+        catchError(() => of(null)),
+        tap(() => this.expire()),
       ),
   });
 
@@ -125,7 +131,7 @@ export class SessionStore {
     this.state.restoreRequest.set(request);
   }
 
-  private setSignInRequest(request: SignInRequest | undefined): void {
+  private setSignInRequest(request: LoginV1Command | undefined): void {
     this.state.signInRequest.set(request);
   }
 
@@ -138,20 +144,17 @@ export class SessionStore {
     this.setRestoreRequest({});
   }
 
-  signIn(command: LoginCommand): void {
-    this.setSignInRequest({ kind: 'password', command: { ...command } });
-  }
-
-  signInDemo(userId: string): void {
-    this.setSignInRequest({ kind: 'demo', userId });
+  signIn(command: LoginV1Command): void {
+    this.setSignInRequest({ ...command });
   }
 
   signOut(): void {
     this.setSignOutRequest({});
   }
 
-  /** The server ended the session: forget the user without calling it (the dev toolbar uses it). */
+  /** The session ended: forget the token and the user without calling the server. */
   expire(): void {
+    this.tokens.clear();
     this.profileResource.set(null);
   }
 

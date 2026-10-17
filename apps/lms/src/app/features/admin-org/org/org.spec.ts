@@ -17,6 +17,10 @@ import {
 } from '../../../core/config/app-config';
 import { testAppConfig } from '../../../core/config/app-config.testing';
 import { provideEnvelopeHttpClient } from '../../../core/http/http.testing';
+import {
+  FakeSessionStore,
+  fakeSession,
+} from '../../../core/session/session.testing';
 import { SessionStore } from '../../../core/session/session.store';
 
 describe('Org', () => {
@@ -30,7 +34,7 @@ describe('Org', () => {
         provideEnvelopeHttpClient(),
         provideAppConfig(parseAppConfig(testAppConfig())),
         provideRouter(createAppRoutes({ devTools: true })),
-        SessionStore,
+        { provide: SessionStore, useClass: FakeSessionStore },
       ],
     });
     backend = TestBed.inject(HttpTestingController);
@@ -52,12 +56,7 @@ describe('Org', () => {
     role: 'admin' | 'unit-admin' = 'admin',
     org: readonly OrgUnit[] = orgFixtures,
   ) {
-    TestBed.inject(SessionStore).restore();
-    await settle();
-    backend
-      .expectOne('/api/auth/profile')
-      .flush(envelopeOk(profileFixtures[role]));
-    await settle();
+    fakeSession().user.set(profileFixtures[role]);
     harness = await RouterTestingHarness.create();
     await harness.navigateByUrl('/admin/org');
     await settle();
