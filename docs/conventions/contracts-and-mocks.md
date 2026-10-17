@@ -94,19 +94,22 @@ File | Blob` or an array of those. Arrays repeat the key, numbers and booleans
   `FileSaver.save(blob, filename)` (`core/files/`) from a mutation's `onSuccess`.
   `Content-Disposition` is not read.
 - `apps/lms/src/app/core/errors/app-error.ts` exports `toAppError(unknown): AppError`,
-  the one place that maps `ApiError` (an `ERROR` envelope), `HttpErrorResponse`,
-  `ContractError` and offline status 0 to `AppError`
-  (`offline | unauthorized | server | contract | unknown`; status 0 is `offline`, status 401 is
-  `unauthorized`, any other HTTP status is `unknown` with the default message: the body of an
-  `HttpErrorResponse` is never read).
-  `AppError` is `{ kind, message, title?, messageCode? }`. From an `ApiError` the
-  `message` and `title` are the backend's, verbatim (the Vietnamese default replaces only a
-  missing `message`; a missing `title` stays absent), `messageCode` is kept, and the kind is
-  `server` unless the code is in `MESSAGE_CODE_KIND`. A new kind is added only when a screen
-  must behave differently for a backend code, together with that code's entry in the table.
+  the one place that maps `ApiError` (an `ERROR` envelope, whatever its HTTP status),
+  `HttpErrorResponse` (no envelope in the body), `ContractError` and offline status 0 to `AppError`
+  (`offline | unauthorized | forbidden | passwordChangeRequired | server | contract | unknown`;
+  status 0 is `offline`, 401 `unauthorized`, 403 `forbidden`, any other HTTP status `unknown`
+  with the default message).
+  `AppError` is `{ kind, message, title?, messageCode?, httpStatus?, responseId? }`. From an
+  `ApiError` the `message` and `title` are the backend's, verbatim (the Vietnamese default
+  replaces only a missing `message`; a missing `title` stays absent), `messageCode`,
+  `httpStatus` and `responseId` are kept, and the kind is `server` unless the code is in
+  `MESSAGE_CODE_KIND`. A new kind is added only when a screen must behave differently for a
+  backend code, together with that code's entry in the table.
   `serverData` and `serverMutation` expose their error as an `AppError`; components render it with retry.
+  A `serverMutation` with `errors: 'toast'` appends "Mã tra cứu: <responseId>" to the toast of a
+  system failure (HTTP 5xx).
 - **Expired session.** `sessionExpiryInterceptor` (`core/http/`, first in the chain,
-  all environments) treats a 401, or an `ApiError` with `CORE-0401`, from any endpoint except
+  all environments) treats a 401 (an `ApiError` with HTTP status 401, e.g. `CORE-UNAUTHENTICATED`, or a bare 401) from any endpoint except
   `authV1Endpoints.me`, `login` and `logout` as the session ending (those mean anonymous visitor,
   wrong credentials, or a token already revoked at logout). It matches by endpoint identity through the `ENDPOINT` context
   token, never by URL, and hands over to `SessionExpiry` (`core/session/`), which, only
@@ -124,27 +127,44 @@ File | Blob` or an array of those. Arrays repeat the key, numbers and booleans
 
 ## Response envelope
 
-The backend answers every call with HTTP 200 and the same wrapper (`EnvelopeSchema` in
+The backend (`BaseResponse`) wraps every answer in the same envelope (`EnvelopeSchema` in
 `libs/contracts/src/lib/http/envelope.ts`): `responseId`, `timestamp`, `status`
 (`SUCCESS` | `ERROR`), `messageCode`, `messageTitle`, `message` and `data`. The payload of a
-success is in `data`; an endpoint's `response` schema describes that payload, never the wrapper.
+success is in `data` (HTTP 200, or 201 for a create); an endpoint's `response` schema describes
+that payload, never the wrapper. Validation and business refusals are HTTP 200 with `status:
+'ERROR'`; authentication (401), permission (403), protocol (400, 404, 405, 406, 415, 429) and
+system (500) failures use their own HTTP status **and still carry the envelope in the body**. A
+body `errors[]` (per-field details) is deliberately not read (decision D10): forms show only
+their own validators' messages, and a backend refusal is a toast.
 
-- **Success test.** `status === 'SUCCESS'` and nothing else. (`CORE-0000` is the success code, but
-  `messageCode` is not used to decide.)
+- **Success test.** `status === 'SUCCESS'` and nothing else (`CORE-SUCCESS` is the success code, but
+  `messageCode` is not used to decide).
 - **`envelopeInterceptor`** (`core/http/`, second in the chain, after `sessionExpiryInterceptor`
   and before the dev features and the mock) is the one place that knows the wrapper. It acts only
   on requests with an `ENDPOINT` tag and skips `blob` endpoints. `SUCCESS` continues with `data`;
-  `ERROR` throws an `ApiError` (`messageCode`, `title`, `serverMessage`); a body that is not an
-  envelope throws `ContractError` (and goes to `ErrorHandler`). Non-2xx responses (offline,
-  gateway errors, a real 401) pass through as `HttpErrorResponse`.
-- **`toAppError`** reads an `ApiError`: a code in `MESSAGE_CODE_KIND` (today only
-  `CORE-0401 → unauthorized`) gives that kind, any other code is `server`. The `AppError` keeps the
+  `ERROR` throws an `ApiError` (`messageCode`, `title`, `serverMessage`, `httpStatus`,
+  `responseId`); the same happens for an envelope in the body of a 4xx/5xx
+  `HttpErrorResponse`; a 2xx body that is not an envelope throws `ContractError` (and goes to
+  `ErrorHandler`). A non-2xx without an envelope (offline, a gateway's error page) passes through
+  as `HttpErrorResponse`.
+- **`requestIdInterceptor`** sends `X-Request-Id` (a UUID, or random hex on a plain-HTTP page) on
+  every `/api/` call; the backend returns it as `responseId`.
+- **`toAppError`** reads an `ApiError`: a code in `MESSAGE_CODE_KIND` (`CORE-UNAUTHENTICATED →
+  unauthorized`, `CORE-ACCESS_DENIED → forbidden`, `IDENTITY-PASSWORD_CHANGE_REQUIRED →
+  passwordChangeRequired`) gives that kind, any other code is `server`. The `AppError` keeps the
   backend's `title`, `message` (verbatim, the Vietnamese default only when it sent none) and
-  `messageCode`. Add a code to `MESSAGE_CODE_KIND` only when a screen must behave differently for it.
+  `messageCode`. A wrong password is `IDENTITY-CREDENTIALS_INVALID` in a 401: a plain `server`
+  error whose message is the backend's "Tên đăng nhập hoặc mật khẩu không đúng.".
+  Add a code to `MESSAGE_CODE_KIND` only when a screen must behave differently for it.
 - **Display is not decided here.** No interceptor shows a toast: a `serverMutation` with
   `errors: 'toast'` shows `title` as the heading and `message` as the detail.
+- **Paging and PATCH.** `PageSchema(item)` (`http/page.ts`) is the backend's `PageResponse`
+  (`items`, 0-based `page`, `size` 1..100, `totalElements`, `totalPages`). `toPatch(original, next,
+  fields)` (`http/patch.ts`) builds a PATCH body of the changed fields only: a field left out is
+  kept by the server and `null` clears it.
 - **Mock and specs.** The in-app mock answers `envelopeOk(fixture)`. A spec flushes
-  `envelopeOk(data)` or `envelopeError(code, title, message)` (from `@lms/mocks`) through
+  `envelopeOk(data)`, or a refusal from `backendRefusal(key)` (`@lms/mocks`: the real HTTP status,
+  code, title and message of every backend refusal) with that status, through
   `provideEnvelopeHttpClient()` (`core/http/http.testing.ts`), which installs the interceptor.
 
 ## Forms

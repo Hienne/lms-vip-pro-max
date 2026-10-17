@@ -18,16 +18,20 @@ const EXEMPT = new Set<unknown>([
   authV1Endpoints.logout,
 ]);
 
-/** The backend refuses the session two ways: an HTTP 401, or a 200 with the `CORE-0401` envelope. */
+/**
+ * The backend refuses the session with an HTTP 401: `CORE-UNAUTHENTICATED` in an envelope (which
+ * `envelopeInterceptor` turns into an `ApiError`), or a 401 without one.
+ */
 function isUnauthenticated(error: unknown): boolean {
   return (
     (error instanceof HttpErrorResponse && error.status === 401) ||
-    (error instanceof ApiError && error.messageCode === UNAUTHENTICATED_CODE)
+    (error instanceof ApiError &&
+      (error.httpStatus === 401 || error.messageCode === UNAUTHENTICATED_CODE))
   );
 }
 
 /**
- * Any other 401, or `CORE-0401`, while signed in means the session ended: it is handed to `SessionExpiry` and the
+ * Any other 401 (or `CORE-UNAUTHENTICATED`) while signed in means the session ended: it is handed to `SessionExpiry` and the
  * error still reaches the caller. Exempt by endpoint identity, never by URL. `SessionExpiry` is
  * loaded and resolved only on that error path: it depends on `HttpClient` through the session store, and the UI toaster stays out of the initial bundle.
  */

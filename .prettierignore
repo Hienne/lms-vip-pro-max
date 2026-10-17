@@ -9,3 +9,7 @@
 /package-lock.json
 # kept verbatim from the team convention source
 /docs/conventions/angular.md
+# generated notes and report artifacts, not source
+/.scratch
+/.flow
+/docs/reports

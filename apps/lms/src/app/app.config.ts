@@ -16,6 +16,7 @@ import { provideAppErrorHandler } from './core/errors/app-error-handler';
 import { apiBaseUrlInterceptor } from './core/http/api-base-url.interceptor';
 import { envelopeInterceptor } from './core/http/envelope.interceptor';
 import { bearerInterceptor } from './core/http/bearer.interceptor';
+import { requestIdInterceptor } from './core/http/request-id.interceptor';
 import { sessionExpiryInterceptor } from './core/http/session-expiry.interceptor';
 import { AppTitleStrategy } from './core/routing/page-title.strategy';
 import { provideSession } from './core/session/session.provider';
@@ -41,6 +42,7 @@ export const appConfig: ApplicationConfig = {
         sessionExpiryInterceptor,
         envelopeInterceptor,
         bearerInterceptor,
+        requestIdInterceptor,
         ...DEV_FEATURES.interceptors,
         ...(config.mockApi ? mockInterceptors : []),
         apiBaseUrlInterceptor,

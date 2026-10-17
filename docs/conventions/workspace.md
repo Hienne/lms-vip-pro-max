@@ -138,7 +138,8 @@ project run the Nx target directly (`npx nx test ui`).
   toolbar, the board or any mock fixture, and builds staging to check that it holds no fixtures. Known gap: the migration registry data
   (`migration-entries.data.ts`, with owner handles) still ships because the design-system
   placeholders read statuses from it; it is hidden at runtime by `devTools`.
-- `apiBaseUrl` is the API origin per environment (`''` = same origin).
+- `apiBaseUrl` is the API origin per environment (`''` = same origin, the value of every
+  environment today).
   `apiBaseUrlInterceptor` prefixes it to every `/api/...` request, so endpoint
   paths in `@lms/contracts` stay environment-free and `EndpointClient` never reads
   the config.
@@ -166,6 +167,8 @@ not interrupted mid-copy.
 A new check belongs in a `package.json` script first, then in the workflow, so
 `npm run check` and CI never disagree.
 
-`apps/lms/proxy.conf.mjs` maps `/api` to the backend's dev origin (a `TODO(backend)`
-placeholder), so app code only ever uses relative `/api/...` URLs. It is unused while
-`mockApi` is true, the development default.
+`apps/lms/proxy.conf.mjs` maps `/api` to the backend's dev origin, `http://localhost:8019`
+(`corebanking-academy`, whose CORS only allows `http://localhost:4200`), so app code only ever
+uses relative `/api/...` URLs. All three environment files set `apiBaseUrl: ''`: in development
+the proxy forwards the calls the mock does not answer, and staging and production sit behind an
+HTTPS reverse proxy on the same origin (infrastructure, not code).

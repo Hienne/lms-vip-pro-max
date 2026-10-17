@@ -4,14 +4,15 @@ import { mockApiInterceptor } from '../app/core/dev/mock-api/mock-api.intercepto
 
 /**
  * Development (default: `nx serve lms`, unit tests).
- * The in-app mock API (`mockApi`) answers every endpoint that has a fixture; endpoints without
- * one (the v1 auth calls) go to the backend at `apiBaseUrl`. Set `mockApi` to false to use the
- * backend for everything.
+ * `apiBaseUrl: ''` sends `/api/` through the dev-server proxy to the backend on
+ * `http://localhost:8019` (`apps/lms/proxy.conf.mjs`). The in-app mock API (`mockApi`) answers
+ * every endpoint that has a fixture; endpoints without one go to that backend. Set `mockApi` to
+ * false to use the backend for everything.
  */
 export const environment: AppConfigInput = {
   name: 'development',
   production: false,
-  apiBaseUrl: 'http://103.121.90.119:8019',
+  apiBaseUrl: '',
   mockApi: true,
   devTools: true,
 };

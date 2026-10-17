@@ -145,6 +145,47 @@ describe('serverMutation', () => {
     );
   });
 
+  it('with errors "toast" adds the lookup id to a system failure (HTTP 5xx) only', async () => {
+    const { calls, run } = sources();
+    const mutation = TestBed.runInInjectionContext(() =>
+      serverMutation(run, { errors: 'toast', success: () => 'ok' }),
+    );
+
+    mutation.run('a');
+    await settle();
+    calls[0].source.error(
+      new ApiError(
+        'CORE-INTERNAL_ERROR',
+        'Lỗi hệ thống',
+        'Hệ thống gặp lỗi.',
+        500,
+        'req-42',
+      ),
+    );
+    await settle();
+    expect(toaster.error).toHaveBeenLastCalledWith(
+      'Lỗi hệ thống',
+      'Hệ thống gặp lỗi. Mã tra cứu: req-42',
+    );
+
+    mutation.run('b');
+    await settle();
+    calls[1].source.error(
+      new ApiError(
+        'CORE-VALIDATION_FAILED',
+        'Thông tin chưa hợp lệ',
+        'Sai.',
+        200,
+        'req-43',
+      ),
+    );
+    await settle();
+    expect(toaster.error).toHaveBeenLastCalledWith(
+      'Thông tin chưa hợp lệ',
+      'Sai.',
+    );
+  });
+
   it('with errors "alert" exposes the error and shows no toast', async () => {
     const { calls, run } = sources();
     const mutation = TestBed.runInInjectionContext(() =>
@@ -163,6 +204,7 @@ describe('serverMutation', () => {
       title: 'Trùng email',
       message: 'Email đã tồn tại.',
       messageCode: 'CORE-0409',
+      httpStatus: 200,
     });
     expect(toaster.error).not.toHaveBeenCalled();
   });

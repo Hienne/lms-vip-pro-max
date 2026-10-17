@@ -1,18 +1,36 @@
-import { HttpResponse, type HttpInterceptorFn } from '@angular/common/http';
+import {
+  HttpErrorResponse,
+  HttpResponse,
+  type HttpInterceptorFn,
+} from '@angular/common/http';
 import { ErrorHandler, inject } from '@angular/core';
-import { EnvelopeSchema } from '@lms/contracts';
-import { map } from 'rxjs';
+import { type Envelope, EnvelopeSchema } from '@lms/contracts';
+import { catchError, map, throwError } from 'rxjs';
 import { ApiError } from './api-error';
 import { ContractError } from './contract-error';
 import { ENDPOINT } from './endpoint-client';
 
+function toApiError(envelope: Envelope, httpStatus: number): ApiError {
+  const { messageCode, messageTitle, message, responseId } = envelope;
+  return new ApiError(
+    messageCode,
+    messageTitle ?? undefined,
+    message ?? undefined,
+    httpStatus,
+    responseId ?? undefined,
+  );
+}
+
 /**
- * The backend answers every call with HTTP 200 and an envelope, whatever the outcome. For an
- * endpoint call this unwraps it, so everything after it keeps seeing the payload alone:
- * `SUCCESS` continues with `data`, anything else becomes an `ApiError` with the backend's code,
- * title and message, and a body that is not an envelope is a `ContractError`. A request without
- * an endpoint is not an API call and passes untouched, and so does a `blob` endpoint, whose
- * body is a file. It decides nothing about how a failure is shown.
+ * Every API answer is wrapped in an envelope. For an endpoint call this unwraps it, so everything
+ * after it keeps seeing the payload alone: `SUCCESS` continues with `data`, anything else becomes
+ * an `ApiError` with the backend's code, title and message, and a 2xx body that is not an
+ * envelope is a `ContractError`. The backend also puts an envelope in the body of a 4xx/5xx
+ * answer; that body is read too, so a wrong password or a missing permission keeps the backend's
+ * own message. A failure without an envelope (offline, a proxy's error page) passes through as
+ * the `HttpErrorResponse`. A request without an endpoint is not an API call and passes untouched,
+ * and so does a `blob` endpoint, whose body is a file. It decides nothing about how a failure is
+ * shown.
  */
 export const envelopeInterceptor: HttpInterceptorFn = (req, next) => {
   const endpoint = req.context.get(ENDPOINT);
@@ -27,16 +45,19 @@ export const envelopeInterceptor: HttpInterceptorFn = (req, next) => {
         errorHandler.handleError(error);
         throw error;
       }
-      const { status, messageCode, messageTitle, message, data } =
-        envelope.data;
-      if (status === 'ERROR') {
-        throw new ApiError(
-          messageCode,
-          messageTitle ?? undefined,
-          message ?? undefined,
-        );
+      if (envelope.data.status === 'ERROR') {
+        throw toApiError(envelope.data, event.status);
       }
-      return event.clone({ body: data });
+      return event.clone({ body: envelope.data.data });
+    }),
+    catchError((error: unknown) => {
+      if (error instanceof HttpErrorResponse) {
+        const envelope = EnvelopeSchema.safeParse(error.error);
+        if (envelope.success) {
+          return throwError(() => toApiError(envelope.data, error.status));
+        }
+      }
+      return throwError(() => error);
     }),
   );
 };

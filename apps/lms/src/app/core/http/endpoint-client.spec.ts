@@ -279,17 +279,23 @@ describe('EndpointClient with the backend envelope', () => {
       title: 'Trùng email',
       message: 'Email đã tồn tại.',
       messageCode: 'CORE-0409',
+      httpStatus: 200,
+      responseId: '00000000-0000-4000-8000-000000000000',
     });
   });
 
-  it('turns CORE-0401 into an unauthorized error', () => {
+  it('turns CORE-UNAUTHENTICATED into an unauthorized error', () => {
     const { outcome, request } = callGetCourse();
     request.flush(
-      envelopeError('CORE-0401', 'Authentication required', 'Token is invalid'),
+      envelopeError(
+        'CORE-UNAUTHENTICATED',
+        'Authentication required',
+        'Token is invalid',
+      ),
     );
     expect(toAppError(outcome.error)).toMatchObject({
       kind: 'unauthorized',
-      messageCode: 'CORE-0401',
+      messageCode: 'CORE-UNAUTHENTICATED',
       message: 'Token is invalid',
     });
   });

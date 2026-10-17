@@ -61,9 +61,15 @@ export function serverMutation<I, R>(
           },
           error: (error: unknown) => {
             if (options.errors === 'toast') {
-              const { title, message } = toAppError(error);
-              if (title) toaster.error(title, message);
-              else toaster.error(message);
+              const { title, message, httpStatus, responseId } =
+                toAppError(error);
+              // A system failure (HTTP 5xx) carries the id support looks the call up by.
+              const detail =
+                responseId && httpStatus && httpStatus >= 500
+                  ? `${message} Mã tra cứu: ${responseId}`
+                  : message;
+              if (title) toaster.error(title, detail);
+              else toaster.error(detail);
             }
           },
         }),

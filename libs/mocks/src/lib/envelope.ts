@@ -10,14 +10,14 @@ export function envelopeOk(data: unknown): Envelope {
   return {
     ...IDENTITY,
     status: 'SUCCESS',
-    messageCode: 'CORE-0000',
+    messageCode: 'CORE-SUCCESS',
     messageTitle: 'Thành công',
-    message: 'Thành công',
+    message: 'Thao tác thành công.',
     data,
   };
 }
 
-/** A backend `ERROR` envelope: the backend still answers HTTP 200 and sends no `data`. */
+/** A backend `ERROR` envelope: `data` is `null`. The HTTP status is the caller's (see `backendRefusal`). */
 export function envelopeError(
   messageCode: string,
   messageTitle: string,

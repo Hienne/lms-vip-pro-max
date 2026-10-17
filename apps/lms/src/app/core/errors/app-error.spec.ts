@@ -16,7 +16,7 @@ describe('toAppError', () => {
       'unauthorized',
       'Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.',
     ],
-    [403, 'unknown', 'Có lỗi xảy ra. Vui lòng thử lại sau.'],
+    [403, 'forbidden', 'Bạn không có quyền thực hiện thao tác này.'],
     [500, 'unknown', 'Có lỗi xảy ra. Vui lòng thử lại sau.'],
   ] as const)(
     'maps status %s to %s with a default message',
@@ -25,7 +25,7 @@ describe('toAppError', () => {
     },
   );
 
-  it('ignores any HTTP response body', () => {
+  it('ignores the body of a response that is not an envelope', () => {
     expect(toAppError(http(401, { message: 'Sai.' })).message).toBe(
       'Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.',
     );
@@ -46,25 +46,43 @@ describe('toAppError', () => {
   });
 
   describe('an ERROR envelope', () => {
-    it('shows the backend title and message verbatim', () => {
+    it('shows the backend title and message verbatim, with the status and response id', () => {
       expect(
         toAppError(
-          new ApiError('CORE-0409', 'Trùng email', 'Email đã tồn tại.'),
+          new ApiError(
+            'ORGANIZATION-TEAM_IN_USE',
+            'Nhóm đang được sử dụng',
+            'Không thể xóa nhóm.',
+            200,
+            'req-1',
+          ),
         ),
       ).toEqual({
         kind: 'server',
-        title: 'Trùng email',
-        message: 'Email đã tồn tại.',
-        messageCode: 'CORE-0409',
+        title: 'Nhóm đang được sử dụng',
+        message: 'Không thể xóa nhóm.',
+        messageCode: 'ORGANIZATION-TEAM_IN_USE',
+        httpStatus: 200,
+        responseId: 'req-1',
       });
     });
 
-    it('maps CORE-0401 to unauthorized', () => {
+    it.each([
+      ['CORE-UNAUTHENTICATED', 401, 'unauthorized'],
+      ['CORE-ACCESS_DENIED', 403, 'forbidden'],
+      ['IDENTITY-PASSWORD_CHANGE_REQUIRED', 403, 'passwordChangeRequired'],
+      ['IDENTITY-CREDENTIALS_INVALID', 401, 'server'],
+      ['CORE-INTERNAL_ERROR', 500, 'server'],
+    ] as const)('maps %s (HTTP %s) to %s', (code, status, kind) => {
       const error = toAppError(
-        new ApiError('CORE-0401', 'Cần đăng nhập', 'Hết phiên.'),
+        new ApiError(code, 'Tiêu đề', 'Nội dung.', status),
       );
-      expect(error.kind).toBe('unauthorized');
-      expect(error.messageCode).toBe('CORE-0401');
+      expect(error).toMatchObject({
+        kind,
+        messageCode: code,
+        httpStatus: status,
+        message: 'Nội dung.',
+      });
     });
 
     it('falls back to the Vietnamese default when the backend sent no message', () => {
@@ -73,7 +91,16 @@ describe('toAppError', () => {
         kind: 'server',
         message: 'Có lỗi xảy ra. Vui lòng thử lại sau.',
         messageCode: 'CORE-0500',
+        httpStatus: 200,
       });
+    });
+
+    it('falls back to the default of its kind for a 403 without a message', () => {
+      expect(
+        toAppError(
+          new ApiError('CORE-ACCESS_DENIED', undefined, undefined, 403),
+        ).message,
+      ).toBe('Bạn không có quyền thực hiện thao tác này.');
     });
   });
 });

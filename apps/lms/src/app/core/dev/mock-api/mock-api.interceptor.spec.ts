@@ -64,7 +64,7 @@ describe('mockApiInterceptor', () => {
     );
     expect(EnvelopeSchema.parse(body)).toMatchObject({
       status: 'SUCCESS',
-      messageCode: 'CORE-0000',
+      messageCode: 'CORE-SUCCESS',
       data: navCountsFixtures['learner'],
     });
     backend.expectNone('/api/me/nav-counts');

@@ -3,7 +3,6 @@ import {
   type AnyEndpoint,
   type Envelope,
   authEndpoints,
-  healthEndpoints,
   shellEndpoints,
 } from '@lms/contracts';
 import {
@@ -44,7 +43,6 @@ import {
   unitFixtures,
 } from './identity/identity.fixtures';
 import { sessionExpired } from './error-envelopes';
-import { healthOk } from './health/health.fixtures';
 import { navCountsFixtures } from './shell/shell.fixtures';
 
 /** Named response examples of one endpoint; `default` is the 2xx body. */
@@ -58,7 +56,6 @@ export interface EndpointExamples {
 
 /** Keyed by the endpoint's key in its registry. */
 export const endpointExamples: Readonly<Record<string, EndpointExamples>> = {
-  health: { default: healthOk },
   // The mock is stateless and a PUT carries no role example, so the app reloads the user (`me`)
   // instead of applying this body.
   updateProfile: {
@@ -146,12 +143,7 @@ export const endpointExamples: Readonly<Record<string, EndpointExamples>> = {
   },
 };
 
-const registries = [
-  healthEndpoints,
-  authEndpoints,
-  shellEndpoints,
-  adminOrgEndpoints,
-] as const;
+const registries = [authEndpoints, shellEndpoints, adminOrgEndpoints] as const;
 
 /**
  * The examples of every endpoint that has some, keyed by the endpoint object itself, which is

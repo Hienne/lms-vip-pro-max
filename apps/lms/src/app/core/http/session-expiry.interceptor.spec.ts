@@ -4,7 +4,7 @@ import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { provideRouter, Router } from '@angular/router';
 import { authEndpoints, authV1Endpoints, type Profile } from '@lms/contracts';
-import { envelopeError, profileFixtures } from '@lms/mocks';
+import { backendRefusal, envelopeError, profileFixtures } from '@lms/mocks';
 import { Toaster } from '@lms/ui';
 import { SESSION_EXPIRED_MESSAGE } from '../errors/app-error';
 import { SessionStore } from '../session/session.store';
@@ -65,14 +65,14 @@ describe('sessionExpiryInterceptor', async () => {
     );
   });
 
-  it('ends the session on a 200 carrying the CORE-0401 envelope and still fails the caller', async () => {
+  it('ends the session on a 401 carrying the CORE-UNAUTHENTICATED envelope and still fails the caller', async () => {
     const errors: unknown[] = [];
     client
       .call(authEndpoints.demoAccounts)
       .subscribe({ error: (e) => errors.push(e) });
     backend
       .expectOne(() => true)
-      .flush(envelopeError('CORE-0401', 'Cần đăng nhập', 'Token không hợp lệ'));
+      .flush(backendRefusal('unauthenticated').body, fail(401));
     await settle();
 
     expect(errors).toHaveLength(1);
@@ -89,13 +89,13 @@ describe('sessionExpiryInterceptor', async () => {
     ['me', authV1Endpoints.me],
     ['login', authV1Endpoints.login],
     ['logout', authV1Endpoints.logout],
-  ])('leaves a CORE-0401 envelope on %s alone', async (_name, endpoint) => {
+  ])('leaves a 401 envelope on %s alone', async (_name, endpoint) => {
     client
       .call(...([endpoint, { body: {} }] as unknown as [never]))
       .subscribe({ error: () => undefined });
     backend
       .expectOne(() => true)
-      .flush(envelopeError('CORE-0401', 'Sai thông tin', 'Sai mật khẩu'));
+      .flush(backendRefusal('credentialsInvalid').body, fail(401));
     await settle();
     expect(session.expire).not.toHaveBeenCalled();
   });

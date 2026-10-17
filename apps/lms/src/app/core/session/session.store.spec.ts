@@ -1,7 +1,7 @@
 import { HttpTestingController } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 import {
-  loginUnauthorized,
+  backendRefusal,
   loginV1Body,
   logoutV1Body,
   meV1Body,
@@ -187,10 +187,16 @@ describe('SessionStore', () => {
       await settle();
       store.signIn({ username: 'x', password: 'bad' });
       await settle();
-      backend.expectOne(LOGIN_URL).flush(loginUnauthorized, UNAUTHORIZED);
+      backend
+        .expectOne(LOGIN_URL)
+        .flush(backendRefusal('credentialsInvalid').body, UNAUTHORIZED);
       await settle();
 
-      expect(store.signInError$()?.kind).toBe('unauthorized');
+      expect(store.signInError$()).toMatchObject({
+        kind: 'server',
+        messageCode: 'IDENTITY-CREDENTIALS_INVALID',
+        message: 'Tên đăng nhập hoặc mật khẩu không đúng.',
+      });
       expect(store.isSignedIn$()).toBe(false);
       expect(localStorage.length).toBe(0);
     });
