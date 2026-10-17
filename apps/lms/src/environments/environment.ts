@@ -10,8 +10,8 @@ import { mockApiInterceptor } from '../app/core/dev/mock-api/mock-api.intercepto
 export const environment: AppConfigInput = {
   name: 'development',
   production: false,
-  apiBaseUrl: '',
-  mockApi: true,
+  apiBaseUrl: 'http://103.121.90.119:8019',
+  mockApi: false,
   devTools: true,
 };
 

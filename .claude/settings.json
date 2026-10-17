@@ -1,0 +1,14 @@
+{
+  "extraKnownMarketplaces": {
+    "agentflow": {
+      "source": {
+        "source": "github",
+        "repo": "Hienne/agent-flow"
+      }
+    }
+  },
+  "enabledPlugins": {
+    "flow@agentflow": true,
+    "flow-ui@agentflow": true
+  }
+}

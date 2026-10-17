@@ -1,0 +1,278 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Auth API integration</title>
+<style>
+:root {
+  --bg: #ffffff; --fg: #1f2328; --muted: #59636e; --border: #d1d9e0; --code-bg: #f6f8fa;
+  --add: #1a7f37; --add-bg: #dafbe1; --del: #cf222e; --del-bg: #ffebe9;
+  --ok: #1a7f37; --warn: #9a6700; --warn-bg: #fff8c5; --info-bg: #ddf4ff; --accent: #0969da;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0d1117; --fg: #e6edf3; --muted: #9198a1; --border: #3d444d; --code-bg: #151b23;
+    --add: #3fb950; --add-bg: #12261e; --del: #f85149; --del-bg: #25171c;
+    --ok: #3fb950; --warn: #d29922; --warn-bg: #272115; --info-bg: #121d2f; --accent: #4493f8;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0d1117; --fg: #e6edf3; --muted: #9198a1; --border: #3d444d; --code-bg: #151b23;
+  --add: #3fb950; --add-bg: #12261e; --del: #f85149; --del-bg: #25171c;
+  --ok: #3fb950; --warn: #d29922; --warn-bg: #272115; --info-bg: #121d2f; --accent: #4493f8;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--fg); font: 15px/1.6 system-ui, -apple-system, "Segoe UI", sans-serif; }
+main { max-width: 980px; margin: 0 auto; padding: 24px 16px 80px; }
+h1 { font-size: 26px; margin: 0 0 4px; }
+h2 { font-size: 21px; border-bottom: 1px solid var(--border); padding-bottom: 6px; margin-top: 40px; }
+h3 { font-size: 17px; margin-top: 28px; }
+p, li { max-width: 80ch; }
+.meta { color: var(--muted); font-size: 14px; }
+code { font: 13px/1.5 ui-monospace, "Cascadia Code", Consolas, monospace; background: var(--code-bg); padding: 1px 5px; border-radius: 4px; }
+pre { font: 13px/1.5 ui-monospace, "Cascadia Code", Consolas, monospace; background: var(--code-bg); border: 1px solid var(--border); border-radius: 6px; padding: 12px 14px; overflow-x: auto; }
+pre code { background: none; padding: 0; }
+pre .a { color: var(--add); background: var(--add-bg); display: inline-block; width: 100%; }
+pre .d { color: var(--del); background: var(--del-bg); display: inline-block; width: 100%; }
+pre .c { color: var(--muted); }
+.cap { color: var(--muted); font-size: 13px; margin: -6px 0 14px; }
+table { border-collapse: collapse; width: 100%; font-size: 14px; margin: 10px 0 16px; display: block; overflow-x: auto; }
+th, td { border: 1px solid var(--border); padding: 6px 10px; text-align: left; vertical-align: top; }
+th { background: var(--code-bg); }
+.note { border-left: 4px solid var(--accent); background: var(--info-bg); padding: 8px 12px; border-radius: 4px; margin: 12px 0; }
+.note.warn { border-color: var(--warn); background: var(--warn-bg); }
+.review { border-left: 4px solid var(--warn); padding: 4px 12px; margin: 12px 0; }
+.review b { color: var(--warn); }
+.ok { color: var(--ok); font-weight: 600; }
+.bad { color: var(--warn); font-weight: 600; }
+nav ol { padding-left: 20px; }
+</style>
+</head>
+<body>
+<main>
+
+<h1>Auth API integration</h1>
+<p class="meta">
+  Feature <code>auth-api-integration</code> · branch <code>agent/auth-api-integration</code> (not committed, not pushed) ·
+  one workspace: <code>.worktrees/auth-api-integration</code>, touching the units <code>lms</code>, <code>contracts</code> and <code>mocks</code>
+</p>
+<p>Replaces the mock sign-in with the real backend (<code>http://103.121.90.119:8019</code>): <code>POST /api/v1/auth/login</code>, <code>POST /api/v1/auth/logout</code>, <code>GET /api/v1/auth/me</code>, all wrapped in the backend's <code>BaseResponse</code> envelope. The access token lives in <code>localStorage</code> with an expiry, a bearer interceptor attaches it, and <code>/me</code> is adapted to the existing <code>Profile</code>. Everything outside auth stays on the mock API.</p>
+
+<table>
+  <tr><th>Ticket</th><th>Content</th><th>AC</th><th>Status</th></tr>
+  <tr><td>01</td><td>v1 auth contract: envelope helper, login/logout/me schemas and endpoints, fixtures, <code>inactive</code> status</td><td>AC-007, AC-010</td><td class="ok">done</td></tr>
+  <tr><td>02</td><td>Sign in with a bearer token: token store, bearer interceptor, <code>/me</code> adapter, session store, login page, dev toolbar</td><td>AC-001…005, 008, 009, 011</td><td class="ok">done</td></tr>
+  <tr><td>03</td><td>Logout on every device</td><td>AC-006</td><td class="ok">done</td></tr>
+  <tr><td>04</td><td>Retire the mock auth endpoints; dev toolbar switches mock data only</td><td>AC-012, AC-013</td><td class="ok">done</td></tr>
+</table>
+
+<nav>
+  <strong>Contents</strong>
+  <ol>
+    <li><a href="#map">Summary: change map</a></li>
+    <li><a href="#t01">Ticket 01: contract</a></li>
+    <li><a href="#t02">Ticket 02: sign in with a bearer token</a></li>
+    <li><a href="#t03">Ticket 03: logout</a></li>
+    <li><a href="#t04">Ticket 04: retire the mock auth</a></li>
+    <li><a href="#evidence">Evidence</a></li>
+    <li><a href="#danger">Merge Danger</a></li>
+    <li><a href="#open">Open items</a></li>
+  </ol>
+</nav>
+
+<h2 id="map">Summary</h2>
+<h3>Change map</h3>
+<p>Three layers move together. <b>Contracts</b> describe what the backend sends: the envelope helper unwraps <code>data</code> so callers never see the wrapper. <b>Session code</b> in <code>apps/lms/src/app/core</code> turns a login into a stored token and a <code>Profile</code>. <b>Mocks</b> lose the old auth fixtures, and the v1 endpoints have none on purpose: the mock API interceptor lets an endpoint without a fixture go to the network, which is how auth reaches the real backend in dev while every other screen stays mocked.</p>
+
+<pre><code>libs/contracts/src/lib/
+├── http/envelope.ts                 <span class="c"># + NEW: BaseResponse → data</span>
+├── auth/auth-v1.schema.ts           <span class="c"># + NEW: login command, token, Me</span>
+├── auth/auth-v1.endpoints.ts        <span class="c"># + NEW: login / logout / me</span>
+├── auth/auth.endpoints.ts, auth.schema.ts   <span class="c"># − login, logout, profile, loginDemo types</span>
+└── identity/identity.schema.ts      <span class="c"># ~ AccountStatus gains 'inactive'</span>
+libs/mocks/src/lib/
+├── auth/auth-v1.fixtures.ts         <span class="c"># + NEW: sample bodies for specs (not registered)</span>
+└── auth/auth.fixtures.ts, examples.ts   <span class="c"># − old login/logout/profile fixtures</span>
+apps/lms/src/app/
+├── core/session/token-store.ts      <span class="c"># + NEW: token + expiresAt in localStorage</span>
+├── core/session/to-profile.ts       <span class="c"># + NEW: Me → Profile</span>
+├── core/session/session.store.ts    <span class="c"># ~ login → token → /me; logout; expire</span>
+├── core/session/session.testing.ts  <span class="c"># + NEW: spec helpers (FakeSessionStore)</span>
+├── core/http/bearer.interceptor.ts  <span class="c"># + NEW</span>
+├── core/http/session-expiry.interceptor.ts  <span class="c"># ~ exempt me, login, logout</span>
+├── features/auth/login/*            <span class="c"># ~ username field, demo panel removed</span>
+└── core/dev/dev-toolbar/*           <span class="c"># ~ role switch changes mock data only</span></code></pre>
+<p class="cap">58 files changed, +1265 / −873 against <code>b2c8895e</code> (uncommitted). Roughly 60% of the added lines are specs.</p>
+
+<h2 id="t01">Ticket 01: contract</h2>
+<h3>1.1 Envelope unwrapping</h3>
+<p><code>libs/contracts/src/lib/http/envelope.ts:9</code>. <code>EndpointClient</code> parses every response with the endpoint schema, so the wrapper is handled in the schema itself and callers receive <code>data</code> directly.</p>
+<pre><code>envelope(DataSchema)
+  parse { responseId, timestamp (iso, offset or local), status SUCCESS|ERROR,
+          messageCode, message, messageTitle, data: DataSchema }
+  transform → body.data           <span class="c">(a body without the wrapper, or a bad data, fails the parse)</span></code></pre>
+<div class="review"><b>Needs review:</b> <code>errors</code> and <code>messageCode</code> are parsed but never read; the backend error contract is deferred (DEC-005). The <code>timestamp</code> format (offset or local) is a guess from the sample; a different shape from the real server makes every call fail the parse (see Merge Danger).</div>
+
+<h3>1.2 Endpoints</h3>
+<table>
+  <tr><th>Endpoint</th><th>Path</th><th>Body</th><th>Response</th></tr>
+  <tr><td><code>authV1Endpoints.login</code></td><td>POST /api/v1/auth/login</td><td><code>{username, password}</code></td><td><code>envelope(TokenResponseSchema)</code></td></tr>
+  <tr><td><code>authV1Endpoints.logout</code></td><td>POST /api/v1/auth/logout</td><td>none</td><td><code>envelope(z.unknown())</code></td></tr>
+  <tr><td><code>authV1Endpoints.me</code></td><td>GET /api/v1/auth/me</td><td>none</td><td><code>envelope(MeSchema)</code></td></tr>
+</table>
+<p>Defined at <code>libs/contracts/src/lib/auth/auth-v1.endpoints.ts:11</code>. <code>MeSchema</code> makes most user fields nullish (email, org, team) because the sample backend sends nulls; <code>status</code> excludes <code>suspended</code> from <code>AccountStatusSchema</code>, which now also accepts <code>inactive</code> (rendered "Ngừng hoạt động", neutral, plus a filter option on the users screen).</p>
+
+<h2 id="t02">Ticket 02: sign in with a bearer token</h2>
+<h3>2.1 Runtime flow</h3>
+<pre><code>login form submit  (login.ts → store.signIn)
+└─ SessionStore.signIn(command)                                 session.store.ts:147
+   └─ signInResource stream                                     session.store.ts:66
+      ├─ POST /api/v1/auth/login            <span class="c">(no bearer header: bearer.interceptor.ts:15)</span>
+      ├─ tap  tokens.save(accessToken, expiresInSeconds)        token-store.ts:32  → { accessToken, expiresAt }
+      ├─ switchMap GET /api/v1/auth/me      <span class="c">(now carries Authorization: Bearer …)</span>
+      ├─ map toProfile                                          to-profile.ts:33
+      ├─ tap profileResource.set(profile)
+      └─ catchError tokens.clear() and rethrow                  <span class="c">(a /me failure right after login leaves no half-signed-in token)</span>
+
+app start  (restore)                                            session.store.ts:50
+└─ token absent or expired → anonymous, no request              <span class="c">(token-store.ts:25 drops an expired token)</span>
+└─ else GET /me → toProfile; 401 → clear token → anonymous; other error → 'error' state, token kept for retry</code></pre>
+
+<h3>2.2 Interceptor order</h3>
+<p><code>app.config.ts:40-44</code>: <code>sessionExpiry → bearer → dev features → mock API → apiBaseUrl</code>. The bearer interceptor must run before <code>apiBaseUrlInterceptor</code>, which makes the path absolute; the test for <code>startsWith('/api/')</code> therefore can never match another origin (<code>bearer.interceptor.ts:12-17</code>). Login is skipped by endpoint identity, not by URL.</p>
+<div class="review"><b>Needs review:</b> the order is a hidden dependency. Moving <code>bearerInterceptor</code> after <code>apiBaseUrlInterceptor</code> would silently stop sending the token. The spec composes the real pair, so that regression fails a test.</div>
+
+<h3>2.3 Me → Profile</h3>
+<table>
+  <tr><th>Profile field</th><th>Source</th></tr>
+  <tr><td>id, staffCode</td><td><code>user.userId</code> (<code>to-profile.ts:37-38</code>)</td></tr>
+  <tr><td>email, title, unit, group names</td><td><code>user.*</code>, empty string when null</td></tr>
+  <tr><td>roleId / roleName</td><td>first role grant (<code>to-profile.ts:35</code>)</td></tr>
+  <tr><td>scopeName</td><td>GLOBAL "Toàn hệ thống", ORG org name, TEAM team name, OWN "Cá nhân" (DEC-018)</td></tr>
+  <tr><td>joinedAt</td><td><code>lastSyncTime</code>, else 1970-01-01 (<code>to-profile.ts:51</code>)</td></tr>
+  <tr><td>menus, homePath</td><td>every menu, <code>/learn</code> (DEC-010; TODO at <code>to-profile.ts:53</code>)</td></tr>
+</table>
+<div class="review"><b>Needs review:</b> <code>joinedAt</code> falls back to the epoch because <code>Profile</code> requires it; the profile page can show 1970 under "Tham gia". Granting every menu to every user means any signed-in account sees admin navigation until the backend permissions are mapped; business rules stay on the server, so the screens' own calls must still be refused there.</div>
+
+<h3>2.4 Login page and dev toolbar</h3>
+<p>The field is now "Tên đăng nhập hoặc mã cán bộ"; the demo accounts block and the locked-account shortcut are gone (<code>login.html</code>, <code>login.store.ts</code>, <code>login.scss</code>). The dev toolbar's role switch no longer signs in: <code>DevToolbarStore.switchRole</code> sets the mock role, shows "Đã chuyển dữ liệu mô phỏng sang …" and goes to <code>/</code> (<code>dev-toolbar.store.ts:53-60</code>).</p>
+
+<h3>2.5 Spec infrastructure</h3>
+<p><code>session.testing.ts</code> provides <code>storeToken</code>, <code>flushMe</code> and <code>FakeSessionStore</code>; <code>test-setup.ts</code> clears <code>localStorage</code> before each test. Profile, org, roles, users and user-detail specs now use <code>FakeSessionStore</code> instead of mock sign-in. <code>*.testing.ts</code> is excluded from the app tsconfig and covered by the ESLint spec override (noted in <code>docs/conventions/workspace.md</code>).</p>
+
+<h2 id="t03">Ticket 03: logout</h2>
+<pre><code>SessionStore.signOut()                                          session.store.ts:151
+└─ POST /api/v1/auth/logout  (bearer attached)                  <span class="c">revokes all tokens of the account on all devices</span>
+   ├─ catchError → of(null)                                     <span class="c">any failure still signs out locally (DEC-014)</span>
+   └─ tap expire()                                              session.store.ts:156 → tokens.clear(), profile = null</code></pre>
+<pre><code><span class="d">-  EXEMPT = { me, login }</span>
+<span class="a">+  EXEMPT = { me, login, logout }      session-expiry.interceptor.ts:14</span></code></pre>
+<p>Why: a 401 on logout means the token is already dead, which is the outcome the user wanted. Without the exemption it would start the "session expired" flow on top of the logout (DEC-020).</p>
+<div class="review"><b>Needs review:</b> logout revokes every token of the account, so signing out in one tab or device ends the others. That is the backend's contract, stated in the endpoint comment.</div>
+
+<h2 id="t04">Ticket 04: retire the mock auth</h2>
+<p><code>authEndpoints</code> keeps <code>updateProfile</code>, <code>changePassword</code> and <code>demoAccounts</code> (DEC-015); <code>login</code>, <code>loginDemo</code>, <code>logout</code> and <code>profile</code> are removed with their fixtures and examples, and their types leave <code>auth.schema.ts</code>. <code>mock-api.interceptor.spec</code> now uses <code>navCounts</code> as its example fixture. <code>tools/check-production-bundle.mjs</code> looks for the new toolbar label "Đổi vai trò dữ liệu mô phỏng". <code>docs/conventions/contracts-and-mocks.md</code> documents bearer, v1 endpoints, the token store, interceptor order and exemptions.</p>
+<div class="review"><b>Needs review:</b> in dev, the old paths <code>/api/auth/login|logout|profile</code> now match no fixture, so the mock interceptor lets them reach the network. Nothing calls them any more, but a forgotten caller would hit the backend instead of failing loudly.</div>
+
+<h2 id="evidence">Evidence</h2>
+<h3>Before / after</h3>
+<table>
+  <tr><th>Situation</th><th>Before</th><th>After</th><th>Spec</th></tr>
+  <tr><td>Backend body wrapped in BaseResponse</td><td>no helper</td><td>endpoint returns <code>data</code>; unwrapped body fails</td><td><code>envelope.spec.ts</code></td></tr>
+  <tr><td>Start-up without a token</td><td>always called the profile endpoint</td><td>anonymous, no request</td><td>SessionStore "makes no /me call without a token and leaves the visitor anonymous"</td></tr>
+  <tr><td>Expired stored token</td><td>n/a</td><td>dropped, no request</td><td>"drops an expired token without asking /me"</td></tr>
+  <tr><td><code>/me</code> answers 401 at start-up</td><td>n/a</td><td>anonymous, token removed</td><td>"treats a 401 from /me as anonymous and removes the token"</td></tr>
+  <tr><td><code>/me</code> fails otherwise</td><td>n/a</td><td>error state, token kept, retry works</td><td>"reports any other failure, keeps the token and retries on the next restore"</td></tr>
+  <tr><td>Login</td><td>mock login by demo account</td><td>login → store token with expiry → <code>/me</code></td><td>"posts the credentials, stores the token with its expiry, then loads /me"</td></tr>
+  <tr><td><code>/me</code> fails right after login</td><td>n/a</td><td>token removed again</td><td>"removes the token again when /me fails right after login"</td></tr>
+  <tr><td>Token on requests</td><td>none</td><td>header on <code>/api/</code>; none on login, assets or another origin</td><td><code>bearer.interceptor.spec.ts</code> (5 tests)</td></tr>
+  <tr><td>Logout fails (network)</td><td>n/a</td><td>still signed out locally</td><td>"signs out when the network fails"</td></tr>
+  <tr><td>Session expires mid-use</td><td>cleared user</td><td>clears token and user</td><td>"forgets the user and the token when the session expires"</td></tr>
+  <tr><td><code>inactive</code> account</td><td>parse failure</td><td>neutral badge "Ngừng hoạt động"</td><td><code>account-status.spec.ts</code></td></tr>
+  <tr><td>Dev toolbar role switch</td><td>signed in as the demo account</td><td>mock data only, says so</td><td><code>dev-toolbar.spec.ts</code></td></tr>
+</table>
+
+<h3>Commands run in this session</h3>
+<pre><code>$ cd apps/lms && npx vitest run bearer.interceptor token-store session.store
+ ✓ |lms| src/app/core/session/token-store.spec.ts (7 tests)
+ ✓ |lms| src/app/core/http/bearer.interceptor.spec.ts (5 tests)
+ ✓ |lms| src/app/core/session/session.store.spec.ts (20 tests)
+ Test Files  3 passed (3)
+      Tests  32 passed (32)
+
+$ npm run check      <span class="c"># run after ticket 04, from the earlier part of this session</span>
+ NX   14 tasks succeeded  (lms 468 tests, contracts 34, mocks 96)</code></pre>
+<p class="cap">The first command was rerun while writing this report; the second is the result recorded when ticket 04 closed. One earlier <code>npm run check</code> hit 120 s test timeouts while the machine was loaded and passed on rerun.</p>
+
+<h3>Harness gates per task</h3>
+<table>
+  <tr><th>Task</th><th>Build</th><th>test-integrity</th><th>Review gate</th><th>Reviewer findings (blocking / non-blocking)</th></tr>
+  <tr><td>-01</td><td class="ok">passed</td><td class="ok">passed</td><td class="ok">satisfied</td><td>code-review 2 / 15, simplifier 0 / 2</td></tr>
+  <tr><td>-02</td><td class="ok">passed</td><td class="ok">passed (39 findings accepted by the user)</td><td class="ok">satisfied</td><td>code-review 5 / 12, simplifier 1 / 3</td></tr>
+  <tr><td>-03</td><td class="ok">passed</td><td class="ok">passed (39 accepted)</td><td class="ok">satisfied</td><td>code-review 0 / 3, simplifier 0 / 1</td></tr>
+  <tr><td>-04</td><td class="ok">passed</td><td class="ok">passed (55 accepted)</td><td class="ok">satisfied</td><td>code-review 0 / 13, simplifier 0 / 2</td></tr>
+</table>
+
+<h3>Review findings applied (examples)</h3>
+<ul>
+  <li>Private-resource test hack (<code>setSessionUser</code>, <code>meBodyAs</code>) replaced by <code>FakeSessionStore</code>.</li>
+  <li>Token read hardened: malformed JSON, wrong field types and missing storage all count as no token; storage writes sit in try/catch.</li>
+  <li>A failed <code>/me</code> after a successful login now removes the stored token.</li>
+  <li>Logout added to the 401 exemption (DEC-020) after the ticket 03 review.</li>
+  <li>Demo styles and unused login-store state removed.</li>
+</ul>
+
+<div class="note warn"><b>Not verified at runtime.</b> No sign-in, <code>/me</code> or logout was run against the real backend (it needs real credentials, which only the user enters). No visual check of the changed screens in a browser. The wire format of <code>timestamp</code>, omitted versus null keys, and the order of <code>functions</code> are taken from the sample payload, not from a live response. The worklogs hold no red-run records for the tests.</div>
+
+<h2 id="danger">Merge Danger</h2>
+<p><b>Door: two-way for code, one-way for sessions.</b> Reverting the branch restores the mock sign-in. A user already signed in with the new build holds a <code>lms.accessToken</code> entry the old build ignores, and the old build's mock session is not restored, so they sign in again. The backend side effect (logout revokes every token of the account) cannot be undone from this repo.</p>
+
+<h3>Consumers</h3>
+<p><code>flow impact --task auth-api-integration-04</code>: <code>lms</code> has no dependents; <code>contracts</code> is consumed by <code>lms</code> and <code>mocks</code>; <code>mocks</code> by <code>lms</code>. Searched <code>AccountStatus</code> consumers and the removed <code>authEndpoints</code> members across <code>apps</code> and <code>libs</code>; no leftover caller remains (the build and the 14-task check pass).</p>
+
+<h3>Safety fact</h3>
+<p><b>The bearer token is attached only to same-app <code>/api/</code> requests and never to login, assets or another origin.</b> Level: <b>ran</b>.</p>
+<pre><code>$ cd apps/lms && npx vitest run bearer.interceptor
+ ✓ bearer.interceptor.spec.ts (5 tests)</code></pre>
+<p>The spec composes the real <code>bearerInterceptor</code> and <code>apiBaseUrlInterceptor</code> and asserts: header present on <code>/api/courses</code> with a token, absent without a token, absent on login while a token is stored, absent on <code>/assets/i18n/vi.json</code> and on <code>https://other.example.test/api/x</code>. If the interceptor order or the prefix test regresses, one of these fails. Limit: the safety fact covers the interceptor, not storage exposure (see risk 3).</p>
+
+<h3>Risks</h3>
+<table>
+  <tr><th>#</th><th>How it breaks</th><th>Where</th><th>Likelihood / cost</th><th>Level</th><th>Check</th></tr>
+  <tr><td>1</td><td>The real backend's JSON differs from the sample: a <code>timestamp</code> without offset or <code>Z</code>, or a missing key where the schema expects null. Every call then fails the zod parse and sign-in shows an error.</td><td><code>envelope.ts:13</code>, <code>auth-v1.schema.ts</code></td><td>medium / sign-in blocked, easy fix</td><td>claimed (sample only)</td><td>Sign in once against the backend and read the console and network panel.</td></tr>
+  <tr><td>2</td><td>Browser calls from the dev server to <code>http://103.121.90.119:8019</code> are cross-origin. The backend must allow the dev origin and the <code>Authorization</code> header, or the preflight fails.</td><td><code>environment.ts</code> (<code>apiBaseUrl</code>)</td><td>medium / sign-in blocked in dev</td><td>claimed</td><td>Same live sign-in.</td></tr>
+  <tr><td>3</td><td>Token in <code>localStorage</code> over plain HTTP in dev can be read by any script on the origin or sniffed on the network. Chosen in DEC-001; no refresh token exists.</td><td><code>token-store.ts:32</code></td><td>low–medium / account takeover</td><td>cited</td><td>Confirm the production and staging <code>apiBaseUrl</code> use HTTPS before release.</td></tr>
+  <tr><td>4</td><td>Every user gets every menu and <code>/learn</code> as home. A low-privilege account sees admin navigation; mock-served admin screens still show mock data for them.</td><td><code>to-profile.ts:54-55</code></td><td>certain / UX and exposure of navigation only</td><td>cited</td><td>Map <code>functions</code> to menus before real users are onboarded.</td></tr>
+  <tr><td>5</td><td>Profile shows 1970 as the join date, an empty email, or blank unit when <code>/me</code> lacks them.</td><td><code>to-profile.ts:40-48,51</code></td><td>likely / cosmetic</td><td>walked</td><td>Look at the profile page after the live sign-in.</td></tr>
+  <tr><td>6</td><td>Logout revokes the account's tokens everywhere; a user on two devices is signed out of both.</td><td><code>auth-v1.endpoints.ts:19</code></td><td>certain / by backend design</td><td>cited</td><td>Confirm with the backend owner that this is intended.</td></tr>
+  <tr><td>7</td><td>Stale callers of the removed <code>/api/auth/*</code> paths would reach the network in dev instead of a fixture.</td><td>mock API interceptor (DEC-013)</td><td>low / confusing error</td><td>walked (search found none)</td><td><code>npm run check</code> already green.</td></tr>
+</table>
+
+<h3>Cleared</h3>
+<ul>
+  <li><b>Token leaks to other origins or assets:</b> cleared, <code>ran</code> (safety fact above).</li>
+  <li><b>Login sends a stale token:</b> cleared, <code>ran</code>; the login endpoint is skipped by identity (<code>bearer.interceptor.ts:15</code>).</li>
+  <li><b>A 401 on <code>/me</code>, login or logout triggers the "session expired" flow:</b> cleared, <code>ran</code>; the exemption set is covered by <code>session-expiry.interceptor.spec.ts</code>.</li>
+  <li><b>Expired or corrupt stored token breaks start-up:</b> cleared, <code>ran</code>; <code>token-store.spec.ts</code> (7 tests) covers malformed JSON, wrong types and expiry.</li>
+  <li><b>Existing <code>AccountStatus</code> consumers:</b> cleared, <code>walked</code>; adding <code>inactive</code> widens the union and the badge map and the users filter were updated (<code>account-status.ts</code>, <code>users.html</code>).</li>
+  <li><b>Production bundle contains the dev toolbar:</b> cleared by the updated marker in <code>tools/check-production-bundle.mjs</code>, run by <code>npm run check</code>.</li>
+  <li><b>Shared libraries:</b> <code>contracts</code> and <code>mocks</code> have only <code>lms</code> as consumer (<code>flow impact</code>).</li>
+</ul>
+
+<h3>Before merge</h3>
+<p>Cheapest check that catches the real risks (1, 2, 5): run the app in dev, sign in with a real account yourself, and watch the network panel for the login, <code>/me</code> and logout calls. This takes about two minutes and needs your credentials, which this session did not and must not enter. No throwaway script was written; the existing <code>bearer.interceptor.spec.ts</code> is the proof for the safety fact.</p>
+
+<h2 id="open">Open items</h2>
+<ul>
+  <li><b>Tickets:</b> all four are done; none open.</li>
+  <li><b>Feature review did not run.</b> The prompt had <code>--full</code> without <code>--reviewer</code>, so <code>flow:feature-reviewer</code> was not spawned (finding count 0 because nothing ran). Decision for you: rerun with <code>--full --reviewer</code> if you want a whole-feature review before merging.</li>
+  <li><b>Live check not done:</b> sign-in, <code>/me</code>, logout against the real backend and a visual pass on the login page, header and profile.</li>
+  <li><b>Backend contract gaps:</b> error contract (DEC-005), permission to menu mapping (TODO in <code>to-profile.ts:53</code>), real <code>joinedAt</code>.</li>
+  <li><b>Not committed, not pushed.</b> The work sits in the worktree on <code>agent/auth-api-integration</code>; <code>flow task cleanup</code> removes the worktree after you merge.</li>
+  <li><b>Unchanged:</b> profile edit, change password and every non-auth endpoint stay on the mock API; the dev toolbar still offers mock roles for those screens.</li>
+</ul>
+
+</main>
+</body>
+</html>
