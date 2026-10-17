@@ -1,46 +1,44 @@
 import { HttpTestingController } from '@angular/common/http/testing';
-import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { provideRouter, Router } from '@angular/router';
-import type { MenuKey, Profile } from '@lms/contracts';
-import { envelopeOk, profileFixtures } from '@lms/mocks';
+import { envelopeOk } from '@lms/mocks';
 import { createAppRoutes } from '../../app.routes';
 import { parseAppConfig, provideAppConfig } from '../../core/config/app-config';
 import { testAppConfig } from '../../core/config/app-config.testing';
 import { SessionStore } from '../../core/session/session.store';
+import {
+  FakeSessionStore,
+  fakeSession,
+  seedProfile,
+} from '../../core/session/session.testing';
 import { AppShell } from './app-shell';
 import { LeavePrompt } from '../../core/routing/unsaved-changes.guard';
 import { LOCAL_STORAGE } from '../../core/storage/local-storage';
 import { SIDEBAR_COLLAPSED_KEY, ShellStore } from './data-access/shell.store';
 import { provideEnvelopeHttpClient } from '../../core/http/http.testing';
 
-class FakeSession {
-  readonly user = signal<Profile | null>(null);
-  readonly user$ = this.user.asReadonly();
-  readonly menus$ = (): readonly MenuKey[] => this.user()?.menus ?? [];
-  readonly homePath$ = () => this.user()?.homePath ?? null;
-  readonly isSignedIn$ = () => this.user() !== null;
-  // What the login page reads; the shell tests only render it.
-  readonly isSigningIn$ = () => false;
-  readonly signInError$ = () => undefined;
-  whenReady = () => Promise.resolve();
-  signOut = vi.fn(() => this.user.set(null));
-}
+/** The backend demo accounts by what they are, as the seed names them. */
+const USERS = {
+  learner: '000004',
+  viewer: '000006',
+  instructor: '000005',
+  admin: '000002',
+  'unit-admin': '000003',
+} as const;
 
 describe('AppShell', () => {
-  let session: FakeSession;
+  let session: FakeSessionStore;
   let router: Router;
   let storage: Map<string, string>;
 
   beforeEach(() => {
-    session = new FakeSession();
     storage = new Map();
     TestBed.configureTestingModule({
       providers: [
-        provideAppConfig(parseAppConfig(testAppConfig())),
+        provideAppConfig(parseAppConfig(testAppConfig({ mockApi: true }))),
         provideRouter(createAppRoutes({ devTools: true })),
         provideEnvelopeHttpClient(),
-        { provide: SessionStore, useValue: session },
+        { provide: SessionStore, useClass: FakeSessionStore },
         {
           provide: LOCAL_STORAGE,
           useValue: {
@@ -51,6 +49,7 @@ describe('AppShell', () => {
         },
       ],
     });
+    session = fakeSession();
     router = TestBed.inject(Router);
   });
 
@@ -60,8 +59,8 @@ describe('AppShell', () => {
       .forEach((c) => (c.innerHTML = '')),
   );
 
-  const signInAs = (key: keyof typeof profileFixtures) =>
-    session.user.set(profileFixtures[key]);
+  const signInAs = (key: keyof typeof USERS) =>
+    session.user.set(seedProfile(USERS[key]));
 
   type Counts = { notifications: number; inbox: number };
 
@@ -73,10 +72,6 @@ describe('AppShell', () => {
       .match('/api/me/nav-counts')
       .filter((r) => !r.cancelled)
       .forEach((r) => r.flush(envelopeOk(counts)));
-    backend
-      .match('/api/auth/demo-accounts')
-      .filter((r) => !r.cancelled)
-      .forEach((r) => r.flush(envelopeOk([])));
   }
 
   async function open(url: string, counts?: Counts) {
@@ -95,88 +90,87 @@ describe('AppShell', () => {
     [
       'learner',
       '/learn',
-      [
-        '/learn',
-        '/catalog',
-        '/progress',
-        '/leaderboard',
-        '/assistant',
-        '/flashcards',
-        '/saved',
-        '/certificates',
-      ],
+      ['/profile', '/learn', '/progress', '/quiz', '/knowledge', '/issues'],
     ],
-    ['viewer', '/reports', ['/reports']],
+    ['viewer', '/reports', ['/profile', '/reports']],
     [
       'instructor',
-      '/instructor',
+      '/learn',
       [
-        '/instructor',
-        '/admin/catalog',
+        '/profile',
+        '/learn',
+        '/progress',
+        '/quiz',
         '/admin/courses',
+        '/admin/lessons',
         '/admin/questions',
         '/admin/quizzes',
-        '/admin/import',
         '/reports',
-        '/instructor/inbox',
+        '/knowledge',
+        '/issues',
       ],
     ],
     [
       'admin',
-      '/admin',
+      '/admin/courses',
       [
-        '/admin',
-        '/admin/catalog',
+        '/profile',
         '/admin/courses',
+        '/admin/lessons',
         '/admin/questions',
         '/admin/quizzes',
-        '/admin/import',
         '/admin/users',
         '/admin/org',
         '/admin/roles',
         '/admin/assignments',
         '/reports',
-        '/instructor/inbox',
         '/admin/system',
       ],
     ],
-  ] as const)('lists the sidebar of %s', async (role, url, expected) => {
-    signInAs(role);
-    const el = await open(url);
-    expect(hrefs(el)).toEqual([...expected]);
-  });
+  ] as const)(
+    'lists the sidebar of %s from the functions /me lists, in the backend order',
+    async (role, url, expected) => {
+      signInAs(role);
+      const el = await open(url);
+      expect(hrefs(el)).toEqual([...expected]);
+    },
+  );
 
-  it('shows a custom role only the menus it holds, under the name the server sends', async () => {
-    session.user.set({
-      ...profileFixtures['viewer'],
-      roleId: 'content-lead',
-      roleName: 'Chuyên viên nội dung',
-      menus: ['content.courses', 'content.questions', 'reports'],
-      homePath: '/admin/courses',
-    });
-    const el = await open('/admin/courses');
-    expect(hrefs(el)).toEqual([
-      '/admin/courses',
-      '/admin/questions',
-      '/reports',
-    ]);
-    expect(el.querySelector('.sidebar__role')?.textContent).toContain(
-      'Chuyên viên nội dung',
+  it('names each entry with the name the backend sends for the function', async () => {
+    signInAs('learner');
+    const el = await open('/learn');
+    expect(el.querySelector('nav a[href="/learn"]')?.textContent?.trim()).toBe(
+      'Học tập',
     );
+    expect(
+      el.querySelector('nav a[href="/progress"]')?.textContent?.trim(),
+    ).toBe('Tiến độ học tập');
   });
 
-  it('names the role of the user', async () => {
+  it('shows no entry for a function the app has no screen for', async () => {
+    const profile = seedProfile(USERS.learner);
+    session.user.set({
+      ...profile,
+      functions: [
+        ...profile.functions,
+        { id: 99, code: 'FUTURE_SCREEN', name: 'Mới', sortNo: 999 },
+      ],
+    });
+    const el = await open('/learn');
+    expect(el.querySelector('nav')?.textContent).not.toContain('Mới');
+  });
+
+  it('names the roles of the user', async () => {
     signInAs('admin');
-    const role = (await open('/admin')).querySelector('.sidebar__role');
+    const role = (await open('/admin/courses')).querySelector('.sidebar__role');
     expect(role?.textContent).toContain('Quản trị viên');
-    expect(role?.textContent).not.toContain('đơn vị');
   });
 
-  it('says "đơn vị" for an admin limited to one unit', async () => {
-    signInAs('unit-admin');
-    const el = await open('/admin');
+  it('lists every distinct role of a user with two grants', async () => {
+    signInAs('instructor');
+    const el = await open('/learn');
     expect(el.querySelector('.sidebar__role')?.textContent).toContain(
-      'Quản trị viên đơn vị',
+      'Học viên, Giảng viên',
     );
   });
 
@@ -197,11 +191,11 @@ describe('AppShell', () => {
     expect(
       el.querySelector('nav a[aria-current="page"]')?.getAttribute('href'),
     ).toBe('/learn');
-    await router.navigateByUrl('/catalog');
+    await router.navigateByUrl('/progress');
     TestBed.tick();
     expect(
       el.querySelector('nav a[aria-current="page"]')?.getAttribute('href'),
-    ).toBe('/catalog');
+    ).toBe('/progress');
   });
 
   it('links to the design system from the footer', async () => {
@@ -268,10 +262,10 @@ describe('AppShell', () => {
       const el = await open('/learn');
       toggle(el)?.click();
       TestBed.tick();
-      expect(hrefs(el)).toHaveLength(8);
+      expect(hrefs(el)).toHaveLength(6);
       expect(
-        el.querySelector('nav a[href="/catalog"]')?.textContent?.trim(),
-      ).toBe('Danh mục khóa học');
+        el.querySelector('nav a[href="/progress"]')?.textContent?.trim(),
+      ).toBe('Tiến độ học tập');
     });
 
     it('remembers the choice in this browser', async () => {
@@ -313,7 +307,7 @@ describe('AppShell', () => {
       expect(button?.getAttribute('aria-expanded')).toBe('false');
 
       await openDrawer(el);
-      expect(dialog()?.querySelectorAll('nav a')).toHaveLength(8);
+      expect(dialog()?.querySelectorAll('nav a')).toHaveLength(6);
       expect(dialog()?.querySelector('.sidebar__toggle')).toBeNull();
       expect(button?.getAttribute('aria-expanded')).toBe('true');
     });
@@ -322,7 +316,7 @@ describe('AppShell', () => {
       signInAs('learner');
       const el = await open('/learn');
       await openDrawer(el);
-      await router.navigateByUrl('/catalog');
+      await router.navigateByUrl('/progress');
       TestBed.tick();
       await vi.waitFor(() => expect(dialog()).toBeNull());
       expect(
@@ -406,17 +400,6 @@ describe('AppShell', () => {
       expect(bell?.classList).not.toContain('icon-btn--dot');
     });
 
-    it('badges the inbox item with the new-item count', async () => {
-      signInAs('admin');
-      const el = await open('/admin', { notifications: 1, inbox: 3 });
-      await vi.waitFor(() => {
-        TestBed.tick();
-        expect(
-          el.querySelector('.sidebar__badge')?.getAttribute('aria-label'),
-        ).toBe('3 mục mới');
-      });
-    });
-
     it('reloads the counts after a navigation', async () => {
       signInAs('learner');
       await open('/learn', { notifications: 2, inbox: 0 });
@@ -446,11 +429,11 @@ describe('AppShell', () => {
         signInAs('learner');
         const el = await open('/learn');
         expect(el.querySelector('ui-menu button')?.textContent).toContain(
-          profileFixtures['learner'].name,
+          seedProfile(USERS.learner).fullName,
         );
         await openMenu(el);
         expect(menu()?.textContent).toContain(
-          `${profileFixtures['learner'].name} · ${profileFixtures['learner'].email}`,
+          `${seedProfile(USERS.learner).fullName} · ${seedProfile(USERS.learner).email}`,
         );
         expect(items()).toEqual(['Hồ sơ cá nhân', 'Thông báo', 'Đăng xuất']);
       });

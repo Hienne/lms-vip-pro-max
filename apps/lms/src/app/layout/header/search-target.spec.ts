@@ -2,32 +2,32 @@ import { searchPlaceholder, searchTarget } from './search-target';
 
 describe('searchTarget', () => {
   it.each([
-    [['learn.home', 'learn.catalog'], '/catalog'],
-    [['reports'], '/reports/learners'],
-    [['teach.home', 'content.courses', 'reports'], '/admin/courses'],
-    [['admin.users', 'content.courses', 'reports'], '/admin/courses'],
-  ] as const)('sends the menus %j to %s with the query', (menus, path) => {
+    [['PROFILE', 'COURSE_LEARNING', 'QUIZ_TAKING'], '/catalog'],
+    [['PROFILE', 'REPORTING'], '/reports/learners'],
+    [['PROFILE', 'COURSE_MANAGEMENT', 'REPORTING'], '/admin/courses'],
+    [['USER_MANAGEMENT', 'COURSE_MANAGEMENT', 'REPORTING'], '/admin/courses'],
+  ] as const)('sends the functions %j to %s with the query', (menus, path) => {
     expect(searchTarget(menus, 'core')).toEqual({ path, query: { q: 'core' } });
   });
 
   it('trims the query and ignores an empty one', () => {
-    expect(searchTarget(['learn.catalog'], '  vay vốn ')?.query).toEqual({
+    expect(searchTarget(['COURSE_LEARNING'], '  vay vốn ')?.query).toEqual({
       q: 'vay vốn',
     });
-    expect(searchTarget(['learn.catalog'], '   ')).toBeNull();
+    expect(searchTarget(['COURSE_LEARNING'], '   ')).toBeNull();
   });
 
-  it('has nowhere to send a user whose menus offer no list', () => {
-    expect(searchTarget(['admin.roles'], 'core')).toBeNull();
+  it('has nowhere to send a user whose functions offer no list', () => {
+    expect(searchTarget(['ROLE_MANAGEMENT'], 'core')).toBeNull();
   });
 });
 
 describe('searchPlaceholder', () => {
   it('is shorter for a user who only learns', () => {
-    expect(searchPlaceholder(['learn.home', 'learn.catalog'])).toBe(
+    expect(searchPlaceholder(['PROFILE', 'COURSE_LEARNING'])).toBe(
       'Tìm khóa học, bài học…',
     );
-    expect(searchPlaceholder(['admin.users', 'content.courses'])).toBe(
+    expect(searchPlaceholder(['USER_MANAGEMENT', 'COURSE_MANAGEMENT'])).toBe(
       'Tìm khóa học, người dùng, câu hỏi…',
     );
   });

@@ -74,10 +74,11 @@ export class StatusSection {
   protected readonly publishStatuses = PublishStatusSchema.options;
   protected readonly accountStatuses = AccountStatusSchema.options;
   protected readonly roles = [
-    { roleId: 'learner', name: 'Học viên' },
-    { roleId: 'instructor', name: 'Giảng viên' },
-    { roleId: 'admin', name: 'Quản trị viên' },
-    { roleId: 'viewer', name: 'Lãnh đạo' },
-    { roleId: 'content-lead', name: 'Vai trò tùy chỉnh' },
+    { code: 'SUPER_ADMIN', name: 'Quản trị hệ thống' },
+    { code: 'ADMIN', name: 'Quản trị viên' },
+    { code: 'INSTRUCTOR', name: 'Giảng viên' },
+    { code: 'LEARNER', name: 'Học viên' },
+    { code: 'REPORT_VIEWER', name: 'Người xem báo cáo' },
+    { code: 'CONTENT_LEAD', name: 'Vai trò tùy chỉnh' },
   ] as const;
 }

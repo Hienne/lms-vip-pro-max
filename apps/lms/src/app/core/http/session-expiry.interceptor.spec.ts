@@ -3,17 +3,19 @@ import { HttpTestingController } from '@angular/common/http/testing';
 import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { provideRouter, Router } from '@angular/router';
-import { authEndpoints, authV1Endpoints, type Profile } from '@lms/contracts';
-import { backendRefusal, envelopeError, profileFixtures } from '@lms/mocks';
+import { authV1Endpoints, identityEndpoints } from '@lms/contracts';
+import { backendRefusal, envelopeError } from '@lms/mocks';
 import { Toaster } from '@lms/ui';
 import { SESSION_EXPIRED_MESSAGE } from '../errors/app-error';
+import type { Profile } from '../session/profile';
 import { SessionStore } from '../session/session.store';
+import { seedProfile } from '../session/session.testing';
 import { EndpointClient } from './endpoint-client';
 import { provideEnvelopeHttpClient } from './http.testing';
 import { sessionExpiryInterceptor } from './session-expiry.interceptor';
 
 class FakeSession {
-  readonly user = signal<Profile | null>(profileFixtures['learner']);
+  readonly user = signal<Profile | null>(seedProfile('000004'));
   readonly isSignedIn$ = () => this.user() !== null;
   expire = vi.fn(() => this.user.set(null));
 }
@@ -50,7 +52,7 @@ describe('sessionExpiryInterceptor', async () => {
   it('ends the session on a 401 and still fails the caller', async () => {
     const errors: unknown[] = [];
     client
-      .call(authEndpoints.demoAccounts)
+      .call(identityEndpoints.listRoles)
       .subscribe({ error: (e) => errors.push(e) });
     backend.expectOne(() => true).flush({ message: 'no' }, fail(401));
     await settle();
@@ -68,7 +70,7 @@ describe('sessionExpiryInterceptor', async () => {
   it('ends the session on a 401 carrying the CORE-UNAUTHENTICATED envelope and still fails the caller', async () => {
     const errors: unknown[] = [];
     client
-      .call(authEndpoints.demoAccounts)
+      .call(identityEndpoints.listRoles)
       .subscribe({ error: (e) => errors.push(e) });
     backend
       .expectOne(() => true)
@@ -102,7 +104,7 @@ describe('sessionExpiryInterceptor', async () => {
 
   it('ignores an ERROR envelope with any other code', async () => {
     client
-      .call(authEndpoints.demoAccounts)
+      .call(identityEndpoints.listRoles)
       .subscribe({ error: () => undefined });
     backend
       .expectOne(() => true)
@@ -114,7 +116,7 @@ describe('sessionExpiryInterceptor', async () => {
   it('reports a burst of 401s once', async () => {
     for (let i = 0; i < 3; i++) {
       client
-        .call(authEndpoints.demoAccounts)
+        .call(identityEndpoints.listRoles)
         .subscribe({ error: () => undefined });
     }
     backend.match(() => true).forEach((r) => r.flush({}, fail(401)));
@@ -142,7 +144,7 @@ describe('sessionExpiryInterceptor', async () => {
   it('does nothing when the visitor is already anonymous', async () => {
     session.user.set(null);
     client
-      .call(authEndpoints.demoAccounts)
+      .call(identityEndpoints.listRoles)
       .subscribe({ error: () => undefined });
     backend.expectOne(() => true).flush({}, fail(401));
     await settle();
@@ -151,7 +153,7 @@ describe('sessionExpiryInterceptor', async () => {
 
   it.each([403, 404, 500])('ignores a %s', async (status) => {
     client
-      .call(authEndpoints.demoAccounts)
+      .call(identityEndpoints.listRoles)
       .subscribe({ error: () => undefined });
     backend.expectOne(() => true).flush({}, fail(status));
     await settle();

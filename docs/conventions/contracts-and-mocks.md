@@ -149,9 +149,9 @@ their own validators' messages, and a backend refusal is a toast.
   as `HttpErrorResponse`.
 - **`requestIdInterceptor`** sends `X-Request-Id` (a UUID, or random hex on a plain-HTTP page) on
   every `/api/` call; the backend returns it as `responseId`.
-- **`toAppError`** reads an `ApiError`: a code in `MESSAGE_CODE_KIND` (`CORE-UNAUTHENTICATED →
-  unauthorized`, `CORE-ACCESS_DENIED → forbidden`, `IDENTITY-PASSWORD_CHANGE_REQUIRED →
-  passwordChangeRequired`) gives that kind, any other code is `server`. The `AppError` keeps the
+- **`toAppError`** reads an `ApiError`: a code in `MESSAGE_CODE_KIND` gives that kind
+  (`CORE-UNAUTHENTICATED` is `unauthorized`, `CORE-ACCESS_DENIED` is `forbidden`,
+  `IDENTITY-PASSWORD_CHANGE_REQUIRED` is `passwordChangeRequired`), any other code is `server`. The `AppError` keeps the
   backend's `title`, `message` (verbatim, the Vietnamese default only when it sent none) and
   `messageCode`. A wrong password is `IDENTITY-CREDENTIALS_INVALID` in a 401: a plain `server`
   error whose message is the backend's "Tên đăng nhập hoặc mật khẩu không đúng.".
@@ -159,8 +159,7 @@ their own validators' messages, and a backend refusal is a toast.
 - **Display is not decided here.** No interceptor shows a toast: a `serverMutation` with
   `errors: 'toast'` shows `title` as the heading and `message` as the detail.
 - **Paging and PATCH.** `PageSchema(item)` (`http/page.ts`) is the backend's `PageResponse`
-  (`items`, 0-based `page`, `size` 1..100, `totalElements`, `totalPages`). `toPatch(original, next,
-  fields)` (`http/patch.ts`) builds a PATCH body of the changed fields only: a field left out is
+  (`items`, 0-based `page`, `size` 1..100, `totalElements`, `totalPages`). `toPatch` (`http/patch.ts`) builds a PATCH body of the changed fields only: a field left out is
   kept by the server and `null` clears it.
 - **Mock and specs.** The in-app mock answers `envelopeOk(fixture)`. A spec flushes
   `envelopeOk(data)`, or a refusal from `backendRefusal(key)` (`@lms/mocks`: the real HTTP status,

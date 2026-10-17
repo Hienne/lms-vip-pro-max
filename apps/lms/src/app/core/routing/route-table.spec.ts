@@ -1,62 +1,68 @@
 import { provideHttpClient } from '@angular/common/http';
 import { provideHttpClientTesting } from '@angular/common/http/testing';
-import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { provideRouter, Router } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
-import type { MenuKey, Profile } from '@lms/contracts';
-import { profileFixtures } from '@lms/mocks';
 import { createAppRoutes } from '../../app.routes';
 import { parseAppConfig, provideAppConfig } from '../config/app-config';
 import { testAppConfig } from '../config/app-config.testing';
 import { SessionStore } from '../session/session.store';
+import {
+  FakeSessionStore,
+  fakeSession,
+  seedProfile,
+} from '../session/session.testing';
 import type { ForbiddenState } from './forbidden-state';
-import { MENU_KEYS, menuGroup, SCREEN_ENTRIES, screenHref } from './screens';
+import {
+  FUNCTION_CODES,
+  menuGroup,
+  SCREEN_ENTRIES,
+  screenHref,
+} from './screens';
 
-/** Just what the guards read from the session. */
-class FakeSession {
-  readonly user = signal<Profile | null>(null);
-  readonly user$ = this.user.asReadonly();
-  readonly menus$ = (): readonly MenuKey[] => this.user()?.menus ?? [];
-  readonly homePath$ = () => this.user()?.homePath ?? null;
-  readonly isSignedIn$ = () => this.user() !== null;
-  // What the login page reads; these tests only render it.
-  readonly isSigningIn$ = () => false;
-  readonly signInError$ = () => undefined;
-  whenReady = () => Promise.resolve();
-}
+/** The backend demo accounts by what they are, as the seed names them. */
+const USERS = {
+  superAdmin: '000001',
+  admin: '000002',
+  learner: '000004',
+  instructor: '000005',
+  reportViewer: '000006',
+} as const;
 
 describe('route table', () => {
-  let session: FakeSession;
+  let session: FakeSessionStore;
   let router: Router;
   let harness: RouterTestingHarness;
 
   beforeEach(async () => {
-    session = new FakeSession();
     TestBed.configureTestingModule({
       providers: [
         provideHttpClient(),
         provideHttpClientTesting(),
         provideAppConfig(parseAppConfig(testAppConfig())),
         provideRouter(createAppRoutes({ devTools: true })),
-        { provide: SessionStore, useValue: session },
+        { provide: SessionStore, useClass: FakeSessionStore },
       ],
     });
+    session = fakeSession();
     router = TestBed.inject(Router);
     harness = await RouterTestingHarness.create();
   });
 
-  const signInAs = (key: keyof typeof profileFixtures) =>
-    session.user.set(profileFixtures[key]);
+  const signInAs = (key: keyof typeof USERS) =>
+    session.user.set(seedProfile(USERS[key]));
 
   it('lists every route of the mockup router except the ones with their own entry', () => {
     expect(new Set(SCREEN_ENTRIES.map(({ screen }) => screen.path))).toEqual(
       new Set([
         'login',
+        'change-password',
+        'profile',
         'learn',
         'catalog',
         'course/:id',
         'lesson/:courseId/:lessonId',
+        'quiz',
         'quiz/:id',
         'quiz/:id/take',
         'quiz/:id/result/:attemptId',
@@ -69,7 +75,6 @@ describe('route table', () => {
         'flashcards',
         'assistant',
         'notifications',
-        'profile',
         'instructor',
         'instructor/inbox',
         'admin',
@@ -77,6 +82,7 @@ describe('route table', () => {
         'admin/courses',
         'admin/courses/new',
         'admin/courses/:id/edit',
+        'admin/lessons',
         'admin/questions',
         'admin/quizzes',
         'admin/quizzes/:id',
@@ -89,6 +95,8 @@ describe('route table', () => {
         'admin/system',
         'reports',
         'reports/:dim',
+        'knowledge',
+        'issues',
         '403',
       ]),
     );
@@ -100,7 +108,9 @@ describe('route table', () => {
   });
 
   it('starts every menu on a screen without a route parameter', () => {
-    const entries = MENU_KEYS.map((menu) => menuGroup(menu).screens[0].path);
+    const entries = FUNCTION_CODES.map(
+      (menu) => menuGroup(menu).screens[0].path,
+    );
     expect(entries.filter((path) => path.includes(':'))).toEqual([]);
   });
 
@@ -114,7 +124,7 @@ describe('route table', () => {
         want.every((part, i) => part.startsWith(':') || part === got[i])
       );
     };
-    const targets = MENU_KEYS.flatMap((menu) => {
+    const targets = FUNCTION_CODES.flatMap((menu) => {
       const { search, screens } = menuGroup(menu);
       return search?.href ? [{ href: search.href, screens }] : [];
     });
@@ -146,7 +156,7 @@ describe('route table', () => {
     expect(router.url).toBe('/design-system');
   });
 
-  it('lets a role holding the menu in and renders the placeholder naming the mockup page', async () => {
+  it('lets a user holding the function in and renders the placeholder naming the mockup page', async () => {
     signInAs('admin');
     await harness.navigateByUrl('/admin/assignments');
     expect(router.url).toBe('/admin/assignments');
@@ -156,16 +166,15 @@ describe('route table', () => {
   });
 
   it.each([
-    ['learner', '/admin/users', 'admin.users'],
-    ['viewer', '/learn', 'learn.home'],
-    ['learner', '/instructor', 'teach.home'],
-    ['viewer', '/admin/courses', 'content.courses'],
-    ['instructor', '/admin/roles', 'admin.roles'],
-    ['admin', '/instructor', 'teach.home'],
+    ['learner', '/admin/users', 'USER_MANAGEMENT'],
+    ['reportViewer', '/learn', 'COURSE_LEARNING'],
+    ['learner', '/admin/courses', 'COURSE_MANAGEMENT'],
+    ['instructor', '/admin/roles', 'ROLE_MANAGEMENT'],
+    ['admin', '/learn', 'COURSE_LEARNING'],
   ] as const)(
-    'sends %s from %s to /403 with the menu that grants it',
-    async (role, url, menu) => {
-      signInAs(role);
+    'sends %s from %s to /403 with the function that grants it',
+    async (user, url, menu) => {
+      signInAs(user);
       await harness.navigateByUrl(url);
       expect(router.url).toBe('/403');
       const state = router.lastSuccessfulNavigation()?.extras.state as
@@ -181,12 +190,10 @@ describe('route table', () => {
     expect(router.url).toBe('/login?next=%2Fquiz%2Fq1%2Fresult%2Fa1');
   });
 
-  it('shows a custom role only the screens of its menus', async () => {
+  it('opens a screen by the function that covers it, and only that one', async () => {
     session.user.set({
-      ...profileFixtures['viewer'],
-      roleId: 'content-lead',
-      menus: ['content.courses'],
-      homePath: '/admin/courses',
+      ...seedProfile(USERS.reportViewer),
+      menus: ['PROFILE', 'COURSE_MANAGEMENT'],
     });
     await harness.navigateByUrl('/admin/courses/new');
     expect(router.url).toBe('/admin/courses/new');
@@ -194,35 +201,52 @@ describe('route table', () => {
     expect(router.url).toBe('/403');
   });
 
-  it('lets any signed-in user open the screens that belong to no menu', async () => {
-    signInAs('viewer');
-    for (const url of ['/profile', '/notifications', '/quiz/q1/result/a1']) {
+  it('lets any signed-in user open the screens that belong to no function', async () => {
+    signInAs('reportViewer');
+    for (const url of ['/profile', '/notifications', '/leaderboard']) {
       await harness.navigateByUrl(url);
       expect(router.url).toBe(url);
     }
   });
 
-  it('serves 403 to any signed-in role, and to nobody anonymous', async () => {
+  it('sends a user with a temporary password to the password change from every other screen', async () => {
+    session.user.set({
+      ...seedProfile(USERS.learner),
+      mustChangePassword: true,
+    });
+    await harness.navigateByUrl('/learn');
+    expect(router.url).toBe('/change-password');
+    await harness.navigateByUrl('/profile');
+    expect(router.url).toBe('/change-password');
+    await harness.navigateByUrl('/change-password');
+    expect(router.url).toBe('/change-password');
+  });
+
+  it('serves 403 to any signed-in user, and to nobody anonymous', async () => {
     await harness.navigateByUrl('/403');
     expect(router.url).toBe('/login?next=%2F403');
-    signInAs('viewer');
+    signInAs('reportViewer');
     await harness.navigateByUrl('/403');
     expect(router.url).toBe('/403');
   });
 
-  it('carries the menu and layout in route data', () => {
+  it('carries the function code and layout in route data', () => {
     const dataOf = (path: string) =>
       createAppRoutes({ devTools: false }).find((r) => r.path === path)?.data;
     expect(dataOf('learn')).toMatchObject({
-      menu: 'learn.home',
+      menu: 'COURSE_LEARNING',
       layout: 'app',
     });
     expect(dataOf('lesson/:courseId/:lessonId')).toMatchObject({
-      menu: 'learn.catalog',
+      menu: 'COURSE_LEARNING',
       layout: 'focus',
     });
     expect(dataOf('login')).toMatchObject({ layout: 'bare' });
     expect(dataOf('login')).not.toHaveProperty('menu');
+    expect(dataOf('change-password')).toMatchObject({
+      layout: 'bare',
+      passwordChange: true,
+    });
   });
 
   it('keeps login public and visitor-only', () => {

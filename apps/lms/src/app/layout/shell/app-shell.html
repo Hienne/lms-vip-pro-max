@@ -10,10 +10,9 @@
   @if (chrome === 'app' && user) {
   <app-sidebar
     class="app-shell__sidebar"
-    [menus]="user.menus"
+    [functions]="user.functions"
     [roleText]="store.roleText$()"
     [activePath]="store.path$()"
-    [inboxCount]="store.inboxCount$()"
     [collapsible]="true"
     [collapsed]="store.sidebarCollapsed$()"
     (collapseToggle)="store.toggleSidebar()"
@@ -53,10 +52,9 @@
 >
   @if (user) {
   <app-sidebar
-    [menus]="user.menus"
+    [functions]="user.functions"
     [roleText]="store.roleText$()"
     [activePath]="store.path$()"
-    [inboxCount]="store.inboxCount$()"
   />
   }
 </ng-template>

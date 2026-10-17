@@ -6,8 +6,8 @@ import {
   type BackendResponseKey,
   backendRefusal,
   envelopeError,
-  loginV1Body,
-  meV1Body,
+  envelopeOk,
+  seedMe,
 } from '@lms/mocks';
 import { Toaster } from '@lms/ui';
 import { createAppRoutes } from '../../../app.routes';
@@ -25,6 +25,15 @@ import {
 } from '../../../core/session/session.testing';
 
 const LOGIN_URL = '/api/v1/auth/login';
+
+const loginData = {
+  accessToken: 'fixture.jwt.token',
+  tokenType: 'Bearer',
+  expiresInSeconds: 3600,
+};
+const loginV1Body = envelopeOk(loginData);
+/** `/me` of the seed learner. */
+const meV1Body = envelopeOk(seedMe('000004'));
 
 describe('Login', () => {
   let harness: RouterTestingHarness;
@@ -249,5 +258,23 @@ describe('Login', () => {
     harness = await RouterTestingHarness.create();
     await harness.navigateByUrl('/login');
     expect(router.url).toBe('/learn');
+  });
+
+  it('sends a user with a temporary password to the password change', async () => {
+    await openLogin();
+    await type('moi.tao', 'Tam@12345');
+    await submit();
+    backend.expectOne(LOGIN_URL).flush(loginV1Body);
+    await settle();
+    const me = seedMe('000004');
+    backend
+      .expectOne(ME_URL)
+      .flush(
+        envelopeOk({ ...me, user: { ...me.user, mustChangePassword: true } }),
+      );
+    await vi.waitFor(() => {
+      TestBed.tick();
+      expect(router.url).toBe('/change-password');
+    });
   });
 });

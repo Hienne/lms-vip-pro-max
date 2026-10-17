@@ -11,8 +11,8 @@ import {
 } from '@angular/core';
 import { map } from 'rxjs';
 import { RouterLink } from '@angular/router';
-import type { Profile } from '@lms/contracts';
 import { Icon, IconButton, Input, Menu, type MenuEntry } from '@lms/ui';
+import type { Profile } from '../../core/session/profile';
 import { searchPlaceholder } from './search-target';
 
 export type UserMenuValue = 'profile' | 'notifications' | 'sign-out';
@@ -58,7 +58,10 @@ export class Header {
   protected readonly entries = computed<MenuEntry<UserMenuValue>[]>(() => {
     const user = this.user();
     return [
-      { kind: 'label', label: user ? `${user.name} · ${user.email}` : '' },
+      {
+        kind: 'label',
+        label: user ? `${user.fullName} · ${user.email ?? user.username}` : '',
+      },
       { kind: 'item', value: 'profile', label: 'Hồ sơ cá nhân', icon: 'user' },
       {
         kind: 'item',

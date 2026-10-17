@@ -8,7 +8,6 @@ import {
   type BackendResponseKey,
   backendRefusal,
   envelopeOk,
-  loginV1Body,
 } from '@lms/mocks';
 import { toAppError, type AppErrorKind } from '../errors/app-error';
 import { ApiError } from './api-error';
@@ -17,6 +16,13 @@ import { EndpointClient } from './endpoint-client';
 import { provideEnvelopeHttpClient } from './http.testing';
 
 const LOGIN_URL = '/api/v1/auth/login';
+
+const loginData = {
+  accessToken: 'fixture.jwt.token',
+  tokenType: 'Bearer',
+  expiresInSeconds: 3600,
+};
+const loginV1Body = { ...envelopeOk(loginData), data: loginData };
 
 describe('envelopeInterceptor', () => {
   let backend: HttpTestingController;

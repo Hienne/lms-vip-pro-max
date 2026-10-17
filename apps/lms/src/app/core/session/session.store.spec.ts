@@ -1,11 +1,6 @@
 import { HttpTestingController } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
-import {
-  backendRefusal,
-  loginV1Body,
-  logoutV1Body,
-  meV1Body,
-} from '@lms/mocks';
+import { backendRefusal, envelopeOk, seedMe } from '@lms/mocks';
 import { bearerInterceptor } from '../http/bearer.interceptor';
 import { provideEnvelopeHttpClient } from '../http/http.testing';
 import { SessionStore } from './session.store';
@@ -14,6 +9,16 @@ import { TokenStore } from './token-store';
 
 const LOGIN_URL = '/api/v1/auth/login';
 const UNAUTHORIZED = { status: 401, statusText: 'Unauthorized' };
+
+const loginData = {
+  accessToken: 'fixture.jwt.token',
+  tokenType: 'Bearer',
+  expiresInSeconds: 3600,
+};
+const loginV1Body = { ...envelopeOk(loginData), data: loginData };
+const logoutV1Body = envelopeOk(null);
+/** `/me` of the seed learner (staff code 000004). */
+const meV1Body = envelopeOk(seedMe('000004'));
 
 describe('SessionStore', () => {
   let store: SessionStore;
@@ -64,26 +69,37 @@ describe('SessionStore', () => {
       expect(store.status$()).toBe('ready');
       expect(store.isSignedIn$()).toBe(true);
       expect(store.user$()).toMatchObject({
-        id: '000123',
-        staffCode: '000123',
-        name: 'Nguyễn Văn Demo',
-        email: '',
-        unitName: 'Ban QL&PT Core Banking',
-        groupName: '',
-        title: 'Chuyên viên',
+        userId: '000004',
+        username: 'hocvien',
         status: 'active',
-        roleId: 'LEARNER',
-        roleName: 'Học viên',
-        scopeName: 'Ban QL&PT Core Banking',
+        mustChangePassword: false,
         homePath: '/learn',
+        roleText: 'Học viên',
       });
     });
 
-    it('grants every menu and sends the user to /learn', async () => {
+    it('exposes the functions /me lists as the menus, and the first of them as home', async () => {
       await restoreWithToken();
-      expect(store.menus$()).toContain('admin.users');
-      expect(store.menus$()).toContain('learn.home');
+      expect(store.menus$()).toContain('COURSE_LEARNING');
+      expect(store.menus$()).not.toContain('USER_MANAGEMENT');
       expect(store.homePath$()).toBe('/learn');
+    });
+
+    it('flags a temporary password and sends the user to the password change', async () => {
+      storeToken();
+      store.restore();
+      await settle();
+      const me = seedMe('000004');
+      backend.expectOne(ME_URL).flush(
+        envelopeOk({
+          ...me,
+          user: { ...me.user, mustChangePassword: true },
+        }),
+      );
+      await settle();
+
+      expect(store.mustChangePassword$()).toBe(true);
+      expect(store.homePath$()).toBe('/change-password');
     });
 
     it('makes no /me call without a token and leaves the visitor anonymous', async () => {
@@ -178,7 +194,7 @@ describe('SessionStore', () => {
       await settle();
 
       expect(store.isSigningIn$()).toBe(false);
-      expect(store.user$()?.name).toBe('Nguyễn Văn Demo');
+      expect(store.user$()?.fullName).toBe(seedMe('000004').user.fullName);
       expect(store.signInError$()).toBeUndefined();
     });
 
@@ -216,39 +232,6 @@ describe('SessionStore', () => {
       expect(store.signInError$()).toBeDefined();
       expect(store.isSignedIn$()).toBe(false);
       expect(localStorage.length).toBe(0);
-    });
-  });
-
-  describe('scope label', () => {
-    async function restoreWithScope(
-      type: 'GLOBAL' | 'ORG' | 'TEAM' | 'OWN' | null,
-    ): Promise<void> {
-      storeToken();
-      store.restore();
-      await settle();
-      const { data } = meV1Body;
-      backend.expectOne(ME_URL).flush({
-        ...meV1Body,
-        data: {
-          ...data,
-          user: { ...data.user, teamName: 'Nhóm QA' },
-          roleGrants: type
-            ? [{ ...data.roleGrants[0], scope: { type, orgId: 7, teamId: 3 } }]
-            : [],
-        },
-      });
-      await settle();
-    }
-
-    it.each([
-      ['GLOBAL', 'Toàn hệ thống'],
-      ['ORG', 'Ban QL&PT Core Banking'],
-      ['TEAM', 'Nhóm QA'],
-      ['OWN', 'Cá nhân'],
-      [null, '—'],
-    ] as const)('reads %s as "%s"', async (type, label) => {
-      await restoreWithScope(type);
-      expect(store.user$()?.scopeName).toBe(label);
     });
   });
 

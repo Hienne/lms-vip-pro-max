@@ -24,6 +24,7 @@ import { confirm, Toaster } from '@lms/ui';
 import { filter, switchMap, take, tap } from 'rxjs';
 import type { UserMenuValue } from '../../header/header';
 import { searchTarget } from '../../header/search-target';
+import { APP_CONFIG } from '../../../core/config/app-config';
 import { EndpointClient } from '../../../core/http/endpoint-client';
 import {
   hasUnsavedChanges,
@@ -36,7 +37,6 @@ import {
   LOCAL_STORAGE,
   type PreferenceStorage,
 } from '../../../core/storage/local-storage';
-import { roleText } from '../../../shared/status/role-badge';
 
 /** Which frame surrounds the page: sidebar and header, the plain focus frame, or nothing. */
 export type Chrome = 'app' | 'focus' | 'bare';
@@ -73,6 +73,7 @@ export class ShellStore {
   private readonly injector = inject(Injector);
   private readonly destroyRef = inject(DestroyRef);
   private readonly storage = inject(LOCAL_STORAGE);
+  private readonly mockApi = inject(APP_CONFIG).mockApi;
 
   constructor() {
     inject(LeavePrompt).use(() =>
@@ -126,16 +127,18 @@ export class ShellStore {
   });
 
   readonly user$ = this.session.user$;
-  readonly roleText$ = computed(() => {
-    const user = this.session.user$();
-    return user ? roleText(user) : '';
-  });
+  readonly roleText$ = computed(() => this.session.user$()?.roleText ?? '');
 
-  /** Reloaded after sign-in and on every navigation, as the mockup refreshes its badges. */
+  /**
+   * Reloaded after sign-in and on every navigation, as the mockup refreshes its badges. The
+   * backend has no such endpoint yet, so it is only asked while the mock API answers it.
+   */
   private readonly countsResource = rxResource({
     params: () => {
       const user = this.session.user$();
-      return user ? { userId: user.id, path: this.path$() } : undefined;
+      return user && this.mockApi
+        ? { userId: user.userId, path: this.path$() }
+        : undefined;
     },
     stream: () => this.client.call(shellEndpoints.navCounts),
   });
@@ -150,7 +153,6 @@ export class ShellStore {
   });
 
   readonly unread$ = computed(() => this.counts().notifications);
-  readonly inboxCount$ = computed(() => this.counts().inbox);
 
   /** The router outlet's `activate` and `deactivate` events keep track of the current page. */
   activated(page: unknown): void {

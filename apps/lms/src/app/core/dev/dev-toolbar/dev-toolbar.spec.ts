@@ -1,55 +1,54 @@
-import { HttpTestingController } from '@angular/common/http/testing';
 import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { provideRouter, Router } from '@angular/router';
-import type { Profile } from '@lms/contracts';
-import { demoAccountFixtures, envelopeOk, profileFixtures } from '@lms/mocks';
 import { provideAppConfig } from '../../config/app-config';
 import { testAppConfig } from '../../config/app-config.testing';
 import { NetworkStore } from '../../network/network.store';
 import { SessionStore } from '../../session/session.store';
-import { MockScenario } from '../mock-scenario';
-import { DevToolbar } from './dev-toolbar';
+import { seedProfile } from '../../session/session.testing';
+import type { Profile } from '../../session/profile';
 import { provideEnvelopeHttpClient } from '../../http/http.testing';
+import { MOCK_ACCOUNTS } from '../mock-api/mock-accounts';
+import { DevToolbar } from './dev-toolbar';
 
 class FakeSession {
-  readonly user = signal<Profile | null>(profileFixtures['learner']);
+  readonly user = signal<Profile | null>(seedProfile('000004'));
   readonly user$ = this.user.asReadonly();
   readonly isSignedIn$ = () => this.user() !== null;
   expire = vi.fn(() => this.user.set(null));
+  signIn = vi.fn((command: { username: string }) => {
+    const account = MOCK_ACCOUNTS.find((a) => a.username === command.username);
+    if (account) this.user.set(seedProfile(account.userId));
+  });
 }
 
 describe('DevToolbar', () => {
   let session: FakeSession;
-  let backend: HttpTestingController;
   let router: Router;
   let el: HTMLElement;
 
-  beforeEach(() => {
-    sessionStorage.clear();
+  function create(config: Parameters<typeof testAppConfig>[0]) {
     session = new FakeSession();
     TestBed.configureTestingModule({
       providers: [
         provideEnvelopeHttpClient(),
         provideRouter([]),
-        provideAppConfig(testAppConfig({ mockApi: true })),
+        provideAppConfig(testAppConfig(config)),
         { provide: SessionStore, useValue: session },
       ],
     });
-    backend = TestBed.inject(HttpTestingController);
     router = TestBed.inject(Router);
     vi.spyOn(router, 'navigateByUrl').mockResolvedValue(true);
     vi.spyOn(router, 'navigate').mockResolvedValue(true);
     el = TestBed.createComponent(DevToolbar).nativeElement as HTMLElement;
     document.body.append(el);
     TestBed.tick();
-  });
+  }
   afterEach(() => {
     el.remove();
     document
       .querySelectorAll('.cdk-overlay-container')
       .forEach((c) => (c.innerHTML = ''));
-    backend.verify();
   });
 
   const menu = () => document.querySelector<HTMLElement>('[role="menu"]');
@@ -60,128 +59,92 @@ describe('DevToolbar', () => {
     items().find((i) => i.textContent?.includes(text))!;
 
   async function open() {
-    const wrapper = el.querySelector('.dev-toolbar')!;
-    wrapper.dispatchEvent(new Event('pointerenter'));
-    TestBed.tick();
-    backend
-      .expectOne('/api/auth/demo-accounts')
-      .flush(envelopeOk(demoAccountFixtures));
     el.querySelector<HTMLButtonElement>('ui-menu button')?.click();
     TestBed.tick();
     await vi.waitFor(() => {
       TestBed.tick();
       expect(menu()).not.toBeNull();
-      expect(items().length).toBeGreaterThan(demoAccountFixtures.length);
     });
   }
 
-  it('asks for nothing until it is touched', () => {
-    backend.expectNone('/api/auth/demo-accounts');
-    expect(el.querySelector('ui-menu button')?.textContent).toContain('Demo');
-  });
+  describe('with the mock backend', () => {
+    beforeEach(() => create({ mockApi: true, mockBackend: true }));
 
-  it('lists a mock role per demo account and the incident simulations', async () => {
-    await open();
-    expect(labels()).toHaveLength(demoAccountFixtures.length + 4);
-    expect(labels()).toContain('Mô phỏng mất kết nối');
-    expect(labels()).toContain('Mô phỏng hết phiên đăng nhập');
-    expect(labels()).toContain('Mở Design System');
-    expect(menu()?.textContent).toContain('Đổi vai trò dữ liệu mô phỏng');
-    expect(item('Quản trị viên đơn vị')).toBeDefined();
-  });
+    it('lists the seven demo accounts and the incident simulations', async () => {
+      await open();
+      expect(MOCK_ACCOUNTS).toHaveLength(7);
+      expect(labels()).toHaveLength(MOCK_ACCOUNTS.length + 4);
+      expect(menu()?.textContent).toContain('Đăng nhập bằng tài khoản demo');
+      expect(item('Quản trị viên gốc — Quản trị gốc Demo')).toBeDefined();
+      expect(labels()).toContain('Mô phỏng mất kết nối');
+      expect(labels()).toContain('Mở Design System');
+    });
 
-  it('switches the mock role only: remembers the example, keeps the user, goes home and says so', async () => {
-    await open();
-    item('Quản trị viên đơn vị').click();
-    TestBed.tick();
-    expect(TestBed.inject(MockScenario).role$()).toBe('unit-admin');
-    expect(session.expire).not.toHaveBeenCalled();
-    expect(session.user()).toBe(profileFixtures['learner']);
-    expect(router.navigateByUrl).toHaveBeenCalledWith('/');
-    await vi.waitFor(() =>
+    it('signs in as the chosen demo user, says so and goes home', async () => {
+      await open();
+      item('Học viên, Giảng viên — Giảng viên Demo').click();
+      TestBed.tick();
+      expect(session.signIn).toHaveBeenCalledWith({
+        username: 'giangvien',
+        password: 'Demo@123',
+      });
+      await vi.waitFor(() => {
+        TestBed.tick();
+        expect(router.navigateByUrl).toHaveBeenCalledWith('/');
+      });
       expect(document.body.textContent).toContain(
-        'Đã chuyển dữ liệu mô phỏng sang Quản trị viên đơn vị',
-      ),
-    );
-  });
-
-  it('disables the role whose mock data is in use', async () => {
-    TestBed.inject(MockScenario).setRole('learner');
-    await open();
-    const current = demoAccountFixtures.find((a) => a.roleId === 'learner')!;
-    const row = items().find((i) => i.textContent?.includes(current.name));
-    expect(row?.getAttribute('aria-disabled')).toBe('true');
-  });
-
-  it('switches the connection off and back on', async () => {
-    await open();
-    item('Mô phỏng mất kết nối').click();
-    TestBed.tick();
-    expect(TestBed.inject(NetworkStore).offline$()).toBe(true);
-    el.querySelector<HTMLButtonElement>('ui-menu button')?.click();
-    await vi.waitFor(() => {
-      TestBed.tick();
-      expect(labels()).toContain('Bật lại kết nối mạng');
-    });
-    item('Bật lại kết nối mạng').click();
-    TestBed.tick();
-    expect(TestBed.inject(NetworkStore).offline$()).toBe(false);
-  });
-
-  it('ends the session and asks to sign in again where the user was', async () => {
-    vi.spyOn(router, 'url', 'get').mockReturnValue('/catalog?q=a');
-    await open();
-    item('Mô phỏng hết phiên đăng nhập').click();
-    TestBed.tick();
-    expect(session.expire).toHaveBeenCalledOnce();
-    expect(router.navigate).toHaveBeenCalledWith(['/login'], {
-      queryParams: { next: '/catalog?q=a' },
-    });
-  });
-
-  it('tries an admin URL and opens the design system', async () => {
-    await open();
-    item('Thử truy cập URL quản trị').click();
-    TestBed.tick();
-    expect(router.navigateByUrl).toHaveBeenCalledWith('/admin/users');
-    el.querySelector<HTMLButtonElement>('ui-menu button')?.click();
-    await vi.waitFor(() => {
-      TestBed.tick();
-      expect(menu()).not.toBeNull();
-    });
-    item('Mở Design System').click();
-    TestBed.tick();
-    expect(router.navigateByUrl).toHaveBeenCalledWith('/design-system');
-  });
-});
-
-describe('DevToolbar against a real backend', () => {
-  it('offers no role list, since the role only drives the mock API', async () => {
-    TestBed.configureTestingModule({
-      providers: [
-        provideEnvelopeHttpClient(),
-        provideRouter([]),
-        provideAppConfig(testAppConfig({ mockApi: false })),
-        { provide: SessionStore, useValue: new FakeSession() },
-      ],
-    });
-    const el = TestBed.createComponent(DevToolbar).nativeElement as HTMLElement;
-    document.body.append(el);
-    TestBed.tick();
-    el.querySelector<HTMLButtonElement>('ui-menu button')?.click();
-    TestBed.tick();
-    await vi.waitFor(() => {
-      TestBed.tick();
-      expect(document.querySelector('[role="menu"]')?.textContent).toContain(
-        'Mô phỏng mất kết nối',
+        'Đã đăng nhập bằng Giảng viên Demo',
       );
     });
-    expect(document.querySelector('[role="menu"]')?.textContent).not.toContain(
-      'Đổi vai trò dữ liệu mô phỏng',
-    );
-    el.remove();
-    document
-      .querySelectorAll('.cdk-overlay-container')
-      .forEach((c) => (c.innerHTML = ''));
+
+    it('disables the account that is already signed in', async () => {
+      await open();
+      const row = item('Học viên tiền gửi Demo');
+      expect(row.getAttribute('aria-disabled')).toBe('true');
+    });
+
+    it('switches the connection off and back on', async () => {
+      await open();
+      item('Mô phỏng mất kết nối').click();
+      TestBed.tick();
+      expect(TestBed.inject(NetworkStore).offline$()).toBe(true);
+      el.querySelector<HTMLButtonElement>('ui-menu button')?.click();
+      await vi.waitFor(() => {
+        TestBed.tick();
+        expect(labels()).toContain('Bật lại kết nối mạng');
+      });
+      item('Bật lại kết nối mạng').click();
+      TestBed.tick();
+      expect(TestBed.inject(NetworkStore).offline$()).toBe(false);
+    });
+
+    it('ends the session and asks to sign in again where the user was', async () => {
+      vi.spyOn(router, 'url', 'get').mockReturnValue('/catalog?q=a');
+      await open();
+      item('Mô phỏng hết phiên đăng nhập').click();
+      TestBed.tick();
+      expect(session.expire).toHaveBeenCalledOnce();
+      expect(router.navigate).toHaveBeenCalledWith(['/login'], {
+        queryParams: { next: '/catalog?q=a' },
+      });
+    });
+
+    it('tries an admin URL and opens the design system', async () => {
+      await open();
+      item('Thử truy cập URL quản trị').click();
+      TestBed.tick();
+      expect(router.navigateByUrl).toHaveBeenCalledWith('/admin/users');
+      await open();
+      item('Mở Design System').click();
+      TestBed.tick();
+      expect(router.navigateByUrl).toHaveBeenCalledWith('/design-system');
+    });
+  });
+
+  it('offers no demo accounts against a real backend', async () => {
+    create({ mockApi: true, mockBackend: false });
+    await open();
+    expect(menu()?.textContent).toContain('Mô phỏng mất kết nối');
+    expect(menu()?.textContent).not.toContain('tài khoản demo');
   });
 });

@@ -33,7 +33,7 @@
     </a>
     @if (user(); as me) {
     <ui-menu
-      [label]="me.name"
+      [label]="me.fullName"
       icon="user"
       variant="ghost"
       [iconOnly]="compact()"

@@ -11,6 +11,7 @@ export const environment: AppConfigInput = {
   production: true,
   apiBaseUrl: '',
   mockApi: false,
+  mockBackend: false,
   devTools: false,
 };
 

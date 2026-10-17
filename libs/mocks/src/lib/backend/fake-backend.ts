@@ -140,6 +140,18 @@ export class FakeBackend {
     return this.handlers.has(endpoint);
   }
 
+  /**
+   * The role codes of the user a token belongs to, so a mock-only endpoint can answer as that
+   * user's role; empty for an unknown token.
+   */
+  roleCodesOf(token: string | null): string[] {
+    const userId = token ? this.tokens.get(token) : undefined;
+    if (!userId) return [];
+    return [
+      ...new Set(this.activeGrants(userId).map((g) => this.roleOf(g).code)),
+    ];
+  }
+
   /** Answers one call, or `undefined` when `endpoint` is not the backend's. */
   handle(endpoint: AnyEndpoint, request: FakeRequest): FakeReply | undefined {
     const handler = this.handlers.get(endpoint);
@@ -424,7 +436,11 @@ export class FakeBackend {
   // ---- request reading ---------------------------------------------------------------------
 
   private bodyOf(request: FakeRequest, allowed: readonly string[]) {
-    const body = request.body;
+    // Through JSON, as on the wire: a field set to `undefined` is not sent.
+    const body: unknown =
+      request.body === undefined
+        ? undefined
+        : JSON.parse(JSON.stringify(request.body));
     if (typeof body !== 'object' || body === null || Array.isArray(body)) {
       return refuse('malformedRequest');
     }

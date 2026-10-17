@@ -19,6 +19,7 @@ function setup(apiBaseUrl: string) {
         production: true,
         apiBaseUrl,
         mockApi: false,
+        mockBackend: false,
         devTools: false,
       }),
       provideHttpClient(withInterceptors([apiBaseUrlInterceptor])),
