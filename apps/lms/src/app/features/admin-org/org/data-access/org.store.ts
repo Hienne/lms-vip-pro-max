@@ -50,8 +50,9 @@ type TeamSave =
 
 /**
  * The org screen (the mockup's `org` page): the picked org with its administrators and its teams,
- * and the commands on orgs and teams. The tree itself is `OrgTreeStore`. Every accepted mutation
- * bumps `changes` (the detail and the teams reload on it) and refreshes the tree.
+ * and the commands on orgs and teams. The tree itself is `OrgTreeStore`, which this store hides
+ * behind the selectors below. Every accepted mutation bumps `changes`; the detail, the teams and
+ * the tree reload on it.
  */
 @Injectable()
 export class OrgStore {
@@ -59,7 +60,7 @@ export class OrgStore {
   private readonly session = inject(SessionStore);
   private readonly dialog = inject(Dialog);
   private readonly destroyRef = inject(DestroyRef);
-  readonly tree = inject(OrgTreeStore);
+  private readonly tree = inject(OrgTreeStore);
 
   private readonly selectedOrgId = computed(() => this.tree.selected$()?.id);
 
@@ -74,6 +75,10 @@ export class OrgStore {
   };
 
   private readonly changes = invalidation();
+
+  constructor() {
+    this.tree.reloadOn(this.changes);
+  }
 
   private readonly detailData = serverData(
     (orgId: number) =>
@@ -112,7 +117,6 @@ export class OrgStore {
       success: () => 'Đã lưu',
       onSuccess: (org) => {
         this.setEditingOrg(null);
-        this.tree.refresh();
         if (org.parentId) this.tree.reveal(org.parentId);
       },
       invalidates: this.changes,
@@ -128,7 +132,6 @@ export class OrgStore {
     {
       errors: 'toast',
       success: () => 'Đã cập nhật',
-      onSuccess: () => this.tree.refresh(),
       invalidates: this.changes,
     },
   );
@@ -149,7 +152,6 @@ export class OrgStore {
       success: () => 'Đã lưu',
       onSuccess: () => {
         this.setEditingTeam(null);
-        this.tree.refresh();
       },
       invalidates: this.changes,
     },
@@ -163,10 +165,18 @@ export class OrgStore {
     {
       errors: 'toast',
       success: () => 'Đã xóa nhóm',
-      onSuccess: () => this.tree.refresh(),
       invalidates: this.changes,
     },
   );
+
+  readonly treeNodes$ = this.tree.nodes$;
+  readonly treeExpanded$ = this.tree.expanded$;
+  readonly treeLoading$ = this.tree.isLoading$;
+  readonly treeError$ = this.tree.loadError$;
+  readonly selectedId$ = this.tree.selectedId$;
+  readonly selected$ = this.tree.selected$;
+  /** The UNIT orgs read so far: the candidates for a new org's parent. */
+  readonly units$ = this.tree.units$;
 
   readonly editingOrg$ = this.state.editingOrg.asReadonly();
   readonly editingTeam$ = this.state.editingTeam.asReadonly();
@@ -214,6 +224,18 @@ export class OrgStore {
   }
 
   // Commands
+  expandTree(ids: readonly string[]): void {
+    this.tree.expand(ids);
+  }
+
+  selectNode(id: string | undefined): void {
+    this.tree.select(id);
+  }
+
+  retryTree(): void {
+    this.tree.retry();
+  }
+
   /** Opens the add (`null`) or edit drawer of an org: the page shows it while `editingOrg$` is set. */
   editOrg(org: OrganizationInfo | null): void {
     this.orgMutation.reset();

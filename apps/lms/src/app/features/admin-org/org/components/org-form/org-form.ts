@@ -40,13 +40,13 @@ export class OrgForm {
   readonly org = input.required<OrganizationInfo | null>();
 
   protected readonly isEdit = computed(() => this.org() !== null);
-  protected readonly parents = this.store.tree.units$;
+  protected readonly parents = this.store.units$;
 
   private readonly model = linkedSignal<OrgFormValue>(() =>
     toOrgFormValue(
       this.org(),
-      this.store.tree.selected$()?.orgType === 'UNIT'
-        ? (this.store.tree.selected$()?.id ?? null)
+      this.store.selected$()?.orgType === 'UNIT'
+        ? (this.store.selected$()?.id ?? null)
         : null,
     ),
   );

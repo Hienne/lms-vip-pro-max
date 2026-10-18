@@ -2,8 +2,10 @@ import {
   computed,
   DestroyRef,
   inject,
+  effect,
   Injectable,
   signal,
+  untracked,
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import {
@@ -12,6 +14,7 @@ import {
   type Page,
 } from '@lms/contracts';
 import type { TreeNode } from '@lms/ui';
+import type { ChangeToken } from '../../../../core/data-access/invalidation';
 import { toAppError, type AppError } from '../../../../core/errors/app-error';
 import { EndpointClient } from '../../../../core/http/endpoint-client';
 
@@ -33,7 +36,8 @@ interface Level {
  * it is opened or picked, each level one page at a time ("Xem thêm" asks the next). Nothing is
  * known about a UNIT's children until its level is read, so it carries a placeholder child that
  * the tree shows as openable. Reads here are one level at a time and concurrent, which
- * `serverData` (one value per store) does not model, so the store subscribes itself.
+ * `serverData` (one value per store) does not model, so the store subscribes itself. `reloadOn` reads the loaded levels again
+ * when the org change token is bumped, so a mutation only has to invalidate.
  */
 @Injectable()
 export class OrgTreeStore {
@@ -178,8 +182,21 @@ export class OrgTreeStore {
     if (org?.orgType === 'UNIT') this.open(id);
   }
 
-  /** Reads the loaded levels again (first page) after a change. */
-  refresh(): void {
+  /**
+   * Reads the loaded levels again (first page) whenever `token` is bumped. Call it once, from the
+   * owner's constructor: the effect lives as long as this store.
+   */
+  reloadOn(token: ChangeToken): void {
+    let seen = untracked(token.version);
+    effect(() => {
+      const version = token.version();
+      if (version === seen) return;
+      seen = version;
+      untracked(() => this.refresh());
+    });
+  }
+
+  private refresh(): void {
     Object.keys(this.state.levels()).forEach((key) => this.loadLevel(key, 0));
   }
 

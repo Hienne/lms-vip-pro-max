@@ -15,15 +15,15 @@
   </div>
 </ui-page-header>
 
-@if (tree.loadError$(); as error) {
+@if (store.treeError$(); as error) {
 <ui-error-state
   title="Không tải được cây đơn vị"
   [message]="error.message"
-  (retry)="tree.retry()"
+  (retry)="store.retryTree()"
 />
-} @else if (tree.isLoading$()) {
+} @else if (store.treeLoading$()) {
 <div class="org__loading"><span uiSpinner></span></div>
-} @else { @let selected = tree.selected$(); @if (selected) {
+} @else { @let selected = store.selected$(); @if (selected) {
 <div class="org__split">
   <section uiCard class="org__units" aria-labelledby="org-units-title">
     <div uiCardHeader>
@@ -32,12 +32,12 @@
     <div class="org__tree">
       <ui-tree
         label="Cây đơn vị và phòng ban"
-        [nodes]="tree.nodes$()"
+        [nodes]="store.treeNodes$()"
         [trailing]="trailing"
-        [expanded]="tree.expanded$()"
-        (expandedChange)="tree.expand($event)"
-        [selected]="tree.selectedId$()"
-        (selectedChange)="tree.select($event)"
+        [expanded]="store.treeExpanded$()"
+        (expandedChange)="store.expandTree($event)"
+        [selected]="store.selectedId$()"
+        (selectedChange)="store.selectNode($event)"
       />
     </div>
   </section>

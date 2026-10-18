@@ -40,7 +40,7 @@ export class TeamForm {
     void submit(this.teamForm, async () => {
       const team = this.team();
       if (!team) {
-        const orgId = this.store.tree.selected$()?.id;
+        const orgId = this.store.selected$()?.id;
         if (orgId !== undefined) {
           this.store.createTeam(orgId, toCreateTeamCommand(this.model()));
         }
