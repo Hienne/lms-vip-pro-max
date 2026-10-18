@@ -90,6 +90,20 @@ describe('sessionExpiryInterceptor', async () => {
     );
   });
 
+  it('ends the session on a 401 envelope with a code the app does not list', async () => {
+    client
+      .call(identityEndpoints.listRoles)
+      .subscribe({ error: () => undefined });
+    backend
+      .expectOne(() => true)
+      .flush(
+        envelopeError('CORE-TOKEN_REVOKED', 'Hết hạn', 'Thu hồi'),
+        fail(401),
+      );
+    await settle();
+    expect(session.expire).toHaveBeenCalledOnce();
+  });
+
   it.each([
     ['me', authV1Endpoints.me],
     ['login', authV1Endpoints.login],

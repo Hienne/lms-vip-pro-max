@@ -87,10 +87,10 @@ describe('envelopeInterceptor', () => {
   });
 
   it.each<[BackendResponseKey, AppErrorKind]>([
-    ['credentialsInvalid', 'server'],
+    ['credentialsInvalid', 'unauthorized'],
     ['unauthenticated', 'unauthorized'],
     ['accessDenied', 'forbidden'],
-    ['passwordChangeRequired', 'passwordChangeRequired'],
+    ['passwordChangeRequired', 'forbidden'],
     ['malformedRequest', 'server'],
     ['endpointNotFound', 'server'],
     ['internalError', 'server'],

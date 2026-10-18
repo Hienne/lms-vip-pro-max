@@ -7,7 +7,6 @@ export type AppErrorKind =
   | 'offline'
   | 'unauthorized'
   | 'forbidden'
-  | 'passwordChangeRequired'
   | 'server'
   | 'contract'
   | 'unknown';
@@ -31,7 +30,6 @@ const DEFAULT_MESSAGE: Record<AppErrorKind, string> = {
   offline: 'Không có kết nối mạng. Kiểm tra kết nối và thử lại.',
   unauthorized: 'Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.',
   forbidden: 'Bạn không có quyền thực hiện thao tác này.',
-  passwordChangeRequired: 'Vui lòng đổi mật khẩu tạm trước khi tiếp tục.',
   server: 'Có lỗi xảy ra. Vui lòng thử lại sau.',
   contract: 'Dữ liệu trả về không hợp lệ. Vui lòng thử lại sau.',
   unknown: 'Có lỗi xảy ra. Vui lòng thử lại sau.',
@@ -40,18 +38,34 @@ const DEFAULT_MESSAGE: Record<AppErrorKind, string> = {
 /** Shown once when the server ends the session mid-use. */
 export const SESSION_EXPIRED_MESSAGE = DEFAULT_MESSAGE.unauthorized;
 
+const CODE_KIND: Readonly<Record<string, AppErrorKind>> = MESSAGE_CODE_KIND;
+
 const KIND_BY_STATUS: Record<number, AppErrorKind> = {
   0: 'offline',
   401: 'unauthorized',
   403: 'forbidden',
 };
 
+/**
+ * The one table for the kind of a failure: a code the app branches on wins, then the HTTP status
+ * (so any 401 is `unauthorized`, whatever its code), then `fallback`.
+ */
+function kindOf(
+  status: number,
+  code: string | undefined,
+  fallback: AppErrorKind,
+): AppErrorKind {
+  return (
+    (code === undefined ? undefined : CODE_KIND[code]) ??
+    KIND_BY_STATUS[status] ??
+    fallback
+  );
+}
+
 /** The one place that turns transport and contract failures into an `AppError`. */
 export function toAppError(error: unknown): AppError {
   if (error instanceof ApiError) {
-    const kind: AppErrorKind =
-      (MESSAGE_CODE_KIND as Record<string, AppErrorKind>)[error.messageCode] ??
-      'server';
+    const kind = kindOf(error.httpStatus, error.messageCode, 'server');
     return {
       kind,
       message: error.serverMessage || DEFAULT_MESSAGE[kind],
@@ -65,7 +79,7 @@ export function toAppError(error: unknown): AppError {
     return { kind: 'contract', message: DEFAULT_MESSAGE.contract };
   }
   if (error instanceof HttpErrorResponse) {
-    const kind = KIND_BY_STATUS[error.status] ?? 'unknown';
+    const kind = kindOf(error.status, undefined, 'unknown');
     return { kind, message: DEFAULT_MESSAGE[kind] };
   }
   return { kind: 'unknown', message: DEFAULT_MESSAGE.unknown };

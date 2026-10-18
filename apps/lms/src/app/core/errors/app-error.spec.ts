@@ -70,8 +70,11 @@ describe('toAppError', () => {
     it.each([
       ['CORE-UNAUTHENTICATED', 401, 'unauthorized'],
       ['CORE-ACCESS_DENIED', 403, 'forbidden'],
-      ['IDENTITY-PASSWORD_CHANGE_REQUIRED', 403, 'passwordChangeRequired'],
-      ['IDENTITY-CREDENTIALS_INVALID', 401, 'server'],
+      ['IDENTITY-PASSWORD_CHANGE_REQUIRED', 403, 'forbidden'],
+      ['IDENTITY-CREDENTIALS_INVALID', 401, 'unauthorized'],
+      ['SOME-FUTURE_CODE', 401, 'unauthorized'],
+      ['CORE-UNAUTHENTICATED', 200, 'unauthorized'],
+      ['CORE-VALIDATION', 400, 'server'],
       ['CORE-INTERNAL_ERROR', 500, 'server'],
     ] as const)('maps %s (HTTP %s) to %s', (code, status, kind) => {
       const error = toAppError(

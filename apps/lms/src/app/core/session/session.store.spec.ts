@@ -215,7 +215,7 @@ describe('SessionStore', () => {
       await settle();
 
       expect(store.signInError$()).toMatchObject({
-        kind: 'server',
+        kind: 'unauthorized',
         messageCode: 'IDENTITY-CREDENTIALS_INVALID',
         message: 'Tên đăng nhập hoặc mật khẩu không đúng.',
       });

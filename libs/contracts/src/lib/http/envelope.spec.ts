@@ -41,11 +41,10 @@ describe('EnvelopeSchema', () => {
 });
 
 describe('MESSAGE_CODE_KIND', () => {
-  it('branches on the authentication, permission and temporary-password codes', () => {
+  it('branches on the authentication and permission codes', () => {
     expect(MESSAGE_CODE_KIND).toEqual({
       'CORE-UNAUTHENTICATED': 'unauthorized',
       'CORE-ACCESS_DENIED': 'forbidden',
-      'IDENTITY-PASSWORD_CHANGE_REQUIRED': 'passwordChangeRequired',
     });
   });
 });

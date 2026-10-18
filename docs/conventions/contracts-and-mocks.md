@@ -96,14 +96,14 @@ File | Blob` or an array of those. Arrays repeat the key, numbers and booleans
 - `apps/lms/src/app/core/errors/app-error.ts` exports `toAppError(unknown): AppError`,
   the one place that maps `ApiError` (an `ERROR` envelope, whatever its HTTP status),
   `HttpErrorResponse` (no envelope in the body), `ContractError` and offline status 0 to `AppError`
-  (`offline | unauthorized | forbidden | passwordChangeRequired | server | contract | unknown`;
+  (`offline | unauthorized | forbidden | server | contract | unknown`;
   status 0 is `offline`, 401 `unauthorized`, 403 `forbidden`, any other HTTP status `unknown`
   with the default message).
   `AppError` is `{ kind, message, title?, messageCode?, httpStatus?, responseId? }`. From an
   `ApiError` the `message` and `title` are the backend's, verbatim (the Vietnamese default
   replaces only a missing `message`; a missing `title` stays absent), `messageCode`,
-  `httpStatus` and `responseId` are kept, and the kind is `server` unless the code is in
-  `MESSAGE_CODE_KIND`. A new kind is added only when a screen must behave differently for a
+  `httpStatus` and `responseId` are kept, and the kind comes from one table: a code in
+  `MESSAGE_CODE_KIND`, else the HTTP status (401 `unauthorized`, 403 `forbidden`), else `server`. A new kind is added only when a screen must behave differently for a
   backend code, together with that code's entry in the table.
   `serverData` and `serverMutation` expose their error as an `AppError`; components render it with retry.
   A `serverMutation` with `errors: 'toast'` appends "Mã tra cứu: <responseId>" to the toast of a
@@ -150,11 +150,13 @@ their own validators' messages, and a backend refusal is a toast.
 - **`requestIdInterceptor`** sends `X-Request-Id` (a UUID, or random hex on a plain-HTTP page) on
   every `/api/` call; the backend returns it as `responseId`.
 - **`toAppError`** reads an `ApiError`: a code in `MESSAGE_CODE_KIND` gives that kind
-  (`CORE-UNAUTHENTICATED` is `unauthorized`, `CORE-ACCESS_DENIED` is `forbidden`,
-  `IDENTITY-PASSWORD_CHANGE_REQUIRED` is `passwordChangeRequired`), any other code is `server`. The `AppError` keeps the
+  (`CORE-UNAUTHENTICATED` is `unauthorized`, `CORE-ACCESS_DENIED` is `forbidden`), otherwise
+  the HTTP status does (any 401 is `unauthorized`, any 403 `forbidden`), and any other
+  failure is `server`. The session-expiry interceptor ends the session on `unauthorized`
+  through this same function, so the two cannot disagree. The `AppError` keeps the
   backend's `title`, `message` (verbatim, the Vietnamese default only when it sent none) and
-  `messageCode`. A wrong password is `IDENTITY-CREDENTIALS_INVALID` in a 401: a plain `server`
-  error whose message is the backend's "Tên đăng nhập hoặc mật khẩu không đúng.".
+  `messageCode`. A wrong password is `IDENTITY-CREDENTIALS_INVALID` in a 401: an `unauthorized`
+  error (the login endpoint is exempt from session expiry) whose message is the backend's "Tên đăng nhập hoặc mật khẩu không đúng.".
   Add a code to `MESSAGE_CODE_KIND` only when a screen must behave differently for it.
 - **Display is not decided here.** No interceptor shows a toast: a `serverMutation` with
   `errors: 'toast'` shows `title` as the heading and `message` as the detail.

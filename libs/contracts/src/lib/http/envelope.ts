@@ -26,17 +26,14 @@ export type Envelope = z.infer<typeof EnvelopeSchema>;
 export const UNAUTHENTICATED_CODE = 'CORE-UNAUTHENTICATED';
 /** HTTP 403: the caller may not do this; the session stays. */
 export const ACCESS_DENIED_CODE = 'CORE-ACCESS_DENIED';
-/** HTTP 403: a temporary password must be changed before anything else works. */
-export const PASSWORD_CHANGE_REQUIRED_CODE =
-  'IDENTITY-PASSWORD_CHANGE_REQUIRED';
 
 /**
- * The message codes the app branches on, and the error kind each one means. Add a code here only
- * when a screen must behave differently for it; every other failure is a plain `server` error
- * that shows the backend's own title and message.
+ * The message codes the app branches on, and the error kind each one means; a code here wins over
+ * the HTTP status. Add a code here only when a screen must behave differently for it: every other
+ * failure takes its kind from the status (`toAppError`) and shows the backend's own title and
+ * message.
  */
 export const MESSAGE_CODE_KIND = {
   [UNAUTHENTICATED_CODE]: 'unauthorized',
   [ACCESS_DENIED_CODE]: 'forbidden',
-  [PASSWORD_CHANGE_REQUIRED_CODE]: 'passwordChangeRequired',
 } as const;
