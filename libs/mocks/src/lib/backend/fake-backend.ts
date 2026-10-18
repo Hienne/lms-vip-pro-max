@@ -220,18 +220,18 @@ export class FakeBackend {
   private saveMockRole(request: FakeRequest): FakeReply {
     const command = request.body as SaveRoleCommand;
     const name = command.name.trim();
-    if (!name) return invalid('Tên vai trò không được để trống.');
+    if (!name) invalid('Tên vai trò không được để trống.');
     const existing = command.id
       ? this.roles.find((r) => r.id === command.id)
       : undefined;
-    if (command.id && !existing) return this.refuseMock(roleMissing);
-    if (existing?.locked) return this.refuseMock(systemRoleLocked);
+    if (command.id && !existing) this.refuseMock(roleMissing);
+    if (existing?.locked) this.refuseMock(systemRoleLocked);
     if (
       this.roles.some(
         (r) => r !== existing && r.name.toLowerCase() === name.toLowerCase(),
       )
     ) {
-      return this.refuseMock(saveRoleRejected);
+      this.refuseMock(saveRoleRejected);
     }
     const fields = {
       name,
@@ -255,10 +255,10 @@ export class FakeBackend {
 
   private deleteMockRole(request: FakeRequest): FakeReply {
     const role = this.roles.find((r) => r.id === request.params['roleId']);
-    if (!role) return this.refuseMock(roleMissing);
-    if (role.system) return this.refuseMock(deleteRoleNotPermitted);
+    if (!role) this.refuseMock(roleMissing);
+    if (role.system) this.refuseMock(deleteRoleNotPermitted);
     if (this.withUserCount(role).userCount > 0) {
-      return this.refuseMock(deleteRoleRejected);
+      this.refuseMock(deleteRoleRejected);
     }
     this.roles = this.roles.filter((r) => r !== role);
     return ok(true);

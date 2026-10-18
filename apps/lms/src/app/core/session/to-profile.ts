@@ -23,7 +23,8 @@ function scopeSummaryOf(grants: Me['roleGrants']): ScopeSummary {
 /**
  * Adapts the backend's `/me` to the `Profile` the app renders. The menus are the functions `/me`
  * lists that the app has a screen for; the home is the entry screen of the first of them after
- * the profile. Nothing is computed from role names: the backend decides what a role opens.
+ * the profile. What a role opens is the backend's call (the menus); role names are used only for the
+ * display-only `scopeSummary`.
  * `isServed` drops the functions whose screens need an endpoint this build does not answer.
  */
 export function toProfile(me: Me, isServed?: IsServed): Profile {

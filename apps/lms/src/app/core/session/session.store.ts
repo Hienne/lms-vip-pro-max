@@ -37,15 +37,15 @@ export class SessionStore {
   private readonly client = inject(EndpointClient);
   private readonly tokens = inject(TokenStore);
 
-  private profileOf(me: Me): Profile {
-    return toProfile(me, (endpoint) => this.client.isServed(endpoint));
-  }
-
   private readonly state = {
     restoreRequest: signal<object | undefined>(undefined),
     signInRequest: signal<LoginV1Command | undefined>(undefined),
     signOutRequest: signal<object | undefined>(undefined),
   };
+
+  private profileOf(me: Me): Profile {
+    return toProfile(me, (endpoint) => this.client.isServed(endpoint));
+  }
 
   /** `null` is an anonymous visitor: no valid token, or `/me` answered 401. */
   private readonly profileResource = rxResource<
