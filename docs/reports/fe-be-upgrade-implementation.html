@@ -1,0 +1,1208 @@
+<title>Báo cáo triển khai FE–BE G0–G6</title>
+<meta name="claude:viewport-fit-sides" content="cover" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link
+  rel="stylesheet"
+  href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap"
+/>
+<style>
+  /* Layout: one reading column, phase sections as ruled blocks, screenshots in a wrapping grid.
+     Accent is the app's own deep green; amber, red and slate-blue are status colours only. */
+  :root {
+    --bg: #f6f7f5;
+    --surface: #ffffff;
+    --fg: #1b2420;
+    --muted: #5b6862;
+    --rule: #dde3df;
+    --accent: #1f5a4d;
+    --accent-soft: #e2efe9;
+    --pass: #1d6b3c;
+    --pass-bg: #e1f1e6;
+    --partial: #8a5a00;
+    --partial-bg: #fbefd2;
+    --gap: #a3321f;
+    --gap-bg: #f9e0da;
+    --unverified: #34508a;
+    --unverified-bg: #e3e9f7;
+    --code-bg: #eef1ef;
+    --font-body: 'Be Vietnam Pro', system-ui, -apple-system, 'Segoe UI', sans-serif;
+    --font-mono: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme='light']) {
+      --bg: #121815;
+      --surface: #1a221e;
+      --fg: #e6ece8;
+      --muted: #9aa8a1;
+      --rule: #2b3631;
+      --accent: #7cc4ad;
+      --accent-soft: #1d2e28;
+      --pass: #7fd19c;
+      --pass-bg: #1b3326;
+      --partial: #e8bf6a;
+      --partial-bg: #3a2f14;
+      --gap: #f09a8a;
+      --gap-bg: #3b1f1a;
+      --unverified: #9db5ef;
+      --unverified-bg: #1f2a47;
+      --code-bg: #232d28;
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme='dark'] {
+    --bg: #121815;
+    --surface: #1a221e;
+    --fg: #e6ece8;
+    --muted: #9aa8a1;
+    --rule: #2b3631;
+    --accent: #7cc4ad;
+    --accent-soft: #1d2e28;
+    --pass: #7fd19c;
+    --pass-bg: #1b3326;
+    --partial: #e8bf6a;
+    --partial-bg: #3a2f14;
+    --gap: #f09a8a;
+    --gap-bg: #3b1f1a;
+    --unverified: #9db5ef;
+    --unverified-bg: #1f2a47;
+    --code-bg: #232d28;
+    color-scheme: dark;
+  }
+
+  * {
+    box-sizing: border-box;
+  }
+  body {
+    background: var(--bg);
+    color: var(--fg);
+    font-family: var(--font-body);
+    font-size: 15px;
+    line-height: 1.6;
+    padding-block: 40px 72px;
+    padding-left: max(16px, env(safe-area-inset-left, 0px));
+    padding-right: max(16px, env(safe-area-inset-right, 0px));
+  }
+  .page {
+    max-width: 920px;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    gap: 48px;
+  }
+  h1,
+  h2,
+  h3 {
+    text-wrap: balance;
+    line-height: 1.25;
+    margin: 0;
+  }
+  h1 {
+    font-size: 30px;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+  }
+  h2 {
+    font-size: 21px;
+    font-weight: 700;
+  }
+  h3 {
+    font-size: 16px;
+    font-weight: 600;
+  }
+  p {
+    margin: 0;
+  }
+  a {
+    color: var(--accent);
+  }
+  code {
+    font-family: var(--font-mono);
+    font-size: 0.86em;
+    background: var(--code-bg);
+    padding: 1px 5px;
+    border-radius: 4px;
+    overflow-wrap: anywhere;
+  }
+  .eyebrow {
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--accent);
+  }
+  .lede {
+    color: var(--muted);
+    max-width: 68ch;
+  }
+  .meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 18px;
+    color: var(--muted);
+    font-size: 13px;
+    margin-top: 12px;
+  }
+  header {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    border-bottom: 2px solid var(--accent);
+    padding-bottom: 24px;
+  }
+
+  /* status chips */
+  .chip {
+    display: inline-block;
+    font-size: 12px;
+    font-weight: 600;
+    padding: 1px 9px;
+    border-radius: 999px;
+    white-space: nowrap;
+  }
+  .chip.pass {
+    color: var(--pass);
+    background: var(--pass-bg);
+  }
+  .chip.partial {
+    color: var(--partial);
+    background: var(--partial-bg);
+  }
+  .chip.gap {
+    color: var(--gap);
+    background: var(--gap-bg);
+  }
+  .chip.unverified {
+    color: var(--unverified);
+    background: var(--unverified-bg);
+  }
+
+  /* summary */
+  .summary {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+    gap: 0;
+    border: 1px solid var(--rule);
+    background: var(--surface);
+    border-radius: 8px;
+  }
+  .summary > div {
+    padding: 16px 18px;
+    border-right: 1px solid var(--rule);
+    min-width: 0;
+  }
+  .summary > div:last-child {
+    border-right: 0;
+  }
+  .summary strong {
+    display: block;
+    font-size: 24px;
+    font-variant-numeric: tabular-nums;
+    line-height: 1.2;
+  }
+  .summary span {
+    font-size: 13px;
+    color: var(--muted);
+  }
+  .callout {
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-left: 4px solid var(--unverified);
+    border-radius: 6px;
+    padding: 14px 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  /* sections */
+  section {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+  .phase {
+    border-top: 1px solid var(--rule);
+    padding-top: 24px;
+  }
+  .phase-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 4px 14px;
+  }
+  .phase-id {
+    font-family: var(--font-mono);
+    font-weight: 500;
+    font-size: 15px;
+    color: var(--accent);
+    background: var(--accent-soft);
+    padding: 2px 8px;
+    border-radius: 4px;
+  }
+  .facts {
+    display: grid;
+    grid-template-columns: 110px 1fr;
+    gap: 6px 14px;
+    font-size: 13.5px;
+  }
+  .facts dt {
+    color: var(--muted);
+  }
+  .facts dd {
+    margin: 0;
+    min-width: 0;
+  }
+
+  .table-wrap {
+    overflow-x: auto;
+    border: 1px solid var(--rule);
+    border-radius: 6px;
+    background: var(--surface);
+  }
+  table {
+    border-collapse: collapse;
+    width: 100%;
+    font-size: 13.5px;
+    min-width: 560px;
+  }
+  th,
+  td {
+    text-align: left;
+    vertical-align: top;
+    padding: 9px 12px;
+    border-bottom: 1px solid var(--rule);
+  }
+  tr:last-child td {
+    border-bottom: 0;
+  }
+  th {
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--muted);
+    font-weight: 600;
+    background: var(--code-bg);
+  }
+  td.status {
+    width: 1%;
+    white-space: nowrap;
+  }
+
+  /* screenshots */
+  .shots {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 420px), 1fr));
+    gap: 22px 20px;
+  }
+  figure {
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    min-width: 0;
+  }
+  figure img {
+    width: 100%;
+    height: auto;
+    display: block;
+    border: 1px solid var(--rule);
+    border-radius: 6px;
+    background: var(--surface);
+  }
+  figcaption {
+    font-size: 13px;
+    color: var(--muted);
+  }
+  figcaption b {
+    color: var(--fg);
+    font-weight: 600;
+  }
+
+  ul.plain {
+    margin: 0;
+    padding-left: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .two {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 380px), 1fr));
+    gap: 20px;
+  }
+  .two > div {
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  pre {
+    margin: 0;
+    background: var(--code-bg);
+    border-radius: 6px;
+    padding: 12px 14px;
+    overflow-x: auto;
+    font-family: var(--font-mono);
+    font-size: 12.5px;
+    line-height: 1.55;
+  }
+  :focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+  @media (max-width: 520px) {
+    h1 {
+      font-size: 24px;
+    }
+    .facts {
+      grid-template-columns: 1fr;
+      gap: 2px;
+    }
+    .facts dd {
+      margin-bottom: 8px;
+    }
+    .summary > div {
+      border-right: 0;
+      border-bottom: 1px solid var(--rule);
+    }
+    .summary > div:last-child {
+      border-bottom: 0;
+    }
+  }
+</style>
+
+<div class="page">
+  <header>
+    <span class="eyebrow">Core Banking Academy · Angular LMS</span>
+    <h1>Báo cáo triển khai FE–BE, giai đoạn G0 đến G6</h1>
+    <p class="lede">
+      Kết quả thực hiện kế hoạch nâng cấp trong
+      báo cáo đối chiếu 17/10/2026 (<code>docs/reports/fe-be-contract-audit.html</code>): nối FE với contract v1
+      của backend corebanking-academy cho phần Identity và Organization. Backend thật tại cổng 8019
+      không chạy được trong phiên này, nên mọi kiểm chứng chạy trên backend giả lập có seed lấy từ
+      dữ liệu của backend.
+    </p>
+    <div class="meta">
+      <span>Nhánh <code>claude/fe-be-upgrade-g0-g6-88d387</code></span>
+      <span>So với <code>main@1e094cd</code></span>
+      <span>7 commit · 176 file · +9.196 / −4.795 dòng</span>
+      <span>18/10/2026</span>
+    </div>
+  </header>
+
+  <section aria-labelledby="sum">
+    <h2 id="sum">Kết quả chung</h2>
+    <div class="summary">
+      <div>
+        <strong>Xanh</strong>
+        <span><code>npm run check</code>: format, lint, typecheck, test, build, check-bundle (14/14 task)</span>
+      </div>
+      <div>
+        <strong>1.080</strong>
+        <span>test đạt: lms 515 · ui 437 · mocks 77 · contracts 51</span>
+      </div>
+      <div>
+        <strong>15</strong>
+        <span>ảnh chụp từ trình duyệt, chế độ mock, không có lỗi console</span>
+      </div>
+      <div>
+        <strong>0</strong>
+        <span>kiểm chứng với backend thật</span>
+      </div>
+    </div>
+    <div class="callout">
+      <h3>Điều chưa được kiểm chứng</h3>
+      <p>
+        Backend tại <code>localhost:8019</code> không truy cập được. FE chạy bằng
+        <code>mockBackend</code>, một bản sao backend trong bộ nhớ (<code>FakeBackend</code>, 1.326
+        dòng) với seed 7 tài khoản, 1 Ban, 15 nhóm, 5 role, 16 function. Bản sao này được kiểm bằng
+        bộ request mẫu của Postman collection, nhưng vẫn là mô hình do FE tự dựng. Mọi mục có chip
+        <span class="chip unverified">Chưa kiểm với BE thật</span> cần chạy lại khi backend sẵn sàng.
+      </p>
+    </div>
+    <p>
+      Chú giải trạng thái:
+      <span class="chip pass">Đạt</span>
+      <span class="chip partial">Một phần</span>
+      <span class="chip gap">Chưa làm</span>
+      <span class="chip unverified">Chưa kiểm với BE thật</span>
+    </p>
+  </section>
+
+  <section aria-labelledby="commits">
+    <h2 id="commits">Commit</h2>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Commit</th>
+            <th>Nội dung</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>46b3665</code></td>
+            <td>G0: đọc envelope trong lỗi HTTP, gửi <code>X-Request-Id</code></td>
+          </tr>
+          <tr>
+            <td><code>3d4795f</code></td>
+            <td>
+              Contract v1 cho identity và organization, backend giả lập có seed (tầng dữ liệu
+              G1–G6)
+            </td>
+          </tr>
+          <tr>
+            <td><code>c2ea0bc</code></td>
+            <td>G2: hồ sơ <code>PATCH /auth/me</code>, đổi mật khẩu <code>PUT /auth/password</code></td>
+          </tr>
+          <tr>
+            <td><code>94a37fc</code></td>
+            <td>G5: cây tổ chức lazy, nhóm phân trang, CRUD tổ chức và nhóm</td>
+          </tr>
+          <tr>
+            <td><code>ef1dfe0</code></td>
+            <td>G3, G4: người dùng, cấp quyền, selector role đọc từ BE, phân trang server</td>
+          </tr>
+          <tr>
+            <td><code>04d5054</code></td>
+            <td>
+              G1, G6: menu theo mã function, guard đổi mật khẩu bắt buộc, nối
+              <code>mockBackend</code>, đăng ký migration, chuyển spec
+            </td>
+          </tr>
+          <tr>
+            <td><code>1e3d3b4</code></td>
+            <td>Sửa theo code review: setter cho store, màn catalog thành route mở, cập nhật tài liệu</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="lede">
+      Các commit giữa nhánh không tách sạch theo phase vì G1 đổi screen table, session và menu mà
+      mọi màn sau dùng chung. Nội dung từng commit nằm trong thông điệp commit.
+    </p>
+  </section>
+
+  <section class="phase" aria-labelledby="g0">
+    <div class="phase-head">
+      <span class="phase-id">G0</span>
+      <h2 id="g0">Nền tảng transport và lỗi</h2>
+    </div>
+    <dl class="facts">
+      <dt>Commit</dt>
+      <dd><code>46b3665</code></dd>
+      <dt>File chính</dt>
+      <dd>
+        <code>core/http/envelope.interceptor.ts</code>, <code>core/http/api-error.ts</code>,
+        <code>core/errors/app-error.ts</code>, <code>core/http/request-id.interceptor.ts</code>,
+        <code>libs/contracts/src/lib/http/{envelope,page,patch}.ts</code>,
+        <code>apps/lms/proxy.conf.mjs</code>, <code>environments/*</code>
+      </dd>
+    </dl>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Tiêu chí</th>
+            <th>Trạng thái</th>
+            <th>Bằng chứng</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Envelope trong <code>HttpErrorResponse</code> (400, 401, 403, 404, 500) ra đúng <code>AppError</code></td>
+            <td class="status"><span class="chip pass">Đạt</span></td>
+            <td>
+              <code>envelope.interceptor.spec.ts</code>, <code>app-error.spec.ts</code>: giữ
+              <code>httpStatus</code>, title và message nguyên văn, lỗi không có envelope đi qua
+              nguyên dạng
+            </td>
+          </tr>
+          <tr>
+            <td>Mã hết phiên <code>CORE-UNAUTHENTICATED</code>, 401 thật; login, me, logout được miễn</td>
+            <td class="status"><span class="chip pass">Đạt</span></td>
+            <td><code>session-expiry.interceptor.spec.ts</code></td>
+          </tr>
+          <tr>
+            <td>Sai mật khẩu hiện “Tên đăng nhập hoặc mật khẩu không đúng.”</td>
+            <td class="status"><span class="chip pass">Đạt</span></td>
+            <td>
+              Spec login dùng HTTP 401 + <code>IDENTITY-CREDENTIALS_INVALID</code>; ảnh 01 trong
+              trình duyệt
+            </td>
+          </tr>
+          <tr>
+            <td>403 <code>IDENTITY-PASSWORD_CHANGE_REQUIRED</code> và <code>CORE-ACCESS_DENIED</code> có kind riêng</td>
+            <td class="status"><span class="chip partial">Một phần</span></td>
+            <td>
+              Hai kind <code>passwordChangeRequired</code>, <code>forbidden</code> có spec. Chưa có
+              phản ứng runtime: một 403 kiểu này giữa phiên chỉ hiện toast, không chuyển sang màn
+              đổi mật khẩu. Luồng chính dùng <code>mustChangePassword</code> từ <code>/me</code>
+              (G1).
+            </td>
+          </tr>
+          <tr>
+            <td><code>X-Request-Id</code> trên mọi lệnh gọi <code>/api/</code></td>
+            <td class="status"><span class="chip pass">Đạt</span></td>
+            <td><code>request-id.interceptor.spec.ts</code></td>
+          </tr>
+          <tr>
+            <td><code>PageSchema</code>, <code>toPatch</code>, <code>isEmptyPatch</code></td>
+            <td class="status"><span class="chip pass">Đạt</span></td>
+            <td>Spec trong <code>libs/contracts</code>; dùng ở G2, G3, G5</td>
+          </tr>
+          <tr>
+            <td>Proxy dev về <code>localhost:8019</code>; staging và production <code>apiBaseUrl: ''</code> (D7)</td>
+            <td class="status"><span class="chip pass">Đạt</span> <span class="chip unverified">Chưa kiểm với BE thật</span></td>
+            <td>
+              <code>proxy.conf.mjs</code>, ba file environment. Reverse proxy HTTPS cho staging và
+              production cần DevOps cấu hình.
+            </td>
+          </tr>
+          <tr>
+            <td>Sửa câu “luôn HTTP 200” trong tài liệu</td>
+            <td class="status"><span class="chip pass">Đạt</span></td>
+            <td><code>docs/conventions/contracts-and-mocks.md</code> viết lại ở commit cuối</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="phase" aria-labelledby="g1">
+    <div class="phase-head">
+      <span class="phase-id">G1</span>
+      <h2 id="g1">Phiên và menu sau đăng nhập</h2>
+    </div>
+    <dl class="facts">
+      <dt>Commit</dt>
+      <dd><code>3d4795f</code> (contract), <code>04d5054</code></dd>
+      <dt>File chính</dt>
+      <dd>
+        <code>core/routing/{screens,route-table,password-change.guard}.ts</code>,
+        <code>core/menu/menu-catalog.ts</code>,
+        <code>core/session/{session.store,to-profile,profile}.ts</code>,
+        <code>features/auth/{login,change-password}</code>,
+        <code>layout/sidebar</code>, <code>shared/status/*</code>
+      </dd>
+    </dl>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Tiêu chí</th>
+            <th>Trạng thái</th>
+            <th>Bằng chứng</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Bỏ <code>MenuKeySchema</code>; mã function của BE là khóa menu ở screen table, guard, sidebar, role form (D3)</td>
+            <td class="status"><span class="chip pass">Đạt</span></td>
+            <td>16 function trong <code>SCREEN_TABLE</code>; <code>menu-catalog.spec.ts</code> dựng sidebar từ <code>functionDetails</code> theo thứ tự <code>sortNo</code></td>
+          </tr>
+          <tr>
+            <td><code>homePath</code> là route function đầu tiên theo <code>sortNo</code>, trừ <code>PROFILE</code>, mặc định <code>/profile</code></td>
+            <td class="status"><span class="chip pass">Đạt</span></td>
+            <td>Trong trình duyệt: super admin vào <code>/admin/courses</code>, học viên vào <code>/learn</code>, người xem báo cáo vào <code>/reports</code></td>
+          </tr>
+          <tr>
+            <td>Sidebar mỗi tài khoản đúng với <code>role_functions</code> của sample</td>
+            <td class="status"><span class="chip pass">Đạt</span> <span class="chip unverified">Chưa kiểm với BE thật</span></td>
+            <td>
+              <code>fake-backend.spec.ts</code> kiểm các function của từng role trên seed; ảnh 11, 12, 13 và
+              15 cho học viên, giảng viên (2 grant), quản trị Ban, người xem báo cáo. Sidebar lấy tên
+              và <code>sortNo</code> từ BE nhưng đường dẫn từ screen table của FE, nên nếu
+              <code>route_pattern</code> của BE đổi thì FE không tự theo.
+            </td>
+          </tr>
+          <tr>
+            <td>Người dùng mới bị ép đổi mật khẩu: guard chỉ cho vào màn đổi mật khẩu và đăng xuất</td>
+            <td class="status"><span class="chip pass">Đạt</span></td>
+            <td><code>change-password.spec.ts</code> (3 ca), <code>session.store.spec.ts</code>; ảnh 09. Tạo user bằng super admin rồi đăng nhập bằng user đó trong trình duyệt.</td>
+          </tr>
+          <tr>
+            <td>11 màn FE không có function BE thành route mở, không có trong sidebar (D9)</td>
+            <td class="status"><span class="chip pass">Đạt</span></td>
+            <td>
+              <code>open[]</code> của screen table gồm catalog, admin/catalog, leaderboard,
+              assistant, flashcards, saved, certificates, instructor, inbox, admin home, import và
+              thêm <code>notifications</code>. Hai màn catalog được chuyển sang đây sau code review.
+            </td>
+          </tr>
+          <tr>
+            <td>Hiển thị đủ grant thay vì <code>roleGrants[0]</code>; bỏ <code>lastSyncTime</code> làm ngày tham gia</td>
+            <td class="status"><span class="chip pass">Đạt</span></td>
+            <td>Ảnh 07 (hồ sơ) và 08 (giảng viên có 2 grant). <code>lastSyncTime</code> hiện là “Đồng bộ lần cuối”.</td>
+          </tr>
+          <tr>
+            <td>Form login có <code>min(1)</code> cho hai field</td>
+            <td class="status"><span class="chip pass">Đạt</span></td>
+            <td><code>login.form.ts</code>: “Nhập tên đăng nhập hoặc mã cán bộ.”, “Nhập mật khẩu.”</td>
+          </tr>
+          <tr>
+            <td>Route <code>/quiz</code>, <code>/admin/lessons</code>, <code>/knowledge</code>, <code>/issues</code> để menu BE không trỏ vào 404</td>
+            <td class="status"><span class="chip pass">Đạt</span></td>
+            <td>Có trong screen table và migration registry (placeholder “Trang đang được chuyển đổi”)</td>
+          </tr>
+          <tr>
+            <td>Đăng nhập được cả 7 tài khoản seed</td>
+            <td class="status"><span class="chip partial">Một phần</span></td>
+            <td>
+              Đăng nhập bằng form và dev toolbar thành công với 5 tài khoản (super.admin,
+              quantri.ban, hocvien, giangvien, baocao) cộng 1 tài khoản mới tạo. Hai tài khoản còn
+              lại (quantri, hocvien.tichhop) chỉ được seed và liệt kê trong toolbar.
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="shots">
+      <figure>
+        <img src="screenshots/01-login-error.jpg" alt="Màn đăng nhập với thông báo sai mật khẩu" loading="lazy" />
+        <figcaption><b>Đăng nhập sai mật khẩu.</b> Backend trả 401 <code>IDENTITY-CREDENTIALS_INVALID</code>; FE hiện tiêu đề và message của backend.</figcaption>
+      </figure>
+      <figure>
+        <img src="screenshots/09-forced-password-change.jpg" alt="Màn đổi mật khẩu bắt buộc" loading="lazy" />
+        <figcaption><b>Đổi mật khẩu bắt buộc.</b> User vừa tạo đăng nhập bằng mật khẩu tạm và chỉ thấy màn này, cùng nút đăng xuất.</figcaption>
+      </figure>
+      <figure>
+        <img src="screenshots/10-password-changed-login.jpg" alt="Màn đăng nhập sau khi đổi mật khẩu" loading="lazy" />
+        <figcaption><b>Sau khi đổi mật khẩu.</b> Token bị xóa, FE về <code>/login</code> và báo “Đã đổi mật khẩu”.</figcaption>
+      </figure>
+    </div>
+    <div class="shots">
+      <figure>
+        <img src="screenshots/11-sidebar-learner.jpg" alt="Sidebar của học viên" loading="lazy" />
+        <figcaption><b>Sidebar học viên.</b> Hồ sơ, Học tập, Tiến độ, Làm bài kiểm tra, Kho tri thức, Tra cứu sự cố.</figcaption>
+      </figure>
+      <figure>
+        <img src="screenshots/12-sidebar-instructor.jpg" alt="Sidebar của giảng viên" loading="lazy" />
+        <figcaption><b>Sidebar giảng viên (Học viên + Giảng viên).</b> Hai nhóm function gộp lại, thêm Nội dung và Báo cáo.</figcaption>
+      </figure>
+      <figure>
+        <img src="screenshots/13-sidebar-org-admin.jpg" alt="Sidebar của quản trị viên đơn vị" loading="lazy" />
+        <figcaption><b>Sidebar quản trị Ban (ADMIN, scope ORG).</b> Có Tổ chức, Vai trò, Giao khóa học, Báo cáo.</figcaption>
+      </figure>
+      <figure>
+        <img src="screenshots/15-sidebar-report-viewer.jpg" alt="Sidebar của người xem báo cáo" loading="lazy" />
+        <figcaption><b>Sidebar người xem báo cáo.</b> Chỉ Hồ sơ và Báo cáo đào tạo.</figcaption>
+      </figure>
+    </div>
+  </section>
+
+  <section class="phase" aria-labelledby="g2">
+    <div class="phase-head">
+      <span class="phase-id">G2</span>
+      <h2 id="g2">Hồ sơ và đổi mật khẩu</h2>
+    </div>
+    <dl class="facts">
+      <dt>Commit</dt>
+      <dd><code>c2ea0bc</code></dd>
+      <dt>File chính</dt>
+      <dd>
+        <code>features/account/profile/*</code>, <code>shared/account/password-form/*</code>,
+        <code>shared/account/password-change.store.ts</code>
+      </dd>
+    </dl>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Tiêu chí</th>
+            <th>Trạng thái</th>
+            <th>Bằng chứng</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Form <code>PATCH /auth/me</code> chỉ gửi trường đổi; nút Lưu tắt khi chưa đổi gì</td>
+            <td class="status"><span class="chip pass">Đạt</span></td>
+            <td><code>profile.spec.ts</code>: PATCH diff, <code>null</code> khi xóa trường tùy chọn, Lưu bị tắt. Ảnh 07.</td>
+          </tr>
+          <tr>
+            <td>Tài khoản SSO chỉ đọc</td>
+            <td class="status"><span class="chip pass">Đạt</span></td>
+            <td><code>profile.spec.ts</code> (quy tắc <code>readonly</code> của Signal Forms)</td>
+          </tr>
+          <tr>
+            <td>Khối chỉ đọc: tổ chức, nhóm, grant kèm nhãn scope</td>
+            <td class="status"><span class="chip pass">Đạt</span></td>
+            <td>Ảnh 07; nhãn scope dùng chung <code>shared/status/scope-label.ts</code></td>
+          </tr>
+          <tr>
+            <td>Đổi mật khẩu 6 ký tự, tối đa 72 byte UTF-8, khác mật khẩu cũ; thành công thì đăng xuất về login</td>
+            <td class="status"><span class="chip pass">Đạt</span></td>
+            <td><code>password-form.schema.ts</code>; spec “PUTs the two passwords, clears the token and returns to the login page”; ảnh 10</td>
+          </tr>
+          <tr>
+            <td>Lỗi PASSWORD_POLICY, SAME_AS_CURRENT, CURRENT_PASSWORD_INCORRECT hiện dưới đúng field</td>
+            <td class="status"><span class="chip partial">Khác kế hoạch</span></td>
+            <td>
+              Theo quyết định D10, FE không gắn <code>errors[]</code> của BE vào field. Validator FE
+              kiểm cùng rule trước khi gọi; mật khẩu hiện tại sai là toast với message của BE (có
+              spec).
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <figure>
+      <img src="screenshots/07-profile.jpg" alt="Màn hồ sơ cá nhân của super admin" loading="lazy" />
+      <figcaption><b>Hồ sơ cá nhân.</b> Họ tên, email, chức danh có thể sửa; khối bên phải liệt kê đơn vị, nhóm, grant và các chức năng được cấp.</figcaption>
+    </figure>
+  </section>
+
+  <section class="phase" aria-labelledby="g3">
+    <div class="phase-head">
+      <span class="phase-id">G3</span>
+      <h2 id="g3">Quản lý người dùng</h2>
+    </div>
+    <dl class="facts">
+      <dt>Commit</dt>
+      <dd><code>ef1dfe0</code></dd>
+      <dt>File chính</dt>
+      <dd>
+        <code>features/admin-org/users/*</code>, <code>user-detail/*</code>,
+        <code>components/{user-form,user-editor}/*</code>,
+        <code>data-access/user-editor.store.ts</code>,
+        <code>libs/contracts/src/lib/identity/*</code>
+      </dd>
+    </dl>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Tiêu chí</th>
+            <th>Trạng thái</th>
+            <th>Bằng chứng</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Danh sách lọc, sắp xếp, phân trang trên server; cột role từ <code>roleCodes</code></td>
+            <td class="status"><span class="chip pass">Đạt</span> <span class="chip unverified">Chưa kiểm với BE thật</span></td>
+            <td><code>users.spec.ts</code> (18 ca) kiểm <code>page</code> 0-based, <code>size</code>, <code>sort=id,asc</code>, <code>q</code>, <code>roleCode</code>, <code>orgId</code>, <code>teamId</code>, <code>status</code>. Ảnh 02.</td>
+          </tr>
+          <tr>
+            <td>Drawer tạo: mã cán bộ, username, mật khẩu tạm, org và team phụ thuộc nhau, bảng grant ban đầu</td>
+            <td class="status"><span class="chip pass">Đạt</span></td>
+            <td>Spec kiểm body <code>createUser</code> và <code>initialRoleGrants</code>; trong trình duyệt tạo user 000099 với grant “Học viên · Cá nhân”. Ảnh 03, 04.</td>
+          </tr>
+          <tr>
+            <td>Drawer sửa gửi PATCH diff; cảnh báo khi đổi tổ chức</td>
+            <td class="status"><span class="chip pass">Đạt</span></td>
+            <td>Spec: <code>Object.keys(body)</code> chỉ chứa trường đổi; không gọi server khi không đổi gì</td>
+          </tr>
+          <tr>
+            <td>Tạm dừng/Kích hoạt, Khóa/Mở khóa theo <code>editable</code>; trạng thái active, inactive, locked</td>
+            <td class="status"><span class="chip pass">Đạt</span></td>
+            <td>Spec kiểm <code>setUserStatus</code>, hỏi xác nhận với inactive và locked, ẩn nút với chính mình và với admin khác</td>
+          </tr>
+          <tr>
+            <td>Chi tiết: tab Thông tin và Quyền gọi BE; tab Khóa học, Lịch sử thi, Hoạt động giữ mock (D6)</td>
+            <td class="status"><span class="chip pass">Đạt</span></td>
+            <td><code>user-detail.spec.ts</code> (6 ca). Ba tab mock chỉ hiện khi <code>mockApi</code> bật. Ảnh 08.</td>
+          </tr>
+          <tr>
+            <td><code>quantri.ban</code> chỉ thấy user trong Ban và không sửa được <code>quantri</code>; grant lỗi thì không tạo user</td>
+            <td class="status"><span class="chip pass">Đạt</span> <span class="chip unverified">Chưa kiểm với BE thật</span></td>
+            <td>Hai quy tắc này do server quyết định; FE chỉ hiển thị. Đã kiểm trên <code>FakeBackend</code> (<code>fake-backend.spec.ts</code>), chưa kiểm trên backend thật.</td>
+          </tr>
+          <tr>
+            <td><code>maxlength</code> 100 trên ô tìm kiếm</td>
+            <td class="status"><span class="chip partial">Một phần</span></td>
+            <td>Store cắt <code>q</code> còn 100 ký tự trước khi gửi; <code>ui-search</code> chưa có thuộc tính <code>maxlength</code>.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="shots">
+      <figure>
+        <img src="screenshots/02-users-list.jpg" alt="Danh sách người dùng" loading="lazy" />
+        <figcaption><b>Danh sách người dùng.</b> 7 người dùng từ seed, phân trang trên server; thao tác Sửa và Khóa theo quyền của người gọi.</figcaption>
+      </figure>
+      <figure>
+        <img src="screenshots/03-user-form-validation.jpg" alt="Form thêm người dùng báo email không hợp lệ" loading="lazy" />
+        <figcaption><b>Validate trong form.</b> Email sai định dạng báo ngay “Email không hợp lệ.” từ validator FE.</figcaption>
+      </figure>
+      <figure>
+        <img src="screenshots/04-user-create-drawer.jpg" alt="Form thêm người dùng đã điền, có một grant ban đầu" loading="lazy" />
+        <figcaption><b>Thêm người dùng.</b> Form đã điền và một grant ban đầu “Học viên · Cá nhân”; role lấy từ <code>GET /api/v1/roles</code>.</figcaption>
+      </figure>
+      <figure>
+        <img src="screenshots/08-user-grants.jpg" alt="Tab vai trò và quyền của giảng viên" loading="lazy" />
+        <figcaption><b>Tab Vai trò &amp; quyền.</b> Giảng viên có hai grant (Học viên · Cá nhân, Giảng viên · Đơn vị), có Thu hồi và bộ chọn cấp mới.</figcaption>
+      </figure>
+    </div>
+  </section>
+
+  <section class="phase" aria-labelledby="g4">
+    <div class="phase-head">
+      <span class="phase-id">G4</span>
+      <h2 id="g4">Vai trò và phân quyền</h2>
+    </div>
+    <dl class="facts">
+      <dt>Commit</dt>
+      <dd><code>ef1dfe0</code></dd>
+      <dt>File chính</dt>
+      <dd>
+        <code>components/grant-picker/*</code>, <code>roles/*</code>,
+        <code>roles/components/role-form/*</code>
+      </dd>
+    </dl>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Tiêu chí</th>
+            <th>Trạng thái</th>
+            <th>Bằng chứng</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>CRUD role giữ trên mock (D2); role form chọn theo mã function (D3)</td>
+            <td class="status"><span class="chip pass">Đạt</span></td>
+            <td><code>roles.spec.ts</code> (12 ca) với 16 function code và id role mới. Ảnh 06.</td>
+          </tr>
+          <tr>
+            <td>Selector cấp quyền đọc <code>GET /api/v1/roles</code>, không đọc danh sách mock</td>
+            <td class="status"><span class="chip pass">Đạt</span></td>
+            <td>Drawer thêm người dùng liệt kê 5 role BE (id 1 đến 5, đọc từ trang trong trình duyệt); <code>UserEditorStore.roles$</code></td>
+          </tr>
+          <tr>
+            <td>Component chọn grant dùng chung (role, scope, target) cho drawer tạo và tab quyền</td>
+            <td class="status"><span class="chip pass">Đạt</span></td>
+            <td><code>grant-picker</code>; xóa team khi đổi org; nút Thêm tắt đến khi chọn đủ</td>
+          </tr>
+          <tr>
+            <td>Request cấp quyền là <code>discriminatedUnion</code> theo scope</td>
+            <td class="status"><span class="chip partial">Một phần</span></td>
+            <td><code>GrantRequestSchema</code> là object phẳng; picker chỉ gửi trường target đúng với scope. Chưa chặn ở mức kiểu.</td>
+          </tr>
+          <tr>
+            <td>ADMIN không cấp được ADMIN và SUPER_ADMIN; màn role đọc capability, không chỉ đọc menu</td>
+            <td class="status"><span class="chip gap">Chưa làm</span></td>
+            <td>Server từ chối và FE hiện toast. FE chưa đọc <code>assignableScopes</code> hay capability <code>ADMIN_ROLE_GRANT</code> để ẩn lựa chọn hoặc ẩn màn vai trò.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <figure>
+      <img src="screenshots/06-roles.jpg" alt="Màn vai trò và phân quyền" loading="lazy" />
+      <figcaption><b>Vai trò &amp; phân quyền (mock).</b> Danh sách role và chức năng theo mã function. Câu mô tả “mỗi người dùng có đúng một vai trò” đã sửa thành “có thể giữ nhiều vai trò” sau khi chụp.</figcaption>
+    </figure>
+  </section>
+
+  <section class="phase" aria-labelledby="g5">
+    <div class="phase-head">
+      <span class="phase-id">G5</span>
+      <h2 id="g5">Tổ chức và nhóm</h2>
+    </div>
+    <dl class="facts">
+      <dt>Commit</dt>
+      <dd><code>94a37fc</code></dd>
+      <dt>File chính</dt>
+      <dd>
+        <code>features/admin-org/org/{org,data-access/org.store,data-access/org-tree.store}</code>,
+        <code>components/{org-form,team-form}/*</code>
+      </dd>
+    </dl>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Tiêu chí</th>
+            <th>Trạng thái</th>
+            <th>Bằng chứng</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Cây lazy: gốc qua <code>rootOnly</code>, con qua <code>parentId</code>, “Xem thêm” khi còn trang</td>
+            <td class="status"><span class="chip pass">Đạt</span> <span class="chip unverified">Chưa kiểm với BE thật</span></td>
+            <td><code>org.spec.ts</code> kiểm <code>rootOnly=true</code>, tải con khi chọn, và tạo phòng mới hiện ngay trong cây (lỗi được phát hiện và sửa bằng <code>reveal()</code> khi viết spec). Ảnh 05.</td>
+          </tr>
+          <tr>
+            <td>Panel: quản trị viên trực tiếp, nhóm phân trang, preview tối đa 5 người, “Xem tất cả” về <code>/admin/users?teamId=</code></td>
+            <td class="status"><span class="chip pass">Đạt</span></td>
+            <td>Spec kiểm trang 6 nhóm, <code>page</code> truyền sang trang sau, preview ≤ 5; <code>UsersStore</code> đọc <code>?teamId</code> từ URL</td>
+          </tr>
+          <tr>
+            <td>Form tổ chức và nhóm; sửa gửi PATCH diff; xóa nhóm báo <code>TEAM_IN_USE</code></td>
+            <td class="status"><span class="chip pass">Đạt</span></td>
+            <td>Spec: tạo nhóm, đổi tên (body chỉ có <code>name</code>), xóa nhóm trống, toast “Không thể xóa nhóm còn thành viên…” và nhóm vẫn còn trong danh sách</td>
+          </tr>
+          <tr>
+            <td>Ẩn tạo tổ chức và đổi trạng thái với ADMIN ORG</td>
+            <td class="status"><span class="chip pass">Đạt</span></td>
+            <td>Spec với <code>quantri.ban</code>; ảnh 14 (chỉ còn nút Sửa, Nhập từ tệp và Thêm nhóm)</td>
+          </tr>
+          <tr>
+            <td>Cây hiển thị đúng 1 Ban + 15 nhóm như sample; mã nhóm trùng báo lỗi tại field</td>
+            <td class="status"><span class="chip partial">Một phần</span></td>
+            <td>Cây 1 Ban và 15 nhóm đúng như seed (ảnh 05). Mã nhóm trùng hiện là toast, theo D10, không gắn vào field.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="shots">
+      <figure>
+        <img src="screenshots/05-org-tree-teams.jpg" alt="Màn đơn vị, phòng và nhóm của super admin" loading="lazy" />
+        <figcaption><b>Đơn vị, phòng &amp; nhóm (super admin).</b> Cây một Ban, quản trị viên trực tiếp, 8 thành viên (7 seed + 1 tạo trong phiên), 15 nhóm với preview thành viên.</figcaption>
+      </figure>
+      <figure>
+        <img src="screenshots/14-org-as-org-admin.jpg" alt="Màn đơn vị của quản trị Ban, không có nút thêm đơn vị" loading="lazy" />
+        <figcaption><b>Cùng màn với quản trị Ban.</b> Không có “Thêm đơn vị / phòng” và “Tạm dừng”; số thành viên là 7 vì user mới nằm ở phiên trước.</figcaption>
+      </figure>
+    </div>
+  </section>
+
+  <section class="phase" aria-labelledby="g6">
+    <div class="phase-head">
+      <span class="phase-id">G6</span>
+      <h2 id="g6">Mock, fixture và kiểm thử contract</h2>
+    </div>
+    <dl class="facts">
+      <dt>Commit</dt>
+      <dd><code>3d4795f</code>, <code>04d5054</code>, <code>1e3d3b4</code> (tài liệu)</dd>
+      <dt>File chính</dt>
+      <dd>
+        <code>libs/mocks/src/lib/backend/{fake-backend,seed,seed-me,postman-requests}.ts</code>,
+        <code>libs/mocks/src/lib/backend-responses.ts</code>,
+        <code>core/dev/mock-api/*</code>, <code>core/config/app-config.ts</code>
+      </dd>
+    </dl>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Tiêu chí</th>
+            <th>Trạng thái</th>
+            <th>Bằng chứng</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Fixture khớp seed BE: 1 org, 15 team, 7 user, grant, 5 role, 16 function</td>
+            <td class="status"><span class="chip partial">Một phần</span></td>
+            <td>
+              Seed viết tay trong <code>seed.ts</code> (549 dòng), đối chiếu bằng mắt với
+              <code>~/Downloads/lms-sample-data</code> (đếm khớp). Chưa có test đọc trực tiếp file
+              JSON mẫu, nên seed và dữ liệu thật có thể lệch mà test không báo.
+            </td>
+          </tr>
+          <tr>
+            <td>Mock trả lỗi đúng mã BE và đúng HTTP status thật</td>
+            <td class="status"><span class="chip partial">Một phần</span></td>
+            <td>
+              Endpoint của BE (identity, organization, auth v1) trả đúng status và envelope qua
+              <code>backendRefusal()</code>. Các endpoint mock-only (role CRUD, khóa học, lượt thi,
+              audit) vẫn dùng <code>MOCK_REFUSAL_CODE = 'CORE-9999'</code> và HTTP 200.
+            </td>
+          </tr>
+          <tr>
+            <td>Spec contract parse response mẫu của Postman</td>
+            <td class="status"><span class="chip pass">Đạt</span></td>
+            <td><code>postman.contract.spec.ts</code> chạy cả bộ request của collection trên <code>FakeBackend</code> và parse mọi response bằng schema zod</td>
+          </tr>
+          <tr>
+            <td><code>fixtures.spec.ts</code> parse mọi ví dụ; bật/tắt <code>mockApi</code> không đổi hành vi màn</td>
+            <td class="status"><span class="chip partial">Một phần</span></td>
+            <td>Fixtures parse đạt. Chưa chạy các màn với <code>mockApi: false</code> vì không có backend thật.</td>
+          </tr>
+          <tr>
+            <td>Spec màn chạy end to end trên backend giả</td>
+            <td class="status"><span class="chip pass">Đạt</span></td>
+            <td><code>provideMockBackendHttp()</code> và <code>signInToMockBackend()</code>; spec theo dõi <code>MockBackend.handle</code> để kiểm params, query, body</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="lede">
+      Hạn chế của chế độ mock: token nằm trong bộ nhớ của backend giả nên tải lại trang là mất
+      phiên và về trang đăng nhập. Khi kiểm bằng trình duyệt phải điều hướng bằng liên kết trong app.
+    </p>
+  </section>
+
+  <section aria-labelledby="review">
+    <h2 id="review">Code review</h2>
+    <p class="lede">
+      Chạy skill code-review với hai trục Standards và Spec trên <code>git diff main...HEAD</code>.
+      Spec là báo cáo đối chiếu cộng quyết định D1 đến D10. Mỗi phát hiện được kiểm lại với mã nguồn
+      và <code>angular.md</code> trước khi sửa. Kết quả sau sửa nằm ở commit <code>1e3d3b4</code>;
+      <code>npm run check</code> xanh sau đó.
+    </p>
+    <div class="two">
+      <div>
+        <h3>Trục Standards</h3>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Phát hiện</th>
+                <th>Xử lý</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Store ghi <code>state</code> ngoài setter (§5.2): org-tree, org, user-editor, users, user-detail</td>
+                <td><span class="chip pass">Đã sửa</span> Mỗi key có setter <code>setX</code>, lệnh chỉ gọi setter</td>
+              </tr>
+              <tr>
+                <td>Signal ghi được ngoài <code>state</code>: <code>teamPage</code>, <code>shown</code></td>
+                <td><span class="chip pass">Đã sửa</span> Đưa vào <code>state</code> dạng <code>linkedSignal</code></td>
+              </tr>
+              <tr>
+                <td>State trong component: danh sách grant chờ ở <code>user-form</code>; <code>roles</code> và <code>grants</code> ở <code>profile</code></td>
+                <td><span class="chip pass">Đã sửa</span> Chuyển sang <code>UserEditorStore</code> và <code>ProfileStore</code></td>
+              </tr>
+              <tr>
+                <td>Gọi method trong template: <code>roleName(code)</code></td>
+                <td><span class="chip pass">Đã sửa</span> Selector <code>roleNames$</code></td>
+              </tr>
+              <tr>
+                <td><code>$</code> gắn vào hàm thường: <code>currentUserId$</code></td>
+                <td><span class="chip pass">Đã sửa</span> Đổi thành <code>computed</code></td>
+              </tr>
+              <tr>
+                <td>Trùng code: hai <code>serverData</code> tải team giống nhau</td>
+                <td><span class="chip pass">Đã sửa</span> Một hàm <code>teamsOf</code></td>
+              </tr>
+              <tr>
+                <td>Giá trị px cứng ở <code>org.scss</code> (2px) và <code>user-detail.scss</code> (110px)</td>
+                <td><span class="chip partial">Bỏ qua</span> Hai giá trị đã có sẵn trên <code>main</code>, không thuộc thay đổi này</td>
+              </tr>
+              <tr>
+                <td>Mock “stateless” trong tài liệu trái với <code>FakeBackend</code></td>
+                <td><span class="chip pass">Đã sửa</span> Viết lại phần mock và quyết định contract</td>
+              </tr>
+              <tr>
+                <td>Tái xuất store khác (<code>tree</code>, <code>roles$</code>), smell Middle Man; <code>PasswordChangeStore</code> nằm trong <code>shared/</code>; <code>OrgTreeStore</code> gánh nhiều việc</td>
+                <td><span class="chip partial">Chưa làm</span> Đánh giá là judgement, ghi ở mục chưa làm</td>
+              </tr>
+              <tr>
+                <td><code>user-editor.scss</code> thiếu <code>@use 'ui'</code></td>
+                <td><span class="chip partial">Bỏ qua</span> File chỉ có <code>:host</code>, không dùng token</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <div>
+        <h3>Trục Spec</h3>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Phát hiện</th>
+                <th>Xử lý</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>D9: <code>catalog</code> và <code>admin/catalog</code> vẫn bị chặn theo function</td>
+                <td><span class="chip pass">Đã sửa</span> Chuyển vào <code>open[]</code>; sửa spec route-table và đăng ký migration</td>
+              </tr>
+              <tr>
+                <td>Tài liệu cũ còn <code>CORE-0401</code> và “stateless”</td>
+                <td><span class="chip pass">Đã sửa</span></td>
+              </tr>
+              <tr>
+                <td>Seed chưa được kiểm trực tiếp với JSON mẫu</td>
+                <td><span class="chip partial">Chưa làm</span> Ghi ở mục chưa làm</td>
+              </tr>
+              <tr>
+                <td>Không có <code>maxlength=100</code> ở ô tìm kiếm</td>
+                <td><span class="chip partial">Một phần</span> Store cắt 100 ký tự; <code>ui-search</code> chưa hỗ trợ thuộc tính</td>
+              </tr>
+              <tr>
+                <td>Đường dẫn sidebar lấy từ FE thay vì <code>route_pattern</code> của BE</td>
+                <td><span class="chip partial">Chưa làm</span> Trùng với sample hiện tại; cần quyết định cách xử lý khi BE đổi route</td>
+              </tr>
+              <tr>
+                <td><code>GrantRequestSchema</code> phẳng, không phải union theo scope</td>
+                <td><span class="chip partial">Chưa làm</span></td>
+              </tr>
+              <tr>
+                <td>Chưa phản ứng với 403 <code>PASSWORD_CHANGE_REQUIRED</code> giữa phiên</td>
+                <td><span class="chip partial">Chưa làm</span> Chỉ hiện toast</td>
+              </tr>
+              <tr>
+                <td><code>notifications</code> nằm trong route mở ngoài danh sách D9</td>
+                <td><span class="chip pass">Giữ</span> Màn có sẵn từ mockup, không có function BE; cùng loại với 11 màn kia</td>
+              </tr>
+              <tr>
+                <td><code>MOCK_REFUSAL_CODE</code> còn dùng cho endpoint mock-only</td>
+                <td><span class="chip partial">Giữ</span> Các endpoint này chưa có mã BE</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section aria-labelledby="notdone">
+    <h2 id="notdone">Chưa làm và chưa kiểm chứng</h2>
+    <ul class="plain">
+      <li>
+        <b>Chưa chạy với backend thật.</b> Cổng 8019 không truy cập được. Cần chạy lại các luồng
+        đăng nhập, đổi mật khẩu, người dùng, cấp quyền, tổ chức, nhóm với <code>mockApi</code> và
+        <code>mockBackend</code> đặt false, và so sánh với phản ứng của backend giả.
+      </li>
+      <li>
+        <b>Seed chưa đối chiếu tự động với JSON mẫu.</b> Một spec đọc
+        <code>lms-sample-data</code> và so với <code>seed.ts</code> sẽ bắt lệch dữ liệu.
+      </li>
+      <li>
+        <b>Role CRUD vẫn là mock</b> (D2) và <b>ba tab chi tiết người dùng</b> (khóa học, lượt thi,
+        hoạt động) vẫn là mock (D6). Màn vai trò chưa kiểm capability, nên ADMIN vẫn thấy màn này.
+      </li>
+      <li>
+        <b>Phản ứng runtime với 403 <code>IDENTITY-PASSWORD_CHANGE_REQUIRED</code></b> giữa phiên
+        chưa có. Chỉ trường hợp <code>mustChangePassword</code> từ <code>/me</code> được chặn bằng guard.
+      </li>
+      <li>
+        <b>Lỗi BE theo field</b> hiện là toast (D10), nên tiêu chí “lỗi hiện dưới đúng field” của G2
+        và G5 không được thực hiện. Muốn đạt cần mở lại D10 và thêm <code>errors[]</code> vào envelope.
+      </li>
+      <li>
+        <b>Huy hiệu hộp thư ở sidebar</b> bị bỏ vì chưa có endpoint đếm; số đếm nav chỉ hiện khi
+        <code>mockApi</code> bật.
+      </li>
+      <li>
+        <b>Sidebar theo <code>route_pattern</code> của BE</b>, <b>union theo scope</b> cho yêu cầu cấp
+        quyền, và <b><code>maxlength</code> trên <code>ui-search</code></b> chưa làm.
+      </li>
+      <li>
+        <b>Refactor store còn lại:</b> <code>OrgStore</code> đang lộ <code>tree</code> cho component;
+        <code>UsersStore</code> tái xuất <code>roles$</code>, <code>orgs$</code>;
+        <code>OrgTreeStore</code> gộp phân trang, dựng nút và chọn nút. Các điểm này không vi phạm
+        quy tắc cứng nhưng nên dọn khi có thêm màn dùng chung.
+      </li>
+      <li>
+        <b>Chưa kiểm ở độ rộng điện thoại và chế độ tối</b> cho các màn mới. Ảnh chụp ở 1280 px,
+        giao diện sáng.
+      </li>
+      <li>
+        <b>Bundle:</b> <code>check-bundle</code> đạt trong <code>npm run check</code>. Bản dev
+        báo tổng ban đầu 563 kB; đó không phải số của bản production.
+      </li>
+    </ul>
+  </section>
+
+  <section aria-labelledby="repro">
+    <h2 id="repro">Chạy lại</h2>
+    <pre>npm run check                                   # format, lint, typecheck, test, build, check-bundle
+npx nx serve lms                                # mock: đăng nhập bằng tài khoản seed, mật khẩu trong libs/mocks/src/lib/backend/seed.ts
+npx vitest run apps/lms/src/app/features/admin-org/org   # ví dụ chạy riêng một spec</pre>
+    <p class="lede">
+      Tài khoản seed: <code>super.admin</code>, <code>quantri</code>, <code>quantri.ban</code>,
+      <code>hocvien</code>, <code>giangvien</code>, <code>baocao</code>, <code>hocvien.tichhop</code>.
+      Dev toolbar (nút “Demo” góc dưới phải) đăng nhập nhanh bằng các tài khoản này.
+    </p>
+  </section>
+</div>
