@@ -4,7 +4,6 @@ import { ActivatedRoute } from '@angular/router';
 import { adminOrgEndpoints, identityEndpoints } from '@lms/contracts';
 import type { TabItem } from '@lms/ui';
 import { map } from 'rxjs';
-import { APP_CONFIG } from '../../../../core/config/app-config';
 import { serverData } from '../../../../core/data-access/server-data';
 import { EndpointClient } from '../../../../core/http/endpoint-client';
 import { scopeLabel } from '../../../../shared/status/scope-label';
@@ -20,14 +19,13 @@ export type UserDetailTab =
 /**
  * The user page (the mockup's `userDetail`): one user from the backend with the tab being read.
  * The info and grants tabs are the backend's; the courses, attempts and activity tabs have no
- * backend endpoint yet, so they exist only on the mock API and are hidden otherwise.
+ * backend endpoint yet, so they exist only while their endpoints are served (the mock API).
  */
 @Injectable()
 export class UserDetailStore {
   private readonly client = inject(EndpointClient);
   private readonly route = inject(ActivatedRoute);
   private readonly editor = inject(UserEditorStore);
-  private readonly mockApi = inject(APP_CONFIG).mockApi;
 
   private readonly state = {
     tab: signal<UserDetailTab>('info'),
@@ -44,9 +42,16 @@ export class UserDetailStore {
     { params: () => this.userId(), reloadOn: this.editor.changes },
   );
 
-  // The mock-only tabs read when opened, so a signed-in user without them costs no request.
+  // The tabs the backend lacks read when opened, so a signed-in user without them costs no request.
+  private readonly hasLearningTabs = [
+    adminOrgEndpoints.userCourses,
+    adminOrgEndpoints.userAttempts,
+    adminOrgEndpoints.userAudit,
+  ].every((endpoint) => this.client.isServed(endpoint));
   private readonly onTab = (tab: UserDetailTab) =>
-    this.mockApi && this.state.tab() === tab ? this.userId() : undefined;
+    this.hasLearningTabs && this.state.tab() === tab
+      ? this.userId()
+      : undefined;
   private readonly coursesData = serverData(
     (userId: string) =>
       this.client.call(adminOrgEndpoints.userCourses, { params: { userId } }),
@@ -89,7 +94,7 @@ export class UserDetailStore {
   readonly tabs$ = computed((): readonly TabItem[] => [
     { id: 'info', label: 'Thông tin' },
     { id: 'grants', label: 'Vai trò & quyền', count: this.grants$().length },
-    ...(this.mockApi
+    ...(this.hasLearningTabs
       ? [
           { id: 'courses', label: 'Khóa học được giao' },
           { id: 'attempts', label: 'Lịch sử thi' },

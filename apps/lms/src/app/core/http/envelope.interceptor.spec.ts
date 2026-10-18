@@ -13,6 +13,8 @@ import { toAppError, type AppErrorKind } from '../errors/app-error';
 import { ApiError } from './api-error';
 import { ContractError } from './contract-error';
 import { EndpointClient } from './endpoint-client';
+import { provideAppConfig } from '../config/app-config';
+import { testAppConfig } from '../config/app-config.testing';
 import { provideEnvelopeHttpClient } from './http.testing';
 
 const LOGIN_URL = '/api/v1/auth/login';
@@ -33,6 +35,7 @@ describe('envelopeInterceptor', () => {
     handled.length = 0;
     TestBed.configureTestingModule({
       providers: [
+        provideAppConfig(testAppConfig()),
         provideEnvelopeHttpClient(),
         {
           provide: ErrorHandler,

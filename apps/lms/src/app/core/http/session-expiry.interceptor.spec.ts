@@ -11,6 +11,8 @@ import type { Profile } from '../session/profile';
 import { SessionStore } from '../session/session.store';
 import { seedProfile } from '../session/session.testing';
 import { EndpointClient } from './endpoint-client';
+import { provideAppConfig } from '../config/app-config';
+import { testAppConfig } from '../config/app-config.testing';
 import { provideEnvelopeHttpClient } from './http.testing';
 import { sessionExpiryInterceptor } from './session-expiry.interceptor';
 
@@ -31,6 +33,7 @@ describe('sessionExpiryInterceptor', async () => {
     session = new FakeSession();
     TestBed.configureTestingModule({
       providers: [
+        provideAppConfig(testAppConfig()),
         provideEnvelopeHttpClient(sessionExpiryInterceptor),
         provideRouter([]),
         { provide: SessionStore, useValue: session },

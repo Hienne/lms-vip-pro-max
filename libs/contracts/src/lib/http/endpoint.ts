@@ -13,6 +13,12 @@ export type ResponseSchemaFor<R extends ResponseKind> = R extends 'blob'
   ? z.ZodType<Blob>
   : z.ZodType;
 
+/**
+ * Who answers an endpoint: the real backend, or the in-app mock API because the backend does not
+ * have it yet. Moving an endpoint across this line is a one-word edit on its definition.
+ */
+export type Served = 'backend' | 'mock';
+
 export interface EndpointDefinition<
   Path extends string = string,
   Params extends z.ZodObject | undefined = z.ZodObject | undefined,
@@ -31,6 +37,8 @@ export interface EndpointDefinition<
   readonly encoding?: BodyEncoding;
   /** `'blob'` receives a file (declare `response: z.instanceof(Blob)`); defaults to `'json'`. */
   readonly responseType?: ResponseKind;
+  /** Who answers it; defaults to `'backend'`. A `'mock'` endpoint only exists while `mockApi` is on. */
+  readonly served?: Served;
 }
 
 /** What `defineEndpoint` accepts: params, query and body are optional. */

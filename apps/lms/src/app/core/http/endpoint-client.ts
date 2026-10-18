@@ -8,6 +8,7 @@ import { ErrorHandler, inject, Service } from '@angular/core';
 import { type AnyEndpoint, toUrl } from '@lms/contracts';
 import { map, type Observable } from 'rxjs';
 import type { z } from 'zod';
+import { APP_CONFIG } from '../config/app-config';
 import { ContractError } from './contract-error';
 
 /** The endpoint a request belongs to; the dev mock API answers by it. */
@@ -94,6 +95,15 @@ function toFormData(body: unknown): FormData {
 export class EndpointClient {
   private readonly http = inject(HttpClient);
   private readonly errorHandler = inject(ErrorHandler);
+  private readonly config = inject(APP_CONFIG);
+
+  /**
+   * Whether this build can answer the endpoint: always for a backend one, only while the mock API
+   * is on for a `served: 'mock'` one. Stores and menus ask this instead of reading the flag.
+   */
+  isServed(endpoint: AnyEndpoint): boolean {
+    return endpoint.served !== 'mock' || this.config.mockApi;
+  }
 
   call<E extends AnyEndpoint>(
     endpoint: E,

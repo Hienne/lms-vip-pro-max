@@ -2,6 +2,8 @@ import { HttpTestingController } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 import { backendRefusal, envelopeOk, seedMe } from '@lms/mocks';
 import { bearerInterceptor } from '../http/bearer.interceptor';
+import { provideAppConfig } from '../config/app-config';
+import { testAppConfig } from '../config/app-config.testing';
 import { provideEnvelopeHttpClient } from '../http/http.testing';
 import { SessionStore } from './session.store';
 import { storeToken, ME_URL } from './session.testing';
@@ -27,7 +29,11 @@ describe('SessionStore', () => {
 
   beforeEach(() => {
     TestBed.configureTestingModule({
-      providers: [provideEnvelopeHttpClient(bearerInterceptor), SessionStore],
+      providers: [
+        provideAppConfig(testAppConfig()),
+        provideEnvelopeHttpClient(bearerInterceptor),
+        SessionStore,
+      ],
     });
     store = TestBed.inject(SessionStore);
     tokens = TestBed.inject(TokenStore);

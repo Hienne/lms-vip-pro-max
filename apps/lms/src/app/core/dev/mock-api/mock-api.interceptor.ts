@@ -73,8 +73,9 @@ function queryOf(req: HttpRequest<unknown>): Record<string, string> {
  * Dev only: answers a request from the mock API instead of the network. The endpoint comes from
  * the `ENDPOINT` context `EndpointClient` sets, and is looked up by object:
  *
- * - an endpoint the backend lacks has static examples (`MOCK_FIXTURES`): the body for the role of
- *   the signed-in demo user, or the default one, in the backend's envelope (HTTP 200);
+ * - an endpoint declared `served: 'mock'` (the backend lacks it) answers its static examples
+ *   (`MOCK_FIXTURES`): the body for the role of the signed-in demo user, or the default one, in
+ *   the backend's envelope (HTTP 200);
  * - with `mockBackend`, an endpoint the backend has is answered by the seeded in-memory backend
  *   with the real HTTP status and envelope. A 4xx or 5xx is thrown as an `HttpErrorResponse`,
  *   which is how the browser reports it, and `envelopeInterceptor` reads the envelope from it;
@@ -83,7 +84,8 @@ function queryOf(req: HttpRequest<unknown>): Record<string, string> {
 export const mockApiInterceptor: HttpInterceptorFn = (req, next) => {
   const endpoint = req.context.get(ENDPOINT);
   const backend = inject(MockBackend);
-  const fixture = endpoint ? MOCK_FIXTURES.get(endpoint) : undefined;
+  const fixture =
+    endpoint?.served === 'mock' ? MOCK_FIXTURES.get(endpoint) : undefined;
   if (endpoint && fixture) {
     const held = backend.roleCodesOf(bearerOf(req));
     const role = ROLE_PRIORITY.find(

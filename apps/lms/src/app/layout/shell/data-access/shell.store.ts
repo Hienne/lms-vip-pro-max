@@ -24,7 +24,6 @@ import { confirm, Toaster } from '@lms/ui';
 import { filter, switchMap, take, tap } from 'rxjs';
 import type { UserMenuValue } from '../../header/header';
 import { searchTarget } from '../../header/search-target';
-import { APP_CONFIG } from '../../../core/config/app-config';
 import { EndpointClient } from '../../../core/http/endpoint-client';
 import {
   hasUnsavedChanges,
@@ -73,7 +72,6 @@ export class ShellStore {
   private readonly injector = inject(Injector);
   private readonly destroyRef = inject(DestroyRef);
   private readonly storage = inject(LOCAL_STORAGE);
-  private readonly mockApi = inject(APP_CONFIG).mockApi;
 
   constructor() {
     inject(LeavePrompt).use(() =>
@@ -131,12 +129,12 @@ export class ShellStore {
 
   /**
    * Reloaded after sign-in and on every navigation, as the mockup refreshes its badges. The
-   * backend has no such endpoint yet, so it is only asked while the mock API answers it.
+   * backend has no such endpoint yet, so it is only asked while the endpoint is served.
    */
   private readonly countsResource = rxResource({
     params: () => {
       const user = this.session.user$();
-      return user && this.mockApi
+      return user && this.client.isServed(shellEndpoints.navCounts)
         ? { userId: user.userId, path: this.path$() }
         : undefined;
     },

@@ -37,14 +37,17 @@ describe('fixtures match their contracts', () => {
     }
   });
 
-  it('answers exactly the endpoints the backend lacks', () => {
+  it('answers exactly the endpoints declared served: mock', () => {
+    const mockOnly = [
+      ...Object.values(adminOrgEndpoints),
+      ...Object.values(authV1Endpoints),
+      ...Object.values(identityEndpoints),
+      ...Object.values(organizationEndpoints),
+      ...Object.values(shellEndpoints),
+    ].filter((endpoint) => endpoint.served === 'mock');
     expect(
       [...MOCK_FIXTURES.keys()].sort((a, b) => a.path.localeCompare(b.path)),
-    ).toEqual(
-      [...Object.values(adminOrgEndpoints), shellEndpoints.navCounts].sort(
-        (a, b) => a.path.localeCompare(b.path),
-      ),
-    );
+    ).toEqual(mockOnly.sort((a, b) => a.path.localeCompare(b.path)));
   });
 
   it('keeps the backend endpoints out of the static fixtures and in the fake backend', () => {

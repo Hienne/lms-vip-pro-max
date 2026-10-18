@@ -11,6 +11,8 @@ import { z } from 'zod';
 import { toAppError } from '../errors/app-error';
 import { ContractError } from './contract-error';
 import { ENDPOINT, EndpointClient } from './endpoint-client';
+import { parseAppConfig, provideAppConfig } from '../config/app-config';
+import { testAppConfig } from '../config/app-config.testing';
 import { provideEnvelopeHttpClient } from './http.testing';
 
 const getCourse = defineEndpoint({
@@ -76,6 +78,7 @@ describe('EndpointClient', () => {
     handled.length = 0;
     TestBed.configureTestingModule({
       providers: [
+        provideAppConfig(testAppConfig()),
         provideHttpClient(),
         provideHttpClientTesting(),
         {
@@ -245,6 +248,7 @@ describe('EndpointClient with the backend envelope', () => {
   beforeEach(() => {
     TestBed.configureTestingModule({
       providers: [
+        provideAppConfig(testAppConfig()),
         provideEnvelopeHttpClient(),
         { provide: ErrorHandler, useValue: { handleError: () => undefined } },
       ],
@@ -335,5 +339,36 @@ describe('EndpointClient with the backend envelope', () => {
       .expectOne('/api/export')
       .flush(new Blob(['a,b'], { type: 'text/csv' }));
     expect(blob).toBeInstanceOf(Blob);
+  });
+
+  describe('isServed', () => {
+    const mockOnly = defineEndpoint({
+      method: 'get',
+      path: '/api/mock-only',
+      response: z.unknown(),
+      served: 'mock',
+    });
+
+    const serving = (mockApi: boolean) => {
+      TestBed.resetTestingModule();
+      TestBed.configureTestingModule({
+        providers: [
+          provideAppConfig(parseAppConfig(testAppConfig({ mockApi }))),
+          provideHttpClient(),
+          provideHttpClientTesting(),
+        ],
+      });
+      return TestBed.inject(EndpointClient);
+    };
+
+    it('serves a backend endpoint in every build', () => {
+      expect(serving(false).isServed(ping)).toBe(true);
+      expect(serving(true).isServed(ping)).toBe(true);
+    });
+
+    it('serves a mock endpoint only while the mock API is on', () => {
+      expect(serving(false).isServed(mockOnly)).toBe(false);
+      expect(serving(true).isServed(mockOnly)).toBe(true);
+    });
   });
 });

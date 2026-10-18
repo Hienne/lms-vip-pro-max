@@ -37,6 +37,10 @@ export class SessionStore {
   private readonly client = inject(EndpointClient);
   private readonly tokens = inject(TokenStore);
 
+  private profileOf(me: Me): Profile {
+    return toProfile(me, (endpoint) => this.client.isServed(endpoint));
+  }
+
   private readonly state = {
     restoreRequest: signal<object | undefined>(undefined),
     signInRequest: signal<LoginV1Command | undefined>(undefined),
@@ -53,7 +57,7 @@ export class SessionStore {
       this.tokens.read() === null
         ? of(null)
         : this.client.call(authV1Endpoints.me).pipe(
-            map(toProfile),
+            map((me) => this.profileOf(me)),
             catchError((error: unknown) => {
               if (toAppError(error).kind !== 'unauthorized') {
                 return throwError(() => error);
@@ -72,7 +76,7 @@ export class SessionStore {
           this.tokens.save(token.accessToken, token.expiresInSeconds),
         ),
         switchMap(() => this.client.call(authV1Endpoints.me)),
-        map(toProfile),
+        map((me) => this.profileOf(me)),
         tap((profile) => this.profileResource.set(profile)),
         catchError((error: unknown) => {
           this.tokens.clear();
@@ -159,7 +163,7 @@ export class SessionStore {
 
   /** Takes a `/me` the server just sent (a profile save answers one) as the signed-in user. */
   apply(me: Me): void {
-    this.profileResource.set(toProfile(me));
+    this.profileResource.set(this.profileOf(me));
   }
 
   /** The session ended: forget the token and the user without calling the server. */

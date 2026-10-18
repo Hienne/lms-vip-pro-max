@@ -1,4 +1,8 @@
-import { FunctionCodeSchema, type FunctionInfo } from '@lms/contracts';
+import {
+  adminOrgEndpoints,
+  FunctionCodeSchema,
+  type FunctionInfo,
+} from '@lms/contracts';
 import { SEED_FUNCTIONS } from '@lms/mocks';
 import { seedProfile } from '../session/session.testing';
 import {
@@ -6,6 +10,7 @@ import {
   allSections,
   entryHref,
   homePathFor,
+  knownFunctions,
   menuLabel,
   navFor,
 } from './menu-catalog';
@@ -69,6 +74,26 @@ describe('menu catalog', () => {
     expect(codes('000001')).toEqual(
       expect.arrayContaining(['ROLE_MANAGEMENT', 'ORGANIZATION_MANAGEMENT']),
     );
+  });
+
+  describe('knownFunctions', () => {
+    const functions = [fn(1, 'PROFILE', 1), fn(2, 'ROLE_MANAGEMENT', 2)];
+
+    it('keeps every known function when the build serves all endpoints', () => {
+      expect(knownFunctions(functions).map((f) => f.code)).toEqual([
+        'PROFILE',
+        'ROLE_MANAGEMENT',
+      ]);
+    });
+
+    it('leaves out a function whose screens need an endpoint the build does not serve', () => {
+      const withoutMock = (endpoint: { served?: string }) =>
+        endpoint.served !== 'mock';
+      expect(knownFunctions(functions, withoutMock).map((f) => f.code)).toEqual(
+        ['PROFILE'],
+      );
+      expect(adminOrgEndpoints.roles.served).toBe('mock');
+    });
   });
 
   describe('homePathFor', () => {

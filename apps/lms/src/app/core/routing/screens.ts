@@ -1,5 +1,9 @@
 import type { Route } from '@angular/router';
-import type { FunctionCode } from '@lms/contracts';
+import {
+  adminOrgEndpoints,
+  type AnyEndpoint,
+  type FunctionCode,
+} from '@lms/contracts';
 import type { IconName } from '@lms/ui';
 import type { Layout, RouteMeta } from './route-table';
 
@@ -43,6 +47,11 @@ export interface MenuSearch {
 export interface MenuGroup {
   readonly nav: MenuNav;
   readonly search?: MenuSearch;
+  /**
+   * Endpoints the group's screens cannot work without. While any is not served in this build
+   * (`EndpointClient.isServed`), the function is left out of the user's menus.
+   */
+  readonly requires?: readonly AnyEndpoint[];
   /** The first screen is the menu's entry route: the sidebar links to it. */
   readonly screens: readonly [Screen, ...Screen[]];
 }
@@ -226,6 +235,11 @@ export const SCREEN_TABLE = {
     },
     ROLE_MANAGEMENT: {
       nav: { icon: 'shield', section: 'Tổ chức' },
+      requires: [
+        adminOrgEndpoints.roles,
+        adminOrgEndpoints.saveRole,
+        adminOrgEndpoints.deleteRole,
+      ],
       screens: [
         {
           path: 'admin/roles',

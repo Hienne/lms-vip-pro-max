@@ -1,4 +1,4 @@
-import type { FunctionCode, FunctionInfo } from '@lms/contracts';
+import type { AnyEndpoint, FunctionCode, FunctionInfo } from '@lms/contracts';
 import { FunctionCodeSchema } from '@lms/contracts';
 import type { IconName } from '@lms/ui';
 import { FUNCTION_CODES, menuGroup } from '../routing/screens';
@@ -26,12 +26,24 @@ function isKnown(code: string): code is FunctionCode {
   return FunctionCodeSchema.safeParse(code).success;
 }
 
-/** The functions of `/me` this app has a screen for, in the backend's order (`sortNo`, then `id`). */
+/** Whether this build answers an endpoint: `EndpointClient.isServed`. */
+export type IsServed = (endpoint: AnyEndpoint) => boolean;
+
+const allServed: IsServed = () => true;
+
+/**
+ * The functions of `/me` this app has a screen for and can serve in this build (a group whose
+ * `requires` endpoints are not served is left out), in the backend's order (`sortNo`, then `id`).
+ */
 export function knownFunctions(
   functions: readonly FunctionInfo[],
+  isServed: IsServed = allServed,
 ): readonly FunctionInfo[] {
   return functions
-    .filter((fn) => isKnown(fn.code))
+    .filter(
+      (fn) =>
+        isKnown(fn.code) && (menuGroup(fn.code).requires ?? []).every(isServed),
+    )
     .sort((a, b) => a.sortNo - b.sortNo || a.id - b.id);
 }
 
