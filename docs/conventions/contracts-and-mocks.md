@@ -191,18 +191,17 @@ with `/api/` and never contain a host.
   `libs/mocks/src/lib/<domain>/<domain>.fixtures.ts`. Keep the mockup's people,
   units, courses and the seven learner states, so the README's demo accounts
   still describe the data.
-- `endpointExamples` (`lib/examples.ts`) lists, per endpoint key, a `default`
-  success body, optional `roles` bodies (`learner`, `admin`, ...) and optional
-  `errors`: `ERROR` envelopes keyed by scenario name (`wrongCredentials`,
-  `sessionExpired`, `rejected`…), never by HTTP status. The session-expired one carries the real
-  `CORE-UNAUTHENTICATED`; every other uses the placeholder `MOCK_REFUSAL_CODE` (`lib/error-envelopes.ts`),
-  which is mock-only and unconfirmed with the backend. Messages are the mockup's; titles are
-  placeholders, and field hints the mockup sent as `details` are dropped (the forms validate
-  shape themselves). `MOCK_FIXTURES` is the same data
-  keyed by the endpoint object, built from the registries that the mocks
-  library lists itself. A new domain registers its `xEndpoints` there.
-- `libs/mocks/src/fixtures.spec.ts` parses every example with its schema. A
-  fixture that drifts from the contract fails the test suite.
+- The endpoints the backend lacks are declared `served: 'mock'` on their definition and
+  answered by `FakeBackend` (`lib/backend/fake-backend.ts`) from these fixtures: role CRUD against
+  seeded, stateful roles (a save or delete changes the next list), a user's courses, attempts and
+  activity, the shell's nav counts. Their refusals are `ERROR` envelopes in HTTP 200 using the
+  placeholder `MOCK_REFUSAL_CODE` (`lib/error-envelopes.ts`), which is mock-only and unconfirmed
+  with the backend. Messages are the mockup's; titles are placeholders, and field hints the mockup
+  sent as `details` are dropped (the forms validate shape themselves). Moving an endpoint to the
+  backend is one edit: delete its `served: 'mock'`.
+- `libs/mocks/src/fixtures.spec.ts` checks that `FakeBackend` answers every declared endpoint and
+  that the mock-only reads parse with their schema. A fixture that drifts from the contract fails
+  the test suite.
 - Store and component specs import fixtures from `@lms/mocks` instead of
   inventing inline data.
 - Responses the mockup computes on its fake server (dashboard aggregates, scores,
@@ -215,13 +214,14 @@ with `/api/` and never contain a host.
 `npm start` runs the app against mocks inside the browser; no second process and no OpenAPI
 document. Two switches in `AppConfig` choose, per endpoint, who answers:
 
-- **`mockApi`: endpoints the backend lacks.** `mockApiInterceptor` (`core/dev/mock-api/`) reads the
-  request's `ENDPOINT` tag, finds the endpoint object in `MOCK_FIXTURES` (learning, shell,
-  `adminOrgEndpoints`: the role CRUD screen, the user-detail Courses/Attempts/Activity tabs) and
-  answers `200` with a `SUCCESS` envelope around `roles[role] ?? default`, where `role` is the
-  highest-priority role the signed-in demo user holds. No delay, no state, no per-request error
-  simulation. These endpoints are not on the backend yet.
-- **`mockBackend`: endpoints the backend has.** `MockBackend` extends `FakeBackend`
+- **`mockApi`: endpoints the backend lacks (`served: 'mock'`).** `mockApiInterceptor`
+  (`core/dev/mock-api/`) reads the request's `ENDPOINT` tag and, for an endpoint declared
+  `served: 'mock'` (`adminOrgEndpoints`: the role CRUD screen and the user-detail
+  Courses/Attempts/Activity tabs; `shellEndpoints.navCounts`), has `MockBackend` answer it. A
+  store asks `EndpointClient.isServed(endpoint)` whether the build can answer an endpoint instead
+  of reading `mockApi`, and a menu group lists the endpoints it `requires`: while one is not
+  served the function is left out of the user's menus. These endpoints are not on the backend yet.
+- **`mockBackend`: endpoints the backend has.** `MockBackend` (also the mock-only answerer) extends `FakeBackend`
   (`@lms/mocks/backend`), an in-memory, **stateful** copy of the backend seeded from its data
   (`seed.ts`: the 7 demo users, orgs, teams, roles, the 16 functions). It answers the v1 identity,
   organisation and auth endpoints with the real HTTP status and envelope, so a POST changes what

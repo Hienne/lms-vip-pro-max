@@ -2,7 +2,6 @@
 export * from './lib/backend-responses';
 export * from './lib/envelope';
 export * from './lib/error-envelopes';
-export * from './lib/examples';
 export * from './lib/backend/seed';
 export * from './lib/backend/fake-backend';
 export * from './lib/backend/seed-me';

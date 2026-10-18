@@ -1,10 +1,12 @@
 import {
+  adminOrgEndpoints,
   authV1Endpoints,
   identityEndpoints,
   organizationEndpoints,
   passwordByteLength,
   PASSWORD_MAX_BYTES,
   PASSWORD_MIN_LENGTH,
+  shellEndpoints,
   USER_LIMITS,
   type AnyEndpoint,
   type Envelope,
@@ -13,7 +15,9 @@ import {
   type Me,
   type ManagedRoleGrant,
   type OrganizationInfo,
+  type Role,
   type RoleOption,
+  type SaveRoleCommand,
   type ScopeType,
   type TeamInfo,
   type UserDetail,
@@ -25,7 +29,19 @@ import {
   backendRefusal,
   type BackendResponseKey,
 } from '../backend-responses';
+import {
+  deleteRoleNotPermitted,
+  deleteRoleRejected,
+  roleFixtures,
+  roleMissing,
+  saveRoleRejected,
+  systemRoleLocked,
+  userAttemptFixtures,
+  userAuditFixtures,
+  userCourseFixtures,
+} from '../admin-org/admin-org.fixtures';
 import { envelopeError, envelopeOk } from '../envelope';
+import { navCountsFixtures } from '../shell/shell.fixtures';
 import {
   SEED_FUNCTIONS,
   SEED_GRANTS,
@@ -85,6 +101,15 @@ const ok = (data: unknown, status = 200): FakeReply => ({
 });
 
 const ADMIN_ROLES = ['ADMIN', 'SUPER_ADMIN'];
+
+/** A user with several roles gets the nav counts of the most powerful one. */
+const ROLE_PRIORITY = [
+  'SUPER_ADMIN',
+  'ADMIN',
+  'INSTRUCTOR',
+  'REPORT_VIEWER',
+  'LEARNER',
+];
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 type Handler = (request: FakeRequest) => FakeReply;
@@ -92,7 +117,10 @@ type Handler = (request: FakeRequest) => FakeReply;
 /**
  * The backend's identity and organisation services, in memory, on the demo seed: the same
  * statuses, codes, scoping and PATCH semantics as corebanking-academy, minus what no screen
- * needs (audit, locking, token expiry). One instance is one database; reload the page to reset
+ * needs (audit, locking, token expiry). It also answers the endpoints the backend lacks
+ * (`served: 'mock'`: role CRUD, a user's courses, attempts and activity, the shell's nav counts)
+ * so the app has one mock to talk to; those never check the caller, since a dev build can send
+ * them with a token this database did not issue. One instance is one database; reload the page to reset
  * it. The mock API in the app and the specs both call `handle`.
  */
 export class FakeBackend {
@@ -110,6 +138,11 @@ export class FakeBackend {
   private nextTeamId = Math.max(...SEED_TEAMS.map((t) => t.id)) + 1;
   private nextGrantId = Math.max(...SEED_GRANTS.map((g) => g.grantId)) + 1;
   private nextUserSeq = SEED_USERS.length;
+  private roles: Mutable<Role>[] = roleFixtures.map((r) => ({
+    ...r,
+    menus: [...r.menus],
+  }));
+  private nextRoleSeq = 1;
 
   private readonly handlers = new Map<AnyEndpoint, Handler>([
     [authV1Endpoints.login, (r) => this.login(r)],
@@ -133,23 +166,18 @@ export class FakeBackend {
     [organizationEndpoints.createTeam, (r) => this.createTeam(r)],
     [organizationEndpoints.updateTeam, (r) => this.updateTeam(r)],
     [organizationEndpoints.deleteTeam, (r) => this.deleteTeam(r)],
+    [adminOrgEndpoints.userCourses, () => ok(userCourseFixtures)],
+    [adminOrgEndpoints.userAttempts, () => ok(userAttemptFixtures)],
+    [adminOrgEndpoints.userAudit, () => ok(userAuditFixtures)],
+    [adminOrgEndpoints.roles, () => this.listMockRoles()],
+    [adminOrgEndpoints.saveRole, (r) => this.saveMockRole(r)],
+    [adminOrgEndpoints.deleteRole, (r) => this.deleteMockRole(r)],
+    [shellEndpoints.navCounts, (r) => this.navCounts(r)],
   ]);
 
   /** True for the endpoints this backend answers; the others are not the backend's. */
   answers(endpoint: AnyEndpoint): boolean {
     return this.handlers.has(endpoint);
-  }
-
-  /**
-   * The role codes of the user a token belongs to, so a mock-only endpoint can answer as that
-   * user's role; empty for an unknown token.
-   */
-  roleCodesOf(token: string | null): string[] {
-    const userId = token ? this.tokens.get(token) : undefined;
-    if (!userId) return [];
-    return [
-      ...new Set(this.activeGrants(userId).map((g) => this.roleOf(g).code)),
-    ];
   }
 
   /** Answers one call, or `undefined` when `endpoint` is not the backend's. */
@@ -162,6 +190,88 @@ export class FakeBackend {
       if (error instanceof Refused) return error.reply;
       throw error;
     }
+  }
+
+  // ---- mock-only endpoints: role CRUD, learning tabs, nav counts ----------------------------
+
+  /** A mock refusal: HTTP 200 with the `ERROR` envelope, as the backend answers a business rule. */
+  private refuseMock(body: Envelope): never {
+    throw new Refused({ status: 200, body });
+  }
+
+  /** A role with how many users hold it: counted live for a system role, kept for a custom one. */
+  private withUserCount(role: Mutable<Role>): Role {
+    if (!role.system) return { ...role, menus: [...role.menus] };
+    const roleId = SEED_ROLES.find(
+      (r) => r.code.toLowerCase() === role.id,
+    )?.roleId;
+    const holders = new Set(
+      this.grants
+        .filter((g) => g.active && g.roleId === roleId)
+        .map((g) => g.userId),
+    );
+    return { ...role, menus: [...role.menus], userCount: holders.size };
+  }
+
+  private listMockRoles(): FakeReply {
+    return ok(this.roles.map((r) => this.withUserCount(r)));
+  }
+
+  private saveMockRole(request: FakeRequest): FakeReply {
+    const command = request.body as SaveRoleCommand;
+    const name = command.name.trim();
+    if (!name) return invalid('Tên vai trò không được để trống.');
+    const existing = command.id
+      ? this.roles.find((r) => r.id === command.id)
+      : undefined;
+    if (command.id && !existing) return this.refuseMock(roleMissing);
+    if (existing?.locked) return this.refuseMock(systemRoleLocked);
+    if (
+      this.roles.some(
+        (r) => r !== existing && r.name.toLowerCase() === name.toLowerCase(),
+      )
+    ) {
+      return this.refuseMock(saveRoleRejected);
+    }
+    const fields = {
+      name,
+      description: command.description.trim(),
+      menus: [...command.menus],
+    };
+    if (existing) {
+      Object.assign(existing, fields);
+      return ok(this.withUserCount(existing));
+    }
+    const created: Mutable<Role> = {
+      id: `custom-${this.nextRoleSeq++}`,
+      ...fields,
+      system: false,
+      locked: false,
+      userCount: 0,
+    };
+    this.roles.push(created);
+    return ok(this.withUserCount(created));
+  }
+
+  private deleteMockRole(request: FakeRequest): FakeReply {
+    const role = this.roles.find((r) => r.id === request.params['roleId']);
+    if (!role) return this.refuseMock(roleMissing);
+    if (role.system) return this.refuseMock(deleteRoleNotPermitted);
+    if (this.withUserCount(role).userCount > 0) {
+      return this.refuseMock(deleteRoleRejected);
+    }
+    this.roles = this.roles.filter((r) => r !== role);
+    return ok(true);
+  }
+
+  /** The caller's nav counts by their most powerful role; the learner's for an unknown token. */
+  private navCounts(request: FakeRequest): FakeReply {
+    const userId = request.token ? this.tokens.get(request.token) : undefined;
+    const held = userId
+      ? this.activeGrants(userId).map((g) => this.roleOf(g).code)
+      : [];
+    const role = ROLE_PRIORITY.find((code) => held.includes(code));
+    return ok(navCountsFixtures[role ?? 'LEARNER']);
   }
 
   // ---- identity: who is calling -------------------------------------------------------------

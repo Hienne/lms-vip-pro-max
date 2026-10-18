@@ -1,64 +1,56 @@
 import {
   adminOrgEndpoints,
   authV1Endpoints,
-  EnvelopeSchema,
+  type AnyEndpoint,
   identityEndpoints,
   organizationEndpoints,
   shellEndpoints,
 } from '@lms/contracts';
 import { FakeBackend } from './lib/backend/fake-backend';
-import { MOCK_FIXTURES } from './lib/examples';
 
-describe('fixtures match their contracts', () => {
-  it.each([...MOCK_FIXTURES])(
-    '%# default and role examples parse',
-    (endpoint, examples) => {
-      expect(() => endpoint.response.parse(examples.default)).not.toThrow();
-      for (const [role, body] of Object.entries(examples.roles ?? {})) {
-        expect(() => endpoint.response.parse(body), role).not.toThrow();
-      }
-    },
-  );
+const everyEndpoint: readonly AnyEndpoint[] = [
+  ...Object.values(adminOrgEndpoints),
+  ...Object.values(authV1Endpoints),
+  ...Object.values(identityEndpoints),
+  ...Object.values(organizationEndpoints),
+  ...Object.values(shellEndpoints),
+];
 
-  it.each([...MOCK_FIXTURES])(
-    '%# endpoint-specific errors parse',
-    (_, examples) => {
-      for (const body of Object.values(examples.errors ?? {})) {
-        expect(EnvelopeSchema.parse(body).status).toBe('ERROR');
-      }
-    },
-  );
-
-  it('error examples are keyed by scenario name, not by HTTP status', () => {
-    for (const examples of MOCK_FIXTURES.values()) {
-      for (const scenario of Object.keys(examples.errors ?? {})) {
-        expect(scenario).not.toMatch(/^\d+$/);
-      }
-    }
-  });
-
-  it('answers exactly the endpoints declared served: mock', () => {
-    const mockOnly = [
-      ...Object.values(adminOrgEndpoints),
-      ...Object.values(authV1Endpoints),
-      ...Object.values(identityEndpoints),
-      ...Object.values(organizationEndpoints),
-      ...Object.values(shellEndpoints),
-    ].filter((endpoint) => endpoint.served === 'mock');
-    expect(
-      [...MOCK_FIXTURES.keys()].sort((a, b) => a.path.localeCompare(b.path)),
-    ).toEqual(mockOnly.sort((a, b) => a.path.localeCompare(b.path)));
-  });
-
-  it('keeps the backend endpoints out of the static fixtures and in the fake backend', () => {
+describe('FakeBackend and the endpoint registries', () => {
+  it('answers every endpoint the app declares, the backend ones and the served: mock ones', () => {
     const backend = new FakeBackend();
-    for (const endpoint of [
-      ...Object.values(authV1Endpoints),
-      ...Object.values(identityEndpoints),
-      ...Object.values(organizationEndpoints),
-    ]) {
-      expect(MOCK_FIXTURES.has(endpoint), endpoint.path).toBe(false);
+    for (const endpoint of everyEndpoint) {
       expect(backend.answers(endpoint), endpoint.path).toBe(true);
     }
+  });
+
+  it('declares the endpoints the backend lacks as served: mock', () => {
+    const mock = everyEndpoint
+      .filter((endpoint) => endpoint.served === 'mock')
+      .map((endpoint) => endpoint.path)
+      .sort();
+    expect(mock).toEqual(
+      [...Object.values(adminOrgEndpoints), shellEndpoints.navCounts]
+        .map((endpoint) => endpoint.path)
+        .sort(),
+    );
+  });
+
+  // Role CRUD takes a body and is covered by the FakeBackend spec.
+  it.each(
+    everyEndpoint.filter(
+      (endpoint) =>
+        endpoint.served === 'mock' &&
+        endpoint !== adminOrgEndpoints.saveRole &&
+        endpoint !== adminOrgEndpoints.deleteRole,
+    ),
+  )('answers the read %# with a body its contract parses', (endpoint) => {
+    const reply = new FakeBackend().handle(endpoint, {
+      token: null,
+      params: { userId: '000004' },
+      query: {},
+      body: undefined,
+    });
+    expect(() => endpoint.response.parse(reply?.body.data)).not.toThrow();
   });
 });

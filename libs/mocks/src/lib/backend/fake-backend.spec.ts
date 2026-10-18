@@ -1,7 +1,10 @@
 import {
+  adminOrgEndpoints,
   authV1Endpoints,
   identityEndpoints,
   organizationEndpoints,
+  RoleSchema,
+  shellEndpoints,
   type AnyEndpoint,
   type Me,
   type Page,
@@ -596,6 +599,72 @@ describe('FakeBackend', () => {
       expect(code(patch('3', { code: 'bidv110b8031000' }))).toBe(
         'ORGANIZATION-TEAM_CODE_EXISTS',
       );
+    });
+  });
+
+  describe('the endpoints the backend lacks', () => {
+    const roles = () =>
+      RoleSchema.array().parse(call(adminOrgEndpoints.roles, null).body.data);
+    const save = (body: unknown) =>
+      call(adminOrgEndpoints.saveRole, null, { body });
+    const remove = (roleId: string) =>
+      call(adminOrgEndpoints.deleteRole, null, { params: { roleId } });
+    const draft = {
+      name: 'Kiểm soát',
+      description: 'Xem báo cáo',
+      menus: ['PROFILE', 'REPORTING'],
+    };
+
+    it('lists the five system roles and one custom role, counting the holders of a system role', () => {
+      const list = roles();
+      expect(list.filter((r) => r.system)).toHaveLength(5);
+      expect(list.find((r) => r.id === 'learner')?.userCount).toBeGreaterThan(
+        0,
+      );
+      expect(list.find((r) => r.id === 'content-lead')?.system).toBe(false);
+    });
+
+    it('adds a role that the next list shows', () => {
+      const reply = save(draft);
+      expect(reply.status).toBe(200);
+      const created = RoleSchema.parse(reply.body.data);
+      expect(created).toMatchObject({ ...draft, system: false, userCount: 0 });
+      expect(roles().map((r) => r.id)).toContain(created.id);
+    });
+
+    it('changes a role that the next list shows', () => {
+      save({ ...draft, id: 'content-lead' });
+      expect(roles().find((r) => r.id === 'content-lead')).toMatchObject(draft);
+    });
+
+    it('refuses a locked role, a missing one and a duplicate name', () => {
+      expect(save({ ...draft, id: 'admin' }).body.message).toContain('bị khóa');
+      expect(save({ ...draft, id: 'nope' }).body.message).toContain(
+        'không tồn tại',
+      );
+      expect(save({ ...draft, name: 'học viên' }).body.status).toBe('ERROR');
+      expect(save({ ...draft, name: ' ' }).body.messageCode).toBe(
+        'CORE-VALIDATION_FAILED',
+      );
+      expect(roles()).toHaveLength(6);
+    });
+
+    it('deletes a custom role from the next list, and refuses a system or a missing one', () => {
+      expect(remove('content-lead').body.data).toBe(true);
+      expect(roles().map((r) => r.id)).not.toContain('content-lead');
+      expect(remove('learner').body.status).toBe('ERROR');
+      expect(remove('content-lead').body.status).toBe('ERROR');
+    });
+
+    it("answers the nav counts of the most powerful role of the caller, the learner's for a stranger", () => {
+      const counts = (token: string | null) =>
+        call(shellEndpoints.navCounts, token).body.data;
+      expect(counts(login('giangvien'))).toEqual({
+        notifications: 1,
+        inbox: 3,
+      });
+      expect(counts(login('hocvien'))).toEqual({ notifications: 2, inbox: 0 });
+      expect(counts('not-issued-here')).toEqual({ notifications: 2, inbox: 0 });
     });
   });
 });

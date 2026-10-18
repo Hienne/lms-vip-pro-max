@@ -163,17 +163,16 @@ data export (`exportAll`). The current API-service shape has no way to send
   each parsed by its schema in a spec.
 - The "every endpoint has an example" rule and the error-status cross-checks
   are removed.
-- Exports `MOCK_FIXTURES: ReadonlyMap<AnyEndpoint, EndpointExamples>`, built
-  from the registries that the mocks library lists itself.
+- `MOCK_FIXTURES` was removed: `FakeBackend` answers the `served: 'mock'`
+  endpoints from the fixtures and a stateful role list.
 
 ### In-app dev mock
 
 - `mockApiInterceptor` in `apps/lms/src/app/core/dev/mock-api/`. It reads
-  `req.context.get(ENDPOINT)` and looks it up in `MOCK_FIXTURES` by object
-  identity, then answers `200` with `roles[role] ?? default`, where `role` is
-  `MockScenario.role$()`. No delay, no state, no per-request error
-  simulation. A request without a fixture goes to `next(req)` and logs one
-  `console.warn` per endpoint.
+  `req.context.get(ENDPOINT)` and, for a `served: 'mock'` endpoint, has the
+  in-memory `FakeBackend` answer it (see `contracts-and-mocks.md`). A request
+  nothing answers goes to `next(req)` and logs one `console.warn` per
+  endpoint.
 - Config: `mockScenarios` is renamed `mockApi` (`environment.ts` true;
   staging and production false).
 - **Wiring (fixtures never in staging or production):** only

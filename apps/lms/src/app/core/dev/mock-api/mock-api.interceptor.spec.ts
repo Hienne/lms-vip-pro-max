@@ -11,6 +11,7 @@ import {
 } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 import {
+  adminOrgEndpoints,
   type AnyEndpoint,
   authV1Endpoints,
   defineEndpoint,
@@ -119,6 +120,24 @@ describe('mockApiInterceptor', () => {
       expect(EnvelopeSchema.parse(body).data).toEqual(
         navCountsFixtures['INSTRUCTOR'],
       );
+    });
+
+    it('keeps a saved role: the next list shows it', () => {
+      const answer = (endpoint: AnyEndpoint, body?: unknown) => {
+        let data: unknown;
+        ask(endpoint, endpoint.path, { body }).subscribe(
+          (r) => (data = EnvelopeSchema.parse(r.body).data),
+        );
+        return data as { name: string }[] & { name: string };
+      };
+      answer(adminOrgEndpoints.saveRole, {
+        name: 'Kiểm soát',
+        description: '',
+        menus: ['PROFILE'],
+      });
+      expect(
+        answer(adminOrgEndpoints.roles).map((role) => role.name),
+      ).toContain('Kiểm soát');
     });
 
     it('answers a backend endpoint from the seed with its real status', () => {

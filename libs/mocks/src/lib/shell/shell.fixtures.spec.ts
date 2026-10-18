@@ -1,6 +1,4 @@
 import { NavCountsSchema } from '@lms/contracts';
-import { MOCK_FIXTURES } from '../examples';
-import { shellEndpoints } from '@lms/contracts';
 import { navCountsFixtures } from './shell.fixtures';
 
 describe('shell fixtures', () => {
@@ -22,13 +20,5 @@ describe('shell fixtures', () => {
       notifications: 0,
       inbox: 0,
     });
-  });
-
-  it('is the navCounts example, with one body per backend role', () => {
-    const example = MOCK_FIXTURES.get(shellEndpoints.navCounts);
-    expect(example?.default).toEqual(navCountsFixtures['LEARNER']);
-    expect(Object.keys(example?.roles ?? {}).sort()).toEqual(
-      Object.keys(navCountsFixtures).sort(),
-    );
   });
 });
