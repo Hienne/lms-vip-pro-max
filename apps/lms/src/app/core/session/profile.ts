@@ -1,6 +1,8 @@
 import type { AccountStatus, FunctionCode, RoleGrant } from '@lms/contracts';
 import type { NavSection } from '../menu/menu-catalog';
 
+export type ScopeSummary = 'global' | 'limited';
+
 /** An org or team as the signed-in user's profile names it. */
 export interface Placement {
   readonly id: number;
@@ -27,6 +29,12 @@ export interface Profile {
   readonly team: Placement | null;
   /** Every role grant with its scope, as `/me` lists them. */
   readonly grants: readonly RoleGrant[];
+  /**
+   * `global` for an `ADMIN` or `SUPER_ADMIN` grant at `GLOBAL` scope (the backend's global
+   * administrator), `limited` for everyone else. Display only: screens word their text by it, and
+   * the server enforces the real scope.
+   */
+  readonly scopeSummary: ScopeSummary;
   /** The sidebar: the functions this app has a screen for, grouped by section in the backend's order. */
   readonly nav: readonly NavSection[];
   /** The codes of those functions, for the route guard and the header search. */

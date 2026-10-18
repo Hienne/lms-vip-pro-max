@@ -192,9 +192,7 @@ export class OrgStore {
 
   /** Creating an org and pausing one are for global administrators; the server enforces it. */
   readonly canManageOrgs$ = computed(
-    () =>
-      this.session.user$()?.grants.some((g) => g.scope.type === 'GLOBAL') ??
-      false,
+    () => this.session.user$()?.scopeSummary === 'global',
   );
 
   readonly isSavingOrg$ = this.orgMutation.isPending;

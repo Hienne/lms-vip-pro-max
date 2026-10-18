@@ -25,6 +25,30 @@ describe('toProfile', () => {
     ).not.toContain('ROLE_MANAGEMENT');
   });
 
+  describe('scopeSummary', () => {
+    it('is global for an ADMIN or SUPER_ADMIN at GLOBAL scope', () => {
+      expect(toProfile(seedMe('000001')).scopeSummary).toBe('global');
+      expect(toProfile(seedMe('000002')).scopeSummary).toBe('global');
+    });
+
+    it('is limited for an admin tied to an org and for a learner', () => {
+      expect(toProfile(seedMe('000003')).scopeSummary).toBe('limited');
+      expect(toProfile(seedMe('000004')).scopeSummary).toBe('limited');
+    });
+
+    it('is limited for a non-admin role granted at GLOBAL scope', () => {
+      const me = seedMe('000004');
+      const profile = toProfile({
+        ...me,
+        roleGrants: me.roleGrants.map((grant) => ({
+          ...grant,
+          scope: { ...grant.scope, type: 'GLOBAL' },
+        })),
+      });
+      expect(profile.scopeSummary).toBe('limited');
+    });
+  });
+
   it('ignores a function code the app has no screen for', () => {
     const me = seedMe('000004');
     const profile = toProfile({

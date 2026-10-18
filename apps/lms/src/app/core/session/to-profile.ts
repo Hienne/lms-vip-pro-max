@@ -5,7 +5,20 @@ import {
   knownFunctions,
   navFor,
 } from '../menu/menu-catalog';
-import type { Profile } from './profile';
+import type { Profile, ScopeSummary } from './profile';
+
+/** The roles that make a `GLOBAL` grant a global administrator; the backend's `isGlobalAdmin`. */
+const GLOBAL_ADMIN_ROLES = ['ADMIN', 'SUPER_ADMIN'];
+
+function scopeSummaryOf(grants: Me['roleGrants']): ScopeSummary {
+  return grants.some(
+    (grant) =>
+      grant.scope.type === 'GLOBAL' &&
+      GLOBAL_ADMIN_ROLES.includes(grant.roleCode),
+  )
+    ? 'global'
+    : 'limited';
+}
 
 /**
  * Adapts the backend's `/me` to the `Profile` the app renders. The menus are the functions `/me`
@@ -47,6 +60,7 @@ export function toProfile(me: Me, isServed?: IsServed): Profile {
             name: user.teamName ?? '',
           },
     grants: roleGrants,
+    scopeSummary: scopeSummaryOf(roleGrants),
     nav: navFor(functions),
     menus: functions.map((fn) => fn.code),
     homePath: user.mustChangePassword

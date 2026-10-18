@@ -121,8 +121,7 @@ export class UsersStore {
   /** Sentence under the title; a caller limited to one org is told which. */
   readonly description$ = computed(() => {
     const me = this.me$();
-    const scoped = me && !me.grants.some((g) => g.scope.type === 'GLOBAL');
-    return scoped && me.org
+    return me?.scopeSummary === 'limited' && me.org
       ? `Bạn chỉ thấy và quản lý người dùng thuộc ${me.org.name}.`
       : 'Quản lý tài khoản, vai trò, đơn vị và trạng thái. Tài khoản bị khóa không đăng nhập được.';
   });
