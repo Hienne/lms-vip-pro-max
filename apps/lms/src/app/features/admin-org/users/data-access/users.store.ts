@@ -1,5 +1,18 @@
-import { computed, inject, Injectable, signal } from '@angular/core';
-import { adminOrgEndpoints, type UserListItem } from '@lms/contracts';
+import {
+  computed,
+  inject,
+  Injectable,
+  linkedSignal,
+  signal,
+} from '@angular/core';
+import { ActivatedRoute } from '@angular/router';
+import {
+  identityEndpoints,
+  type AccountStatus,
+  type ListUsersQuery,
+  type Page,
+  type UserSummary,
+} from '@lms/contracts';
 import type { DataTableSort } from '@lms/ui';
 import { serverData } from '../../../../core/data-access/server-data';
 import { EndpointClient } from '../../../../core/http/endpoint-client';
@@ -7,134 +20,134 @@ import { UserEditorStore } from '../../data-access/user-editor.store';
 
 export const USERS_PAGE_SIZE = 10;
 
-const collator = new Intl.Collator('vi');
+/** A table column's key to the sort field the backend accepts. */
+const SORT_FIELD: Readonly<Record<string, string>> = {
+  userId: 'id',
+  fullName: 'fullName',
+};
 
-/** The sortable columns' values; a user who never signed in sorts as the empty string. */
-function sortValue(user: UserListItem, key: string): string {
-  switch (key) {
-    case 'roleName':
-      return user.roleName;
-    case 'unitName':
-      return `${user.unitName} ${user.groupName}`;
-    case 'status':
-      return user.status;
-    case 'lastLoginAt':
-      return user.lastLoginAt ?? '';
-    default:
-      return user.name;
-  }
-}
+/** A list row: the table wants an `id`, the user's own key is the staff code. */
+export type UserRow = UserSummary & { readonly id: string };
 
-/** The users list (the mockup's `users` page): filters, sorting and paging over the server's list. */
+const idParam = (value: string | null): number | undefined => {
+  const id = Number(value);
+  return value && Number.isInteger(id) ? id : undefined;
+};
+
+/**
+ * The users list (the mockup's `users` page): the server filters, sorts and pages, scoped to the
+ * caller. The filters start from the page URL, so the org screen can link to one team's members.
+ */
 @Injectable()
 export class UsersStore {
   private readonly client = inject(EndpointClient);
   private readonly editor = inject(UserEditorStore);
+  private readonly route = inject(ActivatedRoute);
 
   private readonly state = {
     query: signal(''),
-    role: signal(''),
-    unit: signal(''),
-    status: signal(''),
+    roleCode: signal(''),
+    orgId: signal<number | undefined>(
+      idParam(this.route.snapshot.queryParamMap.get('orgId')),
+    ),
+    teamId: signal<number | undefined>(
+      idParam(this.route.snapshot.queryParamMap.get('teamId')),
+    ),
+    status: signal<AccountStatus | ''>(''),
     sort: signal<DataTableSort | null>(null),
     page: signal(1),
+    /** The last page the server sent: the table stays while the next one loads. */
+    shown: linkedSignal<
+      Page<UserSummary> | undefined,
+      Page<UserSummary> | undefined
+    >({
+      source: () => this.listData.value(),
+      computation: (next, previous) => next ?? previous?.value,
+    }),
   };
+
+  /** What the server is asked for; the 1-based table page is the backend's 0-based `page`. */
+  private readonly request = computed((): ListUsersQuery => {
+    const { query, roleCode, orgId, teamId, status, sort, page } = this.state;
+    const chosen = status();
+    const order = sort();
+    const field = order ? SORT_FIELD[order.key] : undefined;
+    return {
+      page: page() - 1,
+      size: USERS_PAGE_SIZE,
+      ...(query().trim() ? { q: query().trim().slice(0, 100) } : {}),
+      ...(roleCode() ? { roleCode: roleCode() } : {}),
+      ...(orgId() !== undefined ? { orgId: orgId() } : {}),
+      ...(teamId() !== undefined ? { teamId: teamId() } : {}),
+      ...(chosen ? { status: chosen } : {}),
+      ...(field && order ? { sort: `${field},${order.dir}` } : {}),
+    };
+  });
 
   /** Reloads on the editor's token, so every accepted mutation refreshes the list. */
   private readonly listData = serverData(
-    () => this.client.call(adminOrgEndpoints.users),
-    {
-      reloadOn: this.editor.changes,
-    },
+    (query: ListUsersQuery) =>
+      this.client.call(identityEndpoints.listUsers, { query }),
+    { params: () => this.request(), reloadOn: this.editor.changes },
   );
 
   readonly query$ = this.state.query.asReadonly();
-  readonly role$ = this.state.role.asReadonly();
-  readonly unit$ = this.state.unit.asReadonly();
+  readonly roleCode$ = this.state.roleCode.asReadonly();
+  readonly orgId$ = this.state.orgId.asReadonly();
+  readonly teamId$ = this.state.teamId.asReadonly();
   readonly status$ = this.state.status.asReadonly();
   readonly sort$ = this.state.sort.asReadonly();
+  readonly page$ = this.state.page.asReadonly();
 
-  readonly meta$ = this.editor.meta$;
+  readonly roles$ = this.editor.roles$;
+  /** Role names by code; a role the caller cannot list is shown by its code. */
+  readonly roleNames$ = computed(() =>
+    Object.fromEntries(this.roles$().map((role) => [role.code, role.name])),
+  );
+  readonly orgs$ = this.editor.orgs$;
   readonly me$ = this.editor.me$;
-  readonly isLoading$ = this.listData.isLoading;
+  readonly isLoading$ = computed(
+    () => this.listData.isLoading() && this.state.shown() === undefined,
+  );
   readonly loadError$ = this.listData.error;
 
-  /** Sentence under the title; a caller limited to one unit is told which. */
+  readonly rows$ = computed(
+    (): readonly UserRow[] =>
+      this.state.shown()?.items.map((user) => ({ ...user, id: user.userId })) ??
+      [],
+  );
+  readonly total$ = computed(() => this.state.shown()?.totalElements ?? 0);
+
+  /** Sentence under the title; a caller limited to one org is told which. */
   readonly description$ = computed(() => {
-    const scope = this.editor.me$()?.scopeUnitId;
-    const unit = this.editor.meta$()?.allUnits.find((u) => u.id === scope);
-    return unit
-      ? `Bạn là quản trị viên đơn vị — chỉ thấy và quản lý người dùng thuộc ${unit.name}.`
+    const me = this.me$();
+    return me?.scopeSummary === 'limited' && me.org
+      ? `Bạn chỉ thấy và quản lý người dùng thuộc ${me.org.name}.`
       : 'Quản lý tài khoản, vai trò, đơn vị và trạng thái. Tài khoản bị khóa không đăng nhập được.';
   });
 
-  /** Roles present in the list, for the role filter. */
-  readonly roleOptions$ = computed(() => {
-    const names = new Map(
-      (this.listData.value() ?? []).map((u) => [u.roleId, u.roleName]),
-    );
-    return [...names]
-      .map(([value, label]) => ({ value, label }))
-      .sort((a, b) => collator.compare(a.label, b.label));
-  });
-
-  private readonly filtered = computed(() => {
-    const query = this.state.query().trim().toLowerCase();
-    const role = this.state.role();
-    const unit = this.state.unit();
-    const status = this.state.status();
-    return (this.listData.value() ?? []).filter(
-      (u) =>
-        (!query ||
-          `${u.name} ${u.email} ${u.staffCode}`
-            .toLowerCase()
-            .includes(query)) &&
-        (!role || u.roleId === role) &&
-        (!unit || u.unitId === unit) &&
-        (!status || u.status === status),
-    );
-  });
-
-  private readonly sorted = computed(() => {
-    const sort = this.state.sort();
-    if (!sort) return this.filtered();
-    const sign = sort.dir === 'asc' ? 1 : -1;
-    return [...this.filtered()].sort(
-      (a, b) =>
-        sign * collator.compare(sortValue(a, sort.key), sortValue(b, sort.key)),
-    );
-  });
-
-  readonly total$ = computed(() => this.sorted().length);
-  /** The requested page, held inside the page count after a filter shrinks the list. */
-  readonly page$ = computed(() =>
-    Math.min(
-      this.state.page(),
-      Math.max(1, Math.ceil(this.total$() / USERS_PAGE_SIZE)),
-    ),
-  );
-  readonly rows$ = computed(() => {
-    const start = (this.page$() - 1) * USERS_PAGE_SIZE;
-    return this.sorted().slice(start, start + USERS_PAGE_SIZE);
-  });
-
-  private setQuery(value: string): void {
-    this.state.query.set(value);
+  // Setters: the only writers of state
+  private setQuery(query: string): void {
+    this.state.query.set(query);
   }
 
-  private setRole(value: string): void {
-    this.state.role.set(value);
+  private setRoleCode(roleCode: string): void {
+    this.state.roleCode.set(roleCode);
   }
 
-  private setUnit(value: string): void {
-    this.state.unit.set(value);
+  private setOrgId(orgId: number | undefined): void {
+    this.state.orgId.set(orgId);
   }
 
-  private setStatus(value: string): void {
-    this.state.status.set(value);
+  private setTeamId(teamId: number | undefined): void {
+    this.state.teamId.set(teamId);
   }
 
-  private setSort(sort: DataTableSort | null): void {
+  private setStatus(status: AccountStatus | ''): void {
+    this.state.status.set(status);
+  }
+
+  private setSort(sort: DataTableSort): void {
     this.state.sort.set(sort);
   }
 
@@ -142,28 +155,36 @@ export class UsersStore {
     this.state.page.set(page);
   }
 
+  // Commands: a changed filter or sort starts again at the first page
   search(query: string): void {
     this.setQuery(query);
     this.setPage(1);
   }
 
-  filterRole(roleId: string): void {
-    this.setRole(roleId);
+  filterRole(roleCode: string): void {
+    this.setRoleCode(roleCode);
     this.setPage(1);
   }
 
-  filterUnit(unitId: string): void {
-    this.setUnit(unitId);
+  filterOrg(orgId: string): void {
+    this.setOrgId(idParam(orgId || null));
+    this.setTeamId(undefined);
+    this.setPage(1);
+  }
+
+  clearTeam(): void {
+    this.setTeamId(undefined);
     this.setPage(1);
   }
 
   filterStatus(status: string): void {
-    this.setStatus(status);
+    this.setStatus(status as AccountStatus | '');
     this.setPage(1);
   }
 
   sortBy(sort: DataTableSort): void {
     this.setSort(sort);
+    this.setPage(1);
   }
 
   goToPage(page: number): void {

@@ -20,12 +20,12 @@
     >
   </div>
   <nav aria-label="Điều hướng chính">
-    @for (section of sections(); track section.section) {
+    @for (section of nav(); track section.section) {
     <div class="sidebar__section" aria-hidden="true">
       <span class="sidebar__label">{{ section.section }}</span>
     </div>
     <ul class="sidebar__list" [attr.aria-label]="section.section">
-      @for (item of section.items; track item.href) {
+      @for (item of section.items; track item.code) {
       <li>
         <a
           class="sidebar__link"
@@ -35,13 +35,6 @@
         >
           <ui-icon [name]="item.icon" />
           <span class="sidebar__label">{{ item.label }}</span>
-          @if (item.badge === 'inbox' && inboxCount() > 0) {
-          <span
-            class="sidebar__badge"
-            [attr.aria-label]="inboxCount() + ' mục mới'"
-            >{{ inboxCount() }}</span
-          >
-          }
         </a>
       </li>
       }

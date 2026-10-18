@@ -6,7 +6,7 @@ import {
   validateStandardSchema,
 } from '@angular/forms/signals';
 import { RouterLink } from '@angular/router';
-import { type LoginV1Command, LoginV1CommandSchema } from '@lms/contracts';
+import { type LoginV1Command } from '@lms/contracts';
 import {
   Alert,
   Button,
@@ -18,6 +18,7 @@ import {
   Mai,
 } from '@lms/ui';
 import { LoginStore } from './data-access/login.store';
+import { LoginFormSchema } from './login.form';
 
 /** The alert's heading when the backend sent no title for the failure. */
 const FAILURE_HEADING = 'Không đăng nhập được';
@@ -64,7 +65,7 @@ export class Login {
     password: '',
   });
   protected readonly loginForm = form(this.model, (path) => {
-    validateStandardSchema(path, LoginV1CommandSchema);
+    validateStandardSchema(path, LoginFormSchema);
   });
 
   protected togglePassword(): void {
@@ -74,7 +75,8 @@ export class Login {
   protected onSubmit(event: Event): void {
     event.preventDefault();
     void submit(this.loginForm, async () => {
-      this.store.signIn(this.model());
+      const { username, password } = this.model();
+      this.store.signIn({ username: username.trim(), password });
     });
   }
 }

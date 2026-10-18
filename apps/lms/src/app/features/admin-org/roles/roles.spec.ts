@@ -2,12 +2,7 @@ import { HttpTestingController } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
-import {
-  envelopeError,
-  envelopeOk,
-  profileFixtures,
-  roleFixtures,
-} from '@lms/mocks';
+import { envelopeError, envelopeOk, roleFixtures } from '@lms/mocks';
 import { createAppRoutes } from '../../../app.routes';
 import {
   parseAppConfig,
@@ -18,6 +13,7 @@ import { provideEnvelopeHttpClient } from '../../../core/http/http.testing';
 import {
   FakeSessionStore,
   fakeSession,
+  seedProfile,
 } from '../../../core/session/session.testing';
 import { SessionStore } from '../../../core/session/session.store';
 
@@ -51,7 +47,7 @@ describe('Roles', () => {
   }
 
   async function open() {
-    fakeSession().user.set(profileFixtures['admin']);
+    fakeSession().user.set(seedProfile('000002'));
     harness = await RouterTestingHarness.create();
     await harness.navigateByUrl('/admin/roles');
     await settle();
@@ -97,7 +93,11 @@ describe('Roles', () => {
     await settle();
   }
 
-  const [learner, , admin, , custom] = roleFixtures;
+  const role = (id: string) =>
+    roleFixtures.find((r) => r.id === id) as (typeof roleFixtures)[number];
+  const learner = role('learner');
+  const admin = role('admin');
+  const custom = role('content-lead');
 
   it('lists every role with its kind, users and menus by their sidebar names', async () => {
     await open();
@@ -127,7 +127,7 @@ describe('Roles', () => {
 
   it('disables deleting a custom role that users still hold', async () => {
     const held = { ...custom, userCount: 2 };
-    fakeSession().user.set(profileFixtures['admin']);
+    fakeSession().user.set(seedProfile('000002'));
     harness = await RouterTestingHarness.create();
     await harness.navigateByUrl('/admin/roles');
     await settle();
@@ -148,7 +148,7 @@ describe('Roles', () => {
     await settle();
     expect(dialog()?.textContent).toContain(`Sửa vai trò ${custom.name}`);
     expect(inputOf('Tên vai trò').value).toBe(custom.name);
-    expect(dialog()?.querySelectorAll('input[type=checkbox]')).toHaveLength(22);
+    expect(dialog()?.querySelectorAll('input[type=checkbox]')).toHaveLength(16);
     expect(box('Khóa học').checked).toBe(true);
     expect(box('Người dùng').checked).toBe(false);
   });
@@ -173,7 +173,7 @@ describe('Roles', () => {
     expect(post.request.body).toEqual({
       name: 'Kiểm soát',
       description: 'Xem báo cáo',
-      menus: ['reports'],
+      menus: ['REPORTING'],
     });
     post.flush(envelopeOk(custom));
     await settle();
@@ -188,15 +188,15 @@ describe('Roles', () => {
     button(card(custom.name), 'Sửa')?.click();
     await settle();
     await check(box('Khóa học'), false);
-    await check(box('Nhập dữ liệu'), true);
+    await check(box('Tiến độ của tôi'), true);
     button(dialog() as HTMLElement, 'Lưu')?.click();
     await settle();
     const post = backend.expectOne('/api/admin/roles');
     expect(post.request.body.id).toBe(custom.id);
     expect([...post.request.body.menus].sort()).toEqual(
       [
-        ...custom.menus.filter((m: string) => m !== 'content.courses'),
-        'content.import',
+        ...custom.menus.filter((m: string) => m !== 'COURSE_MANAGEMENT'),
+        'LEARNING_PROGRESS',
       ].sort(),
     );
     post.flush(envelopeOk(custom));

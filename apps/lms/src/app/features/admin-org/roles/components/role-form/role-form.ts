@@ -11,7 +11,7 @@ import {
   submit,
   validateStandardSchema,
 } from '@angular/forms/signals';
-import type { MenuKey, Role, SaveRoleCommand } from '@lms/contracts';
+import type { FunctionCode, Role, SaveRoleCommand } from '@lms/contracts';
 import { Checkbox, Field, Input, Textarea } from '@lms/ui';
 import { allSections } from '../../../../../core/menu/menu-catalog';
 import { RoleFormSchema, toRoleFormValue } from './role-form.schema';
@@ -41,7 +41,7 @@ export class RoleForm {
 
   protected readonly chosen = computed(() => new Set(this.model().menus));
 
-  protected toggle(key: MenuKey, on: boolean): void {
+  protected toggle(key: FunctionCode, on: boolean): void {
     this.model.update((value) => ({
       ...value,
       menus: on

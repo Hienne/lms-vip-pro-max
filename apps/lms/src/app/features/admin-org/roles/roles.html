@@ -1,7 +1,7 @@
 <ui-page-header
   eyebrow="Tổ chức"
   title="Vai trò & phân quyền"
-  description="Mỗi vai trò là một tập các menu. Người dùng có quyền vào menu nào thì được toàn quyền thao tác trên menu đó."
+  description="Mỗi vai trò là một tập các chức năng. Người dùng có quyền vào chức năng nào thì được thao tác trên chức năng đó."
 >
   <div slot="actions">
     <button uiButton variant="primary" (click)="store.edit(null)">
@@ -20,8 +20,8 @@
 <div class="roles__loading"><span uiSpinner></span></div>
 } @else {
 <ui-alert tone="info" [announce]="false" class="roles__note">
-  Mỗi người dùng có đúng một vai trò. Phạm vi dữ liệu (toàn hệ thống hay một đơn
-  vị) đặt riêng cho từng người dùng và do máy chủ kiểm tra.
+  Một người dùng có thể giữ nhiều vai trò. Phạm vi dữ liệu (toàn hệ thống, đơn
+  vị, nhóm hoặc cá nhân) đặt riêng cho từng lần cấp và do máy chủ kiểm tra.
 </ui-alert>
 @if (store.roles$().length) {
 <div class="grid-2">

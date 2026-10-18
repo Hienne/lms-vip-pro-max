@@ -36,7 +36,6 @@ import {
   LOCAL_STORAGE,
   type PreferenceStorage,
 } from '../../../core/storage/local-storage';
-import { roleText } from '../../../shared/status/role-badge';
 
 /** Which frame surrounds the page: sidebar and header, the plain focus frame, or nothing. */
 export type Chrome = 'app' | 'focus' | 'bare';
@@ -126,16 +125,18 @@ export class ShellStore {
   });
 
   readonly user$ = this.session.user$;
-  readonly roleText$ = computed(() => {
-    const user = this.session.user$();
-    return user ? roleText(user) : '';
-  });
+  readonly roleText$ = computed(() => this.session.user$()?.roleText ?? '');
 
-  /** Reloaded after sign-in and on every navigation, as the mockup refreshes its badges. */
+  /**
+   * Reloaded after sign-in and on every navigation, as the mockup refreshes its badges. The
+   * backend has no such endpoint yet, so it is only asked while the endpoint is served.
+   */
   private readonly countsResource = rxResource({
     params: () => {
       const user = this.session.user$();
-      return user ? { userId: user.id, path: this.path$() } : undefined;
+      return user && this.client.isServed(shellEndpoints.navCounts)
+        ? { userId: user.userId, path: this.path$() }
+        : undefined;
     },
     stream: () => this.client.call(shellEndpoints.navCounts),
   });
@@ -150,7 +151,6 @@ export class ShellStore {
   });
 
   readonly unread$ = computed(() => this.counts().notifications);
-  readonly inboxCount$ = computed(() => this.counts().inbox);
 
   /** The router outlet's `activate` and `deactivate` events keep track of the current page. */
   activated(page: unknown): void {

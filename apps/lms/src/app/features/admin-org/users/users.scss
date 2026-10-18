@@ -39,3 +39,8 @@
     color: ui.color(text-muted);
   }
 }
+
+.users__roles {
+  @include ui.row(1);
+  flex-wrap: wrap;
+}

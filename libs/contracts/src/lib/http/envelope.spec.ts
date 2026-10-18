@@ -4,7 +4,7 @@ const success = {
   responseId: '53ed5e25-0d34-46e0-84ee-ce65ce9c9b7d',
   timestamp: '2026-10-16T08:04:34.801128100Z',
   status: 'SUCCESS',
-  messageCode: 'CORE-0000',
+  messageCode: 'CORE-SUCCESS',
   message: 'OK',
   messageTitle: 'Success',
   data: { id: 'a' },
@@ -19,7 +19,7 @@ describe('EnvelopeSchema', () => {
     const body = {
       ...success,
       status: 'ERROR',
-      messageCode: 'CORE-0401',
+      messageCode: 'CORE-UNAUTHENTICATED',
       data: null,
     };
     expect(EnvelopeSchema.parse(body).status).toBe('ERROR');
@@ -41,7 +41,10 @@ describe('EnvelopeSchema', () => {
 });
 
 describe('MESSAGE_CODE_KIND', () => {
-  it('branches only on the authentication code', () => {
-    expect(MESSAGE_CODE_KIND).toEqual({ 'CORE-0401': 'unauthorized' });
+  it('branches on the authentication and permission codes', () => {
+    expect(MESSAGE_CODE_KIND).toEqual({
+      'CORE-UNAUTHENTICATED': 'unauthorized',
+      'CORE-ACCESS_DENIED': 'forbidden',
+    });
   });
 });

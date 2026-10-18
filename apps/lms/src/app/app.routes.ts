@@ -3,6 +3,7 @@ import type { AppConfig } from './core/config/app-config';
 import { authGuard } from './core/routing/auth.guard';
 import { unsavedChangesGuard } from './core/routing/unsaved-changes.guard';
 import { menuGuard } from './core/routing/menu.guard';
+import { passwordChangeGuard } from './core/routing/password-change.guard';
 import {
   HOME_META,
   NOT_FOUND_META,
@@ -35,7 +36,7 @@ function toRoute(entry: ScreenEntry): Route {
     pathMatch: 'full',
     title: screen.title,
     data: routeData(metaOf(entry)),
-    canMatch: screen.public ? [] : [authGuard, menuGuard],
+    canMatch: screen.public ? [] : [authGuard, passwordChangeGuard, menuGuard],
     canActivate: screen.guestOnly ? [guestGuard] : [],
     canDeactivate: [unsavedChangesGuard],
     loadComponent: screen.load ?? placeholder,

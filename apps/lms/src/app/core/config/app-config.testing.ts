@@ -9,6 +9,7 @@ export function testAppConfig(
     production: false,
     apiBaseUrl: '',
     mockApi: false,
+    mockBackend: false,
     devTools: true,
     ...overrides,
   };

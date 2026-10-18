@@ -1,9 +1,9 @@
-import { MenuKeySchema } from '@lms/contracts';
+import { FunctionCodeSchema } from '@lms/contracts';
 import { z } from 'zod';
 
 /** What the menu guard hands the 403 page through navigation state. */
 export const ForbiddenStateSchema = z.object({
   path: z.string(),
-  menu: MenuKeySchema,
+  menu: FunctionCodeSchema,
 });
 export type ForbiddenState = z.infer<typeof ForbiddenStateSchema>;

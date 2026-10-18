@@ -2,27 +2,31 @@
 <ui-page-header
   eyebrow="Tài khoản"
   title="Hồ sơ cá nhân"
-  description="Thông tin tổ chức và vai trò do quản trị viên quản lý — bạn chỉ sửa được thông tin cá nhân."
+  description="Thông tin tổ chức và phân quyền do quản trị viên quản lý — bạn chỉ sửa được thông tin cá nhân."
 />
 <div class="stack stack--gap-5">
   <section uiCard padded class="profile__summary">
-    <ui-avatar [name]="user.name" size="xl" />
+    <ui-avatar [name]="user.fullName" size="xl" />
     <div class="grow stack stack--gap-2">
-      <h2>{{ user.name }}</h2>
+      <h2>{{ user.fullName }}</h2>
       <div class="row">
-        <app-role-badge
-          [roleId]="user.roleId"
-          [name]="user.roleName"
-          [scoped]="scopedAdmin()"
-        />
+        @for (role of store.roles$(); track role.code) {
+        <app-role-badge [code]="role.code" [name]="role.name" />
+        } @empty {
+        <span uiBadge outline>Chưa được cấp vai trò</span>
+        }
         <app-account-status [status]="user.status" />
         <span uiBadge outline
-          ><ui-icon name="key" size="sm" />Mã cán bộ {{ user.staffCode }}</span
+          ><ui-icon name="key" size="sm" />Mã cán bộ {{ user.userId }}</span
+        >
+        <span uiBadge outline
+          >{{ user.authProvider === 'SSO' ? 'Tài khoản SSO' : 'Tài khoản nội bộ'
+          }}</span
         >
       </div>
       <span class="profile__meta"
-        >{{ user.email }} · Tham gia {{ user.joinedAt | fmtDate }} · Đăng nhập
-        gần nhất {{ user.lastLoginAt | fmtRelative }}</span
+        >{{ user.username }}@if (user.email) { · {{ user.email }}}@if
+        (user.positionName) { · {{ user.positionName }}}</span
       >
     </div>
   </section>
@@ -31,23 +35,44 @@
     <section uiCard>
       <div uiCardHeader><h2>Thông tin cá nhân</h2></div>
       <div uiCardBody>
+        @if (store.readOnly$()) {
+        <ui-alert [announce]="false"
+          >Tài khoản SSO được đồng bộ từ hệ thống nguồn nên không sửa được ở
+          đây.</ui-alert
+        >
+        }
         <form class="stack" novalidate (submit)="onSubmit($event)">
           <ui-field label="Họ và tên" required>
-            <input uiInput [formField]="profileForm.name" />
+            <input
+              uiInput
+              autocomplete="name"
+              [formField]="profileForm.fullName"
+            />
+          </ui-field>
+          <ui-field label="Email">
+            <input
+              uiInput
+              type="email"
+              autocomplete="email"
+              [formField]="profileForm.email"
+            />
           </ui-field>
           <ui-field label="Chức danh">
-            <input uiInput [formField]="profileForm.title" />
+            <input uiInput [formField]="profileForm.positionName" />
           </ui-field>
+          @if (!store.readOnly$()) {
           <div class="profile__actions">
             <button
               uiButton
               variant="primary"
               type="submit"
-              [disabled]="store.isSaving$()"
+              [busy]="store.isSaving$()"
+              [disabled]="unchanged()"
             >
               Lưu thay đổi
             </button>
           </div>
+          }
         </form>
       </div>
     </section>
@@ -58,30 +83,36 @@
         <dl class="stack stack--gap-3">
           <div class="row-between">
             <dt class="profile__term">Đơn vị</dt>
-            <dd class="profile__value">{{ user.unitName }}</dd>
-          </div>
-          <div class="row-between">
-            <dt class="profile__term">Phòng / nhóm</dt>
-            <dd class="profile__value">{{ user.groupName }}</dd>
-          </div>
-          <div class="row-between">
-            <dt class="profile__term">Vai trò</dt>
             <dd class="profile__value">
-              {{ user.roleName }}{{ scopedAdmin() ? ' đơn vị' : '' }}
+              {{ user.org ? user.org.name : 'Chưa gán đơn vị' }}
             </dd>
           </div>
           <div class="row-between">
-            <dt class="profile__term">Phạm vi dữ liệu</dt>
-            <dd class="profile__value">{{ user.scopeName }}</dd>
+            <dt class="profile__term">Nhóm</dt>
+            <dd class="profile__value">
+              {{ user.team ? user.team.name : 'Chưa gán nhóm' }}
+            </dd>
           </div>
         </dl>
         <hr class="profile__rule" />
-        <h3 class="profile__subhead">Menu được cấp</h3>
-        <ul class="profile__menus">
-          @for (label of menuLabels(); track label) {
-          <li><span uiBadge tone="primary">{{ label }}</span></li>
+        <h3 class="profile__subhead">Phân quyền</h3>
+        <ul class="profile__grants">
+          @for (grant of store.grants$(); track $index) {
+          <li>
+            <strong>{{ grant.roleName }}</strong
+            ><span class="profile__term"> · {{ grant.scope }}</span>
+          </li>
           } @empty {
-          <li class="profile__term">Vai trò này chưa được cấp menu nào.</li>
+          <li class="profile__term">Chưa có phân quyền nào.</li>
+          }
+        </ul>
+        <hr class="profile__rule" />
+        <h3 class="profile__subhead">Chức năng được cấp</h3>
+        <ul class="profile__menus">
+          @for (item of store.menuItems$(); track item.code) {
+          <li><span uiBadge tone="primary">{{ item.label }}</span></li>
+          } @empty {
+          <li class="profile__term">Chưa được cấp chức năng nào.</li>
           }
         </ul>
       </div>
@@ -91,10 +122,14 @@
   <section uiCard>
     <div uiCardHeader><h2>Đổi mật khẩu</h2></div>
     <div uiCardBody>
-      @for (round of [store.passwordChanges$()]; track round) {
+      @if (user.authProvider === 'SSO') {
+      <ui-alert [announce]="false"
+        >Tài khoản SSO đổi mật khẩu ở hệ thống nguồn.</ui-alert
+      >
+      } @else {
       <app-password-form
-        [busy]="store.isChangingPassword$()"
-        (submitted)="store.changePassword($event)"
+        [busy]="password.isChanging$()"
+        (submitted)="password.change($event)"
       />
       }
     </div>

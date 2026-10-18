@@ -8,5 +8,6 @@ export const shellEndpoints = {
     method: 'get',
     path: '/api/me/nav-counts',
     response: NavCountsSchema,
+    served: 'mock',
   }),
 } as const;

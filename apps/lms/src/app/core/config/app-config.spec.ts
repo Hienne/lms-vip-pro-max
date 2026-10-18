@@ -14,6 +14,7 @@ const valid: AppConfigInput = {
   production: false,
   apiBaseUrl: '',
   mockApi: true,
+  mockBackend: true,
   devTools: true,
 };
 

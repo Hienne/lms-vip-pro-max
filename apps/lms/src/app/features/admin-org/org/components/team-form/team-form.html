@@ -1,0 +1,11 @@
+<form id="team-form" class="stack" novalidate (submit)="onSubmit($event)">
+  <ui-field label="Tên nhóm" required>
+    <input uiInput [formField]="teamForm.name" />
+  </ui-field>
+  <ui-field label="Mã nhóm">
+    <input uiInput [formField]="teamForm.code" />
+  </ui-field>
+  <ui-field label="Mô tả">
+    <textarea uiTextarea rows="3" [formField]="teamForm.description"></textarea>
+  </ui-field>
+</form>

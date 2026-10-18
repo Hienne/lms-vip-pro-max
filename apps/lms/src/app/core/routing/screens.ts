@@ -1,5 +1,9 @@
 import type { Route } from '@angular/router';
-import type { MenuKey } from '@lms/contracts';
+import {
+  adminOrgEndpoints,
+  type AnyEndpoint,
+  type FunctionCode,
+} from '@lms/contracts';
 import type { IconName } from '@lms/ui';
 import type { Layout, RouteMeta } from './route-table';
 
@@ -14,6 +18,11 @@ export interface Screen {
   /** The mockup page this route will become; the placeholder names it. */
   readonly mockupPage: string;
   readonly layout?: Layout;
+  /**
+   * Stays reachable for a user who must change a temporary password; every other screen is
+   * closed to them (the backend refuses its calls with IDENTITY-PASSWORD_CHANGE_REQUIRED).
+   */
+  readonly passwordChange?: boolean;
   /** Reachable without signing in. */
   readonly public?: boolean;
   /** Only for visitors: a signed-in user is sent to their home (the login page). */
@@ -27,8 +36,6 @@ export interface MenuNav {
   readonly section: string;
   /** Count shown beside the label; the shell fills it from the server's nav counts. */
   readonly badge?: 'inbox';
-  /** Sidebar wording, where it differs from the title of the entry screen. */
-  readonly label?: string;
 }
 
 /** A list the header search can fill: the menu's entry screen, or `href` for a parametrised one. */
@@ -40,37 +47,48 @@ export interface MenuSearch {
 export interface MenuGroup {
   readonly nav: MenuNav;
   readonly search?: MenuSearch;
+  /**
+   * Endpoints the group's screens cannot work without. While any is not served in this build
+   * (`EndpointClient.isServed`), the function is left out of the user's menus.
+   */
+  readonly requires?: readonly AnyEndpoint[];
   /** The first screen is the menu's entry route: the sidebar links to it. */
   readonly screens: readonly [Screen, ...Screen[]];
 }
 
 /**
- * Every screen with a path, declared once and grouped by the menu that grants it. A screen's menu
- * is the group it is written in; group order is sidebar order, and the first screen of a group is
- * where its sidebar entry links to. The mockup's `routes[]`
+ * Every screen with a path, declared once. A screen of a **menu group** is opened by the backend
+ * function it is written under (`functions.code`, which `/me` lists for the signed-in user); the
+ * first screen of a group is where the sidebar links to. Group order here is not the sidebar
+ * order: the sidebar follows the backend's `sortNo`. The **open** screens belong to no function:
+ * any signed-in user may open them, and they are not in the sidebar. The mockup's `routes[]`
  * (core/router.js) is the spec. `/` (role home), `/design-system`, the dev routes and the
  * not-found route have their own entries in `app.routes.ts`.
  */
 export const SCREEN_TABLE = {
   menus: {
-    'learn.home': {
-      nav: { icon: 'house', section: 'Học tập' },
+    PROFILE: {
+      nav: { icon: 'user', section: 'Tài khoản' },
+      screens: [
+        {
+          path: 'profile',
+          title: 'Hồ sơ cá nhân',
+          mockupPage: 'profile',
+          load: () =>
+            import('../../features/account/profile/profile').then(
+              (m) => m.Profile,
+            ),
+        },
+      ],
+    },
+    COURSE_LEARNING: {
+      nav: { icon: 'library', section: 'Học tập' },
+      search: { href: 'catalog' },
       screens: [
         {
           path: 'learn',
           title: 'Trang chủ học tập',
           mockupPage: 'dashboard',
-        },
-      ],
-    },
-    'learn.catalog': {
-      nav: { icon: 'library', section: 'Học tập' },
-      search: {},
-      screens: [
-        {
-          path: 'catalog',
-          title: 'Danh mục khóa học',
-          mockupPage: 'catalog',
         },
         {
           path: 'course/:id',
@@ -82,6 +100,26 @@ export const SCREEN_TABLE = {
           title: 'Bài học',
           mockupPage: 'lesson',
           layout: 'focus',
+        },
+      ],
+    },
+    LEARNING_PROGRESS: {
+      nav: { icon: 'chart-column', section: 'Học tập' },
+      screens: [
+        {
+          path: 'progress',
+          title: 'Tiến độ của tôi',
+          mockupPage: 'progress',
+        },
+      ],
+    },
+    QUIZ_TAKING: {
+      nav: { icon: 'notebook-pen', section: 'Học tập' },
+      screens: [
+        {
+          path: 'quiz',
+          title: 'Làm bài kiểm tra',
+          mockupPage: 'quizHub',
         },
         {
           path: 'quiz/:id',
@@ -99,104 +137,14 @@ export const SCREEN_TABLE = {
           title: 'Lịch sử thi',
           mockupPage: 'quizAttempts',
         },
-      ],
-    },
-    'learn.progress': {
-      nav: { icon: 'chart-column', section: 'Học tập' },
-      screens: [
         {
-          path: 'progress',
-          title: 'Tiến độ của tôi',
-          mockupPage: 'progress',
+          path: 'quiz/:id/result/:attemptId',
+          title: 'Kết quả bài kiểm tra',
+          mockupPage: 'quizResult',
         },
       ],
     },
-    'learn.leaderboard': {
-      nav: { icon: 'trophy', section: 'Học tập' },
-      screens: [
-        {
-          path: 'leaderboard',
-          title: 'Bảng xếp hạng',
-          mockupPage: 'leaderboard',
-        },
-      ],
-    },
-    'learn.assistant': {
-      nav: { icon: 'sparkles', section: 'Công cụ học' },
-      screens: [
-        {
-          path: 'assistant',
-          title: 'Trợ lý AI',
-          mockupPage: 'assistant',
-        },
-      ],
-    },
-    'learn.flashcards': {
-      nav: { icon: 'layers', section: 'Công cụ học' },
-      screens: [
-        {
-          path: 'flashcards',
-          title: 'Flashcard ôn tập',
-          mockupPage: 'flashcards',
-        },
-      ],
-    },
-    'learn.saved': {
-      nav: { icon: 'bookmark', section: 'Công cụ học' },
-      screens: [
-        {
-          path: 'saved',
-          title: 'Đã lưu & ghi chú',
-          mockupPage: 'saved',
-        },
-      ],
-    },
-    'learn.certificates': {
-      nav: { icon: 'award', section: 'Công cụ học' },
-      screens: [
-        {
-          path: 'certificates',
-          title: 'Chứng nhận',
-          mockupPage: 'certificates',
-        },
-        {
-          path: 'certificate/:id',
-          title: 'Chứng nhận',
-          mockupPage: 'certificate',
-        },
-      ],
-    },
-    'teach.home': {
-      nav: { icon: 'house', section: 'Giảng dạy' },
-      screens: [
-        {
-          path: 'instructor',
-          title: 'Tổng quan giảng viên',
-          mockupPage: 'instructor',
-        },
-      ],
-    },
-    'admin.home': {
-      nav: { icon: 'house', section: 'Quản trị', label: 'Tổng quan' },
-      screens: [
-        {
-          path: 'admin',
-          title: 'Tổng quan quản trị',
-          mockupPage: 'adminHome',
-        },
-      ],
-    },
-    'content.catalog': {
-      nav: { icon: 'network', section: 'Nội dung' },
-      screens: [
-        {
-          path: 'admin/catalog',
-          title: 'Lĩnh vực & chương trình',
-          mockupPage: 'adminCatalog',
-        },
-      ],
-    },
-    'content.courses': {
+    COURSE_MANAGEMENT: {
       nav: { icon: 'book-open', section: 'Nội dung' },
       search: {},
       screens: [
@@ -217,7 +165,17 @@ export const SCREEN_TABLE = {
         },
       ],
     },
-    'content.questions': {
+    LESSON_MANAGEMENT: {
+      nav: { icon: 'file-text', section: 'Nội dung' },
+      screens: [
+        {
+          path: 'admin/lessons',
+          title: 'Quản lý bài giảng',
+          mockupPage: 'lessons',
+        },
+      ],
+    },
+    QUESTION_BANK: {
       nav: { icon: 'circle-help', section: 'Nội dung' },
       screens: [
         {
@@ -227,7 +185,7 @@ export const SCREEN_TABLE = {
         },
       ],
     },
-    'content.quizzes': {
+    QUIZ_MANAGEMENT: {
       nav: { icon: 'clipboard-check', section: 'Nội dung' },
       screens: [
         {
@@ -242,17 +200,7 @@ export const SCREEN_TABLE = {
         },
       ],
     },
-    'content.import': {
-      nav: { icon: 'upload', section: 'Nội dung', label: 'Nhập dữ liệu' },
-      screens: [
-        {
-          path: 'admin/import',
-          title: 'Nhập dữ liệu hàng loạt',
-          mockupPage: 'import',
-        },
-      ],
-    },
-    'admin.users': {
+    USER_MANAGEMENT: {
       nav: { icon: 'users', section: 'Tổ chức' },
       screens: [
         {
@@ -273,7 +221,7 @@ export const SCREEN_TABLE = {
         },
       ],
     },
-    'admin.org': {
+    ORGANIZATION_MANAGEMENT: {
       nav: { icon: 'building-2', section: 'Tổ chức' },
       screens: [
         {
@@ -285,8 +233,13 @@ export const SCREEN_TABLE = {
         },
       ],
     },
-    'admin.roles': {
+    ROLE_MANAGEMENT: {
       nav: { icon: 'shield', section: 'Tổ chức' },
+      requires: [
+        adminOrgEndpoints.roles,
+        adminOrgEndpoints.saveRole,
+        adminOrgEndpoints.deleteRole,
+      ],
       screens: [
         {
           path: 'admin/roles',
@@ -297,8 +250,8 @@ export const SCREEN_TABLE = {
         },
       ],
     },
-    'admin.assignments': {
-      nav: { icon: 'calendar', section: 'Tổ chức', label: 'Giao học & hạn' },
+    COURSE_ASSIGNMENT: {
+      nav: { icon: 'calendar', section: 'Tổ chức' },
       screens: [
         {
           path: 'admin/assignments',
@@ -307,8 +260,8 @@ export const SCREEN_TABLE = {
         },
       ],
     },
-    reports: {
-      nav: { icon: 'chart-column', section: 'Theo dõi', label: 'Báo cáo' },
+    REPORTING: {
+      nav: { icon: 'chart-column', section: 'Theo dõi' },
       search: { href: 'reports/learners' },
       screens: [
         {
@@ -323,17 +276,7 @@ export const SCREEN_TABLE = {
         },
       ],
     },
-    'teach.inbox': {
-      nav: { icon: 'inbox', section: 'Theo dõi', badge: 'inbox' },
-      screens: [
-        {
-          path: 'instructor/inbox',
-          title: 'Hộp phản hồi',
-          mockupPage: 'inbox',
-        },
-      ],
-    },
-    'admin.system': {
+    SYSTEM_AUDIT: {
       nav: { icon: 'settings', section: 'Theo dõi' },
       screens: [
         {
@@ -343,8 +286,32 @@ export const SCREEN_TABLE = {
         },
       ],
     },
+    KNOWLEDGE_HUB: {
+      nav: { icon: 'graduation-cap', section: 'Công cụ học' },
+      screens: [
+        {
+          path: 'knowledge',
+          title: 'Kho tri thức',
+          mockupPage: 'knowledge',
+        },
+      ],
+    },
+    ISSUE_HUB: {
+      nav: { icon: 'message-square', section: 'Công cụ học' },
+      screens: [
+        {
+          path: 'issues',
+          title: 'Tra cứu sự cố',
+          mockupPage: 'issues',
+        },
+      ],
+    },
   },
-  /** Screens that belong to no menu: any signed-in user may open them (login is public). */
+  /**
+   * Screens of the mockup that no backend function covers: any signed-in user may open them, the
+   * guards never block them and the sidebar does not list them (login is public, the password
+   * change is the one screen a user with a temporary password may use).
+   */
   open: [
     {
       path: 'login',
@@ -357,22 +324,41 @@ export const SCREEN_TABLE = {
         import('../../features/auth/login/login').then((m) => m.Login),
     },
     {
-      path: 'quiz/:id/result/:attemptId',
-      title: 'Kết quả bài kiểm tra',
-      mockupPage: 'quizResult',
-    },
-    {
-      path: 'notifications',
-      title: 'Thông báo',
-      mockupPage: 'notifications',
-    },
-    {
-      path: 'profile',
-      title: 'Hồ sơ cá nhân',
-      mockupPage: 'profile',
+      path: 'change-password',
+      title: 'Đổi mật khẩu',
+      mockupPage: 'changePassword',
+      layout: 'bare',
+      passwordChange: true,
       load: () =>
-        import('../../features/account/profile/profile').then((m) => m.Profile),
+        import('../../features/auth/change-password/change-password').then(
+          (m) => m.ChangePassword,
+        ),
     },
+    { path: 'catalog', title: 'Danh mục khóa học', mockupPage: 'catalog' },
+    {
+      path: 'admin/catalog',
+      title: 'Lĩnh vực & chương trình',
+      mockupPage: 'adminCatalog',
+    },
+    { path: 'leaderboard', title: 'Bảng xếp hạng', mockupPage: 'leaderboard' },
+    { path: 'assistant', title: 'Trợ lý AI', mockupPage: 'assistant' },
+    { path: 'flashcards', title: 'Flashcard ôn tập', mockupPage: 'flashcards' },
+    { path: 'saved', title: 'Đã lưu & ghi chú', mockupPage: 'saved' },
+    { path: 'certificates', title: 'Chứng nhận', mockupPage: 'certificates' },
+    { path: 'certificate/:id', title: 'Chứng nhận', mockupPage: 'certificate' },
+    {
+      path: 'instructor',
+      title: 'Tổng quan giảng viên',
+      mockupPage: 'instructor',
+    },
+    { path: 'instructor/inbox', title: 'Hộp phản hồi', mockupPage: 'inbox' },
+    { path: 'admin', title: 'Tổng quan quản trị', mockupPage: 'adminHome' },
+    {
+      path: 'admin/import',
+      title: 'Nhập dữ liệu hàng loạt',
+      mockupPage: 'import',
+    },
+    { path: 'notifications', title: 'Thông báo', mockupPage: 'notifications' },
     {
       path: '403',
       title: 'Không đủ quyền',
@@ -384,12 +370,12 @@ export const SCREEN_TABLE = {
     },
   ],
 } as const satisfies {
-  /** Checked against every key: a menu without a group is a compile error. */
-  readonly menus: Record<MenuKey, MenuGroup>;
+  /** Checked against every key: a function code without a group is a compile error. */
+  readonly menus: Record<FunctionCode, MenuGroup>;
   readonly open: readonly Screen[];
 };
 
-type MenuScreens = (typeof SCREEN_TABLE.menus)[MenuKey]['screens'][number];
+type MenuScreens = (typeof SCREEN_TABLE.menus)[FunctionCode]['screens'][number];
 type OpenScreens = (typeof SCREEN_TABLE.open)[number];
 
 /** Every path of the table. */
@@ -400,21 +386,22 @@ export type StaticScreenPath = Exclude<ScreenPath, `${string}:${string}`>;
 /** The URL of a screen with no route parameter. Renaming the screen breaks callers at build time. */
 export const screenHref = (path: StaticScreenPath): string => `/${path}`;
 
-/** The menus in table order, which is sidebar order. */
-export const MENU_KEYS = Object.keys(SCREEN_TABLE.menus) as MenuKey[];
+/** The function codes in table order. */
+export const FUNCTION_CODES = Object.keys(SCREEN_TABLE.menus) as FunctionCode[];
 
-/** The group of a menu, with the literal paths of the table widened to the `MenuGroup` shape. */
-export const menuGroup = (menu: MenuKey): MenuGroup => SCREEN_TABLE.menus[menu];
+/** The group of a function, with the literal paths of the table widened to the `MenuGroup` shape. */
+export const menuGroup = (code: FunctionCode): MenuGroup =>
+  SCREEN_TABLE.menus[code];
 
-/** A screen with the menu it is declared under (`undefined` for the open ones). */
+/** A screen with the function code it is declared under (`undefined` for the open ones). */
 export interface ScreenEntry {
   readonly screen: Screen;
-  readonly menu?: MenuKey;
+  readonly menu?: FunctionCode;
 }
 
 /** The table flattened in declaration order. */
 export const SCREEN_ENTRIES: readonly ScreenEntry[] = [
-  ...MENU_KEYS.flatMap((menu) =>
+  ...FUNCTION_CODES.flatMap((menu) =>
     menuGroup(menu).screens.map((screen) => ({ screen, menu })),
   ),
   ...SCREEN_TABLE.open.map((screen) => ({ screen })),
@@ -425,5 +412,8 @@ export function metaOf({ screen, menu }: ScreenEntry): RouteMeta {
     ...(menu ? { menu } : {}),
     layout: screen.layout ?? 'app',
     mockupPage: screen.mockupPage,
+    ...(screen.passwordChange !== undefined
+      ? { passwordChange: screen.passwordChange }
+      : {}),
   };
 }

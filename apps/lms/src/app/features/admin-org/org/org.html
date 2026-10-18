@@ -1,61 +1,45 @@
 <ui-page-header
   eyebrow="Tổ chức"
   title="Đơn vị, phòng & nhóm"
-  description="Mô hình nhiều đơn vị: mỗi đơn vị có quản trị viên riêng, dữ liệu tách biệt; khóa học được chia sẻ giữa các đơn vị."
+  description="Cây đơn vị và phòng ban theo phạm vi của bạn; mỗi đơn vị có quản trị viên và các nhóm chuyên môn riêng."
 >
   <div slot="actions" class="row">
     <a uiButton routerLink="/admin/import" [queryParams]="{ type: 'org' }">
       <ui-icon name="upload" size="sm" />Nhập từ tệp
     </a>
-    @if (store.canManageUnits$()) {
-    <button uiButton variant="primary" (click)="store.editUnit(null)">
-      <ui-icon name="plus" size="sm" />Thêm đơn vị
+    @if (store.canManageOrgs$()) {
+    <button uiButton variant="primary" (click)="store.editOrg(null)">
+      <ui-icon name="plus" size="sm" />Thêm đơn vị / phòng
     </button>
     }
   </div>
 </ui-page-header>
 
-@if (store.loadError$(); as error) {
+@if (store.treeError$(); as error) {
 <ui-error-state
-  title="Không tải được danh sách đơn vị"
+  title="Không tải được cây đơn vị"
   [message]="error.message"
-  (retry)="store.retryLoad()"
+  (retry)="store.retryTree()"
 />
-} @else if (store.isLoading$()) {
+} @else if (store.treeLoading$()) {
 <div class="org__loading"><span uiSpinner></span></div>
 } @else { @let selected = store.selected$(); @if (selected) {
 <div class="org__split">
   <section uiCard class="org__units" aria-labelledby="org-units-title">
     <div uiCardHeader>
-      <h3 id="org-units-title">Đơn vị</h3>
-      <span uiBadge>{{ store.units$().length }}</span>
+      <h3 id="org-units-title">Cây đơn vị</h3>
     </div>
-    <ul uiList>
-      @for (unit of store.units$(); track unit.id) {
-      <li>
-        <button
-          uiListItem
-          class="org__unit"
-          [attr.aria-current]="unit.id === selected.id ? 'true' : null"
-          (click)="store.pick(unit.id)"
-        >
-          <span uiListIcon class="org__unit-icon"
-            ><ui-icon name="building-2" size="sm"
-          /></span>
-          <span class="org__unit-body">
-            <span class="org__unit-name">{{ unit.name }}</span>
-            <span class="org__meta"
-              >{{ unit.code }} · {{ unit.members }} người · {{
-              unit.groups.length }} nhóm</span
-            >
-          </span>
-          @if (unit.status !== 'active') {
-          <span uiBadge tone="warning">Tạm dừng</span>
-          }
-        </button>
-      </li>
-      }
-    </ul>
+    <div class="org__tree">
+      <ui-tree
+        label="Cây đơn vị và phòng ban"
+        [nodes]="store.treeNodes$()"
+        [trailing]="trailing"
+        [expanded]="store.treeExpanded$()"
+        (expandedChange)="store.expandTree($event)"
+        [selected]="store.selectedId$()"
+        (selectedChange)="store.selectNode($event)"
+      />
+    </div>
   </section>
 
   <section class="org__detail">
@@ -64,35 +48,43 @@
         <div class="org__head-text">
           <div class="org__head-eyebrow">
             <span class="org__eyebrow">{{ selected.code }}</span>
+            <span uiBadge tone="neutral" [outline]="true"
+              >{{ selected.orgType === 'UNIT' ? 'Đơn vị' : 'Phòng' }}</span
+            >
             @if (selected.status !== 'active') {
             <span uiBadge tone="warning">Tạm dừng</span>
             }
           </div>
           <h2 class="org__title">{{ selected.name }}</h2>
+          @if (store.detail$(); as detail) {
           <p class="org__admins">
             <ui-icon name="shield" size="sm" />
             <span
-              >Quản trị viên: @for (admin of selected.admins; track admin.id;
-              let last = $last) { {{ admin.name }} ({{ admin.scope === 'unit' ?
-              'Đơn vị' : 'Toàn hệ thống' }}){{ last ? '' : ', ' }} } @empty {
-              chưa gán }</span
+              >Quản trị viên: @for (admin of detail.administrators; track
+              admin.userId; let last = $last) {
+              <a [routerLink]="['/admin/users', admin.userId]"
+                >{{ admin.fullName }}</a
+              >{{ last ? '' : ', ' }} } @empty { chưa gán }</span
             >
           </p>
+          } @else if (store.detailError$(); as error) {
+          <p class="org__admins">{{ error.message }}</p>
+          }
         </div>
         <div class="org__head-actions">
-          <button uiButton (click)="store.editUnit(selected)">
+          <button uiButton (click)="store.editOrg(selected)">
             <ui-icon name="pen-line" size="sm" />Sửa
           </button>
-          @if (store.canManageUnits$()) { @if (selected.status === 'active') {
+          @if (store.canManageOrgs$()) { @if (selected.status === 'active') {
           <button
             uiButton
             variant="ghost"
-            (click)="store.toggleUnitStatus(selected)"
+            (click)="store.toggleOrgStatus(selected)"
           >
             <ui-icon name="circle-pause" size="sm" />Tạm dừng
           </button>
           } @else {
-          <button uiButton (click)="store.toggleUnitStatus(selected)">
+          <button uiButton (click)="store.toggleOrgStatus(selected)">
             <ui-icon name="check" size="sm" />Kích hoạt
           </button>
           } }
@@ -100,49 +92,43 @@
       </div>
       <dl class="org__stats">
         <div class="org__stat">
-          <dt>Thành viên</dt>
-          <dd>{{ selected.members }}</dd>
+          <dt>Thành viên trực tiếp</dt>
+          <dd>{{ selected.memberCount }}</dd>
         </div>
         <div class="org__stat">
-          <dt>Phòng / nhóm</dt>
-          <dd>{{ selected.groups.length }}</dd>
-        </div>
-        <div class="org__stat">
-          <dt>Khóa học chia sẻ</dt>
-          <dd>{{ selected.sharedCourses.length }}</dd>
+          <dt>Nhóm</dt>
+          <dd>{{ selected.teamCount }}</dd>
         </div>
       </dl>
     </div>
 
     <div class="org__section-head">
-      <h3>Phòng / nhóm ({{ selected.groups.length }})</h3>
-      <button uiButton size="sm" (click)="store.editGroup(null)">
-        <ui-icon name="plus" size="sm" />Thêm phòng/nhóm
+      <h3>Nhóm ({{ store.teamsTotal$() }})</h3>
+      <button uiButton size="sm" (click)="store.editTeam(null)">
+        <ui-icon name="plus" size="sm" />Thêm nhóm
       </button>
     </div>
-    @if (selected.groups.length) {
+    @if (store.teamsError$(); as error) {
+    <ui-error-state title="Không tải được nhóm" [message]="error.message" />
+    } @else if (store.teams$().length) {
     <div class="org__groups">
-      @for (group of selected.groups; track group.id) {
+      @for (team of store.teams$(); track team.id) {
       <article uiCard class="org__group">
         <div class="org__group-head">
-          <span uiListIcon
-            ><ui-icon
-              [name]="group.kind === 'department' ? 'layers' : 'users'"
-              size="sm"
-          /></span>
+          <span uiListIcon><ui-icon name="users" size="sm" /></span>
           <div class="org__group-title">
-            <strong [attr.title]="group.name">{{ group.name }}</strong>
+            <strong [attr.title]="team.name">{{ team.name }}</strong>
             <span class="org__meta">
-              {{ group.kind === 'department' ? 'Phòng' : 'Nhóm' }} · {{
-              group.members.length }} thành viên
+              {{ team.code || 'Chưa có mã' }} · {{ team.memberCount }} thành
+              viên
             </span>
           </div>
           <div class="org__group-actions">
             <button
               uiIconButton
               size="sm"
-              label="Đổi tên {{ group.name }}"
-              (click)="store.editGroup(group)"
+              label="Sửa {{ team.name }}"
+              (click)="store.editTeam(team)"
             >
               <ui-icon name="pen-line" size="sm" />
             </button>
@@ -150,110 +136,103 @@
               uiIconButton
               size="sm"
               variant="danger"
-              label="Xóa {{ group.name }}"
-              (click)="store.deleteGroup(group)"
+              label="Xóa {{ team.name }}"
+              (click)="store.deleteTeam(team)"
             >
               <ui-icon name="trash-2" size="sm" />
             </button>
           </div>
         </div>
-        @if (group.members.length) {
+        @if (team.memberPreview.length) {
         <ul uiList>
-          @for (member of group.members.slice(0, shown); track member.id) {
+          @for (member of team.memberPreview; track member.userId) {
           <li>
-            <a uiListItem [routerLink]="['/admin/users', member.id]">
-              <ui-avatar [name]="member.name" size="sm" />
-              <span class="org__member-name">{{ member.name }}</span>
-              <app-role-badge
-                [roleId]="member.roleId"
-                [name]="member.roleName"
-                [scoped]="isUnitAdmin(member)"
-              />
+            <a uiListItem [routerLink]="['/admin/users', member.userId]">
+              <ui-avatar [name]="member.fullName" size="sm" />
+              <span class="org__member-name">{{ member.fullName }}</span>
             </a>
           </li>
           }
         </ul>
-        @if (group.members.length > shown) {
-        <p class="org__more">+{{ group.members.length - shown }} người khác</p>
+        @if (team.memberCount > previewSize) {
+        <p class="org__more">
+          +{{ team.memberCount - previewSize }} người khác ·
+          <a [routerLink]="['/admin/users']" [queryParams]="{ teamId: team.id }"
+            >Xem tất cả</a
+          >
+        </p>
         } } @else {
         <p class="org__no-members">Chưa có thành viên.</p>
         }
       </article>
       }
     </div>
+    @if (store.teamsTotal$() > pageSize) {
+    <ui-pagination
+      [total]="store.teamsTotal$()"
+      [page]="store.teamPage$()"
+      [pageSize]="pageSize"
+      (pageChange)="store.goToTeamPage($event)"
+    />
+    } } @else if (store.teamsLoading$()) {
+    <div class="org__loading"><span uiSpinner></span></div>
     } @else {
     <div uiCard>
-      <ui-empty icon="users" title="Đơn vị chưa có phòng/nhóm nào" />
+      <ui-empty icon="users" title="Chưa có nhóm nào" />
     </div>
     }
-
-    <section uiCard aria-labelledby="org-shared-title">
-      <div uiCardHeader>
-        <h3 id="org-shared-title">Khóa học được chia sẻ cho đơn vị này</h3>
-      </div>
-      <div uiCardBody>
-        @if (selected.sharedCourses.length) {
-        <ul class="org__shared">
-          @for (course of selected.sharedCourses; track course.id) {
-          <li><ui-icon name="globe" size="sm" />{{ course.title }}</li>
-          }
-        </ul>
-        } @else {
-        <p class="org__meta">
-          Chưa có. Chia sẻ tại màn Khóa học → Thao tác → Chia sẻ cho đơn vị.
-        </p>
-        }
-      </div>
-    </section>
   </section>
 </div>
 } @else {
-<ui-empty icon="building-2" title="Chưa có đơn vị nào" />
+<ui-empty icon="building-2" title="Chưa có đơn vị nào trong phạm vi của bạn" />
 } }
 
-<ng-template
-  [uiDrawer]="store.editingUnit$() !== null"
-  [uiDrawerTitle]="store.unitEditorTitle$()"
-  [uiDrawerFooter]="unitFooter"
-  [uiDrawerBusy]="store.isSavingUnit$()"
-  uiDrawerBusyLabel="Đang lưu…"
-  (uiDrawerDismiss)="store.cancelUnitEdit()"
->
-  @if (store.editingUnit$(); as editing) {
-  <app-unit-form [unit]="editing.unit" (submitted)="store.saveUnit($event)" />
+<ng-template #trailing let-node>
+  @if (node.data?.status === 'inactive') {
+  <span uiBadge tone="warning">Tạm dừng</span>
   }
 </ng-template>
-<ng-template #unitFooter let-close="close">
+
+<ng-template
+  [uiDrawer]="store.editingOrg$() !== null"
+  [uiDrawerTitle]="store.orgEditorTitle$()"
+  [uiDrawerFooter]="orgFooter"
+  [uiDrawerBusy]="store.isSavingOrg$()"
+  uiDrawerBusyLabel="Đang lưu…"
+  (uiDrawerDismiss)="store.cancelOrgEdit()"
+>
+  @if (store.editingOrg$(); as editing) {
+  <app-org-form [org]="editing.org" />
+  }
+</ng-template>
+<ng-template #orgFooter let-close="close">
   <ui-form-actions
-    formId="unit-form"
+    formId="org-form"
     submitLabel="Lưu"
     cancelLabel="Hủy"
-    [saving]="store.isSavingUnit$()"
+    [saving]="store.isSavingOrg$()"
     (cancel)="close()"
   />
 </ng-template>
 
 <ng-template
-  [uiDrawer]="store.editingGroup$() !== null"
-  [uiDrawerTitle]="store.groupEditorTitle$()"
-  [uiDrawerFooter]="groupFooter"
-  [uiDrawerBusy]="store.isSavingGroup$()"
+  [uiDrawer]="store.editingTeam$() !== null"
+  [uiDrawerTitle]="store.teamEditorTitle$()"
+  [uiDrawerFooter]="teamFooter"
+  [uiDrawerBusy]="store.isSavingTeam$()"
   uiDrawerBusyLabel="Đang lưu…"
-  (uiDrawerDismiss)="store.cancelGroupEdit()"
+  (uiDrawerDismiss)="store.cancelTeamEdit()"
 >
-  @if (store.editingGroup$(); as editing) {
-  <app-group-form
-    [group]="editing.group"
-    (submitted)="store.saveGroup($event)"
-  />
+  @if (store.editingTeam$(); as editing) {
+  <app-team-form [team]="editing.team" />
   }
 </ng-template>
-<ng-template #groupFooter let-close="close">
+<ng-template #teamFooter let-close="close">
   <ui-form-actions
-    formId="group-form"
+    formId="team-form"
     submitLabel="Lưu"
     cancelLabel="Hủy"
-    [saving]="store.isSavingGroup$()"
+    [saving]="store.isSavingTeam$()"
     (cancel)="close()"
   />
 </ng-template>

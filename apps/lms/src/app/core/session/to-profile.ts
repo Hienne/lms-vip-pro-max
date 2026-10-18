@@ -1,57 +1,72 @@
+import type { Me } from '@lms/contracts';
 import {
-  type Me,
-  type MenuKey,
-  MenuKeySchema,
-  type Profile,
-} from '@lms/contracts';
+  homePathFor,
+  type IsServed,
+  knownFunctions,
+  navFor,
+} from '../menu/menu-catalog';
+import type { Profile, ScopeSummary } from './profile';
 
-/** Stand-in for `joinedAt`, which `/me` does not have and `Profile` requires. */
-const NO_JOIN_DATE = '1970-01-01T00:00:00.000Z';
+/** The roles that make a `GLOBAL` grant a global administrator; the backend's `isGlobalAdmin`. */
+const GLOBAL_ADMIN_ROLES = ['ADMIN', 'SUPER_ADMIN'];
 
-const ALL_MENUS: readonly MenuKey[] = MenuKeySchema.options;
-
-function scopeLabel({ user, roleGrants }: Me): string {
-  switch (roleGrants[0]?.scope.type) {
-    case 'GLOBAL':
-      return 'Toàn hệ thống';
-    case 'ORG':
-      return user.orgName ?? '—';
-    case 'TEAM':
-      return user.teamName ?? '—';
-    case 'OWN':
-      return 'Cá nhân';
-    default:
-      return '—';
-  }
+function scopeSummaryOf(grants: Me['roleGrants']): ScopeSummary {
+  return grants.some(
+    (grant) =>
+      grant.scope.type === 'GLOBAL' &&
+      GLOBAL_ADMIN_ROLES.includes(grant.roleCode),
+  )
+    ? 'global'
+    : 'limited';
 }
 
 /**
- * Adapts the backend's `/me` to the `Profile` the app already renders. Every menu is granted
- * and the home is `/learn` until permissions are mapped; fields `/me` lacks are defaulted for
- * display only.
+ * Adapts the backend's `/me` to the `Profile` the app renders. The menus are the functions `/me`
+ * lists that the app has a screen for; the home is the entry screen of the first of them after
+ * the profile. What a role opens is the backend's call (the menus); role names are used only for the
+ * display-only `scopeSummary`.
+ * `isServed` drops the functions whose screens need an endpoint this build does not answer.
  */
-export function toProfile(me: Me): Profile {
+export function toProfile(me: Me, isServed?: IsServed): Profile {
   const { user, roleGrants } = me;
-  const grant = roleGrants[0];
+  const functions = knownFunctions(
+    me.functionDetails.filter((fn) => me.functions.includes(fn.code)),
+    isServed,
+  );
+  const roleNames = [...new Set(roleGrants.map((grant) => grant.roleName))];
   return {
-    id: user.userId,
-    staffCode: user.userId,
-    name: user.fullName,
-    email: user.email ?? '',
-    title: user.positionName ?? '',
+    userId: user.userId,
+    username: user.username,
+    fullName: user.fullName,
+    email: user.email ?? null,
+    positionName: user.positionName ?? null,
     status: user.status,
-    roleId: grant?.roleCode ?? '',
-    roleName: grant?.roleName ?? '',
-    unitId: String(user.orgId ?? ''),
-    unitName: user.orgName ?? '',
-    groupId: String(user.teamId ?? ''),
-    groupName: user.teamName ?? '',
-    scopeUnitId: null,
-    scopeName: scopeLabel(me),
-    joinedAt: user.lastSyncTime ?? NO_JOIN_DATE,
-    lastLoginAt: user.lastSyncTime ?? null,
-    // TODO(backend): derive the menus and home from `functions` / `functionScopes`.
-    menus: [...ALL_MENUS],
-    homePath: '/learn',
+    authProvider: user.authProvider,
+    mustChangePassword: user.mustChangePassword,
+    org:
+      user.orgId == null
+        ? null
+        : {
+            id: user.orgId,
+            code: user.orgCode ?? null,
+            name: user.orgName ?? '',
+            type: user.orgType ?? null,
+          },
+    team:
+      user.teamId == null
+        ? null
+        : {
+            id: user.teamId,
+            code: user.teamCode ?? null,
+            name: user.teamName ?? '',
+          },
+    grants: roleGrants,
+    scopeSummary: scopeSummaryOf(roleGrants),
+    nav: navFor(functions),
+    menus: functions.map((fn) => fn.code),
+    homePath: user.mustChangePassword
+      ? '/change-password'
+      : homePathFor(functions),
+    roleText: roleNames.join(', '),
   };
 }

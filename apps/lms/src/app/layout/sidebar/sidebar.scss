@@ -135,29 +135,6 @@
     }
   }
 
-  &__badge {
-    @include ui.text(xs);
-    @include ui.num;
-    min-width: ui.space(5);
-    height: ui.space(5);
-    margin-left: auto;
-    padding: 0 ui.space(1);
-    border-radius: ui.radius(full);
-    background: ui.color(accent);
-    color: ui.color(on-accent);
-    font-weight: ui.weight(bold);
-    display: inline-grid;
-    place-items: center;
-
-    // On the rail the count sits on the icon's corner.
-    .sidebar--collapsed & {
-      position: absolute;
-      top: ui.space(1);
-      right: ui.space(1);
-      margin: 0;
-    }
-  }
-
   &__footer {
     display: flex;
     align-items: center;

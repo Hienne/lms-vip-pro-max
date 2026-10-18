@@ -1,9 +1,11 @@
 import type { HttpTestingController } from '@angular/common/http/testing';
 import { computed, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
-import type { Profile } from '@lms/contracts';
-import { meV1Body } from '@lms/mocks';
+import type { Me } from '@lms/contracts';
+import { envelopeOk, seedMe } from '@lms/mocks';
+import type { Profile } from './profile';
 import { SessionStore } from './session.store';
+import { toProfile } from './to-profile';
 import { TokenStore } from './token-store';
 
 export const ME_URL = '/api/v1/auth/me';
@@ -14,8 +16,11 @@ export function storeToken(expiresInSeconds = 3600): void {
 }
 
 /** Answers the pending `/me` request with the fixture user. */
-export function flushMe(backend: HttpTestingController): void {
-  backend.expectOne(ME_URL).flush(meV1Body);
+export function flushMe(
+  backend: HttpTestingController,
+  userId = '000004',
+): void {
+  backend.expectOne(ME_URL).flush(envelopeOk(seedMe(userId)));
 }
 
 /**
@@ -29,13 +34,25 @@ export class FakeSessionStore {
   readonly menus$ = computed(() => this.user()?.menus ?? []);
   readonly homePath$ = computed(() => this.user()?.homePath ?? null);
   readonly isSignedIn$ = computed(() => this.user() !== null);
+  readonly mustChangePassword$ = computed(
+    () => this.user()?.mustChangePassword ?? false,
+  );
   readonly status$ = signal('ready').asReadonly();
   readonly loadError$ = signal(undefined).asReadonly();
+  readonly isSigningIn$ = signal(false).asReadonly();
+  readonly signInError$ = signal(undefined).asReadonly();
   readonly isSigningOut$ = signal(false).asReadonly();
+  readonly signIn = vi.fn();
   readonly restore = vi.fn();
-  readonly signOut = vi.fn();
+  readonly signOut = vi.fn(() => this.user.set(null));
   readonly expire = vi.fn(() => this.user.set(null));
+  readonly apply = vi.fn((me: Me) => this.user.set(toProfile(me)));
   readonly whenReady = () => Promise.resolve();
+}
+
+/** The profile of a seed user (the backend demo accounts), as `toProfile` builds it from `/me`. */
+export function seedProfile(userId: string): Profile {
+  return toProfile(seedMe(userId));
 }
 
 /** The `FakeSessionStore` the spec provided. */

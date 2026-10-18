@@ -1,8 +1,8 @@
 import { HttpTestingController } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
-import { provideRouter } from '@angular/router';
+import { provideRouter, Router } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
-import { envelopeError, envelopeOk, profileFixtures } from '@lms/mocks';
+import { backendRefusal, envelopeOk, seedMe } from '@lms/mocks';
 import { createAppRoutes } from '../../../app.routes';
 import {
   parseAppConfig,
@@ -13,8 +13,12 @@ import { provideEnvelopeHttpClient } from '../../../core/http/http.testing';
 import {
   FakeSessionStore,
   fakeSession,
+  seedProfile,
 } from '../../../core/session/session.testing';
 import { SessionStore } from '../../../core/session/session.store';
+
+const ME_URL = '/api/v1/auth/me';
+const PASSWORD_URL = '/api/v1/auth/password';
 
 describe('Profile', () => {
   let harness: RouterTestingHarness;
@@ -45,8 +49,8 @@ describe('Profile', () => {
     TestBed.tick();
   }
 
-  async function open(role: keyof typeof profileFixtures = 'admin') {
-    fakeSession().user.set(profileFixtures[role]);
+  async function open(userId = '000005', change?: object) {
+    fakeSession().user.set({ ...seedProfile(userId), ...change });
     harness = await RouterTestingHarness.create();
     await harness.navigateByUrl('/profile');
     await settle();
@@ -70,130 +74,162 @@ describe('Profile', () => {
       .find((s) => s.textContent?.includes(title))
       ?.querySelector<HTMLButtonElement>('button[type="submit"]');
 
-  it('shows who is signed in, with the organisation facts and the role', async () => {
-    await open('admin');
+  it('shows who is signed in, with the organisation, the grants and the screens the backend opens', async () => {
+    await open('000005');
+    const user = seedProfile('000005');
     expect(el.querySelector('h1')?.textContent).toBe('Hồ sơ cá nhân');
-    expect(text()).toContain(profileFixtures['admin'].name);
-    expect(text()).toContain('Mã cán bộ CB1001');
-    expect(text()).toContain('Phạm vi dữ liệuToàn hệ thống');
-    expect(text()).toContain('Vai trò Quản trị viên');
-    expect(input('Họ và tên').value).toBe(profileFixtures['admin'].name);
+    expect(text()).toContain(user.fullName);
+    expect(text()).toContain('Mã cán bộ 000005');
+    expect(text()).toContain(user.org?.name);
+    expect(text()).toContain('Giảng viên · Đơn vị');
+    expect(text()).toContain('Học viên · Cá nhân');
+    expect(text()).toContain('Báo cáo');
+    expect(input('Họ và tên').value).toBe(user.fullName);
   });
 
-  it('says "đơn vị" for an admin limited to one unit', async () => {
-    await open('unit-admin');
-    expect(text()).toContain('Vai trò Quản trị viên đơn vị');
-  });
-
-  it('lists the menus the role grants by their sidebar names', async () => {
-    await open('viewer');
-    const section = text().split('Menu được cấp')[1] ?? '';
-    expect(section).toContain('Báo cáo');
-    expect(section).not.toContain('Người dùng');
-  });
-
-  it('saves the personal fields, then reloads the profile', async () => {
-    await open('admin');
-    await type(input('Họ và tên'), '  Phạm Trang  ');
+  it('keeps Save disabled until a field changes', async () => {
+    await open();
+    const save = submitOf('Thông tin cá nhân');
+    expect(save?.disabled).toBe(true);
     await type(input('Chức danh'), 'Trưởng nhóm');
+    expect(save?.disabled).toBe(false);
+    await type(input('Chức danh'), seedProfile('000005').positionName ?? '');
+    expect(save?.disabled).toBe(true);
+  });
+
+  it('PATCHes only the changed fields, then takes the answered /me as the signed-in user', async () => {
+    await open();
+    await type(input('Họ và tên'), '  Phạm Trang  ');
     submitOf('Thông tin cá nhân')?.click();
     await settle();
-    const put = backend.expectOne('/api/auth/profile');
-    expect(put.request.method).toBe('PUT');
-    expect(put.request.body).toEqual({
-      name: 'Phạm Trang',
-      title: 'Trưởng nhóm',
-    });
-    put.flush(envelopeOk(profileFixtures['admin']));
+    const patch = backend.expectOne(ME_URL);
+    expect(patch.request.method).toBe('PATCH');
+    expect(patch.request.body).toEqual({ fullName: 'Phạm Trang' });
+    const me = seedMe('000005');
+    patch.flush(
+      envelopeOk({ ...me, user: { ...me.user, fullName: 'Phạm Trang' } }),
+    );
     await settle();
-    expect(fakeSession().restore).toHaveBeenCalledOnce();
-    fakeSession().user.set({ ...profileFixtures['admin'], name: 'Phạm Trang' });
-    await settle();
+    expect(fakeSession().apply).toHaveBeenCalledOnce();
     expect(input('Họ và tên').value).toBe('Phạm Trang');
     expect(document.body.textContent).toContain('Đã lưu hồ sơ');
   });
 
-  it('refuses a name that is too short before calling the server', async () => {
-    await open('admin');
-    await type(input('Họ và tên'), 'A');
+  it('clears an emptied optional field with null', async () => {
+    await open();
+    await type(input('Email'), '');
     submitOf('Thông tin cá nhân')?.click();
     await settle();
-    backend.expectNone('/api/auth/profile');
-    expect(text()).toContain('Họ tên tối thiểu 2 ký tự.');
+    const patch = backend.expectOne(ME_URL);
+    expect(patch.request.body).toEqual({ email: null });
+    patch.flush(envelopeOk(seedMe('000005')));
+    await settle();
   });
 
+  it.each([
+    ['Họ và tên', '', 'Nhập họ và tên.'],
+    ['Email', 'khong-phai-email', 'Email không hợp lệ.'],
+    ['Họ và tên', 'a'.repeat(256), 'Họ tên tối đa 255 ký tự.'],
+  ])(
+    'refuses %s "%s" before calling the server',
+    async (label, value, message) => {
+      await open();
+      await type(input(label), value);
+      submitOf('Thông tin cá nhân')?.click();
+      await settle();
+      backend.expectNone(ME_URL);
+      expect(text()).toContain(message);
+    },
+  );
+
   it('toasts the backend message when a profile save is refused, and keeps the form', async () => {
-    await open('admin');
+    await open();
     await type(input('Họ và tên'), 'Phạm Trang');
     submitOf('Thông tin cá nhân')?.click();
     await settle();
-    backend
-      .expectOne('/api/auth/profile')
-      .flush(
-        envelopeError(
-          'CORE-0422',
-          'Không lưu được hồ sơ',
-          'Họ tên không hợp lệ.',
-        ),
-      );
+    const { body } = backendRefusal('validationFailed');
+    backend.expectOne(ME_URL).flush(body);
     await settle();
-    backend.expectNone('/api/auth/profile');
-    expect(document.body.textContent).toContain('Không lưu được hồ sơ');
-    expect(document.body.textContent).toContain('Họ tên không hợp lệ.');
+    expect(document.body.textContent).toContain('Thông tin chưa hợp lệ');
+    expect(document.body.textContent).toContain(
+      'Dữ liệu đầu vào không hợp lệ.',
+    );
     expect(document.body.textContent).not.toContain('Đã lưu hồ sơ');
     expect(input('Họ và tên').value).toBe('Phạm Trang');
   });
 
-  it('checks the confirmation locally and sends the three fields otherwise', async () => {
-    await open('admin');
-    await type(input('Mật khẩu hiện tại'), 'abc123');
-    await type(input('Mật khẩu mới'), 'Abcdef12');
-    await type(input('Nhập lại mật khẩu mới'), 'Abcdef13');
-    submitOf('Đổi mật khẩu')?.click();
-    await settle();
-    backend.expectNone('/api/auth/change-password');
-    expect(text()).toContain('Mật khẩu nhập lại không khớp.');
-
-    await type(input('Nhập lại mật khẩu mới'), 'Abcdef12');
-    submitOf('Đổi mật khẩu')?.click();
-    await settle();
-    const post = backend.expectOne('/api/auth/change-password');
-    expect(post.request.body).toEqual({
-      cur: 'abc123',
-      next: 'Abcdef12',
-      confirm: 'Abcdef12',
-    });
-    post.flush(envelopeOk(true));
-    await settle();
-    expect(document.body.textContent).toContain('Đã đổi mật khẩu');
-    expect(input('Mật khẩu hiện tại').value).toBe('');
-    expect(input('Mật khẩu mới').value).toBe('');
+  it('shows an SSO account read-only: the source system owns its fields', async () => {
+    await open('000007', { authProvider: 'SSO' });
+    expect(text()).toContain('Tài khoản SSO được đồng bộ');
+    expect(input('Họ và tên').readOnly).toBe(true);
+    expect(submitOf('Thông tin cá nhân')).toBeFalsy();
+    expect(text()).toContain('Tài khoản SSO đổi mật khẩu ở hệ thống nguồn.');
   });
 
-  it('toasts the backend message when a password change is refused, and keeps the fields', async () => {
-    await open('admin');
-    await type(input('Mật khẩu hiện tại'), 'abc123');
-    await type(input('Mật khẩu mới'), 'weak');
-    await type(input('Nhập lại mật khẩu mới'), 'weak');
-    submitOf('Đổi mật khẩu')?.click();
-    await settle();
-    backend
-      .expectOne('/api/auth/change-password')
-      .flush(
-        envelopeError(
-          'CORE-0422',
-          'Không đổi được mật khẩu',
-          'Tối thiểu 8 ký tự, gồm chữ hoa và chữ số.',
-        ),
+  describe('password', () => {
+    async function fill(current: string, next: string, again: string) {
+      await type(input('Mật khẩu hiện tại'), current);
+      await type(input('Mật khẩu mới'), next);
+      await type(input('Nhập lại mật khẩu mới'), again);
+    }
+
+    it('checks the rules locally before calling the server', async () => {
+      await open();
+      await fill('Demo@123', 'Moi@456', 'Moi@457');
+      submitOf('Đổi mật khẩu')?.click();
+      await settle();
+      backend.expectNone(PASSWORD_URL);
+      expect(text()).toContain('Mật khẩu nhập lại không khớp.');
+
+      await fill('Demo@123', 'abc', 'abc');
+      submitOf('Đổi mật khẩu')?.click();
+      await settle();
+      backend.expectNone(PASSWORD_URL);
+      expect(text()).toContain('Mật khẩu mới tối thiểu 6 ký tự.');
+
+      await fill('Demo@123', 'Demo@123', 'Demo@123');
+      submitOf('Đổi mật khẩu')?.click();
+      await settle();
+      backend.expectNone(PASSWORD_URL);
+      expect(text()).toContain('Mật khẩu mới phải khác mật khẩu hiện tại.');
+    });
+
+    it('PUTs the two passwords, clears the token and returns to the login page', async () => {
+      await open();
+      await fill('Demo@123', 'Moi@456', 'Moi@456');
+      submitOf('Đổi mật khẩu')?.click();
+      await settle();
+      const put = backend.expectOne(PASSWORD_URL);
+      expect(put.request.method).toBe('PUT');
+      expect(put.request.body).toEqual({
+        currentPassword: 'Demo@123',
+        newPassword: 'Moi@456',
+      });
+      put.flush(envelopeOk(null));
+      await settle();
+      expect(fakeSession().expire).toHaveBeenCalledOnce();
+      await vi.waitFor(() =>
+        expect(TestBed.inject(Router).url.startsWith('/login')).toBe(true),
       );
-    await settle();
-    expect(document.body.textContent).toContain('Không đổi được mật khẩu');
-    expect(document.body.textContent).toContain(
-      'Tối thiểu 8 ký tự, gồm chữ hoa và chữ số.',
-    );
-    expect(document.body.textContent).not.toContain('Đã đổi mật khẩu');
-    expect(input('Mật khẩu hiện tại').value).toBe('abc123');
-    expect(input('Mật khẩu mới').value).toBe('weak');
-    expect(input('Nhập lại mật khẩu mới').value).toBe('weak');
+      expect(document.body.textContent).toContain('Đã đổi mật khẩu');
+    });
+
+    it('toasts the backend message when the current password is wrong, and keeps the fields', async () => {
+      await open();
+      await fill('sai-mat-khau', 'Moi@456', 'Moi@456');
+      submitOf('Đổi mật khẩu')?.click();
+      await settle();
+      const { status, body } = backendRefusal('currentPasswordIncorrect');
+      backend
+        .expectOne(PASSWORD_URL)
+        .flush(body, { status, statusText: 'Bad Request' });
+      await settle();
+      expect(document.body.textContent).toContain(
+        backendRefusal('currentPasswordIncorrect').body.messageTitle,
+      );
+      expect(fakeSession().expire).not.toHaveBeenCalled();
+      expect(input('Mật khẩu hiện tại').value).toBe('sai-mat-khau');
+      expect(input('Mật khẩu mới').value).toBe('Moi@456');
+    });
   });
 });

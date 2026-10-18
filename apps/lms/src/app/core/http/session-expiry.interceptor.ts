@@ -1,11 +1,8 @@
-import {
-  HttpErrorResponse,
-  type HttpInterceptorFn,
-} from '@angular/common/http';
+import type { HttpInterceptorFn } from '@angular/common/http';
 import { inject, Injector } from '@angular/core';
-import { authV1Endpoints, UNAUTHENTICATED_CODE } from '@lms/contracts';
+import { authV1Endpoints } from '@lms/contracts';
 import { catchError, throwError } from 'rxjs';
-import { ApiError } from './api-error';
+import { toAppError } from '../errors/app-error';
 import { ENDPOINT } from './endpoint-client';
 
 /**
@@ -18,24 +15,20 @@ const EXEMPT = new Set<unknown>([
   authV1Endpoints.logout,
 ]);
 
-/** The backend refuses the session two ways: an HTTP 401, or a 200 with the `CORE-0401` envelope. */
-function isUnauthenticated(error: unknown): boolean {
-  return (
-    (error instanceof HttpErrorResponse && error.status === 401) ||
-    (error instanceof ApiError && error.messageCode === UNAUTHENTICATED_CODE)
-  );
-}
-
 /**
- * Any other 401, or `CORE-0401`, while signed in means the session ended: it is handed to `SessionExpiry` and the
- * error still reaches the caller. Exempt by endpoint identity, never by URL. `SessionExpiry` is
+ * Any other failure `toAppError` calls `unauthorized` (an HTTP 401, whatever its code, or
+ * `CORE-UNAUTHENTICATED`) while signed in means the session ended: it is handed to `SessionExpiry`
+ * and the error still reaches the caller. Exempt by endpoint identity, never by URL. `SessionExpiry` is
  * loaded and resolved only on that error path: it depends on `HttpClient` through the session store, and the UI toaster stays out of the initial bundle.
  */
 export const sessionExpiryInterceptor: HttpInterceptorFn = (req, next) => {
   const injector = inject(Injector);
   return next(req).pipe(
     catchError((error: unknown) => {
-      if (isUnauthenticated(error) && !EXEMPT.has(req.context.get(ENDPOINT))) {
+      if (
+        toAppError(error).kind === 'unauthorized' &&
+        !EXEMPT.has(req.context.get(ENDPOINT))
+      ) {
         void import('../session/session-expiry').then(({ SessionExpiry }) =>
           injector.get(SessionExpiry).end(),
         );

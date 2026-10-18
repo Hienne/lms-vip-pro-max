@@ -1,4 +1,4 @@
-import { type MenuKey, SaveRoleCommandSchema } from '@lms/contracts';
+import { type FunctionCode, SaveRoleCommandSchema } from '@lms/contracts';
 import { z } from 'zod';
 
 /** The role form: the contract's command with a required-name message. */
@@ -12,7 +12,11 @@ export const RoleFormSchema = z.object({
 export type RoleFormValue = z.infer<typeof RoleFormSchema>;
 
 export function toRoleFormValue(
-  role: { name: string; description: string; menus: readonly MenuKey[] } | null,
+  role: {
+    name: string;
+    description: string;
+    menus: readonly FunctionCode[];
+  } | null,
 ): RoleFormValue {
   return {
     name: role?.name ?? '',

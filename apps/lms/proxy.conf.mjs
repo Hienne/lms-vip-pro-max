@@ -1,8 +1,10 @@
-/** Dev-server proxy: `/api` goes to the backend; unused while `apiBaseUrl` is set. */
+/**
+ * Dev-server proxy: `/api` goes to the backend (`corebanking-academy`, port 8019) when
+ * `apiBaseUrl` is empty, which is how the dev, staging and production builds reach it.
+ */
 export default {
   '/api': {
-    // TODO(backend): the backend's dev origin.
-    target: 'http://localhost:3000',
+    target: 'http://localhost:8019',
     secure: false,
     changeOrigin: true,
   },

@@ -6,16 +6,10 @@
   uiDrawerBusyLabel="Đang lưu…"
   (uiDrawerDismiss)="store.cancelEdit()"
 >
-  @let meta = store.meta$(); @let me = store.me$(); @let editing =
-  store.editing$(); @if (meta && me && editing) {
-  <app-user-form
-    [user]="editing.user"
-    [meta]="meta"
-    [me]="me"
-    (submitted)="store.save($event)"
-  />
-  } @else if (store.metaError$(); as error) {
+  @let editing = store.editing$(); @if (store.lookupError$(); as error) {
   <ui-alert tone="danger">{{ error.message }}</ui-alert>
+  } @else if (editing && store.lookupsReady$()) {
+  <app-user-form [user]="editing.user" />
   } @else {
   <span uiSpinner></span>
   }
@@ -26,19 +20,7 @@
     formId="user-form"
     submitLabel="Lưu"
     cancelLabel="Hủy"
-    [saving]="store.isSaving$() || !store.meta$()"
+    [saving]="store.isSaving$() || !store.lookupsReady$()"
     (cancel)="close()"
-  >
-    @if (store.editing$()?.user; as user) {
-    <button
-      uiButton
-      variant="ghost"
-      class="user-editor__reset"
-      [disabled]="store.isResetting$()"
-      (click)="store.resetPassword(user)"
-    >
-      <ui-icon name="key" size="sm" />Đặt lại mật khẩu
-    </button>
-    }
-  </ui-form-actions>
+  />
 </ng-template>

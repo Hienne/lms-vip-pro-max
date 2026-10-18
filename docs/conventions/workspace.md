@@ -124,8 +124,9 @@ project run the Nx target directly (`npx nx test ui`).
   (`/dev/migration`, registered by `createAppRoutes` only when true) and owner / pull request
   details in the `/design-system` placeholders. True in development and staging, false in
   production, so internal names and pull request links never reach end users. It is separate
-  from `mockApi`, which is true only in development: the mock API and its fixtures are wired from
-  `environment.ts` alone.
+  from `mockApi` and `mockBackend`, which are true only in development: the mock API, its fixtures
+  and the seeded in-memory backend (`mockBackend`: it answers the endpoints the backend has) are
+  wired from `environment.ts` alone.
 - Everything that exists only for the team (the migration board route, the dev toolbar, the
   offline simulation) hangs off one object, `DEV_FEATURES` in
   `apps/lms/src/app/core/dev/dev-features.ts`. The production build replaces that file with
@@ -138,7 +139,8 @@ project run the Nx target directly (`npx nx test ui`).
   toolbar, the board or any mock fixture, and builds staging to check that it holds no fixtures. Known gap: the migration registry data
   (`migration-entries.data.ts`, with owner handles) still ships because the design-system
   placeholders read statuses from it; it is hidden at runtime by `devTools`.
-- `apiBaseUrl` is the API origin per environment (`''` = same origin).
+- `apiBaseUrl` is the API origin per environment (`''` = same origin, the value of every
+  environment today).
   `apiBaseUrlInterceptor` prefixes it to every `/api/...` request, so endpoint
   paths in `@lms/contracts` stay environment-free and `EndpointClient` never reads
   the config.
@@ -166,6 +168,8 @@ not interrupted mid-copy.
 A new check belongs in a `package.json` script first, then in the workflow, so
 `npm run check` and CI never disagree.
 
-`apps/lms/proxy.conf.mjs` maps `/api` to the backend's dev origin (a `TODO(backend)`
-placeholder), so app code only ever uses relative `/api/...` URLs. It is unused while
-`mockApi` is true, the development default.
+`apps/lms/proxy.conf.mjs` maps `/api` to the backend's dev origin, `http://localhost:8019`
+(`corebanking-academy`, whose CORS only allows `http://localhost:4200`), so app code only ever
+uses relative `/api/...` URLs. All three environment files set `apiBaseUrl: ''`: in development
+the proxy forwards the calls the mock does not answer, and staging and production sit behind an
+HTTPS reverse proxy on the same origin (infrastructure, not code).

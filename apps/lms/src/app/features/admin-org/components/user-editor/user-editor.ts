@@ -1,12 +1,5 @@
 import { Component, inject } from '@angular/core';
-import {
-  Alert,
-  Button,
-  DrawerOutlet,
-  FormActions,
-  Icon,
-  Spinner,
-} from '@lms/ui';
+import { Alert, DrawerOutlet, FormActions, Spinner } from '@lms/ui';
 import { UserEditorStore } from '../../data-access/user-editor.store';
 import { UserForm } from '../user-form/user-form';
 
@@ -17,7 +10,7 @@ import { UserForm } from '../user-form/user-form';
  */
 @Component({
   selector: 'app-user-editor',
-  imports: [Alert, Button, DrawerOutlet, FormActions, Icon, Spinner, UserForm],
+  imports: [Alert, DrawerOutlet, FormActions, Spinner, UserForm],
   templateUrl: './user-editor.html',
   styleUrl: './user-editor.scss',
 })

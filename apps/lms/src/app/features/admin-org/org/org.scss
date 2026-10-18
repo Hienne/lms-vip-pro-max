@@ -26,36 +26,8 @@
     overflow: hidden;
   }
 
-  &__unit {
-    position: relative;
-
-    &[aria-current='true'] {
-      background: ui.color(primary-subtle);
-
-      &::before {
-        position: absolute;
-        inset-block: 0;
-        inset-inline-start: 0;
-        width: 3px;
-        background: ui.color(primary);
-        content: '';
-      }
-
-      .org__unit-icon {
-        background: ui.color(surface);
-        color: ui.color(primary);
-      }
-    }
-  }
-
-  &__unit-body {
-    @include ui.grow;
-    @include ui.stack(1);
-  }
-
-  &__unit-name {
-    @include ui.text(sm);
-    font-weight: ui.weight(semibold);
+  &__tree {
+    padding: ui.space(2);
   }
 
   &__meta {
@@ -119,7 +91,7 @@
 
   &__stats {
     display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     margin: 0;
     border-top: 1px solid ui.color(border);
     background: ui.color(surface-2);
@@ -210,17 +182,5 @@
     display: grid;
     place-items: center;
     padding: ui.space(8) ui.space(5);
-  }
-
-  &__shared {
-    @include ui.stack(2);
-    margin: 0;
-    padding: 0;
-    list-style: none;
-
-    li {
-      @include ui.row(2);
-      @include ui.text(sm);
-    }
   }
 }

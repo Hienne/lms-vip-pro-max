@@ -1,62 +1,56 @@
-import { inject, Injectable, signal } from '@angular/core';
-import { rxResource } from '@angular/core/rxjs-interop';
+import { computed, inject, Injectable, Injector } from '@angular/core';
+import { toObservable } from '@angular/core/rxjs-interop';
 import { Router } from '@angular/router';
-import { authEndpoints, type DemoAccount } from '@lms/contracts';
 import { Toaster } from '@lms/ui';
-import { EndpointClient } from '../../http/endpoint-client';
+import { filter, take } from 'rxjs';
 import { NetworkStore } from '../../network/network.store';
 import { SessionExpiry } from '../../session/session-expiry';
-import { isUnitAdmin, roleText } from '../../../shared/status/role-badge';
-import { MockScenario } from '../mock-scenario';
+import { SessionStore } from '../../session/session.store';
 import { screenHref } from '../../routing/screens';
-
-/** The `@lms/mocks` example that stands for a demo account (a unit admin has its own). */
-export const exampleOf = (account: DemoAccount): string =>
-  isUnitAdmin(account) ? 'unit-admin' : account.roleId;
+import {
+  MOCK_ACCOUNTS,
+  MOCK_PASSWORD,
+  type MockAccount,
+} from '../mock-api/mock-accounts';
 
 /**
- * What the dev toolbar does, replacing the mockup's "Demo" menu: switch the mock data's role,
- * simulate a lost connection or an expired session, try a forbidden URL. The demo accounts load
- * the first time the toolbar is touched, so an idle page makes no extra request.
+ * What the dev toolbar does, replacing the mockup's "Demo" menu: sign in as one of the mock
+ * backend's demo users, simulate a lost connection or an expired session, try a forbidden URL.
  */
 @Injectable()
 export class DevToolbarStore {
   private readonly network = inject(NetworkStore);
-  private readonly scenario = inject(MockScenario);
+  private readonly session = inject(SessionStore);
   private readonly sessionExpiry = inject(SessionExpiry);
   private readonly router = inject(Router);
   private readonly toaster = inject(Toaster);
-  private readonly client = inject(EndpointClient);
+  private readonly injector = inject(Injector);
 
-  private readonly state = { wanted: signal(false) };
-
-  private readonly accountsResource = rxResource({
-    params: () => (this.state.wanted() ? {} : undefined),
-    stream: () => this.client.call(authEndpoints.demoAccounts),
-  });
-
-  readonly accounts$ = () =>
-    this.accountsResource.hasValue() ? this.accountsResource.value() : [];
-  /** The mock role in use, as the example name `exampleOf` gives. */
-  readonly currentRole$ = this.scenario.role$;
+  readonly accounts: readonly MockAccount[] = MOCK_ACCOUNTS;
+  /** The staff code of the signed-in user, to mark them in the list. */
+  readonly currentUserId$ = computed(
+    () => this.session.user$()?.userId ?? null,
+  );
   readonly offline$ = this.network.offline$;
 
-  /** Starts loading the demo accounts (idempotent). */
-  load(): void {
-    this.setWanted(true);
-  }
-
-  private setWanted(wanted: boolean): void {
-    this.state.wanted.set(wanted);
-  }
-
-  switchRole(account: DemoAccount): void {
-    this.scenario.setRole(exampleOf(account));
-    this.toaster.info(
-      `Đã chuyển dữ liệu mô phỏng sang ${roleText(account)}`,
-      'Chỉ đổi dữ liệu mock; người đăng nhập không đổi.',
-    );
-    void this.router.navigateByUrl('/');
+  /** Signs in as a demo user of the mock backend and opens their home. */
+  signInAs(account: MockAccount): void {
+    this.session.signIn({
+      username: account.username,
+      password: MOCK_PASSWORD,
+    });
+    toObservable(this.session.user$, { injector: this.injector })
+      .pipe(
+        filter((user) => user?.userId === account.userId),
+        take(1),
+      )
+      .subscribe(() => {
+        this.toaster.info(
+          `Đã đăng nhập bằng ${account.fullName}`,
+          account.roleText,
+        );
+        void this.router.navigateByUrl('/');
+      });
   }
 
   toggleOffline(): void {

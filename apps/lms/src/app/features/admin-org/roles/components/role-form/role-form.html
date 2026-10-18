@@ -13,14 +13,14 @@
     @for (section of sections; track section.section) {
     <fieldset class="role-form__section">
       <legend>{{ section.section }}</legend>
-      @for (item of section.items; track item.key) {
+      @for (item of section.items; track item.code) {
       <label class="role-form__option">
         <input
           type="checkbox"
           uiCheckbox
           #box
-          [checked]="chosen().has(item.key)"
-          (change)="toggle(item.key, box.checked)"
+          [checked]="chosen().has(item.code)"
+          (change)="toggle(item.code, box.checked)"
         />
         {{ item.label }}
       </label>

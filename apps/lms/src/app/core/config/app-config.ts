@@ -26,11 +26,18 @@ export const AppConfigSchema = z.object({
       error: 'apiBaseUrl must not end with "/"',
     }),
   /**
-   * Answers requests from the in-app mock API instead of a backend, and lets the dev toolbar
-   * pick the mocked role. Only the development environment file also supplies the mock
-   * interceptor (`mockInterceptors`), so staging and production bundles hold no fixtures.
+   * Turns the in-app mock API on: it answers the endpoints the backend does not have (role
+   * management, a user's courses, attempts and activity, the shell badges) from fixtures. Only the
+   * development environment file also supplies the mock interceptor (`mockInterceptors`), so
+   * staging and production bundles hold no fixtures.
    */
   mockApi: z.boolean(),
+  /**
+   * With `mockApi`, the mock also answers the endpoints the backend does have, from a seeded
+   * in-memory copy of its demo database, and the dev toolbar can sign in as a demo user. Turn it
+   * off to send those endpoints to the real backend while the mock-only ones stay mocked.
+   */
+  mockBackend: z.boolean(),
   /**
    * Internal tooling for the team: the migration progress board and owner/pull request details on
    * the design-system placeholders. True in development and staging, false in production, so

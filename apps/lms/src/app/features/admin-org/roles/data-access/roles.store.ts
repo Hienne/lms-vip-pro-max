@@ -22,7 +22,7 @@ import { EndpointClient } from '../../../../core/http/endpoint-client';
 /**
  * The roles screen: the roles the server holds, and the commands to add, change and delete one.
  * Every accepted mutation bumps `changes`, which the list reloads on, so the page shows the
- * server's truth (the mock API is stateless).
+ * server's truth.
  */
 @Injectable()
 export class RolesStore {

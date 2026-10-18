@@ -2,7 +2,13 @@ import { HttpTestingController } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 import { provideRouter, Router } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
-import { envelopeError, loginV1Body, meV1Body } from '@lms/mocks';
+import {
+  type BackendResponseKey,
+  backendRefusal,
+  envelopeError,
+  envelopeOk,
+  seedMe,
+} from '@lms/mocks';
 import { Toaster } from '@lms/ui';
 import { createAppRoutes } from '../../../app.routes';
 import {
@@ -19,6 +25,15 @@ import {
 } from '../../../core/session/session.testing';
 
 const LOGIN_URL = '/api/v1/auth/login';
+
+const loginData = {
+  accessToken: 'fixture.jwt.token',
+  tokenType: 'Bearer',
+  expiresInSeconds: 3600,
+};
+const loginV1Body = envelopeOk(loginData);
+/** `/me` of the seed learner. */
+const meV1Body = envelopeOk(seedMe('000004'));
 
 describe('Login', () => {
   let harness: RouterTestingHarness;
@@ -85,11 +100,13 @@ describe('Login', () => {
     await settle();
   }
 
-  /** The backend refuses with an ERROR envelope; it still answers HTTP 200. */
-  const refuse = (title: string, message: string) =>
+  /** The backend refuses a wrong password with HTTP 401 and an envelope in the body. */
+  const refuse = (key: BackendResponseKey = 'credentialsInvalid') => {
+    const { status, body } = backendRefusal(key);
     backend
       .expectOne(LOGIN_URL)
-      .flush(envelopeError('CORE-0402', title, message));
+      .flush(body, { status, statusText: 'Unauthorized' });
+  };
 
   const alert = () => el.querySelector('.login__card ui-alert[role="alert"]');
 
@@ -184,14 +201,14 @@ describe('Login', () => {
     });
   });
 
-  it('shows a refused sign-in as one alert with the backend title and message, and no toast', async () => {
+  it('shows a wrong password (HTTP 401 IDENTITY-CREDENTIALS_INVALID) as one alert with the backend title and message, and no toast', async () => {
     await openLogin();
     const toasts = vi.spyOn(TestBed.inject(Toaster), 'error');
     await type('000123', 'wrong-password');
     await submit();
-    refuse('Đăng nhập thất bại', 'Tên đăng nhập hoặc mật khẩu không đúng.');
+    refuse();
     await settle();
-    expect(alert()?.textContent).toContain('Đăng nhập thất bại');
+    expect(alert()?.textContent).toContain('Đăng nhập không thành công');
     expect(alert()?.textContent).toContain(
       'Tên đăng nhập hoặc mật khẩu không đúng.',
     );
@@ -206,10 +223,13 @@ describe('Login', () => {
     await openLogin();
     await type('000123', 'wrong-password');
     await submit();
-    backend.expectOne(LOGIN_URL).flush({
-      ...envelopeError('CORE-0402', '', 'Sai thông tin.'),
-      messageTitle: null,
-    });
+    backend.expectOne(LOGIN_URL).flush(
+      {
+        ...envelopeError('IDENTITY-CREDENTIALS_INVALID', '', 'Sai thông tin.'),
+        messageTitle: null,
+      },
+      { status: 401, statusText: 'Unauthorized' },
+    );
     await settle();
     expect(alert()?.textContent).toContain('Không đăng nhập được');
     expect(alert()?.textContent).toContain('Sai thông tin.');
@@ -219,7 +239,7 @@ describe('Login', () => {
     await openLogin();
     await type('000123', 'wrong-password');
     await submit();
-    refuse('Đăng nhập thất bại', 'Sai mật khẩu.');
+    refuse();
     await settle();
     await submit();
     await signInSucceeds();
@@ -238,5 +258,23 @@ describe('Login', () => {
     harness = await RouterTestingHarness.create();
     await harness.navigateByUrl('/login');
     expect(router.url).toBe('/learn');
+  });
+
+  it('sends a user with a temporary password to the password change', async () => {
+    await openLogin();
+    await type('moi.tao', 'Tam@12345');
+    await submit();
+    backend.expectOne(LOGIN_URL).flush(loginV1Body);
+    await settle();
+    const me = seedMe('000004');
+    backend
+      .expectOne(ME_URL)
+      .flush(
+        envelopeOk({ ...me, user: { ...me.user, mustChangePassword: true } }),
+      );
+    await vi.waitFor(() => {
+      TestBed.tick();
+      expect(router.url).toBe('/change-password');
+    });
   });
 });

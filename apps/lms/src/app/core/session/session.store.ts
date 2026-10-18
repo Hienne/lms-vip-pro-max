@@ -2,9 +2,9 @@ import { computed, inject, Injectable, signal } from '@angular/core';
 import { rxResource, toObservable } from '@angular/core/rxjs-interop';
 import {
   authV1Endpoints,
+  type FunctionCode,
   type LoginV1Command,
-  type MenuKey,
-  type Profile,
+  type Me,
 } from '@lms/contracts';
 import {
   catchError,
@@ -18,12 +18,13 @@ import {
 } from 'rxjs';
 import { EndpointClient } from '../http/endpoint-client';
 import { type AppError, toAppError } from '../errors/app-error';
+import type { Profile } from './profile';
 import { toProfile } from './to-profile';
 import { TokenStore } from './token-store';
 
 export type SessionStatus = 'loading' | 'ready' | 'error';
 
-const NO_MENUS: readonly MenuKey[] = [];
+const NO_MENUS: readonly FunctionCode[] = [];
 
 /**
  * Who is signed in. `/me`, adapted by `toProfile`, is the only source of the user. The access
@@ -42,6 +43,10 @@ export class SessionStore {
     signOutRequest: signal<object | undefined>(undefined),
   };
 
+  private profileOf(me: Me): Profile {
+    return toProfile(me, (endpoint) => this.client.isServed(endpoint));
+  }
+
   /** `null` is an anonymous visitor: no valid token, or `/me` answered 401. */
   private readonly profileResource = rxResource<
     Profile | null,
@@ -52,7 +57,7 @@ export class SessionStore {
       this.tokens.read() === null
         ? of(null)
         : this.client.call(authV1Endpoints.me).pipe(
-            map(toProfile),
+            map((me) => this.profileOf(me)),
             catchError((error: unknown) => {
               if (toAppError(error).kind !== 'unauthorized') {
                 return throwError(() => error);
@@ -71,7 +76,7 @@ export class SessionStore {
           this.tokens.save(token.accessToken, token.expiresInSeconds),
         ),
         switchMap(() => this.client.call(authV1Endpoints.me)),
-        map(toProfile),
+        map((me) => this.profileOf(me)),
         tap((profile) => this.profileResource.set(profile)),
         catchError((error: unknown) => {
           this.tokens.clear();
@@ -105,12 +110,16 @@ export class SessionStore {
   readonly user$ = computed<Profile | null>(() =>
     this.profileResource.hasValue() ? this.profileResource.value() : null,
   );
-  readonly menus$ = computed<readonly MenuKey[]>(
+  readonly menus$ = computed<readonly FunctionCode[]>(
     () => this.user$()?.menus ?? NO_MENUS,
   );
   /** Where `/` and the login page send the signed-in user; `null` for a visitor. */
   readonly homePath$ = computed(() => this.user$()?.homePath ?? null);
   readonly isSignedIn$ = computed(() => this.user$() !== null);
+  /** A temporary password is in use: the backend refuses everything but the password change. */
+  readonly mustChangePassword$ = computed(
+    () => this.user$()?.mustChangePassword ?? false,
+  );
 
   readonly loadError$ = computed<AppError | undefined>(() =>
     this.status$() === 'error'
@@ -150,6 +159,11 @@ export class SessionStore {
 
   signOut(): void {
     this.setSignOutRequest({});
+  }
+
+  /** Takes a `/me` the server just sent (a profile save answers one) as the signed-in user. */
+  apply(me: Me): void {
+    this.profileResource.set(this.profileOf(me));
   }
 
   /** The session ended: forget the token and the user without calling the server. */

@@ -3,7 +3,7 @@ import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { provideRouter, Router } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
-import type { MenuKey } from '@lms/contracts';
+import type { FunctionCode } from '@lms/contracts';
 import { createAppRoutes } from '../../../app.routes';
 import {
   parseAppConfig,
@@ -13,11 +13,11 @@ import { testAppConfig } from '../../../core/config/app-config.testing';
 import { SessionStore } from '../../../core/session/session.store';
 
 describe('403 page', () => {
-  const menus = signal<readonly MenuKey[]>(['learn.home']);
+  const menus = signal<readonly FunctionCode[]>(['COURSE_LEARNING']);
   let harness: RouterTestingHarness;
 
   beforeEach(async () => {
-    menus.set(['learn.home']);
+    menus.set(['COURSE_LEARNING']);
     TestBed.configureTestingModule({
       providers: [
         provideAppConfig(parseAppConfig(testAppConfig())),
@@ -27,6 +27,7 @@ describe('403 page', () => {
           useValue: {
             menus$: menus,
             isSignedIn$: () => true,
+            mustChangePassword$: () => false,
             whenReady: () => Promise.resolve(),
           },
         },

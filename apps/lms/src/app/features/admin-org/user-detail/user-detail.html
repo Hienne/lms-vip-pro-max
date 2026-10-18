@@ -9,31 +9,26 @@
 <ui-breadcrumb
   [items]="[
     { label: 'Người dùng', href: '/admin/users' },
-    { label: user.name },
+    { label: user.fullName },
   ]"
 />
 <section uiCard padded class="user-detail__summary">
-  <ui-avatar [name]="user.name" size="xl" />
+  <ui-avatar [name]="user.fullName" size="xl" />
   <div class="grow stack stack--gap-2">
-    <h1>{{ user.name }}</h1>
+    <h1>{{ user.fullName }}</h1>
     <div class="row">
-      <app-role-badge
-        [roleId]="user.roleId"
-        [name]="user.roleName"
-        [scoped]="isUnitAdmin(user)"
-      />
       <app-account-status [status]="user.status" />
+      @if (user.mustChangePassword) {
+      <span uiBadge tone="warning">Chờ đổi mật khẩu</span>
+      }
       <span class="user-detail__meta"
-        >{{ user.email }} · {{ user.staffCode }} · {{ user.unitName }} / {{
-        user.groupName }}</span
+        >{{ user.email || user.username }} · {{ user.userId }}@if (user.orgName)
+        { · {{ user.orgName }}@if (user.teamName) { / {{ user.teamName }}}
+        }</span
       >
     </div>
-    <span class="user-detail__meta"
-      >Tham gia {{ user.joinedAt | fmtDate }} · Đăng nhập cuối @if
-      (user.lastLoginAt) { {{ user.lastLoginAt | fmtRelative }} } @else { chưa
-      }</span
-    >
   </div>
+  @if (detail.editable) {
   <div class="row">
     <button uiButton (click)="editorStore.edit(user)">
       <ui-icon name="pen-line" size="sm" />Sửa
@@ -41,17 +36,25 @@
     @if (!store.isSelf$()) { @if (user.status === 'active') {
     <button
       uiButton
+      variant="ghost"
+      (click)="editorStore.setStatus(user, 'inactive')"
+    >
+      <ui-icon name="circle-pause" size="sm" />Tạm dừng
+    </button>
+    <button
+      uiButton
       variant="danger-ghost"
-      (click)="editorStore.toggleLock(user)"
+      (click)="editorStore.setStatus(user, 'locked')"
     >
       <ui-icon name="lock" size="sm" />Khóa tài khoản
     </button>
     } @else {
-    <button uiButton (click)="editorStore.toggleLock(user)">
-      <ui-icon name="lock-open" size="sm" />Mở khóa
+    <button uiButton (click)="editorStore.setStatus(user, 'active')">
+      <ui-icon name="lock-open" size="sm" />Kích hoạt
     </button>
     } }
   </div>
+  }
 </section>
 
 <section uiCard class="user-detail__tabs">
@@ -61,8 +64,118 @@
     [selected]="store.tab$()"
     (selectedChange)="store.selectTab($event)"
   >
+    <div uiTabPanel="info">
+      <dl class="user-detail__facts">
+        <div>
+          <dt>Mã cán bộ</dt>
+          <dd>{{ user.userId }}</dd>
+        </div>
+        <div>
+          <dt>Tên đăng nhập</dt>
+          <dd>{{ user.username }}</dd>
+        </div>
+        <div>
+          <dt>Email</dt>
+          <dd>{{ user.email || '—' }}</dd>
+        </div>
+        <div>
+          <dt>Chức danh</dt>
+          <dd>{{ user.positionName || '—' }}</dd>
+        </div>
+        <div>
+          <dt>Đơn vị</dt>
+          <dd>{{ user.orgName || '—' }}</dd>
+        </div>
+        <div>
+          <dt>Nhóm</dt>
+          <dd>{{ user.teamName || '—' }}</dd>
+        </div>
+        <div>
+          <dt>Nguồn tài khoản</dt>
+          <dd>{{ user.authProvider === 'SSO' ? 'SSO' : 'Cục bộ' }}</dd>
+        </div>
+        @if (user.lastSyncTime) {
+        <div>
+          <dt>Đồng bộ lần cuối</dt>
+          <dd>{{ user.lastSyncTime | fmtDatetime }}</dd>
+        </div>
+        }
+      </dl>
+    </div>
+
+    <div uiTabPanel="grants">
+      <div class="stack user-detail__role">
+        @if (store.grants$().length) {
+        <div uiTableWrap>
+          <table uiTable responsive>
+            <caption class="sr-only">
+              Vai trò được cấp
+            </caption>
+            <thead>
+              <tr>
+                <th scope="col">Vai trò</th>
+                <th scope="col">Phạm vi</th>
+                <th scope="col">Cấp bởi</th>
+                <th scope="col">Thao tác</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (grant of store.grants$(); track grant.grantId) {
+              <tr>
+                <td data-label="Vai trò">
+                  <app-role-badge
+                    [code]="grant.roleCode"
+                    [name]="grant.roleName"
+                  />
+                </td>
+                <td data-label="Phạm vi">{{ grant.scopeText }}</td>
+                <td data-label="Cấp bởi">
+                  <div>{{ grant.grantedBy || '—' }}</div>
+                  @if (grant.grantedAt) {
+                  <div uiTableSub>{{ grant.grantedAt | fmtDatetime }}</div>
+                  }
+                </td>
+                <td data-label="Thao tác">
+                  @if (detail.editable && grant.revocable) {
+                  <button
+                    uiButton
+                    size="sm"
+                    variant="danger-ghost"
+                    (click)="
+                      editorStore.revoke(
+                        user.userId,
+                        grant.grantId,
+                        grant.roleName
+                      )
+                    "
+                  >
+                    Thu hồi
+                  </button>
+                  }
+                </td>
+              </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+        } @else {
+        <ui-empty icon="shield" title="Chưa được cấp vai trò" />
+        } @if (detail.editable) {
+        <h2 class="user-detail__subhead">Cấp vai trò mới</h2>
+        <app-grant-picker
+          [roles]="editorStore.roles$()"
+          [orgs]="editorStore.orgs$()"
+          [teams]="editorStore.grantTeams$()"
+          [busy]="editorStore.isGranting$()"
+          (orgChosen)="editorStore.pickGrantOrg($event)"
+          (added)="editorStore.grant(user.userId, $event)"
+        />
+        }
+      </div>
+    </div>
+
     <div uiTabPanel="courses">
-      @if (detail.courses.length) {
+      @if (store.courses$(); as courses) { @if (courses.length) {
       <div uiTableWrap>
         <table uiTable responsive>
           <caption class="sr-only">
@@ -79,7 +192,7 @@
             </tr>
           </thead>
           <tbody>
-            @for (course of detail.courses; track course.id) {
+            @for (course of courses; track course.id) {
             <tr>
               <td data-label="Khóa học">
                 <div uiTablePrimary>{{ course.title }}</div>
@@ -126,11 +239,13 @@
       </div>
       } @else {
       <ui-empty icon="book-open" title="Chưa được giao khóa học" />
+      } } @else {
+      <span uiSpinner></span>
       }
     </div>
 
     <div uiTabPanel="attempts">
-      @if (detail.attempts.length) {
+      @if (store.attempts$(); as attempts) { @if (attempts.length) {
       <div uiTableWrap>
         <table uiTable responsive>
           <caption class="sr-only">
@@ -145,7 +260,7 @@
             </tr>
           </thead>
           <tbody>
-            @for (attempt of detail.attempts; track attempt.id) {
+            @for (attempt of attempts; track attempt.id) {
             <tr>
               <td data-label="Bài kiểm tra">
                 <!-- The result route is keyed by the attempt; the quiz segment is not used. -->
@@ -171,34 +286,15 @@
       </div>
       } @else {
       <ui-empty icon="clipboard-check" title="Chưa có lần thi" />
+      } } @else {
+      <span uiSpinner></span>
       }
     </div>
 
-    <div uiTabPanel="role">
-      <div class="stack user-detail__role">
-        <p>
-          Vai trò <strong>{{ detail.role.name }}</strong>@if
-          (detail.role.description) { — {{ detail.role.description }}} Phạm vi
-          dữ liệu: <strong>{{ store.scopeName$() }}</strong>.
-        </p>
-        <h2 class="user-detail__subhead">Menu được cấp</h2>
-        <ul class="user-detail__menus">
-          @for (label of store.menuLabels$(); track label) {
-          <li><span uiBadge tone="primary">{{ label }}</span></li>
-          } @empty {
-          <li class="user-detail__meta">Vai trò này chưa được cấp menu nào.</li>
-          }
-        </ul>
-        <p class="user-detail__meta">
-          Người dùng có toàn quyền thao tác trên các menu được cấp.
-        </p>
-      </div>
-    </div>
-
     <div uiTabPanel="audit">
-      @if (detail.audit.length) {
+      @if (store.audit$(); as audit) { @if (audit.length) {
       <ul uiList>
-        @for (entry of detail.audit; track entry.id) {
+        @for (entry of audit; track entry.id) {
         <li uiListItem>
           <span uiListIcon><ui-icon name="history" size="sm" /></span>
           <span class="grow"
@@ -211,6 +307,8 @@
       </ul>
       } @else {
       <ui-empty icon="history" title="Chưa có hoạt động" />
+      } } @else {
+      <span uiSpinner></span>
       }
     </div>
   </ui-tabs>

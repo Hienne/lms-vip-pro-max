@@ -50,3 +50,11 @@
     list-style: none;
   }
 }
+
+.profile__grants {
+  display: grid;
+  gap: ui.space(1);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}

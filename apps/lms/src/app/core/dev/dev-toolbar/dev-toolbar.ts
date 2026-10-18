@@ -1,11 +1,10 @@
 import { Component, computed, inject } from '@angular/core';
 import { APP_CONFIG } from '../../config/app-config';
 import { Menu, type MenuEntry } from '@lms/ui';
-import { roleText } from '../../../shared/status/role-badge';
-import { DevToolbarStore, exampleOf } from './dev-toolbar.store';
+import { DevToolbarStore } from './dev-toolbar.store';
 
 type Choice =
-  | `role:${string}`
+  | `user:${string}`
   | 'offline'
   | 'expire'
   | 'admin-url'
@@ -20,11 +19,7 @@ type Choice =
   imports: [Menu],
   providers: [DevToolbarStore],
   template: `
-    <div
-      class="dev-toolbar"
-      (pointerenter)="store.load()"
-      (focusin)="store.load()"
-    >
+    <div class="dev-toolbar">
       <ui-menu
         label="Demo"
         icon="settings"
@@ -38,20 +33,20 @@ type Choice =
 })
 export class DevToolbar {
   protected readonly store = inject(DevToolbarStore);
-  private readonly mockApi = inject(APP_CONFIG).mockApi;
+  private readonly config = inject(APP_CONFIG);
 
-  /** The role list drives the mock API, so it is only offered while `mockApi` is on. */
-  private readonly roleEntries = computed<MenuEntry<Choice>[]>(() =>
-    this.mockApi
+  /** Signing in as a demo user only works against the mock backend, so it is offered only then. */
+  private readonly userEntries = computed<MenuEntry<Choice>[]>(() =>
+    this.config.mockApi && this.config.mockBackend
       ? [
-          { kind: 'label', label: 'Đổi vai trò dữ liệu mô phỏng' },
-          ...this.store.accounts$().map(
+          { kind: 'label', label: 'Đăng nhập bằng tài khoản demo' },
+          ...this.store.accounts.map(
             (account): MenuEntry<Choice> => ({
               kind: 'item',
-              value: `role:${account.id}`,
-              label: `${roleText(account)} — ${account.name}`,
+              value: `user:${account.userId}`,
+              label: `${account.roleText} — ${account.fullName}`,
               icon: 'user',
-              disabled: exampleOf(account) === this.store.currentRole$(),
+              disabled: account.userId === this.store.currentUserId$(),
             }),
           ),
           { kind: 'separator' },
@@ -60,7 +55,7 @@ export class DevToolbar {
   );
 
   protected readonly entries = computed<MenuEntry<Choice>[]>(() => [
-    ...this.roleEntries(),
+    ...this.userEntries(),
     { kind: 'label', label: 'Mô phỏng sự cố' },
     {
       kind: 'item',
@@ -92,11 +87,11 @@ export class DevToolbar {
   ]);
 
   protected run(choice: Choice): void {
-    if (choice.startsWith('role:')) {
-      const account = this.store
-        .accounts$()
-        .find((a) => `role:${a.id}` === choice);
-      if (account) this.store.switchRole(account);
+    if (choice.startsWith('user:')) {
+      const account = this.store.accounts.find(
+        (a) => `user:${a.userId}` === choice,
+      );
+      if (account) this.store.signInAs(account);
     } else if (choice === 'offline') this.store.toggleOffline();
     else if (choice === 'expire') this.store.expireSession();
     else if (choice === 'admin-url') this.store.tryAdminUrl();

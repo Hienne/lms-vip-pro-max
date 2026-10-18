@@ -1,0 +1,12 @@
+@use 'ui';
+
+.grant-picker {
+  display: grid;
+  gap: ui.space(3);
+  grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
+  align-items: end;
+
+  &__add {
+    justify-self: start;
+  }
+}
