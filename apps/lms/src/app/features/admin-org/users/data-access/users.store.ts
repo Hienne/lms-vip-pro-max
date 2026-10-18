@@ -10,6 +10,7 @@ import {
   identityEndpoints,
   type AccountStatus,
   type ListUsersQuery,
+  type Page,
   type UserSummary,
 } from '@lms/contracts';
 import type { DataTableSort } from '@lms/ui';
@@ -55,12 +56,22 @@ export class UsersStore {
     status: signal<AccountStatus | ''>(''),
     sort: signal<DataTableSort | null>(null),
     page: signal(1),
+    /** The last page the server sent: the table stays while the next one loads. */
+    shown: linkedSignal<
+      Page<UserSummary> | undefined,
+      Page<UserSummary> | undefined
+    >({
+      source: () => this.listData.value(),
+      computation: (next, previous) => next ?? previous?.value,
+    }),
   };
 
   /** What the server is asked for; the 1-based table page is the backend's 0-based `page`. */
   private readonly request = computed((): ListUsersQuery => {
     const { query, roleCode, orgId, teamId, status, sort, page } = this.state;
-    const field = sort() ? SORT_FIELD[sort()!.key] : undefined;
+    const chosen = status();
+    const order = sort();
+    const field = order ? SORT_FIELD[order.key] : undefined;
     return {
       page: page() - 1,
       size: USERS_PAGE_SIZE,
@@ -68,8 +79,8 @@ export class UsersStore {
       ...(roleCode() ? { roleCode: roleCode() } : {}),
       ...(orgId() !== undefined ? { orgId: orgId() } : {}),
       ...(teamId() !== undefined ? { teamId: teamId() } : {}),
-      ...(status() ? { status: status() as AccountStatus } : {}),
-      ...(field ? { sort: `${field},${sort()!.dir}` } : {}),
+      ...(chosen ? { status: chosen } : {}),
+      ...(field && order ? { sort: `${field},${order.dir}` } : {}),
     };
   });
 
@@ -80,15 +91,6 @@ export class UsersStore {
     { params: () => this.request(), reloadOn: this.editor.changes },
   );
 
-  /** The last page the server sent: the table stays while the next one loads. */
-  private readonly shown = linkedSignal<
-    ReturnType<typeof this.listData.value>,
-    ReturnType<typeof this.listData.value>
-  >({
-    source: this.listData.value,
-    computation: (next, previous) => next ?? previous?.value,
-  });
-
   readonly query$ = this.state.query.asReadonly();
   readonly roleCode$ = this.state.roleCode.asReadonly();
   readonly orgId$ = this.state.orgId.asReadonly();
@@ -98,18 +100,23 @@ export class UsersStore {
   readonly page$ = this.state.page.asReadonly();
 
   readonly roles$ = this.editor.roles$;
+  /** Role names by code; a role the caller cannot list is shown by its code. */
+  readonly roleNames$ = computed(() =>
+    Object.fromEntries(this.roles$().map((role) => [role.code, role.name])),
+  );
   readonly orgs$ = this.editor.orgs$;
   readonly me$ = this.editor.me$;
   readonly isLoading$ = computed(
-    () => this.listData.isLoading() && this.shown() === undefined,
+    () => this.listData.isLoading() && this.state.shown() === undefined,
   );
   readonly loadError$ = this.listData.error;
 
   readonly rows$ = computed(
     (): readonly UserRow[] =>
-      this.shown()?.items.map((user) => ({ ...user, id: user.userId })) ?? [],
+      this.state.shown()?.items.map((user) => ({ ...user, id: user.userId })) ??
+      [],
   );
-  readonly total$ = computed(() => this.shown()?.totalElements ?? 0);
+  readonly total$ = computed(() => this.state.shown()?.totalElements ?? 0);
 
   /** Sentence under the title; a caller limited to one org is told which. */
   readonly description$ = computed(() => {
@@ -120,39 +127,69 @@ export class UsersStore {
       : 'Quản lý tài khoản, vai trò, đơn vị và trạng thái. Tài khoản bị khóa không đăng nhập được.';
   });
 
-  search(query: string): void {
+  // Setters: the only writers of state
+  private setQuery(query: string): void {
     this.state.query.set(query);
-    this.state.page.set(1);
+  }
+
+  private setRoleCode(roleCode: string): void {
+    this.state.roleCode.set(roleCode);
+  }
+
+  private setOrgId(orgId: number | undefined): void {
+    this.state.orgId.set(orgId);
+  }
+
+  private setTeamId(teamId: number | undefined): void {
+    this.state.teamId.set(teamId);
+  }
+
+  private setStatus(status: AccountStatus | ''): void {
+    this.state.status.set(status);
+  }
+
+  private setSort(sort: DataTableSort): void {
+    this.state.sort.set(sort);
+  }
+
+  private setPage(page: number): void {
+    this.state.page.set(page);
+  }
+
+  // Commands: a changed filter or sort starts again at the first page
+  search(query: string): void {
+    this.setQuery(query);
+    this.setPage(1);
   }
 
   filterRole(roleCode: string): void {
-    this.state.roleCode.set(roleCode);
-    this.state.page.set(1);
+    this.setRoleCode(roleCode);
+    this.setPage(1);
   }
 
   filterOrg(orgId: string): void {
-    this.state.orgId.set(idParam(orgId || null));
-    this.state.teamId.set(undefined);
-    this.state.page.set(1);
+    this.setOrgId(idParam(orgId || null));
+    this.setTeamId(undefined);
+    this.setPage(1);
   }
 
   clearTeam(): void {
-    this.state.teamId.set(undefined);
-    this.state.page.set(1);
+    this.setTeamId(undefined);
+    this.setPage(1);
   }
 
   filterStatus(status: string): void {
-    this.state.status.set(status as AccountStatus | '');
-    this.state.page.set(1);
+    this.setStatus(status as AccountStatus | '');
+    this.setPage(1);
   }
 
   sortBy(sort: DataTableSort): void {
-    this.state.sort.set(sort);
-    this.state.page.set(1);
+    this.setSort(sort);
+    this.setPage(1);
   }
 
   goToPage(page: number): void {
-    this.state.page.set(page);
+    this.setPage(page);
   }
 
   retryLoad(): void {

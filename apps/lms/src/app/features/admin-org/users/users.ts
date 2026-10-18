@@ -55,9 +55,4 @@ export class Users {
   protected readonly store = inject(UsersStore);
   protected readonly pageSize = USERS_PAGE_SIZE;
   protected readonly editorStore = inject(UserEditorStore);
-
-  /** A role's display name from the lookup; a role the caller cannot list keeps its code. */
-  protected roleName(code: string): string {
-    return this.store.roles$().find((role) => role.code === code)?.name ?? code;
-  }
 }

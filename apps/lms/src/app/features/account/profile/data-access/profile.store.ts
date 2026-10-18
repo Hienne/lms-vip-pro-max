@@ -3,6 +3,7 @@ import { authV1Endpoints, type UpdateMeCommand } from '@lms/contracts';
 import { serverMutation } from '../../../../core/data-access/server-mutation';
 import { EndpointClient } from '../../../../core/http/endpoint-client';
 import { SessionStore } from '../../../../core/session/session.store';
+import { scopeLabel } from '../../../../shared/status/scope-label';
 
 /**
  * The profile page: the signed-in user from the session, and the one command it offers, saving
@@ -29,6 +30,27 @@ export class ProfileStore {
   /** Accounts synced from SSO are read-only here: the source system owns their fields. */
   readonly readOnly$ = computed(() => this.user$()?.authProvider === 'SSO');
   readonly isSaving$ = this.saveMutation.isPending;
+
+  /** One badge per distinct role, as a user with two grants of one role shows it once. */
+  readonly roles$ = computed(() => {
+    const seen = new Map<string, string>();
+    for (const grant of this.user$()?.grants ?? []) {
+      seen.set(grant.roleCode, grant.roleName);
+    }
+    return [...seen].map(([code, name]) => ({ code, name }));
+  });
+
+  readonly grants$ = computed(() => {
+    const user = this.user$();
+    return (user?.grants ?? []).map((grant) => ({
+      roleName: grant.roleName,
+      scope: scopeLabel(grant.scope, {
+        orgName: grant.scope.orgId === user?.org?.id ? user?.org?.name : null,
+        teamName:
+          grant.scope.teamId === user?.team?.id ? user?.team?.name : null,
+      }),
+    }));
+  });
 
   save(command: UpdateMeCommand): void {
     this.saveMutation.run(command);

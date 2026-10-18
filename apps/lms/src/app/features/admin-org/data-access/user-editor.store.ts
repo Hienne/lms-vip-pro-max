@@ -26,7 +26,14 @@ import { serverData } from '../../../core/data-access/server-data';
 import { serverMutation } from '../../../core/data-access/server-mutation';
 import { EndpointClient } from '../../../core/http/endpoint-client';
 import { SessionStore } from '../../../core/session/session.store';
+import { scopeLabel } from '../../../shared/status/scope-label';
 import type { ManagedUser } from '../components/user-form/user-form.schema';
+
+/** A role grant collected in the add form, with the words the form lists it by. */
+export interface PendingGrant {
+  readonly request: GrantRequest;
+  readonly label: string;
+}
 
 type SaveRequest =
   | { readonly kind: 'create'; readonly command: CreateUserCommand }
@@ -93,6 +100,7 @@ export class UserEditorStore {
     editing: signal<{ readonly user: ManagedUser | null } | null>(null),
     formOrgId: signal<number | undefined>(undefined),
     grantOrgId: signal<number | undefined>(undefined),
+    pendingGrants: signal<readonly PendingGrant[]>([]),
   };
 
   private readonly changeSource = invalidation();
@@ -111,22 +119,18 @@ export class UserEditorStore {
       query: { size: MAX_PAGE_SIZE, sort: 'name,asc' },
     }),
   );
-  private readonly formTeamsData = serverData(
-    (orgId: number) =>
-      this.client.call(organizationEndpoints.listTeams, {
-        params: { orgId },
-        query: { size: MAX_PAGE_SIZE, sort: 'name,asc' },
-      }),
-    { params: () => this.state.formOrgId() },
-  );
-  private readonly grantTeamsData = serverData(
-    (orgId: number) =>
-      this.client.call(organizationEndpoints.listTeams, {
-        params: { orgId },
-        query: { size: MAX_PAGE_SIZE, sort: 'name,asc' },
-      }),
-    { params: () => this.state.grantOrgId() },
-  );
+  // The teams of the org picked in the user form, and of the one picked in the grant picker.
+  private readonly teamsOf = (orgId: () => number | undefined) =>
+    serverData(
+      (id: number) =>
+        this.client.call(organizationEndpoints.listTeams, {
+          params: { orgId: id },
+          query: { size: MAX_PAGE_SIZE, sort: 'name,asc' },
+        }),
+      { params: orgId },
+    );
+  private readonly formTeamsData = this.teamsOf(() => this.state.formOrgId());
+  private readonly grantTeamsData = this.teamsOf(() => this.state.grantOrgId());
 
   private readonly saveMutation = serverMutation(
     (request: SaveRequest) =>
@@ -187,6 +191,8 @@ export class UserEditorStore {
 
   readonly me$ = this.session.user$;
   readonly editing$ = this.state.editing.asReadonly();
+  /** The first role grants of the user being added. */
+  readonly pendingGrants$ = this.state.pendingGrants.asReadonly();
 
   readonly roles$ = computed(() => this.rolesData.value() ?? []);
   readonly orgs$ = computed(() => this.orgsData.value()?.items ?? []);
@@ -212,14 +218,30 @@ export class UserEditorStore {
     return user ? `Sửa ${user.fullName}` : 'Thêm người dùng';
   });
 
+  // Setters: the only writers of state
   private setEditing(editing: { readonly user: ManagedUser | null } | null) {
     this.state.editing.set(editing);
   }
 
+  private setFormOrgId(orgId: number | undefined): void {
+    this.state.formOrgId.set(orgId);
+  }
+
+  private setGrantOrgId(orgId: number | undefined): void {
+    this.state.grantOrgId.set(orgId);
+  }
+
+  private setPendingGrants(grants: readonly PendingGrant[]): void {
+    this.state.pendingGrants.set(grants);
+  }
+
+  // Commands
+
   /** Opens the add (`user` null) or edit drawer: the editor shows it while `editing$` is set. */
   edit(user: ManagedUser | null): void {
     this.saveMutation.reset();
-    this.state.formOrgId.set(user?.orgId ?? this.me$()?.org?.id ?? undefined);
+    this.setFormOrgId(user?.orgId ?? this.me$()?.org?.id ?? undefined);
+    this.setPendingGrants([]);
     this.setEditing({ user });
   }
 
@@ -229,12 +251,32 @@ export class UserEditorStore {
 
   /** The form's org select changed: load that org's teams. */
   pickFormOrg(orgId: number | undefined): void {
-    this.state.formOrgId.set(orgId);
+    this.setFormOrgId(orgId);
   }
 
   /** The grant picker's org select changed: load that org's teams. */
   pickGrantOrg(orgId: number | undefined): void {
-    this.state.grantOrgId.set(orgId);
+    this.setGrantOrgId(orgId);
+  }
+
+  /** Adds a grant to the new user's list, worded by role and scope. */
+  addPendingGrant(request: GrantRequest): void {
+    const role = this.roles$().find((r) => r.roleId === request.roleId);
+    const scope = scopeLabel(
+      { type: request.scope, orgId: request.orgId, teamId: request.teamId },
+      {
+        orgName: this.orgs$().find((o) => o.id === request.orgId)?.name,
+        teamName: this.grantTeams$().find((t) => t.id === request.teamId)?.name,
+      },
+    );
+    const label = `${role?.name ?? `#${request.roleId}`} · ${scope}`;
+    this.setPendingGrants([...this.state.pendingGrants(), { request, label }]);
+  }
+
+  removePendingGrant(index: number): void {
+    this.setPendingGrants(
+      this.state.pendingGrants().filter((_, i) => i !== index),
+    );
   }
 
   create(command: CreateUserCommand): void {

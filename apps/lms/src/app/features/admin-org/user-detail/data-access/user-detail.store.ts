@@ -98,8 +98,14 @@ export class UserDetailStore {
       : []),
   ]);
 
+  // Setters: the only writers of state
+  private setTab(tab: UserDetailTab): void {
+    this.state.tab.set(tab);
+  }
+
+  // Commands
   selectTab(tab: string): void {
-    this.state.tab.set(tab as UserDetailTab);
+    this.setTab(tab as UserDetailTab);
   }
 
   retryLoad(): void {

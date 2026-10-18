@@ -15,6 +15,7 @@ import {
 import type { ForbiddenState } from './forbidden-state';
 import {
   FUNCTION_CODES,
+  SCREEN_TABLE,
   menuGroup,
   SCREEN_ENTRIES,
   screenHref,
@@ -114,7 +115,7 @@ describe('route table', () => {
     expect(entries.filter((path) => path.includes(':'))).toEqual([]);
   });
 
-  it('sends every search target to a screen of its own menu', () => {
+  it('sends every search target to a screen of its own menu or an open screen', () => {
     // `reports/learners` is a concrete URL of the screen `reports/:dim`.
     const matches = (pattern: string, path: string) => {
       const want = pattern.split('/');
@@ -126,7 +127,9 @@ describe('route table', () => {
     };
     const targets = FUNCTION_CODES.flatMap((menu) => {
       const { search, screens } = menuGroup(menu);
-      return search?.href ? [{ href: search.href, screens }] : [];
+      return search?.href
+        ? [{ href: search.href, screens: [...screens, ...SCREEN_TABLE.open] }]
+        : [];
     });
     expect(targets.length).toBeGreaterThan(0);
     for (const { href, screens } of targets) {

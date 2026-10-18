@@ -24,7 +24,6 @@ import { PasswordChangeStore } from '../../../shared/account/password-change.sto
 import { PasswordForm } from '../../../shared/account/password-form/password-form';
 import { AccountStatus } from '../../../shared/status/account-status';
 import { RoleBadge } from '../../../shared/status/role-badge';
-import { scopeLabel } from '../../../shared/status/scope-label';
 import { ProfileStore } from './data-access/profile.store';
 import {
   ProfileFormSchema,
@@ -77,27 +76,6 @@ export class Profile {
     return user ? toUpdateMeCommand(user, this.model()) : {};
   });
   protected readonly unchanged = computed(() => isEmptyPatch(this.patch()));
-
-  /** One badge per distinct role, as a user with two grants of one role shows it once. */
-  protected readonly roles = computed(() => {
-    const seen = new Map<string, string>();
-    for (const grant of this.store.user$()?.grants ?? []) {
-      seen.set(grant.roleCode, grant.roleName);
-    }
-    return [...seen].map(([code, name]) => ({ code, name }));
-  });
-
-  protected readonly grants = computed(() => {
-    const user = this.store.user$();
-    return (user?.grants ?? []).map((grant) => ({
-      roleName: grant.roleName,
-      scope: scopeLabel(grant.scope, {
-        orgName: grant.scope.orgId === user?.org?.id ? user?.org?.name : null,
-        teamName:
-          grant.scope.teamId === user?.team?.id ? user?.team?.name : null,
-      }),
-    }));
-  });
 
   protected onSubmit(event: Event): void {
     event.preventDefault();

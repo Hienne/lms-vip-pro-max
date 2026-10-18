@@ -4,7 +4,6 @@ import {
   inject,
   input,
   linkedSignal,
-  signal,
 } from '@angular/core';
 import {
   form,
@@ -13,9 +12,8 @@ import {
   submit,
   validateStandardSchema,
 } from '@angular/forms/signals';
-import { isEmptyPatch, type GrantRequest } from '@lms/contracts';
+import { isEmptyPatch } from '@lms/contracts';
 import { Alert, Button, Field, Icon, Input, Select } from '@lms/ui';
-import { scopeLabel } from '../../../../shared/status/scope-label';
 import { UserEditorStore } from '../../data-access/user-editor.store';
 import { GrantPicker } from '../grant-picker/grant-picker';
 import {
@@ -26,11 +24,6 @@ import {
   type ManagedUser,
   type UserFormValue,
 } from './user-form.schema';
-
-interface PendingGrant {
-  readonly request: GrantRequest;
-  readonly label: string;
-}
 
 /**
  * The add/edit form of a user (the mockup's `userForm` drawer body). It owns the form model and
@@ -61,8 +54,6 @@ export class UserForm {
     hidden(path.initialPassword, { when: () => this.isEdit() });
   });
 
-  protected readonly pending = signal<readonly PendingGrant[]>([]);
-
   /** Moving a user revokes the grants scoped to the old org or team: say so before saving. */
   protected readonly moves = computed(() => {
     const user = this.user();
@@ -81,23 +72,6 @@ export class UserForm {
     this.store.pickFormOrg(orgId ? Number(orgId) : undefined);
   }
 
-  protected addGrant(request: GrantRequest): void {
-    const role = this.store.roles$().find((r) => r.roleId === request.roleId);
-    const label = `${role?.name ?? `#${request.roleId}`} · ${scopeLabel(
-      { type: request.scope, orgId: request.orgId, teamId: request.teamId },
-      {
-        orgName: this.store.orgs$().find((o) => o.id === request.orgId)?.name,
-        teamName: this.store.grantTeams$().find((t) => t.id === request.teamId)
-          ?.name,
-      },
-    )}`;
-    this.pending.update((list) => [...list, { request, label }]);
-  }
-
-  protected removeGrant(index: number): void {
-    this.pending.update((list) => list.filter((_, i) => i !== index));
-  }
-
   protected onSubmit(event: Event): void {
     event.preventDefault();
     void submit(this.userForm, async () => {
@@ -106,7 +80,7 @@ export class UserForm {
         this.store.create(
           toCreateUserCommand(
             this.model(),
-            this.pending().map((p) => p.request),
+            this.store.pendingGrants$().map((p) => p.request),
           ),
         );
         return;

@@ -6,7 +6,11 @@ import {
   signal,
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { organizationEndpoints, type OrganizationInfo } from '@lms/contracts';
+import {
+  organizationEndpoints,
+  type OrganizationInfo,
+  type Page,
+} from '@lms/contracts';
 import type { TreeNode } from '@lms/ui';
 import { toAppError, type AppError } from '../../../../core/errors/app-error';
 import { EndpointClient } from '../../../../core/http/endpoint-client';
@@ -110,22 +114,12 @@ export class OrgTreeStore {
       .subscribe({
         next: (result) => {
           this.inFlight.delete(flight);
-          this.state.error.set(undefined);
-          this.state.levels.update((levels) => ({
-            ...levels,
-            [key]: {
-              items:
-                page === 0
-                  ? result.items
-                  : [...(levels[key]?.items ?? []), ...result.items],
-              page: result.page,
-              totalPages: result.totalPages,
-            },
-          }));
+          this.setError(undefined);
+          this.addLevelPage(key, result);
         },
         error: (error: unknown) => {
           this.inFlight.delete(flight);
-          this.state.error.set(toAppError(error));
+          this.setError(toAppError(error));
         },
       });
   }
@@ -134,10 +128,39 @@ export class OrgTreeStore {
     if (this.state.levels()[id] === undefined) this.loadLevel(id, 0);
   }
 
-  /** The tree opened or closed nodes: read the children of each newly opened one. */
-  setExpanded(ids: readonly string[]): void {
-    const opened = ids.filter((id) => !this.state.expanded().includes(id));
+  // Setters: the only writers of state
+  private setError(error: AppError | undefined): void {
+    this.state.error.set(error);
+  }
+
+  private setPicked(id: string): void {
+    this.state.picked.set(id);
+  }
+
+  private setExpanded(ids: readonly string[]): void {
     this.state.expanded.set(ids);
+  }
+
+  /** Stores a page of a level: the first page replaces it, a later page is appended. */
+  private addLevelPage(key: string, result: Page<OrganizationInfo>): void {
+    this.state.levels.update((levels) => ({
+      ...levels,
+      [key]: {
+        items:
+          result.page === 0
+            ? result.items
+            : [...(levels[key]?.items ?? []), ...result.items],
+        page: result.page,
+        totalPages: result.totalPages,
+      },
+    }));
+  }
+
+  // Commands
+  /** The tree opened or closed nodes: read the children of each newly opened one. */
+  expand(ids: readonly string[]): void {
+    const opened = ids.filter((id) => !this.state.expanded().includes(id));
+    this.setExpanded(ids);
     opened.forEach((id) => this.ensureLevel(id));
   }
 
@@ -150,14 +173,9 @@ export class OrgTreeStore {
       if (level) this.loadLevel(key, level.page + 1);
       return;
     }
-    this.state.picked.set(id);
+    this.setPicked(id);
     const org = this.known().find((o) => String(o.id) === id);
-    if (org?.orgType === 'UNIT') {
-      this.ensureLevel(id);
-      if (!this.state.expanded().includes(id)) {
-        this.state.expanded.update((ids) => [...ids, id]);
-      }
-    }
+    if (org?.orgType === 'UNIT') this.open(id);
   }
 
   /** Reads the loaded levels again (first page) after a change. */
@@ -167,15 +185,18 @@ export class OrgTreeStore {
 
   /** Opens a node whose children may not have been read yet, so a new child shows in the tree. */
   reveal(id: number): void {
-    const key = String(id);
+    this.open(String(id));
+  }
+
+  private open(key: string): void {
     this.ensureLevel(key);
     if (!this.state.expanded().includes(key)) {
-      this.state.expanded.update((ids) => [...ids, key]);
+      this.setExpanded([...this.state.expanded(), key]);
     }
   }
 
   retry(): void {
-    this.state.error.set(undefined);
+    this.setError(undefined);
     this.loadLevel(ROOT, 0);
   }
 }

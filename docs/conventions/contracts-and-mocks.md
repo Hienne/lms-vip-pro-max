@@ -193,7 +193,7 @@ with `/api/` and never contain a host.
   success body, optional `roles` bodies (`learner`, `admin`, ...) and optional
   `errors`: `ERROR` envelopes keyed by scenario name (`wrongCredentials`,
   `sessionExpired`, `rejected`…), never by HTTP status. The session-expired one carries the real
-  `CORE-0401`; every other uses the placeholder `MOCK_REFUSAL_CODE` (`lib/error-envelopes.ts`),
+  `CORE-UNAUTHENTICATED`; every other uses the placeholder `MOCK_REFUSAL_CODE` (`lib/error-envelopes.ts`),
   which is mock-only and unconfirmed with the backend. Messages are the mockup's; titles are
   placeholders, and field hints the mockup sent as `details` are dropped (the forms validate
   shape themselves). `MOCK_FIXTURES` is the same data
@@ -210,101 +210,84 @@ with `/api/` and never contain a host.
 
 ## In-app mock API (development only)
 
-`npm start` runs the app against a mock inside the browser; no second process
-and no OpenAPI document.
+`npm start` runs the app against mocks inside the browser; no second process and no OpenAPI
+document. Two switches in `AppConfig` choose, per endpoint, who answers:
 
-- `mockApiInterceptor` (`core/dev/mock-api/`) reads the request's `ENDPOINT`
-  tag, finds the endpoint object in `MOCK_FIXTURES` and answers `200` with a
-  `SUCCESS` envelope around `roles[role] ?? default`, where `role` is `MockScenario.role$()`, the role
-  chosen in the dev toolbar and kept for the tab. No delay, no state, no
-  per-request error simulation.
-- A request whose endpoint has no fixture (or no tag) goes on to the network,
-  with one `console.warn` per endpoint, so partial mocking is possible and visible.
-- **Wiring, so fixtures never ship:** only `environments/environment.ts`
-  imports the mock module (and through it `@lms/mocks`); it exports
-  `mockInterceptors`. The staging and production environment files export an
-  empty list and import nothing from the mock, so their builds cannot contain
-  it. `app.config.ts` registers, in order: `sessionExpiryInterceptor`, `bearerInterceptor`,
-  the dev interceptors (offline simulation), `mockInterceptors` (only when `mockApi` is true),
-  `apiBaseUrlInterceptor`. A narrow
-  ESLint override lets only `environment.ts` and `core/dev/mock-api/**` depend
-  on `type:mocks` outside specs.
-- `tools/check-production-bundle.mjs` looks for a fixture marker
-  (`admin@demo.cb`): `npm run check` builds production and staging and fails if
-  either contains it (staging is checked with `--fixtures-only`, since it keeps
-  the dev toolbar on purpose). A development build fails the check.
-- To use a backend instead, set `mockApi` to false in `environment.ts` and put
-  the backend's dev origin in `apps/lms/proxy.conf.mjs`; no code changes. The
-  toolbar's role list is then hidden (it only switches which mock examples answer): sign in
-  with a real account. The offline, session-expired
-  and forbidden-URL simulations stay. The toolbar replaces the mockup's "Demo"
-  menu and is not part of the production build.
-- The mock is stateless: a POST does not change what the next GET returns.
-  Stores apply the mutation response to their own state or reload (angular.md
-  §5.2), which is also the correct behaviour against the real backend.
+- **`mockApi`: endpoints the backend lacks.** `mockApiInterceptor` (`core/dev/mock-api/`) reads the
+  request's `ENDPOINT` tag, finds the endpoint object in `MOCK_FIXTURES` (learning, shell,
+  `adminOrgEndpoints`: the role CRUD screen, the user-detail Courses/Attempts/Activity tabs) and
+  answers `200` with a `SUCCESS` envelope around `roles[role] ?? default`, where `role` is the
+  highest-priority role the signed-in demo user holds. No delay, no state, no per-request error
+  simulation. These endpoints are not on the backend yet.
+- **`mockBackend`: endpoints the backend has.** `MockBackend` extends `FakeBackend`
+  (`@lms/mocks/backend`), an in-memory, **stateful** copy of the backend seeded from its data
+  (`seed.ts`: the 7 demo users, orgs, teams, roles, the 16 functions). It answers the v1 identity,
+  organisation and auth endpoints with the real HTTP status and envelope, so a POST changes what
+  the next GET returns, the caller's scope is enforced, and a refusal is an `ERROR` envelope
+  (`backendRefusal(key)` in `backend-responses.ts`). A 4xx or 5xx is thrown as an
+  `HttpErrorResponse`, which `envelopeInterceptor` turns into an `ApiError` as it does for the real
+  backend. `postman.contract.spec.ts` replays the backend's Postman request bodies against it and
+  parses every answer with the endpoint schema. Passwords are `SEED_PASSWORD`.
+- An endpoint that neither answers goes on to the network, with one `console.warn` per endpoint.
+- **Wiring, so mocks never ship:** only `environments/environment.ts` imports the mock module (and
+  through it `@lms/mocks`); it exports `mockInterceptors`. The staging and production environment
+  files export an empty list and import nothing from the mock, so their builds cannot contain it.
+  `app.config.ts` registers, in order: `sessionExpiryInterceptor`, `envelopeInterceptor`,
+  `bearerInterceptor`, `requestIdInterceptor`, the dev interceptors (offline simulation),
+  `mockInterceptors` (only when `mockApi` is true), `apiBaseUrlInterceptor`. A narrow ESLint
+  override lets only specs, `*.testing.ts`, `environment.ts` and `core/dev/mock-api/**` depend on
+  `type:mocks`.
+- **Specs** that need a working backend use `provideMockBackendHttp()` and
+  `signInToMockBackend(username)` (`core/dev/mock-api/mock-backend.testing.ts`) and spy on
+  `MockBackend.handle` to assert the request's `params`, `query` and `body`. The older specs flush
+  `envelopeOk(data)` from `HttpTestingController` instead.
+- `tools/check-production-bundle.mjs` looks for a fixture marker (`admin@demo.cb`): `npm run check`
+  builds production and staging and fails if either contains it (staging is checked with
+  `--fixtures-only`, since it keeps the dev toolbar on purpose). A development build fails the
+  check.
+- To use the real backend, set `mockApi` and `mockBackend` to false in `environment.ts`; the dev
+  proxy (`apps/lms/proxy.conf.mjs`) sends `/api` to `http://localhost:8019`. Sign in with a real
+  account; the toolbar's account list is the seeded one and only works against the mock backend.
+  The offline, session-expired and forbidden-URL simulations stay. The toolbar is not part of the
+  production build.
 - Mid-session 401: see "Expired session" under error handling.
 
-## Auth contract decisions
+## Identity and organisation contract decisions
 
-- Access is granted **per menu**, not per action. A role is `{ id, name, description, system, menus[] }`
-  (`RoleSchema`); `MenuKeySchema` has one key per sidebar entry (`admin.users`, `reports`, ...).
-  Holding a menu allows its screen, its sub-routes and everything done on them. The mockup's
-  `PERMS` table is gone: there is no `Permission` type and no `*appCan`.
-- Each user has exactly one `roleId` and a separate `scopeUnitId` (`null` = whole system). The scope
-  limits **data** and is enforced by the server; the app only renders what it gets.
-- `Profile` (built from `me` by `toProfile`) is what the screens render. Until permissions are mapped,
-  `menus` is every menu, `homePath` is `/learn` and `scopeName` is the app's label for
-  `roleGrants[0].scope.type` (DEC-010, DEC-018); the mock's `profileFixtures` keep the
-  server-computed values.
-- `roleText` in the app adds "đơn vị" to the name of an `admin` limited to one unit (the mockup's
-  "Quản trị viên đơn vị"); the demo accounts therefore carry `roleName` and `scopeUnitId`.
-- The mock's role examples (`navCounts`) exist for the four system roles and the unit admin
-  only (`learner`, `instructor`, `admin`, `viewer`, `unit-admin`). A custom role has no example (the
-  default answers), and the mock cannot keep one across a reload because it is stateless.
-- `authEndpoints` keeps only what the backend lacks, answered by the mock: `demoAccounts` (the dev
-  toolbar's role list), `updateProfile` and `changePassword`. Sign-in, sign-out and the current user
-  are `authV1Endpoints`; the session token is the v1 `login` bearer token, kept by `TokenStore`.
-  `profileFixtures` stay as the `Profile` data for specs and mock responses.
-- **v1 auth (backend).** `authV1Endpoints` (`login`, `logout`, `me` under `/api/v1/auth/`) are the
-  backend's contract. Like every endpoint, their response schemas describe the envelope's `data`;
-  `envelopeInterceptor` unwraps it. `MeSchema` follows the backend (nullable email and org/team
-  fields; `userId` is the staff code, keep it a string). Their fixtures (`auth-v1.fixtures.ts`) are
-  wire envelopes for specs and are **not** in `MOCK_FIXTURES`, so the mock API forwards these
-  endpoints to the network. `AccountStatus` includes `inactive` (neutral badge).
+- **Access is by function code.** The backend's 16 function codes (`PROFILE`, `COURSE_LEARNING`,
+  `USER_MANAGEMENT`, ...) are the menu keys everywhere: the route table (`core/routing/screens.ts`),
+  the sidebar, the guards and the role form. `MenuKeySchema` is gone. `Me.functionDetails` carries each
+  function's name, route and `sortNo`; the sidebar lists them in `sortNo` order, and `homePath` is
+  the first function's route excluding `PROFILE`, else `/profile`. Eleven FE screens have no
+  function (catalog, leaderboard, assistant, flashcards, saved, certificates, instructor home and
+  inbox, content catalog, import, admin home) plus `notifications`: they are `open` routes for any
+  signed-in user and not in the sidebar.
+- **Grants** are `{ roleId, scope: GLOBAL | ORG | TEAM | OWN, orgId?, teamId? }`, with numeric ids.
+  `userId` is the staff code, a string whose leading zeros matter. A user has many grants; the
+  profile and the user page list all of them. Status is `active | inactive | locked`.
+- **Who may do what is the server's call.** The app renders what the backend returns and shows a
+  refusal as a toast (`title` as the heading, `message` as the detail); no form maps `errors[]` to a
+  field, so the form validators must match the backend's rules (lengths, password 6 to 72 UTF-8
+  bytes, `q` up to 100 characters).
+- **Paging.** Lists are paged by the server (`PageSchema`, 0-based `page`, `size` up to
+  `MAX_PAGE_SIZE`). The users list sorts on the server (`sort=id,asc`), and the org tree reads one
+  level at a time (`rootOnly`, then `parentId`), each level paged. A team lists at most five members
+  and links to `/admin/users?teamId=` for the rest.
+- **PATCH sends the diff only** (`toPatch`): profile (`PATCH /auth/me`), user, org and team. A field
+  left out is kept, `null` clears it, an empty PATCH is not sent. `orgType` and `parentId` of an org
+  cannot change after creation.
+- **Passwords.** `mustChangePassword` (from `/me`) closes every route but `/change-password`
+  (`passwordChangeGuard`). Changing it (`PUT /auth/password`, from the profile or the forced screen)
+  clears the token and returns to `/login`. A 403 `IDENTITY-PASSWORD_CHANGE_REQUIRED` on a stale
+  profile is only a toast: nothing redirects at runtime.
+- **Roles.** The grant forms read `GET /api/v1/roles`. The role CRUD screen is still on the mock API
+  (`adminOrgEndpoints.roles`, `saveRole`, `deleteRole`) until the backend has the endpoints.
 - **Session.** The access token and its `expiresAt` live in `localStorage` behind `TokenStore`
   (storage errors and malformed entries count as no token). `bearerInterceptor` adds
-  `Authorization: Bearer <token>` to `/api/` requests except `authV1Endpoints.login`, and runs before
-  `apiBaseUrlInterceptor` so the `/api/` test sees the relative path. At boot an unexpired token
-  restores the user through `me`; a missing or expired token is anonymous with no request. `me` is
-  adapted by `toProfile` (every menu, home `/learn`, until permissions are mapped; `SessionStore.expire()` also
-  removes the stored token).
-
-## Admin organisation contract decisions
-
-- Everything under `/api/admin/users` and `/api/admin/meta` is reached through the `admin.users`
-  menu; the server also cuts every answer to the caller's `scopeUnitId` and refuses what a
-  unit-limited caller may not do (grant the whole system, create a unit, assign a role holding
-  `admin.roles`). The app never decides this: it renders `adminMeta` (units, groups and **the roles
-  the caller may assign**) and shows the refusal the backend sends as a toast.
-- `UserDetail` is `{ user, role, courses, attempts, audit }`. The mockup's `perms` matrix became
-  `role` (with its `menus`); its `competency` (the radar) is left out until the charts are migrated.
-- Mutations answer the changed record, but the list and detail stores **reload** instead of
-  patching it in, because the server is the source of truth and the mock is stateless (it always
-  answers the same example).
-- The mock has role examples for `users`, `adminMeta` and `org` (`admin`, `unit-admin`); `user` answers one
-  fixed user whatever `userId` is.
-- The roles screen (`roles`, `saveRole`, `deleteRole`) sits behind the `admin.roles` menu and has no
-  mockup page. `Role.system` and `Role.locked` are what the screen may rely on: the app hides edit
-  on a locked role and delete on a system one, and disables delete while `userCount` is above zero,
-  but the server enforces all three (and protects the last administrator), so a refusal arrives as
-  an `ERROR` envelope and is shown as a toast. A role is saved as a name, a description and
-  menu keys; there is nothing finer than the menu to grant.
-- The org screen (`org`, `saveUnit`, `setUnitStatus`, `saveGroup`, `deleteGroup`) sits behind the
-  `admin.org` menu. `org` rows carry what the screen shows (admins, member counts, groups with
-  members, shared courses) so the app computes none of it; `admins[].scope` is `unit` or `system`.
-  A unit-limited caller may edit its own unit but the server refuses `saveUnit` without an `id` and
-  decides who may pause a unit. Deleting a group that still has members is refused with a message the
-  app shows as a toast. The mutations answer one record and the store reloads `org`.
+  `Authorization: Bearer <token>` to `/api/` requests except `authV1Endpoints.login`, and runs
+  before `apiBaseUrlInterceptor` so the `/api/` test sees the relative path. At boot an unexpired
+  token restores the user through `me`; a missing or expired token is anonymous with no request.
+  `SessionStore.expire()` removes the stored token.
 
 ## Done criteria for a contract change
 

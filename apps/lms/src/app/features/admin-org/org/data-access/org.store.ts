@@ -61,19 +61,19 @@ export class OrgStore {
   private readonly destroyRef = inject(DestroyRef);
   readonly tree = inject(OrgTreeStore);
 
+  private readonly selectedOrgId = computed(() => this.tree.selected$()?.id);
+
   private readonly state = {
     editingOrg: signal<{ readonly org: OrganizationInfo | null } | null>(null),
     editingTeam: signal<{ readonly team: TeamInfo | null } | null>(null),
+    /** The team page being read (0-based); a different org starts again at the first. */
+    teamPage: linkedSignal<number | undefined, number>({
+      source: this.selectedOrgId,
+      computation: () => 0,
+    }),
   };
 
   private readonly changes = invalidation();
-
-  private readonly selectedOrgId = computed(() => this.tree.selected$()?.id);
-  /** The team page being read; a different org starts again at the first. */
-  private readonly teamPage = linkedSignal<number | undefined, number>({
-    source: this.selectedOrgId,
-    computation: () => 0,
-  });
 
   private readonly detailData = serverData(
     (orgId: number) =>
@@ -91,7 +91,7 @@ export class OrgStore {
         const orgId = this.selectedOrgId();
         return orgId === undefined
           ? undefined
-          : { orgId, page: this.teamPage() };
+          : { orgId, page: this.state.teamPage() };
       },
       reloadOn: this.changes,
     },
@@ -111,7 +111,7 @@ export class OrgStore {
       errors: 'toast',
       success: () => 'Đã lưu',
       onSuccess: (org) => {
-        this.state.editingOrg.set(null);
+        this.setEditingOrg(null);
         this.tree.refresh();
         if (org.parentId) this.tree.reveal(org.parentId);
       },
@@ -148,7 +148,7 @@ export class OrgStore {
       errors: 'toast',
       success: () => 'Đã lưu',
       onSuccess: () => {
-        this.state.editingTeam.set(null);
+        this.setEditingTeam(null);
         this.tree.refresh();
       },
       invalidates: this.changes,
@@ -176,7 +176,7 @@ export class OrgStore {
   readonly teamsTotal$ = computed(
     () => this.teamsData.value()?.totalElements ?? 0,
   );
-  readonly teamPage$ = computed(() => this.teamPage() + 1);
+  readonly teamPage$ = computed(() => this.state.teamPage() + 1);
   readonly teamsLoading$ = this.teamsData.isLoading;
   readonly teamsError$ = this.teamsData.error;
 
@@ -196,27 +196,45 @@ export class OrgStore {
     this.state.editingTeam()?.team ? 'Sửa nhóm' : 'Thêm nhóm',
   );
 
+  // Setters: the only writers of state
+  private setEditingOrg(
+    editing: { readonly org: OrganizationInfo | null } | null,
+  ): void {
+    this.state.editingOrg.set(editing);
+  }
+
+  private setEditingTeam(
+    editing: { readonly team: TeamInfo | null } | null,
+  ): void {
+    this.state.editingTeam.set(editing);
+  }
+
+  private setTeamPage(page: number): void {
+    this.state.teamPage.set(page);
+  }
+
+  // Commands
   /** Opens the add (`null`) or edit drawer of an org: the page shows it while `editingOrg$` is set. */
   editOrg(org: OrganizationInfo | null): void {
     this.orgMutation.reset();
-    this.state.editingOrg.set({ org });
+    this.setEditingOrg({ org });
   }
 
   cancelOrgEdit(): void {
-    this.state.editingOrg.set(null);
+    this.setEditingOrg(null);
   }
 
   editTeam(team: TeamInfo | null): void {
     this.teamMutation.reset();
-    this.state.editingTeam.set({ team });
+    this.setEditingTeam({ team });
   }
 
   cancelTeamEdit(): void {
-    this.state.editingTeam.set(null);
+    this.setEditingTeam(null);
   }
 
   goToTeamPage(page: number): void {
-    this.teamPage.set(page - 1);
+    this.setTeamPage(page - 1);
   }
 
   createOrg(command: CreateOrgCommand): void {

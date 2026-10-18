@@ -124,8 +124,9 @@ project run the Nx target directly (`npx nx test ui`).
   (`/dev/migration`, registered by `createAppRoutes` only when true) and owner / pull request
   details in the `/design-system` placeholders. True in development and staging, false in
   production, so internal names and pull request links never reach end users. It is separate
-  from `mockApi`, which is true only in development: the mock API and its fixtures are wired from
-  `environment.ts` alone.
+  from `mockApi` and `mockBackend`, which are true only in development: the mock API, its fixtures
+  and the seeded in-memory backend (`mockBackend`: it answers the endpoints the backend has) are
+  wired from `environment.ts` alone.
 - Everything that exists only for the team (the migration board route, the dev toolbar, the
   offline simulation) hangs off one object, `DEV_FEATURES` in
   `apps/lms/src/app/core/dev/dev-features.ts`. The production build replaces that file with

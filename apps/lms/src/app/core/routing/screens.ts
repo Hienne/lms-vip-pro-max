@@ -82,11 +82,6 @@ export const SCREEN_TABLE = {
           mockupPage: 'dashboard',
         },
         {
-          path: 'catalog',
-          title: 'Danh mục khóa học',
-          mockupPage: 'catalog',
-        },
-        {
           path: 'course/:id',
           title: 'Chi tiết khóa học',
           mockupPage: 'course',
@@ -158,11 +153,6 @@ export const SCREEN_TABLE = {
           path: 'admin/courses/:id/edit',
           title: 'Sửa khóa học',
           mockupPage: 'courseWizard',
-        },
-        {
-          path: 'admin/catalog',
-          title: 'Lĩnh vực & chương trình',
-          mockupPage: 'adminCatalog',
         },
       ],
     },
@@ -329,6 +319,12 @@ export const SCREEN_TABLE = {
         import('../../features/auth/change-password/change-password').then(
           (m) => m.ChangePassword,
         ),
+    },
+    { path: 'catalog', title: 'Danh mục khóa học', mockupPage: 'catalog' },
+    {
+      path: 'admin/catalog',
+      title: 'Lĩnh vực & chương trình',
+      mockupPage: 'adminCatalog',
     },
     { path: 'leaderboard', title: 'Bảng xếp hạng', mockupPage: 'leaderboard' },
     { path: 'assistant', title: 'Trợ lý AI', mockupPage: 'assistant' },

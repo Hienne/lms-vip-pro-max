@@ -1,4 +1,4 @@
-import { inject, Injectable, Injector } from '@angular/core';
+import { computed, inject, Injectable, Injector } from '@angular/core';
 import { toObservable } from '@angular/core/rxjs-interop';
 import { Router } from '@angular/router';
 import { Toaster } from '@lms/ui';
@@ -28,7 +28,9 @@ export class DevToolbarStore {
 
   readonly accounts: readonly MockAccount[] = MOCK_ACCOUNTS;
   /** The staff code of the signed-in user, to mark them in the list. */
-  readonly currentUserId$ = () => this.session.user$()?.userId ?? null;
+  readonly currentUserId$ = computed(
+    () => this.session.user$()?.userId ?? null,
+  );
   readonly offline$ = this.network.offline$;
 
   /** Signs in as a demo user of the mock backend and opens their home. */

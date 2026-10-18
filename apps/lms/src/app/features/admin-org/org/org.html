@@ -35,7 +35,7 @@
         [nodes]="tree.nodes$()"
         [trailing]="trailing"
         [expanded]="tree.expanded$()"
-        (expandedChange)="tree.setExpanded($event)"
+        (expandedChange)="tree.expand($event)"
         [selected]="tree.selectedId$()"
         (selectedChange)="tree.select($event)"
       />

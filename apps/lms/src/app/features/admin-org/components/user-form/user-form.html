@@ -56,7 +56,7 @@
   </ui-field>
   <fieldset class="user-form__grants">
     <legend>Vai trò ban đầu</legend>
-    @for (grant of pending(); track $index) {
+    @for (grant of store.pendingGrants$(); track $index) {
     <div class="user-form__pending">
       <span>{{ grant.label }}</span>
       <button
@@ -64,7 +64,7 @@
         type="button"
         size="sm"
         variant="ghost"
-        (click)="removeGrant($index)"
+        (click)="store.removePendingGrant($index)"
       >
         <ui-icon name="x" size="sm" />Bỏ
       </button>
@@ -75,7 +75,7 @@
       [orgs]="store.orgs$()"
       [teams]="store.grantTeams$()"
       (orgChosen)="store.pickGrantOrg($event)"
-      (added)="addGrant($event)"
+      (added)="store.addPendingGrant($event)"
     />
   </fieldset>
   }
