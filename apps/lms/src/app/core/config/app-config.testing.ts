@@ -7,7 +7,6 @@ export function testAppConfig(
   return {
     name: 'development',
     production: false,
-    apiBaseUrl: '',
     mockApi: false,
     mockBackend: false,
     devTools: true,

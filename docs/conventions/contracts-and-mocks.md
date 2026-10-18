@@ -180,9 +180,8 @@ their own validators' messages, and a backend refusal is a toast.
 
 ## Runtime config
 
-Environment files are validated by `AppConfigSchema` at bootstrap, and the
-API origin per environment is applied by `apiBaseUrlInterceptor`: see
-`workspace.md` → Environments. Endpoint paths in the registry always start
+Environment files are validated by `AppConfigSchema` at bootstrap. The API is
+always called on the app's own origin: see `workspace.md` → Environments. Endpoint paths in the registry always start
 with `/api/` and never contain a host.
 
 ## Fixtures (`libs/mocks`)
@@ -236,7 +235,7 @@ document. Two switches in `AppConfig` choose, per endpoint, who answers:
   files export an empty list and import nothing from the mock, so their builds cannot contain it.
   `app.config.ts` registers, in order: `sessionExpiryInterceptor`, `envelopeInterceptor`,
   `bearerInterceptor`, `requestIdInterceptor`, the dev interceptors (offline simulation),
-  `mockInterceptors` (only when `mockApi` is true), `apiBaseUrlInterceptor`. A narrow ESLint
+  `mockInterceptors` (only when `mockApi` is true). A narrow ESLint
   override lets only specs, `*.testing.ts`, `environment.ts` and `core/dev/mock-api/**` depend on
   `type:mocks`.
 - **Specs** that need a working backend use `provideMockBackendHttp()` and
@@ -286,8 +285,7 @@ document. Two switches in `AppConfig` choose, per endpoint, who answers:
   (`adminOrgEndpoints.roles`, `saveRole`, `deleteRole`) until the backend has the endpoints.
 - **Session.** The access token and its `expiresAt` live in `localStorage` behind `TokenStore`
   (storage errors and malformed entries count as no token). `bearerInterceptor` adds
-  `Authorization: Bearer <token>` to `/api/` requests except `authV1Endpoints.login`, and runs
-  before `apiBaseUrlInterceptor` so the `/api/` test sees the relative path. At boot an unexpired
+  `Authorization: Bearer <token>` to `/api/` requests except `authV1Endpoints.login`. At boot an unexpired
   token restores the user through `me`; a missing or expired token is anonymous with no request.
   `SessionStore.expire()` removes the stored token.
 

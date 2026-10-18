@@ -3,13 +3,12 @@ import type { AppConfigInput } from '../app/core/config/app-config';
 
 /**
  * Production (`nx build lms`, the default configuration).
- * `apiBaseUrl: ''`: the API is served from the same origin as the app (an HTTPS reverse proxy
- * forwards `/api/` to the backend, so the browser never sees mixed content).
+ * The app calls `/api/` on its own origin: the reverse proxy that serves it forwards `/api/` to
+ * the backend, so the browser needs no CORS and never sees mixed content.
  */
 export const environment: AppConfigInput = {
   name: 'production',
   production: true,
-  apiBaseUrl: '',
   mockApi: false,
   mockBackend: false,
   devTools: false,

@@ -139,11 +139,10 @@ project run the Nx target directly (`npx nx test ui`).
   toolbar, the board or any mock fixture, and builds staging to check that it holds no fixtures. Known gap: the migration registry data
   (`migration-entries.data.ts`, with owner handles) still ships because the design-system
   placeholders read statuses from it; it is hidden at runtime by `devTools`.
-- `apiBaseUrl` is the API origin per environment (`''` = same origin, the value of every
-  environment today).
-  `apiBaseUrlInterceptor` prefixes it to every `/api/...` request, so endpoint
-  paths in `@lms/contracts` stay environment-free and `EndpointClient` never reads
-  the config.
+- There is no API origin setting: the app always calls `/api/...` on its own origin, so
+  endpoint paths in `@lms/contracts` stay environment-free and `EndpointClient` never reads
+  the config. Serving the API on another origin would need a base-URL interceptor and CORS on
+  the backend; add them only when a deployment actually needs it.
 - Environment files ship to the browser: no secrets, tokens or credentials.
 
 ## CI (GitHub Actions)
@@ -168,8 +167,8 @@ not interrupted mid-copy.
 A new check belongs in a `package.json` script first, then in the workflow, so
 `npm run check` and CI never disagree.
 
-`apps/lms/proxy.conf.mjs` maps `/api` to the backend's dev origin, `http://localhost:8019`
-(`corebanking-academy`, whose CORS only allows `http://localhost:4200`), so app code only ever
-uses relative `/api/...` URLs. All three environment files set `apiBaseUrl: ''`: in development
-the proxy forwards the calls the mock does not answer, and staging and production sit behind an
-HTTPS reverse proxy on the same origin (infrastructure, not code).
+`apps/lms/proxy.conf.mjs` maps `/api` to the shared backend server, `http://103.121.90.119:8019`
+(`corebanking-academy`); change the target to `http://localhost:8019` to use a backend on this
+machine. App code only ever uses relative `/api/...` URLs: in development the proxy forwards the
+calls the mock does not answer, and staging and production are served by an Nginx reverse proxy
+that forwards `/api/` to the backend on the same origin (infrastructure, not code).

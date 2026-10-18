@@ -11,11 +11,8 @@ import {
 import { TestBed } from '@angular/core/testing';
 import { authV1Endpoints } from '@lms/contracts';
 import { storeToken } from '../session/session.testing';
-import { apiBaseUrlInterceptor } from './api-base-url.interceptor';
 import { bearerInterceptor } from './bearer.interceptor';
 import { ENDPOINT } from './endpoint-client';
-import { provideAppConfig } from '../config/app-config';
-import { testAppConfig } from '../config/app-config.testing';
 
 describe('bearerInterceptor', () => {
   let http: HttpClient;
@@ -24,12 +21,7 @@ describe('bearerInterceptor', () => {
   beforeEach(() => {
     TestBed.configureTestingModule({
       providers: [
-        provideAppConfig(
-          testAppConfig({ apiBaseUrl: 'https://api.example.test' }),
-        ),
-        provideHttpClient(
-          withInterceptors([bearerInterceptor, apiBaseUrlInterceptor]),
-        ),
+        provideHttpClient(withInterceptors([bearerInterceptor])),
         provideHttpClientTesting(),
       ],
     });
@@ -41,7 +33,7 @@ describe('bearerInterceptor', () => {
   it('adds the bearer header to an /api/ request while a token is stored', () => {
     storeToken();
     http.get('/api/courses').subscribe();
-    const request = backend.expectOne('https://api.example.test/api/courses');
+    const request = backend.expectOne('/api/courses');
     expect(request.request.headers.get('Authorization')).toBe(
       'Bearer test-token',
     );
@@ -50,7 +42,7 @@ describe('bearerInterceptor', () => {
 
   it('sends no header without a token', () => {
     http.get('/api/courses').subscribe();
-    const request = backend.expectOne('https://api.example.test/api/courses');
+    const request = backend.expectOne('/api/courses');
     expect(request.request.headers.has('Authorization')).toBe(false);
     request.flush([]);
   });
@@ -66,9 +58,7 @@ describe('bearerInterceptor', () => {
         },
       )
       .subscribe();
-    const request = backend.expectOne(
-      'https://api.example.test/api/v1/auth/login',
-    );
+    const request = backend.expectOne('/api/v1/auth/login');
     expect(request.request.headers.has('Authorization')).toBe(false);
     request.flush({});
   });

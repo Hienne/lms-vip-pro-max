@@ -6,8 +6,7 @@ import { ENDPOINT } from './endpoint-client';
 
 /**
  * Adds `Authorization: Bearer <token>` to `/api/` requests while a token is stored; the login
- * request and every other URL pass untouched. It must run before `apiBaseUrlInterceptor`, which
- * turns the path into an absolute URL, so the `/api/` test cannot match another origin.
+ * request and every other URL (including an absolute URL to another origin) pass untouched.
  */
 export const bearerInterceptor: HttpInterceptorFn = (req, next) => {
   if (

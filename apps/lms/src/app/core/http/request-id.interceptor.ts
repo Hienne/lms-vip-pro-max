@@ -15,8 +15,7 @@ export function newRequestId(): string {
 
 /**
  * Sends `X-Request-Id` with every `/api/` request. The backend echoes it back as the envelope's
- * `responseId`, which an error toast can quote so support can find the call. It runs before
- * `apiBaseUrlInterceptor`, like `bearerInterceptor`, so the `/api/` test sees the relative path.
+ * `responseId`, which an error toast can quote so support can find the call.
  */
 export const requestIdInterceptor: HttpInterceptorFn = (req, next) =>
   req.url.startsWith('/api/')

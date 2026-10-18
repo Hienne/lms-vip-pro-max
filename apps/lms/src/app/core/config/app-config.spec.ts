@@ -12,7 +12,6 @@ import {
 const valid: AppConfigInput = {
   name: 'development',
   production: false,
-  apiBaseUrl: '',
   mockApi: true,
   mockBackend: true,
   devTools: true,
@@ -41,25 +40,6 @@ describe('AppConfig', () => {
     expect(AppConfigSchema.safeParse(withoutDevTools).success).toBe(false);
   });
 
-  it('accepts an https origin as apiBaseUrl', () => {
-    expect(
-      AppConfigSchema.safeParse({
-        ...valid,
-        apiBaseUrl: 'https://api.example.test',
-      }).success,
-    ).toBe(true);
-  });
-
-  it.each([
-    'api.example.test',
-    'ftp://api.example.test',
-    'https://api.example.test/',
-  ])('rejects apiBaseUrl %s', (apiBaseUrl) => {
-    expect(AppConfigSchema.safeParse({ ...valid, apiBaseUrl }).success).toBe(
-      false,
-    );
-  });
-
   it('provides the parsed config as APP_CONFIG', () => {
     TestBed.configureTestingModule({ providers: [provideAppConfig(valid)] });
     expect(TestBed.inject(APP_CONFIG)).toEqual(valid);
@@ -67,7 +47,7 @@ describe('AppConfig', () => {
 
   it('fails fast with the offending field on invalid input', () => {
     expect(() =>
-      provideAppConfig({ ...valid, apiBaseUrl: 'not a url' }),
-    ).toThrow(/apiBaseUrl/);
+      provideAppConfig({ ...valid, name: 'qa' } as unknown as AppConfigInput),
+    ).toThrow(/name/);
   });
 });
