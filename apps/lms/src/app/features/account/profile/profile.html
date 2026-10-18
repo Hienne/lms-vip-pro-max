@@ -109,8 +109,8 @@
         <hr class="profile__rule" />
         <h3 class="profile__subhead">Chức năng được cấp</h3>
         <ul class="profile__menus">
-          @for (fn of user.functions; track fn.id) {
-          <li><span uiBadge tone="primary">{{ fn.name }}</span></li>
+          @for (item of store.menuItems$(); track item.code) {
+          <li><span uiBadge tone="primary">{{ item.label }}</span></li>
           } @empty {
           <li class="profile__term">Chưa được cấp chức năng nào.</li>
           }

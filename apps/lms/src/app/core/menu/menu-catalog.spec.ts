@@ -22,6 +22,10 @@ const fn = (id: number, code: string, sortNo: number): FunctionInfo => ({
   sortNo,
 });
 
+/** The nav of functions as `/me` lists them, the way `toProfile` builds it. */
+const navOf = (functions: readonly FunctionInfo[]) =>
+  navFor(knownFunctions(functions));
+
 describe('menu catalog', () => {
   it('has one entry screen and one section for every function code the backend knows', () => {
     const items = allSections().flatMap((section) => section.items);
@@ -37,7 +41,7 @@ describe('menu catalog', () => {
       fn(1, 'PROFILE', 10),
       fn(2, 'COURSE_LEARNING', 20),
     ];
-    const items = navFor(functions).flatMap((section) => section.items);
+    const items = navOf(functions).flatMap((section) => section.items);
     expect(items.map((item) => [item.code, item.label])).toEqual([
       ['PROFILE', 'Tên PROFILE'],
       ['COURSE_LEARNING', 'Tên COURSE_LEARNING'],
@@ -46,7 +50,7 @@ describe('menu catalog', () => {
   });
 
   it('breaks a sortNo tie by id', () => {
-    const items = navFor([
+    const items = navOf([
       fn(9, 'REPORTING', 5),
       fn(4, 'USER_MANAGEMENT', 5),
     ]).flatMap((section) => section.items);
@@ -57,7 +61,7 @@ describe('menu catalog', () => {
   });
 
   it('skips a function code the app has no screen for', () => {
-    const items = navFor([fn(1, 'PROFILE', 1), fn(2, 'FUTURE_SCREEN', 2)])
+    const items = navOf([fn(1, 'PROFILE', 1), fn(2, 'FUTURE_SCREEN', 2)])
       .flatMap((section) => section.items)
       .map((item) => item.code);
     expect(items).toEqual(['PROFILE']);
@@ -65,8 +69,8 @@ describe('menu catalog', () => {
 
   it('shows a learner the learner screens and an admin the management ones', () => {
     const codes = (userId: string) =>
-      navFor(seedProfile(userId).functions)
-        .flatMap((section) => section.items)
+      seedProfile(userId)
+        .nav.flatMap((section) => section.items)
         .map((item) => item.code);
     expect(codes('000004')).toContain('COURSE_LEARNING');
     expect(codes('000004')).not.toContain('USER_MANAGEMENT');
@@ -98,17 +102,23 @@ describe('menu catalog', () => {
 
   describe('homePathFor', () => {
     it('is the entry screen of the first function after the profile', () => {
-      expect(homePathFor(SEED_FUNCTIONS)).toBe(entryHref('COURSE_LEARNING'));
+      expect(homePathFor(knownFunctions(SEED_FUNCTIONS))).toBe(
+        entryHref('COURSE_LEARNING'),
+      );
     });
 
     it('is the profile when the user holds nothing else', () => {
-      expect(homePathFor([fn(1, 'PROFILE', 1)])).toBe('/profile');
+      expect(homePathFor(knownFunctions([fn(1, 'PROFILE', 1)]))).toBe(
+        '/profile',
+      );
       expect(homePathFor([])).toBe('/profile');
     });
 
     it('ignores a function the app has no screen for', () => {
       expect(
-        homePathFor([fn(1, 'FUTURE_SCREEN', 1), fn(2, 'REPORTING', 2)]),
+        homePathFor(
+          knownFunctions([fn(1, 'FUTURE_SCREEN', 1), fn(2, 'REPORTING', 2)]),
+        ),
       ).toBe(entryHref('REPORTING'));
     });
   });
@@ -125,12 +135,12 @@ describe('menu catalog', () => {
 
     it('marks the longest entry that equals the path or is its parent', () => {
       const manage = entryHref('COURSE_MANAGEMENT');
-      expect(activeHref(functions, `${manage}/new`)).toBe(manage);
-      expect(activeHref(functions, manage)).toBe(manage);
+      expect(activeHref(navOf(functions), `${manage}/new`)).toBe(manage);
+      expect(activeHref(navOf(functions), manage)).toBe(manage);
     });
 
     it('marks nothing for a path outside the menu', () => {
-      expect(activeHref(functions, '/profile')).toBeNull();
+      expect(activeHref(navOf(functions), '/profile')).toBeNull();
     });
   });
 });

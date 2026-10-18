@@ -1,8 +1,9 @@
-import type { FunctionCode, Me } from '@lms/contracts';
+import type { Me } from '@lms/contracts';
 import {
   homePathFor,
   type IsServed,
   knownFunctions,
+  navFor,
 } from '../menu/menu-catalog';
 import type { Profile } from './profile';
 
@@ -46,8 +47,8 @@ export function toProfile(me: Me, isServed?: IsServed): Profile {
             name: user.teamName ?? '',
           },
     grants: roleGrants,
-    functions,
-    menus: functions.map((fn) => fn.code as FunctionCode),
+    nav: navFor(functions),
+    menus: functions.map((fn) => fn.code),
     homePath: user.mustChangePassword
       ? '/change-password'
       : homePathFor(functions),

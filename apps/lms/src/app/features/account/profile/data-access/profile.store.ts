@@ -40,6 +40,11 @@ export class ProfileStore {
     return [...seen].map(([code, name]) => ({ code, name }));
   });
 
+  /** The functions granted to the user, in the sidebar's order. */
+  readonly menuItems$ = computed(() =>
+    (this.user$()?.nav ?? []).flatMap((section) => section.items),
+  );
+
   readonly grants$ = computed(() => {
     const user = this.user$();
     return (user?.grants ?? []).map((grant) => ({

@@ -26,6 +26,9 @@ function isKnown(code: string): code is FunctionCode {
   return FunctionCodeSchema.safeParse(code).success;
 }
 
+/** A function of `/me` this app has a screen for: its code is narrowed to `FunctionCode`. */
+export type KnownFunction = FunctionInfo & { readonly code: FunctionCode };
+
 /** Whether this build answers an endpoint: `EndpointClient.isServed`. */
 export type IsServed = (endpoint: AnyEndpoint) => boolean;
 
@@ -38,48 +41,55 @@ const allServed: IsServed = () => true;
 export function knownFunctions(
   functions: readonly FunctionInfo[],
   isServed: IsServed = allServed,
-): readonly FunctionInfo[] {
+): readonly KnownFunction[] {
   return functions
     .filter(
-      (fn) =>
+      (fn): fn is KnownFunction =>
         isKnown(fn.code) && (menuGroup(fn.code).requires ?? []).every(isServed),
     )
     .sort((a, b) => a.sortNo - b.sortNo || a.id - b.id);
 }
 
-/**
- * The sidebar of a user: one entry per function `/me` lists, labelled with the backend's name and
- * linked to its first screen, grouped by section in the order the backend sorts them. A code the
- * app has no screen for is skipped.
- */
-export function navFor(
-  functions: readonly FunctionInfo[],
-): readonly NavSection[] {
+/** Items grouped by section, sections and items in the order given. */
+function groupBySection(items: readonly MenuItem[]): readonly NavSection[] {
   const sections: { section: string; items: MenuItem[] }[] = [];
-  for (const fn of knownFunctions(functions)) {
-    const code = fn.code as FunctionCode;
-    const { nav } = menuGroup(code);
-    const item: MenuItem = {
-      code,
-      href: entryHref(code),
-      icon: nav.icon,
-      label: fn.name,
-      section: nav.section,
-    };
-    const existing = sections.find((s) => s.section === nav.section);
+  for (const item of items) {
+    const existing = sections.find((s) => s.section === item.section);
     if (existing) existing.items.push(item);
-    else sections.push({ section: nav.section, items: [item] });
+    else sections.push({ section: item.section, items: [item] });
   }
   return sections;
+}
+
+/**
+ * The sidebar of a user: one entry per function, labelled with the backend's name and linked to
+ * its first screen, grouped by section in the order the backend sorts them. `toProfile` builds it
+ * once; the sidebar only renders it.
+ */
+export function navFor(
+  functions: readonly KnownFunction[],
+): readonly NavSection[] {
+  return groupBySection(
+    functions.map((fn) => {
+      const { nav } = menuGroup(fn.code);
+      return {
+        code: fn.code,
+        href: entryHref(fn.code),
+        icon: nav.icon,
+        label: fn.name,
+        section: nav.section,
+      };
+    }),
+  );
 }
 
 /**
  * Where `/` and the login page send a user: the entry screen of the first function (after the
  * profile, which every account has) the app has a screen for; the profile when there is none.
  */
-export function homePathFor(functions: readonly FunctionInfo[]): string {
-  const first = knownFunctions(functions).find((fn) => fn.code !== 'PROFILE');
-  return first ? entryHref(first.code as FunctionCode) : '/profile';
+export function homePathFor(functions: readonly KnownFunction[]): string {
+  const first = functions.find((fn) => fn.code !== 'PROFILE');
+  return first ? entryHref(first.code) : '/profile';
 }
 
 /** The sidebar label of a function code, for the 403 page: the table's first screen title. */
@@ -92,21 +102,15 @@ export function menuLabel(code: FunctionCode): string {
  * for choosing the screens of a role in the (mock) role form.
  */
 export function allSections(): readonly NavSection[] {
-  const sections: { section: string; items: MenuItem[] }[] = [];
-  for (const code of FUNCTION_CODES) {
-    const { nav } = menuGroup(code);
-    const item: MenuItem = {
+  return groupBySection(
+    FUNCTION_CODES.map((code) => ({
       code,
       href: entryHref(code),
-      icon: nav.icon,
+      icon: menuGroup(code).nav.icon,
       label: menuLabel(code),
-      section: nav.section,
-    };
-    const existing = sections.find((s) => s.section === nav.section);
-    if (existing) existing.items.push(item);
-    else sections.push({ section: nav.section, items: [item] });
-  }
-  return sections;
+      section: menuGroup(code).nav.section,
+    })),
+  );
 }
 
 /**
@@ -115,10 +119,10 @@ export function allSections(): readonly NavSection[] {
  * cannot do this, which is why the sidebar computes it.
  */
 export function activeHref(
-  functions: readonly FunctionInfo[],
+  nav: readonly NavSection[],
   path: string,
 ): string | null {
-  const matches = navFor(functions)
+  const matches = nav
     .flatMap((section) => section.items.map((item) => item.href))
     .filter((href) => path === href || path.startsWith(`${href}/`));
   return matches.sort((a, b) => b.length - a.length)[0] ?? null;

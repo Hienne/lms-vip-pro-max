@@ -1,11 +1,12 @@
 import { HttpTestingController } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 import { provideRouter, Router } from '@angular/router';
-import { envelopeOk } from '@lms/mocks';
+import { envelopeOk, seedMe } from '@lms/mocks';
 import { createAppRoutes } from '../../app.routes';
 import { parseAppConfig, provideAppConfig } from '../../core/config/app-config';
 import { testAppConfig } from '../../core/config/app-config.testing';
 import { SessionStore } from '../../core/session/session.store';
+import { toProfile } from '../../core/session/to-profile';
 import {
   FakeSessionStore,
   fakeSession,
@@ -148,14 +149,17 @@ describe('AppShell', () => {
   });
 
   it('shows no entry for a function the app has no screen for', async () => {
-    const profile = seedProfile(USERS.learner);
-    session.user.set({
-      ...profile,
-      functions: [
-        ...profile.functions,
-        { id: 99, code: 'FUTURE_SCREEN', name: 'Mới', sortNo: 999 },
-      ],
-    });
+    const me = seedMe(USERS.learner);
+    session.user.set(
+      toProfile({
+        ...me,
+        functions: [...me.functions, 'FUTURE_SCREEN'],
+        functionDetails: [
+          ...me.functionDetails,
+          { id: 99, code: 'FUTURE_SCREEN', name: 'Mới', sortNo: 999 },
+        ],
+      }),
+    );
     const el = await open('/learn');
     expect(el.querySelector('nav')?.textContent).not.toContain('Mới');
   });

@@ -6,11 +6,23 @@ describe('toProfile', () => {
     expect(toProfile(seedMe('000004')).userId).toBe('000004');
   });
 
-  it('lists the functions the app has a screen for, in the backend order, as menus', () => {
+  it('lists the functions the app has a screen for, in the backend order, as menus and as the nav', () => {
     const profile = toProfile(seedMe('000002'));
-    expect(profile.menus).toEqual(profile.functions.map((fn) => fn.code));
+    expect(
+      profile.nav.flatMap((section) => section.items.map((i) => i.code)).sort(),
+    ).toEqual([...profile.menus].sort());
     expect(profile.menus[0]).toBe('PROFILE');
     expect(profile.menus).toContain('USER_MANAGEMENT');
+  });
+
+  it('leaves a function out of the nav and the menus when its endpoints are not served', () => {
+    const me = seedMe('000001');
+    expect(toProfile(me).menus).toContain('ROLE_MANAGEMENT');
+    const profile = toProfile(me, (endpoint) => endpoint.served !== 'mock');
+    expect(profile.menus).not.toContain('ROLE_MANAGEMENT');
+    expect(
+      profile.nav.flatMap((section) => section.items).map((i) => i.code),
+    ).not.toContain('ROLE_MANAGEMENT');
   });
 
   it('ignores a function code the app has no screen for', () => {

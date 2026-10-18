@@ -1,9 +1,5 @@
-import type {
-  AccountStatus,
-  FunctionCode,
-  FunctionInfo,
-  RoleGrant,
-} from '@lms/contracts';
+import type { AccountStatus, FunctionCode, RoleGrant } from '@lms/contracts';
+import type { NavSection } from '../menu/menu-catalog';
 
 /** An org or team as the signed-in user's profile names it. */
 export interface Placement {
@@ -31,9 +27,9 @@ export interface Profile {
   readonly team: Placement | null;
   /** Every role grant with its scope, as `/me` lists them. */
   readonly grants: readonly RoleGrant[];
-  /** The functions this app has a screen for, in the backend's order: the sidebar. */
-  readonly functions: readonly FunctionInfo[];
-  /** Their codes, for the route guard. */
+  /** The sidebar: the functions this app has a screen for, grouped by section in the backend's order. */
+  readonly nav: readonly NavSection[];
+  /** The codes of those functions, for the route guard and the header search. */
   readonly menus: readonly FunctionCode[];
   /** Where `/` and the login page send the user. */
   readonly homePath: string;
