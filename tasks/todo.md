@@ -302,12 +302,28 @@ focus outline) were added to the `nav-*` set.
 
 **Acceptance criteria:**
 
-- [ ] No `radius(sm|md|lg)` remains on a control or card surface that a theme should reach
+- [x] No `radius(sm|md|lg)` remains on a control or card surface that a theme should reach
       (listed in the task notes)
-- [ ] BIDV computed styles on `/design-system` are identical before and after: a script compares
+- [x] BIDV computed styles on `/design-system` are identical before and after: a script compares
       the border-radius, font-family, font-weight and letter-spacing of every element
 
 **Verification:** `npx nx test ui`; browser computed-style comparison
+
+**Verified (2026-10-20):** 15 new `theme hooks` cases in `styles.spec.ts` failed first, then
+passed. In the browser on `/design-system` (BIDV), the computed values equal the previous ones:
+
+- button 6px, segmented 10/6px, input 6px, card 14px
+- h1 Be Vietnam Pro 700 −0.01em; h2 600, normal tracking
+- body background-image none
+- eyebrow `#5f6b69` (text-muted)
+
+Deviations from the plan:
+
+- A third shape key, `field` (inputs, selects, textareas), keeps a pill `control` radius off
+  textareas.
+- The dialog keeps `radius-xl` (20px, not the 14px card radius), so BIDV stays identical.
+- Chips and icon buttons are already round and keep `radius-full`.
+- The `ui.eyebrow` mixin now reads `eyebrow`, which every eyebrow uses.
 
 **Dependencies:** T9
 

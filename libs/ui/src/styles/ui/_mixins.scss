@@ -83,7 +83,7 @@ $-tones: (
 }
 
 @mixin eyebrow {
-  @include text(xs, muted);
+  @include text(xs, eyebrow);
   font-weight: weight(semibold);
   letter-spacing: tracking(wider);
   text-transform: uppercase;

@@ -142,6 +142,7 @@ const LIGHT_PROPERTIES = [
   '--radius-xl',
   '--radius-full',
   '--radius-control',
+  '--radius-field',
   '--radius-card',
   '--shadow-sm',
   '--shadow-md',
@@ -407,6 +408,40 @@ describe('global stylesheet', () => {
   it('is generated from the token source file the guard spec exempts', () => {
     expect(readFileSync(join(styles, 'ui/_tokens.scss'), 'utf8')).toContain(
       '$spacing',
+    );
+  });
+});
+
+describe('theme hooks', () => {
+  // The rules a theme reaches through its type, shape and texture tokens (SPEC.md decision 2).
+  const all = rules(compileGlobal());
+  const body = (selector: string) =>
+    all
+      .filter((rule) => rule.selector === selector)
+      .map((rule) => rule.body)
+      .join(';');
+
+  it.each([
+    ['body', 'background-image: var(--texture-page)'],
+    ['h1,\n  h2,\n  h3,\n  h4', 'font-family: var(--font-display)'],
+    ['h1', 'font-weight: var(--font-weight-display)'],
+    ['h1', 'letter-spacing: var(--tracking-display)'],
+    ['.btn', 'border-radius: var(--radius-control)'],
+    ['.segmented', 'border-radius: calc(var(--radius-control) + 4px)'],
+    ['.segmented__option', 'border-radius: var(--radius-control)'],
+    ['.input', 'border-radius: var(--radius-field)'],
+    ['.textarea', 'border-radius: var(--radius-field)'],
+    ['.card', 'border-radius: var(--radius-card)'],
+    ['.popover', 'border-radius: var(--radius-card)'],
+    ['.page-header__eyebrow', 'color: var(--color-eyebrow)'],
+    ['.kpi__value', 'font-family: var(--font-display)'],
+  ])('%s reads %s', (selector, declaration) => {
+    expect(body(selector)).toContain(declaration);
+  });
+
+  it('gives every eyebrow the eyebrow colour', () => {
+    expect(compile("@use 'ui'; .x { @include ui.eyebrow; }")).toContain(
+      'color: var(--color-eyebrow)',
     );
   });
 });

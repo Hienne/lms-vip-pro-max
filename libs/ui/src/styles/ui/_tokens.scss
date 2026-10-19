@@ -207,6 +207,7 @@ $palette-type-keys: (
 );
 $palette-shape-keys: (
   control: radius-control,
+  field: radius-field,
   card: radius-card,
 );
 $palette-texture-keys: (
@@ -513,9 +514,12 @@ $radii: (
   lg: 14px,
   xl: 20px,
   full: 999px,
+  // buttons and segmented controls
   control: 6px,
-  // buttons, inputs, selects, segmented controls, chips
-  card: 14px, // cards, popovers, dialogs
+  // inputs, selects, textareas
+  field: 6px,
+  // cards and popovers
+  card: 14px,
 );
 
 // ---- Texture: the page background image over `bg` (none by default) ----
