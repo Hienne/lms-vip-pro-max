@@ -145,7 +145,7 @@ shimmer | spin)` (reduced motion shows the end state).
   generated with `@each` over the token map, so the showcase never drifts from the tokens.
 - Runtime values go through a CSS variable binding (`[style.--value]="pct() + '%'"`), never an inline
   literal. Inline `style="color:#fff"` in mockup markup becomes a token.
-- Dark mode comes from tokens only: see [Theme and dark mode](#theme-and-dark-mode).
+- Dark mode and palettes come from tokens only: see [Theme, palettes and dark mode](#theme-palettes-and-dark-mode).
 
 ### Mockup token → project token
 
@@ -240,29 +240,51 @@ outside the token source has a hex or `rgb()` colour; and when anything referenc
 PostCSS. `libs/ui/src/styles/styles.spec.ts` compiles the style library and locks its contract (see the
 spec for the list).
 
-## Theme and dark mode
+## Theme, palettes and dark mode
 
-Three choices, **Hệ thống / Sáng / Tối** (`system | light | dark`), remembered per browser.
+Two independent choices, remembered per browser:
+
+- **Mode:** **Hệ thống / Sáng / Tối** (`system | light | dark`).
+- **Palette:** **BIDV chuẩn / BIDV dịu / Xanh dương / Cát ấm** (`bidv | bidv-soft | blue | sand`).
+  `bidv` is the default and is the base tokens themselves.
 
 - **Tokens carry the theme.** `global/_theme.scss` emits the light values and the dark values behind two
   conditions: `:root[data-theme="dark"]`, and `prefers-color-scheme: dark` unless
-  `data-theme="light"`. A screen that uses tokens supports both themes with no extra work.
-  `system` means no attribute at all.
-- **Nothing else mentions a theme.** Components, templates and SCSS never branch on the theme; a spec
-  (`template-scan.spec.ts`) fails on any file other than `ThemeStore` that writes the `data-theme`
-  attribute.
-- **`ThemeStore`** (`apps/lms/src/app/core/theme/theme.store.ts`, root-provided) owns the choice:
-  `preference$()`, `effective$()` (`light | dark`, following the OS live in `system`) and one
-  command, `setPreference()`. It is the only writer of the attribute, persists the choice under
-  `lms.theme` (absence = `system`) and tolerates blocked storage. Read `effective$()` when something
-  must react to the theme (the contrast table recomputes from it); never read the attribute.
-- **No flash.** An inline script in `apps/lms/src/index.html` applies the stored `light | dark`
-  before the app boots. If a strict Content-Security-Policy is introduced, add the script's hash to
-  `script-src`. It is not unit-tested: verify in the browser by reloading in each of the three
-  choices with the OS theme light and dark and watching the first paint.
-- **The control** is `ui-segmented` (a molecule on the `@angular/aria` listbox, one selected
-  option, arrow keys move and select, `value` is a two-way model). `/design-system` has the switch
-  in its table of contents; the app header will reuse the same store and control.
+  `data-theme="light"`. A screen that uses tokens supports every mode and palette with no extra work.
+  `system` means no `data-theme` attribute, and `bidv` means no `data-palette` attribute.
+- **Palettes are token overrides.** `ui/_tokens.scss` declares `$palettes`, where each palette has a
+  `light` and a `dark` map of `colors` and `chart` overrides. They may only override the keys
+  listed in `$palette-color-keys` / `$palette-chart-keys`, which are brand and neutral tokens.
+  Semantic colours, hoa mai `accent*` and the hero accent never change. `global/_palettes.scss`
+  emits `:root[data-palette="<id>"]` for light, and the dark overrides at specificity (0,3,0)
+  behind both dark conditions. The build fails on a disallowed key, on a missing `light`/`dark`
+  map, or on a light key the dark map leaves out (it would beat the base dark value in dark mode).
+  It also declares constant swatch tokens (`--color-swatch-<id>-fill/-base`, each palette's light
+  `primary` / `bg`) so a picker can show every palette while another one is active.
+- **Contrast is a spec.** `styles.spec.ts` resolves every palette × light/dark from the compiled CSS
+  and checks the pairs in `SPEC.md` Success Criterion 5: text tokens 4.5:1 on `bg`, `surface` and
+  `surface-2`; `on-primary` on `primary` and `primary` on `surface` 4.5:1; `border-strong` and
+  `ring` 3:1; `hero-muted` on `hero-to` 4.5:1. A new palette must pass before it ships.
+- **Nothing else mentions a theme.** Components, templates and SCSS never branch on the mode or
+  palette. A spec (`template-scan.spec.ts`) fails on any file other than `ThemeStore` (and the
+  pre-boot script) that writes `data-theme` or `data-palette`. Another spec fails when
+  `THEME_PALETTES`, the pre-boot script and the token palettes list different ids.
+- **`ThemeStore`** (`apps/lms/src/app/core/theme/theme.store.ts`, root-provided) owns both choices:
+  `preference$()`, `effective$()` (`light | dark`, following the OS live in `system`), `palette$()`,
+  and the commands `setPreference()` and `setPalette()`. It is the only writer of the attributes,
+  persists the choices under `lms.theme` (absence = `system`) and `lms.palette` (absence = `bidv`;
+  an unknown value falls back to it) and tolerates blocked storage. Read `effective$()` /
+  `palette$()` when something must react to them (the contrast table recomputes from both); never
+  read the attributes.
+- **No flash.** An inline script in `apps/lms/src/index.html` applies the stored `light | dark` and
+  palette before the app boots. If a strict Content-Security-Policy is introduced, add the script's
+  hash to `script-src`. Its logic is not unit-tested: verify in the browser by reloading in each
+  palette and mode with the OS theme light and dark and watching the first paint.
+- **The controls** are `app-theme-controls` (`apps/lms/src/app/shared/theme-controls/`): a
+  `ui-swatch-group` "Bảng màu" and a `ui-segmented` "Chế độ", both bound to `ThemeStore`. The
+  header renders them in a `uiPopover` behind the palette icon (`app-theme-picker`, "Tùy chỉnh giao
+  diện"), and `/design-system` renders them inline in its table of contents. A choice applies at
+  once; the popover stays open so palettes can be compared.
 
 ## Icons
 
@@ -317,6 +339,8 @@ and never call `Date.now()` themselves. Specs provide `{ provide: NOW, useValue:
 | Form buttons in a drawer footer (Hủy + Lưu)   | `ui-form-actions` molecule: required `formId`, `submitLabel`, `cancelLabel`; extra actions slot |
 | `ui.toast` (`.toasts`)                        | `Toaster` service (root, presentation-only) + CDK overlay; text also sent to `LiveAnnouncer`    |
 | Tooltip                                       | `uiTooltip` directive on CDK overlay                                                            |
+| Non-modal panel under a button (theme picker) | `uiPopover` directive on CDK overlay + CDK focus trap (`@angular/aria` has no popover pattern)  |
+| Single choice among colour swatches           | `ui-swatch-group` molecule on the `@angular/aria` listbox (vertical; swatches are token keys)   |
 | Wizard stepper (`.stepper`)                   | CDK stepper                                                                                     |
 | Sortable lists (`.sort-item`, `.drag-handle`) | CDK drag-drop, with keyboard move buttons                                                       |
 
@@ -326,6 +350,14 @@ user can close it and shows the `uiDrawerBusyLabel` overlay; `uiDrawerDismiss` f
 user close, and the page maps it to the store's cancel command. `openDrawer` is internal to
 `@lms/ui`: there is no imperative way to show a drawer. `@lms/ui` ships no screen copy, so the
 title, busy label and form-actions labels always come from the screen.
+
+**Popovers.** `button[uiPopover]="template"` with a required `popoverLabel` opens the template
+in a non-modal `role="dialog"` panel (`ui-popover-panel`, width `ui.layout(popover)`, full width
+between the page gutters below `md`), anchored under the button. The button gets `aria-haspopup`,
+`aria-expanded` and `aria-controls`. Once rendering settles, focus moves to the first control
+inside (`ApplicationRef.whenStable()`, because a listbox sets its roving tabindex in a second pass),
+and Tab cycles within the panel. Escape closes it and returns focus to the button; a click outside
+closes it. Use it for small settings panels; a menu of actions is `ui-menu`.
 
 Read the installed `@angular/aria` exports before using a pattern; names are
 not guessed from memory.

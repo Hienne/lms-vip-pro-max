@@ -1,0 +1,99 @@
+// Emits the colour palettes of `ui/_tokens.scss` (`ui.$palettes`) as custom-property overrides on
+// `:root[data-palette='<id>']`. The light values sit at specificity (0,2,0); the dark values at
+// (0,3,0), behind the same two conditions as the base dark values, so they win over both whatever
+// the order. A palette's light keys must all have dark values too, or a light value would beat the
+// base dark value in dark mode: the build fails on that, and on any key outside the allowed lists.
+// Loading this file emits no CSS; `global/_theme.scss` includes `emit` once.
+@use 'sass:list';
+@use 'sass:map';
+@use '../ui';
+
+$-parts: (
+  colors: (
+    prefix: color,
+    keys: ui.$palette-color-keys,
+  ),
+  chart: (
+    prefix: color-chart,
+    keys: ui.$palette-chart-keys,
+  ),
+);
+
+@function -part($mode, $part) {
+  @return map.get($mode, $part) or ();
+}
+
+@mixin -check($id, $palette) {
+  @if $id == bidv {
+    @error 'palette bidv is the default (the base tokens) and takes no overrides';
+  }
+  @each $name in (light, dark) {
+    @if not map.has-key($palette, $name) {
+      @error 'palette #{$id}: missing its #{$name} map';
+    }
+    @each $part in map.keys(map.get($palette, $name)) {
+      @if not map.has-key($-parts, $part) {
+        @error 'palette #{$id}: unknown group `#{$part}` in #{$name}; valid groups: #{map.keys($-parts)}';
+      }
+    }
+  }
+  @each $part, $spec in $-parts {
+    $allowed: map.get($spec, keys);
+    $dark: -part(map.get($palette, dark), $part);
+    @each $name in (light, dark) {
+      @each $key in map.keys(-part(map.get($palette, $name), $part)) {
+        @if not list.index($allowed, $key) {
+          @error 'palette #{$id}: #{$part} key `#{$key}` (#{$name}) is not a palette key; valid keys: #{$allowed}';
+        }
+      }
+    }
+    @each $key in map.keys(-part(map.get($palette, light), $part)) {
+      @if not map.has-key($dark, $key) {
+        @error 'palette #{$id}: #{$part} key `#{$key}` has a light value but no dark value';
+      }
+    }
+  }
+}
+
+@mixin -declare($mode) {
+  @each $part, $spec in $-parts {
+    @each $key, $value in -part($mode, $part) {
+      --#{map.get($spec, prefix)}-#{$key}: #{$value};
+    }
+  }
+}
+
+/// Constant swatch tokens for a palette picker, declared inside `:root` by `global/_theme.scss`:
+/// `--color-swatch-<id>-fill` / `-base` are each palette's light `primary` / `bg` (`bidv` from the
+/// base map), so a picker can show every palette while another one is active.
+@mixin swatches($palettes: ui.$palettes) {
+  --color-swatch-bidv-fill: #{map.get(ui.$colors, primary)};
+  --color-swatch-bidv-base: #{map.get(ui.$colors, bg)};
+  @each $id, $palette in $palettes {
+    $light: -part(map.get($palette, light), colors);
+    --color-swatch-#{$id}-fill: #{map.get($light, primary) or
+      map.get(ui.$colors, primary)};
+    --color-swatch-#{$id}-base: #{map.get($light, bg) or
+      map.get(ui.$colors, bg)};
+  }
+}
+
+/// Emits every palette of `$palettes` (defaults to the token source; specs pass their own).
+@mixin emit($palettes: ui.$palettes) {
+  @each $id, $palette in $palettes {
+    @include -check($id, $palette);
+  }
+  @each $id, $palette in $palettes {
+    :root[data-palette='#{$id}'] {
+      @include -declare(map.get($palette, light));
+    }
+    :root[data-palette='#{$id}'][data-theme='dark'] {
+      @include -declare(map.get($palette, dark));
+    }
+    @media (prefers-color-scheme: dark) {
+      :root[data-palette='#{$id}']:not([data-theme='light']) {
+        @include -declare(map.get($palette, dark));
+      }
+    }
+  }
+}

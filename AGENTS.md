@@ -18,7 +18,10 @@ local type definitions; these libraries change between majors.
 
 Run `nvm use` first (Node 24). Full table in `docs/conventions/workspace.md`.
 
-- `npm start`: app on :4200 against the in-app mock API.
+- `npm start`: app on :4200. The in-app mock API answers only the endpoints the backend lacks;
+  everything else (sign-in included) goes through `apps/lms/proxy.conf.mjs` to the shared backend.
+  Set `mockBackend: true` in `environment.ts` to run fully on the seeded mock, signing in from
+  the Demo menu.
 - `npx nx test <project>` (`lms`, `ui`, `contracts`, `mocks`): one project's specs.
 - `npm run check`: format, lint, typecheck, test, build and bundle guard on every project.
 

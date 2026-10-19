@@ -14,17 +14,18 @@ import { RouterLink } from '@angular/router';
 import { Icon, IconButton, Input, Menu, type MenuEntry } from '@lms/ui';
 import type { Profile } from '../../core/session/profile';
 import { searchPlaceholder } from './search-target';
+import { ThemePicker } from './theme-picker/theme-picker';
 
 export type UserMenuValue = 'profile' | 'notifications' | 'sign-out';
 
 /**
  * The page header (the mockup's `.header`): the navigation button below the `lg` breakpoint, the
- * global search, the notification bell and the user menu. It renders what the shell passes in and
- * reports intent through outputs.
+ * global search, the theme picker, the notification bell and the user menu. It renders what the
+ * shell passes in and reports intent through outputs; the theme picker talks to `ThemeStore` itself.
  */
 @Component({
   selector: 'app-header',
-  imports: [Icon, IconButton, Input, Menu, RouterLink],
+  imports: [Icon, IconButton, Input, Menu, RouterLink, ThemePicker],
   templateUrl: './header.html',
   styleUrl: './header.scss',
 })

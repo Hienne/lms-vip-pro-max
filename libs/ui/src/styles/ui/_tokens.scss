@@ -137,6 +137,218 @@ $chart-dark: (
   grid: #2a3836,
 );
 
+// ---- Colour palettes: the user's choice beside light/dark (ThemeStore, `data-palette`) ----
+// `bidv` is the default: the maps above, with no override block. Every other palette overrides
+// brand and neutral tokens only, in light and in dark; `global/_palettes.scss` emits them and
+// fails the build on a key outside these lists, or on a light key the dark map leaves out (it would
+// leak into dark mode).
+$palette-color-keys: (
+  primary,
+  primary-hover,
+  primary-strong,
+  primary-subtle,
+  on-primary,
+  ring,
+  on-dark-hover,
+  hero-from,
+  hero-to,
+  hero-muted,
+  hero-subtle,
+  bg,
+  surface,
+  surface-2,
+  surface-sunken,
+  text,
+  text-secondary,
+  text-muted,
+  border,
+  border-strong,
+  cover-layers
+);
+$palette-chart-keys: (1, grid);
+
+$palettes: (
+  // BIDV dịu: the BIDV teal, less saturated; sidebar and hero mid-teal instead of near-black
+  bidv-soft: (
+      light: (
+        colors: (
+          primary: #2a7f7b,
+          primary-hover: #236c69,
+          primary-strong: #2c5a58,
+          primary-subtle: #edf5f4,
+          on-primary: #ffffff,
+          ring: #2a7f7b,
+          on-dark-hover: #edf5f4,
+          hero-from: #2c5a58,
+          hero-to: #256a67,
+          bg: #f7faf9,
+          surface: #ffffff,
+          surface-2: #f1f6f5,
+          surface-sunken: #e9f0ef,
+          text: #1c2120,
+          text-secondary: #4b5755,
+          text-muted: #5f6b69,
+          border: #e4ecea,
+          border-strong: #8a9694,
+          cover-layers: #edf5f4,
+        ),
+        chart: (
+          1: #2a7f7b,
+          grid: #e4ecea,
+        ),
+      ),
+      dark: (
+        colors: (
+          primary: #6cc4bd,
+          primary-hover: #86d0ca,
+          primary-strong: #12312f,
+          primary-subtle: #16302e,
+          on-primary: #04201f,
+          ring: #86d0ca,
+          on-dark-hover: #edf5f4,
+          hero-from: #12312f,
+          hero-to: #1d4f4c,
+          bg: #111917,
+          surface: #17201f,
+          surface-2: #1e2928,
+          surface-sunken: #131c1b,
+          text: #e6eeed,
+          text-secondary: #c4d0ce,
+          text-muted: #a2b2af,
+          border: #293634,
+          border-strong: #5f716e,
+          cover-layers: #16302e,
+        ),
+        chart: (
+          1: #6cc4bd,
+          grid: #2b3937,
+        ),
+      ),
+    ),
+  // Xanh dương: muted steel blue, cool near-white neutrals
+  blue: (
+      light: (
+        colors: (
+          primary: #33659f,
+          primary-hover: #2a5587,
+          primary-strong: #1f3b63,
+          primary-subtle: #eaf1fa,
+          on-primary: #ffffff,
+          ring: #33659f,
+          on-dark-hover: #eaf1fa,
+          hero-from: #1f3b63,
+          hero-to: #2a5587,
+          hero-muted: #d4e2f4,
+          hero-subtle: #aec6e6,
+          bg: #f5f8fc,
+          surface: #ffffff,
+          surface-2: #eef3f9,
+          surface-sunken: #e5ecf5,
+          text: #18202b,
+          text-secondary: #47546a,
+          text-muted: #5b677a,
+          border: #e0e7f0,
+          border-strong: #8792a3,
+          cover-layers: #eaf1fa,
+        ),
+        chart: (
+          1: #33659f,
+          grid: #e0e7f0,
+        ),
+      ),
+      dark: (
+        colors: (
+          primary: #7fb0ec,
+          primary-hover: #9cc2f1,
+          primary-strong: #13233a,
+          primary-subtle: #172741,
+          on-primary: #0b1a2e,
+          ring: #9cc2f1,
+          on-dark-hover: #eaf1fa,
+          hero-from: #13233a,
+          hero-to: #1f3a60,
+          hero-muted: #d4e2f4,
+          hero-subtle: #aec6e6,
+          bg: #0f141b,
+          surface: #151b24,
+          surface-2: #1c2430,
+          surface-sunken: #11171f,
+          text: #e6ecf3,
+          text-secondary: #c2ccd8,
+          text-muted: #9eabbb,
+          border: #263040,
+          border-strong: #5d6a7e,
+          cover-layers: #172741,
+        ),
+        chart: (
+          1: #7fb0ec,
+          grid: #283344,
+        ),
+      ),
+    ),
+  // Cát ấm: muted terracotta, warm cream neutrals
+  sand: (
+      light: (
+        colors: (
+          primary: #9a5b3c,
+          primary-hover: #844d32,
+          primary-strong: #5a3a2a,
+          primary-subtle: #f6ece4,
+          on-primary: #ffffff,
+          ring: #9a5b3c,
+          on-dark-hover: #f6ece4,
+          hero-from: #5a3a2a,
+          hero-to: #7d4a31,
+          hero-muted: #f0dccf,
+          hero-subtle: #dcbfae,
+          bg: #faf7f2,
+          surface: #fffdf9,
+          surface-2: #f4efe7,
+          surface-sunken: #ece5da,
+          text: #221d18,
+          text-secondary: #594f45,
+          text-muted: #6b6157,
+          border: #ebe3d6,
+          border-strong: #978b7d,
+          cover-layers: #f6ece4,
+        ),
+        chart: (
+          1: #9a5b3c,
+          grid: #ebe3d6,
+        ),
+      ),
+      dark: (
+        colors: (
+          primary: #e0a382,
+          primary-hover: #e8b699,
+          primary-strong: #2e1f17,
+          primary-subtle: #2f221a,
+          on-primary: #2a170d,
+          ring: #e8b699,
+          on-dark-hover: #f6ece4,
+          hero-from: #2e1f17,
+          hero-to: #4a3022,
+          hero-muted: #f0dccf,
+          hero-subtle: #dcbfae,
+          bg: #1a1612,
+          surface: #211c17,
+          surface-2: #29231d,
+          surface-sunken: #1c1814,
+          text: #f0ebe4,
+          text-secondary: #d2c8bc,
+          text-muted: #aea395,
+          border: #352d25,
+          border-strong: #74685b,
+          cover-layers: #2f221a,
+        ),
+        chart: (
+          1: #e0a382,
+          grid: #362e26,
+        ),
+      ),
+    )
+);
+
 // ---- Typography ----
 $font-families: (
   sans: string.unquote(
@@ -220,6 +432,11 @@ $layout: (
     value: 220px,
   ),
   // menu panel
+  popover: (
+      property: 'container-popover',
+      value: 320px,
+    ),
+  // popover panel (uiPopover)
   header: (
       property: 'spacing-header',
       value: 64px,
