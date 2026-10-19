@@ -1,5 +1,10 @@
-import { DOCUMENT } from '@angular/common';
-import { DestroyRef, inject, Injectable, signal } from '@angular/core';
+import {
+  DestroyRef,
+  DOCUMENT,
+  inject,
+  Injectable,
+  signal,
+} from '@angular/core';
 import { fromEvent, map, merge } from 'rxjs';
 
 /**

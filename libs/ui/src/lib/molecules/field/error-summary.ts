@@ -1,7 +1,7 @@
-import { DOCUMENT } from '@angular/common';
 import {
   afterNextRender,
   Component,
+  DOCUMENT,
   ElementRef,
   inject,
   input,

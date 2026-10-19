@@ -1,6 +1,6 @@
-import { DOCUMENT } from '@angular/common';
 import {
   computed,
+  DOCUMENT,
   effect,
   inject,
   Injectable,
