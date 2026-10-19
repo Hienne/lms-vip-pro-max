@@ -268,12 +268,19 @@ list, and a per-theme `swatch` source key. Add guard errors for the new groups.
 
 **Acceptance criteria:**
 
-- [ ] `:root` emits the new properties, and every revision 1 property keeps its value (asserted)
-- [ ] Spec palettes with `type`/`shape`/`texture` emit them only in the light block; a `type` key
+- [x] `:root` emits the new properties, and every revision 1 property keeps its value (asserted)
+- [x] Spec palettes with `type`/`shape`/`texture` emit them only in the light block; a `type` key
       in a dark map fails; an unknown group or key fails; a light `shadow` key without a dark value fails
-- [ ] Revision 1 palettes still compile and pass contrast (they are replaced in T13)
+- [x] Revision 1 palettes still compile and pass contrast (they are replaced in T13)
 
 **Verification:** `npx nx test ui`; compiled CSS diff vs HEAD only adds properties
+
+**Verified (2026-10-20):** 13 new or changed `styles.spec.ts` cases failed first, then passed.
+The compiled global CSS compared with HEAD removes no line and adds 16 `:root` properties.
+`nav-*` and `eyebrow` reference today's tokens (`var(--color-…)`), so BIDV is unchanged in both
+modes. The contrast spec now follows `var()` references and composites `color-mix(…, transparent)`
+washes. Spec deviation: `nav-strong` (brand name, hover text) and `nav-indicator` (active bar,
+focus outline) were added to the `nav-*` set.
 
 **Dependencies:** None
 

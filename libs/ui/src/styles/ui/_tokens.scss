@@ -77,6 +77,19 @@ $colors: (
   hero-subtle: #a9cfcc,
   hero-accent: #ffd15c,
   hero-chip: rgba(255, 255, 255, 0.14),
+  // page and section eyebrows (small uppercase labels)
+  eyebrow: var(--color-text-muted),
+  // sidebar navigation: a dark brand panel for BIDV, which a theme may turn light. The references
+  // follow the mode (primary-strong has a dark value); the washes sit on nav-bg.
+  nav-bg: var(--color-primary-strong),
+  nav-text: var(--color-hero-muted),
+  nav-muted: var(--color-hero-subtle),
+  nav-strong: var(--color-white),
+  nav-hover: color-mix(in srgb, var(--color-white) 8%, transparent),
+  nav-active-bg: color-mix(in srgb, var(--color-white) 14%, transparent),
+  nav-active-text: var(--color-white),
+  nav-indicator: var(--color-accent),
+  nav-border: color-mix(in srgb, var(--color-white) 8%, transparent),
 );
 
 // ---- Colour: data viz (distinguishable, always paired with a label or symbol) ----
@@ -137,11 +150,12 @@ $chart-dark: (
   grid: #2a3836,
 );
 
-// ---- Colour palettes: the user's choice beside light/dark (ThemeStore, `data-palette`) ----
-// `bidv` is the default: the maps above, with no override block. Every other palette overrides
-// brand and neutral tokens only, in light and in dark; `global/_palettes.scss` emits them and
-// fails the build on a key outside these lists, or on a light key the dark map leaves out (it would
-// leak into dark mode).
+// ---- Themes: the user's choice beside light/dark (ThemeStore, `data-palette`) ----
+// `bidv` is the default: the maps above, with no override block. Every other theme may override
+// the colour, chart and shadow keys below in light and in dark, and the mode-independent type,
+// shape and texture keys once. `global/_palettes.scss` emits them and fails the build on a group
+// or key outside these lists, or on a light key the dark map leaves out (it would leak into dark
+// mode).
 $palette-color-keys: (
   primary,
   primary-hover,
@@ -163,9 +177,41 @@ $palette-color-keys: (
   text-muted,
   border,
   border-strong,
-  cover-layers
+  cover-layers,
+  accent,
+  accent-subtle,
+  accent-ink,
+  on-accent,
+  hero-accent,
+  hero-chip,
+  eyebrow,
+  nav-bg,
+  nav-text,
+  nav-muted,
+  nav-strong,
+  nav-hover,
+  nav-active-bg,
+  nav-active-text,
+  nav-indicator,
+  nav-border
 );
-$palette-chart-keys: (1, grid);
+$palette-chart-keys: (1, 2, grid);
+$palette-shadow-keys: (sm, md, lg);
+// Mode-independent groups: set once per palette, emitted in its light block, valid in dark too.
+// Each key names the custom property it sets.
+$palette-type-keys: (
+  sans: font-sans,
+  display: font-display,
+  display-weight: font-weight-display,
+  display-tracking: tracking-display,
+);
+$palette-shape-keys: (
+  control: radius-control,
+  card: radius-card,
+);
+$palette-texture-keys: (
+  page: texture-page,
+);
 
 $palettes: (
   // BIDV dịu: the BIDV teal, less saturated; sidebar and hero mid-teal instead of near-black
@@ -355,6 +401,8 @@ $font-families: (
       "'Be Vietnam Pro', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif"
     ),
   mono: string.unquote("ui-monospace, 'SF Mono', Menlo, Consolas, monospace"),
+  // headings (h1–h3, page titles, KPI values); a theme may set its own face
+  display: string.unquote('var(--font-sans)'),
 );
 $text-sizes: (
   xs: 0.75rem,
@@ -381,13 +429,16 @@ $weights: (
   medium: 500,
   semibold: 600,
   bold: 700,
+  display: 700, // h1 and page titles
 );
 $trackings: (
   tight: -0.01em,
   // H1
   wide: 0.04em,
   // table header
-  wider: 0.08em, // eyebrow
+  wider: 0.08em,
+  // eyebrow
+  display: -0.01em, // h1 and page titles
 );
 
 // ---- Spacing: the mockup's 4px steps and nothing else ----
@@ -462,6 +513,14 @@ $radii: (
   lg: 14px,
   xl: 20px,
   full: 999px,
+  control: 6px,
+  // buttons, inputs, selects, segmented controls, chips
+  card: 14px, // cards, popovers, dialogs
+);
+
+// ---- Texture: the page background image over `bg` (none by default) ----
+$textures: (
+  page: none,
 );
 $shadows: (
   sm: (

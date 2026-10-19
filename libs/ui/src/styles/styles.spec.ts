@@ -67,6 +67,16 @@ const LIGHT_PROPERTIES = [
   '--color-hero-subtle',
   '--color-hero-accent',
   '--color-hero-chip',
+  '--color-eyebrow',
+  '--color-nav-bg',
+  '--color-nav-text',
+  '--color-nav-muted',
+  '--color-nav-strong',
+  '--color-nav-hover',
+  '--color-nav-active-bg',
+  '--color-nav-active-text',
+  '--color-nav-indicator',
+  '--color-nav-border',
   '--color-chart-1',
   '--color-chart-2',
   '--color-chart-3',
@@ -83,6 +93,7 @@ const LIGHT_PROPERTIES = [
   '--color-swatch-sand-base',
   '--font-sans',
   '--font-mono',
+  '--font-display',
   '--default-font-family',
   '--default-mono-font-family',
   '--text-xs',
@@ -99,9 +110,11 @@ const LIGHT_PROPERTIES = [
   '--font-weight-medium',
   '--font-weight-semibold',
   '--font-weight-bold',
+  '--font-weight-display',
   '--tracking-tight',
   '--tracking-wide',
   '--tracking-wider',
+  '--tracking-display',
   '--spacing-1',
   '--spacing-2',
   '--spacing-3',
@@ -128,9 +141,12 @@ const LIGHT_PROPERTIES = [
   '--radius-lg',
   '--radius-xl',
   '--radius-full',
+  '--radius-control',
+  '--radius-card',
   '--shadow-sm',
   '--shadow-md',
   '--shadow-lg',
+  '--texture-page',
   '--transition-duration-fast',
   '--transition-duration-base',
   '--transition-duration-slow',
@@ -411,8 +427,54 @@ function contrast(a: string, b: string): number {
   return (light + 0.05) / (dark + 0.05);
 }
 
-/** SPEC.md Success Criterion 5: [foreground, background, minimum ratio]. */
-const CONTRAST_RULES: readonly [string, string, number][] = [
+/** Blends `#rrggbb` `top` at `alpha` over `#rrggbb` `under` (what a translucent fill paints). */
+function composite(top: string, alpha: number, under: string): string {
+  return (
+    '#' +
+    [1, 3, 5]
+      .map((i) => {
+        const [a, b] = [top, under].map((hex) =>
+          parseInt(hex.slice(i, i + 2), 16),
+        );
+        return Math.round(a * alpha + b * (1 - alpha))
+          .toString(16)
+          .padStart(2, '0');
+      })
+      .join('')
+  );
+}
+
+/**
+ * The `#rrggbb` a colour token paints: follows `var(--color-…)` references and composites a
+ * `color-mix(in srgb, <colour> N%, transparent)` wash over the `under` token. Anything else is
+ * returned as is, so the hex check below reports it.
+ */
+function paint(
+  tokens: Record<string, string>,
+  key: string,
+  under?: string,
+): string {
+  const value = tokens[`--color-${key}`] ?? '';
+  const ref = value.match(/^var\(--color-([\w-]+)\)$/);
+  if (ref) return paint(tokens, ref[1], under);
+  const wash = value.match(
+    /^color-mix\(in srgb, var\(--color-([\w-]+)\) ([\d.]+)%, transparent\)$/,
+  );
+  if (wash && under) {
+    return composite(
+      paint(tokens, wash[1]),
+      Number(wash[2]) / 100,
+      paint(tokens, under),
+    );
+  }
+  return value;
+}
+
+/**
+ * SPEC.md Success Criterion 5: [foreground, background, minimum ratio, what a translucent
+ * background sits on].
+ */
+const CONTRAST_RULES: readonly [string, string, number, string?][] = [
   ...['text', 'text-secondary', 'text-muted'].flatMap((fg) =>
     ['bg', 'surface', 'surface-2'].map(
       (bg) => [fg, bg, 4.5] as [string, string, number],
@@ -423,6 +485,14 @@ const CONTRAST_RULES: readonly [string, string, number][] = [
   ['border-strong', 'surface', 3],
   ['ring', 'surface', 3],
   ['hero-muted', 'hero-to', 4.5],
+  ...['eyebrow', 'accent-ink'].flatMap((fg) =>
+    ['bg', 'surface'].map((bg) => [fg, bg, 4.5] as [string, string, number]),
+  ),
+  ['on-accent', 'accent', 4.5],
+  ['nav-text', 'nav-bg', 4.5],
+  ['nav-muted', 'nav-bg', 4.5],
+  ['nav-strong', 'nav-bg', 4.5],
+  ['nav-active-text', 'nav-active-bg', 4.5, 'nav-bg'],
 ];
 
 describe('colour palettes', () => {
@@ -508,16 +578,20 @@ describe('colour palettes', () => {
     ),
   )('%s in %s passes the contrast rules', (id, mode) => {
     const tokens = resolved(id, mode);
-    // Every compared token is a resolved hex colour, so a missing one cannot pass as NaN.
-    const unresolved = CONTRAST_RULES.flatMap(([fg, bg]) => [fg, bg]).filter(
-      (key) => !/^#[0-9a-f]{6}$/i.test(tokens[`--color-${key}`] ?? ''),
+    const pairs = CONTRAST_RULES.map(([fg, bg, min, under]) => ({
+      pair: `${fg} on ${bg}`,
+      fg: paint(tokens, fg),
+      bg: paint(tokens, bg, under),
+      min,
+    }));
+    // Every compared token paints a hex colour, so a missing one cannot pass as NaN.
+    const unresolved = pairs.flatMap(({ pair, fg, bg }) =>
+      [fg, bg].filter((hex) => !/^#[0-9a-f]{6}$/i.test(hex)).map(() => pair),
     );
     expect(unresolved).toEqual([]);
-    const failures = CONTRAST_RULES.map(([fg, bg, min]) => ({
-      pair: `${fg} on ${bg}`,
-      ratio: contrast(tokens[`--color-${fg}`], tokens[`--color-${bg}`]),
-      min,
-    })).filter(({ ratio, min }) => ratio < min);
+    const failures = pairs
+      .map(({ pair, fg, bg, min }) => ({ pair, ratio: contrast(fg, bg), min }))
+      .filter(({ ratio, min }) => ratio < min);
     expect(failures).toEqual([]);
   });
 
@@ -567,6 +641,69 @@ describe('colour palettes', () => {
       expect(() => emitPalettes(`(bidv: (light: (), dark: ()))`)).toThrow(
         /palette bidv is the default/,
       );
+    });
+
+    it('emits type, shape and texture once, in the light block, for both modes', () => {
+      const out = rules(
+        emitPalettes(`(x: (
+          light: (colors: ${colors}), dark: (colors: ${colors}),
+          type: (sans: a, display: b, display-weight: 300, display-tracking: -0.03em),
+          shape: (control: 999px, card: 20px),
+          texture: (page: none),
+        ))`),
+      );
+      const light = out.find(
+        (r) => r.selector === ':root[data-palette=x]',
+      )!.body;
+      for (const declaration of [
+        '--font-sans: a',
+        '--font-display: b',
+        '--font-weight-display: 300',
+        '--tracking-display: -0.03em',
+        '--radius-control: 999px',
+        '--radius-card: 20px',
+        '--texture-page: none',
+      ]) {
+        expect(light).toContain(declaration);
+      }
+      for (const dark of out.filter(
+        (r) => r.selector.includes('dark') || r.selector.includes('light]'),
+      )) {
+        expect(dark.body).not.toMatch(/--(font|radius|texture|tracking)-/);
+      }
+    });
+
+    it('treats shadows as a per-mode group', () => {
+      expect(
+        emitPalettes(
+          `(x: (light: (shadow: (md: none)), dark: (shadow: (md: none))))`,
+        ),
+      ).toContain('--shadow-md: none');
+      expect(() =>
+        emitPalettes(`(x: (light: (shadow: (md: none)), dark: ()))`),
+      ).toThrow(
+        /palette x: shadow key `md` has a light value but no dark value/,
+      );
+    });
+
+    it('fails on a mode-independent group inside a mode, an unknown key or setting', () => {
+      expect(() =>
+        emitPalettes(`(x: (light: (type: (sans: a)), dark: ()))`),
+      ).toThrow(/palette x: unknown group `type` in light/);
+      expect(() =>
+        emitPalettes(`(x: (light: (), dark: (), shape: (pill: 1px)))`),
+      ).toThrow(/palette x: shape key `pill` is not a palette key/);
+      expect(() =>
+        emitPalettes(`(x: (light: (), dark: (), fonts: ()))`),
+      ).toThrow(/palette x: unknown setting `fonts`/);
+    });
+
+    it('takes the swatch fill from the colour the palette names', () => {
+      const root = compile(
+        `@use 'global/palettes'; :root { @include palettes.swatches((x: (swatch: accent, light: (colors: (primary: #111111, accent: #222222, bg: #333333)), dark: ()))); }`,
+      );
+      expect(root).toContain('--color-swatch-x-fill: #222222');
+      expect(root).toContain('--color-swatch-x-base: #333333');
     });
   });
 });

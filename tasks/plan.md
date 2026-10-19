@@ -136,7 +136,7 @@ T9  token model v2: new base tokens + theme groups + guards (bidv output unchang
 
 ### Phase 4: Token refactor (BIDV unchanged)
 
-- [ ] T9: Token model v2 and emitter
+- [x] T9: Token model v2 and emitter
 - [ ] T10: libs/ui components and base read the new semantic tokens
 - [ ] T11: Sidebar reads `nav-*` tokens
 - [ ] T12: Theme fonts (Fraunces, Nunito Sans)
