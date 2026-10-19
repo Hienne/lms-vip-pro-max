@@ -1,5 +1,10 @@
-import { DOCUMENT } from '@angular/common';
-import { afterRenderEffect, Component, inject, untracked } from '@angular/core';
+import {
+  afterRenderEffect,
+  Component,
+  DOCUMENT,
+  inject,
+  untracked,
+} from '@angular/core';
 import { Badge, Card, CardHeader, Icon, Table, TableWrap } from '@lms/ui';
 import { ThemeStore } from '../../../../../core/theme/theme.store';
 import { DsSection } from '../section/section';

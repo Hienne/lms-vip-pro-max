@@ -1,5 +1,4 @@
-import { DOCUMENT } from '@angular/common';
-import { inject, Service } from '@angular/core';
+import { DOCUMENT, inject, Service } from '@angular/core';
 
 /**
  * Saves a downloaded `Blob` as a file under a name the caller chooses (the store names it;

@@ -14,6 +14,14 @@ zod · `@angular/aria` + `@angular/cdk` · SCSS only (the `ui` Sass module) ·
 Before using any API, check the installed version in `package.json` and its
 local type definitions; these libraries change between majors.
 
+## Commands
+
+Run `nvm use` first (Node 24). Full table in `docs/conventions/workspace.md`.
+
+- `npm start`: app on :4200 against the in-app mock API.
+- `npx nx test <project>` (`lms`, `ui`, `contracts`, `mocks`): one project's specs.
+- `npm run check`: format, lint, typecheck, test, build and bundle guard on every project.
+
 ## Docs
 
 Project docs override `docs/conventions/angular.md` where they differ. Read the

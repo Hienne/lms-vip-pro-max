@@ -1,4 +1,4 @@
-<form id="role-form" class="stack" novalidate (submit)="onSubmit($event)">
+<form id="role-form" class="stack" [formRoot]="roleForm">
   <ui-field label="Tên vai trò" required>
     <input uiInput [formField]="roleForm.name" />
   </ui-field>

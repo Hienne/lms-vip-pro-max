@@ -2,7 +2,7 @@ import { Component, input, output, signal } from '@angular/core';
 import {
   form,
   FormField,
-  submit,
+  FormRoot,
   validateStandardSchema,
 } from '@angular/forms/signals';
 import {
@@ -24,7 +24,7 @@ import {
  */
 @Component({
   selector: 'app-password-form',
-  imports: [Button, Field, FormField, Input],
+  imports: [Button, Field, FormField, FormRoot, Input],
   templateUrl: './password-form.html',
   styleUrl: './password-form.scss',
 })
@@ -37,15 +37,18 @@ export class PasswordForm {
   private readonly model = signal<PasswordFormValue>({
     ...EMPTY_PASSWORD_FORM,
   });
-  protected readonly passwordForm = form(this.model, (path) => {
-    validateStandardSchema(path, PasswordFormSchema);
-  });
-
-  protected onSubmit(event: Event): void {
-    event.preventDefault();
-    void submit(this.passwordForm, async () => {
-      const { currentPassword, newPassword } = this.model();
-      this.submitted.emit({ currentPassword, newPassword });
-    });
-  }
+  protected readonly passwordForm = form(
+    this.model,
+    (path) => {
+      validateStandardSchema(path, PasswordFormSchema);
+    },
+    {
+      submission: {
+        action: async () => {
+          const { currentPassword, newPassword } = this.model();
+          this.submitted.emit({ currentPassword, newPassword });
+        },
+      },
+    },
+  );
 }

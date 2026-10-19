@@ -349,8 +349,13 @@ export class CourseDetailStore {
   `form().errorSummary()`.
 - To prefill from server data, use a `linkedSignal` from the store's readonly
   signal as the form model.
-- On submit, validate with `submit()`, convert the value into a form-agnostic
-  command, and call a store command.
+- Submit through the `FormRoot` directive (`<form [formRoot]="courseForm">`)
+  and the `submission` option of `form()`. `FormRoot` sets `novalidate`,
+  prevents the native submit and runs the submission, which marks the fields
+  touched and calls `action` only when the form is valid. The `action` converts
+  the value into a form-agnostic command and calls a store command. Do not write
+  `(submit)` handlers, `preventDefault()` or `novalidate` for a signal form
+  ([Form submission](https://angular.dev/guide/forms/signals/form-submission)).
 - A store never creates, exposes, reads, or validates a form. Do not copy form
   values into store state.
 - Every validator provides a user-facing `message`.
@@ -360,22 +365,25 @@ export class CourseDetail {
   protected readonly store = inject(CourseDetailStore);
 
   private readonly model = linkedSignal(() => toCourseFormValue(this.store.course$()));
-  protected readonly courseForm = form(this.model, (path) => {
-    required(path.title, { message: 'Title is required' });
-    maxLength(path.title, 120, { message: 'Max 120 characters' });
-  });
-
-  protected onSubmit(event: Event): void {
-    event.preventDefault();
-    submit(this.courseForm, async () => {
-      this.store.save(toSaveCourseCommand(this.store.course$()!.id, this.model()));
-    });
-  }
+  protected readonly courseForm = form(
+    this.model,
+    (path) => {
+      required(path.title, { message: 'Title is required' });
+      maxLength(path.title, 120, { message: 'Max 120 characters' });
+    },
+    {
+      submission: {
+        action: async () => {
+          this.store.save(toSaveCourseCommand(this.store.course$()!.id, this.model()));
+        },
+      },
+    },
+  );
 }
 ```
 
 ```html
-<form (submit)="onSubmit($event)">
+<form [formRoot]="courseForm">
   <ui-field label="Title" required>
     <input uiInput [formField]="courseForm.title" />
   </ui-field>

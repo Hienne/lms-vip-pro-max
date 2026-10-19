@@ -2,8 +2,8 @@ import { Component, computed, inject, linkedSignal } from '@angular/core';
 import {
   form,
   FormField,
+  FormRoot,
   readonly,
-  submit,
   validateStandardSchema,
 } from '@angular/forms/signals';
 import { isEmptyPatch } from '@lms/contracts';
@@ -48,6 +48,7 @@ import {
     CardHeader,
     Field,
     FormField,
+    FormRoot,
     Icon,
     Input,
     PageHeader,
@@ -65,10 +66,21 @@ export class Profile {
   private readonly model = linkedSignal(() =>
     toProfileFormValue(this.store.user$()),
   );
-  protected readonly profileForm = form(this.model, (path) => {
-    validateStandardSchema(path, ProfileFormSchema);
-    readonly(path, () => this.store.readOnly$());
-  });
+  protected readonly profileForm = form(
+    this.model,
+    (path) => {
+      validateStandardSchema(path, ProfileFormSchema);
+      readonly(path, { when: () => this.store.readOnly$() });
+    },
+    {
+      submission: {
+        action: async () => {
+          const user = this.store.user$();
+          if (user && !this.unchanged()) this.store.save(this.patch());
+        },
+      },
+    },
+  );
 
   /** What a save would send; empty while the form still equals the signed-in user. */
   private readonly patch = computed(() => {
@@ -76,12 +88,4 @@ export class Profile {
     return user ? toUpdateMeCommand(user, this.model()) : {};
   });
   protected readonly unchanged = computed(() => isEmptyPatch(this.patch()));
-
-  protected onSubmit(event: Event): void {
-    event.preventDefault();
-    void submit(this.profileForm, async () => {
-      const user = this.store.user$();
-      if (user && !this.unchanged()) this.store.save(this.patch());
-    });
-  }
 }

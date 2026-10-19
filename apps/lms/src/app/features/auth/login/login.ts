@@ -2,7 +2,7 @@ import { Component, inject, signal } from '@angular/core';
 import {
   form,
   FormField,
-  submit,
+  FormRoot,
   validateStandardSchema,
 } from '@angular/forms/signals';
 import { RouterLink } from '@angular/router';
@@ -43,6 +43,7 @@ const BRAND_POINTS: readonly { icon: IconName; text: string }[] = [
     Button,
     Field,
     FormField,
+    FormRoot,
     Icon,
     IconButton,
     Input,
@@ -64,19 +65,22 @@ export class Login {
     username: '',
     password: '',
   });
-  protected readonly loginForm = form(this.model, (path) => {
-    validateStandardSchema(path, LoginFormSchema);
-  });
+  protected readonly loginForm = form(
+    this.model,
+    (path) => {
+      validateStandardSchema(path, LoginFormSchema);
+    },
+    {
+      submission: {
+        action: async () => {
+          const { username, password } = this.model();
+          this.store.signIn({ username: username.trim(), password });
+        },
+      },
+    },
+  );
 
   protected togglePassword(): void {
     this.showPassword.update((shown) => !shown);
-  }
-
-  protected onSubmit(event: Event): void {
-    event.preventDefault();
-    void submit(this.loginForm, async () => {
-      const { username, password } = this.model();
-      this.store.signIn({ username: username.trim(), password });
-    });
   }
 }

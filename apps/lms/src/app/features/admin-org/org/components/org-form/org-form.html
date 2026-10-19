@@ -1,4 +1,4 @@
-<form id="org-form" class="stack" novalidate (submit)="onSubmit($event)">
+<form id="org-form" class="stack" [formRoot]="orgForm">
   @if (!isEdit()) {
   <ui-field label="Loại" required>
     <select uiSelect [formField]="orgForm.orgType">

@@ -8,8 +8,8 @@ import {
 import {
   form,
   FormField,
+  FormRoot,
   hidden,
-  submit,
   validateStandardSchema,
 } from '@angular/forms/signals';
 import { isEmptyPatch, type OrganizationInfo } from '@lms/contracts';
@@ -30,7 +30,7 @@ import {
  */
 @Component({
   selector: 'app-org-form',
-  imports: [Field, FormField, Input, Select],
+  imports: [Field, FormField, FormRoot, Input, Select],
   templateUrl: './org-form.html',
 })
 export class OrgForm {
@@ -50,30 +50,31 @@ export class OrgForm {
         : null,
     ),
   );
-  protected readonly orgForm = form(this.model, (path) => {
-    validateStandardSchema(path, OrgFormSchema);
-    hidden(path.orgType, { when: () => this.isEdit() });
-    hidden(path.parentId, { when: () => this.isEdit() });
-    hidden(path.status, {
-      when: () => !this.isEdit() || !this.store.canManageOrgs$(),
-    });
-  });
+  protected readonly orgForm = form(
+    this.model,
+    (path) => {
+      validateStandardSchema(path, OrgFormSchema);
+      hidden(path.orgType, { when: () => this.isEdit() });
+      hidden(path.parentId, { when: () => this.isEdit() });
+      hidden(path.status, {
+        when: () => !this.isEdit() || !this.store.canManageOrgs$(),
+      });
+    },
+    { submission: { action: async () => this.save() } },
+  );
 
-  protected onSubmit(event: Event): void {
-    event.preventDefault();
-    void submit(this.orgForm, async () => {
-      const org = this.org();
-      if (!org) {
-        this.store.createOrg(toCreateOrgCommand(this.model()));
-        return;
-      }
-      const patch = toUpdateOrgCommand(
-        org,
-        this.model(),
-        this.store.canManageOrgs$(),
-      );
-      if (isEmptyPatch(patch)) this.store.cancelOrgEdit();
-      else this.store.updateOrg(org.id, patch);
-    });
+  private save(): void {
+    const org = this.org();
+    if (!org) {
+      this.store.createOrg(toCreateOrgCommand(this.model()));
+      return;
+    }
+    const patch = toUpdateOrgCommand(
+      org,
+      this.model(),
+      this.store.canManageOrgs$(),
+    );
+    if (isEmptyPatch(patch)) this.store.cancelOrgEdit();
+    else this.store.updateOrg(org.id, patch);
   }
 }
