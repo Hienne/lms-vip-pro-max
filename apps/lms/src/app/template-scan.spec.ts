@@ -303,6 +303,19 @@ describe('template scan', () => {
     expect(scriptPalettes).toEqual(others);
   });
 
+  it('paints the sidebar with the nav tokens only, so a theme can restyle it', () => {
+    const sidebar = readFileSync(
+      join(appSource, 'app/layout/sidebar/sidebar.scss'),
+      'utf8',
+    );
+    const colours = [...sidebar.matchAll(/ui\.color\(([\w-]+)\)/g)].map(
+      (match) => match[1],
+    );
+    expect(colours.length).toBeGreaterThan(0);
+    expect(colours.filter((key) => !key.startsWith('nav-'))).toEqual([]);
+    expect(sidebar).not.toContain('color-mix(');
+  });
+
   it('writes only BEM classes, layout helpers and their gap modifiers', () => {
     const { global, byFolder } = stylesheetClasses();
     const spacing = spacingKeys();

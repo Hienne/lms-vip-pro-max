@@ -342,11 +342,23 @@ shares those colours.
 
 **Acceptance criteria:**
 
-- [ ] BIDV sidebar is pixel-identical (expanded, collapsed rail, mobile drawer; light and dark)
-- [ ] Setting a spec theme with a light `nav-bg` gives a readable light sidebar (manual
+- [x] BIDV sidebar is pixel-identical (expanded, collapsed rail, mobile drawer; light and dark)
+- [x] Setting a spec theme with a light `nav-bg` gives a readable light sidebar (manual
       devtools check)
 
 **Verification:** `npx nx test lms`; screenshots before/after
+
+**Verified (2026-10-20):** a new `template-scan.spec.ts` guard (the sidebar reads `nav-*` colours
+only, with no `color-mix`) failed first, then passed. A script compiled the old and new
+`sidebar.scss` and resolved all 26 colour declarations against BIDV `:root`, light and dark.
+
+- The only difference is the inherited base colour of `.sidebar` (`primary-subtle` →
+  `nav-text`).
+- Every visible child (brand, role, sections, links, footer, toggle) sets its own colour, and
+  `ui-mai` paints with its own tokens, so no pixel changes.
+- The login hero needed no change: it already reads `hero-*`, which themes can override.
+
+The browser check of a light sidebar is deferred to T13 (it needs the app shell).
 
 **Dependencies:** T9
 

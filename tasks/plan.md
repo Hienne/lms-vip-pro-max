@@ -138,7 +138,7 @@ T9  token model v2: new base tokens + theme groups + guards (bidv output unchang
 
 - [x] T9: Token model v2 and emitter
 - [x] T10: libs/ui components and base read the new semantic tokens
-- [ ] T11: Sidebar reads `nav-*` tokens
+- [x] T11: Sidebar reads `nav-*` tokens
 - [ ] T12: Theme fonts (Fraunces, Nunito Sans)
 
 ### Checkpoint C2 (after T9–T12)
