@@ -96,7 +96,7 @@ describe('/design-system', () => {
         Array.from(groups[0].querySelectorAll('[role="option"]')).map((o) =>
           o.textContent?.trim(),
         ),
-      ).toEqual(['BIDV chuẩn', 'BIDV dịu', 'Xanh dương', 'Cát ấm']);
+      ).toEqual(['BIDV chuẩn', 'Ngọc', 'Cobalt', 'Giấy']);
       const options = Array.from(groups[1].querySelectorAll('[role="option"]'));
       expect(options.map((o) => o.textContent?.trim())).toEqual([
         'Hệ thống',
@@ -129,12 +129,12 @@ describe('/design-system', () => {
 
     it('changes the palette attribute on the root element and remembers the choice', async () => {
       const { page } = await openDesignSystem();
-      option(page, 'Xanh dương').click();
+      option(page, 'Cobalt').click();
       TestBed.tick();
       expect(document.documentElement.getAttribute('data-palette')).toBe(
-        'blue',
+        'cobalt',
       );
-      expect(localStorage.getItem('lms.palette')).toBe('blue');
+      expect(localStorage.getItem('lms.palette')).toBe('cobalt');
 
       option(page, 'BIDV chuẩn').click();
       TestBed.tick();
@@ -148,7 +148,7 @@ describe('/design-system', () => {
         page.querySelector('#ds-color tbody tr [data-ratio]')?.textContent;
       expect(ratio()).toBe('16.98:1');
 
-      option(page, 'Cát ấm').click();
+      option(page, 'Giấy').click();
       // The tokens take the palette's values with the attribute; here the stylesheet is simulated.
       document.documentElement.style.setProperty('--color-text', '#5a3a2a');
       TestBed.tick();

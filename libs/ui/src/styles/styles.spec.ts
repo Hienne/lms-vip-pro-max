@@ -85,12 +85,12 @@ const LIGHT_PROPERTIES = [
   '--color-chart-grid',
   '--color-swatch-bidv-fill',
   '--color-swatch-bidv-base',
-  '--color-swatch-bidv-soft-fill',
-  '--color-swatch-bidv-soft-base',
-  '--color-swatch-blue-fill',
-  '--color-swatch-blue-base',
-  '--color-swatch-sand-fill',
-  '--color-swatch-sand-base',
+  '--color-swatch-ngoc-fill',
+  '--color-swatch-ngoc-base',
+  '--color-swatch-cobalt-fill',
+  '--color-swatch-cobalt-base',
+  '--color-swatch-giay-fill',
+  '--color-swatch-giay-base',
   '--font-sans',
   '--font-mono',
   '--font-display',
@@ -148,6 +148,7 @@ const LIGHT_PROPERTIES = [
   '--shadow-md',
   '--shadow-lg',
   '--texture-page',
+  '--texture-page-size',
   '--transition-duration-fast',
   '--transition-duration-base',
   '--transition-duration-slow',
@@ -423,6 +424,7 @@ describe('theme hooks', () => {
 
   it.each([
     ['body', 'background-image: var(--texture-page)'],
+    ['body', 'background-size: var(--texture-page-size)'],
     ['h1,\n  h2,\n  h3,\n  h4', 'font-family: var(--font-display)'],
     ['h1', 'font-weight: var(--font-weight-display)'],
     ['h1', 'letter-spacing: var(--tracking-display)'],
@@ -570,13 +572,17 @@ describe('colour palettes', () => {
     return Object.assign({}, ...layers.map(values)) as Record<string, string>;
   }
 
-  it('declares a constant swatch per palette from its light primary and bg', () => {
+  it('declares a constant swatch per palette from its light swatch colour and bg', () => {
     const root = values(':root');
     expect(root['--color-swatch-bidv-fill']).toBe('#006b68');
     expect(root['--color-swatch-bidv-base']).toBe('#f5f8f8');
+    // Giấy's primary is its ink, so its swatch shows the rust accent instead.
+    const fillKey: Record<string, string> = { giay: '--color-accent' };
     for (const id of ids) {
       const light = values(`:root[data-palette=${id}]`);
-      expect(root[`--color-swatch-${id}-fill`]).toBe(light['--color-primary']);
+      expect(root[`--color-swatch-${id}-fill`]).toBe(
+        light[fillKey[id] ?? '--color-primary'],
+      );
       expect(root[`--color-swatch-${id}-base`]).toBe(light['--color-bg']);
     }
     expect(css).not.toMatch(/data-theme=dark\][^{]*\{[^}]*--color-swatch/);
@@ -584,13 +590,16 @@ describe('colour palettes', () => {
 
   it('emits no override block for the default bidv palette', () => {
     expect(css).not.toContain('data-palette=bidv]');
-    expect(ids).toEqual(['bidv-soft', 'blue', 'sand']);
+    expect(ids).toEqual(['ngoc', 'cobalt', 'giay']);
   });
 
-  it.each(['bidv-soft', 'blue', 'sand'])(
+  it.each(['ngoc', 'cobalt', 'giay'])(
     'emits %s in light, in explicit dark and in system dark, with the same keys in both dark rules',
     (id) => {
-      const light = Object.keys(values(`:root[data-palette=${id}]`));
+      // Mode-independent settings (type, shape, texture) live in the light block only.
+      const light = Object.keys(values(`:root[data-palette=${id}]`)).filter(
+        (name) => /^--(color|shadow)-/.test(name),
+      );
       const explicit = Object.keys(
         values(`:root[data-palette=${id}][data-theme=dark]`),
       );
@@ -600,6 +609,24 @@ describe('colour palettes', () => {
       expect(light.length).toBeGreaterThan(0);
       expect(system.sort()).toEqual(explicit.sort());
       expect(explicit).toEqual(expect.arrayContaining(light));
+    },
+  );
+
+  it.each([
+    ['ngoc', 'Be Vietnam Pro', '10px', 'none'],
+    ['cobalt', 'Nunito Sans', '999px', 'none'],
+    ['giay', 'Fraunces', '10px', 'radial-gradient'],
+  ])(
+    '%s sets its own display face, control radius and texture',
+    (id, face, control, texture) => {
+      const light = values(`:root[data-palette=${id}]`);
+      const root = values(':root');
+      expect(
+        light['--font-display'] ?? light['--font-sans'] ?? root['--font-sans'],
+      ).toContain(face);
+      expect(light['--radius-control']).toBe(control);
+      expect(light['--texture-page'] ?? 'none').toContain(texture);
+      expect(light['--color-nav-bg']).toMatch(/^#/);
     },
   );
 

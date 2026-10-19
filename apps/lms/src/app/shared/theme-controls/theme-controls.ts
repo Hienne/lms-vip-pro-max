@@ -14,9 +14,9 @@ import {
 
 const PALETTE_LABEL: Readonly<Record<ThemePalette, string>> = {
   bidv: 'BIDV chuẩn',
-  'bidv-soft': 'BIDV dịu',
-  blue: 'Xanh dương',
-  sand: 'Cát ấm',
+  ngoc: 'Ngọc',
+  cobalt: 'Cobalt',
+  giay: 'Giấy',
 };
 
 /**

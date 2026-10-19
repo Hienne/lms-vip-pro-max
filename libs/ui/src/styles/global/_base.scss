@@ -15,6 +15,7 @@
     min-height: 100vh;
     background-color: ui.color(bg);
     background-image: ui.texture(page);
+    background-size: ui.texture(page-size);
     color: ui.color(text);
     font-family: ui.font(sans);
     font-size: ui.text-size(md);

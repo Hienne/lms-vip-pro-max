@@ -72,10 +72,10 @@ describe('ThemePicker', () => {
     await settle();
     const sand = Array.from(
       panel()!.querySelectorAll<HTMLElement>('[role="option"]'),
-    ).find((o) => o.textContent?.trim() === 'Cát ấm')!;
+    ).find((o) => o.textContent?.trim() === 'Giấy')!;
     sand.click();
     await settle();
-    expect(store.setPalette).toHaveBeenCalledWith('sand');
+    expect(store.setPalette).toHaveBeenCalledWith('giay');
     expect(panel()).not.toBeNull();
   });
 });

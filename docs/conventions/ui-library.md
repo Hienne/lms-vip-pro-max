@@ -245,7 +245,7 @@ spec for the list).
 Two independent choices, remembered per browser:
 
 - **Mode:** **Hệ thống / Sáng / Tối** (`system | light | dark`).
-- **Palette:** **BIDV chuẩn / BIDV dịu / Xanh dương / Cát ấm** (`bidv | bidv-soft | blue | sand`).
+- **Palette:** **BIDV chuẩn / Ngọc / Cobalt / Giấy** (`bidv | ngoc | cobalt | giay`).
   `bidv` is the default and is the base tokens themselves.
 
 - **Tokens carry the theme.** `global/_theme.scss` emits the light values and the dark values behind two

@@ -149,7 +149,7 @@ T9  token model v2: new base tokens + theme groups + guards (bidv output unchang
 
 ### Phase 5: Themes
 
-- [ ] T13: Ngọc, Cobalt, Giấy
+- [x] T13: Ngọc, Cobalt, Giấy
 
 ### Checkpoint D (after T13)
 

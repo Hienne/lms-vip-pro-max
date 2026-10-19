@@ -420,12 +420,31 @@ synthesised.
 
 **Acceptance criteria:**
 
-- [ ] Picker lists BIDV chuẩn, Ngọc, Cobalt, Giấy; an old stored id falls back to `bidv`
-- [ ] Contrast spec passes for every theme × mode, including the new rules
-- [ ] Id-sync guard green
+- [x] Picker lists BIDV chuẩn, Ngọc, Cobalt, Giấy; an old stored id falls back to `bidv`
+- [x] Contrast spec passes for every theme × mode, including the new rules
+- [x] Id-sync guard green
 
 **Verification:** `npm run check`; screenshots of the 3 themes × light/dark (dashboard, course
 page, login, header popover open) for the user
+
+**Verified (2026-10-20):**
+
+- **Specs:** the store, controls, picker, design-system and styles specs were moved to the new ids
+  and failed first. They gained cases for old ids falling back to `bidv` and for each theme's
+  own face, control radius and texture. All passed after the change.
+- **Contrast:** passes for every theme × mode under the extended rules (eyebrow, accent-ink,
+  on-accent, nav-\*).
+- **`npm run check`:** green, all 4 projects, the change-password flake included this run.
+- **Browser:** checked with `mockBackend` temporarily on, signing in from the Demo menu; the
+  setting was reverted afterwards and never committed.
+  - `/admin/users` in Ngọc, Cobalt and Giấy, light and dark: sidebar, page header, table, badges
+    and buttons.
+  - `/login` in Cobalt (gradient hero, light Nunito heading, pill button) and Giấy (Fraunces
+    heading, rust eyebrow, ink button).
+  - BIDV unchanged.
+
+Added `texture.page-size` (the dot grid needs a tile size). The dot colour mixes
+`--color-text`, so it follows dark mode.
 
 **Dependencies:** T10, T11, T12
 
