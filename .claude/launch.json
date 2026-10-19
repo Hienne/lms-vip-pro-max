@@ -9,15 +9,6 @@
         "source ~/.nvm/nvm.sh && nvm use 24 >/dev/null && npx nx serve lms --port 4200"
       ],
       "port": 4200
-    },
-    {
-      "name": "lms-auth-worktree",
-      "runtimeExecutable": "bash",
-      "runtimeArgs": [
-        "-c",
-        "source ~/.nvm/nvm.sh && nvm use 24 >/dev/null && cd .worktrees/auth-api-integration && npx nx serve lms --port 4200"
-      ],
-      "port": 4200
     }
   ]
 }
