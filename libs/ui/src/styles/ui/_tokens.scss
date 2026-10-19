@@ -4,6 +4,7 @@
 // `global/_theme.scss`, light and dark, and read back through the accessor functions of the `ui`
 // module (`ui.color(primary)` → `var(--color-primary)`).
 // This file only declares maps: loading it emits no CSS.
+@use 'sass:map';
 @use 'sass:string';
 
 // ---- Breakpoints (mobile-first; the mockup's max-width 900/1000/1024 map to the nearest step) ----
@@ -397,10 +398,20 @@ $palettes: (
 );
 
 // ---- Typography ----
-$font-families: (
-  sans: string.unquote(
+// Self-hosted faces a theme may use (each one is a `@fontsource/<name>` package listed in the
+// app's build styles; a guard spec checks the list). The browser downloads a file only when an
+// element renders in that family.
+$font-stacks: (
+  be-vietnam-pro: string.unquote(
       "'Be Vietnam Pro', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif"
     ),
+  fraunces: string.unquote("'Fraunces', Georgia, 'Times New Roman', serif"),
+  nunito-sans: string.unquote(
+      "'Nunito Sans', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif"
+    ),
+);
+$font-families: (
+  sans: map.get($font-stacks, be-vietnam-pro),
   mono: string.unquote("ui-monospace, 'SF Mono', Menlo, Consolas, monospace"),
   // headings (h1–h3, page titles, KPI values); a theme may set its own face
   display: string.unquote('var(--font-sans)'),

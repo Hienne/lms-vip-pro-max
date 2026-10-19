@@ -316,6 +316,28 @@ describe('template scan', () => {
     expect(sidebar).not.toContain('color-mix(');
   });
 
+  it('bundles the self-hosted files of every font a theme can name', () => {
+    // `ui.$font-stacks`: the faces a theme's type group may use; each one is self-hosted
+    // (`@fontsource/<kebab name>`, never Google Fonts) and listed in the build styles.
+    const css = sass.compileString(
+      "@use 'ui'; @each $name, $stack in ui.$font-stacks { .f { family: $stack; } }",
+      { loadPaths, logger: sass.Logger.silent },
+    ).css;
+    const families = [...css.matchAll(/family: ["']([^"']+)["']/g)].map(
+      (match) => match[1],
+    );
+    expect(families).toEqual(
+      expect.arrayContaining(['Be Vietnam Pro', 'Fraunces', 'Nunito Sans']),
+    );
+    const styles: string[] = JSON.parse(
+      readFileSync(join(root, 'apps/lms/project.json'), 'utf8'),
+    ).targets.build.options.styles;
+    for (const family of families) {
+      const pkg = `@fontsource/${family.toLowerCase().replaceAll(' ', '-')}/`;
+      expect(styles.some((style) => style.startsWith(pkg))).toBe(true);
+    }
+  });
+
   it('writes only BEM classes, layout helpers and their gap modifiers', () => {
     const { global, byFolder } = stylesheetClasses();
     const spacing = spacingKeys();

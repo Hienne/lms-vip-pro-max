@@ -374,12 +374,27 @@ the themes to use. Update `docs/conventions/workspace.md` (the font row).
 
 **Acceptance criteria:**
 
-- [ ] With BIDV active, the network panel shows no Fraunces or Nunito Sans request
-- [ ] A test element in each family renders Vietnamese diacritics in that font, not the fallback
+- [x] With BIDV active, the network panel shows no Fraunces or Nunito Sans request
+- [x] A test element in each family renders Vietnamese diacritics in that font, not the fallback
       (check `document.fonts`)
-- [ ] `check-bundle` and the budgets stay green
+- [x] `check-bundle` and the budgets stay green
 
 **Verification:** `npm run check`; browser network panel
+
+**Verified (2026-10-20):**
+
+- **Guard test:** a new `template-scan.spec.ts` guard failed first (`ui.$font-stacks` did not
+  exist), then passed. It checks that every face in `ui.$font-stacks` has `@fontsource/<name>`
+  CSS in the build styles.
+- **Fonts on demand:** in the browser on `/design-system`, BIDV loads only Be Vietnam Pro files.
+  A probe element in Fraunces 500 and Nunito Sans 300 then fetches their Latin, Latin-ext and
+  Vietnamese subsets. `document.fonts.check` passes for "ệ" and "ậ" in each face.
+- **Bundle:** `check-bundle` is green. The fonts add about 13 KB of raw `@font-face` CSS. The
+  initial bundle (841 KB) was already over the 500 KB _warning_ budget before this task; the
+  error budget is 1 MB.
+
+Fraunces 600 and Nunito Sans 500 were added, so h2/h3 (600) and medium labels (500) are not
+synthesised.
 
 **Dependencies:** T9
 
