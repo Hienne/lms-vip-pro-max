@@ -52,7 +52,7 @@
       >
       }
 
-      <form class="login__fields" novalidate (submit)="onSubmit($event)">
+      <form class="login__fields" [formRoot]="loginForm">
         <ui-field label="Tên đăng nhập hoặc mã cán bộ" required>
           <input
             uiInput

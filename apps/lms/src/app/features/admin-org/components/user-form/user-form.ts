@@ -8,8 +8,8 @@ import {
 import {
   form,
   FormField,
+  FormRoot,
   hidden,
-  submit,
   validateStandardSchema,
 } from '@angular/forms/signals';
 import { isEmptyPatch } from '@lms/contracts';
@@ -32,7 +32,17 @@ import {
  */
 @Component({
   selector: 'app-user-form',
-  imports: [Alert, Button, Field, FormField, GrantPicker, Icon, Input, Select],
+  imports: [
+    Alert,
+    Button,
+    Field,
+    FormField,
+    FormRoot,
+    GrantPicker,
+    Icon,
+    Input,
+    Select,
+  ],
   templateUrl: './user-form.html',
   styleUrl: './user-form.scss',
 })
@@ -47,12 +57,16 @@ export class UserForm {
   private readonly model = linkedSignal<UserFormValue>(() =>
     toUserFormValue(this.user(), this.store.me$()?.org?.id ?? null),
   );
-  protected readonly userForm = form(this.model, (path) => {
-    validateStandardSchema(path, UserFormSchema);
-    hidden(path.userId, { when: () => this.isEdit() });
-    hidden(path.username, { when: () => this.isEdit() });
-    hidden(path.initialPassword, { when: () => this.isEdit() });
-  });
+  protected readonly userForm = form(
+    this.model,
+    (path) => {
+      validateStandardSchema(path, UserFormSchema);
+      hidden(path.userId, { when: () => this.isEdit() });
+      hidden(path.username, { when: () => this.isEdit() });
+      hidden(path.initialPassword, { when: () => this.isEdit() });
+    },
+    { submission: { action: async () => this.save() } },
+  );
 
   /** Moving a user revokes the grants scoped to the old org or team: say so before saving. */
   protected readonly moves = computed(() => {
@@ -72,22 +86,19 @@ export class UserForm {
     this.store.pickFormOrg(orgId ? Number(orgId) : undefined);
   }
 
-  protected onSubmit(event: Event): void {
-    event.preventDefault();
-    void submit(this.userForm, async () => {
-      const user = this.user();
-      if (!user) {
-        this.store.create(
-          toCreateUserCommand(
-            this.model(),
-            this.store.pendingGrants$().map((p) => p.request),
-          ),
-        );
-        return;
-      }
-      const patch = toUpdateUserCommand(user, this.model());
-      if (isEmptyPatch(patch)) this.store.cancelEdit();
-      else this.store.update(user.userId, patch);
-    });
+  private save(): void {
+    const user = this.user();
+    if (!user) {
+      this.store.create(
+        toCreateUserCommand(
+          this.model(),
+          this.store.pendingGrants$().map((p) => p.request),
+        ),
+      );
+      return;
+    }
+    const patch = toUpdateUserCommand(user, this.model());
+    if (isEmptyPatch(patch)) this.store.cancelEdit();
+    else this.store.update(user.userId, patch);
   }
 }

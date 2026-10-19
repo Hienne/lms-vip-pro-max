@@ -1,14 +1,14 @@
 import { Component, computed, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
-import { form, FormField, required, submit } from '@angular/forms/signals';
+import { form, FormField, FormRoot, required } from '@angular/forms/signals';
 import { Input } from '../../atoms/input/input.directive';
 import { ErrorSummary, type ErrorSummaryItem } from './error-summary';
 import { Field } from './field';
 
 @Component({
-  imports: [ErrorSummary, Field, Input, FormField],
+  imports: [ErrorSummary, Field, Input, FormField, FormRoot],
   template: `
-    <form (submit)="onSubmit($event)">
+    <form [formRoot]="f">
       @if (items().length > 0) {
         <ui-error-summary [items]="items()" />
       }
@@ -24,11 +24,20 @@ import { Field } from './field';
 })
 class Host {
   readonly model = signal({ title: '', email: '' });
-  readonly f = form(this.model, (p) => {
-    required(p.title, { message: 'Tên khóa học là bắt buộc.' });
-    required(p.email, { message: 'Email là bắt buộc.' });
-  });
   readonly submitted = signal(false);
+  readonly f = form(
+    this.model,
+    (p) => {
+      required(p.title, { message: 'Tên khóa học là bắt buộc.' });
+      required(p.email, { message: 'Email là bắt buộc.' });
+    },
+    {
+      submission: {
+        action: async () => this.submitted.set(true),
+        onInvalid: () => this.submitted.set(true),
+      },
+    },
+  );
   readonly items = computed<ErrorSummaryItem[]>(() =>
     this.submitted()
       ? [
@@ -49,11 +58,6 @@ class Host {
         ]
       : [],
   );
-  onSubmit(event: Event) {
-    event.preventDefault();
-    void submit(this.f, async () => undefined);
-    this.submitted.set(true);
-  }
 }
 
 async function render() {

@@ -41,7 +41,7 @@
           đây.</ui-alert
         >
         }
-        <form class="stack" novalidate (submit)="onSubmit($event)">
+        <form class="stack" [formRoot]="profileForm">
           <ui-field label="Họ và tên" required>
             <input
               uiInput

@@ -8,7 +8,7 @@ import {
 import {
   form,
   FormField,
-  submit,
+  FormRoot,
   validateStandardSchema,
 } from '@angular/forms/signals';
 import type { FunctionCode, Role, SaveRoleCommand } from '@lms/contracts';
@@ -23,7 +23,7 @@ import { RoleFormSchema, toRoleFormValue } from './role-form.schema';
  */
 @Component({
   selector: 'app-role-form',
-  imports: [Checkbox, Field, FormField, Input, Textarea],
+  imports: [Checkbox, Field, FormField, FormRoot, Input, Textarea],
   templateUrl: './role-form.html',
   styleUrl: './role-form.scss',
 })
@@ -35,9 +35,13 @@ export class RoleForm {
   protected readonly sections = allSections();
 
   private readonly model = linkedSignal(() => toRoleFormValue(this.role()));
-  protected readonly roleForm = form(this.model, (path) => {
-    validateStandardSchema(path, RoleFormSchema);
-  });
+  protected readonly roleForm = form(
+    this.model,
+    (path) => {
+      validateStandardSchema(path, RoleFormSchema);
+    },
+    { submission: { action: async () => this.save() } },
+  );
 
   protected readonly chosen = computed(() => new Set(this.model().menus));
 
@@ -50,17 +54,14 @@ export class RoleForm {
     }));
   }
 
-  protected onSubmit(event: Event): void {
-    event.preventDefault();
-    void submit(this.roleForm, async () => {
-      const id = this.role()?.id;
-      const value = this.model();
-      this.submitted.emit({
-        ...(id ? { id } : {}),
-        name: value.name.trim(),
-        description: value.description.trim(),
-        menus: value.menus,
-      });
+  private save(): void {
+    const id = this.role()?.id;
+    const value = this.model();
+    this.submitted.emit({
+      ...(id ? { id } : {}),
+      name: value.name.trim(),
+      description: value.description.trim(),
+      menus: value.menus,
     });
   }
 }
