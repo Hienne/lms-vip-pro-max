@@ -1,0 +1,104 @@
+@use 'ui';
+:host {
+  @include ui.page(wide);
+  min-width: 0;
+}
+.loading {
+  min-height: 20rem;
+  display: grid;
+  place-items: center;
+}
+.panel {
+  padding: ui.space(5);
+  margin-block: ui.space(4);
+}
+.question-form,
+.config-form {
+  display: grid;
+  gap: ui.space(4);
+}
+label {
+  display: grid;
+  gap: ui.space(2);
+  min-width: 0;
+  @include ui.text(sm);
+  font-weight: ui.weight(medium);
+}
+label:has(> input[type='checkbox']) {
+  @include ui.row(3);
+  flex-wrap: nowrap;
+  justify-content: flex-start;
+}
+input,
+select,
+fieldset {
+  min-width: 0;
+}
+.option input {
+  flex-shrink: 0;
+  inline-size: ui.space(5);
+  block-size: ui.space(5);
+  accent-color: ui.color(primary);
+}
+.actions,
+.row,
+.timer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: ui.space(3);
+  flex-wrap: wrap;
+}
+.row {
+  padding-block: ui.space(3);
+  border-top: 1px solid ui.color(border);
+}
+.row p {
+  margin-block: ui.space(2) 0;
+  color: ui.color(text-secondary);
+}
+.number-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
+  gap: ui.space(3);
+}
+fieldset {
+  display: grid;
+  gap: ui.space(2);
+  border: 1px solid ui.color(border);
+  padding: ui.space(4);
+}
+fieldset label,
+.option {
+  display: flex;
+  align-items: flex-start;
+  gap: ui.space(3);
+  padding: ui.space(3);
+  border: 1px solid ui.color(border);
+  border-radius: ui.radius(md);
+}
+.hint,
+small {
+  color: ui.color(text-muted);
+}
+.timer {
+  padding: ui.space(4);
+  margin-block: ui.space(4);
+  position: sticky;
+  top: 0;
+  background: ui.color(surface);
+  z-index: ui.z(header);
+}
+.q-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: ui.space(2);
+  margin-block: ui.space(4);
+}
+.review {
+  border-top: 1px solid ui.color(border);
+  padding-block: ui.space(3);
+}
+.review p {
+  color: ui.color(text-secondary);
+}

@@ -1,0 +1,74 @@
+@use 'ui';
+:host {
+  @include ui.page(wide);
+  min-width: 0;
+}
+.lesson-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: ui.space(4);
+  margin-block: ui.space(4);
+  @include ui.bp(lg) {
+    grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+  }
+}
+.viewer,
+.notes {
+  padding: ui.space(5);
+}
+.viewer-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: ui.space(3);
+  flex-wrap: wrap;
+}
+h2 {
+  margin-block: ui.space(2);
+}
+.eyebrow,
+.hint {
+  color: ui.color(text-secondary);
+}
+.document {
+  min-height: 16rem;
+  margin-block: ui.space(4);
+  display: grid;
+  align-content: center;
+  justify-items: center;
+  text-align: center;
+  background: ui.color(surface-2);
+  border: 1px dashed ui.color(border);
+  border-radius: ui.radius(md);
+  padding: ui.space(5);
+  @include ui.bp(lg) {
+    min-height: 24rem;
+  }
+}
+.document p {
+  margin-block: ui.space(2);
+}
+.video {
+  background: ui.color(surface-2);
+}
+.position {
+  display: flex;
+  align-items: center;
+  gap: ui.space(3);
+  max-width: 18rem;
+}
+.position input {
+  max-width: 8rem;
+}
+.notes {
+  display: grid;
+  align-content: start;
+  gap: ui.space(3);
+}
+textarea {
+  width: 100%;
+  resize: vertical;
+}
+.notes button {
+  justify-self: start;
+}

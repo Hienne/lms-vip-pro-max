@@ -1,0 +1,183 @@
+@if(store.isLoading$()){
+<div class="loading"><span uiSpinner></span></div>
+}@else if(store.error$();as error){<ui-error-state
+  title="Không tải được báo cáo"
+  [message]="error.message"
+  (retry)="store.retry()"
+/>}@else if(store.overview$();as data){
+<ui-page-header
+  eyebrow="Báo cáo"
+  [title]="store.dimension$() ? 'Báo cáo chi tiết' : 'Tình hình đào tạo'"
+  [description]="'Phạm vi: '+data.scope.label+' · số liệu theo dữ liệu học tập.'"
+  ><div slot="actions">
+    <button
+      uiButton
+      variant="primary"
+      [disabled]="store.isExporting$()"
+      (click)="store.export()"
+    >
+      <ui-icon name="download" size="sm" />Xuất CSV
+    </button>
+  </div></ui-page-header
+>
+<section uiCard class="filters">
+  <label
+    >Đơn vị<select
+      uiSelect
+      [value]="store.filters$().unitId??''"
+      (change)="store.setFilter('unitId',$any($event.target).value)"
+    >
+      <option value="">Tất cả trong phạm vi</option>
+      @for(x of data.filters.units;track x.id){
+      <option [value]="x.id">{{x.name}}</option>
+      }
+    </select></label
+  ><label
+    >Phòng / nhóm<select
+      uiSelect
+      [value]="store.filters$().groupId??''"
+      (change)="store.setFilter('groupId',$any($event.target).value)"
+    >
+      <option value="">Tất cả</option>
+      @for(x of data.filters.groups;track x.id){
+      <option [value]="x.id">{{x.name}}</option>
+      }
+    </select></label
+  ><label
+    >Chương trình<select
+      uiSelect
+      [value]="store.filters$().programId??''"
+      (change)="store.setFilter('programId',$any($event.target).value)"
+    >
+      <option value="">Tất cả</option>
+      @for(x of data.filters.programs;track x.id){
+      <option [value]="x.id">{{x.name}}</option>
+      }
+    </select></label
+  ><label
+    >Khóa học<select
+      uiSelect
+      [value]="store.filters$().courseId??''"
+      (change)="store.setFilter('courseId',$any($event.target).value)"
+    >
+      <option value="">Tất cả</option>
+      @for(x of data.filters.courses;track x.id){
+      <option [value]="x.id">{{x.title}}</option>
+      }
+    </select></label
+  ><label
+    >Khoảng thời gian<select
+      uiSelect
+      [value]="''"
+      (change)="store.setFilter('period',$any($event.target).value)"
+    >
+      <option value="">Toàn bộ</option>
+      <option value="7">7 ngày qua</option>
+      <option value="30">30 ngày qua</option>
+      <option value="90">90 ngày qua</option>
+    </select></label
+  >
+</section>
+<div class="kpis">
+  <ui-kpi
+    icon="users"
+    label="Học viên"
+    [value]="data.total.learners"
+    [delta]="data.total.enrolments+' lượt tham gia'"
+  /><ui-kpi
+    icon="chart-column"
+    label="Tiến độ trung bình"
+    [value]="data.total.pct+'%'"
+  /><ui-kpi
+    icon="calendar"
+    label="Quá hạn"
+    [value]="data.total.overdue"
+  /><ui-kpi
+    icon="clipboard-check"
+    label="Điểm trung bình"
+    [value]="data.total.avgScore===null?'—':data.total.avgScore+'%'"
+  />
+</div>
+@if(!store.dimension$()){
+<div class="charts">
+  <section uiCard>
+    <h2>Trạng thái khóa học</h2>
+    <p>
+      Hoàn thành {{data.total.completed}} · Đang học {{data.total.inProgress}} ·
+      Chưa bắt đầu {{data.total.notStarted}} · Chưa đạt {{data.total.failed}}
+    </p>
+  </section>
+  <section uiCard>
+    <h2>Năng lực theo nhóm kiến thức</h2>
+    @for(item of data.competency;track item.id){
+    <div class="bar">
+      <span>{{item.name}}</span>
+      <div class="track"><span [style.width.%]="item.value??0"></span></div>
+      <strong>{{item.value===null?'—':item.value+'%'}}</strong>
+    </div>
+    }
+  </section>
+  <section uiCard>
+    <h2>Bài học hoàn thành theo tuần</h2>
+    @for(week of data.weeks;track week.weekStart){
+    <p>{{week.weekStart|date:'dd/MM'}} · {{week.completedLessons}} bài</p>
+    }
+  </section>
+</div>
+<section uiCard class="section">
+  <h2>Báo cáo chi tiết</h2>
+  <nav>
+    @for(d of dims;track d[0]){<a uiButton [routerLink]="['/reports',d[0]]"
+      >{{d[1]}}</a
+    >}
+  </nav>
+</section>
+} @else if(store.detail$();as page){
+<section uiCard class="section">
+  <div class="detail-head">
+    <h2>{{store.dimension$()}}</h2>
+    <input
+      uiInput
+      type="search"
+      aria-label="Tìm trong báo cáo"
+      placeholder="Tìm kiếm"
+      [value]="store.query$()"
+      (input)="store.setQuery($any($event.target).value)"
+    />
+  </div>
+  <div uiTableWrap class="table-wrap">
+    <table uiTable>
+      <thead>
+        <tr>
+          <th>Tên</th>
+          <th>Đơn vị</th>
+          <th>Trạng thái / số liệu</th>
+          <th>Tiến độ / điểm</th>
+          <th>Ngày</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for(row of store.displayRows$();track row.id){
+        <tr>
+          <td>{{row.name}}</td>
+          <td>{{row.unit}}</td>
+          <td>{{row.status}}</td>
+          <td>{{row.value}}</td>
+          <td>{{row.date}}</td>
+        </tr>
+        }@empty{
+        <tr>
+          <td colspan="5">Không có dữ liệu phù hợp bộ lọc.</td>
+        </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+  <ui-pagination
+    [total]="page.totalElements"
+    [page]="store.page$()+1"
+    [pageSize]="20"
+    (pageChange)="store.setPage($event-1)"
+  />
+</section>
+} }

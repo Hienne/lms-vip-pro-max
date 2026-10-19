@@ -1,0 +1,19 @@
+@use 'ui';
+:host {
+  @include ui.page(wide);
+  min-width: 0;
+}
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: ui.space(3);
+  margin-block: ui.space(4);
+}
+.item {
+  padding: ui.space(5);
+  margin-block: ui.space(4);
+  overflow-wrap: anywhere;
+}
+h2 {
+  font-size: inherit;
+}

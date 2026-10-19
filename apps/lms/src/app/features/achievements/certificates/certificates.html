@@ -1,0 +1,65 @@
+@if(store.isLoading$()){
+<div class="loading"><span uiSpinner></span></div>
+}@else if(store.error$();as error){<ui-error-state
+  title="Không tải được chứng nhận"
+  [message]="error.message"
+  (retry)="store.retry()"
+/>}@else if(store.detail$();as item){<ui-page-header
+  eyebrow="Thành tích"
+  [title]="item.courseTitle"
+  description="Chứng nhận do hệ thống cấp sau khi xác nhận hoàn thành khóa học."
+/>
+<article uiCard class="certificate">
+  <div>
+    <h2>{{item.courseTitle}}</h2>
+    <p>
+      {{item.courseCode}} · Hoàn thành {{item.completedAt|date:'dd/MM/yyyy'}}
+      @if(item.score!==null){· Điểm {{item.score}}%}
+    </p>
+    <p>Mã xác thực: <strong>{{item.verificationCode}}</strong></p>
+    <small>File demo tích hợp FE</small>
+  </div>
+  <div class="actions">
+    <a uiButton routerLink="/certificates">Danh sách chứng nhận</a
+    ><button
+      uiButton
+      variant="primary"
+      [disabled]="store.isDownloading$()"
+      (click)="store.download(item.id)"
+    >
+      Tải PDF
+    </button>
+  </div>
+</article>
+}@else{<ui-page-header
+  eyebrow="Thành tích"
+  title="Chứng nhận hoàn thành"
+  description="Chứng nhận được cấp sau khi hệ thống xác nhận hoàn thành khóa học."
+/>@for(item of store.items$();track item.id){
+<article uiCard class="certificate">
+  <div>
+    <h2>{{item.courseTitle}}</h2>
+    <p>
+      {{item.courseCode}} · Hoàn thành {{item.completedAt|date:'dd/MM/yyyy'}}
+      @if(item.score!==null){· Điểm {{item.score}}%}
+    </p>
+    <p>Mã xác thực: <strong>{{item.verificationCode}}</strong></p>
+    <small>File demo tích hợp FE</small>
+  </div>
+  <div class="actions">
+    <a uiButton [routerLink]="['/certificate',item.id]">Chi tiết</a
+    ><button
+      uiButton
+      variant="primary"
+      [disabled]="store.isDownloading$()"
+      (click)="store.download(item.id)"
+    >
+      Tải PDF
+    </button>
+  </div>
+</article>
+}@empty{<ui-empty
+  icon="award"
+  title="Chưa có chứng nhận"
+  description="Hoàn thành khóa học để nhận chứng nhận."
+/>}}

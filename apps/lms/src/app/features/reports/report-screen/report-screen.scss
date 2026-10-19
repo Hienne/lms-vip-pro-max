@@ -1,0 +1,75 @@
+@use 'ui';
+:host {
+  @include ui.page(wide);
+  min-width: 0;
+}
+.loading {
+  min-height: 20rem;
+  display: grid;
+  place-items: center;
+}
+.filters,
+.kpis,
+.charts {
+  display: grid;
+  gap: ui.space(4);
+  margin-block: ui.space(5);
+}
+.filters {
+  padding: ui.space(4);
+  grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
+}
+.filters label {
+  display: grid;
+  gap: ui.space(2);
+}
+.kpis {
+  grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
+}
+.charts {
+  @include ui.grid(
+    (
+      md: 2,
+      lg: 3,
+    ),
+    4
+  );
+}
+.charts section,
+.section {
+  padding: ui.space(5);
+}
+.section {
+  margin-block: ui.space(5);
+}
+nav,
+.detail-head {
+  display: flex;
+  gap: ui.space(3);
+  flex-wrap: wrap;
+  align-items: center;
+}
+.bar {
+  display: grid;
+  grid-template-columns: minmax(7rem, 1fr) 2fr auto;
+  align-items: center;
+  gap: ui.space(3);
+  margin-block: ui.space(3);
+}
+.track {
+  height: ui.space(2);
+  background: ui.color(surface-2);
+  border-radius: ui.radius(full);
+  overflow: hidden;
+}
+.track span {
+  display: block;
+  height: 100%;
+  background: ui.color(primary);
+}
+.table-wrap {
+  overflow: auto;
+}
+.detail-head h2 {
+  margin-right: auto;
+}

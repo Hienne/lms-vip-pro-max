@@ -1,0 +1,74 @@
+@use 'ui';
+:host {
+  @include ui.page(wide);
+  min-width: 0;
+}
+.loading {
+  display: grid;
+  min-height: 20rem;
+  place-items: center;
+}
+.continue,
+.tabs,
+.course {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: ui.space(4);
+  flex-wrap: wrap;
+}
+.continue,
+.section {
+  margin-block: ui.space(5);
+  padding: ui.space(5);
+}
+.continue p,
+.course small {
+  color: ui.color(text-muted);
+  margin: ui.space(2) 0 0;
+}
+.kpis {
+  display: grid;
+  gap: ui.space(4);
+  grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
+  margin-block: ui.space(5);
+}
+.tabs {
+  flex-wrap: wrap;
+}
+.tabs h2 {
+  margin-right: auto;
+}
+.course {
+  flex-wrap: wrap;
+  border-top: 1px solid ui.color(border);
+  padding-block: ui.space(4);
+}
+.course a {
+  color: ui.color(text);
+  text-decoration: none;
+}
+.track {
+  background: ui.color(surface-2);
+  border-radius: ui.radius(full);
+  height: ui.space(2);
+  overflow: hidden;
+  width: 100%;
+}
+.track span {
+  display: block;
+  height: 100%;
+  background: ui.color(primary);
+}
+.competencies {
+  display: grid;
+  gap: ui.space(4);
+  grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+}
+.competencies > div {
+  display: grid;
+  gap: ui.space(2);
+}
+.muted {
+  color: ui.color(text-muted);
+}

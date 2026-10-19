@@ -1,0 +1,116 @@
+@if (store.isLoading$()) {
+<div class="loading"><span uiSpinner></span></div>
+} @else if (store.error$(); as error) {
+<ui-error-state
+  title="Không tải được trang học tập"
+  [message]="error.message"
+  (retry)="store.retry()"
+/>
+} @else if (store.dashboard$(); as data) {
+<ui-page-header
+  eyebrow="Học tập"
+  [title]="'Chào ' + data.user.name"
+  description="Tiếp tục lộ trình đào tạo và theo dõi tiến độ của bạn."
+/>
+@if (data.continueTarget; as target) {
+<section uiCard class="continue">
+  <div>
+    <strong>{{ target.lessonTitle }}</strong>
+    <p>{{ target.courseTitle }} · {{ target.where }}</p>
+  </div>
+  <a
+    uiButton
+    variant="primary"
+    [routerLink]="['/lesson',target.courseId,target.lessonId]"
+    [queryParams]="target.anchor?.type === 'pdf' ? {anchorType:'pdf',page:target.anchor.page} : target.anchor?.type === 'video' ? {anchorType:'video',seconds:target.anchor.seconds} : {}"
+    ><ui-icon name="play" size="sm" />Tiếp tục học</a
+  >
+</section>
+} @else {
+<ui-empty
+  icon="book-open"
+  title="Chưa có bài học đang dở"
+  description="Khám phá lộ trình được giao để bắt đầu học."
+/>
+}
+<div class="kpis">
+  <ui-kpi
+    icon="book-open"
+    label="Khóa được giao"
+    [value]="data.counts.assigned"
+    [delta]="data.counts.required + ' bắt buộc'"
+  /><ui-kpi
+    icon="chart-column"
+    label="Tỷ lệ hoàn thành"
+    [value]="data.completionPct + '%'"
+  /><ui-kpi
+    icon="clipboard-check"
+    label="Điểm gần nhất"
+    [value]="data.lastScore ? data.lastScore.score + '%' : '—'"
+    [delta]="data.lastScore?.quizTitle ?? 'Chưa làm bài'"
+  /><ui-kpi
+    icon="award"
+    label="Điểm thưởng"
+    [value]="data.points.total"
+    [delta]="'Chuỗi học ' + data.streak + ' ngày'"
+  />
+</div>
+<section uiCard class="section">
+  <header class="tabs">
+    <h2>Khóa học của tôi</h2>
+    @for(tab of [{id:'inProgress',name:'Đang học'},{id:'notStarted',name:'Chưa
+    bắt đầu'},{id:'completed',name:'Đã hoàn thành'},{id:'required',name:'Bắt
+    buộc'},{id:'assigned',name:'Được giao'}];track tab.id){<button
+      uiButton
+      [attr.aria-pressed]="store.tab$()===tab.id"
+      (click)="store.setTab(tab.id)"
+    >
+      {{tab.name}}</button
+    >}
+  </header>
+  @for(course of store.courses$();track course.id){
+  <article class="course">
+    <a [routerLink]="['/course',course.id]"><strong>{{course.title}}</strong></a
+    ><span>{{course.done}}/{{course.total}} bài · {{course.pct}}%</span>
+    <div
+      class="track"
+      role="progressbar"
+      [attr.aria-valuenow]="course.pct"
+      aria-valuemin="0"
+      aria-valuemax="100"
+    >
+      <span [style.width.%]="course.pct"></span>
+    </div>
+    @if(course.dueAt){<small
+      >Hạn {{course.dueAt | date:'dd/MM/yyyy'}} @if(course.overdue){· Quá
+      hạn}</small
+    >}
+  </article>
+  } @empty { <ui-empty title="Không có khóa học trong mục này" /> }
+</section>
+<section uiCard class="section">
+  <h2>Năng lực theo nhóm kiến thức</h2>
+  <div class="competencies">
+    @for(item of data.competency;track item.id){
+    <div>
+      <span>{{item.name}}</span>@if(item.value===null){<span class="muted"
+        >Chưa có dữ liệu</span
+      >}@else{<strong>{{item.value}}% · {{item.answered}} lượt</strong>
+      <div class="track"><span [style.width.%]="item.value"></span></div>
+      }
+    </div>
+    }
+  </div>
+</section>
+<section uiCard class="section">
+  <h2>Hạn hoàn thành</h2>
+  @for(item of data.deadlines;track item.id){
+  <p>
+    <a [routerLink]="['/course',item.id]">{{item.title}}</a> · {{item.dueAt |
+    date:'dd/MM/yyyy'}} · {{item.pct}}%
+  </p>
+  } @empty {
+  <p>Không có khóa học sắp đến hạn.</p>
+  }
+</section>
+}

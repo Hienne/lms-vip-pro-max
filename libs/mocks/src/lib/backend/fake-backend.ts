@@ -42,6 +42,9 @@ import {
 } from '../admin-org/admin-org.fixtures';
 import { envelopeError, envelopeOk } from '../envelope';
 import { navCountsFixtures } from '../shell/shell.fixtures';
+import { AssessmentMock } from '../assessment/assessment.mock';
+import { learningReportHandlers } from '../reports/learning-report.handlers';
+import { PersonalFakeBackend } from '../personal/personal.backend';
 import {
   SEED_FUNCTIONS,
   SEED_GRANTS,
@@ -72,6 +75,8 @@ export interface FakeRequest {
 export interface FakeReply {
   readonly status: number;
   readonly body: Envelope;
+  /** Binary downloads bypass the JSON envelope, like their real endpoints. */
+  readonly binary?: Blob;
 }
 
 type Mutable<T> = { -readonly [K in keyof T]: T[K] };
@@ -124,6 +129,8 @@ type Handler = (request: FakeRequest) => FakeReply;
  * it. The mock API in the app and the specs both call `handle`.
  */
 export class FakeBackend {
+  private readonly assessment = new AssessmentMock();
+  private readonly personal = new PersonalFakeBackend();
   private orgs: Mutable<SeedOrg>[] = SEED_ORGS.map((o) => ({ ...o }));
   private teams: Mutable<SeedTeam>[] = SEED_TEAMS.map((t) => ({ ...t }));
   private users: DbUser[] = SEED_USERS.map((u, index) => ({
@@ -177,11 +184,26 @@ export class FakeBackend {
 
   /** True for the endpoints this backend answers; the others are not the backend's. */
   answers(endpoint: AnyEndpoint): boolean {
-    return this.handlers.has(endpoint);
+    return (
+      this.handlers.has(endpoint) ||
+      this.assessment.answers(endpoint) ||
+      learningReportHandlers.has(endpoint) ||
+      this.personal.answers(endpoint)
+    );
   }
 
   /** Answers one call, or `undefined` when `endpoint` is not the backend's. */
   handle(endpoint: AnyEndpoint, request: FakeRequest): FakeReply | undefined {
+    const assessmentReply = this.assessment.handle(endpoint, request);
+    if (assessmentReply) return assessmentReply;
+    const learningReply = learningReportHandlers.get(endpoint)?.(request);
+    if (learningReply) return learningReply;
+    const personalReply = this.personal.handle(
+      endpoint,
+      request,
+      request.token ?? 'demo',
+    );
+    if (personalReply) return personalReply;
     const handler = this.handlers.get(endpoint);
     if (!handler) return undefined;
     try {
@@ -271,7 +293,10 @@ export class FakeBackend {
       ? this.activeGrants(userId).map((g) => this.roleOf(g).code)
       : [];
     const role = ROLE_PRIORITY.find((code) => held.includes(code));
-    return ok(navCountsFixtures[role ?? 'LEARNER']);
+    return ok({
+      ...navCountsFixtures[role ?? 'LEARNER'],
+      ...this.personal.navCounts(userId ?? 'demo'),
+    });
   }
 
   // ---- identity: who is calling -------------------------------------------------------------

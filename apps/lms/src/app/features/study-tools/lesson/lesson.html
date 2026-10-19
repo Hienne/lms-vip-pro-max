@@ -1,0 +1,81 @@
+<ui-page-header
+  eyebrow="Bài học"
+  title="Nội dung bài học"
+  description="Mốc PDF hoặc video hiện tại được dùng khi lưu ghi chú và đánh dấu."
+  ><div slot="actions">
+    <a uiButton routerLink="/saved">Mục đã lưu</a>
+  </div></ui-page-header
+>
+<div class="lesson-grid">
+  <section uiCard class="viewer">
+    <div class="viewer-title">
+      <div>
+        <span class="eyebrow">Khóa học {{ store.courseId$() }}</span>
+        <h2>Bài học {{ store.lessonId$() }}</h2>
+      </div>
+      <button
+        uiButton
+        (click)="store.saveBookmark()"
+        [disabled]="store.isSaving$()"
+      >
+        <ui-icon name="bookmark" size="sm" />Đánh dấu vị trí
+      </button>
+    </div>
+    @if (store.isPdf$()) {
+    <div class="document">
+      <ui-icon name="file-text" size="lg" />
+      <p>Khung hiển thị tài liệu PDF</p>
+      <p class="hint">
+        Tệp bài học sẽ được tải từ API nội dung khi tích hợp backend.
+      </p>
+    </div>
+    <label class="position"
+      >Trang PDF<input
+        uiInput
+        type="number"
+        min="1"
+        [value]="store.page$()"
+        (input)="store.setPage($any($event.target).value)"
+    /></label>
+    } @else {
+    <div class="document video">
+      <ui-icon name="play" size="lg" />
+      <p>Khung phát video bài học</p>
+      <p class="hint">
+        Tệp video sẽ được tải từ API nội dung khi tích hợp backend.
+      </p>
+    </div>
+    <label class="position"
+      >Vị trí video (giây)<input
+        uiInput
+        type="number"
+        min="0"
+        [value]="store.seconds$()"
+        (input)="store.setSeconds($any($event.target).value)"
+    /></label>
+    }
+  </section>
+  <section uiCard class="notes">
+    <h2>Ghi chú tại vị trí này</h2>
+    <p class="hint">
+      Ghi chú được gắn với {{ store.isPdf$() ? 'trang '+store.page$() : 'mốc
+      '+store.seconds$()+' giây' }}.
+    </p>
+    <textarea
+      uiTextarea
+      rows="6"
+      maxlength="4000"
+      placeholder="Nhập nội dung cần ghi nhớ"
+      [value]="store.noteText$()"
+      (input)="store.setNote($any($event.target).value)"
+    ></textarea
+    ><button
+      uiButton
+      variant="primary"
+      (click)="store.saveNote()"
+      [disabled]="store.isSaving$() || !store.noteText$().trim()"
+    >
+      Lưu ghi chú
+    </button>
+  </section>
+</div>

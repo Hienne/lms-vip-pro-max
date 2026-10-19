@@ -1,0 +1,434 @@
+@if (store.isLoading$()) {
+<div class="loading"><span uiSpinner></span></div>
+} @else if (store.error$(); as error) {
+<ui-error-state
+  title="Không tải được dữ liệu bài kiểm tra"
+  [message]="error.message"
+  (retry)="store.retry()"
+/>
+} @else { @switch (store.routeScreen$()) { @case ('questions') {
+<ui-page-header
+  eyebrow="Nội dung"
+  title="Ngân hàng câu hỏi"
+  description="Quản lý câu hỏi và tái sử dụng trong nhiều bài kiểm tra."
+/>
+<section uiCard class="panel">
+  <form class="question-form" (submit)="questionSubmit($event)">
+    <h2>{{ store.questionDraft$() ? 'Sửa câu hỏi' : 'Thêm câu hỏi' }}</h2>
+    <label
+      >Mã câu hỏi<input
+        uiInput
+        name="code"
+        [value]="store.questionDraft$()?.code ?? ''"
+        placeholder="Tự sinh nếu để trống"
+    /></label>
+    <label
+      >Nội dung câu hỏi<input
+        uiInput
+        name="text"
+        required
+        [value]="store.questionDraft$()?.text ?? ''"
+    /></label>
+    <label
+      >Loại câu<select uiSelect name="type">
+        <option value="single">Một đáp án</option>
+        <option value="multiple">Nhiều đáp án</option>
+      </select></label
+    >
+    <label
+      >Phương án (phân cách bằng |)<input
+        uiInput
+        name="options"
+        required
+        placeholder="Phương án A | Phương án B"
+        [value]="store.questionDraft$()?.options?.map(x => x.text)?.join(' | ') ?? ''"
+    /></label>
+    <label
+      >Đáp án đúng (số thứ tự, phân cách bằng dấu phẩy)<input
+        uiInput
+        name="correct"
+        required
+        placeholder="1 hoặc 1,2"
+    /></label>
+    <label
+      >Giải thích<input
+        uiInput
+        name="explanation"
+        [value]="store.questionDraft$()?.explanation ?? ''"
+    /></label>
+    <label
+      >Nhóm kiến thức<input
+        uiInput
+        name="competency"
+        required
+        [value]="store.questionDraft$()?.competency ?? 'Quản lý CIF'"
+    /></label>
+    <div class="actions">
+      <button
+        uiButton
+        type="submit"
+        variant="primary"
+        [disabled]="store.isSaving$()"
+      >
+        Lưu câu hỏi</button
+      ><button uiButton type="button" (click)="store.editQuestion(null)">
+        Bỏ chọn
+      </button>
+    </div>
+    <p class="hint">
+      Đáp án được nhập bằng số thứ tự phương án, ví dụ 1 hoặc 1,2.
+    </p>
+  </form>
+</section>
+<section uiCard class="panel">
+  <h2>Câu hỏi ({{ store.questions$()?.totalElements ?? 0 }})</h2>
+  @for (item of store.questions$()?.items ?? []; track item.id) {
+  <article class="row">
+    <div>
+      <strong>{{ item.code }} · {{ item.text }}</strong>
+      <p>
+        {{ item.competency }} · {{ item.type === 'multiple' ? 'Nhiều đáp án' :
+        'Một đáp án' }} · {{ item.usedIn.length }} bài kiểm tra
+      </p>
+    </div>
+    <span uiBadge [tone]="item.status === 'active' ? 'success' : 'neutral'"
+      >{{ item.status === 'active' ? 'Đang dùng' : 'Ngưng' }}</span
+    ><button uiButton size="sm" (click)="store.editQuestion(item)">Sửa</button
+    ><button
+      uiButton
+      size="sm"
+      (click)="store.changeQuestionStatus(item.id, item.status === 'active' ? 'inactive' : 'active')"
+    >
+      {{ item.status === 'active' ? 'Ngưng dùng' : 'Kích hoạt' }}</button
+    ><button
+      uiButton
+      size="sm"
+      variant="danger-ghost"
+      [disabled]="item.usedIn.length > 0"
+      (click)="deleteQuestion(item.id)"
+    >
+      Xóa
+    </button>
+  </article>
+  } @empty { <ui-empty title="Chưa có câu hỏi" /> }
+</section>
+} @case ('quizzes') {
+<ui-page-header
+  eyebrow="Nội dung"
+  title="Bài kiểm tra"
+  description="Cấu hình thời lượng, ngân hàng câu hỏi và điều kiện thi."
+/>
+<div class="actions">
+  <a uiButton variant="primary" [routerLink]="['/admin/quizzes', 'new']"
+    >Tạo cấu hình bài kiểm tra</a
+  >
+</div>
+@for (item of store.quizList$(); track item.id) {
+<article uiCard class="row">
+  <div>
+    <strong>{{ item.title }}</strong>
+    <p>
+      {{ item.courseTitle }} · {{ item.questionCount }} câu · {{ item.attempts
+      }} lượt đã làm
+    </p>
+  </div>
+  <a uiButton [routerLink]="['/admin/quizzes', item.id]">Cấu hình</a>
+</article>
+} @empty { <ui-empty title="Chưa có bài kiểm tra" /> } } @case ('config') {
+<ui-page-header
+  eyebrow="Nội dung"
+  [title]="store.config$()?.title ?? 'Cấu hình bài kiểm tra'"
+  description="Các giá trị này được chốt khi học viên bắt đầu lượt thi."
+/>
+<section uiCard class="panel">
+  <form class="config-form" (submit)="quizSubmit($event)">
+    <label
+      >Tên bài kiểm tra<input
+        uiInput
+        name="title"
+        required
+        [value]="store.config$()?.title ?? ''"
+    /></label>
+    <label
+      >Khóa học<select uiSelect name="courseId">
+        @for (x of store.options$()?.courses ?? []; track x.id) {
+        <option
+          [value]="x.id"
+          [selected]="x.id === (store.config$()?.courseId ?? 'c1')"
+        >
+          {{ x.title }}
+        </option>
+        }
+      </select></label
+    >
+    <label
+      >Nguồn câu<select uiSelect name="source">
+        <option value="manual">Chọn thủ công</option>
+        <option value="random">Lấy ngẫu nhiên trong bộ câu</option>
+      </select></label
+    >
+    <div class="number-grid">
+      <label
+        >Số câu<input
+          uiInput
+          name="questionCount"
+          type="number"
+          min="1"
+          [value]="store.config$()?.questionCount ?? 2" /></label
+      ><label
+        >Thời gian (phút)<input
+          uiInput
+          name="minutes"
+          type="number"
+          min="1"
+          max="240"
+          [value]="store.config$()?.minutes ?? 15" /></label
+      ><label
+        >Điểm đạt (%)<input
+          uiInput
+          name="passPct"
+          type="number"
+          min="1"
+          max="100"
+          [value]="store.config$()?.passPct ?? 80" /></label
+      ><label
+        >Số lượt tối đa<input
+          uiInput
+          name="maxAttempts"
+          type="number"
+          min="1"
+          max="20"
+          [value]="store.config$()?.maxAttempts ?? 3" /></label
+      ><label
+        >Chờ thi lại (giờ)<input
+          uiInput
+          name="retakeWaitHours"
+          type="number"
+          min="0"
+          [value]="store.config$()?.retakeWaitHours ?? 0"
+      /></label>
+    </div>
+    <label
+      >Mở lúc<input
+        uiInput
+        name="openAt"
+        type="datetime-local"
+        required
+        [value]="store.config$()?.openAt?.slice(0, 16) ?? '2026-01-01T00:00'" /></label
+    ><label
+      >Đóng lúc<input
+        uiInput
+        name="closeAt"
+        type="datetime-local"
+        required
+        [value]="store.config$()?.closeAt?.slice(0, 16) ?? '2027-12-31T00:00'"
+    /></label>
+    <label
+      >Chính sách xem đáp án<select uiSelect name="reviewPolicy">
+        <option value="after_submit">Sau khi nộp</option>
+        <option value="after_pass">Sau khi đạt</option>
+        <option value="after_close">Sau khi đóng đề</option>
+        <option value="never">Không cho xem</option>
+      </select></label
+    >
+    <fieldset>
+      <legend>Chọn câu hỏi trong ngân hàng</legend>
+      @for (q of store.questions$()?.items ?? []; track q.id) {
+      <label
+        ><input
+          type="checkbox"
+          uiCheckbox
+          name="questionIds"
+          [value]="q.id"
+          [checked]="store.config$()?.questionIds?.includes(q.id)"
+        />{{ q.code }} · {{ q.text }}</label
+      >
+      }
+    </fieldset>
+    <label
+      ><input
+        type="checkbox"
+        uiCheckbox
+        name="shuffleQuestions"
+        [checked]="store.config$()?.shuffleQuestions"
+      />Trộn câu hỏi</label
+    ><label
+      ><input
+        type="checkbox"
+        uiCheckbox
+        name="shuffleOptions"
+        [checked]="store.config$()?.shuffleOptions"
+      />Trộn phương án</label
+    >
+    <button
+      uiButton
+      type="submit"
+      variant="primary"
+      [disabled]="store.isSaving$()"
+    >
+      Lưu cấu hình
+    </button>
+  </form>
+</section>
+} @case ('intro') { @if (store.intro$(); as data) {
+<ui-page-header
+  eyebrow="Bài kiểm tra"
+  [title]="data.quiz.title"
+  [description]="'Thuộc khóa ' + data.course.title"
+/>
+<section uiCard class="panel">
+  <p>
+    {{ data.quiz.questionCount }} câu · {{ data.quiz.minutes }} phút · điểm đạt
+    {{ data.quiz.passPct }}%
+  </p>
+  <p>
+    Lượt thi còn {{ data.summary.left }} / {{ data.summary.maxAttempts }}. Điểm
+    cao nhất: {{ data.summary.best ?? '—' }}%
+  </p>
+  <p>
+    Mở {{ data.quiz.openAt | date:'dd/MM/yyyy HH:mm' }} — Đóng {{
+    data.quiz.closeAt | date:'dd/MM/yyyy HH:mm' }}
+  </p>
+  @if (data.block) {
+  <ui-alert tone="warning">{{ data.block.message }}</ui-alert> } @else {
+  <button uiButton variant="primary" (click)="store.start()">
+    {{ data.pendingAttemptId ? 'Tiếp tục làm bài' : 'Bắt đầu làm bài' }}
+  </button>
+  }
+  <a uiButton [routerLink]="['/quiz', data.quiz.id, 'attempts']">Lịch sử thi</a>
+</section>
+} } @case ('take') { @if (store.snapshot$(); as snapshot) {
+<ui-page-header eyebrow="Làm bài kiểm tra" [title]="snapshot.quiz.title" />
+<section uiCard class="timer">
+  <strong role="timer" aria-live="off"
+    >Còn {{ (store.seconds$() / 60 | number:'2.0-0') }}:{{ (store.seconds$() %
+    60 | number:'2.0-0') }}</strong
+  ><button uiButton variant="primary" (click)="store.submit()">Nộp bài</button>
+</section>
+@if (store.selectedQuestion$(); as question) {
+<section uiCard class="panel">
+  <div class="row">
+    <strong
+      >Câu {{ store.currentIndex$() + 1 }} / {{ snapshot.questions.length }} ·
+      {{ question.code }}</strong
+    ><button uiButton (click)="store.toggleFlag(question.id)">
+      {{ snapshot.attempt.flags.includes(question.id) ? 'Bỏ đánh dấu' : 'Đánh
+      dấu xem lại' }}
+    </button>
+  </div>
+  <h2>{{ question.text }}</h2>
+  <p>
+    {{ question.type === 'multiple' ? 'Chọn tất cả đáp án đúng.' : 'Chọn một đáp
+    án.' }}
+  </p>
+  @for (option of question.options; track option.id) {
+  <label class="option"
+    ><input
+      [type]="question.type === 'multiple' ? 'checkbox' : 'radio'"
+      [name]="question.id"
+      [checked]="snapshot.attempt.answers[question.id]?.includes(option.id)"
+      [disabled]="store.isSaving$()"
+      (change)="toggleOption(question.id, option.id, $any($event.target).checked, question.type === 'multiple')"
+    />{{ option.text }}</label
+  >
+  }
+  <div class="actions">
+    <button
+      uiButton
+      [disabled]="store.currentIndex$() === 0"
+      (click)="store.goto(store.currentIndex$() - 1)"
+    >
+      Câu trước</button
+    ><button
+      uiButton
+      variant="primary"
+      [disabled]="store.currentIndex$() >= snapshot.questions.length - 1"
+      (click)="store.goto(store.currentIndex$() + 1)"
+    >
+      Câu tiếp
+    </button>
+  </div>
+  <div class="q-grid">
+    @for (q of snapshot.questions; track q.id; let i = $index) {
+    <button
+      uiButton
+      [attr.aria-current]="store.currentIndex$() === i ? 'step' : null"
+      (click)="store.goto(i)"
+    >
+      {{ i + 1 }}{{ snapshot.attempt.answers[q.id]?.length ? ' ✓' : '' }}{{
+      snapshot.attempt.flags.includes(q.id) ? ' ⚑' : '' }}
+    </button>
+    }
+  </div>
+  <small
+    >{{ store.isSaving$() ? 'Đang đồng bộ đáp án…' : 'Đáp án được lưu khi chọn.'
+    }}</small
+  >
+</section>
+} } @else {
+<section uiCard class="panel">
+  <p>Chưa có lượt thi đang làm.</p>
+  <button uiButton variant="primary" (click)="store.start()">
+    Bắt đầu hoặc tiếp tục
+  </button>
+</section>
+} } @case ('result') { @if (store.result$(); as data) {
+<ui-page-header
+  eyebrow="Kết quả"
+  [title]="data.attempt.passed ? 'Chúc mừng, bạn đã đạt!' : 'Chưa đạt — cố gắng thêm nhé'"
+  [description]="data.attempt.score + '% · ' + data.attempt.correctCount + '/' + data.attempt.total + ' câu đúng · điểm đạt ' + data.quiz.passPct + '%'"
+/>
+<section uiCard class="panel">
+  <p>
+    Lần thi {{ data.attempt.nth }} · {{ data.attempt.submittedAt |
+    date:'dd/MM/yyyy HH:mm' }} @if (data.attempt.autoSubmitted) { · Tự động nộp
+    khi hết giờ }
+  </p>
+  <a uiButton [routerLink]="['/quiz', data.quiz.id, 'attempts']">Lịch sử thi</a>
+  @if (!data.summary.passed && data.summary.left > 0) {
+  <a uiButton variant="primary" [routerLink]="['/quiz', data.quiz.id]"
+    >Thi lại</a
+  >
+  } @if (data.reviewAllowed && data.review) {
+  <h2>Giải thích đáp án</h2>
+  @for (item of data.review; track item.questionId) {
+  <article class="review">
+    <strong>Câu {{ item.number }} · {{ item.text }}</strong>
+    <p>
+      Đáp án đã chọn: {{ item.mine.join(', ') }} · Đáp án đúng: {{
+      item.correctOptionIds.join(', ') }}
+    </p>
+    <p>{{ item.explanation }}</p>
+  </article>
+  } } @else {
+  <ui-alert tone="info"
+    >{{ data.reviewMessage ?? 'Chưa được phép xem lại đáp án.' }}</ui-alert
+  >
+  }
+</section>
+} } @case ('history') { @if (store.history$(); as data) {
+<ui-page-header
+  eyebrow="Bài kiểm tra"
+  [title]="'Lịch sử: ' + data.quiz.title"
+/>
+<section uiCard class="panel">
+  @for (item of data.attempts.items; track item.id) {
+  <article class="row">
+    <span
+      >Lần {{ item.nth }} · {{ item.submittedAt | date:'dd/MM/yyyy HH:mm'
+      }}</span
+    ><strong>{{ item.score }}% · {{ item.passed ? 'Đạt' : 'Chưa đạt' }}</strong
+    ><a uiButton [routerLink]="['/quiz', data.quiz.id, 'result', item.id]"
+      >Xem kết quả</a
+    >
+  </article>
+  } @empty { <ui-empty title="Chưa có lần thi" /> }
+</section>
+} } @case ('hub') {
+<ui-page-header eyebrow="Học tập" title="Bài kiểm tra" />
+@for (item of store.quizList$(); track item.id) {
+<article uiCard class="row">
+  <strong>{{ item.title }}</strong
+  ><a uiButton [routerLink]="['/quiz', item.id]">Xem thông tin</a>
+</article>
+} @empty { <ui-empty title="Chưa có bài kiểm tra" /> } } } }

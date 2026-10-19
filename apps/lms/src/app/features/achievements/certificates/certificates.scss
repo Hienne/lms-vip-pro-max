@@ -1,0 +1,33 @@
+@use 'ui';
+:host {
+  @include ui.page(wide);
+  min-width: 0;
+}
+.loading {
+  min-height: 20rem;
+  display: grid;
+  place-items: center;
+}
+.certificate {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: ui.space(4);
+  padding: ui.space(5);
+  margin-block: ui.space(4);
+}
+.certificate p,
+.certificate small {
+  color: ui.color(text-secondary);
+}
+.actions {
+  display: flex;
+  gap: ui.space(3);
+  flex-wrap: wrap;
+}
+@include ui.bp-below(md) {
+  .certificate {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}

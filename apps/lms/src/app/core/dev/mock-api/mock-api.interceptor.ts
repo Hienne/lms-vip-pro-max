@@ -78,7 +78,12 @@ export const mockApiInterceptor: HttpInterceptorFn = (req, next) => {
       : undefined;
   if (reply) {
     return reply.status < 400
-      ? of(new HttpResponse({ status: reply.status, body: reply.body }))
+      ? of(
+          new HttpResponse({
+            status: reply.status,
+            body: reply.binary ?? reply.body,
+          }),
+        )
       : throwError(
           () =>
             new HttpErrorResponse({

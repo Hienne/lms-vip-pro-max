@@ -1,0 +1,34 @@
+@use 'ui';
+:host {
+  @include ui.page(wide);
+  min-width: 0;
+}
+.loading {
+  min-height: 20rem;
+  display: grid;
+  place-items: center;
+}
+.kpis {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
+  gap: ui.space(4);
+  margin-block: ui.space(5);
+}
+.section {
+  padding: ui.space(5);
+  margin-block: ui.space(5);
+}
+.badges {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
+  gap: ui.space(4);
+}
+.badges article {
+  padding: ui.space(4);
+}
+.locked {
+  opacity: 0.72;
+}
+.award {
+  color: ui.color(accent-ink);
+}

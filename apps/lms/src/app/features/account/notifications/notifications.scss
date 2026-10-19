@@ -1,0 +1,33 @@
+@use 'ui';
+:host {
+  @include ui.page(wide);
+  min-width: 0;
+}
+.loading {
+  min-height: 20rem;
+  display: grid;
+  place-items: center;
+}
+.filter,
+.notice {
+  padding: ui.space(4);
+  margin-block: ui.space(3);
+}
+.filter label,
+.notice {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: ui.space(3);
+  flex-wrap: wrap;
+}
+.filter label {
+  justify-content: flex-start;
+}
+.notice p {
+  color: ui.color(text-muted);
+  margin-block: ui.space(2) 0;
+}
+.unread {
+  border-inline-start: ui.space(1) solid ui.color(primary);
+}

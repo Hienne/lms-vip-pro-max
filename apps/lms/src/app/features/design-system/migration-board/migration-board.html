@@ -6,6 +6,11 @@
       Nguồn duy nhất là <code>migration-entries.data.ts</code>. Cập nhật dòng
       của phần bạn làm trong cùng pull request.
     </p>
+    <p class="board__lead">
+      Trạng thái bên dưới là hồ sơ nghiệm thu. “Đã nối màn hình” lấy từ route
+      trong code, chưa có nghĩa là hoàn tất nghiệp vụ, API hay kiểm tra giao
+      diện.
+    </p>
   </header>
 
   @for (group of board; track group.kind) {
@@ -16,7 +21,8 @@
         {{ group.summary.total }} mục @for (status of statuses; track
         status.status) { · {{ status.label }}:
         <strong>{{ group.summary.byStatus[status.status] }}</strong>
-        }
+        } @if (group.kind === 'route') { · Đã nối màn hình/điều hướng:
+        <strong>{{ group.connectedRoutes }}</strong> }
       </p>
     </div>
 
@@ -52,6 +58,11 @@
             </td>
             <td class="board__cell" data-label="Đích Angular">
               <code>{{ row.target }}</code>
+              @if (row.implementation) {
+              <p class="board__implementation">{{ row.implementation }}</p>
+              } @if (row.notes) {
+              <p class="board__note">{{ row.notes }}</p>
+              }
             </td>
             <td class="board__cell" data-label="Checklist">
               {{ row.checklist }}

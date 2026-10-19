@@ -776,6 +776,8 @@ export const MIGRATION_ENTRIES = [
   },
   {
     id: 'route-learn',
+    notes:
+      'Có dashboard, biểu đồ thanh và tiếp tục học bằng mock; còn tích hợp API và đối chiếu mockup.',
     kind: 'route',
     mockupSource: 'src/pages/learner.js · dashboard',
     target: 'learn',
@@ -800,6 +802,8 @@ export const MIGRATION_ENTRIES = [
   },
   {
     id: 'route-lesson-course-id-lesson-id',
+    notes:
+      'Có mốc trang/giây và lưu ghi chú/bookmark. PDF/video hiện là khung chờ, chưa phát nội dung thật.',
     kind: 'route',
     mockupSource: 'src/pages/lesson.js · lesson',
     target: 'lesson/:courseId/:lessonId',
@@ -808,6 +812,8 @@ export const MIGRATION_ENTRIES = [
   },
   {
     id: 'route-quiz-id',
+    notes:
+      'Có giới thiệu và bắt đầu/tiếp tục lượt thi với mock; DTO SQL mới chưa nối vào store.',
     kind: 'route',
     mockupSource: 'src/pages/quiz.js · quizIntro',
     target: 'quiz/:id',
@@ -816,6 +822,8 @@ export const MIGRATION_ENTRIES = [
   },
   {
     id: 'route-quiz-id-take',
+    notes:
+      'Có chọn đáp án, điều hướng, đếm giờ và nộp bài mock; còn kiểm chứng lỗi mạng, resume và nộp khi hết giờ.',
     kind: 'route',
     mockupSource: 'src/pages/quiz.js · quizTake',
     target: 'quiz/:id/take',
@@ -824,6 +832,8 @@ export const MIGRATION_ENTRIES = [
   },
   {
     id: 'route-quiz-id-result-attempt-id',
+    notes:
+      'Có kết quả và giải thích theo policy mock; còn nối DTO SQL và API thật.',
     kind: 'route',
     mockupSource: 'src/pages/quiz.js · quizResult',
     target: 'quiz/:id/result/:attemptId',
@@ -832,6 +842,8 @@ export const MIGRATION_ENTRIES = [
   },
   {
     id: 'route-quiz-id-attempts',
+    notes:
+      'Có lịch sử mock; còn tích hợp lịch sử thật và đầy đủ điều kiện thi lại.',
     kind: 'route',
     mockupSource: 'src/pages/quiz.js · quizAttempts',
     target: 'quiz/:id/attempts',
@@ -840,6 +852,7 @@ export const MIGRATION_ENTRIES = [
   },
   {
     id: 'route-progress',
+    notes: 'Có điểm, chuỗi học và huy hiệu mock; còn API thành tích thực tế.',
     kind: 'route',
     mockupSource: 'src/pages/tools.js · progress',
     target: 'progress',
@@ -856,6 +869,7 @@ export const MIGRATION_ENTRIES = [
   },
   {
     id: 'route-certificates',
+    notes: 'Có danh sách và tải PDF demo; chưa có chứng nhận thật.',
     kind: 'route',
     mockupSource: 'src/pages/tools.js · certificates',
     target: 'certificates',
@@ -864,6 +878,7 @@ export const MIGRATION_ENTRIES = [
   },
   {
     id: 'route-certificate-id',
+    notes: 'Có chi tiết và tải PDF demo; còn API cấp/xác thực chứng nhận.',
     kind: 'route',
     mockupSource: 'src/pages/tools.js · certificate',
     target: 'certificate/:id',
@@ -872,6 +887,8 @@ export const MIGRATION_ENTRIES = [
   },
   {
     id: 'route-saved',
+    notes:
+      'Có danh sách, xóa và mở lại mốc trang/giây; nội dung bài học thật chưa tích hợp.',
     kind: 'route',
     mockupSource: 'src/pages/tools.js · saved',
     target: 'saved',
@@ -896,6 +913,8 @@ export const MIGRATION_ENTRIES = [
   },
   {
     id: 'route-notifications',
+    notes:
+      'Có lọc chưa đọc và đánh dấu đã đọc bằng mock; còn API nhắc hạn thực tế.',
     kind: 'route',
     mockupSource: 'src/pages/auth.js · notifications',
     target: 'notifications',
@@ -969,6 +988,8 @@ export const MIGRATION_ENTRIES = [
   },
   {
     id: 'route-admin-questions',
+    notes:
+      'Có form CRUD cơ bản và trạng thái bằng mock; còn form theo Signal Forms, lọc/import và nối DTO SQL.',
     kind: 'route',
     mockupSource: 'src/pages/admin-questions.js · questions',
     target: 'admin/questions',
@@ -977,6 +998,7 @@ export const MIGRATION_ENTRIES = [
   },
   {
     id: 'route-admin-quizzes',
+    notes: 'Có danh sách cấu hình mock; còn đối chiếu mockup và nối DTO SQL.',
     kind: 'route',
     mockupSource: 'src/pages/admin-questions.js · quizzes',
     target: 'admin/quizzes',
@@ -985,6 +1007,8 @@ export const MIGRATION_ENTRIES = [
   },
   {
     id: 'route-admin-quizzes-id',
+    notes:
+      'Có form cấu hình cơ bản; còn Signal Forms, đồng bộ DTO SQL và kiểm tra luồng sửa cấu hình.',
     kind: 'route',
     mockupSource: 'src/pages/admin-questions.js · quizConfig',
     target: 'admin/quizzes/:id',
@@ -1053,6 +1077,8 @@ export const MIGRATION_ENTRIES = [
   },
   {
     id: 'route-reports',
+    notes:
+      'Có bộ lọc, số liệu và xuất CSV mock; biểu đồ hiện còn đơn giản, chưa nối API thật.',
     kind: 'route',
     mockupSource: 'src/pages/reports.js · reports',
     target: 'reports',
@@ -1061,6 +1087,8 @@ export const MIGRATION_ENTRIES = [
   },
   {
     id: 'route-reports-dim',
+    notes:
+      'Có bảng chi tiết và phân trang mock; còn ánh xạ từng chiều báo cáo và kiểm tra dữ liệu/API thật.',
     kind: 'route',
     mockupSource: 'src/pages/reports.js · reportDetail',
     target: 'reports/:dim',
@@ -1085,6 +1113,8 @@ export const MIGRATION_ENTRIES = [
   },
   {
     id: 'route-quiz',
+    notes:
+      'Có danh sách mock; còn tách API danh sách bài thi học viên khỏi API quản trị.',
     kind: 'route',
     mockupSource: null,
     target: 'quiz',

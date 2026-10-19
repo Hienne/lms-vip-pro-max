@@ -1,6 +1,10 @@
 import {
   adminOrgEndpoints,
+  assessmentEndpoints,
   authV1Endpoints,
+  learningDashboardEndpoints,
+  personalEndpoints,
+  reportEndpoints,
   type AnyEndpoint,
   identityEndpoints,
   organizationEndpoints,
@@ -10,9 +14,13 @@ import { FakeBackend } from './lib/backend/fake-backend';
 
 const everyEndpoint: readonly AnyEndpoint[] = [
   ...Object.values(adminOrgEndpoints),
+  ...Object.values(assessmentEndpoints),
   ...Object.values(authV1Endpoints),
+  ...Object.values(learningDashboardEndpoints),
   ...Object.values(identityEndpoints),
   ...Object.values(organizationEndpoints),
+  ...Object.values(personalEndpoints),
+  ...Object.values(reportEndpoints),
   ...Object.values(shellEndpoints),
 ];
 
@@ -30,7 +38,14 @@ describe('FakeBackend and the endpoint registries', () => {
       .map((endpoint) => endpoint.path)
       .sort();
     expect(mock).toEqual(
-      [...Object.values(adminOrgEndpoints), shellEndpoints.navCounts]
+      [
+        ...Object.values(adminOrgEndpoints),
+        ...Object.values(assessmentEndpoints),
+        ...Object.values(learningDashboardEndpoints),
+        ...Object.values(personalEndpoints),
+        ...Object.values(reportEndpoints),
+        shellEndpoints.navCounts,
+      ]
         .map((endpoint) => endpoint.path)
         .sort(),
     );
@@ -41,6 +56,7 @@ describe('FakeBackend and the endpoint registries', () => {
     everyEndpoint.filter(
       (endpoint) =>
         endpoint.served === 'mock' &&
+        endpoint.method === 'get' &&
         endpoint !== adminOrgEndpoints.saveRole &&
         endpoint !== adminOrgEndpoints.deleteRole,
     ),

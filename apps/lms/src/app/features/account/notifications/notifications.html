@@ -1,0 +1,48 @@
+@if(store.isLoading$()){
+<div class="loading"><span uiSpinner></span></div>
+}@else if(store.error$();as error){<ui-error-state
+  title="Không tải được thông báo"
+  [message]="error.message"
+  (retry)="store.retry()"
+/>}@else{<ui-page-header
+  eyebrow="Tài khoản"
+  title="Thông báo"
+  description="Nhắc hạn, kết quả học tập và chứng nhận do hệ thống ghi nhận."
+  ><div slot="actions">
+    <button
+      uiButton
+      [disabled]="store.isSaving$()"
+      (click)="store.markAllRead()"
+    >
+      Đánh dấu tất cả đã đọc
+    </button>
+  </div></ui-page-header
+>
+<section uiCard class="filter">
+  <label
+    ><input
+      type="checkbox"
+      uiCheckbox
+      [checked]="store.unreadOnly$()"
+      (change)="store.setUnreadOnly($any($event.target).checked)"
+    />Chỉ xem chưa đọc</label
+  >
+</section>
+@for(item of store.items$();track item.id){
+<article uiCard class="notice" [class.unread]="!item.readAt">
+  <div>
+    <strong>{{item.text}}</strong>
+    <p>
+      {{item.at|date:'dd/MM/yyyy HH:mm'}} @if(item.dueAt){· Hạn
+      {{item.dueAt|date:'dd/MM/yyyy'}}}
+    </p>
+  </div>
+  <button uiButton (click)="store.markRead(item)">
+    {{item.readAt?'Mở':'Đánh dấu đã đọc & mở'}}
+  </button>
+</article>
+}@empty{<ui-empty
+  icon="bell"
+  title="Không có thông báo"
+  description="Thông báo mới sẽ hiển thị tại đây."
+/>}}

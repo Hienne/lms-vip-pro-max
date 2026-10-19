@@ -1,0 +1,60 @@
+<ui-page-header
+  eyebrow="Công cụ học"
+  title="Đã lưu & ghi chú"
+  description="Ghi chú gắn với trang PDF hoặc mốc video; bấm để mở đúng vị trí."
+/>
+<div class="actions" aria-label="Loại mục đã lưu">
+  <button
+    uiButton
+    [attr.aria-pressed]="store.tab$() === 'notes'"
+    (click)="store.setTab('notes')"
+  >
+    Ghi chú ({{ store.data$()?.counts?.notes ?? 0 }})
+  </button>
+  <button
+    uiButton
+    [attr.aria-pressed]="store.tab$() === 'bookmarks'"
+    (click)="store.setTab('bookmarks')"
+  >
+    Đánh dấu ({{ store.data$()?.counts?.bookmarks ?? 0 }})
+  </button>
+</div>
+@if (store.isLoading$()) {
+<p role="status">Đang tải mục đã lưu…</p>
+} @else if (store.error$(); as error) {
+<ui-error-state [message]="error.message" (retry)="store.retry()" /> } @else {
+@for (item of store.items$(); track item.id) {
+<article uiCard class="item">
+  <div>
+    <h2>{{ item.text ?? item.label }}</h2>
+    <p>{{ item.courseTitle }} · {{ item.lessonTitle }}</p>
+    <p>
+      @if(item.anchor.type === 'pdf'){Trang {{ item.anchor.page }}} @else {Video
+      {{ item.anchor.seconds }} giây} · {{ item.createdAt | date:'dd/MM/yyyy' }}
+    </p>
+  </div>
+  <div class="actions">
+    <button uiButton (click)="store.openAtAnchor(item)">Mở đúng vị trí</button
+    ><button
+      uiButton
+      variant="danger-ghost"
+      [disabled]="store.isSaving$()"
+      (click)="store.remove(item)"
+    >
+      Xóa
+    </button>
+  </div>
+</article>
+} @empty {
+<ui-empty
+  title="Chưa có mục nào"
+  description="Trong bài học, ghi chú hoặc đánh dấu trên tài liệu để lưu lại."
+/>
+}
+<ui-pagination
+  [total]="store.data$()?.totalElements ?? 0"
+  [page]="store.page$()+1"
+  [pageSize]="20"
+  (pageChange)="store.setPage($event-1)"
+/>
+}
