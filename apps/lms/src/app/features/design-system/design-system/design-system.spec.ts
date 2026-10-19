@@ -51,7 +51,9 @@ describe('/design-system', () => {
   afterEach(() => {
     document.documentElement.removeAttribute('style');
     document.documentElement.removeAttribute('data-theme');
+    document.documentElement.removeAttribute('data-palette');
     localStorage.removeItem('lms.theme');
+    localStorage.removeItem('lms.palette');
   });
 
   it('opens publicly with a table of contents linking to every section', async () => {
@@ -77,17 +79,25 @@ describe('/design-system', () => {
     }
   });
 
-  describe('theme switch', () => {
+  describe('theme controls', () => {
     const option = (page: HTMLElement, label: string) =>
       Array.from(
         page.querySelectorAll<HTMLElement>('nav [role="option"]'),
       ).find((o) => o.textContent?.trim() === label) as HTMLElement;
 
-    it('offers Hệ thống, Sáng and Tối as one group with the current choice selected', async () => {
+    it('offers the palettes and Hệ thống, Sáng, Tối as two groups in the table of contents', async () => {
       const { page } = await openDesignSystem();
-      const group = page.querySelector('nav [role="listbox"]');
-      expect(group?.getAttribute('aria-label')).toBe('Giao diện');
-      const options = Array.from(page.querySelectorAll('nav [role="option"]'));
+      const groups = Array.from(page.querySelectorAll('nav [role="listbox"]'));
+      expect(groups.map((g) => g.getAttribute('aria-label'))).toEqual([
+        'Bảng màu',
+        'Chế độ',
+      ]);
+      expect(
+        Array.from(groups[0].querySelectorAll('[role="option"]')).map((o) =>
+          o.textContent?.trim(),
+        ),
+      ).toEqual(['BIDV chuẩn', 'BIDV dịu', 'Xanh dương', 'Cát ấm']);
+      const options = Array.from(groups[1].querySelectorAll('[role="option"]'));
       expect(options.map((o) => o.textContent?.trim())).toEqual([
         'Hệ thống',
         'Sáng',
@@ -115,6 +125,35 @@ describe('/design-system', () => {
       TestBed.tick();
       expect(document.documentElement.hasAttribute('data-theme')).toBe(false);
       expect(localStorage.getItem('lms.theme')).toBeNull();
+    });
+
+    it('changes the palette attribute on the root element and remembers the choice', async () => {
+      const { page } = await openDesignSystem();
+      option(page, 'Xanh dương').click();
+      TestBed.tick();
+      expect(document.documentElement.getAttribute('data-palette')).toBe(
+        'blue',
+      );
+      expect(localStorage.getItem('lms.palette')).toBe('blue');
+
+      option(page, 'BIDV chuẩn').click();
+      TestBed.tick();
+      expect(document.documentElement.hasAttribute('data-palette')).toBe(false);
+      expect(localStorage.getItem('lms.palette')).toBeNull();
+    });
+
+    it('recomputes the contrast table after the palette changes', async () => {
+      const { page } = await openDesignSystem();
+      const ratio = () =>
+        page.querySelector('#ds-color tbody tr [data-ratio]')?.textContent;
+      expect(ratio()).toBe('16.98:1');
+
+      option(page, 'Cát ấm').click();
+      // The tokens take the palette's values with the attribute; here the stylesheet is simulated.
+      document.documentElement.style.setProperty('--color-text', '#5a3a2a');
+      TestBed.tick();
+      await TestBed.inject(ApplicationRef).whenStable();
+      expect(ratio()).not.toBe('16.98:1');
     });
 
     it('recomputes the contrast table after the theme changes', async () => {

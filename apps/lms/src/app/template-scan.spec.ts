@@ -1,6 +1,7 @@
 import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { dirname, join, relative } from 'node:path';
 import * as sass from 'sass';
+import { THEME_PALETTES } from './core/theme/theme.store';
 
 /**
  * Guards the styling rules (docs/conventions/ui-library.md → Styling):
@@ -10,7 +11,7 @@ import * as sass from 'sass';
  *    use the atom instead;
  *  - no stylesheet outside the token source writes a colour literal;
  *  - nothing references Tailwind or PostCSS any more;
- *  - only `ThemeStore` writes the theme attribute.
+ *  - only `ThemeStore` writes the theme and palette attributes.
  */
 
 const root = join(import.meta.dirname, '../../../..');
@@ -267,15 +268,39 @@ describe('template scan', () => {
     expect(scssFiles.length).toBeGreaterThan(0);
   });
 
-  it('writes the theme attribute in ThemeStore only', () => {
-    const offenders = [...appFiles, ...uiFiles].filter(
-      (file) =>
-        // index.html carries the pre-boot script that applies the stored choice.
-        !file.endsWith('theme.store.ts') &&
-        !file.endsWith('index.html') &&
-        readFileSync(file, 'utf8').includes('data-theme'),
+  it.each(['data-theme', 'data-palette'])(
+    'writes %s in ThemeStore only',
+    (attribute) => {
+      const offenders = [...appFiles, ...uiFiles].filter(
+        (file) =>
+          // index.html carries the pre-boot script that applies the stored choice.
+          !file.endsWith('theme.store.ts') &&
+          !file.endsWith('index.html') &&
+          readFileSync(file, 'utf8').includes(attribute),
+      );
+      expect(offenders.map((file) => relative(root, file))).toEqual([]);
+    },
+  );
+
+  it('keeps the palette list of ThemeStore, the pre-boot script and the tokens in sync', () => {
+    const others = THEME_PALETTES.filter((palette) => palette !== 'bidv');
+    const css = sass.compile(join(stylesRoot, 'global.scss'), {
+      loadPaths,
+      logger: sass.Logger.silent,
+    }).css;
+    const tokenPalettes = [
+      ...new Set(
+        [...css.matchAll(/:root\[data-palette=([\w-]+)\]/g)].map(
+          (match) => match[1],
+        ),
+      ),
+    ];
+    const script = readFileSync(join(appSource, 'index.html'), 'utf8');
+    const scriptPalettes = [...script.matchAll(/palette === '([\w-]+)'/g)].map(
+      (match) => match[1],
     );
-    expect(offenders.map((file) => relative(root, file))).toEqual([]);
+    expect(tokenPalettes).toEqual(others);
+    expect(scriptPalettes).toEqual(others);
   });
 
   it('writes only BEM classes, layout helpers and their gap modifiers', () => {

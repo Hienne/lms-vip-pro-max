@@ -73,6 +73,14 @@ const LIGHT_PROPERTIES = [
   '--color-chart-4',
   '--color-chart-5',
   '--color-chart-grid',
+  '--color-swatch-bidv-fill',
+  '--color-swatch-bidv-base',
+  '--color-swatch-bidv-soft-fill',
+  '--color-swatch-bidv-soft-base',
+  '--color-swatch-blue-fill',
+  '--color-swatch-blue-base',
+  '--color-swatch-sand-fill',
+  '--color-swatch-sand-base',
   '--font-sans',
   '--font-mono',
   '--default-font-family',
@@ -109,6 +117,7 @@ const LIGHT_PROPERTIES = [
   '--container-wide',
   '--container-content',
   '--container-menu',
+  '--container-popover',
   '--container-narrow',
   '--spacing-header',
   '--spacing-control',
@@ -383,5 +392,181 @@ describe('global stylesheet', () => {
     expect(readFileSync(join(styles, 'ui/_tokens.scss'), 'utf8')).toContain(
       '$spacing',
     );
+  });
+});
+
+/** Relative luminance of a `#rrggbb` colour (WCAG 2.x). */
+function luminance(hex: string): number {
+  const [r, g, b] = [1, 3, 5].map((i) => {
+    const channel = parseInt(hex.slice(i, i + 2), 16) / 255;
+    return channel <= 0.03928
+      ? channel / 12.92
+      : ((channel + 0.055) / 1.055) ** 2.4;
+  });
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+}
+
+function contrast(a: string, b: string): number {
+  const [light, dark] = [luminance(a), luminance(b)].sort((x, y) => y - x);
+  return (light + 0.05) / (dark + 0.05);
+}
+
+/** SPEC.md Success Criterion 5: [foreground, background, minimum ratio]. */
+const CONTRAST_RULES: readonly [string, string, number][] = [
+  ...['text', 'text-secondary', 'text-muted'].flatMap((fg) =>
+    ['bg', 'surface', 'surface-2'].map(
+      (bg) => [fg, bg, 4.5] as [string, string, number],
+    ),
+  ),
+  ['on-primary', 'primary', 4.5],
+  ['primary', 'surface', 4.5],
+  ['border-strong', 'surface', 3],
+  ['ring', 'surface', 3],
+  ['hero-muted', 'hero-to', 4.5],
+];
+
+describe('colour palettes', () => {
+  const css = compileGlobal();
+  const all = rules(css);
+  /** Custom property values a selector declares, the last declaration winning. */
+  const values = (selector: string): Record<string, string> =>
+    Object.fromEntries(
+      all
+        .filter((rule) => rule.selector === selector)
+        .flatMap((rule) =>
+          [...rule.body.matchAll(/(--[\w-]+)\s*:\s*([^;]+);/g)].map((match) => [
+            match[1],
+            match[2].trim(),
+          ]),
+        ),
+    );
+  const ids = [
+    ...new Set(
+      [...css.matchAll(/:root\[data-palette=([\w-]+)\]/g)].map(
+        (match) => match[1],
+      ),
+    ),
+  ];
+  const emitPalettes = (palettes: string) =>
+    compile(`@use 'global/palettes'; @include palettes.emit(${palettes});`);
+
+  /** What the cascade resolves on :root for a palette in light or explicit dark mode. */
+  function resolved(id: string, mode: 'light' | 'dark') {
+    const palette = id === 'bidv' ? '' : `[data-palette=${id}]`;
+    const layers =
+      mode === 'light'
+        ? [':root', `:root${palette}`]
+        : [
+            ':root',
+            ':root[data-theme=dark]',
+            `:root${palette}`,
+            `:root${palette}[data-theme=dark]`,
+          ];
+    return Object.assign({}, ...layers.map(values)) as Record<string, string>;
+  }
+
+  it('declares a constant swatch per palette from its light primary and bg', () => {
+    const root = values(':root');
+    expect(root['--color-swatch-bidv-fill']).toBe('#006b68');
+    expect(root['--color-swatch-bidv-base']).toBe('#f5f8f8');
+    for (const id of ids) {
+      const light = values(`:root[data-palette=${id}]`);
+      expect(root[`--color-swatch-${id}-fill`]).toBe(light['--color-primary']);
+      expect(root[`--color-swatch-${id}-base`]).toBe(light['--color-bg']);
+    }
+    expect(css).not.toMatch(/data-theme=dark\][^{]*\{[^}]*--color-swatch/);
+  });
+
+  it('emits no override block for the default bidv palette', () => {
+    expect(css).not.toContain('data-palette=bidv]');
+    expect(ids).toEqual(['bidv-soft', 'blue', 'sand']);
+  });
+
+  it.each(['bidv-soft', 'blue', 'sand'])(
+    'emits %s in light, in explicit dark and in system dark, with the same keys in both dark rules',
+    (id) => {
+      const light = Object.keys(values(`:root[data-palette=${id}]`));
+      const explicit = Object.keys(
+        values(`:root[data-palette=${id}][data-theme=dark]`),
+      );
+      const system = Object.keys(
+        values(`:root[data-palette=${id}]:not([data-theme=light])`),
+      );
+      expect(light.length).toBeGreaterThan(0);
+      expect(system.sort()).toEqual(explicit.sort());
+      expect(explicit).toEqual(expect.arrayContaining(light));
+    },
+  );
+
+  it.each(
+    ['bidv', ...ids].flatMap(
+      (id) =>
+        [
+          [id, 'light'],
+          [id, 'dark'],
+        ] as [string, 'light' | 'dark'][],
+    ),
+  )('%s in %s passes the contrast rules', (id, mode) => {
+    const tokens = resolved(id, mode);
+    // Every compared token is a resolved hex colour, so a missing one cannot pass as NaN.
+    const unresolved = CONTRAST_RULES.flatMap(([fg, bg]) => [fg, bg]).filter(
+      (key) => !/^#[0-9a-f]{6}$/i.test(tokens[`--color-${key}`] ?? ''),
+    );
+    expect(unresolved).toEqual([]);
+    const failures = CONTRAST_RULES.map(([fg, bg, min]) => ({
+      pair: `${fg} on ${bg}`,
+      ratio: contrast(tokens[`--color-${fg}`], tokens[`--color-${bg}`]),
+      min,
+    })).filter(({ ratio, min }) => ratio < min);
+    expect(failures).toEqual([]);
+  });
+
+  describe('guards', () => {
+    const colors = '(primary: #000000)';
+    it('accepts a palette whose dark map covers its light map', () => {
+      expect(
+        emitPalettes(
+          `(x: (light: (colors: ${colors}), dark: (colors: ${colors})))`,
+        ),
+      ).toContain(':root[data-palette=x]');
+    });
+
+    it('fails on a light key with no dark value', () => {
+      expect(() =>
+        emitPalettes(`(x: (light: (colors: ${colors}), dark: (colors: ())))`),
+      ).toThrow(
+        /palette x: colors key `primary` has a light value but no dark value/,
+      );
+    });
+
+    it('fails on a key that is not a palette key', () => {
+      expect(() =>
+        emitPalettes(
+          `(x: (light: (colors: (danger: #000000)), dark: (colors: (danger: #000000))))`,
+        ),
+      ).toThrow(
+        /palette x: colors key `danger` \(light\) is not a palette key/,
+      );
+    });
+
+    it('fails on a chart key that is not a palette key', () => {
+      expect(() =>
+        emitPalettes(
+          `(x: (light: (chart: (3: #000000)), dark: (chart: (3: #000000))))`,
+        ),
+      ).toThrow(/palette x: chart key `3` \(light\) is not a palette key/);
+    });
+
+    it('fails on a missing mode, an unknown group and the reserved bidv id', () => {
+      expect(() => emitPalettes(`(x: (light: (colors: ${colors})))`)).toThrow(
+        /palette x: missing its dark map/,
+      );
+      expect(() =>
+        emitPalettes(`(x: (light: (shadows: ()), dark: ()))`),
+      ).toThrow(/palette x: unknown group `shadows`/);
+      expect(() => emitPalettes(`(bidv: (light: (), dark: ()))`)).toThrow(
+        /palette bidv is the default/,
+      );
+    });
   });
 });
