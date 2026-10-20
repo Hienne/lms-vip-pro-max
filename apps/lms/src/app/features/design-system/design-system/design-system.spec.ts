@@ -412,9 +412,7 @@ describe('/design-system', () => {
       expect(hero.querySelector('h1')?.textContent).toContain(
         'Flat, rõ ràng, đáng tin cậy — và dễ chuyển thành code.',
       );
-      expect(hero.textContent).toContain(
-        'Core Banking Academy · Design System v2',
-      );
+      expect(hero.textContent).not.toContain('Design System v2');
       expect(hero.querySelectorAll('li')).toHaveLength(5);
       expect(hero.querySelector('[aria-hidden="true"] ui-mai')).not.toBeNull();
     });

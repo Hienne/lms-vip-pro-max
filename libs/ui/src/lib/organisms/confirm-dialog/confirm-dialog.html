@@ -1,7 +1,4 @@
 <div class="dialog__header">
-  <div class="dialog__icon" [class]="'dialog__icon--' + data.tone">
-    <ui-icon [name]="icon()" />
-  </div>
   <h2 class="dialog__title" [id]="data.titleId">{{ data.title }}</h2>
   <button uiIconButton label="Đóng hộp thoại" (click)="close(false)">
     <ui-icon name="x" />

@@ -11,10 +11,6 @@
     padding-inline: ui.space(6);
   }
 
-  &__eyebrow {
-    @include ui.eyebrow;
-  }
-
   &__lead {
     color: ui.color(text-secondary);
   }

@@ -32,10 +32,13 @@
   h2,
   h3,
   h4 {
-    font-family: ui.font(display);
-    font-weight: ui.weight(bold);
     line-height: ui.leading(tight);
     text-wrap: balance;
+  }
+  // The display font only on h1 and h2; h3 and h4 stay in the body font (visual-design.md).
+  h1,
+  h2 {
+    font-family: ui.font(display);
   }
   h1 {
     font-size: ui.text-size(2xl);

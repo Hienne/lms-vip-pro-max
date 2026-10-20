@@ -78,9 +78,10 @@
   }
 
   &__section {
-    @include ui.eyebrow;
+    @include ui.text(sm);
     padding: ui.space(3) ui.space(5) ui.space(1);
     color: ui.color(nav-muted);
+    font-weight: ui.weight(medium);
 
     // A rule between sections stands in for the heading.
     .sidebar--collapsed & {
@@ -123,7 +124,6 @@
     &[aria-current='page'] {
       background: ui.color(nav-active-bg);
       color: ui.color(nav-active-text);
-      box-shadow: inset 3px 0 0 ui.color(nav-indicator);
     }
 
     &:focus-visible {

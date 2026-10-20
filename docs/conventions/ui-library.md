@@ -130,8 +130,9 @@ SCSS only. There is no PostCSS step and no utility framework; the Sass compiler 
     `ui.grid((md: 2, lg: 3), $gap)` (columns per breakpoint, `base` defaults to 1). Gaps are spacing
     keys.
   - **Typography mixins**: `ui.text($size, $tone)` (a tone is a colour key, or `muted`, `secondary`,
-    `accent`), `ui.num`, `ui.mono`, `ui.truncate`, `ui.clamp($lines)`. `ui.eyebrow` remains only
-    for code not yet migrated; new code never uses it (`visual-design.md`).
+    `accent`), `ui.num`, `ui.mono`, `ui.truncate`, `ui.clamp($lines)`. A small label (sidebar group,
+    table header, menu group) is `ui.text(sm, muted)` with `ui.weight(medium)`, in sentence case;
+    there is no eyebrow mixin (`visual-design.md`).
   - **Accessibility and motion**: `ui.sr-only`, `ui.focus-ring`, `ui.animate(enter | reward-pop |
 shimmer | spin)` (reduced motion shows the end state).
 - **Spacing** uses the mockup's 4px steps only: 1, 2, 3, 4, 5, 6, 8, 10, 12, 18. The mockup's
@@ -174,8 +175,7 @@ shimmer | spin)` (reduced motion shows the end state).
 Tokens added on top of the mockup (the mockup hard-coded these values): `--color-white`,
 `--color-on-danger` (dark: a dark ink, because white on the dark danger red is 2.4:1),
 `--color-hero-from/to/muted/subtle/accent/chip` (the hero panel is dark teal in both themes),
-`--color-cover-layers/process/clock/building/database/shield` (course cover tints, with dark values),
-`--tracking-tight/wide/wider`. Durations drop to `0ms` under `prefers-reduced-motion`.
+`--tracking-tight`. Durations drop to `0ms` under `prefers-reduced-motion`.
 
 ### Breakpoints
 
@@ -261,9 +261,8 @@ Two independent choices, remembered per browser:
   - the sidebar paints only with `nav-*` (`nav-bg`, `nav-text`, `nav-muted`, `nav-strong`,
     `nav-hover`, `nav-active-bg`, `nav-active-text`, `nav-indicator`, `nav-border`); a guard spec
     fails on any other colour or a `color-mix` in `sidebar.scss`;
-  - eyebrows (`ui.eyebrow`, `.page-header__eyebrow`) read `eyebrow`;
-  - h1–h4 and KPI values read `ui.font(display)`; h1 also reads `ui.weight(display)` and
-    `ui.tracking(display)`;
+  - h1 and h2 read `ui.font(display)`; h3, h4 and KPI values stay in the body font; h1 also
+    reads `ui.weight(display)` and `ui.tracking(display)`;
   - buttons and segmented controls read `ui.radius(control)`, text fields `ui.radius(field)`,
     cards and popovers `ui.radius(card)`;
   - `body` paints `ui.texture(page)` sized by `ui.texture(page-size)` over `bg`.
@@ -274,7 +273,7 @@ Two independent choices, remembered per browser:
 - **Themes are token overrides.** `ui/_tokens.scss` declares `$palettes` (after the type and
   texture tokens it reads). Each theme has:
   - `light` and `dark` maps of `colors`, `chart` and `shadow` (keys in `$palette-color-keys`,
-    `$palette-chart-keys`, `$palette-shadow-keys`: brand, neutral, accent, eyebrow, `nav-*`,
+    `$palette-chart-keys`, `$palette-shadow-keys`: brand, neutral, accent, `nav-*`,
     hero, charts 1–2 and grid, shadows);
   - mode-independent `type` (`sans`, `display`, `display-weight`, `display-tracking`), `shape`
     (`control`, `field`, `card`) and `texture` (`page`, `page-size`) groups;
@@ -297,7 +296,7 @@ Two independent choices, remembered per browser:
   pairs in `SPEC.md` Success Criterion 5:
   - text tokens 4.5:1 on `bg`, `surface` and `surface-2`;
   - `on-primary` on `primary`, `primary` on `surface` and `on-accent` on `accent`, 4.5:1;
-  - `eyebrow` and `accent-ink` on `bg` and `surface`, 4.5:1;
+  - `accent-ink` on `bg` and `surface`, 4.5:1;
   - `nav-text`, `nav-muted` and `nav-strong` on `nav-bg`, and `nav-active-text` on
     `nav-active-bg`, 4.5:1;
   - `border-strong` and `ring` 3:1;

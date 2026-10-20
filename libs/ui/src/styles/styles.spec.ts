@@ -41,12 +41,6 @@ const LIGHT_PROPERTIES = [
   '--color-on-danger',
   '--color-info',
   '--color-info-subtle',
-  '--color-cover-layers',
-  '--color-cover-process',
-  '--color-cover-clock',
-  '--color-cover-building',
-  '--color-cover-database',
-  '--color-cover-shield',
   '--color-bg',
   '--color-surface',
   '--color-surface-2',
@@ -67,7 +61,6 @@ const LIGHT_PROPERTIES = [
   '--color-hero-subtle',
   '--color-hero-accent',
   '--color-hero-chip',
-  '--color-eyebrow',
   '--color-nav-bg',
   '--color-nav-text',
   '--color-nav-muted',
@@ -112,8 +105,6 @@ const LIGHT_PROPERTIES = [
   '--font-weight-bold',
   '--font-weight-display',
   '--tracking-tight',
-  '--tracking-wide',
-  '--tracking-wider',
   '--tracking-display',
   '--spacing-1',
   '--spacing-2',
@@ -184,12 +175,6 @@ const DARK_PROPERTIES = [
   '--color-on-danger',
   '--color-info',
   '--color-info-subtle',
-  '--color-cover-layers',
-  '--color-cover-process',
-  '--color-cover-clock',
-  '--color-cover-building',
-  '--color-cover-database',
-  '--color-cover-shield',
   '--color-bg',
   '--color-surface',
   '--color-surface-2',
@@ -425,13 +410,12 @@ describe('BIDV chuẩn refinements (SPEC.md revision 2)', () => {
       ),
   );
 
-  it('gives buttons 8px corners, h1 tighter tracking and eyebrows the brand colour', () => {
+  it('gives buttons 8px corners and h1 tighter tracking', () => {
     expect(root['--radius-control']).toBe('8px');
     expect(root['--radius-field']).toBe('6px');
     expect(root['--radius-card']).toBe('14px');
     expect(root['--tracking-display']).toBe('-0.02em');
     expect(root['--font-weight-display']).toBe('700');
-    expect(root['--color-eyebrow']).toBe('var(--color-primary)');
   });
 
   it('uses two-layer, ink-tinted shadows: a contact shadow and a long soft drop', () => {
@@ -455,7 +439,7 @@ describe('theme hooks', () => {
   it.each([
     ['body', 'background-image: var(--texture-page)'],
     ['body', 'background-size: var(--texture-page-size)'],
-    ['h1,\n  h2,\n  h3,\n  h4', 'font-family: var(--font-display)'],
+    ['h1,\n  h2', 'font-family: var(--font-display)'],
     ['h1', 'font-weight: var(--font-weight-display)'],
     ['h1', 'letter-spacing: var(--tracking-display)'],
     ['.btn', 'border-radius: var(--radius-control)'],
@@ -465,16 +449,18 @@ describe('theme hooks', () => {
     ['.textarea', 'border-radius: var(--radius-field)'],
     ['.card', 'border-radius: var(--radius-card)'],
     ['.popover', 'border-radius: var(--radius-card)'],
-    ['.page-header__eyebrow', 'color: var(--color-eyebrow)'],
-    ['.kpi__value', 'font-family: var(--font-display)'],
   ])('%s reads %s', (selector, declaration) => {
     expect(body(selector)).toContain(declaration);
   });
 
-  it('gives every eyebrow the eyebrow colour', () => {
-    expect(compile("@use 'ui'; .x { @include ui.eyebrow; }")).toContain(
-      'color: var(--color-eyebrow)',
-    );
+  it('keeps h3 and h4 in the body font (visual-design.md: display font on h1 and h2 only)', () => {
+    expect(body('h1,\n  h2,\n  h3,\n  h4')).not.toContain('--font-display');
+    expect(body('h3')).not.toContain('--font-display');
+    expect(body('h4')).not.toContain('--font-display');
+  });
+
+  it('has no eyebrow mixin', () => {
+    expect(() => compile("@use 'ui'; .x { @include ui.eyebrow; }")).toThrow();
   });
 });
 
@@ -552,8 +538,8 @@ const CONTRAST_RULES: readonly [string, string, number, string?][] = [
   ['border-strong', 'surface', 3],
   ['ring', 'surface', 3],
   ['hero-muted', 'hero-to', 4.5],
-  ...['eyebrow', 'accent-ink'].flatMap((fg) =>
-    ['bg', 'surface'].map((bg) => [fg, bg, 4.5] as [string, string, number]),
+  ...['bg', 'surface'].map(
+    (bg) => ['accent-ink', bg, 4.5] as [string, string, number],
   ),
   ['on-accent', 'accent', 4.5],
   ['nav-text', 'nav-bg', 4.5],

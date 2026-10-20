@@ -6,7 +6,8 @@ import { Kpi } from './kpi';
 @Component({
   imports: [Kpi],
   template: `
-    <ui-kpi id="plain" icon="book-open" [value]="12" label="Khóa đang học" />
+    <ui-kpi id="plain" [value]="12" label="Khóa đang học" />
+    <ui-kpi id="icon" icon="book-open" [value]="12" label="Khóa đang học" />
     <ui-kpi
       id="full"
       icon="award"
@@ -38,10 +39,10 @@ function render() {
 }
 
 describe('Kpi', () => {
-  it('shows icon, value and label inside a card', () => {
+  it('shows label and value inside a card, with no icon unless given', () => {
     const el = render().kpi('plain');
     expect(el.querySelector('.card')).not.toBeNull();
-    expect(el.querySelector('.kpi__icon ui-icon')).not.toBeNull();
+    expect(el.querySelector('ui-icon')).toBeNull();
     expect(el.querySelector('.kpi__value')?.textContent?.trim()).toBe('12');
     expect(el.querySelector('.kpi__label')?.textContent?.trim()).toBe(
       'Khóa đang học',
@@ -50,16 +51,22 @@ describe('Kpi', () => {
     expect(el.querySelector('small')).toBeNull();
   });
 
-  it('defaults to the primary tone and applies a given one', () => {
+  it('puts a given icon inline in the label at 16px, with no tile', () => {
+    const icon = render().kpi('icon').querySelector('.kpi__label > ui-icon');
+    expect(icon?.classList.contains('kpi__icon')).toBe(true);
+    expect(icon?.classList.contains('icon--sm')).toBe(true);
+  });
+
+  it('defaults to the primary tone and applies a given one to the icon', () => {
     const { kpi } = render();
-    expect(kpi('plain').querySelector('.kpi__icon')?.className).not.toContain(
+    expect(kpi('icon').querySelector('.kpi__icon')?.className).not.toContain(
       'kpi__icon--',
     );
     expect(kpi('full').querySelector('.kpi__icon--reward')).not.toBeNull();
     expect(kpi('link').querySelector('.kpi__icon--danger')).not.toBeNull();
   });
 
-  it('renders the suffix next to the value and the delta below the label', () => {
+  it('renders the suffix next to the value and the delta below it', () => {
     const el = render().kpi('full');
     expect(el.querySelector('.kpi__value small')?.textContent).toBe('%');
     expect(
@@ -80,6 +87,6 @@ describe('Kpi', () => {
     expect(links).toHaveLength(1);
     expect(links[0].getAttribute('href')).toBe('/learner/overdue');
     expect(links[0].classList.contains('card--interactive')).toBe(true);
-    expect(links[0].textContent?.replace(/\s+/g, ' ').trim()).toBe('3 Quá hạn');
+    expect(links[0].textContent?.replace(/\s+/g, ' ').trim()).toBe('Quá hạn 3');
   });
 });

@@ -21,7 +21,7 @@
         height: var(--spacing-control-sm);
         border-radius: var(--radius-sm);
         color: var(--color-text-secondary);
-        font-weight: var(--font-weight-semibold);
+        font-weight: var(--font-weight-medium);
 
         &:hover:not(:disabled) {
           background: var(--color-surface-2);

@@ -1,6 +1,6 @@
 import { Component, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
-import { Empty, type EmptyTone } from './empty';
+import { Empty, type EmptyTone, type EmptyVariant } from './empty';
 
 @Component({
   imports: [Empty],
@@ -11,6 +11,7 @@ import { Empty, type EmptyTone } from './empty';
       [description]="description()"
       [tone]="tone()"
       [headingLevel]="level()"
+      [variant]="variant()"
     >
       <button class="action">Khám phá khóa học</button>
     </ui-empty>
@@ -20,6 +21,7 @@ class Host {
   readonly description = signal('Hoàn thành khóa học đầu tiên để mở bài thi.');
   readonly tone = signal<EmptyTone>('primary');
   readonly level = signal<1 | 2 | 3 | 4>(3);
+  readonly variant = signal<EmptyVariant>('page');
 }
 
 function render() {
@@ -30,7 +32,7 @@ function render() {
     fixture,
     host: fixture.componentInstance,
     empty: root.querySelector('ui-empty') as HTMLElement,
-    art: () => root.querySelector('.empty__art') as HTMLElement,
+    icon: () => root.querySelector('.empty__icon') as HTMLElement,
     heading: () => root.querySelector('h1, h2, h3, h4') as HTMLElement,
     description: () => root.querySelector('p'),
   };
@@ -70,14 +72,38 @@ describe('Empty', () => {
     expect(heading().tagName).toBe('H1');
   });
 
-  it('colours the art by tone and keeps the icon decorative', () => {
-    const { fixture, host, art } = render();
-    expect(art().className).toBe('empty__art');
+  it('has no icon circle and no entrance animation', () => {
+    const { empty } = render();
+    expect(empty.querySelector('.empty__art')).toBeNull();
+    expect(empty.className).not.toContain('animate');
+  });
+
+  it('puts the icon beside the heading, coloured by tone and decorative', () => {
+    const { fixture, host, icon } = render();
+    expect(icon().parentElement?.classList).toContain('empty__title');
+    expect(icon().className).not.toContain('empty__icon--');
     host.tone.set('danger');
     fixture.detectChanges();
-    expect(art().classList).toContain('empty__art--danger');
-    expect(art().querySelector('ui-icon')?.getAttribute('aria-hidden')).toBe(
-      'true',
+    expect(icon().classList).toContain('empty__icon--danger');
+    expect(icon().getAttribute('aria-hidden')).toBe('true');
+  });
+
+  it('inline: one muted line and the action, with no heading or icon', () => {
+    const { fixture, host, empty, heading, icon } = render();
+    host.variant.set('inline');
+    fixture.detectChanges();
+    expect(empty.classList).toContain('empty--inline');
+    expect(heading()).toBeNull();
+    expect(icon()).toBeNull();
+    expect(empty.querySelectorAll('p')).toHaveLength(1);
+    expect(empty.querySelector('.empty__line')?.textContent).toBe(
+      'Chưa có bài thi nào. Hoàn thành khóa học đầu tiên để mở bài thi.',
+    );
+    expect(empty.querySelector('button.action')).not.toBeNull();
+    host.description.set('');
+    fixture.detectChanges();
+    expect(empty.querySelector('.empty__line')?.textContent).toBe(
+      'Chưa có bài thi nào',
     );
   });
 });

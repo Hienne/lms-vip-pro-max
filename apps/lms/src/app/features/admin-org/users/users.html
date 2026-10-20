@@ -1,8 +1,4 @@
-<ui-page-header
-  eyebrow="Tổ chức"
-  title="Người dùng"
-  [description]="store.description$()"
->
+<ui-page-header title="Người dùng" [description]="store.description$()">
   <div slot="actions" class="row">
     <a uiButton routerLink="/admin/import" [queryParams]="{ type: 'users' }">
       <ui-icon name="upload" size="sm" />Nhập danh sách
@@ -104,7 +100,7 @@
   >
     <ui-empty
       slot="empty"
-      icon="users"
+      variant="inline"
       title="Không có người dùng phù hợp"
       description="Thử đổi từ khóa hoặc bỏ bớt bộ lọc."
     />
@@ -123,10 +119,7 @@
     <ng-template uiDataTableCell="roleCodes" [of]="store.rows$()" let-user>
       <div class="users__roles">
         @for (code of user.roleCodes; track code) {
-        <app-role-badge
-          [code]="code"
-          [name]="store.roleNames$()[code] ?? code"
-        />
+        <app-role-badge [name]="store.roleNames$()[code] ?? code" />
         } @empty {
         <span class="users__never">Chưa có vai trò</span>
         }
