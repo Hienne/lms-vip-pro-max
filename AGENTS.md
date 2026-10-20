@@ -33,6 +33,7 @@ matching doc before starting the work it covers:
 - `docs/conventions/angular.md`: before writing any Angular code (component, store, form, effect, route, test).
 - `docs/conventions/workspace.md`: before creating a project, library, folder or Nx target, or adding a dependency.
 - `docs/conventions/ui-library.md`: before building or restyling reusable UI, tokens, icons or overlays.
+- `docs/conventions/visual-design.md`: before building or restyling any UI, converting a mockup screen, or writing UI copy.
 - `docs/conventions/contracts-and-mocks.md`: before touching an endpoint, schema, model, fixture, the mock API or error handling.
 - `docs/migration/mockup-to-angular.md`: before converting a mockup screen or component.
 
@@ -47,6 +48,11 @@ matching doc before starting the work it covers:
   token maps through the `ui` Sass module (`ui.color(primary)`, `ui.space(3)`):
   an unknown key fails the build and a colour literal outside the token source
   fails the guard spec.
+- **Designed, not generated.** The look follows
+  `docs/conventions/visual-design.md`, over the mockup and over existing code:
+  no eyebrows, icon tiles, heroes, gradients, coloured edge stripes, badge soup,
+  or status colours used for decoration, even where the mockup or a
+  neighbouring file has them.
 - **Business rules stay on the server.** Scoring, progress %, permissions and
   unit scope in the mockup's `api/*.js` are backend spec; the app renders
   server results and uses roles only for navigation and display.
@@ -56,5 +62,6 @@ matching doc before starting the work it covers:
 ## Done
 
 A task is done when `npm run check` is green, the
-angular.md §14 checklist passes, and any converted screen passes the verify
+angular.md §14 checklist passes, any UI change passes the checklist in
+`docs/conventions/visual-design.md`, and any converted screen passes the verify
 step in `docs/migration/mockup-to-angular.md`. Report what was verified and how.

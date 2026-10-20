@@ -3,6 +3,10 @@
 Rules for every reusable piece of UI: the design system in `libs/ui`, and the
 domain-aware presentational UI in `apps/lms/src/app/shared/` that composes it.
 
+How that UI looks (hierarchy, colour use, type, shape, density, motion, and the
+AI-template patterns that are banned) is `docs/conventions/visual-design.md`. It
+applies to every piece here and overrides the mockup's look.
+
 ## Atomic levels
 
 | Level     | What it is                                                                                      | Lives in                            | May use                                       |
@@ -126,7 +130,8 @@ SCSS only. There is no PostCSS step and no utility framework; the Sass compiler 
     `ui.grid((md: 2, lg: 3), $gap)` (columns per breakpoint, `base` defaults to 1). Gaps are spacing
     keys.
   - **Typography mixins**: `ui.text($size, $tone)` (a tone is a colour key, or `muted`, `secondary`,
-    `accent`), `ui.eyebrow`, `ui.num`, `ui.mono`, `ui.truncate`, `ui.clamp($lines)`.
+    `accent`), `ui.num`, `ui.mono`, `ui.truncate`, `ui.clamp($lines)`. `ui.eyebrow` remains only
+    for code not yet migrated; new code never uses it (`visual-design.md`).
   - **Accessibility and motion**: `ui.sr-only`, `ui.focus-ring`, `ui.animate(enter | reward-pop |
 shimmer | spin)` (reduced motion shows the end state).
 - **Spacing** uses the mockup's 4px steps only: 1, 2, 3, 4, 5, 6, 8, 10, 12, 18. The mockup's
@@ -203,15 +208,15 @@ mixin a component would use. Everything else in the mockup's `base.css` is a mix
 | `.grid-2` / `.grid-3` / `.grid-4`              | helpers `grid-2` (1 → md 2), `grid-3` (1 → md 2 → lg 3), `grid-4` (1 → md 2 → lg 4); `grid-N--gap-<key>`; mixin `ui.grid` for other column counts |
 | `.span-2`                                      | helper `span-2` (from `md`)                                                                                                                       |
 | `.mt-2/4/6`, `.mb-2/4`, `.w-full`, `.hidden`   | `margin-top: ui.space(4)` etc. in the component's `.scss`                                                                                         |
-| `.text-sm/xs/lg`, `.fw-600`, `.fw-700`         | `@include ui.text(sm)`, `font-weight: ui.weight(semibold)`                                                                                        |
+| `.text-sm/xs/lg`, `.fw-600`, `.fw-700`         | `@include ui.text(sm)`; the weight follows the element's role (`visual-design.md` → Type), not the mockup class                                   |
 | `.text-muted/secondary/success/danger/warning` | `@include ui.text(sm, muted)` (tone = colour key or alias), or `color: ui.color(success)`                                                         |
 | `.text-accent`                                 | `ui.text(sm, accent)` (the `accent-ink` colour)                                                                                                   |
-| `.eyebrow`                                     | `@include ui.eyebrow`                                                                                                                             |
+| `.eyebrow`                                     | dropped: no eyebrows (`visual-design.md`)                                                                                                         |
 | `.num`                                         | `@include ui.num`                                                                                                                                 |
 | `.mono`                                        | `@include ui.mono`                                                                                                                                |
 | `.truncate` / `.clamp-2`                       | `@include ui.truncate` / `@include ui.clamp(2)`                                                                                                   |
 | `.sr-only`                                     | helper `sr-only`; mixin `ui.sr-only`                                                                                                              |
-| `.animate-enter` / `.animate-reward`           | `@include ui.animate(enter)` / `ui.animate(reward-pop)`                                                                                           |
+| `.animate-enter` / `.animate-reward`           | overlays only: `ui.animate(enter)`; dropped on page content (`visual-design.md`) / `ui.animate(reward-pop)` on an earned achievement              |
 | `.skip-link`                                   | helper `skip-link`                                                                                                                                |
 
 ### Global stylesheet and cascade layers
@@ -409,4 +414,6 @@ not guessed from memory.
 - Spec covers rendered classes/ARIA per variant and every output.
 - Demo added to the `/design-system` route (the living catalogue, ported from
   the mockup's design-system page) in light and dark.
+- Passes the checklist in `docs/conventions/visual-design.md`; the demo shows
+  realistic content and density, not showcase filler.
 - Keyboard and screen-reader behaviour checked for interactive pieces.
