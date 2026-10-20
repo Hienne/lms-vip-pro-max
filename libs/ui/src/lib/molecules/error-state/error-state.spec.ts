@@ -44,7 +44,7 @@ describe('ErrorState', () => {
     expect(root.querySelector('p')?.textContent?.trim()).toBe(
       'Dữ liệu đang nhập được giữ nguyên.',
     );
-    expect(root.querySelector('.empty__art--warning')).not.toBeNull();
+    expect(root.querySelector('.empty__icon--warning')).not.toBeNull();
   });
 
   it('emits retry when the retry button is pressed', () => {

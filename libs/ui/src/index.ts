@@ -83,6 +83,7 @@ export {
   Empty,
   type EmptyHeadingLevel,
   type EmptyTone,
+  type EmptyVariant,
 } from './lib/molecules/empty/empty';
 export { ErrorState } from './lib/molecules/error-state/error-state';
 

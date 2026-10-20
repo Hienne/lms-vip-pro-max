@@ -123,10 +123,7 @@
               @for (grant of store.grants$(); track grant.grantId) {
               <tr>
                 <td data-label="Vai trò">
-                  <app-role-badge
-                    [code]="grant.roleCode"
-                    [name]="grant.roleName"
-                  />
+                  <app-role-badge [name]="grant.roleName" />
                 </td>
                 <td data-label="Phạm vi">{{ grant.scopeText }}</td>
                 <td data-label="Cấp bởi">
@@ -159,7 +156,7 @@
           </table>
         </div>
         } @else {
-        <ui-empty icon="shield" title="Chưa được cấp vai trò" />
+        <ui-empty variant="inline" title="Chưa được cấp vai trò" />
         } @if (detail.editable) {
         <h2 class="user-detail__subhead">Cấp vai trò mới</h2>
         <app-grant-picker
@@ -238,7 +235,7 @@
         </table>
       </div>
       } @else {
-      <ui-empty icon="book-open" title="Chưa được giao khóa học" />
+      <ui-empty variant="inline" title="Chưa được giao khóa học" />
       } } @else {
       <span uiSpinner></span>
       }
@@ -285,7 +282,7 @@
         </table>
       </div>
       } @else {
-      <ui-empty icon="clipboard-check" title="Chưa có lần thi" />
+      <ui-empty variant="inline" title="Chưa có lần thi" />
       } } @else {
       <span uiSpinner></span>
       }
@@ -306,7 +303,7 @@
         }
       </ul>
       } @else {
-      <ui-empty icon="history" title="Chưa có hoạt động" />
+      <ui-empty variant="inline" title="Chưa có hoạt động" />
       } } @else {
       <span uiSpinner></span>
       }

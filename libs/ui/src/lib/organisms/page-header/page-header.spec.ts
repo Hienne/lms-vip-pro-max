@@ -7,11 +7,7 @@ import { PageHeader } from './page-header';
 @Component({
   imports: [PageHeader, Breadcrumb],
   template: `
-    <ui-page-header
-      title="Khóa học của tôi"
-      [eyebrow]="eyebrow()"
-      [description]="description()"
-    >
+    <ui-page-header title="Khóa học của tôi" [description]="description()">
       @if (withBreadcrumb()) {
         <ui-breadcrumb slot="breadcrumb" [items]="trail" />
       }
@@ -23,7 +19,6 @@ import { PageHeader } from './page-header';
 })
 class Host {
   readonly trail = [{ label: 'Trang chủ' }];
-  readonly eyebrow = signal<string | undefined>('Học tập');
   readonly description = signal<string | undefined>('Tiến độ của bạn.');
   readonly withBreadcrumb = signal(true);
   readonly withActions = signal(true);
@@ -46,25 +41,21 @@ async function render() {
 }
 
 describe('PageHeader', () => {
-  it('renders the title as the page heading, with eyebrow and description', async () => {
+  it('renders the title as the page heading, with a description and no eyebrow', async () => {
     const { root } = await render();
     expect(root.querySelector('h1')?.textContent?.trim()).toBe(
       'Khóa học của tôi',
     );
-    expect(root.querySelector('.page-header__eyebrow')?.textContent).toBe(
-      'Học tập',
-    );
+    expect(root.querySelector('.page-header__eyebrow')).toBeNull();
     expect(root.querySelector('.page-header__desc')?.textContent).toBe(
       'Tiến độ của bạn.',
     );
   });
 
-  it('omits eyebrow and description when not given', async () => {
+  it('omits the description when not given', async () => {
     const { host, root, settle } = await render();
-    host.eyebrow.set(undefined);
     host.description.set(undefined);
     await settle();
-    expect(root.querySelector('.page-header__eyebrow')).toBeNull();
     expect(root.querySelector('.page-header__desc')).toBeNull();
   });
 

@@ -9,5 +9,6 @@
 }
 
 .theme-controls__title {
-  @include ui.eyebrow;
+  @include ui.text(sm, muted);
+  font-weight: ui.weight(medium);
 }

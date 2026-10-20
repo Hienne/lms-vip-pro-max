@@ -17,7 +17,8 @@
   }
 
   &__label {
-    @include ui.eyebrow;
+    @include ui.text(sm, muted);
+    font-weight: ui.weight(medium);
   }
 
   &__pending {

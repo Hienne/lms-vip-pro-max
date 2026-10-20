@@ -540,7 +540,6 @@ describe('AppShell', () => {
         document.querySelector<HTMLElement>('[role="alertdialog"]');
       await vi.waitFor(() => expect(dialog()).not.toBeNull());
       expect(dialog()?.textContent).toContain('Rời trang khi chưa lưu?');
-      expect(dialog()?.querySelector('.dialog__icon--warning')).not.toBeNull();
       const press = (label: string) =>
         Array.from(dialog()?.querySelectorAll('button') ?? [])
           .find((b) => b.textContent?.trim() === label)

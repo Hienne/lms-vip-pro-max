@@ -1,33 +1,8 @@
 import { Component, computed, input } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import type { CourseStatus } from '@lms/contracts';
-import {
-  Badge,
-  Card,
-  Icon,
-  Progress,
-  type IconName,
-  type ProgressTone,
-} from '@lms/ui';
+import { Badge, Card, Progress, type ProgressTone } from '@lms/ui';
 import { DueDate } from './due-date';
-import { RequiredMark } from './required-mark';
-
-export type CourseCover =
-  | 'layers'
-  | 'process'
-  | 'clock'
-  | 'building'
-  | 'database'
-  | 'shield';
-
-const COVER_ICON: Record<CourseCover, IconName> = {
-  layers: 'layers',
-  process: 'workflow',
-  clock: 'clock',
-  building: 'building-2',
-  database: 'database',
-  shield: 'shield',
-};
 
 /**
  * What the card shows about a course. The learner feature maps its API result to this; the card
@@ -37,7 +12,6 @@ export interface CourseCardView {
   readonly id: string;
   readonly title: string;
   readonly required: boolean;
-  readonly cover: CourseCover;
   readonly domain: string;
   readonly module: string;
   readonly minutes: number;
@@ -72,21 +46,18 @@ function formatMinutes(total: number): string {
 }
 
 /**
- * A course in a catalog or dashboard grid (the mockup's `UI.CourseCard`). The whole card is one
- * link to the course page.
+ * A course in a catalog or dashboard grid (the mockup's `UI.CourseCard`), text only: no cover art.
+ * The whole card is one link to the course page.
  */
 @Component({
   selector: 'app-course-card',
-  imports: [RouterLink, Card, Badge, Icon, Progress, RequiredMark, DueDate],
+  imports: [RouterLink, Card, Badge, Progress, DueDate],
   templateUrl: './course-card.html',
   styleUrl: './course-card.scss',
 })
 export class CourseCard {
   readonly course = input.required<CourseCardView>();
 
-  protected readonly coverIcon = computed(
-    () => COVER_ICON[this.course().cover],
-  );
   protected readonly duration = computed(() =>
     formatMinutes(this.course().minutes),
   );

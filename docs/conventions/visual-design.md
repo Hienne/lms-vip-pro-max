@@ -140,22 +140,16 @@ The first port of the mockup left these in the code; `docs/reports/design-system
 schedules their removal. Do not copy them into new code and do not extend them. Fix one only when
 the task is that fix, then delete its row here.
 
-| Pattern                    | Where                                                                                                                                                                                                               |
-| -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Eyebrow                    | `ui.eyebrow` and the `eyebrow` token; the `ui-page-header` `eyebrow` input (passed by users, org, roles, profile); sign-in, change-password, course card, sidebar groups, theme controls, `/design-system` sections |
-| Uppercase labels           | `_table.scss` (header cells), `_menu.scss` (group label), the course card meta                                                                                                                                      |
-| Icon tiles                 | `ui-kpi` (its `icon` input is still required: pass one, but add no tile anywhere else), `.list__icon`, `.dialog__icon`, `.empty__art`, the `/design-system` principles grid                                         |
-| Status tone as category    | `shared/status/role-badge.ts`, `shared/course/required-mark.ts`                                                                                                                                                     |
-| Coloured edges             | `_toast.scss`, `_tip.scss`, `layout/sidebar/sidebar.scss` (`nav-indicator`)                                                                                                                                         |
-| Gradient, watermark, glass | the `/design-system` hero, the sign-in brand panel watermark, `layout/header/header.scss` (`backdrop-filter`), the `hero-*` tokens, Cobalt's hero                                                                   |
-| Placeholder art            | the `shared/course/course-card` cover and the `cover-*` tokens                                                                                                                                                      |
-| Flat semibold              | `_badge.scss`, `_btn.scss`, the labels in `_field.scss`; the display font on h3 and h4 in `global/_base.scss`                                                                                                       |
-| Pills and extra radii      | `ui.radius(xl)` on the dialog and the `/design-system` hero, `ui.radius(full)` on badges and chips, Cobalt's `control: 999px`                                                                                       |
-| Entrance motion            | `_empty.scss` (`ui.animate(enter)`); the `enter` keyframe itself moves 8px over `base` (the token change to 4px and `fast` is central: do not override it per component)                                            |
-| Copy                       | the sign-in slogan, "Chào mừng trở lại" and the always-on mockup note; the `/design-system` hero, its chips and the "Skill gợi ý cặp 'Financial Trust'" line                                                        |
-| Chart colours              | `chart` 3 equals `warning`, 4 is Tailwind violet, 5 equals `danger`                                                                                                                                                 |
+| Pattern                    | Where                                                                                                                                                        |
+| -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Icon tiles                 | the `/design-system` principles grid                                                                                                                         |
+| Gradient, watermark, glass | the `/design-system` hero, the sign-in brand panel watermark, `layout/header/header.scss` (`backdrop-filter`), the `hero-*` tokens, Cobalt's hero            |
+| Pills and extra radii      | `ui.radius(xl)` on the dialog and the `/design-system` hero, `ui.radius(full)` on chips, Cobalt's `control: 999px`                                           |
+| Entrance motion            | the `enter` keyframe moves 8px over `base` (the token change to 4px and `fast` is central: do not override it per component)                                 |
+| Copy                       | the sign-in slogan, "Chào mừng trở lại" and the always-on mockup note; the `/design-system` hero, its chips and the "Skill gợi ý cặp 'Financial Trust'" line |
+| Chart colours              | `chart` 3 equals `warning`, 4 is Tailwind violet, 5 equals `danger`                                                                                          |
 
-The `/design-system` page still demonstrates most of these. Until it is rewritten, use it to look up
+The `/design-system` page still demonstrates several of these. Until it is rewritten, use it to look up
 a component's API, not its look.
 
 ## Checklist

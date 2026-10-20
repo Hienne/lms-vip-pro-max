@@ -59,12 +59,13 @@
     @include ui.stack(1);
   }
 
-  &__head-eyebrow {
+  &__head-meta {
     @include ui.row(2);
   }
 
-  &__eyebrow {
-    @include ui.eyebrow;
+  &__code {
+    @include ui.mono;
+    color: ui.color(text-muted);
   }
 
   &__title {
