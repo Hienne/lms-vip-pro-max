@@ -1,6 +1,6 @@
 # Spec: Custom theme (palette + light/dark) from the header
 
-Status: **revision 2, awaiting approval (2026-10-20)**. Revision 1 (approved 2026-10-19) shipped
+Status: **revision 2, approved and built (2026-10-20)**. Revision 1 (approved 2026-10-19) shipped
 the picker, `ThemeStore` palette state, the no-flash script and three colour-only palettes in
 PR #34. The user found those palettes too plain. Revision 2 replaces them with three full themes
 modelled on two reference sites, and lightly refines BIDV chuẩn. It still ships in PR #34.

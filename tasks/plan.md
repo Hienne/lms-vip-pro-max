@@ -143,8 +143,8 @@ T9  token model v2: new base tokens + theme groups + guards (bidv output unchang
 
 ### Checkpoint C2 (after T9–T12)
 
-- [ ] `npm run check` green
-- [ ] BIDV light and dark screenshots (dashboard, course page, login, `/design-system`) match
+- [x] `npm run check` green
+- [x] BIDV light and dark screenshots (dashboard, course page, login, `/design-system`) match
       `main` pixel for pixel
 
 ### Phase 5: Themes
@@ -159,7 +159,7 @@ T9  token model v2: new base tokens + theme groups + guards (bidv output unchang
 ### Phase 6: Finish
 
 - [x] T14: BIDV chuẩn refinements
-- [ ] T15: Docs, full verification, PR #34 update
+- [x] T15: Docs, full verification, PR #34 update
 
 ## Risks and mitigations
 

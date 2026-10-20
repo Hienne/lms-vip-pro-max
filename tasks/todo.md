@@ -405,8 +405,10 @@ synthesised.
 
 ## Checkpoint C2
 
-- [ ] `npm run check` green
-- [ ] BIDV screenshots identical to `main` (light, dark; dashboard, course, login, design-system)
+- [x] `npm run check` green
+- [x] BIDV identical to `main`. This was checked through the compiled CSS diff (T9), computed
+      styles on `/design-system` (T10) and the resolved sidebar colours in light and dark (T11),
+      not pixel screenshots.
 
 ## Task 13: Ngọc, Cobalt, Giấy
 
@@ -502,10 +504,27 @@ Contrast still passes for BIDV light and dark (eyebrow = primary). In the browse
 
 **Acceptance criteria:**
 
-- [ ] SPEC Success Criteria 1–7 verified
-- [ ] Docs match the code
+- [x] SPEC Success Criteria 1–7 verified
+- [x] Docs match the code
 
 **Verification:** `npm run check`; browser
+
+**Verified (2026-10-20):**
+
+- **Docs:** the `ui-library.md` theme section is rewritten (semantic hooks, theme groups, fonts,
+  extended contrast rules); `ui.texture` is added to the function list; the workspace font row
+  was updated in T12.
+- **Reload matrix:** for 4 themes × 3 modes, under OS light and under OS dark, the pre-boot script
+  alone gives the same `primary`, `bg`, `nav-bg` and `radius-control` (and display font) as the
+  booted app.
+- **SC6 fonts:** fresh loads fetch BIDV → Be Vietnam Pro, Ngọc → Be Vietnam Pro,
+  Cobalt → Nunito Sans, Giấy → Be Vietnam Pro + Fraunces.
+- **Keyboard flow:** the picker and popover code is unchanged since revision 1 (verified in T7);
+  only the labels and ids changed, and the specs cover them.
+- **§14 review:** clean. Only tokens, SCSS, specs and the `ThemeStore` id list changed; no new
+  component, effect or state.
+- **`npm run check`:** green on the rerun. The first run failed only `lms:test` on the known
+  `change-password.spec.ts` timeout flake.
 
 **Dependencies:** T14
 
@@ -513,4 +532,4 @@ Contrast still passes for BIDV light and dark (eyebrow = primary). In the browse
 
 ## Checkpoint E: Complete
 
-- [ ] All acceptance criteria met; PR #34 ready for review
+- [x] All acceptance criteria met; PR #34 ready for review

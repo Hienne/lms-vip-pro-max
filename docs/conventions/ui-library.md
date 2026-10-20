@@ -117,7 +117,7 @@ SCSS only. There is no PostCSS step and no utility framework; the Sass compiler 
   - **Functions** return `var(--<namespace>-<key>)` and fail the build on an unknown key, naming the
     namespace and the valid keys: `ui.color`, `ui.chart`, `ui.space`, `ui.radius`, `ui.shadow`,
     `ui.text-size`, `ui.leading`, `ui.weight`, `ui.tracking`, `ui.font`, `ui.duration`, `ui.ease`,
-    `ui.z`, `ui.layout`.
+    `ui.z`, `ui.texture`, `ui.layout`.
   - **Breakpoints**: `@include ui.bp(md)` is a mobile-first `min-width` media query from the
     `sm 640 / md 720 / lg 1100 / xl 1280` map, the only place widths are written. Write the narrow
     layout as the base style. `ui.bp-below(md)` exists for the one narrow-only case (a responsive table
@@ -245,46 +245,87 @@ spec for the list).
 Two independent choices, remembered per browser:
 
 - **Mode:** **Hệ thống / Sáng / Tối** (`system | light | dark`).
-- **Palette:** **BIDV chuẩn / Ngọc / Cobalt / Giấy** (`bidv | ngoc | cobalt | giay`).
-  `bidv` is the default and is the base tokens themselves.
+- **Theme** (the `data-palette` attribute): **BIDV chuẩn / Ngọc / Cobalt / Giấy**
+  (`bidv | ngoc | cobalt | giay`). `bidv` is the default and is the base tokens themselves.
 
-- **Tokens carry the theme.** `global/_theme.scss` emits the light values and the dark values behind two
-  conditions: `:root[data-theme="dark"]`, and `prefers-color-scheme: dark` unless
-  `data-theme="light"`. A screen that uses tokens supports every mode and palette with no extra work.
+- **Tokens carry the theme.** `global/_theme.scss` emits the light values and the dark values
+  behind two conditions: `:root[data-theme="dark"]`, and `prefers-color-scheme: dark` unless
+  `data-theme="light"`. A screen that uses tokens supports every mode and theme with no extra work.
   `system` means no `data-theme` attribute, and `bidv` means no `data-palette` attribute.
-- **Palettes are token overrides.** `ui/_tokens.scss` declares `$palettes`, where each palette has a
-  `light` and a `dark` map of `colors` and `chart` overrides. They may only override the keys
-  listed in `$palette-color-keys` / `$palette-chart-keys`, which are brand and neutral tokens.
-  Semantic colours, hoa mai `accent*` and the hero accent never change. `global/_palettes.scss`
-  emits `:root[data-palette="<id>"]` for light, and the dark overrides at specificity (0,3,0)
-  behind both dark conditions. The build fails on a disallowed key, on a missing `light`/`dark`
-  map, or on a light key the dark map leaves out (it would beat the base dark value in dark mode).
-  It also declares constant swatch tokens (`--color-swatch-<id>-fill/-base`, each palette's light
-  `primary` / `bg`) so a picker can show every palette while another one is active.
-- **Contrast is a spec.** `styles.spec.ts` resolves every palette × light/dark from the compiled CSS
-  and checks the pairs in `SPEC.md` Success Criterion 5: text tokens 4.5:1 on `bg`, `surface` and
-  `surface-2`; `on-primary` on `primary` and `primary` on `surface` 4.5:1; `border-strong` and
-  `ring` 3:1; `hero-muted` on `hero-to` 4.5:1. A new palette must pass before it ships.
+- **Components read semantic tokens, so a theme can reach them.** Beyond colours:
+  - the sidebar paints only with `nav-*` (`nav-bg`, `nav-text`, `nav-muted`, `nav-strong`,
+    `nav-hover`, `nav-active-bg`, `nav-active-text`, `nav-indicator`, `nav-border`); a guard spec
+    fails on any other colour or a `color-mix` in `sidebar.scss`;
+  - eyebrows (`ui.eyebrow`, `.page-header__eyebrow`) read `eyebrow`;
+  - h1–h4 and KPI values read `ui.font(display)`; h1 also reads `ui.weight(display)` and
+    `ui.tracking(display)`;
+  - buttons and segmented controls read `ui.radius(control)`, text fields `ui.radius(field)`,
+    cards and popovers `ui.radius(card)`;
+  - `body` paints `ui.texture(page)` sized by `ui.texture(page-size)` over `bg`.
+
+  For BIDV these resolve to the base look, so a new screen gets every theme by using them. Reach
+  for `radius(sm|md|lg)` and the raw colours only where a theme should not change the result.
+
+- **Themes are token overrides.** `ui/_tokens.scss` declares `$palettes` (after the type and
+  texture tokens it reads). Each theme has:
+  - `light` and `dark` maps of `colors`, `chart` and `shadow` (keys in `$palette-color-keys`,
+    `$palette-chart-keys`, `$palette-shadow-keys`: brand, neutral, accent, eyebrow, `nav-*`,
+    hero, charts 1–2 and grid, shadows);
+  - mode-independent `type` (`sans`, `display`, `display-weight`, `display-tracking`), `shape`
+    (`control`, `field`, `card`) and `texture` (`page`, `page-size`) groups;
+  - an optional `swatch` naming the colour its picker swatch shows (default `primary`).
+
+  Semantic colours, `white`/`black`, `overlay`, spacing, text sizes and layout never change.
+  `global/_palettes.scss` emits `:root[data-palette="<id>"]` for the light values and the
+  mode-independent groups, and the dark overrides at specificity (0,3,0) behind both dark
+  conditions. The build fails on an unknown setting, group or key, a missing `light`/`dark` map,
+  a mode-independent group inside a mode, or a light key the dark map leaves out (it would beat
+  the base dark value in dark mode). It also declares constant swatch tokens
+  (`--color-swatch-<id>-fill/-base`) so a picker can show every theme while another one is active.
+
+- **Fonts.** A theme names faces from `ui.$font-stacks` (Be Vietnam Pro, Fraunces, Nunito Sans),
+  all self-hosted through `@fontsource/*` in `apps/lms/project.json` styles; a guard spec fails
+  when a stack has no bundled CSS. The browser downloads a file only when an element renders in
+  that face, so BIDV users fetch nothing extra. Adding a face is a new dependency: ask first.
+- **Contrast is a spec.** `styles.spec.ts` resolves every theme × light/dark from the compiled CSS
+  (following `var()` references and compositing `color-mix(…, transparent)` washes) and checks the
+  pairs in `SPEC.md` Success Criterion 5:
+  - text tokens 4.5:1 on `bg`, `surface` and `surface-2`;
+  - `on-primary` on `primary`, `primary` on `surface` and `on-accent` on `accent`, 4.5:1;
+  - `eyebrow` and `accent-ink` on `bg` and `surface`, 4.5:1;
+  - `nav-text`, `nav-muted` and `nav-strong` on `nav-bg`, and `nav-active-text` on
+    `nav-active-bg`, 4.5:1;
+  - `border-strong` and `ring` 3:1;
+  - `hero-muted` on `hero-to` 4.5:1.
+
+  A new theme must pass before it ships.
+
 - **Nothing else mentions a theme.** Components, templates and SCSS never branch on the mode or
-  palette. A spec (`template-scan.spec.ts`) fails on any file other than `ThemeStore` (and the
+  theme. A spec (`template-scan.spec.ts`) fails on any file other than `ThemeStore` (and the
   pre-boot script) that writes `data-theme` or `data-palette`. Another spec fails when
-  `THEME_PALETTES`, the pre-boot script and the token palettes list different ids.
+  `THEME_PALETTES`, the pre-boot script and the token themes list different ids.
 - **`ThemeStore`** (`apps/lms/src/app/core/theme/theme.store.ts`, root-provided) owns both choices:
-  `preference$()`, `effective$()` (`light | dark`, following the OS live in `system`), `palette$()`,
-  and the commands `setPreference()` and `setPalette()`. It is the only writer of the attributes,
-  persists the choices under `lms.theme` (absence = `system`) and `lms.palette` (absence = `bidv`;
-  an unknown value falls back to it) and tolerates blocked storage. Read `effective$()` /
-  `palette$()` when something must react to them (the contrast table recomputes from both); never
-  read the attributes.
+  - selectors `preference$()`, `effective$()` (`light | dark`, following the OS live in
+    `system`) and `palette$()`;
+  - commands `setPreference()` and `setPalette()`.
+
+  It is the only writer of the attributes. It persists the choices under `lms.theme` (absence =
+  `system`) and `lms.palette` (absence = `bidv`; an unknown value, such as a revision 1 id, falls
+  back to it) and tolerates blocked storage. Read `effective$()` / `palette$()` when something
+  must react to them (the contrast table recomputes from both); never read the attributes.
+
 - **No flash.** An inline script in `apps/lms/src/index.html` applies the stored `light | dark` and
-  palette before the app boots. If a strict Content-Security-Policy is introduced, add the script's
+  theme before the app boots. If a strict Content-Security-Policy is introduced, add the script's
   hash to `script-src`. Its logic is not unit-tested: verify in the browser by reloading in each
-  palette and mode with the OS theme light and dark and watching the first paint.
+  theme and mode with the OS theme light and dark and watching the first paint. A theme heading
+  face may swap in once its font arrives (`font-display: swap`).
 - **The controls** are `app-theme-controls` (`apps/lms/src/app/shared/theme-controls/`): a
-  `ui-swatch-group` "Bảng màu" and a `ui-segmented` "Chế độ", both bound to `ThemeStore`. The
-  header renders them in a `uiPopover` behind the palette icon (`app-theme-picker`, "Tùy chỉnh giao
-  diện"), and `/design-system` renders them inline in its table of contents. A choice applies at
-  once; the popover stays open so palettes can be compared.
+  `ui-swatch-group` "Bảng màu" and a `ui-segmented` "Chế độ", both bound to `ThemeStore`.
+  - The header renders them in a `uiPopover` behind the palette icon (`app-theme-picker`, "Tùy
+    chỉnh giao diện").
+  - `/design-system` renders them inline in its table of contents.
+
+  A choice applies at once; the popover stays open so themes can be compared.
 
 ## Icons
 
