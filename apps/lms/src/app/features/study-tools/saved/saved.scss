@@ -1,19 +1,63 @@
 @use 'ui';
 :host {
-  @include ui.page(wide);
+  @include ui.page(narrow);
   min-width: 0;
 }
-.actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: ui.space(3);
-  margin-block: ui.space(4);
+.saved__list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
 }
-.item {
+.saved__row {
+  @include ui.row(2);
+  flex-wrap: nowrap;
+  padding-right: ui.space(3);
+  & + & {
+    border-top: 1px solid ui.color(border);
+  }
+}
+.saved__open {
+  @include ui.row(3);
+  flex-wrap: nowrap;
+  width: 100%;
+  min-width: 0;
+  padding: ui.space(4) ui.space(5);
+  text-align: left;
+  border: 0;
+  background: transparent;
+  color: ui.color(text);
+  cursor: pointer;
+  &:hover {
+    background: ui.color(surface-2);
+  }
+  &:focus-visible {
+    @include ui.focus-ring;
+  }
+}
+.saved__icon {
+  display: grid;
+  place-items: center;
+  width: ui.space(10);
+  height: ui.space(10);
+  flex-shrink: 0;
+  background: ui.color(primary-subtle);
+  color: ui.color(primary);
+  border-radius: ui.radius(md);
+}
+.saved__body {
+  flex: 1;
+  min-width: 0;
+  @include ui.stack(1);
+  strong {
+    @include ui.text(sm);
+    font-weight: ui.weight(semibold);
+    overflow-wrap: anywhere;
+  }
+  small {
+    @include ui.text(xs, muted);
+  }
+}
+.saved__status {
   padding: ui.space(5);
-  margin-block: ui.space(4);
-  overflow-wrap: anywhere;
-}
-h2 {
-  font-size: inherit;
+  @include ui.text(sm, muted);
 }

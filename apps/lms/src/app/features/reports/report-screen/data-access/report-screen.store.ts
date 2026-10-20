@@ -2,6 +2,35 @@ import { computed, inject, Injectable, signal } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { reportEndpoints, type ReportDimension } from '@lms/contracts';
+import type { DataTableSort, DataTableColumn, DonutDatum } from '@lms/ui';
+
+export const REPORT_DIMENSIONS = [
+  { id: 'learners', label: 'Học viên' },
+  { id: 'courses', label: 'Khóa học' },
+  { id: 'programs', label: 'Chương trình' },
+  { id: 'groups', label: 'Phòng / nhóm' },
+  { id: 'units', label: 'Đơn vị' },
+  { id: 'status', label: 'Trạng thái hoàn thành' },
+  { id: 'results', label: 'Kết quả kiểm tra' },
+  { id: 'competency', label: 'Năng lực theo nhóm kiến thức' },
+] as const;
+const statusLabel: Record<string, string> = {
+  not_started: 'Chưa bắt đầu',
+  in_progress: 'Đang học',
+  completed: 'Đã hoàn thành',
+  failed: 'Chưa đạt',
+};
+const dateText = (value: string | null) =>
+  value
+    ? new Date(value).toLocaleString('vi-VN', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+      })
+    : '—';
+const pct = (value: number | null) => (value === null ? '—' : `${value}%`);
 import { FileSaver } from '../../../../core/files/file-saver';
 import { invalidation } from '../../../../core/data-access/invalidation';
 import { serverData } from '../../../../core/data-access/server-data';
@@ -32,6 +61,7 @@ export class ReportScreenStore {
     period: signal(''),
     page: signal(0),
     q: signal(''),
+    sort: signal<DataTableSort>({ key: 'name', dir: 'asc' }),
   };
   private readonly changes = invalidation();
   private readonly filters = computed(() => {
@@ -83,7 +113,7 @@ export class ReportScreenStore {
             q: this.state.q() || undefined,
             page: this.state.page(),
             size: 20,
-            sort: 'name,asc',
+            sort: `${this.state.sort().key},${this.state.sort().dir}`,
           },
         };
       },
@@ -124,29 +154,154 @@ export class ReportScreenStore {
   });
   readonly overview$ = this.overview.value;
   readonly detail$ = this.detail.value;
-  readonly displayRows$ = computed(() =>
-    (this.detail.value()?.items ?? []).map((row) => {
-      const fields = row as Record<string, unknown>;
-      const first = (...keys: string[]) =>
-        keys
-          .map((key) => fields[key])
-          .find(
-            (value) => value !== undefined && value !== null && value !== '',
-          );
-      const value = first('pct', 'score', 'avgScore', 'enrolments');
-      return {
-        id: String(first('id') ?? JSON.stringify(row)),
-        name: String(first('name', 'title', 'quiz') ?? '—'),
-        unit: String(first('unit', 'group', 'program') ?? '—'),
-        status: String(first('status', 'enrolments', 'quiz') ?? '—'),
-        value:
-          value === undefined
-            ? '—'
-            : `${value}${first('pct', 'score', 'avgScore') !== undefined ? '%' : ''}`,
-        date: String(first('at', 'lastAccess', 'dueAt', 'completedAt') ?? '—'),
-      };
-    }),
+  readonly dimensionLabel$ = computed(
+    () =>
+      REPORT_DIMENSIONS.find((d) => d.id === this.dimension$())?.label ??
+      'Báo cáo',
   );
+  readonly period$ = this.state.period.asReadonly();
+  readonly sort$ = this.state.sort.asReadonly();
+  readonly groups$ = computed(
+    () =>
+      this.overview$()?.filters.groups.filter(
+        (g) => !this.state.unitId() || g.unitId === this.state.unitId(),
+      ) ?? [],
+  );
+  readonly weeks$ = computed(
+    () =>
+      this.overview$()?.weeks.map((w) => ({
+        label: new Date(w.weekStart).toLocaleDateString('vi-VN', {
+          day: '2-digit',
+          month: '2-digit',
+        }),
+        value: w.completedLessons,
+      })) ?? [],
+  );
+  readonly statusParts$ = computed((): readonly DonutDatum[] => {
+    const t = this.overview$()?.total;
+    return t
+      ? [
+          { label: 'Đã hoàn thành', value: t.completed, tone: 'success' },
+          { label: 'Đang học', value: t.inProgress, tone: 'primary' },
+          { label: 'Chưa bắt đầu', value: t.notStarted, tone: 'neutral' },
+          { label: 'Chưa đạt', value: t.failed, tone: 'danger' },
+        ]
+      : [];
+  });
+  readonly columns$ = computed((): readonly DataTableColumn[] => {
+    const dim = this.dimension$();
+    const pairs: readonly (readonly [string, string])[] =
+      dim === 'learners'
+        ? [
+            ['name', 'Học viên'],
+            ['email', 'Email'],
+            ['unit', 'Đơn vị'],
+            ['group', 'Phòng/nhóm'],
+            ['courses', 'Khóa'],
+            ['pct', 'Tiến độ'],
+            ['overdue', 'Quá hạn'],
+            ['failed', 'Chưa đạt'],
+            ['avgScore', 'Điểm TB'],
+            ['lastAccess', 'Truy cập'],
+          ]
+        : dim === 'status'
+          ? [
+              ['name', 'Học viên'],
+              ['course', 'Khóa học'],
+              ['group', 'Phòng/nhóm'],
+              ['status', 'Trạng thái'],
+              ['pct', 'Tiến độ'],
+              ['startedAt', 'Bắt đầu'],
+              ['completedAt', 'Hoàn thành'],
+              ['dueAt', 'Hạn'],
+            ]
+          : dim === 'results'
+            ? [
+                ['name', 'Học viên'],
+                ['unit', 'Đơn vị'],
+                ['quiz', 'Bài kiểm tra'],
+                ['nth', 'Lần'],
+                ['score', 'Điểm'],
+                ['passed', 'Kết quả'],
+                ['at', 'Ngày'],
+              ]
+            : dim === 'competency'
+              ? [
+                  ['name', 'Học viên'],
+                  ['unit', 'Đơn vị'],
+                  ...(this.overview$()?.competency ?? []).map(
+                    (c) => [c.id, c.name] as const,
+                  ),
+                ]
+              : [
+                  ['name', this.dimensionLabel$()],
+                  ['learners', 'Học viên'],
+                  ['enrolments', 'Lượt tham gia'],
+                  ['pct', 'Tiến độ TB'],
+                  ['completed', 'Hoàn thành'],
+                  ['inProgress', 'Đang học'],
+                  ['notStarted', 'Chưa bắt đầu'],
+                  ['overdue', 'Quá hạn'],
+                  ['avgScore', 'Điểm TB'],
+                  ['passRate', 'Tỷ lệ đạt'],
+                ];
+    return pairs.map(([key, label]) => ({
+      key,
+      label,
+      sortable: dim !== 'competency' || key === 'name' || key === 'unit',
+    }));
+  });
+  readonly displayRows$ = computed(
+    (): readonly ({ id: string } & Record<string, string | number>)[] =>
+      (this.detail$()?.items ?? []).map((row) => {
+        if ('values' in row)
+          return {
+            id: row.id,
+            name: row.name,
+            unit: row.unit,
+            ...Object.fromEntries(
+              row.values.map((v) => [v.competencyId, pct(v.value)]),
+            ),
+          };
+        if ('quiz' in row)
+          return {
+            ...row,
+            score: pct(row.score),
+            passed: row.passed ? 'Đạt' : 'Chưa đạt',
+            at: dateText(row.at),
+            autoSubmitted: row.autoSubmitted ? 'Tự nộp' : '',
+          };
+        if ('course' in row)
+          return {
+            ...row,
+            status: statusLabel[row.status] ?? row.status,
+            pct: pct(row.pct),
+            overdue: row.overdue ? 'Quá hạn' : '',
+            startedAt: dateText(row.startedAt),
+            completedAt: dateText(row.completedAt),
+            dueAt: dateText(row.dueAt),
+            lastAccess: dateText(row.lastAccess),
+          };
+        if ('email' in row)
+          return {
+            ...row,
+            courses: `${row.completed}/${row.courses}`,
+            pct: pct(row.pct),
+            avgScore: pct(row.avgScore),
+            lastAccess: dateText(row.lastAccess),
+          };
+        return {
+          ...row,
+          pct: pct(row.pct),
+          avgScore: pct(row.avgScore),
+          passRate: pct(row.passRate),
+        };
+      }),
+  );
+  setSort(sort: DataTableSort): void {
+    this.state.sort.set(sort);
+    this.setPage(0);
+  }
   readonly filters$ = this.filters;
   readonly page$ = this.state.page.asReadonly();
   readonly query$ = this.state.q.asReadonly();
@@ -178,7 +333,7 @@ export class ReportScreenStore {
       query: {
         ...this.filters(),
         q: this.state.q() || undefined,
-        sort: 'name,asc',
+        sort: `${this.sort$().key},${this.sort$().dir}`,
       },
     });
   }

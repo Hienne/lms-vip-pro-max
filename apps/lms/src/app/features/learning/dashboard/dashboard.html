@@ -1,5 +1,7 @@
 @if (store.isLoading$()) {
-<div class="loading"><span uiSpinner></span></div>
+<div class="dashboard__loading" role="status">
+  <span uiSpinner></span><span class="sr-only">Đang tải trang học tập</span>
+</div>
 } @else if (store.error$(); as error) {
 <ui-error-state
   title="Không tải được trang học tập"
@@ -7,110 +9,194 @@
   (retry)="store.retry()"
 />
 } @else if (store.dashboard$(); as data) {
-<ui-page-header
-  eyebrow="Học tập"
-  [title]="'Chào ' + data.user.name"
-  description="Tiếp tục lộ trình đào tạo và theo dõi tiến độ của bạn."
+<app-dashboard-hero
+  [dashboard]="data"
+  [firstName]="store.firstName$()"
+  [date]="store.today$()"
+  [greeting]="store.greeting$()"
 />
-@if (data.continueTarget; as target) {
-<section uiCard class="continue">
-  <div>
-    <strong>{{ target.lessonTitle }}</strong>
-    <p>{{ target.courseTitle }} · {{ target.where }}</p>
-  </div>
-  <a
-    uiButton
-    variant="primary"
-    [routerLink]="['/lesson',target.courseId,target.lessonId]"
-    [queryParams]="target.anchor?.type === 'pdf' ? {anchorType:'pdf',page:target.anchor.page} : target.anchor?.type === 'video' ? {anchorType:'video',seconds:target.anchor.seconds} : {}"
-    ><ui-icon name="play" size="sm" />Tiếp tục học</a
-  >
-</section>
-} @else {
-<ui-empty
-  icon="book-open"
-  title="Chưa có bài học đang dở"
-  description="Khám phá lộ trình được giao để bắt đầu học."
-/>
-}
-<div class="kpis">
+<div class="grid-4 dashboard__section">
   <ui-kpi
     icon="book-open"
-    label="Khóa được giao"
+    label="Khóa học được giao"
     [value]="data.counts.assigned"
-    [delta]="data.counts.required + ' bắt buộc'"
-  /><ui-kpi
-    icon="chart-column"
-    label="Tỷ lệ hoàn thành"
-    [value]="data.completionPct + '%'"
-  /><ui-kpi
+    [delta]="data.counts.required + ' bắt buộc · ' + data.counts.overdue + ' quá hạn'"
+    href="/catalog"
+  />
+  <section uiCard padded class="dashboard__completion">
+    <ui-ring [value]="data.completionPct" [size]="56" [stroke]="6" label="" />
+    <div>
+      <strong>{{data.completionPct}}<small>%</small></strong>
+      <p>Tỷ lệ hoàn thành</p>
+      <small
+        >{{data.counts.completed}}/{{data.cards.length}} khóa đã xong</small
+      >
+    </div>
+  </section>
+  <ui-kpi
     icon="clipboard-check"
-    label="Điểm gần nhất"
-    [value]="data.lastScore ? data.lastScore.score + '%' : '—'"
-    [delta]="data.lastScore?.quizTitle ?? 'Chưa làm bài'"
-  /><ui-kpi
-    icon="award"
-    label="Điểm thưởng"
-    [value]="data.points.total"
-    [delta]="'Chuỗi học ' + data.streak + ' ngày'"
+    tone="info"
+    label="Điểm kiểm tra gần nhất"
+    [value]="data.lastScore?.score ?? '—'"
+    [suffix]="data.lastScore ? '%' : ''"
+    [delta]="data.lastScore ? (data.lastScore.passed ? 'Đạt · ' : 'Chưa đạt · ') + data.lastScore.quizTitle : 'Chưa làm bài kiểm tra'"
+    href="/progress"
+  />
+  <ui-kpi
+    icon="trophy"
+    tone="reward"
+    label="Điểm cao nhất"
+    [value]="data.bestScore ?? '—'"
+    [suffix]="data.bestScore === null ? '' : '%'"
+    [delta]="'Đạt ' + data.passedQuizzes + '/' + data.totalQuizzes + ' bài kiểm tra'"
+    href="/progress"
   />
 </div>
-<section uiCard class="section">
-  <header class="tabs">
-    <h2>Khóa học của tôi</h2>
-    @for(tab of [{id:'inProgress',name:'Đang học'},{id:'notStarted',name:'Chưa
-    bắt đầu'},{id:'completed',name:'Đã hoàn thành'},{id:'required',name:'Bắt
-    buộc'},{id:'assigned',name:'Được giao'}];track tab.id){<button
-      uiButton
-      [attr.aria-pressed]="store.tab$()===tab.id"
-      (click)="store.setTab(tab.id)"
-    >
-      {{tab.name}}</button
-    >}
-  </header>
-  @for(course of store.courses$();track course.id){
-  <article class="course">
-    <a [routerLink]="['/course',course.id]"><strong>{{course.title}}</strong></a
-    ><span>{{course.done}}/{{course.total}} bài · {{course.pct}}%</span>
-    <div
-      class="track"
-      role="progressbar"
-      [attr.aria-valuenow]="course.pct"
-      aria-valuemin="0"
-      aria-valuemax="100"
-    >
-      <span [style.width.%]="course.pct"></span>
-    </div>
-    @if(course.dueAt){<small
-      >Hạn {{course.dueAt | date:'dd/MM/yyyy'}} @if(course.overdue){· Quá
-      hạn}</small
-    >}
-  </article>
-  } @empty { <ui-empty title="Không có khóa học trong mục này" /> }
-</section>
-<section uiCard class="section">
-  <h2>Năng lực theo nhóm kiến thức</h2>
-  <div class="competencies">
-    @for(item of data.competency;track item.id){
-    <div>
-      <span>{{item.name}}</span>@if(item.value===null){<span class="muted"
-        >Chưa có dữ liệu</span
-      >}@else{<strong>{{item.value}}% · {{item.answered}} lượt</strong>
-      <div class="track"><span [style.width.%]="item.value"></span></div>
-      }
-    </div>
+<div class="dashboard__columns dashboard__section">
+  <div class="stack stack--gap-6">
+    <section uiCard>
+      <header uiCardHeader>
+        <h2>Khóa học của tôi</h2>
+        <a routerLink="/catalog"
+          >Xem tất cả <ui-icon name="arrow-right" size="sm"
+        /></a>
+      </header>
+      <ui-tabs
+        [tabs]="store.tabs$()"
+        label="Lọc khóa học theo trạng thái"
+        [selected]="store.tab$()"
+        (selectedChange)="store.setTab($event)"
+      >
+        @for (tab of store.tabs$(); track tab.id) {
+        <div [uiTabPanel]="tab.id" uiCardBody>
+          <div class="dashboard__courses">
+            @for (course of store.cards$(); track course.id) {
+            <app-course-card [course]="course" /> } @empty {
+            <ui-empty
+              icon="book-open"
+              title="Không có khóa học ở trạng thái này"
+              description="Chọn trạng thái khác hoặc khám phá thêm khóa học tự chọn."
+              ><a uiButton routerLink="/catalog">Mở danh mục</a></ui-empty
+            >
+            }
+          </div>
+        </div>
+        }
+      </ui-tabs>
+    </section>
+    <section uiCard>
+      <header uiCardHeader>
+        <h2>Biểu đồ năng lực</h2>
+        <a routerLink="/progress">Chi tiết</a>
+      </header>
+      <div uiCardBody>
+        @if (store.hasCompetency$()) {
+        <div class="dashboard__radar">
+          <ui-radar-chart [data]="data.competency" />
+          <ul class="dashboard__skills">
+            @for (item of data.competency; track item.id) {
+            <li>
+              <div class="row-between">
+                <span>{{item.name}}</span
+                ><strong
+                  >{{item.value === null ? '—' : item.value + '%'}}</strong
+                >
+              </div>
+              <ui-progress
+                size="sm"
+                [value]="item.value ?? 0"
+                [tone]="item.value !== null && item.value >= 70 ? 'success' : undefined"
+                [label]="item.name"
+              />
+            </li>
+            }
+            <li class="dashboard__muted">
+              Tính từ lần thi tốt nhất của từng bài kiểm tra. “—” = chưa có câu
+              hỏi thuộc nhóm.
+            </li>
+          </ul>
+        </div>
+        } @else {
+        <ui-empty
+          icon="target"
+          title="Chưa có dữ liệu năng lực"
+          description="Làm bài kiểm tra đầu tiên để hệ thống tính năng lực theo nhóm kiến thức."
+        />
+        }
+      </div>
+    </section>
+    @if (data.journey.length) {
+    <section uiCard>
+      <header uiCardHeader><h2>Lộ trình theo chương trình</h2></header>
+      <div uiCardBody><app-journey [stops]="data.journey" /></div>
+    </section>
     }
   </div>
-</section>
-<section uiCard class="section">
-  <h2>Hạn hoàn thành</h2>
-  @for(item of data.deadlines;track item.id){
-  <p>
-    <a [routerLink]="['/course',item.id]">{{item.title}}</a> · {{item.dueAt |
-    date:'dd/MM/yyyy'}} · {{item.pct}}%
-  </p>
-  } @empty {
-  <p>Không có khóa học sắp đến hạn.</p>
-  }
-</section>
+  <aside class="stack stack--gap-6">
+    <section uiCard>
+      <header uiCardHeader><h2>Hạn hoàn thành</h2></header>
+      <ul class="dashboard__list">
+        @for (item of data.deadlines.slice(0,5); track item.id) {
+        <li>
+          <a [routerLink]="['/course',item.id]"
+            ><span
+              class="dashboard__list-icon"
+              [class.dashboard__list-icon--danger]="item.overdue"
+              ><ui-icon
+                [name]="item.overdue ? 'triangle-alert' : 'calendar'"
+                size="sm" /></span
+            ><span class="dashboard__list-body"
+              ><strong>{{item.title}}</strong
+              ><app-due-date [dueAt]="item.dueAt" /></span
+            ><strong>{{item.pct}}%</strong></a
+          >
+        </li>
+        } @empty {
+        <li>
+          <ui-empty
+            icon="calendar"
+            title="Không có hạn sắp tới"
+            description="Các khóa được giao kèm hạn sẽ hiển thị ở đây."
+          />
+        </li>
+        }
+      </ul>
+    </section>
+    <section uiCard>
+      <header uiCardHeader><h2>Công cụ học nhanh</h2></header>
+      <ul class="dashboard__list">
+        <li>
+          <a routerLink="/assistant"
+            ><span class="dashboard__list-icon"
+              ><ui-icon name="sparkles" size="sm" /></span
+            ><span class="dashboard__list-body"
+              ><strong>Hỏi trợ lý AI</strong
+              ><small>Tra cứu tài liệu có trích nguồn</small></span
+            ><ui-icon name="chevron-right" size="sm"
+          /></a>
+        </li>
+        <li>
+          <a routerLink="/flashcards"
+            ><span class="dashboard__list-icon"
+              ><ui-icon name="layers" size="sm" /></span
+            ><span class="dashboard__list-body"
+              ><strong>Ôn bằng flashcard</strong
+              ><small>Sinh từ ngân hàng câu hỏi</small></span
+            ><ui-icon name="chevron-right" size="sm"
+          /></a>
+        </li>
+        <li>
+          <a routerLink="/saved"
+            ><span class="dashboard__list-icon"
+              ><ui-icon name="bookmark" size="sm" /></span
+            ><span class="dashboard__list-body"
+              ><strong>Ghi chú & đánh dấu</strong
+              ><small>Mở đúng trang / mốc video</small></span
+            ><ui-icon name="chevron-right" size="sm"
+          /></a>
+        </li>
+      </ul>
+    </section>
+  </aside>
+</div>
 }

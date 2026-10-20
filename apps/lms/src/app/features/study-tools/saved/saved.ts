@@ -1,17 +1,33 @@
 import { Component, inject } from '@angular/core';
-import { DatePipe } from '@angular/common';
 import {
-  Button,
   Card,
   Empty,
   ErrorState,
+  FmtRelativePipe,
+  FmtTimePipe,
+  Icon,
+  IconButton,
   PageHeader,
   Pagination,
+  Tabs,
+  TabPanel,
 } from '@lms/ui';
 import { SavedStore } from './data-access/saved.store';
 @Component({
   selector: 'app-saved',
-  imports: [DatePipe, Button, Card, Empty, ErrorState, PageHeader, Pagination],
+  imports: [
+    Card,
+    Empty,
+    ErrorState,
+    FmtRelativePipe,
+    FmtTimePipe,
+    Icon,
+    IconButton,
+    PageHeader,
+    Pagination,
+    Tabs,
+    TabPanel,
+  ],
   providers: [SavedStore],
   templateUrl: './saved.html',
   styleUrl: './saved.scss',

@@ -201,7 +201,9 @@ export class FakeBackend {
     const personalReply = this.personal.handle(
       endpoint,
       request,
-      request.token ?? 'demo',
+      (request.token && this.tokens.get(request.token)) ??
+        request.token ??
+        'demo',
     );
     if (personalReply) return personalReply;
     const handler = this.handlers.get(endpoint);
@@ -295,7 +297,7 @@ export class FakeBackend {
     const role = ROLE_PRIORITY.find((code) => held.includes(code));
     return ok({
       ...navCountsFixtures[role ?? 'LEARNER'],
-      ...this.personal.navCounts(userId ?? 'demo'),
+      ...this.personal.navCounts(userId ?? request.token ?? 'demo'),
     });
   }
 

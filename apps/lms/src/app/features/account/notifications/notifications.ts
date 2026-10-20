@@ -1,26 +1,36 @@
 import { Component, inject } from '@angular/core';
-import { DatePipe } from '@angular/common';
 import {
+  Badge,
   Button,
   Card,
-  Checkbox,
   Empty,
   ErrorState,
+  FmtDatePipe,
+  FmtRelativePipe,
+  Icon,
   PageHeader,
+  Pagination,
   Spinner,
+  Tabs,
+  TabPanel,
 } from '@lms/ui';
 import { NotificationsStore } from './data-access/notifications.store';
 @Component({
   selector: 'app-notifications',
   imports: [
-    DatePipe,
+    Badge,
     Button,
     Card,
-    Checkbox,
     Empty,
     ErrorState,
+    FmtDatePipe,
+    FmtRelativePipe,
+    Icon,
     PageHeader,
+    Pagination,
     Spinner,
+    Tabs,
+    TabPanel,
   ],
   providers: [NotificationsStore],
   templateUrl: './notifications.html',

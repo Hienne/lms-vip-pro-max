@@ -3,73 +3,82 @@
   @include ui.page(wide);
   min-width: 0;
 }
-.loading {
+.report__loading {
   min-height: 20rem;
   display: grid;
   place-items: center;
 }
-.filters,
-.kpis,
-.charts {
+.report__section {
+  margin-top: ui.space(6);
+}
+.report__filters {
+  @include ui.row(3);
+  select {
+    width: auto;
+    max-width: 100%;
+    flex: 1;
+    min-width: min(100%, 10rem);
+  }
+}
+.report__dimensions {
+  @include ui.row(2);
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  padding-bottom: ui.space(4);
+  a {
+    white-space: nowrap;
+    text-decoration: none;
+  }
+}
+.report__dimension--active {
+  background: ui.color(primary-subtle);
+  color: ui.color(primary);
+  border-color: ui.color(primary);
+}
+.report__bar {
   display: grid;
-  gap: ui.space(4);
-  margin-block: ui.space(5);
-}
-.filters {
-  padding: ui.space(4);
-  grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
-}
-.filters label {
-  display: grid;
-  gap: ui.space(2);
-}
-.kpis {
-  grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
-}
-.charts {
-  @include ui.grid(
-    (
-      md: 2,
-      lg: 3,
-    ),
-    4
-  );
-}
-.charts section,
-.section {
-  padding: ui.space(5);
-}
-.section {
-  margin-block: ui.space(5);
-}
-nav,
-.detail-head {
-  display: flex;
+  grid-template-columns: minmax(0, 1fr) minmax(3rem, 1.4fr) 3rem;
   gap: ui.space(3);
-  flex-wrap: wrap;
   align-items: center;
+  @include ui.text(sm);
+  strong {
+    text-align: right;
+  }
 }
-.bar {
-  display: grid;
-  grid-template-columns: minmax(7rem, 1fr) 2fr auto;
-  align-items: center;
+.report__eyebrow {
+  @include ui.eyebrow;
+  margin-bottom: ui.space(2);
+}
+.report__links {
   gap: ui.space(3);
-  margin-block: ui.space(3);
 }
-.track {
-  height: ui.space(2);
-  background: ui.color(surface-2);
+.report__link {
+  @include ui.row(3);
+  flex-wrap: nowrap;
+  color: ui.color(text);
+  text-decoration: none;
+  @include ui.text(sm);
+  strong {
+    flex: 1;
+  }
+}
+@media print {
+  .report__filters,
+  .report__dimensions,
+  .report__links {
+    display: none;
+  }
+  :host {
+    max-width: none;
+    padding: 0;
+  }
+}
+
+.report__dimension {
+  border: 1px solid ui.color(border);
   border-radius: ui.radius(full);
-  overflow: hidden;
-}
-.track span {
-  display: block;
-  height: 100%;
-  background: ui.color(primary);
-}
-.table-wrap {
-  overflow: auto;
-}
-.detail-head h2 {
-  margin-right: auto;
+  padding: ui.space(2) ui.space(3);
+  color: ui.color(text-secondary);
+  background: ui.color(surface);
+  @include ui.text(sm);
 }

@@ -63,10 +63,20 @@ describe('FakeBackend and the endpoint registries', () => {
   )('answers the read %# with a body its contract parses', (endpoint) => {
     const reply = new FakeBackend().handle(endpoint, {
       token: null,
-      params: { userId: '000004' },
-      query: {},
+      params: {
+        userId: '000004',
+        quizId: 'q1',
+        attemptId: 'at-demo',
+        certificateId: 'cert1',
+        dim: 'learners',
+      },
+      query: { dim: 'learners' },
       body: undefined,
     });
-    expect(() => endpoint.response.parse(reply?.body.data)).not.toThrow();
+    const data =
+      endpoint.responseType === 'blob' && reply && 'binary' in reply
+        ? reply.binary
+        : reply?.body.data;
+    expect(() => endpoint.response.parse(data)).not.toThrow();
   });
 });

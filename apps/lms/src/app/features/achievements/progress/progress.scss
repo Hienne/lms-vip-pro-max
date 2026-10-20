@@ -1,34 +1,53 @@
 @use 'ui';
 :host {
-  @include ui.page(wide);
+  @include ui.page;
   min-width: 0;
 }
-.loading {
+.progress-page__loading {
   min-height: 20rem;
   display: grid;
   place-items: center;
 }
-.kpis {
+.progress-page__section {
+  margin-top: ui.space(6);
+}
+.progress-page__muted {
+  @include ui.text(xs, muted);
+}
+.progress-page__badges {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
-  gap: ui.space(4);
-  margin-block: ui.space(5);
+  grid-template-columns: repeat(auto-fill, minmax(8rem, 1fr));
+  gap: ui.space(5);
 }
-.section {
-  padding: ui.space(5);
-  margin-block: ui.space(5);
+.progress-page__badge {
+  text-align: center;
+  @include ui.stack(2);
+  small {
+    @include ui.text(xs, muted);
+  }
 }
-.badges {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
-  gap: ui.space(4);
-}
-.badges article {
-  padding: ui.space(4);
-}
-.locked {
-  opacity: 0.72;
-}
-.award {
-  color: ui.color(accent-ink);
+.progress-page__events {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  li {
+    @include ui.row(3);
+    flex-wrap: nowrap;
+    padding: ui.space(4) ui.space(5);
+    & + li {
+      border-top: 1px solid ui.color(border);
+    }
+    > span:nth-child(2) {
+      flex: 1;
+      min-width: 0;
+    }
+    strong {
+      @include ui.text(sm);
+      font-weight: ui.weight(semibold);
+    }
+    small {
+      display: block;
+      @include ui.text(xs, muted);
+    }
+  }
 }

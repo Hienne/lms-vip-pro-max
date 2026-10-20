@@ -16,11 +16,13 @@
     >
     <h3 class="course-card__title">{{ course().title }}</h3>
     <div class="course-card__meta">
-      <span><ui-icon name="clock" size="sm" />{{ duration() }}</span>
+      @if (duration()) {
+      <span><ui-icon name="clock" size="sm" />{{ duration() }}</span> }
       <span
         ><ui-icon name="book-open" size="sm" />{{ course().lessons }} bài</span
       >
-      <span><ui-icon name="target" size="sm" />{{ course().level }}</span>
+      @if (course().level) {
+      <span><ui-icon name="target" size="sm" />{{ course().level }}</span> }
     </div>
     <div class="course-card__foot">
       <ui-progress

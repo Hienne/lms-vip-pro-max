@@ -1,183 +1,245 @@
-@if(store.isLoading$()){
-<div class="loading"><span uiSpinner></span></div>
-}@else if(store.error$();as error){<ui-error-state
+@if(store.isLoading$()) {
+<div class="report__loading" role="status">
+  <span uiSpinner></span><span class="sr-only">Đang tải báo cáo</span>
+</div>
+} @else if(store.error$(); as error){<ui-error-state
   title="Không tải được báo cáo"
   [message]="error.message"
   (retry)="store.retry()"
-/>}@else if(store.overview$();as data){
+/>} @else if(store.overview$();as data){ @if(store.dimension$()){<ui-breadcrumb
+  [items]="[{label:'Báo cáo',href:'/reports'},{label:store.dimensionLabel$()}]"
+/>}
 <ui-page-header
-  eyebrow="Báo cáo"
-  [title]="store.dimension$() ? 'Báo cáo chi tiết' : 'Tình hình đào tạo'"
-  [description]="'Phạm vi: '+data.scope.label+' · số liệu theo dữ liệu học tập.'"
+  [eyebrow]="store.dimension$() ? 'Báo cáo chi tiết' : 'Báo cáo'"
+  [title]="store.dimension$() ? 'Báo cáo theo ' + store.dimensionLabel$().toLowerCase() : 'Tình hình đào tạo'"
+  [description]="store.dimension$() ? (store.detail$()?.totalElements ?? 0) + ' dòng · lọc & sắp xếp theo cột · xuất CSV/Excel hoặc in PDF.' : 'Phạm vi: ' + data.scope.label + ' · số liệu tính trực tiếp từ dữ liệu học tập, cập nhật theo thời gian thực.'"
   ><div slot="actions">
-    <button
-      uiButton
-      variant="primary"
-      [disabled]="store.isExporting$()"
-      (click)="store.export()"
-    >
-      <ui-icon name="download" size="sm" />Xuất CSV
+    <button uiButton [disabled]="store.isExporting$()" (click)="store.export()">
+      <ui-icon name="file-spreadsheet" size="sm" />{{store.dimension$() ? 'Xuất
+      CSV' : 'Xuất Excel (CSV)'}}</button
+    ><button uiButton (click)="print()">
+      <ui-icon name="printer" size="sm" />In / PDF
     </button>
   </div></ui-page-header
 >
-<section uiCard class="filters">
-  <label
-    >Đơn vị<select
-      uiSelect
-      [value]="store.filters$().unitId??''"
-      (change)="store.setFilter('unitId',$any($event.target).value)"
-    >
-      <option value="">Tất cả trong phạm vi</option>
-      @for(x of data.filters.units;track x.id){
-      <option [value]="x.id">{{x.name}}</option>
-      }
-    </select></label
-  ><label
-    >Phòng / nhóm<select
-      uiSelect
-      [value]="store.filters$().groupId??''"
-      (change)="store.setFilter('groupId',$any($event.target).value)"
-    >
-      <option value="">Tất cả</option>
-      @for(x of data.filters.groups;track x.id){
-      <option [value]="x.id">{{x.name}}</option>
-      }
-    </select></label
-  ><label
-    >Chương trình<select
-      uiSelect
-      [value]="store.filters$().programId??''"
-      (change)="store.setFilter('programId',$any($event.target).value)"
-    >
-      <option value="">Tất cả</option>
-      @for(x of data.filters.programs;track x.id){
-      <option [value]="x.id">{{x.name}}</option>
-      }
-    </select></label
-  ><label
-    >Khóa học<select
-      uiSelect
-      [value]="store.filters$().courseId??''"
-      (change)="store.setFilter('courseId',$any($event.target).value)"
-    >
-      <option value="">Tất cả</option>
-      @for(x of data.filters.courses;track x.id){
-      <option [value]="x.id">{{x.title}}</option>
-      }
-    </select></label
-  ><label
-    >Khoảng thời gian<select
-      uiSelect
-      [value]="''"
-      (change)="store.setFilter('period',$any($event.target).value)"
-    >
-      <option value="">Toàn bộ</option>
-      <option value="7">7 ngày qua</option>
-      <option value="30">30 ngày qua</option>
-      <option value="90">90 ngày qua</option>
-    </select></label
+@if(store.dimension$()){
+<nav class="report__dimensions" aria-label="Các báo cáo chi tiết">
+  @for(d of dims;track d.id){<a
+    class="report__dimension"
+    [routerLink]="['/reports',d.id]"
+    [attr.aria-current]="store.dimension$() === d.id ? 'page' : null"
+    [class.report__dimension--active]="store.dimension$() === d.id"
+    >{{d.label}}</a
+  >}
+</nav>
+}
+<section uiCard padded class="report__filters" aria-label="Bộ lọc báo cáo">
+  <ui-icon name="funnel" size="sm" /> @if(data.filters.units.length > 1){<label
+    class="sr-only"
+    for="report-unit"
+    >Đơn vị</label
+  ><select
+    uiSelect
+    id="report-unit"
+    [value]="store.filters$().unitId ?? ''"
+    (change)="store.setFilter('unitId',$any($event.target).value)"
   >
+    <option value="">Đơn vị: Tất cả</option>
+    @for(x of data.filters.units;track x.id){
+    <option [value]="x.id">{{x.name}}</option>
+    }</select
+  >} <label class="sr-only" for="report-group">Phòng/nhóm</label
+  ><select
+    uiSelect
+    id="report-group"
+    [value]="store.filters$().groupId ?? ''"
+    (change)="store.setFilter('groupId',$any($event.target).value)"
+  >
+    <option value="">Phòng/nhóm: Tất cả</option>
+    @for(x of store.groups$();track x.id){
+    <option [value]="x.id">{{x.name}}</option>
+    }
+  </select>
+  <label class="sr-only" for="report-program">Chương trình</label
+  ><select
+    uiSelect
+    id="report-program"
+    [value]="store.filters$().programId ?? ''"
+    (change)="store.setFilter('programId',$any($event.target).value)"
+  >
+    <option value="">Chương trình: Tất cả</option>
+    @for(x of data.filters.programs;track x.id){
+    <option [value]="x.id">{{x.name}}</option>
+    }
+  </select>
+  <label class="sr-only" for="report-course">Khóa học</label
+  ><select
+    uiSelect
+    id="report-course"
+    [value]="store.filters$().courseId ?? ''"
+    (change)="store.setFilter('courseId',$any($event.target).value)"
+  >
+    <option value="">Khóa học: Tất cả</option>
+    @for(x of data.filters.courses;track x.id){
+    <option [value]="x.id">{{x.title}}</option>
+    }
+  </select>
+  <label class="sr-only" for="report-period">Thời gian</label
+  ><select
+    uiSelect
+    id="report-period"
+    [value]="store.period$()"
+    (change)="store.setFilter('period',$any($event.target).value)"
+  >
+    <option value="">Thời gian: Toàn bộ</option>
+    <option value="7">7 ngày qua</option>
+    <option value="30">30 ngày qua</option>
+    <option value="90">Quý này</option>
+  </select>
+  @if(store.dimension$()){<ui-search
+    label="Tìm trong báo cáo"
+    placeholder="Tìm trong báo cáo…"
+    [value]="store.query$()"
+    (searched)="store.setQuery($event)"
+    width="240px"
+  />}
 </section>
-<div class="kpis">
+@if(!store.dimension$()){
+<div class="grid-4 report__section">
   <ui-kpi
     icon="users"
-    label="Học viên"
     [value]="data.total.learners"
-    [delta]="data.total.enrolments+' lượt tham gia'"
+    label="Học viên trong phạm vi"
+    [delta]="data.total.enrolments + ' lượt tham gia khóa học'"
+    href="/reports/learners"
   /><ui-kpi
     icon="chart-column"
-    label="Tiến độ trung bình"
-    [value]="data.total.pct+'%'"
+    [value]="data.total.pct"
+    suffix="%"
+    label="Tiến độ hoàn thành TB"
+    [delta]="data.total.completed + ' lượt đã hoàn thành'"
+    href="/reports/status"
   /><ui-kpi
-    icon="calendar"
-    label="Quá hạn"
+    icon="triangle-alert"
+    tone="danger"
     [value]="data.total.overdue"
+    label="Lượt quá hạn"
+    [delta]="data.total.failed + ' lượt chưa đạt (hết lượt thi)'"
+    href="/reports/status"
   /><ui-kpi
     icon="clipboard-check"
-    label="Điểm trung bình"
-    [value]="data.total.avgScore===null?'—':data.total.avgScore+'%'"
+    tone="info"
+    [value]="data.total.avgScore ?? '—'"
+    [suffix]="data.total.avgScore === null ? '' : '%'"
+    label="Điểm thi cao nhất TB"
+    [delta]="data.total.passRate === null ? '' : 'Tỷ lệ đạt ' + data.total.passRate + '%'"
+    href="/reports/results"
   />
 </div>
-@if(!store.dimension$()){
-<div class="charts">
+<div class="grid-3 report__section">
   <section uiCard>
-    <h2>Trạng thái khóa học</h2>
-    <p>
-      Hoàn thành {{data.total.completed}} · Đang học {{data.total.inProgress}} ·
-      Chưa bắt đầu {{data.total.notStarted}} · Chưa đạt {{data.total.failed}}
-    </p>
+    <header uiCardHeader><h2>Trạng thái tham gia</h2></header>
+    <div uiCardBody><ui-donut-chart [data]="store.statusParts$()" /></div>
   </section>
   <section uiCard>
-    <h2>Năng lực theo nhóm kiến thức</h2>
-    @for(item of data.competency;track item.id){
-    <div class="bar">
-      <span>{{item.name}}</span>
-      <div class="track"><span [style.width.%]="item.value??0"></span></div>
-      <strong>{{item.value===null?'—':item.value+'%'}}</strong>
+    <header uiCardHeader>
+      <h2>Năng lực theo nhóm kiến thức</h2>
+      <a routerLink="/reports/competency">Chi tiết</a>
+    </header>
+    <div uiCardBody>
+      <ui-radar-chart
+        [data]="data.competency"
+        label="Năng lực trung bình"
+        seriesLabel="Trung bình học viên trong phạm vi"
+      />
     </div>
-    }
   </section>
   <section uiCard>
-    <h2>Bài học hoàn thành theo tuần</h2>
-    @for(week of data.weeks;track week.weekStart){
-    <p>{{week.weekStart|date:'dd/MM'}} · {{week.completedLessons}} bài</p>
-    }
+    <header uiCardHeader><h2>Bài học hoàn thành theo tuần</h2></header>
+    <div uiCardBody>
+      <ui-bar-chart
+        [data]="store.weeks$()"
+        label="Số bài học hoàn thành mỗi tuần"
+      />
+    </div>
   </section>
 </div>
-<section uiCard class="section">
-  <h2>Báo cáo chi tiết</h2>
-  <nav>
-    @for(d of dims;track d[0]){<a uiButton [routerLink]="['/reports',d[0]]"
-      >{{d[1]}}</a
-    >}
-  </nav>
+<div class="grid-2 report__section">
+  @for(group of [{title:'Theo đơn
+  vị',rows:data.byUnit,path:'units'},{title:'Theo phòng /
+  nhóm',rows:data.byGroup,path:'groups'}];track group.path){
+  <section uiCard>
+    <header uiCardHeader>
+      <h2>{{group.title}}</h2>
+      <a [routerLink]="['/reports',group.path]">Chi tiết</a>
+    </header>
+    <div uiCardBody class="stack">
+      @for(row of group.rows;track row.id){
+      <div class="report__bar">
+        <span>{{row.name}}</span
+        ><ui-progress
+          size="sm"
+          [value]="row.pct"
+          [tone]="row.pct >= 80 ? 'success' : row.pct >= 50 ? undefined : 'warning'"
+          [label]="row.name"
+        /><strong>{{row.pct}}%</strong>
+      </div>
+      }@empty{<ui-empty title="Không có dữ liệu" />}
+    </div>
+  </section>
+  }
+</div>
+<section uiCard class="report__section">
+  <header uiCardHeader>
+    <h2>Theo khóa học</h2>
+    <a routerLink="/reports/courses">Chi tiết</a>
+  </header>
+  <ui-data-table
+    caption="Báo cáo theo khóa học"
+    [columns]="courseColumns"
+    [rows]="data.byCourse"
+    [total]="data.byCourse.length"
+    [pageSize]="100"
+    ><ng-template uiDataTableCell="pct" [of]="data.byCourse" let-row
+      ><ui-progress
+        size="sm"
+        [value]="row.pct"
+        label="Tiến độ trung bình"
+      /><small>{{row.pct}}%</small></ng-template
+    ><ng-template uiDataTableCell="avgScore" [of]="data.byCourse" let-row
+      >{{row.avgScore === null ? '—' : row.avgScore + '%'}}</ng-template
+    ><ng-template uiDataTableCell="passRate" [of]="data.byCourse" let-row
+      >{{row.passRate === null ? '—' : row.passRate + '%'}}</ng-template
+    ></ui-data-table
+  >
 </section>
-} @else if(store.detail$();as page){
-<section uiCard class="section">
-  <div class="detail-head">
-    <h2>{{store.dimension$()}}</h2>
-    <input
-      uiInput
-      type="search"
-      aria-label="Tìm trong báo cáo"
-      placeholder="Tìm kiếm"
-      [value]="store.query$()"
-      (input)="store.setQuery($any($event.target).value)"
-    />
+<nav class="report__section" aria-label="Các báo cáo chi tiết">
+  <h2 class="report__eyebrow">Báo cáo chi tiết</h2>
+  <div class="grid-4 report__links">
+    @for(d of dims;track d.id){<a
+      uiCard
+      padded
+      interactive
+      class="report__link"
+      [routerLink]="['/reports',d.id]"
+      ><ui-icon name="chart-column" size="sm" /><strong>{{d.label}}</strong
+      ><ui-icon name="chevron-right" size="sm" /></a
+    >}
   </div>
-  <div uiTableWrap class="table-wrap">
-    <table uiTable>
-      <thead>
-        <tr>
-          <th>Tên</th>
-          <th>Đơn vị</th>
-          <th>Trạng thái / số liệu</th>
-          <th>Tiến độ / điểm</th>
-          <th>Ngày</th>
-        </tr>
-      </thead>
-      <tbody>
-        @for(row of store.displayRows$();track row.id){
-        <tr>
-          <td>{{row.name}}</td>
-          <td>{{row.unit}}</td>
-          <td>{{row.status}}</td>
-          <td>{{row.value}}</td>
-          <td>{{row.date}}</td>
-        </tr>
-        }@empty{
-        <tr>
-          <td colspan="5">Không có dữ liệu phù hợp bộ lọc.</td>
-        </tr>
-        }
-      </tbody>
-    </table>
-  </div>
-  <ui-pagination
+</nav>
+}@else if(store.detail$(); as page){
+<section uiCard class="report__section">
+  <ui-data-table
+    [caption]="store.dimensionLabel$()"
+    [columns]="store.columns$()"
+    [rows]="store.displayRows$()"
     [total]="page.totalElements"
     [page]="store.page$()+1"
     [pageSize]="20"
+    [sort]="store.sort$()"
+    (sortChange)="store.setSort($event)"
     (pageChange)="store.setPage($event-1)"
-  />
+    ><ui-empty slot="empty" title="Không có dữ liệu phù hợp bộ lọc"
+  /></ui-data-table>
 </section>
 } }

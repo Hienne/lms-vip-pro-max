@@ -54,11 +54,19 @@ export class SavedStore {
   readonly page$ = this.state.page.asReadonly();
   readonly data$ = this.data.value;
   readonly items$ = computed(() => this.data.value()?.items ?? []);
+  readonly tabs$ = computed(() => [
+    { id: 'notes', label: 'Ghi chú', count: this.data.value()?.counts.notes },
+    {
+      id: 'bookmarks',
+      label: 'Đánh dấu',
+      count: this.data.value()?.counts.bookmarks,
+    },
+  ]);
   readonly isLoading$ = this.data.isLoading;
   readonly error$ = this.data.error;
   readonly isSaving$ = this.removal.isPending;
-  setTab(tab: 'notes' | 'bookmarks') {
-    this.state.tab.set(tab);
+  setTab(tab: string) {
+    this.state.tab.set(tab === 'bookmarks' ? 'bookmarks' : 'notes');
     this.setPage(0);
   }
   setPage(page: number) {

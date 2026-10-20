@@ -1,74 +1,96 @@
 @use 'ui';
 :host {
-  @include ui.page(wide);
+  display: block;
   min-width: 0;
 }
-.lesson-grid {
+.lesson__bar {
+  @include ui.row(3);
+  flex-wrap: nowrap;
+  padding: ui.space(3) ui.space(4);
+  background: ui.color(surface);
+  border-bottom: 1px solid ui.color(border);
+  position: sticky;
+  top: 0;
+  z-index: ui.z(header);
+}
+.lesson__title {
+  flex: 1;
+  min-width: 0;
+  @include ui.stack(1);
+  small {
+    @include ui.text(xs, muted);
+    @include ui.truncate;
+  }
+  strong {
+    @include ui.text(sm);
+    @include ui.truncate;
+  }
+}
+.lesson__layout {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
-  gap: ui.space(4);
-  margin-block: ui.space(4);
   @include ui.bp(lg) {
-    grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+    grid-template-columns: minmax(0, 1fr) 22.5rem;
   }
 }
-.viewer,
-.notes {
+.lesson__main {
   padding: ui.space(5);
-}
-.viewer-title {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: ui.space(3);
-  flex-wrap: wrap;
-}
-h2 {
-  margin-block: ui.space(2);
-}
-.eyebrow,
-.hint {
-  color: ui.color(text-secondary);
-}
-.document {
-  min-height: 16rem;
-  margin-block: ui.space(4);
-  display: grid;
-  align-content: center;
-  justify-items: center;
-  text-align: center;
-  background: ui.color(surface-2);
-  border: 1px dashed ui.color(border);
-  border-radius: ui.radius(md);
-  padding: ui.space(5);
-  @include ui.bp(lg) {
-    min-height: 24rem;
+  @include ui.bp(md) {
+    padding: ui.space(6) ui.space(8);
   }
 }
-.document p {
-  margin-block: ui.space(2);
+.lesson__heading {
+  margin-bottom: ui.space(6);
+  h1 {
+    margin-top: ui.space(2);
+    @include ui.text(2xl);
+  }
 }
-.video {
+.lesson__eyebrow {
+  @include ui.eyebrow;
+}
+.lesson__toolbar {
+  @include ui.row-between(2);
+  padding: ui.space(3) ui.space(4);
+  border-bottom: 1px solid ui.color(border);
+  span {
+    @include ui.row(2);
+    @include ui.text(sm);
+  }
+}
+.lesson__document {
+  min-height: 24rem;
+  display: grid;
+  place-items: center;
   background: ui.color(surface-2);
 }
-.position {
-  display: flex;
-  align-items: center;
-  gap: ui.space(3);
-  max-width: 18rem;
+.lesson__position {
+  @include ui.row(3);
+  padding: ui.space(3) ui.space(4);
+  @include ui.text(sm);
+  input {
+    max-width: 8rem;
+  }
 }
-.position input {
-  max-width: 8rem;
+.lesson__side {
+  padding: ui.space(5);
+  @include ui.bp(lg) {
+    padding: ui.space(6) ui.space(5) ui.space(6) 0;
+  }
 }
-.notes {
-  display: grid;
-  align-content: start;
-  gap: ui.space(3);
+.lesson__note {
+  @include ui.stack(2);
+  p {
+    @include ui.text(sm);
+    overflow-wrap: anywhere;
+  }
+  small {
+    @include ui.text(xs, muted);
+  }
+  button {
+    align-self: flex-start;
+  }
 }
-textarea {
-  width: 100%;
-  resize: vertical;
-}
-.notes button {
-  justify-self: start;
+.lesson__muted {
+  @include ui.text(xs, muted);
 }

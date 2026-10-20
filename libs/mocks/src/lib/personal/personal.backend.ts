@@ -37,7 +37,6 @@ export class PersonalFakeBackend {
     return {
       notifications: this.state(userId).notifications.filter((x) => !x.readAt)
         .length,
-      inbox: 0,
     };
   }
   answers(endpoint: AnyEndpoint) {

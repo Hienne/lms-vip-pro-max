@@ -1,4 +1,13 @@
 // Public API of @lms/ui. Export every public symbol from here.
+export {
+  RadarChart,
+  type RadarDatum,
+} from './lib/organisms/charts/radar-chart';
+export { BarChart, type BarDatum } from './lib/organisms/charts/bar-chart';
+export {
+  DonutChart,
+  type DonutDatum,
+} from './lib/organisms/charts/donut-chart';
 export { Icon, type IconSize } from './lib/atoms/icon/icon';
 export { ICON_CATALOG, type IconName } from './lib/atoms/icon/icon-registry';
 export { Mai, type MaiTone } from './lib/atoms/mai/mai';

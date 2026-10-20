@@ -40,9 +40,9 @@ export interface CourseCardView {
   readonly cover: CourseCover;
   readonly domain: string;
   readonly module: string;
-  readonly minutes: number;
+  readonly minutes?: number;
   readonly lessons: number;
-  readonly level: string;
+  readonly level?: string;
   /** Progress, 0 to 100. */
   readonly pct: number;
   readonly status: CourseStatus;
@@ -87,9 +87,10 @@ export class CourseCard {
   protected readonly coverIcon = computed(
     () => COVER_ICON[this.course().cover],
   );
-  protected readonly duration = computed(() =>
-    formatMinutes(this.course().minutes),
-  );
+  protected readonly duration = computed(() => {
+    const minutes = this.course().minutes;
+    return minutes === undefined ? null : formatMinutes(minutes);
+  });
   protected readonly progressTone = computed(
     () => PROGRESS_TONE[this.course().status],
   );
