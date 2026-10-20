@@ -153,12 +153,12 @@ T9  token model v2: new base tokens + theme groups + guards (bidv output unchang
 
 ### Checkpoint D (after T13)
 
-- [ ] `npm run check` green; SC5 contrast passes for every theme × mode
-- [ ] Screenshots of the 3 themes × light/dark shared with the user for review **before** T14
+- [x] `npm run check` green; SC5 contrast passes for every theme × mode
+- [x] Screenshots of the 3 themes × light/dark shared with the user for review **before** T14
 
 ### Phase 6: Finish
 
-- [ ] T14: BIDV chuẩn refinements
+- [x] T14: BIDV chuẩn refinements
 - [ ] T15: Docs, full verification, PR #34 update
 
 ## Risks and mitigations

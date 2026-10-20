@@ -413,6 +413,36 @@ describe('global stylesheet', () => {
   });
 });
 
+describe('BIDV chuẩn refinements (SPEC.md revision 2)', () => {
+  const root = Object.fromEntries(
+    rules(compileGlobal())
+      .filter((rule) => rule.selector === ':root')
+      .flatMap((rule) =>
+        [...rule.body.matchAll(/(--[\w-]+)\s*:\s*([^;]+);/g)].map((m) => [
+          m[1],
+          m[2].trim(),
+        ]),
+      ),
+  );
+
+  it('gives buttons 8px corners, h1 tighter tracking and eyebrows the brand colour', () => {
+    expect(root['--radius-control']).toBe('8px');
+    expect(root['--radius-field']).toBe('6px');
+    expect(root['--radius-card']).toBe('14px');
+    expect(root['--tracking-display']).toBe('-0.02em');
+    expect(root['--font-weight-display']).toBe('700');
+    expect(root['--color-eyebrow']).toBe('var(--color-primary)');
+  });
+
+  it('uses two-layer, ink-tinted shadows: a contact shadow and a long soft drop', () => {
+    for (const key of ['md', 'lg']) {
+      const layers = root[`--shadow-${key}`].split(/,(?![^(]*\))/);
+      expect(layers).toHaveLength(2);
+      expect(layers[1]).toMatch(/-\d+px rgba\(16, 40, 38, /);
+    }
+  });
+});
+
 describe('theme hooks', () => {
   // The rules a theme reaches through its type, shape and texture tokens (SPEC.md decision 2).
   const all = rules(compileGlobal());

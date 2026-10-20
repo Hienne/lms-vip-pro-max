@@ -79,7 +79,7 @@ $colors: (
   hero-accent: #ffd15c,
   hero-chip: rgba(255, 255, 255, 0.14),
   // page and section eyebrows (small uppercase labels)
-  eyebrow: var(--color-text-muted),
+  eyebrow: var(--color-primary),
   // sidebar navigation: a dark brand panel for BIDV, which a theme may turn light. The references
   // follow the mode (primary-strong has a dark value); the washes sit on nav-bg.
   nav-bg: var(--color-primary-strong),
@@ -269,7 +269,7 @@ $trackings: (
   // table header
   wider: 0.08em,
   // eyebrow
-  display: -0.01em, // h1 and page titles
+  display: -0.02em, // h1 and page titles
 );
 
 // ---- Spacing: the mockup's 4px steps and nothing else ----
@@ -345,7 +345,7 @@ $radii: (
   xl: 20px,
   full: 999px,
   // buttons and segmented controls
-  control: 6px,
+  control: 8px,
   // inputs, selects, textareas
   field: 6px,
   // cards and popovers
@@ -357,15 +357,18 @@ $textures: (
   page: none,
   page-size: auto,
 );
+// Two layers, tinted with the BIDV ink: a contact shadow and a long, soft drop.
 $shadows: (
   sm: (
-    0 1px 2px rgba(16, 40, 38, 0.06),
+    0 1px 2px rgba(16, 40, 38, 0.05),
   ),
   md: (
-    0 4px 16px rgba(16, 40, 38, 0.08),
+    0 1px 2px rgba(16, 40, 38, 0.04),
+    0 8px 24px -12px rgba(16, 40, 38, 0.14),
   ),
   lg: (
-    0 16px 40px rgba(16, 40, 38, 0.18),
+    0 1px 2px rgba(16, 40, 38, 0.04),
+    0 32px 64px -28px rgba(16, 40, 38, 0.32),
   ),
 );
 $shadows-dark: (

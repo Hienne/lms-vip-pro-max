@@ -455,7 +455,8 @@ Added `texture.page-size` (the dot grid needs a tile size). The dot colour mixes
 
 ## Checkpoint D
 
-- [ ] User reviews the theme screenshots and approves (or requests tuning) before T14
+- [x] User reviews the theme screenshots and approves (or requests tuning) before T14
+      (approved 2026-10-20; the mai logo keeps following each theme's accent)
 
 ## Task 14: BIDV chuẩn refinements
 
@@ -468,10 +469,20 @@ Added `texture.page-size` (the dot grid needs a tile size). The dot colour mixes
 
 **Acceptance criteria:**
 
-- [ ] `styles.spec.ts` asserts the BIDV `:root` differs from revision 1 only in these properties
-- [ ] Contrast still passes for BIDV light and dark
+- [x] `styles.spec.ts` asserts the BIDV `:root` differs from revision 1 only in these properties
+- [x] Contrast still passes for BIDV light and dark
 
 **Verification:** `npx nx test ui`; before/after screenshots in the PR
+
+**Verified (2026-10-20):** two new `styles.spec.ts` cases failed first, then passed:
+
+- `:root` values: control 8px, field 6px, card 14px, display −0.02em / 700, eyebrow →
+  `primary`.
+- md/lg shadows have two ink-tinted layers.
+
+Contrast still passes for BIDV light and dark (eyebrow = primary). In the browser on
+`/design-system` (BIDV), the button radius is 8px, h1 letter-spacing is −0.72px at 36px, and
+`--shadow-md` has both layers. The section eyebrows render in brand teal.
 
 **Dependencies:** Checkpoint D
 
