@@ -54,6 +54,7 @@
     }
 
     &__value {
+      font-family: var(--font-display);
       font-size: var(--text-2xl);
       font-weight: var(--font-weight-bold);
       font-variant-numeric: tabular-nums;

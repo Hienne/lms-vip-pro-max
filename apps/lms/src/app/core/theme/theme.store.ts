@@ -20,7 +20,7 @@ export type EffectiveTheme = 'light' | 'dark';
  * The colour palettes. `bidv` is the default and has no attribute; the others are token overrides
  * in `@lms/ui`'s theme. The pre-boot script in index.html repeats this list: keep them in sync.
  */
-export const THEME_PALETTES = ['bidv', 'bidv-soft', 'blue', 'sand'] as const;
+export const THEME_PALETTES = ['bidv', 'ngoc', 'cobalt', 'giay'] as const;
 export type ThemePalette = (typeof THEME_PALETTES)[number];
 
 export const THEME_STORAGE_KEY = 'lms.theme';
@@ -165,7 +165,7 @@ export class ThemeStore {
     this.state.preference.set(preference);
   }
 
-  /** Choose BIDV chuẩn, BIDV dịu, Xanh dương or Cát ấm. */
+  /** Choose BIDV chuẩn, Ngọc, Cobalt or Giấy. */
   setPalette(palette: ThemePalette): void {
     this.state.palette.set(palette);
   }

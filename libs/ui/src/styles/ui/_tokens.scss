@@ -4,6 +4,7 @@
 // `global/_theme.scss`, light and dark, and read back through the accessor functions of the `ui`
 // module (`ui.color(primary)` → `var(--color-primary)`).
 // This file only declares maps: loading it emits no CSS.
+@use 'sass:map';
 @use 'sass:string';
 
 // ---- Breakpoints (mobile-first; the mockup's max-width 900/1000/1024 map to the nearest step) ----
@@ -77,6 +78,19 @@ $colors: (
   hero-subtle: #a9cfcc,
   hero-accent: #ffd15c,
   hero-chip: rgba(255, 255, 255, 0.14),
+  // page and section eyebrows (small uppercase labels)
+  eyebrow: var(--color-primary),
+  // sidebar navigation: a dark brand panel for BIDV, which a theme may turn light. The references
+  // follow the mode (primary-strong has a dark value); the washes sit on nav-bg.
+  nav-bg: var(--color-primary-strong),
+  nav-text: var(--color-hero-muted),
+  nav-muted: var(--color-hero-subtle),
+  nav-strong: var(--color-white),
+  nav-hover: color-mix(in srgb, var(--color-white) 8%, transparent),
+  nav-active-bg: color-mix(in srgb, var(--color-white) 14%, transparent),
+  nav-active-text: var(--color-white),
+  nav-indicator: var(--color-accent),
+  nav-border: color-mix(in srgb, var(--color-white) 8%, transparent),
 );
 
 // ---- Colour: data viz (distinguishable, always paired with a label or symbol) ----
@@ -137,11 +151,12 @@ $chart-dark: (
   grid: #2a3836,
 );
 
-// ---- Colour palettes: the user's choice beside light/dark (ThemeStore, `data-palette`) ----
-// `bidv` is the default: the maps above, with no override block. Every other palette overrides
-// brand and neutral tokens only, in light and in dark; `global/_palettes.scss` emits them and
-// fails the build on a key outside these lists, or on a light key the dark map leaves out (it would
-// leak into dark mode).
+// ---- Themes: the user's choice beside light/dark (ThemeStore, `data-palette`) ----
+// `bidv` is the default: the maps above, with no override block. Every other theme may override
+// the colour, chart and shadow keys below in light and in dark, and the mode-independent type,
+// shape and texture keys once. `global/_palettes.scss` emits them and fails the build on a group
+// or key outside these lists, or on a light key the dark map leaves out (it would leak into dark
+// mode).
 $palette-color-keys: (
   primary,
   primary-hover,
@@ -163,198 +178,62 @@ $palette-color-keys: (
   text-muted,
   border,
   border-strong,
-  cover-layers
+  cover-layers,
+  accent,
+  accent-subtle,
+  accent-ink,
+  on-accent,
+  hero-accent,
+  hero-chip,
+  eyebrow,
+  nav-bg,
+  nav-text,
+  nav-muted,
+  nav-strong,
+  nav-hover,
+  nav-active-bg,
+  nav-active-text,
+  nav-indicator,
+  nav-border
 );
-$palette-chart-keys: (1, grid);
-
-$palettes: (
-  // BIDV dịu: the BIDV teal, less saturated; sidebar and hero mid-teal instead of near-black
-  bidv-soft: (
-      light: (
-        colors: (
-          primary: #2a7f7b,
-          primary-hover: #236c69,
-          primary-strong: #2c5a58,
-          primary-subtle: #edf5f4,
-          on-primary: #ffffff,
-          ring: #2a7f7b,
-          on-dark-hover: #edf5f4,
-          hero-from: #2c5a58,
-          hero-to: #256a67,
-          bg: #f7faf9,
-          surface: #ffffff,
-          surface-2: #f1f6f5,
-          surface-sunken: #e9f0ef,
-          text: #1c2120,
-          text-secondary: #4b5755,
-          text-muted: #5f6b69,
-          border: #e4ecea,
-          border-strong: #8a9694,
-          cover-layers: #edf5f4,
-        ),
-        chart: (
-          1: #2a7f7b,
-          grid: #e4ecea,
-        ),
-      ),
-      dark: (
-        colors: (
-          primary: #6cc4bd,
-          primary-hover: #86d0ca,
-          primary-strong: #12312f,
-          primary-subtle: #16302e,
-          on-primary: #04201f,
-          ring: #86d0ca,
-          on-dark-hover: #edf5f4,
-          hero-from: #12312f,
-          hero-to: #1d4f4c,
-          bg: #111917,
-          surface: #17201f,
-          surface-2: #1e2928,
-          surface-sunken: #131c1b,
-          text: #e6eeed,
-          text-secondary: #c4d0ce,
-          text-muted: #a2b2af,
-          border: #293634,
-          border-strong: #5f716e,
-          cover-layers: #16302e,
-        ),
-        chart: (
-          1: #6cc4bd,
-          grid: #2b3937,
-        ),
-      ),
-    ),
-  // Xanh dương: muted steel blue, cool near-white neutrals
-  blue: (
-      light: (
-        colors: (
-          primary: #33659f,
-          primary-hover: #2a5587,
-          primary-strong: #1f3b63,
-          primary-subtle: #eaf1fa,
-          on-primary: #ffffff,
-          ring: #33659f,
-          on-dark-hover: #eaf1fa,
-          hero-from: #1f3b63,
-          hero-to: #2a5587,
-          hero-muted: #d4e2f4,
-          hero-subtle: #aec6e6,
-          bg: #f5f8fc,
-          surface: #ffffff,
-          surface-2: #eef3f9,
-          surface-sunken: #e5ecf5,
-          text: #18202b,
-          text-secondary: #47546a,
-          text-muted: #5b677a,
-          border: #e0e7f0,
-          border-strong: #8792a3,
-          cover-layers: #eaf1fa,
-        ),
-        chart: (
-          1: #33659f,
-          grid: #e0e7f0,
-        ),
-      ),
-      dark: (
-        colors: (
-          primary: #7fb0ec,
-          primary-hover: #9cc2f1,
-          primary-strong: #13233a,
-          primary-subtle: #172741,
-          on-primary: #0b1a2e,
-          ring: #9cc2f1,
-          on-dark-hover: #eaf1fa,
-          hero-from: #13233a,
-          hero-to: #1f3a60,
-          hero-muted: #d4e2f4,
-          hero-subtle: #aec6e6,
-          bg: #0f141b,
-          surface: #151b24,
-          surface-2: #1c2430,
-          surface-sunken: #11171f,
-          text: #e6ecf3,
-          text-secondary: #c2ccd8,
-          text-muted: #9eabbb,
-          border: #263040,
-          border-strong: #5d6a7e,
-          cover-layers: #172741,
-        ),
-        chart: (
-          1: #7fb0ec,
-          grid: #283344,
-        ),
-      ),
-    ),
-  // Cát ấm: muted terracotta, warm cream neutrals
-  sand: (
-      light: (
-        colors: (
-          primary: #9a5b3c,
-          primary-hover: #844d32,
-          primary-strong: #5a3a2a,
-          primary-subtle: #f6ece4,
-          on-primary: #ffffff,
-          ring: #9a5b3c,
-          on-dark-hover: #f6ece4,
-          hero-from: #5a3a2a,
-          hero-to: #7d4a31,
-          hero-muted: #f0dccf,
-          hero-subtle: #dcbfae,
-          bg: #faf7f2,
-          surface: #fffdf9,
-          surface-2: #f4efe7,
-          surface-sunken: #ece5da,
-          text: #221d18,
-          text-secondary: #594f45,
-          text-muted: #6b6157,
-          border: #ebe3d6,
-          border-strong: #978b7d,
-          cover-layers: #f6ece4,
-        ),
-        chart: (
-          1: #9a5b3c,
-          grid: #ebe3d6,
-        ),
-      ),
-      dark: (
-        colors: (
-          primary: #e0a382,
-          primary-hover: #e8b699,
-          primary-strong: #2e1f17,
-          primary-subtle: #2f221a,
-          on-primary: #2a170d,
-          ring: #e8b699,
-          on-dark-hover: #f6ece4,
-          hero-from: #2e1f17,
-          hero-to: #4a3022,
-          hero-muted: #f0dccf,
-          hero-subtle: #dcbfae,
-          bg: #1a1612,
-          surface: #211c17,
-          surface-2: #29231d,
-          surface-sunken: #1c1814,
-          text: #f0ebe4,
-          text-secondary: #d2c8bc,
-          text-muted: #aea395,
-          border: #352d25,
-          border-strong: #74685b,
-          cover-layers: #2f221a,
-        ),
-        chart: (
-          1: #e0a382,
-          grid: #362e26,
-        ),
-      ),
-    )
+$palette-chart-keys: (1, 2, grid);
+$palette-shadow-keys: (sm, md, lg);
+// Mode-independent groups: set once per palette, emitted in its light block, valid in dark too.
+// Each key names the custom property it sets.
+$palette-type-keys: (
+  sans: font-sans,
+  display: font-display,
+  display-weight: font-weight-display,
+  display-tracking: tracking-display,
+);
+$palette-shape-keys: (
+  control: radius-control,
+  field: radius-field,
+  card: radius-card,
+);
+$palette-texture-keys: (
+  page: texture-page,
+  page-size: texture-page-size,
 );
 
 // ---- Typography ----
-$font-families: (
-  sans: string.unquote(
+// Self-hosted faces a theme may use (each one is a `@fontsource/<name>` package listed in the
+// app's build styles; a guard spec checks the list). The browser downloads a file only when an
+// element renders in that family.
+$font-stacks: (
+  be-vietnam-pro: string.unquote(
       "'Be Vietnam Pro', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif"
     ),
+  fraunces: string.unquote("'Fraunces', Georgia, 'Times New Roman', serif"),
+  nunito-sans: string.unquote(
+      "'Nunito Sans', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif"
+    ),
+);
+$font-families: (
+  sans: map.get($font-stacks, be-vietnam-pro),
   mono: string.unquote("ui-monospace, 'SF Mono', Menlo, Consolas, monospace"),
+  // headings (h1–h3, page titles, KPI values); a theme may set its own face
+  display: string.unquote('var(--font-sans)'),
 );
 $text-sizes: (
   xs: 0.75rem,
@@ -381,13 +260,16 @@ $weights: (
   medium: 500,
   semibold: 600,
   bold: 700,
+  display: 700, // h1 and page titles
 );
 $trackings: (
   tight: -0.01em,
   // H1
   wide: 0.04em,
   // table header
-  wider: 0.08em, // eyebrow
+  wider: 0.08em,
+  // eyebrow
+  display: -0.02em, // h1 and page titles
 );
 
 // ---- Spacing: the mockup's 4px steps and nothing else ----
@@ -462,16 +344,31 @@ $radii: (
   lg: 14px,
   xl: 20px,
   full: 999px,
+  // buttons and segmented controls
+  control: 8px,
+  // inputs, selects, textareas
+  field: 6px,
+  // cards and popovers
+  card: 14px,
 );
+
+// ---- Texture: the page background image over `bg` (none by default) ----
+$textures: (
+  page: none,
+  page-size: auto,
+);
+// Two layers, tinted with the BIDV ink: a contact shadow and a long, soft drop.
 $shadows: (
   sm: (
-    0 1px 2px rgba(16, 40, 38, 0.06),
+    0 1px 2px rgba(16, 40, 38, 0.05),
   ),
   md: (
-    0 4px 16px rgba(16, 40, 38, 0.08),
+    0 1px 2px rgba(16, 40, 38, 0.04),
+    0 8px 24px -12px rgba(16, 40, 38, 0.14),
   ),
   lg: (
-    0 16px 40px rgba(16, 40, 38, 0.18),
+    0 1px 2px rgba(16, 40, 38, 0.04),
+    0 32px 64px -28px rgba(16, 40, 38, 0.32),
   ),
 );
 $shadows-dark: (
@@ -511,4 +408,404 @@ $z-indexes: (
   drawer: 60,
   modal: 70,
   toast: 80,
+);
+
+// ---- Themes (after the type and texture tokens they read) ----
+// Values tuned to the SPEC.md contrast rules; `styles.spec.ts` checks them per theme and mode.
+$palettes: (
+  // Ngọc: the BIDV teal toned down on a mist canvas; deep-teal sidebar, muted gold accent
+  ngoc: (
+      type: (
+        display-weight: 600,
+        display-tracking: -0.02em,
+      ),
+      shape: (
+        control: 10px,
+        field: 8px,
+        card: 16px,
+      ),
+      light: (
+        colors: (
+          primary: #2b6e69,
+          primary-hover: #245e5a,
+          primary-strong: #1f3b39,
+          primary-subtle: #e4efed,
+          on-primary: #ffffff,
+          ring: #2b6e69,
+          on-dark-hover: #e4efed,
+          hero-from: #1f3b39,
+          hero-to: #2b5e5a,
+          hero-muted: #d3e3e0,
+          hero-subtle: #a9c4c0,
+          bg: #eef2f1,
+          surface: #f7f9f8,
+          surface-2: #f1f4f3,
+          surface-sunken: #e6ecea,
+          text: #1e2b2a,
+          text-secondary: #3f4d4b,
+          text-muted: #566462,
+          border: #d8e0de,
+          border-strong: #7e8b88,
+          cover-layers: #e4efed,
+          accent: #b8862b,
+          accent-subtle: #f5ecd8,
+          accent-ink: #7d5f1a,
+          on-accent: #2a1f05,
+          hero-accent: #e3c27a,
+          eyebrow: #7d5f1a,
+          nav-bg: #1f3b39,
+          nav-text: #d3e3e0,
+          nav-muted: #a9c4c0,
+          nav-strong: #ffffff,
+          nav-active-text: #ffffff,
+          nav-indicator: #e3c27a,
+          nav-hover: color-mix(in srgb, var(--color-white) 8%, transparent),
+          nav-active-bg: color-mix(in srgb, var(--color-white) 12%, transparent),
+          nav-border: color-mix(in srgb, var(--color-white) 8%, transparent),
+        ),
+        chart: (
+          1: #2b6e69,
+          2: #b8862b,
+          grid: #d8e0de,
+        ),
+        shadow: (
+          sm: (
+            0 1px 2px rgba(30, 43, 42, 0.05),
+          ),
+          md: (
+            0 1px 2px rgba(30, 43, 42, 0.04),
+            0 8px 24px -12px rgba(30, 43, 42, 0.16),
+          ),
+          lg: (
+            0 1px 2px rgba(30, 43, 42, 0.04),
+            0 32px 64px -28px rgba(30, 43, 42, 0.34),
+          ),
+        ),
+      ),
+      dark: (
+        colors: (
+          primary: #6fb8b0,
+          primary-hover: #86c6bf,
+          primary-strong: #0f2422,
+          primary-subtle: #16302d,
+          on-primary: #0e1615,
+          ring: #86c6bf,
+          on-dark-hover: #e4efed,
+          hero-from: #0f2422,
+          hero-to: #1a3b38,
+          hero-muted: #d3e3e0,
+          hero-subtle: #a9c4c0,
+          bg: #141a19,
+          surface: #1a2120,
+          surface-2: #1f2726,
+          surface-sunken: #121817,
+          text: #d6e0de,
+          text-secondary: #b6c3c0,
+          text-muted: #95a39f,
+          border: #29332f,
+          border-strong: #66756f,
+          cover-layers: #16302d,
+          accent: #d9b25e,
+          accent-subtle: #2e2814,
+          accent-ink: #e3c27a,
+          on-accent: #241a04,
+          hero-accent: #e3c27a,
+          eyebrow: #e3c27a,
+          nav-bg: #101615,
+          nav-text: #c7d4d1,
+          nav-muted: #95a39f,
+          nav-strong: #ffffff,
+          nav-active-text: #ffffff,
+          nav-indicator: #d9b25e,
+          nav-hover: color-mix(in srgb, var(--color-white) 8%, transparent),
+          nav-active-bg: color-mix(in srgb, var(--color-white) 12%, transparent),
+          nav-border: color-mix(in srgb, var(--color-white) 8%, transparent),
+        ),
+        chart: (
+          1: #6fb8b0,
+          2: #d9b25e,
+          grid: #29332f,
+        ),
+        shadow: (
+          sm: (
+            0 1px 2px rgba(0, 0, 0, 0.3),
+          ),
+          md: (
+            0 1px 2px rgba(0, 0, 0, 0.3),
+            0 8px 24px -12px rgba(0, 0, 0, 0.5),
+          ),
+          lg: (
+            0 1px 2px rgba(0, 0, 0, 0.3),
+            0 40px 70px -32px rgba(0, 0, 0, 0.65),
+          ),
+        ),
+      ),
+    ),
+  // Cobalt (after kite.vibery.app): slate ink, cobalt primary, terracotta accent, Nunito Sans with light headings, pill buttons, light sidebar
+  cobalt: (
+      type: (
+        sans: map.get($font-stacks, nunito-sans),
+        display-weight: 300,
+        display-tracking: -0.03em,
+      ),
+      shape: (
+        control: 999px,
+        field: 12px,
+        card: 20px,
+      ),
+      light: (
+        colors: (
+          primary: #3a5ba9,
+          primary-hover: #314e93,
+          primary-strong: #1b3a8c,
+          primary-subtle: #e4e9f2,
+          on-primary: #ffffff,
+          ring: #3a5ba9,
+          on-dark-hover: #e4e9f2,
+          hero-from: #132a66,
+          hero-to: #2b55b8,
+          hero-muted: #dbe3f5,
+          hero-subtle: #c8d4f0,
+          bg: #eef1f4,
+          surface: #f6f7f9,
+          surface-2: #f0f2f5,
+          surface-sunken: #e6e9ee,
+          text: #243042,
+          text-secondary: #3f4a5c,
+          text-muted: #4f596a,
+          border: #d9dee6,
+          border-strong: #7c8799,
+          cover-layers: #e4e9f2,
+          accent: #b94328,
+          accent-subtle: #f2e1db,
+          accent-ink: #9a3d2a,
+          on-accent: #ffffff,
+          hero-accent: #ff8a6b,
+          eyebrow: #b94328,
+          nav-bg: #e9edf3,
+          nav-text: #3f4a5c,
+          nav-muted: #4f596a,
+          nav-strong: #243042,
+          nav-hover: color-mix(in srgb, var(--color-text) 6%, transparent),
+          nav-active-bg: #dfe4eb,
+          nav-active-text: #1b3a8c,
+          nav-indicator: #b94328,
+          nav-border: #d9dee6,
+        ),
+        chart: (
+          1: #3a5ba9,
+          2: #b94328,
+          grid: #d9dee6,
+        ),
+        shadow: (
+          sm: (
+            0 1px 2px rgba(19, 33, 58, 0.05),
+          ),
+          md: (
+            0 1px 2px rgba(19, 33, 58, 0.04),
+            0 6px 20px -10px rgba(19, 33, 58, 0.14),
+          ),
+          lg: (
+            0 1px 2px rgba(19, 33, 58, 0.04),
+            0 40px 70px -32px rgba(36, 48, 66, 0.45),
+          ),
+        ),
+      ),
+      dark: (
+        colors: (
+          primary: #7c97d6,
+          primary-hover: #8da5dd,
+          primary-strong: #0f1a33,
+          primary-subtle: #252f42,
+          on-primary: #0f141b,
+          ring: #8da5dd,
+          on-dark-hover: #e4e9f2,
+          hero-from: #0f1a33,
+          hero-to: #1b2c55,
+          hero-muted: #dbe3f5,
+          hero-subtle: #c8d4f0,
+          bg: #151a21,
+          surface: #1c222b,
+          surface-2: #212833,
+          surface-sunken: #12161c,
+          text: #d5dce6,
+          text-secondary: #b3bcc9,
+          text-muted: #99a3b3,
+          border: #2a323d,
+          border-strong: #6a7689,
+          cover-layers: #252f42,
+          accent: #e07a5f,
+          accent-subtle: #3d2724,
+          accent-ink: #eaa394,
+          on-accent: #1a1210,
+          hero-accent: #ff8a6b,
+          eyebrow: #e07a5f,
+          nav-bg: #181d25,
+          nav-text: #b3bcc9,
+          nav-muted: #99a3b3,
+          nav-strong: #d5dce6,
+          nav-hover: color-mix(in srgb, var(--color-text) 6%, transparent),
+          nav-active-bg: #27303c,
+          nav-active-text: #d5dce6,
+          nav-indicator: #e07a5f,
+          nav-border: #2a323d,
+        ),
+        chart: (
+          1: #7c97d6,
+          2: #e07a5f,
+          grid: #2a323d,
+        ),
+        shadow: (
+          sm: (
+            0 1px 2px rgba(0, 0, 0, 0.3),
+          ),
+          md: (
+            0 1px 2px rgba(0, 0, 0, 0.3),
+            0 8px 24px -12px rgba(0, 0, 0, 0.5),
+          ),
+          lg: (
+            0 1px 2px rgba(0, 0, 0, 0.3),
+            0 40px 70px -32px rgba(0, 0, 0, 0.65),
+          ),
+        ),
+      ),
+    ),
+  // Giấy (after tony-card.pages.dev): warm paper with a dot grid, ink as the primary, one rust accent, Fraunces headings, light sidebar
+  giay: (
+      // the primary is the ink, so the picker shows the accent
+      swatch: accent,
+      type: (
+        display: map.get($font-stacks, fraunces),
+        display-weight: 500,
+        display-tracking: -0.02em,
+      ),
+      shape: (
+        control: 10px,
+        field: 8px,
+        card: 20px,
+      ),
+      texture: (
+        // a dot grid in the ink colour, so it follows light and dark
+        page: string.unquote(
+            'radial-gradient(circle at 1px 1px, color-mix(in srgb, var(--color-text) 7%, transparent) 1px, transparent 0)'
+          ),
+        page-size: 22px 22px
+      ),
+      light: (
+        colors: (
+          primary: #16181d,
+          primary-hover: #2c2f36,
+          primary-strong: #16181d,
+          primary-subtle: #efeae0,
+          on-primary: #fbfaf6,
+          ring: #c2512b,
+          on-dark-hover: #efeae0,
+          hero-from: #16181d,
+          hero-to: #16181d,
+          hero-muted: #d6d2c8,
+          hero-subtle: #b1afa8,
+          bg: #f4f1ea,
+          surface: #fbfaf6,
+          surface-2: #f6f3ec,
+          surface-sunken: #eeeae1,
+          text: #16181d,
+          text-secondary: #4a4d55,
+          text-muted: #5f6168,
+          border: #e2ddd2,
+          border-strong: #8a857a,
+          cover-layers: #efeae0,
+          accent: #c2512b,
+          accent-subtle: #f3e2d9,
+          accent-ink: #a3401d,
+          on-accent: #ffffff,
+          hero-accent: #e0703f,
+          eyebrow: #a3401d,
+          nav-bg: #efebe2,
+          nav-text: #4a4d55,
+          nav-muted: #5f6168,
+          nav-strong: #16181d,
+          nav-hover: color-mix(in srgb, var(--color-text) 5%, transparent),
+          nav-active-bg: #e6e0d4,
+          nav-active-text: #16181d,
+          nav-indicator: #c2512b,
+          nav-border: #e2ddd2,
+        ),
+        chart: (
+          1: #c2512b,
+          2: #16181d,
+          grid: #e2ddd2,
+        ),
+        shadow: (
+          sm: (
+            0 1px 0 rgba(22, 24, 29, 0.03),
+          ),
+          md: (
+            0 1px 0 rgba(22, 24, 29, 0.03),
+            0 12px 32px -20px rgba(22, 24, 29, 0.2),
+          ),
+          lg: (
+            0 1px 0 rgba(22, 24, 29, 0.03),
+            0 30px 60px -30px rgba(22, 24, 29, 0.3),
+          ),
+        ),
+      ),
+      dark: (
+        colors: (
+          primary: #ece8df,
+          primary-hover: #f6f3ec,
+          primary-strong: #0b0d10,
+          primary-subtle: #262a31,
+          on-primary: #15181d,
+          ring: #e0703f,
+          on-dark-hover: #efeae0,
+          hero-from: #0b0d10,
+          hero-to: #0b0d10,
+          hero-muted: #d6d2c8,
+          hero-subtle: #b1afa8,
+          bg: #0f1115,
+          surface: #15181d,
+          surface-2: #1a1d23,
+          surface-sunken: #0c0e11,
+          text: #ece8df,
+          text-secondary: #c9c5bc,
+          text-muted: #b1afa8,
+          border: #262a31,
+          border-strong: #6b6f78,
+          cover-layers: #262a31,
+          accent: #e0703f,
+          accent-subtle: #3a2318,
+          accent-ink: #f0a07a,
+          on-accent: #15181d,
+          hero-accent: #e0703f,
+          eyebrow: #e0703f,
+          nav-bg: #13161b,
+          nav-text: #c9c5bc,
+          nav-muted: #b1afa8,
+          nav-strong: #ece8df,
+          nav-hover: color-mix(in srgb, var(--color-text) 6%, transparent),
+          nav-active-bg: #22262d,
+          nav-active-text: #ece8df,
+          nav-indicator: #e0703f,
+          nav-border: #262a31,
+        ),
+        chart: (
+          1: #e0703f,
+          2: #ece8df,
+          grid: #262a31,
+        ),
+        shadow: (
+          sm: (
+            0 1px 2px rgba(0, 0, 0, 0.3),
+          ),
+          md: (
+            0 1px 2px rgba(0, 0, 0, 0.3),
+            0 8px 24px -12px rgba(0, 0, 0, 0.5),
+          ),
+          lg: (
+            0 1px 2px rgba(0, 0, 0, 0.3),
+            0 40px 70px -32px rgba(0, 0, 0, 0.65),
+          ),
+        ),
+      )
+    )
 );

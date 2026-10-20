@@ -39,6 +39,7 @@
   }
   @include -emit(ui.$radii, radius);
   @include -emit(ui.$shadows, shadow);
+  @include -emit(ui.$textures, texture);
   @include -emit(ui.$durations, transition-duration);
   @include -emit(ui.$easings, ease);
   --default-transition-duration: var(--transition-duration-base);

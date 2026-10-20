@@ -200,7 +200,7 @@ describe('ThemeStore', () => {
       );
     });
 
-    it.each(['bidv-soft', 'blue', 'sand'] as const)(
+    it.each(['ngoc', 'cobalt', 'giay'] as const)(
       'applies and remembers %s',
       (palette) => {
         const { store, storage } = setup();
@@ -216,11 +216,22 @@ describe('ThemeStore', () => {
 
     it('restores a stored palette', () => {
       const storage = new FakeStorage();
-      storage.setItem(PALETTE_STORAGE_KEY, 'sand');
+      storage.setItem(PALETTE_STORAGE_KEY, 'giay');
       const { store } = setup({ storage });
-      expect(store.palette$()).toBe('sand');
-      expect(rootPalette()).toBe('sand');
+      expect(store.palette$()).toBe('giay');
+      expect(rootPalette()).toBe('giay');
     });
+
+    it.each(['bidv-soft', 'blue', 'sand'])(
+      'treats a revision 1 palette id (%s) as BIDV chuẩn',
+      (old) => {
+        const storage = new FakeStorage();
+        storage.setItem(PALETTE_STORAGE_KEY, old);
+        const { store } = setup({ storage });
+        expect(store.palette$()).toBe('bidv');
+        expect(rootPalette()).toBeNull();
+      },
+    );
 
     it('treats an unknown stored palette as BIDV chuẩn', () => {
       const storage = new FakeStorage();
@@ -232,7 +243,7 @@ describe('ThemeStore', () => {
 
     it('removes the attribute and the stored value when going back to BIDV chuẩn', () => {
       const { store, storage } = setup();
-      store.setPalette('blue');
+      store.setPalette('cobalt');
       TestBed.tick();
       store.setPalette('bidv');
       TestBed.tick();
@@ -245,15 +256,15 @@ describe('ThemeStore', () => {
     it('is independent of the light/dark choice', () => {
       const { store, storage } = setup();
       store.setPreference('dark');
-      store.setPalette('sand');
+      store.setPalette('giay');
       TestBed.tick();
       store.setPreference('system');
       TestBed.tick();
-      expect(store.palette$()).toBe('sand');
-      expect(rootPalette()).toBe('sand');
+      expect(store.palette$()).toBe('giay');
+      expect(rootPalette()).toBe('giay');
       expect(rootTheme()).toBeNull();
       expect((storage as FakeStorage).items.get(PALETTE_STORAGE_KEY)).toBe(
-        'sand',
+        'giay',
       );
     });
 
@@ -261,9 +272,9 @@ describe('ThemeStore', () => {
       expect(() => {
         const { store } = setup({ storage: blockedStorage });
         expect(store.palette$()).toBe('bidv');
-        store.setPalette('blue');
+        store.setPalette('cobalt');
         TestBed.tick();
-        expect(rootPalette()).toBe('blue');
+        expect(rootPalette()).toBe('cobalt');
       }).not.toThrow();
     });
   });

@@ -8,7 +8,7 @@ import {
 import { ThemeControls } from './theme-controls';
 
 class FakeThemeStore {
-  readonly palette$ = signal<ThemePalette>('bidv-soft');
+  readonly palette$ = signal<ThemePalette>('ngoc');
   readonly preference$ = signal<ThemePreference>('dark');
   readonly setPalette = vi.fn((palette: ThemePalette) =>
     this.palette$.set(palette),
@@ -49,23 +49,23 @@ describe('ThemeControls', () => {
     const { options, selected } = await render();
     expect(options('Bảng màu').map((o) => o.textContent?.trim())).toEqual([
       'BIDV chuẩn',
-      'BIDV dịu',
-      'Xanh dương',
-      'Cát ấm',
+      'Ngọc',
+      'Cobalt',
+      'Giấy',
     ]);
-    expect(selected('Bảng màu')).toEqual(['BIDV dịu']);
+    expect(selected('Bảng màu')).toEqual(['Ngọc']);
   });
 
   it('paints each palette swatch from its constant swatch tokens', async () => {
     const { option } = await render();
-    const swatch = option('Bảng màu', 'Xanh dương').querySelector<HTMLElement>(
+    const swatch = option('Bảng màu', 'Cobalt').querySelector<HTMLElement>(
       '.swatch-group__swatch',
     )!;
     expect(swatch.style.getPropertyValue('--swatch-fill')).toBe(
-      'var(--color-swatch-blue-fill)',
+      'var(--color-swatch-cobalt-fill)',
     );
     expect(swatch.style.getPropertyValue('--swatch-base')).toBe(
-      'var(--color-swatch-blue-base)',
+      'var(--color-swatch-cobalt-base)',
     );
   });
 
@@ -81,10 +81,10 @@ describe('ThemeControls', () => {
 
   it('chooses a palette through the store', async () => {
     const { store, option, selected, settle } = await render();
-    option('Bảng màu', 'Cát ấm').click();
+    option('Bảng màu', 'Giấy').click();
     await settle();
-    expect(store.setPalette).toHaveBeenCalledWith('sand');
-    expect(selected('Bảng màu')).toEqual(['Cát ấm']);
+    expect(store.setPalette).toHaveBeenCalledWith('giay');
+    expect(selected('Bảng màu')).toEqual(['Giấy']);
   });
 
   it('chooses a mode through the store', async () => {

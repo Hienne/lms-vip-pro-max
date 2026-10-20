@@ -45,6 +45,9 @@
 @function radius($key) {
   @return token(radius, radius, tokens.$radii, $key);
 }
+@function texture($key) {
+  @return token(texture, texture, tokens.$textures, $key);
+}
 @function shadow($key) {
   @return token(shadow, shadow, tokens.$shadows, $key);
 }

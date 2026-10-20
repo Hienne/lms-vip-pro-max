@@ -67,6 +67,16 @@ const LIGHT_PROPERTIES = [
   '--color-hero-subtle',
   '--color-hero-accent',
   '--color-hero-chip',
+  '--color-eyebrow',
+  '--color-nav-bg',
+  '--color-nav-text',
+  '--color-nav-muted',
+  '--color-nav-strong',
+  '--color-nav-hover',
+  '--color-nav-active-bg',
+  '--color-nav-active-text',
+  '--color-nav-indicator',
+  '--color-nav-border',
   '--color-chart-1',
   '--color-chart-2',
   '--color-chart-3',
@@ -75,14 +85,15 @@ const LIGHT_PROPERTIES = [
   '--color-chart-grid',
   '--color-swatch-bidv-fill',
   '--color-swatch-bidv-base',
-  '--color-swatch-bidv-soft-fill',
-  '--color-swatch-bidv-soft-base',
-  '--color-swatch-blue-fill',
-  '--color-swatch-blue-base',
-  '--color-swatch-sand-fill',
-  '--color-swatch-sand-base',
+  '--color-swatch-ngoc-fill',
+  '--color-swatch-ngoc-base',
+  '--color-swatch-cobalt-fill',
+  '--color-swatch-cobalt-base',
+  '--color-swatch-giay-fill',
+  '--color-swatch-giay-base',
   '--font-sans',
   '--font-mono',
+  '--font-display',
   '--default-font-family',
   '--default-mono-font-family',
   '--text-xs',
@@ -99,9 +110,11 @@ const LIGHT_PROPERTIES = [
   '--font-weight-medium',
   '--font-weight-semibold',
   '--font-weight-bold',
+  '--font-weight-display',
   '--tracking-tight',
   '--tracking-wide',
   '--tracking-wider',
+  '--tracking-display',
   '--spacing-1',
   '--spacing-2',
   '--spacing-3',
@@ -128,9 +141,14 @@ const LIGHT_PROPERTIES = [
   '--radius-lg',
   '--radius-xl',
   '--radius-full',
+  '--radius-control',
+  '--radius-field',
+  '--radius-card',
   '--shadow-sm',
   '--shadow-md',
   '--shadow-lg',
+  '--texture-page',
+  '--texture-page-size',
   '--transition-duration-fast',
   '--transition-duration-base',
   '--transition-duration-slow',
@@ -395,6 +413,71 @@ describe('global stylesheet', () => {
   });
 });
 
+describe('BIDV chuẩn refinements (SPEC.md revision 2)', () => {
+  const root = Object.fromEntries(
+    rules(compileGlobal())
+      .filter((rule) => rule.selector === ':root')
+      .flatMap((rule) =>
+        [...rule.body.matchAll(/(--[\w-]+)\s*:\s*([^;]+);/g)].map((m) => [
+          m[1],
+          m[2].trim(),
+        ]),
+      ),
+  );
+
+  it('gives buttons 8px corners, h1 tighter tracking and eyebrows the brand colour', () => {
+    expect(root['--radius-control']).toBe('8px');
+    expect(root['--radius-field']).toBe('6px');
+    expect(root['--radius-card']).toBe('14px');
+    expect(root['--tracking-display']).toBe('-0.02em');
+    expect(root['--font-weight-display']).toBe('700');
+    expect(root['--color-eyebrow']).toBe('var(--color-primary)');
+  });
+
+  it('uses two-layer, ink-tinted shadows: a contact shadow and a long soft drop', () => {
+    for (const key of ['md', 'lg']) {
+      const layers = root[`--shadow-${key}`].split(/,(?![^(]*\))/);
+      expect(layers).toHaveLength(2);
+      expect(layers[1]).toMatch(/-\d+px rgba\(16, 40, 38, /);
+    }
+  });
+});
+
+describe('theme hooks', () => {
+  // The rules a theme reaches through its type, shape and texture tokens (SPEC.md decision 2).
+  const all = rules(compileGlobal());
+  const body = (selector: string) =>
+    all
+      .filter((rule) => rule.selector === selector)
+      .map((rule) => rule.body)
+      .join(';');
+
+  it.each([
+    ['body', 'background-image: var(--texture-page)'],
+    ['body', 'background-size: var(--texture-page-size)'],
+    ['h1,\n  h2,\n  h3,\n  h4', 'font-family: var(--font-display)'],
+    ['h1', 'font-weight: var(--font-weight-display)'],
+    ['h1', 'letter-spacing: var(--tracking-display)'],
+    ['.btn', 'border-radius: var(--radius-control)'],
+    ['.segmented', 'border-radius: calc(var(--radius-control) + 4px)'],
+    ['.segmented__option', 'border-radius: var(--radius-control)'],
+    ['.input', 'border-radius: var(--radius-field)'],
+    ['.textarea', 'border-radius: var(--radius-field)'],
+    ['.card', 'border-radius: var(--radius-card)'],
+    ['.popover', 'border-radius: var(--radius-card)'],
+    ['.page-header__eyebrow', 'color: var(--color-eyebrow)'],
+    ['.kpi__value', 'font-family: var(--font-display)'],
+  ])('%s reads %s', (selector, declaration) => {
+    expect(body(selector)).toContain(declaration);
+  });
+
+  it('gives every eyebrow the eyebrow colour', () => {
+    expect(compile("@use 'ui'; .x { @include ui.eyebrow; }")).toContain(
+      'color: var(--color-eyebrow)',
+    );
+  });
+});
+
 /** Relative luminance of a `#rrggbb` colour (WCAG 2.x). */
 function luminance(hex: string): number {
   const [r, g, b] = [1, 3, 5].map((i) => {
@@ -411,8 +494,54 @@ function contrast(a: string, b: string): number {
   return (light + 0.05) / (dark + 0.05);
 }
 
-/** SPEC.md Success Criterion 5: [foreground, background, minimum ratio]. */
-const CONTRAST_RULES: readonly [string, string, number][] = [
+/** Blends `#rrggbb` `top` at `alpha` over `#rrggbb` `under` (what a translucent fill paints). */
+function composite(top: string, alpha: number, under: string): string {
+  return (
+    '#' +
+    [1, 3, 5]
+      .map((i) => {
+        const [a, b] = [top, under].map((hex) =>
+          parseInt(hex.slice(i, i + 2), 16),
+        );
+        return Math.round(a * alpha + b * (1 - alpha))
+          .toString(16)
+          .padStart(2, '0');
+      })
+      .join('')
+  );
+}
+
+/**
+ * The `#rrggbb` a colour token paints: follows `var(--color-…)` references and composites a
+ * `color-mix(in srgb, <colour> N%, transparent)` wash over the `under` token. Anything else is
+ * returned as is, so the hex check below reports it.
+ */
+function paint(
+  tokens: Record<string, string>,
+  key: string,
+  under?: string,
+): string {
+  const value = tokens[`--color-${key}`] ?? '';
+  const ref = value.match(/^var\(--color-([\w-]+)\)$/);
+  if (ref) return paint(tokens, ref[1], under);
+  const wash = value.match(
+    /^color-mix\(in srgb, var\(--color-([\w-]+)\) ([\d.]+)%, transparent\)$/,
+  );
+  if (wash && under) {
+    return composite(
+      paint(tokens, wash[1]),
+      Number(wash[2]) / 100,
+      paint(tokens, under),
+    );
+  }
+  return value;
+}
+
+/**
+ * SPEC.md Success Criterion 5: [foreground, background, minimum ratio, what a translucent
+ * background sits on].
+ */
+const CONTRAST_RULES: readonly [string, string, number, string?][] = [
   ...['text', 'text-secondary', 'text-muted'].flatMap((fg) =>
     ['bg', 'surface', 'surface-2'].map(
       (bg) => [fg, bg, 4.5] as [string, string, number],
@@ -423,6 +552,14 @@ const CONTRAST_RULES: readonly [string, string, number][] = [
   ['border-strong', 'surface', 3],
   ['ring', 'surface', 3],
   ['hero-muted', 'hero-to', 4.5],
+  ...['eyebrow', 'accent-ink'].flatMap((fg) =>
+    ['bg', 'surface'].map((bg) => [fg, bg, 4.5] as [string, string, number]),
+  ),
+  ['on-accent', 'accent', 4.5],
+  ['nav-text', 'nav-bg', 4.5],
+  ['nav-muted', 'nav-bg', 4.5],
+  ['nav-strong', 'nav-bg', 4.5],
+  ['nav-active-text', 'nav-active-bg', 4.5, 'nav-bg'],
 ];
 
 describe('colour palettes', () => {
@@ -465,13 +602,17 @@ describe('colour palettes', () => {
     return Object.assign({}, ...layers.map(values)) as Record<string, string>;
   }
 
-  it('declares a constant swatch per palette from its light primary and bg', () => {
+  it('declares a constant swatch per palette from its light swatch colour and bg', () => {
     const root = values(':root');
     expect(root['--color-swatch-bidv-fill']).toBe('#006b68');
     expect(root['--color-swatch-bidv-base']).toBe('#f5f8f8');
+    // Giấy's primary is its ink, so its swatch shows the rust accent instead.
+    const fillKey: Record<string, string> = { giay: '--color-accent' };
     for (const id of ids) {
       const light = values(`:root[data-palette=${id}]`);
-      expect(root[`--color-swatch-${id}-fill`]).toBe(light['--color-primary']);
+      expect(root[`--color-swatch-${id}-fill`]).toBe(
+        light[fillKey[id] ?? '--color-primary'],
+      );
       expect(root[`--color-swatch-${id}-base`]).toBe(light['--color-bg']);
     }
     expect(css).not.toMatch(/data-theme=dark\][^{]*\{[^}]*--color-swatch/);
@@ -479,13 +620,16 @@ describe('colour palettes', () => {
 
   it('emits no override block for the default bidv palette', () => {
     expect(css).not.toContain('data-palette=bidv]');
-    expect(ids).toEqual(['bidv-soft', 'blue', 'sand']);
+    expect(ids).toEqual(['ngoc', 'cobalt', 'giay']);
   });
 
-  it.each(['bidv-soft', 'blue', 'sand'])(
+  it.each(['ngoc', 'cobalt', 'giay'])(
     'emits %s in light, in explicit dark and in system dark, with the same keys in both dark rules',
     (id) => {
-      const light = Object.keys(values(`:root[data-palette=${id}]`));
+      // Mode-independent settings (type, shape, texture) live in the light block only.
+      const light = Object.keys(values(`:root[data-palette=${id}]`)).filter(
+        (name) => /^--(color|shadow)-/.test(name),
+      );
       const explicit = Object.keys(
         values(`:root[data-palette=${id}][data-theme=dark]`),
       );
@@ -495,6 +639,24 @@ describe('colour palettes', () => {
       expect(light.length).toBeGreaterThan(0);
       expect(system.sort()).toEqual(explicit.sort());
       expect(explicit).toEqual(expect.arrayContaining(light));
+    },
+  );
+
+  it.each([
+    ['ngoc', 'Be Vietnam Pro', '10px', 'none'],
+    ['cobalt', 'Nunito Sans', '999px', 'none'],
+    ['giay', 'Fraunces', '10px', 'radial-gradient'],
+  ])(
+    '%s sets its own display face, control radius and texture',
+    (id, face, control, texture) => {
+      const light = values(`:root[data-palette=${id}]`);
+      const root = values(':root');
+      expect(
+        light['--font-display'] ?? light['--font-sans'] ?? root['--font-sans'],
+      ).toContain(face);
+      expect(light['--radius-control']).toBe(control);
+      expect(light['--texture-page'] ?? 'none').toContain(texture);
+      expect(light['--color-nav-bg']).toMatch(/^#/);
     },
   );
 
@@ -508,16 +670,20 @@ describe('colour palettes', () => {
     ),
   )('%s in %s passes the contrast rules', (id, mode) => {
     const tokens = resolved(id, mode);
-    // Every compared token is a resolved hex colour, so a missing one cannot pass as NaN.
-    const unresolved = CONTRAST_RULES.flatMap(([fg, bg]) => [fg, bg]).filter(
-      (key) => !/^#[0-9a-f]{6}$/i.test(tokens[`--color-${key}`] ?? ''),
+    const pairs = CONTRAST_RULES.map(([fg, bg, min, under]) => ({
+      pair: `${fg} on ${bg}`,
+      fg: paint(tokens, fg),
+      bg: paint(tokens, bg, under),
+      min,
+    }));
+    // Every compared token paints a hex colour, so a missing one cannot pass as NaN.
+    const unresolved = pairs.flatMap(({ pair, fg, bg }) =>
+      [fg, bg].filter((hex) => !/^#[0-9a-f]{6}$/i.test(hex)).map(() => pair),
     );
     expect(unresolved).toEqual([]);
-    const failures = CONTRAST_RULES.map(([fg, bg, min]) => ({
-      pair: `${fg} on ${bg}`,
-      ratio: contrast(tokens[`--color-${fg}`], tokens[`--color-${bg}`]),
-      min,
-    })).filter(({ ratio, min }) => ratio < min);
+    const failures = pairs
+      .map(({ pair, fg, bg, min }) => ({ pair, ratio: contrast(fg, bg), min }))
+      .filter(({ ratio, min }) => ratio < min);
     expect(failures).toEqual([]);
   });
 
@@ -567,6 +733,69 @@ describe('colour palettes', () => {
       expect(() => emitPalettes(`(bidv: (light: (), dark: ()))`)).toThrow(
         /palette bidv is the default/,
       );
+    });
+
+    it('emits type, shape and texture once, in the light block, for both modes', () => {
+      const out = rules(
+        emitPalettes(`(x: (
+          light: (colors: ${colors}), dark: (colors: ${colors}),
+          type: (sans: a, display: b, display-weight: 300, display-tracking: -0.03em),
+          shape: (control: 999px, card: 20px),
+          texture: (page: none),
+        ))`),
+      );
+      const light = out.find(
+        (r) => r.selector === ':root[data-palette=x]',
+      )!.body;
+      for (const declaration of [
+        '--font-sans: a',
+        '--font-display: b',
+        '--font-weight-display: 300',
+        '--tracking-display: -0.03em',
+        '--radius-control: 999px',
+        '--radius-card: 20px',
+        '--texture-page: none',
+      ]) {
+        expect(light).toContain(declaration);
+      }
+      for (const dark of out.filter(
+        (r) => r.selector.includes('dark') || r.selector.includes('light]'),
+      )) {
+        expect(dark.body).not.toMatch(/--(font|radius|texture|tracking)-/);
+      }
+    });
+
+    it('treats shadows as a per-mode group', () => {
+      expect(
+        emitPalettes(
+          `(x: (light: (shadow: (md: none)), dark: (shadow: (md: none))))`,
+        ),
+      ).toContain('--shadow-md: none');
+      expect(() =>
+        emitPalettes(`(x: (light: (shadow: (md: none)), dark: ()))`),
+      ).toThrow(
+        /palette x: shadow key `md` has a light value but no dark value/,
+      );
+    });
+
+    it('fails on a mode-independent group inside a mode, an unknown key or setting', () => {
+      expect(() =>
+        emitPalettes(`(x: (light: (type: (sans: a)), dark: ()))`),
+      ).toThrow(/palette x: unknown group `type` in light/);
+      expect(() =>
+        emitPalettes(`(x: (light: (), dark: (), shape: (pill: 1px)))`),
+      ).toThrow(/palette x: shape key `pill` is not a palette key/);
+      expect(() =>
+        emitPalettes(`(x: (light: (), dark: (), fonts: ()))`),
+      ).toThrow(/palette x: unknown setting `fonts`/);
+    });
+
+    it('takes the swatch fill from the colour the palette names', () => {
+      const root = compile(
+        `@use 'global/palettes'; :root { @include palettes.swatches((x: (swatch: accent, light: (colors: (primary: #111111, accent: #222222, bg: #333333)), dark: ()))); }`,
+      );
+      expect(root).toContain('--color-swatch-x-fill: #222222');
+      expect(root).toContain('--color-swatch-x-base: #333333');
     });
   });
 });

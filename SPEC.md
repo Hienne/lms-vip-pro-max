@@ -1,12 +1,16 @@
 # Spec: Custom theme (palette + light/dark) from the header
 
-Status: **approved 2026-10-19**. Single capability (no capability map needed).
+Status: **revision 2, approved and built (2026-10-20)**. Revision 1 (approved 2026-10-19) shipped
+the picker, `ThemeStore` palette state, the no-flash script and three colour-only palettes in
+PR #34. The user found those palettes too plain. Revision 2 replaces them with three full themes
+modelled on two reference sites, and lightly refines BIDV chuẩn. It still ships in PR #34.
+Single capability (no capability map needed).
 
 ## Objective
 
 Let every signed-in user choose how the LMS looks from a palette icon button in the app header.
-The standard BIDV teal is saturated and dark for long study sessions, so the app gets three more
-palettes alongside it: a softer BIDV and two quiet, minimal palettes.
+The standard BIDV teal is saturated and dark for long study sessions, so the app offers three
+quiet, minimal themes next to it.
 
 **Users:** all roles (learner, instructor, admin). The choice belongs to the browser, not the
 account: it is stored in `localStorage`, has no server API and does not follow the user to another
@@ -14,72 +18,121 @@ device.
 
 ### User stories
 
-1. As a learner, I click the palette icon in the header, pick **BIDV dịu**, and the whole app
-   (sidebar, buttons, hero, backgrounds) changes at once, without a reload.
-2. As a user, I set **Tối** (dark) in the same dropdown and the chosen palette shows its dark
+1. As a learner, I click the palette icon in the header, pick **Giấy**, and the whole app
+   (sidebar, buttons, headings, backgrounds, login hero) changes at once, without a reload.
+2. As a user, I set **Tối** (dark) in the same dropdown and the chosen theme shows its dark
    variant.
-3. As a user, I reload or come back tomorrow and the app opens in my palette and mode, with no
+3. As a user, I reload or come back tomorrow and the app opens in my theme and mode, with no
    flash of the default teal.
 4. As a keyboard or screen-reader user, I can open the dropdown, move between options with the
    arrow keys, select one, and close with Escape. Focus then returns to the icon.
 
-### Palettes
+### What the references teach (design direction)
 
-| Id          | Label (UI copy) | Character                                                                                          |
-| ----------- | --------------- | -------------------------------------------------------------------------------------------------- |
-| `bidv`      | BIDV chuẩn      | Today's tokens, unchanged. **Default** (no stored choice = `bidv`).                                |
-| `bidv-soft` | BIDV dịu        | Same teal hue but less saturated and lighter; sidebar and hero are mid-teal instead of near-black. |
-| `blue`      | Xanh dương      | Muted steel-blue primary, cool near-white neutrals. Calm and professional.                         |
-| `sand`      | Cát ấm          | Muted terracotta primary, warm cream neutrals. Paper-like.                                         |
+| Principle                              | Kite (kite.vibery.app)                                | Tony (tony-card.pages.dev)                                     |
+| -------------------------------------- | ----------------------------------------------------- | -------------------------------------------------------------- |
+| Tinted near-white, not pure white      | slate canvas `#EEF1F4`, surface one step up `#F6F7F9` | paper `#F4F1EA`, card `#FBFAF6`, faint dot grid                |
+| Ink instead of black                   | `#243042`                                             | `#16181D`                                                      |
+| One primary, one accent used sparingly | cobalt `#3A5BA9` + terracotta `#B94328`               | primary **is** the ink; rust `#C2512B` for eyebrows/highlights |
+| Typography carries the character       | Nunito Sans, light 300 display with -0.03em tracking  | Fraunces serif display, sans body                              |
+| Long, soft, ink-tinted shadows         | `0 1px 2px ink/4%, 0 6px 20px -10px ink/12%`          | `0 30px 60px -30px ink/18%`                                    |
+| Dim dark mode, not black               | `#151A21`                                             | `#0F1115`, ivory text                                          |
 
-Each palette has a light **and** a dark variant. A palette overrides **brand + neutral** tokens only:
+### Themes
 
-- **Changes:** `primary`, `primary-hover`, `primary-strong`, `primary-subtle`, `on-primary`,
-  `ring`, `on-dark-hover`, `hero-from`, `hero-to`, `hero-muted`, `hero-subtle`, `bg`, `surface`,
-  `surface-2`, `surface-sunken`, `text`, `text-secondary`, `text-muted`, `border`, `border-strong`,
-  `cover-layers`, chart `1` and `grid`.
-- **Never changes:** semantic colours (`success*`, `warning*`, `danger*`, `info*`), hoa mai
-  `accent*`, `hero-accent`, `hero-chip`, `white`, `black`, `overlay`, the other cover tints and
-  chart colours 2–5.
+| Id       | Label (UI copy) | Character                                                                                                    |
+| -------- | --------------- | ------------------------------------------------------------------------------------------------------------ |
+| `bidv`   | BIDV chuẩn      | **Default** (no stored choice = `bidv`). Today's tokens with the light refinements below.                    |
+| `ngoc`   | Ngọc            | BIDV teal toned down on Kite's structure: mist canvas, deep-teal sidebar, muted gold accent. Brand-adjacent. |
+| `cobalt` | Cobalt          | Kite: slate ink, cobalt primary, terracotta accent, Nunito Sans with light display headings, pill controls.  |
+| `giay`   | Giấy            | Tony: warm paper with a dot grid, ink primary, rust accent, Fraunces display headings, light sidebar.        |
 
-Starting values are proposals. Each one must pass the contrast rules in Success Criteria before
-it ships and may be adjusted to do so.
+Revision 1 ids `bidv-soft`, `blue` and `sand` are dropped. A stored old id is unknown, so it falls
+back to `bidv` (they never reached `main`).
 
-| Token (light)  | bidv-soft | blue      | sand      |
-| -------------- | --------- | --------- | --------- |
-| primary        | `#2a7f7b` | `#33659f` | `#9a5b3c` |
-| primary-strong | `#2f5f5d` | `#1f3b63` | `#5a3a2a` |
-| primary-subtle | `#edf5f4` | `#eaf1fa` | `#f6ece4` |
-| bg             | `#f7faf9` | `#f5f8fc` | `#faf7f2` |
-| surface-2      | `#f1f6f5` | `#eef3f9` | `#f4efe7` |
-| border         | `#e4ecea` | `#e0e7f0` | `#ebe3d6` |
+Each theme has a light **and** a dark variant. A theme may override these token groups:
 
-| Token (dark) | bidv-soft | blue      | sand      |
-| ------------ | --------- | --------- | --------- |
-| primary      | `#6cc4bd` | `#7fb0ec` | `#e0a382` |
-| bg           | `#111917` | `#0f141b` | `#1a1612` |
-| surface      | `#17201f` | `#151b24` | `#211c17` |
+| Group     | Keys                                                                                                                                                                                                                                                                    |
+| --------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `colors`  | revision 1 brand + neutral keys; **plus** `accent`, `accent-subtle`, `accent-ink`, `on-accent`, `hero-accent`, `hero-chip`, `eyebrow` (new) and the new `nav-*` keys (`nav-bg`, `nav-text`, `nav-muted`, `nav-hover`, `nav-active-bg`, `nav-active-text`, `nav-border`) |
+| `chart`   | `1`, `2`, `grid`                                                                                                                                                                                                                                                        |
+| `shadow`  | `sm`, `md`, `lg` (dark values too, as today)                                                                                                                                                                                                                            |
+| `type`    | `sans`, `display` (new font token), `display-weight` (new), `display-tracking` (new)                                                                                                                                                                                    |
+| `shape`   | `control` (new radius for buttons, inputs, segmented, chips), `card` (new radius for cards, popover, dialog)                                                                                                                                                            |
+| `texture` | `page` (new: the body background image, `none` by default)                                                                                                                                                                                                              |
+
+**Never changes:** semantic colours (`success*`, `warning*`, `danger*`, `info*`), `white`, `black`,
+`overlay`, the cover tints other than `cover-layers`, chart colours 3–5, spacing, text sizes,
+layout, motion, z-indexes. `type`, `shape` and `texture` are mode-independent: they are set once
+per theme and need no dark value.
+
+Starting values are proposals. Each must pass the contrast rules in Success Criteria and may be
+adjusted to do so.
+
+| Light               | ngoc                        | cobalt                   | giay                       |
+| ------------------- | --------------------------- | ------------------------ | -------------------------- |
+| bg / surface        | `#EEF2F1/#F7F9F8`           | `#EEF1F4/#F6F7F9`        | `#F4F1EA/#FBFAF6`          |
+| text / text-muted   | `#1E2B2A/#566462`           | `#243042/#4F596A`        | `#16181D/#5F6168`          |
+| border              | `#D8E0DE`                   | `#D9DEE6`                | `#E2DDD2`                  |
+| primary / on        | `#2B6E69/#FFFFFF`           | `#3A5BA9/#FFFFFF`        | `#16181D/#FBFAF6`          |
+| accent / eyebrow    | `#B8862B/#8A6A1E`           | `#B94328/#B94328`        | `#C2512B/#B0461F`          |
+| nav-bg / nav-text   | `#1F3B39/#E4EFED`           | `#E9EDF3/#243042`        | `#EFEBE2/#16181D`          |
+| hero-from → hero-to | `#1F3B39 → #2B5E5A`         | `#132A66 → #2B55B8`      | `#16181D → #16181D` (flat) |
+| display             | Be Vietnam Pro 600, −0.02em | Nunito Sans 300, −0.03em | Fraunces 500, −0.02em      |
+| sans                | Be Vietnam Pro              | Nunito Sans              | Be Vietnam Pro             |
+| control / card      | 10px / 16px                 | 999px (pill) / 20px      | 10px / 20px                |
+| texture             | none                        | none                     | dot grid, ink at 6%        |
+
+| Dark              | ngoc              | cobalt            | giay              |
+| ----------------- | ----------------- | ----------------- | ----------------- |
+| bg / surface      | `#141A19/#1A2120` | `#151A21/#1C222B` | `#0F1115/#15181D` |
+| text / text-muted | `#D6E0DE/#95A39F` | `#D5DCE6/#99A3B3` | `#ECE8DF/#B1AFA8` |
+| primary / on      | `#6FB8B0/#0E1615` | `#7C97D6/#0F141B` | `#ECE8DF/#15181D` |
+| accent            | `#D9B25E`         | `#E07A5F`         | `#E0703F`         |
+| nav-bg            | `#101615`         | `#181D25`         | `#13161B`         |
+
+### BIDV chuẩn refinements (light touch)
+
+The colours stay the same. Only the following change, in the base tokens, so every theme inherits
+them unless it overrides them:
+
+- **Shadows:** two layers (a contact shadow plus a long, soft drop) tinted with the BIDV ink:
+  - `sm` = `0 1px 2px` ink/5%
+  - `md` = `0 1px 2px` ink/4% + `0 8px 24px -12px` ink/14%
+  - `lg` = `0 1px 2px` ink/4% + `0 32px 64px -28px` ink/32%
+- **Headings:** h1–h3 and the page title use the `display` tokens. For BIDV that is Be Vietnam
+  Pro 700 with −0.02em tracking (today h1 alone has −0.01em).
+- **Controls:** radius 6px → 8px. Cards stay at 14px.
+- **Eyebrow:** the new `eyebrow` token is BIDV `primary`, replacing `text-muted`. Page-header
+  eyebrows pick up the brand colour, as in both references.
+
+The sidebar, hero, accent and all colours are unchanged. The `/design-system` screenshots in the
+PR show BIDV before and after.
 
 ### The dropdown
 
-- **Trigger:** `button[uiIconButton]` with `<ui-icon name="palette" />` (the icon is already in the
-  registry), label **"Tùy chỉnh giao diện"**, placed in `.header__actions` before the bell.
-  `aria-haspopup="dialog"`, `aria-expanded` reflects the open state.
-- **Panel** (non-modal popover, anchored below the trigger, aligned right):
-  - Group **"Bảng màu"**: four swatch options (a colour dot built from that palette's own
-    `primary`/`bg` tokens, plus the label). One selected option, `@angular/aria` listbox semantics.
-    Selecting applies immediately.
-  - Group **"Chế độ"**: the existing `ui-segmented` with **Hệ thống / Sáng / Tối**, bound to
-    `ThemeStore.preference$`.
-- **Closes on** Escape, a click outside, or a click on the trigger. Focus returns to the trigger.
-  Choosing an option does **not** close the panel, so the user can compare palettes.
-- **Mobile (< md):** same popover, full width minus the gutter, still under the header.
+Unchanged from revision 1:
+
+- **Trigger:** `button[uiIconButton]` with `<ui-icon name="palette" />`, label **"Tùy chỉnh
+  giao diện"**, in `.header__actions` before the bell. `aria-haspopup="dialog"`, `aria-expanded`.
+- **Panel** (non-modal popover, anchored below the trigger and aligned right):
+  - Group **"Bảng màu"**: four swatches, BIDV chuẩn / Ngọc / Cobalt / Giấy.
+  - Group **"Chế độ"**: Hệ thống / Sáng / Tối.
+- Selecting applies immediately and the panel stays open. It closes on Escape, an outside click,
+  or the trigger, and focus returns to the trigger.
+- **Mobile (< md):** full width minus the gutter.
 
 ## Tech Stack
 
-Angular 22 (standalone, zoneless, signals) · `@angular/aria` listbox · `@angular/cdk/overlay`
-(`CdkConnectedOverlay`, as `ui-menu` already uses) · SCSS through the `ui` module · Vitest.
-No new dependencies.
+Angular 22 (standalone, zoneless, signals) · `@angular/aria` listbox · `@angular/cdk/overlay` ·
+SCSS through the `ui` module · Vitest.
+
+**New dependencies (approved 2026-10-20):** `@fontsource/fraunces` (weight 500) and
+`@fontsource/nunito-sans` (weights 300, 400, 600, 700), version 5.3.0. They are self-hosted like
+`@fontsource/be-vietnam-pro` because internal networks may block Google Fonts. Their
+`@font-face` rules go in `apps/lms/project.json` styles. The browser downloads a font file only
+when a rendered element uses that family, so a user on BIDV never fetches them. Each rule ships
+Vietnamese, Latin and Latin-ext `unicode-range` subsets.
 
 ## Architecture
 
@@ -89,189 +142,201 @@ index.html inline script ──applies──▶ <html data-theme data-palette>
 ThemeStore (core/theme) ─── only writer ──────┘   persists lms.theme + lms.palette
    ▲  preference$ / palette$ / effective$ ; setPreference() / setPalette()
    │
-app-theme-controls (shared/theme-controls)      ← reads store, calls commands
-   uses: ui-swatch-group (libs/ui, new) · ui-segmented (existing)
-   ├── app-theme-picker (layout/header/theme-picker) wraps it in uiPopover (libs/ui, new)
-   └── /design-system table of contents renders it inline (replaces app-theme-switch)
+app-theme-controls (shared/theme-controls)  ← reads store, calls commands
+   uses: ui-swatch-group · ui-segmented
+   ├── app-theme-picker (header) wraps it in uiPopover
+   └── /design-system renders it inline
 
-_tokens.scss $palettes map ──▶ _theme.scss emits :root[data-palette=…] (light + dark)
+_tokens.scss $palettes (colors, chart, shadow, type, shape, texture)
+   ──▶ _palettes.scss emits :root[data-palette=…] (light + dark; type/shape/texture light only)
 ```
 
-Decisions:
+Revision 1 decisions 1, 2 and 4–7 stand (ThemeStore, attribute, no-flash script, popover,
+swatch group, theme controls, design-system). New or changed:
 
-1. **Extend `ThemeStore`**, not a second store. It stays the only writer of theme attributes and
-   gains `palette$()` and `setPalette(id)`. Storage key `lms.palette`, where absence means `bidv`.
-   Unknown stored values fall back to `bidv`. Blocked storage never throws, as today.
-2. **`data-palette` attribute on `<html>`**, absent for `bidv`. `template-scan.spec.ts` widens its
-   rule: only `theme.store.ts` (and `index.html`) may write `data-theme` or `data-palette`.
-3. **Tokens stay the single source.** `_tokens.scss` gains
-   `$palettes: (bidv-soft: (light: (…), dark: (…)), blue: …, sand: …)` holding colour keys plus
-   a nested `chart` map. `_theme.scss` emits:
-   - `:root[data-palette='x']` for the light overrides;
-   - `:root[data-palette='x'][data-theme='dark']` and, inside `prefers-color-scheme: dark`,
-     `:root[data-palette='x']:not([data-theme='light'])` for the dark overrides.
+1. **Tokens stay the single source, with more groups.** `_tokens.scss` gains:
+   - `$fonts.display`, `$display: (weight, tracking)`, `$radii.control`, `$radii.card`,
+     `$textures.page`;
+   - colour keys `eyebrow` and `nav-*`.
 
-   Specificity (0,3,0) beats the base dark rules, so ordering does not matter. A Sass `@error`
-   fails the build when a palette's dark map does not override every key its light map
-   overrides, or when it overrides a key outside the allowed list above. This prevents a palette
-   light value from leaking into dark mode.
+   The base values reproduce BIDV (refined). `_palettes.scss` validates and emits the new groups:
+   - `type`, `shape` and `texture` are emitted only in the light block `:root[data-palette=x]`;
+     they hold for both modes.
+   - `colors`, `chart` and `shadow` keep the light ⊆ dark guard.
+   - Unknown groups or keys fail the build, as today.
 
-4. **No-flash script** in `index.html` also reads `lms.palette` and checks it against the
-   allowed ids before setting the attribute.
-5. **New `@lms/ui` pieces**, both presentational, with no theme or palette knowledge:
-   - `uiPopover` (organism-level behaviour): `button[uiPopover]="template"` with a required
-     `popoverLabel`, on the CDK `Overlay` (like `uiTooltip`) plus a CDK focus trap. It renders the
-     template in a `role="dialog"` panel (`ui-popover-panel`, width `ui.layout(popover)`), toggles
-     `aria-expanded` / `aria-controls`, moves focus to the first control, closes on Escape (focus
-     back to the trigger) and on an outside click. `@angular/aria` has no popover pattern.
-   - `ui-swatch-group` (molecule): an `@angular/aria` listbox with a two-way `value` model and
-     options `{ value, label, swatch: { fill, base } }`, where `fill` and `base` are colour token
-     keys painted as `var(--color-<key>)` (the `ui-mai` pattern), never a literal.
-6. **Domain UI** `app-theme-controls` (`apps/lms/src/app/shared/theme-controls/`) renders both
-   groups and maps `ThemePalette` ids to labels and swatch token keys. Each swatch shows a
-   palette other than the active one, so `_palettes.scss` emits constant swatch tokens on `:root`
-   (`--color-swatch-<id>-fill/-base` from each palette's light `primary` / `bg`, and `bidv` from
-   the base map). They are generated from the token maps, so they never drift.
-   `app-theme-picker` (`layout/header/theme-picker/`) is only the icon trigger + popover around it.
-7. **`/design-system`**: the table of contents renders `app-theme-controls` in place of
-   `app-theme-switch` (deleted), so every token sample can be reviewed per palette. The colour
-   section's contrast table re-reads tokens when `palette$()` changes, as well as `effective$()`.
+2. **Components read semantic tokens, never a theme.** One-time refactors so a theme can reach
+   them:
+   - The sidebar reads `nav-*` instead of `primary-strong`, `primary-subtle`, `white` and
+     `hero-subtle`. The BIDV `nav-*` values equal today's colours.
+   - h1–h3, `.page-header__title` and KPI values read `--font-display`,
+     `--font-weight-display` and `--tracking-display`.
+   - Buttons, inputs, segmented controls and chips read `--radius-control`; cards, the popover
+     and the dialog read `--radius-card`.
+   - The page eyebrow reads `--color-eyebrow`.
+   - `body` paints `--texture-page` over `bg`.
+
+   No SCSS file branches on a theme.
+
+3. **Theme swatches** (`--color-swatch-<id>-fill/-base`) keep coming from each theme's light
+   `primary` / `bg`. For Giấy, whose primary is ink, the fill is `accent`, so the swatch reads
+   as "rust on paper". The swatch source key becomes configurable per theme (`swatch: accent`).
 
 ## Commands
 
 ```bash
 nvm use
-npm start                 # app on :4200 with the mock API
-npx nx test lms           # ThemeStore, theme picker, template scan
-npx nx test ui            # uiPopover, ui-swatch-group
+npm start                 # app on :4200; see AGENTS.md for the mock/proxy split
+npx nx test ui            # tokens, palettes, contrast, popover, swatch group
+npx nx test lms           # ThemeStore, theme controls, picker, template scan
 npm run check             # format, lint, typecheck, test, build, bundle guard
 ```
 
 ## Project Structure
 
+Revision 2 touches:
+
 ```
-libs/ui/src/styles/ui/_tokens.scss                  + $palettes map, allowed-key list
-libs/ui/src/styles/global/_theme.scss               + palette emission + @error guards
-libs/ui/src/styles/global/_palettes.scss            new: palette emitter + Sass guards (no CSS on load)
-libs/ui/src/lib/organisms/popover/                  new: popover.directive.ts (+ trigger), spec
-libs/ui/src/lib/molecules/swatch-group/             new: swatch-group.ts/.html/.scss, spec
-libs/ui/src/styles/components/_popover.scss         new BEM block (@layer components)
-libs/ui/src/styles/components/_swatch-group.scss    new BEM block
-libs/ui/src/index.ts                                + exports
-apps/lms/src/app/core/theme/theme.store.ts          + palette$, setPalette, lms.palette
-apps/lms/src/app/core/theme/theme.store.spec.ts     + palette cases
-apps/lms/src/app/shared/theme-controls/              new: theme-controls.ts/.html/.scss, spec
-apps/lms/src/app/layout/header/theme-picker/        new: theme-picker.ts/.html/.scss, spec
-apps/lms/src/app/layout/header/header.html/.ts      + <app-theme-picker />
-apps/lms/src/app/template-scan.spec.ts              rule widened to data-palette
-apps/lms/src/index.html                             no-flash script reads lms.palette
-apps/lms/src/app/features/design-system/…/color-section.ts   re-read on palette change
-apps/lms/src/app/features/design-system/…/design-system.*     TOC uses app-theme-controls
-apps/lms/src/app/features/design-system/…/theme-switch/       deleted
-docs/conventions/ui-library.md                      "Theme and dark mode" → palettes, new pieces
+libs/ui/src/styles/ui/_tokens.scss          new groups and keys; ngoc/cobalt/giay replace bidv-soft/blue/sand; BIDV refinements
+libs/ui/src/styles/ui/_functions.scss       accessors for the new tokens if needed (ui.radius(control) etc.)
+libs/ui/src/styles/global/_palettes.scss    new groups, mode-independent groups, swatch source key
+libs/ui/src/styles/global/_theme.scss       emits the new base tokens
+libs/ui/src/styles/global/_base.scss        headings use the display tokens; body texture
+libs/ui/src/styles/components/_btn.scss, _input.scss, _segmented.scss, _chip.scss,
+  _card.scss, _popover.scss, _dialog.scss, _page-header.scss, _kpi.scss   radius/eyebrow/display tokens
+libs/ui/src/styles/styles.spec.ts           emitted keys per group, new contrast rules, guard errors
+apps/lms/project.json, package.json         @fontsource/fraunces, @fontsource/nunito-sans
+apps/lms/src/app/layout/sidebar/sidebar.scss   nav-* tokens
+apps/lms/src/app/features/auth/login/login.scss   eyebrow/hero tokens only if needed
+apps/lms/src/app/core/theme/theme.store.ts (+spec)     THEME_PALETTES = bidv, ngoc, cobalt, giay
+apps/lms/src/index.html                     no-flash ids
+apps/lms/src/app/shared/theme-controls/     labels and swatch keys
+apps/lms/src/app/template-scan.spec.ts      id sync (unchanged logic)
+docs/conventions/ui-library.md              theme groups, new tokens, fonts
 ```
 
 ## Code Style
 
-The store follows the existing `ThemeStore` shape: private `state` signals, `$`-suffixed readonly
-selectors, effects for side effects, and one command per intent.
+The theme map shape (one theme shown, values abbreviated):
 
-```ts
-export const THEME_PALETTES = ['bidv', 'bidv-soft', 'blue', 'sand'] as const;
-export type ThemePalette = (typeof THEME_PALETTES)[number];
-export const PALETTE_STORAGE_KEY = 'lms.palette';
+```scss
+$palettes: (
+  giay: (
+    swatch: accent,
+    type: (
+      sans: $font-be-vietnam,
+      display: $font-fraunces,
+      display-weight: 500,
+      display-tracking: -0.02em,
+    ),
+    shape: (
+      control: 10px,
+      card: 20px,
+    ),
+    texture: (
+      page: radial-gradient(circle at 1px 1px, rgba(22, 24, 29, 0.06) 1px, transparent 0) 0 0 / 22px 22px,
+    ),
+    light: (
+      colors: (
+        primary: #16181d,
+        bg: #f4f1ea,
+        …,
+      ),
+      chart: (
+        1: #c2512b,
+        …,
+      ),
+      shadow: (
+        md: …,
+        lg: …,
+      ),
+    ),
+    dark: (
+      colors: (
+        primary: #ece8df,
+        bg: #0f1115,
+        …,
+      ),
+      chart: (
+        …,
+      ),
+      shadow: (
+        …,
+      ),
+    ),
+  ),
+);
+```
 
-// inside ThemeStore
-readonly palette$ = this.state.palette.asReadonly();
+Components only ever read semantic tokens:
 
-private readonly applyPalette = effect(() => {
-  const palette = this.palette$();
-  untracked(() => {
-    if (palette === 'bidv') this.root.removeAttribute(PALETTE_ATTRIBUTE);
-    else this.root.setAttribute(PALETTE_ATTRIBUTE, palette);
-  });
-});
-
-/** Choose BIDV chuẩn, BIDV dịu, Xanh dương or Cát ấm. */
-setPalette(palette: ThemePalette): void {
-  this.state.palette.set(palette);
+```scss
+.sidebar {
+  background: ui.color(nav-bg);
+  color: ui.color(nav-text);
+}
+.btn {
+  border-radius: ui.radius(control);
 }
 ```
 
-```html
-<!-- theme-controls.html (shared) -->
-<ui-swatch-group label="Bảng màu" [options]="palettes" [value]="theme.palette$()" (valueChange)="theme.setPalette($event)" />
-<ui-segmented label="Chế độ" [options]="modes" [value]="theme.preference$()" (valueChange)="theme.setPreference($event)" />
-
-<!-- theme-picker.html (header) -->
-<button uiIconButton label="Tùy chỉnh giao diện" popoverLabel="Tùy chỉnh giao diện" [uiPopover]="panel">
-  <ui-icon name="palette" />
-</button>
-<ng-template #panel>
-  <app-theme-controls />
-</ng-template>
-```
-
-Conventions: English identifiers, Vietnamese copy, tokens only (no colour literal outside
-`_tokens.scss`), BEM classes in component `.scss`, and imports that point down the atomic levels.
+Conventions are unchanged: English identifiers, Vietnamese copy, tokens only, BEM, and imports
+that point down the atomic levels.
 
 ## Testing Strategy
 
-| Level                           | What                                                                                                                                                                                                                                                 | Where                       |
-| ------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------- |
-| Unit: store                     | default `bidv` with no storage; reads a valid stored id; ignores an unknown id; `setPalette` writes the attribute and storage; `bidv` removes both; blocked storage (getter throws, setItem throws) does not throw; palette and mode are independent | `theme.store.spec.ts`       |
-| Unit: `uiPopover`               | opens and closes on trigger click; `aria-expanded`; Escape closes and returns focus; outside click closes; stays open on inside click                                                                                                                | `popover.directive.spec.ts` |
-| Unit: `ui-swatch-group`         | renders options; one `aria-selected`; arrow keys move and select; click selects; emits `valueChange`                                                                                                                                                 | `swatch-group.spec.ts`      |
-| Component: `app-theme-controls` | four palettes + three modes rendered with the right copy; selecting calls `setPalette` / `setPreference`; reflects store state (store stubbed)                                                                                                       | `theme-controls.spec.ts`    |
-| Component: `app-theme-picker`   | icon button with label; opens a panel containing `app-theme-controls`                                                                                                                                                                                | `theme-picker.spec.ts`      |
-| Guard                           | template scan: only ThemeStore writes `data-palette`; colour-literal guard still green                                                                                                                                                               | `template-scan.spec.ts`     |
-| Build                           | Sass `@error` guards and SC5 contrast for every palette × mode, asserted by compiling the styles                                                                                                                                                     | `styles.spec.ts`            |
-| Browser (manual)                | see Success Criteria 4–6                                                                                                                                                                                                                             | `npm start`                 |
+| Level              | What                                                                                                                                                                                                                      | Where                    |
+| ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------ |
+| Build: tokens      | each theme emits every group it declares; `type`/`shape`/`texture` only in the light block; dark ⊇ light for `colors`/`chart`/`shadow`; guard errors for unknown group, unknown key, light-without-dark, `bidv` overrides | `styles.spec.ts`         |
+| Build: BIDV refine | compiled `:root` equals HEAD except the listed refinements and the new tokens (property-level diff asserted in the spec)                                                                                                  | `styles.spec.ts`         |
+| Build: contrast    | revision 1 rules **plus** the new rules in SC5, for every theme × mode, computed from compiled CSS                                                                                                                        | `styles.spec.ts`         |
+| Unit: store        | ids are `bidv, ngoc, cobalt, giay`; an old id (`sand`) falls back to `bidv`                                                                                                                                               | `theme.store.spec.ts`    |
+| Component          | theme controls show the four new labels                                                                                                                                                                                   | `theme-controls.spec.ts` |
+| Guard              | id sync between store, CSS and `index.html`; colour-literal guard stays green (the texture uses a literal only inside `_tokens.scss`)                                                                                     | `template-scan.spec.ts`  |
+| Browser            | screenshots of the dashboard, a course page, login and `/design-system` in 4 themes × light/dark (in the PR), the reload matrix, and a check that fonts load only when their theme is active (network panel)              | manual, `npm start`      |
 
 ## Boundaries
 
 - **Always:** keep `ThemeStore` the only runtime writer of `data-theme` and `data-palette`; put
-  every colour in `_tokens.scss`; give each palette both light and dark values; tolerate blocked
-  storage; run `npm run check` before calling the work done.
-- **Ask first:** changing any `bidv` (standard) token value; making a palette override a semantic
-  or accent colour; adding a dependency; storing the choice server-side or per account; changing
-  the default palette.
-- **Never:** branch on theme or palette in a component or SCSS file (only tokens change); write a
-  colour literal outside `_tokens.scss`; read the DOM attribute instead of the store; ship a
-  palette that fails a contrast rule.
+  every theme value in `_tokens.scss`; give every colour, chart and shadow key a dark value; make
+  components read semantic tokens; run `npm run check`.
+- **Ask first:** BIDV changes beyond the listed refinements; letting a theme change semantic
+  colours, spacing, text sizes or layout; any further font or dependency; changing the default
+  theme.
+- **Never:** branch on a theme in a component or SCSS file; write a colour literal outside
+  `_tokens.scss`; load fonts from Google Fonts; ship a theme that fails a contrast rule; change
+  layout or component structure as part of a theme.
 
 ## Success Criteria
 
-1. The header shows a palette icon button (44px touch target, label "Tùy chỉnh giao diện") on
-   every page that renders the app shell, on desktop and mobile.
-2. The dropdown lists **BIDV chuẩn, BIDV dịu, Xanh dương, Cát ấm** and **Hệ thống / Sáng / Tối**.
-   Selecting a palette restyles the app immediately, without a reload.
-3. Choices persist in `localStorage` (`lms.palette`, `lms.theme`). With no stored palette the app
-   looks exactly as it does today (no visual diff on `bidv` light or dark).
-4. **No flash:** reloading in each of the 4 palettes × 3 modes, with the OS set to light and to
-   dark, paints the right colours from the first frame.
-5. **Contrast** for each palette in both light and dark modes:
-   - 4.5:1 or more for `text`, `text-secondary` and `text-muted` on `bg`, `surface` and
-     `surface-2`;
-   - 4.5:1 or more for `on-primary` on `primary`;
-   - 4.5:1 or more for `primary` used as a link or text colour on `surface`;
-   - 3:1 or more for `border-strong` and `ring` against `surface`;
-   - 4.5:1 or more for `hero-muted` on `hero-to`.
-
-   Checked with the `/design-system` contrast table after switching to that palette.
-
-6. **Keyboard and screen reader:** Tab to the icon, Enter opens the panel, arrow keys change the
-   palette, Tab reaches the mode control, and Escape closes the panel and returns focus to the
-   icon. The listbox exposes `aria-selected`.
+1. The header palette button and the dropdown work as in revision 1. The dropdown lists **BIDV
+   chuẩn, Ngọc, Cobalt, Giấy** and **Hệ thống / Sáng / Tối**.
+2. Selecting a theme restyles the whole app immediately, with no reload: colours, sidebar,
+   headings font, control and card radius, shadows, texture and login hero.
+3. Choices persist (`lms.palette`, `lms.theme`). BIDV chuẩn shows only the listed refinements
+   compared with `main`.
+4. **No flash:** the reload matrix (4 themes × 3 modes × OS light/dark) paints the right
+   colours from the first frame. A Fraunces or Nunito Sans heading may swap in once the font
+   arrives (`font-display: swap`); this is accepted.
+5. **Contrast** for every theme in both modes:
+   - revision 1 rules;
+   - 4.5:1 or more for `eyebrow` and `accent-ink` on `surface` and `bg`;
+   - 4.5:1 or more for `nav-text` and `nav-muted` on `nav-bg`, and `nav-active-text` on
+     `nav-active-bg`;
+   - 4.5:1 or more for `on-accent` on `accent`.
+6. **Fonts:** a user on BIDV or Ngọc downloads no Fraunces or Nunito Sans file. Vietnamese
+   diacritics render in the theme font (no fallback glyphs) on the dashboard and the login page.
 7. `npm run check` passes, the angular.md §14 checklist passes, and `ui-library.md` documents
-   palettes, `uiPopover` and `ui-swatch-group`.
+   the theme groups, the new tokens and the fonts.
 
 ## Resolved Questions
 
-1. **Palette selector in `/design-system`:** yes. The TOC renders the shared `app-theme-controls`
-   (palette + mode), replacing `app-theme-switch`.
+1. Palette selector in `/design-system`: yes (revision 1).
+2. Revision 2 (2026-10-20): the three themes are the right direction; theme fonts are allowed;
+   BIDV chuẩn gets light refinements; the work continues on PR #34.
 
 ## Open Questions
 
-1. **Exact hex values:** tuned to pass the contrast rules; the user reviews each palette from
-   `/design-system` screenshots in the PR.
+1. **Exact hex values:** tuned to pass contrast; the user reviews each theme from screenshots.
+2. **Cobalt body font:** Nunito Sans for the whole UI (as Kite), or only for headings with Be
+   Vietnam Pro for the body? The proposal is the whole UI.

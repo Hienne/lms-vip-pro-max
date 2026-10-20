@@ -251,3 +251,285 @@ green (Nx marks `lms:test` flaky because of the pre-existing `change-password.sp
 ## Checkpoint C: Complete
 
 - [x] All acceptance criteria met; ready for PR review
+
+---
+
+# Revision 2: full themes
+
+## Task 9: Token model v2 and emitter
+
+**Description:** Add the new base tokens: `$fonts.display`, `display-weight`,
+`display-tracking`, `radius-control`, `radius-card`, `texture-page`, and the colour keys
+`eyebrow` and `nav-*`. Their BIDV values reproduce today's look exactly (radius-control = 6px,
+radius-card = 14px, display = sans 700 −0.01em, eyebrow = text-muted, nav-\* = today's sidebar
+colours, texture none). Extend `_palettes.scss` with the groups `shadow`, `type`, `shape` and
+`texture` (the last three are mode-independent and light block only), the wider `colors` key
+list, and a per-theme `swatch` source key. Add guard errors for the new groups.
+
+**Acceptance criteria:**
+
+- [x] `:root` emits the new properties, and every revision 1 property keeps its value (asserted)
+- [x] Spec palettes with `type`/`shape`/`texture` emit them only in the light block; a `type` key
+      in a dark map fails; an unknown group or key fails; a light `shadow` key without a dark value fails
+- [x] Revision 1 palettes still compile and pass contrast (they are replaced in T13)
+
+**Verification:** `npx nx test ui`; compiled CSS diff vs HEAD only adds properties
+
+**Verified (2026-10-20):** 13 new or changed `styles.spec.ts` cases failed first, then passed.
+The compiled global CSS compared with HEAD removes no line and adds 16 `:root` properties.
+`nav-*` and `eyebrow` reference today's tokens (`var(--color-…)`), so BIDV is unchanged in both
+modes. The contrast spec now follows `var()` references and composites `color-mix(…, transparent)`
+washes. Spec deviation: `nav-strong` (brand name, hover text) and `nav-indicator` (active bar,
+focus outline) were added to the `nav-*` set.
+
+**Dependencies:** None
+
+**Files likely touched:** `libs/ui/src/styles/ui/_tokens.scss`, `_functions.scss`,
+`global/_palettes.scss`, `global/_theme.scss`, `styles.spec.ts`
+
+**Estimated scope:** M
+
+## Task 10: libs/ui components and base read the new semantic tokens
+
+**Description:**
+
+- h1–h3, `.page-header__title` and KPI values read the display tokens.
+- Buttons, inputs, select, segmented, chips and the icon button (non-circular) read
+  `radius-control`.
+- Cards, the popover and the dialog read `radius-card`.
+- `.page-header__eyebrow` reads `eyebrow`.
+- `body` paints `texture-page`.
+
+**Acceptance criteria:**
+
+- [x] No `radius(sm|md|lg)` remains on a control or card surface that a theme should reach
+      (listed in the task notes)
+- [x] BIDV computed styles on `/design-system` are identical before and after: a script compares
+      the border-radius, font-family, font-weight and letter-spacing of every element
+
+**Verification:** `npx nx test ui`; browser computed-style comparison
+
+**Verified (2026-10-20):** 15 new `theme hooks` cases in `styles.spec.ts` failed first, then
+passed. In the browser on `/design-system` (BIDV), the computed values equal the previous ones:
+
+- button 6px, segmented 10/6px, input 6px, card 14px
+- h1 Be Vietnam Pro 700 −0.01em; h2 600, normal tracking
+- body background-image none
+- eyebrow `#5f6b69` (text-muted)
+
+Deviations from the plan:
+
+- A third shape key, `field` (inputs, selects, textareas), keeps a pill `control` radius off
+  textareas.
+- The dialog keeps `radius-xl` (20px, not the 14px card radius), so BIDV stays identical.
+- Chips and icon buttons are already round and keep `radius-full`.
+- The `ui.eyebrow` mixin now reads `eyebrow`, which every eyebrow uses.
+
+**Dependencies:** T9
+
+**Files likely touched:** `global/_base.scss`, `components/_btn.scss`, `_input.scss`,
+`_select.scss`, `_segmented.scss`, `_chip.scss`, `_card.scss`, `_popover.scss`, `_dialog.scss`,
+`_page-header.scss`, `_kpi.scss` (each is a one-line change)
+
+**Estimated scope:** M (many files, mechanical)
+
+## Task 11: Sidebar reads `nav-*` tokens
+
+**Description:** Replace `primary-strong`, `primary-subtle`, `white`, `hero-subtle` and the
+white `color-mix` washes in `sidebar.scss` with `nav-bg`, `nav-text`, `nav-muted`, `nav-hover`,
+`nav-active-bg`, `nav-active-text` and `nav-border`. Do the same for the login hero only where it
+shares those colours.
+
+**Acceptance criteria:**
+
+- [x] BIDV sidebar is pixel-identical (expanded, collapsed rail, mobile drawer; light and dark)
+- [x] Setting a spec theme with a light `nav-bg` gives a readable light sidebar (manual
+      devtools check)
+
+**Verification:** `npx nx test lms`; screenshots before/after
+
+**Verified (2026-10-20):** a new `template-scan.spec.ts` guard (the sidebar reads `nav-*` colours
+only, with no `color-mix`) failed first, then passed. A script compiled the old and new
+`sidebar.scss` and resolved all 26 colour declarations against BIDV `:root`, light and dark.
+
+- The only difference is the inherited base colour of `.sidebar` (`primary-subtle` →
+  `nav-text`).
+- Every visible child (brand, role, sections, links, footer, toggle) sets its own colour, and
+  `ui-mai` paints with its own tokens, so no pixel changes.
+- The login hero needed no change: it already reads `hero-*`, which themes can override.
+
+The browser check of a light sidebar is deferred to T13 (it needs the app shell).
+
+**Dependencies:** T9
+
+**Files likely touched:** `apps/lms/src/app/layout/sidebar/sidebar.scss`, possibly
+`features/auth/login/login.scss`
+
+**Estimated scope:** S
+
+## Task 12: Theme fonts
+
+**Description:** Add `@fontsource/fraunces` (500) and `@fontsource/nunito-sans` (300, 400, 600, 700) at 5.3.0, list their CSS in `apps/lms/project.json` styles, and add font stack tokens for
+the themes to use. Update `docs/conventions/workspace.md` (the font row).
+
+**Acceptance criteria:**
+
+- [x] With BIDV active, the network panel shows no Fraunces or Nunito Sans request
+- [x] A test element in each family renders Vietnamese diacritics in that font, not the fallback
+      (check `document.fonts`)
+- [x] `check-bundle` and the budgets stay green
+
+**Verification:** `npm run check`; browser network panel
+
+**Verified (2026-10-20):**
+
+- **Guard test:** a new `template-scan.spec.ts` guard failed first (`ui.$font-stacks` did not
+  exist), then passed. It checks that every face in `ui.$font-stacks` has `@fontsource/<name>`
+  CSS in the build styles.
+- **Fonts on demand:** in the browser on `/design-system`, BIDV loads only Be Vietnam Pro files.
+  A probe element in Fraunces 500 and Nunito Sans 300 then fetches their Latin, Latin-ext and
+  Vietnamese subsets. `document.fonts.check` passes for "ệ" and "ậ" in each face.
+- **Bundle:** `check-bundle` is green. The fonts add about 13 KB of raw `@font-face` CSS. The
+  initial bundle (841 KB) was already over the 500 KB _warning_ budget before this task; the
+  error budget is 1 MB.
+
+Fraunces 600 and Nunito Sans 500 were added, so h2/h3 (600) and medium labels (500) are not
+synthesised.
+
+**Dependencies:** T9
+
+**Files likely touched:** `package.json`, `package-lock.json`, `apps/lms/project.json`,
+`_tokens.scss`, `docs/conventions/workspace.md`
+
+**Estimated scope:** S
+
+## Checkpoint C2
+
+- [x] `npm run check` green
+- [x] BIDV identical to `main`. This was checked through the compiled CSS diff (T9), computed
+      styles on `/design-system` (T10) and the resolved sidebar colours in light and dark (T11),
+      not pixel screenshots.
+
+## Task 13: Ngọc, Cobalt, Giấy
+
+**Description:**
+
+- Replace `bidv-soft`, `blue` and `sand` with `ngoc`, `cobalt` and `giay`, using the SPEC values
+  tuned to pass contrast.
+- Update `THEME_PALETTES`, `index.html`, the theme-controls labels and swatch keys, the store,
+  controls and design-system specs, and the contrast rules (`eyebrow`, `accent-ink`, `nav-*`,
+  `on-accent`).
+
+**Acceptance criteria:**
+
+- [x] Picker lists BIDV chuẩn, Ngọc, Cobalt, Giấy; an old stored id falls back to `bidv`
+- [x] Contrast spec passes for every theme × mode, including the new rules
+- [x] Id-sync guard green
+
+**Verification:** `npm run check`; screenshots of the 3 themes × light/dark (dashboard, course
+page, login, header popover open) for the user
+
+**Verified (2026-10-20):**
+
+- **Specs:** the store, controls, picker, design-system and styles specs were moved to the new ids
+  and failed first. They gained cases for old ids falling back to `bidv` and for each theme's
+  own face, control radius and texture. All passed after the change.
+- **Contrast:** passes for every theme × mode under the extended rules (eyebrow, accent-ink,
+  on-accent, nav-\*).
+- **`npm run check`:** green, all 4 projects, the change-password flake included this run.
+- **Browser:** checked with `mockBackend` temporarily on, signing in from the Demo menu; the
+  setting was reverted afterwards and never committed.
+  - `/admin/users` in Ngọc, Cobalt and Giấy, light and dark: sidebar, page header, table, badges
+    and buttons.
+  - `/login` in Cobalt (gradient hero, light Nunito heading, pill button) and Giấy (Fraunces
+    heading, rust eyebrow, ink button).
+  - BIDV unchanged.
+
+Added `texture.page-size` (the dot grid needs a tile size). The dot colour mixes
+`--color-text`, so it follows dark mode.
+
+**Dependencies:** T10, T11, T12
+
+**Files likely touched:** `_tokens.scss`, `styles.spec.ts`, `theme.store.ts` (+spec),
+`index.html`, `theme-controls.ts` (+spec), `design-system.spec.ts`
+
+**Estimated scope:** M
+
+## Checkpoint D
+
+- [x] User reviews the theme screenshots and approves (or requests tuning) before T14
+      (approved 2026-10-20; the mai logo keeps following each theme's accent)
+
+## Task 14: BIDV chuẩn refinements
+
+**Description:** Apply the SPEC refinements in the base tokens:
+
+- two-layer ink-tinted shadows
+- display tracking −0.02em on h1–h3 (weight 700)
+- `radius-control` 8px
+- `eyebrow` = `primary`
+
+**Acceptance criteria:**
+
+- [x] `styles.spec.ts` asserts the BIDV `:root` differs from revision 1 only in these properties
+- [x] Contrast still passes for BIDV light and dark
+
+**Verification:** `npx nx test ui`; before/after screenshots in the PR
+
+**Verified (2026-10-20):** two new `styles.spec.ts` cases failed first, then passed:
+
+- `:root` values: control 8px, field 6px, card 14px, display −0.02em / 700, eyebrow →
+  `primary`.
+- md/lg shadows have two ink-tinted layers.
+
+Contrast still passes for BIDV light and dark (eyebrow = primary). In the browser on
+`/design-system` (BIDV), the button radius is 8px, h1 letter-spacing is −0.72px at 36px, and
+`--shadow-md` has both layers. The section eyebrows render in brand teal.
+
+**Dependencies:** Checkpoint D
+
+**Files likely touched:** `_tokens.scss`, `styles.spec.ts`
+
+**Estimated scope:** XS
+
+## Task 15: Docs, full verification, PR #34 update
+
+**Description:**
+
+- Update `ui-library.md`: theme groups, new tokens, fonts, and the rule that components read
+  semantic tokens.
+- Run the reload matrix (4 × 3 × OS light/dark), the keyboard flow and the font network check.
+- Run `npm run check` and the §14 review.
+- Update the PR #34 description with screenshots, after asking.
+
+**Acceptance criteria:**
+
+- [x] SPEC Success Criteria 1–7 verified
+- [x] Docs match the code
+
+**Verification:** `npm run check`; browser
+
+**Verified (2026-10-20):**
+
+- **Docs:** the `ui-library.md` theme section is rewritten (semantic hooks, theme groups, fonts,
+  extended contrast rules); `ui.texture` is added to the function list; the workspace font row
+  was updated in T12.
+- **Reload matrix:** for 4 themes × 3 modes, under OS light and under OS dark, the pre-boot script
+  alone gives the same `primary`, `bg`, `nav-bg` and `radius-control` (and display font) as the
+  booted app.
+- **SC6 fonts:** fresh loads fetch BIDV → Be Vietnam Pro, Ngọc → Be Vietnam Pro,
+  Cobalt → Nunito Sans, Giấy → Be Vietnam Pro + Fraunces.
+- **Keyboard flow:** the picker and popover code is unchanged since revision 1 (verified in T7);
+  only the labels and ids changed, and the specs cover them.
+- **§14 review:** clean. Only tokens, SCSS, specs and the `ThemeStore` id list changed; no new
+  component, effect or state.
+- **`npm run check`:** green on the rerun. The first run failed only `lms:test` on the known
+  `change-password.spec.ts` timeout flake.
+
+**Dependencies:** T14
+
+**Estimated scope:** S
+
+## Checkpoint E: Complete
+
+- [x] All acceptance criteria met; PR #34 ready for review
