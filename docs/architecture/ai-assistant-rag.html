@@ -1,0 +1,3568 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Trợ lý AI · Kiến trúc RAG cục bộ</title>
+    <meta
+      name="description"
+      content="Thiết kế kiến trúc màn hình Trợ lý AI và hệ thống RAG chạy cục bộ (Angular LMS + Spring Boot + PostgreSQL/pgvector + Ollama)."
+    />
+    <style>
+      :root {
+        color-scheme: light;
+        --bg: #f6f6f3;
+        --surface: #ffffff;
+        --surface-2: #f0f0ec;
+        --text: #1b1d1f;
+        --muted: #5b6167;
+        --border: #dcdcd5;
+        --focus: #1d4ed8;
+        --fe: #2457c5;
+        --fe-bg: #e9effc;
+        --be: #0f766e;
+        --be-bg: #e3f3f1;
+        --worker: #a5530c;
+        --worker-bg: #fbefe1;
+        --db: #1f7a3c;
+        --db-bg: #e5f4e9;
+        --ollama: #b0285f;
+        --ollama-bg: #fae7ef;
+        --ok: #1f7a3c;
+        --warn: #a5530c;
+        --err: #b42318;
+        --shadow: 0 1px 2px rgb(0 0 0 / 5%), 0 8px 24px -14px rgb(0 0 0 / 18%);
+        --radius: 10px;
+        --mono: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+        --sans:
+          system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial,
+          sans-serif;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root:not([data-theme='light']) {
+          color-scheme: dark;
+          --bg: #121416;
+          --surface: #1a1d20;
+          --surface-2: #22262a;
+          --text: #e6e8ea;
+          --muted: #9ba2a8;
+          --border: #33393e;
+          --focus: #8ab4ff;
+          --fe: #86a8ff;
+          --fe-bg: #1c2740;
+          --be: #4cc3b5;
+          --be-bg: #13302d;
+          --worker: #f0a75a;
+          --worker-bg: #3a2814;
+          --db: #66d08d;
+          --db-bg: #15301f;
+          --ollama: #f17aac;
+          --ollama-bg: #3b1828;
+          --ok: #66d08d;
+          --warn: #f0a75a;
+          --err: #ff8a80;
+          --shadow: 0 1px 2px rgb(0 0 0 / 40%);
+        }
+      }
+      :root[data-theme='dark'] {
+        color-scheme: dark;
+        --bg: #121416;
+        --surface: #1a1d20;
+        --surface-2: #22262a;
+        --text: #e6e8ea;
+        --muted: #9ba2a8;
+        --border: #33393e;
+        --focus: #8ab4ff;
+        --fe: #86a8ff;
+        --fe-bg: #1c2740;
+        --be: #4cc3b5;
+        --be-bg: #13302d;
+        --worker: #f0a75a;
+        --worker-bg: #3a2814;
+        --db: #66d08d;
+        --db-bg: #15301f;
+        --ollama: #f17aac;
+        --ollama-bg: #3b1828;
+        --ok: #66d08d;
+        --warn: #f0a75a;
+        --err: #ff8a80;
+        --shadow: 0 1px 2px rgb(0 0 0 / 40%);
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+      html {
+        scroll-behavior: smooth;
+        scroll-padding-top: 16px;
+      }
+      @media (prefers-reduced-motion: reduce) {
+        html {
+          scroll-behavior: auto;
+        }
+      }
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--text);
+        font: 15px/1.6 var(--sans);
+      }
+      a {
+        color: var(--fe);
+      }
+      :focus-visible {
+        outline: 2px solid var(--focus);
+        outline-offset: 2px;
+        border-radius: 4px;
+      }
+      code,
+      pre,
+      .mono {
+        font-family: var(--mono);
+        font-size: 13px;
+      }
+      code {
+        background: var(--surface-2);
+        padding: 1px 5px;
+        border-radius: 4px;
+      }
+      :not(pre) > code {
+        overflow-wrap: anywhere;
+      }
+      pre {
+        background: var(--surface-2);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 12px 14px;
+        overflow-x: auto;
+        line-height: 1.5;
+        margin: 12px 0;
+      }
+      pre code {
+        background: none;
+        padding: 0;
+      }
+      h1 {
+        font-size: 28px;
+        line-height: 1.25;
+        margin: 0 0 6px;
+        letter-spacing: -0.01em;
+      }
+      h2 {
+        font-size: 22px;
+        line-height: 1.3;
+        margin: 0 0 12px;
+      }
+      h3 {
+        font-size: 17px;
+        margin: 24px 0 8px;
+      }
+      p {
+        margin: 8px 0;
+      }
+      ul,
+      ol {
+        padding-left: 22px;
+        margin: 8px 0;
+      }
+      li {
+        margin: 3px 0;
+      }
+      table {
+        border-collapse: collapse;
+        width: 100%;
+        font-size: 14px;
+      }
+      th,
+      td {
+        text-align: left;
+        vertical-align: top;
+        padding: 8px 10px;
+        border-bottom: 1px solid var(--border);
+      }
+      th {
+        font-weight: 600;
+        color: var(--muted);
+        background: var(--surface-2);
+      }
+      .table-wrap {
+        overflow-x: auto;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        margin: 12px 0;
+      }
+      .table-wrap table th:first-child,
+      .table-wrap table td:first-child {
+        padding-left: 14px;
+      }
+
+      .layout > *,
+      .grid-2 > *,
+      .seq-body > *,
+      .er > * {
+        min-width: 0;
+      }
+      .layout {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr);
+        max-width: 1240px;
+        margin: 0 auto;
+        padding: 0 16px 64px;
+        gap: 32px;
+      }
+      @media (min-width: 1100px) {
+        .layout {
+          grid-template-columns: 220px minmax(0, 1fr);
+          padding: 0 32px 80px;
+        }
+      }
+      header.top {
+        max-width: 1240px;
+        margin: 0 auto;
+        padding: 28px 16px 16px;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 16px;
+        align-items: flex-start;
+        justify-content: space-between;
+      }
+      @media (min-width: 1100px) {
+        header.top {
+          padding: 40px 32px 24px;
+        }
+      }
+      header.top .meta {
+        color: var(--muted);
+        font-size: 14px;
+      }
+      .theme-btn {
+        font: inherit;
+        font-size: 14px;
+        color: var(--text);
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 6px 12px;
+        cursor: pointer;
+      }
+      .theme-btn:hover {
+        background: var(--surface-2);
+      }
+
+      nav.toc {
+        font-size: 14px;
+      }
+      @media (min-width: 1100px) {
+        nav.toc {
+          position: sticky;
+          top: 16px;
+          align-self: start;
+          max-height: calc(100vh - 32px);
+          overflow: auto;
+        }
+      }
+      nav.toc ol {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 4px 14px;
+      }
+      @media (min-width: 1100px) {
+        nav.toc ol {
+          display: block;
+        }
+        nav.toc li {
+          margin: 2px 0;
+        }
+      }
+      nav.toc a {
+        color: var(--muted);
+        text-decoration: none;
+        display: inline-block;
+        padding: 3px 0;
+      }
+      nav.toc a:hover {
+        color: var(--text);
+        text-decoration: underline;
+      }
+      main section {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        padding: 20px 18px;
+        margin-bottom: 24px;
+      }
+      @media (min-width: 768px) {
+        main section {
+          padding: 28px 32px;
+        }
+      }
+      .lead {
+        color: var(--muted);
+        max-width: 72ch;
+      }
+      .grid-2 {
+        display: grid;
+        gap: 16px;
+        grid-template-columns: 1fr;
+      }
+      @media (min-width: 860px) {
+        .grid-2 {
+          grid-template-columns: 1fr 1fr;
+        }
+      }
+      .box {
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 14px 16px;
+        background: var(--surface);
+      }
+      .box h3 {
+        margin-top: 0;
+      }
+      .muted {
+        color: var(--muted);
+      }
+      .small {
+        font-size: 13px;
+      }
+
+      .legend {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px 14px;
+        font-size: 13px;
+      }
+      nav.toc .legend {
+        margin-top: 12px;
+      }
+      @media (min-width: 1100px) {
+        nav.toc .legend {
+          flex-direction: column;
+          margin-top: 20px;
+        }
+      }
+      .box table {
+        font-size: 13.5px;
+      }
+      .box td code {
+        white-space: normal;
+      }
+      .legend span {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+      }
+      .sw {
+        width: 12px;
+        height: 12px;
+        border-radius: 3px;
+        border: 2px solid;
+        display: inline-block;
+        flex: none;
+      }
+      .sw.fe {
+        border-color: var(--fe);
+        background: var(--fe-bg);
+      }
+      .sw.be {
+        border-color: var(--be);
+        background: var(--be-bg);
+      }
+      .sw.worker {
+        border-color: var(--worker);
+        background: var(--worker-bg);
+      }
+      .sw.db {
+        border-color: var(--db);
+        background: var(--db-bg);
+      }
+      .sw.ollama {
+        border-color: var(--ollama);
+        background: var(--ollama-bg);
+      }
+      .tag {
+        font-size: 12px;
+        font-weight: 600;
+        padding: 1px 7px;
+        border-radius: 4px;
+        border: 1px solid;
+        white-space: nowrap;
+      }
+      .tag.fe {
+        color: var(--fe);
+        border-color: var(--fe);
+      }
+      .tag.be {
+        color: var(--be);
+        border-color: var(--be);
+      }
+      .tag.worker {
+        color: var(--worker);
+        border-color: var(--worker);
+      }
+      .tag.db {
+        color: var(--db);
+        border-color: var(--db);
+      }
+      .tag.ollama {
+        color: var(--ollama);
+        border-color: var(--ollama);
+      }
+
+      /* SVG diagrams */
+      .diagram {
+        overflow-x: auto;
+        margin: 12px 0;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        background: var(--bg);
+      }
+      .diagram svg {
+        display: block;
+        width: 100%;
+        height: auto;
+      }
+      svg text {
+        fill: var(--text);
+        font-family: var(--sans);
+      }
+      svg .t-muted {
+        fill: var(--muted);
+      }
+      svg .t-mono {
+        font-family: var(--mono);
+      }
+      svg .node {
+        stroke-width: 1.5;
+      }
+      svg .n-fe {
+        fill: var(--fe-bg);
+        stroke: var(--fe);
+      }
+      svg .n-be {
+        fill: var(--be-bg);
+        stroke: var(--be);
+      }
+      svg .n-worker {
+        fill: var(--worker-bg);
+        stroke: var(--worker);
+      }
+      svg .n-db {
+        fill: var(--db-bg);
+        stroke: var(--db);
+      }
+      svg .n-ollama {
+        fill: var(--ollama-bg);
+        stroke: var(--ollama);
+      }
+      svg .n-plain {
+        fill: var(--surface);
+        stroke: var(--border);
+      }
+      svg .s-fe {
+        stroke: var(--fe);
+      }
+      svg .f-fe {
+        fill: var(--fe);
+      }
+      svg .s-be {
+        stroke: var(--be);
+      }
+      svg .f-be {
+        fill: var(--be);
+      }
+      svg .s-worker {
+        stroke: var(--worker);
+      }
+      svg .f-worker {
+        fill: var(--worker);
+      }
+      svg .s-db {
+        stroke: var(--db);
+      }
+      svg .f-db {
+        fill: var(--db);
+      }
+      svg .s-ollama {
+        stroke: var(--ollama);
+      }
+      svg .f-ollama {
+        fill: var(--ollama);
+      }
+      svg .s-muted {
+        stroke: var(--muted);
+      }
+      svg .f-muted {
+        fill: var(--muted);
+      }
+      svg .edge {
+        fill: none;
+        stroke-width: 1.6;
+      }
+      svg .dashed {
+        stroke-dasharray: 5 4;
+      }
+      svg .lifeline {
+        stroke: var(--border);
+        stroke-width: 1.2;
+        stroke-dasharray: 4 4;
+      }
+      svg .group {
+        fill: none;
+        stroke: var(--border);
+        stroke-dasharray: 6 4;
+      }
+
+      /* Sequence player */
+      .seq {
+        margin: 20px 0 32px;
+      }
+      .seq h3 {
+        margin-bottom: 4px;
+      }
+      .seq-controls {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        align-items: center;
+        margin: 10px 0;
+      }
+      .seq-controls button {
+        font: inherit;
+        font-size: 14px;
+        color: var(--text);
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 5px 12px;
+        cursor: pointer;
+        min-height: 34px;
+      }
+      .seq-controls button:hover:not(:disabled) {
+        background: var(--surface-2);
+      }
+      .seq-controls button:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+      }
+      .seq-controls .primary {
+        background: var(--fe);
+        border-color: var(--fe);
+        color: #fff;
+      }
+      :root[data-theme='dark'] .seq-controls .primary {
+        color: #0b1530;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root:not([data-theme='light']) .seq-controls .primary {
+          color: #0b1530;
+        }
+      }
+      .seq-controls .seq-pos {
+        color: var(--muted);
+        font-size: 13px;
+        margin-left: 4px;
+        font-variant-numeric: tabular-nums;
+      }
+      .seq-controls .rm-note {
+        color: var(--muted);
+        font-size: 13px;
+      }
+      .seq-caption {
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 10px 14px;
+        background: var(--surface-2);
+        min-height: 48px;
+      }
+      .seq-body {
+        display: grid;
+        gap: 12px;
+        grid-template-columns: 1fr;
+      }
+      .seq-body.with-owl {
+        grid-template-columns: 1fr;
+      }
+      @media (min-width: 900px) {
+        .seq-body.with-owl {
+          grid-template-columns: minmax(0, 1fr) 150px;
+        }
+      }
+      .owl-preview {
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 12px;
+        text-align: center;
+        background: var(--bg);
+        align-self: start;
+      }
+      .owl-preview .owl-label {
+        font-size: 13px;
+        color: var(--muted);
+        margin-top: 6px;
+      }
+
+      svg .step {
+        opacity: 0.18;
+        transition: opacity 0.35s ease;
+      }
+      svg .step.past {
+        opacity: 0.78;
+      }
+      svg .step.current {
+        opacity: 1;
+      }
+      svg .step.current .edge {
+        stroke-width: 2.8;
+      }
+      svg .step.current text.lbl {
+        font-weight: 700;
+      }
+      svg .step .hl {
+        fill: none;
+        stroke: none;
+      }
+      svg .step.current .hl {
+        fill: var(--surface-2);
+        stroke: var(--border);
+      }
+      svg .actor-box.active rect {
+        stroke-width: 2.6;
+      }
+      @media (prefers-reduced-motion: reduce) {
+        svg .step {
+          transition: none;
+        }
+      }
+
+      /* Owl */
+      .owl {
+        width: 72px;
+        height: 72px;
+      }
+      .owl .ol {
+        fill: none;
+        stroke: var(--text);
+        stroke-width: 2.2;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+      }
+      .owl .of {
+        fill: var(--text);
+      }
+      .owl .disc {
+        fill: var(--surface);
+        stroke: var(--border);
+        stroke-width: 1.5;
+      }
+      .owl .pose-open,
+      .owl .pose-smile,
+      .owl .book {
+        display: none;
+      }
+      .owl.s-processing .pose-closed,
+      .owl.s-done .pose-closed,
+      .owl.s-done .eyes-open {
+        display: none;
+      }
+      .owl.s-processing .pose-open,
+      .owl.s-processing .book {
+        display: inline;
+      }
+      .owl.s-done .pose-smile {
+        display: inline;
+      }
+      .owl .jaw {
+        transform-box: fill-box;
+        transform-origin: center top;
+      }
+      .owl.s-processing .jaw {
+        animation: chew 1.2s ease-in-out infinite;
+      }
+      .owl.s-processing .book {
+        animation: nibble 1.2s ease-in-out infinite;
+        transform-box: fill-box;
+        transform-origin: center;
+      }
+      @keyframes chew {
+        0%,
+        100% {
+          transform: translateY(0);
+        }
+        50% {
+          transform: translateY(2.5px);
+        }
+      }
+      @keyframes nibble {
+        0%,
+        100% {
+          transform: translateY(0);
+        }
+        50% {
+          transform: translateY(1.5px);
+        }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .owl.s-processing .jaw,
+        .owl.s-processing .book {
+          animation: none;
+        }
+      }
+      .owl-row {
+        display: grid;
+        gap: 12px;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        margin: 12px 0;
+      }
+      @media (min-width: 720px) {
+        .owl-row {
+          grid-template-columns: repeat(4, minmax(0, 1fr));
+        }
+      }
+      .owl-row figure {
+        margin: 0;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 12px;
+        text-align: center;
+        background: var(--bg);
+      }
+      .owl-row figcaption {
+        font-size: 13px;
+      }
+      .owl-row figcaption strong {
+        display: block;
+        font-size: 14px;
+      }
+
+      /* ER */
+      .er {
+        display: grid;
+        gap: 0;
+        grid-template-columns: 1fr;
+        align-items: start;
+        margin: 12px 0;
+      }
+      @media (min-width: 1000px) {
+        .er {
+          grid-template-columns: minmax(0, 1fr) 90px minmax(0, 1fr);
+        }
+      }
+      .entity {
+        border: 2px solid var(--db);
+        border-radius: 8px;
+        overflow-x: auto;
+        background: var(--surface);
+      }
+      .entity .eh {
+        background: var(--db-bg);
+        padding: 8px 12px;
+        font-weight: 700;
+        font-family: var(--mono);
+        font-size: 14px;
+        border-bottom: 1px solid var(--db);
+      }
+      .entity table {
+        font-size: 13px;
+      }
+      .entity td {
+        padding: 5px 10px;
+      }
+      .entity td:first-child {
+        font-family: var(--mono);
+        white-space: nowrap;
+      }
+      .entity td:nth-child(2) {
+        font-family: var(--mono);
+        color: var(--muted);
+        white-space: nowrap;
+      }
+      .entity .pk {
+        font-weight: 700;
+      }
+      .entity .idx {
+        padding: 8px 12px;
+        font-size: 12.5px;
+        color: var(--muted);
+        border-top: 1px solid var(--border);
+      }
+      .er-link {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 10px 0;
+        color: var(--muted);
+        font-size: 13px;
+        text-align: center;
+      }
+      .er-link svg {
+        width: 90px;
+        height: 60px;
+      }
+      @media (max-width: 999px) {
+        .er-link svg {
+          transform: rotate(90deg);
+          height: 60px;
+        }
+      }
+
+      /* Chunk example */
+      .chunk-table td.ln {
+        font-family: var(--mono);
+        color: var(--muted);
+        text-align: right;
+        width: 44px;
+      }
+      .chunk-table td.tk {
+        font-family: var(--mono);
+        color: var(--muted);
+        text-align: right;
+        width: 56px;
+      }
+      .chunk-table td.bar {
+        width: 18px;
+        padding: 0 2px;
+      }
+      .chunk-table td.bar span {
+        display: block;
+        width: 8px;
+        min-height: 26px;
+        height: 100%;
+        margin: 0 auto;
+        border-radius: 2px;
+      }
+      .chunk-table tr.blank td.txt {
+        color: var(--muted);
+        font-style: italic;
+      }
+      .c0 {
+        background: var(--fe);
+      }
+      .c1 {
+        background: var(--worker);
+      }
+      .c2 {
+        background: var(--db);
+      }
+      .c3 {
+        background: var(--ollama);
+      }
+      .c4 {
+        background: var(--be);
+      }
+      .chunk-out {
+        display: grid;
+        gap: 8px;
+        margin: 12px 0;
+      }
+      .chunk-out div {
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 8px 12px;
+        font-size: 14px;
+        display: flex;
+        gap: 10px;
+        align-items: baseline;
+        flex-wrap: wrap;
+      }
+      .chunk-out i {
+        width: 10px;
+        height: 10px;
+        border-radius: 2px;
+        display: inline-block;
+      }
+
+      .tree {
+        white-space: pre;
+      }
+      .risk-table td:first-child {
+        font-weight: 600;
+      }
+      .decision {
+        border-left: 0;
+      }
+      footer {
+        color: var(--muted);
+        font-size: 13px;
+        text-align: center;
+        padding: 24px 16px 48px;
+      }
+      .sr-only {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        padding: 0;
+        margin: -1px;
+        overflow: hidden;
+        clip: rect(0 0 0 0);
+        white-space: nowrap;
+        border: 0;
+      }
+      @media print {
+        nav.toc,
+        .seq-controls,
+        .theme-btn {
+          display: none;
+        }
+        main section {
+          break-inside: avoid;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <header class="top">
+      <div>
+        <h1>Trợ lý AI · Kiến trúc RAG cục bộ</h1>
+        <div class="meta">
+          Core Banking Academy · Phase 0 (thiết kế) · cập nhật 22/10/2026 ·
+          nhánh <code>feat/ai-assistant-rag</code> ở cả hai repo
+        </div>
+      </div>
+      <button
+        class="theme-btn"
+        type="button"
+        id="theme-btn"
+        aria-pressed="false"
+      >
+        Chế độ tối
+      </button>
+    </header>
+
+    <div class="layout">
+      <nav class="toc" aria-label="Mục lục">
+        <ol>
+          <li><a href="#tong-quan">1. Tổng quan</a></li>
+          <li><a href="#kien-truc">2. Kiến trúc tổng thể</a></li>
+          <li><a href="#du-lieu">3. Mô hình dữ liệu</a></li>
+          <li><a href="#api">4. API contract</a></li>
+          <li><a href="#tuan-tu">5. Sơ đồ tuần tự</a></li>
+          <li><a href="#trang-thai">6. Trạng thái</a></li>
+          <li><a href="#chunking">7. Chunking &amp; trích dẫn</a></li>
+          <li><a href="#cau-truc">8. Cấu trúc code</a></li>
+          <li><a href="#rui-ro">9. Rủi ro &amp; quyết định</a></li>
+        </ol>
+        <div class="legend" aria-label="Chú giải màu theo lớp">
+          <strong class="small">Chú giải</strong>
+          <span><i class="sw fe"></i>Frontend (Angular)</span>
+          <span><i class="sw be"></i>Backend API (Spring Boot)</span>
+          <span><i class="sw worker"></i>Worker nền</span>
+          <span><i class="sw db"></i>PostgreSQL + pgvector</span>
+          <span><i class="sw ollama"></i>Ollama (model cục bộ)</span>
+        </div>
+      </nav>
+
+      <main>
+        <!-- 1 -->
+        <section id="tong-quan" aria-labelledby="h-tong-quan">
+          <h2 id="h-tong-quan">1. Tổng quan</h2>
+          <p class="lead">
+            Mọi người dùng đã đăng nhập, ở mọi vai trò, tải tài liệu
+            <code>.pdf</code>, <code>.md</code>, <code>.docx</code> vào
+            <strong>một kho tri thức dùng chung</strong> và đặt câu hỏi về
+            chúng. Câu trả lời do model chạy cục bộ trên máy này sinh ra, chỉ
+            dựa trên tài liệu đã tải lên, kèm nguồn: tên tệp, trang và khoảng
+            dòng.
+          </p>
+          <div class="grid-2">
+            <div class="box">
+              <h3>Mục tiêu</h3>
+              <ul>
+                <li>
+                  Di chuyển màn hình
+                  <strong>Trợ lý AI</strong> (<code>#/assistant</code>,
+                  checklist G.1, tiêu chí F1) từ mockup sang Angular.
+                </li>
+                <li>
+                  Xây RAG cục bộ: trích xuất → chia chunk → embed
+                  <code>bge-m3</code> → lưu <code>pgvector</code> → hỏi đáp với
+                  <code>qwen3:8b</code>.
+                </li>
+                <li>
+                  Xử lý chạy nền, người dùng vẫn duyệt các trang khác; con cú
+                  góc phải dưới báo tiến độ.
+                </li>
+                <li>
+                  Trích dẫn có cấu trúc, dựng từ metadata của chunk, không đọc
+                  từ văn bản model sinh ra.
+                </li>
+              </ul>
+            </div>
+            <div class="box">
+              <h3>Phạm vi theo phase</h3>
+              <table>
+                <tr>
+                  <th>Phase</th>
+                  <th>Module</th>
+                </tr>
+                <tr>
+                  <td>0</td>
+                  <td>Thiết kế: tài liệu này + <code>SPEC*.md</code></td>
+                </tr>
+                <tr>
+                  <td>1</td>
+                  <td>
+                    <span class="tag be">BE</span> <code>kb-storage</code>,
+                    <code>kb-ingestion</code>
+                  </td>
+                </tr>
+                <tr>
+                  <td>2</td>
+                  <td><span class="tag be">BE</span> <code>kb-chat</code></td>
+                </tr>
+                <tr>
+                  <td>3</td>
+                  <td>
+                    <span class="tag fe">FE</span> <code>kb-contracts</code>,
+                    <code>doc-tracker</code>, <code>assistant-screen</code>
+                  </td>
+                </tr>
+                <tr>
+                  <td>4</td>
+                  <td>
+                    <span class="tag fe">FE</span> <code>owl-indicator</code>
+                  </td>
+                </tr>
+                <tr>
+                  <td>5</td>
+                  <td>Kiểm chứng đầu-cuối</td>
+                </tr>
+              </table>
+            </div>
+            <div class="box">
+              <h3>Giả định</h3>
+              <ul>
+                <li>
+                  PoC chạy hoàn toàn trên một máy: Postgres Docker
+                  <code>pgvector/pgvector:pg16</code>, backend
+                  <code>localhost:8019</code>, Ollama
+                  <code>localhost:11434</code>.
+                </li>
+                <li>
+                  Model đã cài: <code>qwen3:8b</code>,
+                  <code>bge-m3:latest</code> (1024 chiều). Gọi
+                  <code>qwen3</code> với <code>think: false</code>.
+                </li>
+                <li>
+                  PDF: số dòng đánh lại từ 1 ở mỗi trang. DOCX: không có trang,
+                  mỗi đoạn hoặc dòng bảng là một “dòng” (hiển thị là “đoạn”).
+                  MD: dòng của chính tệp.
+                </li>
+                <li>
+                  Token ước lượng theo ký tự (<code>ceil(ký tự / 3)</code>).
+                </li>
+                <li>
+                  Hỏi đáp một lượt; lịch sử chat chỉ nằm trong trình duyệt.
+                </li>
+                <li>Mọi người dùng được tải lên; giới hạn 20 MB mỗi tệp.</li>
+              </ul>
+            </div>
+            <div class="box">
+              <h3>Ngoài phạm vi</h3>
+              <ul>
+                <li>OCR cho PDF scan; xóa, đổi tên, xử lý lại tài liệu.</li>
+                <li>Phân quyền xem tài liệu theo người hoặc đơn vị.</li>
+                <li>
+                  Hội thoại nhiều lượt, xếp hạng lại (re-rank), model trên
+                  cloud.
+                </li>
+                <li>
+                  Trợ lý trong tab bài học, “Tóm tắt bài này”, “Tạo 3 câu ôn
+                  tập” của mockup.
+                </li>
+                <li>Triển khai production, giới hạn tần suất (rate limit).</li>
+              </ul>
+            </div>
+          </div>
+        </section>
+
+        <!-- 2 -->
+        <section id="kien-truc" aria-labelledby="h-kien-truc">
+          <h2 id="h-kien-truc">2. Kiến trúc tổng thể</h2>
+          <p class="lead">
+            Một tiến trình Spring Boot chứa cả API và worker nền; bảng
+            <code>knowledge_documents</code> đóng vai trò hàng đợi, nên không
+            cần thêm message broker hay vector DB riêng.
+          </p>
+          <div
+            class="diagram"
+            role="img"
+            aria-label="Sơ đồ thành phần: trình duyệt Angular gọi Spring Boot qua dev proxy; Spring Boot gồm API và worker, đọc ghi PostgreSQL với pgvector và ổ đĩa, gọi Ollama để embed và sinh câu trả lời."
+          >
+            <svg viewBox="0 0 1010 560" style="min-width: 760px">
+              <!-- FE -->
+              <rect
+                class="node n-fe"
+                x="20"
+                y="40"
+                width="250"
+                height="300"
+                rx="10"
+              />
+              <text x="36" y="66" font-weight="700" font-size="15">
+                Trình duyệt · Angular 22
+              </text>
+              <text x="36" y="84" class="t-muted" font-size="12">
+                apps/lms (localhost:4200)
+              </text>
+              <rect
+                class="node n-plain"
+                x="36"
+                y="100"
+                width="218"
+                height="42"
+                rx="6"
+              />
+              <text x="48" y="118" font-size="13" font-weight="600">
+                /assistant
+              </text>
+              <text x="48" y="134" font-size="11.5" class="t-muted">
+                upload · danh sách · chat
+              </text>
+              <rect
+                class="node n-plain"
+                x="36"
+                y="152"
+                width="218"
+                height="42"
+                rx="6"
+              />
+              <text x="48" y="170" font-size="13" font-weight="600">
+                DocumentTrackerStore
+              </text>
+              <text x="48" y="186" font-size="11.5" class="t-muted">
+                root · poll 3 s khi có tài liệu chờ
+              </text>
+              <rect
+                class="node n-plain"
+                x="36"
+                y="204"
+                width="218"
+                height="42"
+                rx="6"
+              />
+              <text x="48" y="222" font-size="13" font-weight="600">
+                app-owl (shell)
+              </text>
+              <text x="48" y="238" font-size="11.5" class="t-muted">
+                idle · processing · done · failed
+              </text>
+              <rect
+                class="node n-plain"
+                x="36"
+                y="256"
+                width="218"
+                height="42"
+                rx="6"
+              />
+              <text x="48" y="274" font-size="13" font-weight="600">
+                EndpointClient
+              </text>
+              <text x="48" y="290" font-size="11.5" class="t-muted">
+                zod parse · call() · stream() NDJSON
+              </text>
+              <text x="36" y="326" font-size="11.5" class="t-muted">
+                proxy.conf.mjs · LMS_API_TARGET
+              </text>
+
+              <!-- BE -->
+              <rect
+                class="node n-be"
+                x="370"
+                y="40"
+                width="290"
+                height="200"
+                rx="10"
+              />
+              <text x="386" y="66" font-weight="700" font-size="15">
+                Spring Boot · API
+              </text>
+              <text x="386" y="84" class="t-muted" font-size="12">
+                corebanking-academy :8019 · JWT
+              </text>
+              <rect
+                class="node n-plain"
+                x="386"
+                y="98"
+                width="258"
+                height="40"
+                rx="6"
+              />
+              <text x="398" y="116" font-size="13" font-weight="600">
+                KnowledgeDocumentController
+              </text>
+              <text x="398" y="131" font-size="11.5" class="t-muted">
+                POST/GET …/knowledge/documents
+              </text>
+              <rect
+                class="node n-plain"
+                x="386"
+                y="146"
+                width="258"
+                height="40"
+                rx="6"
+              />
+              <text x="398" y="164" font-size="13" font-weight="600">
+                KnowledgeChatController
+              </text>
+              <text x="398" y="179" font-size="11.5" class="t-muted">
+                POST /chat · POST /chat/stream
+              </text>
+              <rect
+                class="node n-plain"
+                x="386"
+                y="194"
+                width="258"
+                height="34"
+                rx="6"
+              />
+              <text x="398" y="215" font-size="12.5">
+                OllamaClient · KnowledgeProperties
+              </text>
+
+              <!-- Worker -->
+              <rect
+                class="node n-worker"
+                x="370"
+                y="270"
+                width="290"
+                height="130"
+                rx="10"
+              />
+              <text x="386" y="296" font-weight="700" font-size="15">
+                Worker nền (cùng JVM)
+              </text>
+              <text x="386" y="314" class="t-muted" font-size="12">
+                @Scheduled 2 s · executor 1 luồng
+              </text>
+              <text x="386" y="338" font-size="12.5">
+                DocumentIngestionWorker (nhận việc)
+              </text>
+              <text x="386" y="357" font-size="12.5">
+                DocumentProcessor (trích xuất → embed)
+              </text>
+              <text x="386" y="382" font-size="12" class="t-muted">
+                khởi động: processing → queued
+              </text>
+
+              <!-- Disk -->
+              <rect
+                class="node n-plain"
+                x="370"
+                y="440"
+                width="290"
+                height="70"
+                rx="10"
+              />
+              <text x="386" y="466" font-weight="700" font-size="14">
+                Ổ đĩa cục bộ
+              </text>
+              <text x="386" y="486" font-size="12" class="t-muted">
+                app.knowledge.storage-dir/&lt;uuid&gt;
+              </text>
+
+              <!-- DB -->
+              <rect
+                class="node n-db"
+                x="740"
+                y="40"
+                width="255"
+                height="200"
+                rx="10"
+              />
+              <text x="756" y="66" font-weight="700" font-size="15">
+                PostgreSQL 16 + pgvector
+              </text>
+              <text x="756" y="84" class="t-muted" font-size="12">
+                Docker · schema learning_hub
+              </text>
+              <text x="756" y="112" font-size="12.5" class="t-mono">
+                knowledge_documents
+              </text>
+              <text x="756" y="130" font-size="11.5" class="t-muted">
+                hàng đợi: status + SKIP LOCKED
+              </text>
+              <text x="756" y="158" font-size="12.5" class="t-mono">
+                knowledge_document_chunks
+              </text>
+              <text x="756" y="176" font-size="11.5" class="t-muted">
+                vector(1024) · HNSW cosine
+              </text>
+              <text x="756" y="204" font-size="12.5" class="t-mono">
+                users, functions, …
+              </text>
+              <text x="756" y="222" font-size="11.5" class="t-muted">
+                có sẵn · thêm AI_ASSISTANT
+              </text>
+
+              <!-- Ollama -->
+              <rect
+                class="node n-ollama"
+                x="740"
+                y="290"
+                width="255"
+                height="110"
+                rx="10"
+              />
+              <text x="756" y="316" font-weight="700" font-size="15">
+                Ollama · localhost:11434
+              </text>
+              <text x="756" y="342" font-size="12.5" class="t-mono">
+                bge-m3 → /api/embed
+              </text>
+              <text x="756" y="362" font-size="12.5" class="t-mono">
+                qwen3:8b → /api/chat
+              </text>
+              <text x="756" y="384" font-size="11.5" class="t-muted">
+                URL, model lấy từ cấu hình
+              </text>
+
+              <!-- edges -->
+              <path class="edge s-fe" d="M270 118 H370" />
+              <polygon class="f-fe" points="370,118 361,113 361,123" />
+              <text x="278" y="110" font-size="11">JSON, multipart</text>
+              <path class="edge s-fe" d="M270 166 H370" />
+              <polygon class="f-fe" points="370,166 361,161 361,171" />
+              <text x="278" y="158" font-size="11">NDJSON</text>
+              <path class="edge s-be" d="M660 118 H740" />
+              <polygon class="f-be" points="740,118 731,113 731,123" />
+              <text x="670" y="110" font-size="11">JDBC</text>
+              <path class="edge s-be" d="M644 211 C700 211 690 330 740 330" />
+              <polygon class="f-be" points="740,330 731,325 731,335" />
+              <text x="668" y="204" font-size="11">HTTP</text>
+              <path
+                class="edge s-worker"
+                d="M660 290 C700 290 700 215 740 215"
+              />
+              <polygon class="f-worker" points="740,215 731,210 731,220" />
+              <text x="668" y="306" font-size="11">JDBC</text>
+              <path class="edge s-worker" d="M660 370 H740" />
+              <polygon class="f-worker" points="740,370 731,365 731,375" />
+              <text x="670" y="362" font-size="11">embed</text>
+              <path class="edge s-be dashed" d="M480 240 V270" />
+              <polygon class="f-be" points="480,270 475,261 485,261" />
+              <text x="488" y="259" font-size="11" class="t-muted">
+                tạo dòng queued
+              </text>
+              <path class="edge s-be" d="M386 236 C320 300 320 420 370 470" />
+              <polygon class="f-be" points="370,470 360,467 366,459" />
+              <text x="290" y="420" font-size="11">ghi tệp</text>
+              <path class="edge s-worker" d="M520 400 V440" />
+              <polygon class="f-worker" points="520,440 515,431 525,431" />
+              <text x="528" y="426" font-size="11">đọc tệp</text>
+              <text x="20" y="540" font-size="12" class="t-muted">
+                Mũi tên đi theo màu lớp gửi. Không có broker, không có vector DB
+                riêng; worker và API dùng chung pool kết nối.
+              </text>
+            </svg>
+          </div>
+          <div class="grid-2">
+            <div class="box">
+              <h3>Kết nối</h3>
+              <ul>
+                <li>
+                  <strong>FE → BE:</strong> cùng origin <code>/api/</code>, dev
+                  proxy chuyển tới <code>LMS_API_TARGET</code> (PoC:
+                  <code>http://localhost:8019</code>). Bearer JWT có sẵn.
+                </li>
+                <li>
+                  <strong>BE → DB:</strong> JPA cho
+                  <code>knowledge_documents</code>;
+                  <code>JdbcTemplate</code> cho chunk (JPA không ánh xạ
+                  <code>vector</code>).
+                </li>
+                <li>
+                  <strong>BE/Worker → Ollama:</strong> Spring
+                  <code>RestClient</code>, timeout kết nối 5 s, đọc 180 s.
+                </li>
+              </ul>
+            </div>
+            <div class="box">
+              <h3>Vì sao cơ chế job này</h3>
+              <p>
+                Backend chưa có job nào. Dùng chính bảng làm hàng đợi: không mất
+                việc khi khởi động lại, nhiều instance cũng không nhận trùng nhờ
+                <code>SKIP LOCKED</code>, và không thêm hạ tầng. Mặc định 1
+                luồng vì Ollama dùng chung CPU/GPU của máy.
+              </p>
+            </div>
+          </div>
+        </section>
+
+        <!-- 3 -->
+        <section id="du-lieu" aria-labelledby="h-du-lieu">
+          <h2 id="h-du-lieu">3. Mô hình dữ liệu</h2>
+          <p class="lead">
+            Hai bảng mới trong schema <code>learning_hub</code>, tạo bằng tệp
+            SQL chạy tay <code>docs/sql/learning_hub_knowledge.sql</code> theo
+            đúng quy ước backend: không FK, không DROP, mỗi cột có
+            <code>COMMENT</code> tiếng Việt, <code>ddl-auto=validate</code>.
+          </p>
+          <div class="er">
+            <div class="entity">
+              <div class="eh">knowledge_documents</div>
+              <table>
+                <tr>
+                  <td class="pk">document_id</td>
+                  <td>bigint identity</td>
+                  <td>PK</td>
+                </tr>
+                <tr>
+                  <td>uploaded_by</td>
+                  <td>varchar(20)</td>
+                  <td>users.user_id (logic)</td>
+                </tr>
+                <tr>
+                  <td>file_name</td>
+                  <td>varchar(255)</td>
+                  <td>tên gốc, chỉ hiển thị</td>
+                </tr>
+                <tr>
+                  <td>mime_type</td>
+                  <td>varchar(100)</td>
+                  <td>loại đã phát hiện</td>
+                </tr>
+                <tr>
+                  <td>size_bytes</td>
+                  <td>bigint</td>
+                  <td></td>
+                </tr>
+                <tr>
+                  <td>storage_key</td>
+                  <td>varchar(100)</td>
+                  <td>uuid trên đĩa</td>
+                </tr>
+                <tr>
+                  <td>status</td>
+                  <td>varchar(20)</td>
+                  <td>CHECK queued | processing | ready | failed</td>
+                </tr>
+                <tr>
+                  <td>error_message</td>
+                  <td>varchar(500)</td>
+                  <td>tiếng Việt, khi failed</td>
+                </tr>
+                <tr>
+                  <td>page_count</td>
+                  <td>integer</td>
+                  <td>chỉ PDF</td>
+                </tr>
+                <tr>
+                  <td>chunk_count</td>
+                  <td>integer</td>
+                  <td>mặc định 0</td>
+                </tr>
+                <tr>
+                  <td>attempts</td>
+                  <td>integer</td>
+                  <td>số lần worker nhận</td>
+                </tr>
+                <tr>
+                  <td>create_time</td>
+                  <td>timestamptz</td>
+                  <td>DB sinh</td>
+                </tr>
+                <tr>
+                  <td>started_at</td>
+                  <td>timestamptz</td>
+                  <td>lần nhận gần nhất</td>
+                </tr>
+                <tr>
+                  <td>processed_at</td>
+                  <td>timestamptz</td>
+                  <td>khi ready hoặc failed</td>
+                </tr>
+              </table>
+              <div class="idx">
+                Index: <code>(status, create_time)</code> cho hàng đợi ·
+                <code>(uploaded_by, create_time DESC)</code> cho “của tôi” ·
+                <code>(create_time DESC)</code> cho danh sách.
+              </div>
+            </div>
+            <div class="er-link" aria-hidden="true">
+              <svg viewBox="0 0 90 60">
+                <path
+                  d="M4 30 H86"
+                  stroke="currentColor"
+                  stroke-width="1.5"
+                  fill="none"
+                />
+                <path
+                  d="M78 22 L86 30 L78 38 M74 22 V38"
+                  stroke="currentColor"
+                  stroke-width="1.5"
+                  fill="none"
+                />
+                <text x="10" y="22" font-size="11">1</text>
+                <text x="62" y="22" font-size="11">n</text>
+                <text x="14" y="50" font-size="9.5" class="t-muted">
+                  document_id
+                </text>
+              </svg>
+            </div>
+            <div class="entity">
+              <div class="eh">knowledge_document_chunks</div>
+              <table>
+                <tr>
+                  <td class="pk">chunk_id</td>
+                  <td>bigint identity</td>
+                  <td>PK</td>
+                </tr>
+                <tr>
+                  <td>document_id</td>
+                  <td>bigint</td>
+                  <td>knowledge_documents (logic)</td>
+                </tr>
+                <tr>
+                  <td>chunk_index</td>
+                  <td>integer</td>
+                  <td>thứ tự, từ 0</td>
+                </tr>
+                <tr>
+                  <td>content</td>
+                  <td>text</td>
+                  <td>văn bản chunk</td>
+                </tr>
+                <tr>
+                  <td>page_number</td>
+                  <td>integer null</td>
+                  <td>null với .md, .docx</td>
+                </tr>
+                <tr>
+                  <td>line_start</td>
+                  <td>integer</td>
+                  <td>dòng đầu (không trống)</td>
+                </tr>
+                <tr>
+                  <td>line_end</td>
+                  <td>integer</td>
+                  <td>dòng cuối (không trống)</td>
+                </tr>
+                <tr>
+                  <td>token_estimate</td>
+                  <td>integer</td>
+                  <td>ceil(ký tự / 3)</td>
+                </tr>
+                <tr>
+                  <td>embedding</td>
+                  <td>vector(1024)</td>
+                  <td>bge-m3</td>
+                </tr>
+              </table>
+              <div class="idx">
+                Index: unique <code>(document_id, chunk_index)</code> ·
+                <code>USING hnsw (embedding vector_cosine_ops)</code>. Chunk
+                được INSERT cùng transaction chuyển tài liệu sang
+                <code>ready</code>, nên tìm kiếm không bao giờ thấy tài liệu dở
+                dang.
+              </div>
+            </div>
+          </div>
+          <p class="small muted">
+            Đổi tên so với yêu cầu ban đầu để theo quy ước backend:
+            <code>id → document_id</code>,
+            <code>uploaded_by_user_id → uploaded_by</code>,
+            <code>size → size_bytes</code>, <code>error → error_message</code>,
+            <code>created_at → create_time</code>; tiền tố
+            <code>knowledge_</code> vì schema dùng chung. Seed identity thêm
+            function
+            <code>('AI_ASSISTANT', 'Trợ lý AI', '/assistant', 155)</code> cho cả
+            5 vai trò.
+          </p>
+
+          <h3>Model theo endpoint</h3>
+          <div class="grid-2">
+            <div>
+              <p>
+                <span class="tag fe">FE</span> zod,
+                <code
+                  >libs/contracts/src/lib/knowledge/knowledge.schema.ts</code
+                >
+              </p>
+              <pre><code>DocumentStatusSchema = z.enum(['queued', 'processing', 'ready', 'failed'])
+
+KnowledgeDocumentSchema = z.object({
+  id: z.number().int(), fileName: z.string(), mimeType: z.string(),
+  sizeBytes: z.number().int().nonnegative(), status: DocumentStatusSchema,
+  errorMessage: z.string().nullable(), pageCount: z.number().int().nullable(),
+  chunkCount: z.number().int(),
+  uploadedBy: z.object({ userId: z.string(), fullName: z.string() }),
+  createdAt: z.iso.datetime(), processedAt: z.iso.datetime().nullable(),
+})
+
+DocumentListQuerySchema = z.object({ page, size (1..100), mine: z.boolean(),
+  status: z.array(DocumentStatusSchema) })          // tất cả optional
+UploadDocumentCommandSchema = z.object({ file: z.file() })
+AskCommandSchema = z.object({ question: z.string().trim().min(1).max(300) })
+
+CitationSchema = z.object({ n, documentId, fileName,
+  page: z.number().int().nullable(), lineStart, lineEnd, snippet })
+ChatAnswerSchema = z.object({ answer, found: z.boolean(),
+  citations: z.array(CitationSchema) })
+ChatStreamEventSchema = z.discriminatedUnion('type', [
+  { type: 'retrieved', count }, { type: 'delta', text },
+  { type: 'done', found, citations }, { type: 'error', messageCode, message } ])</code></pre>
+            </div>
+            <div>
+              <p>
+                <span class="tag be">BE</span> DTO (record Java),
+                <code>knowledge.dto</code>
+              </p>
+              <pre><code>record KnowledgeDocumentView(Long id, String fileName, String mimeType,
+    long sizeBytes, String status, String errorMessage, Integer pageCount,
+    int chunkCount, UploaderView uploadedBy, Instant createdAt,
+    Instant processedAt) { }
+record UploaderView(String userId, String fullName) { }
+
+// GET /documents: PageResponse&lt;KnowledgeDocumentView&gt;
+// (items, page từ 0, size, totalElements, totalPages)
+
+record ChatRequest(@NotBlank @Size(max = 300) String question) { }
+record CitationView(int n, Long documentId, String fileName,
+    Integer page, int lineStart, int lineEnd, String snippet) { }
+record ChatAnswerView(String answer, boolean found,
+    List&lt;CitationView&gt; citations) { }
+
+sealed interface ChatStreamEvent {
+  record Retrieved(String type, int count) { }
+  record Delta(String type, String text) { }
+  record Done(String type, boolean found, List&lt;CitationView&gt; citations) { }
+  record Error(String type, String messageCode, String message) { }
+}</code></pre>
+            </div>
+          </div>
+        </section>
+
+        <!-- 4 -->
+        <section id="api" aria-labelledby="h-api">
+          <h2 id="h-api">4. API contract</h2>
+          <p class="lead">
+            Tiền tố <code>/api/v1/knowledge</code>. Mọi người dùng đã đăng nhập
+            đều gọi được (không kiểm tra vai trò, vì kho dùng chung). JSON bọc
+            trong <code>BaseResponse</code>; lỗi nghiệp vụ là HTTP 200 với
+            <code>status: "ERROR"</code>, 401 khi thiếu hoặc hết hạn token.
+            Luồng NDJSON không bọc envelope.
+          </p>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Method</th>
+                  <th>Path</th>
+                  <th>Request</th>
+                  <th>Response (data)</th>
+                  <th>Lỗi</th>
+                  <th>Key FE</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>POST</td>
+                  <td><code>/documents</code></td>
+                  <td>multipart <code>file</code></td>
+                  <td>
+                    <code>KnowledgeDocumentView</code>, HTTP 201,
+                    <code>status: queued</code>
+                  </td>
+                  <td>
+                    <code>KNOWLEDGE-FILE_TYPE_UNSUPPORTED</code>,
+                    <code>KNOWLEDGE-FILE_INVALID</code>,
+                    <code>KNOWLEDGE-FILE_TOO_LARGE</code>, 401
+                  </td>
+                  <td><code>uploadDocument</code></td>
+                </tr>
+                <tr>
+                  <td>GET</td>
+                  <td><code>/documents</code></td>
+                  <td>
+                    <code>page</code>, <code>size</code> ≤ 100,
+                    <code>mine</code>, <code>status</code> (lặp)
+                  </td>
+                  <td>
+                    <code>PageResponse&lt;KnowledgeDocumentView&gt;</code>, mới
+                    nhất trước
+                  </td>
+                  <td><code>CORE-VALIDATION_FAILED</code>, 401</td>
+                  <td><code>documents</code></td>
+                </tr>
+                <tr>
+                  <td>GET</td>
+                  <td><code>/documents/{documentId}</code></td>
+                  <td>path</td>
+                  <td><code>KnowledgeDocumentView</code></td>
+                  <td><code>CORE-RESOURCE_NOT_FOUND</code>, 401</td>
+                  <td><code>document</code></td>
+                </tr>
+                <tr>
+                  <td>POST</td>
+                  <td><code>/chat</code></td>
+                  <td><code>{ question }</code> 1–300 ký tự</td>
+                  <td><code>ChatAnswerView</code></td>
+                  <td>
+                    <code>CORE-VALIDATION_FAILED</code>,
+                    <code>KNOWLEDGE-AI_UNAVAILABLE</code>, 401
+                  </td>
+                  <td><code>ask</code> (key mockup)</td>
+                </tr>
+                <tr>
+                  <td>POST</td>
+                  <td><code>/chat/stream</code></td>
+                  <td><code>{ question }</code></td>
+                  <td>
+                    <code>application/x-ndjson</code>: <code>retrieved</code> →
+                    <code>delta</code>… → <code>done</code>
+                  </td>
+                  <td>
+                    Trước dòng đầu: envelope JSON như <code>/chat</code>. Sau
+                    đó: sự kiện <code>error</code>
+                  </td>
+                  <td><code>askStream</code></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <h3>Mã lỗi mới (<code>KnowledgeResponseCode</code>, HTTP 200)</h3>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>messageCode</th>
+                  <th>message</th>
+                  <th>messageTitle</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><code>KNOWLEDGE-FILE_TYPE_UNSUPPORTED</code></td>
+                  <td>Chỉ hỗ trợ tệp .pdf, .md hoặc .docx.</td>
+                  <td>Loại tệp không hỗ trợ</td>
+                </tr>
+                <tr>
+                  <td><code>KNOWLEDGE-FILE_INVALID</code></td>
+                  <td>
+                    Tệp rỗng, bị hỏng hoặc nội dung không khớp với loại tệp.
+                  </td>
+                  <td>Tệp không hợp lệ</td>
+                </tr>
+                <tr>
+                  <td><code>KNOWLEDGE-FILE_TOO_LARGE</code></td>
+                  <td>Tệp vượt quá dung lượng tối đa 20 MB.</td>
+                  <td>Tệp quá lớn</td>
+                </tr>
+                <tr>
+                  <td><code>KNOWLEDGE-AI_UNAVAILABLE</code></td>
+                  <td>
+                    Dịch vụ AI tạm thời không phản hồi. Vui lòng thử lại sau.
+                  </td>
+                  <td>Dịch vụ AI chưa sẵn sàng</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <h3>Ví dụ luồng NDJSON</h3>
+          <pre><code>{"type":"retrieved","count":3}
+{"type":"delta","text":"Trước khi chạy EOD cần "}
+{"type":"delta","text":"đối chiếu số dư GL [1] và khóa giao dịch quầy [2]."}
+{"type":"done","found":true,"citations":[
+  {"n":1,"documentId":42,"fileName":"Quy-trinh-EOD.pdf","page":3,"lineStart":4,"lineEnd":9,"snippet":"Đối chiếu số dư..."},
+  {"n":2,"documentId":57,"fileName":"Checklist-van-hanh.md","page":null,"lineStart":18,"lineEnd":31,"snippet":"Khóa giao dịch..."}]}</code></pre>
+          <p class="small muted">
+            Trích dẫn gửi ở cuối để có thể rút lại khi model trả lời “Không tìm
+            thấy thông tin này trong tài liệu.” FE đọc luồng bằng
+            <code>EndpointClient.stream()</code> (transport mới
+            <code>responseType: 'ndjson'</code>), dựa trên
+            <code>DownloadProgress.partialText</code> của
+            <code>FetchBackend</code> Angular 22.2.
+          </p>
+        </section>
+
+        <!-- 5 -->
+        <section id="tuan-tu" aria-labelledby="h-tuan-tu">
+          <h2 id="h-tuan-tu">5. Sơ đồ tuần tự</h2>
+          <p class="lead">
+            Mỗi sơ đồ chạy từng bước: <strong>Phát</strong> tự chạy,
+            <strong>Tạm dừng</strong>, <strong>Bước</strong> sang bước kế,
+            <strong>Lùi</strong> về bước trước, <strong>Đặt lại</strong> về đầu.
+            Phím tắt khi đang ở trong một sơ đồ: <kbd>→</kbd> bước kế,
+            <kbd>←</kbd> lùi. Khi hệ thống bật giảm chuyển động, chỉ dùng được
+            Bước và Lùi.
+          </p>
+          <div id="seq-upload" class="seq"></div>
+          <div id="seq-poll" class="seq"></div>
+          <div id="seq-chat" class="seq"></div>
+          <div id="seq-errors" class="seq"></div>
+        </section>
+
+        <!-- 6 -->
+        <section id="trang-thai" aria-labelledby="h-trang-thai">
+          <h2 id="h-trang-thai">6. Trạng thái</h2>
+          <h3>Tài liệu</h3>
+          <div
+            class="diagram"
+            role="img"
+            aria-label="Sơ đồ trạng thái tài liệu: queued sang processing khi worker nhận; processing sang ready khi lưu xong, sang failed khi lỗi trích xuất hoặc hết 3 lần thử; processing quay lại queued khi Ollama tạm lỗi hoặc khi khởi động lại."
+          >
+            <svg viewBox="0 0 900 270" style="min-width: 680px">
+              <text x="24" y="92" font-size="11" class="t-muted">
+                upload hợp lệ
+              </text>
+              <circle cx="40" cy="120" r="9" class="f-muted" />
+              <path class="edge s-muted" d="M49 120 H110" />
+              <polygon class="f-muted" points="110,120 101,115 101,125" />
+              <rect
+                class="node n-be"
+                x="110"
+                y="95"
+                width="140"
+                height="50"
+                rx="25"
+              />
+              <text
+                x="180"
+                y="125"
+                text-anchor="middle"
+                font-weight="700"
+                class="t-mono"
+                font-size="14"
+              >
+                queued
+              </text>
+              <rect
+                class="node n-worker"
+                x="420"
+                y="95"
+                width="160"
+                height="50"
+                rx="25"
+              />
+              <text
+                x="500"
+                y="125"
+                text-anchor="middle"
+                font-weight="700"
+                class="t-mono"
+                font-size="14"
+              >
+                processing
+              </text>
+              <rect
+                class="node n-db"
+                x="720"
+                y="30"
+                width="140"
+                height="50"
+                rx="25"
+              />
+              <text
+                x="790"
+                y="60"
+                text-anchor="middle"
+                font-weight="700"
+                class="t-mono"
+                font-size="14"
+              >
+                ready
+              </text>
+              <rect
+                class="node n-plain"
+                x="720"
+                y="160"
+                width="140"
+                height="50"
+                rx="25"
+                style="stroke: var(--err)"
+              />
+              <text
+                x="790"
+                y="190"
+                text-anchor="middle"
+                font-weight="700"
+                class="t-mono"
+                font-size="14"
+              >
+                failed
+              </text>
+              <path class="edge s-worker" d="M250 112 H420" />
+              <polygon class="f-worker" points="420,112 411,107 411,117" />
+              <text x="335" y="88" text-anchor="middle" font-size="11.5">
+                worker nhận việc
+              </text>
+              <text
+                x="335"
+                y="103"
+                text-anchor="middle"
+                font-size="11.5"
+                class="t-muted"
+              >
+                FOR UPDATE SKIP LOCKED
+              </text>
+              <path class="edge s-worker dashed" d="M420 132 H250" />
+              <polygon class="f-worker" points="250,132 259,127 259,137" />
+              <text x="335" y="152" text-anchor="middle" font-size="11.5">
+                Ollama tạm lỗi, attempts &lt; 3,
+              </text>
+              <text x="335" y="168" text-anchor="middle" font-size="11.5">
+                hoặc khởi động lại backend
+              </text>
+              <path class="edge s-worker" d="M580 110 C650 110 650 55 720 55" />
+              <polygon class="f-worker" points="720,55 711,50 711,60" />
+              <text x="560" y="40" font-size="11.5">chunk + embed xong</text>
+              <path
+                class="edge s-worker"
+                d="M580 130 C650 130 650 185 720 185"
+              />
+              <polygon class="f-worker" points="720,185 711,180 711,190" />
+              <text x="560" y="236" font-size="11.5">
+                lỗi trích xuất, không có văn bản,
+              </text>
+              <text x="560" y="252" font-size="11.5">
+                hoặc Ollama lỗi lần thứ 3
+              </text>
+            </svg>
+          </div>
+          <p class="small muted">
+            <code>ready</code> và <code>failed</code> là trạng thái cuối (chưa
+            có xử lý lại trong phạm vi này). <code>processed_at</code> được ghi
+            ở cả hai.
+          </p>
+
+          <h3>Con cú (<code>DocumentTrackerStore.owlState$</code>)</h3>
+          <div
+            class="diagram"
+            role="img"
+            aria-label="Sơ đồ trạng thái con cú: idle sang processing khi có tài liệu chờ; processing sang done khi tài liệu cuối xong, sang failed khi tài liệu cuối lỗi; done về idle sau 6 giây hoặc khi đóng; failed về idle khi đóng."
+          >
+            <svg viewBox="0 0 900 320" style="min-width: 680px">
+              <rect
+                class="node n-plain"
+                x="40"
+                y="135"
+                width="130"
+                height="50"
+                rx="25"
+              />
+              <text
+                x="105"
+                y="165"
+                text-anchor="middle"
+                font-weight="700"
+                class="t-mono"
+                font-size="14"
+              >
+                idle
+              </text>
+              <rect
+                class="node n-fe"
+                x="330"
+                y="135"
+                width="160"
+                height="50"
+                rx="25"
+              />
+              <text
+                x="410"
+                y="165"
+                text-anchor="middle"
+                font-weight="700"
+                class="t-mono"
+                font-size="14"
+              >
+                processing
+              </text>
+              <rect
+                class="node n-fe"
+                x="680"
+                y="50"
+                width="140"
+                height="50"
+                rx="25"
+              />
+              <text
+                x="750"
+                y="80"
+                text-anchor="middle"
+                font-weight="700"
+                class="t-mono"
+                font-size="14"
+              >
+                done
+              </text>
+              <rect
+                class="node n-plain"
+                x="680"
+                y="220"
+                width="140"
+                height="50"
+                rx="25"
+              />
+              <text
+                x="750"
+                y="250"
+                text-anchor="middle"
+                font-weight="700"
+                class="t-mono"
+                font-size="14"
+              >
+                failed
+              </text>
+              <path class="edge s-fe" d="M170 160 H330" />
+              <polygon class="f-fe" points="330,160 321,155 321,165" />
+              <text x="184" y="150" font-size="11.5">
+                có tài liệu chờ xử lý
+              </text>
+              <path class="edge s-fe" d="M490 150 C590 150 590 75 680 75" />
+              <polygon class="f-fe" points="680,75 671,70 671,80" />
+              <text x="530" y="66" font-size="11.5">tài liệu cuối ready</text>
+              <path class="edge s-fe" d="M490 170 C590 170 590 245 680 245" />
+              <polygon class="f-fe" points="680,245 671,240 671,250" />
+              <text x="545" y="270" font-size="11.5">tài liệu cuối failed</text>
+              <path class="edge s-fe dashed" d="M700 52 C600 0 170 0 105 135" />
+              <polygon class="f-fe" points="105,135 100,126 110,127" />
+              <text x="300" y="62" font-size="11.5">
+                sau 6 s, hoặc bấm đóng / mở trợ lý
+              </text>
+              <path
+                class="edge s-fe dashed"
+                d="M700 268 C600 320 170 320 105 185"
+              />
+              <polygon class="f-fe" points="105,185 100,194 110,193" />
+              <text x="290" y="250" font-size="11.5">
+                bấm đóng hoặc mở trợ lý (không tự đóng)
+              </text>
+            </svg>
+          </div>
+          <p class="small muted">
+            Từ <code>done</code> hoặc <code>failed</code>, tải thêm tệp thì sang
+            thẳng <code>processing</code>; bong bóng vẫn hiện cho tài liệu vừa
+            xong.
+          </p>
+          <div class="owl-row" id="owl-row"></div>
+          <p class="small muted">
+            Bản phác: nét đơn sắc lấy màu chữ, nền <code>surface</code>, viền
+            1px; không tô màu, không nền nhạt. Idle đứng yên (không chớp mắt),
+            processing nhai sách lặp lại, done cười một lần, failed giữ mặt
+            trung tính và không dùng màu đỏ. Khi giảm chuyển động: mỗi trạng
+            thái là một tư thế tĩnh, ý nghĩa nằm ở chữ (tooltip, bong bóng, vùng
+            <code>aria-live</code>).
+          </p>
+        </section>
+
+        <!-- 7 -->
+        <section id="chunking" aria-labelledby="h-chunking">
+          <h2 id="h-chunking">7. Chunking &amp; trích dẫn</h2>
+          <p class="lead">
+            Trích xuất trả về một danh sách
+            <code>TextLine(page, line, text)</code>. Chunker chỉ cắt ở ranh giới
+            dòng, nên mỗi chunk biết chính xác <code>page_number</code>,
+            <code>line_start</code>, <code>line_end</code>; trích dẫn chỉ việc
+            đọc lại các cột này.
+          </p>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Loại</th>
+                  <th>Thư viện</th>
+                  <th>Trang</th>
+                  <th>Dòng</th>
+                  <th>Nhãn trên FE</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>PDF</td>
+                  <td>
+                    PDFBox 3, <code>PDFTextStripper</code> từng trang,
+                    <code>setSortByPosition(true)</code>
+                  </td>
+                  <td>1, 2, 3…</td>
+                  <td>Đánh lại từ 1 mỗi trang, đếm cả dòng trống</td>
+                  <td>trang 3 · dòng 13–27</td>
+                </tr>
+                <tr>
+                  <td>Markdown</td>
+                  <td>Không cần (UTF-8 nghiêm ngặt)</td>
+                  <td>null</td>
+                  <td>
+                    Dòng của tệp, đếm cả dòng trống, <code>\r\n</code> và
+                    <code>\n</code>
+                  </td>
+                  <td>dòng 13–27</td>
+                </tr>
+                <tr>
+                  <td>DOCX</td>
+                  <td>POI <code>XWPFDocument</code>, phần thân theo thứ tự</td>
+                  <td>null</td>
+                  <td>
+                    Mỗi đoạn là 1 dòng; mỗi hàng bảng là 1 dòng, các ô nối bằng
+                    <code> | </code>; bỏ header, footer, chú thích
+                  </td>
+                  <td>đoạn 13–27</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <h3>Quy tắc chia chunk</h3>
+          <ul>
+            <li>
+              Ước lượng token: <code>ceil(số ký tự / 3)</code>. Mục tiêu 600,
+              tối đa 800, chồng lấn 80 token.
+            </li>
+            <li>
+              Bỏ dòng trống khỏi nội dung nhưng giữ số dòng. Đóng chunk ngay khi
+              đạt mục tiêu, hoặc trước một dòng sẽ làm vượt tối đa, hoặc khi
+              sang trang PDF mới (một chunk không bao giờ trải qua hai trang).
+            </li>
+            <li>
+              Chồng lấn: chunk sau bắt đầu bằng các dòng nguyên vẹn cuối cùng
+              của chunk trước, tổng không quá 80 token, cùng trang.
+            </li>
+            <li>
+              Một dòng dài hơn tối đa được tách theo khoảng trắng thành nhiều
+              chunk có cùng <code>line_start = line_end</code>.
+            </li>
+          </ul>
+          <h3>
+            Ví dụ có tính toán (thu nhỏ: mục tiêu 50, tối đa 65, chồng lấn 20
+            token)
+          </h3>
+          <p class="small muted">
+            Trang 3 của <code>Quy-trinh-EOD.pdf</code>. Bảng dưới được tính bằng
+            đúng thuật toán trên, chạy ngay trong trang này. Mỗi cột màu là một
+            chunk; ô trùng màu ở hai cột là phần chồng lấn.
+          </p>
+          <div class="table-wrap">
+            <table class="chunk-table" id="chunk-table"></table>
+          </div>
+          <div class="chunk-out" id="chunk-out"></div>
+          <h3>Từ chunk tới trích dẫn</h3>
+          <pre><code>câu hỏi ──embed──▶ vector q ──▶ ORDER BY embedding &lt;=&gt; q LIMIT 5 ──▶ lọc similarity ≥ 0.35
+   chunk 1 (doc 42, trang 3, dòng 5–7)    ──▶ [1] trong prompt ──▶ citation { n: 1, page: 3, lineStart: 5, lineEnd: 7, snippet }
+   chunk 2 (doc 42, trang 3, dòng 7–10)   ──▶ [2] trong prompt ──▶ citation { n: 2, page: 3, lineStart: 7, lineEnd: 10, ... }
+model chỉ trả văn bản + dấu [n]; danh sách trích dẫn luôn dựng từ các cột của chunk, không phân tích văn bản model.</code></pre>
+          <div class="grid-2">
+            <div class="box">
+              <h3>Ví dụ Markdown</h3>
+              <pre><code>17  ## Khóa giao dịch quầy
+18  - Thông báo các chi nhánh trước 17:00.
+19
+20  - Chặn đăng nhập teller mới.</code></pre>
+              <p class="small">
+                Chunk chứa dòng 17–20 →
+                <code>page: null, lineStart: 17, lineEnd: 20</code> →
+                “Checklist-van-hanh.md · dòng 17–20”.
+              </p>
+            </div>
+            <div class="box">
+              <h3>Ví dụ DOCX</h3>
+              <pre><code>đoạn 12  Quy trình thay đổi khẩn cấp
+đoạn 13  Bước 1: Lập phiếu ECR có chữ ký...
+đoạn 14  Mã | Nội dung | Người duyệt        ← hàng bảng
+đoạn 15  ECR-01 | Vá lỗi lãi suất | Trưởng ban</code></pre>
+              <p class="small">
+                Chunk chứa đoạn 12–15 →
+                <code>page: null, lineStart: 12, lineEnd: 15</code> →
+                “Quy-trinh-ECR.docx · đoạn 12–15”.
+              </p>
+            </div>
+          </div>
+        </section>
+
+        <!-- 8 -->
+        <section id="cau-truc" aria-labelledby="h-cau-truc">
+          <h2 id="h-cau-truc">8. Cấu trúc code</h2>
+          <div class="grid-2">
+            <div>
+              <h3><span class="tag be">BE</span> corebanking-academy</h3>
+              <pre
+                class="tree"
+              ><code>src/main/java/vn/com/coreacademy/knowledge/
+├── controller/  KnowledgeDocumentController
+│                KnowledgeChatController
+├── service/     KnowledgeDocumentService     upload · list · get
+│                DocumentIngestionWorker      @Scheduled, claim
+│                DocumentProcessor            extract → chunk → embed → save
+│                KnowledgeChatService         embed → search → prompt
+│                ChatPromptBuilder, NotFoundAnswer
+├── extraction/  TextLine, FileTypeDetector, ExtractionException
+│                PdfTextExtractor, MarkdownTextExtractor, DocxTextExtractor
+├── chunking/    Chunker, Chunk, TokenEstimator
+├── ai/          OllamaClient, OllamaUnavailableException, OllamaException
+├── repository/  KnowledgeDocumentRepository (JPA)
+│                DocumentChunkRepository (JdbcTemplate + pgvector)
+├── entity/      KnowledgeDocument, DocumentStatus
+├── dto/         KnowledgeViews, KnowledgeRequests, ChatStreamEvent
+├── exception/   KnowledgeResponseCode
+└── config/      KnowledgeProperties, KnowledgeSchedulingConfig
+src/test/java/vn/com/coreacademy/knowledge/   (thư mục test đầu tiên của repo)
+docs/sql/learning_hub_knowledge.sql · docs/sql/README.md
+docs/sql/learning_hub_identity.sql   (+ AI_ASSISTANT)
+docs/api/KNOWLEDGE.md · docs/postman · compose.yaml (image pgvector)
+pom.xml  pdfbox 3 · poi-ooxml 5 · testcontainers postgresql</code></pre>
+              <p class="small">
+                <strong>Tái sử dụng:</strong> <code>BaseResponse</code>,
+                <code>PageResponse</code>, <code>PageQuery</code>,
+                <code>ApiExceptionHandler</code>,
+                <code>BusinessException</code>,
+                <code>SecurityContextUtils</code>,
+                <code>IdentityAuditService</code>, mẫu lưu tệp của
+                <code>LearningAssetService</code> (ghi đĩa ngoài transaction,
+                xóa khi rollback), bảng <code>users</code> để lấy tên người tải
+                lên.
+              </p>
+            </div>
+            <div>
+              <h3><span class="tag fe">FE</span> lms vip pro max</h3>
+              <pre class="tree"><code>libs/contracts/src/lib/knowledge/
+├── knowledge.schema.ts      KnowledgeDocument, Citation, ChatStreamEvent…
+└── knowledge.endpoints.ts   documents · document · uploadDocument · ask · askStream
+libs/contracts/src/lib/http/endpoint.ts    responseType 'ndjson'
+libs/contracts/src/lib/identity/identity.schema.ts   + 'AI_ASSISTANT'
+libs/mocks/src/lib/knowledge/knowledge.fixtures.ts   + FakeBackend
+apps/lms/src/app/
+├── core/http/endpoint-client.ts           + stream()
+├── core/http/envelope.interceptor.ts      bỏ qua x-ndjson
+├── core/knowledge/document-tracker.store.ts   root, poll 3 s
+├── core/routing/screens.ts                AI_ASSISTANT → /assistant
+├── layout/owl/owl.ts|html|scss            app-owl trong app-shell
+└── features/study-tools/assistant/
+    ├── assistant.ts|html|scss|spec.ts
+    ├── data-access/assistant.store.ts
+    └── components/
+        ├── chat-log/  chat-message/  citation-list/
+        ├── ask-form/  (Signal Forms, ask-form.form.ts)
+        └── document-upload/  document-list/
+apps/lms/proxy.conf.mjs                     LMS_API_TARGET</code></pre>
+              <p class="small">
+                <strong>Tái sử dụng:</strong> <code>EndpointClient</code>,
+                <code>serverData</code>, <code>serverMutation</code>,
+                <code>invalidation</code>, <code>SessionStore</code>,
+                <code>NetworkStore</code>, <code>toAppError</code>; từ
+                <code>@lms/ui</code>: <code>ui-page-header</code>,
+                <code>[uiCard]</code>, <code>[uiDropzone]</code> +
+                <code>ui-upload-item</code>, <code>table[uiTable]</code>,
+                <code>[uiBadge]</code> có <code>dot</code>,
+                <code>ui-pagination</code>, <code>input[uiInput]</code>,
+                <code>[uiButton]</code>, <code>[uiSkeleton]</code>,
+                <code>ui-error-state</code>, <code>ui-icon</code>, toast có sẵn.
+              </p>
+            </div>
+          </div>
+          <h3>Khác biệt có chủ đích so với mockup</h3>
+          <ul>
+            <li>
+              Bỏ eyebrow “Công cụ học”, bỏ avatar sparkles trong vòng tròn vàng
+              (icon trong ô màu và màu <code>accent</code> ngoài thành tích đều
+              bị cấm); tin nhắn phân biệt bằng căn lề và nhãn “Trợ lý” / “Bạn”.
+            </li>
+            <li>
+              Hộp <code>alert</code> có icon thành một dòng chữ mờ; câu có gạch
+              ngang được viết lại.
+            </li>
+            <li>
+              Bỏ ba chip câu hỏi gợi ý (chip chỉ dùng cho bộ lọc; các câu này
+              gắn với dữ liệu mẫu của mockup).
+            </li>
+            <li>
+              Trích dẫn ghi trang và khoảng dòng, mở rộng ra đoạn trích, thay
+              cho liên kết bài học.
+            </li>
+            <li>
+              Mới: tải lên và danh sách tài liệu dùng chung; con cú trạng thái
+              trong shell.
+            </li>
+          </ul>
+        </section>
+
+        <!-- 9 -->
+        <section id="rui-ro" aria-labelledby="h-rui-ro">
+          <h2 id="h-rui-ro">9. Rủi ro &amp; quyết định mở</h2>
+          <div class="table-wrap">
+            <table class="risk-table">
+              <thead>
+                <tr>
+                  <th>Rủi ro</th>
+                  <th>Ảnh hưởng</th>
+                  <th>Giảm thiểu</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>Model cục bộ chậm</td>
+                  <td>
+                    <code>qwen3:8b</code> trên laptop có thể mất vài giây tới
+                    token đầu và 10–60 s cho cả câu trả lời; embed một PDF 50
+                    trang mất hàng chục giây.
+                  </td>
+                  <td>
+                    Stream từng đoạn; FE hiện tiến trình “Đang tìm…” → “Đã tìm
+                    thấy N đoạn…”; nút Dừng; <code>keep_alive 10m</code> để
+                    model không phải nạp lại; đo thời gian tới token đầu ở Phase
+                    2.
+                  </td>
+                </tr>
+                <tr>
+                  <td>Tranh chấp tài nguyên</td>
+                  <td>
+                    Worker embed cùng lúc với người dùng hỏi làm cả hai chậm.
+                  </td>
+                  <td>
+                    Worker 1 luồng; Ollama tự xếp hàng yêu cầu; cấu hình được
+                    qua <code>KNOWLEDGE_WORKER_CONCURRENCY</code>.
+                  </td>
+                </tr>
+                <tr>
+                  <td>Ollama không chạy</td>
+                  <td>Tài liệu không xử lý được, hỏi đáp lỗi.</td>
+                  <td>
+                    Worker kiểm tra <code>/api/version</code> trước khi nhận
+                    việc (tài liệu đứng ở <code>queued</code>); 3 lần thử rồi
+                    mới <code>failed</code>; chat trả
+                    <code>KNOWLEDGE-AI_UNAVAILABLE</code>.
+                  </td>
+                </tr>
+                <tr>
+                  <td>Số dòng PDF khác với trình xem PDF</td>
+                  <td>
+                    Header/footer, cột đôi làm thứ tự dòng PDFBox khác với mắt
+                    người.
+                  </td>
+                  <td>
+                    <code>setSortByPosition(true)</code>; trích dẫn kèm đoạn
+                    trích để đối chiếu; ghi rõ “dòng theo văn bản trích xuất”
+                    trong tài liệu API.
+                  </td>
+                </tr>
+                <tr>
+                  <td>Kích thước tệp, bộ nhớ</td>
+                  <td>PDF lớn chiếm RAM khi trích xuất.</td>
+                  <td>
+                    Giới hạn 20 MB (cấu hình
+                    <code>KNOWLEDGE_MAX_FILE_SIZE</code>); PDFBox dùng bộ nhớ
+                    tạm trên đĩa (<code>MemoryUsageSetting</code>); xử lý từng
+                    trang.
+                  </td>
+                </tr>
+                <tr>
+                  <td>Ước lượng token sai</td>
+                  <td>Chunk quá dài so với ngữ cảnh 8192 của prompt.</td>
+                  <td>
+                    Ước lượng thận trọng (ký tự / 3); top-k 5 × 800 ≈ 4000
+                    token, còn dư cho câu hỏi và câu trả lời.
+                  </td>
+                </tr>
+                <tr>
+                  <td>Model không tuân thủ prompt</td>
+                  <td>
+                    Trả lời ngoài tài liệu hoặc quên câu “Không tìm thấy…”.
+                  </td>
+                  <td>
+                    Không có chunk vượt ngưỡng thì không gọi model;
+                    <code>temperature 0.1</code>; kiểm thử đường “không tìm
+                    thấy”; tinh chỉnh ngưỡng 0.35 ở Phase 2 với dữ liệu thật.
+                  </td>
+                </tr>
+                <tr>
+                  <td>HNSW + lọc sau</td>
+                  <td>
+                    Với kho lớn, lọc sau truy vấn có thể trả ít hơn k dòng.
+                  </td>
+                  <td>
+                    Không cần lọc trạng thái (chỉ tài liệu <code>ready</code> có
+                    chunk); PoC vài trăm tài liệu, chưa cần chỉnh
+                    <code>hnsw.ef_search</code>.
+                  </td>
+                </tr>
+                <tr>
+                  <td>Con cú che nội dung</td>
+                  <td>Trên 375 px có thể che nút Hỏi.</td>
+                  <td>
+                    Host <code>pointer-events: none</code>;
+                    <code>/assistant</code> chừa khoảng trống phía dưới; z-index
+                    dưới dialog, drawer, toast.
+                  </td>
+                </tr>
+                <tr>
+                  <td>Backend chưa có test</td>
+                  <td>
+                    Repo chưa có <code>src/test</code>; Testcontainers cần
+                    Docker đang chạy.
+                  </td>
+                  <td>
+                    Bạn đã yêu cầu test rõ ràng; ghi lệnh chạy và điều kiện
+                    Docker trong báo cáo mỗi phase.
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <h3>Quyết định đã chốt (22/10/2026)</h3>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th>Quyết định</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>D1</td>
+                  <td>
+                    Chạy cục bộ: Postgres Docker
+                    <code>pgvector/pgvector:pg16</code>, backend
+                    <code>localhost:8019</code>, proxy FE đổi được qua
+                    <code>LMS_API_TARGET</code>. Không đụng DB dùng chung
+                    <code>103.121.90.119</code>.
+                  </td>
+                </tr>
+                <tr>
+                  <td>D2</td>
+                  <td>
+                    Bảng <code>knowledge_documents</code> là hàng đợi;
+                    <code>@Scheduled</code> +
+                    <code>FOR UPDATE SKIP LOCKED</code>; executor 1 luồng; khởi
+                    động lại thì <code>processing → queued</code>.
+                  </td>
+                </tr>
+                <tr>
+                  <td>D3</td>
+                  <td>
+                    Function mới
+                    <code>AI_ASSISTANT</code> (<code>/assistant</code>, thứ tự
+                    155) cho cả 5 vai trò; <code>/assistant</code> vào nhóm menu
+                    “Công cụ học”.
+                  </td>
+                </tr>
+                <tr>
+                  <td>D4</td>
+                  <td>
+                    Con cú: idle đứng yên, processing nhai lặp, done cười một
+                    lần.
+                  </td>
+                </tr>
+                <tr>
+                  <td>D5</td>
+                  <td>
+                    PDFBox 3, POI <code>poi-ooxml</code>, Spring
+                    <code>RestClient</code> (không Spring AI), Testcontainers
+                    với image pgvector.
+                  </td>
+                </tr>
+                <tr>
+                  <td>D6</td>
+                  <td>Stream NDJSON qua <code>fetch</code>.</td>
+                </tr>
+                <tr>
+                  <td>D7</td>
+                  <td>
+                    Mọi người dùng được tải lên; chưa có xóa; 20 MB mỗi tệp.
+                  </td>
+                </tr>
+                <tr>
+                  <td>D8</td>
+                  <td>
+                    <code>SPEC.md</code> là bản đồ năng lực; mỗi module có
+                    <code>SPEC-&lt;module&gt;.md</code>.
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <h3>Còn để ngỏ (không chặn Phase 1)</h3>
+          <ul>
+            <li>
+              Thông số tinh chỉnh: kích thước chunk, <code>topK</code>, ngưỡng
+              tương đồng 0.35, chu kỳ poll 3 s. Đo lại ở Phase 1–2; nếu đổi, cập
+              nhật spec và tài liệu này rồi báo bạn.
+            </li>
+            <li>
+              Có hiển thị chỉ những trích dẫn được model đánh dấu
+              <code>[n]</code> hay toàn bộ chunk đã tìm thấy. Mặc định: toàn bộ
+              (đúng nguyên tắc “dựng từ metadata”); xem lại khi có dữ liệu thật
+              ở Phase 5.
+            </li>
+          </ul>
+        </section>
+      </main>
+    </div>
+    <footer>
+      Nguồn sự thật là <code>SPEC.md</code> và <code>SPEC-*.md</code> ở gốc
+      repo; khi tài liệu này lệch spec, sửa tài liệu này.
+    </footer>
+
+    <script>
+      (function () {
+        'use strict';
+        var root = document.documentElement;
+        var mqDark = window.matchMedia('(prefers-color-scheme: dark)');
+        var mqReduce = window.matchMedia('(prefers-reduced-motion: reduce)');
+
+        /* ---------- Theme ---------- */
+        var themeBtn = document.getElementById('theme-btn');
+        function storedTheme() {
+          try {
+            return localStorage.getItem('rag-doc-theme');
+          } catch (e) {
+            return null;
+          }
+        }
+        function isDark() {
+          var t = root.getAttribute('data-theme');
+          return t ? t === 'dark' : mqDark.matches;
+        }
+        function syncThemeBtn() {
+          var d = isDark();
+          themeBtn.textContent = d ? 'Chế độ sáng' : 'Chế độ tối';
+          themeBtn.setAttribute('aria-pressed', String(d));
+        }
+        var saved = storedTheme();
+        if (saved === 'light' || saved === 'dark')
+          root.setAttribute('data-theme', saved);
+        themeBtn.addEventListener('click', function () {
+          var next = isDark() ? 'light' : 'dark';
+          root.setAttribute('data-theme', next);
+          try {
+            localStorage.setItem('rag-doc-theme', next);
+          } catch (e) {
+            /* storage unavailable */
+          }
+          syncThemeBtn();
+        });
+        mqDark.addEventListener('change', syncThemeBtn);
+        syncThemeBtn();
+
+        /* ---------- Owl ---------- */
+        var OWL_LABEL = {
+          idle: 'idle · đứng yên',
+          processing: 'processing · nhai sách',
+          done: 'done · mỉm cười',
+          failed: 'failed · trung tính',
+        };
+        function owlSvg(state) {
+          return (
+            '<svg class="owl s-' +
+            state +
+            '" viewBox="0 0 64 64" aria-hidden="true">' +
+            '<circle class="disc" cx="32" cy="32" r="31"/>' +
+            '<path class="ol" d="M20 18 L17 11 L25 15.5 Q32 13 39 15.5 L47 11 L44 18 Q50 25 49.5 34 Q49 46 40 51 Q32 54 24 51 Q15 46 14.5 34 Q14 25 20 18 Z"/>' +
+            '<path class="ol" d="M32 23.5 C28.5 19.5 19.5 20 19.5 28.5 C19.5 35 26 37 32 33.5 C38 37 44.5 35 44.5 28.5 C44.5 20 35.5 19.5 32 23.5 Z"/>' +
+            '<path class="ol" d="M17.5 35 Q20 45 27 48.5"/><path class="ol" d="M46.5 35 Q44 45 37 48.5"/>' +
+            '<path class="ol" d="M28.5 53 V56.5 M35.5 53 V56.5"/>' +
+            '<g class="eyes-open"><circle class="ol" cx="26" cy="28.5" r="4"/><circle class="ol" cx="38" cy="28.5" r="4"/>' +
+            '<circle class="of" cx="26.5" cy="29" r="1.6"/><circle class="of" cx="37.5" cy="29" r="1.6"/></g>' +
+            '<g class="pose-smile"><path class="ol" d="M22.5 29.5 Q26 25.5 29.5 29.5"/><path class="ol" d="M34.5 29.5 Q38 25.5 41.5 29.5"/>' +
+            '<path class="ol" d="M30.5 32.5 L32 36 L33.5 32.5 Z"/><path class="ol" d="M27 39 Q32 43 37 39"/></g>' +
+            '<g class="pose-closed"><path class="ol" d="M30.5 32.5 L32 36.5 L33.5 32.5 Z"/></g>' +
+            '<g class="pose-open"><path class="ol" d="M30 32 L32 34 L34 32"/><path class="ol jaw" d="M30.5 36 L32 38.5 L33.5 36"/></g>' +
+            '<g class="book"><path class="ol" d="M25.5 40 L32 42 L38.5 40 L38.5 46 L32 48 L25.5 46 Z"/><path class="ol" d="M32 42 V48"/></g>' +
+            '</svg>'
+          );
+        }
+        var owlRow = document.getElementById('owl-row');
+        owlRow.innerHTML = ['idle', 'processing', 'done', 'failed']
+          .map(function (s) {
+            var cap = {
+              idle: 'Chưa có tài liệu đang xử lý.',
+              processing: 'Có tài liệu queued hoặc processing.',
+              done: '“Đã xử lý xong tài liệu Quy-trinh-EOD.pdf”, tự đóng sau 6 s.',
+              failed: '“Không xử lý được tài liệu scan.pdf.” Giữ tới khi đóng.',
+            }[s];
+            return (
+              '<figure>' +
+              owlSvg(s) +
+              '<figcaption><strong class="mono">' +
+              s +
+              '</strong>' +
+              cap +
+              '</figcaption></figure>'
+            );
+          })
+          .join('');
+
+        /* ---------- Sequence diagrams ---------- */
+        var LAYER_NAME = {
+          fe: 'Frontend',
+          be: 'Backend API',
+          worker: 'Worker nền',
+          db: 'PostgreSQL',
+          ollama: 'Ollama',
+        };
+        var SEQS = {
+          'seq-upload': {
+            title:
+              '5.1 Tải lên → hàng đợi → trích xuất → chunk → embed → lưu → ready',
+            desc: 'Request trả về ngay với queued; mọi việc nặng chạy trong worker.',
+            actors: [
+              {
+                id: 'fe',
+                label: 'Trình duyệt',
+                sub: 'AssistantStore',
+                layer: 'fe',
+              },
+              {
+                id: 'api',
+                label: 'API',
+                sub: 'DocumentController',
+                layer: 'be',
+              },
+              { id: 'disk', label: 'Ổ đĩa', sub: 'storage-dir', layer: 'be' },
+              { id: 'db', label: 'PostgreSQL', sub: 'pgvector', layer: 'db' },
+              {
+                id: 'wk',
+                label: 'Worker',
+                sub: '@Scheduled 2 s',
+                layer: 'worker',
+              },
+              { id: 'ol', label: 'Ollama', sub: 'bge-m3', layer: 'ollama' },
+            ],
+            steps: [
+              {
+                f: 'fe',
+                t: 'api',
+                l: 'POST /documents (multipart)',
+                c: 'Người dùng kéo thả Quy-trinh-EOD.pdf. AssistantStore gửi multipart qua EndpointClient (encoding: multipart), kèm Bearer JWT.',
+              },
+              {
+                f: 'api',
+                t: 'api',
+                l: 'đuôi · dung lượng · MIME · magic',
+                c: 'Kiểm tra đồng bộ: đuôi .pdf/.md/.docx, 1 byte đến 20 MB, MIME khai báo nằm trong danh sách cho phép, magic bytes khớp (%PDF-, PK + word/document.xml, UTF-8 không có byte NUL).',
+              },
+              {
+                f: 'api',
+                t: 'disk',
+                l: 'ghi storage-dir/<uuid>',
+                c: 'Ghi tệp ra đĩa ngoài transaction (mẫu của LearningAssetService). Nếu bước sau lỗi, xóa đúng tệp uuid này.',
+              },
+              {
+                f: 'api',
+                t: 'db',
+                l: 'INSERT … status = queued',
+                c: 'Một transaction ngắn: tạo dòng knowledge_documents với status queued và ghi audit KNOWLEDGE_DOCUMENT_UPLOADED.',
+              },
+              {
+                f: 'api',
+                t: 'fe',
+                l: '201 · status: queued',
+                r: true,
+                c: 'Trả về ngay KnowledgeDocumentView với status queued. Request không bao giờ chờ model. FE gọi tracker.track(doc), con cú bắt đầu nhai.',
+              },
+              {
+                f: 'wk',
+                t: 'ol',
+                l: 'GET /api/version',
+                c: 'Mỗi 2 s, nếu executor còn chỗ trống, worker kiểm tra Ollama còn sống. Không sống thì bỏ qua chu kỳ, tài liệu vẫn queued.',
+              },
+              {
+                f: 'wk',
+                t: 'db',
+                l: 'claim: processing (SKIP LOCKED)',
+                c: 'UPDATE … SET status = processing, started_at = now(), attempts + 1 cho dòng queued cũ nhất, chọn bằng FOR UPDATE SKIP LOCKED: hai worker không bao giờ nhận trùng.',
+              },
+              {
+                f: 'wk',
+                t: 'disk',
+                l: 'đọc tệp',
+                c: 'Worker đọc tệp theo storage_key, ngoài mọi transaction.',
+              },
+              {
+                f: 'wk',
+                t: 'wk',
+                l: 'trích xuất (trang, dòng)',
+                c: 'PDFBox trích từng trang thành TextLine(page, line, text). PDF không có lớp văn bản sẽ thành failed ở luồng lỗi C.',
+              },
+              {
+                f: 'wk',
+                t: 'wk',
+                l: 'chunk 600–800, chồng 80',
+                c: 'Chunker cắt ở ranh giới dòng, không vượt trang, mỗi chunk giữ page_number, line_start, line_end (xem mục 7).',
+              },
+              {
+                f: 'wk',
+                t: 'ol',
+                l: 'POST /api/embed (lô 16)',
+                c: 'Gửi nội dung chunk theo lô 16 cho bge-m3. Model và URL lấy từ app.knowledge.ollama.',
+              },
+              {
+                f: 'ol',
+                t: 'wk',
+                l: 'vector 1024 chiều',
+                r: true,
+                c: 'Ollama trả vector đã chuẩn hóa; client kiểm tra đủ 1024 chiều.',
+              },
+              {
+                f: 'wk',
+                t: 'db',
+                l: 'INSERT chunks + status = ready',
+                c: 'Một transaction: INSERT toàn bộ chunk, đặt status ready, chunk_count, page_count, processed_at. Từ đây tài liệu tìm kiếm được.',
+              },
+            ],
+          },
+          'seq-poll': {
+            title: '5.2 FE poll trạng thái + con cú: idle → nhai → cười',
+            desc: 'DocumentTrackerStore ở mức app nên vẫn poll khi người dùng sang trang khác.',
+            owl: true,
+            actors: [
+              { id: 'owl', label: 'app-owl', sub: 'layout/owl', layer: 'fe' },
+              {
+                id: 'tr',
+                label: 'DocumentTracker',
+                sub: 'root store',
+                layer: 'fe',
+              },
+              {
+                id: 'as',
+                label: 'AssistantStore',
+                sub: '/assistant',
+                layer: 'fe',
+              },
+              {
+                id: 'api',
+                label: 'API',
+                sub: '/api/v1/knowledge',
+                layer: 'be',
+              },
+              {
+                id: 'db',
+                label: 'PostgreSQL',
+                sub: 'knowledge_documents',
+                layer: 'db',
+              },
+            ],
+            steps: [
+              {
+                f: 'as',
+                t: 'tr',
+                l: 'track(doc 42)',
+                owl: 'processing',
+                c: 'Upload thành công, AssistantStore gọi tracker.track(doc). pending không rỗng nên owlState$ = processing: con cú há miệng nhai sách.',
+              },
+              {
+                f: 'tr',
+                t: 'api',
+                l: 'GET /documents?mine&status…',
+                owl: 'processing',
+                c: 'Mỗi 3 s khi còn tài liệu chờ và đang online: GET /documents?mine=true&status=queued&status=processing.',
+              },
+              {
+                f: 'api',
+                t: 'db',
+                l: 'WHERE uploaded_by = me',
+                owl: 'processing',
+                c: 'Backend lọc theo người gọi lấy từ JWT (SecurityContextUtils), không tin tham số từ trình duyệt.',
+              },
+              {
+                f: 'api',
+                t: 'tr',
+                l: '[42: processing]',
+                r: true,
+                owl: 'processing',
+                c: 'Tài liệu 42 vẫn đang xử lý. Người dùng có thể đang ở trang khác: tracker là root nên vẫn chạy.',
+              },
+              {
+                f: 'tr',
+                t: 'api',
+                l: 'GET … (3 s sau)',
+                owl: 'processing',
+                c: 'Lần poll tiếp theo.',
+              },
+              {
+                f: 'api',
+                t: 'tr',
+                l: '[] · 42 rời danh sách chờ',
+                r: true,
+                owl: 'processing',
+                c: 'Danh sách chờ rỗng: tài liệu 42 đã ready hoặc failed. Tracker cần biết kết quả cụ thể.',
+              },
+              {
+                f: 'tr',
+                t: 'api',
+                l: 'GET /documents/42',
+                owl: 'processing',
+                c: 'Hỏi riêng một lần theo id. Nếu lỗi mạng, giữ 42 trong pending cho lần poll sau.',
+              },
+              {
+                f: 'api',
+                t: 'tr',
+                l: 'status: ready',
+                r: true,
+                owl: 'processing',
+                c: 'Kết quả: ready, chunk_count 37.',
+              },
+              {
+                f: 'tr',
+                t: 'owl',
+                l: 'owlState = done',
+                owl: 'done',
+                c: 'lastFinished = tài liệu 42, pending rỗng nên owlState$ = done: cú cười, bong bóng “Đã xử lý xong tài liệu Quy-trinh-EOD.pdf”. aria-live đọc câu này.',
+              },
+              {
+                f: 'tr',
+                t: 'as',
+                l: 'finished.bump()',
+                owl: 'done',
+                c: 'ChangeToken finished tăng: danh sách tài liệu trên /assistant tự tải lại và hiện “Sẵn sàng”.',
+              },
+              {
+                f: 'tr',
+                t: 'owl',
+                l: 'sau 6 s: dismiss()',
+                owl: 'idle',
+                c: 'Thông báo ready tự đóng sau 6 s (hoặc khi người dùng bấm vào cú, mở /assistant). Cú về idle, đứng yên.',
+              },
+            ],
+          },
+          'seq-chat': {
+            title:
+              '5.3 Hỏi đáp: câu hỏi → embed → tìm vector → prompt qwen3 → trả lời + trích dẫn',
+            desc: 'Bước 1–7 chạy trên luồng request nên lỗi vẫn là envelope; sinh câu trả lời chạy trong StreamingResponseBody.',
+            actors: [
+              {
+                id: 'fe',
+                label: 'Trình duyệt',
+                sub: 'AssistantStore',
+                layer: 'fe',
+              },
+              {
+                id: 'api',
+                label: 'API',
+                sub: 'KnowledgeChatService',
+                layer: 'be',
+              },
+              {
+                id: 'ol',
+                label: 'Ollama',
+                sub: 'bge-m3 · qwen3:8b',
+                layer: 'ollama',
+              },
+              {
+                id: 'db',
+                label: 'PostgreSQL',
+                sub: 'HNSW cosine',
+                layer: 'db',
+              },
+            ],
+            steps: [
+              {
+                f: 'fe',
+                t: 'api',
+                l: 'POST /chat/stream {question}',
+                c: '“Trước khi chạy EOD cần kiểm tra gì?”. EndpointClient.stream() gửi fetch với responseType text và reportProgress.',
+              },
+              {
+                f: 'api',
+                t: 'api',
+                l: 'kiểm tra 1–300 ký tự',
+                c: 'Sai độ dài trả envelope CORE-VALIDATION_FAILED (JSON), chưa mở luồng.',
+              },
+              {
+                f: 'api',
+                t: 'ol',
+                l: 'POST /api/embed (câu hỏi)',
+                c: 'Embed câu hỏi bằng bge-m3. Ollama tắt: trả KNOWLEDGE-AI_UNAVAILABLE.',
+              },
+              {
+                f: 'ol',
+                t: 'api',
+                l: 'vector q',
+                r: true,
+                c: 'Vector 1024 chiều của câu hỏi.',
+              },
+              {
+                f: 'api',
+                t: 'db',
+                l: 'ORDER BY embedding <=> q LIMIT 5',
+                c: 'Tìm 5 chunk gần nhất theo cosine trên toàn bộ kho dùng chung (mọi người, mọi vai trò), JOIN lấy file_name.',
+              },
+              {
+                f: 'db',
+                t: 'api',
+                l: '5 chunk + similarity',
+                r: true,
+                c: 'Mỗi dòng có document_id, file_name, page_number, line_start, line_end, content, similarity = 1 − khoảng cách.',
+              },
+              {
+                f: 'api',
+                t: 'api',
+                l: 'lọc ≥ 0.35',
+                c: 'Giữ chunk có similarity ≥ 0.35. Không còn chunk nào: trả ngay “Không tìm thấy thông tin này trong tài liệu.”, found=false, không gọi qwen3.',
+              },
+              {
+                f: 'api',
+                t: 'fe',
+                l: '{"type":"retrieved","count":3}',
+                r: true,
+                c: 'Dòng NDJSON đầu tiên. FE đổi chữ chờ thành “Đã tìm thấy 3 đoạn liên quan, đang soạn câu trả lời…”.',
+              },
+              {
+                f: 'api',
+                t: 'ol',
+                l: 'POST /api/chat qwen3:8b stream',
+                c: 'System prompt: chỉ dùng NGỮ CẢNH, nếu thiếu thì trả đúng câu “Không tìm thấy…”, ghi nguồn [n]. User message: các chunk đánh số [1]…[3] + câu hỏi. think:false, temperature 0.1, num_ctx 8192.',
+              },
+              {
+                f: 'ol',
+                t: 'api',
+                l: 'delta token',
+                r: true,
+                c: 'Ollama trả từng đoạn văn bản dạng NDJSON.',
+              },
+              {
+                f: 'api',
+                t: 'fe',
+                l: '{"type":"delta"} …',
+                r: true,
+                c: 'Mỗi delta được ghi và flush ngay một dòng; FE nối vào bong bóng trả lời. Người dùng có thể bấm Dừng (hủy fetch).',
+              },
+              {
+                f: 'api',
+                t: 'api',
+                l: 'câu trả lời là “Không tìm thấy…”?',
+                c: 'Nếu có: found=false và bỏ trích dẫn. Nếu không: trích dẫn = các chunk đã đưa vào prompt, đánh số n như trong prompt.',
+              },
+              {
+                f: 'api',
+                t: 'fe',
+                l: '{"type":"done",citations}',
+                r: true,
+                c: 'Dòng cuối: found và citations dựng từ metadata chunk (tên tệp, trang, dòng, snippet 280 ký tự). FE hiện “Nguồn” với từng mục mở rộng được.',
+              },
+            ],
+          },
+          'seq-errors': {
+            title:
+              '5.4 Luồng lỗi: tệp không hợp lệ, Ollama không chạy, lỗi trích xuất',
+            desc: 'Ba tình huống nối tiếp trong một sơ đồ; mỗi tình huống bắt đầu bằng một dải tiêu đề.',
+            actors: [
+              {
+                id: 'fe',
+                label: 'Trình duyệt',
+                sub: 'store · app-owl',
+                layer: 'fe',
+              },
+              {
+                id: 'api',
+                label: 'API',
+                sub: '/api/v1/knowledge',
+                layer: 'be',
+              },
+              {
+                id: 'wk',
+                label: 'Worker',
+                sub: 'DocumentProcessor',
+                layer: 'worker',
+              },
+              {
+                id: 'db',
+                label: 'PostgreSQL',
+                sub: 'knowledge_documents',
+                layer: 'db',
+              },
+              {
+                id: 'ol',
+                label: 'Ollama',
+                sub: 'localhost:11434',
+                layer: 'ollama',
+              },
+            ],
+            steps: [
+              {
+                note: 'A · Tệp không hợp lệ',
+                c: 'Tình huống A: người dùng tải lên một tệp .pdf thực chất là tệp thực thi đổi tên.',
+              },
+              {
+                f: 'fe',
+                t: 'api',
+                l: 'POST /documents (bao-cao.pdf)',
+                c: 'FE đã kiểm tra đuôi và dung lượng phía client; nội dung thật chỉ backend kiểm tra được.',
+              },
+              {
+                f: 'api',
+                t: 'api',
+                l: 'magic bytes ≠ %PDF-',
+                c: 'Magic bytes không khớp đuôi .pdf. Không ghi đĩa, không tạo dòng nào.',
+              },
+              {
+                f: 'api',
+                t: 'fe',
+                l: '200 · ERROR KNOWLEDGE-FILE_INVALID',
+                r: true,
+                c: 'Envelope ERROR với message “Tệp rỗng, bị hỏng hoặc nội dung không khớp với loại tệp.”. serverMutation (errors: toast) hiện toast; con cú không đổi.',
+              },
+              {
+                note: 'B · Ollama không chạy',
+                c: 'Tình huống B: Ollama tắt khi có tài liệu đang chờ và khi người dùng hỏi.',
+              },
+              {
+                f: 'wk',
+                t: 'ol',
+                l: 'GET /api/version ✕ refused',
+                c: 'Kiểm tra trước khi nhận việc thất bại: bỏ qua chu kỳ, tài liệu vẫn queued, không tốn lượt thử.',
+              },
+              {
+                f: 'wk',
+                t: 'ol',
+                l: 'POST /api/embed ✕ timeout',
+                c: 'Nếu Ollama tắt giữa chừng khi đang embed: OllamaUnavailableException (lỗi tạm thời).',
+              },
+              {
+                f: 'wk',
+                t: 'db',
+                l: 'queued, attempts + 1 (lần 3: failed)',
+                c: 'Lỗi tạm thời: trả về queued để thử lại. Đến lần thứ 3: failed với “Không kết nối được dịch vụ AI sau 3 lần thử. Vui lòng tải lại tệp sau.”',
+              },
+              {
+                f: 'fe',
+                t: 'api',
+                l: 'POST /chat/stream',
+                c: 'Người dùng hỏi khi Ollama tắt.',
+              },
+              {
+                f: 'api',
+                t: 'fe',
+                l: '200 · ERROR KNOWLEDGE-AI_UNAVAILABLE',
+                r: true,
+                c: 'Embed câu hỏi thất bại trước khi mở luồng, nên trả envelope JSON. Bong bóng trả lời hiện thông báo của server và nút Thử lại.',
+              },
+              {
+                note: 'C · Lỗi trích xuất',
+                c: 'Tình huống C: một PDF scan không có lớp văn bản.',
+              },
+              {
+                f: 'wk',
+                t: 'wk',
+                l: 'PDF không có lớp văn bản',
+                c: 'Tổng số ký tự không phải khoảng trắng của mọi trang dưới 20: ExtractionException mang thông điệp tiếng Việt.',
+              },
+              {
+                f: 'wk',
+                t: 'db',
+                l: 'status = failed, error_message',
+                c: 'failed, error_message = “PDF không có lớp văn bản (có thể là bản scan). Hệ thống chưa hỗ trợ nhận dạng chữ.”, processed_at = now(). Không chunk nào được lưu.',
+              },
+              {
+                f: 'fe',
+                t: 'api',
+                l: 'poll → GET /documents/43',
+                c: 'Tracker thấy tài liệu 43 rời danh sách chờ và hỏi kết quả.',
+              },
+              {
+                f: 'api',
+                t: 'fe',
+                l: 'status: failed + errorMessage',
+                r: true,
+                c: 'Con cú về tư thế trung tính, bong bóng “Không xử lý được tài liệu scan.pdf.” (không màu đỏ), giữ tới khi đóng. Danh sách hiện nhãn “Không xử lý được” và lý do.',
+              },
+            ],
+          },
+        };
+
+        function esc(s) {
+          return String(s)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;');
+        }
+
+        function buildSvg(def) {
+          var n = def.actors.length,
+            colW = 175,
+            padX = 90,
+            top = 74,
+            rowH = 46;
+          var W = padX * 2 + colW * (n - 1),
+            H = top + 24 + def.steps.length * rowH + 16;
+          var idx = {};
+          def.actors.forEach(function (a, i) {
+            idx[a.id] = i;
+          });
+          var X = function (id) {
+            return padX + idx[id] * colW;
+          };
+          var layerOf = function (id) {
+            return def.actors[idx[id]].layer;
+          };
+          var out = [
+            '<svg viewBox="0 0 ' +
+              W +
+              ' ' +
+              H +
+              '" style="min-width:' +
+              Math.round(W * 0.78) +
+              'px" aria-hidden="true">',
+          ];
+          def.actors.forEach(function (a, i) {
+            var x = padX + i * colW;
+            out.push(
+              '<line class="lifeline" x1="' +
+                x +
+                '" y1="' +
+                (top - 8) +
+                '" x2="' +
+                x +
+                '" y2="' +
+                (H - 8) +
+                '"/>',
+            );
+            out.push(
+              '<g class="actor-box" data-actor="' +
+                a.id +
+                '"><rect class="node n-' +
+                a.layer +
+                '" x="' +
+                (x - 78) +
+                '" y="10" width="156" height="50" rx="8"/>' +
+                '<text x="' +
+                x +
+                '" y="32" text-anchor="middle" font-size="13.5" font-weight="700">' +
+                esc(a.label) +
+                '</text>' +
+                '<text x="' +
+                x +
+                '" y="49" text-anchor="middle" font-size="11" class="t-muted">' +
+                esc(a.sub) +
+                '</text></g>',
+            );
+          });
+          def.steps.forEach(function (s, i) {
+            var y = top + 24 + i * rowH;
+            var g = ['<g class="step" data-i="' + i + '">'];
+            g.push(
+              '<rect class="hl" x="4" y="' +
+                (y - 30) +
+                '" width="' +
+                (W - 8) +
+                '" height="' +
+                (rowH - 2) +
+                '" rx="6"/>',
+            );
+            g.push(
+              '<text x="14" y="' +
+                (y - 4) +
+                '" font-size="11" class="t-muted">' +
+                (i + 1) +
+                '</text>',
+            );
+            if (s.note) {
+              g.push(
+                '<rect x="' +
+                  (padX - 70) +
+                  '" y="' +
+                  (y - 24) +
+                  '" width="' +
+                  (colW * (n - 1) + 140) +
+                  '" height="30" rx="6" class="node n-plain"/>',
+              );
+              g.push(
+                '<text class="lbl" x="' +
+                  W / 2 +
+                  '" y="' +
+                  (y - 4) +
+                  '" text-anchor="middle" font-size="13" font-weight="700">' +
+                  esc(s.note) +
+                  '</text>',
+              );
+            } else {
+              var layer = layerOf(s.f),
+                x1 = X(s.f),
+                x2 = X(s.t),
+                cls = 'edge s-' + layer + (s.r ? ' dashed' : '');
+              if (s.f === s.t) {
+                var left = idx[s.f] === n - 1,
+                  d = left ? -1 : 1,
+                  xe = x1 + d * 34;
+                g.push(
+                  '<path class="' +
+                    cls +
+                    '" d="M' +
+                    x1 +
+                    ' ' +
+                    (y - 10) +
+                    ' H' +
+                    xe +
+                    ' V' +
+                    (y + 8) +
+                    ' H' +
+                    (x1 + d * 4) +
+                    '"/>',
+                );
+                g.push(
+                  '<polygon class="f-' +
+                    layer +
+                    '" points="' +
+                    x1 +
+                    ',' +
+                    (y + 8) +
+                    ' ' +
+                    (x1 + d * 9) +
+                    ',' +
+                    (y + 3) +
+                    ' ' +
+                    (x1 + d * 9) +
+                    ',' +
+                    (y + 13) +
+                    '"/>',
+                );
+                g.push(
+                  '<text class="lbl" x="' +
+                    (x1 + d * 42) +
+                    '" y="' +
+                    (y + 3) +
+                    '" font-size="12"' +
+                    (left ? ' text-anchor="end"' : '') +
+                    '>' +
+                    esc(s.l) +
+                    '</text>',
+                );
+              } else {
+                var dir = x2 > x1 ? 1 : -1;
+                g.push(
+                  '<path class="' +
+                    cls +
+                    '" d="M' +
+                    x1 +
+                    ' ' +
+                    y +
+                    ' H' +
+                    (x2 - dir * 2) +
+                    '"/>',
+                );
+                g.push(
+                  '<polygon class="f-' +
+                    layer +
+                    '" points="' +
+                    x2 +
+                    ',' +
+                    y +
+                    ' ' +
+                    (x2 - dir * 10) +
+                    ',' +
+                    (y - 5) +
+                    ' ' +
+                    (x2 - dir * 10) +
+                    ',' +
+                    (y + 5) +
+                    '"/>',
+                );
+                g.push(
+                  '<text class="lbl" x="' +
+                    (x1 + x2) / 2 +
+                    '" y="' +
+                    (y - 8) +
+                    '" text-anchor="middle" font-size="12">' +
+                    esc(s.l) +
+                    '</text>',
+                );
+              }
+            }
+            g.push('</g>');
+            out.push(g.join(''));
+          });
+          out.push('</svg>');
+          return out.join('');
+        }
+
+        var players = [];
+        function Player(el, def) {
+          var self = this;
+          this.def = def;
+          this.i = -1;
+          this.timer = null;
+          var hid = el.id + '-h';
+          el.setAttribute('aria-labelledby', hid);
+          el.setAttribute('role', 'group');
+          el.innerHTML =
+            '<h3 id="' +
+            hid +
+            '">' +
+            esc(def.title) +
+            '</h3><p class="small muted">' +
+            esc(def.desc) +
+            '</p>' +
+            '<div class="seq-controls">' +
+            '<button type="button" class="primary" data-act="play">Phát</button>' +
+            '<button type="button" data-act="back">Lùi</button>' +
+            '<button type="button" data-act="step">Bước</button>' +
+            '<button type="button" data-act="reset">Đặt lại</button>' +
+            '<span class="seq-pos" aria-hidden="true"></span><span class="rm-note" hidden>Giảm chuyển động đang bật: dùng Bước và Lùi.</span>' +
+            '</div>' +
+            '<div class="seq-body' +
+            (def.owl ? ' with-owl' : '') +
+            '">' +
+            '<div class="diagram" tabindex="0" aria-label="Sơ đồ tuần tự ' +
+            esc(def.title) +
+            '. Dùng phím mũi tên trái phải để đi từng bước.">' +
+            buildSvg(def) +
+            '</div>' +
+            (def.owl
+              ? '<div class="owl-preview" aria-hidden="true"><div class="owl-holder"></div><div class="owl-label"></div></div>'
+              : '') +
+            '</div>' +
+            '<div class="seq-caption" aria-live="polite"></div>';
+          this.el = el;
+          this.svg = el.querySelector('svg');
+          this.caption = el.querySelector('.seq-caption');
+          this.pos = el.querySelector('.seq-pos');
+          this.playBtn = el.querySelector('[data-act="play"]');
+          this.rmNote = el.querySelector('.rm-note');
+          this.owlHolder = el.querySelector('.owl-holder');
+          this.owlLabel = el.querySelector('.owl-label');
+          el.querySelector('.seq-controls').addEventListener(
+            'click',
+            function (e) {
+              var b = e.target.closest('button');
+              if (!b) return;
+              var a = b.getAttribute('data-act');
+              if (a === 'play') {
+                self.timer ? self.pause() : self.play();
+              }
+              if (a === 'step') {
+                self.pause();
+                self.go(self.i + 1);
+              }
+              if (a === 'back') {
+                self.pause();
+                self.go(self.i - 1);
+              }
+              if (a === 'reset') {
+                self.pause();
+                self.go(-1);
+              }
+            },
+          );
+          el.querySelector('.diagram').addEventListener(
+            'keydown',
+            function (e) {
+              if (e.key === 'ArrowRight') {
+                e.preventDefault();
+                self.pause();
+                self.go(self.i + 1);
+              }
+              if (e.key === 'ArrowLeft') {
+                e.preventDefault();
+                self.pause();
+                self.go(self.i - 1);
+              }
+            },
+          );
+          this.applyMotion();
+          this.go(-1);
+        }
+        Player.prototype.go = function (i) {
+          var last = this.def.steps.length - 1;
+          this.i = Math.max(-1, Math.min(last, i));
+          var steps = this.svg.querySelectorAll('.step'),
+            cur = this.i,
+            s = this.def.steps[cur];
+          steps.forEach(function (g, k) {
+            g.classList.toggle('past', k < cur);
+            g.classList.toggle('current', k === cur);
+          });
+          this.svg.querySelectorAll('.actor-box').forEach(function (b) {
+            var id = b.getAttribute('data-actor');
+            b.classList.toggle(
+              'active',
+              !!s && !s.note && (s.f === id || s.t === id),
+            );
+          });
+          var total = this.def.steps.length;
+          this.pos.textContent = cur < 0 ? '0/' + total : cur + 1 + '/' + total;
+          this.caption.innerHTML =
+            cur < 0
+              ? '<span class="muted">Nhấn Phát hoặc Bước để bắt đầu (' +
+                total +
+                ' bước).</span>'
+              : '<strong>Bước ' +
+                (cur + 1) +
+                '/' +
+                total +
+                (s.note
+                  ? ''
+                  : ' · ' +
+                    esc(
+                      LAYER_NAME[
+                        this.def.actors.filter(function (a) {
+                          return a.id === s.f;
+                        })[0].layer
+                      ],
+                    )) +
+                ':</strong> ' +
+                esc(s.c);
+          if (this.owlHolder) {
+            var state = cur < 0 ? 'idle' : s.owl || 'idle';
+            this.owlHolder.innerHTML = owlSvg(state);
+            this.owlLabel.textContent = 'Con cú: ' + OWL_LABEL[state];
+          }
+          if (cur >= last) this.pause();
+        };
+        Player.prototype.play = function () {
+          if (mqReduce.matches) return;
+          var self = this;
+          if (this.i >= this.def.steps.length - 1) this.go(-1);
+          this.go(this.i + 1);
+          this.timer = setInterval(function () {
+            self.go(self.i + 1);
+          }, 1900);
+          this.playBtn.textContent = 'Tạm dừng';
+        };
+        Player.prototype.pause = function () {
+          if (this.timer) {
+            clearInterval(this.timer);
+            this.timer = null;
+          }
+          this.playBtn.textContent = 'Phát';
+        };
+        Player.prototype.applyMotion = function () {
+          var reduce = mqReduce.matches;
+          if (reduce) this.pause();
+          this.playBtn.disabled = reduce;
+          this.rmNote.hidden = !reduce;
+        };
+        Object.keys(SEQS).forEach(function (id) {
+          players.push(new Player(document.getElementById(id), SEQS[id]));
+        });
+        mqReduce.addEventListener('change', function () {
+          players.forEach(function (p) {
+            p.applyMotion();
+          });
+        });
+
+        /* ---------- Chunking example (same algorithm as the spec, scaled limits) ---------- */
+        var LINES = [
+          'Quy trình cuối ngày (EOD) – Chuẩn bị',
+          'Trước khi chạy EOD, bộ phận vận hành phải đối chiếu số dư tài khoản GL với báo cáo tổng hợp.',
+          'Mọi chênh lệch lớn hơn 0 đồng phải được giải trình và phê duyệt.',
+          '',
+          'Khóa giao dịch quầy: thông báo các chi nhánh trước 17:00.',
+          'Chặn đăng nhập mới của giao dịch viên sau 17:15.',
+          'Kiểm tra hàng đợi giao dịch treo trên kênh điện tử.',
+          'Xác nhận lô lãi tiền gửi đã tính xong trong ngày.',
+          '',
+          'Chạy EOD theo thứ tự: tiền gửi, cho vay, thẻ, sổ cái.',
+          'Theo dõi nhật ký job; dừng ngay khi có lỗi mức nghiêm trọng.',
+          'Lập biên bản hoàn tất và gửi trưởng ca trước 23:00.',
+        ];
+        var LIMITS = { target: 50, max: 65, overlap: 20 };
+        function est(s) {
+          return Math.ceil(s.length / 3);
+        }
+        function chunkLines(lines, lim) {
+          var chunks = [],
+            cur = [],
+            tok = 0,
+            fresh = 0;
+          function close(keepOverlap) {
+            chunks.push({
+              start: cur[0].line,
+              end: cur[cur.length - 1].line,
+              tokens: tok,
+              lines: cur.map(function (l) {
+                return l.line;
+              }),
+            });
+            if (!keepOverlap) return;
+            var ov = [],
+              t = 0;
+            for (var k = cur.length - 1; k >= 0; k--) {
+              var e = est(cur[k].text);
+              if (t + e > lim.overlap) break;
+              ov.unshift(cur[k]);
+              t += e;
+            }
+            cur = ov;
+            tok = t;
+            fresh = 0;
+          }
+          lines.forEach(function (l) {
+            if (!l.text.trim()) return;
+            var e = est(l.text);
+            if (fresh > 0 && tok + e > lim.max) close(true);
+            cur.push(l);
+            tok += e;
+            fresh++;
+            if (tok >= lim.target) close(true);
+          });
+          if (fresh > 0) close(false);
+          return chunks;
+        }
+        var lines = LINES.map(function (t, k) {
+          return { page: 3, line: k + 1, text: t };
+        });
+        var chunks = chunkLines(lines, LIMITS);
+        var table = document.getElementById('chunk-table');
+        var head =
+          '<thead><tr><th>Dòng</th><th>Văn bản (trang 3)</th><th>~token</th>' +
+          chunks
+            .map(function (c, k) {
+              return '<th title="chunk ' + k + '">#' + k + '</th>';
+            })
+            .join('') +
+          '</tr></thead>';
+        var body = lines
+          .map(function (l) {
+            var blank = !l.text.trim();
+            return (
+              '<tr class="' +
+              (blank ? 'blank' : '') +
+              '"><td class="ln">' +
+              l.line +
+              '</td><td class="txt">' +
+              (blank ? '(dòng trống, giữ số dòng)' : esc(l.text)) +
+              '</td><td class="tk">' +
+              (blank ? '' : est(l.text)) +
+              '</td>' +
+              chunks
+                .map(function (c, k) {
+                  return (
+                    '<td class="bar">' +
+                    (c.lines.indexOf(l.line) >= 0
+                      ? '<span class="c' +
+                        (k % 5) +
+                        '" title="chunk ' +
+                        k +
+                        '"></span>'
+                      : '') +
+                    '</td>'
+                  );
+                })
+                .join('') +
+              '</tr>'
+            );
+          })
+          .join('');
+        table.innerHTML =
+          '<caption class="sr-only">Ví dụ chia chunk trang 3</caption>' +
+          head +
+          '<tbody>' +
+          body +
+          '</tbody>';
+        document.getElementById('chunk-out').innerHTML = chunks
+          .map(function (c, k) {
+            return (
+              '<div><i class="c' +
+              (k % 5) +
+              '"></i><strong>chunk ' +
+              k +
+              '</strong><span class="mono">page_number 3 · line_start ' +
+              c.start +
+              ' · line_end ' +
+              c.end +
+              '</span><span class="muted">~' +
+              c.tokens +
+              ' token</span><span>→ “Quy-trinh-EOD.pdf · trang 3 · dòng ' +
+              c.start +
+              '–' +
+              c.end +
+              '”</span></div>'
+            );
+          })
+          .join('');
+      })();
+    </script>
+  </body>
+</html>
