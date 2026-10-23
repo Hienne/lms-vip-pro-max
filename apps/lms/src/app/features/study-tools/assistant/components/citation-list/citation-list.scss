@@ -1,0 +1,42 @@
+@use 'ui';
+
+.citations {
+  @include ui.stack(1);
+  margin-top: ui.space(3);
+
+  &__title {
+    @include ui.text(sm, muted);
+    font-weight: ui.weight(medium);
+  }
+
+  &__list {
+    @include ui.stack(1);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  &__item {
+    @include ui.text(sm);
+
+    summary {
+      cursor: pointer;
+      overflow-wrap: anywhere;
+
+      &:focus-visible {
+        @include ui.focus-ring;
+      }
+    }
+  }
+
+  &__quote {
+    @include ui.text(sm, secondary);
+    margin: ui.space(1) 0 0;
+    padding: ui.space(2) ui.space(3);
+    border: 1px solid ui.color(border);
+    border-radius: ui.radius(md);
+    background: ui.color(surface-2);
+    overflow-wrap: anywhere;
+    white-space: pre-wrap;
+  }
+}

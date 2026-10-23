@@ -1,0 +1,15 @@
+@if (items().length > 0) {
+<section class="citations" aria-label="Nguồn">
+  <h3 class="citations__title">Nguồn</h3>
+  <ul class="citations__list">
+    @for (item of items(); track item.n) {
+    <li>
+      <details class="citations__item">
+        <summary>{{ item.label }}</summary>
+        <blockquote class="citations__quote">{{ item.snippet }}</blockquote>
+      </details>
+    </li>
+    }
+  </ul>
+</section>
+}

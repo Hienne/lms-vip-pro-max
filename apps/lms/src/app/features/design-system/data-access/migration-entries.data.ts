@@ -716,7 +716,8 @@ export const MIGRATION_ENTRIES = [
     level: 'feature',
     targets: ['features/study-tools'],
     checklist: ['G.1'],
-    status: 'todo',
+    status: 'in-progress',
+    owner: 'Hienne',
   },
   {
     id: 'timer',
@@ -924,7 +925,8 @@ export const MIGRATION_ENTRIES = [
     mockupSource: 'src/pages/tools.js · assistant',
     target: 'assistant',
     checklist: ['G.1'],
-    status: 'todo',
+    status: 'in-progress',
+    owner: 'Hienne',
   },
   {
     id: 'route-notifications',

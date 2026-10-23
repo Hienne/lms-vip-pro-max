@@ -21,7 +21,9 @@ export type CallableEndpoint = AnyEndpoint & {
 };
 
 /** An endpoint `stream` can read: one that declares `responseType: 'ndjson'`. */
-export type StreamEndpoint = AnyEndpoint & { readonly responseType: 'ndjson' };
+export type StreamEndpoint = AnyEndpoint & {
+  readonly responseType?: 'ndjson';
+};
 
 type Declared<S> = [S] extends [undefined] ? false : true;
 

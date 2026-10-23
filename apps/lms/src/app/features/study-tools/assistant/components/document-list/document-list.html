@@ -1,0 +1,53 @@
+<section uiCard aria-labelledby="documents-title" [attr.aria-busy]="loading()">
+  <div uiCardHeader>
+    <h2 id="documents-title">Tài liệu trong kho</h2>
+    <span class="docs__count">{{ total() }}</span>
+  </div>
+  <div uiCardBody>
+    @if (failed()) {
+    <ui-error-state
+      title="Không tải được danh sách tài liệu"
+      message="Kiểm tra kết nối rồi thử lại."
+      (retry)="retry.emit()"
+    />
+    } @else if (loading() && documents().length === 0) {
+    <div class="docs__skeleton">
+      @for (row of [1, 2, 3]; track row) {
+      <div uiSkeleton variant="text"></div>
+      }
+    </div>
+    } @else if (documents().length === 0) {
+    <p class="docs__empty">
+      Chưa có tài liệu nào. Tải lên tệp đầu tiên để bắt đầu hỏi đáp.
+    </p>
+    } @else {
+    <ul class="docs__list">
+      @for (doc of documents(); track doc.id) {
+      <li class="doc">
+        <span class="doc__name" [title]="doc.fileName">{{ doc.fileName }}</span>
+        <span uiBadge dot [tone]="statusView[doc.status].tone"
+          >{{ statusView[doc.status].label }}</span
+        >
+        <span class="doc__meta">
+          {{ doc.uploadedBy.fullName }} ·
+          <time
+            [attr.datetime]="doc.createdAt"
+            [title]="doc.createdAt | fmtDatetime"
+            >{{ doc.createdAt | fmtRelative }}</time
+          >
+        </span>
+        @if (doc.status === 'failed' && doc.errorMessage) {
+        <span class="doc__error">{{ doc.errorMessage }}</span>
+        }
+      </li>
+      }
+    </ul>
+    <ui-pagination
+      [total]="total()"
+      [page]="page()"
+      [pageSize]="pageSize()"
+      (pageChange)="pageChange.emit($event)"
+    />
+    }
+  </div>
+</section>

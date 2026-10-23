@@ -1,0 +1,46 @@
+@use 'ui';
+
+:host {
+  @include ui.stack(4);
+}
+
+.message {
+  @include ui.stack(1);
+
+  &--user {
+    align-items: flex-end;
+
+    .message__text {
+      padding: ui.space(2) ui.space(3);
+      border-radius: ui.radius(md);
+      background: ui.color(surface-2);
+    }
+  }
+
+  &__who {
+    @include ui.text(sm, muted);
+    font-weight: ui.weight(medium);
+  }
+
+  &__text {
+    max-width: 100%;
+    margin: 0;
+    overflow-wrap: anywhere;
+    white-space: pre-wrap;
+  }
+
+  &__progress {
+    @include ui.row(2);
+    @include ui.text(sm, muted);
+    margin: 0;
+  }
+
+  &__note {
+    @include ui.text(sm, muted);
+    margin: 0;
+
+    &--error {
+      color: ui.color(danger);
+    }
+  }
+}

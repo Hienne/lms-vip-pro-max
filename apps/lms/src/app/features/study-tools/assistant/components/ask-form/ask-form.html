@@ -1,0 +1,19 @@
+<form class="ask" [formRoot]="askForm">
+  <label class="sr-only" for="assistant-question">Câu hỏi cho trợ lý</label>
+  <input
+    uiInput
+    id="assistant-question"
+    autocomplete="off"
+    placeholder="Nhập câu hỏi…"
+    [formField]="askForm.question"
+  />
+  @if (answering()) {
+  <button uiButton type="button" variant="secondary" (click)="stop.emit()">
+    Dừng
+  </button>
+  } @else {
+  <button uiButton type="submit" variant="primary">
+    <ui-icon name="send" size="sm" />Hỏi
+  </button>
+  }
+</form>

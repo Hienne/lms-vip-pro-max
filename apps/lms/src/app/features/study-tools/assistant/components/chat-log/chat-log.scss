@@ -1,0 +1,22 @@
+@use 'ui';
+
+:host {
+  display: block;
+}
+
+.log {
+  @include ui.stack(4);
+
+  &__greeting {
+    @include ui.stack(1);
+
+    p {
+      margin: 0;
+    }
+  }
+
+  &__who {
+    @include ui.text(sm, muted);
+    font-weight: ui.weight(medium);
+  }
+}

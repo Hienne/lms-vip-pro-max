@@ -1,0 +1,45 @@
+<label uiDropzone [accept]="accept" multiple (files)="files.emit($event)">
+  <span class="drop__title">Kéo thả tệp vào đây hoặc chọn tệp</span>
+  <span class="drop__hint"
+    >PDF, Markdown hoặc Word (.docx), tối đa 20 MB mỗi tệp.</span
+  >
+  <input type="file" hidden />
+</label>
+@if (uploads().length > 0) {
+<ul class="uploads" aria-label="Tệp đang tải lên">
+  @for (upload of uploads(); track upload.id) {
+  <li>
+    @if (upload.state === 'error') {
+    <div class="uploads__error">
+      <ui-upload-item
+        [name]="upload.name"
+        [size]="upload.size"
+        state="error"
+        errorLabel="Không tải lên được"
+        >{{ upload.error }}</ui-upload-item
+      >
+      <button
+        uiIconButton
+        type="button"
+        [label]="'Bỏ ' + upload.name"
+        (click)="dismiss.emit(upload.id)"
+      >
+        <ui-icon name="x" />
+      </button>
+    </div>
+    } @else {
+    <p class="uploads__row">
+      @if (upload.state === 'uploading') {
+      <span uiSpinner label="Đang tải lên"></span>
+      }
+      <span class="uploads__name" [title]="upload.name">{{ upload.name }}</span>
+      <span class="uploads__state"
+        >{{ upload.state === 'uploading' ? 'Đang tải lên…' : 'Đang chờ tải lên'
+        }}</span
+      >
+    </p>
+    }
+  </li>
+  }
+</ul>
+}

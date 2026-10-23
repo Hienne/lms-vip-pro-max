@@ -1,0 +1,33 @@
+@use 'ui';
+
+:host {
+  @include ui.page(wide);
+}
+
+.assistant {
+  @include ui.grid(
+    (
+      lg: 3,
+    ),
+    6
+  );
+
+  &__chat {
+    @include ui.stack(4);
+    min-width: 0;
+
+    @include ui.bp(lg) {
+      grid-column: span 2;
+    }
+  }
+
+  &__docs {
+    @include ui.stack(4);
+    min-width: 0;
+  }
+
+  &__note {
+    @include ui.text(sm, muted);
+    margin: 0;
+  }
+}

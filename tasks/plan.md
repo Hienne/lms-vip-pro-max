@@ -53,25 +53,25 @@ Phase 5  E2E ─ real upload of 3 files, grounded Q&A, not-found, second role, s
 
 ## Phases and checkpoints
 
-| Phase | Tasks | Gate before commit |
-| ----- | ----- | ------------------ |
-| 0 | local environment | `docker ps` pgvector healthy, `ollama list` has both models, SQL loaded |
-| 1 | B1, B2 | `mvn clean verify` green; manual upload of three types ends `ready` |
-| 2 | B3 | `mvn clean verify` green; manual grounded answer + not-found; time to first token recorded |
-| 3 | F1, F2, F3 | `npm run check` green; angular.md §14; visual-design checklist; migration verify step; browser pass at 375/1280 light/dark |
-| 4 | F4 | same frontend gates; keyboard + reduced-motion pass |
-| 5 | E2E | success criteria 1–5 of SPEC.md with screenshots |
+| Phase | Tasks             | Gate before commit                                                                                                         |
+| ----- | ----------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| 0     | local environment | `docker ps` pgvector healthy, `ollama list` has both models, SQL loaded                                                    |
+| 1     | B1, B2            | `mvn clean verify` green; manual upload of three types ends `ready`                                                        |
+| 2     | B3                | `mvn clean verify` green; manual grounded answer + not-found; time to first token recorded                                 |
+| 3     | F1, F2, F3        | `npm run check` green; angular.md §14; visual-design checklist; migration verify step; browser pass at 375/1280 light/dark |
+| 4     | F4                | same frontend gates; keyboard + reduced-motion pass                                                                        |
+| 5     | E2E               | success criteria 1–5 of SPEC.md with screenshots                                                                           |
 
 ## Risks and mitigations
 
-| Risk | Impact | Mitigation |
-| ---- | ------ | ---------- |
-| `qwen3:8b` ignores "answer only from context" or the not-found sentence | Wrong answers | Threshold gate before the model; exact-sentence check; tune `min-similarity` with measurements; temperature 0.1 |
-| Testcontainers needs Docker | ITs cannot run | Docker Desktop running; verified before Phase 1 |
-| `ddl-auto=validate` vs `vector` column | App fails to start | Entity `KnowledgeDocument` only; chunks via `JdbcTemplate` |
-| Angular `partialText` streaming support (D6) | No incremental text | Verify in F1 with a spec and in the browser; fall back to a documented change if not available |
-| Long LLM calls and DB transactions | Pool starvation | No remote call inside a transaction (claim → process → finish) |
-| Shared worktree for frontend while other sessions edit | Commit pollution | Stage only files of the task |
+| Risk                                                                    | Impact              | Mitigation                                                                                                      |
+| ----------------------------------------------------------------------- | ------------------- | --------------------------------------------------------------------------------------------------------------- |
+| `qwen3:8b` ignores "answer only from context" or the not-found sentence | Wrong answers       | Threshold gate before the model; exact-sentence check; tune `min-similarity` with measurements; temperature 0.1 |
+| Testcontainers needs Docker                                             | ITs cannot run      | Docker Desktop running; verified before Phase 1                                                                 |
+| `ddl-auto=validate` vs `vector` column                                  | App fails to start  | Entity `KnowledgeDocument` only; chunks via `JdbcTemplate`                                                      |
+| Angular `partialText` streaming support (D6)                            | No incremental text | Verify in F1 with a spec and in the browser; fall back to a documented change if not available                  |
+| Long LLM calls and DB transactions                                      | Pool starvation     | No remote call inside a transaction (claim → process → finish)                                                  |
+| Shared worktree for frontend while other sessions edit                  | Commit pollution    | Stage only files of the task                                                                                    |
 
 ## Parallelization
 

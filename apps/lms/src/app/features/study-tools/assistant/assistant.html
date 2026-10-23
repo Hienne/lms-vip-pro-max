@@ -1,0 +1,36 @@
+<ui-page-header
+  title="Trợ lý AI tra cứu tài liệu"
+  description="Hỏi đáp dựa trên các tài liệu trong kho dùng chung, luôn kèm nguồn trích dẫn."
+/>
+<div class="assistant">
+  <section class="assistant__chat" aria-label="Hỏi đáp">
+    <app-chat-log [turns]="store.turns$()" (retry)="store.retry($event)" />
+    <app-ask-form
+      [answering]="store.isAnswering$()"
+      (ask)="store.ask($event)"
+      (stop)="store.stop()"
+    />
+    <p class="assistant__note">
+      Trợ lý chỉ trả lời từ các tài liệu trong kho. Hãy đối chiếu với tài liệu
+      gốc trước khi áp dụng.
+    </p>
+  </section>
+  <div class="assistant__docs">
+    <app-document-upload
+      [uploads]="store.uploads$()"
+      (files)="store.addFiles($event)"
+      (dismiss)="store.dismissUpload($event)"
+    />
+    <app-document-list
+      [documents]="store.documents$()"
+      [total]="store.totalDocuments$()"
+      [page]="store.page$()"
+      [pageSize]="pageSize"
+      [loading]="store.isLoading$()"
+      [failed]="!!store.loadError$()"
+      (pageChange)="store.setPage($event)"
+      (retry)="store.retryLoad()"
+    />
+  </div>
+</div>
+<p class="sr-only" role="status">{{ store.announcement$() }}</p>

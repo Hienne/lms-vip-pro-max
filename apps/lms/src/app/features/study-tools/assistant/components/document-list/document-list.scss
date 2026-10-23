@@ -1,0 +1,46 @@
+@use 'ui';
+
+:host {
+  display: block;
+}
+
+.docs {
+  &__count {
+    @include ui.text(sm, muted);
+    @include ui.num;
+  }
+
+  &__skeleton {
+    @include ui.stack(3);
+  }
+
+  &__empty {
+    @include ui.text(md, muted);
+    margin: 0;
+  }
+
+  &__list {
+    @include ui.stack(3);
+    margin: 0 0 ui.space(4);
+    padding: 0;
+    list-style: none;
+  }
+}
+
+.doc {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: ui.space(1) ui.space(3);
+  align-items: center;
+
+  &__name {
+    @include ui.truncate;
+    font-weight: ui.weight(medium);
+  }
+
+  &__meta,
+  &__error {
+    @include ui.text(sm, muted);
+    grid-column: 1 / -1;
+  }
+}
