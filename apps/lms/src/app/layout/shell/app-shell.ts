@@ -14,6 +14,7 @@ import { APP_CONFIG } from '../../core/config/app-config';
 import { DEV_FEATURES } from '../../core/dev/dev-features';
 import { Header } from '../header/header';
 import { NetBanner } from '../net-banner/net-banner';
+import { Owl } from '../owl/owl';
 import { Sidebar } from '../sidebar/sidebar';
 import { ShellStore } from './data-access/shell.store';
 
@@ -31,6 +32,7 @@ import { ShellStore } from './data-access/shell.store';
     Header,
     NetBanner,
     NgComponentOutlet,
+    Owl,
   ],
   host: { '(window:beforeunload)': 'warnBeforeUnload($event)' },
   providers: [ShellStore],

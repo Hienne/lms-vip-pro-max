@@ -44,6 +44,10 @@
   </div>
 </div>
 
+@if (chrome === 'app' && user) {
+<app-owl [besideToolbar]="devToolbar() !== null" />
+}
+
 <ng-template
   [uiDrawer]="store.navOpen$()"
   uiDrawerTitle="Điều hướng chính"
