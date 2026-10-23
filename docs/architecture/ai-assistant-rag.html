@@ -2241,7 +2241,7 @@ apps/lms/src/app/
         ├── chat-log/  chat-message/  source-badge/
         ├── ask-form/  (Signal Forms, ask-form.form.ts)
         └── document-upload/  document-list/
-libs/ui: uiTooltip nhận template + uiTooltipToggle; button[uiBadge];
+libs/ui: button[uiBadge] (badge nguồn mở uiPopover);
          token layout reading (760px), panel (360px); icon panel-right
 apps/lms/proxy.conf.mjs                     LMS_API_TARGET</code></pre>
               <p class="small">
@@ -2250,7 +2250,7 @@ apps/lms/proxy.conf.mjs                     LMS_API_TARGET</code></pre>
                 <code>invalidation</code>, <code>SessionStore</code>,
                 <code>NetworkStore</code>, <code>toAppError</code>; từ
                 <code>@lms/ui</code>: <code>[uiDrawer]</code>,
-                <code>[uiTooltip]</code>, <code>[uiDropzone]</code> +
+                <code>[uiPopover]</code>, <code>[uiDropzone]</code> +
                 <code>ui-upload-item</code>, <code>[uiBadge]</code> (trạng thái
                 có <code>dot</code>; nguồn trên <code>&lt;button&gt;</code>),
                 <code>ui-pagination</code>, <code>input[uiInput]</code>,
@@ -2295,10 +2295,10 @@ apps/lms/proxy.conf.mjs                     LMS_API_TARGET</code></pre>
               “Nguồn”.
             </li>
             <li>
-              Rê chuột, focus bàn phím hoặc chạm vào badge hiện tooltip: tên
-              tệp, vị trí (trang/dòng cho PDF, đoạn cho DOCX, dòng cho MD) và
-              đoạn trích. Badge dựng từ văn bản đã tách và mảng citations, không
-              dùng
+              Bấm, chạm hoặc nhấn Enter trên badge mở popover: tên tệp, vị trí
+              (trang/dòng cho PDF, đoạn cho DOCX, dòng cho MD) và đoạn trích.
+              Esc đóng popover và trả focus về badge, bấm ra ngoài cũng đóng.
+              Badge dựng từ văn bản đã tách và mảng citations, không dùng
               <code>innerHTML</code>.
             </li>
             <li>
@@ -2322,7 +2322,7 @@ apps/lms/proxy.conf.mjs                     LMS_API_TARGET</code></pre>
               gắn với dữ liệu mẫu của mockup).
             </li>
             <li>
-              Trích dẫn là badge số ngay trong câu trả lời, tooltip ghi trang,
+              Trích dẫn là badge số ngay trong câu trả lời, popover ghi trang,
               khoảng dòng và đoạn trích, thay cho liên kết bài học.
             </li>
             <li>
@@ -2576,7 +2576,7 @@ apps/lms/proxy.conf.mjs                     LMS_API_TARGET</code></pre>
               dòng của tệp (có nút bỏ) thay vì toast. Thiết kế lại (23/10/2026):
               layout <code>workspace</code> (chat lấp trang, tự cuộn), panel tài
               liệu đóng/mở (drawer khi hẹp), bỏ danh sách “Nguồn” dưới câu trả
-              lời để thay bằng badge số có tooltip.
+              lời để thay bằng badge số mở popover.
             </li>
             <li>
               <strong>Con cú:</strong> thông báo nằm bên trái con cú; ngăn toast
@@ -3033,7 +3033,7 @@ apps/lms/proxy.conf.mjs                     LMS_API_TARGET</code></pre>
                 t: 'fe',
                 l: '{"type":"done",answer,citations}',
                 r: true,
-                c: 'Dòng cuối: found, answer (văn bản cuối cùng; câu cố định nếu không tìm thấy) và citations dựng từ metadata chunk (tên tệp, trang, dòng, snippet 280 ký tự). FE hiện mỗi [n] thành badge số, tooltip ghi tệp, vị trí và đoạn trích.',
+                c: 'Dòng cuối: found, answer (văn bản cuối cùng; câu cố định nếu không tìm thấy) và citations dựng từ metadata chunk (tên tệp, trang, dòng, snippet 280 ký tự). FE hiện mỗi [n] thành badge số, bấm mở popover ghi tệp, vị trí và đoạn trích.',
               },
             ],
           },

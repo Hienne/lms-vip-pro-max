@@ -3,12 +3,3 @@
 .buttons-section__note {
   @include ui.text(sm, secondary);
 }
-
-.buttons-section__sample {
-  margin: 0;
-}
-
-.buttons-section__tip-title {
-  display: block;
-  font-weight: ui.weight(semibold);
-}

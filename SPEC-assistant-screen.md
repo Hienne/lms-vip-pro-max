@@ -8,8 +8,8 @@ Map: [SPEC.md](SPEC.md). Uses [SPEC-kb-contracts.md](SPEC-kb-contracts.md) and
 ## Objective
 
 On `/assistant`, any signed-in user can add documents to the shared knowledge base, see every document and
-its status, and ask questions whose answers show their sources (file, page, lines) as numbered badges whose
-tooltip holds the quoted text.
+its status, and ask questions whose answers show their sources (file, page, lines) as numbered badges that
+open a popover with the quoted text.
 
 ## Route and menu
 
@@ -81,11 +81,11 @@ on `surface`, the chat on the page background. No shadows, cards or tinted tiles
 - A focusable `button[uiBadge]` (`outline`, neutral colours) showing the number `n`, with
   `aria-label` **Nguồn 1: Quy-trinh-EOD.pdf, trang 3, dòng 13–27** (DOCX: **đoạn 4–6**, MD: **dòng
   2–9**). The number is the visible label, so the meaning never rests on colour.
-- Hover, keyboard focus or a tap shows a rich `uiTooltip` (a template, on `surface` with a border):
-  the file name, the location (`citation-label.ts`: **trang 3 · dòng 13–27**, **đoạn 13–27**, **dòng
-  13–27**) and the snippet (at most 280 characters, from the backend). The badge gets
-  `aria-describedby` to it while it shows. Escape hides it; a click or tap keeps it open and the next one
-  hides it.
+- A click, tap, Enter or Space opens a `uiPopover` (a non-modal `role="dialog"` named like the badge)
+  with the file name, the location (`citation-label.ts`: **trang 3 · dòng 13–27**, **đoạn 13–27**,
+  **dòng 13–27**) and the snippet (at most 280 characters, from the backend). The badge carries
+  `aria-haspopup="dialog"`, `aria-expanded` and `aria-controls`. Focus moves into the panel; Escape closes
+  it with focus back on the badge; a click outside or a second click on the badge closes it.
 - Badges are built from the parsed answer text and the citation array (`answer-parts.ts`), never from
   HTML.
 
@@ -119,7 +119,7 @@ outputs only. A `knowledge-status` badge goes in `shared/` only if a second scre
 - The `alert` with icon becomes one muted line; its em-dash sentence is rewritten.
 - The three suggestion chips (CIF, EOD, thay đổi khẩn cấp) removed: chips are for filters, and the
   questions depended on the mockup's seeded courses, not on uploaded documents.
-- Citations are numbered badges inside the answer whose tooltip shows file, page and line range and the
+- Citations are numbered badges inside the answer whose popover shows file, page and line range and the
   snippet, instead of `lessonTitle · where` links.
 - The page is a workspace in the spirit of a notebook tool: the chat fills the page and the documents
   sit in a panel that opens and closes (a drawer on a phone), separated by 1px borders. The page header
@@ -136,8 +136,8 @@ PoC: `LMS_API_TARGET=http://localhost:8019 npm start` with `mockBackend: false`.
 - Store spec: list load/error/retry, upload queue (sequential, tracker called), `ask` streaming events into
   messages, `stop` aborts, offline and refusal errors, not-found answer has no citations.
 - Component specs: each state above renders; citation labels per file type; markers become badges (a
-  marker without a citation stays text, an answer without markers gets the row); the badge tooltip shows
-  file, location and snippet on focus, hover and tap and hides on Escape; the panel toggle flips
+  marker without a citation stays text, an answer without markers gets the row); the badge popover shows
+  file, location and snippet on click, closes on Escape with focus back on the badge and on a second click; the panel toggle flips
   `aria-expanded`; below `md` the panel is a drawer that Escape closes with focus back on the toggle;
   keyboard: the form submits on Enter.
 - Migration registry: `route-assistant` and `feature-assistant` entries move to `done` with the PR link and
@@ -162,9 +162,8 @@ sàng` in the list while a question streams an answer with citations.
 
 - No chat card: the chat column is plain content (`visual-design.md` rule on cards and framing). Since the redesign the
   conversation scrolls inside the chat column (the `workspace` layout) and the newest message is scrolled into view.
-- `uiTooltip` takes a template (`TooltipContent`) for the rich bubble and `uiTooltipToggle` for tap; `uiBadge` also
-  applies to a `<button>`. `uiPopover` was not used for sources: it opens on click only and traps focus, while a source
-  must open on hover and focus.
+- Sources open in the existing `uiPopover`, not a tooltip: the content is several lines (file, place, quote) and a
+  click works the same with a mouse, a keyboard and a touch screen. `uiBadge` also applies to a `<button>`.
 - New layout tokens: `reading` (760px, the conversation column) and `panel` (360px, the documents panel).
 - The streamed text is silent for screen readers; a visually hidden `role="status"` region announces "Đang tìm…", "Đang soạn…"
   and the finished answer once, instead of `aria-live` on the log.

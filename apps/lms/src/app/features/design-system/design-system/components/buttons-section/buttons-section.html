@@ -80,26 +80,4 @@
       </p>
     </div>
   </app-ds-demo>
-
-  <app-ds-demo
-    label="Tooltip nhiều dòng trên badge (chạm để bật/tắt)"
-    [needs]="['tooltip']"
-  >
-    <p class="buttons-section__sample">
-      Đối chiếu số dư sổ cái trước khi chạy EOD
-      <button
-        uiBadge
-        type="button"
-        aria-label="Nguồn 1: Quy-trinh-EOD.pdf, trang 3, dòng 13–27"
-        [uiTooltip]="source"
-        uiTooltipToggle
-      >
-        1</button
-      >.
-    </p>
-    <ng-template #source>
-      <span class="buttons-section__tip-title">Quy-trinh-EOD.pdf</span>
-      <span class="buttons-section__note">trang 3 · dòng 13–27</span>
-    </ng-template>
-  </app-ds-demo>
 </app-ds-section>

@@ -1,6 +1,5 @@
 import { Component } from '@angular/core';
 import {
-  Badge,
   Button,
   Icon,
   IconButton,
@@ -31,7 +30,6 @@ const ROWS: readonly {
   imports: [
     DsSection,
     DsDemo,
-    Badge,
     Button,
     Icon,
     IconButton,

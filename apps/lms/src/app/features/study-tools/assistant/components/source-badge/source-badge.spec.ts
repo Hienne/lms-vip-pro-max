@@ -23,72 +23,84 @@ class Host {
 }
 
 describe('SourceBadge', () => {
-  beforeEach(() => vi.useFakeTimers());
   afterEach(() => {
-    vi.useRealTimers();
     TestBed.inject(OverlayContainer).ngOnDestroy();
+    document.body.innerHTML = '';
   });
 
-  function render() {
+  async function render() {
     const fixture = TestBed.createComponent(Host);
-    fixture.detectChanges();
+    document.body.appendChild(fixture.nativeElement);
+    const settle = async () => {
+      fixture.detectChanges();
+      await fixture.whenStable();
+    };
+    await settle();
     const badge = (fixture.nativeElement as HTMLElement).querySelector(
       'button',
     ) as HTMLButtonElement;
-    const tooltip = () =>
+    const panel = () =>
       TestBed.inject(OverlayContainer)
         .getContainerElement()
-        .querySelector('[role="tooltip"]');
-    const settle = (ms = 400) => {
-      vi.advanceTimersByTime(ms);
-      fixture.detectChanges();
-    };
-    return { badge, tooltip, settle };
+        .querySelector<HTMLElement>('[role="dialog"]');
+    return { badge, panel, settle };
   }
 
-  it('is a focusable button showing the number, named in full', () => {
-    const { badge } = render();
+  it('is a focusable button showing the number, named in full', async () => {
+    const { badge } = await render();
     expect(badge.type).toBe('button');
     expect(badge.textContent?.trim()).toBe('2');
     expect(badge.getAttribute('aria-label')).toBe(
       'Nguồn 2: Quy-dinh-ECR.docx, đoạn 4–6',
     );
+    expect(badge.getAttribute('aria-haspopup')).toBe('dialog');
+    expect(badge.getAttribute('aria-expanded')).toBe('false');
     badge.focus();
     expect(document.activeElement).toBe(badge);
   });
 
-  it('shows the file, the place and the passage on keyboard focus', () => {
-    const { badge, tooltip, settle } = render();
-    badge.dispatchEvent(new FocusEvent('focus'));
-    settle();
-    const tip = tooltip() as HTMLElement;
-    expect(tip.querySelector('.source__file')?.textContent).toBe(
+  it('opens a popover with the file, the place and the passage', async () => {
+    const { badge, panel, settle } = await render();
+    badge.click();
+    await settle();
+    const dialog = panel() as HTMLElement;
+    expect(dialog.getAttribute('aria-label')).toBe(
+      'Nguồn 2: Quy-dinh-ECR.docx, đoạn 4–6',
+    );
+    expect(dialog.querySelector('.source__file')?.textContent).toBe(
       'Quy-dinh-ECR.docx',
     );
-    expect(tip.querySelector('.source__where')?.textContent).toBe('đoạn 4–6');
-    expect(tip.querySelector('.source__quote')?.textContent).toBe(docx.snippet);
-    expect(badge.getAttribute('aria-describedby')).toBe(tip.id);
+    expect(dialog.querySelector('.source__where')?.textContent).toBe(
+      'đoạn 4–6',
+    );
+    expect(dialog.querySelector('.source__quote')?.textContent).toBe(
+      docx.snippet,
+    );
+    expect(badge.getAttribute('aria-expanded')).toBe('true');
+    expect(badge.getAttribute('aria-controls')).toBe(dialog.id);
   });
 
-  it('shows on hover and hides with Escape', () => {
-    const { badge, tooltip, settle } = render();
-    badge.dispatchEvent(new MouseEvent('mouseenter'));
-    settle();
-    expect(tooltip()).not.toBeNull();
-    badge.dispatchEvent(
+  it('closes with Escape and gives focus back to the badge', async () => {
+    const { badge, panel, settle } = await render();
+    badge.focus();
+    badge.click();
+    await settle();
+    await vi.waitFor(() => expect(document.activeElement).toBe(panel()));
+    panel()?.dispatchEvent(
       new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }),
     );
-    settle(0);
-    expect(tooltip()).toBeNull();
+    await settle();
+    expect(panel()).toBeNull();
+    expect(document.activeElement).toBe(badge);
   });
 
-  it('toggles on a tap, for touch screens', () => {
-    const { badge, tooltip, settle } = render();
+  it('closes on a second click, for touch screens', async () => {
+    const { badge, panel, settle } = await render();
     badge.click();
-    settle(0);
-    expect(tooltip()?.textContent).toContain(docx.snippet);
+    await settle();
+    expect(panel()).not.toBeNull();
     badge.click();
-    settle(0);
-    expect(tooltip()).toBeNull();
+    await settle();
+    expect(panel()).toBeNull();
   });
 });

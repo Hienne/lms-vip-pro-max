@@ -61,10 +61,7 @@ export { TableSub } from './lib/atoms/table/table-sub.directive';
 // keep the marker comment, and do not touch the other blocks.
 
 // Tooltip (04)
-export {
-  Tooltip,
-  type TooltipContent,
-} from './lib/atoms/tooltip/tooltip.directive';
+export { Tooltip } from './lib/atoms/tooltip/tooltip.directive';
 
 // Field, ErrorSummary (05)
 export { Field } from './lib/molecules/field/field';

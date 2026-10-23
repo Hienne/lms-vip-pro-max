@@ -4,13 +4,13 @@
   type="button"
   class="source"
   [attr.aria-label]="name()"
-  [uiTooltip]="details"
-  uiTooltipToggle
+  [uiPopover]="details"
+  [popoverLabel]="name()"
 >
   {{ citation().n }}
 </button>
 <ng-template #details>
-  <span class="source__file">{{ citation().fileName }}</span>
-  <span class="source__where">{{ location() }}</span>
-  <span class="source__quote">{{ citation().snippet }}</span>
+  <p class="source__file">{{ citation().fileName }}</p>
+  <p class="source__where">{{ location() }}</p>
+  <p class="source__quote">{{ citation().snippet }}</p>
 </ng-template>
