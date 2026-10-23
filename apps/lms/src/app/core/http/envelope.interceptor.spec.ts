@@ -2,7 +2,7 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { HttpTestingController } from '@angular/common/http/testing';
 import { ErrorHandler } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
-import { authV1Endpoints } from '@lms/contracts';
+import { authV1Endpoints, knowledgeEndpoints } from '@lms/contracts';
 import {
   BACKEND_RESPONSES,
   type BackendResponseKey,
@@ -18,6 +18,7 @@ import { testAppConfig } from '../config/app-config.testing';
 import { provideEnvelopeHttpClient } from './http.testing';
 
 const LOGIN_URL = '/api/v1/auth/login';
+const CHAT_URL = '/api/v1/knowledge/chat/stream';
 
 const loginData = {
   accessToken: 'fixture.jwt.token',
@@ -123,5 +124,67 @@ describe('envelopeInterceptor', () => {
     const error = login({ accessToken: 'x' }).error;
     expect(error).toBeInstanceOf(ContractError);
     expect(handled).toHaveLength(1);
+  });
+
+  describe('a streamed endpoint', () => {
+    const NDJSON = { 'Content-Type': 'application/x-ndjson' };
+
+    function ask(reply: (request: ReturnType<typeof expectChat>) => void) {
+      const outcome: { events: unknown[]; error?: unknown } = { events: [] };
+      client
+        .stream(knowledgeEndpoints.askStream, {
+          body: { question: 'CIF là gì?' },
+        })
+        .subscribe({
+          next: (event) => outcome.events.push(event),
+          error: (error) => (outcome.error = error),
+        });
+      reply(expectChat());
+      return outcome;
+    }
+
+    const expectChat = () => backend.expectOne(CHAT_URL);
+
+    it('leaves an application/x-ndjson answer alone: its lines are events, not an envelope', () => {
+      const outcome = ask((request) =>
+        request.flush(
+          '{"type":"retrieved","count":1}\n{"type":"done","found":false,"citations":[]}\n',
+          {
+            headers: NDJSON,
+          },
+        ),
+      );
+      expect(outcome.error).toBeUndefined();
+      expect(outcome.events).toEqual([
+        { type: 'retrieved', count: 1 },
+        { type: 'done', found: false, citations: [] },
+      ]);
+    });
+
+    it('turns a JSON envelope refusal sent before the stream into an ApiError', () => {
+      const { body } = backendRefusal('aiUnavailable');
+      const outcome = ask((request) =>
+        request.flush(JSON.stringify(body), {
+          headers: { 'Content-Type': 'application/json' },
+        }),
+      );
+      expect(outcome.events).toEqual([]);
+      expect(outcome.error).toBeInstanceOf(ApiError);
+      expect(toAppError(outcome.error)).toMatchObject({
+        messageCode: 'KNOWLEDGE-AI_UNAVAILABLE',
+      });
+    });
+
+    it('reads the envelope of a 4xx refusal, which arrives as text', () => {
+      const { body } = backendRefusal('unauthenticated');
+      const outcome = ask((request) =>
+        request.flush(JSON.stringify(body), {
+          status: 401,
+          statusText: 'Unauthorized',
+        }),
+      );
+      expect(outcome.error).toBeInstanceOf(ApiError);
+      expect((outcome.error as ApiError).httpStatus).toBe(401);
+    });
   });
 });

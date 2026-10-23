@@ -2,17 +2,26 @@ import {
   HttpClient,
   HttpContext,
   HttpContextToken,
+  HttpEventType,
   HttpParams,
 } from '@angular/common/http';
 import { ErrorHandler, inject, Service } from '@angular/core';
-import { type AnyEndpoint, toUrl } from '@lms/contracts';
-import { map, type Observable } from 'rxjs';
+import { type AnyEndpoint, type ResponseKind, toUrl } from '@lms/contracts';
+import { map, Observable } from 'rxjs';
 import type { z } from 'zod';
 import { APP_CONFIG } from '../config/app-config';
 import { ContractError } from './contract-error';
 
 /** The endpoint a request belongs to; the dev mock API answers by it. */
 export const ENDPOINT = new HttpContextToken<AnyEndpoint | null>(() => null);
+
+/** An endpoint `call` can send: everything except an `ndjson` one, which only `stream` reads. */
+export type CallableEndpoint = AnyEndpoint & {
+  readonly responseType?: Exclude<ResponseKind, 'ndjson'>;
+};
+
+/** An endpoint `stream` can read: one that declares `responseType: 'ndjson'`. */
+export type StreamEndpoint = AnyEndpoint & { readonly responseType: 'ndjson' };
 
 type Declared<S> = [S] extends [undefined] ? false : true;
 
@@ -88,7 +97,7 @@ function toFormData(body: unknown): FormData {
  * The one way the app calls the backend: verb, URL and response schema come from the endpoint
  * definition, so a store writes `client.call(courseEndpoints.getCourse, { params })`.
  * The body is sent as passed (JSON), or as `FormData` for a `multipart` endpoint; a `blob`
- * endpoint answers a `Blob`. The response is parsed with `endpoint.response`, and a mismatch
+ * endpoint answers a `Blob` and an `ndjson` one is read with `stream`. The response is parsed with `endpoint.response`, and a mismatch
  * is reported to `ErrorHandler` (with the zod issues) before the stream errors with it.
  */
 @Service()
@@ -105,31 +114,114 @@ export class EndpointClient {
     return endpoint.served !== 'mock' || this.config.mockApi;
   }
 
-  call<E extends AnyEndpoint>(
+  call<E extends CallableEndpoint>(
     endpoint: E,
     ...args: CallArgs<E>
   ): Observable<z.output<E['response']>> {
-    const input = (args[0] ?? {}) as {
+    const request = this.prepare(endpoint, args[0]);
+    return this.http
+      .request<unknown>(endpoint.method, request.url, {
+        body: request.body,
+        params: request.params,
+        context: request.context,
+        responseType: (endpoint.responseType ?? 'json') as 'json',
+      })
+      .pipe(map((body) => this.parse(endpoint, body)));
+  }
+
+  /**
+   * Reads an `ndjson` endpoint as its events arrive: every complete line of the growing body is
+   * parsed with the endpoint's schema and emitted, a mismatch errors the stream with a
+   * `ContractError`, and the last line needs no trailing newline. Unsubscribing aborts the
+   * request. A refusal sent before the stream starts is an ordinary envelope (`ApiError`).
+   */
+  stream<E extends StreamEndpoint>(
+    endpoint: E,
+    ...args: CallArgs<E>
+  ): Observable<z.output<E['response']>> {
+    const request = this.prepare(endpoint, args[0]);
+    return new Observable<z.output<E['response']>>((subscriber) => {
+      let consumed = 0;
+      const emit = (text: string, final: boolean): void => {
+        for (;;) {
+          const end = text.indexOf('\n', consumed);
+          if (end === -1) break;
+          const line = text.slice(consumed, end).trim();
+          consumed = end + 1;
+          if (line) subscriber.next(this.parseLine(endpoint, line));
+        }
+        if (final && consumed < text.length) {
+          const line = text.slice(consumed).trim();
+          consumed = text.length;
+          if (line) subscriber.next(this.parseLine(endpoint, line));
+        }
+      };
+      const subscription = this.http
+        .request(endpoint.method, request.url, {
+          body: request.body,
+          params: request.params,
+          context: request.context,
+          headers: { Accept: 'application/x-ndjson, application/json' },
+          observe: 'events',
+          reportProgress: true,
+          responseType: 'text',
+        })
+        .subscribe({
+          next: (event) => {
+            try {
+              if (event.type === HttpEventType.DownloadProgress) {
+                emit(event.partialText ?? '', false);
+              } else if (event.type === HttpEventType.Response) {
+                emit(event.body ?? '', true);
+              }
+            } catch (error) {
+              subscription.unsubscribe();
+              subscriber.error(error);
+            }
+          },
+          error: (error: unknown) => subscriber.error(error),
+          complete: () => subscriber.complete(),
+        });
+      return () => subscription.unsubscribe();
+    });
+  }
+
+  private prepare(
+    endpoint: AnyEndpoint,
+    input: unknown,
+  ): {
+    url: string;
+    body: unknown;
+    params: HttpParams;
+    context: HttpContext;
+  } {
+    const { params, query, body } = (input ?? {}) as {
       params?: Record<string, unknown>;
       query?: Record<string, unknown>;
       body?: unknown;
     };
-    const url = (toUrl as (e: AnyEndpoint, p?: unknown) => string)(
-      endpoint,
-      input.params,
-    );
-    const body =
-      endpoint.encoding === 'multipart' && input.body !== undefined
-        ? toFormData(input.body)
-        : input.body;
-    return this.http
-      .request<unknown>(endpoint.method, url, {
-        body,
-        params: toHttpParams(input.query),
-        context: new HttpContext().set(ENDPOINT, endpoint),
-        responseType: (endpoint.responseType ?? 'json') as 'json',
-      })
-      .pipe(map((body) => this.parse(endpoint, body)));
+    return {
+      url: (toUrl as (e: AnyEndpoint, p?: unknown) => string)(endpoint, params),
+      body:
+        endpoint.encoding === 'multipart' && body !== undefined
+          ? toFormData(body)
+          : body,
+      params: toHttpParams(query),
+      context: new HttpContext().set(ENDPOINT, endpoint),
+    };
+  }
+
+  private parseLine<E extends AnyEndpoint>(
+    endpoint: E,
+    line: string,
+  ): z.output<E['response']> {
+    let value: unknown;
+    try {
+      value = JSON.parse(line);
+    } catch {
+      value = line;
+    }
+    return this.parse(endpoint, value);
   }
 
   private parse<E extends AnyEndpoint>(

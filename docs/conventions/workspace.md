@@ -168,7 +168,7 @@ A new check belongs in a `package.json` script first, then in the workflow, so
 `npm run check` and CI never disagree.
 
 `apps/lms/proxy.conf.mjs` maps `/api` to the shared backend server, `http://103.121.90.119:8019`
-(`corebanking-academy`); change the target to `http://localhost:8019` to use a backend on this
-machine. App code only ever uses relative `/api/...` URLs: in development the proxy forwards the
+(`corebanking-academy`); start the server with `LMS_API_TARGET=http://localhost:8019 npm start` to use a backend on
+this machine. App code only ever uses relative `/api/...` URLs: in development the proxy forwards the
 calls the mock does not answer, and staging and production are served by an Nginx reverse proxy
 that forwards `/api/` to the backend on the same origin (infrastructure, not code).

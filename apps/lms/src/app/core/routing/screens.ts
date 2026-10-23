@@ -296,6 +296,16 @@ export const SCREEN_TABLE = {
         },
       ],
     },
+    AI_ASSISTANT: {
+      nav: { icon: 'sparkles', section: 'Công cụ học' },
+      screens: [
+        {
+          path: 'assistant',
+          title: 'Trợ lý AI',
+          mockupPage: 'assistant',
+        },
+      ],
+    },
     ISSUE_HUB: {
       nav: { icon: 'message-square', section: 'Công cụ học' },
       screens: [
@@ -341,7 +351,6 @@ export const SCREEN_TABLE = {
       mockupPage: 'adminCatalog',
     },
     { path: 'leaderboard', title: 'Bảng xếp hạng', mockupPage: 'leaderboard' },
-    { path: 'assistant', title: 'Trợ lý AI', mockupPage: 'assistant' },
     { path: 'flashcards', title: 'Flashcard ôn tập', mockupPage: 'flashcards' },
     { path: 'saved', title: 'Đã lưu & ghi chú', mockupPage: 'saved' },
     { path: 'certificates', title: 'Chứng nhận', mockupPage: 'certificates' },

@@ -2,10 +2,12 @@ import {
   adminOrgEndpoints,
   authV1Endpoints,
   identityEndpoints,
+  knowledgeEndpoints,
   organizationEndpoints,
   RoleSchema,
   shellEndpoints,
   type AnyEndpoint,
+  type KnowledgeDocument,
   type Me,
   type Page,
   type UserSummary,
@@ -56,7 +58,7 @@ describe('FakeBackend', () => {
       expect(SEED_USERS).toHaveLength(7);
       expect(SEED_GRANTS).toHaveLength(8);
       expect(SEED_ROLES).toHaveLength(5);
-      expect(SEED_FUNCTIONS).toHaveLength(16);
+      expect(SEED_FUNCTIONS).toHaveLength(17);
       expect(SEED_USERS.map((u) => u.userId)).toEqual([
         '000001',
         '000002',
@@ -76,9 +78,14 @@ describe('FakeBackend', () => {
         'LEARNING_PROGRESS',
         'QUIZ_TAKING',
         'KNOWLEDGE_HUB',
+        'AI_ASSISTANT',
         'ISSUE_HUB',
       ]);
-      expect(functions('000006')).toEqual(['PROFILE', 'REPORTING']);
+      expect(functions('000006')).toEqual([
+        'PROFILE',
+        'REPORTING',
+        'AI_ASSISTANT',
+      ]);
       expect(functions('000001')).toContain('ROLE_MANAGEMENT');
       expect(functions('000001')).not.toContain('COURSE_LEARNING');
     });
@@ -665,6 +672,156 @@ describe('FakeBackend', () => {
       });
       expect(counts(login('hocvien'))).toEqual({ notifications: 2, inbox: 0 });
       expect(counts('not-issued-here')).toEqual({ notifications: 2, inbox: 0 });
+    });
+  });
+
+  describe('knowledge', () => {
+    const file = (name: string, content = 'nội dung') =>
+      new File([content], name, { type: 'text/markdown' });
+    const items = (reply: FakeReply) =>
+      (reply.body.data as Page<KnowledgeDocument>).items;
+
+    it('lists everyone’s documents to any signed-in user, newest first', () => {
+      const reply = call(knowledgeEndpoints.documents, login('hocvien'));
+      expect(reply.status).toBe(200);
+      expect(items(reply).map((d) => d.id)).toEqual([3, 2, 1]);
+    });
+
+    it('narrows the list to the caller’s own uploads and to the statuses asked for', () => {
+      const token = login('giangvien');
+      expect(
+        items(
+          call(knowledgeEndpoints.documents, token, {
+            query: { mine: 'true' },
+          }),
+        ).map((d) => d.id),
+      ).toEqual([2, 1]);
+      expect(
+        items(
+          call(knowledgeEndpoints.documents, token, {
+            query: { status: 'failed,processing' },
+          }),
+        ).map((d) => d.id),
+      ).toEqual([3, 2]);
+      expect(
+        code(
+          call(knowledgeEndpoints.documents, token, {
+            query: { status: 'weird' },
+          }),
+        ),
+      ).toBe('CORE-VALIDATION_FAILED');
+    });
+
+    it('queues an upload for its uploader, then moves it to processing and ready as it is read', () => {
+      const token = login('giangvien');
+      const created = call(knowledgeEndpoints.uploadDocument, token, {
+        body: { file: file('quy-trinh.md') },
+      });
+      expect(created.status).toBe(201);
+      const document = created.body.data as KnowledgeDocument;
+      expect(document).toMatchObject({
+        fileName: 'quy-trinh.md',
+        status: 'queued',
+        chunkCount: 0,
+        uploadedBy: { userId: '000005', fullName: 'Giảng viên Demo' },
+      });
+      const status = () =>
+        (
+          call(knowledgeEndpoints.document, token, {
+            params: { documentId: String(document.id) },
+          }).body.data as KnowledgeDocument
+        ).status;
+      expect(status()).toBe('processing');
+      expect(status()).toBe('ready');
+      expect(status()).toBe('ready');
+    });
+
+    it('shows an uploaded document to other roles as well', () => {
+      call(knowledgeEndpoints.uploadDocument, login('giangvien'), {
+        body: { file: file('chung.md') },
+      });
+      const names = items(
+        call(knowledgeEndpoints.documents, login('hocvien')),
+      ).map((d) => d.fileName);
+      expect(names).toContain('chung.md');
+    });
+
+    it('refuses an unsupported, empty or oversized file with the backend codes', () => {
+      const token = login('giangvien');
+      const upload = (body: unknown) =>
+        code(call(knowledgeEndpoints.uploadDocument, token, { body }));
+      expect(upload({ file: file('tinh.exe') })).toBe(
+        'KNOWLEDGE-FILE_TYPE_UNSUPPORTED',
+      );
+      expect(upload({ file: file('rong.md', '') })).toBe(
+        'KNOWLEDGE-FILE_INVALID',
+      );
+      const big = new File([new Uint8Array(20 * 1024 * 1024 + 1)], 'lon.pdf');
+      expect(upload({ file: big })).toBe('KNOWLEDGE-FILE_TOO_LARGE');
+      expect(upload({})).toBe('CORE-VALIDATION_FAILED');
+    });
+
+    it('refuses a missing document as not found', () => {
+      const reply = call(knowledgeEndpoints.document, login('hocvien'), {
+        params: { documentId: '99' },
+      });
+      expect(code(reply)).toBe('CORE-RESOURCE_NOT_FOUND');
+    });
+
+    it('answers a question with citations, and the fixed sentence when the question says "không có"', () => {
+      const token = login('hocvien');
+      const found = call(knowledgeEndpoints.ask, token, {
+        body: { question: 'EOD là gì?' },
+      });
+      expect(found.body.data).toMatchObject({ found: true });
+      const none = call(knowledgeEndpoints.ask, token, {
+        body: { question: 'Tài liệu không có mục này?' },
+      });
+      expect(none.body.data).toEqual({
+        answer: 'Không tìm thấy thông tin này trong tài liệu.',
+        found: false,
+        citations: [],
+      });
+    });
+
+    it('replays the answer as stream events and refuses an invalid question before streaming', () => {
+      const token = login('hocvien');
+      const stream = call(knowledgeEndpoints.askStream, token, {
+        body: { question: 'EOD là gì?' },
+      });
+      expect(stream.events?.map((e) => (e as { type: string }).type)).toEqual([
+        'retrieved',
+        'delta',
+        'delta',
+        'delta',
+        'delta',
+        'delta',
+        'done',
+      ]);
+      expect(
+        code(
+          call(knowledgeEndpoints.askStream, token, {
+            body: { question: '  ' },
+          }),
+        ),
+      ).toBe('CORE-VALIDATION_FAILED');
+      expect(
+        code(
+          call(knowledgeEndpoints.askStream, token, {
+            body: { question: 'x'.repeat(301) },
+          }),
+        ),
+      ).toBe('CORE-VALIDATION_FAILED');
+    });
+
+    it('needs a signed-in user for every knowledge endpoint', () => {
+      for (const endpoint of Object.values(knowledgeEndpoints)) {
+        const reply = call(endpoint, null, {
+          params: { documentId: '1' },
+          body: { question: 'a' },
+        });
+        expect(reply.status, endpoint.path).toBe(401);
+      }
     });
   });
 });
