@@ -69,11 +69,7 @@
 </ui-alert>
 }
 
-<form
-  id="course-editor-form"
-  class="course-editor__form"
-  [formRoot]="courseForm"
->
+<form id="course-editor-form" [formRoot]="courseForm">
   <fieldset class="course-editor__body" [disabled]="!store.isDraft$()">
     <legend class="sr-only">{{ steps[store.step$()].label }}</legend>
     @switch (store.step$()) { @case (0) {

@@ -41,13 +41,7 @@ const CopyCourseFormSchema = z.object({
       </ui-field>
     </form>
   `,
-  styles: `
-    @use 'ui';
-
-    .copy-course-form__note {
-      @include ui.text(sm, muted);
-    }
-  `,
+  styleUrl: './copy-course-form.scss',
 })
 export class CopyCourseForm {
   readonly title = input.required<string>();

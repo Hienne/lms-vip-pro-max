@@ -22,8 +22,10 @@ export default defineConfig(() => ({
     globals: true,
     environment: 'jsdom',
     // The first test that touches an icon pays for JIT-linking @lucide/angular's ~1,900 icon
-    // components (about 15 s); later tests reuse the module.
+    // components (about 15 s); later tests reuse the module. A `beforeEach` that renders first
+    // pays it instead, so hooks get the same budget.
     testTimeout: 120_000,
+    hookTimeout: 120_000,
     include: ['{src,tests}/**/*.{test,spec}.{js,mjs,cjs,ts,mts,cts,jsx,tsx}'],
     setupFiles: ['src/test-setup.ts'],
     reporters: ['default'],

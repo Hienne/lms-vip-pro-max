@@ -57,6 +57,12 @@ describe('Login', () => {
     document
       .querySelectorAll('.cdk-overlay-container')
       .forEach((c) => (c.innerHTML = ''));
+    // The learner's home a sign-in lands on reads its courses; this spec is about signing in.
+    backend.match(
+      (req) =>
+        req.url.startsWith('/api/v1/me/learning/') ||
+        req.url.startsWith('/api/v1/training-catalog/'),
+    );
     backend.verify();
   });
 

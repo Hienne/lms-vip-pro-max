@@ -104,7 +104,6 @@
         } }
         <label
           uiDropzone
-          class="lesson-form__drop"
           [accept]="acceptOf(block().value().blockType)"
           (files)="choose(block().value(), $event)"
         >

@@ -113,7 +113,7 @@ describe('AppShell', () => {
     ],
     [
       'admin',
-      '/admin/courses',
+      '/admin/system',
       [
         '/profile',
         '/admin/courses',
@@ -166,7 +166,7 @@ describe('AppShell', () => {
 
   it('names the roles of the user', async () => {
     signInAs('admin');
-    const role = (await open('/admin/courses')).querySelector('.sidebar__role');
+    const role = (await open('/admin/system')).querySelector('.sidebar__role');
     expect(role?.textContent).toContain('Quản trị viên');
   });
 

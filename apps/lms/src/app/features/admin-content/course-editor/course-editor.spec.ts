@@ -1,5 +1,5 @@
 import { courseEndpoints, type SaveDraftCommand } from '@lms/contracts';
-import { setUpAdminScreen } from '../admin-content.testing';
+import { setUpAdminScreen } from '../../../core/dev/mock-api/admin-screen.testing';
 import { CourseEditor } from './course-editor';
 
 describe('CourseEditor', () => {

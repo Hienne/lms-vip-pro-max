@@ -2,20 +2,20 @@ import type { MockInstance } from 'vitest';
 import { TestBed } from '@angular/core/testing';
 import { provideRouter, Router } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
-import { createAppRoutes } from '../../app.routes';
-import { parseAppConfig, provideAppConfig } from '../../core/config/app-config';
-import { testAppConfig } from '../../core/config/app-config.testing';
-import { MockBackend } from '../../core/dev/mock-api/mock-api.interceptor';
+import { createAppRoutes } from '../../../app.routes';
+import { parseAppConfig, provideAppConfig } from '../../config/app-config';
+import { testAppConfig } from '../../config/app-config.testing';
+import { MockBackend } from './mock-api.interceptor';
 import {
   provideMockBackendHttp,
   signInToMockBackend,
-} from '../../core/dev/mock-api/mock-backend.testing';
+} from './mock-backend.testing';
 import {
   FakeSessionStore,
   fakeSession,
   seedProfile,
-} from '../../core/session/session.testing';
-import { SessionStore } from '../../core/session/session.store';
+} from '../../session/session.testing';
+import { SessionStore } from '../../session/session.store';
 
 /**
  * Screen specs of the content and assignment admin, run against the seeded in-memory backend as
@@ -80,7 +80,7 @@ export function setUpAdminScreen() {
     button: (label: string | RegExp, root: ParentNode = page()) =>
       Array.from(root.querySelectorAll<HTMLButtonElement>('button, a')).find(
         (b) => {
-          const name: string = `${b.textContent ?? ''} ${b.getAttribute('aria-label') ?? ''}`;
+          const name = `${b.textContent ?? ''} ${b.getAttribute('aria-label') ?? ''}`;
           return typeof label === 'string'
             ? name.includes(label)
             : label.test(name);

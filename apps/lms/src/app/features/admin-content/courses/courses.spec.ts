@@ -1,5 +1,5 @@
 import { courseEndpoints } from '@lms/contracts';
-import { setUpAdminScreen } from '../admin-content.testing';
+import { setUpAdminScreen } from '../../../core/dev/mock-api/admin-screen.testing';
 
 describe('Courses', () => {
   const screen = setUpAdminScreen();
