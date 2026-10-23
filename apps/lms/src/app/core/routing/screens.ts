@@ -152,16 +152,28 @@ export const SCREEN_TABLE = {
           path: 'admin/courses',
           title: 'Khóa học',
           mockupPage: 'adminCourses',
+          load: () =>
+            import('../../features/admin-content/courses/courses').then(
+              (m) => m.Courses,
+            ),
         },
         {
           path: 'admin/courses/new',
           title: 'Tạo khóa học mới',
           mockupPage: 'courseWizard',
+          load: () =>
+            import('../../features/admin-content/course-new/course-new').then(
+              (m) => m.CourseNew,
+            ),
         },
         {
           path: 'admin/courses/:id/edit',
           title: 'Sửa khóa học',
           mockupPage: 'courseWizard',
+          load: () =>
+            import(
+              '../../features/admin-content/course-editor/course-editor'
+            ).then((m) => m.CourseEditor),
         },
       ],
     },
@@ -347,6 +359,10 @@ export const SCREEN_TABLE = {
       path: 'admin/catalog',
       title: 'Lĩnh vực & chương trình',
       mockupPage: 'adminCatalog',
+      load: () =>
+        import(
+          '../../features/admin-content/training-catalog/training-catalog'
+        ).then((m) => m.TrainingCatalog),
     },
     { path: 'leaderboard', title: 'Bảng xếp hạng', mockupPage: 'leaderboard' },
     { path: 'assistant', title: 'Trợ lý AI', mockupPage: 'assistant' },

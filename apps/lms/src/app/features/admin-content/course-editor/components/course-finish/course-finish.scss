@@ -1,0 +1,48 @@
+@use 'ui';
+
+.course-finish {
+  display: grid;
+  gap: ui.space(4);
+  align-items: start;
+
+  @include ui.bp(md) {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  &__title {
+    @include ui.text(lg);
+  }
+
+  &__rules {
+    @include ui.stack(1);
+    @include ui.text(sm, muted);
+    margin: 0;
+    padding-left: ui.space(5);
+  }
+
+  &__checks {
+    @include ui.stack(2);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  &__check {
+    @include ui.row(2);
+    @include ui.text(sm);
+    flex-wrap: nowrap;
+  }
+
+  &__check-label {
+    flex: 1 1 auto;
+  }
+
+  &__verdict {
+    @include ui.text(sm);
+    font-weight: ui.weight(semibold);
+  }
+
+  &__note {
+    @include ui.text(xs, muted);
+  }
+}

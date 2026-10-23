@@ -1,0 +1,62 @@
+@use 'ui';
+
+.course-info {
+  display: grid;
+  gap: ui.space(6);
+  align-items: start;
+
+  @include ui.bp(lg) {
+    grid-template-columns: minmax(0, 1fr) 20rem;
+  }
+
+  &__form {
+    @include ui.stack(5);
+  }
+
+  &__pair {
+    display: grid;
+    gap: ui.space(4);
+
+    @include ui.bp(md) {
+      grid-template-columns: 1fr 1fr;
+    }
+  }
+
+  &__kind,
+  &__objectives {
+    @include ui.stack(2);
+    margin: 0;
+    padding: 0;
+    border: 0;
+
+    legend {
+      @include ui.text(sm);
+      margin-bottom: ui.space(2);
+      padding: 0;
+      font-weight: ui.weight(medium);
+    }
+  }
+
+  &__objectives {
+    align-items: flex-start;
+  }
+
+  &__objective {
+    @include ui.row(2);
+    flex-wrap: nowrap;
+    align-self: stretch;
+  }
+
+  &__preview {
+    @include ui.stack(3);
+  }
+
+  &__preview-title {
+    @include ui.text(sm, muted);
+    font-weight: ui.weight(medium);
+  }
+
+  &__note {
+    @include ui.text(xs, muted);
+  }
+}

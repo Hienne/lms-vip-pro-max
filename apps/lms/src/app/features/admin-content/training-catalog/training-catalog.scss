@@ -1,0 +1,27 @@
+@use 'ui';
+
+:host {
+  @include ui.page(wide);
+}
+
+.training-catalog {
+  &__toolbar {
+    justify-content: flex-start;
+  }
+
+  &__filter {
+    @include ui.row(2);
+    @include ui.text(sm, muted);
+    white-space: nowrap;
+  }
+
+  &__loading {
+    display: flex;
+    justify-content: center;
+    padding-block: ui.space(10);
+  }
+
+  &__desc {
+    @include ui.text(sm, muted);
+  }
+}
