@@ -52,7 +52,7 @@ export const ChatAnswerSchema = z.object({
   found: z.boolean(),
   citations: z.array(CitationSchema),
 });
-export const ChatStreamEventSchema = z.discriminatedUnion('type', [z.object({ type: z.literal('retrieved'), count: z.number().int() }), z.object({ type: z.literal('delta'), text: z.string() }), z.object({ type: z.literal('done'), found: z.boolean(), citations: z.array(CitationSchema) }), z.object({ type: z.literal('error'), messageCode: z.string(), message: z.string() })]);
+export const ChatStreamEventSchema = z.discriminatedUnion('type', [z.object({ type: z.literal('retrieved'), count: z.number().int() }), z.object({ type: z.literal('delta'), text: z.string() }), z.object({ type: z.literal('done'), found: z.boolean(), answer: z.string(), citations: z.array(CitationSchema) }), z.object({ type: z.literal('error'), messageCode: z.string(), message: z.string() })]);
 ```
 
 No UI copy in contracts: status labels ("Đang chờ", "Đang xử lý", "Sẵn sàng", "Không xử lý được") live
@@ -112,3 +112,11 @@ script (`retrieved`, five `delta`s, `done`). `FakeBackend` answers the five endp
 
 Contract done criteria pass (schemas, endpoints with doc comments, fixtures parse, `npm start` shows the
 endpoints answering); the stream specs above pass.
+
+## Implementation notes (as built)
+
+- `done` carries `answer` (the server's final text); the store replaces the streamed text with it.
+- `StreamEndpoint.responseType` is optional in the type so every endpoint definition is assignable; `stream()` still
+  requires `responseType: 'ndjson'` at the call site through `CallableEndpoint`.
+- `envelopeInterceptor` passes `application/x-ndjson` through and still reads a JSON refusal sent before the stream.
+- `LMS_API_TARGET` overrides the dev proxy target (default stays the shared backend).

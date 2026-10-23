@@ -170,3 +170,12 @@ mvn spring-boot:run
 
 The three SQL files load into a fresh `pgvector/pgvector:pg16`; the app starts against it; `/auth/me` of
 every seeded role lists `AI_ASSISTANT`; the two test classes pass in `mvn clean verify`.
+
+## Implementation notes (as built)
+
+- The SQL creates the extension in `learning_hub` (`CREATE EXTENSION vector WITH SCHEMA learning_hub`) and sets
+  `search_path` for the script: with `currentSchema=learning_hub` a type in `public` is invisible to `CAST(? AS vector)`.
+- `OllamaClientTest` talks to a real JDK `HttpServer` (real streaming, real refused connection) instead of
+  `MockRestServiceServer`.
+- Versions: PDFBox 3.0.8 and POI 5.5.1 are explicit (not in the Boot BOM); surefire `includes` also picks `**/*IT.java`
+  (no failsafe plugin); Testcontainers comes from the Boot BOM.

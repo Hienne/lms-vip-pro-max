@@ -17,7 +17,7 @@ that their documents are being processed and when each one is done, and takes th
 
 ## States (from `DocumentTrackerStore.owlState$`)
 
-| State        | Owl                                                        | Bubble (popover beside the owl)                                            |
+| State        | Owl                                                        | Bubble (notice left of the owl)                                            |
 | ------------ | ---------------------------------------------------------- | -------------------------------------------------------------------------- |
 | `idle`       | still, eyes open                                           | none                                                                       |
 | `processing` | mouth open with a small book, jaw chews in a loop (~1.2 s) | none; the tooltip says **Đang xử lý N tài liệu**                           |
@@ -70,3 +70,15 @@ Enter opens the assistant, Escape closes the bubble; the owl never blocks a clic
 
 During Phase 5's upload of three files the owl chews while the user browses, then shows the done bubble
 for each, and clicking it opens the assistant.
+
+## Implementation notes (as built)
+
+- The notice sits left of the owl in one row of text + link ("Mở trợ lý" or "Xem chi tiết") + ✕. A `done` notice closes after
+  6 s through the tracker (`dismiss()`); a `failed` one stays until ✕, the link or Escape.
+- Toasts and the owl share the bottom-right corner, so `.toasts` gets a larger bottom margin (`_toast.scss`) and the stack
+  starts above the owl and its notice. The dev toolbar sits in the same corner in development: `besideToolbar` moves the owl
+  left of it (the shell sets it when the toolbar is loaded).
+- Poses are one inline SVG; the state is exposed as `data-state` and as the button's `aria-label`. The live region is a
+  visually hidden `aria-live="polite"` paragraph whose text names no count, so it speaks once per state.
+- Reduced motion is the CSS media query on the chew loop and the notice; it is verified by reading the stylesheet, not by a
+  `matchMedia` stub.

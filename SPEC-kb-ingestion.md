@@ -174,3 +174,13 @@ comments stay as they are. Messages to users are Vietnamese.
 
 `mvn clean verify` green with the tests above; manual: uploading the three types locally ends `ready`
 with sensible `chunk_count`, and a bad file is refused at once with the right code.
+
+## Implementation notes (as built)
+
+- `KNOWLEDGE-FILE_TOO_LARGE` has no number in its message ("…dung lượng tối đa cho phép."): messages are per code and the
+  limit is configuration.
+- Queue transitions (claim, finish, fail, requeue) live in `DocumentQueueRepository` (`JdbcTemplate`, one guarded statement
+  each), not on the entity.
+- `LearningIdentityService.fullNames(ids)` is the public adapter that gives the uploader names.
+- Chunker: the overlap is dropped when it would leave no room for the next line, and a line longer than the target is split
+  into pieces of at most the target tokens.

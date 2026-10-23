@@ -1604,7 +1604,7 @@ ChatAnswerSchema = z.object({ answer, found: z.boolean(),
   citations: z.array(CitationSchema) })
 ChatStreamEventSchema = z.discriminatedUnion('type', [
   { type: 'retrieved', count }, { type: 'delta', text },
-  { type: 'done', found, citations }, { type: 'error', messageCode, message } ])</code></pre>
+  { type: 'done', found, answer, citations }, { type: 'error', messageCode, message } ])</code></pre>
             </div>
             <div>
               <p>
@@ -1766,7 +1766,7 @@ sealed interface ChatStreamEvent {
           <pre><code>{"type":"retrieved","count":3}
 {"type":"delta","text":"Trước khi chạy EOD cần "}
 {"type":"delta","text":"đối chiếu số dư GL [1] và khóa giao dịch quầy [2]."}
-{"type":"done","found":true,"citations":[
+{"type":"done","found":true,"answer":"Trước khi chạy EOD cần đối chiếu số dư GL [1] và khóa giao dịch quầy [2].","citations":[
   {"n":1,"documentId":42,"fileName":"Quy-trinh-EOD.pdf","page":3,"lineStart":4,"lineEnd":9,"snippet":"Đối chiếu số dư..."},
   {"n":2,"documentId":57,"fileName":"Checklist-van-hanh.md","page":null,"lineStart":18,"lineEnd":31,"snippet":"Khóa giao dịch..."}]}</code></pre>
           <p class="small muted">
@@ -2481,9 +2481,43 @@ apps/lms/proxy.conf.mjs                     LMS_API_TARGET</code></pre>
             </li>
             <li>
               Có hiển thị chỉ những trích dẫn được model đánh dấu
-              <code>[n]</code> hay toàn bộ chunk đã tìm thấy. Mặc định: toàn bộ
-              (đúng nguyên tắc “dựng từ metadata”); xem lại khi có dữ liệu thật
-              ở Phase 5.
+              <code>[n]</code> hay toàn bộ chunk đã tìm thấy. Đã chọn: toàn bộ
+              (đúng nguyên tắc “dựng từ metadata”). Chạy thật ở Phase 5 cho thấy
+              hệ quả: khi kho có nhiều bản trùng, danh sách nguồn lặp lại cùng
+              nội dung; nên cân nhắc lọc theo <code>[n]</code> hoặc loại trùng ở
+              bước sau.
+            </li>
+          </ul>
+          <h3>Thay đổi so với thiết kế ban đầu (khi hiện thực Phase 1–5)</h3>
+          <ul>
+            <li>
+              <strong>SQL:</strong> extension <code>vector</code> tạo trong
+              schema <code>learning_hub</code> (không phải <code>public</code>)
+              vì ứng dụng chạy với <code>currentSchema=learning_hub</code>.
+            </li>
+            <li>
+              <strong>Luồng chat:</strong> dòng <code>done</code> có thêm
+              <code>answer</code> — văn bản cuối cùng. Khi model trả lời “không
+              tìm thấy” kèm <code>[n]</code>, FE thay văn bản đã stream bằng
+              đúng câu cố định và không có nguồn. Lời từ chối trước dòng đầu
+              tiên (câu hỏi sai, AI chưa sẵn sàng) là envelope JSON thường.
+            </li>
+            <li>
+              <strong>Màn hình trợ lý:</strong> không bọc trong thẻ; nhật ký
+              cuộc trò chuyện cuộn theo trang; vùng đọc cho trình đọc màn hình
+              báo trạng thái thay vì <code>aria-live</code> trên nhật ký; tệp bị
+              từ chối hiện ngay trên dòng của tệp (có nút bỏ) thay vì toast.
+            </li>
+            <li>
+              <strong>Con cú:</strong> thông báo nằm bên trái con cú; ngăn toast
+              nhích lên để không che con cú (<code>_toast.scss</code>); khi có
+              thanh công cụ dev thì con cú đứng cạnh nó.
+            </li>
+            <li>
+              <strong>Backend:</strong> khối lượng công việc hàng đợi nằm ở
+              <code>DocumentQueueRepository</code>; thông báo
+              <code>FILE_TOO_LARGE</code> không nêu số; PDFBox 3.0.8 và POI
+              5.5.1 khai báo phiên bản tường minh.
             </li>
           </ul>
         </section>
@@ -2927,9 +2961,9 @@ apps/lms/proxy.conf.mjs                     LMS_API_TARGET</code></pre>
               {
                 f: 'api',
                 t: 'fe',
-                l: '{"type":"done",citations}',
+                l: '{"type":"done",answer,citations}',
                 r: true,
-                c: 'Dòng cuối: found và citations dựng từ metadata chunk (tên tệp, trang, dòng, snippet 280 ký tự). FE hiện “Nguồn” với từng mục mở rộng được.',
+                c: 'Dòng cuối: found, answer (văn bản cuối cùng; câu cố định nếu không tìm thấy) và citations dựng từ metadata chunk (tên tệp, trang, dòng, snippet 280 ký tự). FE hiện “Nguồn” với từng mục mở rộng được.',
               },
             ],
           },

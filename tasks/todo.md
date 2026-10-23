@@ -42,10 +42,10 @@ Spec: [SPEC.md](../SPEC.md) · Plan: [plan.md](plan.md). Backend repo: `corebank
 
 ## Phase 4: owl
 
-- [ ] **T8 owl-indicator** (FE). `app-owl` in the shell, SVG poses, bubble, live region, reduced motion, spec.
+- [x] **T8 owl-indicator** (FE). `app-owl` in the shell, SVG poses, bubble, live region, reduced motion, spec.
       Verify: `npm run check`; browser pass (palettes, light/dark, 375/1280); keyboard.
 
 ## Phase 5: end-to-end
 
-- [ ] **T9 E2E** (both). Real run as `giangvien` (three uploads, owl, cited answer, not-found), then as `hocvien`;
+- [x] **T9 E2E** (both). Real run as `giangvien` (three uploads, owl, cited answer, not-found), then as `hocvien`;
       screenshots; spec/HTML updates for anything that changed; final report.

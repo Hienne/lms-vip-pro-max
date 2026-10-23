@@ -29,11 +29,13 @@ Stream events:
 ```text
 {"type":"retrieved","count":5}                      retrieval done, generation starting
 {"type":"delta","text":"CIF là "}                   answer text, many lines
-{"type":"done","found":true,"citations":[…]}         last line on success
+{"type":"done","found":true,"answer":"…","citations":[…]}   last line on success
 {"type":"error","messageCode":"KNOWLEDGE-AI_UNAVAILABLE","message":"…"}   last line on failure mid-stream
 ```
 
-Citations come last so they can be withdrawn when the model says it found nothing.
+Citations come last so they can be withdrawn when the model says it found nothing. `answer` on `done` is the final
+text: what the deltas added up to, or exactly the fixed sentence when the model said nothing was found (even with `[n]`
+markers appended); a client replaces what it streamed with it.
 
 ## Flow (`KnowledgeChatService`)
 
@@ -93,7 +95,7 @@ docs/api/KNOWLEDGE.md (chat section), docs/postman (chat requests)
 public sealed interface ChatStreamEvent {
     record Retrieved(String type, int count) implements ChatStreamEvent { }
     record Delta(String type, String text) implements ChatStreamEvent { }
-    record Done(String type, boolean found, List<CitationView> citations) implements ChatStreamEvent { }
+    record Done(String type, boolean found, String answer, List<CitationView> citations) implements ChatStreamEvent { }
     record Error(String type, String messageCode, String message) implements ChatStreamEvent { }
 }
 ```
@@ -120,3 +122,12 @@ public sealed interface ChatStreamEvent {
 Tests green in `mvn clean verify`; manually, with real documents, an in-document question cites the right
 file and lines, an out-of-document question returns the fixed sentence, and the first `delta` arrives
 while generation is still running (measured in Phase 2, reported with the time to first token).
+
+## Implementation notes (as built)
+
+- Every retrieved chunk above `min-similarity` becomes a citation, numbered as the model saw it; citations are never parsed
+  from the model text, so a model that cites `[1][2][3][4][5]` still yields exactly the retrieved list.
+- `/chat/stream` refusals before the first line (validation, AI unavailable) are ordinary JSON envelopes; the client sends
+  `Accept: application/x-ndjson, application/json`.
+- The prompt asks for the not-found sentence without source numbers; `done.answer` is the safety net when the model adds
+  them anyway (found during the Phase 5 run with duplicate documents).

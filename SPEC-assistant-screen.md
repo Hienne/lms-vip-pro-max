@@ -43,7 +43,7 @@ title: 'Trợ lý AI', mockupPage: 'assistant', load: … }] }`.
    - Upload: `[uiDropzone]` + file input `accept=".pdf,.md,.docx"`, `multiple`; text **Kéo thả tệp vào
      đây hoặc chọn tệp** and the hint **PDF, Markdown hoặc Word (.docx), tối đa 20 MB mỗi tệp.** Files
      upload one after another, each shown with `ui-upload-item` until the server answers. Client checks
-     (extension, size) mirror the backend with the backend's messages; a server refusal is a toast.
+     (extension, size) mirror the backend with the backend's messages; a server refusal stays on that file's row (with a dismiss button) instead of a toast.
    - List, server-paged (size 20, `ui-pagination`), newest first: file name (truncate + `title`),
      uploader, time (relative, `title` = full date), status as one `uiBadge` with `dot`:
      `queued` **Đang chờ** (neutral), `processing` **Đang xử lý** (info), `ready` **Sẵn sàng** (success),
@@ -68,7 +68,7 @@ title: 'Trợ lý AI', mockupPage: 'assistant', load: … }] }`.
 
 `state`: `messages` (the chat log, browser only), `answering` (id of the message being streamed),
 `uploadQueue`, `page`. Resources: `documents` (`serverData`, `reloadOn` the tracker's `finished` and a local
-invalidation), `upload` (`serverMutation`, `errors: 'toast'`, `onSuccess` → `tracker.track(doc)` and next
+invalidation), `upload` (a queue, one file at a time; a refusal stays on its row; on success `tracker.track(doc)` and next
 in queue). Commands: `ask(question)`, `stop()`, `retry(messageId)`, `addFiles(files)`, `setPage(n)`.
 Streaming uses `EndpointClient.stream` in a command; the subscription is held in the store and cancelled
 by `stop()` and on destroy (raw stream, not `serverData`: comment says why).
@@ -118,3 +118,14 @@ visual-design checklist; each error forced through the dev toolbar (`Prefer: cod
 
 All of the above pass, and against the local backend a real upload goes `Đang chờ → Đang xử lý → Sẵn
 sàng` in the list while a question streams an answer with citations.
+
+## Implementation notes (as built)
+
+- No chat card: the chat column is plain content under the page header (`visual-design.md` rule on cards and framing);
+  the log grows with the page and the newest message is scrolled into view, instead of an inner scroll box.
+- The streamed text is silent for screen readers; a visually hidden `role="status"` region announces "Đang tìm…", "Đang soạn…"
+  and the finished answer once, instead of `aria-live` on the log.
+- The opening line "Xin chào! …" is kept as the chat's first message (a conversation start, not a page greeting).
+- A blank question is not sent and shows no error text; `maxlength` comes from `maxLength(path, 300)` on the form.
+- The migration entries `route-assistant` and `feature-assistant` are claimed (`in-progress`, owner Hienne); they turn `done`
+  with the pull request link, which the registry schema requires.
