@@ -126,3 +126,96 @@ describe('Tooltip', () => {
     expect(bubble()).toBeNull();
   });
 });
+
+@Component({
+  imports: [Tooltip],
+  template: `<button [uiTooltip]="details" uiTooltipToggle>1</button>
+    <ng-template #details>
+      <strong>Quy-trinh-EOD.pdf</strong>
+      <span>trang 3 · dòng 13–27</span>
+    </ng-template>`,
+})
+class RichHost {}
+
+describe('Tooltip with a template', () => {
+  beforeEach(() => vi.useFakeTimers());
+  afterEach(() => {
+    vi.useRealTimers();
+    TestBed.inject(OverlayContainer).ngOnDestroy();
+  });
+
+  function renderRich() {
+    const fixture = TestBed.createComponent(RichHost);
+    fixture.detectChanges();
+    const trigger = (fixture.nativeElement as HTMLElement).querySelector(
+      'button',
+    ) as HTMLButtonElement;
+    const container = TestBed.inject(OverlayContainer).getContainerElement();
+    const bubble = () => container.querySelector('[role="tooltip"]');
+    const settle = (ms = 400) => {
+      vi.advanceTimersByTime(ms);
+      fixture.detectChanges();
+    };
+    return { trigger, bubble, settle };
+  }
+
+  it('renders the template in the wider bubble on focus', () => {
+    const { trigger, bubble, settle } = renderRich();
+    trigger.dispatchEvent(new FocusEvent('focus'));
+    settle();
+    expect(bubble()?.classList).toContain('ui-tooltip--rich');
+    expect(bubble()?.querySelector('strong')?.textContent).toBe(
+      'Quy-trinh-EOD.pdf',
+    );
+    expect(trigger.getAttribute('aria-describedby')).toBe(bubble()?.id);
+  });
+
+  it('shows and hides at once on a click or tap when it toggles', () => {
+    const { trigger, bubble, settle } = renderRich();
+    trigger.click();
+    settle(0);
+    expect(bubble()?.textContent).toContain('trang 3 · dòng 13–27');
+    trigger.click();
+    settle(0);
+    expect(bubble()).toBeNull();
+  });
+
+  it('keeps a bubble that hover opened when it is clicked, and hides it on the next click', () => {
+    const { trigger, bubble, settle } = renderRich();
+    trigger.dispatchEvent(new MouseEvent('mouseenter'));
+    settle();
+    expect(bubble()).not.toBeNull();
+    trigger.click();
+    settle(0);
+    expect(bubble()).not.toBeNull();
+    trigger.click();
+    settle(0);
+    expect(bubble()).toBeNull();
+  });
+
+  it('does not reopen from a pending hover once a tap has opened it', () => {
+    const { trigger, bubble, settle } = renderRich();
+    trigger.dispatchEvent(new MouseEvent('mouseenter'));
+    trigger.click();
+    settle(0);
+    trigger.click();
+    settle();
+    expect(bubble()).toBeNull();
+  });
+});
+
+describe('Tooltip without the toggle', () => {
+  afterEach(() => TestBed.inject(OverlayContainer).ngOnDestroy());
+
+  it('ignores clicks, so an action button does not flash its label', () => {
+    const fixture = TestBed.createComponent(Host);
+    fixture.detectChanges();
+    (fixture.nativeElement as HTMLElement).querySelector('button')?.click();
+    fixture.detectChanges();
+    expect(
+      TestBed.inject(OverlayContainer)
+        .getContainerElement()
+        .querySelector('[role="tooltip"]'),
+    ).toBeNull();
+  });
+});

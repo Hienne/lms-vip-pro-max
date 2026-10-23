@@ -1,33 +1,128 @@
 @use 'ui';
 
+// The page fills what the shell's `workspace` layout leaves under the header: the chat takes every
+// column the panel does not, and each region scrolls inside itself. Regions meet at 1px borders.
 :host {
-  @include ui.page(wide);
+  display: grid;
+  flex: 1 1 auto;
+  grid-template-columns: minmax(0, 1fr);
+  min-height: 0;
 }
 
-.assistant {
-  @include ui.grid(
-    (
-      lg: 3,
-    ),
-    6
-  );
+:host(.assistant--panel) {
+  grid-template-columns: minmax(0, 1fr) ui.layout(panel);
+}
 
-  &__chat {
-    @include ui.stack(4);
-    min-width: 0;
+// Shared by the two bars so their bottom borders line up.
+%bar {
+  display: flex;
+  align-items: center;
+  gap: ui.space(3);
+  min-height: ui.space(12);
+  padding: ui.space(2) ui.space(4);
+  border-bottom: 1px solid ui.color(border);
 
-    @include ui.bp(lg) {
-      grid-column: span 2;
+  @include ui.bp(md) {
+    padding-inline: ui.space(6);
+  }
+}
+
+.chat {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  min-width: 0;
+  min-height: 0;
+
+  &__bar {
+    @extend %bar;
+    justify-content: space-between;
+  }
+
+  &__title {
+    @include ui.text(lg);
+    margin: 0;
+    font-family: ui.font(sans);
+    font-weight: ui.weight(semibold);
+    letter-spacing: normal;
+  }
+
+  &__toggle {
+    flex: none;
+  }
+
+  &__count {
+    @include ui.num;
+    color: ui.color(text-muted);
+  }
+
+  &__scroll {
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding: ui.space(6) ui.space(4);
+
+    @include ui.bp(md) {
+      padding-inline: ui.space(6);
     }
   }
 
-  &__docs {
-    @include ui.stack(4);
-    min-width: 0;
+  &__thread {
+    max-width: ui.layout(reading);
+    margin-inline: auto;
+  }
+
+  // Docked under the conversation; the border runs the full width of the column.
+  &__composer {
+    padding: ui.space(3) ui.space(4) ui.space(4);
+    border-top: 1px solid ui.color(border);
+
+    @include ui.bp(md) {
+      padding-inline: ui.space(6);
+    }
+  }
+
+  &__dock {
+    @include ui.stack(2);
+    max-width: ui.layout(reading);
+    margin-inline: auto;
   }
 
   &__note {
-    @include ui.text(sm, muted);
+    @include ui.text(xs, muted);
     margin: 0;
+  }
+}
+
+.panel {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  min-height: 0;
+  border-left: 1px solid ui.color(border);
+  background: ui.color(surface);
+
+  &__bar {
+    @extend %bar;
+  }
+
+  &__title {
+    @include ui.text(md);
+    margin: 0;
+    font-family: ui.font(sans);
+    font-weight: ui.weight(semibold);
+  }
+
+  &__count {
+    @include ui.text(sm, muted);
+    @include ui.num;
+  }
+
+  &__body,
+  &__drawer {
+    @include ui.stack(5);
+  }
+
+  &__body {
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding: ui.space(4);
   }
 }

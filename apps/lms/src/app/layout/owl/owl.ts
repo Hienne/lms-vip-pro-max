@@ -24,6 +24,12 @@ export class Owl {
 
   /** Moves the owl left, off the dev toolbar that is pinned to the same corner. */
   readonly besideToolbar = input(false);
+  /**
+   * Keeps only the screen-reader announcement: a workspace page (the assistant) docks its
+   * composer and panel along the bottom edge where the owl sits, and shows the document status
+   * itself.
+   */
+  readonly quiet = input(false);
 
   protected readonly state = this.tracker.owlState$;
   protected readonly finished = computed(

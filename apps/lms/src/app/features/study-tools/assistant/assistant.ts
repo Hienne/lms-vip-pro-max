@@ -1,5 +1,6 @@
+import { NgTemplateOutlet } from '@angular/common';
 import { Component, inject } from '@angular/core';
-import { PageHeader } from '@lms/ui';
+import { Button, DrawerOutlet, Icon } from '@lms/ui';
 import { AskForm } from './components/ask-form/ask-form';
 import { ChatLog } from './components/chat-log/chat-log';
 import { DocumentList } from './components/document-list/document-list';
@@ -9,11 +10,25 @@ import {
   DOCUMENTS_PAGE_SIZE,
 } from './data-access/assistant.store';
 
-/** "Trợ lý AI": ask questions answered from the shared documents, and add documents to them. */
+/**
+ * "Trợ lý AI": a chat that fills the page, answered from the shared documents, and a documents
+ * panel beside it (a drawer on a narrow screen) to add documents and follow their processing. The
+ * route uses the `workspace` layout, so the chat and the panel scroll inside themselves.
+ */
 @Component({
   selector: 'app-assistant',
-  imports: [AskForm, ChatLog, DocumentList, DocumentUpload, PageHeader],
+  imports: [
+    AskForm,
+    Button,
+    ChatLog,
+    DocumentList,
+    DocumentUpload,
+    DrawerOutlet,
+    Icon,
+    NgTemplateOutlet,
+  ],
   providers: [AssistantStore],
+  host: { '[class.assistant--panel]': 'store.panelBeside$()' },
   templateUrl: './assistant.html',
   styleUrl: './assistant.scss',
 })

@@ -1,4 +1,10 @@
-<label uiDropzone [accept]="accept" multiple (files)="files.emit($event)">
+<label
+  uiDropzone
+  class="drop"
+  [accept]="accept"
+  multiple
+  (files)="files.emit($event)"
+>
   <span class="drop__title">Kéo thả tệp vào đây hoặc chọn tệp</span>
   <span class="drop__hint"
     >PDF, Markdown hoặc Word (.docx), tối đa 20 MB mỗi tệp.</span

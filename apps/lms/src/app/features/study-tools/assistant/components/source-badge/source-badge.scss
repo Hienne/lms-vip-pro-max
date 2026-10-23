@@ -1,0 +1,32 @@
+@use 'ui';
+
+// Inline in a sentence: the badge sits on the text's baseline and keeps its number tabular.
+.source {
+  @include ui.num;
+  min-width: ui.space(5);
+  justify-content: center;
+  margin-inline: 1px;
+  vertical-align: text-bottom;
+
+  // The tooltip body, rendered in the bubble from this component's template.
+  &__file {
+    display: block;
+    font-weight: ui.weight(semibold);
+    overflow-wrap: anywhere;
+  }
+
+  &__where {
+    @include ui.text(sm, muted);
+    display: block;
+  }
+
+  &__quote {
+    @include ui.text(sm, secondary);
+    display: block;
+    margin-top: ui.space(2);
+    padding-top: ui.space(2);
+    border-top: 1px solid ui.color(border);
+    overflow-wrap: anywhere;
+    white-space: pre-wrap;
+  }
+}

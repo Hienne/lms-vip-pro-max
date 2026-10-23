@@ -116,13 +116,20 @@ export class ShellStore {
     const layout: unknown = leaf(this.router.routerState.snapshot.root).data[
       'layout'
     ];
-    return layout === 'focus' || layout === 'bare' ? layout : 'app';
+    return layout === 'workspace' || layout === 'focus' || layout === 'bare'
+      ? layout
+      : 'app';
   });
 
   readonly chrome$ = computed<Chrome>(() => {
     if (!this.session.isSignedIn$() || this.layout() === 'bare') return 'bare';
     return this.layout() === 'focus' ? 'focus' : 'app';
   });
+
+  /** The page fills the viewport under the header and scrolls inside itself (`workspace`). */
+  readonly fillsViewport$ = computed(
+    () => this.chrome$() === 'app' && this.layout() === 'workspace',
+  );
 
   readonly user$ = this.session.user$;
   readonly roleText$ = computed(() => this.session.user$()?.roleText ?? '');

@@ -33,10 +33,11 @@ class FakeTracker {
 
 @Component({
   imports: [Owl],
-  template: `<app-owl [besideToolbar]="besideToolbar()" />`,
+  template: `<app-owl [besideToolbar]="besideToolbar()" [quiet]="quiet()" />`,
 })
 class Host {
   readonly besideToolbar = signal(false);
+  readonly quiet = signal(false);
 }
 
 describe('Owl', () => {
@@ -171,5 +172,13 @@ describe('Owl', () => {
     expect(el.querySelector('app-owl')?.classList).toContain(
       'owl--beside-toolbar',
     );
+  });
+
+  it('keeps only the announcement when quiet, out of the way of a workspace page', () => {
+    fixture.componentInstance.quiet.set(true);
+    show('done', [], ready);
+    expect(button()).toBeNull();
+    expect(bubble()).toBeNull();
+    expect(live()).toBe('Đã xử lý xong tài liệu quy-trinh-eod.pdf.');
   });
 });

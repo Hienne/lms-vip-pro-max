@@ -5,7 +5,7 @@
 }
 
 .log {
-  @include ui.stack(4);
+  @include ui.stack(6);
 
   &__greeting {
     @include ui.stack(1);

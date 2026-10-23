@@ -2,9 +2,6 @@ import { Component, input, output } from '@angular/core';
 import type { KnowledgeDocument } from '@lms/contracts';
 import {
   Badge,
-  Card,
-  CardBody,
-  CardHeader,
   ErrorState,
   FmtDatetimePipe,
   FmtRelativePipe,
@@ -13,14 +10,14 @@ import {
 } from '@lms/ui';
 import { STATUS_VIEW } from '../../data-access/knowledge-status';
 
-/** The shared knowledge base: every document with who added it and where processing stands. */
+/**
+ * The shared knowledge base: every document with who added it and where processing stands. It has
+ * no heading of its own; the documents panel or drawer around it names it.
+ */
 @Component({
   selector: 'app-document-list',
   imports: [
     Badge,
-    Card,
-    CardBody,
-    CardHeader,
     ErrorState,
     FmtDatetimePipe,
     FmtRelativePipe,

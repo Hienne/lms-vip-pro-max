@@ -4,8 +4,14 @@
 </div>
 <div class="message">
   <span class="message__who">Trợ lý</span>
-  @let answer = turn().answer; @if (answer.text) {
-  <p class="message__text">{{ answer.text }}</p>
+  @let answer = turn().answer; @let view = content(); @if (answer.text) {
+  <p class="message__answer">
+    @for (part of view.parts; track $index) { @if (part.kind === 'text') {
+    <span class="message__run">{{ part.text }}</span>
+    } @else {
+    <app-source-badge [citation]="part.citation" />
+    } }
+  </p>
   } @else if (answer.status === 'searching') {
   <p class="message__progress">
     <span uiSpinner label="Đang tìm"></span>Đang tìm trong tài liệu…
@@ -15,8 +21,12 @@
     <span uiSpinner label="Đang soạn"></span>Đã tìm thấy {{ answer.retrieved }}
     đoạn liên quan, đang soạn câu trả lời…
   </p>
-  } @if (answer.status === 'done') {
-  <app-citation-list [citations]="answer.citations" />
+  } @if (answer.status === 'done' && view.unmarked.length > 0) {
+  <ul class="message__sources" aria-label="Nguồn của câu trả lời">
+    @for (citation of view.unmarked; track citation.n) {
+    <li><app-source-badge [citation]="citation" /></li>
+    }
+  </ul>
   } @else if (answer.status === 'stopped') {
   <p class="message__note">
     Đã dừng.

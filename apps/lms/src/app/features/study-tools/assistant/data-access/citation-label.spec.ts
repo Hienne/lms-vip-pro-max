@@ -1,5 +1,5 @@
 import type { Citation } from '@lms/contracts';
-import { citationLabel, citationLocation } from './citation-label';
+import { citationLocation, citationName } from './citation-label';
 
 const citation = (over: Partial<Citation>): Citation => ({
   n: 1,
@@ -37,10 +37,13 @@ describe('citationLocation', () => {
   });
 });
 
-describe('citationLabel', () => {
-  it('puts the number, the file and the location together', () => {
+describe('citationName', () => {
+  it('reads the number, the file and the location as one phrase', () => {
     expect(
-      citationLabel(citation({ n: 2, page: 1, lineStart: 5, lineEnd: 8 })),
-    ).toBe('[2] quy-trinh.pdf · trang 1 · dòng 5–8');
+      citationName(citation({ n: 2, page: 3, lineStart: 13, lineEnd: 27 })),
+    ).toBe('Nguồn 2: quy-trinh.pdf, trang 3, dòng 13–27');
+    expect(citationName(citation({ fileName: 'b.docx' }))).toBe(
+      'Nguồn 1: b.docx, đoạn 3',
+    );
   });
 });

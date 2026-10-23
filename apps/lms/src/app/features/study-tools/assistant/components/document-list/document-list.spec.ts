@@ -44,8 +44,8 @@ describe('DocumentList', () => {
   const text = () => el.textContent?.replace(/\s+/g, ' ') ?? '';
   const rows = () => Array.from(el.querySelectorAll('li'));
 
-  it('shows each document with its uploader, a status badge and the total', () => {
-    expect(el.querySelector('h2')?.textContent).toBe('Tài liệu trong kho');
+  it('shows each document with its uploader and a status badge, under no card', () => {
+    expect(el.querySelector('.card')).toBeNull();
     expect(rows()).toHaveLength(knowledgeDocumentFixtures.length);
     const first = knowledgeDocumentFixtures[0];
     expect(rows()[0].querySelector('.doc__name')?.getAttribute('title')).toBe(
@@ -99,7 +99,7 @@ describe('DocumentList', () => {
     expect(
       el.querySelectorAll('[uiSkeleton][aria-hidden="true"]'),
     ).toHaveLength(3);
-    expect(el.querySelector('section')?.getAttribute('aria-busy')).toBe('true');
+    expect(el.querySelector('.docs')?.getAttribute('aria-busy')).toBe('true');
     expect(text()).not.toContain('Chưa có tài liệu nào');
   });
 

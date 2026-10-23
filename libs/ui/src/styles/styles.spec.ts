@@ -123,6 +123,8 @@ const LIGHT_PROPERTIES = [
   '--container-menu',
   '--container-popover',
   '--container-narrow',
+  '--container-reading',
+  '--container-panel',
   '--spacing-header',
   '--spacing-control',
   '--spacing-control-sm',

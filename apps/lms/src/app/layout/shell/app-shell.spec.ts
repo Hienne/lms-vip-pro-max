@@ -241,7 +241,20 @@ describe('AppShell', () => {
     expect(el.querySelector('app-sidebar')).not.toBeNull();
     expect(el.querySelector('app-header')).not.toBeNull();
     expect(el.querySelector('main#main')).not.toBeNull();
-    expect(el.querySelector('app-owl')).not.toBeNull();
+    expect(el.querySelector('app-owl button')).not.toBeNull();
+    expect(el.querySelector('.app-shell')?.classList).not.toContain(
+      'app-shell--fill',
+    );
+  });
+
+  it('lets a workspace page fill the viewport and quiets the owl there', async () => {
+    signInAs('learner');
+    const el = await open('/assistant');
+    expect(el.querySelector('app-header')).not.toBeNull();
+    expect(el.querySelector('.app-shell')?.classList).toContain(
+      'app-shell--fill',
+    );
+    expect(el.querySelector('app-owl button')).toBeNull();
   });
 
   it('drops the frame for focus routes', async () => {

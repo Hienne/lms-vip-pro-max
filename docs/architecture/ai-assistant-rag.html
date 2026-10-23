@@ -2229,31 +2229,83 @@ apps/lms/src/app/
 ├── core/http/endpoint-client.ts           + stream()
 ├── core/http/envelope.interceptor.ts      bỏ qua x-ndjson
 ├── core/knowledge/document-tracker.store.ts   root, poll 3 s
-├── core/routing/screens.ts                AI_ASSISTANT → /assistant
-├── layout/owl/owl.ts|html|scss            app-owl trong app-shell
+├── core/routing/screens.ts                AI_ASSISTANT → /assistant (layout 'workspace')
+├── layout/shell/app-shell.*               app-shell--fill: khung đúng bằng viewport
+├── layout/owl/owl.ts|html|scss            app-owl trong app-shell (quiet ở workspace)
 └── features/study-tools/assistant/
-    ├── assistant.ts|html|scss|spec.ts
-    ├── data-access/assistant.store.ts
+    ├── assistant.ts|html|scss|spec.ts     cột chat + panel tài liệu / drawer
+    ├── data-access/assistant.store.ts     + panelOpen (theo breakpoint md)
+    ├── data-access/answer-parts.ts        tách [n] thành badge nguồn
+    ├── data-access/citation-label.ts      vị trí + aria-label của nguồn
     └── components/
-        ├── chat-log/  chat-message/  citation-list/
+        ├── chat-log/  chat-message/  source-badge/
         ├── ask-form/  (Signal Forms, ask-form.form.ts)
         └── document-upload/  document-list/
+libs/ui: uiTooltip nhận template + uiTooltipToggle; button[uiBadge];
+         token layout reading (760px), panel (360px); icon panel-right
 apps/lms/proxy.conf.mjs                     LMS_API_TARGET</code></pre>
               <p class="small">
                 <strong>Tái sử dụng:</strong> <code>EndpointClient</code>,
                 <code>serverData</code>, <code>serverMutation</code>,
                 <code>invalidation</code>, <code>SessionStore</code>,
                 <code>NetworkStore</code>, <code>toAppError</code>; từ
-                <code>@lms/ui</code>: <code>ui-page-header</code>,
-                <code>[uiCard]</code>, <code>[uiDropzone]</code> +
-                <code>ui-upload-item</code>, <code>table[uiTable]</code>,
-                <code>[uiBadge]</code> có <code>dot</code>,
+                <code>@lms/ui</code>: <code>[uiDrawer]</code>,
+                <code>[uiTooltip]</code>, <code>[uiDropzone]</code> +
+                <code>ui-upload-item</code>, <code>[uiBadge]</code> (trạng thái
+                có <code>dot</code>; nguồn trên <code>&lt;button&gt;</code>),
                 <code>ui-pagination</code>, <code>input[uiInput]</code>,
                 <code>[uiButton]</code>, <code>[uiSkeleton]</code>,
                 <code>ui-error-state</code>, <code>ui-icon</code>, toast có sẵn.
               </p>
             </div>
           </div>
+          <h3>Bố cục màn hình <code>/assistant</code></h3>
+          <pre
+            class="tree"
+          ><code>┌ header của app ─────────────────────────────────────────────────────┐
+├ cột chat (phần còn lại) ───────────────────┬ panel tài liệu (360px) ─┤
+│ Trợ lý AI tra cứu tài liệu   [▯ Tài liệu 4] │ Tài liệu trong kho   4  │
+├─────────────────────────────────────────────┼─────────────────────────┤
+│   (cuộn) hội thoại, cột đọc 760px           │ (cuộn) vùng kéo thả     │
+│   … khóa ngày giao dịch [1]. … vận hành [2].│ danh sách + trạng thái  │
+├─────────────────────────────────────────────┤ phân trang              │
+│   [Nhập câu hỏi…              ] [Hỏi]       │                         │
+│   Trợ lý chỉ trả lời từ các tài liệu…       │                         │
+└─────────────────────────────────────────────┴─────────────────────────┘</code></pre>
+          <ul>
+            <li>
+              Route dùng layout <code>workspace</code>: khung app đúng bằng
+              viewport, trang lấp phần dưới header, cửa sổ không cuộn; hội thoại
+              và panel tự cuộn bên trong. Các vùng phân cách bằng đường
+              <code>border</code> 1px (panel nền <code>surface</code>), không đổ
+              bóng, không thẻ.
+            </li>
+            <li>
+              Nút <strong>Tài liệu</strong> (có số lượng) đóng/mở panel, có
+              <code>aria-expanded</code> và <code>aria-controls</code>. Trạng
+              thái mở nằm trong store, không lưu lại. Từ 720px panel mở sẵn bên
+              phải; hẹp hơn thì panel là drawer đóng sẵn, Esc đóng và trả focus
+              về nút.
+            </li>
+            <li>
+              Mỗi dấu <code>[n]</code> có trích dẫn tương ứng thành badge số
+              (nút, <code>aria-label</code> “Nguồn 1: tên tệp, trang 3, dòng
+              13–27”); dấu không có trích dẫn giữ nguyên chữ. Câu trả lời không
+              có dấu hợp lệ thì một hàng badge nằm dưới, không có tiêu đề
+              “Nguồn”.
+            </li>
+            <li>
+              Rê chuột, focus bàn phím hoặc chạm vào badge hiện tooltip: tên
+              tệp, vị trí (trang/dòng cho PDF, đoạn cho DOCX, dòng cho MD) và
+              đoạn trích. Badge dựng từ văn bản đã tách và mảng citations, không
+              dùng
+              <code>innerHTML</code>.
+            </li>
+            <li>
+              Con cú chỉ giữ thông báo cho trình đọc màn hình ở trang workspace,
+              nên không che ô nhập hay nút panel.
+            </li>
+          </ul>
           <h3>Khác biệt có chủ đích so với mockup</h3>
           <ul>
             <li>
@@ -2270,8 +2322,13 @@ apps/lms/proxy.conf.mjs                     LMS_API_TARGET</code></pre>
               gắn với dữ liệu mẫu của mockup).
             </li>
             <li>
-              Trích dẫn ghi trang và khoảng dòng, mở rộng ra đoạn trích, thay
-              cho liên kết bài học.
+              Trích dẫn là badge số ngay trong câu trả lời, tooltip ghi trang,
+              khoảng dòng và đoạn trích, thay cho liên kết bài học.
+            </li>
+            <li>
+              Bố cục kiểu sổ tay: chat chiếm toàn trang, tài liệu ở panel bên
+              phải đóng/mở được; tiêu đề trang và mô tả thành một thanh mảnh có
+              <code>h1</code> và nút panel.
             </li>
             <li>
               Mới: tải lên và danh sách tài liệu dùng chung; con cú trạng thái
@@ -2513,10 +2570,13 @@ apps/lms/proxy.conf.mjs                     LMS_API_TARGET</code></pre>
               thì hiện mọi chunk.
             </li>
             <li>
-              <strong>Màn hình trợ lý:</strong> không bọc trong thẻ; nhật ký
-              cuộc trò chuyện cuộn theo trang; vùng đọc cho trình đọc màn hình
-              báo trạng thái thay vì <code>aria-live</code> trên nhật ký; tệp bị
-              từ chối hiện ngay trên dòng của tệp (có nút bỏ) thay vì toast.
+              <strong>Màn hình trợ lý:</strong> không bọc trong thẻ; vùng đọc
+              cho trình đọc màn hình báo trạng thái thay vì
+              <code>aria-live</code> trên nhật ký; tệp bị từ chối hiện ngay trên
+              dòng của tệp (có nút bỏ) thay vì toast. Thiết kế lại (23/10/2026):
+              layout <code>workspace</code> (chat lấp trang, tự cuộn), panel tài
+              liệu đóng/mở (drawer khi hẹp), bỏ danh sách “Nguồn” dưới câu trả
+              lời để thay bằng badge số có tooltip.
             </li>
             <li>
               <strong>Con cú:</strong> thông báo nằm bên trái con cú; ngăn toast
@@ -2973,7 +3033,7 @@ apps/lms/proxy.conf.mjs                     LMS_API_TARGET</code></pre>
                 t: 'fe',
                 l: '{"type":"done",answer,citations}',
                 r: true,
-                c: 'Dòng cuối: found, answer (văn bản cuối cùng; câu cố định nếu không tìm thấy) và citations dựng từ metadata chunk (tên tệp, trang, dòng, snippet 280 ký tự). FE hiện “Nguồn” với từng mục mở rộng được.',
+                c: 'Dòng cuối: found, answer (văn bản cuối cùng; câu cố định nếu không tìm thấy) và citations dựng từ metadata chunk (tên tệp, trang, dòng, snippet 280 ký tự). FE hiện mỗi [n] thành badge số, tooltip ghi tệp, vị trí và đoạn trích.',
               },
             ],
           },

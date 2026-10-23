@@ -51,7 +51,7 @@ describe('ChatMessage', () => {
     show({ status: 'searching' });
     expect(text()).toContain('Quy trình EOD?');
     expect(text()).toContain('Đang tìm trong tài liệu…');
-    expect(el.querySelector('details')).toBeNull();
+    expect(el.querySelector('app-source-badge')).toBeNull();
   });
 
   it('says how many passages were found while composing', () => {
@@ -67,29 +67,69 @@ describe('ChatMessage', () => {
     expect(text()).not.toContain('đang soạn');
   });
 
-  it('lists each citation as a closed details with its location and snippet', () => {
+  const badges = () =>
+    Array.from(
+      el.querySelectorAll<HTMLButtonElement>('app-source-badge button'),
+    );
+
+  it('turns each marker into a source badge where it stands, with no source list', () => {
     show({
       status: 'done',
       text: knowledgeAnswerFixture.answer,
       found: true,
       citations: knowledgeAnswerFixture.citations,
     });
-    const rows = Array.from(el.querySelectorAll('details'));
-    expect(rows).toHaveLength(knowledgeAnswerFixture.citations.length);
-    expect(rows.every((d) => !d.open)).toBe(true);
-    expect(rows[0].querySelector('summary')?.textContent).toMatch(
-      /^\[1\] .+ · (trang \d+ · dòng|dòng|đoạn) /,
+    expect(badges().map((b) => b.textContent?.trim())).toEqual(['1', '2']);
+    expect(badges()[0].getAttribute('aria-label')).toBe(
+      'Nguồn 1: Quy-trinh-EOD.pdf, trang 1, dòng 3–9',
     );
-    expect(rows[0].querySelector('blockquote')?.textContent?.trim()).toBe(
-      knowledgeAnswerFixture.citations[0].snippet,
-    );
-    expect(text()).toContain('Nguồn');
+    const answer = el.querySelector('.message__answer') as HTMLElement;
+    // Text, badge, text, badge, text: each badge stands where its marker was.
+    expect(
+      Array.from(answer.children).map((child) => child.tagName.toLowerCase()),
+    ).toEqual(['span', 'app-source-badge', 'span', 'app-source-badge', 'span']);
+    expect(answer.children[0].textContent).toMatch(/khóa ngày giao dịch $/);
+    expect(answer.children[2].textContent).toMatch(/^\. Mọi chênh lệch/);
+    expect(el.querySelector('.message__sources')).toBeNull();
+    expect(text()).not.toContain('Nguồn');
+    expect(el.querySelector('details')).toBeNull();
   });
 
-  it('shows no source list when the answer has no citations', () => {
-    show({ status: 'done', text: 'Không tìm thấy.', found: false });
-    expect(el.querySelector('details')).toBeNull();
+  it('keeps a marker with no citation as plain text', () => {
+    show({
+      status: 'done',
+      text: 'Đối chiếu sổ cái [1], rồi khóa ngày [7].',
+      found: true,
+      citations: [knowledgeAnswerFixture.citations[0]],
+    });
+    expect(badges().map((b) => b.textContent?.trim())).toEqual(['1']);
+    expect(text()).toContain('rồi khóa ngày [7].');
+  });
+
+  it('shows every source in a row under an answer that marks none', () => {
+    show({
+      status: 'done',
+      text: 'Chạy EOD phải đối chiếu số dư sổ cái trước.',
+      found: true,
+      citations: knowledgeAnswerFixture.citations,
+    });
+    const row = el.querySelector('.message__sources') as HTMLElement;
+    expect(row.getAttribute('aria-label')).toBe('Nguồn của câu trả lời');
+    expect(row.querySelectorAll('li app-source-badge')).toHaveLength(2);
+    expect(el.querySelector('.message__answer app-source-badge')).toBeNull();
     expect(text()).not.toContain('Nguồn');
+  });
+
+  it('shows no sources when the answer has no citations', () => {
+    show({ status: 'done', text: 'Không tìm thấy.', found: false });
+    expect(el.querySelector('app-source-badge')).toBeNull();
+    expect(el.querySelector('.message__sources')).toBeNull();
+  });
+
+  it('keeps markers as text while the answer streams', () => {
+    show({ status: 'composing', retrieved: 2, text: 'khóa ngày [1].' });
+    expect(el.querySelector('app-source-badge')).toBeNull();
+    expect(text()).toContain('khóa ngày [1].');
   });
 
   it('marks a stopped answer and offers to ask again', () => {

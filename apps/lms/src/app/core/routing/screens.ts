@@ -303,6 +303,7 @@ export const SCREEN_TABLE = {
           path: 'assistant',
           title: 'Trợ lý AI',
           mockupPage: 'assistant',
+          layout: 'workspace',
           load: () =>
             import('../../features/study-tools/assistant/assistant').then(
               (m) => m.Assistant,

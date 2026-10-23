@@ -1,36 +1,85 @@
-<ui-page-header
-  title="Trợ lý AI tra cứu tài liệu"
-  description="Hỏi đáp dựa trên các tài liệu trong kho dùng chung, luôn kèm nguồn trích dẫn."
-/>
-<div class="assistant">
-  <section class="assistant__chat" aria-label="Hỏi đáp">
-    <app-chat-log [turns]="store.turns$()" (retry)="store.retry($event)" />
-    <app-ask-form
-      [answering]="store.isAnswering$()"
-      (ask)="store.ask($event)"
-      (stop)="store.stop()"
-    />
-    <p class="assistant__note">
-      Trợ lý chỉ trả lời từ các tài liệu trong kho. Hãy đối chiếu với tài liệu
-      gốc trước khi áp dụng.
-    </p>
-  </section>
-  <div class="assistant__docs">
-    <app-document-upload
-      [uploads]="store.uploads$()"
-      (files)="store.addFiles($event)"
-      (dismiss)="store.dismissUpload($event)"
-    />
-    <app-document-list
-      [documents]="store.documents$()"
-      [total]="store.totalDocuments$()"
-      [page]="store.page$()"
-      [pageSize]="pageSize"
-      [loading]="store.isLoading$()"
-      [failed]="!!store.loadError$()"
-      (pageChange)="store.setPage($event)"
-      (retry)="store.retryLoad()"
+<section class="chat" aria-labelledby="assistant-title">
+  <header class="chat__bar">
+    <h1 id="assistant-title" class="chat__title">Trợ lý AI tra cứu tài liệu</h1>
+    <button
+      uiButton
+      type="button"
+      variant="ghost"
+      size="sm"
+      class="chat__toggle"
+      [attr.aria-controls]="store.panelOpen$() ? 'assistant-documents' : null"
+      [attr.aria-expanded]="store.panelOpen$()"
+      (click)="store.togglePanel()"
+    >
+      <ui-icon name="panel-right" size="sm" />Tài liệu
+      <span class="chat__count">{{ store.totalDocuments$() }}</span>
+    </button>
+  </header>
+  <div class="chat__scroll">
+    <app-chat-log
+      class="chat__thread"
+      [turns]="store.turns$()"
+      (retry)="store.retry($event)"
     />
   </div>
-</div>
+  <div class="chat__composer">
+    <div class="chat__dock">
+      <app-ask-form
+        [answering]="store.isAnswering$()"
+        (ask)="store.ask($event)"
+        (stop)="store.stop()"
+      />
+      <p class="chat__note">
+        Trợ lý chỉ trả lời từ các tài liệu trong kho. Hãy đối chiếu với tài liệu
+        gốc trước khi áp dụng.
+      </p>
+    </div>
+  </div>
+</section>
+
+@if (store.panelBeside$()) {
+<aside
+  id="assistant-documents"
+  class="panel"
+  aria-labelledby="assistant-documents-title"
+>
+  <header class="panel__bar">
+    <h2 id="assistant-documents-title" class="panel__title">
+      Tài liệu trong kho
+    </h2>
+    <span class="panel__count">{{ store.totalDocuments$() }}</span>
+  </header>
+  <div class="panel__body">
+    <ng-container [ngTemplateOutlet]="documents" />
+  </div>
+</aside>
+}
+
+<ng-template
+  [uiDrawer]="store.panelInDrawer$()"
+  uiDrawerTitle="Tài liệu trong kho"
+  (uiDrawerDismiss)="store.closePanel()"
+>
+  <div id="assistant-documents" class="panel__drawer">
+    <ng-container [ngTemplateOutlet]="documents" />
+  </div>
+</ng-template>
+
+<ng-template #documents>
+  <app-document-upload
+    [uploads]="store.uploads$()"
+    (files)="store.addFiles($event)"
+    (dismiss)="store.dismissUpload($event)"
+  />
+  <app-document-list
+    [documents]="store.documents$()"
+    [total]="store.totalDocuments$()"
+    [page]="store.page$()"
+    [pageSize]="pageSize"
+    [loading]="store.isLoading$()"
+    [failed]="!!store.loadError$()"
+    (pageChange)="store.setPage($event)"
+    (retry)="store.retryLoad()"
+  />
+</ng-template>
 <p class="sr-only" role="status">{{ store.announcement$() }}</p>

@@ -244,6 +244,10 @@ describe('route table', () => {
       menu: 'COURSE_LEARNING',
       layout: 'focus',
     });
+    expect(dataOf('assistant')).toMatchObject({
+      menu: 'AI_ASSISTANT',
+      layout: 'workspace',
+    });
     expect(dataOf('login')).toMatchObject({ layout: 'bare' });
     expect(dataOf('login')).not.toHaveProperty('menu');
     expect(dataOf('change-password')).toMatchObject({

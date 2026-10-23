@@ -1,6 +1,6 @@
 @let doc = finished();
 <p class="sr-only" aria-live="polite">{{ announcement() }}</p>
-@if (doc) {
+@if (!quiet()) { @if (doc) {
 <div class="owl__bubble">
   <p class="owl__text">
     @if (doc.status === 'ready') { Đã xử lý xong tài liệu
@@ -66,3 +66,4 @@
     } }
   </svg>
 </button>
+}

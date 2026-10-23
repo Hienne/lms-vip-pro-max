@@ -1,17 +1,20 @@
+import { BreakpointObserver } from '@angular/cdk/layout';
 import {
   computed,
   DestroyRef,
   inject,
   Injectable,
+  linkedSignal,
   signal,
 } from '@angular/core';
-import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { type ChatStreamEvent, knowledgeEndpoints } from '@lms/contracts';
 import { Toaster } from '@lms/ui';
 import {
   catchError,
   concatMap,
   EMPTY,
+  map,
   Subject,
   type Subscription,
   tap,
@@ -27,6 +30,9 @@ import { uploadProblem } from './upload-rules';
 
 export const DOCUMENTS_PAGE_SIZE = 20;
 
+/** From the `md` breakpoint the documents panel sits beside the chat; below it, it is a drawer. */
+export const PANEL_BESIDE_QUERY = '(min-width: 720px)';
+
 export const OFFLINE_MESSAGE =
   'Mất kết nối — không gửi được câu hỏi. Thử lại khi có mạng.';
 const CUT_OFF_MESSAGE = 'Kết nối bị ngắt khi đang trả lời.';
@@ -41,9 +47,9 @@ const SEARCHING: Answer = {
 };
 
 /**
- * The assistant screen: the chat (kept in the browser, one question at a time) and the shared
- * documents (upload queue, server-paged list). Retrieval, answers, citations and document status
- * are all the server's; this store only shows them.
+ * The assistant screen: the chat (kept in the browser, one question at a time), the shared
+ * documents (upload queue, server-paged list) and whether the documents panel is open. Retrieval,
+ * answers, citations and document status are all the server's; this store only shows them.
  */
 @Injectable()
 export class AssistantStore {
@@ -51,8 +57,17 @@ export class AssistantStore {
   private readonly tracker = inject(DocumentTrackerStore);
   private readonly network = inject(NetworkStore);
   private readonly toaster = inject(Toaster);
+  private readonly breakpoints = inject(BreakpointObserver);
 
   private nextId = 1;
+
+  /** Whether the viewport is wide enough for the panel beside the chat (an input, not state). */
+  private readonly wide = toSignal(
+    this.breakpoints
+      .observe(PANEL_BESIDE_QUERY)
+      .pipe(map((result) => result.matches)),
+    { initialValue: this.breakpoints.isMatched(PANEL_BESIDE_QUERY) },
+  );
   private streaming: Subscription | null = null;
 
   private readonly state = {
@@ -60,6 +75,11 @@ export class AssistantStore {
     answeringId: signal<number | null>(null),
     uploads: signal<readonly Upload[]>([]),
     page: signal(1),
+    /** Open beside the chat on a wide screen, closed (a drawer) on a narrow one, until toggled. */
+    panelOpen: linkedSignal<boolean, boolean>({
+      source: () => this.wide(),
+      computation: (wide) => wide,
+    }),
   };
 
   private readonly changes = invalidation();
@@ -83,6 +103,11 @@ export class AssistantStore {
   readonly isAnswering$ = computed(() => this.state.answeringId() !== null);
   readonly uploads$ = this.state.uploads.asReadonly();
   readonly page$ = this.state.page.asReadonly();
+  readonly panelOpen$ = this.state.panelOpen.asReadonly();
+  /** The panel is a column beside the chat. */
+  readonly panelBeside$ = computed(() => this.wide() && this.panelOpen$());
+  /** The panel is a drawer over the chat. */
+  readonly panelInDrawer$ = computed(() => !this.wide() && this.panelOpen$());
   readonly documents$ = computed(() => this.documentsData.value()?.items ?? []);
   readonly totalDocuments$ = computed(
     () => this.documentsData.value()?.totalElements ?? 0,
@@ -130,6 +155,20 @@ export class AssistantStore {
 
   setPage(page: number): void {
     this.state.page.set(page);
+  }
+
+  setPanelOpen(open: boolean): void {
+    this.state.panelOpen.set(open);
+  }
+
+  // ---- documents panel -------------------------------------------------------------------------
+
+  togglePanel(): void {
+    this.setPanelOpen(!this.panelOpen$());
+  }
+
+  closePanel(): void {
+    this.setPanelOpen(false);
   }
 
   // ---- chat ------------------------------------------------------------------------------------

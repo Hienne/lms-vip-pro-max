@@ -5,6 +5,8 @@
 }
 
 .drop {
+  // Compact enough for the documents panel; the dashed edge still says "drop here".
+  padding: ui.space(5) ui.space(4);
   &__title {
     display: block;
     color: ui.color(text);

@@ -17,5 +17,22 @@
     @starting-style {
       opacity: 0;
     }
+
+    // A template tooltip (title, meta, quote): wider and on the surface, like a popover that only
+    // shows text.
+    &--rich {
+      width: max-content;
+      max-width: min(
+        var(--container-popover),
+        calc(100vw - 2 * var(--spacing-4))
+      );
+      padding: var(--spacing-3);
+      border: 1px solid var(--color-border);
+      background: var(--color-surface);
+      box-shadow: var(--shadow-md);
+      color: var(--color-text);
+      font-size: var(--text-sm);
+      line-height: var(--leading-normal);
+    }
   }
 }

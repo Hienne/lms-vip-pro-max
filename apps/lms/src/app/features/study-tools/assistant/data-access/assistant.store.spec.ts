@@ -23,6 +23,7 @@ import { DocumentTrackerStore } from '../../../../core/knowledge/document-tracke
 import { NetworkStore } from '../../../../core/network/network.store';
 import { SessionStore } from '../../../../core/session/session.store';
 import { FakeSessionStore } from '../../../../core/session/session.testing';
+import { FakeBreakpoints, provideFakeBreakpoints } from './breakpoints.testing';
 import {
   AssistantStore,
   DOCUMENTS_PAGE_SIZE,
@@ -63,14 +64,17 @@ const file = (name: string, content = 'noi dung') =>
 describe('AssistantStore', () => {
   let backend: HttpTestingController;
   let store: AssistantStore;
+  let breakpoints: FakeBreakpoints;
 
   beforeEach(() => {
+    breakpoints = new FakeBreakpoints();
     TestBed.configureTestingModule({
       providers: [
         provideAppConfig(parseAppConfig(testAppConfig())),
         provideEnvelopeHttpClient(),
         { provide: SessionStore, useClass: FakeSessionStore },
         { provide: ErrorHandler, useValue: { handleError: () => undefined } },
+        provideFakeBreakpoints(breakpoints),
         AssistantStore,
       ],
     });
@@ -417,6 +421,40 @@ describe('AssistantStore', () => {
       expect(store.announcement$()).toBe(
         `Trợ lý trả lời: ${KNOWLEDGE_NOT_FOUND_ANSWER}`,
       );
+    });
+  });
+
+  describe('documents panel', () => {
+    // The list request the store makes on creation is not under test here.
+    afterEach(() => backend.match(() => true));
+
+    it('starts open beside the chat on a wide screen and toggles', () => {
+      expect(store.panelOpen$()).toBe(true);
+      expect(store.panelBeside$()).toBe(true);
+      expect(store.panelInDrawer$()).toBe(false);
+      store.togglePanel();
+      expect(store.panelOpen$()).toBe(false);
+      expect(store.panelBeside$()).toBe(false);
+      store.togglePanel();
+      expect(store.panelBeside$()).toBe(true);
+    });
+
+    it('is a closed drawer on a narrow screen until opened, and closes again', () => {
+      breakpoints.wide.next(false);
+      expect(store.panelOpen$()).toBe(false);
+      store.togglePanel();
+      expect(store.panelInDrawer$()).toBe(true);
+      expect(store.panelBeside$()).toBe(false);
+      store.closePanel();
+      expect(store.panelInDrawer$()).toBe(false);
+    });
+
+    it('follows the screen when it crosses the breakpoint', () => {
+      store.closePanel();
+      breakpoints.wide.next(false);
+      expect(store.panelOpen$()).toBe(false);
+      breakpoints.wide.next(true);
+      expect(store.panelBeside$()).toBe(true);
     });
   });
 });
