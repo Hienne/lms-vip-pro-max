@@ -986,8 +986,9 @@
                   góc phải dưới báo tiến độ.
                 </li>
                 <li>
-                  Trích dẫn có cấu trúc, dựng từ metadata của chunk, không đọc
-                  từ văn bản model sinh ra.
+                  Trích dẫn có cấu trúc, dựng từ metadata của chunk; dấu
+                  <code>[n]</code> của model chỉ chọn chunk nào được hiện, không
+                  bao giờ cung cấp nguồn.
                 </li>
               </ul>
             </div>
@@ -1629,7 +1630,7 @@ record ChatAnswerView(String answer, boolean found,
 sealed interface ChatStreamEvent {
   record Retrieved(String type, int count) { }
   record Delta(String type, String text) { }
-  record Done(String type, boolean found, List&lt;CitationView&gt; citations) { }
+  record Done(String type, boolean found, String answer, List&lt;CitationView&gt; citations) { }
   record Error(String type, String messageCode, String message) { }
 }</code></pre>
             </div>
@@ -2139,10 +2140,12 @@ sealed interface ChatStreamEvent {
           </div>
           <div class="chunk-out" id="chunk-out"></div>
           <h3>Từ chunk tới trích dẫn</h3>
-          <pre><code>câu hỏi ──embed──▶ vector q ──▶ ORDER BY embedding &lt;=&gt; q LIMIT 5 ──▶ lọc similarity ≥ 0.35
+          <pre><code>câu hỏi ──embed──▶ vector q ──▶ ORDER BY embedding &lt;=&gt; q LIMIT 15 ──▶ lọc similarity ≥ 0.35 ──▶ bỏ chunk trùng nội dung ──▶ giữ 5
    chunk 1 (doc 42, trang 3, dòng 5–7)    ──▶ [1] trong prompt ──▶ citation { n: 1, page: 3, lineStart: 5, lineEnd: 7, snippet }
    chunk 2 (doc 42, trang 3, dòng 7–10)   ──▶ [2] trong prompt ──▶ citation { n: 2, page: 3, lineStart: 7, lineEnd: 10, ... }
-model chỉ trả văn bản + dấu [n]; danh sách trích dẫn luôn dựng từ các cột của chunk, không phân tích văn bản model.</code></pre>
+   chunk 3 (doc 43, dòng 1–4)             ──▶ [3] trong prompt ──▶ (không hiện: câu trả lời không ghi [3])
+câu trả lời "… [1] … [2]." ──▶ nguồn = chunk 1, 2. Mọi trường của nguồn lấy từ cột của chunk;
+[n] ngoài khoảng bị bỏ qua; không có [n] hợp lệ nào thì hiện mọi chunk đã đưa vào prompt.</code></pre>
           <div class="grid-2">
             <div class="box">
               <h3>Ví dụ Markdown</h3>
@@ -2480,12 +2483,11 @@ apps/lms/proxy.conf.mjs                     LMS_API_TARGET</code></pre>
               nhật spec và tài liệu này rồi báo bạn.
             </li>
             <li>
-              Có hiển thị chỉ những trích dẫn được model đánh dấu
-              <code>[n]</code> hay toàn bộ chunk đã tìm thấy. Đã chọn: toàn bộ
-              (đúng nguyên tắc “dựng từ metadata”). Chạy thật ở Phase 5 cho thấy
-              hệ quả: khi kho có nhiều bản trùng, danh sách nguồn lặp lại cùng
-              nội dung; nên cân nhắc lọc theo <code>[n]</code> hoặc loại trùng ở
-              bước sau.
+              Hiển thị trích dẫn nào: ban đầu là toàn bộ chunk đã tìm thấy. Chạy
+              thật ở Phase 5 cho thấy khi kho có bản trùng, danh sách nguồn lặp
+              cùng nội dung. Đã duyệt ngày 23/10/2026: chỉ hiện chunk được câu
+              trả lời đánh dấu <code>[n]</code> và loại chunk trùng nội dung
+              ngay khi tìm kiếm.
             </li>
           </ul>
           <h3>Thay đổi so với thiết kế ban đầu (khi hiện thực Phase 1–5)</h3>
@@ -2501,6 +2503,14 @@ apps/lms/proxy.conf.mjs                     LMS_API_TARGET</code></pre>
               tìm thấy” kèm <code>[n]</code>, FE thay văn bản đã stream bằng
               đúng câu cố định và không có nguồn. Lời từ chối trước dòng đầu
               tiên (câu hỏi sai, AI chưa sẵn sàng) là envelope JSON thường.
+            </li>
+            <li>
+              <strong>Nguồn trích dẫn:</strong> tìm <code>top-k × 3</code> (15)
+              ứng viên, bỏ chunk có nội dung trùng một chunk tốt hơn (tệp tải
+              lại), giữ 5. Nguồn chỉ gồm chunk mà câu trả lời ghi
+              <code>[n]</code> (dạng <code>[1]</code>, <code>[2][3]</code>,
+              <code>[1, 2]</code>), giữ số như trong prompt; không có dấu hợp lệ
+              thì hiện mọi chunk.
             </li>
             <li>
               <strong>Màn hình trợ lý:</strong> không bọc trong thẻ; nhật ký
@@ -2909,21 +2919,21 @@ apps/lms/proxy.conf.mjs                     LMS_API_TARGET</code></pre>
               {
                 f: 'api',
                 t: 'db',
-                l: 'ORDER BY embedding <=> q LIMIT 5',
-                c: 'Tìm 5 chunk gần nhất theo cosine trên toàn bộ kho dùng chung (mọi người, mọi vai trò), JOIN lấy file_name.',
+                l: 'ORDER BY embedding <=> q LIMIT 15',
+                c: 'Tìm 15 ứng viên (top-k × 3) gần nhất theo cosine trên toàn bộ kho dùng chung (mọi người, mọi vai trò), JOIN lấy file_name.',
               },
               {
                 f: 'db',
                 t: 'api',
-                l: '5 chunk + similarity',
+                l: 'ứng viên + similarity',
                 r: true,
                 c: 'Mỗi dòng có document_id, file_name, page_number, line_start, line_end, content, similarity = 1 − khoảng cách.',
               },
               {
                 f: 'api',
                 t: 'api',
-                l: 'lọc ≥ 0.35',
-                c: 'Giữ chunk có similarity ≥ 0.35. Không còn chunk nào: trả ngay “Không tìm thấy thông tin này trong tài liệu.”, found=false, không gọi qwen3.',
+                l: 'lọc ≥ 0.35, bỏ trùng',
+                c: 'Giữ chunk có similarity ≥ 0.35, bỏ chunk trùng nội dung với chunk tốt hơn (tệp tải lại), lấy 5 chunk đầu. Không còn chunk nào: trả ngay “Không tìm thấy thông tin này trong tài liệu.”, found=false, không gọi qwen3.',
               },
               {
                 f: 'api',
@@ -2956,7 +2966,7 @@ apps/lms/proxy.conf.mjs                     LMS_API_TARGET</code></pre>
                 f: 'api',
                 t: 'api',
                 l: 'câu trả lời là “Không tìm thấy…”?',
-                c: 'Nếu có: found=false và bỏ trích dẫn. Nếu không: trích dẫn = các chunk đã đưa vào prompt, đánh số n như trong prompt.',
+                c: 'Nếu có: found=false và bỏ trích dẫn. Nếu không: trích dẫn = các chunk mà câu trả lời ghi [n], giữ số n như trong prompt; không có [n] hợp lệ thì lấy mọi chunk đã đưa vào prompt.',
               },
               {
                 f: 'api',

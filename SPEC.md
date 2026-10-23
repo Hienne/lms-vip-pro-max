@@ -80,7 +80,8 @@ production deployment; rate limiting.
   changing the shared remote database or the remote backend; a change to the approved design (update the
   HTML and say so).
 - **Never:** commit to `main`; commit `.env` or secrets; run SQL against `103.121.90.119`; let the model
-  answer from outside the retrieved chunks; parse citations out of model text.
+  answer from outside the retrieved chunks; take a source from model text (its `[n]` markers only
+  select among the retrieved chunks, see `SPEC-kb-chat.md`).
 
 ## Success criteria (Phase 5)
 

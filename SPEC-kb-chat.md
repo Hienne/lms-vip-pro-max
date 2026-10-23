@@ -52,7 +52,9 @@ markers appended); a client replaces what it streamed with it.
     LIMIT ?
    ```
 
-   then keep rows with `similarity >= min-similarity` (0.35). Only `ready` documents have chunks.
+   with `LIMIT top-k × 3`, then keep rows with `similarity >= min-similarity` (0.35), drop a row whose content
+   (trimmed, whitespace collapsed) equals a better row's (the same file uploaded again), and keep the first
+   `top-k`. Only `ready` documents have chunks.
 
 4. **No row left → not found** without calling the chat model: answer = the fixed sentence,
    `found=false`, `citations=[]`.
@@ -71,9 +73,12 @@ markers appended); a client replaces what it streamed with it.
    `CÂU HỎI: <question>`. Options: `think:false`, `temperature 0.1`, `num_ctx 8192`.
 
 6. Answer: if the trimmed answer starts with "Không tìm thấy thông tin này trong tài liệu" →
-   `found=false`, `citations=[]`; else `found=true` and the citations are **all retrieved chunks** in rank
-   order, numbered `n` = their `[n]` in the prompt, with `snippet` = the first 280 characters of the chunk
-   content on a word boundary. Citations are never parsed from the model's text.
+   `found=false`, `citations=[]`; else `found=true` and the citations are the retrieved chunks **the answer
+   marks** (`[1]`, `[2][3]`, `[1, 2]`), in rank order, each once, numbered `n` = their `[n]` in the prompt,
+   with `snippet` = the first 280 characters of the chunk content on a word boundary. Markers outside
+   `1..hits` are ignored; an answer with no usable marker cites every retrieved chunk. A citation's file,
+   page, lines and snippet always come from the chunk's metadata: the model's text only selects which
+   retrieved chunks are shown, it never supplies a source.
 7. Stream: steps 1–4 run on the request thread (so refusals are envelopes); generation runs inside a
    `StreamingResponseBody`, writing and flushing one JSON line per Ollama delta. The response sets
    `Cache-Control: no-store` (already global) and `X-Accel-Buffering: no`.
@@ -106,14 +111,16 @@ public sealed interface ChatStreamEvent {
   them in cosine order with the right similarity, respects `LIMIT`, and joins `file_name`.
 - `KnowledgeChatServiceTest` (`OllamaClient` mocked): nothing above the threshold → not-found answer and
   `chat` is **never called**; the model answers the not-found sentence → `found=false`, no citations; a
-  normal answer → citations equal the retrieved chunks with page and lines; the prompt contains only the
+  normal answer → citations are the marked chunks with page and lines, keeping their prompt number; every
+  marker form; out-of-range markers ignored; no usable marker → every retrieved chunk; a chunk stored twice
+  reaches the prompt and the sources once; at most `top-k` distinct chunks; the prompt contains only the
   retrieved chunks; Ollama down → `KNOWLEDGE-AI_UNAVAILABLE`.
 - `KnowledgeChatControllerTest` (MockMvc, async dispatch): NDJSON lines in order `retrieved`, `delta`…,
   `done`; validation refusal returns a JSON envelope, not a stream; 401 without token.
 
 ## Boundaries
 
-- Always: answer only from retrieved chunks; citations from metadata.
+- Always: answer only from retrieved chunks; citations from metadata (the answer's `[n]` only selects among them).
 - Ask first: multi-turn memory, re-ranking, a cloud model, a different not-found sentence.
 - Never: send document text or questions to anything but the local Ollama; log question or answer text.
 
@@ -125,8 +132,11 @@ while generation is still running (measured in Phase 2, reported with the time t
 
 ## Implementation notes (as built)
 
-- Every retrieved chunk above `min-similarity` becomes a citation, numbered as the model saw it; citations are never parsed
-  from the model text, so a model that cites `[1][2][3][4][5]` still yields exactly the retrieved list.
+- Citations are the chunks the answer marks with `[n]`, numbered as the model saw it (approved 2026-10-23, replacing "every
+  retrieved chunk"). Before that change, re-uploaded files filled the source list with copies of one passage; retrieval now
+  also drops chunks whose text repeats a better hit, over-fetching `top-k × 3` so the prompt still gets `top-k` distinct
+  chunks. The model's text never supplies a source: `[n]` outside the retrieved range is ignored, and no usable marker
+  falls back to every retrieved chunk.
 - `/chat/stream` refusals before the first line (validation, AI unavailable) are ordinary JSON envelopes; the client sends
   `Accept: application/x-ndjson, application/json`.
 - The prompt asks for the not-found sentence without source numbers; `done.answer` is the safety net when the model adds
