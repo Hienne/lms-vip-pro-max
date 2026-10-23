@@ -718,6 +718,13 @@ export const MIGRATION_ENTRIES = [
     checklist: ['G.1'],
     status: 'in-progress',
     owner: 'Hienne',
+    pullRequest: 'https://github.com/Hienne/lms-vip-pro-max/pull/40',
+    verify: {
+      lightDark: 'done',
+      widths: 'done',
+      keyboard: 'todo',
+      errorStates: 'todo',
+    },
   },
   {
     id: 'timer',
@@ -927,6 +934,13 @@ export const MIGRATION_ENTRIES = [
     checklist: ['G.1'],
     status: 'in-progress',
     owner: 'Hienne',
+    pullRequest: 'https://github.com/Hienne/lms-vip-pro-max/pull/40',
+    verify: {
+      lightDark: 'done',
+      widths: 'done',
+      keyboard: 'todo',
+      errorStates: 'todo',
+    },
   },
   {
     id: 'route-notifications',
