@@ -1,0 +1,208 @@
+<ui-page-header
+  title="Danh mục khóa học"
+  description="Tìm theo tên, lĩnh vực, phân hệ nghiệp vụ, chương trình, mức độ hoặc trạng thái học tập."
+/>
+
+<section uiCard class="catalog__filters" aria-label="Bộ lọc">
+  <div class="catalog__row">
+    <ui-segmented
+      label="Phạm vi"
+      [options]="scopes"
+      [value]="store.scope$()"
+      (valueChange)="store.showScope($event)"
+    />
+    <ui-search
+      label="Tìm theo từ khóa"
+      placeholder="Từ khóa: CIF, EOD, thay đổi…"
+      width="100%"
+      class="catalog__search"
+      [value]="store.filters$().q"
+      (searched)="store.search($event)"
+    />
+  </div>
+  <div class="catalog__row">
+    @if (store.fields$().length) {
+    <select
+      uiSelect
+      size="sm"
+      class="catalog__select"
+      aria-label="Lĩnh vực"
+      (change)="store.filterField(field.value)"
+      #field
+    >
+      <option value="">Tất cả lĩnh vực</option>
+      @for (option of store.fields$(); track option.id) {
+      <option
+        [value]="option.id"
+        [selected]="option.id === store.filters$().fieldId"
+      >
+        {{ option.name }}
+      </option>
+      }
+    </select>
+    } @if (store.modules$().length) {
+    <select
+      uiSelect
+      size="sm"
+      class="catalog__select"
+      aria-label="Phân hệ"
+      (change)="store.filterModule(module.value)"
+      #module
+    >
+      <option value="">Tất cả phân hệ</option>
+      @for (option of store.modules$(); track option.id) {
+      <option
+        [value]="option.id"
+        [selected]="option.id === store.filters$().moduleId"
+      >
+        {{ option.name }}
+      </option>
+      }
+    </select>
+    } @if (store.programs$().length) {
+    <select
+      uiSelect
+      size="sm"
+      class="catalog__select"
+      aria-label="Chương trình"
+      (change)="store.filterProgram(program.value)"
+      #program
+    >
+      <option value="">Tất cả chương trình</option>
+      @for (option of store.programs$(); track option.id) {
+      <option
+        [value]="option.id"
+        [selected]="option.id === store.filters$().programId"
+      >
+        {{ option.name }}
+      </option>
+      }
+    </select>
+    }
+    <select
+      uiSelect
+      size="sm"
+      class="catalog__select"
+      aria-label="Mức độ"
+      (change)="store.filterLevel(level.value)"
+      #level
+    >
+      <option value="">Tất cả mức độ</option>
+      @for (option of levels; track option.value) {
+      <option
+        [value]="option.value"
+        [selected]="option.value === store.filters$().level"
+      >
+        {{ option.label }}
+      </option>
+      }
+    </select>
+    <select
+      uiSelect
+      size="sm"
+      class="catalog__select"
+      aria-label="Trạng thái"
+      (change)="store.filterStatus(status.value)"
+      #status
+    >
+      <option value="">Tất cả trạng thái</option>
+      @for (option of statuses; track option.value) {
+      <option
+        [value]="option.value"
+        [selected]="option.value === store.filters$().learningStatus"
+      >
+        {{ option.label }}
+      </option>
+      }
+    </select>
+    <select
+      uiSelect
+      size="sm"
+      class="catalog__select"
+      aria-label="Loại"
+      (change)="store.filterRequirement(requirement.value)"
+      #requirement
+    >
+      <option value="">Bắt buộc và tự chọn</option>
+      @for (option of requirements; track option.value) {
+      <option
+        [value]="option.value"
+        [selected]="option.value === store.filters$().requirement"
+      >
+        {{ option.label }}
+      </option>
+      }
+    </select>
+    @if (store.activeFilters$(); as active) {
+    <button uiButton size="sm" variant="ghost" (click)="store.clearFilters()">
+      <ui-icon name="x" size="sm" />Xóa {{ active }} bộ lọc
+    </button>
+    }
+  </div>
+</section>
+
+<div class="catalog__bar">
+  <p class="catalog__count" role="status" aria-live="polite">
+    <strong>{{ store.total$() }}</strong> khóa học phù hợp
+  </p>
+  <label class="catalog__sort">
+    <span>Sắp xếp</span>
+    <select
+      uiSelect
+      size="sm"
+      [value]="store.sort$()"
+      (change)="store.sortBy(sort.value)"
+      #sort
+    >
+      <option value="due">Hạn gần nhất</option>
+      <option value="progress">Tiến độ cao nhất</option>
+      <option value="name">Tên A–Z</option>
+    </select>
+  </label>
+</div>
+
+@if (store.loadError$(); as error) {
+<ui-error-state
+  title="Không tải được danh mục khóa học"
+  [message]="error.message"
+  (retry)="store.retryLoad()"
+/>
+} @else if (store.isLoading$()) {
+<div class="catalog__grid" aria-busy="true">
+  @for (item of placeholders; track item) {
+  <div uiSkeleton variant="block" class="catalog__placeholder"></div>
+  }
+</div>
+} @else if (store.cards$().length) {
+<ul class="catalog__grid" aria-label="Khóa học">
+  @for (course of store.cards$(); track course.id) {
+  <li><app-course-card [course]="course" /></li>
+  }
+</ul>
+<ui-pagination
+  [total]="store.total$()"
+  [page]="store.page$()"
+  [pageSize]="pageSize"
+  (pageChange)="store.goToPage($event)"
+/>
+} @else {
+<ui-empty
+  variant="page"
+  [title]="
+    store.scope$() === 'assigned' && !store.activeFilters$()
+      ? 'Bạn chưa được giao khóa học nào'
+      : 'Không có khóa học phù hợp'
+  "
+  [description]="
+    store.activeFilters$()
+      ? 'Thử bỏ bớt bộ lọc hoặc dùng từ khóa khác.'
+      : 'Khóa học được giao sẽ hiện ở đây cùng hạn hoàn thành.'
+  "
+>
+  @if (store.activeFilters$()) {
+  <button uiButton variant="primary" (click)="store.clearFilters()">
+    Xóa bộ lọc
+  </button>
+  }
+</ui-empty>
+}

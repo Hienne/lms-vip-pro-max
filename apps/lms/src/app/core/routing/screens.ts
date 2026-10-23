@@ -334,7 +334,15 @@ export const SCREEN_TABLE = {
           (m) => m.ChangePassword,
         ),
     },
-    { path: 'catalog', title: 'Danh mục khóa học', mockupPage: 'catalog' },
+    {
+      path: 'catalog',
+      title: 'Danh mục khóa học',
+      mockupPage: 'catalog',
+      load: () =>
+        import('../../features/learning/catalog/catalog').then(
+          (m) => m.Catalog,
+        ),
+    },
     {
       path: 'admin/catalog',
       title: 'Lĩnh vực & chương trình',
