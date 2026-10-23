@@ -2,6 +2,7 @@ import {
   adminOrgEndpoints,
   authV1Endpoints,
   identityEndpoints,
+  knowledgeEndpoints,
   organizationEndpoints,
   passwordByteLength,
   PASSWORD_MAX_BYTES,
@@ -12,6 +13,7 @@ import {
   type Envelope,
   type FunctionInfo,
   type GrantScope,
+  type KnowledgeDocument,
   type Me,
   type ManagedRoleGrant,
   type OrganizationInfo,
@@ -41,6 +43,13 @@ import {
   userCourseFixtures,
 } from '../admin-org/admin-org.fixtures';
 import { envelopeError, envelopeOk } from '../envelope';
+import {
+  knowledgeAnswerFixture,
+  knowledgeDocumentFixtures,
+  knowledgeNotFoundFixture,
+  knowledgeNotFoundStreamFixture,
+  knowledgeStreamFixture,
+} from '../knowledge/knowledge.fixtures';
 import { navCountsFixtures } from '../shell/shell.fixtures';
 import {
   SEED_FUNCTIONS,
@@ -68,10 +77,14 @@ export interface FakeRequest {
   readonly body: unknown;
 }
 
-/** The HTTP status and the envelope the backend would answer with. */
+/**
+ * The HTTP status and the envelope the backend would answer with. A streamed endpoint answers
+ * `events` (one NDJSON line each) instead of an envelope's data; its refusals stay envelopes.
+ */
 export interface FakeReply {
   readonly status: number;
   readonly body: Envelope;
+  readonly events?: readonly unknown[];
 }
 
 type Mutable<T> = { -readonly [K in keyof T]: T[K] };
@@ -143,6 +156,12 @@ export class FakeBackend {
     menus: [...r.menus],
   }));
   private nextRoleSeq = 1;
+  private documents: Mutable<KnowledgeDocument>[] =
+    knowledgeDocumentFixtures.map((d) => ({ ...d }));
+  /** Uploaded documents still moving to `ready`: one step per read, like the worker over time. */
+  private pendingDocuments = new Set<number>();
+  private nextDocumentId =
+    Math.max(...knowledgeDocumentFixtures.map((d) => d.id)) + 1;
 
   private readonly handlers = new Map<AnyEndpoint, Handler>([
     [authV1Endpoints.login, (r) => this.login(r)],
@@ -173,6 +192,11 @@ export class FakeBackend {
     [adminOrgEndpoints.saveRole, (r) => this.saveMockRole(r)],
     [adminOrgEndpoints.deleteRole, (r) => this.deleteMockRole(r)],
     [shellEndpoints.navCounts, (r) => this.navCounts(r)],
+    [knowledgeEndpoints.documents, (r) => this.listDocuments(r)],
+    [knowledgeEndpoints.document, (r) => this.getDocument(r)],
+    [knowledgeEndpoints.uploadDocument, (r) => this.uploadDocument(r)],
+    [knowledgeEndpoints.ask, (r) => this.ask(r)],
+    [knowledgeEndpoints.askStream, (r) => this.askStream(r)],
   ]);
 
   /** True for the endpoints this backend answers; the others are not the backend's. */
@@ -272,6 +296,116 @@ export class FakeBackend {
       : [];
     const role = ROLE_PRIORITY.find((code) => held.includes(code));
     return ok(navCountsFixtures[role ?? 'LEARNER']);
+  }
+
+  // ---- knowledge: shared documents and the chat -----------------------------------------------
+
+  /** Every read moves each uploaded document one step: queued, processing, ready. */
+  private advanceDocuments(): void {
+    for (const id of [...this.pendingDocuments]) {
+      const document = this.documents.find((d) => d.id === id);
+      if (!document) continue;
+      if (document.status === 'queued') {
+        document.status = 'processing';
+      } else {
+        document.status = 'ready';
+        document.chunkCount = 1;
+        document.processedAt = new Date().toISOString();
+        this.pendingDocuments.delete(id);
+      }
+    }
+  }
+
+  private listDocuments(request: FakeRequest): FakeReply {
+    const actor = this.actor(request);
+    const query = this.pageQuery(request, ['createTime'], 'createTime,desc');
+    const statuses = (request.query['status'] ?? '').split(',').filter(Boolean);
+    if (
+      statuses.some(
+        (s) => !['queued', 'processing', 'ready', 'failed'].includes(s),
+      )
+    ) {
+      return invalid('status không hợp lệ.');
+    }
+    this.advanceDocuments();
+    const rows = this.documents.filter(
+      (d) =>
+        (request.query['mine'] !== 'true' ||
+          d.uploadedBy.userId === actor.userId) &&
+        (statuses.length === 0 || statuses.includes(d.status)),
+    );
+    return ok(this.paged(rows, query, (d) => d.id));
+  }
+
+  private getDocument(request: FakeRequest): FakeReply {
+    this.actor(request);
+    this.advanceDocuments();
+    const document = this.documents.find(
+      (d) => d.id === Number(request.params['documentId']),
+    );
+    return document ? ok({ ...document }) : refuse('resourceNotFound');
+  }
+
+  private uploadDocument(request: FakeRequest): FakeReply {
+    const actor = this.actor(request);
+    const body = request.body;
+    const file =
+      body instanceof FormData
+        ? body.get('file')
+        : (body as { file?: unknown } | null)?.file;
+    if (!(file instanceof Blob) || !(file as File).name) {
+      return invalid('Cần chọn một tệp.');
+    }
+    const upload = file as File;
+    if (!/\.(pdf|md|docx)$/i.test(upload.name)) {
+      return refuse('fileTypeUnsupported');
+    }
+    if (upload.size === 0) return refuse('fileInvalid');
+    if (upload.size > 20 * 1024 * 1024) return refuse('fileTooLarge');
+    const document: Mutable<KnowledgeDocument> = {
+      id: this.nextDocumentId++,
+      fileName: upload.name,
+      mimeType: upload.type || 'application/octet-stream',
+      sizeBytes: upload.size,
+      status: 'queued',
+      errorMessage: null,
+      pageCount: null,
+      chunkCount: 0,
+      uploadedBy: { userId: actor.userId, fullName: actor.fullName },
+      createdAt: new Date().toISOString(),
+      processedAt: null,
+    };
+    this.documents.unshift(document);
+    this.pendingDocuments.add(document.id);
+    return ok({ ...document }, 201);
+  }
+
+  private questionOf(request: FakeRequest): string {
+    const question = (request.body as { question?: unknown } | null)?.question;
+    if (typeof question !== 'string' || !question.trim()) {
+      return invalid('Câu hỏi không được để trống.');
+    }
+    if (question.trim().length > 300) {
+      return invalid('Câu hỏi tối đa 300 ký tự.');
+    }
+    return question.trim();
+  }
+
+  /** The mock finds nothing when the question says "không có"; every other question is answered. */
+  private ask(request: FakeRequest): FakeReply {
+    this.actor(request);
+    const found = !this.questionOf(request).toLowerCase().includes('không có');
+    return ok(found ? knowledgeAnswerFixture : knowledgeNotFoundFixture);
+  }
+
+  private askStream(request: FakeRequest): FakeReply {
+    this.actor(request);
+    const found = !this.questionOf(request).toLowerCase().includes('không có');
+    return {
+      status: 200,
+      body: envelopeOk(null),
+      events: found ? knowledgeStreamFixture : knowledgeNotFoundStreamFixture,
+    };
   }
 
   // ---- identity: who is calling -------------------------------------------------------------

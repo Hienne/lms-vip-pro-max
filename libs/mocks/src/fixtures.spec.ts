@@ -3,15 +3,24 @@ import {
   authV1Endpoints,
   type AnyEndpoint,
   identityEndpoints,
+  knowledgeEndpoints,
   organizationEndpoints,
   shellEndpoints,
 } from '@lms/contracts';
 import { FakeBackend } from './lib/backend/fake-backend';
+import {
+  knowledgeAnswerFixture,
+  knowledgeDocumentFixtures,
+  knowledgeNotFoundFixture,
+  knowledgeNotFoundStreamFixture,
+  knowledgeStreamFixture,
+} from './lib/knowledge/knowledge.fixtures';
 
 const everyEndpoint: readonly AnyEndpoint[] = [
   ...Object.values(adminOrgEndpoints),
   ...Object.values(authV1Endpoints),
   ...Object.values(identityEndpoints),
+  ...Object.values(knowledgeEndpoints),
   ...Object.values(organizationEndpoints),
   ...Object.values(shellEndpoints),
 ];
@@ -52,5 +61,31 @@ describe('FakeBackend and the endpoint registries', () => {
       body: undefined,
     });
     expect(() => endpoint.response.parse(reply?.body.data)).not.toThrow();
+  });
+
+  it('keeps the knowledge fixtures within their contracts', () => {
+    for (const document of knowledgeDocumentFixtures) {
+      expect(() =>
+        knowledgeEndpoints.document.response.parse(document),
+      ).not.toThrow();
+    }
+    for (const answer of [knowledgeAnswerFixture, knowledgeNotFoundFixture]) {
+      expect(() => knowledgeEndpoints.ask.response.parse(answer)).not.toThrow();
+    }
+    for (const event of [
+      ...knowledgeStreamFixture,
+      ...knowledgeNotFoundStreamFixture,
+    ]) {
+      expect(() =>
+        knowledgeEndpoints.askStream.response.parse(event),
+      ).not.toThrow();
+    }
+  });
+
+  it('streams the same text the complete answer holds', () => {
+    const streamed = knowledgeStreamFixture
+      .flatMap((event) => (event.type === 'delta' ? [event.text] : []))
+      .join('');
+    expect(streamed).toBe(knowledgeAnswerFixture.answer);
   });
 });

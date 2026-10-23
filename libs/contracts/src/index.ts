@@ -15,3 +15,5 @@ export * from './lib/shell/shell.schema';
 export * from './lib/shell/shell.endpoints';
 export * from './lib/admin-org/admin-org.schema';
 export * from './lib/admin-org/admin-org.endpoints';
+export * from './lib/knowledge/knowledge.schema';
+export * from './lib/knowledge/knowledge.endpoints';

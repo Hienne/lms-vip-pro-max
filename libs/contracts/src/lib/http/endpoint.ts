@@ -5,8 +5,11 @@ export type HttpMethod = 'get' | 'post' | 'put' | 'patch' | 'delete';
 /** How the request body travels: JSON (default) or multipart form data for file uploads. */
 export type BodyEncoding = 'json' | 'multipart';
 
-/** What the response carries: JSON (default) or a file, received as a `Blob`. */
-export type ResponseKind = 'json' | 'blob';
+/**
+ * What the response carries: JSON (default), a file received as a `Blob`, or newline-delimited
+ * JSON events (`ndjson`) read as they arrive; for it `response` describes one event.
+ */
+export type ResponseKind = 'json' | 'blob' | 'ndjson';
 
 /** The response schema an endpoint may declare: a `Blob` one when `responseType` is `'blob'`. */
 export type ResponseSchemaFor<R extends ResponseKind> = R extends 'blob'
@@ -25,6 +28,7 @@ export interface EndpointDefinition<
   Query extends z.ZodObject | undefined = z.ZodObject | undefined,
   Body extends z.ZodType | undefined = z.ZodType | undefined,
   Response extends z.ZodType = z.ZodType,
+  Kind extends ResponseKind = ResponseKind,
 > {
   readonly method: HttpMethod;
   /** Always starts with `/api/`; `{name}` segments are filled from `params`. */
@@ -35,8 +39,11 @@ export interface EndpointDefinition<
   readonly response: Response;
   /** `'multipart'` sends a flat body as `FormData`; defaults to `'json'`. */
   readonly encoding?: BodyEncoding;
-  /** `'blob'` receives a file (declare `response: z.instanceof(Blob)`); defaults to `'json'`. */
-  readonly responseType?: ResponseKind;
+  /**
+   * `'blob'` receives a file (declare `response: z.instanceof(Blob)`); `'ndjson'` streams events
+   * (`EndpointClient.stream`, `response` is one event); defaults to `'json'`.
+   */
+  readonly responseType?: Kind;
   /** Who answers it; defaults to `'backend'`. A `'mock'` endpoint only exists while `mockApi` is on. */
   readonly served?: Served;
 }
@@ -50,7 +57,7 @@ export type EndpointInput<
   Response extends z.ZodType,
   Kind extends ResponseKind = ResponseKind,
 > = Omit<
-  EndpointDefinition<Path, Params, Query, Body, Response>,
+  EndpointDefinition<Path, Params, Query, Body, Response, Kind>,
   'params' | 'query' | 'body' | 'responseType'
 > & {
   params?: Params;
@@ -76,8 +83,15 @@ export function defineEndpoint<
   Response extends ResponseSchemaFor<Kind> = ResponseSchemaFor<Kind>,
 >(
   endpoint: EndpointInput<Path, Params, Query, Body, Response, Kind>,
-): EndpointDefinition<Path, Params, Query, Body, Response> {
-  return endpoint as EndpointDefinition<Path, Params, Query, Body, Response>;
+): EndpointDefinition<Path, Params, Query, Body, Response, Kind> {
+  return endpoint as EndpointDefinition<
+    Path,
+    Params,
+    Query,
+    Body,
+    Response,
+    Kind
+  >;
 }
 
 type ParamsArgs<E extends AnyEndpoint> = E['params'] extends z.ZodObject

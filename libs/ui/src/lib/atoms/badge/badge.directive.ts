@@ -13,9 +13,12 @@ export type BadgeTone =
  * A small status label on a `<span>`: `tone` is the semantic colour, `dot` adds a leading dot,
  * `outline` swaps the fill for a border. Colour never carries the meaning alone: put the status in
  * the text, or an icon before it (`<span uiBadge tone="success"><ui-icon name="check" />Đạt</span>`).
+ *
+ * On a `<button>` it is a badge that opens something about itself (a source marker whose tooltip
+ * shows the passage): same look, plus a hover border and the focus ring. Write `type="button"`.
  */
 @Directive({
-  selector: 'span[uiBadge]',
+  selector: 'span[uiBadge], button[uiBadge]',
   host: { class: 'badge', '[class]': 'modifiers()' },
 })
 export class Badge {

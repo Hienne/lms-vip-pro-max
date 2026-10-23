@@ -27,11 +27,26 @@ describe('App boot', () => {
     storeToken();
   });
   afterEach(() => {
-    // The shell loads its badge counts once a user is signed in; no test here is about them.
+    // The shell loads its badge counts and the owl's unfinished uploads once a user is signed in;
+    // no test here is about them.
     backend
       .match('/api/me/nav-counts')
       .filter((r) => !r.cancelled)
       .forEach((r) => r.flush(envelopeOk({ notifications: 0, inbox: 0 })));
+    backend
+      .match((r) => r.url === '/api/v1/knowledge/documents')
+      .filter((r) => !r.cancelled)
+      .forEach((r) =>
+        r.flush(
+          envelopeOk({
+            items: [],
+            page: 0,
+            size: 100,
+            totalElements: 0,
+            totalPages: 0,
+          }),
+        ),
+      );
     backend.verify();
   });
 

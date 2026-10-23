@@ -62,6 +62,9 @@ export const courseEndpoints = {
     `z.file()`.
   - `responseType: 'blob'` receives a file. The response schema must be
     `z.instanceof(Blob)`; the types reject any other schema.
+  - `responseType: 'ndjson'` streams newline-delimited JSON events; `response` describes one event
+    and the endpoint is read with `EndpointClient.stream` (below), which `call` rejects at type
+    level.
 
 ## Calling endpoints (in the app)
 
@@ -90,6 +93,13 @@ File | Blob` or an array of those. Arrays repeat the key, numbers and booleans
   parse above, so a schema describes the payload only.
 - **Tag.** Every request carries its endpoint object in the `ENDPOINT`
   `HttpContextToken` (exported by the client). `envelopeInterceptor`, `sessionExpiryInterceptor`, `bearerInterceptor` and the dev mock read it.
+- **Streams.** `EndpointClient.stream(endpoint, input)` returns an `Observable` of the events of an
+  `ndjson` endpoint. It sends `Accept: application/x-ndjson, application/json` with
+  `reportProgress`, reads `DownloadProgress.partialText` as it grows, parses each complete line
+  with the endpoint's schema (a mismatch is a `ContractError`, as for `call`) and emits it; the
+  final response flushes a last line without `\n`. Unsubscribing aborts the request. An
+  `application/x-ndjson` answer passes through `envelopeInterceptor` untouched; a refusal before
+  the first line is the usual JSON envelope (an `ApiError`).
 - **Files.** A `blob` endpoint returns a `Blob`; the store names it and calls
   `FileSaver.save(blob, filename)` (`core/files/`) from a mutation's `onSuccess`.
   `Content-Disposition` is not read.
@@ -257,10 +267,10 @@ document. Two switches in `AppConfig` choose, per endpoint, who answers:
 
 - **Access is by function code.** The backend's 16 function codes (`PROFILE`, `COURSE_LEARNING`,
   `USER_MANAGEMENT`, ...) are the menu keys everywhere: the route table (`core/routing/screens.ts`),
-  the sidebar, the guards and the role form. `MenuKeySchema` is gone. `Me.functionDetails` carries each
+  the sidebar, the guards and the role form (`AI_ASSISTANT`, route `/assistant`, is the 17th). `MenuKeySchema` is gone. `Me.functionDetails` carries each
   function's name, route and `sortNo`; the sidebar lists them in `sortNo` order, and `homePath` is
-  the first function's route excluding `PROFILE`, else `/profile`. Eleven FE screens have no
-  function (catalog, leaderboard, assistant, flashcards, saved, certificates, instructor home and
+  the first function's route excluding `PROFILE`, else `/profile`. Ten FE screens have no
+  function (catalog, leaderboard, flashcards, saved, certificates, instructor home and
   inbox, content catalog, import, admin home) plus `notifications`: they are `open` routes for any
   signed-in user and not in the sidebar.
 - **Grants** are `{ roleId, scope: GLOBAL | ORG | TEAM | OWN, orgId?, teamId? }`, with numeric ids.

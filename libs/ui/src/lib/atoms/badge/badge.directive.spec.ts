@@ -59,3 +59,28 @@ describe('Badge', () => {
     expect(badge.querySelector('ui-icon')).not.toBeNull();
   });
 });
+
+@Component({
+  imports: [Badge],
+  template: `<button uiBadge type="button" (click)="clicks = clicks + 1">
+    1
+  </button>`,
+})
+class ButtonHost {
+  clicks = 0;
+}
+
+describe('Badge on a button', () => {
+  it('keeps the native button, so it is focusable and clickable', () => {
+    const fixture = TestBed.createComponent(ButtonHost);
+    fixture.detectChanges();
+    const button = (fixture.nativeElement as HTMLElement).querySelector(
+      'button',
+    ) as HTMLButtonElement;
+    expect(button.className).toBe('badge');
+    button.focus();
+    expect(document.activeElement).toBe(button);
+    button.click();
+    expect(fixture.componentInstance.clicks).toBe(1);
+  });
+});

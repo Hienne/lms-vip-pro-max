@@ -65,7 +65,7 @@ describe('AppShell', () => {
 
   type Counts = { notifications: number; inbox: number };
 
-  /** Answers the nav-counts requests the shell makes once a user is signed in. */
+  /** Answers the requests the shell makes once a user is signed in: nav counts and the owl's tracker. */
   function flushCounts(counts: Counts = { notifications: 0, inbox: 0 }) {
     TestBed.tick();
     const backend = TestBed.inject(HttpTestingController);
@@ -73,6 +73,21 @@ describe('AppShell', () => {
       .match('/api/me/nav-counts')
       .filter((r) => !r.cancelled)
       .forEach((r) => r.flush(envelopeOk(counts)));
+    // The owl's tracker asks for the user's unfinished uploads; there are none.
+    backend
+      .match((r) => r.url === '/api/v1/knowledge/documents')
+      .filter((r) => !r.cancelled)
+      .forEach((r) =>
+        r.flush(
+          envelopeOk({
+            items: [],
+            page: 0,
+            size: 100,
+            totalElements: 0,
+            totalPages: 0,
+          }),
+        ),
+      );
   }
 
   async function open(url: string, counts?: Counts) {
@@ -91,9 +106,17 @@ describe('AppShell', () => {
     [
       'learner',
       '/learn',
-      ['/profile', '/learn', '/progress', '/quiz', '/knowledge', '/issues'],
+      [
+        '/profile',
+        '/learn',
+        '/progress',
+        '/quiz',
+        '/knowledge',
+        '/assistant',
+        '/issues',
+      ],
     ],
-    ['viewer', '/reports', ['/profile', '/reports']],
+    ['viewer', '/reports', ['/profile', '/reports', '/assistant']],
     [
       'instructor',
       '/learn',
@@ -108,6 +131,7 @@ describe('AppShell', () => {
         '/admin/quizzes',
         '/reports',
         '/knowledge',
+        '/assistant',
         '/issues',
       ],
     ],
@@ -126,6 +150,7 @@ describe('AppShell', () => {
         '/admin/assignments',
         '/reports',
         '/admin/system',
+        '/assistant',
       ],
     ],
   ] as const)(
@@ -216,6 +241,20 @@ describe('AppShell', () => {
     expect(el.querySelector('app-sidebar')).not.toBeNull();
     expect(el.querySelector('app-header')).not.toBeNull();
     expect(el.querySelector('main#main')).not.toBeNull();
+    expect(el.querySelector('app-owl button')).not.toBeNull();
+    expect(el.querySelector('.app-shell')?.classList).not.toContain(
+      'app-shell--fill',
+    );
+  });
+
+  it('lets a workspace page fill the viewport and quiets the owl there', async () => {
+    signInAs('learner');
+    const el = await open('/assistant');
+    expect(el.querySelector('app-header')).not.toBeNull();
+    expect(el.querySelector('.app-shell')?.classList).toContain(
+      'app-shell--fill',
+    );
+    expect(el.querySelector('app-owl button')).toBeNull();
   });
 
   it('drops the frame for focus routes', async () => {
@@ -224,6 +263,7 @@ describe('AppShell', () => {
     expect(el.querySelector('app-sidebar')).toBeNull();
     expect(el.querySelector('app-header')).toBeNull();
     expect(el.querySelector('main')).not.toBeNull();
+    expect(el.querySelector('app-owl')).toBeNull();
   });
 
   it('drops the frame for bare routes and for visitors', async () => {
@@ -231,6 +271,7 @@ describe('AppShell', () => {
     expect(visitor.querySelector('app-sidebar')).toBeNull();
     expect(visitor.querySelector('app-header')).toBeNull();
     expect(visitor.querySelector('main')).not.toBeNull();
+    expect(visitor.querySelector('app-owl')).toBeNull();
   });
 
   describe('collapsing the sidebar', () => {
@@ -266,7 +307,7 @@ describe('AppShell', () => {
       const el = await open('/learn');
       toggle(el)?.click();
       TestBed.tick();
-      expect(hrefs(el)).toHaveLength(6);
+      expect(hrefs(el)).toHaveLength(7);
       expect(
         el.querySelector('nav a[href="/progress"]')?.textContent?.trim(),
       ).toBe('Tiến độ học tập');
@@ -311,7 +352,7 @@ describe('AppShell', () => {
       expect(button?.getAttribute('aria-expanded')).toBe('false');
 
       await openDrawer(el);
-      expect(dialog()?.querySelectorAll('nav a')).toHaveLength(6);
+      expect(dialog()?.querySelectorAll('nav a')).toHaveLength(7);
       expect(dialog()?.querySelector('.sidebar__toggle')).toBeNull();
       expect(button?.getAttribute('aria-expanded')).toBe('true');
     });

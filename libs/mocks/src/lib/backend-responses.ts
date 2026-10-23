@@ -131,6 +131,30 @@ export const BACKEND_RESPONSES = {
     title: 'Cấu trúc tổ chức chưa hợp lệ',
     message: 'Phòng phải trực thuộc đơn vị; tổ chức cha không được là phòng.',
   },
+  fileTypeUnsupported: {
+    status: 200,
+    code: 'KNOWLEDGE-FILE_TYPE_UNSUPPORTED',
+    title: 'Loại tệp không hỗ trợ',
+    message: 'Chỉ hỗ trợ tệp .pdf, .md hoặc .docx.',
+  },
+  fileInvalid: {
+    status: 200,
+    code: 'KNOWLEDGE-FILE_INVALID',
+    title: 'Tệp không hợp lệ',
+    message: 'Tệp rỗng, bị hỏng hoặc nội dung không khớp với loại tệp.',
+  },
+  fileTooLarge: {
+    status: 200,
+    code: 'KNOWLEDGE-FILE_TOO_LARGE',
+    title: 'Tệp quá lớn',
+    message: 'Tệp vượt quá dung lượng tối đa cho phép.',
+  },
+  aiUnavailable: {
+    status: 200,
+    code: 'KNOWLEDGE-AI_UNAVAILABLE',
+    title: 'Dịch vụ AI chưa sẵn sàng',
+    message: 'Dịch vụ AI tạm thời không phản hồi. Vui lòng thử lại sau.',
+  },
 } as const;
 
 export type BackendResponseKey = keyof typeof BACKEND_RESPONSES;

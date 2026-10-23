@@ -1,0 +1,16 @@
+<button
+  uiBadge
+  outline
+  type="button"
+  class="source"
+  [attr.aria-label]="name()"
+  [uiPopover]="details"
+  [popoverLabel]="name()"
+>
+  {{ citation().n }}
+</button>
+<ng-template #details>
+  <p class="source__file">{{ citation().fileName }}</p>
+  <p class="source__where">{{ location() }}</p>
+  <p class="source__quote">{{ citation().snippet }}</p>
+</ng-template>
