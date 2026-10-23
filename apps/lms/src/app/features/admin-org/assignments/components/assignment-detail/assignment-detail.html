@@ -1,0 +1,153 @@
+@if (store.detail$(); as detail) {
+<div class="assignment-detail">
+  <dl class="assignment-detail__facts">
+    <div class="assignment-detail__wide">
+      <dt>Khóa học</dt>
+      <dd>{{ courseTitle() || 'Khóa #' + detail.assignment.courseId }}</dd>
+    </div>
+    <div>
+      <dt>Bắt đầu</dt>
+      <dd>{{ detail.assignment.startAt | fmtDate }}</dd>
+    </div>
+    <div>
+      <dt>Hạn hoàn thành</dt>
+      <dd><app-due-date [dueAt]="detail.assignment.dueAt" /></dd>
+    </div>
+    <div>
+      <dt>Yêu cầu</dt>
+      <dd>{{ requirementLabel[detail.assignment.requirement] }}</dd>
+    </div>
+    <div>
+      <dt>Người đã từng học</dt>
+      <dd>{{ modeLabel[detail.assignment.enrollmentMode] }}</dd>
+    </div>
+    <div>
+      <dt>Nhắc học</dt>
+      <dd>
+        {{ detail.assignment.reminderEnabled ? 'Trước hạn ' +
+        (detail.assignment.reminderDaysBefore ?? 0) + ' ngày' : 'Không nhắc' }}
+      </dd>
+    </div>
+    <div>
+      <dt>Giao bởi</dt>
+      <dd>
+        {{ assignedBy() }} @if (detail.assignment.createTime) {
+        <span class="assignment-detail__muted"
+          >· {{ detail.assignment.createTime | fmtDatetime }}</span
+        >
+        }
+      </dd>
+    </div>
+  </dl>
+
+  <section class="assignment-detail__section" aria-labelledby="ad-targets">
+    <h3 id="ad-targets" class="assignment-detail__heading">
+      Đối tượng ({{ detail.targets.length }})
+    </h3>
+    <ul class="assignment-detail__list">
+      @for (target of detail.targets; track target.id) {
+      <li class="assignment-detail__row">
+        <span class="assignment-detail__type"
+          >{{ typeLabel[target.targetType] }}</span
+        >
+        <span class="assignment-detail__name"
+          >{{ target.targetNameSnapshot || '—' }}@if (target.includeDescendants)
+          { và đơn vị cấp dưới }</span
+        >
+        <span class="assignment-detail__muted"
+          >{{ targetCount(detail, target.id) }} người</span
+        >
+      </li>
+      }
+    </ul>
+  </section>
+
+  <section class="assignment-detail__section" aria-labelledby="ad-recipients">
+    <h3 id="ad-recipients" class="assignment-detail__heading">
+      Học viên ({{ recipients().length }})
+    </h3>
+    @if (recipients().length) {
+    <ul class="assignment-detail__list">
+      @for (row of recipients(); track row.recipient.id) {
+      <li class="assignment-detail__recipient">
+        <div class="assignment-detail__row">
+          <span class="assignment-detail__name">
+            {{ row.name }}
+            <span class="assignment-detail__muted"
+              >{{ row.recipient.userId }}</span
+            >
+          </span>
+          @if (row.active) { @if (store.revokingId$() !== row.recipient.id) {
+          <button
+            uiButton
+            size="sm"
+            variant="ghost"
+            type="button"
+            [attr.aria-label]="'Thu hồi ' + row.name"
+            (click)="store.startRevoke(row.recipient.id)"
+          >
+            Thu hồi
+          </button>
+          } } @else {
+          <span uiBadge [tone]="statusView(row.recipient.status).tone">
+            {{ statusView(row.recipient.status).label }}
+          </span>
+          }
+        </div>
+        @if (!row.active && row.recipient.revokeReason) {
+        <p class="assignment-detail__reason">
+          {{ row.recipient.revokeReason }}
+        </p>
+        } @if (store.revokingId$() === row.recipient.id) {
+        <form class="assignment-detail__revoke" [formRoot]="revokeForm">
+          <ui-field
+            label="Lý do thu hồi"
+            required
+            hint="Học viên không còn bắt buộc học khóa này; tiến độ đã học vẫn được giữ."
+          >
+            <textarea
+              uiTextarea
+              rows="2"
+              [formField]="revokeForm.reason"
+            ></textarea>
+          </ui-field>
+          <div class="assignment-detail__revoke-actions">
+            <button
+              uiButton
+              size="sm"
+              type="button"
+              (click)="store.cancelRevoke()"
+            >
+              Hủy
+            </button>
+            <button
+              uiButton
+              size="sm"
+              variant="danger"
+              type="submit"
+              [disabled]="store.isRevoking$()"
+            >
+              Thu hồi
+            </button>
+          </div>
+        </form>
+        }
+      </li>
+      }
+    </ul>
+    } @else {
+    <p class="assignment-detail__muted">
+      Đối tượng không có học viên nào lúc giao.
+    </p>
+    }
+  </section>
+</div>
+} @else if (store.detailError$(); as error) {
+<ui-error-state
+  title="Không tải được lượt giao"
+  [message]="error.message"
+  (retry)="store.retryDetail()"
+/>
+} @else {
+<div class="assignment-detail__loading"><span uiSpinner></span></div>
+}

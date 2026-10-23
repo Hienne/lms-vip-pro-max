@@ -50,6 +50,11 @@ export interface LearningDirectory {
   /** The caller's staff code; refuses (401, 403) like the identity service does. */
   callerId(request: FakeRequest): string;
   people(): readonly LearningPerson[];
+  /** The current name of a person, team or org, kept on the target when it is assigned. */
+  nameOf(
+    type: 'user' | 'team' | 'org',
+    id: string | number,
+  ): string | undefined;
 }
 
 type Mutable<T> = { -readonly [K in keyof T]: T[K] };
@@ -924,11 +929,11 @@ export class LearningBackend {
   private targetName(target: AssignCourseCommand['targets'][number]): string {
     switch (target.targetType) {
       case 'user':
-        return target.userId ?? '';
+        return this.directory.nameOf('user', target.userId ?? '') ?? '';
       case 'team':
-        return `Nhóm #${target.teamId}`;
+        return this.directory.nameOf('team', target.teamId ?? 0) ?? '';
       case 'org':
-        return `Đơn vị #${target.orgId}`;
+        return this.directory.nameOf('org', target.orgId ?? 0) ?? '';
       case 'learning_group':
         return (
           this.groups.find((g) => g.group.id === target.groupId)?.group.name ??

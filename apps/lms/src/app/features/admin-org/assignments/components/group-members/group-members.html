@@ -1,0 +1,63 @@
+<form id="group-members-form" class="group-members" [formRoot]="membersForm">
+  @if (store.membersError$(); as error) {
+  <ui-alert tone="danger">{{ error.message }}</ui-alert>
+  } @if (membersForm.userIds().invalid()) {
+  <ui-alert tone="danger"
+    >{{ membersForm.userIds().errors()[0].message }}</ui-alert
+  >
+  }
+  <div class="group-members__add">
+    <ui-field label="Thêm thành viên">
+      <select uiSelect [formField]="membersForm.pick">
+        <option value="">— Chọn người —</option>
+        @for (person of candidates(); track person.userId) {
+        <option [value]="person.userId">
+          {{ person.fullName }} · {{ person.userId }}
+        </option>
+        }
+      </select>
+    </ui-field>
+    <button
+      uiButton
+      type="button"
+      [disabled]="!membersForm.pick().value()"
+      (click)="add()"
+    >
+      <ui-icon name="plus" size="sm" />Thêm
+    </button>
+  </div>
+
+  <h3 class="group-members__heading">Thành viên ({{ members().length }})</h3>
+  @if (members().length) {
+  <ul class="group-members__list">
+    @for (member of members(); track member.userId) {
+    <li class="group-members__row">
+      <div class="group-members__who">
+        <span class="group-members__name"
+          >{{ member.name }}
+          <span class="group-members__muted">{{ member.userId }}</span></span
+        >
+        @if (member.place) {
+        <span class="group-members__muted">{{ member.place }}</span>
+        }
+      </div>
+      <button
+        uiIconButton
+        type="button"
+        size="sm"
+        variant="danger"
+        [label]="'Bỏ ' + member.name + ' khỏi nhóm'"
+        (click)="remove(member.userId)"
+      >
+        <ui-icon name="trash-2" size="sm" />
+      </button>
+    </li>
+    }
+  </ul>
+  } @else {
+  <p class="group-members__muted">Nhóm chưa có thành viên.</p>
+  }
+  <p class="group-members__muted">
+    Lượt giao đã có giữ nguyên học viên; thay đổi chỉ áp dụng cho lượt giao sau.
+  </p>
+</form>

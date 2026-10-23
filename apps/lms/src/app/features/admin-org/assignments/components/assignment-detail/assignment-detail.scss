@@ -1,0 +1,89 @@
+@use 'ui';
+
+.assignment-detail {
+  @include ui.stack(6);
+
+  &__facts {
+    display: grid;
+    gap: ui.space(4);
+    grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
+    margin: 0;
+
+    dt {
+      @include ui.text(xs, muted);
+    }
+
+    dd {
+      margin: 0;
+    }
+  }
+
+  &__wide {
+    grid-column: 1 / -1;
+  }
+
+  &__section {
+    @include ui.stack(2);
+  }
+
+  &__heading {
+    margin: 0;
+    font-size: ui.text-size(md);
+    font-weight: ui.weight(semibold);
+  }
+
+  &__list {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  &__recipient + &__recipient,
+  &__list > &__row + &__row {
+    border-block-start: 1px solid ui.color(border);
+  }
+
+  &__row {
+    @include ui.row(3);
+    flex-wrap: nowrap;
+    min-height: ui.space(10);
+    padding-block: ui.space(2);
+  }
+
+  &__type {
+    flex: none;
+    min-width: 6.5rem;
+    @include ui.text(sm, muted);
+  }
+
+  &__name {
+    @include ui.grow;
+    flex-basis: 0;
+    @include ui.text(sm);
+  }
+
+  &__muted {
+    @include ui.text(sm, muted);
+  }
+
+  &__reason {
+    margin: 0 0 ui.space(2);
+    @include ui.text(sm, muted);
+  }
+
+  &__revoke {
+    @include ui.stack(3);
+    padding-block-end: ui.space(3);
+  }
+
+  &__revoke-actions {
+    @include ui.row(2);
+    justify-content: flex-end;
+  }
+
+  &__loading {
+    display: grid;
+    place-items: center;
+    padding: ui.space(10);
+  }
+}

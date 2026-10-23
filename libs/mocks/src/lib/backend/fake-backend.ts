@@ -152,6 +152,16 @@ export class FakeBackend {
       this.users
         .filter((u) => u.status === 'active')
         .map((u) => ({ userId: u.userId, orgId: u.orgId, teamId: u.teamId })),
+    nameOf: (type, id) => {
+      switch (type) {
+        case 'user':
+          return this.users.find((u) => u.userId === id)?.fullName;
+        case 'team':
+          return this.teams.find((t) => t.id === id)?.name;
+        case 'org':
+          return this.orgs.find((o) => o.id === id)?.name;
+      }
+    },
   });
 
   private readonly handlers = new Map<AnyEndpoint, Handler>([

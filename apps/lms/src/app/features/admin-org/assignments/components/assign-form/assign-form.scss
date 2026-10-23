@@ -1,0 +1,75 @@
+@use 'ui';
+
+.assign-form {
+  @include ui.stack(5);
+
+  &__targets {
+    @include ui.stack(3);
+    margin: 0;
+    padding: 0;
+    border: 0;
+    min-width: 0;
+  }
+
+  &__legend {
+    padding: 0;
+    margin-block-end: ui.space(2);
+    font-weight: ui.weight(semibold);
+    @include ui.text(sm);
+  }
+
+  &__chosen {
+    @include ui.stack(1);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  &__target {
+    @include ui.row(3);
+    flex-wrap: nowrap;
+    padding: ui.space(2) ui.space(3);
+    border: 1px solid ui.color(border);
+    border-radius: ui.radius(md);
+  }
+
+  &__target-type {
+    flex: none;
+    min-width: 6.5rem;
+    @include ui.text(sm, muted);
+  }
+
+  &__target-name {
+    @include ui.grow;
+    flex-basis: 0;
+    @include ui.text(sm);
+  }
+
+  &__hint {
+    margin: 0;
+    @include ui.text(sm, muted);
+  }
+
+  &__pair {
+    display: grid;
+    gap: ui.space(4);
+
+    @include ui.bp(sm) {
+      grid-template-columns: 1fr 1fr;
+    }
+  }
+
+  &__reminder {
+    display: grid;
+    gap: ui.space(3);
+  }
+
+  &__days {
+    max-width: 12rem;
+  }
+
+  &__toggle {
+    @include ui.row(2);
+    @include ui.text(sm);
+  }
+}

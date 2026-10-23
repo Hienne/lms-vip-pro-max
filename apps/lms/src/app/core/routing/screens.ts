@@ -269,6 +269,10 @@ export const SCREEN_TABLE = {
           path: 'admin/assignments',
           title: 'Giao học & hạn hoàn thành',
           mockupPage: 'assignments',
+          load: () =>
+            import('../../features/admin-org/assignments/assignments').then(
+              (m) => m.Assignments,
+            ),
         },
       ],
     },
