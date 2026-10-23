@@ -197,6 +197,8 @@ export class AssistantStore {
         this.patchAnswer(id, {
           status: 'done',
           found: event.found,
+          // The server's final text wins over what was streamed (a "not found" is always its fixed sentence).
+          text: event.answer,
           citations: event.citations,
         });
         this.setAnsweringId(null);

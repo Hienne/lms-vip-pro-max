@@ -290,6 +290,29 @@ describe('AssistantStore', () => {
       });
     });
 
+    it("replaces the streamed text with the server's final answer", async () => {
+      await loadDocuments();
+      store.ask('Giá vàng hôm nay?');
+      finish(stream(), [
+        { type: 'retrieved', count: 3 },
+        { type: 'delta', text: KNOWLEDGE_NOT_FOUND_ANSWER },
+        { type: 'delta', text: '[1][2][3]' },
+        {
+          type: 'done',
+          found: false,
+          answer: KNOWLEDGE_NOT_FOUND_ANSWER,
+          citations: [],
+        },
+      ]);
+      await settle();
+      expect(store.turns$()[0].answer).toMatchObject({
+        status: 'done',
+        found: false,
+        text: KNOWLEDGE_NOT_FOUND_ANSWER,
+        citations: [],
+      });
+    });
+
     it('ignores a blank question and a second one while an answer is on its way', async () => {
       await loadDocuments();
       store.ask('   ');

@@ -100,6 +100,7 @@ export const knowledgeStreamFixture: readonly ChatStreamEvent[] = [
   {
     type: 'done',
     found: true,
+    answer: knowledgeAnswerFixture.answer,
     citations: knowledgeAnswerFixture.citations,
   },
 ];
@@ -107,5 +108,10 @@ export const knowledgeStreamFixture: readonly ChatStreamEvent[] = [
 export const knowledgeNotFoundStreamFixture: readonly ChatStreamEvent[] = [
   { type: 'retrieved', count: 0 },
   { type: 'delta', text: KNOWLEDGE_NOT_FOUND_ANSWER },
-  { type: 'done', found: false, citations: [] },
+  {
+    type: 'done',
+    found: false,
+    answer: KNOWLEDGE_NOT_FOUND_ANSWER,
+    citations: [],
+  },
 ];

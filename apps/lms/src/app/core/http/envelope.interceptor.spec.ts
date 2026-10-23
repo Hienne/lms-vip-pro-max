@@ -148,7 +148,7 @@ describe('envelopeInterceptor', () => {
     it('leaves an application/x-ndjson answer alone: its lines are events, not an envelope', () => {
       const outcome = ask((request) =>
         request.flush(
-          '{"type":"retrieved","count":1}\n{"type":"done","found":false,"citations":[]}\n',
+          '{"type":"retrieved","count":1}\n{"type":"done","found":false,"answer":"Không tìm thấy.","citations":[]}\n',
           {
             headers: NDJSON,
           },
@@ -157,7 +157,12 @@ describe('envelopeInterceptor', () => {
       expect(outcome.error).toBeUndefined();
       expect(outcome.events).toEqual([
         { type: 'retrieved', count: 1 },
-        { type: 'done', found: false, citations: [] },
+        {
+          type: 'done',
+          found: false,
+          answer: 'Không tìm thấy.',
+          citations: [],
+        },
       ]);
     });
 

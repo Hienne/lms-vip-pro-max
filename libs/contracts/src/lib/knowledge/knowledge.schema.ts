@@ -73,6 +73,8 @@ export const ChatStreamEventSchema = z.discriminatedUnion('type', [
   z.object({
     type: z.literal('done'),
     found: z.boolean(),
+    /** The final text: what the deltas added up to, or the fixed sentence when nothing was found. */
+    answer: z.string(),
     citations: z.array(CitationSchema),
   }),
   z.object({
