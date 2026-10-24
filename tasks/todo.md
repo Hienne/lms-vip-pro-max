@@ -36,7 +36,7 @@ task; stop at each checkpoint. BE paths are under `src/main/java/vn/com/coreacad
   - Files: `…/assistant/agent/AgentPrompt.java`, `…/assistant/tool/ToolDefinitions.java`,
     `test/…/assistant/AgentToolChoiceEval.java`.
   - Depends on: T1.
-- [ ] **T3 Agent loop** · M
+- [x] **T3 Agent loop** · M
   - Accept: plain answer → `delta`… `done`; a read tool's result goes back and the second answer streams; terminal
     `Navigate`/`ActionRequired` → event, `done`, no second model call; unknown tool and bad arguments go back as
     text; step cap → fixed sentence; Ollama down mid-stream → `error`; tools not `availableTo` are not offered; a
