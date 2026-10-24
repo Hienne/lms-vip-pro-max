@@ -161,7 +161,7 @@ task; stop at each checkpoint. BE paths are under `src/main/java/vn/com/coreacad
   - Files: `apps/lms/src/app/layout/chat-widget/chat-widget.ts|html|scss|spec.ts`,
     `components/agent-message/*`, `components/agent-composer/*`, `layout/shell/app-shell.html`.
   - Depends on: T12, T14.
-- [ ] **T16 Action card** · S
+- [x] **T16 Action card** · S
   - Accept: `dl` of changes with "(trống)" for null; "Xác nhận" / "Huỷ" by state; result line after; `expired` and
     `failed` messages in the danger text token; one card confirming at a time.
   - Verify: `npx nx test lms -- action-card`; browser: the mock's profile row end to end.
