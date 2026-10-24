@@ -144,7 +144,7 @@ task; stop at each checkpoint. BE paths are under `src/main/java/vn/com/coreacad
   - Files: `apps/lms/src/app/core/storage/session-storage.ts`, `core/assistant/agent-chat.storage.ts`,
     `agent-chat.storage.spec.ts`, `agent-chat.model.ts`.
   - Depends on: T10.
-- [ ] **T14 `AgentChatStore`** · M
+- [x] **T14 `AgentChatStore`** · M
   - Accept: history = last 10 finished turns with card results, errored/stopped left out; events move the reply as
     in the spec; `navigate` outside the user's nav does not navigate; confirm applies `Me`; not-found → `expired`,
     stale → `failed`; expired `expiresAt` makes no request; stop keeps text; offline refuses; persistence restores a
