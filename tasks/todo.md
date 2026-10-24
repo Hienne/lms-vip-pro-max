@@ -201,7 +201,7 @@ task; stop at each checkpoint. BE paths are under `src/main/java/vn/com/coreacad
     `npm run check`.
   - Files: none, or fixes found by the run (each its own commit).
   - Depends on: Phase 4.
-- [ ] **T19 As-built notes** · XS
+- [x] **T19 As-built notes** · XS
   - Accept: each module spec has an "Implementation notes (as built)" section for any deviation; `SPEC.md` status
     updated; `docs/api/ASSISTANT.md` final.
   - Verify: `npx prettier --check "*.md" tasks/*.md`.
