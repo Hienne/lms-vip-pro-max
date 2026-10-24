@@ -471,6 +471,40 @@ describe('AgentChatStore', () => {
       expect(fakeSession().apply).not.toHaveBeenCalled();
     });
 
+    it('drops a confirm or cancel still on its way when the user signs out or another user signs in', async () => {
+      await converse('Đổi chức danh', agentActionEvents(action('a1')));
+      store.confirm(turnId());
+      await settle();
+      const confirming = backend.expectOne(confirmUrl('a1'));
+      fakeSession().user.set(null);
+      TestBed.tick();
+      expect(confirming.cancelled).toBe(true);
+      expect(store.isConfirming$()).toBe(false);
+
+      fakeSession().user.set(seedProfile('000004'));
+      TestBed.tick();
+      await converse('Đổi chức danh', agentActionEvents(action('a2')));
+      store.cancel(turnId());
+      await settle();
+      const cancelling = backend.expectOne(cancelUrl('a2'));
+      fakeSession().user.set(seedProfile('000002'));
+      TestBed.tick();
+      expect(cancelling.cancelled).toBe(true);
+      expect(fakeSession().apply).not.toHaveBeenCalled();
+    });
+
+    it('ignores a confirm answer that arrives after the user changed, before the store noticed', async () => {
+      await converse('Đổi chức danh', agentActionEvents(action('a1')));
+      store.confirm(turnId());
+      await settle();
+      const confirming = backend.expectOne(confirmUrl('a1'));
+      fakeSession().user.set(seedProfile('000002'));
+      confirming.flush(ok('a1'));
+      await settle();
+      expect(fakeSession().apply).not.toHaveBeenCalled();
+      expect(store.turns$()).toEqual([]);
+    });
+
     it('keeps the card pending with the offline message when confirming without a connection', async () => {
       await converse('Đổi chức danh', agentActionEvents(action('a1')));
       TestBed.inject(NetworkStore).goOffline();

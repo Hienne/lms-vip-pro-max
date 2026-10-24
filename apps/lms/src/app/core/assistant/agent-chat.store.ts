@@ -68,6 +68,8 @@ export class AgentChatStore {
   private readonly destroyRef = inject(DestroyRef);
 
   private streaming: Subscription | null = null;
+  /** The confirm or cancel request on its way; at most one, since one card settles at a time. */
+  private settling: Subscription | null = null;
   private lastUserId: string | undefined;
 
   private readonly userId = computed(() => this.session.user$()?.userId);
@@ -238,7 +240,8 @@ export class AgentChatStore {
     }
     this.setConfirmingId(turnId);
     this.patchCard(turnId, { status: 'confirming', message: null });
-    this.client
+    const userId = this.userId();
+    this.settling = this.client
       .call(agentEndpoints.confirmAction, {
         params: { actionId: card.pending.id },
       })
@@ -247,14 +250,16 @@ export class AgentChatStore {
         takeUntilDestroyed(this.destroyRef),
       )
       .subscribe({
-        next: (result) => {
+        next: this.sameUser(userId, (result) => {
           this.session.apply(result.data);
           this.patchCard(turnId, {
             status: 'confirmed',
             message: result.message,
           });
-        },
-        error: (error: unknown) => this.refused(turnId, error),
+        }),
+        error: this.sameUser(userId, (error: unknown) =>
+          this.refused(turnId, error),
+        ),
       });
   }
 
@@ -268,7 +273,8 @@ export class AgentChatStore {
     }
     this.setConfirmingId(turnId);
     this.patchCard(turnId, { status: 'confirming', message: null });
-    this.client
+    const userId = this.userId();
+    this.settling = this.client
       .call(agentEndpoints.cancelAction, {
         params: { actionId: card.pending.id },
       })
@@ -277,13 +283,30 @@ export class AgentChatStore {
         takeUntilDestroyed(this.destroyRef),
       )
       .subscribe({
-        next: () =>
+        next: this.sameUser(userId, () =>
           this.patchCard(turnId, {
             status: 'cancelled',
             message: CANCELLED_MESSAGE,
           }),
-        error: (error: unknown) => this.refused(turnId, error),
+        ),
+        error: this.sameUser(userId, (error: unknown) =>
+          this.refused(turnId, error),
+        ),
       });
+  }
+
+  /**
+   * Runs `handle` only while the user who sent the request is still the one signed in: an answer
+   * that lands after a sign-out or a switch, before the store has dropped the request, belongs to
+   * nobody on screen and must not reach the session or the new user's conversation.
+   */
+  private sameUser<T>(
+    userId: string | undefined,
+    handle: (value: T) => void,
+  ): (value: T) => void {
+    return (value) => {
+      if (this.userId() === userId) handle(value);
+    };
   }
 
   private refused(turnId: number, error: unknown): void {
@@ -410,6 +433,8 @@ export class AgentChatStore {
     this.lastUserId = userId;
     if (previous === undefined || previous === userId) return;
     this.dropStream();
+    this.settling?.unsubscribe();
+    this.settling = null;
     this.setAnsweringId(null);
     this.setConfirmingId(null);
     this.storage.clear(previous);
