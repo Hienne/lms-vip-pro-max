@@ -131,7 +131,7 @@ describe('ActionCard', () => {
       const { el, buttons, text } = await render(card({ status, message }));
       expect(buttons()).toEqual([]);
       expect(text()).toContain(message);
-      expect(el.querySelector('.card__result--error')).toBeNull();
+      expect(el.querySelector('.action-card__result--error')).toBeNull();
     },
   );
 
@@ -149,9 +149,9 @@ describe('ActionCard', () => {
     async (status, message) => {
       const { el, buttons } = await render(card({ status, message }));
       expect(buttons()).toEqual([]);
-      expect(el.querySelector('.card__result--error')?.textContent).toContain(
-        message,
-      );
+      expect(
+        el.querySelector('.action-card__result--error')?.textContent,
+      ).toContain(message);
     },
   );
 
@@ -160,8 +160,8 @@ describe('ActionCard', () => {
       card({ message: 'Mất kết nối — không gửi được câu hỏi.' }),
     );
     expect(buttons()).toEqual(['Xác nhận', 'Huỷ']);
-    expect(el.querySelector('.card__result--error')?.textContent).toContain(
-      'Mất kết nối',
-    );
+    expect(
+      el.querySelector('.action-card__result--error')?.textContent,
+    ).toContain('Mất kết nối');
   });
 });

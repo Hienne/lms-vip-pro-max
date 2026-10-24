@@ -1,7 +1,7 @@
 @let state = card();
-<section class="card" [attr.aria-label]="state.pending.title">
-  <h3 class="card__title">{{ state.pending.title }}</h3>
-  <dl class="card__changes">
+<section class="action-card" [attr.aria-label]="state.pending.title">
+  <h3 class="action-card__title">{{ state.pending.title }}</h3>
+  <dl class="action-card__changes">
     @for (change of state.pending.changes; track change.field) {
     <div class="change">
       <dt class="change__label">{{ change.label }}</dt>
@@ -16,17 +16,23 @@
     }
   </dl>
   @switch (state.status) { @case ('confirmed') {
-  <p class="card__result">{{ state.message }}</p>
+  <p class="action-card__result">{{ state.message }}</p>
   } @case ('cancelled') {
-  <p class="card__result">{{ state.message }}</p>
+  <p class="action-card__result">{{ state.message }}</p>
   } @case ('expired') {
-  <p class="card__result card__result--error">{{ state.message }}</p>
+  <p class="action-card__result action-card__result--error">
+    {{ state.message }}
+  </p>
   } @case ('failed') {
-  <p class="card__result card__result--error">{{ state.message }}</p>
+  <p class="action-card__result action-card__result--error">
+    {{ state.message }}
+  </p>
   } @default { @if (state.message) {
-  <p class="card__result card__result--error">{{ state.message }}</p>
+  <p class="action-card__result action-card__result--error">
+    {{ state.message }}
+  </p>
   }
-  <div class="card__actions">
+  <div class="action-card__actions">
     <button
       uiButton
       type="button"
