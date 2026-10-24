@@ -193,7 +193,7 @@ task; stop at each checkpoint. BE paths are under `src/main/java/vn/com/coreacad
 
 ## Phase 5: end to end
 
-- [ ] **T18 End-to-end run on the local backend** · S
+- [x] **T18 End-to-end run on the local backend** · S
   - Accept: SPEC.md success criteria 1–5 with screenshots (owl toggle and persistence; grounded answer and not-found;
     `quantri` navigates, `hocvien` refused; profile card confirm, cancel and expiry; all checks green); time to first
     token recorded.
