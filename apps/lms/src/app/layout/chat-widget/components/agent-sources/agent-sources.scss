@@ -1,0 +1,58 @@
+@use 'ui';
+
+.sources {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+
+  &__item {
+    @include ui.row(2);
+    @include ui.text(xs, secondary);
+    width: 100%;
+    padding: ui.space(1) 0;
+    text-align: start;
+    background: none;
+    border: 0;
+    cursor: pointer;
+
+    &:hover .sources__file {
+      color: ui.color(text);
+    }
+
+    &:focus-visible {
+      @include ui.focus-ring;
+    }
+  }
+
+  &__n {
+    @include ui.num;
+    flex: none;
+    min-width: ui.space(3);
+    color: ui.color(primary);
+    font-weight: ui.weight(medium);
+  }
+
+  &__file {
+    @include ui.truncate;
+    min-width: 0;
+  }
+
+  // The popover body, rendered in the panel from this component's template.
+  &__name {
+    font-weight: ui.weight(semibold);
+    overflow-wrap: anywhere;
+  }
+
+  &__where {
+    @include ui.text(sm, muted);
+  }
+
+  &__quote {
+    @include ui.text(sm, secondary);
+    margin-top: ui.space(3);
+    padding-top: ui.space(3);
+    border-top: 1px solid ui.color(border);
+    overflow-wrap: anywhere;
+    white-space: pre-wrap;
+  }
+}
