@@ -55,7 +55,7 @@ task; stop at each checkpoint. BE paths are under `src/main/java/vn/com/coreacad
   - Files: `…/assistant/action/PendingAction.java`, `PendingActionStore.java`,
     `…/assistant/config/AssistantSchedulingConfig.java`, `test/…/assistant/PendingActionStoreTest.java`.
   - Depends on: T3.
-- [ ] **T5 Endpoints and API doc** · M
+- [x] **T5 Endpoints and API doc** · M
   - Accept: `/stream` returns NDJSON lines in order with `X-Accel-Buffering: no`; bad roles, empty list, last
     `assistant`, 501 characters → JSON `CORE-VALIDATION_FAILED`; probe false → `ASSISTANT-AI_UNAVAILABLE` envelope;
     401 without token; confirm and cancel envelopes; `docs/api/ASSISTANT.md` and Postman requests added.
