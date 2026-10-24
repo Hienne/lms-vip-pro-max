@@ -23,6 +23,13 @@
     <app-source-badge [citation]="part.citation" />
     } }
   </p>
+  } @if (reply.action; as card) {
+  <app-action-card
+    [card]="card"
+    [busy]="busy()"
+    (confirm)="confirm.emit(turn().id)"
+    (cancel)="cancel.emit(turn().id)"
+  />
   } @if (reply.status === 'done' && view.unmarked.length > 0) {
   <ul class="message__sources" aria-label="Nguồn của câu trả lời">
     @for (citation of view.unmarked; track citation.n) {

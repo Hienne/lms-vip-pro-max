@@ -37,11 +37,14 @@ function fakeStore() {
       turns$: turns.asReadonly(),
       isAnswering$: answering.asReadonly(),
       isOffline$: signal(false).asReadonly(),
+      isConfirming$: signal(false).asReadonly(),
       announcement$: signal('').asReadonly(),
       close: vi.fn(() => open.set(false)),
       clear: vi.fn(() => turns.set([])),
       ask: vi.fn(),
       stop: vi.fn(),
+      confirm: vi.fn(),
+      cancel: vi.fn(),
     },
   };
 }
@@ -172,5 +175,44 @@ describe('ChatWidget', () => {
     await fixture.whenStable();
     el.querySelector<HTMLButtonElement>('.composer__bar button')?.click();
     expect(store.stop).toHaveBeenCalled();
+  });
+
+  it('hands a card’s Xác nhận and Huỷ to the store with the turn it belongs to', async () => {
+    const { fixture, el, turns, store } = await render();
+    turns.set([
+      {
+        ...turn(7, 'Vui lòng kiểm tra và xác nhận thay đổi bên dưới.'),
+        reply: {
+          ...turn(7, '').reply,
+          text: 'Vui lòng kiểm tra và xác nhận thay đổi bên dưới.',
+          action: {
+            status: 'pending',
+            message: null,
+            pending: {
+              id: 'a1',
+              tool: 'update_profile',
+              title: 'Cập nhật hồ sơ cá nhân',
+              changes: [
+                {
+                  field: 'positionName',
+                  label: 'Chức danh',
+                  from: null,
+                  to: 'Chuyên viên',
+                },
+              ],
+              expiresAt: '2026-10-24T09:10:00Z',
+            },
+          },
+        },
+      },
+    ]);
+    await fixture.whenStable();
+    const [confirm, cancel] = Array.from(
+      el.querySelectorAll<HTMLButtonElement>('app-action-card button'),
+    );
+    confirm.click();
+    cancel.click();
+    expect(store.confirm).toHaveBeenCalledWith(7);
+    expect(store.cancel).toHaveBeenCalledWith(7);
   });
 });

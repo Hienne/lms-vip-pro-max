@@ -1,20 +1,25 @@
-import { Component, computed, input } from '@angular/core';
+import { Component, computed, input, output } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { Spinner } from '@lms/ui';
 import type { AgentTurn } from '../../../../core/assistant/agent-chat.model';
 import { toolStatusText } from '../../../../core/assistant/agent-status';
+import { ActionCard } from '../action-card/action-card';
 import { answerParts } from '../../../../shared/assistant/answer-parts';
 import { SourceBadge } from '../../../../shared/assistant/source-badge/source-badge';
 
 /** One question of the quick assistant and its reply, in whatever state the reply is. */
 @Component({
   selector: 'app-agent-message',
-  imports: [RouterLink, SourceBadge, Spinner],
+  imports: [ActionCard, RouterLink, SourceBadge, Spinner],
   templateUrl: './agent-message.html',
   styleUrl: './agent-message.scss',
 })
 export class AgentMessage {
   readonly turn = input.required<AgentTurn>();
+  /** A card is being confirmed somewhere in the conversation: one at a time. */
+  readonly busy = input(false);
+  readonly confirm = output<number>();
+  readonly cancel = output<number>();
 
   /** The reply's text with its markers as source badges, and the sources no marker points at. */
   protected readonly content = computed(() => {

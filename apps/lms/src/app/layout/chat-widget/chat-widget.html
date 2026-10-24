@@ -33,7 +33,12 @@
     (scroll)="trackScroll()"
   >
     @for (turn of store.turns$(); track turn.id) {
-    <app-agent-message [turn]="turn" />
+    <app-agent-message
+      [turn]="turn"
+      [busy]="store.isConfirming$()"
+      (confirm)="store.confirm($event)"
+      (cancel)="store.cancel($event)"
+    />
     } @empty {
     <p class="chat__empty">
       Hỏi về tài liệu, mở một màn hình hoặc sửa hồ sơ của bạn.
