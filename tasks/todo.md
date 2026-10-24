@@ -18,7 +18,7 @@ task; stop at each checkpoint. BE paths are under `src/main/java/vn/com/coreacad
 
 ## Phase 1: `agent-runtime` (BE)
 
-- [ ] **T1 Ollama tool calling** · S
+- [x] **T1 Ollama tool calling** · S
   - Accept: `chatWithTools` sends `tools`, `stream:true`, `think:false`; streams content deltas; collects
     `tool_calls` split across lines; `error` line → `OllamaException`; refused connection →
     `OllamaUnavailableException`; `chat`/`chatStream` bodies unchanged.
