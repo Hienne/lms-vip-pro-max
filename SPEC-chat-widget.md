@@ -83,8 +83,9 @@ Commands and rules:
   `failed`; both show the server's message. A card whose `expiresAt` has passed is shown `expired` without a
   request. Only one card can be confirming at a time.
 - `clear()`: empties the conversation (and storage); refused while answering.
-- **Persistence:** after every finished turn and every card change, the turns are written to `sessionStorage`
-  under `lms.agent-chat.v1.<userId>` (at most 30 turns, oldest dropped). On sign-in the store reads that key;
+- **Persistence:** on every change, a streaming turn included, the turns are written to `sessionStorage`
+  under `lms.agent-chat.v1.<userId>` (at most 30 turns, oldest dropped). Whenever a user is signed in, every other
+  `lms.agent-chat.v1.*` key in the tab is removed. On sign-in the store reads that key;
   data that fails its zod check is discarded. A turn that was streaming at reload is restored as `stopped`. Sign-out
   removes the key and empties the state. `open` is persisted too, so a reload keeps the panel open.
 
@@ -151,5 +152,9 @@ light and dark themes, keyboard-only (open, ask, confirm, close).
 - After "Xác nhận" or "Huỷ" the cursor goes back to the message box, since the card's buttons disappear.
 - The action card's CSS block is `action-card`: a block named `card` is reserved for the design system (template scan).
 - The open state is stored with the conversation, so the panel is still open after a reload.
+- Hardened after the ship review (2026-10-24): a confirm or cancel in flight is dropped when the user changes, and an
+  answer that lands before the store noticed is ignored; a stream's late callbacks touch only its own turn (a late
+  `complete` no longer clears the newer stream's handle, a late `done` no longer unlocks the composer); the chat is
+  stored while streaming; other users' keys are cleared on sign-in.
 - Browser pass (mock and local backend): 375 and 1280 wide, light and dark, keyboard only (owl → Enter → type → Enter → Tab to
   "Xác nhận" → Enter → Escape).

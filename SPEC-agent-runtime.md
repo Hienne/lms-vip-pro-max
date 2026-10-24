@@ -11,7 +11,10 @@ runs the read-only tools the model calls, feeds their results back, and streams 
 data never runs inside the loop: it becomes a pending action the user must confirm through a separate request,
 which then runs as that user. The loop is bounded and every failure ends the stream with a readable message.
 
-## API (`/api/v1/assistant/agent`, every signed-in user)
+## API (`/api/v1/assistant/agent`, every user granted `AI_ASSISTANT`)
+
+All three endpoints read `/auth/me` on the request thread and refuse with `CORE-ACCESS_DENIED` (HTTP 403) unless its
+`functions` list `AI_ASSISTANT`; a user still on a temporary password has no functions, so this also keeps them out.
 
 | Method | Path                          | Request                | Success                                    | Refusals (HTTP 200 `ERROR` unless noted)                                                        |
 | ------ | ----------------------------- | ---------------------- | ------------------------------------------ | ----------------------------------------------------------------------------------------------- |
@@ -39,6 +42,8 @@ Streams are not wrapped in `BaseResponse` (API_CONTRACT.md: file/stream keep the
   (longer is cut, not refused, since it is the server's own earlier answer).
 - History is text only. Tool calls and tool results are never accepted from the client; they exist only inside
   one request. A client that edits earlier `assistant` text gains nothing it could not type itself.
+- Over 16 000 characters in all (`MAX_HISTORY_CHARS`), the oldest messages are dropped until the rest fits, starting
+  again on a `user` message, so the prompt stays within `num_ctx` 8192.
 
 ### Stream events
 
@@ -82,19 +87,28 @@ On the request thread (so refusals are envelopes):
 
 Inside the `StreamingResponseBody`:
 
-5. Messages = system prompt (below) + the request's messages.
+5. Take a place from `TurnLimiter`: one turn per user, at most `max-concurrent-turns` on the server. No place → the
+   only event is `error` `ASSISTANT-BUSY` and the model is not called. The place is given back in a `finally`.
+   Messages = system prompt (below) + the request's messages.
 6. Up to `max-steps` (4) model calls: `ollama.chatWithTools(messages, tools, AGENT options, onDelta)`.
    Content deltas are written as `delta` events as they arrive.
    - No tool call → the turn is over: write `done` and stop.
-   - Tool calls → for each, in order: write `tool`; look the tool up (unknown name → tool result
+   - Tool calls → only the first 3 (`MAX_CALLS_PER_STEP`) run and go back to the model; for each, in order: write `tool`; look the tool up (unknown name → tool result
      `"Công cụ không tồn tại."`); parse and validate its arguments with the tool's own validator (bad
      arguments → tool result with the validation message, so the model can ask the user); run it.
    - A tool's `ToolOutcome` is one of: `Result(text)` (appended as a `tool` message, loop continues),
      `Navigate(path, title, text)` and `ActionRequired(PendingAction)`. The last two are **terminal**: the runtime
      writes the event, then `done` with the outcome's fixed text, and makes no further model call.
+   - Once a tool that `readsSharedContent()` (`search_documents`) has run, the tools that `actsForUser()`
+     (`open_screen`, `update_profile`) are no longer offered, and a call to one, in the same step or later, gets the
+     result `"Không thể mở màn hình hay đề xuất thay đổi trong lượt đã đọc tài liệu. Hãy trả lời câu hỏi, người dùng
+có thể gửi yêu cầu đó riêng."` instead of running: document text is written by others and may carry instructions.
+   - A blank final answer, after the finisher, becomes `"Mình chưa có câu trả lời cho yêu cầu này. Bạn thử hỏi lại
+nhé."` with no citations.
 7. Cap reached with the model still calling tools → `done` with
    `"Mình chưa xử lý được yêu cầu này. Bạn thử diễn đạt lại ngắn gọn hơn nhé."`.
-8. `OllamaUnavailableException`/`OllamaException` → `error` event `ASSISTANT-AI_UNAVAILABLE`. Any other
+8. `OllamaUnavailableException`/`OllamaException` (a stream closed before `done: true` included) → `error` event
+   `ASSISTANT-AI_UNAVAILABLE`. Any other
    exception → `error` event `CORE-INTERNAL_ERROR` with the generic message; the stack trace is logged without
    message content.
 
@@ -130,7 +144,9 @@ public ChatTurn chatWithTools(List<ChatMessage> messages, List<ToolDefinition> t
 - Body: as `chatBody` plus `"tools": [{ "type": "function", "function": { "name", "description", "parameters" } }]`,
   `stream: true`, `think: false`.
 - Reading the stream: content deltas go to `onDelta`; `message.tool_calls` (`function.name`, `function.arguments`
-  as a JSON object) are collected across lines; return at `done: true`.
+  as a JSON object) are collected across lines; return at `done: true`; the stream ending without it is an
+  `OllamaException` (also for `chatStream`). The log line names only the calls whose name is among the offered tools,
+  others as `unknown`.
 - `ChatMessage` carries `role`, `content`, optional `tool_calls` (an assistant step that called tools) and optional
   `tool_name` (a `tool` result), serialised with `NON_NULL` so the existing `Message` shape is unchanged.
 - `Options.AGENT = new Options(0.1, 8192)`.
@@ -151,11 +167,12 @@ arguments, preview, createdAt, expiresAt)`.
 
 ## Response codes (`AssistantResponseCode`)
 
-| Code                         | Title                      | Message                                                                 |
-| ---------------------------- | -------------------------- | ----------------------------------------------------------------------- |
-| `ASSISTANT-AI_UNAVAILABLE`   | Dịch vụ AI chưa sẵn sàng   | Dịch vụ AI tạm thời không phản hồi. Vui lòng thử lại sau.               |
-| `ASSISTANT-ACTION_NOT_FOUND` | Yêu cầu không còn hiệu lực | Yêu cầu này đã hết hạn hoặc đã được xử lý. Vui lòng yêu cầu lại trợ lý. |
-| `ASSISTANT-ACTION_STALE`     | Dữ liệu đã thay đổi        | Dữ liệu đã thay đổi từ lúc trợ lý đề xuất. Vui lòng yêu cầu lại.        |
+| Code                         | Title                      | Message                                                                  |
+| ---------------------------- | -------------------------- | ------------------------------------------------------------------------ |
+| `ASSISTANT-AI_UNAVAILABLE`   | Dịch vụ AI chưa sẵn sàng   | Dịch vụ AI tạm thời không phản hồi. Vui lòng thử lại sau.                |
+| `ASSISTANT-ACTION_NOT_FOUND` | Yêu cầu không còn hiệu lực | Yêu cầu này đã hết hạn hoặc đã được xử lý. Vui lòng yêu cầu lại trợ lý.  |
+| `ASSISTANT-BUSY`             | Trợ lý đang bận            | Trợ lý đang bận trả lời. Bạn đợi câu trả lời trước xong rồi thử lại nhé. |
+| `ASSISTANT-ACTION_STALE`     | Dữ liệu đã thay đổi        | Dữ liệu đã thay đổi từ lúc trợ lý đề xuất. Vui lòng yêu cầu lại.         |
 
 All HTTP 200, like `KnowledgeResponseCode`.
 
@@ -168,9 +185,15 @@ app:
       max-steps: ${ASSISTANT_AGENT_MAX_STEPS:4}
       history-messages: 20
       action-ttl: ${ASSISTANT_ACTION_TTL:10m}
+      max-concurrent-turns: ${ASSISTANT_MAX_CONCURRENT_TURNS:4}
+spring:
+  mvc:
+    async:
+      request-timeout: ${ASSISTANT_STREAM_TIMEOUT:15m}
 ```
 
-The model, URL and timeouts stay under `app.knowledge.ollama` (one Ollama client).
+The model, URL and timeouts stay under `app.knowledge.ollama` (one Ollama client). The async timeout must cover
+`max-steps` × the Ollama `read-timeout` (4 × 180 s); the servlet default of about 30 s cut longer turns.
 
 ## Project structure
 
@@ -266,3 +289,7 @@ definitions only (no `run`).
 - The backend accepts 1–20 messages, so the app sends the last 9 finished turns plus the new question (19 messages), not
   the 10 turns of decision C4.
 - A tried tweak to the `open_screen` description ("name screens, not codes") dropped the eval to 19/20 and was reverted.
+- Hardened after the ship review (2026-10-24): acting tools withdrawn once document text is in the turn, the stream
+  async timeout, `AI_ASSISTANT` enforced on the server, the turn limiter, the history and per-step caps, the blank-answer
+  fallback, a stream without `done` as a failure, unknown tool names kept out of the log, and the stale check moved into
+  the profile service's transaction (`SPEC-agent-tools.md`).

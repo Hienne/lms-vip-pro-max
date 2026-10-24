@@ -64,8 +64,8 @@ Build order (one phase at a time, each ends with its checks, a commit and a stop
 1. **Local run.** Postgres from the backend's `compose.yaml` (`pgvector/pgvector:pg16`, needs Docker Desktop
    running — it is not running now), backend on `localhost:8019`, app with
    `LMS_API_TARGET=http://localhost:8019 npm start`. Ollama 0.40.9 is installed with `qwen3:8b` and `bge-m3`.
-2. **Who sees it.** Every signed-in user with the `AI_ASSISTANT` function (all four roles today). No new function
-   code. The widget is hidden on `/assistant` (that screen is the full version) and on the sign-in and
+2. **Who sees it.** Every signed-in user with the `AI_ASSISTANT` function (all four roles today), enforced by the
+   backend on every assistant endpoint too. No new function code. The widget is hidden on `/assistant` (that screen is the full version) and on the sign-in and
    change-password pages.
 3. **New endpoints** under `/api/v1/assistant/agent`: `POST /stream` (NDJSON, same transport as
    `kb-chat`), `POST /actions/{actionId}/confirm`, `POST /actions/{actionId}/cancel`. Pending actions are held

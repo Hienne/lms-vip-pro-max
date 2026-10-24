@@ -114,10 +114,12 @@ Definition:
   `ActionRequired(action, "Vui lòng kiểm tra và xác nhận thay đổi bên dưới.")`. The preview lists each change as
   `{ field, label, from, to }` with labels "Họ tên", "Email", "Chức danh" and `null` shown by the app as "(trống)".
 - `execute` (on confirm, request thread, the user's own security context):
-  1. Reload the profile; if any change's `from` differs from the current value → `ASSISTANT-ACTION_STALE`.
-  2. Build a `ProfileUpdateRequest` through its setters with only the changed fields and call
-     `SelfProfileService.update` (its checks, write lock and `USER_PROFILE_UPDATED` audit apply unchanged).
-  3. Return `ActionResultView(actionId, "update_profile", "Đã cập nhật hồ sơ.", authService.me())`.
+  1. Build a `ProfileUpdateRequest` through its setters with only the changed fields and call
+     `SelfProfileService.updateIfUnchanged(request, from-values)`: after taking the identity write lock, in the
+     transaction that writes, it compares each `from` with the current value; any difference → nothing written and
+     the tool throws `ASSISTANT-ACTION_STALE`. Otherwise its checks and `USER_PROFILE_UPDATED` audit apply as for
+     `update`, which now calls it with no expectations.
+  2. Return `ActionResultView(actionId, "update_profile", "Đã cập nhật hồ sơ.", authService.me())`.
      Refusals from the service (validation, SSO, password change pending) pass through as their own envelopes.
 
 ## Project structure
@@ -164,8 +166,8 @@ As in `agent-runtime`, approving this spec is the explicit request for these tes
   invented code → the refusal `Result`, no `Navigate`; a user with no openable screen is not offered the tool.
 - `UpdateProfileToolTest`: SSO and must-change-password users are not offered it; each validation failure is a
   `Result`; unchanged fields are dropped; `ActionRequired` preview has labels and old values; `execute` calls
-  `SelfProfileService.update` with only the changed fields; a profile changed since the proposal →
-  `ACTION_STALE` and no update.
+  `SelfProfileService.updateIfUnchanged` with only the changed fields and the card's `from` values; the service
+  reporting a change → `ACTION_STALE`.
 - `AgentProfileFlowIT` (Testcontainers, the seeded demo users, `OllamaClient` mocked to call `update_profile`):
   stream → `action_required`; confirm by another user → `ACTION_NOT_FOUND`; confirm by the owner → the row and the
   audit log change once; a second confirm → `ACTION_NOT_FOUND`.
