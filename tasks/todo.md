@@ -48,7 +48,7 @@ task; stop at each checkpoint. BE paths are under `src/main/java/vn/com/coreacad
     `…/assistant/exception/AssistantResponseCode.java`; `application.yml`; `test/…/assistant/AgentServiceTest.java`.
     (Many small records; one slice: the loop and the types it needs.)
   - Depends on: T2.
-- [ ] **T4 Pending actions** · S
+- [x] **T4 Pending actions** · S
   - Accept: confirm runs once under a race; another user's, an expired and a cancelled id are all
     `ACTION_NOT_FOUND`; the 21st action drops the oldest; the scheduled sweep removes expired entries.
   - Verify: `mvn test -Dtest=PendingActionStoreTest`.
