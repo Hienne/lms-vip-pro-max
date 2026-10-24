@@ -26,7 +26,7 @@ task; stop at each checkpoint. BE paths are under `src/main/java/vn/com/coreacad
   - Files: `…/knowledge/ai/OllamaClient.java`, `ChatMessage.java`, `ToolCall.java`, `ToolDefinition.java`,
     `ChatTurn.java`; `test/…/knowledge/ai/OllamaClientTest.java`.
   - Depends on: T0.
-- [ ] **T2 Prompt, tool definitions and the tool-choice eval** · M · _highest risk, fail fast_
+- [x] **T2 Prompt, tool definitions and the tool-choice eval** · M · _highest risk, fail fast_
   - Accept: `AgentPrompt` holds the spec's system prompt; the three tool definitions exist as data (no `run`);
     `AgentToolChoiceEval` runs the 20 prompts against the real model and prints tool chosen vs expected and time to
     first token. The `*Eval` name keeps it out of the default run: surefire only includes `*Test` and `*IT`, so
