@@ -61,11 +61,17 @@ export class ChatWidget {
       const composer = this.composer();
       if (composer) untracked(() => composer.focus());
     });
+    // Every opening starts at the newest message, whatever the last opening ended on.
+    afterRenderEffect(() => {
+      const log = this.log()?.nativeElement;
+      if (!log) return;
+      this.following = true;
+      log.scrollTop = log.scrollHeight;
+    });
     afterRenderEffect(() => {
       this.growth();
-      const log = this.log()?.nativeElement;
-      if (log && untracked(() => this.following))
-        log.scrollTop = log.scrollHeight;
+      const log = untracked(() => this.log())?.nativeElement;
+      if (log && this.following) log.scrollTop = log.scrollHeight;
     });
   }
 
@@ -74,6 +80,16 @@ export class ChatWidget {
     if (!log) return;
     this.following =
       log.scrollHeight - log.scrollTop - log.clientHeight <= FOLLOW_DISTANCE;
+  }
+
+  protected confirm(turnId: number): void {
+    this.store.confirm(turnId);
+    this.composer()?.focus();
+  }
+
+  protected cancel(turnId: number): void {
+    this.store.cancel(turnId);
+    this.composer()?.focus();
   }
 
   /** Closes the panel and puts focus back on the owl that opened it. */

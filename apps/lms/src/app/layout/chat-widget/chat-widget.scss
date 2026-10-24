@@ -22,8 +22,11 @@
   }
 }
 
+// The dev toolbar sits in the same corner on a wide screen; on a phone the panel keeps both gutters.
 :host(.chat-widget--beside-toolbar) {
-  right: calc(#{ui.space(4)} + 6rem);
+  @include ui.bp(sm) {
+    right: calc(#{ui.space(4)} + 6rem);
+  }
 }
 
 .chat {

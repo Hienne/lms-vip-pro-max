@@ -112,6 +112,26 @@ describe('ChatWidget', () => {
     expect(document.activeElement).toBe(el.querySelector('textarea'));
   });
 
+  it('starts every opening at the newest message', async () => {
+    const height = vi
+      .spyOn(HTMLElement.prototype, 'scrollHeight', 'get')
+      .mockReturnValue(900);
+    try {
+      const { fixture, el, open, turns } = await render();
+      turns.set([turn(1, 'Trả lời một'), turn(2, 'Trả lời hai')]);
+      await fixture.whenStable();
+      open.set(false);
+      await fixture.whenStable();
+      open.set(true);
+      await fixture.whenStable();
+      expect(el.querySelector<HTMLElement>('[role="log"]')?.scrollTop).toBe(
+        900,
+      );
+    } finally {
+      height.mockRestore();
+    }
+  });
+
   it('closes on Escape and hands focus back to the owl', async () => {
     const { fixture, el, store } = await render();
     el.querySelector('textarea')?.dispatchEvent(
@@ -214,5 +234,43 @@ describe('ChatWidget', () => {
     cancel.click();
     expect(store.confirm).toHaveBeenCalledWith(7);
     expect(store.cancel).toHaveBeenCalledWith(7);
+  });
+
+  it('puts the cursor back in the message box after a card button is used, since the buttons go away', async () => {
+    const { fixture, el, turns } = await render();
+    turns.set([
+      {
+        ...turn(7, 'Vui lòng kiểm tra và xác nhận thay đổi bên dưới.'),
+        reply: {
+          ...turn(7, '').reply,
+          action: {
+            status: 'pending',
+            message: null,
+            pending: {
+              id: 'a1',
+              tool: 'update_profile',
+              title: 'Cập nhật hồ sơ cá nhân',
+              changes: [
+                {
+                  field: 'positionName',
+                  label: 'Chức danh',
+                  from: null,
+                  to: 'Chuyên viên',
+                },
+              ],
+              expiresAt: '2026-10-24T09:10:00Z',
+            },
+          },
+        },
+      },
+    ]);
+    await fixture.whenStable();
+    const confirm = el.querySelector<HTMLButtonElement>(
+      'app-action-card button',
+    )!;
+    confirm.focus();
+    expect(document.activeElement).toBe(confirm);
+    confirm.click();
+    expect(document.activeElement).toBe(el.querySelector('textarea'));
   });
 });
