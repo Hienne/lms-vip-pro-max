@@ -170,14 +170,14 @@ task; stop at each checkpoint. BE paths are under `src/main/java/vn/com/coreacad
 
 ### Checkpoint: Phase 3
 
-- [ ] `npm run check` green
-- [ ] angular.md §14 and the visual-design checklist pass
-- [ ] Browser on the mock backend: 375 and 1280, light and dark, keyboard only
-- [ ] Stop for approval
+- [x] `npm run check` green
+- [x] angular.md §14 and the visual-design checklist pass
+- [x] Browser on the mock backend: 375 and 1280, light and dark, keyboard only
+- [x] Stop for approval
 
 ## Phase 4: `owl-launcher` (FE)
 
-- [ ] **T17 The owl opens and closes the panel** · S
+- [x] **T17 The owl opens and closes the panel** · S
   - Accept: click toggles when available, navigates to `/assistant` when not; `aria-expanded`, `aria-controls`,
     labels with the processing count; bubble hidden while open; click no longer dismisses the notice; existing owl
     state specs unchanged; the dev-toolbar offset moves owl and panel together.
@@ -188,8 +188,8 @@ task; stop at each checkpoint. BE paths are under `src/main/java/vn/com/coreacad
 
 ### Checkpoint: Phase 4
 
-- [ ] Frontend gates as in Phase 3, plus the owl's processing states unchanged
-- [ ] Stop for approval
+- [x] Frontend gates as in Phase 3, plus the owl's processing states unchanged
+- [x] Stop for approval
 
 ## Phase 5: end to end
 
