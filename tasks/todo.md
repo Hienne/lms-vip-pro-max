@@ -121,7 +121,7 @@ task; stop at each checkpoint. BE paths are under `src/main/java/vn/com/coreacad
   - Files: `libs/contracts/src/lib/assistant-agent/agent.schema.ts`, `agent.endpoints.ts`, `agent.schema.spec.ts`,
     `libs/contracts/src/index.ts`.
   - Depends on: Phase 2 (contract as built).
-- [ ] **T11 Mock backend for the agent** · M
+- [x] **T11 Mock backend for the agent** · M
   - Accept: each scripted row yields its events in order and every line parses; confirm changes `/auth/me`;
     confirm twice, by another user, or after cancel → `assistantActionNotFound`; the agent requests of the backend's
     Postman collection (added in T5 and T9) are copied into `postman-requests.ts` and the replay parses them.
