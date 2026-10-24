@@ -1,5 +1,7 @@
 import {
   adminOrgEndpoints,
+  AgentCommandSchema,
+  agentEndpoints,
   authV1Endpoints,
   identityEndpoints,
   knowledgeEndpoints,
@@ -11,6 +13,8 @@ import {
   USER_LIMITS,
   type AnyEndpoint,
   type Envelope,
+  type PendingAction,
+  type ProfileChange,
   type FunctionInfo,
   type GrantScope,
   type KnowledgeDocument,
@@ -42,6 +46,19 @@ import {
   userAuditFixtures,
   userCourseFixtures,
 } from '../admin-org/admin-org.fixtures';
+import {
+  AGENT_PROFILE_CARD_TITLE,
+  AGENT_PROFILE_INVALID,
+  AGENT_PROFILE_NOT_OFFERED,
+  AGENT_PROFILE_UNCHANGED,
+  AGENT_SCREEN_REFUSED,
+  agentActionEvents,
+  agentAiErrorEvents,
+  agentDocumentEvents,
+  agentNavigateEvents,
+  agentNotFoundEvents,
+  agentRefusedEvents,
+} from '../assistant-agent/agent.fixtures';
 import { envelopeError, envelopeOk } from '../envelope';
 import {
   knowledgeAnswerFixture,
@@ -127,6 +144,29 @@ const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 type Handler = (request: FakeRequest) => FakeReply;
 
+/** How long the backend keeps a proposed action waiting for its confirmation. */
+const ACTION_TTL_MS = 10 * 60_000;
+
+interface PendingProposal {
+  readonly userId: string;
+  readonly action: Extract<PendingAction, { tool: 'update_profile' }>;
+  readonly expiresAt: number;
+}
+
+/** Lower case without accents, so a scripted marker matches however the question is typed. */
+const fold = (text: string): string =>
+  Array.from(text.normalize('NFC'))
+    .map((char) => char.normalize('NFD').replace(/\p{M}/gu, ''))
+    .join('')
+    .replace(/đ/g, 'd')
+    .toLowerCase();
+
+const PROFILE_FIELDS = [
+  { marker: 'chuc danh', field: 'positionName', label: 'Chức danh' },
+  { marker: 'email', field: 'email', label: 'Email' },
+  { marker: 'ho ten', field: 'fullName', label: 'Họ tên' },
+] as const;
+
 /**
  * The backend's identity and organisation services, in memory, on the demo seed: the same
  * statuses, codes, scoping and PATCH semantics as corebanking-academy, minus what no screen
@@ -163,6 +203,10 @@ export class FakeBackend {
   private nextDocumentId =
     Math.max(...knowledgeDocumentFixtures.map((d) => d.id)) + 1;
 
+  /** Changes the assistant proposed and nobody has confirmed, by action id (the backend keeps them in memory too). */
+  private pendingActions = new Map<string, PendingProposal>();
+  private nextActionSeq = 1;
+
   private readonly handlers = new Map<AnyEndpoint, Handler>([
     [authV1Endpoints.login, (r) => this.login(r)],
     [authV1Endpoints.logout, (r) => this.logout(r)],
@@ -197,6 +241,9 @@ export class FakeBackend {
     [knowledgeEndpoints.uploadDocument, (r) => this.uploadDocument(r)],
     [knowledgeEndpoints.ask, (r) => this.ask(r)],
     [knowledgeEndpoints.askStream, (r) => this.askStream(r)],
+    [agentEndpoints.stream, (r) => this.agentStream(r)],
+    [agentEndpoints.confirmAction, (r) => this.confirmAction(r)],
+    [agentEndpoints.cancelAction, (r) => this.cancelAction(r)],
   ]);
 
   /** True for the endpoints this backend answers; the others are not the backend's. */
@@ -406,6 +453,132 @@ export class FakeBackend {
       body: envelopeOk(null),
       events: found ? knowledgeStreamFixture : knowledgeNotFoundStreamFixture,
     };
+  }
+
+  // ---- quick assistant: scripted turns and confirmed actions ---------------------------------
+
+  private agentStream(request: FakeRequest): FakeReply {
+    const user = this.caller(request);
+    const parsed = AgentCommandSchema.safeParse(request.body);
+    const last = parsed.success ? parsed.data.messages.at(-1) : undefined;
+    const text = last?.content.trim() ?? '';
+    if (!last || text.length < 1 || text.length > 500) {
+      return invalid('Tin nhắn phải từ 1 đến 500 ký tự.');
+    }
+
+    return {
+      status: 200,
+      body: envelopeOk(null),
+      events: this.scriptedTurn(user, text),
+    };
+  }
+
+  /** First match wins; see `agent.fixtures.ts` for what each reply says. */
+  private scriptedTurn(user: DbUser, text: string) {
+    const folded = fold(text);
+    if (folded.includes('mo trang') || folded.includes('mo man hinh')) {
+      const screen = this.functionsOf(user.userId)
+        .filter((f) => f.routePattern && !f.routePattern.includes(':'))
+        .filter((f) => folded.includes(fold(f.name)))
+        .sort((a, b) => b.name.length - a.name.length)[0];
+      return screen
+        ? agentNavigateEvents(screen.routePattern as string, screen.name)
+        : agentRefusedEvents('open_screen', AGENT_SCREEN_REFUSED);
+    }
+    const profile = this.profileTurn(user, text, folded);
+    if (profile) return profile;
+    if (folded.includes('loi ai')) return agentAiErrorEvents;
+    if (folded.includes('khong co trong tai lieu')) return agentNotFoundEvents;
+    return agentDocumentEvents;
+  }
+
+  /** "đổi chức danh … thành <giá trị>": a card, or the words the tool would give back. */
+  private profileTurn(user: DbUser, text: string, folded: string) {
+    const field = PROFILE_FIELDS.find((f) => folded.includes(f.marker));
+    const at = folded.lastIndexOf(' thanh ');
+    if (!field || at < 0) return undefined;
+    const to = text
+      .slice(at + ' thanh '.length)
+      .trim()
+      .replace(/[.!]+$/, '');
+    if (!to) return undefined;
+    if (user.authProvider !== 'LOCAL') {
+      return agentRefusedEvents('update_profile', AGENT_PROFILE_NOT_OFFERED);
+    }
+    const valid =
+      field.field === 'email'
+        ? EMAIL.test(to) && to.length <= USER_LIMITS.email
+        : to.length <= USER_LIMITS[field.field];
+    if (!valid) {
+      return agentRefusedEvents(
+        'update_profile',
+        AGENT_PROFILE_INVALID[field.field],
+      );
+    }
+    const from = user[field.field] ?? null;
+    if (from === to) {
+      return agentRefusedEvents('update_profile', AGENT_PROFILE_UNCHANGED);
+    }
+
+    const change: ProfileChange = {
+      field: field.field,
+      label: field.label,
+      from,
+      to,
+    };
+    const expiresAt = Date.now() + ACTION_TTL_MS;
+    const action: PendingProposal['action'] = {
+      id: `agent-action-${this.nextActionSeq++}`,
+      tool: 'update_profile',
+      title: AGENT_PROFILE_CARD_TITLE,
+      changes: [change],
+      expiresAt: new Date(expiresAt).toISOString(),
+    };
+    this.pendingActions.set(action.id, {
+      userId: user.userId,
+      action,
+      expiresAt,
+    });
+    return agentActionEvents(action);
+  }
+
+  /** The action when it is the caller's and has not expired, else the one not-found refusal. */
+  private pendingOf(request: FakeRequest, user: DbUser): PendingProposal {
+    const id = request.params['actionId'] ?? '';
+    const pending = this.pendingActions.get(id);
+    if (pending && pending.expiresAt <= Date.now())
+      this.pendingActions.delete(id);
+    if (
+      !pending ||
+      pending.userId !== user.userId ||
+      pending.expiresAt <= Date.now()
+    ) {
+      return refuse('assistantActionNotFound');
+    }
+    return pending;
+  }
+
+  private confirmAction(request: FakeRequest): FakeReply {
+    const user = this.caller(request);
+    const pending = this.pendingOf(request, user);
+    this.pendingActions.delete(pending.action.id);
+    const changes = pending.action.changes;
+    if (changes.some((c) => (user[c.field] ?? null) !== c.from)) {
+      return refuse('assistantActionStale');
+    }
+    for (const c of changes) user[c.field] = c.to as string;
+    return ok({
+      actionId: pending.action.id,
+      tool: pending.action.tool,
+      message: 'Đã cập nhật hồ sơ.',
+      data: this.meOf(user),
+    });
+  }
+
+  private cancelAction(request: FakeRequest): FakeReply {
+    const user = this.caller(request);
+    this.pendingActions.delete(this.pendingOf(request, user).action.id);
+    return ok(null);
   }
 
   // ---- identity: who is calling -------------------------------------------------------------
