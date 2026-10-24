@@ -93,7 +93,7 @@ task; stop at each checkpoint. BE paths are under `src/main/java/vn/com/coreacad
   - Verify: `mvn test -Dtest=OpenScreenToolTest`; manual: `quantri` → `navigate /admin/users`, `hocvien` refused.
   - Files: `…/assistant/tool/OpenScreenTool.java`, `test/…/assistant/OpenScreenToolTest.java`.
   - Depends on: Phase 1.
-- [ ] **T9 `update_profile`** · M
+- [x] **T9 `update_profile`** · M
   - Accept: SSO and must-change-password users not offered; validation failures are `Result`s; unchanged fields
     dropped; preview has labels and old values; `execute` updates only the changed fields through
     `SelfProfileService` and returns `/me`; changed since proposal → `ACTION_STALE`; IT: foreign confirm
