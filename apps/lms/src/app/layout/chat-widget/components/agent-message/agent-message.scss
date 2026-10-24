@@ -1,19 +1,22 @@
 @use 'ui';
 
 :host {
-  @include ui.stack(3);
+  @include ui.stack(2);
 }
 
 .message {
   @include ui.stack(1);
 
+  // The user's words in an outlined bubble on the right; the assistant's reply is plain text.
   &--user {
     align-items: flex-end;
 
     .message__text {
+      max-width: 85%;
       padding: ui.space(2) ui.space(3);
-      border-radius: ui.radius(md);
       background: ui.color(surface-2);
+      border: 1px solid ui.color(border);
+      border-radius: ui.radius(md);
     }
   }
 

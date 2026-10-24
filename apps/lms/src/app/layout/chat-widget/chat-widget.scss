@@ -74,8 +74,9 @@
     }
   }
 
+  // Turns sit further apart than the parts of one turn, so each question and its reply read as a pair.
   &__log {
-    @include ui.stack(4);
+    @include ui.stack(6);
     flex: 1 1 auto;
     min-height: 8rem;
     padding: ui.space(4);
