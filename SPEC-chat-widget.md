@@ -142,3 +142,14 @@ password change not pending), `announcement$` (screen-reader text, as `Assistant
 `npm run check` green; angular.md §14 and the visual-design checklist pass; in the browser on the mock backend
 (`mockBackend: true`): each scripted row of `agent-contracts` behaves as above, at 375px and at desktop width, in
 light and dark themes, keyboard-only (open, ask, confirm, close).
+
+## Implementation notes (as built)
+
+- History: the store sends 9 finished turns plus the new question (`HISTORY_TURNS`), because the backend caps a request at
+  20 messages; decision C4 said 10 turns.
+- The panel opens at the newest message every time and keeps following streamed text only while the reader is at the end.
+- After "Xác nhận" or "Huỷ" the cursor goes back to the message box, since the card's buttons disappear.
+- The action card's CSS block is `action-card`: a block named `card` is reserved for the design system (template scan).
+- The open state is stored with the conversation, so the panel is still open after a reload.
+- Browser pass (mock and local backend): 375 and 1280 wide, light and dark, keyboard only (owl → Enter → type → Enter → Tab to
+  "Xác nhận" → Enter → Escape).

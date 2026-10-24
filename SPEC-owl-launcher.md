@@ -54,3 +54,13 @@ apps/lms/src/app/layout/shell/        app-shell.html, app-shell.scss (renders <a
 `npm run check` green; angular.md §14 and the visual-design checklist pass; in the browser: upload a file, open the
 panel while the owl chews, ask a question, close the panel and see the smile and bubble when processing ends; keyboard
 only: Tab to the owl, Enter opens with focus in the composer, Escape closes with focus back on the owl.
+
+## Implementation notes (as built)
+
+- Without the assistant function the owl keeps its old click (go to `/assistant` and clear the finished notice), so its
+  existing specs run unchanged; the new behaviour is a second `describe` that turns the assistant on.
+- Labels: "Mở Trợ lý nhanh" / "Đóng Trợ lý nhanh", plus ", đang xử lý N tài liệu"; the tooltip repeats the words and is
+  empty while the panel is open.
+- Checked live: the owl chews and names the count while the panel is open. The smile and bubble after processing, and the
+  bubble hiding while the panel is open, are covered by specs only: the ready notice dismisses itself after a few seconds, too
+  short to catch in the browser with a small document.

@@ -184,3 +184,17 @@ As in `agent-runtime`, approving this spec is the explicit request for these tes
 `mvn clean verify` green. Manually on the local backend: `hocvien` asking for "quản lý người dùng" gets a refusal and
 no `navigate`; `quantri` gets `navigate` to `/admin/users`; a profile change shows `action_required`, the row is
 unchanged until confirm, and changed once after it.
+
+## Implementation notes (as built)
+
+- `search_documents` asks the model to answer with the exact not-found sentence when the passages do not answer the
+  question. `qwen3:8b` follows it for some questions and paraphrases for others ("… không được đề cập trong tài liệu"). A
+  paraphrase carries no `[n]` marker, so the `kb-chat` rule (no usable marker returns every retrieved chunk) attaches
+  sources to it. Checked on the local backend: of four out-of-document questions, one got the exact sentence with no sources.
+  Making a paraphrased not-found carry no sources would change that `kb-chat` rule, which this map does not touch (ask first);
+  it is left as a follow-up.
+- A refusal from `open_screen` (a screen the role does not grant) goes back to the model as text, and the model sometimes
+  repeats the function codes it was given ("PROFILE, COURSE_LEARNING, …") instead of screen names. Nothing navigates and the
+  refusal is clear, but the wording is rough; a description sentence against it cost one eval case and was reverted.
+- Verified on the local backend: `quantri` + "mở trang quản lý người dùng" navigates to `/admin/users`; `hocvien` is refused;
+  "Đổi chức danh … thành Chuyên viên" shows the card, "Huỷ" changes nothing, "Xác nhận" updates the profile page.

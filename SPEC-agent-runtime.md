@@ -256,3 +256,13 @@ definitions (stubbed execution) and reports, per prompt, the tool chosen versus 
 median time to first token) is reported at the end of Phase 1; below 90% we revisit the prompt or the tool
 descriptions before Phase 2. This needs the tool definitions from `agent-tools`, so Phase 1 adds them as
 definitions only (no `run`).
+
+## Implementation notes (as built)
+
+- Tool-choice eval on the shipped code: 20/20 (tool and arguments). Median time to the tool decision about 1 s on this Mac;
+  direct answers start streaming after about 0.2 s; a cold model adds about 8 s once.
+- Time to first token, document question, warm model: the `tool` event after about 1.4 s (drives the status line), the first
+  answer text after about 4 s (up to 8 s when the passages do not answer the question), `done` after about 8.5 s.
+- The backend accepts 1–20 messages, so the app sends the last 9 finished turns plus the new question (19 messages), not
+  the 10 turns of decision C4.
+- A tried tweak to the `open_screen` description ("name screens, not codes") dropped the eval to 19/20 and was reverted.

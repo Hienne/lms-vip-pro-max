@@ -148,3 +148,13 @@ libs/mocks/src/lib/backend-responses.ts   three refusals
 
 `npm run check` green; the contract and mock specs above pass; `postman.contract.spec.ts` replays the backend's
 new agent requests (added in `agent-tools`) against the mock and parses every answer.
+
+## Implementation notes (as built)
+
+- The request schema keeps the backend's 1–20 message cap (`AGENT_HISTORY_MESSAGES`) and the 500-character limit
+  (`AGENT_MESSAGE_MAX_LENGTH`); the last message must be from the user.
+- `confirmAction` and `cancelAction` are called straight through `client.call` from the store, not through
+  `serverMutation`: the card owns its status and message, so the store maps `ASSISTANT-ACTION_NOT_FOUND` and
+  `ASSISTANT-ACTION_STALE` to the card instead of raising a toast.
+- The mock backend scripts its replies with an accent- and case-insensitive match, first match wins; pending actions expire
+  after 10 minutes like the real ones.

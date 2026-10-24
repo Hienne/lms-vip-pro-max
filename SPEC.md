@@ -1,6 +1,6 @@
 # Capability map: AI chatbot with tool calls ("Trợ lý nhanh")
 
-Status: **map and module specs approved 2026-10-24; plan in [tasks/plan.md](tasks/plan.md).**
+Status: **built and verified on the local backend 2026-10-24; plan in [tasks/plan.md](tasks/plan.md). Deviations and known gaps are in the "Implementation notes (as built)" of each module spec.**
 
 Replaces the map of the AI assistant RAG initiative (shipped in PR #40; that map is in git history). Its module
 specs (`SPEC-kb-*.md`, `SPEC-doc-tracker.md`, `SPEC-assistant-screen.md`, `SPEC-owl-indicator.md`) stay beside
