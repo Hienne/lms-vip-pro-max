@@ -20,6 +20,13 @@ import { AgentComposer } from './components/agent-composer/agent-composer';
 import { OwlFace } from '../owl/owl-face/owl-face';
 import { AgentMessage } from './components/agent-message/agent-message';
 
+/** One question for each thing the assistant does: documents, screens, the profile. */
+export const SUGGESTIONS = [
+  'Quy trình EOD gồm những bước nào?',
+  'Mở trang Hồ sơ cá nhân',
+  'Đổi chức danh của tôi',
+] as const;
+
 /** How close to the end of the log counts as "following" the newest message, in pixels. */
 const FOLLOW_DISTANCE = 48;
 
@@ -43,6 +50,7 @@ export class ChatWidget {
   readonly besideToolbar = input(false);
 
   protected readonly panelId = AGENT_PANEL_ID;
+  protected readonly suggestions = SUGGESTIONS;
   protected readonly isEmpty = computed(() => this.store.turns$().length === 0);
 
   private readonly composer = viewChild(AgentComposer);
@@ -81,6 +89,12 @@ export class ChatWidget {
     if (!log) return;
     this.following =
       log.scrollHeight - log.scrollTop - log.clientHeight <= FOLLOW_DISTANCE;
+  }
+
+  /** Sends a suggested question as it stands; the list goes away, so the cursor goes to the box. */
+  protected suggest(question: string): void {
+    this.store.ask(question);
+    this.composer()?.focus();
   }
 
   protected confirm(turnId: number): void {

@@ -87,9 +87,43 @@
     }
   }
 
+  // Left-aligned: the hint, then the suggestions as plain links, one per line.
   &__empty {
+    @include ui.stack(1);
+  }
+
+  &__hint {
     @include ui.text(sm, muted);
     margin: 0;
+  }
+
+  &__suggestions {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  &__suggestion {
+    @include ui.text(sm);
+    padding: ui.space(1) 0;
+    color: ui.color(primary);
+    text-align: start;
+    background: none;
+    border: 0;
+    cursor: pointer;
+
+    &:hover:not(:disabled) {
+      text-decoration: underline;
+    }
+
+    &:disabled {
+      color: ui.color(text-muted);
+      cursor: not-allowed;
+    }
+
+    &:focus-visible {
+      @include ui.focus-ring;
+    }
   }
 
   &__composer {

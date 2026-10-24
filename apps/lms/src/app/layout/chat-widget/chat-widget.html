@@ -40,9 +40,25 @@
       (cancelled)="cancel($event)"
     />
     } @empty {
-    <p class="chat__empty">
-      Hỏi về tài liệu, mở một màn hình hoặc sửa hồ sơ của bạn.
-    </p>
+    <div class="chat__empty">
+      <p class="chat__hint">
+        Hỏi về tài liệu, mở một màn hình hoặc sửa hồ sơ của bạn. Thử:
+      </p>
+      <ul class="chat__suggestions">
+        @for (suggestion of suggestions; track suggestion) {
+        <li>
+          <button
+            type="button"
+            class="chat__suggestion"
+            [disabled]="store.isOffline$()"
+            (click)="suggest(suggestion)"
+          >
+            {{ suggestion }}
+          </button>
+        </li>
+        }
+      </ul>
+    </div>
     }
   </div>
   <div class="chat__composer">

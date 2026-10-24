@@ -168,6 +168,21 @@ describe('ChatWidget', () => {
     expect(store.clear).toHaveBeenCalled();
   });
 
+  it('offers three suggested questions that are sent as they stand, then puts the cursor in the box', async () => {
+    const { el, store } = await render();
+    const suggestions = [
+      ...el.querySelectorAll<HTMLButtonElement>('.chat__suggestion'),
+    ];
+    expect(suggestions.map((s) => s.textContent?.trim())).toEqual([
+      'Quy trình EOD gồm những bước nào?',
+      'Mở trang Hồ sơ cá nhân',
+      'Đổi chức danh của tôi',
+    ]);
+    suggestions[1].click();
+    expect(store.ask).toHaveBeenCalledWith('Mở trang Hồ sơ cá nhân');
+    expect(document.activeElement?.id).toBe('agent-composer-box');
+  });
+
   it('shows each turn in order and hides the empty line', async () => {
     const { fixture, el, turns } = await render();
     turns.set([turn(1, 'Trả lời một'), turn(2, 'Trả lời hai')]);
