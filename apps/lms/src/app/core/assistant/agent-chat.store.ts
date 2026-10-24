@@ -119,9 +119,11 @@ export class AgentChatStore {
     }
   });
 
-  /** The chat as stored: only while nothing is streaming, so a write happens once per finished turn. */
+  /**
+   * The chat as stored, written on every change, a streaming turn included: a reload mid-answer
+   * keeps the question and the text so far, which `AgentChatStorage.read` brings back as stopped.
+   */
   private readonly persisted = computed(() => {
-    if (this.state.answeringId() !== null) return null;
     const userId = this.userId();
     return userId
       ? { userId, open: this.isOpen$(), turns: this.turns$() }

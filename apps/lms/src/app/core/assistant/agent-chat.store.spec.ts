@@ -551,6 +551,25 @@ describe('AgentChatStore', () => {
       expect(store.turns$()).toEqual([]);
     });
 
+    it('keeps the question and the text so far when the page reloads mid-answer', async () => {
+      store.ask('EOD là gì?');
+      await settle();
+      backend.expectOne(STREAM).event({
+        type: 3,
+        loaded: 1,
+        partialText: JSON.stringify({ type: 'delta', text: 'Chạy ' }) + '\n',
+      } as never);
+      await settle();
+
+      setup();
+      TestBed.tick();
+      expect(store.turns$()).toHaveLength(1);
+      expect(store.turns$()[0]).toMatchObject({
+        question: 'EOD là gì?',
+        reply: { status: 'stopped', text: 'Chạy ' },
+      });
+    });
+
     it('restores a turn that was streaming at reload as stopped', () => {
       sessionStorage.setItem(
         KEY('000004'),
