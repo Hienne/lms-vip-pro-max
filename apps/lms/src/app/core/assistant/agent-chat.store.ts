@@ -446,6 +446,7 @@ export class AgentChatStore {
   private userChanged(userId: string | undefined): void {
     const previous = this.lastUserId;
     this.lastUserId = userId;
+    if (userId !== undefined) this.storage.clearOthers(userId);
     if (previous === undefined || previous === userId) return;
     this.dropStream();
     this.settling?.unsubscribe();

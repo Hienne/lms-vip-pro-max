@@ -627,6 +627,16 @@ describe('AgentChatStore', () => {
       expect(store.turns$()).toEqual([]);
     });
 
+    it('leaves no other user’s conversation in this tab once a user is signed in', () => {
+      sessionStorage.setItem(
+        KEY('000005'),
+        JSON.stringify({ open: true, turns: [finished(1)] }),
+      );
+      setup('000004');
+      TestBed.tick();
+      expect(sessionStorage.getItem(KEY('000005'))).toBeNull();
+    });
+
     it('forgets the conversation and its storage on sign-out', async () => {
       await converse('Một', [done('Trả lời một')]);
       TestBed.tick();

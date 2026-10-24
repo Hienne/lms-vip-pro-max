@@ -5,7 +5,8 @@ import { SESSION_STORAGE } from '../storage/session-storage';
 /** The newest turns kept; older ones are dropped on write. */
 export const MAX_STORED_TURNS = 30;
 
-const keyOf = (userId: string): string => `lms.agent-chat.v1.${userId}`;
+const PREFIX = 'lms.agent-chat.v1.';
+const keyOf = (userId: string): string => `${PREFIX}${userId}`;
 
 const EMPTY: PersistedChat = { open: false, turns: [] };
 
@@ -70,6 +71,28 @@ export class AgentChatStorage {
 
   clear(userId: string): void {
     this.remove(keyOf(userId));
+  }
+
+  /**
+   * Removes every conversation in this tab but `userId`'s: one left by a user whose session ended
+   * without a sign-out (an expired token, then a reload) must not stay readable by the next one.
+   */
+  clearOthers(userId: string): void {
+    const keep = keyOf(userId);
+    const keys = [...this.memory.keys()];
+    try {
+      if (this.storage) {
+        for (let i = 0; i < this.storage.length; i++) {
+          const key = this.storage.key(i);
+          if (key !== null) keys.push(key);
+        }
+      }
+    } catch {
+      // Storage that cannot be listed holds nothing this page wrote.
+    }
+    for (const key of keys) {
+      if (key.startsWith(PREFIX) && key !== keep) this.remove(key);
+    }
   }
 
   private get(key: string): string | null {

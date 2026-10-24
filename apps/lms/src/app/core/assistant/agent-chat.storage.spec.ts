@@ -106,6 +106,22 @@ describe('AgentChatStorage', () => {
     expect(storage.read('000004').turns).toEqual([]);
   });
 
+  it('removes every other user’s conversation and leaves this user’s and other keys', () => {
+    const storage = TestBed.inject(AgentChatStorage);
+    storage.write('000004', { open: true, turns: [turn(1)] });
+    storage.write('000005', { open: true, turns: [turn(1)] });
+    sessionStorage.setItem('lms.agent-chat.v1.000006', '{}');
+    sessionStorage.setItem('lms.other', 'kept');
+
+    storage.clearOthers('000004');
+
+    expect(sessionStorage.getItem(KEY)).not.toBeNull();
+    expect(sessionStorage.getItem('lms.agent-chat.v1.000005')).toBeNull();
+    expect(sessionStorage.getItem('lms.agent-chat.v1.000006')).toBeNull();
+    expect(sessionStorage.getItem('lms.other')).toBe('kept');
+    sessionStorage.removeItem('lms.other');
+  });
+
   it('works in memory when storage is blocked or throws', () => {
     for (const blocked of [
       null,
@@ -119,6 +135,12 @@ describe('AgentChatStorage', () => {
         removeItem: () => {
           throw new Error('blocked');
         },
+        key: () => {
+          throw new Error('blocked');
+        },
+        get length(): number {
+          throw new Error('blocked');
+        },
       },
     ]) {
       TestBed.resetTestingModule();
@@ -130,6 +152,9 @@ describe('AgentChatStorage', () => {
       expect(storage.read('000004')).toEqual({ open: true, turns: [turn(1)] });
       storage.clear('000004');
       expect(storage.read('000004').turns).toEqual([]);
+      storage.write('000005', { open: true, turns: [turn(1)] });
+      storage.clearOthers('000004');
+      expect(storage.read('000005').turns).toEqual([]);
     }
   });
 });
