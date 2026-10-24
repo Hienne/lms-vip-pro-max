@@ -114,7 +114,7 @@ task; stop at each checkpoint. BE paths are under `src/main/java/vn/com/coreacad
 
 ## Phase 3: `agent-contracts` → `chat-widget` (FE)
 
-- [ ] **T10 Agent schemas and endpoints** · S
+- [x] **T10 Agent schemas and endpoints** · S
   - Accept: every event type parses; `navigate` without `/` fails; an unknown `tool` event parses; an unknown
     pending-action tool fails; last message `assistant` fails; exported from `@lms/contracts`.
   - Verify: `npx nx test contracts`.
