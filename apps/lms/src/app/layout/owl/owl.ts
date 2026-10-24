@@ -21,6 +21,8 @@ import { OwlFace } from './owl-face/owl-face';
   imports: [Icon, OwlFace, Tooltip],
   host: {
     '[class.owl--beside-toolbar]': 'besideToolbar()',
+    '[class.owl--with-panel]': 'panelOpen()',
+    '[class.owl--docked]': 'docked()',
     '(keydown.escape)': 'dismiss()',
   },
   templateUrl: './owl.html',
@@ -54,6 +56,7 @@ export class Owl {
   protected readonly panelOpen = computed(
     () => this.available() && this.chat.isOpen$(),
   );
+  protected readonly docked = this.chat.isDocked$;
 
   private readonly processing = computed(() =>
     this.state() === 'processing'

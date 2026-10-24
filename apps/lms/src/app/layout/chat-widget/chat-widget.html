@@ -19,6 +19,18 @@
     >
       <ui-icon name="trash-2" size="sm" />
     </button>
+    <button
+      uiIconButton
+      size="sm"
+      class="chat__dock"
+      [label]="store.isDocked$() ? 'Thu nhỏ' : 'Mở rộng'"
+      (click)="store.toggleDocked()"
+    >
+      <ui-icon
+        [name]="store.isDocked$() ? 'panel-right-close' : 'panel-right-open'"
+        size="sm"
+      />
+    </button>
     <button uiIconButton size="sm" label="Đóng" (click)="dismiss()">
       <ui-icon name="x" size="sm" />
     </button>

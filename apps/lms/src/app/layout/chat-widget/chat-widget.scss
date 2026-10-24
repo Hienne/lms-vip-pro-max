@@ -1,20 +1,23 @@
 @use 'ui';
 
-// Docked above the owl, in the same corner and layer. The host takes no pointer events, so only
-// the panel blocks what is underneath it. Below `sm` it spans the viewport between the gutters.
+// A phone gets a full-screen sheet (the owl hides while it is open). From `sm` the panel floats
+// above the owl, in the same corner and layer; from `xl` it can dock to the right edge at full
+// height, and the shell makes room for it. The host takes no pointer events, so only the panel
+// blocks what is underneath it.
 :host {
   position: fixed;
-  right: ui.space(4);
-  bottom: calc(#{ui.space(4)} + #{ui.space(10)} + #{ui.space(2)});
-  left: ui.space(4);
+  inset: 0;
   z-index: ui.z(header);
   display: flex;
   justify-content: flex-end;
   pointer-events: none;
 
   @include ui.bp(sm) {
+    top: auto;
+    right: ui.space(4);
+    bottom: calc(#{ui.space(4)} + #{ui.space(10)} + #{ui.space(2)});
     left: auto;
-    width: 24rem;
+    width: ui.layout(assistant);
   }
 
   @include ui.bp(md) {
@@ -22,10 +25,18 @@
   }
 }
 
-// The dev toolbar sits in the same corner on a wide screen; on a phone the panel keeps both gutters.
+// The dev toolbar sits in the same corner on a wide screen.
 :host(.chat-widget--beside-toolbar) {
   @include ui.bp(sm) {
     right: calc(#{ui.space(4)} + 6rem);
+  }
+}
+
+:host(.chat-widget--docked) {
+  @include ui.bp(xl) {
+    top: 0;
+    right: 0;
+    bottom: 0;
   }
 }
 
@@ -33,21 +44,44 @@
   display: flex;
   flex-direction: column;
   width: 100%;
-  // The owl and its gutters are below the panel, the page gutter above it.
-  max-height: min(
-    35rem,
-    calc(
-      100dvh - #{ui.space(4)} - #{ui.space(4)} - #{ui.space(12)} -
-        #{ui.space(2)}
-    )
-  );
+  height: 100%;
   overflow: hidden;
   color: ui.color(text);
   background: ui.color(surface);
-  border: 1px solid ui.color(border);
-  border-radius: ui.radius(card);
-  box-shadow: ui.shadow(md);
   pointer-events: auto;
+
+  @include ui.bp(sm) {
+    height: auto;
+    // The owl and its gutters are below the panel, the page gutter above it.
+    max-height: min(
+      35rem,
+      calc(
+        100dvh - #{ui.space(4)} - #{ui.space(4)} - #{ui.space(12)} -
+          #{ui.space(2)}
+      )
+    );
+    border: 1px solid ui.color(border);
+    border-radius: ui.radius(card);
+    box-shadow: ui.shadow(md);
+  }
+
+  // Docked: a full-height column beside the page, separated by its border alone.
+  :host(.chat-widget--docked) & {
+    @include ui.bp(xl) {
+      height: 100%;
+      max-height: none;
+      border-width: 0 0 0 1px;
+      border-radius: 0;
+      box-shadow: none;
+    }
+  }
+
+  // Only a wide screen docks, so the toggle shows only there.
+  &__dock {
+    @include ui.bp-below(xl) {
+      display: none;
+    }
+  }
 
   &__header {
     @include ui.row(2);

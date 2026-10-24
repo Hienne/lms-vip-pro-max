@@ -1,10 +1,12 @@
 import { DOCUMENT } from '@angular/common';
 import {
+  afterNextRender,
   afterRenderEffect,
   Component,
   computed,
   ElementRef,
   inject,
+  Injector,
   input,
   untracked,
   viewChild,
@@ -31,20 +33,25 @@ export const SUGGESTIONS = [
 const FOLLOW_DISTANCE = 48;
 
 /**
- * "Trợ lý nhanh": the panel above the owl on every app page. It is a non-modal dialog (the page
- * stays usable behind it), opens with the cursor in the message box, and `Escape` or the close
+ * "Trợ lý nhanh": the panel above the owl on every app page, a full-screen sheet on a phone, and
+ * docked to the right edge on a wide screen when the user asks. It is a non-modal dialog (the page
+ * stays usable beside it), opens with the cursor in the message box, and `Escape` or the close
  * button hands focus back to the owl. The store owns the conversation; the panel only shows it.
  */
 @Component({
   selector: 'app-chat-widget',
   imports: [AgentComposer, AgentMessage, Icon, IconButton, OwlFace, RouterLink],
-  host: { '[class.chat-widget--beside-toolbar]': 'besideToolbar()' },
+  host: {
+    '[class.chat-widget--beside-toolbar]': 'besideToolbar()',
+    '[class.chat-widget--docked]': 'store.isDocked$()',
+  },
   templateUrl: './chat-widget.html',
   styleUrl: './chat-widget.scss',
 })
 export class ChatWidget {
   protected readonly store = inject(AgentChatStore);
   private readonly document = inject(DOCUMENT);
+  private readonly injector = inject(Injector);
 
   /** Moves the panel left with the owl, off the dev toolbar that is pinned to the same corner. */
   readonly besideToolbar = input(false);
@@ -107,9 +114,15 @@ export class ChatWidget {
     this.composer()?.focus();
   }
 
-  /** Closes the panel and puts focus back on the owl that opened it. */
+  /**
+   * Closes the panel and puts focus back on the owl that opened it, once the owl shows again (it
+   * hides behind the phone sheet and the docked panel).
+   */
   protected dismiss(): void {
     this.store.close();
-    this.document.getElementById(AGENT_LAUNCHER_ID)?.focus();
+    afterNextRender(
+      () => this.document.getElementById(AGENT_LAUNCHER_ID)?.focus(),
+      { injector: this.injector },
+    );
   }
 }

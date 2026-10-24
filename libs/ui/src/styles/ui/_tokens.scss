@@ -299,6 +299,11 @@ $layout: (
       property: 'container-panel',
       value: 360px,
     ),
+  // the quick assistant's panel, floating or docked to the right edge
+  assistant: (
+      property: 'container-assistant',
+      value: 416px,
+    ),
   menu: (
     property: 'container-menu',
     value: 220px,

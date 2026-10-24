@@ -54,6 +54,19 @@ describe('AgentChatStorage', () => {
     expect(storage.read('000005')).toEqual({ open: false, turns: [] });
   });
 
+  it('stores docked only when it is on, and reads an entry without it as floating', () => {
+    const storage = TestBed.inject(AgentChatStorage);
+    storage.write('000004', { open: true, docked: false, turns: [] });
+    expect(sessionStorage.getItem(KEY)).not.toContain('docked');
+    expect(storage.read('000004')).toEqual({ open: true, turns: [] });
+    storage.write('000004', { open: true, docked: true, turns: [] });
+    expect(storage.read('000004')).toEqual({
+      open: true,
+      docked: true,
+      turns: [],
+    });
+  });
+
   it('keeps the newest 30 turns', () => {
     const storage = TestBed.inject(AgentChatStorage);
     const turns = Array.from({ length: 35 }, (_, i) => turn(i + 1));

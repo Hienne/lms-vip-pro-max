@@ -277,6 +277,22 @@ describe('AppShell', () => {
       expect(panel(closed)).not.toBeNull();
     });
 
+    it('makes room for a docked panel, but not on the assistant screen', async () => {
+      signInAs('learner');
+      const chat = TestBed.inject(AgentChatStore);
+      chat.open();
+      chat.toggleDocked();
+      const el = await open('/learn');
+      expect(el.querySelector('.app-shell')?.classList).toContain(
+        'app-shell--docked',
+      );
+      await TestBed.inject(Router).navigateByUrl('/assistant');
+      TestBed.tick();
+      expect(el.querySelector('.app-shell')?.classList).not.toContain(
+        'app-shell--docked',
+      );
+    });
+
     it('is hidden on the assistant screen, which is the full version', async () => {
       signInAs('learner');
       TestBed.inject(AgentChatStore).open();

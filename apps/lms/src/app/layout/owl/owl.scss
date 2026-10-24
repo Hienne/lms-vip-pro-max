@@ -19,6 +19,20 @@
   right: calc(#{ui.space(4)} + 6rem);
 }
 
+// The phone sheet covers the corner, and the docked panel stands where the owl does; both have
+// their own close button, which hands focus back once the owl shows again.
+:host(.owl--with-panel) {
+  @include ui.bp-below(sm) {
+    display: none;
+  }
+}
+
+:host(.owl--docked) {
+  @include ui.bp(xl) {
+    display: none;
+  }
+}
+
 .owl {
   &__button {
     display: grid;

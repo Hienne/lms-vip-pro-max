@@ -63,6 +63,14 @@
     min-width: 0;
   }
 
+  // The quick assistant docked to the right edge: the page gives up its width instead of sitting
+  // under the panel.
+  &--docked &__main {
+    @include ui.bp(xl) {
+      padding-inline-end: ui.layout(assistant);
+    }
+  }
+
   &__content {
     flex: 1 1 auto;
 

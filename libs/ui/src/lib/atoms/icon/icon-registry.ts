@@ -60,6 +60,8 @@ import {
   LucideNotebookPen,
   LucidePalette,
   LucidePanelRight,
+  LucidePanelRightClose,
+  LucidePanelRightOpen,
   LucidePaperclip,
   LucidePause,
   LucidePenLine,
@@ -160,6 +162,8 @@ export const ICONS = {
   'notebook-pen': LucideNotebookPen.icon,
   palette: LucidePalette.icon,
   'panel-right': LucidePanelRight.icon,
+  'panel-right-close': LucidePanelRightClose.icon,
+  'panel-right-open': LucidePanelRightOpen.icon,
   paperclip: LucidePaperclip.icon,
   pause: LucidePause.icon,
   'pen-line': LucidePenLine.icon,
@@ -297,4 +301,7 @@ export const ICON_CATALOG: readonly {
   // The quick assistant's composer: send and stop.
   { mockup: null, name: 'arrow-up' },
   { mockup: null, name: 'square' },
+  // The quick assistant's dock toggle.
+  { mockup: null, name: 'panel-right-open' },
+  { mockup: null, name: 'panel-right-close' },
 ];

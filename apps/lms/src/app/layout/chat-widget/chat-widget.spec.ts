@@ -26,7 +26,9 @@ function fakeStore() {
   const open = signal(true);
   const turns = signal<readonly AgentTurn[]>([]);
   const answering = signal(false);
+  const docked = signal(false);
   return {
+    docked,
     available,
     open,
     turns,
@@ -34,6 +36,7 @@ function fakeStore() {
     store: {
       available$: available.asReadonly(),
       isOpen$: open.asReadonly(),
+      isDocked$: docked.asReadonly(),
       turns$: turns.asReadonly(),
       isAnswering$: answering.asReadonly(),
       isOffline$: signal(false).asReadonly(),
@@ -43,6 +46,7 @@ function fakeStore() {
       clear: vi.fn(() => turns.set([])),
       ask: vi.fn(),
       stop: vi.fn(),
+      toggleDocked: vi.fn(() => docked.update((value) => !value)),
       confirm: vi.fn(),
       cancel: vi.fn(),
     },
@@ -141,6 +145,23 @@ describe('ChatWidget', () => {
     expect(store.close).toHaveBeenCalled();
     expect(dialog(el)).toBeNull();
     expect(document.activeElement?.id).toBe(AGENT_LAUNCHER_ID);
+  });
+
+  it('docks and undocks from its header, saying which it will do', async () => {
+    const { fixture, el, store } = await render();
+    const toggle = () =>
+      el.querySelector<HTMLButtonElement>('.chat__dock') as HTMLButtonElement;
+    expect(toggle().getAttribute('aria-label')).toBe('Mở rộng');
+    expect(el.querySelector('app-chat-widget')?.classList).not.toContain(
+      'chat-widget--docked',
+    );
+    toggle().click();
+    await fixture.whenStable();
+    expect(store.toggleDocked).toHaveBeenCalled();
+    expect(toggle().getAttribute('aria-label')).toBe('Thu nhỏ');
+    expect(el.querySelector('app-chat-widget')?.classList).toContain(
+      'chat-widget--docked',
+    );
   });
 
   it('closes from its close button too', async () => {

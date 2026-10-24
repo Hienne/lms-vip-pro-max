@@ -37,6 +37,7 @@ class FakeTracker {
 class FakeChat {
   readonly available$ = signal(false);
   readonly isOpen$ = signal(false);
+  readonly isDocked$ = signal(false);
   readonly toggle = vi.fn(() => this.isOpen$.update((open) => !open));
 }
 
@@ -221,6 +222,17 @@ describe('Owl', () => {
       expect(button().getAttribute('aria-controls')).toBe('agent-chat-panel');
       expect(button().getAttribute('aria-label')).toBe('Đóng Trợ lý nhanh');
       expect(button().classList).toContain('owl__button--open');
+    });
+
+    it('marks its host while the panel is open or docked, so the styles can step aside', () => {
+      const host = () =>
+        fixture.nativeElement.querySelector('app-owl') as HTMLElement;
+      expect(host().classList).not.toContain('owl--with-panel');
+      chat.isOpen$.set(true);
+      chat.isDocked$.set(true);
+      fixture.detectChanges();
+      expect(host().classList).toContain('owl--with-panel');
+      expect(host().classList).toContain('owl--docked');
     });
 
     it('names how many documents are processing in the label', () => {

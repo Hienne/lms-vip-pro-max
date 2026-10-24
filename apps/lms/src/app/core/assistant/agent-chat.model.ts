@@ -66,6 +66,8 @@ export type AgentTurn = z.infer<typeof AgentTurnSchema>;
 /** What `sessionStorage` holds for one user. */
 export const PersistedChatSchema = z.object({
   open: z.boolean(),
+  /** The panel is docked to the right edge on a wide screen; stored only when it is. */
+  docked: z.boolean().optional(),
   turns: z.array(AgentTurnSchema),
 });
 export type PersistedChat = z.infer<typeof PersistedChatSchema>;

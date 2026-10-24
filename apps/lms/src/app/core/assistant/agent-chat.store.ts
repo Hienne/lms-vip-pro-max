@@ -84,12 +84,25 @@ export class AgentChatStore {
       source: this.userId,
       computation: (id) => (id ? this.storage.read(id).open : false),
     }),
+    docked: linkedSignal<string | undefined, boolean>({
+      source: this.userId,
+      computation: (id) =>
+        id ? (this.storage.read(id).docked ?? false) : false,
+    }),
     answeringId: signal<number | null>(null),
     confirmingId: signal<number | null>(null),
   };
 
   readonly turns$ = this.state.turns.asReadonly();
   readonly isOpen$ = this.state.open.asReadonly();
+  /**
+   * The open panel is docked to the right edge, full height, and the page makes room for it. Only
+   * a wide screen docks (the panel's and the shell's styles say from where); elsewhere the panel
+   * floats whatever this says.
+   */
+  readonly isDocked$ = computed(
+    () => this.available$() && this.isOpen$() && this.state.docked(),
+  );
   readonly isAnswering$ = computed(() => this.state.answeringId() !== null);
   readonly isConfirming$ = computed(() => this.state.confirmingId() !== null);
   /** The composer is off: a question could not be sent. */
@@ -126,7 +139,12 @@ export class AgentChatStore {
   private readonly persisted = computed(() => {
     const userId = this.userId();
     return userId
-      ? { userId, open: this.isOpen$(), turns: this.turns$() }
+      ? {
+          userId,
+          open: this.isOpen$(),
+          docked: this.state.docked(),
+          turns: this.turns$(),
+        }
       : null;
   });
 
@@ -150,6 +168,10 @@ export class AgentChatStore {
     this.state.open.set(open);
   }
 
+  setDocked(docked: boolean): void {
+    this.state.docked.set(docked);
+  }
+
   setAnsweringId(id: number | null): void {
     this.state.answeringId.set(id);
   }
@@ -170,6 +192,11 @@ export class AgentChatStore {
 
   toggle(): void {
     this.setOpen(!this.isOpen$());
+  }
+
+  /** Docks the panel to the right edge, or lets it float again; remembered with the chat. */
+  toggleDocked(): void {
+    this.setDocked(!this.state.docked());
   }
 
   // ---- conversation ----------------------------------------------------------------------------
@@ -432,12 +459,14 @@ export class AgentChatStore {
   private persist(chat: {
     userId: string;
     open: boolean;
+    docked: boolean;
     turns: readonly AgentTurn[];
   }): void {
     if (!chat.open && chat.turns.length === 0) this.storage.clear(chat.userId);
     else
       this.storage.write(chat.userId, {
         open: chat.open,
+        docked: chat.docked,
         turns: [...chat.turns],
       });
   }

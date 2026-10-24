@@ -43,6 +43,7 @@ export class AgentChatStorage {
 
     return {
       open: parsed.open,
+      ...(parsed.docked ? { docked: true } : {}),
       turns: parsed.turns.map((turn) => ({
         ...turn,
         reply: {
@@ -64,6 +65,7 @@ export class AgentChatStorage {
   write(userId: string, chat: PersistedChat): void {
     const kept = {
       open: chat.open,
+      ...(chat.docked ? { docked: true } : {}),
       turns: chat.turns.slice(-MAX_STORED_TURNS),
     };
     this.set(keyOf(userId), JSON.stringify(kept));
