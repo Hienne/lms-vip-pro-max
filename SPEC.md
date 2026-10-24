@@ -81,7 +81,8 @@ Build order (one phase at a time, each ends with its checks, a commit and a stop
    card is confirm or cancel only (no inline editing); to change a value the user says so in the chat. After
    confirm, the app applies the refreshed `/me` to the session, as the profile page does.
 7. **Document answers** keep the `kb-chat` rules: only retrieved chunks, citations from chunk metadata selected by
-   `[n]` markers, the fixed not-found sentence. The widget reuses the source badge and popover from
+   `[n]` markers, the fixed not-found sentence; an answer with no usable `[n]` has no sources (the one difference from
+   `kb-chat`, approved 2026-10-24). The widget reuses the source badge and popover from
    `/assistant`.
 8. **Agent loop limits:** at most 4 model calls per user turn, `think: false`, temperature 0.1, `num_ctx 8192`;
    an unknown tool, bad arguments or the cap ends the turn with a readable Vietnamese message.

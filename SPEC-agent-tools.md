@@ -49,8 +49,9 @@ Run:
      `kb-chat` never asks the model in that case either);
    - `NotFoundAnswer.isNotFound(answer)` → the fixed sentence, no citations;
    - otherwise the citations are the turn's chunks the answer marks with `[n]`, in number order, each once;
-     markers outside the turn's range are ignored; no usable marker → every chunk of the turn. Citation file,
-     page, lines and snippet come from chunk metadata only.
+     markers outside the turn's range are ignored; no usable marker → no citations, the answer text kept (amended
+     2026-10-24; `kb-chat` still cites every chunk then). Citation file, page, lines and snippet come from chunk
+     metadata only.
 
 Shared with `kb-chat` by extraction, with no behaviour change to `/knowledge/chat`:
 `ChatPromptBuilder.formatChunk(int n, ChunkHit hit)` and a public `CitationSelector.select(String answer,
@@ -157,7 +158,7 @@ As in `agent-runtime`, approving this spec is the explicit request for these tes
 
 - `SearchDocumentsToolTest` (`KnowledgeChatService.retrieve` mocked): numbering continues across two calls and a
   repeated chunk keeps its number; the finisher's three rules (nothing retrieved → fixed sentence even if the
-  model wrote something else; not-found answer → no citations; marked chunks only, no marker → all); out-of-range
+  model wrote something else; not-found answer → no citations; marked chunks only, no marker → none); out-of-range
   markers ignored; an over-long query is a `Result`, not an exception; AI unavailable → `OllamaUnavailableException`.
 - `OpenScreenToolTest`: the enum and description list only the user's static routes; a code from another role and an
   invented code → the refusal `Result`, no `Navigate`; a user with no openable screen is not offered the tool.
@@ -191,8 +192,9 @@ unchanged until confirm, and changed once after it.
   question. `qwen3:8b` follows it for some questions and paraphrases for others ("… không được đề cập trong tài liệu").
   Approved 2026-10-24: an answer with no usable `[n]` marker whose first sentence says so in other words ("không tìm thấy",
   "không được đề cập", "không có thông tin", …) is the fixed sentence with no sources (`NotFoundAnswer.saysNothingWasFound`,
-  used by `RetrievedChunks.finish`). An answer that marks a chunk keeps its sources. `kb-chat` is unchanged: there a
-  markerless answer still returns every chunk. Checked on the local backend: 4 of 4 out-of-document questions end with the
+  used by `RetrievedChunks.finish`). An answer that marks a chunk keeps its sources. Approved the same day: any other
+  answer with no usable `[n]` marker keeps its text and has no sources, instead of every chunk of the turn. `kb-chat` is
+  unchanged: there a markerless answer still returns every chunk. Checked on the local backend: 4 of 4 out-of-document questions end with the
   fixed sentence and no sources.
 - A refusal from `open_screen` (a screen the role does not grant) goes back to the model as text, and the model sometimes
   repeats the function codes it was given ("PROFILE, COURSE_LEARNING, …") instead of screen names. Nothing navigates and the
