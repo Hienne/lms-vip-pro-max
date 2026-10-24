@@ -73,7 +73,7 @@ task; stop at each checkpoint. BE paths are under `src/main/java/vn/com/coreacad
 
 ## Phase 2: `agent-tools` (BE)
 
-- [ ] **T6 Share chunk formatting and citation selection** · S
+- [x] **T6 Share chunk formatting and citation selection** · S
   - Accept: `ChatPromptBuilder.formatChunk` and `CitationSelector.select` extracted; `/knowledge/chat` output
     unchanged.
   - Verify: `mvn test -Dtest='KnowledgeChat*Test'` green unchanged.
