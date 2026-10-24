@@ -9,6 +9,8 @@ import { AgentSources, agentSourceId } from '../agent-sources/agent-sources';
 import { answerParts } from '../../../../shared/assistant/answer-parts';
 import { citationName } from '../../../../shared/assistant/citation-label';
 
+const COMPOSING = 'Đang soạn câu trả lời…';
+
 /** One question of the quick assistant and its reply, in whatever state the reply is. */
 @Component({
   selector: 'app-agent-message',
@@ -46,11 +48,17 @@ export class AgentMessage {
     );
   });
 
-  /** The status line while the reply has no text yet: the tool that is running. */
+  /**
+   * The status line until the first text arrives: the tool that is running, then the answer being
+   * written. The text takes its place, on the same line.
+   */
   protected readonly status = computed(() => {
     const { status, text, toolName } = this.turn().reply;
-    const busy = status === 'waiting' || status === 'working';
-    return busy && !text ? toolStatusText(toolName) : null;
+    if (text) return null;
+    if (status === 'composing') return COMPOSING;
+    return status === 'waiting' || status === 'working'
+      ? toolStatusText(toolName)
+      : null;
   });
 
   /** A number in the answer moves focus to its line in the source list, which scrolls it into view. */
@@ -58,17 +66,20 @@ export class AgentMessage {
     this.document.getElementById(agentSourceId(this.turn().id, n))?.focus();
   }
 
-  /** The text around the page title, which links to the page the assistant opened. */
+  /**
+   * The page the assistant opened, as a link: in the sentence where the text names it, else on a
+   * line of its own under the text.
+   */
   protected readonly opened = computed(() => {
     const { navigatedTo, text } = this.turn().reply;
     if (!navigatedTo) return null;
     const at = text.indexOf(navigatedTo.title);
-    if (at < 0) return null;
     return {
       path: navigatedTo.path,
       title: navigatedTo.title,
-      before: text.slice(0, at),
-      after: text.slice(at + navigatedTo.title.length),
+      inline: at >= 0,
+      before: at >= 0 ? text.slice(0, at) : text,
+      after: at >= 0 ? text.slice(at + navigatedTo.title.length) : '',
     };
   });
 }

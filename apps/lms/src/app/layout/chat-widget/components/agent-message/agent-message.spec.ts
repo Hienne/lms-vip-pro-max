@@ -76,6 +76,14 @@ describe('AgentMessage', () => {
     ).toContain('Đang chuẩn bị thay đổi…');
   });
 
+  it('says the answer is being written until its first text arrives', async () => {
+    const { el, text } = await render(
+      turn({ status: 'composing', toolName: 'search_documents' }),
+    );
+    expect(text()).toContain('Đang soạn câu trả lời…');
+    expect(el.querySelector('[role="status"]')).not.toBeNull();
+  });
+
   it('shows streamed text instead of the status line', async () => {
     const { el, text } = await render(
       turn({
@@ -163,6 +171,21 @@ describe('AgentMessage', () => {
     expect(link?.getAttribute('href')).toBe('/admin/users');
     expect(el.querySelector('.message__answer')?.textContent?.trim()).toBe(
       'Đã mở trang Quản lý người dùng.',
+    );
+  });
+
+  it('links the page on a line of its own when the text does not name it', async () => {
+    const { el } = await render(
+      turn({
+        text: 'Xong.',
+        navigatedTo: { path: '/admin/users', title: 'Quản lý người dùng' },
+      }),
+    );
+    const answers = el.querySelectorAll('.message__answer');
+    expect(answers).toHaveLength(2);
+    expect(answers[0].textContent?.trim()).toBe('Xong.');
+    expect(answers[1].querySelector('a')?.getAttribute('href')).toBe(
+      '/admin/users',
     );
   });
 

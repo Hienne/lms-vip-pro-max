@@ -9,11 +9,19 @@
   <p class="message__progress">
     <span uiSpinner label="Đang xử lý"></span>{{ line }}
   </p>
-  } @else if (link) {
+  } @else if (link?.inline) {
   <p class="message__answer">
     <span class="message__run">{{ link.before }}</span
     ><a class="message__link" [routerLink]="link.path">{{ link.title }}</a
     ><span class="message__run">{{ link.after }}</span>
+  </p>
+  } @else if (link) { @if (link.before) {
+  <p class="message__answer">
+    <span class="message__run">{{ link.before }}</span>
+  </p>
+  }
+  <p class="message__answer">
+    <a class="message__link" [routerLink]="link.path">{{ link.title }}</a>
   </p>
   } @else if (reply.text) {
   <p class="message__answer">

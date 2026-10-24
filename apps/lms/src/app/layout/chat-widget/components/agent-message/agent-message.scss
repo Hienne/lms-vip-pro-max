@@ -40,6 +40,8 @@
   &__link {
     color: ui.color(primary);
     font-weight: ui.weight(medium);
+    text-decoration: underline;
+    text-underline-offset: 2px;
 
     &:focus-visible {
       @include ui.focus-ring;
@@ -69,10 +71,12 @@
     }
   }
 
+  // The same line height as the answer, so the first text replaces it without a jump.
   &__progress {
     @include ui.row(2);
     @include ui.text(sm, muted);
     margin: 0;
+    line-height: ui.leading(relaxed);
   }
 
   &__note {
