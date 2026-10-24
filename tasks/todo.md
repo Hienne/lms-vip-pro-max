@@ -130,7 +130,7 @@ task; stop at each checkpoint. BE paths are under `src/main/java/vn/com/coreacad
     `libs/mocks/src/lib/backend/fake-backend.ts`, `fake-backend.spec.ts`, `postman-requests.ts`,
     `libs/mocks/src/fixtures.spec.ts`. (Six files, most of them small edits.)
   - Depends on: T10.
-- [ ] **T12 Move shared answer parts to `shared/assistant/`** · S
+- [x] **T12 Move shared answer parts to `shared/assistant/`** · S
   - Accept: `source-badge`, `answer-parts`, `citation-label` (and specs) live in `apps/lms/src/app/shared/assistant/`;
     `/assistant` imports them from there; no behaviour change.
   - Verify: `npx nx test lms` green before and after; `npx nx lint lms`.
