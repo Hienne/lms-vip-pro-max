@@ -1,33 +1,31 @@
-@let state = card();
-<section class="action-card" [attr.aria-label]="state.pending.title">
-  <h3 class="action-card__title">{{ state.pending.title }}</h3>
-  <dl class="action-card__changes">
-    @for (change of state.pending.changes; track change.field) {
-    <div class="change">
-      <dt class="change__label">{{ change.label }}</dt>
-      <dd class="change__value">
-        <span class="change__from">{{ change.from ?? '(trống)' }}</span>
-        <ui-icon name="arrow-right" size="sm" /><span class="sr-only"
-          >đổi thành</span
-        >
-        <span class="change__to">{{ change.to ?? '(trống)' }}</span>
-      </dd>
-    </div>
+@let state = card(); @switch (state.status) { @case ('confirmed') {
+<p class="action-card__result">{{ state.message }}</p>
+} @case ('cancelled') {
+<p class="action-card__result">{{ state.message }}</p>
+} @case ('expired') {
+<p class="action-card__result action-card__result--error">
+  {{ state.message }}
+</p>
+} @case ('failed') {
+<p class="action-card__result action-card__result--error">
+  {{ state.message }}
+</p>
+} @default {
+<section class="action-card" [attr.aria-label]="question()">
+  <h3 class="action-card__title">{{ question() }}</h3>
+  @for (change of state.pending.changes; track change.field) {
+  <div class="change">
+    @if (several()) {
+    <p class="change__label">{{ change.label }}</p>
     }
-  </dl>
-  @switch (state.status) { @case ('confirmed') {
-  <p class="action-card__result">{{ state.message }}</p>
-  } @case ('cancelled') {
-  <p class="action-card__result">{{ state.message }}</p>
-  } @case ('expired') {
-  <p class="action-card__result action-card__result--error">
-    {{ state.message }}
-  </p>
-  } @case ('failed') {
-  <p class="action-card__result action-card__result--error">
-    {{ state.message }}
-  </p>
-  } @default { @if (state.message) {
+    <dl class="change__values">
+      <dt>Hiện tại</dt>
+      <dd class="change__from">{{ change.from ?? '(trống)' }}</dd>
+      <dt>Mới</dt>
+      <dd class="change__to">{{ change.to ?? '(trống)' }}</dd>
+    </dl>
+  </div>
+  } @if (state.message) {
   <p class="action-card__result action-card__result--error">
     {{ state.message }}
   </p>
@@ -58,5 +56,5 @@
       Huỷ
     </button>
   </div>
-  } }
 </section>
+} }

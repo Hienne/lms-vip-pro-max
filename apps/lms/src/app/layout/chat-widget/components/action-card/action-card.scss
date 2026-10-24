@@ -13,15 +13,11 @@
     font-weight: ui.weight(semibold);
   }
 
-  &__changes {
-    @include ui.stack(2);
-    margin: 0;
-  }
-
   &__actions {
     @include ui.row(2);
   }
 
+  // Once settled, the card gives way to this one line.
   &__result {
     @include ui.text(sm, muted);
     margin: 0;
@@ -36,15 +32,27 @@
   @include ui.stack(1);
 
   &__label {
-    @include ui.text(sm, muted);
+    @include ui.text(sm);
+    margin: 0;
+    font-weight: ui.weight(medium);
   }
 
-  &__value {
-    @include ui.row(1);
+  // "Hiện tại" and "Mới" in one column, their values in the other.
+  &__values {
     @include ui.text(sm);
-    flex-wrap: wrap;
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: ui.space(1) ui.space(3);
     margin: 0;
-    overflow-wrap: anywhere;
+
+    dt {
+      color: ui.color(text-muted);
+    }
+
+    dd {
+      margin: 0;
+      overflow-wrap: anywhere;
+    }
   }
 
   &__from {
@@ -52,6 +60,6 @@
   }
 
   &__to {
-    font-weight: ui.weight(medium);
+    font-weight: ui.weight(semibold);
   }
 }
