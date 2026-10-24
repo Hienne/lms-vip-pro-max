@@ -79,7 +79,7 @@ task; stop at each checkpoint. BE paths are under `src/main/java/vn/com/coreacad
   - Verify: `mvn test -Dtest='KnowledgeChat*Test'` green unchanged.
   - Files: `…/knowledge/service/ChatPromptBuilder.java`, `CitationSelector.java`, `KnowledgeChatService.java`.
   - Depends on: Phase 1.
-- [ ] **T7 `search_documents`** · S
+- [x] **T7 `search_documents`** · S
   - Accept: numbering continues across calls in a turn and repeats keep their number; finisher rules (nothing
     retrieved → fixed sentence whatever the model wrote; not-found → no citations; marked chunks only, none marked →
     all); over-long query is a `Result`; AI unavailable → stream `error`.
