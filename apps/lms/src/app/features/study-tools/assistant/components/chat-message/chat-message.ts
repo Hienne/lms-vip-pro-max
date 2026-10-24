@@ -1,8 +1,8 @@
 import { Component, computed, input, output } from '@angular/core';
 import { LinkButton, Spinner } from '@lms/ui';
 import type { Turn } from '../../data-access/assistant.model';
-import { answerParts } from '../../data-access/answer-parts';
-import { SourceBadge } from '../source-badge/source-badge';
+import { answerParts } from '../../../../../shared/assistant/answer-parts';
+import { SourceBadge } from '../../../../../shared/assistant/source-badge/source-badge';
 
 /** One question and the answer to it, in whatever state the answer is. */
 @Component({

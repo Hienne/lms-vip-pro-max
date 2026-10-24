@@ -1,10 +1,7 @@
 import { Component, computed, input } from '@angular/core';
 import type { Citation } from '@lms/contracts';
 import { Badge, Popover } from '@lms/ui';
-import {
-  citationLocation,
-  citationName,
-} from '../../data-access/citation-label';
+import { citationLocation, citationName } from '../citation-label';
 
 /**
  * One source of an answer: a numbered badge that opens a popover with the file, the place in it and
