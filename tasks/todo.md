@@ -7,7 +7,7 @@ task; stop at each checkpoint. BE paths are under `src/main/java/vn/com/coreacad
 
 ## Phase 0: local stack
 
-- [ ] **T0 Local stack up** (BE + machine) · XS
+- [x] **T0 Local stack up** (BE + machine) · XS
   - Do: start Docker Desktop; `docker compose up -d db` in the BE repo (the `core_academy_pg` volume from the RAG
     initiative keeps the data); create `feat/ai-chatbot-agent` from `main`; `mvn spring-boot:run` on :8019; FE with
     `LMS_API_TARGET=http://localhost:8019 npm start`.
