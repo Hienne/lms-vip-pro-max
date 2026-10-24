@@ -1,100 +1,129 @@
-# Capability map: AI assistant with local RAG ("Trợ lý AI")
+# Capability map: AI chatbot with tool calls ("Trợ lý nhanh")
 
-Status: **map approved 2026-10-22; module specs in Phase 0 review.** Replaces the shipped custom-theme
-spec (still in git history, PR #34).
+Status: **map and module specs approved 2026-10-24; plan in [tasks/plan.md](tasks/plan.md).**
 
-The visual architecture of this initiative, in Vietnamese, is
-[`docs/architecture/ai-assistant-rag.html`](docs/architecture/ai-assistant-rag.html). When the HTML and a
-spec disagree, the spec wins and the HTML is fixed.
+Replaces the map of the AI assistant RAG initiative (shipped in PR #40; that map is in git history). Its module
+specs (`SPEC-kb-*.md`, `SPEC-doc-tracker.md`, `SPEC-assistant-screen.md`, `SPEC-owl-indicator.md`) stay beside
+this file as the reference for the shipped modules this initiative builds on.
 
 ## Objective
 
-Every signed-in user, in any role, can upload `.pdf`, `.md` and `.docx` documents into **one shared
-knowledge base** and ask questions about them. Answers come from a local model (Ollama on this machine),
-use only the uploaded documents, and cite file, page and line range. Processing is slow, so it runs in the
-background while the user keeps working; a small owl in the corner of the app shows its progress.
+A small chatbot docked in the bottom-right corner of every app page, separate from the "Trợ lý AI" screen
+(`/assistant`). The user opens and closes it from the owl. In it they can:
 
-This is a proof of concept that runs entirely on one machine.
+1. ask about the uploaded documents, answered from the shared knowledge base with the same citations as
+   `/assistant`;
+2. ask it to **open a screen** ("mở trang quản lý người dùng"), limited to the screens the user's role grants;
+3. ask it to **update their own profile** ("đổi email của tôi thành …"), which runs only after the user
+   confirms the change in the chat.
+
+The model is `qwen3:8b` on the local Ollama, called with tools. The backend (`corebanking-academy`) runs
+locally. Creating and assigning courses are the next tools, after this map ships (see Out of scope); the
+tool registry is designed so adding them touches only `agent-tools` and the action card.
 
 ## Modules
 
-| Module id          | Repo                  | Responsibility                                                                                            | Depends on                    | Spec                                                 |
-| ------------------ | --------------------- | --------------------------------------------------------------------------------------------------------- | ----------------------------- | ---------------------------------------------------- |
-| `kb-storage`       | `corebanking-academy` | SQL (`vector`, `documents`, `document_chunks`), `AI_ASSISTANT` function, entity, settings, Ollama client  | —                             | [SPEC-kb-storage.md](SPEC-kb-storage.md)             |
-| `kb-ingestion`     | `corebanking-academy` | Upload checks, DB-backed job queue and worker, extraction with page/line, chunking, embedding, status API | `kb-storage`                  | [SPEC-kb-ingestion.md](SPEC-kb-ingestion.md)         |
-| `kb-chat`          | `corebanking-academy` | Question embedding, top-k vector search, grounded prompt to `qwen3:8b`, answer + citations, NDJSON stream | `kb-storage`                  | [SPEC-kb-chat.md](SPEC-kb-chat.md)                   |
-| `kb-contracts`     | this repo             | zod schemas, endpoint registry, fixtures, `EndpointClient` stream transport, menu code `AI_ASSISTANT`     | `kb-ingestion`, `kb-chat`     | [SPEC-kb-contracts.md](SPEC-kb-contracts.md)         |
-| `doc-tracker`      | this repo             | App-level store that polls the signed-in user's pending uploads and reports each finish                   | `kb-contracts`                | [SPEC-doc-tracker.md](SPEC-doc-tracker.md)           |
-| `assistant-screen` | this repo             | `/assistant` route: upload, shared document list, chat with expandable citations                          | `kb-contracts`, `doc-tracker` | [SPEC-assistant-screen.md](SPEC-assistant-screen.md) |
-| `owl-indicator`    | this repo             | Owl fixed bottom-right in the app shell, driven by `doc-tracker`                                          | `doc-tracker`                 | [SPEC-owl-indicator.md](SPEC-owl-indicator.md)       |
+| Module id         | Repo                  | Responsibility                                                                                                                                         | Depends on                                       |
+| ----------------- | --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------ |
+| `agent-runtime`   | `corebanking-academy` | Ollama tool calling (`tools`, `tool_calls`), the agent loop with a step cap, NDJSON stream, the tool registry, pending actions with confirm and cancel | `kb-storage` (shipped: `OllamaClient`, settings) |
+| `agent-tools`     | `corebanking-academy` | The three tools: `search_documents` (reuses `kb-chat` retrieval and citations), `open_screen`, `update_profile`                                        | `agent-runtime`, `kb-chat`, identity             |
+| `agent-contracts` | this repo             | zod schemas for the request, stream events and actions; endpoint registry; fixtures; mock API handlers                                                 | `agent-runtime`, `agent-tools`                   |
+| `chat-widget`     | this repo             | App-level store (conversation in `sessionStorage`, streaming, pending action) and the floating chat panel with the action card and source badges       | `agent-contracts`                                |
+| `owl-launcher`    | this repo             | The owl becomes the widget's launcher: a click opens and closes the panel, while it keeps showing document processing                                  | `chat-widget`, `owl-indicator` (shipped)         |
 
-Build order (one phase at a time, each ends with checks, a commit and a stop for approval):
+Module specs: [SPEC-agent-runtime.md](SPEC-agent-runtime.md) · [SPEC-agent-tools.md](SPEC-agent-tools.md) ·
+[SPEC-agent-contracts.md](SPEC-agent-contracts.md) · [SPEC-chat-widget.md](SPEC-chat-widget.md) ·
+[SPEC-owl-launcher.md](SPEC-owl-launcher.md).
 
-| Phase | Modules                                                 |
-| ----- | ------------------------------------------------------- |
-| 0     | this map, the seven module specs, the architecture HTML |
-| 1     | `kb-storage` → `kb-ingestion`                           |
-| 2     | `kb-chat`                                               |
-| 3     | `kb-contracts` → `doc-tracker` → `assistant-screen`     |
-| 4     | `owl-indicator`                                         |
-| 5     | end-to-end verification                                 |
+Dependency direction is one way: backend runtime → backend tools → FE contracts → widget → owl. The
+contract between the backend and the app (request, stream events, action shape) is specified in
+`SPEC-agent-runtime.md`, with each tool's arguments and result in `SPEC-agent-tools.md`.
 
-## Decisions (approved 2026-10-22)
+Build order (one phase at a time, each ends with its checks, a commit and a stop for approval):
 
-| #   | Decision                                                                                                                                                                                                                                                                                                            |
-| --- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| D1  | **Local only.** Postgres in Docker from `pgvector/pgvector:pg16` (the backend's `compose.yaml` image changes from `postgres:16-alpine`), loaded with the identity, learning and new knowledge SQL. Backend on `localhost:8019`. The FE dev proxy target becomes configurable (`LMS_API_TARGET`, default unchanged). |
-| D2  | **The `documents` table is the queue.** A `@Scheduled` poller claims `queued` rows with `FOR UPDATE SKIP LOCKED` and runs them on a bounded executor (1 worker by default). Rows left in `processing` at startup are re-queued. No broker, no new infrastructure.                                                   |
-| D3  | **New function `AI_ASSISTANT`** (route `/assistant`) added to the identity seed and granted to every role. `/assistant` moves from the FE `open` screens to a menu group.                                                                                                                                           |
-| D4  | **Owl motion:** idle is still, processing chews in a loop (a state indicator, like a spinner), done smiles once. No idle blink.                                                                                                                                                                                     |
-| D5  | **Backend libraries:** Apache PDFBox 3 (PDF), Apache POI `poi-ooxml` (DOCX), Spring `RestClient` for Ollama (no Spring AI), Testcontainers (`postgresql` module, image `pgvector/pgvector:pg16`) for persistence tests. Versions come from the Spring Boot BOM where it manages them.                               |
-| D6  | **Streaming:** NDJSON over `fetch` (`application/x-ndjson`), not browser SSE. Angular's `FetchBackend` (22.2) emits `DownloadProgress.partialText` for `responseType: 'text'` with `reportProgress`, which `EndpointClient` reads line by line.                                                                     |
-| D7  | Every signed-in user may upload. Deleting documents is out of scope. One size limit: 20 MB per file.                                                                                                                                                                                                                |
-| D8  | This file is the map; each module has `SPEC-<module>.md` beside it.                                                                                                                                                                                                                                                 |
+| Phase | Modules                                        |
+| ----- | ---------------------------------------------- |
+| 0     | this map, then the five module specs           |
+| 1     | `agent-runtime`                                |
+| 2     | `agent-tools`                                  |
+| 3     | `agent-contracts` → `chat-widget`              |
+| 4     | `owl-launcher`                                 |
+| 5     | end-to-end run on the local backend and Ollama |
 
-## Assumptions
+## Decisions (from the 2026-10-24 questions)
 
-- PDF line numbers restart at 1 on each page, in the order PDFBox extracts the text.
-- DOCX has no pages: `page` is null and each paragraph or table row is one line (shown as "đoạn").
-- Markdown lines are the file's own lines, 1-based.
-- A PDF with no text layer (a scan) fails with a readable message; OCR is out of scope.
-- The owl follows only the signed-in user's own uploads; the document list shows everyone's.
-- Tokens are estimated from characters (no bge-m3 tokenizer in Java).
-- `qwen3:8b` is called with `think: false`; installed tags verified on disk: `qwen3:8b`, `bge-m3:latest`.
-- Chat is single-turn: each question is answered on its own; the conversation lives in the browser only.
-- Backend branch `feat/ai-assistant-rag` from `main`; this repo's branch `feat/ai-assistant-rag`.
+| #   | Decision                                                                                                                                                                                                                                                                                                                                                                                                                                        |
+| --- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| C1  | **The backend runs the agent loop.** Read-only tools (`search_documents`, `open_screen`) run as soon as the model calls them. A tool that changes data (`update_profile`) does not run: the backend stores it as a pending action and streams an `action_required` event; the app shows a confirmation card, and only `POST …/actions/{id}/confirm` runs it, as the signed-in user, through the existing service (`SelfProfileService.update`). |
+| C2  | **First tools:** document search, open a screen, update own profile (full name, email, position). Course creation and assignment are out of this map.                                                                                                                                                                                                                                                                                           |
+| C3  | **The owl is the launcher.** One anchor in the corner: the owl keeps its processing states and opens or closes the chat panel on click. The owl's current click (go to `/assistant`) moves to a link inside the panel.                                                                                                                                                                                                                          |
+| C4  | **Conversation lives in the browser, per tab** (`sessionStorage`): it survives navigation and reload, and is cleared on sign-out or when the tab closes. Each request sends the last 10 turns. No new table.                                                                                                                                                                                                                                    |
+
+## Assumptions (correct any of these before approval)
+
+1. **Local run.** Postgres from the backend's `compose.yaml` (`pgvector/pgvector:pg16`, needs Docker Desktop
+   running — it is not running now), backend on `localhost:8019`, app with
+   `LMS_API_TARGET=http://localhost:8019 npm start`. Ollama 0.40.9 is installed with `qwen3:8b` and `bge-m3`.
+2. **Who sees it.** Every signed-in user with the `AI_ASSISTANT` function (all four roles today). No new function
+   code. The widget is hidden on `/assistant` (that screen is the full version) and on the sign-in and
+   change-password pages.
+3. **New endpoints** under `/api/v1/assistant/agent`: `POST /stream` (NDJSON, same transport as
+   `kb-chat`), `POST /actions/{actionId}/confirm`, `POST /actions/{actionId}/cancel`. Pending actions are held
+   in memory, bound to the user who caused them, and expire after 10 minutes; a restart drops them (the card
+   then says the request expired).
+4. **History is text only.** The request carries `user` and `assistant` text turns; the backend ignores any other
+   role, so a client cannot inject tool results. Each tool's result is computed on the server in the same turn.
+5. **`open_screen`** takes a function code from the user's own granted functions (the server builds the list
+   from the user's grants, the same source as `/auth/me` `nav`); the stream sends a `navigate` event with the
+   route and the app navigates. Unmigrated screens open their placeholder, as from the sidebar.
+6. **`update_profile`** accepts only `fullName`, `email`, `positionName`, validated with the same rules as
+   `PATCH /auth/me`. The card shows each field as "cũ → mới". SSO accounts get a refusal before any card. The
+   card is confirm or cancel only (no inline editing); to change a value the user says so in the chat. After
+   confirm, the app applies the refreshed `/me` to the session, as the profile page does.
+7. **Document answers** keep the `kb-chat` rules: only retrieved chunks, citations from chunk metadata selected by
+   `[n]` markers, the fixed not-found sentence. The widget reuses the source badge and popover from
+   `/assistant`.
+8. **Agent loop limits:** at most 4 model calls per user turn, `think: false`, temperature 0.1, `num_ctx 8192`;
+   an unknown tool, bad arguments or the cap ends the turn with a readable Vietnamese message.
+9. **Branches:** backend `feat/ai-chatbot-agent` from `main`; this repo continues on
+   `claude/ai-chatbot-tool-call-2fcf7a`.
 
 ## Out of scope
 
-OCR; deleting, renaming or re-processing documents; per-user or per-unit document visibility; multi-turn
-memory; the mockup's lesson-tab assistant, "Tóm tắt bài này" and "Tạo 3 câu ôn tập"; cloud models;
+Creating, publishing or assigning courses (next map); any other data-changing tool; server-side conversation
+history; editing an action's values in the card; voice; uploading documents from the widget; cloud models;
 production deployment; rate limiting.
 
 ## Boundaries (whole initiative)
 
-- **Always:** one phase at a time, ending with its checks, a commit and a stop; this repo follows
-  `AGENTS.md` and its docs; the backend follows its `AGENTS.md` and `DEVELOPMENT_GUIDELINES.md`; UI copy and
-  the architecture HTML in Vietnamese, code, comments and commits in English; Ollama URL and model names
-  from configuration.
-- **Ask first:** a cloud model; a separate vector database or message broker; any dependency beyond D5;
-  changing the shared remote database or the remote backend; a change to the approved design (update the
-  HTML and say so).
-- **Never:** commit to `main`; commit `.env` or secrets; run SQL against `103.121.90.119`; let the model
-  answer from outside the retrieved chunks; take a source from model text (its `[n]` markers only
-  select among the retrieved chunks, see `SPEC-kb-chat.md`).
+- **Always:** one phase at a time, ending with its checks, a commit and a stop; this repo follows `AGENTS.md`
+  and its docs; the backend follows its `AGENTS.md` and `DEVELOPMENT_GUIDELINES.md`; every data change goes
+  through a confirmed action and the existing service with the user's own permissions; tool arguments are
+  validated on the server, never trusted from the model; UI copy in Vietnamese, code, comments and commits in
+  English.
+- **Ask first:** a new tool, and above all any tool that changes data; a new dependency (Spring AI, LangChain4j,
+  a cache library); a new table; changing `kb-chat` behaviour or the `/assistant` screen beyond reusing its
+  parts; touching the shared remote database or backend.
+- **Never:** run a data-changing tool without the user's confirmation; act with more rights than the signed-in
+  user; take a citation's source from model text; log question, answer or profile values; send anything to a
+  model other than the local Ollama; commit to `main` or commit secrets.
 
-## Success criteria (Phase 5)
+## Success criteria (Phase 5, on the local backend)
 
-1. Signed in as `giangvien` / `Demo@123`, upload one PDF, one `.md` and one `.docx`: the owl chews while
-   the user browses other pages, then smiles with "Đã xử lý xong tài liệu <tên tệp>".
-2. A question answered in one document returns the right answer citing that file and the right line range
-   (and page for the PDF).
-3. A question not covered returns "Không tìm thấy thông tin này trong tài liệu." with no citations.
-4. Signed in with another role (`hocvien`), the same documents are listed and searchable.
-5. FE: `npm run check` green, angular.md §14, visual-design checklist and the migration verify step pass.
+1. On any page, a click on the owl opens the panel and another closes it; the owl still chews while an upload
+   processes. The conversation is still there after moving to another page and after a reload.
+2. "CIF là gì?" (with a document that covers it) answers with source badges pointing at the right file and lines;
+   an out-of-document question answers the fixed not-found sentence with no sources.
+3. Signed in as `quantri`, "mở trang quản lý người dùng" navigates to `/admin/users`; signed in as `hocvien`, the
+   same request is refused in words and nothing navigates.
+4. "Đổi chức danh của tôi thành Chuyên viên" shows a card with the old and new value; nothing changes until
+   "Xác nhận"; after it the profile page and header show the new value; "Huỷ" leaves the profile unchanged; a card
+   confirmed after 10 minutes reports it expired.
+5. FE: `npm run check` green, angular.md §14, the visual-design checklist and the migration verify step pass.
    BE: `mvn clean verify` green (Docker running for Testcontainers).
 
 ## Open questions
 
-None blocking. Tuning values (chunk size, `topK`, similarity threshold, poll interval) are set in the
-module specs and may change in Phase 1–2 with measurements; any change updates the spec and the HTML.
+1. Is `qwen3:8b` reliable enough at choosing tools in Vietnamese? Phase 1 measures it on a fixed set of ~20
+   prompts (documents, navigation, profile, chit-chat) and reports the hit rate; below 90% we revisit the
+   prompt or the tool descriptions before Phase 2.
