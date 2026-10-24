@@ -193,7 +193,7 @@ describe('ChatWidget', () => {
     expect(store.ask).toHaveBeenCalledWith('EOD là gì?');
     answering.set(true);
     await fixture.whenStable();
-    el.querySelector<HTMLButtonElement>('.composer__bar button')?.click();
+    el.querySelector<HTMLButtonElement>('.composer__action')?.click();
     expect(store.stop).toHaveBeenCalled();
   });
 
