@@ -1,3 +1,4 @@
+import { Component, type Type, type WritableSignal } from '@angular/core';
 import { HttpTestingController } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 import { provideRouter, Router } from '@angular/router';
@@ -27,6 +28,9 @@ const USERS = {
   admin: '000002',
   'unit-admin': '000003',
 } as const;
+
+@Component({ template: '' })
+class DevToolbarStub {}
 
 describe('AppShell', () => {
   let session: FakeSessionStore;
@@ -296,6 +300,52 @@ describe('AppShell', () => {
       TestBed.inject(AgentChatStore).open();
       const focus = await open('/lesson/c1/l1');
       expect(focus.querySelector('app-chat-widget')).toBeNull();
+    });
+
+    it('opens and closes from the owl, and Escape hands focus back to it', async () => {
+      signInAs('learner');
+      const el = await open('/learn');
+      const owl = el.querySelector<HTMLButtonElement>('app-owl button')!;
+      owl.click();
+      TestBed.tick();
+      expect(panel(el)).not.toBeNull();
+      expect(owl.getAttribute('aria-expanded')).toBe('true');
+      expect(owl.getAttribute('aria-controls')).toBe(panel(el)?.id);
+      el.querySelector('textarea')?.dispatchEvent(
+        new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }),
+      );
+      TestBed.tick();
+      expect(panel(el)).toBeNull();
+      expect(owl.getAttribute('aria-expanded')).toBe('false');
+      expect(document.activeElement).toBe(owl);
+    });
+
+    it('moves with the owl off the dev toolbar', async () => {
+      signInAs('learner');
+      TestBed.inject(AgentChatStore).open();
+      const fixture = TestBed.createComponent(AppShell);
+      await router.navigateByUrl('/learn');
+      flushCounts();
+      await fixture.whenStable();
+      TestBed.tick();
+      const el = fixture.nativeElement as HTMLElement;
+      const beside = () => [
+        el.querySelector('app-owl')?.classList.contains('owl--beside-toolbar'),
+        el
+          .querySelector('app-chat-widget')
+          ?.classList.contains('chat-widget--beside-toolbar'),
+      ];
+      const devToolbar = (
+        fixture.componentInstance as unknown as {
+          devToolbar: WritableSignal<Type<unknown> | null>;
+        }
+      ).devToolbar;
+      devToolbar.set(null);
+      TestBed.tick();
+      expect(beside()).toEqual([false, false]);
+      devToolbar.set(DevToolbarStub);
+      TestBed.tick();
+      expect(beside()).toEqual([true, true]);
     });
   });
 

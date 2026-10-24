@@ -39,6 +39,11 @@
       height: ui.space(12);
     }
 
+    // Open is carried by `aria-expanded`; the border only echoes it for sighted users.
+    &--open {
+      border-color: ui.color(primary);
+    }
+
     &:focus-visible {
       @include ui.focus-ring;
     }
