@@ -75,14 +75,14 @@ describe('ChatWidget', () => {
   const dialog = (el: HTMLElement) =>
     el.querySelector<HTMLElement>('[role="dialog"]');
 
-  it('is a non-modal dialog named by its title, with the empty line when there are no turns', async () => {
+  it('is a non-modal dialog named "Trợ lý nhanh", headed by the owl, with the empty line when there are no turns', async () => {
     const { el } = await render();
     const panel = dialog(el);
     expect(panel?.getAttribute('aria-modal')).toBe('false');
-    expect(panel?.getAttribute('aria-labelledby')).toBe('agent-chat-title');
-    expect(el.querySelector('#agent-chat-title')?.textContent).toBe(
-      'Trợ lý nhanh',
-    );
+    expect(panel?.getAttribute('aria-label')).toBe('Trợ lý nhanh');
+    expect(panel?.querySelector('h2')).toBeNull();
+    const face = panel?.querySelector('.chat__header app-owl-face svg');
+    expect(face?.getAttribute('aria-hidden')).toBe('true');
     expect(el.querySelector('.chat__empty')?.textContent).toContain(
       'Hỏi về tài liệu, mở một màn hình hoặc sửa hồ sơ của bạn.',
     );

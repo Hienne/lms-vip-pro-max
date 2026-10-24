@@ -56,11 +56,12 @@
     border-bottom: 1px solid ui.color(border);
   }
 
-  &__title {
-    @include ui.text(md);
-    flex: 1 1 auto;
-    margin: 0;
-    font-weight: ui.weight(semibold);
+  // The owl stands in for a title; the dialog is named by its `aria-label`.
+  &__face {
+    flex: none;
+    width: ui.space(8);
+    height: ui.space(8);
+    margin-inline-end: auto;
   }
 
   &__link {

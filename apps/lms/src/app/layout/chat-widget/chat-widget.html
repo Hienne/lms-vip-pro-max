@@ -3,12 +3,12 @@
   class="chat"
   role="dialog"
   aria-modal="false"
-  aria-labelledby="agent-chat-title"
+  aria-label="Trợ lý nhanh"
   [id]="panelId"
   (keydown.escape)="dismiss()"
 >
   <header class="chat__header">
-    <h2 id="agent-chat-title" class="chat__title">Trợ lý nhanh</h2>
+    <app-owl-face class="chat__face" />
     <a class="chat__link" routerLink="/assistant">Mở Trợ lý AI</a>
     <button
       uiIconButton

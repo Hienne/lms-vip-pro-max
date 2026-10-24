@@ -101,7 +101,8 @@ password change not pending), `announcement$` (screen-reader text, as `Assistant
 - Size and place: 380px wide and up to `min(560px, 100dvh − 2 × gutter − owl height)` tall, anchored above the owl
   with the owl's gutter; below the `sm` breakpoint it spans the viewport width minus the gutters. Surface `surface`,
   1px `border`, the overlay radius and elevation tokens. No entrance animation beyond the `ui` overlay motion.
-- Header: title "Trợ lý nhanh"; a text link "Mở Trợ lý AI" to `/assistant`; an icon button "Xoá hội thoại"
+- Header: the owl face (`app-owl-face`, decorative) in place of a title, the dialog named "Trợ lý nhanh" by
+  `aria-label`; a text link "Mở Trợ lý AI" to `/assistant`; an icon button "Xoá hội thoại"
   (disabled when empty or answering); an icon button "Đóng". Icons are `ui-icon` `sm`, inline, no tile.
 - Log: turns in order, scrolled to the newest. Empty state: one muted line, left-aligned:
   "Hỏi về tài liệu, mở một màn hình hoặc sửa hồ sơ của bạn." No suggestion chips, no greeting.

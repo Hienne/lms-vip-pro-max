@@ -17,6 +17,7 @@ import {
 } from '../../core/assistant/agent-launcher';
 import { AgentChatStore } from '../../core/assistant/agent-chat.store';
 import { AgentComposer } from './components/agent-composer/agent-composer';
+import { OwlFace } from '../owl/owl-face/owl-face';
 import { AgentMessage } from './components/agent-message/agent-message';
 
 /** How close to the end of the log counts as "following" the newest message, in pixels. */
@@ -29,7 +30,7 @@ const FOLLOW_DISTANCE = 48;
  */
 @Component({
   selector: 'app-chat-widget',
-  imports: [AgentComposer, AgentMessage, Icon, IconButton, RouterLink],
+  imports: [AgentComposer, AgentMessage, Icon, IconButton, OwlFace, RouterLink],
   host: { '[class.chat-widget--beside-toolbar]': 'besideToolbar()' },
   templateUrl: './chat-widget.html',
   styleUrl: './chat-widget.scss',

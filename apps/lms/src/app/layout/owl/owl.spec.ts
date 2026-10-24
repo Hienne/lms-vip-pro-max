@@ -92,7 +92,7 @@ describe('Owl', () => {
     expect(button().getAttribute('aria-label')).toBe('Trợ lý AI');
     expect(bubble()).toBeNull();
     expect(live()).toBe('');
-    expect(el.querySelector('.owl__jaw')).toBeNull();
+    expect(el.querySelector('.owl-face__jaw')).toBeNull();
     expect(button().querySelector('svg')?.getAttribute('aria-hidden')).toBe(
       'true',
     );
@@ -104,7 +104,7 @@ describe('Owl', () => {
     expect(button().getAttribute('aria-label')).toBe(
       'Trợ lý AI: đang xử lý 2 tài liệu',
     );
-    expect(el.querySelector('.owl__jaw')).not.toBeNull();
+    expect(el.querySelector('.owl-face__jaw')).not.toBeNull();
     expect(bubble()).toBeNull();
     expect(live()).toBe('Đang xử lý tài liệu.');
   });
@@ -125,7 +125,7 @@ describe('Owl', () => {
     expect(bubble()?.textContent).toContain('Đã xử lý xong tài liệu');
     expect(bubble()?.textContent).toContain('quy-trinh-eod.pdf');
     expect(live()).toBe('Đã xử lý xong tài liệu quy-trinh-eod.pdf.');
-    expect(el.querySelector('.owl__jaw')).toBeNull();
+    expect(el.querySelector('.owl-face__jaw')).toBeNull();
   });
 
   it('keeps the bubble while it chews on the next document', () => {
@@ -141,7 +141,7 @@ describe('Owl', () => {
     expect(bubble()?.textContent).toContain('hong.docx');
     expect(bubble()?.textContent).toContain('Xem chi tiết');
     expect(live()).toBe('Không xử lý được tài liệu hong.docx.');
-    expect(el.querySelector('.owl__jaw')).toBeNull();
+    expect(el.querySelector('.owl-face__jaw')).toBeNull();
   });
 
   it('opens the assistant and clears the notice when the owl is clicked', () => {

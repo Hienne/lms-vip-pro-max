@@ -54,11 +54,6 @@
     height: 80%;
   }
 
-  // The jaw and the book move together while the owl chews; the loop ends when nothing is pending.
-  &__jaw {
-    animation: owl-chew 1.2s ease-in-out infinite;
-  }
-
   &__bubble {
     display: flex;
     align-items: flex-start;
@@ -114,16 +109,6 @@
   }
 }
 
-@keyframes owl-chew {
-  0%,
-  100% {
-    transform: translateY(0);
-  }
-  50% {
-    transform: translateY(1.2px);
-  }
-}
-
 @keyframes owl-bubble {
   from {
     opacity: 0;
@@ -132,7 +117,6 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .owl__jaw,
   .owl__bubble {
     animation: none;
   }

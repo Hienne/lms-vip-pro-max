@@ -7,6 +7,7 @@ import {
   AGENT_PANEL_ID,
 } from '../../core/assistant/agent-launcher';
 import { DocumentTrackerStore } from '../../core/knowledge/document-tracker.store';
+import { OwlFace } from './owl-face/owl-face';
 
 /**
  * The owl in the corner of every app page: it chews while the user's uploads are being processed,
@@ -17,7 +18,7 @@ import { DocumentTrackerStore } from '../../core/knowledge/document-tracker.stor
  */
 @Component({
   selector: 'app-owl',
-  imports: [Icon, Tooltip],
+  imports: [Icon, OwlFace, Tooltip],
   host: {
     '[class.owl--beside-toolbar]': 'besideToolbar()',
     '(keydown.escape)': 'dismiss()',
