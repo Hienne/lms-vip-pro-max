@@ -1,5 +1,7 @@
 import {
   adminOrgEndpoints,
+  AgentStreamEventSchema,
+  agentEndpoints,
   authV1Endpoints,
   identityEndpoints,
   knowledgeEndpoints,
@@ -819,6 +821,271 @@ describe('FakeBackend', () => {
         const reply = call(endpoint, null, {
           params: { documentId: '1' },
           body: { question: 'a' },
+        });
+        expect(reply.status, endpoint.path).toBe(401);
+      }
+    });
+  });
+
+  describe('the quick assistant', () => {
+    const turn = (token: string | null, content: string) =>
+      call(agentEndpoints.stream, token, {
+        body: { messages: [{ role: 'user', content }] },
+      });
+    const events = (reply: FakeReply) =>
+      (reply.events ?? []).map((e) => AgentStreamEventSchema.parse(e));
+    const types = (reply: FakeReply) => events(reply).map((e) => e.type);
+    const actionOf = (reply: FakeReply) => {
+      const event = events(reply).find((e) => e.type === 'action_required');
+      if (event?.type !== 'action_required') throw new Error('no action');
+      return event.action;
+    };
+    const meOf = (token: string) =>
+      call(authV1Endpoints.me, token).body.data as Me;
+
+    it('answers a document question with a tool line, text and the citations', () => {
+      const reply = turn(login('hocvien'), 'EOD là gì?');
+      expect(types(reply)).toEqual(['tool', 'delta', 'delta', 'delta', 'done']);
+      expect(events(reply)[0]).toEqual({
+        type: 'tool',
+        name: 'search_documents',
+      });
+      const done = events(reply).at(-1);
+      expect(done?.type === 'done' && done.citations.length).toBe(2);
+      const streamed = events(reply)
+        .flatMap((e) => (e.type === 'delta' ? [e.text] : []))
+        .join('');
+      expect(done?.type === 'done' && done.answer).toBe(streamed);
+    });
+
+    it('answers the fixed sentence with no sources when the question says "không có trong tài liệu"', () => {
+      const reply = turn(login('hocvien'), 'Việc X không có trong tài liệu?');
+      expect(types(reply)).toEqual(['tool', 'done']);
+      expect(events(reply)[1]).toEqual({
+        type: 'done',
+        answer: 'Không tìm thấy thông tin này trong tài liệu.',
+        citations: [],
+      });
+    });
+
+    it('fails mid-stream with the AI unavailable code when the question says "lỗi AI"', () => {
+      const reply = turn(login('hocvien'), 'Thử lỗi AI giúp mình');
+      expect(types(reply)).toEqual(['tool', 'error']);
+      expect(events(reply)[1]).toMatchObject({
+        type: 'error',
+        messageCode: 'ASSISTANT-AI_UNAVAILABLE',
+      });
+    });
+
+    it('opens a screen the caller is granted, ignoring case and accents', () => {
+      const reply = turn(login('quantri'), 'MỞ TRANG quản ly người dung');
+      expect(events(reply)).toEqual([
+        { type: 'tool', name: 'open_screen' },
+        { type: 'navigate', path: '/admin/users', title: 'Quản lý người dùng' },
+        {
+          type: 'done',
+          answer: 'Đã mở trang Quản lý người dùng.',
+          citations: [],
+        },
+      ]);
+    });
+
+    it('refuses in words a screen the caller is not granted, without navigating', () => {
+      const reply = turn(login('hocvien'), 'mở trang quản lý người dùng');
+      expect(types(reply)).not.toContain('navigate');
+      const done = events(reply).at(-1);
+      expect(done).toEqual({
+        type: 'done',
+        answer:
+          'Bạn không có quyền mở màn hình này hoặc màn hình không tồn tại.',
+        citations: [],
+      });
+    });
+
+    it('proposes a profile change with the seeded value as "from" and changes nothing yet', () => {
+      const token = login('hocvien');
+      const before = meOf(token).user.positionName;
+      const reply = turn(
+        token,
+        'Đổi chức danh của tôi thành Chuyên viên chính',
+      );
+      expect(types(reply)).toEqual(['tool', 'action_required', 'done']);
+      expect(actionOf(reply)).toMatchObject({
+        tool: 'update_profile',
+        title: 'Cập nhật hồ sơ cá nhân',
+        changes: [
+          {
+            field: 'positionName',
+            label: 'Chức danh',
+            from: before,
+            to: 'Chuyên viên chính',
+          },
+        ],
+      });
+      expect(meOf(token).user.positionName).toBe(before);
+    });
+
+    it('proposes the email and the full name too, and refuses a value the profile rules reject', () => {
+      const token = login('hocvien');
+      expect(
+        actionOf(turn(token, 'đổi email của tôi thành moi@example.test'))
+          .changes[0],
+      ).toMatchObject({ field: 'email', to: 'moi@example.test' });
+      expect(
+        actionOf(turn(token, 'sửa họ tên của mình thành Nguyễn Văn Minh'))
+          .changes[0],
+      ).toMatchObject({ field: 'fullName', to: 'Nguyễn Văn Minh' });
+      const bad = turn(token, 'đổi email của tôi thành khong-phai-email');
+      expect(types(bad)).not.toContain('action_required');
+      expect(events(bad).at(-1)).toMatchObject({
+        type: 'done',
+        answer: 'Email không hợp lệ hoặc dài quá 100 ký tự.',
+      });
+    });
+
+    it('says nothing changes when the value is already the current one', () => {
+      const token = login('hocvien');
+      const current = meOf(token).user.positionName as string;
+      const reply = turn(token, `đổi chức danh của tôi thành ${current}`);
+      expect(types(reply)).not.toContain('action_required');
+      expect(events(reply).at(-1)).toMatchObject({
+        answer: 'Hồ sơ đã có đúng giá trị này, không cần thay đổi.',
+      });
+    });
+
+    it('offers no profile change to an account that is not local', () => {
+      const token = login('hocvien');
+      const users = (
+        backend as unknown as {
+          users: { userId: string; authProvider: string }[];
+        }
+      ).users;
+      users.find((u) => u.userId === '000004')!.authProvider = 'SSO';
+      const reply = turn(token, 'đổi chức danh của tôi thành Chuyên viên');
+      expect(types(reply)).not.toContain('action_required');
+    });
+
+    it('confirms once: the profile changes, /auth/me shows it, a second confirm is not found', () => {
+      const token = login('hocvien');
+      const action = actionOf(
+        turn(token, 'Đổi chức danh của tôi thành Chuyên viên chính'),
+      );
+      const reply = call(agentEndpoints.confirmAction, token, {
+        params: { actionId: action.id },
+      });
+      expect(reply.status).toBe(200);
+      expect(reply.body.data).toMatchObject({
+        actionId: action.id,
+        tool: 'update_profile',
+        message: 'Đã cập nhật hồ sơ.',
+        data: { user: { positionName: 'Chuyên viên chính' } },
+      });
+      expect(meOf(token).user.positionName).toBe('Chuyên viên chính');
+      expect(
+        code(
+          call(agentEndpoints.confirmAction, token, {
+            params: { actionId: action.id },
+          }),
+        ),
+      ).toBe('ASSISTANT-ACTION_NOT_FOUND');
+    });
+
+    it('answers not found for another user’s action, a cancelled one and an unknown id', () => {
+      const owner = login('hocvien');
+      const other = login('giangvien');
+      const action = actionOf(
+        turn(owner, 'Đổi chức danh của tôi thành Chuyên viên chính'),
+      );
+      expect(
+        code(
+          call(agentEndpoints.confirmAction, other, {
+            params: { actionId: action.id },
+          }),
+        ),
+      ).toBe('ASSISTANT-ACTION_NOT_FOUND');
+      expect(
+        code(
+          call(agentEndpoints.cancelAction, other, {
+            params: { actionId: action.id },
+          }),
+        ),
+      ).toBe('ASSISTANT-ACTION_NOT_FOUND');
+      expect(
+        call(agentEndpoints.cancelAction, owner, {
+          params: { actionId: action.id },
+        }).status,
+      ).toBe(200);
+      expect(
+        code(
+          call(agentEndpoints.confirmAction, owner, {
+            params: { actionId: action.id },
+          }),
+        ),
+      ).toBe('ASSISTANT-ACTION_NOT_FOUND');
+      expect(
+        code(
+          call(agentEndpoints.confirmAction, owner, {
+            params: { actionId: 'khong-co' },
+          }),
+        ),
+      ).toBe('ASSISTANT-ACTION_NOT_FOUND');
+    });
+
+    it('answers stale when the profile changed after the proposal', () => {
+      const token = login('hocvien');
+      const action = actionOf(
+        turn(token, 'Đổi chức danh của tôi thành Chuyên viên chính'),
+      );
+      call(authV1Endpoints.updateMe, token, {
+        body: { positionName: 'Chức danh khác' },
+      });
+      expect(
+        code(
+          call(agentEndpoints.confirmAction, token, {
+            params: { actionId: action.id },
+          }),
+        ),
+      ).toBe('ASSISTANT-ACTION_STALE');
+    });
+
+    it('lets an action expire after ten minutes', () => {
+      vi.useFakeTimers();
+      try {
+        const token = login('hocvien');
+        const action = actionOf(
+          turn(token, 'Đổi chức danh của tôi thành Chuyên viên chính'),
+        );
+        vi.advanceTimersByTime(10 * 60_000 + 1);
+        expect(
+          code(
+            call(agentEndpoints.confirmAction, token, {
+              params: { actionId: action.id },
+            }),
+          ),
+        ).toBe('ASSISTANT-ACTION_NOT_FOUND');
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+
+    it('refuses an invalid command before streaming and needs a signed-in user', () => {
+      const token = login('hocvien');
+      const bad = (messages: unknown) =>
+        code(call(agentEndpoints.stream, token, { body: { messages } }));
+      expect(bad([])).toBe('CORE-VALIDATION_FAILED');
+      expect(bad([{ role: 'assistant', content: 'x' }])).toBe(
+        'CORE-VALIDATION_FAILED',
+      );
+      expect(bad([{ role: 'user', content: '  ' }])).toBe(
+        'CORE-VALIDATION_FAILED',
+      );
+      expect(bad([{ role: 'user', content: 'x'.repeat(501) }])).toBe(
+        'CORE-VALIDATION_FAILED',
+      );
+      for (const endpoint of Object.values(agentEndpoints)) {
+        const reply = call(endpoint, null, {
+          params: { actionId: 'a' },
+          body: { messages: [{ role: 'user', content: 'a' }] },
         });
         expect(reply.status, endpoint.path).toBe(401);
       }

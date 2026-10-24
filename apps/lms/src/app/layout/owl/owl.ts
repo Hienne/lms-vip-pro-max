@@ -1,12 +1,19 @@
 import { Component, computed, inject, input } from '@angular/core';
 import { Router } from '@angular/router';
 import { Icon, Tooltip } from '@lms/ui';
+import { AgentChatStore } from '../../core/assistant/agent-chat.store';
+import {
+  AGENT_LAUNCHER_ID,
+  AGENT_PANEL_ID,
+} from '../../core/assistant/agent-launcher';
 import { DocumentTrackerStore } from '../../core/knowledge/document-tracker.store';
 
 /**
  * The owl in the corner of every app page: it chews while the user's uploads are being processed,
- * smiles when one is ready and shows a plain face when one failed, and takes the user to the
- * assistant. It keeps no state of its own; the tracker owns what is pending and what finished.
+ * smiles when one is ready and shows a plain face when one failed. It is also the launcher of the
+ * quick assistant: a click opens and closes the panel, and without the assistant function it takes
+ * the user to the assistant screen instead. It keeps no state of its own; the tracker owns what
+ * is pending and what finished, and the chat store owns whether the panel is open.
  */
 @Component({
   selector: 'app-owl',
@@ -20,6 +27,7 @@ import { DocumentTrackerStore } from '../../core/knowledge/document-tracker.stor
 })
 export class Owl {
   private readonly tracker = inject(DocumentTrackerStore);
+  private readonly chat = inject(AgentChatStore);
   private readonly router = inject(Router);
 
   /** Moves the owl left, off the dev toolbar that is pinned to the same corner. */
@@ -39,16 +47,35 @@ export class Owl {
     () => this.tracker.pending$().length,
   );
 
-  protected readonly label = computed(() =>
-    this.state() === 'processing'
-      ? `Trợ lý AI: đang xử lý ${this.pendingCount()} tài liệu`
-      : 'Trợ lý AI',
+  protected readonly launcherId = AGENT_LAUNCHER_ID;
+  protected readonly panelId = AGENT_PANEL_ID;
+  protected readonly available = this.chat.available$;
+  protected readonly panelOpen = computed(
+    () => this.available() && this.chat.isOpen$(),
   );
-  protected readonly tip = computed(() =>
+
+  private readonly processing = computed(() =>
     this.state() === 'processing'
-      ? `Đang xử lý ${this.pendingCount()} tài liệu`
-      : 'Trợ lý AI',
+      ? `đang xử lý ${this.pendingCount()} tài liệu`
+      : null,
   );
+  protected readonly label = computed(() => {
+    const processing = this.processing();
+    if (!this.available())
+      return processing ? `Trợ lý AI: ${processing}` : 'Trợ lý AI';
+    const action = this.panelOpen() ? 'Đóng Trợ lý nhanh' : 'Mở Trợ lý nhanh';
+    return processing ? `${action}, ${processing}` : action;
+  });
+  /** The same words as the label; the panel being open says it all, so no tooltip then. */
+  protected readonly tip = computed(() => {
+    if (this.panelOpen()) return '';
+    const processing = this.processing();
+    if (!this.available())
+      return processing
+        ? `Đang xử lý ${this.pendingCount()} tài liệu`
+        : 'Trợ lý AI';
+    return this.label();
+  });
 
   /** What a screen reader hears when the state changes; it names no count, so it speaks once. */
   protected readonly announcement = computed(() => {
@@ -59,6 +86,12 @@ export class Owl {
       ? `Đã xử lý xong tài liệu ${document.fileName}.`
       : `Không xử lý được tài liệu ${document.fileName}.`;
   });
+
+  /** The owl button: the panel for a user who has the assistant, the assistant screen otherwise. */
+  protected activate(): void {
+    if (this.available()) this.chat.toggle();
+    else this.open();
+  }
 
   protected open(): void {
     void this.router.navigateByUrl('/assistant');

@@ -1,0 +1,42 @@
+<form class="composer" #formElement [formRoot]="composerForm">
+  <label class="sr-only" for="agent-composer-box">Tin nhắn cho trợ lý</label>
+  <textarea
+    uiTextarea
+    #box
+    id="agent-composer-box"
+    rows="2"
+    autocomplete="off"
+    placeholder="Nhập tin nhắn…"
+    [formField]="composerForm.message"
+    (keydown.enter)="send($event)"
+  ></textarea>
+  <div class="composer__bar">
+    @if (offline()) {
+    <p class="composer__note composer__note--error">Mất kết nối.</p>
+    } @else if (counting()) {
+    <p class="composer__note" [class.composer__note--error]="tooLong()">
+      {{ length() }}/{{ limit }}
+    </p>
+    } @if (answering()) {
+    <button
+      uiButton
+      type="button"
+      variant="secondary"
+      size="sm"
+      (click)="stop.emit()"
+    >
+      Dừng
+    </button>
+    } @else {
+    <button
+      uiButton
+      type="submit"
+      variant="primary"
+      size="sm"
+      [disabled]="!canSend() || tooLong()"
+    >
+      <ui-icon name="send" size="sm" />Gửi
+    </button>
+    }
+  </div>
+</form>

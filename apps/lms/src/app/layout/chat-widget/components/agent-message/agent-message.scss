@@ -1,0 +1,68 @@
+@use 'ui';
+
+:host {
+  @include ui.stack(3);
+}
+
+.message {
+  @include ui.stack(1);
+
+  &--user {
+    align-items: flex-end;
+
+    .message__text {
+      padding: ui.space(2) ui.space(3);
+      border-radius: ui.radius(md);
+      background: ui.color(surface-2);
+    }
+  }
+
+  &__text,
+  &__answer {
+    @include ui.text(sm);
+    max-width: 100%;
+    margin: 0;
+    overflow-wrap: anywhere;
+  }
+
+  &__text,
+  &__run {
+    white-space: pre-wrap;
+  }
+
+  &__answer {
+    line-height: ui.leading(relaxed);
+  }
+
+  &__link {
+    color: ui.color(primary);
+    font-weight: ui.weight(medium);
+
+    &:focus-visible {
+      @include ui.focus-ring;
+    }
+  }
+
+  // Sources of a reply that marks none: the same badges in a row, no heading.
+  &__sources {
+    @include ui.row(1);
+    margin: ui.space(1) 0 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  &__progress {
+    @include ui.row(2);
+    @include ui.text(sm, muted);
+    margin: 0;
+  }
+
+  &__note {
+    @include ui.text(sm, muted);
+    margin: 0;
+
+    &--error {
+      color: ui.color(danger);
+    }
+  }
+}

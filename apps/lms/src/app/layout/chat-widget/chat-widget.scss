@@ -1,0 +1,98 @@
+@use 'ui';
+
+// Docked above the owl, in the same corner and layer. The host takes no pointer events, so only
+// the panel blocks what is underneath it. Below `sm` it spans the viewport between the gutters.
+:host {
+  position: fixed;
+  right: ui.space(4);
+  bottom: calc(#{ui.space(4)} + #{ui.space(10)} + #{ui.space(2)});
+  left: ui.space(4);
+  z-index: ui.z(header);
+  display: flex;
+  justify-content: flex-end;
+  pointer-events: none;
+
+  @include ui.bp(sm) {
+    left: auto;
+    width: 24rem;
+  }
+
+  @include ui.bp(md) {
+    bottom: calc(#{ui.space(4)} + #{ui.space(12)} + #{ui.space(2)});
+  }
+}
+
+// The dev toolbar sits in the same corner on a wide screen; on a phone the panel keeps both gutters.
+:host(.chat-widget--beside-toolbar) {
+  @include ui.bp(sm) {
+    right: calc(#{ui.space(4)} + 6rem);
+  }
+}
+
+.chat {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  // The owl and its gutters are below the panel, the page gutter above it.
+  max-height: min(
+    35rem,
+    calc(
+      100dvh - #{ui.space(4)} - #{ui.space(4)} - #{ui.space(12)} -
+        #{ui.space(2)}
+    )
+  );
+  overflow: hidden;
+  color: ui.color(text);
+  background: ui.color(surface);
+  border: 1px solid ui.color(border);
+  border-radius: ui.radius(card);
+  box-shadow: ui.shadow(md);
+  pointer-events: auto;
+
+  &__header {
+    @include ui.row(2);
+    flex: none;
+    padding: ui.space(2) ui.space(3) ui.space(2) ui.space(4);
+    border-bottom: 1px solid ui.color(border);
+  }
+
+  &__title {
+    @include ui.text(md);
+    flex: 1 1 auto;
+    margin: 0;
+    font-weight: ui.weight(semibold);
+  }
+
+  &__link {
+    @include ui.text(sm);
+    flex: none;
+    color: ui.color(primary);
+
+    &:focus-visible {
+      @include ui.focus-ring;
+    }
+  }
+
+  &__log {
+    @include ui.stack(4);
+    flex: 1 1 auto;
+    min-height: 8rem;
+    padding: ui.space(4);
+    overflow-y: auto;
+
+    &:focus-visible {
+      @include ui.focus-ring;
+    }
+  }
+
+  &__empty {
+    @include ui.text(sm, muted);
+    margin: 0;
+  }
+
+  &__composer {
+    flex: none;
+    padding: ui.space(3) ui.space(4) ui.space(4);
+    border-top: 1px solid ui.color(border);
+  }
+}

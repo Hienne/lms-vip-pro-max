@@ -1,0 +1,71 @@
+import {
+  CitationSchema,
+  PendingActionSchema,
+  type PendingAction,
+} from '@lms/contracts';
+import { z } from 'zod';
+
+/**
+ * The quick assistant's conversation as the app keeps it: in the browser, per tab. The server
+ * owns every answer, citation and action; these types only hold what it streamed so the panel can
+ * show it again after a navigation or a reload.
+ */
+
+/** Where a reply is: the stream drives every step but `stopped`. */
+export const AgentReplyStatusSchema = z.enum([
+  'waiting',
+  'working',
+  'composing',
+  'done',
+  'stopped',
+  'error',
+]);
+export type AgentReplyStatus = z.infer<typeof AgentReplyStatusSchema>;
+
+export const ActionCardStatusSchema = z.enum([
+  'pending',
+  'confirming',
+  'confirmed',
+  'cancelled',
+  'expired',
+  'failed',
+]);
+export type ActionCardStatus = z.infer<typeof ActionCardStatusSchema>;
+
+/** A proposed change as the panel shows it; `message` is the server's result or refusal. */
+export const ActionCardSchema = z.object({
+  pending: PendingActionSchema,
+  status: ActionCardStatusSchema,
+  message: z.string().nullable(),
+});
+export interface ActionCard {
+  readonly pending: PendingAction;
+  readonly status: ActionCardStatus;
+  readonly message: string | null;
+}
+
+export const AgentReplySchema = z.object({
+  status: AgentReplyStatusSchema,
+  /** The last `tool` event, for the status line. */
+  toolName: z.string().nullable(),
+  text: z.string(),
+  citations: z.array(CitationSchema),
+  navigatedTo: z.object({ path: z.string(), title: z.string() }).nullable(),
+  action: ActionCardSchema.nullable(),
+  error: z.string().nullable(),
+});
+export type AgentReply = z.infer<typeof AgentReplySchema>;
+
+export const AgentTurnSchema = z.object({
+  id: z.number().int().positive(),
+  question: z.string(),
+  reply: AgentReplySchema,
+});
+export type AgentTurn = z.infer<typeof AgentTurnSchema>;
+
+/** What `sessionStorage` holds for one user. */
+export const PersistedChatSchema = z.object({
+  open: z.boolean(),
+  turns: z.array(AgentTurnSchema),
+});
+export type PersistedChat = z.infer<typeof PersistedChatSchema>;

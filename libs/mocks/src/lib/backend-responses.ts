@@ -3,7 +3,8 @@ import { envelopeError } from './envelope';
 
 /**
  * Every refusal the backend can send, with its real HTTP status, code, title and message
- * (`ResponseCode`, `IdentityResponseCode` and `OrganizationResponseCode` of corebanking-academy).
+ * (`ResponseCode`, `IdentityResponseCode`, `OrganizationResponseCode`, `KnowledgeResponseCode` and
+ * `AssistantResponseCode` of corebanking-academy).
  * A mock reply or a spec asks for one by key, so no test or fixture invents a code.
  */
 export const BACKEND_RESPONSES = {
@@ -154,6 +155,25 @@ export const BACKEND_RESPONSES = {
     code: 'KNOWLEDGE-AI_UNAVAILABLE',
     title: 'Dịch vụ AI chưa sẵn sàng',
     message: 'Dịch vụ AI tạm thời không phản hồi. Vui lòng thử lại sau.',
+  },
+  assistantAiUnavailable: {
+    status: 200,
+    code: 'ASSISTANT-AI_UNAVAILABLE',
+    title: 'Dịch vụ AI chưa sẵn sàng',
+    message: 'Dịch vụ AI tạm thời không phản hồi. Vui lòng thử lại sau.',
+  },
+  assistantActionNotFound: {
+    status: 200,
+    code: 'ASSISTANT-ACTION_NOT_FOUND',
+    title: 'Yêu cầu không còn hiệu lực',
+    message:
+      'Yêu cầu này đã hết hạn hoặc đã được xử lý. Vui lòng yêu cầu lại trợ lý.',
+  },
+  assistantActionStale: {
+    status: 200,
+    code: 'ASSISTANT-ACTION_STALE',
+    title: 'Dữ liệu đã thay đổi',
+    message: 'Dữ liệu đã thay đổi từ lúc trợ lý đề xuất. Vui lòng yêu cầu lại.',
   },
 } as const;
 

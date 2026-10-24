@@ -1,5 +1,7 @@
 import {
   adminOrgEndpoints,
+  agentEndpoints,
+  AgentStreamEventSchema,
   authV1Endpoints,
   type AnyEndpoint,
   identityEndpoints,
@@ -7,6 +9,13 @@ import {
   organizationEndpoints,
   shellEndpoints,
 } from '@lms/contracts';
+import {
+  agentAiErrorEvents,
+  agentDocumentEvents,
+  agentNavigateEvents,
+  agentNotFoundEvents,
+  agentTextEvents,
+} from './lib/assistant-agent/agent.fixtures';
 import { FakeBackend } from './lib/backend/fake-backend';
 import {
   knowledgeAnswerFixture,
@@ -18,6 +27,7 @@ import {
 
 const everyEndpoint: readonly AnyEndpoint[] = [
   ...Object.values(adminOrgEndpoints),
+  ...Object.values(agentEndpoints),
   ...Object.values(authV1Endpoints),
   ...Object.values(identityEndpoints),
   ...Object.values(knowledgeEndpoints),
@@ -84,6 +94,31 @@ describe('FakeBackend and the endpoint registries', () => {
 
   it('streams the same text the complete answer holds', () => {
     const streamed = knowledgeStreamFixture
+      .flatMap((event) => (event.type === 'delta' ? [event.text] : []))
+      .join('');
+    expect(streamed).toBe(knowledgeAnswerFixture.answer);
+  });
+});
+
+describe('agent fixtures', () => {
+  const scripts = [
+    agentDocumentEvents,
+    agentNotFoundEvents,
+    agentAiErrorEvents,
+    agentNavigateEvents('/admin/users', 'Quản lý người dùng'),
+    agentTextEvents('Xin chào'),
+  ];
+
+  it.each(scripts.map((events, i) => [i, events] as const))(
+    'script %i parses and ends the turn',
+    (_, events) => {
+      for (const event of events) AgentStreamEventSchema.parse(event);
+      expect(['done', 'error']).toContain(events.at(-1)?.type);
+    },
+  );
+
+  it('streams the same text the complete answer holds', () => {
+    const streamed = agentDocumentEvents
       .flatMap((event) => (event.type === 'delta' ? [event.text] : []))
       .join('');
     expect(streamed).toBe(knowledgeAnswerFixture.answer);

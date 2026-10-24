@@ -1,0 +1,44 @@
+@let reply = turn().reply; @let view = content(); @let link = opened();
+<div class="message message--user">
+  <span class="sr-only">Bạn:</span>
+  <p class="message__text">{{ turn().question }}</p>
+</div>
+<div class="message">
+  <span class="sr-only">Trợ lý:</span>
+  @if (status(); as line) {
+  <p class="message__progress">
+    <span uiSpinner label="Đang xử lý"></span>{{ line }}
+  </p>
+  } @else if (link) {
+  <p class="message__answer">
+    <span class="message__run">{{ link.before }}</span
+    ><a class="message__link" [routerLink]="link.path">{{ link.title }}</a
+    ><span class="message__run">{{ link.after }}</span>
+  </p>
+  } @else if (reply.text) {
+  <p class="message__answer">
+    @for (part of view.parts; track $index) { @if (part.kind === 'text') {
+    <span class="message__run">{{ part.text }}</span>
+    } @else {
+    <app-source-badge [citation]="part.citation" />
+    } }
+  </p>
+  } @if (reply.action; as card) {
+  <app-action-card
+    [card]="card"
+    [busy]="busy()"
+    (confirmed)="confirmed.emit(turn().id)"
+    (cancelled)="cancelled.emit(turn().id)"
+  />
+  } @if (reply.status === 'done' && view.unmarked.length > 0) {
+  <ul class="message__sources" aria-label="Nguồn của câu trả lời">
+    @for (citation of view.unmarked; track citation.n) {
+    <li><app-source-badge [citation]="citation" /></li>
+    }
+  </ul>
+  } @else if (reply.status === 'stopped') {
+  <p class="message__note">Đã dừng.</p>
+  } @else if (reply.status === 'error') {
+  <p class="message__note message__note--error">{{ reply.error }}</p>
+  }
+</div>

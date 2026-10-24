@@ -1,0 +1,57 @@
+@use 'ui';
+
+.action-card {
+  @include ui.stack(3);
+  padding: ui.space(3);
+  background: ui.color(surface);
+  border: 1px solid ui.color(border);
+  border-radius: ui.radius(md);
+
+  &__title {
+    @include ui.text(sm);
+    margin: 0;
+    font-weight: ui.weight(semibold);
+  }
+
+  &__changes {
+    @include ui.stack(2);
+    margin: 0;
+  }
+
+  &__actions {
+    @include ui.row(2);
+  }
+
+  &__result {
+    @include ui.text(sm, muted);
+    margin: 0;
+
+    &--error {
+      color: ui.color(danger);
+    }
+  }
+}
+
+.change {
+  @include ui.stack(1);
+
+  &__label {
+    @include ui.text(sm, muted);
+  }
+
+  &__value {
+    @include ui.row(1);
+    @include ui.text(sm);
+    flex-wrap: wrap;
+    margin: 0;
+    overflow-wrap: anywhere;
+  }
+
+  &__from {
+    color: ui.color(text-muted);
+  }
+
+  &__to {
+    font-weight: ui.weight(medium);
+  }
+}

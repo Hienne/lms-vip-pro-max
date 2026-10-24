@@ -1,6 +1,6 @@
 @let doc = finished();
 <p class="sr-only" aria-live="polite">{{ announcement() }}</p>
-@if (!quiet()) { @if (doc) {
+@if (!quiet()) { @if (doc && !panelOpen()) {
 <div class="owl__bubble">
   <p class="owl__text">
     @if (doc.status === 'ready') { Đã xử lý xong tài liệu
@@ -23,10 +23,14 @@
 <button
   type="button"
   class="owl__button"
+  [class.owl__button--open]="panelOpen()"
+  [id]="launcherId"
   [attr.data-state]="state()"
   [attr.aria-label]="label()"
+  [attr.aria-expanded]="available() ? panelOpen() : null"
+  [attr.aria-controls]="panelOpen() ? panelId : null"
   [uiTooltip]="tip()"
-  (click)="open()"
+  (click)="activate()"
 >
   <svg
     class="owl__art"
