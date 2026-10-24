@@ -11,7 +11,6 @@ import {
   untracked,
   viewChild,
 } from '@angular/core';
-import { RouterLink } from '@angular/router';
 import { Icon, IconButton } from '@lms/ui';
 import {
   AGENT_LAUNCHER_ID,
@@ -40,7 +39,7 @@ const FOLLOW_DISTANCE = 48;
  */
 @Component({
   selector: 'app-chat-widget',
-  imports: [AgentComposer, AgentMessage, Icon, IconButton, OwlFace, RouterLink],
+  imports: [AgentComposer, AgentMessage, Icon, IconButton, OwlFace],
   host: {
     '[class.chat-widget--beside-toolbar]': 'besideToolbar()',
     '[class.chat-widget--docked]': 'store.isDocked$()',

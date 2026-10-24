@@ -90,9 +90,10 @@ describe('ChatWidget', () => {
     expect(el.querySelector('.chat__empty')?.textContent).toContain(
       'Hỏi về tài liệu, mở một màn hình hoặc sửa hồ sơ của bạn.',
     );
-    expect(el.querySelector('a.chat__link')?.getAttribute('href')).toBe(
-      '/assistant',
-    );
+    const header = [
+      ...el.querySelectorAll('.chat__header button, .chat__header a'),
+    ].map((control) => control.getAttribute('aria-label'));
+    expect(header).toEqual(['Mở rộng', 'Đóng']);
   });
 
   it('renders nothing while closed or when the assistant is not available', async () => {
@@ -170,13 +171,13 @@ describe('ChatWidget', () => {
     expect(store.close).toHaveBeenCalled();
   });
 
-  it('keeps clear disabled with no turns or while a reply is on its way', async () => {
+  it('offers clear only once there is a conversation, and not while a reply is on its way', async () => {
     const { fixture, el, turns, answering, store } = await render();
     const clear = () =>
       el.querySelector<HTMLButtonElement>(
         'button[aria-label="Xoá hội thoại"]',
-      )!;
-    expect(clear().disabled).toBe(true);
+      ) as HTMLButtonElement;
+    expect(clear()).toBeNull();
     turns.set([turn(1, 'Trả lời một')]);
     await fixture.whenStable();
     expect(clear().disabled).toBe(false);

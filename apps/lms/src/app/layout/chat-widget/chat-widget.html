@@ -9,16 +9,17 @@
 >
   <header class="chat__header">
     <app-owl-face class="chat__face" />
-    <a class="chat__link" routerLink="/assistant">Mở Trợ lý AI</a>
+    @if (!isEmpty()) {
     <button
       uiIconButton
       size="sm"
       label="Xoá hội thoại"
-      [disabled]="isEmpty() || store.isAnswering$()"
+      [disabled]="store.isAnswering$()"
       (click)="store.clear()"
     >
       <ui-icon name="trash-2" size="sm" />
     </button>
+    }
     <button
       uiIconButton
       size="sm"

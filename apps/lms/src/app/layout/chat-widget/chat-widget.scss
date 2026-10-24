@@ -98,16 +98,6 @@
     margin-inline-end: auto;
   }
 
-  &__link {
-    @include ui.text(sm);
-    flex: none;
-    color: ui.color(primary);
-
-    &:focus-visible {
-      @include ui.focus-ring;
-    }
-  }
-
   // Turns sit further apart than the parts of one turn, so each question and its reply read as a pair.
   &__log {
     @include ui.stack(6);
