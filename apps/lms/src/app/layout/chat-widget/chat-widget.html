@@ -1,0 +1,52 @@
+@if (store.available$() && store.isOpen$()) {
+<section
+  class="chat"
+  role="dialog"
+  aria-modal="false"
+  aria-labelledby="agent-chat-title"
+  [id]="panelId"
+  (keydown.escape)="dismiss()"
+>
+  <header class="chat__header">
+    <h2 id="agent-chat-title" class="chat__title">Trợ lý nhanh</h2>
+    <a class="chat__link" routerLink="/assistant">Mở Trợ lý AI</a>
+    <button
+      uiIconButton
+      size="sm"
+      label="Xoá hội thoại"
+      [disabled]="isEmpty() || store.isAnswering$()"
+      (click)="store.clear()"
+    >
+      <ui-icon name="trash-2" size="sm" />
+    </button>
+    <button uiIconButton size="sm" label="Đóng" (click)="dismiss()">
+      <ui-icon name="x" size="sm" />
+    </button>
+  </header>
+  <p class="sr-only" aria-live="polite">{{ store.announcement$() }}</p>
+  <div
+    #log
+    class="chat__log"
+    role="log"
+    tabindex="0"
+    aria-label="Hội thoại"
+    (scroll)="trackScroll()"
+  >
+    @for (turn of store.turns$(); track turn.id) {
+    <app-agent-message [turn]="turn" />
+    } @empty {
+    <p class="chat__empty">
+      Hỏi về tài liệu, mở một màn hình hoặc sửa hồ sơ của bạn.
+    </p>
+    }
+  </div>
+  <div class="chat__composer">
+    <app-agent-composer
+      [answering]="store.isAnswering$()"
+      [offline]="store.isOffline$()"
+      (ask)="store.ask($event)"
+      (stop)="store.stop()"
+    />
+  </div>
+</section>
+}

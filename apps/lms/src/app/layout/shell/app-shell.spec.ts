@@ -12,6 +12,7 @@ import {
   fakeSession,
   seedProfile,
 } from '../../core/session/session.testing';
+import { AgentChatStore } from '../../core/assistant/agent-chat.store';
 import { AppShell } from './app-shell';
 import { LeavePrompt } from '../../core/routing/unsaved-changes.guard';
 import { LOCAL_STORAGE } from '../../core/storage/local-storage';
@@ -255,6 +256,47 @@ describe('AppShell', () => {
       'app-shell--fill',
     );
     expect(el.querySelector('app-owl button')).toBeNull();
+  });
+
+  describe('the quick assistant panel', () => {
+    const panel = (el: HTMLElement) =>
+      el.querySelector('app-chat-widget [role="dialog"]');
+
+    it('shows while it is open, and not before', async () => {
+      signInAs('learner');
+      const closed = await open('/learn');
+      expect(panel(closed)).toBeNull();
+      TestBed.inject(AgentChatStore).open();
+      TestBed.tick();
+      await TestBed.inject(Router).navigateByUrl('/profile');
+      TestBed.tick();
+      expect(panel(closed)).not.toBeNull();
+    });
+
+    it('is hidden on the assistant screen, which is the full version', async () => {
+      signInAs('learner');
+      TestBed.inject(AgentChatStore).open();
+      const el = await open('/assistant');
+      expect(el.querySelector('app-chat-widget')).toBeNull();
+    });
+
+    it('is not offered to a user without the assistant function', async () => {
+      const profile = seedProfile(USERS.learner);
+      session.user.set({
+        ...profile,
+        menus: profile.menus.filter((code) => code !== 'AI_ASSISTANT'),
+      });
+      TestBed.inject(AgentChatStore).open();
+      const el = await open('/learn');
+      expect(panel(el)).toBeNull();
+    });
+
+    it('is not on focus or bare routes', async () => {
+      signInAs('learner');
+      TestBed.inject(AgentChatStore).open();
+      const focus = await open('/lesson/c1/l1');
+      expect(focus.querySelector('app-chat-widget')).toBeNull();
+    });
   });
 
   it('drops the frame for focus routes', async () => {

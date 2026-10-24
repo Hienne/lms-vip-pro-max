@@ -50,7 +50,9 @@
   [besideToolbar]="devToolbar() !== null"
   [quiet]="store.fillsViewport$()"
 />
-}
+@if (!store.fillsViewport$()) {
+<app-chat-widget [besideToolbar]="devToolbar() !== null" />
+} }
 
 <ng-template
   [uiDrawer]="store.navOpen$()"

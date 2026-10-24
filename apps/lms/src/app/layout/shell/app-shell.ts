@@ -12,6 +12,7 @@ import { RouterOutlet } from '@angular/router';
 import { DrawerOutlet } from '@lms/ui';
 import { APP_CONFIG } from '../../core/config/app-config';
 import { DEV_FEATURES } from '../../core/dev/dev-features';
+import { ChatWidget } from '../chat-widget/chat-widget';
 import { Header } from '../header/header';
 import { NetBanner } from '../net-banner/net-banner';
 import { Owl } from '../owl/owl';
@@ -33,6 +34,7 @@ import { ShellStore } from './data-access/shell.store';
     NetBanner,
     NgComponentOutlet,
     Owl,
+    ChatWidget,
   ],
   host: { '(window:beforeunload)': 'warnBeforeUnload($event)' },
   providers: [ShellStore],

@@ -90,6 +90,8 @@ export class AgentChatStore {
   readonly isOpen$ = this.state.open.asReadonly();
   readonly isAnswering$ = computed(() => this.state.answeringId() !== null);
   readonly isConfirming$ = computed(() => this.state.confirmingId() !== null);
+  /** The composer is off: a question could not be sent. */
+  readonly isOffline$ = this.network.offline$;
   /** Signed in, with the assistant function, and not stuck on a temporary password. */
   readonly available$ = computed(
     () =>
