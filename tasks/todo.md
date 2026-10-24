@@ -87,7 +87,7 @@ task; stop at each checkpoint. BE paths are under `src/main/java/vn/com/coreacad
   - Files: `…/assistant/tool/SearchDocumentsTool.java`, `RetrievedChunks.java`,
     `test/…/assistant/SearchDocumentsToolTest.java`.
   - Depends on: T6.
-- [ ] **T8 `open_screen`** · S
+- [x] **T8 `open_screen`** · S
   - Accept: enum and description list only the user's static routes; another role's code and an invented code →
     refusal `Result`, no `navigate`; no openable screen → not offered.
   - Verify: `mvn test -Dtest=OpenScreenToolTest`; manual: `quantri` → `navigate /admin/users`, `hocvien` refused.
