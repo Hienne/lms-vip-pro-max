@@ -188,11 +188,12 @@ unchanged until confirm, and changed once after it.
 ## Implementation notes (as built)
 
 - `search_documents` asks the model to answer with the exact not-found sentence when the passages do not answer the
-  question. `qwen3:8b` follows it for some questions and paraphrases for others ("… không được đề cập trong tài liệu"). A
-  paraphrase carries no `[n]` marker, so the `kb-chat` rule (no usable marker returns every retrieved chunk) attaches
-  sources to it. Checked on the local backend: of four out-of-document questions, one got the exact sentence with no sources.
-  Making a paraphrased not-found carry no sources would change that `kb-chat` rule, which this map does not touch (ask first);
-  it is left as a follow-up.
+  question. `qwen3:8b` follows it for some questions and paraphrases for others ("… không được đề cập trong tài liệu").
+  Approved 2026-10-24: an answer with no usable `[n]` marker whose first sentence says so in other words ("không tìm thấy",
+  "không được đề cập", "không có thông tin", …) is the fixed sentence with no sources (`NotFoundAnswer.saysNothingWasFound`,
+  used by `RetrievedChunks.finish`). An answer that marks a chunk keeps its sources. `kb-chat` is unchanged: there a
+  markerless answer still returns every chunk. Checked on the local backend: 4 of 4 out-of-document questions end with the
+  fixed sentence and no sources.
 - A refusal from `open_screen` (a screen the role does not grant) goes back to the model as text, and the model sometimes
   repeats the function codes it was given ("PROFILE, COURSE_LEARNING, …") instead of screen names. Nothing navigates and the
   refusal is clear, but the wording is rough; a description sentence against it cost one eval case and was reverted.
