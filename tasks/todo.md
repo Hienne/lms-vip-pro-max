@@ -152,7 +152,7 @@ task; stop at each checkpoint. BE paths are under `src/main/java/vn/com/coreacad
   - Verify: `npx nx test lms -- agent-chat.store`.
   - Files: `apps/lms/src/app/core/assistant/agent-chat.store.ts`, `agent-chat.store.spec.ts`.
   - Depends on: T11, T13.
-- [ ] **T15 Chat panel, message, composer** · M
+- [x] **T15 Chat panel, message, composer** · M
   - Accept: the shell renders the panel while open, not on `/assistant`, not without `AI_ASSISTANT`; `role="dialog"`
     non-modal, Escape closes; header (title, "Mở Trợ lý AI", clear, close); empty line; tool status lines; `[n]`
     badges; composer Enter / Shift+Enter, 500 limit, stop, offline.
