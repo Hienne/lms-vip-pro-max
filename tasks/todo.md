@@ -136,7 +136,7 @@ task; stop at each checkpoint. BE paths are under `src/main/java/vn/com/coreacad
   - Verify: `npx nx test lms` green before and after; `npx nx lint lms`.
   - Files: the three moved units and their specs, the assistant components that import them.
   - Depends on: None (own commit).
-- [ ] **T13 Session storage for the conversation** · S
+- [x] **T13 Session storage for the conversation** · S
   - Accept: `SESSION_STORAGE` token mirrors `LOCAL_STORAGE`; `agent-chat.storage` uses key
     `lms.agent-chat.v1.<userId>`, caps at 30 turns, discards data failing its zod check, works in memory when storage
     is blocked.
