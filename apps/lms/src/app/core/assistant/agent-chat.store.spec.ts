@@ -261,6 +261,25 @@ describe('AgentChatStore', () => {
       expect(store.isAnswering$()).toBe(false);
     });
 
+    it('can still stop a new answer after the previous stream closes late', async () => {
+      const doneLine = JSON.stringify(done('Trả lời một')) + '\n';
+      store.ask('Một');
+      await settle();
+      const first = backend.expectOne(STREAM);
+      // The done line has arrived, but the connection has not closed yet.
+      first.event({ type: 3, loaded: 1, partialText: doneLine } as never);
+      await settle();
+      store.ask('Hai');
+      await settle();
+      const second = backend.expectOne(STREAM);
+
+      finish(first, [done('Trả lời một')]);
+      await settle();
+      store.stop();
+      expect(second.cancelled).toBe(true);
+      expect(lastReply()?.status).toBe('stopped');
+    });
+
     it('stops the answer and keeps what has arrived', async () => {
       store.ask('Một');
       await settle();

@@ -16,7 +16,7 @@ import {
   type AgentStreamEvent,
   type PendingAction,
 } from '@lms/contracts';
-import { finalize, type Subscription } from 'rxjs';
+import { finalize, Subscription } from 'rxjs';
 import { toAppError } from '../errors/app-error';
 import { EndpointClient } from '../http/endpoint-client';
 import { NetworkStore } from '../network/network.store';
@@ -186,26 +186,34 @@ export class AgentChatStore {
       this.fail(id, OFFLINE_MESSAGE);
       return;
     }
-    this.streaming = this.client
-      .stream(agentEndpoints.stream, { body: command })
-      .subscribe({
-        next: (event) => this.apply(id, event),
-        error: (error: unknown) => {
+    // A stream can close after its done line and after the next question has started: its late
+    // callbacks touch only its own turn, and only while the same user is signed in.
+    const userId = this.userId();
+    const subscription = new Subscription();
+    this.streaming = subscription;
+    subscription.add(
+      this.client.stream(agentEndpoints.stream, { body: command }).subscribe({
+        next: this.sameUser(userId, (event: AgentStreamEvent) =>
+          this.apply(id, event),
+        ),
+        error: this.sameUser(userId, (error: unknown) => {
           const app = toAppError(error);
           this.fail(id, app.kind === 'offline' ? OFFLINE_MESSAGE : app.message);
-        },
+        }),
         complete: () => {
           const status = this.turnOf(id)?.reply.status;
           if (
-            status === 'waiting' ||
-            status === 'working' ||
-            status === 'composing'
+            this.userId() === userId &&
+            (status === 'waiting' ||
+              status === 'working' ||
+              status === 'composing')
           ) {
             this.fail(id, CUT_OFF_MESSAGE);
           }
-          this.streaming = null;
+          if (this.streaming === subscription) this.streaming = null;
         },
-      });
+      }),
+    );
   }
 
   /** Aborts the reply in progress and keeps what has arrived, marked as stopped. */
@@ -359,7 +367,7 @@ export class AgentChatStore {
           text: event.answer,
           citations: event.citations,
         });
-        this.setAnsweringId(null);
+        this.answered(id);
         break;
       case 'error':
         this.fail(id, event.message);
@@ -383,7 +391,12 @@ export class AgentChatStore {
 
   private fail(id: number, error: string): void {
     this.patchReply(id, { status: 'error', error });
-    this.setAnsweringId(null);
+    this.answered(id);
+  }
+
+  /** Turn `id` no longer streams; a newer turn that is still answering keeps the composer locked. */
+  private answered(id: number): void {
+    if (this.state.answeringId() === id) this.setAnsweringId(null);
   }
 
   private dropStream(): void {
