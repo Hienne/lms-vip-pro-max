@@ -16,6 +16,6 @@ export class ActionCard {
   readonly card = input.required<ActionCardState>();
   /** Another card (or this one) is being confirmed: one at a time. */
   readonly busy = input(false);
-  readonly confirm = output<void>();
-  readonly cancel = output<void>();
+  readonly confirmed = output<void>();
+  readonly cancelled = output<void>();
 }

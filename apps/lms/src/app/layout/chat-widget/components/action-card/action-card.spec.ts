@@ -29,8 +29,8 @@ const card = (patch: Partial<ActionCard> = {}): ActionCard => ({
   template: `<app-action-card
     [card]="card()"
     [busy]="busy()"
-    (confirm)="confirmed = confirmed + 1"
-    (cancel)="cancelled = cancelled + 1"
+    (confirmed)="confirmed = confirmed + 1"
+    (cancelled)="cancelled = cancelled + 1"
   />`,
 })
 class Host {

@@ -27,8 +27,8 @@
   <app-action-card
     [card]="card"
     [busy]="busy()"
-    (confirm)="confirm.emit(turn().id)"
-    (cancel)="cancel.emit(turn().id)"
+    (confirmed)="confirmed.emit(turn().id)"
+    (cancelled)="cancelled.emit(turn().id)"
   />
   } @if (reply.status === 'done' && view.unmarked.length > 0) {
   <ul class="message__sources" aria-label="Nguồn của câu trả lời">

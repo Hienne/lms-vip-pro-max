@@ -33,7 +33,7 @@
       variant="primary"
       size="sm"
       [disabled]="busy() || state.status === 'confirming'"
-      (click)="confirm.emit()"
+      (click)="confirmed.emit()"
     >
       @if (state.status === 'confirming') {<span
         uiSpinner
@@ -47,7 +47,7 @@
       variant="secondary"
       size="sm"
       [disabled]="busy() || state.status === 'confirming'"
-      (click)="cancel.emit()"
+      (click)="cancelled.emit()"
     >
       Huỷ
     </button>

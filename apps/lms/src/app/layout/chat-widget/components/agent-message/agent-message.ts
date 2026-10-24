@@ -18,8 +18,8 @@ export class AgentMessage {
   readonly turn = input.required<AgentTurn>();
   /** A card is being confirmed somewhere in the conversation: one at a time. */
   readonly busy = input(false);
-  readonly confirm = output<number>();
-  readonly cancel = output<number>();
+  readonly confirmed = output<number>();
+  readonly cancelled = output<number>();
 
   /** The reply's text with its markers as source badges, and the sources no marker points at. */
   protected readonly content = computed(() => {

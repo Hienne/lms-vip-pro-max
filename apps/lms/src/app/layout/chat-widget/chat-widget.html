@@ -36,8 +36,8 @@
     <app-agent-message
       [turn]="turn"
       [busy]="store.isConfirming$()"
-      (confirm)="store.confirm($event)"
-      (cancel)="store.cancel($event)"
+      (confirmed)="store.confirm($event)"
+      (cancelled)="store.cancel($event)"
     />
     } @empty {
     <p class="chat__empty">
