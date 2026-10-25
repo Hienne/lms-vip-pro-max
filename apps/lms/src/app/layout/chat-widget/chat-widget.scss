@@ -25,8 +25,13 @@
   }
 }
 
-// The dev toolbar sits in the same corner on a wide screen.
+// The dev toolbar sits in the same corner: the phone sheet ends above it, the floating panel moves
+// left of it.
 :host(.chat-widget--beside-toolbar) {
+  @include ui.bp-below(sm) {
+    bottom: calc(#{ui.space(4)} + #{ui.space(10)});
+  }
+
   @include ui.bp(sm) {
     right: calc(#{ui.space(4)} + 6rem);
   }
@@ -37,6 +42,13 @@
     top: 0;
     right: 0;
     bottom: 0;
+  }
+}
+
+// Docked, the panel ends above the dev toolbar instead of under it.
+:host(.chat-widget--docked.chat-widget--beside-toolbar) {
+  @include ui.bp(xl) {
+    bottom: calc(#{ui.space(4)} + #{ui.space(10)});
   }
 }
 
