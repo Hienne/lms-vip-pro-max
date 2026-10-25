@@ -99,10 +99,11 @@ password change not pending), `announcement$` (screen-reader text, as `Assistant
 - `role="dialog"`, `aria-modal="false"`, named "Trợ lý nhanh" by `aria-label`. Non-modal: the page stays usable
   beside it. Opening focuses the composer; `Escape` or "Đóng" closes and returns focus to the owl once it shows
   again; focus is not trapped.
-- Size and place: below `sm`, a full-screen sheet, and the owl hides while it is open. From `sm`, it floats above the
-  owl, `container-assistant` (416px) wide and up to `min(35rem, 100dvh − 2 × gutter − owl height)` tall, with
-  `surface`, a 1px `border`, the card radius and `shadow(md)`. From `xl`, "Mở rộng" docks it to the right edge at full
-  height: the shell pads its main column by the same width, the owl hides, and "Thu nhỏ" floats it again. The choice
+- Size and place: the owl's button hides while the panel is open, at every width, and the panel takes its corner.
+  Below `sm`, a full-screen sheet. From `sm`, it floats in the corner, `container-assistant` (416px) wide and
+  `min(45rem, 100dvh − 2 × gutter)` tall however long the conversation, with `surface`, a 1px `border`, the card
+  radius and `shadow(md)`. From `xl`, "Mở rộng" docks it to the right edge at full height: the shell pads its main
+  column by the same width, and "Thu nhỏ" floats it again. The choice
   (`docked`) is kept with the chat in `sessionStorage`, written only when on. No entrance animation.
 - Header: the owl face (`app-owl-face`, decorative) in place of a title, then icon buttons only, each with a tooltip:
   "Xoá hội thoại" (only once there are turns; disabled while answering), "Mở rộng" / "Thu nhỏ" (from `xl`), "Đóng".

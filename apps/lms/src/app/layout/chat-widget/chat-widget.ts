@@ -32,8 +32,9 @@ export const SUGGESTIONS = [
 const FOLLOW_DISTANCE = 48;
 
 /**
- * "Trợ lý nhanh": the panel above the owl on every app page, a full-screen sheet on a phone, and
- * docked to the right edge on a wide screen when the user asks. It is a non-modal dialog (the page
+ * "Trợ lý nhanh": the panel in the owl's corner on every app page (the owl steps aside while it is
+ * open), a full-screen sheet on a phone, and docked to the right edge on a wide screen when the
+ * user asks. It is a non-modal dialog (the page
  * stays usable beside it), opens with the cursor in the message box, and `Escape` or the close
  * button hands focus back to the owl. The store owns the conversation; the panel only shows it.
  */

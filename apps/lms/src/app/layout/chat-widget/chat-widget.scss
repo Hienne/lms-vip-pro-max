@@ -1,27 +1,24 @@
 @use 'ui';
 
-// A phone gets a full-screen sheet (the owl hides while it is open). From `sm` the panel floats
-// above the owl, in the same corner and layer; from `xl` it can dock to the right edge at full
-// height, and the shell makes room for it. The host takes no pointer events, so only the panel
-// blocks what is underneath it.
+// The owl hides while the panel is open, so the panel takes its corner. A phone gets a full-screen
+// sheet; from `sm` the panel floats in the corner at a fixed height; from `xl` it can dock to the
+// right edge at full height, and the shell makes room for it. The host takes no pointer events, so
+// only the panel blocks what is underneath it.
 :host {
   position: fixed;
   inset: 0;
   z-index: ui.z(header);
   display: flex;
+  align-items: flex-end;
   justify-content: flex-end;
   pointer-events: none;
 
   @include ui.bp(sm) {
     top: auto;
     right: ui.space(4);
-    bottom: calc(#{ui.space(4)} + #{ui.space(10)} + #{ui.space(2)});
+    bottom: ui.space(4);
     left: auto;
     width: ui.layout(assistant);
-  }
-
-  @include ui.bp(md) {
-    bottom: calc(#{ui.space(4)} + #{ui.space(12)} + #{ui.space(2)});
   }
 }
 
@@ -62,16 +59,9 @@
   background: ui.color(surface);
   pointer-events: auto;
 
+  // The same height however long the conversation, with the page gutter above and below it.
   @include ui.bp(sm) {
-    height: auto;
-    // The owl and its gutters are below the panel, the page gutter above it.
-    max-height: min(
-      35rem,
-      calc(
-        100dvh - #{ui.space(4)} - #{ui.space(4)} - #{ui.space(12)} -
-          #{ui.space(2)}
-      )
-    );
+    height: min(45rem, calc(100dvh - #{ui.space(4)} - #{ui.space(4)}));
     border: 1px solid ui.color(border);
     border-radius: ui.radius(card);
     box-shadow: ui.shadow(md);
