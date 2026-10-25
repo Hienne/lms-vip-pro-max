@@ -16,7 +16,7 @@ import {
   validateStandardSchema,
 } from '@angular/forms/signals';
 import { AGENT_MESSAGE_MAX_LENGTH } from '@lms/contracts';
-import { Button, Icon, Textarea } from '@lms/ui';
+import { Icon, IconButton, Textarea } from '@lms/ui';
 import {
   AgentComposerSchema,
   COUNTER_FROM,
@@ -24,13 +24,13 @@ import {
 } from './agent-composer.form';
 
 /**
- * The message box of the quick assistant. `Enter` sends, `Shift+Enter` starts a new line (and an
- * `Enter` that confirms an input-method composition does neither). While a reply is on its way the
- * button stops it instead.
+ * The message box of the quick assistant: one line that grows as the user types, with the send
+ * button inside it. `Enter` sends, `Shift+Enter` starts a new line (and an `Enter` that confirms an
+ * input-method composition does neither). While a reply is on its way the button stops it instead.
  */
 @Component({
   selector: 'app-agent-composer',
-  imports: [Button, FormField, FormRoot, Icon, Textarea],
+  imports: [FormField, FormRoot, Icon, IconButton, Textarea],
   templateUrl: './agent-composer.html',
   styleUrl: './agent-composer.scss',
 })
@@ -81,6 +81,11 @@ export class AgentComposer {
     const key = event as KeyboardEvent;
     if (key.shiftKey || key.isComposing) return;
     event.preventDefault();
+    this.submit();
+  }
+
+  /** The icon button cannot be a submit button (`uiIconButton` sets `type="button"`), so it asks the form. */
+  protected submit(): void {
     this.formElement().nativeElement.requestSubmit();
   }
 }

@@ -42,7 +42,7 @@ describe('AgentComposer', () => {
       return event;
     };
     const button = () =>
-      el.querySelector<HTMLButtonElement>('.composer__bar button')!;
+      el.querySelector<HTMLButtonElement>('.composer__action')!;
     return {
       fixture,
       el,
@@ -60,6 +60,18 @@ describe('AgentComposer', () => {
     const event = await press({});
     expect(event.defaultPrevented).toBe(true);
     expect(host.asked).toEqual(['EOD là gì?']);
+    expect(box.value).toBe('');
+  });
+
+  it('sends from the icon button inside the box too', async () => {
+    const { el, box, type, button, host } = await setup();
+    expect(box.rows).toBe(1);
+    expect(el.querySelector('.composer__field')?.contains(button())).toBe(true);
+    expect(button().getAttribute('aria-label')).toBe('Gửi');
+    await type('CIF là gì?');
+    button().click();
+    await Promise.resolve();
+    expect(host.asked).toEqual(['CIF là gì?']);
     expect(box.value).toBe('');
   });
 
@@ -103,7 +115,7 @@ describe('AgentComposer', () => {
     const { fixture, button, host } = await setup();
     host.answering.set(true);
     await fixture.whenStable();
-    expect(button().textContent).toContain('Dừng');
+    expect(button().getAttribute('aria-label')).toBe('Dừng');
     button().click();
     expect(host.stopped).toBe(1);
   });

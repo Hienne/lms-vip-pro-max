@@ -19,6 +19,12 @@
   right: calc(#{ui.space(4)} + 6rem);
 }
 
+// The open panel takes this corner and has its own close button, so the owl steps aside; its
+// screen-reader announcement stays.
+:host(.owl--with-panel) .owl__button {
+  display: none;
+}
+
 .owl {
   &__button {
     display: grid;
@@ -52,11 +58,6 @@
   &__art {
     width: 80%;
     height: 80%;
-  }
-
-  // The jaw and the book move together while the owl chews; the loop ends when nothing is pending.
-  &__jaw {
-    animation: owl-chew 1.2s ease-in-out infinite;
   }
 
   &__bubble {
@@ -114,16 +115,6 @@
   }
 }
 
-@keyframes owl-chew {
-  0%,
-  100% {
-    transform: translateY(0);
-  }
-  50% {
-    transform: translateY(1.2px);
-  }
-}
-
 @keyframes owl-bubble {
   from {
     opacity: 0;
@@ -132,7 +123,6 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .owl__jaw,
   .owl__bubble {
     animation: none;
   }

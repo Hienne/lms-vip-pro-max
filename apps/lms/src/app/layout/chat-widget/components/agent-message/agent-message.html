@@ -1,4 +1,4 @@
-@let reply = turn().reply; @let view = content(); @let link = opened();
+@let reply = turn().reply; @let link = opened();
 <div class="message message--user">
   <span class="sr-only">Bạn:</span>
   <p class="message__text">{{ turn().question }}</p>
@@ -9,18 +9,33 @@
   <p class="message__progress">
     <span uiSpinner label="Đang xử lý"></span>{{ line }}
   </p>
-  } @else if (link) {
+  } @else if (link?.inline) {
   <p class="message__answer">
     <span class="message__run">{{ link.before }}</span
     ><a class="message__link" [routerLink]="link.path">{{ link.title }}</a
     ><span class="message__run">{{ link.after }}</span>
   </p>
+  } @else if (link) { @if (link.before) {
+  <p class="message__answer">
+    <span class="message__run">{{ link.before }}</span>
+  </p>
+  }
+  <p class="message__answer">
+    <a class="message__link" [routerLink]="link.path">{{ link.title }}</a>
+  </p>
   } @else if (reply.text) {
   <p class="message__answer">
-    @for (part of view.parts; track $index) { @if (part.kind === 'text') {
+    @for (part of parts(); track $index) { @if (part.kind === 'text') {
     <span class="message__run">{{ part.text }}</span>
     } @else {
-    <app-source-badge [citation]="part.citation" />
+    <button
+      type="button"
+      class="message__cite"
+      [attr.aria-label]="part.name"
+      (click)="showSource(part.citation.n)"
+    >
+      {{ part.citation.n }}
+    </button>
     } }
   </p>
   } @if (reply.action; as card) {
@@ -30,13 +45,9 @@
     (confirmed)="confirmed.emit(turn().id)"
     (cancelled)="cancelled.emit(turn().id)"
   />
-  } @if (reply.status === 'done' && view.unmarked.length > 0) {
-  <ul class="message__sources" aria-label="Nguồn của câu trả lời">
-    @for (citation of view.unmarked; track citation.n) {
-    <li><app-source-badge [citation]="citation" /></li>
-    }
-  </ul>
-  } @else if (reply.status === 'stopped') {
+  } @if (sourcesShown()) {
+  <app-agent-sources [turnId]="turn().id" [citations]="reply.citations" />
+  } @if (reply.status === 'stopped') {
   <p class="message__note">Đã dừng.</p>
   } @else if (reply.status === 'error') {
   <p class="message__note message__note--error">{{ reply.error }}</p>

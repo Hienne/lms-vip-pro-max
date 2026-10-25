@@ -1,19 +1,22 @@
 @use 'ui';
 
 :host {
-  @include ui.stack(3);
+  @include ui.stack(2);
 }
 
 .message {
   @include ui.stack(1);
 
+  // The user's words in an outlined bubble on the right; the assistant's reply is plain text.
   &--user {
     align-items: flex-end;
 
     .message__text {
+      max-width: 85%;
       padding: ui.space(2) ui.space(3);
-      border-radius: ui.radius(md);
       background: ui.color(surface-2);
+      border: 1px solid ui.color(border);
+      border-radius: ui.radius(md);
     }
   }
 
@@ -37,24 +40,43 @@
   &__link {
     color: ui.color(primary);
     font-weight: ui.weight(medium);
+    text-decoration: underline;
+    text-underline-offset: 2px;
 
     &:focus-visible {
       @include ui.focus-ring;
     }
   }
 
-  // Sources of a reply that marks none: the same badges in a row, no heading.
-  &__sources {
-    @include ui.row(1);
-    margin: ui.space(1) 0 0;
-    padding: 0;
-    list-style: none;
+  // A source number in the sentence: small, raised and teal, like a footnote mark. It moves focus to
+  // the source list under the reply.
+  &__cite {
+    @include ui.num;
+    padding: 0 1px;
+    color: ui.color(primary);
+    font-size: ui.text-size(xs);
+    font-weight: ui.weight(medium);
+    line-height: 0;
+    vertical-align: super;
+    background: none;
+    border: 0;
+    cursor: pointer;
+
+    &:hover {
+      text-decoration: underline;
+    }
+
+    &:focus-visible {
+      @include ui.focus-ring;
+    }
   }
 
+  // The same line height as the answer, so the first text replaces it without a jump.
   &__progress {
     @include ui.row(2);
     @include ui.text(sm, muted);
     margin: 0;
+    line-height: ui.leading(relaxed);
   }
 
   &__note {

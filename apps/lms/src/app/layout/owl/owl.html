@@ -32,42 +32,6 @@
   [uiTooltip]="tip()"
   (click)="activate()"
 >
-  <svg
-    class="owl__art"
-    viewBox="0 0 32 32"
-    fill="none"
-    stroke="currentColor"
-    stroke-width="1.6"
-    stroke-linecap="round"
-    stroke-linejoin="round"
-    aria-hidden="true"
-    focusable="false"
-  >
-    <path
-      d="M8 13c0-5.2 3.2-7.5 8-7.5s8 2.3 8 7.5v6c0 4.7-3.4 7.5-8 7.5s-8-2.8-8-7.5z"
-    />
-    <path d="M9.5 8.3 8.5 4.8l4 1.9M22.5 8.3l1-3.5-4 1.9" />
-    @if (state() === 'done') {
-    <path
-      d="M9.4 14.6c.6-1.9 1.7-2.8 2.9-2.8s2.3.9 2.9 2.8M16.8 14.6c.6-1.9 1.7-2.8 2.9-2.8s2.3.9 2.9 2.8"
-    />
-    } @else {
-    <circle cx="12.3" cy="14" r="3" />
-    <circle cx="19.7" cy="14" r="3" />
-    <circle cx="12.3" cy="14" r="0.9" fill="currentColor" stroke="none" />
-    <circle cx="19.7" cy="14" r="0.9" fill="currentColor" stroke="none" />
-    }
-    <path d="M14.6 18.6h2.8L16 20.8z" fill="currentColor" />
-    @switch (state()) { @case ('processing') {
-    <g class="owl__jaw">
-      <path d="M13.4 22.4h5.2" />
-      <path d="M12.6 24.2h6.8v3.3h-6.8zM16 24.2v3.3" />
-    </g>
-    } @case ('done') {
-    <path d="M12.8 22.2c1.6 1.9 4.8 1.9 6.4 0" />
-    } @case ('failed') {
-    <path d="M14 22.6h4" />
-    } }
-  </svg>
+  <app-owl-face class="owl__art" [state]="state()" />
 </button>
 }

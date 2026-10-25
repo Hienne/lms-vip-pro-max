@@ -76,6 +76,14 @@ describe('AgentMessage', () => {
     ).toContain('Đang chuẩn bị thay đổi…');
   });
 
+  it('says the answer is being written until its first text arrives', async () => {
+    const { el, text } = await render(
+      turn({ status: 'composing', toolName: 'search_documents' }),
+    );
+    expect(text()).toContain('Đang soạn câu trả lời…');
+    expect(el.querySelector('[role="status"]')).not.toBeNull();
+  });
+
   it('shows streamed text instead of the status line', async () => {
     const { el, text } = await render(
       turn({
@@ -88,29 +96,67 @@ describe('AgentMessage', () => {
     expect(el.querySelector('[role="status"]')).toBeNull();
   });
 
-  it('turns [n] markers into source badges, as /assistant does', async () => {
+  it('turns [n] markers into raised source numbers named for a screen reader', async () => {
     const { el } = await render(
       turn({
         text: knowledgeAnswerFixture.answer,
         citations: knowledgeAnswerFixture.citations,
       }),
     );
-    expect(
-      el.querySelectorAll('.message__answer app-source-badge button'),
-    ).toHaveLength(2);
-    expect(el.querySelector('.message__sources')).toBeNull();
+    const marks = el.querySelectorAll<HTMLButtonElement>(
+      '.message__answer .message__cite',
+    );
+    expect(marks).toHaveLength(2);
+    expect(marks[0].textContent?.trim()).toBe('1');
+    expect(marks[0].getAttribute('aria-label')).toMatch(/^Nguồn 1: /);
   });
 
-  it('lists the sources no marker points at in a row under the text', async () => {
+  it('lists every source of a finished reply under it, file and place, in number order', async () => {
     const { el } = await render(
+      turn({
+        text: knowledgeAnswerFixture.answer,
+        citations: [...knowledgeAnswerFixture.citations].reverse(),
+      }),
+    );
+    const lines = [...el.querySelectorAll('app-agent-sources li button')];
+    expect(
+      lines.map((line) => line.querySelector('.sources__n')?.textContent),
+    ).toEqual(['1', '2']);
+    expect(lines[0].textContent).toContain(
+      knowledgeAnswerFixture.citations[0].fileName,
+    );
+  });
+
+  it('lists the sources of a reply whose text marks none, but not while it is still on its way', async () => {
+    const { fixture, el } = await render(
+      turn({
+        status: 'composing',
+        text: 'Không có dấu nguồn.',
+        citations: knowledgeAnswerFixture.citations,
+      }),
+    );
+    expect(el.querySelector('app-agent-sources')).toBeNull();
+    fixture.componentInstance.turn.set(
       turn({
         text: 'Không có dấu nguồn.',
         citations: knowledgeAnswerFixture.citations,
       }),
     );
-    expect(
-      el.querySelectorAll('.message__sources app-source-badge'),
-    ).toHaveLength(2);
+    await fixture.whenStable();
+    expect(el.querySelectorAll('app-agent-sources li')).toHaveLength(2);
+  });
+
+  it('moves focus from a number in the answer to its line in the source list', async () => {
+    const { el } = await render(
+      turn({
+        text: knowledgeAnswerFixture.answer,
+        citations: knowledgeAnswerFixture.citations,
+      }),
+    );
+    document.body.appendChild(el);
+    el.querySelectorAll<HTMLButtonElement>('.message__cite')[1].click();
+    expect(document.activeElement?.id).toBe('agent-source-1-2');
+    el.remove();
   });
 
   it('links the page title of a reply that opened a page', async () => {
@@ -125,6 +171,21 @@ describe('AgentMessage', () => {
     expect(link?.getAttribute('href')).toBe('/admin/users');
     expect(el.querySelector('.message__answer')?.textContent?.trim()).toBe(
       'Đã mở trang Quản lý người dùng.',
+    );
+  });
+
+  it('links the page on a line of its own when the text does not name it', async () => {
+    const { el } = await render(
+      turn({
+        text: 'Xong.',
+        navigatedTo: { path: '/admin/users', title: 'Quản lý người dùng' },
+      }),
+    );
+    const answers = el.querySelectorAll('.message__answer');
+    expect(answers).toHaveLength(2);
+    expect(answers[0].textContent?.trim()).toBe('Xong.');
+    expect(answers[1].querySelector('a')?.getAttribute('href')).toBe(
+      '/admin/users',
     );
   });
 

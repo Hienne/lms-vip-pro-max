@@ -54,18 +54,21 @@ describe('ActionCard', () => {
     return { fixture, el, host: fixture.componentInstance, buttons, text };
   }
 
-  it('shows the title and each change as "label: old → new"', async () => {
-    const { el, text } = await render();
-    expect(el.querySelector('h3')?.textContent).toBe('Cập nhật hồ sơ cá nhân');
-    const row = el.querySelector('dl > div');
-    expect(row?.querySelector('dt')?.textContent).toBe('Chức danh');
-    expect(row?.querySelector('.change__from')?.textContent).toBe(
+  it('asks about the one field it changes, with the current and the new value side by side', async () => {
+    const { el } = await render();
+    expect(el.querySelector('h3')?.textContent).toBe('Đổi chức danh?');
+    expect(el.querySelector('section')?.getAttribute('aria-label')).toBe(
+      'Đổi chức danh?',
+    );
+    expect(el.querySelector('.change__label')).toBeNull();
+    const terms = [...el.querySelectorAll('dt')].map((dt) => dt.textContent);
+    expect(terms).toEqual(['Hiện tại', 'Mới']);
+    expect(el.querySelector('.change__from')?.textContent).toBe(
       'Chuyên viên nghiệp vụ',
     );
-    expect(row?.querySelector('.change__to')?.textContent).toBe(
+    expect(el.querySelector('.change__to')?.textContent).toBe(
       'Chuyên viên chính',
     );
-    expect(text()).toContain('đổi thành');
   });
 
   it('shows an empty value as (trống), on either side', async () => {
@@ -90,9 +93,32 @@ describe('ActionCard', () => {
         },
       }),
     );
-    const rows = el.querySelectorAll('dl > div');
+    const rows = el.querySelectorAll('.change');
     expect(rows[0].querySelector('.change__from')?.textContent).toBe('(trống)');
     expect(rows[1].querySelector('.change__to')?.textContent).toBe('(trống)');
+  });
+
+  it('asks with the server’s title and names each field when several change', async () => {
+    const { el } = await render(
+      card({
+        pending: {
+          ...card().pending,
+          changes: [
+            ...card().pending.changes,
+            {
+              field: 'email',
+              label: 'Email',
+              from: null,
+              to: 'moi@example.test',
+            },
+          ],
+        },
+      }),
+    );
+    expect(el.querySelector('h3')?.textContent).toBe('Cập nhật hồ sơ cá nhân?');
+    expect(
+      [...el.querySelectorAll('.change__label')].map((p) => p.textContent),
+    ).toEqual(['Chức danh', 'Email']);
   });
 
   it('offers Xác nhận and Huỷ while pending, and tells the store which was clicked', async () => {
@@ -126,11 +152,12 @@ describe('ActionCard', () => {
     ['confirmed', 'Đã cập nhật hồ sơ.'],
     ['cancelled', 'Đã huỷ thay đổi.'],
   ] as const)(
-    'replaces the buttons with the result line once %s',
+    'gives way to the result line alone once %s',
     async (status, message) => {
       const { el, buttons, text } = await render(card({ status, message }));
       expect(buttons()).toEqual([]);
-      expect(text()).toContain(message);
+      expect(text()).toBe(message);
+      expect(el.querySelector('section, dl')).toBeNull();
       expect(el.querySelector('.action-card__result--error')).toBeNull();
     },
   );

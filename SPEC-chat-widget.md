@@ -96,25 +96,36 @@ password change not pending), `announcement$` (screen-reader text, as `Assistant
 
 - Rendered by the app shell when `available$` and the current page is not `/assistant` (the shell's
   `fillsViewport$`), and only while `isOpen$`. Outside the router outlet, so it survives navigation.
-- `role="dialog"`, `aria-modal="false"`, labelled by its title. Non-modal: the page stays usable behind it.
-  Opening focuses the composer; `Escape` closes and returns focus to the owl; focus is not trapped.
-- Size and place: 380px wide and up to `min(560px, 100dvh − 2 × gutter − owl height)` tall, anchored above the owl
-  with the owl's gutter; below the `sm` breakpoint it spans the viewport width minus the gutters. Surface `surface`,
-  1px `border`, the overlay radius and elevation tokens. No entrance animation beyond the `ui` overlay motion.
-- Header: title "Trợ lý nhanh"; a text link "Mở Trợ lý AI" to `/assistant`; an icon button "Xoá hội thoại"
-  (disabled when empty or answering); an icon button "Đóng". Icons are `ui-icon` `sm`, inline, no tile.
-- Log: turns in order, scrolled to the newest. Empty state: one muted line, left-aligned:
-  "Hỏi về tài liệu, mở một màn hình hoặc sửa hồ sơ của bạn." No suggestion chips, no greeting.
-- Reply status line (muted, while working): `search_documents` "Đang tìm trong tài liệu…", `open_screen`
-  "Đang mở màn hình…", `update_profile` "Đang chuẩn bị thay đổi…", any other "Đang xử lý…".
-- Reply text renders `[n]` markers as the shared source badges (popover with file, page, lines, snippet), exactly as
-  on `/assistant`. A navigation reply shows its text with the page title as a link to the path.
-- Action card (`ActionCard`): title (the action's `title`), a `dl` of the changes, each "Chức danh: Chuyên viên →
-  Chuyên viên chính", `null` shown as "(trống)"; buttons "Xác nhận" (primary) and "Huỷ". After confirming or
-  cancelling the buttons go and the result message stays as one line; `expired` and `failed` show their message
-  with the danger text token. One coloured state at most.
-- Composer: textarea (1–500 characters after trim, counter shown from 400), `Enter` sends, `Shift+Enter` new line,
-  the send button becomes "Dừng" while answering. Disabled offline with the offline line.
+- `role="dialog"`, `aria-modal="false"`, named "Trợ lý nhanh" by `aria-label`. Non-modal: the page stays usable
+  beside it. Opening focuses the composer; `Escape` or "Đóng" closes and returns focus to the owl once it shows
+  again; focus is not trapped.
+- Size and place: the owl's button hides while the panel is open, at every width, and the panel takes its corner.
+  Below `sm`, a full-screen sheet. From `sm`, it floats in the corner, `container-assistant` (416px) wide and
+  60% of the viewport (`60dvh`) tall however long the conversation, with `surface`, a 1px `border`, the card
+  radius and `shadow(md)`. From `xl`, "Mở rộng" docks it to the right edge at full height: the shell pads its main
+  column by the same width, and "Thu nhỏ" floats it again. The choice
+  (`docked`) is kept with the chat in `sessionStorage`, written only when on. No entrance animation.
+- Header: the owl face (`app-owl-face`, decorative) in place of a title, then icon buttons only, each with a tooltip:
+  "Xoá hội thoại" (only once there are turns; disabled while answering), "Mở rộng" / "Thu nhỏ" (from `xl`), "Đóng".
+  The sidebar's "Trợ lý AI" item is the way to `/assistant`.
+- Log: turns in order, scrolled to the newest, further apart than the parts of a turn. The user's question is an
+  outlined bubble on the right; the reply is plain text. Empty state, left-aligned: the muted line "Hỏi về tài liệu,
+  mở một màn hình hoặc sửa hồ sơ của bạn. Thử:" and three suggested questions as plain links, which send as they stand:
+  "Quy trình EOD gồm những bước nào?", "Mở trang Hồ sơ cá nhân", "Đổi chức danh của tôi". No chips, no greeting.
+- Reply status line (muted, spinner, the answer's line height) until the first text: `search_documents` "Đang tìm
+  trong tài liệu…", `open_screen` "Đang mở màn hình…", `update_profile` "Đang chuẩn bị thay đổi…", any other "Đang xử
+  lý…", then "Đang soạn câu trả lời…" while composing. The text replaces it on the same line.
+- Reply text renders a `[n]` marker as a small raised teal number that moves focus to its line in the source list under
+  the reply: every source of a finished reply, in number order, as "n file · place"; a line opens a popover with the
+  quoted passage. `/assistant` keeps the shared source badges. A navigation reply links the page title in its text, or
+  on a line of its own when the text does not name it.
+- Action card (`ActionCard`): a question as its title, "Đổi chức danh?" for one field and the action's `title` with
+  "?" for several (each field then named above its values); "Hiện tại" and "Mới" in two columns, the new value in
+  semibold, `null` shown as "(trống)"; buttons "Xác nhận" (primary) and "Huỷ". Once confirmed, cancelled, expired or
+  failed, the card gives way to its one result line, `expired` and `failed` in the danger text token.
+- Composer: one line that grows with the text (up to 8rem), 1–500 characters after trim, counter from 400. The send
+  icon button ("Gửi") sits inside the box and becomes "Dừng" while answering. `Enter` sends, `Shift+Enter` new line.
+  Disabled offline with the offline line.
 
 ## Testing
 
@@ -125,9 +136,11 @@ password change not pending), `announcement$` (screen-reader text, as `Assistant
   round-trips, discards bad data, restores a streaming turn as `stopped`, and sign-out clears it.
 - `agent-chat.storage.spec.ts`: version key, 30-turn cap, blocked storage (`null` token) works in memory.
 - `chat-widget.spec.ts`: hidden on `/assistant` and for a user without `AI_ASSISTANT`; `Escape` closes and focuses the
-  owl; clear is disabled while answering; the empty line shows with no turns.
-- `action-card.spec.ts`, `agent-message.spec.ts`, `agent-composer.spec.ts`: labels, `(trống)`, buttons by state;
-  badges for `[n]`; Enter / Shift+Enter, length limit, stop.
+  owl; clear only with turns and disabled while answering; the suggestions send; the dock toggle.
+- `action-card.spec.ts`, `agent-message.spec.ts`, `agent-sources.spec.ts`, `agent-composer.spec.ts`: the question,
+  `(trống)`, buttons by state, the settled line; raised numbers and the source list; Enter / Shift+Enter, length
+  limit, stop.
+- `owl.spec.ts`, `app-shell.spec.ts`: the owl steps aside for the sheet and the dock; the shell makes room when docked.
 - The `/assistant` specs pass unchanged after the `shared/assistant/` move.
 
 ## Boundaries

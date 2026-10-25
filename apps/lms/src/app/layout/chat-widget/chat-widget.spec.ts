@@ -26,7 +26,9 @@ function fakeStore() {
   const open = signal(true);
   const turns = signal<readonly AgentTurn[]>([]);
   const answering = signal(false);
+  const docked = signal(false);
   return {
+    docked,
     available,
     open,
     turns,
@@ -34,6 +36,7 @@ function fakeStore() {
     store: {
       available$: available.asReadonly(),
       isOpen$: open.asReadonly(),
+      isDocked$: docked.asReadonly(),
       turns$: turns.asReadonly(),
       isAnswering$: answering.asReadonly(),
       isOffline$: signal(false).asReadonly(),
@@ -43,6 +46,7 @@ function fakeStore() {
       clear: vi.fn(() => turns.set([])),
       ask: vi.fn(),
       stop: vi.fn(),
+      toggleDocked: vi.fn(() => docked.update((value) => !value)),
       confirm: vi.fn(),
       cancel: vi.fn(),
     },
@@ -75,20 +79,21 @@ describe('ChatWidget', () => {
   const dialog = (el: HTMLElement) =>
     el.querySelector<HTMLElement>('[role="dialog"]');
 
-  it('is a non-modal dialog named by its title, with the empty line when there are no turns', async () => {
+  it('is a non-modal dialog named "Trợ lý nhanh", headed by the owl, with the empty line when there are no turns', async () => {
     const { el } = await render();
     const panel = dialog(el);
     expect(panel?.getAttribute('aria-modal')).toBe('false');
-    expect(panel?.getAttribute('aria-labelledby')).toBe('agent-chat-title');
-    expect(el.querySelector('#agent-chat-title')?.textContent).toBe(
-      'Trợ lý nhanh',
-    );
+    expect(panel?.getAttribute('aria-label')).toBe('Trợ lý nhanh');
+    expect(panel?.querySelector('h2')).toBeNull();
+    const face = panel?.querySelector('.chat__header app-owl-face svg');
+    expect(face?.getAttribute('aria-hidden')).toBe('true');
     expect(el.querySelector('.chat__empty')?.textContent).toContain(
       'Hỏi về tài liệu, mở một màn hình hoặc sửa hồ sơ của bạn.',
     );
-    expect(el.querySelector('a.chat__link')?.getAttribute('href')).toBe(
-      '/assistant',
-    );
+    const header = [
+      ...el.querySelectorAll('.chat__header button, .chat__header a'),
+    ].map((control) => control.getAttribute('aria-label'));
+    expect(header).toEqual(['Mở rộng', 'Đóng']);
   });
 
   it('renders nothing while closed or when the assistant is not available', async () => {
@@ -143,19 +148,36 @@ describe('ChatWidget', () => {
     expect(document.activeElement?.id).toBe(AGENT_LAUNCHER_ID);
   });
 
+  it('docks and undocks from its header, saying which it will do', async () => {
+    const { fixture, el, store } = await render();
+    const toggle = () =>
+      el.querySelector<HTMLButtonElement>('.chat__dock') as HTMLButtonElement;
+    expect(toggle().getAttribute('aria-label')).toBe('Mở rộng');
+    expect(el.querySelector('app-chat-widget')?.classList).not.toContain(
+      'chat-widget--docked',
+    );
+    toggle().click();
+    await fixture.whenStable();
+    expect(store.toggleDocked).toHaveBeenCalled();
+    expect(toggle().getAttribute('aria-label')).toBe('Thu nhỏ');
+    expect(el.querySelector('app-chat-widget')?.classList).toContain(
+      'chat-widget--docked',
+    );
+  });
+
   it('closes from its close button too', async () => {
     const { el, store } = await render();
     el.querySelector<HTMLButtonElement>('button[aria-label="Đóng"]')?.click();
     expect(store.close).toHaveBeenCalled();
   });
 
-  it('keeps clear disabled with no turns or while a reply is on its way', async () => {
+  it('offers clear only once there is a conversation, and not while a reply is on its way', async () => {
     const { fixture, el, turns, answering, store } = await render();
     const clear = () =>
       el.querySelector<HTMLButtonElement>(
         'button[aria-label="Xoá hội thoại"]',
-      )!;
-    expect(clear().disabled).toBe(true);
+      ) as HTMLButtonElement;
+    expect(clear()).toBeNull();
     turns.set([turn(1, 'Trả lời một')]);
     await fixture.whenStable();
     expect(clear().disabled).toBe(false);
@@ -166,6 +188,21 @@ describe('ChatWidget', () => {
     await fixture.whenStable();
     clear().click();
     expect(store.clear).toHaveBeenCalled();
+  });
+
+  it('offers three suggested questions that are sent as they stand, then puts the cursor in the box', async () => {
+    const { el, store } = await render();
+    const suggestions = [
+      ...el.querySelectorAll<HTMLButtonElement>('.chat__suggestion'),
+    ];
+    expect(suggestions.map((s) => s.textContent?.trim())).toEqual([
+      'Quy trình EOD gồm những bước nào?',
+      'Mở trang Hồ sơ cá nhân',
+      'Đổi chức danh của tôi',
+    ]);
+    suggestions[1].click();
+    expect(store.ask).toHaveBeenCalledWith('Mở trang Hồ sơ cá nhân');
+    expect(document.activeElement?.id).toBe('agent-composer-box');
   });
 
   it('shows each turn in order and hides the empty line', async () => {
@@ -193,7 +230,7 @@ describe('ChatWidget', () => {
     expect(store.ask).toHaveBeenCalledWith('EOD là gì?');
     answering.set(true);
     await fixture.whenStable();
-    el.querySelector<HTMLButtonElement>('.composer__bar button')?.click();
+    el.querySelector<HTMLButtonElement>('.composer__action')?.click();
     expect(store.stop).toHaveBeenCalled();
   });
 

@@ -125,6 +125,7 @@ const LIGHT_PROPERTIES = [
   '--container-narrow',
   '--container-reading',
   '--container-panel',
+  '--container-assistant',
   '--spacing-header',
   '--spacing-control',
   '--spacing-control-sm',

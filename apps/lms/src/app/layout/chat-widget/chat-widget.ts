@@ -1,15 +1,16 @@
 import { DOCUMENT } from '@angular/common';
 import {
+  afterNextRender,
   afterRenderEffect,
   Component,
   computed,
   ElementRef,
   inject,
+  Injector,
   input,
   untracked,
   viewChild,
 } from '@angular/core';
-import { RouterLink } from '@angular/router';
 import { Icon, IconButton } from '@lms/ui';
 import {
   AGENT_LAUNCHER_ID,
@@ -17,31 +18,46 @@ import {
 } from '../../core/assistant/agent-launcher';
 import { AgentChatStore } from '../../core/assistant/agent-chat.store';
 import { AgentComposer } from './components/agent-composer/agent-composer';
+import { OwlFace } from '../owl/owl-face/owl-face';
 import { AgentMessage } from './components/agent-message/agent-message';
+
+/** One question for each thing the assistant does: documents, screens, the profile. */
+export const SUGGESTIONS = [
+  'Quy trình EOD gồm những bước nào?',
+  'Mở trang Hồ sơ cá nhân',
+  'Đổi chức danh của tôi',
+] as const;
 
 /** How close to the end of the log counts as "following" the newest message, in pixels. */
 const FOLLOW_DISTANCE = 48;
 
 /**
- * "Trợ lý nhanh": the panel above the owl on every app page. It is a non-modal dialog (the page
- * stays usable behind it), opens with the cursor in the message box, and `Escape` or the close
+ * "Trợ lý nhanh": the panel in the owl's corner on every app page (the owl steps aside while it is
+ * open), a full-screen sheet on a phone, and docked to the right edge on a wide screen when the
+ * user asks. It is a non-modal dialog (the page
+ * stays usable beside it), opens with the cursor in the message box, and `Escape` or the close
  * button hands focus back to the owl. The store owns the conversation; the panel only shows it.
  */
 @Component({
   selector: 'app-chat-widget',
-  imports: [AgentComposer, AgentMessage, Icon, IconButton, RouterLink],
-  host: { '[class.chat-widget--beside-toolbar]': 'besideToolbar()' },
+  imports: [AgentComposer, AgentMessage, Icon, IconButton, OwlFace],
+  host: {
+    '[class.chat-widget--beside-toolbar]': 'besideToolbar()',
+    '[class.chat-widget--docked]': 'store.isDocked$()',
+  },
   templateUrl: './chat-widget.html',
   styleUrl: './chat-widget.scss',
 })
 export class ChatWidget {
   protected readonly store = inject(AgentChatStore);
   private readonly document = inject(DOCUMENT);
+  private readonly injector = inject(Injector);
 
   /** Moves the panel left with the owl, off the dev toolbar that is pinned to the same corner. */
   readonly besideToolbar = input(false);
 
   protected readonly panelId = AGENT_PANEL_ID;
+  protected readonly suggestions = SUGGESTIONS;
   protected readonly isEmpty = computed(() => this.store.turns$().length === 0);
 
   private readonly composer = viewChild(AgentComposer);
@@ -82,6 +98,12 @@ export class ChatWidget {
       log.scrollHeight - log.scrollTop - log.clientHeight <= FOLLOW_DISTANCE;
   }
 
+  /** Sends a suggested question as it stands; the list goes away, so the cursor goes to the box. */
+  protected suggest(question: string): void {
+    this.store.ask(question);
+    this.composer()?.focus();
+  }
+
   protected confirm(turnId: number): void {
     this.store.confirm(turnId);
     this.composer()?.focus();
@@ -92,9 +114,15 @@ export class ChatWidget {
     this.composer()?.focus();
   }
 
-  /** Closes the panel and puts focus back on the owl that opened it. */
+  /**
+   * Closes the panel and puts focus back on the owl that opened it, once the owl shows again (it
+   * hides behind the phone sheet and the docked panel).
+   */
   protected dismiss(): void {
     this.store.close();
-    this.document.getElementById(AGENT_LAUNCHER_ID)?.focus();
+    afterNextRender(
+      () => this.document.getElementById(AGENT_LAUNCHER_ID)?.focus(),
+      { injector: this.injector },
+    );
   }
 }

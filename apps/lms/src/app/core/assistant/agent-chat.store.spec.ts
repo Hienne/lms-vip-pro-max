@@ -146,6 +146,19 @@ describe('AgentChatStore', () => {
       expect(store.isOpen$()).toBe(true);
       backend.expectNone(STREAM);
     });
+
+    it('docks only an open panel, and keeps the choice for the next opening', () => {
+      store.toggleDocked();
+      expect(store.isDocked$()).toBe(false);
+      store.open();
+      expect(store.isDocked$()).toBe(true);
+      store.close();
+      expect(store.isDocked$()).toBe(false);
+      store.open();
+      expect(store.isDocked$()).toBe(true);
+      store.toggleDocked();
+      expect(store.isDocked$()).toBe(false);
+    });
   });
 
   describe('asking', () => {
@@ -562,6 +575,17 @@ describe('AgentChatStore', () => {
       TestBed.tick();
       expect(store.turns$().map((t) => t.question)).toEqual(['Một']);
       expect(store.isOpen$()).toBe(true);
+    });
+
+    it('restores a docked panel docked', () => {
+      store.open();
+      store.toggleDocked();
+      TestBed.tick();
+      expect(sessionStorage.getItem(KEY('000004'))).toContain('"docked":true');
+
+      setup();
+      TestBed.tick();
+      expect(store.isDocked$()).toBe(true);
     });
 
     it('keeps each user’s conversation apart', async () => {
