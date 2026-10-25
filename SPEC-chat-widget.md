@@ -101,7 +101,7 @@ password change not pending), `announcement$` (screen-reader text, as `Assistant
   again; focus is not trapped.
 - Size and place: the owl's button hides while the panel is open, at every width, and the panel takes its corner.
   Below `sm`, a full-screen sheet. From `sm`, it floats in the corner, `container-assistant` (416px) wide and
-  half the viewport (`50dvh`) tall however long the conversation, with `surface`, a 1px `border`, the card
+  60% of the viewport (`60dvh`) tall however long the conversation, with `surface`, a 1px `border`, the card
   radius and `shadow(md)`. From `xl`, "Mở rộng" docks it to the right edge at full height: the shell pads its main
   column by the same width, and "Thu nhỏ" floats it again. The choice
   (`docked`) is kept with the chat in `sessionStorage`, written only when on. No entrance animation.

@@ -59,9 +59,9 @@
   background: ui.color(surface);
   pointer-events: auto;
 
-  // Half the viewport, however long the conversation.
+  // 60% of the viewport, however long the conversation.
   @include ui.bp(sm) {
-    height: 50dvh;
+    height: 60dvh;
     border: 1px solid ui.color(border);
     border-radius: ui.radius(card);
     box-shadow: ui.shadow(md);
