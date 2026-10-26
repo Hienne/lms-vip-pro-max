@@ -1,0 +1,34 @@
+@use 'ui';
+
+.files {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+
+  &__row {
+    @include ui.row(3);
+    flex-wrap: nowrap;
+    padding-block: ui.space(2);
+    border-bottom: 1px solid ui.color(border);
+
+    &:last-child {
+      border-bottom: 0;
+    }
+  }
+
+  &__name {
+    @include ui.grow;
+    @include ui.truncate;
+  }
+
+  &__size {
+    @include ui.text(sm, muted);
+    @include ui.num;
+    flex: none;
+  }
+
+  &__empty {
+    @include ui.text(sm, muted);
+    margin: 0;
+  }
+}

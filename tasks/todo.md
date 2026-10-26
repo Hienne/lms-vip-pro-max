@@ -154,7 +154,7 @@ SameSite=Strict` with no domain, so the proxy needs no rewrite (browser retentio
   - Files: `package.json`, `package-lock.json`, `apps/lms/project.json` (asset), `…/components/pdf-block/*`,
     `lesson.html`.
   - Depends on: T9.
-- [ ] **T12 Image and attachment blocks** · S
+- [x] **T12 Image and attachment blocks** · S
   - Accept: `<img>` with `altText` (else the title), caption, load error line; attachments listed with name and size,
     "Tải xuống" through `getAssetContent` as a blob → `FileSaver.save` with the original name, refusal toast.
   - Verify: `npx nx test lms -- image-block attachment-block`.

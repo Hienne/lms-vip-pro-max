@@ -2,6 +2,7 @@ import { TestBed } from '@angular/core/testing';
 import { provideRouter, Router } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
 import {
+  courseEndpoints,
   EnrollmentDetailSchema,
   learnerEndpoints,
   type EnrollmentDetail,
@@ -14,6 +15,7 @@ import {
   provideAppConfig,
 } from '../../../core/config/app-config';
 import { testAppConfig } from '../../../core/config/app-config.testing';
+import { FileSaver } from '../../../core/files/file-saver';
 import { MockBackend } from '../../../core/dev/mock-api/mock-api.interceptor';
 import {
   provideMockBackendHttp,
@@ -211,15 +213,67 @@ describe('Lesson', () => {
   describe('a lesson with several blocks', () => {
     beforeEach(() => open(lessonUrl(1)));
 
-    it('lists the blocks, starts on the first and shows a line for the kinds not shown yet', async () => {
-      const items = Array.from(
-        el.querySelectorAll<HTMLElement>('app-block-list button'),
-      );
+    const choose = async (title: string) => {
+      Array.from(el.querySelectorAll<HTMLElement>('app-block-list button'))
+        .find((b) => b.textContent?.includes(title))!
+        .click();
+      await settle();
+    };
+
+    it('lists the blocks and starts on the first', () => {
+      const items = Array.from(el.querySelectorAll('app-block-list button'));
       expect(items.length).toBe(4);
       expect(items[0].getAttribute('aria-current')).toBe('true');
-      items[1].click();
+    });
+
+    it('shows the picture of an image block with the content URL and the usage alt text', async () => {
+      await choose('Mẫu báo cáo đối soát');
+      const img = el.querySelector('app-image-block img');
+      expect(img?.getAttribute('src')).toMatch(
+        /^\/api\/v1\/learning-assets\/\d+\/content\?blockId=\d+&enrollmentId=\d+$/,
+      );
+      expect(img?.getAttribute('alt')).toBeTruthy();
+    });
+
+    it('lists an attachment and saves it under its name through the content endpoint', async () => {
+      const saved: [Blob, string][] = [];
+      vi.spyOn(TestBed.inject(FileSaver), 'save').mockImplementation(
+        (blob, name) => void saved.push([blob, name]),
+      );
+      const original = real();
+      handle.mockImplementation((endpoint, request) =>
+        endpoint === courseEndpoints.getAssetContent
+          ? { status: 200, body: new Blob(['x']) }
+          : original(endpoint, request),
+      );
+      await choose('Biểu mẫu đối soát');
+      const download = el.querySelector<HTMLButtonElement>(
+        'app-attachment-block button',
+      )!;
+      download.click();
       await settle();
-      expect(text()).toContain('chưa hiển thị');
+      expect(calls(courseEndpoints.getAssetContent).length).toBe(1);
+      expect(saved.length).toBe(1);
+      expect(saved[0][1]).toBe(
+        el.querySelector('app-attachment-block .files__name')?.textContent,
+      );
+    });
+
+    it('keeps the page and shows no file when the server refuses the download', async () => {
+      const saver = vi.spyOn(TestBed.inject(FileSaver), 'save');
+      const original = real();
+      handle.mockImplementation((endpoint, request) =>
+        endpoint === courseEndpoints.getAssetContent
+          ? backendRefusal('notAvailable')
+          : original(endpoint, request),
+      );
+      await choose('Biểu mẫu đối soát');
+      el.querySelector<HTMLButtonElement>(
+        'app-attachment-block button',
+      )!.click();
+      await settle();
+      expect(saver).not.toHaveBeenCalled();
+      expect(el.querySelector('app-attachment-block')).not.toBeNull();
     });
 
     it('opens the PDF block on the content URL of its file', () => {

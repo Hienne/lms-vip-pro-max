@@ -16,6 +16,7 @@ import {
   toUrl,
   type BlockDetail,
   type BlockProgress,
+  type AssetDetail,
   type CourseEnrollment,
   type LessonDetail,
   type LessonProgress,
@@ -23,6 +24,8 @@ import {
 } from '@lms/contracts';
 import { map } from 'rxjs';
 import { serverData } from '../../../../core/data-access/server-data';
+import { serverMutation } from '../../../../core/data-access/server-mutation';
+import { FileSaver } from '../../../../core/files/file-saver';
 import { EndpointClient } from '../../../../core/http/endpoint-client';
 import { findLearnerCourse } from '../../../../core/learning/learner-course';
 import { SessionStore } from '../../../../core/session/session.store';
@@ -96,6 +99,7 @@ const sameTarget = (a: ClaimTarget | undefined, b: ClaimTarget | undefined) =>
 @Injectable()
 export class LessonStore {
   private readonly client = inject(EndpointClient);
+  private readonly saver = inject(FileSaver);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly session = inject(SessionStore);
@@ -260,6 +264,28 @@ export class LessonStore {
     return `${url}?blockId=${active.id}&enrollmentId=${enrollmentId}`;
   });
 
+  /** An attachment saved under its original name; a refusal shows as a toast. */
+  private readonly downloads = serverMutation(
+    (input: {
+      readonly asset: AssetDetail;
+      readonly blockId: number;
+      readonly enrollmentId: number;
+    }) =>
+      this.client
+        .call(courseEndpoints.getAssetContent, {
+          params: { assetId: input.asset.asset.id },
+          query: { blockId: input.blockId, enrollmentId: input.enrollmentId },
+        })
+        .pipe(map((blob) => ({ blob, name: input.asset.asset.originalName }))),
+    {
+      errors: 'toast',
+      success: (_, saved) => ({ title: 'Đã tải xuống', detail: saved.name }),
+      onSuccess: (saved) => this.saver.save(saved.blob, saved.name),
+    },
+  );
+
+  readonly downloading$ = this.downloads.isPending;
+
   readonly completion$ = computed(() => {
     const active = this.activeBlock$();
     const blocks = this.state.results().blocks;
@@ -365,6 +391,15 @@ export class LessonStore {
   // Commands
   selectBlock(blockId: number): void {
     this.state.selected.set(blockId);
+  }
+
+  /** "Tải xuống" on an attachment. */
+  download(asset: AssetDetail): void {
+    const blockId = this.activeBlock$()?.id;
+    const enrollmentId = this.card$()?.enrollmentId;
+    if (blockId && enrollmentId) {
+      this.downloads.run({ asset, blockId, enrollmentId });
+    }
   }
 
   openOutline(): void {

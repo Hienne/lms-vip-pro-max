@@ -11,10 +11,12 @@ import {
   Progress,
   Skeleton,
 } from '@lms/ui';
+import { AttachmentBlock } from './components/attachment-block/attachment-block';
 import {
   BlockList,
   BLOCK_TYPE_LABEL,
 } from './components/block-list/block-list';
+import { ImageBlock } from './components/image-block/image-block';
 import { LessonOutline } from './components/lesson-outline/lesson-outline';
 import { PdfBlock } from './components/pdf-block/pdf-block';
 import { ProcessBlock } from './components/process-block/process-block';
@@ -27,6 +29,7 @@ import { LessonStore } from './data-access/lesson.store';
 @Component({
   selector: 'app-lesson',
   imports: [
+    AttachmentBlock,
     BlockList,
     Button,
     DrawerOutlet,
@@ -35,6 +38,7 @@ import { LessonStore } from './data-access/lesson.store';
     FmtDatePipe,
     FmtPctPipe,
     Icon,
+    ImageBlock,
     LessonOutline,
     PdfBlock,
     ProcessBlock,

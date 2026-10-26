@@ -140,7 +140,22 @@
         <div uiSkeleton variant="block" class="lesson__skeleton-body"></div>
         } } @else if (store.phase$() === 'claiming') {
         <div uiSkeleton variant="block" class="lesson__skeleton-body"></div>
-        } } @case ('process') {
+        } } @case ('image') { @if (store.contentUrl$(); as src) {
+        <app-image-block
+          [src]="src"
+          [alt]="active.detail.assets[0].usage.altText || active.title"
+          [caption]="active.detail.assets[0].usage.caption ?? null"
+          (retry)="store.reloadMedia()"
+        />
+        } @else if (store.phase$() === 'claiming') {
+        <div uiSkeleton variant="block" class="lesson__skeleton-body"></div>
+        } } @case ('attachment') {
+        <app-attachment-block
+          [assets]="active.detail.assets"
+          [busy]="store.downloading$()"
+          (download)="store.download($event)"
+        />
+        } @case ('process') {
         <app-process-block [steps]="active.detail.steps" />
         } @default {
         <p class="lesson__note">
