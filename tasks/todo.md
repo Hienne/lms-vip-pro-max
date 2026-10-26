@@ -84,7 +84,7 @@ SameSite=Strict` with no domain, so the proxy needs no rewrite (browser retentio
 
 ## Phase 1b: text lessons end to end
 
-- [ ] **T5 `study-protocol.ts`** · S
+- [x] **T5 `study-protocol.ts`** · S
   - Accept: pure functions: next command from session + last result + event; range only after a `playing: true`
     event and never on `SEEK`/`OPEN`; seek flushes a heartbeat first; receipt → next sequence and version; refusal
     code → action (re-claim, takeover prompt, reload, block error, page error, retry).
