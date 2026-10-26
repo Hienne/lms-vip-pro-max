@@ -1,0 +1,75 @@
+<ui-page-header
+  title="Thông báo"
+  description="Nhắc hạn các khóa học được giao."
+>
+  @if (store.count$() > 1) {
+  <div slot="actions">
+    <button
+      uiButton
+      variant="secondary"
+      type="button"
+      [disabled]="store.isMarking$()"
+      (click)="store.markAllRead()"
+    >
+      Đánh dấu đã đọc tất cả
+    </button>
+  </div>
+  }
+</ui-page-header>
+
+@if (store.loadError$(); as error) {
+<ui-error-state
+  title="Không tải được thông báo"
+  [message]="error.message"
+  (retry)="store.retry()"
+/>
+} @else if (store.isLoading$()) {
+<ul uiList>
+  @for (n of placeholders; track n) {
+  <li uiListItem>
+    <span uiSkeleton variant="text" class="notifications__line"></span>
+  </li>
+  }
+</ul>
+} @else if (store.count$() === 0) {
+<ui-empty variant="inline" title="Không có nhắc hạn nào." />
+} @else {
+<ul uiList>
+  @for (item of store.items$(); track item.id) {
+  <li uiListItem class="notifications__item">
+    <div class="notifications__text">
+      <div class="notifications__title">
+        {{ item.isOverdue ? 'Khóa học được giao đã quá hạn' : 'Khóa học được
+        giao sắp đến hạn' }}
+      </div>
+      <div class="notifications__meta">
+        Hạn hoàn thành
+        <span [class.notifications__due--overdue]="item.isOverdue"
+          >{{ item.reminder.dueAtSnapshot | fmtDate }}</span
+        >
+        · nhắc lúc {{ item.reminder.scheduledAt | fmtRelative }}
+      </div>
+    </div>
+    <div class="notifications__actions">
+      <a
+        uiButton
+        variant="ghost"
+        size="sm"
+        routerLink="/progress"
+        [queryParams]="item.isOverdue ? { sort: 'dueAt,asc', overdue: true } : { sort: 'dueAt,asc' }"
+        >Xem khóa học của tôi</a
+      >
+      <button
+        uiIconButton
+        label="Đánh dấu đã đọc"
+        type="button"
+        [disabled]="store.isMarking$()"
+        (click)="store.markRead(item.id)"
+      >
+        <ui-icon name="check" />
+      </button>
+    </div>
+  </li>
+  }
+</ul>
+}

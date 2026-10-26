@@ -410,7 +410,15 @@ export const SCREEN_TABLE = {
       title: 'Nhập dữ liệu hàng loạt',
       mockupPage: 'import',
     },
-    { path: 'notifications', title: 'Thông báo', mockupPage: 'notifications' },
+    {
+      path: 'notifications',
+      title: 'Thông báo',
+      mockupPage: 'notifications',
+      load: () =>
+        import('../../features/account/notifications/notifications').then(
+          (m) => m.Notifications,
+        ),
+    },
     {
       path: '403',
       title: 'Không đủ quyền',

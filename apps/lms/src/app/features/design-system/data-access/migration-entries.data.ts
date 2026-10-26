@@ -997,7 +997,14 @@ export const MIGRATION_ENTRIES = [
     mockupSource: 'src/pages/auth.js · notifications',
     target: 'notifications',
     checklist: ['E.3'],
-    status: 'todo',
+    status: 'in-progress',
+    owner: 'Hiendeptroai',
+    verify: {
+      lightDark: 'todo',
+      widths: 'todo',
+      keyboard: 'todo',
+      errorStates: 'todo',
+    },
   },
   {
     id: 'route-profile',

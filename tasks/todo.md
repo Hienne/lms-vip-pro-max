@@ -245,7 +245,7 @@ SameSite=Strict` with no domain, so the proxy needs no rewrite (browser retentio
   - Files: `contracts/learner/learner.schema.ts`, `mocks/learning/learning.fixtures.ts`,
     `mocks/learning/learning.backend.ts`, `mocks/backend/fake-backend.ts`.
   - Depends on: T1.
-- [ ] **T18 Notifications page (`notifications`)** · M
+- [x] **T18 Notifications page (`notifications`)** · M
   - Accept: claims `route-notifications`; `NotificationsStore` (idle without `COURSE_LEARNING`, 403 → empty, mark one,
     mark all in order stopping at a refusal, bumps `remindersChanged`); `core/learning/reminders-changed.ts`; page per
     spec with the progress link and its query; `screens.ts` loads it.
