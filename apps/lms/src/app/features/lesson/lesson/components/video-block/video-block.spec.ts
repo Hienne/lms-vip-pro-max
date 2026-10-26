@@ -27,7 +27,7 @@ function render(startAt = 0): Probe {
   fixture.componentInstance.played.subscribe((p) => played.push(p));
   fixture.componentInstance.paused.subscribe((p) => paused.push(p));
   fixture.componentInstance.beat.subscribe((p) => beats.push(p));
-  fixture.componentInstance.seeked.subscribe((s) => seeks.push(s));
+  fixture.componentInstance.jumped.subscribe((s) => seeks.push(s));
   fixture.componentInstance.retry.subscribe(() => (retries += 1));
   fixture.detectChanges();
 

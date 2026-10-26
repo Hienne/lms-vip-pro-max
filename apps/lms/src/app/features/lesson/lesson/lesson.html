@@ -122,7 +122,7 @@
           (played)="store.videoPlay($event)"
           (paused)="store.videoPause($event)"
           (beat)="store.videoBeat($event)"
-          (seeked)="store.videoSeek($event.from, $event.to, $event.playing)"
+          (jumped)="store.videoSeek($event.from, $event.to, $event.playing)"
           (retry)="store.reloadMedia()"
         />
         } @else if (store.phase$() === 'claiming') {

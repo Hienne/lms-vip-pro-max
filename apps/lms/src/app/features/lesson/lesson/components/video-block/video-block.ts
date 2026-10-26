@@ -39,7 +39,7 @@ export class VideoBlock {
   readonly played = output<number>();
   readonly paused = output<number>();
   readonly beat = output<number>();
-  readonly seeked = output<VideoSeek>();
+  readonly jumped = output<VideoSeek>();
   /** "Thử lại": the page claims the block again, which renews the media cookie. */
   readonly retry = output<void>();
 
@@ -89,7 +89,7 @@ export class VideoBlock {
       return;
     }
     const playing = !this.player()?.nativeElement.paused;
-    this.seeked.emit({ from: this.last, to, playing });
+    this.jumped.emit({ from: this.last, to, playing });
     this.last = to;
   }
 
