@@ -94,6 +94,10 @@ export const SCREEN_TABLE = {
           path: 'course/:id',
           title: 'Chi tiết khóa học',
           mockupPage: 'course',
+          load: () =>
+            import('../../features/learning/course/course').then(
+              (m) => m.Course,
+            ),
         },
         {
           path: 'lesson/:courseId/:lessonId',

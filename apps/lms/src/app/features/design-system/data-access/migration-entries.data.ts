@@ -850,7 +850,8 @@ export const MIGRATION_ENTRIES = [
     mockupSource: 'src/pages/learner.js · course',
     target: 'course/:id',
     checklist: ['F.2'],
-    status: 'todo',
+    status: 'in-progress',
+    owner: 'Hiendeptroai',
   },
   {
     id: 'route-lesson-course-id-lesson-id',

@@ -1,0 +1,36 @@
+@for (chapter of chapters(); track chapter.id) {
+<details class="outline__chapter" [open]="chapter.open">
+  <summary class="outline__summary">
+    <ui-icon class="outline__chevron" name="chevron-right" size="sm" />
+    <span class="outline__chapter-title">{{ chapter.title }}</span>
+    <span class="outline__count">{{ chapter.lessons.length }} bài</span>
+  </summary>
+  <ul class="outline__lessons">
+    @for (lesson of chapter.lessons; track lesson.id) {
+    <li class="outline__lesson">
+      <span
+        class="outline__state"
+        [attr.data-status]="lesson.state"
+        [class.outline__state--done]="lesson.state === 'completed'"
+        [class.outline__state--current]="lesson.state === 'in_progress'"
+      >
+        @if (lesson.state === 'completed') {
+        <ui-icon name="check" size="sm" />
+        }
+        <span class="outline__sr">{{ stateLabel[lesson.state] }}</span>
+      </span>
+      @if (lesson.link; as link) {
+      <a class="outline__title" [routerLink]="link">{{ lesson.title }}</a>
+      } @else {
+      <span class="outline__title outline__title--locked"
+        >{{ lesson.title }}</span
+      >
+      <span class="outline__note">Bài kiểm tra chưa mở</span>
+      } @if (lesson.minutes) {
+      <span class="outline__minutes">{{ lesson.minutes }} phút</span>
+      }
+    </li>
+    }
+  </ul>
+</details>
+}

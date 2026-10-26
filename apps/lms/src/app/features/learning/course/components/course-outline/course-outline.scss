@@ -1,0 +1,125 @@
+@use 'ui';
+
+:host {
+  display: block;
+}
+
+.outline {
+  &__chapter {
+    border-bottom: 1px solid ui.color(border);
+
+    &:last-child {
+      border-bottom: 0;
+    }
+  }
+
+  &__summary {
+    @include ui.row(2);
+    flex-wrap: nowrap;
+    padding-block: ui.space(3);
+    cursor: pointer;
+    list-style: none;
+
+    &::-webkit-details-marker {
+      display: none;
+    }
+
+    &:focus-visible {
+      @include ui.focus-ring;
+    }
+  }
+
+  &__chevron {
+    flex: none;
+    color: ui.color(text-muted);
+  }
+
+  &__chapter[open] &__chevron {
+    transform: rotate(90deg);
+  }
+
+  &__chapter-title {
+    @include ui.grow;
+    font-weight: ui.weight(semibold);
+  }
+
+  &__count {
+    @include ui.text(sm, muted);
+    @include ui.num;
+  }
+
+  &__lessons {
+    margin: 0;
+    padding: 0 0 ui.space(2) ui.space(6);
+    list-style: none;
+  }
+
+  &__lesson {
+    @include ui.row(3);
+    flex-wrap: nowrap;
+    padding-block: ui.space(2);
+  }
+
+  &__state {
+    display: grid;
+    flex: none;
+    place-items: center;
+    width: 1.25rem;
+    height: 1.25rem;
+    border: 1.5px solid ui.color(border-strong);
+    border-radius: ui.radius(full);
+
+    &--done {
+      border-color: ui.color(success);
+      background: ui.color(success);
+      color: ui.color(on-primary);
+    }
+
+    &--current {
+      border-color: ui.color(primary);
+
+      &::after {
+        content: '';
+        width: 0.5rem;
+        height: 0.5rem;
+        border-radius: ui.radius(full);
+        background: ui.color(primary);
+      }
+    }
+  }
+
+  &__sr {
+    @include ui.sr-only;
+  }
+
+  &__title {
+    @include ui.grow;
+    color: ui.color(text);
+    text-decoration: none;
+
+    &:is(a):hover {
+      color: ui.color(primary);
+      text-decoration: underline;
+    }
+
+    &:is(a):focus-visible {
+      @include ui.focus-ring;
+    }
+
+    &--locked {
+      flex: 0 1 auto;
+      color: ui.color(text-muted);
+    }
+  }
+
+  &__note {
+    @include ui.text(sm, muted);
+    @include ui.grow;
+  }
+
+  &__minutes {
+    @include ui.text(sm, muted);
+    @include ui.num;
+    flex: none;
+  }
+}

@@ -63,7 +63,7 @@ SameSite=Strict` with no domain, so the proxy needs no rewrite (browser retentio
   - Verify: `npx nx test lms -- learner-course`.
   - Files: `app/core/learning/learner-course.ts` (+ spec).
   - Depends on: T1.
-- [ ] **T4 Course page (`course/:id`)** · M
+- [x] **T4 Course page (`course/:id`)** · M
   - Accept: claims `route-course-id`; `CourseStore` (card, detail by `enrollmentId`, `enroll` with toast and reload,
     `view$`, `canEnroll$`, `resumeLink$`, `outline$`); page per SPEC-lesson-player "Screen 1": breadcrumb, header
     with the one primary action, overdue alert, objectives, `course-outline` (quiz lesson not a link), side ring and
