@@ -106,13 +106,15 @@ SameSite=Strict` with no domain, so the proxy needs no rewrite (browser retentio
   - Verify: `npx nx test lms -- lesson.store` (mock backend, fake timers).
   - Files: `app/features/lesson/lesson/data-access/lesson.store.ts` (+ spec).
   - Depends on: T2, T3, T5, T6.
-- [ ] **T8 `app-markdown`, text and process blocks** · M
+- [x] **T8 `app-markdown`, text and process blocks** · M
   - Accept: `app-markdown` builds nodes for the editor's markdown subset; `html` bodies rebuilt from the allowlist;
     `plain` keeps line breaks; never a `script`, `style`, `iframe` or `on*` attribute; `text-block` and
     `process-block` render their data; new inventory row and migration entry for `app-markdown`.
   - Verify: `npx nx test lms -- markdown text-block process-block`.
   - Files: `app/shared/content/markdown/*`, `app/features/lesson/lesson/components/text-block/*`,
     `…/process-block/*`, `docs/migration/mockup-to-angular.md`, `migration-entries.data.ts`.
+  - Done: the inventory already had the `UI.Markdown` → `app-markdown` row and a `domain-markdown` entry, so only the
+    entry was claimed (`in-progress`).
   - Depends on: none.
 - [ ] **T9 Lesson page (`lesson/:courseId/:lessonId`)** · M
   - Accept: claims `route-lesson-course-id-lesson-id`; focus bar (Thoát, course · chapter, title, save line

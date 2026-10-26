@@ -698,7 +698,14 @@ export const MIGRATION_ENTRIES = [
     level: 'domain',
     targets: ['app-markdown'],
     checklist: ['F.3'],
-    status: 'todo',
+    status: 'in-progress',
+    owner: 'Hiendeptroai',
+    verify: {
+      lightDark: 'todo',
+      widths: 'todo',
+      keyboard: 'n/a',
+      errorStates: 'n/a',
+    },
   },
   {
     id: 'feature-viewers',
