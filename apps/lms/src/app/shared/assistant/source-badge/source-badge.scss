@@ -1,0 +1,29 @@
+@use 'ui';
+
+// Inline in a sentence: the badge sits on the text's baseline and keeps its number tabular.
+.source {
+  @include ui.num;
+  min-width: ui.space(5);
+  justify-content: center;
+  margin-inline: 1px;
+  vertical-align: text-bottom;
+
+  // The popover body, rendered in the panel from this component's template.
+  &__file {
+    font-weight: ui.weight(semibold);
+    overflow-wrap: anywhere;
+  }
+
+  &__where {
+    @include ui.text(sm, muted);
+  }
+
+  &__quote {
+    @include ui.text(sm, secondary);
+    margin-top: ui.space(3);
+    padding-top: ui.space(3);
+    border-top: 1px solid ui.color(border);
+    overflow-wrap: anywhere;
+    white-space: pre-wrap;
+  }
+}

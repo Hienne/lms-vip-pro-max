@@ -1,0 +1,15 @@
+@use 'ui';
+
+.ask {
+  display: flex;
+  gap: ui.space(2);
+
+  input {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+
+  button {
+    flex: none;
+  }
+}

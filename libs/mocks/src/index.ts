@@ -9,3 +9,5 @@ export * from './lib/shell/shell.fixtures';
 export * from './lib/admin-org/admin-org.fixtures';
 export * from './lib/learning/learning.fixtures';
 export * from './lib/learning/learning.backend';
+export * from './lib/knowledge/knowledge.fixtures';
+export * from './lib/assistant-agent/agent.fixtures';

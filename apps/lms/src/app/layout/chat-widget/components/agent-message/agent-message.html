@@ -1,0 +1,55 @@
+@let reply = turn().reply; @let link = opened();
+<div class="message message--user">
+  <span class="sr-only">Bạn:</span>
+  <p class="message__text">{{ turn().question }}</p>
+</div>
+<div class="message">
+  <span class="sr-only">Trợ lý:</span>
+  @if (status(); as line) {
+  <p class="message__progress">
+    <span uiSpinner label="Đang xử lý"></span>{{ line }}
+  </p>
+  } @else if (link?.inline) {
+  <p class="message__answer">
+    <span class="message__run">{{ link.before }}</span
+    ><a class="message__link" [routerLink]="link.path">{{ link.title }}</a
+    ><span class="message__run">{{ link.after }}</span>
+  </p>
+  } @else if (link) { @if (link.before) {
+  <p class="message__answer">
+    <span class="message__run">{{ link.before }}</span>
+  </p>
+  }
+  <p class="message__answer">
+    <a class="message__link" [routerLink]="link.path">{{ link.title }}</a>
+  </p>
+  } @else if (reply.text) {
+  <p class="message__answer">
+    @for (part of parts(); track $index) { @if (part.kind === 'text') {
+    <span class="message__run">{{ part.text }}</span>
+    } @else {
+    <button
+      type="button"
+      class="message__cite"
+      [attr.aria-label]="part.name"
+      (click)="showSource(part.citation.n)"
+    >
+      {{ part.citation.n }}
+    </button>
+    } }
+  </p>
+  } @if (reply.action; as card) {
+  <app-action-card
+    [card]="card"
+    [busy]="busy()"
+    (confirmed)="confirmed.emit(turn().id)"
+    (cancelled)="cancelled.emit(turn().id)"
+  />
+  } @if (sourcesShown()) {
+  <app-agent-sources [turnId]="turn().id" [citations]="reply.citations" />
+  } @if (reply.status === 'stopped') {
+  <p class="message__note">Đã dừng.</p>
+  } @else if (reply.status === 'error') {
+  <p class="message__note message__note--error">{{ reply.error }}</p>
+  }
+</div>

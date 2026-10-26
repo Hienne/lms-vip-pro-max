@@ -1,0 +1,129 @@
+@use 'ui';
+
+// Pinned to the bottom-right corner above the page but below the drawer and dialogs. The bubble
+// sits left of the owl; toasts start higher (`_toast.scss` leaves this corner free). The host takes
+// no pointer events, so only the owl and the bubble block what is underneath them.
+:host {
+  position: fixed;
+  right: ui.space(4);
+  bottom: ui.space(4);
+  z-index: ui.z(header);
+  display: flex;
+  align-items: flex-end;
+  gap: ui.space(2);
+  max-width: calc(100vw - #{ui.space(8)});
+  pointer-events: none;
+}
+
+:host(.owl--beside-toolbar) {
+  right: calc(#{ui.space(4)} + 6rem);
+}
+
+// The open panel takes this corner and has its own close button, so the owl steps aside; its
+// screen-reader announcement stays.
+:host(.owl--with-panel) .owl__button {
+  display: none;
+}
+
+.owl {
+  &__button {
+    display: grid;
+    place-items: center;
+    width: ui.space(10);
+    height: ui.space(10);
+    padding: 0;
+    color: ui.color(text);
+    background: ui.color(surface);
+    border: 1px solid ui.color(border);
+    border-radius: ui.radius(full);
+    box-shadow: ui.shadow(sm);
+    cursor: pointer;
+    pointer-events: auto;
+
+    @include ui.bp(md) {
+      width: ui.space(12);
+      height: ui.space(12);
+    }
+
+    // Open is carried by `aria-expanded`; the border only echoes it for sighted users.
+    &--open {
+      border-color: ui.color(primary);
+    }
+
+    &:focus-visible {
+      @include ui.focus-ring;
+    }
+  }
+
+  &__art {
+    width: 80%;
+    height: 80%;
+  }
+
+  &__bubble {
+    display: flex;
+    align-items: flex-start;
+    gap: ui.space(2);
+    max-width: 20rem;
+    padding: ui.space(3) ui.space(4);
+    color: ui.color(text);
+    background: ui.color(surface);
+    border: 1px solid ui.color(border);
+    border-radius: ui.radius(card);
+    box-shadow: ui.shadow(md);
+    pointer-events: auto;
+    animation: owl-bubble ui.duration(fast) ui.ease(out) both;
+  }
+
+  &__text {
+    @include ui.text(sm);
+    flex: 1 1 auto;
+    min-width: 0;
+    margin: 0;
+    overflow-wrap: anywhere;
+  }
+
+  &__link {
+    font: inherit;
+    margin-inline-start: ui.space(1);
+    padding: 0;
+    color: ui.color(accent-ink);
+    background: none;
+    border: 0;
+    font-weight: ui.weight(medium);
+    text-decoration: underline;
+    cursor: pointer;
+
+    &:focus-visible {
+      @include ui.focus-ring;
+    }
+  }
+
+  &__close {
+    display: grid;
+    place-items: center;
+    padding: ui.space(1);
+    color: ui.color(text-muted);
+    background: none;
+    border: 0;
+    border-radius: ui.radius(control);
+    cursor: pointer;
+
+    &:focus-visible {
+      @include ui.focus-ring;
+    }
+  }
+}
+
+@keyframes owl-bubble {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .owl__bubble {
+    animation: none;
+  }
+}

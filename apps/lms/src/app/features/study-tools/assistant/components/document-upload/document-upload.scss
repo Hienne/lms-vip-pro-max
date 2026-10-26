@@ -1,0 +1,56 @@
+@use 'ui';
+
+:host {
+  @include ui.stack(3);
+}
+
+.drop {
+  // Compact enough for the documents panel; the dashed edge still says "drop here".
+  padding: ui.space(5) ui.space(4);
+  &__title {
+    display: block;
+    color: ui.color(text);
+    font-weight: ui.weight(medium);
+  }
+
+  &__hint {
+    @include ui.text(sm, muted);
+    display: block;
+    margin-top: ui.space(1);
+  }
+}
+
+.uploads {
+  @include ui.stack(2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+
+  &__error {
+    @include ui.row(2);
+    flex-wrap: nowrap;
+
+    ui-upload-item {
+      flex: 1 1 auto;
+      min-width: 0;
+    }
+  }
+
+  &__row {
+    @include ui.row(2);
+    @include ui.text(sm);
+    flex-wrap: nowrap;
+    margin: 0;
+  }
+
+  &__name {
+    @include ui.truncate;
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+
+  &__state {
+    @include ui.text(sm, muted);
+    flex: none;
+  }
+}

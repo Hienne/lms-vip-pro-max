@@ -10,10 +10,13 @@ import {
 import { NgComponentOutlet } from '@angular/common';
 import { RouterOutlet } from '@angular/router';
 import { DrawerOutlet } from '@lms/ui';
+import { AgentChatStore } from '../../core/assistant/agent-chat.store';
 import { APP_CONFIG } from '../../core/config/app-config';
 import { DEV_FEATURES } from '../../core/dev/dev-features';
+import { ChatWidget } from '../chat-widget/chat-widget';
 import { Header } from '../header/header';
 import { NetBanner } from '../net-banner/net-banner';
+import { Owl } from '../owl/owl';
 import { Sidebar } from '../sidebar/sidebar';
 import { ShellStore } from './data-access/shell.store';
 
@@ -31,6 +34,8 @@ import { ShellStore } from './data-access/shell.store';
     Header,
     NetBanner,
     NgComponentOutlet,
+    Owl,
+    ChatWidget,
   ],
   host: { '(window:beforeunload)': 'warnBeforeUnload($event)' },
   providers: [ShellStore],
@@ -39,6 +44,8 @@ import { ShellStore } from './data-access/shell.store';
 })
 export class AppShell {
   protected readonly store = inject(ShellStore);
+  /** Whether the quick assistant is docked, so the frame makes room for it. */
+  protected readonly chat = inject(AgentChatStore);
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
 
   /** The dev toolbar once its chunk has loaded; stays null where the build has none. */

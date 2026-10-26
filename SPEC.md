@@ -1,342 +1,130 @@
-# Spec: Custom theme (palette + light/dark) from the header
+# Capability map: AI chatbot with tool calls ("Trợ lý nhanh")
 
-Status: **revision 2, approved and built (2026-10-20)**. Revision 1 (approved 2026-10-19) shipped
-the picker, `ThemeStore` palette state, the no-flash script and three colour-only palettes in
-PR #34. The user found those palettes too plain. Revision 2 replaces them with three full themes
-modelled on two reference sites, and lightly refines BIDV chuẩn. It still ships in PR #34.
-Single capability (no capability map needed).
+Status: **built and verified on the local backend 2026-10-24; plan in [tasks/plan.md](tasks/plan.md). Deviations and known gaps are in the "Implementation notes (as built)" of each module spec.**
+
+Replaces the map of the AI assistant RAG initiative (shipped in PR #40; that map is in git history). Its module
+specs (`SPEC-kb-*.md`, `SPEC-doc-tracker.md`, `SPEC-assistant-screen.md`, `SPEC-owl-indicator.md`) stay beside
+this file as the reference for the shipped modules this initiative builds on.
 
 ## Objective
 
-Let every signed-in user choose how the LMS looks from a palette icon button in the app header.
-The standard BIDV teal is saturated and dark for long study sessions, so the app offers three
-quiet, minimal themes next to it.
+A small chatbot docked in the bottom-right corner of every app page, separate from the "Trợ lý AI" screen
+(`/assistant`). The user opens and closes it from the owl. In it they can:
 
-**Users:** all roles (learner, instructor, admin). The choice belongs to the browser, not the
-account: it is stored in `localStorage`, has no server API and does not follow the user to another
-device.
+1. ask about the uploaded documents, answered from the shared knowledge base with the same citations as
+   `/assistant`;
+2. ask it to **open a screen** ("mở trang quản lý người dùng"), limited to the screens the user's role grants;
+3. ask it to **update their own profile** ("đổi email của tôi thành …"), which runs only after the user
+   confirms the change in the chat.
 
-### User stories
+The model is `qwen3:8b` on the local Ollama, called with tools. The backend (`corebanking-academy`) runs
+locally. Creating and assigning courses are the next tools, after this map ships (see Out of scope); the
+tool registry is designed so adding them touches only `agent-tools` and the action card.
 
-1. As a learner, I click the palette icon in the header, pick **Giấy**, and the whole app
-   (sidebar, buttons, headings, backgrounds, login hero) changes at once, without a reload.
-2. As a user, I set **Tối** (dark) in the same dropdown and the chosen theme shows its dark
-   variant.
-3. As a user, I reload or come back tomorrow and the app opens in my theme and mode, with no
-   flash of the default teal.
-4. As a keyboard or screen-reader user, I can open the dropdown, move between options with the
-   arrow keys, select one, and close with Escape. Focus then returns to the icon.
+## Modules
 
-### What the references teach (design direction)
+| Module id         | Repo                  | Responsibility                                                                                                                                         | Depends on                                       |
+| ----------------- | --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------ |
+| `agent-runtime`   | `corebanking-academy` | Ollama tool calling (`tools`, `tool_calls`), the agent loop with a step cap, NDJSON stream, the tool registry, pending actions with confirm and cancel | `kb-storage` (shipped: `OllamaClient`, settings) |
+| `agent-tools`     | `corebanking-academy` | The three tools: `search_documents` (reuses `kb-chat` retrieval and citations), `open_screen`, `update_profile`                                        | `agent-runtime`, `kb-chat`, identity             |
+| `agent-contracts` | this repo             | zod schemas for the request, stream events and actions; endpoint registry; fixtures; mock API handlers                                                 | `agent-runtime`, `agent-tools`                   |
+| `chat-widget`     | this repo             | App-level store (conversation in `sessionStorage`, streaming, pending action) and the floating chat panel with the action card and source badges       | `agent-contracts`                                |
+| `owl-launcher`    | this repo             | The owl becomes the widget's launcher: a click opens and closes the panel, while it keeps showing document processing                                  | `chat-widget`, `owl-indicator` (shipped)         |
 
-| Principle                              | Kite (kite.vibery.app)                                | Tony (tony-card.pages.dev)                                     |
-| -------------------------------------- | ----------------------------------------------------- | -------------------------------------------------------------- |
-| Tinted near-white, not pure white      | slate canvas `#EEF1F4`, surface one step up `#F6F7F9` | paper `#F4F1EA`, card `#FBFAF6`, faint dot grid                |
-| Ink instead of black                   | `#243042`                                             | `#16181D`                                                      |
-| One primary, one accent used sparingly | cobalt `#3A5BA9` + terracotta `#B94328`               | primary **is** the ink; rust `#C2512B` for eyebrows/highlights |
-| Typography carries the character       | Nunito Sans, light 300 display with -0.03em tracking  | Fraunces serif display, sans body                              |
-| Long, soft, ink-tinted shadows         | `0 1px 2px ink/4%, 0 6px 20px -10px ink/12%`          | `0 30px 60px -30px ink/18%`                                    |
-| Dim dark mode, not black               | `#151A21`                                             | `#0F1115`, ivory text                                          |
+Module specs: [SPEC-agent-runtime.md](SPEC-agent-runtime.md) · [SPEC-agent-tools.md](SPEC-agent-tools.md) ·
+[SPEC-agent-contracts.md](SPEC-agent-contracts.md) · [SPEC-chat-widget.md](SPEC-chat-widget.md) ·
+[SPEC-owl-launcher.md](SPEC-owl-launcher.md).
 
-### Themes
+Dependency direction is one way: backend runtime → backend tools → FE contracts → widget → owl. The
+contract between the backend and the app (request, stream events, action shape) is specified in
+`SPEC-agent-runtime.md`, with each tool's arguments and result in `SPEC-agent-tools.md`.
 
-| Id       | Label (UI copy) | Character                                                                                                    |
-| -------- | --------------- | ------------------------------------------------------------------------------------------------------------ |
-| `bidv`   | BIDV chuẩn      | **Default** (no stored choice = `bidv`). Today's tokens with the light refinements below.                    |
-| `ngoc`   | Ngọc            | BIDV teal toned down on Kite's structure: mist canvas, deep-teal sidebar, muted gold accent. Brand-adjacent. |
-| `cobalt` | Cobalt          | Kite: slate ink, cobalt primary, terracotta accent, Nunito Sans with light display headings, pill controls.  |
-| `giay`   | Giấy            | Tony: warm paper with a dot grid, ink primary, rust accent, Fraunces display headings, light sidebar.        |
+Build order (one phase at a time, each ends with its checks, a commit and a stop for approval):
 
-Revision 1 ids `bidv-soft`, `blue` and `sand` are dropped. A stored old id is unknown, so it falls
-back to `bidv` (they never reached `main`).
+| Phase | Modules                                        |
+| ----- | ---------------------------------------------- |
+| 0     | this map, then the five module specs           |
+| 1     | `agent-runtime`                                |
+| 2     | `agent-tools`                                  |
+| 3     | `agent-contracts` → `chat-widget`              |
+| 4     | `owl-launcher`                                 |
+| 5     | end-to-end run on the local backend and Ollama |
 
-Each theme has a light **and** a dark variant. A theme may override these token groups:
+## Decisions (from the 2026-10-24 questions)
 
-| Group     | Keys                                                                                                                                                                                                                                                                    |
-| --------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `colors`  | revision 1 brand + neutral keys; **plus** `accent`, `accent-subtle`, `accent-ink`, `on-accent`, `hero-accent`, `hero-chip`, `eyebrow` (new) and the new `nav-*` keys (`nav-bg`, `nav-text`, `nav-muted`, `nav-hover`, `nav-active-bg`, `nav-active-text`, `nav-border`) |
-| `chart`   | `1`, `2`, `grid`                                                                                                                                                                                                                                                        |
-| `shadow`  | `sm`, `md`, `lg` (dark values too, as today)                                                                                                                                                                                                                            |
-| `type`    | `sans`, `display` (new font token), `display-weight` (new), `display-tracking` (new)                                                                                                                                                                                    |
-| `shape`   | `control` (new radius for buttons, inputs, segmented, chips), `card` (new radius for cards, popover, dialog)                                                                                                                                                            |
-| `texture` | `page` (new: the body background image, `none` by default)                                                                                                                                                                                                              |
+| #   | Decision                                                                                                                                                                                                                                                                                                                                                                                                                                        |
+| --- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| C1  | **The backend runs the agent loop.** Read-only tools (`search_documents`, `open_screen`) run as soon as the model calls them. A tool that changes data (`update_profile`) does not run: the backend stores it as a pending action and streams an `action_required` event; the app shows a confirmation card, and only `POST …/actions/{id}/confirm` runs it, as the signed-in user, through the existing service (`SelfProfileService.update`). |
+| C2  | **First tools:** document search, open a screen, update own profile (full name, email, position). Course creation and assignment are out of this map.                                                                                                                                                                                                                                                                                           |
+| C3  | **The owl is the launcher.** One anchor in the corner: the owl keeps its processing states and opens or closes the chat panel on click. The owl's current click (go to `/assistant`) moves to a link inside the panel.                                                                                                                                                                                                                          |
+| C4  | **Conversation lives in the browser, per tab** (`sessionStorage`): it survives navigation and reload, and is cleared on sign-out or when the tab closes. Each request sends the last 10 turns. No new table.                                                                                                                                                                                                                                    |
 
-**Never changes:** semantic colours (`success*`, `warning*`, `danger*`, `info*`), `white`, `black`,
-`overlay`, the cover tints other than `cover-layers`, chart colours 3–5, spacing, text sizes,
-layout, motion, z-indexes. `type`, `shape` and `texture` are mode-independent: they are set once
-per theme and need no dark value.
+## Assumptions (correct any of these before approval)
 
-Starting values are proposals. Each must pass the contrast rules in Success Criteria and may be
-adjusted to do so.
+1. **Local run.** Postgres from the backend's `compose.yaml` (`pgvector/pgvector:pg16`, needs Docker Desktop
+   running — it is not running now), backend on `localhost:8019`, app with
+   `LMS_API_TARGET=http://localhost:8019 npm start`. Ollama 0.40.9 is installed with `qwen3:8b` and `bge-m3`.
+2. **Who sees it.** Every signed-in user with the `AI_ASSISTANT` function (all four roles today), enforced by the
+   backend on every assistant endpoint too. No new function code. The widget is hidden on `/assistant` (that screen is the full version) and on the sign-in and
+   change-password pages.
+3. **New endpoints** under `/api/v1/assistant/agent`: `POST /stream` (NDJSON, same transport as
+   `kb-chat`), `POST /actions/{actionId}/confirm`, `POST /actions/{actionId}/cancel`. Pending actions are held
+   in memory, bound to the user who caused them, and expire after 10 minutes; a restart drops them (the card
+   then says the request expired).
+4. **History is text only.** The request carries `user` and `assistant` text turns; the backend ignores any other
+   role, so a client cannot inject tool results. Each tool's result is computed on the server in the same turn.
+5. **`open_screen`** takes a function code from the user's own granted functions (the server builds the list
+   from the user's grants, the same source as `/auth/me` `nav`); the stream sends a `navigate` event with the
+   route and the app navigates. Unmigrated screens open their placeholder, as from the sidebar.
+6. **`update_profile`** accepts only `fullName`, `email`, `positionName`, validated with the same rules as
+   `PATCH /auth/me`. The card shows each field as "cũ → mới". SSO accounts get a refusal before any card. The
+   card is confirm or cancel only (no inline editing); to change a value the user says so in the chat. After
+   confirm, the app applies the refreshed `/me` to the session, as the profile page does.
+7. **Document answers** keep the `kb-chat` rules: only retrieved chunks, citations from chunk metadata selected by
+   `[n]` markers, the fixed not-found sentence; an answer with no usable `[n]` has no sources (the one difference from
+   `kb-chat`, approved 2026-10-24). The widget reuses the source badge and popover from
+   `/assistant`.
+8. **Agent loop limits:** at most 4 model calls per user turn, `think: false`, temperature 0.1, `num_ctx 8192`;
+   an unknown tool, bad arguments or the cap ends the turn with a readable Vietnamese message.
+9. **Branches:** backend `feat/ai-chatbot-agent` from `main`; this repo continues on
+   `claude/ai-chatbot-tool-call-2fcf7a`.
 
-| Light               | ngoc                        | cobalt                   | giay                       |
-| ------------------- | --------------------------- | ------------------------ | -------------------------- |
-| bg / surface        | `#EEF2F1/#F7F9F8`           | `#EEF1F4/#F6F7F9`        | `#F4F1EA/#FBFAF6`          |
-| text / text-muted   | `#1E2B2A/#566462`           | `#243042/#4F596A`        | `#16181D/#5F6168`          |
-| border              | `#D8E0DE`                   | `#D9DEE6`                | `#E2DDD2`                  |
-| primary / on        | `#2B6E69/#FFFFFF`           | `#3A5BA9/#FFFFFF`        | `#16181D/#FBFAF6`          |
-| accent / eyebrow    | `#B8862B/#8A6A1E`           | `#B94328/#B94328`        | `#C2512B/#B0461F`          |
-| nav-bg / nav-text   | `#1F3B39/#E4EFED`           | `#E9EDF3/#243042`        | `#EFEBE2/#16181D`          |
-| hero-from → hero-to | `#1F3B39 → #2B5E5A`         | `#132A66 → #2B55B8`      | `#16181D → #16181D` (flat) |
-| display             | Be Vietnam Pro 600, −0.02em | Nunito Sans 300, −0.03em | Fraunces 500, −0.02em      |
-| sans                | Be Vietnam Pro              | Nunito Sans              | Be Vietnam Pro             |
-| control / card      | 10px / 16px                 | 999px (pill) / 20px      | 10px / 20px                |
-| texture             | none                        | none                     | dot grid, ink at 6%        |
+## Out of scope
 
-| Dark              | ngoc              | cobalt            | giay              |
-| ----------------- | ----------------- | ----------------- | ----------------- |
-| bg / surface      | `#141A19/#1A2120` | `#151A21/#1C222B` | `#0F1115/#15181D` |
-| text / text-muted | `#D6E0DE/#95A39F` | `#D5DCE6/#99A3B3` | `#ECE8DF/#B1AFA8` |
-| primary / on      | `#6FB8B0/#0E1615` | `#7C97D6/#0F141B` | `#ECE8DF/#15181D` |
-| accent            | `#D9B25E`         | `#E07A5F`         | `#E0703F`         |
-| nav-bg            | `#101615`         | `#181D25`         | `#13161B`         |
+Creating, publishing or assigning courses (next map); any other data-changing tool; server-side conversation
+history; editing an action's values in the card; voice; uploading documents from the widget; cloud models;
+production deployment; rate limiting.
 
-### BIDV chuẩn refinements (light touch)
+## Boundaries (whole initiative)
 
-The colours stay the same. Only the following change, in the base tokens, so every theme inherits
-them unless it overrides them:
+- **Always:** one phase at a time, ending with its checks, a commit and a stop; this repo follows `AGENTS.md`
+  and its docs; the backend follows its `AGENTS.md` and `DEVELOPMENT_GUIDELINES.md`; every data change goes
+  through a confirmed action and the existing service with the user's own permissions; tool arguments are
+  validated on the server, never trusted from the model; UI copy in Vietnamese, code, comments and commits in
+  English.
+- **Ask first:** a new tool, and above all any tool that changes data; a new dependency (Spring AI, LangChain4j,
+  a cache library); a new table; changing `kb-chat` behaviour or the `/assistant` screen beyond reusing its
+  parts; touching the shared remote database or backend.
+- **Never:** run a data-changing tool without the user's confirmation; act with more rights than the signed-in
+  user; take a citation's source from model text; log question, answer or profile values; send anything to a
+  model other than the local Ollama; commit to `main` or commit secrets.
 
-- **Shadows:** two layers (a contact shadow plus a long, soft drop) tinted with the BIDV ink:
-  - `sm` = `0 1px 2px` ink/5%
-  - `md` = `0 1px 2px` ink/4% + `0 8px 24px -12px` ink/14%
-  - `lg` = `0 1px 2px` ink/4% + `0 32px 64px -28px` ink/32%
-- **Headings:** h1–h3 and the page title use the `display` tokens. For BIDV that is Be Vietnam
-  Pro 700 with −0.02em tracking (today h1 alone has −0.01em).
-- **Controls:** radius 6px → 8px. Cards stay at 14px.
-- **Eyebrow:** the new `eyebrow` token is BIDV `primary`, replacing `text-muted`. Page-header
-  eyebrows pick up the brand colour, as in both references.
+## Success criteria (Phase 5, on the local backend)
 
-The sidebar, hero, accent and all colours are unchanged. The `/design-system` screenshots in the
-PR show BIDV before and after.
+1. On any page, a click on the owl opens the panel and another closes it; the owl still chews while an upload
+   processes. The conversation is still there after moving to another page and after a reload.
+2. "CIF là gì?" (with a document that covers it) answers with source badges pointing at the right file and lines;
+   an out-of-document question answers the fixed not-found sentence with no sources.
+3. Signed in as `quantri`, "mở trang quản lý người dùng" navigates to `/admin/users`; signed in as `hocvien`, the
+   same request is refused in words and nothing navigates.
+4. "Đổi chức danh của tôi thành Chuyên viên" shows a card with the old and new value; nothing changes until
+   "Xác nhận"; after it the profile page and header show the new value; "Huỷ" leaves the profile unchanged; a card
+   confirmed after 10 minutes reports it expired.
+5. FE: `npm run check` green, angular.md §14, the visual-design checklist and the migration verify step pass.
+   BE: `mvn clean verify` green (Docker running for Testcontainers).
 
-### The dropdown
+## Open questions
 
-Unchanged from revision 1:
-
-- **Trigger:** `button[uiIconButton]` with `<ui-icon name="palette" />`, label **"Tùy chỉnh
-  giao diện"**, in `.header__actions` before the bell. `aria-haspopup="dialog"`, `aria-expanded`.
-- **Panel** (non-modal popover, anchored below the trigger and aligned right):
-  - Group **"Bảng màu"**: four swatches, BIDV chuẩn / Ngọc / Cobalt / Giấy.
-  - Group **"Chế độ"**: Hệ thống / Sáng / Tối.
-- Selecting applies immediately and the panel stays open. It closes on Escape, an outside click,
-  or the trigger, and focus returns to the trigger.
-- **Mobile (< md):** full width minus the gutter.
-
-## Tech Stack
-
-Angular 22 (standalone, zoneless, signals) · `@angular/aria` listbox · `@angular/cdk/overlay` ·
-SCSS through the `ui` module · Vitest.
-
-**New dependencies (approved 2026-10-20):** `@fontsource/fraunces` (weight 500) and
-`@fontsource/nunito-sans` (weights 300, 400, 600, 700), version 5.3.0. They are self-hosted like
-`@fontsource/be-vietnam-pro` because internal networks may block Google Fonts. Their
-`@font-face` rules go in `apps/lms/project.json` styles. The browser downloads a font file only
-when a rendered element uses that family, so a user on BIDV never fetches them. Each rule ships
-Vietnamese, Latin and Latin-ext `unicode-range` subsets.
-
-## Architecture
-
-```
-index.html inline script ──applies──▶ <html data-theme data-palette>
-                                              ▲
-ThemeStore (core/theme) ─── only writer ──────┘   persists lms.theme + lms.palette
-   ▲  preference$ / palette$ / effective$ ; setPreference() / setPalette()
-   │
-app-theme-controls (shared/theme-controls)  ← reads store, calls commands
-   uses: ui-swatch-group · ui-segmented
-   ├── app-theme-picker (header) wraps it in uiPopover
-   └── /design-system renders it inline
-
-_tokens.scss $palettes (colors, chart, shadow, type, shape, texture)
-   ──▶ _palettes.scss emits :root[data-palette=…] (light + dark; type/shape/texture light only)
-```
-
-Revision 1 decisions 1, 2 and 4–7 stand (ThemeStore, attribute, no-flash script, popover,
-swatch group, theme controls, design-system). New or changed:
-
-1. **Tokens stay the single source, with more groups.** `_tokens.scss` gains:
-   - `$fonts.display`, `$display: (weight, tracking)`, `$radii.control`, `$radii.card`,
-     `$textures.page`;
-   - colour keys `eyebrow` and `nav-*`.
-
-   The base values reproduce BIDV (refined). `_palettes.scss` validates and emits the new groups:
-   - `type`, `shape` and `texture` are emitted only in the light block `:root[data-palette=x]`;
-     they hold for both modes.
-   - `colors`, `chart` and `shadow` keep the light ⊆ dark guard.
-   - Unknown groups or keys fail the build, as today.
-
-2. **Components read semantic tokens, never a theme.** One-time refactors so a theme can reach
-   them:
-   - The sidebar reads `nav-*` instead of `primary-strong`, `primary-subtle`, `white` and
-     `hero-subtle`. The BIDV `nav-*` values equal today's colours.
-   - h1–h3, `.page-header__title` and KPI values read `--font-display`,
-     `--font-weight-display` and `--tracking-display`.
-   - Buttons, inputs, segmented controls and chips read `--radius-control`; cards, the popover
-     and the dialog read `--radius-card`.
-   - The page eyebrow reads `--color-eyebrow`.
-   - `body` paints `--texture-page` over `bg`.
-
-   No SCSS file branches on a theme.
-
-3. **Theme swatches** (`--color-swatch-<id>-fill/-base`) keep coming from each theme's light
-   `primary` / `bg`. For Giấy, whose primary is ink, the fill is `accent`, so the swatch reads
-   as "rust on paper". The swatch source key becomes configurable per theme (`swatch: accent`).
-
-## Commands
-
-```bash
-nvm use
-npm start                 # app on :4200; see AGENTS.md for the mock/proxy split
-npx nx test ui            # tokens, palettes, contrast, popover, swatch group
-npx nx test lms           # ThemeStore, theme controls, picker, template scan
-npm run check             # format, lint, typecheck, test, build, bundle guard
-```
-
-## Project Structure
-
-Revision 2 touches:
-
-```
-libs/ui/src/styles/ui/_tokens.scss          new groups and keys; ngoc/cobalt/giay replace bidv-soft/blue/sand; BIDV refinements
-libs/ui/src/styles/ui/_functions.scss       accessors for the new tokens if needed (ui.radius(control) etc.)
-libs/ui/src/styles/global/_palettes.scss    new groups, mode-independent groups, swatch source key
-libs/ui/src/styles/global/_theme.scss       emits the new base tokens
-libs/ui/src/styles/global/_base.scss        headings use the display tokens; body texture
-libs/ui/src/styles/components/_btn.scss, _input.scss, _segmented.scss, _chip.scss,
-  _card.scss, _popover.scss, _dialog.scss, _page-header.scss, _kpi.scss   radius/eyebrow/display tokens
-libs/ui/src/styles/styles.spec.ts           emitted keys per group, new contrast rules, guard errors
-apps/lms/project.json, package.json         @fontsource/fraunces, @fontsource/nunito-sans
-apps/lms/src/app/layout/sidebar/sidebar.scss   nav-* tokens
-apps/lms/src/app/features/auth/login/login.scss   eyebrow/hero tokens only if needed
-apps/lms/src/app/core/theme/theme.store.ts (+spec)     THEME_PALETTES = bidv, ngoc, cobalt, giay
-apps/lms/src/index.html                     no-flash ids
-apps/lms/src/app/shared/theme-controls/     labels and swatch keys
-apps/lms/src/app/template-scan.spec.ts      id sync (unchanged logic)
-docs/conventions/ui-library.md              theme groups, new tokens, fonts
-```
-
-## Code Style
-
-The theme map shape (one theme shown, values abbreviated):
-
-```scss
-$palettes: (
-  giay: (
-    swatch: accent,
-    type: (
-      sans: $font-be-vietnam,
-      display: $font-fraunces,
-      display-weight: 500,
-      display-tracking: -0.02em,
-    ),
-    shape: (
-      control: 10px,
-      card: 20px,
-    ),
-    texture: (
-      page: radial-gradient(circle at 1px 1px, rgba(22, 24, 29, 0.06) 1px, transparent 0) 0 0 / 22px 22px,
-    ),
-    light: (
-      colors: (
-        primary: #16181d,
-        bg: #f4f1ea,
-        …,
-      ),
-      chart: (
-        1: #c2512b,
-        …,
-      ),
-      shadow: (
-        md: …,
-        lg: …,
-      ),
-    ),
-    dark: (
-      colors: (
-        primary: #ece8df,
-        bg: #0f1115,
-        …,
-      ),
-      chart: (
-        …,
-      ),
-      shadow: (
-        …,
-      ),
-    ),
-  ),
-);
-```
-
-Components only ever read semantic tokens:
-
-```scss
-.sidebar {
-  background: ui.color(nav-bg);
-  color: ui.color(nav-text);
-}
-.btn {
-  border-radius: ui.radius(control);
-}
-```
-
-Conventions are unchanged: English identifiers, Vietnamese copy, tokens only, BEM, and imports
-that point down the atomic levels.
-
-## Testing Strategy
-
-| Level              | What                                                                                                                                                                                                                      | Where                    |
-| ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------ |
-| Build: tokens      | each theme emits every group it declares; `type`/`shape`/`texture` only in the light block; dark ⊇ light for `colors`/`chart`/`shadow`; guard errors for unknown group, unknown key, light-without-dark, `bidv` overrides | `styles.spec.ts`         |
-| Build: BIDV refine | compiled `:root` equals HEAD except the listed refinements and the new tokens (property-level diff asserted in the spec)                                                                                                  | `styles.spec.ts`         |
-| Build: contrast    | revision 1 rules **plus** the new rules in SC5, for every theme × mode, computed from compiled CSS                                                                                                                        | `styles.spec.ts`         |
-| Unit: store        | ids are `bidv, ngoc, cobalt, giay`; an old id (`sand`) falls back to `bidv`                                                                                                                                               | `theme.store.spec.ts`    |
-| Component          | theme controls show the four new labels                                                                                                                                                                                   | `theme-controls.spec.ts` |
-| Guard              | id sync between store, CSS and `index.html`; colour-literal guard stays green (the texture uses a literal only inside `_tokens.scss`)                                                                                     | `template-scan.spec.ts`  |
-| Browser            | screenshots of the dashboard, a course page, login and `/design-system` in 4 themes × light/dark (in the PR), the reload matrix, and a check that fonts load only when their theme is active (network panel)              | manual, `npm start`      |
-
-## Boundaries
-
-- **Always:** keep `ThemeStore` the only runtime writer of `data-theme` and `data-palette`; put
-  every theme value in `_tokens.scss`; give every colour, chart and shadow key a dark value; make
-  components read semantic tokens; run `npm run check`.
-- **Ask first:** BIDV changes beyond the listed refinements; letting a theme change semantic
-  colours, spacing, text sizes or layout; any further font or dependency; changing the default
-  theme.
-- **Never:** branch on a theme in a component or SCSS file; write a colour literal outside
-  `_tokens.scss`; load fonts from Google Fonts; ship a theme that fails a contrast rule; change
-  layout or component structure as part of a theme.
-
-## Success Criteria
-
-1. The header palette button and the dropdown work as in revision 1. The dropdown lists **BIDV
-   chuẩn, Ngọc, Cobalt, Giấy** and **Hệ thống / Sáng / Tối**.
-2. Selecting a theme restyles the whole app immediately, with no reload: colours, sidebar,
-   headings font, control and card radius, shadows, texture and login hero.
-3. Choices persist (`lms.palette`, `lms.theme`). BIDV chuẩn shows only the listed refinements
-   compared with `main`.
-4. **No flash:** the reload matrix (4 themes × 3 modes × OS light/dark) paints the right
-   colours from the first frame. A Fraunces or Nunito Sans heading may swap in once the font
-   arrives (`font-display: swap`); this is accepted.
-5. **Contrast** for every theme in both modes:
-   - revision 1 rules;
-   - 4.5:1 or more for `eyebrow` and `accent-ink` on `surface` and `bg`;
-   - 4.5:1 or more for `nav-text` and `nav-muted` on `nav-bg`, and `nav-active-text` on
-     `nav-active-bg`;
-   - 4.5:1 or more for `on-accent` on `accent`.
-6. **Fonts:** a user on BIDV or Ngọc downloads no Fraunces or Nunito Sans file. Vietnamese
-   diacritics render in the theme font (no fallback glyphs) on the dashboard and the login page.
-7. `npm run check` passes, the angular.md §14 checklist passes, and `ui-library.md` documents
-   the theme groups, the new tokens and the fonts.
-
-## Resolved Questions
-
-1. Palette selector in `/design-system`: yes (revision 1).
-2. Revision 2 (2026-10-20): the three themes are the right direction; theme fonts are allowed;
-   BIDV chuẩn gets light refinements; the work continues on PR #34.
-
-## Open Questions
-
-1. **Exact hex values:** tuned to pass contrast; the user reviews each theme from screenshots.
-2. **Cobalt body font:** Nunito Sans for the whole UI (as Kite), or only for headings with Be
-   Vietnam Pro for the body? The proposal is the whole UI.
+1. Is `qwen3:8b` reliable enough at choosing tools in Vietnamese? Phase 1 measures it on a fixed set of ~20
+   prompts (documents, navigation, profile, chit-chat) and reports the hit rate; below 90% we revisit the
+   prompt or the tool descriptions before Phase 2.

@@ -2,6 +2,8 @@ import {
   HttpClient,
   HttpContext,
   type HttpErrorResponse,
+  HttpParams,
+  type HttpResponse,
   provideHttpClient,
   withInterceptors,
 } from '@angular/common/http';
@@ -17,6 +19,7 @@ import {
   defineEndpoint,
   EnvelopeSchema,
   identityEndpoints,
+  knowledgeEndpoints,
   shellEndpoints,
 } from '@lms/contracts';
 import { navCountsFixtures, SEED_PASSWORD } from '@lms/mocks';
@@ -109,6 +112,49 @@ describe('mockApiInterceptor', () => {
         data: navCountsFixtures['LEARNER'],
       });
       backend.expectNone('/api/me/nav-counts');
+    });
+
+    it('answers a streamed endpoint with NDJSON text, one event per line', () => {
+      const token = signIn('hocvien');
+      let response: HttpResponse<unknown> | undefined;
+      ask(knowledgeEndpoints.askStream, knowledgeEndpoints.askStream.path, {
+        token,
+        body: { question: 'EOD là gì?' },
+      }).subscribe((r) => (response = r));
+      expect(response?.headers.get('Content-Type')).toBe(
+        'application/x-ndjson',
+      );
+      const lines = String(response?.body).trimEnd().split('\n');
+      expect(lines.map((l) => JSON.parse(l).type)).toEqual([
+        'retrieved',
+        'delta',
+        'delta',
+        'delta',
+        'delta',
+        'delta',
+        'done',
+      ]);
+    });
+
+    it('joins a repeated query key so the mock sees every value', () => {
+      const token = signIn('hocvien');
+      let body: unknown;
+      http
+        .get(knowledgeEndpoints.documents.path, {
+          params: new HttpParams()
+            .append('status', 'failed')
+            .append('status', 'ready'),
+          headers: { Authorization: `Bearer ${token}` },
+          context: new HttpContext().set(
+            ENDPOINT,
+            knowledgeEndpoints.documents,
+          ),
+        })
+        .subscribe((b) => (body = b));
+      const ids = (
+        EnvelopeSchema.parse(body).data as { items: { id: number }[] }
+      ).items.map((d) => d.id);
+      expect(ids).toEqual([3, 1]);
     });
 
     it('answers a mock-only endpoint with the example of the signed-in role', () => {

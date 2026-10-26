@@ -1,0 +1,60 @@
+@let state = card(); @switch (state.status) { @case ('confirmed') {
+<p class="action-card__result">{{ state.message }}</p>
+} @case ('cancelled') {
+<p class="action-card__result">{{ state.message }}</p>
+} @case ('expired') {
+<p class="action-card__result action-card__result--error">
+  {{ state.message }}
+</p>
+} @case ('failed') {
+<p class="action-card__result action-card__result--error">
+  {{ state.message }}
+</p>
+} @default {
+<section class="action-card" [attr.aria-label]="question()">
+  <h3 class="action-card__title">{{ question() }}</h3>
+  @for (change of state.pending.changes; track change.field) {
+  <div class="change">
+    @if (several()) {
+    <p class="change__label">{{ change.label }}</p>
+    }
+    <dl class="change__values">
+      <dt>Hiện tại</dt>
+      <dd class="change__from">{{ change.from ?? '(trống)' }}</dd>
+      <dt>Mới</dt>
+      <dd class="change__to">{{ change.to ?? '(trống)' }}</dd>
+    </dl>
+  </div>
+  } @if (state.message) {
+  <p class="action-card__result action-card__result--error">
+    {{ state.message }}
+  </p>
+  }
+  <div class="action-card__actions">
+    <button
+      uiButton
+      type="button"
+      variant="primary"
+      size="sm"
+      [disabled]="busy() || state.status === 'confirming'"
+      (click)="confirmed.emit()"
+    >
+      @if (state.status === 'confirming') {<span
+        uiSpinner
+        label="Đang xác nhận"
+      ></span
+      >}Xác nhận
+    </button>
+    <button
+      uiButton
+      type="button"
+      variant="secondary"
+      size="sm"
+      [disabled]="busy() || state.status === 'confirming'"
+      (click)="cancelled.emit()"
+    >
+      Huỷ
+    </button>
+  </div>
+</section>
+} }

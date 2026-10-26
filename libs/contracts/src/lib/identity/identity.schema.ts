@@ -28,6 +28,7 @@ export const FunctionCodeSchema = z.enum([
   'SYSTEM_AUDIT',
   'KNOWLEDGE_HUB',
   'ISSUE_HUB',
+  'AI_ASSISTANT',
 ]);
 export type FunctionCode = z.infer<typeof FunctionCodeSchema>;
 

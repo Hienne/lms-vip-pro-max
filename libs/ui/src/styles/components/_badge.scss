@@ -57,6 +57,21 @@
       color: var(--color-text-secondary);
     }
 
+    // A badge on a button: the same label, findable by pointer and keyboard.
+    &:is(button) {
+      cursor: pointer;
+      font-family: inherit;
+      line-height: 1;
+
+      &:hover {
+        border-color: var(--color-border-strong);
+      }
+
+      &:focus-visible {
+        @include ui.focus-ring;
+      }
+    }
+
     &--dot::before {
       content: '';
       width: 6px;
