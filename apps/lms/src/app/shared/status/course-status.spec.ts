@@ -5,11 +5,16 @@ import { CourseStatus } from './course-status';
 
 @Component({
   imports: [CourseStatus],
-  template: `<app-course-status [status]="status()" [overdue]="overdue()" />`,
+  template: `<app-course-status
+    [status]="status()"
+    [overdue]="overdue()"
+    [dot]="dot()"
+  />`,
 })
 class Host {
   readonly status = signal<CourseStatusValue>('not_started');
   readonly overdue = signal(false);
+  readonly dot = signal(false);
 }
 
 function render() {
@@ -54,5 +59,32 @@ describe('CourseStatus', () => {
     expect(text(overdue)).toBe('Quá hạn');
     expect(overdue.classList.contains('badge--danger')).toBe(true);
     expect(overdue.querySelector('ui-icon')).not.toBeNull();
+  });
+
+  describe('as a dot', () => {
+    it('is one dot badge with the status and no icon', () => {
+      const { badges, set } = render();
+      set((h) => {
+        h.dot.set(true);
+        h.status.set('completed');
+      });
+      expect(badges()).toHaveLength(1);
+      expect(text(badges()[0])).toBe('Đã hoàn thành');
+      expect(badges()[0].classList.contains('badge--dot')).toBe(true);
+      expect(badges()[0].classList.contains('badge--success')).toBe(true);
+      expect(badges()[0].querySelector('ui-icon')).toBeNull();
+    });
+
+    it('says "Quá hạn" in danger instead of the status when overdue', () => {
+      const { badges, set } = render();
+      set((h) => {
+        h.dot.set(true);
+        h.status.set('in_progress');
+        h.overdue.set(true);
+      });
+      expect(badges()).toHaveLength(1);
+      expect(text(badges()[0])).toBe('Quá hạn');
+      expect(badges()[0].classList.contains('badge--danger')).toBe(true);
+    });
   });
 });

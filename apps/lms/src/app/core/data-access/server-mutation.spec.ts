@@ -55,6 +55,24 @@ describe('serverMutation', () => {
     expect(mutation.isPending()).toBe(false);
   });
 
+  it('shows no success toast when it declares none, and still runs onSuccess', async () => {
+    const { calls, run } = sources();
+    const saved: number[] = [];
+    const mutation = TestBed.runInInjectionContext(() =>
+      serverMutation(run, {
+        errors: 'toast',
+        onSuccess: (result) => saved.push(result),
+      }),
+    );
+    mutation.run('a');
+    await settle();
+    calls[0].source.next(7);
+    calls[0].source.complete();
+    await settle();
+    expect(saved).toEqual([7]);
+    expect(toaster.success).not.toHaveBeenCalled();
+  });
+
   it('on success runs onSuccess, then bumps invalidations, then toasts', async () => {
     const { calls, run } = sources();
     const order: string[] = [];

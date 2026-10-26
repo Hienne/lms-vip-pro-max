@@ -163,7 +163,8 @@ this.client.call(courseEndpoints.saveCourse, { body: command });
     runs a command. `errors` is required: `'toast'` shows the server's `title`
     (when it sent one) and message as a toast, `'alert'` exposes it as `error` for the view to show in a `ui-alert`. On success it runs
     `onSuccess`, then bumps `invalidates`, then shows the `success(input,
-    result)` toast. Exposes `run(input)`, `isPending`, `error` and `reset()`.
+    result)` toast; leave `success` out when the result is its own feedback (a saved file).
+    Exposes `run(input)`, `isPending`, `error` and `reset()`.
   - Use raw `rxResource` only where they do not fit, with a comment giving the
     reason. Guard its `value()` with `hasValue()`, because reading the value of
     an errored resource throws.

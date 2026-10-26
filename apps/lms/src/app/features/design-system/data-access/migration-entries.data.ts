@@ -926,7 +926,14 @@ export const MIGRATION_ENTRIES = [
     mockupSource: 'src/pages/tools.js · progress',
     target: 'progress',
     checklist: ['F.8'],
-    status: 'todo',
+    status: 'in-progress',
+    owner: 'Hiendeptroai',
+    verify: {
+      lightDark: 'done',
+      widths: 'done',
+      keyboard: 'done',
+      errorStates: 'todo',
+    },
   },
   {
     id: 'route-leaderboard',

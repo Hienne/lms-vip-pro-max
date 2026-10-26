@@ -116,6 +116,10 @@ export const SCREEN_TABLE = {
           path: 'progress',
           title: 'Tiến độ của tôi',
           mockupPage: 'progress',
+          load: () =>
+            import('../../features/achievements/progress/progress').then(
+              (m) => m.LearningProgress,
+            ),
         },
       ],
     },

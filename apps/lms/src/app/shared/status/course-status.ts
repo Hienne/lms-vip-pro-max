@@ -13,26 +13,35 @@ const COURSE_STATUS_VIEW: Record<CourseStatusValue, StatusView> = {
 
 /**
  * A learner's course status as a badge; the icon on done and failed keeps the meaning off colour.
- * `overdue` adds a "Quá hạn" badge next to it.
+ * `overdue` adds a "Quá hạn" badge next to it. With `dot` it is one compact dot badge for a table
+ * row: "Quá hạn" in danger when overdue, otherwise the status, and no icon.
  */
 @Component({
   selector: 'app-course-status',
   imports: [Badge, Icon],
   template: `
-    <span uiBadge [tone]="view().tone">
-      @if (view().icon; as icon) {
-        <ui-icon [name]="icon" />
+    @if (dot()) {
+      <span uiBadge dot [tone]="dotView().tone">{{ dotView().label }}</span>
+    } @else {
+      <span uiBadge [tone]="view().tone">
+        @if (view().icon; as icon) {
+          <ui-icon [name]="icon" />
+        }
+        {{ view().label }}
+      </span>
+      @if (overdue()) {
+        <span uiBadge tone="danger"> <ui-icon name="clock" /> Quá hạn </span>
       }
-      {{ view().label }}
-    </span>
-    @if (overdue()) {
-      <span uiBadge tone="danger"> <ui-icon name="clock" /> Quá hạn </span>
     }
   `,
 })
 export class CourseStatus {
   readonly status = input.required<CourseStatusValue>();
   readonly overdue = input(false, { transform: booleanAttribute });
+  readonly dot = input(false, { transform: booleanAttribute });
 
   protected readonly view = computed(() => COURSE_STATUS_VIEW[this.status()]);
+  protected readonly dotView = computed<StatusView>(() =>
+    this.overdue() ? { label: 'Quá hạn', tone: 'danger' } : this.view(),
+  );
 }

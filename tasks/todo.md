@@ -209,7 +209,7 @@ SameSite=Strict` with no domain, so the proxy needs no rewrite (browser retentio
   - Files: `contracts/learner/learner.schema.ts`, `learner.endpoints.ts`, `mocks/learning/learning.backend.ts`,
     `mocks/backend-responses.ts`.
   - Depends on: T1.
-- [ ] **T16 Progress page (`progress`)** · M
+- [x] **T16 Progress page (`progress`)** · M
   - Accept: claims `route-progress`; `ProgressStore` (URL-synced filters, debounced `q`, page reset, export with the
     table's query and the dated file name); header with "Xuất CSV", KPI row, unavailable note, filters, data table
     per spec, empty / no-match / error states; `screens.ts` loads it.
