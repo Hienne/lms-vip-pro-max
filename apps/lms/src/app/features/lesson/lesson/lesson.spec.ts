@@ -7,7 +7,7 @@ import {
   learnerEndpoints,
   type EnrollmentDetail,
 } from '@lms/contracts';
-import { backendRefusal } from '@lms/mocks';
+import { backendRefusal, type FakeReply } from '@lms/mocks';
 import type { MockInstance } from 'vitest';
 import { createAppRoutes } from '../../../app.routes';
 import {
@@ -243,7 +243,11 @@ describe('Lesson', () => {
       const original = real();
       handle.mockImplementation((endpoint, request) =>
         endpoint === courseEndpoints.getAssetContent
-          ? { status: 200, body: new Blob(['x']) }
+          ? // The mock has no file bytes: a real response of this endpoint is a blob, not an envelope.
+            {
+              status: 200,
+              body: new Blob(['x']) as unknown as FakeReply['body'],
+            }
           : original(endpoint, request),
       );
       await choose('Biểu mẫu đối soát');
