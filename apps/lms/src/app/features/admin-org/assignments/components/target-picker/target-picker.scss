@@ -1,0 +1,28 @@
+@use 'ui';
+
+.target-picker {
+  display: grid;
+  gap: ui.space(3);
+
+  // Four types do not fit a phone-wide drawer: the toggle scrolls instead of the drawer.
+  &__types {
+    max-width: 100%;
+    overflow-x: auto;
+  }
+
+  &__row {
+    display: grid;
+    gap: ui.space(3);
+    grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
+    align-items: end;
+  }
+
+  &__add {
+    justify-self: start;
+  }
+
+  &__toggle {
+    @include ui.row(2);
+    @include ui.text(sm);
+  }
+}

@@ -1,0 +1,53 @@
+<form id="catalog-item-form" class="stack" [formRoot]="itemForm">
+  <ui-field
+    label="Mã"
+    required
+    [hint]="kind() === 'fields' ? 'Ví dụ: NV, VH' : 'Ví dụ: VH-02'"
+  >
+    <input uiInput [formField]="itemForm.code" />
+  </ui-field>
+  <ui-field label="Tên" required>
+    <input uiInput [formField]="itemForm.name" />
+  </ui-field>
+  @if (kind() !== 'fields') {
+  <ui-field
+    label="Lĩnh vực"
+    [required]="kind() === 'modules'"
+    [hint]="item() && kind() === 'modules' ? 'Phân hệ không chuyển được sang lĩnh vực khác.' : ''"
+  >
+    <select uiSelect [formField]="itemForm.fieldId">
+      <option value="" [selected]="!itemForm.fieldId().value()">
+        {{ kind() === 'modules' ? '— Chọn lĩnh vực —' : 'Không thuộc lĩnh vực'
+        }}
+      </option>
+      @for (field of fields(); track field.id) {
+      <option
+        [value]="field.id"
+        [selected]="itemForm.fieldId().value() === '' + field.id"
+      >
+        {{ field.name }}
+      </option>
+      }
+    </select>
+  </ui-field>
+  } @if (kind() !== 'modules') {
+  <ui-field label="Mô tả">
+    <textarea uiTextarea rows="3" [formField]="itemForm.description"></textarea>
+  </ui-field>
+  }
+  <ui-field
+    label="Trạng thái"
+    hint="Tạm dừng: không dùng cho khóa mới, khóa đang có giữ nguyên. Lưu trữ: ngừng hẳn, lịch sử được giữ."
+  >
+    <select uiSelect [formField]="itemForm.status">
+      @for (status of statuses; track status[0]) {
+      <option
+        [value]="status[0]"
+        [selected]="itemForm.status().value() === status[0]"
+      >
+        {{ status[1] }}
+      </option>
+      }
+    </select>
+  </ui-field>
+</form>

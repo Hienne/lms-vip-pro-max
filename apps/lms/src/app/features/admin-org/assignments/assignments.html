@@ -1,0 +1,270 @@
+<ui-page-header
+  title="Giao học & hạn hoàn thành"
+  description="Giao khóa học cho cá nhân, phòng/nhóm, đơn vị hoặc nhóm học tập, kèm hạn hoàn thành. Học viên được xác định ngay lúc giao."
+>
+  <div slot="actions">
+    @if (store.tab$() === 'groups') {
+    <button uiButton variant="primary" (click)="store.startCreateGroup()">
+      <ui-icon name="plus" size="sm" />Tạo nhóm
+    </button>
+    } @else {
+    <button uiButton variant="primary" (click)="store.startAssign()">
+      <ui-icon name="plus" size="sm" />Giao khóa học
+    </button>
+    }
+  </div>
+</ui-page-header>
+
+<section uiCard>
+  <ui-tabs
+    label="Giao học"
+    [tabs]="tabs()"
+    [selected]="store.tab$()"
+    (selectedChange)="store.showTab($event)"
+  >
+    <div uiTabPanel="assignments">
+      @if (store.tab$() === 'assignments') {
+      <ng-container [ngTemplateOutlet]="assignmentsPanel" />
+      }
+    </div>
+    <div uiTabPanel="groups">
+      @if (store.tab$() === 'groups') {
+      <ng-container [ngTemplateOutlet]="groupsPanel" />
+      }
+    </div>
+  </ui-tabs>
+</section>
+
+<ng-template #assignmentsPanel>
+  @if (store.loadError$(); as error) {
+  <ui-error-state
+    title="Không tải được lượt giao"
+    [message]="error.message"
+    (retry)="store.retryLoad()"
+  />
+  } @else if (store.isLoading$()) {
+  <div class="assignments__loading"><span uiSpinner></span></div>
+  } @else if (!store.courses$().length) {
+  <ui-empty
+    variant="inline"
+    title="Chưa có khóa học đã xuất bản"
+    description="Chỉ giao được khóa học đã xuất bản và đang mở."
+  >
+    <a uiButton routerLink="/admin/courses">Đến danh sách khóa học</a>
+  </ui-empty>
+  } @else {
+  <div uiCardHeader class="assignments__toolbar">
+    <label class="assignments__filter">
+      <span>Khóa học</span>
+      <select
+        uiSelect
+        size="sm"
+        #course
+        (change)="store.pickCourse(course.value)"
+      >
+        @for (option of store.courses$(); track option.courseId) {
+        <option
+          [value]="option.courseId"
+          [selected]="option.courseId === store.courseId$()"
+        >
+          {{ option.code }} · {{ option.title }}
+        </option>
+        }
+      </select>
+    </label>
+    <span class="assignments__count" aria-live="polite"
+      >{{ store.total$() }} lượt giao</span
+    >
+  </div>
+  <ui-data-table
+    caption="Lượt giao khóa học"
+    [columns]="[
+      { key: 'title', label: 'Đợt giao', sortable: false },
+      { key: 'period', label: 'Thời gian', sortable: false },
+      { key: 'requirement', label: 'Yêu cầu', sortable: false },
+      { key: 'status', label: 'Trạng thái', sortable: false },
+      { key: 'actions', label: 'Thao tác', kind: 'actions' },
+    ]"
+    [rows]="store.rows$()"
+    [total]="store.total$()"
+    [page]="store.page$()"
+    [pageSize]="pageSize"
+    (pageChange)="store.goToPage($event)"
+  >
+    <ui-empty
+      slot="empty"
+      variant="inline"
+      title="Khóa học này chưa được giao"
+      description="Giao cho cá nhân, phòng/nhóm, đơn vị hoặc nhóm học tập."
+    />
+    <ng-template uiDataTableCell="title" [of]="store.rows$()" let-row>
+      <div uiTablePrimary>{{ row.title }}</div>
+      <div uiTableSub>Giao ngày {{ row.assignment.createTime | fmtDate }}</div>
+    </ng-template>
+    <ng-template uiDataTableCell="period" [of]="store.rows$()" let-row>
+      <div class="assignments__period">
+        <span class="assignments__muted"
+          >{{ row.assignment.startAt | fmtDate }} →</span
+        >
+        <app-due-date [dueAt]="row.assignment.dueAt" />
+      </div>
+    </ng-template>
+    <ng-template uiDataTableCell="requirement" [of]="store.rows$()" let-row>
+      {{ requirementLabel[row.assignment.requirement] }}
+    </ng-template>
+    <ng-template uiDataTableCell="status" [of]="store.rows$()" let-row>
+      <span
+        uiBadge
+        [dot]="statusView(row.assignment.status).dot ?? false"
+        [outline]="statusView(row.assignment.status).outline ?? false"
+        [tone]="statusView(row.assignment.status).tone"
+        >{{ statusView(row.assignment.status).label }}</span
+      >
+    </ng-template>
+    <ng-template uiDataTableCell="actions" [of]="store.rows$()" let-row>
+      <button
+        uiButton
+        size="sm"
+        variant="ghost"
+        [attr.aria-label]="'Xem ' + row.title"
+        (click)="store.view(row.assignment.id)"
+      >
+        Xem
+      </button>
+    </ng-template>
+  </ui-data-table>
+  }
+</ng-template>
+
+<ng-template #groupsPanel>
+  @if (store.groupsError$(); as error) {
+  <ui-error-state
+    title="Không tải được nhóm học tập"
+    [message]="error.message"
+    (retry)="store.retryGroups()"
+  />
+  } @else if (store.groupsLoading$()) {
+  <div class="assignments__loading"><span uiSpinner></span></div>
+  } @else {
+  <ui-data-table
+    caption="Nhóm học tập"
+    [columns]="[
+      { key: 'name', label: 'Nhóm', sortable: false },
+      { key: 'description', label: 'Mô tả', sortable: false },
+      { key: 'updated', label: 'Cập nhật', sortable: false },
+      { key: 'actions', label: 'Thao tác', kind: 'actions' },
+    ]"
+    [rows]="store.groups$()"
+    [total]="store.groups$().length"
+    [pageSize]="100"
+  >
+    <ui-empty
+      slot="empty"
+      variant="inline"
+      title="Chưa có nhóm học tập"
+      description="Nhóm học tập gom người từ nhiều phòng để giao khóa học cùng lúc."
+    />
+    <ng-template uiDataTableCell="name" [of]="store.groups$()" let-row>
+      <div uiTablePrimary>{{ row.group.name }}</div>
+      <div uiTableSub>{{ row.group.code }}</div>
+    </ng-template>
+    <ng-template uiDataTableCell="description" [of]="store.groups$()" let-row>
+      <span class="assignments__muted">{{ row.group.description || '—' }}</span>
+    </ng-template>
+    <ng-template uiDataTableCell="updated" [of]="store.groups$()" let-row>
+      {{ row.group.updateTime | fmtDate }}
+    </ng-template>
+    <ng-template uiDataTableCell="actions" [of]="store.groups$()" let-row>
+      <button
+        uiButton
+        size="sm"
+        variant="ghost"
+        [attr.aria-label]="'Thành viên ' + row.group.name"
+        (click)="store.editMembers(row.group.id)"
+      >
+        <ui-icon name="users" size="sm" />Thành viên
+      </button>
+    </ng-template>
+  </ui-data-table>
+  }
+</ng-template>
+
+<ng-template
+  [uiDrawer]="store.assigning$() !== null"
+  uiDrawerTitle="Giao khóa học"
+  [uiDrawerFooter]="assignFooter"
+  [uiDrawerBusy]="store.isAssigning$()"
+  uiDrawerBusyLabel="Đang giao…"
+  (uiDrawerDismiss)="store.cancelAssign()"
+>
+  @if (store.assigning$(); as assigning) {
+  <app-assign-form [courseId]="assigning.courseId" />
+  }
+</ng-template>
+<ng-template #assignFooter let-close="close">
+  <ui-form-actions
+    formId="assign-form"
+    submitLabel="Giao khóa học"
+    cancelLabel="Hủy"
+    [saving]="store.isAssigning$()"
+    (cancel)="close()"
+  />
+</ng-template>
+
+<ng-template
+  [uiDrawer]="store.isViewing$()"
+  [uiDrawerTitle]="detailTitle()"
+  (uiDrawerDismiss)="store.closeView()"
+>
+  <app-assignment-detail />
+</ng-template>
+
+<ng-template
+  [uiDrawer]="store.creatingGroup$()"
+  uiDrawerTitle="Tạo nhóm học tập"
+  [uiDrawerFooter]="groupFooter"
+  [uiDrawerBusy]="store.isCreatingGroup$()"
+  uiDrawerBusyLabel="Đang tạo…"
+  (uiDrawerDismiss)="store.cancelCreateGroup()"
+>
+  <app-group-form />
+</ng-template>
+<ng-template #groupFooter let-close="close">
+  <ui-form-actions
+    formId="group-form"
+    submitLabel="Tạo nhóm"
+    cancelLabel="Hủy"
+    [saving]="store.isCreatingGroup$()"
+    (cancel)="close()"
+  />
+</ng-template>
+
+<ng-template
+  [uiDrawer]="store.isEditingMembers$()"
+  [uiDrawerTitle]="membersTitle()"
+  [uiDrawerFooter]="membersFooter"
+  [uiDrawerBusy]="store.isSavingMembers$()"
+  uiDrawerBusyLabel="Đang lưu…"
+  (uiDrawerDismiss)="store.closeMembers()"
+>
+  @if (store.groupDetail$(); as detail) {
+  <app-group-members [detail]="detail" />
+  } @else if (store.groupError$(); as error) {
+  <ui-error-state
+    title="Không tải được nhóm"
+    [message]="error.message"
+    (retry)="store.retryGroup()"
+  />
+  } @else {
+  <div class="assignments__loading"><span uiSpinner></span></div>
+  }
+</ng-template>
+<ng-template #membersFooter let-close="close">
+  <ui-form-actions
+    formId="group-members-form"
+    submitLabel="Lưu thành viên"
+    cancelLabel="Hủy"
+    [saving]="store.isSavingMembers$()"
+    (cancel)="close()"
+  />
+</ng-template>

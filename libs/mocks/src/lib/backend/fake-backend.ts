@@ -60,6 +60,7 @@ import {
   agentRefusedEvents,
 } from '../assistant-agent/agent.fixtures';
 import { envelopeError, envelopeOk } from '../envelope';
+import { LearningBackend } from '../learning/learning.backend';
 import {
   knowledgeAnswerFixture,
   knowledgeDocumentFixtures,
@@ -207,7 +208,27 @@ export class FakeBackend {
   private pendingActions = new Map<string, PendingProposal>();
   private nextActionSeq = 1;
 
+  /** The learning services, which ask this one who calls and who belongs where. */
+  private readonly learning = new LearningBackend({
+    callerId: (request) => this.caller(request).userId,
+    people: () =>
+      this.users
+        .filter((u) => u.status === 'active')
+        .map((u) => ({ userId: u.userId, orgId: u.orgId, teamId: u.teamId })),
+    nameOf: (type, id) => {
+      switch (type) {
+        case 'user':
+          return this.users.find((u) => u.userId === id)?.fullName;
+        case 'team':
+          return this.teams.find((t) => t.id === id)?.name;
+        case 'org':
+          return this.orgs.find((o) => o.id === id)?.name;
+      }
+    },
+  });
+
   private readonly handlers = new Map<AnyEndpoint, Handler>([
+    ...this.learning.entries(),
     [authV1Endpoints.login, (r) => this.login(r)],
     [authV1Endpoints.logout, (r) => this.logout(r)],
     [authV1Endpoints.me, (r) => this.me(r)],

@@ -1,0 +1,66 @@
+@use 'ui';
+
+:host {
+  @include ui.page(wide);
+}
+
+.catalog {
+  &__filters {
+    @include ui.stack(3);
+    padding: ui.space(4);
+  }
+
+  &__row {
+    @include ui.row(3);
+    flex-wrap: wrap;
+  }
+
+  &__search {
+    flex: 1 1 18rem;
+  }
+
+  &__select {
+    flex: 1 1 10rem;
+    width: auto;
+    max-width: 16rem;
+  }
+
+  &__bar {
+    @include ui.row-between(3);
+    flex-wrap: wrap;
+    margin-block: ui.space(4);
+  }
+
+  &__count {
+    @include ui.text(sm, muted);
+
+    strong {
+      @include ui.num;
+      color: ui.color(text);
+      font-weight: ui.weight(semibold);
+    }
+  }
+
+  &__sort {
+    @include ui.row(2);
+    @include ui.text(sm, muted);
+    flex-wrap: nowrap;
+    white-space: nowrap;
+  }
+
+  &__grid {
+    @include ui.grid(
+      (
+        md: 2,
+        lg: 3,
+      )
+    );
+    margin: 0 0 ui.space(5);
+    padding: 0;
+    list-style: none;
+  }
+
+  &__placeholder {
+    min-height: 12rem;
+  }
+}

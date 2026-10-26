@@ -1,0 +1,132 @@
+<div class="course-info">
+  <section class="course-info__form" aria-label="Thông tin cơ bản">
+    <ui-field label="Tên khóa học" required>
+      <input
+        uiInput
+        [formField]="draft().title"
+        placeholder="Ví dụ: Quy trình đối soát cuối ngày"
+      />
+    </ui-field>
+    <div class="course-info__pair">
+      <ui-field label="Chương trình" required>
+        <select
+          uiSelect
+          [formField]="draft().programId"
+          (change)="programPicked.emit(draft().programId().value())"
+        >
+          <option value="" [selected]="!draft().programId().value()">
+            — Chọn chương trình —
+          </option>
+          @for (program of programs(); track program.id) {
+          <option
+            [value]="program.id"
+            [selected]="draft().programId().value() === '' + program.id"
+          >
+            {{ program.name }}
+          </option>
+          }
+        </select>
+      </ui-field>
+      <ui-field
+        label="Phân hệ nghiệp vụ"
+        [hint]="draft().programId().value() ? '' : 'Chọn chương trình trước.'"
+      >
+        <select uiSelect [formField]="draft().moduleId">
+          <option value="" [selected]="!draft().moduleId().value()">
+            Không chọn
+          </option>
+          @for (module of modules(); track module.id) {
+          <option
+            [value]="module.id"
+            [selected]="draft().moduleId().value() === '' + module.id"
+          >
+            {{ module.name }}
+          </option>
+          }
+        </select>
+      </ui-field>
+      <ui-field label="Mã khóa học" hint="Mã không đổi sau khi tạo.">
+        <input uiInput [value]="code()" readonly />
+      </ui-field>
+      <ui-field label="Mức độ">
+        <select uiSelect [formField]="draft().level">
+          <option value="" [selected]="!draft().level().value()">
+            Chưa chọn
+          </option>
+          @for (level of levels; track level[0]) {
+          <option
+            [value]="level[0]"
+            [selected]="draft().level().value() === level[0]"
+          >
+            {{ level[1] }}
+          </option>
+          }
+        </select>
+      </ui-field>
+    </div>
+
+    <fieldset class="course-info__kind">
+      <legend>Loại khóa học</legend>
+      <div class="course-info__pair">
+        <ui-option-card
+          title="Bắt buộc"
+          description="Học viên được giao phải hoàn thành trước hạn"
+        >
+          <input
+            type="radio"
+            value="mandatory"
+            [formField]="draft().defaultRequirement"
+          />
+        </ui-option-card>
+        <ui-option-card
+          title="Tự chọn"
+          description="Học viên tự đăng ký từ danh mục"
+        >
+          <input
+            type="radio"
+            value="optional"
+            [formField]="draft().defaultRequirement"
+          />
+        </ui-option-card>
+      </div>
+    </fieldset>
+
+    <ui-field label="Mô tả ngắn">
+      <textarea uiTextarea rows="3" [formField]="draft().summary"></textarea>
+    </ui-field>
+
+    <fieldset class="course-info__objectives">
+      <legend>Mục tiêu đầu ra</legend>
+      @for (objective of draft().objectives; track $index; let i = $index) {
+      <div class="course-info__objective">
+        <input
+          uiInput
+          [formField]="objective"
+          placeholder="Học viên có thể…"
+          [attr.aria-label]="'Mục tiêu ' + (i + 1)"
+        />
+        <button
+          uiIconButton
+          type="button"
+          [label]="'Xóa mục tiêu ' + (i + 1)"
+          (click)="removeObjective(i)"
+        >
+          <ui-icon name="x" size="sm" />
+        </button>
+      </div>
+      }
+      <button uiLinkButton type="button" (click)="addObjective()">
+        <ui-icon name="plus" size="sm" />Thêm mục tiêu
+      </button>
+    </fieldset>
+  </section>
+
+  <aside class="course-info__preview" aria-label="Xem trước thẻ khóa học">
+    <h2 class="course-info__preview-title">Xem trước thẻ khóa học</h2>
+    <app-course-card [course]="preview()" />
+    <p class="course-info__note">
+      Thẻ cập nhật theo dữ liệu bạn đang nhập: đây là những gì học viên nhìn
+      thấy.
+    </p>
+  </aside>
+</div>

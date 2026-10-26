@@ -1,0 +1,5 @@
+@use 'ui';
+
+.copy-course-form__note {
+  @include ui.text(sm, muted);
+}

@@ -1,0 +1,172 @@
+<ui-page-header
+  title="Khóa học"
+  description="Tạo, sửa, sao chép và xuất bản khóa học. Thay đổi có hiệu lực ngay, không cần triển khai lại."
+>
+  <div slot="actions">
+    <a uiButton variant="primary" routerLink="/admin/courses/new">
+      <ui-icon name="plus" size="sm" />Tạo khóa học
+    </a>
+  </div>
+</ui-page-header>
+
+@if (store.loadError$(); as error) {
+<ui-error-state
+  title="Không tải được danh sách khóa học"
+  [message]="error.message"
+  (retry)="store.retryLoad()"
+/>
+} @else if (store.isLoading$()) {
+<div class="courses__loading"><span uiSpinner></span></div>
+} @else {
+<section uiCard>
+  <div uiCardHeader class="courses__toolbar">
+    <div class="row courses__filters">
+      <ui-search
+        label="Tìm khóa học"
+        placeholder="Tên hoặc mã khóa học…"
+        [value]="store.query$()"
+        (searched)="store.search($event)"
+      />
+      <select
+        uiSelect
+        size="sm"
+        class="courses__filter"
+        aria-label="Lĩnh vực"
+        #field
+        (change)="store.filterField(field.value)"
+      >
+        <option value="" [selected]="store.fieldId$() === undefined">
+          Tất cả lĩnh vực
+        </option>
+        @for (option of store.fields$(); track option.id) {
+        <option [value]="option.id" [selected]="option.id === store.fieldId$()">
+          {{ option.name }}
+        </option>
+        }
+      </select>
+      <select
+        uiSelect
+        size="sm"
+        class="courses__filter"
+        aria-label="Trạng thái"
+        #status
+        (change)="store.filterStatus(status.value)"
+      >
+        <option value="" [selected]="store.status$() === ''">
+          Tất cả trạng thái
+        </option>
+        @for (option of statuses; track option[0]) {
+        <option [value]="option[0]" [selected]="option[0] === store.status$()">
+          {{ option[1] }}
+        </option>
+        }
+      </select>
+    </div>
+    <span class="courses__count" aria-live="polite"
+      >{{ store.total$() }} khóa học</span
+    >
+  </div>
+
+  <ui-data-table
+    caption="Danh sách khóa học"
+    [columns]="[
+      { key: 'title', label: 'Khóa học' },
+      { key: 'level', label: 'Mức độ / loại', sortable: false },
+      { key: 'lessons', label: 'Bài', sortable: false },
+      { key: 'assigned', label: 'Được giao', sortable: false },
+      { key: 'status', label: 'Trạng thái', sortable: false },
+      { key: 'updated', label: 'Cập nhật' },
+      { key: 'actions', label: 'Thao tác', kind: 'actions' },
+    ]"
+    [rows]="store.rows$()"
+    [total]="store.total$()"
+    [sort]="store.sort$()"
+    [page]="store.page$()"
+    [pageSize]="pageSize"
+    (sortChange)="store.sortBy($event)"
+    (pageChange)="store.goToPage($event)"
+  >
+    <ui-empty
+      slot="empty"
+      variant="inline"
+      title="Không có khóa học phù hợp"
+      [description]="store.hasFilters$() ? 'Thử đổi từ khóa hoặc bỏ bớt bộ lọc.' : 'Tạo khóa học đầu tiên để bắt đầu.'"
+    />
+    <ng-template uiDataTableCell="title" [of]="store.rows$()" let-row>
+      <a uiTablePrimary [routerLink]="['/admin/courses', row.id, 'edit']"
+        >{{ row.title }}</a
+      >
+      <div uiTableSub>{{ row.card.code }} · {{ row.programName }}</div>
+    </ng-template>
+    <ng-template uiDataTableCell="level" [of]="store.rows$()" let-row>
+      <div class="courses__level">
+        @if (row.level) {
+        <span>{{ row.level }}</span>
+        }
+        <app-required-mark [required]="row.card.requirement !== 'optional'" />
+      </div>
+    </ng-template>
+    <ng-template uiDataTableCell="lessons" [of]="store.rows$()" let-row>
+      <span class="courses__num">{{ row.card.lessonCount ?? 0 }}</span>
+    </ng-template>
+    <ng-template uiDataTableCell="assigned" [of]="store.rows$()" let-row>
+      <span class="courses__num">{{ row.card.assignedCount ?? 0 }}</span>
+    </ng-template>
+    <ng-template uiDataTableCell="status" [of]="store.rows$()" let-row>
+      <app-catalog-status [status]="row.status" />
+    </ng-template>
+    <ng-template uiDataTableCell="updated" [of]="store.rows$()" let-row>
+      {{ row.card.updateTime | fmtDate }}
+    </ng-template>
+    <ng-template uiDataTableCell="actions" [of]="store.rows$()" let-row>
+      <div class="courses__actions">
+        <a
+          uiButton
+          size="sm"
+          variant="ghost"
+          [routerLink]="['/admin/courses', row.id, 'edit']"
+          [attr.aria-label]="'Sửa ' + row.title"
+        >
+          <ui-icon name="pen-line" size="sm" />Sửa
+        </a>
+        <ui-menu
+          [label]="'Thêm thao tác cho ' + row.title"
+          icon="ellipsis"
+          iconOnly
+          variant="ghost"
+          size="sm"
+          [disabled]="store.isChangingState$()"
+          [entries]="store.menuFor(row)"
+          (selected)="store.act(row, $event)"
+        />
+      </div>
+    </ng-template>
+  </ui-data-table>
+</section>
+}
+
+<ng-template
+  [uiDrawer]="store.copying$() !== null"
+  uiDrawerTitle="Sao chép khóa học"
+  [uiDrawerFooter]="footer"
+  [uiDrawerBusy]="store.isCopying$()"
+  uiDrawerBusyLabel="Đang sao chép…"
+  (uiDrawerDismiss)="store.cancelCopy()"
+>
+  @if (store.copying$(); as row) {
+  <app-copy-course-form
+    [title]="row.title"
+    [code]="row.card.code"
+    (submitted)="store.copy($event)"
+  />
+  }
+</ng-template>
+<ng-template #footer let-close="close">
+  <ui-form-actions
+    formId="copy-course-form"
+    submitLabel="Sao chép"
+    cancelLabel="Hủy"
+    [saving]="store.isCopying$()"
+    (cancel)="close()"
+  />
+</ng-template>

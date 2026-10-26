@@ -1,0 +1,44 @@
+@use 'ui';
+
+:host {
+  @include ui.page(wide);
+}
+
+.assignments {
+  &__toolbar {
+    flex-wrap: wrap;
+    gap: ui.space(3);
+  }
+
+  &__filter {
+    @include ui.row(2);
+    @include ui.text(sm, muted);
+    white-space: nowrap;
+    min-width: 0;
+
+    select {
+      min-width: 0;
+      max-width: 28rem;
+    }
+  }
+
+  &__count {
+    @include ui.text(sm, muted);
+  }
+
+  &__loading {
+    display: flex;
+    justify-content: center;
+    padding-block: ui.space(10);
+  }
+
+  &__period {
+    @include ui.row(2);
+    flex-wrap: wrap;
+    @include ui.text(sm);
+  }
+
+  &__muted {
+    @include ui.text(sm, muted);
+  }
+}

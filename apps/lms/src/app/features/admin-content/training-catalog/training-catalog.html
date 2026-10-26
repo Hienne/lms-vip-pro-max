@@ -1,0 +1,133 @@
+<ui-page-header
+  title="Lĩnh vực & chương trình"
+  description="Lĩnh vực, phân hệ nghiệp vụ và chương trình dùng để xếp khóa học. Thay đổi có hiệu lực ngay, không cần triển khai lại."
+>
+  <div slot="actions">
+    <button uiButton variant="primary" (click)="store.edit(null)">
+      <ui-icon name="plus" size="sm" />Thêm {{ store.noun$() }}
+    </button>
+  </div>
+</ui-page-header>
+
+<section uiCard>
+  <ui-tabs
+    label="Danh mục đào tạo"
+    [tabs]="tabs()"
+    [selected]="store.tab$()"
+    (selectedChange)="store.showTab($event)"
+  >
+    @for (tab of tabs(); track tab.id) {
+    <div [uiTabPanel]="tab.id">
+      @if (store.tab$() === tab.id) {
+      <ng-container [ngTemplateOutlet]="panel" />
+      }
+    </div>
+    }
+  </ui-tabs>
+</section>
+
+<ng-template #panel>
+  @if (store.tab$() === 'modules') {
+  <div uiCardHeader class="training-catalog__toolbar">
+    <label class="training-catalog__filter">
+      <span>Lĩnh vực</span>
+      <select
+        uiSelect
+        size="sm"
+        #field
+        (change)="store.showModulesOf(field.value)"
+      >
+        @for (option of store.fields$(); track option.id) {
+        <option
+          [value]="option.id"
+          [selected]="option.id === store.moduleFieldId$()"
+        >
+          {{ option.name }}
+        </option>
+        }
+      </select>
+    </label>
+  </div>
+  } @if (store.loadError$(); as error) {
+  <ui-error-state
+    title="Không tải được danh mục đào tạo"
+    [message]="error.message"
+    (retry)="store.retryLoad()"
+  />
+  } @else if (store.isLoading$()) {
+  <div class="training-catalog__loading"><span uiSpinner></span></div>
+  } @else {
+  <ui-data-table
+    [caption]="'Danh sách ' + store.noun$()"
+    [columns]="[
+        { key: 'name', label: 'Tên', sortable: false },
+        { key: 'field', label: store.tab$() === 'fields' ? 'Mô tả' : 'Lĩnh vực', sortable: false },
+        { key: 'status', label: 'Trạng thái', sortable: false },
+        { key: 'actions', label: 'Thao tác', kind: 'actions' },
+      ]"
+    [rows]="store.rows$()"
+    [total]="store.rows$().length"
+    [pageSize]="100"
+  >
+    <ui-empty
+      slot="empty"
+      variant="inline"
+      [title]="'Chưa có ' + store.noun$() + ' nào'"
+      description="Thêm mục đầu tiên để bắt đầu xếp khóa học."
+    />
+    <ng-template uiDataTableCell="name" [of]="store.rows$()" let-row>
+      <div uiTablePrimary>{{ row.item.name }}</div>
+      <div uiTableSub>{{ row.item.code }}</div>
+    </ng-template>
+    <ng-template uiDataTableCell="field" [of]="store.rows$()" let-row>
+      @if (store.tab$() === 'fields') {
+      <span class="training-catalog__desc"
+        >{{ row.item.description || '—' }}</span
+      >
+      } @else { {{ row.fieldName || '—' }} }
+    </ng-template>
+    <ng-template uiDataTableCell="status" [of]="store.rows$()" let-row>
+      <app-catalog-status [status]="row.item.status" />
+    </ng-template>
+    <ng-template uiDataTableCell="actions" [of]="store.rows$()" let-row>
+      <button
+        uiButton
+        size="sm"
+        variant="ghost"
+        [attr.aria-label]="'Sửa ' + row.item.name"
+        (click)="store.edit(row.item)"
+      >
+        <ui-icon name="pen-line" size="sm" />Sửa
+      </button>
+    </ng-template>
+  </ui-data-table>
+  }
+</ng-template>
+
+<ng-template
+  [uiDrawer]="store.editing$() !== null"
+  [uiDrawerTitle]="store.editorTitle$()"
+  [uiDrawerFooter]="footer"
+  [uiDrawerBusy]="store.isSaving$()"
+  uiDrawerBusyLabel="Đang lưu…"
+  (uiDrawerDismiss)="store.cancelEdit()"
+>
+  @if (store.editing$(); as editing) {
+  <app-catalog-item-form
+    [kind]="editing.kind"
+    [item]="editing.item"
+    [fields]="store.fields$()"
+    [defaultFieldId]="store.moduleFieldId$()"
+    (submitted)="store.save($event)"
+  />
+  }
+</ng-template>
+<ng-template #footer let-close="close">
+  <ui-form-actions
+    formId="catalog-item-form"
+    submitLabel="Lưu"
+    cancelLabel="Hủy"
+    [saving]="store.isSaving$()"
+    (cancel)="close()"
+  />
+</ng-template>

@@ -1,0 +1,158 @@
+<ui-breadcrumb
+  [items]="[
+    { label: 'Khóa học', href: '/admin/courses' },
+    { label: 'Sửa khóa học' },
+  ]"
+/>
+
+@if (store.loadError$(); as error) {
+<ui-error-state
+  title="Không tải được khóa học"
+  [message]="error.message"
+  (retry)="store.retryLoad()"
+/>
+} @else if (store.isLoading$()) {
+<div class="course-editor__loading"><span uiSpinner></span></div>
+} @else if (store.course$(); as detail) {
+<header class="course-editor__head">
+  <div>
+    <h1>Sửa khóa học</h1>
+    <p class="course-editor__sub">
+      {{ detail.revision.title || 'Chưa đặt tên' }} · {{ detail.course.code }}
+      <app-catalog-status [status]="store.status$()" />
+    </p>
+  </div>
+  <span class="course-editor__saved" aria-live="polite">
+    @if (dirty()) {
+    <ui-icon name="pen-line" size="sm" />Có thay đổi chưa lưu } @else if
+    (store.savedAt$(); as at) { <ui-icon name="check" size="sm" />Đã lưu nháp
+    lúc {{ at }} }
+  </span>
+</header>
+
+@if (!store.isDraft$()) {
+<ui-alert tone="info" [announce]="false" class="course-editor__notice">
+  Đây là bản đang xuất bản. Mở bản nháp để sửa; học viên vẫn học bản hiện tại
+  cho đến khi bạn xuất bản lại.
+  <button
+    uiButton
+    size="sm"
+    variant="primary"
+    uiAlertAction
+    [disabled]="store.isOpeningDraft$()"
+    (click)="store.openDraft()"
+  >
+    Mở bản nháp để sửa
+  </button>
+</ui-alert>
+}
+
+<ui-stepper
+  class="course-editor__steps"
+  label="Các bước soạn khóa học"
+  [steps]="steps"
+  [selectedIndex]="store.step$()"
+  (selectedIndexChange)="store.goToStep($event)"
+/>
+
+@if (invalidSteps().length) {
+<ui-alert tone="danger" class="course-editor__notice">
+  Còn thông tin chưa hợp lệ ở: @for (step of invalidSteps(); track step; let
+  last = $last) {
+  <button uiLinkButton type="button" (click)="store.goToStep(step)">
+    {{ steps[step].label }}</button
+  >{{ last ? '.' : ',' }} }
+</ui-alert>
+} @if (store.saveError$(); as error) {
+<ui-alert tone="danger" class="course-editor__notice">
+  {{ error.title ? error.title + ': ' : '' }}{{ error.message }}
+</ui-alert>
+}
+
+<form id="course-editor-form" [formRoot]="courseForm">
+  <fieldset class="course-editor__body" [disabled]="!store.isDraft$()">
+    <legend class="sr-only">{{ steps[store.step$()].label }}</legend>
+    @switch (store.step$()) { @case (0) {
+    <app-course-info
+      [draft]="courseForm"
+      [code]="detail.course.code"
+      [programs]="store.programs$()"
+      [modules]="store.modules$()"
+      (programPicked)="store.pickProgram($event)"
+    />
+    } @case (1) {
+    <app-course-outline
+      [draft]="courseForm"
+      (editLesson)="store.editLesson($event)"
+    />
+    } @case (2) {
+    <app-course-finish
+      [draft]="courseForm"
+      (goToStep)="store.goToStep($event)"
+    />
+    } }
+  </fieldset>
+</form>
+
+<footer class="course-editor__foot">
+  @if (store.step$() > 0) {
+  <button uiButton variant="ghost" (click)="store.goToStep(store.step$() - 1)">
+    <ui-icon name="chevron-left" size="sm" />Quay lại
+  </button>
+  } @else {
+  <a uiButton variant="ghost" routerLink="/admin/courses">Về danh sách</a>
+  }
+  <span class="course-editor__spacer"></span>
+  @if (store.isDraft$()) {
+  <button
+    uiButton
+    type="submit"
+    form="course-editor-form"
+    [disabled]="store.isSaving$()"
+  >
+    <ui-icon name="archive" size="sm" />Lưu nháp
+  </button>
+  } @if (store.step$() < steps.length - 1) {
+  <button
+    uiButton
+    variant="primary"
+    (click)="store.goToStep(store.step$() + 1)"
+  >
+    Tiếp tục<ui-icon name="chevron-right" size="sm" />
+  </button>
+  } @else if (store.isDraft$()) {
+  <button
+    uiButton
+    variant="primary"
+    [disabled]="store.isSaving$()"
+    (click)="publish()"
+  >
+    <ui-icon name="check" size="sm" />Xuất bản khóa học
+  </button>
+  }
+</footer>
+}
+
+<ng-template
+  [uiDrawer]="!!editingLesson()"
+  uiDrawerTitle="Sửa bài học"
+  [uiDrawerFooter]="footer"
+  (uiDrawerDismiss)="store.closeLesson()"
+>
+  @if (editingLesson(); as lesson) {
+  <app-lesson-form
+    [lesson]="lesson"
+    [uploads]="store.uploads$()"
+    (upload)="store.upload($event)"
+    (submitted)="applyLesson($event)"
+  />
+  }
+</ng-template>
+<ng-template #footer let-close="close">
+  <ui-form-actions
+    formId="lesson-form"
+    submitLabel="Áp dụng"
+    cancelLabel="Hủy"
+    (cancel)="close()"
+  />
+</ng-template>

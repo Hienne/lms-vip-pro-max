@@ -1,0 +1,59 @@
+@use 'ui';
+
+:host {
+  @include ui.page(wide);
+}
+
+.course-editor {
+  &__loading {
+    display: flex;
+    justify-content: center;
+    padding-block: ui.space(10);
+  }
+
+  &__head {
+    @include ui.row-between(4);
+    flex-wrap: wrap;
+    align-items: flex-end;
+    margin-bottom: ui.space(4);
+  }
+
+  &__sub {
+    @include ui.row(2);
+    @include ui.text(sm, muted);
+    flex-wrap: wrap;
+  }
+
+  &__saved {
+    @include ui.row(1);
+    @include ui.text(xs, muted);
+  }
+
+  &__notice {
+    margin-bottom: ui.space(4);
+  }
+
+  &__steps {
+    display: block;
+    margin-bottom: ui.space(6);
+  }
+
+  &__body {
+    min-width: 0;
+    margin: 0;
+    padding: 0;
+    border: 0;
+  }
+
+  &__foot {
+    @include ui.row(2);
+    flex-wrap: wrap;
+    margin-top: ui.space(6);
+    padding-top: ui.space(4);
+    border-top: 1px solid ui.color(border);
+  }
+
+  &__spacer {
+    flex: 1 1 auto;
+  }
+}
