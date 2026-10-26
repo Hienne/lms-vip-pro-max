@@ -160,7 +160,7 @@ SameSite=Strict` with no domain, so the proxy needs no rewrite (browser retentio
   - Verify: `npx nx test lms -- image-block attachment-block`.
   - Files: `…/components/image-block/*`, `…/components/attachment-block/*`, `lesson.html`, `lesson.store.ts`.
   - Depends on: T9.
-- [ ] **T13 Local-backend pass for the lesson player** · S
+- [x] **T13 Local-backend pass for the lesson player** · S
   - Do: as the content admin, build and publish a course with a PDF (`pdf_end`), a video (`video_coverage`, if
     `ffmpeg` is installed), a text block and an image; assign or share it to `hocvien`; run lesson-player success
     criteria 2 and 3 in two browsers; fix what the pass finds (each fix its own commit with a spec).
@@ -172,9 +172,25 @@ SameSite=Strict` with no domain, so the proxy needs no rewrite (browser retentio
 
 ### Checkpoint 1c (Phase 1 done)
 
-- [ ] `npm run check` green
-- [ ] lesson-player success criteria 1–4 reported with how each was verified
-- [ ] Stop for approval
+- [x] `npm run check` green (2026-10-27; Nx reported `ui:test` flaky once, it passes on retry)
+- [x] lesson-player success criteria 1–4, how each was verified:
+  1. Mock, as `hocvien`: enrolled in the optional course, opened "Tổng kết", "Đánh dấu hoàn thành" moved the lesson,
+     the outline tick and "Khóa học 33%"; the URL keeps `?block=` (reload is covered by `lesson.spec.ts`).
+  2. Local backend (:8019, course `FE-LP-T13` published by `giangvien` with a PDF, an image, an attachment and a text
+     block, enrolled as `hocvien`): the PDF rendered through pdf.js with the worker asset, `PDF_PAGE` on pages 2 and
+     3 completed the `pdf_end` block, leaving and coming back reopened it at page 3 ("Đã mở lại tại trang 3."); the
+     image loaded through the `academy_media` cookie; the attachment's content answered 200 with the cookie.
+     **Video: not verified on the local backend.** `ffmpeg` is not installed and was not installed (decision of the
+     starting session); the video block is verified on the mock and in specs only (PLAY, 10 s beat with range, PAUSE,
+     heartbeat-then-SEEK, resume position, error state with "Thử lại"). Seeking past the end and completion by
+     threshold are therefore the server's behaviour, unverified here.
+  3. Two tabs of the same user on the local backend: the second tab asked "Bài học đang mở ở nơi khác", after "Học trên
+     thiết bị này" the first tab showed "Bài học đã chuyển sang thiết bị khác." on its next event. Heartbeats went every
+     20 s with 200; no `STALE_EVENT` or `CONFLICT` in the network log.
+  4. `npm run check` green; both routes checked at 375 / ~800 / 1280 px, light and dark (`data-theme`), keyboard only
+     (focus order and a visible 2 px ring); forced error states are covered by specs only (`errorStates` stays
+     `todo` in the migration entries, which also stay `in-progress`: no pull request exists yet).
+- [x] Stop for approval (recorded only; continuing as instructed)
 
 ## Phase 2: `learner-progress`
 

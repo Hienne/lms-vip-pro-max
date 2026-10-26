@@ -714,7 +714,14 @@ export const MIGRATION_ENTRIES = [
     level: 'feature',
     targets: ['features/lesson'],
     checklist: ['F.3', 'F.4', 'F.5', 'F.6'],
-    status: 'todo',
+    status: 'in-progress',
+    owner: 'Hiendeptroai',
+    verify: {
+      lightDark: 'done',
+      widths: 'done',
+      keyboard: 'done',
+      errorStates: 'todo',
+    },
   },
   {
     id: 'feature-assistant',
@@ -859,6 +866,12 @@ export const MIGRATION_ENTRIES = [
     checklist: ['F.2'],
     status: 'in-progress',
     owner: 'Hiendeptroai',
+    verify: {
+      lightDark: 'done',
+      widths: 'done',
+      keyboard: 'done',
+      errorStates: 'todo',
+    },
   },
   {
     id: 'route-lesson-course-id-lesson-id',
@@ -868,6 +881,12 @@ export const MIGRATION_ENTRIES = [
     checklist: ['F.3', 'F.4', 'F.5', 'F.6'],
     status: 'in-progress',
     owner: 'Hiendeptroai',
+    verify: {
+      lightDark: 'done',
+      widths: 'done',
+      keyboard: 'done',
+      errorStates: 'todo',
+    },
   },
   {
     id: 'route-quiz-id',
