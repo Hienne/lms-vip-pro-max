@@ -2,7 +2,12 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { HttpTestingController } from '@angular/common/http/testing';
 import { ErrorHandler } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
-import { authV1Endpoints, knowledgeEndpoints } from '@lms/contracts';
+import {
+  authV1Endpoints,
+  defineEndpoint,
+  knowledgeEndpoints,
+} from '@lms/contracts';
+import { z } from 'zod';
 import {
   BACKEND_RESPONSES,
   type BackendResponseKey,
@@ -19,6 +24,14 @@ import { provideEnvelopeHttpClient } from './http.testing';
 
 const LOGIN_URL = '/api/v1/auth/login';
 const CHAT_URL = '/api/v1/knowledge/chat/stream';
+const EXPORT_URL = '/api/v1/test/export';
+
+const exportFile = defineEndpoint({
+  method: 'get',
+  path: EXPORT_URL,
+  responseType: 'blob',
+  response: z.instanceof(Blob),
+});
 
 const loginData = {
   accessToken: 'fixture.jwt.token',
@@ -190,6 +203,67 @@ describe('envelopeInterceptor', () => {
       );
       expect(outcome.error).toBeInstanceOf(ApiError);
       expect((outcome.error as ApiError).httpStatus).toBe(401);
+    });
+  });
+  describe('a blob endpoint', () => {
+    function download(
+      answer: (request: ReturnType<HttpTestingController['expectOne']>) => void,
+    ) {
+      const outcome: { file?: Blob; error?: unknown } = {};
+      client.call(exportFile).subscribe({
+        next: (file) => (outcome.file = file),
+        error: (error: unknown) => (outcome.error = error),
+      });
+      answer(backend.expectOne(EXPORT_URL));
+      return outcome;
+    }
+
+    /** `FileReader` answers on a later task. */
+    const settled = () => new Promise((resolve) => setTimeout(resolve, 0));
+
+    it('passes a file through untouched', async () => {
+      const csv = new Blob(['a,b'], { type: 'text/csv' });
+      const outcome = download((request) => request.flush(csv));
+      await settled();
+      expect(outcome.file).toBe(csv);
+      expect(outcome.error).toBeUndefined();
+    });
+
+    it('turns a JSON ERROR envelope sent instead of the file into an ApiError', async () => {
+      const { body } = backendRefusal('validationFailed');
+      const outcome = download((request) =>
+        request.flush(
+          new Blob([JSON.stringify(body)], { type: 'application/json' }),
+        ),
+      );
+      await settled();
+      expect(outcome.file).toBeUndefined();
+      expect(outcome.error).toBeInstanceOf(ApiError);
+      expect((outcome.error as ApiError).httpStatus).toBe(200);
+    });
+
+    it('keeps the status of a 403 whose body is a JSON envelope', async () => {
+      const { body } = backendRefusal('accessDenied');
+      const outcome = download((request) =>
+        request.flush(
+          new Blob([JSON.stringify(body)], { type: 'application/json' }),
+          { status: 403, statusText: 'Forbidden' },
+        ),
+      );
+      await settled();
+      expect(outcome.error).toBeInstanceOf(ApiError);
+      expect((outcome.error as ApiError).httpStatus).toBe(403);
+    });
+
+    it('leaves an HTTP error that is not an envelope as it is', async () => {
+      const outcome = download((request) =>
+        request.flush(new Blob(['<html>'], { type: 'text/html' }), {
+          status: 502,
+          statusText: 'Bad Gateway',
+        }),
+      );
+      await settled();
+      expect(outcome.error).toBeInstanceOf(HttpErrorResponse);
     });
   });
 });

@@ -9,7 +9,7 @@ import {
   type Envelope,
   EnvelopeSchema,
 } from '@lms/contracts';
-import { catchError, map, throwError } from 'rxjs';
+import { catchError, map, Observable, of, switchMap, throwError } from 'rxjs';
 import { ApiError } from './api-error';
 import { ContractError } from './contract-error';
 import { ENDPOINT } from './endpoint-client';
@@ -26,6 +26,34 @@ function envelopeBody(endpoint: AnyEndpoint, body: unknown): unknown {
   } catch {
     return body;
   }
+}
+
+/** A `Blob`'s text; `Blob.text()` is missing from some DOM implementations, `FileReader` is not. */
+function readText(blob: Blob): Observable<string> {
+  return new Observable<string>((subscriber) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      subscriber.next(String(reader.result));
+      subscriber.complete();
+    };
+    reader.onerror = () => subscriber.error(reader.error);
+    reader.readAsText(blob);
+  });
+}
+
+/** The envelope a file endpoint sent instead of its file, or `null` for any other body. */
+function blobEnvelope(body: unknown): Observable<Envelope | null> {
+  if (!(body instanceof Blob) || !body.type.includes('json')) return of(null);
+  return readText(body).pipe(
+    map((text) => {
+      try {
+        const envelope = EnvelopeSchema.safeParse(JSON.parse(text));
+        return envelope.success ? envelope.data : null;
+      } catch {
+        return null;
+      }
+    }),
+  );
 }
 
 function toApiError(envelope: Envelope, httpStatus: number): ApiError {
@@ -47,13 +75,42 @@ function toApiError(envelope: Envelope, httpStatus: number): ApiError {
  * answer; that body is read too, so a wrong password or a missing permission keeps the backend's
  * own message. A failure without an envelope (offline, a proxy's error page) passes through as
  * the `HttpErrorResponse`. A request without an endpoint is not an API call and passes untouched,
- * and so does a `blob` endpoint, whose body is a file, and the events and `application/x-ndjson`
- * answer of a streamed endpoint (only its refusals are envelopes). It decides nothing about how a failure is
- * shown.
+ * and so do the events and `application/x-ndjson` answer of a streamed endpoint (only its refusals
+ * are envelopes). A `blob` endpoint answers a file, so a body is passed through as it is, except a
+ * `application/json` one (a 2xx or an HTTP error): the backend sends a refusal of a file endpoint
+ * as an envelope, which becomes an `ApiError` instead of being saved as the file. It decides
+ * nothing about how a failure is shown.
  */
 export const envelopeInterceptor: HttpInterceptorFn = (req, next) => {
   const endpoint = req.context.get(ENDPOINT);
-  if (!endpoint || endpoint.responseType === 'blob') return next(req);
+  if (!endpoint) return next(req);
+  if (endpoint.responseType === 'blob') {
+    return next(req).pipe(
+      switchMap((event) =>
+        event instanceof HttpResponse
+          ? blobEnvelope(event.body).pipe(
+              map((envelope) => {
+                if (envelope?.status === 'ERROR') {
+                  throw toApiError(envelope, event.status);
+                }
+                return event;
+              }),
+            )
+          : of(event),
+      ),
+      catchError((error: unknown) =>
+        error instanceof HttpErrorResponse
+          ? blobEnvelope(error.error).pipe(
+              switchMap((envelope) =>
+                throwError(() =>
+                  envelope ? toApiError(envelope, error.status) : error,
+                ),
+              ),
+            )
+          : throwError(() => error),
+      ),
+    );
+  }
   const errorHandler = inject(ErrorHandler);
   return next(req).pipe(
     map((event) => {

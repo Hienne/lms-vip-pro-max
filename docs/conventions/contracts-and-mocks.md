@@ -129,8 +129,12 @@ File | Blob` or an array of those. Arrays repeat the key, numbers and booleans
   "session expired" uses `SessionExpiry` too. `core/routing/return-to.ts` builds
   (`returnToParams`) and reads (`readReturnTo`, rejects external or unsafe paths)
   `?next=`.
-- **Known limit:** an HTTP error on a `blob` endpoint arrives as a `Blob` body,
-  so `toAppError` shows the default message for its kind.
+- **File endpoints and refusals:** a `blob` endpoint passes a file through, but
+  `envelopeInterceptor` reads a body whose `Content-Type` is `application/json`
+  as an envelope, on a 2xx or an HTTP error, so a refusal (for example the
+  export's `LEARNING-EXPORT_TOO_LARGE`) is an `ApiError` with the server's
+  message instead of a saved file. An HTTP error without an envelope still
+  shows the default message for its kind.
 - **Extension rule:** a new transport kind (another body encoding, streaming…)
   is a new optional field on `defineEndpoint` plus a branch in `EndpointClient`,
   never a new API service and never a direct `HttpClient` call in a store.

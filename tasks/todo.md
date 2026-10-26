@@ -194,7 +194,7 @@ SameSite=Strict` with no domain, so the proxy needs no rewrite (browser retentio
 
 ## Phase 2: `learner-progress`
 
-- [ ] **T14 JSON refusal on `blob` endpoints** · S
+- [x] **T14 JSON refusal on `blob` endpoints** · S
   - Accept: `envelopeInterceptor` reads a `blob` response with `Content-Type: application/json` as an envelope
     (`ApiError` on `ERROR`, on a 2xx or a 4xx/5xx), passes other blobs through; `contracts-and-mocks.md` "Known
     limit" updated.
