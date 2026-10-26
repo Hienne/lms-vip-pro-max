@@ -91,7 +91,7 @@ SameSite=Strict` with no domain, so the proxy needs no rewrite (browser retentio
   - Verify: `npx nx test lms -- study-protocol` (table tests).
   - Files: `app/features/lesson/lesson/data-access/study-protocol.ts` (+ spec).
   - Depends on: T2.
-- [ ] **T6 Study-session storage** · XS
+- [x] **T6 Study-session storage** · XS
   - Accept: `lms.study-session.v1.<userId>.<enrollmentId>` in `sessionStorage`; bad data discarded; blocked storage
     works in memory; cleared on sign-out.
   - Verify: `npx nx test lms -- study-session.storage`.
