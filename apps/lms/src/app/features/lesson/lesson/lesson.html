@@ -157,11 +157,6 @@
         />
         } @case ('process') {
         <app-process-block [steps]="active.detail.steps" />
-        } @default {
-        <p class="lesson__note">
-          Khối {{ typeLabel[active.detail.block.blockType].toLowerCase() }} chưa
-          hiển thị trong phiên bản này.
-        </p>
         } } }
       </section>
 

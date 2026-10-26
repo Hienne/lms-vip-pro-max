@@ -12,10 +12,7 @@ import {
   Skeleton,
 } from '@lms/ui';
 import { AttachmentBlock } from './components/attachment-block/attachment-block';
-import {
-  BlockList,
-  BLOCK_TYPE_LABEL,
-} from './components/block-list/block-list';
+import { BlockList } from './components/block-list/block-list';
 import { ImageBlock } from './components/image-block/image-block';
 import { LessonOutline } from './components/lesson-outline/lesson-outline';
 import { PdfBlock } from './components/pdf-block/pdf-block';
@@ -55,7 +52,6 @@ import { LessonStore } from './data-access/lesson.store';
 })
 export class Lesson {
   protected readonly store = inject(LessonStore);
-  protected readonly typeLabel = BLOCK_TYPE_LABEL;
 
   /** The page the focus bar and every dead end lead back to. */
   protected readonly courseLink = computed(() => {
