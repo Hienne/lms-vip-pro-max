@@ -316,6 +316,8 @@ describe('LessonStore', () => {
     expect(store.phase$()).toBe('moved');
     expect(claims().at(-1)).toMatchObject({ takeover: false });
     expect(store.studyError$()?.messageCode).toBe('LEARNING-SESSION_IN_USE');
+    // Nothing more is saved from here, so the save line must not keep saying it was.
+    expect(store.save$()).toBe('idle');
     const count = events().length;
     store.markComplete();
     settle();

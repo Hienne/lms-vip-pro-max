@@ -290,6 +290,8 @@ export class StudyChannel {
     this.stopHeartbeat();
     this.waiting = [];
     this.inFlight = null;
+    // Nothing is saved from a refused phase; a failed save keeps saying so.
+    if (action !== 'save-failed') this.state.save.set('idle');
     this.state.phase.set(
       {
         'prompt-takeover': 'takeover',
