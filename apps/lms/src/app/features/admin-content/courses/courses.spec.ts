@@ -24,14 +24,14 @@ describe('Courses', () => {
       size: '10',
       sort: 'updateTime,desc',
     });
-    expect(rows()).toHaveLength(6);
+    expect(rows()).toHaveLength(7);
     expect(screen.text(row('An toàn thông tin cho cán bộ CNTT'))).toContain(
       'Nháp',
     );
     expect(screen.text(row('Tổng quan hệ thống Core Banking'))).toContain(
       'Đã xuất bản',
     );
-    expect(screen.text()).toContain('6 khóa học');
+    expect(screen.text()).toContain('7 khóa học');
   });
 
   it('filters by state on the server', async () => {
@@ -82,6 +82,6 @@ describe('Courses', () => {
       code: 'NV-102-COPY',
     });
     expect(screen.drawer()).toBeNull();
-    expect(rows()).toHaveLength(7);
+    expect(rows()).toHaveLength(8);
   });
 });

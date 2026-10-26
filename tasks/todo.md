@@ -11,7 +11,7 @@ touches; every checkpoint runs `npm run check`. Screen tasks also run the browse
 
 ## Phase 0: local stack
 
-- [ ] **T0 Local stack up** (machine + BE) · XS
+- [x] **T0 Local stack up** (machine + BE) · XS
   - Do: start Docker Desktop; `docker compose up -d db` in the BE repo; apply `learning_hub_learning.sql`,
     `learning_hub_media_progress.sql` and `learning_hub_learning_demo.sql` if their tables or demo rows are missing;
     `mvn spring-boot:run` on :8019; FE with `LMS_API_TARGET=http://localhost:8019 npm start`. **Ask before**
@@ -22,10 +22,21 @@ touches; every checkpoint runs `npm run check`. Screen tasks also run the browse
     `/api/v1/learning-assets`.
   - Verify: `curl -s localhost:8019/actuator/health`; browser; `curl -i` through :4200 for the cookie.
   - Files: none committed (`proxy.conf.mjs` only if the cookie needs a rewrite, then committed with a note).
+  - Done 2026-10-26: Docker up; the backend's `.env` points `DB_URL` at the shared remote database, so the backend
+    runs against the local `core_academy` container instead (env `DB_URL`/`DB_USER`/`DB_PASSWORD` override the
+    file; the local role's password was aligned with `.env` by `ALTER USER`). The local DB already had the
+    identity and learning tables; `learning_hub_media_progress.sql` and `learning_hub_learning_demo.sql` were
+    applied. Backend `GET /actuator/health` UP on :8019. `hocvien`, `hocvien.tichhop`, `giangvien`, `quantri`
+    sign in through :4200 (`Demo@123`). A 3-page PDF uploaded as `giangvien` went to S3 (`s3.chanacademy.io.vn`,
+    shared bucket `academy-media`) and came back `ready` (asset id 2). `POST /me/learning/sessions` through the
+    proxy answers `Set-Cookie: academy_media; Path=/api/v1/learning-assets; Max-Age=300; HttpOnly;
+SameSite=Strict` with no domain, so the proxy needs no rewrite (browser retention is checked in T13).
+    `ffmpeg`/`ffprobe` are not installed: the install was asked of the user; until approved, video is verified
+    on the mock only.
 
 ## Phase 1a: course page
 
-- [ ] **T1 Learner fixtures and the enrollment read** · M
+- [x] **T1 Learner fixtures and the enrollment read** · M
   - Accept: `CourseCardSchema` has the backend's newer fields (resume, counts, `deadlineStatus` enum, dates);
     `BlockProgressSchema` has `lastEventSequence`, `mediaAssetId`, `watchedSeconds`; fixtures give `hocvien` an
     optional published course (not enrolled) and an assigned one (enrolled, in progress) with every block type and

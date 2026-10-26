@@ -269,6 +269,17 @@ export const CourseDetailSchema = z.object({
 });
 export type CourseDetail = z.infer<typeof CourseDetailSchema>;
 
+/** The backend's deadline state of a learner's card, apart from the learning status. */
+export const DeadlineStatusSchema = z.enum([
+  'not_active',
+  'no_deadline',
+  'on_time_active',
+  'overdue_active',
+  'completed_on_time',
+  'completed_late',
+]);
+export type DeadlineStatus = z.infer<typeof DeadlineStatusSchema>;
+
 /**
  * A row of a course list: the learner's catalogue and courses, and the instructor's courses.
  * The learner fields (`enrollmentId`, `learningStatus`, `progressPercent`, `dueAt`, `assigned`,
@@ -296,6 +307,19 @@ export const CourseCardSchema = z.object({
   assigned: z.boolean().nullish(),
   overdue: z.boolean().nullish(),
   updateTime: BackendDateTimeSchema.nullish(),
+  /** The learner's cycle, dates and resume point (the server's results, `nullish` in the instructor list). */
+  cycleNo: z.number().int().nullish(),
+  startedAt: BackendDateTimeSchema.nullish(),
+  lastAccessAt: BackendDateTimeSchema.nullish(),
+  completedAt: BackendDateTimeSchema.nullish(),
+  lastLessonId: z.number().int().nullish(),
+  lastBlockId: z.number().int().nullish(),
+  completedRequiredLessonCount: z.number().int().nullish(),
+  requiredLessonCount: z.number().int().nullish(),
+  deadlineStatus: DeadlineStatusSchema.nullish(),
+  mediaAssetId: z.number().int().nullish(),
+  lastPdfPage: z.number().int().nullish(),
+  lastVideoPositionSeconds: z.number().nullish(),
 });
 export type CourseCard = z.infer<typeof CourseCardSchema>;
 

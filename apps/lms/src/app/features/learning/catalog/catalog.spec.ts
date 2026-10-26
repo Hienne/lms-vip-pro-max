@@ -80,7 +80,7 @@ describe('Catalog', () => {
 
     expect(titles()).toContain('Tổng quan hệ thống Core Banking');
     expect(titles()).not.toContain('An toàn thông tin cho cán bộ CNTT');
-    expect(text()).toContain('5 khóa học phù hợp');
+    expect(text()).toContain('6 khóa học phù hợp');
     expect(text()).toContain('62%');
     expect(text()).toContain('Quá hạn');
     expect(select('Lĩnh vực').options.length).toBe(5);
@@ -105,7 +105,7 @@ describe('Catalog', () => {
     clear.click();
     await settle();
 
-    expect(titles().length).toBe(5);
+    expect(titles().length).toBe(6);
     expect(TestBed.inject(Router).url).toBe('/catalog');
   });
 
@@ -147,6 +147,6 @@ describe('Catalog', () => {
       .click();
     await settle();
 
-    expect(titles().length).toBe(5);
+    expect(titles().length).toBe(6);
   });
 });

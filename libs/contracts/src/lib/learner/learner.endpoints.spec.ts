@@ -87,11 +87,15 @@ describe('learner endpoints', () => {
           status: 'in_progress',
           lastVideoPositionSeconds: 30,
           lastEventSequence: 6,
+          mediaAssetId: 12,
+          watchedSeconds: 45.5,
           ...stamp,
         },
       ],
     });
     expect(detail.blocks[0].lastEventSequence).toBe(6);
+    expect(detail.blocks[0].mediaAssetId).toBe(12);
+    expect(detail.blocks[0].watchedSeconds).toBe(45.5);
   });
 
   it('checks a progress event against the backend rules', () => {

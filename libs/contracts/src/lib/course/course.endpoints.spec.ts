@@ -163,6 +163,45 @@ describe('course endpoints', () => {
     expect(card.progressPercent).toBe(40);
   });
 
+  it('parses the learner card fields of the backend, as the local backend sends them', () => {
+    const card = CourseCardSchema.parse({
+      courseId: 1,
+      revisionId: 1,
+      code: 'FE-DEMO-C1',
+      title: 'Tổng quan hệ thống Core Banking',
+      level: 'basic',
+      requirement: 'mandatory',
+      lessonCount: 4,
+      enrollmentId: 3,
+      learningStatus: 'in_progress',
+      progressPercent: 50,
+      dueAt: '2026-10-28T16:18:06.151850Z',
+      assigned: true,
+      overdue: false,
+      cycleNo: 1,
+      startedAt: '2026-10-20T16:18:06.151850Z',
+      lastAccessAt: '2026-10-22T16:18:06.151850Z',
+      completedAt: null,
+      lastLessonId: 2,
+      lastBlockId: 4,
+      completedRequiredLessonCount: 2,
+      requiredLessonCount: 4,
+      deadlineStatus: 'on_time_active',
+      mediaAssetId: null,
+      lastPdfPage: null,
+      lastVideoPositionSeconds: null,
+    });
+    expect(card.requiredLessonCount).toBe(4);
+    expect(card.deadlineStatus).toBe('on_time_active');
+    expect(
+      CourseCardSchema.safeParse({
+        courseId: 1,
+        code: 'X',
+        deadlineStatus: 'someday',
+      }).success,
+    ).toBe(false);
+  });
+
   it('checks a draft body against the backend rules', () => {
     const draft = {
       expectedVersion: 0,

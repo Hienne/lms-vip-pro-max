@@ -55,6 +55,10 @@ export const BlockProgressSchema = z.object({
   progressPercent: z.number().nullish(),
   lastVideoPositionSeconds: z.number().nullish(),
   lastPdfPage: z.number().int().nullish(),
+  /** The asset the position or page was measured on; a different asset resets it. */
+  mediaAssetId: z.number().int().nullish(),
+  /** Seconds of the video covered by the watched ranges. */
+  watchedSeconds: z.number().nullish(),
   startedAt: BackendDateTimeSchema.nullish(),
   lastAccessAt: BackendDateTimeSchema.nullish(),
   completedAt: BackendDateTimeSchema.nullish(),

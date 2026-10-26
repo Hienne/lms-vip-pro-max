@@ -1,10 +1,12 @@
 import type {
+  AssetDetail,
   BlockType,
   BusinessModule,
   CompletionMode,
   CourseDetail,
   CourseLevel,
   GroupDetail,
+  LearningAsset,
   Requirement,
   TrainingField,
   TrainingProgram,
@@ -112,6 +114,8 @@ interface SeedCourse {
   readonly objectives: readonly string[];
   readonly rewardPoints: number;
   readonly coverIcon: string;
+  /** Gives each video, PDF, image and attachment block a ready asset, as a learner course has. */
+  readonly assets?: boolean;
   readonly chapters: readonly {
     readonly title: string;
     readonly lessons: readonly SeedLesson[];
@@ -138,6 +142,7 @@ const SEED_COURSES: readonly SeedCourse[] = [
     ],
     rewardPoints: 80,
     coverIcon: 'layers',
+    assets: true,
     chapters: [
       {
         title: 'Kiến trúc & dữ liệu',
@@ -163,7 +168,11 @@ const SEED_COURSES: readonly SeedCourse[] = [
           {
             title: 'Luồng giao dịch từ kênh đến sổ cái',
             minutes: 15,
-            blocks: [['process', 'Các bước xử lý giao dịch']],
+            blocks: [
+              ['process', 'Các bước xử lý giao dịch'],
+              ['image', 'Sơ đồ luồng giao dịch'],
+              ['attachment', 'Bảng mã giao dịch'],
+            ],
           },
           {
             title: 'Kiểm tra cuối khóa: Tổng quan Core Banking',
@@ -350,6 +359,50 @@ const SEED_COURSES: readonly SeedCourse[] = [
       },
     ],
   },
+  {
+    id: 7, // optional and published: `hocvien` finds it in the catalogue and has not joined it
+    code: 'NV-402',
+    title: 'Phân hệ Thanh toán liên ngân hàng',
+    programId: 2,
+    moduleId: 1,
+    level: 'intermediate',
+    requirement: 'optional',
+    published: true,
+    summary:
+      'Luồng thanh toán liên ngân hàng, đối soát và xử lý giao dịch lỗi trên Core Banking.',
+    objectives: [
+      'Mô tả luồng thanh toán liên ngân hàng từ kênh đến hệ thống đối tác',
+      'Thực hiện được đối soát cuối ngày',
+    ],
+    rewardPoints: 40,
+    coverIcon: 'layers',
+    assets: true,
+    chapters: [
+      {
+        title: 'Thanh toán và đối soát',
+        lessons: [
+          {
+            title: 'Luồng thanh toán liên ngân hàng',
+            minutes: 12,
+            blocks: [
+              ['video', 'Video bài giảng'],
+              ['text', 'Tóm tắt'],
+            ],
+          },
+          {
+            title: 'Đối soát cuối ngày',
+            minutes: 16,
+            blocks: [
+              ['pdf', 'Quy trình đối soát'],
+              ['image', 'Mẫu báo cáo đối soát'],
+              ['process', 'Các bước đối soát'],
+              ['attachment', 'Biểu mẫu đối soát'],
+            ],
+          },
+        ],
+      },
+    ],
+  },
 ];
 
 const COMPLETION: Record<BlockType, CompletionMode> = {
@@ -360,6 +413,92 @@ const COMPLETION: Record<BlockType, CompletionMode> = {
   image: 'open',
   attachment: 'open',
 };
+
+const ASSET_FILES: Record<
+  'video' | 'pdf' | 'image' | 'attachment',
+  Pick<LearningAsset, 'originalName' | 'mimeType' | 'sizeBytes'> &
+    Partial<
+      Pick<LearningAsset, 'durationSeconds' | 'pageCount' | 'width' | 'height'>
+    >
+> = {
+  video: {
+    originalName: 'bai-giang.mp4',
+    mimeType: 'video/mp4',
+    sizeBytes: 48_000_000,
+    durationSeconds: 600,
+  },
+  pdf: {
+    originalName: 'tai-lieu.pdf',
+    mimeType: 'application/pdf',
+    sizeBytes: 1_200_000,
+    pageCount: 12,
+  },
+  image: {
+    originalName: 'so-do.png',
+    mimeType: 'image/png',
+    sizeBytes: 240_000,
+    width: 1280,
+    height: 720,
+  },
+  attachment: {
+    originalName: 'bieu-mau.xlsx',
+    mimeType:
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    sizeBytes: 36_000,
+  },
+};
+
+/** The ready file a video, PDF, image or attachment block plays, shows or offers. */
+function blockAsset(
+  type: BlockType,
+  blockId: number,
+  title: string,
+  assetId: number,
+): AssetDetail[] {
+  if (
+    type !== 'video' &&
+    type !== 'pdf' &&
+    type !== 'image' &&
+    type !== 'attachment'
+  ) {
+    return [];
+  }
+  return [
+    {
+      usage: {
+        id: assetId,
+        blockId,
+        assetId,
+        usage:
+          type === 'image'
+            ? 'image'
+            : type === 'attachment'
+              ? 'attachment'
+              : 'primary',
+        caption: type === 'image' ? title : null,
+        altText: type === 'image' ? title : null,
+        sortNo: 1,
+        rowVersion: 0,
+        ...stamp,
+      },
+      asset: {
+        id: assetId,
+        ownerOrgId: ORG,
+        uploadedBy: '000005',
+        storageType: 's3',
+        checksumSha256: null,
+        durationSeconds: null,
+        pageCount: null,
+        width: null,
+        height: null,
+        status: 'ready',
+        rowVersion: 0,
+        ...stamp,
+        ...ASSET_FILES[type],
+      },
+    },
+  ];
+}
 
 /** Builds one revision's tree; `ids` hands out the row ids, as the backend does on every save. */
 function courseDetail(seed: SeedCourse, ids: () => number): CourseDetail {
@@ -451,7 +590,9 @@ function courseDetail(seed: SeedCourse, ids: () => number): CourseDetail {
                   rowVersion: 0,
                   ...stamp,
                 },
-                assets: [],
+                assets: seed.assets
+                  ? blockAsset(type, blockId, title, ids())
+                  : [],
                 steps:
                   type === 'process'
                     ? ['Tiếp nhận', 'Kiểm tra', 'Phê duyệt'].map(
