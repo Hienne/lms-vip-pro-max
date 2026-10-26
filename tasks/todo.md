@@ -97,7 +97,7 @@ SameSite=Strict` with no domain, so the proxy needs no rewrite (browser retentio
   - Verify: `npx nx test lms -- study-session.storage`.
   - Files: `app/features/lesson/lesson/data-access/study-session.storage.ts` (+ spec).
   - Depends on: none.
-- [ ] **T7 `LessonStore`** · M
+- [x] **T7 `LessonStore`** · M
   - Accept: loads card and detail; active block from `?block`, `lastBlockId`, first; claim on entry and block change
     with the previous ids; `OPEN` after claim; 20 s heartbeat while visible, none while hidden; one request in flight
     through a serial queue, offline resend of the same payload; results override shown progress; every refusal row
