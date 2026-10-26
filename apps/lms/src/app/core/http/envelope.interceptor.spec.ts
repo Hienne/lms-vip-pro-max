@@ -218,13 +218,14 @@ describe('envelopeInterceptor', () => {
       return outcome;
     }
 
-    /** `FileReader` answers on a later task. */
-    const settled = () => new Promise((resolve) => setTimeout(resolve, 0));
+    /** `FileReader` answers on a later task, how much later depends on the load: wait for it. */
+    const settled = (outcome: { file?: Blob; error?: unknown }) =>
+      vi.waitFor(() => expect(outcome.file ?? outcome.error).toBeDefined());
 
     it('passes a file through untouched', async () => {
       const csv = new Blob(['a,b'], { type: 'text/csv' });
       const outcome = download((request) => request.flush(csv));
-      await settled();
+      await settled(outcome);
       expect(outcome.file).toBe(csv);
       expect(outcome.error).toBeUndefined();
     });
@@ -236,7 +237,7 @@ describe('envelopeInterceptor', () => {
           new Blob([JSON.stringify(body)], { type: 'application/json' }),
         ),
       );
-      await settled();
+      await settled(outcome);
       expect(outcome.file).toBeUndefined();
       expect(outcome.error).toBeInstanceOf(ApiError);
       expect((outcome.error as ApiError).httpStatus).toBe(200);
@@ -250,7 +251,7 @@ describe('envelopeInterceptor', () => {
           { status: 403, statusText: 'Forbidden' },
         ),
       );
-      await settled();
+      await settled(outcome);
       expect(outcome.error).toBeInstanceOf(ApiError);
       expect((outcome.error as ApiError).httpStatus).toBe(403);
     });
@@ -262,7 +263,7 @@ describe('envelopeInterceptor', () => {
           statusText: 'Bad Gateway',
         }),
       );
-      await settled();
+      await settled(outcome);
       expect(outcome.error).toBeInstanceOf(HttpErrorResponse);
     });
   });

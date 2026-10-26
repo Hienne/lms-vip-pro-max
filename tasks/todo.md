@@ -254,7 +254,7 @@ SameSite=Strict` with no domain, so the proxy needs no rewrite (browser retentio
     `…/data-access/notifications.store.ts` (+ spec), `app/core/learning/reminders-changed.ts` (+ spec),
     `app/core/routing/screens.ts`, `migration-entries.data.ts`.
   - Depends on: T17.
-- [ ] **T19 Bell count on the real backend** · S
+- [x] **T19 Bell count on the real backend** · S
   - Accept: while `navCounts` is not served, `ShellStore.unread$` is the reminders count for a `COURSE_LEARNING`
     user, refreshed on navigation and on `remindersChanged`, 0 on 403 or error.
   - Verify: `npx nx test lms -- shell.store`; local backend: read a reminder, the bell drops without reload.

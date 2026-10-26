@@ -27,12 +27,16 @@ describe('App boot', () => {
     storeToken();
   });
   afterEach(() => {
-    // The shell loads its badge counts and the owl's unfinished uploads once a user is signed in;
-    // no test here is about them.
+    // The shell loads its badge counts (the learner's due reminders without the mock API) and the
+    // owl's unfinished uploads once a user is signed in; no test here is about them.
     backend
       .match('/api/me/nav-counts')
       .filter((r) => !r.cancelled)
       .forEach((r) => r.flush(envelopeOk({ notifications: 0, inbox: 0 })));
+    backend
+      .match('/api/v1/me/learning/reminders')
+      .filter((r) => !r.cancelled)
+      .forEach((r) => r.flush(envelopeOk([])));
     backend
       .match((r) => r.url === '/api/v1/knowledge/documents')
       .filter((r) => !r.cancelled)

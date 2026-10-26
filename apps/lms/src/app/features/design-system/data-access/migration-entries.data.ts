@@ -1000,9 +1000,9 @@ export const MIGRATION_ENTRIES = [
     status: 'in-progress',
     owner: 'Hiendeptroai',
     verify: {
-      lightDark: 'todo',
-      widths: 'todo',
-      keyboard: 'todo',
+      lightDark: 'done',
+      widths: 'done',
+      keyboard: 'done',
       errorStates: 'todo',
     },
   },
