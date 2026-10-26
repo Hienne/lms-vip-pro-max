@@ -724,3 +724,27 @@ export const learningGroupFixtures: readonly GroupDetail[] = [
     })),
   },
 ];
+
+/** A deadline reminder of one learner; the times are days from now, like the enrolments' due dates. */
+export interface LearnerReminderState {
+  readonly id: number;
+  readonly recipientId: number;
+  /** When the reminder falls due: negative is already due, positive is not yet scheduled to send. */
+  readonly scheduledInDays: number;
+  readonly dueInDays: number;
+}
+
+/**
+ * Deadline reminders by learner: `hocvien` (000004) has three due (one for the overdue course, two
+ * upcoming) and one still to come that the backend never lists.
+ */
+export const learnerReminderFixtures: Readonly<
+  Record<string, readonly LearnerReminderState[]>
+> = {
+  '000004': [
+    { id: 1, recipientId: 41, scheduledInDays: -3, dueInDays: -2 },
+    { id: 2, recipientId: 42, scheduledInDays: -1, dueInDays: 1 },
+    { id: 3, recipientId: 43, scheduledInDays: -0.2, dueInDays: 3 },
+    { id: 4, recipientId: 44, scheduledInDays: 2, dueInDays: 6 },
+  ],
+};

@@ -85,13 +85,17 @@ export type EnrollmentDetail = z.infer<typeof EnrollmentDetailSchema>;
 
 /** The block, its lesson and the enrolment after the server applied one event. */
 
+/** The backend lists only `pending` reminders that are due; reading one sets it to `sent`. */
+export const ReminderStatusSchema = z.enum(['pending', 'sent', 'cancelled']);
+export type ReminderStatus = z.infer<typeof ReminderStatusSchema>;
+
 export const LearningReminderSchema = z.object({
   id: z.number().int(),
   recipientId: z.number().int(),
   scheduledAt: BackendDateTimeSchema.nullish(),
   dueAtSnapshot: BackendDateTimeSchema.nullish(),
   channel: z.string().nullish(),
-  status: z.string(),
+  status: ReminderStatusSchema,
   sentAt: BackendDateTimeSchema.nullish(),
   attemptCount: z.number().int().nullish(),
   lastErrorCode: z.string().nullish(),

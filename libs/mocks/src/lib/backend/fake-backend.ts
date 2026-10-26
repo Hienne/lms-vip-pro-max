@@ -370,7 +370,13 @@ export class FakeBackend {
       ? this.activeGrants(userId).map((g) => this.roleOf(g).code)
       : [];
     const role = ROLE_PRIORITY.find((code) => held.includes(code));
-    return ok(navCountsFixtures[role ?? 'LEARNER']);
+    const counts = navCountsFixtures[role ?? 'LEARNER'];
+    // The bell is the caller's due reminders, the same number the real backend's list gives.
+    return ok(
+      userId
+        ? { ...counts, notifications: this.learning.dueReminderCount(userId) }
+        : counts,
+    );
   }
 
   // ---- knowledge: shared documents and the chat -----------------------------------------------

@@ -157,15 +157,16 @@ describe('mockApiInterceptor', () => {
       expect(ids).toEqual([3, 1]);
     });
 
-    it('answers a mock-only endpoint with the example of the signed-in role', () => {
+    it('answers a mock-only endpoint with the role example and the due reminders of the caller', () => {
       const token = signIn('giangvien');
       let body: unknown;
       ask(shellEndpoints.navCounts, '/api/me/nav-counts', { token }).subscribe(
         (r) => (body = r.body),
       );
-      expect(EnvelopeSchema.parse(body).data).toEqual(
-        navCountsFixtures['INSTRUCTOR'],
-      );
+      expect(EnvelopeSchema.parse(body).data).toEqual({
+        ...navCountsFixtures['INSTRUCTOR'],
+        notifications: 0,
+      });
     });
 
     it('keeps a saved role: the next list shows it', () => {

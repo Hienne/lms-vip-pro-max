@@ -29,6 +29,7 @@ import type { FakeReply, FakeRequest } from '../backend/fake-backend';
 import { envelopeOk } from '../envelope';
 import { LearnerStudy } from './learner-session.backend';
 import { LearningRefused, ok, refuse } from './learning-reply';
+import { LearnerReminders } from './learner-reminders';
 import {
   LearnerEnrollments,
   type EnrollmentRecord,
@@ -36,6 +37,7 @@ import {
 import {
   businessModuleFixtures,
   learnerCourseStateFixtures,
+  learnerReminderFixtures,
   learningGroupFixtures,
   seedCourseDetails,
   trainingFieldFixtures,
@@ -136,9 +138,16 @@ export class LearningBackend {
     ),
   );
 
+  private reminders = new LearnerReminders(learnerReminderFixtures);
+
   private study = new LearnerStudy(this.enrollments, (request) =>
     this.directory.callerId(request),
   );
+
+  /** How many reminders the person has due: what the mock's bell shows. */
+  dueReminderCount(userId: string): number {
+    return this.reminders.due(userId).length;
+  }
 
   /** Rows the progress export allows; the real limit is 10,000. */
   exportRowLimit = 10_000;
@@ -199,6 +208,20 @@ export class LearningBackend {
       [learnerEndpoints.myCourses, (r) => this.learnerList(r, true)],
       [learnerEndpoints.progressSummary, (r) => this.progressSummary(r)],
       [learnerEndpoints.exportProgress, (r) => this.exportProgress(r)],
+      [
+        learnerEndpoints.reminders,
+        (r) => ok(this.reminders.due(this.directory.callerId(r))),
+      ],
+      [
+        learnerEndpoints.markReminderRead,
+        (r) =>
+          ok(
+            this.reminders.read(
+              this.directory.callerId(r),
+              num(r.params['reminderId']) ?? 0,
+            ),
+          ),
+      ],
       [learnerEndpoints.enroll, (r) => this.enroll(r)],
       [learnerEndpoints.enrollment, (r) => this.enrollmentDetail(r)],
       [learnerEndpoints.openSession, (r) => this.study.openSession(r)],

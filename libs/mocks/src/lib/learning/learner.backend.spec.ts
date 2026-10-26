@@ -4,11 +4,14 @@ import {
   EnrollmentDetailSchema,
   learnerEndpoints,
   LearningProgressOverviewSchema,
+  LearningReminderSchema,
   PageSchema,
+  shellEndpoints,
   type AnyEndpoint,
   type CourseCard,
   type EnrollmentDetail,
 } from '@lms/contracts';
+import { z } from 'zod';
 import { FakeBackend, type FakeReply } from '../backend/fake-backend';
 import { SEED_PASSWORD } from '../backend/seed';
 
@@ -273,6 +276,75 @@ describe('the learner reads of the mock backend', () => {
       const reply = call(learnerEndpoints.exportProgress, token);
       expect(reply.file).toBeUndefined();
       expect(reply.body.messageCode).toBe('LEARNING-EXPORT_TOO_LARGE');
+    });
+  });
+
+  describe('reminders', () => {
+    const Reminders = z.array(LearningReminderSchema);
+    const list = (token: string) =>
+      Reminders.parse(call(learnerEndpoints.reminders, token).body.data);
+    const markRead = (token: string, reminderId: number) =>
+      call(learnerEndpoints.markReminderRead, token, {
+        params: { reminderId: String(reminderId) },
+      });
+    const navCount = (token: string) =>
+      (
+        call(shellEndpoints.navCounts, token).body.data as {
+          notifications: number;
+        }
+      ).notifications;
+
+    it('lists the three due reminders of the learner, pending, one of them overdue', () => {
+      const items = list(login('hocvien'));
+      expect(items).toHaveLength(3);
+      expect(items.every((r) => r.status === 'pending')).toBe(true);
+      expect(
+        items.every(
+          (r) => new Date(r.scheduledAt ?? '').getTime() <= Date.now(),
+        ),
+      ).toBe(true);
+      expect(
+        items.filter(
+          (r) => new Date(r.dueAtSnapshot ?? '').getTime() < Date.now(),
+        ),
+      ).toHaveLength(1);
+    });
+
+    it('lists nothing for a person with none, and never a reminder not yet scheduled', () => {
+      expect(list(login('giangvien'))).toEqual([]);
+      expect(list(login('hocvien.tichhop'))).toEqual([]);
+    });
+
+    it('sets a reminder to sent, so it leaves the list', () => {
+      const token = login('hocvien');
+      const [first, ...rest] = list(token);
+      const reply = markRead(token, first.id);
+      const read = LearningReminderSchema.parse(reply.body.data);
+      expect(read).toMatchObject({ id: first.id, status: 'sent' });
+      expect(read.sentAt).toBeTruthy();
+      expect(list(token).map((r) => r.id)).toEqual(rest.map((r) => r.id));
+    });
+
+    it("refuses another user's reminder with a 403 and keeps it listed", () => {
+      const owner = login('hocvien');
+      const [first] = list(owner);
+      const reply = markRead(login('hocvien.tichhop'), first.id);
+      expect(reply.body.messageCode).toBe('CORE-ACCESS_DENIED');
+      expect(list(owner)).toHaveLength(3);
+    });
+
+    it('answers not found for an id nobody has', () => {
+      expect(markRead(login('hocvien'), 99_999).body.messageCode).toBe(
+        'CORE-RESOURCE_NOT_FOUND',
+      );
+    });
+
+    it('is the number the bell shows on the mock: the due reminders of the caller', () => {
+      const token = login('hocvien');
+      expect(navCount(token)).toBe(3);
+      markRead(token, list(token)[0].id);
+      expect(navCount(token)).toBe(2);
+      expect(navCount(login('giangvien'))).toBe(0);
     });
   });
 });

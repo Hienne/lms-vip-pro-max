@@ -237,7 +237,7 @@ SameSite=Strict` with no domain, so the proxy needs no rewrite (browser retentio
 
 ## Phase 3: `learning-reminders`
 
-- [ ] **T17 Reminder contract and mock** · S
+- [x] **T17 Reminder contract and mock** · S
   - Accept: `status` enum; fixtures (three due for `hocvien`, one overdue, one not yet scheduled); `reminders` lists
     pending and due for the caller; `markReminderRead` sets `sent`, 403 for another user's; mock `navCounts`
     `notifications` = the caller's due reminders.

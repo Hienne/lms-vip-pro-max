@@ -668,11 +668,12 @@ describe('FakeBackend', () => {
     it("answers the nav counts of the most powerful role of the caller, the learner's for a stranger", () => {
       const counts = (token: string | null) =>
         call(shellEndpoints.navCounts, token).body.data;
+      // `notifications` is the caller's due reminders; `inbox` is the role's fixture.
       expect(counts(login('giangvien'))).toEqual({
-        notifications: 1,
+        notifications: 0,
         inbox: 3,
       });
-      expect(counts(login('hocvien'))).toEqual({ notifications: 2, inbox: 0 });
+      expect(counts(login('hocvien'))).toEqual({ notifications: 3, inbox: 0 });
       expect(counts('not-issued-here')).toEqual({ notifications: 2, inbox: 0 });
     });
   });
