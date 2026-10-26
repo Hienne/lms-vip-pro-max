@@ -139,7 +139,7 @@ SameSite=Strict` with no domain, so the proxy needs no rewrite (browser retentio
 
 ## Phase 1c: media blocks and the local backend
 
-- [ ] **T10 Video block** · M
+- [x] **T10 Video block** · M
   - Accept: `<video controls preload="metadata">` with the content URL (`toUrl`, `blockId`, `enrollmentId`), starts
     at the resume position, no autoplay; emits play, pause, ended, seeking and time; the store sends `PLAY`, 10 s
     `HEARTBEAT` with ranges, `PAUSE`, heartbeat-then-`SEEK`; "Đã xem x% · cần y%"; load error with "Thử lại".

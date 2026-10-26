@@ -1,0 +1,23 @@
+@if (failed()) {
+<p class="video__error">
+  Không phát được video.
+  <button uiButton variant="ghost" size="sm" (click)="retried()">
+    Thử lại
+  </button>
+</p>
+} @else {
+<video
+  #player
+  class="video__player"
+  controls
+  preload="metadata"
+  [src]="src()"
+  [attr.aria-label]="title() || null"
+  (loadedmetadata)="loaded()"
+  (play)="play()"
+  (pause)="pause()"
+  (seeking)="seeking()"
+  (timeupdate)="tick()"
+  (error)="failed.set(true)"
+></video>
+}

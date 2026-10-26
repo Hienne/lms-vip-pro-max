@@ -152,6 +152,45 @@ describe('Lesson', () => {
     });
   });
 
+  describe('a video lesson', () => {
+    beforeEach(() => open(lessonUrl(0)));
+
+    const player = () => el.querySelector('video');
+    const sent = () =>
+      calls(learnerEndpoints.saveProgress).map(
+        ([, r]) => r.body as { eventType: string; playing: boolean },
+      );
+
+    it('loads the content URL of the block only once this tab holds the session, without autoplay', () => {
+      expect(player()?.getAttribute('src')).toMatch(
+        /^\/api\/v1\/learning-assets\/\d+\/content\?blockId=\d+&enrollmentId=\d+$/,
+      );
+      expect(player()?.autoplay).toBe(false);
+      expect(text()).toMatch(/Đã xem \d+% · cần \d+%/);
+    });
+
+    it('sends PLAY when the learner plays and PAUSE when they pause', async () => {
+      handle.mockClear();
+      player()!.dispatchEvent(new Event('play'));
+      player()!.dispatchEvent(new Event('pause'));
+      await settle();
+      expect(sent().map((e) => e.eventType)).toEqual(['PLAY', 'PAUSE']);
+      expect(sent()[0].playing).toBe(true);
+      expect(sent()[1].playing).toBe(false);
+    });
+
+    it('shows "Không phát được video." and claims the block again on "Thử lại"', async () => {
+      player()!.dispatchEvent(new Event('error'));
+      await settle();
+      expect(text()).toContain('Không phát được video.');
+      handle.mockClear();
+      button('Thử lại')!.click();
+      await settle();
+      expect(calls(learnerEndpoints.openSession).length).toBe(1);
+      expect(player()).not.toBeNull();
+    });
+  });
+
   describe('a lesson with several blocks', () => {
     beforeEach(() => open(lessonUrl(1)));
 

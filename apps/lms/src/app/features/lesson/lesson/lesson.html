@@ -114,7 +114,20 @@
         </p>
         } @else { @switch (active.detail.block.blockType) { @case ('text') {
         <app-text-block [block]="active.detail.block" />
-        } @case ('process') {
+        } @case ('video') { @if (store.contentUrl$(); as src) {
+        <app-video-block
+          [src]="src"
+          [startAt]="store.resume$()?.lastVideoPositionSeconds ?? 0"
+          [title]="active.title"
+          (played)="store.videoPlay($event)"
+          (paused)="store.videoPause($event)"
+          (beat)="store.videoBeat($event)"
+          (seeked)="store.videoSeek($event.from, $event.to, $event.playing)"
+          (retry)="store.reloadMedia()"
+        />
+        } @else if (store.phase$() === 'claiming') {
+        <div uiSkeleton variant="block" class="lesson__skeleton-body"></div>
+        } } @case ('process') {
         <app-process-block [steps]="active.detail.steps" />
         } @default {
         <p class="lesson__note">

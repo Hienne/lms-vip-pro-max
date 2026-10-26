@@ -19,6 +19,7 @@ import { LessonOutline } from './components/lesson-outline/lesson-outline';
 import { ProcessBlock } from './components/process-block/process-block';
 import { SessionAlert } from './components/session-alert/session-alert';
 import { TextBlock } from './components/text-block/text-block';
+import { VideoBlock } from './components/video-block/video-block';
 import { LessonStore } from './data-access/lesson.store';
 
 /** The lesson player (the mockup's `lesson` page): one active block at a time, saved as it is studied. */
@@ -40,6 +41,7 @@ import { LessonStore } from './data-access/lesson.store';
     SessionAlert,
     Skeleton,
     TextBlock,
+    VideoBlock,
   ],
   providers: [LessonStore],
   templateUrl: './lesson.html',
@@ -59,10 +61,5 @@ export class Lesson {
     Math.round(
       (this.store.lesson$()?.lesson.estimatedDurationSeconds ?? 0) / 60,
     ),
-  );
-
-  /** A file the player loads needs this tab to hold the session (the media cookie). */
-  protected readonly mediaWaiting = computed(
-    () => this.store.phase$() !== 'ready',
   );
 }

@@ -390,6 +390,11 @@ export class LessonStore {
     this.channel.reclaim();
   }
 
+  /** "Thử lại" on a file that would not load: claim again, which renews the media cookie. */
+  reloadMedia(): void {
+    this.channel.reclaim();
+  }
+
   /** "Thử lại" after a failed claim or a failed save. */
   retry(): void {
     this.channel.retry();

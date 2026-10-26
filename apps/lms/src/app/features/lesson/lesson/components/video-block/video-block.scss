@@ -1,0 +1,17 @@
+@use 'ui';
+
+.video {
+  &__player {
+    display: block;
+    width: 100%;
+    max-height: 70dvh;
+    border-radius: ui.radius(control);
+    background: ui.color(black);
+  }
+
+  &__error {
+    @include ui.row(2);
+    margin: 0;
+    color: ui.color(text-secondary);
+  }
+}
