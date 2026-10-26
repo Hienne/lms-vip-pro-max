@@ -1,6 +1,9 @@
 import { z } from 'zod';
 import { BackendDateTimeSchema } from '../http/datetime';
-import { CourseDetailSchema } from '../course/course.schema';
+import {
+  CourseDetailSchema,
+  CourseListQuerySchema,
+} from '../course/course.schema';
 
 // Mirrors the backend's learner endpoints (/api/v1/me/learning, POST /courses/{id}/enrollments).
 // Progress, status and due dates are the server's results; the app renders them and reports raw
@@ -181,3 +184,52 @@ export const SaveProgressCommandSchema = z.object({
   pdfPage: z.number().int().positive().optional(),
 });
 export type SaveProgressCommand = z.infer<typeof SaveProgressCommandSchema>;
+
+// ---- Progress overview and export ---------------------------------------------------------
+
+/** What the backend can say about a metric: anything but data it has is `unavailable`. */
+export const AvailabilitySchema = z.object({ availability: z.string() });
+
+/**
+ * `LearningProgressOverview`: counts over the caller's current cycles, independent of any table
+ * filter. `activity`, `assessment` and `competency` are `unavailable` until the backend has the
+ * data (no hours, scores or streaks are invented in the meantime).
+ */
+export const LearningProgressOverviewSchema = z.object({
+  serverTime: BackendDateTimeSchema,
+  timeZone: z.string(),
+  counts: z.object({
+    total: z.number().int(),
+    completed: z.number().int(),
+    inProgress: z.number().int(),
+    notStarted: z.number().int(),
+    overdue: z.number().int(),
+  }),
+  activity: AvailabilitySchema,
+  assessment: AvailabilitySchema,
+  competency: AvailabilitySchema,
+});
+export type LearningProgressOverview = z.infer<
+  typeof LearningProgressOverviewSchema
+>;
+
+export const LearningStatusSchema = z.enum([
+  'not_started',
+  'in_progress',
+  'completed',
+]);
+export type LearningStatus = z.infer<typeof LearningStatusSchema>;
+
+/** The filters of "my courses": the shared list filters, a typed status and the overdue flag. */
+export const MyCoursesQuerySchema = CourseListQuerySchema.extend({
+  learningStatus: LearningStatusSchema.optional(),
+  overdue: z.boolean().optional(),
+});
+export type MyCoursesQuery = z.infer<typeof MyCoursesQuerySchema>;
+
+/** The same filters and sort as the table, no paging; at most 10,000 rows. */
+export const ProgressExportQuerySchema = MyCoursesQuerySchema.omit({
+  page: true,
+  size: true,
+});
+export type ProgressExportQuery = z.infer<typeof ProgressExportQuerySchema>;

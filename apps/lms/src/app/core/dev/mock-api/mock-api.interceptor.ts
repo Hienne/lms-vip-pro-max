@@ -78,6 +78,12 @@ export const mockApiInterceptor: HttpInterceptorFn = (req, next) => {
         })
       : undefined;
   if (reply) {
+    // A file endpoint answers its refusals as a JSON body that the browser hands over as a blob.
+    const asBlob = endpoint?.responseType === 'blob';
+    const jsonBody = () =>
+      asBlob
+        ? new Blob([JSON.stringify(reply.body)], { type: 'application/json' })
+        : reply.body;
     return reply.status < 400
       ? of(
           reply.events
@@ -90,13 +96,16 @@ export const mockApiInterceptor: HttpInterceptorFn = (req, next) => {
                   .map((e) => `${JSON.stringify(e)}\n`)
                   .join(''),
               })
-            : new HttpResponse({ status: reply.status, body: reply.body }),
+            : new HttpResponse({
+                status: reply.status,
+                body: reply.file ?? jsonBody(),
+              }),
         )
       : throwError(
           () =>
             new HttpErrorResponse({
               status: reply.status,
-              error: reply.body,
+              error: jsonBody(),
               url: req.url,
             }),
         );

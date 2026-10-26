@@ -26,6 +26,7 @@ import {
   type TrainingProgram,
 } from '@lms/contracts';
 import type { FakeReply, FakeRequest } from '../backend/fake-backend';
+import { envelopeOk } from '../envelope';
 import { LearnerStudy } from './learner-session.backend';
 import { LearningRefused, ok, refuse } from './learning-reply';
 import {
@@ -139,6 +140,9 @@ export class LearningBackend {
     this.directory.callerId(request),
   );
 
+  /** Rows the progress export allows; the real limit is 10,000. */
+  exportRowLimit = 10_000;
+
   constructor(private readonly directory: LearningDirectory) {}
 
   /** The endpoints this service answers, for the fake backend's table. */
@@ -193,6 +197,8 @@ export class LearningBackend {
       [courseEndpoints.uploadAsset, (r) => this.uploadAsset(r)],
       [learnerEndpoints.catalog, (r) => this.learnerList(r, false)],
       [learnerEndpoints.myCourses, (r) => this.learnerList(r, true)],
+      [learnerEndpoints.progressSummary, (r) => this.progressSummary(r)],
+      [learnerEndpoints.exportProgress, (r) => this.exportProgress(r)],
       [learnerEndpoints.enroll, (r) => this.enroll(r)],
       [learnerEndpoints.enrollment, (r) => this.enrollmentDetail(r)],
       [learnerEndpoints.openSession, (r) => this.study.openSession(r)],
@@ -357,7 +363,13 @@ export class LearningBackend {
           ? (card.progressPercent ?? -1)
           : field === 'dueAt'
             ? (card.dueAt ?? '9999')
-            : (card.updateTime ?? '');
+            : field === 'startedAt' ||
+                field === 'lastAccessAt' ||
+                field === 'completedAt'
+              ? (card[field] ?? '')
+              : field === 'id'
+                ? (card.courseId ?? 0)
+                : (card.updateTime ?? '');
     return cards.sort((a, b) => {
       const x = value(a);
       const y = value(b);
@@ -818,9 +830,11 @@ export class LearningBackend {
 
   // ---- learner ------------------------------------------------------------------------------
 
-  private learnerList(request: FakeRequest, mineOnly: boolean): FakeReply {
+  /** The cards a learner's list shows, filtered and sorted by `request.query` and not paged. */
+  private learnerCards(request: FakeRequest, mineOnly: boolean): CourseCard[] {
     const userId = this.directory.callerId(request);
     const learningStatus = request.query['learningStatus'];
+    const overdueOnly = request.query['overdue'] === 'true';
     const cards = this.courses
       .filter(
         (record) =>
@@ -831,19 +845,77 @@ export class LearningBackend {
       )
       .filter((card) => !mineOnly || card.assigned || card.enrollmentId)
       .filter((card) => this.matches(card, request.query))
-      .filter((card) =>
-        !learningStatus
-          ? true
-          : learningStatus === 'overdue'
-            ? card.overdue
-            : (card.learningStatus ?? 'not_started') === learningStatus,
-      );
-    return ok(
-      paged(
-        this.sorted(cards, request.query['sort'] ?? 'dueAt,asc'),
-        request.query,
-      ),
+      .filter(
+        (card) =>
+          !learningStatus ||
+          (card.learningStatus ?? 'not_started') === learningStatus,
+      )
+      .filter((card) => !overdueOnly || card.overdue);
+    return this.sorted(cards, request.query['sort'] ?? 'dueAt,asc');
+  }
+
+  private learnerList(request: FakeRequest, mineOnly: boolean): FakeReply {
+    return ok(paged(this.learnerCards(request, mineOnly), request.query));
+  }
+
+  /** Counts over the caller's own cycles, a stand-in for the backend's (it counts the same rows). */
+  private progressSummary(request: FakeRequest): FakeReply {
+    const mine = this.learnerCards(
+      { ...request, query: { sort: 'id,asc' } },
+      true,
     );
+    const status = (card: CourseCard) => card.learningStatus ?? 'not_started';
+    const unavailable = { availability: 'unavailable' };
+    return ok({
+      serverTime: now(),
+      timeZone: 'Asia/Ho_Chi_Minh',
+      counts: {
+        total: mine.length,
+        completed: mine.filter((c) => status(c) === 'completed').length,
+        inProgress: mine.filter((c) => status(c) === 'in_progress').length,
+        notStarted: mine.filter((c) => status(c) === 'not_started').length,
+        overdue: mine.filter((c) => c.overdue).length,
+      },
+      activity: unavailable,
+      assessment: unavailable,
+      competency: unavailable,
+    });
+  }
+
+  /** Mirrors the backend's CSV: UTF-8 BOM, quoted cells, a leading `'` before a formula. */
+  private exportProgress(request: FakeRequest): FakeReply {
+    const rows = this.learnerCards(request, true);
+    if (rows.length > this.exportRowLimit) refuse('exportTooLarge');
+    const cell = (value: unknown): string => {
+      let text = value === null || value === undefined ? '' : String(value);
+      if (/^\s*[=+\-@]/.test(text)) text = `'${text}`;
+      return `"${text.replaceAll('"', '""')}"`;
+    };
+    const lines = rows.map((card) =>
+      [
+        card.code,
+        card.title,
+        card.cycleNo,
+        card.learningStatus ?? 'not_started',
+        card.progressPercent,
+        card.startedAt,
+        card.lastAccessAt,
+        card.completedAt,
+        card.dueAt,
+        card.deadlineStatus,
+      ]
+        .map(cell)
+        .join(','),
+    );
+    const header =
+      'Mã khóa,Tên khóa,Lần học,Trạng thái,Tiến độ,Bắt đầu,Truy cập gần nhất,Hoàn thành,Hạn,Trạng thái hạn';
+    return {
+      status: 200,
+      body: envelopeOk(null),
+      file: new Blob([`\uFEFF${header}\r\n${lines.join('\r\n')}\r\n`], {
+        type: 'text/csv',
+      }),
+    };
   }
 
   private learnerCard(

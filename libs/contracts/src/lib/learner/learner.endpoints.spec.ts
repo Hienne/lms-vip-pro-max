@@ -2,7 +2,10 @@ import { toUrl } from '../http/endpoint';
 import { learnerEndpoints } from './learner.endpoints';
 import {
   EnrollmentDetailSchema,
+  LearningProgressOverviewSchema,
+  MyCoursesQuerySchema,
   OpenSessionCommandSchema,
+  ProgressExportQuerySchema,
   ProgressResultSchema,
   SaveProgressCommandSchema,
   StudySessionSchema,
@@ -43,6 +46,8 @@ describe('learner endpoints', () => {
     ).toEqual([
       ['catalog', 'get', '/api/v1/me/learning/catalog'],
       ['myCourses', 'get', '/api/v1/me/learning/courses'],
+      ['progressSummary', 'get', '/api/v1/me/learning/progress/summary'],
+      ['exportProgress', 'get', '/api/v1/me/learning/progress/export'],
       ['enroll', 'post', '/api/v1/courses/{courseId}/enrollments'],
       ['enrollment', 'get', '/api/v1/me/learning/enrollments/{enrollmentId}'],
       ['openSession', 'post', '/api/v1/me/learning/sessions'],
@@ -206,5 +211,60 @@ describe('learner endpoints', () => {
       },
     });
     expect(result.session.lastAcceptedSequence).toBe(2);
+  });
+  describe('progress overview and export', () => {
+    const overview = {
+      serverTime: '2026-10-26T10:00:00Z',
+      timeZone: 'Asia/Ho_Chi_Minh',
+      counts: {
+        total: 5,
+        completed: 1,
+        inProgress: 2,
+        notStarted: 1,
+        overdue: 1,
+      },
+      activity: { availability: 'unavailable' },
+      assessment: { availability: 'unavailable' },
+      competency: { availability: 'unavailable' },
+    };
+
+    it('parses the summary the backend sends', () => {
+      expect(LearningProgressOverviewSchema.parse(overview).counts).toEqual(
+        overview.counts,
+      );
+    });
+
+    it('refuses a summary without counts', () => {
+      const { counts: _counts, ...without } = overview;
+      expect(LearningProgressOverviewSchema.safeParse(without).success).toBe(
+        false,
+      );
+    });
+
+    it('takes a typed status and the overdue flag on the table query', () => {
+      expect(
+        MyCoursesQuerySchema.parse({
+          learningStatus: 'in_progress',
+          overdue: true,
+        }),
+      ).toEqual({ learningStatus: 'in_progress', overdue: true });
+      expect(
+        MyCoursesQuerySchema.safeParse({ learningStatus: 'overdue' }).success,
+      ).toBe(false);
+    });
+
+    it('exports the table query without paging', () => {
+      const query = ProgressExportQuerySchema.parse({
+        q: 'core',
+        sort: 'dueAt,asc',
+        page: 3,
+        size: 20,
+      });
+      expect(query).toEqual({ q: 'core', sort: 'dueAt,asc' });
+    });
+
+    it('declares the export as a file', () => {
+      expect(learnerEndpoints.exportProgress.responseType).toBe('blob');
+    });
   });
 });

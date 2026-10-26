@@ -201,7 +201,7 @@ SameSite=Strict` with no domain, so the proxy needs no rewrite (browser retentio
   - Verify: `npx nx test lms -- envelope.interceptor`.
   - Files: `app/core/http/envelope.interceptor.ts` (+ spec), `docs/conventions/contracts-and-mocks.md`.
   - Depends on: none.
-- [ ] **T15 Progress contracts and mock** · S
+- [x] **T15 Progress contracts and mock** · S
   - Accept: `LearningProgressOverviewSchema`, `LearningStatusSchema`, `MyCoursesQuerySchema` (`overdue`),
     `ProgressExportQuerySchema`; `progressSummary` and `exportProgress` (`blob`); mock summary counts, `overdue`
     filter and sort on `myCourses`, CSV blob with BOM, `EXPORT_TOO_LARGE` as a JSON blob.

@@ -3,6 +3,7 @@ import {
   CourseCardSchema,
   EnrollmentDetailSchema,
   learnerEndpoints,
+  LearningProgressOverviewSchema,
   PageSchema,
   type AnyEndpoint,
   type CourseCard,
@@ -170,5 +171,108 @@ describe('the learner reads of the mock backend', () => {
         (c) => c.courseId === open.courseId,
       ),
     ).toBe(true);
+  });
+  describe('the progress page', () => {
+    const summary = (token: string) =>
+      LearningProgressOverviewSchema.parse(
+        call(learnerEndpoints.progressSummary, token).body.data,
+      );
+
+    it('counts the caller own cycles, whatever a table filter says', () => {
+      const token = login('hocvien');
+      const mine = cards(token, learnerEndpoints.myCourses);
+      const { counts, activity, assessment, competency } = summary(token);
+      expect(counts.total).toBe(mine.length);
+      expect(counts.completed).toBe(
+        mine.filter((c) => c.learningStatus === 'completed').length,
+      );
+      expect(counts.inProgress).toBe(
+        mine.filter((c) => c.learningStatus === 'in_progress').length,
+      );
+      expect(counts.notStarted).toBe(
+        mine.filter(
+          (c) => (c.learningStatus ?? 'not_started') === 'not_started',
+        ).length,
+      );
+      expect(counts.overdue).toBe(mine.filter((c) => c.overdue).length);
+      expect(counts.overdue).toBeGreaterThan(0);
+      expect([activity, assessment, competency]).toEqual(
+        Array(3).fill({ availability: 'unavailable' }),
+      );
+    });
+
+    it('lists only the overdue courses for `overdue=true`', () => {
+      const token = login('hocvien');
+      const overdue = cards(token, learnerEndpoints.myCourses, {
+        overdue: 'true',
+      });
+      expect(overdue.length).toBeGreaterThan(0);
+      expect(overdue.every((c) => c.overdue)).toBe(true);
+    });
+
+    it('filters by a learning status', () => {
+      const token = login('hocvien');
+      const done = cards(token, learnerEndpoints.myCourses, {
+        learningStatus: 'completed',
+      });
+      expect(done.every((c) => c.learningStatus === 'completed')).toBe(true);
+    });
+
+    it.each([
+      'startedAt',
+      'lastAccessAt',
+      'completedAt',
+      'progressPercent',
+      'id',
+    ])('sorts by %s in both directions', (field) => {
+      const token = login('hocvien');
+      const up = cards(token, learnerEndpoints.myCourses, {
+        sort: `${field},asc`,
+      }).map((c) => c.courseId);
+      const down = cards(token, learnerEndpoints.myCourses, {
+        sort: `${field},desc`,
+      }).map((c) => c.courseId);
+      expect(new Set(up)).toEqual(new Set(down));
+      expect(up.length).toBeGreaterThan(1);
+    });
+
+    it('exports the filtered rows as a UTF-8 CSV with a BOM and the backend header', async () => {
+      const token = login('hocvien');
+      const rows = cards(token, learnerEndpoints.myCourses, {
+        learningStatus: 'in_progress',
+      });
+      const reply = call(learnerEndpoints.exportProgress, token, {
+        query: { learningStatus: 'in_progress' },
+      });
+      expect(reply.file?.type).toBe('text/csv');
+      // `Blob.text()` drops a BOM while decoding, so the bytes are read.
+      const bytes = new Uint8Array(await reply.file!.arrayBuffer());
+      expect(Array.from(bytes.slice(0, 3))).toEqual([0xef, 0xbb, 0xbf]);
+      const text = await reply.file!.text();
+      expect(text.startsWith('Mã khóa,Tên khóa,Lần học,')).toBe(true);
+      const lines = text.trimEnd().split('\r\n');
+      expect(lines.length).toBe(rows.length + 1);
+      expect(lines[1]).toContain(`"${rows[0].code}"`);
+      expect(lines[1]).toContain(`"${rows[0].title}"`);
+    });
+
+    it('does not page the export', async () => {
+      const token = login('hocvien');
+      const all = cards(token, learnerEndpoints.myCourses).length;
+      const reply = call(learnerEndpoints.exportProgress, token, {
+        query: { page: '0', size: '1' },
+      });
+      expect((await reply.file!.text()).trimEnd().split('\r\n').length).toBe(
+        all + 1,
+      );
+    });
+
+    it('refuses an export over the row limit with LEARNING-EXPORT_TOO_LARGE', () => {
+      const token = login('hocvien');
+      backend.limitProgressExport(1);
+      const reply = call(learnerEndpoints.exportProgress, token);
+      expect(reply.file).toBeUndefined();
+      expect(reply.body.messageCode).toBe('LEARNING-EXPORT_TOO_LARGE');
+    });
   });
 });

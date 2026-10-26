@@ -8,8 +8,11 @@ import {
 import {
   CourseEnrollmentSchema,
   EnrollmentDetailSchema,
+  LearningProgressOverviewSchema,
   LearningReminderSchema,
+  MyCoursesQuerySchema,
   OpenSessionCommandSchema,
+  ProgressExportQuerySchema,
   ProgressResultSchema,
   SaveProgressCommandSchema,
   StudySessionSchema,
@@ -30,8 +33,26 @@ export const learnerEndpoints = {
   myCourses: defineEndpoint({
     method: 'get',
     path: '/api/v1/me/learning/courses',
-    query: CourseListQuerySchema,
+    query: MyCoursesQuerySchema,
     response: PageSchema(CourseCardSchema),
+  }),
+  /** Counts over the caller's current cycles, whatever the table below filters. */
+  progressSummary: defineEndpoint({
+    method: 'get',
+    path: '/api/v1/me/learning/progress/summary',
+    response: LearningProgressOverviewSchema,
+  }),
+  /**
+   * A CSV (UTF-8 with BOM) of the rows `myCourses` lists for the same filters and sort, up to
+   * 10,000. A refusal such as `LEARNING-EXPORT_TOO_LARGE` comes as a JSON envelope instead of the
+   * file; `envelopeInterceptor` turns it into an `ApiError`.
+   */
+  exportProgress: defineEndpoint({
+    method: 'get',
+    path: '/api/v1/me/learning/progress/export',
+    query: ProgressExportQuerySchema,
+    responseType: 'blob',
+    response: z.instanceof(Blob),
   }),
   /** Self-enrols in a published, optional course the caller may discover. */
   enroll: defineEndpoint({

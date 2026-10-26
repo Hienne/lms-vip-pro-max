@@ -103,6 +103,8 @@ export interface FakeReply {
   readonly status: number;
   readonly body: Envelope;
   readonly events?: readonly unknown[];
+  /** A file endpoint's answer (`body` is then an empty `SUCCESS`); a refusal is a JSON blob. */
+  readonly file?: Blob;
 }
 
 type Mutable<T> = { -readonly [K in keyof T]: T[K] };
@@ -207,6 +209,11 @@ export class FakeBackend {
   /** Changes the assistant proposed and nobody has confirmed, by action id (the backend keeps them in memory too). */
   private pendingActions = new Map<string, PendingProposal>();
   private nextActionSeq = 1;
+
+  /** Lowers the row limit of the progress export, to see the refusal without 10,000 rows. */
+  limitProgressExport(rows: number): void {
+    this.learning.exportRowLimit = rows;
+  }
 
   /** The learning services, which ask this one who calls and who belongs where. */
   private readonly learning = new LearningBackend({
