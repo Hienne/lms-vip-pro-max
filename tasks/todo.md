@@ -116,7 +116,7 @@ SameSite=Strict` with no domain, so the proxy needs no rewrite (browser retentio
   - Done: the inventory already had the `UI.Markdown` → `app-markdown` row and a `domain-markdown` entry, so only the
     entry was claimed (`in-progress`).
   - Depends on: none.
-- [ ] **T9 Lesson page (`lesson/:courseId/:lessonId`)** · M
+- [x] **T9 Lesson page (`lesson/:courseId/:lessonId`)** · M
   - Accept: claims `route-lesson-course-id-lesson-id`; focus bar (Thoát, course · chapter, title, save line
     `aria-live`), `block-list` (keyboard selection, `?block` follows), the active block (text/process now, a
     placeholder line for the media types until T10–T12), completion row with "Đánh dấu hoàn thành", block and

@@ -134,6 +134,11 @@ export class LessonStore {
       source: () => this.lessonId$(),
       computation: () => undefined,
     }),
+    /** The "Mục lục" drawer below `lg`; a new lesson closes it. */
+    outlineOpen: linkedSignal<number | undefined, boolean>({
+      source: () => this.lessonId$(),
+      computation: () => false,
+    }),
     /** Accepted results, shown instead of the detail's progress until it is read again. */
     results: linkedSignal<unknown, Results>({
       source: () => this.detailData.value(),
@@ -156,6 +161,7 @@ export class LessonStore {
   readonly loadError$ = computed(
     () => this.cardData.error() ?? this.detailData.error(),
   );
+  readonly outlineOpen$ = this.state.outlineOpen.asReadonly();
   readonly phase$ = this.channel.phase$;
   readonly save$ = this.channel.save$;
   readonly studyError$ = this.channel.error$;
@@ -239,7 +245,7 @@ export class LessonStore {
   private neighbour(step: 1 | -1): number | undefined {
     const blocks = this.blocks$();
     const index = blocks.findIndex((b) => b.id === this.activeBlock$()?.id);
-    return index < 0 ? undefined : blocks.at(index + step)?.id;
+    return index < 0 ? undefined : blocks[index + step]?.id;
   }
 
   /** The block's file, loadable only while this tab holds the session (the media cookie). */
@@ -312,7 +318,7 @@ export class LessonStore {
   private lessonLink(step: 1 | -1): string | null {
     const lessons = this.contentLessons();
     const index = lessons.findIndex((l) => l.current);
-    return index < 0 ? null : (lessons.at(index + step)?.link ?? null);
+    return index < 0 ? null : (lessons[index + step]?.link ?? null);
   }
 
   private readonly claimTarget = computed(
@@ -359,6 +365,14 @@ export class LessonStore {
   // Commands
   selectBlock(blockId: number): void {
     this.state.selected.set(blockId);
+  }
+
+  openOutline(): void {
+    this.state.outlineOpen.set(true);
+  }
+
+  closeOutline(): void {
+    this.state.outlineOpen.set(false);
   }
 
   markComplete(): void {

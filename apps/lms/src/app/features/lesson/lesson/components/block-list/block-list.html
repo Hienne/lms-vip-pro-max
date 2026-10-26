@@ -1,0 +1,26 @@
+<nav aria-label="Các khối trong bài học">
+  <ol class="blocks">
+    @for (block of blocks(); track block.id) {
+    <li>
+      <button
+        type="button"
+        class="blocks__item"
+        [class.blocks__item--active]="block.id === activeId()"
+        [attr.aria-current]="block.id === activeId() ? 'true' : null"
+        (click)="selected.emit(block.id)"
+      >
+        <span class="blocks__title">{{ block.title }}</span>
+        <span class="blocks__meta"
+          >{{ typeLabel[block.detail.block.blockType] }}</span
+        >
+        <span class="blocks__state">
+          @if (block.status === 'completed') {
+          <ui-icon name="check" size="sm" />
+          <span class="blocks__sr">Đã hoàn thành</span>
+          } @else if (block.status === 'in_progress') { {{ block.percent }}% }
+        </span>
+      </button>
+    </li>
+    }
+  </ol>
+</nav>

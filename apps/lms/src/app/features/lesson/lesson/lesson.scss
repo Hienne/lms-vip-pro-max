@@ -1,0 +1,149 @@
+@use 'ui';
+
+:host {
+  display: block;
+}
+
+.lesson {
+  min-height: 100dvh;
+
+  &__bar {
+    @include ui.row(3);
+    flex-wrap: nowrap;
+    padding: ui.space(2) ui.space(4);
+    border-bottom: 1px solid ui.color(border);
+    background: ui.color(surface);
+  }
+
+  &__where {
+    @include ui.text(sm, muted);
+    @include ui.grow;
+    @include ui.truncate;
+    margin: 0;
+  }
+
+  &__save {
+    @include ui.text(sm, muted);
+    @include ui.row(2);
+    flex: none;
+    flex-wrap: nowrap;
+    min-height: 2rem;
+    margin: 0;
+  }
+
+  &__toc-toggle {
+    flex: none;
+
+    @include ui.bp(lg) {
+      display: none;
+    }
+  }
+
+  &__layout {
+    display: grid;
+    gap: ui.space(6);
+    align-items: start;
+    max-width: ui.layout(wide);
+    margin-inline: auto;
+    padding: ui.space(5) ui.space(4) ui.space(10);
+
+    @include ui.bp(md) {
+      padding-inline: ui.space(6);
+    }
+
+    @include ui.bp(lg) {
+      grid-template-columns: minmax(0, 1fr) 20rem;
+    }
+  }
+
+  &__main {
+    @include ui.stack(5);
+    min-width: 0;
+  }
+
+  &__head {
+    @include ui.stack(1);
+  }
+
+  &__title {
+    margin: 0;
+    font-size: ui.text-size(xl);
+  }
+
+  &__meta {
+    @include ui.text(sm, muted);
+    @include ui.num;
+    margin: 0;
+  }
+
+  &__block {
+    @include ui.stack(3);
+    padding: ui.space(5);
+    border: 1px solid ui.color(border);
+    border-radius: ui.radius(card);
+    background: ui.color(surface);
+  }
+
+  &__block-title {
+    margin: 0;
+    font-size: ui.text-size(lg);
+    font-weight: ui.weight(semibold);
+  }
+
+  &__note {
+    @include ui.text(sm, muted);
+    @include ui.row(2);
+    margin: 0;
+  }
+
+  &__done {
+    min-height: 2.5rem;
+  }
+
+  &__done-line {
+    @include ui.row(2);
+    margin: 0;
+    color: ui.color(text-secondary);
+  }
+
+  &__steps {
+    @include ui.row-between(3);
+  }
+
+  &__side {
+    display: none;
+
+    @include ui.bp(lg) {
+      @include ui.stack(3);
+      position: sticky;
+      top: ui.space(4);
+      display: flex;
+    }
+  }
+
+  &__side-title {
+    margin: 0;
+    font-size: ui.text-size(lg);
+    font-weight: ui.weight(semibold);
+  }
+
+  &__progress {
+    @include ui.text(sm, muted);
+    @include ui.num;
+    margin: 0;
+  }
+
+  &__loading {
+    @include ui.stack(4);
+    padding: ui.space(5) ui.space(4);
+  }
+
+  &__skeleton-title {
+    width: 40%;
+    height: 2rem;
+  }
+
+  &__skeleton-body {
+    height: 16rem;
+  }
+}

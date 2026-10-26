@@ -866,7 +866,8 @@ export const MIGRATION_ENTRIES = [
     mockupSource: 'src/pages/lesson.js · lesson',
     target: 'lesson/:courseId/:lessonId',
     checklist: ['F.3', 'F.4', 'F.5', 'F.6'],
-    status: 'todo',
+    status: 'in-progress',
+    owner: 'Hiendeptroai',
   },
   {
     id: 'route-quiz-id',

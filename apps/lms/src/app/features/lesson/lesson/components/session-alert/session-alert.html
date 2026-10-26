@@ -1,0 +1,14 @@
+@if (view(); as view) {
+<ui-alert tone="warning" [heading]="view.heading">
+  {{ message() || view.fallback }}
+  <button
+    uiAlertAction
+    uiButton
+    variant="primary"
+    size="sm"
+    (click)="act(view.action)"
+  >
+    {{ view.label }}
+  </button>
+</ui-alert>
+}

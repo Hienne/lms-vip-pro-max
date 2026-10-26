@@ -104,6 +104,8 @@ export const SCREEN_TABLE = {
           title: 'Bài học',
           mockupPage: 'lesson',
           layout: 'focus',
+          load: () =>
+            import('../../features/lesson/lesson/lesson').then((m) => m.Lesson),
         },
       ],
     },
