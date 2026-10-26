@@ -57,7 +57,7 @@ SameSite=Strict` with no domain, so the proxy needs no rewrite (browser retentio
   - Files: `contracts/learner/learner.schema.ts`, `contracts/learner/learner.endpoints.ts`,
     `contracts/http/envelope.ts`, `mocks/backend-responses.ts`, `mocks/learning/learner-session.backend.ts` (+ spec).
   - Depends on: T1.
-- [ ] **T3 `findLearnerCourse`** · S
+- [x] **T3 `findLearnerCourse`** · S
   - Accept: finds a card in `myCourses` first, then `catalog`; stops at the last page or after 5 pages each; `null`
     when absent; one request at a time.
   - Verify: `npx nx test lms -- learner-course`.
