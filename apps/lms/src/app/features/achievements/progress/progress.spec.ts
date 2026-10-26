@@ -78,7 +78,7 @@ describe('LearningProgress', () => {
       b.textContent?.includes(label),
     );
   const kpi = (label: string) =>
-    Array.from(el.querySelectorAll('.learning-progress__kpi')).find((node) =>
+    Array.from(el.querySelectorAll('.progress-counts__item')).find((node) =>
       node.textContent?.includes(label),
     );
 
@@ -97,7 +97,7 @@ describe('LearningProgress', () => {
 
     it('shows the server counts as five labelled numbers', () => {
       const labels = Array.from(
-        el.querySelectorAll('.learning-progress__kpi dt'),
+        el.querySelectorAll('.progress-counts__item dt'),
       ).map((node) => node.textContent?.trim());
       expect(labels).toEqual([
         'Tổng số khóa',
@@ -113,13 +113,13 @@ describe('LearningProgress', () => {
     it('turns the overdue number to danger only while it is above zero', () => {
       const overdue = kpi('Đang quá hạn')!.querySelector('dd')!;
       expect(Number(overdue.textContent)).toBeGreaterThan(0);
-      expect(
-        overdue.classList.contains('learning-progress__kpi-value--danger'),
-      ).toBe(true);
+      expect(overdue.classList.contains('progress-counts__value--danger')).toBe(
+        true,
+      );
       expect(
         kpi('Tổng số khóa')!
           .querySelector('dd')!
-          .classList.contains('learning-progress__kpi-value--danger'),
+          .classList.contains('progress-counts__value--danger'),
       ).toBe(false);
     });
 
@@ -315,7 +315,7 @@ describe('LearningProgress', () => {
       answer(learnerEndpoints.progressSummary, backendRefusal('internalError'));
       await open();
       expect(text()).toContain('Không tải được số liệu tiến độ');
-      expect(el.querySelector('.learning-progress__kpis')).toBeNull();
+      expect(el.querySelector('.progress-counts')).toBeNull();
     });
   });
 });

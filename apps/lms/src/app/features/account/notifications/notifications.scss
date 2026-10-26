@@ -11,21 +11,8 @@
   }
 
   &__text {
-    @include ui.stack(1);
     flex: 1 1 16rem;
     min-width: 0;
-  }
-
-  &__title {
-    font-weight: ui.weight(medium);
-  }
-
-  &__meta {
-    @include ui.text(sm, muted);
-  }
-
-  &__due--overdue {
-    color: ui.color(danger);
   }
 
   &__actions {

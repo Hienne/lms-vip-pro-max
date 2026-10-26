@@ -280,7 +280,7 @@ SameSite=Strict` with no domain, so the proxy needs no rewrite (browser retentio
 
 ## Phase 4: `learner-home`
 
-- [ ] **T20 Promote shared learning pieces** · M
+- [x] **T20 Promote shared learning pieces** · M
   - Accept: `progress-counts`, `unavailable-note` and `reminder-item` move to `app/shared/learning/` with their
     specs; the progress and notifications pages use them; no behaviour change.
   - Verify: `npx nx test lms -- progress notifications shared/learning` green before and after.

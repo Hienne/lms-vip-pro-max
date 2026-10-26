@@ -56,13 +56,6 @@ interface ProgressFilters {
   readonly overdueOnly: boolean;
 }
 
-export interface ProgressKpi {
-  readonly label: string;
-  readonly value: number;
-  /** Only the overdue count is danger text, and only above zero. */
-  readonly danger: boolean;
-}
-
 export interface ProgressRow {
   readonly id: string;
   readonly card: CourseCard;
@@ -164,32 +157,8 @@ export class ProgressStore {
   );
   readonly isExporting$ = this.exports.isPending;
 
-  readonly kpis$ = computed((): readonly ProgressKpi[] => {
-    const counts = this.summaryData.value()?.counts;
-    if (!counts) return [];
-    return [
-      { label: 'Tổng số khóa', value: counts.total, danger: false },
-      { label: 'Hoàn thành', value: counts.completed, danger: false },
-      { label: 'Đang học', value: counts.inProgress, danger: false },
-      { label: 'Chưa bắt đầu', value: counts.notStarted, danger: false },
-      {
-        label: 'Đang quá hạn',
-        value: counts.overdue,
-        danger: counts.overdue > 0,
-      },
-    ];
-  });
-
-  /** The backend has no hours, scores or competency yet: say so once instead of showing zeros. */
-  readonly unavailableNote$ = computed(() => {
-    const summary = this.summaryData.value();
-    return (
-      summary !== undefined &&
-      [summary.activity, summary.assessment, summary.competency].some(
-        (metric) => metric.availability === 'unavailable',
-      )
-    );
-  });
+  /** The server's counts and availabilities; no filter touches them. */
+  readonly summary$ = this.summaryData.value;
 
   readonly rows$ = computed((): readonly ProgressRow[] =>
     (this.state.shown()?.items ?? []).map(toRow),

@@ -27,21 +27,9 @@
   variant="block"
   class="learning-progress__kpis-placeholder"
 ></div>
-} @else {
-<dl class="learning-progress__kpis">
-  @for (kpi of store.kpis$(); track kpi.label) {
-  <div class="learning-progress__kpi">
-    <dt>{{ kpi.label }}</dt>
-    <dd [class.learning-progress__kpi-value--danger]="kpi.danger">
-      {{ kpi.value }}
-    </dd>
-  </div>
-  }
-</dl>
-@if (store.unavailableNote$()) {
-<p class="learning-progress__note">
-  Giờ học, điểm kiểm tra và năng lực sẽ hiển thị khi hệ thống có dữ liệu.
-</p>
+} @else { @if (store.summary$(); as summary) {
+<app-progress-counts [counts]="summary.counts" />
+<app-unavailable-note class="learning-progress__note" [summary]="summary" />
 } @if (store.isEmpty$()) {
 <ui-empty
   title="Bạn chưa có khóa học nào."

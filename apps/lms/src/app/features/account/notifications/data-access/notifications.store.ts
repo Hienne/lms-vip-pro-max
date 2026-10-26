@@ -17,6 +17,7 @@ import { toAppError } from '../../../../core/errors/app-error';
 import { EndpointClient } from '../../../../core/http/endpoint-client';
 import { RemindersChanged } from '../../../../core/learning/reminders-changed';
 import { SessionStore } from '../../../../core/session/session.store';
+import { isReminderOverdue } from '../../../../shared/learning/reminder-item/reminder-item';
 
 export interface ReminderItem {
   readonly id: number;
@@ -111,7 +112,7 @@ export class NotificationsStore {
       .map((reminder) => ({
         id: reminder.id,
         reminder,
-        isOverdue: time(reminder.dueAtSnapshot) < now,
+        isOverdue: isReminderOverdue(reminder, now),
       }));
   });
   readonly count$ = computed(() => this.items$().length);

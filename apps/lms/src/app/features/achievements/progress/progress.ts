@@ -18,6 +18,8 @@ import {
   TablePrimary,
   type SegmentedOption,
 } from '@lms/ui';
+import { ProgressCounts } from '../../../shared/learning/progress-counts/progress-counts';
+import { UnavailableNote } from '../../../shared/learning/unavailable-note/unavailable-note';
 import { CourseStatus } from '../../../shared/status/course-status';
 import {
   PROGRESS_PAGE_SIZE,
@@ -41,11 +43,13 @@ import {
     Icon,
     PageHeader,
     Progress,
+    ProgressCounts,
     RouterLink,
     Search,
     Segmented,
     Skeleton,
     TablePrimary,
+    UnavailableNote,
   ],
   providers: [ProgressStore],
   templateUrl: './progress.html',

@@ -4,8 +4,6 @@ import {
   Button,
   Empty,
   ErrorState,
-  FmtDatePipe,
-  FmtRelativePipe,
   Icon,
   IconButton,
   List,
@@ -13,6 +11,7 @@ import {
   PageHeader,
   Skeleton,
 } from '@lms/ui';
+import { ReminderItem } from '../../../shared/learning/reminder-item/reminder-item';
 import { NotificationsStore } from './data-access/notifications.store';
 
 /** The learner's due deadline reminders (the mockup's `notifications` page, E.3). */
@@ -22,13 +21,12 @@ import { NotificationsStore } from './data-access/notifications.store';
     Button,
     Empty,
     ErrorState,
-    FmtDatePipe,
-    FmtRelativePipe,
     Icon,
     IconButton,
     List,
     ListItem,
     PageHeader,
+    ReminderItem,
     RouterLink,
     Skeleton,
   ],

@@ -82,11 +82,11 @@ describe('Notifications', () => {
       const [overdue, ...upcoming] = items();
       expect(overdue.textContent).toContain('Khóa học được giao đã quá hạn');
       expect(
-        overdue.querySelector('.notifications__due--overdue'),
+        overdue.querySelector('.reminder-item__due--overdue'),
       ).not.toBeNull();
       for (const li of upcoming) {
         expect(li.textContent).toContain('Khóa học được giao sắp đến hạn');
-        expect(li.querySelector('.notifications__due--overdue')).toBeNull();
+        expect(li.querySelector('.reminder-item__due--overdue')).toBeNull();
       }
     });
 

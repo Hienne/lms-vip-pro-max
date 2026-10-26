@@ -37,19 +37,11 @@
 <ul uiList>
   @for (item of store.items$(); track item.id) {
   <li uiListItem class="notifications__item">
-    <div class="notifications__text">
-      <div class="notifications__title">
-        {{ item.isOverdue ? 'Khóa học được giao đã quá hạn' : 'Khóa học được
-        giao sắp đến hạn' }}
-      </div>
-      <div class="notifications__meta">
-        Hạn hoàn thành
-        <span [class.notifications__due--overdue]="item.isOverdue"
-          >{{ item.reminder.dueAtSnapshot | fmtDate }}</span
-        >
-        · nhắc lúc {{ item.reminder.scheduledAt | fmtRelative }}
-      </div>
-    </div>
+    <app-reminder-item
+      class="notifications__text"
+      [reminder]="item.reminder"
+      [overdue]="item.isOverdue"
+    />
     <div class="notifications__actions">
       <a
         uiButton

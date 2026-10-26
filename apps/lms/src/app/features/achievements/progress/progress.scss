@@ -5,38 +5,13 @@
 }
 
 .learning-progress {
-  &__kpis {
-    @include ui.row(6);
-    flex-wrap: wrap;
-    margin: 0 0 ui.space(3);
-  }
-
-  &__kpi {
-    @include ui.stack(1);
-
-    dt {
-      @include ui.text(sm, muted);
-    }
-
-    dd {
-      @include ui.num;
-      @include ui.text(xl);
-      margin: 0;
-      font-weight: ui.weight(semibold);
-    }
-  }
-
-  &__kpi-value--danger {
-    color: ui.color(danger);
-  }
-
   &__kpis-placeholder {
     min-height: 4rem;
   }
 
   &__note {
-    @include ui.text(sm, muted);
-    margin: 0 0 ui.space(5);
+    display: block;
+    margin: ui.space(3) 0 ui.space(5);
   }
 
   &__table {
