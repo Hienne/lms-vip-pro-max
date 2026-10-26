@@ -263,9 +263,20 @@ SameSite=Strict` with no domain, so the proxy needs no rewrite (browser retentio
 
 ### Checkpoint 3
 
-- [ ] `npm run check` green
-- [ ] learning-reminders success criteria 1–4
-- [ ] Stop for approval
+- [x] `npm run check` green (2026-10-27; Nx flagged one task flaky: a test failed once and passed on its retry)
+- [x] learning-reminders success criteria 1–4, how each was verified:
+  1. Local backend as `hocvien` (two due reminders: one overdue, one upcoming), with the in-app mock API switched
+     off so `navCounts` is not served (the production setup; `environment.ts` restored afterwards): the bell read
+     "2 chưa đọc", `notifications` listed both with the due dates, "Đánh dấu đã đọc" removed one and the bell went to
+     "1 chưa đọc" without a reload; no `nav-counts` request was made.
+  2. As a user without the learner function: `notifications.spec.ts` and `shell.store.spec.ts` (empty line, no
+     request, bell 0). Not tried on the real backend with an admin account.
+  3. Mock: `learner.backend.spec.ts` (three seeded reminders, read, bell 3 → 2) and the same flow in
+     `notifications.spec.ts`.
+  4. Check green; looked at 1024 and 375 px, light and dark on the local backend; the read button is a native
+     button. Deviation: the "Xem khóa học của tôi" link and the read button are both shown at narrow widths (the row
+     wraps), instead of hiding the button. `route-notifications` stays `in-progress` (needs a pull request link).
+- [x] Stop for approval (a note only; continuing as instructed)
 
 ## Phase 4: `learner-home`
 
