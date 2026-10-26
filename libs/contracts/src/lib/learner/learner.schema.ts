@@ -81,12 +81,6 @@ export const EnrollmentDetailSchema = z.object({
 export type EnrollmentDetail = z.infer<typeof EnrollmentDetailSchema>;
 
 /** The block, its lesson and the enrolment after the server applied one event. */
-export const ProgressResultSchema = z.object({
-  block: BlockProgressSchema,
-  lesson: LessonProgressSchema,
-  enrollment: CourseEnrollmentSchema,
-});
-export type ProgressResult = z.infer<typeof ProgressResultSchema>;
 
 export const LearningReminderSchema = z.object({
   id: z.number().int(),
@@ -105,14 +99,82 @@ export const LearningReminderSchema = z.object({
 });
 export type LearningReminder = z.infer<typeof LearningReminderSchema>;
 
+export const ProgressEventTypeSchema = z.enum([
+  'OPEN',
+  'PLAY',
+  'HEARTBEAT',
+  'PAUSE',
+  'SEEK',
+  'PDF_PAGE',
+  'COMPLETE',
+  'CLOSE',
+]);
+export type ProgressEventType = z.infer<typeof ProgressEventTypeSchema>;
+
+/** Claims the account's one study session on a block (`MediaRequests.Session`). */
+export const OpenSessionCommandSchema = z.object({
+  enrollmentId: z.number().int().positive(),
+  blockId: z.number().int().positive(),
+  /** The session this tab holds, so changing block in the same player is not a takeover. */
+  previousSessionId: z.uuid().optional(),
+  previousFence: z.number().int().positive().optional(),
+  /** True only after the learner confirmed moving the session to this device. */
+  takeover: z.boolean(),
+});
+export type OpenSessionCommand = z.infer<typeof OpenSessionCommandSchema>;
+
+/** `MediaViews.Session`: the lease to echo on every event, and where the block resumes. */
+export const StudySessionSchema = z.object({
+  sessionId: z.uuid(),
+  sessionFence: z.number().int(),
+  leaseExpiresAt: BackendDateTimeSchema,
+  lastAcceptedSequence: z.number().int(),
+  enrollmentId: z.number().int(),
+  blockId: z.number().int(),
+  assetId: z.number().int().nullish(),
+  /** Send it as `expectedVersion` with the first event. */
+  expectedVersion: z.number().int(),
+  resume: BlockProgressSchema.nullish(),
+});
+export type StudySession = z.infer<typeof StudySessionSchema>;
+
+/** `MediaViews.Receipt`, returned with every progress result. */
+export const SessionReceiptSchema = z.object({
+  sessionId: z.uuid(),
+  sessionFence: z.number().int(),
+  lastAcceptedSequence: z.number().int(),
+  /** `active`, or `released` after a `CLOSE`. */
+  leaseState: z.string(),
+  /** The server's absolute expiry; a repeated ACK does not extend it. */
+  leaseExpiresAt: BackendDateTimeSchema.nullish(),
+});
+export type SessionReceipt = z.infer<typeof SessionReceiptSchema>;
+
+/** The block, its lesson and the enrolment after the server applied one event. */
+export const ProgressResultSchema = z.object({
+  block: BlockProgressSchema,
+  lesson: LessonProgressSchema,
+  enrollment: CourseEnrollmentSchema,
+  session: SessionReceiptSchema,
+});
+export type ProgressResult = z.infer<typeof ProgressResultSchema>;
+
 /**
- * One interaction with a block. `expectedVersion` is the block progress's `rowVersion`; the
- * server computes the percentage and checks PDF pages and watched video ranges.
+ * One interaction with a block (`LearningRequests.ProgressRequest`). The server scores it and
+ * checks PDF pages and watched video ranges; the app never sends a percentage.
  */
 export const SaveProgressCommandSchema = z.object({
+  sessionId: z.uuid(),
+  sessionFence: z.number().int().positive(),
+  eventType: ProgressEventTypeSchema,
+  assetId: z.number().int().positive().nullable(),
+  /** True only while a video is actually playing. */
+  playing: z.boolean(),
+  /** The block progress's `rowVersion`. */
   expectedVersion: z.number().int().nonnegative(),
-  sequence: z.number().int().positive().optional(),
-  complete: z.boolean().optional(),
+  /** The receipt's `lastAcceptedSequence` + 1; 1 in a new session. */
+  sequence: z.number().int().positive(),
+  complete: z.boolean(),
   videoPositionSeconds: z.number().nonnegative().optional(),
   watchedFromSeconds: z.number().nonnegative().optional(),
   watchedToSeconds: z.number().nonnegative().optional(),

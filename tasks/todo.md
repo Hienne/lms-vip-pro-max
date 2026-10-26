@@ -46,7 +46,7 @@ SameSite=Strict` with no domain, so the proxy needs no rewrite (browser retentio
   - Files: `contracts/course/course.schema.ts`, `contracts/learner/learner.schema.ts`,
     `mocks/learning/learning.fixtures.ts`, `mocks/learning/learning.backend.ts`, a fixtures spec.
   - Depends on: none.
-- [ ] **T2 Study-session contract and mock protocol** · M · _highest contract risk, early_
+- [x] **T2 Study-session contract and mock protocol** · M · _highest contract risk, early_
   - Accept: `ProgressEventTypeSchema`, `OpenSessionCommandSchema`, `StudySessionSchema`, `SessionReceiptSchema`;
     `SaveProgressCommandSchema` as the backend's `ProgressRequest`; `ProgressResultSchema.session`;
     `learnerEndpoints.openSession`; the seven `LEARNING-*` codes in `MESSAGE_CODE_KIND` and `backendRefusal`; new

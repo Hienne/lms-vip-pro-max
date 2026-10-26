@@ -25,9 +25,9 @@ import {
   type TrainingField,
   type TrainingProgram,
 } from '@lms/contracts';
-import { backendRefusal, type BackendResponseKey } from '../backend-responses';
-import { envelopeOk } from '../envelope';
 import type { FakeReply, FakeRequest } from '../backend/fake-backend';
+import { LearnerStudy } from './learner-session.backend';
+import { LearningRefused, ok, refuse } from './learning-reply';
 import {
   LearnerEnrollments,
   type EnrollmentRecord,
@@ -62,21 +62,6 @@ export interface LearningDirectory {
 
 type Mutable<T> = { -readonly [K in keyof T]: T[K] };
 type Handler = (request: FakeRequest) => FakeReply;
-
-class LearningRefused extends Error {
-  constructor(readonly reply: FakeReply) {
-    super(reply.body.messageCode);
-  }
-}
-
-const refuse = (key: BackendResponseKey): never => {
-  throw new LearningRefused(backendRefusal(key));
-};
-
-const ok = (data: unknown): FakeReply => ({
-  status: 200,
-  body: envelopeOk(data),
-});
 
 const DAY = 86_400_000;
 const now = () => new Date().toISOString();
@@ -150,6 +135,10 @@ export class LearningBackend {
     ),
   );
 
+  private study = new LearnerStudy(this.enrollments, (request) =>
+    this.directory.callerId(request),
+  );
+
   constructor(private readonly directory: LearningDirectory) {}
 
   /** The endpoints this service answers, for the fake backend's table. */
@@ -206,6 +195,8 @@ export class LearningBackend {
       [learnerEndpoints.myCourses, (r) => this.learnerList(r, true)],
       [learnerEndpoints.enroll, (r) => this.enroll(r)],
       [learnerEndpoints.enrollment, (r) => this.enrollmentDetail(r)],
+      [learnerEndpoints.openSession, (r) => this.study.openSession(r)],
+      [learnerEndpoints.saveProgress, (r) => this.study.saveProgress(r)],
       [assignmentEndpoints.courseAssignments, (r) => this.courseAssignments(r)],
       [assignmentEndpoints.assignCourse, (r) => this.assignCourse(r)],
       [assignmentEndpoints.getAssignment, (r) => this.getAssignment(r)],

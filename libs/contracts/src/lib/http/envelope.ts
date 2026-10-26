@@ -36,4 +36,13 @@ export const ACCESS_DENIED_CODE = 'CORE-ACCESS_DENIED';
 export const MESSAGE_CODE_KIND = {
   [UNAUTHENTICATED_CODE]: 'unauthorized',
   [ACCESS_DENIED_CODE]: 'forbidden',
+  // The study session protocol: valid requests the server cannot apply as sent. The player reads
+  // the code and acts (claim again, ask to take over, reload); none of them is a system failure.
+  'LEARNING-SESSION_IN_USE': 'refused',
+  'LEARNING-SESSION_EXPIRED': 'refused',
+  'LEARNING-STALE_EVENT': 'refused',
+  'LEARNING-CONFLICT': 'refused',
+  'LEARNING-MEDIA_CHANGED': 'refused',
+  'LEARNING-ASSET_PROCESSING': 'refused',
+  'LEARNING-NOT_AVAILABLE': 'refused',
 } as const;

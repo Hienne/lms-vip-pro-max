@@ -399,6 +399,11 @@ const SEED_COURSES: readonly SeedCourse[] = [
               ['attachment', 'Biểu mẫu đối soát'],
             ],
           },
+          {
+            title: 'Tổng kết',
+            minutes: 5,
+            blocks: [['text', 'Tổng kết']],
+          },
         ],
       },
     ],

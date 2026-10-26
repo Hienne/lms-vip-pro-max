@@ -9,8 +9,10 @@ import {
   CourseEnrollmentSchema,
   EnrollmentDetailSchema,
   LearningReminderSchema,
+  OpenSessionCommandSchema,
   ProgressResultSchema,
   SaveProgressCommandSchema,
+  StudySessionSchema,
 } from './learner.schema';
 
 const enrollmentParams = z.object({ enrollmentId: z.number().int() });
@@ -45,7 +47,21 @@ export const learnerEndpoints = {
     params: enrollmentParams,
     response: EnrollmentDetailSchema,
   }),
-  /** Records one interaction; the server recomputes block, lesson and course progress. */
+  /**
+   * Claims the account's one study session on a block (a lease, a fence that rises on every
+   * takeover) and sets the HttpOnly `academy_media` cookie the content URLs need. A second
+   * device is refused with `LEARNING-SESSION_IN_USE` until it asks with `takeover: true`.
+   */
+  openSession: defineEndpoint({
+    method: 'post',
+    path: '/api/v1/me/learning/sessions',
+    body: OpenSessionCommandSchema,
+    response: StudySessionSchema,
+  }),
+  /**
+   * Records one interaction inside the claimed session; the server recomputes block, lesson and
+   * course progress and answers the session receipt.
+   */
   saveProgress: defineEndpoint({
     method: 'put',
     path: '/api/v1/me/learning/enrollments/{enrollmentId}/blocks/{blockId}/progress',

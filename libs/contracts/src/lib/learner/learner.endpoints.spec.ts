@@ -2,8 +2,13 @@ import { toUrl } from '../http/endpoint';
 import { learnerEndpoints } from './learner.endpoints';
 import {
   EnrollmentDetailSchema,
+  OpenSessionCommandSchema,
+  ProgressResultSchema,
   SaveProgressCommandSchema,
+  StudySessionSchema,
 } from './learner.schema';
+
+const SESSION_ID = '550e8400-e29b-41d4-a716-446655440001';
 
 const stamp = { rowVersion: 0, createTime: '2026-10-20T08:00:00' };
 
@@ -40,6 +45,7 @@ describe('learner endpoints', () => {
       ['myCourses', 'get', '/api/v1/me/learning/courses'],
       ['enroll', 'post', '/api/v1/courses/{courseId}/enrollments'],
       ['enrollment', 'get', '/api/v1/me/learning/enrollments/{enrollmentId}'],
+      ['openSession', 'post', '/api/v1/me/learning/sessions'],
       [
         'saveProgress',
         'put',
@@ -99,17 +105,106 @@ describe('learner endpoints', () => {
   });
 
   it('checks a progress event against the backend rules', () => {
+    const event = {
+      sessionId: SESSION_ID,
+      sessionFence: 1,
+      eventType: 'HEARTBEAT',
+      assetId: 501,
+      playing: true,
+      expectedVersion: 0,
+      sequence: 7,
+      complete: false,
+      videoPositionSeconds: 45,
+      watchedFromSeconds: 30,
+      watchedToSeconds: 45,
+    };
+    expect(SaveProgressCommandSchema.parse(event).sequence).toBe(7);
     expect(
-      SaveProgressCommandSchema.parse({
-        expectedVersion: 0,
-        sequence: 7,
-        watchedFromSeconds: 30,
-        watchedToSeconds: 45,
-      }).sequence,
-    ).toBe(7);
+      SaveProgressCommandSchema.safeParse({ ...event, pdfPage: 0 }).success,
+    ).toBe(false);
+    // The session fields are required: an event without a claim is refused by the backend.
+    const { sessionId: _sessionId, ...withoutSession } = event;
+    expect(SaveProgressCommandSchema.safeParse(withoutSession).success).toBe(
+      false,
+    );
+    const { sequence: _sequence, ...withoutSequence } = event;
+    expect(SaveProgressCommandSchema.safeParse(withoutSequence).success).toBe(
+      false,
+    );
     expect(
-      SaveProgressCommandSchema.safeParse({ expectedVersion: 0, pdfPage: 0 })
+      SaveProgressCommandSchema.safeParse({ ...event, eventType: 'RESUME' })
         .success,
     ).toBe(false);
+  });
+
+  it('claims a session for a block, with the previous pair only when the tab holds one', () => {
+    expect(
+      OpenSessionCommandSchema.parse({
+        enrollmentId: 2,
+        blockId: 31,
+        takeover: false,
+      }),
+    ).toEqual({ enrollmentId: 2, blockId: 31, takeover: false });
+    expect(
+      OpenSessionCommandSchema.parse({
+        enrollmentId: 2,
+        blockId: 31,
+        previousSessionId: SESSION_ID,
+        previousFence: 3,
+        takeover: true,
+      }).previousFence,
+    ).toBe(3);
+    expect(
+      OpenSessionCommandSchema.safeParse({ enrollmentId: 2, blockId: 31 })
+        .success,
+    ).toBe(false);
+  });
+
+  it('parses the study session the backend grants and the receipt of a progress result', () => {
+    const session = StudySessionSchema.parse({
+      sessionId: SESSION_ID,
+      sessionFence: 1,
+      leaseExpiresAt: '2026-10-26T16:24:04.063803Z',
+      lastAcceptedSequence: 0,
+      enrollmentId: 3,
+      blockId: 1,
+      assetId: null,
+      expectedVersion: 0,
+      resume: null,
+    });
+    expect(session.sessionFence).toBe(1);
+    const stamped = { rowVersion: 1, createTime: '2026-10-20T08:00:00' };
+    const result = ProgressResultSchema.parse({
+      block: {
+        id: 4,
+        enrollmentId: 3,
+        blockId: 1,
+        status: 'in_progress',
+        ...stamped,
+      },
+      lesson: {
+        id: 3,
+        enrollmentId: 3,
+        lessonId: 21,
+        status: 'in_progress',
+        ...stamped,
+      },
+      enrollment: {
+        id: 3,
+        courseId: 7,
+        revisionId: 70,
+        userId: '00123',
+        status: 'in_progress',
+        ...stamped,
+      },
+      session: {
+        sessionId: SESSION_ID,
+        sessionFence: 1,
+        lastAcceptedSequence: 2,
+        leaseState: 'active',
+        leaseExpiresAt: '2026-10-26T16:25:04.063803Z',
+      },
+    });
+    expect(result.session.lastAcceptedSequence).toBe(2);
   });
 });

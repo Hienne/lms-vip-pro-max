@@ -4,7 +4,7 @@ import { envelopeError } from './envelope';
 /**
  * Every refusal the backend can send, with its real HTTP status, code, title and message
  * (`ResponseCode`, `IdentityResponseCode`, `OrganizationResponseCode`, `KnowledgeResponseCode` and
- * `AssistantResponseCode` of corebanking-academy).
+ * `AssistantResponseCode` and `LearningResponseCode` of corebanking-academy).
  * A mock reply or a spec asks for one by key, so no test or fixture invents a code.
  */
 export const BACKEND_RESPONSES = {
@@ -174,6 +174,52 @@ export const BACKEND_RESPONSES = {
     code: 'ASSISTANT-ACTION_STALE',
     title: 'Dữ liệu đã thay đổi',
     message: 'Dữ liệu đã thay đổi từ lúc trợ lý đề xuất. Vui lòng yêu cầu lại.',
+  },
+  // LearningResponseCode: the study session protocol. All are HTTP 200 `ERROR` envelopes.
+  sessionInUse: {
+    status: 200,
+    code: 'LEARNING-SESSION_IN_USE',
+    title: 'Chưa thể thực hiện',
+    message:
+      'Việc học đang mở ở nơi khác. Hãy xác nhận chuyển sang thiết bị này.',
+  },
+  sessionExpired: {
+    status: 200,
+    code: 'LEARNING-SESSION_EXPIRED',
+    title: 'Chưa thể thực hiện',
+    message:
+      'Phiên học đã hết hạn hoặc được chuyển sang nơi khác. Vui lòng mở lại bài.',
+  },
+  staleEvent: {
+    status: 200,
+    code: 'LEARNING-STALE_EVENT',
+    title: 'Chưa thể thực hiện',
+    message:
+      'Sự kiện tiến độ đã cũ hoặc không đúng thứ tự. Vui lòng đồng bộ lại.',
+  },
+  learningConflict: {
+    status: 200,
+    code: 'LEARNING-CONFLICT',
+    title: 'Xung đột dữ liệu',
+    message: 'Dữ liệu đã thay đổi hoặc xung đột. Vui lòng tải lại và kiểm tra.',
+  },
+  mediaChanged: {
+    status: 200,
+    code: 'LEARNING-MEDIA_CHANGED',
+    title: 'Chưa thể thực hiện',
+    message: 'Tài nguyên không khớp phiên học. Vui lòng tải lại bài.',
+  },
+  assetProcessing: {
+    status: 200,
+    code: 'LEARNING-ASSET_PROCESSING',
+    title: 'Chưa thể thực hiện',
+    message: 'Tài nguyên đang được xử lý. Vui lòng chờ và thử lại.',
+  },
+  notAvailable: {
+    status: 200,
+    code: 'LEARNING-NOT_AVAILABLE',
+    title: 'Chưa thể học',
+    message: 'Khóa học chưa mở hoặc hiện không được phép học.',
   },
 } as const;
 
