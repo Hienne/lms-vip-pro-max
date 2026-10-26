@@ -220,9 +220,20 @@ SameSite=Strict` with no domain, so the proxy needs no rewrite (browser retentio
 
 ### Checkpoint 2
 
-- [ ] `npm run check` green
-- [ ] learner-progress success criteria 1–4 (CSV opened in Excel with Vietnamese intact)
-- [ ] Stop for approval
+- [x] `npm run check` green (2026-10-27; one `lms:test` run failed under load and passed on the rerun, Nx reports it
+      flaky; the failing test was not identified)
+- [x] learner-progress success criteria 1–4, how each was verified:
+  1. Local backend as `hocvien`: the five KPIs (6 / 1 / 2 / 3 / 1) equal the server's summary; the table sorts on
+     the server (`sort=title,asc` in the URL and the request); "Chỉ khóa quá hạn" leaves the one overdue course.
+  2. "Xuất CSV" on the local backend saved `tien-do-cua-toi-2026-10-27.csv`: `text/csv`, UTF-8 BOM (EF BB BF) and
+     Vietnamese titles intact. **Not opened in Excel itself** (no Excel here); BOM plus UTF-8 is what it needs.
+  3. `LEARNING-EXPORT_TOO_LARGE` toasts the server message and saves nothing: verified in `progress.spec.ts` and
+     the envelope interceptor spec only (the real backend has fewer than 10,000 rows, so it cannot be forced).
+  4. Check green; 1280 and 375 px in light and dark were looked at on the local backend (at 375 the rows are cards,
+     the segmented control no longer widens the page). At ≤1280 px the nine-column table scrolls sideways inside its
+     wrapper (the "Hoàn thành" and "Hạn" columns are off screen until scrolled); all controls are native elements.
+     `route-progress` stays `in-progress`: a migration entry needs a pull request link to be `done`.
+- [x] Stop for approval (a note only; continuing as instructed)
 
 ## Phase 3: `learning-reminders`
 
