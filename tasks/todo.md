@@ -146,7 +146,7 @@ SameSite=Strict` with no domain, so the proxy needs no rewrite (browser retentio
   - Verify: `npx nx test lms -- video-block lesson.store`.
   - Files: `app/features/lesson/lesson/components/video-block/*`, `lesson.store.ts` (+ spec), `lesson.html`.
   - Depends on: T9.
-- [ ] **T11 `pdfjs-dist` and the PDF block** · M
+- [x] **T11 `pdfjs-dist` and the PDF block** · M
   - Accept: `pdfjs-dist` added (exact version pinned); the block in `@defer`, worker loaded as an asset; one page on a
     canvas, "Trang trước"/"Trang sau", "Trang p/n", zoom; opens at the resume page with the muted line; `PDF_PAGE`
     after 1 s on a page; load error state; production build within budget and the bundle guard green.

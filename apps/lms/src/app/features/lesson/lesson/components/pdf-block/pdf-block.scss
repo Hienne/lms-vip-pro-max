@@ -1,0 +1,51 @@
+@use 'ui';
+
+.pdf {
+  @include ui.stack(3);
+
+  &__bar {
+    @include ui.row(2);
+    flex-wrap: nowrap;
+  }
+
+  &__spacer {
+    flex: 1;
+  }
+
+  &__page-count,
+  &__zoom {
+    @include ui.text(sm, muted);
+    @include ui.num;
+    min-width: 4rem;
+    text-align: center;
+  }
+
+  &__note {
+    @include ui.text(sm, muted);
+    margin: 0;
+  }
+
+  &__stage {
+    overflow: auto;
+    border: 1px solid ui.color(border);
+    border-radius: ui.radius(control);
+    background: ui.color(surface-sunken);
+  }
+
+  &__canvas {
+    display: block;
+    max-width: 100%;
+    margin-inline: auto;
+    height: auto;
+  }
+
+  &__loading {
+    height: 24rem;
+  }
+
+  &__error {
+    @include ui.row(2);
+    margin: 0;
+    color: ui.color(text-secondary);
+  }
+}

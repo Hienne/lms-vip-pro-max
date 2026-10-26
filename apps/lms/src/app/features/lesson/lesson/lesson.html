@@ -127,6 +127,19 @@
         />
         } @else if (store.phase$() === 'claiming') {
         <div uiSkeleton variant="block" class="lesson__skeleton-body"></div>
+        } } @case ('pdf') { @if (store.contentUrl$(); as src) { @defer (on
+        immediate) {
+        <app-pdf-block
+          [src]="src"
+          [startPage]="store.resume$()?.lastPdfPage ?? 1"
+          [title]="active.title"
+          (pageShown)="store.pdfPage($event)"
+          (retry)="store.reloadMedia()"
+        />
+        } @placeholder {
+        <div uiSkeleton variant="block" class="lesson__skeleton-body"></div>
+        } } @else if (store.phase$() === 'claiming') {
+        <div uiSkeleton variant="block" class="lesson__skeleton-body"></div>
         } } @case ('process') {
         <app-process-block [steps]="active.detail.steps" />
         } @default {

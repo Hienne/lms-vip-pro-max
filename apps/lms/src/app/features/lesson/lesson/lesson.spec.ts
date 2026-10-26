@@ -19,6 +19,7 @@ import {
   provideMockBackendHttp,
   signInToMockBackend,
 } from '../../../core/dev/mock-api/mock-backend.testing';
+import { PdfEngine, type PdfFile } from './components/pdf-block/pdf-engine';
 import { SessionStore } from '../../../core/session/session.store';
 import {
   FakeSessionStore,
@@ -28,7 +29,21 @@ import {
 
 const COURSE = 7;
 
+/** jsdom has no canvas, so the page spec draws PDFs with a stub. */
+class StubPdfEngine {
+  readonly opened: string[] = [];
+  open(url: string): Promise<PdfFile> {
+    this.opened.push(url);
+    return Promise.resolve({
+      pageCount: 4,
+      render: () => ({ done: Promise.resolve(), cancel: () => undefined }),
+      destroy: () => undefined,
+    });
+  }
+}
+
 describe('Lesson', () => {
+  let pdf: StubPdfEngine;
   let backend: MockBackend;
   let handle: MockInstance<MockBackend['handle']>;
   let token: string;
@@ -47,8 +62,10 @@ describe('Lesson', () => {
 
   beforeEach(() => {
     sessionStorage.clear();
+    pdf = new StubPdfEngine();
     TestBed.configureTestingModule({
       providers: [
+        { provide: PdfEngine, useValue: pdf },
         provideMockBackendHttp(),
         provideAppConfig(
           parseAppConfig(testAppConfig({ mockApi: true, mockBackend: true })),
@@ -194,11 +211,23 @@ describe('Lesson', () => {
   describe('a lesson with several blocks', () => {
     beforeEach(() => open(lessonUrl(1)));
 
-    it('lists the blocks, starts on the first and shows a line for the kinds not shown yet', () => {
-      const items = Array.from(el.querySelectorAll('app-block-list button'));
+    it('lists the blocks, starts on the first and shows a line for the kinds not shown yet', async () => {
+      const items = Array.from(
+        el.querySelectorAll<HTMLElement>('app-block-list button'),
+      );
       expect(items.length).toBe(4);
       expect(items[0].getAttribute('aria-current')).toBe('true');
+      items[1].click();
+      await settle();
       expect(text()).toContain('chưa hiển thị');
+    });
+
+    it('opens the PDF block on the content URL of its file', () => {
+      expect(el.querySelector('app-pdf-block')).not.toBeNull();
+      expect(pdf.opened[0]).toMatch(
+        /^\/api\/v1\/learning-assets\/\d+\/content\?blockId=\d+&enrollmentId=\d+$/,
+      );
+      expect(text()).toContain('Trang 1/4');
     });
 
     it('moves to a block, keeps it in the URL and closes the old one on the server', async () => {

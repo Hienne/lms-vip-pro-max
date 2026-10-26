@@ -1,0 +1,67 @@
+@if (failed$()) {
+<p class="pdf__error">
+  Không tải được tài liệu PDF.
+  <button uiButton variant="ghost" size="sm" (click)="retried()">
+    Thử lại
+  </button>
+</p>
+} @else {
+<div #root class="pdf">
+  <div class="pdf__bar">
+    <button
+      uiIconButton
+      size="sm"
+      label="Trang trước"
+      [disabled]="!canPrev$()"
+      (click)="go(-1)"
+    >
+      <ui-icon name="chevron-left" />
+    </button>
+    <span class="pdf__page-count" aria-live="polite">
+      Trang {{ page$() }}/{{ pageCount$() }}
+    </span>
+    <button
+      uiIconButton
+      size="sm"
+      label="Trang sau"
+      [disabled]="!canNext$()"
+      (click)="go(1)"
+    >
+      <ui-icon name="chevron-right" />
+    </button>
+    <span class="pdf__spacer"></span>
+    <button
+      uiIconButton
+      size="sm"
+      label="Thu nhỏ"
+      [disabled]="!canZoomOut$()"
+      (click)="zoom(-1)"
+    >
+      <ui-icon name="zoom-out" />
+    </button>
+    <span class="pdf__zoom">{{ zoom$() * 100 }}%</span>
+    <button
+      uiIconButton
+      size="sm"
+      label="Phóng to"
+      [disabled]="!canZoomIn$()"
+      (click)="zoom(1)"
+    >
+      <ui-icon name="zoom-in" />
+    </button>
+  </div>
+  @if (resumedAt$(); as resumed) {
+  <p class="pdf__note">Đã mở lại tại trang {{ resumed }}.</p>
+  } @if (loading$()) {
+  <div uiSkeleton variant="block" class="pdf__loading"></div>
+  }
+  <div class="pdf__stage" [hidden]="loading$()">
+    <canvas
+      #canvas
+      class="pdf__canvas"
+      role="img"
+      [attr.aria-label]="'Trang ' + page$() + ' của ' + (title() || 'tài liệu')"
+    ></canvas>
+  </div>
+</div>
+}

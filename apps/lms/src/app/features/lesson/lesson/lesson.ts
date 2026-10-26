@@ -16,6 +16,7 @@ import {
   BLOCK_TYPE_LABEL,
 } from './components/block-list/block-list';
 import { LessonOutline } from './components/lesson-outline/lesson-outline';
+import { PdfBlock } from './components/pdf-block/pdf-block';
 import { ProcessBlock } from './components/process-block/process-block';
 import { SessionAlert } from './components/session-alert/session-alert';
 import { TextBlock } from './components/text-block/text-block';
@@ -35,6 +36,7 @@ import { LessonStore } from './data-access/lesson.store';
     FmtPctPipe,
     Icon,
     LessonOutline,
+    PdfBlock,
     ProcessBlock,
     Progress,
     RouterLink,
