@@ -1,0 +1,65 @@
+@use 'ui';
+
+.action-card {
+  @include ui.stack(3);
+  padding: ui.space(3);
+  background: ui.color(surface);
+  border: 1px solid ui.color(border);
+  border-radius: ui.radius(md);
+
+  &__title {
+    @include ui.text(sm);
+    margin: 0;
+    font-weight: ui.weight(semibold);
+  }
+
+  &__actions {
+    @include ui.row(2);
+  }
+
+  // Once settled, the card gives way to this one line.
+  &__result {
+    @include ui.text(sm, muted);
+    margin: 0;
+
+    &--error {
+      color: ui.color(danger);
+    }
+  }
+}
+
+.change {
+  @include ui.stack(1);
+
+  &__label {
+    @include ui.text(sm);
+    margin: 0;
+    font-weight: ui.weight(medium);
+  }
+
+  // "Hiện tại" and "Mới" in one column, their values in the other.
+  &__values {
+    @include ui.text(sm);
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: ui.space(1) ui.space(3);
+    margin: 0;
+
+    dt {
+      color: ui.color(text-muted);
+    }
+
+    dd {
+      margin: 0;
+      overflow-wrap: anywhere;
+    }
+  }
+
+  &__from {
+    color: ui.color(text-muted);
+  }
+
+  &__to {
+    font-weight: ui.weight(semibold);
+  }
+}

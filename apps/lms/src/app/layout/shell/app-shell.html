@@ -6,6 +6,10 @@
   class="app-shell"
   [class.app-shell--framed]="chrome === 'app'"
   [class.app-shell--rail]="store.sidebarCollapsed$()"
+  [class.app-shell--fill]="store.fillsViewport$()"
+  [class.app-shell--docked]="
+    chrome === 'app' && chat.isDocked$() && !store.fillsViewport$()
+  "
 >
   @if (chrome === 'app' && user) {
   <app-sidebar
@@ -43,6 +47,15 @@
     </main>
   </div>
 </div>
+
+@if (chrome === 'app' && user) {
+<app-owl
+  [besideToolbar]="devToolbar() !== null"
+  [quiet]="store.fillsViewport$()"
+/>
+@if (!store.fillsViewport$()) {
+<app-chat-widget [besideToolbar]="devToolbar() !== null" />
+} }
 
 <ng-template
   [uiDrawer]="store.navOpen$()"

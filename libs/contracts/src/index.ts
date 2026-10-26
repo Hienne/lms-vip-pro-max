@@ -24,3 +24,7 @@ export * from './lib/assignment/assignment.schema';
 export * from './lib/assignment/assignment.endpoints';
 export * from './lib/learner/learner.schema';
 export * from './lib/learner/learner.endpoints';
+export * from './lib/knowledge/knowledge.schema';
+export * from './lib/knowledge/knowledge.endpoints';
+export * from './lib/assistant-agent/agent.schema';
+export * from './lib/assistant-agent/agent.endpoints';

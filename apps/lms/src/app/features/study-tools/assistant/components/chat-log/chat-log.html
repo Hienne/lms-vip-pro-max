@@ -1,0 +1,10 @@
+<div class="log">
+  <div class="log__greeting">
+    <span class="log__who">Trợ lý</span>
+    <p>Xin chào! Hãy hỏi mình bất kỳ điều gì về nội dung tài liệu trong kho.</p>
+  </div>
+  @for (turn of turns(); track turn.id) {
+  <app-chat-message [turn]="turn" (retry)="retry.emit($event)" />
+  }
+</div>
+<div #end></div>

@@ -1,4 +1,6 @@
 import {
+  agentEndpoints,
+  AgentStreamEventSchema,
   authV1Endpoints,
   EnvelopeSchema,
   identityEndpoints,
@@ -14,6 +16,7 @@ import { SEED_PASSWORD } from './seed';
 // with the endpoint's schema. A contract change that the fake or the app missed fails here.
 
 const ENDPOINTS: readonly AnyEndpoint[] = [
+  ...Object.values(agentEndpoints),
   ...Object.values(authV1Endpoints),
   ...Object.values(identityEndpoints),
   ...Object.values(organizationEndpoints),
@@ -57,6 +60,27 @@ describe('the Postman collection against the fake backend', () => {
   it.each(POSTMAN_REQUESTS.map((request) => [request.name, request] as const))(
     '%s answers a parsable envelope',
     (_, request) => {
+      if (request.name === 'Huỷ yêu cầu') {
+        // Confirm and cancel share one {{actionId}} in the collection, and an action runs once: the
+        // user proposes again before cancelling (the confirmed value is now the current one).
+        const again = backend.handle(agentEndpoints.stream, {
+          token,
+          params: {},
+          query: {},
+          body: {
+            messages: [
+              {
+                role: 'user',
+                content: 'Đổi chức danh của tôi thành Chuyên viên cao cấp',
+              },
+            ],
+          },
+        });
+        const card = again?.events?.find(
+          (e) => (e as { type: string }).type === 'action_required',
+        ) as { action: { id: string } } | undefined;
+        variables['actionId'] = card?.action.id ?? '';
+      }
       const [path, search = ''] = fill(request.url).split('?');
       const { endpoint, params } = endpointOf(request.method, path);
       const query = Object.fromEntries(new URLSearchParams(search));
@@ -72,6 +96,18 @@ describe('the Postman collection against the fake backend', () => {
       expect(answer.status, JSON.stringify(answer.body)).toBeLessThan(300);
       const envelope = EnvelopeSchema.parse(answer.body);
       expect(envelope.status).toBe('SUCCESS');
+      if (endpoint === agentEndpoints.stream) {
+        // A stream answers events, not data: each line parses and the last one ends the turn.
+        const events = (answer.events ?? []).map((e) =>
+          AgentStreamEventSchema.parse(e),
+        );
+        expect(['done', 'error']).toContain(events.at(-1)?.type);
+        const card = events.find((e) => e.type === 'action_required');
+        if (card?.type === 'action_required') {
+          variables['actionId'] = card.action.id;
+        }
+        return;
+      }
       expect(() => endpoint.response.parse(envelope.data)).not.toThrow();
 
       // Fill the variables the collection's test scripts save.

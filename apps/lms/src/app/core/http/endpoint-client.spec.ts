@@ -1,5 +1,9 @@
 import { ErrorHandler } from '@angular/core';
-import { HttpClient, provideHttpClient } from '@angular/common/http';
+import {
+  HttpClient,
+  HttpEventType,
+  provideHttpClient,
+} from '@angular/common/http';
 import {
   HttpTestingController,
   provideHttpClientTesting,
@@ -67,6 +71,17 @@ const exportAll = defineEndpoint({
   path: '/api/export',
   responseType: 'blob',
   response: z.instanceof(Blob).refine((blob) => blob.type === 'text/csv'),
+});
+
+const chat = defineEndpoint({
+  method: 'post',
+  path: '/api/chat',
+  body: z.object({ question: z.string() }),
+  responseType: 'ndjson',
+  response: z.discriminatedUnion('type', [
+    z.object({ type: z.literal('delta'), text: z.string() }),
+    z.object({ type: z.literal('done') }),
+  ]),
 });
 
 describe('EndpointClient', () => {
@@ -151,6 +166,132 @@ describe('EndpointClient', () => {
     const req = backend.expectOne('/api/ping');
     expect(req.request.context.get(ENDPOINT)).toBe(ping);
     req.flush(true);
+  });
+
+  describe('stream', () => {
+    const progress = (
+      request: { event: (e: never) => void },
+      partialText: string,
+    ) =>
+      request.event({
+        type: HttpEventType.DownloadProgress,
+        loaded: partialText.length,
+        partialText,
+      } as never);
+
+    const open = () => {
+      const events: unknown[] = [];
+      const outcome: { error?: unknown; completed: boolean } = {
+        completed: false,
+      };
+      const subscription = client
+        .stream(chat, { body: { question: 'q' } })
+        .subscribe({
+          next: (event) => events.push(event),
+          error: (error: unknown) => (outcome.error = error),
+          complete: () => (outcome.completed = true),
+        });
+      return {
+        events,
+        outcome,
+        subscription,
+        request: backend.expectOne('/api/chat'),
+      };
+    };
+
+    it('sends the body as JSON and asks for events as text with progress', () => {
+      const { request } = open();
+      expect(request.request.method).toBe('POST');
+      expect(request.request.body).toEqual({ question: 'q' });
+      expect(request.request.responseType).toBe('text');
+      expect(request.request.reportProgress).toBe(true);
+      expect(request.request.headers.get('Accept')).toBe(
+        'application/x-ndjson, application/json',
+      );
+      request.flush('');
+    });
+
+    it('emits each complete line as it arrives, even when a line is split across chunks', () => {
+      const { events, request } = open();
+      progress(request, '{"type":"delta","text":"Xin');
+      expect(events).toEqual([]);
+      progress(request, '{"type":"delta","text":"Xin "}\n{"type":"del');
+      expect(events).toEqual([{ type: 'delta', text: 'Xin ' }]);
+      progress(
+        request,
+        '{"type":"delta","text":"Xin "}\n{"type":"delta","text":"chào"}\n',
+      );
+      expect(events).toEqual([
+        { type: 'delta', text: 'Xin ' },
+        { type: 'delta', text: 'chào' },
+      ]);
+      request.flush(
+        '{"type":"delta","text":"Xin "}\n{"type":"delta","text":"chào"}\n',
+      );
+    });
+
+    it('emits several lines that arrive in one chunk, in order', () => {
+      const { events, request } = open();
+      progress(
+        request,
+        '{"type":"delta","text":"a"}\n{"type":"delta","text":"b"}\n{"type":"done"}\n',
+      );
+      expect(events.map((e) => (e as { type: string }).type)).toEqual([
+        'delta',
+        'delta',
+        'done',
+      ]);
+      request.flush('');
+    });
+
+    it('reads everything from the final response when no progress was reported, and a last line needs no newline', () => {
+      const { events, outcome, request } = open();
+      request.flush('{"type":"delta","text":"a"}\n{"type":"done"}');
+      expect(events).toEqual([{ type: 'delta', text: 'a' }, { type: 'done' }]);
+      expect(outcome.completed).toBe(true);
+    });
+
+    it('does not emit a line twice when the final response repeats the whole body', () => {
+      const { events, request } = open();
+      progress(request, '{"type":"delta","text":"a"}\n');
+      request.flush('{"type":"delta","text":"a"}\n{"type":"done"}\n');
+      expect(events).toEqual([{ type: 'delta', text: 'a' }, { type: 'done' }]);
+    });
+
+    it('errors with a ContractError, reported to ErrorHandler, when a line does not match the schema', () => {
+      const { events, outcome, request } = open();
+      progress(
+        request,
+        '{"type":"delta","text":"a"}\n{"type":"delta","text":7}\n',
+      );
+      expect(events).toEqual([{ type: 'delta', text: 'a' }]);
+      expect(outcome.error).toBeInstanceOf(ContractError);
+      expect(handled).toEqual([outcome.error]);
+    });
+
+    it('treats a line that is not JSON as a contract mismatch', () => {
+      const { outcome, request } = open();
+      progress(request, 'upstream timeout\n');
+      expect(outcome.error).toBeInstanceOf(ContractError);
+    });
+
+    it('aborts the request when the subscriber unsubscribes', () => {
+      const { request, subscription } = open();
+      progress(request, '{"type":"delta","text":"a"}\n');
+      subscription.unsubscribe();
+      expect(request.cancelled).toBe(true);
+    });
+
+    it('passes a transport failure through', () => {
+      const { outcome, request } = open();
+      request.error(new ProgressEvent('error'), { status: 0 });
+      expect(toAppError(outcome.error).kind).toBe('offline');
+    });
+
+    it('is the only way to read an ndjson endpoint: call rejects it at type level', () => {
+      // @ts-expect-error an ndjson endpoint is read with stream
+      client.call(chat, { body: { question: 'q' } });
+    });
   });
 
   describe('multipart', () => {

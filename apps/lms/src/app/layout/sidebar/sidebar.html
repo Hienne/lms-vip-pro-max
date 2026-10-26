@@ -19,7 +19,7 @@
       >Vai trò: <strong>{{ roleText() }}</strong></span
     >
   </div>
-  <nav aria-label="Điều hướng chính">
+  <nav class="sidebar__nav" aria-label="Điều hướng chính">
     @for (section of nav(); track section.section) {
     <div class="sidebar__section" aria-hidden="true">
       <span class="sidebar__label">{{ section.section }}</span>

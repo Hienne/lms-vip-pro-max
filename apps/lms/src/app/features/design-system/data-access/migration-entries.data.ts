@@ -716,7 +716,15 @@ export const MIGRATION_ENTRIES = [
     level: 'feature',
     targets: ['features/study-tools'],
     checklist: ['G.1'],
-    status: 'todo',
+    status: 'in-progress',
+    owner: 'Hienne',
+    pullRequest: 'https://github.com/Hienne/lms-vip-pro-max/pull/40',
+    verify: {
+      lightDark: 'done',
+      widths: 'done',
+      keyboard: 'todo',
+      errorStates: 'todo',
+    },
   },
   {
     id: 'timer',
@@ -924,7 +932,15 @@ export const MIGRATION_ENTRIES = [
     mockupSource: 'src/pages/tools.js · assistant',
     target: 'assistant',
     checklist: ['G.1'],
-    status: 'todo',
+    status: 'in-progress',
+    owner: 'Hienne',
+    pullRequest: 'https://github.com/Hienne/lms-vip-pro-max/pull/40',
+    verify: {
+      lightDark: 'done',
+      widths: 'done',
+      keyboard: 'todo',
+      errorStates: 'todo',
+    },
   },
   {
     id: 'route-notifications',

@@ -1,0 +1,24 @@
+<ol class="sources" aria-label="Nguồn của câu trả lời">
+  @for (item of items(); track item.citation.n) {
+  <li>
+    <button
+      type="button"
+      class="sources__item"
+      [id]="item.id"
+      [attr.aria-label]="item.name"
+      [uiPopover]="details"
+      [popoverLabel]="item.name"
+    >
+      <span class="sources__n">{{ item.citation.n }}</span>
+      <span class="sources__file"
+        >{{ item.citation.fileName }} · {{ item.location }}</span
+      >
+    </button>
+    <ng-template #details>
+      <p class="sources__name">{{ item.citation.fileName }}</p>
+      <p class="sources__where">{{ item.location }}</p>
+      <p class="sources__quote">{{ item.citation.snippet }}</p>
+    </ng-template>
+  </li>
+  }
+</ol>

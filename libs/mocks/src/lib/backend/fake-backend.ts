@@ -1,7 +1,10 @@
 import {
   adminOrgEndpoints,
+  AgentCommandSchema,
+  agentEndpoints,
   authV1Endpoints,
   identityEndpoints,
+  knowledgeEndpoints,
   organizationEndpoints,
   passwordByteLength,
   PASSWORD_MAX_BYTES,
@@ -10,8 +13,11 @@ import {
   USER_LIMITS,
   type AnyEndpoint,
   type Envelope,
+  type PendingAction,
+  type ProfileChange,
   type FunctionInfo,
   type GrantScope,
+  type KnowledgeDocument,
   type Me,
   type ManagedRoleGrant,
   type OrganizationInfo,
@@ -40,7 +46,27 @@ import {
   userAuditFixtures,
   userCourseFixtures,
 } from '../admin-org/admin-org.fixtures';
+import {
+  AGENT_PROFILE_CARD_TITLE,
+  AGENT_PROFILE_INVALID,
+  AGENT_PROFILE_NOT_OFFERED,
+  AGENT_PROFILE_UNCHANGED,
+  AGENT_SCREEN_REFUSED,
+  agentActionEvents,
+  agentAiErrorEvents,
+  agentDocumentEvents,
+  agentNavigateEvents,
+  agentNotFoundEvents,
+  agentRefusedEvents,
+} from '../assistant-agent/agent.fixtures';
 import { envelopeError, envelopeOk } from '../envelope';
+import {
+  knowledgeAnswerFixture,
+  knowledgeDocumentFixtures,
+  knowledgeNotFoundFixture,
+  knowledgeNotFoundStreamFixture,
+  knowledgeStreamFixture,
+} from '../knowledge/knowledge.fixtures';
 import { navCountsFixtures } from '../shell/shell.fixtures';
 import {
   SEED_FUNCTIONS,
@@ -68,10 +94,14 @@ export interface FakeRequest {
   readonly body: unknown;
 }
 
-/** The HTTP status and the envelope the backend would answer with. */
+/**
+ * The HTTP status and the envelope the backend would answer with. A streamed endpoint answers
+ * `events` (one NDJSON line each) instead of an envelope's data; its refusals stay envelopes.
+ */
 export interface FakeReply {
   readonly status: number;
   readonly body: Envelope;
+  readonly events?: readonly unknown[];
 }
 
 type Mutable<T> = { -readonly [K in keyof T]: T[K] };
@@ -114,6 +144,29 @@ const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 type Handler = (request: FakeRequest) => FakeReply;
 
+/** How long the backend keeps a proposed action waiting for its confirmation. */
+const ACTION_TTL_MS = 10 * 60_000;
+
+interface PendingProposal {
+  readonly userId: string;
+  readonly action: Extract<PendingAction, { tool: 'update_profile' }>;
+  readonly expiresAt: number;
+}
+
+/** Lower case without accents, so a scripted marker matches however the question is typed. */
+const fold = (text: string): string =>
+  Array.from(text.normalize('NFC'))
+    .map((char) => char.normalize('NFD').replace(/\p{M}/gu, ''))
+    .join('')
+    .replace(/đ/g, 'd')
+    .toLowerCase();
+
+const PROFILE_FIELDS = [
+  { marker: 'chuc danh', field: 'positionName', label: 'Chức danh' },
+  { marker: 'email', field: 'email', label: 'Email' },
+  { marker: 'ho ten', field: 'fullName', label: 'Họ tên' },
+] as const;
+
 /**
  * The backend's identity and organisation services, in memory, on the demo seed: the same
  * statuses, codes, scoping and PATCH semantics as corebanking-academy, minus what no screen
@@ -143,6 +196,16 @@ export class FakeBackend {
     menus: [...r.menus],
   }));
   private nextRoleSeq = 1;
+  private documents: Mutable<KnowledgeDocument>[] =
+    knowledgeDocumentFixtures.map((d) => ({ ...d }));
+  /** Uploaded documents still moving to `ready`: one step per read, like the worker over time. */
+  private pendingDocuments = new Set<number>();
+  private nextDocumentId =
+    Math.max(...knowledgeDocumentFixtures.map((d) => d.id)) + 1;
+
+  /** Changes the assistant proposed and nobody has confirmed, by action id (the backend keeps them in memory too). */
+  private pendingActions = new Map<string, PendingProposal>();
+  private nextActionSeq = 1;
 
   private readonly handlers = new Map<AnyEndpoint, Handler>([
     [authV1Endpoints.login, (r) => this.login(r)],
@@ -173,6 +236,14 @@ export class FakeBackend {
     [adminOrgEndpoints.saveRole, (r) => this.saveMockRole(r)],
     [adminOrgEndpoints.deleteRole, (r) => this.deleteMockRole(r)],
     [shellEndpoints.navCounts, (r) => this.navCounts(r)],
+    [knowledgeEndpoints.documents, (r) => this.listDocuments(r)],
+    [knowledgeEndpoints.document, (r) => this.getDocument(r)],
+    [knowledgeEndpoints.uploadDocument, (r) => this.uploadDocument(r)],
+    [knowledgeEndpoints.ask, (r) => this.ask(r)],
+    [knowledgeEndpoints.askStream, (r) => this.askStream(r)],
+    [agentEndpoints.stream, (r) => this.agentStream(r)],
+    [agentEndpoints.confirmAction, (r) => this.confirmAction(r)],
+    [agentEndpoints.cancelAction, (r) => this.cancelAction(r)],
   ]);
 
   /** True for the endpoints this backend answers; the others are not the backend's. */
@@ -272,6 +343,242 @@ export class FakeBackend {
       : [];
     const role = ROLE_PRIORITY.find((code) => held.includes(code));
     return ok(navCountsFixtures[role ?? 'LEARNER']);
+  }
+
+  // ---- knowledge: shared documents and the chat -----------------------------------------------
+
+  /** Every read moves each uploaded document one step: queued, processing, ready. */
+  private advanceDocuments(): void {
+    for (const id of [...this.pendingDocuments]) {
+      const document = this.documents.find((d) => d.id === id);
+      if (!document) continue;
+      if (document.status === 'queued') {
+        document.status = 'processing';
+      } else {
+        document.status = 'ready';
+        document.chunkCount = 1;
+        document.processedAt = new Date().toISOString();
+        this.pendingDocuments.delete(id);
+      }
+    }
+  }
+
+  private listDocuments(request: FakeRequest): FakeReply {
+    const actor = this.actor(request);
+    const query = this.pageQuery(request, ['createTime'], 'createTime,desc');
+    const statuses = (request.query['status'] ?? '').split(',').filter(Boolean);
+    if (
+      statuses.some(
+        (s) => !['queued', 'processing', 'ready', 'failed'].includes(s),
+      )
+    ) {
+      return invalid('status không hợp lệ.');
+    }
+    this.advanceDocuments();
+    const rows = this.documents.filter(
+      (d) =>
+        (request.query['mine'] !== 'true' ||
+          d.uploadedBy.userId === actor.userId) &&
+        (statuses.length === 0 || statuses.includes(d.status)),
+    );
+    return ok(this.paged(rows, query, (d) => d.id));
+  }
+
+  private getDocument(request: FakeRequest): FakeReply {
+    this.actor(request);
+    this.advanceDocuments();
+    const document = this.documents.find(
+      (d) => d.id === Number(request.params['documentId']),
+    );
+    return document ? ok({ ...document }) : refuse('resourceNotFound');
+  }
+
+  private uploadDocument(request: FakeRequest): FakeReply {
+    const actor = this.actor(request);
+    const body = request.body;
+    const file =
+      body instanceof FormData
+        ? body.get('file')
+        : (body as { file?: unknown } | null)?.file;
+    if (!(file instanceof Blob) || !(file as File).name) {
+      return invalid('Cần chọn một tệp.');
+    }
+    const upload = file as File;
+    if (!/\.(pdf|md|docx)$/i.test(upload.name)) {
+      return refuse('fileTypeUnsupported');
+    }
+    if (upload.size === 0) return refuse('fileInvalid');
+    if (upload.size > 20 * 1024 * 1024) return refuse('fileTooLarge');
+    const document: Mutable<KnowledgeDocument> = {
+      id: this.nextDocumentId++,
+      fileName: upload.name,
+      mimeType: upload.type || 'application/octet-stream',
+      sizeBytes: upload.size,
+      status: 'queued',
+      errorMessage: null,
+      pageCount: null,
+      chunkCount: 0,
+      uploadedBy: { userId: actor.userId, fullName: actor.fullName },
+      createdAt: new Date().toISOString(),
+      processedAt: null,
+    };
+    this.documents.unshift(document);
+    this.pendingDocuments.add(document.id);
+    return ok({ ...document }, 201);
+  }
+
+  private questionOf(request: FakeRequest): string {
+    const question = (request.body as { question?: unknown } | null)?.question;
+    if (typeof question !== 'string' || !question.trim()) {
+      return invalid('Câu hỏi không được để trống.');
+    }
+    if (question.trim().length > 300) {
+      return invalid('Câu hỏi tối đa 300 ký tự.');
+    }
+    return question.trim();
+  }
+
+  /** The mock finds nothing when the question says "không có"; every other question is answered. */
+  private ask(request: FakeRequest): FakeReply {
+    this.actor(request);
+    const found = !this.questionOf(request).toLowerCase().includes('không có');
+    return ok(found ? knowledgeAnswerFixture : knowledgeNotFoundFixture);
+  }
+
+  private askStream(request: FakeRequest): FakeReply {
+    this.actor(request);
+    const found = !this.questionOf(request).toLowerCase().includes('không có');
+    return {
+      status: 200,
+      body: envelopeOk(null),
+      events: found ? knowledgeStreamFixture : knowledgeNotFoundStreamFixture,
+    };
+  }
+
+  // ---- quick assistant: scripted turns and confirmed actions ---------------------------------
+
+  private agentStream(request: FakeRequest): FakeReply {
+    const user = this.caller(request);
+    const parsed = AgentCommandSchema.safeParse(request.body);
+    const last = parsed.success ? parsed.data.messages.at(-1) : undefined;
+    const text = last?.content.trim() ?? '';
+    if (!last || text.length < 1 || text.length > 500) {
+      return invalid('Tin nhắn phải từ 1 đến 500 ký tự.');
+    }
+
+    return {
+      status: 200,
+      body: envelopeOk(null),
+      events: this.scriptedTurn(user, text),
+    };
+  }
+
+  /** First match wins; see `agent.fixtures.ts` for what each reply says. */
+  private scriptedTurn(user: DbUser, text: string) {
+    const folded = fold(text);
+    if (folded.includes('mo trang') || folded.includes('mo man hinh')) {
+      const screen = this.functionsOf(user.userId)
+        .filter((f) => f.routePattern && !f.routePattern.includes(':'))
+        .filter((f) => folded.includes(fold(f.name)))
+        .sort((a, b) => b.name.length - a.name.length)[0];
+      return screen
+        ? agentNavigateEvents(screen.routePattern as string, screen.name)
+        : agentRefusedEvents('open_screen', AGENT_SCREEN_REFUSED);
+    }
+    const profile = this.profileTurn(user, text, folded);
+    if (profile) return profile;
+    if (folded.includes('loi ai')) return agentAiErrorEvents;
+    if (folded.includes('khong co trong tai lieu')) return agentNotFoundEvents;
+    return agentDocumentEvents;
+  }
+
+  /** "đổi chức danh … thành <giá trị>": a card, or the words the tool would give back. */
+  private profileTurn(user: DbUser, text: string, folded: string) {
+    const field = PROFILE_FIELDS.find((f) => folded.includes(f.marker));
+    const at = folded.lastIndexOf(' thanh ');
+    if (!field || at < 0) return undefined;
+    const to = text
+      .slice(at + ' thanh '.length)
+      .trim()
+      .replace(/[.!]+$/, '');
+    if (!to) return undefined;
+    if (user.authProvider !== 'LOCAL') {
+      return agentRefusedEvents('update_profile', AGENT_PROFILE_NOT_OFFERED);
+    }
+    const valid =
+      field.field === 'email'
+        ? EMAIL.test(to) && to.length <= USER_LIMITS.email
+        : to.length <= USER_LIMITS[field.field];
+    if (!valid) {
+      return agentRefusedEvents(
+        'update_profile',
+        AGENT_PROFILE_INVALID[field.field],
+      );
+    }
+    const from = user[field.field] ?? null;
+    if (from === to) {
+      return agentRefusedEvents('update_profile', AGENT_PROFILE_UNCHANGED);
+    }
+
+    const change: ProfileChange = {
+      field: field.field,
+      label: field.label,
+      from,
+      to,
+    };
+    const expiresAt = Date.now() + ACTION_TTL_MS;
+    const action: PendingProposal['action'] = {
+      id: `agent-action-${this.nextActionSeq++}`,
+      tool: 'update_profile',
+      title: AGENT_PROFILE_CARD_TITLE,
+      changes: [change],
+      expiresAt: new Date(expiresAt).toISOString(),
+    };
+    this.pendingActions.set(action.id, {
+      userId: user.userId,
+      action,
+      expiresAt,
+    });
+    return agentActionEvents(action);
+  }
+
+  /** The action when it is the caller's and has not expired, else the one not-found refusal. */
+  private pendingOf(request: FakeRequest, user: DbUser): PendingProposal {
+    const id = request.params['actionId'] ?? '';
+    const pending = this.pendingActions.get(id);
+    if (pending && pending.expiresAt <= Date.now())
+      this.pendingActions.delete(id);
+    if (
+      !pending ||
+      pending.userId !== user.userId ||
+      pending.expiresAt <= Date.now()
+    ) {
+      return refuse('assistantActionNotFound');
+    }
+    return pending;
+  }
+
+  private confirmAction(request: FakeRequest): FakeReply {
+    const user = this.caller(request);
+    const pending = this.pendingOf(request, user);
+    this.pendingActions.delete(pending.action.id);
+    const changes = pending.action.changes;
+    if (changes.some((c) => (user[c.field] ?? null) !== c.from)) {
+      return refuse('assistantActionStale');
+    }
+    for (const c of changes) user[c.field] = c.to as string;
+    return ok({
+      actionId: pending.action.id,
+      tool: pending.action.tool,
+      message: 'Đã cập nhật hồ sơ.',
+      data: this.meOf(user),
+    });
+  }
+
+  private cancelAction(request: FakeRequest): FakeReply {
+    const user = this.caller(request);
+    this.pendingActions.delete(this.pendingOf(request, user).action.id);
+    return ok(null);
   }
 
   // ---- identity: who is calling -------------------------------------------------------------

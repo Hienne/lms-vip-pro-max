@@ -1,3 +1,4 @@
+import { Component, type Type, type WritableSignal } from '@angular/core';
 import { HttpTestingController } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 import { provideRouter, Router } from '@angular/router';
@@ -12,6 +13,7 @@ import {
   fakeSession,
   seedProfile,
 } from '../../core/session/session.testing';
+import { AgentChatStore } from '../../core/assistant/agent-chat.store';
 import { AppShell } from './app-shell';
 import { LeavePrompt } from '../../core/routing/unsaved-changes.guard';
 import { LOCAL_STORAGE } from '../../core/storage/local-storage';
@@ -26,6 +28,9 @@ const USERS = {
   admin: '000002',
   'unit-admin': '000003',
 } as const;
+
+@Component({ template: '' })
+class DevToolbarStub {}
 
 describe('AppShell', () => {
   let session: FakeSessionStore;
@@ -65,7 +70,7 @@ describe('AppShell', () => {
 
   type Counts = { notifications: number; inbox: number };
 
-  /** Answers the nav-counts requests the shell makes once a user is signed in. */
+  /** Answers the requests the shell makes once a user is signed in: nav counts and the owl's tracker. */
   function flushCounts(counts: Counts = { notifications: 0, inbox: 0 }) {
     TestBed.tick();
     const backend = TestBed.inject(HttpTestingController);
@@ -73,6 +78,21 @@ describe('AppShell', () => {
       .match('/api/me/nav-counts')
       .filter((r) => !r.cancelled)
       .forEach((r) => r.flush(envelopeOk(counts)));
+    // The owl's tracker asks for the user's unfinished uploads; there are none.
+    backend
+      .match((r) => r.url === '/api/v1/knowledge/documents')
+      .filter((r) => !r.cancelled)
+      .forEach((r) =>
+        r.flush(
+          envelopeOk({
+            items: [],
+            page: 0,
+            size: 100,
+            totalElements: 0,
+            totalPages: 0,
+          }),
+        ),
+      );
   }
 
   async function open(url: string, counts?: Counts) {
@@ -91,9 +111,17 @@ describe('AppShell', () => {
     [
       'learner',
       '/learn',
-      ['/profile', '/learn', '/progress', '/quiz', '/knowledge', '/issues'],
+      [
+        '/profile',
+        '/learn',
+        '/progress',
+        '/quiz',
+        '/knowledge',
+        '/assistant',
+        '/issues',
+      ],
     ],
-    ['viewer', '/reports', ['/profile', '/reports']],
+    ['viewer', '/reports', ['/profile', '/reports', '/assistant']],
     [
       'instructor',
       '/learn',
@@ -108,6 +136,7 @@ describe('AppShell', () => {
         '/admin/quizzes',
         '/reports',
         '/knowledge',
+        '/assistant',
         '/issues',
       ],
     ],
@@ -126,6 +155,7 @@ describe('AppShell', () => {
         '/admin/assignments',
         '/reports',
         '/admin/system',
+        '/assistant',
       ],
     ],
   ] as const)(
@@ -216,6 +246,123 @@ describe('AppShell', () => {
     expect(el.querySelector('app-sidebar')).not.toBeNull();
     expect(el.querySelector('app-header')).not.toBeNull();
     expect(el.querySelector('main#main')).not.toBeNull();
+    expect(el.querySelector('app-owl button')).not.toBeNull();
+    expect(el.querySelector('.app-shell')?.classList).not.toContain(
+      'app-shell--fill',
+    );
+  });
+
+  it('lets a workspace page fill the viewport and quiets the owl there', async () => {
+    signInAs('learner');
+    const el = await open('/assistant');
+    expect(el.querySelector('app-header')).not.toBeNull();
+    expect(el.querySelector('.app-shell')?.classList).toContain(
+      'app-shell--fill',
+    );
+    expect(el.querySelector('app-owl button')).toBeNull();
+  });
+
+  describe('the quick assistant panel', () => {
+    const panel = (el: HTMLElement) =>
+      el.querySelector('app-chat-widget [role="dialog"]');
+
+    it('shows while it is open, and not before', async () => {
+      signInAs('learner');
+      const closed = await open('/learn');
+      expect(panel(closed)).toBeNull();
+      TestBed.inject(AgentChatStore).open();
+      TestBed.tick();
+      await TestBed.inject(Router).navigateByUrl('/profile');
+      TestBed.tick();
+      expect(panel(closed)).not.toBeNull();
+    });
+
+    it('makes room for a docked panel, but not on the assistant screen', async () => {
+      signInAs('learner');
+      const chat = TestBed.inject(AgentChatStore);
+      chat.open();
+      chat.toggleDocked();
+      const el = await open('/learn');
+      expect(el.querySelector('.app-shell')?.classList).toContain(
+        'app-shell--docked',
+      );
+      await TestBed.inject(Router).navigateByUrl('/assistant');
+      TestBed.tick();
+      expect(el.querySelector('.app-shell')?.classList).not.toContain(
+        'app-shell--docked',
+      );
+    });
+
+    it('is hidden on the assistant screen, which is the full version', async () => {
+      signInAs('learner');
+      TestBed.inject(AgentChatStore).open();
+      const el = await open('/assistant');
+      expect(el.querySelector('app-chat-widget')).toBeNull();
+    });
+
+    it('is not offered to a user without the assistant function', async () => {
+      const profile = seedProfile(USERS.learner);
+      session.user.set({
+        ...profile,
+        menus: profile.menus.filter((code) => code !== 'AI_ASSISTANT'),
+      });
+      TestBed.inject(AgentChatStore).open();
+      const el = await open('/learn');
+      expect(panel(el)).toBeNull();
+    });
+
+    it('is not on focus or bare routes', async () => {
+      signInAs('learner');
+      TestBed.inject(AgentChatStore).open();
+      const focus = await open('/lesson/c1/l1');
+      expect(focus.querySelector('app-chat-widget')).toBeNull();
+    });
+
+    it('opens and closes from the owl, and Escape hands focus back to it', async () => {
+      signInAs('learner');
+      const el = await open('/learn');
+      const owl = el.querySelector<HTMLButtonElement>('app-owl button')!;
+      owl.click();
+      TestBed.tick();
+      expect(panel(el)).not.toBeNull();
+      expect(owl.getAttribute('aria-expanded')).toBe('true');
+      expect(owl.getAttribute('aria-controls')).toBe(panel(el)?.id);
+      el.querySelector('textarea')?.dispatchEvent(
+        new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }),
+      );
+      TestBed.tick();
+      expect(panel(el)).toBeNull();
+      expect(owl.getAttribute('aria-expanded')).toBe('false');
+      expect(document.activeElement).toBe(owl);
+    });
+
+    it('moves with the owl off the dev toolbar', async () => {
+      signInAs('learner');
+      TestBed.inject(AgentChatStore).open();
+      const fixture = TestBed.createComponent(AppShell);
+      await router.navigateByUrl('/learn');
+      flushCounts();
+      await fixture.whenStable();
+      TestBed.tick();
+      const el = fixture.nativeElement as HTMLElement;
+      const beside = () => [
+        el.querySelector('app-owl')?.classList.contains('owl--beside-toolbar'),
+        el
+          .querySelector('app-chat-widget')
+          ?.classList.contains('chat-widget--beside-toolbar'),
+      ];
+      const devToolbar = (
+        fixture.componentInstance as unknown as {
+          devToolbar: WritableSignal<Type<unknown> | null>;
+        }
+      ).devToolbar;
+      devToolbar.set(null);
+      TestBed.tick();
+      expect(beside()).toEqual([false, false]);
+      devToolbar.set(DevToolbarStub);
+      TestBed.tick();
+      expect(beside()).toEqual([true, true]);
+    });
   });
 
   it('drops the frame for focus routes', async () => {
@@ -224,6 +371,7 @@ describe('AppShell', () => {
     expect(el.querySelector('app-sidebar')).toBeNull();
     expect(el.querySelector('app-header')).toBeNull();
     expect(el.querySelector('main')).not.toBeNull();
+    expect(el.querySelector('app-owl')).toBeNull();
   });
 
   it('drops the frame for bare routes and for visitors', async () => {
@@ -231,6 +379,7 @@ describe('AppShell', () => {
     expect(visitor.querySelector('app-sidebar')).toBeNull();
     expect(visitor.querySelector('app-header')).toBeNull();
     expect(visitor.querySelector('main')).not.toBeNull();
+    expect(visitor.querySelector('app-owl')).toBeNull();
   });
 
   describe('collapsing the sidebar', () => {
@@ -266,7 +415,7 @@ describe('AppShell', () => {
       const el = await open('/learn');
       toggle(el)?.click();
       TestBed.tick();
-      expect(hrefs(el)).toHaveLength(6);
+      expect(hrefs(el)).toHaveLength(7);
       expect(
         el.querySelector('nav a[href="/progress"]')?.textContent?.trim(),
       ).toBe('Tiến độ học tập');
@@ -311,7 +460,7 @@ describe('AppShell', () => {
       expect(button?.getAttribute('aria-expanded')).toBe('false');
 
       await openDrawer(el);
-      expect(dialog()?.querySelectorAll('nav a')).toHaveLength(6);
+      expect(dialog()?.querySelectorAll('nav a')).toHaveLength(7);
       expect(dialog()?.querySelector('.sidebar__toggle')).toBeNull();
       expect(button?.getAttribute('aria-expanded')).toBe('true');
     });
