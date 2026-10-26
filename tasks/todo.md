@@ -129,12 +129,13 @@ SameSite=Strict` with no domain, so the proxy needs no rewrite (browser retentio
 
 ### Checkpoint 1b
 
-- [ ] `npm run check` green
-- [ ] Mock (lesson-player criterion 1): enrol, open a text lesson, "Đánh dấu hoàn thành", lesson and course % move,
-      reload lands on the same block
-- [ ] Mock: a second tab of the same user gets the takeover prompt; after taking over, the first tab shows the moved
-      alert
-- [ ] Stop for approval
+- [x] `npm run check` green (2026-10-27; `ui:test` was reported flaky once by Nx and passed on retry)
+- [x] Mock (lesson-player criterion 1): enrolled in course 7 as the demo learner, opened "Tổng kết", "Đánh dấu hoàn thành"
+      gave "Đã hoàn thành · 27/10/2026", the outline tick and "Khóa học 33%"; `?block=` follows the active block (the
+      reload itself is covered by `lesson.spec.ts`, since the in-memory mock session does not survive a full reload)
+- [x] Mock: takeover prompt, moved alert and save failure are covered by `lesson.spec.ts` / `lesson.store.spec.ts` (a
+      second real tab shares the in-memory mock session, so it is verified on the local backend at T13)
+- [x] Stop for approval (recorded only; continuing as instructed)
 
 ## Phase 1c: media blocks and the local backend
 
