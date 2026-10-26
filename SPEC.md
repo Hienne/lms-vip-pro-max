@@ -1,130 +1,168 @@
-# Capability map: AI chatbot with tool calls ("Trợ lý nhanh")
+# Capability map: learner and lesson APIs ("Học viên & bài học")
 
-Status: **built and verified on the local backend 2026-10-24; plan in [tasks/plan.md](tasks/plan.md). Deviations and known gaps are in the "Implementation notes (as built)" of each module spec.**
+Status: **map and the six module specs approved 2026-10-26; plan in [tasks/plan.md](tasks/plan.md). Nothing is built yet.**
 
-Replaces the map of the AI assistant RAG initiative (shipped in PR #40; that map is in git history). Its module
-specs (`SPEC-kb-*.md`, `SPEC-doc-tracker.md`, `SPEC-assistant-screen.md`, `SPEC-owl-indicator.md`) stay beside
-this file as the reference for the shipped modules this initiative builds on.
+Replaces the map of the AI chatbot initiative (shipped in PR #42; that map is in git history). Its module specs
+(`SPEC-agent-*.md`, `SPEC-chat-widget.md`, `SPEC-owl-launcher.md`) and the older `SPEC-kb-*.md`,
+`SPEC-doc-tracker.md`, `SPEC-assistant-screen.md`, `SPEC-owl-indicator.md` stay beside this file as the reference
+for shipped modules.
 
 ## Objective
 
-A small chatbot docked in the bottom-right corner of every app page, separate from the "Trợ lý AI" screen
-(`/assistant`). The user opens and closes it from the owl. In it they can:
+The backend (`corebanking-academy`, `learning` package) serves the whole learner flow and the asset library, but
+the app calls only the catalogue (`/me/learning/catalog`, `/me/learning/courses`) and the course authoring
+endpoints. A learner can find a course and cannot open it. This initiative wires the 18 backend endpoints the app
+does not use yet, through the screens that need them, so a learner can enrol, study a lesson (video, PDF, text,
+process, image, attachment) with progress saved by the server, see their progress and reminders, and an author
+can manage media and course shares.
 
-1. ask about the uploaded documents, answered from the shared knowledge base with the same citations as
-   `/assistant`;
-2. ask it to **open a screen** ("mở trang quản lý người dùng"), limited to the screens the user's role grants;
-3. ask it to **update their own profile** ("đổi email của tôi thành …"), which runs only after the user
-   confirms the change in the chat.
+Users: learners (`hocvien`), and authors and admins for `asset-library` and `course-sharing`.
 
-The model is `qwen3:8b` on the local Ollama, called with tools. The backend (`corebanking-academy`) runs
-locally. Creating and assigning courses are the next tools, after this map ships (see Out of scope); the
-tool registry is designed so adding them touches only `agent-tools` and the action card.
+## The 18 endpoints
+
+| #   | Endpoint                                                                       | In contracts today          | Module               |
+| --- | ------------------------------------------------------------------------------ | --------------------------- | -------------------- |
+| 1   | `POST /api/v1/courses/{courseId}/enrollments`                                  | yes (`enroll`), unused      | `lesson-player`      |
+| 2   | `GET /api/v1/me/learning/enrollments/{enrollmentId}`                           | yes (`enrollment`), unused  | `lesson-player`      |
+| 3   | `POST /api/v1/me/learning/sessions`                                            | no                          | `lesson-player`      |
+| 4   | `PUT /api/v1/me/learning/enrollments/{enrollmentId}/blocks/{blockId}/progress` | yes, **schema out of date** | `lesson-player`      |
+| 5   | `GET /api/v1/learning-assets/{assetId}/content`                                | yes, unused                 | `lesson-player`      |
+| 6   | `GET /api/v1/me/learning/progress/summary`                                     | no                          | `learner-progress`   |
+| 7   | `GET /api/v1/me/learning/progress/export` (CSV)                                | no                          | `learner-progress`   |
+| 8   | `GET /api/v1/me/learning/reminders`                                            | yes, unused                 | `learning-reminders` |
+| 9   | `POST /api/v1/me/learning/reminders/{reminderId}/read`                         | yes, unused                 | `learning-reminders` |
+| 10  | `GET /api/v1/learning-assets`                                                  | no                          | `asset-library`      |
+| 11  | `POST /api/v1/learning-assets/uploads`                                         | no                          | `asset-library`      |
+| 12  | `GET /api/v1/learning-assets/uploads/{uploadId}`                               | no                          | `asset-library`      |
+| 13  | `PUT /api/v1/learning-assets/uploads/{uploadId}/parts/{partNumber}`            | no                          | `asset-library`      |
+| 14  | `POST /api/v1/learning-assets/uploads/{uploadId}/complete`                     | no                          | `asset-library`      |
+| 15  | `DELETE /api/v1/learning-assets/uploads/{uploadId}`                            | no                          | `asset-library`      |
+| 16  | `DELETE /api/v1/learning-assets/{assetId}`                                     | no                          | `asset-library`      |
+| 17  | `GET /api/v1/courses/{courseId}/shares`                                        | yes, unused                 | `course-sharing`     |
+| 18  | `PUT /api/v1/courses/{courseId}/shares`                                        | yes, unused                 | `course-sharing`     |
+
+`learner-home` adds no new endpoint: it reuses #6, #8 and the shipped `myCourses`.
+
+Not wired: `GET /api/v1/learning-assets/{assetId}/gateway-authorization` is called by the media gateway with
+`X-Media-Gateway-Key`, never by the browser.
 
 ## Modules
 
-| Module id         | Repo                  | Responsibility                                                                                                                                         | Depends on                                       |
-| ----------------- | --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------ |
-| `agent-runtime`   | `corebanking-academy` | Ollama tool calling (`tools`, `tool_calls`), the agent loop with a step cap, NDJSON stream, the tool registry, pending actions with confirm and cancel | `kb-storage` (shipped: `OllamaClient`, settings) |
-| `agent-tools`     | `corebanking-academy` | The three tools: `search_documents` (reuses `kb-chat` retrieval and citations), `open_screen`, `update_profile`                                        | `agent-runtime`, `kb-chat`, identity             |
-| `agent-contracts` | this repo             | zod schemas for the request, stream events and actions; endpoint registry; fixtures; mock API handlers                                                 | `agent-runtime`, `agent-tools`                   |
-| `chat-widget`     | this repo             | App-level store (conversation in `sessionStorage`, streaming, pending action) and the floating chat panel with the action card and source badges       | `agent-contracts`                                |
-| `owl-launcher`    | this repo             | The owl becomes the widget's launcher: a click opens and closes the panel, while it keeps showing document processing                                  | `chat-widget`, `owl-indicator` (shipped)         |
+| Module id            | Screens                                                     | Responsibility                                                                                                                                                                    | Depends on                                                |
+| -------------------- | ----------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------- |
+| `lesson-player`      | `course/:id`, `lesson/:courseId/:lessonId` (mockup F.3–F.6) | Course page with enrol and resume; the lesson player per block type; the study session (claim, fence, takeover on another device); progress events; media playback                | shipped `catalog`                                         |
+| `learner-progress`   | `progress` (F.8)                                            | Summary counts, the personal course table (shipped `myCourses`), CSV export                                                                                                       | —                                                         |
+| `learning-reminders` | `notifications` (E.3)                                       | Due reminders, mark as read, unread count on the menu                                                                                                                             | —                                                         |
+| `learner-home`       | `learn` (F.1)                                               | Continue learning, summary counts, my courses by state, due dates, latest reminders; no radar, scores or streak while the backend returns `unavailable`                           | `lesson-player`, `learner-progress`, `learning-reminders` |
+| `asset-library`      | course editor, lesson form                                  | Pick a file from the library; chunked upload (8 MiB parts, SHA-256 of the whole file) with progress, resume and cancel, replacing today's one-shot upload; delete an unused asset | —                                                         |
+| `course-sharing`     | course list (`admin/courses`), row menu → drawer            | List and change the units a course is shared with                                                                                                                                 | —                                                         |
 
-Module specs: [SPEC-agent-runtime.md](SPEC-agent-runtime.md) · [SPEC-agent-tools.md](SPEC-agent-tools.md) ·
-[SPEC-agent-contracts.md](SPEC-agent-contracts.md) · [SPEC-chat-widget.md](SPEC-chat-widget.md) ·
-[SPEC-owl-launcher.md](SPEC-owl-launcher.md).
+Each module owns its contracts (zod schema, endpoint, fixture, mock handler) and its screen, so each ships and is
+verified on its own. Dependencies point one way; only `learner-home` depends on other modules of this map, and only
+on their contracts and the lesson route.
 
-Dependency direction is one way: backend runtime → backend tools → FE contracts → widget → owl. The
-contract between the backend and the app (request, stream events, action shape) is specified in
-`SPEC-agent-runtime.md`, with each tool's arguments and result in `SPEC-agent-tools.md`.
+Build order (one phase at a time; each ends with `npm run check`, a run on the local backend, a commit and a stop
+for approval):
 
-Build order (one phase at a time, each ends with its checks, a commit and a stop for approval):
+| Phase | Modules                             |
+| ----- | ----------------------------------- |
+| 0     | this map, then the six module specs |
+| 1     | `lesson-player`                     |
+| 2     | `learner-progress`                  |
+| 3     | `learning-reminders`                |
+| 4     | `learner-home`                      |
+| 5     | `asset-library`                     |
+| 6     | `course-sharing`                    |
 
-| Phase | Modules                                        |
-| ----- | ---------------------------------------------- |
-| 0     | this map, then the five module specs           |
-| 1     | `agent-runtime`                                |
-| 2     | `agent-tools`                                  |
-| 3     | `agent-contracts` → `chat-widget`              |
-| 4     | `owl-launcher`                                 |
-| 5     | end-to-end run on the local backend and Ollama |
+Module specs, in build order: [SPEC-lesson-player.md](SPEC-lesson-player.md) ·
+[SPEC-learner-progress.md](SPEC-learner-progress.md) · [SPEC-learning-reminders.md](SPEC-learning-reminders.md) ·
+[SPEC-learner-home.md](SPEC-learner-home.md) · [SPEC-asset-library.md](SPEC-asset-library.md) ·
+[SPEC-course-sharing.md](SPEC-course-sharing.md).
 
-## Decisions (from the 2026-10-24 questions)
+## Decisions (from the 2026-10-26 questions)
 
-| #   | Decision                                                                                                                                                                                                                                                                                                                                                                                                                                        |
-| --- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| C1  | **The backend runs the agent loop.** Read-only tools (`search_documents`, `open_screen`) run as soon as the model calls them. A tool that changes data (`update_profile`) does not run: the backend stores it as a pending action and streams an `action_required` event; the app shows a confirmation card, and only `POST …/actions/{id}/confirm` runs it, as the signed-in user, through the existing service (`SelfProfileService.update`). |
-| C2  | **First tools:** document search, open a screen, update own profile (full name, email, position). Course creation and assignment are out of this map.                                                                                                                                                                                                                                                                                           |
-| C3  | **The owl is the launcher.** One anchor in the corner: the owl keeps its processing states and opens or closes the chat panel on click. The owl's current click (go to `/assistant`) moves to a link inside the panel.                                                                                                                                                                                                                          |
-| C4  | **Conversation lives in the browser, per tab** (`sessionStorage`): it survives navigation and reload, and is cleared on sign-out or when the tab closes. Each request sends the last 10 turns. No new table.                                                                                                                                                                                                                                    |
+| #   | Decision                                                                                                                                           |
+| --- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
+| L1  | **All five API modules** are in scope, built in the order above.                                                                                   |
+| L2  | **`learner-home` is added** as a sixth module: the `learn` screen is migrated in this initiative.                                                  |
+| L3  | **Reminders live on the `notifications` screen** (migrated from mockup E.3), with the unread count on the menu.                                    |
+| L4  | **The asset library lives in the course editor**: the lesson form picks from the library or uploads in parts. `admin/lessons` stays a placeholder. |
+
+## Findings that shape the specs
+
+1. **`saveProgress` is out of date in the app.** The backend's `ProgressRequest` requires `sessionId`,
+   `sessionFence`, `eventType`, `expectedVersion` and `sequence` (≥ 1), and takes `assetId` and `playing`; the
+   app's `SaveProgressCommandSchema` has none of the session fields and makes `sequence` optional. The backend's
+   `ProgressResult` also returns `session` (a receipt with the accepted sequence and lease state), which the app's
+   `ProgressResultSchema` drops. `lesson-player` fixes both and the mock handler with them.
+2. **Progress needs a session.** A lesson block is studied inside a session from `POST /me/learning/sessions`
+   (one active session per account, a lease, a fence that rises on each takeover). Opening the same lesson on a
+   second device needs a "chuyển sang thiết bị này" confirmation (`takeover: true`).
+3. **Media goes through a cookie, not a bearer token.** The session response sets an HttpOnly media cookie, and
+   `/learning-assets/{id}/content` streams the file (Range requests, no envelope). `<video>` and the PDF viewer load
+   it by URL through the dev proxy.
+4. **CSV export is not JSON.** `/progress/export` returns `text/csv` with a BOM and no envelope. It is a `blob`
+   endpoint (the transport exists); `learner-progress` makes `envelopeInterceptor` read a JSON refusal on a blob
+   endpoint, so `LEARNING-EXPORT_TOO_LARGE` is not saved as a `.csv`.
+5. **The summary is partial.** `activity`, `assessment` and `competency` come back as `unavailable` until the
+   backend has a source; screens show that state instead of inventing numbers.
 
 ## Assumptions (correct any of these before approval)
 
-1. **Local run.** Postgres from the backend's `compose.yaml` (`pgvector/pgvector:pg16`, needs Docker Desktop
-   running — it is not running now), backend on `localhost:8019`, app with
-   `LMS_API_TARGET=http://localhost:8019 npm start`. Ollama 0.40.9 is installed with `qwen3:8b` and `bge-m3`.
-2. **Who sees it.** Every signed-in user with the `AI_ASSISTANT` function (all four roles today), enforced by the
-   backend on every assistant endpoint too. No new function code. The widget is hidden on `/assistant` (that screen is the full version) and on the sign-in and
-   change-password pages.
-3. **New endpoints** under `/api/v1/assistant/agent`: `POST /stream` (NDJSON, same transport as
-   `kb-chat`), `POST /actions/{actionId}/confirm`, `POST /actions/{actionId}/cancel`. Pending actions are held
-   in memory, bound to the user who caused them, and expire after 10 minutes; a restart drops them (the card
-   then says the request expired).
-4. **History is text only.** The request carries `user` and `assistant` text turns; the backend ignores any other
-   role, so a client cannot inject tool results. Each tool's result is computed on the server in the same turn.
-5. **`open_screen`** takes a function code from the user's own granted functions (the server builds the list
-   from the user's grants, the same source as `/auth/me` `nav`); the stream sends a `navigate` event with the
-   route and the app navigates. Unmigrated screens open their placeholder, as from the sidebar.
-6. **`update_profile`** accepts only `fullName`, `email`, `positionName`, validated with the same rules as
-   `PATCH /auth/me`. The card shows each field as "cũ → mới". SSO accounts get a refusal before any card. The
-   card is confirm or cancel only (no inline editing); to change a value the user says so in the chat. After
-   confirm, the app applies the refreshed `/me` to the session, as the profile page does.
-7. **Document answers** keep the `kb-chat` rules: only retrieved chunks, citations from chunk metadata selected by
-   `[n]` markers, the fixed not-found sentence; an answer with no usable `[n]` has no sources (the one difference from
-   `kb-chat`, approved 2026-10-24). The widget reuses the source badge and popover from
-   `/assistant`.
-8. **Agent loop limits:** at most 4 model calls per user turn, `think: false`, temperature 0.1, `num_ctx 8192`;
-   an unknown tool, bad arguments or the cap ends the turn with a readable Vietnamese message.
-9. **Branches:** backend `feat/ai-chatbot-agent` from `main`; this repo continues on
-   `claude/ai-chatbot-tool-call-2fcf7a`.
+1. **Local run.** Backend on `localhost:8019` with its own Postgres and object storage, app with
+   `LMS_API_TARGET=http://localhost:8019 npm start`. Each phase is verified on it with the seeded accounts, and on
+   the mock (`mockBackend: true`) for the specs.
+2. **Business rules stay on the server.** Completion modes (`manual`, `video_coverage`, `pdf_end`, `open`),
+   percentages, watched ranges and lesson unlocking come from the backend; the app sends events and renders results.
+3. **Quiz lessons are out.** The backend's quiz module is not built (`LEARNING-QUIZ_UNAVAILABLE`), so a `quiz`
+   lesson is listed in the outline as "Bài kiểm tra chưa mở" and is not a link.
+4. **No backend change.** Every endpoint exists on `corebanking-academy` `main` (`eef62e5`). A backend gap found
+   while specifying a module is written in that module's open questions, not patched here.
+5. **Branch:** this repo continues on `claude/fe-be-missing-apis-c5a9bd`, one commit per phase.
 
 ## Out of scope
 
-Creating, publishing or assigning courses (next map); any other data-changing tool; server-side conversation
-history; editing an action's values in the card; voice; uploading documents from the widget; cloud models;
-production deployment; rate limiting.
+Quiz taking and results; notes, bookmarks, transcripts and flashcards from the lesson page; the AI tab in the
+lesson; certificates and leaderboard; the `admin/lessons` screen; notification types other than learning
+reminders; backend changes; production deployment.
 
 ## Boundaries (whole initiative)
 
-- **Always:** one phase at a time, ending with its checks, a commit and a stop; this repo follows `AGENTS.md`
-  and its docs; the backend follows its `AGENTS.md` and `DEVELOPMENT_GUIDELINES.md`; every data change goes
-  through a confirmed action and the existing service with the user's own permissions; tool arguments are
-  validated on the server, never trusted from the model; UI copy in Vietnamese, code, comments and commits in
-  English.
-- **Ask first:** a new tool, and above all any tool that changes data; a new dependency (Spring AI, LangChain4j,
-  a cache library); a new table; changing `kb-chat` behaviour or the `/assistant` screen beyond reusing its
-  parts; touching the shared remote database or backend.
-- **Never:** run a data-changing tool without the user's confirmation; act with more rights than the signed-in
-  user; take a citation's source from model text; log question, answer or profile values; send anything to a
-  model other than the local Ollama; commit to `main` or commit secrets.
+- **Always:** one phase at a time, ending with its checks, a commit and a stop; follow `AGENTS.md` and the docs it
+  lists (angular.md, contracts-and-mocks.md, visual-design.md, mockup-to-angular.md); every response parsed by its
+  zod schema, types from `z.infer`; components render store selectors; UI copy in Vietnamese from the mockup, code,
+  comments and commits in English.
+- **Ask first:** a new dependency (a PDF renderer, a SHA-256 or upload library); a backend change; a contract change
+  to an endpoint another shipped screen uses; moving a screen out of this map's list.
+- **Never:** compute progress, completion or permissions in the app; put an access token in a media URL; keep a
+  file's bytes or a session id in `localStorage`; commit to `main` or commit secrets.
 
-## Success criteria (Phase 5, on the local backend)
+## Success criteria (end of Phase 6, on the local backend)
 
-1. On any page, a click on the owl opens the panel and another closes it; the owl still chews while an upload
-   processes. The conversation is still there after moving to another page and after a reload.
-2. "CIF là gì?" (with a document that covers it) answers with source badges pointing at the right file and lines;
-   an out-of-document question answers the fixed not-found sentence with no sources.
-3. Signed in as `quantri`, "mở trang quản lý người dùng" navigates to `/admin/users`; signed in as `hocvien`, the
-   same request is refused in words and nothing navigates.
-4. "Đổi chức danh của tôi thành Chuyên viên" shows a card with the old and new value; nothing changes until
-   "Xác nhận"; after it the profile page and header show the new value; "Huỷ" leaves the profile unchanged; a card
-   confirmed after 10 minutes reports it expired.
-5. FE: `npm run check` green, angular.md §14, the visual-design checklist and the migration verify step pass.
-   BE: `mvn clean verify` green (Docker running for Testcontainers).
+1. As `hocvien`: from `catalog`, open a course, enrol, open a video lesson, watch part of it, reload, and resume at
+   the saved position; the course and lesson percentages shown are the server's.
+2. A PDF block resumes at the last page; a `manual` block completes on "Đánh dấu hoàn thành".
+3. Opening the same lesson in a second browser asks to switch device; after confirming, the first one stops
+   saving and says the session moved.
+4. `progress` shows the server's counts and table; "Xuất CSV" downloads a file that opens in Excel with Vietnamese
+   text intact.
+5. `notifications` lists due reminders; opening one marks it read and the menu count drops.
+6. `learn` shows "Tiếp tục học" pointing at the right lesson, the summary counts and the latest reminders.
+7. As an author: in the course editor, upload a video over 8 MiB with a progress bar, cancel one upload, resume
+   one after a reload, pick an existing asset from the library, and delete an unused asset.
+8. As an author: share a course with another unit and see it in the share list.
+9. `npm run check` green; angular.md §14, the visual-design checklist and the migration verify step pass for every
+   migrated screen.
 
 ## Open questions
 
-1. Is `qwen3:8b` reliable enough at choosing tools in Vietnamese? Phase 1 measures it on a fixed set of ~20
-   prompts (documents, navigation, profile, chit-chat) and reports the hit rate; below 90% we revisit the
-   prompt or the tool descriptions before Phase 2.
+None for the map. The module specs leave these for approval:
+
+| Spec                 | Question                                                                       | Kind                          |
+| -------------------- | ------------------------------------------------------------------------------ | ----------------------------- |
+| `lesson-player`      | Add `pdfjs-dist` to track the PDF page (LP2)                                   | new dependency                |
+| `lesson-player`      | One active block at a time instead of the mockup's stacked blocks (LP1)        | deliberate difference         |
+| `lesson-player`      | A learner endpoint for one course; until then two lists are paged to find it   | backend gap, interim in place |
+| `learning-reminders` | Course id and title on a reminder; until then items link to the progress table | backend gap, interim in place |
+| `asset-library`      | Add `@noble/hashes` for the incremental whole-file SHA-256                     | new dependency                |
+| `course-sharing`     | Authors see only the units in their scope when sharing                         | backend gap, interim in place |
