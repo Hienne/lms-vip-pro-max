@@ -75,10 +75,12 @@ SameSite=Strict` with no domain, so the proxy needs no rewrite (browser retentio
 
 ### Checkpoint 1a
 
-- [ ] `npm run check` green
-- [ ] Mock: `hocvien` opens the optional course from `catalog`, enrols, sees the outline; the mandatory unassigned
-      course shows no button
-- [ ] Stop for approval
+- [x] `npm run check` green (2026-10-26, exit 0; Nx flagged `ui:test` as flaky, it passed on retry)
+- [x] Mock: `hocvien` opens the optional course (7, NV-402), enrols and sees the outline without leaving the page;
+      course 3 (mandatory, unassigned) shows "cần được giao để học" and no button; course 4 shows the overdue alert;
+      999 shows "Không tìm thấy khóa học". Checked at 375, 768 and 1280, light and dark. Keyboard-only pass and
+      forced error states in the browser are left to T13 (spec covers the error and retry).
+- [x] Stop for approval: recorded only, `/build auto` was approved
 
 ## Phase 1b: text lessons end to end
 
