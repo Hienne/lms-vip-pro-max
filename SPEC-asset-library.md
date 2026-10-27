@@ -181,3 +181,23 @@ video, `pageCount` 8 for PDF), cancel moves to `canceled`. `listAssets` pages fi
    a 500 MB video into memory, and it needs a secure context). Recommended: `@noble/hashes` (audited, no
    dependencies, incremental `sha256.create().update()`), run in the worker. Alternative: `hash-wasm` (faster, a
    WebAssembly blob).
+
+## Implementation notes (as built)
+
+Built in T22–T27; verified on the local backend in Checkpoint 5 of `tasks/todo.md` (a 103.5 MB MP4 in 13 parts, server
+duration 55 s).
+
+- Endpoints gained `encoding: 'binary'` and declared request `headers` (T22). `courseEndpoints.uploadAsset` and
+  `readFileFacts` are gone: the server reads duration and page count; `AssetValue` is unchanged.
+- `LEARNING-MEDIA_PROCESSING_UNAVAILABLE` is an upload `errorCode` constant, not a `MESSAGE_CODE_KIND` entry;
+  `INVALID_REFERENCE` was added to `MESSAGE_CODE_KIND`.
+- Kept uploads are keyed by position (`chapter.lesson.block`) plus block type, not by block key: keys are regenerated on every
+  load and save. Picking a new file over an interrupted upload cancels the old one on the server and forgets it.
+- `AssetLibraryStore` is provided by `LessonForm` (not by the drawer component), with `open`/`close` commands; a pick goes
+  through `CourseEditorStore.attach`.
+- The library table shows the MIME type under the file name instead of in its own column, so the actions column fits a
+  560 px drawer; sorting is on `name` and `createTime` only.
+- `ui-upload-item` gained a `processing` state and a `status` input; the `started` event carries `expiresAt`.
+- A file picked as kept upload after a reload needs the same bytes: a different file shows "Tệp không khớp tệp đang tải
+  lên." before any request.
+- Not covered: an upload interrupted before it was saved into a lesson position that later moves keeps its old position.

@@ -108,3 +108,15 @@ each state, due dates (one overdue) and reminders.
 ## Open questions
 
 None.
+
+## Implementation notes (as built)
+
+Built in T20–T21; verified on the local backend in Checkpoint 4 of `tasks/todo.md`.
+
+- `progress-counts`, `unavailable-note` and `reminder-item` were promoted to `app/shared/learning/` (T20) so `learn`,
+  `progress` and `notifications` share them.
+- No radar, scores or streak: the backend returns `unavailable` for them and the page says so once.
+- The empty state ("Khám phá khóa học") is covered by a spec with a stubbed empty `myCourses`; an administrator is
+  redirected away from `/learn`, so it was not tried on the real backend.
+- `route-learn` is owned by `longnvse` in `migration-entries.data.ts`; its entry was left alone.
+- `app.spec.ts` and `app-shell.spec.ts` now answer the requests `/learn` makes (they hung 120 s per test before).

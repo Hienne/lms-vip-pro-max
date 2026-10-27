@@ -309,3 +309,20 @@ else the first block. The query param follows the active block (`replaceUrl`), s
    PDFs open in an `<iframe>`, no page is reported, and a `pdf_end` block cannot complete.
 3. **LP1: one block at a time.** Confirm the deliberate difference above (stacked blocks would need one session per
    block, which the backend does not offer).
+
+## Implementation notes (as built)
+
+Built in tasks T1–T13 (commits `084afc7`…`40b6869`); verified on the local backend in Checkpoint 1c of `tasks/todo.md`.
+
+- The study session lives in `StudyChannel` (`features/lesson/lesson/data-access/study-channel.ts`), created by
+  `LessonStore`. Events go through a hand-written serial queue, not a `serverMutation`: a `serverMutation` cancels the
+  run in flight, and a cancelled event may still be applied by the server and break the sequence. The unsent event is
+  kept until acknowledged, so a resend after a lost answer carries the same payload.
+- `study-protocol.ts` holds the pure rules (next sequence and version, which events may carry a watched range, what each
+  refusal code means); `study-session.storage.ts` keeps `sessionId` and fence per tab in `sessionStorage`.
+- A seek to the end of a video does not complete it: only watched ranges count (checked on the backend, 11 % after a
+  jump to 29 s of 30 s).
+- One active block at a time (decision LP1). `pdfjs-dist` is pinned and its worker is a build asset; the PDF block sits in
+  `@defer`.
+- Known gaps: `CLOSE` on sign-out is not sent; forced error states are covered by specs only; the migration entries
+  stay `in-progress` until a pull request exists (`pullRequest` left empty).

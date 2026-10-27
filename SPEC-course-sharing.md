@@ -104,3 +104,19 @@ mock `listOrgs` serves the seeded orgs.
    then share only within it, and shared units outside the scope show as "Đơn vị #<id>". If authors must share
    across branches, the backend needs a unit lookup for sharing (id, name, active), or the share view should carry
    the unit name.
+
+## Implementation notes (as built)
+
+Built in T28–T29; verified on the local backend in Checkpoint 6 of `tasks/todo.md`.
+
+- `CourseSharesStore` reads the course from `CoursesStore.sharing$()` (parent store through the element injector) instead of
+  an input; the add form's 300 ms pause lives in the feature-local `app-org-picker` (an `@angular/aria` combobox over an
+  always-expanded listbox, `selectionMode="explicit"`), not in the store.
+- `app-share-rights` is the shared form of the three switches (add and inline edit). "Chia sẻ lại" resends the revoked
+  row's own rights with `active: true`, with no confirm.
+- The seeded backend has one unit only, so the local check used a child unit and a learner created as `super.admin`
+  (test data). A shared optional course shows in that unit's learner catalog whatever the rights; `canSelfEnroll` is
+  not what makes it appear, and it disappears after the revoke.
+- Open question 1 stands: a caller without `ORGANIZATION_MANAGEMENT` (such as `giangvien`) gets `ACCESS_DENIED` from
+  `GET /orgs`, so the add form offers no units and shared units show as "Đơn vị #<id>". The in-app mock has one unit, so
+  adding a unit cannot be tried on the mock.

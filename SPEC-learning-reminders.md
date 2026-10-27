@@ -111,3 +111,14 @@ modes agree.
 1. **Course on a reminder.** Ask the backend to add `courseId`, `courseTitle` and `enrollmentId` to
    `LearningReminderView`. With them each item names its course and links to `/course/:courseId`; until then the
    item links to the learner's progress table sorted by due date.
+
+## Implementation notes (as built)
+
+Built in T17–T19; verified on the local backend in Checkpoint 3 of `tasks/todo.md`.
+
+- While `navCounts` is not served, `ShellStore.unread$` is the learner's due-reminders count (refreshed on navigation and
+  on `remindersChanged`, 0 on 403 or error). Verified with the in-app mock API switched off.
+- A reminder carries no course id or title, so each item links to the progress table with its query (backend gap, interim).
+- At narrow widths the "Xem khóa học của tôi" link and the read button are both shown; the row wraps instead of hiding
+  the button.
+- A user without the learner function: covered by specs, not tried on the real backend with an administrator.

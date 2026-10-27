@@ -430,7 +430,7 @@ SameSite=Strict` with no domain, so the proxy needs no rewrite (browser retentio
 
 ## Phase 7: wrap-up
 
-- [ ] **T30 End-to-end pass and as-built notes** · S
+- [x] **T30 End-to-end pass and as-built notes** · S
   - Do: run every success criterion in SPEC.md on the local backend; add "Implementation notes (as built)" to each
     module spec (deviations, known gaps); open the pull request; fill each migration entry's `pullRequest`.
   - Accept: every SPEC.md criterion reported with how it was verified; `npm run check` green.
@@ -439,5 +439,18 @@ SameSite=Strict` with no domain, so the proxy needs no rewrite (browser retentio
 
 ### Checkpoint: complete
 
-- [ ] Every success criterion in SPEC.md met and reported with how it was verified
-- [ ] Ready for review and the pull request
+- [x] Every success criterion in SPEC.md met and reported with how it was verified. Each was run in its own phase on the
+      local backend (:8019) and recorded above; nothing was re-run as one session at the end.
+  1. Resume at the saved position, server percentages: Checkpoint 1c (1, 2), video checked later with `ffmpeg`.
+  2. PDF resumes at the last page, `manual` block completes: Checkpoint 1c (2) and 1b.
+  3. Second browser asks to switch device, the first says the session moved: Checkpoint 1c (3).
+  4. `progress` counts and table from the server, CSV with intact Vietnamese: Checkpoint 2 (1, 2); not opened in Excel.
+  5. `notifications` lists due reminders, reading one drops the bell: Checkpoint 3 (1).
+  6. `learn` continue card, counts and reminders: Checkpoint 4 (1, 2).
+  7. Over-8 MiB upload with progress, cancel, resume after a reload, pick from the library, delete an unused file:
+     Checkpoint 5.
+  8. Share with another unit and see it in the list: Checkpoint 6.
+  9. `npm run check` green at every checkpoint and at the end; the visual-design and migration checks per screen in the
+     checkpoints.
+- [x] Ready for review. Not done on purpose: no push and no pull request (as instructed), so the migration entries'
+      `pullRequest` stay empty and their entries `in-progress`.

@@ -152,3 +152,14 @@ View:
 ## Open questions
 
 None.
+
+## Implementation notes (as built)
+
+Built in T14–T16; verified on the local backend in Checkpoint 2 of `tasks/todo.md`.
+
+- `envelopeInterceptor` now reads a `blob` response whose `Content-Type` is JSON as an envelope, so
+  `LEARNING-EXPORT_TOO_LARGE` reaches the store as a refusal (T14, `contracts-and-mocks.md` updated).
+- The CSV was checked for `text/csv`, the UTF-8 BOM and Vietnamese text; it was not opened in Excel itself.
+- `EXPORT_TOO_LARGE` is covered by specs only (the real backend has too few rows to force it).
+- The table scrolls horizontally up to 1280 px; at 375 px the rows become cards.
+- Nx reported `lms:test` flaky under load a few times; the failing test was never identified and every rerun was green.
