@@ -225,8 +225,9 @@ export class OrgTreeStore {
     }
   }
 
+  /** Reads again the roots and every opened level not read yet, whichever read failed. */
   retry(): void {
     this.setError(undefined);
-    this.loadLevel(ROOT, 0);
+    [ROOT, ...this.state.expanded()].forEach((key) => this.ensureLevel(key));
   }
 }

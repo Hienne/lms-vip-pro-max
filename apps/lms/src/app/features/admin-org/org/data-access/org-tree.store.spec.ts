@@ -1,6 +1,7 @@
 import type { MockInstance } from 'vitest';
 import { TestBed } from '@angular/core/testing';
 import { organizationEndpoints } from '@lms/contracts';
+import { backendRefusal } from '@lms/mocks';
 import {
   parseAppConfig,
   provideAppConfig,
@@ -114,6 +115,15 @@ describe('OrgTreeStore', () => {
     expect(childrenOfRoot(store).at(-1)).toBe('Phòng 51');
   });
 
+  it('shows no "Xem thêm…" on the last page of a level', () => {
+    addDepartments(50);
+    const store = start();
+    store.expand(['1']);
+    TestBed.tick();
+    expect(childrenOfRoot(store)).toHaveLength(50);
+    expect(childrenOfRoot(store)).not.toContain('Xem thêm…');
+  });
+
   it('reads the loaded levels again when the change token is bumped, and not before', () => {
     const store = start();
     const changes = invalidation();
@@ -147,5 +157,54 @@ describe('OrgTreeStore', () => {
     expect(new Set(ids).size).toBe(ids.length);
     expect(ids).toHaveLength(51);
     expect(ids.at(-1)).toBe('more:1');
+  });
+
+  it('drops a "Xem thêm…" answer that lands after the reload, so no node shows twice', () => {
+    addDepartments(51);
+    const store = start();
+    const changes = invalidation();
+    TestBed.runInInjectionContext(() => store.reloadOn(changes));
+    store.expand(['1']);
+    TestBed.tick();
+
+    const hold = TestBed.inject(ReplyGate).hold(organizationEndpoints.orgTree);
+    store.select('more:1');
+    changes.bump();
+    TestBed.tick();
+    expect(hold.pending()).toBe(3);
+    // The reload's two reads land first; the second page asked before it comes last.
+    hold.releaseLast();
+    hold.releaseLast();
+    TestBed.tick();
+    hold.release();
+    TestBed.tick();
+
+    const ids = (store.nodes$()[0].children ?? []).map((node) => node.id);
+    expect(new Set(ids).size).toBe(ids.length);
+    expect(ids).toHaveLength(51);
+    expect(ids.at(-1)).toBe('more:1');
+  });
+
+  it('reads a level again on retry after its read failed', () => {
+    addDepartments(2);
+    const store = start();
+    const backend = TestBed.inject(MockBackend);
+    handle.mockImplementation((endpoint, request) =>
+      endpoint === organizationEndpoints.orgTree && 'parentId' in request.query
+        ? backendRefusal('internalError')
+        : MockBackend.prototype.handle.call(backend, endpoint, request),
+    );
+    store.expand(['1']);
+    TestBed.tick();
+    expect(store.loadError$()).toBeDefined();
+
+    handle.mockImplementation((endpoint, request) =>
+      MockBackend.prototype.handle.call(backend, endpoint, request),
+    );
+    store.retry();
+    TestBed.tick();
+    expect(store.loadError$()).toBeUndefined();
+    expect(store.expanded$()).toEqual(['1']);
+    expect(childrenOfRoot(store)).toEqual(['Phòng 1', 'Phòng 2']);
   });
 });
