@@ -1,168 +1,210 @@
-# Capability map: learner and lesson APIs ("Học viên & bài học")
+# Spec: org tree and import from file ("Cây đơn vị & Nhập từ tệp")
 
-Status: **map and the six module specs approved 2026-10-26; plan in [tasks/plan.md](tasks/plan.md). Nothing is built yet.**
+Status: **approved 2026-10-27; plan in [tasks/plan.md](tasks/plan.md). Nothing is built yet.**
 
-Replaces the map of the AI chatbot initiative (shipped in PR #42; that map is in git history). Its module specs
-(`SPEC-agent-*.md`, `SPEC-chat-widget.md`, `SPEC-owl-launcher.md`) and the older `SPEC-kb-*.md`,
-`SPEC-doc-tracker.md`, `SPEC-assistant-screen.md`, `SPEC-owl-indicator.md` stay beside this file as the reference
-for shipped modules.
+Replaces the map of the learner and lesson APIs initiative (shipped in PR #44; that map is in git history). Its
+module specs (`SPEC-lesson-player.md` and the rest) stay beside this file as the reference for shipped modules.
+
+Backend reference: `corebanking-academy/docs/api/IDENTITY.md` §3 "Cây tổ chức và nhóm" and "Nhập đơn vị/phòng và
+nhóm bằng Excel", §5 rows O1–O4, §6 item 6. Controllers: `OrganizationController` (`tree`, `contents`) and
+`OrganizationImportController`. All four endpoints are on `corebanking-academy` `main` (`eef62e5`) and answer on
+the shared backend (`/v3/api-docs`, checked 2026-10-27).
 
 ## Objective
 
-The backend (`corebanking-academy`, `learning` package) serves the whole learner flow and the asset library, but
-the app calls only the catalogue (`/me/learning/catalog`, `/me/learning/courses`) and the course authoring
-endpoints. A learner can find a course and cannot open it. This initiative wires the 18 backend endpoints the app
-does not use yet, through the screens that need them, so a learner can enrol, study a lesson (video, PDF, text,
-process, image, attachment) with progress saved by the server, see their progress and reminders, and an author
-can manage media and course shares.
+The org screen (`/admin/org`) builds its tree from `GET /orgs` (`rootOnly`, then `parentId`) and guesses which
+nodes can open: every UNIT gets a "Đang tải…" placeholder, even one with no children. Its panel needs two calls
+(`/orgs/{id}` and `/orgs/{id}/teams`). The "Nhập từ tệp" button links to `/admin/import?type=org`, a route with no
+screen. The backend now has the endpoints made for this screen; this spec wires them:
 
-Users: learners (`hocvien`), and authors and admins for `asset-library` and `course-sharing`.
+1. **Tree** — `GET /orgs/tree` loads one level at a time and says `hasChildren`, so only nodes with children in
+   the caller's scope show an expand control.
+2. **Panel** — `GET /orgs/{id}/contents` returns the node, its direct administrators and one page of its teams in
+   one call.
+3. **Import** — download the Excel template, pick a `.xlsx`, check it (`dryRun=true`), read the counts, confirm,
+   import (`dryRun=false`), then reload the tree and the panel. A refusal is a toast, as on every other screen;
+   the per-row `errors[]` are not shown in this spec.
 
-## The 18 endpoints
+Users: global administrators (orgs and teams) and ADMIN ORG (teams only, inside their active branch). Who may do
+what is decided by the server; the app only hides "Thêm đơn vị / phòng" as today (`canManageOrgs$`).
 
-| #   | Endpoint                                                                       | In contracts today          | Module               |
-| --- | ------------------------------------------------------------------------------ | --------------------------- | -------------------- |
-| 1   | `POST /api/v1/courses/{courseId}/enrollments`                                  | yes (`enroll`), unused      | `lesson-player`      |
-| 2   | `GET /api/v1/me/learning/enrollments/{enrollmentId}`                           | yes (`enrollment`), unused  | `lesson-player`      |
-| 3   | `POST /api/v1/me/learning/sessions`                                            | no                          | `lesson-player`      |
-| 4   | `PUT /api/v1/me/learning/enrollments/{enrollmentId}/blocks/{blockId}/progress` | yes, **schema out of date** | `lesson-player`      |
-| 5   | `GET /api/v1/learning-assets/{assetId}/content`                                | yes, unused                 | `lesson-player`      |
-| 6   | `GET /api/v1/me/learning/progress/summary`                                     | no                          | `learner-progress`   |
-| 7   | `GET /api/v1/me/learning/progress/export` (CSV)                                | no                          | `learner-progress`   |
-| 8   | `GET /api/v1/me/learning/reminders`                                            | yes, unused                 | `learning-reminders` |
-| 9   | `POST /api/v1/me/learning/reminders/{reminderId}/read`                         | yes, unused                 | `learning-reminders` |
-| 10  | `GET /api/v1/learning-assets`                                                  | no                          | `asset-library`      |
-| 11  | `POST /api/v1/learning-assets/uploads`                                         | no                          | `asset-library`      |
-| 12  | `GET /api/v1/learning-assets/uploads/{uploadId}`                               | no                          | `asset-library`      |
-| 13  | `PUT /api/v1/learning-assets/uploads/{uploadId}/parts/{partNumber}`            | no                          | `asset-library`      |
-| 14  | `POST /api/v1/learning-assets/uploads/{uploadId}/complete`                     | no                          | `asset-library`      |
-| 15  | `DELETE /api/v1/learning-assets/uploads/{uploadId}`                            | no                          | `asset-library`      |
-| 16  | `DELETE /api/v1/learning-assets/{assetId}`                                     | no                          | `asset-library`      |
-| 17  | `GET /api/v1/courses/{courseId}/shares`                                        | yes, unused                 | `course-sharing`     |
-| 18  | `PUT /api/v1/courses/{courseId}/shares`                                        | yes, unused                 | `course-sharing`     |
+Not a capability map: the three parts land on one screen and one store, and the import's success path reloads the
+tree and the panel, so they ship as one module in three commits.
 
-`learner-home` adds no new endpoint: it reuses #6, #8 and the shipped `myCourses`.
+## The four endpoints
 
-Not wired: `GET /api/v1/learning-assets/{assetId}/gateway-authorization` is called by the media gateway with
-`X-Media-Gateway-Key`, never by the browser.
+| #   | Endpoint                            | In contracts today | Response                                                                                              |
+| --- | ----------------------------------- | ------------------ | ----------------------------------------------------------------------------------------------------- |
+| O1  | `GET /api/v1/orgs/tree`             | no                 | `Page<OrganizationTreeNode>`; query `parentId?`, `page`, `size` (1–100, def. 20)                      |
+| O2  | `GET /api/v1/orgs/{orgId}/contents` | no                 | `{ organization, administrators, teams: Page<TeamInfo> }`; `page`, `size`, `sort`                     |
+| O3  | `GET /api/v1/orgs/import-template`  | no                 | `.xlsx` binary, no envelope (`blob` endpoint); a refusal is a JSON envelope                           |
+| O4  | `POST /api/v1/orgs/import?dryRun=`  | no                 | multipart part `file`; `{ dryRun, organizationCount, teamCount, createdOrganizations, createdTeams }` |
 
-## Modules
+`OrganizationTreeNode` = `{ id, parentId, orgType, code, name, status, sortNo, hasChildren }`, no counts.
+`organization` and `administrators` in O2 have the same schema as `GET /orgs/{id}` (`OrganizationDetailSchema`).
 
-| Module id            | Screens                                                     | Responsibility                                                                                                                                                                    | Depends on                                                |
-| -------------------- | ----------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------- |
-| `lesson-player`      | `course/:id`, `lesson/:courseId/:lessonId` (mockup F.3–F.6) | Course page with enrol and resume; the lesson player per block type; the study session (claim, fence, takeover on another device); progress events; media playback                | shipped `catalog`                                         |
-| `learner-progress`   | `progress` (F.8)                                            | Summary counts, the personal course table (shipped `myCourses`), CSV export                                                                                                       | —                                                         |
-| `learning-reminders` | `notifications` (E.3)                                       | Due reminders, mark as read, unread count on the menu                                                                                                                             | —                                                         |
-| `learner-home`       | `learn` (F.1)                                               | Continue learning, summary counts, my courses by state, due dates, latest reminders; no radar, scores or streak while the backend returns `unavailable`                           | `lesson-player`, `learner-progress`, `learning-reminders` |
-| `asset-library`      | course editor, lesson form                                  | Pick a file from the library; chunked upload (8 MiB parts, SHA-256 of the whole file) with progress, resume and cancel, replacing today's one-shot upload; delete an unused asset | —                                                         |
-| `course-sharing`     | course list (`admin/courses`), row menu → drawer            | List and change the units a course is shared with                                                                                                                                 | —                                                         |
+An invalid file is HTTP 200, `status: ERROR`, `messageCode: ORGANIZATION-IMPORT_INVALID`, `data: null` and up to
+200 `errors[]` of `{ field, code, message }`, where `field` is `Sheet[excelRow].column` (`Organizations[3].code`,
+`Teams[5].orgCode`) or `file` for file/header/limit errors. Nothing is written when there is any error. The app
+does not read `errors[]` yet: the toast shows the envelope's `messageTitle` and `message`, as for any refusal.
+An ADMIN ORG file with rows in Organizations is HTTP 403 `CORE-ACCESS_DENIED`, also a toast.
 
-Each module owns its contracts (zod schema, endpoint, fixture, mock handler) and its screen, so each ships and is
-verified on its own. Dependencies point one way; only `learner-home` depends on other modules of this map, and only
-on their contracts and the lesson route.
+## What changes in the app
 
-Build order (one phase at a time; each ends with `npm run check`, a run on the local backend, a commit and a stop
-for approval):
+### 1. Contracts (`libs/contracts/src/lib/organization`)
 
-| Phase | Modules                             |
-| ----- | ----------------------------------- |
-| 0     | this map, then the six module specs |
-| 1     | `lesson-player`                     |
-| 2     | `learner-progress`                  |
-| 3     | `learning-reminders`                |
-| 4     | `learner-home`                      |
-| 5     | `asset-library`                     |
-| 6     | `course-sharing`                    |
+- `OrganizationTreeNodeSchema`, `OrgTreeQuerySchema` (`parentId?`, `page`, `size ≤ 100`),
+  `OrganizationContentsSchema`, `OrganizationImportResultSchema`, `ORG_IMPORT_LIMITS` (5 MiB, `.xlsx` only, 1000
+  rows) and the endpoints `orgTree`, `orgContents`, `orgImportTemplate` (`responseType: 'blob'`) and `importOrgs`
+  (multipart body `{ file: File }`, query `{ dryRun: boolean }`) in `organizationEndpoints`.
+- No envelope or error-model change: `errors[]` stays unread, `ORGANIZATION-IMPORT_INVALID` is not added to
+  `MESSAGE_CODE_KIND`, and both import calls use `errors: 'toast'`.
+- `listOrgs`, `getOrg`, `listTeams` stay: the user form, the assignment picker and course sharing use `/orgs`.
 
-Module specs, in build order: [SPEC-lesson-player.md](SPEC-lesson-player.md) ·
-[SPEC-learner-progress.md](SPEC-learner-progress.md) · [SPEC-learning-reminders.md](SPEC-learning-reminders.md) ·
-[SPEC-learner-home.md](SPEC-learner-home.md) · [SPEC-asset-library.md](SPEC-asset-library.md) ·
-[SPEC-course-sharing.md](SPEC-course-sharing.md).
+### 2. Tree (`org-tree.store.ts`)
 
-## Decisions (from the 2026-10-26 questions)
+- Each level reads `orgTree` (`parentId` absent for the roots) instead of `listOrgs`. Page size 50 stays.
+- A node shows the expand control and the "Đang tải…" placeholder only when `hasChildren` is true. A node with
+  `hasChildren: false` is a leaf, whatever its `orgType`.
+- A root whose `parentId` is outside the scope is shown as a root; the app never loads its parent.
+- The store keeps `OrganizationTreeNode`s, not `OrganizationInfo`s. `units$` (the parent picker of the org form)
+  reads `{ id, code, name, orgType }` from them, which the form already uses.
+- Ignore a stale answer: a level reply for a key that is no longer wanted (the tree was reloaded) is dropped.
 
-| #   | Decision                                                                                                                                           |
-| --- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
-| L1  | **All five API modules** are in scope, built in the order above.                                                                                   |
-| L2  | **`learner-home` is added** as a sixth module: the `learn` screen is migrated in this initiative.                                                  |
-| L3  | **Reminders live on the `notifications` screen** (migrated from mockup E.3), with the unread count on the menu.                                    |
-| L4  | **The asset library lives in the course editor**: the lesson form picks from the library or uploads in parts. `admin/lessons` stays a placeholder. |
+### 3. Panel (`org.store.ts`, `org.html`)
 
-## Findings that shape the specs
+- `detailData` + `teamsData` become one `serverData` on `orgContents` keyed by `{ orgId, page }`, `size` 6,
+  `sort: 'name,asc'`. The team page resets to 0 when the node changes (the `linkedSignal` stays).
+- The panel's name, code, status, `memberCount`, `teamCount` and administrators come from
+  `contents.organization` / `contents.administrators`, not from the tree node (tree nodes carry no counts). The
+  edit drawer opens with `contents.organization`.
+- `serverData` already drops the answer for a node the user has left; the spec adds a test for it.
+- Not found or out of scope (`CORE-RESOURCE_NOT_FOUND`) shows the panel's error state with retry, as today.
 
-1. **`saveProgress` is out of date in the app.** The backend's `ProgressRequest` requires `sessionId`,
-   `sessionFence`, `eventType`, `expectedVersion` and `sequence` (≥ 1), and takes `assetId` and `playing`; the
-   app's `SaveProgressCommandSchema` has none of the session fields and makes `sequence` optional. The backend's
-   `ProgressResult` also returns `session` (a receipt with the accepted sequence and lease state), which the app's
-   `ProgressResultSchema` drops. `lesson-player` fixes both and the mock handler with them.
-2. **Progress needs a session.** A lesson block is studied inside a session from `POST /me/learning/sessions`
-   (one active session per account, a lease, a fence that rises on each takeover). Opening the same lesson on a
-   second device needs a "chuyển sang thiết bị này" confirmation (`takeover: true`).
-3. **Media goes through a cookie, not a bearer token.** The session response sets an HttpOnly media cookie, and
-   `/learning-assets/{id}/content` streams the file (Range requests, no envelope). `<video>` and the PDF viewer load
-   it by URL through the dev proxy.
-4. **CSV export is not JSON.** `/progress/export` returns `text/csv` with a BOM and no envelope. It is a `blob`
-   endpoint (the transport exists); `learner-progress` makes `envelopeInterceptor` read a JSON refusal on a blob
-   endpoint, so `LEARNING-EXPORT_TOO_LARGE` is not saved as a `.csv`.
-5. **The summary is partial.** `activity`, `assessment` and `competency` come back as `unavailable` until the
-   backend has a source; screens show that state instead of inventing numbers.
+### 4. Import from file (new drawer on the org screen)
 
-## Assumptions (correct any of these before approval)
+"Nhập từ tệp" opens a drawer on `/admin/org` instead of linking to `/admin/import?type=org` (the backend's flow
+calls it a dialog on this screen; `/admin/import` stays unbuilt for questions and users — see Open questions).
 
-1. **Local run.** Backend on `localhost:8019` with its own Postgres and object storage, app with
-   `LMS_API_TARGET=http://localhost:8019 npm start`. Each phase is verified on it with the seeded accounts, and on
-   the mock (`mockBackend: true`) for the specs.
-2. **Business rules stay on the server.** Completion modes (`manual`, `video_coverage`, `pdf_end`, `open`),
-   percentages, watched ranges and lesson unlocking come from the backend; the app sends events and renders results.
-3. **Quiz lessons are out.** The backend's quiz module is not built (`LEARNING-QUIZ_UNAVAILABLE`), so a `quiz`
-   lesson is listed in the outline as "Bài kiểm tra chưa mở" and is not a link.
-4. **No backend change.** Every endpoint exists on `corebanking-academy` `main` (`eef62e5`). A backend gap found
-   while specifying a module is written in that module's open questions, not patched here.
-5. **Branch:** this repo continues on `claude/fe-be-missing-apis-c5a9bd`, one commit per phase.
+Flow, matching IDENTITY.md "Luồng FE":
 
-## Out of scope
+1. **Tải mẫu Excel** — calls O3 and saves `organization-import-template.xlsx` through `core/files/file-saver`.
+2. **Chọn tệp** — one `<input type="file" accept=".xlsx">`. The app checks extension and size (≤ 5 MiB) before
+   sending; everything else is the server's check. Picking another file clears the previous result.
+3. **Kiểm tra** — O4 with `dryRun=true`. Success shows "Hợp lệ: N đơn vị/phòng, M nhóm". Any failure
+   (`ORGANIZATION-IMPORT_INVALID`, 403, 500, offline) is the usual toast and the file stays picked, so the user can
+   fix it and pick it again.
+4. **Nhập dữ liệu** — enabled only after a successful check of the current file; O4 with `dryRun=false`; the
+   button is disabled while either request is pending (no double submit). Success toasts "Đã nhập N đơn vị/phòng,
+   M nhóm", closes the drawer and bumps the org change token, so the tree and the panel reload. A real import can
+   still be refused (data changed since the check): toast, the drawer stays open and the check result is cleared.
 
-Quiz taking and results; notes, bookmarks, transcripts and flashcards from the lesson page; the AI tab in the
-lesson; certificates and leaderboard; the `admin/lessons` screen; notification types other than learning
-reminders; backend changes; production deployment.
+- The drawer shows the selected node's code with a copy button, as a hint for `orgCode` / `parentCode`. The app
+  never edits the file's codes.
+- ADMIN ORG sees the drawer too, with the line "Bạn chỉ nhập được nhóm trong phạm vi quản lý; để trống sheet
+  Organizations." The server enforces it.
 
-## Boundaries (whole initiative)
+State lives in a new `OrgImportStore` (`features/admin-org/org/data-access/org-import.store.ts`), provided by the
+drawer; it is handed the org change token by `OrgStore`. The drawer is a component in
+`features/admin-org/org/components/org-import/`.
 
-- **Always:** one phase at a time, ending with its checks, a commit and a stop; follow `AGENTS.md` and the docs it
-  lists (angular.md, contracts-and-mocks.md, visual-design.md, mockup-to-angular.md); every response parsed by its
-  zod schema, types from `z.infer`; components render store selectors; UI copy in Vietnamese from the mockup, code,
-  comments and commits in English.
-- **Ask first:** a new dependency (a PDF renderer, a SHA-256 or upload library); a backend change; a contract change
-  to an endpoint another shipped screen uses; moving a screen out of this map's list.
-- **Never:** compute progress, completion or permissions in the app; put an access token in a media URL; keep a
-  file's bytes or a session id in `localStorage`; commit to `main` or commit secrets.
+### 5. Mock (`libs/mocks`)
 
-## Success criteria (end of Phase 6, on the local backend)
+`mockBackend: true` must keep the screen usable: `fake-backend.ts` answers `orgTree` (from the seeded orgs, with
+`hasChildren` computed in scope), `orgContents`, `orgImportTemplate` (a tiny placeholder `.xlsx` blob) and
+`importOrgs` (fixture answers: a success and an `ORGANIZATION-IMPORT_INVALID` `ERROR` envelope; the mock
+does not parse Excel). Fixtures parse with the contract schemas.
 
-1. As `hocvien`: from `catalog`, open a course, enrol, open a video lesson, watch part of it, reload, and resume at
-   the saved position; the course and lesson percentages shown are the server's.
-2. A PDF block resumes at the last page; a `manual` block completes on "Đánh dấu hoàn thành".
-3. Opening the same lesson in a second browser asks to switch device; after confirming, the first one stops
-   saving and says the session moved.
-4. `progress` shows the server's counts and table; "Xuất CSV" downloads a file that opens in Excel with Vietnamese
-   text intact.
-5. `notifications` lists due reminders; opening one marks it read and the menu count drops.
-6. `learn` shows "Tiếp tục học" pointing at the right lesson, the summary counts and the latest reminders.
-7. As an author: in the course editor, upload a video over 8 MiB with a progress bar, cancel one upload, resume
-   one after a reload, pick an existing asset from the library, and delete an unused asset.
-8. As an author: share a course with another unit and see it in the share list.
-9. `npm run check` green; angular.md §14, the visual-design checklist and the migration verify step pass for every
-   migrated screen.
+## Tech stack
 
-## Open questions
+Angular 22 standalone, zoneless, signals; Signal Forms not needed (one file input); zod 4 contracts; `@lms/ui`
+drawer, tree, button, toast; `@lucide/angular`; Vitest. No new dependency: the browser sends the file as
+multipart (`EndpointClient` already builds `FormData`), no Excel parsing in the app.
 
-None for the map. The module specs leave these for approval:
+## Commands
 
-| Spec                 | Question                                                                       | Kind                          |
-| -------------------- | ------------------------------------------------------------------------------ | ----------------------------- |
-| `lesson-player`      | Add `pdfjs-dist` to track the PDF page (LP2)                                   | new dependency                |
-| `lesson-player`      | One active block at a time instead of the mockup's stacked blocks (LP1)        | deliberate difference         |
-| `lesson-player`      | A learner endpoint for one course; until then two lists are paged to find it   | backend gap, interim in place |
-| `learning-reminders` | Course id and title on a reminder; until then items link to the progress table | backend gap, interim in place |
-| `asset-library`      | Add `@noble/hashes` for the incremental whole-file SHA-256                     | new dependency                |
-| `course-sharing`     | Authors see only the units in their scope when sharing                         | backend gap, interim in place |
+```bash
+nvm use
+LMS_API_TARGET=http://localhost:8019 npm start   # or the shared backend via proxy.conf.mjs
+npx nx test contracts
+npx nx test mocks
+npx nx test lms
+npm run check
+```
+
+## Project structure (files touched)
+
+```
+libs/contracts/src/lib/organization/organization.schema.ts  tree node, contents, import result, limits
+libs/contracts/src/lib/organization/organization.endpoints.ts (+ .spec.ts)
+apps/lms/src/app/features/admin-org/org/data-access/org-tree.store.ts (+ .spec.ts)
+apps/lms/src/app/features/admin-org/org/data-access/org.store.ts
+apps/lms/src/app/features/admin-org/org/data-access/org-import.store.ts (+ .spec.ts)   new
+apps/lms/src/app/features/admin-org/org/components/org-import/                         new
+apps/lms/src/app/features/admin-org/org/org.html, org.ts, org.spec.ts
+libs/mocks/src/lib/backend/fake-backend.ts, fixtures
+docs/conventions/contracts-and-mocks.md   tree paging line (/orgs/tree, hasChildren)
+```
+
+## Code style
+
+Follow the existing stores: private `state` signals, setters as the only writers, commands as public methods,
+`serverData` / `serverMutation` for HTTP, selectors suffixed `$`. Example of the import command shape:
+
+```ts
+private readonly checkMutation = serverMutation(
+  (file: File) =>
+    this.client.call(organizationEndpoints.importOrgs, {
+      query: { dryRun: true },
+      body: { file },
+    }),
+  { errors: 'toast', onSuccess: (result) => this.setChecked(result) },
+);
+```
+
+## Testing strategy
+
+- **contracts:** each new schema parses the IDENTITY.md examples; `importOrgs` builds multipart with part `file`
+  and `dryRun` in the query.
+- **lms, `org-tree.store.spec.ts`:** roots from `orgTree` without `parentId`; opening a node sends `parentId`;
+  `hasChildren: false` gives a leaf with no placeholder; "Xem thêm…" reads the next page; reload on the token.
+- **lms, `org.spec.ts`:** panel renders from `orgContents`; changing node resets the team page and drops the late
+  answer for the old node.
+- **lms, `org-import.store.spec.ts`:** wrong extension / too big is refused without a request; new file clears the
+  result; confirm is disabled until a successful check and while pending; an `ORGANIZATION-IMPORT_INVALID`
+  answer toasts and leaves no check result; success bumps the change token and closes.
+- **mocks:** fixtures parse.
+- **Manual, on the backend:** as `admin` (global) import the template with one UNIT, one DEPARTMENT and one team;
+  as an ADMIN ORG account import teams only, and a file with rows in Organizations toasts the 403; a file with a
+  duplicate code toasts the backend's import refusal. Tree on a scoped account shows only its branch.
+
+## Boundaries
+
+- **Always:** AGENTS.md and the docs it lists (angular.md, contracts-and-mocks.md, visual-design.md); every
+  response parsed by its schema; UI copy in Vietnamese, code and commits in English; one commit per part
+  (contracts+tree, panel, import), `npm run check` green before each.
+- **Ask first:** a new dependency (e.g. an Excel reader); a backend change; changing the `/orgs` contract that the
+  user form, assignments and course sharing use; building the generic `/admin/import` page.
+- **Never:** validate business rules of the file in the app (duplicate codes, parents, scope); load ancestors
+  outside the scope; keep the uploaded file after the drawer closes; commit to `main` or commit secrets.
+
+## Success criteria
+
+1. On the backend, the tree of a global admin and of an ADMIN ORG shows only nodes in scope; only nodes with
+   `hasChildren` have an expand control; levels over 50 nodes page with "Xem thêm…".
+2. Selecting a node makes one request (`/contents`); the panel shows counts, administrators and paged teams.
+3. "Tải mẫu Excel" saves the backend's template.
+4. A valid file: check shows the counts, confirm imports, the new nodes appear in the tree without a page reload.
+5. An invalid file: a toast with the backend's title and message; nothing is imported and "Nhập dữ liệu" stays
+   disabled.
+6. Double-click on "Nhập dữ liệu" sends one request; changing the file clears the old result.
+7. `mockBackend: true` shows the tree, the panel, a successful import and the refusal toast.
+8. `npm run check` green; angular.md §14 and the visual-design checklist pass.
+
+## Decisions (2026-10-27)
+
+1. **Import lives in a drawer on `/admin/org`**, not on the mockup's `/admin/import` page. The route stays unbuilt.
+2. **"Nhập danh sách" on `/admin/users` is hidden**: the backend has no user import endpoint. Removing the link is
+   part of this spec (`features/admin-org/users/users.html` and its spec).
+3. **Per-row errors are a later spec.** Showing `errors[]` (sheet, row, column, message) needs an envelope and
+   `AppError` change; every refusal here is the current toast.
