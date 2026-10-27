@@ -116,7 +116,7 @@ and one team, and see them in the tree. Files: `org/components/org-import/org-im
 
 Remove the link to `/admin/import?type=users`.
 
-- [ ] The users page header has only "Thêm người dùng"; no other screen links to `/admin/import?type=users`.
+- [x] The users page header has only "Thêm người dùng"; no other screen links to `/admin/import?type=users`.
 
 Verify: `npx nx test lms -- users`. Files: `app/features/admin-org/users/users.html`, `users.spec.ts` if it
 asserts the link. Depends on: none.
