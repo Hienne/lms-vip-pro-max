@@ -294,9 +294,18 @@ document. Two switches in `AppConfig` choose, per endpoint, who answers:
   field, so the form validators must match the backend's rules (lengths, password 6 to 72 UTF-8
   bytes, `q` up to 100 characters).
 - **Paging.** Lists are paged by the server (`PageSchema`, 0-based `page`, `size` up to
-  `MAX_PAGE_SIZE`). The users list sorts on the server (`sort=id,asc`), and the org tree reads one
-  level at a time (`rootOnly`, then `parentId`), each level paged. A team lists at most five members
-  and links to `/admin/users?teamId=` for the rest.
+  `MAX_PAGE_SIZE`). The users list sorts on the server (`sort=id,asc`). The org tree reads one
+  level at a time from `GET /orgs/tree` (no `parentId` for the roots in scope, then `parentId`),
+  each level paged; only a node with `hasChildren` can open, and a root whose parent is out of
+  scope stays a root. Selectors and search keep `GET /orgs`. The panel of the picked node is one
+  `GET /orgs/{id}/contents` (node, direct administrators, a page of teams). A team lists at most
+  five members and links to `/admin/users?teamId=` for the rest.
+- **Org import.** The "Nhập từ tệp" drawer on `/admin/org` downloads `GET /orgs/import-template`
+  (a `blob` endpoint) and sends the `.xlsx` to `POST /orgs/import` as multipart part `file`, first
+  with `dryRun=true` (the check), then `dryRun=false`. The app checks only the extension and the
+  size (`ORG_IMPORT_LIMITS`); every refusal, `ORGANIZATION-IMPORT_INVALID` included, is the usual
+  toast and its `errors[]` are not read. The mock does not parse Excel: a file name containing
+  `loi`, a wrong type, a file over 5 MiB or a repeated import is refused.
 - **PATCH sends the diff only** (`toPatch`): profile (`PATCH /auth/me`), user, org and team. A field
   left out is kept, `null` clears it, an empty PATCH is not sent. `orgType` and `parentId` of an org
   cannot change after creation.

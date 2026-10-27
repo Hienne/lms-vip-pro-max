@@ -63,7 +63,7 @@ T1 contracts (schemas + endpoints)
 - [x] T5: `OrgImportStore` (template, check, import)
 - [x] T6: "Nhập từ tệp" drawer on `/admin/org`
 - [x] T7: Hide "Nhập danh sách" on `/admin/users`
-- [ ] T8: Docs and final verification
+- [x] T8: Docs and final verification
 
 ### Checkpoint C (done)
 

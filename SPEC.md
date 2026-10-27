@@ -1,6 +1,7 @@
 # Spec: org tree and import from file ("Cây đơn vị & Nhập từ tệp")
 
-Status: **approved 2026-10-27; plan in [tasks/plan.md](tasks/plan.md). Nothing is built yet.**
+Status: **approved 2026-10-27; plan in [tasks/plan.md](tasks/plan.md). Built on branch
+`claude/agent-skills-be-fe-integration-fb8624` (T1–T8); not merged.**
 
 Replaces the map of the learner and lesson APIs initiative (shipped in PR #44; that map is in git history). Its
 module specs (`SPEC-lesson-player.md` and the rest) stay beside this file as the reference for shipped modules.

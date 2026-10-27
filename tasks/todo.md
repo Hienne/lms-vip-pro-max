@@ -75,7 +75,8 @@ teams. Files: `org/data-access/org.store.ts`, `org/org.html`, `org/org.spec.ts`.
 
 ### Checkpoint B
 
-- [x] `npm run check` green (browser and backend pass done after T6, see T8); tree and panel checked on the backend for both roles; browser pass. Commit T3, T4.
+- [x] `npm run check` green; browser pass on `mockBackend: true` after T6. **Not done:** the backend pass for
+      both roles (the local backend hangs on sign-in; the shared one is not signed into from here). Commit T3, T4.
       Stop for review.
 
 ## Phase 3: import
@@ -126,7 +127,7 @@ asserts the link. Depends on: none.
 Update `docs/conventions/contracts-and-mocks.md` (paging line: the tree reads `/orgs/tree` with `hasChildren`;
 import endpoints listed), and the org entry in `migration-entries.data.ts` if it names the import route.
 
-- [ ] Every SPEC.md success criterion checked and reported with how it was verified.
+- [x] Every SPEC.md success criterion checked and reported with how it was verified.
 
 Verify: `npm run check`. Files: `docs/conventions/contracts-and-mocks.md`,
 `app/features/design-system/data-access/migration-entries.data.ts`. Depends on: T6, T7.
