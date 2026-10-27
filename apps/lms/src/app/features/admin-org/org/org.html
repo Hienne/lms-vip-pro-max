@@ -70,35 +70,35 @@
           <p class="org__admins">{{ error.message }}</p>
           }
         </div>
+        @if (store.org$(); as org) {
         <div class="org__head-actions">
-          <button uiButton (click)="store.editOrg(selected)">
+          <button uiButton (click)="store.editOrg(org)">
             <ui-icon name="pen-line" size="sm" />Sửa
           </button>
-          @if (store.canManageOrgs$()) { @if (selected.status === 'active') {
-          <button
-            uiButton
-            variant="ghost"
-            (click)="store.toggleOrgStatus(selected)"
-          >
+          @if (store.canManageOrgs$()) { @if (org.status === 'active') {
+          <button uiButton variant="ghost" (click)="store.toggleOrgStatus(org)">
             <ui-icon name="circle-pause" size="sm" />Tạm dừng
           </button>
           } @else {
-          <button uiButton (click)="store.toggleOrgStatus(selected)">
+          <button uiButton (click)="store.toggleOrgStatus(org)">
             <ui-icon name="check" size="sm" />Kích hoạt
           </button>
           } }
         </div>
+        }
       </div>
+      @if (store.org$(); as org) {
       <dl class="org__stats">
         <div class="org__stat">
           <dt>Thành viên trực tiếp</dt>
-          <dd>{{ selected.memberCount }}</dd>
+          <dd>{{ org.memberCount }}</dd>
         </div>
         <div class="org__stat">
           <dt>Nhóm</dt>
-          <dd>{{ selected.teamCount }}</dd>
+          <dd>{{ org.teamCount }}</dd>
         </div>
       </dl>
+      }
     </div>
 
     <div class="org__section-head">

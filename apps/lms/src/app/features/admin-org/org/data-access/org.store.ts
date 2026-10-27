@@ -181,6 +181,8 @@ export class OrgStore {
   readonly editingOrg$ = this.state.editingOrg.asReadonly();
   readonly editingTeam$ = this.state.editingTeam.asReadonly();
   readonly detail$ = this.detailData.value;
+  /** The picked org with its counts; tree nodes carry none. */
+  readonly org$ = computed(() => this.detailData.value()?.organization);
   readonly detailError$ = this.detailData.error;
   readonly teams$ = computed(() => this.teamsData.value()?.items ?? []);
   readonly teamsTotal$ = computed(

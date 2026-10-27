@@ -50,7 +50,7 @@ T1 contracts (schemas + endpoints)
 
 ### Phase 2: tree and panel
 
-- [ ] T3: Tree reads `/orgs/tree` with `hasChildren`
+- [x] T3: Tree reads `/orgs/tree` with `hasChildren`
 - [ ] T4: Panel reads `/orgs/{id}/contents`
 
 ### Checkpoint B

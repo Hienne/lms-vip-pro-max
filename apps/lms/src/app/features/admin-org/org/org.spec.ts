@@ -93,11 +93,13 @@ describe('Org', () => {
     await settle();
   }
 
-  it('reads the roots with rootOnly and shows the first one with its facts', async () => {
+  it('reads the roots from the tree endpoint and shows the first one with its facts', async () => {
     await open('super.admin', '000001');
-    expect(calls(organizationEndpoints.listOrgs)[0][1].query).toMatchObject({
-      rootOnly: 'true',
+    expect(calls(organizationEndpoints.orgTree)[0][1].query).toEqual({
+      page: '0',
+      size: '50',
     });
+    expect(calls(organizationEndpoints.listOrgs)).toHaveLength(0);
     expect(el.querySelector('h1')?.textContent).toBe('Đơn vị, phòng & nhóm');
     expect(el.querySelector('[role="tree"]')).not.toBeNull();
     expect(text()).toContain(ROOT.name);
@@ -244,7 +246,7 @@ describe('Org', () => {
       sortNo: 0,
     });
     expect(
-      calls(organizationEndpoints.listOrgs).some(
+      calls(organizationEndpoints.orgTree).some(
         ([, request]) => request.query['parentId'] === String(ROOT.id),
       ),
     ).toBe(true);

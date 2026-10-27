@@ -53,9 +53,9 @@ Depends on: T1.
 `OrganizationTreeNode`; the "Đang tải…" placeholder and the expand control appear only when `hasChildren`.
 `units$` and `selected$` keep working with the node type; `OrgStore` / `org-form` compile against it.
 
-- [ ] Root call has no `parentId`; opening a node sends `parentId`; "Xem thêm…" reads the next page.
-- [ ] A node with `hasChildren: false` has no children and no placeholder, whatever its `orgType`.
-- [ ] Reload on the change token rereads loaded levels; a reload during a pending level does not duplicate items.
+- [x] Root call has no `parentId`; opening a node sends `parentId`; "Xem thêm…" reads the next page.
+- [x] A node with `hasChildren: false` has no children and no placeholder, whatever its `orgType`.
+- [x] Reload on the change token rereads loaded levels; a reload during a pending level does not duplicate items.
 
 Verify: `npx nx test lms -- org-tree.store`, `npx nx test lms -- org`. Files: `org/data-access/org-tree.store.ts`,
 `org-tree.store.spec.ts`, `org/components/org-form/org-form.ts` (type only, if needed). Depends on: T2.
