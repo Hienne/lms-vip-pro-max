@@ -5,7 +5,11 @@ import {
   authV1Endpoints,
   identityEndpoints,
   knowledgeEndpoints,
+  OrganizationContentsSchema,
   organizationEndpoints,
+  OrganizationImportResultSchema,
+  OrganizationTreeNodeSchema,
+  PageSchema,
   personalEndpoints,
   RoleSchema,
   shellEndpoints,
@@ -609,6 +613,156 @@ describe('FakeBackend', () => {
       expect(code(patch('3', { code: 'bidv110b8031000' }))).toBe(
         'ORGANIZATION-TEAM_CODE_EXISTS',
       );
+    });
+  });
+
+  describe('organisation tree, contents and import', () => {
+    type TreePage = Page<{ id: number; code: string; hasChildren: boolean }>;
+    const tree = (token: string, query: Record<string, string> = {}) => {
+      const reply = call(organizationEndpoints.orgTree, token, { query });
+      return PageSchema(OrganizationTreeNodeSchema).parse(
+        reply.body.data,
+      ) as TreePage;
+    };
+    const department = (token: string, code: string, sortNo = 0) =>
+      call(organizationEndpoints.createOrg, token, {
+        body: { orgType: 'DEPARTMENT', parentId: 1, code, name: code, sortNo },
+      });
+    const xlsx = (name: string, bytes = 10) =>
+      new File([new Uint8Array(bytes)], name);
+    const importFile = (token: string, file: File, dryRun: boolean) =>
+      call(organizationEndpoints.importOrgs, token, {
+        query: { dryRun: String(dryRun) },
+        body: { file },
+      });
+
+    it('reads the roots in scope, then the children of a node, with hasChildren', () => {
+      const root = login('super.admin');
+      expect(tree(root).items).toEqual([
+        expect.objectContaining({ id: 1, hasChildren: false }),
+      ]);
+      department(root, 'PB2', 2);
+      department(root, 'PB1', 1);
+      expect(tree(root).items[0].hasChildren).toBe(true);
+      const children = tree(root, { parentId: '1' }).items;
+      expect(children.map((o) => [o.code, o.hasChildren])).toEqual([
+        ['PB1', false],
+        ['PB2', false],
+      ]);
+    });
+
+    it('pages a level and refuses a size over 100', () => {
+      const root = login('super.admin');
+      ['A', 'B', 'C'].forEach((c) => department(root, c));
+      const first = tree(root, { parentId: '1', size: '2' });
+      expect(first).toMatchObject({ totalElements: 3, totalPages: 2 });
+      expect(
+        tree(root, { parentId: '1', page: '1', size: '2' }).items,
+      ).toHaveLength(1);
+      expect(
+        code(
+          call(organizationEndpoints.orgTree, root, { query: { size: '101' } }),
+        ),
+      ).toBe('CORE-VALIDATION_FAILED');
+    });
+
+    it('starts an org admin tree at the granted node', () => {
+      expect(tree(login('quantri.ban')).items.map((o) => o.id)).toEqual([1]);
+    });
+
+    it('answers the panel contents as getOrg plus a page of listTeams', () => {
+      const root = login('super.admin');
+      const contents = OrganizationContentsSchema.parse(
+        call(organizationEndpoints.orgContents, root, {
+          params: { orgId: '1' },
+          query: { page: '1', size: '6', sort: 'name,asc' },
+        }).body.data,
+      );
+      const detail = call(organizationEndpoints.getOrg, root, {
+        params: { orgId: '1' },
+      }).body.data;
+      const teams = call(organizationEndpoints.listTeams, root, {
+        params: { orgId: '1' },
+        query: { page: '1', size: '6', sort: 'name,asc' },
+      }).body.data;
+      expect(contents).toEqual({ ...(detail as object), teams });
+      expect(
+        code(
+          call(organizationEndpoints.orgContents, root, {
+            params: { orgId: '999' },
+          }),
+        ),
+      ).toBe('CORE-RESOURCE_NOT_FOUND');
+    });
+
+    it('hands an administrator the template as an xlsx file', () => {
+      const reply = call(
+        organizationEndpoints.orgImportTemplate,
+        login('super.admin'),
+      );
+      expect(reply.file?.type).toBe(
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      );
+      expect(
+        call(organizationEndpoints.orgImportTemplate, login('hocvien')).status,
+      ).toBe(403);
+    });
+
+    it('checks a file without writing, then imports it and shows the new nodes', () => {
+      const root = login('super.admin');
+      const check = OrganizationImportResultSchema.parse(
+        importFile(root, xlsx('don-vi.xlsx'), true).body.data,
+      );
+      expect(check).toMatchObject({
+        dryRun: true,
+        createdOrganizations: 0,
+        createdTeams: 0,
+      });
+      expect(tree(root).items[0].hasChildren).toBe(false);
+
+      const done = OrganizationImportResultSchema.parse(
+        importFile(root, xlsx('don-vi.xlsx'), false).body.data,
+      );
+      expect(done).toMatchObject({
+        dryRun: false,
+        createdOrganizations: check.organizationCount,
+        createdTeams: check.teamCount,
+      });
+      expect(tree(root).items[0].hasChildren).toBe(true);
+      // The same rows again are duplicates: the whole file is refused.
+      expect(code(importFile(root, xlsx('don-vi.xlsx'), true))).toBe(
+        'ORGANIZATION-IMPORT_INVALID',
+      );
+    });
+
+    it('refuses a file named loi, a wrong type or a file over 5 MiB, with no data', () => {
+      const root = login('super.admin');
+      for (const file of [
+        xlsx('du-lieu-loi.xlsx'),
+        xlsx('don-vi.xls'),
+        xlsx('don-vi.xlsx', 5 * 1024 * 1024 + 1),
+      ]) {
+        const reply = importFile(root, file, true);
+        expect(reply.status).toBe(200);
+        expect(reply.body).toMatchObject({
+          status: 'ERROR',
+          messageCode: 'ORGANIZATION-IMPORT_INVALID',
+          messageTitle: 'Dữ liệu nhập chưa hợp lệ',
+          data: null,
+        });
+      }
+    });
+
+    it('lets an org admin import teams only, in scope', () => {
+      const orgAdmin = login('quantri.ban');
+      const result = OrganizationImportResultSchema.parse(
+        importFile(orgAdmin, xlsx('nhom.xlsx'), false).body.data,
+      );
+      expect(result).toMatchObject({
+        organizationCount: 0,
+        createdOrganizations: 0,
+      });
+      expect(result.createdTeams).toBeGreaterThan(0);
     });
   });
 

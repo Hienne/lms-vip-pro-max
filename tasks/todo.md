@@ -34,9 +34,9 @@ then id, paged, `hasChildren` from visible children), `orgContents` (the existin
 `orgImportTemplate` (a small placeholder `.xlsx` `Blob`), `importOrgs` (success with counts from the request's
 `dryRun`; a file name containing `loi` answers an `ORGANIZATION-IMPORT_INVALID` `ERROR` envelope).
 
-- [ ] Tree: roots, children, `hasChildren` false on a leaf UNIT, paging past one page.
-- [ ] Contents matches `getOrg` + `listTeams` for the same org; out of scope answers `CORE-RESOURCE_NOT_FOUND`.
-- [ ] Import success and refusal fixtures parse with the T1 schemas.
+- [x] Tree: roots, children, `hasChildren` false on a leaf UNIT, paging past one page.
+- [x] Contents matches `getOrg` + `listTeams` for the same org; out of scope answers `CORE-RESOURCE_NOT_FOUND`.
+- [x] Import success and refusal fixtures parse with the T1 schemas.
 
 Verify: `npx nx test mocks`. Files: `mocks/backend/fake-backend.ts`, its spec, an org fixtures file if one exists.
 Depends on: T1.
