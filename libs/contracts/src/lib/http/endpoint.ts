@@ -2,8 +2,11 @@ import type { z } from 'zod';
 
 export type HttpMethod = 'get' | 'post' | 'put' | 'patch' | 'delete';
 
-/** How the request body travels: JSON (default) or multipart form data for file uploads. */
-export type BodyEncoding = 'json' | 'multipart';
+/**
+ * How the request body travels: JSON (default), multipart form data for file uploads, or one
+ * `Blob` sent as `application/octet-stream` (a part of a chunked upload).
+ */
+export type BodyEncoding = 'json' | 'multipart' | 'binary';
 
 /**
  * What the response carries: JSON (default), a file received as a `Blob`, or newline-delimited
@@ -29,6 +32,7 @@ export interface EndpointDefinition<
   Body extends z.ZodType | undefined = z.ZodType | undefined,
   Response extends z.ZodType = z.ZodType,
   Kind extends ResponseKind = ResponseKind,
+  Headers extends z.ZodObject | undefined = z.ZodObject | undefined,
 > {
   readonly method: HttpMethod;
   /** Always starts with `/api/`; `{name}` segments are filled from `params`. */
@@ -37,7 +41,15 @@ export interface EndpointDefinition<
   readonly query: Query;
   readonly body: Body;
   readonly response: Response;
-  /** `'multipart'` sends a flat body as `FormData`; defaults to `'json'`. */
+  /**
+   * Request headers the caller must send, by name (`z.object({ 'X-Part-SHA256': z.string() })`).
+   * `EndpointClient` takes them from `input.headers`, required exactly when this is declared.
+   */
+  readonly headers: Headers;
+  /**
+   * `'multipart'` sends a flat body as `FormData`; `'binary'` sends the body, one `Blob` (declare
+   * `body: z.instanceof(Blob)`), as `application/octet-stream`; defaults to `'json'`.
+   */
   readonly encoding?: BodyEncoding;
   /**
    * `'blob'` receives a file (declare `response: z.instanceof(Blob)`); `'ndjson'` streams events
@@ -56,14 +68,16 @@ export type EndpointInput<
   Body extends z.ZodType | undefined,
   Response extends z.ZodType,
   Kind extends ResponseKind = ResponseKind,
+  Headers extends z.ZodObject | undefined = z.ZodObject | undefined,
 > = Omit<
-  EndpointDefinition<Path, Params, Query, Body, Response, Kind>,
-  'params' | 'query' | 'body' | 'responseType'
+  EndpointDefinition<Path, Params, Query, Body, Response, Kind, Headers>,
+  'params' | 'query' | 'body' | 'responseType' | 'headers'
 > & {
   params?: Params;
   query?: Query;
   body?: Body;
   responseType?: Kind;
+  headers?: Headers;
 };
 
 export type AnyEndpoint = EndpointDefinition<
@@ -81,16 +95,18 @@ export function defineEndpoint<
   Body extends z.ZodType | undefined = undefined,
   const Kind extends ResponseKind = 'json',
   Response extends ResponseSchemaFor<Kind> = ResponseSchemaFor<Kind>,
+  Headers extends z.ZodObject | undefined = undefined,
 >(
-  endpoint: EndpointInput<Path, Params, Query, Body, Response, Kind>,
-): EndpointDefinition<Path, Params, Query, Body, Response, Kind> {
+  endpoint: EndpointInput<Path, Params, Query, Body, Response, Kind, Headers>,
+): EndpointDefinition<Path, Params, Query, Body, Response, Kind, Headers> {
   return endpoint as EndpointDefinition<
     Path,
     Params,
     Query,
     Body,
     Response,
-    Kind
+    Kind,
+    Headers
   >;
 }
 

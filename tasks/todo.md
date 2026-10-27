@@ -321,7 +321,7 @@ SameSite=Strict` with no domain, so the proxy needs no rewrite (browser retentio
 
 ## Phase 5: `asset-library`
 
-- [ ] **T22 Binary transport** · S · _new transport, early in the phase_
+- [x] **T22 Binary transport** · S · _new transport, early in the phase_
   - Accept: `defineEndpoint` `encoding: 'binary'` (one `Blob`, `application/octet-stream`) and an optional `headers`
     schema; `EndpointClient` sets declared headers, required exactly when declared (type and runtime);
     `contracts-and-mocks.md` documents both.
