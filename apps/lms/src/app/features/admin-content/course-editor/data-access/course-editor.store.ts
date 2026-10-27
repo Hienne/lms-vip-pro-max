@@ -557,14 +557,21 @@ export class CourseEditorStore {
     const { blockKey, blockType, blockIndex, file } = request;
     this.release(blockKey);
     const target = this.state.editingLesson();
+    const position = target
+      ? `${target.chapter}.${target.lesson}.${blockIndex}`
+      : undefined;
+    // A file picked over an interrupted upload replaces it: the old one is forgotten.
+    for (const stale of this.state.kept()) {
+      if (stale.position === position && stale.uploadId !== resumed?.uploadId) {
+        this.cancelOnServer(stale.uploadId);
+      }
+    }
     const context: UploadContext = {
       blockKey,
       blockType,
       name: file.name,
       sizeBytes: file.size,
-      position: target
-        ? `${target.chapter}.${target.lesson}.${blockIndex}`
-        : undefined,
+      position,
       resumed,
     };
     this.setUpload(blockKey, {

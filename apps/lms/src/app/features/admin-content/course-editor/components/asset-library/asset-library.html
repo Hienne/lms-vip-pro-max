@@ -38,19 +38,19 @@
       [description]="store.query$() ? 'Thử đổi từ khóa.' : ''"
     />
     <ng-template uiDataTableCell="name" [of]="store.rows$()" let-row>
-      <button
-        uiButton
-        variant="ghost"
-        size="sm"
-        class="asset-library__pick"
-        [attr.aria-label]="'Chọn ' + row.name"
-        (click)="picked.emit(row.asset)"
-      >
-        {{ row.name }}
-      </button>
-    </ng-template>
-    <ng-template uiDataTableCell="type" [of]="store.rows$()" let-row>
-      <span class="asset-library__mime">{{ row.mimeType }}</span>
+      <div class="asset-library__file">
+        <button
+          uiButton
+          variant="ghost"
+          size="sm"
+          class="asset-library__pick"
+          [attr.aria-label]="'Chọn ' + row.name"
+          (click)="picked.emit(row.asset)"
+        >
+          {{ row.name }}
+        </button>
+        <span class="asset-library__mime">{{ row.mimeType }}</span>
+      </div>
     </ng-template>
     <ng-template uiDataTableCell="size" [of]="store.rows$()" let-row>
       <span class="asset-library__num">{{ row.sizeBytes | fmtBytes }}</span>

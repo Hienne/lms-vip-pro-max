@@ -370,9 +370,25 @@ SameSite=Strict` with no domain, so the proxy needs no rewrite (browser retentio
 
 ### Checkpoint 5
 
-- [ ] `npm run check` green
-- [ ] asset-library success criteria 1–5 on the local backend (criterion 1 needs `ffmpeg`)
-- [ ] Stop for approval
+- [x] `npm run check` green (14 tasks)
+- [x] asset-library success criteria 1–5 on the local backend (criterion 1 needs `ffmpeg`)
+  - 1: a 103.5 MB mp4 uploaded in 13 parts with progress, then "Đang xử lý tệp…"; server `ready`, `durationSeconds` 55,
+    asset 9.
+  - 2: network cut at 32 MB (blocked requests + `offline` event) → "Mất kết nối, sẽ tiếp tục khi có mạng."; back online it
+    went on at 40 MB, not from 0, and finished `ready`. Reload at 16 MB → "Tải lên bị gián đoạn…" after reopening the lesson;
+    a different file → "Tệp không khớp tệp đang tải lên."; the same file → hashed again, then continued from the server's
+    next part to `ready`.
+  - 3: "Hủy" mid-upload removes the row; `GET /learning-assets/uploads/{id}` → `canceled` (16 MB uploaded).
+  - 4: library drawer lists ready files of the block's media type; picking one joins the block; deleting an unused file
+    removes it (toast "Đã xóa tệp khỏi thư viện"); deleting a used file refuses with "Tài nguyên còn được sử dụng trong nội
+    dung học tập."
+  - 5: 375 px (dark) and the desktop width: no horizontal page scroll, library rows become cards at 375, Escape closes only
+    the library drawer and returns focus to the "Chọn từ thư viện" button.
+  - Fixed on the way: picking a new file over an interrupted upload left the old one in the kept list (it came back after
+    the new upload was cancelled); it is now cancelled on the server and forgotten (spec added). Library table: the MIME
+    moved under the file name so the action column fits a 560 px drawer; in-progress and interrupted rows get the block's
+    icon; `share.backend.spec.ts` typecheck fixed.
+- [x] Stop for approval (note only; continuing)
 
 ## Phase 6: `course-sharing`
 

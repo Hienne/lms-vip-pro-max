@@ -26,8 +26,14 @@
     overflow-wrap: anywhere;
   }
 
+  &__file {
+    @include ui.stack(1);
+    min-inline-size: 0;
+  }
+
   &__mime {
     @include ui.text(xs, muted);
+    padding-inline: ui.space(3);
     overflow-wrap: anywhere;
   }
 

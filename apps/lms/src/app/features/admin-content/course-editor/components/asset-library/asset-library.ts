@@ -21,7 +21,6 @@ import {
 
 const COLUMNS: readonly DataTableColumn[] = [
   { key: 'name', label: 'Tên tệp' },
-  { key: 'type', label: 'Loại', sortable: false },
   { key: 'size', label: 'Dung lượng', sortable: false },
   { key: 'uploaded', label: 'Ngày tải lên' },
   { key: 'actions', label: 'Thao tác', kind: 'actions' },

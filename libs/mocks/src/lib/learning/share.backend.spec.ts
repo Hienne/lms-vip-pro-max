@@ -55,7 +55,8 @@ describe('course shares in the mock backend', () => {
       'canSelfEnroll',
       'active',
     ]) {
-      const { [missing]: _gone, ...rest } = command();
+      const rest: Record<string, unknown> = command();
+      delete rest[missing];
       expect(ShareCourseCommandSchema.safeParse(rest).success).toBe(false);
     }
   });

@@ -377,6 +377,27 @@ describe('CourseEditor', () => {
       expect(kept()).toEqual([]);
     });
 
+    it('forgets an interrupted upload when another file is picked for its block', async () => {
+      await interruptedAttachment();
+      const drawer = screen.drawer()!;
+      const { uploadId } = kept()[0];
+      const again = Array.from(
+        drawer.querySelectorAll<HTMLInputElement>('input[type=file][hidden]'),
+      ).at(-2)!;
+
+      vi.useFakeTimers();
+      pick(again, pdf('khac.pdf'));
+      await advance(POLL_MS * 3);
+      vi.useRealTimers();
+      await screen.settle();
+
+      expect(screen.lastCall(assetEndpoints.cancelUpload)?.params).toEqual({
+        uploadId,
+      });
+      expect(kept()).toEqual([]);
+      expect(screen.text(drawer)).not.toContain('Tải lên bị gián đoạn');
+    });
+
     it('forgets an interrupted upload on "Hủy"', async () => {
       await interruptedAttachment();
       const drawer = screen.drawer()!;

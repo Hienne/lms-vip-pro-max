@@ -103,6 +103,7 @@
         <ui-upload-item
           [name]="entry.name"
           [size]="entry.sizeBytes"
+          [icon]="blockTypes[block().value().blockType].icon"
           [state]="itemState(entry)"
           [progress]="entry.percent"
           [status]="entry.status"
@@ -144,7 +145,11 @@
         </div>
         } } @else if (interrupted()[i]; as kept) { @if (kept.blockType ===
         block().value().blockType) {
-        <ui-upload-item [name]="kept.name" [size]="kept.sizeBytes" state="error"
+        <ui-upload-item
+          [name]="kept.name"
+          [size]="kept.sizeBytes"
+          [icon]="blockTypes[block().value().blockType].icon"
+          state="error"
           >{{ kept.message ?? 'Tải lên bị gián đoạn. Chọn lại đúng tệp này để
           tiếp tục.' }}</ui-upload-item
         >
