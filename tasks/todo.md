@@ -436,6 +436,22 @@ SameSite=Strict` with no domain, so the proxy needs no rewrite (browser retentio
   - Accept: every SPEC.md criterion reported with how it was verified; `npm run check` green.
   - Files: `SPEC*.md`, `migration-entries.data.ts`.
   - Depends on: T29.
+  - Known gaps (ship review, left as they are; no code):
+    - No Content-Security-Policy is set for the app.
+    - A sign-out clears the study-session keys only; the kept-upload keys (`lms.asset-uploads.v1.*`) and the study
+      session keys of other users stay in the browser until they are read again.
+    - `zod` is pinned at 4.6.6; check it against the release notes before the next upgrade.
+    - `URL.revokeObjectURL` is called right after the CSV and attachment saves; a slow browser may start the download
+      later than the revoke.
+    - `settle()` in the screen specs waits a fixed number of ticks; a slow machine can make a spec flaky.
+    - `learn.ts:33` still warns NG8113 for the unused `Button` import.
+    - The envelope interceptor reads a large JSON blob into memory before parsing it.
+    - A PDF loading task is not cancelled when the PDF block is left.
+    - The notification bell reads the count again on every navigation.
+  - Fixed after the review (one commit each, test first): the harness fails an unmocked request at once and can hold a
+    reply (`ReplyGate`); the study heartbeat and claims stop after `destroy()`; a cancelled upload sends nothing more;
+    `CLOSE` carries the video range; a block change keeps the queued events; `reclaim()` waits for the event in
+    flight; the export-too-large assertion checks the real toast.
 
 ### Checkpoint: complete
 
