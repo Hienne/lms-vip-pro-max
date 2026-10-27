@@ -180,10 +180,16 @@ SameSite=Strict` with no domain, so the proxy needs no rewrite (browser retentio
      block, enrolled as `hocvien`): the PDF rendered through pdf.js with the worker asset, `PDF_PAGE` on pages 2 and
      3 completed the `pdf_end` block, leaving and coming back reopened it at page 3 ("Đã mở lại tại trang 3."); the
      image loaded through the `academy_media` cookie; the attachment's content answered 200 with the cookie.
-     **Video: not verified on the local backend.** `ffmpeg` is not installed and was not installed (decision of the
-     starting session); the video block is verified on the mock and in specs only (PLAY, 10 s beat with range, PAUSE,
-     heartbeat-then-SEEK, resume position, error state with "Thử lại"). Seeking past the end and completion by
-     threshold are therefore the server's behaviour, unverified here.
+     Video, first left out because `ffmpeg` was missing and verified later (2026-10-27, after `brew install ffmpeg`,
+     `ffprobe 9.0.2`; the running backend picked it up from its PATH without a restart): `giangvien` uploaded a
+     30 s H.264/AAC MP4 (asset 6, `ready`, duration 30.0 read by the server), built and published course
+     `FE-LP-T13V` with two `video_coverage` blocks (threshold 90) on that asset, `hocvien` enrolled. In the player
+     (`/lesson/8/18`) the video loaded through the `academy_media` cookie. Block "Video xem đủ" played to the end:
+     seven progress requests, all 200, the block ended `completed`, 100 %, `watchedSeconds` 30. Block "Video tua đến
+     cuối" played 2.5 s, then seeked to 29 s and ended: position 30, `watchedSeconds` 3.3, 11 %, `in_progress`, no
+     `completedAt`. So a seek to the end does not complete a video; only watched ranges count. Earlier mock/spec
+     coverage of the player stays as it was (PLAY, 10 s beat with range, PAUSE, heartbeat-then-SEEK, resume
+     position, error state with "Thử lại").
   3. Two tabs of the same user on the local backend: the second tab asked "Bài học đang mở ở nơi khác", after "Học trên
      thiết bị này" the first tab showed "Bài học đã chuyển sang thiết bị khác." on its next event. Heartbeats went every
      20 s with 200; no `STALE_EVENT` or `CONFLICT` in the network log.
