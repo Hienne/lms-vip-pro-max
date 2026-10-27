@@ -3,41 +3,28 @@ import {
   BookmarkCommandSchema,
   personalEndpoints,
   type AnyEndpoint,
-  type PersonalNotification,
   type SavedItem,
 } from '@lms/contracts';
 import { envelopeError, envelopeOk } from '../envelope';
 import type { FakeReply, FakeRequest } from '../backend/fake-backend';
 import {
-  achievementFixture,
   certificateFixtures,
   demoCertificatePdf,
-  notificationFixtures,
   savedFixtures,
 } from './personal.fixtures';
 
-/** Stateful development fixture, isolated per authenticated caller. No achievement rules are calculated here. */
+/** Stateful development fixture, isolated per authenticated caller.  */
 export class PersonalFakeBackend {
-  private readonly users = new Map<
-    string,
-    { saved: SavedItem[]; notifications: PersonalNotification[] }
-  >();
+  private readonly users = new Map<string, { saved: SavedItem[] }>();
   private state(userId: string) {
     let state = this.users.get(userId);
     if (!state) {
       state = {
         saved: structuredClone(savedFixtures),
-        notifications: structuredClone(notificationFixtures),
       };
       this.users.set(userId, state);
     }
     return state;
-  }
-  navCounts(userId: string) {
-    return {
-      notifications: this.state(userId).notifications.filter((x) => !x.readAt)
-        .length,
-    };
   }
   answers(endpoint: AnyEndpoint) {
     return Object.values(personalEndpoints).some((e) => e === endpoint);
@@ -150,34 +137,6 @@ export class PersonalFakeBackend {
       return endpoint === p.certificate
         ? ok(certificate)
         : { ...ok(null), file: demoCertificatePdf() };
-    }
-    if (endpoint === p.progress) return ok(achievementFixture);
-    if (endpoint === p.notifications)
-      return ok(
-        page(
-          state.notifications.filter(
-            (x) =>
-              (!request.query['kind'] || x.kind === request.query['kind']) &&
-              (request.query['unreadOnly'] !== 'true' || !x.readAt),
-          ),
-        ),
-      );
-    if (endpoint === p.markRead) {
-      const item = state.notifications.find(
-        (x) => x.id === request.params['notificationId'],
-      );
-      if (!item) return missing();
-      item.readAt ??= new Date().toISOString();
-      return ok({ id: item.id, readAt: item.readAt });
-    }
-    if (endpoint === p.markAllRead) {
-      let updated = 0;
-      for (const item of state.notifications)
-        if (!item.readAt) {
-          item.readAt = new Date().toISOString();
-          updated++;
-        }
-      return ok({ updated, unreadCount: 0 });
     }
     return undefined;
   }

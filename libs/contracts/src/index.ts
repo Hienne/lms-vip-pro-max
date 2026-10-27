@@ -19,8 +19,6 @@ export * from './lib/assessment/assessment.schema';
 export * from './lib/assessment/assessment.endpoints';
 export * from './lib/assessment/assessment-sql.schema';
 export * from './lib/assessment/assessment-sql.endpoints';
-export * from './lib/learning-dashboard/learning-dashboard.schema';
-export * from './lib/learning-dashboard/learning-dashboard.endpoints';
 export * from './lib/reports/reports.schema';
 export * from './lib/reports/reports.endpoints';
 export * from './lib/personal/personal.schema';

@@ -1,5 +1,4 @@
 import {
-  learningDashboardEndpoints,
   reportEndpoints,
   ReportDimensionSchema,
   type AnyEndpoint,
@@ -7,7 +6,6 @@ import {
 } from '@lms/contracts';
 import type { FakeReply, FakeRequest } from '../backend/fake-backend';
 import { envelopeOk } from '../envelope';
-import { learningDashboardFixture } from '../learning-dashboard/learning-dashboard.fixtures';
 import { reportOverviewFixture, reportRowsFixture } from './reports.fixtures';
 
 const matchesScope = (q: FakeRequest['query']) =>
@@ -60,10 +58,6 @@ export const learningReportHandlers = new Map<
   AnyEndpoint,
   (request: FakeRequest) => FakeReply
 >([
-  [
-    learningDashboardEndpoints.dashboard,
-    () => ({ status: 200, body: envelopeOk(learningDashboardFixture) }),
-  ],
   [
     reportEndpoints.overview,
     (request) => {

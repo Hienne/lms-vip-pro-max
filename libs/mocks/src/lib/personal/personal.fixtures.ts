@@ -1,9 +1,4 @@
-import type {
-  Achievements,
-  Certificate,
-  PersonalNotification,
-  SavedItem,
-} from '@lms/contracts';
+import type { Certificate, SavedItem } from '@lms/contracts';
 export const savedFixtures: SavedItem[] = [
   {
     id: 'n1',
@@ -42,61 +37,6 @@ export const certificateFixtures: Certificate[] = [
     fileName: 'DEMO-chung-nhan-CIF.pdf',
   },
 ];
-export const achievementFixture: Achievements = {
-  points: {
-    total: 65,
-    parts: { lessons: 10, quizzes: 30, courses: 0, streak: 25 },
-  },
-  streak: 3,
-  badges: [
-    {
-      id: 'first',
-      name: 'Khởi đầu suôn sẻ',
-      description: 'Hoàn thành khóa học đầu tiên',
-      earned: true,
-      earnedAt: '2026-10-18T08:00:00Z',
-      progress: { current: 1, target: 1, unit: 'course' },
-    },
-    {
-      id: 'week',
-      name: 'Bền bỉ mỗi ngày',
-      description: 'Học liên tục 7 ngày',
-      earned: false,
-      earnedAt: null,
-      progress: { current: 3, target: 7, unit: 'day' },
-    },
-  ],
-  recentEvents: [
-    {
-      id: 'ev1',
-      kind: 'quiz',
-      label: 'Đạt bài kiểm tra CIF',
-      at: '2026-10-18T08:00:00Z',
-      points: 30,
-    },
-  ],
-};
-export const notificationFixtures: PersonalNotification[] = [
-  {
-    id: 'nt1',
-    kind: 'due',
-    text: 'Khóa Nghiệp vụ CIF sắp đến hạn.',
-    target: { type: 'course', id: 'c1' },
-    at: '2026-10-19T02:00:00Z',
-    readAt: null,
-    dueAt: '2026-10-22T10:00:00Z',
-  },
-  {
-    id: 'nt2',
-    kind: 'certificate',
-    text: 'Chứng nhận hoàn thành đã được cấp.',
-    target: { type: 'certificate', id: 'cert1' },
-    at: '2026-10-18T08:00:10Z',
-    readAt: null,
-    dueAt: null,
-  },
-];
-
 /** Small, structurally valid PDF fixture; never represents a real certificate. */
 export function demoCertificatePdf(): Blob {
   const stream =

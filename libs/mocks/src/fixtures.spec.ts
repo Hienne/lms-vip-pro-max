@@ -4,7 +4,6 @@ import {
   agentEndpoints,
   AgentStreamEventSchema,
   authV1Endpoints,
-  learningDashboardEndpoints,
   personalEndpoints,
   reportEndpoints,
   type AnyEndpoint,
@@ -34,7 +33,6 @@ const everyEndpoint: readonly AnyEndpoint[] = [
   ...Object.values(assessmentEndpoints),
   ...Object.values(agentEndpoints),
   ...Object.values(authV1Endpoints),
-  ...Object.values(learningDashboardEndpoints),
   ...Object.values(identityEndpoints),
   ...Object.values(knowledgeEndpoints),
   ...Object.values(organizationEndpoints),
@@ -60,7 +58,6 @@ describe('FakeBackend and the endpoint registries', () => {
       [
         ...Object.values(adminOrgEndpoints),
         ...Object.values(assessmentEndpoints),
-        ...Object.values(learningDashboardEndpoints),
         ...Object.values(personalEndpoints),
         ...Object.values(reportEndpoints),
         shellEndpoints.navCounts,
