@@ -127,6 +127,9 @@ export class StudyChannel {
       this.queue({ type: 'CLOSE', playing: false });
       this.afterIdle = () => this.claimWanted();
       this.pump();
+    } else if (this.busy) {
+      // A lease is still being closed: the next block is claimed once that answers.
+      this.afterIdle = () => this.claimWanted();
     } else {
       this.claimWanted();
     }
@@ -134,21 +137,21 @@ export class StudyChannel {
 
   /** The learner chose to move the session here ("Học trên thiết bị này"). */
   takeOver(): void {
-    if (this.state.phase() === 'claiming') return;
+    if (this.destroyed || this.state.phase() === 'claiming') return;
     this.clearWork();
     this.claimWanted(true);
   }
 
   /** Claims the block again with the ids this tab holds ("Thử lại", "Tải lại bài"). */
   reclaim(): void {
-    if (this.state.phase() === 'claiming') return;
+    if (this.destroyed || this.state.phase() === 'claiming') return;
     this.clearWork();
     this.claimWanted();
   }
 
   /** The player reports something the learner did. */
   send(event: StudyEvent): void {
-    if (this.state.phase() !== 'ready') return;
+    if (this.destroyed || this.state.phase() !== 'ready') return;
     this.queue(event);
     this.pump();
   }
@@ -162,6 +165,7 @@ export class StudyChannel {
 
   /** Sends the unsent event again after "Chưa lưu được tiến độ". */
   retry(): void {
+    if (this.destroyed) return;
     if (this.state.phase() === 'ready') this.pump();
     else this.reclaim();
   }
@@ -249,6 +253,10 @@ export class StudyChannel {
   ): void {
     this.busy = false;
     this.remember(session);
+    if (!silent && (this.destroyed || !this.wanted)) {
+      this.closeLease(target, session);
+      return;
+    }
     if (!silent && target !== this.wanted) {
       // The learner moved on while this claim was in flight. It is a real lease on the server,
       // so its ids are kept for the next claim, which studies the block wanted now.
@@ -272,6 +280,19 @@ export class StudyChannel {
         ? { type: 'OPEN', playing: false, positionSeconds: resume ?? 0 }
         : { type: 'OPEN' },
     );
+    this.pump();
+  }
+
+  /**
+   * A claim that answers after nobody wants it any more is still a lease on the server: it is
+   * closed at once and nothing else starts (no `OPEN`, no heartbeat, no new claim).
+   */
+  private closeLease(target: ClaimTarget, session: StudySession): void {
+    this.target = target;
+    this.protocol = fromClaim(session);
+    this.tracker = NOT_PLAYING;
+    this.state.phase.set('idle');
+    this.waiting = [{ type: 'CLOSE', playing: false }];
     this.pump();
   }
 
@@ -353,6 +374,12 @@ export class StudyChannel {
 
   private refused(error: unknown): void {
     this.busy = false;
+    if (this.destroyed) {
+      // The page is gone: a `CLOSE` that cannot be sent is dropped, not claimed again.
+      this.inFlight = null;
+      this.waiting = [];
+      return;
+    }
     const failure = toAppError(error);
     const action = actionFor(failure, 'event', this.resyncs);
     switch (action) {
@@ -398,6 +425,7 @@ export class StudyChannel {
 
   private startHeartbeat(): void {
     this.stopHeartbeat();
+    if (this.destroyed) return;
     this.heartbeat = interval(HEARTBEAT_MS).subscribe(() => {
       // A playing video reports every 10 s itself, with its range.
       if (this.deps.visible() && !this.tracker.playing) {
