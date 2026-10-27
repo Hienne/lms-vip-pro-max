@@ -101,6 +101,20 @@ export class OrgStore {
     },
   );
 
+  /**
+   * The contents on screen: the last answer for the picked org. A new team page drops the read's
+   * held value, but the org, its administrators and the team total stay until the page lands; a
+   * different node clears it.
+   */
+  private readonly contents = linkedSignal({
+    source: () => ({
+      orgId: this.selectedOrgId(),
+      value: this.contentsData.value(),
+    }),
+    computation: ({ orgId, value }, previous) =>
+      value ?? (previous?.source.orgId === orgId ? previous.value : undefined),
+  });
+
   private readonly orgMutation = serverMutation(
     (save: OrgSave) =>
       save.kind === 'create'
@@ -181,15 +195,14 @@ export class OrgStore {
   readonly editingTeam$ = this.state.editingTeam.asReadonly();
   readonly importing$ = this.state.importing.asReadonly();
   /** The picked org with its counts; tree nodes carry none. */
-  readonly org$ = computed(() => this.contentsData.value()?.organization);
+  readonly org$ = computed(() => this.contents()?.organization);
   readonly administrators$ = computed(
-    () => this.contentsData.value()?.administrators ?? [],
+    () => this.contents()?.administrators ?? [],
   );
-  readonly teams$ = computed(
-    () => this.contentsData.value()?.teams.items ?? [],
-  );
+  /** The teams of the page on screen; the previous page stays until the next one lands. */
+  readonly teams$ = computed(() => this.contents()?.teams.items ?? []);
   readonly teamsTotal$ = computed(
-    () => this.contentsData.value()?.teams.totalElements ?? 0,
+    () => this.contents()?.teams.totalElements ?? 0,
   );
   readonly teamPage$ = computed(() => this.state.teamPage() + 1);
   readonly contentsLoading$ = this.contentsData.isLoading;

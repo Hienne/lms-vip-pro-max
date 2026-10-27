@@ -139,6 +139,34 @@ describe('Org', () => {
     }
   });
 
+  it('keeps the org header, its counts and the team total while the next team page is read', async () => {
+    await open('super.admin', '000001');
+    const firstPage = cards().map(
+      (c) => c.querySelector('strong')?.textContent,
+    );
+    const hold = TestBed.inject(ReplyGate).hold(
+      organizationEndpoints.orgContents,
+    );
+    button(el, '2').click();
+    await settle();
+
+    expect(hold.pending()).toBe(1);
+    expect(button(el, 'Sửa')).toBeTruthy();
+    expect(button(el, 'Tạm dừng')).toBeTruthy();
+    expect(text()).toContain('Quản trị viên: Quản trị Ban Demo');
+    expect(el.querySelectorAll('dl dd')).toHaveLength(2);
+    expect(text()).toContain(`Nhóm (${SEED_TEAMS.length})`);
+
+    hold.release();
+    await settle();
+    const secondPage = cards().map(
+      (c) => c.querySelector('strong')?.textContent,
+    );
+    expect(secondPage).toHaveLength(Math.min(6, SEED_TEAMS.length - 6));
+    expect(secondPage[0]).not.toBe(firstPage[0]);
+    expect(text()).toContain(`Nhóm (${SEED_TEAMS.length})`);
+  });
+
   it('links a team with more than five members to the users list filtered by that team', async () => {
     await open('super.admin', '000001');
     const more = el.querySelector<HTMLAnchorElement>('article p a');
