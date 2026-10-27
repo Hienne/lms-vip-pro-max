@@ -47,7 +47,13 @@ export interface CourseRow {
 }
 
 /** What the row menu can do; publishing happens in the editor, where the draft is. */
-export type CourseAction = 'copy' | 'pause' | 'resume' | 'archive' | 'assign';
+export type CourseAction =
+  | 'copy'
+  | 'share'
+  | 'pause'
+  | 'resume'
+  | 'archive'
+  | 'assign';
 
 const STATE_COPY: Record<
   CourseLifecycle,
@@ -92,6 +98,8 @@ export class CoursesStore {
     page: signal(1),
     /** The course being copied: the drawer asks for the new code. */
     copying: signal<CourseRow | null>(null),
+    /** The course whose shares the drawer shows. */
+    sharing: signal<CourseRow | null>(null),
     /** The last page the server sent: the table stays while the next one loads. */
     shown: linkedSignal<
       Page<CourseCard> | undefined,
@@ -187,6 +195,7 @@ export class CoursesStore {
   readonly sort$ = this.state.sort.asReadonly();
   readonly page$ = this.state.page.asReadonly();
   readonly copying$ = this.state.copying.asReadonly();
+  readonly sharing$ = this.state.sharing.asReadonly();
 
   readonly fields$ = computed(() => this.fieldsData.value()?.items ?? []);
   readonly isLoading$ = computed(
@@ -228,6 +237,12 @@ export class CoursesStore {
     const lifecycle = row.card.lifecycleStatus?.toLowerCase();
     return [
       { kind: 'item', value: 'copy', label: 'Sao chép khóa học', icon: 'copy' },
+      {
+        kind: 'item',
+        value: 'share',
+        label: 'Chia sẻ cho đơn vị',
+        icon: 'globe',
+      },
       ...(lifecycle === 'paused' || lifecycle === 'archived'
         ? [
             {
@@ -291,6 +306,10 @@ export class CoursesStore {
     this.state.copying.set(row);
   }
 
+  private setSharing(row: CourseRow | null): void {
+    this.state.sharing.set(row);
+  }
+
   // Commands
   search(query: string): void {
     this.setQuery(query);
@@ -328,6 +347,9 @@ export class CoursesStore {
         this.copyMutation.reset();
         this.setCopying(row);
         return;
+      case 'share':
+        this.setSharing(row);
+        return;
       case 'assign':
         void this.router.navigate(['/admin/assignments'], {
           queryParams: { course: row.card.courseId },
@@ -344,6 +366,10 @@ export class CoursesStore {
 
   cancelCopy(): void {
     this.setCopying(null);
+  }
+
+  closeShares(): void {
+    this.setSharing(null);
   }
 
   copy(code: string): void {

@@ -170,3 +170,13 @@
     (cancel)="close()"
   />
 </ng-template>
+
+<ng-template
+  [uiDrawer]="store.sharing$() !== null"
+  uiDrawerTitle="Chia sẻ khóa học"
+  (uiDrawerDismiss)="store.closeShares()"
+>
+  @if (store.sharing$()) {
+  <app-course-shares />
+  }
+</ng-template>

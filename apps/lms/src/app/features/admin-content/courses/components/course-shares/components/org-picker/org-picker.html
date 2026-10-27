@@ -1,0 +1,48 @@
+<ui-field label="Đơn vị" required>
+  <input
+    uiInput
+    ngCombobox
+    alwaysExpanded
+    #combobox="ngCombobox"
+    autocomplete="off"
+    placeholder="Tìm theo tên hoặc mã đơn vị…"
+    [value]="text()"
+    (valueChange)="typed($event)"
+  />
+</ui-field>
+<ng-template ngComboboxPopup [combobox]="combobox">
+  <div class="org-picker__results">
+    <div
+      ngComboboxWidget
+      ngListbox
+      #listbox="ngListbox"
+      class="org-picker__list"
+      focusMode="activedescendant"
+      selectionMode="explicit"
+      [tabindex]="-1"
+      aria-label="Đơn vị"
+      [activeDescendant]="listbox.activeDescendant()"
+      [value]="chosen()"
+      (valueChange)="choose($event)"
+    >
+      @for (option of options(); track option.id) {
+      <div
+        ngOption
+        class="org-picker__option"
+        [value]="option.id"
+        [label]="option.name"
+      >
+        <span class="org-picker__name">{{ option.name }}</span>
+        <span class="org-picker__code">{{ option.code }}</span>
+      </div>
+      }
+    </div>
+    @if (error(); as message) {
+    <p class="org-picker__note">{{ message }}</p>
+    } @else if (busy()) {
+    <p class="org-picker__note">Đang tìm…</p>
+    } @else if (!options().length) {
+    <p class="org-picker__note">Không có đơn vị phù hợp.</p>
+    }
+  </div>
+</ng-template>

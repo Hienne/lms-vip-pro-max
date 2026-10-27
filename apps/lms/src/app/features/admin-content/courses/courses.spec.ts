@@ -84,4 +84,32 @@ describe('Courses', () => {
     expect(screen.drawer()).toBeNull();
     expect(rows()).toHaveLength(8);
   });
+  it('opens the shares drawer for a row from the menu and clears it on close', async () => {
+    await screen.open('/admin/courses');
+    const menu = (title: string) =>
+      screen.click(screen.button(`Thêm thao tác cho ${title}`));
+
+    await menu('Phân hệ Tiền gửi');
+    const labels = Array.from(
+      document.querySelectorAll<HTMLElement>('[role="menuitem"]'),
+    ).map((i) => i.textContent?.trim());
+    expect(labels.indexOf('Chia sẻ cho đơn vị')).toBe(
+      labels.indexOf('Sao chép khóa học') + 1,
+    );
+
+    await screen.click(menuItem('Chia sẻ cho đơn vị'));
+    const drawer = screen.drawer()!;
+    expect(screen.text(drawer)).toContain('Chia sẻ khóa học');
+    expect(screen.callsTo(courseEndpoints.shares)).toBe(1);
+    expect(screen.lastCall(courseEndpoints.shares)?.params).toEqual({
+      courseId: '5',
+    });
+
+    await screen.click(screen.button('Đóng', drawer));
+    expect(screen.drawer()).toBeNull();
+
+    await menu('Phân hệ Tiền gửi');
+    await screen.click(menuItem('Chia sẻ cho đơn vị'));
+    expect(screen.drawer()).not.toBeNull();
+  });
 });

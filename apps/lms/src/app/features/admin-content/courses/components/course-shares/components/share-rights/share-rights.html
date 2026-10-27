@@ -1,0 +1,41 @@
+<form class="share-rights" [formRoot]="rightsForm">
+  <div class="share-rights__switches">
+    <label class="share-rights__toggle">
+      <input
+        type="checkbox"
+        uiSwitch
+        [formField]="rightsForm.includeDescendants"
+      />
+      Gồm cả đơn vị con
+    </label>
+    <label class="share-rights__toggle">
+      <input type="checkbox" uiSwitch [formField]="rightsForm.canAssign" />
+      Được giao khóa học cho học viên
+    </label>
+    <label class="share-rights__toggle">
+      <input type="checkbox" uiSwitch [formField]="rightsForm.canSelfEnroll" />
+      Học viên được tự đăng ký
+    </label>
+  </div>
+  <div class="share-rights__actions">
+    <button
+      uiButton
+      type="submit"
+      variant="primary"
+      size="sm"
+      [disabled]="blocked() || busy()"
+    >
+      {{ submitLabel() }}
+    </button>
+    <button
+      uiButton
+      type="button"
+      size="sm"
+      variant="ghost"
+      [disabled]="busy()"
+      (click)="cancelled.emit()"
+    >
+      Hủy
+    </button>
+  </div>
+</form>

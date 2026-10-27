@@ -398,7 +398,7 @@ SameSite=Strict` with no domain, so the proxy needs no rewrite (browser retentio
   - Verify: `npx nx test contracts mocks`.
   - Files: `contracts/course/course.schema.ts`, `mocks/learning/learning.backend.ts` (+ spec).
   - Depends on: none.
-- [ ] **T29 Shares drawer in the course list** · M
+- [x] **T29 Shares drawer in the course list** · M
   - Accept: "Chia sẻ cho đơn vị" in the row menu opens the drawer; `CourseSharesStore` (shares, owner from
     `getCourse`, org names with fallback, debounced org options without owner and active shares, add/change/revoke
     with confirm); active and revoked sections with rights as text; combobox and switches by keyboard.
@@ -409,9 +409,24 @@ SameSite=Strict` with no domain, so the proxy needs no rewrite (browser retentio
 
 ### Checkpoint 6
 
-- [ ] `npm run check` green
-- [ ] course-sharing success criteria 1–3
-- [ ] Stop for approval
+- [x] `npm run check` green (14 tasks)
+- [x] course-sharing success criteria 1–3
+  - Setup on the local backend (test data only): as `super.admin` a child unit "Phòng thử nghiệm chia sẻ" (id 2, parent 1)
+    and a learner `hocvien.cp6` in it; the seeded backend has one unit only, so there was nothing to share with.
+  - 1: as `quantri` the row menu "Chia sẻ cho đơn vị" opens the drawer; the unit was picked with the keyboard (ArrowDown,
+    Enter), Tab reached the switches and "Chia sẻ"; list shows "Được giao học". "Sửa quyền" + "Học viên được tự đăng ký" →
+    "Được giao học · Học viên tự đăng ký". "Thu hồi" → confirm text as specified → the unit moves under "Đã thu hồi" with
+    its revoke date.
+  - 2: the learner's catalog (`GET /me/learning/catalog`) was empty before the share, listed the course after the first
+    share (canAssign only) and stayed listed with self-enrol on, and was empty again after the revoke. The backend lists a
+    shared optional course for the unit whatever the rights; `canSelfEnroll` is not what makes it appear.
+  - 3: 375 px light and dark (add form open): no horizontal scroll, switches and buttons readable; the unit list under the
+    combobox shows the unit and its code.
+  - Found and fixed on the way: with `selectionMode` left to follow, the listbox picked the first unit on open; it is now
+    explicit, and the listbox is no longer a second Tab stop. Authors without `ORGANIZATION_MANAGEMENT` (e.g. `giangvien`)
+    get ACCESS_DENIED from `GET /orgs`, so they see no units to pick and shared units as "Đơn vị #<id>" (open question 1
+    of SPEC-course-sharing).
+- [x] Stop for approval (note only; continuing)
 
 ## Phase 7: wrap-up
 
