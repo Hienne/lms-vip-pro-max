@@ -831,7 +831,7 @@ export const MIGRATION_ENTRIES = [
   {
     id: 'route-learn',
     notes:
-      'Đã khôi phục hero, thẻ khóa học, tabs, radar, lộ trình và hạn học theo mockup; đã thử 375/768/1280 và theme tối. Còn API thật và metadata thẻ khóa học.',
+      'Nối API học viên thật của backend (tiến độ, khóa đang học, nhắc hạn); bản mock dashboard của #43 đã gỡ.',
     kind: 'route',
     mockupSource: 'src/pages/learner.js · dashboard',
     target: 'learn',
@@ -878,7 +878,7 @@ export const MIGRATION_ENTRIES = [
   {
     id: 'route-lesson-course-id-lesson-id',
     notes:
-      'Đã đưa ghi chú về panel cạnh bài học, lưu/mở đúng trang PDF hoặc giây video. Trình đọc PDF/video còn chờ API nội dung; không giả lập tệp học thật.',
+      'Nối API học thật: phiên học một thiết bị, heartbeat, video/PDF qua nội dung có kiểm soát. Ghi chú/đánh dấu trong bài chưa có trên backend.',
     kind: 'route',
     mockupSource: 'src/pages/lesson.js · lesson',
     target: 'lesson/:courseId/:lessonId',
@@ -935,7 +935,7 @@ export const MIGRATION_ENTRIES = [
   {
     id: 'route-progress',
     notes:
-      'Đã đưa lại bảng tiến độ, radar và huy hiệu cánh mai với trạng thái khóa/mở từ API mock. Chưa có API thời lượng học và hoạt động theo tuần.',
+      'Nối API tiến độ học viên thật, lọc/sắp xếp phía máy chủ và xuất CSV; bản mock achievements của #43 đã gỡ.',
     kind: 'route',
     mockupSource: 'src/pages/tools.js · progress',
     target: 'progress',
@@ -1014,7 +1014,7 @@ export const MIGRATION_ENTRIES = [
   {
     id: 'route-notifications',
     notes:
-      'Đã khôi phục tabs/danh sách, thử mở chứng nhận từ thông báo và đọc tất cả; bộ đếm đồng bộ dữ liệu mock. Chưa có dịch vụ phát nhắc hạn thật.',
+      'Hiển thị nhắc hạn học thật từ backend và đánh dấu đã đọc; chuông trên header dùng cùng nguồn. Bản mock thông báo của #43 đã gỡ.',
     kind: 'route',
     mockupSource: 'src/pages/auth.js · notifications',
     target: 'notifications',
