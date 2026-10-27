@@ -344,7 +344,7 @@ SameSite=Strict` with no domain, so the proxy needs no rewrite (browser retentio
   - Files: `package.json`, `package-lock.json`, `app/features/admin-content/course-editor/data-access/sha256.worker.ts`
     (+ spec), a small client wrapper.
   - Depends on: none.
-- [ ] **T25 `chunkedUpload`** · M
+- [x] **T25 `chunkedUpload`** · M
   - Accept: the Observable of the spec: check → hash → start → parts in order with headers, skipping acknowledged →
     complete → poll 3 s up to 15 min → ready/failed; "Xử lý lại" path; cancel; offline pause and continue; a
     mismatched file on resume refused before any request.
