@@ -10,7 +10,7 @@ import {
   type FakeReply,
   type FakeRequest,
 } from '@lms/mocks';
-import { from, map, Observable, timer } from 'rxjs';
+import { map, Observable, timer } from 'rxjs';
 import type { MockInstance } from 'vitest';
 import {
   parseAppConfig,
@@ -32,22 +32,11 @@ import {
   reprocessUpload,
   type UploadProgress,
 } from './chunked-upload';
+import { digestOf, FakeHasher } from './fake-hasher.testing';
 import type { HashEvent, Hasher } from './sha256-hasher';
 
 const PART = 8 * 1024 * 1024;
-const hex = (n: number) => n.toString(16).padStart(64, '0');
-
-/** Hashes by size, so equal sizes give equal digests and the specs know them without computing. */
-class FakeHasher implements Hasher {
-  readonly hashed: number[] = [];
-  hash(blob: Blob): Observable<HashEvent> {
-    this.hashed.push(blob.size);
-    return from<HashEvent[]>([
-      { type: 'progress', hashed: blob.size, total: blob.size },
-      { type: 'done', hex: hex(blob.size) },
-    ]);
-  }
-}
+const hex = digestOf;
 
 const fileOf = (size: number, name = 'clip.mp4', type = 'video/mp4') =>
   new File([new Uint8Array(size)], name, { type });
@@ -167,6 +156,7 @@ describe('chunkedUpload', () => {
       expect(started).toMatchObject({
         uploadId: (request.body as { requestId: string }).requestId,
         checksumSha256: hex(PART * 2 + 5),
+        expiresAt: expect.any(String),
       });
     });
 

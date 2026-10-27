@@ -3,7 +3,7 @@ import { Icon } from '../../atoms/icon/icon';
 import type { IconName } from '../../atoms/icon/icon-registry';
 import { Progress } from '../../atoms/progress/progress';
 
-export type UploadState = 'uploading' | 'done' | 'error';
+export type UploadState = 'uploading' | 'processing' | 'done' | 'error';
 
 /** The mockup's `fmt.bytes`: MB with one decimal above 1 MB, whole KB (at least 1) below. */
 function formatBytes(bytes: number): string {
@@ -14,8 +14,10 @@ function formatBytes(bytes: number): string {
 
 /**
  * One file in an upload list (the mockup's `.upload-item`): icon, name, size and, while
- * `uploading`, a progress bar. In the `error` state it is an alert and the projected content is
- * the message; the error icon has a name so the failure is never colour alone.
+ * `uploading`, a progress bar. `processing` is the wait after the last byte, when there is nothing
+ * to measure, so it has no bar. `status` is one line of text on what is happening. In the `error`
+ * state it is an alert and the projected content is the message; the error icon has a name so the
+ * failure is never colour alone.
  */
 @Component({
   selector: 'ui-upload-item',
@@ -39,6 +41,9 @@ function formatBytes(bytes: number): string {
       @if (sizeText(); as size) {
         <div class="upload-item__size">{{ size }}</div>
       }
+      @if (status(); as line) {
+        <div class="upload-item__status">{{ line }}</div>
+      }
       @if (state() === 'uploading') {
         <ui-progress
           size="sm"
@@ -54,6 +59,8 @@ export class UploadItem {
   /** Size in bytes. */
   readonly size = input<number>();
   readonly state = input<UploadState>('done');
+  /** What the item is doing, as one line of text under the name. */
+  readonly status = input<string>();
   /** Percentage while uploading. */
   readonly progress = input<number>();
   readonly icon = input<IconName>('file-text');

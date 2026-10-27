@@ -140,12 +140,7 @@
   (uiDrawerDismiss)="store.closeLesson()"
 >
   @if (editingLesson(); as lesson) {
-  <app-lesson-form
-    [lesson]="lesson"
-    [uploads]="store.uploads$()"
-    (upload)="store.upload($event)"
-    (submitted)="applyLesson($event)"
-  />
+  <app-lesson-form [lesson]="lesson" (submitted)="applyLesson($event)" />
   }
 </ng-template>
 <ng-template #footer let-close="close">

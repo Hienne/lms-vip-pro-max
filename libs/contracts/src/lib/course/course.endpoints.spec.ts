@@ -127,7 +127,6 @@ describe('course endpoints', () => {
       ['copyCourse', 'post', '/api/v1/courses/{courseId}/copy'],
       ['shares', 'get', '/api/v1/courses/{courseId}/shares'],
       ['share', 'put', '/api/v1/courses/{courseId}/shares'],
-      ['uploadAsset', 'post', '/api/v1/learning-assets'],
       ['getAssetContent', 'get', '/api/v1/learning-assets/{assetId}/content'],
     ]);
     expect(
@@ -135,8 +134,7 @@ describe('course endpoints', () => {
     ).toBe('/api/v1/courses/7/revisions/70');
   });
 
-  it('uploads as multipart and downloads as a blob', () => {
-    expect(courseEndpoints.uploadAsset.encoding).toBe('multipart');
+  it('downloads a file as a blob', () => {
     expect(courseEndpoints.getAssetContent.responseType).toBe('blob');
   });
 

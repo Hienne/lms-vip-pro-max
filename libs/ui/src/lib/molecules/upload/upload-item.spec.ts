@@ -9,6 +9,7 @@ import { UploadItem, type UploadState } from './upload-item';
     [size]="size()"
     [state]="state()"
     [progress]="progress()"
+    [status]="status()"
     >Sai định dạng: chỉ chấp nhận PDF.</ui-upload-item
   >`,
 })
@@ -16,6 +17,7 @@ class Host {
   readonly size = signal<number | undefined>(2_621_440);
   readonly state = signal<UploadState>('done');
   readonly progress = signal<number | undefined>(undefined);
+  readonly status = signal<string | undefined>(undefined);
 }
 
 function render() {
@@ -58,6 +60,32 @@ describe('UploadItem', () => {
     const bar = root.querySelector('ui-progress');
     expect(bar?.getAttribute('aria-valuenow')).toBe('64');
     expect(bar?.getAttribute('aria-label')).toBe('Tiến trình tải lên');
+  });
+
+  it('says what it is doing under the name, without a bar while the server prepares the file', () => {
+    const { fixture, root, host } = render();
+    host.state.set('uploading');
+    host.progress.set(40);
+    host.status.set('Đang tải lên… 3.2 MB / 8.0 MB');
+    fixture.detectChanges();
+    expect(text(root.querySelector('.upload-item__status'))).toBe(
+      'Đang tải lên… 3.2 MB / 8.0 MB',
+    );
+    expect(root.querySelector('ui-progress')).not.toBeNull();
+
+    host.state.set('processing');
+    host.status.set('Đang xử lý tệp…');
+    fixture.detectChanges();
+    expect(text(root.querySelector('.upload-item__status'))).toBe(
+      'Đang xử lý tệp…',
+    );
+    expect(root.querySelector('ui-progress')).toBeNull();
+    expect(root.querySelector('[role="alert"]')).toBeNull();
+  });
+
+  it('shows no status line when none is given', () => {
+    const { root } = render();
+    expect(root.querySelector('.upload-item__status')).toBeNull();
   });
 
   it('is a plain item when done, with no alert and no error mark', () => {

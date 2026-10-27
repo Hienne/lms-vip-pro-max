@@ -351,7 +351,7 @@ SameSite=Strict` with no domain, so the proxy needs no rewrite (browser retentio
   - Verify: `npx nx test lms -- chunked-upload`.
   - Files: `app/features/admin-content/course-editor/data-access/chunked-upload.ts` (+ spec).
   - Depends on: T23, T24.
-- [ ] **T26 Course editor uploads through parts** · M
+- [x] **T26 Course editor uploads through parts** · M
   - Accept: `CourseEditorStore` runs `chunkedUpload` per block key; rows show hashing, bytes, processing, failed with
     the server message, cancel; kept uploads in `localStorage` with resume ("Tiếp tục" / "Hủy"); asset attached on
     ready with server duration/page count; `courseEndpoints.uploadAsset`, its mock and `readFileFacts` removed.

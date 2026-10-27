@@ -473,21 +473,6 @@ export const ShareCourseCommandSchema = z.object({
 });
 export type ShareCourseCommand = z.infer<typeof ShareCourseCommandSchema>;
 
-/** A video needs `durationSeconds` and a PDF `pageCount`, as the author confirms them. */
-export const UploadAssetQuerySchema = z.object({
-  ownerOrgId: z.number().int().positive(),
-  durationSeconds: z
-    .number()
-    .min(0.001)
-    .max(COURSE_LIMITS.lessonSeconds)
-    .optional(),
-  pageCount: z.number().int().positive().optional(),
-});
-export type UploadAssetQuery = z.infer<typeof UploadAssetQuerySchema>;
-
-export const UploadAssetBodySchema = z.object({ file: z.file() });
-export type UploadAssetBody = z.infer<typeof UploadAssetBodySchema>;
-
 /** A learner sends both ids of their own enrolment; an author sends neither. */
 export const AssetContentQuerySchema = z.object({
   blockId: z.number().int().positive().optional(),

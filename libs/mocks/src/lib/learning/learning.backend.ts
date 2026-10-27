@@ -213,7 +213,6 @@ export class LearningBackend {
       [courseEndpoints.copyCourse, (r) => this.copyCourse(r)],
       [courseEndpoints.shares, (r) => this.listShares(r)],
       [courseEndpoints.share, (r) => this.share(r)],
-      [courseEndpoints.uploadAsset, (r) => this.uploadAsset(r)],
       ...this.library.entries(),
       [learnerEndpoints.catalog, (r) => this.learnerList(r, false)],
       [learnerEndpoints.myCourses, (r) => this.learnerList(r, true)],
@@ -848,35 +847,6 @@ export class LearningBackend {
     };
     this.shares = [...this.shares.filter((s) => s !== existing), share];
     return ok(share);
-  }
-
-  private uploadAsset(request: FakeRequest): FakeReply {
-    const body = request.body;
-    const file =
-      body instanceof FormData
-        ? body.get('file')
-        : (body as { file?: unknown } | null)?.file;
-    if (!(file instanceof Blob)) return refuse('validationFailed');
-    const asset: LearningAsset = {
-      id: this.id(),
-      ownerOrgId: num(request.query['ownerOrgId']) ?? 1,
-      uploadedBy: this.directory.callerId(request),
-      storageType: 'local',
-      originalName: file instanceof File ? file.name : 'tep-tai-len',
-      mimeType: file.type || 'application/octet-stream',
-      sizeBytes: file.size,
-      checksumSha256: null,
-      durationSeconds: num(request.query['durationSeconds']) ?? null,
-      pageCount: num(request.query['pageCount']) ?? null,
-      width: null,
-      height: null,
-      status: 'ready',
-      rowVersion: 0,
-      createTime: now(),
-      updateTime: now(),
-    };
-    this.assets.push(asset);
-    return ok(asset);
   }
 
   // ---- learner ------------------------------------------------------------------------------

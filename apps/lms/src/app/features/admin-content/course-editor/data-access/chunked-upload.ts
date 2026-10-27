@@ -39,6 +39,8 @@ export type UploadProgress =
       readonly type: 'started';
       readonly uploadId: string;
       readonly checksumSha256: string;
+      /** When the server forgets the upload; null when it does not say. */
+      readonly expiresAt: string | null;
     }
   | {
       readonly type: 'uploading';
@@ -352,7 +354,12 @@ export function chunkedUpload(
         },
       }),
     );
-    run.emit({ type: 'started', uploadId, checksumSha256 });
+    run.emit({
+      type: 'started',
+      uploadId,
+      checksumSha256,
+      expiresAt: upload.expiresAt ?? null,
+    });
 
     if (upload.status === 'uploading') {
       const total = Math.ceil(file.size / upload.partSize);

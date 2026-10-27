@@ -1,3 +1,4 @@
+import type { Provider } from '@angular/core';
 import type { MockInstance } from 'vitest';
 import { TestBed } from '@angular/core/testing';
 import { provideRouter, Router } from '@angular/router';
@@ -19,9 +20,10 @@ import { SessionStore } from '../../session/session.store';
 
 /**
  * Screen specs of the content and assignment admin, run against the seeded in-memory backend as
- * `quantri` (000002, admin of org 1). Every backend call is recorded on `calls`.
+ * `quantri` (000002, admin of org 1). Every backend call is recorded on `calls`. `providers` replace
+ * services a spec cannot run for real, such as the hasher that needs a worker.
  */
-export function setUpAdminScreen() {
+export function setUpAdminScreen(providers: Provider[] = []) {
   let harness: RouterTestingHarness;
   let calls: MockInstance<MockBackend['handle']>;
 
@@ -34,6 +36,7 @@ export function setUpAdminScreen() {
         ),
         provideRouter(createAppRoutes({ devTools: true })),
         { provide: SessionStore, useClass: FakeSessionStore },
+        ...providers,
       ],
     });
     calls = vi.spyOn(TestBed.inject(MockBackend), 'handle');

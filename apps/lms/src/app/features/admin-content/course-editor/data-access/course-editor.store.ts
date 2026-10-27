@@ -4,10 +4,15 @@ import {
   DestroyRef,
   inject,
   Injectable,
+  Injector,
   linkedSignal,
   signal,
 } from '@angular/core';
-import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
+import {
+  takeUntilDestroyed,
+  toObservable,
+  toSignal,
+} from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router } from '@angular/router';
 import {
   courseEndpoints,
@@ -15,15 +20,43 @@ import {
   type BlockType,
   type SaveDraftCommand,
 } from '@lms/contracts';
-import { confirm, type StepperItem } from '@lms/ui';
-import { filter, map, switchMap } from 'rxjs';
+import { confirm, Toaster, type StepperItem } from '@lms/ui';
+import {
+  filter,
+  firstValueFrom,
+  map,
+  switchMap,
+  type Observable,
+  type Subscription,
+} from 'rxjs';
 import { invalidation } from '../../../../core/data-access/invalidation';
 import { serverData } from '../../../../core/data-access/server-data';
 import { serverMutation } from '../../../../core/data-access/server-mutation';
 import { EndpointClient } from '../../../../core/http/endpoint-client';
+import { NetworkStore } from '../../../../core/network/network.store';
 import { SessionStore } from '../../../../core/session/session.store';
 import { courseCatalogStatus } from '../../../../shared/status/catalog-status';
-import { FILE_USAGE, type AssetValue } from '../course-draft';
+import { FILE_USAGE } from '../course-draft';
+import {
+  cancelUpload,
+  chunkedUpload,
+  pollUpload,
+  reprocessUpload,
+  SERVER_RETRY_MS,
+  type UploadProgress,
+} from './chunked-upload';
+import { KeptUploads, type KeptUpload } from './kept-uploads.storage';
+import { Sha256Hasher } from './sha256-hasher';
+import {
+  hashingStatus,
+  isCancellable,
+  MISMATCH_MESSAGE,
+  PROCESSING_STATUS,
+  sendingStatus,
+  STALLED_MESSAGE,
+  WAITING_STATUS,
+  type UploadEntry,
+} from './upload-entry';
 
 export const EDITOR_STEPS: readonly StepperItem[] = [
   { label: 'Thông tin cơ bản', subtitle: 'Tên, chương trình, mục tiêu' },
@@ -37,23 +70,34 @@ export interface LessonTarget {
   readonly lesson: number;
 }
 
-/** A file the author chose for a block, by the block's key. */
-export interface UploadEntry {
-  readonly state: 'uploading' | 'done' | 'error';
-  readonly name: string;
-  readonly sizeBytes: number;
-  readonly asset?: AssetValue;
-  readonly message?: string;
-}
-
 export interface UploadRequest {
   readonly blockKey: string;
   readonly blockType: BlockType;
+  /** The block's place in its lesson: the key does not survive a reload, the place does. */
+  readonly blockIndex: number;
   readonly file: File;
-  /** What the author's file says, sent so the server can check coverage. */
-  readonly durationSeconds?: number;
-  readonly pageCount?: number;
 }
+
+/** An upload the page lost in a reload: the author picks the file again to continue it. */
+export interface InterruptedUpload extends KeptUpload {
+  /** Why the last file the author picked was refused. */
+  readonly message?: string;
+}
+
+/** What a row needs to know about its block once the file itself is out of sight. */
+interface UploadContext {
+  readonly blockKey: string;
+  readonly blockType: BlockType;
+  readonly name: string;
+  readonly sizeBytes: number;
+  /** `chapter.lesson.block`, or none when no lesson is open. */
+  readonly position: string | undefined;
+  /** The kept upload this one continues. */
+  readonly resumed?: KeptUpload;
+}
+
+const MISMATCH_CODE = 'LEARNING-UPLOAD_FILE_MISMATCH';
+const EXPIRED_CODE = 'LEARNING-UPLOAD_EXPIRED';
 
 /** The mockup's upload settings: accepted extensions and the size limit of each file block. */
 const UPLOAD_RULES: Partial<
@@ -91,6 +135,19 @@ export class CourseEditorStore {
   private readonly router = inject(Router);
   private readonly dialog = inject(Dialog);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly injector = inject(Injector);
+  private readonly hasher = inject(Sha256Hasher);
+  private readonly network = inject(NetworkStore);
+  private readonly keptStorage = inject(KeptUploads);
+  private readonly toaster = inject(Toaster);
+  /**
+   * The uploads running in this page, by block key. Raw RxJS subscriptions on purpose: an upload
+   * is a long stream with its own pauses and polls, not one request, so `serverMutation` (one run,
+   * cancelled by the next) does not fit it.
+   */
+  private readonly running = new Map<string, Subscription>();
+  /** What each running or stopped row needs to go on once the picked file is out of sight. */
+  private readonly contexts = new Map<string, UploadContext>();
 
   private readonly state = {
     step: signal(0),
@@ -104,6 +161,14 @@ export class CourseEditorStore {
       () => this.courseData.value()?.revision.programId ?? undefined,
     ),
     uploads: signal<Readonly<Record<string, UploadEntry>>>({}),
+    /** The uploads the server still holds for this course, kept across reloads. */
+    kept: linkedSignal<readonly KeptUpload[]>(() => {
+      const userId = this.userId();
+      const courseId = this.courseId();
+      return userId && courseId ? this.keptStorage.read(userId, courseId) : [];
+    }),
+    /** Why the file picked to continue an interrupted upload was refused, by upload id. */
+    refusals: signal<Readonly<Record<string, string>>>({}),
   };
 
   private readonly courseId = toSignal(
@@ -116,6 +181,7 @@ export class CourseEditorStore {
   );
 
   private readonly orgId = computed(() => this.session.user$()?.org?.id);
+  private readonly userId = computed(() => this.session.user$()?.userId);
 
   private readonly changes = invalidation();
 
@@ -206,40 +272,11 @@ export class CourseEditorStore {
     },
   );
 
-  private readonly uploadMutation = serverMutation(
-    (request: UploadRequest) =>
-      this.client
-        .call(courseEndpoints.uploadAsset, {
-          query: {
-            ownerOrgId: this.orgId() ?? 0,
-            ...(request.durationSeconds
-              ? { durationSeconds: request.durationSeconds }
-              : {}),
-            ...(request.pageCount ? { pageCount: request.pageCount } : {}),
-          },
-          body: { file: request.file },
-        })
-        .pipe(map((asset) => ({ request, asset }))),
-    {
-      errors: 'toast',
-      success: ({ file }) => ({
-        title: 'Tải lên thành công',
-        detail: `${file.name} · đã kiểm tra định dạng và dung lượng`,
-      }),
-      onSuccess: ({ request, asset }) =>
-        this.setUpload(request.blockKey, {
-          state: 'done',
-          name: asset.originalName,
-          sizeBytes: asset.sizeBytes,
-          asset: {
-            assetId: asset.id,
-            usage: FILE_USAGE[request.blockType] ?? 'attachment',
-            name: asset.originalName,
-            sizeBytes: asset.sizeBytes,
-          },
-        }),
-    },
-  );
+  constructor() {
+    this.destroyRef.onDestroy(() =>
+      this.running.forEach((upload) => upload.unsubscribe()),
+    );
+  }
 
   // Selectors
   readonly step$ = this.state.step.asReadonly();
@@ -277,24 +314,34 @@ export class CourseEditorStore {
     () => this.saveMutation.error() ?? this.publishMutation.error(),
   );
 
-  /** Uploads by block key; the one in flight shows as uploading, a refused one as an error. */
-  readonly uploads$ = computed((): Readonly<Record<string, UploadEntry>> => {
-    const pending = this.uploadMutation.isPending();
-    const failure = this.uploadMutation.error();
-    return Object.fromEntries(
-      Object.entries(this.state.uploads()).map(([key, entry]) => [
-        key,
-        entry.state === 'uploading' && !pending
-          ? {
-              ...entry,
-              state: 'error',
-              message:
-                failure?.message ?? 'Tải lên bị gián đoạn, hãy chọn lại tệp.',
-            }
-          : entry,
-      ]),
-    );
-  });
+  /** The files chosen in this editor by block key, and where each one's upload stands. */
+  readonly uploads$ = this.state.uploads.asReadonly();
+
+  /** The open lesson's blocks (by index) with an upload to continue; a running one is not listed. */
+  readonly interrupted$ = computed(
+    (): Readonly<Record<number, InterruptedUpload>> => {
+      const target = this.state.editingLesson();
+      if (!target) return {};
+      const running = new Set(
+        Object.values(this.state.uploads()).map((entry) => entry.uploadId),
+      );
+      const refusals = this.state.refusals();
+      const prefix = `${target.chapter}.${target.lesson}.`;
+      return Object.fromEntries(
+        this.state
+          .kept()
+          .filter(
+            (upload) =>
+              upload.position.startsWith(prefix) &&
+              !running.has(upload.uploadId),
+          )
+          .map((upload) => [
+            Number(upload.position.slice(prefix.length)),
+            { ...upload, message: refusals[upload.uploadId] },
+          ]),
+      );
+    },
+  );
 
   // Setters
   private setStep(step: number): void {
@@ -319,6 +366,32 @@ export class CourseEditorStore {
 
   private setUpload(key: string, entry: UploadEntry): void {
     this.state.uploads.update((all) => ({ ...all, [key]: entry }));
+  }
+
+  /** Changes a row that is still there: a late answer for a dismissed row is dropped. */
+  private patchUpload(key: string, patch: Partial<UploadEntry>): void {
+    this.state.uploads.update((all) =>
+      all[key] ? { ...all, [key]: { ...all[key], ...patch } } : all,
+    );
+  }
+
+  private removeUpload(key: string): void {
+    this.state.uploads.update(
+      ({ [key]: _gone, ...rest }) => rest as Record<string, UploadEntry>,
+    );
+  }
+
+  private setKept(kept: readonly KeptUpload[]): void {
+    this.state.kept.set(kept);
+    const userId = this.userId();
+    const courseId = this.courseId();
+    if (userId && courseId) this.keptStorage.write(userId, courseId, kept);
+  }
+
+  private setRefusal(uploadId: string, message: string | undefined): void {
+    this.state.refusals.update(({ [uploadId]: _old, ...rest }) =>
+      message === undefined ? rest : { ...rest, [uploadId]: message },
+    );
   }
 
   // Commands
@@ -377,33 +450,292 @@ export class CourseEditorStore {
 
   /** Checks the file against the block's rules, then uploads it. */
   upload(request: UploadRequest): void {
-    const { blockKey, blockType, file } = request;
-    const rule = UPLOAD_RULES[blockType];
-    const extension = file.name.split('.').pop()?.toLowerCase() ?? '';
-    const base = { name: file.name, sizeBytes: file.size };
-    if (rule && !rule.extensions.includes(extension)) {
-      this.setUpload(blockKey, {
-        ...base,
-        state: 'error',
-        message: `Sai định dạng: chỉ chấp nhận ${rule.extensions.join(', ').toUpperCase()}.`,
-      });
+    if (this.refuse(request)) return;
+    this.begin(request);
+  }
+
+  /** The author picked the file of an interrupted upload again: it goes on where it stopped. */
+  resume(request: UploadRequest): void {
+    const kept = this.interrupted$()[request.blockIndex];
+    if (!kept || kept.blockType !== request.blockType) {
+      this.upload(request);
       return;
     }
-    if (rule && file.size > rule.maxMb * 1024 * 1024) {
-      this.setUpload(blockKey, {
-        ...base,
-        state: 'error',
-        message: `Tệp vượt giới hạn ${rule.maxMb} MB.`,
-      });
-      return;
-    }
-    this.setUpload(blockKey, { ...base, state: 'uploading' });
-    this.uploadMutation.run(request);
+    if (this.refuse(request)) return;
+    this.begin(request, kept);
+  }
+
+  /** "Hủy" on a row that is hashing or sending: stops it and cancels it on the server. */
+  cancel(blockKey: string): void {
+    this.release(blockKey);
+    this.removeUpload(blockKey);
+  }
+
+  /** "Hủy" on an interrupted upload: the server forgets it. */
+  cancelInterrupted(uploadId: string): void {
+    this.cancelOnServer(uploadId);
+    this.setRefusal(uploadId, undefined);
+  }
+
+  /** "Kiểm tra lại": asks the server whether it finished the file. */
+  recheck(blockKey: string): void {
+    const context = this.contexts.get(blockKey);
+    const uploadId = this.state.uploads()[blockKey]?.uploadId;
+    if (!context || !uploadId) return;
+    this.patchUpload(blockKey, {
+      state: 'processing',
+      status: PROCESSING_STATUS,
+      message: undefined,
+    });
+    this.follow(
+      context,
+      pollUpload(this.client, uploadId, { online: this.online }),
+    );
+  }
+
+  /** "Xử lý lại": the server could not check the file the first time, so it completes again. */
+  reprocess(blockKey: string): void {
+    const context = this.contexts.get(blockKey);
+    const uploadId = this.state.uploads()[blockKey]?.uploadId;
+    if (!context || !uploadId) return;
+    this.patchUpload(blockKey, {
+      state: 'processing',
+      status: PROCESSING_STATUS,
+      message: undefined,
+      reprocess: false,
+    });
+    this.follow(
+      context,
+      reprocessUpload(this.client, uploadId, { online: this.online }),
+    );
   }
 
   retryLoad(): void {
     this.courseData.reload();
   }
+
+  /** Shows why the file is not acceptable for the block, or returns false when it is. */
+  private refuse({ blockKey, blockType, file }: UploadRequest): boolean {
+    const rule = UPLOAD_RULES[blockType];
+    const extension = file.name.split('.').pop()?.toLowerCase() ?? '';
+    const base = { name: file.name, sizeBytes: file.size };
+    const message =
+      rule && !rule.extensions.includes(extension)
+        ? `Sai định dạng: chỉ chấp nhận ${rule.extensions.join(', ').toUpperCase()}.`
+        : rule && file.size > rule.maxMb * 1024 * 1024
+          ? `Tệp vượt giới hạn ${rule.maxMb} MB.`
+          : undefined;
+    if (message === undefined) return false;
+    this.release(blockKey);
+    this.setUpload(blockKey, { ...base, state: 'error', message });
+    return true;
+  }
+
+  private begin(request: UploadRequest, resumed?: KeptUpload): void {
+    const { blockKey, blockType, blockIndex, file } = request;
+    this.release(blockKey);
+    const target = this.state.editingLesson();
+    const context: UploadContext = {
+      blockKey,
+      blockType,
+      name: file.name,
+      sizeBytes: file.size,
+      position: target
+        ? `${target.chapter}.${target.lesson}.${blockIndex}`
+        : undefined,
+      resumed,
+    };
+    this.setUpload(blockKey, {
+      state: 'hashing',
+      name: file.name,
+      sizeBytes: file.size,
+      percent: 0,
+      status: hashingStatus(0),
+      uploadId: resumed?.uploadId,
+    });
+    this.follow(
+      context,
+      chunkedUpload(this.client, this.hasher, file, this.orgId() ?? 0, {
+        resume: resumed,
+        online: this.online,
+      }),
+    );
+  }
+
+  private follow(
+    context: UploadContext,
+    source: Observable<UploadProgress>,
+  ): void {
+    this.running.get(context.blockKey)?.unsubscribe();
+    this.contexts.set(context.blockKey, context);
+    this.running.set(
+      context.blockKey,
+      source.subscribe((event) => this.progressed(context, event)),
+    );
+  }
+
+  private progressed(context: UploadContext, event: UploadProgress): void {
+    const { blockKey } = context;
+    switch (event.type) {
+      case 'hashing':
+        this.patchUpload(blockKey, {
+          state: 'hashing',
+          percent: event.percent,
+          status: hashingStatus(event.percent),
+        });
+        return;
+      case 'started':
+        this.patchUpload(blockKey, { uploadId: event.uploadId });
+        if (context.position) {
+          this.setKept([
+            ...this.state.kept().filter((k) => k.uploadId !== event.uploadId),
+            {
+              uploadId: event.uploadId,
+              position: context.position,
+              blockType: context.blockType,
+              name: context.name,
+              sizeBytes: context.sizeBytes,
+              checksumSha256: event.checksumSha256,
+              expiresAt: event.expiresAt,
+            },
+          ]);
+        }
+        return;
+      case 'uploading':
+        this.patchUpload(blockKey, {
+          state: 'uploading',
+          uploadId: event.uploadId,
+          percent: Math.floor((event.uploadedBytes / event.totalBytes) * 100),
+          status: sendingStatus(event.uploadedBytes, event.totalBytes),
+        });
+        return;
+      case 'waiting':
+        this.patchUpload(blockKey, {
+          state: 'waiting',
+          status: WAITING_STATUS,
+        });
+        return;
+      case 'processing':
+        this.patchUpload(blockKey, {
+          state: 'processing',
+          uploadId: event.uploadId,
+          percent: undefined,
+          status: PROCESSING_STATUS,
+        });
+        return;
+      case 'stalled':
+        this.patchUpload(blockKey, {
+          state: 'stalled',
+          uploadId: event.uploadId,
+          status: undefined,
+          message: STALLED_MESSAGE,
+        });
+        return;
+      case 'ready':
+        this.finished(context, event.upload.assetId, event.upload.uploadId);
+        return;
+      case 'failed':
+        this.failed(context, event);
+    }
+  }
+
+  private finished(
+    context: UploadContext,
+    assetId: number | null | undefined,
+    uploadId: string,
+  ): void {
+    const { blockKey, blockType, name, sizeBytes } = context;
+    this.running.delete(blockKey);
+    this.dropKept(uploadId);
+    if (!assetId) {
+      this.setUpload(blockKey, {
+        state: 'error',
+        name,
+        sizeBytes,
+        message: 'Máy chủ không trả về tệp đã xử lý.',
+      });
+      return;
+    }
+    this.setUpload(blockKey, {
+      state: 'done',
+      name,
+      sizeBytes,
+      uploadId,
+      asset: {
+        assetId,
+        usage: FILE_USAGE[blockType] ?? 'attachment',
+        name,
+        sizeBytes,
+      },
+    });
+    this.toaster.success(
+      'Tải lên thành công',
+      `${name} · đã kiểm tra định dạng và dung lượng`,
+    );
+  }
+
+  private failed(
+    context: UploadContext,
+    event: Extract<UploadProgress, { type: 'failed' }>,
+  ): void {
+    const { blockKey, name, sizeBytes, resumed } = context;
+    this.running.delete(blockKey);
+    const uploadId =
+      this.state.uploads()[blockKey]?.uploadId ?? resumed?.uploadId;
+    if (resumed && event.code === MISMATCH_CODE) {
+      // The wrong file: the kept upload is untouched and still waits for the right one.
+      this.removeUpload(blockKey);
+      this.setRefusal(resumed.uploadId, MISMATCH_MESSAGE);
+      return;
+    }
+    // A refusal from the app's own domain ends the upload; a network or system failure leaves it
+    // on the server to be continued.
+    const final =
+      (event.code?.startsWith('LEARNING-') ?? false) && !event.retryProcessing;
+    if (final && uploadId) this.dropKept(uploadId);
+    this.setUpload(blockKey, {
+      state: 'error',
+      name,
+      sizeBytes,
+      uploadId,
+      message: event.message,
+      reprocess: event.retryProcessing,
+      expired: event.code === EXPIRED_CODE,
+    });
+  }
+
+  /** Stops the upload running on a block, and cancels it on the server while it is still sending. */
+  private release(blockKey: string): void {
+    this.running.get(blockKey)?.unsubscribe();
+    this.running.delete(blockKey);
+    const entry = this.state.uploads()[blockKey];
+    if (entry?.uploadId && isCancellable(entry)) {
+      this.cancelOnServer(entry.uploadId);
+    }
+  }
+
+  /** The server forgets the upload; if it cannot be reached the upload simply expires there. */
+  private cancelOnServer(uploadId: string): void {
+    this.dropKept(uploadId);
+    cancelUpload(this.client, uploadId).subscribe({ error: () => undefined });
+  }
+
+  private dropKept(uploadId: string): void {
+    if (this.state.kept().some((k) => k.uploadId === uploadId)) {
+      this.setKept(this.state.kept().filter((k) => k.uploadId !== uploadId));
+    }
+    this.setRefusal(uploadId, undefined);
+  }
+
+  /** Waits for the network to come back, never less than the pause between two tries. */
+  private readonly online = async (): Promise<void> => {
+    await new Promise<void>((resolve) => setTimeout(resolve, SERVER_RETRY_MS));
+    await firstValueFrom(
+      toObservable(this.network.offline$, { injector: this.injector }).pipe(
+        filter((offline) => !offline),
+      ),
+    );
+  };
 
   private saveDraft(command: SaveDraftCommand) {
     const detail = this.course$();

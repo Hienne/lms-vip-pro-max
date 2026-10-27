@@ -1,6 +1,7 @@
 import {
   Component,
   computed,
+  inject,
   input,
   linkedSignal,
   output,
@@ -38,11 +39,15 @@ import {
 } from '../../course-draft';
 import {
   acceptOf,
+  CourseEditorStore,
   uploadHintOf,
-  type UploadEntry,
-  type UploadRequest,
 } from '../../data-access/course-editor.store';
-import { readFileFacts } from './file-facts';
+import {
+  isBusy,
+  isCancellable,
+  itemState,
+  type UploadEntry,
+} from '../../data-access/upload-entry';
 
 /** A block as the form edits it: process steps as one line each, "Tiêu đề | Mô tả". */
 type BlockFormValue = Omit<BlockValue, 'steps'> & { stepsText: string };
@@ -71,8 +76,9 @@ const toSteps = (text: string) =>
 
 /**
  * The lesson drawer (the mockup's `lessonDrawer`): title, length, kind and the content blocks,
- * each with its file, text or steps. A file is uploaded as soon as it is chosen and joins its
- * block when the lesson is applied; "Áp dụng" changes the course draft, "Lưu nháp" saves it.
+ * each with its file, text or steps. A file is uploaded as soon as it is chosen (the store runs
+ * it, so it goes on while the drawer is closed) and joins its block when the lesson is applied;
+ * "Áp dụng" changes the course draft, "Lưu nháp" saves it.
  */
 @Component({
   selector: 'app-lesson-form',
@@ -95,11 +101,15 @@ const toSteps = (text: string) =>
 })
 export class LessonForm {
   readonly lesson = input.required<LessonValue>();
-  /** Files chosen in this editor, by block key. */
-  readonly uploads = input.required<Readonly<Record<string, UploadEntry>>>();
   readonly submitted = output<LessonValue>();
-  readonly upload = output<UploadRequest>();
 
+  protected readonly store = inject(CourseEditorStore);
+  /** Files chosen in this editor, by block key. */
+  protected readonly uploads = this.store.uploads$;
+  /** Uploads a reload stopped, by the index of their block in this lesson. */
+  protected readonly interrupted = this.store.interrupted$;
+  protected readonly itemState = itemState;
+  protected readonly isCancellable = isCancellable;
   protected readonly blockTypes = BLOCK_TYPES;
   protected readonly addable = BlockTypeSchema.options;
   protected readonly acceptOf = acceptOf;
@@ -155,6 +165,11 @@ export class LessonForm {
         ),
   );
 
+  /** File blocks whose file is still on its way: the lesson cannot be applied before it is there. */
+  protected readonly busyBlocks = computed(() =>
+    this.model().blocks.filter((b) => isBusy(this.uploads()[b.key])),
+  );
+
   protected addBlock(type: BlockType): void {
     const { steps: _steps, ...block } = newBlock(type);
     this.model.update((value) => ({
@@ -179,20 +194,39 @@ export class LessonForm {
     }));
   }
 
-  protected async choose(block: BlockFormValue, files: File[]): Promise<void> {
+  /** A file from the dropzone or a picker; with `resuming` it continues the interrupted upload. */
+  protected choose(
+    block: BlockFormValue,
+    index: number,
+    files: readonly File[],
+    resuming = false,
+  ): void {
     const file = files[0];
     if (!file) return;
-    const facts = await readFileFacts(file);
-    this.upload.emit({
+    const request = {
       blockKey: block.key,
       blockType: block.blockType,
+      blockIndex: index,
       file,
-      ...facts,
-    });
+    };
+    if (resuming) this.store.resume(request);
+    else this.store.upload(request);
+  }
+
+  /** The file a button's hidden input picked; the input is emptied so the same file can be picked again. */
+  protected picked(
+    event: Event,
+    block: BlockFormValue,
+    index: number,
+    resuming = false,
+  ): void {
+    const input = event.target as HTMLInputElement;
+    this.choose(block, index, Array.from(input.files ?? []), resuming);
+    input.value = '';
   }
 
   private apply(): void {
-    if (this.missingFiles().length) return;
+    if (this.missingFiles().length || this.busyBlocks().length) return;
     const value = this.model();
     const files = this.files();
     this.submitted.emit({
