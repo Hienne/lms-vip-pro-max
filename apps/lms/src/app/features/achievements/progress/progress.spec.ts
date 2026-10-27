@@ -271,7 +271,7 @@ describe('LearningProgress', () => {
       button('Xuất CSV')!.click();
       await settle();
       expect(document.body.textContent).not.toContain('Đã xuất');
-      expect(document.querySelector('ui-toaster [role=status]')).toBeNull();
+      expect(document.querySelector('ui-toast-outlet .toast')).toBeNull();
     });
 
     it('toasts the server message and saves nothing when the export is too large', async () => {
@@ -279,7 +279,14 @@ describe('LearningProgress', () => {
       button('Xuất CSV')!.click();
       await settle();
       expect(save).not.toHaveBeenCalled();
-      expect(document.body.textContent).toMatch(/10\.?000|quá nhiều|xuất/i);
+      // The refusal arrives as a Blob, which is read asynchronously before the toast shows.
+      await vi.waitFor(() => {
+        expect(
+          document.querySelector('ui-toast-outlet .toast--error')?.textContent,
+        ).toContain(
+          'Kết quả vượt giới hạn xuất 10.000 dòng. Vui lòng thu hẹp bộ lọc.',
+        );
+      });
     });
   });
 
