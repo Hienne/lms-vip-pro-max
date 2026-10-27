@@ -725,11 +725,26 @@ export class FakeBackend {
       ) {
         continue;
       }
-      if (grant.orgId !== null) {
+      if (grant.orgId !== null && this.activeAncestors(grant.orgId)) {
         for (const id of this.subtree(grant.orgId)) ids.add(id);
       }
     }
     return ids;
+  }
+
+  /** Every ancestor of `orgId` exists and is active: an inactive or broken path grants nothing. */
+  private activeAncestors(orgId: number): boolean {
+    const seen = new Set<number>();
+    let parentId = this.orgOf(orgId)?.parentId ?? null;
+    while (parentId !== null) {
+      const parent = this.orgOf(parentId);
+      if (!parent || parent.status !== 'active' || seen.has(parentId)) {
+        return false;
+      }
+      seen.add(parentId);
+      parentId = parent.parentId;
+    }
+    return true;
   }
 
   /** `orgId` and every active descendant (an inactive node cuts its branch off). */
@@ -1576,8 +1591,7 @@ export class FakeBackend {
     if (request.query['rootOnly'] === 'true') {
       // A root is a node whose parent the caller cannot see: the tree starts where the scope does.
       rows = rows.filter(
-        (o) =>
-          o.parentId === null || !visible(this.orgOf(o.parentId) as SeedOrg),
+        (o) => o.parentId === null || !this.isVisibleOrg(o.parentId, visible),
       );
     } else if (request.query['parentId']) {
       rows = rows.filter(
@@ -1614,7 +1628,7 @@ export class FakeBackend {
       .filter((o) =>
         parentId
           ? o.parentId === Number(parentId)
-          : o.parentId === null || !visible(this.orgOf(o.parentId) as SeedOrg),
+          : o.parentId === null || !this.isVisibleOrg(o.parentId, visible),
       )
       .sort((a, b) => a.sortNo - b.sortNo || a.id - b.id);
     const start = query.page * query.size;
@@ -1636,6 +1650,15 @@ export class FakeBackend {
       totalElements: rows.length,
       totalPages: Math.ceil(rows.length / query.size),
     });
+  }
+
+  /** A missing parent counts as out of sight, so its child is a root. */
+  private isVisibleOrg(
+    id: number,
+    visible: (org: SeedOrg) => boolean,
+  ): boolean {
+    const org = this.orgOf(id);
+    return org !== undefined && visible(org);
   }
 
   private visibleOrgs(actor: DbUser): (org: SeedOrg) => boolean {
@@ -1692,7 +1715,7 @@ export class FakeBackend {
       (o) =>
         visible(o) &&
         o.status === 'active' &&
-        (o.parentId === null || !visible(this.orgOf(o.parentId) as SeedOrg)),
+        (o.parentId === null || !this.isVisibleOrg(o.parentId, visible)),
     );
     if (!parent) return refuse('orgImportInvalid');
     const org = global

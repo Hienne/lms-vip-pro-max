@@ -670,6 +670,58 @@ describe('FakeBackend', () => {
       expect(tree(login('quantri.ban')).items.map((o) => o.id)).toEqual([1]);
     });
 
+    it('shows an org admin only the active branch: no inactive node, nothing under an inactive ancestor', () => {
+      const root = login('super.admin');
+      const created = (code: string) =>
+        (department(root, code).body.data as { id: number }).id;
+      const pause = (orgId: number) =>
+        call(organizationEndpoints.updateOrg, root, {
+          params: { orgId: String(orgId) },
+          body: { status: 'inactive' },
+        });
+      const paused = created('PB_DUNG');
+      const granted = created('PB_CAP');
+      pause(paused);
+      expect(
+        call(identityEndpoints.grantRole, root, {
+          params: { userId: '000004' },
+          body: { roleId: 2, scope: 'ORG', orgId: granted },
+        }).status,
+      ).toBe(201);
+
+      expect(tree(root, { parentId: '1' }).items.map((o) => o.code)).toContain(
+        'PB_DUNG',
+      );
+      const orgAdmin = login('quantri.ban');
+      expect(
+        tree(orgAdmin, { parentId: '1' }).items.map((o) => o.code),
+      ).toEqual(['PB_CAP']);
+      expect(tree(login('hocvien')).items.map((o) => o.code)).toEqual([
+        'PB_CAP',
+      ]);
+
+      pause(1);
+      expect(tree(login('hocvien')).items).toEqual([]);
+      expect(tree(root).items.map((o) => o.id)).toEqual([1]);
+    });
+
+    it('answers the contents of a node out of scope as not found', () => {
+      const root = login('super.admin');
+      const outside = (department(root, 'PB_NGOAI').body.data as { id: number })
+        .id;
+      call(identityEndpoints.grantRole, root, {
+        params: { userId: '000004' },
+        body: { roleId: 2, scope: 'ORG', orgId: outside },
+      });
+      expect(
+        code(
+          call(organizationEndpoints.orgContents, login('hocvien'), {
+            params: { orgId: '1' },
+          }),
+        ),
+      ).toBe('CORE-RESOURCE_NOT_FOUND');
+    });
+
     it('answers the panel contents as getOrg plus a page of listTeams', () => {
       const root = login('super.admin');
       const contents = OrganizationContentsSchema.parse(
