@@ -15,12 +15,14 @@ import { TestBed } from '@angular/core/testing';
 import {
   adminOrgEndpoints,
   type AnyEndpoint,
+  assetEndpoints,
   authV1Endpoints,
   defineEndpoint,
   EnvelopeSchema,
   identityEndpoints,
   knowledgeEndpoints,
   shellEndpoints,
+  toUrl,
 } from '@lms/contracts';
 import { navCountsFixtures, SEED_PASSWORD } from '@lms/mocks';
 import { z } from 'zod';
@@ -61,13 +63,18 @@ describe('mockApiInterceptor', () => {
   const ask = (
     endpoint: AnyEndpoint,
     url: string,
-    options: { body?: unknown; token?: string } = {},
+    options: {
+      body?: unknown;
+      token?: string;
+      headers?: Record<string, string>;
+    } = {},
   ) =>
     http.request(endpoint.method, url, {
       body: options.body,
-      headers: options.token
-        ? { Authorization: `Bearer ${options.token}` }
-        : {},
+      headers: {
+        ...options.headers,
+        ...(options.token ? { Authorization: `Bearer ${options.token}` } : {}),
+      },
       observe: 'response',
       context: new HttpContext().set(ENDPOINT, endpoint),
     });
@@ -157,15 +164,16 @@ describe('mockApiInterceptor', () => {
       expect(ids).toEqual([3, 1]);
     });
 
-    it('answers a mock-only endpoint with the example of the signed-in role', () => {
+    it('answers a mock-only endpoint with the role example and the due reminders of the caller', () => {
       const token = signIn('giangvien');
       let body: unknown;
       ask(shellEndpoints.navCounts, '/api/me/nav-counts', { token }).subscribe(
         (r) => (body = r.body),
       );
-      expect(EnvelopeSchema.parse(body).data).toEqual(
-        navCountsFixtures['INSTRUCTOR'],
-      );
+      expect(EnvelopeSchema.parse(body).data).toEqual({
+        ...navCountsFixtures['INSTRUCTOR'],
+        notifications: 0,
+      });
     });
 
     it('keeps a saved role: the next list shows it', () => {
@@ -218,6 +226,36 @@ describe('mockApiInterceptor', () => {
       ).subscribe((r) => (body = r.body));
       expect(EnvelopeSchema.parse(body).data).toMatchObject({
         user: { userId: '000004' },
+      });
+    });
+
+    it('hands the mock the headers an endpoint declares and a binary body as it is', () => {
+      const token = signIn('giangvien');
+      const uploadId = '00000000-0000-4000-8000-000000000001';
+      ask(assetEndpoints.startUpload, assetEndpoints.startUpload.path, {
+        token,
+        body: {
+          requestId: uploadId,
+          ownerOrgId: 1,
+          originalName: 'a.pdf',
+          mimeType: 'application/pdf',
+          sizeBytes: 3,
+          checksumSha256: 'a'.repeat(64),
+        },
+      }).subscribe();
+      let body: unknown;
+      ask(
+        assetEndpoints.uploadPart,
+        toUrl(assetEndpoints.uploadPart, { uploadId, partNumber: 1 }),
+        {
+          token,
+          body: new Blob(['abc']),
+          headers: { 'X-Part-SHA256': 'b'.repeat(64) },
+        },
+      ).subscribe((r) => (body = r.body));
+      expect(EnvelopeSchema.parse(body).data).toMatchObject({
+        uploadedBytes: 3,
+        parts: [{ partNumber: 1, checksumSha256: 'b'.repeat(64) }],
       });
     });
 

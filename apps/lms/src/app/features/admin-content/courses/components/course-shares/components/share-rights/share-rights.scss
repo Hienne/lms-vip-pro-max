@@ -1,0 +1,19 @@
+@use 'ui';
+
+.share-rights {
+  @include ui.stack(3);
+
+  &__switches {
+    @include ui.stack(2);
+  }
+
+  &__toggle {
+    @include ui.row(3);
+    @include ui.text(sm);
+    cursor: pointer;
+  }
+
+  &__actions {
+    @include ui.row(2);
+  }
+}

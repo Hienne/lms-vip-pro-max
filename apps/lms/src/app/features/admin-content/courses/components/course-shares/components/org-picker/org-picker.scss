@@ -1,0 +1,57 @@
+@use 'ui';
+
+.org-picker {
+  &__results {
+    @include ui.stack(1);
+    margin-block-start: ui.space(2);
+  }
+
+  &__list {
+    max-height: 14rem;
+    overflow-y: auto;
+    padding: ui.space(1);
+    border: 1px solid ui.color(border);
+    border-radius: ui.radius(md);
+    background: ui.color(surface);
+
+    &:empty {
+      display: none;
+    }
+  }
+
+  &__option {
+    @include ui.row(3);
+    justify-content: space-between;
+    min-height: ui.space(10);
+    padding-inline: ui.space(3);
+    border-radius: ui.radius(sm);
+    cursor: pointer;
+    @include ui.text(sm);
+
+    &:hover,
+    &[data-active='true'] {
+      background: ui.color(surface-2);
+    }
+
+    &[aria-selected='true'] {
+      background: ui.color(primary-subtle);
+      color: ui.color(primary);
+    }
+  }
+
+  &__name {
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+
+  &__code {
+    flex: none;
+    @include ui.mono;
+    @include ui.text(xs, muted);
+  }
+
+  &__note {
+    margin: 0;
+    @include ui.text(sm, muted);
+  }
+}

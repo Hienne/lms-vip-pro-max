@@ -1,0 +1,26 @@
+@use 'ui';
+
+.progress-counts {
+  @include ui.row(6);
+  flex-wrap: wrap;
+  margin: 0;
+
+  &__item {
+    @include ui.stack(1);
+
+    dt {
+      @include ui.text(sm, muted);
+    }
+
+    dd {
+      @include ui.num;
+      @include ui.text(xl);
+      margin: 0;
+      font-weight: ui.weight(semibold);
+    }
+  }
+
+  &__value--danger {
+    color: ui.color(danger);
+  }
+}

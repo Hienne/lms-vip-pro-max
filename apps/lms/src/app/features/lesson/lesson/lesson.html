@@ -1,0 +1,228 @@
+<div class="lesson">
+  <header class="lesson__bar">
+    <a uiButton size="sm" [routerLink]="courseLink()">
+      <ui-icon name="arrow-left" size="sm" />Thoát
+    </a>
+    <p class="lesson__where">
+      @if (store.card$(); as card) { {{ card.title }} @if
+      (store.chapterTitle$()) { · {{ store.chapterTitle$() }} } }
+    </p>
+    <p class="lesson__save" aria-live="polite">
+      @if (store.save$() === 'failed') { Chưa lưu được tiến độ
+      <button uiButton variant="ghost" size="sm" (click)="store.retry()">
+        Thử lại
+      </button>
+      } @else if (store.save$() === 'saved') { Đã lưu tiến độ }
+    </p>
+    @if (store.view$() === 'ready') {
+    <button
+      uiButton
+      size="sm"
+      class="lesson__toc-toggle"
+      (click)="store.openOutline()"
+    >
+      <ui-icon name="list" size="sm" />Mục lục
+    </button>
+    }
+  </header>
+
+  @if (store.loadError$(); as error) {
+  <ui-error-state
+    title="Không tải được bài học"
+    [message]="error.message"
+    (retry)="store.retryLoad()"
+  />
+  } @else if (store.phase$() === 'page-error') {
+  <ui-empty
+    variant="page"
+    [headingLevel]="1"
+    [title]="store.studyError$()?.title || 'Không mở được bài học'"
+    [description]="store.studyError$()?.message ?? ''"
+  >
+    <a uiButton variant="primary" [routerLink]="courseLink()">Về khóa học</a>
+  </ui-empty>
+  } @else { @switch (store.view$()) { @case ('loading') {
+  <div class="lesson__loading" aria-busy="true">
+    <div uiSkeleton variant="text" class="lesson__skeleton-title"></div>
+    <div uiSkeleton variant="block" class="lesson__skeleton-body"></div>
+  </div>
+  } @case ('missing') {
+  <ui-empty
+    variant="page"
+    [headingLevel]="1"
+    title="Không tìm thấy bài học"
+    description="Bài học không còn trong khóa học hoặc đường dẫn không đúng."
+  >
+    <a uiButton variant="primary" [routerLink]="courseLink()">Về khóa học</a>
+  </ui-empty>
+  } @case ('not-enrolled') {
+  <ui-empty
+    variant="page"
+    [headingLevel]="1"
+    title="Bạn chưa đăng ký khóa học này."
+    description="Đăng ký ở trang khóa học để bắt đầu học."
+  >
+    <a uiButton variant="primary" [routerLink]="courseLink()">Về khóa học</a>
+  </ui-empty>
+  } @case ('quiz') {
+  <ui-empty
+    variant="page"
+    [headingLevel]="1"
+    [title]="'Bài kiểm tra chưa mở.'"
+    [description]="store.lesson$()?.lesson?.title ?? ''"
+  >
+    <a uiButton variant="primary" [routerLink]="courseLink()">Về khóa học</a>
+  </ui-empty>
+  } @default { @if (store.lesson$(); as lesson) {
+  <div class="lesson__layout">
+    <div class="lesson__main">
+      <div class="lesson__head">
+        <h1 class="lesson__title">{{ lesson.lesson.title }}</h1>
+        <p class="lesson__meta">
+          Bài {{ store.lessonPosition$().number }}/{{
+          store.lessonPosition$().total }} @if (minutes()) { · {{ minutes() }}
+          phút }
+        </p>
+      </div>
+
+      <app-session-alert
+        [phase]="store.phase$()"
+        [message]="store.studyError$()?.message"
+        (takeOver)="store.takeOver()"
+        (reload)="store.reloadLesson()"
+        (retry)="store.retry()"
+      />
+
+      @if (store.view$() === 'empty') {
+      <p class="lesson__note">Bài học chưa có nội dung.</p>
+      } @else { @if (store.blocks$().length > 1) {
+      <app-block-list
+        [blocks]="store.blocks$()"
+        [activeId]="store.activeBlock$()?.id"
+        (selected)="store.selectBlock($event)"
+      />
+      } @if (store.activeBlock$(); as active) {
+      <section class="lesson__block" [attr.aria-label]="active.title">
+        @if (store.blocks$().length > 1) {
+        <h2 class="lesson__block-title">{{ active.title }}</h2>
+        } @if (store.phase$() === 'block-error') {
+        <p class="lesson__note">
+          Tài nguyên đang được xử lý hoặc chưa sẵn sàng.
+          <button uiButton variant="ghost" size="sm" (click)="store.retry()">
+            Thử lại
+          </button>
+        </p>
+        } @else { @switch (active.detail.block.blockType) { @case ('text') {
+        <app-text-block [block]="active.detail.block" />
+        } @case ('video') { @if (store.contentUrl$(); as src) {
+        <app-video-block
+          [src]="src"
+          [startAt]="store.resume$()?.lastVideoPositionSeconds ?? 0"
+          [title]="active.title"
+          (played)="store.videoPlay($event)"
+          (paused)="store.videoPause($event)"
+          (beat)="store.videoBeat($event)"
+          (jumped)="store.videoSeek($event.from, $event.to, $event.playing)"
+          (retry)="store.reloadMedia()"
+        />
+        } @else if (store.phase$() === 'claiming') {
+        <div uiSkeleton variant="block" class="lesson__skeleton-body"></div>
+        } } @case ('pdf') { @if (store.contentUrl$(); as src) { @defer (on
+        immediate) {
+        <app-pdf-block
+          [src]="src"
+          [startPage]="store.resume$()?.lastPdfPage ?? 1"
+          [title]="active.title"
+          (pageShown)="store.pdfPage($event)"
+          (retry)="store.reloadMedia()"
+        />
+        } @placeholder {
+        <div uiSkeleton variant="block" class="lesson__skeleton-body"></div>
+        } } @else if (store.phase$() === 'claiming') {
+        <div uiSkeleton variant="block" class="lesson__skeleton-body"></div>
+        } } @case ('image') { @if (store.contentUrl$(); as src) {
+        <app-image-block
+          [src]="src"
+          [alt]="active.detail.assets[0].usage.altText || active.title"
+          [caption]="active.detail.assets[0].usage.caption ?? null"
+          (retry)="store.reloadMedia()"
+        />
+        } @else if (store.phase$() === 'claiming') {
+        <div uiSkeleton variant="block" class="lesson__skeleton-body"></div>
+        } } @case ('attachment') {
+        <app-attachment-block
+          [assets]="active.detail.assets"
+          [busy]="store.downloading$()"
+          (download)="store.download($event)"
+        />
+        } @case ('process') {
+        <app-process-block [steps]="active.detail.steps" />
+        } } }
+      </section>
+
+      <div class="lesson__done">
+        @if (store.completion$(); as done) { @if (done.done) {
+        <p class="lesson__done-line">
+          <ui-icon name="check" size="sm" />Đã hoàn thành @if (done.completedAt)
+          { · {{ done.completedAt | fmtDate }} }
+        </p>
+        } @else if (done.manual) {
+        <button uiButton variant="primary" (click)="store.markComplete()">
+          Đánh dấu hoàn thành
+        </button>
+        } @else if (active.detail.block.completionMode === 'video_coverage') {
+        <p class="lesson__done-line">
+          Đã xem {{ done.percent }}% @if (done.threshold !== null) { · cần {{
+          done.threshold }}% }
+        </p>
+        } }
+      </div>
+
+      <nav class="lesson__steps" aria-label="Chuyển khối và bài học">
+        @if (store.prevBlockId$(); as previous) {
+        <button uiButton (click)="store.selectBlock(previous)">
+          <ui-icon name="arrow-left" size="sm" />Khối trước
+        </button>
+        } @else if (store.prevLessonLink$(); as link) {
+        <a uiButton [routerLink]="link">
+          <ui-icon name="arrow-left" size="sm" />Bài trước
+        </a>
+        } @if (store.nextBlockId$(); as next) {
+        <button uiButton variant="primary" (click)="store.selectBlock(next)">
+          Khối tiếp theo<ui-icon name="arrow-right" size="sm" />
+        </button>
+        } @else if (store.nextLessonLink$(); as link) {
+        <a uiButton variant="primary" [routerLink]="link">
+          Bài tiếp theo<ui-icon name="arrow-right" size="sm" />
+        </a>
+        }
+      </nav>
+      } }
+    </div>
+
+    <aside class="lesson__side" aria-label="Mục lục">
+      <h2 class="lesson__side-title">Mục lục</h2>
+      <p class="lesson__progress">
+        Khóa học {{ store.courseProgress$() | fmtPct }}
+      </p>
+      <ui-progress
+        size="sm"
+        [value]="store.courseProgress$()"
+        label="Tiến độ khóa học"
+      />
+      <app-lesson-outline [chapters]="store.outline$()" />
+    </aside>
+  </div>
+  } } } }
+</div>
+
+<ng-template
+  [uiDrawer]="store.outlineOpen$()"
+  uiDrawerTitle="Mục lục"
+  (uiDrawerDismiss)="store.closeOutline()"
+>
+  <p class="lesson__progress">
+    Khóa học {{ store.courseProgress$() | fmtPct }}
+  </p>
+  <app-lesson-outline [chapters]="store.outline$()" />
+</ng-template>

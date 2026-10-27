@@ -1,68 +1,26 @@
 @use 'ui';
+
 :host {
   @include ui.page(narrow);
-  min-width: 0;
 }
-.notifications__loading {
-  min-height: 12rem;
-  display: grid;
-  place-items: center;
-}
-.notifications__list {
-  list-style: none;
-  padding: 0;
-  margin: 0;
-  li + li {
-    border-top: 1px solid ui.color(border);
+
+.notifications {
+  &__item {
+    @include ui.row-between(3);
+    flex-wrap: wrap;
   }
-}
-.notifications__item {
-  @include ui.row(3);
-  flex-wrap: nowrap;
-  width: 100%;
-  border: 0;
-  background: transparent;
-  text-align: left;
-  padding: ui.space(4) ui.space(5);
-  color: ui.color(text);
-  cursor: pointer;
-  &:hover {
-    background: ui.color(surface-2);
+
+  &__text {
+    flex: 1 1 16rem;
+    min-width: 0;
   }
-  &:focus-visible {
-    @include ui.focus-ring;
+
+  &__actions {
+    @include ui.row(2);
+    flex-wrap: nowrap;
   }
-}
-.notifications__item--unread {
-  background: ui.color(primary-subtle);
-  .notifications__body > span {
-    font-weight: ui.weight(semibold);
-  }
-}
-.notifications__icon {
-  width: ui.space(10);
-  height: ui.space(10);
-  display: grid;
-  place-items: center;
-  flex-shrink: 0;
-  background: ui.color(primary-subtle);
-  color: ui.color(primary);
-  border-radius: ui.radius(md);
-}
-.notifications__icon--due {
-  background: ui.color(warning-subtle);
-  color: ui.color(warning);
-}
-.notifications__icon--reward {
-  background: ui.color(accent-subtle);
-  color: ui.color(accent-ink);
-}
-.notifications__body {
-  flex: 1;
-  min-width: 0;
-  @include ui.stack(1);
-  @include ui.text(sm);
-  small {
-    @include ui.text(xs, muted);
+
+  &__line {
+    width: 60%;
   }
 }

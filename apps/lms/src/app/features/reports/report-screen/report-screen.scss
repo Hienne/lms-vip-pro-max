@@ -46,7 +46,7 @@
   }
 }
 .report__eyebrow {
-  @include ui.eyebrow;
+  @include ui.text(sm);
   margin-bottom: ui.space(2);
 }
 .report__links {

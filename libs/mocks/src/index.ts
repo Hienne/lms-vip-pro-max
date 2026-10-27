@@ -8,7 +8,6 @@ export * from './lib/backend/seed-me';
 export * from './lib/shell/shell.fixtures';
 export * from './lib/admin-org/admin-org.fixtures';
 export * from './lib/assessment/assessment.mock';
-export * from './lib/learning-dashboard/learning-dashboard.fixtures';
 export * from './lib/reports/reports.fixtures';
 export * from './lib/reports/learning-report.handlers';
 export * from './lib/personal/personal.fixtures';

@@ -42,9 +42,25 @@ describe('EnvelopeSchema', () => {
 
 describe('MESSAGE_CODE_KIND', () => {
   it('branches on the authentication and permission codes', () => {
-    expect(MESSAGE_CODE_KIND).toEqual({
+    expect(MESSAGE_CODE_KIND).toMatchObject({
       'CORE-UNAUTHENTICATED': 'unauthorized',
       'CORE-ACCESS_DENIED': 'forbidden',
     });
+  });
+
+  it('marks the study-session refusals the player handles itself', () => {
+    for (const code of [
+      'LEARNING-SESSION_IN_USE',
+      'LEARNING-SESSION_EXPIRED',
+      'LEARNING-STALE_EVENT',
+      'LEARNING-CONFLICT',
+      'LEARNING-MEDIA_CHANGED',
+      'LEARNING-ASSET_PROCESSING',
+      'LEARNING-NOT_AVAILABLE',
+    ]) {
+      expect(MESSAGE_CODE_KIND[code as keyof typeof MESSAGE_CODE_KIND]).toBe(
+        'refused',
+      );
+    }
   });
 });

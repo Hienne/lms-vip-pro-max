@@ -1,0 +1,43 @@
+@use 'ui';
+
+.asset-library {
+  @include ui.stack(4);
+
+  &__toolbar {
+    @include ui.row(3);
+    flex-wrap: wrap;
+    justify-content: space-between;
+  }
+
+  &__count {
+    @include ui.text(sm, muted);
+  }
+
+  &__loading {
+    display: flex;
+    justify-content: center;
+    padding-block: ui.space(10);
+  }
+
+  &__pick {
+    max-width: 100%;
+    justify-content: flex-start;
+    text-align: start;
+    overflow-wrap: anywhere;
+  }
+
+  &__file {
+    @include ui.stack(1);
+    min-inline-size: 0;
+  }
+
+  &__mime {
+    @include ui.text(xs, muted);
+    padding-inline: ui.space(3);
+    overflow-wrap: anywhere;
+  }
+
+  &__num {
+    @include ui.num;
+  }
+}

@@ -1,0 +1,17 @@
+@if (ordered().length) {
+<ol class="process">
+  @for (step of ordered(); track step.id) {
+  <li class="process__step">
+    <span class="process__number" aria-hidden="true">{{ $index + 1 }}</span>
+    <div>
+      <h3 class="process__title">{{ step.title }}</h3>
+      @if (step.description) {
+      <p class="process__description">{{ step.description }}</p>
+      }
+    </div>
+  </li>
+  }
+</ol>
+} @else {
+<p class="process__empty">Khối này chưa có bước nào.</p>
+}

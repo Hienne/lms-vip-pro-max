@@ -1,0 +1,35 @@
+<nav aria-label="Mục lục khóa học">
+  @for (chapter of chapters(); track chapter.id) {
+  <section class="toc__chapter">
+    <h3 class="toc__chapter-title">{{ chapter.title }}</h3>
+    <ol class="toc__lessons">
+      @for (lesson of chapter.lessons; track lesson.id) {
+      <li class="toc__lesson">
+        <span class="toc__state" aria-hidden="true">
+          @if (lesson.state === 'completed') {
+          <ui-icon name="check" size="sm" />
+          } @else if (lesson.state === 'in_progress') {
+          <span class="toc__dot"></span>
+          }
+        </span>
+        @if (lesson.link; as link) {
+        <a
+          class="toc__title"
+          [class.toc__title--current]="lesson.current"
+          [routerLink]="link"
+          [attr.aria-current]="lesson.current ? 'page' : null"
+          >{{ lesson.title }}</a
+        >
+        } @else {
+        <span class="toc__title toc__title--locked">{{ lesson.title }}</span>
+        }
+        <span class="toc__sr">
+          @switch (lesson.state) { @case ('completed') {Đã hoàn thành} @case
+          ('in_progress') {Đang học} @default {Chưa học} }
+        </span>
+      </li>
+      }
+    </ol>
+  </section>
+  }
+</nav>

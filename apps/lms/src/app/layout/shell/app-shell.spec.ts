@@ -78,6 +78,17 @@ describe('AppShell', () => {
       .match('/api/me/nav-counts')
       .filter((r) => !r.cancelled)
       .forEach((r) => r.flush(envelopeOk(counts)));
+    // The learner home behind /learn reads the progress and the course lists, and the reports
+    // page its overview; no test here is about them.
+    backend
+      .match(
+        (r) =>
+          r.url.startsWith('/api/v1/me/learning/') ||
+          r.url === '/api/v1/training-catalog/programs' ||
+          r.url.startsWith('/api/reports/'),
+      )
+      .filter((r) => !r.cancelled)
+      .forEach((r) => r.error(new ProgressEvent('error')));
     // The owl's tracker asks for the user's unfinished uploads; there are none.
     backend
       .match((r) => r.url === '/api/v1/knowledge/documents')
@@ -669,7 +680,9 @@ describe('AppShell', () => {
         await fixture.whenStable();
         TestBed.tick();
       };
-      await go('/learn');
+      // A route placeholder has no level-1 heading.
+      await go('/leaderboard');
+      expect(root.querySelector('main h1')).toBeNull();
       expect(document.activeElement).toBe(root.querySelector('main'));
       await go('/403');
       const h1 = root.querySelector('main h1');

@@ -1,0 +1,71 @@
+@use 'ui';
+
+.toc {
+  &__chapter {
+    margin-bottom: ui.space(4);
+  }
+
+  &__chapter-title {
+    @include ui.text(sm, muted);
+    margin: 0 0 ui.space(2);
+    font-weight: ui.weight(medium);
+  }
+
+  &__lessons {
+    @include ui.stack(1);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  &__lesson {
+    @include ui.row(2);
+    flex-wrap: nowrap;
+    align-items: flex-start;
+  }
+
+  &__state {
+    display: grid;
+    flex: none;
+    place-items: center;
+    width: 1rem;
+    height: 1.5rem;
+    color: ui.color(success);
+  }
+
+  &__dot {
+    width: 0.5rem;
+    height: 0.5rem;
+    border-radius: ui.radius(full);
+    background: ui.color(primary);
+  }
+
+  &__title {
+    @include ui.grow;
+    padding-block: ui.space(1);
+    color: ui.color(text);
+    text-decoration: none;
+
+    &:is(a):hover {
+      color: ui.color(primary);
+      text-decoration: underline;
+    }
+
+    &:is(a):focus-visible {
+      @include ui.focus-ring;
+    }
+
+    &--current {
+      color: ui.color(primary);
+      font-weight: ui.weight(semibold);
+    }
+
+    &--locked {
+      color: ui.color(text-muted);
+    }
+  }
+
+  &__sr {
+    @include ui.sr-only;
+  }
+}

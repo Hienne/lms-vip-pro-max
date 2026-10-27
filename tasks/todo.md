@@ -1,214 +1,472 @@
-# Tasks: AI chatbot with tool calls ("Trợ lý nhanh")
+# Tasks: learner and lesson APIs ("Học viên & bài học")
 
-Spec: [SPEC.md](../SPEC.md) · Plan: [plan.md](plan.md). Backend repo `corebanking-academy` (`BE`, branch
-`feat/ai-chatbot-agent`), frontend this repo (`FE`, branch `claude/ai-chatbot-tool-call-2fcf7a`). One commit per
-task; stop at each checkpoint. BE paths are under `src/main/java/vn/com/coreacademy/` (`…/`) and
-`src/test/java/vn/com/coreacademy/` (`test/…/`).
+Spec: [SPEC.md](../SPEC.md) · Plan: [plan.md](plan.md). Frontend only, this worktree, branch
+`claude/fe-be-missing-apis-c5a9bd`. Backend `corebanking-academy` runs locally and is not changed. One commit per
+task; stop at each checkpoint. Paths: `app/` = `apps/lms/src/app/`, `contracts/` = `libs/contracts/src/lib/`,
+`mocks/` = `libs/mocks/src/lib/`.
+
+Every task's verification includes the focused tests named and `npx nx test <project>` for the projects it
+touches; every checkpoint runs `npm run check`. Screen tasks also run the browser pass of
+`docs/migration/mockup-to-angular.md` → Verify (375/768/1280, light/dark, keyboard, error states).
 
 ## Phase 0: local stack
 
-- [x] **T0 Local stack up** (BE + machine) · XS
-  - Do: start Docker Desktop; `docker compose up -d db` in the BE repo (the `core_academy_pg` volume from the RAG
-    initiative keeps the data); create `feat/ai-chatbot-agent` from `main`; `mvn spring-boot:run` on :8019; FE with
-    `LMS_API_TARGET=http://localhost:8019 npm start`.
-  - Accept: DB healthy with `learning_hub` and the knowledge tables; backend health UP; Ollama lists `qwen3:8b` and
-    `bge-m3`; signing in as `quantri` in the app works; `/assistant` answers a document question.
-  - Verify: `docker ps`; `curl -s localhost:8019/actuator/health`; `ollama list`; browser.
-  - Files: none committed (`.env` untouched unless `DB_URL` is wrong, and never committed).
+- [x] **T0 Local stack up** (machine + BE) · XS
+  - Do: start Docker Desktop; `docker compose up -d db` in the BE repo; apply `learning_hub_learning.sql`,
+    `learning_hub_media_progress.sql` and `learning_hub_learning_demo.sql` if their tables or demo rows are missing;
+    `mvn spring-boot:run` on :8019; FE with `LMS_API_TARGET=http://localhost:8019 npm start`. **Ask before**
+    `brew install ffmpeg` (video processing needs `ffprobe`/`ffmpeg`).
+  - Accept: health UP; `hocvien`, `hocvien.tichhop`, `giangvien` and the content admin sign in through the proxy;
+    a PDF uploaded in the course editor (one-shot upload, still in place) becomes `ready` on S3; one
+    `POST /me/learning/sessions` through the proxy returns `Set-Cookie: academy_media` that the browser keeps for
+    `/api/v1/learning-assets`.
+  - Verify: `curl -s localhost:8019/actuator/health`; browser; `curl -i` through :4200 for the cookie.
+  - Files: none committed (`proxy.conf.mjs` only if the cookie needs a rewrite, then committed with a note).
+  - Done 2026-10-26: Docker up; the backend's `.env` points `DB_URL` at the shared remote database, so the backend
+    runs against the local `core_academy` container instead (env `DB_URL`/`DB_USER`/`DB_PASSWORD` override the
+    file; the local role's password was aligned with `.env` by `ALTER USER`). The local DB already had the
+    identity and learning tables; `learning_hub_media_progress.sql` and `learning_hub_learning_demo.sql` were
+    applied. Backend `GET /actuator/health` UP on :8019. `hocvien`, `hocvien.tichhop`, `giangvien`, `quantri`
+    sign in through :4200 (`Demo@123`). A 3-page PDF uploaded as `giangvien` went to S3 (`s3.chanacademy.io.vn`,
+    shared bucket `academy-media`) and came back `ready` (asset id 2). `POST /me/learning/sessions` through the
+    proxy answers `Set-Cookie: academy_media; Path=/api/v1/learning-assets; Max-Age=300; HttpOnly;
+SameSite=Strict` with no domain, so the proxy needs no rewrite (browser retention is checked in T13).
+    `ffmpeg`/`ffprobe` are not installed: the install was asked of the user; until approved, video is verified
+    on the mock only.
 
-## Phase 1: `agent-runtime` (BE)
+## Phase 1a: course page
 
-- [x] **T1 Ollama tool calling** · S
-  - Accept: `chatWithTools` sends `tools`, `stream:true`, `think:false`; streams content deltas; collects
-    `tool_calls` split across lines; `error` line → `OllamaException`; refused connection →
-    `OllamaUnavailableException`; `chat`/`chatStream` bodies unchanged.
-  - Verify: `mvn test -Dtest=OllamaClientTest`.
-  - Files: `…/knowledge/ai/OllamaClient.java`, `ChatMessage.java`, `ToolCall.java`, `ToolDefinition.java`,
-    `ChatTurn.java`; `test/…/knowledge/ai/OllamaClientTest.java`.
-  - Depends on: T0.
-- [x] **T2 Prompt, tool definitions and the tool-choice eval** · M · _highest risk, fail fast_
-  - Accept: `AgentPrompt` holds the spec's system prompt; the three tool definitions exist as data (no `run`);
-    `AgentToolChoiceEval` runs the 20 prompts against the real model and prints tool chosen vs expected and time to
-    first token. The `*Eval` name keeps it out of the default run: surefire only includes `*Test` and `*IT`, so
-    `pom.xml` does not change.
-  - Verify: `mvn test -Dtest=AgentToolChoiceEval`; hit rate ≥ 90% reported. Below that: stop and report (see plan's
-    open questions). `mvn clean verify` does not run it.
-  - Files: `…/assistant/agent/AgentPrompt.java`, `…/assistant/tool/ToolDefinitions.java`,
-    `test/…/assistant/AgentToolChoiceEval.java`.
+- [x] **T1 Learner fixtures and the enrollment read** · M
+  - Accept: `CourseCardSchema` has the backend's newer fields (resume, counts, `deadlineStatus` enum, dates);
+    `BlockProgressSchema` has `lastEventSequence`, `mediaAssetId`, `watchedSeconds`; fixtures give `hocvien` an
+    optional published course (not enrolled) and an assigned one (enrolled, in progress) with every block type and
+    completion mode, and a quiz lesson; `LearningBackend` answers `enrollment` for the caller's own enrollment and 403
+    otherwise; `myCourses`/`catalog` cards carry the new fields.
+  - Verify: `npx nx test contracts mocks`.
+  - Files: `contracts/course/course.schema.ts`, `contracts/learner/learner.schema.ts`,
+    `mocks/learning/learning.fixtures.ts`, `mocks/learning/learning.backend.ts`, a fixtures spec.
+  - Depends on: none.
+- [x] **T2 Study-session contract and mock protocol** · M · _highest contract risk, early_
+  - Accept: `ProgressEventTypeSchema`, `OpenSessionCommandSchema`, `StudySessionSchema`, `SessionReceiptSchema`;
+    `SaveProgressCommandSchema` as the backend's `ProgressRequest`; `ProgressResultSchema.session`;
+    `learnerEndpoints.openSession`; the seven `LEARNING-*` codes in `MESSAGE_CODE_KIND` and `backendRefusal`; new
+    `mocks/learning/learner-session.backend.ts` (lease per user, fence, sequence = last + 1, same payload re-ACKed,
+    `expectedVersion`, `SESSION_IN_USE` without takeover, `SESSION_EXPIRED` after 60 s, stand-in scoring) wired into
+    `LearningBackend`.
+  - Verify: `npx nx test contracts mocks` (a mock spec drives claim → OPEN → events → takeover → stale).
+  - Files: `contracts/learner/learner.schema.ts`, `contracts/learner/learner.endpoints.ts`,
+    `contracts/http/envelope.ts`, `mocks/backend-responses.ts`, `mocks/learning/learner-session.backend.ts` (+ spec).
   - Depends on: T1.
-- [x] **T3 Agent loop** · M
-  - Accept: plain answer → `delta`… `done`; a read tool's result goes back and the second answer streams; terminal
-    `Navigate`/`ActionRequired` → event, `done`, no second model call; unknown tool and bad arguments go back as
-    text; step cap → fixed sentence; Ollama down mid-stream → `error`; tools not `availableTo` are not offered; a
-    `TurnFinisher` shapes `done`.
-  - Verify: `mvn test -Dtest=AgentServiceTest`.
-  - Files: `…/assistant/agent/AgentService.java`, `AgentContext.java`, `ToolRegistry.java`;
-    `…/assistant/tool/AgentTool.java`, `ToolOutcome.java`, `TurnState.java`, `TurnFinisher.java`,
-    `ToolArguments.java`; `…/assistant/dto/AgentStreamEvent.java`; `…/assistant/config/AssistantProperties.java`;
-    `…/assistant/exception/AssistantResponseCode.java`; `application.yml`; `test/…/assistant/AgentServiceTest.java`.
-    (Many small records; one slice: the loop and the types it needs.)
+- [x] **T3 `findLearnerCourse`** · S
+  - Accept: finds a card in `myCourses` first, then `catalog`; stops at the last page or after 5 pages each; `null`
+    when absent; one request at a time.
+  - Verify: `npx nx test lms -- learner-course`.
+  - Files: `app/core/learning/learner-course.ts` (+ spec).
+  - Depends on: T1.
+- [x] **T4 Course page (`course/:id`)** · M
+  - Accept: claims `route-course-id`; `CourseStore` (card, detail by `enrollmentId`, `enroll` with toast and reload,
+    `view$`, `canEnroll$`, `resumeLink$`, `outline$`); page per SPEC-lesson-player "Screen 1": breadcrumb, header
+    with the one primary action, overdue alert, objectives, `course-outline` (quiz lesson not a link), side ring and
+    completion rule, not-enrolled and mandatory lines, `missing`, loading, error with retry; `screens.ts` loads it.
+  - Verify: `npx nx test lms -- course`; browser on the mock as `hocvien`.
+  - Files: `app/features/learning/course/course.ts|html|scss|spec.ts`, `…/data-access/course.store.ts` (+ spec),
+    `…/components/course-outline/*`, `app/core/routing/screens.ts`, `migration-entries.data.ts`.
+  - Depends on: T1, T3.
+
+### Checkpoint 1a
+
+- [x] `npm run check` green (2026-10-26, exit 0; Nx flagged `ui:test` as flaky, it passed on retry)
+- [x] Mock: `hocvien` opens the optional course (7, NV-402), enrols and sees the outline without leaving the page;
+      course 3 (mandatory, unassigned) shows "cần được giao để học" and no button; course 4 shows the overdue alert;
+      999 shows "Không tìm thấy khóa học". Checked at 375, 768 and 1280, light and dark. Keyboard-only pass and
+      forced error states in the browser are left to T13 (spec covers the error and retry).
+- [x] Stop for approval: recorded only, `/build auto` was approved
+
+## Phase 1b: text lessons end to end
+
+- [x] **T5 `study-protocol.ts`** · S
+  - Accept: pure functions: next command from session + last result + event; range only after a `playing: true`
+    event and never on `SEEK`/`OPEN`; seek flushes a heartbeat first; receipt → next sequence and version; refusal
+    code → action (re-claim, takeover prompt, reload, block error, page error, retry).
+  - Verify: `npx nx test lms -- study-protocol` (table tests).
+  - Files: `app/features/lesson/lesson/data-access/study-protocol.ts` (+ spec).
   - Depends on: T2.
-- [x] **T4 Pending actions** · S
-  - Accept: confirm runs once under a race; another user's, an expired and a cancelled id are all
-    `ACTION_NOT_FOUND`; the 21st action drops the oldest; the scheduled sweep removes expired entries.
-  - Verify: `mvn test -Dtest=PendingActionStoreTest`.
-  - Files: `…/assistant/action/PendingAction.java`, `PendingActionStore.java`,
-    `…/assistant/config/AssistantSchedulingConfig.java`, `test/…/assistant/PendingActionStoreTest.java`.
-  - Depends on: T3.
-- [x] **T5 Endpoints and API doc** · M
-  - Accept: `/stream` returns NDJSON lines in order with `X-Accel-Buffering: no`; bad roles, empty list, last
-    `assistant`, 501 characters → JSON `CORE-VALIDATION_FAILED`; probe false → `ASSISTANT-AI_UNAVAILABLE` envelope;
-    401 without token; confirm and cancel envelopes; `docs/api/ASSISTANT.md` and Postman requests added.
-  - Verify: `mvn clean verify`; `curl -N` with a test-profile stub tool shows `tool` before `delta`s.
-  - Files: `…/assistant/controller/AgentController.java`, `AgentActionController.java`,
-    `…/assistant/dto/AgentRequest.java`, `AgentMessage.java`, `PendingActionView.java`, `ActionResultView.java`,
-    `test/…/assistant/AgentControllerTest.java`, `docs/api/ASSISTANT.md`, `docs/postman/…`.
-  - Depends on: T3, T4.
+- [x] **T6 Study-session storage** · XS
+  - Accept: `lms.study-session.v1.<userId>.<enrollmentId>` in `sessionStorage`; bad data discarded; blocked storage
+    works in memory; cleared on sign-out.
+  - Verify: `npx nx test lms -- study-session.storage`.
+  - Files: `app/features/lesson/lesson/data-access/study-session.storage.ts` (+ spec).
+  - Depends on: none.
+- [x] **T7 `LessonStore`** · M
+  - Accept: loads card and detail; active block from `?block`, `lastBlockId`, first; claim on entry and block change
+    with the previous ids; `OPEN` after claim; 20 s heartbeat while visible, none while hidden; one request in flight
+    through a serial queue, offline resend of the same payload; results override shown progress; every refusal row
+    of the spec; `CLOSE` on block change, route leave and sign-out; `markComplete()`; video and PDF event commands
+    exist (used by T10/T11).
+  - Verify: `npx nx test lms -- lesson.store` (mock backend, fake timers).
+  - Files: `app/features/lesson/lesson/data-access/lesson.store.ts` (+ spec).
+  - Depends on: T2, T3, T5, T6.
+- [x] **T8 `app-markdown`, text and process blocks** · M
+  - Accept: `app-markdown` builds nodes for the editor's markdown subset; `html` bodies rebuilt from the allowlist;
+    `plain` keeps line breaks; never a `script`, `style`, `iframe` or `on*` attribute; `text-block` and
+    `process-block` render their data; new inventory row and migration entry for `app-markdown`.
+  - Verify: `npx nx test lms -- markdown text-block process-block`.
+  - Files: `app/shared/content/markdown/*`, `app/features/lesson/lesson/components/text-block/*`,
+    `…/process-block/*`, `docs/migration/mockup-to-angular.md`, `migration-entries.data.ts`.
+  - Done: the inventory already had the `UI.Markdown` → `app-markdown` row and a `domain-markdown` entry, so only the
+    entry was claimed (`in-progress`).
+  - Depends on: none.
+- [x] **T9 Lesson page (`lesson/:courseId/:lessonId`)** · M
+  - Accept: claims `route-lesson-course-id-lesson-id`; focus bar (Thoát, course · chapter, title, save line
+    `aria-live`), `block-list` (keyboard selection, `?block` follows), the active block (text/process now, a
+    placeholder line for the media types until T10–T12), completion row with "Đánh dấu hoàn thành", block and
+    lesson prev/next, `lesson-outline` side panel (drawer below `lg`), `session-alert` with the takeover button,
+    empty lesson, quiz lesson, page error; `screens.ts` loads it.
+  - Verify: `npx nx test lms -- lesson`; browser on the mock.
+  - Files: `app/features/lesson/lesson/lesson.ts|html|scss|spec.ts`, `…/components/block-list/*`,
+    `…/components/lesson-outline/*`, `…/components/session-alert/*`, `app/core/routing/screens.ts`.
+  - Depends on: T7, T8.
 
-### Checkpoint: Phase 1
+### Checkpoint 1b
 
-- [ ] `mvn clean verify` green (Docker running)
-- [ ] Eval hit rate and time to first token reported
-- [ ] Stop for approval
+- [x] `npm run check` green (2026-10-27; `ui:test` was reported flaky once by Nx and passed on retry)
+- [x] Mock (lesson-player criterion 1): enrolled in course 7 as the demo learner, opened "Tổng kết", "Đánh dấu hoàn thành"
+      gave "Đã hoàn thành · 27/10/2026", the outline tick and "Khóa học 33%"; `?block=` follows the active block (the
+      reload itself is covered by `lesson.spec.ts`, since the in-memory mock session does not survive a full reload)
+- [x] Mock: takeover prompt, moved alert and save failure are covered by `lesson.spec.ts` / `lesson.store.spec.ts` (a
+      second real tab shares the in-memory mock session, so it is verified on the local backend at T13)
+- [x] Stop for approval (recorded only; continuing as instructed)
 
-## Phase 2: `agent-tools` (BE)
+## Phase 1c: media blocks and the local backend
 
-- [x] **T6 Share chunk formatting and citation selection** · S
-  - Accept: `ChatPromptBuilder.formatChunk` and `CitationSelector.select` extracted; `/knowledge/chat` output
-    unchanged.
-  - Verify: `mvn test -Dtest='KnowledgeChat*Test'` green unchanged.
-  - Files: `…/knowledge/service/ChatPromptBuilder.java`, `CitationSelector.java`, `KnowledgeChatService.java`.
-  - Depends on: Phase 1.
-- [x] **T7 `search_documents`** · S
-  - Accept: numbering continues across calls in a turn and repeats keep their number; finisher rules (nothing
-    retrieved → fixed sentence whatever the model wrote; not-found → no citations; marked chunks only, none marked →
-    all); over-long query is a `Result`; AI unavailable → stream `error`.
-  - Verify: `mvn test -Dtest=SearchDocumentsToolTest`; manual: "CIF là gì?" through `/stream` cites the right file.
-  - Files: `…/assistant/tool/SearchDocumentsTool.java`, `RetrievedChunks.java`,
-    `test/…/assistant/SearchDocumentsToolTest.java`.
-  - Depends on: T6.
-- [x] **T8 `open_screen`** · S
-  - Accept: enum and description list only the user's static routes; another role's code and an invented code →
-    refusal `Result`, no `navigate`; no openable screen → not offered.
-  - Verify: `mvn test -Dtest=OpenScreenToolTest`; manual: `quantri` → `navigate /admin/users`, `hocvien` refused.
-  - Files: `…/assistant/tool/OpenScreenTool.java`, `test/…/assistant/OpenScreenToolTest.java`.
-  - Depends on: Phase 1.
-- [x] **T9 `update_profile`** · M
-  - Accept: SSO and must-change-password users not offered; validation failures are `Result`s; unchanged fields
-    dropped; preview has labels and old values; `execute` updates only the changed fields through
-    `SelfProfileService` and returns `/me`; changed since proposal → `ACTION_STALE`; IT: foreign confirm
-    `ACTION_NOT_FOUND`, owner confirm changes the row and audit once, second confirm `ACTION_NOT_FOUND`;
-    `ASSISTANT.md` tools section and Postman (navigation turn, profile turn, confirm, cancel).
-  - Verify: `mvn clean verify`; manual: profile unchanged until confirm.
-  - Files: `…/assistant/tool/UpdateProfileTool.java`, `ProfileChange.java`,
-    `test/…/assistant/UpdateProfileToolTest.java`, `test/…/assistant/AgentProfileFlowIT.java`,
-    `docs/api/ASSISTANT.md`, `docs/postman/…`.
-  - Depends on: Phase 1.
+- [x] **T10 Video block** · M
+  - Accept: `<video controls preload="metadata">` with the content URL (`toUrl`, `blockId`, `enrollmentId`), starts
+    at the resume position, no autoplay; emits play, pause, ended, seeking and time; the store sends `PLAY`, 10 s
+    `HEARTBEAT` with ranges, `PAUSE`, heartbeat-then-`SEEK`; "Đã xem x% · cần y%"; load error with "Thử lại".
+  - Verify: `npx nx test lms -- video-block lesson.store`.
+  - Files: `app/features/lesson/lesson/components/video-block/*`, `lesson.store.ts` (+ spec), `lesson.html`.
+  - Depends on: T9.
+- [x] **T11 `pdfjs-dist` and the PDF block** · M
+  - Accept: `pdfjs-dist` added (exact version pinned); the block in `@defer`, worker loaded as an asset; one page on a
+    canvas, "Trang trước"/"Trang sau", "Trang p/n", zoom; opens at the resume page with the muted line; `PDF_PAGE`
+    after 1 s on a page; load error state; production build within budget and the bundle guard green.
+  - Verify: `npx nx test lms -- pdf-block`; `npm run check`.
+  - Files: `package.json`, `package-lock.json`, `apps/lms/project.json` (asset), `…/components/pdf-block/*`,
+    `lesson.html`.
+  - Depends on: T9.
+- [x] **T12 Image and attachment blocks** · S
+  - Accept: `<img>` with `altText` (else the title), caption, load error line; attachments listed with name and size,
+    "Tải xuống" through `getAssetContent` as a blob → `FileSaver.save` with the original name, refusal toast.
+  - Verify: `npx nx test lms -- image-block attachment-block`.
+  - Files: `…/components/image-block/*`, `…/components/attachment-block/*`, `lesson.html`, `lesson.store.ts`.
+  - Depends on: T9.
+- [x] **T13 Local-backend pass for the lesson player** · S
+  - Do: as the content admin, build and publish a course with a PDF (`pdf_end`), a video (`video_coverage`, if
+    `ffmpeg` is installed), a text block and an image; assign or share it to `hocvien`; run lesson-player success
+    criteria 2 and 3 in two browsers; fix what the pass finds (each fix its own commit with a spec).
+  - Accept: criteria 1–4 of SPEC-lesson-player met; `route-course-id`, `route-lesson-course-id-lesson-id`,
+    `feature-viewers` marked `done` with their checks.
+  - Verify: browser; the network log shows no `STALE_EVENT`/`CONFLICT` during a normal 5-minute session.
+  - Files: `migration-entries.data.ts`, fixes as found.
+  - Depends on: T10, T11, T12.
 
-### Checkpoint: Phase 2
+### Checkpoint 1c (Phase 1 done)
 
-- [ ] `mvn clean verify` green
-- [ ] `agent-tools` manual success criteria pass on the local backend
-- [ ] Eval re-run with the real tools; result reported
-- [ ] Stop for approval
+- [x] `npm run check` green (2026-10-27; Nx reported `ui:test` flaky once, it passes on retry)
+- [x] lesson-player success criteria 1–4, how each was verified:
+  1. Mock, as `hocvien`: enrolled in the optional course, opened "Tổng kết", "Đánh dấu hoàn thành" moved the lesson,
+     the outline tick and "Khóa học 33%"; the URL keeps `?block=` (reload is covered by `lesson.spec.ts`).
+  2. Local backend (:8019, course `FE-LP-T13` published by `giangvien` with a PDF, an image, an attachment and a text
+     block, enrolled as `hocvien`): the PDF rendered through pdf.js with the worker asset, `PDF_PAGE` on pages 2 and
+     3 completed the `pdf_end` block, leaving and coming back reopened it at page 3 ("Đã mở lại tại trang 3."); the
+     image loaded through the `academy_media` cookie; the attachment's content answered 200 with the cookie.
+     Video, first left out because `ffmpeg` was missing and verified later (2026-10-27, after `brew install ffmpeg`,
+     `ffprobe 9.0.2`; the running backend picked it up from its PATH without a restart): `giangvien` uploaded a
+     30 s H.264/AAC MP4 (asset 6, `ready`, duration 30.0 read by the server), built and published course
+     `FE-LP-T13V` with two `video_coverage` blocks (threshold 90) on that asset, `hocvien` enrolled. In the player
+     (`/lesson/8/18`) the video loaded through the `academy_media` cookie. Block "Video xem đủ" played to the end:
+     seven progress requests, all 200, the block ended `completed`, 100 %, `watchedSeconds` 30. Block "Video tua đến
+     cuối" played 2.5 s, then seeked to 29 s and ended: position 30, `watchedSeconds` 3.3, 11 %, `in_progress`, no
+     `completedAt`. So a seek to the end does not complete a video; only watched ranges count. Earlier mock/spec
+     coverage of the player stays as it was (PLAY, 10 s beat with range, PAUSE, heartbeat-then-SEEK, resume
+     position, error state with "Thử lại").
+  3. Two tabs of the same user on the local backend: the second tab asked "Bài học đang mở ở nơi khác", after "Học trên
+     thiết bị này" the first tab showed "Bài học đã chuyển sang thiết bị khác." on its next event. Heartbeats went every
+     20 s with 200; no `STALE_EVENT` or `CONFLICT` in the network log.
+  4. `npm run check` green; both routes checked at 375 / ~800 / 1280 px, light and dark (`data-theme`), keyboard only
+     (focus order and a visible 2 px ring); forced error states are covered by specs only (`errorStates` stays
+     `todo` in the migration entries, which also stay `in-progress`: no pull request exists yet).
+- [x] Stop for approval (recorded only; continuing as instructed)
 
-## Phase 3: `agent-contracts` → `chat-widget` (FE)
+## Phase 2: `learner-progress`
 
-- [x] **T10 Agent schemas and endpoints** · S
-  - Accept: every event type parses; `navigate` without `/` fails; an unknown `tool` event parses; an unknown
-    pending-action tool fails; last message `assistant` fails; exported from `@lms/contracts`.
-  - Verify: `npx nx test contracts`.
-  - Files: `libs/contracts/src/lib/assistant-agent/agent.schema.ts`, `agent.endpoints.ts`, `agent.schema.spec.ts`,
-    `libs/contracts/src/index.ts`.
-  - Depends on: Phase 2 (contract as built).
-- [x] **T11 Mock backend for the agent** · M
-  - Accept: each scripted row yields its events in order and every line parses; confirm changes `/auth/me`;
-    confirm twice, by another user, or after cancel → `assistantActionNotFound`; the agent requests of the backend's
-    Postman collection (added in T5 and T9) are copied into `postman-requests.ts` and the replay parses them.
-  - Verify: `npx nx test mocks`.
-  - Files: `libs/mocks/src/lib/backend-responses.ts`, `libs/mocks/src/lib/assistant-agent/agent.fixtures.ts`,
-    `libs/mocks/src/lib/backend/fake-backend.ts`, `fake-backend.spec.ts`, `postman-requests.ts`,
-    `libs/mocks/src/fixtures.spec.ts`. (Six files, most of them small edits.)
-  - Depends on: T10.
-- [x] **T12 Move shared answer parts to `shared/assistant/`** · S
-  - Accept: `source-badge`, `answer-parts`, `citation-label` (and specs) live in `apps/lms/src/app/shared/assistant/`;
-    `/assistant` imports them from there; no behaviour change.
-  - Verify: `npx nx test lms` green before and after; `npx nx lint lms`.
-  - Files: the three moved units and their specs, the assistant components that import them.
-  - Depends on: None (own commit).
-- [x] **T13 Session storage for the conversation** · S
-  - Accept: `SESSION_STORAGE` token mirrors `LOCAL_STORAGE`; `agent-chat.storage` uses key
-    `lms.agent-chat.v1.<userId>`, caps at 30 turns, discards data failing its zod check, works in memory when storage
-    is blocked.
-  - Verify: `npx nx test lms -- agent-chat.storage`.
-  - Files: `apps/lms/src/app/core/storage/session-storage.ts`, `core/assistant/agent-chat.storage.ts`,
-    `agent-chat.storage.spec.ts`, `agent-chat.model.ts`.
-  - Depends on: T10.
-- [x] **T14 `AgentChatStore`** · M
-  - Accept: history = last 10 finished turns with card results, errored/stopped left out; events move the reply as
-    in the spec; `navigate` outside the user's nav does not navigate; confirm applies `Me`; not-found → `expired`,
-    stale → `failed`; expired `expiresAt` makes no request; stop keeps text; offline refuses; persistence restores a
-    streaming turn as `stopped`; sign-out clears; `available$` false without `AI_ASSISTANT`.
-  - Verify: `npx nx test lms -- agent-chat.store`.
-  - Files: `apps/lms/src/app/core/assistant/agent-chat.store.ts`, `agent-chat.store.spec.ts`.
-  - Depends on: T11, T13.
-- [x] **T15 Chat panel, message, composer** · M
-  - Accept: the shell renders the panel while open, not on `/assistant`, not without `AI_ASSISTANT`; `role="dialog"`
-    non-modal, Escape closes; header (title, "Mở Trợ lý AI", clear, close); empty line; tool status lines; `[n]`
-    badges; composer Enter / Shift+Enter, 500 limit, stop, offline.
-  - Verify: `npx nx test lms -- chat-widget agent-message agent-composer`; browser on the mock backend (opened from
-    the store in the dev console until T17).
-  - Files: `apps/lms/src/app/layout/chat-widget/chat-widget.ts|html|scss|spec.ts`,
-    `components/agent-message/*`, `components/agent-composer/*`, `layout/shell/app-shell.html`.
-  - Depends on: T12, T14.
-- [x] **T16 Action card** · S
-  - Accept: `dl` of changes with "(trống)" for null; "Xác nhận" / "Huỷ" by state; result line after; `expired` and
-    `failed` messages in the danger text token; one card confirming at a time.
-  - Verify: `npx nx test lms -- action-card`; browser: the mock's profile row end to end.
-  - Files: `apps/lms/src/app/layout/chat-widget/components/action-card/*`, `chat-widget.html`.
-  - Depends on: T15.
+- [x] **T14 JSON refusal on `blob` endpoints** · S
+  - Accept: `envelopeInterceptor` reads a `blob` response with `Content-Type: application/json` as an envelope
+    (`ApiError` on `ERROR`, on a 2xx or a 4xx/5xx), passes other blobs through; `contracts-and-mocks.md` "Known
+    limit" updated.
+  - Verify: `npx nx test lms -- envelope.interceptor`.
+  - Files: `app/core/http/envelope.interceptor.ts` (+ spec), `docs/conventions/contracts-and-mocks.md`.
+  - Depends on: none.
+- [x] **T15 Progress contracts and mock** · S
+  - Accept: `LearningProgressOverviewSchema`, `LearningStatusSchema`, `MyCoursesQuerySchema` (`overdue`),
+    `ProgressExportQuerySchema`; `progressSummary` and `exportProgress` (`blob`); mock summary counts, `overdue`
+    filter and sort on `myCourses`, CSV blob with BOM, `EXPORT_TOO_LARGE` as a JSON blob.
+  - Verify: `npx nx test contracts mocks`.
+  - Files: `contracts/learner/learner.schema.ts`, `learner.endpoints.ts`, `mocks/learning/learning.backend.ts`,
+    `mocks/backend-responses.ts`.
+  - Depends on: T1.
+- [x] **T16 Progress page (`progress`)** · M
+  - Accept: claims `route-progress`; `ProgressStore` (URL-synced filters, debounced `q`, page reset, export with the
+    table's query and the dated file name); header with "Xuất CSV", KPI row, unavailable note, filters, data table
+    per spec, empty / no-match / error states; `screens.ts` loads it.
+  - Verify: `npx nx test lms -- progress`; browser on the mock and the local backend (criteria 1–3).
+  - Files: `app/features/achievements/progress/progress.ts|html|scss|spec.ts`, `…/data-access/progress.store.ts`
+    (+ spec), `app/core/routing/screens.ts`, `migration-entries.data.ts`.
+  - Depends on: T14, T15.
 
-### Checkpoint: Phase 3
+### Checkpoint 2
 
-- [x] `npm run check` green
-- [x] angular.md §14 and the visual-design checklist pass
-- [x] Browser on the mock backend: 375 and 1280, light and dark, keyboard only
-- [x] Stop for approval
+- [x] `npm run check` green (2026-10-27; one `lms:test` run failed under load and passed on the rerun, Nx reports it
+      flaky; the failing test was not identified)
+- [x] learner-progress success criteria 1–4, how each was verified:
+  1. Local backend as `hocvien`: the five KPIs (6 / 1 / 2 / 3 / 1) equal the server's summary; the table sorts on
+     the server (`sort=title,asc` in the URL and the request); "Chỉ khóa quá hạn" leaves the one overdue course.
+  2. "Xuất CSV" on the local backend saved `tien-do-cua-toi-2026-10-27.csv`: `text/csv`, UTF-8 BOM (EF BB BF) and
+     Vietnamese titles intact. **Not opened in Excel itself** (no Excel here); BOM plus UTF-8 is what it needs.
+  3. `LEARNING-EXPORT_TOO_LARGE` toasts the server message and saves nothing: verified in `progress.spec.ts` and
+     the envelope interceptor spec only (the real backend has fewer than 10,000 rows, so it cannot be forced).
+  4. Check green; 1280 and 375 px in light and dark were looked at on the local backend (at 375 the rows are cards,
+     the segmented control no longer widens the page). At ≤1280 px the nine-column table scrolls sideways inside its
+     wrapper (the "Hoàn thành" and "Hạn" columns are off screen until scrolled); all controls are native elements.
+     `route-progress` stays `in-progress`: a migration entry needs a pull request link to be `done`.
+- [x] Stop for approval (a note only; continuing as instructed)
 
-## Phase 4: `owl-launcher` (FE)
+## Phase 3: `learning-reminders`
 
-- [x] **T17 The owl opens and closes the panel** · S
-  - Accept: click toggles when available, navigates to `/assistant` when not; `aria-expanded`, `aria-controls`,
-    labels with the processing count; bubble hidden while open; click no longer dismisses the notice; existing owl
-    state specs unchanged; the dev-toolbar offset moves owl and panel together.
-  - Verify: `npx nx test lms -- owl app-shell`; `npm run check`; browser: Tab to the owl, Enter, Escape.
-  - Files: `apps/lms/src/app/layout/owl/owl.ts|html|scss|spec.ts`, `layout/shell/app-shell.scss`,
-    `app-shell.spec.ts`.
-  - Depends on: T16.
-
-### Checkpoint: Phase 4
-
-- [x] Frontend gates as in Phase 3, plus the owl's processing states unchanged
-- [x] Stop for approval
-
-## Phase 5: end to end
-
-- [x] **T18 End-to-end run on the local backend** · S
-  - Accept: SPEC.md success criteria 1–5 with screenshots (owl toggle and persistence; grounded answer and not-found;
-    `quantri` navigates, `hocvien` refused; profile card confirm, cancel and expiry; all checks green); time to first
-    token recorded.
-  - Verify: browser with `LMS_API_TARGET=http://localhost:8019`, `mockBackend: false`; `mvn clean verify`;
-    `npm run check`.
-  - Files: none, or fixes found by the run (each its own commit).
-  - Depends on: Phase 4.
-- [x] **T19 As-built notes** · XS
-  - Accept: each module spec has an "Implementation notes (as built)" section for any deviation; `SPEC.md` status
-    updated; `docs/api/ASSISTANT.md` final.
-  - Verify: `npx prettier --check "*.md" tasks/*.md`.
-  - Files: `SPEC*.md`, BE `docs/api/ASSISTANT.md`.
+- [x] **T17 Reminder contract and mock** · S
+  - Accept: `status` enum; fixtures (three due for `hocvien`, one overdue, one not yet scheduled); `reminders` lists
+    pending and due for the caller; `markReminderRead` sets `sent`, 403 for another user's; mock `navCounts`
+    `notifications` = the caller's due reminders.
+  - Verify: `npx nx test contracts mocks`.
+  - Files: `contracts/learner/learner.schema.ts`, `mocks/learning/learning.fixtures.ts`,
+    `mocks/learning/learning.backend.ts`, `mocks/backend/fake-backend.ts`.
+  - Depends on: T1.
+- [x] **T18 Notifications page (`notifications`)** · M
+  - Accept: claims `route-notifications`; `NotificationsStore` (idle without `COURSE_LEARNING`, 403 → empty, mark one,
+    mark all in order stopping at a refusal, bumps `remindersChanged`); `core/learning/reminders-changed.ts`; page per
+    spec with the progress link and its query; `screens.ts` loads it.
+  - Verify: `npx nx test lms -- notifications reminders-changed`; browser.
+  - Files: `app/features/account/notifications/notifications.ts|html|scss|spec.ts`,
+    `…/data-access/notifications.store.ts` (+ spec), `app/core/learning/reminders-changed.ts` (+ spec),
+    `app/core/routing/screens.ts`, `migration-entries.data.ts`.
+  - Depends on: T17.
+- [x] **T19 Bell count on the real backend** · S
+  - Accept: while `navCounts` is not served, `ShellStore.unread$` is the reminders count for a `COURSE_LEARNING`
+    user, refreshed on navigation and on `remindersChanged`, 0 on 403 or error.
+  - Verify: `npx nx test lms -- shell.store`; local backend: read a reminder, the bell drops without reload.
+  - Files: `app/layout/shell/data-access/shell.store.ts` (+ spec).
   - Depends on: T18.
 
-### Checkpoint: Complete
+### Checkpoint 3
 
-- [ ] Every success criterion in SPEC.md met and reported with how it was verified
-- [ ] Ready for review and pull requests (one per repo)
+- [x] `npm run check` green (2026-10-27; Nx flagged one task flaky: a test failed once and passed on its retry)
+- [x] learning-reminders success criteria 1–4, how each was verified:
+  1. Local backend as `hocvien` (two due reminders: one overdue, one upcoming), with the in-app mock API switched
+     off so `navCounts` is not served (the production setup; `environment.ts` restored afterwards): the bell read
+     "2 chưa đọc", `notifications` listed both with the due dates, "Đánh dấu đã đọc" removed one and the bell went to
+     "1 chưa đọc" without a reload; no `nav-counts` request was made.
+  2. As a user without the learner function: `notifications.spec.ts` and `shell.store.spec.ts` (empty line, no
+     request, bell 0). Not tried on the real backend with an admin account.
+  3. Mock: `learner.backend.spec.ts` (three seeded reminders, read, bell 3 → 2) and the same flow in
+     `notifications.spec.ts`.
+  4. Check green; looked at 1024 and 375 px, light and dark on the local backend; the read button is a native
+     button. Deviation: the "Xem khóa học của tôi" link and the read button are both shown at narrow widths (the row
+     wraps), instead of hiding the button. `route-notifications` stays `in-progress` (needs a pull request link).
+- [x] Stop for approval (a note only; continuing as instructed)
+
+## Phase 4: `learner-home`
+
+- [x] **T20 Promote shared learning pieces** · M
+  - Accept: `progress-counts`, `unavailable-note` and `reminder-item` move to `app/shared/learning/` with their
+    specs; the progress and notifications pages use them; no behaviour change.
+  - Verify: `npx nx test lms -- progress notifications shared/learning` green before and after.
+  - Files: `app/shared/learning/*`, `progress.html`, `notifications.html` (+ the moved files).
+  - Depends on: T16, T18.
+- [x] **T21 Learn page (`learn`)** · M
+  - Accept: claims `route-learn`; `LearnStore` (summary, resume card + its detail, tab courses incl. `mandatory`, due
+    list filtered to 5, reminders idle/403); `continue-card`; page per spec with independent loading and error per
+    section; `screens.ts` loads it.
+  - Verify: `npx nx test lms -- learn continue-card`; browser on the mock and the local backend (criteria 1–3).
+  - Files: `app/features/learning/learn/learn.ts|html|scss|spec.ts`, `…/data-access/learn.store.ts` (+ spec),
+    `…/components/continue-card/*`, `app/core/routing/screens.ts`, `migration-entries.data.ts`.
+  - Depends on: T20, T13.
+
+### Checkpoint 4
+
+- [x] `npm run check` green (2026-10-27; Nx flagged `lms:test` as flaky again: a test failed once and passed on its retry)
+- [x] learner-home success criteria 1–4, how each was verified:
+  1. Local backend as `hocvien`: the continue card names "Tài liệu và hình ảnh" (25 %) and its link reopens that
+     block; `continue-card.spec.ts` and `learn.store.spec.ts` cover the lesson, the block query and the empty card.
+  2. The counts (6 / 1 / 2 / 3 / 1 overdue) equal the numbers on `/progress`; the tabs list the server-filtered
+     courses (`in_progress`, `not_started`, `completed`, `mandatory`); the due list shows the five nearest with the
+     overdue one first; reminders show three and stay out for a user without the function (`learn.store.spec.ts`).
+  3. A learner with nothing in progress sees "Khám phá khóa học": `learn.spec.ts` (stubbed empty `myCourses`, since an
+     administrator is redirected away from `/learn`). Not tried on the real backend.
+  4. Check green; looked at 375, 768 and 1280 px on the local backend, light and dark (no horizontal scroll, the
+     primary button reads in both), controls reached by keyboard and named, tabs use a roving tabindex.
+     Deviation: `route-learn` is owned by `longnvse` in `migration-entries.data.ts`, so its entry was left alone.
+  - Fixed on the way: `app.spec.ts` and `app-shell.spec.ts` now answer the requests the page makes (they hung
+    120 s per test because `/learn` was a placeholder before).
+- [x] Stop for approval (a note only; continuing as instructed)
+
+## Phase 5: `asset-library`
+
+- [x] **T22 Binary transport** · S · _new transport, early in the phase_
+  - Accept: `defineEndpoint` `encoding: 'binary'` (one `Blob`, `application/octet-stream`) and an optional `headers`
+    schema; `EndpointClient` sets declared headers, required exactly when declared (type and runtime);
+    `contracts-and-mocks.md` documents both.
+  - Verify: `npx nx test contracts lms -- endpoint`.
+  - Files: `contracts/http/endpoint.ts` (+ spec), `app/core/http/endpoint-client.ts` (+ spec),
+    `docs/conventions/contracts-and-mocks.md`.
+  - Depends on: none.
+- [x] **T23 Asset contracts and mock** · M
+  - Accept: `contracts/learning-asset/` with the seven endpoints and schemas; the seven codes in `MESSAGE_CODE_KIND`
+    and `backendRefusal`; mock uploads in memory (idempotent start, parts, conflict, complete → processing → ready
+    on the second poll, cancel), library list, delete with `ASSET_IN_USE`.
+  - Verify: `npx nx test contracts mocks`.
+  - Files: `contracts/learning-asset/asset.schema.ts`, `asset.endpoints.ts`, `libs/contracts/src/index.ts`,
+    `contracts/http/envelope.ts`, `mocks/learning/asset.backend.ts` (+ spec), `mocks/backend-responses.ts`.
+  - Depends on: T22.
+- [x] **T24 `@noble/hashes` and the SHA-256 worker** · S
+  - Accept: `@noble/hashes` added (exact version); `sha256.worker.ts` hashes a file in 8 MiB slices and single
+    parts, reports progress, matches known vectors and the one-shot digest; a 100 MB file's time is reported.
+  - Verify: `npx nx test lms -- sha256`.
+  - Files: `package.json`, `package-lock.json`, `app/features/admin-content/course-editor/data-access/sha256.worker.ts`
+    (+ spec), a small client wrapper.
+  - Depends on: none.
+- [x] **T25 `chunkedUpload`** · M
+  - Accept: the Observable of the spec: check → hash → start → parts in order with headers, skipping acknowledged →
+    complete → poll 3 s up to 15 min → ready/failed; "Xử lý lại" path; cancel; offline pause and continue; a
+    mismatched file on resume refused before any request.
+  - Verify: `npx nx test lms -- chunked-upload`.
+  - Files: `app/features/admin-content/course-editor/data-access/chunked-upload.ts` (+ spec).
+  - Depends on: T23, T24.
+- [x] **T26 Course editor uploads through parts** · M
+  - Accept: `CourseEditorStore` runs `chunkedUpload` per block key; rows show hashing, bytes, processing, failed with
+    the server message, cancel; kept uploads in `localStorage` with resume ("Tiếp tục" / "Hủy"); asset attached on
+    ready with server duration/page count; `courseEndpoints.uploadAsset`, its mock and `readFileFacts` removed.
+  - Verify: `npx nx test lms contracts mocks -- course-editor`; browser on the mock.
+  - Files: `course-editor.store.ts` (+ spec), `components/lesson-form/lesson-form.ts|html`, `file-facts.ts`
+    (deleted), `contracts/course/course.endpoints.ts`, `mocks/learning/learning.backend.ts`.
+  - Depends on: T25.
+- [x] **T27 Library drawer** · M
+  - Accept: "Chọn từ thư viện" per file block opens the drawer with its store; kind fixed by block type, `ready` only,
+    search, server paging and sort; row click picks and closes; row menu delete with confirm, `ASSET_IN_USE` toast;
+    empty and error states.
+  - Verify: `npx nx test lms -- asset-library`; browser on the mock.
+  - Files: `course-editor/components/asset-library/asset-library.ts|html|scss|spec.ts`,
+    `…/data-access/asset-library.store.ts` (+ spec), `lesson-form.html|ts`.
+  - Depends on: T23.
+
+### Checkpoint 5
+
+- [x] `npm run check` green (14 tasks)
+- [x] asset-library success criteria 1–5 on the local backend (criterion 1 needs `ffmpeg`)
+  - 1: a 103.5 MB mp4 uploaded in 13 parts with progress, then "Đang xử lý tệp…"; server `ready`, `durationSeconds` 55,
+    asset 9.
+  - 2: network cut at 32 MB (blocked requests + `offline` event) → "Mất kết nối, sẽ tiếp tục khi có mạng."; back online it
+    went on at 40 MB, not from 0, and finished `ready`. Reload at 16 MB → "Tải lên bị gián đoạn…" after reopening the lesson;
+    a different file → "Tệp không khớp tệp đang tải lên."; the same file → hashed again, then continued from the server's
+    next part to `ready`.
+  - 3: "Hủy" mid-upload removes the row; `GET /learning-assets/uploads/{id}` → `canceled` (16 MB uploaded).
+  - 4: library drawer lists ready files of the block's media type; picking one joins the block; deleting an unused file
+    removes it (toast "Đã xóa tệp khỏi thư viện"); deleting a used file refuses with "Tài nguyên còn được sử dụng trong nội
+    dung học tập."
+  - 5: 375 px (dark) and the desktop width: no horizontal page scroll, library rows become cards at 375, Escape closes only
+    the library drawer and returns focus to the "Chọn từ thư viện" button.
+  - Fixed on the way: picking a new file over an interrupted upload left the old one in the kept list (it came back after
+    the new upload was cancelled); it is now cancelled on the server and forgotten (spec added). Library table: the MIME
+    moved under the file name so the action column fits a 560 px drawer; in-progress and interrupted rows get the block's
+    icon; `share.backend.spec.ts` typecheck fixed.
+- [x] Stop for approval (note only; continuing)
+
+## Phase 6: `course-sharing`
+
+- [x] **T28 Share contract and mock checks** · XS
+  - Accept: `ShareCourseCommandSchema` fields required; `CourseShareSchema.status` enum; mock `share` checks the
+    booleans, upserts by `orgId`, sets `revokedAt`, refuses the owner org.
+  - Verify: `npx nx test contracts mocks`.
+  - Files: `contracts/course/course.schema.ts`, `mocks/learning/learning.backend.ts` (+ spec).
+  - Depends on: none.
+- [x] **T29 Shares drawer in the course list** · M
+  - Accept: "Chia sẻ cho đơn vị" in the row menu opens the drawer; `CourseSharesStore` (shares, owner from
+    `getCourse`, org names with fallback, debounced org options without owner and active shares, add/change/revoke
+    with confirm); active and revoked sections with rights as text; combobox and switches by keyboard.
+  - Verify: `npx nx test lms -- course-shares courses.store`; browser on the mock and the local backend.
+  - Files: `app/features/admin-content/courses/components/course-shares/*` (+ store and specs),
+    `courses.store.ts` (+ spec), `courses.html`.
+  - Depends on: T28.
+
+### Checkpoint 6
+
+- [x] `npm run check` green (14 tasks)
+- [x] course-sharing success criteria 1–3
+  - Setup on the local backend (test data only): as `super.admin` a child unit "Phòng thử nghiệm chia sẻ" (id 2, parent 1)
+    and a learner `hocvien.cp6` in it; the seeded backend has one unit only, so there was nothing to share with.
+  - 1: as `quantri` the row menu "Chia sẻ cho đơn vị" opens the drawer; the unit was picked with the keyboard (ArrowDown,
+    Enter), Tab reached the switches and "Chia sẻ"; list shows "Được giao học". "Sửa quyền" + "Học viên được tự đăng ký" →
+    "Được giao học · Học viên tự đăng ký". "Thu hồi" → confirm text as specified → the unit moves under "Đã thu hồi" with
+    its revoke date.
+  - 2: the learner's catalog (`GET /me/learning/catalog`) was empty before the share, listed the course after the first
+    share (canAssign only) and stayed listed with self-enrol on, and was empty again after the revoke. The backend lists a
+    shared optional course for the unit whatever the rights; `canSelfEnroll` is not what makes it appear.
+  - 3: 375 px light and dark (add form open): no horizontal scroll, switches and buttons readable; the unit list under the
+    combobox shows the unit and its code.
+  - Found and fixed on the way: with `selectionMode` left to follow, the listbox picked the first unit on open; it is now
+    explicit, and the listbox is no longer a second Tab stop. Authors without `ORGANIZATION_MANAGEMENT` (e.g. `giangvien`)
+    get ACCESS_DENIED from `GET /orgs`, so they see no units to pick and shared units as "Đơn vị #<id>" (open question 1
+    of SPEC-course-sharing).
+- [x] Stop for approval (note only; continuing)
+
+## Phase 7: wrap-up
+
+- [x] **T30 End-to-end pass and as-built notes** · S
+  - Do: run every success criterion in SPEC.md on the local backend; add "Implementation notes (as built)" to each
+    module spec (deviations, known gaps); open the pull request; fill each migration entry's `pullRequest`.
+  - Accept: every SPEC.md criterion reported with how it was verified; `npm run check` green.
+  - Files: `SPEC*.md`, `migration-entries.data.ts`.
+  - Depends on: T29.
+  - Known gaps (ship review, left as they are; no code):
+    - No Content-Security-Policy is set for the app.
+    - A sign-out clears the study-session keys only; the kept-upload keys (`lms.asset-uploads.v1.*`) and the study
+      session keys of other users stay in the browser until they are read again.
+    - `zod` is pinned at 4.6.6; check it against the release notes before the next upgrade.
+    - `URL.revokeObjectURL` is called right after the CSV and attachment saves; a slow browser may start the download
+      later than the revoke.
+    - `settle()` in the screen specs waits a fixed number of ticks; a slow machine can make a spec flaky.
+    - `learn.ts:33` still warns NG8113 for the unused `Button` import.
+    - The envelope interceptor reads a large JSON blob into memory before parsing it.
+    - A PDF loading task is not cancelled when the PDF block is left.
+    - The notification bell reads the count again on every navigation.
+  - Fixed after the review (one commit each, test first): the harness fails an unmocked request at once and can hold a
+    reply (`ReplyGate`); the study heartbeat and claims stop after `destroy()`; a cancelled upload sends nothing more;
+    `CLOSE` carries the video range; a block change keeps the queued events; `reclaim()` waits for the event in
+    flight; the export-too-large assertion checks the real toast.
+
+### Checkpoint: complete
+
+- [x] Every success criterion in SPEC.md met and reported with how it was verified. Each was run in its own phase on the
+      local backend (:8019) and recorded above; nothing was re-run as one session at the end.
+  1. Resume at the saved position, server percentages: Checkpoint 1c (1, 2), video checked later with `ffmpeg`.
+  2. PDF resumes at the last page, `manual` block completes: Checkpoint 1c (2) and 1b.
+  3. Second browser asks to switch device, the first says the session moved: Checkpoint 1c (3).
+  4. `progress` counts and table from the server, CSV with intact Vietnamese: Checkpoint 2 (1, 2); not opened in Excel.
+  5. `notifications` lists due reminders, reading one drops the bell: Checkpoint 3 (1).
+  6. `learn` continue card, counts and reminders: Checkpoint 4 (1, 2).
+  7. Over-8 MiB upload with progress, cancel, resume after a reload, pick from the library, delete an unused file:
+     Checkpoint 5.
+  8. Share with another unit and see it in the list: Checkpoint 6.
+  9. `npm run check` green at every checkpoint and at the end; the visual-design and migration checks per screen in the
+     checkpoints.
+- [x] Ready for review. Not done on purpose: no push and no pull request (as instructed), so the migration entries'
+      `pullRequest` stay empty and their entries `in-progress`.

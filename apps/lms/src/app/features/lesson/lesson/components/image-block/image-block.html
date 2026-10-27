@@ -1,0 +1,20 @@
+@if (failed()) {
+<p class="image__error">
+  Không tải được hình ảnh.
+  <button uiButton variant="ghost" size="sm" (click)="retried()">
+    Thử lại
+  </button>
+</p>
+} @else {
+<figure class="image">
+  <img
+    class="image__picture"
+    [src]="src()"
+    [alt]="alt()"
+    (error)="failed.set(true)"
+  />
+  @if (caption()) {
+  <figcaption class="image__caption">{{ caption() }}</figcaption>
+  }
+</figure>
+}

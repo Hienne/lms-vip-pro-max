@@ -1,36 +1,34 @@
 import { Component, inject } from '@angular/core';
+import { RouterLink } from '@angular/router';
 import {
-  Badge,
   Button,
-  Card,
   Empty,
   ErrorState,
-  FmtDatePipe,
-  FmtRelativePipe,
   Icon,
+  IconButton,
+  List,
+  ListItem,
   PageHeader,
-  Pagination,
-  Spinner,
-  Tabs,
-  TabPanel,
+  Skeleton,
 } from '@lms/ui';
+import { ReminderItem } from '../../../shared/learning/reminder-item/reminder-item';
 import { NotificationsStore } from './data-access/notifications.store';
+
+/** The learner's due deadline reminders (the mockup's `notifications` page, E.3). */
 @Component({
   selector: 'app-notifications',
   imports: [
-    Badge,
     Button,
-    Card,
     Empty,
     ErrorState,
-    FmtDatePipe,
-    FmtRelativePipe,
     Icon,
+    IconButton,
+    List,
+    ListItem,
     PageHeader,
-    Pagination,
-    Spinner,
-    Tabs,
-    TabPanel,
+    ReminderItem,
+    RouterLink,
+    Skeleton,
   ],
   providers: [NotificationsStore],
   templateUrl: './notifications.html',
@@ -38,4 +36,5 @@ import { NotificationsStore } from './data-access/notifications.store';
 })
 export class Notifications {
   protected readonly store = inject(NotificationsStore);
+  protected readonly placeholders = [1, 2, 3];
 }

@@ -1,113 +1,115 @@
-import { computed, inject, Injectable, signal } from '@angular/core';
-import { Router } from '@angular/router';
-import { personalEndpoints, type PersonalNotification } from '@lms/contracts';
-import { map } from 'rxjs';
-import type { IconName } from '@lms/ui';
-import { LearningChanges } from '../../../../core/data-access/learning-changes';
+import { computed, inject, Injectable } from '@angular/core';
+import { learnerEndpoints, type LearningReminder } from '@lms/contracts';
+import { NOW } from '@lms/ui';
+import { concatMap, finalize, from, toArray } from 'rxjs';
+import { invalidation } from '../../../../core/data-access/invalidation';
 import { serverData } from '../../../../core/data-access/server-data';
 import { serverMutation } from '../../../../core/data-access/server-mutation';
 import { EndpointClient } from '../../../../core/http/endpoint-client';
+import { dueReminders } from '../../../../core/learning/due-reminders';
+import { RemindersChanged } from '../../../../core/learning/reminders-changed';
+import { SessionStore } from '../../../../core/session/session.store';
+import { isReminderOverdue } from '../../../../shared/learning/reminder-item/reminder-item';
+
+export interface ReminderItem {
+  readonly id: number;
+  readonly reminder: LearningReminder;
+  /** The due date has passed: the item says "đã quá hạn" and its date turns to the danger colour. */
+  readonly isOverdue: boolean;
+}
+
+const time = (value: string | null | undefined): number =>
+  value ? new Date(value).getTime() : Number.POSITIVE_INFINITY;
+
+/**
+ * The learner's due deadline reminders (SPEC-learning-reminders). The server decides which are
+ * due; reading one sets it to `sent`, so it leaves the list after the reload. Only a learner has
+ * reminders: anyone else is not asked, and a 403 reads as an empty list.
+ */
 @Injectable()
 export class NotificationsStore {
   private readonly client = inject(EndpointClient);
-  private readonly router = inject(Router);
-  private readonly changes = inject(LearningChanges);
-  private readonly state = { unreadOnly: signal(false), page: signal(0) };
-  private readonly data = serverData(
-    (query: {
-      page: number;
-      size: number;
-      sort: string;
-      unreadOnly?: boolean;
-    }) => this.client.call(personalEndpoints.notifications, { query }),
+  private readonly session = inject(SessionStore);
+  private readonly changed = inject(RemindersChanged);
+  private readonly now = inject(NOW);
+
+  /** Reloads the list after a read, here and (through `RemindersChanged`) in the shell. */
+  private readonly reads = invalidation();
+
+  private readonly canLearn = computed(() =>
+    this.session.menus$().includes('COURSE_LEARNING'),
+  );
+
+  /** Idle (`undefined` params) for a user without the learner function. */
+  private readonly remindersData = serverData(
+    (_: { readonly learner: true }) => dueReminders(this.client),
     {
-      params: () => ({
-        page: this.state.page(),
-        size: 20,
-        sort: 'at,desc',
-        unreadOnly: this.state.unreadOnly() || undefined,
+      params: () => (this.canLearn() ? { learner: true as const } : undefined),
+      reloadOn: this.reads,
+    },
+  );
+
+  private readonly readOne = serverMutation(
+    (reminderId: number) =>
+      this.client.call(learnerEndpoints.markReminderRead, {
+        params: { reminderId },
       }),
-      reloadOn: this.changes.notifications,
-    },
+    { errors: 'toast', invalidates: [this.reads, this.changed] },
   );
-  private readonly mark = serverMutation(
-    (item: PersonalNotification) =>
-      this.client
-        .call(personalEndpoints.markRead, {
-          params: { notificationId: item.id },
-        })
-        .pipe(map(() => item)),
-    {
-      errors: 'toast',
-      success: () => 'Đã đánh dấu đã đọc',
-      invalidates: this.changes.notifications,
-      onSuccess: (item) => this.openTarget(item),
-    },
+
+  /**
+   * One after another, as the backend has no bulk call; the first refusal stops the rest. The
+   * list and the bell reload either way, since the ones before it were read.
+   */
+  private readonly readAll = serverMutation(
+    (reminderIds: readonly number[]) =>
+      from(reminderIds).pipe(
+        concatMap((reminderId) =>
+          this.client.call(learnerEndpoints.markReminderRead, {
+            params: { reminderId },
+          }),
+        ),
+        toArray(),
+        finalize(() => {
+          this.reads.bump();
+          this.changed.bump();
+        }),
+      ),
+    { errors: 'toast' },
   );
-  private readonly all = serverMutation(
-    () => this.client.call(personalEndpoints.markAllRead, { body: {} }),
-    {
-      errors: 'toast',
-      success: () => 'Đã đọc tất cả thông báo',
-      invalidates: this.changes.notifications,
-    },
+
+  // Selectors
+  readonly isLoading$ = this.remindersData.isLoading;
+  readonly loadError$ = this.remindersData.error;
+  readonly isMarking$ = computed(
+    () => this.readOne.isPending() || this.readAll.isPending(),
   );
-  readonly page$ = this.data.value;
-  readonly items$ = computed(() => this.data.value()?.items ?? []);
-  readonly rows$ = computed(() =>
-    this.items$().map((item) => ({
-      ...item,
-      icon: (
-        {
-          due: 'clock',
-          assigned: 'book-open',
-          result: 'clipboard-check',
-          certificate: 'award',
-          badge: 'trophy',
-          other: 'bell',
-        } as const
-      )[item.kind] as IconName,
-    })),
-  );
-  readonly tabs$ = [
-    { id: 'all', label: 'Tất cả' },
-    { id: 'unread', label: 'Chưa đọc' },
-  ];
-  readonly pageIndex$ = this.state.page.asReadonly();
-  setPage(page: number): void {
-    this.state.page.set(page);
+
+  readonly items$ = computed((): readonly ReminderItem[] => {
+    if (!this.canLearn()) return [];
+    const now = this.now();
+    return [...(this.remindersData.value() ?? [])]
+      .sort(
+        (a, b) => time(a.dueAtSnapshot) - time(b.dueAtSnapshot) || a.id - b.id,
+      )
+      .map((reminder) => ({
+        id: reminder.id,
+        reminder,
+        isOverdue: isReminderOverdue(reminder, now),
+      }));
+  });
+  readonly count$ = computed(() => this.items$().length);
+
+  // Commands
+  markRead(reminderId: number): void {
+    this.readOne.run(reminderId);
   }
-  readonly unreadOnly$ = this.state.unreadOnly.asReadonly();
-  readonly isLoading$ = this.data.isLoading;
-  readonly error$ = this.data.error;
-  readonly isSaving$ = computed(
-    () => this.mark.isPending() || this.all.isPending(),
-  );
-  setUnreadOnly(value: boolean): void {
-    this.state.unreadOnly.set(value);
-    this.setPage(0);
-  }
-  markRead(item: PersonalNotification): void {
-    if (!item.readAt) this.mark.run(item);
-    else this.openTarget(item);
-  }
-  private openTarget(item: PersonalNotification): void {
-    if (item.target) {
-      const url =
-        item.target.type === 'course'
-          ? ['/course', item.target.id]
-          : item.target.type === 'certificate'
-            ? ['/certificate', item.target.id]
-            : item.target.type === 'quizResult'
-              ? ['/quiz', item.target.quizId, 'result', item.target.id]
-              : ['/progress'];
-      void this.router.navigate(url);
-    }
-  }
+
   markAllRead(): void {
-    this.all.run(undefined);
+    this.readAll.run(this.items$().map((item) => item.id));
   }
+
   retry(): void {
-    this.data.reload();
+    this.remindersData.reload();
   }
 }

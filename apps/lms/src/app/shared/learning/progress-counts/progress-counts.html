@@ -1,0 +1,10 @@
+<dl class="progress-counts">
+  @for (item of items(); track item.label) {
+  <div class="progress-counts__item">
+    <dt>{{ item.label }}</dt>
+    <dd [class.progress-counts__value--danger]="item.danger">
+      {{ item.value }}
+    </dd>
+  </div>
+  }
+</dl>

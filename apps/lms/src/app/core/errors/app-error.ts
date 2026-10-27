@@ -7,6 +7,8 @@ export type AppErrorKind =
   | 'offline'
   | 'unauthorized'
   | 'forbidden'
+  /** A valid request the server will not apply as it is (a session moved, a version changed). */
+  | 'refused'
   | 'server'
   | 'contract'
   | 'unknown';
@@ -30,6 +32,7 @@ const DEFAULT_MESSAGE: Record<AppErrorKind, string> = {
   offline: 'Không có kết nối mạng. Kiểm tra kết nối và thử lại.',
   unauthorized: 'Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.',
   forbidden: 'Bạn không có quyền thực hiện thao tác này.',
+  refused: 'Chưa thể thực hiện thao tác này. Vui lòng thử lại.',
   server: 'Có lỗi xảy ra. Vui lòng thử lại sau.',
   contract: 'Dữ liệu trả về không hợp lệ. Vui lòng thử lại sau.',
   unknown: 'Có lỗi xảy ra. Vui lòng thử lại sau.',

@@ -14,8 +14,6 @@ import {
   LearningAssetSchema,
   SaveDraftCommandSchema,
   ShareCourseCommandSchema,
-  UploadAssetBodySchema,
-  UploadAssetQuerySchema,
   VersionCommandSchema,
 } from './course.schema';
 
@@ -99,15 +97,6 @@ export const courseEndpoints = {
     params: courseParams,
     body: ShareCourseCommandSchema,
     response: CourseShareSchema,
-  }),
-  /** Uploads a file to the private store; only metadata comes back. */
-  uploadAsset: defineEndpoint({
-    method: 'post',
-    path: '/api/v1/learning-assets',
-    query: UploadAssetQuerySchema,
-    body: UploadAssetBodySchema,
-    encoding: 'multipart',
-    response: LearningAssetSchema,
   }),
   /** The file itself after a permission check (supports Range for video and PDF). */
   getAssetContent: defineEndpoint({

@@ -33,20 +33,50 @@ type Part<K extends string, S> = [S] extends [undefined]
     ? { [P in K]: z.input<S> }
     : { [P in K]?: never };
 
-/** `params`, `query` and `body`: each required when the endpoint declares it, forbidden otherwise. */
+/**
+ * `params`, `query`, `body` and `headers`: each required when the endpoint declares it, forbidden
+ * otherwise.
+ */
 export type CallInput<E extends AnyEndpoint> = Part<'params', E['params']> &
   Part<'query', E['query']> &
-  Part<'body', E['body']>;
+  Part<'body', E['body']> &
+  Part<'headers', E['headers']>;
 
 /** The arguments after the endpoint: none when the endpoint declares no input. */
-export type CallArgs<E extends AnyEndpoint> =
-  Declared<E['params']> extends false
-    ? Declared<E['query']> extends false
-      ? Declared<E['body']> extends false
-        ? []
-        : [input: CallInput<E>]
-      : [input: CallInput<E>]
-    : [input: CallInput<E>];
+export type CallArgs<E extends AnyEndpoint> = true extends
+  | Declared<E['params']>
+  | Declared<E['query']>
+  | Declared<E['body']>
+  | Declared<E['headers']>
+  ? [input: CallInput<E>]
+  : [];
+
+/** The headers of a call: required exactly when the endpoint declares them, sent as given. */
+function toHeaders(
+  endpoint: AnyEndpoint,
+  headers: Record<string, unknown> | undefined,
+): Record<string, string> {
+  if ((endpoint.headers === undefined) !== (headers === undefined)) {
+    throw new Error(
+      endpoint.headers === undefined
+        ? `${endpoint.path} declares no headers.`
+        : `${endpoint.path} needs its declared headers.`,
+    );
+  }
+  return Object.fromEntries(
+    Object.entries(headers ?? {}).flatMap(([name, value]) =>
+      value === null || value === undefined ? [] : [[name, String(value)]],
+    ),
+  );
+}
+
+/** The body of a `binary` endpoint is one `Blob`; anything else is a client bug. */
+function toBinary(body: unknown): Blob {
+  if (!(body instanceof Blob)) {
+    throw new Error('A binary body must be a Blob.');
+  }
+  return body;
+}
 
 function toHttpParams(query: Record<string, unknown> | undefined): HttpParams {
   let params = new HttpParams();
@@ -98,8 +128,9 @@ function toFormData(body: unknown): FormData {
 /**
  * The one way the app calls the backend: verb, URL and response schema come from the endpoint
  * definition, so a store writes `client.call(courseEndpoints.getCourse, { params })`.
- * The body is sent as passed (JSON), or as `FormData` for a `multipart` endpoint; a `blob`
- * endpoint answers a `Blob` and an `ndjson` one is read with `stream`. The response is parsed with `endpoint.response`, and a mismatch
+ * The body is sent as passed (JSON), as `FormData` for a `multipart` endpoint, or as one `Blob`
+ * (`application/octet-stream`) for a `binary` one; the headers an endpoint declares come from
+ * `input.headers`. A `blob` endpoint answers a `Blob` and an `ndjson` one is read with `stream`. The response is parsed with `endpoint.response`, and a mismatch
  * is reported to `ErrorHandler` (with the zod issues) before the stream errors with it.
  */
 @Service()
@@ -126,6 +157,7 @@ export class EndpointClient {
         body: request.body,
         params: request.params,
         context: request.context,
+        headers: request.headers,
         responseType: (endpoint.responseType ?? 'json') as 'json',
       })
       .pipe(map((body) => this.parse(endpoint, body)));
@@ -163,7 +195,10 @@ export class EndpointClient {
           body: request.body,
           params: request.params,
           context: request.context,
-          headers: { Accept: 'application/x-ndjson, application/json' },
+          headers: {
+            ...request.headers,
+            Accept: 'application/x-ndjson, application/json',
+          },
           observe: 'events',
           reportProgress: true,
           responseType: 'text',
@@ -196,21 +231,38 @@ export class EndpointClient {
     body: unknown;
     params: HttpParams;
     context: HttpContext;
+    headers: Record<string, string>;
   } {
-    const { params, query, body } = (input ?? {}) as {
+    const { params, query, body, headers } = (input ?? {}) as {
       params?: Record<string, unknown>;
       query?: Record<string, unknown>;
       body?: unknown;
+      headers?: Record<string, unknown>;
     };
     return {
       url: (toUrl as (e: AnyEndpoint, p?: unknown) => string)(endpoint, params),
-      body:
-        endpoint.encoding === 'multipart' && body !== undefined
-          ? toFormData(body)
-          : body,
+      body: this.encode(endpoint, body),
       params: toHttpParams(query),
       context: new HttpContext().set(ENDPOINT, endpoint),
+      headers: {
+        ...toHeaders(endpoint, headers),
+        ...(endpoint.encoding === 'binary'
+          ? { 'Content-Type': 'application/octet-stream' }
+          : {}),
+      },
     };
+  }
+
+  private encode(endpoint: AnyEndpoint, body: unknown): unknown {
+    if (body === undefined) return body;
+    switch (endpoint.encoding) {
+      case 'multipart':
+        return toFormData(body);
+      case 'binary':
+        return toBinary(body);
+      default:
+        return body;
+    }
   }
 
   private parseLine<E extends AnyEndpoint>(

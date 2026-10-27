@@ -1,0 +1,72 @@
+@use 'ui';
+
+:host {
+  display: block;
+}
+
+.markdown {
+  @include ui.stack(3);
+  max-width: 68ch;
+  line-height: ui.leading(relaxed);
+
+  > * {
+    margin: 0;
+  }
+
+  h3 {
+    font-size: ui.text-size(lg);
+    font-weight: ui.weight(semibold);
+  }
+
+  h4 {
+    font-size: ui.text-size(md);
+    font-weight: ui.weight(semibold);
+  }
+
+  ul,
+  ol {
+    @include ui.stack(1);
+    padding-left: ui.space(5);
+  }
+
+  ul {
+    list-style: disc;
+  }
+
+  ol {
+    list-style: decimal;
+  }
+
+  blockquote {
+    padding: ui.space(3) ui.space(4);
+    border-radius: ui.radius(md);
+    background: ui.color(surface-2);
+    color: ui.color(text-secondary);
+  }
+
+  a {
+    color: ui.color(primary);
+    text-decoration: underline;
+    overflow-wrap: anywhere;
+  }
+
+  code {
+    @include ui.mono;
+    padding: 0 ui.space(1);
+    border-radius: ui.radius(sm);
+    background: ui.color(surface-2);
+  }
+
+  pre {
+    overflow-x: auto;
+    padding: ui.space(3) ui.space(4);
+    border: 1px solid ui.color(border);
+    border-radius: ui.radius(md);
+    background: ui.color(surface-2);
+
+    code {
+      padding: 0;
+      background: none;
+    }
+  }
+}

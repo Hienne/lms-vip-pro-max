@@ -1,0 +1,106 @@
+<div class="course-shares">
+  <p class="course-shares__note">
+    Đơn vị được chia sẻ có thể sử dụng khóa học nhưng không sửa được nội dung.
+  </p>
+
+  @if (store.loadError$(); as error) {
+  <ui-error-state
+    title="Không tải được danh sách chia sẻ"
+    [message]="error.message"
+    (retry)="store.retryLoad()"
+  />
+  } @else if (store.isLoading$()) {
+  <div class="course-shares__loading"><span uiSpinner></span></div>
+  } @else { @if (store.ownerName$(); as owner) {
+  <p class="course-shares__owner">
+    Đơn vị sở hữu: <span class="course-shares__owner-name">{{ owner }}</span>
+  </p>
+  } @if (store.active$().length) {
+  <ul class="course-shares__list" aria-label="Đơn vị đang được chia sẻ">
+    @for (row of store.active$(); track row.share.id) {
+    <li class="course-shares__item">
+      <div class="course-shares__head">
+        <div class="course-shares__who">
+          <span class="course-shares__name">{{ row.name }}</span>
+          <span class="course-shares__rights">{{ row.rights }}</span>
+        </div>
+        <ui-menu
+          [label]="'Thêm thao tác cho ' + row.name"
+          icon="ellipsis"
+          iconOnly
+          variant="ghost"
+          size="sm"
+          [disabled]="store.isSaving$()"
+          [entries]="store.menuFor(row)"
+          (selected)="store.act(row, $event)"
+        />
+      </div>
+      @if (store.editingOrgId$() === row.share.orgId) {
+      <app-share-rights
+        [initial]="row.share"
+        submitLabel="Lưu"
+        [busy]="store.isSaving$()"
+        (submitted)="store.saveRights(row, $event)"
+        (cancelled)="store.cancelEdit()"
+      />
+      }
+    </li>
+    }
+  </ul>
+  } @else if (!store.revoked$().length) {
+  <p class="course-shares__empty">Khóa học chưa được chia sẻ với đơn vị nào.</p>
+  } @if (store.revoked$().length) {
+  <section class="course-shares__revoked">
+    <h3 class="course-shares__heading">Đã thu hồi</h3>
+    <ul class="course-shares__list" aria-label="Đơn vị đã thu hồi chia sẻ">
+      @for (row of store.revoked$(); track row.share.id) {
+      <li class="course-shares__item course-shares__item--revoked">
+        <div class="course-shares__head">
+          <div class="course-shares__who">
+            <span class="course-shares__name">{{ row.name }}</span>
+            <span class="course-shares__rights"
+              >Thu hồi {{ row.share.revokedAt | fmtDate }}</span
+            >
+          </div>
+          <ui-menu
+            [label]="'Thêm thao tác cho ' + row.name"
+            icon="ellipsis"
+            iconOnly
+            variant="ghost"
+            size="sm"
+            [disabled]="store.isSaving$()"
+            [entries]="store.menuFor(row)"
+            (selected)="store.act(row, $event)"
+          />
+        </div>
+      </li>
+      }
+    </ul>
+  </section>
+  } @if (store.adding$()) {
+  <section class="course-shares__add" aria-label="Thêm đơn vị">
+    <app-org-picker
+      [options]="store.options$()"
+      [selected]="store.pickedOrg$()"
+      [busy]="store.isSearching$()"
+      [error]="store.optionsError$()?.message"
+      (queried)="store.search($event)"
+      (picked)="store.pick($event)"
+    />
+    <app-share-rights
+      [initial]="defaults"
+      submitLabel="Chia sẻ"
+      [blocked]="!store.pickedOrg$()"
+      [busy]="store.isSaving$()"
+      (submitted)="store.add($event)"
+      (cancelled)="store.cancelAdd()"
+    />
+  </section>
+  } @else {
+  <div>
+    <button uiButton type="button" (click)="store.startAdd()">
+      <ui-icon name="plus" size="sm" />Thêm đơn vị
+    </button>
+  </div>
+  } }
+</div>

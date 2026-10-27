@@ -8,9 +8,14 @@ import {
 import {
   CourseEnrollmentSchema,
   EnrollmentDetailSchema,
+  LearningProgressOverviewSchema,
   LearningReminderSchema,
+  MyCoursesQuerySchema,
+  OpenSessionCommandSchema,
+  ProgressExportQuerySchema,
   ProgressResultSchema,
   SaveProgressCommandSchema,
+  StudySessionSchema,
 } from './learner.schema';
 
 const enrollmentParams = z.object({ enrollmentId: z.number().int() });
@@ -28,8 +33,26 @@ export const learnerEndpoints = {
   myCourses: defineEndpoint({
     method: 'get',
     path: '/api/v1/me/learning/courses',
-    query: CourseListQuerySchema,
+    query: MyCoursesQuerySchema,
     response: PageSchema(CourseCardSchema),
+  }),
+  /** Counts over the caller's current cycles, whatever the table below filters. */
+  progressSummary: defineEndpoint({
+    method: 'get',
+    path: '/api/v1/me/learning/progress/summary',
+    response: LearningProgressOverviewSchema,
+  }),
+  /**
+   * A CSV (UTF-8 with BOM) of the rows `myCourses` lists for the same filters and sort, up to
+   * 10,000. A refusal such as `LEARNING-EXPORT_TOO_LARGE` comes as a JSON envelope instead of the
+   * file; `envelopeInterceptor` turns it into an `ApiError`.
+   */
+  exportProgress: defineEndpoint({
+    method: 'get',
+    path: '/api/v1/me/learning/progress/export',
+    query: ProgressExportQuerySchema,
+    responseType: 'blob',
+    response: z.instanceof(Blob),
   }),
   /** Self-enrols in a published, optional course the caller may discover. */
   enroll: defineEndpoint({
@@ -45,7 +68,21 @@ export const learnerEndpoints = {
     params: enrollmentParams,
     response: EnrollmentDetailSchema,
   }),
-  /** Records one interaction; the server recomputes block, lesson and course progress. */
+  /**
+   * Claims the account's one study session on a block (a lease, a fence that rises on every
+   * takeover) and sets the HttpOnly `academy_media` cookie the content URLs need. A second
+   * device is refused with `LEARNING-SESSION_IN_USE` until it asks with `takeover: true`.
+   */
+  openSession: defineEndpoint({
+    method: 'post',
+    path: '/api/v1/me/learning/sessions',
+    body: OpenSessionCommandSchema,
+    response: StudySessionSchema,
+  }),
+  /**
+   * Records one interaction inside the claimed session; the server recomputes block, lesson and
+   * course progress and answers the session receipt.
+   */
   saveProgress: defineEndpoint({
     method: 'put',
     path: '/api/v1/me/learning/enrollments/{enrollmentId}/blocks/{blockId}/progress',

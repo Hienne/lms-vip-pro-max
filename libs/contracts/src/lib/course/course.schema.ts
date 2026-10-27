@@ -269,6 +269,17 @@ export const CourseDetailSchema = z.object({
 });
 export type CourseDetail = z.infer<typeof CourseDetailSchema>;
 
+/** The backend's deadline state of a learner's card, apart from the learning status. */
+export const DeadlineStatusSchema = z.enum([
+  'not_active',
+  'no_deadline',
+  'on_time_active',
+  'overdue_active',
+  'completed_on_time',
+  'completed_late',
+]);
+export type DeadlineStatus = z.infer<typeof DeadlineStatusSchema>;
+
 /**
  * A row of a course list: the learner's catalogue and courses, and the instructor's courses.
  * The learner fields (`enrollmentId`, `learningStatus`, `progressPercent`, `dueAt`, `assigned`,
@@ -296,6 +307,19 @@ export const CourseCardSchema = z.object({
   assigned: z.boolean().nullish(),
   overdue: z.boolean().nullish(),
   updateTime: BackendDateTimeSchema.nullish(),
+  /** The learner's cycle, dates and resume point (the server's results, `nullish` in the instructor list). */
+  cycleNo: z.number().int().nullish(),
+  startedAt: BackendDateTimeSchema.nullish(),
+  lastAccessAt: BackendDateTimeSchema.nullish(),
+  completedAt: BackendDateTimeSchema.nullish(),
+  lastLessonId: z.number().int().nullish(),
+  lastBlockId: z.number().int().nullish(),
+  completedRequiredLessonCount: z.number().int().nullish(),
+  requiredLessonCount: z.number().int().nullish(),
+  deadlineStatus: DeadlineStatusSchema.nullish(),
+  mediaAssetId: z.number().int().nullish(),
+  lastPdfPage: z.number().int().nullish(),
+  lastVideoPositionSeconds: z.number().nullish(),
 });
 export type CourseCard = z.infer<typeof CourseCardSchema>;
 
@@ -307,7 +331,7 @@ export const CourseShareSchema = z.object({
   includeDescendants: z.boolean(),
   canAssign: z.boolean(),
   canSelfEnroll: z.boolean(),
-  status: z.string(),
+  status: z.enum(['active', 'revoked']),
   sharedBy: z.string().nullish(),
   sharedAt: BackendDateTimeSchema.nullish(),
   revokedAt: BackendDateTimeSchema.nullish(),
@@ -439,30 +463,18 @@ export const CopyCourseCommandSchema = z.object({
 });
 export type CopyCourseCommand = z.infer<typeof CopyCourseCommandSchema>;
 
-/** Shares (or, with `active: false`, revokes) use rights; content editing is never shared. */
+/**
+ * Shares (or, with `active: false`, revokes) use rights; content editing is never shared. Every
+ * field is sent each time: the server saves the row as sent and has no defaults.
+ */
 export const ShareCourseCommandSchema = z.object({
   orgId: z.number().int().positive(),
-  includeDescendants: z.boolean().optional(),
-  canAssign: z.boolean().optional(),
-  canSelfEnroll: z.boolean().optional(),
-  active: z.boolean().optional(),
+  includeDescendants: z.boolean(),
+  canAssign: z.boolean(),
+  canSelfEnroll: z.boolean(),
+  active: z.boolean(),
 });
 export type ShareCourseCommand = z.infer<typeof ShareCourseCommandSchema>;
-
-/** A video needs `durationSeconds` and a PDF `pageCount`, as the author confirms them. */
-export const UploadAssetQuerySchema = z.object({
-  ownerOrgId: z.number().int().positive(),
-  durationSeconds: z
-    .number()
-    .min(0.001)
-    .max(COURSE_LIMITS.lessonSeconds)
-    .optional(),
-  pageCount: z.number().int().positive().optional(),
-});
-export type UploadAssetQuery = z.infer<typeof UploadAssetQuerySchema>;
-
-export const UploadAssetBodySchema = z.object({ file: z.file() });
-export type UploadAssetBody = z.infer<typeof UploadAssetBodySchema>;
 
 /** A learner sends both ids of their own enrolment; an author sends neither. */
 export const AssetContentQuerySchema = z.object({

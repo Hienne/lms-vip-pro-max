@@ -1,0 +1,21 @@
+@if (assets().length) {
+<ul class="files">
+  @for (item of assets(); track item.usage.id) {
+  <li class="files__row">
+    <span class="files__name">{{ item.asset.originalName }}</span>
+    <span class="files__size">{{ item.asset.sizeBytes | fmtBytes }}</span>
+    <button
+      uiButton
+      size="sm"
+      [disabled]="busy()"
+      [attr.aria-label]="'Tải xuống ' + item.asset.originalName"
+      (click)="download.emit(item)"
+    >
+      <ui-icon name="download" size="sm" />Tải xuống
+    </button>
+  </li>
+  }
+</ul>
+} @else {
+<p class="files__empty">Khối này chưa có tệp đính kèm.</p>
+}

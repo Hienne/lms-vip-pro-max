@@ -14,11 +14,17 @@
         "outputPath": "dist/apps/lms",
         "browser": "apps/lms/src/main.ts",
         "tsConfig": "apps/lms/tsconfig.app.json",
+        "webWorkerTsConfig": "apps/lms/tsconfig.worker.json",
         "inlineStyleLanguage": "scss",
         "assets": [
           {
             "glob": "**/*",
             "input": "apps/lms/public"
+          },
+          {
+            "glob": "pdf.worker.min.mjs",
+            "input": "node_modules/pdfjs-dist/build",
+            "output": "pdfjs"
           }
         ],
         "styles": [
@@ -129,6 +135,7 @@
       "options": {
         "commands": [
           "tsc --noEmit -p apps/lms/tsconfig.app.json",
+          "tsc --noEmit -p apps/lms/tsconfig.worker.json",
           "tsc --noEmit -p apps/lms/tsconfig.spec.json"
         ],
         "parallel": false

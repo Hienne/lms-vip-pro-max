@@ -8,7 +8,6 @@
   (retry)="store.retry()"
 />} @else { @switch (store.routeScreen$()) { @case ('questions') {
 <ui-page-header
-  eyebrow="Nội dung"
   title="Ngân hàng câu hỏi"
   [description]="(store.questions$()?.totalElements ?? 0) + ' câu hỏi được lưu dưới dạng dữ liệu, tái sử dụng cho nhiều bài kiểm tra.'"
   ><div slot="actions">
@@ -364,7 +363,6 @@
 /></ng-template>
 } @case ('quizzes') {
 <ui-page-header
-  eyebrow="Nội dung"
   title="Bài kiểm tra"
   description="Cấu hình thời gian, số câu, điểm đạt, số lần thi, trộn đề và quyền xem đáp án — thay đổi có hiệu lực ngay."
   ><a slot="actions" uiButton variant="primary" routerLink="/admin/quizzes/new"
@@ -403,7 +401,6 @@
   [items]="[{label:'Bài kiểm tra',href:'/admin/quizzes'},{label:store.config$()?.title || 'Bài mới'}]"
 />
 <ui-page-header
-  eyebrow="Quiz engine"
   [title]="store.routeId$() === 'new' ? 'Tạo bài kiểm tra' : 'Cấu hình bài kiểm tra'"
   description="Thay đổi thời gian thi, số lần thi, điểm đạt… có hiệu lực ngay với lượt thi mới, không cần triển khai lại."
   ><button
@@ -582,7 +579,6 @@
   [items]="[{label:d.course.title,href:'/course/'+d.course.id},{label:'Bài kiểm tra'}]"
 />
 <ui-page-header
-  eyebrow="Bài kiểm tra"
   [title]="d.quiz.title"
   [description]="'Thuộc khóa “' + d.course.title + '”. Kết quả được chấm tự động và lưu vào hồ sơ học tập.'"
 />
@@ -712,7 +708,6 @@
 } @case ('history') { @if(store.history$(); as d){<ui-breadcrumb
   [items]="[{label:d.quiz.title,href:'/quiz/'+d.quiz.id},{label:'Lịch sử thi'}]"
 /><ui-page-header
-  eyebrow="Bài kiểm tra"
   [title]="'Lịch sử thi · ' + d.quiz.title"
   description="Kết quả từng lượt được lưu vào hồ sơ học tập."
 />
@@ -768,7 +763,7 @@
     ></ui-data-table
   >
 </section>
-} } @case ('hub') {<ui-page-header eyebrow="Học tập" title="Bài kiểm tra" />
+} } @case ('hub') {<ui-page-header title="Bài kiểm tra" />
 <div class="stack">
   @for(item of store.quizList$(); track item.id){
   <section uiCard padded class="row-between">

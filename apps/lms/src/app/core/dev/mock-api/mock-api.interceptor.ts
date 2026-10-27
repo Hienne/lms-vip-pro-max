@@ -56,6 +56,19 @@ function queryOf(req: HttpRequest<unknown>): Record<string, string> {
   );
 }
 
+/** The request headers an endpoint declares, by their declared names. */
+function headersOf(
+  endpoint: AnyEndpoint,
+  req: HttpRequest<unknown>,
+): Record<string, string> {
+  return Object.fromEntries(
+    Object.keys(endpoint.headers?.shape ?? {}).flatMap((name) => {
+      const value = req.headers.get(name);
+      return value === null ? [] : [[name, value] as const];
+    }),
+  );
+}
+
 /**
  * Dev only: answers a request from the mock API instead of the network. The endpoint comes from
  * the `ENDPOINT` context `EndpointClient` sets, and is looked up by object. The seeded in-memory
@@ -75,9 +88,16 @@ export const mockApiInterceptor: HttpInterceptorFn = (req, next) => {
           params: paramsOf(endpoint, req),
           query: queryOf(req),
           body: req.body,
+          headers: headersOf(endpoint, req),
         })
       : undefined;
   if (reply) {
+    // A file endpoint answers its refusals as a JSON body that the browser hands over as a blob.
+    const asBlob = endpoint?.responseType === 'blob';
+    const jsonBody = () =>
+      asBlob
+        ? new Blob([JSON.stringify(reply.body)], { type: 'application/json' })
+        : reply.body;
     return reply.status < 400
       ? of(
           reply.events
@@ -90,13 +110,16 @@ export const mockApiInterceptor: HttpInterceptorFn = (req, next) => {
                   .map((e) => `${JSON.stringify(e)}\n`)
                   .join(''),
               })
-            : new HttpResponse({ status: reply.status, body: reply.body }),
+            : new HttpResponse({
+                status: reply.status,
+                body: reply.file ?? jsonBody(),
+              }),
         )
       : throwError(
           () =>
             new HttpErrorResponse({
               status: reply.status,
-              error: reply.body,
+              error: jsonBody(),
               url: req.url,
             }),
         );

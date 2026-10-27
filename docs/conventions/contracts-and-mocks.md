@@ -60,18 +60,22 @@ export const courseEndpoints = {
 - Two optional fields choose the transport; both default to `'json'`:
   - `encoding: 'multipart'` sends the body as `FormData`. File fields use
     `z.file()`.
+  - `encoding: 'binary'` sends the body, one `Blob` (`body: z.instanceof(Blob)`), as
+    `application/octet-stream`, not parsed: a part of a chunked upload.
   - `responseType: 'blob'` receives a file. The response schema must be
     `z.instanceof(Blob)`; the types reject any other schema.
   - `responseType: 'ndjson'` streams newline-delimited JSON events; `response` describes one event
     and the endpoint is read with `EndpointClient.stream` (below), which `call` rejects at type
     level.
+- An optional `headers` schema (`z.object({ 'X-Part-SHA256': z.string() })`) names request headers the
+  caller must send; an endpoint without it takes none.
 
 ## Calling endpoints (in the app)
 
 Stores call `EndpointClient.call(endpoint, input)` (`core/http/endpoint-client.ts`);
 angular.md §5.1 shows the usage. There is no API service per domain.
 
-- **Types.** `input` has `params`, `query` and `body`, each required exactly
+- **Types.** `input` has `params`, `query`, `body` and `headers`, each required exactly
   when the endpoint declares it and forbidden otherwise (an endpoint with none
   takes no second argument). Types come from `z.input` of each schema; the
   result is `z.output` of the response schema.
@@ -84,6 +88,11 @@ angular.md §5.1 shows the usage. There is no API service per domain.
 File | Blob` or an array of those. Arrays repeat the key, numbers and booleans
   become strings, `null`/`undefined` are skipped, and a nested object throws an
   `Error` (a client bug). The client never sets `Content-Type` for multipart.
+- **Body, binary** must be a `Blob` (anything else throws an `Error`, a client bug). The client sends
+  it untouched with `Content-Type: application/octet-stream`.
+- **Headers** are sent as given (`String(value)`, `null` and `undefined` skipped), not parsed. Passing
+  `headers` to an endpoint that declares none, or leaving them out of one that declares them, throws
+  an `Error` at the call (a client bug); the types reject both first.
 - **Response.** Every response, a blob included, is parsed with the endpoint's
   schema. A mismatch creates a `ContractError` with the zod issues, passes it to
   the global `ErrorHandler` (`core/errors/app-error-handler.ts`,
@@ -129,8 +138,12 @@ File | Blob` or an array of those. Arrays repeat the key, numbers and booleans
   "session expired" uses `SessionExpiry` too. `core/routing/return-to.ts` builds
   (`returnToParams`) and reads (`readReturnTo`, rejects external or unsafe paths)
   `?next=`.
-- **Known limit:** an HTTP error on a `blob` endpoint arrives as a `Blob` body,
-  so `toAppError` shows the default message for its kind.
+- **File endpoints and refusals:** a `blob` endpoint passes a file through, but
+  `envelopeInterceptor` reads a body whose `Content-Type` is `application/json`
+  as an envelope, on a 2xx or an HTTP error, so a refusal (for example the
+  export's `LEARNING-EXPORT_TOO_LARGE`) is an `ApiError` with the server's
+  message instead of a saved file. An HTTP error without an envelope still
+  shows the default message for its kind.
 - **Extension rule:** a new transport kind (another body encoding, streaming…)
   is a new optional field on `defineEndpoint` plus a branch in `EndpointClient`,
   never a new API service and never a direct `HttpClient` call in a store.

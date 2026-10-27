@@ -3,7 +3,9 @@ import { courseEndpoints } from './course.endpoints';
 import {
   CourseCardSchema,
   CourseDetailSchema,
+  CourseShareSchema,
   SaveDraftCommandSchema,
+  ShareCourseCommandSchema,
 } from './course.schema';
 
 const stamp = { rowVersion: 0, createTime: '2026-10-20T08:00:00' };
@@ -127,7 +129,6 @@ describe('course endpoints', () => {
       ['copyCourse', 'post', '/api/v1/courses/{courseId}/copy'],
       ['shares', 'get', '/api/v1/courses/{courseId}/shares'],
       ['share', 'put', '/api/v1/courses/{courseId}/shares'],
-      ['uploadAsset', 'post', '/api/v1/learning-assets'],
       ['getAssetContent', 'get', '/api/v1/learning-assets/{assetId}/content'],
     ]);
     expect(
@@ -135,8 +136,7 @@ describe('course endpoints', () => {
     ).toBe('/api/v1/courses/7/revisions/70');
   });
 
-  it('uploads as multipart and downloads as a blob', () => {
-    expect(courseEndpoints.uploadAsset.encoding).toBe('multipart');
+  it('downloads a file as a blob', () => {
     expect(courseEndpoints.getAssetContent.responseType).toBe('blob');
   });
 
@@ -161,6 +161,45 @@ describe('course endpoints', () => {
       overdue: false,
     });
     expect(card.progressPercent).toBe(40);
+  });
+
+  it('parses the learner card fields of the backend, as the local backend sends them', () => {
+    const card = CourseCardSchema.parse({
+      courseId: 1,
+      revisionId: 1,
+      code: 'FE-DEMO-C1',
+      title: 'Tổng quan hệ thống Core Banking',
+      level: 'basic',
+      requirement: 'mandatory',
+      lessonCount: 4,
+      enrollmentId: 3,
+      learningStatus: 'in_progress',
+      progressPercent: 50,
+      dueAt: '2026-10-28T16:18:06.151850Z',
+      assigned: true,
+      overdue: false,
+      cycleNo: 1,
+      startedAt: '2026-10-20T16:18:06.151850Z',
+      lastAccessAt: '2026-10-22T16:18:06.151850Z',
+      completedAt: null,
+      lastLessonId: 2,
+      lastBlockId: 4,
+      completedRequiredLessonCount: 2,
+      requiredLessonCount: 4,
+      deadlineStatus: 'on_time_active',
+      mediaAssetId: null,
+      lastPdfPage: null,
+      lastVideoPositionSeconds: null,
+    });
+    expect(card.requiredLessonCount).toBe(4);
+    expect(card.deadlineStatus).toBe('on_time_active');
+    expect(
+      CourseCardSchema.safeParse({
+        courseId: 1,
+        code: 'X',
+        deadlineStatus: 'someday',
+      }).success,
+    ).toBe(false);
   });
 
   it('checks a draft body against the backend rules', () => {
@@ -200,5 +239,42 @@ describe('course endpoints', () => {
     expect(
       SaveDraftCommandSchema.safeParse({ ...draft, level: 'expert' }).success,
     ).toBe(false);
+  });
+
+  describe('shares', () => {
+    const row = {
+      id: 5,
+      courseId: 7,
+      orgId: 2,
+      includeDescendants: false,
+      canAssign: true,
+      canSelfEnroll: false,
+      status: 'active',
+      rowVersion: 0,
+    };
+
+    it('knows the two states a share has', () => {
+      expect(CourseShareSchema.parse(row).status).toBe('active');
+      expect(
+        CourseShareSchema.parse({ ...row, status: 'revoked' }).status,
+      ).toBe('revoked');
+      expect(
+        CourseShareSchema.safeParse({ ...row, status: 'pending' }).success,
+      ).toBe(false);
+    });
+
+    it('is sent whole: the backend has no defaults for the rights', () => {
+      const command = {
+        orgId: 2,
+        includeDescendants: true,
+        canAssign: true,
+        canSelfEnroll: false,
+        active: true,
+      };
+      expect(ShareCourseCommandSchema.parse(command)).toEqual(command);
+      expect(
+        ShareCourseCommandSchema.safeParse({ orgId: 2, active: false }).success,
+      ).toBe(false);
+    });
   });
 });

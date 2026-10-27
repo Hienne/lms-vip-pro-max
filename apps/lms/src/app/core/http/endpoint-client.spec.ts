@@ -66,6 +66,16 @@ const upload = defineEndpoint({
   response: z.object({ id: z.string() }),
 });
 
+const putPart = defineEndpoint({
+  method: 'put',
+  path: '/api/uploads/{uploadId}/parts/{partNumber}',
+  params: z.object({ uploadId: z.string(), partNumber: z.number() }),
+  encoding: 'binary',
+  headers: z.object({ 'X-Part-SHA256': z.string() }),
+  body: z.instanceof(Blob),
+  response: z.object({ uploadedBytes: z.number() }),
+});
+
 const exportAll = defineEndpoint({
   method: 'get',
   path: '/api/export',
@@ -329,6 +339,65 @@ describe('EndpointClient', () => {
           body: { title: 'T', file, tags: [{ x: 1 }] as unknown as string[] },
         }),
       ).toThrow(/tags/);
+    });
+  });
+
+  describe('binary', () => {
+    const part = new Blob(['abc'], { type: 'video/mp4' });
+    const url = '/api/uploads/u1/parts/2';
+    const input = {
+      params: { uploadId: 'u1', partNumber: 2 },
+      headers: { 'X-Part-SHA256': 'ab'.repeat(32) },
+      body: part,
+    };
+
+    it('sends the Blob as it is, as application/octet-stream, with the declared header', () => {
+      let result: unknown;
+      client.call(putPart, input).subscribe((v) => (result = v));
+      const req = backend.expectOne(url);
+      expect(req.request.method).toBe('PUT');
+      expect(req.request.body).toBe(part);
+      expect(req.request.headers.get('Content-Type')).toBe(
+        'application/octet-stream',
+      );
+      expect(req.request.headers.get('X-Part-SHA256')).toBe('ab'.repeat(32));
+      req.flush({ uploadedBytes: 3 });
+      expect(result).toEqual({ uploadedBytes: 3 });
+    });
+
+    it('still parses the response with the endpoint schema', () => {
+      const outcome: { error?: unknown } = {};
+      client
+        .call(putPart, input)
+        .subscribe({ error: (error: unknown) => (outcome.error = error) });
+      backend.expectOne(url).flush({ uploadedBytes: 'x' });
+      expect(outcome.error).toBeInstanceOf(ContractError);
+    });
+
+    it('refuses a call without the headers the endpoint declares', () => {
+      expect(() =>
+        // @ts-expect-error the declared headers are required
+        client.call(putPart, { params: input.params, body: part }),
+      ).toThrow(/headers/);
+    });
+
+    it('refuses headers on an endpoint that declares none', () => {
+      expect(() =>
+        client.call(getCourse, {
+          params: { courseId: 'c1' },
+          // @ts-expect-error getCourse declares no headers
+          headers: { 'X-Part-SHA256': 'x' },
+        }),
+      ).toThrow(/headers/);
+    });
+
+    it('refuses a body that is not a Blob', () => {
+      expect(() =>
+        client.call(putPart, {
+          ...input,
+          body: 'abc' as unknown as Blob,
+        }),
+      ).toThrow(/Blob/);
     });
   });
 

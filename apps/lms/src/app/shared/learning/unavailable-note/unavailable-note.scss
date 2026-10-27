@@ -1,0 +1,6 @@
+@use 'ui';
+
+.unavailable-note {
+  @include ui.text(sm, muted);
+  margin: 0;
+}

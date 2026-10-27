@@ -1,0 +1,142 @@
+@if (store.loadError$(); as error) {
+<ui-error-state
+  title="Không tải được khóa học"
+  [message]="error.message"
+  (retry)="store.retry()"
+/>
+} @else if (store.view$() === 'missing') {
+<ui-empty
+  variant="page"
+  [headingLevel]="1"
+  title="Không tìm thấy khóa học"
+  description="Khóa học không còn mở cho bạn hoặc đường dẫn không đúng."
+>
+  <a uiButton variant="primary" routerLink="/catalog">Về danh mục</a>
+</ui-empty>
+} @else if (store.view$() === 'loading') {
+<div class="course__loading" aria-busy="true">
+  <div uiSkeleton variant="text" class="course__skeleton-title"></div>
+  <div uiSkeleton variant="text"></div>
+  <div uiSkeleton variant="block" class="course__skeleton-body"></div>
+</div>
+} @else { @if (store.card$(); as card) {
+<ui-page-header [title]="card.title || card.code" [description]="facts()">
+  <ui-breadcrumb slot="breadcrumb" [items]="crumbs()" />
+  <div slot="actions" class="course__actions">
+    @if (store.canEnroll$()) {
+    <button
+      uiButton
+      variant="primary"
+      [disabled]="store.isEnrolling$()"
+      (click)="store.enroll()"
+    >
+      Đăng ký học
+    </button>
+    } @else if (store.primaryAction$(); as label) {
+    <a uiButton variant="primary" [routerLink]="store.resumeLink$()"
+      >{{ label }}</a
+    >
+    }
+  </div>
+</ui-page-header>
+
+<p class="course__meta">
+  <app-required-mark [required]="card.requirement === 'mandatory'" />
+  @if (minutes()) {
+  <span>{{ minutes() | fmtMinutes }}</span>
+  } @if (card.dueAt) {
+  <app-due-date
+    [dueAt]="card.dueAt"
+    [done]="card.learningStatus === 'completed'"
+  />
+  }
+</p>
+
+@if (store.isOverdue$()) {
+<ui-alert tone="danger" class="course__alert">
+  Khóa học đã quá hạn. Hoàn thành sớm để cập nhật trạng thái.
+</ui-alert>
+}
+
+<div class="course__layout">
+  <div class="course__main">
+    @if (store.view$() === 'enrolled') { @if (objectives().length) {
+    <section aria-labelledby="course-objectives">
+      <h2 id="course-objectives" class="course__heading">Mục tiêu đầu ra</h2>
+      <ul class="course__objectives">
+        @for (objective of objectives(); track objective.id) {
+        <li>{{ objective.description }}</li>
+        }
+      </ul>
+    </section>
+    }
+    <section aria-labelledby="course-outline">
+      <h2 id="course-outline" class="course__heading">Nội dung khóa học</h2>
+      @if (requiredTally(); as tally) {
+      <p class="course__tally">
+        {{ tally.done }}/{{ tally.required }} bài bắt buộc đã hoàn thành
+      </p>
+      }
+      <section uiCard class="course__outline">
+        <app-course-outline [chapters]="store.outline$()" />
+      </section>
+    </section>
+    } @else {
+    <section aria-labelledby="course-about">
+      <h2 id="course-about" class="course__heading">Nội dung khóa học</h2>
+      @if (store.needsAssignment$()) {
+      <p class="course__note">Khóa học bắt buộc này cần được giao để học.</p>
+      } @else {
+      <p class="course__note">Đăng ký để xem nội dung và bắt đầu học.</p>
+      }
+    </section>
+    }
+  </div>
+
+  @if (store.view$() === 'enrolled') {
+  <aside class="course__side" aria-label="Tiến độ">
+    <section uiCard class="course__progress">
+      <ui-ring [value]="card.progressPercent ?? 0" [size]="112" />
+      <dl class="course__facts">
+        <div>
+          <dt>Đã học</dt>
+          <dd>
+            {{ store.lessonTally$().done }}/{{ store.lessonTally$().total }} bài
+          </dd>
+        </div>
+        @if (card.startedAt) {
+        <div>
+          <dt>Bắt đầu</dt>
+          <dd>{{ card.startedAt | fmtDate }}</dd>
+        </div>
+        } @if (card.lastAccessAt) {
+        <div>
+          <dt>Học gần nhất</dt>
+          <dd>{{ card.lastAccessAt | fmtDate }}</dd>
+        </div>
+        } @if (card.completedAt) {
+        <div>
+          <dt>Hoàn thành</dt>
+          <dd>{{ card.completedAt | fmtDate }}</dd>
+        </div>
+        }
+      </dl>
+    </section>
+    <section aria-labelledby="course-rule">
+      <h2 id="course-rule" class="course__heading">Điều kiện hoàn thành</h2>
+      <ul class="course__objectives">
+        <li>
+          Học đủ {{ card.requiredLessonCount ?? store.lessonTally$().total }}
+          bài bắt buộc
+        </li>
+      </ul>
+      @if (rewardPoints() > 0) {
+      <p class="course__reward">
+        +{{ rewardPoints() }} điểm thưởng khi hoàn thành
+      </p>
+      }
+    </section>
+  </aside>
+  }
+</div>
+} }

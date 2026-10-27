@@ -1,0 +1,37 @@
+@use 'ui';
+
+.process {
+  @include ui.stack(4);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+
+  &__step {
+    display: grid;
+    grid-template-columns: 1.5rem minmax(0, 1fr);
+    gap: ui.space(3);
+  }
+
+  &__number {
+    @include ui.num;
+    color: ui.color(text-muted);
+    font-weight: ui.weight(medium);
+    text-align: right;
+  }
+
+  &__title {
+    margin: 0;
+    font-size: ui.text-size(md);
+    font-weight: ui.weight(semibold);
+  }
+
+  &__description {
+    margin: ui.space(1) 0 0;
+    color: ui.color(text-secondary);
+  }
+
+  &__empty {
+    @include ui.text(sm, muted);
+    margin: 0;
+  }
+}

@@ -1,0 +1,18 @@
+@use 'ui';
+
+.reminder-item {
+  @include ui.stack(1);
+  min-width: 0;
+
+  &__title {
+    font-weight: ui.weight(medium);
+  }
+
+  &__meta {
+    @include ui.text(sm, muted);
+  }
+
+  &__due--overdue {
+    color: ui.color(danger);
+  }
+}

@@ -36,4 +36,23 @@ export const ACCESS_DENIED_CODE = 'CORE-ACCESS_DENIED';
 export const MESSAGE_CODE_KIND = {
   [UNAUTHENTICATED_CODE]: 'unauthorized',
   [ACCESS_DENIED_CODE]: 'forbidden',
+  // The study session protocol: valid requests the server cannot apply as sent. The player reads
+  // the code and acts (claim again, ask to take over, reload); none of them is a system failure.
+  'LEARNING-SESSION_IN_USE': 'refused',
+  'LEARNING-SESSION_EXPIRED': 'refused',
+  'LEARNING-STALE_EVENT': 'refused',
+  'LEARNING-CONFLICT': 'refused',
+  'LEARNING-MEDIA_CHANGED': 'refused',
+  'LEARNING-ASSET_PROCESSING': 'refused',
+  'LEARNING-NOT_AVAILABLE': 'refused',
+  // The chunked upload: the author acts on each (pick the file again, upload again, pick another
+  // file), and the row says so; a library file a course uses cannot be deleted.
+  'LEARNING-UPLOAD_FILE_MISMATCH': 'refused',
+  'LEARNING-UPLOAD_EXPIRED': 'refused',
+  'LEARNING-UPLOAD_PART_CONFLICT': 'refused',
+  'LEARNING-ASSET_INVALID': 'refused',
+  'LEARNING-ASSET_CODEC_UNSUPPORTED': 'refused',
+  'LEARNING-ASSET_IN_USE': 'refused',
+  // A share with the course's own unit, or with a unit that does not exist.
+  'LEARNING-INVALID_REFERENCE': 'refused',
 } as const;

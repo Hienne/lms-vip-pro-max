@@ -1,0 +1,58 @@
+<ng-template #inline let-inlines>
+  @for (piece of inlines; track $index) { @switch (piece.kind) { @case
+  ('strong') {<strong>{{ piece.text }}</strong>} @case ('em') {<em
+    >{{ piece.text }}</em
+  >} @case ('code') {<code>{{ piece.text }}</code>} @case ('link') {<a
+    [href]="piece.href"
+    target="_blank"
+    rel="noopener noreferrer"
+    >{{ piece.text }}</a
+  >} @case ('break') {<br />} @default {{{ piece.text }}} } }
+</ng-template>
+
+<div class="markdown">
+  @for (block of blocks(); track $index) { @if (block.kind === 'heading') { @if
+  (block.level === 3) {
+  <h3>
+    <ng-container
+      *ngTemplateOutlet="inline; context: inlineContext(block.inlines)"
+    />
+  </h3>
+  } @else {
+  <h4>
+    <ng-container
+      *ngTemplateOutlet="inline; context: inlineContext(block.inlines)"
+    />
+  </h4>
+  } } @else if (block.kind === 'paragraph') {
+  <p>
+    <ng-container
+      *ngTemplateOutlet="inline; context: inlineContext(block.inlines)"
+    />
+  </p>
+  } @else if (block.kind === 'quote') {
+  <blockquote>
+    <ng-container
+      *ngTemplateOutlet="inline; context: inlineContext(block.inlines)"
+    />
+  </blockquote>
+  } @else if (block.kind === 'code') {
+  <pre><code>{{ block.text }}</code></pre>
+  } @else if (block.kind === 'list') { @if (block.ordered) {
+  <ol>
+    @for (item of block.items; track $index) {
+    <li>
+      <ng-container *ngTemplateOutlet="inline; context: inlineContext(item)" />
+    </li>
+    }
+  </ol>
+  } @else {
+  <ul>
+    @for (item of block.items; track $index) {
+    <li>
+      <ng-container *ngTemplateOutlet="inline; context: inlineContext(item)" />
+    </li>
+    }
+  </ul>
+  } } }
+</div>

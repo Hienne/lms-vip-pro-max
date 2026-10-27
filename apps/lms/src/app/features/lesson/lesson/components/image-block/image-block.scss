@@ -1,0 +1,25 @@
+@use 'ui';
+
+.image {
+  @include ui.stack(2);
+  margin: 0;
+
+  &__picture {
+    display: block;
+    max-width: 100%;
+    height: auto;
+    margin-inline: auto;
+    border-radius: ui.radius(control);
+  }
+
+  &__caption {
+    @include ui.text(sm, muted);
+    text-align: center;
+  }
+
+  &__error {
+    @include ui.row(2);
+    margin: 0;
+    color: ui.color(text-secondary);
+  }
+}

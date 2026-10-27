@@ -51,7 +51,7 @@
   }
 }
 .assessment__eyebrow {
-  @include ui.eyebrow;
+  @include ui.text(sm);
 }
 .assessment__question-heading {
   @include ui.text(xl);

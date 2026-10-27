@@ -10,7 +10,6 @@
   [items]="[{label:'Báo cáo',href:'/reports'},{label:store.dimensionLabel$()}]"
 />}
 <ui-page-header
-  [eyebrow]="store.dimension$() ? 'Báo cáo chi tiết' : 'Báo cáo'"
   [title]="store.dimension$() ? 'Báo cáo theo ' + store.dimensionLabel$().toLowerCase() : 'Tình hình đào tạo'"
   [description]="store.dimension$() ? (store.detail$()?.totalElements ?? 0) + ' dòng · lọc & sắp xếp theo cột · xuất CSV/Excel hoặc in PDF.' : 'Phạm vi: ' + data.scope.label + ' · số liệu tính trực tiếp từ dữ liệu học tập, cập nhật theo thời gian thực.'"
   ><div slot="actions">

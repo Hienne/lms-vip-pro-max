@@ -1,0 +1,77 @@
+@use 'ui';
+
+.course-shares {
+  @include ui.stack(4);
+
+  &__note,
+  &__owner,
+  &__empty {
+    margin: 0;
+    @include ui.text(sm, muted);
+  }
+
+  &__owner-name {
+    font-weight: ui.weight(medium);
+    color: ui.color(text);
+  }
+
+  &__loading {
+    display: flex;
+    justify-content: center;
+    padding-block: ui.space(10);
+  }
+
+  &__list {
+    display: flex;
+    flex-direction: column;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  &__item {
+    @include ui.stack(3);
+    padding-block: ui.space(3);
+    border-block-end: 1px solid ui.color(border);
+
+    &--revoked {
+      color: ui.color(text-muted);
+    }
+  }
+
+  &__head {
+    @include ui.row-between(3);
+    align-items: flex-start;
+  }
+
+  &__who {
+    @include ui.stack(1);
+    min-width: 0;
+  }
+
+  &__name {
+    overflow-wrap: anywhere;
+    font-weight: ui.weight(medium);
+  }
+
+  &__rights {
+    @include ui.text(sm, muted);
+  }
+
+  &__revoked {
+    @include ui.stack(2);
+  }
+
+  &__heading {
+    margin: 0;
+    font-weight: ui.weight(semibold);
+    @include ui.text(sm);
+  }
+
+  &__add {
+    @include ui.stack(4);
+    padding: ui.space(4);
+    border: 1px solid ui.color(border);
+    border-radius: ui.radius(card);
+  }
+}

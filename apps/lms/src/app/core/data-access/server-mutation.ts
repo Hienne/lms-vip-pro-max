@@ -18,8 +18,11 @@ export interface ServerMutationOptions<I, R> {
    * is always visible.
    */
   readonly errors: 'toast' | 'alert';
-  /** The success toast, or null for autosave rendered inline by the screen. */
-  readonly success: (input: I, result: R) => SuccessMessage;
+  /**
+   * The success toast, from what was sent and what came back. Leave it out when the result is its
+   * own feedback (a file that was just saved).
+   */
+  readonly success?: (input: I, result: R) => SuccessMessage;
   /** Runs first on success, before the invalidations and the toast: close a drawer, navigate. */
   readonly onSuccess?: (result: R) => void;
   /** Bumped on success, so the reads that reload on them refresh. */
@@ -38,7 +41,7 @@ export interface ServerMutation<I> {
 
 /**
  * Runs one command against the server. Call it in a store's field initializer, like `rxResource`.
- * On success it runs `onSuccess`, bumps `invalidates`, then shows the success toast.
+ * On success it runs `onSuccess`, bumps `invalidates`, then shows the success toast (if any).
  */
 export function serverMutation<I, R>(
   run: (input: I) => Observable<R>,
@@ -56,8 +59,8 @@ export function serverMutation<I, R>(
           next: (result) => {
             options.onSuccess?.(result);
             invalidates.forEach((token) => token.bump());
-            const message = options.success(params.input, result);
-            if (message === null) return;
+            const message = options.success?.(params.input, result);
+            if (message === undefined || message === null) return;
             if (typeof message === 'string') toaster.success(message);
             else toaster.success(message.title, message.detail);
           },

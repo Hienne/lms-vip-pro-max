@@ -19,12 +19,17 @@ import {
   NavigationEnd,
   Router,
 } from '@angular/router';
-import { type NavCounts, shellEndpoints } from '@lms/contracts';
+import {
+  learnerEndpoints,
+  type NavCounts,
+  shellEndpoints,
+} from '@lms/contracts';
 import { confirm, Toaster } from '@lms/ui';
-import { filter, switchMap, take, tap } from 'rxjs';
+import { catchError, filter, map, of, switchMap, take, tap } from 'rxjs';
 import type { UserMenuValue } from '../../header/header';
 import { searchTarget } from '../../header/search-target';
 import { EndpointClient } from '../../../core/http/endpoint-client';
+import { RemindersChanged } from '../../../core/learning/reminders-changed';
 import { LearningChanges } from '../../../core/data-access/learning-changes';
 import {
   hasUnsavedChanges,
@@ -74,6 +79,7 @@ export class ShellStore {
   private readonly injector = inject(Injector);
   private readonly destroyRef = inject(DestroyRef);
   private readonly storage = inject(LOCAL_STORAGE);
+  private readonly remindersChanged = inject(RemindersChanged);
 
   constructor() {
     inject(LeavePrompt).use(() =>
@@ -163,7 +169,42 @@ export class ShellStore {
       NO_COUNTS,
   });
 
-  readonly unread$ = computed(() => this.counts().notifications);
+  /**
+   * Without `navCounts` (the real backend), the bell is the learner's due reminders, read on the
+   * same triggers and whenever one is read. A refusal or a failure is 0: the bell has no error
+   * state to show.
+   */
+  private readonly remindersResource = rxResource({
+    params: () => {
+      const user = this.session.user$();
+      return user &&
+        !this.client.isServed(shellEndpoints.navCounts) &&
+        this.session.menus$().includes('COURSE_LEARNING')
+        ? {
+            userId: user.userId,
+            path: this.path$(),
+            changes: this.remindersChanged.version(),
+          }
+        : undefined;
+    },
+    stream: () =>
+      this.client.call(learnerEndpoints.reminders).pipe(
+        map((reminders) => reminders.length),
+        catchError(() => of(0)),
+      ),
+  });
+
+  private readonly reminderCount = linkedSignal<number | undefined, number>({
+    source: () => this.remindersResource.value(),
+    computation: (value, previous) =>
+      value ?? (this.session.isSignedIn$() ? previous?.value : undefined) ?? 0,
+  });
+
+  readonly unread$ = computed(() =>
+    this.client.isServed(shellEndpoints.navCounts)
+      ? this.counts().notifications
+      : this.reminderCount(),
+  );
 
   /** The router outlet's `activate` and `deactivate` events keep track of the current page. */
   activated(page: unknown): void {

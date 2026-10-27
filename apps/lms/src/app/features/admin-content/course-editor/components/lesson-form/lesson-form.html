@@ -3,6 +3,11 @@
   <ui-alert tone="danger">
     Khối "{{ missingFiles()[0].title }}" chưa có tệp: tải tệp lên hoặc xóa khối.
   </ui-alert>
+  } @if (lessonForm().touched() && busyBlocks().length) {
+  <ui-alert tone="danger">
+    Tệp của khối "{{ busyBlocks()[0].title }}" chưa tải xong: đợi hoặc hủy tải
+    lên.
+  </ui-alert>
   }
   <div class="lesson-form__pair">
     <ui-field label="Tên bài học" required>
@@ -98,14 +103,74 @@
         <ui-upload-item
           [name]="entry.name"
           [size]="entry.sizeBytes"
-          [state]="entry.state"
+          [icon]="blockTypes[block().value().blockType].icon"
+          [state]="itemState(entry)"
+          [progress]="entry.percent"
+          [status]="entry.status"
           >{{ entry.message }}</ui-upload-item
         >
+        <div class="lesson-form__row-actions">
+          @if (isCancellable(entry)) {
+          <button
+            uiButton
+            type="button"
+            size="sm"
+            (click)="store.cancel(block().value().key)"
+          >
+            Hủy
+          </button>
+          } @if (entry.state === 'stalled') {
+          <button
+            uiButton
+            type="button"
+            size="sm"
+            (click)="store.recheck(block().value().key)"
+          >
+            Kiểm tra lại
+          </button>
+          } @if (entry.state === 'error') { @if (entry.reprocess) {
+          <button
+            uiButton
+            type="button"
+            size="sm"
+            (click)="store.reprocess(block().value().key)"
+          >
+            Xử lý lại
+          </button>
+          } @else {
+          <button uiButton type="button" size="sm" (click)="again.click()">
+            {{ entry.expired ? 'Tải lên lại' : 'Chọn tệp khác' }}
+          </button>
+          } }
+        </div>
+        } } @else if (interrupted()[i]; as kept) { @if (kept.blockType ===
+        block().value().blockType) {
+        <ui-upload-item
+          [name]="kept.name"
+          [size]="kept.sizeBytes"
+          [icon]="blockTypes[block().value().blockType].icon"
+          state="error"
+          >{{ kept.message ?? 'Tải lên bị gián đoạn. Chọn lại đúng tệp này để
+          tiếp tục.' }}</ui-upload-item
+        >
+        <div class="lesson-form__row-actions">
+          <button uiButton type="button" size="sm" (click)="resume.click()">
+            Tiếp tục
+          </button>
+          <button
+            uiButton
+            type="button"
+            size="sm"
+            (click)="store.cancelInterrupted(kept.uploadId)"
+          >
+            Hủy
+          </button>
+        </div>
         } }
         <label
           uiDropzone
           [accept]="acceptOf(block().value().blockType)"
-          (files)="choose(block().value(), $event)"
+          (files)="choose(block().value(), i, $event)"
         >
           <ui-icon name="upload" />
           <div class="lesson-form__drop-title">
@@ -117,6 +182,30 @@
           </div>
           <input type="file" hidden />
         </label>
+        <div class="lesson-form__row-actions">
+          <button
+            uiButton
+            type="button"
+            size="sm"
+            (click)="library.open(block().value().key, block().value().blockType)"
+          >
+            Chọn từ thư viện
+          </button>
+        </div>
+        <input
+          #again
+          type="file"
+          hidden
+          [accept]="acceptOf(block().value().blockType)"
+          (change)="picked($event, block().value(), i)"
+        />
+        <input
+          #resume
+          type="file"
+          hidden
+          [accept]="acceptOf(block().value().blockType)"
+          (change)="picked($event, block().value(), i, true)"
+        />
       </div>
       } @switch (block().value().blockType) { @case ('text') {
       <ui-field label="Nội dung (Markdown: ## tiêu đề, **đậm**, - danh sách)">
@@ -147,3 +236,11 @@
   </section>
   }
 </form>
+
+<ng-template
+  [uiDrawer]="library.target$() !== null"
+  uiDrawerTitle="Thư viện tài nguyên"
+  (uiDrawerDismiss)="library.close()"
+>
+  <app-asset-library (picked)="useLibraryAsset($event)" />
+</ng-template>

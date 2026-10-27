@@ -1,0 +1,28 @@
+<section uiCard padded class="continue-card" aria-label="Tiếp tục học">
+  @if (resume(); as view) {
+  <div class="continue-card__text">
+    <h2 class="continue-card__title">{{ view.lessonTitle }}</h2>
+    @if (view.context) {
+    <p class="continue-card__context">{{ view.context }}</p>
+    }
+  </div>
+  <div class="continue-card__progress">
+    <ui-progress
+      size="sm"
+      [value]="view.pct"
+      [label]="'Tiến độ ' + view.courseTitle"
+    />
+    <span class="continue-card__pct">{{ view.pct }}%</span>
+  </div>
+  <a
+    uiButton
+    variant="primary"
+    [routerLink]="view.link"
+    [queryParams]="view.query"
+    >Tiếp tục học</a
+  >
+  } @else {
+  <p class="continue-card__context">Bạn chưa có khóa học đang học.</p>
+  <a uiButton variant="primary" routerLink="/catalog">Khám phá khóa học</a>
+  }
+</section>

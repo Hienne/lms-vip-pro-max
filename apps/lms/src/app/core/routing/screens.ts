@@ -2,7 +2,6 @@ import type { Route } from '@angular/router';
 import {
   assessmentEndpoints,
   adminOrgEndpoints,
-  learningDashboardEndpoints,
   reportEndpoints,
   type AnyEndpoint,
   type FunctionCode,
@@ -87,21 +86,22 @@ export const SCREEN_TABLE = {
     COURSE_LEARNING: {
       nav: { icon: 'library', section: 'Học tập' },
       search: { href: 'catalog' },
-      requires: [learningDashboardEndpoints.dashboard],
       screens: [
         {
           path: 'learn',
           title: 'Trang chủ học tập',
           mockupPage: 'dashboard',
           load: () =>
-            import('../../features/learning/dashboard/dashboard').then(
-              (m) => m.Dashboard,
-            ),
+            import('../../features/learning/learn/learn').then((m) => m.Learn),
         },
         {
           path: 'course/:id',
           title: 'Chi tiết khóa học',
           mockupPage: 'course',
+          load: () =>
+            import('../../features/learning/course/course').then(
+              (m) => m.Course,
+            ),
         },
         {
           path: 'lesson/:courseId/:lessonId',
@@ -109,9 +109,7 @@ export const SCREEN_TABLE = {
           mockupPage: 'lesson',
           layout: 'focus',
           load: () =>
-            import('../../features/study-tools/lesson/lesson').then(
-              (m) => m.Lesson,
-            ),
+            import('../../features/lesson/lesson/lesson').then((m) => m.Lesson),
         },
       ],
     },
@@ -124,7 +122,7 @@ export const SCREEN_TABLE = {
           mockupPage: 'progress',
           load: () =>
             import('../../features/achievements/progress/progress').then(
-              (m) => m.Progress,
+              (m) => m.LearningProgress,
             ),
         },
       ],

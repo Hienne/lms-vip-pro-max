@@ -1,10 +1,12 @@
 import type {
+  AssetDetail,
   BlockType,
   BusinessModule,
   CompletionMode,
   CourseDetail,
   CourseLevel,
   GroupDetail,
+  LearningAsset,
   Requirement,
   TrainingField,
   TrainingProgram,
@@ -112,6 +114,8 @@ interface SeedCourse {
   readonly objectives: readonly string[];
   readonly rewardPoints: number;
   readonly coverIcon: string;
+  /** Gives each video, PDF, image and attachment block a ready asset, as a learner course has. */
+  readonly assets?: boolean;
   readonly chapters: readonly {
     readonly title: string;
     readonly lessons: readonly SeedLesson[];
@@ -138,6 +142,7 @@ const SEED_COURSES: readonly SeedCourse[] = [
     ],
     rewardPoints: 80,
     coverIcon: 'layers',
+    assets: true,
     chapters: [
       {
         title: 'Kiến trúc & dữ liệu',
@@ -163,7 +168,11 @@ const SEED_COURSES: readonly SeedCourse[] = [
           {
             title: 'Luồng giao dịch từ kênh đến sổ cái',
             minutes: 15,
-            blocks: [['process', 'Các bước xử lý giao dịch']],
+            blocks: [
+              ['process', 'Các bước xử lý giao dịch'],
+              ['image', 'Sơ đồ luồng giao dịch'],
+              ['attachment', 'Bảng mã giao dịch'],
+            ],
           },
           {
             title: 'Kiểm tra cuối khóa: Tổng quan Core Banking',
@@ -350,6 +359,55 @@ const SEED_COURSES: readonly SeedCourse[] = [
       },
     ],
   },
+  {
+    id: 7, // optional and published: `hocvien` finds it in the catalogue and has not joined it
+    code: 'NV-402',
+    title: 'Phân hệ Thanh toán liên ngân hàng',
+    programId: 2,
+    moduleId: 1,
+    level: 'intermediate',
+    requirement: 'optional',
+    published: true,
+    summary:
+      'Luồng thanh toán liên ngân hàng, đối soát và xử lý giao dịch lỗi trên Core Banking.',
+    objectives: [
+      'Mô tả luồng thanh toán liên ngân hàng từ kênh đến hệ thống đối tác',
+      'Thực hiện được đối soát cuối ngày',
+    ],
+    rewardPoints: 40,
+    coverIcon: 'layers',
+    assets: true,
+    chapters: [
+      {
+        title: 'Thanh toán và đối soát',
+        lessons: [
+          {
+            title: 'Luồng thanh toán liên ngân hàng',
+            minutes: 12,
+            blocks: [
+              ['video', 'Video bài giảng'],
+              ['text', 'Tóm tắt'],
+            ],
+          },
+          {
+            title: 'Đối soát cuối ngày',
+            minutes: 16,
+            blocks: [
+              ['pdf', 'Quy trình đối soát'],
+              ['image', 'Mẫu báo cáo đối soát'],
+              ['process', 'Các bước đối soát'],
+              ['attachment', 'Biểu mẫu đối soát'],
+            ],
+          },
+          {
+            title: 'Tổng kết',
+            minutes: 5,
+            blocks: [['text', 'Tổng kết']],
+          },
+        ],
+      },
+    ],
+  },
 ];
 
 const COMPLETION: Record<BlockType, CompletionMode> = {
@@ -360,6 +418,92 @@ const COMPLETION: Record<BlockType, CompletionMode> = {
   image: 'open',
   attachment: 'open',
 };
+
+const ASSET_FILES: Record<
+  'video' | 'pdf' | 'image' | 'attachment',
+  Pick<LearningAsset, 'originalName' | 'mimeType' | 'sizeBytes'> &
+    Partial<
+      Pick<LearningAsset, 'durationSeconds' | 'pageCount' | 'width' | 'height'>
+    >
+> = {
+  video: {
+    originalName: 'bai-giang.mp4',
+    mimeType: 'video/mp4',
+    sizeBytes: 48_000_000,
+    durationSeconds: 600,
+  },
+  pdf: {
+    originalName: 'tai-lieu.pdf',
+    mimeType: 'application/pdf',
+    sizeBytes: 1_200_000,
+    pageCount: 12,
+  },
+  image: {
+    originalName: 'so-do.png',
+    mimeType: 'image/png',
+    sizeBytes: 240_000,
+    width: 1280,
+    height: 720,
+  },
+  attachment: {
+    originalName: 'bieu-mau.xlsx',
+    mimeType:
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    sizeBytes: 36_000,
+  },
+};
+
+/** The ready file a video, PDF, image or attachment block plays, shows or offers. */
+function blockAsset(
+  type: BlockType,
+  blockId: number,
+  title: string,
+  assetId: number,
+): AssetDetail[] {
+  if (
+    type !== 'video' &&
+    type !== 'pdf' &&
+    type !== 'image' &&
+    type !== 'attachment'
+  ) {
+    return [];
+  }
+  return [
+    {
+      usage: {
+        id: assetId,
+        blockId,
+        assetId,
+        usage:
+          type === 'image'
+            ? 'image'
+            : type === 'attachment'
+              ? 'attachment'
+              : 'primary',
+        caption: type === 'image' ? title : null,
+        altText: type === 'image' ? title : null,
+        sortNo: 1,
+        rowVersion: 0,
+        ...stamp,
+      },
+      asset: {
+        id: assetId,
+        ownerOrgId: ORG,
+        uploadedBy: '000005',
+        storageType: 's3',
+        checksumSha256: null,
+        durationSeconds: null,
+        pageCount: null,
+        width: null,
+        height: null,
+        status: 'ready',
+        rowVersion: 0,
+        ...stamp,
+        ...ASSET_FILES[type],
+      },
+    },
+  ];
+}
 
 /** Builds one revision's tree; `ids` hands out the row ids, as the backend does on every save. */
 function courseDetail(seed: SeedCourse, ids: () => number): CourseDetail {
@@ -451,7 +595,9 @@ function courseDetail(seed: SeedCourse, ids: () => number): CourseDetail {
                   rowVersion: 0,
                   ...stamp,
                 },
-                assets: [],
+                assets: seed.assets
+                  ? blockAsset(type, blockId, title, ids())
+                  : [],
                 steps:
                   type === 'process'
                     ? ['Tiếp nhận', 'Kiểm tra', 'Phê duyệt'].map(
@@ -492,6 +638,84 @@ export function seedCourseDetails(firstId = 1000): CourseDetail[] {
 /** The six seed courses with their content (a read-only copy for specs). */
 export const courseDetailFixtures: readonly CourseDetail[] =
   seedCourseDetails();
+
+function libraryFile(
+  id: number,
+  day: string,
+  file: Pick<LearningAsset, 'originalName' | 'mimeType' | 'sizeBytes'> &
+    Partial<
+      Pick<LearningAsset, 'durationSeconds' | 'pageCount' | 'width' | 'height'>
+    >,
+): LearningAsset {
+  return {
+    id,
+    ownerOrgId: ORG,
+    uploadedBy: '000005',
+    storageType: 's3',
+    checksumSha256: null,
+    durationSeconds: null,
+    pageCount: null,
+    width: null,
+    height: null,
+    status: 'ready',
+    rowVersion: 0,
+    createTime: `2026-10-${day}T08:00:00`,
+    updateTime: `2026-10-${day}T08:00:00`,
+    ...file,
+  };
+}
+
+/** Library files no seeded course uses: what the library drawer can pick or delete. */
+export const libraryFileFixtures: readonly LearningAsset[] = [
+  libraryFile(9001, '05', {
+    originalName: 'quy-trinh-doi-soat.pdf',
+    mimeType: 'application/pdf',
+    sizeBytes: 860_000,
+    pageCount: 14,
+  }),
+  libraryFile(9002, '06', {
+    originalName: 'gioi-thieu-core-banking.mp4',
+    mimeType: 'video/mp4',
+    sizeBytes: 120_000_000,
+    durationSeconds: 900,
+  }),
+  libraryFile(9003, '07', {
+    originalName: 'so-do-luong-giao-dich.png',
+    mimeType: 'image/png',
+    sizeBytes: 310_000,
+    width: 1600,
+    height: 900,
+  }),
+  libraryFile(9004, '08', {
+    originalName: 'bieu-mau-de-xuat.docx',
+    mimeType:
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    sizeBytes: 48_000,
+  }),
+  libraryFile(9005, '09', {
+    originalName: 'huong-dan-van-hanh.pdf',
+    mimeType: 'application/pdf',
+    sizeBytes: 2_400_000,
+    pageCount: 32,
+  }),
+];
+
+/**
+ * Everything the library lists before anyone uploads: one file per name from the seeded courses
+ * (they use these) and the extras above (nothing uses these).
+ */
+export const libraryAssetFixtures: readonly LearningAsset[] = [
+  ...new Map(
+    courseDetailFixtures
+      .flatMap((detail) => detail.chapters)
+      .flatMap((chapter) => chapter.lessons)
+      .flatMap((lesson) => lesson.blocks)
+      .flatMap((block) => block.assets)
+      .map(({ asset }) => [asset.originalName, asset] as const)
+      .reverse(),
+  ).values(),
+  ...libraryFileFixtures,
+];
 
 /** What one learner has done in one course: the server's results. */
 export interface LearnerCourseState {
@@ -578,3 +802,27 @@ export const learningGroupFixtures: readonly GroupDetail[] = [
     })),
   },
 ];
+
+/** A deadline reminder of one learner; the times are days from now, like the enrolments' due dates. */
+export interface LearnerReminderState {
+  readonly id: number;
+  readonly recipientId: number;
+  /** When the reminder falls due: negative is already due, positive is not yet scheduled to send. */
+  readonly scheduledInDays: number;
+  readonly dueInDays: number;
+}
+
+/**
+ * Deadline reminders by learner: `hocvien` (000004) has three due (one for the overdue course, two
+ * upcoming) and one still to come that the backend never lists.
+ */
+export const learnerReminderFixtures: Readonly<
+  Record<string, readonly LearnerReminderState[]>
+> = {
+  '000004': [
+    { id: 1, recipientId: 41, scheduledInDays: -3, dueInDays: -2 },
+    { id: 2, recipientId: 42, scheduledInDays: -1, dueInDays: 1 },
+    { id: 3, recipientId: 43, scheduledInDays: -0.2, dueInDays: 3 },
+    { id: 4, recipientId: 44, scheduledInDays: 2, dueInDays: 6 },
+  ],
+};

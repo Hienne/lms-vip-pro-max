@@ -58,9 +58,6 @@ function formatMinutes(total: number): string {
 export class CourseCard {
   readonly course = input.required<CourseCardView>();
 
-  protected readonly coverIcon = computed(
-    () => COVER_ICON[this.course().cover],
-  );
   protected readonly duration = computed(() => {
     const minutes = this.course().minutes;
     return minutes === undefined ? null : formatMinutes(minutes);

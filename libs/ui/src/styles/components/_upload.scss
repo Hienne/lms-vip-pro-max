@@ -56,7 +56,8 @@
       font-size: var(--text-sm);
     }
 
-    &__size {
+    &__size,
+    &__status {
       color: var(--color-text-muted);
       font-size: var(--text-xs);
     }

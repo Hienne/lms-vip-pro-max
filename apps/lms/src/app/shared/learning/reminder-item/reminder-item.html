@@ -1,0 +1,13 @@
+<div class="reminder-item">
+  <div class="reminder-item__title">
+    {{ overdue() ? 'Khóa học được giao đã quá hạn' : 'Khóa học được giao sắp đến
+    hạn' }}
+  </div>
+  <div class="reminder-item__meta">
+    Hạn hoàn thành
+    <span [class.reminder-item__due--overdue]="overdue()"
+      >{{ reminder().dueAtSnapshot | fmtDate }}</span
+    >
+    · nhắc lúc {{ reminder().scheduledAt | fmtRelative }}
+  </div>
+</div>

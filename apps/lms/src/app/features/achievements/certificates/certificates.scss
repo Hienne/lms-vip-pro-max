@@ -65,7 +65,6 @@
   h2 {
     font-size: clamp(1.125rem, 2.5vw, 2.125rem);
     color: ui.color(certificate-brand);
-    letter-spacing: ui.tracking(wide);
   }
   p {
     color: ui.color(certificate-muted);
@@ -80,7 +79,7 @@
   z-index: -1;
 }
 .certificates__eyebrow {
-  @include ui.eyebrow;
+  @include ui.text(sm);
   color: ui.color(certificate-muted);
 }
 .certificates__who {

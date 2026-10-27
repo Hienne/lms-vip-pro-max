@@ -25,6 +25,7 @@ import {
   CATALOG_STATUS_LABEL,
   CatalogStatus,
 } from '../../../shared/status/catalog-status';
+import { CourseShares } from './components/course-shares/course-shares';
 import { CopyCourseForm } from './components/copy-course-form/copy-course-form';
 import { COURSES_PAGE_SIZE, CoursesStore } from './data-access/courses.store';
 
@@ -37,6 +38,7 @@ import { COURSES_PAGE_SIZE, CoursesStore } from './data-access/courses.store';
     CardHeader,
     CatalogStatus,
     CopyCourseForm,
+    CourseShares,
     DataTable,
     DataTableCell,
     DrawerOutlet,

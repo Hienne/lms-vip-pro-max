@@ -4,7 +4,6 @@ import {
   agentEndpoints,
   AgentStreamEventSchema,
   authV1Endpoints,
-  learningDashboardEndpoints,
   personalEndpoints,
   reportEndpoints,
   type AnyEndpoint,
@@ -34,7 +33,6 @@ const everyEndpoint: readonly AnyEndpoint[] = [
   ...Object.values(assessmentEndpoints),
   ...Object.values(agentEndpoints),
   ...Object.values(authV1Endpoints),
-  ...Object.values(learningDashboardEndpoints),
   ...Object.values(identityEndpoints),
   ...Object.values(knowledgeEndpoints),
   ...Object.values(organizationEndpoints),
@@ -60,7 +58,6 @@ describe('FakeBackend and the endpoint registries', () => {
       [
         ...Object.values(adminOrgEndpoints),
         ...Object.values(assessmentEndpoints),
-        ...Object.values(learningDashboardEndpoints),
         ...Object.values(personalEndpoints),
         ...Object.values(reportEndpoints),
         shellEndpoints.navCounts,
@@ -93,8 +90,8 @@ describe('FakeBackend and the endpoint registries', () => {
       body: undefined,
     });
     const data =
-      endpoint.responseType === 'blob' && reply && 'binary' in reply
-        ? reply.binary
+      endpoint.responseType === 'blob' && reply && 'file' in reply
+        ? reply.file
         : reply?.body.data;
     expect(() => endpoint.response.parse(data)).not.toThrow();
   });

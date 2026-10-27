@@ -1,0 +1,344 @@
+import type {
+  BlockProgress,
+  ProgressResult,
+  StudySession,
+} from '@lms/contracts';
+import type { AppError } from '../../../../core/errors/app-error';
+import {
+  actionFor,
+  afterResult,
+  enqueue,
+  fromClaim,
+  MAX_RESYNCS,
+  NOT_PLAYING,
+  seekEvents,
+  toCommand,
+  type PlayTracker,
+  type ProtocolState,
+  type StudyEvent,
+} from './study-protocol';
+
+const SESSION_ID = '5b0c1c3e-5d57-4a3f-9a3f-0c6f6f0a1b01';
+
+const claim: StudySession = {
+  sessionId: SESSION_ID,
+  sessionFence: 3,
+  leaseExpiresAt: '2026-10-26T10:01:00',
+  lastAcceptedSequence: 4,
+  enrollmentId: 11,
+  blockId: 21,
+  assetId: 7,
+  expectedVersion: 9,
+  resume: null,
+};
+
+const state: ProtocolState = fromClaim(claim);
+
+const result = (over: {
+  sequence?: number;
+  version?: number;
+  fence?: number;
+  session?: string;
+}): ProgressResult =>
+  ({
+    block: { rowVersion: over.version ?? 10 } as BlockProgress,
+    lesson: {},
+    enrollment: {},
+    session: {
+      sessionId: over.session ?? SESSION_ID,
+      sessionFence: over.fence ?? 3,
+      lastAcceptedSequence: over.sequence ?? 5,
+      leaseState: 'active',
+    },
+  }) as unknown as ProgressResult;
+
+const failure = (messageCode?: string, kind: AppError['kind'] = 'refused') =>
+  ({ kind, message: 'x', messageCode }) as AppError;
+
+describe('study protocol', () => {
+  describe('the state a claim and a result leave', () => {
+    it('starts at the session sequence and version', () => {
+      expect(state).toEqual({
+        sessionId: SESSION_ID,
+        sessionFence: 3,
+        assetId: 7,
+        lastSequence: 4,
+        version: 9,
+      });
+    });
+
+    it('takes the next sequence and version from the result', () => {
+      const next = afterResult(state, result({ sequence: 5, version: 10 }));
+      expect(next).toMatchObject({ lastSequence: 5, version: 10 });
+      expect(
+        toCommand(next, NOT_PLAYING, { type: 'HEARTBEAT' }).command,
+      ).toMatchObject({
+        sequence: 6,
+        expectedVersion: 10,
+      });
+    });
+
+    it('ignores a result of another session or fence', () => {
+      expect(afterResult(state, result({ session: 'other-session' }))).toBe(
+        state,
+      );
+      expect(afterResult(state, result({ fence: 4 }))).toBe(state);
+    });
+
+    it('keeps no asset for a block without one', () => {
+      expect(fromClaim({ ...claim, assetId: null }).assetId).toBeNull();
+      expect(fromClaim({ ...claim, assetId: undefined }).assetId).toBeNull();
+    });
+  });
+
+  describe('the request of an event', () => {
+    it('echoes the session, fence and asset and sends sequence = last + 1', () => {
+      const { command } = toCommand(state, NOT_PLAYING, {
+        type: 'PDF_PAGE',
+        pdfPage: 3,
+      });
+      expect(command).toEqual({
+        sessionId: SESSION_ID,
+        sessionFence: 3,
+        eventType: 'PDF_PAGE',
+        assetId: 7,
+        playing: false,
+        expectedVersion: 9,
+        sequence: 5,
+        complete: false,
+        pdfPage: 3,
+      });
+    });
+
+    it('is the same request for the same inputs, so a resend carries the same payload', () => {
+      const event: StudyEvent = { type: 'COMPLETE', complete: true };
+      expect(toCommand(state, NOT_PLAYING, event)).toEqual(
+        toCommand(state, NOT_PLAYING, event),
+      );
+    });
+
+    it('sends complete only for a completion', () => {
+      expect(
+        toCommand(state, NOT_PLAYING, { type: 'COMPLETE', complete: true })
+          .command.complete,
+      ).toBe(true);
+      expect(
+        toCommand(state, NOT_PLAYING, { type: 'OPEN' }).command.complete,
+      ).toBe(false);
+    });
+  });
+
+  describe('the watched range of a video', () => {
+    const playing = (position: number): PlayTracker => ({
+      playing: true,
+      position,
+    });
+
+    it('is absent on the first event after OPEN: nothing has played yet', () => {
+      const open = toCommand(state, NOT_PLAYING, {
+        type: 'OPEN',
+        positionSeconds: 120,
+      });
+      expect(open.command.watchedFromSeconds).toBeUndefined();
+      expect(open.tracker).toEqual({ playing: false, position: 120 });
+      const play = toCommand(state, open.tracker, {
+        type: 'PLAY',
+        playing: true,
+        positionSeconds: 120,
+      });
+      expect(play.command.watchedFromSeconds).toBeUndefined();
+      expect(play.tracker).toEqual({ playing: true, position: 120 });
+    });
+
+    it('goes on a heartbeat that follows a playing event, from the last reported position', () => {
+      const beat = toCommand(state, playing(120), {
+        type: 'HEARTBEAT',
+        playing: true,
+        positionSeconds: 130,
+      });
+      expect(beat.command).toMatchObject({
+        watchedFromSeconds: 120,
+        watchedToSeconds: 130,
+        videoPositionSeconds: 130,
+        playing: true,
+      });
+      expect(beat.tracker).toEqual({ playing: true, position: 130 });
+    });
+
+    it('goes on the pause that ends a play and the tracker stops playing', () => {
+      const pause = toCommand(state, playing(130), {
+        type: 'PAUSE',
+        playing: false,
+        positionSeconds: 134,
+      });
+      expect(pause.command).toMatchObject({
+        watchedFromSeconds: 130,
+        watchedToSeconds: 134,
+      });
+      expect(pause.tracker).toEqual({ playing: false, position: 134 });
+    });
+
+    it('never goes on a SEEK or an OPEN, even while playing', () => {
+      for (const type of ['SEEK', 'OPEN'] as const) {
+        const { command } = toCommand(state, playing(120), {
+          type,
+          playing: true,
+          positionSeconds: 300,
+        });
+        expect(command.watchedFromSeconds).toBeUndefined();
+        expect(command.watchedToSeconds).toBeUndefined();
+      }
+    });
+
+    it('is absent after a pause: the next heartbeat did not follow a playing event', () => {
+      const { command } = toCommand(
+        state,
+        { playing: false, position: 134 },
+        {
+          type: 'HEARTBEAT',
+          playing: false,
+          positionSeconds: 150,
+        },
+      );
+      expect(command.watchedFromSeconds).toBeUndefined();
+    });
+
+    it('is absent when the position moved backwards', () => {
+      const { command } = toCommand(state, playing(200), {
+        type: 'HEARTBEAT',
+        playing: true,
+        positionSeconds: 100,
+      });
+      expect(command.watchedFromSeconds).toBeUndefined();
+    });
+
+    it('is absent on an event with no position, such as a page or a completion', () => {
+      const { command } = toCommand(state, playing(200), {
+        type: 'COMPLETE',
+        complete: true,
+      });
+      expect(command.watchedFromSeconds).toBeUndefined();
+    });
+  });
+
+  describe('a seek', () => {
+    it('flushes a heartbeat up to where it started, then the seek', () => {
+      expect(
+        seekEvents({ playing: true, position: 120 }, 150, 400, true),
+      ).toEqual([
+        { type: 'HEARTBEAT', playing: true, positionSeconds: 150 },
+        { type: 'SEEK', playing: true, positionSeconds: 400 },
+      ]);
+    });
+
+    it('is the seek alone when nothing played since the last report', () => {
+      expect(
+        seekEvents({ playing: false, position: 120 }, 120, 400, false),
+      ).toEqual([{ type: 'SEEK', playing: false, positionSeconds: 400 }]);
+      expect(
+        seekEvents({ playing: true, position: 150 }, 150, 400, true),
+      ).toEqual([{ type: 'SEEK', playing: true, positionSeconds: 400 }]);
+    });
+
+    it('moves the tracker to the landing point, so the next range starts there', () => {
+      const [flush, seek] = seekEvents(
+        { playing: true, position: 120 },
+        150,
+        400,
+        true,
+      );
+      const first = toCommand(state, { playing: true, position: 120 }, flush);
+      expect(first.command).toMatchObject({
+        watchedFromSeconds: 120,
+        watchedToSeconds: 150,
+      });
+      const second = toCommand(state, first.tracker, seek);
+      expect(second.command.watchedFromSeconds).toBeUndefined();
+      const beat = toCommand(state, second.tracker, {
+        type: 'HEARTBEAT',
+        playing: true,
+        positionSeconds: 410,
+      });
+      expect(beat.command).toMatchObject({
+        watchedFromSeconds: 400,
+        watchedToSeconds: 410,
+      });
+    });
+  });
+
+  describe('the events waiting for the queue', () => {
+    const beat = (position: number): StudyEvent => ({
+      type: 'HEARTBEAT',
+      playing: true,
+      positionSeconds: position,
+    });
+
+    it('keeps one heartbeat: a newer one replaces the one still waiting', () => {
+      expect(enqueue([beat(10)], beat(20))).toEqual([beat(20)]);
+    });
+
+    it('keeps every other event in order, and a heartbeat after one', () => {
+      const play: StudyEvent = {
+        type: 'PLAY',
+        playing: true,
+        positionSeconds: 5,
+      };
+      const pause: StudyEvent = { type: 'PAUSE', positionSeconds: 9 };
+      expect(enqueue([play], pause)).toEqual([play, pause]);
+      expect(enqueue([play], beat(10))).toEqual([play, beat(10)]);
+      expect(enqueue([beat(10)], pause)).toEqual([beat(10), pause]);
+    });
+  });
+
+  describe('what a refusal means', () => {
+    it.each([
+      ['LEARNING-SESSION_IN_USE', 'claim', 'prompt-takeover'],
+      ['LEARNING-SESSION_IN_USE', 'reclaim', 'moved'],
+      ['LEARNING-SESSION_IN_USE', 'event', 'moved'],
+      ['LEARNING-SESSION_EXPIRED', 'event', 'reclaim'],
+      ['LEARNING-STALE_EVENT', 'event', 'resync'],
+      ['LEARNING-CONFLICT', 'event', 'resync'],
+      ['LEARNING-MEDIA_CHANGED', 'event', 'media-changed'],
+      ['LEARNING-MEDIA_CHANGED', 'claim', 'media-changed'],
+      ['LEARNING-ASSET_PROCESSING', 'claim', 'block-error'],
+      ['LEARNING-ASSET_INVALID', 'claim', 'block-error'],
+      ['LEARNING-NOT_AVAILABLE', 'claim', 'page-error'],
+      ['LEARNING-NOT_AVAILABLE', 'event', 'page-error'],
+    ] as const)('%s on %s is %s', (code, phase, action) => {
+      expect(actionFor(failure(code), phase)).toBe(action);
+    });
+
+    it('sends a stale or conflicting event to a re-claim at most twice in a row', () => {
+      expect(
+        actionFor(failure('LEARNING-STALE_EVENT'), 'event', MAX_RESYNCS - 1),
+      ).toBe('resync');
+      expect(
+        actionFor(failure('LEARNING-STALE_EVENT'), 'event', MAX_RESYNCS),
+      ).toBe('save-failed');
+      expect(
+        actionFor(failure('LEARNING-CONFLICT'), 'event', MAX_RESYNCS),
+      ).toBe('save-failed');
+    });
+
+    it('is a page error for a 403 whatever the code', () => {
+      expect(actionFor(failure(undefined, 'forbidden'), 'claim')).toBe(
+        'page-error',
+      );
+      expect(
+        actionFor(failure('CORE-ACCESS_DENIED', 'forbidden'), 'event'),
+      ).toBe('page-error');
+    });
+
+    it('is a failed save when offline, on a system failure, or when the lease cannot be renewed', () => {
+      expect(actionFor(failure(undefined, 'offline'), 'event')).toBe(
+        'save-failed',
+      );
+      expect(actionFor(failure('CORE-INTERNAL_ERROR', 'server'), 'event')).toBe(
+        'save-failed',
+      );
+      expect(actionFor(failure('LEARNING-SESSION_EXPIRED'), 'reclaim')).toBe(
+        'save-failed',
+      );
+    });
+  });
+});

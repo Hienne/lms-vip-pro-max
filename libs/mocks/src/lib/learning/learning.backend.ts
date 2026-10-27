@@ -21,21 +21,29 @@ import {
   type RevokeRecipientCommand,
   type SaveCatalogItemCommand,
   type SaveDraftCommand,
-  type ShareCourseCommand,
+  ShareCourseCommandSchema,
   type TrainingField,
   type TrainingProgram,
 } from '@lms/contracts';
-import { backendRefusal, type BackendResponseKey } from '../backend-responses';
-import { envelopeOk } from '../envelope';
 import type { FakeReply, FakeRequest } from '../backend/fake-backend';
+import { envelopeOk } from '../envelope';
+import { AssetLibrary } from './asset.backend';
+import { LearnerStudy } from './learner-session.backend';
+import { LearningRefused, ok, refuse } from './learning-reply';
+import { LearnerReminders } from './learner-reminders';
+import {
+  LearnerEnrollments,
+  type EnrollmentRecord,
+} from './learner-enrollments';
 import {
   businessModuleFixtures,
+  libraryAssetFixtures,
   learnerCourseStateFixtures,
+  learnerReminderFixtures,
   learningGroupFixtures,
   seedCourseDetails,
   trainingFieldFixtures,
   trainingProgramFixtures,
-  type LearnerCourseState,
 } from './learning.fixtures';
 
 /** A person as the assignment resolver needs them. */
@@ -60,25 +68,8 @@ export interface LearningDirectory {
 type Mutable<T> = { -readonly [K in keyof T]: T[K] };
 type Handler = (request: FakeRequest) => FakeReply;
 
-class LearningRefused extends Error {
-  constructor(readonly reply: FakeReply) {
-    super(reply.body.messageCode);
-  }
-}
-
-const refuse = (key: BackendResponseKey): never => {
-  throw new LearningRefused(backendRefusal(key));
-};
-
-const ok = (data: unknown): FakeReply => ({
-  status: 200,
-  body: envelopeOk(data),
-});
-
 const DAY = 86_400_000;
 const now = () => new Date().toISOString();
-const inDays = (days: number) =>
-  new Date(Date.now() + days * DAY).toISOString();
 
 const num = (value: string | undefined): number | undefined =>
   value === undefined || value === '' ? undefined : Number(value);
@@ -129,6 +120,47 @@ export class LearningBackend {
   }));
   private shares: CourseShare[] = [];
   private assets: LearningAsset[] = [];
+  private enrollments = new LearnerEnrollments(
+    Object.entries(learnerCourseStateFixtures).flatMap(([userId, states]) =>
+      states.flatMap((state) => {
+        const detail = this.courses.find(
+          (c) => c.course.id === state.courseId,
+        )?.published;
+        return detail
+          ? [
+              {
+                userId,
+                detail,
+                state,
+                origin: state.dueInDays !== null ? 'assignment' : 'self',
+              } as const,
+            ]
+          : [];
+      }),
+    ),
+  );
+
+  private reminders = new LearnerReminders(learnerReminderFixtures);
+
+  private study = new LearnerStudy(this.enrollments, (request) =>
+    this.directory.callerId(request),
+  );
+
+  private library = new AssetLibrary({
+    callerId: (request) => this.directory.callerId(request),
+    assets: this.assets,
+    seeded: libraryAssetFixtures,
+    used: () => this.usedAssetIds(),
+    id: () => this.id(),
+  });
+
+  /** How many reminders the person has due: what the mock's bell shows. */
+  dueReminderCount(userId: string): number {
+    return this.reminders.due(userId).length;
+  }
+
+  /** Rows the progress export allows; the real limit is 10,000. */
+  exportRowLimit = 10_000;
 
   constructor(private readonly directory: LearningDirectory) {}
 
@@ -181,10 +213,29 @@ export class LearningBackend {
       [courseEndpoints.copyCourse, (r) => this.copyCourse(r)],
       [courseEndpoints.shares, (r) => this.listShares(r)],
       [courseEndpoints.share, (r) => this.share(r)],
-      [courseEndpoints.uploadAsset, (r) => this.uploadAsset(r)],
+      ...this.library.entries(),
       [learnerEndpoints.catalog, (r) => this.learnerList(r, false)],
       [learnerEndpoints.myCourses, (r) => this.learnerList(r, true)],
+      [learnerEndpoints.progressSummary, (r) => this.progressSummary(r)],
+      [learnerEndpoints.exportProgress, (r) => this.exportProgress(r)],
+      [
+        learnerEndpoints.reminders,
+        (r) => ok(this.reminders.due(this.directory.callerId(r))),
+      ],
+      [
+        learnerEndpoints.markReminderRead,
+        (r) =>
+          ok(
+            this.reminders.read(
+              this.directory.callerId(r),
+              num(r.params['reminderId']) ?? 0,
+            ),
+          ),
+      ],
       [learnerEndpoints.enroll, (r) => this.enroll(r)],
+      [learnerEndpoints.enrollment, (r) => this.enrollmentDetail(r)],
+      [learnerEndpoints.openSession, (r) => this.study.openSession(r)],
+      [learnerEndpoints.saveProgress, (r) => this.study.saveProgress(r)],
       [assignmentEndpoints.courseAssignments, (r) => this.courseAssignments(r)],
       [assignmentEndpoints.assignCourse, (r) => this.assignCourse(r)],
       [assignmentEndpoints.getAssignment, (r) => this.getAssignment(r)],
@@ -210,6 +261,23 @@ export class LearningBackend {
 
   private id(): number {
     return this.nextId++;
+  }
+
+  /** The assets some draft or published tree of any course still uses. */
+  private usedAssetIds(): Set<number> {
+    const ids = new Set<number>();
+    for (const record of this.courses) {
+      for (const detail of [record.published, record.draft]) {
+        for (const chapter of detail?.chapters ?? []) {
+          for (const lesson of chapter.lessons) {
+            for (const block of lesson.blocks) {
+              for (const { asset } of block.assets) ids.add(asset.id);
+            }
+          }
+        }
+      }
+    }
+    return ids;
   }
 
   // ---- training catalogue -------------------------------------------------------------------
@@ -345,7 +413,13 @@ export class LearningBackend {
           ? (card.progressPercent ?? -1)
           : field === 'dueAt'
             ? (card.dueAt ?? '9999')
-            : (card.updateTime ?? '');
+            : field === 'startedAt' ||
+                field === 'lastAccessAt' ||
+                field === 'completedAt'
+              ? (card[field] ?? '')
+              : field === 'id'
+                ? (card.courseId ?? 0)
+                : (card.updateTime ?? '');
     return cards.sort((a, b) => {
       const x = value(a);
       const y = value(b);
@@ -751,8 +825,15 @@ export class LearningBackend {
   }
 
   private share(request: FakeRequest): FakeReply {
-    const courseId = this.record(request).course.id;
-    const command = request.body as ShareCourseCommand;
+    const record = this.record(request);
+    const courseId = record.course.id;
+    const parsed = ShareCourseCommandSchema.safeParse(request.body);
+    if (!parsed.success) return refuse('validationFailed');
+    const command = parsed.data;
+    // A course is already the owner unit's: sharing it with that unit is a wrong reference.
+    if (command.orgId === record.course.ownerOrgId) {
+      return refuse('invalidReference');
+    }
     const existing = this.shares.find(
       (s) => s.courseId === courseId && s.orgId === command.orgId,
     );
@@ -760,13 +841,13 @@ export class LearningBackend {
       id: existing?.id ?? this.id(),
       courseId,
       orgId: command.orgId,
-      includeDescendants: command.includeDescendants ?? false,
-      canAssign: command.canAssign ?? true,
-      canSelfEnroll: command.canSelfEnroll ?? false,
-      status: command.active === false ? 'revoked' : 'active',
+      includeDescendants: command.includeDescendants,
+      canAssign: command.canAssign,
+      canSelfEnroll: command.canSelfEnroll,
+      status: command.active ? 'active' : 'revoked',
       sharedBy: this.directory.callerId(request),
       sharedAt: now(),
-      revokedAt: command.active === false ? now() : null,
+      revokedAt: command.active ? null : now(),
       rowVersion: (existing?.rowVersion ?? -1) + 1,
       createTime: existing?.createTime ?? now(),
       updateTime: now(),
@@ -775,113 +856,192 @@ export class LearningBackend {
     return ok(share);
   }
 
-  private uploadAsset(request: FakeRequest): FakeReply {
-    const body = request.body;
-    const file =
-      body instanceof FormData
-        ? body.get('file')
-        : (body as { file?: unknown } | null)?.file;
-    if (!(file instanceof Blob)) return refuse('validationFailed');
-    const asset: LearningAsset = {
-      id: this.id(),
-      ownerOrgId: num(request.query['ownerOrgId']) ?? 1,
-      uploadedBy: this.directory.callerId(request),
-      storageType: 'local',
-      originalName: file instanceof File ? file.name : 'tep-tai-len',
-      mimeType: file.type || 'application/octet-stream',
-      sizeBytes: file.size,
-      checksumSha256: null,
-      durationSeconds: num(request.query['durationSeconds']) ?? null,
-      pageCount: num(request.query['pageCount']) ?? null,
-      width: null,
-      height: null,
-      status: 'ready',
-      rowVersion: 0,
-      createTime: now(),
-      updateTime: now(),
-    };
-    this.assets.push(asset);
-    return ok(asset);
-  }
-
   // ---- learner ------------------------------------------------------------------------------
 
-  private learnerList(request: FakeRequest, mineOnly: boolean): FakeReply {
+  /** The cards a learner's list shows, filtered and sorted by `request.query` and not paged. */
+  private learnerCards(request: FakeRequest, mineOnly: boolean): CourseCard[] {
     const userId = this.directory.callerId(request);
-    const states = learnerCourseStateFixtures[userId] ?? [];
     const learningStatus = request.query['learningStatus'];
+    const overdueOnly = request.query['overdue'] === 'true';
     const cards = this.courses
       .filter(
         (record) =>
           record.published && record.course.lifecycleStatus === 'active',
       )
-      .map((record) => this.learnerCard(record, states, userId))
+      .map((record) =>
+        this.learnerCard(record, this.enrollments.of(userId, record.course.id)),
+      )
       .filter((card) => !mineOnly || card.assigned || card.enrollmentId)
       .filter((card) => this.matches(card, request.query))
-      .filter((card) =>
-        !learningStatus
-          ? true
-          : learningStatus === 'overdue'
-            ? card.overdue
-            : (card.learningStatus ?? 'not_started') === learningStatus,
-      );
-    return ok(
-      paged(
-        this.sorted(cards, request.query['sort'] ?? 'dueAt,asc'),
-        request.query,
-      ),
+      .filter(
+        (card) =>
+          !learningStatus ||
+          (card.learningStatus ?? 'not_started') === learningStatus,
+      )
+      .filter((card) => !overdueOnly || card.overdue);
+    return this.sorted(cards, request.query['sort'] ?? 'dueAt,asc');
+  }
+
+  private learnerList(request: FakeRequest, mineOnly: boolean): FakeReply {
+    return ok(paged(this.learnerCards(request, mineOnly), request.query));
+  }
+
+  /** Counts over the caller's own cycles, a stand-in for the backend's (it counts the same rows). */
+  private progressSummary(request: FakeRequest): FakeReply {
+    const mine = this.learnerCards(
+      { ...request, query: { sort: 'id,asc' } },
+      true,
     );
+    const status = (card: CourseCard) => card.learningStatus ?? 'not_started';
+    const unavailable = { availability: 'unavailable' };
+    return ok({
+      serverTime: now(),
+      timeZone: 'Asia/Ho_Chi_Minh',
+      counts: {
+        total: mine.length,
+        completed: mine.filter((c) => status(c) === 'completed').length,
+        inProgress: mine.filter((c) => status(c) === 'in_progress').length,
+        notStarted: mine.filter((c) => status(c) === 'not_started').length,
+        overdue: mine.filter((c) => c.overdue).length,
+      },
+      activity: unavailable,
+      assessment: unavailable,
+      competency: unavailable,
+    });
+  }
+
+  /** Mirrors the backend's CSV: UTF-8 BOM, quoted cells, a leading `'` before a formula. */
+  private exportProgress(request: FakeRequest): FakeReply {
+    const rows = this.learnerCards(request, true);
+    if (rows.length > this.exportRowLimit) refuse('exportTooLarge');
+    const cell = (value: unknown): string => {
+      let text = value === null || value === undefined ? '' : String(value);
+      if (/^\s*[=+\-@]/.test(text)) text = `'${text}`;
+      return `"${text.replaceAll('"', '""')}"`;
+    };
+    const lines = rows.map((card) =>
+      [
+        card.code,
+        card.title,
+        card.cycleNo,
+        card.learningStatus ?? 'not_started',
+        card.progressPercent,
+        card.startedAt,
+        card.lastAccessAt,
+        card.completedAt,
+        card.dueAt,
+        card.deadlineStatus,
+      ]
+        .map(cell)
+        .join(','),
+    );
+    const header =
+      'Mã khóa,Tên khóa,Lần học,Trạng thái,Tiến độ,Bắt đầu,Truy cập gần nhất,Hoàn thành,Hạn,Trạng thái hạn';
+    return {
+      status: 200,
+      body: envelopeOk(null),
+      file: new Blob([`\uFEFF${header}\r\n${lines.join('\r\n')}\r\n`], {
+        type: 'text/csv',
+      }),
+    };
   }
 
   private learnerCard(
     record: CourseRecord,
-    states: readonly LearnerCourseState[],
-    userId: string,
+    enrolled: EnrollmentRecord | undefined,
   ): CourseCard {
     const published = record.published as CourseDetail;
-    const state = states.find((s) => s.courseId === record.course.id);
-    const assignedHere = this.assignments.some(
-      (a) =>
-        a.assignment.courseId === record.course.id &&
-        a.recipients.some((r) => r.userId === userId && r.status === 'active'),
-    );
-    const assigned =
-      assignedHere || (state?.dueInDays !== null && state !== undefined);
-    const dueAt = state?.dueInDays != null ? inDays(state.dueInDays) : null;
-    return {
+    const lessons = published.chapters.flatMap((c) => c.lessons);
+    const base = {
       ...this.card(record, published),
       assignedCount: null,
-      requirement: assigned
+      requiredLessonCount: lessons.filter((l) => l.lesson.isRequired).length,
+    };
+    if (!enrolled) {
+      return {
+        ...base,
+        learningStatus: null,
+        progressPercent: null,
+        assigned: false,
+        overdue: false,
+        deadlineStatus: 'no_deadline',
+      };
+    }
+    const { enrollment, dueAt } = enrolled;
+    const completed = enrollment.status === 'completed';
+    const overdue =
+      dueAt !== null && !completed && Date.parse(dueAt) < Date.now();
+    const resumeBlock = enrolled.blocks.find(
+      (b) => b.blockId === enrollment.lastBlockId,
+    );
+    return {
+      ...base,
+      requirement: enrolled.assigned
         ? 'mandatory'
         : published.revision.defaultRequirement,
-      enrollmentId: state ? record.course.id * 10 : null,
-      learningStatus: state?.learningStatus ?? null,
-      progressPercent: state?.progressPercent ?? null,
+      enrollmentId: enrollment.id,
+      learningStatus: enrollment.status,
+      progressPercent: enrollment.progressPercent,
       dueAt,
-      assigned,
-      overdue:
-        dueAt !== null &&
-        state?.learningStatus !== 'completed' &&
-        Date.parse(dueAt) < Date.now(),
+      assigned: enrolled.assigned,
+      overdue,
+      cycleNo: enrollment.cycleNo,
+      startedAt: enrollment.startedAt,
+      lastAccessAt: enrollment.lastAccessAt,
+      completedAt: enrollment.completedAt,
+      lastLessonId: enrollment.lastLessonId,
+      lastBlockId: enrollment.lastBlockId,
+      completedRequiredLessonCount: enrolled.lessons.filter(
+        (l) =>
+          l.status === 'completed' &&
+          lessons.find((x) => x.lesson.id === l.lessonId)?.lesson.isRequired,
+      ).length,
+      deadlineStatus:
+        dueAt === null
+          ? 'no_deadline'
+          : completed
+            ? 'completed_on_time'
+            : overdue
+              ? 'overdue_active'
+              : 'on_time_active',
+      mediaAssetId: resumeBlock?.mediaAssetId ?? null,
+      lastPdfPage: resumeBlock?.lastPdfPage ?? null,
+      lastVideoPositionSeconds: resumeBlock?.lastVideoPositionSeconds ?? null,
     };
   }
 
+  /** Self-enrolment is idempotent; a course the caller is assigned to is not joined this way. */
   private enroll(request: FakeRequest): FakeReply {
     const record = this.record(request);
     const userId = this.directory.callerId(request);
-    return ok({
-      id: record.course.id * 10,
-      courseId: record.course.id,
-      revisionId: record.course.publishedRevisionId ?? 0,
+    const published = record.published;
+    if (!published || record.course.lifecycleStatus !== 'active') {
+      return refuse('accessDenied');
+    }
+    if (published.revision.defaultRequirement !== 'optional') {
+      return refuse('stateConflict');
+    }
+    const enrolled = this.enrollments.add({
       userId,
-      cycleNo: 1,
-      enrollmentOrigin: 'self',
-      selfEnrolledAt: now(),
-      status: 'active',
-      progressPercent: 0,
-      rowVersion: 0,
-      createTime: now(),
-      updateTime: now(),
+      detail: published,
+      origin: 'self',
+    });
+    return ok(enrolled.enrollment);
+  }
+
+  /** Only the owner reads an enrolment; anyone else is refused, as the backend does with 403. */
+  private enrollmentDetail(request: FakeRequest): FakeReply {
+    const userId = this.directory.callerId(request);
+    const enrolled = this.enrollments.byId(
+      num(request.params['enrollmentId']) ?? 0,
+    );
+    if (!enrolled) return refuse('resourceNotFound');
+    if (enrolled.enrollment.userId !== userId) return refuse('accessDenied');
+    return ok({
+      enrollment: enrolled.enrollment,
+      content: enrolled.content,
+      lessons: enrolled.lessons,
+      blocks: enrolled.blocks,
     });
   }
 
