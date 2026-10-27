@@ -43,7 +43,7 @@ Depends on: T1.
 
 ### Checkpoint A
 
-- [ ] `npx nx test contracts mocks` and `npm run check` green. Commit T1, T2. Stop for review.
+- [x] `npx nx test contracts mocks` and `npm run check` green. Commit T1, T2. Stop for review.
 
 ## Phase 2: tree and panel
 
