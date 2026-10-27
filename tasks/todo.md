@@ -297,9 +297,21 @@ SameSite=Strict` with no domain, so the proxy needs no rewrite (browser retentio
 
 ### Checkpoint 4
 
-- [ ] `npm run check` green
-- [ ] learner-home success criteria 1–4
-- [ ] Stop for approval
+- [x] `npm run check` green (2026-10-27; Nx flagged `lms:test` as flaky again: a test failed once and passed on its retry)
+- [x] learner-home success criteria 1–4, how each was verified:
+  1. Local backend as `hocvien`: the continue card names "Tài liệu và hình ảnh" (25 %) and its link reopens that
+     block; `continue-card.spec.ts` and `learn.store.spec.ts` cover the lesson, the block query and the empty card.
+  2. The counts (6 / 1 / 2 / 3 / 1 overdue) equal the numbers on `/progress`; the tabs list the server-filtered
+     courses (`in_progress`, `not_started`, `completed`, `mandatory`); the due list shows the five nearest with the
+     overdue one first; reminders show three and stay out for a user without the function (`learn.store.spec.ts`).
+  3. A learner with nothing in progress sees "Khám phá khóa học": `learn.spec.ts` (stubbed empty `myCourses`, since an
+     administrator is redirected away from `/learn`). Not tried on the real backend.
+  4. Check green; looked at 375, 768 and 1280 px on the local backend, light and dark (no horizontal scroll, the
+     primary button reads in both), controls reached by keyboard and named, tabs use a roving tabindex.
+     Deviation: `route-learn` is owned by `longnvse` in `migration-entries.data.ts`, so its entry was left alone.
+  - Fixed on the way: `app.spec.ts` and `app-shell.spec.ts` now answer the requests the page makes (they hung
+    120 s per test because `/learn` was a placeholder before).
+- [x] Stop for approval (a note only; continuing as instructed)
 
 ## Phase 5: `asset-library`
 
