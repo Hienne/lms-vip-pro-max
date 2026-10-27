@@ -16,6 +16,12 @@ export {
   Segmented,
   type SegmentedOption,
 } from './lib/molecules/segmented/segmented';
+export { Popover } from './lib/organisms/popover/popover.directive';
+export {
+  SwatchGroup,
+  type Swatch,
+  type SwatchOption,
+} from './lib/molecules/swatch-group/swatch-group';
 export {
   Button,
   type ButtonSize,
@@ -86,6 +92,7 @@ export {
   Empty,
   type EmptyHeadingLevel,
   type EmptyTone,
+  type EmptyVariant,
 } from './lib/molecules/empty/empty';
 export { ErrorState } from './lib/molecules/error-state/error-state';
 

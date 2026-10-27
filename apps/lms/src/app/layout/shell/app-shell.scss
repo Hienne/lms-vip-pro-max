@@ -31,6 +31,19 @@
     }
   }
 
+  // A workspace page: the frame is exactly the viewport, and the page fills what the header and
+  // the offline banner leave (`flex: 1` and `min-height: 0` on its host), scrolling inside itself.
+  &--fill {
+    height: 100dvh;
+    grid-template-rows: minmax(0, 1fr);
+  }
+
+  &--fill &__content {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+  }
+
   &__sidebar {
     position: sticky;
     top: 0;
@@ -48,6 +61,14 @@
     display: flex;
     flex-direction: column;
     min-width: 0;
+  }
+
+  // The quick assistant docked to the right edge: the page gives up its width instead of sitting
+  // under the panel.
+  &--docked &__main {
+    @include ui.bp(xl) {
+      padding-inline-end: ui.layout(assistant);
+    }
   }
 
   &__content {

@@ -1,0 +1,149 @@
+<form id="lesson-form" class="lesson-form" [formRoot]="lessonForm">
+  @if (lessonForm().touched() && missingFiles().length) {
+  <ui-alert tone="danger">
+    Khối "{{ missingFiles()[0].title }}" chưa có tệp: tải tệp lên hoặc xóa khối.
+  </ui-alert>
+  }
+  <div class="lesson-form__pair">
+    <ui-field label="Tên bài học" required>
+      <input uiInput [formField]="lessonForm.title" />
+    </ui-field>
+    <ui-field label="Thời lượng (phút)" required>
+      <input uiInput type="number" [formField]="lessonForm.minutes" />
+    </ui-field>
+  </div>
+  <ui-field label="Loại bài">
+    <select uiSelect [formField]="lessonForm.lessonType">
+      <option
+        value="content"
+        [selected]="lessonForm.lessonType().value() === 'content'"
+      >
+        Bài nội dung (video, tài liệu, quy trình…)
+      </option>
+      <option
+        value="quiz"
+        [selected]="lessonForm.lessonType().value() === 'quiz'"
+      >
+        Bài kiểm tra
+      </option>
+    </select>
+  </ui-field>
+
+  @if (lessonForm.lessonType().value() === 'quiz') {
+  <ui-alert tone="info" [announce]="false">
+    Bài kiểm tra hoàn thành khi học viên đạt điểm. Câu hỏi và điểm đạt cấu hình
+    ở màn Bài kiểm tra; bài này không cần khối nội dung.
+  </ui-alert>
+  } @else {
+  <section class="lesson-form__blocks" aria-label="Khối nội dung">
+    <h3 class="lesson-form__heading">
+      Khối nội dung ({{ lessonForm.blocks().value().length }})
+    </h3>
+    @for (block of lessonForm.blocks; track block; let i = $index; let last =
+    $last) {
+    <div class="lesson-form__block">
+      <div class="lesson-form__block-head">
+        <span class="lesson-form__block-type">
+          <ui-icon
+            [name]="blockTypes[block().value().blockType].icon"
+            size="sm"
+          />
+          {{ blockTypes[block().value().blockType].label }}
+        </span>
+        <button
+          uiIconButton
+          type="button"
+          size="sm"
+          label="Chuyển khối lên"
+          [disabled]="i === 0"
+          (click)="moveBlock(i, -1)"
+        >
+          <ui-icon name="chevron-up" size="sm" />
+        </button>
+        <button
+          uiIconButton
+          type="button"
+          size="sm"
+          label="Chuyển khối xuống"
+          [disabled]="last"
+          (click)="moveBlock(i, 1)"
+        >
+          <ui-icon name="chevron-down" size="sm" />
+        </button>
+        <button
+          uiIconButton
+          type="button"
+          size="sm"
+          variant="danger"
+          [label]="'Xóa khối ' + block().value().title"
+          (click)="removeBlock(i)"
+        >
+          <ui-icon name="trash-2" size="sm" />
+        </button>
+      </div>
+      <ui-field label="Tiêu đề khối" required>
+        <input uiInput [formField]="block.title" />
+      </ui-field>
+
+      @if (holdsFile(block().value().blockType)) {
+      <div class="lesson-form__files">
+        @for (file of files()[block().value().key]; track file.assetId) {
+        <ui-upload-item
+          [name]="file.name"
+          [size]="file.sizeBytes"
+          [icon]="blockTypes[block().value().blockType].icon"
+        />
+        } @if (uploads()[block().value().key]; as entry) { @if (entry.state !==
+        'done') {
+        <ui-upload-item
+          [name]="entry.name"
+          [size]="entry.sizeBytes"
+          [state]="entry.state"
+          >{{ entry.message }}</ui-upload-item
+        >
+        } }
+        <label
+          uiDropzone
+          [accept]="acceptOf(block().value().blockType)"
+          (files)="choose(block().value(), $event)"
+        >
+          <ui-icon name="upload" />
+          <div class="lesson-form__drop-title">
+            {{ files()[block().value().key]?.length && block().value().blockType
+            !== 'attachment' ? 'Thay tệp' : 'Kéo thả hoặc chọn tệp' }}
+          </div>
+          <div class="lesson-form__drop-hint">
+            {{ uploadHintOf(block().value().blockType) }}
+          </div>
+          <input type="file" hidden />
+        </label>
+      </div>
+      } @switch (block().value().blockType) { @case ('text') {
+      <ui-field label="Nội dung (Markdown: ## tiêu đề, **đậm**, - danh sách)">
+        <textarea uiTextarea rows="6" [formField]="block.body"></textarea>
+      </ui-field>
+      } @case ('process') {
+      <ui-field label="Các bước (mỗi dòng: Tiêu đề | Mô tả)">
+        <textarea uiTextarea rows="5" [formField]="block.stepsText"></textarea>
+      </ui-field>
+      } @case ('image') {
+      <ui-field label="Chú thích hình">
+        <input uiInput [formField]="block.body" />
+      </ui-field>
+      } }
+    </div>
+    } @empty {
+    <p class="lesson-form__empty">Bài học chưa có khối nội dung.</p>
+    }
+    <div class="lesson-form__add">
+      <span class="lesson-form__add-label">Thêm khối:</span>
+      @for (type of addable; track type) {
+      <button uiButton type="button" size="sm" (click)="addBlock(type)">
+        <ui-icon [name]="blockTypes[type].icon" size="sm" />{{
+        blockTypes[type].label }}
+      </button>
+      }
+    </div>
+  </section>
+  }
+</form>

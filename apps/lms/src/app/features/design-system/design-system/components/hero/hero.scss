@@ -46,11 +46,6 @@
     max-width: 640px;
   }
 
-  &__eyebrow {
-    @include ui.eyebrow;
-    color: ui.color(hero-subtle);
-  }
-
   &__title {
     @include ui.text(3xl, 'white');
   }

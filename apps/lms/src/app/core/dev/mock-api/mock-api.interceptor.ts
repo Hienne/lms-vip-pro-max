@@ -1,5 +1,6 @@
 import {
   HttpErrorResponse,
+  HttpHeaders,
   HttpResponse,
   type HttpInterceptorFn,
   type HttpRequest,
@@ -49,8 +50,8 @@ function paramsOf(
 function queryOf(req: HttpRequest<unknown>): Record<string, string> {
   return Object.fromEntries(
     req.params.keys().flatMap((key) => {
-      const value = req.params.get(key);
-      return value === null ? [] : [[key, value] as const];
+      const values = req.params.getAll(key);
+      return values === null ? [] : [[key, values.join(',')] as const];
     }),
   );
 }
@@ -79,10 +80,17 @@ export const mockApiInterceptor: HttpInterceptorFn = (req, next) => {
   if (reply) {
     return reply.status < 400
       ? of(
-          new HttpResponse({
-            status: reply.status,
-            body: reply.binary ?? reply.body,
-          }),
+          reply.events
+            ? new HttpResponse({
+                status: reply.status,
+                headers: new HttpHeaders({
+                  'Content-Type': 'application/x-ndjson',
+                }),
+                body: reply.events
+                  .map((e) => `${JSON.stringify(e)}\n`)
+                  .join(''),
+              })
+            : new HttpResponse({ status: reply.status, body: reply.body }),
         )
       : throwError(
           () =>

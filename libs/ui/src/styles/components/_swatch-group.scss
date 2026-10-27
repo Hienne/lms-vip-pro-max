@@ -1,0 +1,67 @@
+// Swatch group: a vertical list of colour choices (no mockup counterpart). Applied by
+// `ui-swatch-group`. The options are `role="option"` elements of the aria listbox, selected by
+// `aria-selected`; the swatch colours arrive as `--swatch-fill` / `--swatch-base`, set from
+// colour tokens by the component.
+@use 'ui';
+
+@layer components {
+  .swatch-group {
+    display: block;
+
+    &__list {
+      @include ui.stack(1);
+    }
+
+    &__option {
+      @include ui.row(3);
+      min-height: ui.layout(touch);
+      padding: 0 ui.space(3);
+      border: 1px solid transparent;
+      border-radius: ui.radius(md);
+      color: ui.color(text-secondary);
+      cursor: pointer;
+      font-size: ui.text-size(sm);
+      font-weight: ui.weight(medium);
+      user-select: none;
+      transition: background-color ui.duration(fast) ui.ease(out);
+
+      &:hover {
+        background: ui.color(surface-2);
+      }
+
+      &:focus-visible {
+        @include ui.focus-ring;
+      }
+
+      &[aria-selected='true'] {
+        border-color: ui.color(primary);
+        background: ui.color(primary-subtle);
+        color: ui.color(text);
+        font-weight: ui.weight(semibold);
+      }
+    }
+
+    &__swatch {
+      flex: none;
+      width: ui.space(6);
+      height: ui.space(6);
+      border: ui.space(1) solid var(--swatch-base);
+      border-radius: ui.radius(full);
+      background: var(--swatch-fill);
+      box-shadow: 0 0 0 1px ui.color(border-strong);
+    }
+
+    &__label {
+      @include ui.grow;
+    }
+
+    &__check {
+      color: ui.color(primary);
+      visibility: hidden;
+    }
+
+    &__option[aria-selected='true'] &__check {
+      visibility: visible;
+    }
+  }
+}

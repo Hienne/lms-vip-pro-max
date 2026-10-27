@@ -8,9 +8,11 @@
     <meta name="color-scheme" content="light dark" />
     <link rel="icon" type="image/x-icon" href="favicon.ico" />
     <!--
-      Applies the stored theme choice before the app boots, so the page never flashes the wrong
-      theme. ThemeStore (core/theme) owns the preference afterwards. Absence of a stored choice
-      means "system": the tokens' prefers-color-scheme rules handle it. Key: lms.theme.
+      Applies the stored theme choice and colour palette before the app boots, so the page never
+      flashes the wrong look. ThemeStore (core/theme) owns both afterwards. Absence of a stored
+      theme means "system" (the tokens' prefers-color-scheme rules handle it); absence of a stored
+      palette means "bidv" (no attribute). Keys: lms.theme, lms.palette. The palette list repeats
+      THEME_PALETTES in theme.store.ts: keep them in sync.
       If a strict Content-Security-Policy is introduced, add this script's hash to script-src.
     -->
     <script>
@@ -18,6 +20,10 @@
         var theme = localStorage.getItem('lms.theme');
         if (theme === 'light' || theme === 'dark') {
           document.documentElement.setAttribute('data-theme', theme);
+        }
+        var palette = localStorage.getItem('lms.palette');
+        if (palette === 'ngoc' || palette === 'cobalt' || palette === 'giay') {
+          document.documentElement.setAttribute('data-palette', palette);
         }
       } catch (e) {}
     </script>

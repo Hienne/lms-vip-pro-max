@@ -11,13 +11,22 @@
       "port": 4200
     },
     {
-      "name": "lms-auth-worktree",
+      "name": "lms-local-backend",
       "runtimeExecutable": "bash",
       "runtimeArgs": [
         "-c",
-        "source ~/.nvm/nvm.sh && nvm use 24 >/dev/null && cd .worktrees/auth-api-integration && npx nx serve lms --port 4200"
+        "source ~/.nvm/nvm.sh && nvm use 24 >/dev/null && LMS_API_TARGET=http://localhost:8019 npx nx serve lms --port 4200"
       ],
       "port": 4200
+    },
+    {
+      "name": "backend",
+      "runtimeExecutable": "bash",
+      "runtimeArgs": [
+        "-c",
+        "cd ~/my-projects/corebanking-academy && mvn -q spring-boot:run"
+      ],
+      "port": 8019
     }
   ]
 }

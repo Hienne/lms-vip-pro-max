@@ -12,7 +12,6 @@ const IN_PROGRESS: CourseCardView = {
   id: 'x1',
   title: 'Tổng quan hệ thống Core Banking',
   required: true,
-  cover: 'layers',
   domain: 'Nghiệp vụ',
   module: 'Tổng quan',
   minutes: 68,
@@ -58,9 +57,9 @@ describe('CourseCard', () => {
     expect(card.querySelectorAll('a, button')).toHaveLength(0);
   });
 
-  it('shows eyebrow, title and the meta row', () => {
+  it('shows the category, title and the meta line as text', () => {
     const { card } = render();
-    expect(text(card.querySelector('.course-card__eyebrow'))).toBe(
+    expect(text(card.querySelector('.course-card__category'))).toBe(
       'Nghiệp vụ · Tổng quan',
     );
     expect(text(card.querySelector('.course-card__title'))).toBe(
@@ -68,24 +67,31 @@ describe('CourseCard', () => {
     );
     expect(
       Array.from(card.querySelectorAll('.course-card__meta span')).map(text),
-    ).toEqual(['1g 8p', '4 bài', 'Cơ bản']);
+    ).toEqual(['Bắt buộc', '1g 8p', '4 bài', 'Cơ bản']);
   });
 
-  it('tints the cover with the cover token, never a literal colour', () => {
-    const { card } = render({ cover: 'clock' });
-    const cover = card.querySelector('.course-card__cover') as HTMLElement;
-    expect(cover.classList.contains('course-card__cover--clock')).toBe(true);
-    expect(cover.getAttribute('style') ?? '').not.toContain('#');
-  });
-
-  it('shows the required mark on the cover', () => {
+  it('has no cover art and no icon', () => {
     const { card } = render();
-    expect(text(card.querySelector('.course-card__cover .badge'))).toBe(
-      'Bắt buộc',
-    );
+    expect(card.querySelector('[class*="course-card__cover"]')).toBeNull();
+    expect(card.querySelector('ui-icon')).toBeNull();
   });
 
-  it('shows "Hoàn thành" instead of an overdue badge when completed', () => {
+  it('says "Bắt buộc" as text, not a badge, and nothing for an optional course', () => {
+    const { card } = render();
+    expect(text(card.querySelector('.course-card__required'))).toBe('Bắt buộc');
+    expect(
+      Array.from(card.querySelectorAll('.badge')).map((b) => text(b)),
+    ).not.toContain('Bắt buộc');
+    expect(
+      render({ required: false }).card.querySelector('.course-card__required'),
+    ).toBeNull();
+  });
+
+  it('shows no status badge while in progress and on time', () => {
+    expect(render().card.querySelectorAll('.badge')).toHaveLength(0);
+  });
+
+  it('shows one "Hoàn thành" badge instead of an overdue one when completed', () => {
     const { card } = render({
       status: 'completed',
       overdue: true,
@@ -93,17 +99,17 @@ describe('CourseCard', () => {
       statusLabel: 'Đã hoàn thành',
     });
     const badges = Array.from(
-      card.querySelectorAll('.course-card__cover .badge'),
+      card.querySelectorAll('.course-card__head .badge'),
     ).map((b) => text(b));
-    expect(badges).toEqual(['Bắt buộc', 'Hoàn thành']);
+    expect(badges).toEqual(['Hoàn thành']);
   });
 
-  it('shows "Quá hạn" on the cover when overdue and not completed', () => {
+  it('shows one "Quá hạn" badge when overdue and not completed', () => {
     const { card } = render({ overdue: true, dueAt: inDays(-2) });
     const badges = Array.from(
-      card.querySelectorAll('.course-card__cover .badge'),
+      card.querySelectorAll('.course-card__head .badge'),
     ).map((b) => text(b));
-    expect(badges).toEqual(['Bắt buộc', 'Quá hạn']);
+    expect(badges).toEqual(['Quá hạn']);
   });
 
   it('draws progress named after the course, toned by status', () => {

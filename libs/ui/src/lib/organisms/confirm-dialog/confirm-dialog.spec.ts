@@ -148,6 +148,17 @@ describe('confirm', () => {
     expect(button('Xóa')?.classList).toContain('btn--danger');
   });
 
+  it('has no icon beside the title, only the close button', async () => {
+    const { open } = setup();
+    open({ ...OPTIONS, tone: 'warning' });
+    await settle();
+
+    expect(panel()?.querySelector('.dialog__icon')).toBeNull();
+    expect(panel()?.querySelectorAll('.dialog__header ui-icon')).toHaveLength(
+      1,
+    );
+  });
+
   it('uses Vietnamese labels by default', async () => {
     const { open } = setup();
     open({ title: 'Xuất bản?', message: 'Học viên sẽ thấy ngay.' });

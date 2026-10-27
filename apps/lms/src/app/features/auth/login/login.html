@@ -34,7 +34,6 @@
   <section class="login__form">
     <div class="login__card">
       <div class="login__intro">
-        <span class="login__eyebrow">Đăng nhập</span>
         <h2 class="login__title">Chào mừng trở lại</h2>
         <p class="login__help">
           Dùng tài khoản nội bộ được cấp. Tài khoản bị khóa sẽ không đăng nhập
@@ -52,7 +51,7 @@
       >
       }
 
-      <form class="login__fields" novalidate (submit)="onSubmit($event)">
+      <form class="login__fields" [formRoot]="loginForm">
         <ui-field label="Tên đăng nhập hoặc mã cán bộ" required>
           <input
             uiInput

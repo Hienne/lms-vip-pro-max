@@ -161,10 +161,10 @@ describe('route table', () => {
 
   it('lets a user holding the function in and renders the placeholder naming the mockup page', async () => {
     signInAs('admin');
-    await harness.navigateByUrl('/admin/assignments');
-    expect(router.url).toBe('/admin/assignments');
+    await harness.navigateByUrl('/admin/system');
+    expect(router.url).toBe('/admin/system');
     expect((harness.routeNativeElement as HTMLElement).textContent).toContain(
-      '“assignments”',
+      '“system”',
     );
   });
 
@@ -243,6 +243,10 @@ describe('route table', () => {
     expect(dataOf('lesson/:courseId/:lessonId')).toMatchObject({
       menu: 'COURSE_LEARNING',
       layout: 'focus',
+    });
+    expect(dataOf('assistant')).toMatchObject({
+      menu: 'AI_ASSISTANT',
+      layout: 'workspace',
     });
     expect(dataOf('login')).toMatchObject({ layout: 'bare' });
     expect(dataOf('login')).not.toHaveProperty('menu');

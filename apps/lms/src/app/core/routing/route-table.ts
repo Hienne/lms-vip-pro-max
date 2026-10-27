@@ -1,7 +1,12 @@
 import type { Route } from '@angular/router';
 import type { FunctionCode } from '@lms/contracts';
 
-export type Layout = 'app' | 'focus' | 'bare';
+/**
+ * The frame around a screen. `workspace` is the app frame with a page that fills the viewport
+ * under the header and scrolls inside its own regions (the assistant's chat and panel), so the
+ * window itself never scrolls.
+ */
+export type Layout = 'app' | 'workspace' | 'focus' | 'bare';
 
 /** What the router, the shell and the guards read from a route's `data`. */
 export interface RouteMeta {

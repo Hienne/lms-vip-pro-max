@@ -1,0 +1,26 @@
+// Popover panel (no mockup counterpart): the non-modal dialog `uiPopover` opens in a CDK overlay
+// below its trigger. Applied by `ui-popover-panel`; the content is the consumer's template.
+@use 'ui';
+
+@layer components {
+  .popover {
+    display: block;
+    width: ui.layout(popover);
+    max-width: calc(100vw - #{ui.space(4)} * 2);
+    max-height: calc(100vh - #{ui.layout(header)} - #{ui.space(4)});
+    overflow-y: auto;
+    padding: ui.space(4);
+    border: 1px solid ui.color(border);
+    border-radius: ui.radius(card);
+    background: ui.color(surface);
+    box-shadow: ui.shadow(lg);
+    color: ui.color(text);
+    outline: none;
+    @include ui.animate(enter);
+
+    // A phone gets the full width between the page gutters.
+    @include ui.bp-below(md) {
+      width: calc(100vw - #{ui.space(4)} * 2);
+    }
+  }
+}

@@ -13,7 +13,9 @@
 
   body {
     min-height: 100vh;
-    background: ui.color(bg);
+    background-color: ui.color(bg);
+    background-image: ui.texture(page);
+    background-size: ui.texture(page-size);
     color: ui.color(text);
     font-family: ui.font(sans);
     font-size: ui.text-size(md);
@@ -30,13 +32,18 @@
   h2,
   h3,
   h4 {
-    font-weight: ui.weight(bold);
     line-height: ui.leading(tight);
     text-wrap: balance;
   }
+  // The display font only on h1 and h2; h3 and h4 stay in the body font (visual-design.md).
+  h1,
+  h2 {
+    font-family: ui.font(display);
+  }
   h1 {
     font-size: ui.text-size(2xl);
-    letter-spacing: ui.tracking(tight);
+    font-weight: ui.weight(display);
+    letter-spacing: ui.tracking(display);
   }
   h2 {
     font-size: ui.text-size(xl);

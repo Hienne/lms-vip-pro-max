@@ -1,5 +1,4 @@
 <ui-page-header
-  eyebrow="Tổ chức"
   title="Đơn vị, phòng & nhóm"
   description="Cây đơn vị và phòng ban theo phạm vi của bạn; mỗi đơn vị có quản trị viên và các nhóm chuyên môn riêng."
 >
@@ -46,8 +45,8 @@
     <div uiCard class="org__head">
       <div class="org__head-main">
         <div class="org__head-text">
-          <div class="org__head-eyebrow">
-            <span class="org__eyebrow">{{ selected.code }}</span>
+          <div class="org__head-meta">
+            <span class="org__code">{{ selected.code }}</span>
             <span uiBadge tone="neutral" [outline]="true"
               >{{ selected.orgType === 'UNIT' ? 'Đơn vị' : 'Phòng' }}</span
             >
@@ -178,7 +177,7 @@
     <div class="org__loading"><span uiSpinner></span></div>
     } @else {
     <div uiCard>
-      <ui-empty icon="users" title="Chưa có nhóm nào" />
+      <ui-empty variant="inline" title="Chưa có nhóm nào" />
     </div>
     }
   </section>

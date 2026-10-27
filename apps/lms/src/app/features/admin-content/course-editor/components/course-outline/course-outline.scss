@@ -1,0 +1,64 @@
+@use 'ui';
+
+.course-outline {
+  @include ui.stack(4);
+
+  &__totals {
+    @include ui.row(6);
+    @include ui.text(sm, muted);
+    flex-wrap: wrap;
+    margin-bottom: ui.space(4);
+
+    strong {
+      @include ui.num;
+      color: ui.color(text);
+    }
+  }
+
+  &__chapter {
+    @include ui.row(3);
+    flex-wrap: nowrap;
+  }
+
+  &__num {
+    @include ui.text(sm, muted);
+    @include ui.num;
+    font-weight: ui.weight(semibold);
+  }
+
+  &__chapter-title {
+    flex: 1 1 auto;
+    font-weight: ui.weight(semibold);
+  }
+
+  &__lesson {
+    @include ui.row(2);
+    flex-wrap: nowrap;
+    min-width: 0;
+  }
+
+  &__lesson-text {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+
+  &__lesson-title {
+    @include ui.text(sm);
+    @include ui.truncate;
+    font-weight: ui.weight(semibold);
+  }
+
+  &__lesson-meta {
+    @include ui.row(2);
+    @include ui.text(xs, muted);
+    flex-wrap: wrap;
+  }
+
+  &__empty {
+    @include ui.text(sm, muted);
+  }
+
+  &__add {
+    align-self: flex-start;
+  }
+}

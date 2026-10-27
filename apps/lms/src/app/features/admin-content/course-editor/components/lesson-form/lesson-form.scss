@@ -1,0 +1,67 @@
+@use 'ui';
+
+.lesson-form {
+  @include ui.stack(4);
+
+  &__pair {
+    display: grid;
+    gap: ui.space(4);
+
+    @include ui.bp(sm) {
+      grid-template-columns: 2fr 1fr;
+    }
+  }
+
+  &__blocks {
+    @include ui.stack(3);
+  }
+
+  &__heading {
+    @include ui.text(sm);
+    font-weight: ui.weight(semibold);
+  }
+
+  &__block {
+    @include ui.stack(3);
+    padding: ui.space(3);
+    border: 1px solid ui.color(border);
+    border-radius: ui.radius(md);
+  }
+
+  &__block-head {
+    @include ui.row(1);
+    flex-wrap: nowrap;
+  }
+
+  &__block-type {
+    @include ui.row(2);
+    @include ui.text(sm);
+    flex: 1 1 auto;
+    font-weight: ui.weight(semibold);
+  }
+
+  &__files {
+    @include ui.stack(2);
+  }
+
+  &__drop-title {
+    font-weight: ui.weight(semibold);
+  }
+
+  &__drop-hint {
+    @include ui.text(xs);
+  }
+
+  &__empty {
+    @include ui.text(sm, muted);
+  }
+
+  &__add {
+    @include ui.row(2);
+    flex-wrap: wrap;
+  }
+
+  &__add-label {
+    @include ui.text(xs, muted);
+  }
+}

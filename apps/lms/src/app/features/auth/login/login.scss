@@ -121,10 +121,6 @@
     gap: ui.space(2);
   }
 
-  &__eyebrow {
-    @include ui.eyebrow;
-  }
-
   &__title {
     margin: 0;
     font-size: ui.text-size(2xl);

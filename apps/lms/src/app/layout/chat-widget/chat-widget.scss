@@ -1,0 +1,160 @@
+@use 'ui';
+
+// The owl hides while the panel is open, so the panel takes its corner. A phone gets a full-screen
+// sheet; from `sm` the panel floats in the corner at a fixed height; from `xl` it can dock to the
+// right edge at full height, and the shell makes room for it. The host takes no pointer events, so
+// only the panel blocks what is underneath it.
+:host {
+  position: fixed;
+  inset: 0;
+  z-index: ui.z(header);
+  display: flex;
+  align-items: flex-end;
+  justify-content: flex-end;
+  pointer-events: none;
+
+  @include ui.bp(sm) {
+    top: auto;
+    right: ui.space(4);
+    bottom: ui.space(4);
+    left: auto;
+    width: ui.layout(assistant);
+  }
+}
+
+// The dev toolbar sits in the same corner: the phone sheet ends above it, the floating panel moves
+// left of it.
+:host(.chat-widget--beside-toolbar) {
+  @include ui.bp-below(sm) {
+    bottom: calc(#{ui.space(4)} + #{ui.space(10)});
+  }
+
+  @include ui.bp(sm) {
+    right: calc(#{ui.space(4)} + 6rem);
+  }
+}
+
+:host(.chat-widget--docked) {
+  @include ui.bp(xl) {
+    top: 0;
+    right: 0;
+    bottom: 0;
+  }
+}
+
+// Docked, the panel ends above the dev toolbar instead of under it.
+:host(.chat-widget--docked.chat-widget--beside-toolbar) {
+  @include ui.bp(xl) {
+    bottom: calc(#{ui.space(4)} + #{ui.space(10)});
+  }
+}
+
+.chat {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  color: ui.color(text);
+  background: ui.color(surface);
+  pointer-events: auto;
+
+  // 60% of the viewport, however long the conversation.
+  @include ui.bp(sm) {
+    height: 60dvh;
+    border: 1px solid ui.color(border);
+    border-radius: ui.radius(card);
+    box-shadow: ui.shadow(md);
+  }
+
+  // Docked: a full-height column beside the page, separated by its border alone.
+  :host(.chat-widget--docked) & {
+    @include ui.bp(xl) {
+      height: 100%;
+      max-height: none;
+      border-width: 0 0 0 1px;
+      border-radius: 0;
+      box-shadow: none;
+    }
+  }
+
+  // Only a wide screen docks, so the toggle shows only there.
+  &__dock {
+    @include ui.bp-below(xl) {
+      display: none;
+    }
+  }
+
+  &__header {
+    @include ui.row(2);
+    flex: none;
+    padding: ui.space(2) ui.space(3) ui.space(2) ui.space(4);
+    border-bottom: 1px solid ui.color(border);
+  }
+
+  // The owl stands in for a title; the dialog is named by its `aria-label`.
+  &__face {
+    flex: none;
+    width: ui.space(8);
+    height: ui.space(8);
+    margin-inline-end: auto;
+  }
+
+  // Turns sit further apart than the parts of one turn, so each question and its reply read as a pair.
+  &__log {
+    @include ui.stack(6);
+    flex: 1 1 auto;
+    min-height: 8rem;
+    padding: ui.space(4);
+    overflow-y: auto;
+
+    &:focus-visible {
+      @include ui.focus-ring;
+    }
+  }
+
+  // Left-aligned: the hint, then the suggestions as plain links, one per line.
+  &__empty {
+    @include ui.stack(1);
+  }
+
+  &__hint {
+    @include ui.text(sm, muted);
+    margin: 0;
+  }
+
+  &__suggestions {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  &__suggestion {
+    @include ui.text(sm);
+    padding: ui.space(1) 0;
+    color: ui.color(primary);
+    text-align: start;
+    background: none;
+    border: 0;
+    cursor: pointer;
+
+    &:hover:not(:disabled) {
+      text-decoration: underline;
+    }
+
+    &:disabled {
+      color: ui.color(text-muted);
+      cursor: not-allowed;
+    }
+
+    &:focus-visible {
+      @include ui.focus-ring;
+    }
+  }
+
+  &__composer {
+    flex: none;
+    padding: ui.space(3) ui.space(4) ui.space(4);
+    border-top: 1px solid ui.color(border);
+  }
+}

@@ -1,0 +1,37 @@
+@let doc = finished();
+<p class="sr-only" aria-live="polite">{{ announcement() }}</p>
+@if (!quiet()) { @if (doc && !panelOpen()) {
+<div class="owl__bubble">
+  <p class="owl__text">
+    @if (doc.status === 'ready') { Đã xử lý xong tài liệu
+    <strong>{{ doc.fileName }}</strong> } @else { Không xử lý được tài liệu
+    <strong>{{ doc.fileName }}</strong>. }
+    <button type="button" class="owl__link" (click)="open()">
+      {{ doc.status === 'ready' ? 'Mở trợ lý' : 'Xem chi tiết' }}
+    </button>
+  </p>
+  <button
+    type="button"
+    class="owl__close"
+    aria-label="Đóng thông báo"
+    (click)="dismiss()"
+  >
+    <ui-icon name="x" size="sm" />
+  </button>
+</div>
+}
+<button
+  type="button"
+  class="owl__button"
+  [class.owl__button--open]="panelOpen()"
+  [id]="launcherId"
+  [attr.data-state]="state()"
+  [attr.aria-label]="label()"
+  [attr.aria-expanded]="available() ? panelOpen() : null"
+  [attr.aria-controls]="panelOpen() ? panelId : null"
+  [uiTooltip]="tip()"
+  (click)="activate()"
+>
+  <app-owl-face class="owl__art" [state]="state()" />
+</button>
+}

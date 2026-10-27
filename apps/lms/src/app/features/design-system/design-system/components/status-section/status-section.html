@@ -98,7 +98,7 @@
   >
     <div class="row">
       @for (role of roles; track role.code) {
-      <app-role-badge [code]="role.code" [name]="role.name" />
+      <app-role-badge [name]="role.name" />
       }
       <app-required-mark [required]="true" />
       <app-required-mark [required]="false" />

@@ -1,5 +1,4 @@
-import { DOCUMENT } from '@angular/common';
-import { Component, inject } from '@angular/core';
+import { Component, DOCUMENT, inject } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { Mai } from '@lms/ui';
 import {
@@ -8,7 +7,7 @@ import {
   sectionHeadingId,
   type DesignSystemSectionId,
 } from '../data-access/design-system-sections';
-import { ThemeSwitch } from './components/theme-switch/theme-switch';
+import { ThemeControls } from '../../../shared/theme-controls/theme-controls';
 import { Hero } from './components/hero/hero';
 import { PrinciplesSection } from './components/principles-section/principles-section';
 import { ColorSection } from './components/color-section/color-section';
@@ -32,7 +31,7 @@ const MAIN_ID = 'ds-main';
     RouterLink,
     Mai,
     Hero,
-    ThemeSwitch,
+    ThemeControls,
     PrinciplesSection,
     ColorSection,
     TypeSection,

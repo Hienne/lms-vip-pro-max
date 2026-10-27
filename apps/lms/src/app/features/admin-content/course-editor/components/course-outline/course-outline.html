@@ -1,0 +1,96 @@
+<p class="course-outline__totals">
+  <span><strong>{{ totals().chapters }}</strong> chương</span>
+  <span><strong>{{ totals().lessons }}</strong> bài học</span>
+  <span
+    ><strong>{{ totals().minutes | fmtMinutes }}</strong> tổng thời lượng</span
+  >
+</p>
+
+<div class="course-outline">
+  @for (chapter of draft().chapters; track chapter; let ci = $index) {
+  <section uiCard [attr.aria-label]="'Chương ' + (ci + 1)">
+    <div uiCardHeader class="course-outline__chapter">
+      <span class="course-outline__num" aria-hidden="true">{{ ci + 1 }}</span>
+      <input
+        uiInput
+        class="course-outline__chapter-title"
+        [formField]="chapter.title"
+        [attr.aria-label]="'Tên chương ' + (ci + 1)"
+      />
+      <button
+        uiIconButton
+        type="button"
+        variant="danger"
+        [label]="'Xóa chương ' + (ci + 1)"
+        (click)="removeChapter(ci)"
+      >
+        <ui-icon name="trash-2" size="sm" />
+      </button>
+    </div>
+    <div uiCardBody class="stack">
+      @if (chapter().value().lessons.length) {
+      <div
+        uiSortableList
+        [label]="'Bài học của chương ' + (ci + 1)"
+        (moved)="moveLesson(ci, $event)"
+      >
+        @for (lesson of chapter().value().lessons; track lesson.key; let li =
+        $index) {
+        <ui-sortable-item [label]="lesson.title">
+          <div class="course-outline__lesson">
+            <div class="course-outline__lesson-text">
+              <div class="course-outline__lesson-title">{{ lesson.title }}</div>
+              <div class="course-outline__lesson-meta">
+                @if (lesson.lessonType === 'quiz') {
+                <span>Bài kiểm tra</span>
+                } @else { @for (block of lesson.blocks; track block.key) {
+                <span>{{ blockTypes[block.blockType].label }}</span>
+                } }
+                <span>{{ lesson.minutes }} phút</span>
+              </div>
+            </div>
+            @if (problemOf(lesson); as problem) {
+            <span uiBadge tone="warning">{{ problem }}</span>
+            }
+            <button
+              uiButton
+              type="button"
+              size="sm"
+              variant="ghost"
+              [attr.aria-label]="'Sửa ' + lesson.title"
+              (click)="editLesson.emit({ chapter: ci, lesson: li })"
+            >
+              <ui-icon name="pen-line" size="sm" />Sửa
+            </button>
+            <button
+              uiIconButton
+              type="button"
+              size="sm"
+              variant="danger"
+              [label]="'Xóa ' + lesson.title"
+              (click)="removeLesson(ci, li)"
+            >
+              <ui-icon name="trash-2" size="sm" />
+            </button>
+          </div>
+        </ui-sortable-item>
+        }
+      </div>
+      } @else {
+      <p class="course-outline__empty">Chương chưa có bài học.</p>
+      }
+      <button uiLinkButton type="button" (click)="addLesson(ci)">
+        <ui-icon name="plus" size="sm" />Thêm bài học
+      </button>
+    </div>
+  </section>
+  }
+  <button
+    uiButton
+    type="button"
+    class="course-outline__add"
+    (click)="addChapter()"
+  >
+    <ui-icon name="plus" size="sm" />Thêm chương
+  </button>
+</div>

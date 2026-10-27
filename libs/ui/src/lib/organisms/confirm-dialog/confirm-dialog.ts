@@ -3,7 +3,6 @@ import { Component, computed, inject } from '@angular/core';
 import { defer, map, type Observable } from 'rxjs';
 import { Button } from '../../atoms/button/button.directive';
 import { Icon } from '../../atoms/icon/icon';
-import type { IconName } from '../../atoms/icon/icon-registry';
 import { IconButton } from '../../atoms/icon-button/icon-button.directive';
 
 export type ConfirmTone = 'primary' | 'warning' | 'danger';
@@ -13,7 +12,7 @@ export type ConfirmOptions = {
   message: string;
   confirmLabel?: string;
   cancelLabel?: string;
-  /** `danger` swaps the confirm button for the danger one and the icon for a trash can. */
+  /** `danger` swaps the confirm button for the danger one. */
   tone?: ConfirmTone;
 };
 
@@ -22,17 +21,11 @@ type ConfirmData = Required<ConfirmOptions> & {
   messageId: string;
 };
 
-const ICON_BY_TONE: Record<ConfirmTone, IconName> = {
-  primary: 'circle-help',
-  warning: 'triangle-alert',
-  danger: 'trash-2',
-};
-
 let nextId = 0;
 
 /**
  * The shell of a confirmation dialog, rendered by {@link confirm} inside a CDK dialog. The title
- * labels the dialog and the message describes it (ids are wired through the dialog config).
+ * says what is being confirmed (no icon) and labels the dialog and the message describes it (ids are wired through the dialog config).
  * Confirm closes with `true`; the cancel button and the close icon with `false`; Escape and the
  * backdrop are handled by the CDK dialog.
  */
@@ -46,7 +39,6 @@ export class ConfirmDialog {
   private readonly ref = inject<DialogRef<boolean>>(DialogRef);
   protected readonly data = inject<ConfirmData>(DIALOG_DATA);
 
-  protected readonly icon = computed(() => ICON_BY_TONE[this.data.tone]);
   protected readonly danger = computed(() => this.data.tone === 'danger');
 
   protected close(result: boolean): void {

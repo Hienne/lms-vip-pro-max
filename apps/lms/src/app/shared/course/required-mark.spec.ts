@@ -11,14 +11,15 @@ class Host {
 }
 
 describe('RequiredMark', () => {
-  it('shows a danger "Bắt buộc" badge for a required course', () => {
+  it('shows a neutral "Bắt buộc" badge for a required course', () => {
     const fixture = TestBed.createComponent(Host);
     fixture.detectChanges();
     const badge = (fixture.nativeElement as HTMLElement).querySelector(
       '.badge',
     );
     expect(badge?.textContent?.trim()).toBe('Bắt buộc');
-    expect(badge?.classList.contains('badge--danger')).toBe(true);
+    // The neutral tone adds no modifier class.
+    expect(badge?.className).not.toMatch(/badge--/);
   });
 
   it('shows an outline "Tự chọn" badge for an optional one', () => {

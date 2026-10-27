@@ -1,5 +1,7 @@
 // Form row and error summary: ported from the mockup's `.field` and `.error-summary` blocks
 // (components.css). Applied by `ui-field` and `ui-error-summary`.
+@use 'ui';
+
 @layer components {
   .field {
     display: flex;
@@ -8,7 +10,7 @@
 
     &__label {
       font-size: var(--text-sm);
-      font-weight: var(--font-weight-semibold);
+      font-weight: ui.weight(medium);
       color: var(--color-text);
     }
 
@@ -27,7 +29,7 @@
       align-items: center;
       gap: var(--spacing-1);
       font-size: var(--text-xs);
-      font-weight: 500;
+      font-weight: ui.weight(medium);
       color: var(--color-danger);
     }
   }
@@ -46,7 +48,7 @@
 
     a {
       color: inherit;
-      font-weight: var(--font-weight-semibold);
+      font-weight: ui.weight(medium);
     }
   }
 }

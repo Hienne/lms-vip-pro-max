@@ -1,4 +1,6 @@
 // Button: ported from the mockup's `.btn` block (components.css). Applied by `uiButton`.
+@use 'ui';
+
 @layer components {
   .btn {
     --btn-bg: var(--color-surface);
@@ -12,12 +14,12 @@
     min-height: var(--spacing-control);
     padding: 0 var(--spacing-4);
     border: 1px solid var(--btn-bd);
-    border-radius: var(--radius-sm);
+    border-radius: var(--radius-control);
     background: var(--btn-bg);
     color: var(--btn-fg);
     cursor: pointer;
     font-size: var(--text-sm);
-    font-weight: var(--font-weight-semibold);
+    font-weight: ui.weight(medium);
     text-decoration: none;
     white-space: nowrap;
     transition:

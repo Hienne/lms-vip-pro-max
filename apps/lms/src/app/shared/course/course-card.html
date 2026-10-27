@@ -1,25 +1,35 @@
 <a uiCard interactive class="course-card" [routerLink]="course().link">
-  <div [class]="'course-card__cover course-card__cover--' + course().cover">
-    <div class="course-card__badges">
-      <app-required-mark [required]="course().required" />
-      @if (completed()) {
-      <span uiBadge tone="success"><ui-icon name="check" /> Hoàn thành</span>
-      } @else if (course().overdue) {
-      <span uiBadge tone="danger"><ui-icon name="clock" /> Quá hạn</span>
-      }
-    </div>
-    <ui-icon [name]="coverIcon()" size="xl" />
-  </div>
-  <div class="course-card__body">
-    <span class="course-card__eyebrow"
+  <div class="course-card__head">
+    <span class="course-card__category"
       >{{ course().domain }} · {{ course().module }}</span
     >
-    <h3 class="course-card__title">{{ course().title }}</h3>
-    <div class="course-card__meta">
-      @if (duration()) {
-      <span><ui-icon name="clock" size="sm" />{{ duration() }}</span> }
+    @if (completed()) {
+    <span uiBadge tone="success">Hoàn thành</span>
+    } @else if (course().overdue) {
+    <span uiBadge tone="danger">Quá hạn</span>
+    }
+  </div>
+  <h3 class="course-card__title">{{ course().title }}</h3>
+  <p class="course-card__meta">
+    @if (course().required) {
+    <span class="course-card__required">Bắt buộc</span>
+    }
+    <span>{{ duration() }}</span>
+    <span>{{ course().lessons }} bài</span>
+    <span>{{ course().level }}</span>
+  </p>
+  <div class="course-card__foot">
+    <ui-progress
+      size="sm"
+      [value]="course().pct"
+      [tone]="progressTone()"
+      [label]="'Tiến độ ' + course().title"
+    />
+    <div class="course-card__line">
       <span
-        ><ui-icon name="book-open" size="sm" />{{ course().lessons }} bài</span
+        class="course-card__status"
+        [class.course-card__status--failed]="course().status === 'failed'"
+        >{{ statusText() }}</span
       >
       @if (course().level) {
       <span><ui-icon name="target" size="sm" />{{ course().level }}</span> }
@@ -43,5 +53,8 @@
       <app-due-date [dueAt]="dueAt" [done]="completed()" />
       }
     </div>
+    @if (course().dueAt; as dueAt) {
+    <app-due-date [dueAt]="dueAt" [done]="completed()" />
+    }
   </div>
 </a>

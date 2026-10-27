@@ -192,16 +192,28 @@ export const SCREEN_TABLE = {
           path: 'admin/courses',
           title: 'Khóa học',
           mockupPage: 'adminCourses',
+          load: () =>
+            import('../../features/admin-content/courses/courses').then(
+              (m) => m.Courses,
+            ),
         },
         {
           path: 'admin/courses/new',
           title: 'Tạo khóa học mới',
           mockupPage: 'courseWizard',
+          load: () =>
+            import('../../features/admin-content/course-new/course-new').then(
+              (m) => m.CourseNew,
+            ),
         },
         {
           path: 'admin/courses/:id/edit',
           title: 'Sửa khóa học',
           mockupPage: 'courseWizard',
+          load: () =>
+            import(
+              '../../features/admin-content/course-editor/course-editor'
+            ).then((m) => m.CourseEditor),
         },
       ],
     },
@@ -314,6 +326,10 @@ export const SCREEN_TABLE = {
           path: 'admin/assignments',
           title: 'Giao học & hạn hoàn thành',
           mockupPage: 'assignments',
+          load: () =>
+            import('../../features/admin-org/assignments/assignments').then(
+              (m) => m.Assignments,
+            ),
         },
       ],
     },
@@ -362,6 +378,21 @@ export const SCREEN_TABLE = {
         },
       ],
     },
+    AI_ASSISTANT: {
+      nav: { icon: 'sparkles', section: 'Công cụ học' },
+      screens: [
+        {
+          path: 'assistant',
+          title: 'Trợ lý AI',
+          mockupPage: 'assistant',
+          layout: 'workspace',
+          load: () =>
+            import('../../features/study-tools/assistant/assistant').then(
+              (m) => m.Assistant,
+            ),
+        },
+      ],
+    },
     ISSUE_HUB: {
       nav: { icon: 'message-square', section: 'Công cụ học' },
       screens: [
@@ -400,14 +431,25 @@ export const SCREEN_TABLE = {
           (m) => m.ChangePassword,
         ),
     },
-    { path: 'catalog', title: 'Danh mục khóa học', mockupPage: 'catalog' },
+    {
+      path: 'catalog',
+      title: 'Danh mục khóa học',
+      mockupPage: 'catalog',
+      load: () =>
+        import('../../features/learning/catalog/catalog').then(
+          (m) => m.Catalog,
+        ),
+    },
     {
       path: 'admin/catalog',
       title: 'Lĩnh vực & chương trình',
       mockupPage: 'adminCatalog',
+      load: () =>
+        import(
+          '../../features/admin-content/training-catalog/training-catalog'
+        ).then((m) => m.TrainingCatalog),
     },
     { path: 'leaderboard', title: 'Bảng xếp hạng', mockupPage: 'leaderboard' },
-    { path: 'assistant', title: 'Trợ lý AI', mockupPage: 'assistant' },
     { path: 'flashcards', title: 'Flashcard ôn tập', mockupPage: 'flashcards' },
     {
       path: 'saved',

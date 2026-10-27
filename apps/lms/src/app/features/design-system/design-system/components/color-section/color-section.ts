@@ -1,5 +1,10 @@
-import { DOCUMENT } from '@angular/common';
-import { afterRenderEffect, Component, inject, untracked } from '@angular/core';
+import {
+  afterRenderEffect,
+  Component,
+  DOCUMENT,
+  inject,
+  untracked,
+} from '@angular/core';
 import { Badge, Card, CardHeader, Icon, Table, TableWrap } from '@lms/ui';
 import { ThemeStore } from '../../../../../core/theme/theme.store';
 import { DsSection } from '../section/section';
@@ -19,8 +24,10 @@ export class ColorSection {
 
   constructor() {
     afterRenderEffect(() => {
-      // Read again whenever the effective theme changes: the tokens change value with it.
+      // Read again whenever the effective theme or the palette changes: the tokens change value
+      // with them.
       this.theme.effective$();
+      this.theme.palette$();
       untracked(() => this.readTokens());
     });
   }

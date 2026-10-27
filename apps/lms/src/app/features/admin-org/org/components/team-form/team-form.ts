@@ -2,7 +2,7 @@ import { Component, inject, input, linkedSignal } from '@angular/core';
 import {
   form,
   FormField,
-  submit,
+  FormRoot,
   validateStandardSchema,
 } from '@angular/forms/signals';
 import { isEmptyPatch, type TeamInfo } from '@lms/contracts';
@@ -21,7 +21,7 @@ import {
  */
 @Component({
   selector: 'app-team-form',
-  imports: [Field, FormField, Input, Textarea],
+  imports: [Field, FormField, FormRoot, Input, Textarea],
   templateUrl: './team-form.html',
 })
 export class TeamForm {
@@ -31,24 +31,25 @@ export class TeamForm {
   readonly team = input.required<TeamInfo | null>();
 
   private readonly model = linkedSignal(() => toTeamFormValue(this.team()));
-  protected readonly teamForm = form(this.model, (path) => {
-    validateStandardSchema(path, TeamFormSchema);
-  });
+  protected readonly teamForm = form(
+    this.model,
+    (path) => {
+      validateStandardSchema(path, TeamFormSchema);
+    },
+    { submission: { action: async () => this.save() } },
+  );
 
-  protected onSubmit(event: Event): void {
-    event.preventDefault();
-    void submit(this.teamForm, async () => {
-      const team = this.team();
-      if (!team) {
-        const orgId = this.store.selected$()?.id;
-        if (orgId !== undefined) {
-          this.store.createTeam(orgId, toCreateTeamCommand(this.model()));
-        }
-        return;
+  private save(): void {
+    const team = this.team();
+    if (!team) {
+      const orgId = this.store.selected$()?.id;
+      if (orgId !== undefined) {
+        this.store.createTeam(orgId, toCreateTeamCommand(this.model()));
       }
-      const patch = toUpdateTeamCommand(team, this.model());
-      if (isEmptyPatch(patch)) this.store.cancelTeamEdit();
-      else this.store.updateTeam(team.id, patch);
-    });
+      return;
+    }
+    const patch = toUpdateTeamCommand(team, this.model());
+    if (isEmptyPatch(patch)) this.store.cancelTeamEdit();
+    else this.store.updateTeam(team.id, patch);
   }
 }

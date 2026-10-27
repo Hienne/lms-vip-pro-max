@@ -1,6 +1,5 @@
 @if (store.user$(); as user) {
 <ui-page-header
-  eyebrow="Tài khoản"
   title="Hồ sơ cá nhân"
   description="Thông tin tổ chức và phân quyền do quản trị viên quản lý — bạn chỉ sửa được thông tin cá nhân."
 />
@@ -11,7 +10,7 @@
       <h2>{{ user.fullName }}</h2>
       <div class="row">
         @for (role of store.roles$(); track role.code) {
-        <app-role-badge [code]="role.code" [name]="role.name" />
+        <app-role-badge [name]="role.name" />
         } @empty {
         <span uiBadge outline>Chưa được cấp vai trò</span>
         }
@@ -41,7 +40,7 @@
           đây.</ui-alert
         >
         }
-        <form class="stack" novalidate (submit)="onSubmit($event)">
+        <form class="stack" [formRoot]="profileForm">
           <ui-field label="Họ và tên" required>
             <input
               uiInput

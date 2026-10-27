@@ -1,13 +1,15 @@
 @use 'ui';
 
+// The host is what sticks: it sits in the shell's main column, which runs the page's full height,
+// while `.header` inside it is only as tall as itself and so had nothing to stick within.
 :host {
+  position: sticky;
+  top: 0;
+  z-index: ui.z(header);
   display: block;
 }
 
 .header {
-  position: sticky;
-  top: 0;
-  z-index: ui.z(header);
   display: flex;
   align-items: center;
   gap: ui.space(3);

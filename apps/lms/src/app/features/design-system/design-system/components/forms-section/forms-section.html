@@ -5,7 +5,7 @@
         label="Field: nhãn luôn hiển thị · lỗi dưới trường (aria-describedby) · error summary có link"
         [needs]="['field', 'text-controls', 'button']"
       >
-        <form class="stack" novalidate (submit)="$event.preventDefault()">
+        <form class="stack" [formRoot]="demoForm">
           @if (store.summaryShown$() && summaryItems().length > 0) {
           <ui-error-summary [items]="summaryItems()" />
           }

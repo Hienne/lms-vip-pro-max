@@ -13,3 +13,7 @@ export * from './lib/reports/reports.fixtures';
 export * from './lib/reports/learning-report.handlers';
 export * from './lib/personal/personal.fixtures';
 export * from './lib/personal/personal.backend';
+export * from './lib/learning/learning.fixtures';
+export * from './lib/learning/learning.backend';
+export * from './lib/knowledge/knowledge.fixtures';
+export * from './lib/assistant-agent/agent.fixtures';

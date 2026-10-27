@@ -81,7 +81,13 @@ describe('icon registry', () => {
     expect(ICON_CATALOG.filter((icon) => icon.mockup)).toHaveLength(89);
     expect(
       ICON_CATALOG.filter((icon) => !icon.mockup).map((i) => i.name),
-    ).toEqual(['monitor']);
+    ).toEqual([
+      'monitor',
+      'arrow-up',
+      'square',
+      'panel-right-open',
+      'panel-right-close',
+    ]);
     for (const { name } of ICON_CATALOG) {
       expect(ICONS[name]).toBeDefined();
     }

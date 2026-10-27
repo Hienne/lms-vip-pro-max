@@ -1,0 +1,32 @@
+@use 'ui';
+
+:host {
+  display: block;
+}
+
+.owl-face {
+  display: block;
+  width: 100%;
+  height: 100%;
+
+  // The jaw and the book move together while the owl chews; the loop ends when nothing is pending.
+  &__jaw {
+    animation: owl-chew 1.2s ease-in-out infinite;
+  }
+}
+
+@keyframes owl-chew {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(1.2px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .owl-face__jaw {
+    animation: none;
+  }
+}

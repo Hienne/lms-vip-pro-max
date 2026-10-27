@@ -1,0 +1,21 @@
+<div class="theme-controls">
+  <div class="theme-controls__group">
+    <!-- Visible caption; the list box already carries the same name. -->
+    <p class="theme-controls__title" aria-hidden="true">Bảng màu</p>
+    <ui-swatch-group
+      label="Bảng màu"
+      [options]="palettes"
+      [value]="theme.palette$()"
+      (valueChange)="theme.setPalette($event)"
+    />
+  </div>
+  <div class="theme-controls__group">
+    <p class="theme-controls__title" aria-hidden="true">Chế độ</p>
+    <ui-segmented
+      label="Chế độ"
+      [options]="modes"
+      [value]="theme.preference$()"
+      (valueChange)="theme.setPreference($event)"
+    />
+  </div>
+</div>

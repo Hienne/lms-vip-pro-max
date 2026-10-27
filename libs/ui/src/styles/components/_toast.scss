@@ -1,11 +1,14 @@
 // Toast stack: ported from the mockup's `.toasts` / `.toast` blocks (components.css). Applied by
-// the toaster's outlet (`ToastOutlet`) host and its toasts.
+// the toaster's outlet (`ToastOutlet`) host and its toasts. A 1px border all round; the icon
+// carries the status (no coloured edge, visual-design.md).
 @layer components {
   .toasts {
     display: flex;
     flex-direction: column;
     gap: var(--spacing-2);
     margin: var(--spacing-5);
+    // The corner below the stack belongs to the owl and its notice (72px) plus a gap.
+    margin-block-end: calc(var(--spacing-18) + var(--spacing-4));
     // min(380px, 100vw - 32px): no token for the 380px width; 32px = 2 x --spacing-4.
     width: min(380px, calc(100vw - 2 * var(--spacing-4)));
   }
@@ -17,7 +20,6 @@
     padding: var(--spacing-3) var(--spacing-4);
     background: var(--color-surface);
     border: 1px solid var(--color-border);
-    border-left: 4px solid var(--color-primary);
     border-radius: var(--radius-md);
     box-shadow: var(--shadow-lg);
     animation: var(--animate-enter);
@@ -29,21 +31,18 @@
     }
 
     &--success {
-      border-left-color: var(--color-success);
       > .icon {
         color: var(--color-success);
       }
     }
 
     &--error {
-      border-left-color: var(--color-danger);
       > .icon {
         color: var(--color-danger);
       }
     }
 
     &--warning {
-      border-left-color: var(--color-warning);
       > .icon {
         color: var(--color-warning);
       }

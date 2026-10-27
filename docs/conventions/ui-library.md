@@ -3,6 +3,10 @@
 Rules for every reusable piece of UI: the design system in `libs/ui`, and the
 domain-aware presentational UI in `apps/lms/src/app/shared/` that composes it.
 
+How that UI looks (hierarchy, colour use, type, shape, density, motion, and the
+AI-template patterns that are banned) is `docs/conventions/visual-design.md`. It
+applies to every piece here and overrides the mockup's look.
+
 ## Atomic levels
 
 | Level     | What it is                                                                                      | Lives in                            | May use                                       |
@@ -117,7 +121,7 @@ SCSS only. There is no PostCSS step and no utility framework; the Sass compiler 
   - **Functions** return `var(--<namespace>-<key>)` and fail the build on an unknown key, naming the
     namespace and the valid keys: `ui.color`, `ui.chart`, `ui.space`, `ui.radius`, `ui.shadow`,
     `ui.text-size`, `ui.leading`, `ui.weight`, `ui.tracking`, `ui.font`, `ui.duration`, `ui.ease`,
-    `ui.z`, `ui.layout`.
+    `ui.z`, `ui.texture`, `ui.layout`.
   - **Breakpoints**: `@include ui.bp(md)` is a mobile-first `min-width` media query from the
     `sm 640 / md 720 / lg 1100 / xl 1280` map, the only place widths are written. Write the narrow
     layout as the base style. `ui.bp-below(md)` exists for the one narrow-only case (a responsive table
@@ -126,7 +130,9 @@ SCSS only. There is no PostCSS step and no utility framework; the Sass compiler 
     `ui.grid((md: 2, lg: 3), $gap)` (columns per breakpoint, `base` defaults to 1). Gaps are spacing
     keys.
   - **Typography mixins**: `ui.text($size, $tone)` (a tone is a colour key, or `muted`, `secondary`,
-    `accent`), `ui.eyebrow`, `ui.num`, `ui.mono`, `ui.truncate`, `ui.clamp($lines)`.
+    `accent`), `ui.num`, `ui.mono`, `ui.truncate`, `ui.clamp($lines)`. A small label (sidebar group,
+    table header, menu group) is `ui.text(sm, muted)` with `ui.weight(medium)`, in sentence case;
+    there is no eyebrow mixin (`visual-design.md`).
   - **Accessibility and motion**: `ui.sr-only`, `ui.focus-ring`, `ui.animate(enter | reward-pop |
 shimmer | spin)` (reduced motion shows the end state).
 - **Spacing** uses the mockup's 4px steps only: 1, 2, 3, 4, 5, 6, 8, 10, 12, 18. The mockup's
@@ -145,7 +151,7 @@ shimmer | spin)` (reduced motion shows the end state).
   generated with `@each` over the token map, so the showcase never drifts from the tokens.
 - Runtime values go through a CSS variable binding (`[style.--value]="pct() + '%'"`), never an inline
   literal. Inline `style="color:#fff"` in mockup markup becomes a token.
-- Dark mode comes from tokens only: see [Theme and dark mode](#theme-and-dark-mode).
+- Dark mode and palettes come from tokens only: see [Theme, palettes and dark mode](#theme-palettes-and-dark-mode).
 
 ### Mockup token → project token
 
@@ -169,8 +175,7 @@ shimmer | spin)` (reduced motion shows the end state).
 Tokens added on top of the mockup (the mockup hard-coded these values): `--color-white`,
 `--color-on-danger` (dark: a dark ink, because white on the dark danger red is 2.4:1),
 `--color-hero-from/to/muted/subtle/accent/chip` (the hero panel is dark teal in both themes),
-`--color-cover-layers/process/clock/building/database/shield` (course cover tints, with dark values),
-`--tracking-tight/wide/wider`. Durations drop to `0ms` under `prefers-reduced-motion`.
+`--tracking-tight`. Durations drop to `0ms` under `prefers-reduced-motion`.
 
 ### Breakpoints
 
@@ -203,15 +208,15 @@ mixin a component would use. Everything else in the mockup's `base.css` is a mix
 | `.grid-2` / `.grid-3` / `.grid-4`              | helpers `grid-2` (1 → md 2), `grid-3` (1 → md 2 → lg 3), `grid-4` (1 → md 2 → lg 4); `grid-N--gap-<key>`; mixin `ui.grid` for other column counts |
 | `.span-2`                                      | helper `span-2` (from `md`)                                                                                                                       |
 | `.mt-2/4/6`, `.mb-2/4`, `.w-full`, `.hidden`   | `margin-top: ui.space(4)` etc. in the component's `.scss`                                                                                         |
-| `.text-sm/xs/lg`, `.fw-600`, `.fw-700`         | `@include ui.text(sm)`, `font-weight: ui.weight(semibold)`                                                                                        |
+| `.text-sm/xs/lg`, `.fw-600`, `.fw-700`         | `@include ui.text(sm)`; the weight follows the element's role (`visual-design.md` → Type), not the mockup class                                   |
 | `.text-muted/secondary/success/danger/warning` | `@include ui.text(sm, muted)` (tone = colour key or alias), or `color: ui.color(success)`                                                         |
 | `.text-accent`                                 | `ui.text(sm, accent)` (the `accent-ink` colour)                                                                                                   |
-| `.eyebrow`                                     | `@include ui.eyebrow`                                                                                                                             |
+| `.eyebrow`                                     | dropped: no eyebrows (`visual-design.md`)                                                                                                         |
 | `.num`                                         | `@include ui.num`                                                                                                                                 |
 | `.mono`                                        | `@include ui.mono`                                                                                                                                |
 | `.truncate` / `.clamp-2`                       | `@include ui.truncate` / `@include ui.clamp(2)`                                                                                                   |
 | `.sr-only`                                     | helper `sr-only`; mixin `ui.sr-only`                                                                                                              |
-| `.animate-enter` / `.animate-reward`           | `@include ui.animate(enter)` / `ui.animate(reward-pop)`                                                                                           |
+| `.animate-enter` / `.animate-reward`           | overlays only: `ui.animate(enter)`; dropped on page content (`visual-design.md`) / `ui.animate(reward-pop)` on an earned achievement              |
 | `.skip-link`                                   | helper `skip-link`                                                                                                                                |
 
 ### Global stylesheet and cascade layers
@@ -240,29 +245,91 @@ outside the token source has a hex or `rgb()` colour; and when anything referenc
 PostCSS. `libs/ui/src/styles/styles.spec.ts` compiles the style library and locks its contract (see the
 spec for the list).
 
-## Theme and dark mode
+## Theme, palettes and dark mode
 
-Three choices, **Hệ thống / Sáng / Tối** (`system | light | dark`), remembered per browser.
+Two independent choices, remembered per browser:
 
-- **Tokens carry the theme.** `global/_theme.scss` emits the light values and the dark values behind two
-  conditions: `:root[data-theme="dark"]`, and `prefers-color-scheme: dark` unless
-  `data-theme="light"`. A screen that uses tokens supports both themes with no extra work.
-  `system` means no attribute at all.
-- **Nothing else mentions a theme.** Components, templates and SCSS never branch on the theme; a spec
-  (`template-scan.spec.ts`) fails on any file other than `ThemeStore` that writes the `data-theme`
-  attribute.
-- **`ThemeStore`** (`apps/lms/src/app/core/theme/theme.store.ts`, root-provided) owns the choice:
-  `preference$()`, `effective$()` (`light | dark`, following the OS live in `system`) and one
-  command, `setPreference()`. It is the only writer of the attribute, persists the choice under
-  `lms.theme` (absence = `system`) and tolerates blocked storage. Read `effective$()` when something
-  must react to the theme (the contrast table recomputes from it); never read the attribute.
-- **No flash.** An inline script in `apps/lms/src/index.html` applies the stored `light | dark`
-  before the app boots. If a strict Content-Security-Policy is introduced, add the script's hash to
-  `script-src`. It is not unit-tested: verify in the browser by reloading in each of the three
-  choices with the OS theme light and dark and watching the first paint.
-- **The control** is `ui-segmented` (a molecule on the `@angular/aria` listbox, one selected
-  option, arrow keys move and select, `value` is a two-way model). `/design-system` has the switch
-  in its table of contents; the app header will reuse the same store and control.
+- **Mode:** **Hệ thống / Sáng / Tối** (`system | light | dark`).
+- **Theme** (the `data-palette` attribute): **BIDV chuẩn / Ngọc / Cobalt / Giấy**
+  (`bidv | ngoc | cobalt | giay`). `bidv` is the default and is the base tokens themselves.
+
+- **Tokens carry the theme.** `global/_theme.scss` emits the light values and the dark values
+  behind two conditions: `:root[data-theme="dark"]`, and `prefers-color-scheme: dark` unless
+  `data-theme="light"`. A screen that uses tokens supports every mode and theme with no extra work.
+  `system` means no `data-theme` attribute, and `bidv` means no `data-palette` attribute.
+- **Components read semantic tokens, so a theme can reach them.** Beyond colours:
+  - the sidebar paints only with `nav-*` (`nav-bg`, `nav-text`, `nav-muted`, `nav-strong`,
+    `nav-hover`, `nav-active-bg`, `nav-active-text`, `nav-indicator`, `nav-border`); a guard spec
+    fails on any other colour or a `color-mix` in `sidebar.scss`;
+  - h1 and h2 read `ui.font(display)`; h3, h4 and KPI values stay in the body font; h1 also
+    reads `ui.weight(display)` and `ui.tracking(display)`;
+  - buttons and segmented controls read `ui.radius(control)`, text fields `ui.radius(field)`,
+    cards and popovers `ui.radius(card)`;
+  - `body` paints `ui.texture(page)` sized by `ui.texture(page-size)` over `bg`.
+
+  For BIDV these resolve to the base look, so a new screen gets every theme by using them. Reach
+  for `radius(sm|md|lg)` and the raw colours only where a theme should not change the result.
+
+- **Themes are token overrides.** `ui/_tokens.scss` declares `$palettes` (after the type and
+  texture tokens it reads). Each theme has:
+  - `light` and `dark` maps of `colors`, `chart` and `shadow` (keys in `$palette-color-keys`,
+    `$palette-chart-keys`, `$palette-shadow-keys`: brand, neutral, accent, `nav-*`,
+    hero, charts 1–2 and grid, shadows);
+  - mode-independent `type` (`sans`, `display`, `display-weight`, `display-tracking`), `shape`
+    (`control`, `field`, `card`) and `texture` (`page`, `page-size`) groups;
+  - an optional `swatch` naming the colour its picker swatch shows (default `primary`).
+
+  Semantic colours, `white`/`black`, `overlay`, spacing, text sizes and layout never change.
+  `global/_palettes.scss` emits `:root[data-palette="<id>"]` for the light values and the
+  mode-independent groups, and the dark overrides at specificity (0,3,0) behind both dark
+  conditions. The build fails on an unknown setting, group or key, a missing `light`/`dark` map,
+  a mode-independent group inside a mode, or a light key the dark map leaves out (it would beat
+  the base dark value in dark mode). It also declares constant swatch tokens
+  (`--color-swatch-<id>-fill/-base`) so a picker can show every theme while another one is active.
+
+- **Fonts.** A theme names faces from `ui.$font-stacks` (Be Vietnam Pro, Fraunces, Nunito Sans),
+  all self-hosted through `@fontsource/*` in `apps/lms/project.json` styles; a guard spec fails
+  when a stack has no bundled CSS. The browser downloads a file only when an element renders in
+  that face, so BIDV users fetch nothing extra. Adding a face is a new dependency: ask first.
+- **Contrast is a spec.** `styles.spec.ts` resolves every theme × light/dark from the compiled CSS
+  (following `var()` references and compositing `color-mix(…, transparent)` washes) and checks the
+  pairs in `SPEC.md` Success Criterion 5:
+  - text tokens 4.5:1 on `bg`, `surface` and `surface-2`;
+  - `on-primary` on `primary`, `primary` on `surface` and `on-accent` on `accent`, 4.5:1;
+  - `accent-ink` on `bg` and `surface`, 4.5:1;
+  - `nav-text`, `nav-muted` and `nav-strong` on `nav-bg`, and `nav-active-text` on
+    `nav-active-bg`, 4.5:1;
+  - `border-strong` and `ring` 3:1;
+  - `hero-muted` on `hero-to` 4.5:1.
+
+  A new theme must pass before it ships.
+
+- **Nothing else mentions a theme.** Components, templates and SCSS never branch on the mode or
+  theme. A spec (`template-scan.spec.ts`) fails on any file other than `ThemeStore` (and the
+  pre-boot script) that writes `data-theme` or `data-palette`. Another spec fails when
+  `THEME_PALETTES`, the pre-boot script and the token themes list different ids.
+- **`ThemeStore`** (`apps/lms/src/app/core/theme/theme.store.ts`, root-provided) owns both choices:
+  - selectors `preference$()`, `effective$()` (`light | dark`, following the OS live in
+    `system`) and `palette$()`;
+  - commands `setPreference()` and `setPalette()`.
+
+  It is the only writer of the attributes. It persists the choices under `lms.theme` (absence =
+  `system`) and `lms.palette` (absence = `bidv`; an unknown value, such as a revision 1 id, falls
+  back to it) and tolerates blocked storage. Read `effective$()` / `palette$()` when something
+  must react to them (the contrast table recomputes from both); never read the attributes.
+
+- **No flash.** An inline script in `apps/lms/src/index.html` applies the stored `light | dark` and
+  theme before the app boots. If a strict Content-Security-Policy is introduced, add the script's
+  hash to `script-src`. Its logic is not unit-tested: verify in the browser by reloading in each
+  theme and mode with the OS theme light and dark and watching the first paint. A theme heading
+  face may swap in once its font arrives (`font-display: swap`).
+- **The controls** are `app-theme-controls` (`apps/lms/src/app/shared/theme-controls/`): a
+  `ui-swatch-group` "Bảng màu" and a `ui-segmented` "Chế độ", both bound to `ThemeStore`.
+  - The header renders them in a `uiPopover` behind the palette icon (`app-theme-picker`, "Tùy
+    chỉnh giao diện").
+  - `/design-system` renders them inline in its table of contents.
+
+  A choice applies at once; the popover stays open so themes can be compared.
 
 ## Icons
 
@@ -317,6 +384,8 @@ and never call `Date.now()` themselves. Specs provide `{ provide: NOW, useValue:
 | Form buttons in a drawer footer (Hủy + Lưu)   | `ui-form-actions` molecule: required `formId`, `submitLabel`, `cancelLabel`; extra actions slot |
 | `ui.toast` (`.toasts`)                        | `Toaster` service (root, presentation-only) + CDK overlay; text also sent to `LiveAnnouncer`    |
 | Tooltip                                       | `uiTooltip` directive on CDK overlay                                                            |
+| Non-modal panel under a button (theme picker) | `uiPopover` directive on CDK overlay + CDK focus trap (`@angular/aria` has no popover pattern)  |
+| Single choice among colour swatches           | `ui-swatch-group` molecule on the `@angular/aria` listbox (vertical; swatches are token keys)   |
 | Wizard stepper (`.stepper`)                   | CDK stepper                                                                                     |
 | Sortable lists (`.sort-item`, `.drag-handle`) | CDK drag-drop, with keyboard move buttons                                                       |
 
@@ -327,6 +396,14 @@ user close, and the page maps it to the store's cancel command. `openDrawer` is 
 `@lms/ui`: there is no imperative way to show a drawer. `@lms/ui` ships no screen copy, so the
 title, busy label and form-actions labels always come from the screen.
 
+**Popovers.** `button[uiPopover]="template"` with a required `popoverLabel` opens the template
+in a non-modal `role="dialog"` panel (`ui-popover-panel`, width `ui.layout(popover)`, full width
+between the page gutters below `md`), anchored under the button. The button gets `aria-haspopup`,
+`aria-expanded` and `aria-controls`. Once rendering settles, focus moves to the first control
+inside (`ApplicationRef.whenStable()`, because a listbox sets its roving tabindex in a second pass),
+and Tab cycles within the panel. Escape closes it and returns focus to the button; a click outside
+closes it. Use it for small settings panels; a menu of actions is `ui-menu`.
+
 Read the installed `@angular/aria` exports before using a pattern; names are
 not guessed from memory.
 
@@ -336,4 +413,6 @@ not guessed from memory.
 - Spec covers rendered classes/ARIA per variant and every output.
 - Demo added to the `/design-system` route (the living catalogue, ported from
   the mockup's design-system page) in light and dark.
+- Passes the checklist in `docs/conventions/visual-design.md`; the demo shows
+  realistic content and density, not showcase filler.
 - Keyboard and screen-reader behaviour checked for interactive pieces.

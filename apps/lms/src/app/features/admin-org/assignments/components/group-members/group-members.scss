@@ -1,0 +1,49 @@
+@use 'ui';
+
+.group-members {
+  @include ui.stack(4);
+
+  &__add {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: ui.space(3);
+    align-items: end;
+  }
+
+  &__heading {
+    margin: 0;
+    font-size: ui.text-size(md);
+    font-weight: ui.weight(semibold);
+  }
+
+  &__list {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  &__row {
+    @include ui.row(3);
+    flex-wrap: nowrap;
+    padding-block: ui.space(2);
+
+    & + & {
+      border-block-start: 1px solid ui.color(border);
+    }
+  }
+
+  &__who {
+    @include ui.grow;
+    display: grid;
+    gap: ui.space(1);
+  }
+
+  &__name {
+    @include ui.text(sm);
+  }
+
+  &__muted {
+    margin: 0;
+    @include ui.text(sm, muted);
+  }
+}

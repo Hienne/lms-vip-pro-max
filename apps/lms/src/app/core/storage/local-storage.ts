@@ -1,5 +1,4 @@
-import { DOCUMENT } from '@angular/common';
-import { inject, InjectionToken } from '@angular/core';
+import { DOCUMENT, inject, InjectionToken } from '@angular/core';
 
 /** The part of `Storage` the app uses for per-browser preferences and the access token. */
 export type PreferenceStorage = Pick<

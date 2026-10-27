@@ -1,0 +1,69 @@
+<div class="target-picker">
+  <ui-segmented
+    class="target-picker__types"
+    label="Loại đối tượng"
+    [options]="types"
+    [value]="pickerForm.targetType().value()"
+    (valueChange)="chooseType($event)"
+  />
+  <div class="target-picker__row">
+    @switch (pickerForm.targetType().value()) { @case ('user') {
+    <ui-field label="Học viên">
+      <select uiSelect [formField]="pickerForm.userId">
+        <option value="">— Chọn học viên —</option>
+        @for (person of store.people$(); track person.userId) {
+        <option [value]="person.userId">
+          {{ person.fullName }} · {{ person.userId }}
+        </option>
+        }
+      </select>
+    </ui-field>
+    } @case ('learning_group') {
+    <ui-field label="Nhóm học tập">
+      <select uiSelect [formField]="pickerForm.groupId">
+        <option value="">— Chọn nhóm —</option>
+        @for (row of store.groups$(); track row.id) {
+        <option [value]="row.id">{{ row.group.name }}</option>
+        }
+      </select>
+    </ui-field>
+    } @default {
+    <ui-field label="Đơn vị">
+      <select uiSelect [formField]="pickerForm.orgId" (change)="onOrgChange()">
+        <option value="">— Chọn đơn vị —</option>
+        @for (org of store.orgs$(); track org.id) {
+        <option [value]="org.id">{{ org.name }}</option>
+        }
+      </select>
+    </ui-field>
+    @if (pickerForm.targetType().value() === 'team') {
+    <ui-field label="Phòng/nhóm">
+      <select uiSelect [formField]="pickerForm.teamId">
+        <option value="">— Chọn phòng/nhóm —</option>
+        @for (team of store.teams$(); track team.id) {
+        <option [value]="team.id">{{ team.name }}</option>
+        }
+      </select>
+    </ui-field>
+    } } }
+    <button
+      uiButton
+      type="button"
+      class="target-picker__add"
+      [disabled]="!pick()"
+      (click)="add()"
+    >
+      <ui-icon name="plus" size="sm" />Thêm
+    </button>
+  </div>
+  @if (pickerForm.targetType().value() === 'org') {
+  <label class="target-picker__toggle">
+    <input
+      type="checkbox"
+      uiCheckbox
+      [formField]="pickerForm.includeDescendants"
+    />
+    Gồm cả các đơn vị cấp dưới
+  </label>
+  }
+</div>

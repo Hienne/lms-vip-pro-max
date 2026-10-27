@@ -1,0 +1,39 @@
+@use 'ui';
+
+.composer {
+  @include ui.stack(1);
+
+  // The box grows with what is typed, up to a few lines; the send or stop button sits inside it,
+  // at the end of the last line.
+  &__field {
+    position: relative;
+  }
+
+  &__box {
+    min-height: 0;
+    max-height: 8rem;
+    padding-inline-end: ui.space(10);
+    resize: none;
+    field-sizing: content;
+  }
+
+  &__action {
+    position: absolute;
+    right: ui.space(1);
+    bottom: ui.space(1);
+
+    &--send:not(:disabled) {
+      color: ui.color(primary);
+    }
+  }
+
+  &__note {
+    @include ui.text(xs, muted);
+    margin: 0;
+    text-align: end;
+
+    &--error {
+      color: ui.color(danger);
+    }
+  }
+}

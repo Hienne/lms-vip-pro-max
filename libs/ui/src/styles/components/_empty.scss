@@ -1,52 +1,61 @@
-// Empty state: ported from the mockup's `.empty` block (components.css). Applied by `ui-empty`.
+// Empty state: applied by `ui-empty`. Left-aligned, no icon circle and no entrance motion
+// (visual-design.md). `--inline` is one muted line and an action, for a card, table or tab.
 @use 'ui';
 
 @layer components {
   .empty {
-    @include ui.animate(enter);
     display: flex;
     flex-direction: column;
-    align-items: center;
-    text-align: center;
-    gap: var(--spacing-3);
-    padding: var(--spacing-10) var(--spacing-4);
-    color: var(--color-text-secondary);
+    align-items: flex-start;
+    gap: ui.space(3);
+    padding: ui.space(8) ui.space(5);
+    color: ui.color(text-secondary);
 
     h1,
     h2,
     h3,
     h4 {
-      color: var(--color-text);
+      color: ui.color(text);
     }
 
     // A page that is only this block still gets its `h1`, at the size of a section title.
     h1 {
-      font-size: var(--text-xl);
+      font-size: ui.text-size(xl);
     }
 
     p {
-      max-width: 46ch;
-      font-size: var(--text-sm);
+      max-width: 64ch;
+      font-size: ui.text-size(sm);
     }
 
-    &__art {
-      width: var(--spacing-18);
-      height: var(--spacing-18);
-      border-radius: var(--radius-full);
-      display: grid;
-      place-items: center;
-      background: var(--color-primary-subtle);
-      color: var(--color-primary);
+    &__title {
+      display: flex;
+      align-items: center;
+      gap: ui.space(2);
+    }
+
+    &__icon {
+      flex: none;
+      color: ui.color(text-muted);
 
       &--danger {
-        background: var(--color-danger-subtle);
-        color: var(--color-danger);
+        color: ui.color(danger);
       }
 
       &--warning {
-        background: var(--color-warning-subtle);
-        color: var(--color-warning);
+        color: ui.color(warning);
       }
+    }
+
+    &--inline {
+      flex-flow: row wrap;
+      align-items: center;
+      gap: ui.space(1) ui.space(3);
+      padding: ui.space(4) ui.space(5);
+    }
+
+    &__line {
+      @include ui.text(sm, muted);
     }
   }
 }

@@ -4,7 +4,8 @@
  * collection has no saved responses, so the contract spec runs these against `FakeBackend` and
  * parses every answer with the endpoint's schema. `{{name}}` is a Postman variable that an
  * earlier answer fills in (`orgId`, `teamId`, `targetUserId`, `grantId`, the role ids) or a
- * fixed sample value (`newUserId`, `newUsername`, the passwords).
+ * fixed sample value (`newUserId`, `newUsername`, the passwords). The five assistant requests are
+ * the ones of `docs/postman/assistant.postman_collection.json`.
  */
 export interface PostmanRequest {
   readonly name: string;
@@ -103,6 +104,34 @@ export const POSTMAN_REQUESTS: readonly PostmanRequest[] = [
     method: 'PATCH',
     url: '/api/v1/auth/me',
     body: '{ "positionName": "Chuyên viên kỹ thuật" }',
+  },
+  {
+    name: 'Hỏi tài liệu (stream)',
+    method: 'POST',
+    url: '/api/v1/assistant/agent/stream',
+    body: '{ "messages": [{ "role": "user", "content": "CIF là gì?" }] }',
+  },
+  {
+    name: 'Mở màn hình (stream)',
+    method: 'POST',
+    url: '/api/v1/assistant/agent/stream',
+    body: '{ "messages": [{ "role": "user", "content": "Mở trang quản lý người dùng" }] }',
+  },
+  {
+    name: 'Đề xuất đổi hồ sơ (stream)',
+    method: 'POST',
+    url: '/api/v1/assistant/agent/stream',
+    body: '{ "messages": [{ "role": "user", "content": "Đổi chức danh của tôi thành Chuyên viên chính" }] }',
+  },
+  {
+    name: 'Xác nhận yêu cầu',
+    method: 'POST',
+    url: '/api/v1/assistant/agent/actions/{{actionId}}/confirm',
+  },
+  {
+    name: 'Huỷ yêu cầu',
+    method: 'POST',
+    url: '/api/v1/assistant/agent/actions/{{actionId}}/cancel',
   },
   {
     name: 'Đổi mật khẩu',

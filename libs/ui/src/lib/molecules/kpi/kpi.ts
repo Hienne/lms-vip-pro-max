@@ -8,9 +8,10 @@ import type { IconName } from '../../atoms/icon/icon-registry';
 export type KpiTone = 'primary' | 'reward' | 'warning' | 'danger' | 'info';
 
 /**
- * Dashboard tile (the mockup's `UI.Kpi`): a toned icon, a big value with an optional suffix, a
- * label and an optional delta, inside a card. With `href` the whole card is one router link whose
- * accessible name is the tile's own text.
+ * Dashboard number (the mockup's `UI.Kpi`): a label with an optional 16px icon beside it, the
+ * value with an optional suffix below, and an optional delta, inside a card. The icon has no tile;
+ * the tone colours only the icon. With `href` the whole card is one router link whose accessible
+ * name is the tile's own text.
  */
 @Component({
   selector: 'ui-kpi',
@@ -19,21 +20,26 @@ export type KpiTone = 'primary' | 'reward' | 'warning' | 'danger' | 'info';
   template: `
     <ng-template #content>
       <div class="kpi">
-        <div class="kpi__icon" [class]="iconModifier()">
-          <ui-icon [name]="icon()" />
+        <div class="kpi__label">
+          @if (icon(); as name) {
+            <ui-icon
+              class="kpi__icon"
+              [class]="iconModifier()"
+              [name]="name"
+              size="sm"
+            />
+          }
+          {{ label() }}
         </div>
-        <div class="kpi__body">
-          <div class="kpi__value">
-            {{ value() }}
-            @if (suffix()) {
-              <small>{{ suffix() }}</small>
-            }
-          </div>
-          <div class="kpi__label">{{ label() }}</div>
-          @if (delta()) {
-            <div class="kpi__delta">{{ delta() }}</div>
+        <div class="kpi__value">
+          {{ value() }}
+          @if (suffix()) {
+            <small>{{ suffix() }}</small>
           }
         </div>
+        @if (delta()) {
+          <div class="kpi__delta">{{ delta() }}</div>
+        }
       </div>
     </ng-template>
     @if (href(); as target) {
@@ -48,7 +54,7 @@ export type KpiTone = 'primary' | 'reward' | 'warning' | 'danger' | 'info';
   `,
 })
 export class Kpi {
-  readonly icon = input.required<IconName>();
+  readonly icon = input<IconName>();
   readonly value = input.required<string | number>();
   readonly label = input.required<string>();
   readonly suffix = input<string>();

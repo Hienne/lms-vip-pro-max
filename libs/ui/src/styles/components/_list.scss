@@ -37,14 +37,10 @@
     }
   }
 
+  // An inline icon beside the item's text: no tile (visual-design.md).
   .list__icon {
-    display: grid;
+    display: inline-flex;
     flex: none;
-    width: 36px;
-    height: 36px;
-    place-items: center;
-    border-radius: var(--radius-sm);
-    background: var(--color-surface-2);
     color: var(--color-text-secondary);
   }
 }

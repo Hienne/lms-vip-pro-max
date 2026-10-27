@@ -1,0 +1,14 @@
+@use 'ui';
+
+.theme-controls {
+  @include ui.stack(5);
+}
+
+.theme-controls__group {
+  @include ui.stack(2);
+}
+
+.theme-controls__title {
+  @include ui.text(sm, muted);
+  font-weight: ui.weight(medium);
+}

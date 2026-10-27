@@ -66,18 +66,18 @@ never from a relative path into another project.
 
 ## Tooling
 
-| Concern            | Choice                                                                                                                                                                                                              |
-| ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Runtime            | Node 24 LTS (`.nvmrc`; Angular 22 rejects odd Node majors such as 23)                                                                                                                                               |
-| Framework          | Angular 22, standalone, zoneless                                                                                                                                                                                    |
-| Monorepo           | Nx 23, npm; `lint` and `test` are inferred targets (`@nx/eslint/plugin`, `@nx/vitest`); `typecheck` is declared per project (`tsc --noEmit` on its lib/app and spec tsconfigs, because Vitest does not type-check)  |
-| Unit tests         | Vitest + jsdom. Angular projects use the Analog plugin (`vitest-analog`, ≥ 2.8 for Angular 22.2); plain TS libs use plain Vitest. The Angular `unit-test` builder is not used: it only supports buildable libraries |
-| Styles             | SCSS only: the `ui` Sass module of `@lms/ui` (token maps, functions, mixins) on the Sass include path `libs/ui/src/styles`; no PostCSS step, no utility framework                                                   |
-| Accessible widgets | `@angular/aria`, `@angular/cdk`                                                                                                                                                                                     |
-| Icons              | `@lucide/angular` (successor of the deprecated `lucide-angular`)                                                                                                                                                    |
-| Validation / types | `zod` (v4 API)                                                                                                                                                                                                      |
-| Mock API           | in-app interceptor over `@lms/mocks` fixtures (development only), no server process                                                                                                                                 |
-| Font               | Be Vietnam Pro, self-hosted (`@fontsource/be-vietnam-pro`); internal networks may block Google Fonts                                                                                                                |
+| Concern            | Choice                                                                                                                                                                                                                                                          |
+| ------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Runtime            | Node 24 LTS (`.nvmrc`; Angular 22 rejects odd Node majors such as 23)                                                                                                                                                                                           |
+| Framework          | Angular 22, standalone, zoneless                                                                                                                                                                                                                                |
+| Monorepo           | Nx 23, npm; `lint` and `test` are inferred targets (`@nx/eslint/plugin`, `@nx/vitest`); `typecheck` is declared per project (`tsc --noEmit` on its lib/app and spec tsconfigs, because Vitest does not type-check)                                              |
+| Unit tests         | Vitest + jsdom. Angular projects use the Analog plugin (`vitest-analog`, ≥ 2.8 for Angular 22.2); plain TS libs use plain Vitest. The Angular `unit-test` builder is not used: it only supports buildable libraries                                             |
+| Styles             | SCSS only: the `ui` Sass module of `@lms/ui` (token maps, functions, mixins) on the Sass include path `libs/ui/src/styles`; no PostCSS step, no utility framework                                                                                               |
+| Accessible widgets | `@angular/aria`, `@angular/cdk`                                                                                                                                                                                                                                 |
+| Icons              | `@lucide/angular` (successor of the deprecated `lucide-angular`)                                                                                                                                                                                                |
+| Validation / types | `zod` (v4 API)                                                                                                                                                                                                                                                  |
+| Mock API           | in-app interceptor over `@lms/mocks` fixtures (development only), no server process                                                                                                                                                                             |
+| Font               | Be Vietnam Pro (UI default), plus Fraunces and Nunito Sans for themes (`ui.$font-stacks`), all self-hosted (`@fontsource/*` in `apps/lms/project.json` styles); internal networks may block Google Fonts. A font file downloads only when a theme renders in it |
 
 Adding any other runtime dependency needs the user's approval. Pre-styled UI
 kits (Material, PrimeNG, Spartan…) are out. The style library's compile test uses the
@@ -168,7 +168,7 @@ A new check belongs in a `package.json` script first, then in the workflow, so
 `npm run check` and CI never disagree.
 
 `apps/lms/proxy.conf.mjs` maps `/api` to the shared backend server, `http://103.121.90.119:8019`
-(`corebanking-academy`); change the target to `http://localhost:8019` to use a backend on this
-machine. App code only ever uses relative `/api/...` URLs: in development the proxy forwards the
+(`corebanking-academy`); start the server with `LMS_API_TARGET=http://localhost:8019 npm start` to use a backend on
+this machine. App code only ever uses relative `/api/...` URLs: in development the proxy forwards the
 calls the mock does not answer, and staging and production are served by an Nginx reverse proxy
 that forwards `/api/` to the backend on the same origin (infrastructure, not code).
