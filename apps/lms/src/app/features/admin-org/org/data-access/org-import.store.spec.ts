@@ -1,9 +1,11 @@
 import type { MockInstance } from 'vitest';
+import { HttpErrorResponse } from '@angular/common/http';
 import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { organizationEndpoints } from '@lms/contracts';
 import { backendRefusal } from '@lms/mocks';
 import { Toaster } from '@lms/ui';
+import { throwError } from 'rxjs';
 import {
   parseAppConfig,
   provideAppConfig,
@@ -16,6 +18,7 @@ import {
   signInToMockBackend,
 } from '../../../../core/dev/mock-api/mock-backend.testing';
 import { FileSaver } from '../../../../core/files/file-saver';
+import { EndpointClient } from '../../../../core/http/endpoint-client';
 import { ORG_IMPORT_TEMPLATE_NAME, OrgImportStore } from './org-import.store';
 import { OrgStore } from './org.store';
 
@@ -109,6 +112,23 @@ describe('OrgImportStore', () => {
     store.check();
     TestBed.tick();
     expect(imports()).toHaveLength(0);
+    expect(store.canCheck$()).toBe(false);
+  });
+
+  it('accepts a file of exactly 5 MB and an upper-case extension', () => {
+    store.pick(xlsx('DON-VI.XLSX', 5 * 1024 * 1024));
+    expect(store.fileError$()).toBeUndefined();
+    expect(store.file$()?.name).toBe('DON-VI.XLSX');
+    expect(store.canCheck$()).toBe(true);
+  });
+
+  it('clears the file and its error when the pick is empty', () => {
+    store.pick(xlsx());
+    store.pick(undefined);
+    expect(store.file$()).toBeUndefined();
+    store.pick(xlsx('don-vi.xls'));
+    store.pick(undefined);
+    expect(store.fileError$()).toBeUndefined();
     expect(store.canCheck$()).toBe(false);
   });
 
@@ -206,6 +226,56 @@ describe('OrgImportStore', () => {
     expect(store.checked$()).toBeUndefined();
     expect(store.canImport$()).toBe(false);
     expect(org.finishImport).not.toHaveBeenCalled();
+  });
+
+  it('checks the same file again when it is picked again after a refusal', () => {
+    const file = xlsx('du-lieu-loi.xlsx');
+    store.pick(file);
+    store.check();
+    TestBed.tick();
+    store.pick(file);
+    expect(store.canCheck$()).toBe(true);
+    store.check();
+    TestBed.tick();
+    expect(imports()).toHaveLength(2);
+    expect(imports()[1][1].query).toEqual({ dryRun: 'true' });
+  });
+
+  it('toasts a refused import (403) and keeps the drawer open', () => {
+    const toast = vi.spyOn(TestBed.inject(Toaster), 'error');
+    store.pick(xlsx());
+    store.check();
+    TestBed.tick();
+    answer(organizationEndpoints.importOrgs, backendRefusal('accessDenied'));
+    store.import();
+    TestBed.tick();
+    expect(toast).toHaveBeenCalledWith(
+      'Không có quyền truy cập',
+      'Bạn không có quyền thực hiện thao tác này.',
+    );
+    expect(org.finishImport).not.toHaveBeenCalled();
+    expect(org.closeImport).not.toHaveBeenCalled();
+    expect(store.file$()?.name).toBe('don-vi.xlsx');
+  });
+
+  it('toasts the network message when the import cannot reach the server', () => {
+    const toast = vi.spyOn(TestBed.inject(Toaster), 'error');
+    store.pick(xlsx());
+    store.check();
+    TestBed.tick();
+    const client = TestBed.inject(EndpointClient);
+    const call = client.call.bind(client);
+    vi.spyOn(client, 'call').mockImplementation(((endpoint, request) =>
+      endpoint === organizationEndpoints.importOrgs
+        ? throwError(() => new HttpErrorResponse({ status: 0 }))
+        : call(endpoint, request)) as EndpointClient['call']);
+    store.import();
+    TestBed.tick();
+    expect(toast.mock.calls.flat()).toContain(
+      'Không có kết nối mạng. Kiểm tra kết nối và thử lại.',
+    );
+    expect(org.finishImport).not.toHaveBeenCalled();
+    expect(store.isImporting$()).toBe(false);
   });
 
   it('tells an org administrator that the file holds teams only', () => {
