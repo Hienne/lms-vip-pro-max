@@ -116,8 +116,12 @@ export class OrgImportStore {
     this.templateMutation.run(undefined);
   }
 
-  /** Takes the picked file, or refuses a wrong type or size without sending it. */
+  /**
+   * Takes the picked file, or refuses a wrong type or size without sending it. Ignored while an
+   * import is out: resetting it would drop the answer the server still writes.
+   */
   pick(file: File | undefined): void {
+    if (this.isImporting$()) return;
     this.checkMutation.reset();
     this.importMutation.reset();
     this.setChecked(undefined);

@@ -173,6 +173,26 @@ describe('OrgImportStore', () => {
     expect(org.finishImport).toHaveBeenCalledTimes(1);
   });
 
+  it('ignores a new file while the import is out, so the import still lands', () => {
+    store.pick(xlsx());
+    store.check();
+    TestBed.tick();
+    const hold = TestBed.inject(ReplyGate).hold(
+      organizationEndpoints.importOrgs,
+    );
+    store.import();
+    TestBed.tick();
+
+    store.pick(xlsx('khac.xlsx'));
+    store.pick(undefined);
+    expect(store.file$()?.name).toBe('don-vi.xlsx');
+    expect(store.isImporting$()).toBe(true);
+    hold.release();
+    TestBed.tick();
+
+    expect(org.finishImport).toHaveBeenCalledTimes(1);
+  });
+
   it('clears the check result when the import itself is refused', () => {
     store.pick(xlsx());
     store.check();
