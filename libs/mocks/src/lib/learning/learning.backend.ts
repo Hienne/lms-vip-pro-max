@@ -27,6 +27,7 @@ import {
 } from '@lms/contracts';
 import type { FakeReply, FakeRequest } from '../backend/fake-backend';
 import { envelopeOk } from '../envelope';
+import { AssetLibrary } from './asset.backend';
 import { LearnerStudy } from './learner-session.backend';
 import { LearningRefused, ok, refuse } from './learning-reply';
 import { LearnerReminders } from './learner-reminders';
@@ -36,6 +37,7 @@ import {
 } from './learner-enrollments';
 import {
   businessModuleFixtures,
+  libraryAssetFixtures,
   learnerCourseStateFixtures,
   learnerReminderFixtures,
   learningGroupFixtures,
@@ -144,6 +146,14 @@ export class LearningBackend {
     this.directory.callerId(request),
   );
 
+  private library = new AssetLibrary({
+    callerId: (request) => this.directory.callerId(request),
+    assets: this.assets,
+    seeded: libraryAssetFixtures,
+    used: () => this.usedAssetIds(),
+    id: () => this.id(),
+  });
+
   /** How many reminders the person has due: what the mock's bell shows. */
   dueReminderCount(userId: string): number {
     return this.reminders.due(userId).length;
@@ -204,6 +214,7 @@ export class LearningBackend {
       [courseEndpoints.shares, (r) => this.listShares(r)],
       [courseEndpoints.share, (r) => this.share(r)],
       [courseEndpoints.uploadAsset, (r) => this.uploadAsset(r)],
+      ...this.library.entries(),
       [learnerEndpoints.catalog, (r) => this.learnerList(r, false)],
       [learnerEndpoints.myCourses, (r) => this.learnerList(r, true)],
       [learnerEndpoints.progressSummary, (r) => this.progressSummary(r)],
@@ -251,6 +262,23 @@ export class LearningBackend {
 
   private id(): number {
     return this.nextId++;
+  }
+
+  /** The assets some draft or published tree of any course still uses. */
+  private usedAssetIds(): Set<number> {
+    const ids = new Set<number>();
+    for (const record of this.courses) {
+      for (const detail of [record.published, record.draft]) {
+        for (const chapter of detail?.chapters ?? []) {
+          for (const lesson of chapter.lessons) {
+            for (const block of lesson.blocks) {
+              for (const { asset } of block.assets) ids.add(asset.id);
+            }
+          }
+        }
+      }
+    }
+    return ids;
   }
 
   // ---- training catalogue -------------------------------------------------------------------

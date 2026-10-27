@@ -93,6 +93,8 @@ export interface FakeRequest {
   /** Query values by name, as strings. */
   readonly query: Readonly<Record<string, string>>;
   readonly body: unknown;
+  /** The request headers the endpoint declares (`headers` on its definition), by declared name. */
+  readonly headers?: Readonly<Record<string, string>>;
 }
 
 /**

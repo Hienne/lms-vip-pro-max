@@ -45,4 +45,12 @@ export const MESSAGE_CODE_KIND = {
   'LEARNING-MEDIA_CHANGED': 'refused',
   'LEARNING-ASSET_PROCESSING': 'refused',
   'LEARNING-NOT_AVAILABLE': 'refused',
+  // The chunked upload: the author acts on each (pick the file again, upload again, pick another
+  // file), and the row says so; a library file a course uses cannot be deleted.
+  'LEARNING-UPLOAD_FILE_MISMATCH': 'refused',
+  'LEARNING-UPLOAD_EXPIRED': 'refused',
+  'LEARNING-UPLOAD_PART_CONFLICT': 'refused',
+  'LEARNING-ASSET_INVALID': 'refused',
+  'LEARNING-ASSET_CODEC_UNSUPPORTED': 'refused',
+  'LEARNING-ASSET_IN_USE': 'refused',
 } as const;

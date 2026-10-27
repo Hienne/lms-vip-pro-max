@@ -329,7 +329,7 @@ SameSite=Strict` with no domain, so the proxy needs no rewrite (browser retentio
   - Files: `contracts/http/endpoint.ts` (+ spec), `app/core/http/endpoint-client.ts` (+ spec),
     `docs/conventions/contracts-and-mocks.md`.
   - Depends on: none.
-- [ ] **T23 Asset contracts and mock** · M
+- [x] **T23 Asset contracts and mock** · M
   - Accept: `contracts/learning-asset/` with the seven endpoints and schemas; the seven codes in `MESSAGE_CODE_KIND`
     and `backendRefusal`; mock uploads in memory (idempotent start, parts, conflict, complete → processing → ready
     on the second poll, cancel), library list, delete with `ASSET_IN_USE`.

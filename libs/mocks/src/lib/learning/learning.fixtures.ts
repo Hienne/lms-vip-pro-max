@@ -639,6 +639,84 @@ export function seedCourseDetails(firstId = 1000): CourseDetail[] {
 export const courseDetailFixtures: readonly CourseDetail[] =
   seedCourseDetails();
 
+function libraryFile(
+  id: number,
+  day: string,
+  file: Pick<LearningAsset, 'originalName' | 'mimeType' | 'sizeBytes'> &
+    Partial<
+      Pick<LearningAsset, 'durationSeconds' | 'pageCount' | 'width' | 'height'>
+    >,
+): LearningAsset {
+  return {
+    id,
+    ownerOrgId: ORG,
+    uploadedBy: '000005',
+    storageType: 's3',
+    checksumSha256: null,
+    durationSeconds: null,
+    pageCount: null,
+    width: null,
+    height: null,
+    status: 'ready',
+    rowVersion: 0,
+    createTime: `2026-10-${day}T08:00:00`,
+    updateTime: `2026-10-${day}T08:00:00`,
+    ...file,
+  };
+}
+
+/** Library files no seeded course uses: what the library drawer can pick or delete. */
+export const libraryFileFixtures: readonly LearningAsset[] = [
+  libraryFile(9001, '05', {
+    originalName: 'quy-trinh-doi-soat.pdf',
+    mimeType: 'application/pdf',
+    sizeBytes: 860_000,
+    pageCount: 14,
+  }),
+  libraryFile(9002, '06', {
+    originalName: 'gioi-thieu-core-banking.mp4',
+    mimeType: 'video/mp4',
+    sizeBytes: 120_000_000,
+    durationSeconds: 900,
+  }),
+  libraryFile(9003, '07', {
+    originalName: 'so-do-luong-giao-dich.png',
+    mimeType: 'image/png',
+    sizeBytes: 310_000,
+    width: 1600,
+    height: 900,
+  }),
+  libraryFile(9004, '08', {
+    originalName: 'bieu-mau-de-xuat.docx',
+    mimeType:
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    sizeBytes: 48_000,
+  }),
+  libraryFile(9005, '09', {
+    originalName: 'huong-dan-van-hanh.pdf',
+    mimeType: 'application/pdf',
+    sizeBytes: 2_400_000,
+    pageCount: 32,
+  }),
+];
+
+/**
+ * Everything the library lists before anyone uploads: one file per name from the seeded courses
+ * (they use these) and the extras above (nothing uses these).
+ */
+export const libraryAssetFixtures: readonly LearningAsset[] = [
+  ...new Map(
+    courseDetailFixtures
+      .flatMap((detail) => detail.chapters)
+      .flatMap((chapter) => chapter.lessons)
+      .flatMap((lesson) => lesson.blocks)
+      .flatMap((block) => block.assets)
+      .map(({ asset }) => [asset.originalName, asset] as const)
+      .reverse(),
+  ).values(),
+  ...libraryFileFixtures,
+];
+
 /** What one learner has done in one course: the server's results. */
 export interface LearnerCourseState {
   readonly courseId: number;
