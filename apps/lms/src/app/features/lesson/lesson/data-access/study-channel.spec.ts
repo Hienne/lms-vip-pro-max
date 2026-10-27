@@ -36,6 +36,9 @@ describe('StudyChannel', () => {
   let channel: StudyChannel;
   let visible: boolean;
   let leases: number;
+  let inFlight: number;
+  /** The most requests the channel had open at once. */
+  let peak: number;
   /** Where the player is now, as the page reads it when the channel closes a block. */
   let position: number | undefined;
 
@@ -44,22 +47,36 @@ describe('StudyChannel', () => {
     calls = [];
     visible = true;
     leases = 0;
+    inFlight = 0;
+    peak = 0;
     position = undefined;
     const client = {
       call: (endpoint: unknown, request: { body?: unknown }) =>
         new Observable<unknown>((subscriber) => {
+          // The slot is free as soon as the answer is on its way, before the handlers run: what
+          // they send next is a new request, not one beside this.
+          const done = () => {
+            if (call.closed) return;
+            call.closed = true;
+            inFlight -= 1;
+          };
           const call: Call = {
             endpoint,
             body: request.body,
             closed: false,
             answer: (value) => {
+              done();
               subscriber.next(value);
               subscriber.complete();
             },
-            fail: (error) => subscriber.error(error),
+            fail: (error) => {
+              done();
+              subscriber.error(error);
+            },
           };
           calls.push(call);
-          return () => (call.closed = true);
+          peak = Math.max(peak, ++inFlight);
+          return done;
         }),
     } as unknown as EndpointClient;
     const deps: StudyChannelDeps = {
@@ -304,6 +321,26 @@ describe('StudyChannel', () => {
 
       // The new block starts clean: nothing of the old one is sent with the new lease.
       expect(types()).toEqual(['OPEN', 'HEARTBEAT', 'HEARTBEAT', 'OPEN']);
+    });
+  });
+
+  describe('claiming again', () => {
+    it('waits for the event in flight, so only one request is open at a time', () => {
+      open(BLOCK_A);
+      vi.advanceTimersByTime(HEARTBEAT_MS);
+      expect(types()).toEqual(['OPEN', 'HEARTBEAT']);
+
+      channel.reclaim();
+      expect(claims()).toHaveLength(1);
+
+      eventAnswered();
+      expect(claims()).toHaveLength(2);
+      claimAnswered();
+      drain();
+
+      expect(types()).toEqual(['OPEN', 'HEARTBEAT', 'OPEN']);
+      expect(peak).toBe(1);
+      expect(channel.phase$()).toBe('ready');
     });
   });
 });

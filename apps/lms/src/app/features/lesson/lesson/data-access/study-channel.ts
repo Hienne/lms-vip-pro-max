@@ -146,7 +146,12 @@ export class StudyChannel {
   /** Claims the block again with the ids this tab holds ("Thử lại", "Tải lại bài"). */
   reclaim(): void {
     if (this.destroyed || this.state.phase() === 'claiming') return;
-    this.clearWork();
+    if (this.busy) {
+      // The request in flight is answered first: its answer frees the slot, which would
+      // otherwise be the claim's, and the next event would reuse a sequence still in flight.
+      this.afterIdle = () => this.claimWanted();
+      return;
+    }
     this.claimWanted();
   }
 
