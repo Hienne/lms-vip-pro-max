@@ -1,0 +1,96 @@
+@use 'ui';
+:host {
+  display: block;
+  min-width: 0;
+}
+.lesson__bar {
+  @include ui.row(3);
+  flex-wrap: nowrap;
+  padding: ui.space(3) ui.space(4);
+  background: ui.color(surface);
+  border-bottom: 1px solid ui.color(border);
+  position: sticky;
+  top: 0;
+  z-index: ui.z(header);
+}
+.lesson__title {
+  flex: 1;
+  min-width: 0;
+  @include ui.stack(1);
+  small {
+    @include ui.text(xs, muted);
+    @include ui.truncate;
+  }
+  strong {
+    @include ui.text(sm);
+    @include ui.truncate;
+  }
+}
+.lesson__layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  @include ui.bp(lg) {
+    grid-template-columns: minmax(0, 1fr) 22.5rem;
+  }
+}
+.lesson__main {
+  padding: ui.space(5);
+  @include ui.bp(md) {
+    padding: ui.space(6) ui.space(8);
+  }
+}
+.lesson__heading {
+  margin-bottom: ui.space(6);
+  h1 {
+    margin-top: ui.space(2);
+    @include ui.text(2xl);
+  }
+}
+.lesson__eyebrow {
+  @include ui.eyebrow;
+}
+.lesson__toolbar {
+  @include ui.row-between(2);
+  padding: ui.space(3) ui.space(4);
+  border-bottom: 1px solid ui.color(border);
+  span {
+    @include ui.row(2);
+    @include ui.text(sm);
+  }
+}
+.lesson__document {
+  min-height: 24rem;
+  display: grid;
+  place-items: center;
+  background: ui.color(surface-2);
+}
+.lesson__position {
+  @include ui.row(3);
+  padding: ui.space(3) ui.space(4);
+  @include ui.text(sm);
+  input {
+    max-width: 8rem;
+  }
+}
+.lesson__side {
+  padding: ui.space(5);
+  @include ui.bp(lg) {
+    padding: ui.space(6) ui.space(5) ui.space(6) 0;
+  }
+}
+.lesson__note {
+  @include ui.stack(2);
+  p {
+    @include ui.text(sm);
+    overflow-wrap: anywhere;
+  }
+  small {
+    @include ui.text(xs, muted);
+  }
+  button {
+    align-self: flex-start;
+  }
+}
+.lesson__muted {
+  @include ui.text(xs, muted);
+}

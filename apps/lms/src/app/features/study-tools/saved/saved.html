@@ -1,0 +1,65 @@
+<ui-page-header
+  eyebrow="Công cụ học"
+  title="Đã lưu & ghi chú"
+  description="Ghi chú gắn với trang PDF hoặc mốc video; bấm để mở đúng vị trí."
+/>
+<section uiCard>
+  <ui-tabs
+    [tabs]="store.tabs$()"
+    label="Loại mục đã lưu"
+    [selected]="store.tab$()"
+    (selectedChange)="store.setTab($event)"
+  >
+    @for(tab of store.tabs$();track tab.id){
+    <div [uiTabPanel]="tab.id">
+      @if(store.isLoading$()){
+      <p class="saved__status" role="status">Đang tải mục đã lưu…</p>
+      }@else if(store.error$();as error){<ui-error-state
+        [message]="error.message"
+        (retry)="store.retry()"
+      />}@else{
+      <ul class="saved__list">
+        @for(item of store.items$();track item.id){
+        <li class="saved__row">
+          <button class="saved__open" (click)="store.openAtAnchor(item)">
+            <span class="saved__icon"
+              ><ui-icon
+                [name]="item.anchor.type === 'video' ? 'video' : 'file-text'"
+                size="sm" /></span
+            ><span class="saved__body"
+              ><strong>{{item.text ?? item.label}}</strong
+              ><small
+                >{{item.lessonTitle}} · @if(item.anchor.type === 'video'){Video
+                {{item.anchor.seconds | fmtTime}}}@else{Trang
+                {{item.anchor.page}}} · {{item.createdAt|fmtRelative}}</small
+              ></span
+            ><ui-icon name="chevron-right" size="sm" /></button
+          ><button
+            uiIconButton
+            [label]="'Xóa ' + (item.text ?? item.label ?? 'mục đã lưu')"
+            [disabled]="store.isSaving$()"
+            (click)="store.remove(item)"
+          >
+            <ui-icon name="trash-2" size="sm" />
+          </button>
+        </li>
+        }@empty{
+        <li>
+          <ui-empty
+            [icon]="store.tab$() === 'notes' ? 'notebook-pen' : 'bookmark'"
+            title="Chưa có mục nào"
+            description="Trong bài học, dùng tab Ghi chú hoặc nút đánh dấu trên tài liệu để lưu lại."
+          />
+        </li>
+        }
+      </ul>
+      @if((store.data$()?.totalElements ?? 0)>20){<ui-pagination
+        [total]="store.data$()?.totalElements ?? 0"
+        [page]="store.page$()+1"
+        [pageSize]="20"
+        (pageChange)="store.setPage($event-1)"
+      />}}
+    </div>
+    }
+  </ui-tabs>
+</section>

@@ -1,0 +1,97 @@
+@if(store.isLoading$()){
+<div class="certificates__loading" role="status"><span uiSpinner></span></div>
+}@else if(store.error$();as error){<ui-error-state
+  title="Không tải được chứng nhận"
+  [message]="error.message"
+  (retry)="store.retry()"
+/>}@else if(store.detail$();as item){
+<ui-breadcrumb
+  [items]="[{label:'Chứng nhận',href:'/certificates'},{label:item.courseTitle}]"
+/>
+<ui-page-header title="Chứng nhận hoàn thành"
+  ><div slot="actions">
+    <button uiButton (click)="print()">
+      <ui-icon name="printer" size="sm" />In / Lưu PDF</button
+    ><button
+      uiButton
+      variant="primary"
+      [disabled]="store.isDownloading$()"
+      (click)="store.download(item.id)"
+    >
+      <ui-icon name="download" size="sm" />Tải PDF
+    </button>
+  </div></ui-page-header
+>
+<article class="certificates__document" aria-label="Chứng nhận hoàn thành">
+  <div class="certificates__watermark" aria-hidden="true">
+    <ui-mai [size]="260" />
+  </div>
+  <ui-mai [size]="56" />
+  <div class="certificates__eyebrow">
+    Core Banking Academy · Ban QL&PT Core Banking
+  </div>
+  <h2>CHỨNG NHẬN HOÀN THÀNH</h2>
+  <p>Chứng nhận</p>
+  <strong class="certificates__who">{{item.userName}}</strong>
+  <p class="certificates__statement">
+    đã hoàn thành khóa đào tạo
+    <strong>{{item.courseTitle}}</strong> ({{item.courseCode}})@if(item.score
+    !== null){ với kết quả bài kiểm tra {{item.score}}%}.
+  </p>
+  <div class="certificates__details">
+    <div>
+      Ngày hoàn thành<br /><strong
+        >{{item.completedAt|date:'dd/MM/yyyy'}}</strong
+      >
+    </div>
+    <div>
+      Mã xác thực<br /><strong class="certificates__code"
+        >{{item.verificationCode}}</strong
+      >
+    </div>
+  </div>
+  <small class="certificates__demo"
+    >Bản xem trước · dữ liệu môi trường demo</small
+  >
+</article>
+}@else{
+<ui-page-header
+  eyebrow="Thành tích"
+  title="Chứng nhận hoàn thành"
+  description="Chứng nhận tự động cấp khi bạn hoàn thành khóa học. Mỗi chứng nhận có mã xác thực."
+/>
+<div class="certificates__grid">
+  @for(item of store.items$();track item.id){<a
+    uiCard
+    padded
+    interactive
+    class="certificates__card"
+    [routerLink]="['/certificate',item.id]"
+    ><div class="row">
+      <ui-mai [size]="40" /><span uiBadge tone="success"
+        ><ui-icon name="check" size="sm" />Đã cấp</span
+      >
+    </div>
+    <h2>{{item.courseTitle}}</h2>
+    <p>
+      {{item.courseCode}} · Hoàn thành
+      {{item.completedAt|date:'dd/MM/yyyy'}}@if(item.score !== null){ · Điểm
+      {{item.score}}%}
+    </p>
+    <span class="certificates__code">{{item.verificationCode}}</span
+    ><span class="certificates__cta"
+      >Xem & in chứng nhận <ui-icon name="arrow-right" size="sm" /></span></a
+  >}@empty{
+  <section uiCard>
+    <ui-empty
+      icon="award"
+      title="Chưa có chứng nhận"
+      description="Hoàn thành khóa học đầu tiên để nhận chứng nhận."
+      ><a uiButton variant="primary" routerLink="/learn"
+        >Xem khóa học của tôi</a
+      ></ui-empty
+    >
+  </section>
+  }
+</div>
+}

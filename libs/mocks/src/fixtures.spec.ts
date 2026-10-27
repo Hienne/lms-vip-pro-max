@@ -1,8 +1,12 @@
 import {
   adminOrgEndpoints,
+  assessmentEndpoints,
   agentEndpoints,
   AgentStreamEventSchema,
   authV1Endpoints,
+  learningDashboardEndpoints,
+  personalEndpoints,
+  reportEndpoints,
   type AnyEndpoint,
   identityEndpoints,
   knowledgeEndpoints,
@@ -27,11 +31,15 @@ import {
 
 const everyEndpoint: readonly AnyEndpoint[] = [
   ...Object.values(adminOrgEndpoints),
+  ...Object.values(assessmentEndpoints),
   ...Object.values(agentEndpoints),
   ...Object.values(authV1Endpoints),
+  ...Object.values(learningDashboardEndpoints),
   ...Object.values(identityEndpoints),
   ...Object.values(knowledgeEndpoints),
   ...Object.values(organizationEndpoints),
+  ...Object.values(personalEndpoints),
+  ...Object.values(reportEndpoints),
   ...Object.values(shellEndpoints),
 ];
 
@@ -49,7 +57,14 @@ describe('FakeBackend and the endpoint registries', () => {
       .map((endpoint) => endpoint.path)
       .sort();
     expect(mock).toEqual(
-      [...Object.values(adminOrgEndpoints), shellEndpoints.navCounts]
+      [
+        ...Object.values(adminOrgEndpoints),
+        ...Object.values(assessmentEndpoints),
+        ...Object.values(learningDashboardEndpoints),
+        ...Object.values(personalEndpoints),
+        ...Object.values(reportEndpoints),
+        shellEndpoints.navCounts,
+      ]
         .map((endpoint) => endpoint.path)
         .sort(),
     );
@@ -60,17 +75,28 @@ describe('FakeBackend and the endpoint registries', () => {
     everyEndpoint.filter(
       (endpoint) =>
         endpoint.served === 'mock' &&
+        endpoint.method === 'get' &&
         endpoint !== adminOrgEndpoints.saveRole &&
         endpoint !== adminOrgEndpoints.deleteRole,
     ),
   )('answers the read %# with a body its contract parses', (endpoint) => {
     const reply = new FakeBackend().handle(endpoint, {
       token: null,
-      params: { userId: '000004' },
-      query: {},
+      params: {
+        userId: '000004',
+        quizId: 'q1',
+        attemptId: 'at-demo',
+        certificateId: 'cert1',
+        dim: 'learners',
+      },
+      query: { dim: 'learners' },
       body: undefined,
     });
-    expect(() => endpoint.response.parse(reply?.body.data)).not.toThrow();
+    const data =
+      endpoint.responseType === 'blob' && reply && 'binary' in reply
+        ? reply.binary
+        : reply?.body.data;
+    expect(() => endpoint.response.parse(data)).not.toThrow();
   });
 
   it('keeps the knowledge fixtures within their contracts', () => {

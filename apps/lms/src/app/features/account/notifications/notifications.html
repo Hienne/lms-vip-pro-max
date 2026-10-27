@@ -1,0 +1,73 @@
+<ui-page-header
+  eyebrow="Hộp thư"
+  title="Thông báo"
+  description="Nhắc hạn, kết quả thi, phản hồi của giảng viên và các thay đổi liên quan đến bạn."
+  ><button
+    slot="actions"
+    uiButton
+    [disabled]="store.isSaving$()"
+    (click)="store.markAllRead()"
+  >
+    <ui-icon name="check" size="sm" />Đánh dấu đã đọc tất cả
+  </button></ui-page-header
+>
+<section uiCard>
+  <ui-tabs
+    [tabs]="store.tabs$"
+    label="Lọc thông báo"
+    [selected]="store.unreadOnly$() ? 'unread' : 'all'"
+    (selectedChange)="store.setUnreadOnly($event === 'unread')"
+    >@for(tab of store.tabs$;track tab.id){
+    <div [uiTabPanel]="tab.id">
+      @if(store.isLoading$()){
+      <div class="notifications__loading" role="status">
+        <span uiSpinner></span>
+      </div>
+      }@else if(store.error$();as error){<ui-error-state
+        title="Không tải được thông báo"
+        [message]="error.message"
+        (retry)="store.retry()"
+      />}@else{
+      <ul class="notifications__list">
+        @for(item of store.rows$();track item.id){
+        <li>
+          <button
+            class="notifications__item"
+            [class.notifications__item--unread]="!item.readAt"
+            [disabled]="store.isSaving$()"
+            (click)="store.markRead(item)"
+          >
+            <span
+              class="notifications__icon"
+              [class.notifications__icon--due]="item.kind === 'due'"
+              [class.notifications__icon--reward]="item.kind === 'badge' || item.kind === 'certificate'"
+              ><ui-icon [name]="item.icon" size="sm" /></span
+            ><span class="notifications__body"
+              ><span>{{item.text}}</span
+              ><small
+                >{{item.at | fmtRelative}}@if(item.dueAt){ · Hạn {{item.dueAt |
+                fmtDate}}}</small
+              ></span
+            >@if(!item.readAt){<span uiBadge tone="primary">Mới</span>}
+          </button>
+        </li>
+        }@empty{
+        <li>
+          <ui-empty
+            icon="bell"
+            title="Không có thông báo chưa đọc"
+            description="Bạn đã xem hết thông báo. Thông báo mới sẽ xuất hiện tại đây."
+          />
+        </li>
+        }
+      </ul>
+      @if((store.page$()?.totalElements ?? 0)>20){<ui-pagination
+        [total]="store.page$()?.totalElements ?? 0"
+        [page]="store.pageIndex$()+1"
+        [pageSize]="20"
+        (pageChange)="store.setPage($event-1)"
+      />}}
+    </div>
+    }</ui-tabs
+  >
+</section>

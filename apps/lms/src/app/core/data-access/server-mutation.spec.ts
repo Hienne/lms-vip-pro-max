@@ -268,4 +268,25 @@ describe('serverMutation', () => {
     const missing = () => serverMutation(run, { success: () => 'ok' });
     expect(missing).toBeTypeOf('function');
   });
+  it('allows autosave to render success inline while still invalidating and invoking onSuccess', async () => {
+    const { calls, run } = sources();
+    const changed = invalidation(),
+      onSuccess = vi.fn();
+    const mutation = TestBed.runInInjectionContext(() =>
+      serverMutation(run, {
+        errors: 'toast',
+        success: () => null,
+        invalidates: changed,
+        onSuccess,
+      }),
+    );
+    mutation.run('autosave');
+    await settle();
+    calls[0].source.next(1);
+    calls[0].source.complete();
+    await settle();
+    expect(onSuccess).toHaveBeenCalledWith(1);
+    expect(changed.version()).toBe(1);
+    expect(toaster.success).not.toHaveBeenCalled();
+  });
 });

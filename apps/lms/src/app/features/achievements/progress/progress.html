@@ -1,0 +1,137 @@
+@if(store.isLoading$()){
+<div class="progress-page__loading"><span uiSpinner></span></div>
+}@else if(store.error$();as error){<ui-error-state
+  title="Không tải được thành tích"
+  [message]="error.message"
+  (retry)="store.retry()"
+/>}@else if(store.data$();as data){<ui-page-header
+  eyebrow="Hồ sơ học tập"
+  title="Kết quả & tiến độ của tôi"
+  description="Toàn bộ số liệu được tính từ dữ liệu học tập thực tế và đồng bộ trên mọi thiết bị."
+/>
+<div class="grid-4">
+  <ui-kpi
+    icon="book-open"
+    label="Khóa đã hoàn thành"
+    [value]="store.dashboard$()?.counts?.completed ?? '—'"
+    [suffix]="'/' + (store.dashboard$()?.cards?.length ?? '—')"
+  /><ui-kpi
+    icon="trophy"
+    tone="reward"
+    label="Điểm thưởng"
+    [value]="data.points.total"
+  /><ui-kpi
+    icon="clipboard-check"
+    tone="info"
+    label="Điểm cao nhất"
+    [value]="store.dashboard$()?.bestScore ?? '—'"
+    suffix="%"
+  /><ui-kpi
+    icon="flame"
+    tone="reward"
+    label="Chuỗi học liên tục"
+    [value]="data.streak"
+    suffix=" ngày"
+  />
+</div>
+@if(store.dashboard$();as d){
+<section uiCard class="progress-page__section">
+  <header uiCardHeader>
+    <h2>Tiến độ từng khóa học</h2>
+    <span class="progress-page__muted">Bấm tên để mở khóa học</span>
+  </header>
+  <div uiTableWrap>
+    <table uiTable>
+      <caption class="sr-only">
+        Tiến độ khóa học
+      </caption>
+      <thead>
+        <tr>
+          <th>Khóa học</th>
+          <th>Tiến độ</th>
+          <th>Trạng thái</th>
+          <th>Truy cập gần nhất</th>
+          <th>Hạn</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for(row of d.cards;track row.id){
+        <tr>
+          <td>
+            <a [routerLink]="['/course',row.id]"
+              ><strong>{{row.title}}</strong></a
+            >
+            <div class="progress-page__muted">
+              {{row.code}} · {{row.required ? 'Bắt buộc' : 'Tự chọn'}}
+            </div>
+          </td>
+          <td>
+            <ui-progress
+              size="sm"
+              [value]="row.pct"
+              label="Tiến độ khóa học"
+            /><small>{{row.pct}}% · {{row.done}}/{{row.total}} bài</small>
+          </td>
+          <td>
+            <span
+              uiBadge
+              [tone]="row.status === 'completed' ? 'success' : row.overdue ? 'danger' : 'neutral'"
+              >{{row.status === 'completed' ? 'Đã hoàn thành' : row.status ===
+              'in_progress' ? 'Đang học' : row.status === 'failed' ? 'Chưa đạt'
+              : 'Chưa bắt đầu'}}</span
+            >
+          </td>
+          <td>{{row.lastAccessAt|fmtRelative}}</td>
+          <td>{{row.dueAt|fmtDate}}</td>
+        </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+</section>
+<div class="grid-2 progress-page__section">
+  <section uiCard>
+    <header uiCardHeader><h2>Năng lực theo nhóm kiến thức</h2></header>
+    <div uiCardBody><ui-radar-chart [data]="d.competency" /></div>
+  </section>
+  <section uiCard>
+    <header uiCardHeader><h2>Hoạt động gần đây</h2></header>
+    <ul class="progress-page__events">
+      @for(event of data.recentEvents;track event.id){
+      <li>
+        <ui-icon name="circle-check" size="sm" /><span
+          ><strong>{{event.label}}</strong
+          ><small>{{event.at|fmtRelative}}</small></span
+        ><span uiBadge tone="reward">+{{event.points}}</span>
+      </li>
+      }@empty{
+      <li><ui-empty title="Chưa có hoạt động được ghi nhận" /></li>
+      }
+    </ul>
+  </section>
+</div>
+}
+<section uiCard class="progress-page__section">
+  <header uiCardHeader>
+    <h2>Tủ huy hiệu cánh mai</h2>
+    <span class="progress-page__muted"
+      >{{store.earnedCount$()}}/{{data.badges.length}} đã đạt</span
+    >
+  </header>
+  <div uiCardBody class="progress-page__badges">
+    @for(badge of data.badges;track badge.id){
+    <div class="progress-page__badge">
+      <ui-mai-badge
+        [name]="badge.name"
+        [description]="badge.description"
+        [earned]="badge.earned"
+      />@if(!badge.earned && badge.progress){<small
+        >{{badge.progress.current}} / {{badge.progress.target}}
+        {{badge.progress.unit === 'day' ? 'ngày' : badge.progress.unit ===
+        'course' ? 'khóa học' : 'bài kiểm tra'}}</small
+      >}@if(badge.earnedAt){<small>Đạt ngày {{badge.earnedAt|fmtDate}}</small>}
+    </div>
+    }@empty{<ui-empty title="Chưa có huy hiệu" />}
+  </div>
+</section>
+}

@@ -1,0 +1,245 @@
+@if(store.isLoading$()) {
+<div class="report__loading" role="status">
+  <span uiSpinner></span><span class="sr-only">Đang tải báo cáo</span>
+</div>
+} @else if(store.error$(); as error){<ui-error-state
+  title="Không tải được báo cáo"
+  [message]="error.message"
+  (retry)="store.retry()"
+/>} @else if(store.overview$();as data){ @if(store.dimension$()){<ui-breadcrumb
+  [items]="[{label:'Báo cáo',href:'/reports'},{label:store.dimensionLabel$()}]"
+/>}
+<ui-page-header
+  [eyebrow]="store.dimension$() ? 'Báo cáo chi tiết' : 'Báo cáo'"
+  [title]="store.dimension$() ? 'Báo cáo theo ' + store.dimensionLabel$().toLowerCase() : 'Tình hình đào tạo'"
+  [description]="store.dimension$() ? (store.detail$()?.totalElements ?? 0) + ' dòng · lọc & sắp xếp theo cột · xuất CSV/Excel hoặc in PDF.' : 'Phạm vi: ' + data.scope.label + ' · số liệu tính trực tiếp từ dữ liệu học tập, cập nhật theo thời gian thực.'"
+  ><div slot="actions">
+    <button uiButton [disabled]="store.isExporting$()" (click)="store.export()">
+      <ui-icon name="file-spreadsheet" size="sm" />{{store.dimension$() ? 'Xuất
+      CSV' : 'Xuất Excel (CSV)'}}</button
+    ><button uiButton (click)="print()">
+      <ui-icon name="printer" size="sm" />In / PDF
+    </button>
+  </div></ui-page-header
+>
+@if(store.dimension$()){
+<nav class="report__dimensions" aria-label="Các báo cáo chi tiết">
+  @for(d of dims;track d.id){<a
+    class="report__dimension"
+    [routerLink]="['/reports',d.id]"
+    [attr.aria-current]="store.dimension$() === d.id ? 'page' : null"
+    [class.report__dimension--active]="store.dimension$() === d.id"
+    >{{d.label}}</a
+  >}
+</nav>
+}
+<section uiCard padded class="report__filters" aria-label="Bộ lọc báo cáo">
+  <ui-icon name="funnel" size="sm" /> @if(data.filters.units.length > 1){<label
+    class="sr-only"
+    for="report-unit"
+    >Đơn vị</label
+  ><select
+    uiSelect
+    id="report-unit"
+    [value]="store.filters$().unitId ?? ''"
+    (change)="store.setFilter('unitId',$any($event.target).value)"
+  >
+    <option value="">Đơn vị: Tất cả</option>
+    @for(x of data.filters.units;track x.id){
+    <option [value]="x.id">{{x.name}}</option>
+    }</select
+  >} <label class="sr-only" for="report-group">Phòng/nhóm</label
+  ><select
+    uiSelect
+    id="report-group"
+    [value]="store.filters$().groupId ?? ''"
+    (change)="store.setFilter('groupId',$any($event.target).value)"
+  >
+    <option value="">Phòng/nhóm: Tất cả</option>
+    @for(x of store.groups$();track x.id){
+    <option [value]="x.id">{{x.name}}</option>
+    }
+  </select>
+  <label class="sr-only" for="report-program">Chương trình</label
+  ><select
+    uiSelect
+    id="report-program"
+    [value]="store.filters$().programId ?? ''"
+    (change)="store.setFilter('programId',$any($event.target).value)"
+  >
+    <option value="">Chương trình: Tất cả</option>
+    @for(x of data.filters.programs;track x.id){
+    <option [value]="x.id">{{x.name}}</option>
+    }
+  </select>
+  <label class="sr-only" for="report-course">Khóa học</label
+  ><select
+    uiSelect
+    id="report-course"
+    [value]="store.filters$().courseId ?? ''"
+    (change)="store.setFilter('courseId',$any($event.target).value)"
+  >
+    <option value="">Khóa học: Tất cả</option>
+    @for(x of data.filters.courses;track x.id){
+    <option [value]="x.id">{{x.title}}</option>
+    }
+  </select>
+  <label class="sr-only" for="report-period">Thời gian</label
+  ><select
+    uiSelect
+    id="report-period"
+    [value]="store.period$()"
+    (change)="store.setFilter('period',$any($event.target).value)"
+  >
+    <option value="">Thời gian: Toàn bộ</option>
+    <option value="7">7 ngày qua</option>
+    <option value="30">30 ngày qua</option>
+    <option value="90">Quý này</option>
+  </select>
+  @if(store.dimension$()){<ui-search
+    label="Tìm trong báo cáo"
+    placeholder="Tìm trong báo cáo…"
+    [value]="store.query$()"
+    (searched)="store.setQuery($event)"
+    width="240px"
+  />}
+</section>
+@if(!store.dimension$()){
+<div class="grid-4 report__section">
+  <ui-kpi
+    icon="users"
+    [value]="data.total.learners"
+    label="Học viên trong phạm vi"
+    [delta]="data.total.enrolments + ' lượt tham gia khóa học'"
+    href="/reports/learners"
+  /><ui-kpi
+    icon="chart-column"
+    [value]="data.total.pct"
+    suffix="%"
+    label="Tiến độ hoàn thành TB"
+    [delta]="data.total.completed + ' lượt đã hoàn thành'"
+    href="/reports/status"
+  /><ui-kpi
+    icon="triangle-alert"
+    tone="danger"
+    [value]="data.total.overdue"
+    label="Lượt quá hạn"
+    [delta]="data.total.failed + ' lượt chưa đạt (hết lượt thi)'"
+    href="/reports/status"
+  /><ui-kpi
+    icon="clipboard-check"
+    tone="info"
+    [value]="data.total.avgScore ?? '—'"
+    [suffix]="data.total.avgScore === null ? '' : '%'"
+    label="Điểm thi cao nhất TB"
+    [delta]="data.total.passRate === null ? '' : 'Tỷ lệ đạt ' + data.total.passRate + '%'"
+    href="/reports/results"
+  />
+</div>
+<div class="grid-3 report__section">
+  <section uiCard>
+    <header uiCardHeader><h2>Trạng thái tham gia</h2></header>
+    <div uiCardBody><ui-donut-chart [data]="store.statusParts$()" /></div>
+  </section>
+  <section uiCard>
+    <header uiCardHeader>
+      <h2>Năng lực theo nhóm kiến thức</h2>
+      <a routerLink="/reports/competency">Chi tiết</a>
+    </header>
+    <div uiCardBody>
+      <ui-radar-chart
+        [data]="data.competency"
+        label="Năng lực trung bình"
+        seriesLabel="Trung bình học viên trong phạm vi"
+      />
+    </div>
+  </section>
+  <section uiCard>
+    <header uiCardHeader><h2>Bài học hoàn thành theo tuần</h2></header>
+    <div uiCardBody>
+      <ui-bar-chart
+        [data]="store.weeks$()"
+        label="Số bài học hoàn thành mỗi tuần"
+      />
+    </div>
+  </section>
+</div>
+<div class="grid-2 report__section">
+  @for(group of [{title:'Theo đơn
+  vị',rows:data.byUnit,path:'units'},{title:'Theo phòng /
+  nhóm',rows:data.byGroup,path:'groups'}];track group.path){
+  <section uiCard>
+    <header uiCardHeader>
+      <h2>{{group.title}}</h2>
+      <a [routerLink]="['/reports',group.path]">Chi tiết</a>
+    </header>
+    <div uiCardBody class="stack">
+      @for(row of group.rows;track row.id){
+      <div class="report__bar">
+        <span>{{row.name}}</span
+        ><ui-progress
+          size="sm"
+          [value]="row.pct"
+          [tone]="row.pct >= 80 ? 'success' : row.pct >= 50 ? undefined : 'warning'"
+          [label]="row.name"
+        /><strong>{{row.pct}}%</strong>
+      </div>
+      }@empty{<ui-empty title="Không có dữ liệu" />}
+    </div>
+  </section>
+  }
+</div>
+<section uiCard class="report__section">
+  <header uiCardHeader>
+    <h2>Theo khóa học</h2>
+    <a routerLink="/reports/courses">Chi tiết</a>
+  </header>
+  <ui-data-table
+    caption="Báo cáo theo khóa học"
+    [columns]="courseColumns"
+    [rows]="data.byCourse"
+    [total]="data.byCourse.length"
+    [pageSize]="100"
+    ><ng-template uiDataTableCell="pct" [of]="data.byCourse" let-row
+      ><ui-progress
+        size="sm"
+        [value]="row.pct"
+        label="Tiến độ trung bình"
+      /><small>{{row.pct}}%</small></ng-template
+    ><ng-template uiDataTableCell="avgScore" [of]="data.byCourse" let-row
+      >{{row.avgScore === null ? '—' : row.avgScore + '%'}}</ng-template
+    ><ng-template uiDataTableCell="passRate" [of]="data.byCourse" let-row
+      >{{row.passRate === null ? '—' : row.passRate + '%'}}</ng-template
+    ></ui-data-table
+  >
+</section>
+<nav class="report__section" aria-label="Các báo cáo chi tiết">
+  <h2 class="report__eyebrow">Báo cáo chi tiết</h2>
+  <div class="grid-4 report__links">
+    @for(d of dims;track d.id){<a
+      uiCard
+      padded
+      interactive
+      class="report__link"
+      [routerLink]="['/reports',d.id]"
+      ><ui-icon name="chart-column" size="sm" /><strong>{{d.label}}</strong
+      ><ui-icon name="chevron-right" size="sm" /></a
+    >}
+  </div>
+</nav>
+}@else if(store.detail$(); as page){
+<section uiCard class="report__section">
+  <ui-data-table
+    [caption]="store.dimensionLabel$()"
+    [columns]="store.columns$()"
+    [rows]="store.displayRows$()"
+    [total]="page.totalElements"
+    [page]="store.page$()+1"
+    [pageSize]="20"
+    [sort]="store.sort$()"
+    (sortChange)="store.setSort($event)"
+    (pageChange)="store.setPage($event-1)"
+    ><ui-empty slot="empty" title="Không có dữ liệu phù hợp bộ lọc"
+  /></ui-data-table>
+</section>
+} }

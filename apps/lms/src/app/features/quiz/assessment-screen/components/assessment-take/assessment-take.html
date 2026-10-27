@@ -1,0 +1,121 @@
+@if(snapshot(); as s) { @if(question(); as q) {
+<header class="assessment__focus-bar">
+  <div class="assessment__focus-title">
+    <small>Bài kiểm tra</small><strong>{{s.quiz.title}}</strong>
+  </div>
+  <span class="assessment__save" role="status"
+    >{{saving() ? 'Đang lưu đáp án…' : 'Đáp án được lưu khi chọn'}}</span
+  ><ui-timer [seconds]="seconds()" /><button
+    uiButton
+    variant="primary"
+    [disabled]="saving()"
+    (click)="submitted.emit()"
+  >
+    Nộp bài
+  </button>
+</header>
+@if(saveError()){<ui-alert tone="warning"
+  >Đáp án đang được giữ trên màn hình, chưa đồng bộ thành công.
+  {{saveError()}}<button
+    uiButton
+    size="sm"
+    [disabled]="saving()"
+    (click)="retrySave.emit()"
+  >
+    Thử lưu lại
+  </button></ui-alert
+>}
+<div class="assessment__take">
+  <section class="stack stack--gap-5" aria-labelledby="question-heading">
+    <div class="row-between">
+      <span class="assessment__eyebrow"
+        >Câu {{current()+1}} / {{s.questions.length}} · {{q.code}}</span
+      ><button
+        uiButton
+        variant="ghost"
+        size="sm"
+        [attr.aria-pressed]="s.attempt.flags.includes(q.id)"
+        (click)="flagged.emit(q.id)"
+      >
+        <ui-icon name="flag" size="sm" />{{s.attempt.flags.includes(q.id) ? 'Bỏ
+        đánh dấu' : 'Đánh dấu xem lại'}}
+      </button>
+    </div>
+    <h1 class="assessment__question-heading" id="question-heading">
+      {{q.text}}
+    </h1>
+    <p class="assessment__muted">
+      {{q.type === 'multiple' ? 'Chọn TẤT CẢ đáp án đúng (có thể nhiều hơn 1).'
+      : 'Chọn 1 đáp án đúng.'}} Phím tắt: 1–{{q.options.length}} chọn, ← →
+      chuyển câu.
+    </p>
+    <fieldset class="assessment__answers">
+      <legend class="sr-only">Phương án trả lời</legend>
+      @for(option of q.options; track option.id; let i = $index){<ui-option-card
+        [title]="option.text"
+        [letter]="letters[i]"
+        ><input
+          [type]="q.type === 'multiple' ? 'checkbox' : 'radio'"
+          name="answer"
+          [attr.aria-label]="option.text"
+          [checked]="(s.attempt.answers[q.id] ?? []).includes(option.id)"
+          [disabled]="saving()"
+          (change)="answerSelected.emit({questionId:q.id,optionId:option.id,checked:$any($event.target).checked,multiple:q.type === 'multiple'})" /></ui-option-card
+      >}
+    </fieldset>
+    <div class="row-between">
+      <button
+        uiButton
+        [disabled]="current() === 0"
+        (click)="goto.emit(current()-1)"
+      >
+        <ui-icon name="chevron-left" size="sm" />Câu trước</button
+      >@if(current() < s.questions.length-1){<button
+        uiButton
+        (click)="goto.emit(current()+1)"
+      >
+        Câu tiếp<ui-icon name="chevron-right" size="sm" /></button
+      >}@else{<button
+        uiButton
+        variant="primary"
+        [disabled]="saving()"
+        (click)="submitted.emit()"
+      >
+        Xem lại & nộp bài</button
+      >}
+    </div>
+  </section>
+  <section
+    role="complementary"
+    class="assessment__navigator"
+    uiCard
+    padded
+    aria-label="Danh sách câu hỏi"
+  >
+    <div class="row-between">
+      <span class="assessment__eyebrow">Danh sách câu</span
+      ><span>{{answeredCount()}}/{{s.questions.length}} đã trả lời</span>
+    </div>
+    <ui-progress
+      size="sm"
+      [value]="answeredCount()/s.questions.length*100"
+      label="Đã trả lời"
+    /><app-question-grid
+      [cells]="cells()"
+      [current]="current()"
+      (goto)="goto.emit($event)"
+    /><app-question-legend /><button
+      uiButton
+      variant="primary"
+      [disabled]="saving()"
+      (click)="submitted.emit()"
+    >
+      Nộp bài
+    </button>
+  </section>
+</div>
+} } @else {<ui-empty title="Chưa có lượt thi đang làm"
+  ><a uiButton [routerLink]="['/quiz',quizId()]"
+    >Về thông tin bài kiểm tra</a
+  ></ui-empty
+>}

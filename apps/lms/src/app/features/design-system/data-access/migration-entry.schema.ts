@@ -32,6 +32,8 @@ const baseShape = {
   mockupSource: z.string().min(1).nullable(),
   /** README checklist codes this piece must still satisfy (`lms-mockup/README.md`). */
   checklist: z.array(ChecklistCodeSchema),
+  /** Current implementation scope and remaining work; never substitutes for verify checks. */
+  notes: z.string().min(1).optional(),
   status: MigrationStatusSchema,
   /** GitHub username of whoever claimed it. Required once the status is not `todo`. */
   owner: z.string().regex(GITHUB_USERNAME).optional(),

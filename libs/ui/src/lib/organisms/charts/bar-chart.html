@@ -1,0 +1,43 @@
+<figure class="chart-view">
+  <svg
+    class="chart-view__svg"
+    viewBox="0 0 520 190"
+    role="img"
+    [attr.aria-label]="label()"
+  >
+    <line class="chart-view__grid" x1="24" x2="496" y1="158" y2="158" />
+    @for (bar of bars(); track $index) {
+    <rect
+      class="chart-view__bar"
+      [class.chart-view__bar--last]="bar.last"
+      [attr.x]="bar.x"
+      [attr.y]="bar.y"
+      [attr.width]="bar.width"
+      [attr.height]="bar.height"
+      rx="4"
+    >
+      <title>{{bar.label}}: {{bar.value}}{{unit()}}</title>
+    </rect>
+    <text
+      class="chart-view__label"
+      [attr.x]="bar.center"
+      [attr.y]="bar.y - 8"
+      text-anchor="middle"
+    >
+      {{bar.value}}
+    </text>
+    <text
+      class="chart-view__label"
+      [attr.x]="bar.center"
+      y="180"
+      text-anchor="middle"
+    >
+      {{bar.label}}
+    </text>
+    }
+  </svg>
+  <figcaption class="sr-only">
+    @for (item of data(); track $index) { {{item.label}}:
+    {{item.value}}{{unit()}}; }
+  </figcaption>
+</figure>

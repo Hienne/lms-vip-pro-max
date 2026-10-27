@@ -161,4 +161,10 @@ describe('CourseCard', () => {
       render({ dueAt: null }).card.querySelector('app-due-date'),
     ).toBeNull();
   });
+  it('does not invent duration or level when the dashboard contract omits them', () => {
+    const { card } = render({ minutes: undefined, level: undefined });
+    expect(
+      Array.from(card.querySelectorAll('.course-card__meta span')).map(text),
+    ).toEqual(['4 bài']);
+  });
 });

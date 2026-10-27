@@ -1,0 +1,115 @@
+@use 'ui';
+:host {
+  display: block;
+  min-width: 0;
+}
+.chart-view {
+  margin: 0;
+  min-width: 0;
+  @include ui.stack(2);
+}
+.chart-view__svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  overflow: visible;
+}
+.chart-view__grid {
+  fill: none;
+  stroke: ui.chart(grid);
+  stroke-width: 1;
+}
+.chart-view__area {
+  fill: ui.chart(1);
+  fill-opacity: 0.2;
+  stroke: ui.chart(1);
+  stroke-width: 2;
+}
+.chart-view__dot {
+  fill: ui.chart(1);
+  stroke: ui.color(surface);
+  stroke-width: 2;
+}
+.chart-view__label {
+  fill: ui.color(text-muted);
+  font-size: 12px;
+  font-family: ui.font(sans);
+}
+.chart-view__value {
+  fill: ui.color(text);
+  font-weight: ui.weight(bold);
+}
+.chart-view__legend {
+  @include ui.row(2);
+  justify-content: center;
+  @include ui.text(xs, muted);
+}
+.chart-view__swatch {
+  display: inline-block;
+  width: ui.space(3);
+  height: ui.space(3);
+  border-radius: ui.radius(sm);
+  background: ui.chart(1);
+  flex-shrink: 0;
+}
+.chart-view__summary {
+  cursor: pointer;
+  color: ui.color(primary);
+  @include ui.text(xs);
+}
+.chart-view__bar {
+  fill: ui.chart(1);
+  fill-opacity: 0.45;
+}
+.chart-view__bar--last {
+  fill-opacity: 1;
+}
+.chart-view--donut {
+  @include ui.row(5);
+  justify-content: center;
+  flex-wrap: wrap;
+}
+.chart-view__donut {
+  width: 150px;
+  height: 150px;
+  transform: rotate(-90deg);
+  flex-shrink: 0;
+}
+.chart-view__base,
+.chart-view__segment {
+  fill: none;
+  stroke-width: 18;
+  stroke: ui.color(surface-sunken);
+}
+.chart-view__parts {
+  @include ui.stack(3);
+  flex: 1;
+  min-width: 160px;
+}
+.chart-view__part {
+  @include ui.row(2);
+  flex-wrap: nowrap;
+  @include ui.text(xs, muted);
+  span:nth-child(2) {
+    flex: 1;
+  }
+  strong {
+    color: ui.color(text);
+  }
+}
+.chart-view__segment--success {
+  stroke: ui.color(success);
+  background: ui.color(success);
+}
+.chart-view__segment--primary {
+  stroke: ui.chart(1);
+  background: ui.chart(1);
+}
+.chart-view__segment--neutral {
+  stroke: ui.color(border-strong);
+  background: ui.color(border-strong);
+}
+.chart-view__segment--danger {
+  stroke: ui.color(danger);
+  background: ui.color(danger);
+}

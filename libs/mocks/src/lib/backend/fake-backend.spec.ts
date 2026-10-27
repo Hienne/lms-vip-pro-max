@@ -6,6 +6,7 @@ import {
   identityEndpoints,
   knowledgeEndpoints,
   organizationEndpoints,
+  personalEndpoints,
   RoleSchema,
   shellEndpoints,
   type AnyEndpoint,
@@ -669,11 +670,24 @@ describe('FakeBackend', () => {
       const counts = (token: string | null) =>
         call(shellEndpoints.navCounts, token).body.data;
       expect(counts(login('giangvien'))).toEqual({
-        notifications: 1,
+        notifications: 2,
         inbox: 3,
       });
       expect(counts(login('hocvien'))).toEqual({ notifications: 2, inbox: 0 });
       expect(counts('not-issued-here')).toEqual({ notifications: 2, inbox: 0 });
+    });
+    it('refreshes notification counts from the same caller data after marking all read', () => {
+      const token = login('hocvien');
+      call(personalEndpoints.markAllRead, token, { body: {} });
+      expect(call(shellEndpoints.navCounts, token).body.data).toEqual({
+        notifications: 0,
+        inbox: 0,
+      });
+      const signedInAgain = login('hocvien');
+      expect(call(shellEndpoints.navCounts, signedInAgain).body.data).toEqual({
+        notifications: 0,
+        inbox: 0,
+      });
     });
   });
 

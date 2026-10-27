@@ -1,6 +1,9 @@
 import type { Route } from '@angular/router';
 import {
+  assessmentEndpoints,
   adminOrgEndpoints,
+  learningDashboardEndpoints,
+  reportEndpoints,
   type AnyEndpoint,
   type FunctionCode,
 } from '@lms/contracts';
@@ -84,11 +87,16 @@ export const SCREEN_TABLE = {
     COURSE_LEARNING: {
       nav: { icon: 'library', section: 'Học tập' },
       search: { href: 'catalog' },
+      requires: [learningDashboardEndpoints.dashboard],
       screens: [
         {
           path: 'learn',
           title: 'Trang chủ học tập',
           mockupPage: 'dashboard',
+          load: () =>
+            import('../../features/learning/dashboard/dashboard').then(
+              (m) => m.Dashboard,
+            ),
         },
         {
           path: 'course/:id',
@@ -100,6 +108,10 @@ export const SCREEN_TABLE = {
           title: 'Bài học',
           mockupPage: 'lesson',
           layout: 'focus',
+          load: () =>
+            import('../../features/study-tools/lesson/lesson').then(
+              (m) => m.Lesson,
+            ),
         },
       ],
     },
@@ -110,37 +122,65 @@ export const SCREEN_TABLE = {
           path: 'progress',
           title: 'Tiến độ của tôi',
           mockupPage: 'progress',
+          load: () =>
+            import('../../features/achievements/progress/progress').then(
+              (m) => m.Progress,
+            ),
         },
       ],
     },
     QUIZ_TAKING: {
       nav: { icon: 'notebook-pen', section: 'Học tập' },
+      requires: [
+        assessmentEndpoints.quizIntro,
+        assessmentEndpoints.startAttempt,
+      ],
       screens: [
         {
           path: 'quiz',
           title: 'Làm bài kiểm tra',
           mockupPage: 'quizHub',
+          load: () =>
+            import(
+              '../../features/quiz/assessment-screen/assessment-screen'
+            ).then((m) => m.AssessmentScreen),
         },
         {
           path: 'quiz/:id',
           title: 'Bài kiểm tra',
           mockupPage: 'quizIntro',
+          load: () =>
+            import(
+              '../../features/quiz/assessment-screen/assessment-screen'
+            ).then((m) => m.AssessmentScreen),
         },
         {
           path: 'quiz/:id/take',
           title: 'Làm bài kiểm tra',
           mockupPage: 'quizTake',
           layout: 'focus',
+          load: () =>
+            import(
+              '../../features/quiz/assessment-screen/assessment-screen'
+            ).then((m) => m.AssessmentScreen),
         },
         {
           path: 'quiz/:id/attempts',
           title: 'Lịch sử thi',
           mockupPage: 'quizAttempts',
+          load: () =>
+            import(
+              '../../features/quiz/assessment-screen/assessment-screen'
+            ).then((m) => m.AssessmentScreen),
         },
         {
           path: 'quiz/:id/result/:attemptId',
           title: 'Kết quả bài kiểm tra',
           mockupPage: 'quizResult',
+          load: () =>
+            import(
+              '../../features/quiz/assessment-screen/assessment-screen'
+            ).then((m) => m.AssessmentScreen),
         },
       ],
     },
@@ -189,26 +229,43 @@ export const SCREEN_TABLE = {
     },
     QUESTION_BANK: {
       nav: { icon: 'circle-help', section: 'Nội dung' },
+      requires: [
+        assessmentEndpoints.questions,
+        assessmentEndpoints.createQuestion,
+      ],
       screens: [
         {
           path: 'admin/questions',
           title: 'Ngân hàng câu hỏi',
           mockupPage: 'questions',
+          load: () =>
+            import(
+              '../../features/quiz/assessment-screen/assessment-screen'
+            ).then((m) => m.AssessmentScreen),
         },
       ],
     },
     QUIZ_MANAGEMENT: {
       nav: { icon: 'clipboard-check', section: 'Nội dung' },
+      requires: [assessmentEndpoints.quizzes, assessmentEndpoints.saveQuiz],
       screens: [
         {
           path: 'admin/quizzes',
           title: 'Bài kiểm tra',
           mockupPage: 'quizzes',
+          load: () =>
+            import(
+              '../../features/quiz/assessment-screen/assessment-screen'
+            ).then((m) => m.AssessmentScreen),
         },
         {
           path: 'admin/quizzes/:id',
           title: 'Cấu hình bài kiểm tra',
           mockupPage: 'quizConfig',
+          load: () =>
+            import(
+              '../../features/quiz/assessment-screen/assessment-screen'
+            ).then((m) => m.AssessmentScreen),
         },
       ],
     },
@@ -278,17 +335,26 @@ export const SCREEN_TABLE = {
     },
     REPORTING: {
       nav: { icon: 'chart-column', section: 'Theo dõi' },
+      requires: [reportEndpoints.overview, reportEndpoints.detail],
       search: { href: 'reports/learners' },
       screens: [
         {
           path: 'reports',
           title: 'Báo cáo đào tạo',
           mockupPage: 'reports',
+          load: () =>
+            import('../../features/reports/report-screen/report-screen').then(
+              (m) => m.ReportScreen,
+            ),
         },
         {
           path: 'reports/:dim',
           title: 'Báo cáo',
           mockupPage: 'reportDetail',
+          load: () =>
+            import('../../features/reports/report-screen/report-screen').then(
+              (m) => m.ReportScreen,
+            ),
         },
       ],
     },
@@ -385,9 +451,31 @@ export const SCREEN_TABLE = {
     },
     { path: 'leaderboard', title: 'Bảng xếp hạng', mockupPage: 'leaderboard' },
     { path: 'flashcards', title: 'Flashcard ôn tập', mockupPage: 'flashcards' },
-    { path: 'saved', title: 'Đã lưu & ghi chú', mockupPage: 'saved' },
-    { path: 'certificates', title: 'Chứng nhận', mockupPage: 'certificates' },
-    { path: 'certificate/:id', title: 'Chứng nhận', mockupPage: 'certificate' },
+    {
+      path: 'saved',
+      title: 'Đã lưu & ghi chú',
+      mockupPage: 'saved',
+      load: () =>
+        import('../../features/study-tools/saved/saved').then((m) => m.Saved),
+    },
+    {
+      path: 'certificates',
+      title: 'Chứng nhận',
+      mockupPage: 'certificates',
+      load: () =>
+        import('../../features/achievements/certificates/certificates').then(
+          (m) => m.Certificates,
+        ),
+    },
+    {
+      path: 'certificate/:id',
+      title: 'Chứng nhận',
+      mockupPage: 'certificate',
+      load: () =>
+        import('../../features/achievements/certificates/certificates').then(
+          (m) => m.CertificateDetail,
+        ),
+    },
     {
       path: 'instructor',
       title: 'Tổng quan giảng viên',
@@ -400,7 +488,15 @@ export const SCREEN_TABLE = {
       title: 'Nhập dữ liệu hàng loạt',
       mockupPage: 'import',
     },
-    { path: 'notifications', title: 'Thông báo', mockupPage: 'notifications' },
+    {
+      path: 'notifications',
+      title: 'Thông báo',
+      mockupPage: 'notifications',
+      load: () =>
+        import('../../features/account/notifications/notifications').then(
+          (m) => m.Notifications,
+        ),
+    },
     {
       path: '403',
       title: 'Không đủ quyền',

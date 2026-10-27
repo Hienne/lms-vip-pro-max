@@ -7,6 +7,7 @@ import type { Invalidation } from './invalidation';
 
 /** A toast title, or a title plus a detail line. */
 export type SuccessMessage =
+  | null
   | string
   | { readonly title: string; readonly detail?: string };
 
@@ -17,7 +18,7 @@ export interface ServerMutationOptions<I, R> {
    * is always visible.
    */
   readonly errors: 'toast' | 'alert';
-  /** The success toast, from what was sent and what came back. */
+  /** The success toast, or null for autosave rendered inline by the screen. */
   readonly success: (input: I, result: R) => SuccessMessage;
   /** Runs first on success, before the invalidations and the toast: close a drawer, navigate. */
   readonly onSuccess?: (result: R) => void;
@@ -56,6 +57,7 @@ export function serverMutation<I, R>(
             options.onSuccess?.(result);
             invalidates.forEach((token) => token.bump());
             const message = options.success(params.input, result);
+            if (message === null) return;
             if (typeof message === 'string') toaster.success(message);
             else toaster.success(message.title, message.detail);
           },
