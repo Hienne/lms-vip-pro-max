@@ -337,7 +337,7 @@ SameSite=Strict` with no domain, so the proxy needs no rewrite (browser retentio
   - Files: `contracts/learning-asset/asset.schema.ts`, `asset.endpoints.ts`, `libs/contracts/src/index.ts`,
     `contracts/http/envelope.ts`, `mocks/learning/asset.backend.ts` (+ spec), `mocks/backend-responses.ts`.
   - Depends on: T22.
-- [ ] **T24 `@noble/hashes` and the SHA-256 worker** · S
+- [x] **T24 `@noble/hashes` and the SHA-256 worker** · S
   - Accept: `@noble/hashes` added (exact version); `sha256.worker.ts` hashes a file in 8 MiB slices and single
     parts, reports progress, matches known vectors and the one-shot digest; a 100 MB file's time is reported.
   - Verify: `npx nx test lms -- sha256`.
