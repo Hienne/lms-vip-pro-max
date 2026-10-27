@@ -271,4 +271,39 @@ describe('StudyChannel', () => {
       expect(closing()).not.toHaveProperty('watchedFromSeconds');
     });
   });
+
+  describe('changing block', () => {
+    const failed = () =>
+      new ApiError('CORE-INTERNAL_ERROR', undefined, 'Lỗi hệ thống', 500);
+
+    it('sends what is queued for the old block, then closes it, then claims the new one', () => {
+      open(BLOCK_A);
+      vi.advanceTimersByTime(HEARTBEAT_MS);
+      channel.send({ type: 'COMPLETE', complete: true });
+
+      channel.switchTo(BLOCK_B);
+      drain();
+
+      expect(types()).toEqual(['OPEN', 'HEARTBEAT', 'COMPLETE', 'CLOSE']);
+      expect(claims()).toHaveLength(2);
+      expect(claims()[1].body).toMatchObject({ blockId: 20 });
+    });
+
+    it('resends the event it could not save once, then moves on without closing the old block', () => {
+      open(BLOCK_A);
+      vi.advanceTimersByTime(HEARTBEAT_MS);
+      events()[1].fail(failed());
+      expect(channel.save$()).toBe('failed');
+
+      channel.switchTo(BLOCK_B);
+      expect(types()).toEqual(['OPEN', 'HEARTBEAT', 'HEARTBEAT']);
+      events()[2].fail(failed());
+      expect(claims()).toHaveLength(2);
+      claimAnswered();
+      drain();
+
+      // The new block starts clean: nothing of the old one is sent with the new lease.
+      expect(types()).toEqual(['OPEN', 'HEARTBEAT', 'HEARTBEAT', 'OPEN']);
+    });
+  });
 });

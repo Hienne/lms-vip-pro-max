@@ -123,9 +123,9 @@ export class StudyChannel {
     this.wanted = target;
     // A claim in flight finishes first (`claimed` then claims what is wanted now).
     if (this.state.phase() === 'claiming') return;
-    this.clearWork();
     if (this.state.phase() === 'ready' && this.target) {
-      // The session is still on the old block: close it there, then claim the new one.
+      // The session is still on the old block: what is queued for it goes first (a completion
+      // must not be lost), then it is closed there, then the new one is claimed.
       this.queue(this.closeEvent());
       this.afterIdle = () => this.claimWanted();
       this.pump();
@@ -140,7 +140,6 @@ export class StudyChannel {
   /** The learner chose to move the session here ("Học trên thiết bị này"). */
   takeOver(): void {
     if (this.destroyed || this.state.phase() === 'claiming') return;
-    this.clearWork();
     this.claimWanted(true);
   }
 
@@ -205,6 +204,8 @@ export class StudyChannel {
   // ---- claim ----
 
   private claimWanted(takeover = false): void {
+    // A claim for a block starts with nothing of the one before it.
+    this.clearWork();
     this.target = this.wanted;
     this.claim(false, takeover);
   }
@@ -416,6 +417,7 @@ export class StudyChannel {
         // A block change does not wait for a `CLOSE` that cannot be sent.
         if (this.afterIdle) {
           this.inFlight = null;
+          this.waiting = [];
           this.runAfterIdle();
         }
         return;
