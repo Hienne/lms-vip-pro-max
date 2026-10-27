@@ -20,9 +20,9 @@ PageSchema(TeamInfoSchema)`), `OrganizationImportResultSchema`, `ORG_IMPORT_LIMI
 `importOrgs` (`bodyEncoding: 'multipart'`, body `{ file: File }`, query `{ dryRun: boolean }`), each with a doc
 comment.
 
-- [ ] Each schema parses the IDENTITY.md examples (tree page, contents, import result).
-- [ ] `importOrgs` declares multipart with part `file` and `dryRun` as a query param.
-- [ ] Existing `listOrgs`, `getOrg`, `listTeams` unchanged.
+- [x] Each schema parses the IDENTITY.md examples (tree page, contents, import result).
+- [x] `importOrgs` declares multipart with part `file` and `dryRun` as a query param.
+- [x] Existing `listOrgs`, `getOrg`, `listTeams` unchanged.
 
 Verify: `npx nx test contracts`. Files: `contracts/organization/organization.schema.ts`,
 `organization.endpoints.ts`, `organization.endpoints.spec.ts`. Depends on: none.

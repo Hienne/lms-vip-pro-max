@@ -4,9 +4,15 @@ import { PageQuerySchema, PageSchema } from '../http/page';
 import {
   CreateOrgCommandSchema,
   CreateTeamCommandSchema,
+  ImportOrgsCommandSchema,
+  ImportOrgsQuerySchema,
   ListOrgsQuerySchema,
+  OrganizationContentsSchema,
   OrganizationDetailSchema,
+  OrganizationImportResultSchema,
   OrganizationInfoSchema,
+  OrganizationTreeNodeSchema,
+  OrgTreeQuerySchema,
   TeamInfoSchema,
   UpdateOrgCommandSchema,
   UpdateTeamCommandSchema,
@@ -23,6 +29,40 @@ export const organizationEndpoints = {
     path: '/api/v1/orgs',
     query: ListOrgsQuerySchema,
     response: PageSchema(OrganizationInfoSchema),
+  }),
+  /** One level of the lazy tree, in scope, with `hasChildren`; the selector and search keep `listOrgs`. */
+  orgTree: defineEndpoint({
+    method: 'get',
+    path: '/api/v1/orgs/tree',
+    query: OrgTreeQuerySchema,
+    response: PageSchema(OrganizationTreeNodeSchema),
+  }),
+  /** The panel of a node in one call: the node, its direct administrators and a page of teams. */
+  orgContents: defineEndpoint({
+    method: 'get',
+    path: '/api/v1/orgs/{orgId}/contents',
+    params: orgParams,
+    query: PageQuerySchema,
+    response: OrganizationContentsSchema,
+  }),
+  /** The Excel template of the import (an `.xlsx` file, no envelope); a refusal is a JSON envelope. */
+  orgImportTemplate: defineEndpoint({
+    method: 'get',
+    path: '/api/v1/orgs/import-template',
+    responseType: 'blob',
+    response: z.instanceof(Blob),
+  }),
+  /**
+   * Checks (`dryRun=true`) or imports new units, departments and teams from an `.xlsx` file. An
+   * invalid file is an `ORGANIZATION-IMPORT_INVALID` refusal and nothing is written.
+   */
+  importOrgs: defineEndpoint({
+    method: 'post',
+    path: '/api/v1/orgs/import',
+    query: ImportOrgsQuerySchema,
+    body: ImportOrgsCommandSchema,
+    encoding: 'multipart',
+    response: OrganizationImportResultSchema,
   }),
   /** Global administrators only. */
   createOrg: defineEndpoint({

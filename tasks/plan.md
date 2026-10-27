@@ -41,7 +41,7 @@ T1 contracts (schemas + endpoints)
 
 ### Phase 1: foundation
 
-- [ ] T1: Contracts for the four endpoints
+- [x] T1: Contracts for the four endpoints
 - [ ] T2: Mock handlers and fixtures
 
 ### Checkpoint A
