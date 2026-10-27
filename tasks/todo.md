@@ -134,5 +134,12 @@ Verify: `npm run check`. Files: `docs/conventions/contracts-and-mocks.md`,
 
 ### Checkpoint C (done)
 
-- [ ] `npm run check` green; angular.md §14 and the visual-design checklist pass; SPEC.md success criteria 1–8
+- [x] `npm run check` green; angular.md §14 and the visual-design checklist pass; SPEC.md success criteria 1–8
       met on the backend and on the mock. Commit T5–T8. Stop for review before a PR.
+  - Local backend (2026-10-27), `super.admin`: tree (`/orgs/tree`, `parentId` on open, leaf without expand), panel
+    in one `/contents` call, template download, refused check toasts, valid file checks ("2 đơn vị/phòng, 1
+    nhóm"), a double-click sends one `dryRun=false`, the drawer closes and the new unit, department and team show.
+  - `quantri.ban`: only the Ban branch, no global-only actions, a file with Organizations rows toasts the 403,
+    a teams-only file imports and the panel's team count goes 15 → 16. Rows confirmed through `/orgs`.
+  - Found and fixed on the way: the toast pane blocked clicks on the drawer footer while an error toast was
+    shown (`libs/ui` toaster).
