@@ -68,6 +68,8 @@ export class OrgStore {
   private readonly state = {
     editingOrg: signal<{ readonly org: OrganizationInfo | null } | null>(null),
     editingTeam: signal<{ readonly team: TeamInfo | null } | null>(null),
+    /** The "Nhập từ tệp" drawer is open. */
+    importing: signal(false),
     /** The team page being read (0-based); a different org starts again at the first. */
     teamPage: linkedSignal<number | undefined, number>({
       source: this.selectedOrgId,
@@ -177,6 +179,7 @@ export class OrgStore {
 
   readonly editingOrg$ = this.state.editingOrg.asReadonly();
   readonly editingTeam$ = this.state.editingTeam.asReadonly();
+  readonly importing$ = this.state.importing.asReadonly();
   /** The picked org with its counts; tree nodes carry none. */
   readonly org$ = computed(() => this.contentsData.value()?.organization);
   readonly administrators$ = computed(
@@ -219,6 +222,10 @@ export class OrgStore {
     this.state.editingTeam.set(editing);
   }
 
+  private setImporting(importing: boolean): void {
+    this.state.importing.set(importing);
+  }
+
   private setTeamPage(page: number): void {
     this.state.teamPage.set(page);
   }
@@ -253,6 +260,20 @@ export class OrgStore {
 
   cancelTeamEdit(): void {
     this.setEditingTeam(null);
+  }
+
+  openImport(): void {
+    this.setImporting(true);
+  }
+
+  closeImport(): void {
+    this.setImporting(false);
+  }
+
+  /** The import drawer wrote new nodes or teams: close it and reload the tree and the panel. */
+  finishImport(): void {
+    this.setImporting(false);
+    this.changes.bump();
   }
 
   goToTeamPage(page: number): void {

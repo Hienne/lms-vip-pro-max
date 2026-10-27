@@ -75,7 +75,7 @@ teams. Files: `org/data-access/org.store.ts`, `org/org.html`, `org/org.spec.ts`.
 
 ### Checkpoint B
 
-- [ ] `npm run check` green; tree and panel checked on the backend for both roles; browser pass. Commit T3, T4.
+- [x] `npm run check` green (browser and backend pass done after T6, see T8); tree and panel checked on the backend for both roles; browser pass. Commit T3, T4.
       Stop for review.
 
 ## Phase 3: import
@@ -88,10 +88,10 @@ clears any previous result), `check()` (`dryRun=true`), `import()` (`dryRun=fals
 of the current file). Both calls `errors: 'toast'`; success of `import()` invalidates the org change token passed
 in and emits `done`.
 
-- [ ] Wrong type or size: message, no request. A new file clears the check result.
-- [ ] `canImport$` is false until a successful check and while either call is pending; a refused import clears
+- [x] Wrong type or size: message, no request. A new file clears the check result.
+- [x] `canImport$` is false until a successful check and while either call is pending; a refused import clears
       the check result.
-- [ ] Import success bumps the token once; template refusal (JSON envelope on the blob) is a toast, not a file.
+- [x] Import success bumps the token once; template refusal (JSON envelope on the blob) is a toast, not a file.
 
 Verify: `npx nx test lms -- org-import.store`. Files: `org/data-access/org-import.store.ts`,
 `org-import.store.spec.ts`. Depends on: T2.
