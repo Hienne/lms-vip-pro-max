@@ -26,8 +26,10 @@ import {
   filter,
   firstValueFrom,
   map,
+  Observable,
   switchMap,
-  type Observable,
+  takeUntil,
+  timer,
   type Subscription,
 } from 'rxjs';
 import { invalidation } from '../../../../core/data-access/invalidation';
@@ -756,13 +758,29 @@ export class CourseEditorStore {
     this.setRefusal(uploadId, undefined);
   }
 
-  /** Waits for the network to come back, never less than the pause between two tries. */
-  private readonly online = async (): Promise<void> => {
-    await new Promise<void>((resolve) => setTimeout(resolve, SERVER_RETRY_MS));
+  /**
+   * Waits for the network to come back, never less than the pause between two tries; a cancelled
+   * upload (`signal`) stops the wait at once so it holds nothing.
+   */
+  private readonly online = async (signal: AbortSignal): Promise<void> => {
+    const cancelled = new Observable<void>((subscriber) => {
+      const stop = () => {
+        subscriber.next();
+        subscriber.complete();
+      };
+      if (signal.aborted) stop();
+      else signal.addEventListener('abort', stop, { once: true });
+      return () => signal.removeEventListener('abort', stop);
+    });
     await firstValueFrom(
-      toObservable(this.network.offline$, { injector: this.injector }).pipe(
+      timer(SERVER_RETRY_MS).pipe(
+        switchMap(() =>
+          toObservable(this.network.offline$, { injector: this.injector }),
+        ),
         filter((offline) => !offline),
+        takeUntil(cancelled),
       ),
+      { defaultValue: undefined },
     );
   };
 

@@ -441,6 +441,42 @@ describe('chunkedUpload', () => {
       expect(handle).not.toHaveBeenCalled();
     });
 
+    it('sends nothing more when the caller unsubscribed while it waited for the network', async () => {
+      failFrom(assetEndpoints.uploadPart, offline, secondPart);
+      let networkBack!: () => void;
+      const online = vi.fn(
+        () => new Promise<void>((resolve) => (networkBack = resolve)),
+      );
+      const subscription = upload(fileOf(PART * 2 + 5), { online }).subscribe();
+      await settle();
+      expect(online).toHaveBeenCalledTimes(1);
+      const sent = called(assetEndpoints.uploadPart).length;
+
+      subscription.unsubscribe();
+      handle.mockImplementation(original);
+      networkBack();
+      await settle(POLL_MS * 10);
+
+      expect(called(assetEndpoints.uploadPart)).toHaveLength(sent);
+      expect(called(assetEndpoints.uploadStatus)).toHaveLength(0);
+      expect(called(assetEndpoints.completeUpload)).toHaveLength(0);
+    });
+
+    it('tells the network wait to stop when the caller unsubscribes', async () => {
+      failFrom(assetEndpoints.uploadPart, offline, secondPart);
+      let signal: AbortSignal | undefined;
+      const online = vi.fn((given: AbortSignal) => {
+        signal = given;
+        return new Promise<void>(() => undefined);
+      });
+      const subscription = upload(fileOf(PART * 2 + 5), { online }).subscribe();
+      await settle();
+      expect(signal?.aborted).toBe(false);
+
+      subscription.unsubscribe();
+      expect(signal?.aborted).toBe(true);
+    });
+
     it('sends cancelUpload for the upload and answers when the server canceled it', async () => {
       let id = '';
       const subscription = upload(fileOf(PART * 2)).subscribe((e) => {

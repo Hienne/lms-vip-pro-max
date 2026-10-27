@@ -12,7 +12,7 @@ import { NEVER } from 'rxjs';
 import { setUpAdminScreen } from '../../../core/dev/mock-api/admin-screen.testing';
 import { MockBackend } from '../../../core/dev/mock-api/mock-api.interceptor';
 import { CourseEditor } from './course-editor';
-import { POLL_MS } from './data-access/chunked-upload';
+import { POLL_MS, SERVER_RETRY_MS } from './data-access/chunked-upload';
 import { digestOf, FakeHasher } from './data-access/fake-hasher.testing';
 import { Sha256Hasher } from './data-access/sha256-hasher';
 
@@ -344,6 +344,31 @@ describe('CourseEditor', () => {
       });
       expect(screen.text(drawer)).not.toContain('quyen.pdf');
       expect(kept()).toEqual([]);
+    });
+
+    it('sends nothing more when "Hủy" is pressed offline and the network comes back', async () => {
+      await screen.open('/admin/courses/6/edit');
+      const drawer = await openLesson();
+      await screen.click(screen.button('Tài liệu PDF', drawer));
+      failParts();
+      vi.useFakeTimers();
+      pick(dropzones().at(-1)!, pdf());
+      await advance(100);
+      expect(screen.text(drawer)).toContain(
+        'Mất kết nối, sẽ tiếp tục khi có mạng.',
+      );
+      const sent = screen.callsTo(assetEndpoints.uploadPart);
+
+      screen.button('Hủy', drawer)!.click();
+      TestBed.tick();
+      screen.calls.mockImplementation(original);
+      await advance(SERVER_RETRY_MS * 4);
+      vi.useRealTimers();
+
+      expect(screen.callsTo(assetEndpoints.uploadPart)).toBe(sent);
+      expect(screen.callsTo(assetEndpoints.uploadStatus)).toBe(0);
+      expect(screen.callsTo(assetEndpoints.completeUpload)).toBe(0);
+      expect(screen.text(drawer)).not.toContain('quyen.pdf');
     });
 
     it('shows an upload a reload stopped, refuses another file and continues with the same one', async () => {

@@ -74,8 +74,11 @@ export interface ResumeTarget {
 
 export interface ChunkedUploadOptions {
   readonly resume?: ResumeTarget;
-  /** Resolves when the network is back; defaults to waiting `SERVER_RETRY_MS`. */
-  readonly online?: () => Promise<void>;
+  /**
+   * Resolves when the network is back, or when `signal` aborts (the upload was cancelled); defaults
+   * to waiting `SERVER_RETRY_MS`.
+   */
+  readonly online?: (signal: AbortSignal) => Promise<void>;
 }
 
 class Cancelled extends Error {}
@@ -92,7 +95,11 @@ class Failed extends Error {
 
 /** The work of one upload as an Observable of rows; unsubscribing cancels the request in flight. */
 interface Run {
+  /** Aborts when the upload is cancelled. */
+  readonly signal: AbortSignal;
   emit(event: UploadProgress): void;
+  /** Throws `Cancelled` once the upload is cancelled, so no step starts after that. */
+  check(): void;
   call<T>(source: Observable<T>): Promise<T>;
   wait(ms: number): Promise<void>;
 }
@@ -104,19 +111,36 @@ interface Run {
 function stream(work: (run: Run) => Promise<void>): Observable<UploadProgress> {
   return new Observable<UploadProgress>((subscriber) => {
     const cancelled = new Subject<void>();
+    const abort = new AbortController();
     let isCancelled = false;
     const run: Run = {
+      signal: abort.signal,
       emit: (event) => {
         if (!isCancelled) subscriber.next(event);
       },
-      call: (source) => firstValueFrom(source.pipe(takeUntil(cancelled))),
+      check: () => {
+        if (isCancelled) throw new Cancelled();
+      },
+      // A step that starts after the cancel never reaches the network: `cancelled` has already
+      // emitted and would not stop it.
+      call: (source) =>
+        isCancelled
+          ? Promise.reject(new Cancelled())
+          : firstValueFrom(source.pipe(takeUntil(cancelled))),
       wait: (ms) =>
         new Promise<void>((resolve, reject) => {
-          const timer = setTimeout(resolve, ms);
-          cancelled.subscribe(() => {
+          if (isCancelled) {
+            reject(new Cancelled());
+            return;
+          }
+          const stop = cancelled.subscribe(() => {
             clearTimeout(timer);
             reject(new Cancelled());
           });
+          const timer = setTimeout(() => {
+            stop.unsubscribe();
+            resolve();
+          }, ms);
         }),
     };
     work(run)
@@ -144,6 +168,7 @@ function stream(work: (run: Run) => Promise<void>): Observable<UploadProgress> {
       });
     return () => {
       isCancelled = true;
+      abort.abort();
       cancelled.next();
       cancelled.complete();
     };
@@ -188,7 +213,7 @@ class Flow {
     private readonly run: Run,
     private readonly client: EndpointClient,
     private readonly hasher: Hasher,
-    private readonly online: () => Promise<void>,
+    private readonly online: (signal: AbortSignal) => Promise<void>,
   ) {}
 
   /**
@@ -222,7 +247,10 @@ class Flow {
       throw failureOf(error);
     }
     this.run.emit({ type: 'waiting' });
-    await (kind === 'offline' ? this.online() : this.run.wait(SERVER_RETRY_MS));
+    await (kind === 'offline'
+      ? this.online(this.run.signal)
+      : this.run.wait(SERVER_RETRY_MS));
+    this.run.check();
   }
 
   hash(blob: Blob, onProgress?: (percent: number) => void): Promise<string> {
@@ -298,8 +326,18 @@ class Flow {
   }
 }
 
-const defaultOnline = (): Promise<void> =>
-  new Promise((resolve) => setTimeout(resolve, SERVER_RETRY_MS));
+const defaultOnline = (signal: AbortSignal): Promise<void> =>
+  new Promise((resolve) => {
+    const timer = setTimeout(resolve, SERVER_RETRY_MS);
+    signal.addEventListener(
+      'abort',
+      () => {
+        clearTimeout(timer);
+        resolve();
+      },
+      { once: true },
+    );
+  });
 
 /**
  * Uploads one file in the parts the server asks for (SPEC-asset-library → Upload flow): hash the
