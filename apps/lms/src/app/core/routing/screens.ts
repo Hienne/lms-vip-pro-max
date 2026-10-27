@@ -89,6 +89,8 @@ export const SCREEN_TABLE = {
           path: 'learn',
           title: 'Trang chủ học tập',
           mockupPage: 'dashboard',
+          load: () =>
+            import('../../features/learning/learn/learn').then((m) => m.Learn),
         },
         {
           path: 'course/:id',

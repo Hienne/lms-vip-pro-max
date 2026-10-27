@@ -286,7 +286,7 @@ SameSite=Strict` with no domain, so the proxy needs no rewrite (browser retentio
   - Verify: `npx nx test lms -- progress notifications shared/learning` green before and after.
   - Files: `app/shared/learning/*`, `progress.html`, `notifications.html` (+ the moved files).
   - Depends on: T16, T18.
-- [ ] **T21 Learn page (`learn`)** · M
+- [x] **T21 Learn page (`learn`)** · M
   - Accept: claims `route-learn`; `LearnStore` (summary, resume card + its detail, tab courses incl. `mandatory`, due
     list filtered to 5, reminders idle/403); `continue-card`; page per spec with independent loading and error per
     section; `screens.ts` loads it.

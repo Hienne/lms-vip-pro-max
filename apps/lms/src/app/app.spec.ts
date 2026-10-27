@@ -37,6 +37,15 @@ describe('App boot', () => {
       .match('/api/v1/me/learning/reminders')
       .filter((r) => !r.cancelled)
       .forEach((r) => r.flush(envelopeOk([])));
+    // The learner home behind /learn reads the progress and the course lists.
+    backend
+      .match(
+        (r) =>
+          r.url.startsWith('/api/v1/me/learning/') ||
+          r.url === '/api/v1/training-catalog/programs',
+      )
+      .filter((r) => !r.cancelled)
+      .forEach((r) => r.error(new ProgressEvent('error')));
     backend
       .match((r) => r.url === '/api/v1/knowledge/documents')
       .filter((r) => !r.cancelled)

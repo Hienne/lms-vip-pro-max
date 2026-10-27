@@ -1,0 +1,37 @@
+@use 'ui';
+
+.continue-card {
+  @include ui.stack(4);
+  align-items: flex-start;
+
+  &__text {
+    @include ui.stack(1);
+  }
+
+  &__title {
+    margin: 0;
+    font-size: ui.text-size(lg);
+    font-weight: ui.weight(semibold);
+  }
+
+  &__context {
+    @include ui.text(sm, muted);
+    margin: 0;
+  }
+
+  &__progress {
+    @include ui.row(3);
+    flex-wrap: nowrap;
+    width: 100%;
+    max-width: 28rem;
+
+    ui-progress {
+      flex: 1 1 auto;
+    }
+  }
+
+  &__pct {
+    @include ui.num;
+    @include ui.text(sm);
+  }
+}

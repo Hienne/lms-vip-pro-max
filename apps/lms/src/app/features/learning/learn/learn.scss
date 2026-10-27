@@ -1,0 +1,86 @@
+@use 'ui';
+
+:host {
+  @include ui.page(wide);
+}
+
+.learn {
+  &__layout {
+    @include ui.stack(6);
+
+    @include ui.bp(lg) {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 20rem;
+      align-items: start;
+      gap: ui.space(8);
+    }
+  }
+
+  &__main,
+  &__side {
+    @include ui.stack(6);
+    min-width: 0;
+  }
+
+  &__section {
+    @include ui.stack(3);
+  }
+
+  &__heading {
+    @include ui.row-between(3);
+
+    h2 {
+      margin: 0;
+    }
+  }
+
+  &__grid {
+    @include ui.grid(
+      (
+        md: 2,
+      )
+    );
+    margin: ui.space(4) 0 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  &__resume-placeholder {
+    min-height: 9rem;
+  }
+
+  &__counts-placeholder {
+    min-height: 4rem;
+  }
+
+  &__card-placeholder {
+    min-height: 12rem;
+  }
+
+  &__due-placeholder {
+    min-height: 8rem;
+  }
+
+  &__due,
+  &__reminders {
+    @include ui.stack(3);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  &__due li {
+    @include ui.row-between(3);
+    flex-wrap: wrap;
+  }
+
+  &__due-title {
+    min-width: 0;
+    flex: 1 1 8rem;
+  }
+
+  &__muted {
+    @include ui.text(sm, muted);
+    margin: 0;
+  }
+}

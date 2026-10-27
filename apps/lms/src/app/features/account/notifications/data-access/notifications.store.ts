@@ -1,20 +1,12 @@
 import { computed, inject, Injectable } from '@angular/core';
 import { learnerEndpoints, type LearningReminder } from '@lms/contracts';
 import { NOW } from '@lms/ui';
-import {
-  catchError,
-  concatMap,
-  finalize,
-  from,
-  of,
-  throwError,
-  toArray,
-} from 'rxjs';
+import { concatMap, finalize, from, toArray } from 'rxjs';
 import { invalidation } from '../../../../core/data-access/invalidation';
 import { serverData } from '../../../../core/data-access/server-data';
 import { serverMutation } from '../../../../core/data-access/server-mutation';
-import { toAppError } from '../../../../core/errors/app-error';
 import { EndpointClient } from '../../../../core/http/endpoint-client';
+import { dueReminders } from '../../../../core/learning/due-reminders';
 import { RemindersChanged } from '../../../../core/learning/reminders-changed';
 import { SessionStore } from '../../../../core/session/session.store';
 import { isReminderOverdue } from '../../../../shared/learning/reminder-item/reminder-item';
@@ -50,16 +42,7 @@ export class NotificationsStore {
 
   /** Idle (`undefined` params) for a user without the learner function. */
   private readonly remindersData = serverData(
-    (_: { readonly learner: true }) =>
-      this.client
-        .call(learnerEndpoints.reminders)
-        .pipe(
-          catchError((error: unknown) =>
-            toAppError(error).kind === 'forbidden'
-              ? of([] as LearningReminder[])
-              : throwError(() => error),
-          ),
-        ),
+    (_: { readonly learner: true }) => dueReminders(this.client),
     {
       params: () => (this.canLearn() ? { learner: true as const } : undefined),
       reloadOn: this.reads,

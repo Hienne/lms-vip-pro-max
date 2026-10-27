@@ -21,11 +21,7 @@ import { serverData } from '../../../../core/data-access/server-data';
 import { EndpointClient } from '../../../../core/http/endpoint-client';
 import { SessionStore } from '../../../../core/session/session.store';
 import type { CourseCardView } from '../../../../shared/course/course-card';
-import {
-  COURSE_STATUS_LABEL,
-  LEVEL_LABEL,
-  toCourseStatus,
-} from '../../../../shared/course/course-labels';
+import { toCourseCardView } from '../../../../shared/course/course-card-view';
 
 export const CATALOG_PAGE_SIZE = 12;
 
@@ -222,7 +218,13 @@ export class CatalogStore {
   );
 
   readonly cards$ = computed((): readonly CourseCardView[] =>
-    (this.state.shown()?.items ?? []).map((card) => this.toView(card)),
+    (this.state.shown()?.items ?? []).map((card) =>
+      toCourseCardView(
+        card,
+        (card.programId && this.programNames().get(card.programId)) ||
+          undefined,
+      ),
+    ),
   );
 
   // Setters: the only writers of state
@@ -330,30 +332,5 @@ export class CatalogStore {
       queryParams,
       replaceUrl: true,
     });
-  }
-
-  /** A server row as the course card shows it; every number is the server's. */
-  private toView(card: CourseCard): CourseCardView {
-    const status = toCourseStatus(card.learningStatus);
-    return {
-      id: String(card.courseId),
-      title: card.title || card.code,
-      required: card.requirement === 'mandatory',
-      domain:
-        (card.programId && this.programNames().get(card.programId)) ||
-        'Khóa học',
-      module: card.code,
-      minutes: Math.round((card.durationSeconds ?? 0) / 60),
-      lessons: card.lessonCount ?? 0,
-      level: card.level ? LEVEL_LABEL[card.level] : '',
-      pct: Math.round(card.progressPercent ?? 0),
-      status,
-      statusLabel: card.enrollmentId
-        ? COURSE_STATUS_LABEL[status]
-        : 'Chưa đăng ký',
-      overdue: card.overdue ?? false,
-      dueAt: card.dueAt ?? null,
-      link: `/course/${card.courseId}`,
-    };
   }
 }

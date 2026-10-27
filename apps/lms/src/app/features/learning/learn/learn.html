@@ -1,0 +1,139 @@
+<ui-page-header title="Trang chủ học tập" />
+
+<div class="learn__layout">
+  <div class="learn__main">
+    @if (store.resumeError$(); as error) {
+    <ui-error-state
+      title="Không tải được khóa học đang học"
+      [message]="error.message"
+      (retry)="store.retryResume()"
+    />
+    } @else if (store.isResumeLoading$()) {
+    <div uiSkeleton variant="block" class="learn__resume-placeholder"></div>
+    } @else {
+    <app-continue-card [resume]="store.resume$()" />
+    }
+
+    <section class="learn__section" aria-label="Số liệu học tập">
+      @if (store.summaryError$(); as error) {
+      <ui-error-state
+        title="Không tải được số liệu học tập"
+        [message]="error.message"
+        (retry)="store.retrySummary()"
+      />
+      } @else if (store.summary$(); as summary) {
+      <app-progress-counts [counts]="summary.counts" />
+      <app-unavailable-note [summary]="summary" />
+      } @else {
+      <div uiSkeleton variant="block" class="learn__counts-placeholder"></div>
+      }
+    </section>
+
+    <section class="learn__section" aria-labelledby="learn-courses">
+      <div class="learn__heading">
+        <h2 id="learn-courses">Khóa học của tôi</h2>
+        <a routerLink="/catalog" [queryParams]="{ scope: 'assigned' }"
+          >Xem tất cả</a
+        >
+      </div>
+      <ui-tabs
+        label="Khóa học theo trạng thái"
+        [tabs]="tabs()"
+        [selected]="store.tab$()"
+        (selectedChange)="store.showTab($event)"
+      >
+        @for (tab of tabs(); track tab.id) {
+        <div [uiTabPanel]="tab.id">
+          @if (store.tab$() === tab.id) { @if (store.coursesError$(); as error)
+          {
+          <ui-error-state
+            title="Không tải được danh sách khóa học"
+            [message]="error.message"
+            (retry)="store.retryCourses()"
+          />
+          } @else if (store.isCoursesLoading$()) {
+          <div class="learn__grid" aria-busy="true">
+            @for (n of placeholders; track n) {
+            <div
+              uiSkeleton
+              variant="block"
+              class="learn__card-placeholder"
+            ></div>
+            }
+          </div>
+          } @else if (store.courses$().length) {
+          <ul class="learn__grid" aria-label="Khóa học">
+            @for (course of store.courses$(); track course.id) {
+            <li><app-course-card [course]="course" /></li>
+            }
+          </ul>
+          } @else {
+          <ui-empty
+            variant="inline"
+            title="Không có khóa học ở trạng thái này."
+          >
+            <a routerLink="/catalog">Mở danh mục</a>
+          </ui-empty>
+          } }
+        </div>
+        }
+      </ui-tabs>
+    </section>
+  </div>
+
+  <aside class="learn__side">
+    <section class="learn__section" aria-labelledby="learn-due">
+      <h2 id="learn-due">Hạn hoàn thành</h2>
+      @if (store.dueError$(); as error) {
+      <ui-error-state
+        title="Không tải được hạn hoàn thành"
+        [message]="error.message"
+        (retry)="store.retryDue()"
+      />
+      } @else if (store.isDueLoading$()) {
+      <div uiSkeleton variant="block" class="learn__due-placeholder"></div>
+      } @else if (store.due$().length) {
+      <ul class="learn__due">
+        @for (row of store.due$(); track row.id) {
+        <li>
+          <a [routerLink]="row.link" class="learn__due-title"
+            >{{ row.title }}</a
+          >
+          <app-due-date [dueAt]="row.dueAt" />
+        </li>
+        }
+      </ul>
+      } @else {
+      <p class="learn__muted">Không có khóa học sắp đến hạn.</p>
+      }
+    </section>
+
+    @if (store.remindersError$(); as error) {
+    <section class="learn__section" aria-labelledby="learn-reminders">
+      <h2 id="learn-reminders">Nhắc hạn</h2>
+      <ui-error-state
+        title="Không tải được nhắc hạn"
+        [message]="error.message"
+        (retry)="store.retryReminders()"
+      />
+    </section>
+    } @else if (store.reminders$().length) {
+    <section class="learn__section" aria-labelledby="learn-reminders">
+      <div class="learn__heading">
+        <h2 id="learn-reminders">Nhắc hạn</h2>
+        <a routerLink="/notifications">Xem tất cả</a>
+      </div>
+      <ul class="learn__reminders">
+        @for (item of store.reminders$(); track item.reminder.id) {
+        <li>
+          <app-reminder-item
+            [reminder]="item.reminder"
+            [overdue]="item.isOverdue"
+          />
+        </li>
+        }
+      </ul>
+    </section>
+    }
+  </aside>
+</div>
