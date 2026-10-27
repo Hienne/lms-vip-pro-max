@@ -3,9 +3,9 @@
   description="Cây đơn vị và phòng ban theo phạm vi của bạn; mỗi đơn vị có quản trị viên và các nhóm chuyên môn riêng."
 >
   <div slot="actions" class="row">
-    <a uiButton routerLink="/admin/import" [queryParams]="{ type: 'org' }">
+    <button uiButton type="button" (click)="store.openImport()">
       <ui-icon name="upload" size="sm" />Nhập từ tệp
-    </a>
+    </button>
     @if (store.canManageOrgs$()) {
     <button uiButton variant="primary" (click)="store.editOrg(null)">
       <ui-icon name="plus" size="sm" />Thêm đơn vị / phòng
@@ -238,3 +238,7 @@
     (cancel)="close()"
   />
 </ng-template>
+
+@if (store.importing$()) {
+<app-org-import />
+}

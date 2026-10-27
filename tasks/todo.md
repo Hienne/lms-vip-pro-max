@@ -103,10 +103,10 @@ button, short rules (`.xlsx`, ≤ 5 MiB, ≤ 1000 dòng; ADMIN ORG line when not
 node's code with a copy button, check result "Hợp lệ: N đơn vị/phòng, M nhóm". Footer: "Kiểm tra", "Nhập dữ
 liệu" (disabled per `canImport$`), "Hủy". Success closes the drawer; tree and panel reload.
 
-- [ ] Full flow on `mockBackend: true`: template downloads, check shows counts, import closes and reloads; a
+- [x] Full flow on `mockBackend: true`: template downloads, check shows counts, import closes and reloads; a
       `loi` file toasts and leaves "Nhập dữ liệu" disabled.
-- [ ] Keyboard: open, pick a file, check, import, Esc closes; focus returns to the button.
-- [ ] Visual-design checklist: no icon tiles, badges or status colours for decoration.
+- [x] Keyboard: open, pick a file, check, import, Esc closes; focus returns to the button.
+- [x] Visual-design checklist: no icon tiles, badges or status colours for decoration.
 
 Verify: `npx nx test lms -- org`; browser pass; on the local backend import a file with one UNIT, one DEPARTMENT
 and one team, and see them in the tree. Files: `org/components/org-import/org-import.{ts,html,scss}`,

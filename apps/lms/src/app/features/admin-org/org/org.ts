@@ -23,6 +23,7 @@ import {
   Tree,
 } from '@lms/ui';
 import { OrgForm } from './components/org-form/org-form';
+import { OrgImport } from './components/org-import/org-import';
 import { TeamForm } from './components/team-form/team-form';
 import { OrgStore, TEAMS_PAGE_SIZE } from './data-access/org.store';
 import { OrgTreeStore } from './data-access/org-tree.store';
@@ -46,6 +47,7 @@ import { OrgTreeStore } from './data-access/org-tree.store';
     ListIcon,
     ListItem,
     OrgForm,
+    OrgImport,
     PageHeader,
     Pagination,
     RouterLink,

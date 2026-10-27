@@ -61,7 +61,7 @@ T1 contracts (schemas + endpoints)
 ### Phase 3: import
 
 - [x] T5: `OrgImportStore` (template, check, import)
-- [ ] T6: "Nhập từ tệp" drawer on `/admin/org`
+- [x] T6: "Nhập từ tệp" drawer on `/admin/org`
 - [ ] T7: Hide "Nhập danh sách" on `/admin/users`
 - [ ] T8: Docs and final verification
 

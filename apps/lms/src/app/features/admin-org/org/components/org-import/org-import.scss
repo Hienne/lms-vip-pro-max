@@ -1,0 +1,52 @@
+@use 'ui';
+
+.org-import {
+  @include ui.stack(4);
+
+  &__lead {
+    margin: 0;
+    color: ui.color(text-muted);
+  }
+
+  &__code {
+    @include ui.row(2);
+    flex-wrap: nowrap;
+    align-items: flex-start;
+    margin: 0;
+  }
+
+  &__code-text {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+
+  &__mono {
+    @include ui.mono;
+  }
+
+  &__drop {
+    padding: ui.space(5) ui.space(4);
+  }
+
+  &__drop-title {
+    display: block;
+    color: ui.color(text);
+    font-weight: ui.weight(medium);
+  }
+
+  &__drop-hint {
+    @include ui.text(sm, muted);
+    display: block;
+    margin-top: ui.space(1);
+  }
+
+  &__error {
+    margin: 0;
+    color: ui.color(danger);
+  }
+
+  &__actions {
+    @include ui.row(2);
+    justify-content: flex-end;
+  }
+}

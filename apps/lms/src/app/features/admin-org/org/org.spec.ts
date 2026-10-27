@@ -338,6 +338,120 @@ describe('Org', () => {
     expect(cards()).toHaveLength(6);
   });
 
+  describe('import from file', () => {
+    const pick = async (name: string) => {
+      const input = dialog()?.querySelector<HTMLInputElement>(
+        'input[type="file"]',
+      ) as HTMLInputElement;
+      Object.defineProperty(input, 'files', {
+        configurable: true,
+        value: [new File([new Uint8Array(10)], name)],
+      });
+      input.dispatchEvent(new Event('change', { bubbles: true }));
+      await settle();
+    };
+    const openImport = async () => {
+      button(el, 'Nhập từ tệp').click();
+      await settle();
+    };
+
+    it('opens a drawer on the page instead of linking to /admin/import', async () => {
+      await open('super.admin', '000001');
+      expect(el.querySelector('a[href^="/admin/import"]')).toBeNull();
+      await openImport();
+      expect(dialog()?.textContent).toContain('Nhập từ tệp');
+      expect(dialog()?.textContent).toContain('Tải mẫu Excel');
+      expect(dialog()?.textContent).toContain(ROOT.code);
+      expect(dialog()?.textContent).not.toContain('để trống sheet');
+      expect(button(dialog() as HTMLElement, 'Nhập dữ liệu').disabled).toBe(
+        true,
+      );
+    });
+
+    it('checks a file, imports it, closes and reloads the tree and the panel', async () => {
+      await open('super.admin', '000001');
+      await openImport();
+      await pick('don-vi.xlsx');
+      expect(button(dialog() as HTMLElement, 'Nhập dữ liệu').disabled).toBe(
+        true,
+      );
+      button(dialog() as HTMLElement, 'Kiểm tra').click();
+      await settle();
+      expect(dialog()?.textContent).toContain('Hợp lệ: 1 đơn vị/phòng, 1 nhóm');
+      const treeReads = calls(organizationEndpoints.orgTree).length;
+      const panelReads = calls(organizationEndpoints.orgContents).length;
+
+      button(dialog() as HTMLElement, 'Nhập dữ liệu').click();
+      await settle();
+      expect(calls(organizationEndpoints.importOrgs)).toHaveLength(2);
+      expect(dialog()).toBeNull();
+      expect(document.body.textContent).toContain(
+        'Đã nhập 1 đơn vị/phòng, 1 nhóm',
+      );
+      expect(calls(organizationEndpoints.orgTree).length).toBeGreaterThan(
+        treeReads,
+      );
+      expect(calls(organizationEndpoints.orgContents).length).toBeGreaterThan(
+        panelReads,
+      );
+      expect(
+        el.querySelector('[role="treeitem"]')?.hasAttribute('aria-expanded'),
+      ).toBe(true);
+    });
+
+    it('toasts an invalid file and keeps "Nhập dữ liệu" disabled', async () => {
+      await open('super.admin', '000001');
+      await openImport();
+      await pick('du-lieu-loi.xlsx');
+      button(dialog() as HTMLElement, 'Kiểm tra').click();
+      await settle();
+      expect(document.body.textContent).toContain(
+        'Tệp nhập chưa hợp lệ. Vui lòng kiểm tra các lỗi chi tiết.',
+      );
+      expect(button(dialog() as HTMLElement, 'Nhập dữ liệu').disabled).toBe(
+        true,
+      );
+    });
+
+    it('refuses a non-xlsx file in the drawer without a request', async () => {
+      await open('super.admin', '000001');
+      await openImport();
+      await pick('don-vi.csv');
+      expect(dialog()?.textContent).toContain('Chỉ nhận tệp Excel .xlsx.');
+      expect(button(dialog() as HTMLElement, 'Kiểm tra').disabled).toBe(true);
+      expect(calls(organizationEndpoints.importOrgs)).toHaveLength(0);
+    });
+
+    it('tells an org administrator to import teams only', async () => {
+      await open('quantri.ban', '000003');
+      await openImport();
+      expect(dialog()?.textContent).toContain(
+        'Bạn chỉ nhập được nhóm trong phạm vi quản lý; để trống sheet Organizations.',
+      );
+    });
+
+    it('closes on Escape, forgets the file and returns focus to the button', async () => {
+      await open('super.admin', '000001');
+      const trigger = button(el, 'Nhập từ tệp');
+      trigger.focus();
+      await openImport();
+      await pick('don-vi.xlsx');
+      dialog()?.dispatchEvent(
+        new KeyboardEvent('keydown', {
+          key: 'Escape',
+          code: 'Escape',
+          keyCode: 27,
+          bubbles: true,
+        }),
+      );
+      await settle();
+      await vi.waitFor(() => expect(dialog()).toBeNull());
+      expect(document.activeElement).toBe(trigger);
+      await openImport();
+      expect(dialog()?.textContent).not.toContain('don-vi.xlsx');
+    });
+  });
+
   it('keeps create and pause for global administrators: an org admin gets neither', async () => {
     await open('quantri.ban', '000003');
     expect(button(el, 'Thêm đơn vị / phòng')).toBeUndefined();
