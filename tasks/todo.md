@@ -66,9 +66,9 @@ Replace `detailData` + `teamsData` in `OrgStore` with one `serverData` on `orgCo
 `{ orgId, page }` (`size` 6, `sort: 'name,asc'`). Add `org$` (from `contents.organization`); the panel's code,
 status, counts, administrators and the edit drawer read it instead of the tree node.
 
-- [ ] Selecting a node sends one request; counts, administrators and teams render from it.
-- [ ] Changing node resets the team page to 1 and ignores a late answer for the previous node.
-- [ ] Not found shows the panel error state with retry; edit and pause still work and reload the panel.
+- [x] Selecting a node sends one request; counts, administrators and teams render from it.
+- [x] Changing node resets the team page to 1 and ignores a late answer for the previous node.
+- [x] Not found shows the panel error state with retry; edit and pause still work and reload the panel.
 
 Verify: `npx nx test lms -- org`; on the backend (global admin, then an ADMIN ORG account) open nodes and page
 teams. Files: `org/data-access/org.store.ts`, `org/org.html`, `org/org.spec.ts`. Depends on: T3.

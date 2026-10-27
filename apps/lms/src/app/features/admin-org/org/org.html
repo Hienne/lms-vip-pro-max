@@ -55,19 +55,17 @@
             }
           </div>
           <h2 class="org__title">{{ selected.name }}</h2>
-          @if (store.detail$(); as detail) {
+          @if (store.org$()) {
           <p class="org__admins">
             <ui-icon name="shield" size="sm" />
             <span
-              >Quản trị viên: @for (admin of detail.administrators; track
+              >Quản trị viên: @for (admin of store.administrators$(); track
               admin.userId; let last = $last) {
               <a [routerLink]="['/admin/users', admin.userId]"
                 >{{ admin.fullName }}</a
               >{{ last ? '' : ', ' }} } @empty { chưa gán }</span
             >
           </p>
-          } @else if (store.detailError$(); as error) {
-          <p class="org__admins">{{ error.message }}</p>
           }
         </div>
         @if (store.org$(); as org) {
@@ -101,15 +99,20 @@
       }
     </div>
 
+    @if (store.contentsError$(); as error) {
+    <ui-error-state
+      title="Không tải được đơn vị"
+      [message]="error.message"
+      (retry)="store.retryContents()"
+    />
+    } @else {
     <div class="org__section-head">
       <h3>Nhóm ({{ store.teamsTotal$() }})</h3>
       <button uiButton size="sm" (click)="store.editTeam(null)">
         <ui-icon name="plus" size="sm" />Thêm nhóm
       </button>
     </div>
-    @if (store.teamsError$(); as error) {
-    <ui-error-state title="Không tải được nhóm" [message]="error.message" />
-    } @else if (store.teams$().length) {
+    @if (store.teams$().length) {
     <div class="org__groups">
       @for (team of store.teams$(); track team.id) {
       <article uiCard class="org__group">
@@ -173,13 +176,13 @@
       [pageSize]="pageSize"
       (pageChange)="store.goToTeamPage($event)"
     />
-    } } @else if (store.teamsLoading$()) {
+    } } @else if (store.contentsLoading$()) {
     <div class="org__loading"><span uiSpinner></span></div>
     } @else {
     <div uiCard>
       <ui-empty variant="inline" title="Chưa có nhóm nào" />
     </div>
-    }
+    } }
   </section>
 </div>
 } @else {

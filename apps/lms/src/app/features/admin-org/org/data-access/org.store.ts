@@ -49,10 +49,11 @@ type TeamSave =
     };
 
 /**
- * The org screen (the mockup's `org` page): the picked org with its administrators and its teams,
- * and the commands on orgs and teams. The tree itself is `OrgTreeStore`, which this store hides
- * behind the selectors below. Every accepted mutation bumps `changes`; the detail, the teams and
- * the tree reload on it.
+ * The org screen (the mockup's `org` page): the picked org with its administrators and a page of
+ * its teams, read in one call (`/orgs/{id}/contents`), and the commands on orgs and teams. The
+ * tree itself is `OrgTreeStore`, which this store hides behind the selectors below; a tree node is
+ * only the selection, the counts come from the contents. Every accepted mutation bumps `changes`;
+ * the contents and the tree reload on it.
  */
 @Injectable()
 export class OrgStore {
@@ -80,14 +81,10 @@ export class OrgStore {
     this.tree.reloadOn(this.changes);
   }
 
-  private readonly detailData = serverData(
-    (orgId: number) =>
-      this.client.call(organizationEndpoints.getOrg, { params: { orgId } }),
-    { params: () => this.selectedOrgId(), reloadOn: this.changes },
-  );
-  private readonly teamsData = serverData(
+  /** A different node or team page drops the held value, so a late answer for the old one is ignored. */
+  private readonly contentsData = serverData(
     (read: { orgId: number; page: number }) =>
-      this.client.call(organizationEndpoints.listTeams, {
+      this.client.call(organizationEndpoints.orgContents, {
         params: { orgId: read.orgId },
         query: { page: read.page, size: TEAMS_PAGE_SIZE, sort: 'name,asc' },
       }),
@@ -180,17 +177,20 @@ export class OrgStore {
 
   readonly editingOrg$ = this.state.editingOrg.asReadonly();
   readonly editingTeam$ = this.state.editingTeam.asReadonly();
-  readonly detail$ = this.detailData.value;
   /** The picked org with its counts; tree nodes carry none. */
-  readonly org$ = computed(() => this.detailData.value()?.organization);
-  readonly detailError$ = this.detailData.error;
-  readonly teams$ = computed(() => this.teamsData.value()?.items ?? []);
+  readonly org$ = computed(() => this.contentsData.value()?.organization);
+  readonly administrators$ = computed(
+    () => this.contentsData.value()?.administrators ?? [],
+  );
+  readonly teams$ = computed(
+    () => this.contentsData.value()?.teams.items ?? [],
+  );
   readonly teamsTotal$ = computed(
-    () => this.teamsData.value()?.totalElements ?? 0,
+    () => this.contentsData.value()?.teams.totalElements ?? 0,
   );
   readonly teamPage$ = computed(() => this.state.teamPage() + 1);
-  readonly teamsLoading$ = this.teamsData.isLoading;
-  readonly teamsError$ = this.teamsData.error;
+  readonly contentsLoading$ = this.contentsData.isLoading;
+  readonly contentsError$ = this.contentsData.error;
 
   /** Creating an org and pausing one are for global administrators; the server enforces it. */
   readonly canManageOrgs$ = computed(
@@ -300,7 +300,7 @@ export class OrgStore {
       .subscribe(() => this.deleteMutation.run(team.id));
   }
 
-  retryDetail(): void {
-    this.detailData.reload();
+  retryContents(): void {
+    this.contentsData.reload();
   }
 }

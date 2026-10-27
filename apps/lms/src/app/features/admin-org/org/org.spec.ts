@@ -3,7 +3,7 @@ import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
 import { organizationEndpoints } from '@lms/contracts';
-import { SEED_ORGS, SEED_TEAMS } from '@lms/mocks';
+import { backendRefusal, SEED_ORGS, SEED_TEAMS } from '@lms/mocks';
 import { createAppRoutes } from '../../../app.routes';
 import {
   parseAppConfig,
@@ -13,6 +13,7 @@ import { testAppConfig } from '../../../core/config/app-config.testing';
 import { MockBackend } from '../../../core/dev/mock-api/mock-api.interceptor';
 import {
   provideMockBackendHttp,
+  ReplyGate,
   signInToMockBackend,
 } from '../../../core/dev/mock-api/mock-backend.testing';
 import {
@@ -108,18 +109,30 @@ describe('Org', () => {
     expect(text()).toContain('Quản trị viên:');
   });
 
+  it('reads the panel of the picked org in one request: counts, administrators and teams', async () => {
+    await open('super.admin', '000001');
+    expect(calls(organizationEndpoints.orgContents)).toHaveLength(1);
+    expect(calls(organizationEndpoints.orgContents)[0][1]).toMatchObject({
+      params: { orgId: String(ROOT.id) },
+      query: { page: '0', size: '6', sort: 'name,asc' },
+    });
+    expect(calls(organizationEndpoints.getOrg)).toHaveLength(0);
+    expect(calls(organizationEndpoints.listTeams)).toHaveLength(0);
+    const stats = Array.from(el.querySelectorAll('dl dd')).map((dd) =>
+      dd.textContent?.trim(),
+    );
+    expect(stats).toEqual(['7', String(SEED_TEAMS.length)]);
+    expect(text()).toContain('Quản trị viên: Quản trị Ban Demo');
+  });
+
   it('pages the teams of the picked org and previews at most five members', async () => {
     await open('super.admin', '000001');
-    expect(calls(organizationEndpoints.listTeams)[0][1]).toMatchObject({
-      params: { orgId: String(ROOT.id) },
-      query: { page: '0', size: '6' },
-    });
     expect(cards()).toHaveLength(6);
     expect(text()).toContain(`Nhóm (${SEED_TEAMS.length})`);
     button(el, '2').click();
     await settle();
     expect(
-      calls(organizationEndpoints.listTeams).at(-1)?.[1].query,
+      calls(organizationEndpoints.orgContents).at(-1)?.[1].query,
     ).toMatchObject({ page: '1' });
     for (const team of cards()) {
       expect(team.querySelectorAll('ul a').length).toBeLessThanOrEqual(5);
@@ -253,6 +266,76 @@ describe('Org', () => {
     expect(el.querySelector('[role="tree"]')?.textContent).toContain(
       'Phòng Mới',
     );
+  });
+
+  async function addDepartment(): Promise<number> {
+    const token = signInToMockBackend('super.admin');
+    const reply = TestBed.inject(MockBackend).handle(
+      organizationEndpoints.createOrg,
+      {
+        token,
+        params: {},
+        query: {},
+        body: {
+          orgType: 'DEPARTMENT',
+          parentId: ROOT.id,
+          code: 'PHONG_TRONG',
+          name: 'Phòng trống',
+          sortNo: 0,
+        },
+      },
+    );
+    return (reply?.body.data as { id: number }).id;
+  }
+  /** The deepest item with that label: an item's text includes its children's. */
+  const treeItem = (label: string) =>
+    Array.from(el.querySelectorAll<HTMLElement>('[role="treeitem"]'))
+      .filter((item) => item.textContent?.includes(label))
+      .at(-1) as HTMLElement;
+
+  it('starts the teams of another node at the first page, and drops the late answer for the old one', async () => {
+    const departmentId = await addDepartment();
+    await open('super.admin', '000001');
+    treeItem(ROOT.name).click();
+    await settle();
+    expect(treeItem('Phòng trống')).toBeTruthy();
+
+    const hold = TestBed.inject(ReplyGate).hold(
+      organizationEndpoints.orgContents,
+    );
+    button(el, '2').click();
+    await settle();
+    treeItem('Phòng trống').click();
+    await settle();
+    hold.release();
+    await settle();
+
+    expect(calls(organizationEndpoints.orgContents).at(-1)?.[1]).toMatchObject({
+      params: { orgId: String(departmentId) },
+      query: { page: '0' },
+    });
+    expect(el.querySelector('h2')?.textContent).toBe('Phòng trống');
+    expect(text()).toContain('Nhóm (0)');
+    expect(cards()).toHaveLength(0);
+  });
+
+  it('shows the panel error with a retry when the node is gone or out of scope', async () => {
+    const backend = TestBed.inject(MockBackend);
+    handle.mockImplementation((endpoint, request) =>
+      endpoint === organizationEndpoints.orgContents
+        ? backendRefusal('resourceNotFound')
+        : MockBackend.prototype.handle.call(backend, endpoint, request),
+    );
+    await open('super.admin', '000001');
+    expect(text()).toContain('Không tìm thấy dữ liệu yêu cầu.');
+    expect(cards()).toHaveLength(0);
+
+    handle.mockImplementation((endpoint, request) =>
+      MockBackend.prototype.handle.call(backend, endpoint, request),
+    );
+    button(el, 'Thử lại').click();
+    await settle();
+    expect(cards()).toHaveLength(6);
   });
 
   it('keeps create and pause for global administrators: an org admin gets neither', async () => {
