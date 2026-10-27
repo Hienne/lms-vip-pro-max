@@ -51,6 +51,8 @@ export interface StudyChannelDeps {
   readonly userId: () => string | undefined;
   /** The page is visible: a hidden tab sends no heartbeat. */
   readonly visible: () => boolean;
+  /** Where the video on screen is now, to close its played range when the block is left. */
+  readonly position?: () => number | undefined;
   /** Each result the server accepted, to show instead of the loaded progress. */
   readonly accepted: (result: ProgressResult) => void;
   /** The server wants a fresh read of the enrolment (a stale event, a changed block). */
@@ -124,7 +126,7 @@ export class StudyChannel {
     this.clearWork();
     if (this.state.phase() === 'ready' && this.target) {
       // The session is still on the old block: close it there, then claim the new one.
-      this.queue({ type: 'CLOSE', playing: false });
+      this.queue(this.closeEvent());
       this.afterIdle = () => this.claimWanted();
       this.pump();
     } else if (this.busy) {
@@ -174,11 +176,19 @@ export class StudyChannel {
   destroy(): void {
     if (this.destroyed) return;
     if (this.state.phase() === 'ready') {
-      this.queue({ type: 'CLOSE', playing: false });
+      this.queue(this.closeEvent());
       this.pump();
     }
     this.destroyed = true;
     this.stopHeartbeat();
+  }
+
+  /** `CLOSE` for the block on screen; a video closes its range where the player is now. */
+  private closeEvent(): StudyEvent {
+    const position = this.target?.video ? this.deps.position?.() : undefined;
+    return position === undefined
+      ? { type: 'CLOSE', playing: false }
+      : { type: 'CLOSE', playing: false, positionSeconds: position };
   }
 
   private queue(event: StudyEvent): void {

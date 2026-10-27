@@ -177,7 +177,13 @@ describe('Lesson', () => {
     const player = () => el.querySelector('video');
     const sent = () =>
       calls(learnerEndpoints.saveProgress).map(
-        ([, r]) => r.body as { eventType: string; playing: boolean },
+        ([, r]) =>
+          r.body as {
+            eventType: string;
+            playing: boolean;
+            watchedFromSeconds?: number;
+            watchedToSeconds?: number;
+          },
       );
 
     it('loads the content URL of the block only once this tab holds the session, without autoplay', () => {
@@ -196,6 +202,26 @@ describe('Lesson', () => {
       expect(sent().map((e) => e.eventType)).toEqual(['PLAY', 'PAUSE']);
       expect(sent()[0].playing).toBe(true);
       expect(sent()[1].playing).toBe(false);
+    });
+
+    it('closes the block with the range played when the learner leaves the page', async () => {
+      let now = 0;
+      Object.defineProperty(player(), 'currentTime', {
+        get: () => now,
+        set: (value: number) => (now = value),
+      });
+      player()!.dispatchEvent(new Event('play'));
+      await settle();
+      now = 7;
+      handle.mockClear();
+
+      await harness.navigateByUrl('/catalog');
+      await settle();
+
+      expect(sent().find((e) => e.eventType === 'CLOSE')).toMatchObject({
+        watchedFromSeconds: 0,
+        watchedToSeconds: 7,
+      });
     });
 
     it('shows "Không phát được video." and claims the block again on "Thử lại"', async () => {

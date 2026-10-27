@@ -1,4 +1,4 @@
-import { Component, computed, inject } from '@angular/core';
+import { Component, computed, effect, inject, viewChild } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import {
   Button,
@@ -52,6 +52,14 @@ import { LessonStore } from './data-access/lesson.store';
 })
 export class Lesson {
   protected readonly store = inject(LessonStore);
+
+  private readonly video = viewChild(VideoBlock);
+
+  /** Hands the store the player on screen, so leaving the block closes the range being watched. */
+  private readonly watchVideo = effect(() => {
+    const video = this.video();
+    this.store.watchVideo(video ? () => video.currentPosition() : undefined);
+  });
 
   /** The page the focus bar and every dead end lead back to. */
   protected readonly courseLink = computed(() => {

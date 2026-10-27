@@ -150,11 +150,15 @@ export class LessonStore {
     }),
   };
 
+  /** Reads the player of the video block on screen, which the page hands over (`watchVideo`). */
+  private videoPosition: (() => number) | undefined;
+
   private readonly channel = new StudyChannel({
     client: this.client,
     storage: this.storage,
     userId: () => this.session.user$()?.userId,
     visible: () => this.document.visibilityState !== 'hidden',
+    position: () => this.videoPosition?.(),
     accepted: (result) => this.addResult(result),
     resync: () => this.detailData.reload(),
   });
@@ -438,6 +442,11 @@ export class LessonStore {
   retryLoad(): void {
     this.cardData.reload();
     this.detailData.reload();
+  }
+
+  /** The page tells where the video on screen is now, or none; a closed block ends at that spot. */
+  watchVideo(position: (() => number) | undefined): void {
+    this.videoPosition = position;
   }
 
   videoPlay(positionSeconds: number): void {

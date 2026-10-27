@@ -26,6 +26,7 @@ interface Call {
 
 const BLOCK_A: ClaimTarget = { enrollmentId: 1, blockId: 10, video: false };
 const BLOCK_B: ClaimTarget = { enrollmentId: 1, blockId: 20, video: true };
+const VIDEO_A: ClaimTarget = { enrollmentId: 1, blockId: 10, video: true };
 
 const expired = () =>
   new ApiError('LEARNING-SESSION_EXPIRED', undefined, 'Phiên đã hết hạn', 409);
@@ -35,12 +36,15 @@ describe('StudyChannel', () => {
   let channel: StudyChannel;
   let visible: boolean;
   let leases: number;
+  /** Where the player is now, as the page reads it when the channel closes a block. */
+  let position: number | undefined;
 
   beforeEach(() => {
     vi.useFakeTimers();
     calls = [];
     visible = true;
     leases = 0;
+    position = undefined;
     const client = {
       call: (endpoint: unknown, request: { body?: unknown }) =>
         new Observable<unknown>((subscriber) => {
@@ -66,6 +70,7 @@ describe('StudyChannel', () => {
       } as unknown as StudySessionStorage,
       userId: () => 'u1',
       visible: () => visible,
+      position: () => position,
       accepted: () => undefined,
       resync: () => undefined,
     };
@@ -219,5 +224,51 @@ describe('StudyChannel', () => {
     eventAnswered();
     expect(claims()).toHaveLength(2);
     expect(claims()[1].body).toMatchObject({ blockId: 20 });
+  });
+
+  describe('closing a block', () => {
+    const play = () => {
+      channel.send({ type: 'PLAY', playing: true, positionSeconds: 0 });
+      eventAnswered();
+    };
+    const closing = () =>
+      sentEvents().find((command) => command.eventType === 'CLOSE');
+
+    it('carries the range played since the last report when the block changes', () => {
+      open(VIDEO_A);
+      play();
+      position = 7;
+
+      channel.switchTo(BLOCK_B);
+
+      expect(closing()).toMatchObject({
+        videoPositionSeconds: 7,
+        watchedFromSeconds: 0,
+        watchedToSeconds: 7,
+      });
+    });
+
+    it('carries the range played when the page is left', () => {
+      open(VIDEO_A);
+      play();
+      position = 12;
+
+      channel.destroy();
+
+      expect(closing()).toMatchObject({
+        watchedFromSeconds: 0,
+        watchedToSeconds: 12,
+      });
+    });
+
+    it('carries no range when the video was paused', () => {
+      open(VIDEO_A);
+      play();
+      channel.send({ type: 'PAUSE', playing: false, positionSeconds: 3 });
+      eventAnswered();
+      position = 9;
+      channel.switchTo(BLOCK_B);
+      expect(closing()).not.toHaveProperty('watchedFromSeconds');
+    });
   });
 });

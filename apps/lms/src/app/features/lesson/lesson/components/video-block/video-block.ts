@@ -102,8 +102,13 @@ export class VideoBlock {
     this.retry.emit();
   }
 
+  /** Where the video is now; the page reads it when the block is closed. */
+  currentPosition(): number {
+    return this.player()?.nativeElement.currentTime ?? this.last;
+  }
+
   private position(): number {
-    return this.player()?.nativeElement.currentTime ?? 0;
+    return this.currentPosition();
   }
 
   private stopBeat(): void {
