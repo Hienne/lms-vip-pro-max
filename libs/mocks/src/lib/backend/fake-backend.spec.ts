@@ -6,6 +6,7 @@ import {
   identityEndpoints,
   knowledgeEndpoints,
   organizationEndpoints,
+  personalEndpoints,
   RoleSchema,
   shellEndpoints,
   type AnyEndpoint,

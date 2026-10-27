@@ -1,0 +1,272 @@
+[
+  {
+    "page": "Dashboard",
+    "heading": "Chào An, hôm nay học gì tiếp nhỉ?",
+    "scrollWidth": 360,
+    "width": 375
+  },
+  {
+    "page": "Dashboard",
+    "heading": "Chào An, hôm nay học gì tiếp nhỉ?",
+    "scrollWidth": 753,
+    "width": 768
+  },
+  {
+    "page": "Dashboard",
+    "heading": "Chào An, hôm nay học gì tiếp nhỉ?",
+    "scrollWidth": 1265,
+    "width": 1280
+  },
+  {
+    "page": "Ghi chú trong bài học",
+    "heading": "Thay đổi CCCD",
+    "scrollWidth": 360,
+    "width": 375
+  },
+  {
+    "page": "Ghi chú trong bài học",
+    "heading": "Thay đổi CCCD",
+    "scrollWidth": 753,
+    "width": 768
+  },
+  {
+    "page": "Ghi chú trong bài học",
+    "heading": "Thay đổi CCCD",
+    "scrollWidth": 1265,
+    "width": 1280
+  },
+  {
+    "page": "Đã lưu & ghi chú",
+    "heading": "Đã lưu & ghi chú",
+    "scrollWidth": 360,
+    "width": 375
+  },
+  {
+    "page": "Đã lưu & ghi chú",
+    "heading": "Đã lưu & ghi chú",
+    "scrollWidth": 753,
+    "width": 768
+  },
+  {
+    "page": "Đã lưu & ghi chú",
+    "heading": "Đã lưu & ghi chú",
+    "scrollWidth": 1265,
+    "width": 1280
+  },
+  {
+    "page": "Tiến độ và huy hiệu",
+    "heading": "Kết quả & tiến độ của tôi",
+    "scrollWidth": 360,
+    "width": 375
+  },
+  {
+    "page": "Tiến độ và huy hiệu",
+    "heading": "Kết quả & tiến độ của tôi",
+    "scrollWidth": 753,
+    "width": 768
+  },
+  {
+    "page": "Tiến độ và huy hiệu",
+    "heading": "Kết quả & tiến độ của tôi",
+    "scrollWidth": 1265,
+    "width": 1280
+  },
+  {
+    "page": "Thông báo nhắc hạn",
+    "heading": "Thông báo",
+    "scrollWidth": 360,
+    "width": 375
+  },
+  {
+    "page": "Thông báo nhắc hạn",
+    "heading": "Thông báo",
+    "scrollWidth": 753,
+    "width": 768
+  },
+  {
+    "page": "Thông báo nhắc hạn",
+    "heading": "Thông báo",
+    "scrollWidth": 1265,
+    "width": 1280
+  },
+  {
+    "page": "Chứng nhận",
+    "heading": "Chứng nhận hoàn thành",
+    "scrollWidth": 375,
+    "width": 375
+  },
+  {
+    "page": "Chứng nhận",
+    "heading": "Chứng nhận hoàn thành",
+    "scrollWidth": 768,
+    "width": 768
+  },
+  {
+    "page": "Chứng nhận",
+    "heading": "Chứng nhận hoàn thành",
+    "scrollWidth": 1280,
+    "width": 1280
+  },
+  {
+    "page": "Làm bài kiểm tra",
+    "heading": "Khi khách hàng đổi CCCD, cần làm gì?",
+    "scrollWidth": 375,
+    "width": 375
+  },
+  {
+    "page": "Làm bài kiểm tra",
+    "heading": "Khi khách hàng đổi CCCD, cần làm gì?",
+    "scrollWidth": 768,
+    "width": 768
+  },
+  {
+    "page": "Làm bài kiểm tra",
+    "heading": "Khi khách hàng đổi CCCD, cần làm gì?",
+    "scrollWidth": 1280,
+    "width": 1280
+  },
+  {
+    "page": "Kết quả và giải thích",
+    "heading": "Chưa đạt — cố gắng thêm nhé",
+    "scrollWidth": 360,
+    "width": 375
+  },
+  {
+    "page": "Kết quả và giải thích",
+    "heading": "Chưa đạt — cố gắng thêm nhé",
+    "scrollWidth": 753,
+    "width": 768
+  },
+  {
+    "page": "Kết quả và giải thích",
+    "heading": "Chưa đạt — cố gắng thêm nhé",
+    "scrollWidth": 1265,
+    "width": 1280
+  },
+  {
+    "page": "Dashboard tối",
+    "heading": "Chào An, hôm nay học gì tiếp nhỉ?",
+    "scrollWidth": 360,
+    "width": 375
+  },
+  {
+    "page": "Dashboard tối",
+    "heading": "Chào An, hôm nay học gì tiếp nhỉ?",
+    "scrollWidth": 753,
+    "width": 768
+  },
+  {
+    "page": "Dashboard tối",
+    "heading": "Chào An, hôm nay học gì tiếp nhỉ?",
+    "scrollWidth": 1265,
+    "width": 1280
+  },
+  {
+    "page": "Ngân hàng câu hỏi tối",
+    "heading": "Ngân hàng câu hỏi",
+    "scrollWidth": 360,
+    "width": 375
+  },
+  {
+    "page": "Ngân hàng câu hỏi tối",
+    "heading": "Ngân hàng câu hỏi",
+    "scrollWidth": 753,
+    "width": 768
+  },
+  {
+    "page": "Ngân hàng câu hỏi tối",
+    "heading": "Ngân hàng câu hỏi",
+    "scrollWidth": 1280,
+    "width": 1280
+  },
+  {
+    "page": "Drawer câu hỏi tối",
+    "heading": "Ngân hàng câu hỏi",
+    "scrollWidth": 360,
+    "width": 375
+  },
+  {
+    "page": "Drawer câu hỏi tối",
+    "heading": "Ngân hàng câu hỏi",
+    "scrollWidth": 753,
+    "width": 768
+  },
+  {
+    "page": "Drawer câu hỏi tối",
+    "heading": "Ngân hàng câu hỏi",
+    "scrollWidth": 1280,
+    "width": 1280
+  },
+  {
+    "page": "Ngân hàng câu hỏi sáng",
+    "heading": "Ngân hàng câu hỏi",
+    "scrollWidth": 360,
+    "width": 375
+  },
+  {
+    "page": "Ngân hàng câu hỏi sáng",
+    "heading": "Ngân hàng câu hỏi",
+    "scrollWidth": 753,
+    "width": 768
+  },
+  {
+    "page": "Ngân hàng câu hỏi sáng",
+    "heading": "Ngân hàng câu hỏi",
+    "scrollWidth": 1280,
+    "width": 1280
+  },
+  {
+    "page": "Cấu hình bài kiểm tra",
+    "heading": "Cấu hình bài kiểm tra",
+    "scrollWidth": 360,
+    "width": 375
+  },
+  {
+    "page": "Cấu hình bài kiểm tra",
+    "heading": "Cấu hình bài kiểm tra",
+    "scrollWidth": 753,
+    "width": 768
+  },
+  {
+    "page": "Cấu hình bài kiểm tra",
+    "heading": "Cấu hình bài kiểm tra",
+    "scrollWidth": 1265,
+    "width": 1280
+  },
+  {
+    "page": "reports-overview",
+    "heading": "Tình hình đào tạo",
+    "scrollWidth": 360,
+    "width": 375
+  },
+  {
+    "page": "reports-overview",
+    "heading": "Tình hình đào tạo",
+    "scrollWidth": 753,
+    "width": 768
+  },
+  {
+    "page": "reports-overview",
+    "heading": "Tình hình đào tạo",
+    "scrollWidth": 1265,
+    "width": 1280
+  },
+  {
+    "page": "reports-learners",
+    "heading": "Báo cáo theo học viên",
+    "scrollWidth": 360,
+    "width": 375
+  },
+  {
+    "page": "reports-learners",
+    "heading": "Báo cáo theo học viên",
+    "scrollWidth": 768,
+    "width": 768
+  },
+  {
+    "page": "reports-learners",
+    "heading": "Báo cáo theo học viên",
+    "scrollWidth": 1280,
+    "width": 1280
+  }
+]

@@ -1,3 +1,4 @@
+import { SCREEN_ENTRIES } from '../../../../core/routing/screens';
 import {
   MIGRATION_REGISTRY,
   STATUS_LABEL,
@@ -38,6 +39,8 @@ export interface BoardRow {
   readonly checklist: string;
   readonly owner: string | undefined;
   readonly pullRequest: string | undefined;
+  readonly implementation: string | undefined;
+  readonly notes: string | undefined;
   readonly checks: readonly {
     readonly label: string;
     readonly mark: string;
@@ -55,6 +58,7 @@ export interface BoardKindGroup {
   readonly kind: MigrationEntry['kind'];
   readonly label: string;
   readonly summary: MigrationSummary;
+  readonly connectedRoutes: number;
   readonly statuses: readonly BoardStatusGroup[];
 }
 
@@ -75,12 +79,28 @@ function toRow(entry: MigrationEntry): BoardRow {
     checklist: entry.checklist.join(', ') || '—',
     owner: entry.owner,
     pullRequest: entry.pullRequest,
+    implementation: implementationOf(entry),
+    notes: entry.notes,
     checks: CHECK_LABELS.map(([key, label]) => ({
       label,
       mark: STATE_MARK[entry.verify[key]],
       text: STATE_TEXT[entry.verify[key]],
     })),
   };
+}
+
+/** Route wiring is observable in code; it does not imply a verified migration. */
+function implementationOf(entry: MigrationEntry): string | undefined {
+  if (entry.kind !== 'route') return undefined;
+  const registered = SCREEN_ENTRIES.find(
+    ({ screen }) => screen.path === entry.target,
+  );
+  if (registered)
+    return registered.screen.load ? 'Đã nối màn hình' : 'Placeholder';
+  if (entry.target === '') return 'Điều hướng theo vai trò';
+  if (['**', 'design-system', 'dev/migration'].includes(entry.target))
+    return 'Đã nối màn hình';
+  return 'Chưa tìm thấy route';
 }
 
 /** Entries grouped by kind and then by status (in progress first), with counts per kind. */
@@ -93,6 +113,11 @@ export function buildBoard(
       kind,
       label: KIND_LABEL[kind],
       summary: summarize(ofKind),
+      connectedRoutes: ofKind.filter((entry) =>
+        ['Đã nối màn hình', 'Điều hướng theo vai trò'].includes(
+          implementationOf(entry) ?? '',
+        ),
+      ).length,
       statuses: STATUS_ORDER.map((status) => ({
         status,
         label: STATUS_LABEL[status],

@@ -1,0 +1,141 @@
+<header class="lesson__bar">
+  <a
+    uiButton
+    variant="ghost"
+    size="sm"
+    [routerLink]="['/course',store.courseId$()]"
+    ><ui-icon name="arrow-left" size="sm" />Thoát</a
+  >
+  <div class="lesson__title">
+    <small>{{store.courseTitle$()}}</small
+    ><strong>{{store.lessonTitle$()}}</strong>
+  </div>
+  <a uiButton variant="ghost" size="sm" routerLink="/saved"
+    ><ui-icon name="bookmark" size="sm" />Đã lưu & ghi chú</a
+  >
+</header>
+<div class="lesson__layout">
+  <article class="lesson__main">
+    <header class="lesson__heading">
+      <span class="lesson__eyebrow">Bài học</span>
+      <h1>{{store.lessonTitle$()}}</h1>
+    </header>
+    <section uiCard>
+      <div class="lesson__toolbar">
+        <span
+          ><ui-icon
+            [name]="store.isPdf$() ? 'file-text' : 'video'"
+            size="sm"
+          />{{store.isPdf$() ? 'Tài liệu PDF' : 'Video bài học'}}</span
+        ><button
+          uiButton
+          variant="ghost"
+          size="sm"
+          [disabled]="store.isSaving$()"
+          (click)="store.saveBookmark()"
+        >
+          <ui-icon name="bookmark" size="sm" />Đánh dấu vị trí
+        </button>
+      </div>
+      <div class="lesson__document">
+        <ui-empty
+          [icon]="store.isPdf$() ? 'file-text' : 'video'"
+          title="Nội dung đang được cập nhật"
+          description="Tài liệu bài học sẽ xuất hiện tại đây khi được cung cấp."
+        />
+      </div>
+      <div class="lesson__position">
+        @if(store.isPdf$()){<label for="lesson-page">Trang PDF</label
+        ><input
+          uiInput
+          id="lesson-page"
+          type="number"
+          min="1"
+          [value]="store.page$()"
+          (change)="store.setPage($any($event.target).value)"
+        />}@else{<label for="lesson-seconds">Vị trí video (giây)</label
+        ><input
+          uiInput
+          id="lesson-seconds"
+          type="number"
+          min="0"
+          [value]="store.seconds$()"
+          (change)="store.setSeconds($any($event.target).value)"
+        />}
+      </div>
+    </section>
+  </article>
+  <aside class="lesson__side" aria-label="Công cụ bài học">
+    <section uiCard>
+      <ui-tabs [tabs]="store.tabs$()" selected="notes" label="Công cụ bài học"
+        ><div uiTabPanel="notes" uiCardBody class="stack">
+          <form class="stack" novalidate (submit)="saveNote($event)">
+            <div class="row row--gap-2">
+              <strong>Ghi chú tại</strong
+              ><span uiBadge tone="primary"
+                >{{store.isPdf$() ? 'Trang ' + store.page$() : 'Video ' +
+                (store.seconds$()|fmtTime)}}</span
+              >
+            </div>
+            <ui-field label="Nội dung ghi chú">
+              <textarea
+                uiTextarea
+                rows="3"
+                placeholder="Ghi nhanh ý chính…"
+                [formField]="noteForm.text"
+              ></textarea></ui-field
+            >@if(store.saveError$();as error){<ui-alert tone="danger"
+              >{{error.message}}</ui-alert
+            >}<button
+              uiButton
+              variant="primary"
+              size="sm"
+              [disabled]="store.isSaving$()"
+              type="submit"
+            >
+              <ui-icon name="notebook-pen" size="sm" />Lưu ghi chú
+            </button>
+          </form>
+          @if(store.readError$();as error){<ui-error-state
+            title="Không tải được ghi chú"
+            [message]="error.message"
+            (retry)="store.retry()"
+          />} @for(item of store.notes$();track item.id){
+          <article uiCard padded class="lesson__note">
+            <button
+              uiButton
+              variant="ghost"
+              size="sm"
+              (click)="store.jump(item)"
+            >
+              @if(item.anchor.type==='pdf'){Trang
+              {{item.anchor.page}}}@else{Video {{item.anchor.seconds|fmtTime}}}
+            </button>
+            <p>{{item.text}}</p>
+          </article>
+          }@empty{
+          <p class="lesson__muted">
+            Chưa có ghi chú. Ghi chú được gắn với trang PDF hoặc mốc video đang
+            xem.
+          </p>
+          } @for(item of store.bookmarks$();track item.id){
+          <article uiCard padded class="lesson__note">
+            <button
+              uiButton
+              variant="ghost"
+              size="sm"
+              (click)="store.jump(item)"
+            >
+              <ui-icon
+                name="bookmark"
+                size="sm"
+              />@if(item.anchor.type==='pdf'){Trang
+              {{item.anchor.page}}}@else{Video {{item.anchor.seconds|fmtTime}}}</button
+            ><small>{{item.label}}</small>
+          </article>
+          }
+        </div></ui-tabs
+      >
+    </section>
+  </aside>
+</div>

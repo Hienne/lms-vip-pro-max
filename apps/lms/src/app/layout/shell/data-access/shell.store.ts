@@ -30,6 +30,7 @@ import type { UserMenuValue } from '../../header/header';
 import { searchTarget } from '../../header/search-target';
 import { EndpointClient } from '../../../core/http/endpoint-client';
 import { RemindersChanged } from '../../../core/learning/reminders-changed';
+import { LearningChanges } from '../../../core/data-access/learning-changes';
 import {
   hasUnsavedChanges,
   LeavePrompt,
@@ -73,6 +74,7 @@ export class ShellStore {
   private readonly session = inject(SessionStore);
   private readonly dialog = inject(Dialog);
   private readonly client = inject(EndpointClient);
+  private readonly learningChanges = inject(LearningChanges);
   private readonly toaster = inject(Toaster);
   private readonly injector = inject(Injector);
   private readonly destroyRef = inject(DestroyRef);
@@ -148,7 +150,11 @@ export class ShellStore {
     params: () => {
       const user = this.session.user$();
       return user && this.client.isServed(shellEndpoints.navCounts)
-        ? { userId: user.userId, path: this.path$() }
+        ? {
+            userId: user.userId,
+            path: this.path$(),
+            version: this.learningChanges.notifications.version(),
+          }
         : undefined;
     },
     stream: () => this.client.call(shellEndpoints.navCounts),

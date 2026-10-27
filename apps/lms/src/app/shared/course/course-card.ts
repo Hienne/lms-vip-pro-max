@@ -14,9 +14,9 @@ export interface CourseCardView {
   readonly required: boolean;
   readonly domain: string;
   readonly module: string;
-  readonly minutes: number;
+  readonly minutes?: number;
   readonly lessons: number;
-  readonly level: string;
+  readonly level?: string;
   /** Progress, 0 to 100. */
   readonly pct: number;
   readonly status: CourseStatus;
@@ -58,9 +58,10 @@ function formatMinutes(total: number): string {
 export class CourseCard {
   readonly course = input.required<CourseCardView>();
 
-  protected readonly duration = computed(() =>
-    formatMinutes(this.course().minutes),
-  );
+  protected readonly duration = computed(() => {
+    const minutes = this.course().minutes;
+    return minutes === undefined ? null : formatMinutes(minutes);
+  });
   protected readonly progressTone = computed(
     () => PROGRESS_TONE[this.course().status],
   );

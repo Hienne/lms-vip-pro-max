@@ -49,6 +49,19 @@
     list-style: none;
   }
 
+  &__implementation {
+    @include ui.text(sm);
+    font-weight: ui.weight(medium);
+    margin-top: ui.space(2);
+  }
+
+  &__note {
+    @include ui.text(xs, secondary);
+    margin-top: ui.space(2);
+    white-space: normal;
+    min-width: 0;
+  }
+
   // Shown only on the phone card, where the group heading and the status caption are not next to it.
   &__meta {
     @include ui.text(xs, muted);

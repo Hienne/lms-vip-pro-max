@@ -7,6 +7,7 @@ import type { Invalidation } from './invalidation';
 
 /** A toast title, or a title plus a detail line. */
 export type SuccessMessage =
+  | null
   | string
   | { readonly title: string; readonly detail?: string };
 
@@ -59,7 +60,7 @@ export function serverMutation<I, R>(
             options.onSuccess?.(result);
             invalidates.forEach((token) => token.bump());
             const message = options.success?.(params.input, result);
-            if (message === undefined) return;
+            if (message === undefined || message === null) return;
             if (typeof message === 'string') toaster.success(message);
             else toaster.success(message.title, message.detail);
           },

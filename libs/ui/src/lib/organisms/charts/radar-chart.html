@@ -1,0 +1,71 @@
+<figure class="chart-view">
+  <svg
+    class="chart-view__svg"
+    viewBox="0 0 440 330"
+    role="img"
+    [attr.aria-label]="label()"
+  >
+    @for (ring of geometry().rings; track $index) {
+    <polygon class="chart-view__grid" [attr.points]="ring" />
+    } @for (axis of geometry().axes; track $index) {
+    <line
+      class="chart-view__grid"
+      x1="220"
+      y1="156"
+      [attr.x2]="axis.end.x"
+      [attr.y2]="axis.end.y"
+    />
+    }
+    <polygon class="chart-view__area" [attr.points]="geometry().polygon" />
+    @for (axis of geometry().axes; track $index) {
+    <circle
+      class="chart-view__dot"
+      [attr.cx]="axis.dot.x"
+      [attr.cy]="axis.dot.y"
+      r="4"
+    >
+      <title>
+        {{axis.name}}: {{axis.value === null ? 'Chưa có dữ liệu' : axis.value +
+        '%'}}
+      </title>
+    </circle>
+    <text
+      class="chart-view__label"
+      [attr.x]="axis.text.x"
+      [attr.y]="axis.text.y - 10"
+      [attr.text-anchor]="axis.anchor"
+    >
+      @for (line of axis.lines; track $index) {
+      <tspan [attr.x]="axis.text.x" [attr.dy]="$index ? 14 : 0">{{line}}</tspan>
+      }
+      <tspan class="chart-view__value" [attr.x]="axis.text.x" dy="16">
+        {{axis.value === null ? '—' : axis.value + '%'}}
+      </tspan>
+    </text>
+    }
+  </svg>
+  <figcaption class="chart-view__legend">
+    <i class="chart-view__swatch"></i>{{seriesLabel()}}
+  </figcaption>
+  <details>
+    <summary class="chart-view__summary">Xem dạng bảng</summary>
+    <table uiTable>
+      <thead>
+        <tr>
+          <th>Nhóm kiến thức</th>
+          <th>Tỷ lệ đúng</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (item of data(); track $index) {
+        <tr>
+          <td>{{item.name}}</td>
+          <td>
+            {{item.value === null ? 'Chưa có dữ liệu' : item.value + '%'}}
+          </td>
+        </tr>
+        }
+      </tbody>
+    </table>
+  </details>
+</figure>

@@ -13,10 +13,13 @@
   <p class="course-card__meta">
     @if (course().required) {
     <span class="course-card__required">Bắt buộc</span>
+    } @if (duration(); as duration) {
+    <span>{{ duration }}</span>
     }
-    <span>{{ duration() }}</span>
     <span>{{ course().lessons }} bài</span>
-    <span>{{ course().level }}</span>
+    @if (course().level; as level) {
+    <span>{{ level }}</span>
+    }
   </p>
   <div class="course-card__foot">
     <ui-progress
