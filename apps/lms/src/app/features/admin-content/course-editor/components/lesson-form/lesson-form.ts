@@ -16,10 +16,16 @@ import {
   min,
   required,
 } from '@angular/forms/signals';
-import { BlockTypeSchema, COURSE_LIMITS, type BlockType } from '@lms/contracts';
+import {
+  BlockTypeSchema,
+  COURSE_LIMITS,
+  type BlockType,
+  type LibraryAsset,
+} from '@lms/contracts';
 import {
   Alert,
   Button,
+  DrawerOutlet,
   Dropzone,
   Field,
   Icon,
@@ -29,6 +35,8 @@ import {
   Textarea,
   UploadItem,
 } from '@lms/ui';
+import { AssetLibrary } from '../asset-library/asset-library';
+import { AssetLibraryStore } from '../asset-library/data-access/asset-library.store';
 import {
   BLOCK_TYPES,
   FILE_USAGE,
@@ -84,7 +92,9 @@ const toSteps = (text: string) =>
   selector: 'app-lesson-form',
   imports: [
     Alert,
+    AssetLibrary,
     Button,
+    DrawerOutlet,
     Dropzone,
     Field,
     FormField,
@@ -96,6 +106,7 @@ const toSteps = (text: string) =>
     Textarea,
     UploadItem,
   ],
+  providers: [AssetLibraryStore],
   templateUrl: './lesson-form.html',
   styleUrl: './lesson-form.scss',
 })
@@ -104,6 +115,7 @@ export class LessonForm {
   readonly submitted = output<LessonValue>();
 
   protected readonly store = inject(CourseEditorStore);
+  protected readonly library = inject(AssetLibraryStore);
   /** Files chosen in this editor, by block key. */
   protected readonly uploads = this.store.uploads$;
   /** Uploads a reload stopped, by the index of their block in this lesson. */
@@ -223,6 +235,14 @@ export class LessonForm {
     const input = event.target as HTMLInputElement;
     this.choose(block, index, Array.from(input.files ?? []), resuming);
     input.value = '';
+  }
+
+  /** A file picked from the library goes to the block like a finished upload. */
+  protected useLibraryAsset(asset: LibraryAsset): void {
+    const target = this.library.target$();
+    if (!target) return;
+    this.store.attach({ ...target, asset });
+    this.library.close();
   }
 
   private apply(): void {

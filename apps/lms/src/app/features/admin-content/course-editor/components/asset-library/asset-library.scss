@@ -1,0 +1,37 @@
+@use 'ui';
+
+.asset-library {
+  @include ui.stack(4);
+
+  &__toolbar {
+    @include ui.row(3);
+    flex-wrap: wrap;
+    justify-content: space-between;
+  }
+
+  &__count {
+    @include ui.text(sm, muted);
+  }
+
+  &__loading {
+    display: flex;
+    justify-content: center;
+    padding-block: ui.space(10);
+  }
+
+  &__pick {
+    max-width: 100%;
+    justify-content: flex-start;
+    text-align: start;
+    overflow-wrap: anywhere;
+  }
+
+  &__mime {
+    @include ui.text(xs, muted);
+    overflow-wrap: anywhere;
+  }
+
+  &__num {
+    @include ui.num;
+  }
+}

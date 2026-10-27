@@ -18,6 +18,7 @@ import {
   courseEndpoints,
   trainingCatalogEndpoints,
   type BlockType,
+  type LibraryAsset,
   type SaveDraftCommand,
 } from '@lms/contracts';
 import { confirm, Toaster, type StepperItem } from '@lms/ui';
@@ -463,6 +464,27 @@ export class CourseEditorStore {
     }
     if (this.refuse(request)) return;
     this.begin(request, kept);
+  }
+
+  /** The author picked a file already in the library: it joins the block like a finished upload. */
+  attach(pick: {
+    readonly blockKey: string;
+    readonly blockType: BlockType;
+    readonly asset: LibraryAsset;
+  }): void {
+    const { blockKey, blockType, asset } = pick;
+    this.release(blockKey);
+    this.setUpload(blockKey, {
+      state: 'done',
+      name: asset.originalName,
+      sizeBytes: asset.sizeBytes,
+      asset: {
+        assetId: asset.id,
+        usage: FILE_USAGE[blockType] ?? 'attachment',
+        name: asset.originalName,
+        sizeBytes: asset.sizeBytes,
+      },
+    });
   }
 
   /** "Hủy" on a row that is hashing or sending: stops it and cancels it on the server. */

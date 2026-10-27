@@ -177,6 +177,16 @@
           </div>
           <input type="file" hidden />
         </label>
+        <div class="lesson-form__row-actions">
+          <button
+            uiButton
+            type="button"
+            size="sm"
+            (click)="library.open(block().value().key, block().value().blockType)"
+          >
+            Chọn từ thư viện
+          </button>
+        </div>
         <input
           #again
           type="file"
@@ -221,3 +231,11 @@
   </section>
   }
 </form>
+
+<ng-template
+  [uiDrawer]="library.target$() !== null"
+  uiDrawerTitle="Thư viện tài nguyên"
+  (uiDrawerDismiss)="library.close()"
+>
+  <app-asset-library (picked)="useLibraryAsset($event)" />
+</ng-template>

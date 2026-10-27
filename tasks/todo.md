@@ -359,7 +359,7 @@ SameSite=Strict` with no domain, so the proxy needs no rewrite (browser retentio
   - Files: `course-editor.store.ts` (+ spec), `components/lesson-form/lesson-form.ts|html`, `file-facts.ts`
     (deleted), `contracts/course/course.endpoints.ts`, `mocks/learning/learning.backend.ts`.
   - Depends on: T25.
-- [ ] **T27 Library drawer** · M
+- [x] **T27 Library drawer** · M
   - Accept: "Chọn từ thư viện" per file block opens the drawer with its store; kind fixed by block type, `ready` only,
     search, server paging and sort; row click picks and closes; row menu delete with confirm, `ASSET_IN_USE` toast;
     empty and error states.

@@ -1,0 +1,75 @@
+<div class="asset-library">
+  <div class="asset-library__toolbar">
+    <ui-search
+      label="Tìm theo tên tệp"
+      placeholder="Tìm theo tên tệp…"
+      [value]="store.query$()"
+      (searched)="store.search($event)"
+    />
+    <span class="asset-library__count" aria-live="polite"
+      >{{ store.total$() }} tệp</span
+    >
+  </div>
+
+  @if (store.loadError$(); as error) {
+  <ui-error-state
+    title="Không tải được thư viện"
+    [message]="error.message"
+    (retry)="store.retryLoad()"
+  />
+  } @else if (store.isLoading$()) {
+  <div class="asset-library__loading"><span uiSpinner></span></div>
+  } @else {
+  <ui-data-table
+    caption="Thư viện tài nguyên"
+    [columns]="columns"
+    [rows]="store.rows$()"
+    [total]="store.total$()"
+    [sort]="store.sort$()"
+    [page]="store.page$()"
+    [pageSize]="pageSize"
+    (sortChange)="store.sortBy($event)"
+    (pageChange)="store.goToPage($event)"
+  >
+    <ui-empty
+      slot="empty"
+      variant="inline"
+      [title]="store.query$() ? 'Không có tệp phù hợp' : 'Thư viện chưa có tệp loại này.'"
+      [description]="store.query$() ? 'Thử đổi từ khóa.' : ''"
+    />
+    <ng-template uiDataTableCell="name" [of]="store.rows$()" let-row>
+      <button
+        uiButton
+        variant="ghost"
+        size="sm"
+        class="asset-library__pick"
+        [attr.aria-label]="'Chọn ' + row.name"
+        (click)="picked.emit(row.asset)"
+      >
+        {{ row.name }}
+      </button>
+    </ng-template>
+    <ng-template uiDataTableCell="type" [of]="store.rows$()" let-row>
+      <span class="asset-library__mime">{{ row.mimeType }}</span>
+    </ng-template>
+    <ng-template uiDataTableCell="size" [of]="store.rows$()" let-row>
+      <span class="asset-library__num">{{ row.sizeBytes | fmtBytes }}</span>
+    </ng-template>
+    <ng-template uiDataTableCell="uploaded" [of]="store.rows$()" let-row>
+      {{ row.createTime | fmtDate }}
+    </ng-template>
+    <ng-template uiDataTableCell="actions" [of]="store.rows$()" let-row>
+      <ui-menu
+        [label]="'Thêm thao tác cho ' + row.name"
+        icon="ellipsis"
+        iconOnly
+        variant="ghost"
+        size="sm"
+        [disabled]="store.isDeleting$()"
+        [entries]="rowMenu"
+        (selected)="store.remove(row)"
+      />
+    </ng-template>
+  </ui-data-table>
+  }
+</div>
