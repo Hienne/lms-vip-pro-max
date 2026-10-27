@@ -53,4 +53,6 @@ export const MESSAGE_CODE_KIND = {
   'LEARNING-ASSET_INVALID': 'refused',
   'LEARNING-ASSET_CODEC_UNSUPPORTED': 'refused',
   'LEARNING-ASSET_IN_USE': 'refused',
+  // A share with the course's own unit, or with a unit that does not exist.
+  'LEARNING-INVALID_REFERENCE': 'refused',
 } as const;

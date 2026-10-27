@@ -376,7 +376,7 @@ SameSite=Strict` with no domain, so the proxy needs no rewrite (browser retentio
 
 ## Phase 6: `course-sharing`
 
-- [ ] **T28 Share contract and mock checks** · XS
+- [x] **T28 Share contract and mock checks** · XS
   - Accept: `ShareCourseCommandSchema` fields required; `CourseShareSchema.status` enum; mock `share` checks the
     booleans, upserts by `orgId`, sets `revokedAt`, refuses the owner org.
   - Verify: `npx nx test contracts mocks`.

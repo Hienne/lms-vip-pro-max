@@ -331,7 +331,7 @@ export const CourseShareSchema = z.object({
   includeDescendants: z.boolean(),
   canAssign: z.boolean(),
   canSelfEnroll: z.boolean(),
-  status: z.string(),
+  status: z.enum(['active', 'revoked']),
   sharedBy: z.string().nullish(),
   sharedAt: BackendDateTimeSchema.nullish(),
   revokedAt: BackendDateTimeSchema.nullish(),
@@ -463,13 +463,16 @@ export const CopyCourseCommandSchema = z.object({
 });
 export type CopyCourseCommand = z.infer<typeof CopyCourseCommandSchema>;
 
-/** Shares (or, with `active: false`, revokes) use rights; content editing is never shared. */
+/**
+ * Shares (or, with `active: false`, revokes) use rights; content editing is never shared. Every
+ * field is sent each time: the server saves the row as sent and has no defaults.
+ */
 export const ShareCourseCommandSchema = z.object({
   orgId: z.number().int().positive(),
-  includeDescendants: z.boolean().optional(),
-  canAssign: z.boolean().optional(),
-  canSelfEnroll: z.boolean().optional(),
-  active: z.boolean().optional(),
+  includeDescendants: z.boolean(),
+  canAssign: z.boolean(),
+  canSelfEnroll: z.boolean(),
+  active: z.boolean(),
 });
 export type ShareCourseCommand = z.infer<typeof ShareCourseCommandSchema>;
 

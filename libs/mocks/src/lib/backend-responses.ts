@@ -257,6 +257,12 @@ export const BACKEND_RESPONSES = {
     title: 'Chưa thể thực hiện',
     message: 'Định dạng hoặc codec video chưa được hỗ trợ.',
   },
+  invalidReference: {
+    status: 200,
+    code: 'LEARNING-INVALID_REFERENCE',
+    title: 'Tham chiếu chưa hợp lệ',
+    message: 'ID tham chiếu không tồn tại hoặc không đúng quan hệ.',
+  },
   assetInUse: {
     status: 200,
     code: 'LEARNING-ASSET_IN_USE',

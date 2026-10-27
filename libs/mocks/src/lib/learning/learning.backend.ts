@@ -21,7 +21,7 @@ import {
   type RevokeRecipientCommand,
   type SaveCatalogItemCommand,
   type SaveDraftCommand,
-  type ShareCourseCommand,
+  ShareCourseCommandSchema,
   type TrainingField,
   type TrainingProgram,
 } from '@lms/contracts';
@@ -825,8 +825,15 @@ export class LearningBackend {
   }
 
   private share(request: FakeRequest): FakeReply {
-    const courseId = this.record(request).course.id;
-    const command = request.body as ShareCourseCommand;
+    const record = this.record(request);
+    const courseId = record.course.id;
+    const parsed = ShareCourseCommandSchema.safeParse(request.body);
+    if (!parsed.success) return refuse('validationFailed');
+    const command = parsed.data;
+    // A course is already the owner unit's: sharing it with that unit is a wrong reference.
+    if (command.orgId === record.course.ownerOrgId) {
+      return refuse('invalidReference');
+    }
     const existing = this.shares.find(
       (s) => s.courseId === courseId && s.orgId === command.orgId,
     );
@@ -834,13 +841,13 @@ export class LearningBackend {
       id: existing?.id ?? this.id(),
       courseId,
       orgId: command.orgId,
-      includeDescendants: command.includeDescendants ?? false,
-      canAssign: command.canAssign ?? true,
-      canSelfEnroll: command.canSelfEnroll ?? false,
-      status: command.active === false ? 'revoked' : 'active',
+      includeDescendants: command.includeDescendants,
+      canAssign: command.canAssign,
+      canSelfEnroll: command.canSelfEnroll,
+      status: command.active ? 'active' : 'revoked',
       sharedBy: this.directory.callerId(request),
       sharedAt: now(),
-      revokedAt: command.active === false ? now() : null,
+      revokedAt: command.active ? null : now(),
       rowVersion: (existing?.rowVersion ?? -1) + 1,
       createTime: existing?.createTime ?? now(),
       updateTime: now(),

@@ -3,7 +3,9 @@ import { courseEndpoints } from './course.endpoints';
 import {
   CourseCardSchema,
   CourseDetailSchema,
+  CourseShareSchema,
   SaveDraftCommandSchema,
+  ShareCourseCommandSchema,
 } from './course.schema';
 
 const stamp = { rowVersion: 0, createTime: '2026-10-20T08:00:00' };
@@ -237,5 +239,42 @@ describe('course endpoints', () => {
     expect(
       SaveDraftCommandSchema.safeParse({ ...draft, level: 'expert' }).success,
     ).toBe(false);
+  });
+
+  describe('shares', () => {
+    const row = {
+      id: 5,
+      courseId: 7,
+      orgId: 2,
+      includeDescendants: false,
+      canAssign: true,
+      canSelfEnroll: false,
+      status: 'active',
+      rowVersion: 0,
+    };
+
+    it('knows the two states a share has', () => {
+      expect(CourseShareSchema.parse(row).status).toBe('active');
+      expect(
+        CourseShareSchema.parse({ ...row, status: 'revoked' }).status,
+      ).toBe('revoked');
+      expect(
+        CourseShareSchema.safeParse({ ...row, status: 'pending' }).success,
+      ).toBe(false);
+    });
+
+    it('is sent whole: the backend has no defaults for the rights', () => {
+      const command = {
+        orgId: 2,
+        includeDescendants: true,
+        canAssign: true,
+        canSelfEnroll: false,
+        active: true,
+      };
+      expect(ShareCourseCommandSchema.parse(command)).toEqual(command);
+      expect(
+        ShareCourseCommandSchema.safeParse({ orgId: 2, active: false }).success,
+      ).toBe(false);
+    });
   });
 });
