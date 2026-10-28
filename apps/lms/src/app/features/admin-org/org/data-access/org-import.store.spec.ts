@@ -270,11 +270,14 @@ describe('OrgImportStore', () => {
     store.check();
     TestBed.tick();
     const client = TestBed.inject(EndpointClient);
-    const call = client.call.bind(client);
-    vi.spyOn(client, 'call').mockImplementation(((endpoint, request) =>
+    const call = client.call.bind(client) as (...args: unknown[]) => unknown;
+    vi.spyOn(client, 'call').mockImplementation(((
+      endpoint: unknown,
+      ...rest: unknown[]
+    ) =>
       endpoint === organizationEndpoints.importOrgs
         ? throwError(() => new HttpErrorResponse({ status: 0 }))
-        : call(endpoint, request)) as EndpointClient['call']);
+        : call(endpoint, ...rest)) as EndpointClient['call']);
     store.import();
     TestBed.tick();
     expect(toast.mock.calls.flat()).toContain(

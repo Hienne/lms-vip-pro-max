@@ -12,6 +12,7 @@ import {
   organizationEndpoints,
   type CreateOrgCommand,
   type CreateTeamCommand,
+  type OrganizationContents,
   type OrganizationInfo,
   type TeamInfo,
   type UpdateOrgCommand,
@@ -106,13 +107,19 @@ export class OrgStore {
    * held value, but the org, its administrators and the team total stay until the page lands; a
    * different node clears it.
    */
-  private readonly contents = linkedSignal({
+  private readonly contents = linkedSignal<
+    {
+      readonly orgId: number | undefined;
+      readonly value: OrganizationContents | undefined;
+    },
+    OrganizationContents | undefined
+  >({
     source: () => ({
       orgId: this.selectedOrgId(),
       value: this.contentsData.value(),
     }),
     computation: ({ orgId, value }, previous) =>
-      value ?? (previous?.source.orgId === orgId ? previous.value : undefined),
+      value ?? (previous?.source.orgId === orgId ? previous?.value : undefined),
   });
 
   private readonly orgMutation = serverMutation(
