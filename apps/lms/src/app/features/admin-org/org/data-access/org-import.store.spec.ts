@@ -115,6 +115,12 @@ describe('OrgImportStore', () => {
     expect(store.canCheck$()).toBe(false);
   });
 
+  it('states the limits from ORG_IMPORT_LIMITS', () => {
+    expect(store.limitsHint).toBe(
+      'Tệp .xlsx, tối đa 5 MB và 1000 dòng dữ liệu.',
+    );
+  });
+
   it('accepts a file of exactly 5 MB and an upper-case extension', () => {
     store.pick(xlsx('DON-VI.XLSX', 5 * 1024 * 1024));
     expect(store.fileError$()).toBeUndefined();

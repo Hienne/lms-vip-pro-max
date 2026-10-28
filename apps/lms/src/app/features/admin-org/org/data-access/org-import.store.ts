@@ -12,6 +12,9 @@ import { OrgStore } from './org.store';
 
 export const ORG_IMPORT_TEMPLATE_NAME = 'organization-import-template.xlsx';
 
+/** The size limit in the copy: binary megabytes, written "MB" as users read it. */
+const MAX_MB = ORG_IMPORT_LIMITS.maxBytes / (1024 * 1024);
+
 /**
  * The "Nhập từ tệp" drawer: the template download, the picked `.xlsx`, its check (`dryRun=true`)
  * and its import (`dryRun=false`). Provided by the drawer, so the file is forgotten when it
@@ -64,6 +67,8 @@ export class OrgImportStore {
     },
   );
 
+  /** The dropzone's hint: what the app and the server take. */
+  readonly limitsHint = `Tệp ${ORG_IMPORT_LIMITS.extension}, tối đa ${MAX_MB} MB và ${ORG_IMPORT_LIMITS.maxRows} dòng dữ liệu.`;
   readonly file$ = this.state.file.asReadonly();
   readonly fileError$ = this.state.fileError.asReadonly();
   /** Hidden again once the import of that file is refused. */
@@ -161,7 +166,7 @@ export function fileProblem(file: File): string | undefined {
     return 'Chỉ nhận tệp Excel .xlsx.';
   }
   if (file.size > ORG_IMPORT_LIMITS.maxBytes) {
-    return 'Tệp lớn hơn 5 MB.';
+    return `Tệp lớn hơn ${MAX_MB} MB.`;
   }
   return undefined;
 }
