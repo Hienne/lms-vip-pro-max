@@ -1179,6 +1179,8 @@ export const MIGRATION_ENTRIES = [
   },
   {
     id: 'route-admin-org',
+    notes:
+      'Cây đọc /orgs/tree (hasChildren), panel đọc /orgs/{id}/contents. Nhập đơn vị/phòng và nhóm từ tệp nằm trong ngăn kéo "Nhập từ tệp" của màn này, không dùng /admin/import.',
     kind: 'route',
     mockupSource: 'src/pages/admin-org.js · org',
     target: 'admin/org',

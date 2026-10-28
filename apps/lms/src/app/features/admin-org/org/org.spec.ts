@@ -3,7 +3,7 @@ import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
 import { organizationEndpoints } from '@lms/contracts';
-import { SEED_ORGS, SEED_TEAMS } from '@lms/mocks';
+import { backendRefusal, SEED_ORGS, SEED_TEAMS } from '@lms/mocks';
 import { createAppRoutes } from '../../../app.routes';
 import {
   parseAppConfig,
@@ -13,6 +13,7 @@ import { testAppConfig } from '../../../core/config/app-config.testing';
 import { MockBackend } from '../../../core/dev/mock-api/mock-api.interceptor';
 import {
   provideMockBackendHttp,
+  ReplyGate,
   signInToMockBackend,
 } from '../../../core/dev/mock-api/mock-backend.testing';
 import {
@@ -93,11 +94,13 @@ describe('Org', () => {
     await settle();
   }
 
-  it('reads the roots with rootOnly and shows the first one with its facts', async () => {
+  it('reads the roots from the tree endpoint and shows the first one with its facts', async () => {
     await open('super.admin', '000001');
-    expect(calls(organizationEndpoints.listOrgs)[0][1].query).toMatchObject({
-      rootOnly: 'true',
+    expect(calls(organizationEndpoints.orgTree)[0][1].query).toEqual({
+      page: '0',
+      size: '50',
     });
+    expect(calls(organizationEndpoints.listOrgs)).toHaveLength(0);
     expect(el.querySelector('h1')?.textContent).toBe('Đơn vị, phòng & nhóm');
     expect(el.querySelector('[role="tree"]')).not.toBeNull();
     expect(text()).toContain(ROOT.name);
@@ -106,22 +109,62 @@ describe('Org', () => {
     expect(text()).toContain('Quản trị viên:');
   });
 
+  it('reads the panel of the picked org in one request: counts, administrators and teams', async () => {
+    await open('super.admin', '000001');
+    expect(calls(organizationEndpoints.orgContents)).toHaveLength(1);
+    expect(calls(organizationEndpoints.orgContents)[0][1]).toMatchObject({
+      params: { orgId: String(ROOT.id) },
+      query: { page: '0', size: '6', sort: 'name,asc' },
+    });
+    expect(calls(organizationEndpoints.getOrg)).toHaveLength(0);
+    expect(calls(organizationEndpoints.listTeams)).toHaveLength(0);
+    const stats = Array.from(el.querySelectorAll('dl dd')).map((dd) =>
+      dd.textContent?.trim(),
+    );
+    expect(stats).toEqual(['7', String(SEED_TEAMS.length)]);
+    expect(text()).toContain('Quản trị viên: Quản trị Ban Demo');
+  });
+
   it('pages the teams of the picked org and previews at most five members', async () => {
     await open('super.admin', '000001');
-    expect(calls(organizationEndpoints.listTeams)[0][1]).toMatchObject({
-      params: { orgId: String(ROOT.id) },
-      query: { page: '0', size: '6' },
-    });
     expect(cards()).toHaveLength(6);
     expect(text()).toContain(`Nhóm (${SEED_TEAMS.length})`);
     button(el, '2').click();
     await settle();
     expect(
-      calls(organizationEndpoints.listTeams).at(-1)?.[1].query,
+      calls(organizationEndpoints.orgContents).at(-1)?.[1].query,
     ).toMatchObject({ page: '1' });
     for (const team of cards()) {
       expect(team.querySelectorAll('ul a').length).toBeLessThanOrEqual(5);
     }
+  });
+
+  it('keeps the org header, its counts and the team total while the next team page is read', async () => {
+    await open('super.admin', '000001');
+    const firstPage = cards().map(
+      (c) => c.querySelector('strong')?.textContent,
+    );
+    const hold = TestBed.inject(ReplyGate).hold(
+      organizationEndpoints.orgContents,
+    );
+    button(el, '2').click();
+    await settle();
+
+    expect(hold.pending()).toBe(1);
+    expect(button(el, 'Sửa')).toBeTruthy();
+    expect(button(el, 'Tạm dừng')).toBeTruthy();
+    expect(text()).toContain('Quản trị viên: Quản trị Ban Demo');
+    expect(el.querySelectorAll('dl dd')).toHaveLength(2);
+    expect(text()).toContain(`Nhóm (${SEED_TEAMS.length})`);
+
+    hold.release();
+    await settle();
+    const secondPage = cards().map(
+      (c) => c.querySelector('strong')?.textContent,
+    );
+    expect(secondPage).toHaveLength(Math.min(6, SEED_TEAMS.length - 6));
+    expect(secondPage[0]).not.toBe(firstPage[0]);
+    expect(text()).toContain(`Nhóm (${SEED_TEAMS.length})`);
   });
 
   it('links a team with more than five members to the users list filtered by that team', async () => {
@@ -244,13 +287,197 @@ describe('Org', () => {
       sortNo: 0,
     });
     expect(
-      calls(organizationEndpoints.listOrgs).some(
+      calls(organizationEndpoints.orgTree).some(
         ([, request]) => request.query['parentId'] === String(ROOT.id),
       ),
     ).toBe(true);
     expect(el.querySelector('[role="tree"]')?.textContent).toContain(
       'Phòng Mới',
     );
+  });
+
+  async function addDepartment(): Promise<number> {
+    const token = signInToMockBackend('super.admin');
+    const reply = TestBed.inject(MockBackend).handle(
+      organizationEndpoints.createOrg,
+      {
+        token,
+        params: {},
+        query: {},
+        body: {
+          orgType: 'DEPARTMENT',
+          parentId: ROOT.id,
+          code: 'PHONG_TRONG',
+          name: 'Phòng trống',
+          sortNo: 0,
+        },
+      },
+    );
+    return (reply?.body.data as { id: number }).id;
+  }
+  /** The deepest item with that label: an item's text includes its children's. */
+  const treeItem = (label: string) =>
+    Array.from(el.querySelectorAll<HTMLElement>('[role="treeitem"]'))
+      .filter((item) => item.textContent?.includes(label))
+      .at(-1) as HTMLElement;
+
+  it('starts the teams of another node at the first page, and drops the late answer for the old one', async () => {
+    const departmentId = await addDepartment();
+    await open('super.admin', '000001');
+    treeItem(ROOT.name).click();
+    await settle();
+    expect(treeItem('Phòng trống')).toBeTruthy();
+
+    const hold = TestBed.inject(ReplyGate).hold(
+      organizationEndpoints.orgContents,
+    );
+    button(el, '2').click();
+    await settle();
+    treeItem('Phòng trống').click();
+    await settle();
+    hold.release();
+    await settle();
+
+    expect(calls(organizationEndpoints.orgContents).at(-1)?.[1]).toMatchObject({
+      params: { orgId: String(departmentId) },
+      query: { page: '0' },
+    });
+    expect(el.querySelector('h2')?.textContent).toBe('Phòng trống');
+    expect(text()).toContain('Nhóm (0)');
+    expect(cards()).toHaveLength(0);
+  });
+
+  it('shows the panel error with a retry when the node is gone or out of scope', async () => {
+    const backend = TestBed.inject(MockBackend);
+    handle.mockImplementation((endpoint, request) =>
+      endpoint === organizationEndpoints.orgContents
+        ? backendRefusal('resourceNotFound')
+        : MockBackend.prototype.handle.call(backend, endpoint, request),
+    );
+    await open('super.admin', '000001');
+    expect(text()).toContain('Không tìm thấy dữ liệu yêu cầu.');
+    expect(cards()).toHaveLength(0);
+
+    handle.mockImplementation((endpoint, request) =>
+      MockBackend.prototype.handle.call(backend, endpoint, request),
+    );
+    button(el, 'Thử lại').click();
+    await settle();
+    expect(cards()).toHaveLength(6);
+  });
+
+  describe('import from file', () => {
+    const pick = async (name: string) => {
+      const input = dialog()?.querySelector<HTMLInputElement>(
+        'input[type="file"]',
+      ) as HTMLInputElement;
+      Object.defineProperty(input, 'files', {
+        configurable: true,
+        value: [new File([new Uint8Array(10)], name)],
+      });
+      input.dispatchEvent(new Event('change', { bubbles: true }));
+      await settle();
+    };
+    const openImport = async () => {
+      button(el, 'Nhập từ tệp').click();
+      await settle();
+    };
+
+    it('opens a drawer on the page instead of linking to /admin/import', async () => {
+      await open('super.admin', '000001');
+      expect(el.querySelector('a[href^="/admin/import"]')).toBeNull();
+      await openImport();
+      expect(dialog()?.textContent).toContain('Nhập từ tệp');
+      expect(dialog()?.textContent).toContain('Tải mẫu Excel');
+      expect(dialog()?.textContent).toContain(ROOT.code);
+      expect(dialog()?.textContent).not.toContain('để trống sheet');
+      expect(button(dialog() as HTMLElement, 'Nhập dữ liệu').disabled).toBe(
+        true,
+      );
+    });
+
+    it('checks a file, imports it, closes and reloads the tree and the panel', async () => {
+      await open('super.admin', '000001');
+      await openImport();
+      await pick('don-vi.xlsx');
+      expect(button(dialog() as HTMLElement, 'Nhập dữ liệu').disabled).toBe(
+        true,
+      );
+      button(dialog() as HTMLElement, 'Kiểm tra').click();
+      await settle();
+      expect(dialog()?.textContent).toContain('Hợp lệ: 1 đơn vị/phòng, 1 nhóm');
+      const treeReads = calls(organizationEndpoints.orgTree).length;
+      const panelReads = calls(organizationEndpoints.orgContents).length;
+
+      button(dialog() as HTMLElement, 'Nhập dữ liệu').click();
+      await settle();
+      expect(calls(organizationEndpoints.importOrgs)).toHaveLength(2);
+      expect(dialog()).toBeNull();
+      expect(document.body.textContent).toContain(
+        'Đã nhập 1 đơn vị/phòng, 1 nhóm',
+      );
+      expect(calls(organizationEndpoints.orgTree).length).toBeGreaterThan(
+        treeReads,
+      );
+      expect(calls(organizationEndpoints.orgContents).length).toBeGreaterThan(
+        panelReads,
+      );
+      expect(
+        el.querySelector('[role="treeitem"]')?.hasAttribute('aria-expanded'),
+      ).toBe(true);
+    });
+
+    it('toasts an invalid file and keeps "Nhập dữ liệu" disabled', async () => {
+      await open('super.admin', '000001');
+      await openImport();
+      await pick('du-lieu-loi.xlsx');
+      button(dialog() as HTMLElement, 'Kiểm tra').click();
+      await settle();
+      expect(document.body.textContent).toContain(
+        'Tệp nhập chưa hợp lệ. Vui lòng kiểm tra các lỗi chi tiết.',
+      );
+      expect(button(dialog() as HTMLElement, 'Nhập dữ liệu').disabled).toBe(
+        true,
+      );
+    });
+
+    it('refuses a non-xlsx file in the drawer without a request', async () => {
+      await open('super.admin', '000001');
+      await openImport();
+      await pick('don-vi.csv');
+      expect(dialog()?.textContent).toContain('Chỉ nhận tệp Excel .xlsx.');
+      expect(button(dialog() as HTMLElement, 'Kiểm tra').disabled).toBe(true);
+      expect(calls(organizationEndpoints.importOrgs)).toHaveLength(0);
+    });
+
+    it('tells an org administrator to import teams only', async () => {
+      await open('quantri.ban', '000003');
+      await openImport();
+      expect(dialog()?.textContent).toContain(
+        'Bạn chỉ nhập được nhóm trong phạm vi quản lý; để trống sheet Organizations.',
+      );
+    });
+
+    it('closes on Escape, forgets the file and returns focus to the button', async () => {
+      await open('super.admin', '000001');
+      const trigger = button(el, 'Nhập từ tệp');
+      trigger.focus();
+      await openImport();
+      await pick('don-vi.xlsx');
+      dialog()?.dispatchEvent(
+        new KeyboardEvent('keydown', {
+          key: 'Escape',
+          code: 'Escape',
+          keyCode: 27,
+          bubbles: true,
+        }),
+      );
+      await settle();
+      await vi.waitFor(() => expect(dialog()).toBeNull());
+      expect(document.activeElement).toBe(trigger);
+      await openImport();
+      expect(dialog()?.textContent).not.toContain('don-vi.xlsx');
+    });
   });
 
   it('keeps create and pause for global administrators: an org admin gets neither', async () => {

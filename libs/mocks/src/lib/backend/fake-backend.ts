@@ -21,6 +21,7 @@ import {
   type Me,
   type ManagedRoleGrant,
   type OrganizationInfo,
+  type OrganizationTreeNode,
   type Role,
   type RoleOption,
   type SaveRoleCommand,
@@ -29,6 +30,7 @@ import {
   type UserDetail,
   type UserInfo,
   type UserSummary,
+  XLSX_MIME_TYPE,
 } from '@lms/contracts';
 import {
   BACKEND_RESPONSES,
@@ -137,6 +139,12 @@ const ok = (data: unknown, status = 200): FakeReply => ({
   status,
   body: envelopeOk(data),
 });
+
+/** Stands in for the backend's `organization-import-template.xlsx`; it is not a real workbook. */
+const orgImportTemplatePlaceholder = (): Blob =>
+  new Blob(['Mẫu nhập đơn vị, phòng và nhóm (bản giả lập).'], {
+    type: XLSX_MIME_TYPE,
+  });
 
 const ADMIN_ROLES = ['ADMIN', 'SUPER_ADMIN'];
 
@@ -257,6 +265,10 @@ export class FakeBackend {
     [identityEndpoints.revokeRole, (r) => this.revokeRole(r)],
     [identityEndpoints.listRoles, (r) => this.listRoles(r)],
     [organizationEndpoints.listOrgs, (r) => this.listOrgs(r)],
+    [organizationEndpoints.orgTree, (r) => this.orgTree(r)],
+    [organizationEndpoints.orgContents, (r) => this.orgContents(r)],
+    [organizationEndpoints.orgImportTemplate, (r) => this.orgImportTemplate(r)],
+    [organizationEndpoints.importOrgs, (r) => this.importOrgs(r)],
     [organizationEndpoints.createOrg, (r) => this.createOrg(r)],
     [organizationEndpoints.getOrg, (r) => this.getOrg(r)],
     [organizationEndpoints.updateOrg, (r) => this.updateOrg(r)],
@@ -714,11 +726,26 @@ export class FakeBackend {
       ) {
         continue;
       }
-      if (grant.orgId !== null) {
+      if (grant.orgId !== null && this.activeAncestors(grant.orgId)) {
         for (const id of this.subtree(grant.orgId)) ids.add(id);
       }
     }
     return ids;
+  }
+
+  /** Every ancestor of `orgId` exists and is active: an inactive or broken path grants nothing. */
+  private activeAncestors(orgId: number): boolean {
+    const seen = new Set<number>();
+    let parentId = this.orgOf(orgId)?.parentId ?? null;
+    while (parentId !== null) {
+      const parent = this.orgOf(parentId);
+      if (!parent || parent.status !== 'active' || seen.has(parentId)) {
+        return false;
+      }
+      seen.add(parentId);
+      parentId = parent.parentId;
+    }
+    return true;
   }
 
   /** `orgId` and every active descendant (an inactive node cuts its branch off). */
@@ -1565,8 +1592,7 @@ export class FakeBackend {
     if (request.query['rootOnly'] === 'true') {
       // A root is a node whose parent the caller cannot see: the tree starts where the scope does.
       rows = rows.filter(
-        (o) =>
-          o.parentId === null || !visible(this.orgOf(o.parentId) as SeedOrg),
+        (o) => o.parentId === null || !this.isVisibleOrg(o.parentId, visible),
       );
     } else if (request.query['parentId']) {
       rows = rows.filter(
@@ -1590,6 +1616,155 @@ export class FakeBackend {
       (o, field) => o[field as 'id' | 'code' | 'name' | 'sortNo'],
     );
     return ok({ ...page, items: page.items.map((o) => this.orgInfo(o)) });
+  }
+
+  /** One level of the lazy tree: roots where the scope starts, or a node's visible children. */
+  private orgTree(request: FakeRequest): FakeReply {
+    const actor = this.caller_(request, 'ORGANIZATION_MANAGEMENT');
+    const query = this.pageQuery(request, ['id'], 'id,asc');
+    const visible = this.visibleOrgs(actor);
+    const parentId = request.query['parentId'];
+    const rows = this.orgs
+      .filter((o) => visible(o))
+      .filter((o) =>
+        parentId
+          ? o.parentId === Number(parentId)
+          : o.parentId === null || !this.isVisibleOrg(o.parentId, visible),
+      )
+      .sort((a, b) => a.sortNo - b.sortNo || a.id - b.id);
+    const start = query.page * query.size;
+    return ok({
+      items: rows.slice(start, start + query.size).map(
+        (o): OrganizationTreeNode => ({
+          id: o.id,
+          parentId: o.parentId,
+          orgType: o.orgType,
+          code: o.code,
+          name: o.name,
+          status: o.status,
+          sortNo: o.sortNo,
+          hasChildren: this.orgs.some((c) => c.parentId === o.id && visible(c)),
+        }),
+      ),
+      page: query.page,
+      size: query.size,
+      totalElements: rows.length,
+      totalPages: Math.ceil(rows.length / query.size),
+    });
+  }
+
+  /** A missing parent counts as out of sight, so its child is a root. */
+  private isVisibleOrg(
+    id: number,
+    visible: (org: SeedOrg) => boolean,
+  ): boolean {
+    const org = this.orgOf(id);
+    return org !== undefined && visible(org);
+  }
+
+  private visibleOrgs(actor: DbUser): (org: SeedOrg) => boolean {
+    if (this.isGlobalAdmin(actor)) return () => true;
+    const managed = this.managedOrgIds(actor);
+    return (org) => managed.has(org.id);
+  }
+
+  /** The panel of a node: `getOrg` and one page of `listTeams` (default size 6) in one reply. */
+  private orgContents(request: FakeRequest): FakeReply {
+    const detail = this.getOrg(request);
+    const teams = this.listTeams({
+      ...request,
+      query: { size: '6', ...request.query },
+    });
+    return ok({
+      ...(detail.body.data as object),
+      teams: teams.body.data,
+    });
+  }
+
+  private orgImportTemplate(request: FakeRequest): FakeReply {
+    this.caller_(request, 'ORGANIZATION_MANAGEMENT');
+    return { ...ok(null), file: orgImportTemplatePlaceholder() };
+  }
+
+  /**
+   * The mock reads no Excel: every accepted file holds the same rows. A global admin's adds a
+   * department under the first root and a team in it; an org admin's adds a team in their first
+   * node. A file named `loi`, a wrong type, a file over 5 MiB or rows that already exist (a second
+   * import) is the backend's `ORGANIZATION-IMPORT_INVALID`, and nothing is written.
+   */
+  private importOrgs(request: FakeRequest): FakeReply {
+    const actor = this.caller_(request, 'ORGANIZATION_MANAGEMENT');
+    const body = request.body;
+    const file =
+      body instanceof FormData
+        ? body.get('file')
+        : (body as { file?: unknown } | null)?.file;
+    if (!(file instanceof Blob) || !(file as File).name) {
+      return invalid('Cần chọn một tệp.');
+    }
+    const name = (file as File).name.toLowerCase();
+    if (
+      !name.endsWith('.xlsx') ||
+      name.includes('loi') ||
+      file.size > 5 * 1024 * 1024
+    ) {
+      return refuse('orgImportInvalid');
+    }
+    const global = this.isGlobalAdmin(actor);
+    const visible = this.visibleOrgs(actor);
+    const parent = this.orgs.find(
+      (o) =>
+        visible(o) &&
+        o.status === 'active' &&
+        (o.parentId === null || !this.isVisibleOrg(o.parentId, visible)),
+    );
+    if (!parent) return refuse('orgImportInvalid');
+    const org = global
+      ? { code: 'NHAP_PHONG_01', name: 'Phòng nhập từ tệp' }
+      : undefined;
+    const team = {
+      code: global ? 'NHAP_NHOM_01' : 'NHAP_NHOM_02',
+      name: 'Nhóm nhập từ tệp',
+    };
+    const duplicate =
+      (org &&
+        this.orgs.some(
+          (o) => o.code.toLowerCase() === org.code.toLowerCase(),
+        )) ||
+      this.teams.some((t) => t.code?.toLowerCase() === team.code.toLowerCase());
+    if (duplicate) return refuse('orgImportInvalid');
+    const dryRun = request.query['dryRun'] !== 'false';
+    const counts = { organizationCount: org ? 1 : 0, teamCount: 1 };
+    if (!dryRun) {
+      let teamOrgId = parent.id;
+      if (org) {
+        const created: Mutable<SeedOrg> = {
+          id: this.nextOrgId++,
+          parentId: parent.id,
+          orgType: 'DEPARTMENT',
+          code: org.code,
+          name: org.name,
+          status: 'active',
+          sortNo: 0,
+        };
+        this.orgs.push(created);
+        teamOrgId = created.id;
+      }
+      this.teams.push({
+        id: this.nextTeamId++,
+        orgId: teamOrgId,
+        code: team.code,
+        name: team.name,
+        description: null,
+        status: 'active',
+      });
+    }
+    return ok({
+      dryRun,
+      ...counts,
+      createdOrganizations: dryRun ? 0 : counts.organizationCount,
+      createdTeams: dryRun ? 0 : counts.teamCount,
+    });
   }
 
   private orgIn(request: FakeRequest, actor: DbUser): Mutable<SeedOrg> {

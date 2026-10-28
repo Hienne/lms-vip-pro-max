@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { PageQuerySchema } from '../http/page';
+import { MAX_PAGE_SIZE, PageQuerySchema, PageSchema } from '../http/page';
 
 // Mirrors the backend's organisation endpoints (/api/v1/orgs, /api/v1/teams). An org is a UNIT
 // (a division, root or under a UNIT) or a DEPARTMENT (always under a UNIT); a team is a
@@ -62,6 +62,69 @@ export const TeamInfoSchema = z.object({
   memberPreview: z.array(MemberPreviewSchema),
 });
 export type TeamInfo = z.infer<typeof TeamInfoSchema>;
+
+/**
+ * One node of a tree level (`GET /orgs/tree`), with no counts. `hasChildren` counts only the
+ * children the caller may see; a root's `parentId` may point outside the scope.
+ */
+export const OrganizationTreeNodeSchema = z.object({
+  id: z.number().int(),
+  parentId: z.number().int().nullish(),
+  orgType: OrgTypeSchema,
+  code: z.string(),
+  name: z.string(),
+  status: OrgStatusSchema,
+  sortNo: z.number().int(),
+  hasChildren: z.boolean(),
+});
+export type OrganizationTreeNode = z.infer<typeof OrganizationTreeNodeSchema>;
+
+/**
+ * One tree level: the roots in scope without `parentId`, a node's direct children with it.
+ * Sorted by `sortNo` then id by the server, so there is no `sort`.
+ */
+export const OrgTreeQuerySchema = z.strictObject({
+  parentId: z.number().int().optional(),
+  page: z.number().int().nonnegative().optional(),
+  size: z.number().int().min(1).max(MAX_PAGE_SIZE).optional(),
+});
+export type OrgTreeQuery = z.infer<typeof OrgTreeQuerySchema>;
+
+/** The panel of the picked node: the node, its direct administrators and one page of its teams. */
+export const OrganizationContentsSchema = OrganizationDetailSchema.extend({
+  teams: PageSchema(TeamInfoSchema),
+});
+export type OrganizationContents = z.infer<typeof OrganizationContentsSchema>;
+
+/** A check (`dryRun`) or an import; the `created*` counts are 0 for a check. */
+export const OrganizationImportResultSchema = z.object({
+  dryRun: z.boolean(),
+  organizationCount: z.number().int().nonnegative(),
+  teamCount: z.number().int().nonnegative(),
+  createdOrganizations: z.number().int().nonnegative(),
+  createdTeams: z.number().int().nonnegative(),
+});
+export type OrganizationImportResult = z.infer<
+  typeof OrganizationImportResultSchema
+>;
+
+/** The file the import accepts; every rule inside the file is checked by the server. */
+/** The media type of the import template and of the files the import takes. */
+export const XLSX_MIME_TYPE =
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+
+export const ORG_IMPORT_LIMITS = {
+  maxBytes: 5 * 1024 * 1024,
+  extension: '.xlsx',
+  maxRows: 1000,
+} as const;
+
+export const ImportOrgsCommandSchema = z.object({ file: z.file() });
+export type ImportOrgsCommand = z.infer<typeof ImportOrgsCommandSchema>;
+
+/** `true` only checks the file; `false` checks it again and writes everything in one transaction. */
+export const ImportOrgsQuerySchema = z.object({ dryRun: z.boolean() });
+export type ImportOrgsQuery = z.infer<typeof ImportOrgsQuerySchema>;
 
 /** The sort fields the backend accepts. */
 export const ORG_SORT_FIELDS = ['id', 'code', 'name', 'sortNo'] as const;

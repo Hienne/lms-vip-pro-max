@@ -12,6 +12,7 @@ import {
   organizationEndpoints,
   type CreateOrgCommand,
   type CreateTeamCommand,
+  type OrganizationContents,
   type OrganizationInfo,
   type TeamInfo,
   type UpdateOrgCommand,
@@ -49,10 +50,11 @@ type TeamSave =
     };
 
 /**
- * The org screen (the mockup's `org` page): the picked org with its administrators and its teams,
- * and the commands on orgs and teams. The tree itself is `OrgTreeStore`, which this store hides
- * behind the selectors below. Every accepted mutation bumps `changes`; the detail, the teams and
- * the tree reload on it.
+ * The org screen (the mockup's `org` page): the picked org with its administrators and a page of
+ * its teams, read in one call (`/orgs/{id}/contents`), and the commands on orgs and teams. The
+ * tree itself is `OrgTreeStore`, which this store hides behind the selectors below; a tree node is
+ * only the selection, the counts come from the contents. Every accepted mutation bumps `changes`;
+ * the contents and the tree reload on it.
  */
 @Injectable()
 export class OrgStore {
@@ -67,6 +69,8 @@ export class OrgStore {
   private readonly state = {
     editingOrg: signal<{ readonly org: OrganizationInfo | null } | null>(null),
     editingTeam: signal<{ readonly team: TeamInfo | null } | null>(null),
+    /** The "Nhập từ tệp" drawer is open. */
+    importing: signal(false),
     /** The team page being read (0-based); a different org starts again at the first. */
     teamPage: linkedSignal<number | undefined, number>({
       source: this.selectedOrgId,
@@ -80,14 +84,10 @@ export class OrgStore {
     this.tree.reloadOn(this.changes);
   }
 
-  private readonly detailData = serverData(
-    (orgId: number) =>
-      this.client.call(organizationEndpoints.getOrg, { params: { orgId } }),
-    { params: () => this.selectedOrgId(), reloadOn: this.changes },
-  );
-  private readonly teamsData = serverData(
+  /** A different node or team page drops the held value, so a late answer for the old one is ignored. */
+  private readonly contentsData = serverData(
     (read: { orgId: number; page: number }) =>
-      this.client.call(organizationEndpoints.listTeams, {
+      this.client.call(organizationEndpoints.orgContents, {
         params: { orgId: read.orgId },
         query: { page: read.page, size: TEAMS_PAGE_SIZE, sort: 'name,asc' },
       }),
@@ -101,6 +101,26 @@ export class OrgStore {
       reloadOn: this.changes,
     },
   );
+
+  /**
+   * The contents on screen: the last answer for the picked org. A new team page drops the read's
+   * held value, but the org, its administrators and the team total stay until the page lands; a
+   * different node clears it.
+   */
+  private readonly contents = linkedSignal<
+    {
+      readonly orgId: number | undefined;
+      readonly value: OrganizationContents | undefined;
+    },
+    OrganizationContents | undefined
+  >({
+    source: () => ({
+      orgId: this.selectedOrgId(),
+      value: this.contentsData.value(),
+    }),
+    computation: ({ orgId, value }, previous) =>
+      value ?? (previous?.source.orgId === orgId ? previous?.value : undefined),
+  });
 
   private readonly orgMutation = serverMutation(
     (save: OrgSave) =>
@@ -180,15 +200,20 @@ export class OrgStore {
 
   readonly editingOrg$ = this.state.editingOrg.asReadonly();
   readonly editingTeam$ = this.state.editingTeam.asReadonly();
-  readonly detail$ = this.detailData.value;
-  readonly detailError$ = this.detailData.error;
-  readonly teams$ = computed(() => this.teamsData.value()?.items ?? []);
+  readonly importing$ = this.state.importing.asReadonly();
+  /** The picked org with its counts; tree nodes carry none. */
+  readonly org$ = computed(() => this.contents()?.organization);
+  readonly administrators$ = computed(
+    () => this.contents()?.administrators ?? [],
+  );
+  /** The teams of the page on screen; the previous page stays until the next one lands. */
+  readonly teams$ = computed(() => this.contents()?.teams.items ?? []);
   readonly teamsTotal$ = computed(
-    () => this.teamsData.value()?.totalElements ?? 0,
+    () => this.contents()?.teams.totalElements ?? 0,
   );
   readonly teamPage$ = computed(() => this.state.teamPage() + 1);
-  readonly teamsLoading$ = this.teamsData.isLoading;
-  readonly teamsError$ = this.teamsData.error;
+  readonly contentsLoading$ = this.contentsData.isLoading;
+  readonly contentsError$ = this.contentsData.error;
 
   /** Creating an org and pausing one are for global administrators; the server enforces it. */
   readonly canManageOrgs$ = computed(
@@ -215,6 +240,10 @@ export class OrgStore {
     editing: { readonly team: TeamInfo | null } | null,
   ): void {
     this.state.editingTeam.set(editing);
+  }
+
+  private setImporting(importing: boolean): void {
+    this.state.importing.set(importing);
   }
 
   private setTeamPage(page: number): void {
@@ -251,6 +280,20 @@ export class OrgStore {
 
   cancelTeamEdit(): void {
     this.setEditingTeam(null);
+  }
+
+  openImport(): void {
+    this.setImporting(true);
+  }
+
+  closeImport(): void {
+    this.setImporting(false);
+  }
+
+  /** The import drawer wrote new nodes or teams: close it and reload the tree and the panel. */
+  finishImport(): void {
+    this.setImporting(false);
+    this.changes.bump();
   }
 
   goToTeamPage(page: number): void {
@@ -298,7 +341,7 @@ export class OrgStore {
       .subscribe(() => this.deleteMutation.run(team.id));
   }
 
-  retryDetail(): void {
-    this.detailData.reload();
+  retryContents(): void {
+    this.contentsData.reload();
   }
 }

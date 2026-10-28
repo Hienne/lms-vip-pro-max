@@ -39,6 +39,15 @@ describe('Toaster', () => {
     expect(toast.closest('.cdk-overlay-container')).not.toBeNull();
   });
 
+  it('lets clicks through the pane around the toasts', () => {
+    const { toaster, toasts, flush } = setup();
+    toaster.error('Không lưu được');
+    flush();
+
+    const pane = toasts()[0].closest<HTMLElement>('.toasts-pane');
+    expect(pane?.style.pointerEvents).toBe('none');
+  });
+
   it.each(['success', 'error', 'warning', 'info'] as const)(
     'styles a %s toast',
     (kind) => {

@@ -118,6 +118,15 @@ describe('Users', () => {
     });
   });
 
+  it('offers only "Thêm người dùng" in the header: the backend has no user import', async () => {
+    await open('super.admin', '000001');
+    const actions = el.querySelector('[slot="actions"]');
+    expect(actions?.textContent?.replace(/\s+/g, ' ').trim()).toBe(
+      'Thêm người dùng',
+    );
+    expect(el.querySelector('a[href^="/admin/import"]')).toBeNull();
+  });
+
   it('cuts the list to the scope of the caller: an org admin sees their own org only', async () => {
     await open('quantri.ban', '000003');
     expect(text()).toContain('chỉ thấy và quản lý người dùng thuộc');

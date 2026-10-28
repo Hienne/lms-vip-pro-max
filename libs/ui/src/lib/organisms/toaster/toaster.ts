@@ -140,6 +140,10 @@ export class Toaster {
       panelClass: 'toasts-pane',
     });
     this.overlayRef.attach(new ComponentPortal(ToastOutlet));
+    // The pane spans the stack's margins (the owl's corner); only the toasts themselves take
+    // clicks (`.toast` sets `pointer-events: auto`). Inline and after `attach`, because the CDK
+    // resets the pane's pointer events on attach and its pane rule is unlayered.
+    this.overlayRef.overlayElement.style.pointerEvents = 'none';
   }
 
   private detachWhenEmpty(): void {
