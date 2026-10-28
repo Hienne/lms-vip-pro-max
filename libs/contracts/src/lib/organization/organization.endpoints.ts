@@ -16,6 +16,7 @@ import {
   TeamInfoSchema,
   UpdateOrgCommandSchema,
   UpdateTeamCommandSchema,
+  XLSX_MIME_TYPE,
 } from './organization.schema';
 
 const orgParams = z.object({ orgId: z.number().int() });
@@ -50,7 +51,8 @@ export const organizationEndpoints = {
     method: 'get',
     path: '/api/v1/orgs/import-template',
     responseType: 'blob',
-    response: z.instanceof(Blob),
+    // Only a spreadsheet is saved as `.xlsx`; any other blob is a contract failure.
+    response: z.instanceof(Blob).refine((blob) => blob.type === XLSX_MIME_TYPE),
   }),
   /**
    * Checks (`dryRun=true`) or imports new units, departments and teams from an `.xlsx` file. An

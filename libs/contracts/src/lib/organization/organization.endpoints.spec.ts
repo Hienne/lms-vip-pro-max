@@ -8,6 +8,7 @@ import {
   OrganizationTreeNodeSchema,
   OrgTreeQuerySchema,
   ORG_IMPORT_LIMITS,
+  XLSX_MIME_TYPE,
   TeamInfoSchema,
   UpdateTeamCommandSchema,
 } from './organization.schema';
@@ -179,5 +180,15 @@ describe('organization endpoints', () => {
       extension: '.xlsx',
       maxRows: 1000,
     });
+  });
+
+  it('takes only a spreadsheet as the template, so another blob is not saved as .xlsx', () => {
+    const template = organizationEndpoints.orgImportTemplate.response;
+    expect(
+      template.safeParse(new Blob(['x'], { type: XLSX_MIME_TYPE })).success,
+    ).toBe(true);
+    expect(
+      template.safeParse(new Blob(['<html>'], { type: 'text/html' })).success,
+    ).toBe(false);
   });
 });

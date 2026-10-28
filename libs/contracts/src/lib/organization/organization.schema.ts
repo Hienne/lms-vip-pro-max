@@ -109,6 +109,10 @@ export type OrganizationImportResult = z.infer<
 >;
 
 /** The file the import accepts; every rule inside the file is checked by the server. */
+/** The media type of the import template and of the files the import takes. */
+export const XLSX_MIME_TYPE =
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+
 export const ORG_IMPORT_LIMITS = {
   maxBytes: 5 * 1024 * 1024,
   extension: '.xlsx',

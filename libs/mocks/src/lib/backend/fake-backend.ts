@@ -30,6 +30,7 @@ import {
   type UserDetail,
   type UserInfo,
   type UserSummary,
+  XLSX_MIME_TYPE,
 } from '@lms/contracts';
 import {
   BACKEND_RESPONSES,
@@ -142,7 +143,7 @@ const ok = (data: unknown, status = 200): FakeReply => ({
 /** Stands in for the backend's `organization-import-template.xlsx`; it is not a real workbook. */
 const orgImportTemplatePlaceholder = (): Blob =>
   new Blob(['Mẫu nhập đơn vị, phòng và nhóm (bản giả lập).'], {
-    type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    type: XLSX_MIME_TYPE,
   });
 
 const ADMIN_ROLES = ['ADMIN', 'SUPER_ADMIN'];
