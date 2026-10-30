@@ -1,0 +1,6 @@
+@use 'ui';
+@use '../community-list';
+
+:host {
+  @include ui.page(wide);
+}

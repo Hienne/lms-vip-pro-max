@@ -55,6 +55,24 @@ describe('serverMutation', () => {
     expect(mutation.isPending()).toBe(false);
   });
 
+  it('treats a run that ends without a result as neither success nor error', async () => {
+    const { calls, run } = sources();
+    const onSuccess = vi.fn();
+    const mutation = TestBed.runInInjectionContext(() =>
+      serverMutation(run, { errors: 'alert', success: () => 'ok', onSuccess }),
+    );
+
+    mutation.run('a');
+    await settle();
+    calls[0].source.complete();
+    await settle();
+
+    expect(mutation.isPending()).toBe(false);
+    expect(mutation.error()).toBeUndefined();
+    expect(onSuccess).not.toHaveBeenCalled();
+    expect(toaster.success).not.toHaveBeenCalled();
+  });
+
   it('shows no success toast when it declares none, and still runs onSuccess', async () => {
     const { calls, run } = sources();
     const saved: number[] = [];

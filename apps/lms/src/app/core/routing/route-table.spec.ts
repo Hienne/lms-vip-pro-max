@@ -98,9 +98,27 @@ describe('route table', () => {
         'reports/:dim',
         'knowledge',
         'issues',
+        'community/questions',
+        'community/questions/new',
+        'community/contents/:id',
+        'community/contents/:id/edit',
+        'community/articles',
+        'community/articles/new',
+        'community/me',
+        'community/moderation',
         '403',
       ]),
     );
+  });
+
+  it('puts the community screens under the two community functions', () => {
+    expect(menuGroup('COMMUNITY').screens[0].path).toBe('community/questions');
+    expect(menuGroup('COMMUNITY').screens.map((s) => s.path)).toContain(
+      'community/me',
+    );
+    expect(
+      menuGroup('COMMUNITY_MODERATION').screens.map((s) => s.path),
+    ).toEqual(['community/moderation']);
   });
 
   it('declares each path once', () => {

@@ -20,6 +20,20 @@
       "port": 4200
     },
     {
+      "name": "community-mockups",
+      "runtimeExecutable": "python3",
+      "runtimeArgs": [
+        "-m",
+        "http.server",
+        "4310",
+        "--bind",
+        "127.0.0.1",
+        "--directory",
+        "docs/mockups/community"
+      ],
+      "port": 4310
+    },
+    {
       "name": "backend",
       "runtimeExecutable": "bash",
       "runtimeArgs": [

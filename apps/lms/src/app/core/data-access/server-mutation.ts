@@ -1,7 +1,7 @@
 import { computed, inject, signal, type Signal } from '@angular/core';
 import { rxResource } from '@angular/core/rxjs-interop';
 import { Toaster } from '@lms/ui';
-import { tap, type Observable } from 'rxjs';
+import { defaultIfEmpty, tap, type Observable } from 'rxjs';
 import { toAppError, type AppError } from '../errors/app-error';
 import type { Invalidation } from './invalidation';
 
@@ -78,6 +78,9 @@ export function serverMutation<I, R>(
             }
           },
         }),
+        // A run may end without a result (a conflict the user answered in a dialog): that is
+        // neither a success nor an error.
+        defaultIfEmpty(undefined),
       ),
   });
 

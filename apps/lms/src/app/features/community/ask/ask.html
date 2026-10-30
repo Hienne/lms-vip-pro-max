@@ -1,0 +1,190 @@
+<ui-breadcrumb
+  [items]="[
+    { label: 'Hỏi đáp', href: '/community/questions' },
+    { label: 'Đặt câu hỏi' },
+  ]"
+/>
+<ui-page-header
+  title="Đặt câu hỏi"
+  description="Tìm xem đồng nghiệp đã hỏi chưa, rồi mô tả đủ để người khác tái hiện được vấn đề."
+/>
+
+<form class="ask" [formRoot]="askForm">
+  <section uiCard>
+    <div uiCardBody class="ask__body">
+      <ui-field
+        label="Tiêu đề"
+        hint="Viết như đang nói với đồng nghiệp: cái gì lỗi, ở đâu. Nhập từ 5 ký tự, hệ thống sẽ gợi ý câu hỏi tương tự."
+      >
+        <input
+          uiInput
+          autocomplete="off"
+          placeholder="Ví dụ: Oracle UCP báo timeout khi nhiều request cùng lấy connection"
+          [formField]="askForm.title"
+        />
+      </ui-field>
+
+      @if (store.suggestions$().length) {
+      <section
+        class="ask__suggest"
+        aria-live="polite"
+        aria-labelledby="ask-suggest-title"
+      >
+        <p id="ask-suggest-title" class="ask__suggest-title">
+          Câu hỏi tương tự. Xem qua trước khi đăng, có thể đã có người trả lời:
+        </p>
+        <ul class="ask__suggest-list">
+          @for (item of store.suggestions$(); track item.contentId) {
+          <li>
+            <a
+              [routerLink]="['/community/contents', item.contentId]"
+              target="_blank"
+            >
+              {{ item.title }}
+            </a>
+            @if (resolutionLabels[item.resolutionStatus ?? '']; as resolution) {
+            <span uiBadge dot [tone]="resolution.tone"
+              >{{ resolution.label }}</span
+            >
+            }
+            <span class="ask__suggest-meta">
+              {{ item.answerCount | fmtNum }} trả lời · {{ (item.lastActivityAt
+              ?? item.publishedAt) | fmtRelative }}
+            </span>
+          </li>
+          }
+        </ul>
+        <p class="ask__note">
+          Không thấy câu hỏi của bạn? Cứ tiếp tục bên dưới.
+        </p>
+      </section>
+      } @else if (store.noSuggestions$()) {
+      <p class="ask__note" aria-live="polite">
+        Chưa có câu hỏi nào tương tự. Bạn có thể tiếp tục đặt câu hỏi.
+      </p>
+      }
+
+      <div class="ask__field">
+        <span class="ask__label">Nội dung</span>
+        <p class="ask__muted">
+          Mô tả bối cảnh, những gì đã thử và kết quả mong đợi.
+        </p>
+        <app-markdown-editor
+          label="Nội dung"
+          [formField]="askForm.bodyMarkdown"
+        />
+        @if (askForm.bodyMarkdown().touched() &&
+        askForm.bodyMarkdown().invalid()) {
+        <p class="ask__error" role="alert">
+          @for (error of askForm.bodyMarkdown().errors(); track error.kind) { {{
+          error.message }} }
+        </p>
+        }
+      </div>
+
+      <div class="ask__field">
+        <app-tag-picker
+          [tags]="tags.tags$() ?? []"
+          [value]="askForm.tagIds().value()"
+          (valueChange)="setTags($event)"
+        />
+        @if (askForm.tagIds().touched() && askForm.tagIds().invalid()) {
+        <p class="ask__error" role="alert">
+          @for (error of askForm.tagIds().errors(); track error.kind) { {{
+          error.message }} }
+        </p>
+        }
+      </div>
+
+      <details class="ask__context">
+        <summary>
+          Công nghệ và môi trường
+          <span class="ask__muted">(không bắt buộc)</span>
+        </summary>
+        <div class="ask__context-body">
+          <fieldset class="ask__tech">
+            <legend>Công nghệ đang dùng</legend>
+            @for (row of askForm.technologies; track $index; let i = $index) {
+            <div class="ask__tech-row">
+              <input
+                uiInput
+                placeholder="Tên"
+                aria-label="Tên công nghệ"
+                [formField]="row.name"
+              />
+              <input
+                uiInput
+                placeholder="Phiên bản"
+                aria-label="Phiên bản"
+                [formField]="row.version"
+              />
+              <button
+                uiIconButton
+                type="button"
+                label="Xóa dòng"
+                (click)="removeTechnology(i)"
+              >
+                <ui-icon name="x" size="sm" />
+              </button>
+            </div>
+            }
+            <div class="ask__tech-add">
+              <button
+                uiButton
+                size="sm"
+                type="button"
+                [disabled]="askForm.technologies().value().length >= maxTechnologies"
+                (click)="addTechnology()"
+              >
+                <ui-icon name="plus" size="sm" />Thêm công nghệ
+              </button>
+              <span class="ask__muted">
+                {{ askForm.technologies().value().length }}/{{ maxTechnologies
+                }}
+              </span>
+            </div>
+          </fieldset>
+          <ui-field label="Môi trường">
+            <input
+              uiInput
+              placeholder="Ví dụ: UAT"
+              [formField]="askForm.environment"
+            />
+          </ui-field>
+          <ui-field label="Ràng buộc">
+            <textarea
+              uiTextarea
+              rows="3"
+              placeholder="Ví dụ: không được nâng phiên bản driver trước kỳ khóa sổ."
+              [formField]="askForm.limitations"
+            ></textarea>
+          </ui-field>
+        </div>
+      </details>
+    </div>
+  </section>
+
+  <div class="ask__actions">
+    <p class="ask__muted">
+      Câu hỏi hiển thị với toàn Ban. Bản nháp chỉ mình bạn thấy.
+    </p>
+    <div class="ask__buttons">
+      <button
+        uiButton
+        type="button"
+        [disabled]="store.isBusy$()"
+        (click)="saveDraft()"
+      >
+        Lưu nháp
+      </button>
+      <button
+        uiButton
+        variant="primary"
+        type="submit"
+        [disabled]="store.isBusy$()"
+      >
+        Đăng câu hỏi
+      </button>
+    </div>
+  </div>
+</form>

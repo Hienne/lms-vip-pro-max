@@ -1,0 +1,59 @@
+// The layout the community list screens share (CM-01, CM-04, CM-06): a search toolbar, a count and
+// sort bar, then the rows. Each screen's stylesheet `@use`s this module.
+@use 'ui';
+
+.community-list {
+  &__toolbar {
+    @include ui.row(3);
+    flex-wrap: wrap;
+    margin-block: ui.space(4);
+  }
+
+  &__search {
+    flex: 1 1 18rem;
+  }
+
+  &__select {
+    flex: 0 1 12rem;
+    width: auto;
+  }
+
+  &__bar {
+    @include ui.row-between(3);
+    flex-wrap: wrap;
+    margin-block-end: ui.space(3);
+  }
+
+  &__count {
+    @include ui.row(2);
+    @include ui.text(sm, muted);
+
+    strong {
+      @include ui.num;
+      color: ui.color(text);
+      font-weight: ui.weight(semibold);
+    }
+  }
+
+  &__sort {
+    @include ui.row(2);
+    @include ui.text(sm, muted);
+  }
+
+  &__rows {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    // Each row draws its own bottom line, so the frame leaves the bottom edge to the last row.
+    border: 1px solid ui.color(border);
+    border-bottom: 0;
+    border-radius: ui.radius(card);
+    background: ui.color(surface);
+    overflow: hidden;
+  }
+
+  &__placeholder {
+    height: ui.space(18);
+    margin: ui.space(3);
+  }
+}

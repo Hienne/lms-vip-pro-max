@@ -1,0 +1,50 @@
+<div class="markdown-editor__bar">
+  <ui-segmented label="Chế độ soạn thảo" [options]="modes" [(value)]="mode" />
+  @if (mode() === 'write') {
+  <div class="markdown-editor__tools" role="toolbar" aria-label="Định dạng">
+    @for (tool of tools; track tool.action) {
+    <button
+      uiButton
+      variant="ghost"
+      size="sm"
+      [disabled]="disabled()"
+      (click)="format(tool.action)"
+    >
+      {{ tool.label }}
+    </button>
+    }
+  </div>
+  }
+</div>
+@if (mode() === 'write') {
+<textarea
+  #box
+  uiTextarea
+  class="markdown-editor__input"
+  rows="14"
+  [attr.aria-label]="label()"
+  [attr.aria-invalid]="invalid() ? 'true' : null"
+  [attr.maxlength]="bodyMax"
+  [value]="value()"
+  [disabled]="disabled()"
+  (input)="edit($event)"
+  (blur)="touched.set(true)"
+></textarea>
+} @else {
+<div class="markdown-editor__preview">
+  @if (value().trim()) {
+  <app-markdown [source]="value()" />
+  } @else {
+  <p class="markdown-editor__empty">Chưa có nội dung để xem trước.</p>
+  }
+</div>
+}
+<p class="markdown-editor__foot">
+  <span>
+    Dùng Markdown. Dán mã trong khối mã; đã che mật khẩu và mã khách hàng. Từ {{
+    bodyMin }} ký tự để đăng.
+  </span>
+  <span class="markdown-editor__count"
+    >{{ length() | fmtNum }} / {{ bodyMax | fmtNum }}</span
+  >
+</p>

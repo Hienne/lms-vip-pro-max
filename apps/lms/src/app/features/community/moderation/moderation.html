@@ -1,0 +1,517 @@
+@if (reports.reportId$(); as reportId) {
+<ui-breadcrumb
+  [items]="[
+    { label: 'Hàng đợi báo cáo', href: '/community/moderation' },
+    { label: 'Báo cáo ' + reportCode(reportId) },
+  ]"
+/>
+<ui-page-header [title]="'Báo cáo ' + reportCode(reportId)" />
+
+@if (reports.reportError$(); as error) {
+<ui-error-state
+  title="Không tải được báo cáo"
+  [message]="error.message"
+  (retry)="reports.retryReport()"
+/>
+} @else if (reports.report$(); as report) {
+<div class="case">
+  <section uiCard aria-label="Thông tin báo cáo">
+    <div uiCardBody class="case__block">
+      <h2 class="case__title">Thông tin báo cáo</h2>
+      <dl class="case__facts">
+        <div>
+          <dt>Mã báo cáo</dt>
+          <dd>{{ reportCode(report.reportId) }}</dd>
+        </div>
+        <div>
+          <dt>Lý do</dt>
+          <dd>{{ reasonLabel(report.reasonCode) }}</dd>
+        </div>
+        <div>
+          <dt>Trạng thái</dt>
+          <dd>
+            @if (statusLabels[report.status]; as status) {
+            <span uiBadge dot [tone]="status.tone">{{ status.label }}</span>
+            } @else { {{ report.status }} }
+          </dd>
+        </div>
+        <div>
+          <dt>Gửi lúc</dt>
+          <dd>{{ (report.reportedAt ?? report.createTime) | fmtDatetime }}</dd>
+        </div>
+        @if (report.target; as target) {
+        <div>
+          <dt>Đối tượng</dt>
+          <dd>
+            <a [routerLink]="['/community/contents', target.contentId]">
+              {{ targetLabels[target.kind] }} {{ target.title ? '· ' +
+              target.title : '#' + (report.targetId ?? target.contentId) }}
+            </a>
+          </dd>
+        </div>
+        }
+        <div>
+          <dt>Người xử lý</dt>
+          <dd>
+            {{ reports.isAssignedToMe$() ? 'Bạn' :
+            (report.assignedModerator?.displayName ?? 'Chưa giao') }}
+          </dd>
+        </div>
+      </dl>
+
+      @if (!reports.isAssignedToMe$()) { @if (report.assignedModerator) {
+      <p class="case__muted">
+        {{ report.assignedModerator.displayName }} đang xử lý báo cáo này.
+      </p>
+      } @else {
+      <p class="case__muted">
+        Người báo cáo, bằng chứng và lịch sử chỉ hiện cho người nhận xử lý.
+      </p>
+      } } @if (report.capabilities?.canAssign && !reports.isClosedCase$()) {
+      <div class="case__buttons">
+        @if (!reports.isAssignedToMe$()) {
+        <button
+          uiButton
+          variant="primary"
+          type="button"
+          [disabled]="reports.isBusy$()"
+          (click)="reports.takeCase()"
+        >
+          Nhận xử lý
+        </button>
+        }
+        <button
+          uiButton
+          type="button"
+          [disabled]="reports.isBusy$()"
+          (click)="reports.startAssign()"
+        >
+          Giao cho người khác
+        </button>
+      </div>
+      @if (reports.assigning$()) {
+      <div class="case__picker">
+        <p class="case__label">Giao cho điều phối viên khác</p>
+        <ul class="case__people">
+          @for (person of reports.assignees$(); track person.userId) {
+          <li>
+            <span
+              >{{ person.displayName ?? person.userId }}
+              <span class="case__muted">{{ person.userId }}</span></span
+            >
+            <button
+              uiButton
+              size="sm"
+              type="button"
+              [disabled]="reports.isBusy$()"
+              (click)="reports.assignTo(person.userId)"
+            >
+              Giao
+            </button>
+          </li>
+          } @empty { @if (!reports.assigneesLoading$()) {
+          <li class="case__muted">Ban chưa có điều phối viên nào khác.</li>
+          } }
+        </ul>
+        <div>
+          <button
+            uiButton
+            size="sm"
+            variant="ghost"
+            type="button"
+            (click)="reports.cancelAssign()"
+          >
+            Hủy
+          </button>
+        </div>
+      </div>
+      } }
+    </div>
+  </section>
+
+  @if (reports.isAssignedToMe$() || reports.isClosedCase$()) { @if
+  (report.reporter || report.description) {
+  <section uiCard aria-label="Người báo cáo">
+    <div uiCardBody class="case__block">
+      <h2 class="case__title">Người báo cáo</h2>
+      <p>{{ report.reporter?.displayName }}</p>
+      @if (report.description) {
+      <p class="case__muted">Ghi chú</p>
+      <p>“{{ report.description }}”</p>
+      }
+    </div>
+  </section>
+  } @if (reports.evidence$(); as evidence) {
+  <section uiCard aria-label="Bằng chứng">
+    <div uiCardBody class="case__block">
+      <h2 class="case__title">Bằng chứng</h2>
+      <p class="case__muted">Đã ghi nhật ký truy cập.</p>
+      @if (evidence.content; as revision) {
+      <p class="case__muted">Mã bản rev-{{ revision.revisionNo }}</p>
+      <app-markdown class="case__evidence" [source]="revision.bodyMarkdown" />
+      } @else if (evidence.comment; as comment) { @if (comment.deletedAt) {
+      <p class="case__muted">
+        Đã xóa lúc {{ comment.deletedAt | fmtDatetime }}
+      </p>
+      }
+      <app-markdown
+        class="case__evidence"
+        [source]="comment.bodyMarkdown ?? ''"
+      />
+      }
+    </div>
+  </section>
+  } @else if (reports.evidenceError$(); as error) {
+  <ui-alert tone="danger">{{ error.message }}</ui-alert>
+  }
+
+  <section uiCard aria-label="Lịch sử hành động">
+    <div uiCardBody class="case__block">
+      <h2 class="case__title">Lịch sử hành động</h2>
+      @if (report.actions?.length) {
+      <ol class="case__history">
+        @for (action of report.actions; track action.actionId) {
+        <li>
+          <span class="case__muted">{{ action.occurredAt | fmtDatetime }}</span>
+          {{ actionNames[action.actionType] ?? action.actionType }} bởi {{
+          action.actor?.displayName ?? 'Không rõ' }}. @if (action.reason) { Lý
+          do: {{ action.reason }} }
+        </li>
+        }
+      </ol>
+      } @else {
+      <p class="case__muted">Chưa có hành động nào.</p>
+      } @if (reports.isClosedCase$()) {
+      <p class="case__muted">
+        Ca đã đóng. Muốn hoàn tác, tạo hành động mới trên nội dung.
+      </p>
+      }
+    </div>
+  </section>
+
+  @if (report.capabilities?.canAct && !reports.isClosedCase$()) {
+  <form uiCard aria-label="Xử lý báo cáo" [formRoot]="actForm">
+    <div uiCardBody class="case__block">
+      <h2 class="case__title">Xử lý</h2>
+      <fieldset class="case__actions">
+        <legend class="case__label">Hành động</legend>
+        @for (option of actions(); track option.value) {
+        <label class="case__action">
+          <input
+            type="radio"
+            [value]="option.value"
+            [formField]="actForm.action"
+            (change)="chooseAction(option.value)"
+          />
+          <span>
+            {{ option.label }}
+            <span class="case__hint">{{ option.hint }}</span>
+          </span>
+        </label>
+        }
+      </fieldset>
+      @if (actForm.action().value() === 'assign_maintainer') {
+      <ui-field
+        label="Tìm người duy trì"
+        hint="Gõ tên hoặc mã cán bộ để thu hẹp danh sách."
+      >
+        <input
+          uiInput
+          type="search"
+          autocomplete="off"
+          #maintainer
+          (input)="reports.searchPeople(maintainer.value)"
+        />
+      </ui-field>
+      <ui-field label="Người duy trì">
+        <select uiSelect [formField]="actForm.maintainerUserId">
+          <option value="">Chọn người trong Ban</option>
+          @for (person of reports.candidates$(); track person.userId) {
+          <option [value]="person.userId">{{ person.displayName }}</option>
+          }
+        </select>
+      </ui-field>
+      }
+      <ui-field
+        label="Lý do"
+        [hint]="'Từ 5 đến ' + (reasonMax | fmtNum) + ' ký tự. Được ghi lại cùng hành động và không sửa được.'"
+      >
+        <textarea uiTextarea rows="3" [formField]="actForm.reason"></textarea>
+      </ui-field>
+      <div class="case__buttons">
+        <button
+          uiButton
+          variant="primary"
+          type="submit"
+          [disabled]="!reports.canSubmitAction$()"
+        >
+          Ghi nhận xử lý
+        </button>
+      </div>
+    </div>
+  </form>
+  } }
+</div>
+} @else {
+<div uiSkeleton variant="block" class="moderation__placeholder"></div>
+} } @else {
+<ui-page-header title="Điều phối cộng đồng" [description]="description()" />
+
+@if (!tabs().length) {
+<ui-empty
+  variant="page"
+  title="Bạn chưa có quyền điều phối"
+  description="Trang này dành cho người điều phối và quản trị của Ban."
+/>
+} @else {
+<ui-tabs
+  label="Điều phối"
+  [tabs]="tabs()"
+  [selected]="tab()"
+  (selectedChange)="selectTab($event)"
+>
+  @if (tab() === 'reports') {
+  <div uiTabPanel="reports" class="moderation__panel">
+    <ui-segmented
+      label="Trạng thái báo cáo"
+      [options]="filters"
+      [value]="reports.filter$()"
+      (valueChange)="reports.filterBy($event)"
+    />
+
+    @if (reports.loadError$(); as error) { @if (!reports.isForbidden$()) {
+    <ui-error-state
+      title="Không tải được báo cáo"
+      [message]="error.message"
+      (retry)="reports.retryLoad()"
+    />
+    } } @else if (reports.isLoading$()) {
+    <div uiSkeleton variant="block" class="moderation__placeholder"></div>
+    } @else if (reports.cards$().length) {
+    <div uiTableWrap>
+      <table uiTable responsive aria-label="Hàng đợi báo cáo">
+        <thead>
+          <tr>
+            <th scope="col">Mã</th>
+            <th scope="col">Lý do</th>
+            <th scope="col">Trạng thái</th>
+            <th scope="col">Gửi lúc</th>
+            <th scope="col">Người xử lý</th>
+            <th scope="col"><span class="sr-only">Thao tác</span></th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (card of reports.cards$(); track card.reportId) {
+          <tr>
+            <td data-label="Mã">
+              <span uiTablePrimary>{{ reportCode(card.reportId) }}</span>
+              @if (card.target; as target) {
+              <div uiTableSub>
+                {{ targetLabels[target.kind] }}{{ target.title ? ' · ' +
+                target.title : '' }}
+              </div>
+              }
+            </td>
+            <td data-label="Lý do">{{ reasonLabel(card.reasonCode) }}</td>
+            <td data-label="Trạng thái">
+              @if (statusLabels[card.status]; as status) {
+              <span uiBadge dot [tone]="status.tone">{{ status.label }}</span>
+              }
+            </td>
+            <td data-label="Gửi lúc">
+              {{ (card.reportedAt ?? card.createTime) | fmtDatetime }}
+            </td>
+            <td data-label="Người xử lý">
+              {{ card.assignedModerator?.displayName ?? 'Chưa giao' }}
+            </td>
+            <td>
+              <button
+                uiButton
+                size="sm"
+                type="button"
+                (click)="reports.openCase(card.reportId)"
+              >
+                Mở
+              </button>
+            </td>
+          </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+    <ui-pagination
+      [total]="reports.total$()"
+      [page]="reports.page$()"
+      [pageSize]="pageSize"
+      (pageChange)="reports.goToPage($event)"
+    />
+    } @else {
+    <ui-empty
+      title="Không có báo cáo nào"
+      description="Báo cáo mới sẽ hiện ở đây khi có người gửi."
+    />
+    }
+  </div>
+  } @if (tab() === 'moderators') {
+  <div uiTabPanel="moderators" class="moderation__panel">
+    <div class="moderation__bar">
+      <ui-segmented
+        label="Trạng thái người điều phối"
+        [options]="moderatorStatuses"
+        [value]="moderators.status$()"
+        (valueChange)="moderators.showStatus($event)"
+      />
+      <button
+        uiButton
+        variant="primary"
+        type="button"
+        (click)="moderators.startEdit({ kind: 'grant' })"
+      >
+        Bổ nhiệm người điều phối
+      </button>
+    </div>
+
+    @if (moderators.loadError$(); as error) { @if (!moderators.isForbidden$()) {
+    <ui-error-state
+      title="Không tải được người điều phối"
+      [message]="error.message"
+      (retry)="moderators.retryLoad()"
+    />
+    } } @else if (moderators.isLoading$()) {
+    <div uiSkeleton variant="block" class="moderation__placeholder"></div>
+    } @else if (moderators.moderators$().length) {
+    <div uiTableWrap>
+      <table uiTable responsive aria-label="Người điều phối">
+        <thead>
+          <tr>
+            <th scope="col">Người dùng</th>
+            <th scope="col">Bổ nhiệm bởi</th>
+            <th scope="col">Thời gian</th>
+            <th scope="col"><span class="sr-only">Thao tác</span></th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (moderator of moderators.moderators$(); track
+          moderator.moderatorId) {
+          <tr>
+            <td data-label="Người dùng">
+              <span uiTablePrimary
+                >{{ moderator.user?.displayName ?? moderator.userId }}</span
+              >
+              <div uiTableSub>{{ moderator.userId }}</div>
+            </td>
+            <td data-label="Bổ nhiệm bởi">
+              {{ moderator.grantedBy?.displayName ?? 'Hệ thống' }}
+            </td>
+            <td data-label="Thời gian">
+              @if (moderator.status === 'revoked') { Thu hồi {{
+              moderator.revokedAt | fmtDatetime }} } @else { Bổ nhiệm {{
+              moderator.grantedAt | fmtDatetime }} }
+            </td>
+            <td>
+              @if (moderator.status === 'revoked') {
+              <button
+                uiButton
+                size="sm"
+                type="button"
+                (click)="moderators.startEdit({ kind: 'regrant', moderator })"
+              >
+                Cấp lại
+              </button>
+              } @else {
+              <button
+                uiButton
+                size="sm"
+                variant="danger-ghost"
+                type="button"
+                (click)="moderators.startEdit({ kind: 'revoke', moderator })"
+              >
+                Thu hồi
+              </button>
+              }
+            </td>
+          </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+    } @else {
+    <ui-empty
+      [title]="moderators.status$() === 'revoked' ? 'Chưa có người điều phối nào bị thu hồi.' : 'Chưa có người điều phối nào.'"
+    />
+    }
+  </div>
+  }
+</ui-tabs>
+} }
+
+<ng-template
+  [uiDrawer]="!!moderators.edit$()"
+  [uiDrawerTitle]="drawerTitle()"
+  [uiDrawerBusy]="moderators.isSaving$()"
+  uiDrawerBusyLabel="Đang lưu"
+  (uiDrawerDismiss)="moderators.cancelEdit()"
+>
+  <form class="moderation__drawer" [formRoot]="moderatorForm">
+    @if (moderators.saveError$(); as error) {
+    <ui-alert tone="danger">{{ error.message }}</ui-alert>
+    } @if (moderators.edit$(); as edit) { @if (edit.kind === 'grant') {
+    <ui-field label="Tìm người trong Ban">
+      <input
+        uiInput
+        type="search"
+        autocomplete="off"
+        [formField]="moderatorForm.query"
+      />
+    </ui-field>
+    <fieldset class="moderation__people">
+      <legend class="sr-only">Người được bổ nhiệm</legend>
+      @for (person of moderators.candidates$(); track person.userId) {
+      <label class="moderation__person">
+        <input
+          type="radio"
+          [value]="person.userId"
+          [formField]="moderatorForm.userId"
+        />
+        <span
+          >{{ person.displayName }}
+          <span class="moderation__muted">{{ person.userId }}</span></span
+        >
+      </label>
+      } @empty { @if (!moderators.candidatesLoading$()) {
+      <p class="moderation__muted">Không có người phù hợp.</p>
+      } }
+    </fieldset>
+    } @else {
+    <p>{{ edit.moderator.user?.displayName ?? edit.moderator.userId }}</p>
+    } }
+    <ui-field
+      label="Lý do"
+      [hint]="'Từ 5 đến ' + (reasonMax | fmtNum) + ' ký tự.'"
+    >
+      <textarea
+        uiTextarea
+        rows="3"
+        [formField]="moderatorForm.reason"
+      ></textarea>
+    </ui-field>
+    <div class="moderation__drawer-actions">
+      <button
+        uiButton
+        variant="ghost"
+        type="button"
+        (click)="moderators.cancelEdit()"
+      >
+        Hủy
+      </button>
+      <button
+        uiButton
+        [variant]="moderators.edit$()?.kind === 'revoke' ? 'danger' : 'primary'"
+        type="submit"
+      >
+        {{ moderators.edit$()?.kind === 'revoke' ? 'Thu hồi' :
+        moderators.edit$()?.kind === 'regrant' ? 'Cấp lại' : 'Bổ nhiệm' }}
+      </button>
+    </div>
+  </form>
+</ng-template>

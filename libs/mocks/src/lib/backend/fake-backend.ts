@@ -60,6 +60,7 @@ import {
   agentRefusedEvents,
 } from '../assistant-agent/agent.fixtures';
 import { envelopeError, envelopeOk } from '../envelope';
+import { CommunityBackend } from '../community/community.backend';
 import { LearningBackend } from '../learning/learning.backend';
 import {
   knowledgeAnswerFixture,
@@ -139,6 +140,9 @@ const ok = (data: unknown, status = 200): FakeReply => ({
 });
 
 const ADMIN_ROLES = ['ADMIN', 'SUPER_ADMIN'];
+
+/** `COMMUNITY_MODERATION` in the seed's function table. */
+const MODERATION_FUNCTION_ID = 19;
 
 /** A user with several roles gets the nav counts of the most powerful one. */
 const ROLE_PRIORITY = [
@@ -241,8 +245,21 @@ export class FakeBackend {
     },
   });
 
+  /** The community service, which asks this one who calls and who is in the org. */
+  private readonly community = new CommunityBackend({
+    callerId: (request) => this.caller(request).userId,
+    orgOf: (userId) => this.user(userId)?.orgId ?? null,
+    nameOf: (userId) => this.user(userId)?.fullName,
+    isAdmin: (userId) => this.hasRole(userId, ADMIN_ROLES),
+    activePeople: (orgId) =>
+      this.users
+        .filter((u) => u.status === 'active' && u.orgId === orgId)
+        .map((u) => ({ userId: u.userId, displayName: u.fullName })),
+  });
+
   private readonly handlers = new Map<AnyEndpoint, Handler>([
     ...this.learning.entries(),
+    ...this.community.entries(),
     [authV1Endpoints.login, (r) => this.login(r)],
     [authV1Endpoints.logout, (r) => this.logout(r)],
     [authV1Endpoints.me, (r) => this.me(r)],
@@ -659,6 +676,11 @@ export class FakeBackend {
     const ids = new Set(
       this.activeGrants(userId).flatMap((g) => this.roleOf(g).functionIds),
     );
+    // Like the identity service's function-grant port: an active moderator of the user's org gets
+    // the moderation menu whatever their roles are.
+    if (this.community.isModerator(userId, this.user(userId)?.orgId ?? null)) {
+      ids.add(MODERATION_FUNCTION_ID);
+    }
     return SEED_FUNCTIONS.filter((f) => ids.has(f.id)).sort(
       (a, b) => a.sortNo - b.sortNo || a.id - b.id,
     );

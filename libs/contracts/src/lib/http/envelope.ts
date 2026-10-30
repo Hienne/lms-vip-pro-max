@@ -55,4 +55,25 @@ export const MESSAGE_CODE_KIND = {
   'LEARNING-ASSET_IN_USE': 'refused',
   // A share with the course's own unit, or with a unit that does not exist.
   'LEARNING-INVALID_REFERENCE': 'refused',
+  // Community: valid requests the server cannot apply as sent. A stale version
+  // (`COMMUNITY-CONFLICT`) opens the reload dialog and is never retried with the new version.
+  'COMMUNITY-CONFLICT': 'refused',
+  'COMMUNITY-IDEMPOTENCY_CONFLICT': 'refused',
+  'COMMUNITY-DUPLICATE': 'refused',
+  'COMMUNITY-STATE_INVALID': 'refused',
+  'COMMUNITY-ACCEPT_INVALID': 'refused',
+  'COMMUNITY-NOT_PUBLISHABLE': 'refused',
+  'COMMUNITY-SELF_VOTE': 'refused',
+  'COMMUNITY-INVALID_REFERENCE': 'refused',
+  'COMMUNITY-ASSET_INVALID': 'refused',
+  'COMMUNITY-ASSET_NOT_READY': 'refused',
+  'COMMUNITY-UPLOAD_BUSY': 'refused',
+  'COMMUNITY-UPLOAD_FILE_MISMATCH': 'refused',
+  'COMMUNITY-MEDIA_UNAVAILABLE': 'refused',
+  'COMMUNITY-JOB_UNAVAILABLE': 'refused',
+  'COMMUNITY-DIGEST_UNAVAILABLE': 'refused',
+  'COMMUNITY-CLEANUP_UNAVAILABLE': 'refused',
 } as const;
+
+/** The code that means someone else changed the content: the screen offers a reload. */
+export const COMMUNITY_CONFLICT_CODE = 'COMMUNITY-CONFLICT';

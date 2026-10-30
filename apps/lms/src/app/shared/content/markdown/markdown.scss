@@ -13,6 +13,11 @@
     margin: 0;
   }
 
+  &__mention {
+    color: ui.color(primary);
+    font-weight: ui.weight(medium);
+  }
+
   h3 {
     font-size: ui.text-size(lg);
     font-weight: ui.weight(semibold);

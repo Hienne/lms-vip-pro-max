@@ -1,0 +1,227 @@
+import {
+  Component,
+  computed,
+  effect,
+  inject,
+  signal,
+  untracked,
+} from '@angular/core';
+import { form, FormField, FormRoot } from '@angular/forms/signals';
+import { RouterLink } from '@angular/router';
+import { COMMUNITY_LIMITS } from '@lms/contracts';
+import {
+  Alert,
+  Badge,
+  type BadgeTone,
+  Breadcrumb,
+  type BreadcrumbItem,
+  Button,
+  Card,
+  CardBody,
+  DrawerOutlet,
+  Empty,
+  ErrorState,
+  Field,
+  FmtDatetimePipe,
+  FmtNumPipe,
+  Icon,
+  IconButton,
+  Input,
+  PageHeader,
+  Segmented,
+  type SegmentedOption,
+  Skeleton,
+  Textarea,
+} from '@lms/ui';
+import type { HasUnsavedChanges } from '../../../core/routing/unsaved-changes.guard';
+import { MarkdownEditor } from '../components/markdown-editor/markdown-editor';
+import { TagPicker } from '../components/tag-picker/tag-picker';
+import { CommunityTagOptions } from '../data-access/community-tag-options';
+import { ContentAuthoring } from '../data-access/content-authoring';
+import {
+  emptyContentForm,
+  publishRules,
+  toDraftFields,
+} from '../data-access/content-form';
+import { EditorStore, type NewKind } from './data-access/editor.store';
+
+const REVISION_STATUS: Readonly<
+  Record<string, { label: string; tone: BadgeTone }>
+> = {
+  draft: { label: 'Bản nháp', tone: 'neutral' },
+  published: { label: 'Đang hiển thị', tone: 'success' },
+  superseded: { label: 'Đã thay thế', tone: 'neutral' },
+};
+
+/**
+ * Soạn bài / sửa nháp (CM-05): a new article or lesson learned, or the draft of any content the
+ * user may edit. The form follows the content's kind; the server decides who may edit and publish.
+ */
+@Component({
+  selector: 'app-community-editor',
+  imports: [
+    Alert,
+    Badge,
+    Breadcrumb,
+    Button,
+    Card,
+    CardBody,
+    DrawerOutlet,
+    Empty,
+    ErrorState,
+    Field,
+    FmtDatetimePipe,
+    FmtNumPipe,
+    FormField,
+    FormRoot,
+    Icon,
+    IconButton,
+    Input,
+    MarkdownEditor,
+    PageHeader,
+    RouterLink,
+    Segmented,
+    Skeleton,
+    TagPicker,
+    Textarea,
+  ],
+  providers: [EditorStore, ContentAuthoring, CommunityTagOptions],
+  templateUrl: './editor.html',
+  styleUrl: './editor.scss',
+})
+export class CommunityEditor implements HasUnsavedChanges {
+  protected readonly store = inject(EditorStore);
+  protected readonly tags = inject(CommunityTagOptions);
+  protected readonly limits = COMMUNITY_LIMITS;
+  protected readonly revisionStatus = REVISION_STATUS;
+  protected readonly kinds: readonly SegmentedOption<NewKind>[] = [
+    { value: 'article', label: 'Bài viết' },
+    { value: 'lesson_learned', label: 'Bài học sự cố' },
+  ];
+
+  private readonly model = signal(emptyContentForm());
+  /** The form as it was last loaded or saved, to tell whether leaving loses anything. */
+  private readonly baseline = signal(JSON.stringify(emptyContentForm()));
+
+  protected readonly isLesson = computed(
+    () => this.store.kind$() === 'lesson_learned',
+  );
+  protected readonly isQuestion = computed(
+    () => this.store.kind$() === 'question',
+  );
+  protected readonly isAnswer = computed(() => this.store.kind$() === 'answer');
+
+  protected readonly editorForm = form(
+    this.model,
+    (path) =>
+      publishRules(path, {
+        tags: () => !this.isAnswer(),
+        lesson: () => this.isLesson(),
+      }),
+    {
+      submission: {
+        action: async () =>
+          this.store.publish(this.fields(), this.model().tagIds),
+      },
+    },
+  );
+
+  protected readonly heading = computed(() => {
+    if (this.store.isNew$()) {
+      return this.isLesson()
+        ? {
+            title: 'Ghi bài học sự cố',
+            description: 'Ghi lại sự cố để lần sau cả Ban xử lý nhanh hơn.',
+          }
+        : {
+            title: 'Viết bài',
+            description:
+              'Chia sẻ điều bạn đã làm hoặc đã học được với đồng nghiệp.',
+          };
+    }
+    if (this.isAnswer()) return { title: 'Sửa câu trả lời', description: '' };
+    if (this.store.isPublished$()) {
+      return { title: 'Sửa bài đã đăng', description: '' };
+    }
+    return { title: 'Sửa bản nháp', description: '' };
+  });
+
+  protected readonly breadcrumb = computed((): BreadcrumbItem[] => {
+    const detail = this.store.detail$();
+    const root: BreadcrumbItem =
+      this.isQuestion() || this.isAnswer()
+        ? { label: 'Hỏi đáp', href: '/community/questions' }
+        : { label: 'Bài viết', href: '/community/articles' };
+    const current: BreadcrumbItem = { label: this.heading().title };
+    if (!detail?.publishedRevision) return [root, current];
+    const target = this.isAnswer() ? detail.questionId : detail.contentId;
+    const title = this.isAnswer()
+      ? (this.store.questionTitle$() ?? 'Câu hỏi')
+      : detail.publishedRevision.title;
+    return [
+      root,
+      { label: title, href: `/community/contents/${target}` },
+      current,
+    ];
+  });
+
+  protected readonly publishLabel = computed(() => {
+    if (this.isAnswer()) return 'Đăng câu trả lời';
+    return this.store.isPublished$() ? 'Đăng bản mới' : 'Đăng bài';
+  });
+
+  constructor() {
+    // The form starts from the server's copy, and starts again after a conflict reload.
+    effect(() => {
+      const initial = this.store.initialForm$();
+      if (!initial) return;
+      untracked(() => {
+        this.model.set(initial);
+        this.baseline.set(JSON.stringify(initial));
+      });
+    });
+    // A save makes the current form the new baseline.
+    effect(() => {
+      if (this.store.savedAt$()) {
+        untracked(() => this.baseline.set(JSON.stringify(this.model())));
+      }
+    });
+  }
+
+  protected chooseKind(kind: NewKind): void {
+    this.store.chooseKind(kind);
+  }
+
+  protected saveDraft(): void {
+    this.store.saveDraft(this.fields(), this.model().tagIds);
+  }
+
+  protected setTags(tagIds: number[]): void {
+    this.editorForm.tagIds().value.set(tagIds);
+    this.editorForm.tagIds().markAsTouched();
+  }
+
+  protected addTechnology(): void {
+    this.model.update((value) => ({
+      ...value,
+      technologies: [...value.technologies, { name: '', version: '' }],
+    }));
+  }
+
+  protected removeTechnology(index: number): void {
+    this.model.update((value) => ({
+      ...value,
+      technologies: value.technologies.filter((_, i) => i !== index),
+    }));
+  }
+
+  hasUnsavedChanges(): boolean {
+    return (
+      !this.store.done$() && JSON.stringify(this.model()) !== this.baseline()
+    );
+  }
+
+  private fields() {
+    return toDraftFields(this.model(), { lesson: this.isLesson() });
+  }
+}

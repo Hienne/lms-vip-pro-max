@@ -1012,6 +1012,94 @@ export const MIGRATION_ENTRIES = [
     },
   },
   {
+    id: 'route-community-questions',
+    notes:
+      'CM-01 Hỏi đáp. Đã chuyển đổi và nối API (backend local); còn bước verify trên trình duyệt.',
+    kind: 'route',
+    mockupSource: 'docs/mockups/community/cm-01-questions.html',
+    target: 'community/questions',
+    checklist: [],
+    status: 'in-progress',
+    owner: 'Hienne',
+  },
+  {
+    id: 'route-community-ask',
+    notes:
+      'CM-02 Đặt câu hỏi. Đã chuyển đổi và nối API (backend local); còn bước verify trên trình duyệt.',
+    kind: 'route',
+    mockupSource: 'docs/mockups/community/cm-02-ask.html',
+    target: 'community/questions/new',
+    checklist: [],
+    status: 'in-progress',
+    owner: 'Hienne',
+  },
+  {
+    id: 'route-community-content',
+    notes:
+      'CM-03 Chi tiết câu hỏi, bài viết và bài học. Đã chuyển đổi và nối API (backend local); còn bước verify trên trình duyệt.',
+    kind: 'route',
+    mockupSource: 'docs/mockups/community/cm-03-question-detail.html',
+    target: 'community/contents/:id',
+    checklist: [],
+    status: 'in-progress',
+    owner: 'Hienne',
+  },
+  {
+    id: 'route-community-content-edit',
+    notes:
+      'CM-05 Sửa bản nháp hoặc bài đã đăng. Đã chuyển đổi và nối API (backend local); còn bước verify trên trình duyệt.',
+    kind: 'route',
+    mockupSource: 'docs/mockups/community/cm-05-editor.html',
+    target: 'community/contents/:id/edit',
+    checklist: [],
+    status: 'in-progress',
+    owner: 'Hienne',
+  },
+  {
+    id: 'route-community-articles',
+    notes:
+      'CM-04 Bài viết và bài học sự cố. Đã chuyển đổi và nối API (backend local); còn bước verify trên trình duyệt.',
+    kind: 'route',
+    mockupSource: 'docs/mockups/community/cm-04-articles.html',
+    target: 'community/articles',
+    checklist: [],
+    status: 'in-progress',
+    owner: 'Hienne',
+  },
+  {
+    id: 'route-community-articles-new',
+    notes:
+      'CM-05 Soạn bài viết hoặc bài học sự cố mới. Đã chuyển đổi và nối API (backend local); còn bước verify trên trình duyệt.',
+    kind: 'route',
+    mockupSource: 'docs/mockups/community/cm-05-editor.html',
+    target: 'community/articles/new',
+    checklist: [],
+    status: 'in-progress',
+    owner: 'Hienne',
+  },
+  {
+    id: 'route-community-me',
+    notes:
+      'CM-06 Của tôi. Đã chuyển đổi và nối API (backend local); còn bước verify trên trình duyệt.',
+    kind: 'route',
+    mockupSource: 'docs/mockups/community/cm-06-mine.html',
+    target: 'community/me',
+    checklist: [],
+    status: 'in-progress',
+    owner: 'Hienne',
+  },
+  {
+    id: 'route-community-moderation',
+    notes:
+      'CM-08 Điều phối cộng đồng. Đã chuyển đổi và nối API (backend local); còn bước verify trên trình duyệt.',
+    kind: 'route',
+    mockupSource: 'docs/mockups/community/cm-08-moderation.html',
+    target: 'community/moderation',
+    checklist: [],
+    status: 'in-progress',
+    owner: 'Hienne',
+  },
+  {
     id: 'route-notifications',
     notes:
       'Hiển thị nhắc hạn học thật từ backend và đánh dấu đã đọc; chuông trên header dùng cùng nguồn. Bản mock thông báo của #43 đã gỡ.',

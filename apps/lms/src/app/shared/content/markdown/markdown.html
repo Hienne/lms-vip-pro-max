@@ -7,6 +7,8 @@
     target="_blank"
     rel="noopener noreferrer"
     >{{ piece.text }}</a
+  >} @case ('mention') {<span class="markdown__mention"
+    >&#64;{{ piece.name }}</span
   >} @case ('break') {<br />} @default {{{ piece.text }}} } }
 </ng-template>
 

@@ -38,3 +38,5 @@ export * from './lib/knowledge/knowledge.schema';
 export * from './lib/knowledge/knowledge.endpoints';
 export * from './lib/assistant-agent/agent.schema';
 export * from './lib/assistant-agent/agent.endpoints';
+export * from './lib/community/community.schema';
+export * from './lib/community/community.endpoints';

@@ -1,0 +1,68 @@
+@use 'ui';
+
+:host {
+  display: block;
+  width: min(30rem, calc(100vw - #{ui.space(8)}));
+  max-height: calc(100vh - #{ui.space(8)});
+  overflow: auto;
+  border-radius: ui.radius(card);
+  background: ui.color(surface);
+  color: ui.color(text);
+  box-shadow: ui.shadow(lg);
+}
+
+.report-dialog {
+  &__header {
+    display: flex;
+    gap: ui.space(3);
+    align-items: flex-start;
+    padding: ui.space(6) ui.space(6) 0;
+  }
+
+  &__title {
+    flex: 1;
+    align-self: center;
+    margin: 0;
+    font-size: ui.text-size(lg);
+    font-weight: ui.weight(semibold);
+  }
+
+  &__body {
+    margin: 0;
+    padding: ui.space(4) ui.space(6);
+    @include ui.text(sm, secondary);
+  }
+
+  &__footer {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: ui.space(2);
+    padding: ui.space(4) ui.space(6) ui.space(6);
+  }
+
+  &__reasons {
+    @include ui.stack(2);
+    margin: 0;
+    padding: 0 ui.space(6);
+    border: 0;
+  }
+
+  &__reason {
+    display: flex;
+    gap: ui.space(3);
+    align-items: flex-start;
+    cursor: pointer;
+  }
+
+  &__hint {
+    display: block;
+    @include ui.text(xs, muted);
+  }
+
+  &__note {
+    @include ui.stack(1);
+    padding: ui.space(4) ui.space(6) 0;
+    @include ui.text(sm, secondary);
+  }
+}

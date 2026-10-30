@@ -85,4 +85,11 @@ describe('Markdown', () => {
     expect(hrefs).toEqual(['https://example.com/a']);
     expect(el.textContent).toContain('bấm');
   });
+
+  it('renders a mention as text with an at sign and no link', () => {
+    const el = render('Cảm ơn @[Trần B](user:000009)!');
+    expect(el.querySelector('a')).toBeNull();
+    expect(el.querySelector('.markdown__mention')?.textContent).toBe('@Trần B');
+    expect(el.textContent).toContain('Cảm ơn @Trần B!');
+  });
 });

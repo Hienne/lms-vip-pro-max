@@ -2,6 +2,7 @@ import type { Route } from '@angular/router';
 import {
   assessmentEndpoints,
   adminOrgEndpoints,
+  communityEndpoints,
   reportEndpoints,
   type AnyEndpoint,
   type FunctionCode,
@@ -387,6 +388,89 @@ export const SCREEN_TABLE = {
           load: () =>
             import('../../features/study-tools/assistant/assistant').then(
               (m) => m.Assistant,
+            ),
+        },
+      ],
+    },
+    COMMUNITY: {
+      nav: { icon: 'message-square', section: 'Học tập' },
+      screens: [
+        {
+          path: 'community/questions',
+          title: 'Hỏi đáp',
+          mockupPage: 'CM-01',
+          load: () =>
+            import('../../features/community/questions/questions').then(
+              (m) => m.CommunityQuestions,
+            ),
+        },
+        {
+          path: 'community/questions/new',
+          title: 'Đặt câu hỏi',
+          mockupPage: 'CM-02',
+          load: () =>
+            import('../../features/community/ask/ask').then(
+              (m) => m.CommunityAsk,
+            ),
+        },
+        {
+          path: 'community/contents/:id',
+          title: 'Chi tiết nội dung',
+          mockupPage: 'CM-03',
+          load: () =>
+            import('../../features/community/content/content').then(
+              (m) => m.CommunityContent,
+            ),
+        },
+        {
+          path: 'community/contents/:id/edit',
+          title: 'Sửa bài',
+          mockupPage: 'CM-05',
+          load: () =>
+            import('../../features/community/editor/editor').then(
+              (m) => m.CommunityEditor,
+            ),
+        },
+        {
+          path: 'community/articles',
+          title: 'Bài viết',
+          mockupPage: 'CM-04',
+          load: () =>
+            import('../../features/community/articles/articles').then(
+              (m) => m.CommunityArticles,
+            ),
+        },
+        {
+          path: 'community/articles/new',
+          title: 'Viết bài mới',
+          mockupPage: 'CM-05',
+          load: () =>
+            import('../../features/community/editor/editor').then(
+              (m) => m.CommunityEditor,
+            ),
+        },
+        {
+          path: 'community/me',
+          title: 'Của tôi',
+          mockupPage: 'CM-06',
+          load: () =>
+            import('../../features/community/mine/mine').then(
+              (m) => m.CommunityMine,
+            ),
+        },
+      ],
+    },
+    COMMUNITY_MODERATION: {
+      nav: { icon: 'shield', section: 'Tổ chức' },
+      requires: [communityEndpoints.moderators],
+      screens: [
+        {
+          path: 'community/moderation',
+          title: 'Điều phối cộng đồng',
+          mockupPage: 'CM-08',
+          load: () =>
+            import('../../features/community/moderation/moderation').then(
+              (m) => m.CommunityModeration,
             ),
         },
       ],

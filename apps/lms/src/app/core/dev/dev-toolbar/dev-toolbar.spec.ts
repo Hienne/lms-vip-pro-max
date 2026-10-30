@@ -70,9 +70,9 @@ describe('DevToolbar', () => {
   describe('with the mock backend', () => {
     beforeEach(() => create({ mockApi: true, mockBackend: true }));
 
-    it('lists the seven demo accounts and the incident simulations', async () => {
+    it('lists the eight demo accounts and the incident simulations', async () => {
       await open();
-      expect(MOCK_ACCOUNTS).toHaveLength(7);
+      expect(MOCK_ACCOUNTS).toHaveLength(8);
       expect(labels()).toHaveLength(MOCK_ACCOUNTS.length + 4);
       expect(menu()?.textContent).toContain('Đăng nhập bằng tài khoản demo');
       expect(item('Quản trị viên gốc — Quản trị gốc Demo')).toBeDefined();

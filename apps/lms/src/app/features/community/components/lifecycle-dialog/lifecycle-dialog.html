@@ -1,0 +1,75 @@
+<form [formRoot]="reasonForm">
+  <div class="lifecycle-dialog__header">
+    <h2 class="lifecycle-dialog__title" id="lifecycle-dialog-title">
+      {{ copy.title }}
+    </h2>
+    <button
+      type="button"
+      uiIconButton
+      label="Đóng hộp thoại"
+      (click)="cancel()"
+    >
+      <ui-icon name="x" />
+    </button>
+  </div>
+  <p class="lifecycle-dialog__body">{{ copy.body }}</p>
+  <div class="lifecycle-dialog__fields">
+    @if (duplicate) {
+    <ui-field label="Câu hỏi gốc" hint="Nhập từ 5 ký tự để tìm.">
+      <input
+        uiInput
+        type="search"
+        autocomplete="off"
+        [formField]="reasonForm.query"
+      />
+    </ui-field>
+    @if (candidates().length) {
+    <fieldset class="lifecycle-dialog__results">
+      <legend class="sr-only">Kết quả tìm</legend>
+      @for (card of candidates(); track card.contentId) {
+      <label class="lifecycle-dialog__result">
+        <input
+          type="radio"
+          [value]="'' + card.contentId"
+          [formField]="reasonForm.targetQuestionId"
+        />
+        <span>
+          {{ card.title }}
+          <span class="lifecycle-dialog__hint">
+            {{ card.answerCount | fmtNum }} trả lời · {{ (card.lastActivityAt ??
+            card.publishedAt) | fmtRelative }}
+          </span>
+        </span>
+      </label>
+      }
+    </fieldset>
+    } @else if (searched()) {
+    <p class="lifecycle-dialog__hint" aria-live="polite">
+      Không tìm thấy câu hỏi phù hợp.
+    </p>
+    } }
+    <ui-field
+      label="Lý do"
+      [hint]="'Từ 5 đến ' + (reasonMax | fmtNum) + ' ký tự. Lý do hiển thị cho mọi người đọc nội dung.'"
+    >
+      <textarea
+        uiTextarea
+        rows="3"
+        [placeholder]="copy.placeholder"
+        [formField]="reasonForm.reason"
+      ></textarea>
+    </ui-field>
+  </div>
+  <div class="lifecycle-dialog__footer">
+    <button type="button" uiButton variant="ghost" (click)="cancel()">
+      Hủy
+    </button>
+    <button
+      type="submit"
+      uiButton
+      [variant]="copy.danger ? 'danger' : 'primary'"
+    >
+      {{ copy.confirm }}
+    </button>
+  </div>
+</form>

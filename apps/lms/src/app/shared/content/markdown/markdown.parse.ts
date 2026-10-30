@@ -11,6 +11,8 @@ export type Inline =
   | { readonly kind: 'em'; readonly text: string }
   | { readonly kind: 'code'; readonly text: string }
   | { readonly kind: 'link'; readonly text: string; readonly href: string }
+  /** `@[Tên](user:id)`: a person named in a community post, shown as text (no link, no lookup). */
+  | { readonly kind: 'mention'; readonly name: string; readonly userId: string }
   | { readonly kind: 'break' };
 
 export type Block =
@@ -47,9 +49,10 @@ export function parseContent(
 
 // ---- markdown ----
 
-const INLINE = /\*\*(.+?)\*\*|\*(.+?)\*|`(.+?)`/g;
+const INLINE =
+  /\*\*(.+?)\*\*|\*(.+?)\*|`(.+?)`|@\[([^\]\n]+)\]\(user:([^)\s]+)\)/g;
 
-/** Bold, italic and code spans; everything else is text. Spans do not nest. */
+/** Bold, italic, code spans and mentions; everything else is text. Spans do not nest. */
 function inlineMarkdown(line: string): Inline[] {
   const out: Inline[] = [];
   let last = 0;
@@ -57,7 +60,8 @@ function inlineMarkdown(line: string): Inline[] {
     if (match.index > last) out.push(text(line.slice(last, match.index)));
     if (match[1] !== undefined) out.push({ kind: 'strong', text: match[1] });
     else if (match[2] !== undefined) out.push({ kind: 'em', text: match[2] });
-    else out.push({ kind: 'code', text: match[3] });
+    else if (match[3] !== undefined) out.push({ kind: 'code', text: match[3] });
+    else out.push({ kind: 'mention', name: match[4], userId: match[5] });
     last = match.index + match[0].length;
   }
   if (last < line.length) out.push(text(line.slice(last)));

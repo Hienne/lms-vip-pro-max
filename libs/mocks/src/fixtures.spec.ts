@@ -4,6 +4,7 @@ import {
   agentEndpoints,
   AgentStreamEventSchema,
   authV1Endpoints,
+  communityEndpoints,
   personalEndpoints,
   reportEndpoints,
   type AnyEndpoint,
@@ -33,6 +34,7 @@ const everyEndpoint: readonly AnyEndpoint[] = [
   ...Object.values(assessmentEndpoints),
   ...Object.values(agentEndpoints),
   ...Object.values(authV1Endpoints),
+  ...Object.values(communityEndpoints),
   ...Object.values(identityEndpoints),
   ...Object.values(knowledgeEndpoints),
   ...Object.values(organizationEndpoints),
@@ -65,6 +67,12 @@ describe('FakeBackend and the endpoint registries', () => {
         .map((endpoint) => endpoint.path)
         .sort(),
     );
+  });
+
+  it('serves no community endpoint from the mock-only list', () => {
+    for (const endpoint of Object.values(communityEndpoints)) {
+      expect(endpoint.served, endpoint.path).toBeUndefined();
+    }
   });
 
   // Role CRUD takes a body and is covered by the FakeBackend spec.

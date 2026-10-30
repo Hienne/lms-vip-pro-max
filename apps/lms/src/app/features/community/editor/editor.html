@@ -1,0 +1,307 @@
+<ui-breadcrumb [items]="breadcrumb()" />
+<ui-page-header [title]="heading().title" [description]="heading().description">
+  @if (!store.isNew$() && store.isPublished$()) {
+  <button uiButton slot="actions" type="button" (click)="store.showHistory()">
+    <ui-icon name="history" size="sm" />Lịch sử bản
+  </button>
+  }
+</ui-page-header>
+
+@if (!store.isNew$() && store.loadError$(); as error) {
+<ui-error-state
+  title="Không tải được bài"
+  [message]="error.message"
+  (retry)="store.retryLoad()"
+/>
+} @else if (!store.isNew$() && !store.detail$()) {
+<div class="editor" aria-busy="true">
+  <div uiSkeleton variant="block" class="editor__placeholder"></div>
+</div>
+} @else if (!store.isNew$() && !store.canEdit$()) {
+<ui-empty
+  variant="page"
+  title="Bạn không sửa được bài này"
+  description="Chỉ tác giả hoặc người phụ trách sửa được khi bài còn đang mở."
+>
+  <a uiButton [routerLink]="['/community/contents', store.detail$()?.contentId]"
+    >Về bài</a
+  >
+</ui-empty>
+} @else {
+<form class="editor" [formRoot]="editorForm">
+  @if (isAnswer()) {
+  <ui-alert
+    [heading]="'Đang sửa câu trả lời cho câu hỏi “' + (store.questionTitle$() ?? '…') + '”'"
+  >
+    @if (store.isAcceptedAnswer$()) { Câu trả lời này đã được chấp nhận. Sau khi
+    bạn đăng bản mới, người hỏi cần xác nhận lại bản mới. }
+  </ui-alert>
+  } @else if (store.isPublished$()) {
+  <ui-alert heading="Bạn đang sửa bản nháp của bài đã đăng">
+    Bài hiện tại vẫn hiển thị với mọi người cho đến khi bạn đăng bản mới. Bản
+    nháp chỉ mình bạn thấy.
+  </ui-alert>
+  }
+
+  <section uiCard>
+    <div uiCardBody class="editor__body">
+      @if (store.isNew$()) {
+      <div class="editor__field">
+        <span class="editor__label">Loại bài</span>
+        <ui-segmented
+          label="Loại bài"
+          [options]="kinds"
+          [value]="store.newKind$()"
+          (valueChange)="chooseKind($event)"
+        />
+      </div>
+      } @if (!isAnswer()) {
+      <ui-field label="Tiêu đề" hint="Từ 5 đến 255 ký tự.">
+        <input
+          uiInput
+          autocomplete="off"
+          placeholder="Một câu nói rõ bài viết về gì"
+          [formField]="editorForm.title"
+        />
+      </ui-field>
+
+      <ui-field
+        label="Tóm tắt"
+        [hint]="'Không bắt buộc. ' + (editorForm.summary().value().length | fmtNum) + '/' + (limits.summary.max | fmtNum)"
+      >
+        <textarea
+          uiTextarea
+          rows="2"
+          placeholder="Hiện trong danh sách và kết quả tìm kiếm."
+          [formField]="editorForm.summary"
+        ></textarea>
+      </ui-field>
+      } @if (isLesson()) {
+      <ui-alert tone="warning">
+        Chỉ mô tả ở mức kỹ thuật. Không đưa mã khách hàng, thông tin đăng nhập
+        hoặc log chưa che.
+      </ui-alert>
+      <ui-field label="Ngày xảy ra sự cố">
+        <input
+          uiInput
+          type="date"
+          class="editor__date"
+          [formField]="editorForm.lesson.occurredOn"
+        />
+      </ui-field>
+      <ui-field
+        label="Triệu chứng"
+        hint="Người dùng hoặc hệ thống thấy gì. Từ 20 đến 10.000 ký tự."
+      >
+        <textarea
+          uiTextarea
+          rows="3"
+          [formField]="editorForm.lesson.symptoms"
+        ></textarea>
+      </ui-field>
+      <ui-field
+        label="Nguyên nhân gốc"
+        hint="Vì sao xảy ra, không chỉ là chỗ nào lỗi. Từ 20 đến 10.000 ký tự."
+      >
+        <textarea
+          uiTextarea
+          rows="3"
+          [formField]="editorForm.lesson.rootCause"
+        ></textarea>
+      </ui-field>
+      <ui-field
+        label="Cách xử lý"
+        hint="Đã làm gì để khôi phục và sửa. Từ 20 đến 20.000 ký tự."
+      >
+        <textarea
+          uiTextarea
+          rows="4"
+          [formField]="editorForm.lesson.resolution"
+        ></textarea>
+      </ui-field>
+      <ui-field
+        label="Phòng ngừa"
+        hint="Thay đổi nào giúp không lặp lại. Từ 20 đến 10.000 ký tự."
+      >
+        <textarea
+          uiTextarea
+          rows="3"
+          [formField]="editorForm.lesson.prevention"
+        ></textarea>
+      </ui-field>
+      }
+
+      <div class="editor__field">
+        <span class="editor__label">Nội dung</span>
+        <app-markdown-editor
+          label="Nội dung"
+          [formField]="editorForm.bodyMarkdown"
+        />
+        @if (editorForm.bodyMarkdown().touched() &&
+        editorForm.bodyMarkdown().invalid()) {
+        <p class="editor__error" role="alert">
+          @for (error of editorForm.bodyMarkdown().errors(); track error.kind) {
+          {{ error.message }} }
+        </p>
+        }
+      </div>
+
+      @if (!isAnswer()) {
+      <div class="editor__field">
+        <app-tag-picker
+          [tags]="tags.tags$() ?? []"
+          [value]="editorForm.tagIds().value()"
+          (valueChange)="setTags($event)"
+        />
+        @if (editorForm.tagIds().touched() && editorForm.tagIds().invalid()) {
+        <p class="editor__error" role="alert">
+          @for (error of editorForm.tagIds().errors(); track error.kind) { {{
+          error.message }} }
+        </p>
+        }
+      </div>
+      } @if (isQuestion()) {
+      <details class="editor__context">
+        <summary>
+          Công nghệ và môi trường
+          <span class="editor__muted">(không bắt buộc)</span>
+        </summary>
+        <div class="editor__context-body">
+          <fieldset class="editor__tech">
+            <legend>Công nghệ đang dùng</legend>
+            @for (row of editorForm.technologies; track $index; let i = $index)
+            {
+            <div class="editor__tech-row">
+              <input
+                uiInput
+                placeholder="Tên"
+                aria-label="Tên công nghệ"
+                [formField]="row.name"
+              />
+              <input
+                uiInput
+                placeholder="Phiên bản"
+                aria-label="Phiên bản"
+                [formField]="row.version"
+              />
+              <button
+                uiIconButton
+                type="button"
+                label="Xóa dòng"
+                (click)="removeTechnology(i)"
+              >
+                <ui-icon name="x" size="sm" />
+              </button>
+            </div>
+            }
+            <div class="editor__tech-add">
+              <button
+                uiButton
+                size="sm"
+                type="button"
+                [disabled]="editorForm.technologies().value().length >= limits.technologies.max"
+                (click)="addTechnology()"
+              >
+                <ui-icon name="plus" size="sm" />Thêm công nghệ
+              </button>
+              <span class="editor__muted">
+                {{ editorForm.technologies().value().length }}/{{
+                limits.technologies.max }}
+              </span>
+            </div>
+          </fieldset>
+          <ui-field label="Môi trường">
+            <input
+              uiInput
+              placeholder="Ví dụ: UAT"
+              [formField]="editorForm.environment"
+            />
+          </ui-field>
+          <ui-field label="Ràng buộc">
+            <textarea
+              uiTextarea
+              rows="3"
+              [formField]="editorForm.limitations"
+            ></textarea>
+          </ui-field>
+        </div>
+      </details>
+      } @if (store.isPublished$()) {
+      <ui-field
+        label="Ghi chú thay đổi"
+        hint="Không bắt buộc. Hiện trong lịch sử bản."
+      >
+        <input
+          uiInput
+          autocomplete="off"
+          placeholder="Ví dụ: Sửa lại giá trị timeout"
+          [formField]="editorForm.changeNote"
+        />
+      </ui-field>
+      }
+    </div>
+  </section>
+
+  <div class="editor__actions">
+    <p class="editor__muted" aria-live="polite">
+      @if (store.savedAt$(); as savedAt) { Đã lưu nháp lúc {{ savedAt |
+      fmtDatetime }} } @else if (hasUnsavedChanges()) { Chưa lưu } @else { Bài
+      hiển thị với toàn Ban khi đăng. }
+    </p>
+    <div class="editor__buttons">
+      <button
+        uiButton
+        type="button"
+        [disabled]="store.isBusy$()"
+        (click)="saveDraft()"
+      >
+        Lưu nháp
+      </button>
+      <button
+        uiButton
+        variant="primary"
+        type="submit"
+        [disabled]="store.isBusy$()"
+      >
+        {{ publishLabel() }}
+      </button>
+    </div>
+  </div>
+</form>
+}
+
+<ng-template
+  [uiDrawer]="store.historyOpen$()"
+  uiDrawerTitle="Lịch sử bản"
+  (uiDrawerDismiss)="store.hideHistory()"
+>
+  @if (store.historyError$(); as error) {
+  <ui-error-state
+    title="Không tải được lịch sử"
+    [message]="error.message"
+    (retry)="store.showHistory()"
+  />
+  } @else if (store.historyLoading$() && !store.history$().length) {
+  <div uiSkeleton variant="block" class="editor__placeholder"></div>
+  } @else {
+  <ol class="editor__history">
+    @for (revision of store.history$(); track revision.revisionId) {
+    <li class="editor__revision">
+      <div class="editor__revision-head">
+        <span class="editor__label">Bản {{ revision.revisionNo }}</span>
+        @if (revisionStatus[revision.revisionStatus]; as status) {
+        <span uiBadge [tone]="status.tone">{{ status.label }}</span>
+        }
+      </div>
+      @if (revision.changeNote) {
+      <p>{{ revision.changeNote }}</p>
+      }
+      <p class="editor__muted">
+        {{ revision.editor?.displayName ?? 'Không rõ' }} · {{
+        (revision.updateTime ?? revision.publishedAt) | fmtDatetime }}
+      </p>
+    </li>
+    }
+  </ol>
+  }
+</ng-template>

@@ -1,0 +1,104 @@
+@use 'ui';
+
+:host {
+  @include ui.page(content);
+}
+
+.content {
+  @include ui.stack(4);
+
+  &__actions {
+    @include ui.row(2);
+    flex-wrap: wrap;
+  }
+
+  &__meta,
+  &__muted {
+    @include ui.text(sm, muted);
+  }
+
+  &__meta {
+    @include ui.row(2);
+    flex-wrap: wrap;
+    margin: 0;
+  }
+
+  &__author {
+    color: ui.color(text);
+    font-weight: ui.weight(semibold);
+  }
+
+  &__post {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: ui.space(4);
+    align-items: start;
+  }
+
+  &__main {
+    @include ui.stack(4);
+    min-width: 0;
+  }
+
+  &__section {
+    @include ui.stack(2);
+  }
+
+  &__section-title,
+  &__answers-title {
+    margin: 0;
+    font-size: ui.text-size(md);
+    font-weight: ui.weight(semibold);
+  }
+
+  &__context {
+    @include ui.stack(1);
+    margin: 0;
+    @include ui.text(sm);
+
+    div {
+      display: flex;
+      gap: ui.space(2);
+    }
+
+    dt {
+      color: ui.color(text-muted);
+    }
+
+    dd {
+      margin: 0;
+    }
+  }
+
+  &__answers {
+    @include ui.stack(4);
+  }
+
+  &__answers-bar {
+    @include ui.row-between(3);
+    flex-wrap: wrap;
+  }
+
+  &__answer-actions {
+    @include ui.row(1);
+    flex-wrap: wrap;
+  }
+
+  &__composer {
+    @include ui.stack(3);
+  }
+
+  &__composer-actions {
+    @include ui.row(2);
+    justify-content: flex-end;
+  }
+
+  &__error {
+    @include ui.text(sm);
+    color: ui.color(danger);
+  }
+
+  &__placeholder {
+    height: ui.space(18);
+  }
+}

@@ -1,0 +1,46 @@
+@use 'ui';
+
+:host {
+  @include ui.stack(2);
+}
+
+.markdown-editor {
+  &__bar {
+    @include ui.row-between(3);
+  }
+
+  &__tools {
+    @include ui.row(1);
+  }
+
+  &__input {
+    width: 100%;
+    min-height: ui.space(18);
+    font-family: ui.font(mono);
+    font-size: ui.text-size(sm);
+    resize: vertical;
+  }
+
+  &__preview {
+    min-height: ui.space(18);
+    padding: ui.space(4);
+    border: 1px solid ui.color(border);
+    border-radius: ui.radius(field);
+    background: ui.color(surface);
+  }
+
+  &__empty {
+    margin: 0;
+    @include ui.text(sm, muted);
+  }
+
+  &__count {
+    @include ui.num;
+  }
+
+  &__foot {
+    @include ui.row-between(3);
+    margin: 0;
+    @include ui.text(xs, muted);
+  }
+}
