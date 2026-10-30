@@ -3,7 +3,7 @@ import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
 import { organizationEndpoints } from '@lms/contracts';
-import { backendRefusal, SEED_ORGS, SEED_TEAMS } from '@lms/mocks';
+import { backendRefusal, SEED_ORGS, SEED_TEAMS, SEED_USERS } from '@lms/mocks';
 import { createAppRoutes } from '../../../app.routes';
 import {
   parseAppConfig,
@@ -121,7 +121,9 @@ describe('Org', () => {
     const stats = Array.from(el.querySelectorAll('dl dd')).map((dd) =>
       dd.textContent?.trim(),
     );
-    expect(stats).toEqual(['7', String(SEED_TEAMS.length)]);
+    // Members are every seeded user of the org, as the mock counts them.
+    const members = SEED_USERS.filter((u) => u.orgId === ROOT.id).length;
+    expect(stats).toEqual([String(members), String(SEED_TEAMS.length)]);
     expect(text()).toContain('Quản trị viên: Quản trị Ban Demo');
   });
 
