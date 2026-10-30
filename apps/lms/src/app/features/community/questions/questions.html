@@ -1,0 +1,122 @@
+<ui-page-header
+  title="Hỏi đáp"
+  description="Hỏi đồng nghiệp trong Ban, hoặc tìm câu trả lời đã có."
+>
+  <div slot="actions">
+    <a uiButton variant="primary" routerLink="/community/questions/new">
+      <ui-icon name="plus" size="sm" />Đặt câu hỏi
+    </a>
+  </div>
+</ui-page-header>
+
+<app-community-tabs />
+
+<form
+  class="community-list__toolbar"
+  role="search"
+  (submit)="$event.preventDefault()"
+>
+  <ui-search
+    label="Tìm câu hỏi"
+    placeholder="Tìm trong câu hỏi"
+    width="100%"
+    class="community-list__search"
+    [value]="store.filters$().q"
+    (searched)="store.search($event)"
+  />
+  <select
+    uiSelect
+    size="sm"
+    class="community-list__select"
+    aria-label="Thẻ"
+    (change)="store.filterTag(tag.value)"
+    #tag
+  >
+    <option value="">Tất cả thẻ</option>
+    @for (option of tags.tags$() ?? []; track option.tagId) {
+    <option
+      [value]="option.tagId"
+      [selected]="option.tagId === store.filters$().tagId"
+    >
+      {{ option.name }}
+    </option>
+    }
+  </select>
+  <ui-segmented
+    label="Trạng thái câu hỏi"
+    [options]="resolutions"
+    [value]="store.filters$().resolution"
+    (valueChange)="store.filterResolution($event)"
+  />
+</form>
+
+<div class="community-list__bar">
+  <p class="community-list__count" role="status" aria-live="polite">
+    <strong>{{ store.total$() }}</strong> câu hỏi @if (store.isFiltered$()) {
+    <button uiButton size="sm" variant="ghost" (click)="store.clearFilters()">
+      Xóa bộ lọc
+    </button>
+    }
+  </p>
+  <label class="community-list__sort">
+    <span>Sắp xếp</span>
+    <select
+      uiSelect
+      size="sm"
+      [value]="store.sort$()"
+      (change)="store.sortBy(sort.value)"
+      #sort
+    >
+      <option value="activity">Hoạt động gần đây</option>
+      <option value="score">Điểm cao nhất</option>
+      <option value="new">Mới nhất</option>
+    </select>
+  </label>
+</div>
+
+@if (store.loadError$(); as error) {
+<ui-error-state
+  title="Không tải được câu hỏi"
+  [message]="error.message"
+  (retry)="store.retryLoad()"
+/>
+} @else if (store.isLoading$()) {
+<div class="community-list__rows" aria-busy="true">
+  @for (item of placeholders; track item) {
+  <div uiSkeleton variant="block" class="community-list__placeholder"></div>
+  }
+</div>
+} @else if (store.cards$().length) {
+<ul class="community-list__rows" aria-label="Câu hỏi">
+  @for (card of store.cards$(); track card.contentId) {
+  <li><app-content-row [card]="card" /></li>
+  }
+</ul>
+<ui-pagination
+  [total]="store.total$()"
+  [page]="store.page$()"
+  [pageSize]="pageSize"
+  (pageChange)="store.goToPage($event)"
+/>
+} @else if (store.isFiltered$()) {
+<ui-empty
+  variant="page"
+  title="Không có câu hỏi phù hợp"
+  description="Thử bỏ bớt bộ lọc hoặc dùng từ khóa khác."
+>
+  <button uiButton (click)="store.clearFilters()">Xóa bộ lọc</button>
+  <a uiButton variant="primary" routerLink="/community/questions/new">
+    Đặt câu hỏi
+  </a>
+</ui-empty>
+} @else {
+<ui-empty
+  variant="page"
+  title="Chưa có câu hỏi nào"
+  description="Đặt câu hỏi đầu tiên cho đồng nghiệp trong Ban."
+>
+  <a uiButton variant="primary" routerLink="/community/questions/new">
+    Đặt câu hỏi
+  </a>
+</ui-empty>
+}

@@ -1,0 +1,47 @@
+import { TestBed } from '@angular/core/testing';
+import { Vote, type VoteValue } from './vote';
+
+function render(inputs: Record<string, unknown>) {
+  const fixture = TestBed.createComponent(Vote);
+  for (const [name, value] of Object.entries(inputs)) {
+    fixture.componentRef.setInput(name, value);
+  }
+  const sent: VoteValue[] = [];
+  fixture.componentInstance.voted.subscribe((value) => sent.push(value));
+  fixture.detectChanges();
+  const el = fixture.nativeElement as HTMLElement;
+  const [up, down] = Array.from(el.querySelectorAll('button'));
+  return { el, up, down, sent };
+}
+
+describe('Vote', () => {
+  it('sends +1 and -1', () => {
+    const { up, down, sent } = render({ score: 4, myVote: 0 });
+    up.click();
+    down.click();
+    expect(sent).toEqual([1, -1]);
+  });
+
+  it('withdraws the vote when the current one is pressed again', () => {
+    const { up, sent } = render({ score: 4, myVote: 1 });
+    expect(up.getAttribute('aria-pressed')).toBe('true');
+    up.click();
+    expect(sent).toEqual([0]);
+  });
+
+  it('is disabled with the reason as its name when the server forbids voting', () => {
+    const { up, down, sent } = render({ score: 0, canVote: false });
+    expect(up.disabled).toBe(true);
+    expect(up.getAttribute('aria-label')).toBe(
+      'Bạn không thể bình chọn cho nội dung của chính mình',
+    );
+    down.click();
+    expect(sent).toEqual([]);
+  });
+
+  it('shows the score', () => {
+    expect(
+      render({ score: 12 }).el.querySelector('.vote__score')?.textContent,
+    ).toContain('12');
+  });
+});

@@ -4,7 +4,7 @@ import { envelopeError } from './envelope';
 /**
  * Every refusal the backend can send, with its real HTTP status, code, title and message
  * (`ResponseCode`, `IdentityResponseCode`, `OrganizationResponseCode`, `KnowledgeResponseCode` and
- * `AssistantResponseCode` and `LearningResponseCode` of corebanking-academy).
+ * `AssistantResponseCode`, `LearningResponseCode` and `CommunityResponseCode` of corebanking-academy).
  * A mock reply or a spec asks for one by key, so no test or fixture invents a code.
  */
 export const BACKEND_RESPONSES = {
@@ -268,6 +268,60 @@ export const BACKEND_RESPONSES = {
     code: 'LEARNING-INVALID_REFERENCE',
     title: 'Tham chiếu chưa hợp lệ',
     message: 'ID tham chiếu không tồn tại hoặc không đúng quan hệ.',
+  },
+  communityNotFound: {
+    status: 200,
+    code: 'CORE-RESOURCE_NOT_FOUND',
+    title: 'Không tìm thấy dữ liệu',
+    message: 'Không tìm thấy nội dung trong phạm vi được phép.',
+  },
+  communityConflict: {
+    status: 200,
+    code: 'COMMUNITY-CONFLICT',
+    title: 'Chưa thể thực hiện',
+    message: 'Dữ liệu đã thay đổi. Vui lòng tải lại trước khi lưu.',
+  },
+  communityInvalidReference: {
+    status: 200,
+    code: 'COMMUNITY-INVALID_REFERENCE',
+    title: 'Chưa thể thực hiện',
+    message: 'Tham chiếu không hợp lệ hoặc không cùng phạm vi.',
+  },
+  communityStateInvalid: {
+    status: 200,
+    code: 'COMMUNITY-STATE_INVALID',
+    title: 'Chưa thể thực hiện',
+    message: 'Trạng thái hiện tại không cho phép thao tác này.',
+  },
+  communitySelfVote: {
+    status: 200,
+    code: 'COMMUNITY-SELF_VOTE',
+    title: 'Chưa thể thực hiện',
+    message: 'Không được tự bình chọn nội dung của mình.',
+  },
+  communityAcceptInvalid: {
+    status: 200,
+    code: 'COMMUNITY-ACCEPT_INVALID',
+    title: 'Chưa thể thực hiện',
+    message: 'Câu trả lời hoặc phiên bản chưa phù hợp để xác nhận.',
+  },
+  communityNotPublishable: {
+    status: 200,
+    code: 'COMMUNITY-NOT_PUBLISHABLE',
+    title: 'Chưa thể thực hiện',
+    message: 'Nội dung chưa đủ điều kiện xuất bản.',
+  },
+  communityDuplicate: {
+    status: 200,
+    code: 'COMMUNITY-DUPLICATE',
+    title: 'Chưa thể thực hiện',
+    message: 'Định danh này đã được sử dụng.',
+  },
+  communityIdempotencyConflict: {
+    status: 200,
+    code: 'COMMUNITY-IDEMPOTENCY_CONFLICT',
+    title: 'Chưa thể thực hiện',
+    message: 'Mã yêu cầu đã được dùng với nội dung khác.',
   },
   assetInUse: {
     status: 200,

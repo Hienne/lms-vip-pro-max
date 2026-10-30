@@ -1,0 +1,30 @@
+<div class="tag-picker__head">
+  <span class="tag-picker__label" id="tag-picker-label">{{ label() }}</span>
+  <span class="tag-picker__count" [class.tag-picker__count--full]="full()">
+    {{ value().length }}/{{ max }}
+  </span>
+</div>
+<div
+  ngListbox
+  class="tag-picker__list"
+  orientation="horizontal"
+  selectionMode="explicit"
+  aria-labelledby="tag-picker-label"
+  [multi]="true"
+  [value]="value()"
+  (valueChange)="choose($event)"
+>
+  @for (tag of tags(); track tag.tagId) {
+  <div
+    ngOption
+    class="tag-picker__option"
+    [value]="tag.tagId"
+    [label]="tag.name"
+  >
+    {{ tag.name }}
+  </div>
+  }
+</div>
+<p class="tag-picker__hint">
+  Chọn tối đa {{ max }} thẻ. Thẻ giúp người khác tìm thấy bài.
+</p>

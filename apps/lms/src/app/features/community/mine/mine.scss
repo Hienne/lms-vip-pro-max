@@ -1,0 +1,32 @@
+@use 'ui';
+@use '../community-list';
+
+:host {
+  @include ui.page(wide);
+}
+
+.mine {
+  &__switch {
+    margin-block-start: ui.space(4);
+  }
+
+  &__num {
+    @include ui.num;
+    text-align: end;
+  }
+
+  &__action {
+    text-align: end;
+  }
+
+  &__saved-row {
+    position: relative;
+  }
+
+  // The row's own badge column sits at the end; the unsave button takes its place on saved rows.
+  &__unsave {
+    position: absolute;
+    inset-block-start: ui.space(4);
+    inset-inline-end: ui.space(4);
+  }
+}

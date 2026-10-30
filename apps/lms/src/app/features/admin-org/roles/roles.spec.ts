@@ -148,7 +148,7 @@ describe('Roles', () => {
     await settle();
     expect(dialog()?.textContent).toContain(`Sửa vai trò ${custom.name}`);
     expect(inputOf('Tên vai trò').value).toBe(custom.name);
-    expect(dialog()?.querySelectorAll('input[type=checkbox]')).toHaveLength(17);
+    expect(dialog()?.querySelectorAll('input[type=checkbox]')).toHaveLength(19);
     expect(box('Khóa học').checked).toBe(true);
     expect(box('Người dùng').checked).toBe(false);
   });

@@ -38,6 +38,28 @@ describe('parseContent: markdown', () => {
     ]);
   });
 
+  it('reads a mention as a named person, not as a link', () => {
+    expect(md('Nhờ @[Nguyễn Văn A](user:000123) xem giúp.')).toEqual([
+      {
+        kind: 'paragraph',
+        inlines: [
+          text('Nhờ '),
+          { kind: 'mention', name: 'Nguyễn Văn A', userId: '000123' },
+          text(' xem giúp.'),
+        ],
+      },
+    ]);
+  });
+
+  it('keeps a malformed mention as text', () => {
+    expect(md('@[Tên](http://x.test) và @[](user:1)')).toEqual([
+      {
+        kind: 'paragraph',
+        inlines: [text('@[Tên](http://x.test) và @[](user:1)')],
+      },
+    ]);
+  });
+
   it('reads a quote and a fenced code block', () => {
     expect(md('> Lưu ý\n```\nSELECT 1;\n  FROM dual;\n```')).toEqual([
       { kind: 'quote', inlines: [text('Lưu ý')] },

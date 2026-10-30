@@ -1,0 +1,202 @@
+<ui-page-header
+  title="Của tôi"
+  description="Bài bạn đã viết, bản nháp đang soạn và bài bạn đã lưu."
+/>
+
+<app-community-tabs />
+
+<div class="mine__switch">
+  <ui-segmented
+    label="Danh sách"
+    [options]="tabs()"
+    [value]="store.tab$()"
+    (valueChange)="store.showTab($event)"
+  />
+</div>
+
+@if (store.tab$() === 'mine') {
+<form class="community-list__toolbar" (submit)="$event.preventDefault()">
+  <select
+    uiSelect
+    size="sm"
+    class="community-list__select"
+    aria-label="Loại"
+    (change)="store.filterKind(kind.value)"
+    #kind
+  >
+    <option value="">Mọi loại</option>
+    @for (option of ['question', 'answer', 'article', 'lesson_learned']; track
+    option) {
+    <option [value]="option" [selected]="option === store.kind$()">
+      {{ kindLabels[option] }}
+    </option>
+    }
+  </select>
+  <select
+    uiSelect
+    size="sm"
+    class="community-list__select"
+    aria-label="Trạng thái"
+    (change)="store.filterStatus(status.value)"
+    #status
+  >
+    <option value="">Mọi trạng thái</option>
+    <option value="draft" [selected]="store.status$() === 'draft'">
+      Bản nháp
+    </option>
+    <option value="published" [selected]="store.status$() === 'published'">
+      Đã đăng
+    </option>
+    <option value="closed" [selected]="store.status$() === 'closed'">
+      Đã đóng
+    </option>
+  </select>
+  @if (store.isFiltered$()) {
+  <button uiButton size="sm" variant="ghost" (click)="store.clearFilters()">
+    Xóa bộ lọc
+  </button>
+  }
+</form>
+
+@if (store.mineError$(); as error) {
+<ui-error-state
+  title="Không tải được bài của bạn"
+  [message]="error.message"
+  (retry)="store.retryMine()"
+/>
+} @else if (store.mineLoading$()) {
+<div class="community-list__rows" aria-busy="true">
+  @for (item of placeholders; track item) {
+  <div uiSkeleton variant="block" class="community-list__placeholder"></div>
+  }
+</div>
+} @else if (store.mineRows$().length) {
+<div uiTableWrap>
+  <table uiTable responsive>
+    <caption class="sr-only">
+      Nội dung của tôi
+    </caption>
+    <thead>
+      <tr>
+        <th scope="col">Tiêu đề</th>
+        <th scope="col">Loại</th>
+        <th scope="col">Trạng thái</th>
+        <th scope="col">Cập nhật</th>
+        <th scope="col" class="mine__num">Điểm</th>
+        <th scope="col"><span class="sr-only">Thao tác</span></th>
+      </tr>
+    </thead>
+    <tbody>
+      @for (row of store.mineRows$(); track row.card.contentId) {
+      <tr>
+        <td data-label="Tiêu đề">
+          @if (row.status === 'draft') {
+          <span uiTablePrimary>{{ row.card.title || 'Chưa có tiêu đề' }}</span>
+          } @else {
+          <a uiTablePrimary [routerLink]="row.link">{{ row.card.title }}</a>
+          } @if (row.status !== 'draft' && row.editDraft) {
+          <div uiTableSub>Có bản nháp mới</div>
+          }
+        </td>
+        <td data-label="Loại">
+          {{ kindLabels[row.card.kind] ?? row.card.kind }}
+        </td>
+        <td data-label="Trạng thái">
+          <span uiBadge dot [tone]="statusBadge[row.status].tone">
+            {{ statusBadge[row.status].label }}
+          </span>
+        </td>
+        <td data-label="Cập nhật">
+          {{ (row.card.lastActivityAt ?? row.card.publishedAt) | fmtDate }}
+        </td>
+        <td data-label="Điểm" class="mine__num">
+          {{ row.card.score | fmtNum }}
+        </td>
+        <td data-label="Thao tác" class="mine__action">
+          @if (row.editDraft) {
+          <a
+            uiButton
+            size="sm"
+            [routerLink]="['/community/contents', row.card.contentId, 'edit']"
+          >
+            {{ row.status === 'draft' ? 'Sửa nháp' : 'Sửa' }}
+          </a>
+          } @else {
+          <a uiButton size="sm" [routerLink]="row.link">Xem</a>
+          }
+        </td>
+      </tr>
+      }
+    </tbody>
+  </table>
+</div>
+<ui-pagination
+  [total]="store.mineTotal$()"
+  [page]="store.minePage$()"
+  [pageSize]="pageSize"
+  (pageChange)="store.goToMinePage($event)"
+/>
+} @else if (store.isFiltered$()) {
+<ui-empty
+  variant="page"
+  title="Không có bài phù hợp"
+  description="Thử bỏ bớt bộ lọc."
+>
+  <button uiButton (click)="store.clearFilters()">Xóa bộ lọc</button>
+</ui-empty>
+} @else {
+<ui-empty
+  variant="page"
+  title="Bạn chưa viết bài nào"
+  description="Câu hỏi, câu trả lời và bài viết của bạn sẽ hiện ở đây, kể cả bản nháp."
+>
+  <a uiButton routerLink="/community/articles/new">Viết bài</a>
+  <a uiButton variant="primary" routerLink="/community/questions/new">
+    Đặt câu hỏi
+  </a>
+</ui-empty>
+} } @else { @if (store.savedError$(); as error) {
+<ui-error-state
+  title="Không tải được bài đã lưu"
+  [message]="error.message"
+  (retry)="store.retrySaved()"
+/>
+} @else if (store.savedLoading$()) {
+<div class="community-list__rows" aria-busy="true">
+  @for (item of placeholders; track item) {
+  <div uiSkeleton variant="block" class="community-list__placeholder"></div>
+  }
+</div>
+} @else if (store.saved$().length) {
+<ul class="community-list__rows" aria-label="Bài đã lưu">
+  @for (card of store.saved$(); track card.contentId) {
+  <li class="mine__saved-row">
+    <app-content-row [card]="card" />
+    <button
+      uiButton
+      size="sm"
+      variant="ghost"
+      class="mine__unsave"
+      [disabled]="store.isUnsaving$()"
+      (click)="store.unsaveContent(card.contentId)"
+    >
+      Bỏ lưu
+    </button>
+  </li>
+  }
+</ul>
+<ui-pagination
+  [total]="store.savedTotal$()"
+  [page]="store.savedPage$()"
+  [pageSize]="pageSize"
+  (pageChange)="store.goToSavedPage($event)"
+/>
+} @else {
+<ui-empty
+  variant="page"
+  title="Chưa lưu bài nào"
+  description="Bấm Lưu ở một câu hỏi hoặc bài viết để đọc lại sau."
+>
+  <a uiButton routerLink="/community/questions">Xem câu hỏi</a>
+</ui-empty>
+} }

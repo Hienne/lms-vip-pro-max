@@ -1,0 +1,55 @@
+@use 'ui';
+
+:host {
+  display: block;
+}
+
+.thread {
+  @include ui.stack(3);
+  padding-top: ui.space(3);
+  border-top: 1px solid ui.color(border);
+
+  &__node {
+    @include ui.stack(2);
+  }
+
+  &__comment {
+    @include ui.stack(1);
+  }
+
+  &__replies {
+    @include ui.stack(2);
+    margin-left: ui.space(6);
+    padding-left: ui.space(4);
+    border-left: 1px solid ui.color(border);
+  }
+
+  &__meta,
+  &__muted,
+  &__deleted {
+    @include ui.text(sm, muted);
+  }
+
+  &__author {
+    color: ui.color(text);
+    font-weight: ui.weight(semibold);
+  }
+
+  &__body {
+    @include ui.text(sm);
+  }
+
+  &__actions {
+    @include ui.row(1);
+    flex-wrap: wrap;
+  }
+
+  &__composer {
+    @include ui.stack(2);
+  }
+
+  &__composer-actions {
+    @include ui.row(2);
+    justify-content: flex-end;
+  }
+}

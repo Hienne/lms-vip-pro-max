@@ -1,0 +1,21 @@
+<button
+  uiIconButton
+  [label]="upLabel()"
+  [attr.aria-pressed]="myVote() === 1"
+  [disabled]="!canVote() || busy()"
+  (click)="cast(1)"
+>
+  <ui-icon name="chevron-up" />
+</button>
+<span class="vote__score" aria-live="polite">
+  {{ score() | fmtNum }}<span class="sr-only"> điểm</span>
+</span>
+<button
+  uiIconButton
+  [label]="downLabel()"
+  [attr.aria-pressed]="myVote() === -1"
+  [disabled]="!canVote() || busy()"
+  (click)="cast(-1)"
+>
+  <ui-icon name="chevron-down" />
+</button>

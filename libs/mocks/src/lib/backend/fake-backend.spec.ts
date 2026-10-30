@@ -62,10 +62,10 @@ describe('FakeBackend', () => {
     it('is the backend demo database', () => {
       expect(SEED_ORGS).toHaveLength(1);
       expect(SEED_TEAMS).toHaveLength(15);
-      expect(SEED_USERS).toHaveLength(7);
-      expect(SEED_GRANTS).toHaveLength(8);
+      expect(SEED_USERS).toHaveLength(8);
+      expect(SEED_GRANTS).toHaveLength(9);
       expect(SEED_ROLES).toHaveLength(5);
-      expect(SEED_FUNCTIONS).toHaveLength(17);
+      expect(SEED_FUNCTIONS).toHaveLength(19);
       expect(SEED_USERS.map((u) => u.userId)).toEqual([
         '000001',
         '000002',
@@ -74,6 +74,7 @@ describe('FakeBackend', () => {
         '000005',
         '000006',
         '000007',
+        '000008',
       ]);
     });
 
@@ -87,11 +88,13 @@ describe('FakeBackend', () => {
         'KNOWLEDGE_HUB',
         'AI_ASSISTANT',
         'ISSUE_HUB',
+        'COMMUNITY',
       ]);
       expect(functions('000006')).toEqual([
         'PROFILE',
         'REPORTING',
         'AI_ASSISTANT',
+        'COMMUNITY',
       ]);
       expect(functions('000001')).toContain('ROLE_MANAGEMENT');
       expect(functions('000001')).not.toContain('COURSE_LEARNING');
@@ -239,7 +242,7 @@ describe('FakeBackend', () => {
 
     it('lists every user for the root, sorted by name, 0-based pages', () => {
       const body = page(list(login('super.admin')));
-      expect(body.totalElements).toBe(7);
+      expect(body.totalElements).toBe(8);
       expect(body.page).toBe(0);
       expect(body.items.map((u) => u.fullName)).toEqual(
         [...body.items.map((u) => u.fullName)].sort((a, b) =>
@@ -253,14 +256,14 @@ describe('FakeBackend', () => {
       expect(
         page(list(token, { q: 'tích hợp' })).items.map((u) => u.userId),
       ).toEqual(['000007']);
-      expect(page(list(token, { roleCode: 'LEARNER' })).totalElements).toBe(3);
+      expect(page(list(token, { roleCode: 'LEARNER' })).totalElements).toBe(4);
       expect(page(list(token, { teamId: '9' })).items[0]?.userId).toBe(
         '000005',
       );
       const second = page(
         list(token, { size: '3', page: '2', sort: 'id,asc' }),
       );
-      expect(second.items.map((u) => u.userId)).toEqual(['000007']);
+      expect(second.items.map((u) => u.userId)).toEqual(['000007', '000008']);
       expect(second.totalPages).toBe(3);
     });
 
@@ -281,7 +284,7 @@ describe('FakeBackend', () => {
     it('shows an org admin only the users of their org, and does not let them edit admins', () => {
       const token = login('quantri.ban');
       const body = page(list(token));
-      expect(body.totalElements).toBe(7);
+      expect(body.totalElements).toBe(8);
       const root = body.items.find((u) => u.userId === '000001');
       expect(root?.editable).toBe(false);
       expect(body.items.find((u) => u.userId === '000004')?.editable).toBe(
@@ -549,7 +552,7 @@ describe('FakeBackend', () => {
       };
       expect(detail.administrators.map((a) => a.userId)).toEqual(['000003']);
       expect(detail.organization).toMatchObject({
-        memberCount: 7,
+        memberCount: 8,
         teamCount: 15,
       });
     });

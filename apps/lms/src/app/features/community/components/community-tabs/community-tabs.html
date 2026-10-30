@@ -1,0 +1,11 @@
+<nav class="community-tabs" aria-label="Cộng đồng">
+  @for (tab of tabs; track tab.path) {
+  <a
+    class="community-tabs__link"
+    [routerLink]="tab.path"
+    routerLinkActive="community-tabs__link--active"
+    ariaCurrentWhenActive="page"
+    >{{ tab.label }}</a
+  >
+  }
+</nav>

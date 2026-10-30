@@ -1,0 +1,28 @@
+@use 'ui';
+
+.community-tabs {
+  @include ui.row(1);
+  border-bottom: 1px solid ui.color(border);
+
+  &__link {
+    padding: ui.space(2) ui.space(4);
+    margin-bottom: -1px;
+    border-bottom: 2px solid transparent;
+    color: ui.color(text-secondary);
+    font-weight: ui.weight(medium);
+    text-decoration: none;
+
+    &:hover {
+      color: ui.color(text);
+    }
+
+    &:focus-visible {
+      @include ui.focus-ring;
+    }
+
+    &--active {
+      border-bottom-color: ui.color(primary);
+      color: ui.color(primary);
+    }
+  }
+}

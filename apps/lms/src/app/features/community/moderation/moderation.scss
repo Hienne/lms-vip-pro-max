@@ -1,0 +1,140 @@
+@use 'ui';
+
+:host {
+  @include ui.page(wide);
+}
+
+.moderation {
+  &__panel {
+    @include ui.stack(4);
+    padding-top: ui.space(4);
+  }
+
+  &__bar {
+    @include ui.row-between(3);
+    flex-wrap: wrap;
+  }
+
+  &__placeholder {
+    height: ui.space(18);
+  }
+
+  &__muted {
+    @include ui.text(sm, muted);
+  }
+
+  &__drawer {
+    @include ui.stack(4);
+  }
+
+  &__people {
+    @include ui.stack(2);
+    margin: 0;
+    padding: 0;
+    border: 0;
+  }
+
+  &__person {
+    display: flex;
+    gap: ui.space(3);
+    align-items: center;
+    cursor: pointer;
+  }
+
+  &__drawer-actions {
+    @include ui.row(2);
+    justify-content: flex-end;
+  }
+}
+
+.case {
+  @include ui.stack(4);
+
+  &__block {
+    @include ui.stack(3);
+  }
+
+  &__title {
+    margin: 0;
+    font-size: ui.text-size(md);
+    font-weight: ui.weight(semibold);
+  }
+
+  &__label {
+    @include ui.text(sm);
+    font-weight: ui.weight(semibold);
+    margin-bottom: ui.space(2);
+  }
+
+  &__facts {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
+    gap: ui.space(3);
+    margin: 0;
+
+    dt {
+      @include ui.text(sm, muted);
+    }
+
+    dd {
+      margin: 0;
+    }
+  }
+
+  &__muted,
+  &__hint {
+    @include ui.text(sm, muted);
+  }
+
+  &__hint {
+    display: block;
+  }
+
+  &__buttons {
+    @include ui.row(2);
+    flex-wrap: wrap;
+  }
+
+  &__picker {
+    @include ui.stack(2);
+  }
+
+  &__people {
+    @include ui.stack(2);
+    list-style: none;
+    margin: 0;
+    padding: 0;
+
+    li {
+      @include ui.row-between(2);
+    }
+  }
+
+  &__evidence {
+    padding: ui.space(3);
+    border: 1px solid ui.color(border);
+    border-radius: ui.radius(card);
+    background: ui.color(surface-2);
+  }
+
+  &__history {
+    @include ui.stack(2);
+    margin: 0;
+    padding-left: ui.space(5);
+    @include ui.text(sm);
+  }
+
+  &__actions {
+    @include ui.stack(2);
+    margin: 0;
+    padding: 0;
+    border: 0;
+  }
+
+  &__action {
+    display: flex;
+    gap: ui.space(3);
+    align-items: flex-start;
+    cursor: pointer;
+  }
+}

@@ -1,0 +1,158 @@
+<ng-template #composerTpl let-label="label">
+  <form class="thread__composer" [formRoot]="composer">
+    <textarea
+      uiTextarea
+      rows="3"
+      [attr.aria-label]="label"
+      placeholder="Viết bình luận"
+      [formField]="composer.body"
+    ></textarea>
+    <div class="thread__composer-actions">
+      <button
+        uiButton
+        size="sm"
+        variant="ghost"
+        type="button"
+        (click)="store.closeComposer()"
+      >
+        Hủy
+      </button>
+      <button
+        uiButton
+        size="sm"
+        variant="primary"
+        type="submit"
+        [disabled]="store.isSending$() || !composer.body().value().trim()"
+      >
+        Gửi
+      </button>
+    </div>
+  </form>
+</ng-template>
+
+<ng-template #commentTpl let-comment let-reply="reply">
+  <article class="thread__comment">
+    @if (comment.isDeleted) {
+    <p class="thread__deleted">Bình luận đã bị xóa.</p>
+    } @else if (isTarget(comment, 'edit')) {
+    <ng-container
+      [ngTemplateOutlet]="composerTpl"
+      [ngTemplateOutletContext]="{ label: 'Sửa bình luận' }"
+    />
+    } @else {
+    <p class="thread__meta">
+      <span class="thread__author"
+        >{{ comment.author?.displayName ?? 'Không rõ' }}</span
+      >
+      {{ comment.createTime | fmtDatetime }}
+    </p>
+    <app-markdown class="thread__body" [source]="comment.bodyMarkdown ?? ''" />
+    <div class="thread__actions">
+      @if (!reply && canComment()) {
+      <button
+        uiButton
+        size="sm"
+        variant="ghost"
+        type="button"
+        (click)="open({ kind: 'reply', parentCommentId: comment.commentId })"
+      >
+        Trả lời
+      </button>
+      } @if (can(comment, 'canEdit')) {
+      <button
+        uiButton
+        size="sm"
+        variant="ghost"
+        type="button"
+        (click)="open({ kind: 'edit', comment })"
+      >
+        Sửa
+      </button>
+      } @if (can(comment, 'canDelete')) {
+      <button
+        uiButton
+        size="sm"
+        variant="ghost"
+        type="button"
+        [disabled]="store.isBusy$()"
+        (click)="store.remove(comment)"
+      >
+        Xóa
+      </button>
+      } @if (canReport(comment)) {
+      <button
+        uiButton
+        size="sm"
+        variant="ghost"
+        type="button"
+        (click)="store.report(comment.commentId)"
+      >
+        Báo cáo
+      </button>
+      }
+    </div>
+    }
+  </article>
+</ng-template>
+
+<section class="thread" aria-label="Bình luận">
+  @if (store.error$(); as error) {
+  <p class="thread__muted">
+    Không tải được bình luận.
+    <button
+      uiButton
+      size="sm"
+      variant="ghost"
+      type="button"
+      (click)="store.retryLoad()"
+    >
+      Thử lại
+    </button>
+  </p>
+  } @else { @for (node of store.threads$(); track node.comment.commentId) {
+  <div class="thread__node">
+    <ng-container
+      [ngTemplateOutlet]="commentTpl"
+      [ngTemplateOutletContext]="{ $implicit: node.comment, reply: false }"
+    />
+    @if (node.replies.length || isTarget(node.comment, 'reply')) {
+    <div class="thread__replies">
+      @for (reply of node.replies; track reply.commentId) {
+      <ng-container
+        [ngTemplateOutlet]="commentTpl"
+        [ngTemplateOutletContext]="{ $implicit: reply, reply: true }"
+      />
+      } @if (isTarget(node.comment, 'reply')) {
+      <ng-container
+        [ngTemplateOutlet]="composerTpl"
+        [ngTemplateOutletContext]="{ label: 'Trả lời bình luận' }"
+      />
+      }
+    </div>
+    }
+  </div>
+  } @if (store.notShown$()) {
+  <p class="thread__muted">
+    Còn {{ store.notShown$() }} bình luận chưa hiển thị.
+  </p>
+  } } @if (canComment()) { @if (store.target$()?.kind === 'new') {
+  <ng-container
+    [ngTemplateOutlet]="composerTpl"
+    [ngTemplateOutletContext]="{ label: 'Bình luận mới' }"
+  />
+  } @else {
+  <div>
+    <button
+      uiButton
+      size="sm"
+      variant="ghost"
+      type="button"
+      (click)="open({ kind: 'new' })"
+    >
+      Thêm bình luận
+    </button>
+  </div>
+  } } @else if (closedMessage()) {
+  <p class="thread__muted">{{ closedMessage() }}</p>
+  }
+</section>

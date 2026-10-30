@@ -1,0 +1,56 @@
+<form [formRoot]="reportForm">
+  <div class="report-dialog__header">
+    <h2 class="report-dialog__title" id="report-dialog-title">
+      Báo cáo vi phạm
+    </h2>
+    <button
+      type="button"
+      uiIconButton
+      label="Đóng hộp thoại"
+      (click)="cancel()"
+    >
+      <ui-icon name="x" />
+    </button>
+  </div>
+  <p class="report-dialog__body">
+    Báo cáo được chuyển đến điều phối viên của Ban. Chọn lý do gần đúng nhất.
+  </p>
+  <fieldset class="report-dialog__reasons">
+    <legend class="sr-only">Lý do</legend>
+    @for (reason of reasons; track reason.code) {
+    <label class="report-dialog__reason">
+      <input
+        type="radio"
+        [value]="reason.code"
+        [formField]="reportForm.reasonCode"
+      />
+      <span>
+        {{ reason.label }} @if (reason.hint) {
+        <span class="report-dialog__hint">{{ reason.hint }}</span>
+        }
+      </span>
+    </label>
+    }
+  </fieldset>
+  <label class="report-dialog__note">
+    <span>Mô tả thêm (không bắt buộc)</span>
+    <textarea
+      uiTextarea
+      rows="3"
+      [formField]="reportForm.description"
+    ></textarea>
+  </label>
+  <div class="report-dialog__footer">
+    <button type="button" uiButton variant="ghost" (click)="cancel()">
+      Hủy
+    </button>
+    <button
+      type="submit"
+      uiButton
+      variant="primary"
+      [disabled]="!reportForm().valid()"
+    >
+      Gửi báo cáo
+    </button>
+  </div>
+</form>

@@ -1,0 +1,30 @@
+@let c = card(); @if (isQuestion()) {
+<div class="content-row__stats">
+  <span><strong>{{ c.score | fmtNum }}</strong> điểm</span>
+  <span><strong>{{ c.answerCount | fmtNum }}</strong> trả lời</span>
+</div>
+}
+<div class="content-row__main">
+  <a class="content-row__title" [routerLink]="link()">{{ c.title }}</a>
+  @if (c.summary) {
+  <p class="content-row__excerpt">{{ c.summary }}</p>
+  }
+  <p class="content-row__meta">
+    @if (tagNames()) {
+    <span>{{ tagNames() }}</span>
+    }
+    <span>{{ c.author?.displayName ?? c.authorUserId }}</span>
+    @if (c.occurredOn) {
+    <span>Sự cố ngày {{ c.occurredOn | fmtDate }}</span>
+    } @else {
+    <span>{{ (c.publishedAt ?? c.lastActivityAt) | fmtRelative }}</span>
+    } @if (c.hasDraft) {
+    <span>Có bản nháp chưa đăng</span>
+    }
+  </p>
+</div>
+@if (status(); as s) {
+<div class="content-row__side">
+  <span uiBadge dot [tone]="s.tone">{{ s.label }}</span>
+</div>
+}

@@ -336,6 +336,22 @@ export const SEED_FUNCTIONS: readonly FunctionInfo[] = [
     parentFunctionId: null,
     sortNo: 155,
   },
+  {
+    id: 18,
+    code: 'COMMUNITY',
+    name: 'Cộng đồng',
+    routePattern: '/community',
+    parentFunctionId: null,
+    sortNo: 165,
+  },
+  {
+    id: 19,
+    code: 'COMMUNITY_MODERATION',
+    name: 'Điều phối cộng đồng',
+    routePattern: '/community/moderation',
+    parentFunctionId: null,
+    sortNo: 170,
+  },
 ];
 
 export const SEED_ROLES: readonly SeedRole[] = [
@@ -345,7 +361,7 @@ export const SEED_ROLES: readonly SeedRole[] = [
     name: 'Quản trị viên gốc',
     description:
       'Quản trị toàn hệ thống và cấp/thu hồi ADMIN hoặc SUPER_ADMIN.',
-    functionIds: [1, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 17],
+    functionIds: [1, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 17, 18, 19],
   },
   {
     roleId: 2,
@@ -353,28 +369,28 @@ export const SEED_ROLES: readonly SeedRole[] = [
     name: 'Quản trị viên',
     description:
       'Quản trị nghiệp vụ theo GLOBAL/ORG; không cấp quyền quản trị.',
-    functionIds: [1, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 17],
+    functionIds: [1, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 17, 18, 19],
   },
   {
     roleId: 3,
     code: 'LEARNER',
     name: 'Học viên',
     description: 'Học viên với phạm vi OWN.',
-    functionIds: [1, 2, 3, 4, 15, 16, 17],
+    functionIds: [1, 2, 3, 4, 15, 16, 17, 18],
   },
   {
     roleId: 4,
     code: 'INSTRUCTOR',
     name: 'Giảng viên',
     description: 'Giảng viên hoặc cán bộ quản lý nội dung theo scope được cấp.',
-    functionIds: [1, 5, 6, 7, 8, 13, 17],
+    functionIds: [1, 5, 6, 7, 8, 13, 17, 18],
   },
   {
     roleId: 5,
     code: 'REPORT_VIEWER',
     name: 'Người xem báo cáo',
     description: 'Lãnh đạo hoặc người xem báo cáo theo TEAM/ORG/GLOBAL.',
-    functionIds: [1, 13, 17],
+    functionIds: [1, 13, 17, 18],
   },
 ];
 
@@ -459,6 +475,18 @@ export const SEED_USERS: readonly SeedUser[] = [
     positionName: 'Chuyên viên kỹ thuật',
     orgId: 1,
     teamId: 11,
+    status: 'active',
+    authProvider: 'LOCAL',
+    mustChangePassword: false,
+  },
+  {
+    userId: '000008',
+    username: 'dieuphoi',
+    fullName: 'Điều phối viên Demo',
+    email: 'moderator@example.test',
+    positionName: 'Chuyên viên kỹ thuật',
+    orgId: 1,
+    teamId: 14,
     status: 'active',
     authProvider: 'LOCAL',
     mustChangePassword: false,
@@ -550,6 +578,17 @@ export const SEED_GRANTS: readonly SeedGrant[] = [
     scope: 'TEAM',
     orgId: 1,
     teamId: 1,
+    grantedBy: '000001',
+    grantedAt: SEED_TIME,
+    active: true,
+  },
+  {
+    grantId: 9,
+    userId: '000008',
+    roleId: 3,
+    scope: 'OWN',
+    orgId: null,
+    teamId: null,
     grantedBy: '000001',
     grantedAt: SEED_TIME,
     active: true,
