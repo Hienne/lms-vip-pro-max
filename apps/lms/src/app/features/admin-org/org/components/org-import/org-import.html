@@ -1,0 +1,99 @@
+<ng-template
+  [uiDrawer]="true"
+  uiDrawerTitle="Nhập từ tệp"
+  [uiDrawerFooter]="footer"
+  [uiDrawerBusy]="store.isImporting$()"
+  uiDrawerBusyLabel="Đang nhập dữ liệu…"
+  (uiDrawerDismiss)="store.close()"
+>
+  <div class="org-import">
+    <p class="org-import__lead">
+      Thêm mới đơn vị, phòng và nhóm từ tệp Excel theo mẫu. Mã đã có không bị
+      ghi đè; tệp có lỗi thì không dòng nào được nhập.
+    </p>
+    @if (store.teamsOnly$()) {
+    <p class="org-import__lead">
+      Bạn chỉ nhập được nhóm trong phạm vi quản lý; để trống sheet
+      Organizations.
+    </p>
+    }
+    <div>
+      <button
+        uiButton
+        type="button"
+        [disabled]="store.isDownloading$()"
+        (click)="store.downloadTemplate()"
+      >
+        <ui-icon name="download" size="sm" />Tải mẫu Excel
+      </button>
+    </div>
+
+    @if (store.selectedCode$(); as code) {
+    <p class="org-import__code">
+      <span class="org-import__code-text"
+        >Mã đơn vị đang chọn: <span class="org-import__mono">{{ code }}</span>,
+        dùng cho cột parentCode hoặc orgCode.</span
+      >
+      <button
+        uiIconButton
+        type="button"
+        size="sm"
+        label="Sao chép mã {{ code }}"
+        [cdkCopyToClipboard]="code"
+        (cdkCopyToClipboardCopied)="store.codeCopied($event)"
+      >
+        <ui-icon name="copy" size="sm" />
+      </button>
+    </p>
+    }
+
+    <label
+      uiDropzone
+      class="org-import__drop"
+      accept=".xlsx"
+      (files)="store.pick($event[0])"
+    >
+      <span class="org-import__drop-title"
+        >Kéo thả tệp vào đây hoặc chọn tệp</span
+      >
+      <span class="org-import__drop-hint">{{ store.limitsHint }}</span>
+      <input type="file" hidden />
+    </label>
+
+    @if (store.fileError$(); as message) {
+    <p class="org-import__error" role="alert">{{ message }}</p>
+    } @else if (store.file$(); as file) {
+    <div aria-live="polite">
+      <ui-upload-item
+        [name]="file.name"
+        [size]="file.size"
+        icon="file-spreadsheet"
+        [status]="store.fileStatus$()"
+      />
+    </div>
+    }
+  </div>
+</ng-template>
+
+<ng-template #footer let-close="close">
+  <div class="org-import__actions">
+    <button uiButton type="button" (click)="close()">Hủy</button>
+    <button
+      uiButton
+      type="button"
+      [disabled]="!store.canCheck$()"
+      (click)="store.check()"
+    >
+      Kiểm tra
+    </button>
+    <button
+      uiButton
+      type="button"
+      variant="primary"
+      [disabled]="!store.canImport$()"
+      (click)="store.import()"
+    >
+      Nhập dữ liệu
+    </button>
+  </div>
+</ng-template>

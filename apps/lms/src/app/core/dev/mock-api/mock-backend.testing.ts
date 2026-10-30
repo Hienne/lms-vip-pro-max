@@ -26,6 +26,8 @@ export interface ReplyHold {
   pending(): number;
   /** Answers the oldest waiting request. */
   releaseNext(): void;
+  /** Answers the newest waiting request, so a later request can land before an earlier one. */
+  releaseLast(): void;
   /** Answers every waiting request and stops holding. */
   release(): void;
 }
@@ -48,6 +50,7 @@ export class ReplyGate {
     return {
       pending: () => waiting.length,
       releaseNext: () => waiting.shift()?.release(),
+      releaseLast: () => waiting.pop()?.release(),
       release: () => {
         this.holds.delete(endpoint);
         for (const request of waiting.splice(0)) request.release();

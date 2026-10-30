@@ -126,6 +126,12 @@ export const BACKEND_RESPONSES = {
     title: 'Nhóm đang được sử dụng',
     message: 'Không thể xóa nhóm còn thành viên hoặc phân quyền tham chiếu.',
   },
+  orgImportInvalid: {
+    status: 200,
+    code: 'ORGANIZATION-IMPORT_INVALID',
+    title: 'Dữ liệu nhập chưa hợp lệ',
+    message: 'Tệp nhập chưa hợp lệ. Vui lòng kiểm tra các lỗi chi tiết.',
+  },
   hierarchyInvalid: {
     status: 200,
     code: 'ORGANIZATION-HIERARCHY_INVALID',

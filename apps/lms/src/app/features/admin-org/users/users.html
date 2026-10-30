@@ -1,8 +1,5 @@
 <ui-page-header title="Người dùng" [description]="store.description$()">
   <div slot="actions" class="row">
-    <a uiButton routerLink="/admin/import" [queryParams]="{ type: 'users' }">
-      <ui-icon name="upload" size="sm" />Nhập danh sách
-    </a>
     <button uiButton variant="primary" (click)="editorStore.edit(null)">
       <ui-icon name="plus" size="sm" />Thêm người dùng
     </button>
