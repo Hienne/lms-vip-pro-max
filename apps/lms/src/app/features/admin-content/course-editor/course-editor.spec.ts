@@ -1,13 +1,19 @@
 import { TestBed } from '@angular/core/testing';
 import { Router } from '@angular/router';
 import {
+  assessmentV1Endpoints,
   assetEndpoints,
   courseEndpoints,
   MEDIA_PROCESSING_UNAVAILABLE_CODE,
   type AnyEndpoint,
   type SaveDraftCommand,
 } from '@lms/contracts';
-import { envelopeError, type FakeReply, type FakeRequest } from '@lms/mocks';
+import {
+  backendRefusal,
+  envelopeError,
+  type FakeReply,
+  type FakeRequest,
+} from '@lms/mocks';
 import { NEVER } from 'rxjs';
 import { setUpAdminScreen } from '../../../core/dev/mock-api/admin-screen.testing';
 import { MockBackend } from '../../../core/dev/mock-api/mock-api.interceptor';
@@ -475,6 +481,163 @@ describe('CourseEditor', () => {
       expect(screen.callsTo(assetEndpoints.completeUpload)).toBe(2);
       expect(screen.text(drawer)).not.toContain('Xử lý lại');
       expect(screen.text(document.body)).toContain('Tải lên thành công');
+    });
+  });
+
+  describe('a quiz lesson', () => {
+    const original = (endpoint: AnyEndpoint, request: FakeRequest): FakeReply =>
+      MockBackend.prototype.handle.call(
+        TestBed.inject(MockBackend),
+        endpoint,
+        request,
+      ) as FakeReply;
+
+    /** The quizzes of course 1 stand in for the ones of the edited course; the first is still a draft. */
+    const listQuizzes = () =>
+      screen.calls.mockImplementation((endpoint, request) => {
+        if (endpoint !== assessmentV1Endpoints.courseQuizList)
+          return original(endpoint, request);
+        const reply = original(endpoint, {
+          ...request,
+          query: { ...request.query, courseId: '1' },
+        });
+        const { items } = reply.body.data as { items: { status: string }[] };
+        items[0].status = 'DRAFT';
+        return reply;
+      });
+
+    /** Adds a lesson to the first chapter and makes it a quiz lesson; the drawer stays open. */
+    async function addQuizLesson() {
+      await screen.open('/admin/courses/6/edit');
+      await step('Nội dung khóa học');
+      await screen.click(screen.button('Thêm bài học'));
+      const drawer = screen.drawer()!;
+      await screen.choose(
+        screen.field('Loại bài', drawer) as HTMLSelectElement,
+        'quiz',
+      );
+      return drawer;
+    }
+
+    it('lists the quizzes of the course in a select, saying which cannot be published', async () => {
+      listQuizzes();
+      const drawer = await addQuizLesson();
+
+      expect(
+        screen.lastCall(assessmentV1Endpoints.courseQuizList)?.query,
+      ).toMatchObject({
+        courseId: '6',
+      });
+      const select = screen.field('Bài kiểm tra', drawer) as HTMLSelectElement;
+      expect(
+        Array.from(select.options).map((o) => o.textContent?.trim()),
+      ).toEqual([
+        '— Chưa chọn —',
+        'Luyện tập: Tổng quan hệ thống Core Banking · Luyện tập · Nháp, chưa thể xuất bản',
+        'Thi cuối khóa: Tổng quan hệ thống Core Banking · Thi cuối khóa',
+      ]);
+      expect(screen.text(drawer)).not.toContain('chưa có bài kiểm tra');
+    });
+
+    it('saves the chosen quiz with the lesson and no blocks, and shows it again after a save', async () => {
+      listQuizzes();
+      const drawer = await addQuizLesson();
+      await screen.type(
+        screen.field('Tên bài học', drawer) as HTMLInputElement,
+        'Thi cuối khóa',
+      );
+      await screen.choose(
+        screen.field('Bài kiểm tra', drawer) as HTMLSelectElement,
+        '2',
+      );
+      await screen.click(screen.button('Áp dụng', drawer));
+      await screen.click(screen.button('Lưu nháp'));
+
+      const { chapters } = screen.lastCall(courseEndpoints.saveDraft)
+        ?.body as SaveDraftCommand;
+      expect(chapters[0].lessons.at(-1)).toEqual({
+        title: 'Thi cuối khóa',
+        lessonType: 'quiz',
+        quizId: 2,
+        estimatedDurationSeconds: 600,
+        isRequired: true,
+        blocks: [],
+      });
+
+      await screen.click(screen.button('Sửa Thi cuối khóa'));
+      expect(
+        (screen.field('Bài kiểm tra', screen.drawer()!) as HTMLSelectElement)
+          .value,
+      ).toBe('2');
+    });
+
+    it('sends no quizId for a lesson that has none yet, and says so in the outline', async () => {
+      listQuizzes();
+      const drawer = await addQuizLesson();
+      await screen.click(screen.button('Áp dụng', drawer));
+      expect(screen.text()).toContain('Chưa chọn bài kiểm tra');
+      await screen.click(screen.button('Lưu nháp'));
+
+      const { chapters } = screen.lastCall(courseEndpoints.saveDraft)
+        ?.body as SaveDraftCommand;
+      expect(chapters[0].lessons.at(-1)).not.toHaveProperty('quizId');
+    });
+
+    it('says to create a quiz first when the course has none', async () => {
+      const drawer = await addQuizLesson();
+      expect(screen.text(drawer)).toContain('Khóa học chưa có bài kiểm tra');
+    });
+
+    it('says so when the quizzes cannot be listed, and leaves the lesson as it is', async () => {
+      screen.calls.mockImplementation((endpoint, request) =>
+        endpoint === assessmentV1Endpoints.courseQuizList
+          ? backendRefusal('internalError')
+          : original(endpoint, request),
+      );
+      const drawer = await addQuizLesson();
+      expect(screen.text(drawer)).toContain(
+        'Không tải được danh sách bài kiểm tra',
+      );
+      expect(screen.text(drawer)).not.toContain(
+        'Khóa học chưa có bài kiểm tra',
+      );
+    });
+
+    it('shows the server’s refusal of the quiz when saving', async () => {
+      listQuizzes();
+      const drawer = await addQuizLesson();
+      await screen.choose(
+        screen.field('Bài kiểm tra', drawer) as HTMLSelectElement,
+        '2',
+      );
+      await screen.click(screen.button('Áp dụng', drawer));
+      screen.calls.mockImplementation((endpoint, request) =>
+        endpoint === courseEndpoints.saveDraft
+          ? backendRefusal('quizInvalid')
+          : original(endpoint, request),
+      );
+      await screen.click(screen.button('Lưu nháp'));
+
+      expect(screen.text()).toContain(
+        'Bài kiểm tra chưa hợp lệ: Bài kiểm tra không tồn tại, đã bị xóa hoặc không thuộc khóa học này.',
+      );
+    });
+
+    it('shows the server’s refusal to publish a course whose quiz lesson is unlinked', async () => {
+      await screen.open('/admin/courses/6/edit');
+      await step('Hoàn thành & xuất bản');
+      screen.calls.mockImplementation((endpoint, request) =>
+        endpoint === courseEndpoints.publish
+          ? backendRefusal('quizLessonUnlinked')
+          : original(endpoint, request),
+      );
+      await screen.click(screen.button('Xuất bản khóa học'));
+      await screen.click(screen.button('Xuất bản', screen.alertDialog()!));
+
+      expect(screen.text()).toContain(
+        'Chưa thể xuất bản: Có bài học loại kiểm tra chưa chọn bài kiểm tra đã xuất bản của khóa học.',
+      );
+      expect(screen.url()).toBe('/admin/courses/6/edit');
     });
   });
 

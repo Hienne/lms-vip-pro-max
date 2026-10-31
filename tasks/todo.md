@@ -203,7 +203,7 @@ Each backend test file is a DB-backed integration test that extends `AssessmentI
   - Files: `course.store.ts`, `course.html` / `.ts`, `lesson.store.ts`, `lesson.html`.
   - Size: M. Depends on: Checkpoint B.
 
-- [ ] **T10: The quiz picker in the course editor**
+- [x] **T10: The quiz picker in the course editor**
   - Acceptance:
     - For a quiz lesson, a "Bài kiểm tra" select lists the course's quizzes from the admin list (title, type,
       status; non-PUBLISHED ones are marked).

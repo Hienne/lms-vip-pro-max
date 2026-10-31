@@ -46,6 +46,8 @@ export interface LessonValue {
   readonly key: string;
   readonly title: string;
   readonly lessonType: LessonType;
+  /** The quiz a quiz lesson holds; `null` until one is chosen, and always `null` for a content lesson. */
+  readonly quizId: number | null;
   readonly minutes: number;
   readonly isRequired: boolean;
   readonly blocks: readonly BlockValue[];
@@ -134,6 +136,7 @@ export function newLesson(position: number): LessonValue {
     key: newKey(),
     title: `Bài ${position}`,
     lessonType: 'content',
+    quizId: null,
     minutes: 10,
     isRequired: true,
     blocks: [],
@@ -174,6 +177,7 @@ function toLessonValue({ lesson, blocks }: LessonDetail): LessonValue {
     key: newKey(),
     title: lesson.title,
     lessonType: lesson.lessonType,
+    quizId: lesson.lessonType === 'quiz' ? (lesson.quizId ?? null) : null,
     minutes: Math.round((lesson.estimatedDurationSeconds ?? 0) / 60),
     isRequired: lesson.isRequired ?? true,
     blocks: blocks.map(toBlockValue),
@@ -257,6 +261,9 @@ export function toSaveDraftCommand(
       lessons: chapter.lessons.map((lesson) => ({
         title: lesson.title.trim(),
         lessonType: lesson.lessonType,
+        ...(lesson.lessonType === 'quiz' && lesson.quizId
+          ? { quizId: lesson.quizId }
+          : {}),
         estimatedDurationSeconds: Math.max(0, Math.round(lesson.minutes * 60)),
         isRequired: lesson.isRequired,
         blocks:
@@ -268,9 +275,11 @@ export function toSaveDraftCommand(
 
 // ---- derived facts ---------------------------------------------------------------------------
 
-/** A content lesson needs a block; a file block needs its file. */
+/** A content lesson needs a block and its files; a quiz lesson needs its quiz. */
 export function lessonProblem(lesson: LessonValue): string | null {
-  if (lesson.lessonType === 'quiz') return null;
+  if (lesson.lessonType === 'quiz') {
+    return lesson.quizId ? null : 'Chưa chọn bài kiểm tra';
+  }
   if (!lesson.blocks.length) return 'Thiếu nội dung';
   const missing = lesson.blocks.find(
     (b) =>
@@ -301,7 +310,7 @@ export function draftChecks(value: CourseDraftValue): readonly DraftCheck[] {
     },
     { label: 'Có ít nhất 1 bài học', ok: lessons.length > 0, step: 1 },
     {
-      label: 'Mọi bài học có nội dung và đủ tệp',
+      label: 'Mọi bài học có nội dung, đủ tệp hoặc đã chọn bài kiểm tra',
       ok: lessons.every((l) => !lessonProblem(l)),
       step: 1,
     },

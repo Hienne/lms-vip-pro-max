@@ -136,7 +136,7 @@ The admin question and quiz screens stay on mock (the spec's open question 1, at
 ### Phase 3: Course, player, editor
 
 - [x] T9: The course page "Bài kiểm tra" section and the quiz lesson in the player
-- [ ] T10: The quiz picker in the course editor
+- [x] T10: The quiz picker in the course editor
 - [ ] T11: End-to-end check against the spec
 
 ### Checkpoint C

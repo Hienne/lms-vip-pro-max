@@ -15,6 +15,7 @@ import {
 } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router } from '@angular/router';
 import {
+  assessmentV1Endpoints,
   courseEndpoints,
   trainingCatalogEndpoints,
   type BlockType,
@@ -197,6 +198,15 @@ export class CourseEditorStore {
     { params: () => this.courseId(), reloadOn: this.changes },
   );
 
+  /** The course's quizzes, for a quiz lesson to pick from. */
+  private readonly quizzesData = serverData(
+    (courseId: number) =>
+      this.client.call(assessmentV1Endpoints.courseQuizList, {
+        query: { courseId, size: 100 },
+      }),
+    { params: () => this.courseId() },
+  );
+
   private readonly programsData = serverData(
     (ownerOrgId: number) =>
       this.client.call(trainingCatalogEndpoints.listPrograms, {
@@ -304,6 +314,8 @@ export class CourseEditorStore {
         })
       : 'draft';
   });
+  readonly quizzes$ = computed(() => this.quizzesData.value()?.items ?? []);
+  readonly quizzesError$ = this.quizzesData.error;
   readonly programs$ = computed(() => this.programsData.value()?.items ?? []);
   readonly modules$ = computed(() =>
     this.fieldId() ? (this.modulesData.value()?.items ?? []) : [],
