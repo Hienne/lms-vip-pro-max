@@ -74,7 +74,7 @@ Each backend test file is a DB-backed integration test that extends `AssessmentI
   - Files: `LearningAssessmentAccess.java`, `LearningProgressService.java`, `AttemptGrader.java`, the new IT.
   - Size: M. Depends on: T2.
 
-- [ ] **T4: `GET /api/v1/me/courses/{courseId}/quizzes`**
+- [x] **T4: `GET /api/v1/me/courses/{courseId}/quizzes`**
   - Acceptance:
     - Returns `List<LearnerQuizCard{ quiz, summary, canStart, blockReason, availableAt, lessonId }>`.
     - Only PUBLISHED quizzes that are not deleted are listed, with FINAL_EXAM last.

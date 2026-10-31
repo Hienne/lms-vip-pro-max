@@ -113,7 +113,7 @@ The admin question and quiz screens stay on mock (the spec's open question 1, at
 - [x] T1: `course_lessons.quiz_id` (DB, entity, view) and the spec amendments
 - [x] T2: Saving and publishing quiz lessons (port, validation, copy)
 - [x] T3: Passing the quiz completes the quiz lesson
-- [ ] T4: `GET /me/courses/{courseId}/quizzes`
+- [x] T4: `GET /me/courses/{courseId}/quizzes`
 - [ ] T5: Demo quiz lessons (dev SQL) and backend docs
 
 ### Checkpoint A
