@@ -114,3 +114,32 @@ export function failEndpoint(
       : mockReply(endpoint, request),
   );
 }
+
+/** Lays `patch` over the data of what the mock answers for `endpoint`; other endpoints are untouched. */
+export function patchReply(
+  handle: MockInstance<MockBackend['handle']>,
+  endpoint: unknown,
+  patch: (data: never) => object,
+): void {
+  handle.mockImplementation((e, request) => {
+    const reply = mockReply(e, request);
+    if (e !== endpoint || !reply) return reply;
+    const body = reply.body as Envelope & { data: never };
+    return {
+      ...reply,
+      body: {
+        ...body,
+        data: { ...(body.data as object), ...patch(body.data) },
+      },
+    };
+  });
+}
+
+/** Goes back to the mock's own answers after a spec bent some of them. */
+export function restoreReplies(
+  handle: MockInstance<MockBackend['handle']>,
+): void {
+  handle.mockImplementation((endpoint, request) =>
+    mockReply(endpoint, request),
+  );
+}

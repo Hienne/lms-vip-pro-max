@@ -1,0 +1,120 @@
+@use 'ui';
+
+:host {
+  display: block;
+  min-width: 0;
+}
+
+.take {
+  &__bar {
+    @include ui.row(3);
+    flex-wrap: nowrap;
+    position: sticky;
+    top: 0;
+    z-index: ui.z(header);
+    border-bottom: 1px solid ui.color(border);
+    background: ui.color(surface);
+    padding: ui.space(3) ui.space(4);
+
+    @include ui.bp(md) {
+      padding-inline: ui.space(6);
+    }
+  }
+
+  &__title {
+    @include ui.stack(1);
+    flex: 1;
+    min-width: 0;
+
+    small {
+      @include ui.text(xs, muted);
+    }
+
+    strong {
+      @include ui.text(sm);
+      @include ui.truncate;
+    }
+  }
+
+  &__save {
+    display: none;
+    @include ui.text(xs, muted);
+
+    @include ui.bp(md) {
+      display: block;
+    }
+  }
+
+  &__alert {
+    display: block;
+    margin: ui.space(3) ui.space(4) 0;
+  }
+
+  &__layout {
+    @include ui.page;
+    max-width: 74rem;
+    display: grid;
+    gap: ui.space(8);
+
+    @include ui.bp(lg) {
+      grid-template-columns: minmax(0, 1fr) 18.75rem;
+    }
+  }
+
+  &__question {
+    @include ui.stack(5);
+    min-width: 0;
+  }
+
+  &__question-bar {
+    @include ui.row-between;
+  }
+
+  &__position {
+    @include ui.text(sm, muted);
+    @include ui.num;
+  }
+
+  &__heading {
+    @include ui.text(xl);
+    margin: 0;
+    font-weight: ui.weight(semibold);
+  }
+
+  &__hint {
+    @include ui.text(sm, muted);
+    margin: 0;
+  }
+
+  &__answers {
+    @include ui.stack(3);
+    min-width: 0;
+    margin: 0;
+    padding: 0;
+    border: 0;
+
+    input {
+      accent-color: ui.color(primary);
+    }
+  }
+
+  &__nav {
+    @include ui.row-between;
+  }
+
+  &__navigator {
+    @include ui.stack(4);
+    @include ui.text(sm);
+    align-self: start;
+
+    @include ui.bp(lg) {
+      position: sticky;
+      top: ui.space(18);
+    }
+  }
+
+  &__count {
+    @include ui.num;
+    margin: 0;
+  }
+}

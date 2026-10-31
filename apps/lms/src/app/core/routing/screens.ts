@@ -161,9 +161,9 @@ export const SCREEN_TABLE = {
           mockupPage: 'quizTake',
           layout: 'focus',
           load: () =>
-            import(
-              '../../features/quiz/assessment-screen/assessment-screen'
-            ).then((m) => m.AssessmentScreen),
+            import('../../features/quiz/learner-quiz/quiz-take/quiz-take').then(
+              (m) => m.QuizTake,
+            ),
         },
         {
           path: 'quiz/:id/attempts',
