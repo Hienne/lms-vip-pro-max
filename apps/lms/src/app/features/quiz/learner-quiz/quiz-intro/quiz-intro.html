@@ -1,0 +1,139 @@
+@if (store.loadError$(); as error) {
+<ui-error-state
+  title="Không tải được bài kiểm tra"
+  [message]="error.message"
+  (retry)="store.retry()"
+/>
+} @else if (store.view$() === 'missing') {
+<ui-empty
+  variant="page"
+  [headingLevel]="1"
+  title="Không tìm thấy bài kiểm tra"
+  description="Bài kiểm tra không còn mở cho bạn hoặc đường dẫn không đúng."
+>
+  <a uiButton variant="primary" routerLink="/quiz">Về danh sách bài kiểm tra</a>
+</ui-empty>
+} @else if (store.intro$(); as intro) {
+<ui-page-header [title]="intro.quiz.title" [description]="facts()">
+  <ui-breadcrumb slot="breadcrumb" [items]="crumbs()" />
+</ui-page-header>
+
+<p class="intro__course">
+  Thuộc khóa “{{ intro.course.title }}”. Kết quả được chấm tự động và lưu vào hồ
+  sơ học tập.
+</p>
+
+@if (intro.quiz.description) {
+<p class="intro__description">{{ intro.quiz.description }}</p>
+}
+
+<div class="intro__layout">
+  <section uiCard aria-labelledby="intro-rules">
+    <header uiCardHeader><h2 id="intro-rules">Quy chế bài thi</h2></header>
+    <div uiCardBody>
+      <ul class="intro__rules">
+        <li>
+          Đồng hồ bắt đầu đếm khi bạn nhấn <strong>Bắt đầu làm bài</strong>; tải
+          lại trang hay đổi thiết bị đồng hồ vẫn tiếp tục.
+        </li>
+        <li>
+          Đáp án được lưu ngay khi chọn. Có thể đánh dấu câu để xem lại và
+          chuyển câu tự do.
+        </li>
+        <li>
+          Mỗi lượt thi {{ intro.quiz.shuffleQuestions ? 'trộn thứ tự câu hỏi' :
+          'giữ thứ tự câu hỏi' }}; mỗi lượt có thể nhận bộ câu khác nhau.
+        </li>
+        <li>
+          Mở đề: {{ intro.quiz.openAt ? (intro.quiz.openAt | fmtDatetime) :
+          'không giới hạn' }}. Đóng đề: {{ intro.quiz.closeAt ?
+          (intro.quiz.closeAt | fmtDatetime) : 'không giới hạn' }}.
+        </li>
+        <li>
+          {{ intro.quiz.retakeWaitHours ? 'Chờ ' + intro.quiz.retakeWaitHours +
+          ' giờ giữa hai lượt thi.' : 'Được thi lại ngay nếu còn lượt.' }} {{
+          store.reviewText$() }}.
+        </li>
+        <li>
+          Điểm của bài là điểm lượt thi {{ intro.quiz.scoreMethod === 'BEST' ?
+          'cao nhất' : 'gần nhất' }}.
+        </li>
+      </ul>
+    </div>
+  </section>
+
+  <section uiCard aria-labelledby="intro-results">
+    <header uiCardHeader><h2 id="intro-results">Kết quả của bạn</h2></header>
+    <div uiCardBody>
+      @if (intro.summary.attemptsUsed) {
+      <dl class="intro__summary">
+        <div>
+          <dt>Số lần đã thi</dt>
+          <dd>
+            {{ intro.summary.attemptsUsed }}/{{ intro.summary.maxAttempts +
+            intro.summary.extraAttempts }}
+          </dd>
+        </div>
+        <div>
+          <dt>Điểm gần nhất</dt>
+          <dd>{{ intro.summary.lastScore | fmtScore }}%</dd>
+        </div>
+        <div>
+          <dt>Điểm cao nhất</dt>
+          <dd>{{ intro.summary.bestScore | fmtScore }}%</dd>
+        </div>
+        <div>
+          <dt>Trạng thái</dt>
+          <dd>
+            {{ intro.summary.passed ? 'Đã đạt' : intro.summary.attemptsLeft ?
+            'Chưa đạt' : 'Chưa đạt, hết lượt' }}
+          </dd>
+        </div>
+      </dl>
+      <a uiLinkButton [routerLink]="['/quiz', intro.quiz.id, 'attempts']"
+        >Xem lịch sử {{ intro.summary.attemptsUsed }} lần thi</a
+      >
+      } @else {
+      <ui-empty
+        icon="clipboard-check"
+        title="Chưa có lần thi nào"
+        description="Kết quả và lịch sử thi sẽ hiển thị tại đây."
+      />
+      }
+    </div>
+  </section>
+</div>
+
+<section uiCard padded class="intro__start" aria-label="Bắt đầu làm bài">
+  @if (store.blockText$(); as reason) {
+  <p class="intro__reason">
+    <ui-icon
+      [name]="intro.blockReason === 'PASSED' ? 'circle-check' : 'lock'"
+    />
+    {{ reason }}
+  </p>
+  <a
+    uiButton
+    [variant]="intro.blockReason === 'PASSED' ? 'primary' : 'secondary'"
+    [routerLink]="['/course', intro.course.id]"
+    >Về khóa học</a
+  >
+  } @else {
+  <p class="intro__reason">
+    {{ store.resuming$() ? 'Bạn có một lượt thi đang làm dở. Tiếp tục để không
+    mất thời gian.' : 'Lượt thi thứ ' + store.attemptNo$() + '/' +
+    (intro.summary.maxAttempts + intro.summary.extraAttempts) + '.' }}
+  </p>
+  <button uiButton variant="primary" size="lg" (click)="store.start()">
+    <ui-icon name="play" />{{ store.resuming$() ? 'Tiếp tục làm bài' : 'Bắt đầu
+    làm bài' }}
+  </button>
+  }
+</section>
+} @else {
+<div class="intro__loading" aria-busy="true">
+  <div uiSkeleton variant="text" class="intro__skeleton-title"></div>
+  <div uiSkeleton variant="text"></div>
+  <div uiSkeleton variant="block"></div>
+</div>
+}

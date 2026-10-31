@@ -1,0 +1,72 @@
+@use 'ui';
+
+:host {
+  @include ui.page(narrow);
+}
+
+.intro {
+  &__course {
+    @include ui.text(sm, muted);
+    margin: 0 0 ui.space(2);
+  }
+
+  &__description {
+    margin: 0 0 ui.space(4);
+  }
+
+  &__layout {
+    display: grid;
+    gap: ui.space(4);
+    margin-top: ui.space(4);
+
+    @include ui.bp(md) {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+
+  &__rules {
+    @include ui.stack(3);
+    margin: 0;
+    padding-left: ui.space(5);
+    list-style: disc;
+    @include ui.text(sm);
+  }
+
+  &__summary {
+    @include ui.stack(3);
+    margin: 0 0 ui.space(4);
+
+    > div {
+      @include ui.row-between;
+    }
+
+    dt {
+      @include ui.text(sm, muted);
+    }
+
+    dd {
+      @include ui.num;
+      margin: 0;
+      font-weight: ui.weight(semibold);
+    }
+  }
+
+  &__start {
+    @include ui.row-between(4);
+    margin-top: ui.space(6);
+  }
+
+  &__reason {
+    @include ui.row(2);
+    @include ui.text(sm);
+    margin: 0;
+  }
+
+  &__loading {
+    @include ui.stack(4);
+  }
+
+  &__skeleton-title {
+    width: 16rem;
+  }
+}

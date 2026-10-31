@@ -138,7 +138,7 @@ Each backend test file is a DB-backed integration test that extends `AssessmentI
   - Files: 2 new contract files plus a spec, the course schema, the assessment mock.
   - Size: M. Depends on: Checkpoint A.
 
-- [ ] **T7: Learner quiz, part 1: store, hub, intro, attempts**
+- [x] **T7: Learner quiz, part 1: store, hub, intro, attempts**
   - Acceptance:
     - `features/quiz/learner-quiz/` has `learner-quiz.store.ts` (`serverData` / `serverMutation`) and the hub,
       intro and attempts views.

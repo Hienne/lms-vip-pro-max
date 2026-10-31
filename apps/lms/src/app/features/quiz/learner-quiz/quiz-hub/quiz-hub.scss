@@ -1,0 +1,69 @@
+@use 'ui';
+
+:host {
+  @include ui.page(content);
+  @include ui.stack(8);
+}
+
+.hub {
+  &__loading {
+    @include ui.stack(4);
+  }
+
+  &__heading {
+    margin: 0 0 ui.space(3);
+    font-size: ui.text-size(lg);
+    font-weight: ui.weight(semibold);
+  }
+
+  &__list {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  &__row {
+    @include ui.row-between(4);
+    padding-block: ui.space(3);
+    border-bottom: 1px solid ui.color(border);
+  }
+
+  &__main {
+    @include ui.grow;
+  }
+
+  &__title {
+    font-weight: ui.weight(semibold);
+  }
+
+  &__meta {
+    @include ui.text(sm, muted);
+    margin: 0;
+  }
+
+  &__group {
+    @include ui.stack(2);
+    padding-block: ui.space(3);
+    border-bottom: 1px solid ui.color(border);
+  }
+
+  &__group-head {
+    @include ui.row-between(3);
+  }
+
+  &__attempt {
+    @include ui.row(3);
+    padding-block: ui.space(1);
+  }
+
+  &__attempt-no {
+    min-width: 4rem;
+    @include ui.num;
+  }
+
+  &__score {
+    @include ui.num;
+    min-width: 3.5rem;
+    font-weight: ui.weight(semibold);
+  }
+}

@@ -3,6 +3,7 @@ import {
   assessmentEndpoints,
   adminOrgEndpoints,
   communityEndpoints,
+  learnerQuizEndpoints,
   reportEndpoints,
   type AnyEndpoint,
   type FunctionCode,
@@ -131,8 +132,9 @@ export const SCREEN_TABLE = {
     QUIZ_TAKING: {
       nav: { icon: 'notebook-pen', section: 'Học tập' },
       requires: [
-        assessmentEndpoints.quizIntro,
-        assessmentEndpoints.startAttempt,
+        learnerQuizEndpoints.quizIntro,
+        learnerQuizEndpoints.startAttempt,
+        learnerQuizEndpoints.myAttempts,
       ],
       screens: [
         {
@@ -140,9 +142,9 @@ export const SCREEN_TABLE = {
           title: 'Làm bài kiểm tra',
           mockupPage: 'quizHub',
           load: () =>
-            import(
-              '../../features/quiz/assessment-screen/assessment-screen'
-            ).then((m) => m.AssessmentScreen),
+            import('../../features/quiz/learner-quiz/quiz-hub/quiz-hub').then(
+              (m) => m.QuizHub,
+            ),
         },
         {
           path: 'quiz/:id',
@@ -150,8 +152,8 @@ export const SCREEN_TABLE = {
           mockupPage: 'quizIntro',
           load: () =>
             import(
-              '../../features/quiz/assessment-screen/assessment-screen'
-            ).then((m) => m.AssessmentScreen),
+              '../../features/quiz/learner-quiz/quiz-intro/quiz-intro'
+            ).then((m) => m.QuizIntro),
         },
         {
           path: 'quiz/:id/take',
@@ -169,8 +171,8 @@ export const SCREEN_TABLE = {
           mockupPage: 'quizAttempts',
           load: () =>
             import(
-              '../../features/quiz/assessment-screen/assessment-screen'
-            ).then((m) => m.AssessmentScreen),
+              '../../features/quiz/learner-quiz/quiz-attempts/quiz-attempts'
+            ).then((m) => m.QuizAttempts),
         },
         {
           path: 'quiz/:id/result/:attemptId',
