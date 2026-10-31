@@ -35,7 +35,7 @@ const chapters: readonly OutlineChapter[] = [
         title: 'Bài kiểm tra cuối khóa',
         state: 'not_started',
         quiz: true,
-        link: null,
+        link: '/lesson/1/12',
         current: false,
       },
     ],
@@ -56,24 +56,31 @@ describe('LessonOutline', () => {
     expect(
       Array.from(el.querySelectorAll('h3')).map((h) => h.textContent),
     ).toEqual(['Kiến trúc', 'Kiểm tra']);
-    const states = Array.from(el.querySelectorAll('.toc__sr')).map((s) =>
+    const states = Array.from(el.querySelectorAll('li > .toc__sr')).map((s) =>
       s.textContent?.trim(),
     );
     expect(states).toEqual(['Đã hoàn thành', 'Đang học', 'Chưa học']);
   });
 
-  it('links content lessons, marks the current one and does not link a quiz', () => {
+  it('links every lesson, marks the current one and the quiz lesson with its own label', () => {
     const el = render();
     const links = Array.from(el.querySelectorAll('a'));
     expect(links.map((a) => a.getAttribute('href'))).toEqual([
       '/lesson/1/10',
       '/lesson/1/11',
+      '/lesson/1/12',
     ]);
     expect(links.map((a) => a.getAttribute('aria-current'))).toEqual([
       null,
       'page',
+      null,
     ]);
-    expect(el.textContent).toContain('Bài kiểm tra cuối khóa');
-    expect(el.querySelectorAll('li')[2].querySelector('a')).toBeNull();
+    const quiz = el.querySelectorAll('li')[2];
+    expect(quiz.textContent).toContain('Bài kiểm tra cuối khóa');
+    expect(quiz.querySelector('a ui-icon')).not.toBeNull();
+    expect(quiz.querySelector('a .toc__sr')?.textContent).toContain(
+      'Bài kiểm tra',
+    );
+    expect(el.querySelectorAll('li')[0].querySelector('a ui-icon')).toBeNull();
   });
 });

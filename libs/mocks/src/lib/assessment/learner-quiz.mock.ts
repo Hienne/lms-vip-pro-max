@@ -20,6 +20,7 @@ import {
 } from '@lms/contracts';
 import type { FakeReply, FakeRequest } from '../backend/fake-backend';
 import { envelopeError, envelopeOk } from '../envelope';
+import { courseDetailFixtures } from '../learning/learning.fixtures';
 
 const BOM = String.fromCharCode(0xfeff);
 const ok = (data: unknown): FakeReply => ({
@@ -158,6 +159,13 @@ const baseQuiz: LearnerQuiz = {
   hasMultipleChoice: true,
 };
 
+/** The quiz lesson of a seeded course: the lesson its final exam completes, as the learning mock serves it. */
+const quizLessonOf = (courseId: number): number | null =>
+  courseDetailFixtures
+    .find((d) => d.course.id === courseId)
+    ?.chapters.flatMap((c) => c.lessons)
+    .find((l) => l.lesson.lessonType === 'quiz')?.lesson.id ?? null;
+
 const SEED: readonly SeedQuiz[] = [
   {
     quiz: {
@@ -188,7 +196,7 @@ const SEED: readonly SeedQuiz[] = [
     },
     courseId: 1,
     courseTitle: 'Tổng quan hệ thống Core Banking',
-    lessonId: 4,
+    lessonId: quizLessonOf(1),
     block: null,
     // Every question counts as right, so the final exam passes and then reports PASSED.
     questions: cifQuestions.map((q) => ({ ...q, graded: true })),
@@ -208,7 +216,7 @@ const SEED: readonly SeedQuiz[] = [
     },
     courseId: 2,
     courseTitle: 'Quy trình quản lý thay đổi (Change Management)',
-    lessonId: 7,
+    lessonId: quizLessonOf(2),
     block: 'LESSONS_REQUIRED',
     questions: changeQuestions,
   },

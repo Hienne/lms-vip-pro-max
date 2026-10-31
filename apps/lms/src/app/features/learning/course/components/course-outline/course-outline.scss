@@ -105,16 +105,12 @@
     &:is(a):focus-visible {
       @include ui.focus-ring;
     }
-
-    &--locked {
-      flex: 0 1 auto;
-      color: ui.color(text-muted);
-    }
   }
 
-  &__note {
-    @include ui.text(sm, muted);
-    @include ui.grow;
+  &__kind {
+    margin-inline-end: ui.space(1);
+    vertical-align: text-bottom;
+    color: ui.color(text-muted);
   }
 
   &__minutes {

@@ -14,7 +14,7 @@
       </button>
       } @else if (store.save$() === 'saved') { Đã lưu tiến độ }
     </p>
-    @if (store.view$() === 'ready') {
+    @if (store.lesson$()) {
     <button
       uiButton
       size="sm"
@@ -64,15 +64,6 @@
   >
     <a uiButton variant="primary" [routerLink]="courseLink()">Về khóa học</a>
   </ui-empty>
-  } @case ('quiz') {
-  <ui-empty
-    variant="page"
-    [headingLevel]="1"
-    [title]="'Bài kiểm tra chưa mở.'"
-    [description]="store.lesson$()?.lesson?.title ?? ''"
-  >
-    <a uiButton variant="primary" [routerLink]="courseLink()">Về khóa học</a>
-  </ui-empty>
   } @default { @if (store.lesson$(); as lesson) {
   <div class="lesson__layout">
     <div class="lesson__main">
@@ -93,7 +84,40 @@
         (retry)="store.retry()"
       />
 
-      @if (store.view$() === 'empty') {
+      @if (store.view$() === 'quiz') {
+      <section class="lesson__quiz" aria-labelledby="lesson-quiz">
+        <h2 id="lesson-quiz" class="lesson__block-title">Bài kiểm tra</h2>
+        @if (store.quiz$(); as card) {
+        <section uiCard>
+          <div uiCardBody><app-quiz-card [card]="card" /></div>
+        </section>
+        } @else if (store.quizError$(); as error) {
+        <ui-error-state
+          title="Không tải được bài kiểm tra"
+          [message]="error.message"
+          (retry)="store.retryQuiz()"
+        />
+        } @else if (store.quizLoading$()) {
+        <div uiSkeleton variant="block" class="lesson__skeleton-body"></div>
+        } @else {
+        <p class="lesson__note">
+          Bài kiểm tra chưa được gắn vào bài học này hoặc chưa mở cho bạn.
+        </p>
+        }
+      </section>
+
+      <nav class="lesson__steps" aria-label="Chuyển bài học">
+        @if (store.prevLessonLink$(); as link) {
+        <a uiButton [routerLink]="link">
+          <ui-icon name="arrow-left" size="sm" />Bài trước
+        </a>
+        } @if (store.nextLessonLink$(); as link) {
+        <a uiButton variant="primary" [routerLink]="link">
+          Bài tiếp theo<ui-icon name="arrow-right" size="sm" />
+        </a>
+        }
+      </nav>
+      } @else if (store.view$() === 'empty') {
       <p class="lesson__note">Bài học chưa có nội dung.</p>
       } @else { @if (store.blocks$().length > 1) {
       <app-block-list

@@ -12,17 +12,17 @@
           <span class="toc__dot"></span>
           }
         </span>
-        @if (lesson.link; as link) {
         <a
           class="toc__title"
           [class.toc__title--current]="lesson.current"
-          [routerLink]="link"
+          [routerLink]="lesson.link"
           [attr.aria-current]="lesson.current ? 'page' : null"
-          >{{ lesson.title }}</a
         >
-        } @else {
-        <span class="toc__title toc__title--locked">{{ lesson.title }}</span>
-        }
+          @if (lesson.quiz) {
+          <ui-icon class="toc__kind" name="clipboard-check" size="sm" />
+          <span class="toc__sr">Bài kiểm tra: </span>
+          }{{ lesson.title }}</a
+        >
         <span class="toc__sr">
           @switch (lesson.state) { @case ('completed') {Đã hoàn thành} @case
           ('in_progress') {Đang học} @default {Chưa học} }

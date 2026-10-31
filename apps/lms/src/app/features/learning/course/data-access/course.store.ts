@@ -3,6 +3,7 @@ import { toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute } from '@angular/router';
 import {
   learnerEndpoints,
+  learnerQuizEndpoints,
   type CourseLevel,
   type EnrollmentDetail,
   type LessonProgress,
@@ -26,8 +27,8 @@ export interface OutlineLesson {
   readonly required: boolean;
   readonly minutes: number;
   readonly state: LessonState;
-  /** `null` for a quiz lesson: it opens from the lesson player, not from here. */
-  readonly link: string | null;
+  /** A quiz lesson opens in the lesson player too, which shows its quiz. */
+  readonly link: string;
 }
 
 export interface OutlineChapter {
@@ -82,6 +83,21 @@ export class CourseStore {
     },
   );
 
+  /** The course's quizzes for the enrolled learner; the endpoint answers nobody else. */
+  private readonly quizData = serverData(
+    (courseId: number) =>
+      this.client.call(learnerQuizEndpoints.courseQuizzes, {
+        params: { courseId },
+      }),
+    {
+      params: () =>
+        this.cardData.value()?.enrollmentId == null
+          ? undefined
+          : this.courseId$(),
+      reloadOn: this.refresh,
+    },
+  );
+
   private readonly enrollment = serverMutation(
     (courseId: number) =>
       this.client.call(learnerEndpoints.enroll, {
@@ -101,6 +117,19 @@ export class CourseStore {
     () => this.cardData.error() ?? this.detailData.error(),
   );
   readonly isEnrolling$ = this.enrollment.isPending;
+  /** Kept apart from `loadError$`: a quiz list that fails must not hide the course. */
+  readonly quizError$ = this.quizData.error;
+  readonly quizzesLoading$ = this.quizData.isLoading;
+
+  /** The course's final exam, the one the page features; `undefined` when it has none. */
+  readonly finalExam$ = computed(() =>
+    this.quizData.value()?.find((c) => c.quiz.quizType === 'FINAL_EXAM'),
+  );
+
+  /** Every other quiz of the course, in the server's order. */
+  readonly otherQuizzes$ = computed(() =>
+    (this.quizData.value() ?? []).filter((c) => c !== this.finalExam$()),
+  );
 
   readonly view$ = computed((): CourseView => {
     if (this.courseId$() === undefined) return 'missing';
@@ -182,10 +211,7 @@ export class CourseStore {
         required: lesson.isRequired ?? false,
         minutes: Math.round((lesson.estimatedDurationSeconds ?? 0) / 60),
         state: stateOf(states.get(lesson.id)),
-        link:
-          lesson.lessonType === 'quiz'
-            ? null
-            : `/lesson/${courseId}/${lesson.id}`,
+        link: `/lesson/${courseId}/${lesson.id}`,
       })),
     }));
   });
@@ -208,5 +234,10 @@ export class CourseStore {
   retry(): void {
     this.cardData.reload();
     this.detailData.reload();
+    this.quizData.reload();
+  }
+
+  retryQuizzes(): void {
+    this.quizData.reload();
   }
 }

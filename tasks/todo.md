@@ -191,7 +191,7 @@ Each backend test file is a DB-backed integration test that extends `AssessmentI
 
 ## Phase 3: Course, player, editor
 
-- [ ] **T9: The course page "Bài kiểm tra" section and the quiz lesson in the player**
+- [x] **T9: The course page "Bài kiểm tra" section and the quiz lesson in the player**
   - Acceptance:
     - The course store loads `courseQuizzes`.
     - The page shows a final-exam card with the pass mark, attempts left, best score, and either the

@@ -90,6 +90,10 @@
     font-weight: ui.weight(semibold);
   }
 
+  &__quiz {
+    @include ui.stack(3);
+  }
+
   &__note {
     @include ui.text(sm, muted);
     @include ui.row(2);

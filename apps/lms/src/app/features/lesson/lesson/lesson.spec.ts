@@ -5,9 +5,10 @@ import {
   courseEndpoints,
   EnrollmentDetailSchema,
   learnerEndpoints,
+  learnerQuizEndpoints,
   type EnrollmentDetail,
 } from '@lms/contracts';
-import { backendRefusal, type FakeReply } from '@lms/mocks';
+import { backendRefusal, envelopeOk, type FakeReply } from '@lms/mocks';
 import type { MockInstance } from 'vitest';
 import { createAppRoutes } from '../../../app.routes';
 import {
@@ -390,7 +391,7 @@ describe('Lesson', () => {
   });
 
   describe('what is not a lesson to study', () => {
-    it('says a quiz lesson is not open yet and leads back to the course', async () => {
+    const quizLesson = () => {
       const mine = call(learnerEndpoints.myCourses);
       const card = (
         mine?.body as {
@@ -404,14 +405,62 @@ describe('Lesson', () => {
           })?.body as { data: unknown }
         ).data,
       );
-      const quiz = course.content.chapters
+      return course.content.chapters
         .flatMap((c) => c.lessons)
         .find((l) => l.lesson.lessonType === 'quiz')!;
+    };
+
+    it('shows the quiz a quiz lesson holds, with the way in, and opens no study session', async () => {
+      const quiz = quizLesson();
       await open(`/lesson/1/${quiz.lesson.id}`);
 
-      expect(text()).toContain('Bài kiểm tra chưa mở.');
-      expect(button('Về khóa học')?.getAttribute('href')).toBe('/course/1');
+      expect(el.querySelector('h1')?.textContent).toBe(quiz.lesson.title);
+      const card = el.querySelector('app-quiz-card')!;
+      expect(card.textContent).toContain('Thi cuối khóa');
+      expect(card.textContent).toContain('Điểm đạt ≥ 70%');
+      expect(
+        Array.from(card.querySelectorAll('a'))
+          .find((a) => a.textContent?.trim() === 'Làm bài')
+          ?.getAttribute('href'),
+      ).toBe('/quiz/2');
+      expect(button('Mục lục')).toBeTruthy();
       expect(calls(learnerEndpoints.openSession).length).toBe(0);
+      expect(calls(learnerQuizEndpoints.courseQuizzes).length).toBe(1);
+    });
+
+    it('lets the learner move on to the lessons around a quiz lesson', async () => {
+      await open(`/lesson/1/${quizLesson().lesson.id}`);
+      expect(button('Bài trước')?.getAttribute('href')).toMatch(
+        /^\/lesson\/1\/\d+$/,
+      );
+    });
+
+    it('says so when no quiz is linked to the lesson', async () => {
+      const quiz = quizLesson();
+      handle.mockImplementation((endpoint, request) =>
+        endpoint === learnerQuizEndpoints.courseQuizzes
+          ? { status: 200, body: envelopeOk([]) }
+          : real()(endpoint, request),
+      );
+      await open(`/lesson/1/${quiz.lesson.id}`);
+      expect(el.querySelector('app-quiz-card')).toBeNull();
+      expect(text()).toContain('chưa được gắn vào bài học này');
+    });
+
+    it('shows the error with a retry when the quizzes cannot be read', async () => {
+      const quiz = quizLesson();
+      handle.mockImplementation((endpoint, request) =>
+        endpoint === learnerQuizEndpoints.courseQuizzes
+          ? backendRefusal('internalError')
+          : real()(endpoint, request),
+      );
+      await open(`/lesson/1/${quiz.lesson.id}`);
+      expect(text()).toContain('Không tải được bài kiểm tra');
+
+      handle.mockImplementation(real());
+      button('Thử lại')!.click();
+      await settle();
+      expect(el.querySelector('app-quiz-card')).not.toBeNull();
     });
 
     it('sends a learner who has not enrolled to the course page', async () => {

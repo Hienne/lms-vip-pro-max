@@ -2,6 +2,8 @@ import { Component, computed, effect, inject, viewChild } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import {
   Button,
+  Card,
+  CardBody,
   DrawerOutlet,
   Empty,
   ErrorState,
@@ -11,6 +13,7 @@ import {
   Progress,
   Skeleton,
 } from '@lms/ui';
+import { QuizCard } from '../../../shared/quiz/quiz-card/quiz-card';
 import { AttachmentBlock } from './components/attachment-block/attachment-block';
 import { BlockList } from './components/block-list/block-list';
 import { ImageBlock } from './components/image-block/image-block';
@@ -29,6 +32,8 @@ import { LessonStore } from './data-access/lesson.store';
     AttachmentBlock,
     BlockList,
     Button,
+    Card,
+    CardBody,
     DrawerOutlet,
     Empty,
     ErrorState,
@@ -40,6 +45,7 @@ import { LessonStore } from './data-access/lesson.store';
     PdfBlock,
     ProcessBlock,
     Progress,
+    QuizCard,
     RouterLink,
     SessionAlert,
     Skeleton,

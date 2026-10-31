@@ -1,0 +1,32 @@
+@use 'ui';
+
+:host {
+  display: block;
+  min-width: 0;
+}
+
+.quiz-card {
+  @include ui.row-between(4);
+
+  &__main {
+    @include ui.stack(1);
+    @include ui.grow;
+    min-width: 0;
+  }
+
+  &__title {
+    margin: 0;
+    font-size: ui.text-size(md);
+    font-weight: ui.weight(semibold);
+  }
+
+  &__meta {
+    @include ui.text(sm, muted);
+    @include ui.row(2);
+    margin: 0;
+  }
+
+  &__action {
+    flex: none;
+  }
+}

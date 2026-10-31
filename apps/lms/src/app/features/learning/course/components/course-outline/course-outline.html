@@ -19,14 +19,13 @@
         }
         <span class="outline__sr">{{ stateLabel[lesson.state] }}</span>
       </span>
-      @if (lesson.link; as link) {
-      <a class="outline__title" [routerLink]="link">{{ lesson.title }}</a>
-      } @else {
-      <span class="outline__title outline__title--locked"
-        >{{ lesson.title }}</span
+      <a class="outline__title" [routerLink]="lesson.link">
+        @if (lesson.quiz) {
+        <ui-icon class="outline__kind" name="clipboard-check" size="sm" />
+        <span class="outline__sr">Bài kiểm tra: </span>
+        }{{ lesson.title }}</a
       >
-      <span class="outline__note">Bài kiểm tra chưa mở</span>
-      } @if (lesson.minutes) {
+      @if (lesson.minutes) {
       <span class="outline__minutes">{{ lesson.minutes }} phút</span>
       }
     </li>

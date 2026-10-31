@@ -4,6 +4,7 @@ import {
   type AnyEndpoint,
 } from '@lms/contracts';
 import { FakeBackend, type FakeReply } from '../backend/fake-backend';
+import { courseDetailFixtures } from '../learning/learning.fixtures';
 
 function call(
   backend: FakeBackend,
@@ -39,6 +40,25 @@ describe('the learner quiz mock', () => {
       (c) => c.quiz.quizType,
     );
     expect(types).toEqual(['PRACTICE', 'FINAL_EXAM']);
+  });
+
+  it('links each final exam to the quiz lesson the learning mock serves for the course', () => {
+    const backend = new FakeBackend();
+    for (const courseId of [1, 2]) {
+      const { data: cards } = call(backend, e.courseQuizzes, {
+        courseId: String(courseId),
+      });
+      const exam = (
+        cards as { quiz: { quizType: string }; lessonId: number | null }[]
+      ).find((c) => c.quiz.quizType === 'FINAL_EXAM')!;
+      const detail = courseDetailFixtures.find(
+        (d) => d.course.id === courseId,
+      )!;
+      const quizLesson = detail.chapters
+        .flatMap((c) => c.lessons)
+        .find((l) => l.lesson.lessonType === 'quiz')!;
+      expect(exam.lessonId).toBe(quizLesson.lesson.id);
+    }
   });
 
   it('reports a block the server would, and refuses to start behind it', () => {

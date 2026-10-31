@@ -1,7 +1,7 @@
 import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
-import { learnerEndpoints } from '@lms/contracts';
+import { learnerEndpoints, learnerQuizEndpoints } from '@lms/contracts';
 import { backendRefusal } from '@lms/mocks';
 import type { MockInstance } from 'vitest';
 import { createAppRoutes } from '../../../app.routes';
@@ -88,7 +88,7 @@ describe('Course', () => {
       expect(action('Đăng ký học')).toBeUndefined();
     });
 
-    it('lists the chapters with a link to every content lesson and none to the quiz', () => {
+    it('lists the chapters with a link to every lesson, the quiz lesson marked with its own icon', () => {
       const chapters = el.querySelectorAll('app-course-outline details');
       expect(chapters.length).toBe(2);
       expect(
@@ -99,8 +99,28 @@ describe('Course', () => {
       const quiz = Array.from(
         el.querySelectorAll('app-course-outline li'),
       ).find((li) => li.textContent?.includes('Kiểm tra cuối khóa'));
-      expect(quiz?.querySelector('a')).toBeNull();
-      expect(quiz?.textContent).toContain('Bài kiểm tra chưa mở');
+      expect(quiz?.querySelector('a')?.getAttribute('href')).toMatch(
+        /^\/lesson\/1\/\d+$/,
+      );
+      expect(quiz?.querySelector('ui-icon')).not.toBeNull();
+      expect(quiz?.textContent).not.toContain('chưa mở');
+    });
+
+    it('features the final exam in a card and lists the other quizzes as rows', () => {
+      const section = el.querySelector('[aria-labelledby="course-quizzes"]')!;
+      expect(section.querySelector('h2')?.textContent).toBe('Bài kiểm tra');
+      const exam = section.querySelector('.course__final')!;
+      expect(exam.textContent).toContain('Thi cuối khóa');
+      expect(exam.textContent).toContain('Điểm đạt ≥ 70%');
+      expect(exam.textContent).toContain('Còn 2/2 lượt');
+      const start = Array.from(exam.querySelectorAll('a')).find(
+        (a) => a.textContent?.trim() === 'Làm bài',
+      );
+      expect(start?.getAttribute('href')).toBe('/quiz/2');
+      const rows = section.querySelectorAll('.course__quizzes li');
+      expect(rows.length).toBe(1);
+      expect(rows[0].textContent).toContain('Luyện tập');
+      expect(calls(learnerQuizEndpoints.courseQuizzes).length).toBe(1);
     });
 
     it('marks the lessons the server reports done and the one in progress', () => {
@@ -123,6 +143,37 @@ describe('Course', () => {
 
     it('reads the card from the lists and the detail once, by the enrolment of the card', () => {
       expect(calls(learnerEndpoints.enrollment).length).toBe(1);
+    });
+  });
+
+  describe('a course whose quizzes do not load', () => {
+    it('keeps the course and offers a retry for the quiz section only', async () => {
+      const backend = TestBed.inject(MockBackend);
+      const original: MockBackend['handle'] = (endpoint, request) =>
+        MockBackend.prototype.handle.call(backend, endpoint, request);
+      handle.mockImplementation((endpoint, request) =>
+        endpoint === learnerQuizEndpoints.courseQuizzes
+          ? backendRefusal('internalError')
+          : original(endpoint, request),
+      );
+      await open(1);
+      expect(heading()).toBe('Tổng quan hệ thống Core Banking');
+      expect(text()).toContain('Không tải được bài kiểm tra');
+      expect(el.querySelector('app-course-outline')).not.toBeNull();
+
+      handle.mockImplementation(original);
+      action('Thử lại')!.click();
+      await settle();
+      expect(el.querySelector('.course__final')?.textContent).toContain(
+        'Thi cuối khóa',
+      );
+    });
+  });
+
+  describe('a course without quizzes', () => {
+    it('shows no quiz section', async () => {
+      await open(4);
+      expect(el.querySelector('[aria-labelledby="course-quizzes"]')).toBeNull();
     });
   });
 
