@@ -238,8 +238,8 @@ under `apps/lms/src/app/features/quiz/` unless they say otherwise.
 
 ### Checkpoint B
 
-- [ ] `npm run check` green.
-- [ ] On `lms-local` as `hocvien`: the three selects list real names and each narrows the list; each status
+- [x] `npm run check` green.
+- [x] On `lms-local` as `hocvien`: the three selects list real names and each narrows the list; each status
       option and each sort changes the list; "Xóa n bộ lọc" shows the right n and clears; the network panel
       shows no `/api/v1/training-catalog` call.
 

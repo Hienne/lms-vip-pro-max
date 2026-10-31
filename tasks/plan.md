@@ -154,8 +154,8 @@ No schema change, so no upgrade script.
 
 ### Checkpoint B
 
-- [ ] `npm run check` green.
-- [ ] On `lms-local`, the catalogue's selects and every status option work.
+- [x] `npm run check` green.
+- [x] On `lms-local`, the catalogue's selects and every status option work.
 
 ### Phase 3: Course, lesson and learn pages
 
