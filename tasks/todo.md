@@ -86,7 +86,7 @@ command line or a log.
   - Files: `scripts/local-smoke.sh`.
   - Size: S. Depends on: T3.
 
-- [ ] **T5: Demo media and seed script (BE)**
+- [x] **T5: Demo media and seed script (BE)**
   - Acceptance:
     - `docs/sql/demo-media/` holds two files generated here, each under 2 MB:
       - `demo-core-banking.pdf`: 4 pages;
