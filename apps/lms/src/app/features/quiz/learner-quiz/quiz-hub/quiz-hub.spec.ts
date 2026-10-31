@@ -53,7 +53,7 @@ describe('QuizHub', () => {
     ).toContain('Tải CSV');
   });
 
-  it('groups the attempts by quiz, with the count and the best score', async () => {
+  it('groups the attempts by quiz, with the count and no best score of its own', async () => {
     signInAsLearner();
     await takeAttempt(1);
     await takeAttempt(1);
@@ -64,6 +64,9 @@ describe('QuizHub', () => {
     const quiz1 = groups.find((g) => g.textContent?.includes('Luyện tập'))!;
     expect(quiz1.querySelector('.hub__group-head')?.textContent).toContain(
       '2 lượt',
+    );
+    expect(quiz1.querySelector('.hub__group-head')?.textContent).not.toMatch(
+      /cao nhất/i,
     );
     expect(quiz1.querySelectorAll('.hub__attempt').length).toBe(2);
     expect(

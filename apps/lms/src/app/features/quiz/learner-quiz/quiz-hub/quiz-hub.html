@@ -78,10 +78,7 @@
       <a class="hub__title" [routerLink]="['/quiz', group.quizId]"
         >{{ group.title }}</a
       >
-      <span class="hub__meta">
-        {{ group.attemptCount }} lượt @if (group.bestScore !== null) { · cao
-        nhất {{ group.bestScore | fmtScore }}% }
-      </span>
+      <span class="hub__meta">{{ group.attemptCount }} lượt</span>
     </div>
     <ul class="hub__list">
       @for (attempt of group.recent; track attempt.attemptId) {

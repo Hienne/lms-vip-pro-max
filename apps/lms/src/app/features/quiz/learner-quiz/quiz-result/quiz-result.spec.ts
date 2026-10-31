@@ -1,9 +1,13 @@
 import { RouterTestingHarness } from '@angular/router/testing';
-import { learnerQuizEndpoints } from '@lms/contracts';
+import {
+  learnerQuizEndpoints,
+  type LearnerAttemptResult,
+} from '@lms/contracts';
 import type { MockInstance } from 'vitest';
 import type { MockBackend } from '../../../../core/dev/mock-api/mock-api.interceptor';
 import {
   failEndpoint,
+  patchReply,
   provideLearnerQuizSpec,
   settle,
   signInAsLearner,
@@ -59,6 +63,17 @@ describe('QuizResult', () => {
     );
   });
 
+  async function openResultWith(
+    quizId: number,
+    patch: (result: LearnerAttemptResult) => object,
+  ) {
+    signInAsLearner();
+    const attemptId = await takeAttempt(quizId);
+    patchReply(handle, learnerQuizEndpoints.attemptResult, patch);
+    await open(`/quiz/${quizId}/result/${attemptId}`);
+    return attemptId;
+  }
+
   it('breaks the score down by competency', async () => {
     await openResult(1);
     expect(text()).toContain('Phân tích theo nhóm kiến thức');
@@ -84,7 +99,43 @@ describe('QuizResult', () => {
     await openResult(1);
     expect(el.querySelector('h1')?.textContent).toContain('Chưa đạt');
     expect(control('Thi lại')?.getAttribute('href')).toBe('/quiz/1');
-    expect(text()).toContain('Bạn còn');
+    expect(text()).toContain('Còn 19 lượt');
+    expect(text()).not.toMatch(/Lần thi \d+\/\d+/);
+  });
+
+  it('says the quiz is passed when a failed attempt is opened after a pass in another one', async () => {
+    const attemptId = await openResultWith(1, (result) => ({
+      summary: { ...result.summary, passed: true, attemptsLeft: 0 },
+    }));
+    expect(attemptId).toBeGreaterThan(0);
+    expect(el.querySelector('h1')?.textContent).toContain('Chưa đạt');
+    expect(text()).toContain('đã đạt bài kiểm tra này ở một lượt thi khác');
+    expect(text()).not.toContain('hết lượt');
+    expect(text()).not.toContain('Giảng viên sẽ xem xét');
+    expect(control('Thi lại')).toBeUndefined();
+  });
+
+  it('counts attempts left from the server when extra attempts were granted', async () => {
+    await openResultWith(1, (result) => ({
+      summary: {
+        ...result.summary,
+        maxAttempts: 2,
+        extraAttempts: 3,
+        attemptsLeft: 4,
+      },
+    }));
+    expect(text()).toContain('Còn 4 lượt');
+    expect(text()).not.toMatch(/Lần thi \d+\/\d+/);
+  });
+
+  it('draws every competency bar in one tone, whatever the pass mark', async () => {
+    await openResult(1);
+    const bars = Array.from(
+      el.querySelectorAll('.result__competency .progress'),
+    );
+    expect(bars.length).toBeGreaterThan(0);
+    for (const bar of bars)
+      expect(bar.className).not.toMatch(/progress--(success|warning|danger)/);
   });
 
   it('offers no retake once the quiz is passed', async () => {

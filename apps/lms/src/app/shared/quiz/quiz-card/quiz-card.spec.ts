@@ -57,7 +57,7 @@ describe('QuizCard', () => {
   it('states what the quiz asks and how many attempts are left, with the way in', () => {
     const el = render(card());
     expect(text(el)).toContain('6 câu · 15 phút · Điểm đạt ≥ 70%');
-    expect(text(el)).toContain('Còn 2/2 lượt');
+    expect(text(el)).toContain('Còn 2 lượt');
     const start = el.querySelector<HTMLAnchorElement>('a.quiz-card__action')!;
     expect(start.textContent?.trim()).toBe('Làm bài');
     expect(start.getAttribute('href')).toBe('/quiz/2');
@@ -79,7 +79,23 @@ describe('QuizCard', () => {
     const el = render(
       card({ summary: { ...base.summary, bestScore: 83.3, attemptsLeft: 1 } }),
     );
-    expect(text(el)).toContain('Còn 1/2 lượt · Cao nhất 83,3%');
+    expect(text(el)).toContain('Còn 1 lượt · Cao nhất 83,3%');
+  });
+
+  it('counts the attempts left from the server, never maxAttempts plus the extra ones', () => {
+    const base = card();
+    const el = render(
+      card({
+        summary: {
+          ...base.summary,
+          extraAttempts: 3,
+          attemptsUsed: 1,
+          attemptsLeft: 4,
+        },
+      }),
+    );
+    expect(text(el)).toContain('Còn 4 lượt');
+    expect(text(el)).not.toMatch(/\d\/\d/);
   });
 
   it('says the quiz is passed with one badge, not the attempts left', () => {

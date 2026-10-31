@@ -66,7 +66,7 @@ export class QuizIntroStore {
     return policy ? REVIEW_TEXT[policy] : '';
   });
 
-  /** The attempt about to start, out of the attempts allowed, e.g. "2/3". */
+  /** The number of the attempt about to start. */
   readonly attemptNo$ = computed(() => {
     const summary = this.intro$()?.summary;
     return summary ? summary.attemptsUsed + 1 : 0;

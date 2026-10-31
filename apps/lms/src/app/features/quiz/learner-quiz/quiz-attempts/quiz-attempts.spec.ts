@@ -52,7 +52,8 @@ describe('QuizAttempts', () => {
     signInAsLearner();
     await takeAttempt(1);
     await open();
-    expect(text()).toContain('Đã thi 1/20 lượt');
+    expect(text()).toContain('Đã thi 1 lượt');
+    expect(text()).toContain('Còn 19 lượt');
     expect(text()).toContain('Cao nhất');
     expect(el.querySelector('ui-kpi')).toBeNull();
   });

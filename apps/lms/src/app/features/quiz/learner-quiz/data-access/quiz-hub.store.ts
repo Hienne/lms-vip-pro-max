@@ -43,7 +43,6 @@ export interface AttemptGroup {
   readonly quizId: number;
   readonly title: string;
   readonly attemptCount: number;
-  readonly bestScore: number | null;
   /** Newest first, at most {@link ATTEMPTS_PER_QUIZ}. */
   readonly recent: readonly MyAttemptRow[];
 }
@@ -150,14 +149,10 @@ export class QuizHubStore {
       else groups.set(row.quizId, [row]);
     }
     return [...groups.entries()].map(([quizId, rows]) => {
-      const scores = rows.flatMap((r) =>
-        r.scorePercent == null ? [] : [r.scorePercent],
-      );
       return {
         quizId,
         title: rows[0].quizTitle,
         attemptCount: rows.length,
-        bestScore: scores.length ? Math.max(...scores) : null,
         recent: rows.slice(0, ATTEMPTS_PER_QUIZ),
       };
     });

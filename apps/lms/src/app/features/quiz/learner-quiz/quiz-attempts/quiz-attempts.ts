@@ -82,7 +82,8 @@ export class QuizAttempts {
     const summary = this.store.history$()?.summary;
     if (!summary) return '';
     const parts = [
-      `Đã thi ${summary.attemptsUsed}/${summary.maxAttempts + summary.extraAttempts} lượt`,
+      `Đã thi ${summary.attemptsUsed} lượt`,
+      `Còn ${summary.attemptsLeft} lượt`,
     ];
     if (summary.bestScore != null)
       parts.push(`Cao nhất ${Math.round(summary.bestScore * 10) / 10}%`);

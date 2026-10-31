@@ -30,11 +30,11 @@
     </span>
   </p>
   <p class="result__meta">
-    Lần thi {{ r.attemptNo }}/{{ r.summary.maxAttempts + r.summary.extraAttempts
-    }} @if (r.summary.bestScore !== null) { · Điểm cao nhất {{
-    r.summary.bestScore | fmtScore }}% } @if (r.submittedAt) { · Nộp {{
-    r.submittedAt | fmtDatetime }} } @if (autoSubmitted()) { · Tự động nộp khi
-    hết giờ }
+    Lần thi {{ r.attemptNo }} @if (!r.summary.passed) { · Còn {{
+    r.summary.attemptsLeft }} lượt } @if (r.summary.bestScore !== null) { · Điểm
+    cao nhất {{ r.summary.bestScore | fmtScore }}% } @if (r.submittedAt) { · Nộp
+    {{ r.submittedAt | fmtDatetime }} } @if (autoSubmitted()) { · Tự động nộp
+    khi hết giờ }
   </p>
 </section>
 
@@ -46,12 +46,7 @@
     @for (c of competencies(); track c.competencyId) {
     <div class="result__competency">
       <span>{{ c.name }}</span>
-      <ui-progress
-        size="sm"
-        [value]="c.percent"
-        [tone]="c.percent >= r.passPercent ? 'success' : 'warning'"
-        [label]="c.name"
-      />
+      <ui-progress size="sm" [value]="c.percent" [label]="c.name" />
       <strong>{{ c.correctCount }}/{{ c.totalQuestions }}</strong>
     </div>
     } @empty {

@@ -70,8 +70,8 @@
         <div>
           <dt>Số lần đã thi</dt>
           <dd>
-            {{ intro.summary.attemptsUsed }}/{{ intro.summary.maxAttempts +
-            intro.summary.extraAttempts }}
+            {{ intro.summary.attemptsUsed }} · Còn {{ intro.summary.attemptsLeft
+            }} lượt
           </dd>
         </div>
         <div>
@@ -121,8 +121,8 @@
   } @else {
   <p class="intro__reason">
     {{ store.resuming$() ? 'Bạn có một lượt thi đang làm dở. Tiếp tục để không
-    mất thời gian.' : 'Lượt thi thứ ' + store.attemptNo$() + '/' +
-    (intro.summary.maxAttempts + intro.summary.extraAttempts) + '.' }}
+    mất thời gian.' : 'Lượt thi thứ ' + store.attemptNo$() + ' · Còn ' +
+    intro.summary.attemptsLeft + ' lượt.' }}
   </p>
   <button uiButton variant="primary" size="lg" (click)="store.start()">
     <ui-icon name="play" />{{ store.resuming$() ? 'Tiếp tục làm bài' : 'Bắt đầu

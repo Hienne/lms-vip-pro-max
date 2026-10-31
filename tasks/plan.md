@@ -118,7 +118,7 @@ No schema change, so no upgrade script.
 ### Phase 0: `learner-quiz` review fixes (approved 2026-10-31)
 
 - [x] F1: Learner quiz stores follow angular.md §5.2
-- [ ] F2: Result screen and server-only numbers
+- [x] F2: Result screen and server-only numbers
 - [ ] F3: Visual-design checklist on the quiz screens
 - [ ] F4: Question code on the take screen (BE + FE)
 - [ ] F5: Route stores and components in their route folders

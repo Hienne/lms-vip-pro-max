@@ -39,7 +39,7 @@ under `apps/lms/src/app/features/quiz/` unless they say otherwise.
     `.html`, the affected specs.
   - Size: M. Depends on: none.
 
-- [ ] **F2: Result screen and server-only numbers**
+- [x] **F2: Result screen and server-only numbers**
   - Acceptance:
     - The result of a failed attempt, opened after the learner passed in another attempt
       (`summary.passed`), says the quiz is passed. It no longer says the attempts are used up and an instructor

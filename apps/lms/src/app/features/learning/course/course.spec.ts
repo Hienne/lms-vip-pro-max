@@ -112,7 +112,7 @@ describe('Course', () => {
       const exam = section.querySelector('.course__final')!;
       expect(exam.textContent).toContain('Thi cuối khóa');
       expect(exam.textContent).toContain('Điểm đạt ≥ 70%');
-      expect(exam.textContent).toContain('Còn 2/2 lượt');
+      expect(exam.textContent).toContain('Còn 2 lượt');
       const start = Array.from(exam.querySelectorAll('a')).find(
         (a) => a.textContent?.trim() === 'Làm bài',
       );

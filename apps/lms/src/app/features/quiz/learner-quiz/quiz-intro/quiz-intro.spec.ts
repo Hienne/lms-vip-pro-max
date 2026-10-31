@@ -65,7 +65,30 @@ describe('QuizIntro', () => {
     await open('/quiz/2');
     expect(control('Bắt đầu làm bài')).toBeTruthy();
     expect(text()).toContain('Chưa có lần thi nào');
-    expect(text()).toContain('Lượt thi thứ 1/2');
+    expect(text()).toContain('Lượt thi thứ 1 · Còn 2 lượt');
+  });
+
+  it('shows the attempts left from the server when extra attempts were granted', async () => {
+    answerIntroWith(handle, {
+      summary: {
+        maxAttempts: 2,
+        extraAttempts: 3,
+        attemptsUsed: 1,
+        attemptsLeft: 4,
+        bestScore: 50,
+        lastScore: 50,
+        finalScore: 50,
+        passed: false,
+        everPassed: false,
+        runningAttemptId: null,
+        lastSubmittedAt: null,
+        nextAttemptAt: null,
+      },
+    });
+    await open('/quiz/2');
+    expect(text()).toContain('1 · Còn 4 lượt');
+    expect(text()).toContain('Lượt thi thứ 2 · Còn 4 lượt');
+    expect(text()).not.toMatch(/\d\/\d+ lượt|Lượt thi thứ \d\/\d/);
   });
 
   it('shows the results and the link to the history after an attempt', async () => {

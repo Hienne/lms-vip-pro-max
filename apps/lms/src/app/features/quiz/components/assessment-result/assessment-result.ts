@@ -75,8 +75,10 @@ export class AssessmentResult {
   protected readonly message = computed(() => {
     const { passed, summary } = this.result();
     if (passed) return 'Bài kiểm tra đã được ghi nhận vào tiến độ khóa học.';
+    if (summary.passed)
+      return 'Bạn đã đạt bài kiểm tra này ở một lượt thi khác. Lượt này chỉ để xem lại.';
     return summary.attemptsLeft > 0
-      ? `Bạn còn ${summary.attemptsLeft} lượt thi. Xem lại nhóm kiến thức còn yếu bên dưới trước khi thi lại.`
+      ? 'Xem lại nhóm kiến thức còn yếu bên dưới trước khi thi lại.'
       : 'Bạn đã dùng hết lượt thi. Giảng viên sẽ xem xét kết quả của bạn.';
   });
 
