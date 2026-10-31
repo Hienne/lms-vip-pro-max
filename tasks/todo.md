@@ -53,7 +53,7 @@ Each backend test file is a DB-backed integration test that extends `AssessmentI
     `LearningResponseCode.java`, the new IT.
   - Size: M. Depends on: T1.
 
-- [ ] **T3: Passing the quiz completes the quiz lesson**
+- [x] **T3: Passing the quiz completes the quiz lesson**
   - Acceptance:
     - `LearningAssessmentAccess.quizPassed(userId, enrollmentId, quizId)` asks `LearningProgressService` to set
       `lesson_progress = 100` on every quiz lesson of that enrollment's revision that has this `quizId`, then
