@@ -423,6 +423,11 @@ describe('Lesson', () => {
           .find((a) => a.textContent?.trim() === 'Làm bài')
           ?.getAttribute('href'),
       ).toBe('/quiz/2');
+      const primary = Array.from(el.querySelectorAll('.btn--primary'));
+      expect(primary.map((b) => b.textContent?.trim())).toEqual(['Làm bài']);
+      expect(
+        button('Bài tiếp theo')?.classList.contains('btn--primary'),
+      ).not.toBe(true);
       expect(button('Mục lục')).toBeTruthy();
       expect(calls(learnerEndpoints.openSession).length).toBe(0);
       expect(calls(learnerQuizEndpoints.courseQuizzes).length).toBe(1);

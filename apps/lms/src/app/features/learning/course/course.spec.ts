@@ -86,6 +86,15 @@ describe('Course', () => {
       expect(resume).toBeTruthy();
       expect(resume.getAttribute('href')).toMatch(/^\/lesson\/1\/\d+$/);
       expect(action('Đăng ký học')).toBeUndefined();
+      // The quiz cards below are secondary: the resume button stays the only primary.
+      expect(
+        el.querySelector('[aria-labelledby="course-quizzes"]'),
+      ).not.toBeNull();
+      expect(
+        Array.from(el.querySelectorAll('.btn--primary')).map((b) =>
+          b.textContent?.trim(),
+        ),
+      ).toEqual(['Tiếp tục học']);
     });
 
     it('lists the chapters with a link to every lesson, the quiz lesson marked with its own icon', () => {

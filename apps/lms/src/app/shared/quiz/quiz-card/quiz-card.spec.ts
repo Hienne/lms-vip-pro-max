@@ -43,10 +43,11 @@ const card = (patch: Partial<LearnerQuizCard> = {}): LearnerQuizCard => ({
   ...patch,
 });
 
-function render(value: LearnerQuizCard): HTMLElement {
+function render(value: LearnerQuizCard, primary = false): HTMLElement {
   TestBed.configureTestingModule({ providers: [provideRouter([])] });
   const fixture = TestBed.createComponent(QuizCard);
   fixture.componentRef.setInput('card', value);
+  fixture.componentRef.setInput('primary', primary);
   fixture.detectChanges();
   return fixture.nativeElement as HTMLElement;
 }
@@ -62,6 +63,15 @@ describe('QuizCard', () => {
     expect(start.textContent?.trim()).toBe('Làm bài');
     expect(start.getAttribute('href')).toBe('/quiz/2');
     expect(el.querySelector('h3 a')?.getAttribute('href')).toBe('/quiz/2');
+  });
+
+  it('is a secondary button unless the quiz is the main thing on the screen', () => {
+    expect(render(card()).querySelector('.btn--primary')).toBeNull();
+    TestBed.resetTestingModule();
+    const el = render(card(), true);
+    expect(el.querySelector('a.btn--primary')?.textContent?.trim()).toBe(
+      'Làm bài',
+    );
   });
 
   it('continues a running attempt instead of starting one', () => {

@@ -58,6 +58,25 @@ describe('QuizTake', () => {
     expect(writableSignalsOf(harness)).toEqual([]);
   });
 
+  it('has one primary button, "Nộp bài" in the top bar, and no label above the title', async () => {
+    await open();
+    const primary = el.querySelectorAll('.btn--primary');
+    expect(primary).toHaveLength(1);
+    expect(primary[0].textContent?.trim()).toBe('Nộp bài');
+    expect(primary[0].closest('.take__bar')).not.toBeNull();
+    expect(el.querySelector('.take__title small')).toBeNull();
+    const hints = [text()];
+    for (let i = 0; i < 2; i++) {
+      document.dispatchEvent(
+        new KeyboardEvent('keydown', { key: 'ArrowRight' }),
+      );
+      await settle();
+      hints.push(text());
+    }
+    expect(hints.join(' ')).toContain('Chọn tất cả đáp án đúng');
+    expect(hints.join(' ')).not.toContain('TẤT CẢ');
+  });
+
   it('saves a choice with a patch as soon as it is made, and marks the question answered', async () => {
     await open();
     await choose(0);

@@ -65,6 +65,10 @@ describe('QuizIntro', () => {
     await open('/quiz/2');
     expect(control('Bắt đầu làm bài')).toBeTruthy();
     expect(text()).toContain('Chưa có lần thi nào');
+    expect(
+      el.querySelector('.intro__layout ui-empty.empty--inline'),
+    ).not.toBeNull();
+    expect(el.querySelectorAll('.btn--primary')).toHaveLength(1);
     expect(text()).toContain('Lượt thi thứ 1 · Còn 2 lượt');
   });
 

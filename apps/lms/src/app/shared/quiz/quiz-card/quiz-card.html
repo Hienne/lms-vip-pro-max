@@ -21,7 +21,7 @@
   @if (card().canStart) {
   <a
     uiButton
-    variant="primary"
+    [variant]="primary() ? 'primary' : 'secondary'"
     size="sm"
     class="quiz-card__action"
     [routerLink]="['/quiz', quiz.id]"

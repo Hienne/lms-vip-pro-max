@@ -1,7 +1,7 @@
 @if (question(); as q) {
 <header class="take__bar">
   <div class="take__title">
-    <small>Bài kiểm tra</small><strong>{{ quizTitle() }}</strong>
+    <strong>{{ quizTitle() }}</strong>
   </div>
   <span class="take__save" role="status">
     {{ saving() ? 'Đang lưu đáp án…' : 'Đáp án được lưu khi chọn' }}
@@ -43,7 +43,7 @@
     </div>
     <h1 class="take__heading" id="question-heading">{{ q.content }}</h1>
     <p class="take__hint">
-      {{ q.questionType === 'MULTIPLE' ? 'Chọn TẤT CẢ đáp án đúng (có thể nhiều
+      {{ q.questionType === 'MULTIPLE' ? 'Chọn tất cả đáp án đúng (có thể nhiều
       hơn 1).' : 'Chọn 1 đáp án đúng.' }} Phím tắt: 1–{{ q.options.length }}
       chọn, ← → chuyển câu.
     </p>
@@ -75,12 +75,7 @@
         Câu tiếp<ui-icon name="chevron-right" size="sm" />
       </button>
       } @else {
-      <button
-        uiButton
-        variant="primary"
-        [disabled]="submitting()"
-        (click)="submitted.emit()"
-      >
+      <button uiButton [disabled]="submitting()" (click)="submitted.emit()">
         Xem lại và nộp bài
       </button>
       }
@@ -107,12 +102,7 @@
       (goto)="goto.emit($event)"
     />
     <app-question-legend />
-    <button
-      uiButton
-      variant="primary"
-      [disabled]="submitting()"
-      (click)="submitted.emit()"
-    >
+    <button uiButton [disabled]="submitting()" (click)="submitted.emit()">
       Nộp bài
     </button>
   </section>

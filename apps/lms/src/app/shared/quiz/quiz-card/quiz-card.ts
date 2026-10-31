@@ -17,6 +17,8 @@ import { blockReasonText } from '../quiz-block-reason';
 })
 export class QuizCard {
   readonly card = input.required<LearnerQuizCard>();
+  /** The quiz is the main thing on its screen (a quiz lesson), so its way in is the primary button. */
+  readonly primary = input(false);
 
   protected readonly resuming = computed(
     () => this.card().summary.runningAttemptId !== null,

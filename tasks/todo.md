@@ -57,7 +57,7 @@ under `apps/lms/src/app/features/quiz/` unless they say otherwise.
     `apps/lms/src/app/shared/quiz/quiz-card/*`, their specs.
   - Size: M. Depends on: F1.
 
-- [ ] **F3: Visual-design checklist on the quiz screens**
+- [x] **F3: Visual-design checklist on the quiz screens**
   - Acceptance:
     - One primary button per view:
       - take screen: only "Nộp bài" in the top bar;

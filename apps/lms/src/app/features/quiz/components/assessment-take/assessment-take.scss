@@ -26,10 +26,6 @@
     flex: 1;
     min-width: 0;
 
-    small {
-      @include ui.text(xs, muted);
-    }
-
     strong {
       @include ui.text(sm);
       @include ui.truncate;

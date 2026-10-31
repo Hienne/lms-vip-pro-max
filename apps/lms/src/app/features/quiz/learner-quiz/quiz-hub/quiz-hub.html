@@ -44,19 +44,10 @@
         <p class="hub__meta">{{ reason }}</p>
         }
       </div>
-      @if (quiz.canStart) {
-      <a
-        uiButton
-        variant="primary"
-        size="sm"
-        [routerLink]="['/quiz', quiz.quizId]"
-        >{{ quiz.resuming ? 'Tiếp tục' : 'Vào thi' }}</a
-      >
-      } @else {
       <a uiButton size="sm" [routerLink]="['/quiz', quiz.quizId]"
-        >Xem thông tin</a
+        >{{ !quiz.canStart ? 'Xem thông tin' : quiz.resuming ? 'Tiếp tục' : 'Vào
+        thi' }}</a
       >
-      }
     </li>
     }
   </ul>

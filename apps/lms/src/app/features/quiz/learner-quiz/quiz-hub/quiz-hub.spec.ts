@@ -45,6 +45,12 @@ describe('QuizHub', () => {
     expect(text()).toContain('Điểm đạt ≥ 70%');
   });
 
+  it('has no primary button: the row actions are secondary', async () => {
+    await open();
+    expect(el.querySelectorAll('.hub__row a.btn').length).toBeGreaterThan(0);
+    expect(el.querySelector('.btn--primary')).toBeNull();
+  });
+
   it('says there are no attempts yet before the learner has taken any', async () => {
     await open();
     expect(text()).toContain('Chưa có lần thi nào');
