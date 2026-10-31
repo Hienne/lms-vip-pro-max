@@ -1,6 +1,6 @@
 # Spec: `learner-quiz`
 
-Map: [SPEC.md](SPEC.md). Status: **draft, waiting for approval.** Depends on `local-stack`.
+Map: [SPEC.md](SPEC.md). Status: **approved 2026-10-31, amended by the plan (see "Amendments").** Depends on `local-stack`.
 
 Read first: `docs/conventions/contracts-and-mocks.md`; `corebanking-academy/docs/api/ASSESSMENT.md`
 ("Danh sách API", "Quy tắc chính", "Chưa làm / cần chốt").
@@ -77,6 +77,24 @@ that has a quiz.
 
 `docs/api/LEARNING.md` gets the `quizId` field. Both `docs/sql/README.md` and the upgrade script carry the
 `psql` line.
+
+## Amendments
+
+Written in T1 from [tasks/plan.md](tasks/plan.md). Where they differ from the sections above, they win.
+
+1. **Draft and publish rules.** A draft may hold a quiz lesson with no `quizId`. Publishing requires every quiz
+   lesson to point to a PUBLISHED, not deleted quiz of the same course; otherwise `LEARNING-QUIZ_LESSON_UNLINKED`.
+   Creating a draft from the published version keeps `quizId`. Copying the course to a new course clears it.
+   `LEARNING-QUIZ_INVALID` is for a `quizId` of another course or a deleted quiz, on save.
+2. **Quiz lookup from Learning.** Learning checks a quiz through a new port, `LearningQuizDirectory`, declared in
+   `learning` and implemented in `assessment`, so `learning` imports no Assessment classes.
+3. **Completion hook (replaces Q4's place).** The hook that completes the quiz lesson sits in `AttemptGrader`, so
+   submit, expiry, submit on behalf and regrade are all covered. It runs when the attempt is `passed = true`.
+   It is one-way: a regrade that turns a pass into a fail does not lower `lesson_progress` (progress only grows).
+4. **Lessons-completed check.** `requiredLessonsCompleted` counts only `content` lessons.
+5. **Demo quiz lessons.** A dev-only `learning_hub_learner_quiz_demo.sql` adds a required quiz lesson to the
+   published revision of `FE-DEMO-C1` and `FE-DEMO-C2` (publishing a new revision would not work: `hocvien` is
+   enrolled on the current one). It replaces the line in "DB upgrade" about the assessment demo.
 
 ## App
 

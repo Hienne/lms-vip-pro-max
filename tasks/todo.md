@@ -15,7 +15,7 @@ Each backend test file is a DB-backed integration test that extends `AssessmentI
 
 ## Phase 1: Backend
 
-- [ ] **T1: `course_lessons.quiz_id` (DB, entity, view) and spec amendments**
+- [x] **T1: `course_lessons.quiz_id` (DB, entity, view) and spec amendments**
   - Acceptance:
     - `docs/sql/upgrade/2026-11-01-learner-quiz.sql` adds the column, its comment and a partial index.
     - `…rollback.sql` stops if a lesson of type `quiz` exists, and otherwise drops the index and the column.
