@@ -71,7 +71,7 @@ command line or a log.
   - Files: `docs/sql/learning_hub_assessment_demo.sql`, `scripts/local-db-init.sh`, `docs/sql/README.md`.
   - Size: M. Depends on: T2.
 
-- [ ] **T4: Smoke script (BE)**
+- [x] **T4: Smoke script (BE)**
   - Acceptance:
     - `scripts/local-smoke.sh` checks that health is UP.
     - It logs in as `hocvien` with `LOCAL_DEMO_PASSWORD` and keeps the cookie or token in a temp file it deletes
