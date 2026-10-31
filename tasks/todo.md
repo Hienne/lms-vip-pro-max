@@ -214,7 +214,7 @@ Each backend test file is a DB-backed integration test that extends `AssessmentI
   - Files: `lesson-form.ts` / `.html`, `course-draft.ts`, the editor store.
   - Size: S–M. Depends on: T9.
 
-- [ ] **T11: End-to-end check against the spec**
+- [x] **T11: End-to-end check against the spec**
   - Acceptance: the spec's success criteria 1–5 are written here, each with how it was checked.
   - Verify, as `quantri` in the browser:
     - add a quiz lesson to a draft and pick the final exam;
@@ -229,8 +229,55 @@ Each backend test file is a DB-backed integration test that extends `AssessmentI
   - Files: `tasks/todo.md`, `SPEC-learner-quiz.md` (status).
   - Size: S. Depends on: T10.
 
+  **Results (2026-10-31).** Checked on the local stack: `lms-local` on :4200, backend on :8019, DB `core_academy`.
+  The learner part ran as `hocvien.tichhop` on `FE-DEMO-C2` instead of `hocvien`, because `hocvien` had already passed
+  `QZ-E2E-01` and had one attempt left on `FE-DEMO-C1`; this kept that demo state. The right answers were read from
+  `question_options` of the local DB, since the app does not show them before a pass.
+  1. **Every learner quiz call goes to `/api/v1/me/…`, none is `served: 'mock'`.** The browser network panel for the
+     whole learner run (course page, intro, start, save, submit, result) lists only `GET /me/courses/2/quizzes`,
+     `GET /me/quizzes/4`, `POST /me/quizzes/4/attempts`, `PATCH /me/quiz-attempts/{id}/questions/{qid}`,
+     `POST /me/quiz-attempts/{id}/submit` and `GET /me/quiz-attempts/{id}/result`, all `200`. In `libs/contracts`
+     `learner-quiz.endpoints.ts` has no `served` key; the `served: 'mock'` keys left in `assessment.endpoints.ts` are
+     all `/api/admin/…` (question bank and quiz authoring, out of scope).
+  2. **A learner takes a quiz from the course page end to end.** The course page shows the final-exam card with its
+     block reason ("Hoàn thành các bài học nội dung… để mở") until the content lessons are done, then "Làm bài".
+     Intro → start → answer one question → full reload on `/quiz/4/take`: the answer and "1/6 đã trả lời" came back
+     and the clock continued (14:39) → submit → result "Chưa đạt 0%", one attempt left, answers locked. Second
+     attempt: all 6 answered (single and multiple choice) → result "Đạt 100%", with the per-competency breakdown.
+     The attempts table (`quiz_attempts`) holds attempt 1 at 0% and attempt 2 at 100% passed.
+  3. **A quiz lesson saved in the editor shows its quiz in the player; passing completes the lesson and the course.**
+     As `quantri`: opened a draft of `QZ-E2E-01`, added a lesson, set its type to "Bài kiểm tra", picked "Thi E2E · Thi
+     cuối khóa" (the picker lists only that course's quizzes), saved the draft (`course_lessons.quiz_id = 5` in the
+     draft revision) and published (`published_revision_id` moved to the new revision, both quiz lessons keep
+     `quiz_id = 5`). As the learner: the quiz lesson in the player (`/lesson/2/19`) shows the quiz card and "Làm bài".
+     After the pass, `lesson_progress` for lesson 19 is `completed` at 100.000 with `completed_at` set, and
+     `course_enrollments` 4 went from `in_progress` 75.000 to `completed` 100.000. On screen the course page shows
+     4/4 required lessons done, the quiz lesson ticked, the final-exam card "Đã đạt · Cao nhất 100%" and
+     "Hoàn thành 31/10/2026". A failed attempt changed nothing (lesson 19 had no row, enrollment stayed at 75).
+  4. **The server's quiz errors show in the editor.**
+     - A quiz lesson with no quiz chosen on publish: the editor shows "Chưa thể xuất bản: Có bài học loại kiểm tra chưa
+       chọn bài kiểm tra đã xuất bản của khóa học." (`LEARNING-QUIZ_LESSON_UNLINKED`). The client checklist warns but
+       does not block, so the request reaches the server.
+     - Another course's quiz: the picker cannot offer one, so the draft save request was edited in the page
+       (`quizId: 5`, a quiz of course 8, on the lesson of course 9). The editor shows "Bài kiểm tra chưa hợp lệ: Bài
+       kiểm tra không tồn tại, đã bị xóa hoặc không thuộc khóa học này." (`LEARNING-QUIZ_INVALID`). The retry fix
+       (`547c229`) held: after each refusal the next publish went out with no data-conflict message.
+  5. **Both builds are green and the SQL applies.**
+     - `npm run check`: the first run failed on one timeout in `course-new.spec.ts` (11 s under load; it passes alone in
+       5.5 s and does not touch this module). The rerun is green (14 tasks, 0 failures).
+     - `mvn clean verify` in the backend: `BUILD SUCCESS`, 310 tests, 0 failures, 42 skipped (`CommunityApiIT`, as before).
+     - Upgrade and rollback were run with the README `psql` command on `flow_check`, a throwaway copy of
+       `core_academy` (dropped afterwards; `core_academy` untouched): rollback with 6 quiz lessons present → refused,
+       exit 3, column and index unchanged; after deleting those lessons in the copy → rollback applied, column and index
+       gone; upgrade applied; upgrade a second time applied with only a "relation already exists, skipping" notice; the
+       column comment is in place.
+
+  **Left in the local DB by this check:** course `QZ-E2E-01` has a second published revision (two quiz lessons);
+  course `QZ-E2E-02` (a draft) has a chapter and one quiz lesson with no quiz; `hocvien.tichhop` has passed
+  `FE-DEMO-C2` (enrollment 4 `completed`, quiz attempts 5 and 6). `hocvien` is untouched.
+
 ### Checkpoint C
 
-- [ ] Criteria 1–5 recorded.
-- [ ] Spec status set to built.
+- [x] Criteria 1–5 recorded.
+- [x] Spec status set to built.
 - [ ] Review with the user, then plan `catalog-discovery`.

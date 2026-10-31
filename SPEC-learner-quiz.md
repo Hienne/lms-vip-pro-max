@@ -1,6 +1,6 @@
 # Spec: `learner-quiz`
 
-Map: [SPEC.md](SPEC.md). Status: **approved 2026-10-31, amended by the plan (see "Amendments").** Depends on `local-stack`.
+Map: [SPEC.md](SPEC.md). Status: **built 2026-10-31** (approved 2026-10-31, amended by the plan, see "Amendments"; success criteria checked in [tasks/todo.md](tasks/todo.md) under T11). Depends on `local-stack`.
 
 Read first: `docs/conventions/contracts-and-mocks.md`; `corebanking-academy/docs/api/ASSESSMENT.md`
 ("Danh sách API", "Quy tắc chính", "Chưa làm / cần chốt").
