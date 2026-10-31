@@ -1,0 +1,86 @@
+@if (store.loadError$(); as error) {
+<ui-error-state
+  title="Không tải được lịch sử thi"
+  [message]="error.message"
+  (retry)="store.retry()"
+/>
+} @else if (store.history$(); as history) {
+<ui-page-header
+  [title]="'Lịch sử thi · ' + history.quizTitle"
+  [description]="summaryLine()"
+>
+  <ui-breadcrumb slot="breadcrumb" [items]="crumbs()" />
+  <div slot="actions" class="attempts__actions">
+    <button
+      uiButton
+      [disabled]="store.isExporting$() || !store.total$()"
+      (click)="store.exportCsv()"
+    >
+      <ui-icon name="download" />Tải CSV
+    </button>
+    <a uiButton variant="primary" [routerLink]="['/quiz', history.quizId]"
+      >Về bài kiểm tra</a
+    >
+  </div>
+</ui-page-header>
+
+<section uiCard>
+  <ui-data-table
+    caption="Lịch sử các lần thi"
+    [columns]="columns"
+    [rows]="store.pageRows$()"
+    [total]="store.total$()"
+    [page]="store.page$()"
+    [pageSize]="pageSize"
+    (pageChange)="store.setPage($event)"
+  >
+    <ng-template uiDataTableCell="attemptNo" [of]="store.pageRows$()" let-row
+      >#{{ row.attemptNo }}</ng-template
+    >
+    <ng-template uiDataTableCell="submittedAt" [of]="store.pageRows$()" let-row>
+      {{ row.submittedAt | fmtDatetime }} @if (row.autoSubmitted) {
+      <span class="attempts__note">Tự động nộp</span>
+      }
+    </ng-template>
+    <ng-template
+      uiDataTableCell="durationSeconds"
+      [of]="store.pageRows$()"
+      let-row
+    >
+      {{ row.durationSeconds === null ? '—' : (row.durationSeconds | fmtTime) }}
+    </ng-template>
+    <ng-template uiDataTableCell="score" [of]="store.pageRows$()" let-row>
+      @if (row.score === null) { — } @else {
+      <strong>{{ row.score | fmtScore }}%</strong>
+      <span class="attempts__note">({{ row.correct }})</span>
+      }
+    </ng-template>
+    <ng-template uiDataTableCell="outcome" [of]="store.pageRows$()" let-row>
+      @if (row.outcome === 'passed') {
+      <span uiBadge tone="success"
+        ><ui-icon name="check" />{{ OUTCOME_TEXT.passed }}</span
+      >
+      } @else if (row.outcome === 'failed') {
+      <span uiBadge tone="danger"
+        ><ui-icon name="x" />{{ OUTCOME_TEXT.failed }}</span
+      >
+      } @else {
+      <span class="attempts__note">{{ OUTCOME_TEXT[row.outcome] }}</span>
+      }
+    </ng-template>
+    <ng-template uiDataTableCell="actions" [of]="store.pageRows$()" let-row>
+      @if (row.link) {
+      <a uiButton size="sm" variant="ghost" [routerLink]="row.link"
+        >{{ row.outcome === 'running' ? 'Tiếp tục' : 'Chi tiết' }}</a
+      >
+      }
+    </ng-template>
+    <ui-empty slot="empty" title="Chưa có lần thi nào" />
+  </ui-data-table>
+</section>
+} @else {
+<div class="attempts__loading" aria-busy="true">
+  <div uiSkeleton variant="text" class="attempts__skeleton-title"></div>
+  <div uiSkeleton variant="block"></div>
+</div>
+}

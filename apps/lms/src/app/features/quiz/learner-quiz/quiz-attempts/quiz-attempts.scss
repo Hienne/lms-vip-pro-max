@@ -1,0 +1,24 @@
+@use 'ui';
+
+:host {
+  @include ui.page(wide);
+}
+
+.attempts {
+  &__actions {
+    @include ui.row(2);
+  }
+
+  &__note {
+    @include ui.text(xs, muted);
+    margin-left: ui.space(2);
+  }
+
+  &__loading {
+    @include ui.stack(4);
+  }
+
+  &__skeleton-title {
+    width: 16rem;
+  }
+}

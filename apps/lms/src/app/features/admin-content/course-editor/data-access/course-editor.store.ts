@@ -15,6 +15,7 @@ import {
 } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router } from '@angular/router';
 import {
+  assessmentV1Endpoints,
   courseEndpoints,
   trainingCatalogEndpoints,
   type BlockType,
@@ -23,12 +24,14 @@ import {
 } from '@lms/contracts';
 import { confirm, Toaster, type StepperItem } from '@lms/ui';
 import {
+  catchError,
   filter,
   firstValueFrom,
   map,
   Observable,
   switchMap,
   takeUntil,
+  throwError,
   timer,
   type Subscription,
 } from 'rxjs';
@@ -197,6 +200,15 @@ export class CourseEditorStore {
     { params: () => this.courseId(), reloadOn: this.changes },
   );
 
+  /** The course's quizzes, for a quiz lesson to pick from. */
+  private readonly quizzesData = serverData(
+    (courseId: number) =>
+      this.client.call(assessmentV1Endpoints.courseQuizList, {
+        query: { courseId, size: 100 },
+      }),
+    { params: () => this.courseId() },
+  );
+
   private readonly programsData = serverData(
     (ownerOrgId: number) =>
       this.client.call(trainingCatalogEndpoints.listPrograms, {
@@ -247,18 +259,29 @@ export class CourseEditorStore {
     },
   );
 
-  /** Saves the draft, then publishes the revision the save returned. */
+  /**
+   * Saves the draft, then publishes the revision the save returned. A refusal to publish leaves
+   * the save done and the revision's version moved on, so the course is read again: the next try
+   * then carries the version the server holds.
+   */
   private readonly publishMutation = serverMutation(
     (command: SaveDraftCommand) =>
       this.saveDraft(command).pipe(
         switchMap((saved) =>
-          this.client.call(courseEndpoints.publish, {
-            params: {
-              courseId: saved.course.id,
-              revisionId: saved.revision.id,
-            },
-            body: { expectedVersion: saved.revision.rowVersion },
-          }),
+          this.client
+            .call(courseEndpoints.publish, {
+              params: {
+                courseId: saved.course.id,
+                revisionId: saved.revision.id,
+              },
+              body: { expectedVersion: saved.revision.rowVersion },
+            })
+            .pipe(
+              catchError((error: unknown) => {
+                this.changes.bump();
+                return throwError(() => error);
+              }),
+            ),
         ),
       ),
     {
@@ -304,6 +327,8 @@ export class CourseEditorStore {
         })
       : 'draft';
   });
+  readonly quizzes$ = computed(() => this.quizzesData.value()?.items ?? []);
+  readonly quizzesError$ = this.quizzesData.error;
   readonly programs$ = computed(() => this.programsData.value()?.items ?? []);
   readonly modules$ = computed(() =>
     this.fieldId() ? (this.modulesData.value()?.items ?? []) : [],

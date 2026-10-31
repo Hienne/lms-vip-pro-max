@@ -59,10 +59,12 @@
       color: ui.color(primary);
       font-weight: ui.weight(semibold);
     }
+  }
 
-    &--locked {
-      color: ui.color(text-muted);
-    }
+  &__kind {
+    margin-inline-end: ui.space(1);
+    vertical-align: text-bottom;
+    color: ui.color(text-muted);
   }
 
   &__sr {

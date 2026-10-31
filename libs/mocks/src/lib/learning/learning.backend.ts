@@ -554,6 +554,7 @@ export class LearningBackend {
       lessons: c.lessons.map((l) => ({
         title: l.lesson.title,
         lessonType: l.lesson.lessonType,
+        ...(l.lesson.quizId ? { quizId: l.lesson.quizId } : {}),
         estimatedDurationSeconds: l.lesson.estimatedDurationSeconds ?? 0,
         isRequired: l.lesson.isRequired ?? true,
         blocks: l.blocks.map((b) => ({
@@ -611,6 +612,7 @@ export class LearningBackend {
                 chapterId,
                 title: lesson.title,
                 lessonType: lesson.lessonType,
+                quizId: lesson.quizId ?? null,
                 estimatedDurationSeconds: lesson.estimatedDurationSeconds,
                 isRequired: lesson.isRequired ?? true,
                 sortNo: li + 1,

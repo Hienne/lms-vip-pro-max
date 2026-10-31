@@ -81,7 +81,31 @@
         <app-course-outline [chapters]="store.outline$()" />
       </section>
     </section>
-    } @else {
+    @if (store.quizError$(); as error) {
+    <section aria-labelledby="course-quizzes">
+      <h2 id="course-quizzes" class="course__heading">Bài kiểm tra</h2>
+      <ui-error-state
+        title="Không tải được bài kiểm tra"
+        [message]="error.message"
+        (retry)="store.retryQuizzes()"
+      />
+    </section>
+    } @else if (store.finalExam$() || store.otherQuizzes$().length) {
+    <section aria-labelledby="course-quizzes">
+      <h2 id="course-quizzes" class="course__heading">Bài kiểm tra</h2>
+      @if (store.finalExam$(); as exam) {
+      <section uiCard class="course__final">
+        <div uiCardBody><app-quiz-card [card]="exam" /></div>
+      </section>
+      } @if (store.otherQuizzes$().length) {
+      <ul class="course__quizzes">
+        @for (card of store.otherQuizzes$(); track card.quiz.id) {
+        <li><app-quiz-card [card]="card" /></li>
+        }
+      </ul>
+      }
+    </section>
+    } } @else {
     <section aria-labelledby="course-about">
       <h2 id="course-about" class="course__heading">Nội dung khóa học</h2>
       @if (store.needsAssignment$()) {

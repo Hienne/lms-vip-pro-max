@@ -1,0 +1,9 @@
+@use 'ui';
+
+:host {
+  @include ui.page(narrow);
+}
+
+.result__loading {
+  @include ui.stack(4);
+}

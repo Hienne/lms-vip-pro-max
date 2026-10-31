@@ -71,6 +71,61 @@ describe('course draft', () => {
     expect(second.lessons[0].blocks).toEqual([]);
   });
 
+  it('keeps the quiz of a quiz lesson both ways and drops it from a content lesson', () => {
+    const detail = structuredClone(eod);
+    const lessons = detail.chapters[0].lessons;
+    lessons[0].lesson.lessonType = 'quiz';
+    lessons[0].lesson.quizId = 7;
+    lessons[0].blocks = [];
+    expect(toDraftValue(detail).chapters[0].lessons[0].quizId).toBe(7);
+    expect(
+      toDraftValue(detail).chapters[0].lessons[1]?.quizId ?? null,
+    ).toBeNull();
+
+    const value = toDraftValue(detail);
+    const sent = toSaveDraftCommand(value, 0).chapters[0].lessons;
+    expect(sent[0]).toMatchObject({
+      lessonType: 'quiz',
+      quizId: 7,
+      blocks: [],
+    });
+
+    const asContent = {
+      ...value,
+      chapters: [
+        {
+          ...value.chapters[0],
+          lessons: [
+            { ...value.chapters[0].lessons[0], lessonType: 'content' as const },
+          ],
+        },
+      ],
+    };
+    expect(
+      toSaveDraftCommand(asContent, 0).chapters[0].lessons[0],
+    ).not.toHaveProperty('quizId');
+    expect(
+      toSaveDraftCommand(
+        {
+          ...value,
+          chapters: [
+            {
+              ...value.chapters[0],
+              lessons: [{ ...value.chapters[0].lessons[0], quizId: null }],
+            },
+          ],
+        },
+        0,
+      ).chapters[0].lessons[0],
+    ).not.toHaveProperty('quizId');
+  });
+
+  it('flags a quiz lesson that has no quiz yet', () => {
+    const quiz = { ...newLesson(1), lessonType: 'quiz' as const };
+    expect(lessonProblem(quiz)).toBe('Chưa chọn bài kiểm tra');
+    expect(lessonProblem({ ...quiz, quizId: 3 })).toBeNull();
+  });
+
   it('flags a content lesson without blocks or without its file', () => {
     expect(lessonProblem(newLesson(1))).toBe('Thiếu nội dung');
     expect(
@@ -79,7 +134,6 @@ describe('course draft', () => {
     expect(
       lessonProblem({ ...newLesson(1), blocks: [newBlock('attachment')] }),
     ).toBeNull();
-    expect(lessonProblem({ ...newLesson(1), lessonType: 'quiz' })).toBeNull();
   });
 
   it('lists what blocks publishing, the objectives being only advised', () => {

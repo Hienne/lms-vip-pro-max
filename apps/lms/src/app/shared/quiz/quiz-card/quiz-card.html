@@ -1,0 +1,39 @@
+@let quiz = card().quiz; @let summary = card().summary;
+<article class="quiz-card">
+  <div class="quiz-card__main">
+    <h3 class="quiz-card__title">
+      <a [routerLink]="['/quiz', quiz.id]">{{ quiz.title }}</a>
+    </h3>
+    <p class="quiz-card__meta">
+      {{ quiz.questionCount }} câu · {{ quiz.timeLimitMinutes }} phút · Điểm đạt
+      ≥ {{ quiz.passPercent }}%
+    </p>
+    <p class="quiz-card__meta">
+      @if (summary.passed) {
+      <span uiBadge tone="success"><ui-icon name="check" />Đã đạt</span>
+      } @else { Còn {{ summary.attemptsLeft }} lượt } @if (summary.bestScore !==
+      null) { · Cao nhất {{ summary.bestScore | fmtScore }}% }
+    </p>
+    @if (blockText(); as reason) {
+    <p class="quiz-card__meta">{{ reason }}</p>
+    }
+  </div>
+  @if (card().canStart) {
+  <a
+    uiButton
+    [variant]="primary() ? 'primary' : 'secondary'"
+    size="sm"
+    class="quiz-card__action"
+    [routerLink]="['/quiz', quiz.id]"
+    >{{ resuming() ? 'Tiếp tục làm bài' : 'Làm bài' }}</a
+  >
+  } @else {
+  <a
+    uiButton
+    size="sm"
+    class="quiz-card__action"
+    [routerLink]="['/quiz', quiz.id]"
+    >Xem thông tin</a
+  >
+  }
+</article>

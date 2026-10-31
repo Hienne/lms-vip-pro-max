@@ -1,0 +1,112 @@
+@if (question(); as q) {
+<header class="take__bar">
+  <div class="take__title">
+    <strong>{{ quizTitle() }}</strong>
+  </div>
+  <span class="take__save" role="status">
+    {{ saving() ? 'Đang lưu đáp án…' : 'Đáp án được lưu khi chọn' }}
+  </span>
+  <ui-timer [seconds]="seconds()" />
+  <button
+    uiButton
+    variant="primary"
+    [disabled]="submitting()"
+    (click)="submitted.emit()"
+  >
+    Nộp bài
+  </button>
+</header>
+@if (saveError(); as error) {
+<ui-alert tone="warning" class="take__alert">
+  Chưa lưu được đáp án. {{ error }}
+  <button uiButton size="sm" [disabled]="saving()" (click)="retrySave.emit()">
+    Thử lại
+  </button>
+</ui-alert>
+}
+<div class="take__layout">
+  <section class="take__question" aria-labelledby="question-heading">
+    <div class="take__question-bar">
+      <span class="take__position"
+        >Câu {{ current() + 1 }} / {{ questions().length }} @if (q.code) { ·
+        <span class="take__code">{{ q.code }}</span>
+        }</span
+      >
+      <button
+        uiButton
+        variant="ghost"
+        size="sm"
+        [attr.aria-pressed]="q.flagged"
+        (click)="flagged.emit(q.attemptQuestionId)"
+      >
+        <ui-icon name="flag" size="sm" />{{ q.flagged ? 'Bỏ đánh dấu' : 'Đánh
+        dấu xem lại' }}
+      </button>
+    </div>
+    <h1 class="take__heading" id="question-heading">{{ q.content }}</h1>
+    <p class="take__hint">
+      {{ q.questionType === 'MULTIPLE' ? 'Chọn tất cả đáp án đúng (có thể nhiều
+      hơn 1).' : 'Chọn 1 đáp án đúng.' }} Phím tắt: 1–{{ q.options.length }}
+      chọn, ← → chuyển câu.
+    </p>
+    <fieldset class="take__answers">
+      <legend class="sr-only">Phương án trả lời</legend>
+      @for (option of options(); track option.id) {
+      <ui-option-card [title]="option.content" [letter]="option.letter">
+        <input
+          [type]="q.questionType === 'MULTIPLE' ? 'checkbox' : 'radio'"
+          [name]="'answer-' + q.attemptQuestionId"
+          [attr.aria-label]="option.content"
+          [checked]="option.selected"
+          [disabled]="submitting()"
+          (change)="select($event, q.attemptQuestionId, option.id)"
+        />
+      </ui-option-card>
+      }
+    </fieldset>
+    <div class="take__nav">
+      <button
+        uiButton
+        [disabled]="current() === 0"
+        (click)="goto.emit(current() - 1)"
+      >
+        <ui-icon name="chevron-left" size="sm" />Câu trước
+      </button>
+      @if (current() < questions().length - 1) {
+      <button uiButton (click)="goto.emit(current() + 1)">
+        Câu tiếp<ui-icon name="chevron-right" size="sm" />
+      </button>
+      } @else {
+      <button uiButton [disabled]="submitting()" (click)="submitted.emit()">
+        Xem lại và nộp bài
+      </button>
+      }
+    </div>
+  </section>
+  <section
+    role="complementary"
+    class="take__navigator"
+    uiCard
+    padded
+    aria-label="Danh sách câu hỏi"
+  >
+    <p class="take__count">
+      <strong>{{ answeredCount() }}</strong>/{{ questions().length }} đã trả lời
+    </p>
+    <ui-progress
+      size="sm"
+      [value]="(answeredCount() / questions().length) * 100"
+      label="Đã trả lời"
+    />
+    <app-question-grid
+      [cells]="cells()"
+      [current]="current()"
+      (goto)="goto.emit($event)"
+    />
+    <app-question-legend />
+    <button uiButton [disabled]="submitting()" (click)="submitted.emit()">
+      Nộp bài
+    </button>
+  </section>
+</div>
+}

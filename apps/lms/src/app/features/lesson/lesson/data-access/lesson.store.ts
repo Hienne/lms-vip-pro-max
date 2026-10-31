@@ -13,6 +13,7 @@ import { ActivatedRoute, Router } from '@angular/router';
 import {
   courseEndpoints,
   learnerEndpoints,
+  learnerQuizEndpoints,
   toUrl,
   type BlockDetail,
   type BlockProgress,
@@ -55,8 +56,8 @@ export interface OutlineLesson {
   readonly title: string;
   readonly state: ProgressState;
   readonly quiz: boolean;
-  /** `null` for a quiz lesson: it opens from the course page. */
-  readonly link: string | null;
+  /** A quiz lesson opens here too: the player shows its quiz. */
+  readonly link: string;
   readonly current: boolean;
 }
 
@@ -132,6 +133,17 @@ export class LessonStore {
     { params: () => this.cardData.value()?.enrollmentId ?? undefined },
   );
 
+  /** The course's quizzes, read only for a quiz lesson: the one that holds the lesson is shown. */
+  private readonly quizData = serverData(
+    (courseId: number) =>
+      this.client.call(learnerQuizEndpoints.courseQuizzes, {
+        params: { courseId },
+      }),
+    {
+      params: () => (this.view$() === 'quiz' ? this.courseId$() : undefined),
+    },
+  );
+
   private readonly state = {
     /** The block the learner chose in this lesson; it wins over the URL and the resume point. */
     selected: linkedSignal<number | undefined, number | undefined>({
@@ -170,6 +182,13 @@ export class LessonStore {
     () => this.cardData.error() ?? this.detailData.error(),
   );
   readonly outlineOpen$ = this.state.outlineOpen.asReadonly();
+
+  /** The quiz this lesson holds, matched by the lesson the server links it to. */
+  readonly quiz$ = computed(() =>
+    this.quizData.value()?.find((c) => c.lessonId === this.lessonId$()),
+  );
+  readonly quizLoading$ = this.quizData.isLoading;
+  readonly quizError$ = this.quizData.error;
   readonly phase$ = this.channel.phase$;
   readonly save$ = this.channel.save$;
   readonly studyError$ = this.channel.error$;
@@ -329,24 +348,22 @@ export class LessonStore {
           state: progressState(
             (lessons.get(lesson.id) ?? loaded.get(lesson.id))?.status,
           ),
-          link: quiz ? null : `/lesson/${courseId}/${lesson.id}`,
+          link: `/lesson/${courseId}/${lesson.id}`,
           current: lesson.id === this.lessonId$(),
         };
       }),
     }));
   });
 
-  private readonly contentLessons = computed(() =>
-    this.outline$()
-      .flatMap((c) => c.lessons)
-      .filter((l) => l.link),
+  private readonly orderedLessons = computed(() =>
+    this.outline$().flatMap((c) => c.lessons),
   );
 
   readonly prevLessonLink$ = computed(() => this.lessonLink(-1));
   readonly nextLessonLink$ = computed(() => this.lessonLink(1));
 
   private lessonLink(step: 1 | -1): string | null {
-    const lessons = this.contentLessons();
+    const lessons = this.orderedLessons();
     const index = lessons.findIndex((l) => l.current);
     return index < 0 ? null : (lessons[index + step]?.link ?? null);
   }
@@ -437,6 +454,10 @@ export class LessonStore {
   /** "Thử lại" after a failed claim or a failed save. */
   retry(): void {
     this.channel.retry();
+  }
+
+  retryQuiz(): void {
+    this.quizData.reload();
   }
 
   retryLoad(): void {

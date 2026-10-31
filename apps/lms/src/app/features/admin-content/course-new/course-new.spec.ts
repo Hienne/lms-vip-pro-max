@@ -1,3 +1,5 @@
+import { ApplicationRef } from '@angular/core';
+import { TestBed } from '@angular/core/testing';
 import { courseEndpoints } from '@lms/contracts';
 import { setUpAdminScreen } from '../../../core/dev/mock-api/admin-screen.testing';
 
@@ -26,9 +28,11 @@ describe('CourseNew', () => {
       code: 'VH-302',
       title: 'Đối soát cuối ngày',
     });
-    await vi.waitFor(() =>
-      expect(screen.url()).toMatch(/^\/admin\/courses\/\d+\/edit$/),
-    );
+    // The editor is a lazy route, so reaching it loads and renders the whole editor. Wait for the
+    // router to finish instead of polling a clock: `vi.waitFor` gives up after 1 s, which a busy
+    // machine exceeds.
+    await TestBed.inject(ApplicationRef).whenStable();
+    expect(screen.url()).toMatch(/^\/admin\/courses\/\d+\/edit$/);
   });
 
   it('shows the refusal when the code is taken', async () => {

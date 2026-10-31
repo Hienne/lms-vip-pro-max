@@ -4,13 +4,6 @@
   min-width: 0;
   @include ui.text(sm);
 }
-:host.assessment--narrow {
-  max-width: ui.layout(narrow);
-}
-:host.assessment--focus {
-  max-width: none;
-  padding: 0;
-}
 .assessment__loading {
   min-height: 20rem;
   display: grid;
@@ -155,17 +148,4 @@
     @include ui.text(xs, muted);
     margin-top: ui.space(1);
   }
-}
-.assessment__rules {
-  @include ui.stack(3);
-  padding-left: ui.space(5);
-  color: ui.color(text-secondary);
-}
-.assessment__start {
-  @include ui.row-between(4);
-  margin-top: ui.space(6);
-  position: sticky;
-  bottom: ui.space(4);
-  box-shadow: ui.shadow(md);
-  color: ui.color(text-secondary);
 }

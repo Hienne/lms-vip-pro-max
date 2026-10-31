@@ -215,6 +215,20 @@ export const BACKEND_RESPONSES = {
     title: 'Chưa thể thực hiện',
     message: 'Tài nguyên không khớp phiên học. Vui lòng tải lại bài.',
   },
+  quizInvalid: {
+    status: 200,
+    code: 'LEARNING-QUIZ_INVALID',
+    title: 'Bài kiểm tra chưa hợp lệ',
+    message:
+      'Bài kiểm tra không tồn tại, đã bị xóa hoặc không thuộc khóa học này.',
+  },
+  quizLessonUnlinked: {
+    status: 200,
+    code: 'LEARNING-QUIZ_LESSON_UNLINKED',
+    title: 'Chưa thể xuất bản',
+    message:
+      'Có bài học loại kiểm tra chưa chọn bài kiểm tra đã xuất bản của khóa học.',
+  },
   assetProcessing: {
     status: 200,
     code: 'LEARNING-ASSET_PROCESSING',

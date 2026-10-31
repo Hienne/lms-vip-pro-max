@@ -1,0 +1,117 @@
+<ui-page-header
+  title="Bài kiểm tra"
+  description="Bài kiểm tra của các khóa bạn đang học và các lượt thi đã làm."
+>
+  <button
+    slot="actions"
+    uiButton
+    [disabled]="store.isExporting$() || !store.groups$().length"
+    (click)="store.exportCsv()"
+  >
+    <ui-icon name="download" />Tải CSV
+  </button>
+</ui-page-header>
+
+@if (store.loadError$(); as error) {
+<ui-error-state
+  title="Không tải được bài kiểm tra"
+  [message]="error.message"
+  (retry)="store.retry()"
+/>
+} @else if (store.isLoading$()) {
+<div class="hub__loading" aria-busy="true">
+  <div uiSkeleton variant="text"></div>
+  <div uiSkeleton variant="block"></div>
+</div>
+} @else {
+<section aria-labelledby="hub-open">
+  <h2 id="hub-open" class="hub__heading">Trong khóa đang học</h2>
+  @if (store.quizzes$().length) {
+  <ul class="hub__list">
+    @for (quiz of store.quizzes$(); track quiz.quizId) {
+    <li class="hub__row">
+      <div class="hub__main">
+        <a class="hub__title" [routerLink]="['/quiz', quiz.quizId]"
+          >{{ quiz.title }}</a
+        >
+        <p class="hub__meta">
+          {{ quiz.courseTitle }} · Điểm đạt ≥ {{ quiz.passPercent }}% · {{
+          quiz.passed ? 'Đã đạt' : 'Còn ' + quiz.attemptsLeft + ' lượt' }} @if
+          (quiz.bestScore !== null) { · Cao nhất {{ quiz.bestScore | fmtScore
+          }}% }
+        </p>
+        @if (quiz.blockText; as reason) {
+        <p class="hub__meta">{{ reason }}</p>
+        }
+      </div>
+      <a uiButton size="sm" [routerLink]="['/quiz', quiz.quizId]"
+        >{{ !quiz.canStart ? 'Xem thông tin' : quiz.resuming ? 'Tiếp tục' : 'Vào
+        thi' }}</a
+      >
+    </li>
+    }
+  </ul>
+  } @else {
+  <ui-empty
+    title="Chưa có bài kiểm tra nào đang mở"
+    description="Bài kiểm tra nằm trong từng khóa học. Mở một khóa bạn đang học để xem."
+  >
+    <a uiButton routerLink="/catalog">Xem danh mục khóa học</a>
+  </ui-empty>
+  }
+</section>
+
+<section aria-labelledby="hub-history">
+  <h2 id="hub-history" class="hub__heading">Các lượt thi đã làm</h2>
+  @for (group of store.groups$(); track group.quizId) {
+  <div class="hub__group">
+    <div class="hub__group-head">
+      <a class="hub__title" [routerLink]="['/quiz', group.quizId]"
+        >{{ group.title }}</a
+      >
+      <span class="hub__meta">{{ group.attemptCount }} lượt</span>
+    </div>
+    <ul class="hub__list">
+      @for (attempt of group.recent; track attempt.attemptId) {
+      <li class="hub__attempt">
+        <span class="hub__attempt-no">Lượt {{ attempt.attemptNo }}</span>
+        <span class="hub__meta"
+          >{{ attempt.submittedAt ? (attempt.submittedAt | fmtDatetime) : 'Đang
+          làm' }}</span
+        >
+        <span class="hub__score">
+          @if (attempt.scorePercent !== null) { {{ attempt.scorePercent |
+          fmtScore }}% }
+        </span>
+        @if (attempt.passed === true) {
+        <span uiBadge tone="success"><ui-icon name="check" />Đạt</span>
+        } @else if (attempt.passed === false) {
+        <span uiBadge tone="danger"><ui-icon name="x" />Chưa đạt</span>
+        } @if (attempt.status === 'IN_PROGRESS') {
+        <a uiLinkButton [routerLink]="['/quiz', group.quizId, 'take']"
+          >Tiếp tục</a
+        >
+        } @else if (attempt.status !== 'VOIDED') {
+        <a
+          uiLinkButton
+          [routerLink]="['/quiz', group.quizId, 'result', attempt.attemptId]"
+          >Chi tiết</a
+        >
+        }
+      </li>
+      }
+    </ul>
+    @if (group.attemptCount > perQuiz) {
+    <a uiLinkButton [routerLink]="['/quiz', group.quizId, 'attempts']"
+      >Xem cả {{ group.attemptCount }} lượt thi</a
+    >
+    }
+  </div>
+  } @empty {
+  <ui-empty
+    title="Chưa có lần thi nào"
+    description="Các lượt thi của bạn sẽ hiển thị tại đây."
+  />
+  }
+</section>
+}

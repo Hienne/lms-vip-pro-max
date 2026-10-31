@@ -10,6 +10,7 @@ import {
   type AnyEndpoint,
   identityEndpoints,
   knowledgeEndpoints,
+  learnerQuizEndpoints,
   organizationEndpoints,
   shellEndpoints,
 } from '@lms/contracts';
@@ -37,6 +38,7 @@ const everyEndpoint: readonly AnyEndpoint[] = [
   ...Object.values(communityEndpoints),
   ...Object.values(identityEndpoints),
   ...Object.values(knowledgeEndpoints),
+  ...Object.values(learnerQuizEndpoints),
   ...Object.values(organizationEndpoints),
   ...Object.values(personalEndpoints),
   ...Object.values(reportEndpoints),

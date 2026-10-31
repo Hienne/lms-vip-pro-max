@@ -21,6 +21,7 @@ import {
   COURSE_LIMITS,
   type BlockType,
   type LibraryAsset,
+  type QuizSummary,
 } from '@lms/contracts';
 import {
   Alert,
@@ -59,12 +60,15 @@ import {
 
 /** A block as the form edits it: process steps as one line each, "Tiêu đề | Mô tả". */
 type BlockFormValue = Omit<BlockValue, 'steps'> & { stepsText: string };
-type LessonFormValue = Omit<LessonValue, 'blocks'> & {
+type LessonFormValue = Omit<LessonValue, 'blocks' | 'quizId'> & {
+  /** The chosen quiz's id as the select holds it; empty when none. */
+  quizId: string;
   blocks: BlockFormValue[];
 };
 
 const toFormValue = (lesson: LessonValue): LessonFormValue => ({
   ...lesson,
+  quizId: lesson.quizId === null ? '' : String(lesson.quizId),
   blocks: lesson.blocks.map(({ steps, ...block }) => ({
     ...block,
     stepsText: steps
@@ -81,6 +85,23 @@ const toSteps = (text: string) =>
       const [title, ...rest] = line.split('|');
       return { title: title.trim(), description: rest.join('|').trim() };
     });
+
+const QUIZ_TYPE: Record<QuizSummary['quizType'], string> = {
+  PRACTICE: 'Luyện tập',
+  FINAL_EXAM: 'Thi cuối khóa',
+};
+
+const QUIZ_STATUS: Record<QuizSummary['status'], string> = {
+  DRAFT: 'Nháp',
+  PUBLISHED: 'Đã xuất bản',
+  CLOSED: 'Đã đóng',
+};
+
+/** One quiz in the select; only a published quiz can be published with the course, the rest say so. */
+const quizLabel = (quiz: QuizSummary): string =>
+  quiz.status === 'PUBLISHED'
+    ? `${quiz.title} · ${QUIZ_TYPE[quiz.quizType]}`
+    : `${quiz.title} · ${QUIZ_TYPE[quiz.quizType]} · ${QUIZ_STATUS[quiz.status]}, chưa thể xuất bản`;
 
 /**
  * The lesson drawer (the mockup's `lessonDrawer`): title, length, kind and the content blocks,
@@ -163,6 +184,23 @@ export class LessonForm {
         withUpload(block, uploads[block.key]),
       ]),
     );
+  });
+
+  /** The course's quizzes to pick from; the chosen one stays listed even when it is no longer there. */
+  protected readonly quizOptions = computed(() => {
+    const options = this.store
+      .quizzes$()
+      .map((quiz) => ({ value: String(quiz.id), label: quizLabel(quiz) }));
+    const chosen = this.model().quizId;
+    return chosen && !options.some((o) => o.value === chosen)
+      ? [
+          ...options,
+          {
+            value: chosen,
+            label: `Bài kiểm tra #${chosen} (không thuộc khóa học này)`,
+          },
+        ]
+      : options;
   });
 
   /** File blocks (attachments aside) without their file: the lesson cannot be applied. */
@@ -251,6 +289,10 @@ export class LessonForm {
     const files = this.files();
     this.submitted.emit({
       ...value,
+      quizId:
+        value.lessonType === 'quiz' && value.quizId
+          ? Number(value.quizId)
+          : null,
       title: value.title.trim(),
       blocks: value.blocks.map(({ stepsText, ...block }) => ({
         ...block,

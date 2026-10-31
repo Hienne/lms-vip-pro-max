@@ -5,6 +5,7 @@ import {
   Breadcrumb,
   Button,
   Card,
+  CardBody,
   Empty,
   ErrorState,
   FmtDatePipe,
@@ -16,6 +17,7 @@ import {
 } from '@lms/ui';
 import { DueDate } from '../../../shared/course/due-date';
 import { RequiredMark } from '../../../shared/course/required-mark';
+import { QuizCard } from '../../../shared/quiz/quiz-card/quiz-card';
 import { CourseOutline } from './components/course-outline/course-outline';
 import { CourseStore } from './data-access/course.store';
 
@@ -27,6 +29,7 @@ import { CourseStore } from './data-access/course.store';
     Breadcrumb,
     Button,
     Card,
+    CardBody,
     CourseOutline,
     DueDate,
     Empty,
@@ -34,6 +37,7 @@ import { CourseStore } from './data-access/course.store';
     FmtDatePipe,
     FmtMinutesPipe,
     PageHeader,
+    QuizCard,
     RequiredMark,
     Ring,
     RouterLink,

@@ -35,11 +35,34 @@
   </ui-field>
 
   @if (lessonForm.lessonType().value() === 'quiz') {
-  <ui-alert tone="info" [announce]="false">
-    Bài kiểm tra hoàn thành khi học viên đạt điểm. Câu hỏi và điểm đạt cấu hình
-    ở màn Bài kiểm tra; bài này không cần khối nội dung.
+  <ui-field
+    label="Bài kiểm tra"
+    hint="Bài hoàn thành khi học viên đạt bài kiểm tra này. Bài kiểm tra phải đã xuất bản để xuất bản khóa học."
+  >
+    <select uiSelect [formField]="lessonForm.quizId">
+      <option value="" [selected]="lessonForm.quizId().value() === ''">
+        — Chưa chọn —
+      </option>
+      @for (option of quizOptions(); track option.value) {
+      <option
+        [value]="option.value"
+        [selected]="lessonForm.quizId().value() === option.value"
+      >
+        {{ option.label }}
+      </option>
+      }
+    </select>
+  </ui-field>
+  @if (store.quizzesError$(); as error) {
+  <ui-alert tone="danger">
+    Không tải được danh sách bài kiểm tra: {{ error.message }}
   </ui-alert>
-  } @else {
+  } @else if (!quizOptions().length) {
+  <ui-alert tone="info" [announce]="false">
+    Khóa học chưa có bài kiểm tra. Tạo bài kiểm tra cho khóa học ở màn Bài kiểm
+    tra rồi quay lại chọn.
+  </ui-alert>
+  } } @else {
   <section class="lesson-form__blocks" aria-label="Khối nội dung">
     <h3 class="lesson-form__heading">
       Khối nội dung ({{ lessonForm.blocks().value().length }})
