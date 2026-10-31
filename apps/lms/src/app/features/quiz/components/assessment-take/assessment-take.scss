@@ -106,6 +106,8 @@
     @include ui.stack(4);
     @include ui.text(sm);
     align-self: start;
+    // The grid is sized for the sidebar column; stacked below `lg` it keeps that width.
+    max-width: 18.75rem;
 
     @include ui.bp(lg) {
       position: sticky;

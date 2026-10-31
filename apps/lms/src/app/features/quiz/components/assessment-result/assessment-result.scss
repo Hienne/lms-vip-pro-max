@@ -45,10 +45,24 @@
 
   &__competency {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) 2fr 3rem;
-    gap: ui.space(3);
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: ui.space(1) ui.space(3);
     align-items: center;
     @include ui.text(sm);
+
+    ui-progress {
+      grid-row: 2;
+      grid-column: 1 / -1;
+    }
+
+    @include ui.bp(sm) {
+      grid-template-columns: minmax(0, 1fr) 2fr 3rem;
+
+      ui-progress {
+        grid-row: auto;
+        grid-column: auto;
+      }
+    }
 
     strong {
       @include ui.num;

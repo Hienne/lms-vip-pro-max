@@ -182,12 +182,12 @@ Each backend test file is a DB-backed integration test that extends `AssessmentI
 
 ### Checkpoint B
 
-- [ ] `npm run check` green.
-- [ ] On `lms-local` as `hocvien`:
+- [x] `npm run check` green (fourth run, commit `febc7c4`).
+- [x] On `lms-local` as `hocvien` (checked 2026-10-31; `quantri` sees the admin menu and no quiz menu):
   - the "Làm bài kiểm tra" menu shows;
   - the final exam of `FE-DEMO-C1` can be taken end to end, including a reload in the middle;
   - the network panel shows only `/api/v1/me/…` calls for quizzes.
-- [ ] On `mockBackend: true` as an admin, the admin question and quiz screens still work.
+- [x] On `mockBackend: true` as an admin, the admin question and quiz screens still work.
 
 ## Phase 3: Course, player, editor
 

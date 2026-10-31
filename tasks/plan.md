@@ -130,8 +130,8 @@ The admin question and quiz screens stay on mock (the spec's open question 1, at
 
 ### Checkpoint B
 
-- [ ] `npm run check` green.
-- [ ] On `lms-local`, the quiz menu shows and a quiz can be taken end to end in the browser.
+- [x] `npm run check` green.
+- [x] On `lms-local`, the quiz menu shows and a quiz can be taken end to end in the browser.
 
 ### Phase 3: Course, player, editor
 
