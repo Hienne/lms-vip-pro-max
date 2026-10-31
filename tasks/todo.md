@@ -107,16 +107,16 @@ under `apps/lms/src/app/features/quiz/` unless they say otherwise.
 
 ### Checkpoint 0
 
-- [ ] `npm run check` and `mvn clean verify` green.
-- [ ] On `lms-local`, as `hocvien.tichhop`:
+- [x] `npm run check` and `mvn clean verify` green.
+- [x] On `lms-local`, as `hocvien.tichhop`:
   - take the practice quiz (it allows 20 attempts), so no final-exam attempt is spent;
   - open an old failed result after a pass;
   - see the hub.
-- [ ] Stop for the main session's review of the Phase 0 diff before T1.
+- [x] Stop for the main session's review of the Phase 0 diff before T1.
 
 ## Phase 1: Backend
 
-- [ ] **T1: `failed` through the quiz port, and the D3 card fields**
+- [x] **T1: `failed` through the quiz port, and the D3 card fields**
   - Acceptance:
     - `LearningQuizDirectory.failedFinalExamCourseIds(String userId)` returns the courses whose PUBLISHED,
       not deleted FINAL_EXAM the user attempted (at least one graded `SUBMITTED` or `AUTO_SUBMITTED` attempt)

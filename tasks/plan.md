@@ -126,12 +126,12 @@ No schema change, so no upgrade script.
 
 ### Checkpoint 0
 
-- [ ] `npm run check` and `mvn clean verify` green; the quiz screens checked on `lms-local`.
-- [ ] Main session reviews the Phase 0 diff before T1.
+- [x] `npm run check` and `mvn clean verify` green; the quiz screens checked on `lms-local`.
+- [x] Main session reviews the Phase 0 diff before T1.
 
 ### Phase 1: Backend
 
-- [ ] T1: `failed` through the quiz port, and the D3 card fields
+- [x] T1: `failed` through the quiz port, and the D3 card fields
 - [ ] T2: `assigned`, `failed` and `overdue` filters on both lists and the export
 - [ ] T3: `GET /me/learning/facets`
 - [ ] T4: `GET /me/learning/courses/{courseId}`
