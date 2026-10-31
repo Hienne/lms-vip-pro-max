@@ -106,6 +106,25 @@ project run the Nx target directly (`npx nx test ui`).
 | `npm run ci:check`                              | CI only: `nx affected -t lint typecheck test build` (needs `NX_BASE`/`NX_HEAD`) |
 | `npm run ci:build`                              | CI only: production + staging builds                                            |
 
+### Run against a local backend
+
+To work with no network at all, run the backend from `~/my-projects/corebanking-academy` on this machine, with its
+own Postgres and S3 (MinIO) in Docker. The backend's `docs/sql/README.md`, section "Chạy local", has the steps:
+`compose.local.yaml`, `scripts/local-db-init.sh` (baselines and demo data), `mvn spring-boot:run` with `.env.local`
+loaded, then `scripts/local-seed-media.sh` and `scripts/local-smoke.sh`. Then, here:
+
+```bash
+LMS_API_TARGET=http://localhost:8019 npm start
+```
+
+`apps/lms/proxy.conf.mjs` already reads `LMS_API_TARGET`; no code changes. The `lms-local` entry in
+`.claude/launch.json` starts the same server for the browser preview.
+
+Sign in with the seeded accounts: `hocvien` (learner), `giangvien` (instructor), `quantri` (admin), `quantri.ban`
+(unit admin), `baocao` (report viewer). Their password is in the backend's `docs/sql/README.md` ("Đăng nhập demo")
+and in its git-ignored `.env.local` as `LOCAL_DEMO_PASSWORD`. The local data has the `FE-DEMO-*` courses, quizzes
+in two of them, and the course `DEMO-MEDIA` with a PDF and a video lesson.
+
 ## Environments
 
 | Configuration                        | Environment file                           | Built by                         |
