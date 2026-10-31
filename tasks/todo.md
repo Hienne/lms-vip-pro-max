@@ -117,7 +117,7 @@ Each backend test file is a DB-backed integration test that extends `AssessmentI
     `completed`.
   - Run on a throwaway copy of the DB (`flow_check`, backend on :8039) using `FE-DEMO-C2`, because its final exam is
     the one that needs the other lessons done first; `FE-DEMO-C1` was only listed (lessonId filled).
-- [ ] Show the backend diff to the user before Phase 2.
+- [x] Show the backend diff to the user before Phase 2 (approved 2026-10-31: "Duyệt, làm Phase 2").
 
 ## Phase 2: App
 
