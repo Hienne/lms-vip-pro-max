@@ -171,7 +171,7 @@ under `apps/lms/src/app/features/quiz/` unless they say otherwise.
     the new IT.
   - Size: S–M. Depends on: T2.
 
-- [ ] **T4: `GET /api/v1/me/learning/courses/{courseId}`**
+- [x] **T4: `GET /api/v1/me/learning/courses/{courseId}`**
   - Acceptance:
     - Returns `LearnerCourse { card, content }`. `card` comes from the `CATALOG` search with a `courseId`
       filter. `content` is `LearningContentService.detail` of the card's revision.
