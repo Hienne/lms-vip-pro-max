@@ -13,12 +13,13 @@ command line or a log.
 
 ## Phase 1: Local services
 
-- [ ] **T1: Local Postgres + MinIO with a bucket (BE)**
+- [x] **T1: Local Postgres + MinIO with a bucket (BE)**
   - Acceptance:
     - `compose.local.yaml` adds three services, alongside `db` from `compose.yaml`:
-      - `s3`: `minio/minio` pinned to a release tag, on `127.0.0.1:9000` and `:9001`, with volume
+      - `s3`: `bitnamilegacy/minio` pinned to a tag (the official `minio/*` images are no longer
+        pullable), on `127.0.0.1:9000` and `:9001`, with volume
         `core_academy_s3` and a healthcheck.
-      - `s3-init`: `minio/mc`, run once. It creates bucket `academy-media` and a user whose policy covers only
+      - `s3-init`: same image (it bundles `mc`), run once. It creates bucket `academy-media` and a user whose policy covers only
         that bucket.
     - `.env.local.example` lists every key the backend reads, with local values (`DB_URL` on `localhost:5432`,
       `S3_ENDPOINT=http://localhost:9000`, `S3_PATH_STYLE_ACCESS=true`) and `change-me` placeholders for secrets.

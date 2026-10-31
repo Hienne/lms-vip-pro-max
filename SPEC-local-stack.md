@@ -84,7 +84,10 @@ There is no unit test, because this module is configuration and scripts. Verific
 - **Always:** keep `.env.local` out of git. It is already covered if `.gitignore` has `.env*`; check this and add
   it if it is missing. Keep the demo SQL dev/test only, under the same header warnings as
   `learning_hub_learning_demo.sql`.
-- **Ask first:** the MinIO image. `minio/minio` is a new container, but not a Maven or npm dependency.
+- **Ask first:** the MinIO image. It is a new container, but not a Maven or npm dependency. The image is
+  `bitnamilegacy/minio` (pinned tag, includes `mc`). The official `minio/minio` and `minio/mc` images can no longer
+  be pulled (Docker Hub and quay.io both refuse). This image is frozen and gets no security updates, which is
+  acceptable for local-only use on loopback ports.
 - **Never:**
   - change `.env` or the shared DB;
   - seed users beyond the Identity baseline;

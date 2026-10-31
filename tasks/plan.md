@@ -39,9 +39,10 @@ docs section and one launch entry.
 
 ## Architecture decisions
 
-- **MinIO image.** Local S3 is the community `minio/minio` image, pinned to a release tag. Production's AIStor
-  needs a licence and is S3-compatible, and the backend uses the MinIO Java SDK either way.
-- **Bucket creation.** A one-shot `minio/mc` service creates the bucket and a bucket-scoped access key. This
+- **MinIO image.** Local S3 is `bitnamilegacy/minio`, pinned to tag `2025.7.23-debian-12-r5`. The official
+  `minio/minio` and `minio/mc` images can no longer be pulled, and this image is frozen with no security updates,
+  which is acceptable for local-only use. Production's AIStor needs a licence and is S3-compatible, and the backend uses the MinIO Java SDK either way.
+- **Bucket creation.** A one-shot `s3-init` service (same image, which bundles `mc`) creates the bucket and a bucket-scoped access key. This
   mirrors production, where the backend does not use the root account.
 - **Local environment.** `.env.local` is loaded into the shell (`set -a; . ./.env.local`). Environment variables
   win over the `optional:file:./.env` import in `application.yml`, so `.env` keeps working for anyone who uses the
