@@ -2,13 +2,9 @@ import {
   assessmentEndpoints as e,
   SaveQuestionSchema,
   SaveQuizConfigSchema,
-  SaveAnswerSchema,
-  TakeQuestionSchema,
   type AnyEndpoint,
   type Question,
   type QuizConfig,
-  type AttemptSnapshot,
-  type AttemptResult,
 } from '@lms/contracts';
 import type { FakeRequest, FakeReply } from '../backend/fake-backend';
 import { envelopeOk, envelopeError } from '../envelope';
@@ -88,62 +84,10 @@ export const assessmentQuizFixture: QuizConfig = {
   version: 1,
 };
 const course = { id: 'c1', title: 'Nghiệp vụ CIF' };
-const summary = {
-  attempts: 1,
-  left: 2,
-  last: 50,
-  best: 50,
-  passed: false,
-  maxAttempts: 3,
-  nextAllowedAt: null,
-};
-/** Fixed computed result: the FE mock never implements scoring or competency calculations. */
-export const assessmentResultFixture: AttemptResult = {
-  attempt: {
-    id: 'at-demo',
-    nth: 1,
-    score: 50,
-    passed: false,
-    correctCount: 1,
-    total: 2,
-    startedAt: '2026-10-19T02:00:00Z',
-    submittedAt: '2026-10-19T02:15:00Z',
-    minutes: 15,
-    autoSubmitted: false,
-  },
-  quiz: {
-    id: 'q1',
-    title: assessmentQuizFixture.title,
-    courseId: 'c1',
-    passPct: 80,
-  },
-  course,
-  summary,
-  competency: [{ name: 'Quản lý CIF', correctCount: 1, total: 2 }],
-  reviewAllowed: true,
-  reviewMessage: null,
-  review: assessmentQuestionFixtures.map((q, index) => ({
-    number: index + 1,
-    questionId: q.id,
-    code: q.code,
-    text: q.text,
-    type: q.type,
-    options: q.options,
-    mine: index === 0 ? ['o1'] : ['a', 'b'],
-    correctOptionIds: q.correctOptionIds,
-    ok: index !== 0,
-    explanation: q.explanation,
-  })),
-  courseCompleted: false,
-  certificateId: null,
-};
-
 /** Stateful mock for proposed FE contracts; browser-memory only, no Java implementation. */
 export class AssessmentMock {
   private questions = structuredClone(assessmentQuestionFixtures);
   private quizzes = [structuredClone(assessmentQuizFixture)];
-  private readonly attempts = new Map<string, AttemptSnapshot>();
-  private readonly sequences = new Map<string, number>();
   answers(endpoint: AnyEndpoint): boolean {
     return Object.values(e).some((item) => item === endpoint);
   }
@@ -152,7 +96,6 @@ export class AssessmentMock {
     const { params: p, query: q, body } = request;
     const quiz =
       this.quizzes.find((item) => item.id === p['quizId']) ?? this.quizzes[0];
-    const key = `${request.token ?? 'demo'}:${quiz.id}`;
     const page = <T>(items: T[]) => {
       const size = Math.min(100, Math.max(1, Number(q['size']) || 20));
       const index = Math.max(0, Number(q['page']) || 0);
@@ -271,107 +214,6 @@ export class AssessmentMock {
         item,
       ];
       return ok(item);
-    }
-    if (endpoint === e.quizIntro)
-      return ok({
-        quiz: { ...quiz, hasMultiple: true },
-        course,
-        summary,
-        block: null,
-        pendingAttemptId:
-          this.attempts.get(key)?.attempt.status === 'in_progress'
-            ? this.attempts.get(key)?.attempt.id
-            : null,
-        lessonsDone: true,
-      });
-    if (endpoint === e.currentAttempt) {
-      const attempt = this.attempts.get(key);
-      return ok(attempt ? { ...attempt, serverNow: now() } : null);
-    }
-    if (endpoint === e.startAttempt) {
-      let attempt = this.attempts.get(key);
-      if (!attempt || attempt.attempt.status === 'submitted') {
-        attempt = {
-          attempt: {
-            id: crypto.randomUUID(),
-            quizId: quiz.id,
-            startedAt: now(),
-            deadlineAt: new Date(
-              Date.now() + quiz.minutes * 60000,
-            ).toISOString(),
-            revision: 0,
-            answers: {},
-            flags: [],
-            status: 'in_progress',
-          },
-          quiz,
-          questions: this.questions
-            .filter((item) => quiz.questionIds.includes(item.id))
-            .map((item) => TakeQuestionSchema.parse(item)),
-          serverNow: now(),
-        };
-        this.attempts.set(key, attempt);
-      }
-      return ok({ ...attempt, serverNow: now() });
-    }
-    const snapshot = [...this.attempts.values()].find(
-      (item) => item.attempt.id === p['attemptId'],
-    );
-    if (endpoint === e.saveAnswer) {
-      if (!snapshot || snapshot.attempt.status !== 'in_progress')
-        return fail('Lượt thi không còn cho phép lưu đáp án.');
-      const parsed = SaveAnswerSchema.safeParse(body);
-      if (!parsed.success) return fail('Đáp án chưa hợp lệ.');
-      const command = parsed.data;
-      const questionId = p['questionId'];
-      if (command.clientSeq < (this.sequences.get(snapshot.attempt.id) ?? 0))
-        return fail('Có thay đổi mới hơn. Hãy tải lại lượt thi.');
-      this.sequences.set(snapshot.attempt.id, command.clientSeq);
-      snapshot.attempt.answers[questionId] = command.optionIds;
-      snapshot.attempt.flags = snapshot.attempt.flags.filter(
-        (id) => id !== questionId,
-      );
-      if (command.flagged) snapshot.attempt.flags.push(questionId);
-      snapshot.attempt.revision = command.clientSeq;
-      return ok({
-        questionId,
-        optionIds: command.optionIds,
-        flagged: command.flagged,
-        revision: command.clientSeq,
-        savedAt: now(),
-        serverNow: now(),
-      });
-    }
-    if (endpoint === e.submitAttempt) {
-      if (!snapshot) return fail('Không tìm thấy lượt thi.');
-      snapshot.attempt.status = 'submitted';
-      return ok({
-        attemptId: snapshot.attempt.id,
-        quizId: snapshot.quiz.id,
-        status: 'submitted',
-        submittedAt: now(),
-        autoSubmitted: false,
-        resultPath: `/quiz/${snapshot.quiz.id}/result/${snapshot.attempt.id}`,
-      });
-    }
-    if (endpoint === e.attempts)
-      return ok({
-        quiz,
-        summary,
-        attempts: page([assessmentResultFixture.attempt]),
-      });
-    if (endpoint === e.attemptResult) {
-      const allowed = quiz.reviewPolicy === 'after_submit';
-      return ok({
-        ...assessmentResultFixture,
-        attempt: { ...assessmentResultFixture.attempt, id: p['attemptId'] },
-        quiz,
-        reviewAllowed: allowed,
-        review: allowed ? assessmentResultFixture.review : null,
-        reviewMessage: allowed
-          ? null
-          : 'Đáp án chưa được phép hiển thị theo chính sách của bài kiểm tra.',
-      });
     }
     return undefined;
   }

@@ -1,0 +1,116 @@
+@let r = result();
+<ui-page-header
+  [title]="r.passed ? 'Bạn đã đạt' : 'Chưa đạt'"
+  [description]="message()"
+>
+  <ui-breadcrumb slot="breadcrumb" [items]="crumbs()" />
+  <div slot="actions" class="result__actions">
+    <a uiButton [routerLink]="['/quiz', r.quizId, 'attempts']">
+      <ui-icon name="history" size="sm" />Lịch sử thi
+    </a>
+    @if (canRetry()) {
+    <a uiButton [routerLink]="['/quiz', r.quizId]">
+      <ui-icon name="rotate-ccw" size="sm" />Thi lại
+    </a>
+    }
+    <a uiButton variant="primary" [routerLink]="['/course', r.courseId]"
+      >Về khóa học</a
+    >
+  </div>
+</ui-page-header>
+
+<section class="result__score" aria-label="Điểm">
+  <p class="result__percent">{{ r.scorePercent | fmtScore }}%</p>
+  <p class="result__detail">
+    {{ r.correctCount }}/{{ r.totalQuestions }} câu đúng · điểm đạt {{
+    r.passPercent | fmtScore }}%
+    <span uiBadge [tone]="r.passed ? 'success' : 'danger'">
+      <ui-icon [name]="r.passed ? 'check' : 'x'" size="sm" />{{ r.passed ? 'Đạt'
+      : 'Chưa đạt' }}
+    </span>
+  </p>
+  <p class="result__meta">
+    Lần thi {{ r.attemptNo }}/{{ r.summary.maxAttempts + r.summary.extraAttempts
+    }} @if (r.summary.bestScore !== null) { · Điểm cao nhất {{
+    r.summary.bestScore | fmtScore }}% } @if (r.submittedAt) { · Nộp {{
+    r.submittedAt | fmtDatetime }} } @if (autoSubmitted()) { · Tự động nộp khi
+    hết giờ }
+  </p>
+</section>
+
+<section uiCard class="result__section" aria-labelledby="result-competency">
+  <header uiCardHeader>
+    <h2 id="result-competency">Phân tích theo nhóm kiến thức</h2>
+  </header>
+  <div uiCardBody class="result__competencies">
+    @for (c of competencies(); track c.competencyId) {
+    <div class="result__competency">
+      <span>{{ c.name }}</span>
+      <ui-progress
+        size="sm"
+        [value]="c.percent"
+        [tone]="c.percent >= r.passPercent ? 'success' : 'warning'"
+        [label]="c.name"
+      />
+      <strong>{{ c.correctCount }}/{{ c.totalQuestions }}</strong>
+    </div>
+    } @empty {
+    <p class="result__muted">Bài kiểm tra này chưa gắn nhóm kiến thức.</p>
+    }
+  </div>
+</section>
+
+<section uiCard class="result__section" aria-labelledby="result-review">
+  <header uiCardHeader>
+    <h2 id="result-review">Đáp án và giải thích</h2>
+    @if (r.review) {
+    <button
+      uiButton
+      size="sm"
+      [attr.aria-expanded]="reviewOpen()"
+      (click)="reviewOpenChange.emit(!reviewOpen())"
+    >
+      {{ reviewOpen() ? 'Thu gọn' : 'Xem lại' }}
+    </button>
+    }
+  </header>
+  <div uiCardBody>
+    @if (!r.review) {
+    <ui-alert tone="info">{{ reviewNote() }}</ui-alert>
+    } @else if (!reviewOpen()) {
+    <p class="result__muted">
+      Nhấn “Xem lại” để xem từng câu, đáp án bạn chọn, đáp án đúng và giải
+      thích.
+    </p>
+    } @else {
+    <ol class="result__review">
+      @for (item of r.review; track item.displayOrder) {
+      <li class="result__question">
+        <p class="result__question-head">
+          <span uiBadge [tone]="item.correct ? 'success' : 'danger'">
+            <ui-icon [name]="item.correct ? 'check' : 'x'" size="sm" />{{
+            item.correct ? 'Đúng' : 'Sai' }}
+          </span>
+          <span class="result__muted"
+            >Câu {{ item.displayOrder }} · {{ item.questionType === 'MULTIPLE' ?
+            'Nhiều đáp án' : 'Một đáp án' }}</span
+          >
+        </p>
+        <strong>{{ item.content }}</strong>
+        @for (option of item.options; track option.id) {
+        <ui-option-card
+          [title]="option.content"
+          [tone]="option.correct ? 'correct' : option.selected ? 'wrong' : 'neutral'"
+          [chosen]="option.selected"
+        />
+        } @if (item.explanation) {
+        <ui-alert tone="info"
+          ><strong>Giải thích:</strong> {{ item.explanation }}</ui-alert
+        >
+        }
+      </li>
+      }
+    </ol>
+    }
+  </div>
+</section>

@@ -47,7 +47,13 @@ import { QuizTakeStore } from '../data-access/quiz-take.store';
     }
   `,
   styleUrl: './quiz-take.scss',
+  host: { '(document:keydown)': 'store.handleKey($event)' },
 })
 export class QuizTake {
   protected readonly store = inject(QuizTakeStore);
+
+  /** The leave guard asks before the learner walks away from a running attempt. */
+  hasUnsavedChanges(): boolean {
+    return this.store.inProgress$();
+  }
 }

@@ -44,7 +44,8 @@
     <h1 class="take__heading" id="question-heading">{{ q.content }}</h1>
     <p class="take__hint">
       {{ q.questionType === 'MULTIPLE' ? 'Chọn TẤT CẢ đáp án đúng (có thể nhiều
-      hơn 1).' : 'Chọn 1 đáp án đúng.' }}
+      hơn 1).' : 'Chọn 1 đáp án đúng.' }} Phím tắt: 1–{{ q.options.length }}
+      chọn, ← → chuyển câu.
     </p>
     <fieldset class="take__answers">
       <legend class="sr-only">Phương án trả lời</legend>

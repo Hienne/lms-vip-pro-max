@@ -180,8 +180,8 @@ export const SCREEN_TABLE = {
           mockupPage: 'quizResult',
           load: () =>
             import(
-              '../../features/quiz/assessment-screen/assessment-screen'
-            ).then((m) => m.AssessmentScreen),
+              '../../features/quiz/learner-quiz/quiz-result/quiz-result'
+            ).then((m) => m.QuizResult),
         },
       ],
     },

@@ -156,7 +156,7 @@ Each backend test file is a DB-backed integration test that extends `AssessmentI
   - Files: store plus spec, the hub, intro and attempts components, `screens.ts`.
   - Size: M. Depends on: T6.
 
-- [ ] **T8: Learner quiz, part 2: take and result; trim `AssessmentScreen`**
+- [x] **T8: Learner quiz, part 2: take and result; trim `AssessmentScreen`**
   - Acceptance:
     - `assessment-take` and `assessment-result` move to `features/quiz/components/` and take the new schemas.
     - Take screen:

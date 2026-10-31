@@ -148,7 +148,7 @@ describe('QuizTake', () => {
 
   it('counts down to the server deadline on the server clock, whatever the device clock says', async () => {
     const serverNow = Date.now() + 3_600_000; // the device clock is an hour behind the server
-    const iso = (ms: number) => new Date(ms).toISOString().slice(0, 19);
+    const iso = (ms: number) => new Date(ms).toISOString();
     patchReply(handle, learnerQuizEndpoints.startAttempt, () => ({
       serverTime: iso(serverNow),
       deadlineAt: iso(serverNow + 600_000),
@@ -168,6 +168,38 @@ describe('QuizTake', () => {
     );
     await open();
     expect(calls(learnerQuizEndpoints.submitAttempt)).toHaveLength(1);
+  });
+
+  it('chooses an option and moves between questions with the keyboard', async () => {
+    await open();
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: '2' }));
+    await settle();
+    expect(calls(learnerQuizEndpoints.saveAnswer)[0][1].body).toMatchObject({
+      selectedOptionIds: [12],
+    });
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight' }));
+    await settle();
+    expect(text()).toContain('Câu 2 / 3');
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowLeft' }));
+    await settle();
+    expect(text()).toContain('Câu 1 / 3');
+  });
+
+  it('asks before the learner walks away from a running attempt, but not once it is submitted', async () => {
+    await open();
+    const page = harness.routeDebugElement!.componentInstance as {
+      hasUnsavedChanges(): boolean;
+    };
+    expect(page.hasUnsavedChanges()).toBe(true);
+    control('Nộp bài')!.click();
+    await settle();
+    Array.from(document.querySelectorAll<HTMLElement>('button'))
+      .find(
+        (b) => b.textContent?.trim() === 'Nộp bài' && b.closest('.dialog-pane'),
+      )!
+      .click();
+    await settle();
+    expect(page.hasUnsavedChanges()).toBe(false);
   });
 
   it('explains why a quiz that cannot start does not open', async () => {

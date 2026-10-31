@@ -115,12 +115,12 @@ export class QuizTakeStore {
     this.failed().size ? [...this.failed().values()][0] : undefined,
   );
 
-  // The clock. The deadline and the server's "now" arrive together; the difference between the
-  // server's "now" and this device's clock at that moment is kept, so a wrong device clock moves
-  // neither the deadline nor the countdown.
+  // The clock. The server sends the deadline and its own "now" together; their difference is the
+  // time left at that moment, and only the time passed on this device since then is subtracted.
+  // The device's clock is never compared with the server's, so a wrong one changes nothing.
   private readonly timing = linkedSignal<
     AttemptSession | undefined,
-    { readonly deadline: number; readonly offset: number } | undefined
+    { readonly leftMs: number; readonly receivedAt: number } | undefined
   >({
     source: this.session$,
     computation: (session) =>
@@ -131,14 +131,15 @@ export class QuizTakeStore {
   readonly seconds$ = computed((): number => {
     const timing = this.timing();
     if (!timing) return 0;
-    return Math.max(
-      0,
-      Math.ceil((timing.deadline - (this.now() + timing.offset)) / 1000),
-    );
+    const passed = Math.max(0, this.now() - timing.receivedAt);
+    return Math.max(0, Math.ceil((timing.leftMs - passed) / 1000));
   });
 
   private readonly jobs = new Subject<Job>();
-  private submitted = false;
+  private readonly done = signal(false);
+
+  /** An attempt is running on this screen: leaving it asks first, because the clock keeps going. */
+  readonly inProgress$ = computed(() => !!this.session$() && !this.done());
 
   constructor() {
     const timer = setInterval(() => this.now.set(this.clock()), 1000);
@@ -154,7 +155,7 @@ export class QuizTakeStore {
     // Time is up: the server grades what it has saved.
     effect(() => {
       const session = this.session$();
-      if (!session || this.submitted) return;
+      if (!session || this.done()) return;
       if (session.expired || this.seconds$() === 0)
         untracked(() => void this.submit(true));
     });
@@ -162,8 +163,8 @@ export class QuizTakeStore {
 
   private timingOf(deadlineAt: string, serverTime: string) {
     return {
-      deadline: Date.parse(deadlineAt),
-      offset: Date.parse(serverTime) - this.clock(),
+      leftMs: Date.parse(deadlineAt) - Date.parse(serverTime),
+      receivedAt: this.clock(),
     };
   }
 
@@ -198,6 +199,36 @@ export class QuizTakeStore {
       this.update(questionId, { flagged: !question.flagged });
   }
 
+  /** The mockup's shortcuts: 1–8 choose an option, the arrows move between questions. */
+  handleKey(event: KeyboardEvent): void {
+    const question = this.questions$()[this.current$()];
+    if (
+      !question ||
+      this.dialog.openDialogs.length ||
+      (event.target instanceof HTMLElement &&
+        event.target.matches(
+          'textarea,input:not([type=radio]):not([type=checkbox]),select,button',
+        ))
+    )
+      return;
+    if (event.key === 'ArrowRight') {
+      event.preventDefault();
+      this.goto(this.current$() + 1);
+    } else if (event.key === 'ArrowLeft') {
+      event.preventDefault();
+      this.goto(this.current$() - 1);
+    } else if (/^[1-8]$/.test(event.key)) {
+      const option = question.options[Number(event.key) - 1];
+      if (!option) return;
+      event.preventDefault();
+      this.chooseOption(
+        question.attemptQuestionId,
+        option.id,
+        !question.selectedOptionIds.includes(option.id),
+      );
+    }
+  }
+
   /** Sends again every choice whose last save failed. */
   retrySave(): void {
     for (const questionId of this.failed().keys())
@@ -205,7 +236,7 @@ export class QuizTakeStore {
   }
 
   async submit(auto = false): Promise<void> {
-    if (this.isSubmitting$() || this.submitted) return;
+    if (this.isSubmitting$() || this.done()) return;
     if (!auto) {
       const left = this.questions$().length - this.answeredCount$();
       const flagged = this.flaggedCount$();
@@ -306,7 +337,7 @@ export class QuizTakeStore {
       .call(learnerQuizEndpoints.submitAttempt, { params: { attemptId } })
       .pipe(
         tap((result) => {
-          this.submitted = true;
+          this.done.set(true);
           this.changes.results.bump();
           void this.router.navigate([
             '/quiz',

@@ -165,6 +165,8 @@ const SEED: readonly SeedQuiz[] = [
       id: 1,
       title: 'Luyện tập: Tổng quan hệ thống Core Banking',
       description: 'Bộ câu hỏi luyện tập, làm lại nhiều lần.',
+      // The canned result gets 2 of 3 right: this quiz fails it, so the retake path can be seen.
+      passPercent: 70,
     },
     courseId: 1,
     courseTitle: 'Tổng quan hệ thống Core Banking',
@@ -188,7 +190,8 @@ const SEED: readonly SeedQuiz[] = [
     courseTitle: 'Tổng quan hệ thống Core Banking',
     lessonId: 4,
     block: null,
-    questions: cifQuestions,
+    // Every question counts as right, so the final exam passes and then reports PASSED.
+    questions: cifQuestions.map((q) => ({ ...q, graded: true })),
   },
   {
     quiz: {
@@ -361,7 +364,7 @@ export class LearnerQuizMock {
     const graded = this.forQuiz(seed).filter((a) => a.submittedAt);
     const used = this.forQuiz(seed).length;
     const score = graded.length ? this.score(graded[0].seed) : null;
-    const passed = graded.length > 0;
+    const passed = score !== null && score >= seed.quiz.passPercent;
     return {
       maxAttempts: seed.quiz.maxAttempts,
       extraAttempts: 0,

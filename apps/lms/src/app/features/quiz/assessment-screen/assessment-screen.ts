@@ -1,5 +1,4 @@
 import { Component, inject, linkedSignal } from '@angular/core';
-import { DatePipe } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import {
   form,
@@ -41,8 +40,6 @@ import {
   SaveQuizConfigSchema,
   type SaveQuestion,
 } from '@lms/contracts';
-import { AssessmentTake } from './components/assessment-take/assessment-take';
-import { AssessmentResult } from './components/assessment-result/assessment-result';
 import { AssessmentScreenStore } from './data-access/assessment-screen.store';
 const questionSchema = SaveQuestionSchema.extend({
   lessonId: z.string(),
@@ -104,7 +101,6 @@ function localDate(iso: string): string {
 @Component({
   selector: 'app-assessment-screen',
   imports: [
-    DatePipe,
     RouterLink,
     FormField,
     Alert,
@@ -132,18 +128,10 @@ function localDate(iso: string): string {
     Select,
     Spinner,
     Textarea,
-    AssessmentTake,
-    AssessmentResult,
   ],
   providers: [AssessmentScreenStore],
   templateUrl: './assessment-screen.html',
   styleUrl: './assessment-screen.scss',
-  host: {
-    '[class.assessment--narrow]':
-      "['intro','result','history'].includes(store.routeScreen$())",
-    '[class.assessment--focus]': "store.routeScreen$() === 'take'",
-    '(document:keydown)': 'store.handleQuizKey($event)',
-  },
 })
 export class AssessmentScreen {
   hasUnsavedChanges(): boolean {
@@ -151,9 +139,7 @@ export class AssessmentScreen {
       (this.store.routeScreen$() === 'config' &&
         this.configForm().dirty() &&
         !this.store.isSaving$()) ||
-      (this.store.editorOpen$() && this.questionForm().dirty()) ||
-      (this.store.routeScreen$() === 'take' &&
-        this.store.snapshot$()?.attempt.status === 'in_progress')
+      (this.store.editorOpen$() && this.questionForm().dirty())
     );
   }
 
@@ -176,14 +162,6 @@ export class AssessmentScreen {
     { key: 'attempts', label: 'Lượt thi', sortable: false },
     { key: 'passRate', label: 'Tỷ lệ đạt', sortable: false },
     { key: 'status', label: 'Trạng thái', sortable: false },
-    { key: 'actions', label: '', sortable: false, kind: 'actions' },
-  ];
-  protected readonly historyColumns: readonly DataTableColumn[] = [
-    { key: 'nth', label: 'Lần thi', sortable: false },
-    { key: 'submittedAt', label: 'Thời điểm nộp', sortable: false },
-    { key: 'score', label: 'Điểm', sortable: false },
-    { key: 'correctCount', label: 'Số câu đúng', sortable: false },
-    { key: 'passed', label: 'Kết quả', sortable: false },
     { key: 'actions', label: '', sortable: false, kind: 'actions' },
   ];
   private readonly questionModel = linkedSignal(

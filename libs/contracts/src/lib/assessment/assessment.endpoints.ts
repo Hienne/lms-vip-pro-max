@@ -1,26 +1,18 @@
-// Proposed integration contracts for mockup api/admin.js and api/learner.js.
+// Proposed integration contracts for mockup api/admin.js (question bank and quiz settings).
 // Keep served: mock until each request/response has been agreed with the backend.
 import { z } from 'zod';
 import { defineEndpoint } from '../http/endpoint';
 import { PageQuerySchema, PageSchema } from '../http/page';
 import {
   AssessmentOptionsSchema,
-  AttemptHistorySchema,
-  AttemptResultSchema,
-  AttemptSnapshotSchema,
   QuestionSchema,
   QuizConfigSchema,
-  QuizIntroSchema,
   QuizListRowSchema,
-  SaveAnswerSchema,
-  SavedAnswerSchema,
   SaveQuestionSchema,
   SaveQuizConfigSchema,
-  SubmitAttemptSchema,
 } from './assessment.schema';
 const quizParams = z.object({ quizId: z.string() });
 const questionParams = z.object({ questionId: z.string() });
-const attemptParams = z.object({ attemptId: z.string() });
 export const assessmentEndpoints = {
   questions: defineEndpoint({
     method: 'get',
@@ -103,59 +95,6 @@ export const assessmentEndpoints = {
     path: '/api/admin/assessment-options',
     query: z.object({ courseId: z.string().optional() }),
     response: AssessmentOptionsSchema,
-    served: 'mock',
-  }),
-  quizIntro: defineEndpoint({
-    method: 'get',
-    path: '/api/quizzes/{quizId}/intro',
-    params: quizParams,
-    response: QuizIntroSchema,
-    served: 'mock',
-  }),
-  startAttempt: defineEndpoint({
-    method: 'post',
-    path: '/api/quizzes/{quizId}/attempts',
-    params: quizParams,
-    body: z.object({ requestId: z.string() }),
-    response: AttemptSnapshotSchema,
-    served: 'mock',
-  }),
-  currentAttempt: defineEndpoint({
-    method: 'get',
-    path: '/api/quizzes/{quizId}/attempts/current',
-    params: quizParams,
-    response: AttemptSnapshotSchema.nullable(),
-    served: 'mock',
-  }),
-  saveAnswer: defineEndpoint({
-    method: 'put',
-    path: '/api/attempts/{attemptId}/answers/{questionId}',
-    params: attemptParams.extend({ questionId: z.string() }),
-    body: SaveAnswerSchema,
-    response: SavedAnswerSchema,
-    served: 'mock',
-  }),
-  submitAttempt: defineEndpoint({
-    method: 'post',
-    path: '/api/attempts/{attemptId}/submit',
-    params: attemptParams,
-    body: z.object({ requestId: z.string(), auto: z.boolean() }),
-    response: SubmitAttemptSchema,
-    served: 'mock',
-  }),
-  attempts: defineEndpoint({
-    method: 'get',
-    path: '/api/quizzes/{quizId}/attempts',
-    params: quizParams,
-    query: PageQuerySchema,
-    response: AttemptHistorySchema,
-    served: 'mock',
-  }),
-  attemptResult: defineEndpoint({
-    method: 'get',
-    path: '/api/quizzes/{quizId}/attempts/{attemptId}/result',
-    params: quizParams.extend({ attemptId: z.string() }),
-    response: AttemptResultSchema,
     served: 'mock',
   }),
 } as const;
