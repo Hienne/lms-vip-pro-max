@@ -24,12 +24,14 @@ import {
 } from '@lms/contracts';
 import { confirm, Toaster, type StepperItem } from '@lms/ui';
 import {
+  catchError,
   filter,
   firstValueFrom,
   map,
   Observable,
   switchMap,
   takeUntil,
+  throwError,
   timer,
   type Subscription,
 } from 'rxjs';
@@ -257,18 +259,29 @@ export class CourseEditorStore {
     },
   );
 
-  /** Saves the draft, then publishes the revision the save returned. */
+  /**
+   * Saves the draft, then publishes the revision the save returned. A refusal to publish leaves
+   * the save done and the revision's version moved on, so the course is read again: the next try
+   * then carries the version the server holds.
+   */
   private readonly publishMutation = serverMutation(
     (command: SaveDraftCommand) =>
       this.saveDraft(command).pipe(
         switchMap((saved) =>
-          this.client.call(courseEndpoints.publish, {
-            params: {
-              courseId: saved.course.id,
-              revisionId: saved.revision.id,
-            },
-            body: { expectedVersion: saved.revision.rowVersion },
-          }),
+          this.client
+            .call(courseEndpoints.publish, {
+              params: {
+                courseId: saved.course.id,
+                revisionId: saved.revision.id,
+              },
+              body: { expectedVersion: saved.revision.rowVersion },
+            })
+            .pipe(
+              catchError((error: unknown) => {
+                this.changes.bump();
+                return throwError(() => error);
+              }),
+            ),
         ),
       ),
     {

@@ -639,6 +639,32 @@ describe('CourseEditor', () => {
       );
       expect(screen.url()).toBe('/admin/courses/6/edit');
     });
+
+    it('publishes with the version the server holds when tried again after a refusal', async () => {
+      await screen.open('/admin/courses/6/edit');
+      await step('Hoàn thành & xuất bản');
+      screen.calls.mockImplementation((endpoint, request) =>
+        endpoint === courseEndpoints.publish
+          ? backendRefusal('quizLessonUnlinked')
+          : original(endpoint, request),
+      );
+      await screen.click(screen.button('Xuất bản khóa học'));
+      await screen.click(screen.button('Xuất bản', screen.alertDialog()!));
+      expect(screen.lastCall(courseEndpoints.publish)?.body).toEqual({
+        expectedVersion: 1,
+      });
+
+      screen.calls.mockImplementation(original);
+      await screen.click(screen.button('Xuất bản khóa học'));
+      await screen.click(screen.button('Xuất bản', screen.alertDialog()!));
+      expect(screen.lastCall(courseEndpoints.saveDraft)?.body).toMatchObject({
+        expectedVersion: 1,
+      });
+      expect(screen.lastCall(courseEndpoints.publish)?.body).toEqual({
+        expectedVersion: 2,
+      });
+      await vi.waitFor(() => expect(screen.url()).toBe('/admin/courses'));
+    });
   });
 
   it('saves then publishes after confirming, and goes back to the list', async () => {
