@@ -97,7 +97,7 @@ under `apps/lms/src/app/features/quiz/` unless they say otherwise.
   - Files: the moved files and their importers.
   - Size: S. Depends on: F4.
 
-- [ ] **F6: Flaky `course-new.spec.ts`**
+- [x] **F6: Flaky `course-new.spec.ts`**
   - Acceptance: the cause of the 11-second timeout when the whole suite runs is found and fixed at the root, for
     example a real timer, an unflushed request, or a heavy render. The test timeout is not simply raised. The
     commit body states the cause.

@@ -122,7 +122,7 @@ No schema change, so no upgrade script.
 - [x] F3: Visual-design checklist on the quiz screens
 - [x] F4: Question code on the take screen (BE + FE)
 - [x] F5: Route stores and components in their route folders
-- [ ] F6: Flaky `course-new.spec.ts`
+- [x] F6: Flaky `course-new.spec.ts`
 
 ### Checkpoint 0
 
