@@ -161,7 +161,7 @@ No schema change, so no upgrade script.
 
 - [x] T8: Course and lesson pages on D4, with the programme breadcrumb
 - [x] T9: Learn page tabs and counts; "Chưa đạt" and "Quá hạn" on the course card
-- [ ] T10: End-to-end check against the spec
+- [x] T10: End-to-end check against the spec
 
 ### Checkpoint C
 

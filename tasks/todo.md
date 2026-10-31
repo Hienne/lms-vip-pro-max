@@ -270,7 +270,7 @@ under `apps/lms/src/app/features/quiz/` unless they say otherwise.
   - Files: `learn.store.ts` (+ spec), `learn.html`, `shared/course/course-card*.ts|html`, `course-labels.ts`.
   - Size: S–M. Depends on: T8.
 
-- [ ] **T10: End-to-end check against the spec**
+- [x] **T10: End-to-end check against the spec**
   - Acceptance: the spec's success criteria 1–5 are written here, each with how it was checked.
   - Verify, as `hocvien` on the local stack in the browser:
     - the catalogue filters and sorts, and "Xóa n bộ lọc";
@@ -284,9 +284,40 @@ under `apps/lms/src/app/features/quiz/` unless they say otherwise.
 
   - Files: `tasks/todo.md`, `SPEC-catalog-discovery.md` (status).
   - Size: S. Depends on: T9.
+  - Result (2026-11-01, as `hocvien` on the local stack, backend `:8019` on the T1–T5 code, app on `:4200` with
+    `LMS_API_TARGET=http://localhost:8019`; every list below was read back with `curl` using the same query): 1. **Selects and no training-catalog call: met.** The field, programme and module selects list the 4
+  - **1. Selects and no training-catalog call: met.** The field, programme and module selects list the 4
+    fields, 4 programmes and 6 modules of `GET /me/learning/facets`, in the server's order. Picking field 2
+    narrows modules to Quản lý thay đổi and Vận hành EOD and programmes to one; a new field clears the old
+    module and programme. Each choice narrows the list and matches `curl` (field 2 → 2 courses; + module 3 →
+    1; + programme 2 → 1; field 1 + overdue → 0; programme 3 → 1). The network panel on `/catalog` and
+    `/learn` shows `facets` once and no `/api/v1/training-catalog` request.
+  - **2. Each status option matches the backend rule: met.** Chưa bắt đầu 3, Đang học 2, Đã hoàn thành 2, Chưa
+    đạt 1 (`failed=true`), Quá hạn 1 (`overdue=true`), Được giao 5 (`assigned=true`); the three sorts (hạn
+    gần nhất, tiến độ, tên) return the order `curl` returns. "Chưa đạt" lists FE-DEMO-C1, whose
+    `/me/quiz-attempts` rows for course 1 are all `passed: false`; course 8, with one passed attempt, is not
+    listed. "Xóa n bộ lọc" showed 1, 2, 3 and 4 as filters were added, counted the status, and cleared to
+    the default URL. The scope tab "Được giao" and the status option "Được giao" both stay, as decided.
+  - **3. Five learn tabs match `progress/summary`: met.** The tabs read Đang học 2, Chưa bắt đầu 3, Đã hoàn thành
+    2, Bắt buộc 5, Được giao 5 and `counts` is `{inProgress 2, notStarted 3, completed 2, mandatory 5,
+assigned 5}`. Each tab's grid equals `courses` with the same query. The cards show one badge at most:
+    "Chưa đạt" on FE-DEMO-C1, "Quá hạn" on FE-DEMO-C3, "Hoàn thành" on completed ones.
+  - **4. One course call per page: met.** `/course/1` makes `GET /me/learning/courses/1`, then the enrolment
+    and quiz reads, and no list read; the breadcrumb is Danh mục khóa học / Nền tảng nghiệp vụ Core Banking /
+    Tổng quan hệ thống Core Banking and the meta line starts "Nghiệp vụ Core Banking · Tổng quan · FE-DEMO-C1".
+    `/lesson/1/2` makes the same single course call and plays the lesson. `/course/6` (unpublished) answers
+    `LEARNING-NOT_FOUND` and the page says "Không tìm thấy khóa học". The not-enrolled course and the null
+    names are covered by specs, since `hocvien` is enrolled in every course he can see.
+  - **5. Both suites green: met, with one note.** `npm run check` is green (format, lint, typecheck, test, build,
+    bundle guard). `mvn clean verify` was green at Checkpoint A (333 tests) and the backend has not changed
+    since (HEAD `7503c4b`, clean tree); it was not run again because `:8019` serves from that checkout's
+    `target/`. - Screens at 1280 and 375 px, light and dark: catalogue, learn, course (lesson only at 1280 light for
+    playing). No horizontal page scroll; the checklist holds. One finding: the five learn tabs need 708 px and
+    the main column at 1280 px gives 624 px, so "Được giao" is partly clipped until the strip scrolls (the
+    `ui-tabs` strip scrolls by design, as in the mockup). Open for a decision.
 
 ### Checkpoint C
 
-- [ ] Criteria 1–5 recorded.
-- [ ] Spec status set to built.
+- [x] Criteria 1–5 recorded.
+- [x] Spec status set to built.
 - [ ] Review with the user, then plan the next module.

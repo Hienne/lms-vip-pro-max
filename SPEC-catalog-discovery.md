@@ -1,6 +1,6 @@
 # Spec: `catalog-discovery`
 
-Map: [SPEC.md](SPEC.md). Status: **approved 2026-10-31, amended by the plan (see "Amendments").** Depends on
+Map: [SPEC.md](SPEC.md). Status: **built 2026-11-01** (approved 2026-10-31, amended by the plan, see "Amendments"; results in `tasks/todo.md` T10) Depends on
 `learner-quiz`, which provides the final exam used by "Chưa đạt".
 
 Read first: `SPEC-lesson-player.md` (open question 1, `findLearnerCourse`), `docs/migration/mockup-to-angular.md`,
