@@ -187,7 +187,7 @@ under `apps/lms/src/app/features/quiz/` unless they say otherwise.
     `LearningDetails.java`, maybe `LearningResponseCode.java`, `docs/api/LEARNING.md`, the new IT.
   - Size: M. Depends on: T2.
 
-- [ ] **T5: `assigned` and `mandatory` counts in the progress summary**
+- [x] **T5: `assigned` and `mandatory` counts in the progress summary**
   - Acceptance:
     - `LearningProgressOverview.Counts` gains `assigned` and `mandatory`.
     - Each is the total of the `MINE` search with `assigned=true` or `requirement=mandatory` (plan amendment 3).

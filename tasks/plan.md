@@ -135,7 +135,7 @@ No schema change, so no upgrade script.
 - [x] T2: `assigned`, `failed` and `overdue` filters on both lists and the export
 - [x] T3: `GET /me/learning/facets`
 - [x] T4: `GET /me/learning/courses/{courseId}`
-- [ ] T5: `assigned` and `mandatory` counts in the progress summary
+- [x] T5: `assigned` and `mandatory` counts in the progress summary
 
 ### Checkpoint A
 
