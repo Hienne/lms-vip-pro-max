@@ -125,6 +125,8 @@ export const SessionQuestionSchema = z.object({
   displayOrder: z.number().int(),
   questionType: LearnerQuestionTypeSchema,
   content: z.string(),
+  /** The question's code in the bank (`questions.code`), `null` when it has none. */
+  code: z.string().nullable(),
   options: z.array(OptionTextSchema),
   selectedOptionIds: z.array(Id),
   flagged: z.boolean(),

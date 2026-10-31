@@ -43,6 +43,28 @@ describe('learnerQuizEndpoints', () => {
     expect(result.review?.[0].options.some((o) => o.correct)).toBe(true);
   });
 
+  it('carries the question code the server sends, which may be null', () => {
+    const session = AttemptSessionSchema.parse(captured.startAttempt);
+    expect(session.questions.every((q) => typeof q.code === 'string')).toBe(
+      true,
+    );
+    const [first, ...rest] = captured.attemptSession.questions;
+    const withNull = {
+      ...captured.attemptSession,
+      questions: [{ ...first, code: null }, ...rest],
+    };
+    expect(AttemptSessionSchema.parse(withNull).questions[0].code).toBeNull();
+    const withoutCode = Object.fromEntries(
+      Object.entries(first).filter(([key]) => key !== 'code'),
+    );
+    expect(
+      e.attemptSession.response.safeParse({
+        ...captured.attemptSession,
+        questions: [withoutCode, ...rest],
+      }).success,
+    ).toBe(false);
+  });
+
   it('refuses a response with the wrong shape', () => {
     const withoutReason = { ...captured.introBlocked, blockReason: undefined };
     expect(e.quizIntro.response.safeParse(withoutReason).success).toBe(false);

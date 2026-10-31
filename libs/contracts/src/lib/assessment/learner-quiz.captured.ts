@@ -3,7 +3,8 @@
  * practice attempt started, answered and submitted). They are the proof that the learner quiz
  * schemas parse what the server really sends; `submitAttempt` returns the same body as
  * `attemptResult`. Recapture them from the local stack (`docs/conventions/workspace.md`, "Run against a
- * local backend") when a record of the backend changes.
+ * local backend") when a record of the backend changes. `startAttempt` and `attemptSession` were
+ * captured again on 2026-10-31, when `SessionQuestion` gained `code`.
  */
 export const capturedLearnerQuiz = {
   courseQuizzes: [
@@ -172,75 +173,55 @@ export const capturedLearnerQuiz = {
     serverTime: '2026-10-31T09:44:15.478509Z',
   },
   startAttempt: {
-    attemptId: 1,
+    attemptId: 7,
     quizId: 1,
     quizTitle: 'Luyện tập: Tổng quan hệ thống Core Banking',
-    attemptNo: 1,
+    attemptNo: 2,
     status: 'IN_PROGRESS',
-    startedAt: '2026-10-31T09:44:15.547554Z',
-    deadlineAt: '2026-10-31T09:54:15.547554Z',
-    serverTime: '2026-10-31T09:44:15.547554Z',
+    startedAt: '2026-10-31T15:48:57.380107Z',
+    deadlineAt: '2026-10-31T15:58:57.380107Z',
+    serverTime: '2026-10-31T15:48:57.380107Z',
     expired: false,
     totalQuestions: 5,
     questions: [
       {
-        attemptQuestionId: 1,
+        attemptQuestionId: 28,
         displayOrder: 1,
-        questionType: 'SINGLE',
-        content: 'Nguyên tắc quyền tối thiểu nghĩa là gì?',
+        questionType: 'MULTIPLE',
+        content: 'Hành vi nào làm tăng rủi ro an toàn thông tin?',
+        code: 'FE-DEMO-Q1-08',
         options: [
           {
-            id: 26,
-            content: 'Mọi người dùng chung một tài khoản quản trị',
+            id: 29,
+            content: 'Chia sẻ mật khẩu cho đồng nghiệp',
           },
           {
-            id: 25,
-            content: 'Mỗi người chỉ có quyền cần thiết cho công việc của mình',
+            id: 30,
+            content: 'Giữ tài khoản của người đã nghỉ việc',
           },
           {
-            id: 28,
-            content: 'Chỉ quản lý mới được đăng nhập',
+            id: 31,
+            content: 'Bật xác thực nhiều lớp',
           },
           {
-            id: 27,
-            content: 'Quyền được cấp vĩnh viễn khi vào làm',
+            id: 32,
+            content: 'Đổi mật khẩu theo chu kỳ quy định',
           },
         ],
         selectedOptionIds: [],
         flagged: false,
       },
       {
-        attemptQuestionId: 2,
+        attemptQuestionId: 29,
         displayOrder: 2,
         questionType: 'SINGLE',
-        content: 'Core Banking chịu trách nhiệm chính cho việc nào sau đây?',
-        options: [
-          {
-            id: 3,
-            content: 'Quản lý email nội bộ của chi nhánh',
-          },
-          {
-            id: 1,
-            content: 'Ghi nhận giao dịch, tài khoản và số dư của khách hàng',
-          },
-          {
-            id: 4,
-            content: 'Lập lịch họp của ban lãnh đạo',
-          },
-          {
-            id: 2,
-            content: 'Thiết kế giao diện website ngân hàng',
-          },
-        ],
-        selectedOptionIds: [],
-        flagged: false,
-      },
-      {
-        attemptQuestionId: 3,
-        displayOrder: 3,
-        questionType: 'SINGLE',
         content: 'Xử lý cuối ngày (EOD) có mục đích chính là gì?',
+        code: 'FE-DEMO-Q1-04',
         options: [
+          {
+            id: 13,
+            content: 'Chốt dữ liệu trong ngày và chuyển sang ngày làm việc mới',
+          },
           {
             id: 15,
             content: 'Khởi động lại máy chủ ứng dụng',
@@ -248,10 +229,6 @@ export const capturedLearnerQuiz = {
           {
             id: 14,
             content: 'Xóa toàn bộ giao dịch đã hoàn tất',
-          },
-          {
-            id: 13,
-            content: 'Chốt dữ liệu trong ngày và chuyển sang ngày làm việc mới',
           },
           {
             id: 16,
@@ -262,53 +239,82 @@ export const capturedLearnerQuiz = {
         flagged: false,
       },
       {
-        attemptQuestionId: 4,
-        displayOrder: 4,
-        questionType: 'MULTIPLE',
-        content: 'Trước khi chạy EOD cần xác nhận những việc nào?',
+        attemptQuestionId: 30,
+        displayOrder: 3,
+        questionType: 'SINGLE',
+        content: 'Khi một job EOD báo lỗi, bước đầu tiên đúng là gì?',
+        code: 'FE-DEMO-Q1-06',
         options: [
           {
-            id: 17,
-            content: 'Không còn giao dịch treo chưa xử lý',
+            id: 21,
+            content: 'Đọc nhật ký lỗi và xác định nguyên nhân',
           },
           {
-            id: 19,
-            content: 'Đã tắt toàn bộ cảnh báo giám sát',
+            id: 23,
+            content: 'Bỏ qua job và chạy bước kế tiếp',
           },
           {
-            id: 18,
-            content: 'Đã có bản sao lưu gần nhất',
+            id: 22,
+            content: 'Chạy lại job ngay nhiều lần',
           },
           {
-            id: 20,
-            content: 'Đã xóa nhật ký của ngày hôm trước',
+            id: 24,
+            content: 'Xóa dữ liệu của job lỗi',
           },
         ],
         selectedOptionIds: [],
         flagged: false,
       },
       {
-        attemptQuestionId: 5,
-        displayOrder: 5,
+        attemptQuestionId: 31,
+        displayOrder: 4,
         questionType: 'SINGLE',
         content:
           'Kênh giao dịch (ATM, Internet Banking) kết nối với Core Banking như thế nào?',
+        code: 'FE-DEMO-Q1-03',
         options: [
           {
             id: 12,
             content: 'Không cần kết nối, kênh tự đối soát cuối tháng',
           },
           {
-            id: 11,
-            content: 'Kênh ghi trực tiếp vào bảng của Core',
-          },
-          {
             id: 9,
             content: 'Qua lớp tích hợp, Core Banking là nguồn dữ liệu duy nhất',
           },
           {
+            id: 11,
+            content: 'Kênh ghi trực tiếp vào bảng của Core',
+          },
+          {
             id: 10,
             content: 'Mỗi kênh giữ một bản sao số dư riêng',
+          },
+        ],
+        selectedOptionIds: [],
+        flagged: false,
+      },
+      {
+        attemptQuestionId: 32,
+        displayOrder: 5,
+        questionType: 'MULTIPLE',
+        content: 'Những phân hệ nào thường nằm trong Core Banking?',
+        code: 'FE-DEMO-Q1-02',
+        options: [
+          {
+            id: 8,
+            content: 'Trình soạn thảo văn bản',
+          },
+          {
+            id: 7,
+            content: 'Sổ cái',
+          },
+          {
+            id: 6,
+            content: 'Tín dụng',
+          },
+          {
+            id: 5,
+            content: 'Tiền gửi',
           },
         ],
         selectedOptionIds: [],
@@ -325,75 +331,55 @@ export const capturedLearnerQuiz = {
     serverTime: '2026-10-31T09:44:15.725978Z',
   },
   attemptSession: {
-    attemptId: 1,
+    attemptId: 7,
     quizId: 1,
     quizTitle: 'Luyện tập: Tổng quan hệ thống Core Banking',
-    attemptNo: 1,
+    attemptNo: 2,
     status: 'IN_PROGRESS',
-    startedAt: '2026-10-31T09:44:15.547554Z',
-    deadlineAt: '2026-10-31T09:54:15.547554Z',
-    serverTime: '2026-10-31T09:44:16.031744Z',
+    startedAt: '2026-10-31T15:48:57.380107Z',
+    deadlineAt: '2026-10-31T15:58:57.380107Z',
+    serverTime: '2026-10-31T15:49:10.702287Z',
     expired: false,
     totalQuestions: 5,
     questions: [
       {
-        attemptQuestionId: 1,
+        attemptQuestionId: 28,
         displayOrder: 1,
-        questionType: 'SINGLE',
-        content: 'Nguyên tắc quyền tối thiểu nghĩa là gì?',
+        questionType: 'MULTIPLE',
+        content: 'Hành vi nào làm tăng rủi ro an toàn thông tin?',
+        code: 'FE-DEMO-Q1-08',
         options: [
           {
-            id: 26,
-            content: 'Mọi người dùng chung một tài khoản quản trị',
+            id: 29,
+            content: 'Chia sẻ mật khẩu cho đồng nghiệp',
           },
           {
-            id: 25,
-            content: 'Mỗi người chỉ có quyền cần thiết cho công việc của mình',
+            id: 30,
+            content: 'Giữ tài khoản của người đã nghỉ việc',
           },
           {
-            id: 28,
-            content: 'Chỉ quản lý mới được đăng nhập',
+            id: 31,
+            content: 'Bật xác thực nhiều lớp',
           },
           {
-            id: 27,
-            content: 'Quyền được cấp vĩnh viễn khi vào làm',
+            id: 32,
+            content: 'Đổi mật khẩu theo chu kỳ quy định',
           },
         ],
-        selectedOptionIds: [27],
+        selectedOptionIds: [],
         flagged: false,
       },
       {
-        attemptQuestionId: 2,
+        attemptQuestionId: 29,
         displayOrder: 2,
         questionType: 'SINGLE',
-        content: 'Core Banking chịu trách nhiệm chính cho việc nào sau đây?',
-        options: [
-          {
-            id: 3,
-            content: 'Quản lý email nội bộ của chi nhánh',
-          },
-          {
-            id: 1,
-            content: 'Ghi nhận giao dịch, tài khoản và số dư của khách hàng',
-          },
-          {
-            id: 4,
-            content: 'Lập lịch họp của ban lãnh đạo',
-          },
-          {
-            id: 2,
-            content: 'Thiết kế giao diện website ngân hàng',
-          },
-        ],
-        selectedOptionIds: [1],
-        flagged: true,
-      },
-      {
-        attemptQuestionId: 3,
-        displayOrder: 3,
-        questionType: 'SINGLE',
         content: 'Xử lý cuối ngày (EOD) có mục đích chính là gì?',
+        code: 'FE-DEMO-Q1-04',
         options: [
+          {
+            id: 13,
+            content: 'Chốt dữ liệu trong ngày và chuyển sang ngày làm việc mới',
+          },
           {
             id: 15,
             content: 'Khởi động lại máy chủ ứng dụng',
@@ -403,68 +389,93 @@ export const capturedLearnerQuiz = {
             content: 'Xóa toàn bộ giao dịch đã hoàn tất',
           },
           {
-            id: 13,
-            content: 'Chốt dữ liệu trong ngày và chuyển sang ngày làm việc mới',
-          },
-          {
             id: 16,
             content: 'Gửi thông báo khuyến mãi cho khách hàng',
           },
         ],
-        selectedOptionIds: [13],
+        selectedOptionIds: [],
         flagged: false,
       },
       {
-        attemptQuestionId: 4,
-        displayOrder: 4,
-        questionType: 'MULTIPLE',
-        content: 'Trước khi chạy EOD cần xác nhận những việc nào?',
+        attemptQuestionId: 30,
+        displayOrder: 3,
+        questionType: 'SINGLE',
+        content: 'Khi một job EOD báo lỗi, bước đầu tiên đúng là gì?',
+        code: 'FE-DEMO-Q1-06',
         options: [
           {
-            id: 17,
-            content: 'Không còn giao dịch treo chưa xử lý',
+            id: 21,
+            content: 'Đọc nhật ký lỗi và xác định nguyên nhân',
           },
           {
-            id: 19,
-            content: 'Đã tắt toàn bộ cảnh báo giám sát',
+            id: 23,
+            content: 'Bỏ qua job và chạy bước kế tiếp',
           },
           {
-            id: 18,
-            content: 'Đã có bản sao lưu gần nhất',
+            id: 22,
+            content: 'Chạy lại job ngay nhiều lần',
           },
           {
-            id: 20,
-            content: 'Đã xóa nhật ký của ngày hôm trước',
+            id: 24,
+            content: 'Xóa dữ liệu của job lỗi',
           },
         ],
-        selectedOptionIds: [17, 18],
+        selectedOptionIds: [],
         flagged: false,
       },
       {
-        attemptQuestionId: 5,
-        displayOrder: 5,
+        attemptQuestionId: 31,
+        displayOrder: 4,
         questionType: 'SINGLE',
         content:
           'Kênh giao dịch (ATM, Internet Banking) kết nối với Core Banking như thế nào?',
+        code: 'FE-DEMO-Q1-03',
         options: [
           {
             id: 12,
             content: 'Không cần kết nối, kênh tự đối soát cuối tháng',
           },
           {
-            id: 11,
-            content: 'Kênh ghi trực tiếp vào bảng của Core',
-          },
-          {
             id: 9,
             content: 'Qua lớp tích hợp, Core Banking là nguồn dữ liệu duy nhất',
+          },
+          {
+            id: 11,
+            content: 'Kênh ghi trực tiếp vào bảng của Core',
           },
           {
             id: 10,
             content: 'Mỗi kênh giữ một bản sao số dư riêng',
           },
         ],
-        selectedOptionIds: [9],
+        selectedOptionIds: [],
+        flagged: false,
+      },
+      {
+        attemptQuestionId: 32,
+        displayOrder: 5,
+        questionType: 'MULTIPLE',
+        content: 'Những phân hệ nào thường nằm trong Core Banking?',
+        code: 'FE-DEMO-Q1-02',
+        options: [
+          {
+            id: 8,
+            content: 'Trình soạn thảo văn bản',
+          },
+          {
+            id: 7,
+            content: 'Sổ cái',
+          },
+          {
+            id: 6,
+            content: 'Tín dụng',
+          },
+          {
+            id: 5,
+            content: 'Tiền gửi',
+          },
+        ],
+        selectedOptionIds: [],
         flagged: false,
       },
     ],

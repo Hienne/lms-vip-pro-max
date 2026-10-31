@@ -73,7 +73,7 @@ under `apps/lms/src/app/features/quiz/` unless they say otherwise.
     `apps/lms/src/app/features/lesson/lesson/lesson.html`, their specs.
   - Size: S–M. Depends on: F2.
 
-- [ ] **F4: Question code on the take screen (BE + FE)**
+- [x] **F4: Question code on the take screen (BE + FE)**
   - Acceptance:
     - Backend: the attempt session's question view gains `code` (`questions.code`, nullable). An IT extending
       `AssessmentIntegrationTest` checks it is present for a question with a code and null without one.

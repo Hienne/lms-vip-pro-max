@@ -120,7 +120,7 @@ No schema change, so no upgrade script.
 - [x] F1: Learner quiz stores follow angular.md §5.2
 - [x] F2: Result screen and server-only numbers
 - [x] F3: Visual-design checklist on the quiz screens
-- [ ] F4: Question code on the take screen (BE + FE)
+- [x] F4: Question code on the take screen (BE + FE)
 - [ ] F5: Route stores and components in their route folders
 - [ ] F6: Flaky `course-new.spec.ts`
 

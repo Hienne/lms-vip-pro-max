@@ -71,6 +71,10 @@
     @include ui.num;
   }
 
+  &__code {
+    @include ui.mono;
+  }
+
   &__heading {
     @include ui.text(xl);
     margin: 0;

@@ -50,12 +50,31 @@ describe('QuizTake', () => {
     expect(text()).toContain('Câu 1 / 3');
     expect(text()).toContain('Mã CIF dùng để làm gì?');
     expect(el.querySelectorAll('fieldset input')).toHaveLength(4);
-    expect(text()).not.toContain('Câu 1 / 3 ·');
   });
 
   it('exposes no writable signal: every write goes through the store', async () => {
     await open();
     expect(writableSignalsOf(harness)).toEqual([]);
+  });
+
+  it('shows the question code after the position when the question has one', async () => {
+    await open();
+    expect(el.querySelector('.take__code')?.textContent).toMatch(/^Q\d+$/);
+    expect(text()).toMatch(/Câu 1 \/ 3 · Q\d+/);
+  });
+
+  it('shows no code, and no separator, when the question has none', async () => {
+    patchReply(
+      handle,
+      learnerQuizEndpoints.startAttempt,
+      (s: AttemptSession) => ({
+        questions: s.questions.map((q) => ({ ...q, code: null })),
+      }),
+    );
+    await open();
+    expect(el.querySelector('.take__code')).toBeNull();
+    expect(text()).toContain('Câu 1 / 3');
+    expect(text()).not.toContain('Câu 1 / 3 ·');
   });
 
   it('has one primary button, "Nộp bài" in the top bar, and no label above the title', async () => {

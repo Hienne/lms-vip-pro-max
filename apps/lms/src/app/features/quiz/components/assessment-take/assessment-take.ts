@@ -16,8 +16,8 @@ const LETTERS = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'];
 
 /**
  * The quiz in progress (the mockup's `quizTake`): the question on screen, the navigator and the
- * countdown. It holds no state; the take store owns the answers and the clock. The mockup shows a
- * question code after "Câu n / N"; the backend does not send one, so it is left out.
+ * countdown. It holds no state; the take store owns the answers and the clock. The question's
+ * bank code, when it has one, follows "Câu n / N".
  */
 @Component({
   selector: 'app-assessment-take',

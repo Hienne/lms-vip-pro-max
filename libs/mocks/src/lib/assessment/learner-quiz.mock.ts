@@ -474,6 +474,7 @@ export class LearnerQuizMock {
         displayOrder: index + 1,
         questionType: q.type,
         content: q.content,
+        code: `Q${q.id}`,
         options: q.options.map((o) => ({ id: o.id, content: o.content })),
         selectedOptionIds: attempt.answers.get(q.id)?.selected ?? [],
         flagged: attempt.answers.get(q.id)?.flagged ?? false,

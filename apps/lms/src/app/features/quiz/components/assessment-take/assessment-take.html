@@ -28,7 +28,9 @@
   <section class="take__question" aria-labelledby="question-heading">
     <div class="take__question-bar">
       <span class="take__position"
-        >Câu {{ current() + 1 }} / {{ questions().length }}</span
+        >Câu {{ current() + 1 }} / {{ questions().length }} @if (q.code) { ·
+        <span class="take__code">{{ q.code }}</span>
+        }</span
       >
       <button
         uiButton
