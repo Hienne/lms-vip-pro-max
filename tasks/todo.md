@@ -155,7 +155,7 @@ under `apps/lms/src/app/features/quiz/` unless they say otherwise.
     `docs/api/LEARNING.md`, the new IT.
   - Size: M. Depends on: T1.
 
-- [ ] **T3: `GET /api/v1/me/learning/facets`**
+- [x] **T3: `GET /api/v1/me/learning/facets`**
   - Acceptance:
     - Returns `LearnerFacets { fields[], programs[], modules[] }`, each item `{ id, code, name }`; programs and
       modules also have `fieldId`.
