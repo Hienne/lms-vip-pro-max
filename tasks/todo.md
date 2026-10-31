@@ -32,7 +32,7 @@ command line or a log.
   - Files: `compose.local.yaml`, `.env.local.example`, `.gitignore`.
   - Size: S. Depends on: none (Docker Desktop running).
 
-- [ ] **T2: Empty-DB init script and run order (BE)**
+- [x] **T2: Empty-DB init script and run order (BE)**
   - Acceptance:
     - `scripts/local-db-init.sh` runs these files in order: Identity, Learning, media_progress, Assessment,
       Knowledge, Community, community catalog, then `learning_hub_learning_demo.sql`,
