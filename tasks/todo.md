@@ -15,6 +15,105 @@ The previous `learner-quiz` checklist, with its success criteria and how each wa
 Each backend test file is a DB-backed integration test in package `assessment` that extends
 `AssessmentIntegrationTest`. There is no `learning` test package.
 
+## Phase 0: `learner-quiz` review fixes
+
+The main session reviewed the `learner-quiz` FE diff (`0569c38..3da2ff3`) against angular.md §14 and the
+visual-design checklist. The user approved these six fixes on 2026-10-31, to be done before T1. Paths below are
+under `apps/lms/src/app/features/quiz/` unless they say otherwise.
+
+- [ ] **F1: Learner quiz stores follow angular.md §5.2**
+  - Acceptance:
+    - `QuizTakeStore`, `QuizAttemptsStore` and `QuizResultStore` hold every writable signal in one
+      `private readonly state = {}`. They expose only readonly `x$` selectors (`asReadonly()` / `computed()`),
+      and each key is written only by its `setX()` setter. Commands compose the setters. Today `current$`,
+      `isSaving$`, `isSubmitting$`, `page$` and `reviewOpen$` are public writable signals, and `failed`, `now`,
+      `done`, `choices` and `timing` live outside `state`.
+    - The answer saves and the submit keep the one ordered queue. `serverMutation` cancels the run in flight,
+      which would drop a save. A comment on the queue states this as the deliberate exception to "every call in
+      `serverData` / `serverMutation`". Submit errors keep showing as one toast.
+    - `assessment-take.html` no longer calls `q.selectedOptionIds.includes(...)`. The component's `computed`
+      view model carries a `selected` flag per option.
+  - Verify: the existing take, attempts and result specs stay green. A spec checks that the take store exposes
+    no `WritableSignal`. `npx nx test lms` is green.
+  - Files: the three stores in `learner-quiz/data-access/`, `components/assessment-take/assessment-take.ts` /
+    `.html`, the affected specs.
+  - Size: M. Depends on: none.
+
+- [ ] **F2: Result screen and server-only numbers**
+  - Acceptance:
+    - The result of a failed attempt, opened after the learner passed in another attempt
+      (`summary.passed`), says the quiz is passed. It no longer says the attempts are used up and an instructor
+      will review (seen on `/quiz/4/result/5`).
+    - No screen adds `maxAttempts + extraAttempts`. Attempts are shown as "Còn N lượt" from `attemptsLeft`, on
+      the intro, the result and `shared/quiz/quiz-card` (which today shows `attemptsLeft/maxAttempts`).
+    - The competency bars on the result are one neutral tone. The app does not compare a competency with
+      `passPercent`.
+    - The hub's attempt groups drop the best score the store computes. The open-quiz rows keep the server's
+      `bestScore`.
+  - Verify: specs cover the passed-elsewhere message, "Còn N lượt" with extra attempts granted, and the hub
+    group without a computed best score.
+  - Files: `components/assessment-result/assessment-result.ts` / `.html`, `learner-quiz/quiz-intro/quiz-intro.html`
+    and its store, `learner-quiz/data-access/quiz-hub.store.ts`, `quiz-hub.html`,
+    `apps/lms/src/app/shared/quiz/quiz-card/*`, their specs.
+  - Size: M. Depends on: F1.
+
+- [ ] **F3: Visual-design checklist on the quiz screens**
+  - Acceptance:
+    - One primary button per view:
+      - take screen: only "Nộp bài" in the top bar;
+      - hub: the row actions are secondary;
+      - lesson player, quiz lesson: "Làm bài" is primary and "Bài tiếp theo" secondary;
+      - course page: check it has a single primary with the "Bài kiểm tra" section shown.
+    - The take screen's small "Bài kiểm tra" label above the quiz title is removed; "Chọn TẤT CẢ" becomes
+      "Chọn tất cả".
+    - The intro's "Chưa có lần thi nào" inside the card uses `ui-empty` `variant="inline"`.
+  - Verify: component specs for the button variants. Screenshots of the hub, intro, take, result, course page
+    and quiz lesson at 1280 and 375 px, light and dark, checked against the `visual-design.md` checklist.
+  - Files: the hub, intro, take and result templates, `shared/quiz/quiz-card/*`,
+    `apps/lms/src/app/features/lesson/lesson/lesson.html`, their specs.
+  - Size: S–M. Depends on: F2.
+
+- [ ] **F4: Question code on the take screen (BE + FE)**
+  - Acceptance:
+    - Backend: the attempt session's question view gains `code` (`questions.code`, nullable). An IT extending
+      `AssessmentIntegrationTest` checks it is present for a question with a code and null without one.
+      `docs/api/ASSESSMENT.md` gets the field.
+    - App: `SessionQuestionSchema` gains `code: z.string().nullable()`; the captured fixture is refreshed from the
+      local backend. The take screen shows the code after "Câu n / N" when present (mockup `quizTake`), styled
+      with `ui.mono`. The "backend does not send one" comment is removed.
+  - Verify: the new IT; `npx nx test contracts`; the take spec renders the code and its absence.
+  - Files: the Assessment view and service, the new IT, `ASSESSMENT.md`; `learner-quiz.schema.ts`, the captured
+    fixture, the mock, `assessment-take.*`.
+  - Size: S–M. Depends on: F3. One commit in each repository.
+
+- [ ] **F5: Route stores and components in their route folders (angular.md §4)**
+  - Acceptance:
+    - Each learner quiz store used by one route moves to that route's `data-access/`. Only shared code
+      (`route-id.ts`, the testing helpers) stays in `learner-quiz/data-access/`.
+    - `components/assessment-take` moves under `learner-quiz/quiz-take/components/`, and
+      `components/assessment-result` under `learner-quiz/quiz-result/components/`.
+    - Moves and import changes only, with no change in behaviour.
+  - Verify: `npx nx test lms` and `npx nx lint lms` are green, and `git diff -M` shows renames.
+  - Files: the moved files and their importers.
+  - Size: S. Depends on: F4.
+
+- [ ] **F6: Flaky `course-new.spec.ts`**
+  - Acceptance: the cause of the 11-second timeout when the whole suite runs is found and fixed at the root, for
+    example a real timer, an unflushed request, or a heavy render. The test timeout is not simply raised. The
+    commit body states the cause.
+  - Verify: `npx nx test lms` three times in a row, and `npm run check`, all green.
+  - Files: `course-new.spec.ts`, and its component or store if the cause is there.
+  - Size: S. Depends on: none.
+
+### Checkpoint 0
+
+- [ ] `npm run check` and `mvn clean verify` green.
+- [ ] On `lms-local`, as `hocvien.tichhop`:
+  - take the practice quiz (it allows 20 attempts), so no final-exam attempt is spent;
+  - open an old failed result after a pass;
+  - see the hub.
+- [ ] Stop for the main session's review of the Phase 0 diff before T1.
+
 ## Phase 1: Backend
 
 - [ ] **T1: `failed` through the quiz port, and the D3 card fields**

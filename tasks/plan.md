@@ -115,6 +115,20 @@ No schema change, so no upgrade script.
 
 ## Task list
 
+### Phase 0: `learner-quiz` review fixes (approved 2026-10-31)
+
+- [ ] F1: Learner quiz stores follow angular.md §5.2
+- [ ] F2: Result screen and server-only numbers
+- [ ] F3: Visual-design checklist on the quiz screens
+- [ ] F4: Question code on the take screen (BE + FE)
+- [ ] F5: Route stores and components in their route folders
+- [ ] F6: Flaky `course-new.spec.ts`
+
+### Checkpoint 0
+
+- [ ] `npm run check` and `mvn clean verify` green; the quiz screens checked on `lms-local`.
+- [ ] Main session reviews the Phase 0 diff before T1.
+
 ### Phase 1: Backend
 
 - [ ] T1: `failed` through the quiz port, and the D3 card fields
