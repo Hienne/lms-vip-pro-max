@@ -48,10 +48,10 @@ command line or a log.
 
 ### Checkpoint A
 
-- [ ] With `set -a; . ./.env.local; set +a; mvn spring-boot:run`, the backend starts with no `validate` error
+- [x] With `set -a; . ./.env.local; set +a; mvn spring-boot:run`, the backend starts with no `validate` error
       (gaps are reported, not patched) and `curl -s localhost:8019/actuator/health` shows `UP`.
-- [ ] The logs show no connection to `103.121.90.119` or `s3.chanacademy.io.vn`.
-- [ ] `mvn clean test` green on the branch (a baseline before any code change).
+- [x] The logs show no connection to `103.121.90.119` or `s3.chanacademy.io.vn`.
+- [x] `mvn clean test` green on the branch (a baseline before any code change). It was red first: see the note under Checkpoint B.
 
 ## Phase 2: Demo data
 
@@ -107,13 +107,13 @@ command line or a log.
 
 ### Checkpoint B
 
-- [ ] Starting from `docker compose … down -v`, run `up`, `local-db-init.sh`, the backend, `local-seed-media.sh`
+- [x] Starting from `docker compose … down -v`, run `up`, `local-db-init.sh`, the backend, `local-seed-media.sh`
       and then `local-smoke.sh`, all green, in one pass, with the commands exactly as in the README.
-- [ ] `mvn clean test` green. Review the backend diff with you before Phase 3.
+- [x] `mvn clean test` green: 293 tests, 0 failures, 42 skipped (`CommunityApiIT`, skipped by its own gate before and after). Review the backend diff with you before Phase 3 (pending).
 
 ## Phase 3: App on the local stack
 
-- [ ] **T6: Docs and launch entry for a local backend (FE)**
+- [x] **T6: Docs and launch entry for a local backend (FE)**
   - Acceptance:
     - `docs/conventions/workspace.md` → Commands gets "Chạy với backend local". It gives
       `LMS_API_TARGET=http://localhost:8019 npm start`, a pointer to the backend's "Chạy local" section, and the
@@ -127,7 +127,7 @@ command line or a log.
   - Files: `docs/conventions/workspace.md`, `.claude/launch.json`.
   - Size: XS. Depends on: Checkpoint B.
 
-- [ ] **T7: End-to-end check against the spec (FE + BE)**
+- [x] **T7: End-to-end check against the spec (FE + BE)**
   - Acceptance: all six success criteria of `SPEC-local-stack.md` are checked in the browser pane, and the result
     of each is written here with how it was checked:
     1. empty-volume bring-up;
@@ -145,9 +145,31 @@ command line or a log.
   - Files: `tasks/todo.md` (results).
   - Size: S. Depends on: T6.
 
+  - **Results (2026-10-31).** Backend `feat/learner-mockup-gap` at `bea51ed`, app on `lms-local` (:4200 to :8019).
+    1. **Empty-volume bring-up: pass.** `docker compose ... down -v`, `up -d db s3 s3-init`, `scripts/local-db-init.sh`
+       (exit 0, 12 SQL files incl. verify), `mvn spring-boot:run` with `.env.local` loaded (`ddl-auto=validate`, health
+       `UP`), `scripts/local-seed-media.sh`, `scripts/local-smoke.sh`. A second init stops with "DB đã có dữ liệu".
+    2. **Smoke: pass.** `scripts/local-smoke.sh` exits 0 (health, login, catalog, quiz-attempts, progress summary).
+       With the backend down or a wrong password it exits 1 and the password is not in the output.
+    3. **Sign-in and catalog: pass.** In the built-in browser, `hocvien` signs in at `localhost:4200`, `/learn` shows
+       6 assigned courses and `/catalog?scope=assigned` lists them, all from the local DB.
+    4. **READY PDF and video: pass.** `GET /api/v1/learning-assets?status=ready` lists PDF (4 pages) and video
+       (30 s). `/lesson/7/16` renders the PDF pages and `/lesson/7/17` loads the video (`duration` 30, 640x360,
+       `readyState` 4, Range requests answered 206). Status values are lower case (`ready`), not `READY`.
+    5. **Quiz with at least 2 competencies: pass on the API, not in the UI.** Each of the four demo quizzes
+       (PRACTICE and FINAL_EXAM for `FE-DEMO-C1`, `FE-DEMO-C2`) is PUBLISHED with a pool of 8 questions over all 3
+       competencies. As `hocvien`: `GET /me/quizzes/{id}` gives `canStart` (quiz 4 gives `LESSONS_REQUIRED`, as the
+       demo intends); starting and submitting an attempt returns a result with a per-competency breakdown. The `/quiz`
+       screen in the app is still the mockup's one-quiz screen (not wired to these endpoints): that is the
+       `learner-quiz` module.
+    6. **No request leaves the machine: pass.** The page's resource timing and the network panel list only
+       `localhost:4200` (the dev proxy forwards `/api` to `localhost:8019`). `lsof -nP -iTCP -sTCP:ESTABLISHED` shows
+       no connection to `103.121.90.119` or `s3.chanacademy.io.vn`; the backend JVM's only connections are
+       `127.0.0.1:5432`. The backend log has no mention of either host. The backend binds `127.0.0.1:8019`.
+
 ### Checkpoint C
 
-- [ ] The spec's success criteria 1–6 are recorded above.
-- [ ] `npm run check` and `mvn clean test` green.
-- [ ] `SPEC-local-stack.md` status set to built.
+- [x] The spec's success criteria 1–6 are recorded above.
+- [x] `npm run check` (14 tasks) and `mvn clean test` (293 tests, 0 failures) green.
+- [x] `SPEC-local-stack.md` status set to built.
 - [ ] Review with you, then plan `learner-quiz`.

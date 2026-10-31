@@ -64,31 +64,31 @@ docs section and one launch entry.
 
 ### Phase 1: Local services
 
-- [ ] T1: Local Postgres + MinIO with a bucket (BE)
-- [ ] T2: Empty-DB init script and run order (BE)
+- [x] T1: Local Postgres + MinIO with a bucket (BE)
+- [x] T2: Empty-DB init script and run order (BE)
 
 ### Checkpoint A
 
-- [ ] The backend starts on local DB and S3 with `ddl-auto=validate`. `/actuator/health` is UP.
+- [x] The backend starts on local DB and S3 with `ddl-auto=validate`. `/actuator/health` is UP.
 
 ### Phase 2: Demo data
 
-- [ ] T3: Assessment demo SQL (BE)
-- [ ] T4: Smoke script (BE)
-- [ ] T5: Demo media and seed script (BE)
+- [x] T3: Assessment demo SQL (BE)
+- [x] T4: Smoke script (BE)
+- [x] T5: Demo media and seed script (BE)
 
 ### Checkpoint B
 
-- [ ] From an empty volume: init, then demos, then seed, then smoke, all green.
+- [x] From an empty volume: init, then demos, then seed, then smoke, all green.
 
 ### Phase 3: App on the local stack
 
-- [ ] T6: Docs and launch entry for a local backend (FE)
-- [ ] T7: End-to-end check against the spec (FE + BE)
+- [x] T6: Docs and launch entry for a local backend (FE)
+- [x] T7: End-to-end check against the spec (FE + BE)
 
 ### Checkpoint C
 
-- [ ] The spec's success criteria 1–6 are checked and reported.
+- [x] The spec's success criteria 1–6 are checked and reported.
 
 ## Risks and mitigations
 

@@ -1,6 +1,6 @@
 # Spec: `local-stack`
 
-Map: [SPEC.md](SPEC.md). Status: **draft, waiting for approval.**
+Map: [SPEC.md](SPEC.md). Status: **built** (2026-10-31); results in [tasks/todo.md](tasks/todo.md).
 
 ## Objective
 
