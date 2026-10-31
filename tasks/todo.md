@@ -121,7 +121,7 @@ Each backend test file is a DB-backed integration test that extends `AssessmentI
 
 ## Phase 2: App
 
-- [ ] **T6: Learner quiz contracts and mocks**
+- [x] **T6: Learner quiz contracts and mocks**
   - Acceptance:
     - `libs/contracts/src/lib/assessment/learner-quiz.schema.ts` and `learner-quiz.endpoints.ts`
       (`learnerQuizEndpoints`) hold the 10 keys from the spec plus `myCompetency`. Each schema mirrors its

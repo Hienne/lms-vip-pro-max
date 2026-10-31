@@ -73,6 +73,7 @@ import {
 } from '../knowledge/knowledge.fixtures';
 import { navCountsFixtures } from '../shell/shell.fixtures';
 import { AssessmentMock } from '../assessment/assessment.mock';
+import { LearnerQuizMock } from '../assessment/learner-quiz.mock';
 import { learningReportHandlers } from '../reports/learning-report.handlers';
 import { PersonalFakeBackend } from '../personal/personal.backend';
 import {
@@ -198,6 +199,7 @@ const PROFILE_FIELDS = [
  */
 export class FakeBackend {
   private readonly assessment = new AssessmentMock();
+  private readonly learnerQuiz = new LearnerQuizMock();
   private readonly personal = new PersonalFakeBackend();
   private orgs: Mutable<SeedOrg>[] = SEED_ORGS.map((o) => ({ ...o }));
   private teams: Mutable<SeedTeam>[] = SEED_TEAMS.map((t) => ({ ...t }));
@@ -315,6 +317,7 @@ export class FakeBackend {
     return (
       this.handlers.has(endpoint) ||
       this.assessment.answers(endpoint) ||
+      this.learnerQuiz.answers(endpoint) ||
       learningReportHandlers.has(endpoint) ||
       this.personal.answers(endpoint)
     );
@@ -324,6 +327,8 @@ export class FakeBackend {
   handle(endpoint: AnyEndpoint, request: FakeRequest): FakeReply | undefined {
     const assessmentReply = this.assessment.handle(endpoint, request);
     if (assessmentReply) return assessmentReply;
+    const quizReply = this.learnerQuiz.handle(endpoint, request);
+    if (quizReply) return quizReply;
     const learningReply = learningReportHandlers.get(endpoint)?.(request);
     if (learningReply) return learningReply;
     const personalReply = this.personal.handle(

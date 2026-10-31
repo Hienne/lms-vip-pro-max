@@ -124,7 +124,7 @@ The admin question and quiz screens stay on mock (the spec's open question 1, at
 
 ### Phase 2: App
 
-- [ ] T6: Learner quiz contracts and mocks
+- [x] T6: Learner quiz contracts and mocks
 - [ ] T7: Learner quiz, part 1: store, hub, intro, attempts
 - [ ] T8: Learner quiz, part 2: take and result; remove the learner code from `AssessmentScreen`
 

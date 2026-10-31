@@ -3,7 +3,9 @@ import { courseEndpoints } from './course.endpoints';
 import {
   CourseCardSchema,
   CourseDetailSchema,
+  CourseLessonSchema,
   CourseShareSchema,
+  LessonInputSchema,
   SaveDraftCommandSchema,
   ShareCourseCommandSchema,
 } from './course.schema';
@@ -276,5 +278,45 @@ describe('course endpoints', () => {
         ShareCourseCommandSchema.safeParse({ orgId: 2, active: false }).success,
       ).toBe(false);
     });
+  });
+});
+
+describe('quiz lessons', () => {
+  const lesson = {
+    id: 22,
+    chapterId: 11,
+    title: 'Bài kiểm tra cuối khóa',
+    lessonType: 'quiz',
+    sortNo: 1,
+    ...stamp,
+  };
+
+  it('reads the quiz a lesson opens, and null for a content lesson', () => {
+    expect(CourseLessonSchema.parse({ ...lesson, quizId: 5 }).quizId).toBe(5);
+    expect(
+      CourseLessonSchema.parse({
+        ...lesson,
+        lessonType: 'content',
+        quizId: null,
+      }).quizId,
+    ).toBeNull();
+  });
+
+  it('sends the quiz of a quiz lesson in the draft, and refuses a quiz id that is not a number', () => {
+    const input = {
+      title: 'Bài kiểm tra',
+      lessonType: 'quiz',
+      estimatedDurationSeconds: 600,
+      blocks: [],
+    };
+    expect(LessonInputSchema.safeParse({ ...input, quizId: 5 }).success).toBe(
+      true,
+    );
+    expect(
+      LessonInputSchema.safeParse({ ...input, quizId: null }).success,
+    ).toBe(true);
+    expect(LessonInputSchema.safeParse({ ...input, quizId: 'x' }).success).toBe(
+      false,
+    );
   });
 });

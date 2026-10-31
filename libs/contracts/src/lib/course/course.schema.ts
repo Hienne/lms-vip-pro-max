@@ -161,6 +161,8 @@ export const CourseLessonSchema = z.object({
   isRequired: z.boolean().nullish(),
   sortNo: z.number().int(),
   sourceLessonId: z.number().int().nullish(),
+  /** The quiz a `quiz` lesson opens (a quiz of the same course); null for a content lesson. */
+  quizId: z.number().int().nullish(),
   rowVersion: z.number().int(),
   createTime: BackendDateTimeSchema.nullish(),
   updateTime: BackendDateTimeSchema.nullish(),
@@ -401,6 +403,8 @@ export const LessonInputSchema = z.object({
   lessonType: LessonTypeSchema,
   estimatedDurationSeconds: z.number().min(0).max(COURSE_LIMITS.lessonSeconds),
   isRequired: z.boolean().optional(),
+  /** Only for a `quiz` lesson; a draft may leave it empty, publishing needs it. */
+  quizId: z.number().int().positive().nullish(),
   blocks: z.array(BlockInputSchema).max(COURSE_LIMITS.items),
 });
 export type LessonInput = z.infer<typeof LessonInputSchema>;
