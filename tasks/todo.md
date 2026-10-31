@@ -90,7 +90,7 @@ Each backend test file is a DB-backed integration test that extends `AssessmentI
     `AssessmentViews.java`, `LearningAssessmentAccess.java`, the new IT.
   - Size: M. Depends on: T3.
 
-- [ ] **T5: Demo quiz lessons (dev SQL) and backend docs**
+- [x] **T5: Demo quiz lessons (dev SQL) and backend docs**
   - Acceptance:
     - `docs/sql/learning_hub_learner_quiz_demo.sql`:
       - dev and test only, with the same header style and run-once guard as the other demos;
@@ -109,12 +109,14 @@ Each backend test file is a DB-backed integration test that extends `AssessmentI
 
 ### Checkpoint A
 
-- [ ] `mvn clean verify` green.
-- [ ] As `hocvien`, with `curl`:
+- [x] `mvn clean verify` green (310 tests, 42 skipped `CommunityApiIT` as before).
+- [x] As `hocvien`, with `curl`:
   - list the quizzes of `FE-DEMO-C1`;
   - start and submit the final exam with wrong answers, then with right ones;
   - the quiz lesson is at 100% and, once the course's other required lessons are done, the enrollment is
     `completed`.
+  - Run on a throwaway copy of the DB (`flow_check`, backend on :8039) using `FE-DEMO-C2`, because its final exam is
+    the one that needs the other lessons done first; `FE-DEMO-C1` was only listed (lessonId filled).
 - [ ] Show the backend diff to the user before Phase 2.
 
 ## Phase 2: App

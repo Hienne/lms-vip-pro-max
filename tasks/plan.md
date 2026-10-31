@@ -114,12 +114,12 @@ The admin question and quiz screens stay on mock (the spec's open question 1, at
 - [x] T2: Saving and publishing quiz lessons (port, validation, copy)
 - [x] T3: Passing the quiz completes the quiz lesson
 - [x] T4: `GET /me/courses/{courseId}/quizzes`
-- [ ] T5: Demo quiz lessons (dev SQL) and backend docs
+- [x] T5: Demo quiz lessons (dev SQL) and backend docs
 
 ### Checkpoint A
 
-- [ ] `mvn clean verify` green.
-- [ ] A `curl` run as `hocvien` works end to end: list quizzes, take the final exam, pass, and the lesson and the
+- [x] `mvn clean verify` green.
+- [x] A `curl` run as `hocvien` works end to end: list quizzes, take the final exam, pass, and the lesson and the
       course become complete.
 
 ### Phase 2: App
