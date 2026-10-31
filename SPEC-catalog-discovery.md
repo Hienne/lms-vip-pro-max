@@ -1,7 +1,7 @@
 # Spec: `catalog-discovery`
 
-Map: [SPEC.md](SPEC.md). Status: **draft, waiting for approval.** Depends on `learner-quiz`, which provides the
-final exam used by "Chưa đạt".
+Map: [SPEC.md](SPEC.md). Status: **approved 2026-10-31, amended by the plan (see "Amendments").** Depends on
+`learner-quiz`, which provides the final exam used by "Chưa đạt".
 
 Read first: `SPEC-lesson-player.md` (open question 1, `findLearnerCourse`), `docs/migration/mockup-to-angular.md`,
 `corebanking-academy/docs/api/LEARNING.md`.
@@ -49,6 +49,26 @@ the plan, with a query plan on the demo data.
 No schema change. Every new filter is a query over existing tables, so no upgrade script.
 
 Docs: `docs/api/LEARNING.md` gets D1–D5, the `failed` rule and the new filter list.
+
+## Amendments
+
+Written with [tasks/plan.md](tasks/plan.md). Where they differ from the sections above, they win.
+
+1. **`failed` goes through the quiz port.** `LearningQuizDirectory` gains `failedFinalExamCourseIds(userId)`,
+   implemented in `assessment`: courses whose PUBLISHED, not deleted FINAL_EXAM the caller attempted (at least
+   one graded `SUBMITTED` or `AUTO_SUBMITTED` attempt) and never passed. The search binds the set as the D2
+   filter and the D3 flag; Learning reads no Assessment table. `MANAGE` mode does not call the port and its
+   `failed` is false.
+2. **One visibility rule.** The learner visibility condition is one private method of
+   `CourseRepositoryCustomImpl`, used by `search` and by the D1 query.
+3. **Counts reuse the list.** D5's `assigned` and `mandatory` are the totals of the `MINE` search with
+   `assigned=true` and `requirement=mandatory`.
+4. **The status filter is one choice.** The app sends at most one of `learningStatus`, `failed=true`,
+   `overdue=true` or `assigned=true`, as the mockup's single "Trạng thái" select does.
+5. **Open questions take their defaults.** "Được giao" means "has an active assignment"; D1 covers the whole
+   visible catalogue.
+6. **D4 before enrolment** (decided 2026-10-31): for a caller who is not enrolled, `content` keeps chapters and
+   lessons and empties every lesson's `blocks`. An enrolled caller gets the full revision.
 
 ## App
 

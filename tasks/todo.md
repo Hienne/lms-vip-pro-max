@@ -1,283 +1,193 @@
-# Tasks: `learner-quiz`
+# Tasks: `catalog-discovery`
 
-Spec: [SPEC-learner-quiz.md](../SPEC-learner-quiz.md) · Plan: [plan.md](plan.md).
-The previous `local-stack` checklist and its T7 results are in git history at `55a756f`.
+Spec: [SPEC-catalog-discovery.md](../SPEC-catalog-discovery.md) · Plan: [plan.md](plan.md).
+The previous `learner-quiz` checklist, with its success criteria and how each was checked, is in git history at
+`3da2ff3`.
 
 - **Repositories:** the backend is `~/my-projects/corebanking-academy`; the frontend is this repository.
 - **Branch:** `feat/learner-mockup-gap` in both. Nothing is pushed.
 - **Local stack:**
   - the backend reads `.env.local` (`set -a; . ./.env.local; set +a`);
   - the app runs with the `lms-local` launch config;
-  - accounts: `hocvien` as the learner, `quantri` as the editor;
+  - accounts: `hocvien` and `hocvien.tichhop` as learners;
   - passwords come only from environment variables.
 
-Each backend test file is a DB-backed integration test that extends `AssessmentIntegrationTest`.
+Each backend test file is a DB-backed integration test in package `assessment` that extends
+`AssessmentIntegrationTest`. There is no `learning` test package.
 
 ## Phase 1: Backend
 
-- [x] **T1: `course_lessons.quiz_id` (DB, entity, view) and spec amendments**
+- [ ] **T1: `failed` through the quiz port, and the D3 card fields**
   - Acceptance:
-    - `docs/sql/upgrade/2026-11-01-learner-quiz.sql` adds the column, its comment and a partial index.
-    - `…rollback.sql` stops if a lesson of type `quiz` exists, and otherwise drops the index and the column.
-    - `learning_hub_learning.sql` gets the same column. The README gets the `psql` lines.
-    - `CourseLesson.quizId` is mapped, and `CourseLessonView` gains `quizId`.
-    - `SPEC-learner-quiz.md` gets the five amendments from the plan.
-  - Verify:
-    - the upgrade and the rollback both apply on the local DB, and the upgrade is applied again afterwards;
-    - the backend starts with `ddl-auto=validate`;
-    - `mvn -q test` is green.
-  - Files: 2 upgrade scripts, `learning_hub_learning.sql`, `docs/sql/README.md`, `CourseLesson.java`,
-    `LearningViews.java`, plus the FE spec.
-  - Size: S. Depends on: none.
+    - `LearningQuizDirectory.failedFinalExamCourseIds(String userId)` returns the courses whose PUBLISHED,
+      not deleted FINAL_EXAM the user attempted (at least one graded `SUBMITTED` or `AUTO_SUBMITTED` attempt)
+      and never passed. The Assessment implementation is one query.
+    - `CourseCard` gains, at the end: `fieldId`, `fieldName`, `programName`, `moduleName`, `failed`.
+      `business_modules` is joined for the module name. A missing programme or module gives `null` names.
+    - In `MINE` and `CATALOG` mode, `failed` is `c.course_id in (:failedIds)` (bind `-1` for an empty set). In
+      `MANAGE` mode the port is not called and `failed` is false.
+  - Verify: `CatalogCardIT` covers:
+    - the names on a demo course;
+    - `failed` is true after a failed final exam, false after a later pass, and false for a course with no
+      final exam;
+    - the instructor list still works and has `failed` false.
 
-- [x] **T2: Saving and publishing quiz lessons**
+    The existing export IT stays green and the CSV header is unchanged. `EXPLAIN (ANALYZE, BUFFERS)` of the
+    port query on the demo DB is pasted into the commit body.
+
+  - Files: `LearningQuizDirectory.java` and its Assessment implementation, `LearningDetails.java`,
+    `CourseRepositoryCustom.java`, `CourseRepositoryCustomImpl.java`, `LearningSearchService.java`, the new IT.
+  - Size: M. Depends on: none.
+
+- [ ] **T2: `assigned`, `failed` and `overdue` filters on both lists and the export**
   - Acceptance:
-    - The `LearningQuizDirectory` port lives in `learning`. Its implementation in `assessment` looks up a quiz
-      by id and returns `courseId`, `status` and `deleted`.
-    - `LessonInput` gains `quizId`.
-    - Saving a draft:
-      - a quiz lesson with blocks → `LEARNING-BLOCK_INVALID`;
-      - a `quizId` that belongs to another course or is deleted → `LEARNING-QUIZ_INVALID`;
-      - a `null` `quizId` is allowed.
-    - Publishing: a quiz lesson whose quiz is missing or not PUBLISHED → `LEARNING-QUIZ_LESSON_UNLINKED`.
-    - `cloneContent` keeps `quizId` when creating a draft, and clears it when copying to another course.
-    - The new codes, with Vietnamese messages, are added to `LearningResponseCode`.
-  - Verify: `QuizLessonContentIT` covers:
-    - save with a `quizId` from the same course;
-    - another course's quiz is refused;
-    - publish with no quiz is refused;
-    - publish with a PUBLISHED quiz succeeds;
-    - the draft keeps `quizId`;
-    - the copy clears it.
-  - Files: port and implementation, `LearningRequests.java`, `LearningContentService.java`,
-    `LearningResponseCode.java`, the new IT.
+    - `/me/learning/courses` and `/me/learning/catalog` take optional `assigned` and `failed` booleans;
+      `/catalog` also takes `overdue`. `/progress/export` takes the same filters as `/courses`.
+    - `assigned=true` is `coalesce(obligations.assigned, false)`, the same expression as the card.
+    - `failed=true` / `false` uses the T1 set.
+    - The learner visibility condition is moved into one private method of `CourseRepositoryCustomImpl`, with no
+      change in behaviour.
+    - `@Parameter` describes each new filter.
+  - Verify: `CatalogFilterIT` covers:
+    - each filter on each list returns the expected demo courses;
+    - `failed` and `assigned` combine with `learningStatus`;
+    - the export with `failed=true` lists the same courses as the list.
+  - Files: `LearningLearnerController.java`, `LearningSearchService.java`, `CourseRepositoryCustom(Impl).java`,
+    `docs/api/LEARNING.md`, the new IT.
   - Size: M. Depends on: T1.
 
-- [x] **T3: Passing the quiz completes the quiz lesson**
+- [ ] **T3: `GET /api/v1/me/learning/facets`**
   - Acceptance:
-    - `LearningAssessmentAccess.quizPassed(userId, enrollmentId, quizId)` asks `LearningProgressService` to set
-      `lesson_progress = 100` on every quiz lesson of that enrollment's revision that has this `quizId`, then
-      runs `updateEnrollment`.
-    - `AttemptGrader` calls it after saving an attempt with `passed = true`. This covers submit, expiry,
-      submit on behalf and regrade.
-    - If the enrollment is missing or withdrawn, the call is logged and skipped, and the grade is kept.
-    - `requiredLessonsCompleted` counts only `content` lessons.
-  - Verify: `QuizLessonCompletionIT` covers:
-    - fail → nothing changes;
-    - pass → the lesson is at 100% and the course is complete when it was the last required lesson;
-    - an expired attempt that passes completes the lesson the same way;
-    - a withdrawn enrollment → the grade is kept and progress is untouched;
-    - a quiz with `requireLessonsCompleted` is not blocked by its own quiz lesson.
+    - Returns `LearnerFacets { fields[], programs[], modules[] }`, each item `{ id, code, name }`; programs and
+      modules also have `fieldId`.
+    - Only values used by at least one course visible in the caller's catalogue (the T2 visibility method),
+      sorted by `sort_no`, then name.
+    - `@Operation` and `@ApiResponse` as on the other learner endpoints.
+  - Verify: `LearnerFacetsIT` covers:
+    - a field, programme or module with no visible course is left out;
+    - a course shared to the caller's org brings its values in;
+    - the order.
+  - Files: `LearningLearnerController.java`, `LearningSearchService.java` (or a small `LearnerFacetsService` if
+    the search service passes 300 lines), `CourseRepositoryCustom(Impl).java`, the DTO, `docs/api/LEARNING.md`,
+    the new IT.
+  - Size: S–M. Depends on: T2.
 
-    `LearnerQuizFlowIT` stays green.
-
-  - Files: `LearningAssessmentAccess.java`, `LearningProgressService.java`, `AttemptGrader.java`, the new IT.
+- [ ] **T4: `GET /api/v1/me/learning/courses/{courseId}`**
+  - Acceptance:
+    - Returns `LearnerCourse { card, content }`. `card` comes from the `CATALOG` search with a `courseId`
+      filter. `content` is `LearningContentService.detail` of the card's revision.
+    - A course the caller cannot see is refused with Learning's course-not-found code. Check
+      `LearningResponseCode` first. If none exists, add `LEARNING-COURSE_NOT_FOUND` with a Vietnamese message.
+    - Before enrolment, `content` keeps chapters and lessons and empties every lesson's `blocks` (plan
+      amendment 6).
+  - Verify: `LearnerCourseIT` covers:
+    - an enrolled course returns the enrolled revision, also after a newer revision is published;
+    - a visible, not-enrolled course returns the published revision with empty block lists;
+    - a course outside the caller's scope is refused.
+  - Files: `LearningLearnerController.java`, `LearningSearchService.java`, `CourseRepositoryCustom(Impl).java`,
+    `LearningDetails.java`, maybe `LearningResponseCode.java`, `docs/api/LEARNING.md`, the new IT.
   - Size: M. Depends on: T2.
 
-- [x] **T4: `GET /api/v1/me/courses/{courseId}/quizzes`**
+- [ ] **T5: `assigned` and `mandatory` counts in the progress summary**
   - Acceptance:
-    - Returns `List<LearnerQuizCard{ quiz, summary, canStart, blockReason, availableAt, lessonId }>`.
-    - Only PUBLISHED quizzes that are not deleted are listed, with FINAL_EXAM last.
-    - It uses the same access rule as the intro, and reuses the intro's summary and block code.
-    - `lessonId` is the quiz lesson in the caller's revision, read through the Learning adapter.
-    - The endpoint has `@Operation` and `@ApiResponse`.
-  - Verify: `LearnerCourseQuizzesIT` covers:
-    - order and status;
-    - a DRAFT quiz is hidden;
-    - another course the caller cannot access is refused;
-    - `lessonId` is filled.
-  - Files: `LearnerQuizController.java`, `QuizAttemptService.java` (or a new `LearnerQuizListService`),
-    `AssessmentViews.java`, `LearningAssessmentAccess.java`, the new IT.
-  - Size: M. Depends on: T3.
-
-- [x] **T5: Demo quiz lessons (dev SQL) and backend docs**
-  - Acceptance:
-    - `docs/sql/learning_hub_learner_quiz_demo.sql`:
-      - dev and test only, with the same header style and run-once guard as the other demos;
-      - adds a required quiz lesson to the published revision of `FE-DEMO-C1` and `FE-DEMO-C2`, linked to that
-        course's FINAL_EXAM;
-      - is added to `local-db-init.sh` after the assessment demo.
-    - `docs/api/ASSESSMENT.md`: the new endpoint, the quiz lesson rule, the one-way regrade, and an updated
-      "Chưa làm" list.
-    - `docs/api/LEARNING.md`: `quizId` and the two new error codes.
-  - Verify:
-    - run the SQL on the local DB;
-    - as `hocvien`, `curl` the new endpoint and see `lessonId`;
-    - a second run of the SQL stops without changing anything.
-  - Files: the demo SQL, `local-db-init.sh`, `docs/sql/README.md`, `ASSESSMENT.md`, `LEARNING.md`.
-  - Size: S. Depends on: T4.
+    - `LearningProgressOverview.Counts` gains `assigned` and `mandatory`.
+    - Each is the total of the `MINE` search with `assigned=true` or `requirement=mandatory` (plan amendment 3).
+  - Verify: `ProgressSummaryCountsIT` checks that both counts equal the `totalElements` of the matching list
+    call for `hocvien`. `docs/api/LEARNING.md` gets D5 and the `failed` rule.
+  - Files: `LearningProgressOverview.java`, the summary service, `docs/api/LEARNING.md`, the new IT.
+  - Size: S. Depends on: T2.
 
 ### Checkpoint A
 
-- [x] `mvn clean verify` green (310 tests, 42 skipped `CommunityApiIT` as before).
-- [x] As `hocvien`, with `curl`:
-  - list the quizzes of `FE-DEMO-C1`;
-  - start and submit the final exam with wrong answers, then with right ones;
-  - the quiz lesson is at 100% and, once the course's other required lessons are done, the enrollment is
-    `completed`.
-  - Run on a throwaway copy of the DB (`flow_check`, backend on :8039) using `FE-DEMO-C2`, because its final exam is
-    the one that needs the other lessons done first; `FE-DEMO-C1` was only listed (lessonId filled).
-- [x] Show the backend diff to the user before Phase 2 (approved 2026-10-31: "Duyệt, làm Phase 2").
+- [ ] `mvn clean verify` green (as before: 42 `CommunityApiIT` tests skipped).
+- [ ] As `hocvien`, with `curl` on `:8019`:
+  - `facets` lists names;
+  - each of `assigned`, `failed`, `overdue` on `catalog` and `courses`;
+  - `courses/{id}` for an enrolled course, a visible one and a hidden one;
+  - `progress/summary` counts agree with the lists.
+- [ ] Show the backend diff to the user before Phase 2.
 
 ## Phase 2: App
 
-- [x] **T6: Learner quiz contracts and mocks**
+- [ ] **T6: Contracts and mocks**
   - Acceptance:
-    - `libs/contracts/src/lib/assessment/learner-quiz.schema.ts` and `learner-quiz.endpoints.ts`
-      (`learnerQuizEndpoints`) hold the 10 keys from the spec plus `myCompetency`. Each schema mirrors its
-      backend record field by field.
-    - The course contracts gain `quizId` on the lesson and on the lesson input.
-    - There is a real key for the admin quiz list (`GET /api/v1/quizzes`).
-    - `libs/mocks/src/lib/assessment` serves the new paths from its seed.
-  - Verify: `npx nx test contracts` covers:
-    - parsing a response captured from the local backend for each key (saved as a fixture);
-    - a wrong shape is refused.
-
-    `npx nx test mocks` is green.
-
-  - Files: 2 new contract files plus a spec, the course schema, the assessment mock.
+    - `learnerEndpoints.facets` (D1) and `learnerEndpoints.course` (D4), with `LearnerFacetsSchema` and
+      `LearnerCourseSchema` mirroring the backend records field by field.
+    - The list query schemas gain `assigned`, `failed`, `overdue`; `CourseCardSchema` gains the D3 fields;
+      `LearningProgressOverviewSchema.counts` gains `assigned` and `mandatory`.
+    - `libs/mocks/src/lib/learning` serves the two keys, the new filters and fields from its seed.
+  - Verify: `npx nx test contracts` parses responses captured from the local backend for each new or changed
+    key and refuses a wrong shape; `npx nx test mocks` is green.
+  - Files: `learner.schema.ts`, `learner.endpoints.ts`, the course card schema, a captured fixture file, the
+    learning mock and its spec.
   - Size: M. Depends on: Checkpoint A.
 
-- [x] **T7: Learner quiz, part 1: store, hub, intro, attempts**
+- [ ] **T7: Catalogue on facets and the new status filters**
   - Acceptance:
-    - `features/quiz/learner-quiz/` has `learner-quiz.store.ts` (`serverData` / `serverMutation`) and the hub,
-      intro and attempts views.
-    - The intro shows `canStart`, or one Vietnamese sentence per `blockReason` (copy from the mockup where it has
-      one).
-    - The routes `quiz`, `quiz/:id` and `quiz/:id/attempts` point to it.
-    - The `QUIZ_TAKING` group `requires` the new keys.
-  - Verify: store and component specs cover:
-    - each `blockReason`;
-    - the hub groups attempts by quiz;
-    - the attempts table and the CSV.
-
-    `npx nx test lms` is green.
-
-  - Files: store plus spec, the hub, intro and attempts components, `screens.ts`.
+    - `catalog.store.ts` reads fields, programmes and modules from one `facets` call. The programme and module
+      selects list only entries of the chosen field. No `trainingCatalogEndpoints` import is left in the store.
+    - "Trạng thái" options are the mockup's `STATUS_OPTS`: Chưa bắt đầu, Đang học, Đã hoàn thành, Chưa đạt,
+      Quá hạn, Được giao. `failed` → `failed: true`, `overdue` → `overdue: true`, `assigned` →
+      `assigned: true`, the rest → `learningStatus`.
+    - The "Được giao" scope lists `catalog` with `assigned: true`.
+    - "Xóa n bộ lọc" counts the status choice; the URL round trip keeps every filter.
+    - The card's programme name comes from `programName`.
+  - Verify: store specs map each status option to its query, cover the URL round trip and the field → module
+    narrowing; the page spec renders the selects from facets. `npx nx test lms` is green.
+  - Files: `catalog.store.ts`, `catalog.html` / `.ts`, `catalog.spec.ts`, `course-card-view.ts`.
   - Size: M. Depends on: T6.
-
-- [x] **T8: Learner quiz, part 2: take and result; trim `AssessmentScreen`**
-  - Acceptance:
-    - `assessment-take` and `assessment-result` move to `features/quiz/components/` and take the new schemas.
-    - Take screen:
-      - the countdown comes from the server's `deadlineAt` and `serverTime`;
-      - each answer is saved with `PATCH`, with "Thử lại" when the save fails;
-      - a reload restores the attempt from the session;
-      - the question code is shown, as in the mockup.
-    - Result screen:
-      - the primary action is "Về khóa học";
-      - the review is collapsed;
-      - the per-competency breakdown is shown.
-    - The routes `quiz/:id/take` and `quiz/:id/result/:attemptId` point to the new feature.
-    - The learner branches, keys and mock handlers are removed from `AssessmentScreen`, its store,
-      `assessment.endpoints.ts` and the mocks.
-  - Verify:
-    - specs cover answer → save, a failed save → retry, submit → result, and the countdown with a skewed
-      `serverTime`;
-    - the existing admin specs stay green;
-    - `npm run check` is green.
-  - Files: the two moved components, the learner store, `assessment-screen.store.ts`, `assessment.endpoints.ts`.
-    The mock file and `screens.ts` are touched in the same commit; keep it at 7 files at most.
-  - Size: M–L (split again if it grows past 7 files). Depends on: T7.
 
 ### Checkpoint B
 
-- [x] `npm run check` green (fourth run, commit `febc7c4`).
-- [x] On `lms-local` as `hocvien` (checked 2026-10-31; `quantri` sees the admin menu and no quiz menu):
-  - the "Làm bài kiểm tra" menu shows;
-  - the final exam of `FE-DEMO-C1` can be taken end to end, including a reload in the middle;
-  - the network panel shows only `/api/v1/me/…` calls for quizzes.
-- [x] On `mockBackend: true` as an admin, the admin question and quiz screens still work.
+- [ ] `npm run check` green.
+- [ ] On `lms-local` as `hocvien`: the three selects list real names and each narrows the list; each status
+      option and each sort changes the list; "Xóa n bộ lọc" shows the right n and clears; the network panel
+      shows no `/api/v1/training-catalog` call.
 
-## Phase 3: Course, player, editor
+## Phase 3: Course, lesson and learn pages
 
-- [x] **T9: The course page "Bài kiểm tra" section and the quiz lesson in the player**
+- [ ] **T8: Course and lesson pages on D4, with the programme breadcrumb**
   - Acceptance:
-    - The course store loads `courseQuizzes`.
-    - The page shows a final-exam card with the pass mark, attempts left, best score, and either the
-      "Làm bài" button or the block reason, and lists the other quizzes as rows.
-    - In the player, a quiz lesson shows its quiz card, with "Làm bài" linking to `quiz/:quizId`, instead of
-      "Bài kiểm tra chưa mở.".
-    - The outline uses the quiz icon for quiz lessons.
-  - Verify: specs cover the course page with and without a final exam, and the player's quiz lesson.
-  - Files: `course.store.ts`, `course.html` / `.ts`, `lesson.store.ts`, `lesson.html`.
+    - `course.store.ts` and `lesson.store.ts` load `learnerEndpoints.course` once; the course page uses its
+      `content` instead of a second enrollment read where the content is enough.
+    - Breadcrumb: Danh mục khóa học › {programName} › {title}. The meta line starts with "{fieldName} ·
+      {moduleName}"; a null name is left out, never shown as "—".
+    - `core/learning/learner-course.ts` and its spec are deleted.
+  - Verify: specs cover the breadcrumb with and without names, the not-enrolled course, and a refused course;
+    the lesson spec loads through D4.
+  - Files: `course.store.ts`, `course.html` / `.ts`, `course.spec.ts`, `lesson.store.ts`, `lesson.spec.ts`,
+    `learner-course.ts` (+ spec, deleted).
   - Size: M. Depends on: Checkpoint B.
 
-- [x] **T10: The quiz picker in the course editor**
+- [ ] **T9: Learn page tabs and counts; "Chưa đạt" and "Quá hạn" on the course card**
   - Acceptance:
-    - For a quiz lesson, a "Bài kiểm tra" select lists the course's quizzes from the admin list (title, type,
-      status; non-PUBLISHED ones are marked).
-    - `course-draft.ts` sends `quizId`.
-    - The server's `LEARNING-QUIZ_INVALID` and `LEARNING-QUIZ_LESSON_UNLINKED` messages appear on save and on
-      publish.
-  - Verify: specs cover the select, the draft mapping both ways, and the server error shown.
-  - Files: `lesson-form.ts` / `.html`, `course-draft.ts`, the editor store.
-  - Size: S–M. Depends on: T9.
+    - Tabs: Đang học, Chưa bắt đầu, Đã hoàn thành, Bắt buộc, Được giao, each with the summary's count. "Được
+      giao" lists `myCourses` with `assigned: true`.
+    - `learn.store.ts` no longer reads `trainingCatalogEndpoints`; the programme name comes from the card.
+    - The course card shows one status label: "Chưa đạt" when `failed`, "Quá hạn" when `deadlineStatus` is
+      overdue, as status tones (`visual-design.md`: at most one coloured badge per card).
+  - Verify: `learn.store.spec.ts` covers the five tabs, their queries and counts; `course-card.spec.ts` covers
+    both labels and their precedence.
+  - Files: `learn.store.ts` (+ spec), `learn.html`, `shared/course/course-card*.ts|html`, `course-labels.ts`.
+  - Size: S–M. Depends on: T8.
 
-- [x] **T11: End-to-end check against the spec**
+- [ ] **T10: End-to-end check against the spec**
   - Acceptance: the spec's success criteria 1–5 are written here, each with how it was checked.
-  - Verify, as `quantri` in the browser:
-    - add a quiz lesson to a draft and pick the final exam;
-    - publish, then try publishing with another course's quiz (the error must show).
+  - Verify, as `hocvien` on the local stack in the browser:
+    - the catalogue filters and sorts, and "Xóa n bộ lọc";
+    - "Chưa đạt" lists a course whose final exam the learner failed (check the data first; see the plan's risk
+      table);
+    - the five learn tabs and their counts against `progress/summary`;
+    - the course page and the lesson page each make one D4 call, with the programme breadcrumb.
 
-    Then, as `hocvien`:
-    - fail and then pass the quiz from the course page;
-    - the lesson and the course are complete.
-
+    Then each changed screen at 1280 and 375 px, light and dark, against the `visual-design.md` checklist.
     Finally, `mvn clean verify` and `npm run check` are green.
 
-  - Files: `tasks/todo.md`, `SPEC-learner-quiz.md` (status).
-  - Size: S. Depends on: T10.
-
-  **Results (2026-10-31).** Checked on the local stack: `lms-local` on :4200, backend on :8019, DB `core_academy`.
-  The learner part ran as `hocvien.tichhop` on `FE-DEMO-C2` instead of `hocvien`, because `hocvien` had already passed
-  `QZ-E2E-01` and had one attempt left on `FE-DEMO-C1`; this kept that demo state. The right answers were read from
-  `question_options` of the local DB, since the app does not show them before a pass.
-  1. **Every learner quiz call goes to `/api/v1/me/…`, none is `served: 'mock'`.** The browser network panel for the
-     whole learner run (course page, intro, start, save, submit, result) lists only `GET /me/courses/2/quizzes`,
-     `GET /me/quizzes/4`, `POST /me/quizzes/4/attempts`, `PATCH /me/quiz-attempts/{id}/questions/{qid}`,
-     `POST /me/quiz-attempts/{id}/submit` and `GET /me/quiz-attempts/{id}/result`, all `200`. In `libs/contracts`
-     `learner-quiz.endpoints.ts` has no `served` key; the `served: 'mock'` keys left in `assessment.endpoints.ts` are
-     all `/api/admin/…` (question bank and quiz authoring, out of scope).
-  2. **A learner takes a quiz from the course page end to end.** The course page shows the final-exam card with its
-     block reason ("Hoàn thành các bài học nội dung… để mở") until the content lessons are done, then "Làm bài".
-     Intro → start → answer one question → full reload on `/quiz/4/take`: the answer and "1/6 đã trả lời" came back
-     and the clock continued (14:39) → submit → result "Chưa đạt 0%", one attempt left, answers locked. Second
-     attempt: all 6 answered (single and multiple choice) → result "Đạt 100%", with the per-competency breakdown.
-     The attempts table (`quiz_attempts`) holds attempt 1 at 0% and attempt 2 at 100% passed.
-  3. **A quiz lesson saved in the editor shows its quiz in the player; passing completes the lesson and the course.**
-     As `quantri`: opened a draft of `QZ-E2E-01`, added a lesson, set its type to "Bài kiểm tra", picked "Thi E2E · Thi
-     cuối khóa" (the picker lists only that course's quizzes), saved the draft (`course_lessons.quiz_id = 5` in the
-     draft revision) and published (`published_revision_id` moved to the new revision, both quiz lessons keep
-     `quiz_id = 5`). As the learner: the quiz lesson in the player (`/lesson/2/19`) shows the quiz card and "Làm bài".
-     After the pass, `lesson_progress` for lesson 19 is `completed` at 100.000 with `completed_at` set, and
-     `course_enrollments` 4 went from `in_progress` 75.000 to `completed` 100.000. On screen the course page shows
-     4/4 required lessons done, the quiz lesson ticked, the final-exam card "Đã đạt · Cao nhất 100%" and
-     "Hoàn thành 31/10/2026". A failed attempt changed nothing (lesson 19 had no row, enrollment stayed at 75).
-  4. **The server's quiz errors show in the editor.**
-     - A quiz lesson with no quiz chosen on publish: the editor shows "Chưa thể xuất bản: Có bài học loại kiểm tra chưa
-       chọn bài kiểm tra đã xuất bản của khóa học." (`LEARNING-QUIZ_LESSON_UNLINKED`). The client checklist warns but
-       does not block, so the request reaches the server.
-     - Another course's quiz: the picker cannot offer one, so the draft save request was edited in the page
-       (`quizId: 5`, a quiz of course 8, on the lesson of course 9). The editor shows "Bài kiểm tra chưa hợp lệ: Bài
-       kiểm tra không tồn tại, đã bị xóa hoặc không thuộc khóa học này." (`LEARNING-QUIZ_INVALID`). The retry fix
-       (`547c229`) held: after each refusal the next publish went out with no data-conflict message.
-  5. **Both builds are green and the SQL applies.**
-     - `npm run check`: the first run failed on one timeout in `course-new.spec.ts` (11 s under load; it passes alone in
-       5.5 s and does not touch this module). The rerun is green (14 tasks, 0 failures).
-     - `mvn clean verify` in the backend: `BUILD SUCCESS`, 310 tests, 0 failures, 42 skipped (`CommunityApiIT`, as before).
-     - Upgrade and rollback were run with the README `psql` command on `flow_check`, a throwaway copy of
-       `core_academy` (dropped afterwards; `core_academy` untouched): rollback with 6 quiz lessons present → refused,
-       exit 3, column and index unchanged; after deleting those lessons in the copy → rollback applied, column and index
-       gone; upgrade applied; upgrade a second time applied with only a "relation already exists, skipping" notice; the
-       column comment is in place.
-
-  **Left in the local DB by this check:** course `QZ-E2E-01` has a second published revision (two quiz lessons);
-  course `QZ-E2E-02` (a draft) has a chapter and one quiz lesson with no quiz; `hocvien.tichhop` has passed
-  `FE-DEMO-C2` (enrollment 4 `completed`, quiz attempts 5 and 6). `hocvien` is untouched.
+  - Files: `tasks/todo.md`, `SPEC-catalog-discovery.md` (status).
+  - Size: S. Depends on: T9.
 
 ### Checkpoint C
 
-- [x] Criteria 1–5 recorded.
-- [x] Spec status set to built.
-- [ ] Review with the user, then plan `catalog-discovery`.
+- [ ] Criteria 1–5 recorded.
+- [ ] Spec status set to built.
+- [ ] Review with the user, then plan the next module.
