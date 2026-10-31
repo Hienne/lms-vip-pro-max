@@ -258,7 +258,7 @@ under `apps/lms/src/app/features/quiz/` unless they say otherwise.
     `learner-course.ts` (+ spec, deleted).
   - Size: M. Depends on: Checkpoint B.
 
-- [ ] **T9: Learn page tabs and counts; "Chưa đạt" and "Quá hạn" on the course card**
+- [x] **T9: Learn page tabs and counts; "Chưa đạt" and "Quá hạn" on the course card**
   - Acceptance:
     - Tabs: Đang học, Chưa bắt đầu, Đã hoàn thành, Bắt buộc, Được giao, each with the summary's count. "Được
       giao" lists `myCourses` with `assigned: true`.

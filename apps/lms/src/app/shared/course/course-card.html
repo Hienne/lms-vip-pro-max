@@ -5,6 +5,8 @@
     >
     @if (completed()) {
     <span uiBadge tone="success">Hoàn thành</span>
+    } @else if (course().failed) {
+    <span uiBadge tone="danger">Chưa đạt</span>
     } @else if (course().overdue) {
     <span uiBadge tone="danger">Quá hạn</span>
     }

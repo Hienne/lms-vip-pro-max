@@ -23,6 +23,8 @@ export interface CourseCardView {
   /** The status in words, as the server phrases it. */
   readonly statusLabel: string;
   readonly overdue?: boolean;
+  /** The final exam was taken and never passed: the server's result. */
+  readonly failed?: boolean;
   /** ISO date-time. */
   readonly dueAt?: string | null;
   /** Best quiz score in percent, when the course has a quiz that was taken. */

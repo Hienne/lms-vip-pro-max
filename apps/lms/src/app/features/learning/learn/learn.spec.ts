@@ -104,7 +104,8 @@ describe('Learn', () => {
     it('lists the in-progress courses first and the status counts on the tabs', () => {
       expect(cards().length).toBeGreaterThan(0);
       expect(tab('Đang học').textContent).toMatch(/Đang học\s*\d+/);
-      expect(tab('Bắt buộc').textContent?.trim()).toBe('Bắt buộc');
+      expect(tab('Bắt buộc').textContent).toMatch(/Bắt buộc\s*\d+/);
+      expect(tab('Được giao').textContent).toMatch(/Được giao\s*\d+/);
     });
 
     it('changes the grid with the tab and says so when a tab has none', async () => {
@@ -125,6 +126,14 @@ describe('Learn', () => {
           ([e, r]) =>
             e === learnerEndpoints.myCourses &&
             r.query['requirement'] === 'mandatory',
+        ),
+      ).toBe(true);
+      tab('Được giao').click();
+      await settle();
+      expect(
+        handle.mock.calls.some(
+          ([e, r]) =>
+            e === learnerEndpoints.myCourses && r.query['assigned'] === 'true',
         ),
       ).toBe(true);
     });

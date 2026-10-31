@@ -24,6 +24,7 @@ export function toCourseCardView(card: CourseCard): CourseCardView {
       ? COURSE_STATUS_LABEL[status]
       : 'Chưa đăng ký',
     overdue: card.overdue ?? false,
+    failed: card.failed ?? false,
     dueAt: card.dueAt ?? null,
     link: `/course/${card.courseId}`,
   };

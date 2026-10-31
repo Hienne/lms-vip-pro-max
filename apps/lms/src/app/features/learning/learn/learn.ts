@@ -24,6 +24,7 @@ const TAB_LABEL: Record<LearnTab, string> = {
   not_started: 'Chưa bắt đầu',
   completed: 'Đã hoàn thành',
   mandatory: 'Bắt buộc',
+  assigned: 'Được giao',
 };
 
 /** The learner's home (the mockup's `dashboard` page, F.1): what to do next, then where they stand. */

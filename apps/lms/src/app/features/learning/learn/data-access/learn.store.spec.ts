@@ -19,7 +19,7 @@ import {
   fakeSession,
   seedProfile,
 } from '../../../../core/session/session.testing';
-import { LearnStore } from './learn.store';
+import { LEARN_TABS, LearnStore } from './learn.store';
 
 describe('LearnStore', () => {
   let handle: MockInstance<MockBackend['handle']>;
@@ -94,7 +94,7 @@ describe('LearnStore', () => {
     expect(store.isResumeLoading$()).toBe(false);
   });
 
-  it('shows the in-progress tab first and the status counts of the summary on the tabs', async () => {
+  it('shows the in-progress tab first and the summary counts on the five tabs', async () => {
     const store = await open();
     expect(store.tab$()).toBe('in_progress');
     expect(queries(learnerEndpoints.myCourses)).toContainEqual({
@@ -104,10 +104,17 @@ describe('LearnStore', () => {
     });
     const counts = store.tabCounts$();
     expect(counts.in_progress).toBeGreaterThan(0);
-    expect(counts).not.toHaveProperty('mandatory');
+    expect(Object.keys(counts).sort()).toEqual(LEARN_TABS.slice().sort());
+    expect(counts).toEqual({
+      in_progress: store.summary$()?.counts.inProgress,
+      not_started: store.summary$()?.counts.notStarted,
+      completed: store.summary$()?.counts.completed,
+      mandatory: store.summary$()?.counts.mandatory,
+      assigned: store.summary$()?.counts.assigned,
+    });
   });
 
-  it('asks the server for each tab: the three statuses, and mandatory by requirement', async () => {
+  it('asks the server for each tab: the three statuses, mandatory by requirement and assigned by flag', async () => {
     const store = await open();
     store.showTab('not_started');
     await settle();
@@ -123,8 +130,15 @@ describe('LearnStore', () => {
       sort: 'dueAt,asc',
       size: '6',
     });
+    store.showTab('assigned');
+    await settle();
+    expect(queries(learnerEndpoints.myCourses)).toContainEqual({
+      assigned: 'true',
+      sort: 'dueAt,asc',
+      size: '6',
+    });
     store.showTab('bogus');
-    expect(store.tab$()).toBe('mandatory');
+    expect(store.tab$()).toBe('assigned');
   });
 
   it('keeps the dated, still open courses of one server page by due date, at most five', async () => {
