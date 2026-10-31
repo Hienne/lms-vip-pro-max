@@ -138,7 +138,7 @@ under `apps/lms/src/app/features/quiz/` unless they say otherwise.
     `CourseRepositoryCustom.java`, `CourseRepositoryCustomImpl.java`, `LearningSearchService.java`, the new IT.
   - Size: M. Depends on: none.
 
-- [ ] **T2: `assigned`, `failed` and `overdue` filters on both lists and the export**
+- [x] **T2: `assigned`, `failed` and `overdue` filters on both lists and the export**
   - Acceptance:
     - `/me/learning/courses` and `/me/learning/catalog` take optional `assigned` and `failed` booleans;
       `/catalog` also takes `overdue`. `/progress/export` takes the same filters as `/courses`.

@@ -132,7 +132,7 @@ No schema change, so no upgrade script.
 ### Phase 1: Backend
 
 - [x] T1: `failed` through the quiz port, and the D3 card fields
-- [ ] T2: `assigned`, `failed` and `overdue` filters on both lists and the export
+- [x] T2: `assigned`, `failed` and `overdue` filters on both lists and the export
 - [ ] T3: `GET /me/learning/facets`
 - [ ] T4: `GET /me/learning/courses/{courseId}`
 - [ ] T5: `assigned` and `mandatory` counts in the progress summary
