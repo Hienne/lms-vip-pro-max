@@ -1,175 +1,234 @@
-# Tasks: `local-stack`
+# Tasks: `learner-quiz`
 
-Spec: [SPEC-local-stack.md](../SPEC-local-stack.md) · Plan: [plan.md](plan.md).
+Spec: [SPEC-learner-quiz.md](../SPEC-learner-quiz.md) · Plan: [plan.md](plan.md).
+The previous `local-stack` checklist and its T7 results are in git history at `55a756f`.
 
-**Repositories.**
+- **Repositories:** the backend is `~/my-projects/corebanking-academy`; the frontend is this repository.
+- **Branch:** `feat/learner-mockup-gap` in both. Nothing is pushed.
+- **Local stack:**
+  - the backend reads `.env.local` (`set -a; . ./.env.local; set +a`);
+  - the app runs with the `lms-local` launch config;
+  - accounts: `hocvien` as the learner, `quantri` as the editor;
+  - passwords come only from environment variables.
 
-- **BE:** `~/my-projects/corebanking-academy`.
-- **FE:** this repository.
-- **Branch:** `feat/learner-mockup-gap` in both, from `main`. Not pushed.
+Each backend test file is a DB-backed integration test that extends `AssessmentIntegrationTest`.
 
-**Passwords.** Commands read them from `PGPASSWORD` and `LOCAL_DEMO_PASSWORD`. They are never typed into a
-command line or a log.
+## Phase 1: Backend
 
-## Phase 1: Local services
-
-- [x] **T1: Local Postgres + MinIO with a bucket (BE)**
+- [ ] **T1: `course_lessons.quiz_id` (DB, entity, view) and spec amendments**
   - Acceptance:
-    - `compose.local.yaml` adds three services, alongside `db` from `compose.yaml`:
-      - `s3`: `bitnamilegacy/minio` pinned to a tag (the official `minio/*` images are no longer
-        pullable), on `127.0.0.1:9000` and `:9001`, with volume
-        `core_academy_s3` and a healthcheck.
-      - `s3-init`: same image (it bundles `mc`), run once. It creates bucket `academy-media` and a user whose policy covers only
-        that bucket.
-    - `.env.local.example` lists every key the backend reads, with local values (`DB_URL` on `localhost:5432`,
-      `S3_ENDPOINT=http://localhost:9000`, `S3_PATH_STYLE_ACCESS=true`) and `change-me` placeholders for secrets.
-    - `.gitignore` gets `!.env.local.example`.
+    - `docs/sql/upgrade/2026-11-01-learner-quiz.sql` adds the column, its comment and a partial index.
+    - `…rollback.sql` stops if a lesson of type `quiz` exists, and otherwise drops the index and the column.
+    - `learning_hub_learning.sql` gets the same column. The README gets the `psql` lines.
+    - `CourseLesson.quizId` is mapped, and `CourseLessonView` gains `quizId`.
+    - `SPEC-learner-quiz.md` gets the five amendments from the plan.
   - Verify:
-    - `docker compose -f compose.yaml -f compose.local.yaml --env-file .env.local up -d db s3 s3-init` → `db`
-      and `s3` are healthy and `s3-init` exits 0.
-    - `docker compose … run --rm s3-init mc ls local/academy-media` → the bucket exists.
-    - `git check-ignore .env.local` → ignored.
-  - Files: `compose.local.yaml`, `.env.local.example`, `.gitignore`.
-  - Size: S. Depends on: none (Docker Desktop running).
+    - the upgrade and the rollback both apply on the local DB, and the upgrade is applied again afterwards;
+    - the backend starts with `ddl-auto=validate`;
+    - `mvn -q test` is green.
+  - Files: 2 upgrade scripts, `learning_hub_learning.sql`, `docs/sql/README.md`, `CourseLesson.java`,
+    `LearningViews.java`, plus the FE spec.
+  - Size: S. Depends on: none.
 
-- [x] **T2: Empty-DB init script and run order (BE)**
+- [ ] **T2: Saving and publishing quiz lessons**
   - Acceptance:
-    - `scripts/local-db-init.sh` runs these files in order: Identity, Learning, media_progress, Assessment,
-      Knowledge, Community, community catalog, then `learning_hub_learning_demo.sql`,
-      `learning_hub_community_demo.sql` and `learning_hub_community_verify.sql`.
-    - It uses `ON_ERROR_STOP=1` and refuses to run when `learning_hub.users` exists.
-    - `docs/sql/README.md` gets a "Chạy local" section: this order, with Assessment in it, and the commands.
+    - The `LearningQuizDirectory` port lives in `learning`. Its implementation in `assessment` looks up a quiz
+      by id and returns `courseId`, `status` and `deleted`.
+    - `LessonInput` gains `quizId`.
+    - Saving a draft:
+      - a quiz lesson with blocks → `LEARNING-BLOCK_INVALID`;
+      - a `quizId` that belongs to another course or is deleted → `LEARNING-QUIZ_INVALID`;
+      - a `null` `quizId` is allowed.
+    - Publishing: a quiz lesson whose quiz is missing or not PUBLISHED → `LEARNING-QUIZ_LESSON_UNLINKED`.
+    - `cloneContent` keeps `quizId` when creating a draft, and clears it when copying to another course.
+    - The new codes, with Vietnamese messages, are added to `LearningResponseCode`.
+  - Verify: `QuizLessonContentIT` covers:
+    - save with a `quizId` from the same course;
+    - another course's quiz is refused;
+    - publish with no quiz is refused;
+    - publish with a PUBLISHED quiz succeeds;
+    - the draft keeps `quizId`;
+    - the copy clears it.
+  - Files: port and implementation, `LearningRequests.java`, `LearningContentService.java`,
+    `LearningResponseCode.java`, the new IT.
+  - Size: M. Depends on: T1.
+
+- [ ] **T3: Passing the quiz completes the quiz lesson**
+  - Acceptance:
+    - `LearningAssessmentAccess.quizPassed(userId, enrollmentId, quizId)` asks `LearningProgressService` to set
+      `lesson_progress = 100` on every quiz lesson of that enrollment's revision that has this `quizId`, then
+      runs `updateEnrollment`.
+    - `AttemptGrader` calls it after saving an attempt with `passed = true`. This covers submit, expiry,
+      submit on behalf and regrade.
+    - If the enrollment is missing or withdrawn, the call is logged and skipped, and the grade is kept.
+    - `requiredLessonsCompleted` counts only `content` lessons.
+  - Verify: `QuizLessonCompletionIT` covers:
+    - fail → nothing changes;
+    - pass → the lesson is at 100% and the course is complete when it was the last required lesson;
+    - an expired attempt that passes completes the lesson the same way;
+    - a withdrawn enrollment → the grade is kept and progress is untouched;
+    - a quiz with `requireLessonsCompleted` is not blocked by its own quiz lesson.
+
+    `LearnerQuizFlowIT` stays green.
+
+  - Files: `LearningAssessmentAccess.java`, `LearningProgressService.java`, `AttemptGrader.java`, the new IT.
+  - Size: M. Depends on: T2.
+
+- [ ] **T4: `GET /api/v1/me/courses/{courseId}/quizzes`**
+  - Acceptance:
+    - Returns `List<LearnerQuizCard{ quiz, summary, canStart, blockReason, availableAt, lessonId }>`.
+    - Only PUBLISHED quizzes that are not deleted are listed, with FINAL_EXAM last.
+    - It uses the same access rule as the intro, and reuses the intro's summary and block code.
+    - `lessonId` is the quiz lesson in the caller's revision, read through the Learning adapter.
+    - The endpoint has `@Operation` and `@ApiResponse`.
+  - Verify: `LearnerCourseQuizzesIT` covers:
+    - order and status;
+    - a DRAFT quiz is hidden;
+    - another course the caller cannot access is refused;
+    - `lessonId` is filled.
+  - Files: `LearnerQuizController.java`, `QuizAttemptService.java` (or a new `LearnerQuizListService`),
+    `AssessmentViews.java`, `LearningAssessmentAccess.java`, the new IT.
+  - Size: M. Depends on: T3.
+
+- [ ] **T5: Demo quiz lessons (dev SQL) and backend docs**
+  - Acceptance:
+    - `docs/sql/learning_hub_learner_quiz_demo.sql`:
+      - dev and test only, with the same header style and run-once guard as the other demos;
+      - adds a required quiz lesson to the published revision of `FE-DEMO-C1` and `FE-DEMO-C2`, linked to that
+        course's FINAL_EXAM;
+      - is added to `local-db-init.sh` after the assessment demo.
+    - `docs/api/ASSESSMENT.md`: the new endpoint, the quiz lesson rule, the one-way regrade, and an updated
+      "Chưa làm" list.
+    - `docs/api/LEARNING.md`: `quizId` and the two new error codes.
   - Verify:
-    - On a fresh volume (`docker compose … down -v` first), the script exits 0 and the verify script reports no
-      error.
-    - A second run stops with the "DB đã có dữ liệu" message and changes nothing.
-  - Files: `scripts/local-db-init.sh`, `docs/sql/README.md`.
-  - Size: S. Depends on: T1.
+    - run the SQL on the local DB;
+    - as `hocvien`, `curl` the new endpoint and see `lessonId`;
+    - a second run of the SQL stops without changing anything.
+  - Files: the demo SQL, `local-db-init.sh`, `docs/sql/README.md`, `ASSESSMENT.md`, `LEARNING.md`.
+  - Size: S. Depends on: T4.
 
 ### Checkpoint A
 
-- [x] With `set -a; . ./.env.local; set +a; mvn spring-boot:run`, the backend starts with no `validate` error
-      (gaps are reported, not patched) and `curl -s localhost:8019/actuator/health` shows `UP`.
-- [x] The logs show no connection to `103.121.90.119` or `s3.chanacademy.io.vn`.
-- [x] `mvn clean test` green on the branch (a baseline before any code change). It was red first: see the note under Checkpoint B.
+- [ ] `mvn clean verify` green.
+- [ ] As `hocvien`, with `curl`:
+  - list the quizzes of `FE-DEMO-C1`;
+  - start and submit the final exam with wrong answers, then with right ones;
+  - the quiz lesson is at 100% and, once the course's other required lessons are done, the enrollment is
+    `completed`.
+- [ ] Show the backend diff to the user before Phase 2.
 
-## Phase 2: Demo data
+## Phase 2: App
 
-- [x] **T3: Assessment demo SQL (BE)**
+- [ ] **T6: Learner quiz contracts and mocks**
   - Acceptance:
-    - `docs/sql/learning_hub_assessment_demo.sql` is dev/test only. It has a header like the learning demo's, runs
-      once (a second run errors and rolls back) and uses no hard-coded ids (`RETURNING`).
-    - It creates at least 3 competencies and at least 12 active questions with options spread over them, on
-      lessons of two published demo courses.
-    - Per course: one published PRACTICE quiz and one published FINAL_EXAM quiz.
-    - It is added to `local-db-init.sh` after the learning demo, and to the README table.
-  - Verify:
-    - On a fresh init, the script runs.
-    - Signed in as `hocvien`, `curl` of `GET /api/v1/me/quizzes/{id}` returns `SUCCESS` with `canStart` (or a
-      `blockReason` the demo explains).
-    - Starting and submitting an attempt returns a result.
-  - Files: `docs/sql/learning_hub_assessment_demo.sql`, `scripts/local-db-init.sh`, `docs/sql/README.md`.
-  - Size: M. Depends on: T2.
+    - `libs/contracts/src/lib/assessment/learner-quiz.schema.ts` and `learner-quiz.endpoints.ts`
+      (`learnerQuizEndpoints`) hold the 10 keys from the spec plus `myCompetency`. Each schema mirrors its
+      backend record field by field.
+    - The course contracts gain `quizId` on the lesson and on the lesson input.
+    - There is a real key for the admin quiz list (`GET /api/v1/quizzes`).
+    - `libs/mocks/src/lib/assessment` serves the new paths from its seed.
+  - Verify: `npx nx test contracts` covers:
+    - parsing a response captured from the local backend for each key (saved as a fixture);
+    - a wrong shape is refused.
 
-- [x] **T4: Smoke script (BE)**
-  - Acceptance:
-    - `scripts/local-smoke.sh` checks that health is UP.
-    - It logs in as `hocvien` with `LOCAL_DEMO_PASSWORD` and keeps the cookie or token in a temp file it deletes
-      on exit.
-    - It checks that `GET /api/v1/me/learning/catalog`, `GET /api/v1/me/quiz-attempts` and
-      `GET /api/v1/me/learning/progress/summary` each return `status: SUCCESS`.
-    - It prints one line per check and exits non-zero on the first failure. It never echoes the password.
-  - Verify:
-    - Run it → exit 0.
-    - With the backend stopped → non-zero with a clear message.
-    - With a wrong password → non-zero, and the password does not appear in the output.
-  - Files: `scripts/local-smoke.sh`.
-  - Size: S. Depends on: T3.
+    `npx nx test mocks` is green.
 
-- [x] **T5: Demo media and seed script (BE)**
+  - Files: 2 new contract files plus a spec, the course schema, the assessment mock.
+  - Size: M. Depends on: Checkpoint A.
+
+- [ ] **T7: Learner quiz, part 1: store, hub, intro, attempts**
   - Acceptance:
-    - `docs/sql/demo-media/` holds two files generated here, each under 2 MB:
-      - `demo-core-banking.pdf`: 4 pages;
-      - `demo-core-banking.mp4`: about 30 s, H.264/yuv420p and AAC, faststart.
-      - A `README.md` says how they were made.
-    - `scripts/local-seed-media.sh`, signed in as `quantri`:
-      - uploads both files (`POST /api/v1/learning-assets`) and waits until each is READY;
-      - creates course `DEMO-MEDIA` in a demo field, programme and module;
-      - saves a tree with one lesson holding a PDF block and one holding a video block;
-      - publishes it and assigns it to `hocvien`, following `LEARNING_CURL.md` §10–13 and §19.
-    - When `DEMO-MEDIA` already exists, it skips.
+    - `features/quiz/learner-quiz/` has `learner-quiz.store.ts` (`serverData` / `serverMutation`) and the hub,
+      intro and attempts views.
+    - The intro shows `canStart`, or one Vietnamese sentence per `blockReason` (copy from the mockup where it has
+      one).
+    - The routes `quiz`, `quiz/:id` and `quiz/:id/attempts` point to it.
+    - The `QUIZ_TAKING` group `requires` the new keys.
+  - Verify: store and component specs cover:
+    - each `blockReason`;
+    - the hub groups attempts by quiz;
+    - the attempts table and the CSV.
+
+    `npx nx test lms` is green.
+
+  - Files: store plus spec, the hub, intro and attempts components, `screens.ts`.
+  - Size: M. Depends on: T6.
+
+- [ ] **T8: Learner quiz, part 2: take and result; trim `AssessmentScreen`**
+  - Acceptance:
+    - `assessment-take` and `assessment-result` move to `features/quiz/components/` and take the new schemas.
+    - Take screen:
+      - the countdown comes from the server's `deadlineAt` and `serverTime`;
+      - each answer is saved with `PATCH`, with "Thử lại" when the save fails;
+      - a reload restores the attempt from the session;
+      - the question code is shown, as in the mockup.
+    - Result screen:
+      - the primary action is "Về khóa học";
+      - the review is collapsed;
+      - the per-competency breakdown is shown.
+    - The routes `quiz/:id/take` and `quiz/:id/result/:attemptId` point to the new feature.
+    - The learner branches, keys and mock handlers are removed from `AssessmentScreen`, its store,
+      `assessment.endpoints.ts` and the mocks.
   - Verify:
-    - After the run, `GET /api/v1/learning-assets?status=READY` lists both assets.
-    - As `hocvien`, `GET /api/v1/me/learning/courses` includes `DEMO-MEDIA`.
-    - A second run prints "đã có, bỏ qua".
-  - Files: `docs/sql/demo-media/*` (3), `scripts/local-seed-media.sh`.
-  - Size: M. Depends on: T4.
+    - specs cover answer → save, a failed save → retry, submit → result, and the countdown with a skewed
+      `serverTime`;
+    - the existing admin specs stay green;
+    - `npm run check` is green.
+  - Files: the two moved components, the learner store, `assessment-screen.store.ts`, `assessment.endpoints.ts`.
+    The mock file and `screens.ts` are touched in the same commit; keep it at 7 files at most.
+  - Size: M–L (split again if it grows past 7 files). Depends on: T7.
 
 ### Checkpoint B
 
-- [x] Starting from `docker compose … down -v`, run `up`, `local-db-init.sh`, the backend, `local-seed-media.sh`
-      and then `local-smoke.sh`, all green, in one pass, with the commands exactly as in the README.
-- [x] `mvn clean test` green: 293 tests, 0 failures, 42 skipped (`CommunityApiIT`, skipped by its own gate before and after). Review the backend diff with you before Phase 3 (pending).
+- [ ] `npm run check` green.
+- [ ] On `lms-local` as `hocvien`:
+  - the "Làm bài kiểm tra" menu shows;
+  - the final exam of `FE-DEMO-C1` can be taken end to end, including a reload in the middle;
+  - the network panel shows only `/api/v1/me/…` calls for quizzes.
+- [ ] On `mockBackend: true` as an admin, the admin question and quiz screens still work.
 
-## Phase 3: App on the local stack
+## Phase 3: Course, player, editor
 
-- [x] **T6: Docs and launch entry for a local backend (FE)**
+- [ ] **T9: The course page "Bài kiểm tra" section and the quiz lesson in the player**
   - Acceptance:
-    - `docs/conventions/workspace.md` → Commands gets "Chạy với backend local". It gives
-      `LMS_API_TARGET=http://localhost:8019 npm start`, a pointer to the backend's "Chạy local" section, and the
-      seeded accounts (by name, no password).
-    - `.claude/launch.json` gets an `lms-local` entry with `LMS_API_TARGET`, added with Edit; your existing
-      changes are left as they are.
-  - Verify:
-    - `preview_start lms-local` opens the app.
-    - The dev-server proxy log shows `/api` going to `localhost:8019`.
-    - `npx prettier --check docs/conventions/workspace.md`.
-  - Files: `docs/conventions/workspace.md`, `.claude/launch.json`.
-  - Size: XS. Depends on: Checkpoint B.
+    - The course store loads `courseQuizzes`.
+    - The page shows a final-exam card with the pass mark, attempts left, best score, and either the
+      "Làm bài" button or the block reason, and lists the other quizzes as rows.
+    - In the player, a quiz lesson shows its quiz card, with "Làm bài" linking to `quiz/:quizId`, instead of
+      "Bài kiểm tra chưa mở.".
+    - The outline uses the quiz icon for quiz lessons.
+  - Verify: specs cover the course page with and without a final exam, and the player's quiz lesson.
+  - Files: `course.store.ts`, `course.html` / `.ts`, `lesson.store.ts`, `lesson.html`.
+  - Size: M. Depends on: Checkpoint B.
 
-- [x] **T7: End-to-end check against the spec (FE + BE)**
-  - Acceptance: all six success criteria of `SPEC-local-stack.md` are checked in the browser pane, and the result
-    of each is written here with how it was checked:
-    1. empty-volume bring-up;
-    2. smoke;
-    3. sign-in as `hocvien` and the catalog listing;
-    4. READY PDF and video;
-    5. a quiz with ≥ 2 competencies;
-    6. no outside request.
-  - Verify:
-    - Sign in as `hocvien`; open the catalog, `DEMO-MEDIA`, the PDF lesson and the video lesson, and a demo
-      quiz.
-    - The network panel shows only `localhost`.
-    - `lsof -nP -iTCP -sTCP:ESTABLISHED | grep -E '103\.121\.90\.119|chanacademy'` is empty.
-    - `npm run check` green (nothing in the app changed except docs and launch).
-  - Files: `tasks/todo.md` (results).
-  - Size: S. Depends on: T6.
+- [ ] **T10: The quiz picker in the course editor**
+  - Acceptance:
+    - For a quiz lesson, a "Bài kiểm tra" select lists the course's quizzes from the admin list (title, type,
+      status; non-PUBLISHED ones are marked).
+    - `course-draft.ts` sends `quizId`.
+    - The server's `LEARNING-QUIZ_INVALID` and `LEARNING-QUIZ_LESSON_UNLINKED` messages appear on save and on
+      publish.
+  - Verify: specs cover the select, the draft mapping both ways, and the server error shown.
+  - Files: `lesson-form.ts` / `.html`, `course-draft.ts`, the editor store.
+  - Size: S–M. Depends on: T9.
 
-  - **Results (2026-10-31).** Backend `feat/learner-mockup-gap` at `bea51ed`, app on `lms-local` (:4200 to :8019).
-    1. **Empty-volume bring-up: pass.** `docker compose ... down -v`, `up -d db s3 s3-init`, `scripts/local-db-init.sh`
-       (exit 0, 12 SQL files incl. verify), `mvn spring-boot:run` with `.env.local` loaded (`ddl-auto=validate`, health
-       `UP`), `scripts/local-seed-media.sh`, `scripts/local-smoke.sh`. A second init stops with "DB đã có dữ liệu".
-    2. **Smoke: pass.** `scripts/local-smoke.sh` exits 0 (health, login, catalog, quiz-attempts, progress summary).
-       With the backend down or a wrong password it exits 1 and the password is not in the output.
-    3. **Sign-in and catalog: pass.** In the built-in browser, `hocvien` signs in at `localhost:4200`, `/learn` shows
-       6 assigned courses and `/catalog?scope=assigned` lists them, all from the local DB.
-    4. **READY PDF and video: pass.** `GET /api/v1/learning-assets?status=ready` lists PDF (4 pages) and video
-       (30 s). `/lesson/7/16` renders the PDF pages and `/lesson/7/17` loads the video (`duration` 30, 640x360,
-       `readyState` 4, Range requests answered 206). Status values are lower case (`ready`), not `READY`.
-    5. **Quiz with at least 2 competencies: pass on the API, not in the UI.** Each of the four demo quizzes
-       (PRACTICE and FINAL_EXAM for `FE-DEMO-C1`, `FE-DEMO-C2`) is PUBLISHED with a pool of 8 questions over all 3
-       competencies. As `hocvien`: `GET /me/quizzes/{id}` gives `canStart` (quiz 4 gives `LESSONS_REQUIRED`, as the
-       demo intends); starting and submitting an attempt returns a result with a per-competency breakdown. The `/quiz`
-       screen in the app is still the mockup's one-quiz screen (not wired to these endpoints): that is the
-       `learner-quiz` module.
-    6. **No request leaves the machine: pass.** The page's resource timing and the network panel list only
-       `localhost:4200` (the dev proxy forwards `/api` to `localhost:8019`). `lsof -nP -iTCP -sTCP:ESTABLISHED` shows
-       no connection to `103.121.90.119` or `s3.chanacademy.io.vn`; the backend JVM's only connections are
-       `127.0.0.1:5432`. The backend log has no mention of either host. The backend binds `127.0.0.1:8019`.
+- [ ] **T11: End-to-end check against the spec**
+  - Acceptance: the spec's success criteria 1–5 are written here, each with how it was checked.
+  - Verify, as `quantri` in the browser:
+    - add a quiz lesson to a draft and pick the final exam;
+    - publish, then try publishing with another course's quiz (the error must show).
+
+    Then, as `hocvien`:
+    - fail and then pass the quiz from the course page;
+    - the lesson and the course are complete.
+
+    Finally, `mvn clean verify` and `npm run check` are green.
+
+  - Files: `tasks/todo.md`, `SPEC-learner-quiz.md` (status).
+  - Size: S. Depends on: T10.
 
 ### Checkpoint C
 
-- [x] The spec's success criteria 1–6 are recorded above.
-- [x] `npm run check` (14 tasks) and `mvn clean test` (293 tests, 0 failures) green.
-- [x] `SPEC-local-stack.md` status set to built.
-- [ ] Review with you, then plan `learner-quiz`.
+- [ ] Criteria 1–5 recorded.
+- [ ] Spec status set to built.
+- [ ] Review with the user, then plan `catalog-discovery`.

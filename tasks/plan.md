@@ -1,107 +1,160 @@
-# Implementation Plan: `local-stack`
+# Implementation Plan: `learner-quiz`
 
-Spec: [SPEC-local-stack.md](../SPEC-local-stack.md), approved 2026-10-31. Map: [SPEC.md](../SPEC.md).
+Spec: [SPEC-learner-quiz.md](../SPEC-learner-quiz.md) (approved 2026-10-31, amended below). Map: [SPEC.md](../SPEC.md).
 Tasks: [todo.md](todo.md).
 
-This file replaces the plan for the org tree and import from file. That work is merged on `main`; its plan is in
-git history at `d9fe5a3`. The plans for the later modules (`learner-quiz`, …) are written one at a time, after
-this one is done and reviewed.
+This plan replaces the one for `local-stack`. That plan is done, and it is in git history at `55a756f`.
 
 ## Overview
 
-Run the whole product on this machine: Postgres with pgvector and MinIO in Docker, the backend from
-`~/my-projects/corebanking-academy` on `:8019`, and the app on `:4200` proxied to it. Load every baseline and
-demo, add the two missing kinds of demo data (quizzes, READY PDF and video), and add a smoke script that proves
-it. Most of the work is in the backend repository: config, SQL and scripts. In this repository there is one
-docs section and one launch entry.
+The goal is that a learner can take a real quiz from start to finish on the local stack.
+
+- **Backend (`corebanking-academy`):**
+  - Quiz lessons can be saved and published.
+  - Passing a lesson's quiz completes that lesson.
+  - A new endpoint lists a course's quizzes for the signed-in learner.
+- **App:**
+  - The learner quiz routes move to a new feature that calls the real `/api/v1/me/…` endpoints.
+  - The course page and the lesson player show the course's quizzes.
+  - The course editor gets a quiz picker.
+
+The admin question and quiz screens stay on mock (the spec's open question 1, at its default).
 
 ## What was checked while planning (2026-10-31)
 
-- **Tools.** `docker`, `psql`, `mvn`, `java 21.0.1`, `ffprobe` and `ffmpeg` are installed. Docker Desktop is
-  not running; it must be started before T1. `ffprobe` is needed for a video to become READY (`LEARNING.md`
-  §upload).
-- **Secrets and git.** The backend `.gitignore` ignores `.env.*` and keeps only `.env` tracked, so `.env.local`
-  stays out of git. `.env.local.example` must be added with `!.env.local.example`.
-- **Current `.env`.** It points at the shared DB and at AIStor on Ubuntu through an SSH tunnel. It is not changed.
-- **No bucket at startup.** The backend never creates its bucket ("không tự tạo bucket/IAM khi khởi động",
-  `DEPLOY_UBUNTU.md`), so the local stack creates it in an init container.
-- **Seeded accounts.** `learning_hub_identity.sql` creates the schema and the demo accounts (`hocvien`,
-  `giangvien`, `quantri`, `quantri.ban`, `hocvien.tichhop`, …) with `must_change_password=false`.
-- **What the demo lacks.** `learning_hub_learning_demo.sql` has no quiz and no READY asset (only FAILED files in a
-  draft). The quiz and media demo data are added in T3 and T5.
-- **Run order from the SQL headers and the README.** Identity → Learning → media/progress → Assessment (needs
-  Identity and Learning) → Knowledge (pgvector) → Community → community catalog → demos → verify. The README's
-  order has no place for Assessment yet; T2 records it.
-- **Sign-in.** `POST /api/v1/auth/login`. Health is `GET /actuator/health`.
-- **Upload.** A single `POST /api/v1/learning-assets` call still works for small files, so the seed script does
-  not need the multipart flow. Course setup follows `LEARNING_CURL.md` §10–13 and §19: create, save tree, publish,
-  assign.
+**Backend**
+
+- **Learner quiz API.** `LearnerQuizController` (`/api/v1/me`) with `QuizAttemptService` already covers:
+  - intro, start, session, answer, submit and result;
+  - history, my attempts, export and competency.
+
+  `LearnerQuizFlowIT` tests this flow against a real database.
+
+- **How Assessment reaches Learning.** Only through `LearningAssessmentAccess`:
+  - `requireStudyingLearner(courseId)` returns `enrollmentId` and `revisionId`;
+  - `requiredLessonsCompleted(enrollmentId, revisionId)` implements `requireLessonsCompleted`.
+
+  Learning does not depend on Assessment.
+
+- **Saving lessons.**
+  - `LessonInput` (`LearningRequests:86`) has no `quizId`.
+  - `LearningContentService:127-131` refuses any lesson that is not `content`.
+  - `replaceTree` (`:490-508`) builds the lessons.
+  - Both the draft and the copy go through `cloneContent` (`:203`, `:235`), starting from the published detail.
+- **Course completion.** `LearningProgressService.updateEnrollment` (`:321`) completes a course when every
+  required lesson is at 100%. A quiz lesson set to 100% fits this rule unchanged.
+- **Grading paths.** All of these end in `AttemptGrader`:
+  - the learner submits (`QuizAttemptService:183`);
+  - the time runs out (`:106`, `QuizAutoSubmitJob`);
+  - an admin submits on the learner's behalf (`submitOnBehalf`);
+  - a regrade (`RegradeService`).
+- **Admin quiz list.** `GET /api/v1/quizzes?courseId=&status=&quizType=` returns `Page<QuizSummary>` and needs
+  the right to manage the course.
+- **Where tests live.** There is no `src/test/java/.../learning`. Database-backed tests live in `assessment`,
+  extending `AssessmentIntegrationTest`, which loads Identity, Learning, media, Knowledge, Assessment and
+  Community.
+
+**App**
+
+- **Current quiz screen.** `features/quiz/assessment-screen` is one component with a 773-line store, serving
+  8 routes: the admin question bank and quiz settings, plus the learner hub, intro, take, attempts and result.
+  The learner routes all call mock keys.
+- **Hidden menu.** The `QUIZ_TAKING` menu group `requires` `quizIntro` and `startAttempt`. While those endpoints
+  are mock, `menu-catalog.ts:48` hides the group when running on the real backend.
+- **Course editor.** It already has "Loại bài" with "Bài kiểm tra" (`lesson-form.html:20-41`), and it sends no
+  blocks for a quiz lesson. What is missing: choosing the quiz, and the `quizId` field.
+- **Lesson player.** It has a `quiz` case (`lesson.html:67`) that shows "Bài kiểm tra chưa mở."
+- **Endpoint helper.** Endpoints are declared with `defineEndpoint`.
+
+## Spec amendments (written into the spec in T1)
+
+1. **Draft and publish rules.**
+   - A draft may contain a quiz lesson with no `quizId`.
+   - Publishing requires every quiz lesson to point to a PUBLISHED quiz of the same course that is not deleted.
+     Otherwise the backend returns `LEARNING-QUIZ_LESSON_UNLINKED`.
+   - Creating a draft from the published version keeps `quizId`.
+   - Copying the course to a new course clears `quizId`.
+2. **Quiz lookup from Learning.** Learning checks a quiz through a new port, `LearningQuizDirectory`. The port is
+   declared in `learning` and implemented in `assessment`, so `learning` still imports no Assessment classes.
+3. **Completion hook.** The hook that completes the quiz lesson sits in `AttemptGrader`, so all four grading
+   paths are covered. It runs when the attempt is `passed = true`.
+   - The hook is one-way. If a regrade turns a pass into a fail, `lesson_progress` is not lowered, because
+     progress only ever increases (`max`).
+   - This is written down in `ASSESSMENT.md`.
+4. **Lessons-completed check.** `requiredLessonsCompleted` counts only `content` lessons.
+5. **Demo quiz lessons.** They come from a dev-only SQL file, `learning_hub_learner_quiz_demo.sql`, which adds a
+   required quiz lesson to the published revision of `FE-DEMO-C1` and `FE-DEMO-C2`. Publishing a new revision
+   would not work here, because `hocvien` is enrolled on the current one.
 
 ## Architecture decisions
 
-- **MinIO image.** Local S3 is `bitnamilegacy/minio`, pinned to tag `2025.7.23-debian-12-r5`. The official
-  `minio/minio` and `minio/mc` images can no longer be pulled, and this image is frozen with no security updates,
-  which is acceptable for local-only use. Production's AIStor needs a licence and is S3-compatible, and the backend uses the MinIO Java SDK either way.
-- **Bucket creation.** A one-shot `s3-init` service (same image, which bundles `mc`) creates the bucket and a bucket-scoped access key. This
-  mirrors production, where the backend does not use the root account.
-- **Local environment.** `.env.local` is loaded into the shell (`set -a; . ./.env.local`). Environment variables
-  win over the `optional:file:./.env` import in `application.yml`, so `.env` keeps working for anyone who uses the
-  shared DB.
-- **DB init script.** One script, `scripts/local-db-init.sh`, runs the SQL files in order with
-  `ON_ERROR_STOP=1`. It refuses to run when `learning_hub.users` already exists, so it never touches a DB that
-  has data.
-- **Demo media.** The sample files are generated here: `ffmpeg` test pattern and tone, about 30 s, H.264 + AAC;
-  a PDF of four text pages. They are committed under `docs/sql/demo-media/`, as the spec allows. No external
-  file.
-- **Seed script.** `scripts/local-seed-media.sh` drives the public API as `quantri`. It does not write SQL
-  for assets, because a READY asset must have passed the real probe pipeline. It does nothing if its course code
-  `DEMO-MEDIA` already exists.
-- **Passwords.** Every script reads passwords from environment variables (`LOCAL_DEMO_PASSWORD`,
-  `PGPASSWORD`) and never prints them.
-- **Branches.** `feat/learner-mockup-gap` in both repositories, from `main`. Nothing is pushed.
+- **New learner feature.** `features/quiz/learner-quiz/` takes over the routes `quiz`, `quiz/:id`,
+  `quiz/:id/take`, `quiz/:id/attempts` and `quiz/:id/result/:attemptId`, with its own store.
+  - `assessment-take` and `assessment-result` move to `features/quiz/components/` and take the new schemas.
+  - `AssessmentScreen` keeps only the admin routes.
+  - The old learner code, keys and mocks are deleted.
+- **Countdown.** It is computed from the server's `deadlineAt` and `serverTime`, so a wrong client clock does not
+  change it.
+- **Saving answers.**
+  - Each answer is saved with `PATCH` as soon as it is chosen.
+  - If saving fails, the screen shows "Thử lại".
+  - Reloading the page restores the attempt from `GET /me/quiz-attempts/{id}`.
+- **Server state.** `canStart`, `blockReason` and `availableAt` come from the server. The app shows them and does
+  not compute them.
+- **Commits.**
+  - One commit per task, in each repository the task touched, on `feat/learner-mockup-gap`.
+  - Nothing is pushed.
+  - The user's uncommitted `.claude/launch.json` and `docs/reports/…html` are never staged.
 
 ## Task list
 
-### Phase 1: Local services
+### Phase 1: Backend
 
-- [x] T1: Local Postgres + MinIO with a bucket (BE)
-- [x] T2: Empty-DB init script and run order (BE)
+- [ ] T1: `course_lessons.quiz_id` (DB, entity, view) and the spec amendments
+- [ ] T2: Saving and publishing quiz lessons (port, validation, copy)
+- [ ] T3: Passing the quiz completes the quiz lesson
+- [ ] T4: `GET /me/courses/{courseId}/quizzes`
+- [ ] T5: Demo quiz lessons (dev SQL) and backend docs
 
 ### Checkpoint A
 
-- [x] The backend starts on local DB and S3 with `ddl-auto=validate`. `/actuator/health` is UP.
+- [ ] `mvn clean verify` green.
+- [ ] A `curl` run as `hocvien` works end to end: list quizzes, take the final exam, pass, and the lesson and the
+      course become complete.
 
-### Phase 2: Demo data
+### Phase 2: App
 
-- [x] T3: Assessment demo SQL (BE)
-- [x] T4: Smoke script (BE)
-- [x] T5: Demo media and seed script (BE)
+- [ ] T6: Learner quiz contracts and mocks
+- [ ] T7: Learner quiz, part 1: store, hub, intro, attempts
+- [ ] T8: Learner quiz, part 2: take and result; remove the learner code from `AssessmentScreen`
 
 ### Checkpoint B
 
-- [x] From an empty volume: init, then demos, then seed, then smoke, all green.
+- [ ] `npm run check` green.
+- [ ] On `lms-local`, the quiz menu shows and a quiz can be taken end to end in the browser.
 
-### Phase 3: App on the local stack
+### Phase 3: Course, player, editor
 
-- [x] T6: Docs and launch entry for a local backend (FE)
-- [x] T7: End-to-end check against the spec (FE + BE)
+- [ ] T9: The course page "Bài kiểm tra" section and the quiz lesson in the player
+- [ ] T10: The quiz picker in the course editor
+- [ ] T11: End-to-end check against the spec
 
 ### Checkpoint C
 
-- [x] The spec's success criteria 1–6 are checked and reported.
+- [ ] Success criteria 1–5 recorded.
+- [ ] Spec status set to built.
+- [ ] Review with you before `catalog-discovery`.
 
 ## Risks and mitigations
 
-| Risk                                                                                       | Impact | Mitigation                                                                                                                                                    |
-| ------------------------------------------------------------------------------------------ | ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| A baseline fails on an empty DB (an undocumented order, or an extension needing superuser) | High   | T2 runs first on a fresh volume. Extensions are created by the `core_academy` owner in the pgvector image; any failure is fixed in the order, not in the SQL. |
-| `ddl-auto=validate` fails because an entity is ahead of the SQL                            | High   | Seen at Checkpoint A. A real schema gap is reported to you; the entity is not edited to make startup pass.                                                    |
-| The community catalog needs an actor with the right role (`quantri.ban`)                   | Med    | The Identity baseline already grants it. If not, stop and ask: no role grants by script.                                                                      |
-| A generated MP4 fails the probe (codec or pixel format)                                    | Med    | Generate with `-c:v libx264 -pix_fmt yuv420p -c:a aac -movflags +faststart`. T5 checks for READY before going on.                                             |
-| Knowledge or Community workers try to reach external AI or S3 at startup                   | Med    | Check the logs at Checkpoint A. Workers stay disabled through their existing properties in `.env.local`.                                                      |
-| `.claude/launch.json` has your uncommitted changes                                         | Low    | T6 adds one entry with Edit and does not rewrite the file. Your changes are not committed with it.                                                            |
+| Risk                                                                 | Impact | Mitigation                                                                                                                                           |
+| -------------------------------------------------------------------- | ------ | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
+| A Learning error inside the grading transaction rolls back the grade | High   | The hook catches `BusinessException` (enrollment missing or withdrawn), logs it, and keeps the grade. An IT covers this.                             |
+| The automatic submit job runs without a signed-in user               | Med    | The hook uses the attempt's `userId` as the actor. An IT covers time running out → pass → lesson completed.                                          |
+| Splitting `AssessmentScreen` breaks the admin screens                | Med    | Remove only the learner branches. The admin specs must stay green, and the admin screens are clicked through on `mockBackend: true` at Checkpoint B. |
+| Once the menu is real, it shows to the wrong roles                   | Low    | The menu still follows the function code; check as both `quantri` and `hocvien`.                                                                     |
+| The demo SQL edits a published revision                              | Low    | Dev and test only, with a run-once guard, like the existing demos.                                                                                   |
 
 ## Open questions
 
-1. **Commits.** The backend's AGENTS.md says to commit only when asked. May each task be committed on
-   `feat/learner-mockup-gap` in its repository, never pushed? Default: yes, once you approve this plan.
+None blocking. Both open questions in the spec take their defaults.
