@@ -30,7 +30,7 @@ Each backend test file is a DB-backed integration test that extends `AssessmentI
     `LearningViews.java`, plus the FE spec.
   - Size: S. Depends on: none.
 
-- [ ] **T2: Saving and publishing quiz lessons**
+- [x] **T2: Saving and publishing quiz lessons**
   - Acceptance:
     - The `LearningQuizDirectory` port lives in `learning`. Its implementation in `assessment` looks up a quiz
       by id and returns `courseId`, `status` and `deleted`.
