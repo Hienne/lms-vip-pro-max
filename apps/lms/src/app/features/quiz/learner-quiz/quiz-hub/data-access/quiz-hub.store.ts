@@ -6,11 +6,11 @@ import {
   type MyAttemptRow,
 } from '@lms/contracts';
 import { forkJoin, map, of, switchMap } from 'rxjs';
-import { serverData } from '../../../../core/data-access/server-data';
-import { serverMutation } from '../../../../core/data-access/server-mutation';
-import { FileSaver } from '../../../../core/files/file-saver';
-import { EndpointClient } from '../../../../core/http/endpoint-client';
-import { blockReasonText } from '../../../../shared/quiz/quiz-block-reason';
+import { serverData } from '../../../../../core/data-access/server-data';
+import { serverMutation } from '../../../../../core/data-access/server-mutation';
+import { FileSaver } from '../../../../../core/files/file-saver';
+import { EndpointClient } from '../../../../../core/http/endpoint-client';
+import { blockReasonText } from '../../../../../shared/quiz/quiz-block-reason';
 
 /** Courses the learner is in the middle of whose quizzes the hub lists. */
 const COURSES_SHOWN = 10;

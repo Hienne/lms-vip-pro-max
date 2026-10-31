@@ -1,8 +1,8 @@
 import { Component, inject } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { Button, Empty, ErrorState, Skeleton } from '@lms/ui';
-import { AssessmentResult } from '../../components/assessment-result/assessment-result';
-import { QuizResultStore } from '../data-access/quiz-result.store';
+import { AssessmentResult } from './components/assessment-result/assessment-result';
+import { QuizResultStore } from './data-access/quiz-result.store';
 
 /** `quiz/:id/result/:attemptId`: loads the graded attempt and hands it to the result view. */
 @Component({

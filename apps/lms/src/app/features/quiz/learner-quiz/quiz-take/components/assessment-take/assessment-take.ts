@@ -9,8 +9,8 @@ import {
   Progress,
   Timer,
 } from '@lms/ui';
-import { QuestionGrid } from '../../../../shared/quiz/question-grid';
-import { QuestionLegend } from '../../../../shared/quiz/question-legend';
+import { QuestionGrid } from '../../../../../../shared/quiz/question-grid';
+import { QuestionLegend } from '../../../../../../shared/quiz/question-legend';
 
 const LETTERS = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'];
 

@@ -17,7 +17,7 @@ import {
   Skeleton,
   type BreadcrumbItem,
 } from '@lms/ui';
-import { QuizIntroStore } from '../data-access/quiz-intro.store';
+import { QuizIntroStore } from './data-access/quiz-intro.store';
 
 /** The screen before a quiz (the mockup's `quizIntro`): the rules, the learner's results, the start. */
 @Component({

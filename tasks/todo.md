@@ -86,7 +86,7 @@ under `apps/lms/src/app/features/quiz/` unless they say otherwise.
     fixture, the mock, `assessment-take.*`.
   - Size: S–M. Depends on: F3. One commit in each repository.
 
-- [ ] **F5: Route stores and components in their route folders (angular.md §4)**
+- [x] **F5: Route stores and components in their route folders (angular.md §4)**
   - Acceptance:
     - Each learner quiz store used by one route moves to that route's `data-access/`. Only shared code
       (`route-id.ts`, the testing helpers) stays in `learner-quiz/data-access/`.

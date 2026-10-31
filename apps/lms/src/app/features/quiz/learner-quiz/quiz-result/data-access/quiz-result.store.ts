@@ -1,9 +1,9 @@
 import { inject, Injectable, signal } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
 import { learnerQuizEndpoints } from '@lms/contracts';
-import { serverData } from '../../../../core/data-access/server-data';
-import { EndpointClient } from '../../../../core/http/endpoint-client';
-import { routeId } from './route-id';
+import { serverData } from '../../../../../core/data-access/server-data';
+import { EndpointClient } from '../../../../../core/http/endpoint-client';
+import { routeId } from '../../data-access/route-id';
 
 /** The result of one graded attempt, as the server computed it. */
 @Injectable()

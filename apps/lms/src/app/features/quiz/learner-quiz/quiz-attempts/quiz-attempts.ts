@@ -22,7 +22,7 @@ import {
   ATTEMPTS_PAGE_SIZE,
   QuizAttemptsStore,
   type AttemptView,
-} from '../data-access/quiz-attempts.store';
+} from './data-access/quiz-attempts.store';
 
 const COLUMNS: readonly DataTableColumn[] = [
   { key: 'attemptNo', label: 'Lượt', sortable: false },

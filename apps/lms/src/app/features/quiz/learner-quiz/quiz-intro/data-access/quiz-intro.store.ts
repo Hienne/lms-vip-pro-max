@@ -4,10 +4,10 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { learnerQuizEndpoints, type LearnerReviewPolicy } from '@lms/contracts';
 import { confirm } from '@lms/ui';
 import { firstValueFrom } from 'rxjs';
-import { serverData } from '../../../../core/data-access/server-data';
-import { EndpointClient } from '../../../../core/http/endpoint-client';
-import { blockReasonText } from '../../../../shared/quiz/quiz-block-reason';
-import { routeId } from './route-id';
+import { serverData } from '../../../../../core/data-access/server-data';
+import { EndpointClient } from '../../../../../core/http/endpoint-client';
+import { blockReasonText } from '../../../../../shared/quiz/quiz-block-reason';
+import { routeId } from '../../data-access/route-id';
 
 export type QuizIntroView = 'loading' | 'missing' | 'ready';
 

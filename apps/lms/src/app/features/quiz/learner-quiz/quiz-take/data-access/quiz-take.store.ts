@@ -28,11 +28,11 @@ import {
   Subject,
   tap,
 } from 'rxjs';
-import { LearningChanges } from '../../../../core/data-access/learning-changes';
-import { serverData } from '../../../../core/data-access/server-data';
-import { toAppError } from '../../../../core/errors/app-error';
-import { EndpointClient } from '../../../../core/http/endpoint-client';
-import { routeId } from './route-id';
+import { LearningChanges } from '../../../../../core/data-access/learning-changes';
+import { serverData } from '../../../../../core/data-access/server-data';
+import { toAppError } from '../../../../../core/errors/app-error';
+import { EndpointClient } from '../../../../../core/http/endpoint-client';
+import { routeId } from '../../data-access/route-id';
 
 type Job =
   | { readonly kind: 'save'; readonly questionId: number }

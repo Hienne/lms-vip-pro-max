@@ -12,7 +12,7 @@ import {
   PageHeader,
   Skeleton,
 } from '@lms/ui';
-import { ATTEMPTS_PER_QUIZ, QuizHubStore } from '../data-access/quiz-hub.store';
+import { ATTEMPTS_PER_QUIZ, QuizHubStore } from './data-access/quiz-hub.store';
 
 /**
  * The quiz hub (`/quiz`): the quizzes of the courses the learner is in the middle of, and the

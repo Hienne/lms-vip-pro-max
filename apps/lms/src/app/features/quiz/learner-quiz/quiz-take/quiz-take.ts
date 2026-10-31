@@ -1,8 +1,8 @@
 import { Component, inject } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { Button, Empty, Skeleton } from '@lms/ui';
-import { AssessmentTake } from '../../components/assessment-take/assessment-take';
-import { QuizTakeStore } from '../data-access/quiz-take.store';
+import { AssessmentTake } from './components/assessment-take/assessment-take';
+import { QuizTakeStore } from './data-access/quiz-take.store';
 
 /** `quiz/:id/take`: starts or continues the attempt and hands the quiz to the take view. */
 @Component({

@@ -1,11 +1,11 @@
 import { computed, inject, Injectable, signal } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
 import { learnerQuizEndpoints, type LearnerAttemptRow } from '@lms/contracts';
-import { serverData } from '../../../../core/data-access/server-data';
-import { serverMutation } from '../../../../core/data-access/server-mutation';
-import { FileSaver } from '../../../../core/files/file-saver';
-import { EndpointClient } from '../../../../core/http/endpoint-client';
-import { routeId } from './route-id';
+import { serverData } from '../../../../../core/data-access/server-data';
+import { serverMutation } from '../../../../../core/data-access/server-mutation';
+import { FileSaver } from '../../../../../core/files/file-saver';
+import { EndpointClient } from '../../../../../core/http/endpoint-client';
+import { routeId } from '../../data-access/route-id';
 
 export const ATTEMPTS_PAGE_SIZE = 10;
 
