@@ -11,9 +11,12 @@ export class QuizResultStore {
   private readonly client = inject(EndpointClient);
   private readonly route = inject(ActivatedRoute);
 
+  private readonly state = {
+    /** The review starts collapsed. */
+    reviewOpen: signal(false),
+  };
+
   readonly attemptId$ = routeId(this.route, 'attemptId');
-  /** The review starts collapsed. */
-  readonly reviewOpen$ = signal(false);
 
   private readonly resultData = serverData(
     (attemptId: number) =>
@@ -25,9 +28,10 @@ export class QuizResultStore {
 
   readonly result$ = this.resultData.value;
   readonly loadError$ = this.resultData.error;
+  readonly reviewOpen$ = this.state.reviewOpen.asReadonly();
 
   setReviewOpen(open: boolean): void {
-    this.reviewOpen$.set(open);
+    this.state.reviewOpen.set(open);
   }
 
   retry(): void {

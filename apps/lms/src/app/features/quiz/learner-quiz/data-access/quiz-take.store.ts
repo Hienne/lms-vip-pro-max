@@ -47,7 +47,12 @@ interface Choice {
  * Taking a quiz. The server owns the attempt: opening the screen asks it to start the attempt (or
  * return the one in progress, so a reload or another device continues it), every choice is sent
  * as soon as it is made, and the countdown is the server's deadline measured on the server's
- * clock. Saves and the submit go through one queue so the submit never overtakes a save.
+ * clock.
+ *
+ * Saves and the submit go through one ordered queue (`jobs`) instead of `serverMutation`, and that
+ * is the one deliberate exception to "every call goes through `serverData` / `serverMutation`":
+ * a mutation cancels the run in flight, which would drop a choice that is still being saved, and
+ * the submit must never overtake a save.
  */
 @Injectable()
 export class QuizTakeStore {
@@ -59,6 +64,43 @@ export class QuizTakeStore {
   private readonly changes = inject(LearningChanges);
   private readonly clock = inject(NOW);
 
+  private readonly state = {
+    /** Zero-based index of the question on screen. */
+    current: signal(0),
+    isSaving: signal(false),
+    isSubmitting: signal(false),
+    /** The attempt was submitted from this screen. */
+    done: signal(false),
+    /** Questions whose last save failed, with the server's message. */
+    failed: signal<ReadonlyMap<number, string>>(new Map()),
+    /** What the learner has chosen, by attempt question; starts from what the server saved. */
+    choices: linkedSignal<
+      AttemptSession | undefined,
+      ReadonlyMap<number, Choice>
+    >({
+      source: () => this.sessionData.value(),
+      computation: (session) =>
+        new Map(
+          (session?.questions ?? []).map((q) => [
+            q.attemptQuestionId,
+            { selectedOptionIds: q.selectedOptionIds, flagged: q.flagged },
+          ]),
+        ),
+    }),
+    // The clock. The server sends the deadline and its own "now" together; their difference is the
+    // time left at that moment, and only the time passed on this device since then is subtracted.
+    // The device's clock is never compared with the server's, so a wrong one changes nothing.
+    timing: linkedSignal<
+      AttemptSession | undefined,
+      { readonly leftMs: number; readonly receivedAt: number } | undefined
+    >({
+      source: () => this.sessionData.value(),
+      computation: (session) =>
+        session && this.timingOf(session.deadlineAt, session.serverTime),
+    }),
+    now: signal(this.clock()),
+  };
+
   readonly quizId$ = routeId(this.route, 'id');
 
   private readonly sessionData = serverData(
@@ -69,34 +111,18 @@ export class QuizTakeStore {
     { params: () => this.quizId$() },
   );
 
+  /** Saves and the submit, run one after the other. */
+  private readonly jobs = new Subject<Job>();
+
   readonly session$ = this.sessionData.value;
   readonly loadError$ = this.sessionData.error;
-
-  /** What the learner has chosen, by attempt question; starts from what the server saved. */
-  private readonly choices = linkedSignal<
-    AttemptSession | undefined,
-    ReadonlyMap<number, Choice>
-  >({
-    source: this.session$,
-    computation: (session) =>
-      new Map(
-        (session?.questions ?? []).map((q) => [
-          q.attemptQuestionId,
-          { selectedOptionIds: q.selectedOptionIds, flagged: q.flagged },
-        ]),
-      ),
-  });
-
-  /** Questions whose last save failed, with the server's message. */
-  private readonly failed = signal<ReadonlyMap<number, string>>(new Map());
-
-  readonly current$ = signal(0);
-  readonly isSaving$ = signal(false);
-  readonly isSubmitting$ = signal(false);
+  readonly current$ = this.state.current.asReadonly();
+  readonly isSaving$ = this.state.isSaving.asReadonly();
+  readonly isSubmitting$ = this.state.isSubmitting.asReadonly();
 
   /** The dealt questions with the learner's current choice laid over what the server saved. */
   readonly questions$ = computed((): readonly SessionQuestion[] => {
-    const choices = this.choices();
+    const choices = this.state.choices();
     return (this.session$()?.questions ?? []).map((q) => ({
       ...q,
       ...(choices.get(q.attemptQuestionId) ?? {}),
@@ -112,37 +138,23 @@ export class QuizTakeStore {
 
   /** The failure to show with "Thử lại", or `undefined` when every choice is saved. */
   readonly saveError$ = computed((): string | undefined =>
-    this.failed().size ? [...this.failed().values()][0] : undefined,
+    this.state.failed().size ? [...this.state.failed().values()][0] : undefined,
   );
 
-  // The clock. The server sends the deadline and its own "now" together; their difference is the
-  // time left at that moment, and only the time passed on this device since then is subtracted.
-  // The device's clock is never compared with the server's, so a wrong one changes nothing.
-  private readonly timing = linkedSignal<
-    AttemptSession | undefined,
-    { readonly leftMs: number; readonly receivedAt: number } | undefined
-  >({
-    source: this.session$,
-    computation: (session) =>
-      session && this.timingOf(session.deadlineAt, session.serverTime),
-  });
-  private readonly now = signal(this.clock());
-
   readonly seconds$ = computed((): number => {
-    const timing = this.timing();
+    const timing = this.state.timing();
     if (!timing) return 0;
-    const passed = Math.max(0, this.now() - timing.receivedAt);
+    const passed = Math.max(0, this.state.now() - timing.receivedAt);
     return Math.max(0, Math.ceil((timing.leftMs - passed) / 1000));
   });
 
-  private readonly jobs = new Subject<Job>();
-  private readonly done = signal(false);
-
   /** An attempt is running on this screen: leaving it asks first, because the clock keeps going. */
-  readonly inProgress$ = computed(() => !!this.session$() && !this.done());
+  readonly inProgress$ = computed(
+    () => !!this.session$() && !this.state.done(),
+  );
 
   constructor() {
-    const timer = setInterval(() => this.now.set(this.clock()), 1000);
+    const timer = setInterval(() => this.setNow(this.clock()), 1000);
     inject(DestroyRef).onDestroy(() => clearInterval(timer));
 
     this.jobs
@@ -155,10 +167,42 @@ export class QuizTakeStore {
     // Time is up: the server grades what it has saved.
     effect(() => {
       const session = this.session$();
-      if (!session || this.done()) return;
+      if (!session || this.state.done()) return;
       if (session.expired || this.seconds$() === 0)
         untracked(() => void this.submit(true));
     });
+  }
+
+  private setCurrent(index: number): void {
+    this.state.current.set(index);
+  }
+
+  private setIsSaving(saving: boolean): void {
+    this.state.isSaving.set(saving);
+  }
+
+  private setIsSubmitting(submitting: boolean): void {
+    this.state.isSubmitting.set(submitting);
+  }
+
+  private setDone(done: boolean): void {
+    this.state.done.set(done);
+  }
+
+  private setFailed(failed: ReadonlyMap<number, string>): void {
+    this.state.failed.set(failed);
+  }
+
+  private setChoices(choices: ReadonlyMap<number, Choice>): void {
+    this.state.choices.set(choices);
+  }
+
+  private setTiming(timing: { leftMs: number; receivedAt: number }): void {
+    this.state.timing.set(timing);
+  }
+
+  private setNow(now: number): void {
+    this.state.now.set(now);
   }
 
   private timingOf(deadlineAt: string, serverTime: string) {
@@ -174,7 +218,7 @@ export class QuizTakeStore {
 
   goto(index: number): void {
     const last = (this.session$()?.questions.length ?? 1) - 1;
-    this.current$.set(Math.min(Math.max(0, index), last));
+    this.setCurrent(Math.min(Math.max(0, index), last));
   }
 
   chooseOption(questionId: number, optionId: number, checked: boolean): void {
@@ -231,12 +275,12 @@ export class QuizTakeStore {
 
   /** Sends again every choice whose last save failed. */
   retrySave(): void {
-    for (const questionId of this.failed().keys())
+    for (const questionId of this.state.failed().keys())
       this.jobs.next({ kind: 'save', questionId });
   }
 
   async submit(auto = false): Promise<void> {
-    if (this.isSubmitting$() || this.done()) return;
+    if (this.isSubmitting$() || this.state.done()) return;
     if (!auto) {
       const left = this.questions$().length - this.answeredCount$();
       const flagged = this.flaggedCount$();
@@ -259,17 +303,17 @@ export class QuizTakeStore {
       );
       if (!ok) return;
     }
-    this.isSubmitting$.set(true);
+    this.setIsSubmitting(true);
     this.jobs.next({ kind: 'submit', auto });
   }
 
   private update(questionId: number, patch: Partial<Choice>): void {
-    const previous = this.choices().get(questionId) ?? {
+    const previous = this.state.choices().get(questionId) ?? {
       selectedOptionIds: [],
       flagged: false,
     };
-    this.choices.set(
-      new Map(this.choices()).set(questionId, { ...previous, ...patch }),
+    this.setChoices(
+      new Map(this.state.choices()).set(questionId, { ...previous, ...patch }),
     );
     this.jobs.next({ kind: 'save', questionId });
   }
@@ -281,13 +325,13 @@ export class QuizTakeStore {
   /** Sends the question's choice as it is now, so a queued older save is not sent stale. */
   private save(questionId: number) {
     const session = this.session$();
-    const choice = this.choices().get(questionId);
+    const choice = this.state.choices().get(questionId);
     if (!session || !choice) return EMPTY;
     const body: SaveAnswerBody = {
       selectedOptionIds: [...choice.selectedOptionIds],
       flagged: choice.flagged,
     };
-    this.isSaving$.set(true);
+    this.setIsSaving(true);
     return this.client
       .call(learnerQuizEndpoints.saveAnswer, {
         params: { attemptId: session.attemptId, attemptQuestionId: questionId },
@@ -295,22 +339,21 @@ export class QuizTakeStore {
       })
       .pipe(
         tap((receipt) => {
-          this.failed.update((failed) => {
-            const next = new Map(failed);
-            next.delete(questionId);
-            return next;
-          });
-          this.timing.set(
-            this.timingOf(receipt.deadlineAt, receipt.serverTime),
-          );
+          const next = new Map(this.state.failed());
+          next.delete(questionId);
+          this.setFailed(next);
+          this.setTiming(this.timingOf(receipt.deadlineAt, receipt.serverTime));
         }),
         catchError((error: unknown) => {
-          this.failed.update((failed) =>
-            new Map(failed).set(questionId, toAppError(error).message),
+          this.setFailed(
+            new Map(this.state.failed()).set(
+              questionId,
+              toAppError(error).message,
+            ),
           );
           return EMPTY;
         }),
-        tap({ finalize: () => this.isSaving$.set(false) }),
+        tap({ finalize: () => this.setIsSaving(false) }),
       );
   }
 
@@ -319,14 +362,14 @@ export class QuizTakeStore {
     const session = this.session$();
     if (!session) return EMPTY;
     return concat(
-      ...[...this.failed().keys()].map((id) => this.save(id)),
+      ...[...this.state.failed().keys()].map((id) => this.save(id)),
       defer(() => this.sendSubmit(session.attemptId, job.auto)),
     );
   }
 
   private sendSubmit(attemptId: number, auto: boolean) {
-    if (this.failed().size && !auto) {
-      this.isSubmitting$.set(false);
+    if (this.state.failed().size && !auto) {
+      this.setIsSubmitting(false);
       this.toaster.error(
         'Chưa nộp được bài',
         'Một số đáp án chưa lưu được. Nhấn Thử lại rồi nộp bài.',
@@ -337,7 +380,7 @@ export class QuizTakeStore {
       .call(learnerQuizEndpoints.submitAttempt, { params: { attemptId } })
       .pipe(
         tap((result) => {
-          this.done.set(true);
+          this.setDone(true);
           this.changes.results.bump();
           void this.router.navigate([
             '/quiz',
@@ -347,7 +390,7 @@ export class QuizTakeStore {
           ]);
         }),
         catchError((error: unknown) => {
-          this.isSubmitting$.set(false);
+          this.setIsSubmitting(false);
           const { title, message } = toAppError(error);
           this.toaster.error(title || 'Chưa nộp được bài', message);
           return EMPTY;

@@ -11,6 +11,7 @@ import {
   restoreReplies,
   settle,
   signInAsLearner,
+  writableSignalsOf,
 } from '../learner-quiz.testing';
 
 describe('QuizTake', () => {
@@ -50,6 +51,11 @@ describe('QuizTake', () => {
     expect(text()).toContain('Mã CIF dùng để làm gì?');
     expect(el.querySelectorAll('fieldset input')).toHaveLength(4);
     expect(text()).not.toContain('Câu 1 / 3 ·');
+  });
+
+  it('exposes no writable signal: every write goes through the store', async () => {
+    await open();
+    expect(writableSignalsOf(harness)).toEqual([]);
   });
 
   it('saves a choice with a patch as soon as it is made, and marks the question answered', async () => {

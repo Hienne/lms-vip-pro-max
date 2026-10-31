@@ -49,13 +49,13 @@
     </p>
     <fieldset class="take__answers">
       <legend class="sr-only">Phương án trả lời</legend>
-      @for (option of q.options; track option.id; let i = $index) {
-      <ui-option-card [title]="option.content" [letter]="letters[i]">
+      @for (option of options(); track option.id) {
+      <ui-option-card [title]="option.content" [letter]="option.letter">
         <input
           [type]="q.questionType === 'MULTIPLE' ? 'checkbox' : 'radio'"
           [name]="'answer-' + q.attemptQuestionId"
           [attr.aria-label]="option.content"
-          [checked]="q.selectedOptionIds.includes(option.id)"
+          [checked]="option.selected"
           [disabled]="submitting()"
           (change)="select($event, q.attemptQuestionId, option.id)"
         />

@@ -11,6 +11,7 @@ import {
   signInAsLearner,
   startAttempt,
   takeAttempt,
+  writableSignalsOf,
 } from '../learner-quiz.testing';
 
 describe('QuizAttempts', () => {
@@ -106,6 +107,11 @@ describe('QuizAttempts', () => {
     )?.click();
     await settle();
     expect(rows().length).toBe(2);
+  });
+
+  it('exposes no writable signal: every write goes through the store', async () => {
+    await open();
+    expect(writableSignalsOf(harness)).toEqual([]);
   });
 
   it('shows an error state with retry when the history cannot be loaded', async () => {

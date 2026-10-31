@@ -8,6 +8,7 @@ import {
   settle,
   signInAsLearner,
   takeAttempt,
+  writableSignalsOf,
 } from '../learner-quiz.testing';
 
 describe('QuizResult', () => {
@@ -90,6 +91,11 @@ describe('QuizResult', () => {
     await openResult(2);
     expect(el.querySelector('h1')?.textContent).toContain('Bạn đã đạt');
     expect(control('Thi lại')).toBeUndefined();
+  });
+
+  it('exposes no writable signal: every write goes through the store', async () => {
+    await openResult(1);
+    expect(writableSignalsOf(harness)).toEqual([]);
   });
 
   it('shows an error state when the result cannot be loaded', async () => {

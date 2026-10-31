@@ -56,10 +56,19 @@ export class AssessmentTake {
   readonly goto = output<number>();
   readonly submitted = output<void>();
 
-  protected readonly letters = LETTERS;
   protected readonly question = computed(
     () => this.questions()[this.current()],
   );
+  /** The options of the question on screen, each with its letter and whether it is chosen. */
+  protected readonly options = computed(() => {
+    const question = this.question();
+    return (question?.options ?? []).map((option, i) => ({
+      id: option.id,
+      content: option.content,
+      letter: LETTERS[i],
+      selected: question?.selectedOptionIds.includes(option.id) ?? false,
+    }));
+  });
   protected readonly answeredCount = computed(
     () => this.questions().filter((q) => q.selectedOptionIds.length).length,
   );

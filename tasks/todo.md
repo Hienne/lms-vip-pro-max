@@ -21,7 +21,7 @@ The main session reviewed the `learner-quiz` FE diff (`0569c38..3da2ff3`) agains
 visual-design checklist. The user approved these six fixes on 2026-10-31, to be done before T1. Paths below are
 under `apps/lms/src/app/features/quiz/` unless they say otherwise.
 
-- [ ] **F1: Learner quiz stores follow angular.md §5.2**
+- [x] **F1: Learner quiz stores follow angular.md §5.2**
   - Acceptance:
     - `QuizTakeStore`, `QuizAttemptsStore` and `QuizResultStore` hold every writable signal in one
       `private readonly state = {}`. They expose only readonly `x$` selectors (`asReadonly()` / `computed()`),

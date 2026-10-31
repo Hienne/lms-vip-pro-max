@@ -40,8 +40,12 @@ export class QuizAttemptsStore {
   private readonly route = inject(ActivatedRoute);
   private readonly fileSaver = inject(FileSaver);
 
+  private readonly state = {
+    /** The 1-based page of the history table. */
+    page: signal(1),
+  };
+
   readonly quizId$ = routeId(this.route, 'id');
-  readonly page$ = signal(1);
 
   private readonly historyData = serverData(
     (quizId: number) =>
@@ -65,6 +69,7 @@ export class QuizAttemptsStore {
   readonly history$ = this.historyData.value;
   readonly loadError$ = this.historyData.error;
   readonly isExporting$ = this.download.isPending;
+  readonly page$ = this.state.page.asReadonly();
 
   /** Newest first, as a learner reads a history. */
   private readonly rows$ = computed((): readonly AttemptView[] => {
@@ -106,7 +111,7 @@ export class QuizAttemptsStore {
   });
 
   setPage(page: number): void {
-    this.page$.set(page);
+    this.state.page.set(page);
   }
 
   retry(): void {

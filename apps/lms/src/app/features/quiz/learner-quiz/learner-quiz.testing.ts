@@ -1,5 +1,7 @@
+import { isSignal, isWritableSignal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
+import type { RouterTestingHarness } from '@angular/router/testing';
 import {
   learnerQuizEndpoints,
   type Envelope,
@@ -142,4 +144,16 @@ export function restoreReplies(
   handle.mockImplementation((endpoint, request) =>
     mockReply(endpoint, request),
   );
+}
+
+/** The writable signals a route component's store exposes; a store must expose none (angular.md §5.2). */
+export function writableSignalsOf(
+  harness: RouterTestingHarness,
+): readonly unknown[] {
+  const { store } = harness.routeDebugElement!.componentInstance as {
+    store: object;
+  };
+  const signals = Object.values(store).filter(isSignal);
+  expect(signals.length).toBeGreaterThan(0);
+  return signals.filter(isWritableSignal);
 }
