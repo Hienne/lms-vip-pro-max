@@ -1,85 +1,106 @@
-# Implementation plan: org tree and import from file
+# Implementation Plan: `local-stack`
 
-Spec: [SPEC.md](../SPEC.md) (approved 2026-10-27). Tasks: [todo.md](todo.md). Replaces the plan of the learner and
-lesson APIs initiative (all tasks done, shipped in PR #44; it is in git history).
+Spec: [SPEC-local-stack.md](../SPEC-local-stack.md), approved 2026-10-31. Map: [SPEC.md](../SPEC.md).
+Tasks: [todo.md](todo.md).
+
+This file replaces the plan for the org tree and import from file. That work is merged on `main`; its plan is in
+git history at `d9fe5a3`. The plans for the later modules (`learner-quiz`, …) are written one at a time, after
+this one is done and reviewed.
 
 ## Overview
 
-Wire four existing backend endpoints into `/admin/org`: the tree reads `GET /orgs/tree` (`hasChildren`), the
-panel reads `GET /orgs/{id}/contents` in one call, and a new "Nhập từ tệp" drawer downloads the template and runs
-`POST /orgs/import` as check (`dryRun=true`) then import (`dryRun=false`). Refusals are the current toast. The
-users screen loses its "Nhập danh sách" link. Frontend only; the backend is not changed.
+Run the whole product on this machine: Postgres with pgvector and MinIO in Docker, the backend from
+`~/my-projects/corebanking-academy` on `:8019`, and the app on `:4200` proxied to it. Load every baseline and
+demo, add the two missing kinds of demo data (quizzes, READY PDF and video), and add a smoke script that proves
+it. Most of the work is in the backend repository: config, SQL and scripts. In this repository there is one
+docs section and one launch entry.
+
+## What was checked while planning (2026-10-31)
+
+- **Tools.** `docker`, `psql`, `mvn`, `java 21.0.1`, `ffprobe` and `ffmpeg` are installed. Docker Desktop is
+  not running; it must be started before T1. `ffprobe` is needed for a video to become READY (`LEARNING.md`
+  §upload).
+- **Secrets and git.** The backend `.gitignore` ignores `.env.*` and keeps only `.env` tracked, so `.env.local`
+  stays out of git. `.env.local.example` must be added with `!.env.local.example`.
+- **Current `.env`.** It points at the shared DB and at AIStor on Ubuntu through an SSH tunnel. It is not changed.
+- **No bucket at startup.** The backend never creates its bucket ("không tự tạo bucket/IAM khi khởi động",
+  `DEPLOY_UBUNTU.md`), so the local stack creates it in an init container.
+- **Seeded accounts.** `learning_hub_identity.sql` creates the schema and the demo accounts (`hocvien`,
+  `giangvien`, `quantri`, `quantri.ban`, `hocvien.tichhop`, …) with `must_change_password=false`.
+- **What the demo lacks.** `learning_hub_learning_demo.sql` has no quiz and no READY asset (only FAILED files in a
+  draft). The quiz and media demo data are added in T3 and T5.
+- **Run order from the SQL headers and the README.** Identity → Learning → media/progress → Assessment (needs
+  Identity and Learning) → Knowledge (pgvector) → Community → community catalog → demos → verify. The README's
+  order has no place for Assessment yet; T2 records it.
+- **Sign-in.** `POST /api/v1/auth/login`. Health is `GET /actuator/health`.
+- **Upload.** A single `POST /api/v1/learning-assets` call still works for small files, so the seed script does
+  not need the multipart flow. Course setup follows `LEARNING_CURL.md` §10–13 and §19: create, save tree, publish,
+  assign.
 
 ## Architecture decisions
 
-- **Contracts first, all four endpoints in one task.** They share one schema file and the mock needs them all;
-  splitting them buys nothing.
-- **The tree keeps its own store and its subscription model.** Only the endpoint, the item type
-  (`OrganizationTreeNode`) and the openable rule (`hasChildren`, not `orgType === 'UNIT'`) change. `units$` keeps
-  its shape for the org form (`id`, `code`, `name`, `orgType`).
-- **The panel's org comes from `/contents`, not the tree.** Tree nodes have no `memberCount` / `teamCount`, so
-  `OrgStore` exposes `org$` from `contents.organization`; the tree node is only the selection.
-- **Import is its own store (`OrgImportStore`)**, provided by the drawer component, with `serverMutation` for the
-  check and the import (`errors: 'toast'`) and `serverMutation`-style one-shot for the template download through
-  `FileSaver`. It invalidates the org change token that `OrgStore` already owns, which reloads tree and panel.
-- **Mock uses fixtures for import.** `fake-backend.ts` does not parse Excel: a file whose name contains `loi`
-  answers `ORGANIZATION-IMPORT_INVALID`, any other answers success. Tree and contents are computed from the
-  seeded orgs.
-
-## Dependency graph
-
-```
-T1 contracts (schemas + endpoints)
- ├── T2 mock handlers (tree, contents, template, import)
- │     ├── T3 tree on /orgs/tree ──┐
- │     ├── T4 panel on /contents ──┤ (T3 and T4 both touch org.store.ts / org.spec.ts → sequential)
- │     └── T5 import store ────────┴── T6 import drawer on the org screen
- └── T7 hide users import (independent, XS)
-```
+- **MinIO image.** Local S3 is the community `minio/minio` image, pinned to a release tag. Production's AIStor
+  needs a licence and is S3-compatible, and the backend uses the MinIO Java SDK either way.
+- **Bucket creation.** A one-shot `minio/mc` service creates the bucket and a bucket-scoped access key. This
+  mirrors production, where the backend does not use the root account.
+- **Local environment.** `.env.local` is loaded into the shell (`set -a; . ./.env.local`). Environment variables
+  win over the `optional:file:./.env` import in `application.yml`, so `.env` keeps working for anyone who uses the
+  shared DB.
+- **DB init script.** One script, `scripts/local-db-init.sh`, runs the SQL files in order with
+  `ON_ERROR_STOP=1`. It refuses to run when `learning_hub.users` already exists, so it never touches a DB that
+  has data.
+- **Demo media.** The sample files are generated here: `ffmpeg` test pattern and tone, about 30 s, H.264 + AAC;
+  a PDF of four text pages. They are committed under `docs/sql/demo-media/`, as the spec allows. No external
+  file.
+- **Seed script.** `scripts/local-seed-media.sh` drives the public API as `quantri`. It does not write SQL
+  for assets, because a READY asset must have passed the real probe pipeline. It does nothing if its course code
+  `DEMO-MEDIA` already exists.
+- **Passwords.** Every script reads passwords from environment variables (`LOCAL_DEMO_PASSWORD`,
+  `PGPASSWORD`) and never prints them.
+- **Branches.** `feat/learner-mockup-gap` in both repositories, from `main`. Nothing is pushed.
 
 ## Task list
 
-### Phase 1: foundation
+### Phase 1: Local services
 
-- [x] T1: Contracts for the four endpoints
-- [x] T2: Mock handlers and fixtures
+- [ ] T1: Local Postgres + MinIO with a bucket (BE)
+- [ ] T2: Empty-DB init script and run order (BE)
 
 ### Checkpoint A
 
-- [x] `npx nx test contracts mocks` green; `npm run check` green
+- [ ] The backend starts on local DB and S3 with `ddl-auto=validate`. `/actuator/health` is UP.
 
-### Phase 2: tree and panel
+### Phase 2: Demo data
 
-- [x] T3: Tree reads `/orgs/tree` with `hasChildren`
-- [x] T4: Panel reads `/orgs/{id}/contents`
+- [ ] T3: Assessment demo SQL (BE)
+- [ ] T4: Smoke script (BE)
+- [ ] T5: Demo media and seed script (BE)
 
 ### Checkpoint B
 
-- [ ] `npm run check` green; on the backend the tree and panel work for a global admin and an ADMIN ORG; browser
-      pass (375/768/1280, light/dark, keyboard)
+- [ ] From an empty volume: init, then demos, then seed, then smoke, all green.
 
-### Phase 3: import
+### Phase 3: App on the local stack
 
-- [x] T5: `OrgImportStore` (template, check, import)
-- [x] T6: "Nhập từ tệp" drawer on `/admin/org`
-- [x] T7: Hide "Nhập danh sách" on `/admin/users`
-- [x] T8: Docs and final verification
+- [ ] T6: Docs and launch entry for a local backend (FE)
+- [ ] T7: End-to-end check against the spec (FE + BE)
 
-### Checkpoint C (done)
+### Checkpoint C
 
-- [ ] Every SPEC.md success criterion checked on the backend and on `mockBackend: true`; `npm run check` green;
-      angular.md §14 and the visual-design checklist pass
+- [ ] The spec's success criteria 1–6 are checked and reported.
 
 ## Risks and mitigations
 
-| Risk                                                                                     | Impact | Mitigation                                                                                                                                            |
-| ---------------------------------------------------------------------------------------- | ------ | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Shared backend data differs from the local seed; import writes real rows there           | Med    | Verify import on a local backend (`LMS_API_TARGET=http://localhost:8019`); on the shared one use check (`dryRun=true`) only, unless you say otherwise |
-| `EndpointClient` multipart with a query param (`dryRun`) not covered by an existing spec | Low    | T1 adds an endpoint spec asserting the URL query and the `file` part                                                                                  |
-| Blob refusal (template download by a non-admin) saved as a file                          | Low    | `envelopeInterceptor` already reads a JSON envelope on a `blob` endpoint (`learner-progress`); T5 tests it                                            |
-| `/orgs/tree` levels arrive after a reload and overwrite fresh data                       | Low    | T3 keeps the `inFlight` guard and adds a test for a reload during a pending level                                                                     |
-| Panel flashes empty between nodes now that counts come from `/contents`                  | Low    | T4 keeps the last org while the new one loads only if it is the same id; otherwise shows the spinner, as the teams list does today                    |
+| Risk                                                                                       | Impact | Mitigation                                                                                                                                                    |
+| ------------------------------------------------------------------------------------------ | ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| A baseline fails on an empty DB (an undocumented order, or an extension needing superuser) | High   | T2 runs first on a fresh volume. Extensions are created by the `core_academy` owner in the pgvector image; any failure is fixed in the order, not in the SQL. |
+| `ddl-auto=validate` fails because an entity is ahead of the SQL                            | High   | Seen at Checkpoint A. A real schema gap is reported to you; the entity is not edited to make startup pass.                                                    |
+| The community catalog needs an actor with the right role (`quantri.ban`)                   | Med    | The Identity baseline already grants it. If not, stop and ask: no role grants by script.                                                                      |
+| A generated MP4 fails the probe (codec or pixel format)                                    | Med    | Generate with `-c:v libx264 -pix_fmt yuv420p -c:a aac -movflags +faststart`. T5 checks for READY before going on.                                             |
+| Knowledge or Community workers try to reach external AI or S3 at startup                   | Med    | Check the logs at Checkpoint A. Workers stay disabled through their existing properties in `.env.local`.                                                      |
+| `.claude/launch.json` has your uncommitted changes                                         | Low    | T6 adds one entry with Edit and does not rewrite the file. Your changes are not committed with it.                                                            |
 
 ## Open questions
 
-None blocking. Where import is verified with real writes (local backend vs. shared) is noted under Risks.
+1. **Commits.** The backend's AGENTS.md says to commit only when asked. May each task be committed on
+   `feat/learner-mockup-gap` in its repository, never pushed? Default: yes, once you approve this plan.
