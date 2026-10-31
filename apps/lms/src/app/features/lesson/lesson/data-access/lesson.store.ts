@@ -28,7 +28,7 @@ import { serverData } from '../../../../core/data-access/server-data';
 import { serverMutation } from '../../../../core/data-access/server-mutation';
 import { FileSaver } from '../../../../core/files/file-saver';
 import { EndpointClient } from '../../../../core/http/endpoint-client';
-import { findLearnerCourse } from '../../../../core/learning/learner-course';
+import { readLearnerCourse } from '../../../../core/learning/read-learner-course';
 import { SessionStore } from '../../../../core/session/session.store';
 import { StudyChannel, type ClaimTarget } from './study-channel';
 import { StudySessionStorage } from './study-session.storage';
@@ -93,7 +93,7 @@ const sameTarget = (a: ClaimTarget | undefined, b: ClaimTarget | undefined) =>
   a?.video === b?.video;
 
 /**
- * The lesson player's page state: the learner's course card, the enrolment detail, the active
+ * The lesson player's page state: the learner's course (card and content in one call), the enrolment detail, the active
  * block and the study session on it (`StudyChannel`). Progress, completion and percentages are the
  * server's: each accepted event's result replaces what is shown until the detail is read again.
  */
@@ -120,8 +120,8 @@ export class LessonStore {
     { initialValue: idParam(this.route.snapshot.queryParamMap.get('block')) },
   );
 
-  private readonly cardData = serverData(
-    (courseId: number) => findLearnerCourse(this.client, courseId),
+  private readonly courseData = serverData(
+    (courseId: number) => readLearnerCourse(this.client, courseId),
     { params: () => this.courseId$() },
   );
 
@@ -130,7 +130,7 @@ export class LessonStore {
       this.client.call(learnerEndpoints.enrollment, {
         params: { enrollmentId },
       }),
-    { params: () => this.cardData.value()?.enrollmentId ?? undefined },
+    { params: () => this.courseData.value()?.card.enrollmentId ?? undefined },
   );
 
   /** The course's quizzes, read only for a quiz lesson: the one that holds the lesson is shown. */
@@ -176,10 +176,10 @@ export class LessonStore {
   });
 
   // Selectors
-  readonly card$ = computed(() => this.cardData.value() ?? undefined);
+  readonly card$ = computed(() => this.courseData.value()?.card);
   readonly detail$ = this.detailData.value;
   readonly loadError$ = computed(
-    () => this.cardData.error() ?? this.detailData.error(),
+    () => this.courseData.error() ?? this.detailData.error(),
   );
   readonly outlineOpen$ = this.state.outlineOpen.asReadonly();
 
@@ -196,7 +196,7 @@ export class LessonStore {
   readonly resume$ = computed(() => this.channel.session$()?.resume ?? null);
 
   private readonly chapters = computed(
-    () => this.detail$()?.content.chapters ?? [],
+    () => this.courseData.value()?.content.chapters ?? [],
   );
   private readonly lessons = computed(() =>
     this.chapters().flatMap((c) => c.lessons),
@@ -227,10 +227,10 @@ export class LessonStore {
     if (this.courseId$() === undefined || this.lessonId$() === undefined) {
       return 'missing';
     }
-    const card = this.cardData.value();
-    if (card === undefined) return 'loading';
-    if (card === null) return 'missing';
-    if (card.enrollmentId == null) return 'not-enrolled';
+    const course = this.courseData.value();
+    if (course === undefined) return 'loading';
+    if (course === null) return 'missing';
+    if (course.card.enrollmentId == null) return 'not-enrolled';
     if (this.detail$() === undefined) return 'loading';
     const lesson = this.lesson$();
     if (!lesson) return 'missing';
@@ -461,7 +461,7 @@ export class LessonStore {
   }
 
   retryLoad(): void {
-    this.cardData.reload();
+    this.courseData.reload();
     this.detailData.reload();
   }
 

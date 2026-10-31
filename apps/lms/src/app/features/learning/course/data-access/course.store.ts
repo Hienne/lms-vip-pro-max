@@ -5,11 +5,10 @@ import {
   learnerEndpoints,
   learnerQuizEndpoints,
   type CourseLevel,
-  type EnrollmentDetail,
   type LessonProgress,
 } from '@lms/contracts';
 import { map } from 'rxjs';
-import { findLearnerCourse } from '../../../../core/learning/learner-course';
+import { readLearnerCourse } from '../../../../core/learning/read-learner-course';
 import { invalidation } from '../../../../core/data-access/invalidation';
 import { serverData } from '../../../../core/data-access/server-data';
 import { serverMutation } from '../../../../core/data-access/server-mutation';
@@ -45,9 +44,10 @@ const stateOf = (progress: LessonProgress | undefined): LessonState =>
     : 'not_started';
 
 /**
- * The learner's page for one course. The card (what the learner sees in the lists) and, once
- * enrolled, the enrolment detail with the outline and the server's lesson status. The rules
- * (progress, who may enrol) stay on the server; the store only arranges what it sent.
+ * The learner's page for one course. One course call gives the card and the content (outline,
+ * objectives, completion rule); once enrolled, the enrolment detail adds the server's lesson
+ * status. The rules (progress, who may enrol) stay on the server; the store only arranges what it
+ * sent.
  */
 @Injectable()
 export class CourseStore {
@@ -67,8 +67,8 @@ export class CourseStore {
     { initialValue: undefined },
   );
 
-  private readonly cardData = serverData(
-    (courseId: number) => findLearnerCourse(this.client, courseId),
+  private readonly courseData = serverData(
+    (courseId: number) => readLearnerCourse(this.client, courseId),
     { params: () => this.courseId$(), reloadOn: this.refresh },
   );
 
@@ -78,7 +78,7 @@ export class CourseStore {
         params: { enrollmentId },
       }),
     {
-      params: () => this.cardData.value()?.enrollmentId ?? undefined,
+      params: () => this.courseData.value()?.card.enrollmentId ?? undefined,
       reloadOn: this.refresh,
     },
   );
@@ -91,7 +91,7 @@ export class CourseStore {
       }),
     {
       params: () =>
-        this.cardData.value()?.enrollmentId == null
+        this.courseData.value()?.card.enrollmentId == null
           ? undefined
           : this.courseId$(),
       reloadOn: this.refresh,
@@ -111,10 +111,11 @@ export class CourseStore {
   );
 
   // Selectors
-  readonly card$ = computed(() => this.cardData.value() ?? undefined);
+  readonly card$ = computed(() => this.courseData.value()?.card);
+  readonly content$ = computed(() => this.courseData.value()?.content);
   readonly detail$ = this.detailData.value;
   readonly loadError$ = computed(
-    () => this.cardData.error() ?? this.detailData.error(),
+    () => this.courseData.error() ?? this.detailData.error(),
   );
   readonly isEnrolling$ = this.enrollment.isPending;
   /** Kept apart from `loadError$`: a quiz list that fails must not hide the course. */
@@ -133,10 +134,10 @@ export class CourseStore {
 
   readonly view$ = computed((): CourseView => {
     if (this.courseId$() === undefined) return 'missing';
-    const card = this.cardData.value();
-    if (card === undefined) return 'loading';
-    if (card === null) return 'missing';
-    if (card.enrollmentId == null) return 'not-enrolled';
+    const course = this.courseData.value();
+    if (course === undefined) return 'loading';
+    if (course === null) return 'missing';
+    if (course.card.enrollmentId == null) return 'not-enrolled';
     return this.detailData.value() ? 'enrolled' : 'loading';
   });
 
@@ -169,7 +170,7 @@ export class CourseStore {
   readonly resumeLessonId$ = computed((): number | undefined => {
     const detail = this.detail$();
     if (!detail) return undefined;
-    const lessons = detail.content.chapters.flatMap((c) => c.lessons);
+    const lessons = (this.content$()?.chapters ?? []).flatMap((c) => c.lessons);
     const last = detail.enrollment.lastLessonId;
     if (last && lessons.some((l) => l.lesson.id === last)) return last;
     return lessons.find((l) => l.lesson.lessonType === 'content')?.lesson.id;
@@ -195,12 +196,12 @@ export class CourseStore {
   });
 
   readonly outline$ = computed((): readonly OutlineChapter[] => {
-    const detail: EnrollmentDetail | undefined = this.detail$();
+    const content = this.content$();
     const courseId = this.courseId$();
-    if (!detail || !courseId) return [];
+    if (!this.detail$() || !content || !courseId) return [];
     const resume = this.resumeLessonId$();
     const states = this.lessonStates();
-    return detail.content.chapters.map(({ chapter, lessons }, index) => ({
+    return content.chapters.map(({ chapter, lessons }, index) => ({
       id: chapter.id,
       title: chapter.title,
       open: index === 0 || lessons.some((l) => l.lesson.id === resume),
@@ -232,7 +233,7 @@ export class CourseStore {
   }
 
   retry(): void {
-    this.cardData.reload();
+    this.courseData.reload();
     this.detailData.reload();
     this.quizData.reload();
   }

@@ -245,7 +245,7 @@ under `apps/lms/src/app/features/quiz/` unless they say otherwise.
 
 ## Phase 3: Course, lesson and learn pages
 
-- [ ] **T8: Course and lesson pages on D4, with the programme breadcrumb**
+- [x] **T8: Course and lesson pages on D4, with the programme breadcrumb**
   - Acceptance:
     - `course.store.ts` and `lesson.store.ts` load `learnerEndpoints.course` once; the course page uses its
       `content` instead of a second enrollment read where the content is enough.

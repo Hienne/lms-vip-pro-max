@@ -136,6 +136,15 @@ describe('Lesson', () => {
       expect(text()).toContain('Thanh toán và đối soát');
     });
 
+    it('reads the course once, and never the lists, to play an enrolled course', () => {
+      expect(calls(learnerEndpoints.course).length).toBe(1);
+      expect(calls(learnerEndpoints.course)[0][1].params).toEqual({
+        courseId: String(COURSE),
+      });
+      expect(calls(learnerEndpoints.myCourses).length).toBe(0);
+      expect(calls(learnerEndpoints.catalog).length).toBe(0);
+    });
+
     it('renders the text of the block and, with one block only, no block list', () => {
       expect(el.querySelector('app-text-block')).not.toBeNull();
       expect(el.querySelector('app-block-list')).toBeNull();
@@ -486,7 +495,7 @@ describe('Lesson', () => {
 
     it('shows the error with a retry when the course cannot be read', async () => {
       handle.mockImplementation((endpoint, request) =>
-        endpoint === learnerEndpoints.myCourses
+        endpoint === learnerEndpoints.course
           ? backendRefusal('internalError')
           : real()(endpoint, request),
       );

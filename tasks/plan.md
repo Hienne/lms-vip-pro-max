@@ -159,7 +159,7 @@ No schema change, so no upgrade script.
 
 ### Phase 3: Course, lesson and learn pages
 
-- [ ] T8: Course and lesson pages on D4, with the programme breadcrumb
+- [x] T8: Course and lesson pages on D4, with the programme breadcrumb
 - [ ] T9: Learn page tabs and counts; "Chưa đạt" and "Quá hạn" on the course card
 - [ ] T10: End-to-end check against the spec
 

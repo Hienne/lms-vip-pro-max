@@ -150,8 +150,25 @@ describe('Course', () => {
       expect(el.querySelector('ui-alert')).toBeNull();
     });
 
-    it('reads the card from the lists and the detail once, by the enrolment of the card', () => {
+    it('reads the course once, and the detail once by the enrolment of the card, never the lists', () => {
+      expect(calls(learnerEndpoints.course).length).toBe(1);
+      expect(calls(learnerEndpoints.course)[0][1].params).toEqual({
+        courseId: '1',
+      });
       expect(calls(learnerEndpoints.enrollment).length).toBe(1);
+      expect(calls(learnerEndpoints.myCourses).length).toBe(0);
+      expect(calls(learnerEndpoints.catalog).length).toBe(0);
+    });
+
+    it('puts the programme in the breadcrumb and field · module first in the meta line', () => {
+      expect(
+        el.querySelector('ui-breadcrumb')?.textContent?.replace(/\s+/g, ' '),
+      ).toContain(
+        'Danh mục khóa học/Nền tảng nghiệp vụ Core Banking/Tổng quan hệ thống Core Banking',
+      );
+      expect(
+        el.querySelector('ui-page-header')?.textContent?.replace(/\s+/g, ' '),
+      ).toContain('Nghiệp vụ Core Banking · Tổng quan · NV-101');
     });
   });
 
@@ -198,6 +215,13 @@ describe('Course', () => {
   describe('an optional course the learner has not joined', () => {
     beforeEach(() => open(7));
 
+    it('reads the course once and shows the programme in the breadcrumb', () => {
+      expect(calls(learnerEndpoints.course).length).toBe(1);
+      expect(el.querySelector('ui-breadcrumb')?.textContent).toContain(
+        'Danh mục khóa học',
+      );
+    });
+
     it('offers to enrol and does not show an outline before it', () => {
       expect(heading()).toBe('Phân hệ Thanh toán liên ngân hàng');
       expect(action('Đăng ký học')).toBeTruthy();
@@ -234,6 +258,38 @@ describe('Course', () => {
     });
   });
 
+  describe('a course whose names the server left out', () => {
+    it('drops the programme from the breadcrumb and the field and module from the meta line, never a dash', async () => {
+      const backend = TestBed.inject(MockBackend);
+      handle.mockImplementation((endpoint, request) => {
+        const reply = MockBackend.prototype.handle.call(
+          backend,
+          endpoint,
+          request,
+        ) as { body: { data: { card: Record<string, unknown> } } };
+        if (endpoint === learnerEndpoints.course) {
+          Object.assign(reply.body.data.card, {
+            fieldId: null,
+            fieldName: null,
+            programName: null,
+            moduleName: null,
+          });
+        }
+        return reply as never;
+      });
+      await open(1);
+      expect(
+        el.querySelector('ui-breadcrumb')?.textContent?.replace(/\s+/g, ' '),
+      ).toBe('Danh mục khóa học/Tổng quan hệ thống Core Banking');
+      const meta = el
+        .querySelector('ui-page-header')
+        ?.textContent?.replace(/\s+/g, ' ');
+      expect(meta).toContain('NV-101');
+      expect(meta).not.toContain('—');
+      expect(meta).not.toContain('Nghiệp vụ Core Banking ·');
+    });
+  });
+
   describe('a mandatory course nobody assigned', () => {
     it('explains that it must be assigned and shows no button', async () => {
       await open(3);
@@ -249,7 +305,7 @@ describe('Course', () => {
       const original: MockBackend['handle'] = (endpoint, request) =>
         MockBackend.prototype.handle.call(backend, endpoint, request);
       handle.mockImplementation((endpoint, request) =>
-        endpoint === learnerEndpoints.myCourses
+        endpoint === learnerEndpoints.course
           ? backendRefusal('internalError')
           : original(endpoint, request),
       );
