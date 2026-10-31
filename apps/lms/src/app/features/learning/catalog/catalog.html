@@ -109,7 +109,7 @@
       @for (option of statuses; track option.value) {
       <option
         [value]="option.value"
-        [selected]="option.value === store.filters$().learningStatus"
+        [selected]="option.value === store.filters$().status"
       >
         {{ option.label }}
       </option>

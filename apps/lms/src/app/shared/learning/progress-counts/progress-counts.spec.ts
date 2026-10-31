@@ -13,6 +13,8 @@ class Host {
     inProgress: 2,
     notStarted: 3,
     overdue: 1,
+    assigned: 4,
+    mandatory: 3,
   });
 }
 
@@ -53,7 +55,15 @@ describe('ProgressCounts', () => {
         .querySelectorAll('dd')[4]
         .classList.contains('progress-counts__value--danger');
     expect(overdue()).toBe(true);
-    set({ total: 6, completed: 1, inProgress: 2, notStarted: 3, overdue: 0 });
+    set({
+      total: 6,
+      completed: 1,
+      inProgress: 2,
+      notStarted: 3,
+      overdue: 0,
+      assigned: 4,
+      mandatory: 3,
+    });
     expect(overdue()).toBe(false);
     expect(root.querySelectorAll('dd')[0].classList).not.toContain(
       'progress-counts__value--danger',

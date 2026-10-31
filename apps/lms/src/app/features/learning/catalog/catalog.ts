@@ -66,5 +66,6 @@ export class Catalog {
   protected readonly statuses = [
     ...entries(COURSE_STATUS_LABEL),
     { value: 'overdue', label: 'Quá hạn' },
+    { value: 'assigned', label: 'Được giao' },
   ];
 }

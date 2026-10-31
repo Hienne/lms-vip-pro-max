@@ -10,16 +10,14 @@ import {
   CourseLevelSchema,
   learnerEndpoints,
   RequirementSchema,
-  trainingCatalogEndpoints,
   type CourseCard,
   type CourseLevel,
-  type CourseListQuery,
+  type MyCoursesQuery,
   type Page,
   type Requirement,
 } from '@lms/contracts';
 import { serverData } from '../../../../core/data-access/server-data';
 import { EndpointClient } from '../../../../core/http/endpoint-client';
-import { SessionStore } from '../../../../core/session/session.store';
 import type { CourseCardView } from '../../../../shared/course/course-card';
 import { toCourseCardView } from '../../../../shared/course/course-card-view';
 
@@ -28,13 +26,32 @@ export const CATALOG_PAGE_SIZE = 12;
 /** "Tất cả" lists the catalogue, "Được giao" the caller's own courses. */
 export type CatalogScope = 'all' | 'assigned';
 export type CatalogSort = 'due' | 'progress' | 'name';
-export type LearningStatusFilter =
-  | ''
-  | 'not_started'
-  | 'in_progress'
-  | 'completed'
-  | 'failed'
-  | 'overdue';
+
+/**
+ * The mockup's single "Trạng thái" choice. `failed`, `overdue` and `assigned` are flags the server
+ * evaluates, not learning statuses, so each becomes its own query flag.
+ */
+export const STATUS_FILTERS = [
+  'not_started',
+  'in_progress',
+  'completed',
+  'failed',
+  'overdue',
+  'assigned',
+] as const;
+export type StatusFilter = '' | (typeof STATUS_FILTERS)[number];
+
+const STATUS_QUERY: Record<
+  (typeof STATUS_FILTERS)[number],
+  Pick<MyCoursesQuery, 'learningStatus' | 'failed' | 'overdue' | 'assigned'>
+> = {
+  not_started: { learningStatus: 'not_started' },
+  in_progress: { learningStatus: 'in_progress' },
+  completed: { learningStatus: 'completed' },
+  failed: { failed: true },
+  overdue: { overdue: true },
+  assigned: { assigned: true },
+};
 
 /** The backend's `sort` for each choice of the "Sắp xếp" select. */
 const SORT_PARAM: Record<CatalogSort, string> = {
@@ -44,14 +61,6 @@ const SORT_PARAM: Record<CatalogSort, string> = {
 };
 
 const SORTS = Object.keys(SORT_PARAM) as CatalogSort[];
-const STATUSES: readonly LearningStatusFilter[] = [
-  'not_started',
-  'in_progress',
-  'completed',
-  'failed',
-  'overdue',
-];
-
 interface CatalogFilters {
   readonly q: string;
   readonly fieldId: number | undefined;
@@ -59,7 +68,7 @@ interface CatalogFilters {
   readonly programId: number | undefined;
   readonly level: CourseLevel | '';
   readonly requirement: Requirement | '';
-  readonly learningStatus: LearningStatusFilter;
+  readonly status: StatusFilter;
 }
 
 const NO_FILTERS: CatalogFilters = {
@@ -69,7 +78,7 @@ const NO_FILTERS: CatalogFilters = {
   programId: undefined,
   level: '',
   requirement: '',
-  learningStatus: '',
+  status: '',
 };
 
 const idParam = (value: string | null): number | undefined => {
@@ -83,7 +92,7 @@ function filtersFrom(params: Params): CatalogFilters {
     typeof params[key] === 'string' ? params[key] : '';
   const level = CourseLevelSchema.safeParse(params['level']);
   const requirement = RequirementSchema.safeParse(params['requirement']);
-  const status = text('status') as LearningStatusFilter;
+  const status = STATUS_FILTERS.find((s) => s === text('status'));
   return {
     q: text('q'),
     fieldId: idParam(text('field')),
@@ -91,7 +100,7 @@ function filtersFrom(params: Params): CatalogFilters {
     programId: idParam(text('program')),
     level: level.success ? level.data : '',
     requirement: requirement.success ? requirement.data : '',
-    learningStatus: STATUSES.includes(status) ? status : '',
+    status: status ?? '',
   };
 }
 
@@ -103,7 +112,6 @@ function filtersFrom(params: Params): CatalogFilters {
 @Injectable()
 export class CatalogStore {
   private readonly client = inject(EndpointClient);
-  private readonly session = inject(SessionStore);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
 
@@ -128,63 +136,33 @@ export class CatalogStore {
     }),
   };
 
-  /** Fields and programs are listed per owner org: the caller's own. */
-  private readonly orgId = computed(() => this.session.user$()?.org?.id);
-
-  private readonly request = computed(
-    (): { scope: CatalogScope; query: CourseListQuery } => {
-      const f = this.state.filters();
-      return {
-        scope: this.state.scope(),
-        query: {
-          page: this.state.page() - 1,
-          size: CATALOG_PAGE_SIZE,
-          sort: SORT_PARAM[this.state.sort()],
-          ...(f.q.trim() ? { q: f.q.trim().slice(0, 100) } : {}),
-          ...(f.fieldId ? { fieldId: f.fieldId } : {}),
-          ...(f.moduleId ? { moduleId: f.moduleId } : {}),
-          ...(f.programId ? { programId: f.programId } : {}),
-          ...(f.level ? { level: f.level } : {}),
-          ...(f.requirement ? { requirement: f.requirement } : {}),
-          ...(f.learningStatus ? { learningStatus: f.learningStatus } : {}),
-        },
-      };
-    },
-  );
+  private readonly request = computed((): MyCoursesQuery => {
+    const f = this.state.filters();
+    return {
+      page: this.state.page() - 1,
+      size: CATALOG_PAGE_SIZE,
+      sort: SORT_PARAM[this.state.sort()],
+      // "Được giao" is the catalogue narrowed to what the caller has an assignment for.
+      ...(this.state.scope() === 'assigned' ? { assigned: true } : {}),
+      ...(f.q.trim() ? { q: f.q.trim().slice(0, 100) } : {}),
+      ...(f.fieldId ? { fieldId: f.fieldId } : {}),
+      ...(f.moduleId ? { moduleId: f.moduleId } : {}),
+      ...(f.programId ? { programId: f.programId } : {}),
+      ...(f.level ? { level: f.level } : {}),
+      ...(f.requirement ? { requirement: f.requirement } : {}),
+      ...(f.status ? STATUS_QUERY[f.status] : {}),
+    };
+  });
 
   private readonly listData = serverData(
-    ({ scope, query }: { scope: CatalogScope; query: CourseListQuery }) =>
-      this.client.call(
-        scope === 'assigned'
-          ? learnerEndpoints.myCourses
-          : learnerEndpoints.catalog,
-        { query },
-      ),
+    (query: MyCoursesQuery) =>
+      this.client.call(learnerEndpoints.catalog, { query }),
     { params: () => this.request() },
   );
 
-  private readonly fieldsData = serverData(
-    (ownerOrgId: number) =>
-      this.client.call(trainingCatalogEndpoints.listFields, {
-        query: { ownerOrgId, size: 100 },
-      }),
-    { params: () => this.orgId() },
-  );
-
-  private readonly programsData = serverData(
-    (ownerOrgId: number) =>
-      this.client.call(trainingCatalogEndpoints.listPrograms, {
-        query: { ownerOrgId, size: 100 },
-      }),
-    { params: () => this.orgId() },
-  );
-
-  private readonly modulesData = serverData(
-    (fieldId: number) =>
-      this.client.call(trainingCatalogEndpoints.listModules, {
-        query: { fieldId, size: 100 },
-      }),
-    { params: () => this.state.filters().fieldId },
+  /** The names the selects offer: only those the caller's visible courses use. */
+  private readonly facetsData = serverData(() =>
+    this.client.call(learnerEndpoints.facets),
   );
 
   // Selectors
@@ -193,10 +171,13 @@ export class CatalogStore {
   readonly sort$ = this.state.sort.asReadonly();
   readonly page$ = this.state.page.asReadonly();
 
-  readonly fields$ = computed(() => this.fieldsData.value()?.items ?? []);
-  readonly programs$ = computed(() => this.programsData.value()?.items ?? []);
+  readonly fields$ = computed(() => this.facetsData.value()?.fields ?? []);
+  /** Programmes and modules of the chosen field; all of them while none is chosen. */
+  readonly programs$ = computed(() =>
+    this.ofChosenField(this.facetsData.value()?.programs ?? []),
+  );
   readonly modules$ = computed(() =>
-    this.state.filters().fieldId ? (this.modulesData.value()?.items ?? []) : [],
+    this.ofChosenField(this.facetsData.value()?.modules ?? []),
   );
 
   readonly isLoading$ = computed(
@@ -213,18 +194,8 @@ export class CatalogStore {
       ).length,
   );
 
-  private readonly programNames = computed(
-    () => new Map(this.programs$().map((p) => [p.id, p.name])),
-  );
-
   readonly cards$ = computed((): readonly CourseCardView[] =>
-    (this.state.shown()?.items ?? []).map((card) =>
-      toCourseCardView(
-        card,
-        (card.programId && this.programNames().get(card.programId)) ||
-          undefined,
-      ),
-    ),
+    (this.state.shown()?.items ?? []).map(toCourseCardView),
   );
 
   // Setters: the only writers of state
@@ -255,9 +226,13 @@ export class CatalogStore {
     this.filter({ q });
   }
 
-  /** A new field clears the module, which belongs to the old one. */
+  /** A new field clears the module and the programme, which belong to the old one. */
   filterField(value: string): void {
-    this.filter({ fieldId: idParam(value), moduleId: undefined });
+    this.filter({
+      fieldId: idParam(value),
+      moduleId: undefined,
+      programId: undefined,
+    });
   }
 
   filterModule(value: string): void {
@@ -279,8 +254,7 @@ export class CatalogStore {
   }
 
   filterStatus(value: string): void {
-    const status = value as LearningStatusFilter;
-    this.filter({ learningStatus: STATUSES.includes(status) ? status : '' });
+    this.filter({ status: STATUS_FILTERS.find((s) => s === value) ?? '' });
   }
 
   clearFilters(): void {
@@ -306,6 +280,13 @@ export class CatalogStore {
     this.listData.reload();
   }
 
+  private ofChosenField<T extends { readonly fieldId: number }>(
+    items: readonly T[],
+  ): readonly T[] {
+    const fieldId = this.state.filters().fieldId;
+    return fieldId ? items.filter((item) => item.fieldId === fieldId) : items;
+  }
+
   private filter(change: Partial<CatalogFilters>): void {
     this.setFilters({ ...this.state.filters(), ...change });
     this.setPage(1);
@@ -323,7 +304,7 @@ export class CatalogStore {
       program: f.programId ?? null,
       level: f.level || null,
       requirement: f.requirement || null,
-      status: f.learningStatus || null,
+      status: f.status || null,
       sort: this.state.sort() === 'due' ? null : this.state.sort(),
       page: this.state.page() > 1 ? this.state.page() : null,
     };

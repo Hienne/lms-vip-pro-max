@@ -150,7 +150,7 @@ No schema change, so no upgrade script.
 ### Phase 2: App
 
 - [x] T6: Contracts and mocks
-- [ ] T7: Catalogue on facets and the new status filters
+- [x] T7: Catalogue on facets and the new status filters
 
 ### Checkpoint B
 

@@ -221,7 +221,7 @@ under `apps/lms/src/app/features/quiz/` unless they say otherwise.
     learning mock and its spec.
   - Size: M. Depends on: Checkpoint A.
 
-- [ ] **T7: Catalogue on facets and the new status filters**
+- [x] **T7: Catalogue on facets and the new status filters**
   - Acceptance:
     - `catalog.store.ts` reads fields, programmes and modules from one `facets` call. The programme and module
       selects list only entries of the chosen field. No `trainingCatalogEndpoints` import is left in the store.

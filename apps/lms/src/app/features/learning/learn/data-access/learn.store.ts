@@ -1,7 +1,6 @@
 import { computed, inject, Injectable, signal } from '@angular/core';
 import {
   learnerEndpoints,
-  trainingCatalogEndpoints,
   type CourseCard,
   type LearningReminder,
   type MyCoursesQuery,
@@ -90,7 +89,6 @@ export class LearnStore {
     tab: signal<LearnTab>('in_progress'),
   };
 
-  private readonly orgId = computed(() => this.session.user$()?.org?.id);
   private readonly canLearn = computed(() =>
     this.session.menus$().includes('COURSE_LEARNING'),
   );
@@ -139,14 +137,6 @@ export class LearnStore {
     {
       params: () => (this.canLearn() ? { learner: true as const } : undefined),
     },
-  );
-
-  private readonly programsData = serverData(
-    (ownerOrgId: number) =>
-      this.client.call(trainingCatalogEndpoints.listPrograms, {
-        query: { ownerOrgId, size: 100 },
-      }),
-    { params: () => this.orgId() },
   );
 
   // Selectors
@@ -204,21 +194,8 @@ export class LearnStore {
   readonly coursesError$ = this.coursesData.error;
   readonly isCoursesLoading$ = this.coursesData.isLoading;
 
-  private readonly programNames = computed(
-    () =>
-      new Map(
-        (this.programsData.value()?.items ?? []).map((p) => [p.id, p.name]),
-      ),
-  );
-
   readonly courses$ = computed((): readonly CourseCardView[] =>
-    (this.coursesData.value()?.items ?? []).map((card) =>
-      toCourseCardView(
-        card,
-        (card.programId && this.programNames().get(card.programId)) ||
-          undefined,
-      ),
-    ),
+    (this.coursesData.value()?.items ?? []).map(toCourseCardView),
   );
 
   readonly dueError$ = this.dueData.error;
