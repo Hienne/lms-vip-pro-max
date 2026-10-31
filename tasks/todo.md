@@ -55,7 +55,7 @@ command line or a log.
 
 ## Phase 2: Demo data
 
-- [ ] **T3: Assessment demo SQL (BE)**
+- [x] **T3: Assessment demo SQL (BE)**
   - Acceptance:
     - `docs/sql/learning_hub_assessment_demo.sql` is dev/test only. It has a header like the learning demo's, runs
       once (a second run errors and rolls back) and uses no hard-coded ids (`RETURNING`).
