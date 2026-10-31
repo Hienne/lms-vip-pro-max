@@ -312,9 +312,9 @@ assigned 5}`. Each tab's grid equals `courses` with the same query. The cards sh
     bundle guard). `mvn clean verify` was green at Checkpoint A (333 tests) and the backend has not changed
     since (HEAD `7503c4b`, clean tree); it was not run again because `:8019` serves from that checkout's
     `target/`. - Screens at 1280 and 375 px, light and dark: catalogue, learn, course (lesson only at 1280 light for
-    playing). No horizontal page scroll; the checklist holds. One finding: the five learn tabs need 708 px and
-    the main column at 1280 px gives 624 px, so "Được giao" is partly clipped until the strip scrolls (the
-    `ui-tabs` strip scrolls by design, as in the mockup). Open for a decision.
+    playing). No horizontal page scroll; the checklist holds. One finding, fixed: the five learn tabs need 708 px and the main column at 1280 px gives 624 px, so
+    "Được giao" was clipped. `ui-tabs` gained a `wrap` input (default off) and the learn tabs use it: all five
+    tabs show, on two rows at 1280 px and three at 375 px, with no page scroll.
 
 ### Checkpoint C
 

@@ -21,6 +21,14 @@ class Host {
   readonly selected = signal('overview');
 }
 
+@Component({
+  imports: [Tabs],
+  template: `<ui-tabs label="Mục" wrap [tabs]="items" selected="overview" />`,
+})
+class WrapHost {
+  readonly items = ITEMS;
+}
+
 async function render() {
   const fixture = TestBed.createComponent(Host);
   fixture.detectChanges();
@@ -67,6 +75,21 @@ describe('Tabs', () => {
       'Khóa học 6',
       'Bài thi',
     ]);
+  });
+
+  it('keeps the strip scrolling unless it is asked to wrap', async () => {
+    const { root } = await render();
+    const list = root.querySelector('[role="tablist"]')!;
+    expect(list.classList.contains('tabs--wrap')).toBe(false);
+
+    const wrapped = TestBed.createComponent(WrapHost);
+    wrapped.detectChanges();
+    await wrapped.whenStable();
+    expect(
+      wrapped.nativeElement
+        .querySelector('[role="tablist"]')
+        .classList.contains('tabs--wrap'),
+    ).toBe(true);
   });
 
   it('includes the count in the accessible name and shows an optional icon', async () => {
