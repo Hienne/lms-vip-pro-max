@@ -1,13 +1,12 @@
 import { z } from 'zod';
 import { defineEndpoint } from '../http/endpoint';
 import { PageSchema } from '../http/page';
-import {
-  CourseCardSchema,
-  CourseListQuerySchema,
-} from '../course/course.schema';
+import { CourseCardSchema } from '../course/course.schema';
 import {
   CourseEnrollmentSchema,
   EnrollmentDetailSchema,
+  LearnerCourseSchema,
+  LearnerFacetsSchema,
   LearningProgressOverviewSchema,
   LearningReminderSchema,
   MyCoursesQuerySchema,
@@ -26,7 +25,7 @@ export const learnerEndpoints = {
   catalog: defineEndpoint({
     method: 'get',
     path: '/api/v1/me/learning/catalog',
-    query: CourseListQuerySchema,
+    query: MyCoursesQuerySchema,
     response: PageSchema(CourseCardSchema),
   }),
   /** One card per course at its current cycle, with the obligation and due date from real assignments. */
@@ -35,6 +34,23 @@ export const learnerEndpoints = {
     path: '/api/v1/me/learning/courses',
     query: MyCoursesQuerySchema,
     response: PageSchema(CourseCardSchema),
+  }),
+  /**
+   * One course the caller can see, with its card and content. Enrolled: the revision they received.
+   * Not enrolled: the published revision with every lesson's `blocks` empty. A course outside the
+   * caller's scope answers `LEARNING-NOT_FOUND`.
+   */
+  course: defineEndpoint({
+    method: 'get',
+    path: '/api/v1/me/learning/courses/{courseId}',
+    params: z.object({ courseId: z.number().int() }),
+    response: LearnerCourseSchema,
+  }),
+  /** The fields, programmes and modules a visible course uses: what the catalogue's selects list. */
+  facets: defineEndpoint({
+    method: 'get',
+    path: '/api/v1/me/learning/facets',
+    response: LearnerFacetsSchema,
   }),
   /** Counts over the caller's current cycles, whatever the table below filters. */
   progressSummary: defineEndpoint({

@@ -87,6 +87,10 @@ No schema change, so no upgrade script.
    is not enrolled, `content` keeps the chapters and lessons and every lesson's `blocks` list is empty. An
    enrolled caller gets the full revision. Media access is unchanged.
 
+7. **D4 refusal code** (found building T4, applied in T6). A course the caller cannot see answers
+   `LEARNING-NOT_FOUND`, the code `LearningSearchService` already uses for a missing learning record, not
+   `LEARNING-COURSE_NOT_FOUND`. The contracts and mocks use `LEARNING-NOT_FOUND`.
+
 ## Architecture decisions
 
 - **Backend.**
@@ -139,13 +143,13 @@ No schema change, so no upgrade script.
 
 ### Checkpoint A
 
-- [ ] `mvn clean verify` green.
-- [ ] `curl` as `hocvien` for each new endpoint and filter.
-- [ ] Show the backend diff to the user before Phase 2.
+- [x] `mvn clean verify` green.
+- [x] `curl` as `hocvien` for each new endpoint and filter.
+- [x] Show the backend diff to the user before Phase 2.
 
 ### Phase 2: App
 
-- [ ] T6: Contracts and mocks
+- [x] T6: Contracts and mocks
 - [ ] T7: Catalogue on facets and the new status filters
 
 ### Checkpoint B

@@ -2,6 +2,8 @@ import {
   authV1Endpoints,
   CourseCardSchema,
   EnrollmentDetailSchema,
+  LearnerCourseSchema,
+  LearnerFacetsSchema,
   learnerEndpoints,
   LearningProgressOverviewSchema,
   LearningReminderSchema,
@@ -345,6 +347,130 @@ describe('the learner reads of the mock backend', () => {
       markRead(token, list(token)[0].id);
       expect(navCount(token)).toBe(2);
       expect(navCount(login('giangvien'))).toBe(0);
+    });
+  });
+
+  describe('catalogue discovery', () => {
+    it('gives every card its field, programme and module names', () => {
+      const token = login('hocvien');
+      const all = cards(token, learnerEndpoints.catalog);
+      const withNames = all.filter((c) => c.programName && c.fieldName);
+      expect(withNames.length).toBeGreaterThan(0);
+      expect(
+        withNames.every((c) => typeof c.fieldId === 'number' && c.fieldId > 0),
+      ).toBe(true);
+    });
+
+    it('marks a failed final exam on the card without making it a learning status', () => {
+      const token = login('hocvien');
+      const all = cards(token, learnerEndpoints.myCourses);
+      const failed = all.filter((c) => c.failed);
+      expect(failed.map((c) => c.courseId)).toEqual([2]);
+      expect(failed[0].learningStatus).toBe('in_progress');
+      expect(all.some((c) => c.learningStatus === ('failed' as never))).toBe(
+        false,
+      );
+    });
+
+    it.each([
+      ['assigned', (c: CourseCard) => c.assigned],
+      ['failed', (c: CourseCard) => c.failed],
+      ['overdue', (c: CourseCard) => c.overdue],
+    ] as const)('filters both lists by `%s`', (flag, pick) => {
+      const token = login('hocvien');
+      for (const endpoint of [
+        learnerEndpoints.myCourses,
+        learnerEndpoints.catalog,
+      ]) {
+        const everything = cards(token, endpoint);
+        const yes = cards(token, endpoint, { [flag]: 'true' });
+        const no = cards(token, endpoint, { [flag]: 'false' });
+        expect(yes.map((c) => c.courseId)).toEqual(
+          everything.filter((c) => pick(c)).map((c) => c.courseId),
+        );
+        expect(no.map((c) => c.courseId)).toEqual(
+          everything.filter((c) => !pick(c)).map((c) => c.courseId),
+        );
+        expect(yes.length).toBeGreaterThan(0);
+      }
+    });
+
+    it('combines the flags with a learning status', () => {
+      const token = login('hocvien');
+      const both = cards(token, learnerEndpoints.catalog, {
+        assigned: 'true',
+        learningStatus: 'in_progress',
+      });
+      expect(both.length).toBeGreaterThan(0);
+      expect(
+        both.every((c) => c.assigned && c.learningStatus === 'in_progress'),
+      ).toBe(true);
+    });
+
+    it('lists the fields, programmes and modules of the visible courses, in order', () => {
+      const token = login('hocvien');
+      const facets = LearnerFacetsSchema.parse(
+        call(learnerEndpoints.facets, token).body.data,
+      );
+      const visible = cards(token, learnerEndpoints.catalog);
+      expect(facets.fields.map((f) => f.id)).toEqual(
+        [...new Set(visible.map((c) => c.fieldId))]
+          .filter((id): id is number => typeof id === 'number')
+          .sort((a, b) => a - b),
+      );
+      expect(facets.modules.length).toBeGreaterThan(0);
+      for (const item of [...facets.programs, ...facets.modules]) {
+        expect(facets.fields.some((f) => f.id === item.fieldId)).toBe(true);
+      }
+    });
+
+    it('answers a visible course with its content, and empty blocks when not enrolled', () => {
+      const token = login('hocvien.tichhop');
+      const open = cards(token, learnerEndpoints.catalog).find(
+        (c) => !c.enrollmentId,
+      )!;
+      const reply = call(learnerEndpoints.course, token, {
+        params: { courseId: String(open.courseId) },
+      });
+      const result = LearnerCourseSchema.parse(reply.body.data);
+      expect(result.card.courseId).toBe(open.courseId);
+      const lessons = result.content.chapters.flatMap((c) => c.lessons);
+      expect(lessons.length).toBeGreaterThan(0);
+      expect(lessons.every((l) => l.blocks.length === 0)).toBe(true);
+    });
+
+    it('answers an enrolled course with every block', () => {
+      const token = login('hocvien');
+      const reply = call(learnerEndpoints.course, token, {
+        params: { courseId: '1' },
+      });
+      const result = LearnerCourseSchema.parse(reply.body.data);
+      expect(result.card.enrollmentId).toBeGreaterThan(0);
+      expect(
+        result.content.chapters
+          .flatMap((c) => c.lessons)
+          .some((l) => l.blocks.length > 0),
+      ).toBe(true);
+    });
+
+    it('refuses an unknown course with LEARNING-NOT_FOUND', () => {
+      const token = login('hocvien');
+      const reply = call(learnerEndpoints.course, token, {
+        params: { courseId: '999999' },
+      });
+      expect(reply.body.messageCode).toBe('LEARNING-NOT_FOUND');
+    });
+
+    it('counts the assigned and mandatory courses in the summary like the lists do', () => {
+      const token = login('hocvien');
+      const counts = LearningProgressOverviewSchema.parse(
+        call(learnerEndpoints.progressSummary, token).body.data,
+      ).counts;
+      const mine = cards(token, learnerEndpoints.myCourses);
+      expect(counts.assigned).toBe(mine.filter((c) => c.assigned).length);
+      expect(counts.mandatory).toBe(
+        mine.filter((c) => c.requirement === 'mandatory').length,
+      );
     });
   });
 });

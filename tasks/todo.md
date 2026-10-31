@@ -198,17 +198,17 @@ under `apps/lms/src/app/features/quiz/` unless they say otherwise.
 
 ### Checkpoint A
 
-- [ ] `mvn clean verify` green (as before: 42 `CommunityApiIT` tests skipped).
-- [ ] As `hocvien`, with `curl` on `:8019`:
+- [x] `mvn clean verify` green (as before: 42 `CommunityApiIT` tests skipped; 333 tests).
+- [x] As `hocvien`, with `curl` on `:8019` (checked by this session and by the main session):
   - `facets` lists names;
   - each of `assigned`, `failed`, `overdue` on `catalog` and `courses`;
   - `courses/{id}` for an enrolled course, a visible one and a hidden one;
   - `progress/summary` counts agree with the lists.
-- [ ] Show the backend diff to the user before Phase 2.
+- [x] Show the backend diff to the user before Phase 2.
 
 ## Phase 2: App
 
-- [ ] **T6: Contracts and mocks**
+- [x] **T6: Contracts and mocks**
   - Acceptance:
     - `learnerEndpoints.facets` (D1) and `learnerEndpoints.course` (D4), with `LearnerFacetsSchema` and
       `LearnerCourseSchema` mirroring the backend records field by field.
