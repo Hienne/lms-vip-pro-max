@@ -1,6 +1,29 @@
 # Spec: `learner-scores`
 
-Map: [SPEC.md](SPEC.md). Status: **draft, waiting for approval.** Depends on `learner-quiz`.
+Map: [SPEC.md](SPEC.md). Status: **draft, amended by the plan (see "Amendments"), waiting for approval.** Depends on
+`learner-quiz`.
+
+## Amendments
+
+Written with [tasks/plan.md](tasks/plan.md) on 2026-11-01. Where they differ from the sections below, they win.
+
+1. **A course's score is its final exam.** `CourseCard.bestScorePercent` is the best graded score on the course's
+   published final exam, else null, as the mockup's course card reads it. `finalExamPassed` is dropped: `failed`
+   already says it.
+2. **Overview figures** come from the same per-quiz summary as `AttemptSummary`, over the published quizzes of the
+   caller's current courses (the `MINE` search's ids):
+   - best is the highest `bestScore`;
+   - passed counts the quizzes whose `passed` is true;
+   - `quizCount` includes practice quizzes;
+   - `last` carries that attempt's own `passed`;
+   - average is the mean of `finalScore` per quiz (open question 1's default).
+3. **The CSV column goes last**, after "Trạng thái hạn", so no existing column moves.
+4. **"Lịch sử thi" as in the mockup:** the 6 latest graded attempts, linking to their result, with no paging and no
+   CSV. The backend adds **S4**, `graded=true` on `/me/quiz-attempts` and its export.
+5. **The course card** shows "· Điểm cao nhất {x}%" on its status line.
+6. **Mockup labels:** "Điểm thi trung bình" and "Lịch sử thi". Percents use `fmtPct` with two digits.
+7. **Bắt đầu and Truy cập gần nhất** are already in the progress table.
+8. **"Điểm cao nhất" is not sortable** (open question 2's default).
 
 ## Objective
 

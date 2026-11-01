@@ -1,160 +1,160 @@
-# Tasks: `learner-competency`
+# Tasks: `learner-scores`
 
-Spec: [SPEC-learner-competency.md](../SPEC-learner-competency.md) · Plan: [plan.md](plan.md).
-The previous `catalog-discovery` checklist, with its success criteria and how each was checked, is in git history
-at `2a298e0`.
+Spec: [SPEC-learner-scores.md](../SPEC-learner-scores.md) · Plan: [plan.md](plan.md).
+The previous `learner-competency` checklist, with its success criteria and how each was checked, is in git history
+at `3aaf270`.
 
-- **Repository:** this one only. No backend change.
-- **Branch:** `feat/learner-mockup-gap`. Nothing is pushed.
+- **Repositories:**
+  - backend: `corebanking-academy`, branch `feat/learner-scores` from `main` (`6717718`), **in its own git
+    worktree**;
+  - app: this one, branch `feat/learner-mockup-gap`.
+
+  Nothing is pushed.
+
 - **Local stack:**
-  - the backend on :8019 is the main session's background task, running from `~/my-projects/corebanking-academy`;
-    message the main session if it needs a restart, and do not run `mvn` in that checkout;
+  - the backend on :8019 is the main session's background task, running from `~/my-projects/corebanking-academy`.
+    Do not run `mvn` or change branches in that checkout. Message the main session when it needs a restart;
   - the app runs on :4200, against `localhost:8019`;
   - accounts: `hocvien` and `hocvien.tichhop` as learners;
   - passwords come only from `LOCAL_DEMO_PASSWORD` in the backend's `.env.local`, never printed;
   - in the browser, sign in with the one-shot token method, never by typing the password.
+- **Never** touch the shared server `103.121.90.119`. No schema change, no seeding users, no direct edits to quiz
+  attempts.
 
-## Phase 1: Contract and the shared piece
+## Phase 1: Backend
 
-- [x] **T1: `percent` nullable, with a fixture captured from the local backend**
+- [ ] **B1: `scores` port method and its Assessment implementation**
   - Acceptance:
-    - `MyCompetencySchema.percent` is `z.number().nullable()`, with a comment saying the server sends null when
-      `maxScore` is 0.
-    - `learner-quiz.captured.ts` gains a `myCompetency` response captured from `GET /api/v1/me/competency` as
-      `hocvien`.
-    - The mock's `COMPETENCIES` seed gains one row with `percent: null` and `totalQuestions: 0`.
-  - Verify: a contracts spec parses the captured response and a row with `percent: null`, and refuses a row
-    without `name`. `npx nx test contracts` and `npx nx test mocks` are green.
-  - Files: `libs/contracts/src/lib/assessment/learner-quiz.schema.ts`, `learner-quiz.captured.ts`, its spec,
-    `libs/mocks/src/lib/assessment/learner-quiz.mock.ts`.
+    - `LearningQuizDirectory.scores(String userId, Collection<Long> courseIds)` returns `List<QuizScore>`, one per
+      published, not deleted quiz of those courses: `quizId`, `courseId`, `title`, `quizType`, `bestScore`,
+      `finalScore`, `passed`, and `last` (attemptId, scorePercent, passed, submittedAt; null when no graded
+      attempt).
+    - `AssessmentQuizDirectory` implements it with one query for the quizzes and one for the caller's attempts on
+      them. Each quiz goes through the same summary code as `AttemptSummary`, extracted from
+      `QuizAttemptService.summarize` so both call it.
+    - An empty `courseIds` returns an empty list without a query.
+  - Verify: a test where `scores` equals the `AttemptSummary` of the quiz intro for a BEST quiz and a LAST quiz, with
+    a voided and an in-progress attempt ignored. `mvn -q test -Dtest=…` green.
+  - Files: `learning/service/LearningQuizDirectory.java`, `assessment/service/AssessmentQuizDirectory.java`,
+    `QuizAttemptService.java` (extraction), the repository it needs, tests.
+  - Size: M. Depends on: none.
+
+- [ ] **B2: `AssessmentOverview` in the progress summary (S1)**
+  - Acceptance:
+    - `LearningProgressOverview.assessment` is `AssessmentOverview(availability, last, bestScorePercent,
+averageScorePercent, passedQuizCount, quizCount)` when the caller's current courses have at least one
+      published quiz, and `{ availability: "unavailable" }` otherwise.
+    - The current courses are the `MINE` search's ids, the same set the counts use.
+    - The figures follow plan amendment 2. The average is rounded to two decimals, half up.
+    - `docs/api/LEARNING.md` ("Summary, CSV và thông tin gửi FE") describes it.
+  - Verify: `LearningProgressReportServiceTest`:
+    - no quiz → `unavailable`;
+    - quizzes but no attempt → `available` with `last` null, best and average null, `passedQuizCount` 0;
+    - one failed and one passed quiz → right best, average, passed/total and last.
+  - Files: `LearningProgressOverview.java`, `LearningProgressReportService.java`, its test, `docs/api/LEARNING.md`.
+  - Size: M. Depends on: B1.
+
+- [ ] **B3: `bestScorePercent` on `CourseCard` and the CSV column (S2, S3)**
+  - Acceptance:
+    - `CourseCard.bestScorePercent` is the best graded score of the course's published final exam, or null. It is
+      filled on catalog, courses and course-by-id, with one `scores` call per page.
+    - `MANAGE` mode leaves it null and does not call the port.
+    - The progress CSV gains "Điểm cao nhất" as its **last** column.
+    - Docs updated.
+  - Verify: a search test (course with a final exam and attempts → the best; without one → null). A CSV header and
+    row test. The query plan of the `scores` queries on the demo data is recorded in the commit message.
+  - Files: the course search and its row mapping, `LearningDetails.java`, `LearningProgressReportService.java`, tests,
+    `docs/api/LEARNING.md`.
+  - Size: M. Depends on: B1.
+
+- [ ] **B4: `graded=true` on `/me/quiz-attempts` and its export (S4)**
+  - Acceptance:
+    - With `graded=true`, the list and the export return only `SUBMITTED` and `AUTO_SUBMITTED` attempts.
+    - It combines with `quizId` and with `status` by AND.
+    - Swagger and `docs/api/ASSESSMENT.md` describe it.
+  - Verify: a test with one attempt of each status. `mvn -q test -Dtest=…` green.
+  - Files: `LearnerQuizController.java`, `QuizAttemptService.java`, the attempts repository, tests,
+    `docs/api/ASSESSMENT.md`.
   - Size: S. Depends on: none.
-
-- [x] **T2: `toRadarData`, `app-competency-view`, and `fmtPct` in `ui-radar-chart`**
-  - Acceptance:
-    - `shared/learning/competency/competency-data.ts`:
-      - `toRadarData(rows)` maps each row to `{ name, value: percent }`, keeping null;
-      - `withData(rows)` is the rows with a non-null `percent`.
-
-      The app computes no percent.
-
-    - `app-competency-view` takes `rows` (required) and `size` (`'compact' | 'large'`). It shows:
-      - with three or more rows with data: `ui-radar-chart` with `seriesLabel` "Tỷ lệ đúng trên mọi lượt thi đã
-        chấm";
-      - with one or two: a short list of those rows (name, "x/y câu đúng", the percent through `fmtPct`);
-      - with none: `ui-empty variant="inline"`, title "Chưa có dữ liệu năng lực", description "Biểu đồ sẽ có sau
-        khi bạn làm bài kiểm tra."
-    - It shows only the competencies the server returned.
-    - `ui-radar-chart` shows each value through `fmtPct` in its labels, tooltips and data table. Null stays
-      "Chưa có dữ liệu".
-    - Tokens only, no status colours. visual-design.md applies.
-
-  - Verify:
-    - The `competency-data` spec covers null kept, and a row with no data left out of `withData`.
-    - The `app-competency-view` spec covers 0, 2 and 3 rows with data.
-    - The `ui` radar spec covers the "14,29%" format and the null label.
-    - The report screen specs stay green. `npx nx test ui` and `npx nx test lms` are green.
-  - Files: `apps/lms/src/app/shared/learning/competency/*`, `libs/ui/src/lib/organisms/charts/radar-chart.*`.
-  - Size: M. Depends on: T1.
 
 ### Checkpoint A
 
-- [x] `npm run check` green.
-- [x] Stop for the main session's review of the T1–T2 diff. Passed on 2026-11-01.
+- [ ] `mvn clean test` green in the worktree.
+- [ ] Stop for the main session. It reviews the diff, restarts the local backend on the branch, and checks with
+      `curl` as `hocvien`:
+  - the summary;
+  - course 1's and course 8's cards;
+  - the CSV header;
+  - `graded=true`.
+- [ ] The backend PR is opened only when the user asks.
 
-## Phase 2: The two pages
+## Phase 2: App
 
-- [x] **T3: "Biểu đồ năng lực" card on the learn page**
+- [ ] **F1: Contracts, captured fixtures and the mock**
   - Acceptance:
-    - `LearnStore` loads `learnerQuizEndpoints.myCompetency` (no `courseId`) with `serverData`. It exposes
-      `competency$`, `isCompetencyLoading$` and `competencyError$`, and gets `retryCompetency()`.
-    - The card sits in the main column under "Khóa học của tôi", as in the mockup. Its heading is "Biểu đồ năng
-      lực", with a "Chi tiết" text link to `/progress`.
-    - The card shows a skeleton while loading, `ui-error-state` with retry on failure (the rest of the page stays),
-      and `app-competency-view size="compact"` otherwise.
-  - Verify: store spec (rows reach `competency$`; an error does not touch the summary). Page spec (heading, link,
-    the three states). `npx nx test lms` is green.
-  - Files: `features/learning/learn/data-access/learn.store.ts` (+ spec), `learn.html` / `.ts` / `.scss`,
-    `learn.spec.ts`.
+    - `AssessmentOverviewSchema`; `LearningProgressOverviewSchema.assessment` is a union on `availability`
+      (`"available"` → the overview, else `AvailabilitySchema`).
+    - `CourseCardSchema.bestScorePercent: z.number().nullable()`.
+    - `MyAttemptsQuerySchema` and the export query gain `graded`.
+    - Captured responses from the local backend as `hocvien`.
+    - The mock's summary, cards and attempts carry the new fields.
+  - Verify: contracts specs parse both union branches and the captured responses. `npx nx test contracts` and
+    `npx nx test mocks` green.
+  - Files: `libs/contracts/src/lib/learner/learner.schema.ts`, `libs/contracts/src/lib/assessment/learner-quiz.*`,
+    captured fixtures, `libs/mocks/src/lib/learning/*`, `libs/mocks/src/lib/assessment/*`.
   - Size: S. Depends on: Checkpoint A.
 
-- [x] **T4: "Năng lực theo nhóm kiến thức" card on the progress page**
+- [ ] **F2: Learn page score figures and the course card score**
   - Acceptance:
-    - `ProgressStore` loads `myCompetency` the same way, with the same three states.
-    - The card is titled "Năng lực theo nhóm kiến thức" and uses `app-competency-view size="large"`.
-    - It sits where the mockup's `tools.js` puts it: after the KPIs and before the course table, unless the page's
-      current layout makes another spot clearer. The commit message says which.
-    - No course select (plan amendment 4).
-  - Verify: store and page specs for the three states. `npx nx test lms` is green.
-  - Files: `features/achievements/progress/data-access/progress.store.ts`, `progress.html` / `.scss`,
-    `progress.spec.ts`.
-  - Size: S. Depends on: Checkpoint A.
+    - With an available overview, two figures follow the counts, in the same label-over-number style, each a link to
+      `/progress`:
+      - "Điểm kiểm tra gần nhất": `fmtPct` of `last.scorePercent` with "Đạt · {quiz}" or "Chưa đạt · {quiz}", or "—"
+        with "Chưa làm bài kiểm tra";
+      - "Điểm cao nhất": `fmtPct` of the best, or "—", with "Đạt {passedQuizCount}/{quizCount} bài kiểm tra".
+    - With `unavailable`, neither figure is rendered.
+    - "Chưa đạt" is the only coloured text.
+    - The course card's status line ends with "· Điểm cao nhất {x}%" when `bestScorePercent` is not null.
+  - Verify: component specs for available with and without `last`, and for unavailable. Course card spec with and
+    without a score. `npx nx test lms` green.
+  - Files: a shared `score-figures` component under `shared/learning/`, `learn.html`, the course card in
+    `shared/course/`, specs.
+  - Size: M. Depends on: F1.
 
-- [x] **T5: The unavailable note drops competency**
+- [ ] **F3: Progress page: average, column and "Lịch sử thi"**
   - Acceptance:
-    - `app-unavailable-note` shows when `activity` or `assessment` is unavailable. It ignores `competency`.
-    - It reads "Giờ học và điểm kiểm tra sẽ hiển thị khi hệ thống có dữ liệu."
-  - Verify: `unavailable-note.spec.ts` covers competency-only unavailable (no note) and the new sentence.
-  - Files: `apps/lms/src/app/shared/learning/unavailable-note/*`.
-  - Size: XS. Depends on: none.
+    - "Điểm thi trung bình" (`fmtPct`, or "—") next to the counts when the overview is available.
+    - The course table gains "Điểm cao nhất" (`fmtPct`, or "—"), not sortable.
+    - "Lịch sử thi":
+      - `ProgressStore` loads `myAttempts` with `graded: true`, `sort: 'submittedAt,desc'` and `size: 6`, using
+        `serverData`, with its own loading, error-with-retry and empty states;
+      - each row shows the quiz title, the submit time (+ "tự nộp" for `AUTO_SUBMITTED`), the score and
+        "Đạt"/"Chưa đạt", and links to `/quiz/:quizId/result/:attemptId`;
+      - it sits beside the competency card on wide screens and below it on narrow ones.
+  - Verify: store and page specs for the three states of the list, the column, and the KPI present and absent.
+    `npx nx test lms` green.
+  - Files: `features/achievements/progress/*`, specs.
+  - Size: M. Depends on: F1.
 
-- [x] **T6: End-to-end check against the spec**
+- [ ] **F4: End-to-end check against the spec**
   - Acceptance: the success criteria below are written here, each with how it was checked.
-  - Verify, on the local stack:
-    - As `hocvien`:
-      - `/learn` and `/progress` each make one `GET /api/v1/me/competency`;
-      - the three axes, values and the data table match `curl` of the same endpoint;
-      - check at 1280 px light and 375 px dark, with no horizontal scroll and no label overlap at 375 px.
-    - Find a learner with no graded attempts with `curl`. If one exists, their `/learn` shows the empty state. If
-      none exists, say so and point to the specs and `mockBackend: true`.
-    - Open the admin report's competency radar once as `baocao` and check the percent format.
-    - `npm run check` is green.
-  - Files: `tasks/todo.md`, `SPEC-learner-competency.md` (status, amendments).
-  - Size: S. Depends on: T3, T4, T5.
+  - Verify, on the local stack as `hocvien`:
+    - the learn figures, the course card scores, the progress KPI, the column and "Lịch sử thi" equal `curl` of the
+      summary, the cards and `/me/quiz-attempts?graded=true`;
+    - the downloaded CSV has the new last column;
+    - check at 1280 px light and 375 px dark, with no horizontal scroll;
+    - a learner whose courses have no quiz sees no score figures and no error. Find one with `curl`; if none exists,
+      say so and point to the specs and `mockBackend: true`;
+    - `npm run check` green.
+  - Files: `tasks/todo.md`, `SPEC-learner-scores.md` (status).
+  - Size: S. Depends on: F2, F3.
 
 ### Checkpoint B
 
-Checked on 2026-11-01 against the local stack (backend `127.0.0.1:8019`, app on `:4200` through the proxy). Signed
-in with the one-shot token method, never the login form.
-
-- [x] Success criteria 1–4 recorded:
-  1. **The learn page and the progress page each show the radar from `/api/v1/me/competency`, and the values match
-     the API response.** Checked as `hocvien`. `curl` of the endpoint returns 14,29 / 11,11 / 33,33 for "Kiến trúc và
-     tổng quan hệ thống", "Vận hành và quy trình" and "Kiểm soát và tuân thủ". The radar labels and the data table of
-     both pages show 14,29% / 11,11% / 33,33% for the same three names. Resource timing shows one `GET
-/api/v1/me/competency` per page load, on `/learn` and on `/progress`. The progress card is `size="large"`, after
-     the counts and before the course table, with no course select.
-  2. **The empty state shows when no competency has data; with one or two, the short list shows.**
-     - Empty state: seen live as `giangvien` (the endpoint answers `[]`): "Chưa có dữ liệu năng lực. Biểu đồ sẽ có sau
-       khi bạn làm bài kiểm tra." on `/learn`.
-     - Both learners (`hocvien`, `hocvien.tichhop`) have graded attempts, so no learner with courses but no graded
-       attempt exists locally. The empty state for such a learner, and the short list for one or two rows, are covered
-       by the `app-competency-view` spec (0, 2 and 3 rows with data), and by the learn and progress page specs. The
-       mock (`mockBackend: true`) now seeds three rows with data plus one with `percent: null`, so it shows the radar.
-  3. (Dropped by amendment 4: no course select.)
-  4. **`npm run check` is green** (14 of 14 tasks, 2 m 32 s), **and the visual-design checklist passes for both
-     cards.**
-     - Looked at 1280 px light and 375 px dark, on both pages: no horizontal scroll, and no label overlap or clipping
-       at 375 px (measured from the label boxes).
-     - Both cards are plain sections with a heading (no card inside a card, no eyebrow, no icon tile, no badge, no
-       status colour, no entrance motion); the "Chi tiết" link on `/learn` is a text link; the only colours are the
-       chart tokens. The radar's own legend and "Xem dạng bảng" are unchanged.
-- [x] The admin report's competency radar, opened once as `baocao`: values read "80%", "60%" and, for the row with
-      no data, "—" in the labels and "Chưa có dữ liệu" in the table. These are whole numbers, so the decimal format
-      is shown only on the learner pages.
-- [x] Spec status set to built.
-- [x] Review with the user, then plan `learner-scores`. Merged as Hienne/lms-vip-pro-max#49 on 2026-11-01.
-
-Not run: the full `lms:test` target hung twice in this session (vitest idle at 0 % CPU), so the per-task commits were
-checked with the specs of the files they touch plus lint and typecheck. The last full run was `npm run check` after
-`af72790`, and it is green.
-
-Deviations and extras, from the build:
-
-- `fmtPct` gained an optional `maxFractionDigits` (default 0), because the pipe rounded to whole numbers.
-- A third mock row with data (`67eeedd`), at the main session's request.
-- `af72790` adds the competency read to the boot, sign-in and shell specs, which match every request `/learn` makes.
-  No assertion changed.
-- `progress.spec.ts` scopes its row selectors to the course table, because the radar's data table also has `tbody`
-  rows, and expects the new unavailable-note sentence.
-- No page-level spec for the loading skeleton: the mock answers synchronously. The loading state is covered in
-  `learn.store.spec.ts`. `ProgressStore` has no spec file of its own; the page spec covers its competency states.
+- [ ] Success criteria recorded:
+  1. `hocvien` sees "Điểm kiểm tra gần nhất" and "Điểm cao nhất · Đạt x/y bài kiểm tra" on the learn page, equal to
+     the backend response.
+  2. Progress shows "Điểm thi trung bình", the "Điểm cao nhất" column and "Lịch sử thi"; the CSV has the new column.
+  3. A learner with no quiz sees no score figures and no error.
+  4. `mvn clean test` and `npm run check` green; the visual-design checklist passes.
+- [ ] Spec status set to built.
+- [ ] Review with the user, then plan `learning-leaderboard`.
