@@ -140,7 +140,7 @@ streakDays }`, for learners only. - `docs/api/LEARNING.md` gets "Điểm học t
 
 ## Phase 2: App
 
-- [ ] **F1: Contracts, captured responses, mock**
+- [x] **F1: Contracts, captured responses, mock**
   - Acceptance:
     - `learnerEndpoints.leaderboard` (L1) and `learnerEndpoints.myPoints` (L2), with their schemas;
     - responses captured from :8019 as `hocvien`;
@@ -148,7 +148,13 @@ streakDays }`, for learners only. - `docs/api/LEARNING.md` gets "Điểm học t
   - Verify: the contracts and mocks specs are green.
   - Size: S. Depends on: Checkpoint A.
 
-- [ ] **F2: `/leaderboard` screen and store**
+  Done 2026-11-01 (21e5257): the schemas and endpoints are in `learner.schema.ts` / `learner.endpoints.ts`. The
+  captured L1/L2 responses (org, team, a page that does not hold `hocvien`, and L2) are in `learner.captured.ts` and
+  parse in the contracts spec. The mock (`learner-leaderboard.ts`) serves fixed points per learner and does what a
+  list does (scope members, order, tie ranks, paging). Two mock-only learners (`000201`, `000202`) give it the tie and
+  the zero-point learner. `nx test contracts mocks` is green.
+
+- [x] **F2: `/leaderboard` screen and store**
   - Acceptance:
     - `features/achievements/leaderboard`, wired in `screens.ts`.
     - Title "Bảng xếp hạng & thành tích" and the mockup's description line.
@@ -165,7 +171,12 @@ streakDays }`, for learners only. - `docs/api/LEARNING.md` gets "Điểm học t
     - `npx nx test lms` is green.
   - Size: M. Depends on: F1.
 
-- [ ] **F3: Learn page "Điểm thưởng" figure**
+  Done 2026-11-01 (a22bfa0, and a fix to the card title): the store spec cases (scope ↔ query ↔ URL, page, unknown
+  scope, bad page) are in the `the store` and `choosing a scope` groups of `leaderboard.spec.ts`; the page spec covers
+  the rows, the marked row, "Vị trí của bạn", the parts card and loading / error-with-retry / empty. `nx test lms`
+  green (1449 + the new specs).
+
+- [x] **F3: Learn page "Điểm thưởng" figure**
   - Acceptance:
     - The learn store reads L2.
     - A figure follows the score figures in the same style: "Điểm thưởng", `{total}`, "Chuỗi {n} ngày", linking to
@@ -174,7 +185,11 @@ streakDays }`, for learners only. - `docs/api/LEARNING.md` gets "Điểm học t
   - Verify: the learn spec with points, with zero and with an error.
   - Size: S. Depends on: F1.
 
-- [ ] **F4: End-to-end check against the spec**
+  Done 2026-11-01 (84838ab): `app-points-figure` shares a row with the score figures (so a learner whose courses have
+  no quiz still sees it). The learn spec covers points, zero, a failed read (figure hidden, no error text), and a
+  failed summary (no figure).
+
+- [x] **F4: End-to-end check against the spec**
   - Acceptance: the success criteria below are written here, each with how it was checked.
   - Verify:
     - Run `npm run check`.
@@ -183,14 +198,38 @@ streakDays }`, for learners only. - `docs/api/LEARNING.md` gets "Điểm học t
       - the learn figure.
   - Size: S. Depends on: F2, F3.
 
+  Done 2026-11-01: `npm run check` is green (format, lint, typecheck, test, build and the bundle guard on every
+  project; exit 0, twice, the second after the last commit). The browser checks stay with the main session.
+
 ### Checkpoint B
 
-- [ ] Success criteria recorded:
+- [x] Success criteria recorded (how each was checked):
   1. `/leaderboard` shows the three scopes with the right membership, ranked by the server's totals, with the
      caller's row marked.
+     - Backend side: Checkpoint A (curl as `hocvien`: team 1 row, org and all 3 rows, ranks 1 / 2 / 3).
+     - App side: the page spec, on the mock backend, checks the three scopes, the order and ties (1, 2, 2, 4, 5),
+       the one `aria-current="true"` row with "(bạn)", and the schemas parse the captured real responses.
+     - Browser against :8019 as `hocvien` (main session): "Nhóm của tôi" 1 learner, hạng 1; "Đơn vị" and "Toàn hệ
+       thống" 3 learners (tích hợp 90, `hocvien` 80 "(bạn)" with `aria-current="true"` and `primary-subtle`,
+       giảng viên 40). `?scope=all` reopens on "Toàn hệ thống".
   2. The points card equals L2, and each part equals the formula on the local DB (SQL recorded).
+     - The parts equal the formula on the local DB: Checkpoint A (table above, SQL in the backend note).
+     - The card renders L2 as it is (`total`, the four parts in the mockup order) and the rank from `me.rank`:
+       the page spec. On screen against :8019: "Điểm thưởng của bạn · hạng 2", 80, +30 / +30 / +0 / +20, equal to
+       L2. The learn page shows "Điểm thưởng 80 · Chuỗi 2 ngày", linking to `/leaderboard`.
   3. Opening a lesson writes today's activity once. The streak counts it.
+     - Checked at Checkpoint A (two `POST /sessions` as `giangvien` wrote one row, streak 1 → 2 days).
   4. The upgrade, the backfill and the rollback apply cleanly. `mvn clean test` and `npm run check` are green, and
      the visual-design checklist passes.
-- [ ] Spec status set to built.
+     - Upgrade and backfill: Checkpoint A. Rollback: the Testcontainers schema test (B1).
+     - `mvn clean test`: Checkpoint A. `npm run check`: green on 2026-11-01 after the last commit.
+     - Visual-design checklist: reviewed against the code (no eyebrow, icon, tile, badge, gradient, edge stripe or
+       hero; accent only on the points total; the small card title is a `p`, not an `h2` in the display font; one
+       inline muted line for an empty board; three weights).
+     - Browser at 1280 px light and 375 px dark (main session): no horizontal scroll, dark background right. The
+       total uses `accent-ink`, which the doc allows for points. At 375 px the name ellipsis cut off "(bạn)" and the
+       streak; fixed in bb98bce (name and meta line wrap), then re-checked with no clipped element.
+     - Not seen on real data: the "Vị trí của bạn" row needs more than 20 learners in a scope (3 locally); the page
+       spec covers it.
+- [x] Spec status set to built.
 - [ ] Review with the user, then plan `lesson-notes`.

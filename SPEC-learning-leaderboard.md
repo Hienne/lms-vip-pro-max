@@ -1,6 +1,6 @@
 # Spec: `learning-leaderboard`
 
-Map: [SPEC.md](SPEC.md). Status: **draft, amended by the plan (see "Amendments"), waiting for approval.** Depends on
+Map: [SPEC.md](SPEC.md). Status: **built 2026-11-01** (amended by the plan, see "Amendments"; results in `tasks/todo.md` Checkpoint B). Depends on
 `learner-quiz`, because quiz passes count toward points.
 
 ## Amendments
