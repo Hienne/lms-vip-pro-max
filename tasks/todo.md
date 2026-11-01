@@ -89,7 +89,7 @@ at `2a298e0`.
     `progress.spec.ts`.
   - Size: S. Depends on: Checkpoint A.
 
-- [ ] **T5: The unavailable note drops competency**
+- [x] **T5: The unavailable note drops competency**
   - Acceptance:
     - `app-unavailable-note` shows when `activity` or `assessment` is unavailable. It ignores `competency`.
     - It reads "Giờ học và điểm kiểm tra sẽ hiển thị khi hệ thống có dữ liệu."

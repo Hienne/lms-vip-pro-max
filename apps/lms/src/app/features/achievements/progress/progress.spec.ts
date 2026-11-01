@@ -123,9 +123,9 @@ describe('LearningProgress', () => {
       ).toBe(false);
     });
 
-    it('says once that hours, scores and competency are not there yet, and shows none', () => {
+    it('says once that hours and scores are not there yet, and shows none', () => {
       expect(text()).toContain(
-        'Giờ học, điểm kiểm tra và năng lực sẽ hiển thị khi hệ thống có dữ liệu.',
+        'Giờ học và điểm kiểm tra sẽ hiển thị khi hệ thống có dữ liệu.',
       );
       expect(text()).not.toContain('Điểm cao nhất');
     });

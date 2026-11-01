@@ -106,7 +106,7 @@ No backend change, no schema change.
 
 - [x] T3: "Biểu đồ năng lực" card on the learn page
 - [ ] T4: "Năng lực theo nhóm kiến thức" card on the progress page
-- [ ] T5: The unavailable note drops competency
+- [x] T5: The unavailable note drops competency
 - [ ] T6: End-to-end check against the spec
 
 ### Checkpoint B
