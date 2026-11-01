@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { BackendDateTimeSchema } from '../http/datetime';
 import {
+  CourseCardSchema,
   CourseDetailSchema,
   CourseListQuerySchema,
 } from '../course/course.schema';
@@ -208,6 +209,9 @@ export const LearningProgressOverviewSchema = z.object({
     inProgress: z.number().int(),
     notStarted: z.number().int(),
     overdue: z.number().int(),
+    /** The totals of `myCourses` with `assigned=true` and with `requirement=mandatory`. */
+    assigned: z.number().int(),
+    mandatory: z.number().int(),
   }),
   activity: AvailabilitySchema,
   assessment: AvailabilitySchema,
@@ -217,6 +221,35 @@ export type LearningProgressOverview = z.infer<
   typeof LearningProgressOverviewSchema
 >;
 
+/** A course the caller can see: its card and its content (the enrolled revision, else the published one). */
+export const LearnerCourseSchema = z.object({
+  card: CourseCardSchema,
+  content: CourseDetailSchema,
+});
+export type LearnerCourse = z.infer<typeof LearnerCourseSchema>;
+
+/** A field of the catalogue the caller sees. */
+export const LearnerFacetSchema = z.object({
+  id: z.number().int(),
+  code: z.string(),
+  name: z.string(),
+});
+export type LearnerFacet = z.infer<typeof LearnerFacetSchema>;
+
+/** A programme or a module, with the field it belongs to. */
+export const LearnerFieldFacetSchema = LearnerFacetSchema.extend({
+  fieldId: z.number().int(),
+});
+export type LearnerFieldFacet = z.infer<typeof LearnerFieldFacetSchema>;
+
+/** The names the catalogue's selects list: only values a visible course uses, in the server's order. */
+export const LearnerFacetsSchema = z.object({
+  fields: z.array(LearnerFacetSchema),
+  programs: z.array(LearnerFieldFacetSchema),
+  modules: z.array(LearnerFieldFacetSchema),
+});
+export type LearnerFacets = z.infer<typeof LearnerFacetsSchema>;
+
 export const LearningStatusSchema = z.enum([
   'not_started',
   'in_progress',
@@ -224,10 +257,15 @@ export const LearningStatusSchema = z.enum([
 ]);
 export type LearningStatus = z.infer<typeof LearningStatusSchema>;
 
-/** The filters of "my courses": the shared list filters, a typed status and the overdue flag. */
+/**
+ * The filters of the learner's lists ("my courses" and the catalogue): the shared list filters, a
+ * typed status and the `overdue`, `assigned` and `failed` flags the server evaluates.
+ */
 export const MyCoursesQuerySchema = CourseListQuerySchema.extend({
   learningStatus: LearningStatusSchema.optional(),
   overdue: z.boolean().optional(),
+  assigned: z.boolean().optional(),
+  failed: z.boolean().optional(),
 });
 export type MyCoursesQuery = z.infer<typeof MyCoursesQuerySchema>;
 

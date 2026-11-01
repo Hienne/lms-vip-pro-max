@@ -38,6 +38,7 @@
       </div>
       <ui-tabs
         label="Khóa học theo trạng thái"
+        wrap
         [tabs]="tabs()"
         [selected]="store.tab$()"
         (selectedChange)="store.showTab($event)"

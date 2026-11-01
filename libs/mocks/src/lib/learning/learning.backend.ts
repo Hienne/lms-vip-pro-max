@@ -13,6 +13,8 @@ import {
   type CourseCard,
   type CourseDetail,
   type CourseShare,
+  type LearnerCourse,
+  type LearnerFacets,
   type CreateCourseCommand,
   type CreateGroupCommand,
   type GroupDetail,
@@ -216,6 +218,8 @@ export class LearningBackend {
       ...this.library.entries(),
       [learnerEndpoints.catalog, (r) => this.learnerList(r, false)],
       [learnerEndpoints.myCourses, (r) => this.learnerList(r, true)],
+      [learnerEndpoints.course, (r) => this.learnerCourse(r)],
+      [learnerEndpoints.facets, (r) => this.facets(r)],
       [learnerEndpoints.progressSummary, (r) => this.progressSummary(r)],
       [learnerEndpoints.exportProgress, (r) => this.exportProgress(r)],
       [
@@ -363,6 +367,13 @@ export class LearningBackend {
             .map((r) => r.userId),
         ),
     );
+    const program = this.programs.find(
+      (p) => p.id === revision.revision.programId,
+    );
+    const module = this.modules.find(
+      (m) => m.id === revision.revision.moduleId,
+    );
+    const field = this.fields.find((f) => f.id === program?.fieldId);
     return {
       courseId: record.course.id,
       revisionId: revision.revision.id,
@@ -381,6 +392,11 @@ export class LearningBackend {
       ),
       assignedCount: people.size,
       updateTime: record.course.updateTime,
+      fieldId: field?.id ?? null,
+      fieldName: field?.name ?? null,
+      programName: program?.name ?? null,
+      moduleName: module?.name ?? null,
+      failed: false,
     };
   }
 
@@ -864,7 +880,13 @@ export class LearningBackend {
   private learnerCards(request: FakeRequest, mineOnly: boolean): CourseCard[] {
     const userId = this.directory.callerId(request);
     const learningStatus = request.query['learningStatus'];
-    const overdueOnly = request.query['overdue'] === 'true';
+    const flag = (name: 'overdue' | 'assigned' | 'failed') =>
+      request.query[name] === undefined
+        ? undefined
+        : request.query[name] === 'true';
+    const overdue = flag('overdue');
+    const assigned = flag('assigned');
+    const failed = flag('failed');
     const cards = this.courses
       .filter(
         (record) =>
@@ -880,12 +902,78 @@ export class LearningBackend {
           !learningStatus ||
           (card.learningStatus ?? 'not_started') === learningStatus,
       )
-      .filter((card) => !overdueOnly || card.overdue);
+      .filter((card) => overdue === undefined || !!card.overdue === overdue)
+      .filter((card) => assigned === undefined || !!card.assigned === assigned)
+      .filter((card) => failed === undefined || !!card.failed === failed);
     return this.sorted(cards, request.query['sort'] ?? 'dueAt,asc');
   }
 
   private learnerList(request: FakeRequest, mineOnly: boolean): FakeReply {
     return ok(paged(this.learnerCards(request, mineOnly), request.query));
+  }
+
+  /** One visible course with its card and content; not enrolled, the lessons keep no blocks. */
+  private learnerCourse(request: FakeRequest): FakeReply {
+    const userId = this.directory.callerId(request);
+    const courseId = num(request.params['courseId']) ?? 0;
+    const record = this.courses.find(
+      (r) =>
+        r.course.id === courseId &&
+        r.published &&
+        r.course.lifecycleStatus === 'active',
+    );
+    if (!record?.published) return refuse('learningNotFound');
+    const enrolled = this.enrollments.of(userId, courseId);
+    const card = this.learnerCard(record, enrolled);
+    const content: CourseDetail = enrolled
+      ? enrolled.content
+      : {
+          ...record.published,
+          chapters: record.published.chapters.map((chapter) => ({
+            ...chapter,
+            lessons: chapter.lessons.map((lesson) => ({
+              ...lesson,
+              blocks: [],
+            })),
+          })),
+        };
+    const result: LearnerCourse = { card, content };
+    return ok(result);
+  }
+
+  /** The fields, programmes and modules of the courses the caller sees, by `sortNo` then name. */
+  private facets(request: FakeRequest): FakeReply {
+    const cards = this.learnerCards(
+      { ...request, query: { sort: 'id,asc' } },
+      false,
+    );
+    const used = (ids: (number | null | undefined)[]) =>
+      new Set(ids.filter((id): id is number => id != null));
+    const byOrder = (
+      a: { sortNo?: number | null; name: string },
+      b: { sortNo?: number | null; name: string },
+    ) =>
+      (a.sortNo ?? 0) - (b.sortNo ?? 0) || a.name.localeCompare(b.name, 'vi');
+    const programs = used(cards.map((c) => c.programId));
+    const modules = used(cards.map((c) => c.moduleId));
+    const fields = used(cards.map((c) => c.fieldId));
+    const facets: LearnerFacets = {
+      fields: this.fields
+        .filter((f) => fields.has(f.id))
+        .sort(byOrder)
+        .map(({ id, code, name }) => ({ id, code, name })),
+      programs: this.programs
+        .filter((p) => programs.has(p.id))
+        .sort(byOrder)
+        .flatMap(({ id, fieldId, code, name }) =>
+          fieldId == null ? [] : [{ id, fieldId, code, name }],
+        ),
+      modules: this.modules
+        .filter((m) => modules.has(m.id))
+        .sort(byOrder)
+        .map(({ id, fieldId, code, name }) => ({ id, fieldId, code, name })),
+    };
+    return ok(facets);
   }
 
   /** Counts over the caller's own cycles, a stand-in for the backend's (it counts the same rows). */
@@ -905,6 +993,8 @@ export class LearningBackend {
         inProgress: mine.filter((c) => status(c) === 'in_progress').length,
         notStarted: mine.filter((c) => status(c) === 'not_started').length,
         overdue: mine.filter((c) => c.overdue).length,
+        assigned: mine.filter((c) => c.assigned).length,
+        mandatory: mine.filter((c) => c.requirement === 'mandatory').length,
       },
       activity: unavailable,
       assessment: unavailable,
@@ -966,6 +1056,7 @@ export class LearningBackend {
         progressPercent: null,
         assigned: false,
         overdue: false,
+        failed: false,
         deadlineStatus: 'no_deadline',
       };
     }
@@ -987,6 +1078,7 @@ export class LearningBackend {
       dueAt,
       assigned: enrolled.assigned,
       overdue,
+      failed: enrolled.failed,
       cycleNo: enrollment.cycleNo,
       startedAt: enrollment.startedAt,
       lastAccessAt: enrollment.lastAccessAt,

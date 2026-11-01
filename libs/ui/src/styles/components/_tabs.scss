@@ -8,6 +8,12 @@
     overflow-x: auto;
     scrollbar-width: none;
 
+    // Every tab stays in view: a narrow column wraps the strip onto a second row.
+    &--wrap {
+      flex-wrap: wrap;
+      overflow-x: visible;
+    }
+
     &__tab {
       position: relative;
       display: inline-flex;

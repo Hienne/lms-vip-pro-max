@@ -2,8 +2,13 @@ import type { MockInstance } from 'vitest';
 import { TestBed } from '@angular/core/testing';
 import { provideRouter, Router } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
-import { learnerEndpoints } from '@lms/contracts';
-import { backendRefusal } from '@lms/mocks';
+import {
+  learnerEndpoints,
+  LearnerFacetsSchema,
+  trainingCatalogEndpoints,
+  type LearnerFacets,
+} from '@lms/contracts';
+import { backendRefusal, type FakeReply } from '@lms/mocks';
 import { createAppRoutes } from '../../../app.routes';
 import {
   parseAppConfig,
@@ -68,6 +73,21 @@ describe('Catalog', () => {
     el.querySelector<HTMLSelectElement>(`select[aria-label="${label}"]`)!;
   const lastQuery = (endpoint: unknown) =>
     handle.mock.calls.filter(([e]) => e === endpoint).at(-1)?.[1].query;
+  const optionTexts = (label: string) =>
+    Array.from(select(label).options)
+      .slice(1)
+      .map((o) => o.textContent?.trim());
+  /** What the one `facets` call answered, so the page can be checked against the server's names. */
+  const facets = (): LearnerFacets => {
+    const at = handle.mock.calls.findIndex(
+      ([endpoint]) => endpoint === learnerEndpoints.facets,
+    );
+    return LearnerFacetsSchema.parse(
+      (handle.mock.results[at].value as FakeReply).body.data,
+    );
+  };
+  const callsOf = (endpoint: unknown) =>
+    handle.mock.calls.filter(([e]) => e === endpoint);
   const choose = async (label: string, value: string) => {
     const box = select(label);
     box.value = value;
@@ -83,8 +103,128 @@ describe('Catalog', () => {
     expect(text()).toContain('6 khóa học phù hợp');
     expect(text()).toContain('62%');
     expect(text()).toContain('Quá hạn');
-    expect(select('Lĩnh vực').options.length).toBe(5);
+    expect(optionTexts('Lĩnh vực')).toEqual(facets().fields.map((f) => f.name));
+    expect(optionTexts('Chương trình')).toEqual(
+      facets().programs.map((p) => p.name),
+    );
+    expect(optionTexts('Phân hệ')).toEqual(facets().modules.map((m) => m.name));
     expect(select('Chương trình').textContent).toContain('Hội nhập cán bộ mới');
+  });
+
+  it('reads the names of the selects from one facets call and never from the training catalogue', async () => {
+    await open();
+
+    expect(callsOf(learnerEndpoints.facets).length).toBe(1);
+    expect(
+      callsOf(trainingCatalogEndpoints.listFields).length +
+        callsOf(trainingCatalogEndpoints.listPrograms).length +
+        callsOf(trainingCatalogEndpoints.listModules).length,
+    ).toBe(0);
+  });
+
+  it('shows the programme name of the card from the server', async () => {
+    await open();
+
+    const programs = facets().programs.map((p) => p.name);
+    const domains = Array.from(el.querySelectorAll('app-course-card')).map(
+      (card) => card.textContent?.replace(/\s+/g, ' '),
+    );
+    expect(domains.length).toBeGreaterThan(0);
+    expect(
+      domains.some((d) => programs.some((name) => d?.includes(name))),
+    ).toBe(true);
+  });
+
+  it('lists only the programmes and modules of the chosen field, and clears a choice that no longer fits', async () => {
+    await open();
+    const all = facets();
+    const field = all.fields.find((f) =>
+      all.modules.some((m) => m.fieldId === f.id),
+    )!;
+    const other = all.modules.find((m) => m.fieldId !== field.id)!;
+    await choose('Phân hệ', String(other.id));
+    expect(lastQuery(learnerEndpoints.catalog)).toMatchObject({
+      moduleId: String(other.id),
+    });
+
+    await choose('Lĩnh vực', String(field.id));
+
+    expect(optionTexts('Phân hệ')).toEqual(
+      all.modules.filter((m) => m.fieldId === field.id).map((m) => m.name),
+    );
+    expect(optionTexts('Chương trình')).toEqual(
+      all.programs.filter((p) => p.fieldId === field.id).map((p) => p.name),
+    );
+    expect(lastQuery(learnerEndpoints.catalog)).toMatchObject({
+      fieldId: String(field.id),
+    });
+    expect(lastQuery(learnerEndpoints.catalog)).not.toHaveProperty('moduleId');
+    expect(TestBed.inject(Router).url).toBe(`/catalog?field=${field.id}`);
+  });
+
+  it.each([
+    ['not_started', { learningStatus: 'not_started' }],
+    ['in_progress', { learningStatus: 'in_progress' }],
+    ['completed', { learningStatus: 'completed' }],
+    ['failed', { failed: 'true' }],
+    ['overdue', { overdue: 'true' }],
+    ['assigned', { assigned: 'true' }],
+  ])('sends the status `%s` as %o and nothing else', async (value, query) => {
+    await open();
+
+    await choose('Trạng thái', value);
+
+    const sent = lastQuery(learnerEndpoints.catalog);
+    expect(sent).toMatchObject(query);
+    const flags = ['learningStatus', 'failed', 'overdue', 'assigned'].filter(
+      (key) => key in (sent ?? {}),
+    );
+    expect(flags).toEqual(Object.keys(query));
+    expect(TestBed.inject(Router).url).toBe(`/catalog?status=${value}`);
+    expect(text()).toContain('Xóa 1 bộ lọc');
+  });
+
+  it('offers the six statuses of the mockup in its order', async () => {
+    await open();
+
+    expect(optionTexts('Trạng thái')).toEqual([
+      'Chưa bắt đầu',
+      'Đang học',
+      'Đã hoàn thành',
+      'Chưa đạt',
+      'Quá hạn',
+      'Được giao',
+    ]);
+  });
+
+  it('keeps every filter across a reload from the URL and counts them for "Xóa n bộ lọc"', async () => {
+    const url =
+      '/catalog?q=core&field=1&level=basic&requirement=mandatory&status=overdue&sort=name';
+    await open(url);
+
+    expect(select('Lĩnh vực').value).toBe('1');
+    expect(select('Mức độ').value).toBe('basic');
+    expect(select('Loại').value).toBe('mandatory');
+    expect(select('Trạng thái').value).toBe('overdue');
+    expect(
+      el.querySelector<HTMLSelectElement>('.catalog__sort select')!.value,
+    ).toBe('name');
+    expect(lastQuery(learnerEndpoints.catalog)).toMatchObject({
+      q: 'core',
+      fieldId: '1',
+      level: 'basic',
+      requirement: 'mandatory',
+      overdue: 'true',
+      sort: 'title,asc',
+    });
+    expect(text()).toContain('Xóa 5 bộ lọc');
+
+    await choose('Mức độ', '');
+
+    expect(text()).toContain('Xóa 4 bộ lọc');
+    expect(TestBed.inject(Router).url).toBe(
+      '/catalog?q=core&field=1&requirement=mandatory&status=overdue&sort=name',
+    );
   });
 
   it('sends a filter to the server, keeps it in the URL and clears it', async () => {
@@ -112,9 +252,11 @@ describe('Catalog', () => {
   it('opens on the assigned courses from the URL and shows only the caller own', async () => {
     await open('/catalog?scope=assigned&status=failed');
 
-    expect(lastQuery(learnerEndpoints.myCourses)).toMatchObject({
-      learningStatus: 'failed',
+    expect(lastQuery(learnerEndpoints.catalog)).toMatchObject({
+      assigned: 'true',
+      failed: 'true',
     });
+    expect(callsOf(learnerEndpoints.myCourses).length).toBe(0);
     expect(titles()).toEqual([
       'Quy trình quản lý thay đổi (Change Management)',
     ]);

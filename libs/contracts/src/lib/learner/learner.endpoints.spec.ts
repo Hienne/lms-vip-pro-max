@@ -1,7 +1,10 @@
 import { toUrl } from '../http/endpoint';
 import { learnerEndpoints } from './learner.endpoints';
+import { capturedLearner as captured } from './learner.captured';
 import {
   EnrollmentDetailSchema,
+  LearnerCourseSchema,
+  LearnerFacetsSchema,
   LearningProgressOverviewSchema,
   MyCoursesQuerySchema,
   OpenSessionCommandSchema,
@@ -46,6 +49,8 @@ describe('learner endpoints', () => {
     ).toEqual([
       ['catalog', 'get', '/api/v1/me/learning/catalog'],
       ['myCourses', 'get', '/api/v1/me/learning/courses'],
+      ['course', 'get', '/api/v1/me/learning/courses/{courseId}'],
+      ['facets', 'get', '/api/v1/me/learning/facets'],
       ['progressSummary', 'get', '/api/v1/me/learning/progress/summary'],
       ['exportProgress', 'get', '/api/v1/me/learning/progress/export'],
       ['enroll', 'post', '/api/v1/courses/{courseId}/enrollments'],
@@ -222,6 +227,8 @@ describe('learner endpoints', () => {
         inProgress: 2,
         notStarted: 1,
         overdue: 1,
+        assigned: 4,
+        mandatory: 3,
       },
       activity: { availability: 'unavailable' },
       assessment: { availability: 'unavailable' },
@@ -234,11 +241,35 @@ describe('learner endpoints', () => {
       );
     });
 
+    it('refuses a summary without the assigned and mandatory counts', () => {
+      const { assigned: _assigned, ...counts } = overview.counts;
+      expect(
+        LearningProgressOverviewSchema.safeParse({ ...overview, counts })
+          .success,
+      ).toBe(false);
+    });
+
     it('refuses a summary without counts', () => {
       const { counts: _counts, ...without } = overview;
       expect(LearningProgressOverviewSchema.safeParse(without).success).toBe(
         false,
       );
+    });
+
+    it('takes the assigned, failed and overdue flags on both lists', () => {
+      const flags = { assigned: true, failed: false, overdue: true };
+      expect(MyCoursesQuerySchema.parse(flags)).toEqual(flags);
+      expect(learnerEndpoints.catalog.query?.safeParse(flags).success).toBe(
+        true,
+      );
+      expect(MyCoursesQuerySchema.safeParse({ failed: 'true' }).success).toBe(
+        false,
+      );
+      expect(
+        learnerEndpoints.catalog.query?.safeParse({ learningStatus: 'failed' })
+          .success,
+      ).toBe(false);
+      expect(ProgressExportQuerySchema.parse(flags)).toEqual(flags);
     });
 
     it('takes a typed status and the overdue flag on the table query', () => {
@@ -265,6 +296,81 @@ describe('learner endpoints', () => {
 
     it('declares the export as a file', () => {
       expect(learnerEndpoints.exportProgress.responseType).toBe('blob');
+    });
+  });
+
+  describe('catalogue discovery', () => {
+    const responses = {
+      catalog: captured.catalog,
+      course: captured.courseEnrolled,
+      facets: captured.facets,
+      progressSummary: captured.progressSummary,
+    } as const;
+
+    it.each(Object.entries(responses))(
+      'parses the response captured from the backend for %s',
+      (key, data) => {
+        const endpoint = learnerEndpoints[key as keyof typeof responses];
+        expect(endpoint.response.safeParse(data).success).toBe(true);
+      },
+    );
+
+    it('reads the names and the failed flag the card carries', () => {
+      const [failed, other] = learnerEndpoints.catalog.response.parse(
+        captured.catalog,
+      ).items;
+      expect(failed).toMatchObject({
+        failed: true,
+        fieldName: 'Nghiệp vụ Core Banking',
+        programName: 'Nền tảng nghiệp vụ Core Banking',
+        moduleName: 'Tổng quan',
+      });
+      expect(other.failed).toBe(false);
+    });
+
+    it('lists the facets with the field of each programme and module', () => {
+      const facets = LearnerFacetsSchema.parse(captured.facets);
+      expect(facets.fields.map((f) => f.name)).toContain(
+        'Vận hành và quy trình',
+      );
+      expect(facets.programs.every((p) => typeof p.fieldId === 'number')).toBe(
+        true,
+      );
+      expect(facets.modules.every((m) => typeof m.fieldId === 'number')).toBe(
+        true,
+      );
+      expect(
+        LearnerFacetsSchema.safeParse({ ...facets, modules: undefined })
+          .success,
+      ).toBe(false);
+      expect(
+        LearnerFacetsSchema.safeParse({
+          ...facets,
+          programs: [{ id: 1, code: 'P', name: 'Chương trình' }],
+        }).success,
+      ).toBe(false);
+    });
+
+    it('keeps the outline of a course the caller has not enrolled in, without blocks', () => {
+      const visible = LearnerCourseSchema.parse(captured.courseVisible);
+      const lessons = visible.content.chapters.flatMap((c) => c.lessons);
+      expect(visible.card.enrollmentId).toBeNull();
+      expect(lessons.length).toBeGreaterThan(0);
+      expect(lessons.every((l) => l.blocks.length === 0)).toBe(true);
+      expect(visible.card.moduleName).toBeNull();
+    });
+
+    it('refuses a course without its card or its content', () => {
+      const { card: _card, ...withoutCard } = captured.courseEnrolled;
+      expect(LearnerCourseSchema.safeParse(withoutCard).success).toBe(false);
+      const { content: _content, ...withoutContent } = captured.courseEnrolled;
+      expect(LearnerCourseSchema.safeParse(withoutContent).success).toBe(false);
+    });
+
+    it('builds the course url from the id', () => {
+      expect(toUrl(learnerEndpoints.course, { courseId: 8 })).toBe(
+        '/api/v1/me/learning/courses/8',
+      );
     });
   });
 });

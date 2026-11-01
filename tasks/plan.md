@@ -87,6 +87,10 @@ No schema change, so no upgrade script.
    is not enrolled, `content` keeps the chapters and lessons and every lesson's `blocks` list is empty. An
    enrolled caller gets the full revision. Media access is unchanged.
 
+7. **D4 refusal code** (found building T4, applied in T6). A course the caller cannot see answers
+   `LEARNING-NOT_FOUND`, the code `LearningSearchService` already uses for a missing learning record, not
+   `LEARNING-COURSE_NOT_FOUND`. The contracts and mocks use `LEARNING-NOT_FOUND`.
+
 ## Architecture decisions
 
 - **Backend.**
@@ -126,38 +130,38 @@ No schema change, so no upgrade script.
 
 ### Checkpoint 0
 
-- [ ] `npm run check` and `mvn clean verify` green; the quiz screens checked on `lms-local`.
-- [ ] Main session reviews the Phase 0 diff before T1.
+- [x] `npm run check` and `mvn clean verify` green; the quiz screens checked on `lms-local`.
+- [x] Main session reviews the Phase 0 diff before T1.
 
 ### Phase 1: Backend
 
-- [ ] T1: `failed` through the quiz port, and the D3 card fields
-- [ ] T2: `assigned`, `failed` and `overdue` filters on both lists and the export
-- [ ] T3: `GET /me/learning/facets`
-- [ ] T4: `GET /me/learning/courses/{courseId}`
-- [ ] T5: `assigned` and `mandatory` counts in the progress summary
+- [x] T1: `failed` through the quiz port, and the D3 card fields
+- [x] T2: `assigned`, `failed` and `overdue` filters on both lists and the export
+- [x] T3: `GET /me/learning/facets`
+- [x] T4: `GET /me/learning/courses/{courseId}`
+- [x] T5: `assigned` and `mandatory` counts in the progress summary
 
 ### Checkpoint A
 
-- [ ] `mvn clean verify` green.
-- [ ] `curl` as `hocvien` for each new endpoint and filter.
-- [ ] Show the backend diff to the user before Phase 2.
+- [x] `mvn clean verify` green.
+- [x] `curl` as `hocvien` for each new endpoint and filter.
+- [x] Show the backend diff to the user before Phase 2.
 
 ### Phase 2: App
 
-- [ ] T6: Contracts and mocks
-- [ ] T7: Catalogue on facets and the new status filters
+- [x] T6: Contracts and mocks
+- [x] T7: Catalogue on facets and the new status filters
 
 ### Checkpoint B
 
-- [ ] `npm run check` green.
-- [ ] On `lms-local`, the catalogue's selects and every status option work.
+- [x] `npm run check` green.
+- [x] On `lms-local`, the catalogue's selects and every status option work.
 
 ### Phase 3: Course, lesson and learn pages
 
-- [ ] T8: Course and lesson pages on D4, with the programme breadcrumb
-- [ ] T9: Learn page tabs and counts; "Chưa đạt" and "Quá hạn" on the course card
-- [ ] T10: End-to-end check against the spec
+- [x] T8: Course and lesson pages on D4, with the programme breadcrumb
+- [x] T9: Learn page tabs and counts; "Chưa đạt" and "Quá hạn" on the course card
+- [x] T10: End-to-end check against the spec
 
 ### Checkpoint C
 

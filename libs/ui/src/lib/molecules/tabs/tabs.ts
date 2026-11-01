@@ -4,7 +4,13 @@ import {
   TabPanel as AriaTabPanel,
   Tabs as AriaTabs,
 } from '@angular/aria/tabs';
-import { Component, Directive, input, model } from '@angular/core';
+import {
+  booleanAttribute,
+  Component,
+  Directive,
+  input,
+  model,
+} from '@angular/core';
 import { Icon } from '../../atoms/icon/icon';
 import type { IconName } from '../../atoms/icon/icon-registry';
 
@@ -29,6 +35,7 @@ export interface TabItem {
     <div
       ngTabList
       class="tabs"
+      [class.tabs--wrap]="wrap()"
       selectionMode="follow"
       [attr.aria-label]="label()"
       [(selectedTab)]="selected"
@@ -53,6 +60,8 @@ export class Tabs {
   /** Accessible name of the tab list, e.g. "Các mục". */
   readonly label = input.required<string>();
   readonly selected = model.required<string>();
+  /** Wraps the tabs onto more rows instead of scrolling the strip; for a few tabs in a narrow column. */
+  readonly wrap = input(false, { transform: booleanAttribute });
 }
 
 /** The panel of the tab whose id is the attribute value, `<div uiTabPanel="courses">`; hidden and inert while that tab is not selected. */

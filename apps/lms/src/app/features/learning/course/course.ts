@@ -50,16 +50,22 @@ import { CourseStore } from './data-access/course.store';
 export class Course {
   protected readonly store = inject(CourseStore);
 
-  protected readonly crumbs = computed((): readonly BreadcrumbItem[] => [
-    { label: 'Danh mục khóa học', href: '/catalog' },
-    { label: this.store.card$()?.title ?? 'Khóa học' },
-  ]);
+  protected readonly crumbs = computed((): readonly BreadcrumbItem[] => {
+    const card = this.store.card$();
+    return [
+      { label: 'Danh mục khóa học', href: '/catalog' },
+      ...(card?.programName ? [{ label: card.programName }] : []),
+      { label: card?.title ?? 'Khóa học' },
+    ];
+  });
 
-  /** The meta line under the title: code, level, lessons, duration. */
+  /** The meta line under the title: field · module, then code, level, lessons; a missing name is left out. */
   protected readonly facts = computed(() => {
     const card = this.store.card$();
     if (!card) return '';
     return [
+      card.fieldName,
+      card.moduleName,
       card.code,
       this.store.levelLabel$(),
       card.lessonCount != null ? `${card.lessonCount} bài` : '',
@@ -86,12 +92,12 @@ export class Course {
   protected readonly objectives = computed(
     () =>
       this.store
-        .detail$()
-        ?.content.objectives.slice()
+        .content$()
+        ?.objectives.slice()
         .sort((a, b) => a.sortNo - b.sortNo) ?? [],
   );
 
   protected readonly rewardPoints = computed(
-    () => this.store.detail$()?.content.completionRule?.rewardPoints ?? 0,
+    () => this.store.content$()?.completionRule?.rewardPoints ?? 0,
   );
 }

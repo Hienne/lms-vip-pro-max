@@ -107,16 +107,16 @@ under `apps/lms/src/app/features/quiz/` unless they say otherwise.
 
 ### Checkpoint 0
 
-- [ ] `npm run check` and `mvn clean verify` green.
-- [ ] On `lms-local`, as `hocvien.tichhop`:
+- [x] `npm run check` and `mvn clean verify` green.
+- [x] On `lms-local`, as `hocvien.tichhop`:
   - take the practice quiz (it allows 20 attempts), so no final-exam attempt is spent;
   - open an old failed result after a pass;
   - see the hub.
-- [ ] Stop for the main session's review of the Phase 0 diff before T1.
+- [x] Stop for the main session's review of the Phase 0 diff before T1.
 
 ## Phase 1: Backend
 
-- [ ] **T1: `failed` through the quiz port, and the D3 card fields**
+- [x] **T1: `failed` through the quiz port, and the D3 card fields**
   - Acceptance:
     - `LearningQuizDirectory.failedFinalExamCourseIds(String userId)` returns the courses whose PUBLISHED,
       not deleted FINAL_EXAM the user attempted (at least one graded `SUBMITTED` or `AUTO_SUBMITTED` attempt)
@@ -138,7 +138,7 @@ under `apps/lms/src/app/features/quiz/` unless they say otherwise.
     `CourseRepositoryCustom.java`, `CourseRepositoryCustomImpl.java`, `LearningSearchService.java`, the new IT.
   - Size: M. Depends on: none.
 
-- [ ] **T2: `assigned`, `failed` and `overdue` filters on both lists and the export**
+- [x] **T2: `assigned`, `failed` and `overdue` filters on both lists and the export**
   - Acceptance:
     - `/me/learning/courses` and `/me/learning/catalog` take optional `assigned` and `failed` booleans;
       `/catalog` also takes `overdue`. `/progress/export` takes the same filters as `/courses`.
@@ -155,7 +155,7 @@ under `apps/lms/src/app/features/quiz/` unless they say otherwise.
     `docs/api/LEARNING.md`, the new IT.
   - Size: M. Depends on: T1.
 
-- [ ] **T3: `GET /api/v1/me/learning/facets`**
+- [x] **T3: `GET /api/v1/me/learning/facets`**
   - Acceptance:
     - Returns `LearnerFacets { fields[], programs[], modules[] }`, each item `{ id, code, name }`; programs and
       modules also have `fieldId`.
@@ -171,7 +171,7 @@ under `apps/lms/src/app/features/quiz/` unless they say otherwise.
     the new IT.
   - Size: S–M. Depends on: T2.
 
-- [ ] **T4: `GET /api/v1/me/learning/courses/{courseId}`**
+- [x] **T4: `GET /api/v1/me/learning/courses/{courseId}`**
   - Acceptance:
     - Returns `LearnerCourse { card, content }`. `card` comes from the `CATALOG` search with a `courseId`
       filter. `content` is `LearningContentService.detail` of the card's revision.
@@ -187,7 +187,7 @@ under `apps/lms/src/app/features/quiz/` unless they say otherwise.
     `LearningDetails.java`, maybe `LearningResponseCode.java`, `docs/api/LEARNING.md`, the new IT.
   - Size: M. Depends on: T2.
 
-- [ ] **T5: `assigned` and `mandatory` counts in the progress summary**
+- [x] **T5: `assigned` and `mandatory` counts in the progress summary**
   - Acceptance:
     - `LearningProgressOverview.Counts` gains `assigned` and `mandatory`.
     - Each is the total of the `MINE` search with `assigned=true` or `requirement=mandatory` (plan amendment 3).
@@ -198,17 +198,17 @@ under `apps/lms/src/app/features/quiz/` unless they say otherwise.
 
 ### Checkpoint A
 
-- [ ] `mvn clean verify` green (as before: 42 `CommunityApiIT` tests skipped).
-- [ ] As `hocvien`, with `curl` on `:8019`:
+- [x] `mvn clean verify` green (as before: 42 `CommunityApiIT` tests skipped; 333 tests).
+- [x] As `hocvien`, with `curl` on `:8019` (checked by this session and by the main session):
   - `facets` lists names;
   - each of `assigned`, `failed`, `overdue` on `catalog` and `courses`;
   - `courses/{id}` for an enrolled course, a visible one and a hidden one;
   - `progress/summary` counts agree with the lists.
-- [ ] Show the backend diff to the user before Phase 2.
+- [x] Show the backend diff to the user before Phase 2.
 
 ## Phase 2: App
 
-- [ ] **T6: Contracts and mocks**
+- [x] **T6: Contracts and mocks**
   - Acceptance:
     - `learnerEndpoints.facets` (D1) and `learnerEndpoints.course` (D4), with `LearnerFacetsSchema` and
       `LearnerCourseSchema` mirroring the backend records field by field.
@@ -221,7 +221,7 @@ under `apps/lms/src/app/features/quiz/` unless they say otherwise.
     learning mock and its spec.
   - Size: M. Depends on: Checkpoint A.
 
-- [ ] **T7: Catalogue on facets and the new status filters**
+- [x] **T7: Catalogue on facets and the new status filters**
   - Acceptance:
     - `catalog.store.ts` reads fields, programmes and modules from one `facets` call. The programme and module
       selects list only entries of the chosen field. No `trainingCatalogEndpoints` import is left in the store.
@@ -238,14 +238,14 @@ under `apps/lms/src/app/features/quiz/` unless they say otherwise.
 
 ### Checkpoint B
 
-- [ ] `npm run check` green.
-- [ ] On `lms-local` as `hocvien`: the three selects list real names and each narrows the list; each status
+- [x] `npm run check` green.
+- [x] On `lms-local` as `hocvien`: the three selects list real names and each narrows the list; each status
       option and each sort changes the list; "Xóa n bộ lọc" shows the right n and clears; the network panel
       shows no `/api/v1/training-catalog` call.
 
 ## Phase 3: Course, lesson and learn pages
 
-- [ ] **T8: Course and lesson pages on D4, with the programme breadcrumb**
+- [x] **T8: Course and lesson pages on D4, with the programme breadcrumb**
   - Acceptance:
     - `course.store.ts` and `lesson.store.ts` load `learnerEndpoints.course` once; the course page uses its
       `content` instead of a second enrollment read where the content is enough.
@@ -258,7 +258,7 @@ under `apps/lms/src/app/features/quiz/` unless they say otherwise.
     `learner-course.ts` (+ spec, deleted).
   - Size: M. Depends on: Checkpoint B.
 
-- [ ] **T9: Learn page tabs and counts; "Chưa đạt" and "Quá hạn" on the course card**
+- [x] **T9: Learn page tabs and counts; "Chưa đạt" and "Quá hạn" on the course card**
   - Acceptance:
     - Tabs: Đang học, Chưa bắt đầu, Đã hoàn thành, Bắt buộc, Được giao, each with the summary's count. "Được
       giao" lists `myCourses` with `assigned: true`.
@@ -270,7 +270,7 @@ under `apps/lms/src/app/features/quiz/` unless they say otherwise.
   - Files: `learn.store.ts` (+ spec), `learn.html`, `shared/course/course-card*.ts|html`, `course-labels.ts`.
   - Size: S–M. Depends on: T8.
 
-- [ ] **T10: End-to-end check against the spec**
+- [x] **T10: End-to-end check against the spec**
   - Acceptance: the spec's success criteria 1–5 are written here, each with how it was checked.
   - Verify, as `hocvien` on the local stack in the browser:
     - the catalogue filters and sorts, and "Xóa n bộ lọc";
@@ -284,9 +284,42 @@ under `apps/lms/src/app/features/quiz/` unless they say otherwise.
 
   - Files: `tasks/todo.md`, `SPEC-catalog-discovery.md` (status).
   - Size: S. Depends on: T9.
+  - Result (2026-11-01, as `hocvien` on the local stack, backend `:8019` on the T1–T5 code, app on `:4200` with
+    `LMS_API_TARGET=http://localhost:8019`; every list below was read back with `curl` using the same query): 1. **Selects and no training-catalog call: met.** The field, programme and module selects list the 4
+  - **1. Selects and no training-catalog call: met.** The field, programme and module selects list the 4
+    fields, 4 programmes and 6 modules of `GET /me/learning/facets`, in the server's order. Picking field 2
+    narrows modules to Quản lý thay đổi and Vận hành EOD and programmes to one; a new field clears the old
+    module and programme. Each choice narrows the list and matches `curl` (field 2 → 2 courses; + module 3 →
+    1; + programme 2 → 1; field 1 + overdue → 0; programme 3 → 1). The network panel on `/catalog` and
+    `/learn` shows `facets` once and no `/api/v1/training-catalog` request.
+  - **2. Each status option matches the backend rule: met.** Chưa bắt đầu 3, Đang học 2, Đã hoàn thành 2, Chưa
+    đạt 1 (`failed=true`), Quá hạn 1 (`overdue=true`), Được giao 5 (`assigned=true`); the three sorts (hạn
+    gần nhất, tiến độ, tên) return the order `curl` returns. "Chưa đạt" lists FE-DEMO-C1, whose
+    `/me/quiz-attempts` rows for course 1 are all `passed: false`; course 8, with one passed attempt, is not
+    listed. "Xóa n bộ lọc" showed 1, 2, 3 and 4 as filters were added, counted the status, and cleared to
+    the default URL. The scope tab "Được giao" and the status option "Được giao" both stay, as decided.
+  - **3. Five learn tabs match `progress/summary`: met.** The tabs read Đang học 2, Chưa bắt đầu 3, Đã hoàn thành
+    2, Bắt buộc 5, Được giao 5 and `counts` is `{inProgress 2, notStarted 3, completed 2, mandatory 5,
+assigned 5}`. Each tab's grid equals `courses` with the same query. The cards show one badge at most:
+    "Chưa đạt" on FE-DEMO-C1, "Quá hạn" on FE-DEMO-C3, "Hoàn thành" on completed ones.
+  - **4. One course call per page: met.** `/course/1` makes `GET /me/learning/courses/1`, then the enrolment
+    and quiz reads, and no list read; the breadcrumb is Danh mục khóa học / Nền tảng nghiệp vụ Core Banking /
+    Tổng quan hệ thống Core Banking and the meta line starts "Nghiệp vụ Core Banking · Tổng quan · FE-DEMO-C1".
+    `/lesson/1/2` makes the same single course call and plays the lesson. `/course/6` (unpublished) answers
+    `LEARNING-NOT_FOUND` and the page says "Không tìm thấy khóa học". As `hocvien.tichhop`, `/course/7`
+    (not enrolled) makes one `courses/7` call, shows the programme breadcrumb, the meta line and the objectives
+    and the chapter and lesson titles with no status, no lesson link and no tally, and "Đăng ký học" as the one
+    primary action; at 1280 and 375 px, light and dark. The null names are covered by specs.
+  - **5. Both suites green: met, with one note.** `npm run check` is green (format, lint, typecheck, test, build,
+    bundle guard). `mvn clean verify` was green at Checkpoint A (333 tests) and the backend has not changed
+    since (HEAD `7503c4b`, clean tree); it was not run again because `:8019` serves from that checkout's
+    `target/`. - Screens at 1280 and 375 px, light and dark: catalogue, learn, course (lesson only at 1280 light for
+    playing). No horizontal page scroll; the checklist holds. One finding, fixed: the five learn tabs need 708 px and the main column at 1280 px gives 624 px, so
+    "Được giao" was clipped. `ui-tabs` gained a `wrap` input (default off) and the learn tabs use it: all five
+    tabs show, on two rows at 1280 px and three at 375 px, with no page scroll.
 
 ### Checkpoint C
 
-- [ ] Criteria 1–5 recorded.
-- [ ] Spec status set to built.
+- [x] Criteria 1–5 recorded.
+- [x] Spec status set to built.
 - [ ] Review with the user, then plan the next module.

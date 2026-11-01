@@ -1,7 +1,6 @@
 import { computed, inject, Injectable, signal } from '@angular/core';
 import {
   learnerEndpoints,
-  trainingCatalogEndpoints,
   type CourseCard,
   type LearningReminder,
   type MyCoursesQuery,
@@ -19,13 +18,15 @@ export type LearnTab =
   | 'in_progress'
   | 'not_started'
   | 'completed'
-  | 'mandatory';
+  | 'mandatory'
+  | 'assigned';
 
 export const LEARN_TABS: readonly LearnTab[] = [
   'in_progress',
   'not_started',
   'completed',
   'mandatory',
+  'assigned',
 ];
 
 /** How many courses the tab grid, the due list and the reminders show. */
@@ -50,6 +51,8 @@ const TAB_QUERY: Record<LearnTab, MyCoursesQuery> = {
     size: GRID_SIZE,
   },
   mandatory: { requirement: 'mandatory', sort: 'dueAt,asc', size: GRID_SIZE },
+  // Courses with an active assignment, not the courses the learner enrolled in themselves.
+  assigned: { assigned: true, sort: 'dueAt,asc', size: GRID_SIZE },
 };
 
 export interface ContinueView {
@@ -90,7 +93,6 @@ export class LearnStore {
     tab: signal<LearnTab>('in_progress'),
   };
 
-  private readonly orgId = computed(() => this.session.user$()?.org?.id);
   private readonly canLearn = computed(() =>
     this.session.menus$().includes('COURSE_LEARNING'),
   );
@@ -141,14 +143,6 @@ export class LearnStore {
     },
   );
 
-  private readonly programsData = serverData(
-    (ownerOrgId: number) =>
-      this.client.call(trainingCatalogEndpoints.listPrograms, {
-        query: { ownerOrgId, size: 100 },
-      }),
-    { params: () => this.orgId() },
-  );
-
   // Selectors
   readonly tab$ = this.state.tab.asReadonly();
 
@@ -156,7 +150,7 @@ export class LearnStore {
   readonly summaryError$ = this.summaryData.error;
   readonly isSummaryLoading$ = this.summaryData.isLoading;
 
-  /** The three status tabs show the summary's counts; "Bắt buộc" has none. */
+  /** Every tab shows the summary's count of the courses it lists. */
   readonly tabCounts$ = computed((): Partial<Record<LearnTab, number>> => {
     const counts = this.summaryData.value()?.counts;
     return counts
@@ -164,6 +158,8 @@ export class LearnStore {
           in_progress: counts.inProgress,
           not_started: counts.notStarted,
           completed: counts.completed,
+          mandatory: counts.mandatory,
+          assigned: counts.assigned,
         }
       : {};
   });
@@ -204,21 +200,8 @@ export class LearnStore {
   readonly coursesError$ = this.coursesData.error;
   readonly isCoursesLoading$ = this.coursesData.isLoading;
 
-  private readonly programNames = computed(
-    () =>
-      new Map(
-        (this.programsData.value()?.items ?? []).map((p) => [p.id, p.name]),
-      ),
-  );
-
   readonly courses$ = computed((): readonly CourseCardView[] =>
-    (this.coursesData.value()?.items ?? []).map((card) =>
-      toCourseCardView(
-        card,
-        (card.programId && this.programNames().get(card.programId)) ||
-          undefined,
-      ),
-    ),
+    (this.coursesData.value()?.items ?? []).map(toCourseCardView),
   );
 
   readonly dueError$ = this.dueData.error;

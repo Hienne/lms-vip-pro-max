@@ -10,7 +10,15 @@ const summary = (
 ): LearningProgressOverview => ({
   serverTime: '2026-10-27T09:00:00',
   timeZone: 'Asia/Ho_Chi_Minh',
-  counts: { total: 0, completed: 0, inProgress: 0, notStarted: 0, overdue: 0 },
+  counts: {
+    total: 0,
+    completed: 0,
+    inProgress: 0,
+    notStarted: 0,
+    overdue: 0,
+    assigned: 0,
+    mandatory: 0,
+  },
   activity: { availability: activity },
   assessment: { availability: assessment },
   competency: { availability: competency },

@@ -241,6 +241,12 @@ export const BACKEND_RESPONSES = {
     title: 'Chưa thể thực hiện',
     message: 'Kết quả vượt giới hạn xuất 10.000 dòng. Vui lòng thu hẹp bộ lọc.',
   },
+  learningNotFound: {
+    status: 200,
+    code: 'LEARNING-NOT_FOUND',
+    title: 'Không tìm thấy',
+    message: 'Không tìm thấy dữ liệu học tập phù hợp.',
+  },
   notAvailable: {
     status: 200,
     code: 'LEARNING-NOT_AVAILABLE',

@@ -112,6 +112,29 @@ describe('CourseCard', () => {
     expect(badges).toEqual(['Quá hạn']);
   });
 
+  it('shows one "Chưa đạt" badge when the final exam was failed, before an overdue one', () => {
+    const failed = render({ failed: true, dueAt: inDays(5) });
+    expect(
+      Array.from(failed.card.querySelectorAll('.badge')).map((b) => text(b)),
+    ).toEqual(['Chưa đạt']);
+    const both = render({ failed: true, overdue: true, dueAt: inDays(-2) });
+    expect(
+      Array.from(both.card.querySelectorAll('.badge')).map((b) => text(b)),
+    ).toEqual(['Chưa đạt']);
+  });
+
+  it('shows no "Chưa đạt" badge on a completed course', () => {
+    const { card } = render({
+      failed: true,
+      status: 'completed',
+      pct: 100,
+      statusLabel: 'Đã hoàn thành',
+    });
+    expect(
+      Array.from(card.querySelectorAll('.badge')).map((b) => text(b)),
+    ).toEqual(['Hoàn thành']);
+  });
+
   it('draws progress named after the course, toned by status', () => {
     expect(
       render().card.querySelector('ui-progress')?.getAttribute('aria-valuenow'),

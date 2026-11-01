@@ -22,6 +22,8 @@ export interface EnrollmentRecord {
   readonly content: CourseDetail;
   readonly dueAt: string | null;
   readonly assigned: boolean;
+  /** The final exam was taken and never passed: the server's flag, not an enrolment status. */
+  readonly failed: boolean;
 }
 
 export interface EnrollmentSource {
@@ -67,7 +69,9 @@ export class LearnerEnrollments {
     const enrollmentId = this.nextEnrollmentId++;
     const { detail, state } = source;
     const lessons = detail.chapters.flatMap((c) => c.lessons);
-    const status = state?.learningStatus ?? 'not_started';
+    const standing = state?.learningStatus ?? 'not_started';
+    // The backend has no failed status: the learner is still in progress and the card says `failed`.
+    const status = standing === 'failed' ? 'in_progress' : standing;
     const started = status !== 'not_started';
     const completedLessons = this.completedLessons(lessons, state);
     const resume = this.resumeOf(lessons, completedLessons, status);
@@ -101,6 +105,7 @@ export class LearnerEnrollments {
       content: detail,
       dueAt: state?.dueInDays != null ? inDays(state.dueInDays) : null,
       assigned: source.origin === 'assignment',
+      failed: standing === 'failed',
     };
     lessons.forEach((lesson, index) => {
       const done = completedLessons.has(lesson.lesson.id);

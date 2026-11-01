@@ -1,6 +1,6 @@
 # Spec: `catalog-discovery`
 
-Map: [SPEC.md](SPEC.md). Status: **approved 2026-10-31, amended by the plan (see "Amendments").** Depends on
+Map: [SPEC.md](SPEC.md). Status: **built 2026-11-01** (approved 2026-10-31, amended by the plan, see "Amendments"; results in `tasks/todo.md` T10) Depends on
 `learner-quiz`, which provides the final exam used by "Chưa đạt".
 
 Read first: `SPEC-lesson-player.md` (open question 1, `findLearnerCourse`), `docs/migration/mockup-to-angular.md`,
@@ -32,13 +32,13 @@ URL, the sort select, the clear count. What does not work against the real backe
 
 ## Backend (`corebanking-academy`)
 
-| #   | Endpoint                                              | Change                                                                                                                                                                                                                                                                                              |
-| --- | ----------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| D1  | `GET /api/v1/me/learning/facets`                      | **new**: `LearnerFacets { fields[], programs[], modules[] }`, each `{ id, code, name }`. Programs and modules also carry `fieldId`. It returns only the values used by at least one course the caller can see in the catalogue, sorted by `sort_no`, then name.                                     |
-| D2  | `GET /me/learning/catalog` and `/me/learning/courses` | **changed**: new optional filters `assigned` (boolean; the caller has an active assignment) and `failed` (boolean; see the rule below). `catalog` also gets `overdue`. The export (`/progress/export`) takes the same filters.                                                                      |
-| D3  | `CourseCard`                                          | **changed, additive**: `fieldId`, `fieldName`, `programName`, `moduleName`, `failed` (boolean)                                                                                                                                                                                                      |
-| D4  | `GET /api/v1/me/learning/courses/{courseId}`          | **new**: `LearnerCourse { card: CourseCard, content: CourseDetail }`. `content` is the caller's enrolled revision, or the current published revision when the caller is not enrolled. Access follows the catalogue's visibility, and a course the caller cannot see is `LEARNING-COURSE_NOT_FOUND`. |
-| D5  | `GET /me/learning/progress/summary`                   | **changed, additive**: `counts.assigned` and `counts.mandatory`                                                                                                                                                                                                                                     |
+| #   | Endpoint                                              | Change                                                                                                                                                                                                                                                                                                     |
+| --- | ----------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| D1  | `GET /api/v1/me/learning/facets`                      | **new**: `LearnerFacets { fields[], programs[], modules[] }`, each `{ id, code, name }`. Programs and modules also carry `fieldId`. It returns only the values used by at least one course the caller can see in the catalogue, sorted by `sort_no`, then name.                                            |
+| D2  | `GET /me/learning/catalog` and `/me/learning/courses` | **changed**: new optional filters `assigned` (boolean; the caller has an active assignment) and `failed` (boolean; see the rule below). `catalog` also gets `overdue`. The export (`/progress/export`) takes the same filters.                                                                             |
+| D3  | `CourseCard`                                          | **changed, additive**: `fieldId`, `fieldName`, `programName`, `moduleName`, `failed` (boolean)                                                                                                                                                                                                             |
+| D4  | `GET /api/v1/me/learning/courses/{courseId}`          | **new**: `LearnerCourse { card: CourseCard, content: CourseDetail }`. `content` is the caller's enrolled revision, or the current published revision when the caller is not enrolled. Access follows the catalogue's visibility, and a course the caller cannot see is `LEARNING-NOT_FOUND` (amendment 7). |
+| D5  | `GET /me/learning/progress/summary`                   | **changed, additive**: `counts.assigned` and `counts.mandatory`                                                                                                                                                                                                                                            |
 
 **Rule for `failed`.** The course has a published FINAL_EXAM quiz with at least one graded attempt by the caller,
 and `everPassed` is false. It lives in `CourseRepositoryCustomImpl` as a subquery on `quiz_attempts`, reached
@@ -69,6 +69,8 @@ Written with [tasks/plan.md](tasks/plan.md). Where they differ from the sections
    visible catalogue.
 6. **D4 before enrolment** (decided 2026-10-31): for a caller who is not enrolled, `content` keeps chapters and
    lessons and empties every lesson's `blocks`. An enrolled caller gets the full revision.
+7. **D4 refusal code** (built in T4): a course the caller cannot see answers `LEARNING-NOT_FOUND`, not
+   `LEARNING-COURSE_NOT_FOUND`; the table row for D4 reads that way.
 
 ## App
 

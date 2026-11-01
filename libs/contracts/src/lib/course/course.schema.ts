@@ -322,6 +322,13 @@ export const CourseCardSchema = z.object({
   mediaAssetId: z.number().int().nullish(),
   lastPdfPage: z.number().int().nullish(),
   lastVideoPositionSeconds: z.number().nullish(),
+  /** The programme's field and the programme and module names; null when the course has none. */
+  fieldId: z.number().int().nullish(),
+  fieldName: z.string().nullish(),
+  programName: z.string().nullish(),
+  moduleName: z.string().nullish(),
+  /** The caller took the final exam and never passed it: the server's result, false in the instructor list. */
+  failed: z.boolean().nullish(),
 });
 export type CourseCard = z.infer<typeof CourseCardSchema>;
 
