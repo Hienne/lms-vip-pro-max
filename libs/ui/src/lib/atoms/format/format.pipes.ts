@@ -43,8 +43,15 @@ export class FmtNumPipe implements PipeTransform {
 
 @Pipe({ name: 'fmtPct' })
 export class FmtPctPipe implements PipeTransform {
-  transform(value: number | null | undefined): string {
-    return `${Math.round(value || 0)}%`;
+  /** `maxFractionDigits` keeps the server's decimals (`14,29%`); the default rounds like the mockup. */
+  transform(value: number | null | undefined, maxFractionDigits = 0): string {
+    if (maxFractionDigits <= 0) {
+      return `${Math.round(value || 0)}%`;
+    }
+    const digits = new Intl.NumberFormat(LOCALE, {
+      maximumFractionDigits: maxFractionDigits,
+    });
+    return `${digits.format(value || 0)}%`;
   }
 }
 

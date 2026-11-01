@@ -29,7 +29,7 @@ at `2a298e0`.
     `libs/mocks/src/lib/assessment/learner-quiz.mock.ts`.
   - Size: S. Depends on: none.
 
-- [ ] **T2: `toRadarData`, `app-competency-view`, and `fmtPct` in `ui-radar-chart`**
+- [x] **T2: `toRadarData`, `app-competency-view`, and `fmtPct` in `ui-radar-chart`**
   - Acceptance:
     - `shared/learning/competency/competency-data.ts`:
       - `toRadarData(rows)` maps each row to `{ name, value: percent }`, keeping null;

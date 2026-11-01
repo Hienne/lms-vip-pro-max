@@ -1,0 +1,28 @@
+@if (showRadar()) {
+<ui-radar-chart
+  class="competency-view__chart"
+  [data]="radarData()"
+  label="Biểu đồ năng lực"
+  seriesLabel="Tỷ lệ đúng trên mọi lượt thi đã chấm"
+/>
+} @else if (rowsWithData().length > 0) {
+<ul class="competency-view__list">
+  @for (row of rowsWithData(); track row.competencyId) {
+  <li class="competency-view__item">
+    <span class="competency-view__name">{{ row.name }}</span>
+    <span class="competency-view__meta"
+      >{{ row.correctCount }}/{{ row.totalQuestions }} câu đúng</span
+    >
+    <span class="competency-view__percent"
+      >{{ row.percent | fmtPct: digits }}</span
+    >
+  </li>
+  }
+</ul>
+} @else {
+<ui-empty
+  variant="inline"
+  title="Chưa có dữ liệu năng lực"
+  description="Biểu đồ sẽ có sau khi bạn làm bài kiểm tra."
+/>
+}

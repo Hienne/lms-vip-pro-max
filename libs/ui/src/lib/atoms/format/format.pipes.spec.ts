@@ -49,6 +49,16 @@ describe('fmtPct', () => {
   ])('%s → %s', (value, text) => {
     expect(pipe(FmtPctPipe).transform(value)).toBe(text);
   });
+
+  it.each([
+    [14.29, '14,29%'],
+    [11.1, '11,1%'],
+    [100, '100%'],
+    [33.333, '33,33%'],
+    [0, '0%'],
+  ])('%s with two decimals → %s', (value, text) => {
+    expect(pipe(FmtPctPipe).transform(value, 2)).toBe(text);
+  });
 });
 
 describe('fmtScore', () => {

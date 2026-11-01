@@ -356,7 +356,7 @@ templates instead of formatting in components.
 | Pipe          | Mockup `fmt.*` | Example output                                           |
 | ------------- | -------------- | -------------------------------------------------------- |
 | `fmtNum`      | `num`          | `1.234.567` (null → `0`)                                 |
-| `fmtPct`      | `pct`          | `72%`                                                    |
+| `fmtPct`      | `pct`          | `72%`; `fmtPct:2` keeps decimals: `14,29%`               |
 | `fmtScore`    | `score`        | `8,6` (null → `—`)                                       |
 | `fmtDate`     | `date`         | `05/03/2026`                                             |
 | `fmtDatetime` | `datetime`     | `09:07 05/03/2026`                                       |
