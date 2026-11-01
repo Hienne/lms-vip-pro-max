@@ -322,4 +322,4 @@ assigned 5}`. Each tab's grid equals `courses` with the same query. The cards sh
 
 - [x] Criteria 1–5 recorded.
 - [x] Spec status set to built.
-- [ ] Review with the user, then plan the next module.
+- [x] Review with the user, then plan the next module. Reviewed and merged as Hienne/lms-vip-pro-max#48 and hmhug19/corebanking-academy#16 (2026-11-01).

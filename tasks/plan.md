@@ -167,7 +167,7 @@ No schema change, so no upgrade script.
 
 - [ ] Success criteria 1–5 recorded.
 - [ ] Spec status set to built.
-- [ ] Review with the user, then plan the next module.
+- [x] Review with the user, then plan the next module. Reviewed and merged as Hienne/lms-vip-pro-max#48 and hmhug19/corebanking-academy#16 (2026-11-01).
 
 ## Risks and mitigations
 
