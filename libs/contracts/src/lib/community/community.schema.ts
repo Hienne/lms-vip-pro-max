@@ -457,6 +457,7 @@ export const QuestionSuggestionQuerySchema = z.object({
 export const ArticleListQuerySchema = PageQuerySchema.extend({
   q: z.string().max(300).optional(),
   tagIds: tagIdsQuery.optional(),
+  resolutionStatus: ResolutionStatusSchema.optional(),
 });
 export type ArticleListQuery = z.infer<typeof ArticleListQuerySchema>;
 

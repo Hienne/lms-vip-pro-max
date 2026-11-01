@@ -2,267 +2,456 @@ import { Dialog } from '@angular/cdk/dialog';
 import { computed, inject, Injectable, signal } from '@angular/core';
 import { ActivatedRoute, NavigationEnd, Router } from '@angular/router';
 import { toSignal } from '@angular/core/rxjs-interop';
-import { filter, firstValueFrom, forkJoin, of } from 'rxjs';
+import { filter, firstValueFrom, of, switchMap, tap } from 'rxjs';
 import {
-  assessmentEndpoints,
-  type Question,
-  type SaveQuestion,
-  type SaveQuizConfig,
+  programAssessmentEndpoints as api,
+  assessmentV1Endpoints,
+  courseEndpoints,
+  type ProgramQuestionQuery,
+  type ProgramQuestionRequest,
+  type QuizRequestV1,
+  type QuizDetailV1,
+  type QuizPoolRequestV1,
 } from '@lms/contracts';
+import { APP_CONFIG } from '../../../../core/config/app-config';
 import { serverData } from '../../../../core/data-access/server-data';
 import { serverMutation } from '../../../../core/data-access/server-mutation';
-import { invalidation } from '../../../../core/data-access/invalidation';
 import { EndpointClient } from '../../../../core/http/endpoint-client';
 import { confirm, type DataTableSort } from '@lms/ui';
 
+const positiveId = (value: string | null | undefined): number | undefined => {
+  const id = Number(value);
+  return Number.isSafeInteger(id) && id > 0 ? id : undefined;
+};
+
+/** Program-scoped bank and course-scoped quizzes; pending program API integration. */
 @Injectable()
 export class AssessmentScreenStore {
   private readonly client = inject(EndpointClient);
+  private readonly appConfig = inject(APP_CONFIG);
+  private readonly quizApi = this.appConfig.mockBackend
+    ? api
+    : assessmentV1Endpoints;
+  readonly integrationPending$ = computed(
+    () =>
+      !this.appConfig.mockBackend &&
+      [
+        api.programs,
+        api.questions,
+        api.question,
+        api.createQuestion,
+        api.updateQuestion,
+        api.bulkQuestionStatus,
+        api.bulkDeleteQuestions,
+        api.replacePool,
+      ].some((endpoint) => endpoint.served === 'mock'),
+  );
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly dialog = inject(Dialog);
-  private readonly id = toSignal(this.route.paramMap);
+  private readonly params = toSignal(this.route.paramMap);
+  private readonly queryParams = toSignal(this.route.queryParamMap);
   private readonly navigated = toSignal(
-    this.router.events.pipe(filter((event) => event instanceof NavigationEnd)),
+    this.router.events.pipe(filter((e) => e instanceof NavigationEnd)),
     { initialValue: null },
   );
   private readonly state = {
-    screen: signal(''),
-    questionDraft: signal<Question | undefined>(undefined),
+    courseId: signal<number | undefined>(undefined),
+    programId: signal<number | undefined>(undefined),
+    programSearch: signal(''),
+    programPage: signal(0),
+    courseSearch: signal(''),
+    coursePage: signal(0),
+    questionId: signal<number | undefined>(undefined),
     editorOpen: signal(false),
     questionFilters: signal({
       q: '',
-      type: '',
+      questionType: '',
       difficulty: '',
-      competency: '',
-      lessonId: '',
+      competencyId: '',
       status: '',
     }),
     questionPage: signal(1),
-    questionSort: signal<DataTableSort>({ key: 'code', dir: 'asc' }),
-    selectedIds: signal<string[]>([]),
+    questionSort: signal<DataTableSort>({ key: 'id', dir: 'desc' }),
+    quizPage: signal(1),
+    selectedIds: signal<number[]>([]),
+    // A successful settings write must not be repeated as a create if the separate pool write fails.
+    saveReceipt: signal<QuizDetailV1 | undefined>(undefined),
   };
-  readonly routeId$ = computed(() => this.id()?.get('id') ?? 'q1');
+  readonly routeId$ = computed(() => this.params()?.get('id') ?? '');
   readonly routeScreen$ = computed(() => {
     this.navigated();
     const path = this.router.url.split(/[?#]/)[0];
-    if (path === '/admin/questions') return 'questions';
-    if (path === '/admin/quizzes') return 'quizzes';
-    if (path.startsWith('/admin/quizzes/')) return 'config';
-    return '';
+    return path === '/admin/questions'
+      ? 'questions'
+      : path === '/admin/quizzes'
+        ? 'quizzes'
+        : path.startsWith('/admin/quizzes/')
+          ? 'config'
+          : '';
   });
-  private readonly questionsData = serverData(
-    (query: { page: number; size: number; sort: string }) =>
-      this.client.call(assessmentEndpoints.questions, { query }),
+  private readonly coursesData = serverData(
+    (query: { q?: string; page: number; size: number }) =>
+      this.client.call(courseEndpoints.instructorCourses, { query }),
     {
       params: () =>
-        ['questions', 'config'].includes(this.routeScreen$())
-          ? { page: 0, size: 100, sort: 'updatedAt,desc' }
-          : undefined,
+        this.routeScreen$() === 'questions'
+          ? undefined
+          : {
+              q: this.state.courseSearch() || undefined,
+              page: this.state.coursePage(),
+              size: 50,
+            },
     },
   );
-  private readonly quizListData = serverData(
-    (query: { page: number; size: number; sort: string }) =>
-      this.client.call(assessmentEndpoints.quizzes, { query }),
+  private readonly programsData = serverData(
+    (query: { q?: string; page: number; size: number }) =>
+      this.client.call(api.programs, { query }),
     {
       params: () =>
-        this.routeScreen$() === 'quizzes'
-          ? { page: 0, size: 50, sort: 'title,asc' }
-          : undefined,
+        this.integrationPending$()
+          ? undefined
+          : {
+              q: this.state.programSearch() || undefined,
+              page: this.state.programPage(),
+              size: 50,
+            },
     },
   );
-  private readonly optionsData = serverData(() =>
-    this.client.call(assessmentEndpoints.assessmentOptions, { query: {} }),
-  );
+  readonly programs$ = this.programsData.value;
+  readonly programSearch$ = this.state.programSearch.asReadonly();
   private readonly configData = serverData(
-    (quizId: string) =>
-      this.client.call(assessmentEndpoints.quiz, { params: { quizId } }),
+    (id: number) => this.client.call(this.quizApi.quiz, { params: { id } }),
     {
       params: () =>
-        this.routeScreen$() === 'config' && this.routeId$() !== 'new'
-          ? this.routeId$()
+        this.routeScreen$() === 'config'
+          ? positiveId(this.routeId$())
           : undefined,
     },
   );
-  private readonly refresh = invalidation();
-  readonly questions$ = computed(() => this.questionsData.value());
-  readonly quizList$ = computed(() => this.quizListData.value()?.items ?? []);
-  readonly options$ = this.optionsData.value;
-  readonly config$ = this.configData.value;
-  readonly isLoading$ = computed(() => {
-    switch (this.routeScreen$()) {
-      case 'questions':
-        return this.questionsData.isLoading();
-      case 'quizzes':
-        return this.quizListData.isLoading();
-      case 'config':
-        return this.configData.isLoading();
-      default:
-        return false;
-    }
-  });
-  readonly error$ = computed(() => {
-    switch (this.routeScreen$()) {
-      case 'questions':
-        return this.questionsData.error();
-      case 'quizzes':
-        return this.quizListData.error();
-      case 'config':
-        return this.configData.error();
-      default:
+  readonly courses$ = this.coursesData.value;
+  readonly courseSearch$ = this.state.courseSearch.asReadonly();
+  readonly configDetail$ = this.configData.value;
+  readonly config$ = computed(() => this.configData.value()?.quiz);
+  readonly selectedCourseId$ = computed(
+    () =>
+      this.config$()?.courseId ??
+      this.state.courseId() ??
+      positiveId(this.queryParams()?.get('courseId')) ??
+      this.courses$()?.items[0]?.courseId,
+  );
+  readonly selectedCourseTitle$ = computed(
+    () =>
+      this.courses$()?.items.find(
+        (x) => x.courseId === this.selectedCourseId$(),
+      )?.title ?? `Khóa học #${this.selectedCourseId$() ?? ''}`,
+  );
+  private readonly courseData = serverData(
+    (id: number) =>
+      this.client.call(courseEndpoints.getCourse, {
+        params: { courseId: id },
+        query: {},
+      }),
+    {
+      params: () =>
+        this.routeScreen$() === 'config' ? this.selectedCourseId$() : undefined,
+    },
+  );
+  private readonly competenciesData = serverData(
+    () => this.client.call(api.competencies, { query: {} }),
+    { params: () => (this.integrationPending$() ? undefined : true) },
+  );
+  readonly competencies$ = computed(() => this.competenciesData.value() ?? []);
+  readonly selectedProgramId$ = computed(() =>
+    this.routeScreen$() === 'config'
+      ? (this.courseData.value()?.revision.programId ?? undefined)
+      : (this.state.programId() ??
+        this.programs$()?.items.find(
+          (p) => p.id === positiveId(this.queryParams()?.get('programId')),
+        )?.id ??
+        this.programs$()?.items[0]?.id),
+  );
+  readonly selectedProgramTitle$ = computed(
+    () =>
+      this.programs$()?.items.find((p) => p.id === this.selectedProgramId$())
+        ?.name ??
+      this.courses$()?.items.find(
+        (c) => c.courseId === this.selectedCourseId$(),
+      )?.programName ??
+      (this.selectedProgramId$()
+        ? 'Chương trình #' + this.selectedProgramId$()
+        : 'Chưa gắn chương trình'),
+  );
+  private readonly questionQuery = computed<ProgramQuestionQuery | undefined>(
+    () => {
+      const programId = this.selectedProgramId$();
+      if (
+        this.integrationPending$() ||
+        !programId ||
+        !['questions', 'config'].includes(this.routeScreen$())
+      )
         return undefined;
-    }
+      const f = this.state.questionFilters();
+      return {
+        programId,
+        page: this.state.questionPage() - 1,
+        size: 20,
+        sort: `${this.state.questionSort().key},${this.state.questionSort().dir}`,
+        q: f.q || undefined,
+        questionType:
+          f.questionType === 'SINGLE' || f.questionType === 'MULTIPLE'
+            ? f.questionType
+            : undefined,
+        difficulty:
+          f.difficulty === 'EASY' ||
+          f.difficulty === 'MEDIUM' ||
+          f.difficulty === 'HARD'
+            ? f.difficulty
+            : undefined,
+        status:
+          f.status === 'ACTIVE' || f.status === 'INACTIVE'
+            ? f.status
+            : undefined,
+        competencyId: positiveId(f.competencyId),
+      };
+    },
+  );
+  private readonly questionsData = serverData(
+    (query: ProgramQuestionQuery) => this.client.call(api.questions, { query }),
+    { params: () => this.questionQuery() },
+  );
+  private readonly quizzesData = serverData(
+    (query: { courseId: number; page: number; size: number; sort: string }) =>
+      this.client.call(this.quizApi.courseQuizList, { query }),
+    {
+      params: () =>
+        this.routeScreen$() === 'quizzes' && this.selectedCourseId$()
+          ? {
+              courseId: this.selectedCourseId$() as number,
+              page: this.state.quizPage() - 1,
+              size: 20,
+              sort: 'id,desc',
+            }
+          : undefined,
+    },
+  );
+  private readonly questionData = serverData(
+    (id: number) => this.client.call(api.question, { params: { id } }),
+    {
+      params: () =>
+        !this.integrationPending$() && this.state.editorOpen()
+          ? this.state.questionId()
+          : undefined,
+    },
+  );
+  readonly questions$ = this.questionsData.value;
+  readonly questionRows$ = computed(() => this.questions$()?.items ?? []);
+  readonly quizList$ = computed(() => this.quizzesData.value()?.items ?? []);
+  readonly quizTotal$ = computed(
+    () => this.quizzesData.value()?.totalElements ?? 0,
+  );
+  readonly quizPage$ = this.state.quizPage.asReadonly();
+  readonly editorOpen$ = this.state.editorOpen.asReadonly();
+  readonly questionDraft$ = this.questionData.value;
+  readonly questionLoading$ = this.questionData.isLoading;
+  readonly questionLoadError$ = this.questionData.error;
+  readonly questionFilters$ = this.state.questionFilters.asReadonly();
+  readonly questionPage$ = this.state.questionPage.asReadonly();
+  readonly questionSort$ = this.state.questionSort.asReadonly();
+  readonly selectedIds$ = this.state.selectedIds.asReadonly();
+  readonly isLoading$ = computed(
+    () =>
+      this.programsData.isLoading() ||
+      this.coursesData.isLoading() ||
+      this.courseData.isLoading() ||
+      this.competenciesData.isLoading() ||
+      (this.routeScreen$() === 'questions'
+        ? this.questionsData.isLoading()
+        : this.routeScreen$() === 'quizzes'
+          ? this.quizzesData.isLoading()
+          : this.configData.isLoading()),
+  );
+  readonly error$ = computed(
+    () =>
+      this.programsData.error() ??
+      this.coursesData.error() ??
+      this.courseData.error() ??
+      this.competenciesData.error() ??
+      (this.routeScreen$() === 'quizzes'
+        ? this.quizzesData.error()
+        : (this.configData.error() ?? this.questionsData.error())),
+  );
+  readonly poolRows$ = computed(() => {
+    const selected = (this.configDetail$()?.pool ?? []).map((p) => ({
+      id: p.questionId,
+      code: p.code,
+      contentPreview: p.contentPreview,
+      status: p.status,
+    }));
+    return [
+      ...selected,
+      ...this.questionRows$().filter(
+        (q) => !selected.some((p) => p.id === q.id),
+      ),
+    ];
   });
   private readonly questionSave = serverMutation(
-    (input: { id?: string; command: SaveQuestion }) =>
-      input.id
-        ? this.client.call(assessmentEndpoints.saveQuestion, {
-            params: { questionId: input.id },
-            body: input.command,
+    (command: ProgramQuestionRequest) => {
+      const draft = this.questionDraft$();
+      return draft
+        ? this.client.call(api.updateQuestion, {
+            params: { id: draft.id },
+            query: { expectedVersion: draft.rowVersion },
+            body: command,
           })
-        : this.client.call(assessmentEndpoints.createQuestion, {
-            body: input.command,
-          }),
+        : this.client.call(api.createQuestion, { body: command });
+    },
     {
       errors: 'alert',
-      success: (input) =>
-        input.id ? 'Đã cập nhật câu hỏi' : 'Đã thêm câu hỏi',
-      invalidates: this.refresh,
+      success: () => 'Đã lưu câu hỏi',
       onSuccess: () => {
         this.setEditorOpen(false);
         this.questionsData.reload();
       },
     },
   );
-  private readonly questionStatus = serverMutation(
-    (input: { id: string; status: 'active' | 'inactive' }) =>
-      this.client.call(assessmentEndpoints.questionStatus, {
-        params: { questionId: input.id },
-        body: { status: input.status },
-      }),
-    {
-      errors: 'toast',
-      success: () => 'Đã cập nhật trạng thái câu hỏi',
-      invalidates: this.refresh,
-      onSuccess: () => this.questionsData.reload(),
-    },
-  );
-  private readonly questionDelete = serverMutation(
-    (id: string) =>
-      this.client.call(assessmentEndpoints.deleteQuestion, {
-        params: { questionId: id },
-      }),
-    {
-      errors: 'toast',
-      success: () => 'Đã xóa câu hỏi',
-      invalidates: this.refresh,
-      onSuccess: () => this.questionsData.reload(),
-    },
-  );
-  private readonly quizSave = serverMutation(
-    (input: { id?: string; command: SaveQuizConfig }) =>
-      input.id
-        ? this.client.call(assessmentEndpoints.saveQuiz, {
-            params: { quizId: input.id },
-            body: input.command,
+  private readonly bulkMutation = serverMutation(
+    (input: { ids: number[]; action: 'ACTIVE' | 'INACTIVE' | 'delete' }) =>
+      input.action === 'delete'
+        ? this.client.call(api.bulkDeleteQuestions, {
+            body: { ids: input.ids },
           })
-        : this.client.call(assessmentEndpoints.createQuiz, {
-            body: input.command,
+        : this.client.call(api.bulkQuestionStatus, {
+            body: { ids: input.ids, status: input.action },
           }),
     {
       errors: 'toast',
-      success: () => 'Đã lưu cấu hình bài kiểm tra',
-      invalidates: this.refresh,
-      onSuccess: (quiz) => {
-        this.configData.reload();
-        void this.router.navigate(['/admin/quizzes', quiz.id]);
-      },
-    },
-  );
-  readonly isSaving$ = computed(
-    () =>
-      this.questionSave.isPending() ||
-      this.quizSave.isPending() ||
-      this.questionStatus.isPending() ||
-      this.questionDelete.isPending(),
-  );
-  readonly editorOpen$ = this.state.editorOpen.asReadonly();
-  readonly questionFilters$ = this.state.questionFilters.asReadonly();
-  readonly questionPage$ = this.state.questionPage.asReadonly();
-  readonly questionSort$ = this.state.questionSort.asReadonly();
-  readonly selectedIds$ = this.state.selectedIds.asReadonly();
-  readonly questionSaveError$ = this.questionSave.error;
-  readonly questionStats$ = computed(() => {
-    const rows = this.questions$()?.items ?? [];
-    return {
-      active: rows.filter((x) => x.status === 'active').length,
-      single: rows.filter((x) => x.type === 'single').length,
-      multiple: rows.filter((x) => x.type === 'multiple').length,
-      inactive: rows.filter((x) => x.status !== 'active').length,
-    };
-  });
-  readonly filteredQuestions$ = computed(() => {
-    const f = this.questionFilters$(),
-      sort = this.questionSort$();
-    const rows = (this.questions$()?.items ?? []).filter(
-      (x) =>
-        (!f.q ||
-          (x.code + ' ' + x.text)
-            .toLocaleLowerCase('vi')
-            .includes(f.q.toLocaleLowerCase('vi'))) &&
-        (!f.type || x.type === f.type) &&
-        (!f.difficulty || x.difficulty === f.difficulty) &&
-        (!f.competency || x.competency === f.competency) &&
-        (!f.lessonId || x.lessonId === f.lessonId) &&
-        (!f.status || x.status === f.status),
-    );
-    const value = (row: Question): string | number => {
-      if (sort.key === 'usedIn') return row.usedIn.length;
-      if (sort.key === 'difficulty')
-        return ['easy', 'medium', 'hard'].indexOf(row.difficulty);
-      return String(row[sort.key as keyof Question] ?? '');
-    };
-    return rows.sort(
-      (a, b) =>
-        String(value(a)).localeCompare(String(value(b)), 'vi', {
-          numeric: true,
-        }) * (sort.dir === 'asc' ? 1 : -1),
-    );
-  });
-  readonly questionRows$ = computed(() =>
-    this.filteredQuestions$().slice(
-      (this.questionPage$() - 1) * 10,
-      this.questionPage$() * 10,
-    ),
-  );
-  private readonly bulkMutation = serverMutation(
-    (input: { ids: string[]; action: 'active' | 'inactive' | 'delete' }) =>
-      input.ids.length
-        ? forkJoin(
-            input.ids.map((id) =>
-              input.action === 'delete'
-                ? this.client.call(assessmentEndpoints.deleteQuestion, {
-                    params: { questionId: id },
-                  })
-                : this.client.call(assessmentEndpoints.questionStatus, {
-                    params: { questionId: id },
-                    body: { status: input.action },
-                  }),
-            ),
-          )
-        : of([]),
-    {
-      errors: 'toast',
-      success: () => 'Đã cập nhật các câu hỏi đã chọn',
+      success: (_, result) => `Đã cập nhật ${result.affected} câu hỏi`,
       onSuccess: () => {
         this.setSelectedIds([]);
         this.questionsData.reload();
       },
     },
   );
+  private readonly quizSave = serverMutation(
+    (input: { command: QuizRequestV1; pool: QuizPoolRequestV1 }) => {
+      const receipt = this.state.saveReceipt();
+      const current =
+        receipt &&
+        (this.routeId$() === 'new' ||
+          receipt.quiz.id === positiveId(this.routeId$()))
+          ? receipt
+          : this.configDetail$();
+      const save = current
+        ? this.client.call(this.quizApi.updateQuiz, {
+            params: { id: current.quiz.id },
+            query: { expectedVersion: current.quiz.rowVersion },
+            body: input.command,
+          })
+        : this.client.call(this.quizApi.createQuiz, { body: input.command });
+      return save.pipe(
+        tap((detail) => this.setSaveReceipt(detail)),
+        switchMap((detail) => {
+          const before = detail.pool.map((p) => ({
+            questionId: p.questionId,
+            points: p.pointsOverride,
+          }));
+          const after = input.pool.items.map(({ questionId, points }) => ({
+            questionId,
+            points,
+          }));
+          return JSON.stringify(before) === JSON.stringify(after)
+            ? of(detail)
+            : this.client.call(
+                this.integrationPending$()
+                  ? this.quizApi.replacePool
+                  : api.replacePool,
+                {
+                  params: { id: detail.quiz.id },
+                  query: { expectedVersion: detail.quiz.rowVersion },
+                  body: input.pool,
+                },
+              );
+        }),
+        tap((detail) => this.setSaveReceipt(detail)),
+      );
+    },
+    {
+      errors: 'alert',
+      success: () => 'Đã lưu cấu hình và bộ câu hỏi',
+      onSuccess: (detail) => {
+        this.configData.reload();
+        void this.router.navigate(['/admin/quizzes', detail.quiz.id], {
+          queryParams: { courseId: detail.quiz.courseId },
+        });
+      },
+    },
+  );
+  private readonly quizState = serverMutation(
+    (action: 'publish' | 'close') => {
+      const receipt = this.state.saveReceipt();
+      const detail =
+        receipt && receipt.quiz.id === positiveId(this.routeId$())
+          ? receipt
+          : this.configDetail$();
+      if (!detail) throw new Error('Quiz detail is required');
+      const input = {
+        params: { id: detail.quiz.id },
+        body: { expectedVersion: detail.quiz.rowVersion },
+      };
+      return this.client.call(
+        action === 'publish'
+          ? this.quizApi.publishQuiz
+          : this.quizApi.closeQuiz,
+        input,
+      );
+    },
+    {
+      errors: 'alert',
+      success: () => 'Đã cập nhật trạng thái bài kiểm tra',
+      onSuccess: (detail) => {
+        this.setSaveReceipt(detail);
+        this.configData.reload();
+      },
+    },
+  );
+  readonly questionSaveError$ = this.questionSave.error;
+  readonly invalidQuizId$ = computed(
+    () =>
+      this.routeScreen$() === 'config' &&
+      this.routeId$() !== 'new' &&
+      !positiveId(this.routeId$()),
+  );
+  readonly quizSaveError$ = computed(
+    () => this.quizSave.error() ?? this.quizState.error(),
+  );
+  readonly partialSave$ = computed(
+    () => !!this.state.saveReceipt() && !!this.quizSave.error(),
+  );
   readonly isBulkSaving$ = this.bulkMutation.isPending;
+  readonly isSaving$ = computed(
+    () =>
+      this.questionSave.isPending() ||
+      this.quizSave.isPending() ||
+      this.quizState.isPending(),
+  );
+  private setSaveReceipt(value: QuizDetailV1 | undefined): void {
+    this.state.saveReceipt.set(value);
+  }
   setEditorOpen(value: boolean): void {
     this.state.editorOpen.set(value);
+  }
+  private setQuestionId(value: number | undefined): void {
+    this.state.questionId.set(value);
+  }
+  private setCourseId(value: number | undefined): void {
+    this.state.courseId.set(value);
+  }
+  private setCourseSearch(value: string): void {
+    this.state.courseSearch.set(value);
+  }
+  private setCoursePage(value: number): void {
+    this.state.coursePage.set(value);
   }
   setQuestionFilter(
     key: keyof ReturnType<typeof this.questionFilters$>,
@@ -273,32 +462,148 @@ export class AssessmentScreenStore {
   }
   setQuestionPage(page: number): void {
     this.state.questionPage.set(page);
+    this.setSelectedIds([]);
   }
   setQuestionSort(sort: DataTableSort): void {
-    this.state.questionSort.set(sort);
+    if (['id', 'code', 'updateTime'].includes(sort.key)) {
+      this.state.questionSort.set(sort);
+      this.setQuestionPage(1);
+    }
   }
-  setSelectedIds(ids: string[]): void {
+  setQuizPage(page: number): void {
+    this.state.quizPage.set(page);
+  }
+  setSelectedIds(ids: number[]): void {
     this.state.selectedIds.set(ids);
   }
-  toggleQuestion(id: string, checked: boolean): void {
+  toggleQuestion(id: number, checked: boolean): void {
     this.setSelectedIds(
       checked
         ? [...new Set([...this.selectedIds$(), id])]
         : this.selectedIds$().filter((x) => x !== id),
     );
   }
-  cancelQuestion(): void {
-    this.setEditorOpen(false);
+  private setProgramId(value: number | undefined): void {
+    this.state.programId.set(value);
   }
-  async bulkQuestions(action: 'active' | 'inactive' | 'delete'): Promise<void> {
-    if (!this.selectedIds$().length) return;
+  private setProgramSearch(value: string): void {
+    this.state.programSearch.set(value);
+  }
+  private setProgramPage(value: number): void {
+    this.state.programPage.set(value);
+  }
+  selectProgram(value: string): void {
+    if (this.editorOpen$() || this.isSaving$()) return;
+    this.setProgramId(positiveId(value));
+    this.setQuestionPage(1);
+  }
+  searchPrograms(value: string): void {
+    if (this.editorOpen$() || this.isSaving$()) return;
+    this.setProgramSearch(value);
+    this.setProgramId(undefined);
+    this.setProgramPage(0);
+    this.setQuestionPage(1);
+  }
+  nextProgramPage(delta: number): void {
+    const page = this.programs$();
+    if (!page || this.editorOpen$() || this.isSaving$()) return;
+    this.setProgramId(undefined);
+    this.setProgramPage(
+      Math.max(0, Math.min(page.totalPages - 1, page.page + delta)),
+    );
+    this.setQuestionPage(1);
+  }
+  selectCourse(value: string): void {
+    if (this.editorOpen$() || this.isSaving$()) return;
+    this.setCourseId(positiveId(value));
+    this.setQuestionPage(1);
+    this.setQuizPage(1);
+  }
+  searchCourses(value: string): void {
+    if (this.editorOpen$() || this.isSaving$()) return;
+    this.setCourseSearch(value);
+    this.setCoursePage(0);
+  }
+  nextCoursePage(delta: number): void {
+    const page = this.courses$();
+    if (page)
+      this.setCoursePage(
+        Math.max(0, Math.min(page.totalPages - 1, page.page + delta)),
+      );
+  }
+  editQuestion(id: number | null): void {
+    if (
+      this.integrationPending$() ||
+      !this.selectedProgramId$() ||
+      this.isSaving$()
+    )
+      return;
+    this.questionSave.reset();
+    this.setQuestionId(id ?? undefined);
+    this.setEditorOpen(true);
+  }
+  cancelQuestion(): void {
+    if (!this.isSaving$()) this.setEditorOpen(false);
+  }
+  retryQuestion(): void {
+    this.questionData.reload();
+  }
+  saveQuestion(command: ProgramQuestionRequest): void {
+    if (
+      !this.integrationPending$() &&
+      !this.isSaving$() &&
+      !this.questionLoading$() &&
+      !this.questionLoadError$()
+    )
+      this.questionSave.run(command);
+  }
+  saveQuiz(command: QuizRequestV1, pool: QuizPoolRequestV1): void {
+    if (!this.isSaving$() && !this.invalidQuizId$()) {
+      // Until BE supports program pools, preserve its existing pool while allowing settings edits.
+      const nextPool = this.integrationPending$()
+        ? {
+            items: (this.configDetail$()?.pool ?? []).map((p) => ({
+              questionId: p.questionId,
+              sortNo: p.sortNo,
+              points: p.pointsOverride,
+            })),
+          }
+        : pool;
+      this.quizSave.run({ command, pool: nextPool });
+    }
+  }
+  async changeQuizState(action: 'publish' | 'close'): Promise<void> {
+    if (this.isSaving$() || !this.configDetail$()) return;
+    const accepted = await firstValueFrom(
+      confirm(this.dialog, {
+        title:
+          action === 'publish'
+            ? 'Xuất bản bài kiểm tra?'
+            : 'Đóng bài kiểm tra?',
+        message:
+          action === 'publish'
+            ? 'Học viên đủ điều kiện có thể bắt đầu thi. Hãy lưu thay đổi trước khi xuất bản.'
+            : 'Các lượt đang làm sẽ được tự nộp với đáp án đã lưu.',
+        confirmLabel: action === 'publish' ? 'Xuất bản' : 'Đóng bài kiểm tra',
+        tone: 'warning',
+      }),
+    );
+    if (accepted) this.quizState.run(action);
+  }
+  async bulkQuestions(action: 'ACTIVE' | 'INACTIVE' | 'delete'): Promise<void> {
+    if (
+      this.integrationPending$() ||
+      !this.selectedIds$().length ||
+      this.isBulkSaving$()
+    )
+      return;
     if (
       action === 'delete' &&
       !(await firstValueFrom(
         confirm(this.dialog, {
           title: `Xóa ${this.selectedIds$().length} câu hỏi?`,
           message:
-            'Câu hỏi đang được dùng trong bài kiểm tra không thể xóa. Thao tác không thể hoàn tác.',
+            'Câu đang trong bộ đề không thể xóa. Lượt thi cũ được giữ nguyên.',
           confirmLabel: 'Xóa',
           tone: 'danger',
         }),
@@ -308,36 +613,13 @@ export class AssessmentScreenStore {
     this.bulkMutation.run({ ids: [...this.selectedIds$()], action });
   }
   retry(): void {
-    switch (this.routeScreen$()) {
-      case 'questions':
-        this.questionsData.reload();
-        break;
-      case 'config':
-        this.configData.reload();
-        break;
-      default:
-        this.quizListData.reload();
-    }
-  }
-  editQuestion(question: Question | null): void {
-    this.questionSave.reset();
-    this.setQuestionDraft(question ?? undefined);
-    this.setEditorOpen(true);
-  }
-  private setQuestionDraft(question: Question | undefined): void {
-    this.state.questionDraft.set(question);
-  }
-  readonly questionDraft$ = this.state.questionDraft.asReadonly();
-  saveQuestion(command: SaveQuestion, id?: string): void {
-    this.questionSave.run({ command, id });
-  }
-  saveQuiz(command: SaveQuizConfig, id?: string): void {
-    this.quizSave.run({ command, id });
-  }
-  changeQuestionStatus(id: string, status: 'active' | 'inactive'): void {
-    this.questionStatus.run({ id, status });
-  }
-  deleteQuestion(id: string): void {
-    this.questionDelete.run(id);
+    this.setSaveReceipt(undefined);
+    this.programsData.reload();
+    this.coursesData.reload();
+    this.competenciesData.reload();
+    this.courseData.reload();
+    this.questionsData.reload();
+    this.quizzesData.reload();
+    this.configData.reload();
   }
 }

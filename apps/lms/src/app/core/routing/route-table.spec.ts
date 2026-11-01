@@ -192,6 +192,12 @@ describe('route table', () => {
     ['learner', '/admin/courses', 'COURSE_MANAGEMENT'],
     ['instructor', '/admin/roles', 'ROLE_MANAGEMENT'],
     ['admin', '/learn', 'COURSE_LEARNING'],
+    ['learner', '/admin/catalog', 'COURSE_MANAGEMENT'],
+    ['learner', '/instructor', 'COURSE_MANAGEMENT'],
+    ['reportViewer', '/catalog', 'COURSE_LEARNING'],
+    ['reportViewer', '/leaderboard', 'LEARNING_PROGRESS'],
+    ['reportViewer', '/saved', 'COURSE_LEARNING'],
+    ['admin', '/certificates', 'LEARNING_PROGRESS'],
   ] as const)(
     'sends %s from %s to /403 with the function that grants it',
     async (user, url, menu) => {
@@ -224,9 +230,17 @@ describe('route table', () => {
 
   it('lets any signed-in user open the screens that belong to no function', async () => {
     signInAs('reportViewer');
-    for (const url of ['/profile', '/notifications', '/leaderboard']) {
+    for (const url of ['/profile', '/notifications']) {
       await harness.navigateByUrl(url);
       expect(router.url).toBe(url);
+    }
+  });
+
+  it('keeps personal mock-only integrations closed in a backend-only build even for a learner', async () => {
+    signInAs('learner');
+    for (const url of ['/saved', '/certificates', '/certificate/1']) {
+      await harness.navigateByUrl(url);
+      expect(router.url).toBe('/403');
     }
   });
 

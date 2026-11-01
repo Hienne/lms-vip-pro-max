@@ -86,7 +86,7 @@ describe('AppShell', () => {
           r.url.startsWith('/api/v1/me/learning/') ||
           r.url === '/api/v1/me/competency' ||
           r.url === '/api/v1/training-catalog/programs' ||
-          r.url.startsWith('/api/reports/'),
+          r.url.startsWith('/api/v1/reports/assessment/'),
       )
       .filter((r) => !r.cancelled)
       .forEach((r) => r.error(new ProgressEvent('error')));
@@ -117,7 +117,9 @@ describe('AppShell', () => {
   }
 
   const hrefs = (el: Element) =>
-    Array.from(el.querySelectorAll('nav a')).map((a) => a.getAttribute('href'));
+    Array.from(el.querySelectorAll('app-sidebar nav a')).map((a) =>
+      a.getAttribute('href'),
+    );
 
   it.each([
     [
@@ -535,7 +537,7 @@ describe('AppShell', () => {
 
     it.each([
       ['learner', '/catalog'],
-      ['viewer', '/reports/learners'],
+      ['viewer', '/reports/results'],
       ['admin', '/admin/courses'],
     ] as const)('sends a %s search to %s', async (role, path) => {
       signInAs(role);
@@ -543,7 +545,11 @@ describe('AppShell', () => {
       const input = el.querySelector<HTMLInputElement>('form input')!;
       input.value = ' core ';
       el.querySelector('form')!.dispatchEvent(new Event('submit'));
-      await vi.waitFor(() => expect(router.url).toBe(`${path}?q=core`));
+      await vi.waitFor(() =>
+        expect(router.url).toBe(
+          `${path}?${role === 'viewer' ? 'userId' : 'q'}=core`,
+        ),
+      );
     });
 
     it('ignores an empty search', async () => {

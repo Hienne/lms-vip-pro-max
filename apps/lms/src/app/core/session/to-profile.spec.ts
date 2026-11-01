@@ -6,6 +6,38 @@ describe('toProfile', () => {
     expect(toProfile(seedMe('000004')).userId).toBe('000004');
   });
 
+  it('keeps real authoring/reporting available when proposed mock endpoints are disabled', () => {
+    const profile = toProfile(
+      seedMe('000002'),
+      (endpoint) => endpoint.served !== 'mock',
+    );
+    expect(profile.menus).toEqual(
+      expect.arrayContaining(['QUESTION_BANK', 'QUIZ_MANAGEMENT', 'REPORTING']),
+    );
+  });
+
+  it('does not combine an instructor OWN grant with the GLOBAL scope of a learner for reports', () => {
+    const me = seedMe('000005');
+    const profile = toProfile({
+      ...me,
+      roleGrants: [
+        {
+          roleCode: 'INSTRUCTOR',
+          roleName: 'Giảng viên',
+          scope: { type: 'OWN' },
+        },
+        {
+          roleCode: 'LEARNER',
+          roleName: 'Học viên',
+          scope: { type: 'GLOBAL' },
+        },
+      ],
+    });
+    expect(profile.menus).not.toContain('REPORTING');
+    expect(profile.menus).not.toContain('COURSE_LEARNING');
+    expect(profile.menus).toContain('COURSE_MANAGEMENT');
+  });
+
   it('lists the functions the app has a screen for, in the backend order, as menus and as the nav', () => {
     const profile = toProfile(seedMe('000002'));
     expect(

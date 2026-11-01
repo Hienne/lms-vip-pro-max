@@ -37,7 +37,7 @@ export interface DataTableSort {
   imports: [Icon, NgTemplateOutlet, Pagination, Table, TableWrap],
   templateUrl: './data-table.html',
 })
-export class DataTable<T extends { readonly id: string }> {
+export class DataTable<T extends { readonly id: string | number }> {
   readonly columns = input.required<readonly DataTableColumn[]>();
   /** The rows of the current page. */
   readonly rows = input.required<readonly T[]>();

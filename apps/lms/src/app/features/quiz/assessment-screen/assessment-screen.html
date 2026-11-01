@@ -1,44 +1,151 @@
-@if (store.isLoading$()) {
+<ui-page-header
+  [title]="store.routeScreen$() === 'questions' ? 'Ngân hàng câu hỏi' : store.routeScreen$() === 'quizzes' ? 'Bài kiểm tra' : 'Cấu hình bài kiểm tra'"
+  [description]="store.routeScreen$() === 'questions' ? 'Quản lý câu hỏi dùng chung cho các khóa học trong cùng chương trình.' : 'Quản lý bài kiểm tra của khóa học; chọn câu hỏi từ chương trình tương ứng.'"
+>
+  <div slot="actions" class="assessment__actions">
+    @if (store.routeScreen$() === 'questions') {
+    <button
+      uiButton
+      variant="primary"
+      [disabled]="!store.selectedProgramId$() || store.isLoading$() || !!store.error$() || store.editorOpen$() || store.isSaving$()"
+      (click)="store.editQuestion(null)"
+    >
+      <ui-icon name="plus" size="sm" /> Thêm câu hỏi
+    </button>
+    } @else if (store.routeScreen$() === 'quizzes') {
+    <a
+      uiButton
+      variant="primary"
+      routerLink="/admin/quizzes/new"
+      [queryParams]="{courseId:store.selectedCourseId$()}"
+      [disabled]="!store.selectedCourseId$() || store.isLoading$() || !!store.error$()"
+    >
+      <ui-icon name="plus" size="sm" /> Tạo bài kiểm tra
+    </a>
+    }
+  </div>
+</ui-page-header>
+@if (store.routeScreen$() !== 'config') {
+<section uiCard padded class="stack assessment__section">
+  <div class="assessment__scope">
+    @if (store.routeScreen$() === 'questions') {
+    <ui-search
+      label="Tìm chương trình"
+      placeholder="Tìm chương trình…"
+      [value]="store.programSearch$()"
+      (searched)="store.searchPrograms($event)"
+    />
+    <ui-field label="Chương trình">
+      <select
+        uiSelect
+        aria-label="Chương trình quản lý"
+        [value]="store.selectedProgramId$() ?? ''"
+        [disabled]="store.editorOpen$() || store.isSaving$()"
+        (change)="store.selectProgram($any($event.target).value)"
+      >
+        <option value="" disabled>— Chọn chương trình —</option>
+        @for(program of store.programs$()?.items ?? []; track program.id) {
+        <option
+          [value]="program.id"
+          [selected]="program.id === store.selectedProgramId$()"
+        >
+          {{program.name}}
+        </option>
+        }
+      </select>
+    </ui-field>
+    @if ((store.programs$()?.totalPages ?? 0) > 1) {
+    <div class="row">
+      <button
+        uiButton
+        size="sm"
+        [disabled]="!store.programs$()?.page"
+        (click)="store.nextProgramPage(-1)"
+      >
+        Chương trình trước
+      </button>
+      <button
+        uiButton
+        size="sm"
+        [disabled]="(store.programs$()?.page ?? 0) + 1 >= (store.programs$()?.totalPages ?? 0)"
+        (click)="store.nextProgramPage(1)"
+      >
+        Chương trình sau
+      </button>
+    </div>
+    } } @else {
+    <ui-search
+      label="Tìm khóa học quản lý"
+      placeholder="Tìm khóa học…"
+      [value]="store.courseSearch$()"
+      (searched)="store.searchCourses($event)"
+    />
+    <ui-field label="Khóa học">
+      <select
+        uiSelect
+        aria-label="Khóa học quản lý"
+        [value]="store.selectedCourseId$() ?? ''"
+        [disabled]="store.editorOpen$() || store.isSaving$()"
+        (change)="store.selectCourse($any($event.target).value)"
+      >
+        <option value="">— Chọn khóa học —</option>
+        @for (course of store.courses$()?.items ?? []; track course.courseId) {
+        <option
+          [value]="course.courseId"
+          [selected]="course.courseId === store.selectedCourseId$()"
+        >
+          {{course.title}}
+        </option>
+        }
+      </select>
+    </ui-field>
+    @if ((store.courses$()?.totalPages ?? 0) > 1) {
+    <button
+      uiButton
+      size="sm"
+      [disabled]="!store.courses$()?.page"
+      (click)="store.nextCoursePage(-1)"
+    >
+      Khóa học trước
+    </button>
+    <button
+      uiButton
+      size="sm"
+      [disabled]="(store.courses$()?.page ?? 0) + 1 >= (store.courses$()?.totalPages ?? 0)"
+      (click)="store.nextCoursePage(1)"
+    >
+      Khóa học sau
+    </button>
+    } }
+  </div>
+</section>
+} @if (store.integrationPending$() && store.routeScreen$() === 'questions') {
+<ui-empty
+  title="Ngân hàng theo chương trình đang chờ kết nối API"
+  description="Chức năng chọn câu hỏi dùng chung trong chương trình cần được cập nhật trên hệ thống trước khi sử dụng."
+/>
+} @else if (store.isLoading$()) {
 <div class="assessment__loading" role="status">
-  <span uiSpinner></span><span class="sr-only">Đang tải bài kiểm tra</span>
+  <span uiSpinner></span><span class="sr-only">Đang tải dữ liệu</span>
 </div>
-} @else if (store.error$(); as error) {<ui-error-state
-  title="Không tải được dữ liệu bài kiểm tra"
+} @else if (store.error$(); as error) {
+<ui-error-state
+  title="Không tải được dữ liệu"
   [message]="error.message"
   (retry)="store.retry()"
-/>} @else { @switch (store.routeScreen$()) { @case ('questions') {
-<ui-page-header
-  title="Ngân hàng câu hỏi"
-  [description]="(store.questions$()?.totalElements ?? 0) + ' câu hỏi được lưu dưới dạng dữ liệu, tái sử dụng cho nhiều bài kiểm tra.'"
-  ><div slot="actions">
-    <a uiButton routerLink="/admin/import" [queryParams]="{type:'questions'}"
-      ><ui-icon name="upload" size="sm" />Nhập từ Excel/CSV</a
-    ><button uiButton variant="primary" (click)="store.editQuestion(null)">
-      <ui-icon name="plus" size="sm" />Thêm câu hỏi
-    </button>
-  </div></ui-page-header
->
-<div class="grid-4 assessment__stats">
-  <ui-kpi
-    icon="circle-help"
-    [value]="store.questionStats$().active"
-    label="Đang sử dụng"
-  /><ui-kpi
-    icon="circle-check"
-    [value]="store.questionStats$().single"
-    label="Một đáp án đúng"
-  /><ui-kpi
-    icon="list"
-    tone="info"
-    [value]="store.questionStats$().multiple"
-    label="Nhiều đáp án đúng"
-  /><ui-kpi
-    icon="archive"
-    tone="warning"
-    [value]="store.questionStats$().inactive"
-    label="Ngưng sử dụng"
-  />
-</div>
+/>
+} @else if(store.invalidQuizId$()){<ui-alert tone="danger"
+  >ID bài kiểm tra không hợp lệ.</ui-alert
+>} @else if (store.routeScreen$() === 'questions' ? !store.selectedProgramId$()
+: !store.selectedCourseId$()) {
+<ui-empty
+  [title]="store.routeScreen$() === 'questions' ? 'Chưa có chương trình được phép quản lý' : 'Chưa có khóa học được phép quản lý'"
+/>
+} @else { @switch (store.routeScreen$()) { @case ('questions') {
+<p class="assessment__count">
+  {{store.questions$()?.totalElements ?? 0}} câu hỏi ·
+  {{store.selectedProgramTitle$()}}
+</p>
 <section uiCard>
   <div uiCardHeader class="assessment__filters">
     <div class="row row--gap-3">
@@ -51,12 +158,12 @@
       <select
         uiSelect
         aria-label="Lọc loại câu hỏi"
-        [value]="store.questionFilters$().type"
-        (change)="store.setQuestionFilter('type',$any($event.target).value)"
+        [value]="store.questionFilters$().questionType"
+        (change)="store.setQuestionFilter('questionType',$any($event.target).value)"
       >
         <option value="">Loại: Tất cả</option>
-        <option value="single">Một đáp án</option>
-        <option value="multiple">Nhiều đáp án</option>
+        <option value="SINGLE">Một đáp án</option>
+        <option value="MULTIPLE">Nhiều đáp án</option>
       </select>
       <select
         uiSelect
@@ -65,32 +172,22 @@
         (change)="store.setQuestionFilter('difficulty',$any($event.target).value)"
       >
         <option value="">Độ khó: Tất cả</option>
-        <option value="easy">Dễ</option>
-        <option value="medium">Trung bình</option>
-        <option value="hard">Khó</option>
+        <option value="EASY">Dễ</option>
+        <option value="MEDIUM">Trung bình</option>
+        <option value="HARD">Khó</option>
       </select>
       <select
         uiSelect
-        aria-label="Lọc nhóm kiến thức"
-        [value]="store.questionFilters$().competency"
-        (change)="store.setQuestionFilter('competency',$any($event.target).value)"
+        aria-label="Lọc nhóm năng lực"
+        [value]="store.questionFilters$().competencyId"
+        (change)="store.setQuestionFilter('competencyId',$any($event.target).value)"
       >
-        <option value="">Nhóm kiến thức: Tất cả</option>
-        @for (x of store.options$()?.competencies ?? []; track x) {
-        <option [value]="x">{{x}}</option>
+        <option value="">Năng lực: Tất cả</option>
+        @for(x of store.competencies$();track x.id){
+        <option [value]="x.id">{{x.name}}</option>
         }
       </select>
-      <select
-        uiSelect
-        aria-label="Lọc bài học"
-        [value]="store.questionFilters$().lessonId"
-        (change)="store.setQuestionFilter('lessonId',$any($event.target).value)"
-      >
-        <option value="">Bài học: Tất cả</option>
-        @for (x of store.options$()?.lessons ?? []; track x.id) {
-        <option [value]="x.id">{{x.title}}</option>
-        }
-      </select>
+
       <select
         uiSelect
         aria-label="Lọc trạng thái"
@@ -98,29 +195,26 @@
         (change)="store.setQuestionFilter('status',$any($event.target).value)"
       >
         <option value="">Trạng thái: Tất cả</option>
-        <option value="active">Đang dùng</option>
-        <option value="inactive">Ngưng sử dụng</option>
+        <option value="ACTIVE">Đang dùng</option>
+        <option value="INACTIVE">Ngưng sử dụng</option>
       </select>
     </div>
-    <span class="assessment__muted"
-      >{{store.filteredQuestions$().length}} kết quả</span
-    >
   </div>
-  @if (store.selectedIds$().length) {
+  @if(store.selectedIds$().length){
   <div class="assessment__bulk">
     <strong>Đã chọn {{store.selectedIds$().length}}</strong
     ><button
       uiButton
       size="sm"
       [disabled]="store.isBulkSaving$()"
-      (click)="store.bulkQuestions('active')"
+      (click)="store.bulkQuestions('ACTIVE')"
     >
       Đang dùng</button
     ><button
       uiButton
       size="sm"
       [disabled]="store.isBulkSaving$()"
-      (click)="store.bulkQuestions('inactive')"
+      (click)="store.bulkQuestions('INACTIVE')"
     >
       Ngưng sử dụng</button
     ><button
@@ -130,7 +224,7 @@
       [disabled]="store.isBulkSaving$()"
       (click)="store.bulkQuestions('delete')"
     >
-      <ui-icon name="trash-2" size="sm" />Xóa
+      Xóa
     </button>
   </div>
   }
@@ -138,13 +232,16 @@
     caption="Ngân hàng câu hỏi"
     [columns]="questionColumns"
     [rows]="store.questionRows$()"
-    [total]="store.filteredQuestions$().length"
+    [total]="store.questions$()?.totalElements ?? 0"
     [sort]="store.questionSort$()"
     [page]="store.questionPage$()"
-    [pageSize]="10"
+    [pageSize]="20"
     (sortChange)="store.setQuestionSort($event)"
     (pageChange)="store.setQuestionPage($event)"
   >
+    <ng-template uiDataTableCell="code" [of]="store.questionRows$()" let-row>
+      <span class="assessment__code">{{row.code}}</span>
+    </ng-template>
     <ng-template uiDataTableCell="selected" [of]="store.questionRows$()" let-row
       ><input
         uiCheckbox
@@ -153,41 +250,32 @@
         [checked]="store.selectedIds$().includes(row.id)"
         (change)="store.toggleQuestion(row.id,$any($event.target).checked)"
     /></ng-template>
-    <ng-template uiDataTableCell="code" [of]="store.questionRows$()" let-row
-      ><span class="assessment__code">{{row.code}}</span></ng-template
-    >
-    <ng-template uiDataTableCell="text" [of]="store.questionRows$()" let-row
-      ><div class="assessment__question-text">{{row.text}}</div>
+    <ng-template
+      uiDataTableCell="contentPreview"
+      [of]="store.questionRows$()"
+      let-row
+      ><div class="assessment__question-text">{{row.contentPreview}}</div>
       <small class="assessment__muted"
-        >{{row.options.length}} phương án · {{row.correctOptionIds.length}}
-        đúng</small
+        >{{row.optionCount}} phương án · {{row.correctCount}} đúng</small
       ></ng-template
     >
-    <ng-template uiDataTableCell="type" [of]="store.questionRows$()" let-row
-      ><span uiBadge [tone]="row.type === 'single' ? 'neutral' : 'info'"
-        >{{row.type === 'single' ? 'Một đáp án' : 'Nhiều đáp án'}}</span
-      ></ng-template
+    <ng-template
+      uiDataTableCell="questionType"
+      [of]="store.questionRows$()"
+      let-row
+      >{{row.questionType === 'SINGLE' ? 'Một đáp án' : 'Nhiều đáp
+      án'}}</ng-template
     >
     <ng-template
       uiDataTableCell="difficulty"
       [of]="store.questionRows$()"
       let-row
-      ><span
-        uiBadge
-        [tone]="row.difficulty === 'hard' ? 'danger' : row.difficulty === 'easy' ? 'success' : 'warning'"
-        >{{row.difficulty === 'hard' ? 'Khó' : row.difficulty === 'easy' ? 'Dễ'
-        : 'Trung bình'}}</span
-      ></ng-template
-    >
-    <ng-template uiDataTableCell="usedIn" [of]="store.questionRows$()" let-row
-      >{{row.usedIn.length ? row.usedIn.length + ' bài thi' : '—'}}</ng-template
+      >{{row.difficulty === 'HARD' ? 'Khó' : row.difficulty === 'EASY' ? 'Dễ' :
+      'Trung bình'}}</ng-template
     >
     <ng-template uiDataTableCell="status" [of]="store.questionRows$()" let-row
-      ><span
-        uiBadge
-        [tone]="row.status === 'active' ? 'success' : 'neutral'"
-        dot
-        >{{row.status === 'active' ? 'Đang dùng' : 'Ngưng'}}</span
+      ><span uiBadge [tone]="row.status === 'ACTIVE' ? 'success' : 'neutral'"
+        >{{row.status === 'ACTIVE' ? 'Đang dùng' : 'Ngưng'}}</span
       ></ng-template
     >
     <ng-template uiDataTableCell="actions" [of]="store.questionRows$()" let-row
@@ -196,16 +284,12 @@
         size="sm"
         variant="ghost"
         [attr.aria-label]="'Sửa câu hỏi ' + row.code"
-        (click)="store.editQuestion(row)"
+        (click)="store.editQuestion(row.id)"
       >
         <ui-icon name="pen-line" size="sm" />Sửa
       </button></ng-template
     >
-    <ui-empty slot="empty" icon="circle-help" title="Không có câu hỏi phù hợp"
-      ><button uiButton variant="primary" (click)="store.editQuestion(null)">
-        Thêm câu hỏi
-      </button></ui-empty
-    >
+    <ui-empty slot="empty" title="Không có câu hỏi phù hợp" />
   </ui-data-table>
 </section>
 <ng-template
@@ -216,13 +300,22 @@
   uiDrawerBusyLabel="Đang lưu câu hỏi…"
   (uiDrawerDismiss)="store.cancelQuestion()"
 >
+  @if(store.questionLoading$()){<span
+    uiSpinner
+    aria-label="Đang tải câu hỏi"
+  ></span
+  >} @else if(store.questionLoadError$();as error){<ui-error-state
+    [message]="error.message"
+    (retry)="store.retryQuestion()"
+  />} @else {
   <form
     id="question-form"
     class="stack"
     novalidate
     (submit)="questionSubmit($event)"
   >
-    @if (store.questionSaveError$(); as error) {<ui-alert tone="danger"
+    <p>Chương trình: {{store.selectedProgramTitle$()}}</p>
+    @if(store.questionSaveError$();as error){<ui-alert tone="danger"
       >{{error.message}}</ui-alert
     >}
     <div class="assessment__form-grid">
@@ -240,14 +333,10 @@
     </ui-field>
     <fieldset class="assessment__options">
       <legend>
-        Phương án & đáp án đúng <span class="assessment__required">*</span
-        ><small>
-          — {{questionValue().type === 'single' ? 'chọn 1 đáp án đúng' : 'chọn ≥
-          2 đáp án đúng'}}</small
-        >
+        Phương án & đáp án đúng · {{questionValue().type === 'single' ? 'chọn 1'
+        : 'chọn ít nhất 2'}}
       </legend>
-      @for (option of questionValue().options; track option.id; let i = $index)
-      {
+      @for(option of questionValue().options;track option.id;let i=$index){
       <div class="assessment__option-edit">
         <label class="assessment__correct"
           ><input
@@ -256,47 +345,36 @@
             [attr.aria-label]="'Phương án ' + letters[i] + ' là đáp án đúng'"
             [checked]="questionValue().correctOptionIds.includes(option.id)"
             (change)="setCorrect(option.id,$any($event.target).checked)"
-          /><span uiBadge outline>{{letters[i]}}</span></label
-        >
-        <div class="assessment__option-input">
-          <input
-            uiInput
-            [attr.aria-label]="'Nội dung phương án ' + letters[i]"
-            placeholder="Nội dung phương án"
-            [formField]="questionForm.options[i].text"
-          />@if(questionForm.options[i].text().touched()){@for(error of
-          questionForm.options[i].text().errors();track $index){
-          <p class="assessment__error">{{error.message}}</p>
-          }}
-        </div>
-        @if (questionValue().options.length > 2) {<button
+          /><span>{{letters[i]}}</span></label
+        ><input
+          uiInput
+          [attr.aria-label]="'Nội dung phương án ' + letters[i]"
+          [formField]="questionForm.options[i].text"
+        />@if(questionValue().options.length > 2){<button
           uiIconButton
+          type="button"
           [label]="'Xóa phương án ' + letters[i]"
           (click)="removeOption(option.id)"
         >
-          <ui-icon name="x" size="sm" /></button
+          <ui-icon name="trash-2" size="sm" /></button
         >}
       </div>
-      } @if (questionValue().options.length < 8) {<button
+      } @if(questionValue().options.length < 10){<button
         uiButton
+        type="button"
         size="sm"
-        variant="ghost"
         (click)="addOption()"
       >
-        <ui-icon name="plus" size="sm" />Thêm phương án</button
-      >} @if (questionForm().touched() ||
-      questionForm.correctOptionIds().touched()) {@for (error of
-      questionForm.correctOptionIds().errors(); track $index) {
+        Thêm phương án</button
+      >} @if(questionForm().touched()){@for(error of
+      questionForm.correctOptionIds().errors();track $index){
       <p class="assessment__error">{{error.message}}</p>
       }}
     </fieldset>
-    <ui-field
-      label="Giải thích đáp án"
-      hint="Hiển thị khi học viên xem lại bài (theo cấu hình quyền xem đáp án)."
-    >
+    <ui-field label="Giải thích đáp án">
       <textarea
         uiTextarea
-        rows="2"
+        rows="3"
         [formField]="questionForm.explanation"
       ></textarea>
     </ui-field>
@@ -307,26 +385,28 @@
           <option value="medium">Trung bình</option>
           <option value="hard">Khó</option>
         </select></ui-field
-      ><ui-field label="Nhóm kiến thức" required
+      >
+      <ui-field label="Nhóm năng lực" required
         ><select uiSelect [formField]="questionForm.competency">
-          @for (x of store.options$()?.competencies ?? []; track x) {
-          <option [value]="x">{{x}}</option>
+          <option value="">— Chọn nhóm năng lực —</option>
+          @for(x of store.competencies$();track x.id){
+          <option
+            [value]="x.id"
+            [disabled]="x.status !== 'ACTIVE' && questionValue().competency !== '' + x.id"
+          >
+            {{x.name}}{{x.status === 'INACTIVE' ? ' (ngưng dùng)' : ''}}
+          </option>
           }
         </select></ui-field
-      ><ui-field label="Lĩnh vực" required
-        ><select uiSelect [formField]="questionForm.domainId">
-          @for (x of store.options$()?.domains ?? []; track x.id) {
-          <option [value]="x.id">{{x.name}}</option>
-          }
-        </select></ui-field
-      ><ui-field label="Bài học liên quan"
-        ><select uiSelect [formField]="questionForm.lessonId">
-          <option value="">— Không gắn bài —</option>
-          @for (x of store.options$()?.lessons ?? []; track x.id) {
-          <option [value]="x.id">{{x.title}}</option>
-          }
-        </select></ui-field
-      ><ui-field label="Trạng thái sử dụng"
+      >
+      <ui-field label="Điểm mặc định" required
+        ><input
+          uiInput
+          type="number"
+          step="0.01"
+          [formField]="questionForm.points"
+      /></ui-field>
+      <ui-field label="Trạng thái sử dụng"
         ><select uiSelect [formField]="questionForm.status">
           <option value="active">Đang dùng</option>
           <option value="inactive">Ngưng sử dụng</option>
@@ -336,84 +416,68 @@
     <details class="assessment__preview">
       <summary>Xem trước như học viên</summary>
       <div class="stack">
-        <strong>{{questionValue().text || 'Nội dung câu hỏi'}}</strong>
-        <p class="assessment__muted">
-          {{questionValue().type === 'multiple' ? 'Chọn tất cả đáp án đúng' :
-          'Chọn 1 đáp án'}}
-        </p>
-        @for (option of questionValue().options; track option.id; let i =
-        $index) { @if (option.text) {<ui-option-card
-          [title]="option.text"
-          [letter]="letters[i]"
-          ><input
-            [type]="questionValue().type === 'multiple' ? 'checkbox' : 'radio'"
-            name="preview"
-            disabled /></ui-option-card
-        >} }
+        <strong>{{questionValue().text}}</strong>@for(option of
+        questionValue().options;track option.id;let i=$index){
+        <p>{{letters[i]}}. {{option.text}}</p>
+        }
       </div>
     </details>
-  </form> </ng-template
-><ng-template #questionFooter
+  </form>
+  }
+</ng-template>
+<ng-template #questionFooter
   ><ui-form-actions
     formId="question-form"
     submitLabel="Lưu câu hỏi"
     cancelLabel="Hủy"
-    [saving]="store.isSaving$()"
+    [saving]="store.isSaving$() || store.questionLoading$()"
     (cancel)="store.cancelQuestion()"
 /></ng-template>
 } @case ('quizzes') {
-<ui-page-header
-  title="Bài kiểm tra"
-  description="Cấu hình thời gian, số câu, điểm đạt, số lần thi, trộn đề và quyền xem đáp án — thay đổi có hiệu lực ngay."
-  ><a slot="actions" uiButton variant="primary" routerLink="/admin/quizzes/new"
-    ><ui-icon name="plus" size="sm" />Tạo bài kiểm tra</a
-  ></ui-page-header
->
+<p class="assessment__count">
+  {{store.quizTotal$()}} bài kiểm tra · {{store.selectedCourseTitle$()}}
+</p>
 <section uiCard>
   <ui-data-table
     caption="Bài kiểm tra"
     [columns]="quizColumns"
     [rows]="store.quizList$()"
-    [total]="store.quizList$().length"
-    [pageSize]="50"
-    ><ng-template uiDataTableCell="title" [of]="store.quizList$()" let-row
-      ><strong>{{row.title}}</strong>
-      <div class="assessment__muted">{{row.courseTitle}}</div></ng-template
-    ><ng-template uiDataTableCell="passRate" [of]="store.quizList$()" let-row
-      >{{row.passRate === null ? '—' : row.passRate + '%'}}</ng-template
-    ><ng-template uiDataTableCell="status" [of]="store.quizList$()" let-row
-      ><span uiBadge [tone]="row.status === 'published' ? 'success' : 'neutral'"
-        >{{row.status === 'published' ? 'Đã công bố' : 'Bản nháp'}}</span
+    [total]="store.quizTotal$()"
+    [page]="store.quizPage$()"
+    [pageSize]="20"
+    (pageChange)="store.setQuizPage($event)"
+  >
+    <ng-template uiDataTableCell="status" [of]="store.quizList$()" let-row
+      ><span uiBadge [tone]="row.status === 'PUBLISHED' ? 'success' : 'neutral'"
+        >{{row.status === 'PUBLISHED' ? 'Đã xuất bản' : row.status === 'CLOSED'
+        ? 'Đã đóng' : 'Bản nháp'}}</span
       ></ng-template
-    ><ng-template uiDataTableCell="actions" [of]="store.quizList$()" let-row
+    >
+    <ng-template uiDataTableCell="actions" [of]="store.quizList$()" let-row
       ><a
         uiButton
         size="sm"
         variant="ghost"
         [routerLink]="['/admin/quizzes',row.id]"
-        ><ui-icon name="settings" size="sm" />Cấu hình</a
+        [queryParams]="{courseId:row.courseId}"
+        >Cấu hình</a
       ></ng-template
-    ></ui-data-table
-  >
+    >
+  </ui-data-table>
 </section>
 } @case ('config') {
 <ui-breadcrumb
   [items]="[{label:'Bài kiểm tra',href:'/admin/quizzes'},{label:store.config$()?.title || 'Bài mới'}]"
 />
-<ui-page-header
-  [title]="store.routeId$() === 'new' ? 'Tạo bài kiểm tra' : 'Cấu hình bài kiểm tra'"
-  description="Thay đổi thời gian thi, số lần thi, điểm đạt… có hiệu lực ngay với lượt thi mới, không cần triển khai lại."
-  ><button
-    slot="actions"
-    uiButton
-    type="submit"
-    form="quiz-config"
-    variant="primary"
-    [disabled]="store.isSaving$()"
-  >
-    <ui-icon name="check" size="sm" />Lưu cấu hình
-  </button></ui-page-header
->
+@if(store.quizSaveError$();as error){<ui-alert tone="danger"
+  >{{error.message}}@if(store.partialSave$()){
+  <p>
+    Cấu hình đã được ghi trước khi bước tiếp theo thất bại. Dữ liệu form vẫn
+    được giữ; bấm lưu lại để tiếp tục với phiên bản vừa nhận, hoặc tải lại để
+    kiểm tra.
+  </p>
+  }</ui-alert
+>}
 <form
   id="quiz-config"
   class="assessment__config"
@@ -423,38 +487,36 @@
   <div class="stack stack--gap-6">
     <section uiCard padded class="stack">
       <h2>Thông tin chung</h2>
+      <p>{{store.selectedCourseTitle$()}}</p>
       <ui-field label="Tên bài kiểm tra" required
         ><input uiInput [formField]="configForm.title" /></ui-field
-      ><ui-field label="Khóa học" required
-        ><select uiSelect [formField]="configForm.courseId">
-          <option value="">— Chọn khóa học —</option>
-          @for(x of store.options$()?.courses ?? []; track x.id){
-          <option [value]="x.id">{{x.title}}</option>
-          }
-        </select></ui-field
-      >
+      ><ui-field label="Mô tả">
+        <textarea uiTextarea [formField]="configForm.description"></textarea>
+      </ui-field>
       <div class="assessment__form-grid">
+        <ui-field label="Loại bài kiểm tra"
+          ><select uiSelect [formField]="configForm.quizType">
+            <option value="PRACTICE">Luyện tập</option>
+            <option value="FINAL_EXAM">Kiểm tra cuối khóa</option>
+          </select></ui-field
+        >
         <ui-field label="Thời gian làm bài (phút)"
+          ><input uiInput type="number" [formField]="configForm.minutes"
+        /></ui-field>
+        <ui-field label="Số câu mỗi lượt"
+          ><input uiInput type="number" [formField]="configForm.questionCount"
+        /></ui-field>
+        <ui-field label="Điểm đạt tối thiểu (%)"
           ><input
             uiInput
             type="number"
-            [formField]="configForm.minutes" /></ui-field
-        ><ui-field label="Số câu mỗi lượt"
-          ><input
-            uiInput
-            type="number"
-            [formField]="configForm.questionCount" /></ui-field
-        ><ui-field label="Điểm đạt tối thiểu (%)"
-          ><input
-            uiInput
-            type="number"
-            [formField]="configForm.passPct" /></ui-field
-        ><ui-field label="Số lần thi tối đa"
-          ><input
-            uiInput
-            type="number"
-            [formField]="configForm.maxAttempts" /></ui-field
-        ><ui-field label="Chờ giữa hai lượt (giờ)"
+            step="0.01"
+            [formField]="configForm.passPct"
+        /></ui-field>
+        <ui-field label="Số lần thi tối đa"
+          ><input uiInput type="number" [formField]="configForm.maxAttempts"
+        /></ui-field>
+        <ui-field label="Chờ giữa hai lượt (giờ)"
           ><input
             uiInput
             type="number"
@@ -485,43 +547,86 @@
     </section>
     <section uiCard padded class="stack">
       <h2>Bộ câu hỏi</h2>
-      <p class="assessment__muted">
+      <p>
+        Chương trình: <strong>{{store.selectedProgramTitle$()}}</strong>. Có thể
+        dùng câu hỏi chung của các khóa học trong chương trình này.
+      </p>
+      @if (store.integrationPending$()) {
+      <ui-alert
+        >Bộ câu hỏi hiện tại được giữ nguyên. Chọn thêm câu hỏi trong chương
+        trình sẽ khả dụng khi hệ thống cập nhật hỗ trợ.</ui-alert
+      >
+      } @if (!store.selectedProgramId$()) {
+      <ui-alert
+        >Khóa học chưa gắn chương trình. Hãy cập nhật chương trình của khóa học
+        trước khi chọn câu hỏi.</ui-alert
+      >
+      } @if (!store.integrationPending$()) {
+      <ui-search
+        label="Tìm câu hỏi trong chương trình"
+        placeholder="Tìm mã hoặc nội dung câu hỏi…"
+        [value]="store.questionFilters$().q"
+        (searched)="store.setQuestionFilter('q',$event)"
+      />
+      }
+      <p>
         Đã chọn {{configValue().questionIds.length}} câu · mỗi lượt lấy
-        {{configValue().questionCount}} câu.
+        {{configValue().questionCount}} câu. Bản nháp được phép lưu khi bộ câu
+        chưa đủ; hệ thống kiểm tra lại khi xuất bản.
       </p>
       <fieldset class="assessment__pool">
         <legend class="sr-only">Chọn câu hỏi vào bộ đề</legend>
-        @for (q of store.questions$()?.items ?? []; track q.id){<label
+        @for(q of store.poolRows$();track q.id){<label
           class="assessment__pool-row"
           ><input
             uiCheckbox
             type="checkbox"
-            [checked]="configValue().questionIds.includes(q.id)"
+            [checked]="poolSelected(q.id)"
+            [disabled]="store.integrationPending$()"
             (change)="selectPool(q.id,$any($event.target).checked)"
           /><span
-            ><strong>{{q.code}} · {{q.text}}</strong
+            ><strong>{{q.code}} · {{q.contentPreview}}</strong
             ><small
-              >{{q.competency}} · {{q.status === 'active' ? 'Đang dùng' : 'Ngưng
-              sử dụng'}}</small
+              >{{q.status === 'ACTIVE' ? 'Đang dùng' : 'Ngưng sử dụng'}}</small
             ></span
           ></label
-        >}@empty{<ui-empty title="Chưa có câu hỏi" />}
+        >}@empty{
+        <p>Chưa có câu hỏi.</p>
+        }
       </fieldset>
-      @if(configForm().touched()){@for(error of
-      configForm.questionIds().errors(); track $index){
-      <p class="assessment__error">{{error.message}}</p>
-      }}
+      <div class="row">
+        <button
+          uiButton
+          type="button"
+          size="sm"
+          [disabled]="store.questionPage$() <= 1"
+          (click)="store.setQuestionPage(store.questionPage$()-1)"
+        >
+          Trang trước</button
+        ><span
+          >Trang {{store.questionPage$()}} / {{store.questions$()?.totalPages ??
+          0}}</span
+        ><button
+          uiButton
+          type="button"
+          size="sm"
+          [disabled]="store.questionPage$() >= (store.questions$()?.totalPages ?? 0)"
+          (click)="store.setQuestionPage(store.questionPage$()+1)"
+        >
+          Trang sau
+        </button>
+      </div>
     </section>
   </div>
   <aside class="stack stack--gap-6">
     <section uiCard padded class="stack">
       <h2>Thời gian & quyền xem</h2>
-      <ui-field label="Mở đề" required
+      <ui-field label="Mở đề" hint="Để trống nếu không giới hạn."
         ><input
           uiInput
           type="datetime-local"
           [formField]="configForm.openAt" /></ui-field
-      ><ui-field label="Đóng đề" required
+      ><ui-field label="Đóng đề" hint="Để trống nếu không giới hạn."
         ><input
           uiInput
           type="datetime-local"
@@ -533,44 +638,70 @@
           <option value="after_close">Sau khi đóng đề</option>
           <option value="never">Không cho xem</option>
         </select></ui-field
-      ><ui-field label="Trạng thái"
-        ><select uiSelect [formField]="configForm.status">
-          <option value="published">Đã công bố</option>
-          <option value="draft">Bản nháp</option>
+      >
+      <ui-field label="Cách chấm câu nhiều đáp án"
+        ><select uiSelect [formField]="configForm.scoringMode">
+          <option value="ALL_OR_NOTHING">Đúng toàn bộ mới có điểm</option>
+          <option value="PARTIAL">Chấm điểm từng phần</option>
         </select></ui-field
+      ><ui-field label="Điểm cuối của bài kiểm tra"
+        ><select uiSelect [formField]="configForm.scoreMethod">
+          <option value="BEST">Điểm cao nhất</option>
+          <option value="LAST">Lượt gần nhất</option>
+        </select></ui-field
+      ><ui-field label="Gia hạn nộp bài (giây)"
+        ><input
+          uiInput
+          type="number"
+          [formField]="configForm.graceSeconds" /></ui-field
+      ><label class="assessment__check"
+        ><input
+          uiCheckbox
+          type="checkbox"
+          [formField]="configForm.allowRetakeAfterPass"
+        />Cho phép thi lại sau khi đạt</label
+      ><label class="assessment__check"
+        ><input
+          uiCheckbox
+          type="checkbox"
+          [formField]="configForm.requireLessonsCompleted"
+        />Yêu cầu hoàn thành các bài học trước</label
       >
     </section>
     <section uiCard padded class="stack">
-      <h2>Tóm tắt cấu hình</h2>
-      <dl class="assessment__summary">
-        <div>
-          <dt>Thời gian</dt>
-          <dd>{{configValue().minutes}} phút</dd>
-        </div>
-        <div>
-          <dt>Điểm đạt</dt>
-          <dd>≥ {{configValue().passPct}}%</dd>
-        </div>
-        <div>
-          <dt>Câu / Bộ câu</dt>
-          <dd>
-            {{configValue().questionCount}} /
-            {{configValue().questionIds.length}}
-          </dd>
-        </div>
-        <div>
-          <dt>Số lượt tối đa</dt>
-          <dd>{{configValue().maxAttempts}}</dd>
-        </div>
-      </dl>
+      <h2>Lưu & xuất bản</h2>
+      <p>
+        {{store.config$()?.status === 'PUBLISHED' ? 'Đã xuất bản' :
+        store.config$()?.status === 'CLOSED' ? 'Đã đóng' : 'Bản nháp'}}
+      </p>
       <button
         uiButton
-        variant="primary"
         type="submit"
+        variant="primary"
         [disabled]="store.isSaving$()"
       >
         Lưu cấu hình
       </button>
+      @if(store.config$();as config){@if(config.status !== 'PUBLISHED'){<button
+        uiButton
+        type="button"
+        [disabled]="store.isSaving$() || configDirty()"
+        (click)="store.changeQuizState('publish')"
+      >
+        Xuất bản</button
+      >}@else{<button
+        uiButton
+        type="button"
+        variant="danger-ghost"
+        [disabled]="store.isSaving$() || configDirty()"
+        (click)="store.changeQuizState('close')"
+      >
+        Đóng bài kiểm tra</button
+      >}}
+      <p class="assessment__muted">
+        Lưu thay đổi trước khi xuất bản hoặc đóng đề. Quyền và điều kiện xuất
+        bản được hệ thống kiểm tra.
+      </p>
     </section>
   </aside>
 </form>
