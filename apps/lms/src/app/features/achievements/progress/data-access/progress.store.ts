@@ -70,6 +70,8 @@ export interface ProgressRow {
   readonly pct: number;
   readonly requiredDone: string;
   readonly completedLate: boolean;
+  /** The server's best score on the course's final exam; null when none was graded. */
+  readonly bestScore: number | null;
   readonly link: string;
 }
 
@@ -342,6 +344,7 @@ function toRow(card: CourseCard): ProgressRow {
     pct: Math.round(card.progressPercent ?? 0),
     requiredDone: `${card.completedRequiredLessonCount ?? 0}/${required}`,
     completedLate: card.deadlineStatus === 'completed_late',
+    bestScore: card.bestScorePercent ?? null,
     link: `/course/${card.courseId}`,
   };
 }

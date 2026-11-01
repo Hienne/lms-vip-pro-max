@@ -228,8 +228,8 @@
     </ng-template>
     <ng-template uiDataTableCell="bestScore" [of]="store.rows$()" let-row>
       <span class="learning-progress__num">
-        @if (row.card.bestScorePercent != null) { {{ row.card.bestScorePercent |
-        fmtPct: 2 }} } @else { — }
+        @if (row.bestScore !== null) { {{ row.bestScore | fmtPct: 2 }} } @else {
+        — }
       </span>
     </ng-template>
   </ui-data-table>

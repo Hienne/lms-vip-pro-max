@@ -464,7 +464,7 @@ describe('LearningProgress', () => {
       const backend = TestBed.inject(MockBackend);
       handle.mockImplementation((e, request) => {
         const reply = MockBackend.prototype.handle.call(backend, e, request);
-        if (e !== learnerEndpoints.progressSummary) return reply;
+        if (e !== learnerEndpoints.progressSummary || !reply) return reply;
         const body = reply.body as { data: Record<string, unknown> };
         return {
           ...reply,
