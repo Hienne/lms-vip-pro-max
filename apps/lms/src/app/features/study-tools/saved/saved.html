@@ -9,55 +9,62 @@
     [selected]="store.tab$()"
     (selectedChange)="store.setTab($event)"
   >
-    @for(tab of store.tabs$();track tab.id){
+    @for (tab of store.tabs$(); track tab.id) {
     <div [uiTabPanel]="tab.id">
-      @if(store.isLoading$()){
+      @if (store.isLoading$()) {
       <p class="saved__status" role="status">Đang tải mục đã lưu…</p>
-      }@else if(store.error$();as error){<ui-error-state
-        [message]="error.message"
-        (retry)="store.retry()"
-      />}@else{
+      } @else if (store.error$(); as error) {
+      <ui-error-state [message]="error.message" (retry)="store.retry()" />
+      } @else {
       <ul class="saved__list">
-        @for(item of store.items$();track item.id){
+        @for (row of store.rows$(); track row.item.id) {
         <li class="saved__row">
-          <button class="saved__open" (click)="store.openAtAnchor(item)">
-            <span class="saved__icon"
-              ><ui-icon
-                [name]="item.anchor.type === 'video' ? 'video' : 'file-text'"
-                size="sm" /></span
-            ><span class="saved__body"
-              ><strong>{{item.text ?? item.label}}</strong
-              ><small
-                >{{item.lessonTitle}} · @if(item.anchor.type === 'video'){Video
-                {{(item.anchor.second ?? 0) | fmtTime}}}@else{Trang
-                {{item.anchor.page}}} · {{item.createTime|fmtRelative}}</small
-              ></span
-            ><ui-icon name="chevron-right" size="sm" /></button
-          ><button
+          <a
+            class="saved__open"
+            [routerLink]="row.link"
+            [queryParams]="row.query"
+          >
+            <span class="saved__body">
+              <strong>{{ row.title }}</strong>
+              <small>
+                {{ row.item.lessonTitle }} · @if (row.where) {{{ row.where }} ·
+                } {{ row.item.createTime | fmtRelative }}
+              </small>
+            </span>
+            <ui-icon name="chevron-right" size="sm" />
+          </a>
+          <button
             uiIconButton
-            [label]="'Xóa ' + (item.text ?? item.label ?? 'mục đã lưu')"
+            variant="danger"
+            [label]="'Xóa ' + row.title"
             [disabled]="store.isSaving$()"
-            (click)="store.remove(item)"
+            (click)="store.remove(row.item)"
           >
             <ui-icon name="trash-2" size="sm" />
           </button>
         </li>
-        }@empty{
+        } @empty {
         <li>
           <ui-empty
-            [icon]="store.tab$() === 'notes' ? 'notebook-pen' : 'bookmark'"
-            title="Chưa có mục nào"
+            variant="inline"
+            title="Chưa có mục nào."
             description="Trong bài học, dùng tab Ghi chú hoặc nút đánh dấu trên tài liệu để lưu lại."
-          />
+          >
+            <a uiButton variant="ghost" size="sm" routerLink="/learn">
+              Vào học
+            </a>
+          </ui-empty>
         </li>
         }
       </ul>
-      @if(store.total$()>20){<ui-pagination
+      @if (store.total$() > pageSize) {
+      <ui-pagination
         [total]="store.total$()"
-        [page]="store.page$()+1"
-        [pageSize]="20"
-        (pageChange)="store.setPage($event-1)"
-      />}}
+        [page]="store.page$() + 1"
+        [pageSize]="pageSize"
+        (pageChange)="store.setPage($event - 1)"
+      />
+      } }
     </div>
     }
   </ui-tabs>

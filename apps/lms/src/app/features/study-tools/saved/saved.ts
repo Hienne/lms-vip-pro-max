@@ -1,10 +1,11 @@
 import { Component, inject } from '@angular/core';
+import { RouterLink } from '@angular/router';
 import {
+  Button,
   Card,
   Empty,
   ErrorState,
   FmtRelativePipe,
-  FmtTimePipe,
   Icon,
   IconButton,
   PageHeader,
@@ -12,20 +13,21 @@ import {
   Tabs,
   TabPanel,
 } from '@lms/ui';
-import { SavedStore } from './data-access/saved.store';
+import { SAVED_PAGE_SIZE, SavedStore } from './data-access/saved.store';
 @Component({
   selector: 'app-saved',
   imports: [
+    Button,
     Card,
     Empty,
     ErrorState,
     FmtRelativePipe,
-    FmtTimePipe,
     Icon,
     IconButton,
     PageHeader,
     Pagination,
     Tabs,
+    RouterLink,
     TabPanel,
   ],
   providers: [SavedStore],
@@ -34,4 +36,5 @@ import { SavedStore } from './data-access/saved.store';
 })
 export class Saved {
   protected readonly store = inject(SavedStore);
+  protected readonly pageSize = SAVED_PAGE_SIZE;
 }

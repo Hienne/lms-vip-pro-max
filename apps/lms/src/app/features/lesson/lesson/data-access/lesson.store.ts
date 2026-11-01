@@ -34,7 +34,7 @@ import { FileSaver } from '../../../../core/files/file-saver';
 import { EndpointClient } from '../../../../core/http/endpoint-client';
 import { readLearnerCourse } from '../../../../core/learning/read-learner-course';
 import { SessionStore } from '../../../../core/session/session.store';
-import { clock } from '../anchor';
+import { clock } from '../../../../shared/learning/anchor';
 import type { BlockJump } from '../components/pdf-block/pdf-block';
 import { lessonNotes } from './lesson-notes';
 import { StudyChannel, type ClaimTarget } from './study-channel';

@@ -12,7 +12,7 @@ import {
 } from '@angular/core';
 import { Button, Icon } from '@lms/ui';
 import { interval, type Subscription } from 'rxjs';
-import { clock } from '../../anchor';
+import { clock } from '../../../../../shared/learning/anchor';
 import type { BlockJump } from '../pdf-block/pdf-block';
 
 /** A playing video reports its range this often; the heartbeat keeps the media cookie alive. */

@@ -22,7 +22,7 @@ import {
   Skeleton,
   Textarea,
 } from '@lms/ui';
-import { anchorText } from '../../anchor';
+import { anchorText } from '../../../../../shared/learning/anchor';
 
 /**
  * "Ghi chú" of the lesson side panel: a form for a note at the spot on screen, the lesson's notes
