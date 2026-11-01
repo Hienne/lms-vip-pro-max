@@ -1,0 +1,127 @@
+<ui-page-header
+  title="Bảng xếp hạng & thành tích"
+  description="Điểm thưởng tính tự động từ bài học hoàn thành, bài kiểm tra đạt, khóa học hoàn thành và chuỗi ngày học."
+/>
+
+<ui-segmented
+  class="leaderboard__scope"
+  label="Phạm vi xếp hạng"
+  [options]="scopes"
+  [value]="store.scope$()"
+  (valueChange)="store.selectScope($event)"
+/>
+
+<div class="leaderboard__layout">
+  <section
+    uiCard
+    padded
+    class="leaderboard__points"
+    aria-labelledby="leaderboard-points"
+  >
+    <h2 id="leaderboard-points" class="leaderboard__points-title">
+      Điểm thưởng của bạn@if (store.rank$(); as rank) { · hạng {{ rank }}}
+    </h2>
+    @if (store.pointsError$(); as error) {
+    <ui-error-state
+      title="Không tải được điểm thưởng"
+      [message]="error.message"
+      [retryable]="error.kind !== 'forbidden'"
+      (retry)="store.retryPoints()"
+    />
+    } @else if (store.points$(); as points) {
+    <p class="leaderboard__total">{{ points.total }}</p>
+    <dl class="leaderboard__parts">
+      @for (part of store.parts$(); track part.key) {
+      <div class="leaderboard__part">
+        <dt>{{ part.label }}</dt>
+        <dd>+{{ part.points }}</dd>
+      </div>
+      }
+    </dl>
+    } @else {
+    <div
+      uiSkeleton
+      variant="block"
+      class="leaderboard__points-placeholder"
+    ></div>
+    }
+  </section>
+
+  <section class="leaderboard__ranking" aria-labelledby="leaderboard-ranking">
+    <div class="leaderboard__ranking-head">
+      <h2 id="leaderboard-ranking">Xếp hạng</h2>
+      @if (!store.isBoardLoading$() && !store.boardError$()) {
+      <span class="leaderboard__count">{{ store.total$() }} học viên</span>
+      }
+    </div>
+
+    @if (store.boardError$(); as error) {
+    <ui-error-state
+      title="Không tải được bảng xếp hạng"
+      [message]="error.message"
+      [retryable]="error.kind !== 'forbidden'"
+      (retry)="store.retryBoard()"
+    />
+    } @else if (store.isBoardLoading$()) {
+    <div
+      uiSkeleton
+      variant="block"
+      class="leaderboard__ranking-placeholder"
+    ></div>
+    } @else { @if (store.isEmpty$()) {
+    <p class="leaderboard__empty">
+      @if (store.scope$() === 'team') { Bạn chưa thuộc nhóm nào nên chưa có bảng
+      xếp hạng nhóm. Chọn Đơn vị để xem xếp hạng. } @else { Chưa có học viên nào
+      trong phạm vi này. }
+    </p>
+    } @else {
+    <ol class="leaderboard__list" aria-label="Bảng xếp hạng">
+      @for (row of store.rows$(); track row.userId) {
+      <ng-container
+        [ngTemplateOutlet]="entry"
+        [ngTemplateOutletContext]="{ $implicit: row }"
+      />
+      }
+    </ol>
+    } @if (store.total$() > pageSize) {
+    <ui-pagination
+      [total]="store.total$()"
+      [page]="store.page$()"
+      [pageSize]="pageSize"
+      (pageChange)="store.goToPage($event)"
+    />
+    } @if (store.isMeOffPage$(); as offPage) { @if (store.me$(); as me) {
+    <p class="leaderboard__me-caption">Vị trí của bạn</p>
+    <ol class="leaderboard__list" aria-label="Vị trí của bạn">
+      <ng-container
+        [ngTemplateOutlet]="entry"
+        [ngTemplateOutletContext]="{ $implicit: me }"
+      />
+    </ol>
+    } } }
+  </section>
+</div>
+
+<ng-template #entry let-row>
+  <li
+    class="leaderboard__row"
+    [class.leaderboard__row--me]="row.me"
+    [attr.aria-current]="row.me ? 'true' : null"
+  >
+    <span class="leaderboard__rank">{{ row.rank ?? '—' }}</span>
+    <span class="leaderboard__who">
+      <span class="leaderboard__name" [title]="row.fullName"
+        >{{ row.fullName }}@if (row.me) {
+        <span class="leaderboard__you"> (bạn)</span>
+        }</span
+      >
+      <span class="leaderboard__meta"
+        >@if (row.teamName) { {{ row.teamName }} · }chuỗi {{ row.streakDays }}
+        ngày</span
+      >
+    </span>
+    <span class="leaderboard__score"
+      >{{ row.points }} <span class="leaderboard__unit">điểm</span></span
+    >
+  </li>
+</ng-template>

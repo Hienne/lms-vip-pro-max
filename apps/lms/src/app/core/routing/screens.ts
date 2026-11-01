@@ -533,7 +533,15 @@ export const SCREEN_TABLE = {
           '../../features/admin-content/training-catalog/training-catalog'
         ).then((m) => m.TrainingCatalog),
     },
-    { path: 'leaderboard', title: 'Bảng xếp hạng', mockupPage: 'leaderboard' },
+    {
+      path: 'leaderboard',
+      title: 'Bảng xếp hạng & thành tích',
+      mockupPage: 'leaderboard',
+      load: () =>
+        import('../../features/achievements/leaderboard/leaderboard').then(
+          (m) => m.Leaderboard,
+        ),
+    },
     { path: 'flashcards', title: 'Flashcard ôn tập', mockupPage: 'flashcards' },
     {
       path: 'saved',

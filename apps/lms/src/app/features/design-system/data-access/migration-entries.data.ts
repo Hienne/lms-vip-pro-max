@@ -951,11 +951,20 @@ export const MIGRATION_ENTRIES = [
   },
   {
     id: 'route-leaderboard',
+    notes:
+      'Nối API điểm thưởng và bảng xếp hạng thật (nhóm, đơn vị, toàn hệ thống); bỏ huy hiệu, mốc ghi nhận và trang trí top 3 của mockup.',
     kind: 'route',
     mockupSource: 'src/pages/tools.js · leaderboard',
     target: 'leaderboard',
     checklist: ['F.9'],
-    status: 'todo',
+    status: 'in-progress',
+    owner: 'Hiendeptroai',
+    verify: {
+      lightDark: 'todo',
+      widths: 'todo',
+      keyboard: 'todo',
+      errorStates: 'done',
+    },
   },
   {
     id: 'route-certificates',
