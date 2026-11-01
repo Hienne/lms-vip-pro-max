@@ -1,4 +1,11 @@
-import { Component, input, linkedSignal, output } from '@angular/core';
+import {
+  Component,
+  effect,
+  input,
+  output,
+  signal,
+  untracked,
+} from '@angular/core';
 import {
   form,
   FormField,
@@ -63,10 +70,7 @@ export class LessonNotes {
 
   protected readonly anchorText = anchorText;
 
-  private readonly model = linkedSignal(() => {
-    this.savedKey();
-    return { text: '' };
-  });
+  private readonly model = signal({ text: '' });
   protected readonly noteForm = form(
     this.model,
     (path) => {
@@ -83,4 +87,11 @@ export class LessonNotes {
       },
     },
   );
+
+  /** A saved note leaves an empty form that has not been touched, so no error shows before the next submit. */
+  private readonly clearAfterSave = effect(() => {
+    if (this.savedKey() > 0) {
+      untracked(() => this.noteForm().reset({ text: '' }));
+    }
+  });
 }

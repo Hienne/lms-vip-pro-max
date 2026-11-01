@@ -119,6 +119,17 @@ describe('LessonNotes', () => {
     expect(field().value).toBe('');
   });
 
+  it('shows no error on the empty form after a note was saved, only when the learner submits empty', async () => {
+    const { type, submit, set, text } = await render();
+    await type('Ghi chú');
+    await submit();
+    await set('savedKey', 1);
+    expect(text()).not.toContain('Hãy nhập nội dung ghi chú.');
+
+    await submit();
+    expect(text()).toContain('Hãy nhập nội dung ghi chú.');
+  });
+
   it('disables the save button while a note is being saved', async () => {
     const { el, set } = await render();
     const save = () =>
