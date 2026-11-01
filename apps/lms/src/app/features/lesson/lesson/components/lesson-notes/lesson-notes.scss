@@ -35,7 +35,9 @@
     font-weight: ui.weight(medium);
 
     &--link {
+      align-self: flex-start;
       padding: 0;
+      text-align: left;
       border: 0;
       background: transparent;
       color: ui.color(primary);
