@@ -155,7 +155,7 @@ at `a04912c`.
 
 ## Phase 2: App
 
-- [ ] **F1: Contracts, captured responses, mock**
+- [x] **F1: Contracts, captured responses, mock**
   - Acceptance:
     - `personalEndpoints` gets `lessonNotes`, `addNote`, `deleteNote`, `lessonBookmarks`, `toggleBookmark`,
       `deleteBookmark` and `saved`:
@@ -170,7 +170,7 @@ at `a04912c`.
   - Verify: the contracts and mocks specs are green, and the captured responses parse.
   - Size: M. Depends on: Checkpoint A.
 
-- [ ] **F2: Block positions, jumps and the bookmark toggle**
+- [x] **F2: Block positions, jumps and the bookmark toggle**
   - Acceptance:
     - `app-pdf-block`:
       - `pageChange` output on every page change, with no dwell; `pageShown` keeps its dwell;
@@ -186,7 +186,7 @@ at `a04912c`.
     jump emitting `jumped`.
   - Size: M. Depends on: F1.
 
-- [ ] **F3: Lesson side panel and the notes panel**
+- [x] **F3: Lesson side panel and the notes panel**
   - Acceptance:
     - **Side panel:** `ui-tabs` "Mục lục" / "Ghi chú ({n})", the same in the `aside` and in the drawer.
     - **`app-lesson-notes`:**
@@ -209,7 +209,7 @@ at `a04912c`.
     - Page spec: the tabs, the form label, the list and the confirm.
   - Size: L. Depends on: F2.
 
-- [ ] **F4: Saved page on N6**
+- [x] **F4: Saved page on N6**
   - Acceptance:
     - `SavedStore` reads N6 with `kind`, `page` and `size`.
     - Rows follow amendment 8: no icon tiles; the text (note) or the label (bookmark); then
@@ -221,7 +221,7 @@ at `a04912c`.
   - Verify: the saved spec covers both tabs, the counts, the link URLs, the confirm and delete, and the three states.
   - Size: M. Depends on: F1.
 
-- [ ] **F5: End-to-end check against the spec**
+- [x] **F5: End-to-end check against the spec**
   - Acceptance: the success criteria below are written here, each with how it was checked.
   - Verify:
     - Run `npm run check`.
@@ -236,13 +236,69 @@ at `a04912c`.
 
 ### Checkpoint B
 
-- [ ] Success criteria recorded:
+- [x] Success criteria recorded (app side checked here; the browser checks against :8019 are the main session's):
   1. Notes and bookmarks are created, listed, followed and removed on the local backend for PDF and video blocks,
      with the same results after a reload.
+     - Checked: Checkpoint A curl on :8019 for the backend. In the app, `lesson.spec.ts` / `lesson.store.spec.ts`
+       (add, delete, toggle reload the lists; follow an anchor selects the block then jumps; `?block=&page=` /
+       `&t=` entry; invalid URL ignored) and the block specs (`pageChange`, `secondChange`, jump to the same value
+       twice, pressed state, video `jumped`), all on the mock that mirrors the backend rules. **Not yet checked in
+       the browser.**
   2. They are private: another learner sees none, and a direct `DELETE` of someone else's note answers
      `LEARNING-NOT_FOUND`.
+     - Checked: Checkpoint A curl as `hocvien.tichhop` for the backend; `learner-notes.spec.ts` (mock) and
+       `saved.spec.ts` ("with nothing saved" as `hocvien.tichhop`). **Browser check pending.**
   3. "Đã lưu & ghi chú" lists both kinds with the right counts, and its links open the lesson at the anchor.
+     - Checked: `saved.spec.ts` (9 tests): counts on both tabs, newest first, where-line, link URLs
+       (`?block=&page=5`, `&t=250`, bookmark `&page=2`), confirm cancel vs confirm for note and bookmark,
+       error with retry, empty state, paging and stepping back a page. `personal.endpoints.spec.ts` parses the
+       responses captured from :8019. **Browser check pending.**
   4. The upgrade and the rollback apply cleanly. `mvn clean test` and `npm run check` are green, and the
      visual-design checklist passes for the side panel and the saved page.
-- [ ] Spec status set to built.
+     - Checked: backend `mvn -o clean test` BUILD SUCCESS (408 run, 0 failures) at Checkpoint A, upgrade twice
+       and rollback in `LessonNotesSchemaTest`. App: `npm run check` exit 0 (format, then lint, typecheck, test,
+       build, check-bundle: 14 tasks succeeded, 9 from cache; lms tests ran uncached). Checklists were read
+       against the templates and styles (no tiles, badges, gradients, uppercase, edge stripes; icon buttons
+       labelled with tooltips; one primary button per screen). **Not looked at in a browser at 1280/375,
+       light/dark.**
+- [x] Browser check on :4200 against :8019 (main session, 2026-11-01), signed in by token, never by typed
+      password:
+  - Criterion 1, as `hocvien` on course 7:
+    - `?block=32&page=3` opens "Trang 3/4" with the label "Ghi chú tại Trang 3", and then the URL keeps
+      `?block=32` only.
+    - A note saved there is stored as pdf page 3 (DB note 6).
+    - Following the "Trang 2" bookmark shows page 2, the label "Trang 2" and the bookmark pressed.
+    - `?block=33&t=12` starts the video at 12 s with the label "Video 0:12".
+    - Toggling the 0:12 bookmark gives `aria-pressed` true, then false.
+    - After the save, the form is empty with no error.
+  - Criterion 2: as `hocvien.tichhop`, "Đã lưu & ghi chú" shows "Ghi chú 0" / "Đánh dấu 0" and the empty
+    state.
+  - Criterion 3:
+    - The saved page counts both tabs.
+    - Links carry `?block&page|t`, and a whole-lesson note has no query.
+    - Only the selected panel renders rows.
+    - Delete asks first, then the count drops.
+    - Seen in light and dark, at 1280 and 375 px, with no horizontal scroll.
+  - Criterion 4: `npm run check` exit 0 on `c9e8618`. One earlier run failed 3 tests in
+    `session-expiry.interceptor.spec.ts` (`NG0205` after an injector teardown) while the dev server built. That
+    spec is not touched by this branch, and it passed alone and on the rerun.
+  - The test rows of the checks are deleted. `hocvien` keeps notes 2 and 3 and bookmark 3.
+- [x] Fixes from the browser check, one commit per cause:
+  1. `e5e3425`: an unselected tab panel stayed visible where the screen set `display`.
+  2. `9258032`: the PDF said it resumed when it opened at a jump or URL anchor.
+  3. `481b7de`: every progress result reset the on-screen position, which also caused the following:
+     - the label "bài học";
+     - notes saved as `none`;
+     - video 0:00 after a jump;
+     - `aria-pressed` never true.
+
+     The position is now keyed on the block id.
+
+  4. `3581c99`: an error showed after a successful save.
+  5. `b7b4be3`: bookmark anchors were centred.
+  6. `c5dd532`: the entry `page`/`t` stayed in the URL.
+  7. `c9e8618`: the saved page rendered rows in the hidden tab too.
+  8. `8d5e3db`: the empty-state title doubled its full stop.
+
+- [x] Spec status set to built.
 - [ ] Review with the user, then plan `lesson-feedback`.

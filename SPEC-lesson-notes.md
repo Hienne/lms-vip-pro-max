@@ -1,6 +1,6 @@
 # Spec: `lesson-notes`
 
-Map: [SPEC.md](SPEC.md). Status: **approved 2026-11-01, amended by the plan (see "Amendments").** Depends on
+Map: [SPEC.md](SPEC.md). Status: **built 2026-11-01** (amended by the plan, see "Amendments"; results in `tasks/todo.md` Checkpoint B). Depends on
 `catalog-discovery` (D4 gives course and lesson titles from one call) and `local-stack` (READY PDF and video blocks).
 
 ## Amendments
