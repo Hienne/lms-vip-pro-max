@@ -6,6 +6,7 @@ import {
   EnrollmentDetailSchema,
   learnerEndpoints,
   learnerQuizEndpoints,
+  personalEndpoints,
   type EnrollmentDetail,
 } from '@lms/contracts';
 import { backendRefusal, envelopeOk, type FakeReply } from '@lms/mocks';
@@ -506,6 +507,206 @@ describe('Lesson', () => {
       button('Thử lại')!.click();
       await settle();
       expect(el.querySelector('h1')?.textContent).toBe('Tổng kết');
+    });
+  });
+  describe('notes and bookmarks', () => {
+    const tab = (name: string) =>
+      Array.from(el.querySelectorAll<HTMLElement>('[role="tab"]')).find((t) =>
+        t.textContent?.includes(name),
+      )!;
+    const field = () =>
+      el.querySelector<HTMLTextAreaElement>('app-lesson-notes textarea')!;
+    const bodies = (endpoint: unknown) =>
+      calls(endpoint).map(([, request]) => request.body);
+    const labelled = (label: string) =>
+      el.querySelector<HTMLElement>(`button[aria-label="${label}"]`)!;
+    const press = async (node: HTMLElement | null | undefined) => {
+      node!.click();
+      await settle();
+    };
+    const typeNote = async (value: string) => {
+      field().value = value;
+      field().dispatchEvent(new Event('input', { bubbles: true }));
+      await settle();
+    };
+    const save = () =>
+      press(
+        Array.from(
+          el.querySelectorAll<HTMLElement>('app-lesson-notes button'),
+        ).find((b) => b.textContent?.includes('Lưu ghi chú')),
+      );
+    const noteTexts = () =>
+      Array.from(el.querySelectorAll('app-lesson-notes .notes__text')).map(
+        (p) => p.textContent?.trim(),
+      );
+
+    describe('on a PDF block', () => {
+      beforeEach(async () => {
+        await open(lessonUrl(1));
+        await press(tab('Ghi chú'));
+      });
+
+      it('has the outline and the notes as tabs, the notes with their count', () => {
+        expect(tab('Mục lục')).toBeTruthy();
+        expect(tab('Ghi chú').textContent).toContain('0');
+        expect(text()).toContain('Ghi chú tại Trang 1');
+        expect(text()).toContain('Chưa có ghi chú.');
+      });
+
+      it('saves a note on the page on screen and lists it with its anchor', async () => {
+        await press(labelled('Trang sau'));
+        await typeNote('Đổi CCCD cần cập nhật CIF');
+        await save();
+
+        expect(bodies(personalEndpoints.addNote)).toEqual([
+          {
+            anchor: {
+              type: 'pdf',
+              blockId: lessons()[1].blocks[0].block.id,
+              page: 2,
+            },
+            text: 'Đổi CCCD cần cập nhật CIF',
+          },
+        ]);
+        expect(noteTexts()).toEqual(['Đổi CCCD cần cập nhật CIF']);
+        expect(
+          el.querySelector('app-lesson-notes .notes__anchor')?.textContent,
+        ).toContain('Trang 2');
+        expect(field().value).toBe('');
+        expect(tab('Ghi chú').textContent).toContain('1');
+      });
+
+      it('keeps what was typed and asks for it when the note is empty', async () => {
+        await save();
+        expect(calls(personalEndpoints.addNote).length).toBe(0);
+        expect(text()).toContain('Hãy nhập nội dung ghi chú.');
+      });
+
+      it('asks before deleting a note, and deletes it after "Xóa"', async () => {
+        await typeNote('Ghi nhớ');
+        await save();
+        await press(labelled('Xóa ghi chú'));
+        const dialog = document.querySelector<HTMLElement>(
+          '[role="alertdialog"]',
+        )!;
+        expect(dialog.textContent).toContain('Xóa ghi chú?');
+        expect(dialog.textContent).toContain('Ghi chú sẽ bị xóa vĩnh viễn.');
+        expect(calls(personalEndpoints.deleteNote).length).toBe(0);
+
+        const cancel = Array.from(dialog.querySelectorAll('button')).find((b) =>
+          b.textContent?.includes('Hủy'),
+        );
+        await press(cancel);
+        expect(calls(personalEndpoints.deleteNote).length).toBe(0);
+
+        await press(labelled('Xóa ghi chú'));
+        const confirmButton = Array.from(
+          document
+            .querySelector('[role="alertdialog"]')!
+            .querySelectorAll('button'),
+        ).find((b) => b.textContent?.trim() === 'Xóa');
+        await press(confirmButton);
+        expect(calls(personalEndpoints.deleteNote).length).toBe(1);
+        expect(noteTexts()).toEqual([]);
+        expect(text()).toContain('Chưa có ghi chú.');
+      });
+
+      it('turns the bookmark of the page on and off from the toolbar', async () => {
+        const toggle = () => labelled('Đánh dấu trang này')!;
+        expect(toggle().getAttribute('aria-pressed')).toBe('false');
+        await press(toggle());
+        expect(toggle().getAttribute('aria-pressed')).toBe('true');
+        expect(bodies(personalEndpoints.toggleBookmark)).toEqual([
+          {
+            anchor: {
+              type: 'pdf',
+              blockId: lessons()[1].blocks[0].block.id,
+              page: 1,
+            },
+          },
+        ]);
+        expect(text()).toContain('Đánh dấu');
+        expect(text()).toContain('Trang 1');
+
+        await press(toggle());
+        expect(toggle().getAttribute('aria-pressed')).toBe('false');
+      });
+
+      it('shows the page of a note when its anchor is followed', async () => {
+        await press(labelled('Trang sau'));
+        await press(labelled('Trang sau'));
+        await typeNote('Trang ba');
+        await save();
+        await press(labelled('Trang trước'));
+        await press(labelled('Trang trước'));
+        expect(text()).toContain('Trang 1/4');
+
+        await press(
+          el.querySelector<HTMLElement>(
+            'app-lesson-notes .notes__anchor--link',
+          ),
+        );
+        expect(text()).toContain('Trang 3/4');
+      });
+    });
+
+    describe('on a video block', () => {
+      beforeEach(async () => {
+        await open(lessonUrl(0));
+        await press(tab('Ghi chú'));
+      });
+
+      it('names the second on screen and saves a note on it', async () => {
+        const player = el.querySelector('video')!;
+        Object.defineProperty(player, 'currentTime', {
+          get: () => 75,
+          set: () => undefined,
+        });
+        player.dispatchEvent(new Event('timeupdate'));
+        await settle();
+        expect(text()).toContain('Ghi chú tại Video 1:15');
+        expect(button('Đánh dấu mốc 1:15')).toBeTruthy();
+
+        await typeNote('Mốc quan trọng');
+        await save();
+        expect(bodies(personalEndpoints.addNote)).toEqual([
+          {
+            anchor: {
+              type: 'video',
+              blockId: lessons()[0].blocks[0].block.id,
+              second: 75,
+            },
+            text: 'Mốc quan trọng',
+          },
+        ]);
+      });
+    });
+
+    it('opens the lesson on the page of the link', async () => {
+      const blockId = lessons()[1].blocks[0].block.id;
+      await open(lessonUrl(1, `?block=${blockId}&page=3`));
+      expect(text()).toContain('Trang 3/4');
+    });
+
+    it('ignores a link whose page is not a number', async () => {
+      const blockId = lessons()[1].blocks[0].block.id;
+      await open(lessonUrl(1, `?block=${blockId}&page=abc`));
+      expect(text()).toContain('Trang 1/4');
+    });
+
+    it('shows the error with a retry when the notes cannot be read', async () => {
+      handle.mockImplementation((endpoint, request) =>
+        endpoint === personalEndpoints.lessonNotes
+          ? backendRefusal('internalError')
+          : real()(endpoint, request),
+      );
+      await open(lessonUrl(1));
+      await press(tab('Ghi chú'));
+      expect(text()).toContain('Không tải được ghi chú');
+
+      handle.mockImplementation(real());
+      await press(button('Thử lại'));
+      expect(text()).toContain('Chưa có ghi chú.');
     });
   });
 });

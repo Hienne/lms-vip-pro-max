@@ -6,6 +6,7 @@ import {
   inject,
   Injectable,
   linkedSignal,
+  signal,
   untracked,
 } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
@@ -17,9 +18,12 @@ import {
   toUrl,
   type BlockDetail,
   type BlockProgress,
+  type AnchorCommand,
   type AssetDetail,
   type CourseEnrollment,
+  type Anchor,
   type LessonDetail,
+  type LessonNoteView,
   type LessonProgress,
   type ProgressResult,
 } from '@lms/contracts';
@@ -30,6 +34,9 @@ import { FileSaver } from '../../../../core/files/file-saver';
 import { EndpointClient } from '../../../../core/http/endpoint-client';
 import { readLearnerCourse } from '../../../../core/learning/read-learner-course';
 import { SessionStore } from '../../../../core/session/session.store';
+import { clock } from '../anchor';
+import type { BlockJump } from '../components/pdf-block/pdf-block';
+import { lessonNotes } from './lesson-notes';
 import { StudyChannel, type ClaimTarget } from './study-channel';
 import { StudySessionStorage } from './study-session.storage';
 
@@ -67,6 +74,8 @@ export interface OutlineChapter {
   readonly lessons: readonly OutlineLesson[];
 }
 
+const NO_ANCHOR: AnchorCommand = { type: 'none' };
+
 interface Results {
   readonly blocks: ReadonlyMap<number, BlockProgress>;
   readonly lessons: ReadonlyMap<number, LessonProgress>;
@@ -85,6 +94,24 @@ const progressState = (status: string | undefined): ProgressState =>
 const idParam = (value: string | null): number | undefined => {
   const id = Number(value);
   return value && Number.isInteger(id) && id > 0 ? id : undefined;
+};
+
+/** The side panel's tabs. */
+export type SideTab = 'outline' | 'notes';
+
+/** A block shown from a given page or second: what an anchor asks for. */
+interface JumpTo extends BlockJump {
+  readonly blockId: number;
+}
+
+const sameJump = (a: JumpTo | null, b: JumpTo | null) =>
+  a?.blockId === b?.blockId && a?.value === b?.value && a?.seq === b?.seq;
+
+const whole = (value: string | null): number | undefined => {
+  const n = Number(value);
+  return value !== null && value !== '' && Number.isInteger(n) && n >= 0
+    ? n
+    : undefined;
 };
 
 const sameTarget = (a: ClaimTarget | undefined, b: ClaimTarget | undefined) =>
@@ -118,6 +145,16 @@ export class LessonStore {
   private readonly queryBlockId = toSignal(
     this.route.queryParamMap.pipe(map((p) => idParam(p.get('block')))),
     { initialValue: idParam(this.route.snapshot.queryParamMap.get('block')) },
+  );
+
+  /** `?page=` and `?t=` next to `?block=`: a link from "Đã lưu & ghi chú" to a spot of the block. */
+  private readonly queryPage = toSignal(
+    this.route.queryParamMap.pipe(map((p) => whole(p.get('page')))),
+    { initialValue: whole(this.route.snapshot.queryParamMap.get('page')) },
+  );
+  private readonly queryTime = toSignal(
+    this.route.queryParamMap.pipe(map((p) => whole(p.get('t')))),
+    { initialValue: whole(this.route.snapshot.queryParamMap.get('t')) },
   );
 
   private readonly courseData = serverData(
@@ -155,12 +192,30 @@ export class LessonStore {
       source: () => this.lessonId$(),
       computation: () => false,
     }),
+    /** The side panel tab: the outline, or the notes of this lesson. */
+    sideTab: signal<SideTab>('outline'),
+    /** Where the learner is in the active block, as its player tells; a new block starts over. */
+    position: linkedSignal<
+      number | undefined,
+      { readonly page: number | null; readonly second: number }
+    >({
+      source: () => this.activeBlock$()?.id,
+      computation: () => ({ page: null, second: 0 }),
+    }),
+    /** The spot an anchor asked the active block to show; another block or lesson drops it. */
+    jump: linkedSignal<number | undefined, JumpTo | null>({
+      source: () => this.lessonId$(),
+      computation: () => null,
+    }),
     /** Accepted results, shown instead of the detail's progress until it is read again. */
     results: linkedSignal<unknown, Results>({
       source: () => this.detailData.value(),
       computation: () => NO_RESULTS,
     }),
   };
+
+  /** Tells two jumps to the same spot apart. */
+  private jumpSeq = 0;
 
   /** Reads the player of the video block on screen, which the page hands over (`watchVideo`). */
   private videoPosition: (() => number) | undefined;
@@ -273,6 +328,92 @@ export class LessonStore {
     const blocks = this.blocks$();
     const index = blocks.findIndex((b) => b.id === this.activeBlock$()?.id);
     return index < 0 ? undefined : blocks[index + step]?.id;
+  }
+
+  // Notes and bookmarks of the lesson
+  private readonly lessonNotes = lessonNotes(() =>
+    this.view$() === 'ready' ? this.lessonId$() : undefined,
+  );
+  readonly notes$ = computed(() => this.lessonNotes.notes() ?? []);
+  readonly bookmarks$ = computed(() => this.lessonNotes.bookmarks() ?? []);
+  /** The number in the "Ghi chú" tab; none until the notes are read. */
+  readonly noteCount$ = computed(() => this.lessonNotes.notes()?.length);
+  readonly notesLoading$ = this.lessonNotes.loading;
+  readonly notesError$ = this.lessonNotes.error;
+  readonly noteSaving$ = this.lessonNotes.saving;
+  readonly bookmarkBusy$ = this.lessonNotes.toggling;
+  /** Changes when a note was saved: the note form empties. */
+  readonly noteAdded$ = this.lessonNotes.added;
+  readonly sideTab$ = this.state.sideTab.asReadonly();
+
+  /** Where a new note would go: the page or second on screen, else the whole lesson. */
+  readonly anchor$ = computed((): AnchorCommand => {
+    const active = this.view$() === 'ready' ? this.activeBlock$() : undefined;
+    const { page, second } = this.state.position();
+    switch (active?.detail.block.blockType) {
+      case 'pdf':
+        return page ? { type: 'pdf', blockId: active.id, page } : NO_ANCHOR;
+      case 'video':
+        return { type: 'video', blockId: active.id, second };
+      default:
+        return NO_ANCHOR;
+    }
+  });
+  readonly anchorLabel$ = computed(() => {
+    const anchor = this.anchor$();
+    return anchor.type === 'pdf'
+      ? `Trang ${anchor.page}`
+      : anchor.type === 'video'
+        ? `Video ${clock(anchor.second)}`
+        : 'bài học';
+  });
+
+  /** The spot on screen already has a bookmark. */
+  readonly bookmarked$ = computed(() => {
+    const here = this.anchor$();
+    return (
+      here.type !== 'none' &&
+      this.bookmarks$().some(
+        ({ anchor }) =>
+          anchor.type === here.type &&
+          anchor.blockId === here.blockId &&
+          (here.type === 'pdf'
+            ? anchor.page === here.page
+            : anchor.second === here.second),
+      )
+    );
+  });
+
+  private readonly urlJump = computed(
+    (): JumpTo | null => {
+      const active = this.activeBlock$();
+      if (!active || active.id !== this.queryBlockId()) return null;
+      const type = active.detail.block.blockType;
+      const value =
+        type === 'pdf'
+          ? this.queryPage()
+          : type === 'video'
+            ? this.queryTime()
+            : undefined;
+      return value === undefined || (type === 'pdf' && value < 1)
+        ? null
+        : { blockId: active.id, value, seq: 0 };
+    },
+    { equal: sameJump },
+  );
+
+  /** The page the PDF on screen has to show now: an anchor followed here, else the link's. */
+  readonly pdfJump$ = computed(() => this.jumpFor('pdf'), { equal: sameJump });
+  /** The second the video on screen has to move to. */
+  readonly videoJump$ = computed(() => this.jumpFor('video'), {
+    equal: sameJump,
+  });
+
+  private jumpFor(type: 'pdf' | 'video'): JumpTo | null {
+    const active = this.activeBlock$();
+    if (active?.detail.block.blockType !== type) return null;
+    const asked = this.state.jump();
+    return asked?.blockId === active.id ? asked : this.urlJump();
   }
 
   /** The block's file, loadable only while this tab holds the session (the media cookie). */
@@ -412,6 +553,7 @@ export class LessonStore {
   // Commands
   selectBlock(blockId: number): void {
     this.state.selected.set(blockId);
+    this.state.jump.set(null);
   }
 
   /** "Tải xuống" on an attachment. */
@@ -421,6 +563,73 @@ export class LessonStore {
     if (blockId && enrollmentId) {
       this.downloads.run({ asset, blockId, enrollmentId });
     }
+  }
+
+  setSideTab(tab: string): void {
+    this.state.sideTab.set(tab === 'notes' ? 'notes' : 'outline');
+  }
+
+  /** The PDF on screen shows this page. */
+  pdfPageChange(page: number): void {
+    this.state.position.update((p) => ({ ...p, page }));
+  }
+
+  /** The video on screen is at this whole second. */
+  videoSecond(second: number): void {
+    this.state.position.update((p) => ({ ...p, second }));
+  }
+
+  /** "Lưu ghi chú": a note at the spot on screen. */
+  addNote(text: string): void {
+    const lessonId = this.lessonId$();
+    if (lessonId !== undefined) {
+      this.lessonNotes.add({ lessonId, anchor: this.anchor$(), text });
+    }
+  }
+
+  /** The bin of a note; it asks first. */
+  deleteNote(note: LessonNoteView): void {
+    this.lessonNotes.remove(note);
+  }
+
+  /** The bookmark button of the block on screen: on, or off if the spot is already marked. */
+  toggleBookmark(value: number): void {
+    const lessonId = this.lessonId$();
+    const active = this.activeBlock$();
+    const type = active?.detail.block.blockType;
+    if (lessonId === undefined || !active) return;
+    if (type === 'pdf') {
+      this.lessonNotes.toggle({
+        lessonId,
+        anchor: { type, blockId: active.id, page: value },
+      });
+    } else if (type === 'video') {
+      this.lessonNotes.toggle({
+        lessonId,
+        anchor: { type, blockId: active.id, second: value },
+      });
+    }
+  }
+
+  /** The anchor of a note or bookmark: opens its block, then shows its page or second. */
+  followAnchor(anchor: Anchor): void {
+    const value = anchor.type === 'pdf' ? anchor.page : anchor.second;
+    if (anchor.type === 'none' || anchor.blockId === null || value === null) {
+      return;
+    }
+    if (anchor.blockId !== this.activeBlock$()?.id) {
+      this.selectBlock(anchor.blockId);
+    }
+    this.state.jump.set({
+      blockId: anchor.blockId,
+      value,
+      seq: ++this.jumpSeq,
+    });
+    this.closeOutline();
+  }
+
+  retryNotes(): void {
+    this.lessonNotes.retry();
   }
 
   openOutline(): void {
@@ -504,7 +713,7 @@ export class LessonStore {
   private writeBlockToUrl(blockId: number): void {
     void this.router.navigate([], {
       relativeTo: this.route,
-      queryParams: { block: blockId },
+      queryParams: { block: blockId, page: null, t: null },
       queryParamsHandling: 'merge',
       replaceUrl: true,
     });
