@@ -8,24 +8,33 @@
   <ul class="outline__lessons">
     @for (lesson of chapter.lessons; track lesson.id) {
     <li class="outline__lesson">
+      @if (lesson.state; as state) {
       <span
         class="outline__state"
-        [attr.data-status]="lesson.state"
-        [class.outline__state--done]="lesson.state === 'completed'"
-        [class.outline__state--current]="lesson.state === 'in_progress'"
+        [attr.data-status]="state"
+        [class.outline__state--done]="state === 'completed'"
+        [class.outline__state--current]="state === 'in_progress'"
       >
-        @if (lesson.state === 'completed') {
+        @if (state === 'completed') {
         <ui-icon name="check" size="sm" />
         }
-        <span class="outline__sr">{{ stateLabel[lesson.state] }}</span>
+        <span class="outline__sr">{{ stateLabel[state] }}</span>
       </span>
-      <a class="outline__title" [routerLink]="lesson.link">
+      } @if (lesson.link; as link) {
+      <a class="outline__title" [routerLink]="link">
         @if (lesson.quiz) {
         <ui-icon class="outline__kind" name="clipboard-check" size="sm" />
         <span class="outline__sr">Bài kiểm tra: </span>
         }{{ lesson.title }}</a
       >
-      @if (lesson.minutes) {
+      } @else {
+      <span class="outline__title">
+        @if (lesson.quiz) {
+        <ui-icon class="outline__kind" name="clipboard-check" size="sm" />
+        <span class="outline__sr">Bài kiểm tra: </span>
+        }{{ lesson.title }}</span
+      >
+      } @if (lesson.minutes) {
       <span class="outline__minutes">{{ lesson.minutes }} phút</span>
       }
     </li>

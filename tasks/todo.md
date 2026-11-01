@@ -306,8 +306,10 @@ assigned 5}`. Each tab's grid equals `courses` with the same query. The cards sh
     and quiz reads, and no list read; the breadcrumb is Danh mục khóa học / Nền tảng nghiệp vụ Core Banking /
     Tổng quan hệ thống Core Banking and the meta line starts "Nghiệp vụ Core Banking · Tổng quan · FE-DEMO-C1".
     `/lesson/1/2` makes the same single course call and plays the lesson. `/course/6` (unpublished) answers
-    `LEARNING-NOT_FOUND` and the page says "Không tìm thấy khóa học". The not-enrolled course and the null
-    names are covered by specs, since `hocvien` is enrolled in every course he can see.
+    `LEARNING-NOT_FOUND` and the page says "Không tìm thấy khóa học". As `hocvien.tichhop`, `/course/7`
+    (not enrolled) makes one `courses/7` call, shows the programme breadcrumb, the meta line and the objectives
+    and the chapter and lesson titles with no status, no lesson link and no tally, and "Đăng ký học" as the one
+    primary action; at 1280 and 375 px, light and dark. The null names are covered by specs.
   - **5. Both suites green: met, with one note.** `npm run check` is green (format, lint, typecheck, test, build,
     bundle guard). `mvn clean verify` was green at Checkpoint A (333 tests) and the backend has not changed
     since (HEAD `7503c4b`, clean tree); it was not run again because `:8019` serves from that checkout's

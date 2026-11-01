@@ -60,7 +60,7 @@
 
 <div class="course__layout">
   <div class="course__main">
-    @if (store.view$() === 'enrolled') { @if (objectives().length) {
+    @if (objectives().length) {
     <section aria-labelledby="course-objectives">
       <h2 id="course-objectives" class="course__heading">Mục tiêu đầu ra</h2>
       <ul class="course__objectives">
@@ -72,16 +72,18 @@
     }
     <section aria-labelledby="course-outline">
       <h2 id="course-outline" class="course__heading">Nội dung khóa học</h2>
-      @if (requiredTally(); as tally) {
+      @if (store.view$() === 'enrolled' && requiredTally(); as tally) {
       <p class="course__tally">
         {{ tally.done }}/{{ tally.required }} bài bắt buộc đã hoàn thành
       </p>
+      } @if (store.needsAssignment$()) {
+      <p class="course__note">Khóa học bắt buộc này cần được giao để học.</p>
       }
       <section uiCard class="course__outline">
         <app-course-outline [chapters]="store.outline$()" />
       </section>
     </section>
-    @if (store.quizError$(); as error) {
+    @if (store.view$() === 'enrolled') { @if (store.quizError$(); as error) {
     <section aria-labelledby="course-quizzes">
       <h2 id="course-quizzes" class="course__heading">Bài kiểm tra</h2>
       <ui-error-state
@@ -105,16 +107,7 @@
       </ul>
       }
     </section>
-    } } @else {
-    <section aria-labelledby="course-about">
-      <h2 id="course-about" class="course__heading">Nội dung khóa học</h2>
-      @if (store.needsAssignment$()) {
-      <p class="course__note">Khóa học bắt buộc này cần được giao để học.</p>
-      } @else {
-      <p class="course__note">Đăng ký để xem nội dung và bắt đầu học.</p>
-      }
-    </section>
-    }
+    } }
   </div>
 
   @if (store.view$() === 'enrolled') {

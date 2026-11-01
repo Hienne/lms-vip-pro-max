@@ -222,13 +222,33 @@ describe('Course', () => {
       );
     });
 
-    it('offers to enrol and does not show an outline before it', () => {
+    it('offers to enrol as the one primary action, without claiming the content is hidden', () => {
       expect(heading()).toBe('Phân hệ Thanh toán liên ngân hàng');
       expect(action('Đăng ký học')).toBeTruthy();
       expect(action('Tiếp tục học')).toBeUndefined();
-      expect(el.querySelector('app-course-outline')).toBeNull();
-      expect(text()).toContain('Đăng ký để xem nội dung và bắt đầu học.');
+      expect(
+        Array.from(el.querySelectorAll('.btn--primary')).map((b) =>
+          b.textContent?.trim(),
+        ),
+      ).toEqual(['Đăng ký học']);
+      expect(text()).not.toContain('Đăng ký để xem nội dung');
       expect(calls(learnerEndpoints.enrollment).length).toBe(0);
+    });
+
+    it('shows the objectives and the chapters and lessons before enrolment, with no status, no link and no tally', () => {
+      expect(text()).toContain('Mục tiêu đầu ra');
+      expect(text()).toContain('Nội dung khóa học');
+      const outline = el.querySelector('app-course-outline')!;
+      expect(outline.querySelectorAll('details').length).toBeGreaterThan(0);
+      const titles = Array.from(
+        outline.querySelectorAll('.outline__title'),
+      ).map((t) => t.textContent?.trim());
+      expect(titles).toContain('Tổng kết');
+      expect(outline.querySelectorAll('a')).toHaveLength(0);
+      expect(outline.querySelectorAll('.outline__state')).toHaveLength(0);
+      expect(text()).not.toContain('bài bắt buộc đã hoàn thành');
+      expect(el.querySelector('[aria-labelledby="course-quizzes"]')).toBeNull();
+      expect(calls(learnerEndpoints.course).length).toBe(1);
     });
 
     it('enrols, then shows the outline and the start action without leaving the page', async () => {
@@ -254,7 +274,7 @@ describe('Course', () => {
       action('Đăng ký học')!.click();
       await settle();
       expect(action('Đăng ký học')).toBeTruthy();
-      expect(el.querySelector('app-course-outline')).toBeNull();
+      expect(el.querySelectorAll('app-course-outline a')).toHaveLength(0);
     });
   });
 

@@ -25,9 +25,10 @@ export interface OutlineLesson {
   readonly quiz: boolean;
   readonly required: boolean;
   readonly minutes: number;
-  readonly state: LessonState;
+  /** `null` before enrolment: the server has no status for a lesson the learner has not started. */
+  readonly state: LessonState | null;
   /** A quiz lesson opens in the lesson player too, which shows its quiz. */
-  readonly link: string;
+  readonly link: string | null;
 }
 
 export interface OutlineChapter {
@@ -198,7 +199,11 @@ export class CourseStore {
   readonly outline$ = computed((): readonly OutlineChapter[] => {
     const content = this.content$();
     const courseId = this.courseId$();
-    if (!this.detail$() || !content || !courseId) return [];
+    const view = this.view$();
+    if (!content || !courseId) return [];
+    // Before enrolment the outline is the structure only: no status and no way into the player.
+    const enrolled = view === 'enrolled';
+    if (!enrolled && view !== 'not-enrolled') return [];
     const resume = this.resumeLessonId$();
     const states = this.lessonStates();
     return content.chapters.map(({ chapter, lessons }, index) => ({
@@ -211,8 +216,8 @@ export class CourseStore {
         quiz: lesson.lessonType === 'quiz',
         required: lesson.isRequired ?? false,
         minutes: Math.round((lesson.estimatedDurationSeconds ?? 0) / 60),
-        state: stateOf(states.get(lesson.id)),
-        link: `/lesson/${courseId}/${lesson.id}`,
+        state: enrolled ? stateOf(states.get(lesson.id)) : null,
+        link: enrolled ? `/lesson/${courseId}/${lesson.id}` : null,
       })),
     }));
   });
