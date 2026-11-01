@@ -928,3 +928,35 @@ export const boardLearnerFixtures: readonly BoardLearner[] = [
     },
   },
 ];
+
+/**
+ * The notes and the bookmark the mock's seed learner (`hocvien`) already has in course 1: where
+ * `at` is a PDF page or a video second. They are anchored on the course's first PDF and first video.
+ */
+export interface LessonNoteSeeds {
+  readonly userId: string;
+  readonly courseId: number;
+  readonly rows: readonly (
+    | {
+        readonly kind: 'note';
+        readonly type: 'pdf' | 'video';
+        readonly at: number;
+        readonly text: string;
+      }
+    | {
+        readonly kind: 'bookmark';
+        readonly type: 'pdf' | 'video';
+        readonly at: number;
+      }
+  )[];
+}
+
+export const lessonNoteSeeds: LessonNoteSeeds = {
+  userId: '000004',
+  courseId: 1,
+  rows: [
+    { kind: 'note', type: 'pdf', at: 5, text: 'Đổi CCCD → cập nhật CIF' },
+    { kind: 'note', type: 'video', at: 250, text: 'Kiểm soát maker-checker' },
+    { kind: 'bookmark', type: 'pdf', at: 2 },
+  ],
+};

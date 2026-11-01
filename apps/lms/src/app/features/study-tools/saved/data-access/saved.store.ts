@@ -1,6 +1,6 @@
 import { computed, inject, Injectable, signal } from '@angular/core';
 import { Router } from '@angular/router';
-import { personalEndpoints, type SavedItem } from '@lms/contracts';
+import { personalEndpoints, type SavedItemView } from '@lms/contracts';
 import { serverData } from '../../../../core/data-access/server-data';
 import { serverMutation } from '../../../../core/data-access/server-mutation';
 import { LearningChanges } from '../../../../core/data-access/learning-changes';
@@ -16,28 +16,20 @@ export class SavedStore {
     page: signal(0),
   };
   private readonly data = serverData(
-    (query: {
-      type: 'notes' | 'bookmarks';
-      page: number;
-      size: number;
-      sort: string;
-    }) => this.client.call(personalEndpoints.saved, { query }),
+    (query: { kind: 'notes' | 'bookmarks'; page: number; size: number }) =>
+      this.client.call(personalEndpoints.saved, { query }),
     {
       params: () => ({
-        type: this.state.tab(),
+        kind: this.state.tab(),
         page: this.state.page(),
         size: 20,
-        sort: 'createdAt,desc',
       }),
       reloadOn: this.changes.saved,
     },
   );
-  private readonly removal = serverMutation<
-    SavedItem,
-    { deleted: true } | { saved: false; id: string }
-  >(
-    (item: SavedItem) =>
-      item.text !== null
+  private readonly removal = serverMutation<SavedItemView, null>(
+    (item: SavedItemView) =>
+      item.kind === 'note'
         ? this.client.call(personalEndpoints.deleteNote, {
             params: { noteId: item.id },
           })
@@ -52,8 +44,8 @@ export class SavedStore {
   );
   readonly tab$ = this.state.tab.asReadonly();
   readonly page$ = this.state.page.asReadonly();
-  readonly data$ = this.data.value;
-  readonly items$ = computed(() => this.data.value()?.items ?? []);
+  readonly total$ = computed(() => this.data.value()?.page.totalElements ?? 0);
+  readonly items$ = computed(() => this.data.value()?.page.items ?? []);
   readonly tabs$ = computed(() => [
     { id: 'notes', label: 'Ghi chú', count: this.data.value()?.counts.notes },
     {
@@ -72,15 +64,17 @@ export class SavedStore {
   setPage(page: number) {
     this.state.page.set(page);
   }
-  remove(item: SavedItem) {
+  remove(item: SavedItemView) {
     this.removal.run(item);
   }
-  openAtAnchor(item: SavedItem) {
+  openAtAnchor(item: SavedItemView) {
     void this.router.navigate(['/lesson', item.courseId, item.lessonId], {
       queryParams:
         item.anchor.type === 'pdf'
-          ? { anchorType: 'pdf', page: item.anchor.page }
-          : { anchorType: 'video', seconds: item.anchor.seconds },
+          ? { block: item.anchor.blockId, page: item.anchor.page }
+          : item.anchor.type === 'video'
+            ? { block: item.anchor.blockId, t: item.anchor.second }
+            : {},
     });
   }
   retry() {

@@ -62,7 +62,9 @@ describe('FakeBackend and the endpoint registries', () => {
       [
         ...Object.values(adminOrgEndpoints),
         ...Object.values(assessmentEndpoints),
-        ...Object.values(personalEndpoints),
+        personalEndpoints.certificates,
+        personalEndpoints.certificate,
+        personalEndpoints.downloadCertificate,
         ...Object.values(reportEndpoints),
         shellEndpoints.navCounts,
       ]

@@ -2,6 +2,7 @@ import {
   assignmentEndpoints,
   courseEndpoints,
   learnerEndpoints,
+  personalEndpoints,
   trainingCatalogEndpoints,
   type AnyEndpoint,
   type AssignCourseCommand,
@@ -33,6 +34,7 @@ import { AssetLibrary } from './asset.backend';
 import { LearnerStudy } from './learner-session.backend';
 import { LearningRefused, ok, refuse } from './learning-reply';
 import { LearnerLeaderboard } from './learner-leaderboard';
+import { LearnerNotes } from './learner-notes';
 import { LearnerReminders } from './learner-reminders';
 import {
   LearnerEnrollments,
@@ -45,6 +47,7 @@ import {
   learnerCourseStateFixtures,
   learnerReminderFixtures,
   learningGroupFixtures,
+  lessonNoteSeeds,
   seedCourseDetails,
   trainingFieldFixtures,
   trainingProgramFixtures,
@@ -148,6 +151,12 @@ export class LearningBackend {
 
   private readonly board: LearnerLeaderboard;
 
+  private notes = new LearnerNotes(
+    this.enrollments,
+    (request) => this.directory.callerId(request),
+    lessonNoteSeeds,
+  );
+
   private study = new LearnerStudy(this.enrollments, (request) =>
     this.directory.callerId(request),
   );
@@ -244,6 +253,19 @@ export class LearningBackend {
       ],
       [learnerEndpoints.myPoints, (r) => ok(this.board.points(r))],
       [learnerEndpoints.leaderboard, (r) => ok(this.board.leaderboard(r))],
+      [personalEndpoints.lessonNotes, (r) => ok(this.notes.notesOf(r))],
+      [personalEndpoints.addNote, (r) => ok(this.notes.addNote(r))],
+      [personalEndpoints.deleteNote, (r) => ok(this.notes.deleteNote(r))],
+      [personalEndpoints.lessonBookmarks, (r) => ok(this.notes.bookmarksOf(r))],
+      [
+        personalEndpoints.toggleBookmark,
+        (r) => ok(this.notes.toggleBookmark(r)),
+      ],
+      [
+        personalEndpoints.deleteBookmark,
+        (r) => ok(this.notes.deleteBookmark(r)),
+      ],
+      [personalEndpoints.saved, (r) => ok(this.notes.saved(r))],
       [learnerEndpoints.enroll, (r) => this.enroll(r)],
       [learnerEndpoints.enrollment, (r) => this.enrollmentDetail(r)],
       [learnerEndpoints.openSession, (r) => this.study.openSession(r)],

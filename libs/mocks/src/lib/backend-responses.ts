@@ -289,6 +289,13 @@ export const BACKEND_RESPONSES = {
     title: 'Tham chiếu chưa hợp lệ',
     message: 'ID tham chiếu không tồn tại hoặc không đúng quan hệ.',
   },
+  noteLimit: {
+    status: 200,
+    code: 'LEARNING-NOTE_LIMIT',
+    title: 'Đã đạt giới hạn',
+    message:
+      'Bài học đã đạt giới hạn 500 ghi chú hoặc 500 đánh dấu. Hãy xóa bớt trước khi thêm.',
+  },
   communityNotFound: {
     status: 200,
     code: 'CORE-RESOURCE_NOT_FOUND',

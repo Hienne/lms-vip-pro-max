@@ -29,8 +29,8 @@
               ><strong>{{item.text ?? item.label}}</strong
               ><small
                 >{{item.lessonTitle}} · @if(item.anchor.type === 'video'){Video
-                {{item.anchor.seconds | fmtTime}}}@else{Trang
-                {{item.anchor.page}}} · {{item.createdAt|fmtRelative}}</small
+                {{(item.anchor.second ?? 0) | fmtTime}}}@else{Trang
+                {{item.anchor.page}}} · {{item.createTime|fmtRelative}}</small
               ></span
             ><ui-icon name="chevron-right" size="sm" /></button
           ><button
@@ -52,8 +52,8 @@
         </li>
         }
       </ul>
-      @if((store.data$()?.totalElements ?? 0)>20){<ui-pagination
-        [total]="store.data$()?.totalElements ?? 0"
+      @if(store.total$()>20){<ui-pagination
+        [total]="store.total$()"
         [page]="store.page$()+1"
         [pageSize]="20"
         (pageChange)="store.setPage($event-1)"
