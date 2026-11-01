@@ -8,6 +8,7 @@ import {
 import { ActivatedRoute, Router, type Params } from '@angular/router';
 import {
   learnerEndpoints,
+  learnerQuizEndpoints,
   LearningStatusSchema,
   type CourseCard,
   type CourseStatus,
@@ -77,7 +78,8 @@ export function exportFileName(time: number): string {
 }
 
 /**
- * "Tiến độ của tôi" (SPEC-learner-progress): the server's counts, its course rows and its CSV.
+ * "Tiến độ của tôi" (SPEC-learner-progress): the server's counts, its competencies, its course rows and
+ * its CSV.
  * The choices live in the URL so a reload or a shared link opens the same table; the table and the
  * export send the same filters and sort.
  */
@@ -128,6 +130,11 @@ export class ProgressStore {
     this.client.call(learnerEndpoints.progressSummary),
   );
 
+  /** The caller's competencies over every course; the server decides which have a percent. */
+  private readonly competencyData = serverData(() =>
+    this.client.call(learnerQuizEndpoints.myCompetency, { query: {} }),
+  );
+
   private readonly coursesData = serverData(
     (query: MyCoursesQuery) =>
       this.client.call(learnerEndpoints.myCourses, { query }),
@@ -156,6 +163,10 @@ export class ProgressStore {
     () => this.coursesData.isLoading() && this.state.shown() === undefined,
   );
   readonly isExporting$ = this.exports.isPending;
+
+  readonly competency$ = this.competencyData.value;
+  readonly competencyError$ = this.competencyData.error;
+  readonly isCompetencyLoading$ = this.competencyData.isLoading;
 
   /** The server's counts and availabilities; no filter touches them. */
   readonly summary$ = this.summaryData.value;
@@ -234,6 +245,10 @@ export class ProgressStore {
 
   retrySummary(): void {
     this.summaryData.reload();
+  }
+
+  retryCompetency(): void {
+    this.competencyData.reload();
   }
 
   retryCourses(): void {

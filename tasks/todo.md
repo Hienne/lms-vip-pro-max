@@ -77,7 +77,7 @@ at `2a298e0`.
     `learn.spec.ts`.
   - Size: S. Depends on: Checkpoint A.
 
-- [ ] **T4: "Năng lực theo nhóm kiến thức" card on the progress page**
+- [x] **T4: "Năng lực theo nhóm kiến thức" card on the progress page**
   - Acceptance:
     - `ProgressStore` loads `myCompetency` the same way, with the same three states.
     - The card is titled "Năng lực theo nhóm kiến thức" and uses `app-competency-view size="large"`.
