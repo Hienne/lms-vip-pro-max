@@ -199,7 +199,7 @@ export class LessonStore {
       number | undefined,
       { readonly page: number | null; readonly second: number }
     >({
-      source: () => this.activeBlock$()?.id,
+      source: () => this.activeBlockId(),
       computation: () => ({ page: null, second: 0 }),
     }),
     /** The spot an anchor asked the active block to show; another block or lesson drops it. */
@@ -320,6 +320,12 @@ export class LessonStore {
       blocks[0]
     );
   });
+
+  /**
+   * The id alone, so a linked signal keyed on the block resets only when the block changes: keyed on
+   * `activeBlock$` it would reset on every progress result, which rebuilds that object.
+   */
+  private readonly activeBlockId = computed(() => this.activeBlock$()?.id);
 
   readonly nextBlockId$ = computed(() => this.neighbour(1));
   readonly prevBlockId$ = computed(() => this.neighbour(-1));

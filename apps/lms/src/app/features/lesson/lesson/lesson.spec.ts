@@ -701,6 +701,31 @@ describe('Lesson', () => {
       expect(text()).toContain('Trang 3/4');
     });
 
+    it('labels the note with the page the link opened on', async () => {
+      const blockId = lessons()[1].blocks[0].block.id;
+      await open(lessonUrl(1, `?block=${blockId}&page=3`));
+      await press(tab('Ghi chú'));
+      expect(text()).toContain('Ghi chú tại Trang 3');
+    });
+
+    it('keeps the label on the page on screen after its dwell is reported and progress comes back', async () => {
+      const blockId = lessons()[1].blocks[0].block.id;
+      await open(lessonUrl(1, `?block=${blockId}&page=3`));
+      await press(tab('Ghi chú'));
+      await new Promise((resolve) => setTimeout(resolve, 1500));
+      await settle();
+      expect(text()).toContain('Ghi chú tại Trang 3');
+
+      await typeNote('Sau khi tiến độ về');
+      await save();
+      expect(bodies(personalEndpoints.addNote)).toEqual([
+        {
+          anchor: { type: 'pdf', blockId, page: 3 },
+          text: 'Sau khi tiến độ về',
+        },
+      ]);
+    });
+
     it('ignores a link whose page is not a number', async () => {
       const blockId = lessons()[1].blocks[0].block.id;
       await open(lessonUrl(1, `?block=${blockId}&page=abc`));
