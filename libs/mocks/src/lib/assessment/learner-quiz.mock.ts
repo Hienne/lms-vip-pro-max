@@ -243,9 +243,19 @@ const COMPETENCIES: readonly MyCompetency[] = [
     score: 0,
     percent: 0,
   },
-  // No graded question yet: the server sends a null percent when maxScore is 0.
   {
     competencyId: 3,
+    code: 'OPS',
+    name: 'Vận hành và quy trình',
+    totalQuestions: 3,
+    correctCount: 1,
+    maxScore: 3,
+    score: 1,
+    percent: 33.33,
+  },
+  // No graded question yet: the server sends a null percent when maxScore is 0.
+  {
+    competencyId: 4,
     code: 'RISK',
     name: 'Quản trị rủi ro vận hành',
     totalQuestions: 0,

@@ -179,5 +179,7 @@ describe('the learner quiz mock', () => {
     const parsed = e.myCompetency.response.parse(rows);
     expect(parsed.some((row) => row.percent === null)).toBe(true);
     expect(parsed.find((row) => row.percent === null)?.totalQuestions).toBe(0);
+    // Three rows with data, so the radar shows under `mockBackend`.
+    expect(parsed.filter((row) => row.percent !== null)).toHaveLength(3);
   });
 });
