@@ -13,6 +13,7 @@ import {
 } from '@lms/ui';
 import { CourseCard } from '../../../shared/course/course-card';
 import { DueDate } from '../../../shared/course/due-date';
+import { CompetencyView } from '../../../shared/learning/competency/competency-view';
 import { ProgressCounts } from '../../../shared/learning/progress-counts/progress-counts';
 import { ReminderItem } from '../../../shared/learning/reminder-item/reminder-item';
 import { UnavailableNote } from '../../../shared/learning/unavailable-note/unavailable-note';
@@ -32,6 +33,7 @@ const TAB_LABEL: Record<LearnTab, string> = {
   selector: 'app-learn',
   imports: [
     Button,
+    CompetencyView,
     ContinueCard,
     CourseCard,
     DueDate,

@@ -1,4 +1,5 @@
 import { Component, computed, input } from '@angular/core';
+import { FmtPctPipe } from '../../atoms/format/format.pipes';
 import { Table } from '../../atoms/table/table.directive';
 
 export interface RadarDatum {
@@ -9,7 +10,7 @@ export interface RadarDatum {
 /** SVG counterpart of the mockup radar; missing values stay explicit in the data table. */
 @Component({
   selector: 'ui-radar-chart',
-  imports: [Table],
+  imports: [FmtPctPipe, Table],
   templateUrl: './radar-chart.html',
   styleUrl: './charts.scss',
 })
@@ -17,6 +18,8 @@ export class RadarChart {
   readonly data = input.required<readonly RadarDatum[]>();
   readonly label = input('Biểu đồ năng lực');
   readonly seriesLabel = input('Của bạn (lần thi tốt nhất)');
+  /** Decimals kept in a value: the server's percents have up to two. */
+  protected readonly digits = 2;
   protected readonly geometry = computed(() => {
     const data = this.data();
     const point = (i: number, value: number) => {

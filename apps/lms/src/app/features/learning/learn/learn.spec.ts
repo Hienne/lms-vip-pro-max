@@ -1,7 +1,7 @@
 import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
-import { learnerEndpoints } from '@lms/contracts';
+import { learnerEndpoints, learnerQuizEndpoints } from '@lms/contracts';
 import { backendRefusal, envelopeOk } from '@lms/mocks';
 import type { MockInstance } from 'vitest';
 import { createAppRoutes } from '../../../app.routes';
@@ -204,6 +204,68 @@ describe('Learn', () => {
       expect(text()).not.toContain('Nhắc hạn');
       expect(text()).not.toContain('Không tải được nhắc hạn');
       expect(cards().length).toBeGreaterThan(0);
+    });
+  });
+
+  describe('the competency card', () => {
+    const card = () =>
+      el.querySelector<HTMLElement>(
+        'section[aria-labelledby="learn-competency"]',
+      )!;
+
+    it('sits under "Khóa học của tôi", with a "Chi tiết" link to the progress page', async () => {
+      await open();
+      const heading = el.querySelector('#learn-competency')!;
+      expect(heading.tagName).toBe('H2');
+      expect(heading.textContent).toContain('Biểu đồ năng lực');
+      const link = card().querySelector('a')!;
+      expect(link.textContent?.trim()).toBe('Chi tiết');
+      expect(link.getAttribute('href')).toBe('/progress');
+      expect(card().querySelector('button')).toBeNull();
+      expect(
+        el.querySelector('#learn-courses')!.compareDocumentPosition(heading) &
+          Node.DOCUMENT_POSITION_FOLLOWING,
+      ).toBeTruthy();
+    });
+
+    it('shows the radar when three competencies have data', async () => {
+      await open();
+      const view = card().querySelector('app-competency-view')!;
+      expect(view.classList).toContain('competency-view--compact');
+      expect(view.querySelector('ui-radar-chart')).not.toBeNull();
+      expect(view.textContent).toContain(
+        'Tỷ lệ đúng trên mọi lượt thi đã chấm',
+      );
+    });
+
+    it('shows the inline empty state when no competency has data', async () => {
+      const backend = TestBed.inject(MockBackend);
+      handle.mockImplementation((e, request) =>
+        e === learnerQuizEndpoints.myCompetency
+          ? { status: 200, body: envelopeOk([]) }
+          : MockBackend.prototype.handle.call(backend, e, request),
+      );
+      await open();
+      expect(card().textContent).toContain('Chưa có dữ liệu năng lực');
+      expect(card().querySelector('ui-radar-chart')).toBeNull();
+    });
+
+    it('fails alone, with a retry, and leaves the rest of the page', async () => {
+      fail(learnerQuizEndpoints.myCompetency);
+      await open();
+      expect(card().textContent).toContain('Không tải được biểu đồ năng lực');
+      expect(card().querySelector('app-competency-view')).toBeNull();
+      expect(el.querySelector('app-continue-card')).not.toBeNull();
+      expect(el.querySelectorAll('app-progress-counts dt')).toHaveLength(5);
+      expect(cards().length).toBeGreaterThan(0);
+
+      handle.mockRestore();
+      handle = vi.spyOn(TestBed.inject(MockBackend), 'handle');
+      Array.from(card().querySelectorAll('button'))
+        .find((b) => b.textContent?.includes('Thử lại'))!
+        .click();
+      await settle();
+      expect(card().querySelector('ui-radar-chart')).not.toBeNull();
     });
   });
 

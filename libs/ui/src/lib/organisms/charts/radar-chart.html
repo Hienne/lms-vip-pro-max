@@ -25,8 +25,8 @@
       r="4"
     >
       <title>
-        {{axis.name}}: {{axis.value === null ? 'Chưa có dữ liệu' : axis.value +
-        '%'}}
+        {{axis.name}}: {{axis.value === null ? 'Chưa có dữ liệu' : (axis.value |
+        fmtPct: digits)}}
       </title>
     </circle>
     <text
@@ -39,7 +39,7 @@
       <tspan [attr.x]="axis.text.x" [attr.dy]="$index ? 14 : 0">{{line}}</tspan>
       }
       <tspan class="chart-view__value" [attr.x]="axis.text.x" dy="16">
-        {{axis.value === null ? '—' : axis.value + '%'}}
+        {{axis.value === null ? '—' : (axis.value | fmtPct: digits)}}
       </tspan>
     </text>
     }
@@ -61,7 +61,8 @@
         <tr>
           <td>{{item.name}}</td>
           <td>
-            {{item.value === null ? 'Chưa có dữ liệu' : item.value + '%'}}
+            {{item.value === null ? 'Chưa có dữ liệu' : (item.value | fmtPct:
+            digits)}}
           </td>
         </tr>
         }

@@ -1,6 +1,7 @@
 import { computed, inject, Injectable, signal } from '@angular/core';
 import {
   learnerEndpoints,
+  learnerQuizEndpoints,
   type CourseCard,
   type LearningReminder,
   type MyCoursesQuery,
@@ -80,7 +81,7 @@ export interface ReminderRow {
 
 /**
  * The learner's home (SPEC-learner-home): where to resume, the counts, the courses by state, what
- * falls due and the reminders. Every read is independent, so one failing section does not blank
+ * falls due, the competency radar and the reminders. Every read is independent, so one failing section does not blank
  * the page. Nothing is computed here: the server's numbers and filters, shown.
  */
 @Injectable()
@@ -128,6 +129,11 @@ export class LearnStore {
     (query: MyCoursesQuery) =>
       this.client.call(learnerEndpoints.myCourses, { query }),
     { params: () => TAB_QUERY[this.state.tab()] },
+  );
+
+  /** The caller's competencies over every course; the server decides which have a percent. */
+  private readonly competencyData = serverData(() =>
+    this.client.call(learnerQuizEndpoints.myCompetency, { query: {} }),
   );
 
   private readonly dueData = serverData(() =>
@@ -204,6 +210,10 @@ export class LearnStore {
     (this.coursesData.value()?.items ?? []).map(toCourseCardView),
   );
 
+  readonly competency$ = this.competencyData.value;
+  readonly competencyError$ = this.competencyData.error;
+  readonly isCompetencyLoading$ = this.competencyData.isLoading;
+
   readonly dueError$ = this.dueData.error;
   readonly isDueLoading$ = this.dueData.isLoading;
 
@@ -262,6 +272,10 @@ export class LearnStore {
 
   retryCourses(): void {
     this.coursesData.reload();
+  }
+
+  retryCompetency(): void {
+    this.competencyData.reload();
   }
 
   retryDue(): void {

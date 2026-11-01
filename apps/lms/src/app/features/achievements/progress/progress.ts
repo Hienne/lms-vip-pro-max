@@ -18,6 +18,7 @@ import {
   TablePrimary,
   type SegmentedOption,
 } from '@lms/ui';
+import { CompetencyView } from '../../../shared/learning/competency/competency-view';
 import { ProgressCounts } from '../../../shared/learning/progress-counts/progress-counts';
 import { UnavailableNote } from '../../../shared/learning/unavailable-note/unavailable-note';
 import { CourseStatus } from '../../../shared/status/course-status';
@@ -33,6 +34,7 @@ import {
   imports: [
     Button,
     Checkbox,
+    CompetencyView,
     CourseStatus,
     DataTable,
     DataTableCell,

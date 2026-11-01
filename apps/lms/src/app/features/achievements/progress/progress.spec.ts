@@ -1,8 +1,8 @@
 import { TestBed } from '@angular/core/testing';
 import { provideRouter, Router } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
-import { learnerEndpoints } from '@lms/contracts';
-import { backendRefusal } from '@lms/mocks';
+import { learnerEndpoints, learnerQuizEndpoints } from '@lms/contracts';
+import { backendRefusal, envelopeOk } from '@lms/mocks';
 import { NOW } from '@lms/ui';
 import type { MockInstance } from 'vitest';
 import { createAppRoutes } from '../../../app.routes';
@@ -68,7 +68,10 @@ describe('LearningProgress', () => {
   }
 
   const text = () => el.textContent?.replace(/\s+/g, ' ') ?? '';
-  const rows = () => Array.from(el.querySelectorAll('tbody tr'));
+  const rows = () =>
+    Array.from(
+      el.querySelectorAll('section[aria-label="Danh sách khóa học"] tbody tr'),
+    );
   const calls = (endpoint: unknown) =>
     handle.mock.calls.filter(([e]) => e === endpoint);
   const lastQuery = (endpoint: unknown) =>
@@ -123,9 +126,9 @@ describe('LearningProgress', () => {
       ).toBe(false);
     });
 
-    it('says once that hours, scores and competency are not there yet, and shows none', () => {
+    it('says once that hours and scores are not there yet, and shows none', () => {
       expect(text()).toContain(
-        'Giờ học, điểm kiểm tra và năng lực sẽ hiển thị khi hệ thống có dữ liệu.',
+        'Giờ học và điểm kiểm tra sẽ hiển thị khi hệ thống có dữ liệu.',
       );
       expect(text()).not.toContain('Điểm cao nhất');
     });
@@ -158,9 +161,11 @@ describe('LearningProgress', () => {
     });
 
     it('shows an overdue course as one danger badge', () => {
-      const badge = Array.from(el.querySelectorAll('tbody .badge')).find((b) =>
-        b.textContent?.includes('Quá hạn'),
-      );
+      const badge = Array.from(
+        el.querySelectorAll(
+          'section[aria-label="Danh sách khóa học"] tbody .badge',
+        ),
+      ).find((b) => b.textContent?.includes('Quá hạn'));
       expect(badge?.classList.contains('badge--danger')).toBe(true);
     });
 
@@ -224,6 +229,82 @@ describe('LearningProgress', () => {
       await settle();
       expect(rows().length).toBeGreaterThan(0);
       expect(TestBed.inject(Router).url).toBe('/progress');
+    });
+  });
+
+  describe('the competency card', () => {
+    const card = () =>
+      el.querySelector<HTMLElement>(
+        'section[aria-labelledby="progress-competency"]',
+      )!;
+
+    it('is titled "Năng lực theo nhóm kiến thức", after the counts and before the table, with no select', async () => {
+      await open();
+      expect(el.querySelector('#progress-competency')?.tagName).toBe('H2');
+      expect(card().textContent).toContain('Năng lực theo nhóm kiến thức');
+      expect(card().querySelector('select, [role="combobox"]')).toBeNull();
+      const after = (a: Element, b: Element) =>
+        !!(a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING);
+      expect(after(el.querySelector('app-progress-counts')!, card())).toBe(
+        true,
+      );
+      expect(
+        after(
+          card(),
+          el.querySelector('section[aria-label="Danh sách khóa học"]')!,
+        ),
+      ).toBe(true);
+    });
+
+    it('shows the large radar from the server rows, once, and keeps it when a filter changes', async () => {
+      await open();
+      const view = card().querySelector('app-competency-view')!;
+      expect(view.classList).toContain('competency-view--large');
+      expect(view.querySelector('ui-radar-chart')).not.toBeNull();
+      expect(view.textContent).toContain(
+        'Tỷ lệ đúng trên mọi lượt thi đã chấm',
+      );
+      expect(calls(learnerQuizEndpoints.myCompetency)).toHaveLength(1);
+      expect(lastQuery(learnerQuizEndpoints.myCompetency)).toEqual({});
+      (el.querySelector('input[type="checkbox"]') as HTMLInputElement).click();
+      await settle();
+      expect(calls(learnerQuizEndpoints.myCompetency)).toHaveLength(1);
+    });
+
+    it('shows the inline empty state when no competency has data', async () => {
+      answer(learnerQuizEndpoints.myCompetency, {
+        status: 200,
+        body: envelopeOk([]),
+      } as ReturnType<typeof backendRefusal>);
+      await open();
+      expect(card().textContent).toContain('Chưa có dữ liệu năng lực');
+      expect(card().querySelector('ui-radar-chart')).toBeNull();
+    });
+
+    it('fails alone, with a retry, while the counts and the table stay', async () => {
+      answer(
+        learnerQuizEndpoints.myCompetency,
+        backendRefusal('internalError'),
+      );
+      await open();
+      expect(card().textContent).toContain(
+        'Không tải được năng lực theo nhóm kiến thức',
+      );
+      expect(card().querySelector('app-competency-view')).toBeNull();
+      expect(kpi('Tổng số khóa')).toBeTruthy();
+      expect(rows().length).toBeGreaterThan(0);
+      handle.mockRestore();
+      handle = vi.spyOn(TestBed.inject(MockBackend), 'handle');
+      Array.from(card().querySelectorAll('button'))
+        .find((b) => b.textContent?.includes('Thử lại'))!
+        .click();
+      await settle();
+      expect(card().querySelector('ui-radar-chart')).not.toBeNull();
+    });
+
+    it('is not shown to a learner without courses', async () => {
+      await open('/progress', '000005', 'giangvien');
+      expect(card()).toBeNull();
     });
   });
 

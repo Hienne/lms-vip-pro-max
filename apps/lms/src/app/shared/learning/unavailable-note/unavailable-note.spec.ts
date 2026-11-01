@@ -40,19 +40,26 @@ describe('UnavailableNote', () => {
     return (fixture.nativeElement as HTMLElement).textContent?.trim();
   }
 
-  it('says once that hours, scores and competency are not there yet', () => {
+  it('says once that hours and scores are not there yet', () => {
     expect(render(summary('unavailable'))).toBe(
-      'Giờ học, điểm kiểm tra và năng lực sẽ hiển thị khi hệ thống có dữ liệu.',
+      'Giờ học và điểm kiểm tra sẽ hiển thị khi hệ thống có dữ liệu.',
     );
   });
 
-  it('keeps saying it while any one of the three is unavailable', () => {
-    expect(render(summary('available', 'available', 'unavailable'))).toContain(
+  it('keeps saying it while hours or scores are unavailable', () => {
+    expect(render(summary('available', 'unavailable', 'available'))).toContain(
+      'sẽ hiển thị',
+    );
+    expect(render(summary('unavailable', 'available', 'available'))).toContain(
       'sẽ hiển thị',
     );
   });
 
-  it('says nothing once all three are available', () => {
+  it('ignores competency: unavailable competency alone shows no note', () => {
+    expect(render(summary('available', 'available', 'unavailable'))).toBe('');
+  });
+
+  it('says nothing once hours and scores are available', () => {
     expect(render(summary('available', 'available', 'available'))).toBe('');
   });
 });

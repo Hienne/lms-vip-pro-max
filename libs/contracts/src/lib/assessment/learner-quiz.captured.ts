@@ -4,7 +4,8 @@
  * schemas parse what the server really sends; `submitAttempt` returns the same body as
  * `attemptResult`. Recapture them from the local stack (`docs/conventions/workspace.md`, "Run against a
  * local backend") when a record of the backend changes. `startAttempt` and `attemptSession` were
- * captured again on 2026-10-31, when `SessionQuestion` gained `code`.
+ * captured again on 2026-10-31, when `SessionQuestion` gained `code`. `myCompetency` was captured
+ * again on 2026-11-01 for `hocvien` after several graded attempts, so its percents are fractional.
  */
 export const capturedLearnerQuiz = {
   courseQuizzes: [
@@ -788,31 +789,31 @@ export const capturedLearnerQuiz = {
       competencyId: 1,
       code: 'FE-DEMO-CMP-ARCH',
       name: 'Kiến trúc và tổng quan hệ thống',
-      totalQuestions: 2,
+      totalQuestions: 11,
       correctCount: 2,
-      maxScore: 2,
+      maxScore: 14,
       score: 2,
-      percent: 100,
+      percent: 14.29,
     },
     {
       competencyId: 2,
       code: 'FE-DEMO-CMP-OPS',
       name: 'Vận hành và quy trình',
-      totalQuestions: 2,
-      correctCount: 2,
-      maxScore: 3,
-      score: 3,
-      percent: 100,
+      totalQuestions: 7,
+      correctCount: 1,
+      maxScore: 9,
+      score: 1,
+      percent: 11.11,
     },
     {
       competencyId: 3,
       code: 'FE-DEMO-CMP-CTRL',
       name: 'Kiểm soát và tuân thủ',
-      totalQuestions: 1,
-      correctCount: 0,
-      maxScore: 1,
-      score: 0,
-      percent: 0,
+      totalQuestions: 2,
+      correctCount: 1,
+      maxScore: 3,
+      score: 1,
+      percent: 33.33,
     },
   ],
 } satisfies Record<string, unknown>;

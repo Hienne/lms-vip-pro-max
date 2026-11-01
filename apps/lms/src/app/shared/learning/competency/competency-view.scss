@@ -1,0 +1,66 @@
+@use 'ui';
+
+:host {
+  display: block;
+  min-width: 0;
+}
+
+.competency-view {
+  &__chart {
+    margin-inline: auto;
+  }
+
+  &__name {
+    min-width: 0;
+  }
+
+  &__list {
+    @include ui.stack(2);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  &__item {
+    display: grid;
+    grid-template-columns: 1fr auto auto;
+    align-items: baseline;
+    gap: ui.space(4);
+  }
+
+  &__meta {
+    @include ui.text(sm, muted);
+    @include ui.num;
+  }
+
+  &__percent {
+    @include ui.num;
+    min-width: ui.space(12);
+    text-align: right;
+    font-weight: ui.weight(semibold);
+  }
+
+  @include ui.bp-below(sm) {
+    &__item {
+      grid-template-columns: 1fr auto;
+    }
+
+    &__meta {
+      grid-column: 1;
+      grid-row: 2;
+    }
+
+    &__percent {
+      grid-column: 2;
+      grid-row: 1 / span 2;
+    }
+  }
+}
+
+:host(.competency-view--compact) .competency-view__chart {
+  max-width: calc(#{ui.space(12)} * 8);
+}
+
+:host(.competency-view--large) .competency-view__chart {
+  max-width: calc(#{ui.space(12)} * 11);
+}

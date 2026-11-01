@@ -1,7 +1,7 @@
 # Spec: `learner-competency`
 
-Map: [SPEC.md](SPEC.md). Status: **draft, waiting for approval.** Depends on `learner-quiz`, which supplies the
-graded attempts the radar is built from.
+Map: [SPEC.md](SPEC.md). Status: **built 2026-11-01** (approved the same day, amended by the plan; see "Amendments"). Depends on
+`learner-quiz`, which supplies the graded attempts the radar is built from.
 
 ## Objective
 
@@ -24,6 +24,25 @@ changes the card's caption.
 
 The progress summary keeps `competency: { availability }` as it is. `learner-scores` fills `assessment`, not
 `competency`, because the radar has its own endpoint.
+
+## Amendments
+
+Written with [tasks/plan.md](tasks/plan.md) and approved by the user on 2026-11-01. Where they differ from the
+sections around them, they win.
+
+1. **`percent` can be null.** The server sends `percent: null` when `maxScore` is 0. `MyCompetencySchema.percent`
+   becomes nullable. A null percent is `value: null` on the radar. This replaces the "`totalQuestions = 0` → null"
+   rule below.
+2. **Every graded attempt counts.** The backend sums every graded attempt, not the best one. The radar's series
+   label is "Tỷ lệ đúng trên mọi lượt thi đã chấm".
+3. **Three ways to show it.** Three or more competencies with a percent: the radar. One or two: a short list
+   (name, "x/y câu đúng", percent). None: the inline empty state "Chưa có dữ liệu năng lực". This answers open
+   question 1.
+4. **No course select on the progress page.** The mockup has none. The radar covers every course, and success
+   criterion 3 is dropped.
+5. **The unavailable note drops competency.** `app-unavailable-note` ignores `competency` and reads "Giờ học và
+   điểm kiểm tra sẽ hiển thị khi hệ thống có dữ liệu."
+6. **Percents in the app's format.** `ui-radar-chart` shows values through `fmtPct` ("14,29%").
 
 ## App
 

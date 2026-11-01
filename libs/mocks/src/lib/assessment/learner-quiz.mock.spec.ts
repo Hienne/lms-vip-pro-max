@@ -176,6 +176,10 @@ describe('the learner quiz mock', () => {
 
   it('answers the competency read', () => {
     const { data: rows } = call(new FakeBackend(), e.myCompetency);
-    expect(() => e.myCompetency.response.parse(rows)).not.toThrow();
+    const parsed = e.myCompetency.response.parse(rows);
+    expect(parsed.some((row) => row.percent === null)).toBe(true);
+    expect(parsed.find((row) => row.percent === null)?.totalQuestions).toBe(0);
+    // Three rows with data, so the radar shows under `mockBackend`.
+    expect(parsed.filter((row) => row.percent !== null)).toHaveLength(3);
   });
 });

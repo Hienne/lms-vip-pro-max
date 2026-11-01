@@ -37,7 +37,30 @@
 >
   <a uiButton variant="primary" routerLink="/catalog">Xem danh mục khóa học</a>
 </ui-empty>
-} } @if (!store.isEmpty$() && !store.summaryError$() &&
+} } @if (!store.isEmpty$()) {
+<section
+  class="learning-progress__competency"
+  aria-labelledby="progress-competency"
+>
+  <h2 id="progress-competency">Năng lực theo nhóm kiến thức</h2>
+  @if (store.competencyError$(); as error) {
+  <ui-error-state
+    title="Không tải được năng lực theo nhóm kiến thức"
+    [message]="error.message"
+    (retry)="store.retryCompetency()"
+  />
+  } @else if (store.competency$(); as rows) {
+  <app-competency-view size="large" [rows]="rows" />
+  } @else {
+  <div
+    uiSkeleton
+    variant="block"
+    class="learning-progress__competency-placeholder"
+    aria-busy="true"
+  ></div>
+  }
+</section>
+} @if (!store.isEmpty$() && !store.summaryError$() &&
 !store.isSummaryLoading$()) {
 <section class="learning-progress__table" aria-label="Danh sách khóa học">
   <div class="learning-progress__filters">

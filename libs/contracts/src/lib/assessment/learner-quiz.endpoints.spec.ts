@@ -83,6 +83,25 @@ describe('learnerQuizEndpoints', () => {
     expect(e.myCompetency.response.safeParse({}).success).toBe(false);
   });
 
+  it('parses a competency with a null percent and refuses one without a name', () => {
+    const [row] = captured.myCompetency;
+    const noData = {
+      ...row,
+      totalQuestions: 0,
+      correctCount: 0,
+      maxScore: 0,
+      score: 0,
+      percent: null,
+    };
+    const parsed = e.myCompetency.response.parse([row, noData]);
+    expect(parsed[0].percent).toBe(14.29);
+    expect(parsed[1].percent).toBeNull();
+    const { name: _name, ...withoutName } = noData;
+    expect(e.myCompetency.response.safeParse([withoutName]).success).toBe(
+      false,
+    );
+  });
+
   it('builds the paths of the backend', () => {
     expect(toUrl(e.courseQuizzes, { courseId: 7 })).toBe(
       '/api/v1/me/courses/7/quizzes',

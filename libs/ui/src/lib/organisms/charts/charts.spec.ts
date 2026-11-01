@@ -18,6 +18,33 @@ describe('data charts', () => {
     expect(e.querySelector('tbody')?.textContent).toContain('Chưa có dữ liệu');
     expect(e.innerHTML).not.toContain('NaN');
   });
+  it('shows radar percents in the app format, with the server decimals', async () => {
+    const f = TestBed.createComponent(RadarChart);
+    f.componentRef.setInput('data', [
+      { name: 'CIF', value: 14.29 },
+      { name: 'Tiền gửi', value: null },
+      { name: 'EOD', value: 100 },
+    ]);
+    await f.whenStable();
+    const e = f.nativeElement as HTMLElement;
+    const cells = Array.from(e.querySelectorAll('tbody td:nth-child(2)')).map(
+      (td) => td.textContent?.trim(),
+    );
+    expect(cells).toEqual(['14,29%', 'Chưa có dữ liệu', '100%']);
+    const labels = Array.from(e.querySelectorAll('.chart-view__value')).map(
+      (v) => v.textContent?.trim(),
+    );
+    expect(labels).toEqual(['14,29%', '—', '100%']);
+    const titles = Array.from(e.querySelectorAll('circle title')).map((t) =>
+      t.textContent?.replace(/\s+/g, ' ').trim(),
+    );
+    expect(titles).toEqual([
+      'CIF: 14,29%',
+      'Tiền gửi: Chưa có dữ liệu',
+      'EOD: 100%',
+    ]);
+    expect(e.innerHTML).not.toContain('14.29');
+  });
   it('renders an empty radar without invalid SVG coordinates', async () => {
     const f = TestBed.createComponent(RadarChart);
     f.componentRef.setInput('data', []);

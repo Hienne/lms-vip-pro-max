@@ -80,6 +80,29 @@
         }
       </ui-tabs>
     </section>
+
+    <section class="learn__section" aria-labelledby="learn-competency">
+      <div class="learn__heading">
+        <h2 id="learn-competency">Biểu đồ năng lực</h2>
+        <a routerLink="/progress">Chi tiết</a>
+      </div>
+      @if (store.competencyError$(); as error) {
+      <ui-error-state
+        title="Không tải được biểu đồ năng lực"
+        [message]="error.message"
+        (retry)="store.retryCompetency()"
+      />
+      } @else if (store.competency$(); as rows) {
+      <app-competency-view size="compact" [rows]="rows" />
+      } @else {
+      <div
+        uiSkeleton
+        variant="block"
+        class="learn__competency-placeholder"
+        aria-busy="true"
+      ></div>
+      }
+    </section>
   </div>
 
   <aside class="learn__side">
