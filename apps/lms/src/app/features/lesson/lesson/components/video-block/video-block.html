@@ -20,4 +20,16 @@
   (timeupdate)="tick()"
   (error)="failed.set(true)"
 ></video>
+<button
+  uiButton
+  size="sm"
+  class="video__bookmark"
+  [variant]="bookmarked() ? 'secondary' : 'ghost'"
+  [attr.aria-pressed]="bookmarked()"
+  [disabled]="busy()"
+  (click)="bookmarkHere()"
+>
+  <ui-icon name="bookmark" size="sm" />
+  Đánh dấu mốc {{ clock(second()) }}
+</button>
 }

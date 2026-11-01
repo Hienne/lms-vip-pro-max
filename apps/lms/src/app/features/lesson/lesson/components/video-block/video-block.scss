@@ -9,6 +9,10 @@
     background: ui.color(black);
   }
 
+  &__bookmark {
+    margin-top: ui.space(2);
+  }
+
   &__error {
     @include ui.row(2);
     margin: 0;

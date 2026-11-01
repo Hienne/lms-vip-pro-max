@@ -19,12 +19,19 @@ export const PDF_PAGE_DWELL_MS = 1000;
 /** Zoom steps on top of fitting the page to the column. */
 export const PDF_ZOOMS = [1, 1.25, 1.5, 2, 3] as const;
 
+/** A request to show a page: `seq` tells two requests for the same page apart. */
+export interface BlockJump {
+  readonly value: number;
+  readonly seq: number;
+}
+
 /** Width used when the column cannot be measured (before layout). */
 const FALLBACK_WIDTH = 800;
 
 /**
- * A `pdf` block: pdf.js draws one page at a time on a canvas. It reports the page shown after the
- * learner stays on it for a second; the store decides what to send.
+ * A `pdf` block: pdf.js draws one page at a time on a canvas. It tells where the learner is
+ * (`pageChange`, at once) and reports the page shown after a second on it (`pageShown`); it shows
+ * the page a `jump` asks for and reports the bookmark button. The store decides what to do.
  */
 @Component({
   selector: 'app-pdf-block',
@@ -39,8 +46,18 @@ export class PdfBlock {
   /** The page the server remembers; the block opens there. */
   readonly startPage = input(1);
   readonly title = input('');
+  /** Shows this page now; a new object is a new request, even for the same page. */
+  readonly jump = input<BlockJump | null>(null);
+  /** The current page is bookmarked. */
+  readonly bookmarked = input(false);
+  /** A bookmark change is in flight, so the button waits. */
+  readonly busy = input(false);
 
+  /** Every page the block shows, as it is shown. */
+  readonly pageChange = output<number>();
   readonly pageShown = output<number>();
+  /** "Đánh dấu trang này": the page to turn on or off. */
+  readonly bookmark = output<number>();
   /** "Thử lại": the page claims the block again, which renews the media cookie. */
   readonly retry = output<void>();
 
@@ -92,7 +109,10 @@ export class PdfBlock {
       (file) => {
         if (!alive) return file.destroy();
         opened = file;
-        this.state.page.set(this.clamp(this.startPage(), file.pageCount));
+        const jump = untracked(this.jump);
+        this.state.page.set(
+          this.clamp(jump ? jump.value : this.startPage(), file.pageCount),
+        );
         this.state.file.set(file);
       },
       () => {
@@ -123,6 +143,20 @@ export class PdfBlock {
     onCleanup(() => render.cancel());
   });
 
+  /** A jump moves to its page once the file is open; an earlier one is taken when it opens. */
+  private readonly follow = effect(() => {
+    const jump = this.jump();
+    if (jump && untracked(this.state.file)) {
+      this.state.page.set(this.clamp(jump.value));
+    }
+  });
+
+  /** The page is told as soon as it is shown. */
+  private readonly track = effect(() => {
+    const page = this.state.page();
+    if (this.state.file()) untracked(() => this.pageChange.emit(page));
+  });
+
   /** A page counts as shown after the dwell time on it. */
   private readonly report = effect((onCleanup) => {
     const page = this.state.page();
@@ -143,6 +177,10 @@ export class PdfBlock {
       const index = PDF_ZOOMS.findIndex((z) => z === zoom) + step;
       return PDF_ZOOMS[Math.min(Math.max(index, 0), PDF_ZOOMS.length - 1)];
     });
+  }
+
+  protected bookmarkPage(): void {
+    this.bookmark.emit(this.state.page());
   }
 
   protected retried(): void {
