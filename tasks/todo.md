@@ -23,7 +23,7 @@ at `3aaf270`.
 
 ## Phase 1: Backend
 
-- [ ] **B1: `scores` port method and its Assessment implementation**
+- [x] **B1: `scores` port method and its Assessment implementation**
   - Acceptance:
     - `LearningQuizDirectory.scores(String userId, Collection<Long> courseIds)` returns `List<QuizScore>`, one per
       published, not deleted quiz of those courses: `quizId`, `courseId`, `title`, `quizType`, `bestScore`,
@@ -39,14 +39,10 @@ at `3aaf270`.
     `QuizAttemptService.java` (extraction), the repository it needs, tests.
   - Size: M. Depends on: none.
 
-- [ ] **B2: `AssessmentOverview` in the progress summary (S1)**
-  - Acceptance:
-    - `LearningProgressOverview.assessment` is `AssessmentOverview(availability, last, bestScorePercent,
+- [x] **B2: `AssessmentOverview` in the progress summary (S1)**
+  - Acceptance: - `LearningProgressOverview.assessment` is `AssessmentOverview(availability, last, bestScorePercent,
 averageScorePercent, passedQuizCount, quizCount)` when the caller's current courses have at least one
-      published quiz, and `{ availability: "unavailable" }` otherwise.
-    - The current courses are the `MINE` search's ids, the same set the counts use.
-    - The figures follow plan amendment 2. The average is rounded to two decimals, half up.
-    - `docs/api/LEARNING.md` ("Summary, CSV và thông tin gửi FE") describes it.
+    published quiz, and `{ availability: "unavailable" }` otherwise. - The current courses are the `MINE` search's ids, the same set the counts use. - The figures follow plan amendment 2. The average is rounded to two decimals, half up. - `docs/api/LEARNING.md` ("Summary, CSV và thông tin gửi FE") describes it.
   - Verify: `LearningProgressReportServiceTest`:
     - no quiz → `unavailable`;
     - quizzes but no attempt → `available` with `last` null, best and average null, `passedQuizCount` 0;
@@ -54,7 +50,7 @@ averageScorePercent, passedQuizCount, quizCount)` when the caller's current cour
   - Files: `LearningProgressOverview.java`, `LearningProgressReportService.java`, its test, `docs/api/LEARNING.md`.
   - Size: M. Depends on: B1.
 
-- [ ] **B3: `bestScorePercent` on `CourseCard` and the CSV column (S2, S3)**
+- [x] **B3: `bestScorePercent` on `CourseCard` and the CSV column (S2, S3)**
   - Acceptance:
     - `CourseCard.bestScorePercent` is the best graded score of the course's published final exam, or null. It is
       filled on catalog, courses and course-by-id, with one `scores` call per page.
@@ -67,7 +63,7 @@ averageScorePercent, passedQuizCount, quizCount)` when the caller's current cour
     `docs/api/LEARNING.md`.
   - Size: M. Depends on: B1.
 
-- [ ] **B4: `graded=true` on `/me/quiz-attempts` and its export (S4)**
+- [x] **B4: `graded=true` on `/me/quiz-attempts` and its export (S4)**
   - Acceptance:
     - With `graded=true`, the list and the export return only `SUBMITTED` and `AUTO_SUBMITTED` attempts.
     - It combines with `quizId` and with `status` by AND.
@@ -79,14 +75,14 @@ averageScorePercent, passedQuizCount, quizCount)` when the caller's current cour
 
 ### Checkpoint A
 
-- [ ] `mvn clean test` green in the worktree.
-- [ ] Stop for the main session. It reviews the diff, restarts the local backend on the branch, and checks with
+- [x] `mvn clean test` green in the worktree.
+- [x] Stop for the main session. Passed on 2026-11-01: every figure below matched `curl` and the quiz intros. It reviews the diff, restarts the local backend on the branch, and checks with
       `curl` as `hocvien`:
   - the summary;
   - course 1's and course 8's cards;
   - the CSV header;
   - `graded=true`.
-- [ ] The backend PR is opened only when the user asks.
+- [ ] The backend PR is opened only when the user asks. (Not asked yet; the user approved Phase 2 on 2026-11-01.)
 
 ## Phase 2: App
 
