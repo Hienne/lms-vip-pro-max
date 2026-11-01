@@ -86,7 +86,7 @@ averageScorePercent, passedQuizCount, quizCount)` when the caller's current cour
 
 ## Phase 2: App
 
-- [ ] **F1: Contracts, captured fixtures and the mock**
+- [x] **F1: Contracts, captured fixtures and the mock**
   - Acceptance:
     - `AssessmentOverviewSchema`; `LearningProgressOverviewSchema.assessment` is a union on `availability`
       (`"available"` → the overview, else `AvailabilitySchema`).
@@ -100,7 +100,7 @@ averageScorePercent, passedQuizCount, quizCount)` when the caller's current cour
     captured fixtures, `libs/mocks/src/lib/learning/*`, `libs/mocks/src/lib/assessment/*`.
   - Size: S. Depends on: Checkpoint A.
 
-- [ ] **F2: Learn page score figures and the course card score**
+- [x] **F2: Learn page score figures and the course card score**
   - Acceptance:
     - With an available overview, two figures follow the counts, in the same label-over-number style, each a link to
       `/progress`:
@@ -116,7 +116,7 @@ averageScorePercent, passedQuizCount, quizCount)` when the caller's current cour
     `shared/course/`, specs.
   - Size: M. Depends on: F1.
 
-- [ ] **F3: Progress page: average, column and "Lịch sử thi"**
+- [x] **F3: Progress page: average, column and "Lịch sử thi"**
   - Acceptance:
     - "Điểm thi trung bình" (`fmtPct`, or "—") next to the counts when the overview is available.
     - The course table gains "Điểm cao nhất" (`fmtPct`, or "—"), not sortable.
@@ -131,7 +131,7 @@ averageScorePercent, passedQuizCount, quizCount)` when the caller's current cour
   - Files: `features/achievements/progress/*`, specs.
   - Size: M. Depends on: F1.
 
-- [ ] **F4: End-to-end check against the spec**
+- [x] **F4: End-to-end check against the spec**
   - Acceptance: the success criteria below are written here, each with how it was checked.
   - Verify, on the local stack as `hocvien`:
     - the learn figures, the course card scores, the progress KPI, the column and "Lịch sử thi" equal `curl` of the
@@ -146,11 +146,29 @@ averageScorePercent, passedQuizCount, quizCount)` when the caller's current cour
 
 ### Checkpoint B
 
-- [ ] Success criteria recorded:
+- [x] Success criteria recorded, with how each was checked (2026-11-01):
   1. `hocvien` sees "Điểm kiểm tra gần nhất" and "Điểm cao nhất · Đạt x/y bài kiểm tra" on the learn page, equal to
      the backend response.
+     - Checked by `curl` of the summary on :8019: last = quiz 1 at 0% failed, best 100, average 42.26, passed 1 of 5.
+     - Checked by `learn.spec` and `score-figures.spec` against the mock: both figures with their links, "Chưa đạt"
+       as the only coloured text, "—" with "Chưa làm bài kiểm tra", none when unavailable.
+     - **Left for the main session's review:** the figures on screen (1280 px light, 375 px dark).
   2. Progress shows "Điểm thi trung bình", the "Điểm cao nhất" column and "Lịch sử thi"; the CSV has the new column.
+     - Checked by `curl` of `GET /me/learning/courses?size=50`: course 1 = 12.5, course 8 = 100, the others null.
+     - Checked by `curl` of the progress export: the header ends with "Điểm cao nhất" and the first row has 12.50.
+     - Checked by `curl` of `/me/quiz-attempts?graded=true&sort=submittedAt,desc&size=6&page=0`: 5 graded attempts,
+       two `AUTO_SUBMITTED`.
+     - Checked by `progress.spec`: the KPI, the last and non-sortable column, the query sent for the history, its
+       three states (rows with the result link and "tự nộp", empty, error with retry), and the card sitting after
+       the competency card.
+     - **Left for the main session's review:** the same on screen, the downloaded file and the wide/narrow layout.
   3. A learner with no quiz sees no score figures and no error.
+     - Checked by specs on both pages with an `unavailable` assessment, and by the mock's `giangvien`.
+     - No local learner has an unavailable assessment: `giangvien` is available with null scores on the backend.
+     - **Left for the main session's review:** the "—" state of `giangvien` on screen.
   4. `mvn clean test` and `npm run check` green; the visual-design checklist passes.
-- [ ] Spec status set to built.
+     - `mvn clean test` was green at Checkpoint A (backend worktree).
+     - `npm run check` green on 2026-11-01: 14 of 14 tasks (format, lint, typecheck, test, build, bundle guard).
+     - **Left for the main session's review:** the visual-design checklist in the browser.
+- [x] Spec status set to "built pending the main session's browser check".
 - [ ] Review with the user, then plan `learning-leaderboard`.

@@ -1,6 +1,6 @@
 # Spec: `learner-scores`
 
-Map: [SPEC.md](SPEC.md). Status: **draft, amended by the plan (see "Amendments"), waiting for approval.** Depends on
+Map: [SPEC.md](SPEC.md). Status: **built, pending the main session's browser check (amended by the plan, see "Amendments").** Depends on
 `learner-quiz`.
 
 ## Amendments
