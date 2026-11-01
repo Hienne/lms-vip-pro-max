@@ -1,185 +1,129 @@
-# Implementation Plan: `catalog-discovery`
+# Implementation Plan: `learner-competency`
 
-Spec: [SPEC-catalog-discovery.md](../SPEC-catalog-discovery.md) (approved 2026-10-31, amended below). Map:
-[SPEC.md](../SPEC.md). Tasks: [todo.md](todo.md).
+Spec: [SPEC-learner-competency.md](../SPEC-learner-competency.md) (approved 2026-11-01 with this plan, amended
+below). Map: [SPEC.md](../SPEC.md). Tasks: [todo.md](todo.md).
 
-This plan replaces the one for `learner-quiz`. That plan is done, and it is in git history at `3da2ff3`.
+This plan replaces the one for `catalog-discovery`. That plan is done and merged (Hienne/lms-vip-pro-max#48,
+hmhug19/corebanking-academy#16), and it is in git history at `2a298e0`.
 
 ## Overview
 
-The goal is that a learner can find a course the way the mockup's `catalog` and `learn` pages describe, on the
-real backend.
+The learner sees their competency radar: "Biểu đồ năng lực" on the learn page, with a "Chi tiết" link to
+`/progress`, and "Năng lực theo nhóm kiến thức" on the progress page. Both read `GET /api/v1/me/competency`, which
+the backend already serves.
 
-- **Backend (`corebanking-academy`):**
-  - A learner can read the field, programme and module names of the catalogue (D1).
-  - The course lists take the `assigned`, `failed` and `overdue` filters (D2), and each card carries the names
-    and the `failed` flag (D3).
-  - One call returns a learner's course by id (D4).
-  - The progress summary counts assigned and mandatory courses (D5).
-- **App:**
-  - The catalogue's selects and status filter run on the new endpoints.
-  - The learn page shows five tabs with counts.
-  - The course page and the lesson page read the course with one call and show the programme breadcrumb.
+No backend change, no schema change.
 
-No schema change, so no upgrade script.
-
-## What was checked while planning (2026-10-31)
+## What was checked while planning (2026-11-01)
 
 **Backend**
 
-- **The course lists.** `LearningLearnerController` serves `/me/learning/courses` (mode `MINE`) and
-  `/me/learning/catalog` (mode `CATALOG`) through `LearningSearchService.search` and
-  `CourseRepositoryCustomImpl.search`. `LearningInstructorController` uses the same query in mode `MANAGE`.
-  - `overdue` already exists as a filter, but only `/courses` passes it.
-  - The card already has `assigned` (an active assignment on the current enrollment) and `overdue`. D2's
-    `assigned` filter is that same expression.
-  - The query already joins `training_programs p` and `training_fields f`. Modules live in
-    `learning_hub.business_modules` (with `field_id`), which is not joined yet.
-- **Visibility.** The learner rule (enrolled, or active, published course in a published programme and field,
-  owned by the caller's org or shared to it) is written inline in `search`. D1 needs the same rule.
-- **Course content.** `LearningContentService.detail(course, revision)` builds a `CourseDetail`. The enrolled
-  revision is the card's `revisionId` (`coalesce(e.revision_id, c.published_revision_id)`).
-- **Progress summary.** `CourseRepositoryCustomImpl.summary` counts by enrollment status and overdue. It has no
-  requirement or assignment counts.
-- **Quiz data for `failed`.** `quiz_attempts` has `user_id`, `status`, `passed` and `graded_at`. There is one
-  FINAL_EXAM per course (`ux_asm_quizzes_final`). `everPassed` is computed in `QuizAttemptService` as "some
-  graded attempt passed". Learning already reaches Assessment through the `LearningQuizDirectory` port.
-- **Not found.** No `LEARNING-COURSE_NOT_FOUND` code was found. T4 checks `LearningResponseCode` for an existing
-  course-not-found code before adding one.
+- `LearnerQuizController` serves `GET /api/v1/me/competency?courseId=`, and `AssessmentReportService.myCompetency`
+  returns `MyCompetency(competencyId, code, name, totalQuestions, correctCount, maxScore, score, percent)`.
+- **Which attempts count:** every graded attempt of the caller, not the best one. The endpoint's description and
+  `docs/api/ASSESSMENT.md` both say "mọi lượt đã chấm".
+- `percent` is `score × 100 / maxScore`, rounded to 2 decimals, and is **`null` when `maxScore` is 0**.
+- On the local stack, `hocvien` gets three rows: 14.29, 11.11 and 33.33. `?courseId=1` also returns three rows.
+- The progress summary still says `competency: unavailable`, and the spec keeps it that way.
 
 **App**
 
-- `features/learning/catalog/data-access/catalog.store.ts` already has the filters in the URL, the sort select
-  and the clear count. It reads fields, programmes and modules from `trainingCatalogEndpoints`, which a learner
-  is refused. It sends `learningStatus=failed|overdue`, which the backend does not know. Its "Được giao" scope
-  lists `myCourses`.
-- `features/learning/learn/data-access/learn.store.ts` has four tabs. It reads programme names from
-  `trainingCatalogEndpoints.listPrograms`.
-- `core/learning/learner-course.ts` (`findLearnerCourse`) pages through `myCourses`, then `catalog`. It is used
-  by `course.store.ts` and `lesson.store.ts`.
-- The admin stores (course editor, training catalogue, courses) keep `trainingCatalogEndpoints`; they are out of
-  scope.
+- The contract exists already: `learnerQuizEndpoints.myCompetency` and `MyCompetencySchema` in
+  `libs/contracts/src/lib/assessment/learner-quiz.*`, added by `learner-quiz`. **`percent` is `z.number()`**, so a
+  row with `percent: null` would fail to parse.
+- The mock already answers it (`libs/mocks/src/lib/assessment/learner-quiz.mock.ts`, `COMPETENCIES`).
+- `ui-radar-chart` (`libs/ui/src/lib/organisms/charts`) takes `RadarDatum { name, value: number | null }`. It has a
+  "Xem dạng bảng" data table. Its default series label is "Của bạn (lần thi tốt nhất)", which is wrong for this
+  endpoint. It prints `value + '%'`, so 14.29 shows as "14.29%", not the app's "14,29%" (`fmtPct`).
+  The admin report screen is its only user today.
+- The learn page and the progress page show `app-unavailable-note`: "Giờ học, điểm kiểm tra và năng lực sẽ hiển
+  thị khi hệ thống có dữ liệu." It counts `competency: unavailable`, so it would keep promising competency next to
+  a radar that shows it.
+- **Mockup:**
+  - The learn page (`learner.js`) shows the radar when any competency has an answer, otherwise an empty state.
+    The card sits in the main column, under "Khóa học của tôi".
+  - The progress page (`tools.js`) shows "Năng lực theo nhóm kiến thức" as a radar card, size 320, with **no
+    course select**.
 
 ## Spec amendments (written into the spec with this plan)
 
-1. **`failed` goes through the quiz port.** `LearningQuizDirectory` gains
-   `failedFinalExamCourseIds(userId)`, implemented in `assessment`. A course is in the set when its FINAL_EXAM
-   is PUBLISHED and not deleted, the caller has at least one graded attempt (`SUBMITTED` or `AUTO_SUBMITTED`,
-   `graded_at` set), and none of their graded attempts passed. The search binds the set as
-   `c.course_id in (:failedIds)`, both as the D2 filter and as the D3 flag. Learning reads no Assessment table.
-   This is the spec's second option, chosen because it keeps the module boundary and the set is small (one row
-   per course the learner took a final exam in). `MANAGE` mode does not call the port, and its `failed` is
-   always false. T1 records `EXPLAIN (ANALYZE, BUFFERS)` of the port query on the demo data; no index is added
-   unless that plan shows a sequential scan on `quiz_attempts`.
-2. **One visibility rule.** The learner visibility condition moves into one private method of
-   `CourseRepositoryCustomImpl`, used by both `search` and the new facets query, so the two cannot drift.
-3. **Counts reuse the list.** D5's `assigned` and `mandatory` are the totals of the `MINE` search with
-   `assigned=true` and `requirement=mandatory`, so the tabs always agree with the lists (spec testing line
-   "D5 counts agree with D2 totals").
-4. **The status filter is one choice.** The app sends at most one of `learningStatus`, `failed=true`,
-   `overdue=true` or `assigned=true`, following the mockup's single "Trạng thái" select.
-5. **Open questions take their defaults.** "Được giao" means "has an active assignment". D1 covers the whole
-   visible catalogue, self-enrol courses included.
+1. **`percent` can be null.** `MyCompetencySchema.percent` becomes nullable. A row with `percent: null` is
+   `value: null` on the radar, so the data table shows it as no data. This replaces the spec's
+   "`totalQuestions = 0` → null" rule: the server decides, through `percent`, when there is no data.
+2. **The caption says every attempt.** The radar's series label is "Tỷ lệ đúng trên mọi lượt thi đã chấm". That is
+   the server's rule, not "lần thi tốt nhất".
+3. **Three ways to show it.**
+   - Three or more rows with a non-null `percent`: the radar.
+   - One or two such rows: no radar, because fewer than three axes do not read as a shape. The card shows the
+     same rows as a short list (name, "x/y câu đúng", percent).
+   - None: an inline empty state, "Chưa có dữ liệu năng lực", with one line saying the chart fills in after a
+     quiz.
 
-6. **D4 before enrolment** (decided by the user on 2026-10-31: "Duyệt, ẩn blocks"). The spec said `content` is
-   the published revision when the caller is not enrolled, but `CourseDetail` includes every block, so a learner
-   could read a course's lessons without enrolling, and the course page needs only the outline. For a caller who
-   is not enrolled, `content` keeps the chapters and lessons and every lesson's `blocks` list is empty. An
-   enrolled caller gets the full revision. Media access is unchanged.
+   This settles the spec's open question, and resolves its two conflicting lines (empty state vs. data table
+   alone).
 
-7. **D4 refusal code** (found building T4, applied in T6). A course the caller cannot see answers
-   `LEARNING-NOT_FOUND`, the code `LearningSearchService` already uses for a missing learning record, not
-   `LEARNING-COURSE_NOT_FOUND`. The contracts and mocks use `LEARNING-NOT_FOUND`.
+4. **No course select on progress** (default, following the mockup). The spec added one, but the mockup has none,
+   and visual-design.md asks for no control the mockup does not need. The radar shows every course. If the user
+   wants the select, it is one more task (T4b) and its success criterion comes back.
+5. **The unavailable note stops speaking for competency.** `app-unavailable-note` ignores `competency` and its
+   sentence drops "năng lực": "Giờ học và điểm kiểm tra sẽ hiển thị khi hệ thống có dữ liệu." The summary field
+   stays as it is on the server.
+6. **Percents in the app's format.** The radar's labels and data table use `fmtPct`. The number is the server's;
+   only its display changes, from "14.29%" to "14,29%".
 
 ## Architecture decisions
 
-- **Backend.**
-  - The new filters extend `CourseSearch` and `LearningSearchService.search`.
-  - `CourseCard` grows by `fieldId`, `fieldName`, `programName`, `moduleName` and `failed`, at the end of the
-    record so the projection order stays readable. The instructor list gets the same fields, with `failed`
-    false.
-  - D1 is a new method on `CourseRepositoryCustom`, returning three lists in one call.
-  - D4 is a new method on `LearningSearchService`: it finds the card through `search` with a `courseId` filter
-    in `CATALOG` mode, then builds `content` with `LearningContentService.detail`.
-  - The CSV export goes through `CourseCard` too. T1 checks that its columns do not change.
-- **App.**
-  - Contracts change in `libs/contracts/src/lib/learner` and the course card schema. The new keys are
-    `learnerEndpoints.facets` and `learnerEndpoints.course`.
-  - `catalog.store.ts` maps one "Trạng thái" choice to one query flag. The "Được giao" scope becomes `catalog`
-    with `assigned: true`.
-  - `findLearnerCourse` and its spec are deleted. `course.store.ts` and `lesson.store.ts` call D4.
-  - The programme name on a card comes from `programName`, so the learn and catalogue stores stop reading
-    `trainingCatalogEndpoints`.
-  - The in-app mock (`libs/mocks/src/lib/learning`) serves every new key, filter and field, so
-    `mockBackend: true` keeps working.
+- **One shared piece.** `shared/learning/competency/` holds:
+  - a pure mapping `toRadarData(rows)`, with its spec;
+  - `app-competency-view`, a component that owns the radar, the short list and the empty state.
+
+  Both pages use it, so the rule of three lives in one place. Its inputs are `rows` and `size` (`compact` on the
+  learn page, `large` on progress). It renders; it never fetches.
+
+- **Each page's store loads the data.** `LearnStore` and `ProgressStore` each add one `serverData` read of
+  `myCompetency`, with its own `competency$`, `competencyError$` and loading state. A failed read shows
+  `ui-error-state` inside the card, with retry, and never hides the rest of the page.
+- **`ui-radar-chart`.** `seriesLabel` is already an input. `fmtPct` replaces the raw `value + '%'` in its template
+  and data table. The admin report screen gets the same formatting, which is a display change only.
 - **Commits.**
-  - One commit per task, in each repository the task touched, on `feat/learner-mockup-gap`.
+  - One commit per task, on `feat/learner-mockup-gap` (fast-forwarded to `main` at `ab6f40a`).
   - Nothing is pushed.
   - The user's uncommitted `.claude/launch.json` and `docs/reports/…html` are never staged.
 
 ## Task list
 
-### Phase 0: `learner-quiz` review fixes (approved 2026-10-31)
+### Phase 1: Contract and the shared piece
 
-- [x] F1: Learner quiz stores follow angular.md §5.2
-- [x] F2: Result screen and server-only numbers
-- [x] F3: Visual-design checklist on the quiz screens
-- [x] F4: Question code on the take screen (BE + FE)
-- [x] F5: Route stores and components in their route folders
-- [x] F6: Flaky `course-new.spec.ts`
-
-### Checkpoint 0
-
-- [x] `npm run check` and `mvn clean verify` green; the quiz screens checked on `lms-local`.
-- [x] Main session reviews the Phase 0 diff before T1.
-
-### Phase 1: Backend
-
-- [x] T1: `failed` through the quiz port, and the D3 card fields
-- [x] T2: `assigned`, `failed` and `overdue` filters on both lists and the export
-- [x] T3: `GET /me/learning/facets`
-- [x] T4: `GET /me/learning/courses/{courseId}`
-- [x] T5: `assigned` and `mandatory` counts in the progress summary
+- [ ] T1: `percent` nullable, with a fixture captured from the local backend
+- [ ] T2: `toRadarData`, `app-competency-view`, and `fmtPct` in `ui-radar-chart`
 
 ### Checkpoint A
 
-- [x] `mvn clean verify` green.
-- [x] `curl` as `hocvien` for each new endpoint and filter.
-- [x] Show the backend diff to the user before Phase 2.
+- [ ] `npm run check` green.
+- [ ] Main session reviews the diff.
 
-### Phase 2: App
+### Phase 2: The two pages
 
-- [x] T6: Contracts and mocks
-- [x] T7: Catalogue on facets and the new status filters
+- [ ] T3: "Biểu đồ năng lực" card on the learn page
+- [ ] T4: "Năng lực theo nhóm kiến thức" card on the progress page
+- [ ] T5: The unavailable note drops competency
+- [ ] T6: End-to-end check against the spec
 
 ### Checkpoint B
 
-- [x] `npm run check` green.
-- [x] On `lms-local`, the catalogue's selects and every status option work.
-
-### Phase 3: Course, lesson and learn pages
-
-- [x] T8: Course and lesson pages on D4, with the programme breadcrumb
-- [x] T9: Learn page tabs and counts; "Chưa đạt" and "Quá hạn" on the course card
-- [x] T10: End-to-end check against the spec
-
-### Checkpoint C
-
-- [ ] Success criteria 1–5 recorded.
+- [ ] Success criteria recorded, with how each was checked.
 - [ ] Spec status set to built.
-- [x] Review with the user, then plan the next module. Reviewed and merged as Hienne/lms-vip-pro-max#48 and hmhug19/corebanking-academy#16 (2026-11-01).
+- [ ] Review with the user, then plan the next module (`learner-scores`).
 
 ## Risks and mitigations
 
-| Risk                                                                  | Impact | Mitigation                                                                                                                                                                  |
-| --------------------------------------------------------------------- | ------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| The facets and the list disagree about which courses are visible      | High   | One private visibility method used by both queries; an IT checks that every facet value has a visible course behind it.                                                     |
-| Adding columns to `CourseCard` changes the instructor list or the CSV | Med    | Fields are added at the end; T1 runs the existing instructor and export ITs, and checks the CSV header is unchanged.                                                        |
-| D5 counts drift from the tab lists                                    | Med    | The counts are the totals of the same search (amendment 3); an IT compares them.                                                                                            |
-| The `failed` set costs a query on every list call                     | Low    | One indexed query per call for one user; `EXPLAIN` on the demo data in T1.                                                                                                  |
-| Demo data no longer has a failed final exam for `hocvien`             | Low    | T10 checks the data first. If no such course exists, it uses `hocvien.tichhop` or a failed attempt made through the app, and says which. It never edits attempts in the DB. |
-| The UI polish branch also touches the learn tabs and the catalogue    | Low    | This plan builds on `feat/learner-mockup-gap` only; if the polish branch merges first, these screens are rebased onto it (SPEC.md → Branches).                              |
+| Risk                                                                     | Impact | Mitigation                                                                                                                                                          |
+| ------------------------------------------------------------------------ | ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| No local learner without graded attempts, so the empty state is not seen | Low    | T6 first checks for one with `curl`. If there is none, the empty state and the short list are covered by specs and by `mockBackend: true`, and T6 says which.       |
+| The radar labels overlap on a 375 px card                                | Med    | The radar's SVG scales with its `viewBox`. T6 checks 375 px. If labels collide, the learn card shows the short list below 480 px instead (one CSS container query). |
+| `fmtPct` in `ui-radar-chart` changes the admin report screen             | Low    | Display only. T2 runs the report screen specs, and T6 opens the report screen once.                                                                                 |
+| The learn page gets slower                                               | Low    | One small extra GET, in parallel with the summary. It has its own loading state, so the rest of the page does not wait.                                             |
 
 ## Open questions
 
-None. The D4 question is decided (amendment 6), and the spec's two open questions take their defaults.
+None of them blocks the plan. Amendment 4 (no course select) is the default; the user can ask for the select.
