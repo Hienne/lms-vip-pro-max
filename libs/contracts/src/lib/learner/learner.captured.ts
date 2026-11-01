@@ -10,6 +10,11 @@
  * `catalog`, `courses` and `progressSummary` were captured again on 2026-11-01 once the backend returned the
  * learner's scores: `courses` is every course `hocvien` has (FE-DEMO-C1 has a final exam score of 12.5 and
  * QZ-E2E-01 of 100, the others none); `progressSummary.assessment` is the overview of five quizzes.
+ *
+ * `points`, `leaderboard`, `leaderboardTeam` and `leaderboardLastPage` were captured on 2026-11-01 as `hocvien`
+ * once the backend computed learning points: `points` is `GET /points`; `leaderboard` is the default `org`
+ * scope (three learners, `hocvien` second); `leaderboardTeam` is `scope=team` (only `hocvien`);
+ * `leaderboardLastPage` is `scope=all&page=2&size=1`, so the caller's row (`me`) is off the page.
  */
 export const capturedLearner = {
   facets: {
@@ -808,6 +813,118 @@ export const capturedLearner = {
     },
     competency: {
       availability: 'unavailable',
+    },
+  },
+  points: {
+    total: 80,
+    parts: {
+      lessons: 30,
+      quizzes: 30,
+      courses: 0,
+      streak: 20,
+    },
+    streakDays: 2,
+  },
+  leaderboard: {
+    page: {
+      items: [
+        {
+          rank: 1,
+          userId: '000007',
+          fullName: 'Học viên tích hợp Demo',
+          teamName: 'Nhóm Tích hợp Core Banking',
+          points: 90,
+          streakDays: 2,
+          me: false,
+        },
+        {
+          rank: 2,
+          userId: '000004',
+          fullName: 'Học viên tiền gửi Demo',
+          teamName: 'Nhóm BA&QC Tiền gửi',
+          points: 80,
+          streakDays: 2,
+          me: true,
+        },
+        {
+          rank: 3,
+          userId: '000005',
+          fullName: 'Giảng viên Demo',
+          teamName: 'Nhóm phát triển Core Banking',
+          points: 40,
+          streakDays: 2,
+          me: false,
+        },
+      ],
+      page: 0,
+      size: 20,
+      totalElements: 3,
+      totalPages: 1,
+    },
+    me: {
+      rank: 2,
+      userId: '000004',
+      fullName: 'Học viên tiền gửi Demo',
+      teamName: 'Nhóm BA&QC Tiền gửi',
+      points: 80,
+      streakDays: 2,
+      me: true,
+    },
+  },
+  leaderboardTeam: {
+    page: {
+      items: [
+        {
+          rank: 1,
+          userId: '000004',
+          fullName: 'Học viên tiền gửi Demo',
+          teamName: 'Nhóm BA&QC Tiền gửi',
+          points: 80,
+          streakDays: 2,
+          me: true,
+        },
+      ],
+      page: 0,
+      size: 20,
+      totalElements: 1,
+      totalPages: 1,
+    },
+    me: {
+      rank: 1,
+      userId: '000004',
+      fullName: 'Học viên tiền gửi Demo',
+      teamName: 'Nhóm BA&QC Tiền gửi',
+      points: 80,
+      streakDays: 2,
+      me: true,
+    },
+  },
+  leaderboardLastPage: {
+    page: {
+      items: [
+        {
+          rank: 3,
+          userId: '000005',
+          fullName: 'Giảng viên Demo',
+          teamName: 'Nhóm phát triển Core Banking',
+          points: 40,
+          streakDays: 2,
+          me: false,
+        },
+      ],
+      page: 2,
+      size: 1,
+      totalElements: 3,
+      totalPages: 3,
+    },
+    me: {
+      rank: 2,
+      userId: '000004',
+      fullName: 'Học viên tiền gửi Demo',
+      teamName: 'Nhóm BA&QC Tiền gửi',
+      points: 80,
+      streakDays: 2,
+      me: true,
     },
   },
 };

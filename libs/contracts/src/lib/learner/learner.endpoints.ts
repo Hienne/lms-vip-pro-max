@@ -5,11 +5,14 @@ import { CourseCardSchema } from '../course/course.schema';
 import {
   CourseEnrollmentSchema,
   EnrollmentDetailSchema,
+  LeaderboardPageSchema,
+  LeaderboardQuerySchema,
   LearnerCourseSchema,
   LearnerFacetsSchema,
   LearningProgressOverviewSchema,
   LearningReminderSchema,
   MyCoursesQuerySchema,
+  MyPointsSchema,
   OpenSessionCommandSchema,
   ProgressExportQuerySchema,
   ProgressResultSchema,
@@ -117,5 +120,25 @@ export const learnerEndpoints = {
     path: '/api/v1/me/learning/reminders/{reminderId}/read',
     params: z.object({ reminderId: z.number().int() }),
     response: LearningReminderSchema,
+  }),
+  /**
+   * The caller's learning points: the total, its four parts and the streak. A caller who is not a
+   * learner is refused with `CORE-ACCESS_DENIED`.
+   */
+  myPoints: defineEndpoint({
+    method: 'get',
+    path: '/api/v1/me/learning/points',
+    response: MyPointsSchema,
+  }),
+  /**
+   * Learners ranked by points in a scope (`team`, `org` by default, `all`), a page at a time, plus the
+   * caller's own row with its rank in that scope. An unknown scope or a `size` above 100 answers
+   * `CORE-VALIDATION_FAILED`.
+   */
+  leaderboard: defineEndpoint({
+    method: 'get',
+    path: '/api/v1/me/learning/leaderboard',
+    query: LeaderboardQuerySchema,
+    response: LeaderboardPageSchema,
   }),
 } as const;

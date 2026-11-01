@@ -8,6 +8,7 @@ import type {
   CourseLevel,
   GroupDetail,
   LearningAsset,
+  MyPoints,
   Requirement,
   TrainingField,
   TrainingProgram,
@@ -865,3 +866,65 @@ export const learnerReminderFixtures: Readonly<
     { id: 4, recipientId: 44, scheduledInDays: 2, dueInDays: 6 },
   ],
 };
+
+/**
+ * What the server shows each learner as their learning points, fixed like the scores above (the
+ * server computes them; the mock never does). The three seed learners carry the figures captured from
+ * the local backend on 2026-11-01; `total` is the sum of the parts there.
+ */
+export const learnerPointsFixtures: Readonly<Record<string, MyPoints>> = {
+  '000004': {
+    total: 80,
+    parts: { lessons: 30, quizzes: 30, courses: 0, streak: 20 },
+    streakDays: 2,
+  },
+  '000005': {
+    total: 40,
+    parts: { lessons: 20, quizzes: 0, courses: 0, streak: 20 },
+    streakDays: 2,
+  },
+  '000007': {
+    total: 90,
+    parts: { lessons: 40, quizzes: 30, courses: 0, streak: 20 },
+    streakDays: 2,
+  },
+};
+
+/** A learner who appears on the mock's boards only: no seed account, so nobody signs in as them. */
+export interface BoardLearner {
+  readonly userId: string;
+  readonly fullName: string;
+  readonly orgId: number;
+  readonly teamId: number | null;
+  readonly points: MyPoints;
+}
+
+/**
+ * Two more learners so the mock shows what the three seed ones cannot: a tie (80 points, as
+ * `hocvien`, so both rank 2 and the next rank is 4) and a learner with no points and no streak, who
+ * comes after everyone who has points.
+ */
+export const boardLearnerFixtures: readonly BoardLearner[] = [
+  {
+    userId: '000201',
+    fullName: 'Học viên tín dụng Demo',
+    orgId: ORG,
+    teamId: 8,
+    points: {
+      total: 80,
+      parts: { lessons: 30, quizzes: 30, courses: 0, streak: 20 },
+      streakDays: 2,
+    },
+  },
+  {
+    userId: '000202',
+    fullName: 'Học viên thẻ Demo',
+    orgId: ORG,
+    teamId: 6,
+    points: {
+      total: 0,
+      parts: { lessons: 0, quizzes: 0, courses: 0, streak: 0 },
+      streakDays: 0,
+    },
+  },
+];

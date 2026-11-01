@@ -4,11 +4,14 @@ import { learnerEndpoints } from './learner.endpoints';
 import { capturedLearner as captured } from './learner.captured';
 import {
   EnrollmentDetailSchema,
+  LeaderboardPageSchema,
+  LeaderboardQuerySchema,
   LearnerCourseSchema,
   AssessmentOverviewSchema,
   LearnerFacetsSchema,
   LearningProgressOverviewSchema,
   MyCoursesQuerySchema,
+  MyPointsSchema,
   OpenSessionCommandSchema,
   ProgressExportQuerySchema,
   ProgressResultSchema,
@@ -69,6 +72,8 @@ describe('learner endpoints', () => {
         'post',
         '/api/v1/me/learning/reminders/{reminderId}/read',
       ],
+      ['myPoints', 'get', '/api/v1/me/learning/points'],
+      ['leaderboard', 'get', '/api/v1/me/learning/leaderboard'],
     ]);
     expect(
       toUrl(learnerEndpoints.saveProgress, { enrollmentId: 2, blockId: 31 }),
@@ -465,6 +470,87 @@ describe('learner endpoints', () => {
     it('builds the course url from the id', () => {
       expect(toUrl(learnerEndpoints.course, { courseId: 8 })).toBe(
         '/api/v1/me/learning/courses/8',
+      );
+    });
+  });
+
+  describe('points and leaderboard', () => {
+    const responses = {
+      myPoints: captured.points,
+      leaderboard: captured.leaderboard,
+    } as const;
+
+    it.each(Object.entries(responses))(
+      'parses the response captured from the backend for %s',
+      (key, data) => {
+        const endpoint = learnerEndpoints[key as keyof typeof responses];
+        expect(endpoint.response.safeParse(data).success).toBe(true);
+      },
+    );
+
+    it('parses the team scope and a page that does not hold the caller', () => {
+      expect(
+        LeaderboardPageSchema.parse(captured.leaderboardTeam).page.items,
+      ).toHaveLength(1);
+      const last = LeaderboardPageSchema.parse(captured.leaderboardLastPage);
+      expect(last.page.items.some((row) => row.me)).toBe(false);
+      expect(last.me).toMatchObject({ me: true, rank: 2 });
+    });
+
+    it('keeps the ties and the caller as the server sent them', () => {
+      const board = LeaderboardPageSchema.parse(captured.leaderboard);
+      expect(board.page.items.map((row) => row.rank)).toEqual([1, 2, 3]);
+      expect(board.page.items.filter((row) => row.me)).toEqual([board.me]);
+    });
+
+    it('splits the total into its four parts', () => {
+      const points = MyPointsSchema.parse(captured.points);
+      const { lessons, quizzes, courses, streak } = points.parts;
+      expect(points.total).toBe(lessons + quizzes + courses + streak);
+      expect(points.streakDays).toBe(2);
+    });
+
+    it('accepts a caller with no rank and a row with no team', () => {
+      const board = captured.leaderboardTeam;
+      const [row] = board.page.items;
+      expect(
+        LeaderboardPageSchema.safeParse({
+          page: { ...board.page, items: [{ ...row, teamName: null }] },
+          me: { ...board.me, rank: null, teamName: null },
+        }).success,
+      ).toBe(true);
+    });
+
+    it('refuses a row without a rank, a negative total and a part left out', () => {
+      const board = captured.leaderboard;
+      const { rank: _rank, ...unranked } = board.page.items[0];
+      expect(
+        LeaderboardPageSchema.safeParse({
+          ...board,
+          page: { ...board.page, items: [unranked] },
+        }).success,
+      ).toBe(false);
+      expect(
+        MyPointsSchema.safeParse({ ...captured.points, total: -1 }).success,
+      ).toBe(false);
+      const { streak: _streak, ...parts } = captured.points.parts;
+      expect(
+        MyPointsSchema.safeParse({ ...captured.points, parts }).success,
+      ).toBe(false);
+    });
+
+    it('accepts the scopes and refuses another, or a size above 100', () => {
+      for (const scope of ['team', 'org', 'all']) {
+        expect(LeaderboardQuerySchema.safeParse({ scope }).success).toBe(true);
+      }
+      expect(LeaderboardQuerySchema.safeParse({ scope: 'x' }).success).toBe(
+        false,
+      );
+      expect(LeaderboardQuerySchema.safeParse({ size: 101 }).success).toBe(
+        false,
+      );
+      expect(LeaderboardQuerySchema.safeParse({ page: -1 }).success).toBe(
+        false,
       );
     });
   });
