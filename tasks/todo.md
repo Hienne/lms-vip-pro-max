@@ -152,7 +152,9 @@ averageScorePercent, passedQuizCount, quizCount)` when the caller's current cour
      - Checked by `curl` of the summary on :8019: last = quiz 1 at 0% failed, best 100, average 42.26, passed 1 of 5.
      - Checked by `learn.spec` and `score-figures.spec` against the mock: both figures with their links, "Chưa đạt"
        as the only coloured text, "—" with "Chưa làm bài kiểm tra", none when unavailable.
-     - **Left for the main session's review:** the figures on screen (1280 px light, 375 px dark).
+     - Main session, in the browser as `hocvien` (one-shot token sign-in): "0% · Chưa đạt · Luyện tập: Tổng quan hệ
+       thống Core Banking" and "100% · Đạt 1/5 bài kiểm tra"; course 1's card reads "Đang học · Điểm cao nhất
+       12,5%"; one summary call per page; no horizontal scroll at 1280 px light.
   2. Progress shows "Điểm thi trung bình", the "Điểm cao nhất" column and "Lịch sử thi"; the CSV has the new column.
      - Checked by `curl` of `GET /me/learning/courses?size=50`: course 1 = 12.5, course 8 = 100, the others null.
      - Checked by `curl` of the progress export: the header ends with "Điểm cao nhất" and the first row has 12.50.
@@ -161,14 +163,25 @@ averageScorePercent, passedQuizCount, quizCount)` when the caller's current cour
      - Checked by `progress.spec`: the KPI, the last and non-sortable column, the query sent for the history, its
        three states (rows with the result link and "tự nộp", empty, error with retry), and the card sitting after
        the competency card.
-     - **Left for the main session's review:** the same on screen, the downloaded file and the wide/narrow layout.
+     - Main session, in the browser as `hocvien`: "Điểm thi trung bình 42,26%"; the last column "Điểm cao nhất" reads
+       12,5% and 100%, "—" elsewhere; "Lịch sử thi" lists the 5 graded attempts newest first, with "tự nộp" on
+       attempts 7 and 2, each linking to `/quiz/:quizId/result/:attemptId`; the page sends
+       `graded=true&sort=submittedAt,desc&page=0&size=6`. The history sits beside the radar at 1280 px light and below
+       it at 375 px dark, with no horizontal scroll at either width.
+     - Not checked: downloading the CSV through the page (its column was checked with `curl`).
   3. A learner with no quiz sees no score figures and no error.
      - Checked by specs on both pages with an `unavailable` assessment, and by the mock's `giangvien`.
      - No local learner has an unavailable assessment: `giangvien` is available with null scores on the backend.
-     - **Left for the main session's review:** the "—" state of `giangvien` on screen.
+     - Main session, in the browser as `giangvien` (quizzes, no attempt): `/learn` shows "—" with "Chưa làm bài kiểm
+       tra" and "Đạt 0/4 bài kiểm tra"; `/progress` shows "Điểm thi trung bình —" and "Bạn chưa có bài thi nào được
+       chấm."; no error state on either page.
   4. `mvn clean test` and `npm run check` green; the visual-design checklist passes.
-     - `mvn clean test` was green at Checkpoint A (backend worktree).
-     - `npm run check` green on 2026-11-01: 14 of 14 tasks (format, lint, typecheck, test, build, bundle guard).
-     - **Left for the main session's review:** the visual-design checklist in the browser.
-- [x] Spec status set to "built pending the main session's browser check".
-- [ ] Review with the user, then plan `learning-leaderboard`.
+     - `mvn clean test` green in the backend worktree after `5f1518c` (356 tests, 42 skipped `CommunityApiIT`).
+     - `npm run check` green 14 of 14 after `968b620`, the review fix that stops `app-unavailable-note` from promising
+       scores next to the score figures (it now reads only `activity`: "Giờ học sẽ hiển thị khi hệ thống có dữ
+       liệu.").
+     - Visual-design checklist passed in the browser: label-over-number figures with no cards or icons, "Chưa đạt"
+       as the only coloured text, one primary action per page unchanged.
+- [x] Spec status set to built.
+- [x] Review with the user (2026-11-01, "Sửa rồi đóng"). Next: the PRs when the user asks, then plan
+      `learning-leaderboard`.

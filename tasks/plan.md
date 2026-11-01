@@ -129,29 +129,29 @@ The server computes every figure. The backend gets three additive changes and on
 
 ### Phase 1: Backend (`corebanking-academy`)
 
-- [ ] B1: `scores` port method and its Assessment implementation
-- [ ] B2: `AssessmentOverview` in the progress summary (S1)
-- [ ] B3: `bestScorePercent` on `CourseCard` and the CSV column (S2, S3)
-- [ ] B4: `graded=true` on `/me/quiz-attempts` and its export (S4)
+- [x] B1: `scores` port method and its Assessment implementation
+- [x] B2: `AssessmentOverview` in the progress summary (S1)
+- [x] B3: `bestScorePercent` on `CourseCard` and the CSV column (S2, S3)
+- [x] B4: `graded=true` on `/me/quiz-attempts` and its export (S4)
 
 ### Checkpoint A
 
-- [ ] `mvn clean test` green in the worktree. The main session restarts the local backend and checks the figures
+- [x] `mvn clean test` green in the worktree. The main session restarts the local backend and checks the figures
       with `curl`.
 - [ ] Review of the backend diff. The PR is opened when the user asks.
 
 ### Phase 2: App
 
-- [ ] F1: Contracts, captured fixtures and the mock
-- [ ] F2: Learn page score figures and the course card score
-- [ ] F3: Progress page: average, column and "Lịch sử thi"
-- [ ] F4: End-to-end check against the spec
+- [x] F1: Contracts, captured fixtures and the mock
+- [x] F2: Learn page score figures and the course card score
+- [x] F3: Progress page: average, column and "Lịch sử thi"
+- [x] F4: End-to-end check against the spec
 
 ### Checkpoint B
 
-- [ ] Success criteria recorded, with how each was checked.
-- [ ] Spec status set to built.
-- [ ] Review with the user, then plan the next module (`learning-leaderboard`).
+- [x] Success criteria recorded, with how each was checked.
+- [x] Spec status set to built.
+- [x] Review with the user, then plan the next module (`learning-leaderboard`).
 
 ## Risks and mitigations
 
