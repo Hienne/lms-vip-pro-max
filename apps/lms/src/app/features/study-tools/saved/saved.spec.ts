@@ -109,6 +109,13 @@ describe('Saved', () => {
       ]);
     });
 
+    it('renders the list in the selected tab only, not a second copy in the other', async () => {
+      const links = () => el.querySelectorAll('a.saved__open').length;
+      expect(links()).toBe(2);
+      await press(tab('Đánh dấu'));
+      expect(links()).toBe(1);
+    });
+
     it('says where each row is: its lesson, the page or second, and how long ago', () => {
       const [video, pdf] = rows().map((row) => row.querySelector('small')!);
       expect(video.textContent).toMatch(/· Video 4:10 · .+/);

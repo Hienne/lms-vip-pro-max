@@ -11,7 +11,7 @@
   >
     @for (tab of store.tabs$(); track tab.id) {
     <div [uiTabPanel]="tab.id">
-      @if (store.isLoading$()) {
+      @if (tab.id === store.tab$()) { @if (store.isLoading$()) {
       <p class="saved__status" role="status">Đang tải mục đã lưu…</p>
       } @else if (store.error$(); as error) {
       <ui-error-state [message]="error.message" (retry)="store.retry()" />
@@ -64,7 +64,7 @@
         [pageSize]="pageSize"
         (pageChange)="store.setPage($event - 1)"
       />
-      } }
+      } } }
     </div>
     }
   </ui-tabs>
