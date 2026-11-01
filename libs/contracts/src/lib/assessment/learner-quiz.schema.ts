@@ -275,6 +275,8 @@ export const MyAttemptPageSchema = PageSchema(MyAttemptRowSchema);
 export const MyAttemptsQuerySchema = z.object({
   quizId: Id.optional(),
   status: LearnerAttemptStatusSchema.optional(),
+  /** `true` keeps the graded attempts only (`SUBMITTED`, `AUTO_SUBMITTED`); combined with `status` by AND. */
+  graded: z.boolean().optional(),
   page: z.number().int().nonnegative().optional(),
   size: z.number().int().min(1).max(100).optional(),
   sort: z.string().optional(),
@@ -284,6 +286,7 @@ export type MyAttemptsQuery = z.infer<typeof MyAttemptsQuerySchema>;
 export const MyAttemptsExportQuerySchema = MyAttemptsQuerySchema.pick({
   quizId: true,
   status: true,
+  graded: true,
   sort: true,
 });
 

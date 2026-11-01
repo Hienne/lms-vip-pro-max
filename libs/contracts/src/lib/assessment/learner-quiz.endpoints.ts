@@ -52,7 +52,7 @@ export const learnerQuizEndpoints = {
     params: quizParams,
     response: LearnerAttemptHistorySchema,
   }),
-  /** The caller's attempts across every quiz, newest first by default; filter by quiz and status. */
+  /** The caller's attempts across every quiz, newest first by default; filter by quiz and status, or `graded` for the graded ones only. */
   myAttempts: defineEndpoint({
     method: 'get',
     path: '/api/v1/me/quiz-attempts',

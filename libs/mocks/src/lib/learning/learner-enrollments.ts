@@ -24,6 +24,8 @@ export interface EnrollmentRecord {
   readonly assigned: boolean;
   /** The final exam was taken and never passed: the server's flag, not an enrolment status. */
   readonly failed: boolean;
+  /** The best score on the final exam: the fixture's number, null when it was not taken. */
+  readonly bestScorePercent: number | null;
 }
 
 export interface EnrollmentSource {
@@ -106,6 +108,7 @@ export class LearnerEnrollments {
       dueAt: state?.dueInDays != null ? inDays(state.dueInDays) : null,
       assigned: source.origin === 'assignment',
       failed: standing === 'failed',
+      bestScorePercent: state?.bestScorePercent ?? null,
     };
     lessons.forEach((lesson, index) => {
       const done = completedLessons.has(lesson.lesson.id);

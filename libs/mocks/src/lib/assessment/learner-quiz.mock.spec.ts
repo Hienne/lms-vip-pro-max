@@ -133,6 +133,26 @@ describe('the learner quiz mock', () => {
     expect((mine as { totalElements: number }).totalElements).toBe(1);
   });
 
+  it('lists the graded attempts only for `graded=true`', () => {
+    const backend = new FakeBackend();
+    const finished = data<{ attemptId: number }>(
+      call(backend, e.startAttempt, { quizId: '1' }),
+    );
+    call(backend, e.submitAttempt, { attemptId: String(finished.attemptId) });
+    call(backend, e.startAttempt, { quizId: '2' });
+
+    const all = call(backend, e.myAttempts).data as { totalElements: number };
+    const graded = call(backend, e.myAttempts, {}, undefined, {
+      graded: 'true',
+      sort: 'submittedAt,desc',
+      size: '6',
+    }).data as { totalElements: number; items: { status: string }[] };
+    expect(all.totalElements).toBe(2);
+    expect(graded.totalElements).toBe(1);
+    expect(graded.items.map((row) => row.status)).toEqual(['SUBMITTED']);
+    expect(() => e.myAttempts.response.parse(graded)).not.toThrow();
+  });
+
   it('refuses an answer that is not an option of the question, and one after the submit', () => {
     const backend = new FakeBackend();
     const session = data<{
