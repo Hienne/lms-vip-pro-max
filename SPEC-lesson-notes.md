@@ -1,7 +1,45 @@
 # Spec: `lesson-notes`
 
-Map: [SPEC.md](SPEC.md). Status: **draft, waiting for approval.** Depends on `catalog-discovery` (D4 gives course
-and lesson titles from one call) and `local-stack` (READY PDF and video blocks).
+Map: [SPEC.md](SPEC.md). Status: **approved 2026-11-01, amended by the plan (see "Amendments").** Depends on
+`catalog-discovery` (D4 gives course and lesson titles from one call) and `local-stack` (READY PDF and video blocks).
+
+## Amendments
+
+Written with [tasks/plan.md](tasks/plan.md) on 2026-11-01. Where they differ from the sections below, they win.
+
+1. **Errors use the existing codes:**
+   - `LEARNING-NOT_FOUND` for a lesson outside the caller's enrollments, and for another user's, a missing or a
+     deleted note or bookmark;
+   - `LEARNING-INVALID_REFERENCE` for a wrong block or an anchor beyond the asset's bounds;
+   - `CORE-VALIDATION_FAILED` for blank or too long text.
+
+   The only new code is `LEARNING-NOTE_LIMIT`.
+
+2. **Access:** the lesson belongs to the revision of one of the caller's enrollments, whatever its status. A note
+   stays on the lesson and block it was written on.
+3. **Video anchors are whole seconds** (`video_second integer`), so the bookmark toggle can compare them.
+4. **Bookmarks on PDF and video:**
+   - "Đánh dấu trang này" in the PDF toolbar;
+   - "Đánh dấu mốc {m:ss}" under the video;
+   - both with `aria-pressed`;
+   - the default label "{block title} — trang {n}" or "{block title} — {m:ss}".
+5. **N7 `DELETE /bookmarks/{bookmarkId}`** for the saved page's delete.
+6. **N6 takes only `kind`, `page` and `size`**, as the mockup's saved page has no search or filter.
+7. **Anchor URL:**
+   - `/lesson/{courseId}/{lessonId}?block={id}&page={n}` or `…&t={s}`;
+   - read by the lesson store on entry;
+   - invalid values are ignored.
+8. **The saved page has no icon tiles.** Each row shows the text or label, then "{lesson} · Trang n | Video m:ss ·
+   {time}". Deleting asks first.
+9. **The notes panel lists the bookmarks under the notes.** The Ghi chú tab shows the note count.
+10. **The upgrade is `2026-11-03-lesson-notes.sql`**, and it runs on the shared DB before the backend PR is merged.
+
+Open questions keep their defaults:
+
+- there is no note editing;
+- Đã lưu does not save courses;
+- notes do not follow a newer revision;
+- writing a note is not a learning day.
 
 ## Objective
 

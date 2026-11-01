@@ -1,24 +1,26 @@
-# Tasks: `learning-leaderboard`
+# Tasks: `lesson-notes`
 
-Spec: [SPEC-learning-leaderboard.md](../SPEC-learning-leaderboard.md) · Plan: [plan.md](plan.md).
-The previous `learner-scores` checklist, with its success criteria and how each was checked, is in git history at
-`cd4b2f1`.
+Spec: [SPEC-lesson-notes.md](../SPEC-lesson-notes.md) · Plan: [plan.md](plan.md).
+The previous `learning-leaderboard` checklist, with its success criteria and how each was checked, is in git history
+at `a04912c`.
 
 - **Repositories:**
-  - backend: `corebanking-academy`, branch `feat/learning-leaderboard`, in its own worktree
-    `~/my-projects/corebanking-academy-leaderboard`. Branch from `main` if #17 is merged, else from
-    `feat/learner-scores`;
-  - app: this one, branch `feat/learning-leaderboard` from `main` after #50 is merged.
+  - backend: `corebanking-academy`, branch `feat/lesson-notes` from `origin/main` (`214d768`, #18 merged), in its own
+    worktree `~/my-projects/corebanking-academy-notes`;
+  - app: this one, branch `feat/lesson-notes` from `origin/main` (#51 merged).
 
   Nothing is pushed.
 
 - **Local stack:**
-  - the backend on :8019 is the main session's background task. Never run `mvn` in the worktree it runs from, and
-    never start another backend. Message the main session for a restart;
-  - **the local DB gets the new table only at Checkpoint A, from the main session.** Until then, test with
+  - the backend on :8019 is the main session's background task. It runs from
+    `~/my-projects/corebanking-academy-leaderboard`. Never run `mvn` in the worktree it runs from, and never start
+    another backend. Message the main session for a restart;
+  - **the local DB gets the new tables only at Checkpoint A, from the main session.** Until then, test with
     Testcontainers;
   - the app runs on :4200 against `localhost:8019`;
-  - accounts: `hocvien` and `hocvien.tichhop` as learners, plus `giangvien` (also a learner);
+  - accounts: `hocvien` and `hocvien.tichhop` as learners;
+  - demo data: PDF block 32 (lesson 16, 4 pages) and video block 33 (lesson 17, 30 s), in "Demo tài liệu PDF và
+    video";
   - passwords come only from `LOCAL_DEMO_PASSWORD` in the backend's `.env.local`, never printed;
   - in the browser, sign in with the one-shot token method, never by typing the password.
 - **Never** touch the shared server `103.121.90.119`. No seeding users, no direct edits to progress or attempts.
@@ -27,209 +29,184 @@ The previous `learner-scores` checklist, with its success criteria and how each 
 
 ## Phase 1: Backend
 
-- [x] **B1: Schema: upgrade, rollback, backfill, baseline, README, entity**
+- [ ] **B1: Schema, entities and repositories**
   - Acceptance:
-    - The table, its index, its rollback and the baseline update, all as described below.
-    - The backfill script, as described below.
-    - The entity `LearningActivityDay` and its repository.
-    - The lesson identity rule for amendment 6, written in a code comment after reading how `source_lesson_id` is
-      set on a new revision.
-  - The table: `docs/sql/upgrade/2026-11-02-learning-leaderboard.sql` creates `learning_hub.learning_activity_days`:
-    - `activity_id` (identity primary key), `user_id varchar(20)`, `activity_date date`,
-      `first_source varchar(20)` (`session | block_progress | quiz`), `create_time timestamptz`;
-    - index `(user_id, activity_date DESC)`;
-    - a comment on the table and on every column;
-    - wrapped in `BEGIN/COMMIT` with `lock_timeout`, and safe to run twice (`IF NOT EXISTS`);
-    - the rollback drops the index and the table;
-    - `docs/sql/learning_hub_learning.sql` (the baseline) gets the same table;
-    - `docs/sql/README.md` gets the upgrade row with the psql commands.
-  - The backfill: `…-learning-leaderboard-backfill.sql` inserts the distinct local dates (`Asia/Ho_Chi_Minh`) of
-    `lesson_progress.update_time` (via the enrollment's `user_id`) and of graded `quiz_attempts.submitted_at`. It
-    skips dates that already exist, so it can run twice.
-  - Verify: the ITs start on the baseline with `ddl-auto=validate`. A Testcontainers test runs the upgrade, the
-    backfill twice (same row count) and the rollback on a baseline without the table.
+    - `docs/sql/upgrade/2026-11-03-lesson-notes.sql` creates `learning_hub.lesson_notes` and
+      `learning_hub.lesson_bookmarks`, as in the spec with amendment 3 (`video_second integer` in place of
+      `video_seconds numeric`). It has:
+      - the audit columns;
+      - the anchor CHECK on both tables;
+      - the two partial indexes;
+      - a comment on each table and column;
+      - `BEGIN/COMMIT` with `lock_timeout`, and is safe to run twice.
+    - A rollback prints both row counts, then drops both tables.
+    - The baseline `learning_hub_learning.sql` gets both tables. `docs/sql/README.md` gets the upgrade row with the
+      psql commands.
+    - Entities `LessonNote` and `LessonBookmark`, and their repositories.
+  - Verify:
+    - The ITs start on the baseline with `ddl-auto=validate`.
+    - A Testcontainers test runs the upgrade twice, then the rollback, on a baseline without the tables.
+    - The CHECK refuses a `pdf` row without `block_id`.
   - Size: M. Depends on: none.
 
-- [x] **B2: Activity recording on session, block progress and quiz start/submit**
+- [ ] **B2: Notes N1–N3**
   - Acceptance:
-    - `LearningActivityService.record(userId, source)`:
-      1. takes the advisory lock `learning-activity:{userId}`;
-      2. inserts today's local date if missing.
-    - Called after a successful `POST /sessions`, `PUT …/blocks/{blockId}/progress`, quiz start and quiz submit.
-      Assessment calls it through the Learning port it already uses.
-    - A recording error is logged and never fails the learner's request.
-  - Verify:
-    - Each of the four calls writes today once; calling twice does not add a row.
-    - Two concurrent calls make one row.
-    - 23:30 and 00:30 local fall on different dates.
-    - A failing recorder still returns success to the learner.
+    - `LearningNotesController` under `/api/v1/me/learning`, for learners only:
+      - N1 `GET /lessons/{lessonId}/notes` → `List<NoteView>`, newest first;
+      - N2 `POST /lessons/{lessonId}/notes` with `{ anchor: { type: none|pdf|video, blockId?, page?, second? }, text }`
+        → `NoteView`;
+      - N3 `DELETE /notes/{noteId}` → `null`.
+    - `NoteView { id, lessonId, anchor, text, createTime }`.
+    - **Access (amendment 2):** one query resolves the lesson's revision and checks it against the caller's
+      enrollments; otherwise `LEARNING-NOT_FOUND`.
+    - **Anchor validation** against the block and its asset; otherwise `LEARNING-INVALID_REFERENCE`:
+      - `pdf`: a `pdf` block of the lesson, with `1 ≤ page ≤ page_count`;
+      - `video`: a `video` block of the lesson, with `0 ≤ second ≤ floor(duration_seconds)`;
+      - a null bound refuses the anchor type.
+    - **Text:** trimmed, 1–4000 characters, else `CORE-VALIDATION_FAILED`.
+    - **Limit:** more than 500 live notes on the lesson → the new `LEARNING-NOTE_LIMIT`.
+    - **Delete:** soft. Another user's note, a missing note and a deleted note are all `LEARNING-NOT_FOUND`.
+  - Verify: ITs for:
+    - the access refusal (another learner's enrollment, a lesson of a course with no enrollment);
+    - each anchor rule, including the bounds and the wrong block type;
+    - blank and 4001-character text;
+    - the limit;
+    - the delete, a second delete, and another user's note;
+    - a non-learner is refused.
   - Size: M. Depends on: B1.
 
-- [x] **B3: Points: weights, the quiz-pass port method, `GET /points` (L2)**
-  - Acceptance: - `app.learning.points.lesson=5`, `quiz-pass=30`, `streak-day=10`, `streak-cap=30` in `application.yml`,
-    overridable by environment. - `LearningQuizDirectory.passedQuizCounts(userIds)`: one grouped query. It counts, per user, the distinct
-    published, not deleted quizzes with a graded attempt with `passed = true`. - `LearningPointsService` parts: - `lessons` = weight × the distinct completed lessons, by amendment 6's identity; - `quizzes` = weight × the passed quizzes; - `courses` = the sum of the completed revision's `reward_points`, once per course (latest completed cycle); - `streak` = weight × `min(streakDays, cap)`; - `streakDays` counts consecutive local days ending today, or ending yesterday when today has no row. - `GET /api/v1/me/learning/points` returns `MyPoints { total, parts { lessons, quizzes, courses, streak },
-streakDays }`, for learners only. - `docs/api/LEARNING.md` gets "Điểm học tập và bảng xếp hạng": the weights, every rule, and the endpoint.
-  - Verify:
-    - Each part on fixtures, including the same lesson completed in two cycles on two revisions (counted once) and
-      a course completed twice (its reward counted once).
-    - A streak of today, of yesterday only, with a gap, and over the cap.
-    - The port test: failed only, passed twice, an unpublished quiz.
-  - Size: M. Depends on: B1.
-
-- [x] **B4: Leaderboard: scopes, tie ranks, `me`, `GET /leaderboard` (L1), docs**
+- [ ] **B3: Bookmarks N4, N5 and N7**
   - Acceptance:
-    - `GET /api/v1/me/learning/leaderboard?scope=team|org|all&page&size`: `scope` defaults to `org`, and `size` is
-      at most 100.
-    - It returns `LeaderboardPage { page: PageResponse<LeaderboardRow>, me: LeaderboardRow }`, where
-      `LeaderboardRow { rank, userId, fullName, teamName, points, streakDays, me }`.
-    - Who is ranked: the active users eligible to learn, by the rule of `findLearningCandidates`, reused and not
-      copied:
-      - `team`: the caller's team (none → an empty page, plus `me`);
-      - `org`: the caller's org;
-      - `all`: everyone (amendment 2).
-    - Order: points descending, then name. Ties share a rank and the next rank skips (1, 1, 3). Users with 0 points
-      come last, by name.
-    - `me` is always present, even when it is off the page.
-    - Docs updated.
-  - Verify:
-    - Each scope's membership.
-    - Tie ranks.
-    - Zero-point users last.
-    - `me` off the page.
-    - A non-learner is refused.
-    - The timings of the grouped queries on the demo data are written in the commit message.
-  - Size: M. Depends on: B2, B3.
+    - N4 `GET /lessons/{lessonId}/bookmarks` → `List<BookmarkView>`, newest first.
+    - N5 `PUT /lessons/{lessonId}/bookmarks` with `{ anchor (pdf | video), label? }`:
+      - under the advisory lock `lesson-bookmark:{userId}`, a live bookmark with the same block and anchor is
+        soft-deleted (`{ saved: false }`);
+      - otherwise one is inserted (`{ saved: true, bookmark }`).
+    - N7 `DELETE /bookmarks/{bookmarkId}` → `null`, with the same rules as N3.
+    - `BookmarkView { id, lessonId, anchor, label, createTime }`. The label is at most 200 characters.
+    - Same access, anchor, limit (500) and not-found rules as B2.
+  - Verify: ITs for:
+    - toggle on, then off, then on again;
+    - two concurrent toggles from one user end in a consistent state (one live row or none);
+    - a `none` anchor refused;
+    - N7 on another user's bookmark → `NOT_FOUND`.
+  - Size: M. Depends on: B2.
+
+- [ ] **B4: Saved N6 and docs**
+  - Acceptance:
+    - N6 `GET /saved?kind=notes|bookmarks&page&size`, where `size` is at most 100. It returns
+      `{ page: PageResponse<SavedItemView>, counts { notes, bookmarks } }`.
+    - `SavedItemView` is the note or bookmark view plus `kind`, `courseId`, `courseTitle`, `lessonTitle`.
+    - Live items of the caller only, newest first.
+    - `docs/api/LEARNING.md` gets "Ghi chú và đánh dấu": N1–N7, the anchor rules, the limits and the error codes.
+  - Verify: ITs for the paging, the counts across both kinds, another user's items absent, and deleted items absent.
+  - Size: S. Depends on: B3.
 
 ### Checkpoint A
 
-- [x] `mvn clean test` green in the worktree: 382 run, 0 failures, 42 skipped (`CommunityApiIT`, untouched).
-- [x] Stop for the main session. It:
-  - applies the upgrade, then the backfill, to the local DB;
+- [ ] `mvn clean test` green in the worktree.
+- [ ] Stop for the main session. It:
+  - applies the upgrade to the local DB;
   - restarts :8019 on the branch;
-  - checks with `curl` as `hocvien` that L2's parts equal the formula on the local DB (SQL recorded here) and that
-    L1 lists `hocvien`, `hocvien.tichhop` and `giangvien` in the `org` scope with the right ranks;
-  - opens a lesson and checks that today's row appears once.
-
-  Done 2026-11-01 by the main session:
-  - The upgrade applied cleanly. The backfill inserted 5 rows, and a second run inserted 0.
-  - L2 equals the SQL below for all three learners. Weights 5 / 30 / 10, cap 30:
-
-    | user              | lessons | quizzes | courses | streak (days) | total |
-    | ----------------- | ------- | ------- | ------- | ------------- | ----- |
-    | `hocvien.tichhop` | 40      | 30      | 0       | 20 (2)        | 90    |
-    | `hocvien`         | 30      | 30      | 0       | 20 (2)        | 80    |
-    | `giangvien`       | 20      | 0       | 0       | 10 (1)        | 30    |
-
-    Every local `reward_points` is 0, so `courses` is checked only by the ITs.
-
-  - L1 as `hocvien`:
-    - `team` lists only `hocvien`, rank 1;
-    - `org` and `all` list `hocvien.tichhop` 1, `hocvien` 2 (`me: true`), `giangvien` 3;
-    - `page=2&size=1` returns `giangvien` with `me.rank` 2.
-  - Refusals:
-    - `scope=x` and `size=101` return `CORE-VALIDATION_FAILED`;
-    - `quantri` is refused with `CORE-ACCESS_DENIED`.
-  - Activity: `hocvien` already had today from the backfill, so the check used `giangvien` (last day 31/10). Two
-    `POST /sessions` wrote one row for 2026-11-01 (`session`), and the streak went from 1 to 2 days (L2 30 → 40).
-  - SQL: the four part queries and the "who is ranked" query, as written in the child's Checkpoint A note. They are
-    the same as the queries in `LearningPointsRepository` with the user fixed, plus a recursive CTE for the streak.
-
+  - checks with `curl` as `hocvien`:
+    - a note on page 3 of block 32 is saved;
+    - page 5 is refused with `LEARNING-INVALID_REFERENCE`;
+    - a bookmark at second 20 of block 33 toggles on, then off, then on;
+    - N6 has the right counts;
+  - checks as `hocvien.tichhop` that the lists are empty, and that deleting `hocvien`'s note is `LEARNING-NOT_FOUND`.
 - [ ] The backend PR is opened only when the user asks. Its first line tells the user to run the upgrade on the
       shared DB before merging.
 
 ## Phase 2: App
 
-- [x] **F1: Contracts, captured responses, mock**
+- [ ] **F1: Contracts, captured responses, mock**
   - Acceptance:
-    - `learnerEndpoints.leaderboard` (L1) and `learnerEndpoints.myPoints` (L2), with their schemas;
-    - responses captured from :8019 as `hocvien`;
-    - the mock serves both from a seed with a tie and a zero-point learner.
-  - Verify: the contracts and mocks specs are green.
-  - Size: S. Depends on: Checkpoint A.
+    - `personalEndpoints` gets `lessonNotes`, `addNote`, `deleteNote`, `lessonBookmarks`, `toggleBookmark`,
+      `deleteBookmark` and `saved`:
+      - on the N1–N7 paths;
+      - numeric ids;
+      - `AnchorSchema` with `none`, `pdf {blockId, page}` and `video {blockId, second}`;
+      - `served: 'mock'` removed.
+    - The certificate keys stay as they are.
+    - Responses captured from :8019 as `hocvien`.
+    - The mock serves the new paths from a seed with a PDF note, a video note and a PDF bookmark.
+    - The saved store and anything else on the old shapes still compile.
+  - Verify: the contracts and mocks specs are green, and the captured responses parse.
+  - Size: M. Depends on: Checkpoint A.
 
-  Done 2026-11-01 (21e5257): the schemas and endpoints are in `learner.schema.ts` / `learner.endpoints.ts`. The
-  captured L1/L2 responses (org, team, a page that does not hold `hocvien`, and L2) are in `learner.captured.ts` and
-  parse in the contracts spec. The mock (`learner-leaderboard.ts`) serves fixed points per learner and does what a
-  list does (scope members, order, tie ranks, paging). Two mock-only learners (`000201`, `000202`) give it the tie and
-  the zero-point learner. `nx test contracts mocks` is green.
-
-- [x] **F2: `/leaderboard` screen and store**
+- [ ] **F2: Block positions, jumps and the bookmark toggle**
   - Acceptance:
-    - `features/achievements/leaderboard`, wired in `screens.ts`.
-    - Title "Bảng xếp hạng & thành tích" and the mockup's description line.
-    - `ui-segmented` "Nhóm của tôi / Đơn vị / Toàn hệ thống", with `scope` in the URL and `org` as the default.
-    - **"Xếp hạng" with "{n} học viên":** an ordered list. Each row shows the rank, the name, "{team} · chuỗi
-      {n} ngày" and the points. The caller's row has the selected-row token, `aria-current="true"` and "(bạn)".
-      There are pages, and a "Vị trí của bạn" row when `me` is off the page.
-    - **Side card:** `{total}`, "Điểm thưởng của bạn · hạng {me.rank}", and the four parts as "+{n}".
-    - Loading, error-with-retry and empty states for each read.
-    - No badges, avatars, icon tiles or top-3 decoration.
-  - Verify:
-    - The store spec: scope ↔ query and URL.
-    - The page spec: rows, the marked row, the "Vị trí của bạn" row, the parts card and the three states.
-    - `npx nx test lms` is green.
+    - `app-pdf-block`:
+      - `pageChange` output on every page change, with no dwell; `pageShown` keeps its dwell;
+      - a `jump` input `{ value, seq }`;
+      - a `bookmarked` input and a `bookmark` output on an icon button "Đánh dấu trang này" in the toolbar, with
+        `aria-pressed`.
+    - `app-video-block`:
+      - `secondChange` output when the whole second changes;
+      - a `jump` input; the jump is reported through `jumped`, as a learner seek is;
+      - a button "Đánh dấu mốc {m:ss}" under the player, with `aria-pressed`.
+    - Both disable the bookmark control while a toggle runs (a `busy` input).
+  - Verify: the block specs cover each output, a jump to the same value twice, the pressed state, and the video
+    jump emitting `jumped`.
   - Size: M. Depends on: F1.
 
-  Done 2026-11-01 (a22bfa0, and a fix to the card title): the store spec cases (scope ↔ query ↔ URL, page, unknown
-  scope, bad page) are in the `the store` and `choosing a scope` groups of `leaderboard.spec.ts`; the page spec covers
-  the rows, the marked row, "Vị trí của bạn", the parts card and loading / error-with-retry / empty. `nx test lms`
-  green (1449 + the new specs).
-
-- [x] **F3: Learn page "Điểm thưởng" figure**
+- [ ] **F3: Lesson side panel and the notes panel**
   - Acceptance:
-    - The learn store reads L2.
-    - A figure follows the score figures in the same style: "Điểm thưởng", `{total}`, "Chuỗi {n} ngày", linking to
-      `/leaderboard`.
-    - A failed read hides only this figure.
-  - Verify: the learn spec with points, with zero and with an error.
-  - Size: S. Depends on: F1.
+    - **Side panel:** `ui-tabs` "Mục lục" / "Ghi chú ({n})", the same in the `aside` and in the drawer.
+    - **`app-lesson-notes`:**
+      - a form "Ghi chú tại {Trang n | Video m:ss | bài học}" with a textarea and "Lưu ghi chú";
+      - the notes, newest first, each with its anchor as a button ("Trang n", "Video m:ss") and a delete that asks
+        "Xóa ghi chú?" / "Ghi chú sẽ bị xóa vĩnh viễn.";
+      - then the bookmarks, each with its anchor and label;
+      - the mockup's empty line;
+      - loading, error-with-retry and empty states.
+    - **`LessonStore`:**
+      - the current anchor;
+      - the notes and bookmarks of the lesson;
+      - `addNote`, `deleteNote`, `toggleBookmark`, `followAnchor`;
+      - on entry, the `?block=&page=` / `?block=&t=` URL (amendment 7).
+    - Mutations reload the lists and signal `LearningChanges.saved`.
+    - No icon tiles and no badges.
+  - Verify:
+    - Store specs: the anchor follows the active block; add, delete and toggle reload; following an anchor on another
+      block selects it and then jumps; the URL entry; an invalid URL is ignored.
+    - Page spec: the tabs, the form label, the list and the confirm.
+  - Size: L. Depends on: F2.
 
-  Done 2026-11-01 (84838ab): `app-points-figure` shares a row with the score figures (so a learner whose courses have
-  no quiz still sees it). The learn spec covers points, zero, a failed read (figure hidden, no error text), and a
-  failed summary (no figure).
+- [ ] **F4: Saved page on N6**
+  - Acceptance:
+    - `SavedStore` reads N6 with `kind`, `page` and `size`.
+    - Rows follow amendment 8: no icon tiles; the text (note) or the label (bookmark); then
+      "{lesson} · Trang n | Video m:ss · {relative time}".
+    - The row links to the lesson with the amendment 7 URL.
+    - The delete uses N3 or N7 by kind, after a confirm.
+    - The tab counts come from `counts`.
+    - Loading, error-with-retry and empty states.
+  - Verify: the saved spec covers both tabs, the counts, the link URLs, the confirm and delete, and the three states.
+  - Size: M. Depends on: F1.
 
-- [x] **F4: End-to-end check against the spec**
+- [ ] **F5: End-to-end check against the spec**
   - Acceptance: the success criteria below are written here, each with how it was checked.
   - Verify:
     - Run `npm run check`.
     - The main session does the browser checks:
-      - as `hocvien`, all three scopes at 1280 px light and 375 px dark, matching `curl`;
-      - the learn figure.
-  - Size: S. Depends on: F2, F3.
-
-  Done 2026-11-01: `npm run check` is green (format, lint, typecheck, test, build and the bundle guard on every
-  project; exit 0, twice, the second after the last commit). The browser checks stay with the main session.
+      - as `hocvien`, at 1280 px light and 375 px dark;
+      - a note on page 3 of PDF block 32 and a bookmark at 0:20 on video block 33;
+      - reload;
+      - follow both anchors, from the panel and from Đã lưu;
+      - delete and untoggle;
+      - as `hocvien.tichhop`, none of them.
+  - Size: S. Depends on: F3, F4.
 
 ### Checkpoint B
 
-- [x] Success criteria recorded (how each was checked):
-  1. `/leaderboard` shows the three scopes with the right membership, ranked by the server's totals, with the
-     caller's row marked.
-     - Backend side: Checkpoint A (curl as `hocvien`: team 1 row, org and all 3 rows, ranks 1 / 2 / 3).
-     - App side: the page spec, on the mock backend, checks the three scopes, the order and ties (1, 2, 2, 4, 5),
-       the one `aria-current="true"` row with "(bạn)", and the schemas parse the captured real responses.
-     - Browser against :8019 as `hocvien` (main session): "Nhóm của tôi" 1 learner, hạng 1; "Đơn vị" and "Toàn hệ
-       thống" 3 learners (tích hợp 90, `hocvien` 80 "(bạn)" with `aria-current="true"` and `primary-subtle`,
-       giảng viên 40). `?scope=all` reopens on "Toàn hệ thống".
-  2. The points card equals L2, and each part equals the formula on the local DB (SQL recorded).
-     - The parts equal the formula on the local DB: Checkpoint A (table above, SQL in the backend note).
-     - The card renders L2 as it is (`total`, the four parts in the mockup order) and the rank from `me.rank`:
-       the page spec. On screen against :8019: "Điểm thưởng của bạn · hạng 2", 80, +30 / +30 / +0 / +20, equal to
-       L2. The learn page shows "Điểm thưởng 80 · Chuỗi 2 ngày", linking to `/leaderboard`.
-  3. Opening a lesson writes today's activity once. The streak counts it.
-     - Checked at Checkpoint A (two `POST /sessions` as `giangvien` wrote one row, streak 1 → 2 days).
-  4. The upgrade, the backfill and the rollback apply cleanly. `mvn clean test` and `npm run check` are green, and
-     the visual-design checklist passes.
-     - Upgrade and backfill: Checkpoint A. Rollback: the Testcontainers schema test (B1).
-     - `mvn clean test`: Checkpoint A. `npm run check`: green on 2026-11-01 after the last commit.
-     - Visual-design checklist: reviewed against the code (no eyebrow, icon, tile, badge, gradient, edge stripe or
-       hero; accent only on the points total; the small card title is a `p`, not an `h2` in the display font; one
-       inline muted line for an empty board; three weights).
-     - Browser at 1280 px light and 375 px dark (main session): no horizontal scroll, dark background right. The
-       total uses `accent-ink`, which the doc allows for points. At 375 px the name ellipsis cut off "(bạn)" and the
-       streak; fixed in bb98bce (name and meta line wrap), then re-checked with no clipped element.
-     - Not seen on real data: the "Vị trí của bạn" row needs more than 20 learners in a scope (3 locally); the page
-       spec covers it.
-- [x] Spec status set to built.
-- [ ] Review with the user, then plan `lesson-notes`.
+- [ ] Success criteria recorded:
+  1. Notes and bookmarks are created, listed, followed and removed on the local backend for PDF and video blocks,
+     with the same results after a reload.
+  2. They are private: another learner sees none, and a direct `DELETE` of someone else's note answers
+     `LEARNING-NOT_FOUND`.
+  3. "Đã lưu & ghi chú" lists both kinds with the right counts, and its links open the lesson at the anchor.
+  4. The upgrade and the rollback apply cleanly. `mvn clean test` and `npm run check` are green, and the
+     visual-design checklist passes for the side panel and the saved page.
+- [ ] Spec status set to built.
+- [ ] Review with the user, then plan `lesson-feedback`.

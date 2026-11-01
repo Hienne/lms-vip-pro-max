@@ -1,209 +1,211 @@
-# Implementation Plan: `learning-leaderboard`
+# Implementation Plan: `lesson-notes`
 
-Spec: [SPEC-learning-leaderboard.md](../SPEC-learning-leaderboard.md) (draft, amended below, waiting for approval).
+Spec: [SPEC-lesson-notes.md](../SPEC-lesson-notes.md) (approved 2026-11-01, amended below).
 Map: [SPEC.md](../SPEC.md). Tasks: [todo.md](todo.md).
 
-This plan replaces the one for `learner-scores`. That plan is done; its PRs are hmhug19/corebanking-academy#17 and
-Hienne/lms-vip-pro-max#50, and it is in git history at `cd4b2f1`.
+This plan replaces the one for `learning-leaderboard`. That plan is done; its PRs are hmhug19/corebanking-academy#18
+and Hienne/lms-vip-pro-max#51, and it is in git history at `a04912c`.
 
 ## Overview
 
-Learners earn learning points from what they already do, and see where they stand:
+A learner keeps private notes and bookmarks on the lesson they study, and finds them again later:
 
-- **New page `/leaderboard`, "Bảng xếp hạng & thành tích":**
-  - a ranking under three scopes, Nhóm của tôi / Đơn vị / Toàn hệ thống;
-  - the caller's row is marked;
-  - a card with the caller's points, rank and the four parts.
-- **Learn page:** one more figure, "Điểm thưởng" with "Chuỗi n ngày", linking to `/leaderboard`.
+- **Lesson page:** the side panel gets two tabs, Mục lục and Ghi chú.
+  - Ghi chú has a form "Ghi chú tại {Trang n | Video m:ss}" with "Lưu ghi chú".
+  - Below the form are the lesson's notes and bookmarks. Clicking an anchor jumps there; deleting asks first.
+  - The PDF and video blocks get a bookmark toggle.
+- **"Đã lưu & ghi chú"** (`/saved`, already built on mock data): real data, tabs Ghi chú / Đánh dấu with counts. A row
+  opens the lesson at its anchor.
 
-**Backend.** The server computes the points on read from progress, quiz passes and course rewards, plus a streak of
-learning days. The streak needs **one new table**, `learning_activity_days`. This is the first schema change since
-`learner-quiz`, so the deploy order matters (see "Shared server").
+**Backend.** Two new tables, `lesson_notes` and `lesson_bookmarks`, and seven endpoints. This is a schema change, so
+the upgrade runs on the shared DB before the backend PR is merged (see "Shared server").
 
 ## What was checked while planning (2026-11-01)
 
-**Backend (`corebanking-academy`, `main` at `6717718`, with #17 not merged yet)**
+**Backend (`corebanking-academy`, `origin/main` at `214d768`, with #18 merged)**
 
-- **Course rewards.** `course_completion_rules.reward_points` is stored per revision and never totalled.
-- **Lesson progress.**
-  - `lesson_progress` is per enrollment (`enrollment_id`, `lesson_id`, `status`, `progress_percent`), and
-    `course_enrollments` holds `user_id`, `cycle_no`, `revision_id`, `status`, `completed_at`.
-  - A new revision copies its lessons with new ids. `course_lessons.source_lesson_id` points back, so "the same
-    lesson across cycles" can be told apart.
-- **No record of learning days.** The closest data are `lesson_progress.update_time`, `block_progress` and
-  `quiz_attempts.submitted_at`.
-- **Quiz passes live in Assessment.** Learning reaches them only through `LearningQuizDirectory`, which #17 extends.
-- **Identity.** `learning_hub.users` has `org_id` and `team_id`. `LearningIdentityService` has `Person(id, name,
-orgId, teamId)`, `teamNames`, and a learner-eligibility query (`UserRepository.findLearningCandidates`).
-- **Community board scope.** The community contribution board ranks only within the caller's org
-  (`visibleOrg = actor.orgId`). It has no cross-org view, so the spec's "`all` reuses the community visibility"
-  would make `all` the same as `org`. See amendment 2.
-- **Advisory locks.** They are already used: `pg_advisory_xact_lock(hashtextextended(:key, 0))` in
-  `AssessmentRepository`.
-- **Local data.** One org (Ban Quản lý và phát triển Core Banking) and 7 users. `hocvien` is in team 7 "Nhóm BA&QC
-  Tiền gửi" and `hocvien.tichhop` in team 11. So locally `org` and `all` show the same people.
+- **No notes or bookmarks.** Nothing in `learning` stores them. Community has its own collections, unrelated.
+- **How a learner reads a lesson.** There is no per-lesson endpoint. The app loads
+  `GET /me/learning/enrollments/{enrollmentId}`, which returns the enrollment's revision tree. Access is "the
+  enrollment is the caller's".
+- **Error codes.** `LearningResponseCode` has generic codes: `LEARNING-NOT_FOUND`, `LEARNING-INVALID_REFERENCE`,
+  `LEARNING-CONFLICT`. Bean validation answers `CORE-VALIDATION_FAILED`. The spec's `LEARNING-NOTE_NOT_FOUND`,
+  `NOTE_INVALID` and `LESSON_NOT_FOUND` do not exist. See amendment 3.
+- **Asset bounds.** `assets.page_count` (integer) and `assets.duration_seconds` (`numeric(12,3)`) exist. A block's
+  media is `lesson_blocks.media_asset_id`, and `block_assets` links the rest.
+- **Revisions.** A new revision copies lessons and blocks with new ids. `source_lesson_id` and `source_block_id` point
+  back.
+
+**Local DB**
+
+- PDF block 32 (lesson 16), asset `ready`, 4 pages.
+- Video block 33 (lesson 17), asset `ready`, 30 seconds.
+- Video block 31 (lesson 15), asset `failed`.
+- These are the lessons of "Demo tài liệu PDF và video", in which `hocvien` is enrolled.
 
 **App**
 
-- `core/routing/screens.ts` has `{ path: 'leaderboard', title: 'Bảng xếp hạng', mockupPage: 'leaderboard' }` with no
-  screen.
-- `ui-segmented` exists (used on `/progress`).
-- The learn page shows `app-progress-counts` and `app-score-figures`.
+- `personalEndpoints` (`saved`, `addNote`, `deleteNote`, `toggleBookmark`, `deleteBookmark`) are `served: 'mock'` on
+  `/api/me/*`.
+  - Their ids are strings, and their anchors are `{type: 'pdf', page} | {type: 'video', seconds}`.
+  - The certificate keys sit in the same file.
+- `features/study-tools/saved` works on the mock. It has tabs, paging and a delete, and builds its links with
+  `?anchorType=&page=|seconds=`, which no lesson code reads. Its rows have icon tiles (`saved__icon`), which
+  visual-design.md forbids.
+- **The lesson page shows one block at a time** (`store.activeBlock$`). Its side panel is "Mục lục" in an `aside`,
+  and the same panel in a drawer on narrow screens.
+  - `app-pdf-block` emits `pageShown` only after a dwell time.
+  - `app-video-block` emits play, pause, a beat every 10 s, and seeks.
+  - Neither exposes the current position, nor accepts a jump.
+- **The mockup** (`lesson.js`, `viewers.js`, `tools.js`):
+  - a bookmark is a PDF page only, with the label "{block title} — trang {n}";
+  - "Ghi chú tại {anchor}", "Lưu ghi chú", "Xóa ghi chú?" / "Ghi chú sẽ bị xóa vĩnh viễn.";
+  - "Chưa có ghi chú. Ghi chú được gắn với trang PDF hoặc mốc video đang xem.";
+  - the saved page has no search, no filter and no paging.
 
-**Mockup** (`tools.js` `leaderboard`, `api/core.js` `points` / `streak`, `api/learner.js` `leaderboard`)
+## Amendments to the spec
 
-- **Header and scopes.**
-  - Title "Bảng xếp hạng & thành tích".
-  - Description: "Điểm thưởng tính tự động từ bài học hoàn thành, bài kiểm tra đạt, khóa học hoàn thành và chuỗi
-    ngày học."
-  - Segmented "Nhóm của tôi / Đơn vị / Toàn hệ thống", default "Đơn vị".
-- **Ranking card** "Xếp hạng" with "{n} học viên". Each row shows the rank, the name, "Bạn" on the caller's own
-  row, "{nhóm} · chuỗi {n} ngày", and the points.
-- **Side card.**
-  - "{total}" with "Điểm thưởng của bạn · hạng {rank in the current scope}".
-  - Four lines: "Bài học hoàn thành", "Bài kiểm tra đạt", "Khóa học hoàn thành", "Chuỗi ngày học", each "+{points}".
-- **Out of scope (spec):** the decorations (mai icons, avatars, highlighted top 3), "Mốc ghi nhận" and "Huy hiệu".
-- **Rules.**
-  - The weights are `lesson 5`, `quizPass 30`, `streakDay 10`.
-  - Courses earn their own `rewardPoints`.
-  - The streak counts consecutive days ending today, capped at 30 for points.
+Written to the spec's "Amendments" section when the plan is approved.
 
-## Spec amendments (written into the spec with this plan)
+1. **Errors use the existing codes:**
+   - a lesson not in any of the caller's enrollments, and another user's (or a deleted) note or bookmark →
+     `LEARNING-NOT_FOUND`;
+   - a block that is not in the lesson, has the wrong type, or an anchor beyond the asset's bounds →
+     `LEARNING-INVALID_REFERENCE`;
+   - a blank or too long text → `CORE-VALIDATION_FAILED`.
 
-1. **Labels from the mockup.** "Bảng xếp hạng & thành tích", "Toàn hệ thống" (not "Toàn bộ"), "Xếp hạng" with
-   "{n} học viên", and the four part labels above. The default scope is `org` ("Đơn vị").
-2. **What `all` means** (open question 1).
-   - Default: every active, learning-eligible user in the system, as the mockup's "Toàn hệ thống".
-   - The community board cannot be the model, because it has no cross-org view.
-   - The alternative is that `all` shows only the caller's own rank and total, with no other names.
-3. **Who is ranked.** Active users who are eligible to learn, by the same rule as `findLearningCandidates`, which
-   is reused and not copied.
-   - `team`: the caller's team. With no team, the page is empty, plus the caller's own row.
-   - `org`: the caller's org.
-   - `all`: as amendment 2.
-4. **The rank lives in L1, not L2.**
-   - L2 `MyPoints` is `{ total, parts { lessons, quizzes, courses, streak }, streakDays }`.
-   - The side card's "hạng n" is `me.rank` from L1 for the selected scope, as in the mockup.
-5. **Points are computed per scope in the service.** One grouped query per part over the scope's users (lessons,
-   courses, activity days), plus one port call for quiz passes. The service sums, sorts, assigns tie ranks and
-   pages. The quiz part cannot be summed in Learning's SQL, because Learning must not read Assessment tables.
-   Timings on the demo data are recorded at Checkpoint A.
-6. **Lessons counted once per user across cycles and revisions.** The lesson's identity is its original lesson,
-   found by following `source_lesson_id`. B1 records how the copy chain works: whether it points to the original or
-   to the previous copy.
-7. **The learn page gets the points figure** (open question 2's default). It is a third figure next to the score
-   figures: "Điểm thưởng", `{total}`, "Chuỗi {n} ngày", linking to `/leaderboard`. There is no hero.
-8. **Marking the caller's row.**
-   - The row uses the selected-row token and `aria-current="true"`, and its name is followed by a quiet "(bạn)".
-   - There is no "Bạn" badge, no avatars and no top-3 decoration (visual-design.md).
-   - When the caller's row is off the current page, a "Vị trí của bạn" row follows the list.
-9. **Audit columns.** `learning_activity_days` has no `created_by` / `row_version`: the system writes it, it is
-   append-only, and it is never edited (open question 3's default). Every column is commented. There is no FK and no
-   UNIQUE; "one row per user per day" is checked in the service under an advisory lock keyed on the user.
+   One new code: `LEARNING-NOTE_LIMIT`, for more than 500 notes or 500 bookmarks per user per lesson.
+
+2. **Access.** The lesson must belong to the revision of one of the caller's enrollments, whatever its status
+   (local statuses: `not_started`, `in_progress`, `completed`). A note stays on the lesson and block it was written on. A new revision does not carry notes over (open question 3).
+3. **Video anchors are whole seconds** (`video_second integer`), and the app sends `Math.floor(currentTime)`.
+   - The mockup shows `m:ss`.
+   - The bookmark toggle compares anchors for equality, which fractional seconds would break.
+4. **Bookmarks on PDF and video.** The spec has both; the mockup has PDF only.
+   - The PDF toolbar gets an icon button "Đánh dấu trang này".
+   - The video block gets a button under the player, "Đánh dấu mốc {m:ss}".
+   - Both use `aria-pressed`.
+   - The default label is the mockup's: "{block title} — trang {n}" or "{block title} — {m:ss}".
+5. **A seventh endpoint, N7 `DELETE /bookmarks/{bookmarkId}`,** for the saved page's delete. The toggle needs the
+   anchor, and the saved page should not rebuild it.
+6. **N6 keeps the mockup's scope:** `kind`, `page` and `size`, plus `counts`. No `q` and no `courseId` filter.
+7. **Anchor URL:**
+   - `/lesson/{courseId}/{lessonId}?block={id}&page={n}` or `…&t={s}`;
+   - the lesson store reads it on entry, selects the block and opens it there;
+   - an unknown block or an out-of-range value is ignored.
+8. **The saved page loses its icon tiles.** Each row is the text, then "{lesson} · Trang n | Video m:ss · {relative
+   time}". The delete asks first, as on the lesson page.
+9. **The notes panel lists the bookmarks too**, under the notes, as the mockup does. The Ghi chú tab shows the
+   note count.
+10. **The upgrade is dated `2026-11-03`.**
+    - It keeps the spec's audit columns and the anchor CHECK.
+    - It has no FK and no UNIQUE. "One bookmark per user, block and anchor" is checked in the service under an
+      advisory lock.
+    - It runs on the shared DB before the backend PR is merged.
 
 ## Architecture decisions
 
-**Backend**
+**Backend (`learning` module)**
 
-- **Activity recording.**
-  - One Learning service, `LearningActivityService.record(userId, source)`, does this:
-    1. take `pg_advisory_xact_lock` on `learning-activity:{userId}`;
-    2. check today's row (`Asia/Ho_Chi_Minh`);
-    3. insert it if missing.
-  - It runs inside the caller's transaction. A failure to record must not fail the learner's action, so record
-    runs after the main write, and its errors are logged.
-  - Callers:
-    - `POST /sessions`;
-    - `PUT …/blocks/{blockId}/progress`;
-    - a quiz start or submit, through a new method on the existing Learning port that Assessment already calls
-      (`requireStudyingLearner`'s service).
-- **Points.** `LearningPointsService`:
-  - computes `MyPoints` for one user and `LeaderboardPage` for a scope;
-  - takes its weights from `app.learning.points.{lesson,quiz-pass,streak-day,streak-cap}` in `application.yml`,
-    overridable by environment.
-- **Port.** `LearningQuizDirectory.passedQuizCounts(Collection<String> userIds)` returns, per user, the number of
-  distinct published, not deleted quizzes with a graded attempt where `passed = true`. It is one grouped query.
-- **Endpoints.** `LearningLeaderboardController` under `/api/v1/me/learning`:
-  - `GET /leaderboard?scope=team|org|all&page&size` (size ≤ 100) returns `PageResponse<LeaderboardRow>` plus
-    `me`. Because the base envelope is a page, the response is `LeaderboardPage { page: PageResponse, me }`.
-  - `GET /points`.
-  - Both require a learner.
+- **One service, `LearningNotesService`, for notes and bookmarks.** They share the access check, the anchor
+  validation and the limits. The controller `LearningNotesController` sits under `/api/v1/me/learning`.
+- **The access check goes through the enrollment, as reading a lesson does.** Resolve the lesson's revision, then
+  check the caller has an enrollment on it. One query, reused by every endpoint.
+- **Anchor validation against the real asset:**
+  - `pdf` needs a `pdf` block with `1 ≤ page ≤ page_count`;
+  - `video` needs a `video` block with `0 ≤ second ≤ floor(duration_seconds)`;
+  - `none` needs no block.
 
-**Schema** (follows the backend's DB rules)
+  An asset with a null bound refuses that anchor type (`INVALID_REFERENCE`), rather than accepting any value.
 
-- `docs/sql/upgrade/2026-11-02-learning-leaderboard.sql` creates the table and the index, with every column
-  commented. Its rollback drops them.
-- `…-backfill.sql` (optional) inserts one day per distinct local date of `lesson_progress.update_time` and graded
-  `quiz_attempts.submitted_at` per user. It skips days that already exist, so it can run twice.
-- The learning baseline gains the table, so Testcontainers ITs and new DBs have it. `docs/sql/README.md` gets the
-  upgrade row and its psql commands.
+- **The toggle (N5) runs under the advisory lock `lesson-bookmark:{userId}`.** It finds a live bookmark with the same
+  block and anchor: if there is one, it soft-deletes it and answers `saved: false`; otherwise it inserts one.
+- **Deletes are soft** (`is_deleted`, `updated_by`, `row_version`), so the audit trail stays. A second delete of the
+  same id answers `NOT_FOUND`.
+- **N6 joins Learning's own tables** for `courseId`, `courseTitle` and `lessonTitle`. It is a paged native query per
+  kind, newest first, with one count query for both kinds.
 
-**Shared server** (learned from #15 on 2026-11-01)
+**App**
 
-- `ddl-auto=validate` refuses to start without the table. So **the user runs the upgrade script on the shared DB
-  before the backend PR is merged**. The PR description says so in its first line.
-- Running the backfill there is the user's choice.
+- **Contracts.** `personalEndpoints` gets the real N1–N7 paths, numeric ids, and `AnchorSchema` with
+  `{type: 'none'} | {type: 'pdf', blockId, page} | {type: 'video', blockId, second}`. `served: 'mock'` is removed
+  from these keys. The certificate keys are untouched.
+- **The blocks only report and obey; the store decides.**
+  - `app-pdf-block` gains a `pageChange` output (every page change, no dwell).
+  - `app-video-block` gains a `secondChange` output (when the whole second changes).
+  - Both take a `jump` input `{ value, seq }`; the sequence lets the same anchor be followed twice.
+  - Both take a `bookmarked` input and emit `bookmark`.
+  - A jump in the video goes through the existing `jumped` path, so the server sees a learner seek as it does today.
+- **`LessonStore`:**
+  - holds the current anchor, `{blockId, page | second}` of the active block, or `none`;
+  - holds the lesson's notes and bookmarks (`serverData` keyed by lesson);
+  - has the commands `addNote`, `deleteNote`, `toggleBookmark` and `followAnchor` (`serverMutation`, reloading the
+    lists);
+  - `followAnchor` on another block selects that block first, then jumps once it is shown.
+- **The side panel becomes `ui-tabs`** "Mục lục" / "Ghi chú", the same in the `aside` and in the drawer. The
+  notes panel is one component, `app-lesson-notes`, which takes the store's selectors and emits commands.
+- **`SavedStore`:**
+  - re-pointed to N6;
+  - links follow amendment 7;
+  - the delete uses N3 or N7 by kind, after a confirm;
+  - it keeps the `LearningChanges.saved` signal, so a note added in a lesson refreshes the saved page.
 
-**Working tree and process**
+## Shared server
 
-- The backend child works in a new worktree, `~/my-projects/corebanking-academy-leaderboard`, on
-  `feat/learning-leaderboard`.
-  - It branches from `main` if #17 is merged by then; otherwise from `feat/learner-scores`, and it rebases once #17
-    is merged.
-  - It never runs `mvn` in a worktree that the local backend runs from.
-- **Local DB.** The main session applies the upgrade (and the backfill) to the local DB at Checkpoint A. That is the
-  only local DB change. Before that, the child tests with Testcontainers only.
-- The app work goes on a new branch, `feat/learning-leaderboard`, from `main` after #50 is merged. Plan files are
-  committed there.
-- One commit per task. Nothing is pushed. PRs are opened when the user asks.
+Merging the backend deploys it, and `ddl-auto=validate` refuses to start without the two tables. Order:
+
+1. the user runs `docs/sql/upgrade/2026-11-03-lesson-notes.sql` on the shared DB;
+2. merge the backend PR, and wait for the deploy;
+3. merge the app PR.
+
+The backend PR's first line says so.
 
 ## Task list
 
-### Phase 1: Backend (`corebanking-academy`)
+Detailed in [todo.md](todo.md).
 
-- [ ] B1: Schema: upgrade, rollback, backfill, baseline, README, entity
-- [ ] B2: Activity recording on session, block progress and quiz start/submit
-- [ ] B3: Points: weights, the quiz-pass port method, `GET /points` (L2)
-- [ ] B4: Leaderboard: scopes, tie ranks, `me`, `GET /leaderboard` (L1), docs
+**Phase 1 (backend)**
 
-### Checkpoint A
+- **B1:** schema, entities and repositories.
+- **B2:** notes N1–N3.
+- **B3:** bookmarks N4, N5 and N7.
+- **B4:** saved N6 and docs.
+- **Checkpoint A:** the main session applies the upgrade locally and checks with `curl`.
 
-- [ ] `mvn clean test` green in the worktree.
-- [ ] The main session applies the upgrade and backfill to the local DB, restarts :8019 on the branch, and checks
-      L1 and L2 with `curl` against the SQL in todo.md.
-- [ ] Review of the backend diff. The PR is opened when the user asks, and the shared DB upgrade comes first.
+**Phase 2 (app)**
 
-### Phase 2: App
-
-- [ ] F1: Contracts, captured responses, mock
-- [ ] F2: `/leaderboard` screen and store
-- [ ] F3: Learn page "Điểm thưởng" figure
-- [ ] F4: End-to-end check against the spec
-
-### Checkpoint B
-
-- [ ] Success criteria recorded, with how each was checked.
-- [ ] Spec status set to built.
-- [ ] Review with the user, then plan the next module (`lesson-notes`).
+- **F1:** contracts, captured responses, mock.
+- **F2:** block positions, jumps and the bookmark toggle.
+- **F3:** the lesson side panel and the notes panel.
+- **F4:** the saved page.
+- **F5:** end-to-end check.
+- **Checkpoint B:** the main session checks in the browser.
 
 ## Risks and mitigations
 
-| Risk                                                                 | Impact | Mitigation                                                                                                                                                  |
-| -------------------------------------------------------------------- | ------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Merging the backend before the shared DB has the table (as with #15) | High   | The PR's first line and the hand-off tell the user to run the upgrade first. The main session reminds the user before any merge.                            |
-| Recording activity slows down or fails a learner's write             | Med    | One indexed lookup under a per-user lock. Errors are caught and logged, never thrown to the learner. B2 tests a failing recorder.                           |
-| Two requests on the same day insert two rows                         | Med    | Advisory lock on the user plus a check. B2 has a concurrency test. Tolerated if it happens: points count distinct dates.                                    |
-| Ranking many users in the service is slow                            | Med    | Grouped queries, one per part. Checkpoint A records the timings on demo data. A nightly summary table is proposed only if the timings call for it, not now. |
-| Lessons double-counted across revisions                              | Med    | Amendment 6; B3 tests a learner who completes the same lesson in two cycles on two revisions.                                                               |
-| The streak is wrong at the day boundary                              | Low    | Local dates in `Asia/Ho_Chi_Minh`. B2 and B3 test 23:30 and 00:30 local.                                                                                    |
-| `all` shows names from other units                                   | Low    | Open question 1. Locally there is one unit, so `org` = `all`.                                                                                               |
+| Risk                                                                                               | Mitigation                                                                                                                       |
+| -------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| The backend deploys before the upgrade, and fails to start (as #15 did).                           | The upgrade runs on the shared DB first; the PR says so on its first line, and the main session reminds the user.                |
+| A jump into the video is reported as a learner seek and changes coverage.                          | It goes through `jumped` as any seek does, and the server already skips seeked-over spans (`SEEK`). A video spec case covers it. |
+| Selecting another block, then jumping, races the block's load.                                     | The jump is held in the store and applied as the block's start page or start second, not sent to a block that is not shown.      |
+| A note's lesson is no longer in the learner's current revision, so its saved link opens "missing". | Known and accepted (open question 3). The note is still listed and can be deleted.                                               |
+| Toggling a bookmark twice quickly.                                                                 | The advisory lock on the server, and the button disabled while the toggle runs.                                                  |
 
-## Open questions
+## Open questions (defaults apply unless the user says otherwise)
 
-None blocks the plan; each has a default.
+1. **Editing notes:** no edit, as in the mockup (spec question 1).
+2. **Saving a course:** not part of Đã lưu (spec question 2).
+3. **Notes across revisions:** a note stays on the lesson it was written on. It is not shown on the copied lesson
+   of a newer revision. Following `source_lesson_id` is possible later.
+4. **Notes as learning activity:** writing a note does not count as a learning day for the streak.
 
-1. **"Toàn hệ thống":** may it list learners of other units by name?
-   - Default: yes, every active learner, as the mockup.
-   - Alternative: `all` shows only the caller's own rank.
-2. **Learn page points figure:** default yes (amendment 7).
-3. **Activity table without audit columns:** default yes (amendment 9).
+## Verification
+
+- **Backend:** `mvn clean test`, then Checkpoint A on the local stack.
+- **App:** `npm run check`, then Checkpoint B in the browser as `hocvien`:
+  - 1280 px light and 375 px dark;
+  - a note on page 3 of PDF block 32, and a bookmark at 0:20 on video block 33;
+  - reload: both are still there;
+  - following each anchor;
+  - Đã lưu counts and links;
+  - as `hocvien.tichhop`, the same lessons show none of them.
