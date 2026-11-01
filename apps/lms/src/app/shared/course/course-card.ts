@@ -1,7 +1,7 @@
 import { Component, computed, input } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import type { CourseStatus } from '@lms/contracts';
-import { Badge, Card, Progress, type ProgressTone } from '@lms/ui';
+import { Badge, Card, FmtPctPipe, Progress, type ProgressTone } from '@lms/ui';
 import { DueDate } from './due-date';
 
 /**
@@ -27,7 +27,7 @@ export interface CourseCardView {
   readonly failed?: boolean;
   /** ISO date-time. */
   readonly dueAt?: string | null;
-  /** Best quiz score in percent, when the course has a quiz that was taken. */
+  /** The server's best score on the course's final exam, in percent; null when none was graded. */
   readonly bestScore?: number | null;
   /** Router path of the course page. */
   readonly link: string;
@@ -53,7 +53,7 @@ function formatMinutes(total: number): string {
  */
 @Component({
   selector: 'app-course-card',
-  imports: [RouterLink, Card, Badge, Progress, DueDate],
+  imports: [RouterLink, Card, Badge, FmtPctPipe, Progress, DueDate],
   templateUrl: './course-card.html',
   styleUrl: './course-card.scss',
 })
@@ -67,11 +67,9 @@ export class CourseCard {
   protected readonly progressTone = computed(
     () => PROGRESS_TONE[this.course().status],
   );
-  protected readonly statusText = computed(() => {
-    const { statusLabel, bestScore } = this.course();
-    return typeof bestScore === 'number'
-      ? `${statusLabel} · Điểm cao nhất ${bestScore}%`
-      : statusLabel;
+  protected readonly bestScore = computed(() => {
+    const score = this.course().bestScore;
+    return typeof score === 'number' ? score : null;
   });
   protected readonly completed = computed(
     () => this.course().status === 'completed',

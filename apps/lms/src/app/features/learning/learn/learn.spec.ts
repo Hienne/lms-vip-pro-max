@@ -98,7 +98,40 @@ describe('Learn', () => {
     it('shows the server counts and the unavailable note', () => {
       expect(el.querySelectorAll('app-progress-counts dt')).toHaveLength(5);
       expect(text()).toContain('sẽ hiển thị khi hệ thống có dữ liệu');
-      expect(text()).not.toContain('Điểm cao nhất');
+    });
+
+    it('follows the counts with the last and the best score, each a link to the progress page', () => {
+      const figures = Array.from(
+        el.querySelectorAll<HTMLAnchorElement>('app-score-figures a'),
+      );
+      expect(figures.map((a) => a.getAttribute('href'))).toEqual([
+        '/progress',
+        '/progress',
+      ]);
+      expect(
+        figures.map((a) =>
+          Array.from(a.querySelectorAll('dt, dd')).map((node) =>
+            node.textContent?.replace(/\s+/g, ' ').trim(),
+          ),
+        ),
+      ).toEqual([
+        [
+          'Điểm kiểm tra gần nhất',
+          '66,67%',
+          'Chưa đạt · Luyện tập: Tổng quan hệ thống Core Banking',
+        ],
+        ['Điểm cao nhất', '90%', 'Đạt 1/5 bài kiểm tra'],
+      ]);
+      expect(
+        el
+          .querySelector('app-progress-counts')!
+          .compareDocumentPosition(el.querySelector('app-score-figures')!) &
+          Node.DOCUMENT_POSITION_FOLLOWING,
+      ).toBeTruthy();
+    });
+
+    it('puts the best score of the final exam on the course card', () => {
+      expect(text()).toContain('Điểm cao nhất 40%');
     });
 
     it('lists the in-progress courses first and the status counts on the tabs', () => {
@@ -158,6 +191,33 @@ describe('Learn', () => {
           (a) => a.getAttribute('href') === '/notifications',
         ),
       ).toBe(true);
+    });
+  });
+
+  describe('a learner who has not taken a quiz yet', () => {
+    it('sees dashes and "Chưa làm bài kiểm tra"', async () => {
+      await open('hocvien.tichhop', '000007');
+      const cells = Array.from(
+        el.querySelectorAll('app-score-figures dt, app-score-figures dd'),
+      ).map((node) => node.textContent?.replace(/\s+/g, ' ').trim());
+      expect(cells).toEqual([
+        'Điểm kiểm tra gần nhất',
+        '—',
+        'Chưa làm bài kiểm tra',
+        'Điểm cao nhất',
+        '—',
+        'Đạt 0/2 bài kiểm tra',
+      ]);
+    });
+  });
+
+  describe('a learner whose courses have no quiz', () => {
+    it('sees no score figures and no error', async () => {
+      await open('giangvien', '000005');
+      expect(el.querySelector('app-score-figures dt')).toBeNull();
+      expect(text()).not.toContain('Điểm kiểm tra gần nhất');
+      expect(text()).not.toContain('Không tải được');
+      expect(el.querySelectorAll('app-progress-counts dt')).toHaveLength(5);
     });
   });
 

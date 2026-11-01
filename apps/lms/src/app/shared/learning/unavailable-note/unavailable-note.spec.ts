@@ -20,7 +20,17 @@ const summary = (
     mandatory: 0,
   },
   activity: { availability: activity },
-  assessment: { availability: assessment },
+  assessment:
+    assessment === 'available'
+      ? {
+          availability: 'available',
+          last: null,
+          bestScorePercent: null,
+          averageScorePercent: null,
+          passedQuizCount: 0,
+          quizCount: 1,
+        }
+      : { availability: assessment },
   competency: { availability: competency },
 });
 
