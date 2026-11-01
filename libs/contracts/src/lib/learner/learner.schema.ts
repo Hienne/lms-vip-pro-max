@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { BackendDateTimeSchema } from '../http/datetime';
+import { PageSchema } from '../http/page';
 import {
   CourseCardSchema,
   CourseDetailSchema,
@@ -314,3 +315,71 @@ export const ProgressExportQuerySchema = MyCoursesQuerySchema.omit({
   size: true,
 });
 export type ProgressExportQuery = z.infer<typeof ProgressExportQuerySchema>;
+
+// ---- Points and leaderboard ---------------------------------------------------------------
+
+/** Who the leaderboard ranks: the caller's team, their org, or every learner in the system. */
+export const LeaderboardScopeSchema = z.enum(['team', 'org', 'all']);
+export type LeaderboardScope = z.infer<typeof LeaderboardScopeSchema>;
+
+/** `scope` defaults to `org` on the server; `size` is at most 100. */
+export const LeaderboardQuerySchema = z.object({
+  scope: LeaderboardScopeSchema.optional(),
+  page: z.number().int().nonnegative().optional(),
+  size: z.number().int().min(1).max(100).optional(),
+});
+export type LeaderboardQuery = z.infer<typeof LeaderboardQuerySchema>;
+
+/**
+ * One learner on the board. The server ranks by total points, ties share a rank (1, 1, 3) and a
+ * learner with no points comes after everyone else. `teamName` is null for a learner with no team.
+ */
+export const LeaderboardRowSchema = z.object({
+  rank: z.number().int().positive(),
+  userId: z.string(),
+  fullName: z.string(),
+  teamName: z.string().nullish(),
+  points: z.number().int().nonnegative(),
+  /** Consecutive learning days, as the server counts them. */
+  streakDays: z.number().int().nonnegative(),
+  /** True on the caller's own row. */
+  me: z.boolean(),
+});
+export type LeaderboardRow = z.infer<typeof LeaderboardRowSchema>;
+
+/**
+ * The caller's row for the scope asked. `rank` is null when the caller is not in that scope, such as
+ * a learner with no team reading `team`.
+ */
+export const LeaderboardMeSchema = LeaderboardRowSchema.extend({
+  rank: z.number().int().positive().nullish(),
+});
+export type LeaderboardMe = z.infer<typeof LeaderboardMeSchema>;
+
+/** `LeaderboardPage`: a page of rows and the caller's own row, whether or not it is on the page. */
+export const LeaderboardPageSchema = z.object({
+  page: PageSchema(LeaderboardRowSchema),
+  me: LeaderboardMeSchema,
+});
+export type LeaderboardPage = z.infer<typeof LeaderboardPageSchema>;
+
+/** The points of each source; `total` is their sum. */
+export const PointPartsSchema = z.object({
+  /** Lessons completed, each counted once however many cycles or revisions. */
+  lessons: z.number().int().nonnegative(),
+  /** Distinct quizzes passed. */
+  quizzes: z.number().int().nonnegative(),
+  /** The reward of each course completed. */
+  courses: z.number().int().nonnegative(),
+  /** The current streak, capped by the server. */
+  streak: z.number().int().nonnegative(),
+});
+export type PointParts = z.infer<typeof PointPartsSchema>;
+
+/** `MyPoints`: the caller's total, its parts and the streak behind the last part. It has no rank. */
+export const MyPointsSchema = z.object({
+  total: z.number().int().nonnegative(),
+  parts: PointPartsSchema,
+  streakDays: z.number().int().nonnegative(),
+});
+export type MyPoints = z.infer<typeof MyPointsSchema>;

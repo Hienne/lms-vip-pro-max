@@ -23,7 +23,12 @@
       />
       } @else if (store.summary$(); as summary) {
       <app-progress-counts [counts]="summary.counts" />
-      <app-score-figures [summary]="summary" />
+      <div class="learn__figures">
+        <app-score-figures [summary]="summary" />
+        @if (store.points$(); as points) {
+        <app-points-figure [points]="points" />
+        }
+      </div>
       <app-unavailable-note [summary]="summary" />
       } @else {
       <div uiSkeleton variant="block" class="learn__counts-placeholder"></div>

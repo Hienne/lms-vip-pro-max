@@ -14,6 +14,7 @@ import {
 import { CourseCard } from '../../../shared/course/course-card';
 import { DueDate } from '../../../shared/course/due-date';
 import { CompetencyView } from '../../../shared/learning/competency/competency-view';
+import { PointsFigure } from '../../../shared/learning/points-figure/points-figure';
 import { ProgressCounts } from '../../../shared/learning/progress-counts/progress-counts';
 import { ReminderItem } from '../../../shared/learning/reminder-item/reminder-item';
 import { ScoreFigures } from '../../../shared/learning/score-figures/score-figures';
@@ -41,6 +42,7 @@ const TAB_LABEL: Record<LearnTab, string> = {
     Empty,
     ErrorState,
     PageHeader,
+    PointsFigure,
     ProgressCounts,
     ReminderItem,
     RouterLink,

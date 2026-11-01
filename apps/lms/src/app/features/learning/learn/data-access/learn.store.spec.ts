@@ -216,6 +216,21 @@ describe('LearnStore', () => {
     expect(store.competency$()?.length).toBeGreaterThan(0);
   });
 
+  it('reads the points once, and a failing read leaves no points and no other error', async () => {
+    const store = await open();
+    expect(queries(learnerEndpoints.myPoints)).toHaveLength(1);
+    expect(store.points$()).toMatchObject({ total: 80, streakDays: 2 });
+  });
+
+  it('has no points when the read fails, and the other sections still load', async () => {
+    fail(learnerEndpoints.myPoints);
+    const store = await open();
+    expect(store.points$()).toBeUndefined();
+    expect(store.summary$()).toBeDefined();
+    expect(store.summaryError$()).toBeUndefined();
+    expect(store.courses$().length).toBeGreaterThan(0);
+  });
+
   it('lets one failing section fail alone', async () => {
     fail(learnerEndpoints.progressSummary);
     const store = await open();

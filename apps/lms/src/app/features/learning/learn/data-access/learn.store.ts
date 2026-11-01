@@ -102,6 +102,11 @@ export class LearnStore {
     this.client.call(learnerEndpoints.progressSummary),
   );
 
+  /** The caller's learning points; the page shows one figure from them and hides it when the read fails. */
+  private readonly pointsData = serverData(() =>
+    this.client.call(learnerEndpoints.myPoints),
+  );
+
   private readonly resumeData = serverData(() =>
     this.client.call(learnerEndpoints.myCourses, {
       query: {
@@ -155,6 +160,8 @@ export class LearnStore {
   readonly summary$ = this.summaryData.value;
   readonly summaryError$ = this.summaryData.error;
   readonly isSummaryLoading$ = this.summaryData.isLoading;
+
+  readonly points$ = this.pointsData.value;
 
   /** Every tab shows the summary's count of the courses it lists. */
   readonly tabCounts$ = computed((): Partial<Record<LearnTab, number>> => {

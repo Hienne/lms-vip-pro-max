@@ -690,7 +690,7 @@ describe('AppShell', () => {
         TestBed.tick();
       };
       // A route placeholder has no level-1 heading.
-      await go('/leaderboard');
+      await go('/flashcards');
       expect(root.querySelector('main h1')).toBeNull();
       expect(document.activeElement).toBe(root.querySelector('main'));
       await go('/403');

@@ -1,0 +1,162 @@
+@use 'ui';
+
+:host {
+  @include ui.page(wide);
+}
+
+.leaderboard {
+  &__scope {
+    display: block;
+    max-width: 100%;
+    margin: ui.space(4) 0 ui.space(5);
+    overflow-x: auto;
+  }
+
+  // The caller's points come first on a narrow screen and sit beside the ranking on a wide one.
+  &__layout {
+    @include ui.stack(5);
+
+    @include ui.bp(lg) {
+      display: grid;
+      grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+      align-items: start;
+      gap: ui.space(8);
+    }
+  }
+
+  &__points {
+    @include ui.stack(3);
+
+    @include ui.bp(lg) {
+      grid-column: 2;
+      grid-row: 1;
+    }
+  }
+
+  &__points-title {
+    @include ui.text(sm, muted);
+    margin: 0;
+    font-weight: ui.weight(medium);
+  }
+
+  &__points-placeholder {
+    min-height: 9rem;
+  }
+
+  &__total {
+    @include ui.num;
+    @include ui.text(xl);
+    margin: 0;
+    color: ui.color(accent-ink);
+    font-weight: ui.weight(semibold);
+  }
+
+  &__parts {
+    @include ui.stack(2);
+    margin: 0;
+  }
+
+  &__part {
+    @include ui.row-between(3);
+    @include ui.text(sm);
+
+    dt {
+      color: ui.color(text-muted);
+    }
+
+    dd {
+      @include ui.num;
+      margin: 0;
+    }
+  }
+
+  &__ranking {
+    @include ui.stack(3);
+    min-width: 0;
+
+    @include ui.bp(lg) {
+      grid-column: 1;
+      grid-row: 1;
+    }
+  }
+
+  &__ranking-head {
+    @include ui.row-between(3);
+
+    h2 {
+      margin: 0;
+    }
+  }
+
+  &__count {
+    @include ui.text(sm, muted);
+  }
+
+  &__ranking-placeholder {
+    min-height: 18rem;
+  }
+
+  &__empty,
+  &__me-caption {
+    @include ui.text(sm, muted);
+    margin: 0;
+  }
+
+  &__list {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    border-top: 1px solid ui.color(border);
+  }
+
+  &__row {
+    display: grid;
+    grid-template-columns: 2.5rem minmax(0, 1fr) auto;
+    align-items: baseline;
+    column-gap: ui.space(3);
+    padding: ui.space(3) ui.space(2);
+    border-bottom: 1px solid ui.color(border);
+
+    &--me {
+      background: ui.color(primary-subtle);
+    }
+  }
+
+  &__rank {
+    @include ui.num;
+    color: ui.color(text-muted);
+    text-align: right;
+  }
+
+  &__who {
+    display: grid;
+    min-width: 0;
+  }
+
+  // The name, "(bạn)" and the meta line wrap instead of ending in an ellipsis, so "(bạn)" and the streak always show.
+  &__title {
+    font-weight: ui.weight(medium);
+    overflow-wrap: anywhere;
+  }
+
+  &__you {
+    color: ui.color(text-muted);
+    font-weight: ui.weight(regular);
+  }
+
+  &__meta {
+    @include ui.text(sm, muted);
+    overflow-wrap: anywhere;
+  }
+
+  &__score {
+    @include ui.num;
+    font-weight: ui.weight(semibold);
+    white-space: nowrap;
+  }
+
+  &__unit {
+    @include ui.text(sm, muted);
+    font-weight: ui.weight(regular);
+  }
+}

@@ -32,6 +32,7 @@ import { envelopeOk } from '../envelope';
 import { AssetLibrary } from './asset.backend';
 import { LearnerStudy } from './learner-session.backend';
 import { LearningRefused, ok, refuse } from './learning-reply';
+import { LearnerLeaderboard } from './learner-leaderboard';
 import { LearnerReminders } from './learner-reminders';
 import {
   LearnerEnrollments,
@@ -145,6 +146,8 @@ export class LearningBackend {
 
   private reminders = new LearnerReminders(learnerReminderFixtures);
 
+  private readonly board: LearnerLeaderboard;
+
   private study = new LearnerStudy(this.enrollments, (request) =>
     this.directory.callerId(request),
   );
@@ -165,7 +168,9 @@ export class LearningBackend {
   /** Rows the progress export allows; the real limit is 10,000. */
   exportRowLimit = 10_000;
 
-  constructor(private readonly directory: LearningDirectory) {}
+  constructor(private readonly directory: LearningDirectory) {
+    this.board = new LearnerLeaderboard(directory);
+  }
 
   /** The endpoints this service answers, for the fake backend's table. */
   entries(): [AnyEndpoint, Handler][] {
@@ -237,6 +242,8 @@ export class LearningBackend {
             ),
           ),
       ],
+      [learnerEndpoints.myPoints, (r) => ok(this.board.points(r))],
+      [learnerEndpoints.leaderboard, (r) => ok(this.board.leaderboard(r))],
       [learnerEndpoints.enroll, (r) => this.enroll(r)],
       [learnerEndpoints.enrollment, (r) => this.enrollmentDetail(r)],
       [learnerEndpoints.openSession, (r) => this.study.openSession(r)],
