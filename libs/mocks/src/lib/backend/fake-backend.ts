@@ -73,6 +73,7 @@ import {
 } from '../knowledge/knowledge.fixtures';
 import { navCountsFixtures } from '../shell/shell.fixtures';
 import { AssessmentMock } from '../assessment/assessment.mock';
+import { AssessmentAuthoringMock } from '../assessment/authoring.mock';
 import { LearnerQuizMock } from '../assessment/learner-quiz.mock';
 import { learningReportHandlers } from '../reports/learning-report.handlers';
 import { PersonalFakeBackend } from '../personal/personal.backend';
@@ -199,6 +200,13 @@ const PROFILE_FIELDS = [
  */
 export class FakeBackend {
   private readonly assessment = new AssessmentMock();
+  private readonly authoring = new AssessmentAuthoringMock((request) =>
+    this.meOf(this.caller(request)),
+  );
+  private readonly programAuthoring = new AssessmentAuthoringMock(
+    (request) => this.meOf(this.caller(request)),
+    true,
+  );
   private readonly learnerQuiz = new LearnerQuizMock();
   private readonly personal = new PersonalFakeBackend();
   private orgs: Mutable<SeedOrg>[] = SEED_ORGS.map((o) => ({ ...o }));
@@ -316,6 +324,8 @@ export class FakeBackend {
   answers(endpoint: AnyEndpoint): boolean {
     return (
       this.handlers.has(endpoint) ||
+      this.authoring.answers(endpoint) ||
+      this.programAuthoring.answers(endpoint) ||
       this.assessment.answers(endpoint) ||
       this.learnerQuiz.answers(endpoint) ||
       learningReportHandlers.has(endpoint) ||
@@ -325,6 +335,17 @@ export class FakeBackend {
 
   /** Answers one call, or `undefined` when `endpoint` is not the backend's. */
   handle(endpoint: AnyEndpoint, request: FakeRequest): FakeReply | undefined {
+    const authoring = this.programAuthoring.answers(endpoint)
+      ? this.programAuthoring
+      : this.authoring;
+    if (authoring.answers(endpoint)) {
+      try {
+        return authoring.handle(endpoint, request);
+      } catch (error) {
+        if (error instanceof Refused) return error.reply;
+        throw error;
+      }
+    }
     const assessmentReply = this.assessment.handle(endpoint, request);
     if (assessmentReply) return assessmentReply;
     const quizReply = this.learnerQuiz.handle(endpoint, request);

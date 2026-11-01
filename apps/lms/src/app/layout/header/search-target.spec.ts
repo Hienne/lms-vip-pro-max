@@ -3,11 +3,14 @@ import { searchPlaceholder, searchTarget } from './search-target';
 describe('searchTarget', () => {
   it.each([
     [['PROFILE', 'COURSE_LEARNING', 'QUIZ_TAKING'], '/catalog'],
-    [['PROFILE', 'REPORTING'], '/reports/learners'],
+    [['PROFILE', 'REPORTING'], '/reports/results'],
     [['PROFILE', 'COURSE_MANAGEMENT', 'REPORTING'], '/admin/courses'],
     [['USER_MANAGEMENT', 'COURSE_MANAGEMENT', 'REPORTING'], '/admin/courses'],
   ] as const)('sends the functions %j to %s with the query', (menus, path) => {
-    expect(searchTarget(menus, 'core')).toEqual({ path, query: { q: 'core' } });
+    expect(searchTarget(menus, 'core')).toEqual({
+      path,
+      query: path === '/reports/results' ? { userId: 'core' } : { q: 'core' },
+    });
   });
 
   it('trims the query and ignores an empty one', () => {

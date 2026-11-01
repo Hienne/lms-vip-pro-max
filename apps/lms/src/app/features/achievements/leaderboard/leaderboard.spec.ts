@@ -300,13 +300,10 @@ describe('Leaderboard', () => {
       expect(rows().length).toBe(5);
     });
 
-    it('offers no retry to a caller who is not a learner', async () => {
+    it('refuses the route before calling the leaderboard API for a non-learner', async () => {
       await open('/leaderboard', 'quantri', '000002');
-      expect(text(el.querySelector('.leaderboard__ranking')!)).toContain(
-        'Không tải được bảng xếp hạng',
-      );
-      expect(el.querySelectorAll('.leaderboard button')).toHaveLength(0);
-      expect(rows()).toEqual([]);
+      expect(TestBed.inject(Router).url).toBe('/403');
+      expect(calls(learnerEndpoints.leaderboard)).toHaveLength(0);
     });
   });
 

@@ -1,5 +1,9 @@
 import type { Route } from '@angular/router';
-import type { FunctionCode } from '@lms/contracts';
+import {
+  FunctionCodeSchema,
+  type AnyEndpoint,
+  type FunctionCode,
+} from '@lms/contracts';
 
 /**
  * The frame around a screen. `workspace` is the app frame with a page that fills the viewport
@@ -12,6 +16,7 @@ export type Layout = 'app' | 'workspace' | 'focus' | 'bare';
 export interface RouteMeta {
   /** The backend function that grants the screen; absent means any signed-in user. */
   readonly menu?: FunctionCode;
+  readonly requires?: readonly AnyEndpoint[];
   /** The one screen a user with a temporary password may open (see `passwordChangeGuard`). */
   readonly passwordChange?: boolean;
   readonly layout: Layout;
@@ -32,7 +37,8 @@ export const NOT_FOUND_META: RouteMeta = {
 /** The function code a route's `data` requires, or `undefined` when any signed-in user may enter. */
 export function menuOf(data: Route['data']): FunctionCode | undefined {
   const menu: unknown = data?.['menu'];
-  return typeof menu === 'string' ? (menu as FunctionCode) : undefined;
+  const parsed = FunctionCodeSchema.safeParse(menu);
+  return parsed.success ? parsed.data : undefined;
 }
 
 /** True for the screen a user with a temporary password is limited to. */

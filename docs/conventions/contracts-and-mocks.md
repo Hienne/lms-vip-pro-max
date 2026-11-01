@@ -278,14 +278,16 @@ document. Two switches in `AppConfig` choose, per endpoint, who answers:
 
 ## Identity and organisation contract decisions
 
-- **Access is by function code.** The backend's 16 function codes (`PROFILE`, `COURSE_LEARNING`,
+- **Access starts with function code.** The backend function codes (`PROFILE`, `COURSE_LEARNING`,
   `USER_MANAGEMENT`, ...) are the menu keys everywhere: the route table (`core/routing/screens.ts`),
-  the sidebar, the guards and the role form (`AI_ASSISTANT`, route `/assistant`, is the 17th). `MenuKeySchema` is gone. `Me.functionDetails` carries each
+  the sidebar, the guards and the role form. `FunctionCodeSchema` is the supported vocabulary, including assistant and community functions. `Me.functionDetails` carries each
   function's name, route and `sortNo`; the sidebar lists them in `sortNo` order, and `homePath` is
-  the first function's route excluding `PROFILE`, else `/profile`. Ten FE screens have no
-  function (catalog, leaderboard, flashcards, saved, certificates, instructor home and
-  inbox, content catalog, import, admin home) plus `notifications`: they are `open` routes for any
-  signed-in user and not in the sidebar.
+  the first eligible function's route excluding `PROFILE`, else `/profile`. Secondary screens
+  (catalog, leaderboard, flashcards, saved, certificates, instructor home/inbox, content catalog,
+  import and admin home) reuse a function through `Screen.access` without adding a sidebar entry.
+  `notifications` remains available to signed-in users; its learner reads are conditional.
+  `canOpenFunction` also checks the explicit business-role requirements of the implemented Java
+  APIs. It only narrows the functions `/me` supplied and is not a substitute for server authorization.
 - **Grants** are `{ roleId, scope: GLOBAL | ORG | TEAM | OWN, orgId?, teamId? }`, with numeric ids.
   `userId` is the staff code, a string whose leading zeros matter. A user has many grants; the
   profile and the user page list all of them. Status is `active | inactive | locked`.
@@ -326,3 +328,252 @@ document. Two switches in `AppConfig` choose, per endpoint, who answers:
 - Schema, endpoint (with its doc comment), fixture (success, plus the mockup's specific errors as `ERROR` envelopes) all updated.
 - `npx nx test contracts mocks` green (fixtures parse).
 - `npm start` shows the endpoint answering its example in the app.
+
+## Java integration audit (2026-11-01)
+
+Source of truth: the current controllers, `AssessmentRequests` / `AssessmentViews`,
+`LearningAccessPolicy`, `LearningAssessmentAccess.reportScope`, `IdentityAccessPolicy`
+and `AuthorizationService` in the sibling `corebanking-academy` repository. The audit
+matched the existing backend-served registry methods/paths to the Java source, including
+auth, identity, organization, course/media, learning, learner quizzes, knowledge,
+assistant and community. Missing optional community filters (`resolutionStatus` on
+articles and `reviewThreadId` on comments) were added. This is source verification,
+not evidence that a deployed server runs the same revision.
+
+The normal development proxy uses the shared target in `apps/lms/proxy.conf.mjs`;
+`LMS_API_TARGET=http://localhost:8019` selects a local backend. No credentials or
+remote grants were changed. Local health and the configured target's public OpenAPI
+were unavailable during this audit, so authenticated live integration is still pending.
+
+### Assessment administration: actual Java DTOs
+
+`assessmentV1Endpoints` now serves the question bank and quiz configuration as well as
+the course editor's quiz picker. The older `assessmentEndpoints` and
+`assessmentSqlEndpoints` remain explicitly mock-only historical proposals; the admin
+screens no longer call them. Removing `served: 'mock'` from one of those proposals
+would not convert its DTO into the Java DTO. Keep wire models and view/form adapters
+separate and verify every caller before promoting an endpoint.
+
+All IDs here are JSON numbers except staff codes. Enum values are uppercase.
+DTO keys are camelCase (`correctCount`, `contentVersion`, `rowVersion`,
+`timeLimitMinutes`, `passPercent`); SQL column names do not travel over HTTP.
+Request bodies are sent directly, without a `data` wrapper. Response examples below
+are the `data` after envelope unwrapping.
+
+| API                                  | Request                                                                                                                       | Response / semantics                                                                                                      |
+| ------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| `GET /api/v1/competencies`           | Optional `status=ACTIVE/INACTIVE`                                                                                             | Array of `CompetencyView`; ID and label are distinct.                                                                     |
+| `GET /api/v1/questions`              | Required `courseId`; optional `q`, `lessonId`, `competencyId`, `questionType`, `difficulty`, `status`, `page`, `size`, `sort` | `PageResponse<QuestionSummary>`; counts/previews only, no options. Sort allowlist: `id`, `code`, `updateTime`.            |
+| `GET /api/v1/questions/{id}`         | Numeric question ID                                                                                                           | `QuestionDetail`, including full options, correctness, `usedInQuizzes`, and `rowVersion`. Only fetched when editing.      |
+| `POST /api/v1/questions`             | `QuestionRequest` below                                                                                                       | Created `QuestionDetail`. Blank code lets Java generate it.                                                               |
+| `PUT /api/v1/questions/{id}`         | `expectedVersion` in query; `QuestionRequest` body                                                                            | Updated `QuestionDetail`. Existing option IDs are preserved; new options omit `id`.                                       |
+| `POST /api/v1/questions/bulk-status` | `{ids: number[], status: ACTIVE/INACTIVE}`                                                                                    | `{affected: number}`; one atomic bulk operation, maximum 100 IDs.                                                         |
+| `POST /api/v1/questions/bulk-delete` | `{ids: number[]}`                                                                                                             | `{affected: number}`; Java refuses in-use questions.                                                                      |
+| `GET /api/v1/quizzes`                | Required `courseId`, page/filter/sort                                                                                         | `PageResponse<QuizSummary>`; includes `gradedAttempts`, `passedAttempts`, `poolSize`, version and schedule.               |
+| `GET /api/v1/quizzes/{id}`           | Numeric quiz ID                                                                                                               | `{quiz: QuizView, pool: PoolEntry[], activePoolSize}`.                                                                    |
+| `POST /api/v1/quizzes`               | `QuizRequest`                                                                                                                 | `QuizDetail`; always creates a DRAFT. Status and pool are separate operations.                                            |
+| `PUT /api/v1/quizzes/{id}`           | `expectedVersion` query + `QuizRequest`                                                                                       | `QuizDetail` with its new `rowVersion`.                                                                                   |
+| `PUT /api/v1/quizzes/{id}/questions` | `expectedVersion` query; `{items:[{questionId,sortNo,points}]}`                                                               | `QuizDetail`; `points:null` uses the question default. Existing point overrides and pool order are preserved by the form. |
+| `POST /api/v1/quizzes/{id}/publish`  | `{expectedVersion}`                                                                                                           | `QuizDetail`; Java checks active pool size and scheduling.                                                                |
+| `POST /api/v1/quizzes/{id}/close`    | `{expectedVersion}`                                                                                                           | `QuizDetail`; Java submits running attempts with their saved answers. The UI asks for confirmation.                       |
+
+Example update: `PUT /api/v1/questions/12?expectedVersion=3`:
+
+```json
+{
+  "courseId": 1,
+  "lessonId": null,
+  "competencyId": 2,
+  "code": "CH-CIF-01",
+  "questionType": "SINGLE",
+  "content": "Khi khách hàng đổi CCCD, cần làm gì?",
+  "explanation": "Cập nhật trên CIF hiện có.",
+  "difficulty": "MEDIUM",
+  "points": 1.25,
+  "status": "ACTIVE",
+  "options": [
+    { "id": 31, "content": "Tạo CIF mới", "correct": false },
+    { "id": 32, "content": "Cập nhật CIF hiện có", "correct": true }
+  ]
+}
+```
+
+The detail response also carries `id`, `contentVersion`, option `sortNo`,
+`usedInQuizzes`, `rowVersion`, `createTime` and `updateTime`. The list summary instead
+carries `contentPreview`, `competencyName`, `optionCount`, `correctCount` and
+`usedInQuizCount`. Do not fake option arrays from a summary.
+
+`QuizRequest` fields are `courseId`, `title`, `description`, `quizType`
+(`PRACTICE/FINAL_EXAM`), `selectionMode` (`FIXED/RANDOM_POOL`), `questionCount`,
+`shuffleQuestions`, `shuffleOptions`, `timeLimitMinutes`, nullable `openAt/closeAt`,
+`graceSeconds`, `passPercent`, `scoringMode` (`ALL_OR_NOTHING/PARTIAL`), `scoreMethod`
+(`BEST/LAST`), `reviewPolicy` (`NEVER/AFTER_SUBMIT/AFTER_PASS/AFTER_CLOSE`),
+`maxAttempts`, `retakeWaitHours`, `allowRetakeAfterPass`, `requireLessonsCompleted`.
+The form renders and preserves these settings. It converts local dates to ISO only
+at submission. A draft may be saved before its pool is ready; publishing enforces
+readiness. Saving settings then the pool is **two transactions**: if the second
+fails, the FE reports the partial save, preserves input and retries using the
+receipt's ID/version instead of creating another draft. It does not retry another
+user's version conflict silently.
+
+### Reporting: do not equate training mock aggregates with assessment data
+
+The implemented Java reporting API is `/api/v1/reports/assessment`:
+
+| Read                 | Filters beyond paging                                           | Response                                                                                                                           |
+| -------------------- | --------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| `GET /overview`      | `orgId`, `teamId`, `courseId`, `quizId`, `from`, `to`           | `gradedAttempts`, `learners`, `passedLearners`, nullable `passRate/averageScore`, `inProgressAttempts`, `byQuiz`, `byOrg`.         |
+| `GET /results`       | Common filters + `userId`, attempt `status`, `passed`           | Page of attempts with learner names, historical org/team, score and result.                                                        |
+| `GET /learners`      | **Required `quizId`**, `orgId`, `teamId`, `learnerStatus`       | Page including people who have not attempted the quiz, attempts left and BEST/LAST/final scores. No date/course filter is applied. |
+| `GET /competency`    | Common filters + `groupBy=user/org`                             | Page by `(groupKey, competencyId)`, with `correctCount`, raw/max score and percent.                                                |
+| `GET /questions`     | Common filters                                                  | Page by `(questionId, questionVersion)`, including served/correct/blank counts and `wrongPercent`.                                 |
+| `GET /{type}/export` | Same applicable filters/sort as its read, **without page/size** | CSV blob; type is `results/learners/competency/questions`. JSON refusals still go through the envelope interceptor.                |
+
+`from` is inclusive and `to` exclusive, by submission time. All filters only narrow
+Java's caller scope. Org/team on results are historical snapshots; learner status
+uses the enrollment snapshot. A global header search for a report-only account
+opens `/reports/results?userId=<staff code>`, not a nonexistent free-text report
+search. The report screen accepts that parameter.
+
+The report UI uses those four dimensions and actual assessment KPI labels. It does
+not label exam scores as course-completion percentages, invent weekly series or
+send an unsupported training dimension to an assessment endpoint. Old training
+report proposals remain mock-only; unsupported deep links show an explicit state.
+Report filters currently accept IDs because no general read-only scoped report
+lookup API was found; do not call admin-only identity lists for REPORT_VIEWER users.
+
+### Permission and route matrix
+
+`/me.functions` is required for a menu. `canOpenFunction` then narrows it to the
+explicit Java role prerequisites below. Both checks operate on effective `/me`
+grants; a role and scope must come from the **same** grant. The FE never expands
+ORG descendants or supplies actor/scope fields to prove access. Java remains the
+security boundary on every list, detail, media download and mutation.
+
+| Function / screen                                                  | Display prerequisites                                        | Java operation boundary                                                                                                   |
+| ------------------------------------------------------------------ | ------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------- |
+| Learning, progress, quiz-taking and their secondary learner routes | `LEARNER + OWN`                                              | Own enrollment/attempt, currently valid learning access; no learner answer key before permitted review.                   |
+| Courses, lessons, question bank, quiz configuration                | `SUPER_ADMIN + GLOBAL`, or ADMIN/INSTRUCTOR grant            | Managed course/resource according to the grant's GLOBAL/ORG subtree/TEAM/OWN policy.                                      |
+| Users, organization, audit                                         | `SUPER_ADMIN + GLOBAL`, or `ADMIN + GLOBAL/ORG`              | Identity boundary; response `editable`, grant `revocable` and role `assignableScopes` still decide individual UI actions. |
+| Reports                                                            | SUPER_ADMIN/ADMIN/INSTRUCTOR/REPORT_VIEWER + GLOBAL/ORG/TEAM | Read-only scoped rows; OWN alone does not grant reporting.                                                                |
+| Community                                                          | Supplied community function                                  | Membership/dynamic grants and response capabilities; not inferred from a learner role.                                    |
+| Saved/certificates                                                 | Corresponding learner function **and** served integration    | Still no Java endpoint; direct routes are closed with mock API disabled.                                                  |
+
+Secondary aliases: catalog/saved -> COURSE_LEARNING; leaderboard/certificates ->
+LEARNING_PROGRESS; flashcards -> QUIZ_TAKING; instructor/inbox/content-catalog/import
+-> COURSE_MANAGEMENT; admin overview -> USER_MANAGEMENT. Aliases do not add sidebar
+items. Normal profile and notifications remain available to signed-in users.
+SUPER_ADMIN is not an unconditional FE bypass and no real grants were assigned.
+
+Remaining contract gaps: role-definition CRUD (role assignment is already real),
+personal notes/bookmarks/certificates, old training aggregates, and admin user
+learning/activity tabs remain mock proposals. In addition, the assignment target
+picker currently reads admin-only identity lists: an INSTRUCTOR without identity
+administration can be denied despite having assignment scope. This requires a
+scoped, read-only learning target lookup contract; **do not grant ADMIN or relax
+IdentityAccessPolicy merely to populate a selector**. It was not converted into a
+fabricated backend endpoint in this audit.
+
+### Verification of this integration change
+
+- Static method/path reconciliation: 197 registry entries, 153 backend entries matched
+  current Java controller mappings, 44 retained mock proposals, zero unmatched
+  backend entries. DTO-level changes focus on assessment authoring/reporting and
+  the two missing community query fields; this is not a live conformance check of
+  every deployed response.
+- 156 relevant Angular tests passed across the affected routing/session/header,
+  shell, assessment, report, leaderboard and expiry suites. Additional complete
+  library runs passed: contracts 194, mocks 265 and UI 511 tests.
+- Nx lint, typecheck, production/staging builds and bundle guards passed for the
+  four projects (10 tasks). Initial production bundle remains above its warning
+  threshold (about 950 kB), below the 1 MB hard limit. Existing lint/template
+  warnings remain outside this change.
+- `npm run check` stops at 1,093 pre-existing formatting warnings; none of the
+  changed/new source files is in that warning set. The full LMS suite was also
+  attempted but did not complete reliably within this environment; its success
+  is not claimed. Related suites were rerun separately with limited workers.
+- Browser checks on the isolated mock review build: admin question edit with
+  decimal points, advanced quiz settings save, report-viewer filtering/CSV,
+  report-viewer denial of an admin URL, learner denial of a reporting URL, and
+  the default course selector. Console error log was empty on the final review.
+- The review build is `dist/api-review/browser`, served locally at
+  `http://127.0.0.1:4311`; screenshots are in `dist/api-review/evidence`.
+  Only that development artifact uses a mock backend. Source `environment.ts`
+  retains its original `mockBackend: false`; production/staging contain no mocks.
+- Java source, database schema/data, passwords and real role grants were not
+  modified. Live authorization/data-scope tests still require an available
+  backend and authorized test accounts.
+
+## Program question bank FE update (2026-11-01)
+
+This supersedes the course-only UI scope in the audit above. A question belongs
+only to a program; a quiz still belongs to a course. Its bank selector derives
+programId from the course detail revision, never from a user-editable query.
+No Java, database, deployed permissions, or verified v1 contracts were changed.
+
+- Routes: /admin/questions, /admin/quizzes, /admin/quizzes/new and /admin/quizzes/:id.
+- The bank selects/searches/pages programs, with programId in list/create/update
+  commands and question detail/summary responses. There is no required courseId
+  or lessonId. Answer options, correctCount, contentVersion, rowVersion and
+  expectedVersion keep their camelCase wire shapes and optimistic concurrency.
+- Question editing cannot move a question to another program. Bulk selection is
+  cleared when switching program or page. Questions from multiple courses in the
+  same program are shown in the quiz selector; another program is excluded.
+- Add/create actions use PageHeader's actions slot and the shared Button atom.
+  No global CSS or other forms were restyled.
+
+### Pending integration proposal (served: mock)
+
+programAssessmentEndpoints declares isolated /api/assessment-program paths.
+These are FE proposals, not existing Java endpoints. Confirm final paths and
+resource authorization before marking them backend; do not send programId to
+existing courseId-only v1 endpoints and pretend it changed their scope.
+
+| Method/path after /api/assessment-program     | Input                                                                                           | Unwrapped data                                                                                |
+| --------------------------------------------- | ----------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------- |
+| GET /programs                                 | q?, page=0, size=50                                                                             | Page<TrainingProgram>, already restricted to manageable programs                              |
+| GET /questions                                | programId required; q?, questionType?, difficulty?, competencyId?, status?, page?, size?, sort? | Page<ProgramQuestionSummary>                                                                  |
+| GET /questions/{id}                           | numeric id                                                                                      | ProgramQuestionDetail                                                                         |
+| POST /questions                               | ProgramQuestionRequest                                                                          | ProgramQuestionDetail                                                                         |
+| PUT /questions/{id}?expectedVersion=N         | id/version + same JSON request                                                                  | updated ProgramQuestionDetail                                                                 |
+| POST /questions/bulk-status                   | {ids:[1,9],status:"INACTIVE"}                                                                   | {affected:2}                                                                                  |
+| POST /questions/bulk-delete                   | {ids:[1,9]}                                                                                     | {affected:2}; refuse questions still in use                                                   |
+| PUT /quizzes/{id}/questions?expectedVersion=N | {items:[{questionId:9,sortNo:0,points:null}]}                                                   | QuizDetailV1 with new rowVersion; validate every question against the course's actual program |
+
+Request example (no envelope and no courseId/lessonId):
+
+```json
+{
+  "programId": 2,
+  "competencyId": 1,
+  "code": "CT2-001",
+  "questionType": "SINGLE",
+  "content": "Nội dung câu hỏi?",
+  "explanation": "Giải thích đáp án",
+  "difficulty": "EASY",
+  "points": 1,
+  "status": "ACTIVE",
+  "options": [
+    { "content": "Phương án A", "correct": true },
+    { "content": "Phương án B", "correct": false }
+  ]
+}
+```
+
+Detail adds id, programId, contentVersion, rowVersion, createTime, updateTime,
+usedInQuizzes; options gain numeric id and sortNo. Summary adds contentPreview,
+competencyName, optionCount, correctCount and usedInQuizCount. Update option ids
+are preserved; newly added options omit id. A stale version must fail without
+closing/resetting the FE form. Scope and cross-program pool validation remain
+server requirements; fixture checks are not production authorization.
+
+For a coherent isolated preview, the program proposal also mirrors quiz
+list/detail/create/update/publish/close under /api/assessment-program/quizzes,
+using the unchanged QuizRequestV1/QuizDetailV1 shapes. Program and legacy mock
+stores are separate so their IDs and row versions cannot mix. In real-backend
+mode, quizzes continue using verified v1 endpoints: settings and existing pools
+are preserved, and the program pool picker stays read-only until integration.
+The bank shows a pending-integration state without issuing fake-auth requests
+or writing mocked questions into real quizzes. The full program workflow is
+reviewable with the existing full-mock development build on port 4311. Source
+mockBackend remains false; no real backend feature is claimed complete.

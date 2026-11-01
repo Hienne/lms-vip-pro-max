@@ -252,7 +252,9 @@ export const communityEndpoints = {
     method: 'get',
     path: '/api/v1/community/contents/{contentId}/comments',
     params: contentParams,
-    query: PageQuerySchema,
+    query: PageQuerySchema.extend({
+      reviewThreadId: z.number().int().positive().optional(),
+    }),
     response: PageSchema(CommentViewSchema),
   }),
   /** C26: posts a comment (up to three levels deep). */

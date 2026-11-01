@@ -6,6 +6,7 @@ import {
   navFor,
 } from '../menu/menu-catalog';
 import type { Profile, ScopeSummary } from './profile';
+import { canOpenFunction } from './function-access';
 
 /** The roles that make a `GLOBAL` grant a global administrator; the backend's `isGlobalAdmin`. */
 const GLOBAL_ADMIN_ROLES = ['ADMIN', 'SUPER_ADMIN'];
@@ -30,7 +31,10 @@ function scopeSummaryOf(grants: Me['roleGrants']): ScopeSummary {
 export function toProfile(me: Me, isServed?: IsServed): Profile {
   const { user, roleGrants } = me;
   const functions = knownFunctions(
-    me.functionDetails.filter((fn) => me.functions.includes(fn.code)),
+    me.functionDetails.filter(
+      (fn) =>
+        me.functions.includes(fn.code) && canOpenFunction(fn.code, roleGrants),
+    ),
     isServed,
   );
   const roleNames = [...new Set(roleGrants.map((grant) => grant.roleName))];

@@ -1,344 +1,355 @@
-import { computed, inject, Injectable, signal } from '@angular/core';
+import { computed, inject, Injectable, linkedSignal } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
 import { toSignal } from '@angular/core/rxjs-interop';
-import { reportEndpoints, type ReportDimension } from '@lms/contracts';
-import type { DataTableSort, DataTableColumn, DonutDatum } from '@lms/ui';
-
-export const REPORT_DIMENSIONS = [
-  { id: 'learners', label: 'Học viên' },
-  { id: 'courses', label: 'Khóa học' },
-  { id: 'programs', label: 'Chương trình' },
-  { id: 'groups', label: 'Phòng / nhóm' },
-  { id: 'units', label: 'Đơn vị' },
-  { id: 'status', label: 'Trạng thái hoàn thành' },
-  { id: 'results', label: 'Kết quả kiểm tra' },
-  { id: 'competency', label: 'Năng lực theo nhóm kiến thức' },
-] as const;
-const statusLabel: Record<string, string> = {
-  not_started: 'Chưa bắt đầu',
-  in_progress: 'Đang học',
-  completed: 'Đã hoàn thành',
-  failed: 'Chưa đạt',
-};
-const dateText = (value: string | null) =>
-  value
-    ? new Date(value).toLocaleString('vi-VN', {
-        day: '2-digit',
-        month: '2-digit',
-        year: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit',
-      })
-    : '—';
-const pct = (value: number | null) => (value === null ? '—' : `${value}%`);
-import { FileSaver } from '../../../../core/files/file-saver';
-import { invalidation } from '../../../../core/data-access/invalidation';
+import { map, type Observable } from 'rxjs';
+import {
+  assessmentReportEndpoints as api,
+  AssessmentReportTypeSchema,
+  type AssessmentReportType,
+  type AssessmentReportFilter,
+  type AssessmentReportExportQuery,
+  type Page,
+} from '@lms/contracts';
+import type { DataTableColumn, DataTableSort } from '@lms/ui';
+import { EndpointClient } from '../../../../core/http/endpoint-client';
 import { serverData } from '../../../../core/data-access/server-data';
 import { serverMutation } from '../../../../core/data-access/server-mutation';
-import { EndpointClient } from '../../../../core/http/endpoint-client';
+import { FileSaver } from '../../../../core/files/file-saver';
 
-const dimensions: readonly ReportDimension[] = [
-  'learners',
-  'courses',
-  'programs',
-  'groups',
-  'units',
-  'status',
-  'results',
-  'competency',
-];
+export const REPORT_DIMENSIONS = [
+  { id: 'results', label: 'Kết quả từng lượt thi' },
+  { id: 'learners', label: 'Tình trạng học viên' },
+  { id: 'competency', label: 'Năng lực' },
+  { id: 'questions', label: 'Phân tích câu hỏi' },
+] as const;
+const labels: Record<string, string> = {
+  IN_PROGRESS: 'Đang làm',
+  SUBMITTED: 'Đã nộp',
+  AUTO_SUBMITTED: 'Tự nộp',
+  VOIDED: 'Đã hủy',
+  NOT_STARTED: 'Chưa thi',
+  FAILED: 'Chưa đạt',
+  PASSED: 'Đạt',
+};
+const SORTS: Record<AssessmentReportType, readonly string[]> = {
+  results: ['id', 'startedAt', 'submittedAt', 'scorePercent'],
+  learners: ['userId', 'finalScore', 'lastSubmittedAt'],
+  competency: ['groupKey', 'competencyId'],
+  questions: ['questionId', 'timesServed', 'wrongPercent'],
+};
+const DEFAULT_SORT: Record<AssessmentReportType, DataTableSort> = {
+  results: { key: 'submittedAt', dir: 'desc' },
+  learners: { key: 'userId', dir: 'asc' },
+  competency: { key: 'groupKey', dir: 'asc' },
+  questions: { key: 'wrongPercent', dir: 'desc' },
+};
+const COLUMNS: Record<AssessmentReportType, readonly [string, string][]> = {
+  results: [
+    ['userId', 'Mã cán bộ'],
+    ['userName', 'Học viên'],
+    ['quizTitle', 'Bài kiểm tra'],
+    ['orgName', 'Đơn vị lúc thi'],
+    ['teamName', 'Nhóm lúc thi'],
+    ['attemptNo', 'Lần'],
+    ['status', 'Trạng thái'],
+    ['correctCount', 'Câu đúng'],
+    ['totalQuestions', 'Số câu'],
+    ['scorePercent', 'Điểm (%)'],
+    ['passed', 'Kết quả'],
+    ['submittedAt', 'Nộp lúc'],
+  ],
+  learners: [
+    ['userId', 'Mã cán bộ'],
+    ['userName', 'Học viên'],
+    ['orgName', 'Đơn vị lúc ghi danh'],
+    ['teamName', 'Nhóm lúc ghi danh'],
+    ['learnerStatus', 'Trạng thái'],
+    ['attemptsUsed', 'Lượt đã dùng'],
+    ['attemptsLeft', 'Lượt còn lại'],
+    ['bestScore', 'Cao nhất (%)'],
+    ['lastScore', 'Gần nhất (%)'],
+    ['finalScore', 'Điểm cuối (%)'],
+    ['lastSubmittedAt', 'Nộp gần nhất'],
+  ],
+  competency: [
+    ['groupKey', 'Mã học viên / đơn vị'],
+    ['groupName', 'Tên'],
+    ['competencyId', 'ID năng lực'],
+    ['code', 'Mã năng lực'],
+    ['name', 'Năng lực'],
+    ['totalQuestions', 'Số câu'],
+    ['correctCount', 'Câu đúng'],
+    ['maxScore', 'Điểm tối đa'],
+    ['score', 'Điểm'],
+    ['percent', 'Tỷ lệ (%)'],
+  ],
+  questions: [
+    ['questionId', 'ID câu hỏi'],
+    ['questionVersion', 'Phiên bản'],
+    ['code', 'Mã'],
+    ['contentPreview', 'Nội dung khi thi'],
+    ['timesServed', 'Lượt phát'],
+    ['timesCorrect', 'Lượt đúng'],
+    ['timesBlank', 'Bỏ trống'],
+    ['wrongPercent', 'Sai (%)'],
+  ],
+};
+interface ReportRow extends Record<string, string | number> {
+  id: string;
+}
+interface TableRequest {
+  type: AssessmentReportType;
+  query: AssessmentReportExportQuery & { page: number; size: number };
+}
+function row(value: object, id: string): ReportRow {
+  return {
+    id,
+    ...Object.fromEntries(
+      Object.entries(value).map(([key, value]) => [
+        key,
+        value == null
+          ? '—'
+          : typeof value === 'boolean'
+            ? value
+              ? 'Đạt'
+              : 'Chưa đạt'
+            : key.endsWith('At')
+              ? new Date(String(value)).toLocaleString('vi-VN')
+              : typeof value === 'string'
+                ? (labels[value] ?? value)
+                : value,
+      ]),
+    ),
+  };
+}
 @Injectable()
 export class ReportScreenStore {
   private readonly client = inject(EndpointClient);
   private readonly saver = inject(FileSaver);
   private readonly route = inject(ActivatedRoute);
-  private readonly routeParams = toSignal(this.route.paramMap);
+  private readonly params = toSignal(this.route.paramMap);
+  private readonly queryParams = toSignal(this.route.queryParamMap);
+  readonly incomingUserId$ = computed(
+    () => this.queryParams()?.get('userId') ?? '',
+  );
+  readonly dimension$ = computed(() => {
+    const parsed = AssessmentReportTypeSchema.safeParse(
+      this.params()?.get('dim'),
+    );
+    return parsed.success ? parsed.data : undefined;
+  });
+  readonly unsupported$ = computed(
+    () => !!this.params()?.get('dim') && !this.dimension$(),
+  );
   private readonly state = {
-    unitId: signal(''),
-    groupId: signal(''),
-    programId: signal(''),
-    courseId: signal(''),
-    period: signal(''),
-    page: signal(0),
-    q: signal(''),
-    sort: signal<DataTableSort>({ key: 'name', dir: 'asc' }),
+    filters: linkedSignal<AssessmentReportExportQuery>(() => ({
+      userId: this.incomingUserId$() || undefined,
+    })),
+    table: linkedSignal(() => ({
+      page: 1,
+      sort: DEFAULT_SORT[this.dimension$() ?? 'results'],
+    })),
   };
-  private readonly changes = invalidation();
-  private readonly filters = computed(() => {
-    const period = this.state.period();
-    const from = period
-      ? new Date(Date.now() - Number(period) * 86400000).toISOString()
-      : undefined;
-    return {
-      unitId: this.state.unitId() || undefined,
-      groupId: this.state.groupId() || undefined,
-      programId: this.state.programId() || undefined,
-      courseId: this.state.courseId() || undefined,
-      from,
-    };
+  readonly filters$ = this.state.filters.asReadonly();
+  private readonly commonFilters = computed<AssessmentReportFilter>(() => {
+    const { orgId, teamId, courseId, quizId, from, to } = this.filters$();
+    return { orgId, teamId, courseId, quizId, from, to };
   });
   private readonly overview = serverData(
-    (query: ReturnType<typeof this.filters>) =>
-      this.client.call(reportEndpoints.overview, { query }),
-    { params: () => this.filters(), reloadOn: this.changes },
-  );
-  private readonly detail = serverData(
-    (params: {
-      dim: ReportDimension;
-      query: {
-        unitId?: string;
-        groupId?: string;
-        programId?: string;
-        courseId?: string;
-        from?: string;
-        q?: string;
-        page: number;
-        size: number;
-        sort: string;
-      };
-    }) =>
-      this.client.call(reportEndpoints.detail, {
-        params: { dim: params.dim },
-        query: params.query,
-      }),
+    (query: AssessmentReportFilter) =>
+      this.client.call(api.overview, { query }),
     {
-      params: () => {
-        const value = this.routeParams()?.get('dim');
-        if (!value || !dimensions.includes(value as ReportDimension))
-          return undefined;
-        return {
-          dim: value as ReportDimension,
-          query: {
-            ...this.filters(),
-            q: this.state.q() || undefined,
-            page: this.state.page(),
-            size: 20,
-            sort: `${this.state.sort().key},${this.state.sort().dir}`,
-          },
-        };
-      },
-      reloadOn: this.changes,
+      params: () =>
+        !this.params()?.get('dim') ? this.commonFilters() : undefined,
     },
   );
+  private readonly tableRequest = computed<TableRequest | undefined>(() => {
+    const type = this.dimension$();
+    if (!type) return undefined;
+    const f = this.filters$(),
+      table = this.state.table();
+    const paging = {
+      page: table.page - 1,
+      size: 20,
+      sort: `${table.sort.key},${table.sort.dir}`,
+    };
+    switch (type) {
+      case 'learners':
+        return f.quizId
+          ? {
+              type,
+              query: {
+                quizId: f.quizId,
+                orgId: f.orgId,
+                teamId: f.teamId,
+                learnerStatus: f.learnerStatus,
+                ...paging,
+              },
+            }
+          : undefined;
+      case 'competency':
+        return {
+          type,
+          query: {
+            ...this.commonFilters(),
+            groupBy: f.groupBy ?? 'user',
+            ...paging,
+          },
+        };
+      case 'results':
+        return {
+          type,
+          query: {
+            ...this.commonFilters(),
+            userId: f.userId,
+            status: f.status,
+            passed: f.passed,
+            ...paging,
+          },
+        };
+      case 'questions':
+        return { type, query: { ...this.commonFilters(), ...paging } };
+    }
+  });
+  private loadPage(input: TableRequest): Observable<Page<ReportRow>> {
+    const { type, query } = input;
+    switch (type) {
+      case 'results':
+        return this.client.call(api.results, { query }).pipe(
+          map((p) => ({
+            ...p,
+            items: p.items.map((r) => row(r, String(r.attemptId))),
+          })),
+        );
+      case 'learners':
+        return this.client
+          .call(api.learners, {
+            query: { ...query, quizId: query.quizId as number },
+          })
+          .pipe(
+            map((p) => ({
+              ...p,
+              items: p.items.map((r) => row(r, String(r.enrollmentId))),
+            })),
+          );
+      case 'competency':
+        return this.client.call(api.competency, { query }).pipe(
+          map((p) => ({
+            ...p,
+            items: p.items.map((r) =>
+              row(r, `${r.groupKey}-${r.competencyId}`),
+            ),
+          })),
+        );
+      case 'questions':
+        return this.client.call(api.questions, { query }).pipe(
+          map((p) => ({
+            ...p,
+            items: p.items.map((r) =>
+              row(r, `${r.questionId}-${r.questionVersion}`),
+            ),
+          })),
+        );
+    }
+  }
+  private readonly detail = serverData(
+    (input: TableRequest) => this.loadPage(input),
+    { params: () => this.tableRequest() },
+  );
   private readonly exportMutation = serverMutation(
-    (input: {
-      dim: 'overview' | ReportDimension;
-      query: {
-        unitId?: string;
-        groupId?: string;
-        programId?: string;
-        courseId?: string;
-        from?: string;
-        q?: string;
-        sort: string;
-      };
-    }) =>
-      this.client.call(reportEndpoints.export, {
-        query: { ...input.query, dim: input.dim },
-      }),
+    (input: TableRequest) => {
+      const { page, size, ...query } = input.query;
+      // Export receives the exact table filters/sort, without pagination.
+      void page;
+      void size;
+      return this.client.call(api.export, {
+        params: { type: input.type },
+        query,
+      });
+    },
     {
       errors: 'toast',
       success: () => 'Đã xuất báo cáo CSV',
       onSuccess: (blob) =>
-        this.saver.save(
-          blob,
-          `bao-cao-${this.dimension$() ?? 'tong-quan'}.csv`,
-        ),
+        this.saver.save(blob, `bao-cao-thi-${this.dimension$()}.csv`),
     },
   );
-  readonly dimension$ = computed(() => {
-    const value = this.routeParams()?.get('dim');
-    return value && dimensions.includes(value as ReportDimension)
-      ? (value as ReportDimension)
-      : null;
-  });
   readonly overview$ = this.overview.value;
-  readonly detail$ = this.detail.value;
-  readonly dimensionLabel$ = computed(
-    () =>
-      REPORT_DIMENSIONS.find((d) => d.id === this.dimension$())?.label ??
-      'Báo cáo',
+  readonly scoreChart$ = computed(() =>
+    (this.overview$()?.byQuiz ?? []).flatMap((group) =>
+      group.averageScore === null
+        ? []
+        : [{ label: group.name ?? 'Chưa xác định', value: group.averageScore }],
+    ),
   );
-  readonly period$ = this.state.period.asReadonly();
-  readonly sort$ = this.state.sort.asReadonly();
-  readonly groups$ = computed(
-    () =>
-      this.overview$()?.filters.groups.filter(
-        (g) => !this.state.unitId() || g.unitId === this.state.unitId(),
-      ) ?? [],
+  readonly byQuiz$ = computed(() =>
+    (this.overview$()?.byQuiz ?? []).map((g) => ({
+      ...g,
+      id: String(g.id ?? 'unknown'),
+      name: g.name ?? 'Chưa xác định',
+    })),
   );
-  readonly weeks$ = computed(
-    () =>
-      this.overview$()?.weeks.map((w) => ({
-        label: new Date(w.weekStart).toLocaleDateString('vi-VN', {
-          day: '2-digit',
-          month: '2-digit',
-        }),
-        value: w.completedLessons,
-      })) ?? [],
+  readonly byOrg$ = computed(() =>
+    (this.overview$()?.byOrg ?? []).map((g) => ({
+      ...g,
+      id: String(g.id ?? 'unknown'),
+      name: g.name ?? 'Chưa xác định',
+    })),
   );
-  readonly statusParts$ = computed((): readonly DonutDatum[] => {
-    const t = this.overview$()?.total;
-    return t
-      ? [
-          { label: 'Đã hoàn thành', value: t.completed, tone: 'success' },
-          { label: 'Đang học', value: t.inProgress, tone: 'primary' },
-          { label: 'Chưa bắt đầu', value: t.notStarted, tone: 'neutral' },
-          { label: 'Chưa đạt', value: t.failed, tone: 'danger' },
-        ]
+  readonly rows$ = computed(() => this.detail.value()?.items ?? []);
+  readonly total$ = computed(() => this.detail.value()?.totalElements ?? 0);
+  readonly columns$ = computed<readonly DataTableColumn[]>(() => {
+    const type = this.dimension$();
+    return type
+      ? COLUMNS[type].map(([key, label]) => ({
+          key,
+          label,
+          sortable: SORTS[type].includes(key),
+        }))
       : [];
   });
-  readonly columns$ = computed((): readonly DataTableColumn[] => {
-    const dim = this.dimension$();
-    const pairs: readonly (readonly [string, string])[] =
-      dim === 'learners'
-        ? [
-            ['name', 'Học viên'],
-            ['email', 'Email'],
-            ['unit', 'Đơn vị'],
-            ['group', 'Phòng/nhóm'],
-            ['courses', 'Khóa'],
-            ['pct', 'Tiến độ'],
-            ['overdue', 'Quá hạn'],
-            ['failed', 'Chưa đạt'],
-            ['avgScore', 'Điểm TB'],
-            ['lastAccess', 'Truy cập'],
-          ]
-        : dim === 'status'
-          ? [
-              ['name', 'Học viên'],
-              ['course', 'Khóa học'],
-              ['group', 'Phòng/nhóm'],
-              ['status', 'Trạng thái'],
-              ['pct', 'Tiến độ'],
-              ['startedAt', 'Bắt đầu'],
-              ['completedAt', 'Hoàn thành'],
-              ['dueAt', 'Hạn'],
-            ]
-          : dim === 'results'
-            ? [
-                ['name', 'Học viên'],
-                ['unit', 'Đơn vị'],
-                ['quiz', 'Bài kiểm tra'],
-                ['nth', 'Lần'],
-                ['score', 'Điểm'],
-                ['passed', 'Kết quả'],
-                ['at', 'Ngày'],
-              ]
-            : dim === 'competency'
-              ? [
-                  ['name', 'Học viên'],
-                  ['unit', 'Đơn vị'],
-                  ...(this.overview$()?.competency ?? []).map(
-                    (c) => [c.id, c.name] as const,
-                  ),
-                ]
-              : [
-                  ['name', this.dimensionLabel$()],
-                  ['learners', 'Học viên'],
-                  ['enrolments', 'Lượt tham gia'],
-                  ['pct', 'Tiến độ TB'],
-                  ['completed', 'Hoàn thành'],
-                  ['inProgress', 'Đang học'],
-                  ['notStarted', 'Chưa bắt đầu'],
-                  ['overdue', 'Quá hạn'],
-                  ['avgScore', 'Điểm TB'],
-                  ['passRate', 'Tỷ lệ đạt'],
-                ];
-    return pairs.map(([key, label]) => ({
-      key,
-      label,
-      sortable: dim !== 'competency' || key === 'name' || key === 'unit',
-    }));
-  });
-  readonly displayRows$ = computed(
-    (): readonly ({ id: string } & Record<string, string | number>)[] =>
-      (this.detail$()?.items ?? []).map((row) => {
-        if ('values' in row)
-          return {
-            id: row.id,
-            name: row.name,
-            unit: row.unit,
-            ...Object.fromEntries(
-              row.values.map((v) => [v.competencyId, pct(v.value)]),
-            ),
-          };
-        if ('quiz' in row)
-          return {
-            ...row,
-            score: pct(row.score),
-            passed: row.passed ? 'Đạt' : 'Chưa đạt',
-            at: dateText(row.at),
-            autoSubmitted: row.autoSubmitted ? 'Tự nộp' : '',
-          };
-        if ('course' in row)
-          return {
-            ...row,
-            status: statusLabel[row.status] ?? row.status,
-            pct: pct(row.pct),
-            overdue: row.overdue ? 'Quá hạn' : '',
-            startedAt: dateText(row.startedAt),
-            completedAt: dateText(row.completedAt),
-            dueAt: dateText(row.dueAt),
-            lastAccess: dateText(row.lastAccess),
-          };
-        if ('email' in row)
-          return {
-            ...row,
-            courses: `${row.completed}/${row.courses}`,
-            pct: pct(row.pct),
-            avgScore: pct(row.avgScore),
-            lastAccess: dateText(row.lastAccess),
-          };
-        return {
-          ...row,
-          pct: pct(row.pct),
-          avgScore: pct(row.avgScore),
-          passRate: pct(row.passRate),
-        };
-      }),
+  readonly page$ = computed(() => this.state.table().page);
+  readonly sort$ = computed(() => this.state.table().sort);
+  readonly isLoading$ = computed(
+    () => this.overview.isLoading() || this.detail.isLoading(),
   );
-  setSort(sort: DataTableSort): void {
-    this.state.sort.set(sort);
-    this.setPage(0);
-  }
-  readonly filters$ = this.filters;
-  readonly page$ = this.state.page.asReadonly();
-  readonly query$ = this.state.q.asReadonly();
-  readonly isLoading$ = computed(() =>
-    this.dimension$() ? this.detail.isLoading() : this.overview.isLoading(),
+  readonly error$ = computed(
+    () => this.overview.error() ?? this.detail.error(),
   );
-  readonly error$ = computed(() =>
-    this.dimension$() ? this.detail.error() : this.overview.error(),
+  readonly exporting$ = this.exportMutation.isPending;
+  readonly canExport$ = computed(() => !!this.tableRequest());
+  readonly needsQuiz$ = computed(
+    () => this.dimension$() === 'learners' && !this.filters$().quizId,
   );
-  readonly isExporting$ = this.exportMutation.isPending;
-  setFilter(
-    key: 'unitId' | 'groupId' | 'programId' | 'courseId' | 'period',
-    value: string,
-  ): void {
-    this.state[key].set(value);
-    this.state.page.set(0);
-    if (key === 'unitId') this.state.groupId.set('');
+  readonly title$ = computed(
+    () =>
+      REPORT_DIMENSIONS.find((d) => d.id === this.dimension$())?.label ??
+      'Tổng quan kết quả thi',
+  );
+  private setFilters(value: AssessmentReportExportQuery): void {
+    this.state.filters.set(value);
   }
-  setQuery(value: string): void {
-    this.state.q.set(value);
-    this.state.page.set(0);
+  private setTable(value: { page: number; sort: DataTableSort }): void {
+    this.state.table.set(value);
   }
-  setPage(page: number): void {
-    this.state.page.set(page);
+  applyFilters(value: AssessmentReportExportQuery): void {
+    this.setFilters(value);
+    this.setTable({ ...this.state.table(), page: 1 });
   }
-  export(): void {
-    this.exportMutation.run({
-      dim: this.dimension$() ?? 'overview',
-      query: {
-        ...this.filters(),
-        q: this.state.q() || undefined,
-        sort: `${this.sort$().key},${this.sort$().dir}`,
-      },
-    });
+  changePage(page: number): void {
+    this.setTable({ ...this.state.table(), page });
+  }
+  changeSort(sort: DataTableSort): void {
+    const type = this.dimension$();
+    if (type && SORTS[type].includes(sort.key))
+      this.setTable({ page: 1, sort });
+  }
+  exportCsv(): void {
+    const request = this.tableRequest();
+    if (request && !this.exporting$()) this.exportMutation.run(request);
   }
   retry(): void {
-    if (this.dimension$()) this.detail.reload();
-    else this.overview.reload();
+    this.overview.reload();
+    this.detail.reload();
   }
 }

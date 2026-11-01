@@ -1,10 +1,11 @@
 import type { Route } from '@angular/router';
 import {
-  assessmentEndpoints,
+  assessmentV1Endpoints,
   adminOrgEndpoints,
   communityEndpoints,
   learnerQuizEndpoints,
-  reportEndpoints,
+  assessmentReportEndpoints,
+  personalEndpoints,
   type AnyEndpoint,
   type FunctionCode,
 } from '@lms/contracts';
@@ -15,6 +16,9 @@ import type { Layout, RouteMeta } from './route-table';
 type ScreenLoad = NonNullable<Route['loadComponent']>;
 
 export interface Screen {
+  /** A secondary route may reuse a function without adding a sidebar entry. */
+  readonly access?: FunctionCode;
+  readonly requires?: readonly AnyEndpoint[];
   /** Angular path, without a leading slash. */
   readonly path: string;
   /** Static page title; screens with a data-dependent title replace it when migrated. */
@@ -44,6 +48,7 @@ export interface MenuNav {
 
 /** A list the header search can fill: the menu's entry screen, or `href` for a parametrised one. */
 export interface MenuSearch {
+  readonly queryKey?: 'q' | 'userId';
   /** Path without a leading slash; must match a screen of the same group. */
   readonly href?: string;
 }
@@ -231,8 +236,8 @@ export const SCREEN_TABLE = {
     QUESTION_BANK: {
       nav: { icon: 'circle-help', section: 'Nội dung' },
       requires: [
-        assessmentEndpoints.questions,
-        assessmentEndpoints.createQuestion,
+        assessmentV1Endpoints.questions,
+        assessmentV1Endpoints.createQuestion,
       ],
       screens: [
         {
@@ -248,7 +253,10 @@ export const SCREEN_TABLE = {
     },
     QUIZ_MANAGEMENT: {
       nav: { icon: 'clipboard-check', section: 'Nội dung' },
-      requires: [assessmentEndpoints.quizzes, assessmentEndpoints.saveQuiz],
+      requires: [
+        assessmentV1Endpoints.courseQuizList,
+        assessmentV1Endpoints.updateQuiz,
+      ],
       screens: [
         {
           path: 'admin/quizzes',
@@ -336,8 +344,11 @@ export const SCREEN_TABLE = {
     },
     REPORTING: {
       nav: { icon: 'chart-column', section: 'Theo dõi' },
-      requires: [reportEndpoints.overview, reportEndpoints.detail],
-      search: { href: 'reports/learners' },
+      requires: [
+        assessmentReportEndpoints.overview,
+        assessmentReportEndpoints.results,
+      ],
+      search: { href: 'reports/results', queryKey: 'userId' },
       screens: [
         {
           path: 'reports',
@@ -489,9 +500,9 @@ export const SCREEN_TABLE = {
     },
   },
   /**
-   * Screens of the mockup that no backend function covers: any signed-in user may open them, the
-   * guards never block them and the sidebar does not list them (login is public, the password
-   * change is the one screen a user with a temporary password may use).
+   * Secondary routes without their own sidebar entry. `access` reuses a business function and
+   * `requires` closes integrations unavailable in this build. Login is public; the password
+   * change is the one screen a user with a temporary password may use.
    */
   open: [
     {
@@ -517,6 +528,7 @@ export const SCREEN_TABLE = {
     },
     {
       path: 'catalog',
+      access: 'COURSE_LEARNING',
       title: 'Danh mục khóa học',
       mockupPage: 'catalog',
       load: () =>
@@ -526,6 +538,7 @@ export const SCREEN_TABLE = {
     },
     {
       path: 'admin/catalog',
+      access: 'COURSE_MANAGEMENT',
       title: 'Lĩnh vực & chương trình',
       mockupPage: 'adminCatalog',
       load: () =>
@@ -535,6 +548,7 @@ export const SCREEN_TABLE = {
     },
     {
       path: 'leaderboard',
+      access: 'LEARNING_PROGRESS',
       title: 'Bảng xếp hạng & thành tích',
       mockupPage: 'leaderboard',
       load: () =>
@@ -542,9 +556,16 @@ export const SCREEN_TABLE = {
           (m) => m.Leaderboard,
         ),
     },
-    { path: 'flashcards', title: 'Flashcard ôn tập', mockupPage: 'flashcards' },
+    {
+      path: 'flashcards',
+      access: 'QUIZ_TAKING',
+      title: 'Flashcard ôn tập',
+      mockupPage: 'flashcards',
+    },
     {
       path: 'saved',
+      access: 'COURSE_LEARNING',
+      requires: [personalEndpoints.saved],
       title: 'Đã lưu & ghi chú',
       mockupPage: 'saved',
       load: () =>
@@ -552,6 +573,8 @@ export const SCREEN_TABLE = {
     },
     {
       path: 'certificates',
+      access: 'LEARNING_PROGRESS',
+      requires: [personalEndpoints.certificates],
       title: 'Chứng nhận',
       mockupPage: 'certificates',
       load: () =>
@@ -561,6 +584,8 @@ export const SCREEN_TABLE = {
     },
     {
       path: 'certificate/:id',
+      access: 'LEARNING_PROGRESS',
+      requires: [personalEndpoints.certificate],
       title: 'Chứng nhận',
       mockupPage: 'certificate',
       load: () =>
@@ -570,13 +595,25 @@ export const SCREEN_TABLE = {
     },
     {
       path: 'instructor',
+      access: 'COURSE_MANAGEMENT',
       title: 'Tổng quan giảng viên',
       mockupPage: 'instructor',
     },
-    { path: 'instructor/inbox', title: 'Hộp phản hồi', mockupPage: 'inbox' },
-    { path: 'admin', title: 'Tổng quan quản trị', mockupPage: 'adminHome' },
+    {
+      path: 'instructor/inbox',
+      access: 'COURSE_MANAGEMENT',
+      title: 'Hộp phản hồi',
+      mockupPage: 'inbox',
+    },
+    {
+      path: 'admin',
+      access: 'USER_MANAGEMENT',
+      title: 'Tổng quan quản trị',
+      mockupPage: 'adminHome',
+    },
     {
       path: 'admin/import',
+      access: 'COURSE_MANAGEMENT',
       title: 'Nhập dữ liệu hàng loạt',
       mockupPage: 'import',
     },
@@ -638,8 +675,10 @@ export const SCREEN_ENTRIES: readonly ScreenEntry[] = [
 ];
 
 export function metaOf({ screen, menu }: ScreenEntry): RouteMeta {
+  const access = menu ?? screen.access;
   return {
-    ...(menu ? { menu } : {}),
+    ...(access ? { menu: access } : {}),
+    ...(screen.requires ? { requires: screen.requires } : {}),
     layout: screen.layout ?? 'app',
     mockupPage: screen.mockupPage,
     ...(screen.passwordChange !== undefined

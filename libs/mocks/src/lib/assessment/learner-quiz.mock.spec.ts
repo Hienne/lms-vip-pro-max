@@ -1,10 +1,12 @@
 import {
   assessmentV1Endpoints,
+  authV1Endpoints,
   learnerQuizEndpoints as e,
   type AnyEndpoint,
 } from '@lms/contracts';
 import { FakeBackend, type FakeReply } from '../backend/fake-backend';
 import { courseDetailFixtures } from '../learning/learning.fixtures';
+import { SEED_PASSWORD } from '../backend/seed';
 
 function call(
   backend: FakeBackend,
@@ -181,13 +183,22 @@ describe('the learner quiz mock', () => {
   });
 
   it('lists a course’s quizzes for the editor’s picker', () => {
-    const { data: page } = call(
-      new FakeBackend(),
-      assessmentV1Endpoints.courseQuizList,
-      {},
-      undefined,
-      { courseId: '1' },
-    );
+    const backend = new FakeBackend();
+    const signedIn = backend.handle(authV1Endpoints.login, {
+      token: null,
+      params: {},
+      query: {},
+      body: { username: 'quantri', password: SEED_PASSWORD },
+    });
+    const token = authV1Endpoints.login.response.parse(
+      signedIn?.body.data,
+    ).accessToken;
+    const page = backend.handle(assessmentV1Endpoints.courseQuizList, {
+      token,
+      params: {},
+      query: { courseId: '1' },
+      body: undefined,
+    })?.body.data;
     expect(() =>
       assessmentV1Endpoints.courseQuizList.response.parse(page),
     ).not.toThrow();

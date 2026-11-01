@@ -1221,7 +1221,7 @@ export const MIGRATION_ENTRIES = [
   {
     id: 'route-admin-questions',
     notes:
-      'Đã khôi phục KPI, lọc, bảng và drawer theo mockup; form Signal Forms có từng phương án và xem trước. Đã thử thêm/sửa/ngưng/xóa câu kiểm thử. Import là route placeholder; DTO SQL chưa tích hợp.',
+      '2026-11-01: chuyển sang /api/v1/questions theo QuestionController; ID số, enum viết hoa, detail riêng, expectedVersion ở query và bulk nguyên tử. Đã thử FE bằng mock DTO Java; chưa kiểm thử server thật.',
     kind: 'route',
     mockupSource: 'src/pages/admin-questions.js · questions',
     target: 'admin/questions',
@@ -1231,7 +1231,7 @@ export const MIGRATION_ENTRIES = [
   {
     id: 'route-admin-quizzes',
     notes:
-      'Đã đưa danh sách bài kiểm tra về bảng và hành động cấu hình. Một số cột thời gian/pool còn thiếu trong DTO danh sách hiện hành.',
+      '2026-11-01: danh sách /api/v1/quizzes theo khóa, phân trang server; dùng gradedAttempts/passedAttempts và DTO hiện hành.',
     kind: 'route',
     mockupSource: 'src/pages/admin-questions.js · quizzes',
     target: 'admin/quizzes',
@@ -1241,7 +1241,7 @@ export const MIGRATION_ENTRIES = [
   {
     id: 'route-admin-quizzes-id',
     notes:
-      'Đã khôi phục cấu hình hai cột và Signal Forms; thử chặn số câu vượt pool, nạp đúng dữ liệu và lưu có version. Còn API/DTO SQL thật.',
+      '2026-11-01: map QuizDetail {quiz,pool,activePoolSize}; giữ toàn bộ cấu hình/điểm pool, lưu phiên bản và tách xuất bản/đóng. Có xử lý lưu một phần; chưa xác minh server thật.',
     kind: 'route',
     mockupSource: 'src/pages/admin-questions.js · quizConfig',
     target: 'admin/quizzes/:id',
@@ -1320,7 +1320,7 @@ export const MIGRATION_ENTRIES = [
   {
     id: 'route-reports',
     notes:
-      'Đã khôi phục bố cục lọc/KPI/donut/radar/cột/thanh ngang/bảng khóa học; đã thử CSV. Scope và số liệu vẫn từ mock.',
+      '2026-11-01: dùng /api/v1/reports/assessment/overview với KPI thi và dữ liệu theo đề/đơn vị. Không giả lập tiến độ đào tạo từ điểm thi.',
     kind: 'route',
     mockupSource: 'src/pages/reports.js · reports',
     target: 'reports',
@@ -1330,7 +1330,7 @@ export const MIGRATION_ENTRIES = [
   {
     id: 'route-reports-dim',
     notes:
-      'Đã tách cột theo từng chiều, giữ bộ lọc/tìm/sắp xếp/xuất CSV đồng nhất. Đã thử bảng học viên và xuất tệp; còn API báo cáo thật.',
+      '2026-11-01: map results/learners/competency/questions và CSV cùng bộ lọc; learners cần quizId. Các chiều báo cáo đào tạo chưa có API không được ánh xạ sang dữ liệu khác.',
     kind: 'route',
     mockupSource: 'src/pages/reports.js · reportDetail',
     target: 'reports/:dim',
