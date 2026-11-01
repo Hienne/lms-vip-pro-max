@@ -58,8 +58,8 @@ at `2a298e0`.
 
 ### Checkpoint A
 
-- [ ] `npm run check` green.
-- [ ] Stop for the main session's review of the T1–T2 diff.
+- [x] `npm run check` green.
+- [x] Stop for the main session's review of the T1–T2 diff. Passed on 2026-11-01.
 
 ## Phase 2: The two pages
 
@@ -97,7 +97,7 @@ at `2a298e0`.
   - Files: `apps/lms/src/app/shared/learning/unavailable-note/*`.
   - Size: XS. Depends on: none.
 
-- [ ] **T6: End-to-end check against the spec**
+- [x] **T6: End-to-end check against the spec**
   - Acceptance: the success criteria below are written here, each with how it was checked.
   - Verify, on the local stack:
     - As `hocvien`:
@@ -113,11 +113,48 @@ at `2a298e0`.
 
 ### Checkpoint B
 
-- [ ] Success criteria 1–4 recorded:
-  1. The learn page and the progress page each show the radar from `/api/v1/me/competency` on the local
-     backend, and the values match the API response.
-  2. The empty state shows when no competency has data; with one or two, the short list shows.
+Checked on 2026-11-01 against the local stack (backend `127.0.0.1:8019`, app on `:4200` through the proxy). Signed
+in with the one-shot token method, never the login form.
+
+- [x] Success criteria 1–4 recorded:
+  1. **The learn page and the progress page each show the radar from `/api/v1/me/competency`, and the values match
+     the API response.** Checked as `hocvien`. `curl` of the endpoint returns 14,29 / 11,11 / 33,33 for "Kiến trúc và
+     tổng quan hệ thống", "Vận hành và quy trình" and "Kiểm soát và tuân thủ". The radar labels and the data table of
+     both pages show 14,29% / 11,11% / 33,33% for the same three names. Resource timing shows one `GET
+/api/v1/me/competency` per page load, on `/learn` and on `/progress`. The progress card is `size="large"`, after
+     the counts and before the course table, with no course select.
+  2. **The empty state shows when no competency has data; with one or two, the short list shows.**
+     - Empty state: seen live as `giangvien` (the endpoint answers `[]`): "Chưa có dữ liệu năng lực. Biểu đồ sẽ có sau
+       khi bạn làm bài kiểm tra." on `/learn`.
+     - Both learners (`hocvien`, `hocvien.tichhop`) have graded attempts, so no learner with courses but no graded
+       attempt exists locally. The empty state for such a learner, and the short list for one or two rows, are covered
+       by the `app-competency-view` spec (0, 2 and 3 rows with data), and by the learn and progress page specs. The
+       mock (`mockBackend: true`) now seeds three rows with data plus one with `percent: null`, so it shows the radar.
   3. (Dropped by amendment 4: no course select.)
-  4. `npm run check` is green, and the visual-design checklist passes for both cards.
-- [ ] Spec status set to built.
+  4. **`npm run check` is green** (14 of 14 tasks, 2 m 32 s), **and the visual-design checklist passes for both
+     cards.**
+     - Looked at 1280 px light and 375 px dark, on both pages: no horizontal scroll, and no label overlap or clipping
+       at 375 px (measured from the label boxes).
+     - Both cards are plain sections with a heading (no card inside a card, no eyebrow, no icon tile, no badge, no
+       status colour, no entrance motion); the "Chi tiết" link on `/learn` is a text link; the only colours are the
+       chart tokens. The radar's own legend and "Xem dạng bảng" are unchanged.
+- [x] The admin report's competency radar, opened once as `baocao`: values read "80%", "60%" and, for the row with
+      no data, "—" in the labels and "Chưa có dữ liệu" in the table. These are whole numbers, so the decimal format
+      is shown only on the learner pages.
+- [x] Spec status set to built.
 - [ ] Review with the user, then plan `learner-scores`.
+
+Not run: the full `lms:test` target hung twice in this session (vitest idle at 0 % CPU), so the per-task commits were
+checked with the specs of the files they touch plus lint and typecheck. The last full run was `npm run check` after
+`af72790`, and it is green.
+
+Deviations and extras, from the build:
+
+- `fmtPct` gained an optional `maxFractionDigits` (default 0), because the pipe rounded to whole numbers.
+- A third mock row with data (`67eeedd`), at the main session's request.
+- `af72790` adds the competency read to the boot, sign-in and shell specs, which match every request `/learn` makes.
+  No assertion changed.
+- `progress.spec.ts` scopes its row selectors to the course table, because the radar's data table also has `tbody`
+  rows, and expects the new unavailable-note sentence.
+- No page-level spec for the loading skeleton: the mock answers synchronously. The loading state is covered in
+  `learn.store.spec.ts`. `ProgressStore` has no spec file of its own; the page spec covers its competency states.

@@ -1,6 +1,6 @@
 # Spec: `learner-competency`
 
-Map: [SPEC.md](SPEC.md). Status: **approved 2026-11-01, amended by the plan (see "Amendments").** Depends on
+Map: [SPEC.md](SPEC.md). Status: **built 2026-11-01** (approved the same day, amended by the plan; see "Amendments"). Depends on
 `learner-quiz`, which supplies the graded attempts the radar is built from.
 
 ## Objective

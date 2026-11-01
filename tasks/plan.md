@@ -99,20 +99,20 @@ No backend change, no schema change.
 
 ### Checkpoint A
 
-- [ ] `npm run check` green.
-- [ ] Main session reviews the diff.
+- [x] `npm run check` green.
+- [x] Main session reviews the diff.
 
 ### Phase 2: The two pages
 
 - [x] T3: "Biểu đồ năng lực" card on the learn page
 - [x] T4: "Năng lực theo nhóm kiến thức" card on the progress page
 - [x] T5: The unavailable note drops competency
-- [ ] T6: End-to-end check against the spec
+- [x] T6: End-to-end check against the spec
 
 ### Checkpoint B
 
-- [ ] Success criteria recorded, with how each was checked.
-- [ ] Spec status set to built.
+- [x] Success criteria recorded, with how each was checked.
+- [x] Spec status set to built.
 - [ ] Review with the user, then plan the next module (`learner-scores`).
 
 ## Risks and mitigations
