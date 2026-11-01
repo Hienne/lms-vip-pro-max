@@ -142,7 +142,7 @@ in with the one-shot token method, never the login form.
       no data, "—" in the labels and "Chưa có dữ liệu" in the table. These are whole numbers, so the decimal format
       is shown only on the learner pages.
 - [x] Spec status set to built.
-- [ ] Review with the user, then plan `learner-scores`.
+- [x] Review with the user, then plan `learner-scores`. Merged as Hienne/lms-vip-pro-max#49 on 2026-11-01.
 
 Not run: the full `lms:test` target hung twice in this session (vitest idle at 0 % CPU), so the per-task commits were
 checked with the specs of the files they touch plus lint and typecheck. The last full run was `npm run check` after

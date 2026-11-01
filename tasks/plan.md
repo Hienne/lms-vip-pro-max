@@ -113,7 +113,7 @@ No backend change, no schema change.
 
 - [x] Success criteria recorded, with how each was checked.
 - [x] Spec status set to built.
-- [ ] Review with the user, then plan the next module (`learner-scores`).
+- [x] Review with the user, then plan the next module (`learner-scores`). Merged as Hienne/lms-vip-pro-max#49.
 
 ## Risks and mitigations
 
