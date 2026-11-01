@@ -545,6 +545,20 @@ export class LessonStore {
     }
   });
 
+  /**
+   * The link's page or second is spent once the block shows it, so a reload after paging on does
+   * not jump back. The block itself stays in the URL.
+   */
+  private readonly dropEntryAnchor = effect(() => {
+    const jump = this.urlJump();
+    const { page, second } = this.state.position();
+    if (!jump) return;
+    const type = this.activeBlock$()?.detail.block.blockType;
+    const shown =
+      type === 'pdf' ? page !== null : jump.value > 0 && second === jump.value;
+    if (shown) untracked(() => this.dropAnchorFromUrl());
+  });
+
   /** A tab whose user signed out must not leave a session id for the next one. */
   private readonly forgetOnSignOut = effect(() => {
     if (!this.session.isSignedIn$()) {
@@ -714,6 +728,15 @@ export class LessonStore {
       lessons: new Map(r.lessons).set(result.lesson.lessonId, result.lesson),
       enrollment: result.enrollment,
     }));
+  }
+
+  private dropAnchorFromUrl(): void {
+    void this.router.navigate([], {
+      relativeTo: this.route,
+      queryParams: { page: null, t: null },
+      queryParamsHandling: 'merge',
+      replaceUrl: true,
+    });
   }
 
   private writeBlockToUrl(blockId: number): void {

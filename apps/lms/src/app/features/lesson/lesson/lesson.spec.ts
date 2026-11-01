@@ -726,6 +726,15 @@ describe('Lesson', () => {
       ]);
     });
 
+    it('drops the page of the link from the URL once it is shown, and keeps the block', async () => {
+      const blockId = lessons()[1].blocks[0].block.id;
+      await open(lessonUrl(1, `?block=${blockId}&page=3`));
+      expect(text()).toContain('Trang 3/4');
+      expect(TestBed.inject(Router).url).toMatch(
+        new RegExp(`\\?block=${blockId}$`),
+      );
+    });
+
     it('ignores a link whose page is not a number', async () => {
       const blockId = lessons()[1].blocks[0].block.id;
       await open(lessonUrl(1, `?block=${blockId}&page=abc`));
