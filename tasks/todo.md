@@ -29,7 +29,7 @@ at `a04912c`.
 
 ## Phase 1: Backend
 
-- [ ] **B1: Schema, entities and repositories**
+- [x] **B1: Schema, entities and repositories**
   - Acceptance:
     - `docs/sql/upgrade/2026-11-03-lesson-notes.sql` creates `learning_hub.lesson_notes` and
       `learning_hub.lesson_bookmarks`, as in the spec with amendment 3 (`video_second integer` in place of
@@ -49,7 +49,7 @@ at `a04912c`.
     - The CHECK refuses a `pdf` row without `block_id`.
   - Size: M. Depends on: none.
 
-- [ ] **B2: Notes N1–N3**
+- [x] **B2: Notes N1–N3**
   - Acceptance:
     - `LearningNotesController` under `/api/v1/me/learning`, for learners only:
       - N1 `GET /lessons/{lessonId}/notes` → `List<NoteView>`, newest first;
@@ -75,7 +75,7 @@ at `a04912c`.
     - a non-learner is refused.
   - Size: M. Depends on: B1.
 
-- [ ] **B3: Bookmarks N4, N5 and N7**
+- [x] **B3: Bookmarks N4, N5 and N7**
   - Acceptance:
     - N4 `GET /lessons/{lessonId}/bookmarks` → `List<BookmarkView>`, newest first.
     - N5 `PUT /lessons/{lessonId}/bookmarks` with `{ anchor (pdf | video), label? }`:
@@ -92,7 +92,7 @@ at `a04912c`.
     - N7 on another user's bookmark → `NOT_FOUND`.
   - Size: M. Depends on: B2.
 
-- [ ] **B4: Saved N6 and docs**
+- [x] **B4: Saved N6 and docs**
   - Acceptance:
     - N6 `GET /saved?kind=notes|bookmarks&page&size`, where `size` is at most 100. It returns
       `{ page: PageResponse<SavedItemView>, counts { notes, bookmarks } }`.
@@ -104,8 +104,8 @@ at `a04912c`.
 
 ### Checkpoint A
 
-- [ ] `mvn clean test` green in the worktree.
-- [ ] Stop for the main session. It:
+- [x] `mvn clean test` green in the worktree: 408 run, 0 failures, 42 skipped (`CommunityApiIT`, untouched).
+- [x] Stop for the main session. It:
   - applies the upgrade to the local DB;
   - restarts :8019 on the branch;
   - checks with `curl` as `hocvien`:
@@ -114,6 +114,42 @@ at `a04912c`.
     - a bookmark at second 20 of block 33 toggles on, then off, then on;
     - N6 has the right counts;
   - checks as `hocvien.tichhop` that the lists are empty, and that deleting `hocvien`'s note is `LEARNING-NOT_FOUND`.
+
+  Done 2026-11-01 by the main session:
+  - The upgrade applied twice on the local DB; the second run only skipped. Each table has 14 columns, and the
+    only constraints are its primary key and the anchor CHECK.
+  - :8019 runs from `~/my-projects/corebanking-academy-notes`.
+  - **Notes, as `hocvien`:**
+    - page 3 of block 32 saved;
+    - page 5, page 0 and a video anchor on the PDF block → `LEARNING-INVALID_REFERENCE`;
+    - blank text → `CORE-VALIDATION_FAILED`;
+    - a whole-lesson note and second 12 of block 33 saved;
+    - N1 lists the notes newest first.
+  - **Bookmarks:**
+    - second 20 of block 33 toggled on (id 1), off, on (id 2), labelled "Video giới thiệu — 0:20";
+    - page 2 of block 32 labelled "Tài liệu Core Banking — trang 2";
+    - second 31 → `LEARNING-INVALID_REFERENCE`;
+    - a `none` anchor → `CORE-VALIDATION_FAILED`;
+    - block 31 (lesson 15, revision 6, no enrollment) → `LEARNING-NOT_FOUND`, since access is checked first.
+  - **N6:** counts `{notes: 3, bookmarks: 2}`. A row carries `kind`, `courseId` 7, the course and lesson titles, and
+    the anchor. `size=101` → `CORE-VALIDATION_FAILED`.
+  - **As `hocvien.tichhop`:**
+    - N6 counts 0 / 0;
+    - lesson 16 → `LEARNING-NOT_FOUND` (not enrolled);
+    - deleting `hocvien`'s note and bookmark → `LEARNING-NOT_FOUND`.
+  - `quantri` → `CORE-ACCESS_DENIED`.
+  - **Deletes:** N3 → `null`, and a second N3 → `LEARNING-NOT_FOUND`. After N7 the counts are `{2, 1}`.
+  - **SQL:** the deleted rows have `is_deleted = true` and `row_version = 1`, and the live rows are as above.
+  - Deviations accepted (from the child's report):
+    - a `withdrawn` enrollment loses access, as opening the lesson does;
+    - the server sets the default bookmark label;
+    - an advisory lock also guards the note limit;
+    - the schema is slightly stricter (a `none` note has no block, and bookmarks have a CHECK too);
+    - a missing or extra anchor field → `CORE-VALIDATION_FAILED`;
+    - an asset that is not `ready` refuses anchors;
+    - N6 rows carry both `text` and `label`, with `kind` `note|bookmark`.
+  - To fix in Phase 2: the comment on `requireLessonAccess` says "any status", but the query excludes `withdrawn`.
+
 - [ ] The backend PR is opened only when the user asks. Its first line tells the user to run the upgrade on the
       shared DB before merging.
 
