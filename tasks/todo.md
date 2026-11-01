@@ -27,7 +27,7 @@ The previous `learner-scores` checklist, with its success criteria and how each 
 
 ## Phase 1: Backend
 
-- [ ] **B1: Schema: upgrade, rollback, backfill, baseline, README, entity**
+- [x] **B1: Schema: upgrade, rollback, backfill, baseline, README, entity**
   - Acceptance:
     - The table, its index, its rollback and the baseline update, all as described below.
     - The backfill script, as described below.
@@ -50,7 +50,7 @@ The previous `learner-scores` checklist, with its success criteria and how each 
     backfill twice (same row count) and the rollback on a baseline without the table.
   - Size: M. Depends on: none.
 
-- [ ] **B2: Activity recording on session, block progress and quiz start/submit**
+- [x] **B2: Activity recording on session, block progress and quiz start/submit**
   - Acceptance:
     - `LearningActivityService.record(userId, source)`:
       1. takes the advisory lock `learning-activity:{userId}`;
@@ -65,21 +65,11 @@ The previous `learner-scores` checklist, with its success criteria and how each 
     - A failing recorder still returns success to the learner.
   - Size: M. Depends on: B1.
 
-- [ ] **B3: Points: weights, the quiz-pass port method, `GET /points` (L2)**
-  - Acceptance:
-    - `app.learning.points.lesson=5`, `quiz-pass=30`, `streak-day=10`, `streak-cap=30` in `application.yml`,
-      overridable by environment.
-    - `LearningQuizDirectory.passedQuizCounts(userIds)`: one grouped query. It counts, per user, the distinct
-      published, not deleted quizzes with a graded attempt with `passed = true`.
-    - `LearningPointsService` parts:
-      - `lessons` = weight × the distinct completed lessons, by amendment 6's identity;
-      - `quizzes` = weight × the passed quizzes;
-      - `courses` = the sum of the completed revision's `reward_points`, once per course (latest completed cycle);
-      - `streak` = weight × `min(streakDays, cap)`;
-      - `streakDays` counts consecutive local days ending today, or ending yesterday when today has no row.
-    - `GET /api/v1/me/learning/points` returns `MyPoints { total, parts { lessons, quizzes, courses, streak },
-streakDays }`, for learners only.
-    - `docs/api/LEARNING.md` gets "Điểm học tập và bảng xếp hạng": the weights, every rule, and the endpoint.
+- [x] **B3: Points: weights, the quiz-pass port method, `GET /points` (L2)**
+  - Acceptance: - `app.learning.points.lesson=5`, `quiz-pass=30`, `streak-day=10`, `streak-cap=30` in `application.yml`,
+    overridable by environment. - `LearningQuizDirectory.passedQuizCounts(userIds)`: one grouped query. It counts, per user, the distinct
+    published, not deleted quizzes with a graded attempt with `passed = true`. - `LearningPointsService` parts: - `lessons` = weight × the distinct completed lessons, by amendment 6's identity; - `quizzes` = weight × the passed quizzes; - `courses` = the sum of the completed revision's `reward_points`, once per course (latest completed cycle); - `streak` = weight × `min(streakDays, cap)`; - `streakDays` counts consecutive local days ending today, or ending yesterday when today has no row. - `GET /api/v1/me/learning/points` returns `MyPoints { total, parts { lessons, quizzes, courses, streak },
+streakDays }`, for learners only. - `docs/api/LEARNING.md` gets "Điểm học tập và bảng xếp hạng": the weights, every rule, and the endpoint.
   - Verify:
     - Each part on fixtures, including the same lesson completed in two cycles on two revisions (counted once) and
       a course completed twice (its reward counted once).
@@ -87,7 +77,7 @@ streakDays }`, for learners only.
     - The port test: failed only, passed twice, an unpublished quiz.
   - Size: M. Depends on: B1.
 
-- [ ] **B4: Leaderboard: scopes, tie ranks, `me`, `GET /leaderboard` (L1), docs**
+- [x] **B4: Leaderboard: scopes, tie ranks, `me`, `GET /leaderboard` (L1), docs**
   - Acceptance:
     - `GET /api/v1/me/learning/leaderboard?scope=team|org|all&page&size`: `scope` defaults to `org`, and `size` is
       at most 100.
@@ -113,13 +103,38 @@ streakDays }`, for learners only.
 
 ### Checkpoint A
 
-- [ ] `mvn clean test` green in the worktree.
-- [ ] Stop for the main session. It:
+- [x] `mvn clean test` green in the worktree: 382 run, 0 failures, 42 skipped (`CommunityApiIT`, untouched).
+- [x] Stop for the main session. It:
   - applies the upgrade, then the backfill, to the local DB;
   - restarts :8019 on the branch;
   - checks with `curl` as `hocvien` that L2's parts equal the formula on the local DB (SQL recorded here) and that
     L1 lists `hocvien`, `hocvien.tichhop` and `giangvien` in the `org` scope with the right ranks;
   - opens a lesson and checks that today's row appears once.
+
+  Done 2026-11-01 by the main session:
+  - The upgrade applied cleanly. The backfill inserted 5 rows, and a second run inserted 0.
+  - L2 equals the SQL below for all three learners. Weights 5 / 30 / 10, cap 30:
+
+    | user              | lessons | quizzes | courses | streak (days) | total |
+    | ----------------- | ------- | ------- | ------- | ------------- | ----- |
+    | `hocvien.tichhop` | 40      | 30      | 0       | 20 (2)        | 90    |
+    | `hocvien`         | 30      | 30      | 0       | 20 (2)        | 80    |
+    | `giangvien`       | 20      | 0       | 0       | 10 (1)        | 30    |
+
+    Every local `reward_points` is 0, so `courses` is checked only by the ITs.
+
+  - L1 as `hocvien`:
+    - `team` lists only `hocvien`, rank 1;
+    - `org` and `all` list `hocvien.tichhop` 1, `hocvien` 2 (`me: true`), `giangvien` 3;
+    - `page=2&size=1` returns `giangvien` with `me.rank` 2.
+  - Refusals:
+    - `scope=x` and `size=101` return `CORE-VALIDATION_FAILED`;
+    - `quantri` is refused with `CORE-ACCESS_DENIED`.
+  - Activity: `hocvien` already had today from the backfill, so the check used `giangvien` (last day 31/10). Two
+    `POST /sessions` wrote one row for 2026-11-01 (`session`), and the streak went from 1 to 2 days (L2 30 → 40).
+  - SQL: the four part queries and the "who is ranked" query, as written in the child's Checkpoint A note. They are
+    the same as the queries in `LearningPointsRepository` with the user fixed, plus a recursive CTE for the streak.
+
 - [ ] The backend PR is opened only when the user asks. Its first line tells the user to run the upgrade on the
       shared DB before merging.
 
