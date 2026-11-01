@@ -287,7 +287,10 @@ export const MyAttemptsExportQuerySchema = MyAttemptsQuerySchema.pick({
   sort: true,
 });
 
-/** `MyCompetency`: the caller's result for one competency across every graded attempt. */
+/**
+ * `MyCompetency`: the caller's result for one competency across every graded attempt. `percent` is
+ * null when `maxScore` is 0: the server decides when there is no data, so the app never computes it.
+ */
 export const MyCompetencySchema = z.object({
   competencyId: Id,
   code: z.string(),
@@ -296,6 +299,6 @@ export const MyCompetencySchema = z.object({
   correctCount: z.number().int(),
   maxScore: z.number(),
   score: z.number(),
-  percent: z.number(),
+  percent: z.number().nullable(),
 });
 export type MyCompetency = z.infer<typeof MyCompetencySchema>;

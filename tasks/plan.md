@@ -94,7 +94,7 @@ No backend change, no schema change.
 
 ### Phase 1: Contract and the shared piece
 
-- [ ] T1: `percent` nullable, with a fixture captured from the local backend
+- [x] T1: `percent` nullable, with a fixture captured from the local backend
 - [ ] T2: `toRadarData`, `app-competency-view`, and `fmtPct` in `ui-radar-chart`
 
 ### Checkpoint A

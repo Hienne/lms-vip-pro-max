@@ -16,7 +16,7 @@ at `2a298e0`.
 
 ## Phase 1: Contract and the shared piece
 
-- [ ] **T1: `percent` nullable, with a fixture captured from the local backend**
+- [x] **T1: `percent` nullable, with a fixture captured from the local backend**
   - Acceptance:
     - `MyCompetencySchema.percent` is `z.number().nullable()`, with a comment saying the server sends null when
       `maxScore` is 0.

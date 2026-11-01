@@ -243,6 +243,17 @@ const COMPETENCIES: readonly MyCompetency[] = [
     score: 0,
     percent: 0,
   },
+  // No graded question yet: the server sends a null percent when maxScore is 0.
+  {
+    competencyId: 3,
+    code: 'RISK',
+    name: 'Quản trị rủi ro vận hành',
+    totalQuestions: 0,
+    correctCount: 0,
+    maxScore: 0,
+    score: 0,
+    percent: null,
+  },
 ];
 
 interface Attempt {
