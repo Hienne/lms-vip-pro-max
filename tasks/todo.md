@@ -1,187 +1,181 @@
-# Tasks: `learner-scores`
+# Tasks: `learning-leaderboard`
 
-Spec: [SPEC-learner-scores.md](../SPEC-learner-scores.md) · Plan: [plan.md](plan.md).
-The previous `learner-competency` checklist, with its success criteria and how each was checked, is in git history
-at `3aaf270`.
+Spec: [SPEC-learning-leaderboard.md](../SPEC-learning-leaderboard.md) · Plan: [plan.md](plan.md).
+The previous `learner-scores` checklist, with its success criteria and how each was checked, is in git history at
+`cd4b2f1`.
 
 - **Repositories:**
-  - backend: `corebanking-academy`, branch `feat/learner-scores` from `main` (`6717718`), **in its own git
-    worktree**;
-  - app: this one, branch `feat/learner-mockup-gap`.
+  - backend: `corebanking-academy`, branch `feat/learning-leaderboard`, in its own worktree
+    `~/my-projects/corebanking-academy-leaderboard`. Branch from `main` if #17 is merged, else from
+    `feat/learner-scores`;
+  - app: this one, branch `feat/learning-leaderboard` from `main` after #50 is merged.
 
   Nothing is pushed.
 
 - **Local stack:**
-  - the backend on :8019 is the main session's background task, running from `~/my-projects/corebanking-academy`.
-    Do not run `mvn` or change branches in that checkout. Message the main session when it needs a restart;
-  - the app runs on :4200, against `localhost:8019`;
-  - accounts: `hocvien` and `hocvien.tichhop` as learners;
+  - the backend on :8019 is the main session's background task. Never run `mvn` in the worktree it runs from, and
+    never start another backend. Message the main session for a restart;
+  - **the local DB gets the new table only at Checkpoint A, from the main session.** Until then, test with
+    Testcontainers;
+  - the app runs on :4200 against `localhost:8019`;
+  - accounts: `hocvien` and `hocvien.tichhop` as learners, plus `giangvien` (also a learner);
   - passwords come only from `LOCAL_DEMO_PASSWORD` in the backend's `.env.local`, never printed;
   - in the browser, sign in with the one-shot token method, never by typing the password.
-- **Never** touch the shared server `103.121.90.119`. No schema change, no seeding users, no direct edits to quiz
-  attempts.
+- **Never** touch the shared server `103.121.90.119`. No seeding users, no direct edits to progress or attempts.
+- Schema rules: an upgrade script, a rollback, the psql command and a README entry. No FK, no business UNIQUE,
+  every column commented. Flyway is off and `ddl-auto=validate`.
 
 ## Phase 1: Backend
 
-- [x] **B1: `scores` port method and its Assessment implementation**
+- [ ] **B1: Schema: upgrade, rollback, backfill, baseline, README, entity**
   - Acceptance:
-    - `LearningQuizDirectory.scores(String userId, Collection<Long> courseIds)` returns `List<QuizScore>`, one per
-      published, not deleted quiz of those courses: `quizId`, `courseId`, `title`, `quizType`, `bestScore`,
-      `finalScore`, `passed`, and `last` (attemptId, scorePercent, passed, submittedAt; null when no graded
-      attempt).
-    - `AssessmentQuizDirectory` implements it with one query for the quizzes and one for the caller's attempts on
-      them. Each quiz goes through the same summary code as `AttemptSummary`, extracted from
-      `QuizAttemptService.summarize` so both call it.
-    - An empty `courseIds` returns an empty list without a query.
-  - Verify: a test where `scores` equals the `AttemptSummary` of the quiz intro for a BEST quiz and a LAST quiz, with
-    a voided and an in-progress attempt ignored. `mvn -q test -Dtest=…` green.
-  - Files: `learning/service/LearningQuizDirectory.java`, `assessment/service/AssessmentQuizDirectory.java`,
-    `QuizAttemptService.java` (extraction), the repository it needs, tests.
+    - The table, its index, its rollback and the baseline update, all as described below.
+    - The backfill script, as described below.
+    - The entity `LearningActivityDay` and its repository.
+    - The lesson identity rule for amendment 6, written in a code comment after reading how `source_lesson_id` is
+      set on a new revision.
+  - The table: `docs/sql/upgrade/2026-11-02-learning-leaderboard.sql` creates `learning_hub.learning_activity_days`:
+    - `activity_id` (identity primary key), `user_id varchar(20)`, `activity_date date`,
+      `first_source varchar(20)` (`session | block_progress | quiz`), `create_time timestamptz`;
+    - index `(user_id, activity_date DESC)`;
+    - a comment on the table and on every column;
+    - wrapped in `BEGIN/COMMIT` with `lock_timeout`, and safe to run twice (`IF NOT EXISTS`);
+    - the rollback drops the index and the table;
+    - `docs/sql/learning_hub_learning.sql` (the baseline) gets the same table;
+    - `docs/sql/README.md` gets the upgrade row with the psql commands.
+  - The backfill: `…-learning-leaderboard-backfill.sql` inserts the distinct local dates (`Asia/Ho_Chi_Minh`) of
+    `lesson_progress.update_time` (via the enrollment's `user_id`) and of graded `quiz_attempts.submitted_at`. It
+    skips dates that already exist, so it can run twice.
+  - Verify: the ITs start on the baseline with `ddl-auto=validate`. A Testcontainers test runs the upgrade, the
+    backfill twice (same row count) and the rollback on a baseline without the table.
   - Size: M. Depends on: none.
 
-- [x] **B2: `AssessmentOverview` in the progress summary (S1)**
-  - Acceptance: - `LearningProgressOverview.assessment` is `AssessmentOverview(availability, last, bestScorePercent,
-averageScorePercent, passedQuizCount, quizCount)` when the caller's current courses have at least one
-    published quiz, and `{ availability: "unavailable" }` otherwise. - The current courses are the `MINE` search's ids, the same set the counts use. - The figures follow plan amendment 2. The average is rounded to two decimals, half up. - `docs/api/LEARNING.md` ("Summary, CSV và thông tin gửi FE") describes it.
-  - Verify: `LearningProgressReportServiceTest`:
-    - no quiz → `unavailable`;
-    - quizzes but no attempt → `available` with `last` null, best and average null, `passedQuizCount` 0;
-    - one failed and one passed quiz → right best, average, passed/total and last.
-  - Files: `LearningProgressOverview.java`, `LearningProgressReportService.java`, its test, `docs/api/LEARNING.md`.
+- [ ] **B2: Activity recording on session, block progress and quiz start/submit**
+  - Acceptance:
+    - `LearningActivityService.record(userId, source)`:
+      1. takes the advisory lock `learning-activity:{userId}`;
+      2. inserts today's local date if missing.
+    - Called after a successful `POST /sessions`, `PUT …/blocks/{blockId}/progress`, quiz start and quiz submit.
+      Assessment calls it through the Learning port it already uses.
+    - A recording error is logged and never fails the learner's request.
+  - Verify:
+    - Each of the four calls writes today once; calling twice does not add a row.
+    - Two concurrent calls make one row.
+    - 23:30 and 00:30 local fall on different dates.
+    - A failing recorder still returns success to the learner.
   - Size: M. Depends on: B1.
 
-- [x] **B3: `bestScorePercent` on `CourseCard` and the CSV column (S2, S3)**
+- [ ] **B3: Points: weights, the quiz-pass port method, `GET /points` (L2)**
   - Acceptance:
-    - `CourseCard.bestScorePercent` is the best graded score of the course's published final exam, or null. It is
-      filled on catalog, courses and course-by-id, with one `scores` call per page.
-    - `MANAGE` mode leaves it null and does not call the port.
-    - The progress CSV gains "Điểm cao nhất" as its **last** column.
+    - `app.learning.points.lesson=5`, `quiz-pass=30`, `streak-day=10`, `streak-cap=30` in `application.yml`,
+      overridable by environment.
+    - `LearningQuizDirectory.passedQuizCounts(userIds)`: one grouped query. It counts, per user, the distinct
+      published, not deleted quizzes with a graded attempt with `passed = true`.
+    - `LearningPointsService` parts:
+      - `lessons` = weight × the distinct completed lessons, by amendment 6's identity;
+      - `quizzes` = weight × the passed quizzes;
+      - `courses` = the sum of the completed revision's `reward_points`, once per course (latest completed cycle);
+      - `streak` = weight × `min(streakDays, cap)`;
+      - `streakDays` counts consecutive local days ending today, or ending yesterday when today has no row.
+    - `GET /api/v1/me/learning/points` returns `MyPoints { total, parts { lessons, quizzes, courses, streak },
+streakDays }`, for learners only.
+    - `docs/api/LEARNING.md` gets "Điểm học tập và bảng xếp hạng": the weights, every rule, and the endpoint.
+  - Verify:
+    - Each part on fixtures, including the same lesson completed in two cycles on two revisions (counted once) and
+      a course completed twice (its reward counted once).
+    - A streak of today, of yesterday only, with a gap, and over the cap.
+    - The port test: failed only, passed twice, an unpublished quiz.
+  - Size: M. Depends on: B1.
+
+- [ ] **B4: Leaderboard: scopes, tie ranks, `me`, `GET /leaderboard` (L1), docs**
+  - Acceptance:
+    - `GET /api/v1/me/learning/leaderboard?scope=team|org|all&page&size`: `scope` defaults to `org`, and `size` is
+      at most 100.
+    - It returns `LeaderboardPage { page: PageResponse<LeaderboardRow>, me: LeaderboardRow }`, where
+      `LeaderboardRow { rank, userId, fullName, teamName, points, streakDays, me }`.
+    - Who is ranked: the active users eligible to learn, by the rule of `findLearningCandidates`, reused and not
+      copied:
+      - `team`: the caller's team (none → an empty page, plus `me`);
+      - `org`: the caller's org;
+      - `all`: everyone (amendment 2).
+    - Order: points descending, then name. Ties share a rank and the next rank skips (1, 1, 3). Users with 0 points
+      come last, by name.
+    - `me` is always present, even when it is off the page.
     - Docs updated.
-  - Verify: a search test (course with a final exam and attempts → the best; without one → null). A CSV header and
-    row test. The query plan of the `scores` queries on the demo data is recorded in the commit message.
-  - Files: the course search and its row mapping, `LearningDetails.java`, `LearningProgressReportService.java`, tests,
-    `docs/api/LEARNING.md`.
-  - Size: M. Depends on: B1.
-
-- [x] **B4: `graded=true` on `/me/quiz-attempts` and its export (S4)**
-  - Acceptance:
-    - With `graded=true`, the list and the export return only `SUBMITTED` and `AUTO_SUBMITTED` attempts.
-    - It combines with `quizId` and with `status` by AND.
-    - Swagger and `docs/api/ASSESSMENT.md` describe it.
-  - Verify: a test with one attempt of each status. `mvn -q test -Dtest=…` green.
-  - Files: `LearnerQuizController.java`, `QuizAttemptService.java`, the attempts repository, tests,
-    `docs/api/ASSESSMENT.md`.
-  - Size: S. Depends on: none.
+  - Verify:
+    - Each scope's membership.
+    - Tie ranks.
+    - Zero-point users last.
+    - `me` off the page.
+    - A non-learner is refused.
+    - The timings of the grouped queries on the demo data are written in the commit message.
+  - Size: M. Depends on: B2, B3.
 
 ### Checkpoint A
 
-- [x] `mvn clean test` green in the worktree.
-- [x] Stop for the main session. Passed on 2026-11-01: every figure below matched `curl` and the quiz intros. It reviews the diff, restarts the local backend on the branch, and checks with
-      `curl` as `hocvien`:
-  - the summary;
-  - course 1's and course 8's cards;
-  - the CSV header;
-  - `graded=true`.
-- [ ] The backend PR is opened only when the user asks. (Not asked yet; the user approved Phase 2 on 2026-11-01.)
+- [ ] `mvn clean test` green in the worktree.
+- [ ] Stop for the main session. It:
+  - applies the upgrade, then the backfill, to the local DB;
+  - restarts :8019 on the branch;
+  - checks with `curl` as `hocvien` that L2's parts equal the formula on the local DB (SQL recorded here) and that
+    L1 lists `hocvien`, `hocvien.tichhop` and `giangvien` in the `org` scope with the right ranks;
+  - opens a lesson and checks that today's row appears once.
+- [ ] The backend PR is opened only when the user asks. Its first line tells the user to run the upgrade on the
+      shared DB before merging.
 
 ## Phase 2: App
 
-- [x] **F1: Contracts, captured fixtures and the mock**
+- [ ] **F1: Contracts, captured responses, mock**
   - Acceptance:
-    - `AssessmentOverviewSchema`; `LearningProgressOverviewSchema.assessment` is a union on `availability`
-      (`"available"` → the overview, else `AvailabilitySchema`).
-    - `CourseCardSchema.bestScorePercent: z.number().nullable()`.
-    - `MyAttemptsQuerySchema` and the export query gain `graded`.
-    - Captured responses from the local backend as `hocvien`.
-    - The mock's summary, cards and attempts carry the new fields.
-  - Verify: contracts specs parse both union branches and the captured responses. `npx nx test contracts` and
-    `npx nx test mocks` green.
-  - Files: `libs/contracts/src/lib/learner/learner.schema.ts`, `libs/contracts/src/lib/assessment/learner-quiz.*`,
-    captured fixtures, `libs/mocks/src/lib/learning/*`, `libs/mocks/src/lib/assessment/*`.
+    - `learnerEndpoints.leaderboard` (L1) and `learnerEndpoints.myPoints` (L2), with their schemas;
+    - responses captured from :8019 as `hocvien`;
+    - the mock serves both from a seed with a tie and a zero-point learner.
+  - Verify: the contracts and mocks specs are green.
   - Size: S. Depends on: Checkpoint A.
 
-- [x] **F2: Learn page score figures and the course card score**
+- [ ] **F2: `/leaderboard` screen and store**
   - Acceptance:
-    - With an available overview, two figures follow the counts, in the same label-over-number style, each a link to
-      `/progress`:
-      - "Điểm kiểm tra gần nhất": `fmtPct` of `last.scorePercent` with "Đạt · {quiz}" or "Chưa đạt · {quiz}", or "—"
-        with "Chưa làm bài kiểm tra";
-      - "Điểm cao nhất": `fmtPct` of the best, or "—", with "Đạt {passedQuizCount}/{quizCount} bài kiểm tra".
-    - With `unavailable`, neither figure is rendered.
-    - "Chưa đạt" is the only coloured text.
-    - The course card's status line ends with "· Điểm cao nhất {x}%" when `bestScorePercent` is not null.
-  - Verify: component specs for available with and without `last`, and for unavailable. Course card spec with and
-    without a score. `npx nx test lms` green.
-  - Files: a shared `score-figures` component under `shared/learning/`, `learn.html`, the course card in
-    `shared/course/`, specs.
+    - `features/achievements/leaderboard`, wired in `screens.ts`.
+    - Title "Bảng xếp hạng & thành tích" and the mockup's description line.
+    - `ui-segmented` "Nhóm của tôi / Đơn vị / Toàn hệ thống", with `scope` in the URL and `org` as the default.
+    - **"Xếp hạng" with "{n} học viên":** an ordered list. Each row shows the rank, the name, "{team} · chuỗi
+      {n} ngày" and the points. The caller's row has the selected-row token, `aria-current="true"` and "(bạn)".
+      There are pages, and a "Vị trí của bạn" row when `me` is off the page.
+    - **Side card:** `{total}`, "Điểm thưởng của bạn · hạng {me.rank}", and the four parts as "+{n}".
+    - Loading, error-with-retry and empty states for each read.
+    - No badges, avatars, icon tiles or top-3 decoration.
+  - Verify:
+    - The store spec: scope ↔ query and URL.
+    - The page spec: rows, the marked row, the "Vị trí của bạn" row, the parts card and the three states.
+    - `npx nx test lms` is green.
   - Size: M. Depends on: F1.
 
-- [x] **F3: Progress page: average, column and "Lịch sử thi"**
+- [ ] **F3: Learn page "Điểm thưởng" figure**
   - Acceptance:
-    - "Điểm thi trung bình" (`fmtPct`, or "—") next to the counts when the overview is available.
-    - The course table gains "Điểm cao nhất" (`fmtPct`, or "—"), not sortable.
-    - "Lịch sử thi":
-      - `ProgressStore` loads `myAttempts` with `graded: true`, `sort: 'submittedAt,desc'` and `size: 6`, using
-        `serverData`, with its own loading, error-with-retry and empty states;
-      - each row shows the quiz title, the submit time (+ "tự nộp" for `AUTO_SUBMITTED`), the score and
-        "Đạt"/"Chưa đạt", and links to `/quiz/:quizId/result/:attemptId`;
-      - it sits beside the competency card on wide screens and below it on narrow ones.
-  - Verify: store and page specs for the three states of the list, the column, and the KPI present and absent.
-    `npx nx test lms` green.
-  - Files: `features/achievements/progress/*`, specs.
-  - Size: M. Depends on: F1.
+    - The learn store reads L2.
+    - A figure follows the score figures in the same style: "Điểm thưởng", `{total}`, "Chuỗi {n} ngày", linking to
+      `/leaderboard`.
+    - A failed read hides only this figure.
+  - Verify: the learn spec with points, with zero and with an error.
+  - Size: S. Depends on: F1.
 
-- [x] **F4: End-to-end check against the spec**
+- [ ] **F4: End-to-end check against the spec**
   - Acceptance: the success criteria below are written here, each with how it was checked.
-  - Verify, on the local stack as `hocvien`:
-    - the learn figures, the course card scores, the progress KPI, the column and "Lịch sử thi" equal `curl` of the
-      summary, the cards and `/me/quiz-attempts?graded=true`;
-    - the downloaded CSV has the new last column;
-    - check at 1280 px light and 375 px dark, with no horizontal scroll;
-    - a learner whose courses have no quiz sees no score figures and no error. Find one with `curl`; if none exists,
-      say so and point to the specs and `mockBackend: true`;
-    - `npm run check` green.
-  - Files: `tasks/todo.md`, `SPEC-learner-scores.md` (status).
+  - Verify:
+    - Run `npm run check`.
+    - The main session does the browser checks:
+      - as `hocvien`, all three scopes at 1280 px light and 375 px dark, matching `curl`;
+      - the learn figure.
   - Size: S. Depends on: F2, F3.
 
 ### Checkpoint B
 
-- [x] Success criteria recorded, with how each was checked (2026-11-01):
-  1. `hocvien` sees "Điểm kiểm tra gần nhất" and "Điểm cao nhất · Đạt x/y bài kiểm tra" on the learn page, equal to
-     the backend response.
-     - Checked by `curl` of the summary on :8019: last = quiz 1 at 0% failed, best 100, average 42.26, passed 1 of 5.
-     - Checked by `learn.spec` and `score-figures.spec` against the mock: both figures with their links, "Chưa đạt"
-       as the only coloured text, "—" with "Chưa làm bài kiểm tra", none when unavailable.
-     - Main session, in the browser as `hocvien` (one-shot token sign-in): "0% · Chưa đạt · Luyện tập: Tổng quan hệ
-       thống Core Banking" and "100% · Đạt 1/5 bài kiểm tra"; course 1's card reads "Đang học · Điểm cao nhất
-       12,5%"; one summary call per page; no horizontal scroll at 1280 px light.
-  2. Progress shows "Điểm thi trung bình", the "Điểm cao nhất" column and "Lịch sử thi"; the CSV has the new column.
-     - Checked by `curl` of `GET /me/learning/courses?size=50`: course 1 = 12.5, course 8 = 100, the others null.
-     - Checked by `curl` of the progress export: the header ends with "Điểm cao nhất" and the first row has 12.50.
-     - Checked by `curl` of `/me/quiz-attempts?graded=true&sort=submittedAt,desc&size=6&page=0`: 5 graded attempts,
-       two `AUTO_SUBMITTED`.
-     - Checked by `progress.spec`: the KPI, the last and non-sortable column, the query sent for the history, its
-       three states (rows with the result link and "tự nộp", empty, error with retry), and the card sitting after
-       the competency card.
-     - Main session, in the browser as `hocvien`: "Điểm thi trung bình 42,26%"; the last column "Điểm cao nhất" reads
-       12,5% and 100%, "—" elsewhere; "Lịch sử thi" lists the 5 graded attempts newest first, with "tự nộp" on
-       attempts 7 and 2, each linking to `/quiz/:quizId/result/:attemptId`; the page sends
-       `graded=true&sort=submittedAt,desc&page=0&size=6`. The history sits beside the radar at 1280 px light and below
-       it at 375 px dark, with no horizontal scroll at either width.
-     - Not checked: downloading the CSV through the page (its column was checked with `curl`).
-  3. A learner with no quiz sees no score figures and no error.
-     - Checked by specs on both pages with an `unavailable` assessment, and by the mock's `giangvien`.
-     - No local learner has an unavailable assessment: `giangvien` is available with null scores on the backend.
-     - Main session, in the browser as `giangvien` (quizzes, no attempt): `/learn` shows "—" with "Chưa làm bài kiểm
-       tra" and "Đạt 0/4 bài kiểm tra"; `/progress` shows "Điểm thi trung bình —" and "Bạn chưa có bài thi nào được
-       chấm."; no error state on either page.
-  4. `mvn clean test` and `npm run check` green; the visual-design checklist passes.
-     - `mvn clean test` green in the backend worktree after `5f1518c` (356 tests, 42 skipped `CommunityApiIT`).
-     - `npm run check` green 14 of 14 after `968b620`, the review fix that stops `app-unavailable-note` from promising
-       scores next to the score figures (it now reads only `activity`: "Giờ học sẽ hiển thị khi hệ thống có dữ
-       liệu.").
-     - Visual-design checklist passed in the browser: label-over-number figures with no cards or icons, "Chưa đạt"
-       as the only coloured text, one primary action per page unchanged.
-- [x] Spec status set to built.
-- [x] Review with the user (2026-11-01, "Sửa rồi đóng"). Next: the PRs when the user asks, then plan
-      `learning-leaderboard`.
+- [ ] Success criteria recorded:
+  1. `/leaderboard` shows the three scopes with the right membership, ranked by the server's totals, with the
+     caller's row marked.
+  2. The points card equals L2, and each part equals the formula on the local DB (SQL recorded).
+  3. Opening a lesson writes today's activity once. The streak counts it.
+  4. The upgrade, the backfill and the rollback apply cleanly. `mvn clean test` and `npm run check` are green, and
+     the visual-design checklist passes.
+- [ ] Spec status set to built.
+- [ ] Review with the user, then plan `lesson-notes`.

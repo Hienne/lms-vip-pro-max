@@ -1,7 +1,32 @@
 # Spec: `learning-leaderboard`
 
-Map: [SPEC.md](SPEC.md). Status: **draft, waiting for approval.** Depends on `learner-quiz`, because quiz passes
-count toward points.
+Map: [SPEC.md](SPEC.md). Status: **draft, amended by the plan (see "Amendments"), waiting for approval.** Depends on
+`learner-quiz`, because quiz passes count toward points.
+
+## Amendments
+
+Written with [tasks/plan.md](tasks/plan.md) on 2026-11-01. Where they differ from the sections below, they win.
+
+1. **Mockup labels.** "Bảng xếp hạng & thành tích", the scopes Nhóm của tôi / Đơn vị / **Toàn hệ thống**, "Xếp
+   hạng · {n} học viên", and the part labels Bài học hoàn thành / Bài kiểm tra đạt / Khóa học hoàn thành / Chuỗi
+   ngày học. The default scope is `org`.
+2. **`all` is every active learner in the system** (open question 1's default, as in the mockup). The community
+   board ranks only within the caller's org, so it cannot be the model for `all`.
+3. **Who is ranked:** active users eligible to learn, by the rule of `findLearningCandidates`. A caller with no team
+   gets an empty `team` page, plus their own row.
+4. **The rank comes from L1's `me`, for the selected scope.** L2 is `{ total, parts, streakDays }` with no rank.
+5. **Ranking is computed in the service** from one grouped query per part, plus one port call for quiz passes.
+   Learning cannot sum Assessment data in its own SQL.
+6. **A lesson counts once per user across cycles and revisions.** Its identity follows `source_lesson_id` back to
+   the original lesson.
+7. **The learn page gets a "Điểm thưởng" figure** ("Chuỗi {n} ngày", linking to `/leaderboard`) beside the score
+   figures (open question 2's default).
+8. **Caller's row:** the selected-row token, `aria-current` and "(bạn)". No badge, no avatar, no top-3
+   decoration. "Vị trí của bạn" appears when the caller's row is off the page.
+9. **`learning_activity_days` has no audit columns** (open question 3's default). It has no FK and no UNIQUE; one
+   row per user per day is checked in the service under an advisory lock. The upgrade is dated `2026-11-02`.
+10. **Deploy order:** the upgrade runs on the shared DB before the backend PR is merged, because `ddl-auto=validate`
+    refuses to start without the table.
 
 ## Objective
 
