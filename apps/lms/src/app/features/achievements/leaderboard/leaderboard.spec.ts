@@ -163,7 +163,7 @@ describe('Leaderboard', () => {
 
     it('shows the points card: the total, the rank in this scope and the four parts', () => {
       const card = el.querySelector('.leaderboard__points')!;
-      expect(text(card.querySelector('h2')!)).toBe(
+      expect(text(card.querySelector('.leaderboard__points-title')!)).toBe(
         'Điểm thưởng của bạn · hạng 2',
       );
       expect(text(card.querySelector('.leaderboard__total')!)).toBe('80');
@@ -195,7 +195,7 @@ describe('Leaderboard', () => {
       expect(TestBed.inject(Router).url).toBe('/leaderboard?scope=team');
       expect(rows()).toHaveLength(1);
       expect(text(el.querySelector('.leaderboard__count')!)).toBe('1 học viên');
-      expect(text(el.querySelector('.leaderboard__points h2')!)).toBe(
+      expect(text(el.querySelector('.leaderboard__points-title')!)).toBe(
         'Điểm thưởng của bạn · hạng 1',
       );
     });
@@ -262,7 +262,7 @@ describe('Leaderboard', () => {
       );
       expect(text(el.querySelector('.leaderboard__total')!)).toBe('80');
       // The rank is the board's: without it the title carries none.
-      expect(text(el.querySelector('.leaderboard__points h2')!)).toBe(
+      expect(text(el.querySelector('.leaderboard__points-title')!)).toBe(
         'Điểm thưởng của bạn',
       );
     });

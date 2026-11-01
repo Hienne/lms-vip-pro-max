@@ -18,9 +18,9 @@
     class="leaderboard__points"
     aria-labelledby="leaderboard-points"
   >
-    <h2 id="leaderboard-points" class="leaderboard__points-title">
+    <p id="leaderboard-points" class="leaderboard__points-title">
       Điểm thưởng của bạn@if (store.rank$(); as rank) { · hạng {{ rank }}}
-    </h2>
+    </p>
     @if (store.pointsError$(); as error) {
     <ui-error-state
       title="Không tải được điểm thưởng"
