@@ -63,7 +63,7 @@ at `2a298e0`.
 
 ## Phase 2: The two pages
 
-- [ ] **T3: "Biểu đồ năng lực" card on the learn page**
+- [x] **T3: "Biểu đồ năng lực" card on the learn page**
   - Acceptance:
     - `LearnStore` loads `learnerQuizEndpoints.myCompetency` (no `courseId`) with `serverData`. It exposes
       `competency$`, `isCompetencyLoading$` and `competencyError$`, and gets `retryCompetency()`.

@@ -1,5 +1,5 @@
 import { TestBed } from '@angular/core/testing';
-import { learnerEndpoints } from '@lms/contracts';
+import { learnerEndpoints, learnerQuizEndpoints } from '@lms/contracts';
 import { backendRefusal } from '@lms/mocks';
 import { NOW } from '@lms/ui';
 import type { MockInstance } from 'vitest';
@@ -178,6 +178,42 @@ describe('LearnStore', () => {
     const store = await open();
     expect(store.reminders$()).toEqual([]);
     expect(store.remindersError$()).toBeUndefined();
+  });
+
+  it('reads the competencies of every course, with no course filter', async () => {
+    const store = await open();
+    const calls = handle.mock.calls.filter(
+      ([e]) => e === learnerQuizEndpoints.myCompetency,
+    );
+    expect(calls).toHaveLength(1);
+    expect(calls[0][1].query).toEqual({});
+    expect(store.competency$()?.length).toBeGreaterThan(0);
+    expect(store.competencyError$()).toBeUndefined();
+    expect(store.isCompetencyLoading$()).toBe(false);
+  });
+
+  it('is loading the competencies until the first read arrives', () => {
+    signInToMockBackend('hocvien');
+    fakeSession().user.set(seedProfile('000004'));
+    const store = TestBed.inject(LearnStore);
+    expect(store.isCompetencyLoading$()).toBe(true);
+    expect(store.competency$()).toBeUndefined();
+  });
+
+  it('keeps the summary when the competency read fails, and reads again on retry', async () => {
+    fail(learnerQuizEndpoints.myCompetency);
+    const store = await open();
+    expect(store.competencyError$()).toBeTruthy();
+    expect(store.competency$()).toBeUndefined();
+    expect(store.summaryError$()).toBeUndefined();
+    expect(store.summary$()?.counts.total).toBeGreaterThan(0);
+    expect(store.courses$().length).toBeGreaterThan(0);
+
+    handle.mockImplementation(original);
+    store.retryCompetency();
+    await settle();
+    expect(store.competencyError$()).toBeUndefined();
+    expect(store.competency$()?.length).toBeGreaterThan(0);
   });
 
   it('lets one failing section fail alone', async () => {
