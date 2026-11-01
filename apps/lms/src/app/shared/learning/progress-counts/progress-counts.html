@@ -6,5 +6,10 @@
       {{ item.value }}
     </dd>
   </div>
+  } @let average = averageScore(); @if (average !== undefined) {
+  <div class="progress-counts__item">
+    <dt>Điểm thi trung bình</dt>
+    <dd>@if (average === null) { — } @else { {{ average | fmtPct: 2 }} }</dd>
+  </div>
   }
 </dl>

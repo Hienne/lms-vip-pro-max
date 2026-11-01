@@ -23,8 +23,12 @@ import { serverMutation } from '../../../../core/data-access/server-mutation';
 import { FileSaver } from '../../../../core/files/file-saver';
 import { EndpointClient } from '../../../../core/http/endpoint-client';
 import { toCourseStatus } from '../../../../shared/course/course-labels';
+import { isAssessmentAvailable } from '../../../../shared/learning/assessment-overview';
 
 export const PROGRESS_PAGE_SIZE = 20;
+
+/** "Lịch sử thi" shows the latest few graded attempts, as the mockup does; there is no paging. */
+export const EXAM_HISTORY_SIZE = 6;
 
 export type ProgressStatusFilter = 'all' | LearningStatus;
 
@@ -135,6 +139,18 @@ export class ProgressStore {
     this.client.call(learnerQuizEndpoints.myCompetency, { query: {} }),
   );
 
+  /** The latest graded attempts over every quiz, newest first. */
+  private readonly attemptsData = serverData(() =>
+    this.client.call(learnerQuizEndpoints.myAttempts, {
+      query: {
+        graded: true,
+        sort: 'submittedAt,desc',
+        page: 0,
+        size: EXAM_HISTORY_SIZE,
+      },
+    }),
+  );
+
   private readonly coursesData = serverData(
     (query: MyCoursesQuery) =>
       this.client.call(learnerEndpoints.myCourses, { query }),
@@ -170,6 +186,18 @@ export class ProgressStore {
 
   /** The server's counts and availabilities; no filter touches them. */
   readonly summary$ = this.summaryData.value;
+
+  /** The server's average quiz score; null before any graded attempt, undefined while unavailable. */
+  readonly averageScore$ = computed(() => {
+    const assessment = this.summaryData.value()?.assessment;
+    return assessment && isAssessmentAvailable(assessment)
+      ? assessment.averageScorePercent
+      : undefined;
+  });
+
+  readonly attempts$ = computed(() => this.attemptsData.value()?.items);
+  readonly attemptsError$ = this.attemptsData.error;
+  readonly isAttemptsLoading$ = this.attemptsData.isLoading;
 
   readonly rows$ = computed((): readonly ProgressRow[] =>
     (this.state.shown()?.items ?? []).map(toRow),
@@ -249,6 +277,10 @@ export class ProgressStore {
 
   retryCompetency(): void {
     this.competencyData.reload();
+  }
+
+  retryAttempts(): void {
+    this.attemptsData.reload();
   }
 
   retryCourses(): void {

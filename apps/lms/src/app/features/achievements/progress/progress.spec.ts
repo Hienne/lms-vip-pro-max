@@ -108,6 +108,7 @@ describe('LearningProgress', () => {
         'Đang học',
         'Chưa bắt đầu',
         'Đang quá hạn',
+        'Điểm thi trung bình',
       ]);
       expect(el.querySelector('h1')?.textContent).toContain('Tiến độ của tôi');
       expect(calls(learnerEndpoints.progressSummary).length).toBe(1);
@@ -126,11 +127,32 @@ describe('LearningProgress', () => {
       ).toBe(false);
     });
 
-    it('says once that hours and scores are not there yet, and shows none', () => {
+    it('says once that hours are not there yet', () => {
       expect(text()).toContain(
         'Giờ học và điểm kiểm tra sẽ hiển thị khi hệ thống có dữ liệu.',
       );
-      expect(text()).not.toContain('Điểm cao nhất');
+    });
+
+    it('ends the counts with the server average quiz score', () => {
+      expect(
+        kpi('Điểm thi trung bình')!.querySelector('dd')!.textContent?.trim(),
+      ).toBe('65,5%');
+      expect(
+        Array.from(el.querySelectorAll('.progress-counts__item dt')).at(-1)
+          ?.textContent,
+      ).toBe('Điểm thi trung bình');
+    });
+
+    it('adds a "Điểm cao nhất" column, last and not sortable, with the server score or a dash', () => {
+      const headers = Array.from(el.querySelectorAll('thead th'));
+      const last = headers.at(-1)!;
+      expect(last.textContent?.trim()).toBe('Điểm cao nhất');
+      expect(last.querySelector('button')).toBeNull();
+      const cells = rows().map((row) =>
+        row.querySelector('td:last-child')!.textContent?.trim(),
+      );
+      expect(cells).toContain('40%');
+      expect(cells).toContain('—');
     });
 
     it('lists every course with the server progress, a link and one status badge per row', () => {
@@ -305,6 +327,161 @@ describe('LearningProgress', () => {
     it('is not shown to a learner without courses', async () => {
       await open('/progress', '000005', 'giangvien');
       expect(card()).toBeNull();
+    });
+  });
+
+  describe('the exam history', () => {
+    const card = () =>
+      el.querySelector<HTMLElement>(
+        'section[aria-labelledby="progress-history"]',
+      )!;
+    const page = (items: unknown[]) =>
+      ({
+        status: 200,
+        body: envelopeOk({
+          items,
+          page: 0,
+          size: 6,
+          totalElements: items.length,
+          totalPages: 1,
+        }),
+      }) as ReturnType<typeof backendRefusal>;
+    const attempt = (change: Record<string, unknown>) => ({
+      attemptId: 7,
+      quizId: 1,
+      quizTitle: 'Luyện tập',
+      courseId: 1,
+      attemptNo: 1,
+      status: 'SUBMITTED',
+      submitType: 'MANUAL',
+      startedAt: '2026-10-26T09:00:00',
+      submittedAt: '2026-10-26T09:20:00',
+      totalQuestions: 7,
+      correctCount: 3,
+      scorePercent: 42.86,
+      passed: false,
+      ...change,
+    });
+
+    it('asks for the six latest graded attempts, newest first', async () => {
+      await open();
+      expect(calls(learnerQuizEndpoints.myAttempts)).toHaveLength(1);
+      expect(lastQuery(learnerQuizEndpoints.myAttempts)).toMatchObject({
+        graded: 'true',
+        sort: 'submittedAt,desc',
+        size: '6',
+        page: '0',
+      });
+    });
+
+    it('lists each attempt with its score and verdict, linked to its result', async () => {
+      answer(
+        learnerQuizEndpoints.myAttempts,
+        page([
+          attempt({}),
+          attempt({
+            attemptId: 9,
+            quizId: 5,
+            quizTitle: 'Kiểm tra cuối khóa',
+            status: 'AUTO_SUBMITTED',
+            scorePercent: 100,
+            passed: true,
+          }),
+        ]),
+      );
+      await open();
+      const items = Array.from(card().querySelectorAll('li a'));
+      expect(items.map((a) => a.getAttribute('href'))).toEqual([
+        '/quiz/1/result/7',
+        '/quiz/5/result/9',
+      ]);
+      const [failed, passed] = items.map((a) =>
+        a.textContent?.replace(/\s+/g, ' ').trim(),
+      );
+      expect(failed).toContain('Luyện tập');
+      expect(failed).toContain('42,86% Chưa đạt');
+      expect(failed).not.toContain('tự nộp');
+      expect(passed).toContain('Kiểm tra cuối khóa');
+      expect(passed).toContain('tự nộp');
+      expect(passed).toContain('100% Đạt');
+      expect(
+        Array.from(card().querySelectorAll('.learning-progress__fail')).map(
+          (n) => n.textContent,
+        ),
+      ).toEqual(['Chưa đạt']);
+    });
+
+    it('sits with the competency card, which comes first', async () => {
+      await open();
+      expect(
+        card().parentElement!.contains(
+          el.querySelector('section[aria-labelledby="progress-competency"]'),
+        ),
+      ).toBe(true);
+      expect(
+        el
+          .querySelector('#progress-competency')!
+          .compareDocumentPosition(el.querySelector('#progress-history')!) &
+          Node.DOCUMENT_POSITION_FOLLOWING,
+      ).toBeTruthy();
+    });
+
+    it('says so when nothing was graded', async () => {
+      answer(learnerQuizEndpoints.myAttempts, page([]));
+      await open();
+      expect(card().textContent).toContain(
+        'Bạn chưa có bài thi nào được chấm.',
+      );
+      expect(card().querySelector('li')).toBeNull();
+    });
+
+    it('fails alone, with a retry, while the rest of the page stays', async () => {
+      answer(learnerQuizEndpoints.myAttempts, backendRefusal('internalError'));
+      await open();
+      expect(card().textContent).toContain('Không tải được lịch sử thi');
+      expect(kpi('Tổng số khóa')).toBeTruthy();
+      expect(rows().length).toBeGreaterThan(0);
+      handle.mockRestore();
+      handle = vi.spyOn(TestBed.inject(MockBackend), 'handle');
+      Array.from(card().querySelectorAll('button'))
+        .find((b) => b.textContent?.includes('Thử lại'))!
+        .click();
+      await settle();
+      expect(card().textContent).not.toContain('Không tải được lịch sử thi');
+      expect(card().textContent).toContain(
+        'Bạn chưa có bài thi nào được chấm.',
+      );
+    });
+
+    it('is not shown to a learner without courses', async () => {
+      await open('/progress', '000005', 'giangvien');
+      expect(card()).toBeNull();
+    });
+  });
+
+  describe('a learner whose courses have no quiz', () => {
+    beforeEach(async () => {
+      const backend = TestBed.inject(MockBackend);
+      handle.mockImplementation((e, request) => {
+        const reply = MockBackend.prototype.handle.call(backend, e, request);
+        if (e !== learnerEndpoints.progressSummary) return reply;
+        const body = reply.body as { data: Record<string, unknown> };
+        return {
+          ...reply,
+          body: {
+            ...body,
+            data: { ...body.data, assessment: { availability: 'unavailable' } },
+          },
+        } as typeof reply;
+      });
+      await open();
+    });
+
+    it('sees no average, no error, and still the column with dashes', () => {
+      expect(kpi('Điểm thi trung bình')).toBeUndefined();
+      expect(text()).not.toContain('Không tải được');
+      expect(kpi('Tổng số khóa')).toBeTruthy();
+      expect(rows().length).toBeGreaterThan(0);
     });
   });
 

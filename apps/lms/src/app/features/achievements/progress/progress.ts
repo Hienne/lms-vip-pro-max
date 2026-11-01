@@ -8,6 +8,8 @@ import {
   Empty,
   ErrorState,
   FmtDatePipe,
+  FmtDatetimePipe,
+  FmtPctPipe,
   FmtRelativePipe,
   Icon,
   PageHeader,
@@ -41,6 +43,8 @@ import {
     Empty,
     ErrorState,
     FmtDatePipe,
+    FmtDatetimePipe,
+    FmtPctPipe,
     FmtRelativePipe,
     Icon,
     PageHeader,
@@ -77,5 +81,6 @@ export class LearningProgress {
     { key: 'lastAccessAt', label: 'Truy cập gần nhất' },
     { key: 'completedAt', label: 'Hoàn thành' },
     { key: 'dueAt', label: 'Hạn' },
+    { key: 'bestScore', label: 'Điểm cao nhất', sortable: false },
   ];
 }

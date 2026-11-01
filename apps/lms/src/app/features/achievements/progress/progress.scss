@@ -14,13 +14,77 @@
     margin: ui.space(3) 0 ui.space(5);
   }
 
-  &__competency {
-    @include ui.stack(3);
+  // The competency card and the exam history: stacked on narrow screens, side by side on wide ones.
+  &__insights {
+    @include ui.stack(5);
     margin-top: ui.space(5);
+
+    @include ui.bp(lg) {
+      display: grid;
+      grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+      align-items: start;
+      gap: ui.space(8);
+    }
+  }
+
+  &__competency,
+  &__history {
+    @include ui.stack(3);
+    min-width: 0;
 
     h2 {
       margin: 0;
     }
+  }
+
+  &__history-placeholder {
+    min-height: 12rem;
+  }
+
+  &__attempts {
+    @include ui.stack(3);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  &__attempt {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    column-gap: ui.space(3);
+    color: inherit;
+    text-decoration: none;
+
+    &:hover .learning-progress__attempt-title {
+      text-decoration: underline;
+    }
+  }
+
+  &__attempt-title {
+    font-weight: ui.weight(medium);
+  }
+
+  &__attempt-time {
+    @include ui.text(sm, muted);
+    grid-column: 1;
+  }
+
+  &__attempt-score {
+    @include ui.num;
+    grid-column: 2;
+    grid-row: 1 / span 2;
+    align-self: center;
+    text-align: right;
+  }
+
+  &__fail {
+    color: ui.color(danger);
+    font-weight: ui.weight(medium);
+  }
+
+  &__muted {
+    @include ui.text(sm, muted);
+    margin: 0;
   }
 
   &__competency-placeholder {
