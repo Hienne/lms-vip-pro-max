@@ -128,9 +128,7 @@ describe('LearningProgress', () => {
     });
 
     it('says once that hours are not there yet', () => {
-      expect(text()).toContain(
-        'Giờ học và điểm kiểm tra sẽ hiển thị khi hệ thống có dữ liệu.',
-      );
+      expect(text()).toContain('Giờ học sẽ hiển thị khi hệ thống có dữ liệu.');
     });
 
     it('ends the counts with the server average quiz score', () => {

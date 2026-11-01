@@ -97,7 +97,8 @@ describe('Learn', () => {
 
     it('shows the server counts and the unavailable note', () => {
       expect(el.querySelectorAll('app-progress-counts dt')).toHaveLength(5);
-      expect(text()).toContain('sẽ hiển thị khi hệ thống có dữ liệu');
+      expect(text()).toContain('Giờ học sẽ hiển thị khi hệ thống có dữ liệu.');
+      expect(text()).not.toContain('điểm kiểm tra sẽ hiển thị');
     });
 
     it('follows the counts with the last and the best score, each a link to the progress page', () => {
