@@ -26,6 +26,17 @@
     @include ui.stack(3);
   }
 
+  // The score figures and the points figure share one row, and wrap on a narrow screen.
+  &__figures {
+    @include ui.row(6);
+    flex-wrap: wrap;
+
+    // Neither figure is drawn: leave no gap.
+    &:not(:has(a)) {
+      display: none;
+    }
+  }
+
   &__heading {
     @include ui.row-between(3);
 

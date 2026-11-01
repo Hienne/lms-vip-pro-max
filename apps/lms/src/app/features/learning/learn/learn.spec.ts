@@ -195,6 +195,74 @@ describe('Learn', () => {
     });
   });
 
+  describe('the points figure', () => {
+    const figure = () => el.querySelector('app-points-figure');
+    const cells = () =>
+      Array.from(figure()!.querySelectorAll('dt, dd')).map((node) =>
+        node.textContent?.replace(/\s+/g, ' ').trim(),
+      );
+
+    /** Answers the points read with fixed figures, the rest as the mock does. */
+    function answerPoints(data: unknown) {
+      const backend = TestBed.inject(MockBackend);
+      handle.mockImplementation((e, request) =>
+        e === learnerEndpoints.myPoints
+          ? { status: 200, body: envelopeOk(data) }
+          : MockBackend.prototype.handle.call(backend, e, request),
+      );
+    }
+
+    it('follows the score figures with the total and the streak, a link to the leaderboard', async () => {
+      await open();
+      expect(cells()).toEqual(['Điểm thưởng', '80', 'Chuỗi 2 ngày']);
+      expect(figure()!.querySelector('a')?.getAttribute('href')).toBe(
+        '/leaderboard',
+      );
+      expect(
+        el
+          .querySelector('app-score-figures')!
+          .compareDocumentPosition(figure()!) &
+          Node.DOCUMENT_POSITION_FOLLOWING,
+      ).toBeTruthy();
+      expect(
+        handle.mock.calls.filter(([e]) => e === learnerEndpoints.myPoints),
+      ).toHaveLength(1);
+    });
+
+    it('shows a learner with no points as 0 and a streak of 0 days', async () => {
+      answerPoints({
+        total: 0,
+        parts: { lessons: 0, quizzes: 0, courses: 0, streak: 0 },
+        streakDays: 0,
+      });
+      await open();
+      expect(cells()).toEqual(['Điểm thưởng', '0', 'Chuỗi 0 ngày']);
+    });
+
+    it('sits beside the score figures even when the courses have no quiz', async () => {
+      await open('giangvien', '000005');
+      expect(el.querySelector('app-score-figures dt')).toBeNull();
+      expect(cells()).toEqual(['Điểm thưởng', '40', 'Chuỗi 2 ngày']);
+    });
+
+    it('is hidden when the read fails, and nothing else is', async () => {
+      fail(learnerEndpoints.myPoints);
+      await open();
+      expect(figure()).toBeNull();
+      expect(text()).not.toContain('Điểm thưởng');
+      expect(text()).not.toContain('Không tải được');
+      expect(el.querySelectorAll('app-progress-counts dt')).toHaveLength(5);
+      expect(el.querySelectorAll('app-score-figures a')).toHaveLength(2);
+      expect(cards().length).toBeGreaterThan(0);
+    });
+
+    it('leaves no empty row while the summary has not arrived', async () => {
+      fail(learnerEndpoints.progressSummary);
+      await open();
+      expect(figure()).toBeNull();
+    });
+  });
+
   describe('a learner who has not taken a quiz yet', () => {
     it('sees dashes and "Chưa làm bài kiểm tra"', async () => {
       await open('hocvien.tichhop', '000007');
