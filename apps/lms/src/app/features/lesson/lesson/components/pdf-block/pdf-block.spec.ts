@@ -205,6 +205,19 @@ describe('PdfBlock', () => {
     expect(engine.drawn.map((d) => d.page)).toEqual([4]);
   });
 
+  it('says nothing about resuming when it opens at a jump, whatever page the server remembers', async () => {
+    const fixture = TestBed.createComponent(PdfBlock);
+    fixture.componentRef.setInput('src', '/api/v1/learning-assets/9/content');
+    fixture.componentRef.setInput('startPage', 4);
+    fixture.componentRef.setInput('jump', { value: 3, seq: 0 });
+    fixture.detectChanges();
+    await flush();
+    fixture.detectChanges();
+    const text = (fixture.nativeElement as HTMLElement).textContent ?? '';
+    expect(text).toContain('Trang 3/5');
+    expect(text).not.toContain('Đã mở lại');
+  });
+
   it('bookmarks the page on screen from a toggle button that shows and waits', async () => {
     const { button, click, set, bookmarks } = await render();
     expect(button('Đánh dấu trang này').getAttribute('aria-pressed')).toBe(

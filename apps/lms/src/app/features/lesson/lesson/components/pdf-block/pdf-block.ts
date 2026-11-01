@@ -66,6 +66,8 @@ export class PdfBlock {
     failed: signal(false),
     page: signal(1),
     zoom: signal<number>(PDF_ZOOMS[0]),
+    /** The page the block reopened on, when it opened there rather than at a jump. */
+    resumed: signal<number | null>(null),
   };
 
   protected readonly failed$ = this.state.failed.asReadonly();
@@ -87,11 +89,8 @@ export class PdfBlock {
   protected readonly canZoomIn$ = computed(
     () => this.state.zoom() < PDF_ZOOMS[PDF_ZOOMS.length - 1],
   );
-  /** The block opened on a page the learner had reached before. */
-  protected readonly resumedAt$ = computed(() => {
-    const start = this.startPage();
-    return this.state.file() && start > 1 ? this.clamp(start) : null;
-  });
+  /** The block reopened on a page the learner had reached before; a block opened at a jump says nothing. */
+  protected readonly resumedAt$ = this.state.resumed.asReadonly();
 
   private readonly canvas = viewChild<ElementRef<HTMLCanvasElement>>('canvas');
   private readonly root = viewChild<ElementRef<HTMLElement>>('root');
@@ -104,14 +103,19 @@ export class PdfBlock {
     untracked(() => {
       this.state.file.set(null);
       this.state.failed.set(false);
+      this.state.resumed.set(null);
     });
     this.engine.open(url).then(
       (file) => {
         if (!alive) return file.destroy();
         opened = file;
         const jump = untracked(this.jump);
+        const start = untracked(this.startPage);
         this.state.page.set(
-          this.clamp(jump ? jump.value : this.startPage(), file.pageCount),
+          this.clamp(jump ? jump.value : start, file.pageCount),
+        );
+        this.state.resumed.set(
+          !jump && start > 1 ? this.clamp(start, file.pageCount) : null,
         );
         this.state.file.set(file);
       },
