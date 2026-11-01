@@ -124,7 +124,7 @@ describe('Leaderboard', () => {
       expect(
         rows().map((row) => [
           text(row.querySelector('.leaderboard__rank')!),
-          text(row.querySelector('.leaderboard__name')!),
+          text(row.querySelector('.leaderboard__title')!),
         ]),
       ).toEqual([
         ['1', 'Học viên tích hợp Demo'],
@@ -155,6 +155,12 @@ describe('Leaderboard', () => {
       expect(
         text(el.querySelector('.leaderboard__ranking')!).match(/\(bạn\)/g),
       ).toHaveLength(1);
+    });
+
+    it('writes "(bạn)" in the same wrapping line as the name, with no truncating element around either', () => {
+      const you = el.querySelector('.leaderboard__you')!;
+      expect(you.closest('.leaderboard__title')).not.toBeNull();
+      expect(you.closest('[title]')).toBeNull();
     });
 
     it('does not list the caller twice, since the row is on the page', () => {

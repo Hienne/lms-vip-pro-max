@@ -133,9 +133,10 @@
     min-width: 0;
   }
 
-  &__name {
-    @include ui.truncate;
+  // The name, "(bạn)" and the meta line wrap instead of ending in an ellipsis, so "(bạn)" and the streak always show.
+  &__title {
     font-weight: ui.weight(medium);
+    overflow-wrap: anywhere;
   }
 
   &__you {
@@ -145,7 +146,7 @@
 
   &__meta {
     @include ui.text(sm, muted);
-    @include ui.truncate;
+    overflow-wrap: anywhere;
   }
 
   &__score {
