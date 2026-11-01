@@ -26,6 +26,7 @@ export function toCourseCardView(card: CourseCard): CourseCardView {
     overdue: card.overdue ?? false,
     failed: card.failed ?? false,
     dueAt: card.dueAt ?? null,
+    bestScore: card.bestScorePercent ?? null,
     link: `/course/${card.courseId}`,
   };
 }

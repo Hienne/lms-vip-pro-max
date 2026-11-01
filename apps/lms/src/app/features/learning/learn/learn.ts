@@ -16,6 +16,7 @@ import { DueDate } from '../../../shared/course/due-date';
 import { CompetencyView } from '../../../shared/learning/competency/competency-view';
 import { ProgressCounts } from '../../../shared/learning/progress-counts/progress-counts';
 import { ReminderItem } from '../../../shared/learning/reminder-item/reminder-item';
+import { ScoreFigures } from '../../../shared/learning/score-figures/score-figures';
 import { UnavailableNote } from '../../../shared/learning/unavailable-note/unavailable-note';
 import { ContinueCard } from './components/continue-card/continue-card';
 import { LearnStore, type LearnTab } from './data-access/learn.store';
@@ -43,6 +44,7 @@ const TAB_LABEL: Record<LearnTab, string> = {
     ProgressCounts,
     ReminderItem,
     RouterLink,
+    ScoreFigures,
     Skeleton,
     TabPanel,
     Tabs,

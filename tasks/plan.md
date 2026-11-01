@@ -1,129 +1,173 @@
-# Implementation Plan: `learner-competency`
+# Implementation Plan: `learner-scores`
 
-Spec: [SPEC-learner-competency.md](../SPEC-learner-competency.md) (approved 2026-11-01 with this plan, amended
-below). Map: [SPEC.md](../SPEC.md). Tasks: [todo.md](todo.md).
+Spec: [SPEC-learner-scores.md](../SPEC-learner-scores.md) (draft, amended below, waiting for approval). Map:
+[SPEC.md](../SPEC.md). Tasks: [todo.md](todo.md).
 
-This plan replaces the one for `catalog-discovery`. That plan is done and merged (Hienne/lms-vip-pro-max#48,
-hmhug19/corebanking-academy#16), and it is in git history at `2a298e0`.
+This plan replaces the one for `learner-competency`. That plan is done and merged (Hienne/lms-vip-pro-max#49), and
+it is in git history at `3aaf270`.
 
 ## Overview
 
-The learner sees their competency radar: "Biểu đồ năng lực" on the learn page, with a "Chi tiết" link to
-`/progress`, and "Năng lực theo nhóm kiến thức" on the progress page. Both read `GET /api/v1/me/competency`, which
-the backend already serves.
+The learner sees their quiz scores where the mockup puts them:
 
-No backend change, no schema change.
+- **Learn page:** "Điểm kiểm tra gần nhất" and "Điểm cao nhất · Đạt x/y bài kiểm tra", next to the counts.
+- **Course cards:** "Điểm cao nhất x%" on the status line.
+- **Progress page:**
+  - "Điểm thi trung bình" next to the counts;
+  - a "Điểm cao nhất" column in the course table and the CSV;
+  - "Lịch sử thi", the latest graded attempts.
+
+The server computes every figure. The backend gets three additive changes and one new filter, with no schema change.
 
 ## What was checked while planning (2026-11-01)
 
-**Backend**
+**Backend (`corebanking-academy`, `main` at `6717718`)**
 
-- `LearnerQuizController` serves `GET /api/v1/me/competency?courseId=`, and `AssessmentReportService.myCompetency`
-  returns `MyCompetency(competencyId, code, name, totalQuestions, correctCount, maxScore, score, percent)`.
-- **Which attempts count:** every graded attempt of the caller, not the best one. The endpoint's description and
-  `docs/api/ASSESSMENT.md` both say "mọi lượt đã chấm".
-- `percent` is `score × 100 / maxScore`, rounded to 2 decimals, and is **`null` when `maxScore` is 0**.
-- On the local stack, `hocvien` gets three rows: 14.29, 11.11 and 33.33. `?courseId=1` also returns three rows.
-- The progress summary still says `competency: unavailable`, and the spec keeps it that way.
+- `LearningProgressReportService.summary()` returns `assessment: { availability: "unavailable" }` unconditionally.
+  `LearningProgressOverview.assessment` is the plain `Availability` record.
+- The per-quiz rule is `QuizAttemptService.summarize` (private static):
+  - graded means `SUBMITTED` or `AUTO_SUBMITTED`;
+  - `bestScore` is the max `scorePercent`;
+  - `finalScore` and `passed` follow the quiz's `scoreMethod` (BEST: ever passed / best; LAST: the latest graded
+    attempt).
+- Learning reaches Assessment only through the port `LearningQuizDirectory` (`find`, `failedFinalExamCourseIds`),
+  implemented by `AssessmentQuizDirectory`.
+- `CourseCard` has no score field. The progress CSV columns are: Mã khóa, Tên khóa, Lần học, Trạng thái, Tiến độ,
+  Bắt đầu, Truy cập gần nhất, Hoàn thành, Hạn, Trạng thái hạn.
+- `GET /me/quiz-attempts` filters by one `status` only. Without a filter it also returns `IN_PROGRESS` and `VOIDED`
+  rows, which have no score.
+- **Local data, `hocvien`.** Every quiz scores by BEST. There are five graded attempts on three quizzes:
+
+  | Quiz | Type       | Course | Attempts               |
+  | ---- | ---------- | ------ | ---------------------- |
+  | 1    | practice   | 1      | 14,28% then 0%, failed |
+  | 2    | final exam | 1      | 12,5%, failed          |
+  | 5    | final exam | 8      | 0% then 100%, passed   |
+
+  The latest attempt is quiz 1 at 0%, failed.
 
 **App**
 
-- The contract exists already: `learnerQuizEndpoints.myCompetency` and `MyCompetencySchema` in
-  `libs/contracts/src/lib/assessment/learner-quiz.*`, added by `learner-quiz`. **`percent` is `z.number()`**, so a
-  row with `percent: null` would fail to parse.
-- The mock already answers it (`libs/mocks/src/lib/assessment/learner-quiz.mock.ts`, `COMPETENCIES`).
-- `ui-radar-chart` (`libs/ui/src/lib/organisms/charts`) takes `RadarDatum { name, value: number | null }`. It has a
-  "Xem dạng bảng" data table. Its default series label is "Của bạn (lần thi tốt nhất)", which is wrong for this
-  endpoint. It prints `value + '%'`, so 14.29 shows as "14.29%", not the app's "14,29%" (`fmtPct`).
-  The admin report screen is its only user today.
-- The learn page and the progress page show `app-unavailable-note`: "Giờ học, điểm kiểm tra và năng lực sẽ hiển
-  thị khi hệ thống có dữ liệu." It counts `competency: unavailable`, so it would keep promising competency next to
-  a radar that shows it.
-- **Mockup:**
-  - The learn page (`learner.js`) shows the radar when any competency has an answer, otherwise an empty state.
-    The card sits in the main column, under "Khóa học của tôi".
-  - The progress page (`tools.js`) shows "Năng lực theo nhóm kiến thức" as a radar card, size 320, with **no
-    course select**.
+- `LearningProgressOverviewSchema.assessment` is `AvailabilitySchema`. `CourseCardSchema` has no score.
+- The progress table already has "Bắt đầu" and "Truy cập gần nhất". The spec's "while here" item is done.
+- `learnerQuizEndpoints.myAttempts` and `exportAttempts` exist. `/quiz/:id/result/:attemptId` exists, so an attempt
+  row can link to its result.
+- The learn page shows `app-progress-counts`, a row of label-over-number figures.
+
+**Mockup**
+
+- **Learn** (`learner.js`):
+  - "Điểm kiểm tra gần nhất" shows the last attempt's score with "Đạt/Chưa đạt · {quiz}", or "—" with "Chưa làm bài
+    kiểm tra".
+  - "Điểm cao nhất" shows the best score over the caller's quizzes, with "Đạt {passed}/{total} bài kiểm tra"; total
+    counts every quiz of the caller's courses.
+  - Both link to `#/progress`.
+- **Course card** (`components.js`): the status line ends with "· Điểm cao nhất {best}%", where `best` is the
+  course's **final exam** (`completion.quizId`).
+- **Progress** (`tools.js`):
+  - KPI "Điểm thi trung bình", which the mockup takes over every submitted attempt;
+  - column "Điểm cao nhất" (the final exam's best), last in the CSV;
+  - card "Lịch sử thi": the 6 latest submitted attempts, each with title, time (+ "tự nộp"), score and Đạt/Chưa đạt,
+    linking to the result.
+
+  There is no paging and no CSV in that card.
 
 ## Spec amendments (written into the spec with this plan)
 
-1. **`percent` can be null.** `MyCompetencySchema.percent` becomes nullable. A row with `percent: null` is
-   `value: null` on the radar, so the data table shows it as no data. This replaces the spec's
-   "`totalQuestions = 0` → null" rule: the server decides, through `percent`, when there is no data.
-2. **The caption says every attempt.** The radar's series label is "Tỷ lệ đúng trên mọi lượt thi đã chấm". That is
-   the server's rule, not "lần thi tốt nhất".
-3. **Three ways to show it.**
-   - Three or more rows with a non-null `percent`: the radar.
-   - One or two such rows: no radar, because fewer than three axes do not read as a shape. The card shows the
-     same rows as a short list (name, "x/y câu đúng", percent).
-   - None: an inline empty state, "Chưa có dữ liệu năng lực", with one line saying the chart fills in after a
-     quiz.
-
-   This settles the spec's open question, and resolves its two conflicting lines (empty state vs. data table
-   alone).
-
-4. **No course select on progress** (default, following the mockup). The spec added one, but the mockup has none,
-   and visual-design.md asks for no control the mockup does not need. The radar shows every course. If the user
-   wants the select, it is one more task (T4b) and its success criterion comes back.
-5. **The unavailable note stops speaking for competency.** `app-unavailable-note` ignores `competency` and its
-   sentence drops "năng lực": "Giờ học và điểm kiểm tra sẽ hiển thị khi hệ thống có dữ liệu." The summary field
-   stays as it is on the server.
-6. **Percents in the app's format.** The radar's labels and data table use `fmtPct`. The number is the server's;
-   only its display changes, from "14.29%" to "14,29%".
+1. **A course's score is its final exam.** `CourseCard.bestScorePercent` is the best graded score on the course's
+   published final exam, null when there is none or no graded attempt. The mockup reads the course's completion quiz,
+   and the `failed` rule already uses the final exam. **`finalExamPassed` is dropped**: no screen needs it, and
+   `failed` already says it.
+2. **Overview figures.** All of them come from the per-quiz summaries built by the same `summarize` as
+   `AttemptSummary`, over the published quizzes of the caller's current courses:
+   - `bestScorePercent`: the highest `bestScore`;
+   - `passedQuizCount`: the quizzes whose `passed` is true;
+   - `quizCount`: every published quiz of those courses, practice included, as in the mockup;
+   - `last`: the latest graded attempt, with that attempt's own `passed`;
+   - `averageScorePercent`: the mean of `finalScore` over quizzes with a graded attempt, two decimals, half up. This
+     is the spec's default. The mockup averages every attempt instead; see open question 1.
+3. **CSV column at the end.** "Điểm cao nhất" goes after "Trạng thái hạn", as the mockup's last column, so existing
+   column positions do not move.
+4. **Attempt list as in the mockup.** "Lịch sử thi" shows the 6 latest graded attempts, linking to
+   `/quiz/:quizId/result/:attemptId`, with no paging and no CSV. To ask for graded attempts only, the backend adds
+   **S4**: `graded=true` on `/me/quiz-attempts` and its export (`SUBMITTED` or `AUTO_SUBMITTED`).
+5. **Course card score.** The course card's status line gains "· Điểm cao nhất {x}%" when `bestScorePercent` is not
+   null.
+6. **Labels from the mockup.** "Điểm thi trung bình" (not "Điểm trung bình") and "Lịch sử thi". Percents go through
+   `fmtPct` with two digits ("14,28%"). The only coloured text is "Chưa đạt", which is status.
+7. **Done already:** the "Bắt đầu" and "Truy cập gần nhất" columns.
+8. **Not sortable:** the "Điểm cao nhất" column (open question 2's default).
 
 ## Architecture decisions
 
-- **One shared piece.** `shared/learning/competency/` holds:
-  - a pure mapping `toRadarData(rows)`, with its spec;
-  - `app-competency-view`, a component that owns the radar, the short list and the empty state.
+**Backend**
 
-  Both pages use it, so the rule of three lives in one place. Its inputs are `rows` and `size` (`compact` on the
-  learn page, `large` on progress). It renders; it never fetches.
+- **One port method for scores.**
+  - `LearningQuizDirectory` gains `scores(userId, courseIds)`. It returns one `QuizScore` per published, not deleted
+    quiz of those courses: quiz id, course id, title, type, `bestScore`, `finalScore`, `passed`, and the latest graded
+    attempt (id, score, passed, submittedAt).
+  - `AssessmentQuizDirectory` implements it with one attempts query for the caller and those quizzes. It calls the
+    same `summarize`, made package-visible and shared, so the summary can never disagree with the quiz intro.
+  - Learning aggregates the overview from that list. The aggregation stays on the server, in
+    `LearningProgressReportService`.
+- **Course card.** The search fills `bestScorePercent` per page with one `scores` call for the page's course ids. It
+  keeps the final exam's `bestScore`. `MANAGE` mode does not call it and leaves null, as with `failed`.
+- **Caller's current courses.** Their ids come from the same `MINE` search the counts use, so the KPIs and the tabs
+  cover the same courses.
 
-- **Each page's store loads the data.** `LearnStore` and `ProgressStore` each add one `serverData` read of
-  `myCompetency`, with its own `competency$`, `competencyError$` and loading state. A failed read shows
-  `ui-error-state` inside the card, with retry, and never hides the rest of the page.
-- **`ui-radar-chart`.** `seriesLabel` is already an input. `fmtPct` replaces the raw `value + '%'` in its template
-  and data table. The admin report screen gets the same formatting, which is a display change only.
-- **Commits.**
-  - One commit per task, on `feat/learner-mockup-gap` (fast-forwarded to `main` at `ab6f40a`).
-  - Nothing is pushed.
-  - The user's uncommitted `.claude/launch.json` and `docs/reports/…html` are never staged.
+**Working tree and process**
+
+- The backend child works in its own git worktree of `corebanking-academy`, never in
+  `~/my-projects/corebanking-academy`, where the main session's local backend runs. The main session restarts the
+  local backend on the new code at Checkpoint A.
+- The app child starts after Checkpoint A, because its captured fixtures come from the new backend.
+- One commit per task: backend on `feat/learner-scores` from `main`, app on `feat/learner-mockup-gap`. Nothing is
+  pushed. Merging the backend to `main` deploys it to the shared server, so its PR waits for the user.
+- **No schema change.** The new queries read existing tables.
 
 ## Task list
 
-### Phase 1: Contract and the shared piece
+### Phase 1: Backend (`corebanking-academy`)
 
-- [x] T1: `percent` nullable, with a fixture captured from the local backend
-- [x] T2: `toRadarData`, `app-competency-view`, and `fmtPct` in `ui-radar-chart`
+- [x] B1: `scores` port method and its Assessment implementation
+- [x] B2: `AssessmentOverview` in the progress summary (S1)
+- [x] B3: `bestScorePercent` on `CourseCard` and the CSV column (S2, S3)
+- [x] B4: `graded=true` on `/me/quiz-attempts` and its export (S4)
 
 ### Checkpoint A
 
-- [x] `npm run check` green.
-- [x] Main session reviews the diff.
+- [x] `mvn clean test` green in the worktree. The main session restarts the local backend and checks the figures
+      with `curl`.
+- [ ] Review of the backend diff. The PR is opened when the user asks.
 
-### Phase 2: The two pages
+### Phase 2: App
 
-- [x] T3: "Biểu đồ năng lực" card on the learn page
-- [x] T4: "Năng lực theo nhóm kiến thức" card on the progress page
-- [x] T5: The unavailable note drops competency
-- [x] T6: End-to-end check against the spec
+- [x] F1: Contracts, captured fixtures and the mock
+- [x] F2: Learn page score figures and the course card score
+- [x] F3: Progress page: average, column and "Lịch sử thi"
+- [x] F4: End-to-end check against the spec
 
 ### Checkpoint B
 
 - [x] Success criteria recorded, with how each was checked.
 - [x] Spec status set to built.
-- [ ] Review with the user, then plan the next module (`learner-scores`).
+- [x] Review with the user, then plan the next module (`learning-leaderboard`).
 
 ## Risks and mitigations
 
-| Risk                                                                     | Impact | Mitigation                                                                                                                                                          |
-| ------------------------------------------------------------------------ | ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| No local learner without graded attempts, so the empty state is not seen | Low    | T6 first checks for one with `curl`. If there is none, the empty state and the short list are covered by specs and by `mockBackend: true`, and T6 says which.       |
-| The radar labels overlap on a 375 px card                                | Med    | The radar's SVG scales with its `viewBox`. T6 checks 375 px. If labels collide, the learn card shows the short list below 480 px instead (one CSS container query). |
-| `fmtPct` in `ui-radar-chart` changes the admin report screen             | Low    | Display only. T2 runs the report screen specs, and T6 opens the report screen once.                                                                                 |
-| The learn page gets slower                                               | Low    | One small extra GET, in parallel with the summary. It has its own loading state, so the rest of the page does not wait.                                             |
+| Risk                                                 | Impact | Mitigation                                                                                                                           |
+| ---------------------------------------------------- | ------ | ------------------------------------------------------------------------------------------------------------------------------------ |
+| The overview disagrees with the quiz intro           | High   | One `summarize` for both. B1 has a test that compares `scores` with `AttemptSummary` for a BEST quiz and a LAST quiz.                |
+| The catalogue gets slower (one more query per page)  | Med    | One batched call per page, not one per card. B3 records the query plan on demo data.                                                 |
+| Merging the backend deploys it to the shared server  | Med    | Additive fields and a new optional filter only, no schema change. The PR waits for the user.                                         |
+| The backend child disturbs the running local backend | Med    | It works in its own worktree. Only the main session restarts the local backend.                                                      |
+| A learner with quizzes but no attempt sees "—"       | Low    | That is the mockup's state: "—" with "Chưa làm bài kiểm tra". With `unavailable` (no quiz in their courses), the figures are absent. |
 
 ## Open questions
 
-None of them blocks the plan. Amendment 4 (no course select) is the default; the user can ask for the select.
+Neither one blocks the plan. Each has a default.
+
+1. **Average score.** The spec's default is the mean of each quiz's final score (one number per quiz). The mockup
+   averages every attempt. For `hocvien` that is 42,26% per quiz against 25,36% over every attempt. Default: per
+   quiz, so retakes do not drag the number down.
+2. **Sorting by best score.** Default: not sortable. Sorting would need the score inside the course search's SQL.

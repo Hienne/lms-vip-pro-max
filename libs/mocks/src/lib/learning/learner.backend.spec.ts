@@ -201,9 +201,47 @@ describe('the learner reads of the mock backend', () => {
       );
       expect(counts.overdue).toBe(mine.filter((c) => c.overdue).length);
       expect(counts.overdue).toBeGreaterThan(0);
-      expect([activity, assessment, competency]).toEqual(
-        Array(3).fill({ availability: 'unavailable' }),
+      expect([activity, competency]).toEqual(
+        Array(2).fill({ availability: 'unavailable' }),
       );
+      expect(assessment).toMatchObject({ availability: 'available' });
+    });
+
+    it('serves each learner their own score figures, and none to an account without quizzes', () => {
+      expect(summary(login('hocvien')).assessment).toMatchObject({
+        availability: 'available',
+        bestScorePercent: 90,
+        passedQuizCount: 1,
+        last: { scorePercent: 66.67, passed: false },
+      });
+      expect(summary(login('hocvien.tichhop')).assessment).toEqual({
+        availability: 'available',
+        last: null,
+        bestScorePercent: null,
+        averageScorePercent: null,
+        passedQuizCount: 0,
+        quizCount: 2,
+      });
+      expect(summary(login('giangvien')).assessment).toEqual({
+        availability: 'unavailable',
+      });
+    });
+
+    it('puts the final exam score on the card of a course the learner took it in', () => {
+      const token = login('hocvien');
+      const scores = Object.fromEntries(
+        cards(token, learnerEndpoints.myCourses).map((c) => [
+          c.courseId,
+          c.bestScorePercent,
+        ]),
+      );
+      expect(scores[2]).toBe(40);
+      expect(scores[5]).toBe(90);
+      expect(scores[1]).toBeNull();
+      expect(
+        cards(token, learnerEndpoints.catalog).find((c) => c.courseId === 2)
+          ?.bestScorePercent,
+      ).toBe(40);
     });
 
     it('lists only the overdue courses for `overdue=true`', () => {
@@ -259,6 +297,22 @@ describe('the learner reads of the mock backend', () => {
       expect(lines.length).toBe(rows.length + 1);
       expect(lines[1]).toContain(`"${rows[0].code}"`);
       expect(lines[1]).toContain(`"${rows[0].title}"`);
+    });
+
+    it('ends the CSV with the best score column, empty when the card has none', async () => {
+      const token = login('hocvien');
+      const rows = cards(token, learnerEndpoints.myCourses);
+      const text = await call(
+        learnerEndpoints.exportProgress,
+        token,
+      ).file!.text();
+      const lines = text.trimEnd().split('\r\n');
+      expect(lines[0].endsWith(',Trạng thái hạn,Điểm cao nhất')).toBe(true);
+      rows.forEach((row, index) => {
+        const last = lines[index + 1].split('","').pop()!.replace(/"$/, '');
+        expect(last).toBe(row.bestScorePercent?.toString() ?? '');
+      });
+      expect(rows.some((row) => row.bestScorePercent !== null)).toBe(true);
     });
 
     it('does not page the export', async () => {

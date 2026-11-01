@@ -329,6 +329,11 @@ export const CourseCardSchema = z.object({
   moduleName: z.string().nullish(),
   /** The caller took the final exam and never passed it: the server's result, false in the instructor list. */
   failed: z.boolean().nullish(),
+  /**
+   * The best graded score on the course's published final exam, as a percentage; null when the course
+   * has no final exam, the caller has no graded attempt, or in the instructor list. The server's result.
+   */
+  bestScorePercent: z.number().nullish(),
 });
 export type CourseCard = z.infer<typeof CourseCardSchema>;
 

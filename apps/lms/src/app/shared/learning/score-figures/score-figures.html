@@ -1,0 +1,32 @@
+@if (overview(); as overview) {
+<div class="score-figures">
+  <a routerLink="/progress" class="score-figures__link">
+    <dl class="score-figures__item">
+      <dt>Điểm kiểm tra gần nhất</dt>
+      @if (overview.last; as last) {
+      <dd class="score-figures__value">{{ last.scorePercent | fmtPct: 2 }}</dd>
+      <dd class="score-figures__detail">
+        @if (last.passed === true) { Đạt · } @else if (last.passed === false) {
+        <span class="score-figures__fail">Chưa đạt</span> · } {{ last.quizTitle
+        }}
+      </dd>
+      } @else {
+      <dd class="score-figures__value">—</dd>
+      <dd class="score-figures__detail">Chưa làm bài kiểm tra</dd>
+      }
+    </dl>
+  </a>
+  <a routerLink="/progress" class="score-figures__link">
+    <dl class="score-figures__item">
+      <dt>Điểm cao nhất</dt>
+      <dd class="score-figures__value">
+        @if (overview.bestScorePercent !== null) { {{ overview.bestScorePercent
+        | fmtPct: 2 }} } @else { — }
+      </dd>
+      <dd class="score-figures__detail">
+        Đạt {{ overview.passedQuizCount }}/{{ overview.quizCount }} bài kiểm tra
+      </dd>
+    </dl>
+  </a>
+</div>
+}

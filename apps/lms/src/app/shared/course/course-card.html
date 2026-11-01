@@ -34,7 +34,8 @@
       <span
         class="course-card__status"
         [class.course-card__status--failed]="course().status === 'failed'"
-        >{{ statusText() }}</span
+        >{{ course().statusLabel }}@if (bestScore() !== null) { · Điểm cao nhất
+        {{ bestScore() | fmtPct: 2 }}}</span
       >
       <strong class="course-card__pct">{{ course().pct }}%</strong>
     </div>

@@ -40,6 +40,7 @@ import {
 import {
   businessModuleFixtures,
   libraryAssetFixtures,
+  learnerAssessmentFixtures,
   learnerCourseStateFixtures,
   learnerReminderFixtures,
   learningGroupFixtures,
@@ -397,6 +398,7 @@ export class LearningBackend {
       programName: program?.name ?? null,
       moduleName: module?.name ?? null,
       failed: false,
+      bestScorePercent: null,
     };
   }
 
@@ -997,7 +999,9 @@ export class LearningBackend {
         mandatory: mine.filter((c) => c.requirement === 'mandatory').length,
       },
       activity: unavailable,
-      assessment: unavailable,
+      assessment:
+        learnerAssessmentFixtures[this.directory.callerId(request)] ??
+        unavailable,
       competency: unavailable,
     });
   }
@@ -1023,12 +1027,13 @@ export class LearningBackend {
         card.completedAt,
         card.dueAt,
         card.deadlineStatus,
+        card.bestScorePercent,
       ]
         .map(cell)
         .join(','),
     );
     const header =
-      'Mã khóa,Tên khóa,Lần học,Trạng thái,Tiến độ,Bắt đầu,Truy cập gần nhất,Hoàn thành,Hạn,Trạng thái hạn';
+      'Mã khóa,Tên khóa,Lần học,Trạng thái,Tiến độ,Bắt đầu,Truy cập gần nhất,Hoàn thành,Hạn,Trạng thái hạn,Điểm cao nhất';
     return {
       status: 200,
       body: envelopeOk(null),
@@ -1057,6 +1062,7 @@ export class LearningBackend {
         assigned: false,
         overdue: false,
         failed: false,
+        bestScorePercent: null,
         deadlineStatus: 'no_deadline',
       };
     }
@@ -1079,6 +1085,7 @@ export class LearningBackend {
       assigned: enrolled.assigned,
       overdue,
       failed: enrolled.failed,
+      bestScorePercent: enrolled.bestScorePercent,
       cycleNo: enrollment.cycleNo,
       startedAt: enrollment.startedAt,
       lastAccessAt: enrollment.lastAccessAt,

@@ -28,7 +28,10 @@
   class="learning-progress__kpis-placeholder"
 ></div>
 } @else { @if (store.summary$(); as summary) {
-<app-progress-counts [counts]="summary.counts" />
+<app-progress-counts
+  [counts]="summary.counts"
+  [averageScore]="store.averageScore$()"
+/>
 <app-unavailable-note class="learning-progress__note" [summary]="summary" />
 } @if (store.isEmpty$()) {
 <ui-empty
@@ -38,28 +41,82 @@
   <a uiButton variant="primary" routerLink="/catalog">Xem danh mục khóa học</a>
 </ui-empty>
 } } @if (!store.isEmpty$()) {
-<section
-  class="learning-progress__competency"
-  aria-labelledby="progress-competency"
->
-  <h2 id="progress-competency">Năng lực theo nhóm kiến thức</h2>
-  @if (store.competencyError$(); as error) {
-  <ui-error-state
-    title="Không tải được năng lực theo nhóm kiến thức"
-    [message]="error.message"
-    (retry)="store.retryCompetency()"
-  />
-  } @else if (store.competency$(); as rows) {
-  <app-competency-view size="large" [rows]="rows" />
-  } @else {
-  <div
-    uiSkeleton
-    variant="block"
-    class="learning-progress__competency-placeholder"
-    aria-busy="true"
-  ></div>
-  }
-</section>
+<div class="learning-progress__insights">
+  <section
+    class="learning-progress__competency"
+    aria-labelledby="progress-competency"
+  >
+    <h2 id="progress-competency">Năng lực theo nhóm kiến thức</h2>
+    @if (store.competencyError$(); as error) {
+    <ui-error-state
+      title="Không tải được năng lực theo nhóm kiến thức"
+      [message]="error.message"
+      (retry)="store.retryCompetency()"
+    />
+    } @else if (store.competency$(); as rows) {
+    <app-competency-view size="large" [rows]="rows" />
+    } @else {
+    <div
+      uiSkeleton
+      variant="block"
+      class="learning-progress__competency-placeholder"
+      aria-busy="true"
+    ></div>
+    }
+  </section>
+
+  <section
+    class="learning-progress__history"
+    aria-labelledby="progress-history"
+  >
+    <h2 id="progress-history">Lịch sử thi</h2>
+    @if (store.attemptsError$(); as error) {
+    <ui-error-state
+      title="Không tải được lịch sử thi"
+      [message]="error.message"
+      (retry)="store.retryAttempts()"
+    />
+    } @else if (store.attempts$(); as attempts) { @if (attempts.length) {
+    <ul class="learning-progress__attempts">
+      @for (attempt of attempts; track attempt.attemptId) {
+      <li>
+        <a
+          class="learning-progress__attempt"
+          [routerLink]="['/quiz', attempt.quizId, 'result', attempt.attemptId]"
+        >
+          <span class="learning-progress__attempt-title"
+            >{{ attempt.quizTitle }}</span
+          >
+          <span class="learning-progress__attempt-time">
+            {{ attempt.submittedAt | fmtDatetime }} @if (attempt.status ===
+            'AUTO_SUBMITTED') { · tự nộp }
+          </span>
+          <span class="learning-progress__attempt-score">
+            @if (attempt.scorePercent !== null) {
+            <strong>{{ attempt.scorePercent | fmtPct: 2 }}</strong>
+            } @if (attempt.passed === true) { &ngsp;Đạt } @else if
+            (attempt.passed === false) { &ngsp;<span
+              class="learning-progress__fail"
+              >Chưa đạt</span
+            >
+            }
+          </span>
+        </a>
+      </li>
+      }
+    </ul>
+    } @else {
+    <p class="learning-progress__muted">Bạn chưa có bài thi nào được chấm.</p>
+    } } @else {
+    <div
+      uiSkeleton
+      variant="block"
+      class="learning-progress__history-placeholder"
+      aria-busy="true"
+    ></div>
+    }
+  </section>
+</div>
 } @if (!store.isEmpty$() && !store.summaryError$() &&
 !store.isSummaryLoading$()) {
 <section class="learning-progress__table" aria-label="Danh sách khóa học">
@@ -168,6 +225,12 @@
     </ng-template>
     <ng-template uiDataTableCell="dueAt" [of]="store.rows$()" let-row>
       {{ row.card.dueAt | fmtDate }}
+    </ng-template>
+    <ng-template uiDataTableCell="bestScore" [of]="store.rows$()" let-row>
+      <span class="learning-progress__num">
+        @if (row.bestScore !== null) { {{ row.bestScore | fmtPct: 2 }} } @else {
+        — }
+      </span>
     </ng-template>
   </ui-data-table>
   }

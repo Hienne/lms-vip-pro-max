@@ -640,13 +640,15 @@ export class LearnerQuizMock {
     const parsed = MyAttemptsQuerySchema.safeParse({
       quizId: query['quizId'] ? Number(query['quizId']) : undefined,
       status: query['status'] || undefined,
+      graded: query['graded'] ? query['graded'] === 'true' : undefined,
     });
     const filter = parsed.success ? parsed.data : {};
     return this.attempts
       .filter(
         (a) =>
           (!filter.quizId || a.seed.quiz.id === filter.quizId) &&
-          (!filter.status || this.row(a).status === filter.status),
+          (!filter.status || this.row(a).status === filter.status) &&
+          (!filter.graded || a.submittedAt !== null),
       )
       .map((a) => ({
         ...this.row(a),

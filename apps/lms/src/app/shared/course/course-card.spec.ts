@@ -165,6 +165,17 @@ describe('CourseCard', () => {
     expect(text(card.querySelector('.course-card__pct'))).toBe('62%');
   });
 
+  it('keeps the server decimals of the best score', () => {
+    expect(
+      text(
+        render({ bestScore: 12.5 }).card.querySelector('.course-card__status'),
+      ),
+    ).toBe('Đang học · Điểm cao nhất 12,5%');
+    expect(
+      text(render({ bestScore: 0 }).card.querySelector('.course-card__status')),
+    ).toBe('Đang học · Điểm cao nhất 0%');
+  });
+
   it('colours the status line danger on failure and omits a missing best score', () => {
     const { card } = render({
       status: 'failed',
@@ -174,6 +185,13 @@ describe('CourseCard', () => {
     const line = card.querySelector('.course-card__status') as HTMLElement;
     expect(text(line)).toBe('Chưa đạt');
     expect(line.classList.contains('course-card__status--failed')).toBe(true);
+    expect(
+      text(
+        render({ bestScore: undefined }).card.querySelector(
+          '.course-card__status',
+        ),
+      ),
+    ).toBe('Đang học');
   });
 
   it('shows the due date, or nothing without one', () => {

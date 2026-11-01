@@ -1,4 +1,5 @@
 import type {
+  AssessmentOverview,
   AssetDetail,
   BlockType,
   BusinessModule,
@@ -727,6 +728,8 @@ export interface LearnerCourseState {
     | 'failed';
   readonly progressPercent: number;
   readonly dueInDays: number | null;
+  /** The best graded score on the course's final exam, as the server computes it; absent when not taken. */
+  readonly bestScorePercent?: number;
 }
 
 /**
@@ -748,6 +751,7 @@ export const learnerCourseStateFixtures: Readonly<
       learningStatus: 'failed',
       progressPercent: 100,
       dueInDays: 18,
+      bestScorePercent: 40,
     },
     {
       courseId: 4,
@@ -760,6 +764,7 @@ export const learnerCourseStateFixtures: Readonly<
       learningStatus: 'completed',
       progressPercent: 100,
       dueInDays: null,
+      bestScorePercent: 90,
     },
   ],
   '000007': [
@@ -776,6 +781,40 @@ export const learnerCourseStateFixtures: Readonly<
       dueInDays: 20,
     },
   ],
+};
+
+/**
+ * The score figures the server puts in a learner's progress summary, as fixed results (the app never
+ * computes them). `hocvien` has taken quizzes, `hocvien.tichhop` has quizzes and no graded attempt; any
+ * other account has no quiz in its courses, so the summary says `unavailable`.
+ */
+export const learnerAssessmentFixtures: Readonly<
+  Record<string, AssessmentOverview>
+> = {
+  '000004': {
+    availability: 'available',
+    last: {
+      quizId: 1,
+      quizTitle: 'Luyện tập: Tổng quan hệ thống Core Banking',
+      courseId: 1,
+      attemptId: 7,
+      scorePercent: 66.67,
+      passed: false,
+      submittedAt: SEED_TIME,
+    },
+    bestScorePercent: 90,
+    averageScorePercent: 65.5,
+    passedQuizCount: 1,
+    quizCount: 5,
+  },
+  '000007': {
+    availability: 'available',
+    last: null,
+    bestScorePercent: null,
+    averageScorePercent: null,
+    passedQuizCount: 0,
+    quizCount: 2,
+  },
 };
 
 export const learningGroupFixtures: readonly GroupDetail[] = [

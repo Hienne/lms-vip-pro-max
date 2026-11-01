@@ -1,9 +1,11 @@
+import { CourseCardSchema } from '../course/course.schema';
 import { toUrl } from '../http/endpoint';
 import { learnerEndpoints } from './learner.endpoints';
 import { capturedLearner as captured } from './learner.captured';
 import {
   EnrollmentDetailSchema,
   LearnerCourseSchema,
+  AssessmentOverviewSchema,
   LearnerFacetsSchema,
   LearningProgressOverviewSchema,
   MyCoursesQuerySchema,
@@ -249,6 +251,76 @@ describe('learner endpoints', () => {
       ).toBe(false);
     });
 
+    describe('the score figures', () => {
+      const available = {
+        availability: 'available',
+        last: {
+          quizId: 1,
+          quizTitle: 'Luyện tập',
+          courseId: 1,
+          attemptId: 7,
+          scorePercent: 0,
+          passed: false,
+          submittedAt: '2026-10-31T15:58:57.380107Z',
+        },
+        bestScorePercent: 100,
+        averageScorePercent: 42.26,
+        passedQuizCount: 1,
+        quizCount: 5,
+      };
+      const parse = (assessment: unknown) =>
+        LearningProgressOverviewSchema.safeParse({ ...overview, assessment });
+
+      it('parses an available overview', () => {
+        const parsed = parse(available);
+        expect(parsed.success).toBe(true);
+        expect(parsed.data?.assessment).toEqual(available);
+      });
+
+      it('parses an available overview before any graded attempt', () => {
+        const none = {
+          availability: 'available',
+          last: null,
+          bestScorePercent: null,
+          averageScorePercent: null,
+          passedQuizCount: 0,
+          quizCount: 2,
+        };
+        expect(AssessmentOverviewSchema.safeParse(none).success).toBe(true);
+        expect(parse(none).success).toBe(true);
+      });
+
+      it('parses an unavailable assessment as it is', () => {
+        expect(parse({ availability: 'unavailable' }).data?.assessment).toEqual(
+          { availability: 'unavailable' },
+        );
+      });
+
+      it('refuses an available assessment without its figures', () => {
+        expect(parse({ availability: 'available' }).success).toBe(false);
+        const { quizCount: _count, ...withoutCount } = available;
+        expect(parse(withoutCount).success).toBe(false);
+        expect(parse({ ...available, last: { quizId: 1 } }).success).toBe(
+          false,
+        );
+      });
+
+      it('reads the figures of the summary captured for hocvien', () => {
+        const parsed = LearningProgressOverviewSchema.parse(
+          captured.progressSummary,
+        );
+        expect(AssessmentOverviewSchema.parse(parsed.assessment)).toMatchObject(
+          {
+            bestScorePercent: 100,
+            averageScorePercent: 42.26,
+            passedQuizCount: 1,
+            quizCount: 5,
+            last: { quizId: 1, scorePercent: 0, passed: false },
+          },
+        );
+      });
+    });
+
     it('refuses a summary without counts', () => {
       const { counts: _counts, ...without } = overview;
       expect(LearningProgressOverviewSchema.safeParse(without).success).toBe(
@@ -302,6 +374,7 @@ describe('learner endpoints', () => {
   describe('catalogue discovery', () => {
     const responses = {
       catalog: captured.catalog,
+      myCourses: captured.courses,
       course: captured.courseEnrolled,
       facets: captured.facets,
       progressSummary: captured.progressSummary,
@@ -326,6 +399,28 @@ describe('learner endpoints', () => {
         moduleName: 'Tổng quan',
       });
       expect(other.failed).toBe(false);
+    });
+
+    it('carries the best final exam score on the card, null without one', () => {
+      const cards = learnerEndpoints.myCourses.response.parse(
+        captured.courses,
+      ).items;
+      const score = (id: number) =>
+        cards.find((card) => card.courseId === id)?.bestScorePercent;
+      expect(score(1)).toBe(12.5);
+      expect(score(8)).toBe(100);
+      expect(score(2)).toBeNull();
+      expect(
+        cards.filter((card) => card.bestScorePercent !== null),
+      ).toHaveLength(2);
+    });
+
+    it('parses a card that carries no score field, as the instructor list sends', () => {
+      const [card] = learnerEndpoints.catalog.response.parse(
+        captured.catalog,
+      ).items;
+      const { bestScorePercent: _score, ...without } = card;
+      expect(CourseCardSchema.safeParse(without).success).toBe(true);
     });
 
     it('lists the facets with the field of each programme and module', () => {

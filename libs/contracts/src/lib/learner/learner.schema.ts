@@ -195,10 +195,49 @@ export type SaveProgressCommand = z.infer<typeof SaveProgressCommandSchema>;
 /** What the backend can say about a metric: anything but data it has is `unavailable`. */
 export const AvailabilitySchema = z.object({ availability: z.string() });
 
+/** The caller's latest graded attempt over every quiz of their current courses. */
+export const LastScoreSchema = z.object({
+  quizId: z.number().int(),
+  quizTitle: z.string(),
+  courseId: z.number().int(),
+  attemptId: z.number().int(),
+  scorePercent: z.number().nullable(),
+  /** The attempt's own result, not the quiz's score method. */
+  passed: z.boolean().nullable(),
+  submittedAt: BackendDateTimeSchema,
+});
+export type LastScore = z.infer<typeof LastScoreSchema>;
+
+/**
+ * `AssessmentOverview`: the scores over the published quizzes of the caller's current courses,
+ * computed by the server by the same rule as a quiz's own summary. The figures are null while the
+ * caller has no graded attempt; `quizCount` includes practice quizzes.
+ */
+export const AssessmentOverviewSchema = z.object({
+  availability: z.literal('available'),
+  last: LastScoreSchema.nullable(),
+  bestScorePercent: z.number().nullable(),
+  /** The mean of each quiz's final score, one number per quiz. */
+  averageScorePercent: z.number().nullable(),
+  passedQuizCount: z.number().int(),
+  quizCount: z.number().int(),
+});
+export type AssessmentOverview = z.infer<typeof AssessmentOverviewSchema>;
+
+/**
+ * Anything but `available` is a metric the server cannot give. `available` is refused here so a
+ * malformed overview is a contract error instead of being read as an unavailable one.
+ */
+export const UnavailableSchema = AvailabilitySchema.refine(
+  (value) => value.availability !== 'available',
+  { error: 'An available metric needs its figures' },
+);
+
 /**
  * `LearningProgressOverview`: counts over the caller's current cycles, independent of any table
- * filter. `activity`, `assessment` and `competency` are `unavailable` until the backend has the
- * data (no hours, scores or streaks are invented in the meantime).
+ * filter. `activity` and `competency` are `unavailable` until the backend has the data (no hours or
+ * streaks are invented in the meantime). `assessment` is an `AssessmentOverview` when the caller's
+ * courses have a published quiz, else `unavailable`.
  */
 export const LearningProgressOverviewSchema = z.object({
   serverTime: BackendDateTimeSchema,
@@ -214,7 +253,7 @@ export const LearningProgressOverviewSchema = z.object({
     mandatory: z.number().int(),
   }),
   activity: AvailabilitySchema,
-  assessment: AvailabilitySchema,
+  assessment: z.union([AssessmentOverviewSchema, UnavailableSchema]),
   competency: AvailabilitySchema,
 });
 export type LearningProgressOverview = z.infer<

@@ -102,6 +102,29 @@ describe('learnerQuizEndpoints', () => {
     );
   });
 
+  it('parses the graded attempts captured for the exam history', () => {
+    const page = e.myAttempts.response.parse(captured.myAttemptsGraded);
+    expect(page.items).toHaveLength(5);
+    expect(page.items.every((row) => row.scorePercent !== null)).toBe(true);
+    expect(
+      page.items.every((row) =>
+        ['SUBMITTED', 'AUTO_SUBMITTED'].includes(row.status),
+      ),
+    ).toBe(true);
+    expect(page.items[0]).toMatchObject({ attemptId: 7, passed: false });
+  });
+
+  it('takes `graded` on the list and on the export, as a boolean only', () => {
+    const query = { graded: true, sort: 'submittedAt,desc', size: 6 };
+    expect(e.myAttempts.query?.safeParse(query).success).toBe(true);
+    expect(e.exportAttempts.query?.safeParse({ graded: true }).success).toBe(
+      true,
+    );
+    expect(e.myAttempts.query?.safeParse({ graded: 'yes' }).success).toBe(
+      false,
+    );
+  });
+
   it('builds the paths of the backend', () => {
     expect(toUrl(e.courseQuizzes, { courseId: 7 })).toBe(
       '/api/v1/me/courses/7/quizzes',
