@@ -553,6 +553,19 @@ describe('Lesson', () => {
         expect(text()).toContain('Chưa có ghi chú.');
       });
 
+      it('shows only the panel of the selected tab, not the other one beneath it', async () => {
+        const panelOf = (selector: string) =>
+          el.querySelector(selector)?.closest('[role="tabpanel"]');
+        expect(panelOf('app-lesson-notes')?.hasAttribute('inert')).toBe(false);
+        expect(panelOf('app-lesson-outline')?.hasAttribute('inert')).toBe(true);
+
+        await press(tab('Mục lục'));
+        expect(panelOf('app-lesson-notes')?.hasAttribute('inert')).toBe(true);
+        expect(panelOf('app-lesson-outline')?.hasAttribute('inert')).toBe(
+          false,
+        );
+      });
+
       it('saves a note on the page on screen and lists it with its anchor', async () => {
         await press(labelled('Trang sau'));
         await typeNote('Đổi CCCD cần cập nhật CIF');
