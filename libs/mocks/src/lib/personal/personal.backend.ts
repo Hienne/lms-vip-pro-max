@@ -1,44 +1,24 @@
-import {
-  AddNoteCommandSchema,
-  BookmarkCommandSchema,
-  personalEndpoints,
-  type AnyEndpoint,
-  type SavedItem,
-} from '@lms/contracts';
+import { personalEndpoints, type AnyEndpoint } from '@lms/contracts';
 import { envelopeError, envelopeOk } from '../envelope';
 import type { FakeReply, FakeRequest } from '../backend/fake-backend';
-import {
-  certificateFixtures,
-  demoCertificatePdf,
-  savedFixtures,
-} from './personal.fixtures';
+import { certificateFixtures, demoCertificatePdf } from './personal.fixtures';
 
-/** Stateful development fixture, isolated per authenticated caller.  */
+const p = personalEndpoints;
+const certificateEndpoints: readonly AnyEndpoint[] = [
+  p.certificates,
+  p.certificate,
+  p.downloadCertificate,
+];
+
+/** The certificates the mockup shows; the backend does not issue them yet. */
 export class PersonalFakeBackend {
-  private readonly users = new Map<string, { saved: SavedItem[] }>();
-  private state(userId: string) {
-    let state = this.users.get(userId);
-    if (!state) {
-      state = {
-        saved: structuredClone(savedFixtures),
-      };
-      this.users.set(userId, state);
-    }
-    return state;
-  }
   answers(endpoint: AnyEndpoint) {
-    return Object.values(personalEndpoints).some((e) => e === endpoint);
+    return certificateEndpoints.includes(endpoint);
   }
-  handle(
-    endpoint: AnyEndpoint,
-    request: FakeRequest,
-    userId: string,
-  ): FakeReply | undefined {
+  handle(endpoint: AnyEndpoint, request: FakeRequest): FakeReply | undefined {
     if (!this.answers(endpoint)) return undefined;
-    const state = this.state(userId),
-      p = personalEndpoints;
-    const ok = (data: unknown, status = 200): FakeReply => ({
-      status,
+    const ok = (data: unknown): FakeReply => ({
+      status: 200,
       body: envelopeOk(data),
     });
     const missing = (): FakeReply => ({
@@ -47,14 +27,6 @@ export class PersonalFakeBackend {
         'MOCK_NOT_FOUND',
         'Không tìm thấy',
         'Không tìm thấy mục hoặc bạn không có quyền truy cập.',
-      ),
-    });
-    const invalid = (): FakeReply => ({
-      status: 200,
-      body: envelopeError(
-        'MOCK_INVALID',
-        'Dữ liệu chưa hợp lệ',
-        'Vui lòng kiểm tra vị trí và nội dung.',
       ),
     });
     const page = <T>(items: T[]) => {
@@ -68,66 +40,6 @@ export class PersonalFakeBackend {
         totalPages: Math.ceil(items.length / size),
       };
     };
-    if (endpoint === p.saved)
-      return ok({
-        ...page(
-          state.saved.filter((x) =>
-            request.query['type'] === 'bookmarks'
-              ? x.text === null
-              : x.text !== null,
-          ),
-        ),
-        counts: {
-          notes: state.saved.filter((x) => x.text !== null).length,
-          bookmarks: state.saved.filter((x) => x.text === null).length,
-        },
-      });
-    if (endpoint === p.addNote || endpoint === p.toggleBookmark) {
-      const parsed =
-        endpoint === p.addNote
-          ? AddNoteCommandSchema.safeParse(request.body)
-          : BookmarkCommandSchema.safeParse(request.body);
-      if (!parsed.success) return invalid();
-      const body = parsed.data;
-      // This fixture knows only these two lessons; arbitrary IDs are refused.
-      if (!['ls2', 'ls3'].includes(body.lessonId)) return missing();
-      const old = state.saved.find(
-        (x) =>
-          x.text === null &&
-          x.lessonId === body.lessonId &&
-          JSON.stringify(x.anchor) === JSON.stringify(body.anchor),
-      );
-      if (endpoint === p.toggleBookmark && old)
-        return ok({ saved: true, item: old });
-      const item: SavedItem = {
-        id: crypto.randomUUID(),
-        courseId: 'c1',
-        courseTitle: 'Nghiệp vụ CIF',
-        lessonId: body.lessonId,
-        lessonTitle:
-          body.lessonId === 'ls2' ? 'Thay đổi CCCD' : 'Kiểm soát giao dịch',
-        anchor: body.anchor,
-        label: 'label' in body ? body.label : null,
-        text: 'text' in body ? body.text : null,
-        createdAt: new Date().toISOString(),
-      };
-      state.saved.unshift(item);
-      return ok(endpoint === p.addNote ? item : { saved: true, item }, 201);
-    }
-    if (endpoint === p.deleteNote || endpoint === p.deleteBookmark) {
-      const id =
-        request.params[endpoint === p.deleteNote ? 'noteId' : 'bookmarkId'];
-      const index = state.saved.findIndex(
-        (x) =>
-          x.id === id &&
-          (endpoint === p.deleteNote ? x.text !== null : x.text === null),
-      );
-      if (index < 0) return missing();
-      state.saved.splice(index, 1);
-      return ok(
-        endpoint === p.deleteNote ? { deleted: true } : { saved: false, id },
-      );
-    }
     if (endpoint === p.certificates) return ok(page(certificateFixtures));
     if (endpoint === p.certificate || endpoint === p.downloadCertificate) {
       const certificate = certificateFixtures.find(

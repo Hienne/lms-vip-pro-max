@@ -57,8 +57,10 @@
     &__panel {
       display: block;
 
+      // `!important`: this rule lives in a cascade layer, so any unlayered `display` a screen gives
+      // its panel (a flex stack, say) would otherwise keep the unselected panel on screen.
       &[inert] {
-        display: none;
+        display: none !important;
       }
     }
   }

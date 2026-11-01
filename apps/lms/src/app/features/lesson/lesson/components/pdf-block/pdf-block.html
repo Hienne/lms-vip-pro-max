@@ -29,6 +29,16 @@
     >
       <ui-icon name="chevron-right" />
     </button>
+    <button
+      uiIconButton
+      size="sm"
+      label="Đánh dấu trang này"
+      [attr.aria-pressed]="bookmarked()"
+      [disabled]="busy()"
+      (click)="bookmarkPage()"
+    >
+      <ui-icon name="bookmark" />
+    </button>
     <span class="pdf__spacer"></span>
     <button
       uiIconButton

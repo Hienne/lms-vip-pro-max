@@ -1,3 +1,4 @@
+import { NgTemplateOutlet } from '@angular/common';
 import { Component, computed, effect, inject, viewChild } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import {
@@ -12,11 +13,14 @@ import {
   Icon,
   Progress,
   Skeleton,
+  TabPanel,
+  Tabs,
 } from '@lms/ui';
 import { QuizCard } from '../../../shared/quiz/quiz-card/quiz-card';
 import { AttachmentBlock } from './components/attachment-block/attachment-block';
 import { BlockList } from './components/block-list/block-list';
 import { ImageBlock } from './components/image-block/image-block';
+import { LessonNotes } from './components/lesson-notes/lesson-notes';
 import { LessonOutline } from './components/lesson-outline/lesson-outline';
 import { PdfBlock } from './components/pdf-block/pdf-block';
 import { ProcessBlock } from './components/process-block/process-block';
@@ -41,7 +45,9 @@ import { LessonStore } from './data-access/lesson.store';
     FmtPctPipe,
     Icon,
     ImageBlock,
+    LessonNotes,
     LessonOutline,
+    NgTemplateOutlet,
     PdfBlock,
     ProcessBlock,
     Progress,
@@ -49,6 +55,8 @@ import { LessonStore } from './data-access/lesson.store';
     RouterLink,
     SessionAlert,
     Skeleton,
+    TabPanel,
+    Tabs,
     TextBlock,
     VideoBlock,
   ],
@@ -72,6 +80,12 @@ export class Lesson {
     const id = this.store.courseId$();
     return id === undefined ? '/catalog' : `/course/${id}`;
   });
+
+  /** The side panel's tabs; the notes carry their count once read. */
+  protected readonly sideTabs = computed(() => [
+    { id: 'outline', label: 'Mục lục' },
+    { id: 'notes', label: 'Ghi chú', count: this.store.noteCount$() },
+  ]);
 
   protected readonly minutes = computed(() =>
     Math.round(

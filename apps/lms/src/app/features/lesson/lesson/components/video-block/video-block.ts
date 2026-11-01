@@ -1,15 +1,19 @@
 import {
   Component,
   DestroyRef,
+  effect,
   ElementRef,
   inject,
   input,
   output,
   signal,
+  untracked,
   viewChild,
 } from '@angular/core';
-import { Button } from '@lms/ui';
+import { Button, Icon } from '@lms/ui';
 import { interval, type Subscription } from 'rxjs';
+import { clock } from '../../../../../shared/learning/anchor';
+import type { BlockJump } from '../pdf-block/pdf-block';
 
 /** A playing video reports its range this often; the heartbeat keeps the media cookie alive. */
 export const VIDEO_BEAT_MS = 10_000;
@@ -22,11 +26,12 @@ export interface VideoSeek {
 
 /**
  * A `video` block: the native player on the block's content URL. It only reports what the learner
- * does (play, pause, a beat every 10 s while playing, seeks); the store decides what to send.
+ * does (play, pause, a beat every 10 s while playing, seeks, the whole second it is at); the store
+ * decides what to send. A `jump` moves the player, which then reports it as a seek.
  */
 @Component({
   selector: 'app-video-block',
-  imports: [Button],
+  imports: [Button, Icon],
   templateUrl: './video-block.html',
   styleUrl: './video-block.scss',
 })
@@ -35,15 +40,27 @@ export class VideoBlock {
   /** Where the video resumes, in seconds; it never starts by itself. */
   readonly startAt = input(0);
   readonly title = input('');
+  /** Moves the player to this second; a new object is a new request, even for the same second. */
+  readonly jump = input<BlockJump | null>(null);
+  /** The second the player is at is bookmarked. */
+  readonly bookmarked = input(false);
+  /** A bookmark change is in flight, so the button waits. */
+  readonly busy = input(false);
 
   readonly played = output<number>();
   readonly paused = output<number>();
   readonly beat = output<number>();
   readonly jumped = output<VideoSeek>();
+  /** The whole second the player is at, each time it changes. */
+  readonly secondChange = output<number>();
+  /** "Đánh dấu mốc": the whole second to turn on or off. */
+  readonly bookmark = output<number>();
   /** "Thử lại": the page claims the block again, which renews the media cookie. */
   readonly retry = output<void>();
 
   protected readonly failed = signal(false);
+  protected readonly second = signal(0);
+  protected readonly clock = clock;
 
   private readonly player = viewChild<ElementRef<HTMLVideoElement>>('player');
   private beating: Subscription | undefined;
@@ -51,18 +68,32 @@ export class VideoBlock {
   private last = 0;
   /** The jump to `startAt` is not something the learner did, so it is not reported. */
   private restoring = false;
+  /** The player knows its length, so it can be moved. */
+  private ready = false;
+  /** The last jump carried out, so a retry's new metadata does not repeat it. */
+  private jumpDone: BlockJump | null = null;
+
+  /** A jump moves the player at once, or when its metadata arrives. */
+  private readonly follow = effect(() => {
+    const jump = this.jump();
+    if (jump && untracked(() => this.ready)) this.moveTo(jump);
+  });
 
   constructor() {
     inject(DestroyRef).onDestroy(() => this.stopBeat());
   }
 
   protected loaded(): void {
+    this.ready = true;
+    const jump = this.jump();
+    if (jump && jump !== this.jumpDone) return this.moveTo(jump);
     const video = this.player()?.nativeElement;
     const start = this.startAt();
     if (!video || start <= 0 || video.currentTime >= start) return;
     this.restoring = true;
     video.currentTime = start;
     this.last = start;
+    this.seen(start);
   }
 
   protected play(): void {
@@ -91,10 +122,16 @@ export class VideoBlock {
     const playing = !this.player()?.nativeElement.paused;
     this.jumped.emit({ from: this.last, to, playing });
     this.last = to;
+    this.seen(to);
   }
 
   protected tick(): void {
     this.last = this.position();
+    this.seen(this.last);
+  }
+
+  protected bookmarkHere(): void {
+    this.bookmark.emit(this.second());
   }
 
   protected retried(): void {
@@ -105,6 +142,21 @@ export class VideoBlock {
   /** Where the video is now; the page reads it when the block is closed. */
   currentPosition(): number {
     return this.player()?.nativeElement.currentTime ?? this.last;
+  }
+
+  private moveTo(jump: BlockJump): void {
+    const video = this.player()?.nativeElement;
+    if (!video) return;
+    this.jumpDone = jump;
+    video.currentTime = jump.value;
+  }
+
+  /** Tells the page when the player enters another whole second. */
+  private seen(position: number): void {
+    const second = Math.floor(position);
+    if (second === this.second()) return;
+    this.second.set(second);
+    this.secondChange.emit(second);
   }
 
   private position(): number {

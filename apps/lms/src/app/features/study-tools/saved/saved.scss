@@ -27,22 +27,13 @@
   background: transparent;
   color: ui.color(text);
   cursor: pointer;
+  text-decoration: none;
   &:hover {
     background: ui.color(surface-2);
   }
   &:focus-visible {
     @include ui.focus-ring;
   }
-}
-.saved__icon {
-  display: grid;
-  place-items: center;
-  width: ui.space(10);
-  height: ui.space(10);
-  flex-shrink: 0;
-  background: ui.color(primary-subtle);
-  color: ui.color(primary);
-  border-radius: ui.radius(md);
 }
 .saved__body {
   flex: 1;

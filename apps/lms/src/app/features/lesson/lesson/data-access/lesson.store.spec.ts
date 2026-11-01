@@ -483,4 +483,133 @@ describe('LessonStore', () => {
       expect(claims()).toHaveLength(0);
     });
   });
+  describe('the anchor of a note', () => {
+    const pdfOf = (lessonIndex: number) =>
+      detail.content.chapters
+        .flatMap((c) => c.lessons)
+        .find((l) => l.lesson.id === lessonIds()[lessonIndex])!
+        .blocks.find((b) => b.block.blockType === 'pdf')!.block.id;
+
+    /** Another lesson in the same test: the harness is made once. */
+    const openAgain = async (lessonIndex: number, query = '') => {
+      await harness.navigateByUrl('/away');
+      const host = await harness.navigateByUrl(
+        `/lesson/${COURSE}/${lessonIds()[lessonIndex]}${query}`,
+        Host,
+      );
+      settle();
+      return host.store;
+    };
+
+    it('follows the page of the PDF and the second of the video on screen', async () => {
+      const pdfStore = await open(1);
+      const pdf = pdfOf(1);
+      expect(pdfStore.anchor$()).toEqual({ type: 'none' });
+      expect(pdfStore.anchorLabel$()).toBe('bài học');
+      pdfStore.pdfPageChange(3);
+      expect(pdfStore.anchor$()).toEqual({
+        type: 'pdf',
+        blockId: pdf,
+        page: 3,
+      });
+      expect(pdfStore.anchorLabel$()).toBe('Trang 3');
+      pdfStore.selectBlock(blocksOf(lessonIds()[1])[1]);
+      expect(pdfStore.anchor$()).toEqual({ type: 'none' });
+
+      const videoStore = await openAgain(0);
+      expect(videoStore.anchorLabel$()).toBe('Video 0:00');
+      videoStore.videoSecond(75);
+      expect(videoStore.anchor$()).toEqual({
+        type: 'video',
+        blockId: blocksOf(lessonIds()[0])[0],
+        second: 75,
+      });
+      expect(videoStore.anchorLabel$()).toBe('Video 1:15');
+    });
+
+    it('opens the block of an anchor on another block, then asks it to show the page', async () => {
+      const store = await open(1);
+      const pdf = pdfOf(1);
+      store.selectBlock(blocksOf(lessonIds()[1])[1]);
+      expect(store.pdfJump$()).toBeNull();
+
+      store.followAnchor({ type: 'pdf', blockId: pdf, page: 3, second: null });
+      expect(store.activeBlock$()?.id).toBe(pdf);
+      expect(store.pdfJump$()).toMatchObject({ blockId: pdf, value: 3 });
+
+      const first = store.pdfJump$();
+      store.followAnchor({ type: 'pdf', blockId: pdf, page: 3, second: null });
+      expect(store.pdfJump$()).not.toBe(first);
+      expect(store.pdfJump$()?.value).toBe(3);
+    });
+
+    it('forgets the page asked for once the learner picks a block', async () => {
+      const store = await open(1);
+      const pdf = pdfOf(1);
+      store.followAnchor({ type: 'pdf', blockId: pdf, page: 3, second: null });
+      store.selectBlock(blocksOf(lessonIds()[1])[1]);
+      store.selectBlock(pdf);
+      expect(store.pdfJump$()).toBeNull();
+    });
+
+    it('does nothing for a note on the whole lesson, and closes the drawer for one with a spot', async () => {
+      const store = await open(1);
+      const pdf = pdfOf(1);
+      store.openOutline();
+      store.followAnchor({
+        type: 'none',
+        blockId: null,
+        page: null,
+        second: null,
+      });
+      expect(store.pdfJump$()).toBeNull();
+      expect(store.outlineOpen$()).toBe(true);
+
+      store.followAnchor({ type: 'pdf', blockId: pdf, page: 2, second: null });
+      expect(store.outlineOpen$()).toBe(false);
+    });
+
+    it('reads ?page of a link on its PDF block, and ?t on its video block', async () => {
+      const pdf = pdfOf(1);
+      const pdfStore = await open(1, `?block=${pdf}&page=3`);
+      expect(pdfStore.pdfJump$()).toMatchObject({ blockId: pdf, value: 3 });
+      expect(pdfStore.videoJump$()).toBeNull();
+
+      const video = blocksOf(lessonIds()[0])[0];
+      const videoStore = await openAgain(0, `?block=${video}&t=75`);
+      expect(videoStore.videoJump$()).toMatchObject({
+        blockId: video,
+        value: 75,
+      });
+    });
+
+    it.each([
+      ['a page of zero', 'page=0'],
+      ['a page that is not a number', 'page=abc'],
+      ['a negative page', 'page=-2'],
+      ['a second where a page is meant', 't=30'],
+    ])('ignores a link with %s', async (_, query) => {
+      const pdf = pdfOf(1);
+      const store = await open(1, `?block=${pdf}&${query}`);
+      expect(store.pdfJump$()).toBeNull();
+    });
+
+    it('ignores the page of a link that names another block', async () => {
+      const [first, second] = blocksOf(lessonIds()[1]);
+      const store = await open(1, `?block=${second}&page=3`);
+      expect(store.activeBlock$()?.id).toBe(second);
+      expect(first).toBeDefined();
+      expect(store.pdfJump$()).toBeNull();
+    });
+
+    it('drops the page from the URL once the learner moves to another block', async () => {
+      const pdf = pdfOf(1);
+      const store = await open(1, `?block=${pdf}&page=3`);
+      store.selectBlock(blocksOf(lessonIds()[1])[1]);
+      await settleRouter();
+      const url = TestBed.inject(Router).url;
+      expect(url).toContain('block=');
+      expect(url).not.toContain('page=');
+    });
+  });
 });

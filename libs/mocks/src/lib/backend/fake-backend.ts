@@ -352,13 +352,7 @@ export class FakeBackend {
     if (quizReply) return quizReply;
     const learningReply = learningReportHandlers.get(endpoint)?.(request);
     if (learningReply) return learningReply;
-    const personalReply = this.personal.handle(
-      endpoint,
-      request,
-      (request.token && this.tokens.get(request.token)) ??
-        request.token ??
-        'demo',
-    );
+    const personalReply = this.personal.handle(endpoint, request);
     if (personalReply) return personalReply;
     const handler = this.handlers.get(endpoint);
     if (!handler) return undefined;

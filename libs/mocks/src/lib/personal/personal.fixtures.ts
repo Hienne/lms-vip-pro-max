@@ -1,28 +1,4 @@
-import type { Certificate, SavedItem } from '@lms/contracts';
-export const savedFixtures: SavedItem[] = [
-  {
-    id: 'n1',
-    courseId: 'c1',
-    courseTitle: 'Nghiệp vụ CIF',
-    lessonId: 'ls2',
-    lessonTitle: 'Thay đổi CCCD',
-    anchor: { type: 'pdf', page: 5 },
-    label: null,
-    text: 'Đổi CCCD → cập nhật CIF',
-    createdAt: '2026-10-19T02:00:00Z',
-  },
-  {
-    id: 'bm1',
-    courseId: 'c1',
-    courseTitle: 'Nghiệp vụ CIF',
-    lessonId: 'ls3',
-    lessonTitle: 'Kiểm soát giao dịch',
-    anchor: { type: 'video', seconds: 250 },
-    label: 'Kiểm soát maker-checker',
-    text: null,
-    createdAt: '2026-10-18T02:00:00Z',
-  },
-];
+import type { Certificate } from '@lms/contracts';
 export const certificateFixtures: Certificate[] = [
   {
     id: 'cert1',

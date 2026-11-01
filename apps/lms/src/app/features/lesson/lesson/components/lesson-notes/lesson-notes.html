@@ -1,0 +1,78 @@
+<form class="notes__form" [formRoot]="noteForm">
+  <ui-field [label]="'Ghi chú tại ' + anchorLabel()">
+    <textarea
+      uiTextarea
+      rows="3"
+      placeholder="Ghi nhanh ý chính…"
+      [formField]="noteForm.text"
+    ></textarea>
+  </ui-field>
+  <div class="notes__actions">
+    <button uiButton size="sm" type="submit" [disabled]="saving()">
+      Lưu ghi chú
+    </button>
+  </div>
+</form>
+
+@if (error(); as failure) {
+<ui-error-state
+  title="Không tải được ghi chú"
+  [message]="failure.message"
+  (retry)="retry.emit()"
+/>
+} @else if (loading()) {
+<div uiSkeleton variant="block" class="notes__skeleton" aria-busy="true"></div>
+} @else {
+<ul class="notes__list" aria-label="Ghi chú của bài học">
+  @for (note of notes(); track note.id) {
+  <li class="notes__item">
+    <div class="notes__head">
+      @if (note.anchor.type === 'none') {
+      <span class="notes__anchor">{{ anchorText(note.anchor) }}</span>
+      } @else {
+      <button
+        type="button"
+        class="notes__anchor notes__anchor--link"
+        (click)="follow.emit(note.anchor)"
+      >
+        {{ anchorText(note.anchor) }}
+      </button>
+      }
+      <span class="notes__time">{{ note.createTime | fmtRelative }}</span>
+      <button
+        uiIconButton
+        size="sm"
+        variant="danger"
+        label="Xóa ghi chú"
+        (click)="remove.emit(note)"
+      >
+        <ui-icon name="trash-2" size="sm" />
+      </button>
+    </div>
+    <p class="notes__text">{{ note.text }}</p>
+  </li>
+  } @empty {
+  <li class="notes__empty">
+    Chưa có ghi chú. Ghi chú được gắn với trang PDF hoặc mốc video đang xem.
+  </li>
+  }
+</ul>
+@if (bookmarks().length) {
+<h3 class="notes__title">Đánh dấu</h3>
+<ul class="notes__list" aria-label="Đánh dấu của bài học">
+  @for (bookmark of bookmarks(); track bookmark.id) {
+  <li class="notes__item">
+    <button
+      type="button"
+      class="notes__anchor notes__anchor--link"
+      (click)="follow.emit(bookmark.anchor)"
+    >
+      {{ anchorText(bookmark.anchor) }}
+    </button>
+    @if (bookmark.label) {
+    <p class="notes__text">{{ bookmark.label }}</p>
+    }
+  </li>
+  }
+</ul>
+} }

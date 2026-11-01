@@ -1,55 +1,71 @@
-/** Proposed FE integration contract, from mockup src/api/learner.js. Not verified with Java. */
+/** Certificates are still the mockup's contract; the learner's notes and bookmarks are the backend's. */
 import { z } from 'zod';
 import { defineEndpoint } from '../http/endpoint';
 import { PageQuerySchema, PageSchema } from '../http/page';
 import {
   AddNoteCommandSchema,
   BookmarkCommandSchema,
+  BookmarkToggleSchema,
+  LessonBookmarkViewSchema,
   CertificateSchema,
-  SavedItemSchema,
+  LessonNoteViewSchema,
   SavedPageSchema,
+  SavedQuerySchema,
 } from './personal.schema';
 const certificateParams = z.object({ certificateId: z.string() });
+const lessonParams = z.object({ lessonId: z.number().int() });
+const LEARNING = '/api/v1/me/learning';
 export const personalEndpoints = {
-  /** List the selected personal saved tab. */
-  saved: defineEndpoint({
+  /** The caller's notes on one lesson, newest first. */
+  lessonNotes: defineEndpoint({
     method: 'get',
-    path: '/api/me/saved',
-    query: PageQuerySchema.extend({ type: z.enum(['notes', 'bookmarks']) }),
-    response: SavedPageSchema,
-    served: 'mock',
+    path: `${LEARNING}/lessons/{lessonId}/notes`,
+    params: lessonParams,
+    response: z.array(LessonNoteViewSchema),
   }),
-  /** Add a private note at a document or video position. */
+  /** Add a private note on a lesson, anchored to a PDF page, a video second or the whole lesson. */
   addNote: defineEndpoint({
     method: 'post',
-    path: '/api/me/notes',
+    path: `${LEARNING}/lessons/{lessonId}/notes`,
+    params: lessonParams,
     body: AddNoteCommandSchema,
-    response: SavedItemSchema,
-    served: 'mock',
+    response: LessonNoteViewSchema,
   }),
-  /** Delete the caller's note. */
+  /** Delete the caller's note; the answer carries no data. */
   deleteNote: defineEndpoint({
     method: 'delete',
-    path: '/api/me/notes/{noteId}',
-    params: z.object({ noteId: z.string() }),
-    response: z.object({ deleted: z.literal(true) }),
-    served: 'mock',
+    path: `${LEARNING}/notes/{noteId}`,
+    params: z.object({ noteId: z.number().int() }),
+    response: z.null(),
   }),
-  /** Save an anchor idempotently. */
+  /** The caller's bookmarks on one lesson, newest first. */
+  lessonBookmarks: defineEndpoint({
+    method: 'get',
+    path: `${LEARNING}/lessons/{lessonId}/bookmarks`,
+    params: lessonParams,
+    response: z.array(LessonBookmarkViewSchema),
+  }),
+  /** Turn the bookmark at an anchor on, or off when it is already on. */
   toggleBookmark: defineEndpoint({
     method: 'put',
-    path: '/api/me/bookmarks',
+    path: `${LEARNING}/lessons/{lessonId}/bookmarks`,
+    params: lessonParams,
     body: BookmarkCommandSchema,
-    response: z.object({ saved: z.literal(true), item: SavedItemSchema }),
-    served: 'mock',
+    response: BookmarkToggleSchema,
   }),
-  /** Remove a bookmark. */
+  /** Remove the caller's bookmark; the answer carries no data. */
   deleteBookmark: defineEndpoint({
     method: 'delete',
-    path: '/api/me/bookmarks/{bookmarkId}',
-    params: z.object({ bookmarkId: z.string() }),
-    response: z.object({ saved: z.literal(false), id: z.string() }),
-    served: 'mock',
+    path: `${LEARNING}/bookmarks/{bookmarkId}`,
+    params: z.object({ bookmarkId: z.number().int() }),
+    response: z.null(),
+  }),
+  /** The "Đã lưu" page: one tab's rows (`kind`, notes by default) plus both counts. */
+  saved: defineEndpoint({
+    method: 'get',
+    path: `${LEARNING}/saved`,
+    query: SavedQuerySchema,
+    response: SavedPageSchema,
   }),
   /** List certificates already issued by the server. */
   certificates: defineEndpoint({

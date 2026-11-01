@@ -11,6 +11,9 @@ interface Probe {
   readonly paused: number[];
   readonly beats: number[];
   readonly seeks: VideoSeek[];
+  readonly seconds: number[];
+  readonly bookmarks: number[];
+  readonly set: (name: string, value: unknown) => void;
   readonly retries: () => number;
 }
 
@@ -23,11 +26,15 @@ function render(startAt = 0): Probe {
   const paused: number[] = [];
   const beats: number[] = [];
   const seeks: VideoSeek[] = [];
+  const seconds: number[] = [];
+  const bookmarks: number[] = [];
   let retries = 0;
   fixture.componentInstance.played.subscribe((p) => played.push(p));
   fixture.componentInstance.paused.subscribe((p) => paused.push(p));
   fixture.componentInstance.beat.subscribe((p) => beats.push(p));
   fixture.componentInstance.jumped.subscribe((s) => seeks.push(s));
+  fixture.componentInstance.secondChange.subscribe((s) => seconds.push(s));
+  fixture.componentInstance.bookmark.subscribe((s) => bookmarks.push(s));
   fixture.componentInstance.retry.subscribe(() => (retries += 1));
   fixture.detectChanges();
 
@@ -56,6 +63,12 @@ function render(startAt = 0): Probe {
     paused,
     beats,
     seeks,
+    seconds,
+    bookmarks,
+    set: (name, value) => {
+      fixture.componentRef.setInput(name, value);
+      fixture.detectChanges();
+    },
     retries: () => retries,
   };
 }
@@ -126,6 +139,63 @@ describe('VideoBlock', () => {
     probe.time(10);
     probe.fire('seeking', true);
     expect(probe.seeks[1]).toEqual({ from: 300, to: 10, playing: false });
+  });
+
+  it('tells the whole second only when it changes', () => {
+    const probe = render();
+    for (const time of [0.4, 5.2, 5.9, 6.1, 6.1]) {
+      probe.time(time);
+      probe.fire('timeupdate');
+    }
+    expect(probe.seconds).toEqual([5, 6]);
+  });
+
+  it('moves to a jump and reports it as a seek, like one the learner made', () => {
+    const probe = render();
+    probe.fire('loadedmetadata');
+    probe.time(30);
+    probe.fire('timeupdate');
+    probe.set('jump', { value: 75, seq: 1 });
+    expect(probe.video()!.currentTime).toBe(75);
+    probe.fire('seeking', true);
+    expect(probe.seeks).toEqual([{ from: 30, to: 75, playing: false }]);
+
+    probe.time(10);
+    probe.fire('timeupdate');
+    probe.set('jump', { value: 75, seq: 2 });
+    expect(probe.video()!.currentTime).toBe(75);
+  });
+
+  it('waits for the metadata before it moves to a jump, and does so only once', () => {
+    const probe = render(95);
+    probe.set('jump', { value: 40, seq: 1 });
+    expect(probe.video()!.currentTime).toBe(0);
+    probe.fire('loadedmetadata');
+    expect(probe.video()!.currentTime).toBe(40);
+    probe.fire('seeking', true);
+    expect(probe.seeks).toHaveLength(1);
+
+    probe.time(12);
+    probe.fire('loadedmetadata');
+    expect(probe.video()!.currentTime).toBe(95);
+  });
+
+  it('bookmarks the second on screen from a toggle button that shows and waits', () => {
+    const probe = render();
+    const button = () => probe.el.querySelector('button')!;
+    expect(button().textContent).toContain('Đánh dấu mốc 0:00');
+    probe.time(75.6);
+    probe.fire('timeupdate');
+    expect(button().textContent).toContain('Đánh dấu mốc 1:15');
+    expect(button().getAttribute('aria-pressed')).toBe('false');
+
+    button().click();
+    expect(probe.bookmarks).toEqual([75]);
+
+    probe.set('bookmarked', true);
+    expect(button().getAttribute('aria-pressed')).toBe('true');
+    probe.set('busy', true);
+    expect(button().disabled).toBe(true);
   });
 
   it('shows an error with "Thử lại" instead of the player when the file cannot be loaded', () => {

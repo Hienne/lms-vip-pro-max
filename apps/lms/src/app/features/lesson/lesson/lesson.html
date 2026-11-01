@@ -143,10 +143,15 @@
           [src]="src"
           [startAt]="store.resume$()?.lastVideoPositionSeconds ?? 0"
           [title]="active.title"
+          [jump]="store.videoJump$()"
+          [bookmarked]="store.bookmarked$()"
+          [busy]="store.bookmarkBusy$()"
           (played)="store.videoPlay($event)"
           (paused)="store.videoPause($event)"
           (beat)="store.videoBeat($event)"
           (jumped)="store.videoSeek($event.from, $event.to, $event.playing)"
+          (secondChange)="store.videoSecond($event)"
+          (bookmark)="store.toggleBookmark($event)"
           (retry)="store.reloadMedia()"
         />
         } @else if (store.phase$() === 'claiming') {
@@ -157,7 +162,12 @@
           [src]="src"
           [startPage]="store.resume$()?.lastPdfPage ?? 1"
           [title]="active.title"
+          [jump]="store.pdfJump$()"
+          [bookmarked]="store.bookmarked$()"
+          [busy]="store.bookmarkBusy$()"
+          (pageChange)="store.pdfPageChange($event)"
           (pageShown)="store.pdfPage($event)"
+          (bookmark)="store.toggleBookmark($event)"
           (retry)="store.reloadMedia()"
         />
         } @placeholder {
@@ -224,8 +234,29 @@
       } }
     </div>
 
-    <aside class="lesson__side" aria-label="Mục lục">
-      <h2 class="lesson__side-title">Mục lục</h2>
+    <aside class="lesson__side" aria-label="Công cụ bài học">
+      <ng-container [ngTemplateOutlet]="sidePanel" />
+    </aside>
+  </div>
+  } } } }
+</div>
+
+<ng-template
+  [uiDrawer]="store.outlineOpen$()"
+  uiDrawerTitle="Bài học"
+  (uiDrawerDismiss)="store.closeOutline()"
+>
+  <ng-container [ngTemplateOutlet]="sidePanel" />
+</ng-template>
+
+<ng-template #sidePanel>
+  <ui-tabs
+    [tabs]="sideTabs()"
+    label="Công cụ bài học"
+    [selected]="store.sideTab$()"
+    (selectedChange)="store.setSideTab($event)"
+  >
+    <div uiTabPanel="outline" class="lesson__side-panel">
       <p class="lesson__progress">
         Khóa học {{ store.courseProgress$() | fmtPct }}
       </p>
@@ -235,18 +266,21 @@
         label="Tiến độ khóa học"
       />
       <app-lesson-outline [chapters]="store.outline$()" />
-    </aside>
-  </div>
-  } } } }
-</div>
-
-<ng-template
-  [uiDrawer]="store.outlineOpen$()"
-  uiDrawerTitle="Mục lục"
-  (uiDrawerDismiss)="store.closeOutline()"
->
-  <p class="lesson__progress">
-    Khóa học {{ store.courseProgress$() | fmtPct }}
-  </p>
-  <app-lesson-outline [chapters]="store.outline$()" />
+    </div>
+    <div uiTabPanel="notes" class="lesson__side-panel">
+      <app-lesson-notes
+        [anchorLabel]="store.anchorLabel$()"
+        [notes]="store.notes$()"
+        [bookmarks]="store.bookmarks$()"
+        [loading]="store.notesLoading$()"
+        [error]="store.notesError$()"
+        [saving]="store.noteSaving$()"
+        [savedKey]="store.noteAdded$()"
+        (add)="store.addNote($event)"
+        (remove)="store.deleteNote($event)"
+        (follow)="store.followAnchor($event)"
+        (retry)="store.retryNotes()"
+      />
+    </div>
+  </ui-tabs>
 </ng-template>
