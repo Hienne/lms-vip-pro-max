@@ -1,0 +1,43 @@
+<ui-page-header
+  title="Chứng nhận hoàn thành"
+  description="Chứng nhận tự động cấp khi bạn hoàn thành khóa học. Mỗi chứng nhận có mã xác thực."
+/>
+
+@if (store.error$(); as error) {
+<ui-error-state
+  title="Không tải được chứng nhận"
+  [headingLevel]="2"
+  [message]="error.message"
+  [retryable]="error.kind !== 'forbidden'"
+  (retry)="store.retry()"
+/>
+} @else if (store.isLoading$()) {
+<div
+  uiSkeleton
+  variant="block"
+  class="certificates__placeholder"
+  role="status"
+  aria-label="Đang tải chứng nhận"
+></div>
+} @else if (store.isEmpty$()) {
+<ui-empty
+  title="Chưa có chứng nhận"
+  description="Hoàn thành khóa học đầu tiên để nhận chứng nhận."
+  [headingLevel]="2"
+>
+  <a uiButton variant="primary" routerLink="/learn">Xem khóa học của tôi</a>
+</ui-empty>
+} @else {
+<ul class="certificates__list" aria-label="Chứng nhận của tôi">
+  @for (row of store.rows$(); track row.id) {
+  <li class="certificates__row">
+    <a class="certificates__title" [routerLink]="row.link">{{ row.title }}</a>
+    <span class="certificates__meta"
+      >{{ row.code }} · Hoàn thành {{ row.completedAt | fmtDate }}@if (row.score
+      !== null) { · Điểm {{ row.score | fmtPct: 2 }}}</span
+    >
+    <span class="certificates__code">{{ row.verificationCode }}</span>
+  </li>
+  }
+</ul>
+}

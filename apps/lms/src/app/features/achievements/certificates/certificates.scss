@@ -1,0 +1,63 @@
+@use 'ui';
+
+:host {
+  @include ui.page(narrow);
+  min-width: 0;
+}
+
+.certificates {
+  &__placeholder {
+    min-height: 8rem;
+    margin-top: ui.space(5);
+  }
+
+  &__list {
+    margin: ui.space(5) 0 0;
+    padding: 0;
+    list-style: none;
+    border-top: 1px solid ui.color(border);
+  }
+
+  // The title and the meta line sit on the left and the code on the right; on a narrow screen the
+  // code drops under the meta line.
+  &__row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: ui.space(1);
+    padding: ui.space(4) ui.space(2);
+    border-bottom: 1px solid ui.color(border);
+
+    @include ui.bp(md) {
+      grid-template-columns: minmax(0, 1fr) auto;
+      column-gap: ui.space(5);
+      align-items: baseline;
+    }
+  }
+
+  &__title {
+    color: ui.color(primary);
+    font-weight: ui.weight(semibold);
+    overflow-wrap: anywhere;
+
+    &:focus-visible {
+      @include ui.focus-ring;
+    }
+  }
+
+  &__meta {
+    @include ui.text(sm, muted);
+    overflow-wrap: anywhere;
+  }
+
+  &__code {
+    @include ui.mono;
+    color: ui.color(text-secondary);
+    overflow-wrap: anywhere;
+
+    @include ui.bp(md) {
+      grid-column: 2;
+      grid-row: 1 / span 2;
+      text-align: right;
+    }
+  }
+}
