@@ -79,3 +79,26 @@
     }
   }
 }
+
+// Printing shows the page alone: no sidebar, header, offline banner, assistant, owl or skip link,
+// and no frame grid or docked-assistant padding left over from them.
+@media print {
+  .skip-link,
+  app-sidebar,
+  app-header,
+  app-net-banner,
+  app-owl,
+  app-chat-widget {
+    display: none;
+  }
+
+  .app-shell {
+    display: block;
+    height: auto;
+    min-height: 0;
+  }
+
+  .app-shell--docked .app-shell__main {
+    padding-inline-end: 0;
+  }
+}

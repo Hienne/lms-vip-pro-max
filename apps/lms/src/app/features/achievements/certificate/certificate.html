@@ -1,0 +1,65 @@
+@if (store.isMissing$()) {
+<ui-empty
+  variant="page"
+  [headingLevel]="1"
+  title="Không tìm thấy chứng nhận"
+  description="Chứng nhận không tồn tại hoặc bạn chưa hoàn thành khóa học."
+>
+  <a uiButton variant="primary" routerLink="/certificates"
+    >Về danh sách chứng nhận</a
+  >
+</ui-empty>
+} @else if (store.error$(); as error) {
+<ui-error-state
+  title="Không tải được chứng nhận"
+  [message]="error.message"
+  (retry)="store.retry()"
+/>
+} @else if (store.document$(); as doc) {
+<ui-page-header [title]="doc.title">
+  <ui-breadcrumb slot="breadcrumb" [items]="crumbs()" />
+  <div slot="actions">
+    <button uiButton variant="primary" type="button" (click)="print()">
+      <ui-icon name="printer" />In / Lưu PDF
+    </button>
+  </div>
+</ui-page-header>
+
+<article class="certificate" aria-labelledby="certificate-heading">
+  <div class="certificate__brand">
+    <ui-mai [size]="32" />
+    <p>Core Banking Academy · Ban QL&amp;PT Core Banking</p>
+  </div>
+  <h2 id="certificate-heading" class="certificate__heading">
+    Chứng nhận hoàn thành
+  </h2>
+  <p class="certificate__lead">Chứng nhận</p>
+  <p class="certificate__name">{{ doc.fullName }}</p>
+  <p class="certificate__course">
+    đã hoàn thành khóa đào tạo <strong>{{ doc.title }}</strong>@if (doc.code) {
+    ({{ doc.code }})}@if (doc.score !== null) { với kết quả bài kiểm tra {{
+    doc.score | fmtPct: 2 }}}.
+  </p>
+  <dl class="certificate__facts">
+    <div>
+      <dt>Ngày hoàn thành</dt>
+      <dd>{{ doc.completedAt | fmtDate }}</dd>
+    </div>
+    <div>
+      <dt>Mã xác thực</dt>
+      <dd class="certificate__code">{{ doc.verificationCode }}</dd>
+    </div>
+  </dl>
+  @if (store.isDemo) {
+  <p class="certificate__demo">Bản xem trước · dữ liệu môi trường demo</p>
+  }
+</article>
+} @else {
+<div
+  uiSkeleton
+  variant="block"
+  class="certificate__placeholder"
+  role="status"
+  aria-label="Đang tải chứng nhận"
+></div>
+}

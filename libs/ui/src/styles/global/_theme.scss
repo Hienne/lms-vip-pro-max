@@ -61,6 +61,19 @@
 // Palette overrides (none for the default `bidv`).
 @include palettes.emit;
 
+// Paper is white whatever the screen theme: printing re-declares the light colours, so a page in
+// dark mode does not print light text on white. `:root` is repeated to reach specificity (0,4,0),
+// above the dark values (0,3,0) of the base and of every palette, whatever the order. The
+// default palette's colours are used, not the chosen palette's.
+@media print {
+  :root:root:root:root {
+    @include -emit(ui.$colors, color);
+    @include -emit(ui.$chart, color-chart);
+    @include -emit(ui.$shadows, shadow);
+    color-scheme: light;
+  }
+}
+
 // Motion durations drop to zero under reduced motion.
 @media (prefers-reduced-motion: reduce) {
   :root {

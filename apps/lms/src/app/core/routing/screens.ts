@@ -586,6 +586,10 @@ export const SCREEN_TABLE = {
       access: 'LEARNING_PROGRESS',
       title: 'Chứng nhận',
       mockupPage: 'certificate',
+      load: () =>
+        import('../../features/achievements/certificate/certificate').then(
+          (m) => m.Certificate,
+        ),
     },
     {
       path: 'instructor',
