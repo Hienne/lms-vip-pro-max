@@ -19,6 +19,7 @@ import {
   type BlockDetail,
   type BlockProgress,
   type AnchorCommand,
+  type FeedbackKind,
   type AssetDetail,
   type CourseEnrollment,
   type Anchor,
@@ -36,6 +37,7 @@ import { readLearnerCourse } from '../../../../core/learning/read-learner-course
 import { SessionStore } from '../../../../core/session/session.store';
 import { clock } from '../../../../shared/learning/anchor';
 import type { BlockJump } from '../components/pdf-block/pdf-block';
+import { lessonFeedback } from './lesson-feedback';
 import { lessonNotes } from './lesson-notes';
 import { StudyChannel, type ClaimTarget } from './study-channel';
 import { StudySessionStorage } from './study-session.storage';
@@ -374,6 +376,30 @@ export class LessonStore {
         : 'bài học';
   });
 
+  // Rating, comments, questions and reports of the lesson
+  private readonly lessonFeedback = lessonFeedback(() =>
+    this.view$() === 'ready' ? this.lessonId$() : undefined,
+  );
+  readonly feedbackLoading$ = this.lessonFeedback.loading;
+  readonly feedbackError$ = this.lessonFeedback.error;
+  /** The lesson's average and count; null until someone rates. */
+  readonly lessonRating$ = this.lessonFeedback.rating;
+  /** The caller's stars (0 for none yet); the ones just chosen show before the server confirms. */
+  readonly myStars$ = this.lessonFeedback.myStars;
+  readonly comments$ = this.lessonFeedback.comments;
+  readonly commentTotal$ = this.lessonFeedback.commentTotal;
+  readonly hasMoreComments$ = this.lessonFeedback.hasMore;
+  readonly moreCommentsBusy$ = this.lessonFeedback.moreBusy;
+  readonly questions$ = this.lessonFeedback.questions;
+  readonly reports$ = this.lessonFeedback.reports;
+  readonly feedbackSending$ = this.lessonFeedback.sending;
+  readonly feedbackSent$ = this.lessonFeedback.sentKinds;
+
+  /** The spot a comment, question or report is sent from, in words; none for the whole lesson. */
+  readonly feedbackSpot$ = computed(() =>
+    this.anchor$().type === 'none' ? null : this.anchorLabel$(),
+  );
+
   /** The spot on screen already has a bookmark. */
   readonly bookmarked$ = computed(() => {
     const here = this.anchor$();
@@ -650,6 +676,35 @@ export class LessonStore {
 
   retryNotes(): void {
     this.lessonNotes.retry();
+  }
+
+  /** A star of the lesson rating; the latest choice is the one saved. */
+  rate(stars: number): void {
+    const lessonId = this.lessonId$();
+    if (lessonId !== undefined) this.lessonFeedback.rate(lessonId, stars);
+  }
+
+  /** A comment, question or report from the spot on screen; a report asks first. */
+  sendFeedback(kind: FeedbackKind, text: string): void {
+    const lessonId = this.lessonId$();
+    if (lessonId !== undefined) {
+      this.lessonFeedback.send({
+        lessonId,
+        kind,
+        text,
+        anchor: this.anchor$(),
+      });
+    }
+  }
+
+  /** "Xem thêm nhận xét": the next page of comments. */
+  moreComments(): void {
+    const lessonId = this.lessonId$();
+    if (lessonId !== undefined) this.lessonFeedback.moreComments(lessonId);
+  }
+
+  retryFeedback(): void {
+    this.lessonFeedback.retry();
   }
 
   openOutline(): void {

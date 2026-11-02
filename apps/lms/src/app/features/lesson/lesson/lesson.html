@@ -212,6 +212,27 @@
         } }
       </div>
 
+      <app-lesson-feedback
+        [lessonId]="store.lessonId$()"
+        [rating]="store.lessonRating$()"
+        [myStars]="store.myStars$()"
+        [comments]="store.comments$()"
+        [commentTotal]="store.commentTotal$()"
+        [hasMore]="store.hasMoreComments$()"
+        [moreBusy]="store.moreCommentsBusy$()"
+        [questions]="store.questions$()"
+        [reports]="store.reports$()"
+        [loading]="store.feedbackLoading$()"
+        [error]="store.feedbackError$()"
+        [sending]="store.feedbackSending$()"
+        [spot]="store.feedbackSpot$()"
+        [sent]="store.feedbackSent$()"
+        (rate)="store.rate($event)"
+        (send)="store.sendFeedback($event.kind, $event.text)"
+        (more)="store.moreComments()"
+        (retry)="store.retryFeedback()"
+      />
+
       <nav class="lesson__steps" aria-label="Chuyển khối và bài học">
         @if (store.prevBlockId$(); as previous) {
         <button uiButton (click)="store.selectBlock(previous)">
