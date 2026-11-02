@@ -969,7 +969,7 @@ export const MIGRATION_ENTRIES = [
   {
     id: 'route-certificates',
     notes:
-      'Đã khôi phục lưới chứng nhận dạng card theo mockup; tải PDF còn là tệp fixture.',
+      'Danh sách chứng nhận đọc từ backend (mỗi dòng là một chu kỳ đã hoàn thành), không còn lưới card theo mockup.',
     kind: 'route',
     mockupSource: 'src/pages/tools.js · certificates',
     target: 'certificates',
@@ -979,7 +979,7 @@ export const MIGRATION_ENTRIES = [
   {
     id: 'route-certificate-id',
     notes:
-      'Đã khôi phục bản xem trước chứng nhận theo mẫu và thử tải PDF; chờ API cấp/xác thực và PDF thật.',
+      'Chứng nhận đọc từ backend và in bằng trình duyệt (In / Lưu PDF); không có API tải PDF.',
     kind: 'route',
     mockupSource: 'src/pages/tools.js · certificate',
     target: 'certificate/:id',
