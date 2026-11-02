@@ -340,6 +340,11 @@ export const CourseCardSchema = z.object({
    * until someone rates. The server's result.
    */
   rating: RatingSummarySchema.nullish(),
+  /**
+   * The enrollment id of the certificate of this card's cycle: set when the cycle is completed, null
+   * otherwise. The server's rule; the app never infers a certificate from `learningStatus`.
+   */
+  certificateId: z.number().int().nullish(),
 });
 export type CourseCard = z.infer<typeof CourseCardSchema>;
 

@@ -236,11 +236,11 @@ describe('route table', () => {
     }
   });
 
-  it('keeps personal mock-only integrations closed in a backend-only build even for a learner', async () => {
+  it('opens the certificates for a learner in a backend-only build, now that the backend serves them', async () => {
     signInAs('learner');
     for (const url of ['/certificates', '/certificate/1']) {
       await harness.navigateByUrl(url);
-      expect(router.url).toBe('/403');
+      expect(router.url).toBe(url);
     }
   });
 

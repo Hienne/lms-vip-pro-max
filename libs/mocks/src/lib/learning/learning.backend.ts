@@ -3,6 +3,7 @@ import {
   courseEndpoints,
   learnerEndpoints,
   feedbackEndpoints,
+  certificateEndpoints,
   personalEndpoints,
   trainingCatalogEndpoints,
   type AnyEndpoint,
@@ -34,6 +35,7 @@ import { envelopeOk } from '../envelope';
 import { AssetLibrary } from './asset.backend';
 import { LearnerStudy } from './learner-session.backend';
 import { LearningRefused, ok, refuse } from './learning-reply';
+import { LearnerCertificates } from './learner-certificates';
 import { LearnerLeaderboard } from './learner-leaderboard';
 import { LearnerFeedback } from './learner-feedback';
 import { LearnerNotes } from './learner-notes';
@@ -167,6 +169,12 @@ export class LearningBackend {
     lessonFeedbackSeeds,
   );
 
+  private certificates = new LearnerCertificates(
+    this.enrollments,
+    (request) => this.directory.callerId(request),
+    (userId) => this.directory.nameOf('user', userId),
+  );
+
   private study = new LearnerStudy(this.enrollments, (request) =>
     this.directory.callerId(request),
   );
@@ -283,6 +291,14 @@ export class LearningBackend {
       [feedbackEndpoints.rateLesson, (r) => ok(this.feedback.rate(r))],
       [feedbackEndpoints.sendFeedback, (r) => ok(this.feedback.send(r))],
       [feedbackEndpoints.lessonComments, (r) => ok(this.feedback.comments(r))],
+      [
+        certificateEndpoints.certificates,
+        (r) => ok(this.certificates.certificates(r)),
+      ],
+      [
+        certificateEndpoints.certificate,
+        (r) => ok(this.certificates.certificate(r)),
+      ],
       [learnerEndpoints.enroll, (r) => this.enroll(r)],
       [learnerEndpoints.enrollment, (r) => this.enrollmentDetail(r)],
       [learnerEndpoints.openSession, (r) => this.study.openSession(r)],
@@ -446,6 +462,7 @@ export class LearningBackend {
       failed: false,
       bestScorePercent: null,
       rating: this.feedback.courseRating(record.course.id),
+      certificateId: null,
     };
   }
 
@@ -1126,6 +1143,7 @@ export class LearningBackend {
         ? 'mandatory'
         : published.revision.defaultRequirement,
       enrollmentId: enrollment.id,
+      certificateId: completed ? enrollment.id : null,
       learningStatus: enrollment.status,
       progressPercent: enrollment.progressPercent,
       dueAt,

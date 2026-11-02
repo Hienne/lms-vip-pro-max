@@ -99,18 +99,6 @@ export const BookmarkCommandSchema = z.object({
   anchor: BookmarkAnchorCommandSchema,
 });
 
-export const CertificateSchema = z.object({
-  id: z.string(),
-  courseId: z.string(),
-  courseCode: z.string(),
-  courseTitle: z.string(),
-  userName: z.string(),
-  completedAt: z.iso.datetime({ offset: true }),
-  score: z.number().min(0).max(100).nullable(),
-  verificationCode: z.string(),
-  issuedAt: z.iso.datetime({ offset: true }),
-  fileName: z.string(),
-});
 export type Anchor = z.infer<typeof AnchorSchema>;
 export type AnchorCommand = z.infer<typeof AnchorCommandSchema>;
 export type LessonNoteView = z.infer<typeof LessonNoteViewSchema>;
@@ -120,4 +108,3 @@ export type SavedItemView = z.infer<typeof SavedItemViewSchema>;
 export type SavedPage = z.infer<typeof SavedPageSchema>;
 export type AddNoteCommand = z.infer<typeof AddNoteCommandSchema>;
 export type BookmarkCommand = z.infer<typeof BookmarkCommandSchema>;
-export type Certificate = z.infer<typeof CertificateSchema>;

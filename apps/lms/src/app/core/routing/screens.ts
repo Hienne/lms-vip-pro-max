@@ -574,24 +574,14 @@ export const SCREEN_TABLE = {
     {
       path: 'certificates',
       access: 'LEARNING_PROGRESS',
-      requires: [personalEndpoints.certificates],
       title: 'Chứng nhận',
       mockupPage: 'certificates',
-      load: () =>
-        import('../../features/achievements/certificates/certificates').then(
-          (m) => m.Certificates,
-        ),
     },
     {
       path: 'certificate/:id',
       access: 'LEARNING_PROGRESS',
-      requires: [personalEndpoints.certificate],
       title: 'Chứng nhận',
       mockupPage: 'certificate',
-      load: () =>
-        import('../../features/achievements/certificates/certificates').then(
-          (m) => m.CertificateDetail,
-        ),
     },
     {
       path: 'instructor',
