@@ -2,6 +2,7 @@ import {
   assignmentEndpoints,
   courseEndpoints,
   learnerEndpoints,
+  feedbackEndpoints,
   personalEndpoints,
   trainingCatalogEndpoints,
   type AnyEndpoint,
@@ -34,6 +35,7 @@ import { AssetLibrary } from './asset.backend';
 import { LearnerStudy } from './learner-session.backend';
 import { LearningRefused, ok, refuse } from './learning-reply';
 import { LearnerLeaderboard } from './learner-leaderboard';
+import { LearnerFeedback } from './learner-feedback';
 import { LearnerNotes } from './learner-notes';
 import { LearnerReminders } from './learner-reminders';
 import {
@@ -47,6 +49,7 @@ import {
   learnerCourseStateFixtures,
   learnerReminderFixtures,
   learningGroupFixtures,
+  lessonFeedbackSeeds,
   lessonNoteSeeds,
   seedCourseDetails,
   trainingFieldFixtures,
@@ -155,6 +158,13 @@ export class LearningBackend {
     this.enrollments,
     (request) => this.directory.callerId(request),
     lessonNoteSeeds,
+  );
+
+  private feedback = new LearnerFeedback(
+    this.enrollments,
+    (request) => this.directory.callerId(request),
+    (userId) => this.directory.nameOf('user', userId),
+    lessonFeedbackSeeds,
   );
 
   private study = new LearnerStudy(this.enrollments, (request) =>
@@ -266,6 +276,13 @@ export class LearningBackend {
         (r) => ok(this.notes.deleteBookmark(r)),
       ],
       [personalEndpoints.saved, (r) => ok(this.notes.saved(r))],
+      [
+        feedbackEndpoints.lessonFeedback,
+        (r) => ok(this.feedback.lessonFeedback(r)),
+      ],
+      [feedbackEndpoints.rateLesson, (r) => ok(this.feedback.rate(r))],
+      [feedbackEndpoints.sendFeedback, (r) => ok(this.feedback.send(r))],
+      [feedbackEndpoints.lessonComments, (r) => ok(this.feedback.comments(r))],
       [learnerEndpoints.enroll, (r) => this.enroll(r)],
       [learnerEndpoints.enrollment, (r) => this.enrollmentDetail(r)],
       [learnerEndpoints.openSession, (r) => this.study.openSession(r)],
@@ -428,6 +445,7 @@ export class LearningBackend {
       moduleName: module?.name ?? null,
       failed: false,
       bestScorePercent: null,
+      rating: this.feedback.courseRating(record.course.id),
     };
   }
 

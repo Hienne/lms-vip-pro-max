@@ -30,6 +30,8 @@ export * from './lib/reports/assessment-reports.schema';
 export * from './lib/reports/assessment-reports.endpoints';
 export * from './lib/personal/personal.schema';
 export * from './lib/personal/personal.endpoints';
+export * from './lib/feedback/feedback.schema';
+export * from './lib/feedback/feedback.endpoints';
 export * from './lib/http/datetime';
 export * from './lib/training-catalog/training-catalog.schema';
 export * from './lib/training-catalog/training-catalog.endpoints';

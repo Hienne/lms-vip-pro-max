@@ -960,3 +960,68 @@ export const lessonNoteSeeds: LessonNoteSeeds = {
     { kind: 'bookmark', type: 'pdf', at: 2 },
   ],
 };
+
+/**
+ * What learners already said about the first lesson of course 1 that holds a PDF: `hocvien` (000004)
+ * and `hocvien.tichhop` (000007) both hold that course, so each sees the other's rating and comment
+ * but never the other's question. `at` is a PDF page or a video second, anchored on the lesson's first
+ * block of that type. The instructor side (`status`, `reply`) is the inbox's, which does not exist yet:
+ * one question is seeded answered so the screen has that state to show.
+ */
+export interface LessonFeedbackSeeds {
+  readonly courseId: number;
+  readonly rows: readonly (
+    | {
+        readonly kind: 'rating';
+        readonly userId: string;
+        readonly stars: number;
+      }
+    | {
+        readonly kind: 'comment' | 'question' | 'report';
+        readonly userId: string;
+        readonly text: string;
+        readonly type: 'none' | 'pdf' | 'video';
+        readonly at?: number;
+        readonly status?: 'new' | 'answered' | 'resolved';
+        readonly reply?: string;
+      }
+  )[];
+}
+
+export const lessonFeedbackSeeds: LessonFeedbackSeeds = {
+  courseId: 1,
+  rows: [
+    { kind: 'rating', userId: '000004', stars: 4 },
+    { kind: 'rating', userId: '000007', stars: 5 },
+    {
+      kind: 'comment',
+      userId: '000007',
+      type: 'pdf',
+      at: 2,
+      text: 'Ví dụ ở trang 2 giúp mình hiểu rõ quy trình đổi CCCD.',
+    },
+    {
+      kind: 'comment',
+      userId: '000004',
+      type: 'none',
+      text: 'Bài ngắn gọn, đủ ý cho người mới.',
+    },
+    {
+      kind: 'question',
+      userId: '000004',
+      type: 'pdf',
+      at: 3,
+      text: 'Khách đổi CCCD nhưng chưa có CIF thì xử lý thế nào?',
+      status: 'answered',
+      reply: 'Tạo CIF mới theo quy trình mở mới, không cập nhật.',
+    },
+    {
+      kind: 'report',
+      userId: '000004',
+      type: 'pdf',
+      at: 1,
+      text: 'Tên biểu mẫu ở trang 1 đã cũ so với bản hiện hành.',
+      status: 'new',
+    },
+  ],
+};
