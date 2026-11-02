@@ -345,12 +345,13 @@ describe('Course', () => {
       rated(null);
       await open(1);
       expect(meta().textContent).not.toContain('★');
-      expect(meta().querySelector('.course__rating')).toBeNull();
+      expect(meta().textContent).not.toContain('Đánh giá');
     });
 
     it('shows nothing when the server leaves the rating out', async () => {
       await open(3);
-      expect(meta().querySelector('.course__rating')).toBeNull();
+      expect(meta().textContent).not.toContain('★');
+      expect(meta().textContent).not.toContain('Đánh giá');
     });
   });
 
