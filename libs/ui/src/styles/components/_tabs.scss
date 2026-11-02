@@ -14,6 +14,16 @@
       overflow-x: visible;
     }
 
+    // Less padding per tab, for a strip that must stay on one line in a narrow column.
+    &--compact {
+      gap: 0;
+
+      .tabs__tab {
+        gap: var(--spacing-1);
+        padding: 0 var(--spacing-3);
+      }
+    }
+
     &__tab {
       position: relative;
       display: inline-flex;

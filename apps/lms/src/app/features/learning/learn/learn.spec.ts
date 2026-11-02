@@ -213,6 +213,124 @@ describe('Learn', () => {
     });
   });
 
+  describe('the course tabs', () => {
+    it('keep to one line: compact spacing, no wrapping row', async () => {
+      await open();
+      const list = el.querySelector('[role="tablist"]')!;
+      expect(list.classList.contains('tabs--compact')).toBe(true);
+      expect(list.classList.contains('tabs--wrap')).toBe(false);
+      expect(el.querySelectorAll('[ngTab]')).toHaveLength(5);
+    });
+  });
+
+  describe('the programme journey', () => {
+    const journey = () =>
+      el.querySelector<HTMLElement>(
+        'section[aria-labelledby="learn-programs"]',
+      );
+    /** Answers the programmes with a fixed page, the rest as the mock does. */
+    function answerPrograms(items: unknown[]) {
+      const backend = TestBed.inject(MockBackend);
+      handle.mockImplementation((e, request) =>
+        e === learnerEndpoints.dashboardPrograms
+          ? {
+              status: 200,
+              body: envelopeOk({
+                items,
+                page: 0,
+                size: 100,
+                totalElements: items.length,
+                totalPages: 1,
+              }),
+            }
+          : MockBackend.prototype.handle.call(backend, e, request),
+      );
+    }
+
+    const group = {
+      id: '1',
+      name: 'Nền tảng nghiệp vụ Core Banking',
+      enrollments: 3,
+      learners: 1,
+      courses: 3,
+      completed: 1,
+      inProgress: 1,
+      notStarted: 1,
+      overdue: 1,
+      averageProgress: 50,
+      completionRate: 33.33,
+    };
+
+    it('lists a row per programme: name, the server percent, a bar and the courses done', async () => {
+      answerPrograms([
+        group,
+        {
+          ...group,
+          id: '2',
+          name: 'Vận hành',
+          courses: 2,
+          completed: 0,
+          averageProgress: 12.5,
+        },
+      ]);
+      await open();
+      const rows = Array.from(journey()!.querySelectorAll('li'));
+      expect(
+        rows.map((row) =>
+          ['.learn__step-name', '.learn__step-pct', '.learn__muted'].map(
+            (selector) => row.querySelector(selector)?.textContent?.trim(),
+          ),
+        ),
+      ).toEqual([
+        ['Nền tảng nghiệp vụ Core Banking', '50%', '1/3 khóa đã xong'],
+        ['Vận hành', '12,5%', '0/2 khóa đã xong'],
+      ]);
+      expect(rows[0].querySelector('ui-progress')).not.toBeNull();
+      expect(
+        el
+          .querySelector('#learn-competency')!
+          .compareDocumentPosition(journey()!) &
+          Node.DOCUMENT_POSITION_FOLLOWING,
+      ).toBeTruthy();
+      expect(
+        handle.mock.calls.some(
+          ([e, r]) =>
+            e === learnerEndpoints.dashboardPrograms &&
+            r.query['size'] === '100',
+        ),
+      ).toBe(true);
+    });
+
+    it('serves the mock learner their programmes', async () => {
+      await open();
+      expect(journey()!.querySelectorAll('li').length).toBeGreaterThan(0);
+    });
+
+    it('is absent when the page is empty', async () => {
+      answerPrograms([]);
+      await open();
+      expect(journey()).toBeNull();
+      expect(text()).not.toContain('Lộ trình theo chương trình');
+      expect(text()).not.toContain('Không tải được');
+    });
+
+    it('fails alone, with a retry', async () => {
+      fail(learnerEndpoints.dashboardPrograms);
+      await open();
+      expect(journey()!.textContent).toContain('Không tải được lộ trình');
+      expect(cards().length).toBeGreaterThan(0);
+      expect(el.querySelectorAll('app-learn-kpis dt')).toHaveLength(4);
+
+      handle.mockRestore();
+      handle = vi.spyOn(TestBed.inject(MockBackend), 'handle');
+      Array.from(journey()!.querySelectorAll('button'))
+        .find((b) => b.textContent?.includes('Thử lại'))!
+        .click();
+      await settle();
+      expect(journey()!.querySelectorAll('li').length).toBeGreaterThan(0);
+    });
+  });
+
   describe('the side column', () => {
     beforeEach(() => open());
 

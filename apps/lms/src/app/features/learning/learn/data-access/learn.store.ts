@@ -34,6 +34,8 @@ export const LEARN_TABS: readonly LearnTab[] = [
 export const GRID_SIZE = 6;
 export const DUE_SHOWN = 5;
 export const REMINDERS_SHOWN = 3;
+/** The most the server pages: a learner has a handful of programmes, so one page is all of them. */
+export const PROGRAMS_SHOWN = 100;
 
 const TAB_QUERY: Record<LearnTab, MyCoursesQuery> = {
   in_progress: {
@@ -110,6 +112,13 @@ export class LearnStore {
    */
   private readonly dashboardData = serverData(() =>
     this.client.call(learnerEndpoints.dashboard),
+  );
+
+  /** The programmes the caller has courses in, with the server's progress for each. */
+  private readonly programsData = serverData(() =>
+    this.client.call(learnerEndpoints.dashboardPrograms, {
+      query: { size: PROGRAMS_SHOWN },
+    }),
   );
 
   /** The caller's learning points; the page shows one figure from them and hides it when the read fails. */
@@ -237,6 +246,10 @@ export class LearnStore {
   readonly competencyError$ = this.competencyData.error;
   readonly isCompetencyLoading$ = this.competencyData.isLoading;
 
+  readonly programs$ = computed(() => this.programsData.value()?.items ?? []);
+  readonly programsError$ = this.programsData.error;
+  readonly isProgramsLoading$ = this.programsData.isLoading;
+
   readonly dueError$ = this.dueData.error;
   readonly isDueLoading$ = this.dueData.isLoading;
 
@@ -304,6 +317,10 @@ export class LearnStore {
 
   retryCompetency(): void {
     this.competencyData.reload();
+  }
+
+  retryPrograms(): void {
+    this.programsData.reload();
   }
 
   retryDue(): void {
