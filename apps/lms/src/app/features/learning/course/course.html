@@ -44,6 +44,13 @@
   <app-required-mark [required]="card.requirement === 'mandatory'" />
   @if (minutes()) {
   <span>{{ minutes() | fmtMinutes }}</span>
+  } @if (rating(); as rating) {
+  <span class="course__rating">
+    <span aria-hidden="true">★ {{ rating.average }} ({{ rating.count }})</span>
+    <span class="sr-only"
+      >Đánh giá {{ rating.average }} trên 5 sao từ {{ rating.count }} lượt</span
+    >
+  </span>
   } @if (card.dueAt) {
   <app-due-date
     [dueAt]="card.dueAt"

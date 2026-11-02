@@ -21,6 +21,11 @@ import { QuizCard } from '../../../shared/quiz/quiz-card/quiz-card';
 import { CourseOutline } from './components/course-outline/course-outline';
 import { CourseStore } from './data-access/course.store';
 
+const ONE_DECIMAL = new Intl.NumberFormat('vi-VN', {
+  minimumFractionDigits: 1,
+  maximumFractionDigits: 1,
+});
+
 /** The learner's page for one course (the mockup's `course` page): outline, progress, enrolment. */
 @Component({
   selector: 'app-course',
@@ -77,6 +82,14 @@ export class Course {
   protected readonly minutes = computed(() =>
     Math.round((this.store.card$()?.durationSeconds ?? 0) / 60),
   );
+
+  /** The learners' rating of the course: the average to one decimal and how many rated; null until someone rates. */
+  protected readonly rating = computed(() => {
+    const rating = this.store.card$()?.rating;
+    return rating
+      ? { average: ONE_DECIMAL.format(rating.average), count: rating.count }
+      : null;
+  });
 
   /** The server's count of required lessons done; absent when the card does not carry it. */
   protected readonly requiredTally = computed(() => {
