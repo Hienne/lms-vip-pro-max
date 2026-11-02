@@ -29,6 +29,10 @@ describe('sessionExpiryInterceptor', async () => {
   let router: Router;
   let toaster: Toaster;
 
+  // The interceptor loads SessionExpiry on demand; warm that import so the first
+  // test does not race the 20 ms settle when the whole suite runs under load.
+  beforeAll(() => import('../session/session-expiry'));
+
   beforeEach(() => {
     session = new FakeSession();
     TestBed.configureTestingModule({
