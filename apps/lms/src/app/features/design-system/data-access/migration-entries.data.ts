@@ -831,7 +831,7 @@ export const MIGRATION_ENTRIES = [
   {
     id: 'route-learn',
     notes:
-      'Nối API học viên thật của backend (tiến độ, khóa đang học, nhắc hạn); bản mock dashboard của #43 đã gỡ.',
+      'Nối API học viên thật của backend (tiến độ, khóa đang học, nhắc hạn, dashboard, lộ trình theo chương trình); bản mock dashboard của #43 đã gỡ. Khác mockup có chủ đích: không hero, không chào, không "Hỏi trợ lý AI" và "Ôn bằng flashcard" (đã bỏ 2026-11-02).',
     kind: 'route',
     mockupSource: 'src/pages/learner.js · dashboard',
     target: 'learn',

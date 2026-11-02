@@ -383,3 +383,124 @@ export const MyPointsSchema = z.object({
   streakDays: z.number().int().nonnegative(),
 });
 export type MyPoints = z.infer<typeof MyPointsSchema>;
+
+/**
+ * `LearningAnalytics.Counts`: the server's counts over a set of enrolments. Both percents are the
+ * server's: `completionRate` is completed / total and `averageProgress` the mean of the courses'
+ * progress, each to two decimals.
+ */
+export const DashboardCountsSchema = z.object({
+  enrollments: z.number().int(),
+  learners: z.number().int(),
+  courses: z.number().int(),
+  assigned: z.number().int(),
+  mandatory: z.number().int(),
+  completed: z.number().int(),
+  inProgress: z.number().int(),
+  notStarted: z.number().int(),
+  overdue: z.number().int(),
+  averageProgress: z.number(),
+  completionRate: z.number(),
+});
+export type DashboardCounts = z.infer<typeof DashboardCountsSchema>;
+
+/** Where the caller left off, to resume. */
+export const DashboardNextActionSchema = z.object({
+  enrollmentId: z.number().int(),
+  courseId: z.number().int(),
+  courseTitle: z.string(),
+  lessonId: z.number().int().nullable(),
+  blockId: z.number().int().nullable(),
+  blockType: z.string().nullable(),
+  quizId: z.number().int().nullable(),
+  assetId: z.number().int().nullable(),
+  lastPdfPage: z.number().int().nullable(),
+  lastVideoPositionSeconds: z.number().nullable(),
+});
+export type DashboardNextAction = z.infer<typeof DashboardNextActionSchema>;
+
+/** One enrolment of the dashboard's deadline list. */
+export const DashboardEnrollmentSchema = z.object({
+  id: z.number().int(),
+  userId: z.string(),
+  courseId: z.number().int(),
+  courseCode: z.string(),
+  courseTitle: z.string(),
+  revisionId: z.number().int(),
+  programId: z.number().int().nullable(),
+  programName: z.string().nullable(),
+  orgId: z.number().int().nullable(),
+  teamId: z.number().int().nullable(),
+  status: LearningStatusSchema,
+  progressPercent: z.number(),
+  assigned: z.boolean(),
+  mandatory: z.boolean(),
+  enrolledAt: BackendDateTimeSchema.nullable(),
+  startedAt: BackendDateTimeSchema.nullable(),
+  lastAccessAt: BackendDateTimeSchema.nullable(),
+  completedAt: BackendDateTimeSchema.nullable(),
+  dueAt: BackendDateTimeSchema.nullable(),
+  overdue: z.boolean(),
+  canStudy: z.boolean(),
+});
+export type DashboardEnrollment = z.infer<typeof DashboardEnrollmentSchema>;
+
+/** The caller's learning figures: counts, where to resume and the nearest deadlines (at most five). */
+export const DashboardLearningSchema = z.object({
+  counts: DashboardCountsSchema,
+  nextAction: DashboardNextActionSchema.nullable(),
+  deadlines: z.array(DashboardEnrollmentSchema),
+});
+export type DashboardLearning = z.infer<typeof DashboardLearningSchema>;
+
+/** A graded attempt named by the dashboard's assessment block. */
+export const DashboardAttemptSchema = z.object({
+  quizId: z.number().int(),
+  quizTitle: z.string(),
+  courseId: z.number().int(),
+  attemptId: z.number().int(),
+  enrollmentId: z.number().int().nullable(),
+  scorePercent: z.number().nullable(),
+  passed: z.boolean().nullable(),
+  submittedAt: BackendDateTimeSchema,
+});
+
+/** `LearningAnalytics.Home`: the dashboard over the caller's current cycles. */
+export const LearningDashboardSchema = z.object({
+  dataAsOf: BackendDateTimeSchema,
+  timeZone: z.string(),
+  learning: DashboardLearningSchema,
+  assessment: z
+    .object({
+      counts: z.object({
+        assessedQuizCount: z.number().int(),
+        passedQuizCount: z.number().int(),
+      }),
+      latest: DashboardAttemptSchema.nullable(),
+      best: DashboardAttemptSchema.nullable(),
+    })
+    .nullish(),
+});
+export type LearningDashboard = z.infer<typeof LearningDashboardSchema>;
+
+/** Paging of the programme list; the backend accepts a `size` of 100 at most. */
+export const DashboardProgramsQuerySchema = z.object({
+  page: z.number().int().min(0).optional(),
+  size: z.number().int().min(1).max(100).optional(),
+});
+export type DashboardProgramsQuery = z.infer<
+  typeof DashboardProgramsQuerySchema
+>;
+
+/**
+ * `LearningAnalytics.Group`: the counts of one programme over the caller's courses in it. The id is
+ * a string on the wire.
+ */
+export const DashboardGroupSchema = DashboardCountsSchema.omit({
+  assigned: true,
+  mandatory: true,
+}).extend({
+  id: z.string(),
+  name: z.string(),
+});
+export type DashboardGroup = z.infer<typeof DashboardGroupSchema>;

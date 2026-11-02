@@ -4,8 +4,10 @@ import {
   Button,
   Empty,
   ErrorState,
-  FmtDatePipe,
+  FmtPctPipe,
+  Icon,
   PageHeader,
+  Progress,
   Skeleton,
   Tabs,
   TabPanel,
@@ -15,11 +17,9 @@ import { CourseCard } from '../../../shared/course/course-card';
 import { DueDate } from '../../../shared/course/due-date';
 import { CompetencyView } from '../../../shared/learning/competency/competency-view';
 import { PointsFigure } from '../../../shared/learning/points-figure/points-figure';
-import { ProgressCounts } from '../../../shared/learning/progress-counts/progress-counts';
 import { ReminderItem } from '../../../shared/learning/reminder-item/reminder-item';
-import { ScoreFigures } from '../../../shared/learning/score-figures/score-figures';
-import { UnavailableNote } from '../../../shared/learning/unavailable-note/unavailable-note';
 import { ContinueCard } from './components/continue-card/continue-card';
+import { LearnKpis } from './components/learn-kpis/learn-kpis';
 import { LearnStore, type LearnTab } from './data-access/learn.store';
 
 const TAB_LABEL: Record<LearnTab, string> = {
@@ -41,16 +41,17 @@ const TAB_LABEL: Record<LearnTab, string> = {
     DueDate,
     Empty,
     ErrorState,
+    FmtPctPipe,
+    Icon,
+    LearnKpis,
     PageHeader,
     PointsFigure,
-    ProgressCounts,
+    Progress,
     ReminderItem,
     RouterLink,
-    ScoreFigures,
     Skeleton,
     TabPanel,
     Tabs,
-    UnavailableNote,
   ],
   providers: [LearnStore],
   templateUrl: './learn.html',

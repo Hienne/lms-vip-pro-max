@@ -153,6 +153,21 @@ describe('LearnStore', () => {
     expect(rows.every((row) => row.link.startsWith('/course/'))).toBe(true);
   });
 
+  it("carries each due row's progress percent from its card, unchanged", async () => {
+    const store = await open();
+    const cards = await Promise.resolve(
+      handle.mock.results
+        .map((r) => r.value as { body?: { data?: { items?: unknown[] } } })
+        .flatMap((r) => r?.body?.data?.items ?? []),
+    );
+    const percent = new Map(
+      (cards as { courseId: number; progressPercent: number | null }[]).map(
+        (c) => [`/course/${c.courseId}`, c.progressPercent ?? 0],
+      ),
+    );
+    for (const row of store.due$()) expect(row.pct).toBe(percent.get(row.link));
+  });
+
   it('shows the first three reminders, the soonest due first', async () => {
     const store = await open();
     const rows = store.reminders$();
@@ -240,5 +255,29 @@ describe('LearnStore', () => {
     expect(store.dueError$()).toBeUndefined();
     expect(store.courses$().length).toBeGreaterThan(0);
     expect(store.reminders$()).toHaveLength(3);
+  });
+
+  it('reads the dashboard once, for the completion rate the server computed', async () => {
+    const store = await open();
+    expect(queries(learnerEndpoints.dashboard)).toHaveLength(1);
+    const counts = store.dashboardCounts$();
+    expect(counts?.courses).toBe(store.summary$()?.counts.total);
+    expect(counts?.completed).toBe(store.summary$()?.counts.completed);
+    expect(store.dashboardError$()).toBeUndefined();
+  });
+
+  it('keeps the summary when the dashboard fails, and reads it again on retry', async () => {
+    fail(learnerEndpoints.dashboard);
+    const store = await open();
+    expect(store.dashboardError$()).toBeTruthy();
+    expect(store.dashboardCounts$()).toBeUndefined();
+    expect(store.summary$()).toBeDefined();
+    expect(store.summaryError$()).toBeUndefined();
+
+    handle.mockImplementation((e, request) => original(e, request));
+    store.retryDashboard();
+    await settle();
+    expect(store.dashboardError$()).toBeUndefined();
+    expect(store.dashboardCounts$()?.completionRate).toBeGreaterThanOrEqual(0);
   });
 });

@@ -9,6 +9,7 @@ import {
   LearnerCourseSchema,
   AssessmentOverviewSchema,
   LearnerFacetsSchema,
+  LearningDashboardSchema,
   LearningProgressOverviewSchema,
   MyCoursesQuerySchema,
   MyPointsSchema,
@@ -57,6 +58,8 @@ describe('learner endpoints', () => {
       ['course', 'get', '/api/v1/me/learning/courses/{courseId}'],
       ['facets', 'get', '/api/v1/me/learning/facets'],
       ['progressSummary', 'get', '/api/v1/me/learning/progress/summary'],
+      ['dashboard', 'get', '/api/v1/me/learning/dashboard'],
+      ['dashboardPrograms', 'get', '/api/v1/me/learning/dashboard/programs'],
       ['exportProgress', 'get', '/api/v1/me/learning/progress/export'],
       ['enroll', 'post', '/api/v1/courses/{courseId}/enrollments'],
       ['enrollment', 'get', '/api/v1/me/learning/enrollments/{enrollmentId}'],
@@ -552,6 +555,81 @@ describe('learner endpoints', () => {
       expect(LeaderboardQuerySchema.safeParse({ page: -1 }).success).toBe(
         false,
       );
+    });
+  });
+
+  describe('dashboard', () => {
+    it('parses the dashboard and the programmes captured from the backend', () => {
+      expect(
+        learnerEndpoints.dashboard.response.safeParse(captured.dashboard)
+          .success,
+      ).toBe(true);
+      expect(
+        learnerEndpoints.dashboardPrograms.response.safeParse(
+          captured.dashboardPrograms,
+        ).success,
+      ).toBe(true);
+    });
+
+    it('keeps the percents as the server sent them, decimals included', () => {
+      const { learning } = LearningDashboardSchema.parse(captured.dashboard);
+      expect(learning.counts).toMatchObject({
+        completed: 2,
+        enrollments: 7,
+        averageProgress: 44.43,
+        completionRate: 28.57,
+      });
+      expect(learning.deadlines.map((row) => row.progressPercent)).toContain(
+        60.996,
+      );
+      const { items } = learnerEndpoints.dashboardPrograms.response.parse(
+        captured.dashboardPrograms,
+      );
+      expect(items[0]).toMatchObject({
+        id: '1',
+        courses: 3,
+        completed: 1,
+        averageProgress: 50,
+        completionRate: 33.33,
+      });
+    });
+
+    it('reads a page that is not the first and an empty one', () => {
+      const second = learnerEndpoints.dashboardPrograms.response.parse(
+        captured.dashboardProgramsPage2,
+      );
+      expect(second).toMatchObject({ page: 1, size: 2, totalPages: 2 });
+      expect(
+        learnerEndpoints.dashboardPrograms.response.parse({
+          items: [],
+          page: 0,
+          size: 20,
+          totalElements: 0,
+          totalPages: 0,
+        }).items,
+      ).toEqual([]);
+    });
+
+    it('accepts a dashboard with nothing to resume and no deadlines', () => {
+      const { learning, ...rest } = captured.dashboard;
+      const empty = LearningDashboardSchema.parse({
+        ...rest,
+        learning: { ...learning, nextAction: null, deadlines: [] },
+      });
+      expect(empty.learning.nextAction).toBeNull();
+    });
+
+    it('refuses a dashboard without its counts and a page size over 100', () => {
+      const { counts: _counts, ...learning } = captured.dashboard.learning;
+      expect(
+        LearningDashboardSchema.safeParse({
+          ...captured.dashboard,
+          learning,
+        }).success,
+      ).toBe(false);
+      const { query } = learnerEndpoints.dashboardPrograms;
+      expect(query?.safeParse({ page: 0, size: 100 }).success).toBe(true);
+      expect(query?.safeParse({ size: 101 }).success).toBe(false);
     });
   });
 });

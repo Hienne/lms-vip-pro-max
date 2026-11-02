@@ -36,6 +36,7 @@ export interface TabItem {
       ngTabList
       class="tabs"
       [class.tabs--wrap]="wrap()"
+      [class.tabs--compact]="compact()"
       selectionMode="follow"
       [attr.aria-label]="label()"
       [(selectedTab)]="selected"
@@ -62,6 +63,8 @@ export class Tabs {
   readonly selected = model.required<string>();
   /** Wraps the tabs onto more rows instead of scrolling the strip; for a few tabs in a narrow column. */
   readonly wrap = input(false, { transform: booleanAttribute });
+  /** Tighter spacing between and inside the tabs, so five or six fit on one line in a column of about 650px. */
+  readonly compact = input(false, { transform: booleanAttribute });
 }
 
 /** The panel of the tab whose id is the attribute value, `<div uiTabPanel="courses">`; hidden and inert while that tab is not selected. */

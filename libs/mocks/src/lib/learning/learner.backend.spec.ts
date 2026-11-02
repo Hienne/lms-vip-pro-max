@@ -1,10 +1,12 @@
 import {
   authV1Endpoints,
   CourseCardSchema,
+  DashboardGroupSchema,
   EnrollmentDetailSchema,
   LearnerCourseSchema,
   LearnerFacetsSchema,
   learnerEndpoints,
+  LearningDashboardSchema,
   LearningProgressOverviewSchema,
   LearningReminderSchema,
   PageSchema,
@@ -525,6 +527,94 @@ describe('the learner reads of the mock backend', () => {
       expect(counts.mandatory).toBe(
         mine.filter((c) => c.requirement === 'mandatory').length,
       );
+    });
+  });
+
+  describe('the dashboard', () => {
+    const dashboard = (token: string) =>
+      LearningDashboardSchema.parse(
+        call(learnerEndpoints.dashboard, token).body.data,
+      );
+    const programs = (token: string, query: Record<string, string> = {}) =>
+      PageSchema(DashboardGroupSchema).parse(
+        call(learnerEndpoints.dashboardPrograms, token, { query }).body.data,
+      );
+
+    it('counts the caller cycles and gives the completion rate as completed over total', () => {
+      const token = login('hocvien');
+      const mine = cards(token, learnerEndpoints.myCourses);
+      const completed = mine.filter(
+        (c) => c.learningStatus === 'completed',
+      ).length;
+      const { counts } = dashboard(token).learning;
+      expect(counts).toMatchObject({
+        enrollments: mine.length,
+        courses: mine.length,
+        completed,
+        assigned: mine.filter((c) => c.assigned).length,
+        overdue: mine.filter((c) => c.overdue).length,
+      });
+      expect(counts.completionRate).toBe(
+        Math.round((completed / mine.length) * 10_000) / 100,
+      );
+      const mean =
+        mine.reduce((sum, c) => sum + (c.progressPercent ?? 0), 0) /
+        mine.length;
+      expect(counts.averageProgress).toBe(Math.round(mean * 100) / 100);
+    });
+
+    it('resumes the course last opened and lists at most five unfinished deadlines, nearest first', () => {
+      const { learning } = dashboard(login('hocvien'));
+      expect(learning.nextAction?.enrollmentId).toBeGreaterThan(0);
+      const due = learning.deadlines.map((row) => row.dueAt ?? '');
+      expect(learning.deadlines.length).toBeLessThanOrEqual(5);
+      expect(due).toEqual([...due].sort());
+      expect(learning.deadlines.some((row) => row.status === 'completed')).toBe(
+        false,
+      );
+    });
+
+    it('groups the caller courses by programme with the same rules', () => {
+      const token = login('hocvien');
+      const mine = cards(token, learnerEndpoints.myCourses);
+      const { items } = programs(token);
+      expect(items.reduce((sum, g) => sum + g.courses, 0)).toBe(
+        mine.filter((c) => c.programId != null).length,
+      );
+      for (const group of items) {
+        const own = mine.filter((c) => String(c.programId) === group.id);
+        expect(group.name).toBe(own[0].programName);
+        expect(group.completed).toBe(
+          own.filter((c) => c.learningStatus === 'completed').length,
+        );
+        expect(group.completionRate).toBe(
+          Math.round((group.completed / own.length) * 10_000) / 100,
+        );
+      }
+    });
+
+    it('pages the programmes', () => {
+      const token = login('hocvien');
+      const all = programs(token).items;
+      expect(all.length).toBeGreaterThan(1);
+      const second = programs(token, { size: '1', page: '1' });
+      expect(second.items.map((g) => g.id)).toEqual([all[1].id]);
+      expect(second.totalElements).toBe(all.length);
+    });
+
+    it('answers zeroes, no next action and no programme to a caller without courses', () => {
+      const token = login('quantri');
+      expect(cards(token, learnerEndpoints.myCourses)).toEqual([]);
+      const { learning } = dashboard(token);
+      expect(learning.counts).toMatchObject({
+        enrollments: 0,
+        completed: 0,
+        averageProgress: 0,
+        completionRate: 0,
+      });
+      expect(learning.nextAction).toBeNull();
+      expect(learning.deadlines).toEqual([]);
+      expect(programs(token).items).toEqual([]);
     });
   });
 });

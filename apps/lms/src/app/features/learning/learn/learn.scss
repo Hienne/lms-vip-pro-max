@@ -10,7 +10,7 @@
 
     @include ui.bp(lg) {
       display: grid;
-      grid-template-columns: minmax(0, 1fr) 20rem;
+      grid-template-columns: minmax(0, 1fr) 18rem;
       align-items: start;
       gap: ui.space(8);
     }
@@ -26,14 +26,20 @@
     @include ui.stack(3);
   }
 
-  // The score figures and the points figure share one row, and wrap on a narrow screen.
-  &__figures {
-    @include ui.row(6);
-    flex-wrap: wrap;
+  // The continue card and the points figure share a row from lg, and stack below it.
+  &__resume {
+    @include ui.stack(4);
 
-    // Neither figure is drawn: leave no gap.
-    &:not(:has(a)) {
-      display: none;
+    @include ui.bp(lg) {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      align-items: center;
+      gap: ui.space(8);
+
+      // No points figure: the card takes the whole row.
+      &:not(:has(app-points-figure)) {
+        grid-template-columns: minmax(0, 1fr);
+      }
     }
   }
 
@@ -72,6 +78,10 @@
     min-height: 14rem;
   }
 
+  &__journey-placeholder {
+    min-height: 8rem;
+  }
+
   &__due-placeholder {
     min-height: 8rem;
   }
@@ -87,6 +97,64 @@
   &__due li {
     @include ui.row-between(3);
     flex-wrap: wrap;
+  }
+
+  &__due-pct {
+    @include ui.num;
+    @include ui.text(sm);
+  }
+
+  &__journey {
+    @include ui.stack(4);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  &__step {
+    @include ui.stack(1);
+  }
+
+  &__step-head {
+    @include ui.row-between(3);
+    flex-wrap: nowrap;
+  }
+
+  &__step-name {
+    min-width: 0;
+    font-weight: ui.weight(medium);
+  }
+
+  &__step-pct {
+    @include ui.num;
+    @include ui.text(sm);
+  }
+
+  &__tools {
+    @include ui.stack(1);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  &__tool {
+    @include ui.row-between(3);
+    padding: ui.space(2) 0;
+    color: inherit;
+    text-decoration: none;
+
+    &:hover &-title {
+      text-decoration: underline;
+    }
+  }
+
+  &__tool-text {
+    @include ui.stack(1);
+    min-width: 0;
+  }
+
+  &__tool-title {
+    font-weight: ui.weight(medium);
   }
 
   &__due-title {

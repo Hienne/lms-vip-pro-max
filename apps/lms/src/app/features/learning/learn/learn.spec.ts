@@ -85,9 +85,8 @@ describe('Learn', () => {
       );
       const first = el.querySelector('app-continue-card')!;
       expect(
-        first.compareDocumentPosition(
-          el.querySelector('app-progress-counts')!,
-        ) & Node.DOCUMENT_POSITION_FOLLOWING,
+        first.compareDocumentPosition(el.querySelector('app-learn-kpis')!) &
+          Node.DOCUMENT_POSITION_FOLLOWING,
       ).toBeTruthy();
       expect(first.querySelector('a')?.textContent).toContain('Tiếp tục học');
       expect(first.querySelector('a')?.getAttribute('href')).toMatch(
@@ -95,27 +94,25 @@ describe('Learn', () => {
       );
     });
 
-    it('shows the server counts and the unavailable note', () => {
-      expect(el.querySelectorAll('app-progress-counts dt')).toHaveLength(5);
-      expect(text()).toContain('Giờ học sẽ hiển thị khi hệ thống có dữ liệu.');
-      expect(text()).not.toContain('điểm kiểm tra sẽ hiển thị');
-    });
-
-    it('follows the counts with the last and the best score, each a link to the progress page', () => {
-      const figures = Array.from(
-        el.querySelectorAll<HTMLAnchorElement>('app-score-figures a'),
-      );
-      expect(figures.map((a) => a.getAttribute('href'))).toEqual([
-        '/progress',
-        '/progress',
-      ]);
-      expect(
-        figures.map((a) =>
-          Array.from(a.querySelectorAll('dt, dd')).map((node) =>
-            node.textContent?.replace(/\s+/g, ' ').trim(),
-          ),
+    const kpis = () =>
+      Array.from(el.querySelectorAll('app-learn-kpis dl')).map((dl) =>
+        Array.from(dl.querySelectorAll('dt, dd')).map((node) =>
+          node.textContent?.replace(/\s+/g, ' ').trim(),
         ),
-      ).toEqual([
+      );
+
+    it('shows four figures: the assigned courses, the completion rate, the last and the best score', () => {
+      expect(kpis()).toEqual([
+        [
+          'Khóa học được giao',
+          expect.stringMatching(/^\d+$/),
+          expect.stringMatching(/^\d+ bắt buộc · \d+ quá hạn$/),
+        ],
+        [
+          'Tỷ lệ hoàn thành',
+          expect.stringMatching(/^\d+(,\d+)?%$/),
+          expect.stringMatching(/^\d+\/\d+ khóa đã xong$/),
+        ],
         [
           'Điểm kiểm tra gần nhất',
           '66,67%',
@@ -123,12 +120,33 @@ describe('Learn', () => {
         ],
         ['Điểm cao nhất', '90%', 'Đạt 1/5 bài kiểm tra'],
       ]);
+    });
+
+    it('reads the completion rate from the dashboard and computes no percent', () => {
       expect(
-        el
-          .querySelector('app-progress-counts')!
-          .compareDocumentPosition(el.querySelector('app-score-figures')!) &
-          Node.DOCUMENT_POSITION_FOLLOWING,
-      ).toBeTruthy();
+        handle.mock.calls.filter(([e]) => e === learnerEndpoints.dashboard),
+      ).toHaveLength(1);
+      const [, rate, done] = kpis()[1];
+      const [completed, total] = (done ?? '').match(/\d+/g)!.map(Number);
+      expect(rate).toBe(
+        `${new Intl.NumberFormat('vi-VN', { maximumFractionDigits: 2 }).format(
+          Math.round((completed / total) * 10_000) / 100,
+        )}%`,
+      );
+    });
+
+    it('links the figures to the assigned catalogue and the progress page, and leaves the completion rate plain', () => {
+      expect(
+        Array.from(el.querySelectorAll('app-learn-kpis a')).map((a) =>
+          a.getAttribute('href'),
+        ),
+      ).toEqual(['/catalog?scope=assigned', '/progress', '/progress']);
+    });
+
+    it('leaves the counts, the score figures and the unavailable note to the progress page', () => {
+      expect(el.querySelector('app-progress-counts')).toBeNull();
+      expect(el.querySelector('app-score-figures')).toBeNull();
+      expect(text()).not.toContain('Giờ học sẽ hiển thị');
     });
 
     it('puts the best score of the final exam on the course card', () => {
@@ -195,6 +213,178 @@ describe('Learn', () => {
     });
   });
 
+  describe('the course tabs', () => {
+    it('keep to one line: compact spacing, no wrapping row', async () => {
+      await open();
+      const list = el.querySelector('[role="tablist"]')!;
+      expect(list.classList.contains('tabs--compact')).toBe(true);
+      expect(list.classList.contains('tabs--wrap')).toBe(false);
+      expect(el.querySelectorAll('[ngTab]')).toHaveLength(5);
+    });
+  });
+
+  describe('the programme journey', () => {
+    const journey = () =>
+      el.querySelector<HTMLElement>(
+        'section[aria-labelledby="learn-programs"]',
+      );
+    /** Answers the programmes with a fixed page, the rest as the mock does. */
+    function answerPrograms(items: unknown[]) {
+      const backend = TestBed.inject(MockBackend);
+      handle.mockImplementation((e, request) =>
+        e === learnerEndpoints.dashboardPrograms
+          ? {
+              status: 200,
+              body: envelopeOk({
+                items,
+                page: 0,
+                size: 100,
+                totalElements: items.length,
+                totalPages: 1,
+              }),
+            }
+          : MockBackend.prototype.handle.call(backend, e, request),
+      );
+    }
+
+    const group = {
+      id: '1',
+      name: 'Nền tảng nghiệp vụ Core Banking',
+      enrollments: 3,
+      learners: 1,
+      courses: 3,
+      completed: 1,
+      inProgress: 1,
+      notStarted: 1,
+      overdue: 1,
+      averageProgress: 50,
+      completionRate: 33.33,
+    };
+
+    it('lists a row per programme: name, the server percent, a bar and the courses done', async () => {
+      answerPrograms([
+        group,
+        {
+          ...group,
+          id: '2',
+          name: 'Vận hành',
+          courses: 2,
+          completed: 0,
+          averageProgress: 12.5,
+        },
+      ]);
+      await open();
+      const rows = Array.from(journey()!.querySelectorAll('li'));
+      expect(
+        rows.map((row) =>
+          ['.learn__step-name', '.learn__step-pct', '.learn__muted'].map(
+            (selector) => row.querySelector(selector)?.textContent?.trim(),
+          ),
+        ),
+      ).toEqual([
+        ['Nền tảng nghiệp vụ Core Banking', '50%', '1/3 khóa đã xong'],
+        ['Vận hành', '12,5%', '0/2 khóa đã xong'],
+      ]);
+      expect(rows[0].querySelector('ui-progress')).not.toBeNull();
+      expect(
+        el
+          .querySelector('#learn-competency')!
+          .compareDocumentPosition(journey()!) &
+          Node.DOCUMENT_POSITION_FOLLOWING,
+      ).toBeTruthy();
+      expect(
+        handle.mock.calls.some(
+          ([e, r]) =>
+            e === learnerEndpoints.dashboardPrograms &&
+            r.query['size'] === '100',
+        ),
+      ).toBe(true);
+    });
+
+    it('serves the mock learner their programmes', async () => {
+      await open();
+      expect(journey()!.querySelectorAll('li').length).toBeGreaterThan(0);
+    });
+
+    it('is absent when the page is empty', async () => {
+      answerPrograms([]);
+      await open();
+      expect(journey()).toBeNull();
+      expect(text()).not.toContain('Lộ trình theo chương trình');
+      expect(text()).not.toContain('Không tải được');
+    });
+
+    it('fails alone, with a retry', async () => {
+      fail(learnerEndpoints.dashboardPrograms);
+      await open();
+      expect(journey()!.textContent).toContain('Không tải được lộ trình');
+      expect(cards().length).toBeGreaterThan(0);
+      expect(el.querySelectorAll('app-learn-kpis dt')).toHaveLength(4);
+
+      handle.mockRestore();
+      handle = vi.spyOn(TestBed.inject(MockBackend), 'handle');
+      Array.from(journey()!.querySelectorAll('button'))
+        .find((b) => b.textContent?.includes('Thử lại'))!
+        .click();
+      await settle();
+      expect(journey()!.querySelectorAll('li').length).toBeGreaterThan(0);
+    });
+  });
+
+  describe('the side column', () => {
+    beforeEach(() => open());
+
+    it("shows each course's percent after its due date, as the card sends it", () => {
+      const rows = Array.from(el.querySelectorAll('.learn__due li'));
+      expect(rows.length).toBeGreaterThan(0);
+      for (const row of rows) {
+        expect(row.querySelector('.learn__due-pct')?.textContent).toMatch(
+          /^\d+%$/,
+        );
+        expect(
+          row
+            .querySelector('app-due-date')!
+            .compareDocumentPosition(row.querySelector('.learn__due-pct')!) &
+            Node.DOCUMENT_POSITION_FOLLOWING,
+        ).toBeTruthy();
+      }
+    });
+
+    it('lists "Công cụ học nhanh" with two links, below the due list and above the reminders', () => {
+      const tools = el.querySelector('#learn-tools')!;
+      expect(tools.tagName).toBe('H2');
+      expect(tools.textContent).toContain('Công cụ học nhanh');
+      const links = Array.from(tools.closest('section')!.querySelectorAll('a'));
+      expect(
+        links.map((a) => [
+          a.querySelector('.learn__tool-title')?.textContent?.trim(),
+          a.getAttribute('href'),
+        ]),
+      ).toEqual([
+        ['Ghi chú & đánh dấu', '/saved'],
+        ['Chứng nhận', '/certificates'],
+      ]);
+      expect(links[0].textContent).toContain('Mở đúng trang / mốc video');
+      expect(links[1].textContent).toContain(
+        'Chứng nhận các khóa đã hoàn thành',
+      );
+      expect(links.every((a) => a.querySelector('ui-icon'))).toBe(true);
+      const position = (selector: string) =>
+        el.querySelector(selector)!.compareDocumentPosition(tools);
+      expect(
+        position('#learn-due') & Node.DOCUMENT_POSITION_FOLLOWING,
+      ).toBeTruthy();
+      expect(
+        tools.compareDocumentPosition(el.querySelector('#learn-reminders')!) &
+          Node.DOCUMENT_POSITION_FOLLOWING,
+      ).toBeTruthy();
+    });
+
+    it('has no AI assistant and no flashcards link', () => {
+      expect(text()).not.toMatch(/trợ lý AI|flashcard/i);
+    });
+  });
+
   describe('the points figure', () => {
     const figure = () => el.querySelector('app-points-figure');
     const cells = () =>
@@ -212,16 +402,20 @@ describe('Learn', () => {
       );
     }
 
-    it('follows the score figures with the total and the streak, a link to the leaderboard', async () => {
+    it('follows the continue card with the total and the streak, a link to the leaderboard', async () => {
       await open();
       expect(cells()).toEqual(['Điểm thưởng', '80', 'Chuỗi 2 ngày']);
       expect(figure()!.querySelector('a')?.getAttribute('href')).toBe(
         '/leaderboard',
       );
+      const card = el.querySelector('app-continue-card')!;
+      expect(card.parentElement).toBe(figure()!.parentElement);
       expect(
-        el
-          .querySelector('app-score-figures')!
-          .compareDocumentPosition(figure()!) &
+        card.compareDocumentPosition(figure()!) &
+          Node.DOCUMENT_POSITION_FOLLOWING,
+      ).toBeTruthy();
+      expect(
+        figure()!.compareDocumentPosition(el.querySelector('app-learn-kpis')!) &
           Node.DOCUMENT_POSITION_FOLLOWING,
       ).toBeTruthy();
       expect(
@@ -239,9 +433,8 @@ describe('Learn', () => {
       expect(cells()).toEqual(['Điểm thưởng', '0', 'Chuỗi 0 ngày']);
     });
 
-    it('sits beside the score figures even when the courses have no quiz', async () => {
+    it('shows for a learner whose courses have no quiz', async () => {
       await open('giangvien', '000005');
-      expect(el.querySelector('app-score-figures dt')).toBeNull();
       expect(cells()).toEqual(['Điểm thưởng', '40', 'Chuỗi 2 ngày']);
     });
 
@@ -251,23 +444,24 @@ describe('Learn', () => {
       expect(figure()).toBeNull();
       expect(text()).not.toContain('Điểm thưởng');
       expect(text()).not.toContain('Không tải được');
-      expect(el.querySelectorAll('app-progress-counts dt')).toHaveLength(5);
-      expect(el.querySelectorAll('app-score-figures a')).toHaveLength(2);
+      expect(el.querySelectorAll('app-learn-kpis dt')).toHaveLength(4);
       expect(cards().length).toBeGreaterThan(0);
     });
 
-    it('leaves no empty row while the summary has not arrived', async () => {
+    it('does not wait for the summary', async () => {
       fail(learnerEndpoints.progressSummary);
       await open();
-      expect(figure()).toBeNull();
+      expect(cells()).toEqual(['Điểm thưởng', '80', 'Chuỗi 2 ngày']);
     });
   });
 
   describe('a learner who has not taken a quiz yet', () => {
-    it('sees dashes and "Chưa làm bài kiểm tra"', async () => {
+    it('sees dashes and "Chưa làm bài kiểm tra", and no "Đạt" verdict', async () => {
       await open('hocvien.tichhop', '000007');
       const cells = Array.from(
-        el.querySelectorAll('app-score-figures dt, app-score-figures dd'),
+        el.querySelectorAll(
+          'app-learn-kpis a:nth-of-type(n+2) dt, app-learn-kpis a:nth-of-type(n+2) dd',
+        ),
       ).map((node) => node.textContent?.replace(/\s+/g, ' ').trim());
       expect(cells).toEqual([
         'Điểm kiểm tra gần nhất',
@@ -277,16 +471,48 @@ describe('Learn', () => {
         '—',
         'Đạt 0/2 bài kiểm tra',
       ]);
+      expect(el.querySelector('app-learn-kpis')!.textContent).not.toMatch(
+        /Đạt ·/,
+      );
     });
   });
 
   describe('a learner whose courses have no quiz', () => {
-    it('sees no score figures and no error', async () => {
+    it('sees dashes under both score figures and no error', async () => {
       await open('giangvien', '000005');
-      expect(el.querySelector('app-score-figures dt')).toBeNull();
-      expect(text()).not.toContain('Điểm kiểm tra gần nhất');
+      const scores = Array.from(
+        el.querySelectorAll('app-learn-kpis a:nth-of-type(n+2) dd'),
+      ).map((node) => node.textContent?.replace(/\s+/g, ' ').trim());
+      expect(scores).toEqual([
+        '—',
+        'Chưa có bài kiểm tra',
+        '—',
+        'Chưa có bài kiểm tra',
+      ]);
       expect(text()).not.toContain('Không tải được');
-      expect(el.querySelectorAll('app-progress-counts dt')).toHaveLength(5);
+      expect(el.querySelectorAll('app-learn-kpis dt')).toHaveLength(4);
+    });
+  });
+
+  describe('a failed dashboard', () => {
+    it('leaves three figures and gives the completion rate its own retry', async () => {
+      fail(learnerEndpoints.dashboard);
+      await open();
+      const kpi = el.querySelector('app-learn-kpis')!;
+      expect(kpi.querySelectorAll('dt')).toHaveLength(4);
+      expect(kpi.textContent).toContain('Tỷ lệ hoàn thành');
+      expect(kpi.textContent).toContain('Không tải được');
+      expect(kpi.textContent).toContain('Điểm cao nhất');
+      expect(cards().length).toBeGreaterThan(0);
+
+      handle.mockRestore();
+      handle = vi.spyOn(TestBed.inject(MockBackend), 'handle');
+      Array.from(kpi.querySelectorAll('button'))
+        .find((b) => b.textContent?.includes('Thử lại'))!
+        .click();
+      await settle();
+      expect(kpi.textContent).not.toContain('Không tải được');
+      expect(kpi.textContent).toMatch(/Tỷ lệ hoàn thành \d/);
     });
   });
 
@@ -385,7 +611,7 @@ describe('Learn', () => {
       expect(card().textContent).toContain('Không tải được biểu đồ năng lực');
       expect(card().querySelector('app-competency-view')).toBeNull();
       expect(el.querySelector('app-continue-card')).not.toBeNull();
-      expect(el.querySelectorAll('app-progress-counts dt')).toHaveLength(5);
+      expect(el.querySelectorAll('app-learn-kpis dt')).toHaveLength(4);
       expect(cards().length).toBeGreaterThan(0);
 
       handle.mockRestore();
@@ -415,7 +641,7 @@ describe('Learn', () => {
         .find((b) => b.textContent?.includes('Thử lại'))!
         .click();
       await settle();
-      expect(el.querySelectorAll('app-progress-counts dt')).toHaveLength(5);
+      expect(el.querySelectorAll('app-learn-kpis dt')).toHaveLength(4);
     });
 
     it('shows the due list error without touching the rest', async () => {

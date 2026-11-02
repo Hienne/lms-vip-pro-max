@@ -34,6 +34,8 @@ export const LEARN_TABS: readonly LearnTab[] = [
 export const GRID_SIZE = 6;
 export const DUE_SHOWN = 5;
 export const REMINDERS_SHOWN = 3;
+/** The most the server pages: a learner has a handful of programmes, so one page is all of them. */
+export const PROGRAMS_SHOWN = 100;
 
 const TAB_QUERY: Record<LearnTab, MyCoursesQuery> = {
   in_progress: {
@@ -71,6 +73,8 @@ export interface DueRow {
   readonly id: string;
   readonly title: string;
   readonly dueAt: string;
+  /** The card's `progressPercent`, the server's. */
+  readonly pct: number;
   readonly link: string;
 }
 
@@ -100,6 +104,21 @@ export class LearnStore {
 
   private readonly summaryData = serverData(() =>
     this.client.call(learnerEndpoints.progressSummary),
+  );
+
+  /**
+   * The dashboard is read only for the server's `completionRate`; the counts and scores come from
+   * the summary and the due list from `myCourses`.
+   */
+  private readonly dashboardData = serverData(() =>
+    this.client.call(learnerEndpoints.dashboard),
+  );
+
+  /** The programmes the caller has courses in, with the server's progress for each. */
+  private readonly programsData = serverData(() =>
+    this.client.call(learnerEndpoints.dashboardPrograms, {
+      query: { size: PROGRAMS_SHOWN },
+    }),
   );
 
   /** The caller's learning points; the page shows one figure from them and hides it when the read fails. */
@@ -163,6 +182,12 @@ export class LearnStore {
 
   readonly points$ = this.pointsData.value;
 
+  /** The server's counts with the completion rate; `undefined` until read and after an error. */
+  readonly dashboardCounts$ = computed(
+    () => this.dashboardData.value()?.learning.counts,
+  );
+  readonly dashboardError$ = this.dashboardData.error;
+
   /** Every tab shows the summary's count of the courses it lists. */
   readonly tabCounts$ = computed((): Partial<Record<LearnTab, number>> => {
     const counts = this.summaryData.value()?.counts;
@@ -221,6 +246,10 @@ export class LearnStore {
   readonly competencyError$ = this.competencyData.error;
   readonly isCompetencyLoading$ = this.competencyData.isLoading;
 
+  readonly programs$ = computed(() => this.programsData.value()?.items ?? []);
+  readonly programsError$ = this.programsData.error;
+  readonly isProgramsLoading$ = this.programsData.isLoading;
+
   readonly dueError$ = this.dueData.error;
   readonly isDueLoading$ = this.dueData.isLoading;
 
@@ -236,6 +265,7 @@ export class LearnStore {
         id: String(card.courseId),
         title: card.title || card.code,
         dueAt: card.dueAt as string,
+        pct: card.progressPercent ?? 0,
         link: `/course/${card.courseId}`,
       })),
   );
@@ -273,6 +303,10 @@ export class LearnStore {
     this.summaryData.reload();
   }
 
+  retryDashboard(): void {
+    this.dashboardData.reload();
+  }
+
   retryResume(): void {
     this.resumeData.reload();
   }
@@ -283,6 +317,10 @@ export class LearnStore {
 
   retryCompetency(): void {
     this.competencyData.reload();
+  }
+
+  retryPrograms(): void {
+    this.programsData.reload();
   }
 
   retryDue(): void {

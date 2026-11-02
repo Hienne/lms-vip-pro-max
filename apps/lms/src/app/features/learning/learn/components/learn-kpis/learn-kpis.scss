@@ -1,0 +1,47 @@
+@use 'ui';
+
+.learn-kpis {
+  @include ui.grid(
+    (
+      sm: 2,
+      lg: 4,
+    )
+  );
+
+  &__link {
+    color: inherit;
+    text-decoration: none;
+
+    &:hover .learn-kpis__value {
+      text-decoration: underline;
+    }
+  }
+
+  &__item {
+    @include ui.stack(1);
+    margin: 0;
+
+    dt {
+      @include ui.text(sm, muted);
+    }
+
+    dd {
+      margin: 0;
+    }
+  }
+
+  &__value {
+    @include ui.num;
+    @include ui.text(xl);
+    font-weight: ui.weight(semibold);
+  }
+
+  &__detail {
+    @include ui.text(sm, muted);
+  }
+
+  &__fail {
+    color: ui.color(danger);
+    font-weight: ui.weight(medium);
+  }
+}

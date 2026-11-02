@@ -23,6 +23,19 @@ class Host {
 
 @Component({
   imports: [Tabs],
+  template: `<ui-tabs
+    label="Mục"
+    compact
+    [tabs]="items"
+    selected="overview"
+  />`,
+})
+class CompactHost {
+  readonly items = ITEMS;
+}
+
+@Component({
+  imports: [Tabs],
   template: `<ui-tabs label="Mục" wrap [tabs]="items" selected="overview" />`,
 })
 class WrapHost {
@@ -89,6 +102,24 @@ describe('Tabs', () => {
       wrapped.nativeElement
         .querySelector('[role="tablist"]')
         .classList.contains('tabs--wrap'),
+    ).toBe(true);
+  });
+
+  it('tightens the spacing only when it is asked to be compact', async () => {
+    const { root } = await render();
+    expect(
+      root
+        .querySelector('[role="tablist"]')!
+        .classList.contains('tabs--compact'),
+    ).toBe(false);
+
+    const compact = TestBed.createComponent(CompactHost);
+    compact.detectChanges();
+    await compact.whenStable();
+    expect(
+      compact.nativeElement
+        .querySelector('[role="tablist"]')
+        .classList.contains('tabs--compact'),
     ).toBe(true);
   });
 
