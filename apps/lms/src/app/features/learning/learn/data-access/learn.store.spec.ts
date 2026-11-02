@@ -241,4 +241,28 @@ describe('LearnStore', () => {
     expect(store.courses$().length).toBeGreaterThan(0);
     expect(store.reminders$()).toHaveLength(3);
   });
+
+  it('reads the dashboard once, for the completion rate the server computed', async () => {
+    const store = await open();
+    expect(queries(learnerEndpoints.dashboard)).toHaveLength(1);
+    const counts = store.dashboardCounts$();
+    expect(counts?.courses).toBe(store.summary$()?.counts.total);
+    expect(counts?.completed).toBe(store.summary$()?.counts.completed);
+    expect(store.dashboardError$()).toBeUndefined();
+  });
+
+  it('keeps the summary when the dashboard fails, and reads it again on retry', async () => {
+    fail(learnerEndpoints.dashboard);
+    const store = await open();
+    expect(store.dashboardError$()).toBeTruthy();
+    expect(store.dashboardCounts$()).toBeUndefined();
+    expect(store.summary$()).toBeDefined();
+    expect(store.summaryError$()).toBeUndefined();
+
+    handle.mockImplementation((e, request) => original(e, request));
+    store.retryDashboard();
+    await settle();
+    expect(store.dashboardError$()).toBeUndefined();
+    expect(store.dashboardCounts$()?.completionRate).toBeGreaterThanOrEqual(0);
+  });
 });

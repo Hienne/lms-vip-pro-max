@@ -26,14 +26,20 @@
     @include ui.stack(3);
   }
 
-  // The score figures and the points figure share one row, and wrap on a narrow screen.
-  &__figures {
-    @include ui.row(6);
-    flex-wrap: wrap;
+  // The continue card and the points figure share a row from lg, and stack below it.
+  &__resume {
+    @include ui.stack(4);
 
-    // Neither figure is drawn: leave no gap.
-    &:not(:has(a)) {
-      display: none;
+    @include ui.bp(lg) {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      align-items: center;
+      gap: ui.space(8);
+
+      // No points figure: the card takes the whole row.
+      &:not(:has(app-points-figure)) {
+        grid-template-columns: minmax(0, 1fr);
+      }
     }
   }
 

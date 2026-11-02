@@ -2,17 +2,21 @@
 
 <div class="learn__layout">
   <div class="learn__main">
-    @if (store.resumeError$(); as error) {
-    <ui-error-state
-      title="Không tải được khóa học đang học"
-      [message]="error.message"
-      (retry)="store.retryResume()"
-    />
-    } @else if (store.isResumeLoading$()) {
-    <div uiSkeleton variant="block" class="learn__resume-placeholder"></div>
-    } @else {
-    <app-continue-card [resume]="store.resume$()" />
-    }
+    <div class="learn__resume">
+      @if (store.resumeError$(); as error) {
+      <ui-error-state
+        title="Không tải được khóa học đang học"
+        [message]="error.message"
+        (retry)="store.retryResume()"
+      />
+      } @else if (store.isResumeLoading$()) {
+      <div uiSkeleton variant="block" class="learn__resume-placeholder"></div>
+      } @else {
+      <app-continue-card [resume]="store.resume$()" />
+      } @if (store.points$(); as points) {
+      <app-points-figure [points]="points" />
+      }
+    </div>
 
     <section class="learn__section" aria-label="Số liệu học tập">
       @if (store.summaryError$(); as error) {
@@ -22,14 +26,12 @@
         (retry)="store.retrySummary()"
       />
       } @else if (store.summary$(); as summary) {
-      <app-progress-counts [counts]="summary.counts" />
-      <div class="learn__figures">
-        <app-score-figures [summary]="summary" />
-        @if (store.points$(); as points) {
-        <app-points-figure [points]="points" />
-        }
-      </div>
-      <app-unavailable-note [summary]="summary" />
+      <app-learn-kpis
+        [summary]="summary"
+        [dashboard]="store.dashboardCounts$()"
+        [dashboardFailed]="!!store.dashboardError$()"
+        (retryDashboard)="store.retryDashboard()"
+      />
       } @else {
       <div uiSkeleton variant="block" class="learn__counts-placeholder"></div>
       }

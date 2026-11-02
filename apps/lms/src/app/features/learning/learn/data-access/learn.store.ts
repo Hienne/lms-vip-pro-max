@@ -102,6 +102,14 @@ export class LearnStore {
     this.client.call(learnerEndpoints.progressSummary),
   );
 
+  /**
+   * The dashboard is read only for the server's `completionRate`; the counts and scores come from
+   * the summary and the due list from `myCourses`.
+   */
+  private readonly dashboardData = serverData(() =>
+    this.client.call(learnerEndpoints.dashboard),
+  );
+
   /** The caller's learning points; the page shows one figure from them and hides it when the read fails. */
   private readonly pointsData = serverData(() =>
     this.client.call(learnerEndpoints.myPoints),
@@ -162,6 +170,12 @@ export class LearnStore {
   readonly isSummaryLoading$ = this.summaryData.isLoading;
 
   readonly points$ = this.pointsData.value;
+
+  /** The server's counts with the completion rate; `undefined` until read and after an error. */
+  readonly dashboardCounts$ = computed(
+    () => this.dashboardData.value()?.learning.counts,
+  );
+  readonly dashboardError$ = this.dashboardData.error;
 
   /** Every tab shows the summary's count of the courses it lists. */
   readonly tabCounts$ = computed((): Partial<Record<LearnTab, number>> => {
@@ -271,6 +285,10 @@ export class LearnStore {
 
   retrySummary(): void {
     this.summaryData.reload();
+  }
+
+  retryDashboard(): void {
+    this.dashboardData.reload();
   }
 
   retryResume(): void {

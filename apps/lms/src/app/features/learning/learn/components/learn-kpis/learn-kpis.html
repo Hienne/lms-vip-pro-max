@@ -1,0 +1,53 @@
+<div class="learn-kpis">
+  <ng-template #figure let-kpi>
+    <dl class="learn-kpis__item">
+      <dt>{{ kpi.label }}</dt>
+      <dd class="learn-kpis__value">
+        @if (kpi.value === null) { — } @else if (kpi.unit === 'percent') { {{
+        kpi.value | fmtPct: 2 }} } @else { {{ kpi.value }} }
+      </dd>
+      <dd class="learn-kpis__detail">
+        @if (kpi.verdict) {
+        <span [class.learn-kpis__fail]="kpi.failed">{{ kpi.verdict }}</span>
+        · } {{ kpi.detail }}
+      </dd>
+    </dl>
+  </ng-template>
+
+  <a
+    class="learn-kpis__link"
+    routerLink="/catalog"
+    [queryParams]="assigned().query"
+  >
+    <ng-container
+      *ngTemplateOutlet="figure; context: { $implicit: assigned() }"
+    />
+  </a>
+
+  @if (dashboardFailed()) {
+  <dl class="learn-kpis__item">
+    <dt>{{ completion().label }}</dt>
+    <dd class="learn-kpis__detail">Không tải được</dd>
+    <dd>
+      <button
+        uiButton
+        variant="ghost"
+        size="sm"
+        (click)="retryDashboard.emit()"
+      >
+        Thử lại
+      </button>
+    </dd>
+  </dl>
+  } @else {
+  <div class="learn-kpis__plain" [attr.aria-busy]="!dashboard()">
+    <ng-container
+      *ngTemplateOutlet="figure; context: { $implicit: completion() }"
+    />
+  </div>
+  } @for (kpi of scores(); track kpi.label) {
+  <a class="learn-kpis__link" [routerLink]="kpi.href">
+    <ng-container *ngTemplateOutlet="figure; context: { $implicit: kpi }" />
+  </a>
+  }
+</div>
