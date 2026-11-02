@@ -20,14 +20,25 @@ The previous `certificates` checklist, with its success criteria and how each wa
 
 ## Phase 0: Local environment
 
-- [ ] **A1: Reporting tables on the local DB** (main session)
+- [x] **A1: Reporting tables on the local DB** (main session)
   - Run `docs/sql/learning_hub_reporting.sql` once on the local DB with `-v ON_ERROR_STOP=1`.
   - Acceptance: as `hocvien` and `hocvien.tichhop`, `/me/learning/dashboard`, `/me/learning/dashboard/competencies`
     and `/me/competency` answer `CORE-SUCCESS`; the backend log has no `does not exist`.
 
 ### Checkpoint A
 
-- [ ] The responses are recorded here. The Sonnet child starts Phase 1.
+- [x] The responses are recorded here (2026-11-02). The Sonnet child starts Phase 1.
+  - The script ran on `localhost/core_academy` from `origin/main` (`5563e76`): 5 rows in `quiz_user_results`, 21 in
+    `attempt_competency_scores`, then `COMMIT`.
+  - **The dashboard's shape:** `data = {dataAsOf, timeZone, learning: {counts, nextAction, deadlines}}`. The counts
+    are under `learning`, so the completion KPI reads `learning.counts.completionRate`.
+  - `hocvien`: `learning.counts` = 7 courses, 5 assigned, 5 mandatory, 2 completed, 2 in progress, 3 not started,
+    2 overdue, `averageProgress` 44.43, `completionRate` 28.57 (2/7). `nextAction` is course 1, lesson 3, block 5.
+    `/dashboard/competencies` has 2 rows; `/me/competency` has 3 (14.29, 11.11, 33.33).
+  - `hocvien.tichhop`: 5 courses, 4 assigned, 2 completed, `completionRate` 40, `averageProgress` 50.
+    `/me/competency` has 3 rows (44.44, 33.33, 30).
+  - `/dashboard/programs` as `hocvien`: 4 programmes (ids 1, 2, 3, 5), e.g. id 1 "Nền tảng nghiệp vụ Core Banking",
+    3 courses, 1 completed, `averageProgress` 50, `completionRate` 33.33.
 
 ## Phase 1: App
 
