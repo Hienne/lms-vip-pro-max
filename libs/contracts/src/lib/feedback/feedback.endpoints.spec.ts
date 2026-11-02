@@ -7,6 +7,7 @@ import {
   SendFeedbackCommandSchema,
 } from './feedback.schema';
 import { CourseCardSchema } from '../course/course.schema';
+import { EnvelopeSchema } from '../http/envelope';
 
 describe('feedbackEndpoints', () => {
   it.each([
@@ -95,6 +96,22 @@ describe('feedbackEndpoints', () => {
           anchor: { type: 'pdf', blockId: 32 },
         }).success,
       ).toBe(false);
+    });
+  });
+
+  it('parses the captured course card with its rating', () => {
+    expect(CourseCardSchema.parse(captured.courseCard).rating).toEqual({
+      average: 4,
+      count: 2,
+    });
+  });
+
+  it('reads the captured refusal of 0 stars as an error envelope on the stars field', () => {
+    const envelope = EnvelopeSchema.parse(captured.ratingRefusal);
+    expect(envelope).toMatchObject({
+      status: 'ERROR',
+      messageCode: 'CORE-VALIDATION_FAILED',
+      message: 'Số sao phải từ 1 đến 5.',
     });
   });
 
