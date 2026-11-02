@@ -1,7 +1,12 @@
 import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
-import { learnerEndpoints, learnerQuizEndpoints } from '@lms/contracts';
+import {
+  certificateEndpoints,
+  learnerEndpoints,
+  learnerQuizEndpoints,
+  type Certificate,
+} from '@lms/contracts';
 import { backendRefusal } from '@lms/mocks';
 import type { MockInstance } from 'vitest';
 import { createAppRoutes } from '../../../app.routes';
@@ -193,6 +198,44 @@ describe('Course', () => {
       expect(el.querySelector('.course__final')?.textContent).toContain(
         'Thi cuối khóa',
       );
+    });
+  });
+
+  describe('the certificate of a finished course', () => {
+    /** The cycle `hocvien` has completed, read from the mock the way the list screen does. */
+    function finished(): Certificate {
+      const token = signInToMockBackend('hocvien');
+      const reply = TestBed.inject(MockBackend).handle(
+        certificateEndpoints.certificates,
+        { token, params: {}, query: {}, body: undefined },
+      );
+      return (reply?.body as { data: { items: Certificate[] } }).data.items[0];
+    }
+
+    it('links to it as the one primary action, in place of resuming', async () => {
+      const done = finished();
+      await open(done.courseId);
+      const link = action('Xem chứng nhận') as HTMLAnchorElement;
+      expect(link).toBeTruthy();
+      expect(link.getAttribute('href')).toBe(`/certificate/${done.id}`);
+      expect(
+        Array.from(el.querySelectorAll('.btn--primary')).map((b) =>
+          b.textContent?.trim(),
+        ),
+      ).toEqual(['Xem chứng nhận']);
+      expect(action('Tiếp tục học')).toBeUndefined();
+      expect(action('Bắt đầu học')).toBeUndefined();
+    });
+
+    it('is offered nowhere on a course still in progress', async () => {
+      await open(1);
+      expect(text()).not.toContain('Xem chứng nhận');
+      expect(action('Tiếp tục học')).toBeTruthy();
+    });
+
+    it('is offered nowhere on a course the learner has not joined', async () => {
+      await open(7);
+      expect(text()).not.toContain('Xem chứng nhận');
     });
   });
 

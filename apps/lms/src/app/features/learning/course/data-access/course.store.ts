@@ -196,6 +196,15 @@ export class CourseStore {
     }
   });
 
+  /**
+   * Where the finished course's certificate opens: the server puts the id on the card only for a
+   * completed cycle, so a course in progress has none.
+   */
+  readonly certificateLink$ = computed((): string | null => {
+    const id = this.card$()?.certificateId;
+    return id == null ? null : `/certificate/${id}`;
+  });
+
   readonly outline$ = computed((): readonly OutlineChapter[] => {
     const content = this.content$();
     const courseId = this.courseId$();
