@@ -40,6 +40,7 @@ import { LearnerLeaderboard } from './learner-leaderboard';
 import { LearnerFeedback } from './learner-feedback';
 import { LearnerNotes } from './learner-notes';
 import { LearnerReminders } from './learner-reminders';
+import { dashboardOf, programGroupsOf } from './learner-dashboard';
 import {
   LearnerEnrollments,
   type EnrollmentRecord,
@@ -254,6 +255,8 @@ export class LearningBackend {
       [learnerEndpoints.course, (r) => this.learnerCourse(r)],
       [learnerEndpoints.facets, (r) => this.facets(r)],
       [learnerEndpoints.progressSummary, (r) => this.progressSummary(r)],
+      [learnerEndpoints.dashboard, (r) => this.dashboard(r)],
+      [learnerEndpoints.dashboardPrograms, (r) => this.dashboardPrograms(r)],
       [learnerEndpoints.exportProgress, (r) => this.exportProgress(r)],
       [
         learnerEndpoints.reminders,
@@ -1068,6 +1071,25 @@ export class LearningBackend {
         unavailable,
       competency: unavailable,
     });
+  }
+
+  /** The caller's own cycles, unfiltered: what the dashboard reads. */
+  private ownCards(request: FakeRequest): CourseCard[] {
+    return this.learnerCards({ ...request, query: { sort: 'id,asc' } }, true);
+  }
+
+  private dashboard(request: FakeRequest): FakeReply {
+    return ok(
+      dashboardOf(
+        this.ownCards(request),
+        this.directory.callerId(request),
+        now(),
+      ),
+    );
+  }
+
+  private dashboardPrograms(request: FakeRequest): FakeReply {
+    return ok(paged(programGroupsOf(this.ownCards(request)), request.query));
   }
 
   /** Mirrors the backend's CSV: UTF-8 BOM, quoted cells, a leading `'` before a formula. */
