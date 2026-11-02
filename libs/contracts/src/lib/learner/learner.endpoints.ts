@@ -4,11 +4,14 @@ import { PageSchema } from '../http/page';
 import { CourseCardSchema } from '../course/course.schema';
 import {
   CourseEnrollmentSchema,
+  DashboardGroupSchema,
+  DashboardProgramsQuerySchema,
   EnrollmentDetailSchema,
   LeaderboardPageSchema,
   LeaderboardQuerySchema,
   LearnerCourseSchema,
   LearnerFacetsSchema,
+  LearningDashboardSchema,
   LearningProgressOverviewSchema,
   LearningReminderSchema,
   MyCoursesQuerySchema,
@@ -60,6 +63,23 @@ export const learnerEndpoints = {
     method: 'get',
     path: '/api/v1/me/learning/progress/summary',
     response: LearningProgressOverviewSchema,
+  }),
+  /**
+   * The caller's dashboard: counts with the server's `completionRate` and `averageProgress`, where to
+   * resume and the five nearest deadlines. It reads the reporting tables, so a backend that lacks
+   * them answers `CORE-INTERNAL_ERROR`.
+   */
+  dashboard: defineEndpoint({
+    method: 'get',
+    path: '/api/v1/me/learning/dashboard',
+    response: LearningDashboardSchema,
+  }),
+  /** The same counts per programme the caller has courses in: the programme journey (`size` at most 100). */
+  dashboardPrograms: defineEndpoint({
+    method: 'get',
+    path: '/api/v1/me/learning/dashboard/programs',
+    query: DashboardProgramsQuerySchema,
+    response: PageSchema(DashboardGroupSchema),
   }),
   /**
    * A CSV (UTF-8 with BOM) of the rows `myCourses` lists for the same filters and sort, up to
