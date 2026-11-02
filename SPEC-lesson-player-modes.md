@@ -1,6 +1,6 @@
 # Spec: `lesson-player-modes`
 
-Map: [SPEC.md](SPEC.md). Status: **draft, waiting for approval.** Depends on `local-stack`, which provides a READY
+Map: [SPEC.md](SPEC.md). Status: **approved 2026-11-03, amended by `tasks/plan.md`.** Depends on `local-stack`, which provides a READY
 video block. It can be built at any point after that.
 
 ## Objective
