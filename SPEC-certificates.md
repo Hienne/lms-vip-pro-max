@@ -1,6 +1,6 @@
 # Spec: `certificates`
 
-Map: [SPEC.md](SPEC.md). Status: **approved 2026-11-02, amended by the plan (see "Amendments").** Depends on `learner-scores` (the score on the
+Map: [SPEC.md](SPEC.md). Status: **built 2026-11-02** (amended by the plan, see "Amendments"; results in `tasks/todo.md` Checkpoint B). Depends on `learner-scores` (the score on the
 certificate) and, through it, `learner-quiz`.
 
 ## Objective

@@ -102,7 +102,7 @@ The previous `lesson-feedback` checklist, with its success criteria and how each
 
 ## Phase 2: App
 
-- [ ] **F1: Contracts, captured responses, mock, route table**
+- [x] **F1: Contracts, captured responses, mock, route table**
   - Acceptance:
     - **Contracts:**
       - `certificates` (C1, paged) and `certificate` (C2, numeric `enrollmentId`) are under
@@ -123,7 +123,7 @@ The previous `lesson-feedback` checklist, with its success criteria and how each
   - Verify: the contracts, mocks and route-table specs are green.
   - Size: M. Depends on: Checkpoint A.
 
-- [ ] **F2: The list "Chứng nhận hoàn thành"**
+- [x] **F2: The list "Chứng nhận hoàn thành"**
   - Acceptance:
     - A `certificates` component with its own store under `data-access`. The store reads one page of 100.
     - **Page header:** "Chứng nhận hoàn thành", with the mockup description.
@@ -138,7 +138,7 @@ The previous `lesson-feedback` checklist, with its success criteria and how each
   - Verify: specs for the rows (with and without score and title), the empty state, and the error with retry.
   - Size: S. Depends on: F1.
 
-- [ ] **F3: The certificate screen and print**
+- [x] **F3: The certificate screen and print**
   - Acceptance:
     - A `certificate` component with its own store.
     - **Page header and breadcrumb:**
@@ -173,7 +173,7 @@ The previous `lesson-feedback` checklist, with its success criteria and how each
     - the styles spec for the print theme.
   - Size: M. Depends on: F1.
 
-- [ ] **F4: "Xem chứng nhận" on the course page**
+- [x] **F4: "Xem chứng nhận" on the course page**
   - Acceptance:
     - When `card.certificateId` is set, the header action is the primary link "Xem chứng nhận" →
       `/certificate/{certificateId}`.
@@ -181,20 +181,48 @@ The previous `lesson-feedback` checklist, with its success criteria and how each
   - Verify: the course spec covers both cases.
   - Size: XS. Depends on: F1.
 
-- [ ] **F5: End-to-end check against the spec**
+- [x] **F5: End-to-end check against the spec**
   - Acceptance: the success criteria below are written here, each with how it was checked.
   - Verify: `npm run check`.
   - Size: S. Depends on: F2, F3, F4.
 
 ### Checkpoint B
 
-- [ ] Success criteria recorded:
+- [x] Success criteria recorded:
   1. `hocvien`'s completed cycles (FE-DEMO-C4 and QZ-E2E-01) are listed, open, and show the server's name, course,
      date, score and code.
+     - Checked by: the `certificates` and `certificate` specs against the in-app mock (the list rows and every field of
+       the document), the contract specs that parse the captured real responses, and the backend ITs
+       (`LearningCertificatesIT`).
+     - Live (main session, :8019 on the certificates branch): `/certificates` as `hocvien` lists "Kiểm thử bài kiểm
+       tra E2E" (QZ-E2E-01 · Hoàn thành 31/10/2026 · Điểm 100%) then "Văn hóa và quy chế làm việc" (FE-DEMO-C4, no
+       score), each with its code. `/certificate/17` shows "Học viên tiền gửi Demo", the course, "với kết quả bài kiểm
+       tra 100%", the date and `CBA-QZ-E2E-01-000004-1`.
   2. "Xem chứng nhận" appears on the FE-DEMO-C4 course page and not on FE-DEMO-C1's.
+     - Checked by: the `course` spec (the finished course shows it as the one primary action, a course in progress and
+       one not joined show nothing) and `CourseCardCertificateIT` on the backend.
+     - Live: `/course/4` and `/course/8` have the one primary "Xem chứng nhận" (→ `/certificate/12`, `/17`);
+       `/course/1` (in progress) has "Tiếp tục học" only.
   3. The print preview (by the user, in dark mode) has no shell chrome and fits one A4 landscape page.
+     - Checked by: the built CSS (`@page { size: A4 landscape; margin: 12mm }` survives emulated encapsulation; the
+       print block of the `ui` theme and the shell's print rules are in the bundle) and the styles spec for the print
+       theme.
+     - Live: the running page holds `@page { size: a4 landscape; margin: 12mm }`, the print `:root` block (text
+       `#1a1d1c` on `#ffffff`) and the hides for the shell, the dev toolbar and `ui-page-header`.
+     - The user's print preview of `/certificate/17` in dark mode (2026-11-02): fine.
   4. `mvn clean test` and `npm run check` green. The visual-design checklist passes for both screens.
-- [ ] Browser check by the main session at 1280 px light and 375 px dark. It covers `hocvien.tichhop`'s list
-      and `/certificate/3`.
-- [ ] Spec status set to built.
+     - Checked by: `npm run check` green at `1131d03`; `mvn -o clean test` in the certificates worktree at `dc06549`
+       (444 tests, 0 failures, 0 errors, 42 skipped). The
+       checklist is read against both screens (no eyebrow, tile, hero, gradient, watermark, badge, uppercase or
+       literal colour; one primary action per screen).
+- [x] Browser check by the main session at 1280 px light and 375 px dark:
+  - `hocvien.tichhop` sees its own two (FE-DEMO-C2 with 100 %, FE-DEMO-C4) and gets "Không tìm thấy chứng nhận" on
+    `hocvien`'s 12;
+  - `/certificate/3` (in progress) and `/certificate/abc` (no call) show the not-found state;
+  - 375 px dark: both screens readable, no horizontal scroll.
+  - Fixed after the check in `1131d03`: the two routes declare `requires` again (as `saved` does), the document takes
+    `ui.radius(card)`, and the name `semibold` (700 is for h1).
+  - Found, out of scope: no sidebar entry leads to `/certificates`, `/saved` or `/leaderboard`; proposed as a task of
+    its own.
+- [x] Spec status set to built.
 - [ ] Review with the user, then plan `lesson-player-modes`.
