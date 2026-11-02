@@ -26,7 +26,7 @@ The previous `lesson-feedback` checklist, with its success criteria and how each
 
 ## Phase 1: Backend
 
-- [ ] **B1: Certificates C1 and C2**
+- [x] **B1: Certificates C1 and C2**
   - Acceptance:
     - `GET /api/v1/me/learning/certificates?page&size`:
       - returns `PageResponse<CertificateView>` with the caller's cycles that have `status = 'completed'` and
@@ -55,7 +55,7 @@ The previous `lesson-feedback` checklist, with its success criteria and how each
     - non-learners are refused.
   - Size: M. Depends on: none.
 
-- [ ] **B2: `CourseCard.certificateId` (C3)**
+- [x] **B2: `CourseCard.certificateId` (C3)**
   - Acceptance:
     - A `@JsonProperty` accessor `certificateId()` on `CourseCard` returns `enrollmentId` when `learningStatus` is
       `completed`, and null otherwise.
@@ -65,7 +65,7 @@ The previous `lesson-feedback` checklist, with its success criteria and how each
     - for a completed cycle (the enrollment id), an in-progress one (null) and a course with no enrollment (null).
   - Size: XS. Depends on: none.
 
-- [ ] **B3: Docs**
+- [x] **B3: Docs**
   - Acceptance:
     - a "Chứng nhận" section in `docs/api/LEARNING.md` with C1 and C2, the rule, the code format, the errors and an
       example;
@@ -75,18 +75,29 @@ The previous `lesson-feedback` checklist, with its success criteria and how each
 
 ### Checkpoint A
 
-- [ ] `mvn clean test` green in the certificates worktree.
-- [ ] The main session restarts :8019 from `~/my-projects/corebanking-academy-certificates`, then checks with
-      `curl`:
-  - C1 as `hocvien`: 17 then 12, with every field;
-  - C2 on 12;
-  - `NOT_FOUND`:
-    - as `hocvien.tichhop` on 12;
-    - as `hocvien` on 3 (in progress);
-    - on 999999;
-  - an admin gets `ACCESS_DENIED`;
-  - `/courses/4` as `hocvien` has `certificateId: 12`, and `/courses/1` has null.
-- [ ] The responses are captured (no tokens) for F1.
+- [x] `mvn -o clean test` green in the certificates worktree: 444 tests, 0 failures, 0 errors, 42 skipped
+      (`CommunityApiIT`, as on `main`). Commits `570a1be` (B1), `4e0e5ea` (B2), `26c2d77` (B3).
+- [x] The main session restarted :8019 from `~/my-projects/corebanking-academy-certificates` and checked with `curl`
+      (2026-11-02):
+  - **C1:**
+    - as `hocvien`: 17 (QZ-E2E-01, score 100) then 12 (FE-DEMO-C4, score null), with every field;
+    - name "Học viên tiền gửi Demo", codes `CBA-QZ-E2E-01-000004-1` and `CBA-FE-DEMO-C4-000004-1`;
+    - `page=1&size=1` gives 12 with 2 pages; a page past the end is empty;
+    - `size=101` and `size=0` answer `CORE-VALIDATION_FAILED`;
+    - `hocvien.tichhop` gets its own 4 and 10 only.
+  - **C2:**
+    - 12 returns every field, and the score of 17 equals the course card's `bestScorePercent` (100);
+    - `LEARNING-NOT_FOUND` for `hocvien.tichhop` on 12, for `hocvien` on 3 (in progress) and on 999999;
+    - id 0 and `abc` answer `CORE-VALIDATION_FAILED`.
+  - **Access:** `quantri` (ADMIN) and `baocao` (REPORT_VIEWER) get `CORE-ACCESS_DENIED`.
+  - **C3:**
+    - as `hocvien`, `/courses/4` has `certificateId: 12`, `/courses/8` 17, and `/courses/1` (in progress) null;
+    - `/courses` and `/catalog` carry the same two ids and null elsewhere;
+    - `hocvien.tichhop`'s `/courses/4` has 10.
+- [x] The responses are captured (no tokens) for F1, in the main session's scratchpad `certificate-captures/`:
+      the list, one certificate, the course card, not-found and a bad id.
+- **Open (non-blocking):** the new Javadoc and comments in the backend are in English. `DEVELOPMENT_GUIDELINES.md`
+  ("Comment, Javadoc và mô tả Swagger") asks for Vietnamese. To fix in the backend before the PR.
 - [ ] Review with the user before Phase 2.
 
 ## Phase 2: App
