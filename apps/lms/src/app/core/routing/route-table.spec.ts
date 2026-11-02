@@ -238,10 +238,16 @@ describe('route table', () => {
 
   it('keeps personal mock-only integrations closed in a backend-only build even for a learner', async () => {
     signInAs('learner');
-    for (const url of ['/saved', '/certificates', '/certificate/1']) {
+    for (const url of ['/certificates', '/certificate/1']) {
       await harness.navigateByUrl(url);
       expect(router.url).toBe('/403');
     }
+  });
+
+  it('opens the saved page for a learner in a backend-only build, now that the backend serves it', async () => {
+    signInAs('learner');
+    await harness.navigateByUrl('/saved');
+    expect(router.url).toBe('/saved');
   });
 
   it('sends a user with a temporary password to the password change from every other screen', async () => {
