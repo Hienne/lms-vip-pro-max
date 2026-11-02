@@ -1,6 +1,6 @@
 # Spec: `lesson-feedback`
 
-Map: [SPEC.md](SPEC.md). Status: **approved 2026-11-02, amended by the plan (see "Amendments").** Depends on `catalog-discovery`: D3 / D4 carry
+Map: [SPEC.md](SPEC.md). Status: **built 2026-11-02** (amended by the plan, see "Amendments"; results in `tasks/todo.md` Checkpoint B). Depends on `catalog-discovery`: D3 / D4 carry
 the course rating.
 
 ## Amendments

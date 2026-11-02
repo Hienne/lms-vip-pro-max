@@ -154,7 +154,7 @@ The previous `lesson-notes` checklist, with its success criteria and how each wa
 
 ## Phase 2: App
 
-- [ ] **F1: Contracts, captured responses, mock**
+- [x] **F1: Contracts, captured responses, mock**
   - Acceptance:
     - Endpoints `lessonFeedback`, `rateLesson`, `sendFeedback` and `lessonComments`, with zod schemas that reuse
       the notes `AnchorSchema`.
@@ -165,7 +165,7 @@ The previous `lesson-notes` checklist, with its success criteria and how each wa
   - Verify: the contracts and mocks specs are green, and the captured responses parse.
   - Size: M. Depends on: Checkpoint A.
 
-- [ ] **F2: The "Đánh giá & trao đổi" section**
+- [x] **F2: The "Đánh giá & trao đổi" section**
   - Acceptance:
     - `LessonStore`:
       - `feedback` keyed by lesson;
@@ -202,25 +202,58 @@ The previous `lesson-notes` checklist, with its success criteria and how each wa
     - the error state with retry.
   - Size: L. Depends on: F1.
 
-- [ ] **F3: Course page rating**
+- [x] **F3: Course page rating**
   - Acceptance: `course__meta` shows "★ {average} ({count})" with the average formatted to one decimal in
     Vietnamese, and nothing when `rating` is null.
   - Verify: the course spec covers both cases.
   - Size: XS. Depends on: F1.
 
-- [ ] **F4: End-to-end check against the spec**
+- [x] **F4: End-to-end check against the spec**
   - Acceptance: the success criteria below are written here, each with how it was checked.
   - Verify: `npm run check`.
   - Size: S. Depends on: F2, F3.
+  - Done: `npm run check` green (14/14 tasks) at `5d05726`. The first run failed twice and was fixed in two commits:
+    `b1cfe89` (the template scan refused the unstyled `course__rating` class) and `5d05726` (the first
+    `session-expiry.interceptor` spec raced its 20 ms settle against a cold lazy import under whole-suite load).
 
 ### Checkpoint B
 
-- [ ] Success criteria recorded:
+- [x] Fixes after the main session's browser check (one commit each, `npm run check` green):
+  - `857b809` the rating keeps one call in flight and sends the last choice when it returns; only the last is
+    announced. Spec: held replies (`ReplyGate`) show one request out at a time and `[4, 2]` sent for 4, 3, 2.
+  - `e0955e4` `ui-stars` shows one Vietnamese decimal ("3,0"), so the lesson header and its sr text match the course
+    page. Specs: `rating.spec.ts` and the lesson header "4,0 (1 đánh giá)".
+  - `82e421f` `feedback.captured.ts` holds the live captures of 2026-11-02 and the contract specs parse them,
+    including the course card and the 0-star refusal.
+- [x] Success criteria recorded (app side checked on the in-app mock and by specs; the live local backend is the main
+      session's check):
   1. Rating, comment, question and report work on the local backend, and a reload shows the same state.
+     - App: `lesson.spec.ts` "rating and comments" (click and arrow-key rating with one saved value, comment with a PDF
+       page anchor, question, report confirm cancel/confirm, refusal toast, more comments, error and retry) and
+       `learner-feedback.spec.ts` (13 specs, limits, visibility, status). The section was also driven in the browser
+       on a throwaway `mockBackend` copy: rating by arrows ends at one saved value, the report confirm dialog opens.
+     - Live (main session, local backend :8019 on `a8b38e9`, app at `82e421f`): as `hocvien` on `/lesson/1/1`, arrows
+       3 → 4 → 5 → 4 → 3 → 2 sent two PUTs, 4 then 2, none cancelled; the DB holds 2, the toast reads "2/5 sao", and a
+       reload shows 2 stars and "2,5 (2 đánh giá)". Comment, question at "Trang 3" (toast, "Chờ trả lời · Trang 3",
+       form cleared), report confirm (cancel sends nothing) and the validation line checked in the first browser pass.
   2. Visibility holds across `hocvien` and `hocvien.tichhop`.
+     - App: the mock specs and the seed show another learner's comment with `mine: false` and the name, and never
+       another learner's question or report.
+     - Live: `hocvien.tichhop` at 375 px dark sees the average, both comments (H's with the name, its own as "Bạn")
+       and its own stars, and none of H's questions or reports. Curl (Checkpoint A) agrees.
   3. The course page shows the course rating, matching `curl` of the card.
+     - App: `course.spec.ts` "the rating of the course" (4 specs: "★ 4,5 (2)", "4,0" for a whole average, null, absent).
+     - Live: `/course/1` shows "★ 2,5 (2)" with "Đánh giá 2,5 trên 5 sao từ 2 lượt", matching the DB rows (2 and 3);
+       the card curl matched the catalogue at Checkpoint A.
   4. The upgrade and the rollback apply cleanly. `mvn clean test` and `npm run check` are green. The
      visual-design checklist passes for the section.
-- [ ] Browser check by the main session at 1280 px light and 375 px dark.
-- [ ] Spec status set to built.
+     - `npm run check` green (14/14) at `82e421f`.
+     - Visual-design checklist for the section: 1024 and 1280 px and 375 px, light and dark, no horizontal scroll;
+       no eyebrow, icon tile, avatar, bubble, gradient or edge stripe; badges only for status; one primary button
+       (the send buttons are secondary, the report is danger).
+     - Backend: `mvn -o clean test` on `a8b38e9`: 429 tests, 0 failures, 0 errors, 42 skipped. The upgrade is applied
+       on the local DB; `EXPLAIN` of the course rating uses `idx_lesson_feedback_course_rating`.
+- [x] Browser check by the main session at 1280 px light and 375 px dark (results above; the tab row wraps to two
+      lines at 375 px, which reads fine).
+- [x] Spec status set to built.
 - [ ] Review with the user, then plan `certificates`.
