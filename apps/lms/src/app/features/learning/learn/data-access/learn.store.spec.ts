@@ -153,6 +153,21 @@ describe('LearnStore', () => {
     expect(rows.every((row) => row.link.startsWith('/course/'))).toBe(true);
   });
 
+  it("carries each due row's progress percent from its card, unchanged", async () => {
+    const store = await open();
+    const cards = await Promise.resolve(
+      handle.mock.results
+        .map((r) => r.value as { body?: { data?: { items?: unknown[] } } })
+        .flatMap((r) => r?.body?.data?.items ?? []),
+    );
+    const percent = new Map(
+      (cards as { courseId: number; progressPercent: number | null }[]).map(
+        (c) => [`/course/${c.courseId}`, c.progressPercent ?? 0],
+      ),
+    );
+    for (const row of store.due$()) expect(row.pct).toBe(percent.get(row.link));
+  });
+
   it('shows the first three reminders, the soonest due first', async () => {
     const store = await open();
     const rows = store.reminders$();

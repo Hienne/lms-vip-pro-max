@@ -213,6 +213,60 @@ describe('Learn', () => {
     });
   });
 
+  describe('the side column', () => {
+    beforeEach(() => open());
+
+    it("shows each course's percent after its due date, as the card sends it", () => {
+      const rows = Array.from(el.querySelectorAll('.learn__due li'));
+      expect(rows.length).toBeGreaterThan(0);
+      for (const row of rows) {
+        expect(row.querySelector('.learn__due-pct')?.textContent).toMatch(
+          /^\d+%$/,
+        );
+        expect(
+          row
+            .querySelector('app-due-date')!
+            .compareDocumentPosition(row.querySelector('.learn__due-pct')!) &
+            Node.DOCUMENT_POSITION_FOLLOWING,
+        ).toBeTruthy();
+      }
+    });
+
+    it('lists "Công cụ học nhanh" with two links, below the due list and above the reminders', () => {
+      const tools = el.querySelector('#learn-tools')!;
+      expect(tools.tagName).toBe('H2');
+      expect(tools.textContent).toContain('Công cụ học nhanh');
+      const links = Array.from(tools.closest('section')!.querySelectorAll('a'));
+      expect(
+        links.map((a) => [
+          a.querySelector('.learn__tool-title')?.textContent?.trim(),
+          a.getAttribute('href'),
+        ]),
+      ).toEqual([
+        ['Ghi chú & đánh dấu', '/saved'],
+        ['Chứng nhận', '/certificates'],
+      ]);
+      expect(links[0].textContent).toContain('Mở đúng trang / mốc video');
+      expect(links[1].textContent).toContain(
+        'Chứng nhận các khóa đã hoàn thành',
+      );
+      expect(links.every((a) => a.querySelector('ui-icon'))).toBe(true);
+      const position = (selector: string) =>
+        el.querySelector(selector)!.compareDocumentPosition(tools);
+      expect(
+        position('#learn-due') & Node.DOCUMENT_POSITION_FOLLOWING,
+      ).toBeTruthy();
+      expect(
+        tools.compareDocumentPosition(el.querySelector('#learn-reminders')!) &
+          Node.DOCUMENT_POSITION_FOLLOWING,
+      ).toBeTruthy();
+    });
+
+    it('has no AI assistant and no flashcards link', () => {
+      expect(text()).not.toMatch(/trợ lý AI|flashcard/i);
+    });
+  });
+
   describe('the points figure', () => {
     const figure = () => el.querySelector('app-points-figure');
     const cells = () =>

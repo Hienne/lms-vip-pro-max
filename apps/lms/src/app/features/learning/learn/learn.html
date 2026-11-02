@@ -132,12 +132,39 @@
             >{{ row.title }}</a
           >
           <app-due-date [dueAt]="row.dueAt" />
+          <span class="learn__due-pct">{{ row.pct | fmtPct }}</span>
         </li>
         }
       </ul>
       } @else {
       <p class="learn__muted">Không có khóa học sắp đến hạn.</p>
       }
+    </section>
+
+    <section class="learn__section" aria-labelledby="learn-tools">
+      <h2 id="learn-tools">Công cụ học nhanh</h2>
+      <ul class="learn__tools">
+        <li>
+          <a routerLink="/saved" class="learn__tool">
+            <span class="learn__tool-text">
+              <span class="learn__tool-title">Ghi chú &amp; đánh dấu</span>
+              <span class="learn__muted">Mở đúng trang / mốc video</span>
+            </span>
+            <ui-icon name="chevron-right" size="sm" />
+          </a>
+        </li>
+        <li>
+          <a routerLink="/certificates" class="learn__tool">
+            <span class="learn__tool-text">
+              <span class="learn__tool-title">Chứng nhận</span>
+              <span class="learn__muted"
+                >Chứng nhận các khóa đã hoàn thành</span
+              >
+            </span>
+            <ui-icon name="chevron-right" size="sm" />
+          </a>
+        </li>
+      </ul>
     </section>
 
     @if (store.remindersError$(); as error) {

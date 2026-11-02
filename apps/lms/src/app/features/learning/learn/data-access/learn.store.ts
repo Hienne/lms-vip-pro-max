@@ -71,6 +71,8 @@ export interface DueRow {
   readonly id: string;
   readonly title: string;
   readonly dueAt: string;
+  /** The card's `progressPercent`, the server's. */
+  readonly pct: number;
   readonly link: string;
 }
 
@@ -250,6 +252,7 @@ export class LearnStore {
         id: String(card.courseId),
         title: card.title || card.code,
         dueAt: card.dueAt as string,
+        pct: card.progressPercent ?? 0,
         link: `/course/${card.courseId}`,
       })),
   );
