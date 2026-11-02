@@ -15,7 +15,7 @@
   background: ui.color(surface);
   color: ui.color(text);
   border: 1px solid ui.color(border);
-  border-radius: ui.radius(lg);
+  border-radius: ui.radius(card);
 
   @include ui.bp(md) {
     gap: ui.space(5);
@@ -57,7 +57,7 @@
   &__name {
     margin: 0;
     font-size: ui.text-size(3xl);
-    font-weight: ui.weight(display);
+    font-weight: ui.weight(semibold);
     line-height: ui.leading(tight);
     overflow-wrap: anywhere;
   }
