@@ -42,19 +42,21 @@ The previous `certificates` checklist, with its success criteria and how each wa
 
 ## Phase 1: App
 
-- [ ] **F1: Dashboard contracts**
+- [x] **F1: Dashboard contracts**
   - `learnerEndpoints.dashboard` (`GET /api/v1/me/learning/dashboard`) and `learnerEndpoints.dashboardPrograms`
     (`GET /api/v1/me/learning/dashboard/programs`, `page`, `size` ≤ 100), with no `served: 'mock'`.
   - Schemas follow `LearningAnalytics.Home` and `Group`. Percents are numbers that may be decimals; counts are
     integers; `nextAction` is nullable.
   - Fixtures are captured from the local backend as `hocvien`.
   - Acceptance: the endpoint specs parse the fixtures; `npx nx test contracts` green.
-- [ ] **F2: Mock**
+  - Checked: `npx nx test contracts` green (231 tests); fixtures captured as `hocvien` on :8019, including a second page and an empty page.
+- [x] **F2: Mock**
   - The in-app mock serves both endpoints from the learning seed: the current cycle per course, `completionRate` =
     completed / total × 100 and `averageProgress` = the mean of the progress, both to two decimals, 0 when empty;
     programmes with at least one of the caller's courses.
   - Acceptance: mock specs for a learner with and without courses; `npx nx test mocks` green.
-- [ ] **F3: KPI row and points**
+  - Checked: `npx nx test mocks` green (290 tests); specs for `hocvien` (counts, rate, next action, deadlines, programmes, paging) and `quantri` (no courses).
+- [x] **F3: KPI row and points**
   - A component in `features/learning/learn/components/` renders the four KPIs of plan Decision 7, using the `ui`
     `kpi` molecule and the `ring` atom where they fit.
   - The store reads `dashboard` with its own error and retry; only the completion KPI depends on it.
@@ -63,24 +65,28 @@ The previous `certificates` checklist, with its success criteria and how each wa
     is unchanged.
   - Acceptance: specs for the four values, the deltas, a dashboard error (three KPIs still render, the fourth shows
     retry), and no learner without a last score showing a "Đạt" line. The app computes no percent.
-- [ ] **F4: Side column**
+  - Checked: `learn.spec` and `learn.store.spec` cover the four values, deltas, a failed dashboard and no "Đạt" line without a score; no percent computed in the app.
+- [x] **F4: Side column**
   - Each "Hạn hoàn thành" row shows the card's `progressPercent` as `{n}%` (`ui.num`), after the due date.
   - "Công cụ học nhanh" below the due list (above "Nhắc hạn"): the two links of plan Decision 4, title over a muted
     line and a `chevron-right` icon of size `sm`, no tile, no AI assistant, no flashcards.
   - Acceptance: specs for the percent and the two links with their `href`s.
-- [ ] **F5: Tabs and journey**
+  - Checked: specs for the percent after the due date, the two links with their hrefs and no AI or flashcard text.
+- [x] **F5: Tabs and journey**
   - The five course tabs fit on one line at 1280 px (column widths or tab spacing), and still wrap or scroll
     without overflow at 375 px.
   - "Lộ trình theo chương trình" in the main column after "Biểu đồ năng lực": one row per programme from
     `dashboardPrograms`, name, a `progress` bar of `averageProgress` and "{completed}/{courses} khóa đã xong". The
     section is hidden when the page is empty, and has its own error and retry.
   - Acceptance: specs for the rows, the empty case and the error; no horizontal scroll at 375 px.
-- [ ] **F6: Docs and routes**
+  - Checked: specs for the rows, the empty case, the error and retry, and the compact tabs; the one-line fit at 1280 px and 375 px overflow are NOT measured in a browser (no sign-in from this session) and are left to Checkpoint B.
+- [x] **F6: Docs and routes**
   - `SPEC-learner-home.md`: the amendments in the plan, and an "Implementation notes (learner-home-refresh)"
     section.
   - The `learn` screen entry declares `requires` for `dashboard` and `dashboardPrograms`.
   - Migration notes for `route-learn` updated if the entry exists for this screen.
   - Acceptance: `npm run check` green.
+  - Checked: spec amendments and notes written; `requires` on `learn`; migration notes updated; `npm run check` result below.
 
 ### Checkpoint B
 

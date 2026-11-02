@@ -7,25 +7,27 @@ Read `docs/conventions/angular.md`, `visual-design.md` and `docs/migration/mocku
 ## Objective
 
 The learner's home page (`/learn`, the home path of every learner) answers "what do I do next": the lesson to
-resume, where the learner stands, what is due soon, and their courses by state. It uses no new endpoint: only
-`myCourses`, `enrollment`, `progressSummary` and `reminders`, each wired in an earlier phase.
+resume, where the learner stands, what is due soon, and their courses by state. It reads `myCourses`,
+`enrollment`, `progressSummary` and `reminders` from earlier phases, plus `myPoints` and `myCompetency`, and, since
+`learner-home-refresh`, `dashboard` (`completionRate`) and `dashboardPrograms` (the programme journey).
 
 Mockup: `learner.js` page `dashboard` (README row F.1). Route `learn` (menu group `COURSE_LEARNING`). Migration
 entry: `route-learn`. Feature folder `features/learning/learn/`.
 
 ## What is built and what is not
 
-| Mockup section                                     | Here                                                                                                        |
-| -------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
-| Hero with date eyebrow, greeting and message       | Replaced (visual-design.md: no hero, no greeting): `ui-page-header` then the "Tiếp tục học" card            |
-| Points and streak in the hero                      | Not built: the backend has no points or streak (`activity: unavailable`)                                    |
-| KPI row (assigned, completion %, last score, best) | The summary counts row from `learner-progress`; scores are not built (`assessment: unavailable`)            |
-| "Khóa học của tôi" with five tabs                  | Built with four server filters: Đang học, Chưa bắt đầu, Đã hoàn thành, Bắt buộc ("Được giao" has no filter) |
-| Competency radar                                   | Not built (`competency: unavailable`); one muted line says so, shared with the progress page                |
-| Programme journey                                  | Not built: no programme progress on the backend                                                             |
-| "Hạn hoàn thành" list                              | Built from `myCourses` sorted by due date                                                                   |
-| "Công cụ học nhanh"                                | Not built: the sidebar already lists those screens                                                          |
-| (new) due reminders                                | The first three reminders, linking to `notifications`                                                       |
+| Mockup section                                     | Here                                                                                                                         |
+| -------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| Hero with date eyebrow, greeting and message       | Replaced (visual-design.md: no hero, no greeting): `ui-page-header` then the "Tiếp tục học" card                             |
+| Points and streak in the hero                      | Built: `app-points-figure` beside the continue card from `lg` (stacked below), linking to `/leaderboard`                     |
+| KPI row (assigned, completion %, last score, best) | Built: `app-learn-kpis`, four figures; the completion rate is the server's `dashboard.learning.counts.completionRate`        |
+| "Khóa học của tôi" with five tabs                  | Built with four server filters and "Được giao" by `assigned=true`; the five tabs fit one line at 1280 px (`ui-tabs compact`) |
+| Competency radar                                   | Built from `myCompetency` (`app-competency-view`, compact)                                                                   |
+| Programme journey                                  | Built: "Lộ trình theo chương trình" from `dashboardPrograms`, a bar of each `averageProgress`                                |
+| "Hạn hoàn thành" list                              | Built from `myCourses` sorted by due date, with each card's `progressPercent`                                                |
+| "Công cụ học nhanh"                                | Built with two links: "Ghi chú & đánh dấu" → `/saved`, "Chứng nhận" → `/certificates`                                        |
+| "Hỏi trợ lý AI", "Ôn bằng flashcard"               | Not built: removed by the user (2026-11-02)                                                                                  |
+| (new) due reminders                                | The first three reminders, linking to `notifications`                                                                        |
 
 ## Shared pieces promoted from earlier phases
 
@@ -66,12 +68,14 @@ View (main column and side column from `lg`, one column below; the first screenf
    "chapter · course"; `ui-progress` with the course's `progressPercent` and the % (`ui.num`); one primary link
    "Tiếp tục học" → `/lesson/:courseId/:lastLessonId` (`?block=:lastBlockId` when set). Without an in-progress
    course: "Bạn chưa có khóa học đang học." and the link "Khám phá khóa học" → `/catalog`.
-3. `app-progress-counts`, then `app-unavailable-note`.
+3. `app-learn-kpis` (below, the continue card's row also holds the points figure). The counts, the score figures and the
+   unavailable note stay on `/progress`.
 4. Main: "Khóa học của tôi" (h2) with "Xem tất cả" → `/catalog?scope=assigned`; `ui-tabs` for the four filters (the
    three status tabs show the summary's counts); a grid of `app-course-card`; per tab an inline empty line "Không có
    khóa học ở trạng thái này." with "Mở danh mục".
-5. Side: "Hạn hoàn thành" (h2) as a list, each row the course title and `app-due-date` (the row's one coloured
-   badge) linking to `/course/:courseId`; empty → "Không có khóa học sắp đến hạn." Then "Nhắc hạn" (h2), up to three
+5. Side: "Hạn hoàn thành" (h2) as a list, each row the course title, `app-due-date` (the row's one coloured
+   badge) and the card's percent, linking to `/course/:courseId`; empty → "Không có khóa học sắp đến hạn." Then
+   "Công cụ học nhanh" (h2, two links) and "Nhắc hạn" (h2), up to three
    `app-reminder-item` and "Xem tất cả" → `/notifications`; the section is absent when there are none.
 6. Loading: a skeleton per section. Error: `ui-error-state` with retry per section.
 
@@ -92,8 +96,9 @@ each state, due dates (one overdue) and reminders.
 ## Boundaries
 
 - Always: the first screenful is the continue card; every number is the server's; sections fail independently.
-- Ask first: any section the backend has no data for (points, streak, scores, competency, journey).
-- Never: a hero, greeting, date eyebrow or placeholder chart; computing a completion rate in the app.
+- Ask first: any section the backend has no data for.
+- Never: a hero, greeting, date eyebrow or placeholder chart; computing a completion rate in the app; an AI assistant or
+  flashcard link in "Công cụ học nhanh".
 
 ## Success criteria
 
@@ -120,3 +125,25 @@ Built in T20–T21; verified on the local backend in Checkpoint 4 of `tasks/todo
   redirected away from `/learn`, so it was not tried on the real backend.
 - `route-learn` is owned by `longnvse` in `migration-entries.data.ts`; its entry was left alone.
 - `app.spec.ts` and `app-shell.spec.ts` now answer the requests `/learn` makes (they hung 120 s per test before).
+
+## Implementation notes (learner-home-refresh)
+
+Plan: `tasks/plan.md`; tasks F1 to F6 in `tasks/todo.md`.
+
+- **Contracts.** `learnerEndpoints.dashboard` (`data = {dataAsOf, timeZone, learning: {counts, nextAction,
+deadlines}, assessment}`) and `dashboardPrograms` (a page of `{id (string), name, courses, completed, averageProgress,
+completionRate, …}`), with fixtures captured from the local backend as `hocvien` (`learner.captured.ts`).
+- **Mock.** `learner-dashboard.ts` serves both from the learner's cards: `completionRate` = completed / total × 100 and
+  `averageProgress` = the mean of the progress, two decimals, 0 when empty.
+- **Reads.** `/learn` calls `dashboard` only for `completionRate`; the other three figures come from `progressSummary`,
+  so a failing dashboard shows a retry in the completion figure alone. The due list keeps `myCourses` (the dashboard's
+  `deadlines` are not used). `dashboardPrograms` is read with `size=100`; the section is absent when empty and has its
+  own error and retry.
+- **KPI row.** Plain label over number, no card per number; the three linked figures are links, the completion figure is
+  not. Percents use `fmtPct` with two decimals, so the server's `28,57%` is shown as sent. The completion figure is text
+  without a `ui-ring`: the ring rounds to a whole number and would repeat the value.
+- **Tabs.** `ui-tabs` has a `compact` input (less padding, no gap); `/learn` uses it instead of `wrap`, and the side
+  column is 18rem, so the five tabs fit one line at 1280 px. Below the tablet width the strip scrolls.
+- **Routes.** The `learn` screen declares `requires: [dashboard, dashboardPrograms]`.
+- **Backend.** The two endpoints read the reporting tables of `docs/sql/learning_hub_reporting.sql`; without them the
+  completion figure shows its error state and the rest of the page still works.

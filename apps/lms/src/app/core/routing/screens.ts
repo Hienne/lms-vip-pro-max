@@ -3,6 +3,7 @@ import {
   assessmentV1Endpoints,
   adminOrgEndpoints,
   communityEndpoints,
+  learnerEndpoints,
   learnerQuizEndpoints,
   assessmentReportEndpoints,
   certificateEndpoints,
@@ -97,6 +98,10 @@ export const SCREEN_TABLE = {
       screens: [
         {
           path: 'learn',
+          requires: [
+            learnerEndpoints.dashboard,
+            learnerEndpoints.dashboardPrograms,
+          ],
           title: 'Trang chủ học tập',
           mockupPage: 'dashboard',
           load: () =>
