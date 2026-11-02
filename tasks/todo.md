@@ -86,7 +86,7 @@ The previous `certificates` checklist, with its success criteria and how each wa
   - The `learn` screen entry declares `requires` for `dashboard` and `dashboardPrograms`.
   - Migration notes for `route-learn` updated if the entry exists for this screen.
   - Acceptance: `npm run check` green.
-  - Checked: spec amendments and notes written; `requires` on `learn`; migration notes updated; `npm run check` result below.
+  - Checked: spec amendments and notes written; `requires` on `learn`; migration notes updated; `npm run check` green.
 
 ### Checkpoint B
 
