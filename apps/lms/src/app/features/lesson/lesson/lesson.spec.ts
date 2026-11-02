@@ -806,7 +806,7 @@ describe('Lesson', () => {
       await press(star(4));
       expect(bodies(feedbackEndpoints.rateLesson)).toEqual([{ stars: 4 }]);
       expect(sectionText()).toContain('Đã ghi nhận 4 sao');
-      expect(sectionText()).toContain('1 đánh giá');
+      expect(sectionText()).toContain('4,0 (1 đánh giá)');
       expect(sectionText()).not.toContain('Chưa có đánh giá');
       expect(document.body.textContent).toContain('Cảm ơn bạn đã đánh giá');
       expect(document.body.textContent).toContain('4/5 sao');

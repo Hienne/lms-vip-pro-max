@@ -5,7 +5,7 @@ const STARS = [1, 2, 3, 4, 5] as const;
 
 /**
  * Read-only star display (the mockup's `UI.Stars`): five star glyphs hidden from assistive
- * technology, the score rounded to one decimal, an optional review count, and a visually hidden
+ * technology, the score with one decimal ("3,0"), an optional review count, and a visually hidden
  * sentence that carries the value.
  */
 @Component({
@@ -48,6 +48,9 @@ export class Stars {
       : `${base}, ${count} ${this.countLabel()}`;
   });
   protected readonly score = computed(() =>
-    (Math.round(this.value() * 10) / 10).toLocaleString('vi-VN'),
+    this.value().toLocaleString('vi-VN', {
+      minimumFractionDigits: 1,
+      maximumFractionDigits: 1,
+    }),
   );
 }
