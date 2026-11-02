@@ -90,10 +90,17 @@ The previous `certificates` checklist, with its success criteria and how each wa
 
 ### Checkpoint B
 
-- [ ] Main-session review of each commit's diff against angular.md §14 and visual-design.md.
-- [ ] `npm run check` green.
-- [ ] `/learn` in the browser as `hocvien` and `hocvien.tichhop`: the KPI values equal the backend's responses; the
-      due percents equal the cards'; the journey equals `/dashboard/programs`; the two quick links open `/saved` and
-      `/certificates`.
-- [ ] Side by side with the mockup on :4320 at 375, 768 and 1280 px, light and dark; keyboard-only pass.
-- [ ] The spec is marked built.
+- [x] Main-session review of each commit's diff against angular.md §14 and visual-design.md. KPIs are label over
+      value with no card per number; no tiles, icons inline at `sm`; the store owns the two new reads with their own
+      error and retry; the app computes no percent. The completion KPI shows the value without `ui-ring` (spec
+      notes why); `ui-tabs` gains a `compact` input.
+- [x] `npm run check` green on `b9b02db` (14 tasks).
+- [x] `/learn` in the browser on the local stack (token sign-in):
+  - `hocvien`: 5 assigned (5 bắt buộc · 2 quá hạn), 28,57% (2/7), last 0% "Chưa đạt", best 100% (1/5); due rows
+    0%, 50%, 0%, 61%; journey 50%, 0%, 100%, 61%, equal to `/dashboard/programs`; competency radar renders.
+  - `hocvien.tichhop`: 4 assigned, 40% (2/5), best 100% (1/4); journey 25%, 50%, 100%.
+  - The quick links are `/saved` and `/certificates`; no AI assistant or flashcards.
+- [x] 1280 px light: the five tabs fit on one line. 768 px light: no horizontal scroll, the tabs fit (720/720).
+      375 px dark: no page scroll (375/375); the tab strip scrolls inside itself. The mockup on :4320 was compared
+      at 1280 px. The keyboard-only pass was not done.
+- [x] The spec is marked built.

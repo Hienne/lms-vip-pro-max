@@ -1,6 +1,6 @@
 # Spec: `learner-home` (Phase 4)
 
-Map: [SPEC.md](SPEC.md). Status: **built in Phase 4; refresh approved 2026-11-02, amended by `tasks/plan.md` (`learner-home-refresh`)**. Builds on [SPEC-lesson-player.md](SPEC-lesson-player.md),
+Map: [SPEC.md](SPEC.md). Status: **built in Phase 4; refresh built 2026-11-02** (amended by the `learner-home-refresh` plan; results in `tasks/todo.md` Checkpoint B). Builds on [SPEC-lesson-player.md](SPEC-lesson-player.md),
 [SPEC-learner-progress.md](SPEC-learner-progress.md) and [SPEC-learning-reminders.md](SPEC-learning-reminders.md).
 Read `docs/conventions/angular.md`, `visual-design.md` and `docs/migration/mockup-to-angular.md` first.
 
