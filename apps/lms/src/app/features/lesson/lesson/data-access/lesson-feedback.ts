@@ -2,9 +2,11 @@ import { Dialog } from '@angular/cdk/dialog';
 import {
   computed,
   DestroyRef,
+  effect,
   inject,
   linkedSignal,
   signal,
+  untracked,
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import {
@@ -60,6 +62,22 @@ export function lessonFeedback(lessonId: () => number | undefined) {
     computation: () => 1,
   });
 
+  /** The choice waiting for the call in flight to return, and what that call carries. */
+  const wanted = signal<{ readonly id: number; readonly stars: number } | null>(
+    null,
+  );
+  const inFlight = signal<{
+    readonly id: number;
+    readonly stars: number;
+  } | null>(null);
+
+  let intermediate = false;
+
+  /**
+   * Saves one rating at a time: aborting a request in the browser does not stop the server from
+   * applying it, so a new call must never cancel one in flight. A choice made meanwhile waits in
+   * `wanted` and goes out when the call returns, so the last choice is the one stored.
+   */
   const rating = serverMutation(
     (input: { readonly lessonId: number; readonly stars: number }) =>
       client.call(feedbackEndpoints.rateLesson, {
@@ -68,13 +86,31 @@ export function lessonFeedback(lessonId: () => number | undefined) {
       }),
     {
       errors: 'toast',
-      success: (input) => ({
-        title: 'Cảm ơn bạn đã đánh giá',
-        detail: `${input.stars}/5 sao`,
-      }),
+      onSuccess: () => {
+        intermediate = wanted() !== null;
+        inFlight.set(null);
+        sendRating();
+      },
+      // A choice already waiting makes this answer an intermediate one: only the last is announced.
+      success: (input) =>
+        intermediate
+          ? null
+          : {
+              title: 'Cảm ơn bạn đã đánh giá',
+              detail: `${input.stars}/5 sao`,
+            },
       invalidates: changed,
     },
   );
+
+  /** Sends the waiting choice once nothing is in flight. */
+  function sendRating() {
+    const next = wanted();
+    if (inFlight() || !next) return;
+    wanted.set(null);
+    inFlight.set(next);
+    rating.run({ lessonId: next.id, stars: next.stars });
+  }
 
   const sending = serverMutation(
     (input: {
@@ -119,10 +155,24 @@ export function lessonFeedback(lessonId: () => number | undefined) {
     },
   );
 
-  /** The stars the learner just chose, shown until the read says what the server holds. */
+  /**
+   * The stars the learner just chose, shown until the read says what the server holds. While a rating
+   * is still on its way a reload does not take it back, or the stars would jump to an earlier choice.
+   */
   const choice = linkedSignal<unknown, number | null>({
-    source: () => [feedback.value(), rating.error()],
-    computation: () => null,
+    source: () => feedback.value(),
+    computation: (_, previous) =>
+      untracked(() => (inFlight() ? (previous?.value ?? null) : null)),
+  });
+
+  // A failed rating is not retried: the stars go back to what the server holds.
+  effect(() => {
+    if (!rating.error()) return;
+    untracked(() => {
+      inFlight.set(null);
+      wanted.set(null);
+      choice.set(null);
+    });
   });
 
   const firstPage = computed(() => feedback.value()?.comments);
@@ -152,10 +202,15 @@ export function lessonFeedback(lessonId: () => number | undefined) {
     sending: sending.isPending,
     sentKinds: sentKinds.asReadonly(),
     retry: () => feedback.reload(),
-    /** Latest choice only: a new run cancels the one in flight, so arrowing across the stars saves one value. */
+    /** The last choice is the one stored, however fast the stars are arrowed across. */
     rate: (id: number, stars: number) => {
       choice.set(stars);
-      rating.run({ lessonId: id, stars });
+      const sending = inFlight();
+      // Choosing what is already on its way needs no second call.
+      wanted.set(
+        sending?.id === id && sending.stars === stars ? null : { id, stars },
+      );
+      sendRating();
     },
     send: (input: {
       readonly lessonId: number;

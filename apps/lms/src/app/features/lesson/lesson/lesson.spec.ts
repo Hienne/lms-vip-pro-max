@@ -22,6 +22,7 @@ import { FileSaver } from '../../../core/files/file-saver';
 import { MockBackend } from '../../../core/dev/mock-api/mock-api.interceptor';
 import {
   provideMockBackendHttp,
+  ReplyGate,
   signInToMockBackend,
 } from '../../../core/dev/mock-api/mock-backend.testing';
 import { PdfEngine, type PdfFile } from './components/pdf-block/pdf-engine';
@@ -805,7 +806,7 @@ describe('Lesson', () => {
       await press(star(4));
       expect(bodies(feedbackEndpoints.rateLesson)).toEqual([{ stars: 4 }]);
       expect(sectionText()).toContain('Đã ghi nhận 4 sao');
-      expect(sectionText()).toContain('4 đánh giá'.replace('4', '1'));
+      expect(sectionText()).toContain('1 đánh giá');
       expect(sectionText()).not.toContain('Chưa có đánh giá');
       expect(document.body.textContent).toContain('Cảm ơn bạn đã đánh giá');
       expect(document.body.textContent).toContain('4/5 sao');
@@ -827,6 +828,54 @@ describe('Lesson', () => {
       })?.body as { data: { myStars: number; rating: { count: number } } };
       expect(reply.data.myStars).toBe(5);
       expect(reply.data.rating.count).toBe(1);
+    });
+
+    it('keeps one rating call in flight and stores the last choice, announcing only that', async () => {
+      await open(lessonUrl(1));
+      const hold = TestBed.inject(ReplyGate).hold(feedbackEndpoints.rateLesson);
+      star(4).click();
+      await settle();
+      star(3).click();
+      star(2).click();
+      await settle();
+      expect(hold.pending()).toBe(1);
+      expect(sectionText()).toContain('Đã ghi nhận 2 sao');
+
+      hold.releaseNext();
+      await settle();
+      expect(hold.pending()).toBe(1);
+      expect(sectionText()).toContain('Đã ghi nhận 2 sao');
+      expect(document.body.textContent).not.toContain('4/5 sao');
+
+      hold.releaseNext();
+      await settle();
+      expect(hold.pending()).toBe(0);
+      expect(bodies(feedbackEndpoints.rateLesson)).toEqual([
+        { stars: 4 },
+        { stars: 2 },
+      ]);
+      expect(sectionText()).toContain('Đã ghi nhận 2 sao');
+      expect(document.body.textContent).toContain('2/5 sao');
+      expect(document.body.textContent).not.toContain('4/5 sao');
+      const reply = call(feedbackEndpoints.lessonFeedback, {
+        lessonId: String(lessonId()),
+      })?.body as { data: { myStars: number } };
+      expect(reply.data.myStars).toBe(2);
+    });
+
+    it('sends nothing more when the learner returns to the stars already on their way', async () => {
+      await open(lessonUrl(1));
+      const hold = TestBed.inject(ReplyGate).hold(feedbackEndpoints.rateLesson);
+      star(4).click();
+      await settle();
+      star(2).click();
+      star(4).click();
+      await settle();
+      hold.releaseNext();
+      await settle();
+      expect(hold.pending()).toBe(0);
+      expect(bodies(feedbackEndpoints.rateLesson)).toEqual([{ stars: 4 }]);
+      expect(sectionText()).toContain('Đã ghi nhận 4 sao');
     });
 
     it('sends a comment from the page on screen and lists it first', async () => {
