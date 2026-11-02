@@ -296,6 +296,13 @@ export const BACKEND_RESPONSES = {
     message:
       'Bài học đã đạt giới hạn 500 ghi chú hoặc 500 đánh dấu. Hãy xóa bớt trước khi thêm.',
   },
+  feedbackLimit: {
+    status: 200,
+    code: 'LEARNING-FEEDBACK_LIMIT',
+    title: 'Đã đạt giới hạn',
+    message:
+      'Bạn đã gửi tối đa 20 nhận xét, câu hỏi và báo cáo cho bài học này trong hôm nay. Hãy thử lại vào ngày mai.',
+  },
   communityNotFound: {
     status: 200,
     code: 'CORE-RESOURCE_NOT_FOUND',

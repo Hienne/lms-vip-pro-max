@@ -4,6 +4,7 @@ import { RouterTestingHarness } from '@angular/router/testing';
 import {
   courseEndpoints,
   EnrollmentDetailSchema,
+  feedbackEndpoints,
   learnerEndpoints,
   learnerQuizEndpoints,
   personalEndpoints,
@@ -21,6 +22,7 @@ import { FileSaver } from '../../../core/files/file-saver';
 import { MockBackend } from '../../../core/dev/mock-api/mock-api.interceptor';
 import {
   provideMockBackendHttp,
+  ReplyGate,
   signInToMockBackend,
 } from '../../../core/dev/mock-api/mock-backend.testing';
 import { PdfEngine, type PdfFile } from './components/pdf-block/pdf-engine';
@@ -754,6 +756,311 @@ describe('Lesson', () => {
       handle.mockImplementation(real());
       await press(button('Thử lại'));
       expect(text()).toContain('Chưa có ghi chú.');
+    });
+  });
+  describe('rating and comments', () => {
+    const section = () => el.querySelector<HTMLElement>('app-lesson-feedback')!;
+    const sectionText = () => section().textContent?.replace(/\s+/g, ' ') ?? '';
+    const bodies = (endpoint: unknown) =>
+      calls(endpoint).map(([, request]) => request.body);
+    const press = async (node: HTMLElement | null | undefined) => {
+      node!.click();
+      await settle();
+    };
+    const star = (n: number) =>
+      section().querySelector<HTMLElement>(`button[aria-label="${n} sao"]`)!;
+    const tab = (name: string) =>
+      Array.from(section().querySelectorAll<HTMLElement>('[role="tab"]')).find(
+        (t) => t.textContent?.includes(name),
+      )!;
+    const panel = () =>
+      Array.from(
+        section().querySelectorAll<HTMLElement>('[role="tabpanel"]'),
+      ).find((p) => !p.hasAttribute('inert'))!;
+    const type = async (value: string) => {
+      const field = panel().querySelector('textarea')!;
+      field.value = value;
+      field.dispatchEvent(new Event('input', { bubbles: true }));
+      await settle();
+    };
+    const send = () =>
+      press(panel().querySelector<HTMLElement>('button[type="submit"]'));
+    const toastText = () =>
+      document.querySelector('.toasts, [role="status"], [role="alert"]')
+        ?.textContent ?? '';
+    const lessonId = () => lessons()[1].lesson.id;
+
+    it('sits after the block and reads the lesson once, for the lesson on screen', async () => {
+      await open(lessonUrl(1));
+      expect(section()).not.toBeNull();
+      expect(sectionText()).toContain('Đánh giá & trao đổi');
+      expect(sectionText()).toContain('Chưa có đánh giá');
+      expect(calls(feedbackEndpoints.lessonFeedback).length).toBe(1);
+      expect(calls(feedbackEndpoints.lessonFeedback)[0][1].params).toEqual({
+        lessonId: String(lessonId()),
+      });
+    });
+
+    it('saves the stars, thanks the learner once and shows the new average', async () => {
+      await open(lessonUrl(1));
+      await press(star(4));
+      expect(bodies(feedbackEndpoints.rateLesson)).toEqual([{ stars: 4 }]);
+      expect(sectionText()).toContain('Đã ghi nhận 4 sao');
+      expect(sectionText()).toContain('4,0 (1 đánh giá)');
+      expect(sectionText()).not.toContain('Chưa có đánh giá');
+      expect(document.body.textContent).toContain('Cảm ơn bạn đã đánh giá');
+      expect(document.body.textContent).toContain('4/5 sao');
+      expect(calls(feedbackEndpoints.lessonFeedback).length).toBe(2);
+    });
+
+    it('keeps the last stars when the learner arrows across them', async () => {
+      await open(lessonUrl(1));
+      star(2).click();
+      star(3).click();
+      star(5).click();
+      await settle();
+      expect(sectionText()).toContain('Đã ghi nhận 5 sao');
+      const last = bodies(feedbackEndpoints.rateLesson).at(-1);
+      expect(last).toEqual({ stars: 5 });
+      // the server holds one rating, whatever reached it
+      const reply = call(feedbackEndpoints.lessonFeedback, {
+        lessonId: String(lessonId()),
+      })?.body as { data: { myStars: number; rating: { count: number } } };
+      expect(reply.data.myStars).toBe(5);
+      expect(reply.data.rating.count).toBe(1);
+    });
+
+    it('keeps one rating call in flight and stores the last choice, announcing only that', async () => {
+      await open(lessonUrl(1));
+      const hold = TestBed.inject(ReplyGate).hold(feedbackEndpoints.rateLesson);
+      star(4).click();
+      await settle();
+      star(3).click();
+      star(2).click();
+      await settle();
+      expect(hold.pending()).toBe(1);
+      expect(sectionText()).toContain('Đã ghi nhận 2 sao');
+
+      hold.releaseNext();
+      await settle();
+      expect(hold.pending()).toBe(1);
+      expect(sectionText()).toContain('Đã ghi nhận 2 sao');
+      expect(document.body.textContent).not.toContain('4/5 sao');
+
+      hold.releaseNext();
+      await settle();
+      expect(hold.pending()).toBe(0);
+      expect(bodies(feedbackEndpoints.rateLesson)).toEqual([
+        { stars: 4 },
+        { stars: 2 },
+      ]);
+      expect(sectionText()).toContain('Đã ghi nhận 2 sao');
+      expect(document.body.textContent).toContain('2/5 sao');
+      expect(document.body.textContent).not.toContain('4/5 sao');
+      const reply = call(feedbackEndpoints.lessonFeedback, {
+        lessonId: String(lessonId()),
+      })?.body as { data: { myStars: number } };
+      expect(reply.data.myStars).toBe(2);
+    });
+
+    it('sends nothing more when the learner returns to the stars already on their way', async () => {
+      await open(lessonUrl(1));
+      const hold = TestBed.inject(ReplyGate).hold(feedbackEndpoints.rateLesson);
+      star(4).click();
+      await settle();
+      star(2).click();
+      star(4).click();
+      await settle();
+      hold.releaseNext();
+      await settle();
+      expect(hold.pending()).toBe(0);
+      expect(bodies(feedbackEndpoints.rateLesson)).toEqual([{ stars: 4 }]);
+      expect(sectionText()).toContain('Đã ghi nhận 4 sao');
+    });
+
+    it('sends a comment from the page on screen and lists it first', async () => {
+      await open(lessonUrl(1));
+      await press(
+        el.querySelector<HTMLElement>('button[aria-label="Trang sau"]'),
+      );
+      expect(sectionText()).toContain('Gửi kèm vị trí: Trang 2');
+      await type('  Trang hai rất rõ  ');
+      await send();
+      expect(bodies(feedbackEndpoints.sendFeedback)).toEqual([
+        {
+          kind: 'comment',
+          text: 'Trang hai rất rõ',
+          anchor: {
+            type: 'pdf',
+            blockId: lessons()[1].blocks[0].block.id,
+            page: 2,
+          },
+        },
+      ]);
+      expect(document.body.textContent).toContain('Đã gửi nhận xét');
+      expect(panel().querySelector('textarea')!.value).toBe('');
+      expect(sectionText()).toContain('Bạn');
+      expect(sectionText()).toContain('Trang hai rất rõ');
+      expect(sectionText()).toContain('tại Trang 2');
+      expect(tab('Nhận xét').textContent).toContain('1');
+    });
+
+    it('keeps what was typed and shows the message when the text is too short', async () => {
+      await open(lessonUrl(1));
+      await type('abcd');
+      await send();
+      expect(calls(feedbackEndpoints.sendFeedback).length).toBe(0);
+      expect(sectionText()).toContain('Nội dung cần tối thiểu 5 ký tự.');
+      expect(panel().querySelector('textarea')!.value).toBe('abcd');
+    });
+
+    it('sends a question privately, with its status and no promise of a notification', async () => {
+      await open(lessonUrl(1));
+      await press(tab('Hỏi giảng viên'));
+      await type('Đoạn này giải thích gì?');
+      await send();
+      expect(bodies(feedbackEndpoints.sendFeedback)).toMatchObject([
+        { kind: 'question', text: 'Đoạn này giải thích gì?' },
+      ]);
+      expect(document.body.textContent).toContain('Đã gửi câu hỏi');
+      expect(document.body.textContent).not.toContain('thông báo');
+      expect(sectionText()).toContain('Chờ trả lời');
+      expect(sectionText()).toContain('Đoạn này giải thích gì?');
+      expect(tab('Hỏi giảng viên').textContent).toContain('1');
+      await press(tab('Nhận xét'));
+      expect(sectionText()).not.toContain(
+        'Chưa có nhận xét.'.replace('.', '!'),
+      );
+    });
+
+    it('asks before a report is sent, sends nothing on "Hủy", and sends it on confirm', async () => {
+      await open(lessonUrl(1));
+      await press(tab('Báo nội dung'));
+      await type('Sai thông tin ở trang 1');
+      await send();
+      const dialog = document.querySelector<HTMLElement>(
+        '[role="alertdialog"]',
+      )!;
+      expect(dialog.textContent).toContain('Gửi báo cáo nội dung?');
+      expect(dialog.textContent).toContain(
+        'Báo cáo sẽ được gửi tới giảng viên/quản trị nội dung để xem xét.',
+      );
+      const cancel = Array.from(dialog.querySelectorAll('button')).find((b) =>
+        b.textContent?.includes('Hủy'),
+      );
+      await press(cancel);
+      expect(calls(feedbackEndpoints.sendFeedback).length).toBe(0);
+      expect(panel().querySelector('textarea')!.value).toBe(
+        'Sai thông tin ở trang 1',
+      );
+
+      await send();
+      const confirmButton = Array.from(
+        document
+          .querySelector('[role="alertdialog"]')!
+          .querySelectorAll('button'),
+      ).find((b) => b.textContent?.includes('Gửi báo cáo'));
+      await press(confirmButton);
+      expect(bodies(feedbackEndpoints.sendFeedback)).toMatchObject([
+        { kind: 'report', text: 'Sai thông tin ở trang 1' },
+      ]);
+      expect(document.body.textContent).toContain('Đã gửi báo cáo');
+      expect(sectionText()).toContain('Chờ xử lý');
+    });
+
+    it('shows a refusal of the server as a toast and keeps the text', async () => {
+      await open(lessonUrl(1));
+      handle.mockImplementation((endpoint, request) =>
+        endpoint === feedbackEndpoints.sendFeedback
+          ? backendRefusal('feedbackLimit')
+          : real()(endpoint, request),
+      );
+      await type('Nhận xét hợp lệ');
+      await send();
+      expect(document.body.textContent).toContain('Đã đạt giới hạn');
+      expect(panel().querySelector('textarea')!.value).toBe('Nhận xét hợp lệ');
+      expect(toastText()).not.toContain('Đã gửi nhận xét');
+    });
+
+    it('loads the next page of comments on "Xem thêm nhận xét"', async () => {
+      // 25 comments: the first page holds 20, one more page holds the rest. One learner cannot send
+      // that many in a day, so the answers are written here.
+      const comment = (id: number) => ({
+        id,
+        authorName: 'Học viên tích hợp Demo',
+        text: `Nhận xét số ${id}`,
+        anchor: { type: 'none', blockId: null, page: null, second: null },
+        createTime: '2026-11-02T09:00:00Z',
+        mine: false,
+      });
+      const ids = (from: number, to: number) =>
+        Array.from({ length: from - to + 1 }, (_, i) => from - i);
+      const page = (newest: number, oldest: number, index: number) => ({
+        items: ids(newest, oldest).map(comment),
+        page: index,
+        size: 20,
+        totalElements: 25,
+        totalPages: 2,
+      });
+      handle.mockImplementation((endpoint, request) => {
+        if (endpoint === feedbackEndpoints.lessonFeedback) {
+          return {
+            status: 200,
+            body: envelopeOk({
+              rating: null,
+              myStars: null,
+              comments: page(25, 6, 0),
+              mine: [],
+            }),
+          } as FakeReply;
+        }
+        if (endpoint === feedbackEndpoints.lessonComments) {
+          return {
+            status: 200,
+            body: envelopeOk(page(5, 1, 1)),
+          } as FakeReply;
+        }
+        return real()(endpoint, request);
+      });
+      await open(lessonUrl(1));
+      const more = () =>
+        Array.from(section().querySelectorAll('button')).find((b) =>
+          b.textContent?.includes('Xem thêm nhận xét'),
+        );
+      const items = () => section().querySelectorAll('.feedback__item').length;
+      expect(items()).toBe(20);
+      await press(more());
+      expect(calls(feedbackEndpoints.lessonComments).length).toBe(1);
+      expect(calls(feedbackEndpoints.lessonComments)[0][1].query).toEqual({
+        page: '1',
+        size: '20',
+      });
+      expect(items()).toBe(25);
+      expect(more()).toBeUndefined();
+    });
+
+    it('shows the error with a retry when the section cannot be read', async () => {
+      handle.mockImplementation((endpoint, request) =>
+        endpoint === feedbackEndpoints.lessonFeedback
+          ? backendRefusal('internalError')
+          : real()(endpoint, request),
+      );
+      await open(lessonUrl(1));
+      expect(sectionText()).toContain('Không tải được đánh giá và nhận xét');
+
+      handle.mockImplementation(real());
+      await press(
+        Array.from(section().querySelectorAll('button')).find((b) =>
+          b.textContent?.includes('Thử lại'),
+        ),
+      );
+      expect(sectionText()).toContain('Chưa có đánh giá');
+    });
+
+    it('is not offered on a lesson that cannot be opened', async () => {
+      await open(`/lesson/${COURSE}/999999`);
+      expect(el.querySelector('app-lesson-feedback')).toBeNull();
+      expect(calls(feedbackEndpoints.lessonFeedback).length).toBe(0);
     });
   });
 });

@@ -42,6 +42,18 @@ describe('Stars', () => {
     );
   });
 
+  it('keeps one decimal on a whole score, in the visible text and the sentence', async () => {
+    const { root, fixture, host } = await render();
+    host.value.set(3);
+    host.count.set(2);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    expect(root.querySelector('strong')?.textContent).toBe('3,0');
+    expect(root.querySelector('.sr-only')?.textContent).toBe(
+      '3,0 trên 5 sao, 2 đánh giá',
+    );
+  });
+
   it('shows the rounded score and the review count', async () => {
     const { root } = await render();
     expect(root.textContent).toContain('4,3');

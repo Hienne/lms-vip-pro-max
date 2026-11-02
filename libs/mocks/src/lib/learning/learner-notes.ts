@@ -3,23 +3,20 @@ import {
   BookmarkCommandSchema,
   SavedQuerySchema,
   type Anchor,
-  type AnchorCommand,
   type BookmarkToggle,
   type LessonBookmarkView,
-  type CourseDetail,
   type LessonNoteView,
   type SavedItemView,
   type SavedPage,
 } from '@lms/contracts';
 import type { FakeRequest } from '../backend/fake-backend';
 import type { LearnerEnrollments } from './learner-enrollments';
+import { locateLesson, resolveAnchor, sameAnchor } from './lesson-anchors';
 import { refuse } from './learning-reply';
 import type { LessonNoteSeeds } from './learning.fixtures';
 
 /** The most notes, and the most bookmarks, a learner keeps on one lesson. */
 export const MAX_PER_LESSON = 500;
-
-type LessonEntry = CourseDetail['chapters'][number]['lessons'][number];
 
 interface Row {
   readonly id: number;
@@ -31,25 +28,11 @@ interface Row {
   readonly createTime: string;
 }
 
-interface Located {
-  readonly lesson: LessonEntry;
-  readonly courseId: number;
-  readonly courseTitle: string;
-}
-
-const NO_ANCHOR = { blockId: null, page: null, second: null } as const;
-
 const numeric = (value: string | undefined): number | undefined =>
   value === undefined || value === '' ? undefined : Number(value);
 
 const clock = (second: number) =>
   `${Math.floor(second / 60)}:${String(second % 60).padStart(2, '0')}`;
-
-const sameAnchor = (a: Anchor, b: Anchor) =>
-  a.type === b.type &&
-  a.blockId === b.blockId &&
-  a.page === b.page &&
-  a.second === b.second;
 
 const newestFirst = (a: Row, b: Row) =>
   b.createTime.localeCompare(a.createTime) || b.id - a.id;
@@ -88,7 +71,7 @@ export class LearnerNotes {
     const { userId, lessonId, located } = this.lessonOf(request);
     const parsed = AddNoteCommandSchema.safeParse(request.body);
     if (!parsed.success) return refuse('validationFailed');
-    const anchor = this.resolve(located.lesson, parsed.data.anchor);
+    const anchor = resolveAnchor(located.lesson, parsed.data.anchor);
     const mine = this.notes.filter(
       (r) => r.userId === userId && r.lessonId === lessonId,
     );
@@ -123,7 +106,7 @@ export class LearnerNotes {
     const { userId, lessonId, located } = this.lessonOf(request);
     const parsed = BookmarkCommandSchema.safeParse(request.body);
     if (!parsed.success) return refuse('validationFailed');
-    const anchor = this.resolve(located.lesson, parsed.data.anchor);
+    const anchor = resolveAnchor(located.lesson, parsed.data.anchor);
     const existing = this.bookmarks.find(
       (r) =>
         r.userId === userId &&
@@ -179,7 +162,7 @@ export class LearnerNotes {
       .filter((r) => r.userId === userId)
       .sort(newestFirst);
     const items = rows.flatMap((row): SavedItemView[] => {
-      const located = this.locate(userId, row.lessonId);
+      const located = locateLesson(this.enrollments, userId, row.lessonId);
       return located
         ? [
             {
@@ -198,8 +181,11 @@ export class LearnerNotes {
         : [];
     });
     const count = (list: readonly Row[]) =>
-      list.filter((r) => r.userId === userId && this.locate(userId, r.lessonId))
-        .length;
+      list.filter(
+        (r) =>
+          r.userId === userId &&
+          locateLesson(this.enrollments, userId, r.lessonId),
+      ).length;
     return {
       page: {
         items: items.slice(page * size, page * size + size),
@@ -260,65 +246,9 @@ export class LearnerNotes {
   private lessonOf(request: FakeRequest) {
     const userId = this.callerId(request);
     const lessonId = Number(request.params['lessonId']);
-    const located = this.locate(userId, lessonId);
+    const located = locateLesson(this.enrollments, userId, lessonId);
     if (!located) return refuse('learningNotFound');
     return { userId, lessonId, located };
-  }
-
-  /** The lesson in the revision the caller received; a course they left does not count. */
-  private locate(userId: string, lessonId: number): Located | undefined {
-    for (const record of this.enrollments.all()) {
-      if (
-        record.enrollment.userId !== userId ||
-        record.enrollment.status === 'withdrawn'
-      ) {
-        continue;
-      }
-      for (const chapter of record.content.chapters) {
-        const lesson = chapter.lessons.find((l) => l.lesson.id === lessonId);
-        if (lesson) {
-          return {
-            lesson,
-            courseId: record.content.course.id,
-            courseTitle: record.content.revision.title ?? '',
-          };
-        }
-      }
-    }
-    return undefined;
-  }
-
-  /** The anchor as the server stores it, after checking it against the block's ready file. */
-  private resolve(lesson: LessonEntry, anchor: AnchorCommand): Anchor {
-    if (anchor.type === 'none') return { type: 'none', ...NO_ANCHOR };
-    const block = lesson.blocks.find((b) => b.block.id === anchor.blockId);
-    const file = block?.assets.find((a) => a.usage.usage === 'primary')?.asset;
-    if (
-      !block ||
-      block.block.blockType !== anchor.type ||
-      file?.status !== 'ready'
-    ) {
-      return refuse('invalidReference');
-    }
-    if (anchor.type === 'pdf') {
-      if (anchor.page > (file.pageCount ?? 0))
-        return refuse('invalidReference');
-      return {
-        type: 'pdf',
-        blockId: anchor.blockId,
-        page: anchor.page,
-        second: null,
-      };
-    }
-    if (anchor.second > Math.floor(file.durationSeconds ?? 0)) {
-      return refuse('invalidReference');
-    }
-    return {
-      type: 'video',
-      blockId: anchor.blockId,
-      page: null,
-      second: anchor.second,
-    };
   }
 
   /** The seed learner's notes and bookmark, anchored on the first PDF and video of their course. */

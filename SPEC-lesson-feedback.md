@@ -1,7 +1,66 @@
 # Spec: `lesson-feedback`
 
-Map: [SPEC.md](SPEC.md). Status: **draft, waiting for approval.** Depends on `catalog-discovery`: D3 / D4 carry
+Map: [SPEC.md](SPEC.md). Status: **built 2026-11-02** (amended by the plan, see "Amendments"; results in `tasks/todo.md` Checkpoint B). Depends on `catalog-discovery`: D3 / D4 carry
 the course rating.
+
+## Amendments
+
+Written with [tasks/plan.md](tasks/plan.md) on 2026-11-02. Where they differ from the sections below, they win.
+
+1. **Errors use the existing codes:**
+   - a lesson outside the caller's enrollments → `LEARNING-NOT_FOUND`;
+   - a bad anchor → `LEARNING-INVALID_REFERENCE`;
+   - stars outside 1–5, an unknown kind, or text that is blank, under 5 or over 1000 characters after trimming →
+     `CORE-VALIDATION_FAILED`, with the mockup's field message.
+
+   One new code: `LEARNING-FEEDBACK_LIMIT`, for more than 20 comments, questions and reports per user per lesson
+   per learning day (`Asia/Ho_Chi_Minh`).
+
+2. **Access** is the notes rule: the lesson is in the revision of one of the caller's enrollments, withdrawn
+   excluded. A learner of the lesson sees its comments and rating, whatever revision they hold.
+3. **Anchors are the notes anchor:**
+   - `{ type: none } | { type: pdf, blockId, page } | { type: video, blockId, second }`, with whole seconds stored as
+     `video_second integer`;
+   - checked against the asset as for notes.
+
+   As in the mockup, every kind is sent with the current position, so there is no "Đính kèm vị trí hiện tại" box. The
+   form shows where it is sent from: "Gửi kèm vị trí: Trang 3" or "Video 0:12". Nothing is shown when the anchor is
+   `none`.
+
+4. **Table changes from the spec's DDL:**
+   - `video_second integer` replaces `video_seconds numeric`.
+   - `status` is null for `rating` and `comment`, and is `new | answered | resolved` for `question` and `report`,
+     with a CHECK.
+   - The anchor CHECK is the notes one. A rating has no anchor.
+   - There is no FK and no UNIQUE. "One rating per user per lesson" is kept by the service under the advisory lock
+     `lesson-rating:{userId}`.
+   - The upgrade is dated `2026-11-04`.
+5. **Course rating covers every revision.** It is the average of the live ratings with that `course_id`, over every
+   revision, rounded to one decimal, with the count.
+   - Ratings are not lost when a course gets a new revision.
+   - It is filled per page beside `bestScorePercent`, with one grouped query for the page's course ids, in place of
+     the spec's lateral join in the card query.
+   - In `MANAGE` mode (the instructor list) it is filled too.
+6. **Where the rating shows:**
+   - on the course page meta line only, as "★ 4,3 (12)", with nothing when `rating` is null. The mockup puts no
+     rating on cards.
+   - the card DTO still carries `rating`, so cards can show it later without a backend change.
+7. **What each learner sees:**
+   - every live comment of the lesson, with `authorName` (`full_name`) and `mine`;
+   - their own questions and their own reports, never anyone else's (spec "Never").
+
+   The mockup also shows other learners' answered questions. That waits for the inbox, since nothing can be answered
+   yet.
+
+   The report tab lists the learner's own reports with "Chờ xử lý" / "Đã xử lý". When there are none: "Bạn chưa gửi
+   báo cáo nào ở bài này." This copy is new; the mockup has no list.
+
+8. **Copy without promises.**
+   - The question toast drops the mockup's "Bạn sẽ nhận thông báo khi giảng viên trả lời.", because no notification
+     is sent (open question 1).
+   - The question help text "Chỉ bạn và giảng viên thấy câu hỏi cho tới khi được trả lời." becomes "Chỉ bạn và
+     giảng viên thấy câu hỏi này."
+9. **Comments page by 20.** F1 returns the first page and its total. "Xem thêm nhận xét" loads the next page from F4.
 
 ## Objective
 

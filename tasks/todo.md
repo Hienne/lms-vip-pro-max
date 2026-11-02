@@ -1,304 +1,259 @@
-# Tasks: `lesson-notes`
+# Tasks: `lesson-feedback`
 
-Spec: [SPEC-lesson-notes.md](../SPEC-lesson-notes.md) · Plan: [plan.md](plan.md).
-The previous `learning-leaderboard` checklist, with its success criteria and how each was checked, is in git history
-at `a04912c`.
+Spec: [SPEC-lesson-feedback.md](../SPEC-lesson-feedback.md) · Plan: [plan.md](plan.md).
+The previous `lesson-notes` checklist, with its success criteria and how each was checked, is in git history at
+`0b964b9`.
 
 - **Repositories:**
-  - backend: `corebanking-academy`, branch `feat/lesson-notes` from `origin/main` (`214d768`, #18 merged), in its own
-    worktree `~/my-projects/corebanking-academy-notes`;
-  - app: this one, branch `feat/lesson-notes` from `origin/main` (#51 merged).
+  - backend: `corebanking-academy`, branch `feat/lesson-feedback` from `origin/main` (`a8b05ea`, #20 merged), in its
+    own worktree `~/my-projects/corebanking-academy-feedback`;
+  - app: this one, branch `feat/lesson-feedback` from `origin/main` (`f03b326`, #54 merged).
 
   Nothing is pushed.
 
 - **Local stack:**
-  - the backend on :8019 is the main session's background task. It runs from
-    `~/my-projects/corebanking-academy-leaderboard`. Never run `mvn` in the worktree it runs from, and never start
-    another backend. Message the main session for a restart;
-  - **the local DB gets the new tables only at Checkpoint A, from the main session.** Until then, test with
-    Testcontainers;
-  - the app runs on :4200 against `localhost:8019`;
-  - accounts: `hocvien` and `hocvien.tichhop` as learners;
-  - demo data: PDF block 32 (lesson 16, 4 pages) and video block 33 (lesson 17, 30 s), in "Demo tài liệu PDF và
-    video";
-  - passwords come only from `LOCAL_DEMO_PASSWORD` in the backend's `.env.local`, never printed;
-  - in the browser, sign in with the one-shot token method, never by typing the password.
-- **Never** touch the shared server `103.121.90.119`. No seeding users, no direct edits to progress or attempts.
-- Schema rules: an upgrade script, a rollback, the psql command and a README entry. No FK, no business UNIQUE,
-  every column commented. Flyway is off and `ddl-auto=validate`.
+  - the backend on :8019 is the main session's background task. Never run `mvn` in the worktree it runs from, and
+    never start another backend. Message the main session for a restart.
+  - **The local DB gets the new table only at Checkpoint A, from the main session.** Until then, test with
+    Testcontainers.
+  - The app runs on :4200 against `localhost:8019`.
+  - Accounts: `hocvien` and `hocvien.tichhop` as learners.
+  - Demo data:
+    - PDF block 32 (lesson 16, 4 pages) and video block 33 (lesson 17, 30 s), in "Demo tài liệu PDF và video"
+      (course 7);
+    - for the visibility check, a lesson both learners are enrolled in, found at Checkpoint A.
+  - Passwords come only from `LOCAL_DEMO_PASSWORD` in the backend's `.env.local`, and are never printed.
+  - In the browser, sign in with the one-shot token method, never by typing the password.
+- **Never** touch the shared server `103.121.90.119`. No seeding users, and no direct edits to progress or attempts.
+- **Schema rules:**
+  - an upgrade script, a rollback, the psql command and a README entry;
+  - no FK, no business UNIQUE, and every column commented;
+  - Flyway is off and `ddl-auto=validate`.
 
 ## Phase 1: Backend
 
-- [x] **B1: Schema, entities and repositories**
+- [x] **B1: Schema, entity and repository**
   - Acceptance:
-    - `docs/sql/upgrade/2026-11-03-lesson-notes.sql` creates `learning_hub.lesson_notes` and
-      `learning_hub.lesson_bookmarks`, as in the spec with amendment 3 (`video_second integer` in place of
-      `video_seconds numeric`). It has:
-      - the audit columns;
-      - the anchor CHECK on both tables;
+    - `docs/sql/upgrade/2026-11-04-lesson-feedback.sql` creates `learning_hub.lesson_feedback` as in the spec, with
+      amendment 4:
+      - `video_second integer`;
+      - `status` null for `rating` / `comment`, and `new | answered | resolved` for `question` / `report`, with a
+        CHECK;
+      - the notes anchor CHECK, and no anchor on a rating;
       - the two partial indexes;
-      - a comment on each table and column;
-      - `BEGIN/COMMIT` with `lock_timeout`, and is safe to run twice.
-    - A rollback prints both row counts, then drops both tables.
-    - The baseline `learning_hub_learning.sql` gets both tables. `docs/sql/README.md` gets the upgrade row with the
-      psql commands.
-    - Entities `LessonNote` and `LessonBookmark`, and their repositories.
+      - audit columns;
+      - a comment on the table and on every column;
+      - `BEGIN/COMMIT` with `lock_timeout`, and safe to run twice.
+    - The rollback prints the row count, then drops the table.
+    - The baseline `learning_hub_learning.sql` gets the table, and `docs/sql/README.md` gets the upgrade row.
+    - The entity `LessonFeedback` and its repository.
   - Verify:
     - The ITs start on the baseline with `ddl-auto=validate`.
-    - A Testcontainers test runs the upgrade twice, then the rollback, on a baseline without the tables.
-    - The CHECK refuses a `pdf` row without `block_id`.
-  - Size: M. Depends on: none.
+    - A Testcontainers test runs the upgrade twice, then the rollback.
+    - The CHECKs refuse a rating with a body, a comment with stars, and a question without a status.
+  - Size: S. Depends on: none.
 
-- [x] **B2: Notes N1–N3**
+- [x] **B2: Rating (F2) and the course rating (F5)**
   - Acceptance:
-    - `LearningNotesController` under `/api/v1/me/learning`, for learners only:
-      - N1 `GET /lessons/{lessonId}/notes` → `List<NoteView>`, newest first;
-      - N2 `POST /lessons/{lessonId}/notes` with `{ anchor: { type: none|pdf|video, blockId?, page?, second? }, text }`
-        → `NoteView`;
-      - N3 `DELETE /notes/{noteId}` → `null`.
-    - `NoteView { id, lessonId, anchor, text, createTime }`.
-    - **Access (amendment 2):** one query resolves the lesson's revision and checks it against the caller's
-      enrollments; otherwise `LEARNING-NOT_FOUND`.
-    - **Anchor validation** against the block and its asset; otherwise `LEARNING-INVALID_REFERENCE`:
-      - `pdf`: a `pdf` block of the lesson, with `1 ≤ page ≤ page_count`;
-      - `video`: a `video` block of the lesson, with `0 ≤ second ≤ floor(duration_seconds)`;
-      - a null bound refuses the anchor type.
-    - **Text:** trimmed, 1–4000 characters, else `CORE-VALIDATION_FAILED`.
-    - **Limit:** more than 500 live notes on the lesson → the new `LEARNING-NOTE_LIMIT`.
-    - **Delete:** soft. Another user's note, a missing note and a deleted note are all `LEARNING-NOT_FOUND`.
+    - The anchor and access checks move from `LearningNotesService` into a shared helper, and the notes ITs stay
+      green.
+    - F2 `PUT /me/learning/lessons/{lessonId}/rating` with `{ stars }`:
+      - stars outside 1–5 → `CORE-VALIDATION_FAILED`;
+      - access as for notes, else `LEARNING-NOT_FOUND`;
+      - under the advisory lock `lesson-rating:{userId}`, it replaces the live rating or inserts one;
+      - it answers `{ average, count, myStars }`, with the average rounded to one decimal.
+    - `CourseCard` gains `rating: { average, count } | null`, the course's live ratings over every revision. It is
+      set per page by one grouped query beside `withBestScores`, in learner and `MANAGE` modes. `LearnerCourse`
+      carries it through the card.
   - Verify: ITs for:
-    - the access refusal (another learner's enrollment, a lesson of a course with no enrollment);
-    - each anchor rule, including the bounds and the wrong block type;
-    - blank and 4001-character text;
-    - the limit;
-    - the delete, a second delete, and another user's note;
-    - a non-learner is refused.
+    - rate 4, then 5: one live row, and `myStars` 5;
+    - two concurrent `PUT`s from one user: one live row;
+    - stars 0 and 6 refused;
+    - a lesson outside the enrollments → `NOT_FOUND`;
+    - a non-learner → `CORE-ACCESS_DENIED`;
+    - the card rating over two lessons and two learners, and null with no ratings;
+    - `/courses/{id}` carries the same rating as the catalogue card.
   - Size: M. Depends on: B1.
 
-- [x] **B3: Bookmarks N4, N5 and N7**
+- [x] **B3: Comments, questions and reports (F3, F1, F4)**
   - Acceptance:
-    - N4 `GET /lessons/{lessonId}/bookmarks` → `List<BookmarkView>`, newest first.
-    - N5 `PUT /lessons/{lessonId}/bookmarks` with `{ anchor (pdf | video), label? }`:
-      - under the advisory lock `lesson-bookmark:{userId}`, a live bookmark with the same block and anchor is
-        soft-deleted (`{ saved: false }`);
-      - otherwise one is inserted (`{ saved: true, bookmark }`).
-    - N7 `DELETE /bookmarks/{bookmarkId}` → `null`, with the same rules as N3.
-    - `BookmarkView { id, lessonId, anchor, label, createTime }`. The label is at most 200 characters.
-    - Same access, anchor, limit (500) and not-found rules as B2.
+    - F3 `POST /me/learning/lessons/{lessonId}/feedback` with
+      `{ kind: comment|question|report, text, anchor }` returns `FeedbackView`:
+      - text trimmed, 5–1000 characters, else `CORE-VALIDATION_FAILED` with the mockup's field message;
+      - the anchor as for notes, else `LEARNING-INVALID_REFERENCE`;
+      - status: null for a comment, `new` for a question or a report;
+      - more than 20 sends per user per lesson per learning day (`Asia/Ho_Chi_Minh`), counted under the advisory
+        lock `lesson-feedback:{userId}` → the new `LEARNING-FEEDBACK_LIMIT`.
+    - F1 `GET /me/learning/lessons/{lessonId}/feedback` returns
+      `{ rating: {average, count} | null, myStars | null, comments: PageResponse<CommentView> (first 20), mine: List<FeedbackView> }`:
+      - `CommentView { id, authorName, text, anchor, createTime, mine }`, newest first;
+      - `mine` holds the caller's questions and reports, newest first.
+    - F4 `GET /me/learning/lessons/{lessonId}/comments?page&size` (size at most 100) → `PageResponse<CommentView>`.
+    - `FeedbackView { id, kind, text, anchor, status, reply, replyTime, createTime }`.
   - Verify: ITs for:
-    - toggle on, then off, then on again;
-    - two concurrent toggles from one user end in a consistent state (one live row or none);
-    - a `none` anchor refused;
-    - N7 on another user's bookmark → `NOT_FOUND`.
+    - each kind saved with its status;
+    - 4 and 1001 characters refused, and 5 and 1000 accepted;
+    - a bad anchor refused;
+    - the 21st send of the day refused, and the limit holding under concurrent sends;
+    - learner B sees A's comment with `mine: false` and A's name, but not A's question or report;
+    - the comment paging;
+    - access refused outside the enrollments.
   - Size: M. Depends on: B2.
 
-- [x] **B4: Saved N6 and docs**
+- [x] **B4: Docs**
   - Acceptance:
-    - N6 `GET /saved?kind=notes|bookmarks&page&size`, where `size` is at most 100. It returns
-      `{ page: PageResponse<SavedItemView>, counts { notes, bookmarks } }`.
-    - `SavedItemView` is the note or bookmark view plus `kind`, `courseId`, `courseTitle`, `lessonTitle`.
-    - Live items of the caller only, newest first.
-    - `docs/api/LEARNING.md` gets "Ghi chú và đánh dấu": N1–N7, the anchor rules, the limits and the error codes.
-  - Verify: ITs for the paging, the counts across both kinds, another user's items absent, and deleted items absent.
-  - Size: S. Depends on: B3.
+    - `docs/api/LEARNING.md` gets a "Phản hồi bài học" section: F1–F5, the rules, the limits and the error codes.
+    - `LEARNING_CURL.md` gets examples, if the notes added some there.
+  - Verify: the doc's examples match the IT payloads.
+  - Size: XS. Depends on: B3.
 
 ### Checkpoint A
 
-- [x] `mvn clean test` green in the worktree: 408 run, 0 failures, 42 skipped (`CommunityApiIT`, untouched).
-- [x] Stop for the main session. It:
-  - applies the upgrade to the local DB;
-  - restarts :8019 on the branch;
-  - checks with `curl` as `hocvien`:
-    - a note on page 3 of block 32 is saved;
-    - page 5 is refused with `LEARNING-INVALID_REFERENCE`;
-    - a bookmark at second 20 of block 33 toggles on, then off, then on;
-    - N6 has the right counts;
-  - checks as `hocvien.tichhop` that the lists are empty, and that deleting `hocvien`'s note is `LEARNING-NOT_FOUND`.
+- [x] `mvn clean test` green in the worktree: 429 run, 0 failures, 42 skipped (`CommunityApiIT`, untouched).
+- [x] Main session check (2026-11-02):
+  - **Upgrade:** applied twice to the local DB (the `core-academy-local` stack); the second run only reports
+    "already exists". :8019 now runs from the `feat/lesson-feedback` worktree.
+  - **Shared lesson:** both learners hold course 1 revision 1. Lesson 1 is used for the visibility check.
+  - **`curl` as `hocvien` (H) and `hocvien.tichhop` (T):**
+    - **F2:**
+      - H rates 4, then 5: count 1, `myStars` 5. T rates 3: average 4.0, count 2.
+      - Stars 0 and 6 return `CORE-VALIDATION_FAILED` on `stars` with "Số sao phải từ 1 đến 5.".
+    - **F3:**
+      - A comment comes back trimmed with status null. A question and a report come back with status `new`.
+      - A pdf p3 anchor (block 32) and a video 12 s anchor (block 33) are stored.
+      - " abcd " and 1001 characters fail with the mockup messages. Kind `rating` fails with `CORE-VALIDATION_FAILED`.
+      - pdf page 5 returns `LEARNING-INVALID_REFERENCE`.
+      - T on lesson 16 (course 7, not enrolled) returns `LEARNING-NOT_FOUND`.
+    - **F1:**
+      - H sees its comment (`mine: true`, "Học viên tiền gửi Demo") and its question and report.
+      - T sees the same comment with `mine: false`, the same average, `myStars` 3, and `mine: []`.
+    - **F4:**
+      - With size 1, page 0 and page 1 come back newest first, with total 2.
+      - Size 101 returns `CORE-VALIDATION_FAILED`.
+    - **F5:**
+      - `/courses/1` gives `rating {4.0, 2}` for both learners, and the catalogue card matches.
+      - `/courses/2` gives null.
+    - **Not run live:**
+      - the 21st send of the day;
+      - concurrent sends and ratings.
 
-  Done 2026-11-01 by the main session:
-  - The upgrade applied twice on the local DB; the second run only skipped. Each table has 14 columns, and the
-    only constraints are its primary key and the anchor CHECK.
-  - :8019 runs from `~/my-projects/corebanking-academy-notes`.
-  - **Notes, as `hocvien`:**
-    - page 3 of block 32 saved;
-    - page 5, page 0 and a video anchor on the PDF block → `LEARNING-INVALID_REFERENCE`;
-    - blank text → `CORE-VALIDATION_FAILED`;
-    - a whole-lesson note and second 12 of block 33 saved;
-    - N1 lists the notes newest first.
-  - **Bookmarks:**
-    - second 20 of block 33 toggled on (id 1), off, on (id 2), labelled "Video giới thiệu — 0:20";
-    - page 2 of block 32 labelled "Tài liệu Core Banking — trang 2";
-    - second 31 → `LEARNING-INVALID_REFERENCE`;
-    - a `none` anchor → `CORE-VALIDATION_FAILED`;
-    - block 31 (lesson 15, revision 6, no enrollment) → `LEARNING-NOT_FOUND`, since access is checked first.
-  - **N6:** counts `{notes: 3, bookmarks: 2}`. A row carries `kind`, `courseId` 7, the course and lesson titles, and
-    the anchor. `size=101` → `CORE-VALIDATION_FAILED`.
-  - **As `hocvien.tichhop`:**
-    - N6 counts 0 / 0;
-    - lesson 16 → `LEARNING-NOT_FOUND` (not enrolled);
-    - deleting `hocvien`'s note and bookmark → `LEARNING-NOT_FOUND`.
-  - `quantri` → `CORE-ACCESS_DENIED`.
-  - **Deletes:** N3 → `null`, and a second N3 → `LEARNING-NOT_FOUND`. After N7 the counts are `{2, 1}`.
-  - **SQL:** the deleted rows have `is_deleted = true` and `row_version = 1`, and the live rows are as above.
-  - Deviations accepted (from the child's report):
-    - a `withdrawn` enrollment loses access, as opening the lesson does;
-    - the server sets the default bookmark label;
-    - an advisory lock also guards the note limit;
-    - the schema is slightly stricter (a `none` note has no block, and bookmarks have a CHECK too);
-    - a missing or extra anchor field → `CORE-VALIDATION_FAILED`;
-    - an asset that is not `ready` refuses anchors;
-    - N6 rows carry both `text` and `label`, with `kind` `note|bookmark`.
-  - To fix in Phase 2: the comment on `requireLessonAccess` says "any status", but the query excludes `withdrawn`.
+      Both are covered by `LearningFeedbackIT` and `LearningRatingIT`, and the build session saw them fail with the
+      lock removed.
 
-- [ ] The backend PR is opened only when the user asks. Its first line tells the user to run the upgrade on the
-      shared DB before merging.
+  - **`EXPLAIN` of the course rating query on the demo DB:** 0.05 ms. With 8 rows the planner picks
+    `idx_lesson_feedback_lesson_kind`.
+
+    The query binds `kind` as a parameter. Under a generic prepared plan this cannot match the partial
+    `idx_lesson_feedback_course_rating` (`WHERE kind = 'rating'`). **Fix:** write the literal `'rating'` in that
+    SQL.
+
+  - **Test rows left for Checkpoint B:**
+    - ratings on lesson 1 (H 5, T 3);
+    - comments 3 and 6 (H) and one from T;
+    - questions 4 and 7, and report 5 (H).
 
 ## Phase 2: App
 
 - [x] **F1: Contracts, captured responses, mock**
   - Acceptance:
-    - `personalEndpoints` gets `lessonNotes`, `addNote`, `deleteNote`, `lessonBookmarks`, `toggleBookmark`,
-      `deleteBookmark` and `saved`:
-      - on the N1–N7 paths;
-      - numeric ids;
-      - `AnchorSchema` with `none`, `pdf {blockId, page}` and `video {blockId, second}`;
-      - `served: 'mock'` removed.
-    - The certificate keys stay as they are.
-    - Responses captured from :8019 as `hocvien`.
-    - The mock serves the new paths from a seed with a PDF note, a video note and a PDF bookmark.
-    - The saved store and anything else on the old shapes still compile.
+    - Endpoints `lessonFeedback`, `rateLesson`, `sendFeedback` and `lessonComments`, with zod schemas that reuse
+      the notes `AnchorSchema`.
+    - `CourseCardSchema` gains `rating`.
+    - Responses captured from the local backend parse.
+    - The in-app mock serves F1–F4 with the backend rules (limits, visibility, status) and a small seed. Its cards
+      carry `rating`.
   - Verify: the contracts and mocks specs are green, and the captured responses parse.
   - Size: M. Depends on: Checkpoint A.
 
-- [x] **F2: Block positions, jumps and the bookmark toggle**
+- [x] **F2: The "Đánh giá & trao đổi" section**
   - Acceptance:
-    - `app-pdf-block`:
-      - `pageChange` output on every page change, with no dwell; `pageShown` keeps its dwell;
-      - a `jump` input `{ value, seq }`;
-      - a `bookmarked` input and a `bookmark` output on an icon button "Đánh dấu trang này" in the toolbar, with
-        `aria-pressed`.
-    - `app-video-block`:
-      - `secondChange` output when the whole second changes;
-      - a `jump` input; the jump is reported through `jumped`, as a learner seek is;
-      - a button "Đánh dấu mốc {m:ss}" under the player, with `aria-pressed`.
-    - Both disable the bookmark control while a toggle runs (a `busy` input).
-  - Verify: the block specs cover each output, a jump to the same value twice, the pressed state, and the video
-    jump emitting `jumped`.
-  - Size: M. Depends on: F1.
+    - `LessonStore`:
+      - `feedback` keyed by lesson;
+      - `rate` keeps the latest only;
+      - `sendFeedback` sends the current anchor;
+      - `moreComments`;
+      - each mutation reloads.
+    - `app-lesson-feedback` sits after the block and before the quiz section, with the mockup copy listed in the
+      plan:
+      - **Header:** the average and count, or "Chưa có đánh giá".
+      - **Rating:** the row with `ui-rating` and "Đã ghi nhận {n} sao".
+      - **Tabs:** `ui-tabs` with the counts.
+      - **Form:**
+        - the label, help and button for the selected tab;
+        - "Gửi kèm vị trí: …" when there is an anchor;
+        - the server's field error shown under the textarea;
+        - the report confirm before it sends.
+      - **Lists:**
+        - comments with "Xem thêm nhận xét";
+        - your questions with "Chờ trả lời" / "Đã trả lời";
+        - your reports with "Chờ xử lý" / "Đã xử lý";
+        - each list's empty line.
+      - **Toasts:** the rating toast and the send toasts, per amendment 8.
+    - Visual design: no icon tiles, badges only for status, one primary button. The report button is the danger
+      variant, as in the mockup.
+  - Verify: specs for:
+    - rating by click and by arrow keys (one saved value);
+    - each tab's copy;
+    - the anchor line;
+    - a validation error;
+    - the report confirm (cancel sends nothing);
+    - the lists, the status labels and the empty lines;
+    - "Xem thêm nhận xét";
+    - the error state with retry.
+  - Size: L. Depends on: F1.
 
-- [x] **F3: Lesson side panel and the notes panel**
-  - Acceptance:
-    - **Side panel:** `ui-tabs` "Mục lục" / "Ghi chú ({n})", the same in the `aside` and in the drawer.
-    - **`app-lesson-notes`:**
-      - a form "Ghi chú tại {Trang n | Video m:ss | bài học}" with a textarea and "Lưu ghi chú";
-      - the notes, newest first, each with its anchor as a button ("Trang n", "Video m:ss") and a delete that asks
-        "Xóa ghi chú?" / "Ghi chú sẽ bị xóa vĩnh viễn.";
-      - then the bookmarks, each with its anchor and label;
-      - the mockup's empty line;
-      - loading, error-with-retry and empty states.
-    - **`LessonStore`:**
-      - the current anchor;
-      - the notes and bookmarks of the lesson;
-      - `addNote`, `deleteNote`, `toggleBookmark`, `followAnchor`;
-      - on entry, the `?block=&page=` / `?block=&t=` URL (amendment 7).
-    - Mutations reload the lists and signal `LearningChanges.saved`.
-    - No icon tiles and no badges.
-  - Verify:
-    - Store specs: the anchor follows the active block; add, delete and toggle reload; following an anchor on another
-      block selects it and then jumps; the URL entry; an invalid URL is ignored.
-    - Page spec: the tabs, the form label, the list and the confirm.
-  - Size: L. Depends on: F2.
+- [x] **F3: Course page rating**
+  - Acceptance: `course__meta` shows "★ {average} ({count})" with the average formatted to one decimal in
+    Vietnamese, and nothing when `rating` is null.
+  - Verify: the course spec covers both cases.
+  - Size: XS. Depends on: F1.
 
-- [x] **F4: Saved page on N6**
-  - Acceptance:
-    - `SavedStore` reads N6 with `kind`, `page` and `size`.
-    - Rows follow amendment 8: no icon tiles; the text (note) or the label (bookmark); then
-      "{lesson} · Trang n | Video m:ss · {relative time}".
-    - The row links to the lesson with the amendment 7 URL.
-    - The delete uses N3 or N7 by kind, after a confirm.
-    - The tab counts come from `counts`.
-    - Loading, error-with-retry and empty states.
-  - Verify: the saved spec covers both tabs, the counts, the link URLs, the confirm and delete, and the three states.
-  - Size: M. Depends on: F1.
-
-- [x] **F5: End-to-end check against the spec**
+- [x] **F4: End-to-end check against the spec**
   - Acceptance: the success criteria below are written here, each with how it was checked.
-  - Verify:
-    - Run `npm run check`.
-    - The main session does the browser checks:
-      - as `hocvien`, at 1280 px light and 375 px dark;
-      - a note on page 3 of PDF block 32 and a bookmark at 0:20 on video block 33;
-      - reload;
-      - follow both anchors, from the panel and from Đã lưu;
-      - delete and untoggle;
-      - as `hocvien.tichhop`, none of them.
-  - Size: S. Depends on: F3, F4.
+  - Verify: `npm run check`.
+  - Size: S. Depends on: F2, F3.
+  - Done: `npm run check` green (14/14 tasks) at `5d05726`. The first run failed twice and was fixed in two commits:
+    `b1cfe89` (the template scan refused the unstyled `course__rating` class) and `5d05726` (the first
+    `session-expiry.interceptor` spec raced its 20 ms settle against a cold lazy import under whole-suite load).
 
 ### Checkpoint B
 
-- [x] Success criteria recorded (app side checked here; the browser checks against :8019 are the main session's):
-  1. Notes and bookmarks are created, listed, followed and removed on the local backend for PDF and video blocks,
-     with the same results after a reload.
-     - Checked: Checkpoint A curl on :8019 for the backend. In the app, `lesson.spec.ts` / `lesson.store.spec.ts`
-       (add, delete, toggle reload the lists; follow an anchor selects the block then jumps; `?block=&page=` /
-       `&t=` entry; invalid URL ignored) and the block specs (`pageChange`, `secondChange`, jump to the same value
-       twice, pressed state, video `jumped`), all on the mock that mirrors the backend rules. **Not yet checked in
-       the browser.**
-  2. They are private: another learner sees none, and a direct `DELETE` of someone else's note answers
-     `LEARNING-NOT_FOUND`.
-     - Checked: Checkpoint A curl as `hocvien.tichhop` for the backend; `learner-notes.spec.ts` (mock) and
-       `saved.spec.ts` ("with nothing saved" as `hocvien.tichhop`). **Browser check pending.**
-  3. "Đã lưu & ghi chú" lists both kinds with the right counts, and its links open the lesson at the anchor.
-     - Checked: `saved.spec.ts` (9 tests): counts on both tabs, newest first, where-line, link URLs
-       (`?block=&page=5`, `&t=250`, bookmark `&page=2`), confirm cancel vs confirm for note and bookmark,
-       error with retry, empty state, paging and stepping back a page. `personal.endpoints.spec.ts` parses the
-       responses captured from :8019. **Browser check pending.**
-  4. The upgrade and the rollback apply cleanly. `mvn clean test` and `npm run check` are green, and the
-     visual-design checklist passes for the side panel and the saved page.
-     - Checked: backend `mvn -o clean test` BUILD SUCCESS (408 run, 0 failures) at Checkpoint A, upgrade twice
-       and rollback in `LessonNotesSchemaTest`. App: `npm run check` exit 0 (format, then lint, typecheck, test,
-       build, check-bundle: 14 tasks succeeded, 9 from cache; lms tests ran uncached). Checklists were read
-       against the templates and styles (no tiles, badges, gradients, uppercase, edge stripes; icon buttons
-       labelled with tooltips; one primary button per screen). **Not looked at in a browser at 1280/375,
-       light/dark.**
-- [x] Browser check on :4200 against :8019 (main session, 2026-11-01), signed in by token, never by typed
-      password:
-  - Criterion 1, as `hocvien` on course 7:
-    - `?block=32&page=3` opens "Trang 3/4" with the label "Ghi chú tại Trang 3", and then the URL keeps
-      `?block=32` only.
-    - A note saved there is stored as pdf page 3 (DB note 6).
-    - Following the "Trang 2" bookmark shows page 2, the label "Trang 2" and the bookmark pressed.
-    - `?block=33&t=12` starts the video at 12 s with the label "Video 0:12".
-    - Toggling the 0:12 bookmark gives `aria-pressed` true, then false.
-    - After the save, the form is empty with no error.
-  - Criterion 2: as `hocvien.tichhop`, "Đã lưu & ghi chú" shows "Ghi chú 0" / "Đánh dấu 0" and the empty
-    state.
-  - Criterion 3:
-    - The saved page counts both tabs.
-    - Links carry `?block&page|t`, and a whole-lesson note has no query.
-    - Only the selected panel renders rows.
-    - Delete asks first, then the count drops.
-    - Seen in light and dark, at 1280 and 375 px, with no horizontal scroll.
-  - Criterion 4: `npm run check` exit 0 on `c9e8618`. One earlier run failed 3 tests in
-    `session-expiry.interceptor.spec.ts` (`NG0205` after an injector teardown) while the dev server built. That
-    spec is not touched by this branch, and it passed alone and on the rerun.
-  - The test rows of the checks are deleted. `hocvien` keeps notes 2 and 3 and bookmark 3.
-- [x] Fixes from the browser check, one commit per cause:
-  1. `e5e3425`: an unselected tab panel stayed visible where the screen set `display`.
-  2. `9258032`: the PDF said it resumed when it opened at a jump or URL anchor.
-  3. `481b7de`: every progress result reset the on-screen position, which also caused the following:
-     - the label "bài học";
-     - notes saved as `none`;
-     - video 0:00 after a jump;
-     - `aria-pressed` never true.
-
-     The position is now keyed on the block id.
-
-  4. `3581c99`: an error showed after a successful save.
-  5. `b7b4be3`: bookmark anchors were centred.
-  6. `c5dd532`: the entry `page`/`t` stayed in the URL.
-  7. `c9e8618`: the saved page rendered rows in the hidden tab too.
-  8. `8d5e3db`: the empty-state title doubled its full stop.
-
+- [x] Fixes after the main session's browser check (one commit each, `npm run check` green):
+  - `857b809` the rating keeps one call in flight and sends the last choice when it returns; only the last is
+    announced. Spec: held replies (`ReplyGate`) show one request out at a time and `[4, 2]` sent for 4, 3, 2.
+  - `e0955e4` `ui-stars` shows one Vietnamese decimal ("3,0"), so the lesson header and its sr text match the course
+    page. Specs: `rating.spec.ts` and the lesson header "4,0 (1 đánh giá)".
+  - `82e421f` `feedback.captured.ts` holds the live captures of 2026-11-02 and the contract specs parse them,
+    including the course card and the 0-star refusal.
+- [x] Success criteria recorded (app side checked on the in-app mock and by specs; the live local backend is the main
+      session's check):
+  1. Rating, comment, question and report work on the local backend, and a reload shows the same state.
+     - App: `lesson.spec.ts` "rating and comments" (click and arrow-key rating with one saved value, comment with a PDF
+       page anchor, question, report confirm cancel/confirm, refusal toast, more comments, error and retry) and
+       `learner-feedback.spec.ts` (13 specs, limits, visibility, status). The section was also driven in the browser
+       on a throwaway `mockBackend` copy: rating by arrows ends at one saved value, the report confirm dialog opens.
+     - Live (main session, local backend :8019 on `a8b38e9`, app at `82e421f`): as `hocvien` on `/lesson/1/1`, arrows
+       3 → 4 → 5 → 4 → 3 → 2 sent two PUTs, 4 then 2, none cancelled; the DB holds 2, the toast reads "2/5 sao", and a
+       reload shows 2 stars and "2,5 (2 đánh giá)". Comment, question at "Trang 3" (toast, "Chờ trả lời · Trang 3",
+       form cleared), report confirm (cancel sends nothing) and the validation line checked in the first browser pass.
+  2. Visibility holds across `hocvien` and `hocvien.tichhop`.
+     - App: the mock specs and the seed show another learner's comment with `mine: false` and the name, and never
+       another learner's question or report.
+     - Live: `hocvien.tichhop` at 375 px dark sees the average, both comments (H's with the name, its own as "Bạn")
+       and its own stars, and none of H's questions or reports. Curl (Checkpoint A) agrees.
+  3. The course page shows the course rating, matching `curl` of the card.
+     - App: `course.spec.ts` "the rating of the course" (4 specs: "★ 4,5 (2)", "4,0" for a whole average, null, absent).
+     - Live: `/course/1` shows "★ 2,5 (2)" with "Đánh giá 2,5 trên 5 sao từ 2 lượt", matching the DB rows (2 and 3);
+       the card curl matched the catalogue at Checkpoint A.
+  4. The upgrade and the rollback apply cleanly. `mvn clean test` and `npm run check` are green. The
+     visual-design checklist passes for the section.
+     - `npm run check` green (14/14) at `82e421f`.
+     - Visual-design checklist for the section: 1024 and 1280 px and 375 px, light and dark, no horizontal scroll;
+       no eyebrow, icon tile, avatar, bubble, gradient or edge stripe; badges only for status; one primary button
+       (the send buttons are secondary, the report is danger).
+     - Backend: `mvn -o clean test` on `a8b38e9`: 429 tests, 0 failures, 0 errors, 42 skipped. The upgrade is applied
+       on the local DB; `EXPLAIN` of the course rating uses `idx_lesson_feedback_course_rating`.
+- [x] Browser check by the main session at 1280 px light and 375 px dark (results above; the tab row wraps to two
+      lines at 375 px, which reads fine).
 - [x] Spec status set to built.
-- [ ] Review with the user, then plan `lesson-feedback`.
+- [ ] Review with the user, then plan `certificates`.

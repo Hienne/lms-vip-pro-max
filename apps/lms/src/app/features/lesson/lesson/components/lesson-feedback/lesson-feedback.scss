@@ -1,0 +1,107 @@
+@use 'ui';
+
+.feedback {
+  @include ui.stack(4);
+  padding: ui.space(5);
+  border: 1px solid ui.color(border);
+  border-radius: ui.radius(card);
+  background: ui.color(surface);
+
+  &__head {
+    @include ui.row-between(3);
+  }
+
+  &__title {
+    margin: 0;
+    font-size: ui.text-size(lg);
+    font-weight: ui.weight(semibold);
+  }
+
+  &__none {
+    @include ui.text(sm, muted);
+  }
+
+  &__skeleton {
+    height: 10rem;
+  }
+
+  &__rate {
+    @include ui.row(3);
+  }
+
+  &__rate-label {
+    @include ui.text(sm);
+    font-weight: ui.weight(medium);
+  }
+
+  &__rate-note {
+    @include ui.text(sm, muted);
+  }
+
+  &__panel {
+    @include ui.stack(4);
+    padding-top: ui.space(4);
+  }
+
+  &__form {
+    @include ui.stack(2);
+  }
+
+  &__actions {
+    @include ui.row-between(3);
+  }
+
+  &__submit {
+    margin-left: auto;
+  }
+
+  &__spot {
+    @include ui.text(sm, muted);
+    @include ui.num;
+    margin: 0;
+  }
+
+  &__list {
+    @include ui.stack(4);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  &__item {
+    @include ui.stack(1);
+  }
+
+  &__meta {
+    @include ui.text(sm, muted);
+    @include ui.row(2);
+    margin: 0;
+  }
+
+  &__who {
+    color: ui.color(text);
+    font-weight: ui.weight(medium);
+  }
+
+  &__text {
+    @include ui.text(sm);
+    margin: 0;
+    overflow-wrap: anywhere;
+    white-space: pre-wrap;
+  }
+
+  &__reply {
+    @include ui.stack(1);
+    margin-top: ui.space(2);
+    padding-left: ui.space(4);
+    border-left: 1px solid ui.color(border);
+  }
+
+  &__empty {
+    @include ui.text(sm, muted);
+  }
+
+  &__more {
+    display: flex;
+  }
+}

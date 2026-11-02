@@ -20,6 +20,7 @@ import { QuizCard } from '../../../shared/quiz/quiz-card/quiz-card';
 import { AttachmentBlock } from './components/attachment-block/attachment-block';
 import { BlockList } from './components/block-list/block-list';
 import { ImageBlock } from './components/image-block/image-block';
+import { LessonFeedback } from './components/lesson-feedback/lesson-feedback';
 import { LessonNotes } from './components/lesson-notes/lesson-notes';
 import { LessonOutline } from './components/lesson-outline/lesson-outline';
 import { PdfBlock } from './components/pdf-block/pdf-block';
@@ -45,6 +46,7 @@ import { LessonStore } from './data-access/lesson.store';
     FmtPctPipe,
     Icon,
     ImageBlock,
+    LessonFeedback,
     LessonNotes,
     LessonOutline,
     NgTemplateOutlet,

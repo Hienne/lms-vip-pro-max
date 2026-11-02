@@ -310,6 +310,51 @@ describe('Course', () => {
     });
   });
 
+  describe('the rating of the course', () => {
+    const rated = (rating: unknown) => {
+      const backend = TestBed.inject(MockBackend);
+      handle.mockImplementation((endpoint, request) => {
+        const reply = MockBackend.prototype.handle.call(
+          backend,
+          endpoint,
+          request,
+        ) as { body: { data: { card: Record<string, unknown> } } };
+        if (endpoint === learnerEndpoints.course) {
+          Object.assign(reply.body.data.card, { rating });
+        }
+        return reply as never;
+      });
+    };
+    const meta = () => el.querySelector<HTMLElement>('.course__meta')!;
+
+    it('shows ★, the average and how many rated on the meta line', async () => {
+      await open(1);
+      expect(meta().querySelector('[aria-hidden="true"]')?.textContent).toBe(
+        '★ 4,5 (2)',
+      );
+      expect(meta().textContent).toContain('Đánh giá 4,5 trên 5 sao từ 2 lượt');
+    });
+
+    it('keeps one decimal, with the Vietnamese comma, for a whole average', async () => {
+      rated({ average: 4, count: 12 });
+      await open(1);
+      expect(meta().textContent).toContain('★ 4,0 (12)');
+    });
+
+    it('shows nothing when nobody has rated the course', async () => {
+      rated(null);
+      await open(1);
+      expect(meta().textContent).not.toContain('★');
+      expect(meta().textContent).not.toContain('Đánh giá');
+    });
+
+    it('shows nothing when the server leaves the rating out', async () => {
+      await open(3);
+      expect(meta().textContent).not.toContain('★');
+      expect(meta().textContent).not.toContain('Đánh giá');
+    });
+  });
+
   describe('a mandatory course nobody assigned', () => {
     it('explains that it must be assigned and shows no button', async () => {
       await open(3);

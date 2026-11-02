@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { BackendDateTimeSchema } from '../http/datetime';
 import { PageQuerySchema } from '../http/page';
+import { RatingSummarySchema } from '../feedback/feedback.schema';
 
 // Mirrors the backend's course authoring endpoints (/api/v1/courses, /api/v1/instructor,
 // /api/v1/learning-assets). A course has revisions: one draft at a time and the published ones,
@@ -334,6 +335,11 @@ export const CourseCardSchema = z.object({
    * has no final exam, the caller has no graded attempt, or in the instructor list. The server's result.
    */
   bestScorePercent: z.number().nullish(),
+  /**
+   * The average and the number of the learners' live ratings over every revision of the course; null
+   * until someone rates. The server's result.
+   */
+  rating: RatingSummarySchema.nullish(),
 });
 export type CourseCard = z.infer<typeof CourseCardSchema>;
 

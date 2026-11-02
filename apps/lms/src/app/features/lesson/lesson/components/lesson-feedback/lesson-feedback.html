@@ -1,0 +1,154 @@
+<section class="feedback" aria-labelledby="feedback-title">
+  <header class="feedback__head">
+    <h2 id="feedback-title" class="feedback__title">Đánh giá &amp; trao đổi</h2>
+    @if (!error() && !loading()) { @if (rating(); as summary) {
+    <ui-stars [value]="summary.average" [count]="summary.count" />
+    } @else {
+    <span class="feedback__none">Chưa có đánh giá</span>
+    } }
+  </header>
+
+  @if (error(); as failure) {
+  <ui-error-state
+    title="Không tải được đánh giá và nhận xét"
+    [message]="failure.message"
+    (retry)="retry.emit()"
+  />
+  } @else if (loading()) {
+  <div
+    uiSkeleton
+    variant="block"
+    class="feedback__skeleton"
+    aria-busy="true"
+  ></div>
+  } @else {
+  <div class="feedback__rate">
+    <span class="feedback__rate-label"
+      >Bài học này hữu ích với bạn thế nào?</span
+    >
+    <ui-rating
+      label="Đánh giá từ 1 đến 5 sao"
+      [value]="myStars()"
+      (valueChange)="rate.emit($event)"
+    />
+    @if (myStars()) {
+    <span class="feedback__rate-note">Đã ghi nhận {{ myStars() }} sao</span>
+    }
+  </div>
+
+  <ui-tabs
+    [tabs]="tabs()"
+    label="Loại phản hồi"
+    wrap
+    [selected]="tab()"
+    (selectedChange)="tab.set($event)"
+  >
+    @for (kind of kinds; track kind) {
+    <div [uiTabPanel]="kind" class="feedback__panel">
+      @let f = forms[kind];
+      <form class="feedback__form" [formRoot]="f">
+        <ui-field [label]="copy[kind].label" [hint]="copy[kind].help">
+          <textarea
+            uiTextarea
+            rows="3"
+            [placeholder]="copy[kind].placeholder"
+            [formField]="f.text"
+          ></textarea>
+        </ui-field>
+        <div class="feedback__actions">
+          @if (spot(); as where) {
+          <p class="feedback__spot">Gửi kèm vị trí: {{ where }}</p>
+          }
+          <button
+            uiButton
+            class="feedback__submit"
+            size="sm"
+            type="submit"
+            [variant]="kind === 'report' ? 'danger' : 'secondary'"
+            [disabled]="sending()"
+          >
+            {{ copy[kind].button }}
+          </button>
+        </div>
+      </form>
+
+      @switch (kind) { @case ('comment') {
+      <ul class="feedback__list" aria-label="Nhận xét của bài học">
+        @for (comment of comments(); track comment.id) {
+        <li class="feedback__item">
+          <p class="feedback__meta">
+            <span class="feedback__who"
+              >{{ comment.mine ? 'Bạn' : comment.authorName }}</span
+            >
+            · {{ comment.createTime | fmtRelative }} @if (comment.anchor.type
+            !== 'none') { · tại {{ anchorText(comment.anchor) }} }
+          </p>
+          <p class="feedback__text">{{ comment.text }}</p>
+        </li>
+        } @empty {
+        <li class="feedback__empty">
+          Chưa có nhận xét. Hãy là người đầu tiên.
+        </li>
+        }
+      </ul>
+      @if (hasMore()) {
+      <div class="feedback__more">
+        <button
+          uiButton
+          size="sm"
+          [disabled]="moreBusy()"
+          (click)="more.emit()"
+        >
+          Xem thêm nhận xét
+        </button>
+      </div>
+      } } @case ('question') {
+      <ul class="feedback__list" aria-label="Câu hỏi của bạn ở bài học">
+        @for (question of questions(); track question.id) {
+        <li class="feedback__item">
+          <p class="feedback__meta">
+            <span class="feedback__who">Bạn</span>
+            · {{ question.createTime | fmtRelative }} @if (question.anchor.type
+            !== 'none') { · {{ anchorText(question.anchor) }} } @let status =
+            questionStatus(question.status);
+            <span uiBadge [tone]="status.tone">{{ status.text }}</span>
+          </p>
+          <p class="feedback__text">{{ question.text }}</p>
+          @if (question.reply) {
+          <div class="feedback__reply">
+            <p class="feedback__meta">
+              <span class="feedback__who">Giảng viên</span>
+              @if (question.replyTime) { · {{ question.replyTime | fmtRelative
+              }} }
+            </p>
+            <p class="feedback__text">{{ question.reply }}</p>
+          </div>
+          }
+        </li>
+        } @empty {
+        <li class="feedback__empty">Bạn chưa đặt câu hỏi nào ở bài này.</li>
+        }
+      </ul>
+      } @case ('report') {
+      <ul class="feedback__list" aria-label="Báo cáo của bạn ở bài học">
+        @for (report of reports(); track report.id) {
+        <li class="feedback__item">
+          <p class="feedback__meta">
+            <span class="feedback__who">Bạn</span>
+            · {{ report.createTime | fmtRelative }} @if (report.anchor.type !==
+            'none') { · {{ anchorText(report.anchor) }} } @let status =
+            reportStatus(report.status);
+            <span uiBadge [tone]="status.tone">{{ status.text }}</span>
+          </p>
+          <p class="feedback__text">{{ report.text }}</p>
+        </li>
+        } @empty {
+        <li class="feedback__empty">Bạn chưa gửi báo cáo nào ở bài này.</li>
+        }
+      </ul>
+      } }
+    </div>
+    }
+  </ui-tabs>
+  }
+</section>
