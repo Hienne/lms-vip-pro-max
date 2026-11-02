@@ -32,7 +32,7 @@ The previous `lesson-notes` checklist, with its success criteria and how each wa
 
 ## Phase 1: Backend
 
-- [ ] **B1: Schema, entity and repository**
+- [x] **B1: Schema, entity and repository**
   - Acceptance:
     - `docs/sql/upgrade/2026-11-04-lesson-feedback.sql` creates `learning_hub.lesson_feedback` as in the spec, with
       amendment 4:
@@ -53,7 +53,7 @@ The previous `lesson-notes` checklist, with its success criteria and how each wa
     - The CHECKs refuse a rating with a body, a comment with stars, and a question without a status.
   - Size: S. Depends on: none.
 
-- [ ] **B2: Rating (F2) and the course rating (F5)**
+- [x] **B2: Rating (F2) and the course rating (F5)**
   - Acceptance:
     - The anchor and access checks move from `LearningNotesService` into a shared helper, and the notes ITs stay
       green.
@@ -75,7 +75,7 @@ The previous `lesson-notes` checklist, with its success criteria and how each wa
     - `/courses/{id}` carries the same rating as the catalogue card.
   - Size: M. Depends on: B1.
 
-- [ ] **B3: Comments, questions and reports (F3, F1, F4)**
+- [x] **B3: Comments, questions and reports (F3, F1, F4)**
   - Acceptance:
     - F3 `POST /me/learning/lessons/{lessonId}/feedback` with
       `{ kind: comment|question|report, text, anchor }` returns `FeedbackView`:
@@ -100,7 +100,7 @@ The previous `lesson-notes` checklist, with its success criteria and how each wa
     - access refused outside the enrollments.
   - Size: M. Depends on: B2.
 
-- [ ] **B4: Docs**
+- [x] **B4: Docs**
   - Acceptance:
     - `docs/api/LEARNING.md` gets a "Phản hồi bài học" section: F1–F5, the rules, the limits and the error codes.
     - `LEARNING_CURL.md` gets examples, if the notes added some there.
@@ -109,13 +109,48 @@ The previous `lesson-notes` checklist, with its success criteria and how each wa
 
 ### Checkpoint A
 
-- [ ] `mvn clean test` green in the worktree.
-- [ ] Stop for the main session. It:
-  - applies the upgrade to the local DB;
-  - restarts :8019 on the branch;
-  - finds a lesson both learners are enrolled in;
-  - checks with `curl` as `hocvien` and as `hocvien.tichhop`: each rule above and the visibility;
-  - runs `EXPLAIN` on the course rating query on the demo DB.
+- [x] `mvn clean test` green in the worktree: 429 run, 0 failures, 42 skipped (`CommunityApiIT`, untouched).
+- [x] Main session check (2026-11-02):
+  - **Upgrade:** applied twice to the local DB (the `core-academy-local` stack); the second run only reports
+    "already exists". :8019 now runs from the `feat/lesson-feedback` worktree.
+  - **Shared lesson:** both learners hold course 1 revision 1. Lesson 1 is used for the visibility check.
+  - **`curl` as `hocvien` (H) and `hocvien.tichhop` (T):**
+    - **F2:**
+      - H rates 4, then 5: count 1, `myStars` 5. T rates 3: average 4.0, count 2.
+      - Stars 0 and 6 return `CORE-VALIDATION_FAILED` on `stars` with "Số sao phải từ 1 đến 5.".
+    - **F3:**
+      - A comment comes back trimmed with status null. A question and a report come back with status `new`.
+      - A pdf p3 anchor (block 32) and a video 12 s anchor (block 33) are stored.
+      - " abcd " and 1001 characters fail with the mockup messages. Kind `rating` fails with `CORE-VALIDATION_FAILED`.
+      - pdf page 5 returns `LEARNING-INVALID_REFERENCE`.
+      - T on lesson 16 (course 7, not enrolled) returns `LEARNING-NOT_FOUND`.
+    - **F1:**
+      - H sees its comment (`mine: true`, "Học viên tiền gửi Demo") and its question and report.
+      - T sees the same comment with `mine: false`, the same average, `myStars` 3, and `mine: []`.
+    - **F4:**
+      - With size 1, page 0 and page 1 come back newest first, with total 2.
+      - Size 101 returns `CORE-VALIDATION_FAILED`.
+    - **F5:**
+      - `/courses/1` gives `rating {4.0, 2}` for both learners, and the catalogue card matches.
+      - `/courses/2` gives null.
+    - **Not run live:**
+      - the 21st send of the day;
+      - concurrent sends and ratings.
+
+      Both are covered by `LearningFeedbackIT` and `LearningRatingIT`, and the build session saw them fail with the
+      lock removed.
+
+  - **`EXPLAIN` of the course rating query on the demo DB:** 0.05 ms. With 8 rows the planner picks
+    `idx_lesson_feedback_lesson_kind`.
+
+    The query binds `kind` as a parameter. Under a generic prepared plan this cannot match the partial
+    `idx_lesson_feedback_course_rating` (`WHERE kind = 'rating'`). **Fix:** write the literal `'rating'` in that
+    SQL.
+
+  - **Test rows left for Checkpoint B:**
+    - ratings on lesson 1 (H 5, T 3);
+    - comments 3 and 6 (H) and one from T;
+    - questions 4 and 7, and report 5 (H).
 
 ## Phase 2: App
 
