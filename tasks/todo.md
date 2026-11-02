@@ -25,34 +25,45 @@ The previous `learner-home-refresh` checklist is in git history at `3d16946`.
 
 ## Phase 1: Backend
 
-- [ ] **B1: Schema**
+- [x] **B1: Schema**
   - `docs/sql/upgrade/2026-11-03-lesson-player-modes.sql`: `ADD COLUMN IF NOT EXISTS video_chapters jsonb` and
     `transcript jsonb`, each with a Vietnamese `COMMENT`, in one transaction.
   - `2026-11-03-lesson-player-modes.rollback.sql`: `DROP COLUMN IF EXISTS` both.
   - The learning baseline (`docs/sql/learning_hub_learning.sql`) gets both columns and comments.
   - `docs/sql/README.md`: an entry with the psql command, and that it must run before the backend deploys.
   - `LessonBlock` maps both as `@JdbcTypeCode(SqlTypes.JSON) JsonNode`.
-  - Acceptance: `mvn -o clean test` green (the test schema has the columns).
-- [ ] **B2: Save, read and copy**
+  - Acceptance: `mvn -o clean test` green (the test schema has the columns). Checked: `mvn -o clean test` green (444 run, 0 failed, 42 Docker-skipped Community ITs); the IT schema is built from the baseline so `validate` passed with the new columns.
+- [x] **B2: Save, read and copy**
   - `BlockInput` gains `List<VideoChapterInput> videoChapters` and `List<TranscriptLineInput> transcript`
     (nullable); `LessonBlockView` gains both as lists, `[]` when `NULL`.
   - `validateBlockInput` applies plan Decision 5 with `BusinessException.validation`.
   - `writeBlock` stores them (an empty list is stored as `NULL`); the revision copy passes them through.
-  - Acceptance: tests below.
-- [ ] **B3: Tests, docs and demo data**
+  - Acceptance: tests below. Checked: covered by B3's integration tests; `mvn -o clean test` green.
+- [x] **B3: Tests, docs and demo data**
   - Integration tests: save with valid lists and read them back in the tree and in the learner's enrollment detail;
     each refusal (count, length, blank, order, beyond the duration, non-video block); a new revision keeps them; a
     save without the lists clears them (documented behaviour).
   - `docs/api/LEARNING.md`: the block fields, the limits, and that a tree save replaces them.
   - `docs/sql/demo-media/lesson-player-modes-demo.sql`: plan Decision 6, idempotent, local only.
   - `scripts/local-seed-media.sh`: the video block of a fresh `DEMO-MEDIA` gets the same lists.
-  - Acceptance: `mvn -o clean test` green.
+  - Acceptance: `mvn -o clean test` green. Checked: `LearningPlayerModesIT` (9 tests) plus full `mvn -o clean test`: 453 run, 0 failed, 42 skipped; seed jq tree checked to emit 3 chapters + 6 lines; no SQL run.
 
 ### Checkpoint A
 
-- [ ] The main session runs the upgrade and the demo SQL on the local DB and restarts :8019 on the branch.
-- [ ] `curl`: block 33 has both lists for `hocvien`; the refusals and the revision copy behave as specified.
-- [ ] `mvn clean test` green. The responses are recorded here. The app child starts Phase 2.
+- [x] The main session ran the upgrade and the demo SQL on `localhost/core_academy` (2026-11-03): `ALTER TABLE`,
+      two `COMMENT`s, `COMMIT`; the demo `UPDATE 1` filled block 33 with 3 chapters and 6 lines. :8019 now runs from
+      `~/my-projects/corebanking-academy-player-modes` (`e88c399`).
+- [x] `curl`:
+  - As `hocvien`, the enrollment detail of `DEMO-MEDIA` (course 7, enrollment 16) returns block 33 with
+    `videoChapters` `[{0, "Giới thiệu"}, {10, "Khái niệm chính"}, {20, "Tổng kết"}]` and 6 transcript lines; the PDF
+    block 32 returns `[]` for both.
+  - As `quantri`, `POST /courses/7/draft` opened revision 11, whose video block (35) kept 3 chapters and 6 lines.
+  - Tree saves on revision 11 are refused with `CORE-VALIDATION_FAILED`: transcript out of order (`transcript`),
+    a chapter at 31 s on the 30 s video, a blank title, 51 chapters (`TOO_MANY`), and chapters on the PDF block. An
+    unchanged save succeeds and keeps the lists (block 37: 3 and 6).
+  - Revision 11 stays an unpublished draft on the local DB; learners still read revision 7.
+- [x] `mvn -o clean test`: 453 tests, 0 failures, 0 errors, 42 skipped (`CommunityApiIT`, as on `main`);
+      `LearningPlayerModesIT` 9/9. The app child starts Phase 2.
 
 ## Phase 2: App
 
