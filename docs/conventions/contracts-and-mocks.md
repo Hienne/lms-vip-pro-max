@@ -457,7 +457,8 @@ security boundary on every list, detail, media download and mutation.
 | Users, organization, audit                                         | `SUPER_ADMIN + GLOBAL`, or `ADMIN + GLOBAL/ORG`              | Identity boundary; response `editable`, grant `revocable` and role `assignableScopes` still decide individual UI actions. |
 | Reports                                                            | SUPER_ADMIN/ADMIN/INSTRUCTOR/REPORT_VIEWER + GLOBAL/ORG/TEAM | Read-only scoped rows; OWN alone does not grant reporting.                                                                |
 | Community                                                          | Supplied community function                                  | Membership/dynamic grants and response capabilities; not inferred from a learner role.                                    |
-| Saved/certificates                                                 | Corresponding learner function **and** served integration    | Still no Java endpoint; direct routes are closed with mock API disabled.                                                  |
+| Saved                                                              | Corresponding learner function **and** served integration    | Still no Java endpoint; direct routes are closed with mock API disabled.                                                  |
+| Certificates                                                       | `LEARNING_PROGRESS`                                          | Own completed enrollment cycle only; any other id answers `LEARNING-NOT_FOUND`. No download: the browser prints it.       |
 
 Secondary aliases: catalog/saved -> COURSE_LEARNING; leaderboard/certificates ->
 LEARNING_PROGRESS; flashcards -> QUIZ_TAKING; instructor/inbox/content-catalog/import
@@ -466,7 +467,7 @@ items. Normal profile and notifications remain available to signed-in users.
 SUPER_ADMIN is not an unconditional FE bypass and no real grants were assigned.
 
 Remaining contract gaps: role-definition CRUD (role assignment is already real),
-personal notes/bookmarks/certificates, old training aggregates, and admin user
+personal notes/bookmarks, old training aggregates, and admin user
 learning/activity tabs remain mock proposals. In addition, the assignment target
 picker currently reads admin-only identity lists: an INSTRUCTOR without identity
 administration can be denied despite having assignment scope. This requires a

@@ -1,259 +1,228 @@
-# Tasks: `lesson-feedback`
+# Tasks: `certificates`
 
-Spec: [SPEC-lesson-feedback.md](../SPEC-lesson-feedback.md) · Plan: [plan.md](plan.md).
-The previous `lesson-notes` checklist, with its success criteria and how each was checked, is in git history at
-`0b964b9`.
+Spec: [SPEC-certificates.md](../SPEC-certificates.md) · Plan: [plan.md](plan.md).
+The previous `lesson-feedback` checklist, with its success criteria and how each was checked, is in git history at
+`a93b2ba`.
 
 - **Repositories:**
-  - backend: `corebanking-academy`, branch `feat/lesson-feedback` from `origin/main` (`a8b05ea`, #20 merged), in its
-    own worktree `~/my-projects/corebanking-academy-feedback`;
-  - app: this one, branch `feat/lesson-feedback` from `origin/main` (`f03b326`, #54 merged).
+  - backend: `corebanking-academy`, branch `feat/certificates` from `origin/main` (`e686291`, #21 merged), in its
+    own worktree `~/my-projects/corebanking-academy-certificates`;
+  - app: this one, branch `feat/certificates` from `origin/main` (`a27364a`, #55 merged).
 
   Nothing is pushed.
 
 - **Local stack:**
-  - the backend on :8019 is the main session's background task. Never run `mvn` in the worktree it runs from, and
+  - The backend on :8019 is the main session's background task. Never run `mvn` in the worktree it runs from, and
     never start another backend. Message the main session for a restart.
-  - **The local DB gets the new table only at Checkpoint A, from the main session.** Until then, test with
-    Testcontainers.
+  - Until Checkpoint A it runs from the old feedback worktree, which is the same code as `main` for this module.
   - The app runs on :4200 against `localhost:8019`.
   - Accounts: `hocvien` and `hocvien.tichhop` as learners.
-  - Demo data:
-    - PDF block 32 (lesson 16, 4 pages) and video block 33 (lesson 17, 30 s), in "Demo tài liệu PDF và video"
-      (course 7);
-    - for the visibility check, a lesson both learners are enrolled in, found at Checkpoint A.
+  - The completed cycles to test with are listed in the plan ("Local data").
   - Passwords come only from `LOCAL_DEMO_PASSWORD` in the backend's `.env.local`, and are never printed.
   - In the browser, sign in with the one-shot token method, never by typing the password.
-- **Never** touch the shared server `103.121.90.119`. No seeding users, and no direct edits to progress or attempts.
-- **Schema rules:**
-  - an upgrade script, a rollback, the psql command and a README entry;
-  - no FK, no business UNIQUE, and every column commented;
-  - Flyway is off and `ddl-auto=validate`.
+- **Never** touch the shared server `103.121.90.119`. No seeding users, and no direct edits to enrollments, progress
+  or attempts.
+- **No schema change** in this module. If one turns out to be needed, stop and ask.
 
 ## Phase 1: Backend
 
-- [x] **B1: Schema, entity and repository**
+- [x] **B1: Certificates C1 and C2**
   - Acceptance:
-    - `docs/sql/upgrade/2026-11-04-lesson-feedback.sql` creates `learning_hub.lesson_feedback` as in the spec, with
-      amendment 4:
-      - `video_second integer`;
-      - `status` null for `rating` / `comment`, and `new | answered | resolved` for `question` / `report`, with a
-        CHECK;
-      - the notes anchor CHECK, and no anchor on a rating;
-      - the two partial indexes;
-      - audit columns;
-      - a comment on the table and on every column;
-      - `BEGIN/COMMIT` with `lock_timeout`, and safe to run twice.
-    - The rollback prints the row count, then drops the table.
-    - The baseline `learning_hub_learning.sql` gets the table, and `docs/sql/README.md` gets the upgrade row.
-    - The entity `LessonFeedback` and its repository.
-  - Verify:
-    - The ITs start on the baseline with `ddl-auto=validate`.
-    - A Testcontainers test runs the upgrade twice, then the rollback.
-    - The CHECKs refuse a rating with a body, a comment with stars, and a question without a status.
-  - Size: S. Depends on: none.
+    - `GET /api/v1/me/learning/certificates?page&size`:
+      - returns `PageResponse<CertificateView>` with the caller's cycles that have `status = 'completed'` and
+        `completed_at` set;
+      - newest completion first, then the highest id;
+      - size at most 100.
+    - `GET /api/v1/me/learning/certificates/{enrollmentId}` returns one `CertificateView`. It answers
+      `LEARNING-NOT_FOUND` when the id:
+      - is another learner's;
+      - is not completed (including `withdrawn`);
+      - does not exist.
+    - `CertificateView` follows amendment 3:
+      - `courseTitle` is the completed revision's;
+      - `bestScorePercent` is the course's `FINAL_EXAM` best, as on the card;
+      - `verificationCode` is `CBA-{courseCode}-{userId}-{cycleNo}` in upper case;
+      - `fullName` comes from `LearningIdentityService.fullNames`.
+    - Names and scores are filled with one call each per page, not one per row.
+    - A non-learner gets `CORE-ACCESS_DENIED`.
+    - The code lives in a new `LearningCertificateService` and `LearningCertificateController`.
+  - Verify: a `LearningCertificatesIT` covering:
+    - only the caller's completed cycles, in order, and paging;
+    - another learner's id, an in-progress id, a withdrawn id and a missing id all answer `NOT_FOUND`;
+    - after a new revision is published with another title, the certificate keeps the completed revision's title;
+    - the score equals the card's `bestScorePercent`, and is null without a final exam;
+    - two cycles of one course give two certificates with different codes;
+    - non-learners are refused.
+  - Size: M. Depends on: none.
 
-- [x] **B2: Rating (F2) and the course rating (F5)**
+- [x] **B2: `CourseCard.certificateId` (C3)**
   - Acceptance:
-    - The anchor and access checks move from `LearningNotesService` into a shared helper, and the notes ITs stay
-      green.
-    - F2 `PUT /me/learning/lessons/{lessonId}/rating` with `{ stars }`:
-      - stars outside 1–5 → `CORE-VALIDATION_FAILED`;
-      - access as for notes, else `LEARNING-NOT_FOUND`;
-      - under the advisory lock `lesson-rating:{userId}`, it replaces the live rating or inserts one;
-      - it answers `{ average, count, myStars }`, with the average rounded to one decimal.
-    - `CourseCard` gains `rating: { average, count } | null`, the course's live ratings over every revision. It is
-      set per page by one grouped query beside `withBestScores`, in learner and `MANAGE` modes. `LearnerCourse`
-      carries it through the card.
-  - Verify: ITs for:
-    - rate 4, then 5: one live row, and `myStars` 5;
-    - two concurrent `PUT`s from one user: one live row;
-    - stars 0 and 6 refused;
-    - a lesson outside the enrollments → `NOT_FOUND`;
-    - a non-learner → `CORE-ACCESS_DENIED`;
-    - the card rating over two lessons and two learners, and null with no ratings;
-    - `/courses/{id}` carries the same rating as the catalogue card.
-  - Size: M. Depends on: B1.
+    - A `@JsonProperty` accessor `certificateId()` on `CourseCard` returns `enrollmentId` when `learningStatus` is
+      `completed`, and null otherwise.
+    - No change to the search SQL, the Hibernate constructor or any caller.
+  - Verify: an IT asserts the JSON field:
+    - on the catalogue and on `GET /me/learning/courses/{id}`;
+    - for a completed cycle (the enrollment id), an in-progress one (null) and a course with no enrollment (null).
+  - Size: XS. Depends on: none.
 
-- [x] **B3: Comments, questions and reports (F3, F1, F4)**
+- [x] **B3: Docs**
   - Acceptance:
-    - F3 `POST /me/learning/lessons/{lessonId}/feedback` with
-      `{ kind: comment|question|report, text, anchor }` returns `FeedbackView`:
-      - text trimmed, 5–1000 characters, else `CORE-VALIDATION_FAILED` with the mockup's field message;
-      - the anchor as for notes, else `LEARNING-INVALID_REFERENCE`;
-      - status: null for a comment, `new` for a question or a report;
-      - more than 20 sends per user per lesson per learning day (`Asia/Ho_Chi_Minh`), counted under the advisory
-        lock `lesson-feedback:{userId}` → the new `LEARNING-FEEDBACK_LIMIT`.
-    - F1 `GET /me/learning/lessons/{lessonId}/feedback` returns
-      `{ rating: {average, count} | null, myStars | null, comments: PageResponse<CommentView> (first 20), mine: List<FeedbackView> }`:
-      - `CommentView { id, authorName, text, anchor, createTime, mine }`, newest first;
-      - `mine` holds the caller's questions and reports, newest first.
-    - F4 `GET /me/learning/lessons/{lessonId}/comments?page&size` (size at most 100) → `PageResponse<CommentView>`.
-    - `FeedbackView { id, kind, text, anchor, status, reply, replyTime, createTime }`.
-  - Verify: ITs for:
-    - each kind saved with its status;
-    - 4 and 1001 characters refused, and 5 and 1000 accepted;
-    - a bad anchor refused;
-    - the 21st send of the day refused, and the limit holding under concurrent sends;
-    - learner B sees A's comment with `mine: false` and A's name, but not A's question or report;
-    - the comment paging;
-    - access refused outside the enrollments.
-  - Size: M. Depends on: B2.
-
-- [x] **B4: Docs**
-  - Acceptance:
-    - `docs/api/LEARNING.md` gets a "Phản hồi bài học" section: F1–F5, the rules, the limits and the error codes.
-    - `LEARNING_CURL.md` gets examples, if the notes added some there.
-  - Verify: the doc's examples match the IT payloads.
-  - Size: XS. Depends on: B3.
+    - a "Chứng nhận" section in `docs/api/LEARNING.md` with C1 and C2, the rule, the code format, the errors and an
+      example;
+    - `certificateId` added where the card fields are listed.
+  - Verify: the examples match the IT responses.
+  - Size: XS. Depends on: B1, B2.
 
 ### Checkpoint A
 
-- [x] `mvn clean test` green in the worktree: 429 run, 0 failures, 42 skipped (`CommunityApiIT`, untouched).
-- [x] Main session check (2026-11-02):
-  - **Upgrade:** applied twice to the local DB (the `core-academy-local` stack); the second run only reports
-    "already exists". :8019 now runs from the `feat/lesson-feedback` worktree.
-  - **Shared lesson:** both learners hold course 1 revision 1. Lesson 1 is used for the visibility check.
-  - **`curl` as `hocvien` (H) and `hocvien.tichhop` (T):**
-    - **F2:**
-      - H rates 4, then 5: count 1, `myStars` 5. T rates 3: average 4.0, count 2.
-      - Stars 0 and 6 return `CORE-VALIDATION_FAILED` on `stars` with "Số sao phải từ 1 đến 5.".
-    - **F3:**
-      - A comment comes back trimmed with status null. A question and a report come back with status `new`.
-      - A pdf p3 anchor (block 32) and a video 12 s anchor (block 33) are stored.
-      - " abcd " and 1001 characters fail with the mockup messages. Kind `rating` fails with `CORE-VALIDATION_FAILED`.
-      - pdf page 5 returns `LEARNING-INVALID_REFERENCE`.
-      - T on lesson 16 (course 7, not enrolled) returns `LEARNING-NOT_FOUND`.
-    - **F1:**
-      - H sees its comment (`mine: true`, "Học viên tiền gửi Demo") and its question and report.
-      - T sees the same comment with `mine: false`, the same average, `myStars` 3, and `mine: []`.
-    - **F4:**
-      - With size 1, page 0 and page 1 come back newest first, with total 2.
-      - Size 101 returns `CORE-VALIDATION_FAILED`.
-    - **F5:**
-      - `/courses/1` gives `rating {4.0, 2}` for both learners, and the catalogue card matches.
-      - `/courses/2` gives null.
-    - **Not run live:**
-      - the 21st send of the day;
-      - concurrent sends and ratings.
-
-      Both are covered by `LearningFeedbackIT` and `LearningRatingIT`, and the build session saw them fail with the
-      lock removed.
-
-  - **`EXPLAIN` of the course rating query on the demo DB:** 0.05 ms. With 8 rows the planner picks
-    `idx_lesson_feedback_lesson_kind`.
-
-    The query binds `kind` as a parameter. Under a generic prepared plan this cannot match the partial
-    `idx_lesson_feedback_course_rating` (`WHERE kind = 'rating'`). **Fix:** write the literal `'rating'` in that
-    SQL.
-
-  - **Test rows left for Checkpoint B:**
-    - ratings on lesson 1 (H 5, T 3);
-    - comments 3 and 6 (H) and one from T;
-    - questions 4 and 7, and report 5 (H).
+- [x] `mvn -o clean test` green in the certificates worktree: 444 tests, 0 failures, 0 errors, 42 skipped
+      (`CommunityApiIT`, as on `main`). Commits `570a1be` (B1), `4e0e5ea` (B2), `26c2d77` (B3).
+- [x] The main session restarted :8019 from `~/my-projects/corebanking-academy-certificates` and checked with `curl`
+      (2026-11-02):
+  - **C1:**
+    - as `hocvien`: 17 (QZ-E2E-01, score 100) then 12 (FE-DEMO-C4, score null), with every field;
+    - name "Học viên tiền gửi Demo", codes `CBA-QZ-E2E-01-000004-1` and `CBA-FE-DEMO-C4-000004-1`;
+    - `page=1&size=1` gives 12 with 2 pages; a page past the end is empty;
+    - `size=101` and `size=0` answer `CORE-VALIDATION_FAILED`;
+    - `hocvien.tichhop` gets its own 4 and 10 only.
+  - **C2:**
+    - 12 returns every field, and the score of 17 equals the course card's `bestScorePercent` (100);
+    - `LEARNING-NOT_FOUND` for `hocvien.tichhop` on 12, for `hocvien` on 3 (in progress) and on 999999;
+    - id 0 and `abc` answer `CORE-VALIDATION_FAILED`.
+  - **Access:** `quantri` (ADMIN) and `baocao` (REPORT_VIEWER) get `CORE-ACCESS_DENIED`.
+  - **C3:**
+    - as `hocvien`, `/courses/4` has `certificateId: 12`, `/courses/8` 17, and `/courses/1` (in progress) null;
+    - `/courses` and `/catalog` carry the same two ids and null elsewhere;
+    - `hocvien.tichhop`'s `/courses/4` has 10.
+- [x] The responses are captured (no tokens) for F1, in the main session's scratchpad `certificate-captures/`:
+      the list, one certificate, the course card, not-found and a bad id.
+- **Open (non-blocking):** the new Javadoc and comments in the backend are in English. `DEVELOPMENT_GUIDELINES.md`
+  ("Comment, Javadoc và mô tả Swagger") asks for Vietnamese. To fix in the backend before the PR.
+- [ ] Review with the user before Phase 2.
 
 ## Phase 2: App
 
-- [x] **F1: Contracts, captured responses, mock**
+- [x] **F1: Contracts, captured responses, mock, route table**
   - Acceptance:
-    - Endpoints `lessonFeedback`, `rateLesson`, `sendFeedback` and `lessonComments`, with zod schemas that reuse
-      the notes `AnchorSchema`.
-    - `CourseCardSchema` gains `rating`.
-    - Responses captured from the local backend parse.
-    - The in-app mock serves F1–F4 with the backend rules (limits, visibility, status) and a small seed. Its cards
-      carry `rating`.
-  - Verify: the contracts and mocks specs are green, and the captured responses parse.
+    - **Contracts:**
+      - `certificates` (C1, paged) and `certificate` (C2, numeric `enrollmentId`) are under
+        `/api/v1/me/learning`, with no `served: 'mock'`;
+      - `CertificateSchema` follows `CertificateView`;
+      - `CourseCardSchema` gains a nullable `certificateId`;
+      - `downloadCertificate`, `demoCertificatePdf` and `certificateFixtures` are deleted.
+    - The captured responses from Checkpoint A parse.
+    - **Mock:**
+      - the in-app mock serves C1 and C2 from the learning seed's completed enrollments, with the backend rules
+        (only the caller's completed cycles, `NOT_FOUND` otherwise);
+      - its course cards derive `certificateId`.
+    - **`route-table.spec.ts`:**
+      - a learner opens `/certificates` and `/certificate/1` in a backend-only build;
+      - the admin case keeps `/403` with `LEARNING_PROGRESS`;
+      - the "closed in a backend-only build" test changes to another mock-only screen, or is deleted if none
+        remains.
+  - Verify: the contracts, mocks and route-table specs are green.
   - Size: M. Depends on: Checkpoint A.
 
-- [x] **F2: The "Đánh giá & trao đổi" section**
+- [x] **F2: The list "Chứng nhận hoàn thành"**
   - Acceptance:
-    - `LessonStore`:
-      - `feedback` keyed by lesson;
-      - `rate` keeps the latest only;
-      - `sendFeedback` sends the current anchor;
-      - `moreComments`;
-      - each mutation reloads.
-    - `app-lesson-feedback` sits after the block and before the quiz section, with the mockup copy listed in the
-      plan:
-      - **Header:** the average and count, or "Chưa có đánh giá".
-      - **Rating:** the row with `ui-rating` and "Đã ghi nhận {n} sao".
-      - **Tabs:** `ui-tabs` with the counts.
-      - **Form:**
-        - the label, help and button for the selected tab;
-        - "Gửi kèm vị trí: …" when there is an anchor;
-        - the server's field error shown under the textarea;
-        - the report confirm before it sends.
-      - **Lists:**
-        - comments with "Xem thêm nhận xét";
-        - your questions with "Chờ trả lời" / "Đã trả lời";
-        - your reports with "Chờ xử lý" / "Đã xử lý";
-        - each list's empty line.
-      - **Toasts:** the rating toast and the send toasts, per amendment 8.
-    - Visual design: no icon tiles, badges only for status, one primary button. The report button is the danger
-      variant, as in the mockup.
-  - Verify: specs for:
-    - rating by click and by arrow keys (one saved value);
-    - each tab's copy;
-    - the anchor line;
-    - a validation error;
-    - the report confirm (cancel sends nothing);
-    - the lists, the status labels and the empty lines;
-    - "Xem thêm nhận xét";
-    - the error state with retry.
-  - Size: L. Depends on: F1.
+    - A `certificates` component with its own store under `data-access`. The store reads one page of 100.
+    - **Page header:** "Chứng nhận hoàn thành", with the mockup description.
+    - **The list:** a plain list (amendment 6). Each row has:
+      - the course title (or the code when the title is null) as the link to `/certificate/{id}`;
+      - the meta line "{code} · Hoàn thành {dd/MM/yyyy} · Điểm {n}%", without the score part when it is null;
+      - the verification code in `ui.mono`.
+    - It has no hoa mai tile, no badge and no card grid.
+    - **Empty state:** whole-page and left-aligned, with "Chưa có chứng nhận", "Hoàn thành khóa học đầu tiên để
+      nhận chứng nhận." and "Xem khóa học của tôi" → `/learn`.
+    - **Loading and error:** a loading state, and an error state with retry.
+  - Verify: specs for the rows (with and without score and title), the empty state, and the error with retry.
+  - Size: S. Depends on: F1.
 
-- [x] **F3: Course page rating**
-  - Acceptance: `course__meta` shows "★ {average} ({count})" with the average formatted to one decimal in
-    Vietnamese, and nothing when `rating` is null.
+- [x] **F3: The certificate screen and print**
+  - Acceptance:
+    - A `certificate` component with its own store.
+    - **Page header and breadcrumb:**
+      - the breadcrumb Chứng nhận › {course};
+      - the page header is the course title;
+      - its only action is the primary "In / Lưu PDF", which calls `window.print()`.
+    - **The document** (amendment 6):
+      - a flat `surface` panel with a 1px border and a small `ui-mai`;
+      - "Core Banking Academy · Ban QL&PT Core Banking";
+      - "Chứng nhận hoàn thành" (h2);
+      - "Chứng nhận", then the full name as the largest text;
+      - "đã hoàn thành khóa đào tạo **{title}** ({code})", then " với kết quả bài kiểm tra {n}%" when there is a
+        score, then ".";
+      - "Ngày hoàn thành" and "Mã xác thực" side by side, wrapping at 375 px;
+      - the demo line only under `mockBackend`.
+    - **Not found:** C2 `NOT_FOUND`, or a non-numeric id (without a call), shows "Chứng nhận không tồn tại hoặc bạn
+      chưa hoàn thành khóa học." with a link to `/certificates`. Other errors show the error state with retry.
+    - **Print:**
+      - `@media print` hides the shell, the breadcrumb, the page header and the toasts;
+      - `@page` is A4 landscape, and the document fits one page;
+      - a `@media print` block in the `ui` global theme re-declares the light colour tokens, so any page prints
+        light from dark mode;
+      - the built CSS is checked to contain `@page` (see the risk in the plan).
+    - No literal colours, no uppercase, no watermark.
+    - The old `certificates.html` / `.scss` / store are deleted.
+  - Verify:
+    - specs for every field;
+    - a missing score;
+    - a null title;
+    - not-found from the server, and from a non-numeric id;
+    - the print button calls `window.print`;
+    - the styles spec for the print theme.
+  - Size: M. Depends on: F1.
+
+- [x] **F4: "Xem chứng nhận" on the course page**
+  - Acceptance:
+    - When `card.certificateId` is set, the header action is the primary link "Xem chứng nhận" →
+      `/certificate/{certificateId}`.
+    - Nothing appears without it, whatever `learningStatus` says.
   - Verify: the course spec covers both cases.
   - Size: XS. Depends on: F1.
 
-- [x] **F4: End-to-end check against the spec**
+- [x] **F5: End-to-end check against the spec**
   - Acceptance: the success criteria below are written here, each with how it was checked.
   - Verify: `npm run check`.
-  - Size: S. Depends on: F2, F3.
-  - Done: `npm run check` green (14/14 tasks) at `5d05726`. The first run failed twice and was fixed in two commits:
-    `b1cfe89` (the template scan refused the unstyled `course__rating` class) and `5d05726` (the first
-    `session-expiry.interceptor` spec raced its 20 ms settle against a cold lazy import under whole-suite load).
+  - Size: S. Depends on: F2, F3, F4.
 
 ### Checkpoint B
 
-- [x] Fixes after the main session's browser check (one commit each, `npm run check` green):
-  - `857b809` the rating keeps one call in flight and sends the last choice when it returns; only the last is
-    announced. Spec: held replies (`ReplyGate`) show one request out at a time and `[4, 2]` sent for 4, 3, 2.
-  - `e0955e4` `ui-stars` shows one Vietnamese decimal ("3,0"), so the lesson header and its sr text match the course
-    page. Specs: `rating.spec.ts` and the lesson header "4,0 (1 đánh giá)".
-  - `82e421f` `feedback.captured.ts` holds the live captures of 2026-11-02 and the contract specs parse them,
-    including the course card and the 0-star refusal.
-- [x] Success criteria recorded (app side checked on the in-app mock and by specs; the live local backend is the main
-      session's check):
-  1. Rating, comment, question and report work on the local backend, and a reload shows the same state.
-     - App: `lesson.spec.ts` "rating and comments" (click and arrow-key rating with one saved value, comment with a PDF
-       page anchor, question, report confirm cancel/confirm, refusal toast, more comments, error and retry) and
-       `learner-feedback.spec.ts` (13 specs, limits, visibility, status). The section was also driven in the browser
-       on a throwaway `mockBackend` copy: rating by arrows ends at one saved value, the report confirm dialog opens.
-     - Live (main session, local backend :8019 on `a8b38e9`, app at `82e421f`): as `hocvien` on `/lesson/1/1`, arrows
-       3 → 4 → 5 → 4 → 3 → 2 sent two PUTs, 4 then 2, none cancelled; the DB holds 2, the toast reads "2/5 sao", and a
-       reload shows 2 stars and "2,5 (2 đánh giá)". Comment, question at "Trang 3" (toast, "Chờ trả lời · Trang 3",
-       form cleared), report confirm (cancel sends nothing) and the validation line checked in the first browser pass.
-  2. Visibility holds across `hocvien` and `hocvien.tichhop`.
-     - App: the mock specs and the seed show another learner's comment with `mine: false` and the name, and never
-       another learner's question or report.
-     - Live: `hocvien.tichhop` at 375 px dark sees the average, both comments (H's with the name, its own as "Bạn")
-       and its own stars, and none of H's questions or reports. Curl (Checkpoint A) agrees.
-  3. The course page shows the course rating, matching `curl` of the card.
-     - App: `course.spec.ts` "the rating of the course" (4 specs: "★ 4,5 (2)", "4,0" for a whole average, null, absent).
-     - Live: `/course/1` shows "★ 2,5 (2)" with "Đánh giá 2,5 trên 5 sao từ 2 lượt", matching the DB rows (2 and 3);
-       the card curl matched the catalogue at Checkpoint A.
-  4. The upgrade and the rollback apply cleanly. `mvn clean test` and `npm run check` are green. The
-     visual-design checklist passes for the section.
-     - `npm run check` green (14/14) at `82e421f`.
-     - Visual-design checklist for the section: 1024 and 1280 px and 375 px, light and dark, no horizontal scroll;
-       no eyebrow, icon tile, avatar, bubble, gradient or edge stripe; badges only for status; one primary button
-       (the send buttons are secondary, the report is danger).
-     - Backend: `mvn -o clean test` on `a8b38e9`: 429 tests, 0 failures, 0 errors, 42 skipped. The upgrade is applied
-       on the local DB; `EXPLAIN` of the course rating uses `idx_lesson_feedback_course_rating`.
-- [x] Browser check by the main session at 1280 px light and 375 px dark (results above; the tab row wraps to two
-      lines at 375 px, which reads fine).
+- [x] Success criteria recorded:
+  1. `hocvien`'s completed cycles (FE-DEMO-C4 and QZ-E2E-01) are listed, open, and show the server's name, course,
+     date, score and code.
+     - Checked by: the `certificates` and `certificate` specs against the in-app mock (the list rows and every field of
+       the document), the contract specs that parse the captured real responses, and the backend ITs
+       (`LearningCertificatesIT`).
+     - Live (main session, :8019 on the certificates branch): `/certificates` as `hocvien` lists "Kiểm thử bài kiểm
+       tra E2E" (QZ-E2E-01 · Hoàn thành 31/10/2026 · Điểm 100%) then "Văn hóa và quy chế làm việc" (FE-DEMO-C4, no
+       score), each with its code. `/certificate/17` shows "Học viên tiền gửi Demo", the course, "với kết quả bài kiểm
+       tra 100%", the date and `CBA-QZ-E2E-01-000004-1`.
+  2. "Xem chứng nhận" appears on the FE-DEMO-C4 course page and not on FE-DEMO-C1's.
+     - Checked by: the `course` spec (the finished course shows it as the one primary action, a course in progress and
+       one not joined show nothing) and `CourseCardCertificateIT` on the backend.
+     - Live: `/course/4` and `/course/8` have the one primary "Xem chứng nhận" (→ `/certificate/12`, `/17`);
+       `/course/1` (in progress) has "Tiếp tục học" only.
+  3. The print preview (by the user, in dark mode) has no shell chrome and fits one A4 landscape page.
+     - Checked by: the built CSS (`@page { size: A4 landscape; margin: 12mm }` survives emulated encapsulation; the
+       print block of the `ui` theme and the shell's print rules are in the bundle) and the styles spec for the print
+       theme.
+     - Live: the running page holds `@page { size: a4 landscape; margin: 12mm }`, the print `:root` block (text
+       `#1a1d1c` on `#ffffff`) and the hides for the shell, the dev toolbar and `ui-page-header`.
+     - The user's print preview of `/certificate/17` in dark mode (2026-11-02): fine.
+  4. `mvn clean test` and `npm run check` green. The visual-design checklist passes for both screens.
+     - Checked by: `npm run check` green at `1131d03`; `mvn -o clean test` in the certificates worktree at `dc06549`
+       (444 tests, 0 failures, 0 errors, 42 skipped). The
+       checklist is read against both screens (no eyebrow, tile, hero, gradient, watermark, badge, uppercase or
+       literal colour; one primary action per screen).
+- [x] Browser check by the main session at 1280 px light and 375 px dark:
+  - `hocvien.tichhop` sees its own two (FE-DEMO-C2 with 100 %, FE-DEMO-C4) and gets "Không tìm thấy chứng nhận" on
+    `hocvien`'s 12;
+  - `/certificate/3` (in progress) and `/certificate/abc` (no call) show the not-found state;
+  - 375 px dark: both screens readable, no horizontal scroll.
+  - Fixed after the check in `1131d03`: the two routes declare `requires` again (as `saved` does), the document takes
+    `ui.radius(card)`, and the name `semibold` (700 is for h1).
+  - Found, out of scope: no sidebar entry leads to `/certificates`, `/saved` or `/leaderboard`; proposed as a task of
+    its own.
 - [x] Spec status set to built.
-- [ ] Review with the user, then plan `certificates`.
+- [ ] Review with the user, then plan `lesson-player-modes`.

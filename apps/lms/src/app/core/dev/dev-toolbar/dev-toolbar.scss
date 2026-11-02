@@ -11,3 +11,9 @@
   bottom: ui.space(4);
   z-index: ui.z(toast);
 }
+
+@media print {
+  .dev-toolbar {
+    display: none;
+  }
+}

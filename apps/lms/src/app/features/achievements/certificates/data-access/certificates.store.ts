@@ -1,69 +1,55 @@
 import { computed, inject, Injectable } from '@angular/core';
-import { ActivatedRoute, Router } from '@angular/router';
-import { toSignal } from '@angular/core/rxjs-interop';
-import { personalEndpoints } from '@lms/contracts';
-import { FileSaver } from '../../../../core/files/file-saver';
+import { certificateEndpoints, type Certificate } from '@lms/contracts';
 import { serverData } from '../../../../core/data-access/server-data';
-import { serverMutation } from '../../../../core/data-access/server-mutation';
 import { EndpointClient } from '../../../../core/http/endpoint-client';
+
+/** The most certificates the server sends in one page; no learner is near it. */
+export const CERTIFICATES_PAGE_SIZE = 100;
+
+/** A row of the list: what to print and where it leads, so the template only prints it. */
+export interface CertificateRow {
+  readonly id: number;
+  /** The title of the revision the learner finished, or the course code when it has none. */
+  readonly title: string;
+  readonly code: string;
+  readonly completedAt: string;
+  readonly score: number | null;
+  readonly verificationCode: string;
+  readonly link: readonly (string | number)[];
+}
+
+const toRow = (certificate: Certificate): CertificateRow => ({
+  id: certificate.id,
+  title: certificate.courseTitle ?? certificate.courseCode,
+  code: certificate.courseCode,
+  completedAt: certificate.completedAt,
+  score: certificate.bestScorePercent,
+  verificationCode: certificate.verificationCode,
+  link: ['/certificate', certificate.id],
+});
+
+/**
+ * "Chứng nhận hoàn thành": the caller's completed cycles as the server lists them, newest first, in
+ * one page. A certificate exists only when the server returns it; nothing is inferred from progress.
+ */
 @Injectable()
 export class CertificatesStore {
   private readonly client = inject(EndpointClient);
-  private readonly saver = inject(FileSaver);
-  private readonly router = inject(ActivatedRoute);
-  private readonly nav = inject(Router);
-  private readonly certificateId = toSignal(this.router.paramMap);
-  private readonly list = serverData(() =>
-    this.client.call(personalEndpoints.certificates, {
-      query: { page: 0, size: 100, sort: 'completedAt,desc' },
+
+  private readonly data = serverData(() =>
+    this.client.call(certificateEndpoints.certificates, {
+      query: { page: 0, size: CERTIFICATES_PAGE_SIZE },
     }),
   );
-  private readonly detail = serverData(
-    (id: string) =>
-      this.client.call(personalEndpoints.certificate, {
-        params: { certificateId: id },
-      }),
-    { params: () => this.certificateId()?.get('id') ?? undefined },
+
+  readonly rows$ = computed<readonly CertificateRow[]>(() =>
+    (this.data.value()?.items ?? []).map(toRow),
   );
-  private readonly downloadMutation = serverMutation(
-    (id: string) =>
-      this.client.call(personalEndpoints.downloadCertificate, {
-        params: { certificateId: id },
-      }),
-    {
-      errors: 'toast',
-      success: () => 'Đã tải chứng nhận mẫu',
-      onSuccess: (blob) =>
-        this.saver.save(
-          blob,
-          this.detail.value()?.fileName ??
-            this.items$().find(
-              (item) => item.id === this.certificateId()?.get('id'),
-            )?.fileName ??
-            'chung-nhan.pdf',
-        ),
-    },
-  );
-  readonly list$ = this.list.value;
-  readonly detail$ = this.detail.value;
-  readonly items$ = computed(() => this.list.value()?.items ?? []);
-  readonly isLoading$ = computed(() =>
-    this.certificateId()?.has('id')
-      ? this.detail.isLoading()
-      : this.list.isLoading(),
-  );
-  readonly error$ = computed(() =>
-    this.certificateId()?.has('id') ? this.detail.error() : this.list.error(),
-  );
-  readonly isDownloading$ = this.downloadMutation.isPending;
+  readonly isEmpty$ = computed(() => this.data.value()?.totalElements === 0);
+  readonly isLoading$ = this.data.isLoading;
+  readonly error$ = this.data.error;
+
   retry(): void {
-    if (this.certificateId()?.has('id')) this.detail.reload();
-    else this.list.reload();
-  }
-  open(id: string): void {
-    void this.nav.navigate(['/certificate', id]);
-  }
-  download(id: string): void {
-    this.downloadMutation.run(id);
+    this.data.reload();
   }
 }

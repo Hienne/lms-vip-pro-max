@@ -59,12 +59,6 @@ const LIGHT_PROPERTIES = [
   '--color-hero-to',
   '--color-hero-muted',
   '--color-hero-subtle',
-  '--color-certificate-paper',
-  '--color-certificate-ink',
-  '--color-certificate-muted',
-  '--color-certificate-brand',
-  '--color-certificate-name',
-  '--color-certificate-line',
   '--color-hero-accent',
   '--color-hero-chip',
   '--color-nav-bg',
@@ -349,6 +343,32 @@ describe('global stylesheet', () => {
     expect(css).toContain('@media (prefers-color-scheme: dark)');
   });
 
+  it('prints in the light colours whatever the screen theme is', () => {
+    const declared = (selector: string): Map<string, string> =>
+      new Map(
+        all
+          .filter((rule) => rule.selector === selector)
+          .flatMap((rule) =>
+            [...rule.body.matchAll(/(--[\w-]+)\s*:\s*([^;]+);/g)].map(
+              (match): [string, string] => [match[1], match[2].trim()],
+            ),
+          ),
+      );
+    const light = declared(':root');
+    const print = declared(':root:root:root:root');
+    const colours = [...light.keys()].filter(
+      (name) => /^--(color|shadow)-(?!swatch-)/.test(name), // swatches are constant
+    );
+    expect(colours.length).toBeGreaterThan(40);
+    for (const name of colours) {
+      expect(print.get(name), name).toBe(light.get(name));
+    }
+    // Specificity (0,4,0) beats the dark values at (0,3,0), and it applies only when printing.
+    expect(css).toMatch(
+      /@media print \{\s*:root:root:root:root \{[^}]*color-scheme: light/,
+    );
+  });
+
   it('declares the layer order first', () => {
     expect(css).toMatch(/@layer reset, base, components, helpers;/);
   });
@@ -623,7 +643,7 @@ describe('colour palettes', () => {
     (id) => {
       // Mode-independent settings (type, shape, texture) live in the light block only.
       const light = Object.keys(values(`:root[data-palette=${id}]`)).filter(
-        (name) => /^--(color|shadow)-/.test(name),
+        (name) => /^--(color|shadow)-(?!swatch-)/.test(name), // swatches are constant
       );
       const explicit = Object.keys(
         values(`:root[data-palette=${id}][data-theme=dark]`),

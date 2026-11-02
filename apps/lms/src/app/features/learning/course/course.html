@@ -36,6 +36,8 @@
     <a uiButton variant="primary" [routerLink]="store.resumeLink$()"
       >{{ label }}</a
     >
+    } @else if (store.certificateLink$(); as certificate) {
+    <a uiButton variant="primary" [routerLink]="certificate">Xem chứng nhận</a>
     }
   </div>
 </ui-page-header>

@@ -5,6 +5,7 @@ import {
   communityEndpoints,
   learnerQuizEndpoints,
   assessmentReportEndpoints,
+  certificateEndpoints,
   personalEndpoints,
   type AnyEndpoint,
   type FunctionCode,
@@ -574,9 +575,9 @@ export const SCREEN_TABLE = {
     {
       path: 'certificates',
       access: 'LEARNING_PROGRESS',
-      requires: [personalEndpoints.certificates],
       title: 'Chứng nhận',
       mockupPage: 'certificates',
+      requires: [certificateEndpoints.certificates],
       load: () =>
         import('../../features/achievements/certificates/certificates').then(
           (m) => m.Certificates,
@@ -585,12 +586,12 @@ export const SCREEN_TABLE = {
     {
       path: 'certificate/:id',
       access: 'LEARNING_PROGRESS',
-      requires: [personalEndpoints.certificate],
       title: 'Chứng nhận',
       mockupPage: 'certificate',
+      requires: [certificateEndpoints.certificate],
       load: () =>
-        import('../../features/achievements/certificates/certificates').then(
-          (m) => m.CertificateDetail,
+        import('../../features/achievements/certificate/certificate').then(
+          (m) => m.Certificate,
         ),
     },
     {

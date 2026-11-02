@@ -1,0 +1,125 @@
+@use 'ui';
+
+:host {
+  @include ui.page(narrow);
+  min-width: 0;
+}
+
+.certificate {
+  // The document: a flat panel on the page, as plain as the print it becomes.
+  display: flex;
+  flex-direction: column;
+  gap: ui.space(4);
+  margin-top: ui.space(5);
+  padding: ui.space(5);
+  background: ui.color(surface);
+  color: ui.color(text);
+  border: 1px solid ui.color(border);
+  border-radius: ui.radius(card);
+
+  @include ui.bp(md) {
+    gap: ui.space(5);
+    padding: ui.space(8);
+  }
+
+  &__placeholder {
+    min-height: 16rem;
+    margin-top: ui.space(5);
+  }
+
+  &__brand {
+    display: flex;
+    align-items: center;
+    gap: ui.space(3);
+
+    p {
+      margin: 0;
+      @include ui.text(sm, secondary);
+    }
+  }
+
+  &__heading {
+    margin: ui.space(3) 0 0;
+    font-size: ui.text-size(xl);
+    font-weight: ui.weight(semibold);
+  }
+
+  &__lead,
+  &__course {
+    margin: 0;
+  }
+
+  &__lead {
+    @include ui.text(md, secondary);
+  }
+
+  // The name is the largest text of the document.
+  &__name {
+    margin: 0;
+    font-size: ui.text-size(3xl);
+    font-weight: ui.weight(semibold);
+    line-height: ui.leading(tight);
+    overflow-wrap: anywhere;
+  }
+
+  &__course {
+    max-width: 56ch;
+    color: ui.color(text-secondary);
+
+    strong {
+      color: ui.color(text);
+      font-weight: ui.weight(semibold);
+    }
+  }
+
+  // Date and code side by side; they wrap under each other on a narrow screen.
+  &__facts {
+    display: flex;
+    flex-wrap: wrap;
+    gap: ui.space(4) ui.space(8);
+    margin: ui.space(3) 0 0;
+
+    dt {
+      @include ui.text(sm, muted);
+    }
+
+    dd {
+      margin: ui.space(1) 0 0;
+      font-weight: ui.weight(semibold);
+      overflow-wrap: anywhere;
+    }
+  }
+
+  &__code {
+    @include ui.mono;
+  }
+
+  &__demo {
+    margin: 0;
+    @include ui.text(xs, muted);
+  }
+}
+
+// One A4 landscape sheet holding the document alone: the page header and its breadcrumb go, the
+// panel loses its page padding, and it is never split. The shell's own chrome is hidden by the
+// shell (`app-shell.scss`), and the light colours come from the `ui` print theme.
+@page {
+  size: A4 landscape;
+  margin: 12mm;
+}
+
+@media print {
+  ui-page-header {
+    display: none;
+  }
+
+  :host {
+    max-width: none;
+    padding: 0;
+  }
+
+  .certificate {
+    margin-top: 0;
+    break-inside: avoid;
+  }
+}

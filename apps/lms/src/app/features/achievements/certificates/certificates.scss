@@ -1,117 +1,63 @@
 @use 'ui';
+
 :host {
-  @include ui.page;
+  @include ui.page(narrow);
   min-width: 0;
 }
-.certificates__loading {
-  min-height: 20rem;
-  display: grid;
-  place-items: center;
-}
-.certificates__grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(min(100%, 18rem), 1fr));
-  gap: ui.space(4);
-}
-.certificates__card {
-  @include ui.stack(3);
-  color: ui.color(text);
-  text-decoration: none;
-  h2 {
-    @include ui.text(lg);
+
+.certificates {
+  &__placeholder {
+    min-height: 8rem;
+    margin-top: ui.space(5);
   }
-  p {
-    @include ui.text(sm, muted);
-  }
-}
-.certificates__code {
-  @include ui.mono;
-  @include ui.text(xs);
-  overflow-wrap: anywhere;
-}
-.certificates__cta {
-  @include ui.row(2);
-  color: ui.color(primary);
-  @include ui.text(sm);
-  font-weight: ui.weight(semibold);
-}
-.certificates__document {
-  position: relative;
-  isolation: isolate;
-  overflow: hidden;
-  aspect-ratio: 1.414;
-  max-width: 56.25rem;
-  margin-inline: auto;
-  background: ui.color(certificate-paper);
-  color: ui.color(certificate-ink);
-  border: ui.space(2) solid ui.color(certificate-brand);
-  border-radius: ui.radius(md);
-  box-shadow: ui.shadow(lg);
-  padding: 6% 8%;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  text-align: center;
-  gap: ui.space(3);
-  &::before {
-    content: '';
-    position: absolute;
-    inset: ui.space(2);
-    border: 2px solid ui.color(certificate-line);
-    border-radius: ui.radius(sm);
-    pointer-events: none;
-  }
-  h2 {
-    font-size: clamp(1.125rem, 2.5vw, 2.125rem);
-    color: ui.color(certificate-brand);
-  }
-  p {
-    color: ui.color(certificate-muted);
-    @include ui.text(sm);
-  }
-}
-.certificates__watermark {
-  position: absolute;
-  right: -40px;
-  top: -40px;
-  opacity: 0.08;
-  z-index: -1;
-}
-.certificates__eyebrow {
-  @include ui.text(sm);
-  color: ui.color(certificate-muted);
-}
-.certificates__who {
-  font-size: clamp(1.25rem, 3vw, 2.5rem);
-  color: ui.color(certificate-name);
-  font-weight: ui.weight(bold);
-}
-.certificates__statement {
-  max-width: 56ch;
-}
-.certificates__details {
-  @include ui.row(6);
-  justify-content: center;
-  @include ui.text(sm);
-  color: ui.color(certificate-muted);
-  margin-top: ui.space(4);
-}
-.certificates__demo {
-  @include ui.text(xs);
-  color: ui.color(certificate-muted);
-}
-@media print {
-  :host {
-    max-width: none;
+
+  &__list {
+    margin: ui.space(5) 0 0;
     padding: 0;
+    list-style: none;
+    border-top: 1px solid ui.color(border);
   }
-  ui-page-header,
-  ui-breadcrumb {
-    display: none;
+
+  // The title and the meta line sit on the left and the code on the right; on a narrow screen the
+  // code drops under the meta line.
+  &__row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: ui.space(1);
+    padding: ui.space(4) ui.space(2);
+    border-bottom: 1px solid ui.color(border);
+
+    @include ui.bp(md) {
+      grid-template-columns: minmax(0, 1fr) auto;
+      column-gap: ui.space(5);
+      align-items: baseline;
+    }
   }
-  .certificates__document {
-    box-shadow: none;
-    print-color-adjust: exact;
+
+  &__title {
+    color: ui.color(primary);
+    font-weight: ui.weight(semibold);
+    overflow-wrap: anywhere;
+
+    &:focus-visible {
+      @include ui.focus-ring;
+    }
+  }
+
+  &__meta {
+    @include ui.text(sm, muted);
+    overflow-wrap: anywhere;
+  }
+
+  &__code {
+    @include ui.mono;
+    color: ui.color(text-secondary);
+    overflow-wrap: anywhere;
+
+    @include ui.bp(md) {
+      grid-column: 2;
+      grid-row: 1 / span 2;
+      text-align: right;
+    }
   }
 }

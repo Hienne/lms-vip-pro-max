@@ -76,7 +76,6 @@ import { AssessmentMock } from '../assessment/assessment.mock';
 import { AssessmentAuthoringMock } from '../assessment/authoring.mock';
 import { LearnerQuizMock } from '../assessment/learner-quiz.mock';
 import { learningReportHandlers } from '../reports/learning-report.handlers';
-import { PersonalFakeBackend } from '../personal/personal.backend';
 import {
   SEED_FUNCTIONS,
   SEED_GRANTS,
@@ -208,7 +207,6 @@ export class FakeBackend {
     true,
   );
   private readonly learnerQuiz = new LearnerQuizMock();
-  private readonly personal = new PersonalFakeBackend();
   private orgs: Mutable<SeedOrg>[] = SEED_ORGS.map((o) => ({ ...o }));
   private teams: Mutable<SeedTeam>[] = SEED_TEAMS.map((t) => ({ ...t }));
   private users: DbUser[] = SEED_USERS.map((u, index) => ({
@@ -328,8 +326,7 @@ export class FakeBackend {
       this.programAuthoring.answers(endpoint) ||
       this.assessment.answers(endpoint) ||
       this.learnerQuiz.answers(endpoint) ||
-      learningReportHandlers.has(endpoint) ||
-      this.personal.answers(endpoint)
+      learningReportHandlers.has(endpoint)
     );
   }
 
@@ -352,8 +349,6 @@ export class FakeBackend {
     if (quizReply) return quizReply;
     const learningReply = learningReportHandlers.get(endpoint)?.(request);
     if (learningReply) return learningReply;
-    const personalReply = this.personal.handle(endpoint, request);
-    if (personalReply) return personalReply;
     const handler = this.handlers.get(endpoint);
     if (!handler) return undefined;
     try {

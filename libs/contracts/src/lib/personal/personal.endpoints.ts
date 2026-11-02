@@ -1,18 +1,14 @@
-/** Certificates are still the mockup's contract; the learner's notes and bookmarks are the backend's. */
 import { z } from 'zod';
 import { defineEndpoint } from '../http/endpoint';
-import { PageQuerySchema, PageSchema } from '../http/page';
 import {
   AddNoteCommandSchema,
   BookmarkCommandSchema,
   BookmarkToggleSchema,
   LessonBookmarkViewSchema,
-  CertificateSchema,
   LessonNoteViewSchema,
   SavedPageSchema,
   SavedQuerySchema,
 } from './personal.schema';
-const certificateParams = z.object({ certificateId: z.string() });
 const lessonParams = z.object({ lessonId: z.number().int() });
 const LEARNING = '/api/v1/me/learning';
 export const personalEndpoints = {
@@ -66,30 +62,5 @@ export const personalEndpoints = {
     path: `${LEARNING}/saved`,
     query: SavedQuerySchema,
     response: SavedPageSchema,
-  }),
-  /** List certificates already issued by the server. */
-  certificates: defineEndpoint({
-    method: 'get',
-    path: '/api/me/certificates',
-    query: PageQuerySchema,
-    response: PageSchema(CertificateSchema),
-    served: 'mock',
-  }),
-  /** Retrieve issued metadata. */
-  certificate: defineEndpoint({
-    method: 'get',
-    path: '/api/me/certificates/{certificateId}',
-    params: certificateParams,
-    response: CertificateSchema,
-    served: 'mock',
-  }),
-  /** Download the API-issued PDF. Mock response is explicitly a demo document. */
-  downloadCertificate: defineEndpoint({
-    method: 'get',
-    path: '/api/me/certificates/{certificateId}/download',
-    params: certificateParams,
-    responseType: 'blob',
-    response: z.instanceof(Blob),
-    served: 'mock',
   }),
 } as const;

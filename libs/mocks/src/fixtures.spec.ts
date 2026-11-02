@@ -4,6 +4,7 @@ import {
   agentEndpoints,
   AgentStreamEventSchema,
   authV1Endpoints,
+  certificateEndpoints,
   communityEndpoints,
   feedbackEndpoints,
   personalEndpoints,
@@ -42,6 +43,7 @@ const everyEndpoint: readonly AnyEndpoint[] = [
   ...Object.values(learnerQuizEndpoints),
   ...Object.values(organizationEndpoints),
   ...Object.values(feedbackEndpoints),
+  ...Object.values(certificateEndpoints),
   ...Object.values(personalEndpoints),
   ...Object.values(reportEndpoints),
   ...Object.values(shellEndpoints),
@@ -64,9 +66,6 @@ describe('FakeBackend and the endpoint registries', () => {
       [
         ...Object.values(adminOrgEndpoints),
         ...Object.values(assessmentEndpoints),
-        personalEndpoints.certificates,
-        personalEndpoints.certificate,
-        personalEndpoints.downloadCertificate,
         ...Object.values(reportEndpoints),
         shellEndpoints.navCounts,
       ]
@@ -97,7 +96,6 @@ describe('FakeBackend and the endpoint registries', () => {
         userId: '000004',
         quizId: 'q1',
         attemptId: 'at-demo',
-        certificateId: 'cert1',
         dim: 'learners',
       },
       query: { dim: 'learners' },

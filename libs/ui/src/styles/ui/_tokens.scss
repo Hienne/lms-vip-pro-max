@@ -71,13 +71,6 @@ $colors: (
   hero-subtle: #a9cfcc,
   hero-accent: #ffd15c,
   hero-chip: rgba(255, 255, 255, 0.14),
-  // Certificate stays a paper document in either application theme and when printed.
-  certificate-paper: #fffdf6,
-  certificate-ink: #1a1d1c,
-  certificate-muted: #4a5553,
-  certificate-brand: #014744,
-  certificate-name: #006b68,
-  certificate-line: #ffc62f,
   // sidebar navigation: a dark brand panel for BIDV, which a theme may turn light. The references
   // follow the mode (primary-strong has a dark value); the washes sit on nav-bg.
   nav-bg: var(--color-primary-strong),
