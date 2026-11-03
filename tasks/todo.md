@@ -23,27 +23,48 @@ The previous `course-final-exam` checklist is in git history at `2c91339`.
 
 ## Phase 1: Backend
 
-- [ ] **B1: Request and shares**
+- [x] **B1: Request and shares**
   - `PublishRequest` and `PublishAssignment` (plan Decision 2); the publish endpoint takes `PublishRequest`.
   - One transaction: publish, then shares (Decision 3, 5). Active shares skipped; a refusal becomes
     `CORE-VALIDATION_FAILED` on `shareOrgIds[j]` (Decision 4).
   - Acceptance: `{expectedVersion}` alone unchanged; `mvn -o clean test` green.
-- [ ] **B2: Assignments**
+  - Checked: d197119 — mvn -o clean test: 470 run, 0 failed, 42 skipped.
+- [x] **B2: Assignments**
   - Each row through `assign` with the values of Decision 6; a `BusinessException` or `AccessDeniedException` becomes
     `CORE-VALIDATION_FAILED` on `assignments[i]` and rolls everything back.
   - Acceptance: `mvn -o clean test` green.
-- [ ] **B3: Tests and docs**
+  - Checked: 1e4d10e — mvn -o clean test (run with the B3 IT present): 477 run, 0 failed, 42 skipped. Lock: `pg_advisory_xact_lock` is re-entrant in one session, so nested `acquire` is safe.
+- [x] **B3: Tests and docs**
   - `CoursePublishTargetsIT` with the spec's Testing cases (two rows and a share; no extras; empty target rolls back;
     owner share refused; existing share unchanged; due before start; retry refused by version).
   - `docs/api/LEARNING.md` and `LEARNING_CURL.md`.
   - Acceptance: `mvn -o clean test` green.
+  - Checked: 0b4b9f8 — mvn -o clean test: 477 run, 0 failed, 42 skipped (CoursePublishTargetsIT: 7 run, 0 failed).
 
 ### Checkpoint A
 
-- [ ] The main session reviews the three diffs and restarts :8019 from
-      `~/my-projects/corebanking-academy-publish-targets`.
-- [ ] Plan Decision 11 through the API, no SQL.
-- [ ] `mvn -o clean test` in a temporary worktree.
+- [x] The main session reviewed the three diffs and restarted :8019 from
+      `~/my-projects/corebanking-academy-publish-targets` (`0b4b9f8`) on 2026-11-03. `LearningPublishService` runs the
+      publish, the shares and the rows in one transaction; the nested `LearningWriteLock.acquire` is a
+      `pg_advisory_xact_lock`, which the same transaction can take again.
+- [x] Plan Decision 11 through the API, on course 19's draft revision 22 (`rowVersion` 3), as `quantri`:
+  - Only one local org exists (org 1, the owner), so a successful share could not be made without seeding; it is
+    left to `CoursePublishTargetsIT`.
+  - Refused, each leaving revision 22 a draft with no assignment and no share:
+    - a valid row for `hocvien` plus `shareOrgIds` [1] gave `CORE-VALIDATION_FAILED` on `shareOrgIds[0]`
+      (`LEARNING-INVALID_REFERENCE`);
+    - rows for `hocvien` and team 2 (no member) gave `assignments[1]` (`LEARNING-EMPTY_TARGET`), so row 0 was rolled
+      back too;
+    - a due date before the start gave `assignments[0]` (`OUT_OF_RANGE`).
+  - A publish with one row for `hocvien` (start 2026-11-04, due 2026-12-04, reminder 3 days) succeeded (published
+    revision 22) in under 0.1 s. Assignment 8 has revision 22, requirement `optional` (the revision default),
+    `continue`, idempotency key `publish-22-0`; its recipient is `000004` on the new enrollment 20 (revision 22).
+    The learning report shows enrollment 20 with `assigned` false until the start date, as for any future
+    assignment.
+  - The same body again gave `LEARNING-CONFLICT` (version check); still one assignment.
+  - Counts read through the API and one read-only psql query on localhost; no write outside the API.
+- [x] `mvn -o clean test` in a temporary worktree at `0b4b9f8`: 477 run, 0 failures, 0 errors, 42 skipped;
+      `CoursePublishTargetsIT` 7/7. The app child starts Phase 2.
 
 ## Phase 2: App
 
