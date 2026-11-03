@@ -1,132 +1,131 @@
-# Implementation Plan: `course-wizard-create`
+# Implementation Plan: `course-final-exam`
 
-Spec: [SPEC-course-wizard-create.md](../SPEC-course-wizard-create.md) (approved; amended below). Map:
+Spec: [SPEC-course-final-exam.md](../SPEC-course-final-exam.md) (approved; amended below). Map:
 [SPEC-course-authoring.md](../SPEC-course-authoring.md). Tasks: [todo.md](todo.md).
 
-This plan replaces the one for `lesson-player-modes`. That plan is done; its PRs are hmhug19/corebanking-academy#23
-and Hienne/lms-vip-pro-max#58, and it is in git history at `0efffaf`.
+This plan replaces the one for `course-wizard-create`. That plan is done; it is in git history at `e838065`.
 
 ## Overview
 
-`/admin/courses/new` becomes the course editor in create mode, with the mockup's four steps, and the first
-"Lưu nháp" creates the course and its whole draft in one `POST /courses`. The backend accepts an optional `draft` in
-that call. No schema change.
+Step 3 of the course editor gets the "Bài kiểm tra cuối khóa" select (the course's `FINAL_EXAM` quiz or none). The
+backend stores the choice as one `course_assessments` row per revision, validates it on save and on publish, and
+requires passing it for completion. No DB change.
 
 ## What was checked while planning (2026-11-03)
 
-**Backend (`corebanking-academy`, `origin/main` at `59aa687`)**
+**Backend (`feat/course-wizard-create` at `b8529eb`, not merged yet)**
 
-- **`LearningContentService.create`** is `@Transactional`:
-  1. `requireManage` and the owner team check;
-  2. `courseCodeExists`, which gives `DUPLICATE`, under `writeLock`;
-  3. save the `Course`, then `newRevision(course, title, actor, 1)`;
-  4. audit `COURSE_CREATED`, `flush`, then `detail`.
-- **`saveDraft`**:
-  - checks the version and `validateCatalog(course, programId, moduleId, false)`, then `validateDraftSize`;
-  - checks the cover asset, then `validateLessonInput` / `validateBlockInput` for each lesson and block;
-  - then `clearDraftTree`, sets the revision fields, sets the completion rule's `rewardPoints` (line ~152), and
-    calls `writeTree(revision, DraftRequest, actor)`.
-- **`DraftRequest`** is a flat record whose first field is `expectedVersion` (`@NotNull`). `writeTree` and
-  `validateDraftSize` take the whole `DraftRequest`.
-- **Course endpoint tests** live in `src/test/java/vn/com/coreacademy/assessment/` (`LearnerCourseIT`,
-  `QuizLessonContentIT`, `support/AssessmentFixtures`) and `learning/LearningPointsIT`.
+- **`course_assessments`** exists in the learning baseline with every column the row needs. The local DB has no row.
+- **Publish** throws `QUIZ_UNAVAILABLE` when the revision has any row (`LearningContentService` ~562). Quiz lessons
+  are checked at publish with `QUIZ_LESSON_UNLINKED` (~544), and on save with `QUIZ_INVALID` (~402, ~413).
+- **Completion** is decided in `LearningProgressService.updateEnrollment`: every required lesson at 100% and
+  `repository.assessments(revisionId).isEmpty()`.
+- **`completeQuizLessons(userId, enrollmentId, quizId)`** is the passing hook, called by `LearningAssessmentAccess`
+  (line 189) from the grading transaction. It returns early when no quiz lesson of the revision points at the quiz.
+- **`LearningQuizDirectory`**:
+  - `QuizRef(quizId, courseId, status, deleted)` has no type or pass data;
+  - `scores(userId, courseIds)` returns `passed` per quiz, following its `scoreMethod`;
+  - it is implemented by `assessment/service/AssessmentQuizDirectory`.
+- **`CourseAssessmentView`** and the mapper exist, but the course detail does not return assessments.
+- `applyDraft` (from `course-wizard-create`) is the one place that writes a draft's tree, for both save and create.
 
-**App (`feat/course-authoring` at `a247bfe`)**
+**Local data**
 
-- **`course-new/`** has its own component, its store (`CourseNewStore.create` → `courseEndpoints.createCourse`,
-  then navigate with `replaceUrl`) and specs.
-- **The editor store** loads with `courseEndpoints.getCourse` by the route's `courseId`. It loads quizzes with
-  `courseQuizList` by `courseId`, and kept uploads with `KeptUploads.read(userId, courseId)`.
-  - `save` and `publish` take `Omit<SaveDraftCommand, 'expectedVersion'>`.
-  - `EDITOR_STEPS` has three steps.
-- **`course-draft.ts`**:
-  - `toDraftValue(detail)` maps a loaded course to the form value;
-  - `toSaveDraftCommand(value, version)` maps it back;
-  - `draftChecks` holds the pre-publish checks, and their `step` indexes point at the three steps.
-- **Uploads** take `ownerOrgId` (`learning-asset` contracts), not a course.
-- **`unsavedChangesGuard`** is on every route.
+- `FINAL_EXAM` quizzes:
+  - quiz 2 on `FE-DEMO-C1` (course 1), pass 70%, 2 attempts;
+  - quiz 4 on `FE-DEMO-C2` (course 2), which requires the lessons to be completed;
+  - quiz 5 on `QZ-E2E-01` (course 8).
+
+  All three are published.
+
+- Courses 1, 2 and 8 each have learners enrolled on their published revisions (rule 3 keeps them unaffected).
+
+**App (`feat/course-authoring` at `e838065`)**
+
+- The editor store already loads `courseQuizList` by course (not in create mode). Quiz summaries carry `quizType`
+  and `status`.
+- `course-rules` (step 3) holds the reward points. `draftChecks` holds the step 4 lines.
 
 ## Decisions (amendments to the spec)
 
-1. **Open questions answered** (by approval, 2026-11-03): before the first save, a quiz lesson cannot pick a quiz
-   and an interrupted upload cannot be resumed; step 4 shows only the checklist and the summary; the course-new screen
-   is deleted.
-2. **Backend shape.**
-   - A new record `LearningRequests.DraftContent` has every `DraftRequest` field except `expectedVersion`, with the
-     same constraints.
-   - `DraftRequest` keeps its JSON shape (no breaking change) and gains `DraftContent content()`.
-   - `CreateCourse` gains `@Valid DraftContent draft`, which may be null.
-   - The checks and the tree write of `saveDraft` move into one private `applyDraft(Course, CourseRevision,
-DraftContent, actor)`. Both `saveDraft` and `create` call it, so no rule is duplicated.
-   - `validateDraftSize` and `writeTree` take `DraftContent`.
-3. **Title.** When `draft` is present, the revision title is `draft.title`. When `draft.title` is null, it falls back
-   to `CreateCourse.title`.
-4. **Response.** The same `CourseDetail`. Its `revision.version` is the value after the tree write, so a publish
-   right after a create uses it.
-5. **App create mode** is chosen by the route: `admin/courses/new` loads `CourseEditor` with the route data
-   `{ mode: 'create' }`. The store reads that mode and has no `getCourse` call in it.
-   - The form starts from `emptyDraftValue()`.
-   - `code` is a field of the create form only, and `ownerOrgId` comes from the session.
-6. **App save in create mode:**
-   - It calls `createCourse` with `toCreateCourseCommand(value, code, ownerOrgId)`.
-   - On success it marks the form clean, then navigates to `['/admin/courses', id, 'edit']` with `replaceUrl` and
-     the query param `step` set to the current step. The edit screen reads `step` once.
-   - Publish in create mode is: create, then `publish` with the returned revision and its version.
-7. **`DUPLICATE`.** The store maps the server's `DUPLICATE` error to the code field ("Mã khóa học đã tồn tại.") and
-   goes to step 1. Other errors use the existing alert.
-8. **Steps.** `EDITOR_STEPS` becomes four steps, with labels and subtitles from the spec. `course-finish` is split
-   into `course-rules` (step 3: completion rules and reward points) and `course-review` (step 4: checklist and
-   summary). `draftChecks`' `step` indexes are updated to match.
-9. **Quiz picker before the first save** shows "Lưu nháp trước để chọn bài kiểm tra" and makes no call.
+1. **Open questions** (by approval, 2026-11-03): no pass score in the completion line; no change on the learner's
+   course page.
+2. **Detail shape.** `CourseDetail` gains a top-level `finalQuizId` (nullable), read from the revision's final row.
+   No assessments list is exposed.
+3. **One row per revision.** `applyDraft` deletes the revision's rows, then writes at most one. `placement` is the
+   string `final`, a constant in `CourseAssessment` or a small enum, documented in `LEARNING.md`.
+4. **`QuizRef`** gains `quizType`, `passPercent`, `maxAttempts` and `allowRetakeAfterPass`. Every existing
+   constructor call is updated. No behaviour changes for quiz lessons.
+5. **Completion check.** A private `finalExamPassed(enrollment)` returns true when the revision has no final row.
+   Otherwise it asks `quizzes.scores(userId, List.of(courseId))` for the row's quiz and reads `passed`.
+   `updateEnrollment` uses it in place of `assessments(...).isEmpty()`.
+6. **Passing hook.** `completeQuizLessons` marks the quiz lessons as today. When the quiz is the revision's final
+   exam, it then calls `updateEnrollment` even with no quiz lesson, and returns true.
+7. **New code** `FINAL_EXAM_UNPUBLISHED("LEARNING-FINAL_EXAM_UNPUBLISHED", …)`, refused kind. `QUIZ_UNAVAILABLE`
+   stays in the enum but is no longer thrown by publish.
+8. **Branches.**
+   - The backend builds on `course-wizard-create`: branch `feat/course-final-exam` from `feat/course-wizard-create`
+     (`b8529eb`), in a new worktree `~/my-projects/corebanking-academy-final-exam`. Its PR waits for the wizard PR.
+   - The app stays on `feat/course-authoring`.
+9. **Checkpoint data** is made through the API only. As `quantri`:
+   1. create `WIZ-FE-01` (optional, one required text lesson) with the wizard's create;
+   2. author and publish a `FINAL_EXAM` quiz for it with the assessment API, plus enough questions;
+   3. save `finalQuizId`, then publish.
+
+   Then `hocvien.tichhop` enrolls from the catalog, completes the lesson, then takes and passes the exam through the
+   learner quiz API. No SQL.
 
 ## Phases
 
-### Phase 1: Backend (child session, new worktree `~/my-projects/corebanking-academy-wizard`, branch `feat/course-wizard-create` from `origin/main` `59aa687`) → Checkpoint A
+### Phase 1: Backend (child session, worktree `~/my-projects/corebanking-academy-final-exam`) → Checkpoint A
 
-- **B1. Refactor.** Add `DraftContent` and `applyDraft`, and route `saveDraft` through them. No change in behaviour;
-  the existing tests stay green.
-- **B2. Create with a draft.** `CreateCourse.draft`, and `create` calls `applyDraft` after `newRevision`.
-  Integration tests and `docs/api/LEARNING.md`.
+- **B1. Store and read the final exam.**
+  - `QuizRef` fields;
+  - `DraftContent` / `DraftRequest.finalQuizId`;
+  - the save validation (`QUIZ_INVALID`, field `finalQuizId`);
+  - the row written in `applyDraft`;
+  - `CourseDetail.finalQuizId`;
+  - the revision copy.
+- **B2. Publish and completion.** `FINAL_EXAM_UNPUBLISHED`, the publish check replacing the blanket refusal,
+  `finalExamPassed`, and the passing hook.
+- **B3. Tests and docs.** The spec's integration tests; `LEARNING.md` and `LEARNING_CURL.md`.
 - **Checkpoint A (main session):**
-  - stop `bext44911`, then start :8019 from the new worktree;
-  - `curl` as `quantri`:
-    - a create with a two-chapter draft, read back with `GET /courses/{id}`;
-    - a create without a draft;
-    - a duplicate code;
-    - a draft with an invalid block, after which no course exists (`courseCodeExists` by listing);
-  - `mvn -o clean test` green.
+  - restart :8019 from the new worktree;
+  - run Decision 9 with `curl`: the in-progress state before the exam, completed after it;
+  - check the refusals (a `PRACTICE` quiz, an unpublished final exam);
+  - check that course 1's existing enrollments are unchanged;
+  - `mvn -o clean test` green, in a temporary worktree.
 
-### Phase 2: App (child session, this checkout, branch `feat/course-authoring`) → Checkpoint B
+### Phase 2: App (child session, this checkout) → Checkpoint B
 
-- **F1. Contracts and mock.** `CreateCourseCommandSchema.draft`; the fixture captured from the local backend; the
-  mock create handler stores the tree.
-- **F2. Draft mapping.** `emptyDraftValue()` and `toCreateCourseCommand` in `course-draft.ts`, sharing the tree
-  mapping with `toSaveDraftCommand`.
-- **F3. Four steps.** `EDITOR_STEPS`, `course-rules`, `course-review`, `draftChecks` indexes, and the footer buttons
-  (Hủy/Quay lại · Lưu nháp · Tiếp tục/Xuất bản khóa học).
-- **F4. Create mode.** Route data, the store's create mode, the code field, save and publish, `DUPLICATE`, the
-  `step` query param, and the quiz picker note.
-- **F5. Remove course-new and write the docs.**
-  - Delete `features/admin-content/course-new/`.
-  - Point the route at the editor.
-  - Add the migration entry for `courseWizard` and the spec's implementation notes.
+- **F1. Contracts and mock.** `finalQuizId` on the save command and the detail; the new message code; fixtures
+  captured from the local backend; the mock save, detail and publish.
+- **F2. Step 3 and the checklist.** Mapping round trip; the two sections in `course-rules`; the `draftChecks` lines.
+- **F3. Docs.** The spec's implementation notes and the migration entry.
 - **Checkpoint B (main session):**
   - review each diff, then run `npm run check`;
-  - in the browser as `quantri`: create a course with two chapters and a lesson in one save, check the URL and the
-    history, reload and see the tree;
-  - try a duplicate code and leaving with unsaved input;
-  - 375, 768 and 1280 px, light and dark, keyboard only, beside the mockup on :4320.
+  - in the browser as `quantri`, on `WIZ-FE-01`'s draft: the select lists only the `FINAL_EXAM` quiz; save; reload
+    and see the choice; publish;
+  - on a course without a `FINAL_EXAM` quiz, the empty-case line;
+  - in create mode, the "Lưu nháp trước" line;
+  - 375, 768 and 1280 px, light and dark, keyboard.
 
 ## Before merging (the user)
 
-- No SQL. Merge the backend PR first and wait for its deploy, then the app PR. The app's create call sends `draft`,
-  which an old backend would reject or ignore.
+- No SQL.
+- Merge order:
+  1. the `course-wizard-create` backend PR;
+  2. this backend PR;
+  3. wait for the deploy;
+  4. the app PR.
+
+  The app branch carries both modules.
 
 ## Risks
 
-- **An old backend ignores `draft`.** Spring ignores unknown fields by default, so with the app merged first,
-  creates would lose their content silently. Hence the merge order. F4's spec asserts that the response tree is
-  non-empty when the draft had chapters; it is a test, not a runtime guard.
-- **The editor store is 822 lines.** Create mode adds branches to it. F4 keeps them to the load, save and publish
-  paths; if it grows past about 100 lines, split a `course-create` helper.
-- **Splitting `course-finish`** may move specs; F3 keeps the existing assertions under the new components.
+- **Older clients that save the tree** without `finalQuizId` clear the final exam. The app's editor is the only
+  client in this repo; `LEARNING.md` says so.
+- **Grading transaction.** `completeQuizLessons` runs inside grading. The extra `scores` query is one more read in
+  that transaction, and a failure there must not lose the grade. Keep the call's current "return false, never
+  throw" contract.
+- **`require_lessons_completed`** on a quiz is independent of this rule. Both can apply, and no change is needed.
