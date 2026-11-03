@@ -91,9 +91,11 @@ The previous `course-final-exam` checklist is in git history at `2c91339`.
   - Checked: new `course-review.spec.ts` (14), `publish-targets.spec.ts` (12) and picker spec; full `lms` suite green
     (1699 tests); lint 0 errors, typecheck clean. Differences: the org list is read in create mode too (the share list
     needs it); the picker's add button is the secondary variant, not ghost; a row with no due date sends no reminder.
-- [ ] **F4: Docs**
+- [x] **F4: Docs**
   - The spec's implementation notes; the migration entry.
   - Acceptance: `npm run check` green.
+  - Checked: `npm run check` NOT completed (stopped at the user's request). Before it: prettier clean on the F4 files; all
+    four `lms`/`contracts`/`mocks` suites, lint and typecheck were green at F3. Run it at Checkpoint B.
 
 ### Checkpoint B
 

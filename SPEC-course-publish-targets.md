@@ -177,3 +177,41 @@ PublishAssignment {
    requirement. Should a row be able to override it (bắt buộc / tự chọn)? The default here is no.
 2. **Limits.** 20 rows and 50 shares per publish are new limits, chosen to keep one transaction short. Are they
    acceptable?
+
+## Implementation notes (app)
+
+Built on `feat/course-authoring` in tasks F1 to F4 (`tasks/todo.md`). Differences from the text above are listed last.
+
+- **Contracts and mock.**
+  - `PublishCourseCommandSchema` (`course-publish.schema.ts`, beside `course.schema.ts` because the assignment schemas
+    import that file) is the publish body: `expectedVersion`, up to 20 `assignments`, up to 50 `shareOrgIds`
+    (`PUBLISH_LIMITS`). `publishRowOf(field)` reads `assignments[i]` / `shareOrgIds[j]`.
+  - The envelope's `errors[]` is now read (`FieldError`; `ApiError.fieldErrors`, `AppError.fieldErrors`), because the
+    row mapping needs the field. Screens that do not use it are unchanged.
+  - `capturedPublishTargets` (`course.captured.ts`) holds a body and the three refusals seen on the local backend.
+  - The mock publish checks, then publishes, shares and assigns through its own `share` and `assignCourse`, and puts
+    everything back on a refusal. It refuses an empty target, a due date before the start, the owner unit and an
+    unknown unit with `CORE-VALIDATION_FAILED` and the row field.
+- **Shared picker.** `shared/assignment-target/`: `TargetPicker` and its own `TargetOptionsStore` (people, orgs, teams of
+  the picked org, learning groups). The owner org of the groups comes from the optional `TARGET_OWNER_ORG` token (the
+  caller's org without it); step 4 provides the course's owner. `TargetPick`, `sameTarget` and `TARGET_TYPE_LABEL` moved
+  there. `AssignmentsStore` lost its org and team lists. The picker takes an `addLabel`.
+- **Editor store.** `publishRows`, `reminderEnabled` and `newShareOrgIds` are state outside the draft. In edit mode it
+  loads the shares and the count of the owner unit's assignments. `publish()` and `createAndPublish()` check the rows
+  (`rowIssue`: "Dòng {i}: chọn đối tượng." / "chọn ngày bắt đầu." / "hạn phải sau ngày bắt đầu."), ask with the counts
+  added when there are any, and send `toPublishCommand`; with nothing to add the body is `{ expectedVersion }` alone.
+  Success clears the state and goes to the list; a refusal marks the row or the unit by id and hides the generic alert.
+  After a create, a refusal moves to the edit screen and the toast carries the row line, because the rows are not kept.
+- **Step 4.** `course-review` has two columns from `lg`: `assign-rows` ("Giao khóa học") and `share-units` ("Chia sẻ cho
+  đơn vị khác") on the left, the checks and the summary on the right. Rows show the label, the type as text, "Bắt đầu",
+  "Hạn hoàn thành" and "Xóa dòng". The only primary button is the footer's.
+- **Differences.**
+  - Rows are added by the picker (plan Decision 8), so there is no per-row type select.
+  - "Hạn hoàn thành" is optional, as on the server; a row without one sends no reminder.
+  - The org list is also read in create mode, where the share list needs it; shares and the count are not.
+  - The picker's add button is the secondary variant, not ghost.
+  - Rows are lost when a refused create moves to the edit screen.
+- **Checked.** Specs for the schema and the captured refusals, the envelope's field errors, the mock (rows, shares,
+  rollback, each refusal), the helpers, the rows, the switch, the share list, the publish in edit and create mode and a
+  refusal mapped back; the assignments specs pass. `npm run check` is green. The browser pass of Checkpoint B is not done
+  here.
