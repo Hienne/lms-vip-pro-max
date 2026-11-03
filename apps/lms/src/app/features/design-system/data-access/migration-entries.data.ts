@@ -1208,7 +1208,7 @@ export const MIGRATION_ENTRIES = [
   {
     id: 'route-admin-courses-id-edit',
     notes:
-      '2026-11-03: bốn bước (Thông tin cơ bản, Nội dung khóa học, Bài thi & điều kiện, Đối tượng & xuất bản); bước 3 là điều kiện hoàn thành và điểm thưởng, bước 4 là danh sách kiểm tra và tóm tắt. Đọc ?step= một lần khi mở. Bài thi cuối khóa và giao/chia sẻ sẽ vào bước 3 và 4 ở các module sau.',
+      '2026-11-03: bốn bước (Thông tin cơ bản, Nội dung khóa học, Bài thi & điều kiện, Đối tượng & xuất bản); bước 3 là điều kiện hoàn thành và điểm thưởng, bước 4 là danh sách kiểm tra và tóm tắt. Đọc ?step= một lần khi mở. Bước 3 có thêm "Bài kiểm tra cuối khóa" (course-final-exam): chọn bài thi loại Thi cuối khóa của khóa, ghi chú "· Nháp"/"· Đã đóng" khi chưa xuất bản; bước 4 có thêm dòng khuyến nghị và dòng bắt buộc "đã xuất bản" khi đã chọn. Máy chủ quyết định khi xuất bản. Chờ đối chiếu trình duyệt ở 375/768/1280 px, bàn phím. Giao/chia sẻ sẽ vào bước 4 ở module sau.',
     kind: 'route',
     mockupSource: 'src/pages/admin-content.js · courseWizard',
     target: 'admin/courses/:id/edit',

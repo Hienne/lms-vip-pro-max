@@ -74,15 +74,20 @@ The previous `course-wizard-create` checklist is in git history at `e838065`.
   - Checked: `contracts` 254 and `mocks` 307 specs pass, typecheck and lint clean. `capturedCourseFinalExam` is
     `GET /courses/19` (`WIZ-FE-01`, `finalQuizId` 6) from :8019. The mock publish asks the new
     `LearningDirectory.quizStatus` (backed by the assessment mock) and refuses anything but `PUBLISHED`.
-- [ ] **F2: Step 3 and the checklist**
+- [x] **F2: Step 3 and the checklist**
   - `CourseDraftValue.finalQuizId` round-tripped (empty in create mode).
   - `course-rules`: "Bài kiểm tra cuối khóa" (the select with only `FINAL_EXAM` quizzes, status suffix, hint, empty
     case, create-mode line) and "Điều kiện hoàn thành" (read-only lines, then reward points). Two columns from `lg`.
   - `draftChecks`: the optional and the conditional required line, both linking to step 3.
   - Acceptance: specs for each point.
-- [ ] **F3: Docs**
+  - Checked: `course-draft.spec` (round trip, left out when empty, both checklist lines) and 8 new `course-editor.spec`
+    cases (only `FINAL_EXAM` options, " · Nháp", empty case, save and re-read, clear, checklist link, create mode);
+    `lms` typecheck, lint and test pass.
+- [x] **F3: Docs**
   - The spec's implementation notes; the migration entry.
   - Acceptance: `npm run check` green.
+  - Checked: spec "Implementation notes (app)"; the notes of `route-admin-courses-id-edit` in the migration entries;
+    `npm run check` green.
 
 ### Checkpoint B
 

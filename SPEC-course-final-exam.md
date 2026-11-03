@@ -152,3 +152,32 @@ Two sections side by side from `lg`, stacked below. Card radius, no icon tiles.
    owns it and the snapshot can go stale.
 2. **Learner course page.** Should the course page tell learners "Cần đạt bài thi cuối khóa để hoàn thành" when the
    revision has a final exam? The default is no change in this module; it can be a small follow-up.
+
+## Implementation notes (app)
+
+Built on `feat/course-authoring` in tasks F1 to F3 (`tasks/todo.md`).
+
+- **Contracts and mock.**
+  - `SaveDraftCommandSchema.finalQuizId` is optional and positive; `CourseDetailSchema.finalQuizId` is nullable and
+    defaults to `null`. `LEARNING-FINAL_EXAM_UNPUBLISHED` is `refused` in `MESSAGE_CODE_KIND`.
+  - `capturedCourseFinalExam` (`course.captured.ts`) is `GET /courses/19` (`WIZ-FE-01`, `finalQuizId` 6) from the
+    local backend.
+  - The mock writes `finalQuizId` in `writeDraft` (create and save, so an omitted value clears it). `openDraft` copies
+    it with the rest of the detail. Publish asks the new `LearningDirectory.quizStatus` (the assessment mock's
+    quizzes) and refuses anything but `PUBLISHED` with the new code. Seed courses have no final exam.
+- **Draft mapping.** `CourseDraftValue.finalQuizId` is a select value (`''` for none), round-tripped by `toDraftValue`,
+  `toSaveDraftCommand` and `toCreateCourseCommand`, and left out of the command when empty.
+- **Step 3.** `course-rules` shows two cards, side by side from `lg`:
+  - "Bài kiểm tra cuối khóa": the select lists "Không yêu cầu bài kiểm tra" and the `FINAL_EXAM` quizzes of the
+    store's `quizzes$`, with " · Nháp" or " · Đã đóng" when not published. A chosen quiz that is not in the list stays
+    selectable, as in the lesson drawer. With no `FINAL_EXAM` quiz an info alert says to create one; in create mode
+    only "Lưu nháp trước để chọn bài kiểm tra" shows and no quiz call is made.
+  - "Điều kiện hoàn thành": read-only lines with a check icon, or a dash for "(chưa chọn)", then the reward points.
+- **Checklist.** `draftChecks(value, quizzes)` adds the optional "Đã cấu hình bài kiểm tra cuối khóa (khuyến nghị)"
+  and, once a quiz is chosen, the required "Bài kiểm tra cuối khóa đã xuất bản" (not met when the quiz is not
+  `PUBLISHED` in the list), both pointing at step 3. `course-review` passes `store.quizzes$()`. The app only mirrors
+  the rule; the server decides on publish.
+- **Checked.** Specs for the contracts and the captured detail, the mock (create, save, clear, publish, closed and
+  missing quiz, next draft), the mapping, the select options, the completion lines, the create-mode line and the
+  checklist. `npm run check` is green. The browser pass of Checkpoint B (local stack, 375/768/1280 px, light and dark,
+  keyboard) is not done here.
