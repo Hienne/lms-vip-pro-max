@@ -1,128 +1,132 @@
-# Implementation Plan: `lesson-player-modes`
+# Implementation Plan: `course-wizard-create`
 
-Spec: [SPEC-lesson-player-modes.md](../SPEC-lesson-player-modes.md) (draft; amended below). Map: [SPEC.md](../SPEC.md).
-Tasks: [todo.md](todo.md).
+Spec: [SPEC-course-wizard-create.md](../SPEC-course-wizard-create.md) (approved; amended below). Map:
+[SPEC-course-authoring.md](../SPEC-course-authoring.md). Tasks: [todo.md](todo.md).
 
-This plan replaces the one for `learner-home-refresh`. That plan is done; its PR is Hienne/lms-vip-pro-max#57, and it
-is in git history at `3d16946`.
+This plan replaces the one for `lesson-player-modes`. That plan is done; its PRs are hmhug19/corebanking-academy#23
+and Hienne/lms-vip-pro-max#58, and it is in git history at `0efffaf`.
 
 ## Overview
 
-Three features of the mockup's lesson player (`lms-mockup/src/pages/lesson.js`):
-
-1. **Chế độ tập trung:** a top-bar toggle that hides the side panel and widens the content. It is app only.
-2. **Mốc video:** a row of chapter buttons under a video block; a click seeks.
-3. **Transcript:** a collapsible list of timed lines under a video block, with search; a click seeks; the line being
-   played is marked.
-
-**Backend.** `lesson_blocks` gains two `jsonb` columns, `video_chapters` and `transcript`. They are saved through the
-existing course tree save and read through the existing block view. There is no new endpoint. This is a schema
-change: an upgrade script, a rollback script, the psql command and a README entry.
+`/admin/courses/new` becomes the course editor in create mode, with the mockup's four steps, and the first
+"Lưu nháp" creates the course and its whole draft in one `POST /courses`. The backend accepts an optional `draft` in
+that call. No schema change.
 
 ## What was checked while planning (2026-11-03)
 
-**Backend (`corebanking-academy`, `origin/main` at `5563e76`)**
+**Backend (`corebanking-academy`, `origin/main` at `59aa687`)**
 
-- **`LearningRequests.BlockInput`** has `blockType, title, body, bodyFormat, completionMode, completionThreshold,
-isRequired, assets, steps`. `LearningViews.LessonBlockView` mirrors the entity and is mapped by MapStruct
-  (`LearningMapper.view(LessonBlock)`).
-- **The tree save rewrites every block.** `LearningContentService.writeTree` → `writeBlock` creates new
-  `LessonBlock` rows from the request. A save that omits the new lists would therefore clear them.
-- **Revisions copy blocks by building `BlockInput`s** from the original tree (`LearningContentService`, around
-  line 597). That constructor call must pass the two lists, or a new revision loses them.
-- **Validation** of a block lives in `validateBlockInput` and fails with `BusinessException.validation(field, code,
-message)`. There is no `LEARNING-BLOCK_INVALID` code.
-- **JSON columns** are mapped as `@JdbcTypeCode(SqlTypes.JSON) JsonNode`, as `MediaTranscript.segmentsJson` does.
-- **Asset duration** is `learning_hub.assets.duration_seconds` (`LearningAsset.durationSeconds`, `numeric(12,3)`),
-  null until the asset is READY.
-- **Upgrades** live in `docs/sql/upgrade/` as `YYYY-MM-DD-<module>.sql` plus `.rollback.sql`; the latest is
-  `2026-11-03-lesson-notes`.
-- **Local data:** one READY video block, block 33 in lesson 17 of `DEMO-MEDIA` (asset 3, **30 s**). Block 31
-  (`FE-DEMO-C6`) points at a failed asset.
-- **`scripts/local-seed-media.sh`** does nothing once `DEMO-MEDIA` exists, so it cannot add data to the local
-  course.
+- **`LearningContentService.create`** is `@Transactional`:
+  1. `requireManage` and the owner team check;
+  2. `courseCodeExists`, which gives `DUPLICATE`, under `writeLock`;
+  3. save the `Course`, then `newRevision(course, title, actor, 1)`;
+  4. audit `COURSE_CREATED`, `flush`, then `detail`.
+- **`saveDraft`**:
+  - checks the version and `validateCatalog(course, programId, moduleId, false)`, then `validateDraftSize`;
+  - checks the cover asset, then `validateLessonInput` / `validateBlockInput` for each lesson and block;
+  - then `clearDraftTree`, sets the revision fields, sets the completion rule's `rewardPoints` (line ~152), and
+    calls `writeTree(revision, DraftRequest, actor)`.
+- **`DraftRequest`** is a flat record whose first field is `expectedVersion` (`@NotNull`). `writeTree` and
+  `validateDraftSize` take the whole `DraftRequest`.
+- **Course endpoint tests** live in `src/test/java/vn/com/coreacademy/assessment/` (`LearnerCourseIT`,
+  `QuizLessonContentIT`, `support/AssessmentFixtures`) and `learning/LearningPointsIT`.
 
-**App (`origin/main` at `3d16946`)**
+**App (`feat/course-authoring` at `a247bfe`)**
 
-- **`video-block`** already has a `jump` input that moves the player and reports the move as a seek (added for
-  `lesson-notes`). Chapters and transcript seek through it.
-- **`LessonBlockSchema`** has no chapters or transcript. `BlockInputSchema` is the editor's save payload.
-- **The course editor** (`features/admin-content/course-editor/course-draft.ts`) builds every block's input from
-  its form value. Without a change it would send no lists, and the backend would clear them on every save.
-- **No focus mode** exists in the lesson page.
+- **`course-new/`** has its own component, its store (`CourseNewStore.create` → `courseEndpoints.createCourse`,
+  then navigate with `replaceUrl`) and specs.
+- **The editor store** loads with `courseEndpoints.getCourse` by the route's `courseId`. It loads quizzes with
+  `courseQuizList` by `courseId`, and kept uploads with `KeptUploads.read(userId, courseId)`.
+  - `save` and `publish` take `Omit<SaveDraftCommand, 'expectedVersion'>`.
+  - `EDITOR_STEPS` has three steps.
+- **`course-draft.ts`**:
+  - `toDraftValue(detail)` maps a loaded course to the form value;
+  - `toSaveDraftCommand(value, version)` maps it back;
+  - `draftChecks` holds the pre-publish checks, and their `step` indexes point at the three steps.
+- **Uploads** take `ownerOrgId` (`learning-asset` contracts), not a course.
+- **`unsavedChangesGuard`** is on every route.
 
 ## Decisions (amendments to the spec)
 
-1. **Errors** use the existing validation error (`BusinessException.validation`), with the fields `videoChapters` or
-   `transcript` and the Vietnamese messages of the module. Not `LEARNING-BLOCK_INVALID`.
-2. **Null and empty.** In a request, a missing list or `null` is saved as `NULL`; an empty list too. The view always
-   returns a list (`[]` when `NULL`).
-3. **Revision copy** passes both lists through.
-4. **The course editor keeps the lists.** It has no chapters or transcript UI (open question 1 stays "no"), but it
-   carries each video block's loaded `videoChapters` and `transcript` into the save payload unchanged, so a save
-   from the app does not clear them. A new block starts with none.
-5. **Validation:**
-   - at most 50 chapters, each title 1–120 characters after trimming;
-   - at most 2000 transcript lines, each text 1–1000 characters after trimming;
-   - `startSeconds` ≥ 0, strictly increasing within each list, and at most the primary asset's `duration_seconds`
-     when that is known;
-   - lists on a block other than `video` are refused.
-6. **Local demo data** comes from a demo SQL file, `docs/sql/demo-media/lesson-player-modes-demo.sql`, run once on
-   the local DB at Checkpoint A. It fills block 33's two columns only when both are `NULL`, so it is idempotent:
-   chapters at 0, 10 and 20 s, and six transcript lines within the 30 s video. It changes content only (no
-   enrollment, progress or attempt). `local-seed-media.sh` also sends the same lists in its tree, so a fresh stack
-   gets them through the API.
-7. **Focus mode** is remembered per browser in `localStorage` under `lms.lesson.focus`, read and written in
-   `try/catch`. It is hidden below `lg`, where the side panel is a drawer.
-8. **Current chapter and line** come from the player's whole-second position and the server's lists: the last item
-   whose `startSeconds` ≤ the position. That is display, not a business rule.
-9. **Transcript search** filters the lines in the app by a case- and accent-insensitive substring. Nothing is sent
-   to the server.
+1. **Open questions answered** (by approval, 2026-11-03): before the first save, a quiz lesson cannot pick a quiz
+   and an interrupted upload cannot be resumed; step 4 shows only the checklist and the summary; the course-new screen
+   is deleted.
+2. **Backend shape.**
+   - A new record `LearningRequests.DraftContent` has every `DraftRequest` field except `expectedVersion`, with the
+     same constraints.
+   - `DraftRequest` keeps its JSON shape (no breaking change) and gains `DraftContent content()`.
+   - `CreateCourse` gains `@Valid DraftContent draft`, which may be null.
+   - The checks and the tree write of `saveDraft` move into one private `applyDraft(Course, CourseRevision,
+DraftContent, actor)`. Both `saveDraft` and `create` call it, so no rule is duplicated.
+   - `validateDraftSize` and `writeTree` take `DraftContent`.
+3. **Title.** When `draft` is present, the revision title is `draft.title`. When `draft.title` is null, it falls back
+   to `CreateCourse.title`.
+4. **Response.** The same `CourseDetail`. Its `revision.version` is the value after the tree write, so a publish
+   right after a create uses it.
+5. **App create mode** is chosen by the route: `admin/courses/new` loads `CourseEditor` with the route data
+   `{ mode: 'create' }`. The store reads that mode and has no `getCourse` call in it.
+   - The form starts from `emptyDraftValue()`.
+   - `code` is a field of the create form only, and `ownerOrgId` comes from the session.
+6. **App save in create mode:**
+   - It calls `createCourse` with `toCreateCourseCommand(value, code, ownerOrgId)`.
+   - On success it marks the form clean, then navigates to `['/admin/courses', id, 'edit']` with `replaceUrl` and
+     the query param `step` set to the current step. The edit screen reads `step` once.
+   - Publish in create mode is: create, then `publish` with the returned revision and its version.
+7. **`DUPLICATE`.** The store maps the server's `DUPLICATE` error to the code field ("Mã khóa học đã tồn tại.") and
+   goes to step 1. Other errors use the existing alert.
+8. **Steps.** `EDITOR_STEPS` becomes four steps, with labels and subtitles from the spec. `course-finish` is split
+   into `course-rules` (step 3: completion rules and reward points) and `course-review` (step 4: checklist and
+   summary). `draftChecks`' `step` indexes are updated to match.
+9. **Quiz picker before the first save** shows "Lưu nháp trước để chọn bài kiểm tra" and makes no call.
 
 ## Phases
 
-### Phase 1: Backend (child session, worktree `~/my-projects/corebanking-academy-player-modes`, branch `feat/lesson-player-modes`) → Checkpoint A
+### Phase 1: Backend (child session, new worktree `~/my-projects/corebanking-academy-wizard`, branch `feat/course-wizard-create` from `origin/main` `59aa687`) → Checkpoint A
 
-- **B1. Schema.** Upgrade and rollback scripts, the learning baseline, the README entry, the entity fields.
-- **B2. Save, read and copy.** `BlockInput` and `LessonBlockView` fields, the validation, the revision copy.
-- **B3. Tests and docs.** Integration tests and `docs/api/LEARNING.md`; the demo SQL and the seed script.
+- **B1. Refactor.** Add `DraftContent` and `applyDraft`, and route `saveDraft` through them. No change in behaviour;
+  the existing tests stay green.
+- **B2. Create with a draft.** `CreateCourse.draft`, and `create` calls `applyDraft` after `newRevision`.
+  Integration tests and `docs/api/LEARNING.md`.
 - **Checkpoint A (main session):**
-  - run the upgrade on the local DB, then the demo SQL; restart :8019 on the branch;
-  - `curl` as `hocvien`: the enrollment detail of `DEMO-MEDIA` returns block 33 with both lists;
-  - as an admin, the validation errors and the revision copy;
-  - `mvn clean test` green.
+  - stop `bext44911`, then start :8019 from the new worktree;
+  - `curl` as `quantri`:
+    - a create with a two-chapter draft, read back with `GET /courses/{id}`;
+    - a create without a draft;
+    - a duplicate code;
+    - a draft with an invalid block, after which no course exists (`courseCodeExists` by listing);
+  - `mvn -o clean test` green.
 
-### Phase 2: App (child session, this checkout) → Checkpoint B
+### Phase 2: App (child session, this checkout, branch `feat/course-authoring`) → Checkpoint B
 
-- **F1. Contracts.** `LessonBlockSchema` gains both lists (default `[]`), `BlockInputSchema` gains them as optional;
-  fixtures captured from the local backend.
-- **F2. Mock and editor.** The mock's seeded video blocks carry the mockup's chapters and transcript; the mock save
-  keeps them; the course editor round-trips them.
-- **F3. Chapters.** The chapter row under a video block.
-- **F4. Transcript.** The collapsible transcript with search.
-- **F5. Focus mode.** The top-bar toggle.
-- **F6. Docs.** The spec's implementation notes and the migration entries.
-- **Checkpoint B (main session):** review each diff, `npm run check`, then the browser on the local stack as
-  `hocvien` at 375, 768 and 1280 px, light and dark, keyboard only, beside the mockup on :4320.
+- **F1. Contracts and mock.** `CreateCourseCommandSchema.draft`; the fixture captured from the local backend; the
+  mock create handler stores the tree.
+- **F2. Draft mapping.** `emptyDraftValue()` and `toCreateCourseCommand` in `course-draft.ts`, sharing the tree
+  mapping with `toSaveDraftCommand`.
+- **F3. Four steps.** `EDITOR_STEPS`, `course-rules`, `course-review`, `draftChecks` indexes, and the footer buttons
+  (Hủy/Quay lại · Lưu nháp · Tiếp tục/Xuất bản khóa học).
+- **F4. Create mode.** Route data, the store's create mode, the code field, save and publish, `DUPLICATE`, the
+  `step` query param, and the quiz picker note.
+- **F5. Remove course-new and write the docs.**
+  - Delete `features/admin-content/course-new/`.
+  - Point the route at the editor.
+  - Add the migration entry for `courseWizard` and the spec's implementation notes.
+- **Checkpoint B (main session):**
+  - review each diff, then run `npm run check`;
+  - in the browser as `quantri`: create a course with two chapters and a lesson in one save, check the URL and the
+    history, reload and see the tree;
+  - try a duplicate code and leaving with unsaved input;
+  - 375, 768 and 1280 px, light and dark, keyboard only, beside the mockup on :4320.
 
 ## Before merging (the user)
 
-- **Shared DB:** run the upgrade script there **before** merging the backend PR, since merging deploys it and
-  `ddl-auto=validate` refuses to start without the columns:
-
-  ```bash
-  psql -h <host> -U <user> -d <database> -v ON_ERROR_STOP=1 -f docs/sql/upgrade/2026-11-03-lesson-player-modes.sql
-  ```
-
-  The demo SQL is for the local stack only.
-
-- **Order:** merge the backend PR, wait for its deploy, then the app PR.
+- No SQL. Merge the backend PR first and wait for its deploy, then the app PR. The app's create call sends `draft`,
+  which an old backend would reject or ignore.
 
 ## Risks
 
-- **Any other client that saves the course tree** without the lists clears them. The app's editor is the only one
-  in this repo; the API docs say so.
-- **Large transcripts** travel with every course tree and enrollment detail. The limits (2000 lines × 1000
-  characters) keep a block under about 2 MB; the demo is a few hundred bytes. A separate endpoint can come later if
-  real transcripts are large.
-- **The focus toggle** must not hide the outline on a narrow screen where it is a drawer; it is hidden there.
+- **An old backend ignores `draft`.** Spring ignores unknown fields by default, so with the app merged first,
+  creates would lose their content silently. Hence the merge order. F4's spec asserts that the response tree is
+  non-empty when the draft had chapters; it is a test, not a runtime guard.
+- **The editor store is 822 lines.** Create mode adds branches to it. F4 keeps them to the load, save and publish
+  paths; if it grows past about 100 lines, split a `course-create` helper.
+- **Splitting `course-finish`** may move specs; F3 keeps the existing assertions under the new components.
