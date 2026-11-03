@@ -9,6 +9,7 @@ import {
   learnerQuizEndpoints,
   personalEndpoints,
   type EnrollmentDetail,
+  type LearnerCourse,
 } from '@lms/contracts';
 import { backendRefusal, envelopeOk, type FakeReply } from '@lms/mocks';
 import type { MockInstance } from 'vitest';
@@ -26,6 +27,7 @@ import {
   signInToMockBackend,
 } from '../../../core/dev/mock-api/mock-backend.testing';
 import { PdfEngine, type PdfFile } from './components/pdf-block/pdf-engine';
+import { LESSON_FOCUS_KEY } from './data-access/lesson-focus';
 import { SessionStore } from '../../../core/session/session.store';
 import {
   FakeSessionStore,
@@ -246,6 +248,145 @@ describe('Lesson', () => {
       await settle();
       expect(calls(learnerEndpoints.openSession).length).toBe(1);
       expect(player()).not.toBeNull();
+    });
+  });
+
+  describe('chapters and transcript of a video', () => {
+    const chapters = [
+      { startSeconds: 0, title: 'Giới thiệu' },
+      { startSeconds: 12, title: 'Khái niệm chính' },
+    ];
+    const transcript = [
+      { startSeconds: 0, text: 'Xin chào.' },
+      { startSeconds: 12, text: 'Khái niệm đầu tiên.' },
+    ];
+
+    /** The course the server sends once its video block has the lists. */
+    function serveLists(): void {
+      const original = real();
+      handle.mockImplementation((endpoint, request) => {
+        const reply = original(endpoint, request);
+        if (endpoint !== learnerEndpoints.course || !reply) return reply;
+        const data = structuredClone(
+          (reply.body as { data: LearnerCourse }).data,
+        );
+        for (const lesson of data.content.chapters.flatMap((c) => c.lessons)) {
+          for (const { block } of lesson.blocks) {
+            if (block.blockType === 'video') {
+              block.videoChapters = chapters;
+              block.transcript = transcript;
+            }
+          }
+        }
+        return { ...reply, body: { ...reply.body, data } } as FakeReply;
+      });
+    }
+
+    it('shows the chapter row and the transcript the server sent, and seeks from both', async () => {
+      serveLists();
+      await open(lessonUrl(0));
+
+      const buttons = Array.from(
+        el.querySelectorAll<HTMLButtonElement>('.chapters__item'),
+      );
+      expect(buttons.map((b) => b.textContent?.trim())).toEqual([
+        '0:00 · Giới thiệu',
+        '0:12 · Khái niệm chính',
+      ]);
+      expect(text()).toContain('Transcript (2 đoạn)');
+
+      const player = el.querySelector('video')!;
+      buttons[1].click();
+      expect(player.currentTime).toBe(12);
+    });
+
+    it('shows neither for a video without them', async () => {
+      await open(lessonUrl(0));
+      expect(el.querySelector('video')).not.toBeNull();
+      expect(el.querySelector('.chapters')).toBeNull();
+      expect(el.querySelector('.transcript')).toBeNull();
+    });
+  });
+
+  describe('focus mode', () => {
+    const toggle = () =>
+      el.querySelector<HTMLButtonElement>('.lesson__focus-toggle')!;
+    const side = () => el.querySelector<HTMLElement>('aside.lesson__side')!;
+
+    beforeEach(() => localStorage.removeItem(LESSON_FOCUS_KEY));
+    afterEach(() => {
+      vi.restoreAllMocks();
+      localStorage.removeItem(LESSON_FOCUS_KEY);
+    });
+
+    it('starts off: the side panel is shown and the button offers the mode', async () => {
+      await open(lessonUrl(2));
+      expect(toggle().textContent?.trim()).toBe('Chế độ tập trung');
+      expect(toggle().getAttribute('aria-pressed')).toBe('false');
+      expect(side().classList).not.toContain('lesson__side--hidden');
+      expect(el.querySelector('.lesson__layout')?.classList).not.toContain(
+        'lesson__layout--focus',
+      );
+    });
+
+    it('hides the side panel, widens the content and offers the outline back, until toggled again', async () => {
+      await open(lessonUrl(2));
+      toggle().click();
+      await settle();
+
+      expect(toggle().textContent?.trim()).toBe('Hiện mục lục');
+      expect(toggle().getAttribute('aria-pressed')).toBe('true');
+      expect(side().classList).toContain('lesson__side--hidden');
+      expect(el.querySelector('.lesson__layout')?.classList).toContain(
+        'lesson__layout--focus',
+      );
+
+      toggle().click();
+      await settle();
+      expect(toggle().getAttribute('aria-pressed')).toBe('false');
+      expect(side().classList).not.toContain('lesson__side--hidden');
+    });
+
+    it('remembers the choice in this browser', async () => {
+      await open(lessonUrl(2));
+      toggle().click();
+      expect(localStorage.getItem(LESSON_FOCUS_KEY)).toBe('true');
+      toggle().click();
+      expect(localStorage.getItem(LESSON_FOCUS_KEY)).toBe('false');
+    });
+
+    it('starts on when the browser remembers it', async () => {
+      localStorage.setItem(LESSON_FOCUS_KEY, 'true');
+      await open(lessonUrl(2));
+      expect(toggle().getAttribute('aria-pressed')).toBe('true');
+      expect(toggle().textContent?.trim()).toBe('Hiện mục lục');
+      expect(side().classList).toContain('lesson__side--hidden');
+    });
+
+    it('still works when storage throws, for this page view', async () => {
+      const getItem = Storage.prototype.getItem;
+      const setItem = Storage.prototype.setItem;
+      vi.spyOn(Storage.prototype, 'getItem').mockImplementation(function (
+        this: Storage,
+        key: string,
+      ) {
+        if (key === LESSON_FOCUS_KEY) throw new Error('blocked');
+        return getItem.call(this, key);
+      });
+      vi.spyOn(Storage.prototype, 'setItem').mockImplementation(function (
+        this: Storage,
+        key: string,
+        value: string,
+      ) {
+        if (key === LESSON_FOCUS_KEY) throw new Error('blocked');
+        setItem.call(this, key, value);
+      });
+      await open(lessonUrl(2));
+      expect(toggle().getAttribute('aria-pressed')).toBe('false');
+      toggle().click();
+      await settle();
+      expect(toggle().getAttribute('aria-pressed')).toBe('true');
+      expect(side().classList).toContain('lesson__side--hidden');
     });
   });
 

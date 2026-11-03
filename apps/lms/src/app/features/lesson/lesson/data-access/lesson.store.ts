@@ -35,9 +35,11 @@ import { FileSaver } from '../../../../core/files/file-saver';
 import { EndpointClient } from '../../../../core/http/endpoint-client';
 import { readLearnerCourse } from '../../../../core/learning/read-learner-course';
 import { SessionStore } from '../../../../core/session/session.store';
+import { LOCAL_STORAGE } from '../../../../core/storage/local-storage';
 import { clock } from '../../../../shared/learning/anchor';
 import type { BlockJump } from '../components/pdf-block/pdf-block';
 import { lessonFeedback } from './lesson-feedback';
+import { readFocus, writeFocus } from './lesson-focus';
 import { lessonNotes } from './lesson-notes';
 import { StudyChannel, type ClaimTarget } from './study-channel';
 import { StudySessionStorage } from './study-session.storage';
@@ -135,6 +137,7 @@ export class LessonStore {
   private readonly session = inject(SessionStore);
   private readonly document = inject(DOCUMENT);
   private readonly storage = inject(StudySessionStorage);
+  private readonly preferences = inject(LOCAL_STORAGE);
 
   readonly courseId$ = toSignal(
     this.route.paramMap.pipe(map((p) => idParam(p.get('courseId')))),
@@ -196,6 +199,8 @@ export class LessonStore {
     }),
     /** The side panel tab: the outline, or the notes of this lesson. */
     sideTab: signal<SideTab>('outline'),
+    /** Focus mode: from `lg` the side panel is hidden and the content takes its width. Per browser. */
+    focus: signal(readFocus(this.preferences)),
     /** Where the learner is in the active block, as its player tells; a new block starts over. */
     position: linkedSignal<
       number | undefined,
@@ -353,6 +358,7 @@ export class LessonStore {
   /** Changes when a note was saved: the note form empties. */
   readonly noteAdded$ = this.lessonNotes.added;
   readonly sideTab$ = this.state.sideTab.asReadonly();
+  readonly focus$ = this.state.focus.asReadonly();
 
   /** Where a new note would go: the page or second on screen, else the whole lesson. */
   readonly anchor$ = computed((): AnchorCommand => {
@@ -613,6 +619,17 @@ export class LessonStore {
 
   setSideTab(tab: string): void {
     this.state.sideTab.set(tab === 'notes' ? 'notes' : 'outline');
+  }
+
+  setFocus(focus: boolean): void {
+    this.state.focus.set(focus);
+  }
+
+  /** "Chế độ tập trung" / "Hiện mục lục": hides or shows the side panel, and remembers the choice. */
+  toggleFocus(): void {
+    const focus = !this.focus$();
+    this.setFocus(focus);
+    writeFocus(this.preferences, focus);
   }
 
   /** The PDF on screen shows this page. */

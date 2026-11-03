@@ -39,6 +39,16 @@
     }
   }
 
+  // Focus mode needs the side panel's column, so it only exists from `lg`.
+  &__focus-toggle {
+    display: none;
+    flex: none;
+
+    @include ui.bp(lg) {
+      display: inline-flex;
+    }
+  }
+
   &__layout {
     display: grid;
     gap: ui.space(6);
@@ -53,6 +63,12 @@
 
     @include ui.bp(lg) {
       grid-template-columns: minmax(0, 1fr) 20rem;
+    }
+
+    &--focus {
+      @include ui.bp(lg) {
+        grid-template-columns: minmax(0, 1fr);
+      }
     }
   }
 
@@ -122,6 +138,12 @@
       position: sticky;
       top: ui.space(4);
       display: flex;
+    }
+
+    &--hidden {
+      @include ui.bp(lg) {
+        display: none;
+      }
     }
   }
 
