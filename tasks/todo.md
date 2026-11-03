@@ -91,9 +91,23 @@ The previous `course-wizard-create` checklist is in git history at `e838065`.
 
 ### Checkpoint B
 
-- [ ] Main-session review of each commit's diff against angular.md §14 and visual-design.md.
-- [ ] `npm run check` green.
-- [ ] Browser on the local stack as `quantri`: `WIZ-FE-01`'s step 3 lists only its `FINAL_EXAM` quiz; save, reload,
-      the choice is kept; the empty case on a course without one; the create-mode line.
-- [ ] 375, 768 and 1280 px, light and dark, keyboard.
-- [ ] The spec is marked built.
+- [x] Main-session review of `f988925`, `4cb0112` and `4a66172` against angular.md §14 and visual-design.md:
+      `course-rules` lists only `FINAL_EXAM` quizzes from the store's quiz list with the status suffix; the empty case,
+      the create-mode line and a load error each have their line; `draftChecks` adds the optional line and, when a
+      quiz is chosen, the "đã xuất bản" line; the server still decides on publish.
+- [x] `npm run check` green on `4a66172` (14 tasks).
+- [x] Browser on the local stack (:8019 on `61ff927`), token sign-in as `quantri`:
+  - `WIZ-FE-01` (course 19, published) step 3: the select offers "Không yêu cầu bài kiểm tra" and "Thi cuối khóa:
+    Khóa thử bài thi cuối", with quiz 6 selected; the select is labelled by "Bài kiểm tra dùng để xét hoàn thành".
+  - "Mở bản nháp để sửa" opened a new draft that kept quiz 6 (the revision copy).
+  - Set to none and saved: after a reload, step 3 read "Đạt bài kiểm tra cuối khóa (chưa chọn)" and step 4's checklist
+    had "Đã cấu hình bài kiểm tra cuối khóa (khuyến nghị)" with "Bổ sung". Set back to quiz 6 and saved: step 4 showed
+    both lines met.
+  - `WIZ-UI-01` (course 18, no quiz): "Khóa học chưa có bài thi cuối khóa…". `/admin/courses/new?step=2`: "Lưu nháp
+    trước để chọn bài kiểm tra".
+  - Not checked in the browser: the required line for an unpublished quiz (a course has at most one `FINAL_EXAM`, and
+    course 19's is published); it is covered by `course-editor.spec.ts`.
+- [x] 375 px dark and 768 px light: one column, no horizontal scroll; 1280 px light: two columns of 476 px, one
+      primary button. Keyboard: Tab moves from the select to the reward points with the focus ring.
+  - Course 19 keeps an unpublished draft revision from this check; learners still read revision 21.
+- [x] The spec is marked built.
