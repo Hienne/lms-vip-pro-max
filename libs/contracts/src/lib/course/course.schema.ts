@@ -405,15 +405,6 @@ export const CourseListQuerySchema = PageQuerySchema.extend({
 });
 export type CourseListQuery = z.infer<typeof CourseListQuerySchema>;
 
-/** Creates the course and its first, empty draft. */
-export const CreateCourseCommandSchema = z.object({
-  ownerOrgId: z.number().int().positive(),
-  ownerTeamId: z.number().int().positive().optional(),
-  code: z.string().max(COURSE_LIMITS.code),
-  title: z.string().max(COURSE_LIMITS.title).optional(),
-});
-export type CreateCourseCommand = z.infer<typeof CreateCourseCommandSchema>;
-
 export const AssetUseInputSchema = z.object({
   assetId: z.number().int().positive(),
   usage: AssetUsageSchema,
@@ -509,6 +500,19 @@ export const SaveDraftCommandSchema = z.object({
     .optional(),
 });
 export type SaveDraftCommand = z.infer<typeof SaveDraftCommandSchema>;
+
+/**
+ * Creates the course and its first draft. Without `draft` the draft is empty; with it the whole
+ * tree is written in the same call, so a course is never left half made.
+ */
+export const CreateCourseCommandSchema = z.object({
+  ownerOrgId: z.number().int().positive(),
+  ownerTeamId: z.number().int().positive().optional(),
+  code: z.string().max(COURSE_LIMITS.code),
+  title: z.string().max(COURSE_LIMITS.title).optional(),
+  draft: SaveDraftCommandSchema.omit({ expectedVersion: true }).optional(),
+});
+export type CreateCourseCommand = z.infer<typeof CreateCourseCommandSchema>;
 
 /** A command that only carries the target's `rowVersion` (publish). */
 export const VersionCommandSchema = z.object({

@@ -55,6 +55,8 @@ export const MESSAGE_CODE_KIND = {
   'LEARNING-ASSET_IN_USE': 'refused',
   // A share with the course's own unit, or with a unit that does not exist.
   'LEARNING-INVALID_REFERENCE': 'refused',
+  // A course code already in use: the create form shows it on the code field.
+  'LEARNING-DUPLICATE': 'refused',
   // Community: valid requests the server cannot apply as sent. A stale version
   // (`COMMUNITY-CONFLICT`) opens the reload dialog and is never retried with the new version.
   'COMMUNITY-CONFLICT': 'refused',

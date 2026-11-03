@@ -537,10 +537,10 @@ export class LearningBackend {
         (c) => c.course.code.toLowerCase() === command.code.toLowerCase(),
       )
     ) {
-      refuse('stateConflict');
+      refuse('learningDuplicate');
     }
     const courseId = this.id();
-    const detail: CourseDetail = {
+    const empty: CourseDetail = {
       course: {
         id: courseId,
         code: command.code,
@@ -559,6 +559,13 @@ export class LearningBackend {
       chapters: [],
       completionRule: null,
     };
+    // The draft is written like a save: its title wins over `title`, and the tree is stored whole.
+    const detail = command.draft
+      ? this.writeDraft(empty, {
+          ...command.draft,
+          title: command.draft.title ?? command.title,
+        })
+      : empty;
     this.courses.push({
       course: { ...detail.course },
       published: null,
@@ -779,6 +786,16 @@ export class LearningBackend {
     const command = request.body as SaveDraftCommand;
     if (command.expectedVersion !== draft.revision.rowVersion)
       refuse('stateConflict');
+    record.draft = this.writeDraft(draft, command);
+    record.course.updateTime = now();
+    return ok(this.latest(record));
+  }
+
+  /** The draft revision with the command's fields and tree written, its version moved on by one. */
+  private writeDraft(
+    draft: CourseDetail,
+    command: Omit<SaveDraftCommand, 'expectedVersion'>,
+  ): CourseDetail {
     const revision = {
       ...draft.revision,
       programId: command.programId ?? null,
@@ -792,7 +809,7 @@ export class LearningBackend {
       updateTime: now(),
     };
     const saved = this.rebuild({ ...draft, revision }, command.chapters, false);
-    record.draft = {
+    return {
       ...saved,
       objectives: command.objectives.map((description, index) => ({
         id: this.id(),
@@ -813,8 +830,6 @@ export class LearningBackend {
         updateTime: now(),
       },
     };
-    record.course.updateTime = now();
-    return ok(this.latest(record));
   }
 
   private publish(request: FakeRequest): FakeReply {

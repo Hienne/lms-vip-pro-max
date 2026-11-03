@@ -1,7 +1,9 @@
 import { toUrl } from '../http/endpoint';
 import { courseEndpoints } from './course.endpoints';
+import { capturedCourseCreate } from './course.captured';
 import {
   CourseCardSchema,
+  CreateCourseCommandSchema,
   CourseDetailSchema,
   CourseLessonSchema,
   CourseShareSchema,
@@ -384,5 +386,31 @@ describe('video chapters and transcript', () => {
         lesson([{ ...input, videoChapters: tooMany }]),
       ).success,
     ).toBe(false);
+  });
+});
+
+describe('a create with a draft captured from the local backend', () => {
+  it('accepts the command that was sent', () => {
+    const command = CreateCourseCommandSchema.parse(
+      capturedCourseCreate.command,
+    );
+    expect(command.draft?.chapters).toHaveLength(2);
+    expect(command.draft?.rewardPoints).toBe(20);
+  });
+
+  it('still accepts a create without a draft', () => {
+    const { draft: _draft, ...bare } = capturedCourseCreate.command;
+    expect(CreateCourseCommandSchema.safeParse(bare).success).toBe(true);
+  });
+
+  it('parses the detail the server answered with, tree included', () => {
+    const detail = CourseDetailSchema.parse(capturedCourseCreate.response);
+    expect(detail.revision.rowVersion).toBe(1);
+    expect(detail.chapters.map((c) => c.chapter.title)).toEqual([
+      'Chương 1',
+      'Chương 2',
+    ]);
+    expect(detail.objectives).toHaveLength(2);
+    expect(detail.completionRule?.rewardPoints).toBe(20);
   });
 });

@@ -241,6 +241,12 @@ export const BACKEND_RESPONSES = {
     title: 'Chưa thể thực hiện',
     message: 'Kết quả vượt giới hạn xuất 10.000 dòng. Vui lòng thu hẹp bộ lọc.',
   },
+  learningDuplicate: {
+    status: 200,
+    code: 'LEARNING-DUPLICATE',
+    title: 'Dữ liệu đã tồn tại',
+    message: 'Mã hoặc đối tượng này đã được sử dụng.',
+  },
   learningNotFound: {
     status: 200,
     code: 'LEARNING-NOT_FOUND',
