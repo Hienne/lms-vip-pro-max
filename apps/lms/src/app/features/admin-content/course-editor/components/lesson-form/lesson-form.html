@@ -34,7 +34,11 @@
     </select>
   </ui-field>
 
-  @if (lessonForm.lessonType().value() === 'quiz') {
+  @if (lessonForm.lessonType().value() === 'quiz') { @if (store.isCreate$()) {
+  <ui-alert tone="info" [announce]="false">
+    Lưu nháp trước để chọn bài kiểm tra
+  </ui-alert>
+  } @else {
   <ui-field
     label="Bài kiểm tra"
     hint="Bài hoàn thành khi học viên đạt bài kiểm tra này. Bài kiểm tra phải đã xuất bản để xuất bản khóa học."
@@ -62,7 +66,7 @@
     Khóa học chưa có bài kiểm tra. Tạo bài kiểm tra cho khóa học ở màn Bài kiểm
     tra rồi quay lại chọn.
   </ui-alert>
-  } } @else {
+  } } } @else {
   <section class="lesson-form__blocks" aria-label="Khối nội dung">
     <h3 class="lesson-form__heading">
       Khối nội dung ({{ lessonForm.blocks().value().length }})

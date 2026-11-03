@@ -72,6 +72,8 @@ export interface ChapterValue {
 }
 
 export interface CourseDraftValue {
+  /** The course code: typed when the course is created, shown read-only afterwards. */
+  readonly code: string;
   readonly title: string;
   readonly summary: string;
   /** Select values: an id, or '' for none. */
@@ -204,6 +206,7 @@ function toLessonValue({ lesson, blocks }: LessonDetail): LessonValue {
 /** The form's value for a course that is not stored yet. */
 export function emptyDraftValue(): CourseDraftValue {
   return {
+    code: '',
     title: '',
     summary: '',
     programId: '',
@@ -220,6 +223,7 @@ export function emptyDraftValue(): CourseDraftValue {
 export function toDraftValue(detail: CourseDetail): CourseDraftValue {
   const { revision } = detail;
   return {
+    code: detail.course.code,
     title: revision.title ?? '',
     summary: revision.summary ?? '',
     programId: revision.programId ? String(revision.programId) : '',

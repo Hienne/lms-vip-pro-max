@@ -28,7 +28,7 @@ import {
   type CourseDraftValue,
   type LessonValue,
 } from './course-draft';
-import { courseDraftSchema } from './course-draft.schema';
+import { courseCodeSchema, courseDraftSchema } from './course-draft.schema';
 import {
   CourseEditorStore,
   EDITOR_STEPS,
@@ -36,7 +36,7 @@ import {
 
 /** The draft without its row keys, to tell whether the author changed anything. */
 const fingerprint = (value: CourseDraftValue) =>
-  JSON.stringify(toSaveDraftCommand(value, 0));
+  JSON.stringify([value.code, toSaveDraftCommand(value, 0)]);
 
 /**
  * The course editor (the mockup's `courseWizard`): four steps over one draft, saved whole. The
@@ -78,11 +78,28 @@ export class CourseEditor implements HasUnsavedChanges {
     const detail = this.store.course$();
     return detail ? toDraftValue(detail) : emptyDraftValue();
   });
-  protected readonly courseForm = form(this.model, courseDraftSchema, {
-    submission: {
-      action: async () => this.store.save(this.command()),
+  protected readonly courseForm = form(
+    this.model,
+    (path) => {
+      courseDraftSchema(path);
+      if (this.store.isCreate$()) {
+        courseCodeSchema(path.code, this.store.takenCode$);
+      }
     },
-  });
+    {
+      submission: {
+        action: async () =>
+          this.store.isCreate$()
+            ? this.store.create(this.model())
+            : this.store.save(this.command()),
+      },
+    },
+  );
+
+  /** Create mode shows the form at once; edit mode waits for the course to be read. */
+  protected readonly ready = computed(
+    () => this.store.isCreate$() || !!this.store.course$(),
+  );
 
   private readonly saved = computed(() => {
     const detail = this.store.course$();
@@ -100,7 +117,8 @@ export class CourseEditor implements HasUnsavedChanges {
     if (!this.courseForm().touched()) return [];
     const f = this.courseForm;
     return [
-      f.title().invalid() ||
+      f.code().invalid() ||
+        f.title().invalid() ||
         f.programId().invalid() ||
         f.summary().invalid() ||
         f.objectives().invalid(),
@@ -122,7 +140,9 @@ export class CourseEditor implements HasUnsavedChanges {
 
   protected publish(): void {
     void submit(this.courseForm, async () =>
-      this.store.publish(this.command()),
+      this.store.isCreate$()
+        ? this.store.createAndPublish(this.model())
+        : this.store.publish(this.command()),
     );
   }
 

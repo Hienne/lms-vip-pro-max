@@ -96,7 +96,7 @@ The previous `lesson-player-modes` checklist is in git history at `0efffaf`.
     step 4 with the "Bổ sung" link back to step 1, and the footer with one primary button on every step); the
     "Hoàn thành & xuất bản" step clicks became "Đối tượng & xuất bản". `draftChecks` indexes needed no change: the
     checks point at steps 1 and 2, which keep their places. `lms` 1649 tests; lint and typecheck green.
-- [ ] **F4: Create mode**
+- [x] **F4: Create mode**
   - Route data `{ mode: 'create' }` on `admin/courses/new`, pointing at `CourseEditor`.
   - Store create mode: no `getCourse`, `courseQuizList` or kept-uploads read; the code field; save → `createCourse`
     → navigate with `replaceUrl` and `?step=`; publish → create, then `publish`.
@@ -104,6 +104,18 @@ The previous `lesson-player-modes` checklist is in git history at `0efffaf`.
   - The quiz picker shows "Lưu nháp trước để chọn bài kiểm tra".
   - The leave guard asks with input and not after the save.
   - Acceptance: store and component specs for each point; no request before the save.
+  - Checked: 9 new editor specs (no `getCourse`, `courseQuizList` or kept-uploads read on open; no create without a
+    code; one `createCourse` with the tree, `navigate` with `replaceUrl` and `?step=1`; the edit screen opens on
+    `?step=`; the guard asks with input and not after the save; a taken code shows "Mã khóa học đã tồn tại." on the
+    field and returns to step 1; create then publish with `expectedVersion` 1; a refused publish keeps the created
+    course and moves to its edit screen with a toast; the quiz picker note makes no call) and 1 route spec for
+    `data.mode`. `lms` 1657 tests; lint and typecheck green.
+  - Design notes:
+    - The code is `CourseDraftValue.code` (read-only text in edit mode), so one form validates it and
+      the fingerprint counts it. The taken-code message is a validator on the code field fed by the store's
+      `takenCode$`, and it clears when the code changes.
+    - `?step=` is the 0-based index the stepper uses.
+    - `course-new/` was deleted in this commit, not F5's, because its route is gone and its spec would fail.
 - [ ] **F5: Remove course-new and docs**
   - Delete `features/admin-content/course-new/`.
   - The migration entry for `courseWizard`.

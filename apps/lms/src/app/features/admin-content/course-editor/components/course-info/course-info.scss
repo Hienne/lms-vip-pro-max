@@ -22,6 +22,10 @@
     }
   }
 
+  &__owner {
+    @include ui.text(sm, muted);
+  }
+
   &__kind,
   &__objectives {
     @include ui.stack(2);

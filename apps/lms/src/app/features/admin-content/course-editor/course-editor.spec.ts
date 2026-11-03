@@ -6,6 +6,7 @@ import {
   courseEndpoints,
   MEDIA_PROCESSING_UNAVAILABLE_CODE,
   type AnyEndpoint,
+  type CreateCourseCommand,
   type SaveDraftCommand,
 } from '@lms/contracts';
 import {
@@ -21,6 +22,7 @@ import { MockBackend } from '../../../core/dev/mock-api/mock-api.interceptor';
 import { CourseEditor } from './course-editor';
 import { POLL_MS, SERVER_RETRY_MS } from './data-access/chunked-upload';
 import { digestOf, FakeHasher } from './data-access/fake-hasher.testing';
+import { KeptUploads } from './data-access/kept-uploads.storage';
 import { Sha256Hasher } from './data-access/sha256-hasher';
 
 const KEPT_KEY = 'lms.asset-uploads.v1.000002.6';
@@ -770,6 +772,200 @@ describe('CourseEditor', () => {
       await screen.click(screen.button('Tiếp tục'));
       expect(primaries()).toEqual(['Xuất bản khóa học']);
       expect(screen.button('Lưu nháp')).toBeTruthy();
+    });
+  });
+
+  describe('create mode', () => {
+    /** Fills the first step far enough for the form to be valid. */
+    async function fillBasics(code = 'WIZ-NEW-1') {
+      await screen.type(screen.field('Mã khóa học') as HTMLInputElement, code);
+      await screen.type(
+        screen.field('Tên khóa học') as HTMLInputElement,
+        'Khóa thử',
+      );
+      await screen.choose(
+        screen.field('Chương trình') as HTMLSelectElement,
+        '1',
+      );
+    }
+
+    async function addChapterWithLesson() {
+      await step('Nội dung khóa học');
+      await screen.click(screen.button('Thêm chương'));
+      await screen.click(screen.button('Thêm bài học'));
+      const drawer = screen.drawer()!;
+      await screen.type(
+        screen.field('Tên bài học', drawer) as HTMLInputElement,
+        'Bài đầu tiên',
+      );
+      await screen.click(screen.button('Văn bản / Markdown', drawer));
+      await screen.click(screen.button('Áp dụng', drawer));
+    }
+
+    it('opens an empty wizard without reading any course, quiz or kept upload', async () => {
+      const kept = vi.spyOn(TestBed.inject(KeptUploads), 'read');
+      await screen.open('/admin/courses/new');
+
+      expect(screen.text()).toContain('Tạo khóa học mới');
+      expect(screen.text()).toContain('Chưa lưu');
+      expect(screen.text()).toContain('Đơn vị sở hữu:');
+      expect(screen.text()).toContain(
+        'Duy nhất trong hệ thống, không đổi sau khi tạo.',
+      );
+      expect((screen.field('Mã khóa học') as HTMLInputElement).readOnly).toBe(
+        false,
+      );
+      expect(screen.button('Lưu nháp')).toBeTruthy();
+      expect(screen.callsTo(courseEndpoints.getCourse)).toBe(0);
+      expect(screen.callsTo(courseEndpoints.createCourse)).toBe(0);
+      expect(screen.callsTo(assessmentV1Endpoints.courseQuizList)).toBe(0);
+      expect(kept).not.toHaveBeenCalled();
+    });
+
+    it('does not create without a code, and says so on the field', async () => {
+      await screen.open('/admin/courses/new');
+      await screen.type(
+        screen.field('Tên khóa học') as HTMLInputElement,
+        'Khóa thử',
+      );
+      await screen.click(screen.button('Lưu nháp'));
+
+      expect(screen.callsTo(courseEndpoints.createCourse)).toBe(0);
+      expect(screen.text()).toContain('Nhập mã khóa học.');
+    });
+
+    it('creates the course with the whole tree in one call, then continues on its edit URL', async () => {
+      const navigate = vi.spyOn(TestBed.inject(Router), 'navigate');
+      await screen.open('/admin/courses/new');
+      await fillBasics();
+      await addChapterWithLesson();
+      await screen.click(screen.button('Lưu nháp'));
+
+      expect(screen.callsTo(courseEndpoints.createCourse)).toBe(1);
+      expect(screen.callsTo(courseEndpoints.saveDraft)).toBe(0);
+      const body = screen.lastCall(courseEndpoints.createCourse)
+        ?.body as CreateCourseCommand;
+      expect(body).toMatchObject({
+        code: 'WIZ-NEW-1',
+        draft: {
+          title: 'Khóa thử',
+          programId: 1,
+          chapters: [
+            { title: 'Chương 1', lessons: [{ title: 'Bài đầu tiên' }] },
+          ],
+        },
+      });
+      expect(body.ownerOrgId).toBeGreaterThan(0);
+      expect(navigate).toHaveBeenCalledWith(
+        ['/admin/courses', expect.any(Number), 'edit'],
+        { replaceUrl: true, queryParams: { step: 1 } },
+      );
+      await vi.waitFor(() =>
+        expect(screen.url()).toMatch(/^\/admin\/courses\/\d+\/edit\?step=1$/),
+      );
+      expect(screen.text()).toContain('Sửa khóa học');
+      expect(screen.text()).toContain('Bài đầu tiên');
+      expect(screen.text(document.body)).toContain('Đã lưu nháp');
+    });
+
+    it('opens the edit screen on the step named in the URL, and only once', async () => {
+      await screen.open('/admin/courses/6/edit?step=2');
+      expect(screen.text()).toContain('Điểm thưởng khi hoàn thành');
+
+      await step('Thông tin cơ bản');
+      expect(screen.field('Tên khóa học')).toBeTruthy();
+    });
+
+    it('asks before leaving with input, and not once the course is created', async () => {
+      await screen.open('/admin/courses/new');
+      const page = screen.page<CourseEditor>();
+      expect(page.hasUnsavedChanges()).toBe(false);
+
+      await fillBasics();
+      expect(page.hasUnsavedChanges()).toBe(true);
+
+      vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
+      await screen.click(screen.button('Lưu nháp'));
+      expect(screen.callsTo(courseEndpoints.createCourse)).toBe(1);
+      expect(page.hasUnsavedChanges()).toBe(false);
+    });
+
+    it('shows a taken code on the code field and goes back to the first step', async () => {
+      await screen.open('/admin/courses/new');
+      await fillBasics('VH-301');
+      await step('Nội dung khóa học');
+      await screen.click(screen.button('Lưu nháp'));
+
+      expect(screen.callsTo(courseEndpoints.createCourse)).toBe(1);
+      expect(screen.url()).toBe('/admin/courses/new');
+      expect(screen.field('Mã khóa học')).toBeTruthy();
+      expect(screen.text()).toContain('Mã khóa học đã tồn tại.');
+      expect(screen.text()).not.toContain('Dữ liệu đã tồn tại');
+
+      await screen.type(
+        screen.field('Mã khóa học') as HTMLInputElement,
+        'WIZ-NEW-2',
+      );
+      expect(screen.text()).not.toContain('Mã khóa học đã tồn tại.');
+    });
+
+    it('creates, then publishes the new revision with the version it came back with', async () => {
+      await screen.open('/admin/courses/new');
+      await fillBasics();
+      await addChapterWithLesson();
+      await step('Đối tượng & xuất bản');
+      await screen.click(screen.button('Xuất bản khóa học'));
+      await screen.click(screen.button('Xuất bản', screen.alertDialog()!));
+
+      expect(screen.callsTo(courseEndpoints.createCourse)).toBe(1);
+      expect(screen.lastCall(courseEndpoints.publish)?.body).toEqual({
+        expectedVersion: 1,
+      });
+      await vi.waitFor(() => expect(screen.url()).toBe('/admin/courses'));
+      expect(screen.text(document.body)).toContain('Đã xuất bản khóa học');
+    });
+
+    it('keeps the created course when publishing is refused, and moves on to its edit screen', async () => {
+      await screen.open('/admin/courses/new');
+      await fillBasics();
+      await addChapterWithLesson();
+      screen.calls.mockImplementation((endpoint, request) =>
+        endpoint === courseEndpoints.publish
+          ? backendRefusal('quizLessonUnlinked')
+          : (MockBackend.prototype.handle.call(
+              TestBed.inject(MockBackend),
+              endpoint,
+              request,
+            ) as FakeReply),
+      );
+      await step('Đối tượng & xuất bản');
+      await screen.click(screen.button('Xuất bản khóa học'));
+      await screen.click(screen.button('Xuất bản', screen.alertDialog()!));
+
+      await vi.waitFor(() =>
+        expect(screen.url()).toMatch(/^\/admin\/courses\/\d+\/edit\?step=3$/),
+      );
+      expect(screen.text(document.body)).toContain(
+        'Đã lưu nháp, chưa xuất bản',
+      );
+    });
+
+    it('says to save first instead of listing quizzes', async () => {
+      await screen.open('/admin/courses/new');
+      await step('Nội dung khóa học');
+      await screen.click(screen.button('Thêm chương'));
+      await screen.click(screen.button('Thêm bài học'));
+      const drawer = screen.drawer()!;
+      await screen.choose(
+        screen.field('Loại bài', drawer) as HTMLSelectElement,
+        'quiz',
+      );
+
+      expect(screen.text(drawer)).toContain(
+        'Lưu nháp trước để chọn bài kiểm tra',
+      );
+      expect(screen.field('Bài kiểm tra', drawer)).toBeUndefined();
+      expect(screen.callsTo(assessmentV1Endpoints.courseQuizList)).toBe(0);
     });
   });
 });

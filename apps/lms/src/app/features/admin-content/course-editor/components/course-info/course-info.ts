@@ -42,7 +42,9 @@ import { draftTotals, type CourseDraftValue } from '../../course-draft';
 })
 export class CourseInfo {
   readonly draft = input.required<FieldTree<CourseDraftValue>>();
-  readonly code = input.required<string>();
+  /** A course being created: its code is typed here, and the owner is shown beside it. */
+  readonly create = input(false);
+  readonly ownerName = input('');
   readonly programs = input.required<readonly TrainingProgram[]>();
   readonly modules = input.required<readonly BusinessModule[]>();
   /** The chosen program, so the page lists the modules of its field. */
@@ -62,7 +64,7 @@ export class CourseInfo {
       title: value.title.trim() || 'Tên khóa học',
       required: value.defaultRequirement === 'mandatory',
       domain: program?.name ?? 'Chương trình',
-      module: module?.name ?? this.code(),
+      module: module?.name ?? value.code,
       minutes: totals.minutes,
       lessons: totals.lessons,
       level: value.level ? LEVEL_LABEL[value.level] : '',

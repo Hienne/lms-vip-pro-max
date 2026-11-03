@@ -19,6 +19,8 @@ import {
   courseEndpoints,
   trainingCatalogEndpoints,
   type BlockType,
+  type CourseDetail,
+  type CreateCourseCommand,
   type LibraryAsset,
   type SaveDraftCommand,
 } from '@lms/contracts';
@@ -41,8 +43,13 @@ import { serverMutation } from '../../../../core/data-access/server-mutation';
 import { EndpointClient } from '../../../../core/http/endpoint-client';
 import { NetworkStore } from '../../../../core/network/network.store';
 import { SessionStore } from '../../../../core/session/session.store';
+import { toAppError } from '../../../../core/errors/app-error';
 import { courseCatalogStatus } from '../../../../shared/status/catalog-status';
-import { FILE_USAGE } from '../course-draft';
+import {
+  FILE_USAGE,
+  toCreateCourseCommand,
+  type CourseDraftValue,
+} from '../course-draft';
 import {
   cancelUpload,
   chunkedUpload,
@@ -106,6 +113,14 @@ interface UploadContext {
   readonly resumed?: KeptUpload;
 }
 
+/** The code the server answers with when a course code is already taken. */
+export const DUPLICATE_CODE = 'LEARNING-DUPLICATE';
+
+/** What a publish starts from: the open draft to save, or a new course to create first. */
+type PublishInput =
+  | { readonly kind: 'save'; readonly command: SaveDraftCommand }
+  | { readonly kind: 'create'; readonly command: CreateCourseCommand };
+
 const MISMATCH_CODE = 'LEARNING-UPLOAD_FILE_MISMATCH';
 const EXPIRED_CODE = 'LEARNING-UPLOAD_EXPIRED';
 
@@ -133,9 +148,12 @@ export const uploadHintOf = (type: BlockType): string => {
 };
 
 /**
- * The course editor (the mockup's `courseWizard`, edit mode). The server keeps one draft per
- * course and saves it whole; this store reads it, opens a draft from the published revision when
- * the author asks, saves, publishes and uploads files. The draft itself is the page's form model.
+ * The course editor (the mockup's `courseWizard`). The server keeps one draft per course and
+ * saves it whole; this store reads it, opens a draft from the published revision when the author
+ * asks, saves, publishes and uploads files. The draft itself is the page's form model.
+ *
+ * In create mode (the route's `data.mode`) there is no course yet, so nothing is read for it:
+ * the first save creates the course with the whole draft, then the page moves to its edit URL.
  */
 @Injectable()
 export class CourseEditorStore {
@@ -160,12 +178,14 @@ export class CourseEditorStore {
   private readonly contexts = new Map<string, UploadContext>();
 
   private readonly state = {
-    step: signal(0),
+    step: signal(this.initialStep()),
     editingLesson: signal<LessonTarget | null>(null),
     /** When the last save went through, as the page shows it ("14:05"). */
     savedAt: signal<string | null>(null),
-    /** Set once the course is published, so leaving does not ask about unsaved changes. */
+    /** Set once the course is created or published, so leaving does not ask about unsaved changes. */
     left: signal(false),
+    /** The course code the server refused as taken, so the code field can say so. */
+    takenCode: signal<string | null>(null),
     /** The program whose field lists the modules; follows the course until the author picks. */
     programId: linkedSignal<number | undefined>(
       () => this.courseData.value()?.revision.programId ?? undefined,
@@ -263,14 +283,28 @@ export class CourseEditorStore {
     },
   );
 
+  private readonly createMutation = serverMutation(
+    (command: CreateCourseCommand) => this.createCourse(command),
+    {
+      errors: 'alert',
+      success: () => 'Đã lưu nháp',
+      onSuccess: (created) => this.moveToEditor(created),
+    },
+  );
+
   /**
-   * Saves the draft, then publishes the revision the save returned. A refusal to publish leaves
-   * the save done and the revision's version moved on, so the course is read again: the next try
-   * then carries the version the server holds.
+   * Saves the draft (or creates the course), then publishes the revision that came back. A refusal
+   * to publish leaves the save done and the revision's version moved on, so the course is read
+   * again: the next try then carries the version the server holds. A refusal after a create leaves
+   * the new course behind, so the page moves on to its edit URL and says so.
    */
   private readonly publishMutation = serverMutation(
-    (command: SaveDraftCommand) =>
-      this.saveDraft(command).pipe(
+    (input: PublishInput) => {
+      const saved$ =
+        input.kind === 'create'
+          ? this.createCourse(input.command)
+          : this.saveDraft(input.command);
+      return saved$.pipe(
         switchMap((saved) =>
           this.client
             .call(courseEndpoints.publish, {
@@ -282,12 +316,22 @@ export class CourseEditorStore {
             })
             .pipe(
               catchError((error: unknown) => {
-                this.changes.bump();
+                if (input.kind === 'create') {
+                  const { title, message } = toAppError(error);
+                  this.toaster.error(
+                    'Đã lưu nháp, chưa xuất bản',
+                    title ? `${title}: ${message}` : message,
+                  );
+                  this.moveToEditor(saved);
+                } else {
+                  this.changes.bump();
+                }
                 return throwError(() => error);
               }),
             ),
         ),
-      ),
+      );
+    },
     {
       errors: 'alert',
       success: () => ({
@@ -314,11 +358,21 @@ export class CourseEditorStore {
   readonly savedAt$ = this.state.savedAt.asReadonly();
   readonly left$ = this.state.left.asReadonly();
 
+  /** True on `/admin/courses/new`: the draft is not stored until the first save. */
+  readonly isCreate$ = computed(
+    () => this.route.snapshot.data['mode'] === 'create',
+  );
+  /** The code the last create was refused for, because it is taken. */
+  readonly takenCode$ = this.state.takenCode.asReadonly();
+  readonly ownerName$ = computed(() => this.session.user$()?.org?.name ?? '');
+
   readonly course$ = this.courseData.value;
   readonly isLoading$ = this.courseData.isLoading;
   readonly loadError$ = this.courseData.error;
   readonly isDraft$ = computed(
-    () => this.course$()?.revision.state.toLowerCase() === 'draft',
+    () =>
+      this.isCreate$() ||
+      this.course$()?.revision.state.toLowerCase() === 'draft',
   );
   readonly status$ = computed(() => {
     const detail = this.course$();
@@ -340,11 +394,19 @@ export class CourseEditorStore {
 
   readonly isOpeningDraft$ = this.openDraftMutation.isPending;
   readonly isSaving$ = computed(
-    () => this.saveMutation.isPending() || this.publishMutation.isPending(),
+    () =>
+      this.saveMutation.isPending() ||
+      this.createMutation.isPending() ||
+      this.publishMutation.isPending(),
   );
-  readonly saveError$ = computed(
-    () => this.saveMutation.error() ?? this.publishMutation.error(),
-  );
+  /** The last failure to show in the alert; a taken code is shown on the code field instead. */
+  readonly saveError$ = computed(() => {
+    const error =
+      this.saveMutation.error() ??
+      this.createMutation.error() ??
+      this.publishMutation.error();
+    return error?.messageCode === DUPLICATE_CODE ? undefined : error;
+  });
 
   /** The files chosen in this editor by block key, and where each one's upload stands. */
   readonly uploads$ = this.state.uploads.asReadonly();
@@ -390,6 +452,10 @@ export class CourseEditorStore {
 
   private setLeft(left: boolean): void {
     this.state.left.set(left);
+  }
+
+  private setTakenCode(code: string | null): void {
+    this.state.takenCode.set(code);
   }
 
   private setProgramId(programId: number | undefined): void {
@@ -460,24 +526,31 @@ export class CourseEditorStore {
     }
   }
 
+  /** The first save of a new course: it is created with the whole draft in one call. */
+  create(value: CourseDraftValue): void {
+    const command = this.createCommand(value);
+    if (command) this.createMutation.run(command);
+  }
+
   /** Asks first: learners in scope see the new content at once. */
   publish(command: Omit<SaveDraftCommand, 'expectedVersion'>): void {
     const revision = this.course$()?.revision;
     if (!revision) return;
-    confirm(this.dialog, {
-      title: 'Xuất bản khóa học?',
-      message:
-        'Bản nháp được lưu rồi xuất bản. Học viên được giao thấy nội dung mới ngay, tiến độ đã có được giữ.',
-      confirmLabel: 'Xuất bản',
-      tone: 'primary',
-    })
-      .pipe(filter(Boolean), takeUntilDestroyed(this.destroyRef))
-      .subscribe(() =>
-        this.publishMutation.run({
-          ...command,
-          expectedVersion: revision.rowVersion,
-        }),
-      );
+    this.confirmPublish(() =>
+      this.publishMutation.run({
+        kind: 'save',
+        command: { ...command, expectedVersion: revision.rowVersion },
+      }),
+    );
+  }
+
+  /** Publishing a course that is not stored yet creates it first, then publishes it. */
+  createAndPublish(value: CourseDraftValue): void {
+    const command = this.createCommand(value);
+    if (!command) return;
+    this.confirmPublish(() =>
+      this.publishMutation.run({ kind: 'create', command }),
+    );
   }
 
   /** Checks the file against the block's rules, then uploads it. */
@@ -812,6 +885,60 @@ export class CourseEditorStore {
       { defaultValue: undefined },
     );
   };
+
+  private confirmPublish(publish: () => void): void {
+    confirm(this.dialog, {
+      title: 'Xuất bản khóa học?',
+      message:
+        'Bản nháp được lưu rồi xuất bản. Học viên được giao thấy nội dung mới ngay, tiến độ đã có được giữ.',
+      confirmLabel: 'Xuất bản',
+      tone: 'primary',
+    })
+      .pipe(filter(Boolean), takeUntilDestroyed(this.destroyRef))
+      .subscribe(publish);
+  }
+
+  private createCommand(value: CourseDraftValue): CreateCourseCommand | null {
+    const ownerOrgId = this.orgId();
+    return ownerOrgId
+      ? toCreateCourseCommand(value, value.code, ownerOrgId)
+      : null;
+  }
+
+  /** A taken code goes back to the code field, on the first step; other failures are the alert's. */
+  private createCourse(command: CreateCourseCommand): Observable<CourseDetail> {
+    return this.client
+      .call(courseEndpoints.createCourse, { body: command })
+      .pipe(
+        catchError((error: unknown) => {
+          if (toAppError(error).messageCode === DUPLICATE_CODE) {
+            this.setTakenCode(command.code);
+            this.setStep(0);
+          }
+          return throwError(() => error);
+        }),
+      );
+  }
+
+  /**
+   * The course exists now: leaving does not ask, and the page continues as the edit screen of the
+   * new course, on the same step, without a history entry for `/new`.
+   */
+  private moveToEditor(created: CourseDetail): void {
+    this.setLeft(true);
+    void this.router.navigate(['/admin/courses', created.course.id, 'edit'], {
+      replaceUrl: true,
+      queryParams: { step: this.state.step() },
+    });
+  }
+
+  /** The step the URL names (`?step=`), read once when the editor opens. */
+  private initialStep(): number {
+    const step = Number(this.route.snapshot.queryParamMap.get('step'));
+    return Number.isInteger(step)
+      ? Math.max(0, Math.min(EDITOR_STEPS.length - 1, step))
+      : 0;
+  }
 
   private saveDraft(command: SaveDraftCommand) {
     const detail = this.course$();
