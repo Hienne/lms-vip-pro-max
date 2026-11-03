@@ -393,3 +393,58 @@ export const capturedCourseFinalExam = {
   },
   finalQuizId: 6,
 };
+
+const refusal = (field: string, code: string, message: string) => ({
+  responseId: 'a5c1d0f2-3b7e-4c1a-9a55-0f3f6d2b7e10',
+  timestamp: '2026-11-03T10:12:41.503117Z',
+  status: 'ERROR',
+  messageCode: 'CORE-VALIDATION_FAILED',
+  message: 'Dữ liệu đầu vào không hợp lệ.',
+  messageTitle: 'Thông tin chưa hợp lệ',
+  data: null,
+  errors: [{ field, code, message }],
+});
+
+/**
+ * The refusals of a publish with assignment rows and shares, observed on the local backend on
+ * 2026-11-03 (`quantri`, a draft of course 19). Each is HTTP 200 with a `CORE-VALIDATION_FAILED`
+ * envelope whose single `errors` entry names the failing row; nothing was published, assigned or
+ * shared. `command` is a body the schema accepts (a row for one learner, no share). Recapture them
+ * from the local stack when the publish rules change.
+ */
+export const capturedPublishTargets = {
+  command: {
+    expectedVersion: 3,
+    assignments: [
+      {
+        startAt: '2026-11-04T00:00:00+07:00',
+        dueAt: '2026-12-04T00:00:00+07:00',
+        reminderEnabled: true,
+        reminderDaysBefore: 3,
+        target: { targetType: 'user', userId: '000004' },
+      },
+      {
+        startAt: '2026-11-04T00:00:00+07:00',
+        reminderEnabled: false,
+        reminderDaysBefore: 0,
+        target: { targetType: 'team', teamId: 2 },
+      },
+    ],
+    shareOrgIds: [1],
+  },
+  emptyTargetRefusal: refusal(
+    'assignments[1]',
+    'LEARNING-EMPTY_TARGET',
+    'Đối tượng giao không có học viên hợp lệ hoặc vượt giới hạn 500 người.',
+  ),
+  shareRefusal: refusal(
+    'shareOrgIds[0]',
+    'LEARNING-INVALID_REFERENCE',
+    'ID tham chiếu không tồn tại hoặc không đúng quan hệ.',
+  ),
+  dueBeforeStartRefusal: refusal(
+    'assignments[0]',
+    'OUT_OF_RANGE',
+    'Hạn hoàn thành phải sau thời điểm mở học.',
+  ),
+} as const;

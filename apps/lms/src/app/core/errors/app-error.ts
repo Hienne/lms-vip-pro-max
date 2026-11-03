@@ -1,5 +1,5 @@
 import { HttpErrorResponse } from '@angular/common/http';
-import { MESSAGE_CODE_KIND } from '@lms/contracts';
+import { MESSAGE_CODE_KIND, type FieldError } from '@lms/contracts';
 import { ApiError } from '../http/api-error';
 import { ContractError } from '../http/contract-error';
 
@@ -25,6 +25,8 @@ export interface AppError {
   readonly httpStatus?: number;
   /** The call's `responseId`, for the "Mã tra cứu" line of a system failure. */
   readonly responseId?: string;
+  /** Per-field details of the refusal, when the envelope carried any. */
+  readonly fieldErrors?: readonly FieldError[];
 }
 
 /** Vietnamese defaults for failures the backend did not explain itself. */
@@ -76,6 +78,7 @@ export function toAppError(error: unknown): AppError {
       messageCode: error.messageCode,
       httpStatus: error.httpStatus,
       ...(error.responseId ? { responseId: error.responseId } : {}),
+      ...(error.fieldErrors.length ? { fieldErrors: error.fieldErrors } : {}),
     };
   }
   if (error instanceof ContractError) {

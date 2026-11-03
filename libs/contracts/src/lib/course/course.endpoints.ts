@@ -14,8 +14,8 @@ import {
   LearningAssetSchema,
   SaveDraftCommandSchema,
   ShareCourseCommandSchema,
-  VersionCommandSchema,
 } from './course.schema';
+import { PublishCourseCommandSchema } from './course-publish.schema';
 
 const courseParams = z.object({ courseId: z.number().int() });
 const revisionParams = courseParams.extend({ revisionId: z.number().int() });
@@ -59,12 +59,15 @@ export const courseEndpoints = {
     body: SaveDraftCommandSchema,
     response: CourseDetailSchema,
   }),
-  /** Checks and freezes the revision; learners' progress is kept. */
+  /**
+   * Checks and freezes the revision; learners' progress is kept. With `assignments` and
+   * `shareOrgIds` the same call assigns and shares, all or nothing.
+   */
   publish: defineEndpoint({
     method: 'post',
     path: '/api/v1/courses/{courseId}/revisions/{revisionId}/publish',
     params: revisionParams,
-    body: VersionCommandSchema,
+    body: PublishCourseCommandSchema,
     response: CourseDetailSchema,
   }),
   /** Pause or archive; learning history is kept. */

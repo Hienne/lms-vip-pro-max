@@ -3,7 +3,13 @@ import { courseEndpoints } from './course.endpoints';
 import {
   capturedCourseCreate,
   capturedCourseFinalExam,
+  capturedPublishTargets,
 } from './course.captured';
+import {
+  PublishCourseCommandSchema,
+  publishRowOf,
+} from './course-publish.schema';
+import { EnvelopeSchema } from '../http/envelope';
 import {
   CourseCardSchema,
   CreateCourseCommandSchema,
@@ -447,5 +453,59 @@ describe('a course with a final exam captured from the local backend', () => {
     expect(
       SaveDraftCommandSchema.safeParse({ ...save, finalQuizId: 0 }).success,
     ).toBe(false);
+  });
+});
+
+describe('a publish with assignments and shares', () => {
+  it('accepts the version alone, as before', () => {
+    expect(
+      PublishCourseCommandSchema.safeParse({ expectedVersion: 3 }).success,
+    ).toBe(true);
+  });
+
+  it('accepts the body that was sent to the local backend', () => {
+    const command = PublishCourseCommandSchema.parse(
+      capturedPublishTargets.command,
+    );
+    expect(command.assignments).toHaveLength(2);
+    expect(command.assignments?.[1].dueAt).toBeUndefined();
+    expect(command.shareOrgIds).toEqual([1]);
+  });
+
+  it('refuses more than 20 rows, more than 50 shares and a reminder over 365 days', () => {
+    const row = capturedPublishTargets.command.assignments[0];
+    const publish = (extra: object) =>
+      PublishCourseCommandSchema.safeParse({ expectedVersion: 0, ...extra })
+        .success;
+    expect(publish({ assignments: Array(20).fill(row) })).toBe(true);
+    expect(publish({ assignments: Array(21).fill(row) })).toBe(false);
+    expect(publish({ shareOrgIds: Array(51).fill(1) })).toBe(false);
+    expect(
+      publish({ assignments: [{ ...row, reminderDaysBefore: 366 }] }),
+    ).toBe(false);
+  });
+
+  it('reads each observed refusal with the row it names', () => {
+    const rows = [
+      capturedPublishTargets.emptyTargetRefusal,
+      capturedPublishTargets.shareRefusal,
+      capturedPublishTargets.dueBeforeStartRefusal,
+    ].map((body) => {
+      const envelope = EnvelopeSchema.parse(body);
+      return publishRowOf(envelope.errors?.[0].field ?? '');
+    });
+    expect(rows).toEqual([
+      { kind: 'assignments', index: 1 },
+      { kind: 'shareOrgIds', index: 0 },
+      { kind: 'assignments', index: 0 },
+    ]);
+  });
+
+  it('knows no row for another field', () => {
+    expect(publishRowOf('assignments[0].target')).toEqual({
+      kind: 'assignments',
+      index: 0,
+    });
+    expect(publishRowOf('expectedVersion')).toBeUndefined();
   });
 });

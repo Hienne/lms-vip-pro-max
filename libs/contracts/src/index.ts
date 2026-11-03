@@ -38,6 +38,7 @@ export * from './lib/http/datetime';
 export * from './lib/training-catalog/training-catalog.schema';
 export * from './lib/training-catalog/training-catalog.endpoints';
 export * from './lib/course/course.schema';
+export * from './lib/course/course-publish.schema';
 export * from './lib/course/course.endpoints';
 export * from './lib/assignment/assignment.schema';
 export * from './lib/assignment/assignment.endpoints';

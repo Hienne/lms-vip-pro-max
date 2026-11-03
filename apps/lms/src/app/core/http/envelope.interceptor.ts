@@ -57,13 +57,14 @@ function blobEnvelope(body: unknown): Observable<Envelope | null> {
 }
 
 function toApiError(envelope: Envelope, httpStatus: number): ApiError {
-  const { messageCode, messageTitle, message, responseId } = envelope;
+  const { messageCode, messageTitle, message, responseId, errors } = envelope;
   return new ApiError(
     messageCode,
     messageTitle ?? undefined,
     message ?? undefined,
     httpStatus,
     responseId ?? undefined,
+    errors ?? [],
   );
 }
 

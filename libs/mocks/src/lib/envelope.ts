@@ -1,4 +1,4 @@
-import type { Envelope } from '@lms/contracts';
+import type { Envelope, FieldError } from '@lms/contracts';
 
 const IDENTITY = {
   responseId: '00000000-0000-4000-8000-000000000000',
@@ -22,6 +22,7 @@ export function envelopeError(
   messageCode: string,
   messageTitle: string,
   message: string,
+  errors?: readonly FieldError[],
 ): Envelope {
   return {
     ...IDENTITY,
@@ -29,6 +30,7 @@ export function envelopeError(
     messageCode,
     messageTitle,
     message,
+    ...(errors ? { errors: [...errors] } : {}),
     data: null,
   };
 }

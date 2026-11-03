@@ -5,9 +5,18 @@ import { z } from 'zod';
  * from failure and the payload of a success is in `data`. Validation and business failures are
  * HTTP 200 with `status: 'ERROR'`; authentication, permission, protocol and system failures use
  * their own HTTP status (400, 401, 403, 404, 405, 406, 415, 429, 500) with the same wrapper in
- * the body. A body `errors[]` (per-field details) is not read: forms show their own validators'
- * messages and a backend refusal is shown as a toast.
+ * the body. A body `errors[]` (per-field details) is read only by the screens that map a refusal
+ * back to a row (the publish of a course names `assignments[i]` / `shareOrgIds[j]`); forms show
+ * their own validators' messages and a backend refusal is otherwise shown as a toast.
  */
+export const FieldErrorSchema = z.object({
+  /** The request path that failed, such as `assignments[1]` or `shareOrgIds[0]`. */
+  field: z.string(),
+  code: z.string(),
+  message: z.string(),
+});
+export type FieldError = z.infer<typeof FieldErrorSchema>;
+
 export const EnvelopeSchema = z.object({
   responseId: z.string().nullish(),
   timestamp: z.string().nullish(),
@@ -16,6 +25,8 @@ export const EnvelopeSchema = z.object({
   messageCode: z.string(),
   messageTitle: z.string().nullish(),
   message: z.string().nullish(),
+  /** Per-field details of a `CORE-VALIDATION_FAILED`; absent or null on other answers. */
+  errors: z.array(FieldErrorSchema).nullish(),
   /** Parsed later by the endpoint's own response schema. */
   data: z.unknown(),
 });

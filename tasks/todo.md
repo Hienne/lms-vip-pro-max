@@ -68,12 +68,15 @@ The previous `course-final-exam` checklist is in git history at `2c91339`.
 
 ## Phase 2: App
 
-- [ ] **F1: Contracts and mock**
+- [x] **F1: Contracts and mock**
   - `PublishCourseCommandSchema` (reusing the assignment `TargetInput` schema); the publish endpoint body.
   - Fixtures captured from the local backend.
   - The mock publish applies rows and shares through its assignment and share logic and refuses an empty target on
     `assignments[i]`.
   - Acceptance: `npx nx test contracts` and `npx nx test mocks` green.
+  - Checked: contracts, mocks and lms (envelope, error mapping and the full suite) tests, lint and typecheck green. Also
+    added to the envelope: `errors[]` is now read (`FieldError`, `ApiError.fieldErrors`, `AppError.fieldErrors`),
+    because the row mapping needs it; the mock refuses with the same shape.
 - [ ] **F2: Shared picker**
   - `shared/assignment-target/`: `TargetPicker` and `TargetOptionsStore` (Decision 7); `assign-form` uses them.
   - Acceptance: the assignments specs pass; `lms` lint (module boundaries) and typecheck clean.
