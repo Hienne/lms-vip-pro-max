@@ -1,14 +1,27 @@
 @use 'ui';
 
 .course-rules {
+  display: grid;
+  gap: ui.space(6);
+  align-items: start;
+
+  @include ui.bp(lg) {
+    grid-template-columns: 1fr 1fr;
+  }
+
   &__title {
     @include ui.text(lg);
   }
 
   &__list {
-    @include ui.stack(1);
-    @include ui.text(sm, muted);
+    @include ui.stack(2);
     margin: 0;
-    padding-left: ui.space(5);
+    padding: 0;
+    list-style: none;
+  }
+
+  &__item {
+    @include ui.row(2);
+    @include ui.text(sm, muted);
   }
 }

@@ -9,6 +9,7 @@ import type {
   CreateCourseCommand,
   LessonDetail,
   LessonType,
+  QuizSummary,
   Requirement,
   SaveDraftCommand,
   TranscriptLine,
@@ -84,6 +85,8 @@ export interface CourseDraftValue {
   readonly coverIcon: string;
   readonly objectives: readonly string[];
   readonly rewardPoints: number;
+  /** The `FINAL_EXAM` quiz that completion requires, as a select value: an id, or '' for none. */
+  readonly finalQuizId: string;
   readonly chapters: readonly ChapterValue[];
 }
 
@@ -216,6 +219,7 @@ export function emptyDraftValue(): CourseDraftValue {
     coverIcon: '',
     objectives: [],
     rewardPoints: 0,
+    finalQuizId: '',
     chapters: [],
   };
 }
@@ -233,6 +237,7 @@ export function toDraftValue(detail: CourseDetail): CourseDraftValue {
     coverIcon: revision.coverIcon ?? '',
     objectives: detail.objectives.map((o) => o.description),
     rewardPoints: detail.completionRule?.rewardPoints ?? 0,
+    finalQuizId: detail.finalQuizId ? String(detail.finalQuizId) : '',
     chapters: detail.chapters.map(({ chapter, lessons }) => ({
       key: newKey(),
       title: chapter.title,
@@ -295,6 +300,7 @@ const idOf = (value: string): number | undefined => {
 function toDraftContent(value: CourseDraftValue): DraftContent {
   const programId = idOf(value.programId);
   const moduleId = idOf(value.moduleId);
+  const finalQuizId = idOf(value.finalQuizId);
   return {
     ...(programId ? { programId } : {}),
     ...(moduleId ? { moduleId } : {}),
@@ -305,6 +311,7 @@ function toDraftContent(value: CourseDraftValue): DraftContent {
     ...(value.coverIcon ? { coverIcon: value.coverIcon } : {}),
     objectives: value.objectives.map((o) => o.trim()).filter(Boolean),
     rewardPoints: Math.max(0, Math.round(value.rewardPoints || 0)),
+    ...(finalQuizId ? { finalQuizId } : {}),
     chapters: value.chapters.map((chapter) => ({
       title: chapter.title.trim(),
       lessons: chapter.lessons.map((lesson) => ({
@@ -366,8 +373,13 @@ export interface DraftCheck {
 }
 
 /** The mockup's "Kiểm tra trước khi xuất bản"; the server still checks on publish. */
-export function draftChecks(value: CourseDraftValue): readonly DraftCheck[] {
+export function draftChecks(
+  value: CourseDraftValue,
+  quizzes: readonly Pick<QuizSummary, 'id' | 'status'>[] = [],
+): readonly DraftCheck[] {
   const lessons = value.chapters.flatMap((c) => c.lessons);
+  const finalQuizId = idOf(value.finalQuizId);
+  const finalQuiz = quizzes.find((q) => q.id === finalQuizId);
   return [
     {
       label: 'Có tên khóa học và chương trình',
@@ -386,6 +398,21 @@ export function draftChecks(value: CourseDraftValue): readonly DraftCheck[] {
       step: 0,
       optional: true,
     },
+    {
+      label: 'Đã cấu hình bài kiểm tra cuối khóa (khuyến nghị)',
+      ok: !!finalQuizId,
+      step: 2,
+      optional: true,
+    },
+    ...(finalQuizId
+      ? [
+          {
+            label: 'Bài kiểm tra cuối khóa đã xuất bản',
+            ok: finalQuiz?.status === 'PUBLISHED',
+            step: 2,
+          },
+        ]
+      : []),
   ];
 }
 

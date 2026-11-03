@@ -1,4 +1,4 @@
-import { Component, computed, input, output } from '@angular/core';
+import { Component, computed, inject, input, output } from '@angular/core';
 import type { FieldTree } from '@angular/forms/signals';
 import { Card, CardBody, Icon, LinkButton } from '@lms/ui';
 import {
@@ -6,6 +6,7 @@ import {
   draftTotals,
   type CourseDraftValue,
 } from '../../course-draft';
+import { CourseEditorStore } from '../../data-access/course-editor.store';
 
 /**
  * Step 4 of the editor: the checks before publishing and a summary of the draft. Assigning and
@@ -21,8 +22,10 @@ export class CourseReview {
   readonly draft = input.required<FieldTree<CourseDraftValue>>();
   readonly goToStep = output<number>();
 
+  private readonly store = inject(CourseEditorStore);
+
   protected readonly checks = computed(() =>
-    draftChecks(this.draft()().value()),
+    draftChecks(this.draft()().value(), this.store.quizzes$()),
   );
   protected readonly ready = computed(() =>
     this.checks().every((check) => check.ok || check.optional),

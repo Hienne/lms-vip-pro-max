@@ -183,10 +183,58 @@ describe('course draft', () => {
     expect(checks.filter((c) => !c.ok).map((c) => c.label)).toEqual([
       'Có ít nhất 1 bài học',
       'Có mục tiêu đầu ra (khuyến nghị)',
+      'Đã cấu hình bài kiểm tra cuối khóa (khuyến nghị)',
     ]);
     expect(checks.find((c) => c.label.includes('mục tiêu'))?.optional).toBe(
       true,
     );
+  });
+
+  describe('the final exam', () => {
+    it('round-trips the final quiz as a select value, left out when empty', () => {
+      const value = toDraftValue({ ...eod, finalQuizId: 2 });
+      expect(value.finalQuizId).toBe('2');
+      expect(toSaveDraftCommand(value, 1).finalQuizId).toBe(2);
+      expect(toCreateCourseCommand(value, 'X', 1).draft?.finalQuizId).toBe(2);
+
+      const none = toDraftValue({ ...eod, finalQuizId: null });
+      expect(none.finalQuizId).toBe('');
+      expect(toSaveDraftCommand(none, 1)).not.toHaveProperty('finalQuizId');
+      expect(toCreateCourseCommand(none, 'X', 1).draft).not.toHaveProperty(
+        'finalQuizId',
+      );
+      expect(emptyDraftValue().finalQuizId).toBe('');
+    });
+
+    it('advises configuring one, and requires it to be published once chosen', () => {
+      const base = { ...toDraftValue(eod), objectives: ['Mục tiêu'] };
+      const find = (checks: ReturnType<typeof draftChecks>, text: string) =>
+        checks.find((c) => c.label.includes(text));
+
+      const none = draftChecks(base);
+      expect(find(none, 'Đã cấu hình bài kiểm tra cuối khóa')).toMatchObject({
+        ok: false,
+        optional: true,
+        step: 2,
+      });
+      expect(find(none, 'đã xuất bản')).toBeUndefined();
+
+      const chosen = { ...base, finalQuizId: '2' };
+      const draft = draftChecks(chosen, [{ id: 2, status: 'DRAFT' }]);
+      expect(find(draft, 'Đã cấu hình bài kiểm tra cuối khóa')?.ok).toBe(true);
+      expect(find(draft, 'Bài kiểm tra cuối khóa đã xuất bản')).toMatchObject({
+        ok: false,
+        step: 2,
+      });
+      expect(find(draft, 'Bài kiểm tra cuối khóa đã xuất bản')?.optional).toBe(
+        undefined,
+      );
+
+      const published = draftChecks(chosen, [{ id: 2, status: 'PUBLISHED' }]);
+      expect(find(published, 'Bài kiểm tra cuối khóa đã xuất bản')?.ok).toBe(
+        true,
+      );
+    });
   });
 
   describe('a course that is not stored yet', () => {
