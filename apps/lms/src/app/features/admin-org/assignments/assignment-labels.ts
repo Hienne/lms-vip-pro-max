@@ -1,14 +1,7 @@
-import type { EnrollmentMode, TargetType } from '@lms/contracts';
+import type { EnrollmentMode } from '@lms/contracts';
 import type { StatusView } from '../../../shared/status/status-view';
 
 /** UI copy for the assignment contracts' values; the mockup's wording where it has one. */
-export const TARGET_TYPE_LABEL: Record<TargetType, string> = {
-  user: 'Cá nhân',
-  team: 'Phòng/nhóm',
-  org: 'Đơn vị',
-  learning_group: 'Nhóm học tập',
-};
-
 export const ENROLLMENT_MODE_LABEL: Record<EnrollmentMode, string> = {
   continue: 'Học tiếp tiến độ cũ',
   retake: 'Học lại từ đầu',

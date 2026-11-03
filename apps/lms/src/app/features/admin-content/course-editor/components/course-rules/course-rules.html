@@ -1,0 +1,65 @@
+<div class="course-rules">
+  <section uiCard>
+    <div uiCardBody class="stack">
+      <h2 class="course-rules__title">Bài kiểm tra cuối khóa</h2>
+      @if (store.isCreate$()) {
+      <ui-alert tone="info" [announce]="false">
+        Lưu nháp trước để chọn bài kiểm tra
+      </ui-alert>
+      } @else {
+      <ui-field
+        label="Bài kiểm tra dùng để xét hoàn thành"
+        hint="Cấu hình thời gian, số câu, điểm đạt, số lần thi tại màn Bài kiểm tra."
+      >
+        <select uiSelect [formField]="draft().finalQuizId">
+          <option value="" [selected]="!hasExam()">
+            Không yêu cầu bài kiểm tra
+          </option>
+          @for (option of examOptions(); track option.value) {
+          <option
+            [value]="option.value"
+            [selected]="draft().finalQuizId().value() === option.value"
+          >
+            {{ option.label }}
+          </option>
+          }
+        </select>
+      </ui-field>
+      @if (store.quizzesError$(); as error) {
+      <ui-alert tone="danger">
+        Không tải được danh sách bài kiểm tra: {{ error.message }}
+      </ui-alert>
+      } @else if (!examOptions().length) {
+      <ui-alert tone="info" [announce]="false">
+        Khóa học chưa có bài thi cuối khóa. Tạo bài kiểm tra loại Thi cuối khóa
+        ở màn Bài kiểm tra.
+      </ui-alert>
+      } }
+    </div>
+  </section>
+
+  <section uiCard>
+    <div uiCardBody class="stack">
+      <h2 class="course-rules__title">Điều kiện hoàn thành</h2>
+      <ul class="course-rules__list">
+        <li class="course-rules__item">
+          <ui-icon name="circle-check" size="sm" label="Có" />
+          Hoàn thành mọi bài học bắt buộc
+        </li>
+        <li class="course-rules__item">
+          @if (hasExam()) {
+          <ui-icon name="circle-check" size="sm" label="Có" />
+          Đạt bài kiểm tra cuối khóa } @else {
+          <ui-icon name="minus" size="sm" label="Không" />
+          Đạt bài kiểm tra cuối khóa (chưa chọn) }
+        </li>
+      </ul>
+      <ui-field
+        label="Điểm thưởng khi hoàn thành"
+        hint="Cộng vào điểm tích lũy và bảng xếp hạng."
+      >
+        <input uiInput type="number" [formField]="draft().rewardPoints" />
+      </ui-field>
+    </div>
+  </section>
+</div>

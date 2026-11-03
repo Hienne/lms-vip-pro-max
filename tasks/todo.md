@@ -1,12 +1,12 @@
-# Tasks: `lesson-player-modes`
+# Tasks: `course-publish-targets`
 
-Spec: [SPEC-lesson-player-modes.md](../SPEC-lesson-player-modes.md) · Plan: [plan.md](plan.md).
-The previous `learner-home-refresh` checklist is in git history at `3d16946`.
+Spec: [SPEC-course-publish-targets.md](../SPEC-course-publish-targets.md) · Plan: [plan.md](plan.md).
+The previous `course-final-exam` checklist is in git history at `2c91339`.
 
 - **Repositories:**
-  - backend: `corebanking-academy`, branch `feat/lesson-player-modes` from `origin/main` (`5563e76`), in its own
-    worktree `~/my-projects/corebanking-academy-player-modes`;
-  - app: this one, branch `feat/lesson-player-modes` from `origin/main` (`3d16946`).
+  - backend: `corebanking-academy`, branch `feat/course-publish-targets` from `feat/course-final-exam` (`61ff927`),
+    in its own worktree `~/my-projects/corebanking-academy-publish-targets`;
+  - app: this one, branch `feat/course-authoring`.
 
   Nothing is pushed.
 
@@ -14,102 +14,114 @@ The previous `learner-home-refresh` checklist is in git history at `3d16946`.
   - The backend on :8019 is the main session's background task. Never run `mvn` in the worktree it runs from, and
     never start another backend. Message the main session for a restart.
   - The app runs on :4200 against `localhost:8019`.
-  - Accounts: `hocvien` as the learner; `quantri` as the admin who saves course trees.
-  - The demo video is block 33, lesson 17, course `DEMO-MEDIA`, 30 s.
+  - Accounts: `quantri` (admin, authoring); `hocvien` (learner for the checkpoint row).
   - Passwords come only from `LOCAL_DEMO_PASSWORD` in the backend's `.env.local`, and are never printed.
   - In the browser, sign in with the one-shot token method, never by typing the password.
-- **Never** touch the shared server `103.121.90.119`. No seeding users, and no direct edits to enrollments, progress
-  or attempts. The only SQL is the upgrade and the demo file, run by the main session at Checkpoint A.
-- **Schema change:** two nullable `jsonb` columns on `learning_hub.lesson_blocks`. No FK, no unique, every column
-  commented. Backend Javadoc and comments in Vietnamese (`DEVELOPMENT_GUIDELINES.md`).
+  - Course 19 (`WIZ-FE-01`) has an open draft revision; published revision 21.
+- **Never** touch the shared server `103.121.90.119`. No SQL, no DB edits; checkpoint data goes through the API.
+- Backend Javadoc and comments in Vietnamese (`DEVELOPMENT_GUIDELINES.md`). Run long commands in the foreground.
 
 ## Phase 1: Backend
 
-- [x] **B1: Schema**
-  - `docs/sql/upgrade/2026-11-03-lesson-player-modes.sql`: `ADD COLUMN IF NOT EXISTS video_chapters jsonb` and
-    `transcript jsonb`, each with a Vietnamese `COMMENT`, in one transaction.
-  - `2026-11-03-lesson-player-modes.rollback.sql`: `DROP COLUMN IF EXISTS` both.
-  - The learning baseline (`docs/sql/learning_hub_learning.sql`) gets both columns and comments.
-  - `docs/sql/README.md`: an entry with the psql command, and that it must run before the backend deploys.
-  - `LessonBlock` maps both as `@JdbcTypeCode(SqlTypes.JSON) JsonNode`.
-  - Acceptance: `mvn -o clean test` green (the test schema has the columns). Checked: `mvn -o clean test` green (444 run, 0 failed, 42 Docker-skipped Community ITs); the IT schema is built from the baseline so `validate` passed with the new columns.
-- [x] **B2: Save, read and copy**
-  - `BlockInput` gains `List<VideoChapterInput> videoChapters` and `List<TranscriptLineInput> transcript`
-    (nullable); `LessonBlockView` gains both as lists, `[]` when `NULL`.
-  - `validateBlockInput` applies plan Decision 5 with `BusinessException.validation`.
-  - `writeBlock` stores them (an empty list is stored as `NULL`); the revision copy passes them through.
-  - Acceptance: tests below. Checked: covered by B3's integration tests; `mvn -o clean test` green.
-- [x] **B3: Tests, docs and demo data**
-  - Integration tests: save with valid lists and read them back in the tree and in the learner's enrollment detail;
-    each refusal (count, length, blank, order, beyond the duration, non-video block); a new revision keeps them; a
-    save without the lists clears them (documented behaviour).
-  - `docs/api/LEARNING.md`: the block fields, the limits, and that a tree save replaces them.
-  - `docs/sql/demo-media/lesson-player-modes-demo.sql`: plan Decision 6, idempotent, local only.
-  - `scripts/local-seed-media.sh`: the video block of a fresh `DEMO-MEDIA` gets the same lists.
-  - Acceptance: `mvn -o clean test` green. Checked: `LearningPlayerModesIT` (9 tests) plus full `mvn -o clean test`: 453 run, 0 failed, 42 skipped; seed jq tree checked to emit 3 chapters + 6 lines; no SQL run.
+- [x] **B1: Request and shares**
+  - `PublishRequest` and `PublishAssignment` (plan Decision 2); the publish endpoint takes `PublishRequest`.
+  - One transaction: publish, then shares (Decision 3, 5). Active shares skipped; a refusal becomes
+    `CORE-VALIDATION_FAILED` on `shareOrgIds[j]` (Decision 4).
+  - Acceptance: `{expectedVersion}` alone unchanged; `mvn -o clean test` green.
+  - Checked: d197119 — mvn -o clean test: 470 run, 0 failed, 42 skipped.
+- [x] **B2: Assignments**
+  - Each row through `assign` with the values of Decision 6; a `BusinessException` or `AccessDeniedException` becomes
+    `CORE-VALIDATION_FAILED` on `assignments[i]` and rolls everything back.
+  - Acceptance: `mvn -o clean test` green.
+  - Checked: 1e4d10e — mvn -o clean test (run with the B3 IT present): 477 run, 0 failed, 42 skipped. Lock: `pg_advisory_xact_lock` is re-entrant in one session, so nested `acquire` is safe.
+- [x] **B3: Tests and docs**
+  - `CoursePublishTargetsIT` with the spec's Testing cases (two rows and a share; no extras; empty target rolls back;
+    owner share refused; existing share unchanged; due before start; retry refused by version).
+  - `docs/api/LEARNING.md` and `LEARNING_CURL.md`.
+  - Acceptance: `mvn -o clean test` green.
+  - Checked: 0b4b9f8 — mvn -o clean test: 477 run, 0 failed, 42 skipped (CoursePublishTargetsIT: 7 run, 0 failed).
 
 ### Checkpoint A
 
-- [x] The main session ran the upgrade and the demo SQL on `localhost/core_academy` (2026-11-03): `ALTER TABLE`,
-      two `COMMENT`s, `COMMIT`; the demo `UPDATE 1` filled block 33 with 3 chapters and 6 lines. :8019 now runs from
-      `~/my-projects/corebanking-academy-player-modes` (`e88c399`).
-- [x] `curl`:
-  - As `hocvien`, the enrollment detail of `DEMO-MEDIA` (course 7, enrollment 16) returns block 33 with
-    `videoChapters` `[{0, "Giới thiệu"}, {10, "Khái niệm chính"}, {20, "Tổng kết"}]` and 6 transcript lines; the PDF
-    block 32 returns `[]` for both.
-  - As `quantri`, `POST /courses/7/draft` opened revision 11, whose video block (35) kept 3 chapters and 6 lines.
-  - Tree saves on revision 11 are refused with `CORE-VALIDATION_FAILED`: transcript out of order (`transcript`),
-    a chapter at 31 s on the 30 s video, a blank title, 51 chapters (`TOO_MANY`), and chapters on the PDF block. An
-    unchanged save succeeds and keeps the lists (block 37: 3 and 6).
-  - Revision 11 stays an unpublished draft on the local DB; learners still read revision 7.
-- [x] `mvn -o clean test`: 453 tests, 0 failures, 0 errors, 42 skipped (`CommunityApiIT`, as on `main`);
-      `LearningPlayerModesIT` 9/9. The app child starts Phase 2.
+- [x] The main session reviewed the three diffs and restarted :8019 from
+      `~/my-projects/corebanking-academy-publish-targets` (`0b4b9f8`) on 2026-11-03. `LearningPublishService` runs the
+      publish, the shares and the rows in one transaction; the nested `LearningWriteLock.acquire` is a
+      `pg_advisory_xact_lock`, which the same transaction can take again.
+- [x] Plan Decision 11 through the API, on course 19's draft revision 22 (`rowVersion` 3), as `quantri`:
+  - Only one local org exists (org 1, the owner), so a successful share could not be made without seeding; it is
+    left to `CoursePublishTargetsIT`.
+  - Refused, each leaving revision 22 a draft with no assignment and no share:
+    - a valid row for `hocvien` plus `shareOrgIds` [1] gave `CORE-VALIDATION_FAILED` on `shareOrgIds[0]`
+      (`LEARNING-INVALID_REFERENCE`);
+    - rows for `hocvien` and team 2 (no member) gave `assignments[1]` (`LEARNING-EMPTY_TARGET`), so row 0 was rolled
+      back too;
+    - a due date before the start gave `assignments[0]` (`OUT_OF_RANGE`).
+  - A publish with one row for `hocvien` (start 2026-11-04, due 2026-12-04, reminder 3 days) succeeded (published
+    revision 22) in under 0.1 s. Assignment 8 has revision 22, requirement `optional` (the revision default),
+    `continue`, idempotency key `publish-22-0`; its recipient is `000004` on the new enrollment 20 (revision 22).
+    The learning report shows enrollment 20 with `assigned` false until the start date, as for any future
+    assignment.
+  - The same body again gave `LEARNING-CONFLICT` (version check); still one assignment.
+  - Counts read through the API and one read-only psql query on localhost; no write outside the API.
+- [x] `mvn -o clean test` in a temporary worktree at `0b4b9f8`: 477 run, 0 failures, 0 errors, 42 skipped;
+      `CoursePublishTargetsIT` 7/7. The app child starts Phase 2.
 
 ## Phase 2: App
 
-- [x] **F1: Contracts**
-  - `VideoChapterSchema {startSeconds, title}` and `TranscriptLineSchema {startSeconds, text}`;
-    `LessonBlockSchema` gains `videoChapters` and `transcript` with `.default([])`; `BlockInputSchema` gains both as
-    optional.
+- [x] **F1: Contracts and mock**
+  - `PublishCourseCommandSchema` (reusing the assignment `TargetInput` schema); the publish endpoint body.
   - Fixtures captured from the local backend.
-  - Acceptance: `npx nx test contracts` green. Checked: `npx nx test contracts` green (248), including the enrolment detail and the learner course captured from the local backend as `hocvien` (block 33: 3 chapters, 6 lines; PDF block 32: `[]`); the mock lib and the app still typecheck.
-- [x] **F2: Mock and editor**
-  - The mock's seeded video blocks carry the mockup's chapters and transcript (`lms-mockup/src/data/seed.js`); the
-    mock tree save stores and returns them.
-  - `course-draft.ts` keeps each loaded video block's lists in the save payload; a new block has none.
-  - Acceptance: specs for the mock round trip and for an editor save that keeps the lists. Checked: `mocks` 298 and `lms` specs green: `course-tree.backend.spec.ts` (seed, new draft, a save that sends the lists keeps them and one that omits them clears them), `course-draft.spec.ts` and `course-editor.spec.ts` (a video lesson opened and applied, then saved, sends the lists unchanged).
-- [x] **F3: Chapters**
-  - Under a video block with chapters: a row of buttons "{mm:ss} · {title}"; a click sets the block's `jump`; the
-    current chapter has `aria-current="true"`.
-  - Acceptance: specs for the seek and the current chapter following the time. Checked (a click sets the player's time inside `video-block`, the move a `jump` makes, not the store-owned `jump` input; see the spec notes): `video-block.spec.ts` (labels, click moves the player and reports a seek, `aria-current` follows the time, none before the first chapter) and the page spec (lists from the server reach the block, a click seeks).
-- [x] **F4: Transcript**
-  - Under a video block with lines: a collapsible "Transcript ({n} đoạn)", closed by default; a search field
-    ("Tìm trong transcript"); each line a button "{mm:ss} {text}" that seeks; the current line marked without
-    scrolling the page; "Không có đoạn nào khớp." when the search finds nothing.
-  - Acceptance: specs for search, seek and the current line. Checked: `video-block.spec.ts` (closed by default with the count, lines, click seeks, current line follows the time, search ignores case and accents, no-match line, no `scrollIntoView`).
-- [x] **F5: Focus mode**
-  - A top-bar button "Chế độ tập trung" / "Hiện mục lục" with `aria-pressed`; it hides the side panel from `lg` and
-    is hidden below `lg`; remembered under `lms.lesson.focus` in `try/catch`.
-  - Acceptance: specs for the toggle, the label, `aria-pressed`, and storage that throws. Checked: `lesson.spec.ts` (label, `aria-pressed`, side panel hidden and layout class, stored under `lms.lesson.focus`, starts on when remembered, storage that throws). The hide-below-`lg` rule is CSS and was not checked in jsdom; it is for Checkpoint B.
-- [x] **F6: Docs**
-  - `SPEC-lesson-player-modes.md`: implementation notes; migration entries for the lesson screen.
-  - Acceptance: `npm run check` green. Checked: `SPEC-lesson-player-modes.md` has the implementation notes; the lesson route entry in the migration registry names the three features (verify ticks left alone); `npm run check` green (see the report).
+  - The mock publish applies rows and shares through its assignment and share logic and refuses an empty target on
+    `assignments[i]`.
+  - Acceptance: `npx nx test contracts` and `npx nx test mocks` green.
+  - Checked: contracts, mocks and lms (envelope, error mapping and the full suite) tests, lint and typecheck green. Also
+    added to the envelope: `errors[]` is now read (`FieldError`, `ApiError.fieldErrors`, `AppError.fieldErrors`),
+    because the row mapping needs it; the mock refuses with the same shape.
+- [x] **F2: Shared picker**
+  - `shared/assignment-target/`: `TargetPicker` and `TargetOptionsStore` (Decision 7); `assign-form` uses them.
+  - Acceptance: the assignments specs pass; `lms` lint (module boundaries) and typecheck clean.
+  - Checked: assignments spec (7) and the new `target-picker.spec.ts` (3) pass; `lms` lint (0 errors) and typecheck clean.
+    The host sets the groups' owner org through the `TARGET_OWNER_ORG` token (the caller's org without it).
+- [x] **F3: Step 4**
+  - Store state, loads and commands (Decision 9); "Giao khóa học" (picker, rows, reminder switch, "Đã giao trước
+    đó", empty line) and "Chia sẻ cho đơn vị khác" (owner and shared units locked); the confirmation counts; the row
+    error mapping; create mode.
+  - Acceptance: specs for rows (add, delete, form checks), the switch, the share list, the publish command in edit
+    and create mode, and a row error mapped back.
+  - Checked: new `course-review.spec.ts` (14), `publish-targets.spec.ts` (12) and picker spec; full `lms` suite green
+    (1699 tests); lint 0 errors, typecheck clean. Differences: the org list is read in create mode too (the share list
+    needs it); the picker's add button is the secondary variant, not ghost; a row with no due date sends no reminder.
+- [x] **F4: Docs**
+  - The spec's implementation notes; the migration entry.
+  - Acceptance: `npm run check` green.
+  - Checked: `npm run check` NOT completed (stopped at the user's request). Before it: prettier clean on the F4 files; all
+    four `lms`/`contracts`/`mocks` suites, lint and typecheck were green at F3. Run it at Checkpoint B.
 
 ### Checkpoint B
 
-- [x] Main-session review of each commit's diff against angular.md §14 and visual-design.md. Chapters are `uiChip`
-      buttons with `aria-current`; the transcript is a `<details>` with a signal-form search and button lines; focus
-      mode lives in the store and is stored in `try/catch`; the editor round-trips both lists (spec and editor test).
-      Seeking sets the player's `currentTime`, which reports the move as a seek like the notes' `jump`.
-- [x] `npm run check` green on `52f09af` (14 tasks).
-- [x] Browser on the local stack (:8019 on `e88c399`), token sign-in as `hocvien`, `/lesson/7/17`:
-  - The chapter row shows the backend's "0:00 · Giới thiệu", "0:10 · Khái niệm chính", "0:20 · Tổng kết"; at 0:12
-    the second is current. A click on "0:20" moved the video to 20 s and marked the chapter and the 0:20 line.
-  - "Transcript (6 đoạn)" opens; "tin dung" (no accents) keeps only "Phân hệ tín dụng…"; a click on it moved the
-    video to 15 s.
-  - "Chế độ tập trung" hides the side panel (main column 1232 px at 1280), switches to "Hiện mục lục" with
-    `aria-pressed="true"`, stores `lms.lesson.focus`, and is still on after a reload.
-- [x] 1280 px light; 768 px light and 375 px dark: no horizontal scroll, the focus toggle is hidden, the chapters
-      wrap. Keyboard: Tab reaches each chapter, Enter seeks (to 20 s), the focus ring shows. The mockup on :4320 was
-      compared at 1280 px only.
+- [x] Main-session review of `05a7f80`, `ed29dab`, `19f439a` and `63022b4` against angular.md §14 and
+      visual-design.md: the picker and `TargetOptionsStore` live in `shared/assignment-target/` and import nothing
+      from `features/`; step 4 state is outside the draft; a refusal naming `assignments[i]` / `shareOrgIds[j]` marks
+      that row or unit and is not repeated in the alert. One fix by the main session, `a5af8dc`: the envelope's
+      `errors[]` now falls back to null when a detail has another shape, so a malformed detail cannot turn a refusal
+      into a parse failure.
+- [x] `npm run check` green on `a5af8dc` (14 tasks; `contracts` 260, `ui` 514, `mocks` 313, `lms` 1698 specs).
+- [x] Browser on the local stack (:8019 on `0b4b9f8`), token sign-in as `quantri`, course 19:
+  - Step 4 of the published course reads "Đã giao trước đó: 1 đợt — quản lý tại Giao học & hạn", the picker, the
+    empty line, the switch, and "Ban Quản lý và phát triển Core Banking (đơn vị sở hữu)" ticked and locked. The
+    page is read only until "Mở bản nháp để sửa" (draft revision 23).
+  - Rows for team 2 (no member) and team 11: the confirmation added "2 đối tượng được giao, 0 đơn vị được chia sẻ.";
+    the server refused and row 1 showed "Đối tượng giao không có học viên hợp lệ hoặc vượt giới hạn 500 người.",
+    with no alert. Revision 23 stayed a draft.
+  - Row 1 deleted, published: toast "Đã xuất bản khóa học. 1 đối tượng được giao, 0 đơn vị được chia sẻ.", back to
+    the list. Through the API: revision 23 published, assignment 10 on revision 23 (start the local midnight of
+    2026-11-04, no due date, so no reminder), and `hocvien.tichhop` (`000007`) has enrollment 21 on revision 23,
+    `assigned` true.
+  - A successful share was not tried: the local stack has one org, the owner. It is covered by
+    `CoursePublishTargetsIT` and the mock specs.
+  - "Giao học & hạn": the list shows assignments 10 and 8; in "Giao khóa học" the moved picker added "Ban Quản lý và
+    phát triển Core Banking và đơn vị cấp dưới" to the targets. The form was closed without sending.
+- [x] 375 px dark: one column, no horizontal scroll. 768 px light: one column of 720 px. 1280 px light: two columns
+      (576 and 384 px). Keyboard in create mode: Tab moves from the type list to the unit select (focus ring) to
+      "Gồm cả các đơn vị cấp dưới", skipping the disabled "Thêm đối tượng".
 - [x] The spec is marked built.

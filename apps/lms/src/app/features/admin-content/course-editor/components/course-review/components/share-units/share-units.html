@@ -1,0 +1,42 @@
+<section uiCard>
+  <div uiCardBody class="stack">
+    <h2 class="share-units__title">Chia sẻ cho đơn vị khác</h2>
+    <p class="share-units__help">
+      Đơn vị được chia sẻ có thể giao khóa cho học viên của mình nhưng không sửa
+      nội dung.
+    </p>
+    @if (store.sharesError$(); as error) {
+    <p class="share-units__error" role="alert">{{ error.message }}</p>
+    } @else {
+    <ul class="share-units__list" aria-label="Đơn vị">
+      @for (unit of store.shareUnits$(); track unit.orgId) {
+      <li class="share-units__unit">
+        <label class="share-units__check">
+          <input
+            type="checkbox"
+            uiCheckbox
+            [checked]="unit.checked"
+            [disabled]="unit.locked !== null || unit.full"
+            [attr.aria-describedby]="unit.error ? 'share-unit-' + unit.orgId : null"
+            (change)="toggle(unit.orgId, $event)"
+          />
+          <span
+            >{{ unit.name }}@if (unit.locked === 'owner') { (đơn vị sở hữu) }
+            @else if (unit.locked === 'shared') { (đã chia sẻ) }</span
+          >
+        </label>
+        @if (unit.error) {
+        <p
+          class="share-units__message"
+          [id]="'share-unit-' + unit.orgId"
+          role="alert"
+        >
+          {{ unit.error }}
+        </p>
+        }
+      </li>
+      }
+    </ul>
+    }
+  </div>
+</section>

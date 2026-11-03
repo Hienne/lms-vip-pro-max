@@ -294,6 +294,13 @@ describe('route table', () => {
     });
   });
 
+  it('tells the course editor whether it creates or edits', () => {
+    const dataOf = (path: string) =>
+      createAppRoutes({ devTools: false }).find((r) => r.path === path)?.data;
+    expect(dataOf('admin/courses/new')).toMatchObject({ mode: 'create' });
+    expect(dataOf('admin/courses/:id/edit')).not.toHaveProperty('mode');
+  });
+
   it('keeps login public and visitor-only', () => {
     const login = createAppRoutes({ devTools: false }).find(
       (r) => r.path === 'login',

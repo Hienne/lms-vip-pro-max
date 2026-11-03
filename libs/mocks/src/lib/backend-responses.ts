@@ -229,6 +229,12 @@ export const BACKEND_RESPONSES = {
     message:
       'Có bài học loại kiểm tra chưa chọn bài kiểm tra đã xuất bản của khóa học.',
   },
+  finalExamUnpublished: {
+    status: 200,
+    code: 'LEARNING-FINAL_EXAM_UNPUBLISHED',
+    title: 'Chưa thể xuất bản',
+    message: 'Bài kiểm tra cuối khóa chưa xuất bản hoặc không còn hợp lệ.',
+  },
   assetProcessing: {
     status: 200,
     code: 'LEARNING-ASSET_PROCESSING',
@@ -240,6 +246,12 @@ export const BACKEND_RESPONSES = {
     code: 'LEARNING-EXPORT_TOO_LARGE',
     title: 'Chưa thể thực hiện',
     message: 'Kết quả vượt giới hạn xuất 10.000 dòng. Vui lòng thu hẹp bộ lọc.',
+  },
+  learningDuplicate: {
+    status: 200,
+    code: 'LEARNING-DUPLICATE',
+    title: 'Dữ liệu đã tồn tại',
+    message: 'Mã hoặc đối tượng này đã được sử dụng.',
   },
   learningNotFound: {
     status: 200,

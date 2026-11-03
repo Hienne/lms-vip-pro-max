@@ -100,6 +100,21 @@ describe('envelopeInterceptor', () => {
     expect(toAppError(error).kind).toBe('server');
   });
 
+  it('keeps the per-field errors of a refusal on the ApiError and the AppError', () => {
+    const errors = [
+      {
+        field: 'assignments[1]',
+        code: 'LEARNING-EMPTY_TARGET',
+        message: 'Đối tượng giao không có học viên hợp lệ.',
+      },
+    ];
+    const { body } = backendRefusal('validationFailed');
+    const error = login({ ...body, errors }).error as ApiError;
+    expect(error.fieldErrors).toEqual(errors);
+    expect(toAppError(error).fieldErrors).toEqual(errors);
+    expect(toAppError(login(body).error).fieldErrors).toBeUndefined();
+  });
+
   it.each<[BackendResponseKey, AppErrorKind]>([
     ['credentialsInvalid', 'unauthorized'],
     ['unauthenticated', 'unauthorized'],

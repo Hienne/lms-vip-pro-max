@@ -6,6 +6,7 @@ import {
   courseEndpoints,
   MEDIA_PROCESSING_UNAVAILABLE_CODE,
   type AnyEndpoint,
+  type CreateCourseCommand,
   type SaveDraftCommand,
 } from '@lms/contracts';
 import {
@@ -21,6 +22,7 @@ import { MockBackend } from '../../../core/dev/mock-api/mock-api.interceptor';
 import { CourseEditor } from './course-editor';
 import { POLL_MS, SERVER_RETRY_MS } from './data-access/chunked-upload';
 import { digestOf, FakeHasher } from './data-access/fake-hasher.testing';
+import { KeptUploads } from './data-access/kept-uploads.storage';
 import { Sha256Hasher } from './data-access/sha256-hasher';
 
 const KEPT_KEY = 'lms.asset-uploads.v1.000002.6';
@@ -648,7 +650,7 @@ describe('CourseEditor', () => {
 
     it('shows the server’s refusal to publish a course whose quiz lesson is unlinked', async () => {
       await screen.open('/admin/courses/6/edit');
-      await step('Hoàn thành & xuất bản');
+      await step('Đối tượng & xuất bản');
       screen.calls.mockImplementation((endpoint, request) =>
         endpoint === courseEndpoints.publish
           ? backendRefusal('quizLessonUnlinked')
@@ -665,7 +667,7 @@ describe('CourseEditor', () => {
 
     it('publishes with the version the server holds when tried again after a refusal', async () => {
       await screen.open('/admin/courses/6/edit');
-      await step('Hoàn thành & xuất bản');
+      await step('Đối tượng & xuất bản');
       screen.calls.mockImplementation((endpoint, request) =>
         endpoint === courseEndpoints.publish
           ? backendRefusal('quizLessonUnlinked')
@@ -692,7 +694,7 @@ describe('CourseEditor', () => {
 
   it('saves then publishes after confirming, and goes back to the list', async () => {
     await screen.open('/admin/courses/6/edit');
-    await step('Hoàn thành & xuất bản');
+    await step('Đối tượng & xuất bản');
     expect(screen.text()).toContain('Sẵn sàng xuất bản.');
 
     await screen.click(screen.button('Xuất bản khóa học'));
@@ -703,5 +705,412 @@ describe('CourseEditor', () => {
     });
     await vi.waitFor(() => expect(screen.url()).toBe('/admin/courses'));
     expect(screen.text(document.body)).toContain('Đã xuất bản khóa học');
+  });
+
+  describe('the four steps', () => {
+    const primaries = () =>
+      Array.from(
+        screen.el.querySelectorAll<HTMLElement>(
+          '.course-editor__foot .btn--primary',
+        ),
+      ).map((b) => b.textContent?.trim());
+
+    it('lists the steps with the mockup labels and subtitles', async () => {
+      await screen.open('/admin/courses/6/edit');
+
+      const steps = Array.from(
+        screen.el.querySelectorAll<HTMLElement>('.stepper__step'),
+      ).map((s) => s.textContent?.replace(/\s+/g, ' ').trim());
+      expect(steps).toHaveLength(4);
+      expect(steps[0]).toContain('Thông tin cơ bản');
+      expect(steps[0]).toContain('Tên, mã, chương trình');
+      expect(steps[1]).toContain('Nội dung khóa học');
+      expect(steps[2]).toContain('Bài thi & điều kiện');
+      expect(steps[2]).toContain('Điều kiện hoàn thành, điểm thưởng');
+      expect(steps[3]).toContain('Đối tượng & xuất bản');
+      expect(steps[3]).toContain('Kiểm tra trước khi xuất bản');
+    });
+
+    it('puts the completion rules and the reward on step 3', async () => {
+      await screen.open('/admin/courses/6/edit');
+      await step('Bài thi & điều kiện');
+
+      expect(screen.text()).toContain('Điều kiện hoàn thành');
+      expect(screen.field('Điểm thưởng khi hoàn thành')).toBeTruthy();
+      expect(screen.text()).not.toContain('Kiểm tra trước khi xuất bản Có');
+    });
+
+    it('puts the checklist and the summary on step 4, linking back to what is missing', async () => {
+      await screen.open('/admin/courses/6/edit');
+      await screen.type(screen.field('Tên khóa học') as HTMLInputElement, '');
+      await step('Đối tượng & xuất bản');
+
+      expect(screen.field('Điểm thưởng khi hoàn thành')).toBeUndefined();
+      expect(screen.text()).toContain('Tóm tắt khóa học');
+      expect(screen.text()).toContain('Số bài học');
+      expect(screen.text()).toContain(
+        'Hoàn thiện các mục trên trước khi xuất bản.',
+      );
+
+      await screen.click(screen.button('Bổ sung'));
+      expect(screen.field('Tên khóa học')).toBeTruthy();
+    });
+
+    describe('the final exam', () => {
+      const original = (
+        endpoint: AnyEndpoint,
+        request: FakeRequest,
+      ): FakeReply =>
+        MockBackend.prototype.handle.call(
+          TestBed.inject(MockBackend),
+          endpoint,
+          request,
+        ) as FakeReply;
+
+      /** The quizzes of course 1 stand in for the edited course's; `status` is the final exam's. */
+      const listQuizzes = (status = 'PUBLISHED') =>
+        screen.calls.mockImplementation((endpoint, request) => {
+          if (endpoint !== assessmentV1Endpoints.courseQuizList)
+            return original(endpoint, request);
+          const reply = original(endpoint, {
+            ...request,
+            query: { ...request.query, courseId: '1' },
+          });
+          const { items } = reply.body.data as {
+            items: { quizType: string; status: string }[];
+          };
+          for (const item of items)
+            if (item.quizType === 'FINAL_EXAM') item.status = status;
+          return reply;
+        });
+
+      const exam = () =>
+        screen.field(
+          'Bài kiểm tra dùng để xét hoàn thành',
+        ) as HTMLSelectElement;
+      const labels = () =>
+        Array.from(exam().options).map((o) => o.textContent?.trim());
+
+      it('offers only the final exam of the course, besides "no exam"', async () => {
+        listQuizzes();
+        await screen.open('/admin/courses/6/edit');
+        await step('Bài thi & điều kiện');
+
+        expect(screen.text()).toContain('Bài kiểm tra cuối khóa');
+        expect(screen.text()).toContain(
+          'Cấu hình thời gian, số câu, điểm đạt, số lần thi tại màn Bài kiểm tra.',
+        );
+        expect(labels()).toEqual([
+          'Không yêu cầu bài kiểm tra',
+          'Thi cuối khóa: Tổng quan hệ thống Core Banking',
+        ]);
+        expect(screen.text()).toContain(
+          'Đạt bài kiểm tra cuối khóa (chưa chọn)',
+        );
+      });
+
+      it('says when a final exam is a draft or closed', async () => {
+        listQuizzes('DRAFT');
+        await screen.open('/admin/courses/6/edit');
+        await step('Bài thi & điều kiện');
+        expect(labels()[1]).toMatch(/ · Nháp$/);
+      });
+
+      it('saves the choice, shows it again, and lists it as a completion rule', async () => {
+        listQuizzes();
+        await screen.open('/admin/courses/6/edit');
+        await step('Bài thi & điều kiện');
+        await screen.choose(exam(), '2');
+        expect(screen.text()).not.toContain('(chưa chọn)');
+        await screen.click(screen.button('Lưu nháp'));
+
+        expect(screen.lastCall(courseEndpoints.saveDraft)?.body).toMatchObject({
+          finalQuizId: 2,
+        });
+        await step('Bài thi & điều kiện');
+        expect(exam().value).toBe('2');
+      });
+
+      it('sends no final quiz once "no exam" is chosen again', async () => {
+        listQuizzes();
+        await screen.open('/admin/courses/6/edit');
+        await step('Bài thi & điều kiện');
+        await screen.choose(exam(), '2');
+        await screen.choose(exam(), '');
+        await screen.click(screen.button('Lưu nháp'));
+
+        expect(
+          screen.lastCall(courseEndpoints.saveDraft)?.body,
+        ).not.toHaveProperty('finalQuizId');
+      });
+
+      it('says to create one when the course has no final exam', async () => {
+        await screen.open('/admin/courses/6/edit');
+        await step('Bài thi & điều kiện');
+
+        expect(labels()).toEqual(['Không yêu cầu bài kiểm tra']);
+        expect(screen.text()).toContain(
+          'Khóa học chưa có bài thi cuối khóa. Tạo bài kiểm tra loại Thi cuối khóa ở màn Bài kiểm tra.',
+        );
+      });
+
+      it('requires the chosen exam to be published on the checklist', async () => {
+        listQuizzes('DRAFT');
+        await screen.open('/admin/courses/6/edit');
+        await step('Bài thi & điều kiện');
+        await screen.choose(exam(), '2');
+        await step('Đối tượng & xuất bản');
+
+        expect(screen.text()).toContain('Bài kiểm tra cuối khóa đã xuất bản');
+        expect(screen.text()).toContain(
+          'Hoàn thiện các mục trên trước khi xuất bản.',
+        );
+        await screen.click(
+          screen.button(
+            'Bổ sung',
+            screen.el.querySelectorAll<HTMLElement>('.course-review__check')[5],
+          ),
+        );
+        expect(exam()).toBeTruthy();
+      });
+
+      it('advises configuring one without blocking the publish', async () => {
+        await screen.open('/admin/courses/6/edit');
+        await step('Đối tượng & xuất bản');
+
+        expect(screen.text()).toContain(
+          'Đã cấu hình bài kiểm tra cuối khóa (khuyến nghị)',
+        );
+        expect(screen.text()).not.toContain(
+          'Bài kiểm tra cuối khóa đã xuất bản',
+        );
+      });
+
+      it('shows only "save first" in create mode', async () => {
+        await screen.open('/admin/courses/new');
+        await step('Bài thi & điều kiện');
+
+        expect(screen.text()).toContain('Lưu nháp trước để chọn bài kiểm tra');
+        expect(
+          screen.field('Bài kiểm tra dùng để xét hoàn thành'),
+        ).toBeUndefined();
+        expect(screen.callsTo(assessmentV1Endpoints.courseQuizList)).toBe(0);
+        expect(screen.text()).toContain(
+          'Đạt bài kiểm tra cuối khóa (chưa chọn)',
+        );
+      });
+    });
+
+    it('offers "Hủy" on step 1 and "Quay lại" after it, always with one primary button', async () => {
+      await screen.open('/admin/courses/6/edit');
+      expect(screen.button('Hủy')).toBeTruthy();
+      expect(screen.button('Quay lại')).toBeUndefined();
+      expect(screen.button('Lưu nháp')).toBeTruthy();
+      expect(primaries()).toEqual(['Tiếp tục']);
+
+      await screen.click(screen.button('Tiếp tục'));
+      await screen.click(screen.button('Tiếp tục'));
+      expect(screen.button('Hủy')).toBeUndefined();
+      expect(screen.button('Quay lại')).toBeTruthy();
+      expect(primaries()).toEqual(['Tiếp tục']);
+
+      await screen.click(screen.button('Tiếp tục'));
+      expect(primaries()).toEqual(['Xuất bản khóa học']);
+      expect(screen.button('Lưu nháp')).toBeTruthy();
+    });
+  });
+
+  describe('create mode', () => {
+    /** Fills the first step far enough for the form to be valid. */
+    async function fillBasics(code = 'WIZ-NEW-1') {
+      await screen.type(screen.field('Mã khóa học') as HTMLInputElement, code);
+      await screen.type(
+        screen.field('Tên khóa học') as HTMLInputElement,
+        'Khóa thử',
+      );
+      await screen.choose(
+        screen.field('Chương trình') as HTMLSelectElement,
+        '1',
+      );
+    }
+
+    async function addChapterWithLesson() {
+      await step('Nội dung khóa học');
+      await screen.click(screen.button('Thêm chương'));
+      await screen.click(screen.button('Thêm bài học'));
+      const drawer = screen.drawer()!;
+      await screen.type(
+        screen.field('Tên bài học', drawer) as HTMLInputElement,
+        'Bài đầu tiên',
+      );
+      await screen.click(screen.button('Văn bản / Markdown', drawer));
+      await screen.click(screen.button('Áp dụng', drawer));
+    }
+
+    it('opens an empty wizard without reading any course, quiz or kept upload', async () => {
+      const kept = vi.spyOn(TestBed.inject(KeptUploads), 'read');
+      await screen.open('/admin/courses/new');
+
+      expect(screen.text()).toContain('Tạo khóa học mới');
+      expect(screen.text()).toContain('Chưa lưu');
+      expect(screen.text()).toContain('Đơn vị sở hữu:');
+      expect(screen.text()).toContain(
+        'Duy nhất trong hệ thống, không đổi sau khi tạo.',
+      );
+      expect((screen.field('Mã khóa học') as HTMLInputElement).readOnly).toBe(
+        false,
+      );
+      expect(screen.button('Lưu nháp')).toBeTruthy();
+      expect(screen.callsTo(courseEndpoints.getCourse)).toBe(0);
+      expect(screen.callsTo(courseEndpoints.createCourse)).toBe(0);
+      expect(screen.callsTo(assessmentV1Endpoints.courseQuizList)).toBe(0);
+      expect(kept).not.toHaveBeenCalled();
+    });
+
+    it('does not create without a code, and says so on the field', async () => {
+      await screen.open('/admin/courses/new');
+      await screen.type(
+        screen.field('Tên khóa học') as HTMLInputElement,
+        'Khóa thử',
+      );
+      await screen.click(screen.button('Lưu nháp'));
+
+      expect(screen.callsTo(courseEndpoints.createCourse)).toBe(0);
+      expect(screen.text()).toContain('Nhập mã khóa học.');
+    });
+
+    it('creates the course with the whole tree in one call, then continues on its edit URL', async () => {
+      const navigate = vi.spyOn(TestBed.inject(Router), 'navigate');
+      await screen.open('/admin/courses/new');
+      await fillBasics();
+      await addChapterWithLesson();
+      await screen.click(screen.button('Lưu nháp'));
+
+      expect(screen.callsTo(courseEndpoints.createCourse)).toBe(1);
+      expect(screen.callsTo(courseEndpoints.saveDraft)).toBe(0);
+      const body = screen.lastCall(courseEndpoints.createCourse)
+        ?.body as CreateCourseCommand;
+      expect(body).toMatchObject({
+        code: 'WIZ-NEW-1',
+        draft: {
+          title: 'Khóa thử',
+          programId: 1,
+          chapters: [
+            { title: 'Chương 1', lessons: [{ title: 'Bài đầu tiên' }] },
+          ],
+        },
+      });
+      expect(body.ownerOrgId).toBeGreaterThan(0);
+      expect(navigate).toHaveBeenCalledWith(
+        ['/admin/courses', expect.any(Number), 'edit'],
+        { replaceUrl: true, queryParams: { step: 1 } },
+      );
+      await vi.waitFor(() =>
+        expect(screen.url()).toMatch(/^\/admin\/courses\/\d+\/edit\?step=1$/),
+      );
+      expect(screen.text()).toContain('Sửa khóa học');
+      expect(screen.text()).toContain('Bài đầu tiên');
+      expect(screen.text(document.body)).toContain('Đã lưu nháp');
+    });
+
+    it('opens the edit screen on the step named in the URL, and only once', async () => {
+      await screen.open('/admin/courses/6/edit?step=2');
+      expect(screen.text()).toContain('Điểm thưởng khi hoàn thành');
+
+      await step('Thông tin cơ bản');
+      expect(screen.field('Tên khóa học')).toBeTruthy();
+    });
+
+    it('asks before leaving with input, and not once the course is created', async () => {
+      await screen.open('/admin/courses/new');
+      const page = screen.page<CourseEditor>();
+      expect(page.hasUnsavedChanges()).toBe(false);
+
+      await fillBasics();
+      expect(page.hasUnsavedChanges()).toBe(true);
+
+      vi.spyOn(TestBed.inject(Router), 'navigate').mockResolvedValue(true);
+      await screen.click(screen.button('Lưu nháp'));
+      expect(screen.callsTo(courseEndpoints.createCourse)).toBe(1);
+      expect(page.hasUnsavedChanges()).toBe(false);
+    });
+
+    it('shows a taken code on the code field and goes back to the first step', async () => {
+      await screen.open('/admin/courses/new');
+      await fillBasics('VH-301');
+      await step('Nội dung khóa học');
+      await screen.click(screen.button('Lưu nháp'));
+
+      expect(screen.callsTo(courseEndpoints.createCourse)).toBe(1);
+      expect(screen.url()).toBe('/admin/courses/new');
+      expect(screen.field('Mã khóa học')).toBeTruthy();
+      expect(screen.text()).toContain('Mã khóa học đã tồn tại.');
+      expect(screen.text()).not.toContain('Dữ liệu đã tồn tại');
+
+      await screen.type(
+        screen.field('Mã khóa học') as HTMLInputElement,
+        'WIZ-NEW-2',
+      );
+      expect(screen.text()).not.toContain('Mã khóa học đã tồn tại.');
+    });
+
+    it('creates, then publishes the new revision with the version it came back with', async () => {
+      await screen.open('/admin/courses/new');
+      await fillBasics();
+      await addChapterWithLesson();
+      await step('Đối tượng & xuất bản');
+      await screen.click(screen.button('Xuất bản khóa học'));
+      await screen.click(screen.button('Xuất bản', screen.alertDialog()!));
+
+      expect(screen.callsTo(courseEndpoints.createCourse)).toBe(1);
+      expect(screen.lastCall(courseEndpoints.publish)?.body).toEqual({
+        expectedVersion: 1,
+      });
+      await vi.waitFor(() => expect(screen.url()).toBe('/admin/courses'));
+      expect(screen.text(document.body)).toContain('Đã xuất bản khóa học');
+    });
+
+    it('keeps the created course when publishing is refused, and moves on to its edit screen', async () => {
+      await screen.open('/admin/courses/new');
+      await fillBasics();
+      await addChapterWithLesson();
+      screen.calls.mockImplementation((endpoint, request) =>
+        endpoint === courseEndpoints.publish
+          ? backendRefusal('quizLessonUnlinked')
+          : (MockBackend.prototype.handle.call(
+              TestBed.inject(MockBackend),
+              endpoint,
+              request,
+            ) as FakeReply),
+      );
+      await step('Đối tượng & xuất bản');
+      await screen.click(screen.button('Xuất bản khóa học'));
+      await screen.click(screen.button('Xuất bản', screen.alertDialog()!));
+
+      await vi.waitFor(() =>
+        expect(screen.url()).toMatch(/^\/admin\/courses\/\d+\/edit\?step=3$/),
+      );
+      expect(screen.text(document.body)).toContain(
+        'Đã lưu nháp, chưa xuất bản',
+      );
+    });
+
+    it('says to save first instead of listing quizzes', async () => {
+      await screen.open('/admin/courses/new');
+      await step('Nội dung khóa học');
+      await screen.click(screen.button('Thêm chương'));
+      await screen.click(screen.button('Thêm bài học'));
+      const drawer = screen.drawer()!;
+      await screen.choose(
+        screen.field('Loại bài', drawer) as HTMLSelectElement,
+        'quiz',
+      );
+
+      expect(screen.text(drawer)).toContain(
+        'Lưu nháp trước để chọn bài kiểm tra',
+      );
+      expect(screen.field('Bài kiểm tra', drawer)).toBeUndefined();
+      expect(screen.callsTo(assessmentV1Endpoints.courseQuizList)).toBe(0);
+    });
   });
 });

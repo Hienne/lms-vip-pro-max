@@ -23,9 +23,11 @@ import {
   type GroupDetail,
   type LearningAsset,
   type ReplaceMembersCommand,
+  type PublishAssignment,
   type RevokeRecipientCommand,
   type SaveCatalogItemCommand,
   type SaveDraftCommand,
+  PublishCourseCommandSchema,
   ShareCourseCommandSchema,
   type TrainingField,
   type TrainingProgram,
@@ -34,7 +36,7 @@ import type { FakeReply, FakeRequest } from '../backend/fake-backend';
 import { envelopeOk } from '../envelope';
 import { AssetLibrary } from './asset.backend';
 import { LearnerStudy } from './learner-session.backend';
-import { LearningRefused, ok, refuse } from './learning-reply';
+import { LearningRefused, ok, refuse, refuseField } from './learning-reply';
 import { LearnerCertificates } from './learner-certificates';
 import { LearnerLeaderboard } from './learner-leaderboard';
 import { LearnerFeedback } from './learner-feedback';
@@ -76,6 +78,8 @@ export interface LearningDirectory {
     type: 'user' | 'team' | 'org',
     id: string | number,
   ): string | undefined;
+  /** The status of a quiz in the assessment service; `undefined` when it does not exist. */
+  quizStatus(quizId: number): string | undefined;
 }
 
 type Mutable<T> = { -readonly [K in keyof T]: T[K] };
@@ -537,10 +541,10 @@ export class LearningBackend {
         (c) => c.course.code.toLowerCase() === command.code.toLowerCase(),
       )
     ) {
-      refuse('stateConflict');
+      refuse('learningDuplicate');
     }
     const courseId = this.id();
-    const detail: CourseDetail = {
+    const empty: CourseDetail = {
       course: {
         id: courseId,
         code: command.code,
@@ -558,7 +562,15 @@ export class LearningBackend {
       objectives: [],
       chapters: [],
       completionRule: null,
+      finalQuizId: null,
     };
+    // The draft is written like a save: its title wins over `title`, and the tree is stored whole.
+    const detail = command.draft
+      ? this.writeDraft(empty, {
+          ...command.draft,
+          title: command.draft.title ?? command.title,
+        })
+      : empty;
     this.courses.push({
       course: { ...detail.course },
       published: null,
@@ -779,6 +791,16 @@ export class LearningBackend {
     const command = request.body as SaveDraftCommand;
     if (command.expectedVersion !== draft.revision.rowVersion)
       refuse('stateConflict');
+    record.draft = this.writeDraft(draft, command);
+    record.course.updateTime = now();
+    return ok(this.latest(record));
+  }
+
+  /** The draft revision with the command's fields and tree written, its version moved on by one. */
+  private writeDraft(
+    draft: CourseDetail,
+    command: Omit<SaveDraftCommand, 'expectedVersion'>,
+  ): CourseDetail {
     const revision = {
       ...draft.revision,
       programId: command.programId ?? null,
@@ -792,7 +814,7 @@ export class LearningBackend {
       updateTime: now(),
     };
     const saved = this.rebuild({ ...draft, revision }, command.chapters, false);
-    record.draft = {
+    return {
       ...saved,
       objectives: command.objectives.map((description, index) => ({
         id: this.id(),
@@ -812,14 +834,15 @@ export class LearningBackend {
         createTime: now(),
         updateTime: now(),
       },
+      finalQuizId: command.finalQuizId ?? null,
     };
-    record.course.updateTime = now();
-    return ok(this.latest(record));
   }
 
   private publish(request: FakeRequest): FakeReply {
     const { record, draft } = this.draftOf(request);
-    const { expectedVersion } = request.body as { expectedVersion: number };
+    const parsed = PublishCourseCommandSchema.safeParse(request.body);
+    if (!parsed.success) return refuse('validationFailed');
+    const { expectedVersion, assignments = [], shareOrgIds = [] } = parsed.data;
     if (expectedVersion !== draft.revision.rowVersion) refuse('stateConflict');
     if (
       !draft.revision.title ||
@@ -827,6 +850,19 @@ export class LearningBackend {
     ) {
       refuse('validationFailed');
     }
+    if (
+      draft.finalQuizId !== null &&
+      this.directory.quizStatus(draft.finalQuizId) !== 'PUBLISHED'
+    ) {
+      refuse('finalExamUnpublished');
+    }
+    // All or nothing: a refused row puts back everything the publish and the earlier rows changed.
+    const before = {
+      published: record.published,
+      course: { ...record.course },
+      assignments: [...this.assignments],
+      shares: [...this.shares],
+    };
     record.published = {
       ...draft,
       revision: {
@@ -843,7 +879,99 @@ export class LearningBackend {
       rowVersion: record.course.rowVersion + 1,
       updateTime: now(),
     });
+    try {
+      this.shareOnPublish(request, record, shareOrgIds);
+      this.assignOnPublish(request, record, draft, assignments);
+    } catch (error) {
+      record.published = before.published;
+      record.draft = draft;
+      Object.assign(record.course, before.course);
+      this.assignments = before.assignments;
+      this.shares = before.shares;
+      throw error;
+    }
     return ok(this.latest(record));
+  }
+
+  /** The units a publish shares with; one with an active share is left as it is. */
+  private shareOnPublish(
+    request: FakeRequest,
+    record: CourseRecord,
+    orgIds: readonly number[],
+  ): void {
+    orgIds.forEach((orgId, index) => {
+      if (
+        orgId === record.course.ownerOrgId ||
+        this.directory.nameOf('org', orgId) === undefined
+      ) {
+        refuseField(
+          `shareOrgIds[${index}]`,
+          'LEARNING-INVALID_REFERENCE',
+          'ID tham chiếu không tồn tại hoặc không đúng quan hệ.',
+        );
+      }
+      const active = this.shares.some(
+        (s) =>
+          s.courseId === record.course.id &&
+          s.orgId === orgId &&
+          s.status === 'active',
+      );
+      if (active) return;
+      this.share({
+        ...request,
+        params: { courseId: String(record.course.id) },
+        body: {
+          orgId,
+          includeDescendants: true,
+          canAssign: true,
+          canSelfEnroll: false,
+          active: true,
+        },
+      });
+    });
+  }
+
+  /** Each row becomes one assignment of the revision just published, by the owner unit. */
+  private assignOnPublish(
+    request: FakeRequest,
+    record: CourseRecord,
+    draft: CourseDetail,
+    rows: readonly PublishAssignment[],
+  ): void {
+    rows.forEach((row, index) => {
+      const field = `assignments[${index}]`;
+      if (row.dueAt && Date.parse(row.dueAt) <= Date.parse(row.startAt)) {
+        refuseField(
+          field,
+          'OUT_OF_RANGE',
+          'Hạn hoàn thành phải sau thời điểm mở học.',
+        );
+      }
+      if (this.resolve(row.target).length === 0) {
+        refuseField(
+          field,
+          'LEARNING-EMPTY_TARGET',
+          'Đối tượng giao không có học viên hợp lệ hoặc vượt giới hạn 500 người.',
+        );
+      }
+      const command: AssignCourseCommand = {
+        revisionId: draft.revision.id,
+        assigningOrgId: record.course.ownerOrgId,
+        startAt: row.startAt,
+        ...(row.dueAt ? { dueAt: row.dueAt } : {}),
+        requirement: draft.revision.defaultRequirement ?? 'optional',
+        enrollmentMode: 'continue',
+        reminderEnabled: row.reminderEnabled,
+        reminderDaysBefore: row.reminderDaysBefore,
+        idempotencyKey: `publish-${draft.revision.id}-${index}`,
+        targets: [row.target],
+      };
+      this.assignCourse({
+        ...request,
+        params: { courseId: String(record.course.id) },
+        body: command,
+      });
+    });
   }
 
   private changeState(request: FakeRequest): FakeReply {

@@ -1,7 +1,18 @@
 import { toUrl } from '../http/endpoint';
 import { courseEndpoints } from './course.endpoints';
 import {
+  capturedCourseCreate,
+  capturedCourseFinalExam,
+  capturedPublishTargets,
+} from './course.captured';
+import {
+  PublishCourseCommandSchema,
+  publishRowOf,
+} from './course-publish.schema';
+import { EnvelopeSchema } from '../http/envelope';
+import {
   CourseCardSchema,
+  CreateCourseCommandSchema,
   CourseDetailSchema,
   CourseLessonSchema,
   CourseShareSchema,
@@ -384,5 +395,117 @@ describe('video chapters and transcript', () => {
         lesson([{ ...input, videoChapters: tooMany }]),
       ).success,
     ).toBe(false);
+  });
+});
+
+describe('a create with a draft captured from the local backend', () => {
+  it('accepts the command that was sent', () => {
+    const command = CreateCourseCommandSchema.parse(
+      capturedCourseCreate.command,
+    );
+    expect(command.draft?.chapters).toHaveLength(2);
+    expect(command.draft?.rewardPoints).toBe(20);
+  });
+
+  it('still accepts a create without a draft', () => {
+    const { draft: _draft, ...bare } = capturedCourseCreate.command;
+    expect(CreateCourseCommandSchema.safeParse(bare).success).toBe(true);
+  });
+
+  it('parses the detail the server answered with, tree included', () => {
+    const detail = CourseDetailSchema.parse(capturedCourseCreate.response);
+    expect(detail.revision.rowVersion).toBe(1);
+    expect(detail.chapters.map((c) => c.chapter.title)).toEqual([
+      'Chương 1',
+      'Chương 2',
+    ]);
+    expect(detail.objectives).toHaveLength(2);
+    expect(detail.completionRule?.rewardPoints).toBe(20);
+  });
+});
+
+describe('a course with a final exam captured from the local backend', () => {
+  it('parses the detail with its final quiz', () => {
+    const detail = CourseDetailSchema.parse(capturedCourseFinalExam);
+    expect(detail.finalQuizId).toBe(6);
+    expect(detail.revision.state).toBe('published');
+  });
+
+  it('reads a detail without the field as having no final exam', () => {
+    const { finalQuizId: _finalQuizId, ...old } = capturedCourseFinalExam;
+    expect(CourseDetailSchema.parse(old).finalQuizId).toBeNull();
+    expect(
+      CourseDetailSchema.parse({ ...old, finalQuizId: null }).finalQuizId,
+    ).toBeNull();
+  });
+
+  it('accepts a save that names the final quiz, and a save that leaves it out', () => {
+    const save = {
+      expectedVersion: 3,
+      defaultRequirement: 'optional',
+      objectives: [],
+      chapters: [],
+    };
+    expect(
+      SaveDraftCommandSchema.parse({ ...save, finalQuizId: 6 }).finalQuizId,
+    ).toBe(6);
+    expect(SaveDraftCommandSchema.parse(save).finalQuizId).toBeUndefined();
+    expect(
+      SaveDraftCommandSchema.safeParse({ ...save, finalQuizId: 0 }).success,
+    ).toBe(false);
+  });
+});
+
+describe('a publish with assignments and shares', () => {
+  it('accepts the version alone, as before', () => {
+    expect(
+      PublishCourseCommandSchema.safeParse({ expectedVersion: 3 }).success,
+    ).toBe(true);
+  });
+
+  it('accepts the body that was sent to the local backend', () => {
+    const command = PublishCourseCommandSchema.parse(
+      capturedPublishTargets.command,
+    );
+    expect(command.assignments).toHaveLength(2);
+    expect(command.assignments?.[1].dueAt).toBeUndefined();
+    expect(command.shareOrgIds).toEqual([1]);
+  });
+
+  it('refuses more than 20 rows, more than 50 shares and a reminder over 365 days', () => {
+    const row = capturedPublishTargets.command.assignments[0];
+    const publish = (extra: object) =>
+      PublishCourseCommandSchema.safeParse({ expectedVersion: 0, ...extra })
+        .success;
+    expect(publish({ assignments: Array(20).fill(row) })).toBe(true);
+    expect(publish({ assignments: Array(21).fill(row) })).toBe(false);
+    expect(publish({ shareOrgIds: Array(51).fill(1) })).toBe(false);
+    expect(
+      publish({ assignments: [{ ...row, reminderDaysBefore: 366 }] }),
+    ).toBe(false);
+  });
+
+  it('reads each observed refusal with the row it names', () => {
+    const rows = [
+      capturedPublishTargets.emptyTargetRefusal,
+      capturedPublishTargets.shareRefusal,
+      capturedPublishTargets.dueBeforeStartRefusal,
+    ].map((body) => {
+      const envelope = EnvelopeSchema.parse(body);
+      return publishRowOf(envelope.errors?.[0].field ?? '');
+    });
+    expect(rows).toEqual([
+      { kind: 'assignments', index: 1 },
+      { kind: 'shareOrgIds', index: 0 },
+      { kind: 'assignments', index: 0 },
+    ]);
+  });
+
+  it('knows no row for another field', () => {
+    expect(publishRowOf('assignments[0].target')).toEqual({
+      kind: 'assignments',
+      index: 0,
+    });
+    expect(publishRowOf('expectedVersion')).toBeUndefined();
   });
 });

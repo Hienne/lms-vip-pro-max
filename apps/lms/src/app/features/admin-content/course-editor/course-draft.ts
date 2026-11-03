@@ -6,8 +6,10 @@ import type {
   CompletionMode,
   CourseDetail,
   CourseLevel,
+  CreateCourseCommand,
   LessonDetail,
   LessonType,
+  QuizSummary,
   Requirement,
   SaveDraftCommand,
   TranscriptLine,
@@ -18,6 +20,9 @@ import type { IconName } from '@lms/ui';
 // The course editor's form model and its adapters. The backend saves the whole tree at once and
 // issues new ids on every save, so the editor keys rows with its own `key`, and every save is
 // followed by a fresh read that becomes the new model.
+
+/** A draft as a command carries it: a save without its version. */
+type DraftContent = Omit<SaveDraftCommand, 'expectedVersion'>;
 
 export interface AssetValue {
   readonly assetId: number;
@@ -68,6 +73,8 @@ export interface ChapterValue {
 }
 
 export interface CourseDraftValue {
+  /** The course code: typed when the course is created, shown read-only afterwards. */
+  readonly code: string;
   readonly title: string;
   readonly summary: string;
   /** Select values: an id, or '' for none. */
@@ -78,6 +85,8 @@ export interface CourseDraftValue {
   readonly coverIcon: string;
   readonly objectives: readonly string[];
   readonly rewardPoints: number;
+  /** The `FINAL_EXAM` quiz that completion requires, as a select value: an id, or '' for none. */
+  readonly finalQuizId: string;
   readonly chapters: readonly ChapterValue[];
 }
 
@@ -197,9 +206,28 @@ function toLessonValue({ lesson, blocks }: LessonDetail): LessonValue {
   };
 }
 
+/** The form's value for a course that is not stored yet. */
+export function emptyDraftValue(): CourseDraftValue {
+  return {
+    code: '',
+    title: '',
+    summary: '',
+    programId: '',
+    moduleId: '',
+    level: '',
+    defaultRequirement: 'mandatory',
+    coverIcon: '',
+    objectives: [],
+    rewardPoints: 0,
+    finalQuizId: '',
+    chapters: [],
+  };
+}
+
 export function toDraftValue(detail: CourseDetail): CourseDraftValue {
   const { revision } = detail;
   return {
+    code: detail.course.code,
     title: revision.title ?? '',
     summary: revision.summary ?? '',
     programId: revision.programId ? String(revision.programId) : '',
@@ -209,6 +237,7 @@ export function toDraftValue(detail: CourseDetail): CourseDraftValue {
     coverIcon: revision.coverIcon ?? '',
     objectives: detail.objectives.map((o) => o.description),
     rewardPoints: detail.completionRule?.rewardPoints ?? 0,
+    finalQuizId: detail.finalQuizId ? String(detail.finalQuizId) : '',
     chapters: detail.chapters.map(({ chapter, lessons }) => ({
       key: newKey(),
       title: chapter.title,
@@ -267,15 +296,12 @@ const idOf = (value: string): number | undefined => {
   return Number.isInteger(id) && id > 0 ? id : undefined;
 };
 
-/** The whole tree as the save command spells it; empty optional fields are left out. */
-export function toSaveDraftCommand(
-  value: CourseDraftValue,
-  expectedVersion: number,
-): SaveDraftCommand {
+/** The draft as both the save and the create command spell it; empty optional fields are left out. */
+function toDraftContent(value: CourseDraftValue): DraftContent {
   const programId = idOf(value.programId);
   const moduleId = idOf(value.moduleId);
+  const finalQuizId = idOf(value.finalQuizId);
   return {
-    expectedVersion,
     ...(programId ? { programId } : {}),
     ...(moduleId ? { moduleId } : {}),
     ...(value.title.trim() ? { title: value.title.trim() } : {}),
@@ -285,6 +311,7 @@ export function toSaveDraftCommand(
     ...(value.coverIcon ? { coverIcon: value.coverIcon } : {}),
     objectives: value.objectives.map((o) => o.trim()).filter(Boolean),
     rewardPoints: Math.max(0, Math.round(value.rewardPoints || 0)),
+    ...(finalQuizId ? { finalQuizId } : {}),
     chapters: value.chapters.map((chapter) => ({
       title: chapter.title.trim(),
       lessons: chapter.lessons.map((lesson) => ({
@@ -300,6 +327,23 @@ export function toSaveDraftCommand(
       })),
     })),
   };
+}
+
+/** The whole tree as the save command spells it. */
+export function toSaveDraftCommand(
+  value: CourseDraftValue,
+  expectedVersion: number,
+): SaveDraftCommand {
+  return { expectedVersion, ...toDraftContent(value) };
+}
+
+/** The create command: the course's code and owner, and the whole draft in the same call. */
+export function toCreateCourseCommand(
+  value: CourseDraftValue,
+  code: string,
+  ownerOrgId: number,
+): CreateCourseCommand {
+  return { ownerOrgId, code: code.trim(), draft: toDraftContent(value) };
 }
 
 // ---- derived facts ---------------------------------------------------------------------------
@@ -329,8 +373,13 @@ export interface DraftCheck {
 }
 
 /** The mockup's "Kiểm tra trước khi xuất bản"; the server still checks on publish. */
-export function draftChecks(value: CourseDraftValue): readonly DraftCheck[] {
+export function draftChecks(
+  value: CourseDraftValue,
+  quizzes: readonly Pick<QuizSummary, 'id' | 'status'>[] = [],
+): readonly DraftCheck[] {
   const lessons = value.chapters.flatMap((c) => c.lessons);
+  const finalQuizId = idOf(value.finalQuizId);
+  const finalQuiz = quizzes.find((q) => q.id === finalQuizId);
   return [
     {
       label: 'Có tên khóa học và chương trình',
@@ -349,6 +398,21 @@ export function draftChecks(value: CourseDraftValue): readonly DraftCheck[] {
       step: 0,
       optional: true,
     },
+    {
+      label: 'Đã cấu hình bài kiểm tra cuối khóa (khuyến nghị)',
+      ok: !!finalQuizId,
+      step: 2,
+      optional: true,
+    },
+    ...(finalQuizId
+      ? [
+          {
+            label: 'Bài kiểm tra cuối khóa đã xuất bản',
+            ok: finalQuiz?.status === 'PUBLISHED',
+            step: 2,
+          },
+        ]
+      : []),
   ];
 }
 

@@ -1,0 +1,86 @@
+<section uiCard>
+  <div uiCardBody class="stack">
+    <h2 class="assign-rows__title">Giao khóa học</h2>
+    @if (store.assignmentCount$(); as count) {
+    <p class="assign-rows__previous">
+      Đã giao trước đó: {{ count }} đợt — quản lý tại
+      <a uiLinkButton routerLink="/admin/assignments">Giao học &amp; hạn</a>
+    </p>
+    } @if (store.canAddRow$()) {
+    <app-target-picker
+      addLabel="Thêm đối tượng"
+      (added)="store.addPublishRow($event)"
+    />
+    } @else {
+    <p class="assign-rows__previous">
+      Đã đủ số đối tượng của một lần xuất bản. Giao thêm ở Giao học &amp; hạn
+      sau khi xuất bản.
+    </p>
+    } @if (store.rowViews$().length) {
+    <ul class="assign-rows__list" aria-label="Đối tượng được giao">
+      @for (view of store.rowViews$(); track view.row.id; let index = $index) {
+      <li class="assign-rows__row">
+        <div class="assign-rows__target">
+          <span class="assign-rows__name" [title]="view.row.pick.label"
+            >{{ view.row.pick.label }}</span
+          >
+          <span class="assign-rows__type"
+            >{{ typeLabel[view.row.pick.targetType] }}</span
+          >
+        </div>
+        <ui-field label="Bắt đầu">
+          <input
+            uiInput
+            type="date"
+            [value]="view.row.startDate"
+            [attr.aria-label]="'Bắt đầu, ' + view.row.pick.label"
+            [attr.aria-describedby]="view.message ? 'assign-row-' + view.row.id : null"
+            (input)="setStart(view.row.id, $event)"
+          />
+        </ui-field>
+        <ui-field label="Hạn hoàn thành">
+          <input
+            uiInput
+            type="date"
+            [value]="view.row.dueDate"
+            [attr.aria-label]="'Hạn hoàn thành, ' + view.row.pick.label"
+            (input)="setDue(view.row.id, $event)"
+          />
+        </ui-field>
+        <button
+          uiIconButton
+          type="button"
+          size="sm"
+          [label]="'Xóa dòng ' + (index + 1) + ': ' + view.row.pick.label"
+          (click)="store.removePublishRow(view.row.id)"
+        >
+          <ui-icon name="trash-2" size="sm" />
+        </button>
+        @if (view.message) {
+        <p
+          class="assign-rows__message"
+          [id]="'assign-row-' + view.row.id"
+          role="alert"
+        >
+          {{ view.message }}
+        </p>
+        }
+      </li>
+      }
+    </ul>
+    } @else {
+    <p class="assign-rows__empty">
+      Chưa thêm đối tượng. Có thể giao sau khi xuất bản.
+    </p>
+    }
+    <label class="assign-rows__toggle">
+      <input
+        type="checkbox"
+        uiSwitch
+        [checked]="store.reminderEnabled$()"
+        (change)="setReminder($event)"
+      />
+      Tự động nhắc học viên trước hạn {{ remindDays }} ngày
+    </label>
+  </div>
+</section>

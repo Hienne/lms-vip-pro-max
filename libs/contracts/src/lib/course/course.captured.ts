@@ -1,0 +1,450 @@
+/**
+ * A create with a draft captured from the local backend on 2026-11-03 (signed in as `quantri`,
+ * `POST /api/v1/courses` with the course code `WIZ-APP-01`): `command` is the body sent (two
+ * chapters, a text block and a process block, two objectives, 20 reward points) and `response` the
+ * `CourseDetail` the server answered with, its tree already written at revision version 1. They
+ * prove the create schema accepts the draft and the detail schema parses what the server really
+ * sends. Recapture it from the local stack (`docs/conventions/workspace.md`, "Run against a local
+ * backend") when the create or draft shape changes.
+ */
+export const capturedCourseCreate = {
+  command: {
+    ownerOrgId: 1,
+    code: 'WIZ-APP-01',
+    draft: {
+      programId: 1,
+      title: 'Khóa thử từ ứng dụng',
+      summary: 'Tạo cùng bản nháp trong một lần lưu.',
+      level: 'basic',
+      defaultRequirement: 'mandatory',
+      objectives: ['Hiểu luồng giao dịch', 'Biết đối soát cuối ngày'],
+      rewardPoints: 20,
+      chapters: [
+        {
+          title: 'Chương 1',
+          lessons: [
+            {
+              title: 'Bài 1',
+              lessonType: 'content',
+              estimatedDurationSeconds: 600,
+              isRequired: true,
+              blocks: [
+                {
+                  blockType: 'text',
+                  title: 'Giới thiệu',
+                  body: 'Nội dung **mở đầu**.',
+                  bodyFormat: 'markdown',
+                  completionMode: 'manual',
+                  isRequired: true,
+                  assets: [],
+                  steps: [],
+                },
+              ],
+            },
+          ],
+        },
+        {
+          title: 'Chương 2',
+          lessons: [
+            {
+              title: 'Bài 2',
+              lessonType: 'content',
+              estimatedDurationSeconds: 300,
+              isRequired: true,
+              blocks: [
+                {
+                  blockType: 'process',
+                  title: 'Các bước',
+                  completionMode: 'manual',
+                  isRequired: true,
+                  assets: [],
+                  steps: [
+                    { title: 'Mở màn hình', description: 'Chọn mục đối soát' },
+                    { title: 'Xác nhận' },
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    },
+  },
+  response: {
+    course: {
+      id: 17,
+      code: 'WIZ-APP-01',
+      ownerOrgId: 1,
+      ownerTeamId: null,
+      ownerUserId: '000002',
+      publishedRevisionId: null,
+      lifecycleStatus: 'active',
+      copiedFromCourseId: null,
+      rowVersion: 0,
+      createTime: '2026-11-03T06:52:39.734872Z',
+      updateTime: '2026-11-03T06:52:39.747424Z',
+    },
+    revision: {
+      id: 19,
+      courseId: 17,
+      revisionNo: 1,
+      state: 'draft',
+      basedOnRevisionId: null,
+      programId: 1,
+      moduleId: null,
+      title: 'Khóa thử từ ứng dụng',
+      summary: 'Tạo cùng bản nháp trong một lần lưu.',
+      level: 'basic',
+      defaultRequirement: 'mandatory',
+      coverAssetId: null,
+      coverIcon: null,
+      coverColor: null,
+      publishedAt: null,
+      publishedBy: null,
+      rowVersion: 1,
+      createTime: '2026-11-03T06:52:39.734872Z',
+      updateTime: '2026-11-03T06:52:39.780430Z',
+    },
+    objectives: [
+      {
+        id: 22,
+        revisionId: 19,
+        description: 'Hiểu luồng giao dịch',
+        sortNo: 0,
+        rowVersion: 0,
+        createTime: '2026-11-03T06:52:39.734872Z',
+        updateTime: '2026-11-03T06:52:39.766972Z',
+      },
+      {
+        id: 23,
+        revisionId: 19,
+        description: 'Biết đối soát cuối ngày',
+        sortNo: 1,
+        rowVersion: 0,
+        createTime: '2026-11-03T06:52:39.734872Z',
+        updateTime: '2026-11-03T06:52:39.767965Z',
+      },
+    ],
+    chapters: [
+      {
+        chapter: {
+          id: 27,
+          revisionId: 19,
+          title: 'Chương 1',
+          sortNo: 0,
+          sourceChapterId: null,
+          rowVersion: 0,
+          createTime: '2026-11-03T06:52:39.734872Z',
+          updateTime: '2026-11-03T06:52:39.769156Z',
+        },
+        lessons: [
+          {
+            lesson: {
+              id: 40,
+              chapterId: 27,
+              title: 'Bài 1',
+              lessonType: 'content',
+              estimatedDurationSeconds: 600,
+              isRequired: true,
+              sortNo: 0,
+              sourceLessonId: null,
+              quizId: null,
+              rowVersion: 0,
+              createTime: '2026-11-03T06:52:39.734872Z',
+              updateTime: '2026-11-03T06:52:39.770174Z',
+            },
+            blocks: [
+              {
+                block: {
+                  id: 42,
+                  lessonId: 40,
+                  blockType: 'text',
+                  title: 'Giới thiệu',
+                  body: 'Nội dung **mở đầu**.',
+                  bodyFormat: 'markdown',
+                  completionMode: 'manual',
+                  completionThreshold: null,
+                  isRequired: true,
+                  sortNo: 0,
+                  sourceBlockId: null,
+                  mediaAssetId: null,
+                  videoChapters: [],
+                  transcript: [],
+                  rowVersion: 0,
+                  createTime: '2026-11-03T06:52:39.734872Z',
+                  updateTime: '2026-11-03T06:52:39.771951Z',
+                },
+                assets: [],
+                steps: [],
+              },
+            ],
+          },
+        ],
+      },
+      {
+        chapter: {
+          id: 28,
+          revisionId: 19,
+          title: 'Chương 2',
+          sortNo: 1,
+          sourceChapterId: null,
+          rowVersion: 0,
+          createTime: '2026-11-03T06:52:39.734872Z',
+          updateTime: '2026-11-03T06:52:39.773133Z',
+        },
+        lessons: [
+          {
+            lesson: {
+              id: 41,
+              chapterId: 28,
+              title: 'Bài 2',
+              lessonType: 'content',
+              estimatedDurationSeconds: 300,
+              isRequired: true,
+              sortNo: 0,
+              sourceLessonId: null,
+              quizId: null,
+              rowVersion: 0,
+              createTime: '2026-11-03T06:52:39.734872Z',
+              updateTime: '2026-11-03T06:52:39.773877Z',
+            },
+            blocks: [
+              {
+                block: {
+                  id: 43,
+                  lessonId: 41,
+                  blockType: 'process',
+                  title: 'Các bước',
+                  body: null,
+                  bodyFormat: null,
+                  completionMode: 'manual',
+                  completionThreshold: null,
+                  isRequired: true,
+                  sortNo: 0,
+                  sourceBlockId: null,
+                  mediaAssetId: null,
+                  videoChapters: [],
+                  transcript: [],
+                  rowVersion: 0,
+                  createTime: '2026-11-03T06:52:39.734872Z',
+                  updateTime: '2026-11-03T06:52:39.774533Z',
+                },
+                assets: [],
+                steps: [
+                  {
+                    id: 46,
+                    blockId: 43,
+                    title: 'Mở màn hình',
+                    description: 'Chọn mục đối soát',
+                    sortNo: 0,
+                    rowVersion: 0,
+                    createTime: '2026-11-03T06:52:39.734872Z',
+                    updateTime: '2026-11-03T06:52:39.775186Z',
+                  },
+                  {
+                    id: 47,
+                    blockId: 43,
+                    title: 'Xác nhận',
+                    description: null,
+                    sortNo: 1,
+                    rowVersion: 0,
+                    createTime: '2026-11-03T06:52:39.734872Z',
+                    updateTime: '2026-11-03T06:52:39.776397Z',
+                  },
+                ],
+              },
+            ],
+          },
+        ],
+      },
+    ],
+    completionRule: {
+      id: 19,
+      revisionId: 19,
+      requireAllRequiredLessons: true,
+      requireAllRequiredQuizzes: true,
+      rewardPoints: 20,
+      rowVersion: 1,
+      createTime: '2026-11-03T06:52:39.734872Z',
+      updateTime: '2026-11-03T06:52:39.780454Z',
+    },
+  },
+};
+
+/**
+ * The detail of a published course that has a final exam, captured from the local backend on
+ * 2026-11-03 (signed in as `quantri`, `GET /api/v1/courses/19`, the course `WIZ-FE-01`): the
+ * revision was saved with `finalQuizId` 6, a `FINAL_EXAM` quiz, and published once the quiz was.
+ * It proves the detail schema parses the field the server sends. Recapture it from the local stack
+ * when the detail shape changes.
+ */
+export const capturedCourseFinalExam = {
+  course: {
+    id: 19,
+    code: 'WIZ-FE-01',
+    ownerOrgId: 1,
+    ownerTeamId: null,
+    ownerUserId: '000002',
+    publishedRevisionId: 21,
+    lifecycleStatus: 'active',
+    copiedFromCourseId: null,
+    rowVersion: 1,
+    createTime: '2026-11-03T08:24:15.300292Z',
+    updateTime: '2026-11-03T08:24:36.670983Z',
+  },
+  revision: {
+    id: 21,
+    courseId: 19,
+    revisionNo: 1,
+    state: 'published',
+    basedOnRevisionId: null,
+    programId: 5,
+    moduleId: 7,
+    title: 'Khóa thử bài thi cuối',
+    summary: null,
+    level: 'basic',
+    defaultRequirement: 'optional',
+    coverAssetId: null,
+    coverIcon: null,
+    coverColor: null,
+    publishedAt: '2026-11-03T08:24:36.669862Z',
+    publishedBy: '000002',
+    rowVersion: 3,
+    createTime: '2026-11-03T08:24:15.300292Z',
+    updateTime: '2026-11-03T08:24:36.671029Z',
+  },
+  objectives: [
+    {
+      id: 25,
+      revisionId: 21,
+      description: 'Đạt bài thi cuối khóa',
+      sortNo: 0,
+      rowVersion: 0,
+      createTime: '2026-11-03T08:24:36.350602Z',
+      updateTime: '2026-11-03T08:24:36.369244Z',
+    },
+  ],
+  chapters: [
+    {
+      chapter: {
+        id: 32,
+        revisionId: 21,
+        title: 'Chương 1',
+        sortNo: 0,
+        sourceChapterId: null,
+        rowVersion: 0,
+        createTime: '2026-11-03T08:24:36.350602Z',
+        updateTime: '2026-11-03T08:24:36.370332Z',
+      },
+      lessons: [
+        {
+          lesson: {
+            id: 44,
+            chapterId: 32,
+            title: 'Bài 1',
+            lessonType: 'content',
+            estimatedDurationSeconds: 300,
+            isRequired: true,
+            sortNo: 0,
+            sourceLessonId: null,
+            quizId: null,
+            rowVersion: 0,
+            createTime: '2026-11-03T08:24:36.350602Z',
+            updateTime: '2026-11-03T08:24:36.371417Z',
+          },
+          blocks: [
+            {
+              block: {
+                id: 46,
+                lessonId: 44,
+                blockType: 'text',
+                title: 'Nội dung',
+                body: 'Bài đọc ngắn.',
+                bodyFormat: 'markdown',
+                completionMode: 'manual',
+                completionThreshold: null,
+                isRequired: true,
+                sortNo: 0,
+                sourceBlockId: null,
+                mediaAssetId: null,
+                videoChapters: [],
+                transcript: [],
+                rowVersion: 0,
+                createTime: '2026-11-03T08:24:36.350602Z',
+                updateTime: '2026-11-03T08:24:36.372392Z',
+              },
+              assets: [],
+              steps: [],
+            },
+          ],
+        },
+      ],
+    },
+  ],
+  completionRule: {
+    id: 21,
+    revisionId: 21,
+    requireAllRequiredLessons: true,
+    requireAllRequiredQuizzes: true,
+    rewardPoints: 20,
+    rowVersion: 1,
+    createTime: '2026-11-03T08:24:15.300292Z',
+    updateTime: '2026-11-03T08:24:15.403740Z',
+  },
+  finalQuizId: 6,
+};
+
+const refusal = (field: string, code: string, message: string) => ({
+  responseId: 'a5c1d0f2-3b7e-4c1a-9a55-0f3f6d2b7e10',
+  timestamp: '2026-11-03T10:12:41.503117Z',
+  status: 'ERROR',
+  messageCode: 'CORE-VALIDATION_FAILED',
+  message: 'Dữ liệu đầu vào không hợp lệ.',
+  messageTitle: 'Thông tin chưa hợp lệ',
+  data: null,
+  errors: [{ field, code, message }],
+});
+
+/**
+ * The refusals of a publish with assignment rows and shares, observed on the local backend on
+ * 2026-11-03 (`quantri`, a draft of course 19). Each is HTTP 200 with a `CORE-VALIDATION_FAILED`
+ * envelope whose single `errors` entry names the failing row; nothing was published, assigned or
+ * shared. `command` is a body the schema accepts (a row for one learner, no share). Recapture them
+ * from the local stack when the publish rules change.
+ */
+export const capturedPublishTargets = {
+  command: {
+    expectedVersion: 3,
+    assignments: [
+      {
+        startAt: '2026-11-04T00:00:00+07:00',
+        dueAt: '2026-12-04T00:00:00+07:00',
+        reminderEnabled: true,
+        reminderDaysBefore: 3,
+        target: { targetType: 'user', userId: '000004' },
+      },
+      {
+        startAt: '2026-11-04T00:00:00+07:00',
+        reminderEnabled: false,
+        reminderDaysBefore: 0,
+        target: { targetType: 'team', teamId: 2 },
+      },
+    ],
+    shareOrgIds: [1],
+  },
+  emptyTargetRefusal: refusal(
+    'assignments[1]',
+    'LEARNING-EMPTY_TARGET',
+    'Đối tượng giao không có học viên hợp lệ hoặc vượt giới hạn 500 người.',
+  ),
+  shareRefusal: refusal(
+    'shareOrgIds[0]',
+    'LEARNING-INVALID_REFERENCE',
+    'ID tham chiếu không tồn tại hoặc không đúng quan hệ.',
+  ),
+  dueBeforeStartRefusal: refusal(
+    'assignments[0]',
+    'OUT_OF_RANGE',
+    'Hạn hoàn thành phải sau thời điểm mở học.',
+  ),
+} as const;

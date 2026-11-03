@@ -1,3 +1,5 @@
+import type { FieldError } from '@lms/contracts';
+
 /**
  * The backend answered, on purpose, with an `ERROR` envelope. Not a transport failure and not a
  * contract bug: it carries the backend's own code, title and message for the user. The envelope
@@ -13,6 +15,8 @@ export class ApiError extends Error {
     readonly httpStatus = 200,
     /** The call's `responseId` (the `X-Request-Id` we sent); quote it to support. */
     readonly responseId?: string,
+    /** The envelope's per-field details, empty when it sent none. */
+    readonly fieldErrors: readonly FieldError[] = [],
   ) {
     super(serverMessage ?? title ?? messageCode);
     this.name = 'ApiError';

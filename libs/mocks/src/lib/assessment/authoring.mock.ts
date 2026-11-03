@@ -73,6 +73,11 @@ export class AssessmentAuthoringMock {
     private readonly programMode = false,
   ) {}
   private nextId = 1000;
+
+  /** The status of a quiz, for the learning service's publish check; `undefined` when it is gone. */
+  quizStatus(quizId: number): string | undefined {
+    return this.quizzes.find((q) => q.quiz.id === quizId)?.quiz.status;
+  }
   private questions: (QuestionDetailV1 & { programId: number })[] = [
     1, 2, 5,
   ].flatMap((courseId) =>

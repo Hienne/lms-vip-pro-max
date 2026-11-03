@@ -1,9 +1,12 @@
+import { CreateCourseCommandSchema } from '@lms/contracts';
 import { courseDetailFixtures } from '@lms/mocks';
 import {
   draftChecks,
+  emptyDraftValue,
   lessonProblem,
   newBlock,
   newLesson,
+  toCreateCourseCommand,
   toDraftValue,
   toSaveDraftCommand,
   type LessonValue,
@@ -180,9 +183,110 @@ describe('course draft', () => {
     expect(checks.filter((c) => !c.ok).map((c) => c.label)).toEqual([
       'Có ít nhất 1 bài học',
       'Có mục tiêu đầu ra (khuyến nghị)',
+      'Đã cấu hình bài kiểm tra cuối khóa (khuyến nghị)',
     ]);
     expect(checks.find((c) => c.label.includes('mục tiêu'))?.optional).toBe(
       true,
     );
+  });
+
+  describe('the final exam', () => {
+    it('round-trips the final quiz as a select value, left out when empty', () => {
+      const value = toDraftValue({ ...eod, finalQuizId: 2 });
+      expect(value.finalQuizId).toBe('2');
+      expect(toSaveDraftCommand(value, 1).finalQuizId).toBe(2);
+      expect(toCreateCourseCommand(value, 'X', 1).draft?.finalQuizId).toBe(2);
+
+      const none = toDraftValue({ ...eod, finalQuizId: null });
+      expect(none.finalQuizId).toBe('');
+      expect(toSaveDraftCommand(none, 1)).not.toHaveProperty('finalQuizId');
+      expect(toCreateCourseCommand(none, 'X', 1).draft).not.toHaveProperty(
+        'finalQuizId',
+      );
+      expect(emptyDraftValue().finalQuizId).toBe('');
+    });
+
+    it('advises configuring one, and requires it to be published once chosen', () => {
+      const base = { ...toDraftValue(eod), objectives: ['Mục tiêu'] };
+      const find = (checks: ReturnType<typeof draftChecks>, text: string) =>
+        checks.find((c) => c.label.includes(text));
+
+      const none = draftChecks(base);
+      expect(find(none, 'Đã cấu hình bài kiểm tra cuối khóa')).toMatchObject({
+        ok: false,
+        optional: true,
+        step: 2,
+      });
+      expect(find(none, 'đã xuất bản')).toBeUndefined();
+
+      const chosen = { ...base, finalQuizId: '2' };
+      const draft = draftChecks(chosen, [{ id: 2, status: 'DRAFT' }]);
+      expect(find(draft, 'Đã cấu hình bài kiểm tra cuối khóa')?.ok).toBe(true);
+      expect(find(draft, 'Bài kiểm tra cuối khóa đã xuất bản')).toMatchObject({
+        ok: false,
+        step: 2,
+      });
+      expect(find(draft, 'Bài kiểm tra cuối khóa đã xuất bản')?.optional).toBe(
+        undefined,
+      );
+
+      const published = draftChecks(chosen, [{ id: 2, status: 'PUBLISHED' }]);
+      expect(find(published, 'Bài kiểm tra cuối khóa đã xuất bản')?.ok).toBe(
+        true,
+      );
+    });
+  });
+
+  describe('a course that is not stored yet', () => {
+    it('starts empty, as a mandatory course', () => {
+      const value = emptyDraftValue();
+
+      expect(value).toMatchObject({
+        title: '',
+        programId: '',
+        level: '',
+        defaultRequirement: 'mandatory',
+        rewardPoints: 0,
+        chapters: [],
+        objectives: [],
+      });
+      expect(emptyDraftValue()).not.toBe(value);
+    });
+
+    it('builds the create command with the code, the owner and the whole draft', () => {
+      const value = toDraftValue(eod);
+      const command = toCreateCourseCommand(value, '  WIZ-1 ', 4);
+
+      expect(CreateCourseCommandSchema.safeParse(command).success).toBe(true);
+      expect(command.ownerOrgId).toBe(4);
+      expect(command.code).toBe('WIZ-1');
+      expect(command.draft).toEqual(
+        expect.objectContaining({
+          title: value.title,
+          objectives: eod.objectives.map((o) => o.description),
+        }),
+      );
+    });
+
+    it('spells the tree the way a save does', () => {
+      const value = toDraftValue(eod);
+      const { expectedVersion: _version, ...saved } = toSaveDraftCommand(
+        value,
+        0,
+      );
+
+      expect(toCreateCourseCommand(value, 'X', 1).draft).toEqual(saved);
+    });
+
+    it('sends an empty draft as just the required fields', () => {
+      const { draft } = toCreateCourseCommand(emptyDraftValue(), 'X', 1);
+
+      expect(draft).toEqual({
+        defaultRequirement: 'mandatory',
+        objectives: [],
+        rewardPoints: 0,
+        chapters: [],
+      });
+    });
   });
 });

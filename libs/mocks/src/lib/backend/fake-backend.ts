@@ -249,6 +249,7 @@ export class FakeBackend {
       this.users
         .filter((u) => u.status === 'active')
         .map((u) => ({ userId: u.userId, orgId: u.orgId, teamId: u.teamId })),
+    quizStatus: (quizId) => this.authoring.quizStatus(quizId),
     nameOf: (type, id) => {
       switch (type) {
         case 'user':

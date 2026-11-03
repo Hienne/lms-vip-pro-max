@@ -22,10 +22,10 @@ import {
 } from '@lms/ui';
 import { DueDate } from '../../../../../shared/course/due-date';
 import { REQUIREMENT_LABEL } from '../../../../../shared/course/course-labels';
+import { TARGET_TYPE_LABEL } from '../../../../../shared/assignment-target/target-labels';
 import {
   assignmentStatusView,
   ENROLLMENT_MODE_LABEL,
-  TARGET_TYPE_LABEL,
 } from '../../assignment-labels';
 import { AssignmentsStore } from '../../data-access/assignments.store';
 

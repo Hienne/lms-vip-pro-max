@@ -1,128 +1,137 @@
-# Implementation Plan: `lesson-player-modes`
+# Implementation Plan: `course-publish-targets`
 
-Spec: [SPEC-lesson-player-modes.md](../SPEC-lesson-player-modes.md) (draft; amended below). Map: [SPEC.md](../SPEC.md).
-Tasks: [todo.md](todo.md).
+Spec: [SPEC-course-publish-targets.md](../SPEC-course-publish-targets.md) (approved; amended below). Map:
+[SPEC-course-authoring.md](../SPEC-course-authoring.md). Tasks: [todo.md](todo.md).
 
-This plan replaces the one for `learner-home-refresh`. That plan is done; its PR is Hienne/lms-vip-pro-max#57, and it
-is in git history at `3d16946`.
+This plan replaces the one for `course-final-exam`. That plan is done; it is in git history at `2c91339`.
 
 ## Overview
 
-Three features of the mockup's lesson player (`lms-mockup/src/pages/lesson.js`):
-
-1. **Chế độ tập trung:** a top-bar toggle that hides the side panel and widens the content. It is app only.
-2. **Mốc video:** a row of chapter buttons under a video block; a click seeks.
-3. **Transcript:** a collapsible list of timed lines under a video block, with search; a click seeks; the line being
-   played is marked.
-
-**Backend.** `lesson_blocks` gains two `jsonb` columns, `video_chapters` and `transcript`. They are saved through the
-existing course tree save and read through the existing block view. There is no new endpoint. This is a schema
-change: an upgrade script, a rollback script, the psql command and a README entry.
+Step 4 of the course editor gets "Giao khóa học" (assignment rows) and "Chia sẻ cho đơn vị khác" (new shares). The
+publish call carries both, and the backend applies the publish, the shares and the assignments in one transaction:
+all or nothing, with a failing row named in the error. No DB change.
 
 ## What was checked while planning (2026-11-03)
 
-**Backend (`corebanking-academy`, `origin/main` at `5563e76`)**
+**Backend (`feat/course-final-exam` at `61ff927`, not merged yet)**
 
-- **`LearningRequests.BlockInput`** has `blockType, title, body, bodyFormat, completionMode, completionThreshold,
-isRequired, assets, steps`. `LearningViews.LessonBlockView` mirrors the entity and is mapped by MapStruct
-  (`LearningMapper.view(LessonBlock)`).
-- **The tree save rewrites every block.** `LearningContentService.writeTree` → `writeBlock` creates new
-  `LessonBlock` rows from the request. A save that omits the new lists would therefore clear them.
-- **Revisions copy blocks by building `BlockInput`s** from the original tree (`LearningContentService`, around
-  line 597). That constructor call must pass the two lists, or a new revision loses them.
-- **Validation** of a block lives in `validateBlockInput` and fails with `BusinessException.validation(field, code,
-message)`. There is no `LEARNING-BLOCK_INVALID` code.
-- **JSON columns** are mapped as `@JdbcTypeCode(SqlTypes.JSON) JsonNode`, as `MediaTranscript.segmentsJson` does.
-- **Asset duration** is `learning_hub.assets.duration_seconds` (`LearningAsset.durationSeconds`, `numeric(12,3)`),
-  null until the asset is READY.
-- **Upgrades** live in `docs/sql/upgrade/` as `YYYY-MM-DD-<module>.sql` plus `.rollback.sql`; the latest is
-  `2026-11-03-lesson-notes`.
-- **Local data:** one READY video block, block 33 in lesson 17 of `DEMO-MEDIA` (asset 3, **30 s**). Block 31
-  (`FE-DEMO-C6`) points at a failed asset.
-- **`scripts/local-seed-media.sh`** does nothing once `DEMO-MEDIA` exists, so it cannot add data to the local
-  course.
+- **Publish** is `POST /courses/{courseId}/revisions/{revisionId}/publish` with a `VersionRequest` body
+  (`expectedVersion`).
+- **`LearningAssignmentService.assign(courseId, AssignmentRequest)`** is `@Transactional`. In order it:
+  `lock.acquire`, `requireAssignCourse`, the idempotency check, `dueAt` before `startAt` →
+  `BusinessException.validation("dueAt", "OUT_OF_RANGE", …)`, `requirePublished`, `resolveTarget`. It throws
+  `EMPTY_TARGET`, and `AccessDeniedException` for a recipient out of scope.
+- `AssignmentRequest(revisionId, assigningOrgId, title, startAt, dueAt, requirement, enrollmentMode, reminderEnabled,
+reminderDaysBefore, idempotencyKey, targets)`; `TargetInput(targetType, userId, teamId, orgId, groupId,
+includeDescendants)`. `LearningLimits.MAX_ASSIGNMENT_TARGETS` 100, `MAX_LEARNERS_PER_ASSIGNMENT` 500.
+- **`share(courseId, ShareRequest{orgId, includeDescendants, canAssign, canSelfEnroll, active})`** refuses the owner
+  org with `INVALID_REFERENCE`.
 
-**App (`origin/main` at `3d16946`)**
+**App (`feat/course-authoring` at `2c91339`)**
 
-- **`video-block`** already has a `jump` input that moves the player and reports the move as a seek (added for
-  `lesson-notes`). Chapters and transcript seek through it.
-- **`LessonBlockSchema`** has no chapters or transcript. `BlockInputSchema` is the editor's save payload.
-- **The course editor** (`features/admin-content/course-editor/course-draft.ts`) builds every block's input from
-  its form value. Without a change it would send no lists, and the backend would clear them on every save.
-- **No focus mode** exists in the lesson page.
+- `TargetPicker` (`features/admin-org/assignments/components/target-picker`) is an "add one target" picker: a
+  segmented type, the selects for that type, "Gồm đơn vị con", and an add button that emits a `TargetPick`
+  (`TargetInput` plus a label). It injects `AssignmentsStore` for `people$`, `orgs$`, `teams$` (by `pickTargetOrg`)
+  and `groups$` (by the caller's org). Only `assign-form` uses it.
+- Module boundaries (`docs/conventions/workspace.md`, angular.md §4): features never import each other's internals;
+  `shared/` never imports `features/`. So the picker and its option data move to `shared/`.
+- The course-shares store uses `courseEndpoints.shares` and `share`. The assign form's defaults are
+  `REMIND_DAYS = 3` and `enrollmentMode 'continue'`.
+- Mockup step 4: `lms-mockup/src/pages/admin-content.js`, about lines 230–250.
 
 ## Decisions (amendments to the spec)
 
-1. **Errors** use the existing validation error (`BusinessException.validation`), with the fields `videoChapters` or
-   `transcript` and the Vietnamese messages of the module. Not `LEARNING-BLOCK_INVALID`.
-2. **Null and empty.** In a request, a missing list or `null` is saved as `NULL`; an empty list too. The view always
-   returns a list (`[]` when `NULL`).
-3. **Revision copy** passes both lists through.
-4. **The course editor keeps the lists.** It has no chapters or transcript UI (open question 1 stays "no"), but it
-   carries each video block's loaded `videoChapters` and `transcript` into the save payload unchanged, so a save
-   from the app does not clear them. A new block starts with none.
-5. **Validation:**
-   - at most 50 chapters, each title 1–120 characters after trimming;
-   - at most 2000 transcript lines, each text 1–1000 characters after trimming;
-   - `startSeconds` ≥ 0, strictly increasing within each list, and at most the primary asset's `duration_seconds`
-     when that is known;
-   - lists on a block other than `video` are refused.
-6. **Local demo data** comes from a demo SQL file, `docs/sql/demo-media/lesson-player-modes-demo.sql`, run once on
-   the local DB at Checkpoint A. It fills block 33's two columns only when both are `NULL`, so it is idempotent:
-   chapters at 0, 10 and 20 s, and six transcript lines within the 30 s video. It changes content only (no
-   enrollment, progress or attempt). `local-seed-media.sh` also sends the same lists in its tree, so a fresh stack
-   gets them through the API.
-7. **Focus mode** is remembered per browser in `localStorage` under `lms.lesson.focus`, read and written in
-   `try/catch`. It is hidden below `lg`, where the side panel is a drawer.
-8. **Current chapter and line** come from the player's whole-second position and the server's lists: the last item
-   whose `startSeconds` ≤ the position. That is display, not a business rule.
-9. **Transcript search** filters the lines in the app by a case- and accent-insensitive substring. Nothing is sent
-   to the server.
+1. **Open questions** (by approval, 2026-11-03): no per-row requirement override; the limits are 20 rows and 50
+   shares per publish.
+2. **Request shape.** `PublishRequest(@NotNull Long expectedVersion, @Size(max=20) @Valid List<PublishAssignment>
+assignments, @Size(max=50) List<@NotNull @Positive Long> shareOrgIds)`, null lists read as empty.
+   `PublishAssignment(@NotNull OffsetDateTime startAt, OffsetDateTime dueAt, boolean reminderEnabled,
+@Min(0) @Max(365) int reminderDaysBefore, @NotNull @Valid TargetInput target)`. The publish endpoint takes it in
+   place of `VersionRequest`; `{expectedVersion}` alone is unchanged.
+3. **One transaction.** A new orchestrating method (for example `LearningPublishService.publish`, or the existing
+   publish method extended) runs the publish, then the shares, then the assignments, all in the caller's
+   transaction. `assign` and `share` join it (default propagation); nothing uses `REQUIRES_NEW`.
+4. **Row errors.** Each share and each assignment call is wrapped. A `BusinessException` or an
+   `AccessDeniedException` from row `i` is rethrown as `CORE-VALIDATION_FAILED` with one error, field
+   `assignments[i]` (or `shareOrgIds[j]`), the original message code and its message. The rethrow marks the
+   transaction for rollback, so the revision stays a draft. Bean-validation failures keep their usual field paths
+   (`assignments[0].target`, …).
+5. **Shares add only.** An org with an active share is skipped (no write, no event). Anything else goes through
+   `share` with `includeDescendants` true, `canAssign` true, `canSelfEnroll` false, `active` true.
+6. **Assignment values.** `revisionId` = the revision just published; `assigningOrgId` = the course's owner org;
+   `title` null; `requirement` = the revision's `defaultRequirement`; `enrollmentMode` `continue`;
+   `idempotencyKey` `publish-{revisionId}-{index}`; one target per assignment.
+7. **Shared picker (app).** The picker moves to `shared/assignment-target/` with a component-provided
+   `TargetOptionsStore` (people, orgs, teams by the picked org, learning groups by an owner org set by the host).
+   `AssignmentsStore` stops loading those four lists for the picker and reads names from its own data as before, or
+   from the new store where it only fed the picker. `assign-form` behaves the same.
+8. **Rows are added by the picker (amends the spec's per-row "Loại").** Step 4 shows the shared picker; "Thêm đối
+   tượng" adds the pick as a row. A row shows the target label, "Bắt đầu" (default today), "Hạn hoàn thành" (empty)
+   and "Xóa dòng". The type switch and its reset stay in the picker, as on "Giao học & hạn". This keeps one picker,
+   one behaviour, and fewer selects on the page.
+9. **Editor state.** The store gains `publishRows`, `reminderEnabled` (true) and `newShareOrgIds`, outside the
+   draft. In edit mode it loads the course's shares, the org list and the assignment count for "Đã giao trước đó".
+   `publish()` and `createAndPublish()` send them; success clears them and reloads; a `CORE-VALIDATION_FAILED` with
+   a field `assignments[i]` or `shareOrgIds[j]` marks that row or unit with the message.
+10. **Branches.**
+    - The backend builds on `course-final-exam`: branch `feat/course-publish-targets` from `feat/course-final-exam`
+      (`61ff927`), in a new worktree `~/my-projects/corebanking-academy-publish-targets`. Its PR waits for the two
+      earlier backend PRs.
+    - The app stays on `feat/course-authoring`.
+11. **Checkpoint data** goes through the API only. As `quantri`, on course 19 (`WIZ-FE-01`, which has an open draft
+    revision): publish with a row for the learner `hocvien` (not yet enrolled in course 19) and a share to a unit
+    other than org 1. Then a second draft with an empty-target row (an org with no active learner, or a learning
+    group with no member) is refused on `assignments[0]` and stays a draft. `hocvien.tichhop` is already enrolled
+    and is not used for the row.
 
 ## Phases
 
-### Phase 1: Backend (child session, worktree `~/my-projects/corebanking-academy-player-modes`, branch `feat/lesson-player-modes`) → Checkpoint A
+### Phase 1: Backend (child session, worktree `~/my-projects/corebanking-academy-publish-targets`) → Checkpoint A
 
-- **B1. Schema.** Upgrade and rollback scripts, the learning baseline, the README entry, the entity fields.
-- **B2. Save, read and copy.** `BlockInput` and `LessonBlockView` fields, the validation, the revision copy.
-- **B3. Tests and docs.** Integration tests and `docs/api/LEARNING.md`; the demo SQL and the seed script.
+- **B1. Request and shares.** `PublishRequest`, `PublishAssignment`, the endpoint body, the orchestration, the
+  share step with the skip rule and the `shareOrgIds[j]` error.
+- **B2. Assignments.** The assignment step with the values of Decision 6 and the `assignments[i]` error, including
+  `AccessDeniedException`.
+- **B3. Tests and docs.** The spec's integration tests (`CoursePublishTargetsIT`); `LEARNING.md` and
+  `LEARNING_CURL.md`.
 - **Checkpoint A (main session):**
-  - run the upgrade on the local DB, then the demo SQL; restart :8019 on the branch;
-  - `curl` as `hocvien`: the enrollment detail of `DEMO-MEDIA` returns block 33 with both lists;
-  - as an admin, the validation errors and the revision copy;
-  - `mvn clean test` green.
+  - review the diffs; restart :8019 from the new worktree;
+  - run Decision 11 with `curl`: the enrollment, the assignment and the share exist after a good publish; the refused
+    publish leaves a draft and no new assignment or share;
+  - `{expectedVersion}` alone still publishes;
+  - `mvn -o clean test` green, in a temporary worktree.
 
 ### Phase 2: App (child session, this checkout) → Checkpoint B
 
-- **F1. Contracts.** `LessonBlockSchema` gains both lists (default `[]`), `BlockInputSchema` gains them as optional;
-  fixtures captured from the local backend.
-- **F2. Mock and editor.** The mock's seeded video blocks carry the mockup's chapters and transcript; the mock save
-  keeps them; the course editor round-trips them.
-- **F3. Chapters.** The chapter row under a video block.
-- **F4. Transcript.** The collapsible transcript with search.
-- **F5. Focus mode.** The top-bar toggle.
-- **F6. Docs.** The spec's implementation notes and the migration entries.
-- **Checkpoint B (main session):** review each diff, `npm run check`, then the browser on the local stack as
-  `hocvien` at 375, 768 and 1280 px, light and dark, keyboard only, beside the mockup on :4320.
+- **F1. Contracts and mock.** `PublishCourseCommandSchema`; the publish endpoint body; fixtures captured from the
+  local backend; the mock publish applies rows and shares and refuses an empty target on `assignments[i]`.
+- **F2. Shared picker.** The move of Decision 7; the assignments screen's specs pass unchanged in behaviour.
+- **F3. Step 4.** The store state of Decision 9; the "Giao khóa học" and "Chia sẻ cho đơn vị khác" sections; the
+  confirmation counts; the row error mapping; create mode.
+- **F4. Docs.** The spec's implementation notes and the migration entry.
+- **Checkpoint B (main session):**
+  - review each diff, then `npm run check`;
+  - in the browser as `quantri`: on a draft, add a row and a share, publish, see the toast and the reset; the learner
+    sees the course in "Khóa học của tôi"; a refused row is marked;
+  - "Giao học & hạn" still assigns with the moved picker;
+  - 375, 768 and 1280 px, light and dark, keyboard.
 
 ## Before merging (the user)
 
-- **Shared DB:** run the upgrade script there **before** merging the backend PR, since merging deploys it and
-  `ddl-auto=validate` refuses to start without the columns:
-
-  ```bash
-  psql -h <host> -U <user> -d <database> -v ON_ERROR_STOP=1 -f docs/sql/upgrade/2026-11-03-lesson-player-modes.sql
-  ```
-
-  The demo SQL is for the local stack only.
-
-- **Order:** merge the backend PR, wait for its deploy, then the app PR.
+- No SQL.
+- Merge order:
+  1. the `course-wizard-create` backend PR;
+  2. the `course-final-exam` backend PR;
+  3. this backend PR;
+  4. wait for the deploy;
+  5. the app PR.
 
 ## Risks
 
-- **Any other client that saves the course tree** without the lists clears them. The app's editor is the only one
-  in this repo; the API docs say so.
-- **Large transcripts** travel with every course tree and enrollment detail. The limits (2000 lines × 1000
-  characters) keep a block under about 2 MB; the demo is a few hundred bytes. A separate endpoint can come later if
-  real transcripts are large.
-- **The focus toggle** must not hide the outline on a narrow screen where it is a drawer; it is hidden there.
+- **Long transaction.** A publish with 20 rows of 500 learners writes up to 10 000 enrollments in one transaction.
+  The limits bound it; the IT measures nothing, but the checkpoint notes the time of one real publish.
+- **Locks.** `assign` takes `lock.acquire` per course inside the publish transaction. The publish already holds the
+  course row; the child checks that the same lock is re-entrant or taken once.
+- **Idempotency keys.** `publish-{revisionId}-{index}` is unique per revision; a refused publish rolls the keys back
+  with everything else, so a retry is clean.
+- **Picker move.** It touches the assignments screen. Its specs are the guard; the checkpoint assigns once there.

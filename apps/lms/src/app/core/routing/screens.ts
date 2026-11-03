@@ -28,6 +28,8 @@ export interface Screen {
   /** The mockup page this route will become; the placeholder names it. */
   readonly mockupPage: string;
   readonly layout?: Layout;
+  /** `create` on the route of a screen that also edits: the screen reads it from the route's `data`. */
+  readonly mode?: 'create';
   /**
    * Stays reachable for a user who must change a temporary password; every other screen is
    * closed to them (the backend refuses its calls with IDENTITY-PASSWORD_CHANGE_REQUIRED).
@@ -213,10 +215,11 @@ export const SCREEN_TABLE = {
           path: 'admin/courses/new',
           title: 'Tạo khóa học mới',
           mockupPage: 'courseWizard',
+          mode: 'create',
           load: () =>
-            import('../../features/admin-content/course-new/course-new').then(
-              (m) => m.CourseNew,
-            ),
+            import(
+              '../../features/admin-content/course-editor/course-editor'
+            ).then((m) => m.CourseEditor),
         },
         {
           path: 'admin/courses/:id/edit',
@@ -687,6 +690,7 @@ export function metaOf({ screen, menu }: ScreenEntry): RouteMeta {
     ...(screen.requires ? { requires: screen.requires } : {}),
     layout: screen.layout ?? 'app',
     mockupPage: screen.mockupPage,
+    ...(screen.mode ? { mode: screen.mode } : {}),
     ...(screen.passwordChange !== undefined
       ? { passwordChange: screen.passwordChange }
       : {}),

@@ -1,0 +1,36 @@
+@use 'ui';
+
+.share-units {
+  &__title {
+    @include ui.text(lg);
+  }
+
+  &__help {
+    margin: 0;
+    @include ui.text(sm, muted);
+  }
+
+  &__list {
+    @include ui.stack(2);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  &__unit {
+    min-width: 0;
+  }
+
+  &__check {
+    @include ui.row(2);
+    @include ui.text(sm);
+    flex-wrap: nowrap;
+  }
+
+  &__message,
+  &__error {
+    margin: ui.space(1) 0 0;
+    @include ui.text(sm);
+    color: ui.color(danger);
+  }
+}

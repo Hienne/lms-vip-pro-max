@@ -1,0 +1,66 @@
+<div class="course-review">
+  <div class="course-review__main">
+    <app-assign-rows />
+    <app-share-units />
+  </div>
+  <div class="course-review__side">
+    <section uiCard>
+      <div uiCardBody class="stack">
+        <h2 class="course-review__title">Kiểm tra trước khi xuất bản</h2>
+        <ul class="course-review__checks">
+          @for (check of checks(); track check.label) {
+          <li class="course-review__check">
+            @if (check.ok) {
+            <ui-icon name="circle-check" size="sm" label="Đạt" />
+            } @else {
+            <ui-icon
+              [name]="check.optional ? 'info' : 'triangle-alert'"
+              size="sm"
+              [label]="check.optional ? 'Khuyến nghị' : 'Chưa đạt'"
+            />
+            }
+            <span class="course-review__check-label">{{ check.label }}</span>
+            @if (!check.ok) {
+            <button
+              uiLinkButton
+              type="button"
+              (click)="goToStep.emit(check.step)"
+            >
+              Bổ sung
+            </button>
+            }
+          </li>
+          }
+        </ul>
+        <p class="course-review__verdict" aria-live="polite">
+          {{ ready() ? 'Sẵn sàng xuất bản.' : 'Hoàn thiện các mục trên trước khi
+          xuất bản.' }}
+        </p>
+      </div>
+    </section>
+
+    <section uiCard>
+      <div uiCardBody class="stack">
+        <h2 class="course-review__title">Tóm tắt khóa học</h2>
+        <dl class="course-review__summary">
+          <div>
+            <dt>Số chương</dt>
+            <dd>{{ totals().chapters }}</dd>
+          </div>
+          <div>
+            <dt>Số bài học</dt>
+            <dd>{{ totals().lessons }}</dd>
+          </div>
+          <div>
+            <dt>Thời lượng</dt>
+            <dd>{{ totals().minutes }} phút</dd>
+          </div>
+          <div>
+            <dt>Điểm thưởng</dt>
+            <dd>{{ draft().rewardPoints().value() }}</dd>
+          </div>
+        </dl>
+      </div>
+    </section>
+  </div>
+</div>

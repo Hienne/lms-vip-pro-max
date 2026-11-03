@@ -20,6 +20,8 @@ export interface RouteMeta {
   /** The one screen a user with a temporary password may open (see `passwordChangeGuard`). */
   readonly passwordChange?: boolean;
   readonly layout: Layout;
+  /** A screen shared by a create and an edit route learns which one it is from this. */
+  readonly mode?: 'create';
   /** The mockup page this route will become; the placeholder names it. */
   readonly mockupPage: string;
 }

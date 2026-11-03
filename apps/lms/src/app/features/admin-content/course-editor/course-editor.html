@@ -1,7 +1,7 @@
 <ui-breadcrumb
   [items]="[
     { label: 'Khóa học', href: '/admin/courses' },
-    { label: 'Sửa khóa học' },
+    { label: store.isCreate$() ? 'Tạo khóa học mới' : 'Sửa khóa học' },
   ]"
 />
 
@@ -13,14 +13,19 @@
 />
 } @else if (store.isLoading$()) {
 <div class="course-editor__loading"><span uiSpinner></span></div>
-} @else if (store.course$(); as detail) {
+} @else if (ready()) {
 <header class="course-editor__head">
   <div>
+    @if (store.course$(); as detail) {
     <h1>Sửa khóa học</h1>
     <p class="course-editor__sub">
       {{ detail.revision.title || 'Chưa đặt tên' }} · {{ detail.course.code }}
       <app-catalog-status [status]="store.status$()" />
     </p>
+    } @else {
+    <h1>Tạo khóa học mới</h1>
+    <p class="course-editor__sub">Chưa lưu</p>
+    }
   </div>
   <span class="course-editor__saved" aria-live="polite">
     @if (dirty()) {
@@ -75,7 +80,8 @@
     @switch (store.step$()) { @case (0) {
     <app-course-info
       [draft]="courseForm"
-      [code]="detail.course.code"
+      [create]="store.isCreate$()"
+      [ownerName]="store.ownerName$()"
       [programs]="store.programs$()"
       [modules]="store.modules$()"
       (programPicked)="store.pickProgram($event)"
@@ -86,7 +92,9 @@
       (editLesson)="store.editLesson($event)"
     />
     } @case (2) {
-    <app-course-finish
+    <app-course-rules [draft]="courseForm" />
+    } @case (3) {
+    <app-course-review
       [draft]="courseForm"
       (goToStep)="store.goToStep($event)"
     />
@@ -100,7 +108,7 @@
     <ui-icon name="chevron-left" size="sm" />Quay lại
   </button>
   } @else {
-  <a uiButton variant="ghost" routerLink="/admin/courses">Về danh sách</a>
+  <a uiButton variant="ghost" routerLink="/admin/courses">Hủy</a>
   }
   <span class="course-editor__spacer"></span>
   @if (store.isDraft$()) {

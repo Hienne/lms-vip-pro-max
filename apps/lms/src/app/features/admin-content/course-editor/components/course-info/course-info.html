@@ -45,9 +45,19 @@
           }
         </select>
       </ui-field>
-      <ui-field label="Mã khóa học" hint="Mã không đổi sau khi tạo.">
-        <input uiInput [value]="code()" readonly />
+      @if (create()) {
+      <ui-field
+        label="Mã khóa học"
+        required
+        hint="Duy nhất trong hệ thống, không đổi sau khi tạo."
+      >
+        <input uiInput [formField]="draft().code" />
       </ui-field>
+      } @else {
+      <ui-field label="Mã khóa học" hint="Mã không đổi sau khi tạo.">
+        <input uiInput [value]="draft().code().value()" readonly />
+      </ui-field>
+      }
       <ui-field label="Mức độ">
         <select uiSelect [formField]="draft().level">
           <option value="" [selected]="!draft().level().value()">
@@ -64,6 +74,9 @@
         </select>
       </ui-field>
     </div>
+    @if (create() && ownerName()) {
+    <p class="course-info__owner">Đơn vị sở hữu: {{ ownerName() }}</p>
+    }
 
     <fieldset class="course-info__kind">
       <legend>Loại khóa học</legend>

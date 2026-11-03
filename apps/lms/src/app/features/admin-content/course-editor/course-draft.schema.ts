@@ -4,7 +4,9 @@ import {
   maxLength,
   min,
   required,
+  validate,
   type SchemaPathTree,
+  type SchemaPath,
 } from '@angular/forms/signals';
 import { COURSE_LIMITS } from '@lms/contracts';
 import type { CourseDraftValue } from './course-draft';
@@ -36,5 +38,25 @@ export function courseDraftSchema(
     maxLength(chapter.title, COURSE_LIMITS.title, {
       message: `Tên chương tối đa ${COURSE_LIMITS.title} ký tự.`,
     });
+  });
+}
+
+/**
+ * The course code of a course that is being created. `taken` is the code the server refused, so
+ * the message shows until the author changes the code.
+ */
+export function courseCodeSchema(
+  path: SchemaPath<string>,
+  taken: () => string | null,
+): void {
+  required(path, { message: 'Nhập mã khóa học.' });
+  maxLength(path, COURSE_LIMITS.code, {
+    message: `Mã tối đa ${COURSE_LIMITS.code} ký tự.`,
+  });
+  validate(path, ({ value }) => {
+    const refused = taken();
+    return refused !== null && value().trim() === refused
+      ? { kind: 'duplicate', message: 'Mã khóa học đã tồn tại.' }
+      : undefined;
   });
 }
