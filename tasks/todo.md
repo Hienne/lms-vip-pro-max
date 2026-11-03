@@ -85,12 +85,17 @@ The previous `lesson-player-modes` checklist is in git history at `0efffaf`.
     specs (empty value, the create command parses with `CreateCourseCommandSchema`, its draft equals the save's tree,
     an empty draft sends only the required fields). The editor's `EMPTY_DRAFT` now calls `emptyDraftValue()`.
     `lms` 1645 tests; lint and typecheck green.
-- [ ] **F3: Four steps**
+- [x] **F3: Four steps**
   - `EDITOR_STEPS` with the spec's labels.
   - `course-finish` is split into `course-rules` (step 3) and `course-review` (step 4).
   - `draftChecks` step indexes are updated.
   - Footer: Hủy/Quay lại · Lưu nháp · Tiếp tục/Xuất bản khóa học, with one primary button.
   - Acceptance: editor specs for the steps, the footer and the checks' links.
+  - Checked: `course-finish` became `course-review` (git mv, checklist plus a new "Tóm tắt khóa học" with chapters,
+    lessons, minutes and reward points) and `course-rules` (new). 4 new editor specs (labels and subtitles, step 3,
+    step 4 with the "Bổ sung" link back to step 1, and the footer with one primary button on every step); the
+    "Hoàn thành & xuất bản" step clicks became "Đối tượng & xuất bản". `draftChecks` indexes needed no change: the
+    checks point at steps 1 and 2, which keep their places. `lms` 1649 tests; lint and typecheck green.
 - [ ] **F4: Create mode**
   - Route data `{ mode: 'create' }` on `admin/courses/new`, pointing at `CourseEditor`.
   - Store create mode: no `getCourse`, `courseQuizList` or kept-uploads read; the code field; save → `createCourse`

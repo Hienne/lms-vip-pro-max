@@ -16,9 +16,10 @@ import {
 } from '@lms/ui';
 import type { HasUnsavedChanges } from '../../../core/routing/unsaved-changes.guard';
 import { CatalogStatus } from '../../../shared/status/catalog-status';
-import { CourseFinish } from './components/course-finish/course-finish';
 import { CourseInfo } from './components/course-info/course-info';
 import { CourseOutline } from './components/course-outline/course-outline';
+import { CourseReview } from './components/course-review/course-review';
+import { CourseRules } from './components/course-rules/course-rules';
 import { LessonForm } from './components/lesson-form/lesson-form';
 import {
   emptyDraftValue,
@@ -38,7 +39,7 @@ const fingerprint = (value: CourseDraftValue) =>
   JSON.stringify(toSaveDraftCommand(value, 0));
 
 /**
- * The course editor (the mockup's `courseWizard`): three steps over one draft, saved whole. The
+ * The course editor (the mockup's `courseWizard`): four steps over one draft, saved whole. The
  * draft is this page's form model, read again from the server after every save because the
  * server renumbers the tree. Assigning moved to the assignments screen.
  */
@@ -50,9 +51,10 @@ const fingerprint = (value: CourseDraftValue) =>
     Breadcrumb,
     Button,
     CatalogStatus,
-    CourseFinish,
     CourseInfo,
     CourseOutline,
+    CourseReview,
+    CourseRules,
     DrawerOutlet,
     ErrorState,
     FormActions,

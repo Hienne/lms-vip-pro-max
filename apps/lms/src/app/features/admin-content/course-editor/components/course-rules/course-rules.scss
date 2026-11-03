@@ -1,0 +1,14 @@
+@use 'ui';
+
+.course-rules {
+  &__title {
+    @include ui.text(lg);
+  }
+
+  &__list {
+    @include ui.stack(1);
+    @include ui.text(sm, muted);
+    margin: 0;
+    padding-left: ui.space(5);
+  }
+}

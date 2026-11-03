@@ -1,6 +1,6 @@
 @use 'ui';
 
-.course-finish {
+.course-review {
   display: grid;
   gap: ui.space(4);
   align-items: start;
@@ -11,13 +11,6 @@
 
   &__title {
     @include ui.text(lg);
-  }
-
-  &__rules {
-    @include ui.stack(1);
-    @include ui.text(sm, muted);
-    margin: 0;
-    padding-left: ui.space(5);
   }
 
   &__checks {
@@ -44,5 +37,24 @@
 
   &__note {
     @include ui.text(xs, muted);
+  }
+
+  &__summary {
+    @include ui.stack(2);
+    margin: 0;
+
+    div {
+      @include ui.row-between(2);
+      @include ui.text(sm);
+    }
+
+    dt {
+      color: ui.color(text-muted);
+    }
+
+    dd {
+      margin: 0;
+      font-weight: ui.weight(semibold);
+    }
   }
 }

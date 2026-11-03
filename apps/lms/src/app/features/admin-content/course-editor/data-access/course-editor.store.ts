@@ -65,9 +65,13 @@ import {
 } from './upload-entry';
 
 export const EDITOR_STEPS: readonly StepperItem[] = [
-  { label: 'Thông tin cơ bản', subtitle: 'Tên, chương trình, mục tiêu' },
+  { label: 'Thông tin cơ bản', subtitle: 'Tên, mã, chương trình' },
   { label: 'Nội dung khóa học', subtitle: 'Chương, bài, khối nội dung' },
-  { label: 'Hoàn thành & xuất bản', subtitle: 'Điểm thưởng, kiểm tra' },
+  {
+    label: 'Bài thi & điều kiện',
+    subtitle: 'Điều kiện hoàn thành, điểm thưởng',
+  },
+  { label: 'Đối tượng & xuất bản', subtitle: 'Kiểm tra trước khi xuất bản' },
 ];
 
 /** The lesson open in the drawer, by position in the model. */

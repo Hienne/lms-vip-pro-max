@@ -1,0 +1,18 @@
+<section uiCard>
+  <div uiCardBody class="stack">
+    <h2 class="course-rules__title">Điều kiện hoàn thành</h2>
+    <ul class="course-rules__list">
+      <li>
+        Hoàn thành mọi bài học bắt buộc (video xem đủ ngưỡng, PDF đọc đến trang
+        cuối).
+      </li>
+      <li>Đạt các bài kiểm tra có trong khóa học.</li>
+    </ul>
+    <ui-field
+      label="Điểm thưởng khi hoàn thành"
+      hint="Cộng vào điểm tích lũy và bảng xếp hạng."
+    >
+      <input uiInput type="number" [formField]="draft().rewardPoints" />
+    </ui-field>
+  </div>
+</section>

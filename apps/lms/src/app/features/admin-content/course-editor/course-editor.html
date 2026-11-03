@@ -86,7 +86,9 @@
       (editLesson)="store.editLesson($event)"
     />
     } @case (2) {
-    <app-course-finish
+    <app-course-rules [draft]="courseForm" />
+    } @case (3) {
+    <app-course-review
       [draft]="courseForm"
       (goToStep)="store.goToStep($event)"
     />
@@ -100,7 +102,7 @@
     <ui-icon name="chevron-left" size="sm" />Quay lại
   </button>
   } @else {
-  <a uiButton variant="ghost" routerLink="/admin/courses">Về danh sách</a>
+  <a uiButton variant="ghost" routerLink="/admin/courses">Hủy</a>
   }
   <span class="course-editor__spacer"></span>
   @if (store.isDraft$()) {

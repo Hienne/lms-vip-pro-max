@@ -648,7 +648,7 @@ describe('CourseEditor', () => {
 
     it('shows the server’s refusal to publish a course whose quiz lesson is unlinked', async () => {
       await screen.open('/admin/courses/6/edit');
-      await step('Hoàn thành & xuất bản');
+      await step('Đối tượng & xuất bản');
       screen.calls.mockImplementation((endpoint, request) =>
         endpoint === courseEndpoints.publish
           ? backendRefusal('quizLessonUnlinked')
@@ -665,7 +665,7 @@ describe('CourseEditor', () => {
 
     it('publishes with the version the server holds when tried again after a refusal', async () => {
       await screen.open('/admin/courses/6/edit');
-      await step('Hoàn thành & xuất bản');
+      await step('Đối tượng & xuất bản');
       screen.calls.mockImplementation((endpoint, request) =>
         endpoint === courseEndpoints.publish
           ? backendRefusal('quizLessonUnlinked')
@@ -692,7 +692,7 @@ describe('CourseEditor', () => {
 
   it('saves then publishes after confirming, and goes back to the list', async () => {
     await screen.open('/admin/courses/6/edit');
-    await step('Hoàn thành & xuất bản');
+    await step('Đối tượng & xuất bản');
     expect(screen.text()).toContain('Sẵn sàng xuất bản.');
 
     await screen.click(screen.button('Xuất bản khóa học'));
@@ -703,5 +703,73 @@ describe('CourseEditor', () => {
     });
     await vi.waitFor(() => expect(screen.url()).toBe('/admin/courses'));
     expect(screen.text(document.body)).toContain('Đã xuất bản khóa học');
+  });
+
+  describe('the four steps', () => {
+    const primaries = () =>
+      Array.from(
+        screen.el.querySelectorAll<HTMLElement>(
+          '.course-editor__foot .btn--primary',
+        ),
+      ).map((b) => b.textContent?.trim());
+
+    it('lists the steps with the mockup labels and subtitles', async () => {
+      await screen.open('/admin/courses/6/edit');
+
+      const steps = Array.from(
+        screen.el.querySelectorAll<HTMLElement>('.stepper__step'),
+      ).map((s) => s.textContent?.replace(/\s+/g, ' ').trim());
+      expect(steps).toHaveLength(4);
+      expect(steps[0]).toContain('Thông tin cơ bản');
+      expect(steps[0]).toContain('Tên, mã, chương trình');
+      expect(steps[1]).toContain('Nội dung khóa học');
+      expect(steps[2]).toContain('Bài thi & điều kiện');
+      expect(steps[2]).toContain('Điều kiện hoàn thành, điểm thưởng');
+      expect(steps[3]).toContain('Đối tượng & xuất bản');
+      expect(steps[3]).toContain('Kiểm tra trước khi xuất bản');
+    });
+
+    it('puts the completion rules and the reward on step 3', async () => {
+      await screen.open('/admin/courses/6/edit');
+      await step('Bài thi & điều kiện');
+
+      expect(screen.text()).toContain('Điều kiện hoàn thành');
+      expect(screen.field('Điểm thưởng khi hoàn thành')).toBeTruthy();
+      expect(screen.text()).not.toContain('Kiểm tra trước khi xuất bản Có');
+    });
+
+    it('puts the checklist and the summary on step 4, linking back to what is missing', async () => {
+      await screen.open('/admin/courses/6/edit');
+      await screen.type(screen.field('Tên khóa học') as HTMLInputElement, '');
+      await step('Đối tượng & xuất bản');
+
+      expect(screen.field('Điểm thưởng khi hoàn thành')).toBeUndefined();
+      expect(screen.text()).toContain('Tóm tắt khóa học');
+      expect(screen.text()).toContain('Số bài học');
+      expect(screen.text()).toContain(
+        'Hoàn thiện các mục trên trước khi xuất bản.',
+      );
+
+      await screen.click(screen.button('Bổ sung'));
+      expect(screen.field('Tên khóa học')).toBeTruthy();
+    });
+
+    it('offers "Hủy" on step 1 and "Quay lại" after it, always with one primary button', async () => {
+      await screen.open('/admin/courses/6/edit');
+      expect(screen.button('Hủy')).toBeTruthy();
+      expect(screen.button('Quay lại')).toBeUndefined();
+      expect(screen.button('Lưu nháp')).toBeTruthy();
+      expect(primaries()).toEqual(['Tiếp tục']);
+
+      await screen.click(screen.button('Tiếp tục'));
+      await screen.click(screen.button('Tiếp tục'));
+      expect(screen.button('Hủy')).toBeUndefined();
+      expect(screen.button('Quay lại')).toBeTruthy();
+      expect(primaries()).toEqual(['Tiếp tục']);
+
+      await screen.click(screen.button('Tiếp tục'));
+      expect(primaries()).toEqual(['Xuất bản khóa học']);
+      expect(screen.button('Lưu nháp')).toBeTruthy();
+    });
   });
 });
