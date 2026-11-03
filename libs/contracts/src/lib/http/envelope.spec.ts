@@ -57,6 +57,7 @@ describe('MESSAGE_CODE_KIND', () => {
       'LEARNING-MEDIA_CHANGED',
       'LEARNING-ASSET_PROCESSING',
       'LEARNING-NOT_AVAILABLE',
+      'LEARNING-FINAL_EXAM_UNPUBLISHED',
     ]) {
       expect(MESSAGE_CODE_KIND[code as keyof typeof MESSAGE_CODE_KIND]).toBe(
         'refused',

@@ -229,6 +229,12 @@ export const BACKEND_RESPONSES = {
     message:
       'Có bài học loại kiểm tra chưa chọn bài kiểm tra đã xuất bản của khóa học.',
   },
+  finalExamUnpublished: {
+    status: 200,
+    code: 'LEARNING-FINAL_EXAM_UNPUBLISHED',
+    title: 'Chưa thể xuất bản',
+    message: 'Bài kiểm tra cuối khóa chưa xuất bản hoặc không còn hợp lệ.',
+  },
   assetProcessing: {
     status: 200,
     code: 'LEARNING-ASSET_PROCESSING',

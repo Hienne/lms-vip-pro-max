@@ -65,12 +65,15 @@ The previous `course-wizard-create` checklist is in git history at `e838065`.
 
 ## Phase 2: App
 
-- [ ] **F1: Contracts and mock**
+- [x] **F1: Contracts and mock**
   - `SaveDraftCommandSchema.finalQuizId` (optional), the detail's `finalQuizId` (nullable, default null),
     `LEARNING-FINAL_EXAM_UNPUBLISHED` as `refused`.
   - Fixtures captured from the local backend.
   - The mock save and detail keep `finalQuizId`; the mock publish refuses an unpublished final exam.
   - Acceptance: `npx nx test contracts` and `npx nx test mocks` green.
+  - Checked: `contracts` 254 and `mocks` 307 specs pass, typecheck and lint clean. `capturedCourseFinalExam` is
+    `GET /courses/19` (`WIZ-FE-01`, `finalQuizId` 6) from :8019. The mock publish asks the new
+    `LearningDirectory.quizStatus` (backed by the assessment mock) and refuses anything but `PUBLISHED`.
 - [ ] **F2: Step 3 and the checklist**
   - `CourseDraftValue.finalQuizId` round-tripped (empty in create mode).
   - `course-rules`: "Bài kiểm tra cuối khóa" (the select with only `FINAL_EXAM` quizzes, status suffix, hint, empty

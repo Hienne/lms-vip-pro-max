@@ -1,6 +1,9 @@
 import { toUrl } from '../http/endpoint';
 import { courseEndpoints } from './course.endpoints';
-import { capturedCourseCreate } from './course.captured';
+import {
+  capturedCourseCreate,
+  capturedCourseFinalExam,
+} from './course.captured';
 import {
   CourseCardSchema,
   CreateCourseCommandSchema,
@@ -412,5 +415,37 @@ describe('a create with a draft captured from the local backend', () => {
     ]);
     expect(detail.objectives).toHaveLength(2);
     expect(detail.completionRule?.rewardPoints).toBe(20);
+  });
+});
+
+describe('a course with a final exam captured from the local backend', () => {
+  it('parses the detail with its final quiz', () => {
+    const detail = CourseDetailSchema.parse(capturedCourseFinalExam);
+    expect(detail.finalQuizId).toBe(6);
+    expect(detail.revision.state).toBe('published');
+  });
+
+  it('reads a detail without the field as having no final exam', () => {
+    const { finalQuizId: _finalQuizId, ...old } = capturedCourseFinalExam;
+    expect(CourseDetailSchema.parse(old).finalQuizId).toBeNull();
+    expect(
+      CourseDetailSchema.parse({ ...old, finalQuizId: null }).finalQuizId,
+    ).toBeNull();
+  });
+
+  it('accepts a save that names the final quiz, and a save that leaves it out', () => {
+    const save = {
+      expectedVersion: 3,
+      defaultRequirement: 'optional',
+      objectives: [],
+      chapters: [],
+    };
+    expect(
+      SaveDraftCommandSchema.parse({ ...save, finalQuizId: 6 }).finalQuizId,
+    ).toBe(6);
+    expect(SaveDraftCommandSchema.parse(save).finalQuizId).toBeUndefined();
+    expect(
+      SaveDraftCommandSchema.safeParse({ ...save, finalQuizId: 0 }).success,
+    ).toBe(false);
   });
 });

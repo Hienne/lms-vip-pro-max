@@ -76,6 +76,8 @@ export interface LearningDirectory {
     type: 'user' | 'team' | 'org',
     id: string | number,
   ): string | undefined;
+  /** The status of a quiz in the assessment service; `undefined` when it does not exist. */
+  quizStatus(quizId: number): string | undefined;
 }
 
 type Mutable<T> = { -readonly [K in keyof T]: T[K] };
@@ -558,6 +560,7 @@ export class LearningBackend {
       objectives: [],
       chapters: [],
       completionRule: null,
+      finalQuizId: null,
     };
     // The draft is written like a save: its title wins over `title`, and the tree is stored whole.
     const detail = command.draft
@@ -829,6 +832,7 @@ export class LearningBackend {
         createTime: now(),
         updateTime: now(),
       },
+      finalQuizId: command.finalQuizId ?? null,
     };
   }
 
@@ -841,6 +845,12 @@ export class LearningBackend {
       draft.chapters.every((c) => c.lessons.length === 0)
     ) {
       refuse('validationFailed');
+    }
+    if (
+      draft.finalQuizId !== null &&
+      this.directory.quizStatus(draft.finalQuizId) !== 'PUBLISHED'
+    ) {
+      refuse('finalExamUnpublished');
     }
     record.published = {
       ...draft,

@@ -290,6 +290,8 @@ export const CourseDetailSchema = z.object({
   objectives: z.array(CourseObjectiveSchema),
   chapters: z.array(ChapterDetailSchema),
   completionRule: CourseCompletionRuleSchema.nullish(),
+  /** The `FINAL_EXAM` quiz the revision must pass to complete; `null` when it has none. */
+  finalQuizId: z.number().int().nullable().default(null),
 });
 export type CourseDetail = z.infer<typeof CourseDetailSchema>;
 
@@ -498,6 +500,8 @@ export const SaveDraftCommandSchema = z.object({
     .min(0)
     .max(COURSE_LIMITS.rewardPoints)
     .optional(),
+  /** The course's `FINAL_EXAM` quiz that completion requires. Left out, the save clears it. */
+  finalQuizId: z.number().int().positive().optional(),
 });
 export type SaveDraftCommand = z.infer<typeof SaveDraftCommandSchema>;
 

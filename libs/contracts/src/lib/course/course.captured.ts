@@ -270,3 +270,126 @@ export const capturedCourseCreate = {
     },
   },
 };
+
+/**
+ * The detail of a published course that has a final exam, captured from the local backend on
+ * 2026-11-03 (signed in as `quantri`, `GET /api/v1/courses/19`, the course `WIZ-FE-01`): the
+ * revision was saved with `finalQuizId` 6, a `FINAL_EXAM` quiz, and published once the quiz was.
+ * It proves the detail schema parses the field the server sends. Recapture it from the local stack
+ * when the detail shape changes.
+ */
+export const capturedCourseFinalExam = {
+  course: {
+    id: 19,
+    code: 'WIZ-FE-01',
+    ownerOrgId: 1,
+    ownerTeamId: null,
+    ownerUserId: '000002',
+    publishedRevisionId: 21,
+    lifecycleStatus: 'active',
+    copiedFromCourseId: null,
+    rowVersion: 1,
+    createTime: '2026-11-03T08:24:15.300292Z',
+    updateTime: '2026-11-03T08:24:36.670983Z',
+  },
+  revision: {
+    id: 21,
+    courseId: 19,
+    revisionNo: 1,
+    state: 'published',
+    basedOnRevisionId: null,
+    programId: 5,
+    moduleId: 7,
+    title: 'Khóa thử bài thi cuối',
+    summary: null,
+    level: 'basic',
+    defaultRequirement: 'optional',
+    coverAssetId: null,
+    coverIcon: null,
+    coverColor: null,
+    publishedAt: '2026-11-03T08:24:36.669862Z',
+    publishedBy: '000002',
+    rowVersion: 3,
+    createTime: '2026-11-03T08:24:15.300292Z',
+    updateTime: '2026-11-03T08:24:36.671029Z',
+  },
+  objectives: [
+    {
+      id: 25,
+      revisionId: 21,
+      description: 'Đạt bài thi cuối khóa',
+      sortNo: 0,
+      rowVersion: 0,
+      createTime: '2026-11-03T08:24:36.350602Z',
+      updateTime: '2026-11-03T08:24:36.369244Z',
+    },
+  ],
+  chapters: [
+    {
+      chapter: {
+        id: 32,
+        revisionId: 21,
+        title: 'Chương 1',
+        sortNo: 0,
+        sourceChapterId: null,
+        rowVersion: 0,
+        createTime: '2026-11-03T08:24:36.350602Z',
+        updateTime: '2026-11-03T08:24:36.370332Z',
+      },
+      lessons: [
+        {
+          lesson: {
+            id: 44,
+            chapterId: 32,
+            title: 'Bài 1',
+            lessonType: 'content',
+            estimatedDurationSeconds: 300,
+            isRequired: true,
+            sortNo: 0,
+            sourceLessonId: null,
+            quizId: null,
+            rowVersion: 0,
+            createTime: '2026-11-03T08:24:36.350602Z',
+            updateTime: '2026-11-03T08:24:36.371417Z',
+          },
+          blocks: [
+            {
+              block: {
+                id: 46,
+                lessonId: 44,
+                blockType: 'text',
+                title: 'Nội dung',
+                body: 'Bài đọc ngắn.',
+                bodyFormat: 'markdown',
+                completionMode: 'manual',
+                completionThreshold: null,
+                isRequired: true,
+                sortNo: 0,
+                sourceBlockId: null,
+                mediaAssetId: null,
+                videoChapters: [],
+                transcript: [],
+                rowVersion: 0,
+                createTime: '2026-11-03T08:24:36.350602Z',
+                updateTime: '2026-11-03T08:24:36.372392Z',
+              },
+              assets: [],
+              steps: [],
+            },
+          ],
+        },
+      ],
+    },
+  ],
+  completionRule: {
+    id: 21,
+    revisionId: 21,
+    requireAllRequiredLessons: true,
+    requireAllRequiredQuizzes: true,
+    rewardPoints: 20,
+    rowVersion: 1,
+    createTime: '2026-11-03T08:24:15.300292Z',
+    updateTime: '2026-11-03T08:24:15.403740Z',
+  },
+  finalQuizId: 6,
+};

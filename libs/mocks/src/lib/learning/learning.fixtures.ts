@@ -644,6 +644,7 @@ function courseDetail(seed: SeedCourse, ids: () => number): CourseDetail {
       rowVersion: 0,
       ...stamp,
     },
+    finalQuizId: null,
   };
 }
 
