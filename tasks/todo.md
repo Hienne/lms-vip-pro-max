@@ -23,7 +23,7 @@ The previous `course-wizard-create` checklist is in git history at `e838065`.
 
 ## Phase 1: Backend
 
-- [ ] **B1: Store and read the final exam**
+- [x] **B1: Store and read the final exam**
   - `QuizRef` gains `quizType`, `passPercent`, `maxAttempts` and `allowRetakeAfterPass`; `AssessmentQuizDirectory`
     fills them.
   - `DraftContent` / `DraftRequest` gain `finalQuizId`. On save, a quiz that is missing, deleted, of another
@@ -31,24 +31,37 @@ The previous `course-wizard-create` checklist is in git history at `e838065`.
   - `applyDraft` replaces the revision's `course_assessments` rows with at most one final row (spec, Backend).
   - `CourseDetail.finalQuizId`; the revision copy carries it.
   - Acceptance: `mvn -o clean test` green.
-- [ ] **B2: Publish and completion**
+  - Checked: commit `1607d18` in `corebanking-academy-final-exam`; `mvn -o clean test` 459 run, 0 failed, 42 skipped (`CommunityApiIT`, as before).
+- [x] **B2: Publish and completion**
   - `FINAL_EXAM_UNPUBLISHED`; the publish check replaces the `QUIZ_UNAVAILABLE` refusal.
   - `finalExamPassed(enrollment)` in `updateEnrollment`; `completeQuizLessons` recomputes the enrollment when the
     quiz is the final exam, even without quiz lessons, and never throws.
   - Acceptance: `mvn -o clean test` green.
-- [ ] **B3: Tests and docs**
+  - Checked: commit `4ab9e1f`; `mvn -o clean test` 459 run, 0 failed, 42 skipped.
+- [x] **B3: Tests and docs**
   - Integration tests from the spec's Testing section (save, refusals, clear, copy, publish, completion in both
     orders, no final exam, older revision unaffected).
   - `docs/api/LEARNING.md` and `LEARNING_CURL.md`.
   - Acceptance: `mvn -o clean test` green.
+  - Checked: commit `61ff927`; new `CourseFinalExamIT` (11 cases); `mvn -o clean test` 470 run, 0 failed, 42 skipped.
 
 ### Checkpoint A
 
-- [ ] The main session restarts :8019 from `~/my-projects/corebanking-academy-final-exam`.
-- [ ] Plan Decision 9 through the API: `WIZ-FE-01`, its `FINAL_EXAM` quiz, publish; `hocvien.tichhop` in progress
-      after the lesson, completed after passing the exam.
-- [ ] Refusals: a `PRACTICE` quiz on save; an unpublished final exam on publish. Course 1's enrollments unchanged.
-- [ ] `mvn -o clean test` green in a temporary worktree. The app child starts Phase 2.
+- [x] The main session reviewed the three diffs and restarted :8019 from `~/my-projects/corebanking-academy-final-exam`
+      (`61ff927`) on 2026-11-03.
+- [x] Plan Decision 9 through the API, no SQL:
+  - As `quantri`: `WIZ-FE-01` (course 19, revision 21) created with one required text block; question 19; quiz 6
+    (`FINAL_EXAM`, FIXED, 1 question, pass 50%).
+  - Save refusals: quiz 1 (`PRACTICE`, course 1) and quiz 2 (`FINAL_EXAM`, course 1) both gave `LEARNING-QUIZ_INVALID`
+    on the field `finalQuizId`. A `PRACTICE` quiz of the same course was left to `CourseFinalExamIT`.
+  - Quiz 6 saved while still a draft; `GET /courses/19` returns `finalQuizId` 6. Publishing the course then gave
+    `LEARNING-FINAL_EXAM_UNPUBLISHED`; after publishing quiz 6, the course published with `finalQuizId` 6.
+  - As `hocvien.tichhop`: self-enrolled (enrollment 18 on revision 21), completed block 46: `in_progress` at 100%.
+    Then attempt 10 on quiz 6, answered and submitted: `passed` true at 100%, and the enrollment became `completed`
+    in the same grading call.
+  - The enrollments of courses 1, 2 and 8 (ids 1–6 and 17) read the same before and after.
+- [x] `mvn -o clean test` in a temporary worktree at `61ff927`: 470 run, 0 failures, 0 errors, 42 skipped;
+      `CourseFinalExamIT` 11/11. The app child starts Phase 2.
 
 ## Phase 2: App
 
