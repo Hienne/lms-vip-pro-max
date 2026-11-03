@@ -127,13 +127,24 @@ The previous `lesson-player-modes` checklist is in git history at `0efffaf`.
 
 ### Checkpoint B
 
-- [ ] Main-session review of each commit's diff against angular.md §14 and visual-design.md.
-- [ ] `npm run check` green.
-- [ ] Browser on the local stack, token sign-in as `quantri`:
-  - create `WIZ-01` with two chapters and a lesson in one "Lưu nháp";
-  - the URL is `/admin/courses/{id}/edit`, and Back does not return to `/new`;
-  - a reload shows the tree;
-  - a duplicate code shows the field error;
-  - leaving with input asks first.
-- [ ] 375, 768 and 1280 px, light and dark, keyboard only, beside the mockup on :4320.
-- [ ] The spec is marked built.
+- [x] Main-session review of the five diffs (`69b776c`..`2e85c8e`) against angular.md §14 and visual-design.md. Create
+      mode comes from route data; the store skips the course, quiz and kept-upload reads; save and publish create
+      first; `LEARNING-DUPLICATE` goes to the code field and step 1; one primary button per step. The course preview
+      card on step 1 predates this module and stays.
+- [x] `npm run check` green on `2e85c8e` (14 tasks).
+- [x] Browser on the local stack (:8019 on `b8529eb`), token sign-in as `quantri`:
+  - `/admin/courses/new` called only `auth/me`, the documents poll and the programs list: no course call.
+  - `WIZ-UI-01` with two chapters, a lesson and a text block: one `POST /courses`, then
+    `/admin/courses/18/edit?step=1` on the same step, with `history.length` unchanged (`/new` replaced).
+  - A reload read back both chapters and "Bài 1" with its text block.
+  - A quiz lesson before the first save shows "Lưu nháp trước để chọn bài kiểm tra".
+  - `WIZ-UI-01` again, saved from step 2: "Mã khóa học đã tồn tại." on the code field, back on step 1, no alert
+    for the duplicate.
+  - "Hủy" with input opened "Rời trang khi chưa lưu?"; "Rời trang" went to `/admin/courses`.
+- [x] 375 px dark, 768 px light, 1280 px light: no horizontal scroll. Step 4 shows the checklist and the summary with
+      "Xuất bản khóa học" as the only primary button. Keyboard: Tab reaches the stepper with a 2 px focus ring.
+  - Not met, and not from this module: Enter or Space on a stepper step does not change the step, and the steps have
+    no accessible name in the accessibility tree. The same happens on the edit screen; it is `ui-stepper`
+    (`libs/ui/src/lib/organisms/stepper`), which this module did not change.
+  - Not done: the side-by-side comparison with the mockup on :4320.
+- [x] The spec is marked built.

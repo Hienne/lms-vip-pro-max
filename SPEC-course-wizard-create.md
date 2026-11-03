@@ -1,6 +1,6 @@
 # Spec: `course-wizard-create`
 
-Map: [SPEC-course-authoring.md](SPEC-course-authoring.md). Status: **approved 2026-11-03** (open questions answered in `tasks/plan.md` Decision 1).
+Map: [SPEC-course-authoring.md](SPEC-course-authoring.md). Status: **built 2026-11-03** (amended by `tasks/plan.md`; results in `tasks/todo.md` Checkpoints A and B).
 Depends on nothing. `course-final-exam` and `course-publish-targets` build on it.
 
 ## Objective
