@@ -5,6 +5,7 @@ import {
   CourseDetailSchema,
   CourseLessonSchema,
   CourseShareSchema,
+  LessonBlockSchema,
   LessonInputSchema,
   SaveDraftCommandSchema,
   ShareCourseCommandSchema,
@@ -318,5 +319,70 @@ describe('quiz lessons', () => {
     expect(LessonInputSchema.safeParse({ ...input, quizId: 'x' }).success).toBe(
       false,
     );
+  });
+});
+
+describe('video chapters and transcript', () => {
+  const block = {
+    id: 9,
+    lessonId: 3,
+    blockType: 'video',
+    title: 'Video',
+    completionMode: 'video_coverage',
+    sortNo: 0,
+    ...stamp,
+  };
+
+  it('default to empty lists when the backend sends none', () => {
+    const parsed = LessonBlockSchema.parse(block);
+    expect(parsed.videoChapters).toEqual([]);
+    expect(parsed.transcript).toEqual([]);
+  });
+
+  it('read decimal seconds as numbers', () => {
+    const parsed = LessonBlockSchema.parse({
+      ...block,
+      videoChapters: [{ startSeconds: 12.5, title: 'Mở đầu' }],
+      transcript: [{ startSeconds: 0.25, text: 'Xin chào' }],
+    });
+    expect(parsed.videoChapters[0].startSeconds).toBe(12.5);
+    expect(parsed.transcript[0].text).toBe('Xin chào');
+  });
+
+  it('are optional in a saved block and checked against the backend limits', () => {
+    const input = {
+      blockType: 'video',
+      title: 'Video',
+      completionMode: 'video_coverage',
+      assets: [],
+      steps: [],
+    };
+    const lesson = (blocks: unknown[]) => ({
+      title: 'Bài',
+      lessonType: 'content',
+      estimatedDurationSeconds: 60,
+      blocks,
+    });
+    expect(LessonInputSchema.safeParse(lesson([input])).success).toBe(true);
+    expect(
+      LessonInputSchema.safeParse(
+        lesson([
+          {
+            ...input,
+            videoChapters: [{ startSeconds: 0, title: 'A' }],
+            transcript: [{ startSeconds: 1.5, text: 'B' }],
+          },
+        ]),
+      ).success,
+    ).toBe(true);
+    const tooMany = Array.from({ length: 51 }, (_, i) => ({
+      startSeconds: i,
+      title: 'A',
+    }));
+    expect(
+      LessonInputSchema.safeParse(
+        lesson([{ ...input, videoChapters: tooMany }]),
+      ).success,
+    ).toBe(false);
   });
 });

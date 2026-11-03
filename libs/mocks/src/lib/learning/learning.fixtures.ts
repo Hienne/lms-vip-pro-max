@@ -594,6 +594,8 @@ function courseDetail(seed: SeedCourse, ids: () => number): CourseDetail {
                   isRequired: true,
                   sortNo: blockIndex + 1,
                   sourceBlockId: null,
+                  videoChapters: [],
+                  transcript: [],
                   rowVersion: 0,
                   ...stamp,
                 },

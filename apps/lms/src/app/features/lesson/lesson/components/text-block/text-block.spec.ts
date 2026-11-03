@@ -13,6 +13,8 @@ const block = (over: Partial<LessonBlock>): LessonBlock => ({
   completionThreshold: null,
   isRequired: true,
   sortNo: 1,
+  videoChapters: [],
+  transcript: [],
   rowVersion: 0,
   ...over,
 });
