@@ -223,4 +223,73 @@ describe('VideoBlock', () => {
     vi.advanceTimersByTime(VIDEO_BEAT_MS * 2);
     expect(beats).toEqual([]);
   });
+
+  describe('chapters', () => {
+    const chapters = [
+      { startSeconds: 0, title: 'Giới thiệu' },
+      { startSeconds: 10, title: 'Khái niệm chính' },
+      { startSeconds: 20.5, title: 'Tổng kết' },
+    ];
+    const items = (probe: Probe) =>
+      Array.from(
+        probe.el.querySelectorAll<HTMLButtonElement>('.chapters__item'),
+      );
+
+    it('shows no row for a video without chapters', () => {
+      const probe = render();
+      expect(probe.el.querySelector('.chapters')).toBeNull();
+    });
+
+    it('lists each chapter as "time · title"', () => {
+      const probe = render();
+      probe.set('chapters', chapters);
+      expect(items(probe).map((b) => b.textContent?.trim())).toEqual([
+        '0:00 · Giới thiệu',
+        '0:10 · Khái niệm chính',
+        '0:20 · Tổng kết',
+      ]);
+    });
+
+    it('moves the player on a click and reports it as a seek', () => {
+      const probe = render();
+      probe.set('chapters', chapters);
+      probe.fire('play', false);
+      probe.time(3);
+      probe.fire('timeupdate');
+
+      items(probe)[1].click();
+      expect(probe.video()!.currentTime).toBe(10);
+      probe.fire('seeking');
+      expect(probe.seeks).toEqual([{ from: 3, to: 10, playing: true }]);
+    });
+
+    it('marks the chapter being played and follows the time', () => {
+      const probe = render();
+      probe.set('chapters', chapters);
+      const current = () =>
+        items(probe).findIndex(
+          (b) => b.getAttribute('aria-current') === 'true',
+        );
+
+      expect(current()).toBe(0);
+      probe.time(9);
+      probe.fire('timeupdate');
+      expect(current()).toBe(0);
+      probe.time(10);
+      probe.fire('timeupdate');
+      expect(current()).toBe(1);
+      probe.time(20);
+      probe.fire('timeupdate');
+      expect(current()).toBe(2);
+    });
+
+    it('marks no chapter before the first one starts', () => {
+      const probe = render();
+      probe.set('chapters', [{ startSeconds: 5, title: 'Sau lời mở đầu' }]);
+      expect(items(probe)[0].getAttribute('aria-current')).toBeNull();
+      probe.time(5);
+      probe.fire('timeupdate');
+      expect(items(probe)[0].getAttribute('aria-current')).toBe('true');
+    });
+  });
 });

@@ -32,4 +32,11 @@
   <ui-icon name="bookmark" size="sm" />
   Đánh dấu mốc {{ clock(second()) }}
 </button>
-}
+@if (chapters().length) {
+<app-video-chapters
+  class="video__chapters"
+  [chapters]="chapters()"
+  [second]="second()"
+  (seek)="seekTo($event)"
+/>
+} }

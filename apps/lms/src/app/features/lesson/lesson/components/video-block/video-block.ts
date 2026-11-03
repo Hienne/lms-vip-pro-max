@@ -10,10 +10,12 @@ import {
   untracked,
   viewChild,
 } from '@angular/core';
+import type { VideoChapter } from '@lms/contracts';
 import { Button, Icon } from '@lms/ui';
 import { interval, type Subscription } from 'rxjs';
 import { clock } from '../../../../../shared/learning/anchor';
 import type { BlockJump } from '../pdf-block/pdf-block';
+import { VideoChapters } from './components/video-chapters/video-chapters';
 
 /** A playing video reports its range this often; the heartbeat keeps the media cookie alive. */
 export const VIDEO_BEAT_MS = 10_000;
@@ -31,7 +33,7 @@ export interface VideoSeek {
  */
 @Component({
   selector: 'app-video-block',
-  imports: [Button, Icon],
+  imports: [Button, Icon, VideoChapters],
   templateUrl: './video-block.html',
   styleUrl: './video-block.scss',
 })
@@ -42,6 +44,8 @@ export class VideoBlock {
   readonly title = input('');
   /** Moves the player to this second; a new object is a new request, even for the same second. */
   readonly jump = input<BlockJump | null>(null);
+  /** The chapters of the video, in time order; a click on one moves the player. */
+  readonly chapters = input<readonly VideoChapter[]>([]);
   /** The second the player is at is bookmarked. */
   readonly bookmarked = input(false);
   /** A bookmark change is in flight, so the button waits. */
@@ -142,6 +146,12 @@ export class VideoBlock {
   /** Where the video is now; the page reads it when the block is closed. */
   currentPosition(): number {
     return this.player()?.nativeElement.currentTime ?? this.last;
+  }
+
+  /** A chapter or transcript line moves the player, which reports it as a seek like any other. */
+  protected seekTo(second: number): void {
+    const video = this.player()?.nativeElement;
+    if (video) video.currentTime = second;
   }
 
   private moveTo(jump: BlockJump): void {

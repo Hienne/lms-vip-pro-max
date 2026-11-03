@@ -13,6 +13,11 @@
     margin-top: ui.space(2);
   }
 
+  &__chapters {
+    display: block;
+    margin-top: ui.space(3);
+  }
+
   &__error {
     @include ui.row(2);
     margin: 0;

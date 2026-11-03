@@ -144,6 +144,7 @@
           [startAt]="store.resume$()?.lastVideoPositionSeconds ?? 0"
           [title]="active.title"
           [jump]="store.videoJump$()"
+          [chapters]="active.detail.block.videoChapters"
           [bookmarked]="store.bookmarked$()"
           [busy]="store.bookmarkBusy$()"
           (played)="store.videoPlay($event)"
