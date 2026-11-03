@@ -11,10 +11,8 @@ import {
   type EnrollmentMode,
   type Requirement,
 } from '@lms/contracts';
-import type {
-  AssignRequest,
-  TargetPick,
-} from '../../data-access/assignments.store';
+import type { TargetPick } from '../../../../../shared/assignment-target/target-labels';
+import type { AssignRequest } from '../../data-access/assignments.store';
 
 export interface AssignFormValue {
   /** Select value: a course id, or '' for none. */

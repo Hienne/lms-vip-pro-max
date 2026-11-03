@@ -77,9 +77,11 @@ The previous `course-final-exam` checklist is in git history at `2c91339`.
   - Checked: contracts, mocks and lms (envelope, error mapping and the full suite) tests, lint and typecheck green. Also
     added to the envelope: `errors[]` is now read (`FieldError`, `ApiError.fieldErrors`, `AppError.fieldErrors`),
     because the row mapping needs it; the mock refuses with the same shape.
-- [ ] **F2: Shared picker**
+- [x] **F2: Shared picker**
   - `shared/assignment-target/`: `TargetPicker` and `TargetOptionsStore` (Decision 7); `assign-form` uses them.
   - Acceptance: the assignments specs pass; `lms` lint (module boundaries) and typecheck clean.
+  - Checked: assignments spec (7) and the new `target-picker.spec.ts` (3) pass; `lms` lint (0 errors) and typecheck clean.
+    The host sets the groups' owner org through the `TARGET_OWNER_ORG` token (the caller's org without it).
 - [ ] **F3: Step 4**
   - Store state, loads and commands (Decision 9); "Giao khóa học" (picker, rows, reminder switch, "Đã giao trước
     đó", empty line) and "Chia sẻ cho đơn vị khác" (owner and shared units locked); the confirmation counts; the row

@@ -10,11 +10,8 @@ import {
   Select,
   type SegmentedOption,
 } from '@lms/ui';
-import { TARGET_TYPE_LABEL } from '../../assignment-labels';
-import {
-  AssignmentsStore,
-  type TargetPick,
-} from '../../data-access/assignments.store';
+import { TARGET_TYPE_LABEL, type TargetPick } from '../target-labels';
+import { TargetOptionsStore } from './data-access/target-options.store';
 
 interface PickerValue {
   targetType: TargetType;
@@ -35,16 +32,18 @@ const EMPTY: Omit<PickerValue, 'targetType'> = {
 
 /**
  * Picks one target of an assignment: a person, a team of an org, an org (with or without its
- * subtree) or a learning group. An incomplete pick cannot be added; the owner keeps the list.
+ * subtree) or a learning group. An incomplete pick cannot be added; the host keeps the list.
+ * Used by "Giao học & hạn" and by step 4 of the course editor.
  */
 @Component({
   selector: 'app-target-picker',
   imports: [Button, Checkbox, Field, FormField, Icon, Segmented, Select],
+  providers: [TargetOptionsStore],
   templateUrl: './target-picker.html',
   styleUrl: './target-picker.scss',
 })
 export class TargetPicker {
-  protected readonly store = inject(AssignmentsStore);
+  protected readonly options = inject(TargetOptionsStore);
 
   readonly added = output<TargetPick>();
 
@@ -65,7 +64,7 @@ export class TargetPicker {
       list.find((item) => String(item.id) === id)?.name ?? '';
     switch (value.targetType) {
       case 'user': {
-        const person = this.store
+        const person = this.options
           .people$()
           .find((p) => p.userId === value.userId);
         return person
@@ -81,7 +80,7 @@ export class TargetPicker {
           ? {
               targetType: 'team',
               teamId: Number(value.teamId),
-              label: `${name(this.store.teams$(), value.teamId)} · ${name(this.store.orgs$(), value.orgId)}`,
+              label: `${name(this.options.teams$(), value.teamId)} · ${name(this.options.orgs$(), value.orgId)}`,
             }
           : null;
       case 'org':
@@ -91,7 +90,7 @@ export class TargetPicker {
               orgId: Number(value.orgId),
               includeDescendants: value.includeDescendants,
               label:
-                name(this.store.orgs$(), value.orgId) +
+                name(this.options.orgs$(), value.orgId) +
                 (value.includeDescendants ? ' và đơn vị cấp dưới' : ''),
             }
           : null;
@@ -101,8 +100,9 @@ export class TargetPicker {
               targetType: 'learning_group',
               groupId: Number(value.groupId),
               label:
-                this.store.groups$().find((g) => g.id === value.groupId)?.group
-                  .name ?? '',
+                this.options
+                  .groups$()
+                  .find((g) => String(g.id) === value.groupId)?.name ?? '',
             }
           : null;
     }
@@ -110,14 +110,14 @@ export class TargetPicker {
 
   protected chooseType(type: TargetType): void {
     this.model.set({ targetType: type, ...EMPTY });
-    this.store.pickTargetOrg(undefined);
+    this.options.pickTeamOrg(undefined);
   }
 
   protected onOrgChange(): void {
     this.model.update((value) => ({ ...value, teamId: '' }));
     if (this.model().targetType === 'team') {
       const orgId = Number(this.model().orgId);
-      this.store.pickTargetOrg(orgId || undefined);
+      this.options.pickTeamOrg(orgId || undefined);
     }
   }
 

@@ -11,14 +11,12 @@ import {
   courseEndpoints,
   identityEndpoints,
   MAX_PAGE_SIZE,
-  organizationEndpoints,
   type AssignCourseCommand,
   type CourseAssignment,
   type CourseCard,
   type CreateGroupCommand,
   type LearningGroup,
   type Page,
-  type TargetInput,
 } from '@lms/contracts';
 import { switchMap } from 'rxjs';
 import { invalidation } from '../../../../core/data-access/invalidation';
@@ -44,9 +42,6 @@ export interface GroupRow {
   readonly id: string;
   readonly group: LearningGroup;
 }
-
-/** A chosen target with the name the form shows for it. */
-export type TargetPick = TargetInput & { readonly label: string };
 
 /**
  * What the assign form sends. The store adds the published revision, the assigning org and the
@@ -116,8 +111,6 @@ export class AssignmentsStore {
           }
         : null,
     ),
-    /** The org whose teams the target picker offers. */
-    targetOrgId: signal<number | undefined>(undefined),
     viewingId: signal<number | null>(null),
     revokingId: signal<number | null>(null),
     creatingGroup: signal(false),
@@ -177,27 +170,11 @@ export class AssignmentsStore {
     },
   );
 
-  // The people, orgs and groups in the caller's scope: the target picker's options and the names
-  // of recipients and members. One page of each is enough for the selects.
+  // The people in the caller's scope: the names of recipients and members. One page is enough.
   private readonly peopleData = serverData(() =>
     this.client.call(identityEndpoints.listUsers, {
       query: { size: MAX_PAGE_SIZE, sort: 'fullName,asc', status: 'active' },
     }),
-  );
-
-  private readonly orgsData = serverData(() =>
-    this.client.call(organizationEndpoints.listOrgs, {
-      query: { size: MAX_PAGE_SIZE, sort: 'name,asc' },
-    }),
-  );
-
-  private readonly teamsData = serverData(
-    (orgId: number) =>
-      this.client.call(organizationEndpoints.listTeams, {
-        params: { orgId },
-        query: { size: MAX_PAGE_SIZE, sort: 'name,asc' },
-      }),
-    { params: () => this.state.targetOrgId() },
   );
 
   private readonly groupsData = serverData(
@@ -328,8 +305,6 @@ export class AssignmentsStore {
   readonly names$ = computed(
     () => new Map(this.people$().map((p) => [p.userId, p.fullName])),
   );
-  readonly orgs$ = computed(() => this.orgsData.value()?.items ?? []);
-  readonly teams$ = computed(() => this.teamsData.value()?.items ?? []);
   readonly groups$ = computed((): readonly GroupRow[] =>
     (this.groupsData.value()?.items ?? []).map((group) => ({
       id: String(group.id),
@@ -393,10 +368,6 @@ export class AssignmentsStore {
     this.state.assigning.set(assigning);
   }
 
-  private setTargetOrgId(orgId: number | undefined): void {
-    this.state.targetOrgId.set(orgId);
-  }
-
   private setViewingId(id: number | null): void {
     this.state.viewingId.set(id);
   }
@@ -429,7 +400,6 @@ export class AssignmentsStore {
 
   startAssign(): void {
     this.assignMutation.reset();
-    this.setTargetOrgId(undefined);
     this.setAssigning({
       idempotencyKey: newIdempotencyKey(),
       courseId: this.state.courseId(),
@@ -438,11 +408,6 @@ export class AssignmentsStore {
 
   cancelAssign(): void {
     this.setAssigning(null);
-  }
-
-  /** The target picker's org changed: offer that org's teams. */
-  pickTargetOrg(orgId: number | undefined): void {
-    this.setTargetOrgId(orgId);
   }
 
   assign(request: AssignRequest): void {

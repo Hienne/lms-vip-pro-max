@@ -11,15 +11,14 @@ import {
   Switch,
 } from '@lms/ui';
 import { REQUIREMENT_LABEL } from '../../../../../shared/course/course-labels';
+import { ENROLLMENT_MODE_LABEL } from '../../assignment-labels';
+import { AssignmentsStore } from '../../data-access/assignments.store';
+import { TargetPicker } from '../../../../../shared/assignment-target/target-picker/target-picker';
 import {
-  ENROLLMENT_MODE_LABEL,
+  sameTarget,
   TARGET_TYPE_LABEL,
-} from '../../assignment-labels';
-import {
-  AssignmentsStore,
   type TargetPick,
-} from '../../data-access/assignments.store';
-import { TargetPicker } from '../target-picker/target-picker';
+} from '../../../../../shared/assignment-target/target-labels';
 import {
   assignFormSchema,
   newAssignFormValue,
@@ -70,15 +69,9 @@ export class AssignForm {
   });
 
   protected addTarget(pick: TargetPick): void {
-    const same = (t: TargetPick) =>
-      t.targetType === pick.targetType &&
-      t.userId === pick.userId &&
-      t.teamId === pick.teamId &&
-      t.orgId === pick.orgId &&
-      t.groupId === pick.groupId;
     this.model.update((value) => ({
       ...value,
-      targets: [...value.targets.filter((t) => !same(t)), pick],
+      targets: [...value.targets.filter((t) => !sameTarget(t, pick)), pick],
     }));
   }
 

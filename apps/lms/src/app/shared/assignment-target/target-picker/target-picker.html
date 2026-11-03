@@ -11,7 +11,7 @@
     <ui-field label="Học viên">
       <select uiSelect [formField]="pickerForm.userId">
         <option value="">— Chọn học viên —</option>
-        @for (person of store.people$(); track person.userId) {
+        @for (person of options.people$(); track person.userId) {
         <option [value]="person.userId">
           {{ person.fullName }} · {{ person.userId }}
         </option>
@@ -22,8 +22,8 @@
     <ui-field label="Nhóm học tập">
       <select uiSelect [formField]="pickerForm.groupId">
         <option value="">— Chọn nhóm —</option>
-        @for (row of store.groups$(); track row.id) {
-        <option [value]="row.id">{{ row.group.name }}</option>
+        @for (group of options.groups$(); track group.id) {
+        <option [value]="group.id">{{ group.name }}</option>
         }
       </select>
     </ui-field>
@@ -31,7 +31,7 @@
     <ui-field label="Đơn vị">
       <select uiSelect [formField]="pickerForm.orgId" (change)="onOrgChange()">
         <option value="">— Chọn đơn vị —</option>
-        @for (org of store.orgs$(); track org.id) {
+        @for (org of options.orgs$(); track org.id) {
         <option [value]="org.id">{{ org.name }}</option>
         }
       </select>
@@ -40,7 +40,7 @@
     <ui-field label="Phòng/nhóm">
       <select uiSelect [formField]="pickerForm.teamId">
         <option value="">— Chọn phòng/nhóm —</option>
-        @for (team of store.teams$(); track team.id) {
+        @for (team of options.teams$(); track team.id) {
         <option [value]="team.id">{{ team.name }}</option>
         }
       </select>
