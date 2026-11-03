@@ -18,6 +18,11 @@
     margin-top: ui.space(3);
   }
 
+  &__transcript {
+    display: block;
+    margin-top: ui.space(3);
+  }
+
   &__error {
     @include ui.row(2);
     margin: 0;

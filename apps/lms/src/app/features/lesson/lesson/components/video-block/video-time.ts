@@ -14,3 +14,12 @@ export function startedIndex(
   }
   return index;
 }
+
+/** Lower case without accents (`đ` included), so a search ignores both case and diacritics. */
+export function fold(text: string): string {
+  return text
+    .normalize('NFD')
+    .replace(/\p{M}/gu, '')
+    .replace(/[đĐ]/g, 'd')
+    .toLowerCase();
+}

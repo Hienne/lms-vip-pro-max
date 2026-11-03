@@ -10,12 +10,13 @@ import {
   untracked,
   viewChild,
 } from '@angular/core';
-import type { VideoChapter } from '@lms/contracts';
+import type { TranscriptLine, VideoChapter } from '@lms/contracts';
 import { Button, Icon } from '@lms/ui';
 import { interval, type Subscription } from 'rxjs';
 import { clock } from '../../../../../shared/learning/anchor';
 import type { BlockJump } from '../pdf-block/pdf-block';
 import { VideoChapters } from './components/video-chapters/video-chapters';
+import { VideoTranscript } from './components/video-transcript/video-transcript';
 
 /** A playing video reports its range this often; the heartbeat keeps the media cookie alive. */
 export const VIDEO_BEAT_MS = 10_000;
@@ -33,7 +34,7 @@ export interface VideoSeek {
  */
 @Component({
   selector: 'app-video-block',
-  imports: [Button, Icon, VideoChapters],
+  imports: [Button, Icon, VideoChapters, VideoTranscript],
   templateUrl: './video-block.html',
   styleUrl: './video-block.scss',
 })
@@ -46,6 +47,8 @@ export class VideoBlock {
   readonly jump = input<BlockJump | null>(null);
   /** The chapters of the video, in time order; a click on one moves the player. */
   readonly chapters = input<readonly VideoChapter[]>([]);
+  /** The timed lines of the video, in time order; a click on one moves the player. */
+  readonly transcript = input<readonly TranscriptLine[]>([]);
   /** The second the player is at is bookmarked. */
   readonly bookmarked = input(false);
   /** A bookmark change is in flight, so the button waits. */

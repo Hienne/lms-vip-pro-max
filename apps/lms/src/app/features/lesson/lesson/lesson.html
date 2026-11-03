@@ -145,6 +145,7 @@
           [title]="active.title"
           [jump]="store.videoJump$()"
           [chapters]="active.detail.block.videoChapters"
+          [transcript]="active.detail.block.transcript"
           [bookmarked]="store.bookmarked$()"
           [busy]="store.bookmarkBusy$()"
           (played)="store.videoPlay($event)"

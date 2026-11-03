@@ -292,4 +292,123 @@ describe('VideoBlock', () => {
       expect(items(probe)[0].getAttribute('aria-current')).toBe('true');
     });
   });
+
+  describe('transcript', () => {
+    const lines = [
+      { startSeconds: 0, text: 'Xin chào, đây là video giới thiệu.' },
+      { startSeconds: 5, text: 'Hệ thống Core Banking xử lý sổ cái.' },
+      { startSeconds: 10.5, text: 'Tổng kết bài học.' },
+    ];
+    const details = (probe: Probe) =>
+      probe.el.querySelector<HTMLDetailsElement>('details.transcript')!;
+    const buttons = (probe: Probe) =>
+      Array.from(
+        probe.el.querySelectorAll<HTMLButtonElement>('.transcript__line'),
+      );
+    const search = (probe: Probe, text: string) => {
+      const input = probe.el.querySelector<HTMLInputElement>(
+        'input[type="search"]',
+      )!;
+      input.value = text;
+      input.dispatchEvent(new Event('input'));
+      probe.fire('timeupdate');
+    };
+
+    it('shows nothing for a video without lines', () => {
+      const probe = render();
+      expect(probe.el.querySelector('details')).toBeNull();
+    });
+
+    it('is closed by default and counts its lines', () => {
+      const probe = render();
+      probe.set('transcript', lines);
+      expect(details(probe).open).toBe(false);
+      expect(
+        probe.el.querySelector('.transcript__summary')?.textContent?.trim(),
+      ).toBe('Transcript (3 đoạn)');
+    });
+
+    it('lists each line as "time text"', () => {
+      const probe = render();
+      probe.set('transcript', lines);
+      expect(buttons(probe).map((b) => b.textContent?.trim())).toEqual([
+        '0:00 Xin chào, đây là video giới thiệu.',
+        '0:05 Hệ thống Core Banking xử lý sổ cái.',
+        '0:10 Tổng kết bài học.',
+      ]);
+    });
+
+    it('moves the player on a click and reports it as a seek', () => {
+      const probe = render();
+      probe.set('transcript', lines);
+      probe.fire('play', false);
+      probe.time(1);
+      probe.fire('timeupdate');
+
+      buttons(probe)[1].click();
+      expect(probe.video()!.currentTime).toBe(5);
+      probe.fire('seeking');
+      expect(probe.seeks).toEqual([{ from: 1, to: 5, playing: true }]);
+    });
+
+    it('marks the line being played and follows the time', () => {
+      const probe = render();
+      probe.set('transcript', lines);
+      const current = () =>
+        buttons(probe).findIndex(
+          (b) => b.getAttribute('aria-current') === 'true',
+        );
+
+      expect(current()).toBe(0);
+      probe.time(5);
+      probe.fire('timeupdate');
+      expect(current()).toBe(1);
+      probe.time(10);
+      probe.fire('timeupdate');
+      expect(current()).toBe(2);
+    });
+
+    it('filters by a substring, ignoring case and accents, and keeps marking the played line', () => {
+      const probe = render();
+      probe.set('transcript', lines);
+
+      search(probe, 'TONG KET');
+      expect(buttons(probe).map((b) => b.textContent?.trim())).toEqual([
+        '0:10 Tổng kết bài học.',
+      ]);
+
+      search(probe, 'đây');
+      expect(buttons(probe)).toHaveLength(1);
+      search(probe, 'day');
+      expect(buttons(probe)).toHaveLength(1);
+
+      probe.time(5);
+      search(probe, 'core');
+      expect(buttons(probe)).toHaveLength(1);
+      expect(buttons(probe)[0].getAttribute('aria-current')).toBe('true');
+    });
+
+    it('says so when no line matches, and lists all again when the search is emptied', () => {
+      const probe = render();
+      probe.set('transcript', lines);
+
+      search(probe, 'không có từ này');
+      expect(buttons(probe)).toHaveLength(0);
+      expect(probe.el.textContent).toContain('Không có đoạn nào khớp.');
+
+      search(probe, '');
+      expect(buttons(probe)).toHaveLength(3);
+      expect(probe.el.textContent).not.toContain('Không có đoạn nào khớp.');
+    });
+
+    it('does not scroll the page to the line being played', () => {
+      const probe = render();
+      probe.set('transcript', lines);
+      const scroll = vi.fn();
+      Element.prototype.scrollIntoView = scroll;
+      probe.time(10);
+      probe.fire('timeupdate');
+      expect(scroll).not.toHaveBeenCalled();
+    });
+  });
 });

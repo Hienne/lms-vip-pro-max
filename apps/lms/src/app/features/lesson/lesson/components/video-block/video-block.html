@@ -39,4 +39,11 @@
   [second]="second()"
   (seek)="seekTo($event)"
 />
+} @if (transcript().length) {
+<app-video-transcript
+  class="video__transcript"
+  [lines]="transcript()"
+  [second]="second()"
+  (seek)="seekTo($event)"
+/>
 } }
