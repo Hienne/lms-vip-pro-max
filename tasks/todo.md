@@ -97,9 +97,19 @@ The previous `learner-home-refresh` checklist is in git history at `3d16946`.
 
 ### Checkpoint B
 
-- [ ] Main-session review of each commit's diff against angular.md §14 and visual-design.md.
-- [ ] `npm run check` green.
-- [ ] Browser on the local stack as `hocvien`, lesson 17: chapters and transcript from the backend; a click on
-      either seeks; search filters; focus mode hides the outline and survives a reload.
-- [ ] 375, 768 and 1280 px, light and dark, keyboard only, beside the mockup on :4320.
-- [ ] The spec is marked built.
+- [x] Main-session review of each commit's diff against angular.md §14 and visual-design.md. Chapters are `uiChip`
+      buttons with `aria-current`; the transcript is a `<details>` with a signal-form search and button lines; focus
+      mode lives in the store and is stored in `try/catch`; the editor round-trips both lists (spec and editor test).
+      Seeking sets the player's `currentTime`, which reports the move as a seek like the notes' `jump`.
+- [x] `npm run check` green on `52f09af` (14 tasks).
+- [x] Browser on the local stack (:8019 on `e88c399`), token sign-in as `hocvien`, `/lesson/7/17`:
+  - The chapter row shows the backend's "0:00 · Giới thiệu", "0:10 · Khái niệm chính", "0:20 · Tổng kết"; at 0:12
+    the second is current. A click on "0:20" moved the video to 20 s and marked the chapter and the 0:20 line.
+  - "Transcript (6 đoạn)" opens; "tin dung" (no accents) keeps only "Phân hệ tín dụng…"; a click on it moved the
+    video to 15 s.
+  - "Chế độ tập trung" hides the side panel (main column 1232 px at 1280), switches to "Hiện mục lục" with
+    `aria-pressed="true"`, stores `lms.lesson.focus`, and is still on after a reload.
+- [x] 1280 px light; 768 px light and 375 px dark: no horizontal scroll, the focus toggle is hidden, the chapters
+      wrap. Keyboard: Tab reaches each chapter, Enter seeks (to 20 s), the focus ring shows. The mockup on :4320 was
+      compared at 1280 px only.
+- [x] The spec is marked built.

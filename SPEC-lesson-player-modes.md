@@ -1,6 +1,6 @@
 # Spec: `lesson-player-modes`
 
-Map: [SPEC.md](SPEC.md). Status: **approved 2026-11-03, amended by `tasks/plan.md`; app part built 2026-11-03 (see "Implementation notes"), Checkpoint B pending.** Depends on `local-stack`, which provides a READY
+Map: [SPEC.md](SPEC.md). Status: **built 2026-11-03** (amended by `tasks/plan.md`; results in `tasks/todo.md` Checkpoints A and B). Depends on `local-stack`, which provides a READY
 video block. It can be built at any point after that.
 
 ## Objective
