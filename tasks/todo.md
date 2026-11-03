@@ -67,33 +67,33 @@ The previous `learner-home-refresh` checklist is in git history at `3d16946`.
 
 ## Phase 2: App
 
-- [ ] **F1: Contracts**
+- [x] **F1: Contracts**
   - `VideoChapterSchema {startSeconds, title}` and `TranscriptLineSchema {startSeconds, text}`;
     `LessonBlockSchema` gains `videoChapters` and `transcript` with `.default([])`; `BlockInputSchema` gains both as
     optional.
   - Fixtures captured from the local backend.
-  - Acceptance: `npx nx test contracts` green.
-- [ ] **F2: Mock and editor**
+  - Acceptance: `npx nx test contracts` green. Checked: `npx nx test contracts` green (248), including the enrolment detail and the learner course captured from the local backend as `hocvien` (block 33: 3 chapters, 6 lines; PDF block 32: `[]`); the mock lib and the app still typecheck.
+- [x] **F2: Mock and editor**
   - The mock's seeded video blocks carry the mockup's chapters and transcript (`lms-mockup/src/data/seed.js`); the
     mock tree save stores and returns them.
   - `course-draft.ts` keeps each loaded video block's lists in the save payload; a new block has none.
-  - Acceptance: specs for the mock round trip and for an editor save that keeps the lists.
-- [ ] **F3: Chapters**
+  - Acceptance: specs for the mock round trip and for an editor save that keeps the lists. Checked: `mocks` 298 and `lms` specs green: `course-tree.backend.spec.ts` (seed, new draft, a save that sends the lists keeps them and one that omits them clears them), `course-draft.spec.ts` and `course-editor.spec.ts` (a video lesson opened and applied, then saved, sends the lists unchanged).
+- [x] **F3: Chapters**
   - Under a video block with chapters: a row of buttons "{mm:ss} · {title}"; a click sets the block's `jump`; the
     current chapter has `aria-current="true"`.
-  - Acceptance: specs for the seek and the current chapter following the time.
-- [ ] **F4: Transcript**
+  - Acceptance: specs for the seek and the current chapter following the time. Checked (a click sets the player's time inside `video-block`, the move a `jump` makes, not the store-owned `jump` input; see the spec notes): `video-block.spec.ts` (labels, click moves the player and reports a seek, `aria-current` follows the time, none before the first chapter) and the page spec (lists from the server reach the block, a click seeks).
+- [x] **F4: Transcript**
   - Under a video block with lines: a collapsible "Transcript ({n} đoạn)", closed by default; a search field
     ("Tìm trong transcript"); each line a button "{mm:ss} {text}" that seeks; the current line marked without
     scrolling the page; "Không có đoạn nào khớp." when the search finds nothing.
-  - Acceptance: specs for search, seek and the current line.
-- [ ] **F5: Focus mode**
+  - Acceptance: specs for search, seek and the current line. Checked: `video-block.spec.ts` (closed by default with the count, lines, click seeks, current line follows the time, search ignores case and accents, no-match line, no `scrollIntoView`).
+- [x] **F5: Focus mode**
   - A top-bar button "Chế độ tập trung" / "Hiện mục lục" with `aria-pressed`; it hides the side panel from `lg` and
     is hidden below `lg`; remembered under `lms.lesson.focus` in `try/catch`.
-  - Acceptance: specs for the toggle, the label, `aria-pressed`, and storage that throws.
-- [ ] **F6: Docs**
+  - Acceptance: specs for the toggle, the label, `aria-pressed`, and storage that throws. Checked: `lesson.spec.ts` (label, `aria-pressed`, side panel hidden and layout class, stored under `lms.lesson.focus`, starts on when remembered, storage that throws). The hide-below-`lg` rule is CSS and was not checked in jsdom; it is for Checkpoint B.
+- [x] **F6: Docs**
   - `SPEC-lesson-player-modes.md`: implementation notes; migration entries for the lesson screen.
-  - Acceptance: `npm run check` green.
+  - Acceptance: `npm run check` green. Checked: `SPEC-lesson-player-modes.md` has the implementation notes; the lesson route entry in the migration registry names the three features (verify ticks left alone); `npm run check` green (see the report).
 
 ### Checkpoint B
 

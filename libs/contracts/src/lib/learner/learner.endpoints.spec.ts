@@ -635,6 +635,24 @@ describe('learner endpoints', () => {
   });
 });
 
+describe('the learner course captured with video chapters and transcript', () => {
+  it('gives the demo video its lists on the read the lesson page uses', () => {
+    const course = LearnerCourseSchema.parse(
+      capturedLessonPlayer.learnerCourse,
+    );
+    const video = course.content.chapters
+      .flatMap((chapter) => chapter.lessons)
+      .flatMap((lesson) => lesson.blocks)
+      .find((entry) => entry.block.id === 33)!.block;
+    expect(video.videoChapters.map((c) => c.title)).toEqual([
+      'Giới thiệu',
+      'Khái niệm chính',
+      'Tổng kết',
+    ]);
+    expect(video.transcript).toHaveLength(6);
+  });
+});
+
 describe('the enrolment detail captured with video chapters and transcript', () => {
   const detail = EnrollmentDetailSchema.parse(
     capturedLessonPlayer.enrollmentDetail,

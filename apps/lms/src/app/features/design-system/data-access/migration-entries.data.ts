@@ -878,7 +878,7 @@ export const MIGRATION_ENTRIES = [
   {
     id: 'route-lesson-course-id-lesson-id',
     notes:
-      'Nối API học thật: phiên học một thiết bị, heartbeat, video/PDF qua nội dung có kiểm soát. Ghi chú/đánh dấu trong bài chưa có trên backend.',
+      'Nối API học thật: phiên học một thiết bị, heartbeat, video/PDF qua nội dung có kiểm soát. Mốc video, transcript có tìm kiếm và chế độ tập trung đã có (lesson-player-modes); chờ đối chiếu trình duyệt ở 375/768/1280 px.',
     kind: 'route',
     mockupSource: 'src/pages/lesson.js · lesson',
     target: 'lesson/:courseId/:lessonId',
