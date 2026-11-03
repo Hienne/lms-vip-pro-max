@@ -10,6 +10,8 @@ import type {
   LessonType,
   Requirement,
   SaveDraftCommand,
+  TranscriptLine,
+  VideoChapter,
 } from '@lms/contracts';
 import type { IconName } from '@lms/ui';
 
@@ -40,6 +42,12 @@ export interface BlockValue {
   readonly isRequired: boolean;
   readonly assets: readonly AssetValue[];
   readonly steps: readonly StepValue[];
+  /**
+   * The chapters and transcript of a loaded video block. The editor has no UI for them, but a tree
+   * save replaces them, so they travel back unchanged; a new block has none.
+   */
+  readonly videoChapters: readonly VideoChapter[];
+  readonly transcript: readonly TranscriptLine[];
 }
 
 export interface LessonValue {
@@ -128,6 +136,8 @@ export function newBlock(blockType: BlockType): BlockValue {
     isRequired: true,
     assets: [],
     steps: [],
+    videoChapters: [],
+    transcript: [],
   };
 }
 
@@ -169,6 +179,9 @@ function toBlockValue({ block, assets, steps }: BlockDetail): BlockValue {
       title: s.title,
       description: s.description ?? '',
     })),
+    // Copies, because the signal forms mark the objects they hold.
+    videoChapters: block.videoChapters.map((c) => ({ ...c })),
+    transcript: block.transcript.map((t) => ({ ...t })),
   };
 }
 
@@ -230,6 +243,22 @@ function toBlockInput(block: BlockValue): BlockInput {
         title: s.title.trim(),
         ...(s.description.trim() ? { description: s.description.trim() } : {}),
       })),
+    ...(block.blockType === 'video' && block.videoChapters.length
+      ? {
+          videoChapters: block.videoChapters.map(({ startSeconds, title }) => ({
+            startSeconds,
+            title,
+          })),
+        }
+      : {}),
+    ...(block.blockType === 'video' && block.transcript.length
+      ? {
+          transcript: block.transcript.map(({ startSeconds, text }) => ({
+            startSeconds,
+            text,
+          })),
+        }
+      : {}),
   };
 }
 

@@ -9,6 +9,7 @@ import {
   type SaveDraftCommand,
 } from '@lms/contracts';
 import {
+  ARCHITECTURE_VIDEO,
   backendRefusal,
   envelopeError,
   type FakeReply,
@@ -110,6 +111,28 @@ describe('CourseEditor', () => {
     expect(screen.text()).toContain(
       'Còn thông tin chưa hợp lệ ở: Thông tin cơ bản',
     );
+  });
+
+  it('saves a loaded video block with its chapters and transcript unchanged', async () => {
+    await screen.open('/admin/courses/1/edit');
+    await screen.click(screen.button('Mở bản nháp để sửa'));
+    await step('Nội dung khóa học');
+    await screen.click(
+      screen.el.querySelector<HTMLElement>(
+        '[aria-label="Sửa Kiến trúc tổng thể hệ thống Core Banking"]',
+      ) ?? undefined,
+    );
+    await screen.click(screen.button('Áp dụng', screen.drawer()!));
+    await screen.click(screen.button('Lưu nháp'));
+
+    const { chapters } = screen.lastCall(courseEndpoints.saveDraft)
+      ?.body as SaveDraftCommand;
+    const video = chapters
+      .flatMap((c) => c.lessons)
+      .flatMap((l) => l.blocks)
+      .find((b) => b.blockType === 'video');
+    expect(video?.videoChapters).toEqual(ARCHITECTURE_VIDEO.videoChapters);
+    expect(video?.transcript).toEqual(ARCHITECTURE_VIDEO.transcript);
   });
 
   it('adds a chapter and a lesson with a text block, then saves them', async () => {

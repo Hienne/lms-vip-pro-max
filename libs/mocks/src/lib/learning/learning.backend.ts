@@ -658,6 +658,8 @@ export class LearningBackend {
             title: s.title,
             description: s.description ?? undefined,
           })),
+          videoChapters: b.block.videoChapters,
+          transcript: b.block.transcript,
         })),
       })),
     }));
