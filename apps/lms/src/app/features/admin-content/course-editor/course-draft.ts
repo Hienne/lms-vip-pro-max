@@ -6,6 +6,7 @@ import type {
   CompletionMode,
   CourseDetail,
   CourseLevel,
+  CreateCourseCommand,
   LessonDetail,
   LessonType,
   Requirement,
@@ -18,6 +19,9 @@ import type { IconName } from '@lms/ui';
 // The course editor's form model and its adapters. The backend saves the whole tree at once and
 // issues new ids on every save, so the editor keys rows with its own `key`, and every save is
 // followed by a fresh read that becomes the new model.
+
+/** A draft as a command carries it: a save without its version. */
+type DraftContent = Omit<SaveDraftCommand, 'expectedVersion'>;
 
 export interface AssetValue {
   readonly assetId: number;
@@ -197,6 +201,22 @@ function toLessonValue({ lesson, blocks }: LessonDetail): LessonValue {
   };
 }
 
+/** The form's value for a course that is not stored yet. */
+export function emptyDraftValue(): CourseDraftValue {
+  return {
+    title: '',
+    summary: '',
+    programId: '',
+    moduleId: '',
+    level: '',
+    defaultRequirement: 'mandatory',
+    coverIcon: '',
+    objectives: [],
+    rewardPoints: 0,
+    chapters: [],
+  };
+}
+
 export function toDraftValue(detail: CourseDetail): CourseDraftValue {
   const { revision } = detail;
   return {
@@ -267,15 +287,11 @@ const idOf = (value: string): number | undefined => {
   return Number.isInteger(id) && id > 0 ? id : undefined;
 };
 
-/** The whole tree as the save command spells it; empty optional fields are left out. */
-export function toSaveDraftCommand(
-  value: CourseDraftValue,
-  expectedVersion: number,
-): SaveDraftCommand {
+/** The draft as both the save and the create command spell it; empty optional fields are left out. */
+function toDraftContent(value: CourseDraftValue): DraftContent {
   const programId = idOf(value.programId);
   const moduleId = idOf(value.moduleId);
   return {
-    expectedVersion,
     ...(programId ? { programId } : {}),
     ...(moduleId ? { moduleId } : {}),
     ...(value.title.trim() ? { title: value.title.trim() } : {}),
@@ -300,6 +316,23 @@ export function toSaveDraftCommand(
       })),
     })),
   };
+}
+
+/** The whole tree as the save command spells it. */
+export function toSaveDraftCommand(
+  value: CourseDraftValue,
+  expectedVersion: number,
+): SaveDraftCommand {
+  return { expectedVersion, ...toDraftContent(value) };
+}
+
+/** The create command: the course's code and owner, and the whole draft in the same call. */
+export function toCreateCourseCommand(
+  value: CourseDraftValue,
+  code: string,
+  ownerOrgId: number,
+): CreateCourseCommand {
+  return { ownerOrgId, code: code.trim(), draft: toDraftContent(value) };
 }
 
 // ---- derived facts ---------------------------------------------------------------------------

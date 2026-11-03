@@ -21,6 +21,7 @@ import { CourseInfo } from './components/course-info/course-info';
 import { CourseOutline } from './components/course-outline/course-outline';
 import { LessonForm } from './components/lesson-form/lesson-form';
 import {
+  emptyDraftValue,
   toDraftValue,
   toSaveDraftCommand,
   type CourseDraftValue,
@@ -31,19 +32,6 @@ import {
   CourseEditorStore,
   EDITOR_STEPS,
 } from './data-access/course-editor.store';
-
-const EMPTY_DRAFT: CourseDraftValue = {
-  title: '',
-  summary: '',
-  programId: '',
-  moduleId: '',
-  level: '',
-  defaultRequirement: 'mandatory',
-  coverIcon: '',
-  objectives: [],
-  rewardPoints: 0,
-  chapters: [],
-};
 
 /** The draft without its row keys, to tell whether the author changed anything. */
 const fingerprint = (value: CourseDraftValue) =>
@@ -86,7 +74,7 @@ export class CourseEditor implements HasUnsavedChanges {
 
   private readonly model = linkedSignal(() => {
     const detail = this.store.course$();
-    return detail ? toDraftValue(detail) : EMPTY_DRAFT;
+    return detail ? toDraftValue(detail) : emptyDraftValue();
   });
   protected readonly courseForm = form(this.model, courseDraftSchema, {
     submission: {
@@ -98,7 +86,7 @@ export class CourseEditor implements HasUnsavedChanges {
     const detail = this.store.course$();
     return detail
       ? fingerprint(toDraftValue(detail))
-      : fingerprint(EMPTY_DRAFT);
+      : fingerprint(emptyDraftValue());
   });
 
   protected readonly dirty = computed(

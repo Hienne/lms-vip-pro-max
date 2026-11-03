@@ -77,10 +77,14 @@ The previous `lesson-player-modes` checklist is in git history at `0efffaf`.
     create and detail schemas; `contracts` 251 tests, `mocks` 302 tests (4 new in `course-create.backend.spec.ts`).
     `LEARNING-DUPLICATE` is added to `MESSAGE_CODE_KIND` (`refused`) and to the mock's refusals, because the backend
     answers a taken code with it and F4 branches on it. The mock's `saveDraft` and create share `writeDraft`.
-- [ ] **F2: Draft mapping**
+- [x] **F2: Draft mapping**
   - `emptyDraftValue()` and `toCreateCourseCommand(value, code, ownerOrgId)` in `course-draft.ts`, sharing the tree
     mapping with `toSaveDraftCommand`.
   - Acceptance: `course-draft.spec.ts` covers both.
+  - Checked: both `toSaveDraftCommand` and `toCreateCourseCommand` build on one private `toDraftContent`; 4 new
+    specs (empty value, the create command parses with `CreateCourseCommandSchema`, its draft equals the save's tree,
+    an empty draft sends only the required fields). The editor's `EMPTY_DRAFT` now calls `emptyDraftValue()`.
+    `lms` 1645 tests; lint and typecheck green.
 - [ ] **F3: Four steps**
   - `EDITOR_STEPS` with the spec's labels.
   - `course-finish` is split into `course-rules` (step 3) and `course-review` (step 4).

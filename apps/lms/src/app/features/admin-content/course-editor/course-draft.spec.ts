@@ -1,9 +1,12 @@
+import { CreateCourseCommandSchema } from '@lms/contracts';
 import { courseDetailFixtures } from '@lms/mocks';
 import {
   draftChecks,
+  emptyDraftValue,
   lessonProblem,
   newBlock,
   newLesson,
+  toCreateCourseCommand,
   toDraftValue,
   toSaveDraftCommand,
   type LessonValue,
@@ -184,5 +187,58 @@ describe('course draft', () => {
     expect(checks.find((c) => c.label.includes('mục tiêu'))?.optional).toBe(
       true,
     );
+  });
+
+  describe('a course that is not stored yet', () => {
+    it('starts empty, as a mandatory course', () => {
+      const value = emptyDraftValue();
+
+      expect(value).toMatchObject({
+        title: '',
+        programId: '',
+        level: '',
+        defaultRequirement: 'mandatory',
+        rewardPoints: 0,
+        chapters: [],
+        objectives: [],
+      });
+      expect(emptyDraftValue()).not.toBe(value);
+    });
+
+    it('builds the create command with the code, the owner and the whole draft', () => {
+      const value = toDraftValue(eod);
+      const command = toCreateCourseCommand(value, '  WIZ-1 ', 4);
+
+      expect(CreateCourseCommandSchema.safeParse(command).success).toBe(true);
+      expect(command.ownerOrgId).toBe(4);
+      expect(command.code).toBe('WIZ-1');
+      expect(command.draft).toEqual(
+        expect.objectContaining({
+          title: value.title,
+          objectives: eod.objectives.map((o) => o.description),
+        }),
+      );
+    });
+
+    it('spells the tree the way a save does', () => {
+      const value = toDraftValue(eod);
+      const { expectedVersion: _version, ...saved } = toSaveDraftCommand(
+        value,
+        0,
+      );
+
+      expect(toCreateCourseCommand(value, 'X', 1).draft).toEqual(saved);
+    });
+
+    it('sends an empty draft as just the required fields', () => {
+      const { draft } = toCreateCourseCommand(emptyDraftValue(), 'X', 1);
+
+      expect(draft).toEqual({
+        defaultRequirement: 'mandatory',
+        objectives: [],
+        rewardPoints: 0,
+        chapters: [],
+      });
+    });
   });
 });
