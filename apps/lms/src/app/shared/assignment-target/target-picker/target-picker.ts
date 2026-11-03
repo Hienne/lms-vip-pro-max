@@ -1,4 +1,11 @@
-import { Component, computed, inject, output, signal } from '@angular/core';
+import {
+  Component,
+  computed,
+  inject,
+  input,
+  output,
+  signal,
+} from '@angular/core';
 import { form, FormField } from '@angular/forms/signals';
 import type { TargetType } from '@lms/contracts';
 import {
@@ -45,6 +52,8 @@ const EMPTY: Omit<PickerValue, 'targetType'> = {
 export class TargetPicker {
   protected readonly options = inject(TargetOptionsStore);
 
+  /** The add button's label: the host says what is being added. */
+  readonly addLabel = input('Thêm');
   readonly added = output<TargetPick>();
 
   protected readonly types: readonly SegmentedOption<TargetType>[] = (

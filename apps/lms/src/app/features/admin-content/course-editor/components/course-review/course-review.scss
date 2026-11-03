@@ -5,8 +5,14 @@
   gap: ui.space(4);
   align-items: start;
 
-  @include ui.bp(md) {
-    grid-template-columns: 1fr 1fr;
+  @include ui.bp(lg) {
+    grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+  }
+
+  &__main,
+  &__side {
+    @include ui.stack(4);
+    min-width: 0;
   }
 
   &__title {
@@ -33,10 +39,6 @@
   &__verdict {
     @include ui.text(sm);
     font-weight: ui.weight(semibold);
-  }
-
-  &__note {
-    @include ui.text(xs, muted);
   }
 
   &__summary {

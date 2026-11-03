@@ -53,7 +53,7 @@
       [disabled]="!pick()"
       (click)="add()"
     >
-      <ui-icon name="plus" size="sm" />Thêm
+      <ui-icon name="plus" size="sm" />{{ addLabel() }}
     </button>
   </div>
   @if (pickerForm.targetType().value() === 'org') {

@@ -16,7 +16,11 @@ import {
 import { ActivatedRoute, Router } from '@angular/router';
 import {
   assessmentV1Endpoints,
+  assignmentEndpoints,
   courseEndpoints,
+  MAX_PAGE_SIZE,
+  organizationEndpoints,
+  PUBLISH_LIMITS,
   trainingCatalogEndpoints,
   type BlockType,
   type CourseDetail,
@@ -24,7 +28,7 @@ import {
   type LibraryAsset,
   type SaveDraftCommand,
 } from '@lms/contracts';
-import { confirm, Toaster, type StepperItem } from '@lms/ui';
+import { confirm, NOW, Toaster, type StepperItem } from '@lms/ui';
 import {
   catchError,
   filter,
@@ -44,6 +48,10 @@ import { EndpointClient } from '../../../../core/http/endpoint-client';
 import { NetworkStore } from '../../../../core/network/network.store';
 import { SessionStore } from '../../../../core/session/session.store';
 import { toAppError } from '../../../../core/errors/app-error';
+import {
+  sameTarget,
+  type TargetPick,
+} from '../../../../shared/assignment-target/target-labels';
 import { courseCatalogStatus } from '../../../../shared/status/catalog-status';
 import {
   FILE_USAGE,
@@ -59,6 +67,16 @@ import {
   type UploadProgress,
 } from './chunked-upload';
 import { KeptUploads, type KeptUpload } from './kept-uploads.storage';
+import {
+  countsText,
+  dateInput,
+  namesPublishRow,
+  refusedRows,
+  rowIssue,
+  toPublishCommand,
+  type PublishRow,
+  type PublishTargets,
+} from './publish-targets';
 import { Sha256Hasher } from './sha256-hasher';
 import {
   hashingStatus,
@@ -117,9 +135,23 @@ interface UploadContext {
 export const DUPLICATE_CODE = 'LEARNING-DUPLICATE';
 
 /** What a publish starts from: the open draft to save, or a new course to create first. */
-type PublishInput =
+type PublishInput = { readonly targets: PublishTargets } & (
   | { readonly kind: 'save'; readonly command: SaveDraftCommand }
-  | { readonly kind: 'create'; readonly command: CreateCourseCommand };
+  | { readonly kind: 'create'; readonly command: CreateCourseCommand }
+);
+
+/** A unit in step 4's share list, with what decides whether it can be ticked. */
+export interface ShareUnit {
+  readonly orgId: number;
+  readonly name: string;
+  /** The owner unit and a unit with an active share are shown ticked and locked. */
+  readonly locked: 'owner' | 'shared' | null;
+  readonly checked: boolean;
+  /** The limit of shares per publish is reached and this one is not ticked. */
+  readonly full: boolean;
+  /** The server's refusal of this share, until the box changes or the next publish. */
+  readonly error?: string;
+}
 
 const MISMATCH_CODE = 'LEARNING-UPLOAD_FILE_MISMATCH';
 const EXPIRED_CODE = 'LEARNING-UPLOAD_EXPIRED';
@@ -168,6 +200,9 @@ export class CourseEditorStore {
   private readonly network = inject(NetworkStore);
   private readonly keptStorage = inject(KeptUploads);
   private readonly toaster = inject(Toaster);
+  private readonly now = inject(NOW);
+  /** Ids for the assignment rows, so a row keeps its identity while others come and go. */
+  private nextRowId = 0;
   /**
    * The uploads running in this page, by block key. Raw RxJS subscriptions on purpose: an upload
    * is a long stream with its own pauses and polls, not one request, so `serverMutation` (one run,
@@ -199,6 +234,12 @@ export class CourseEditorStore {
     }),
     /** Why the file picked to continue an interrupted upload was refused, by upload id. */
     refusals: signal<Readonly<Record<string, string>>>({}),
+    // Step 4. Not part of the draft: "Lưu nháp" does not save them and leaving loses them.
+    publishRows: signal<readonly PublishRow[]>([]),
+    reminderEnabled: signal(true),
+    newShareOrgIds: signal<readonly number[]>([]),
+    /** The server's refusal of a share, by the unit's id. */
+    shareErrors: signal<Readonly<Record<number, string>>>({}),
   };
 
   private readonly courseId = toSignal(
@@ -257,6 +298,37 @@ export class CourseEditorStore {
     { params: () => this.fieldId() },
   );
 
+  /** The units the course is already shared with; read only for a stored course. */
+  private readonly sharesData = serverData(
+    (courseId: number) =>
+      this.client.call(courseEndpoints.shares, { params: { courseId } }),
+    { params: () => this.courseId(), reloadOn: this.changes },
+  );
+
+  /** The units to share with: needed in create mode too, where the course has no shares yet. */
+  private readonly orgsData = serverData(() =>
+    this.client.call(organizationEndpoints.listOrgs, {
+      query: { size: MAX_PAGE_SIZE, sort: 'name,asc' },
+    }),
+  );
+
+  /** How many assignments the owner unit already made of the course ("Đã giao trước đó"). */
+  private readonly assignmentsData = serverData(
+    ({ courseId, orgId }: { courseId: number; orgId: number }) =>
+      this.client.call(assignmentEndpoints.courseAssignments, {
+        params: { courseId },
+        query: { assigningOrgId: orgId, size: 1 },
+      }),
+    {
+      params: () => {
+        const courseId = this.courseId();
+        const orgId = this.courseData.value()?.course.ownerOrgId;
+        return courseId && orgId ? { courseId, orgId } : undefined;
+      },
+      reloadOn: this.changes,
+    },
+  );
+
   private readonly openDraftMutation = serverMutation(
     (courseId: number) =>
       this.client.call(courseEndpoints.openDraft, { params: { courseId } }),
@@ -296,7 +368,9 @@ export class CourseEditorStore {
    * Saves the draft (or creates the course), then publishes the revision that came back. A refusal
    * to publish leaves the save done and the revision's version moved on, so the course is read
    * again: the next try then carries the version the server holds. A refusal after a create leaves
-   * the new course behind, so the page moves on to its edit URL and says so.
+   * the new course behind, so the page moves on to its edit URL and says so. The assignment rows
+   * and shares go with the publish and are all or nothing with it: a refusal that names a row
+   * marks that row on step 4.
    */
   private readonly publishMutation = serverMutation(
     (input: PublishInput) => {
@@ -312,15 +386,15 @@ export class CourseEditorStore {
                 courseId: saved.course.id,
                 revisionId: saved.revision.id,
               },
-              body: { expectedVersion: saved.revision.rowVersion },
+              body: toPublishCommand(saved.revision.rowVersion, input.targets),
             })
             .pipe(
               catchError((error: unknown) => {
+                this.markRefused(error, input.targets);
                 if (input.kind === 'create') {
-                  const { title, message } = toAppError(error);
                   this.toaster.error(
                     'Đã lưu nháp, chưa xuất bản',
-                    title ? `${title}: ${message}` : message,
+                    this.refusalText(error, input.targets),
                   );
                   this.moveToEditor(saved);
                 } else {
@@ -334,12 +408,16 @@ export class CourseEditorStore {
     },
     {
       errors: 'alert',
-      success: () => ({
+      success: ({ targets }) => ({
         title: 'Đã xuất bản khóa học',
-        detail: 'Học viên được giao thấy nội dung mới ngay.',
+        detail:
+          targets.rows.length || targets.shareOrgIds.length
+            ? countsText(targets.rows.length, targets.shareOrgIds.length)
+            : 'Học viên được giao thấy nội dung mới ngay.',
       }),
       onSuccess: () => {
         this.setLeft(true);
+        this.clearPublishTargets();
         void this.router.navigate(['/admin/courses']);
       },
       invalidates: this.changes,
@@ -399,14 +477,72 @@ export class CourseEditorStore {
       this.createMutation.isPending() ||
       this.publishMutation.isPending(),
   );
-  /** The last failure to show in the alert; a taken code is shown on the code field instead. */
+  /**
+   * The last failure to show in the alert. A taken code is shown on the code field instead, and a
+   * refusal that names a row or a share is shown on that row or unit.
+   */
   readonly saveError$ = computed(() => {
     const error =
       this.saveMutation.error() ??
       this.createMutation.error() ??
       this.publishMutation.error();
-    return error?.messageCode === DUPLICATE_CODE ? undefined : error;
+    return error?.messageCode === DUPLICATE_CODE ||
+      namesPublishRow(error?.fieldErrors)
+      ? undefined
+      : error;
   });
+
+  // Step 4: the rows, the reminder and the shares that go with the publish.
+  readonly publishRows$ = this.state.publishRows.asReadonly();
+  readonly reminderEnabled$ = this.state.reminderEnabled.asReadonly();
+  readonly newShareOrgIds$ = this.state.newShareOrgIds.asReadonly();
+  /** The unit that owns the course: its own while stored, else the author's. */
+  readonly ownerOrgId$ = computed(
+    () => this.course$()?.course.ownerOrgId ?? this.orgId(),
+  );
+  /** Each row with the line to show under it: the server's refusal, else what the form finds. */
+  readonly rowViews$ = computed(() =>
+    this.state.publishRows().map((row, index) => ({
+      row,
+      message: row.error ?? rowIssue(row, index),
+    })),
+  );
+  readonly canAddRow$ = computed(
+    () => this.state.publishRows().length < PUBLISH_LIMITS.assignments,
+  );
+  /** Assignments the owner unit already made of this course; undefined while unknown. */
+  readonly assignmentCount$ = computed(
+    () => this.assignmentsData.value()?.totalElements,
+  );
+  readonly shareUnits$ = computed((): readonly ShareUnit[] => {
+    const ownerId = this.ownerOrgId$();
+    const shared = new Set(
+      (this.sharesData.value() ?? [])
+        .filter((share) => share.status.toLowerCase() === 'active')
+        .map((share) => share.orgId),
+    );
+    const ticked = new Set(this.state.newShareOrgIds());
+    const errors = this.state.shareErrors();
+    const full = ticked.size >= PUBLISH_LIMITS.shares;
+    return (this.orgsData.value()?.items ?? [])
+      .filter((org) => org.status.toLowerCase() === 'active')
+      .map((org) => {
+        const locked =
+          org.id === ownerId ? 'owner' : shared.has(org.id) ? 'shared' : null;
+        const checked = locked !== null || ticked.has(org.id);
+        return {
+          orgId: org.id,
+          name: org.name,
+          locked,
+          checked,
+          full: full && !checked,
+          ...(errors[org.id] ? { error: errors[org.id] } : {}),
+        };
+      });
+  });
+  readonly sharesError$ = computed(
+    () => this.sharesData.error() ?? this.orgsData.error(),
+  );
 
   /** The files chosen in this editor by block key, and where each one's upload stands. */
   readonly uploads$ = this.state.uploads.asReadonly();
@@ -460,6 +596,22 @@ export class CourseEditorStore {
 
   private setProgramId(programId: number | undefined): void {
     this.state.programId.set(programId);
+  }
+
+  private setPublishRows(rows: readonly PublishRow[]): void {
+    this.state.publishRows.set(rows);
+  }
+
+  private setReminderEnabled(on: boolean): void {
+    this.state.reminderEnabled.set(on);
+  }
+
+  private setNewShareOrgIds(orgIds: readonly number[]): void {
+    this.state.newShareOrgIds.set(orgIds);
+  }
+
+  private setShareErrors(errors: Readonly<Record<number, string>>): void {
+    this.state.shareErrors.set(errors);
   }
 
   private setUpload(key: string, entry: UploadEntry): void {
@@ -535,11 +687,13 @@ export class CourseEditorStore {
   /** Asks first: learners in scope see the new content at once. */
   publish(command: Omit<SaveDraftCommand, 'expectedVersion'>): void {
     const revision = this.course$()?.revision;
-    if (!revision) return;
-    this.confirmPublish(() =>
+    const targets = this.targetsToPublish();
+    if (!revision || !targets) return;
+    this.confirmPublish(targets, () =>
       this.publishMutation.run({
         kind: 'save',
         command: { ...command, expectedVersion: revision.rowVersion },
+        targets,
       }),
     );
   }
@@ -547,10 +701,64 @@ export class CourseEditorStore {
   /** Publishing a course that is not stored yet creates it first, then publishes it. */
   createAndPublish(value: CourseDraftValue): void {
     const command = this.createCommand(value);
-    if (!command) return;
-    this.confirmPublish(() =>
-      this.publishMutation.run({ kind: 'create', command }),
+    const targets = this.targetsToPublish();
+    if (!command || !targets) return;
+    this.confirmPublish(targets, () =>
+      this.publishMutation.run({ kind: 'create', command, targets }),
     );
+  }
+
+  /** "Thêm đối tượng": the picked target becomes a row starting today; a repeated pick is one row. */
+  addPublishRow(pick: TargetPick): void {
+    const rows = this.state.publishRows();
+    if (!this.canAddRow$() || rows.some((row) => sameTarget(row.pick, pick))) {
+      return;
+    }
+    this.setPublishRows([
+      ...rows,
+      {
+        id: this.nextRowId++,
+        pick,
+        startDate: dateInput(this.now()),
+        dueDate: '',
+      },
+    ]);
+  }
+
+  /** "Xóa dòng". */
+  removePublishRow(id: number): void {
+    this.setPublishRows(
+      this.state.publishRows().filter((row) => row.id !== id),
+    );
+  }
+
+  /** Changing a row clears the server's refusal of it. */
+  setRowDates(
+    id: number,
+    dates: { startDate?: string; dueDate?: string },
+  ): void {
+    this.setPublishRows(
+      this.state.publishRows().map((row) => {
+        if (row.id !== id) return row;
+        const { error: _refused, ...rest } = row;
+        return { ...rest, ...dates };
+      }),
+    );
+  }
+
+  /** The switch applies to every new row. */
+  setReminder(on: boolean): void {
+    this.setReminderEnabled(on);
+  }
+
+  /** Ticks or unticks a unit to share the course with; owner and already shared units stay locked. */
+  toggleShare(orgId: number, on: boolean): void {
+    const unit = this.shareUnits$().find((u) => u.orgId === orgId);
+    if (!unit || unit.locked || (on && unit.full)) return;
+    const { [orgId]: _error, ...errors } = this.state.shareErrors();
+    this.setShareErrors(errors);
+    const others = this.state.newShareOrgIds().filter((id) => id !== orgId);
+    this.setNewShareOrgIds(on ? [...others, orgId] : others);
   }
 
   /** Checks the file against the block's rules, then uploads it. */
@@ -886,11 +1094,72 @@ export class CourseEditorStore {
     );
   };
 
-  private confirmPublish(publish: () => void): void {
+  /**
+   * What the publish carries, or null while a row is not valid: step 4 then shows the line under
+   * the row and nothing is sent.
+   */
+  private targetsToPublish(): PublishTargets | null {
+    const rows = this.state.publishRows();
+    if (rows.some((row, index) => rowIssue(row, index))) {
+      this.goToStep(EDITOR_STEPS.length - 1);
+      return null;
+    }
+    return {
+      rows,
+      reminderEnabled: this.state.reminderEnabled(),
+      shareOrgIds: this.state.newShareOrgIds(),
+    };
+  }
+
+  private clearPublishTargets(): void {
+    this.setPublishRows([]);
+    this.setNewShareOrgIds([]);
+    this.setShareErrors({});
+  }
+
+  /** Marks the rows and shares a refusal names, and clears the marks of the last try. */
+  private markRefused(error: unknown, targets: PublishTargets): void {
+    const refused = refusedRows(toAppError(error).fieldErrors ?? [], targets);
+    this.setPublishRows(
+      this.state.publishRows().map(({ error: _old, ...row }) => {
+        const message = refused.rows.get(row.id);
+        return message ? { ...row, error: message } : row;
+      }),
+    );
+    this.setShareErrors(Object.fromEntries(refused.shares));
+  }
+
+  /** The toast text when the page leaves step 4: the server's line, with the row it belongs to. */
+  private refusalText(error: unknown, targets: PublishTargets): string {
+    const { title, message, fieldErrors = [] } = toAppError(error);
+    const refused = refusedRows(fieldErrors, targets);
+    const lines = [
+      ...targets.rows.flatMap((row, index) =>
+        refused.rows.has(row.id)
+          ? [`Dòng ${index + 1}: ${refused.rows.get(row.id)}`]
+          : [],
+      ),
+      ...targets.shareOrgIds.flatMap((orgId) => {
+        const text = refused.shares.get(orgId);
+        const name = this.shareUnits$().find((u) => u.orgId === orgId)?.name;
+        return text ? [`${name ?? 'Đơn vị'}: ${text}`] : [];
+      }),
+    ];
+    return lines.length
+      ? `${lines.join(' ')} Thêm lại đối tượng và đơn vị ở bước 4.`
+      : title
+        ? `${title}: ${message}`
+        : message;
+  }
+
+  private confirmPublish(targets: PublishTargets, publish: () => void): void {
+    const counts =
+      targets.rows.length || targets.shareOrgIds.length
+        ? ` ${countsText(targets.rows.length, targets.shareOrgIds.length)}`
+        : '';
     confirm(this.dialog, {
       title: 'Xuất bản khóa học?',
-      message:
-        'Bản nháp được lưu rồi xuất bản. Học viên được giao thấy nội dung mới ngay, tiến độ đã có được giữ.',
+      message: `Bản nháp được lưu rồi xuất bản. Học viên được giao thấy nội dung mới ngay, tiến độ đã có được giữ.${counts}`,
       confirmLabel: 'Xuất bản',
       tone: 'primary',
     })

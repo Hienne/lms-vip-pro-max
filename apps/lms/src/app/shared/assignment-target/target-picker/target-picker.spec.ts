@@ -32,6 +32,20 @@ describe('TargetPicker', () => {
     expect(add.disabled).toBe(true);
   });
 
+  it('forgets the pick when the type changes', async () => {
+    const drawer = await openPicker();
+    await screen.choose(
+      screen.field('Đơn vị', drawer) as HTMLSelectElement,
+      '1',
+    );
+    expect(screen.button('Thêm', drawer)!.disabled).toBe(false);
+    await type(drawer, 'Phòng/nhóm');
+    expect((screen.field('Đơn vị', drawer) as HTMLSelectElement).value).toBe(
+      '',
+    );
+    expect(screen.button('Thêm', drawer)!.disabled).toBe(true);
+  });
+
   it('offers the teams of the chosen org only once an org is chosen', async () => {
     const drawer = await openPicker();
     await type(drawer, 'Phòng/nhóm');

@@ -7,14 +7,17 @@ import {
   type CourseDraftValue,
 } from '../../course-draft';
 import { CourseEditorStore } from '../../data-access/course-editor.store';
+import { AssignRows } from './components/assign-rows/assign-rows';
+import { ShareUnits } from './components/share-units/share-units';
 
 /**
- * Step 4 of the editor: the checks before publishing and a summary of the draft. Assigning and
- * sharing the course join this step in a later module; until then they stay on their own screens.
+ * Step 4 of the editor, in two columns from `lg`: on the left who the course is assigned to and
+ * which units it is shared with, as it is published; on the right the checks before publishing
+ * and a summary of the draft.
  */
 @Component({
   selector: 'app-course-review',
-  imports: [Card, CardBody, Icon, LinkButton],
+  imports: [AssignRows, Card, CardBody, Icon, LinkButton, ShareUnits],
   templateUrl: './course-review.html',
   styleUrl: './course-review.scss',
 })

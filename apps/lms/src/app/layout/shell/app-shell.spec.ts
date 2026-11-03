@@ -86,6 +86,7 @@ describe('AppShell', () => {
           r.url.startsWith('/api/v1/me/learning/') ||
           r.url === '/api/v1/me/competency' ||
           r.url === '/api/v1/training-catalog/programs' ||
+          r.url === '/api/v1/orgs' ||
           r.url.startsWith('/api/v1/reports/assessment/'),
       )
       .filter((r) => !r.cancelled)

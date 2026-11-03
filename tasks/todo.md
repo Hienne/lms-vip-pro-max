@@ -82,12 +82,15 @@ The previous `course-final-exam` checklist is in git history at `2c91339`.
   - Acceptance: the assignments specs pass; `lms` lint (module boundaries) and typecheck clean.
   - Checked: assignments spec (7) and the new `target-picker.spec.ts` (3) pass; `lms` lint (0 errors) and typecheck clean.
     The host sets the groups' owner org through the `TARGET_OWNER_ORG` token (the caller's org without it).
-- [ ] **F3: Step 4**
+- [x] **F3: Step 4**
   - Store state, loads and commands (Decision 9); "Giao khóa học" (picker, rows, reminder switch, "Đã giao trước
     đó", empty line) and "Chia sẻ cho đơn vị khác" (owner and shared units locked); the confirmation counts; the row
     error mapping; create mode.
   - Acceptance: specs for rows (add, delete, form checks), the switch, the share list, the publish command in edit
     and create mode, and a row error mapped back.
+  - Checked: new `course-review.spec.ts` (14), `publish-targets.spec.ts` (12) and picker spec; full `lms` suite green
+    (1699 tests); lint 0 errors, typecheck clean. Differences: the org list is read in create mode too (the share list
+    needs it); the picker's add button is the secondary variant, not ghost; a row with no due date sends no reminder.
 - [ ] **F4: Docs**
   - The spec's implementation notes; the migration entry.
   - Acceptance: `npm run check` green.
