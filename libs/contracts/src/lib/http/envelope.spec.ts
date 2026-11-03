@@ -25,6 +25,19 @@ describe('EnvelopeSchema', () => {
     expect(EnvelopeSchema.parse(body).status).toBe('ERROR');
   });
 
+  it('keeps an error envelope whose per-field details have another shape', () => {
+    const body = {
+      ...success,
+      status: 'ERROR',
+      messageCode: 'CORE-VALIDATION_FAILED',
+      errors: [{ field: null, code: 'REQUIRED' }],
+      data: null,
+    };
+    const parsed = EnvelopeSchema.parse(body);
+    expect(parsed.messageCode).toBe('CORE-VALIDATION_FAILED');
+    expect(parsed.errors).toBeNull();
+  });
+
   it('rejects an unknown status and a missing message code', () => {
     expect(EnvelopeSchema.safeParse({ ...success, status: 'OK' }).success).toBe(
       false,

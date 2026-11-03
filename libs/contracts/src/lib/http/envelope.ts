@@ -25,8 +25,12 @@ export const EnvelopeSchema = z.object({
   messageCode: z.string(),
   messageTitle: z.string().nullish(),
   message: z.string().nullish(),
-  /** Per-field details of a `CORE-VALIDATION_FAILED`; absent or null on other answers. */
-  errors: z.array(FieldErrorSchema).nullish(),
+  /**
+   * Per-field details of a `CORE-VALIDATION_FAILED`; absent or null on other answers. A detail
+   * that does not have this shape drops the list, never the envelope: the refusal itself still
+   * reaches the screen.
+   */
+  errors: z.array(FieldErrorSchema).nullish().catch(null),
   /** Parsed later by the endpoint's own response schema. */
   data: z.unknown(),
 });
