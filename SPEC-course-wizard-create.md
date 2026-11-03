@@ -120,3 +120,39 @@ DraftContent = DraftRequest without expectedVersion
    until `course-publish-targets`. Acceptable?
 3. **Removing the course-new screen:** nothing else links to it except `/admin/courses/new`. Delete it, rather than
    keeping it as a fallback?
+
+## Implementation notes (app)
+
+Built on `feat/course-authoring` in tasks F1 to F5 (`tasks/todo.md`).
+
+- **Contracts and mock.** `CreateCourseCommandSchema.draft` is `SaveDraftCommandSchema.omit({ expectedVersion })`,
+  optional. `capturedCourseCreate` (`course.captured.ts`) is a create with a draft from the local backend
+  (`WIZ-APP-01`, two chapters, revision version 1). The mock create and its `saveDraft` share `writeDraft`; a taken
+  code is refused with `LEARNING-DUPLICATE`, which is now in `MESSAGE_CODE_KIND` as `refused` (the backend answers it
+  with HTTP 200 and an `ERROR` envelope).
+- **Draft mapping.** `CourseDraftValue` gains `code`: typed in create mode, read-only in edit mode, counted by the
+  leave guard's fingerprint. `emptyDraftValue()`, `toSaveDraftCommand` and `toCreateCourseCommand(value, code,
+ownerOrgId)` share one `toDraftContent`.
+- **Steps.** `EDITOR_STEPS` has the four labels and subtitles of the table above. `course-finish` became
+  `course-review` (step 4: the checklist and a summary of chapters, lessons, minutes and reward points) and
+  `course-rules` (step 3: completion rules and reward points). `draftChecks` indexes did not change: its checks point
+  at steps 1 and 2, which keep their places. The footer is "Hủy" (step 1) or "Quay lại", "Lưu nháp", and "Tiếp tục"
+  or "Xuất bản khóa học", the last two being the only primary button.
+- **Create mode.**
+  - `Screen.mode` puts `{ mode: 'create' }` in the route data of `admin/courses/new`; `CourseEditorStore.isCreate$`
+    reads it. The store reads no course, quiz list or kept upload without a course id.
+  - "Lưu nháp" calls `createCourse`; on success `left` is set (the guard stops asking), and the page navigates to
+    `/admin/courses/{id}/edit?step={n}` with `replaceUrl`. `?step=` is the 0-based index the stepper uses, read once
+    when the editor opens.
+  - Publish in create mode creates, then publishes with the returned revision id and `rowVersion`. If the publish is
+    refused, the course already exists, so the page moves to its edit URL on the same step and a toast says
+    "Đã lưu nháp, chưa xuất bản" with the server's reason.
+  - A `LEARNING-DUPLICATE` answer stores the refused code (`takenCode$`) and returns to step 1. A validator on the
+    code field shows "Mã khóa học đã tồn tại." while the field still holds that code; the alert does not repeat it.
+  - A quiz lesson shows "Lưu nháp trước để chọn bài kiểm tra" and makes no call.
+- **Removed.** `features/admin-content/course-new/`, deleted with the route change in F4.
+- **Known gap.** The backend refuses to publish a course without a level, and `draftChecks` does not list the level
+  yet; the refusal shows as the publish alert (edit) or toast (create).
+- **Checked.** Specs for the contracts and the captured create, the mock (create, tree, title rule, duplicate), the
+  draft mapping, the four steps and the footer, and the create flow above. `npm run check` is green. The browser pass
+  of Checkpoint B (local stack, 375/768/1280 px, light and dark, keyboard, beside the mockup) is not done here.

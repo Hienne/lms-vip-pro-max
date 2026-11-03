@@ -116,11 +116,14 @@ The previous `lesson-player-modes` checklist is in git history at `0efffaf`.
       `takenCode$`, and it clears when the code changes.
     - `?step=` is the 0-based index the stepper uses.
     - `course-new/` was deleted in this commit, not F5's, because its route is gone and its spec would fail.
-- [ ] **F5: Remove course-new and docs**
+- [x] **F5: Remove course-new and docs**
   - Delete `features/admin-content/course-new/`.
   - The migration entry for `courseWizard`.
   - The spec's implementation notes.
   - Acceptance: `npm run check` green.
+  - Checked: `course-new/` was already deleted in F4 (its route and spec went together). The `courseWizard`
+    entries (`route-admin-courses-new` and `-id-edit`) carry notes, and the spec has "Implementation notes (app)".
+    `npm run check` exit 0 (format, lint, typecheck, test, build, bundle guard on all projects).
 
 ### Checkpoint B
 

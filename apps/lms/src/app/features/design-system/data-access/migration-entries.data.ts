@@ -1190,6 +1190,8 @@ export const MIGRATION_ENTRIES = [
   },
   {
     id: 'route-admin-courses-new',
+    notes:
+      '2026-11-03: dùng chung trình soạn với Sửa khóa học (course-wizard-create): bốn bước như mockup, mã khóa học và đơn vị sở hữu ở bước 1; chưa lưu gì cho đến lần "Lưu nháp" đầu, lần đó tạo khóa học cùng toàn bộ nháp (POST /courses có draft) rồi chuyển sang /admin/courses/{id}/edit. Không có chọn biểu tượng bìa; mã trùng báo ở ô mã. Chờ đối chiếu trình duyệt ở 375/768/1280 px, bàn phím và mockup.',
     kind: 'route',
     mockupSource: 'src/pages/admin-content.js · courseWizard',
     target: 'admin/courses/new',
@@ -1205,6 +1207,8 @@ export const MIGRATION_ENTRIES = [
   },
   {
     id: 'route-admin-courses-id-edit',
+    notes:
+      '2026-11-03: bốn bước (Thông tin cơ bản, Nội dung khóa học, Bài thi & điều kiện, Đối tượng & xuất bản); bước 3 là điều kiện hoàn thành và điểm thưởng, bước 4 là danh sách kiểm tra và tóm tắt. Đọc ?step= một lần khi mở. Bài thi cuối khóa và giao/chia sẻ sẽ vào bước 3 và 4 ở các module sau.',
     kind: 'route',
     mockupSource: 'src/pages/admin-content.js · courseWizard',
     target: 'admin/courses/:id/edit',
