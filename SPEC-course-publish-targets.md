@@ -1,6 +1,6 @@
 # Spec: `course-publish-targets`
 
-Map: [SPEC-course-authoring.md](SPEC-course-authoring.md). Status: **approved 2026-11-03** (open questions answered in `tasks/plan.md` Decision 1).
+Map: [SPEC-course-authoring.md](SPEC-course-authoring.md). Status: **built 2026-11-04** (amended by `tasks/plan.md`; results in `tasks/todo.md` Checkpoints A and B).
 Depends on `course-wizard-create` (built); built after `course-final-exam` (built) because both touch the editor.
 
 ## Objective
@@ -213,5 +213,4 @@ Built on `feat/course-authoring` in tasks F1 to F4 (`tasks/todo.md`). Difference
   - Rows are lost when a refused create moves to the edit screen.
 - **Checked.** Specs for the schema and the captured refusals, the envelope's field errors, the mock (rows, shares,
   rollback, each refusal), the helpers, the rows, the switch, the share list, the publish in edit and create mode and a
-  refusal mapped back; the assignments specs pass. `npm run check` is green. The browser pass of Checkpoint B is not done
-  here.
+  refusal mapped back; the assignments specs pass. `npm run check` is green. The browser pass is in `tasks/todo.md` Checkpoint B.

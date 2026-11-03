@@ -99,9 +99,29 @@ The previous `course-final-exam` checklist is in git history at `2c91339`.
 
 ### Checkpoint B
 
-- [ ] Main-session review of the four diffs against angular.md §14 and visual-design.md.
-- [ ] `npm run check` green.
-- [ ] Browser on the local stack, token sign-in as `quantri`: publish with a row and a share; the learner sees the
-      course; a refused row is marked; "Giao học & hạn" still assigns.
-- [ ] 375 px dark, 768 px light, 1280 px light; keyboard.
-- [ ] The spec is marked built.
+- [x] Main-session review of `05a7f80`, `ed29dab`, `19f439a` and `63022b4` against angular.md §14 and
+      visual-design.md: the picker and `TargetOptionsStore` live in `shared/assignment-target/` and import nothing
+      from `features/`; step 4 state is outside the draft; a refusal naming `assignments[i]` / `shareOrgIds[j]` marks
+      that row or unit and is not repeated in the alert. One fix by the main session, `a5af8dc`: the envelope's
+      `errors[]` now falls back to null when a detail has another shape, so a malformed detail cannot turn a refusal
+      into a parse failure.
+- [x] `npm run check` green on `a5af8dc` (14 tasks; `contracts` 260, `ui` 514, `mocks` 313, `lms` 1698 specs).
+- [x] Browser on the local stack (:8019 on `0b4b9f8`), token sign-in as `quantri`, course 19:
+  - Step 4 of the published course reads "Đã giao trước đó: 1 đợt — quản lý tại Giao học & hạn", the picker, the
+    empty line, the switch, and "Ban Quản lý và phát triển Core Banking (đơn vị sở hữu)" ticked and locked. The
+    page is read only until "Mở bản nháp để sửa" (draft revision 23).
+  - Rows for team 2 (no member) and team 11: the confirmation added "2 đối tượng được giao, 0 đơn vị được chia sẻ.";
+    the server refused and row 1 showed "Đối tượng giao không có học viên hợp lệ hoặc vượt giới hạn 500 người.",
+    with no alert. Revision 23 stayed a draft.
+  - Row 1 deleted, published: toast "Đã xuất bản khóa học. 1 đối tượng được giao, 0 đơn vị được chia sẻ.", back to
+    the list. Through the API: revision 23 published, assignment 10 on revision 23 (start the local midnight of
+    2026-11-04, no due date, so no reminder), and `hocvien.tichhop` (`000007`) has enrollment 21 on revision 23,
+    `assigned` true.
+  - A successful share was not tried: the local stack has one org, the owner. It is covered by
+    `CoursePublishTargetsIT` and the mock specs.
+  - "Giao học & hạn": the list shows assignments 10 and 8; in "Giao khóa học" the moved picker added "Ban Quản lý và
+    phát triển Core Banking và đơn vị cấp dưới" to the targets. The form was closed without sending.
+- [x] 375 px dark: one column, no horizontal scroll. 768 px light: one column of 720 px. 1280 px light: two columns
+      (576 and 384 px). Keyboard in create mode: Tab moves from the type list to the unit select (focus ring) to
+      "Gồm cả các đơn vị cấp dưới", skipping the disabled "Thêm đối tượng".
+- [x] The spec is marked built.

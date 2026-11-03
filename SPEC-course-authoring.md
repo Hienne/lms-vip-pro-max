@@ -1,6 +1,6 @@
 # Capability Map: course authoring wizard (`course-authoring`)
 
-Status: **map approved 2026-11-03.** Each module spec waits for its own approval.
+Status: **map approved 2026-11-03; all three modules built by 2026-11-04** (`SPEC-course-wizard-create.md`, `SPEC-course-final-exam.md`, `SPEC-course-publish-targets.md`).
 
 ## Objective
 
