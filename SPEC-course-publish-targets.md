@@ -173,6 +173,8 @@ PublishAssignment {
 
 ## Open questions
 
+Answered by approval on 2026-11-03 with the defaults below; see `tasks/plan.md` Decision 1.
+
 1. **Row requirement.** This spec uses the course's "Loại khóa học" for every row; the mockup has no per-row
    requirement. Should a row be able to override it (bắt buộc / tự chọn)? The default here is no.
 2. **Limits.** 20 rows and 50 shares per publish are new limits, chosen to keep one transaction short. Are they
@@ -187,7 +189,8 @@ Built on `feat/course-authoring` in tasks F1 to F4 (`tasks/todo.md`). Difference
     import that file) is the publish body: `expectedVersion`, up to 20 `assignments`, up to 50 `shareOrgIds`
     (`PUBLISH_LIMITS`). `publishRowOf(field)` reads `assignments[i]` / `shareOrgIds[j]`.
   - The envelope's `errors[]` is now read (`FieldError`; `ApiError.fieldErrors`, `AppError.fieldErrors`), because the
-    row mapping needs the field. Screens that do not use it are unchanged.
+    row mapping needs the field. Screens that do not use it are unchanged. A detail of another shape makes the list
+    null rather than failing the envelope (`a5af8dc`, Checkpoint B).
   - `capturedPublishTargets` (`course.captured.ts`) holds a body and the three refusals seen on the local backend.
   - The mock publish checks, then publishes, shares and assigns through its own `share` and `assignCourse`, and puts
     everything back on a refusal. It refuses an empty target, a due date before the start, the owner unit and an
@@ -210,6 +213,7 @@ Built on `feat/course-authoring` in tasks F1 to F4 (`tasks/todo.md`). Difference
   - "Hạn hoàn thành" is optional, as on the server; a row without one sends no reminder.
   - The org list is also read in create mode, where the share list needs it; shares and the count are not.
   - The picker's add button is the secondary variant, not ghost.
+  - A successful publish returns to the course list, as before this module, instead of reloading the editor.
   - Rows are lost when a refused create moves to the edit screen.
 - **Checked.** Specs for the schema and the captured refusals, the envelope's field errors, the mock (rows, shares,
   rollback, each refusal), the helpers, the rows, the switch, the share list, the publish in edit and create mode and a

@@ -81,6 +81,9 @@ course-wizard-create
 
 ## Open questions for the module specs
 
+Answered in each module spec's decisions (2026-11-03): only the course's `FINAL_EXAM` quiz, the column reused as
+it is, the final exam only on new revisions, and an all-or-nothing publish.
+
 1. **`course-final-exam`:**
    - Which quizzes can be picked: only the course's `FINAL_EXAM` quiz (at most one), or any published quiz of the
      course, as in the mockup's list?

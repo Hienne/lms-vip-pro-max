@@ -147,6 +147,8 @@ Two sections side by side from `lg`, stacked below. Card radius, no icon tiles.
 
 ## Open questions
 
+Answered by approval on 2026-11-03 with the defaults below; see `tasks/plan.md` Decision 1 at `2c91339`.
+
 1. **Pass score shown in step 3.** Should the completion line show the quiz's pass score, as in "Đạt bài kiểm tra
    cuối khóa (≥ 70%)"? It would come from the stored snapshot. The default in this spec is no, since the quiz screen
    owns it and the snapshot can go stale.

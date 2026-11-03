@@ -1,6 +1,6 @@
 # Implementation Plan: `course-publish-targets`
 
-Spec: [SPEC-course-publish-targets.md](../SPEC-course-publish-targets.md) (approved; amended below). Map:
+Spec: [SPEC-course-publish-targets.md](../SPEC-course-publish-targets.md) (built 2026-11-04; amended below). Map:
 [SPEC-course-authoring.md](../SPEC-course-authoring.md). Tasks: [todo.md](todo.md).
 
 This plan replaces the one for `course-final-exam`. That plan is done; it is in git history at `2c91339`.
@@ -119,12 +119,12 @@ assignments, @Size(max=50) List<@NotNull @Positive Long> shareOrgIds)`, null lis
 ## Before merging (the user)
 
 - No SQL.
-- Merge order:
-  1. the `course-wizard-create` backend PR;
-  2. the `course-final-exam` backend PR;
-  3. this backend PR;
+- Pull requests, opened 2026-11-04. Merge in this order:
+  1. [hmhug19/corebanking-academy#24](https://github.com/hmhug19/corebanking-academy/pull/24) (`course-wizard-create`, base `main`);
+  2. [hmhug19/corebanking-academy#25](https://github.com/hmhug19/corebanking-academy/pull/25) (`course-final-exam`, stacked on #24);
+  3. [hmhug19/corebanking-academy#26](https://github.com/hmhug19/corebanking-academy/pull/26) (this module, stacked on #25);
   4. wait for the deploy;
-  5. the app PR.
+  5. [Hienne/lms-vip-pro-max#59](https://github.com/Hienne/lms-vip-pro-max/pull/59) (the app, all three modules).
 
 ## Risks
 

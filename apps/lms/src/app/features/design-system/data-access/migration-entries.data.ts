@@ -1191,7 +1191,7 @@ export const MIGRATION_ENTRIES = [
   {
     id: 'route-admin-courses-new',
     notes:
-      '2026-11-03: dùng chung trình soạn với Sửa khóa học (course-wizard-create): bốn bước như mockup, mã khóa học và đơn vị sở hữu ở bước 1; chưa lưu gì cho đến lần "Lưu nháp" đầu, lần đó tạo khóa học cùng toàn bộ nháp (POST /courses có draft) rồi chuyển sang /admin/courses/{id}/edit. Bước 4 giao và chia sẻ như màn Sửa khóa học (lệnh tạo xong mới gửi lệnh xuất bản kèm các dòng). Không có chọn biểu tượng bìa; mã trùng báo ở ô mã. Chờ đối chiếu trình duyệt ở 375/768/1280 px, bàn phím và mockup.',
+      '2026-11-03: dùng chung trình soạn với Sửa khóa học (course-wizard-create): bốn bước như mockup, mã khóa học và đơn vị sở hữu ở bước 1; chưa lưu gì cho đến lần "Lưu nháp" đầu, lần đó tạo khóa học cùng toàn bộ nháp (POST /courses có draft) rồi chuyển sang /admin/courses/{id}/edit. Bước 4 giao và chia sẻ như màn Sửa khóa học (lệnh tạo xong mới gửi lệnh xuất bản kèm các dòng). Không có chọn biểu tượng bìa; mã trùng báo ở ô mã. Đã đối chiếu trình duyệt 2026-11-04 (375/768/1280 px, sáng/tối, bàn phím).',
     kind: 'route',
     mockupSource: 'src/pages/admin-content.js · courseWizard',
     target: 'admin/courses/new',
@@ -1200,15 +1200,15 @@ export const MIGRATION_ENTRIES = [
     owner: 'longnvse',
     verify: {
       lightDark: 'done',
-      widths: 'todo',
-      keyboard: 'todo',
-      errorStates: 'todo',
+      widths: 'done',
+      keyboard: 'done',
+      errorStates: 'done',
     },
   },
   {
     id: 'route-admin-courses-id-edit',
     notes:
-      '2026-11-03: bốn bước (Thông tin cơ bản, Nội dung khóa học, Bài thi & điều kiện, Đối tượng & xuất bản); bước 3 là điều kiện hoàn thành và điểm thưởng, bước 4 là danh sách kiểm tra và tóm tắt. Đọc ?step= một lần khi mở. Bước 3 có thêm "Bài kiểm tra cuối khóa" (course-final-exam): chọn bài thi loại Thi cuối khóa của khóa, ghi chú "· Nháp"/"· Đã đóng" khi chưa xuất bản; bước 4 có thêm dòng khuyến nghị và dòng bắt buộc "đã xuất bản" khi đã chọn. Máy chủ quyết định khi xuất bản. Chờ đối chiếu trình duyệt ở 375/768/1280 px, bàn phím. 2026-11-04 (course-publish-targets): bước 4 có thêm "Giao khóa học" (chọn đối tượng bằng bộ chọn dùng chung với Giao học & hạn, mỗi dòng có Bắt đầu và Hạn hoàn thành, công tắc nhắc trước hạn 3 ngày) và "Chia sẻ cho đơn vị khác" (đơn vị sở hữu và đơn vị đã chia sẻ được chọn sẵn, khóa); xuất bản gửi cả hai trong cùng lệnh, hoặc cả hai hoặc không gì, và dòng bị từ chối được đánh dấu bằng thông báo của máy chủ. Chờ đối chiếu trình duyệt.',
+      '2026-11-03: bốn bước (Thông tin cơ bản, Nội dung khóa học, Bài thi & điều kiện, Đối tượng & xuất bản); bước 3 là điều kiện hoàn thành và điểm thưởng, bước 4 là danh sách kiểm tra và tóm tắt. Đọc ?step= một lần khi mở. Bước 3 có thêm "Bài kiểm tra cuối khóa" (course-final-exam): chọn bài thi loại Thi cuối khóa của khóa, ghi chú "· Nháp"/"· Đã đóng" khi chưa xuất bản; bước 4 có thêm dòng khuyến nghị và dòng bắt buộc "đã xuất bản" khi đã chọn. Máy chủ quyết định khi xuất bản. Đã đối chiếu trình duyệt 2026-11-03. 2026-11-04 (course-publish-targets): bước 4 có thêm "Giao khóa học" (chọn đối tượng bằng bộ chọn dùng chung với Giao học & hạn, mỗi dòng có Bắt đầu và Hạn hoàn thành, công tắc nhắc trước hạn 3 ngày) và "Chia sẻ cho đơn vị khác" (đơn vị sở hữu và đơn vị đã chia sẻ được chọn sẵn, khóa); xuất bản gửi cả hai trong cùng lệnh, hoặc cả hai hoặc không gì, và dòng bị từ chối được đánh dấu bằng thông báo của máy chủ. Đã đối chiếu trình duyệt 2026-11-04 (375/768/1280 px, sáng/tối, bàn phím, dòng bị từ chối).',
     kind: 'route',
     mockupSource: 'src/pages/admin-content.js · courseWizard',
     target: 'admin/courses/:id/edit',
@@ -1217,9 +1217,9 @@ export const MIGRATION_ENTRIES = [
     owner: 'longnvse',
     verify: {
       lightDark: 'done',
-      widths: 'todo',
-      keyboard: 'todo',
-      errorStates: 'todo',
+      widths: 'done',
+      keyboard: 'done',
+      errorStates: 'done',
     },
   },
   {
