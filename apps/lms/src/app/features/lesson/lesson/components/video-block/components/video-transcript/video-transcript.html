@@ -1,0 +1,37 @@
+<details class="transcript">
+  <summary class="transcript__summary">
+    <ui-icon name="chevron-down" size="sm" class="transcript__chevron" />
+    Transcript ({{ lines().length }} đoạn)
+  </summary>
+  <div class="transcript__body">
+    <input
+      uiInput
+      size="sm"
+      type="search"
+      class="transcript__search"
+      aria-label="Tìm trong transcript"
+      placeholder="Tìm trong transcript"
+      [formField]="searchForm.query"
+    />
+    @if (shown().length) {
+    <ol class="transcript__lines">
+      @for (item of shown(); track item.line.startSeconds) {
+      <li>
+        <button
+          type="button"
+          class="transcript__line"
+          [attr.aria-current]="item.playing ? 'true' : null"
+          (click)="seek.emit(item.line.startSeconds)"
+        >
+          <span class="transcript__time"
+            >{{ clock(item.line.startSeconds) }}</span
+          >{{ ' ' }}<span class="transcript__text">{{ item.line.text }}</span>
+        </button>
+      </li>
+      }
+    </ol>
+    } @else {
+    <p class="transcript__empty">Không có đoạn nào khớp.</p>
+    }
+  </div>
+</details>

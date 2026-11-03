@@ -1,106 +1,115 @@
-# Tasks: `learner-home-refresh`
+# Tasks: `lesson-player-modes`
 
-Spec: [SPEC-learner-home.md](../SPEC-learner-home.md) · Plan: [plan.md](plan.md).
-The previous `certificates` checklist, with its success criteria and how each was checked, is in git history at
-`2f0f5bc`.
+Spec: [SPEC-lesson-player-modes.md](../SPEC-lesson-player-modes.md) · Plan: [plan.md](plan.md).
+The previous `learner-home-refresh` checklist is in git history at `3d16946`.
 
 - **Repositories:**
-  - app: this one, branch `feat/learner-home-refresh` from `origin/main` (`a27364a`);
-  - backend: no change. The local backend runs `main` (`5563e76`). Nothing is pushed.
+  - backend: `corebanking-academy`, branch `feat/lesson-player-modes` from `origin/main` (`5563e76`), in its own
+    worktree `~/my-projects/corebanking-academy-player-modes`;
+  - app: this one, branch `feat/lesson-player-modes` from `origin/main` (`3d16946`).
+
+  Nothing is pushed.
+
 - **Local stack:**
-  - The backend on :8019 is the main session's background task. Never run `mvn`, and never start another backend.
+  - The backend on :8019 is the main session's background task. Never run `mvn` in the worktree it runs from, and
+    never start another backend. Message the main session for a restart.
   - The app runs on :4200 against `localhost:8019`.
-  - Accounts: `hocvien` and `hocvien.tichhop` as learners.
+  - Accounts: `hocvien` as the learner; `quantri` as the admin who saves course trees.
+  - The demo video is block 33, lesson 17, course `DEMO-MEDIA`, 30 s.
   - Passwords come only from `LOCAL_DEMO_PASSWORD` in the backend's `.env.local`, and are never printed.
   - In the browser, sign in with the one-shot token method, never by typing the password.
 - **Never** touch the shared server `103.121.90.119`. No seeding users, and no direct edits to enrollments, progress
-  or attempts.
-- **No schema change** in this module. If one turns out to be needed, stop and ask.
-- **Scope:** "Công cụ học nhanh" has "Ghi chú & đánh dấu" and "Chứng nhận" only. No AI assistant, no flashcards.
+  or attempts. The only SQL is the upgrade and the demo file, run by the main session at Checkpoint A.
+- **Schema change:** two nullable `jsonb` columns on `learning_hub.lesson_blocks`. No FK, no unique, every column
+  commented. Backend Javadoc and comments in Vietnamese (`DEVELOPMENT_GUIDELINES.md`).
 
-## Phase 0: Local environment
+## Phase 1: Backend
 
-- [x] **A1: Reporting tables on the local DB** (main session)
-  - Run `docs/sql/learning_hub_reporting.sql` once on the local DB with `-v ON_ERROR_STOP=1`.
-  - Acceptance: as `hocvien` and `hocvien.tichhop`, `/me/learning/dashboard`, `/me/learning/dashboard/competencies`
-    and `/me/competency` answer `CORE-SUCCESS`; the backend log has no `does not exist`.
+- [x] **B1: Schema**
+  - `docs/sql/upgrade/2026-11-03-lesson-player-modes.sql`: `ADD COLUMN IF NOT EXISTS video_chapters jsonb` and
+    `transcript jsonb`, each with a Vietnamese `COMMENT`, in one transaction.
+  - `2026-11-03-lesson-player-modes.rollback.sql`: `DROP COLUMN IF EXISTS` both.
+  - The learning baseline (`docs/sql/learning_hub_learning.sql`) gets both columns and comments.
+  - `docs/sql/README.md`: an entry with the psql command, and that it must run before the backend deploys.
+  - `LessonBlock` maps both as `@JdbcTypeCode(SqlTypes.JSON) JsonNode`.
+  - Acceptance: `mvn -o clean test` green (the test schema has the columns). Checked: `mvn -o clean test` green (444 run, 0 failed, 42 Docker-skipped Community ITs); the IT schema is built from the baseline so `validate` passed with the new columns.
+- [x] **B2: Save, read and copy**
+  - `BlockInput` gains `List<VideoChapterInput> videoChapters` and `List<TranscriptLineInput> transcript`
+    (nullable); `LessonBlockView` gains both as lists, `[]` when `NULL`.
+  - `validateBlockInput` applies plan Decision 5 with `BusinessException.validation`.
+  - `writeBlock` stores them (an empty list is stored as `NULL`); the revision copy passes them through.
+  - Acceptance: tests below. Checked: covered by B3's integration tests; `mvn -o clean test` green.
+- [x] **B3: Tests, docs and demo data**
+  - Integration tests: save with valid lists and read them back in the tree and in the learner's enrollment detail;
+    each refusal (count, length, blank, order, beyond the duration, non-video block); a new revision keeps them; a
+    save without the lists clears them (documented behaviour).
+  - `docs/api/LEARNING.md`: the block fields, the limits, and that a tree save replaces them.
+  - `docs/sql/demo-media/lesson-player-modes-demo.sql`: plan Decision 6, idempotent, local only.
+  - `scripts/local-seed-media.sh`: the video block of a fresh `DEMO-MEDIA` gets the same lists.
+  - Acceptance: `mvn -o clean test` green. Checked: `LearningPlayerModesIT` (9 tests) plus full `mvn -o clean test`: 453 run, 0 failed, 42 skipped; seed jq tree checked to emit 3 chapters + 6 lines; no SQL run.
 
 ### Checkpoint A
 
-- [x] The responses are recorded here (2026-11-02). The Sonnet child starts Phase 1.
-  - The script ran on `localhost/core_academy` from `origin/main` (`5563e76`): 5 rows in `quiz_user_results`, 21 in
-    `attempt_competency_scores`, then `COMMIT`.
-  - **The dashboard's shape:** `data = {dataAsOf, timeZone, learning: {counts, nextAction, deadlines}}`. The counts
-    are under `learning`, so the completion KPI reads `learning.counts.completionRate`.
-  - `hocvien`: `learning.counts` = 7 courses, 5 assigned, 5 mandatory, 2 completed, 2 in progress, 3 not started,
-    2 overdue, `averageProgress` 44.43, `completionRate` 28.57 (2/7). `nextAction` is course 1, lesson 3, block 5.
-    `/dashboard/competencies` has 2 rows; `/me/competency` has 3 (14.29, 11.11, 33.33).
-  - `hocvien.tichhop`: 5 courses, 4 assigned, 2 completed, `completionRate` 40, `averageProgress` 50.
-    `/me/competency` has 3 rows (44.44, 33.33, 30).
-  - `/dashboard/programs` as `hocvien`: 4 programmes (ids 1, 2, 3, 5), e.g. id 1 "Nền tảng nghiệp vụ Core Banking",
-    3 courses, 1 completed, `averageProgress` 50, `completionRate` 33.33.
+- [x] The main session ran the upgrade and the demo SQL on `localhost/core_academy` (2026-11-03): `ALTER TABLE`,
+      two `COMMENT`s, `COMMIT`; the demo `UPDATE 1` filled block 33 with 3 chapters and 6 lines. :8019 now runs from
+      `~/my-projects/corebanking-academy-player-modes` (`e88c399`).
+- [x] `curl`:
+  - As `hocvien`, the enrollment detail of `DEMO-MEDIA` (course 7, enrollment 16) returns block 33 with
+    `videoChapters` `[{0, "Giới thiệu"}, {10, "Khái niệm chính"}, {20, "Tổng kết"}]` and 6 transcript lines; the PDF
+    block 32 returns `[]` for both.
+  - As `quantri`, `POST /courses/7/draft` opened revision 11, whose video block (35) kept 3 chapters and 6 lines.
+  - Tree saves on revision 11 are refused with `CORE-VALIDATION_FAILED`: transcript out of order (`transcript`),
+    a chapter at 31 s on the 30 s video, a blank title, 51 chapters (`TOO_MANY`), and chapters on the PDF block. An
+    unchanged save succeeds and keeps the lists (block 37: 3 and 6).
+  - Revision 11 stays an unpublished draft on the local DB; learners still read revision 7.
+- [x] `mvn -o clean test`: 453 tests, 0 failures, 0 errors, 42 skipped (`CommunityApiIT`, as on `main`);
+      `LearningPlayerModesIT` 9/9. The app child starts Phase 2.
 
-## Phase 1: App
+## Phase 2: App
 
-- [x] **F1: Dashboard contracts**
-  - `learnerEndpoints.dashboard` (`GET /api/v1/me/learning/dashboard`) and `learnerEndpoints.dashboardPrograms`
-    (`GET /api/v1/me/learning/dashboard/programs`, `page`, `size` ≤ 100), with no `served: 'mock'`.
-  - Schemas follow `LearningAnalytics.Home` and `Group`. Percents are numbers that may be decimals; counts are
-    integers; `nextAction` is nullable.
-  - Fixtures are captured from the local backend as `hocvien`.
-  - Acceptance: the endpoint specs parse the fixtures; `npx nx test contracts` green.
-  - Checked: `npx nx test contracts` green (231 tests); fixtures captured as `hocvien` on :8019, including a second page and an empty page.
-- [x] **F2: Mock**
-  - The in-app mock serves both endpoints from the learning seed: the current cycle per course, `completionRate` =
-    completed / total × 100 and `averageProgress` = the mean of the progress, both to two decimals, 0 when empty;
-    programmes with at least one of the caller's courses.
-  - Acceptance: mock specs for a learner with and without courses; `npx nx test mocks` green.
-  - Checked: `npx nx test mocks` green (290 tests); specs for `hocvien` (counts, rate, next action, deadlines, programmes, paging) and `quantri` (no courses).
-- [x] **F3: KPI row and points**
-  - A component in `features/learning/learn/components/` renders the four KPIs of plan Decision 7, using the `ui`
-    `kpi` molecule and the `ring` atom where they fit.
-  - The store reads `dashboard` with its own error and retry; only the completion KPI depends on it.
-  - The points figure sits beside the continue card at `lg` and below it under `lg`.
-  - `app-progress-counts`, `app-score-figures` and `app-unavailable-note` are no longer used by `/learn`; `/progress`
-    is unchanged.
-  - Acceptance: specs for the four values, the deltas, a dashboard error (three KPIs still render, the fourth shows
-    retry), and no learner without a last score showing a "Đạt" line. The app computes no percent.
-  - Checked: `learn.spec` and `learn.store.spec` cover the four values, deltas, a failed dashboard and no "Đạt" line without a score; no percent computed in the app.
-- [x] **F4: Side column**
-  - Each "Hạn hoàn thành" row shows the card's `progressPercent` as `{n}%` (`ui.num`), after the due date.
-  - "Công cụ học nhanh" below the due list (above "Nhắc hạn"): the two links of plan Decision 4, title over a muted
-    line and a `chevron-right` icon of size `sm`, no tile, no AI assistant, no flashcards.
-  - Acceptance: specs for the percent and the two links with their `href`s.
-  - Checked: specs for the percent after the due date, the two links with their hrefs and no AI or flashcard text.
-- [x] **F5: Tabs and journey**
-  - The five course tabs fit on one line at 1280 px (column widths or tab spacing), and still wrap or scroll
-    without overflow at 375 px.
-  - "Lộ trình theo chương trình" in the main column after "Biểu đồ năng lực": one row per programme from
-    `dashboardPrograms`, name, a `progress` bar of `averageProgress` and "{completed}/{courses} khóa đã xong". The
-    section is hidden when the page is empty, and has its own error and retry.
-  - Acceptance: specs for the rows, the empty case and the error; no horizontal scroll at 375 px.
-  - Checked: specs for the rows, the empty case, the error and retry, and the compact tabs; the one-line fit at 1280 px and 375 px overflow are NOT measured in a browser (no sign-in from this session) and are left to Checkpoint B.
-- [x] **F6: Docs and routes**
-  - `SPEC-learner-home.md`: the amendments in the plan, and an "Implementation notes (learner-home-refresh)"
-    section.
-  - The `learn` screen entry declares `requires` for `dashboard` and `dashboardPrograms`.
-  - Migration notes for `route-learn` updated if the entry exists for this screen.
-  - Acceptance: `npm run check` green.
-  - Checked: spec amendments and notes written; `requires` on `learn`; migration notes updated; `npm run check` green.
+- [x] **F1: Contracts**
+  - `VideoChapterSchema {startSeconds, title}` and `TranscriptLineSchema {startSeconds, text}`;
+    `LessonBlockSchema` gains `videoChapters` and `transcript` with `.default([])`; `BlockInputSchema` gains both as
+    optional.
+  - Fixtures captured from the local backend.
+  - Acceptance: `npx nx test contracts` green. Checked: `npx nx test contracts` green (248), including the enrolment detail and the learner course captured from the local backend as `hocvien` (block 33: 3 chapters, 6 lines; PDF block 32: `[]`); the mock lib and the app still typecheck.
+- [x] **F2: Mock and editor**
+  - The mock's seeded video blocks carry the mockup's chapters and transcript (`lms-mockup/src/data/seed.js`); the
+    mock tree save stores and returns them.
+  - `course-draft.ts` keeps each loaded video block's lists in the save payload; a new block has none.
+  - Acceptance: specs for the mock round trip and for an editor save that keeps the lists. Checked: `mocks` 298 and `lms` specs green: `course-tree.backend.spec.ts` (seed, new draft, a save that sends the lists keeps them and one that omits them clears them), `course-draft.spec.ts` and `course-editor.spec.ts` (a video lesson opened and applied, then saved, sends the lists unchanged).
+- [x] **F3: Chapters**
+  - Under a video block with chapters: a row of buttons "{mm:ss} · {title}"; a click sets the block's `jump`; the
+    current chapter has `aria-current="true"`.
+  - Acceptance: specs for the seek and the current chapter following the time. Checked (a click sets the player's time inside `video-block`, the move a `jump` makes, not the store-owned `jump` input; see the spec notes): `video-block.spec.ts` (labels, click moves the player and reports a seek, `aria-current` follows the time, none before the first chapter) and the page spec (lists from the server reach the block, a click seeks).
+- [x] **F4: Transcript**
+  - Under a video block with lines: a collapsible "Transcript ({n} đoạn)", closed by default; a search field
+    ("Tìm trong transcript"); each line a button "{mm:ss} {text}" that seeks; the current line marked without
+    scrolling the page; "Không có đoạn nào khớp." when the search finds nothing.
+  - Acceptance: specs for search, seek and the current line. Checked: `video-block.spec.ts` (closed by default with the count, lines, click seeks, current line follows the time, search ignores case and accents, no-match line, no `scrollIntoView`).
+- [x] **F5: Focus mode**
+  - A top-bar button "Chế độ tập trung" / "Hiện mục lục" with `aria-pressed`; it hides the side panel from `lg` and
+    is hidden below `lg`; remembered under `lms.lesson.focus` in `try/catch`.
+  - Acceptance: specs for the toggle, the label, `aria-pressed`, and storage that throws. Checked: `lesson.spec.ts` (label, `aria-pressed`, side panel hidden and layout class, stored under `lms.lesson.focus`, starts on when remembered, storage that throws). The hide-below-`lg` rule is CSS and was not checked in jsdom; it is for Checkpoint B.
+- [x] **F6: Docs**
+  - `SPEC-lesson-player-modes.md`: implementation notes; migration entries for the lesson screen.
+  - Acceptance: `npm run check` green. Checked: `SPEC-lesson-player-modes.md` has the implementation notes; the lesson route entry in the migration registry names the three features (verify ticks left alone); `npm run check` green (see the report).
 
 ### Checkpoint B
 
-- [x] Main-session review of each commit's diff against angular.md §14 and visual-design.md. KPIs are label over
-      value with no card per number; no tiles, icons inline at `sm`; the store owns the two new reads with their own
-      error and retry; the app computes no percent. The completion KPI shows the value without `ui-ring` (spec
-      notes why); `ui-tabs` gains a `compact` input.
-- [x] `npm run check` green on `b9b02db` (14 tasks).
-- [x] `/learn` in the browser on the local stack (token sign-in):
-  - `hocvien`: 5 assigned (5 bắt buộc · 2 quá hạn), 28,57% (2/7), last 0% "Chưa đạt", best 100% (1/5); due rows
-    0%, 50%, 0%, 61%; journey 50%, 0%, 100%, 61%, equal to `/dashboard/programs`; competency radar renders.
-  - `hocvien.tichhop`: 4 assigned, 40% (2/5), best 100% (1/4); journey 25%, 50%, 100%.
-  - The quick links are `/saved` and `/certificates`; no AI assistant or flashcards.
-- [x] 1280 px light: the five tabs fit on one line. 768 px light: no horizontal scroll, the tabs fit (720/720).
-      375 px dark: no page scroll (375/375); the tab strip scrolls inside itself. The mockup on :4320 was compared
-      at 1280 px. The keyboard-only pass was not done.
+- [x] Main-session review of each commit's diff against angular.md §14 and visual-design.md. Chapters are `uiChip`
+      buttons with `aria-current`; the transcript is a `<details>` with a signal-form search and button lines; focus
+      mode lives in the store and is stored in `try/catch`; the editor round-trips both lists (spec and editor test).
+      Seeking sets the player's `currentTime`, which reports the move as a seek like the notes' `jump`.
+- [x] `npm run check` green on `52f09af` (14 tasks).
+- [x] Browser on the local stack (:8019 on `e88c399`), token sign-in as `hocvien`, `/lesson/7/17`:
+  - The chapter row shows the backend's "0:00 · Giới thiệu", "0:10 · Khái niệm chính", "0:20 · Tổng kết"; at 0:12
+    the second is current. A click on "0:20" moved the video to 20 s and marked the chapter and the 0:20 line.
+  - "Transcript (6 đoạn)" opens; "tin dung" (no accents) keeps only "Phân hệ tín dụng…"; a click on it moved the
+    video to 15 s.
+  - "Chế độ tập trung" hides the side panel (main column 1232 px at 1280), switches to "Hiện mục lục" with
+    `aria-pressed="true"`, stores `lms.lesson.focus`, and is still on after a reload.
+- [x] 1280 px light; 768 px light and 375 px dark: no horizontal scroll, the focus toggle is hidden, the chapters
+      wrap. Keyboard: Tab reaches each chapter, Enter seeks (to 20 s), the focus ring shows. The mockup on :4320 was
+      compared at 1280 px only.
 - [x] The spec is marked built.

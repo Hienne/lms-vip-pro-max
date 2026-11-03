@@ -14,6 +14,14 @@ import type {
   TrainingProgram,
 } from '@lms/contracts';
 import { SEED_TIME } from '../backend/seed';
+import {
+  ARCHITECTURE_VIDEO,
+  CHANGE_VIDEO,
+  DEPOSIT_VIDEO,
+  EOD_VIDEO,
+  WELCOME_VIDEO,
+  type VideoNotes,
+} from './video-notes.fixtures';
 
 // The training catalogue, courses, assignments and learning groups of lms-mockup/src/data/seed.js,
 // in the backend's shapes. Ids are numbers; the mockup's string ids are kept in comments. All rows
@@ -100,7 +108,7 @@ interface SeedLesson {
   readonly title: string;
   readonly minutes: number;
   readonly quiz?: boolean;
-  readonly blocks?: readonly [BlockType, string][];
+  readonly blocks?: readonly [BlockType, string, VideoNotes?][];
 }
 
 interface SeedCourse {
@@ -153,7 +161,7 @@ const SEED_COURSES: readonly SeedCourse[] = [
             title: 'Kiến trúc tổng thể hệ thống Core Banking',
             minutes: 18,
             blocks: [
-              ['video', 'Video bài giảng'],
+              ['video', 'Video bài giảng', ARCHITECTURE_VIDEO],
               ['text', 'Tóm tắt'],
             ],
           },
@@ -210,7 +218,7 @@ const SEED_COURSES: readonly SeedCourse[] = [
           {
             title: 'Vòng đời một yêu cầu thay đổi',
             minutes: 14,
-            blocks: [['video', 'Video bài giảng']],
+            blocks: [['video', 'Video bài giảng', CHANGE_VIDEO]],
           },
           {
             title: 'Phê duyệt thay đổi & CAB',
@@ -250,7 +258,7 @@ const SEED_COURSES: readonly SeedCourse[] = [
           {
             title: 'Tổng quan batch cuối ngày',
             minutes: 16,
-            blocks: [['video', 'Video bài giảng']],
+            blocks: [['video', 'Video bài giảng', EOD_VIDEO]],
           },
           {
             title: 'Sổ tay xử lý sự cố EOD',
@@ -289,7 +297,9 @@ const SEED_COURSES: readonly SeedCourse[] = [
           {
             title: 'Cơ cấu tổ chức & đầu mối hỗ trợ',
             minutes: 10,
-            blocks: [['video', 'Giới thiệu Ban QL&PT Core Banking']],
+            blocks: [
+              ['video', 'Giới thiệu Ban QL&PT Core Banking', WELCOME_VIDEO],
+            ],
           },
           {
             title: 'Quy chế làm việc & bảo mật',
@@ -329,7 +339,7 @@ const SEED_COURSES: readonly SeedCourse[] = [
           {
             title: 'Vòng đời tài khoản tiền gửi',
             minutes: 18,
-            blocks: [['video', 'Vòng đời tài khoản tiền gửi']],
+            blocks: [['video', 'Vòng đời tài khoản tiền gửi', DEPOSIT_VIDEO]],
           },
         ],
       },
@@ -578,44 +588,50 @@ function courseDetail(seed: SeedCourse, ids: () => number): CourseDetail {
               rowVersion: 0,
               ...stamp,
             },
-            blocks: (lesson.blocks ?? []).map(([type, title], blockIndex) => {
-              const blockId = ids();
-              return {
-                block: {
-                  id: blockId,
-                  lessonId,
-                  blockType: type,
-                  title,
-                  body:
-                    type === 'text' ? `## ${title}\n\nNội dung bài học.` : null,
-                  bodyFormat: type === 'text' ? 'markdown' : null,
-                  completionMode: COMPLETION[type],
-                  completionThreshold: type === 'video' ? 80 : null,
-                  isRequired: true,
-                  sortNo: blockIndex + 1,
-                  sourceBlockId: null,
-                  rowVersion: 0,
-                  ...stamp,
-                },
-                assets: seed.assets
-                  ? blockAsset(type, blockId, title, ids())
-                  : [],
-                steps:
-                  type === 'process'
-                    ? ['Tiếp nhận', 'Kiểm tra', 'Phê duyệt'].map(
-                        (step, stepIndex) => ({
-                          id: ids(),
-                          blockId,
-                          title: step,
-                          description: null,
-                          sortNo: stepIndex + 1,
-                          rowVersion: 0,
-                          ...stamp,
-                        }),
-                      )
+            blocks: (lesson.blocks ?? []).map(
+              ([type, title, notes], blockIndex) => {
+                const blockId = ids();
+                return {
+                  block: {
+                    id: blockId,
+                    lessonId,
+                    blockType: type,
+                    title,
+                    body:
+                      type === 'text'
+                        ? `## ${title}\n\nNội dung bài học.`
+                        : null,
+                    bodyFormat: type === 'text' ? 'markdown' : null,
+                    completionMode: COMPLETION[type],
+                    completionThreshold: type === 'video' ? 80 : null,
+                    isRequired: true,
+                    sortNo: blockIndex + 1,
+                    sourceBlockId: null,
+                    videoChapters: [...(notes?.videoChapters ?? [])],
+                    transcript: [...(notes?.transcript ?? [])],
+                    rowVersion: 0,
+                    ...stamp,
+                  },
+                  assets: seed.assets
+                    ? blockAsset(type, blockId, title, ids())
                     : [],
-              };
-            }),
+                  steps:
+                    type === 'process'
+                      ? ['Tiếp nhận', 'Kiểm tra', 'Phê duyệt'].map(
+                          (step, stepIndex) => ({
+                            id: ids(),
+                            blockId,
+                            title: step,
+                            description: null,
+                            sortNo: stepIndex + 1,
+                            rowVersion: 0,
+                            ...stamp,
+                          }),
+                        )
+                      : [],
+                };
+              },
+            ),
           };
         }),
       };

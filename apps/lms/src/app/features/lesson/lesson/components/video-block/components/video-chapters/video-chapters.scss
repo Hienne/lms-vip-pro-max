@@ -1,0 +1,19 @@
+@use 'ui';
+
+.chapters {
+  @include ui.row(2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+
+  &__item {
+    @include ui.num;
+    border-radius: ui.radius(control);
+
+    &[aria-current='true'] {
+      border-color: ui.color(primary);
+      background: ui.color(primary-subtle);
+      color: ui.color(primary);
+    }
+  }
+}

@@ -1,6 +1,6 @@
 # Spec: `lesson-player-modes`
 
-Map: [SPEC.md](SPEC.md). Status: **draft, waiting for approval.** Depends on `local-stack`, which provides a READY
+Map: [SPEC.md](SPEC.md). Status: **built 2026-11-03** (amended by `tasks/plan.md`; results in `tasks/todo.md` Checkpoints A and B). Depends on `local-stack`, which provides a READY
 video block. It can be built at any point after that.
 
 ## Objective
@@ -109,3 +109,44 @@ Docs: `docs/api/LEARNING.md` gets the block fields and limits.
    "mm:ss tiêu đề" per line)? Default: no; the data is entered through the API or demo SQL (map decision 5).
 2. **Speech-to-text:** should lesson videos reuse the community speech-to-text worker later? This only needs an
    answer before anyone builds it. Nothing here blocks it.
+
+## Implementation notes (app)
+
+What was built in the app, and where it differs from the text above.
+
+- **Contracts.**
+  - `LessonBlockSchema` has `videoChapters` and `transcript` (`{startSeconds, title}` and `{startSeconds, text}`,
+    `startSeconds` any number, decimals included), both `.default([])`.
+  - `BlockInputSchema` has both as optional, with the backend limits (`COURSE_LIMITS`).
+  - The responses captured from the local backend on 2026-11-03 are in
+    `libs/contracts/src/lib/learner/lesson-player.captured.ts`: the enrolment detail and the learner course
+    (`GET /me/learning/courses/{id}`) of `DEMO-MEDIA`. The lesson page reads its blocks from the course read, so
+    both carry the lists.
+- **Mock.** The five seeded video blocks carry the mockup's chapters and transcript
+  (`libs/mocks/src/lib/learning/video-notes.fixtures.ts`; the mockup's `t` is `startSeconds`). The mock tree save
+  stores what it is sent and a new draft copies them, as the backend does.
+- **Course editor.** There is no chapters or transcript UI (open question 1 stays "no"). A loaded video block keeps its
+  lists in `BlockValue` and the save sends them back unchanged; a new block, or any block that is not a video, sends
+  none. The lists are copied into plain objects on both sides, because the signal forms mark the objects they hold.
+- **`video-block`.** It renders `app-video-chapters` and `app-video-transcript` (own folders under its
+  `components/`) from the new `chapters` and `transcript` inputs, which the lesson page binds to the block's lists.
+  - A click seeks by setting the player's time inside `video-block`, the same move a `jump` makes. The existing
+    `jumped` and `secondChange` outputs report it, so progress and bookmarks see it like any seek. The `jump` input
+    itself belongs to the store (anchors from notes and the URL), so it is not used for these clicks.
+  - The current chapter or line is the last one whose whole second is at most the player's whole second
+    (`video-time.ts`). A start of 12.5 s counts from 12, as its label `0:12` reads, so a click on it selects it.
+  - Chapters are `uiChip` buttons labelled "{m:ss} · {title}" with `aria-current="true"` on the current one. The
+    chip's pill radius is a known violation of `visual-design.md`, so the row sets `ui.radius(control)` itself.
+  - The transcript is a native `<details>`, closed by default: "Transcript ({n} đoạn)", a search input
+    ("Tìm trong transcript") and a scrolling list of buttons "{m:ss} {text}". The search is a case- and
+    accent-insensitive substring (`đ` counts as `d`) done in the browser; "Không có đoạn nào khớp." shows when nothing
+    matches. The current line is marked with `aria-current` and a flat fill; nothing scrolls.
+  - Times use the existing `clock()` (`m:ss`), as the bookmark button does.
+- **Focus mode.** `LessonStore` has a `focus` state, `toggleFocus()` and `focus$`; the choice is read and written in
+  `try/catch` under `lms.lesson.focus` (`data-access/lesson-focus.ts`). The top bar has a ghost button, shown from
+  `lg` only, labelled "Chế độ tập trung" or "Hiện mục lục" with `aria-pressed`. In focus mode the side column is
+  hidden (`lesson__side--hidden`) and the layout is one column. The drawer below `lg` is untouched.
+- **Checked.** Specs for the contracts (including the captured responses), the mock round trip, the editor save, the
+  chapter row, the transcript (search, seek, current line), the page wiring and the focus toggle (label,
+  `aria-pressed`, storage that throws). `npm run check` is green. The browser pass of Checkpoint B (local stack,
+  375/768/1280 px, light and dark, keyboard, beside the mockup) is not done here.

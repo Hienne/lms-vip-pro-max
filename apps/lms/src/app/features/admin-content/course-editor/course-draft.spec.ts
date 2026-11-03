@@ -71,6 +71,43 @@ describe('course draft', () => {
     expect(second.lessons[0].blocks).toEqual([]);
   });
 
+  it('sends back the chapters and transcript of a loaded video block, unchanged', () => {
+    const architecture = courseDetailFixtures.find(
+      (d) => d.course.code === 'NV-101',
+    )!;
+    const loaded = architecture.chapters
+      .flatMap((c) => c.lessons)
+      .flatMap((l) => l.blocks)
+      .find((b) => b.block.blockType === 'video')!.block;
+    expect(loaded.videoChapters.length).toBeGreaterThan(0);
+
+    const command = toSaveDraftCommand(toDraftValue(architecture), 0);
+    const video = command.chapters
+      .flatMap((c) => c.lessons)
+      .flatMap((l) => l.blocks)
+      .find((b) => b.blockType === 'video')!;
+
+    expect(video.videoChapters).toEqual(loaded.videoChapters);
+    expect(video.transcript).toEqual(loaded.transcript);
+  });
+
+  it('sends no lists for a new video block or a block that is not a video', () => {
+    const lesson: LessonValue = {
+      ...newLesson(1),
+      blocks: [newBlock('video'), newBlock('text')],
+    };
+    const value = {
+      ...toDraftValue(eod),
+      chapters: [{ key: 'a', title: 'C', lessons: [lesson] }],
+    };
+    const [video, text] = toSaveDraftCommand(value, 0).chapters[0].lessons[0]
+      .blocks;
+
+    expect(video).not.toHaveProperty('videoChapters');
+    expect(video).not.toHaveProperty('transcript');
+    expect(text).not.toHaveProperty('videoChapters');
+  });
+
   it('keeps the quiz of a quiz lesson both ways and drops it from a content lesson', () => {
     const detail = structuredClone(eod);
     const lessons = detail.chapters[0].lessons;

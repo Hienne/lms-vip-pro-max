@@ -658,6 +658,8 @@ export class LearningBackend {
             title: s.title,
             description: s.description ?? undefined,
           })),
+          videoChapters: b.block.videoChapters,
+          transcript: b.block.transcript,
         })),
       })),
     }));
@@ -719,6 +721,8 @@ export class LearningBackend {
                     isRequired: block.isRequired ?? true,
                     sortNo: bi + 1,
                     sourceBlockId: sourceLesson?.blocks[bi]?.block.id ?? null,
+                    videoChapters: block.videoChapters ?? [],
+                    transcript: block.transcript ?? [],
                     ...stamp,
                   },
                   assets: block.assets.flatMap((use, ai) => {

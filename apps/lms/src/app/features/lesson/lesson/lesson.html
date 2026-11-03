@@ -17,6 +17,19 @@
     @if (store.lesson$()) {
     <button
       uiButton
+      variant="ghost"
+      size="sm"
+      class="lesson__focus-toggle"
+      [attr.aria-pressed]="store.focus$()"
+      (click)="store.toggleFocus()"
+    >
+      <ui-icon
+        [name]="store.focus$() ? 'panel-right-open' : 'panel-right-close'"
+        size="sm"
+      />{{ store.focus$() ? 'Hiện mục lục' : 'Chế độ tập trung' }}
+    </button>
+    <button
+      uiButton
       size="sm"
       class="lesson__toc-toggle"
       (click)="store.openOutline()"
@@ -65,7 +78,7 @@
     <a uiButton variant="primary" [routerLink]="courseLink()">Về khóa học</a>
   </ui-empty>
   } @default { @if (store.lesson$(); as lesson) {
-  <div class="lesson__layout">
+  <div class="lesson__layout" [class.lesson__layout--focus]="store.focus$()">
     <div class="lesson__main">
       <div class="lesson__head">
         <h1 class="lesson__title">{{ lesson.lesson.title }}</h1>
@@ -144,6 +157,8 @@
           [startAt]="store.resume$()?.lastVideoPositionSeconds ?? 0"
           [title]="active.title"
           [jump]="store.videoJump$()"
+          [chapters]="active.detail.block.videoChapters"
+          [transcript]="active.detail.block.transcript"
           [bookmarked]="store.bookmarked$()"
           [busy]="store.bookmarkBusy$()"
           (played)="store.videoPlay($event)"
@@ -255,7 +270,11 @@
       } }
     </div>
 
-    <aside class="lesson__side" aria-label="Công cụ bài học">
+    <aside
+      class="lesson__side"
+      [class.lesson__side--hidden]="store.focus$()"
+      aria-label="Công cụ bài học"
+    >
       <ng-container [ngTemplateOutlet]="sidePanel" />
     </aside>
   </div>

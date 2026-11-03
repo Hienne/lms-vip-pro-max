@@ -2,6 +2,7 @@ import { CourseCardSchema } from '../course/course.schema';
 import { toUrl } from '../http/endpoint';
 import { learnerEndpoints } from './learner.endpoints';
 import { capturedLearner as captured } from './learner.captured';
+import { capturedLessonPlayer } from './lesson-player.captured';
 import {
   EnrollmentDetailSchema,
   LeaderboardPageSchema,
@@ -631,5 +632,50 @@ describe('learner endpoints', () => {
       expect(query?.safeParse({ page: 0, size: 100 }).success).toBe(true);
       expect(query?.safeParse({ size: 101 }).success).toBe(false);
     });
+  });
+});
+
+describe('the learner course captured with video chapters and transcript', () => {
+  it('gives the demo video its lists on the read the lesson page uses', () => {
+    const course = LearnerCourseSchema.parse(
+      capturedLessonPlayer.learnerCourse,
+    );
+    const video = course.content.chapters
+      .flatMap((chapter) => chapter.lessons)
+      .flatMap((lesson) => lesson.blocks)
+      .find((entry) => entry.block.id === 33)!.block;
+    expect(video.videoChapters.map((c) => c.title)).toEqual([
+      'Giới thiệu',
+      'Khái niệm chính',
+      'Tổng kết',
+    ]);
+    expect(video.transcript).toHaveLength(6);
+  });
+});
+
+describe('the enrolment detail captured with video chapters and transcript', () => {
+  const detail = EnrollmentDetailSchema.parse(
+    capturedLessonPlayer.enrollmentDetail,
+  );
+  const blocks = detail.content.chapters
+    .flatMap((chapter) => chapter.lessons)
+    .flatMap((lesson) => lesson.blocks)
+    .map((entry) => entry.block);
+
+  it('gives the demo video its chapters and transcript', () => {
+    const video = blocks.find((block) => block.id === 33);
+    expect(video?.videoChapters).toEqual([
+      { startSeconds: 0, title: 'Giới thiệu' },
+      { startSeconds: 10, title: 'Khái niệm chính' },
+      { startSeconds: 20, title: 'Tổng kết' },
+    ]);
+    expect(video?.transcript).toHaveLength(6);
+    expect(video?.transcript[1].startSeconds).toBeGreaterThan(0);
+  });
+
+  it('gives a block that is not a video two empty lists', () => {
+    const pdf = blocks.find((block) => block.id === 32);
+    expect(pdf?.videoChapters).toEqual([]);
+    expect(pdf?.transcript).toEqual([]);
   });
 });

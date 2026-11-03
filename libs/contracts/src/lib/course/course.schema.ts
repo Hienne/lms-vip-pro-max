@@ -72,6 +72,10 @@ export const COURSE_LIMITS = {
   items: 100,
   assetsPerBlock: 20,
   stepsPerBlock: 200,
+  videoChapters: 50,
+  chapterTitle: 120,
+  transcriptLines: 2000,
+  transcriptText: 1000,
   lessonSeconds: 86400,
   rewardPoints: 100000,
 } as const;
@@ -170,6 +174,20 @@ export const CourseLessonSchema = z.object({
 });
 export type CourseLesson = z.infer<typeof CourseLessonSchema>;
 
+/** A video chapter: where it starts, in seconds (may be a decimal), and its title. */
+export const VideoChapterSchema = z.object({
+  startSeconds: z.number(),
+  title: z.string(),
+});
+export type VideoChapter = z.infer<typeof VideoChapterSchema>;
+
+/** A timed line of a video's transcript. */
+export const TranscriptLineSchema = z.object({
+  startSeconds: z.number(),
+  text: z.string(),
+});
+export type TranscriptLine = z.infer<typeof TranscriptLineSchema>;
+
 export const LessonBlockSchema = z.object({
   id: z.number().int(),
   lessonId: z.number().int(),
@@ -182,6 +200,9 @@ export const LessonBlockSchema = z.object({
   isRequired: z.boolean().nullish(),
   sortNo: z.number().int(),
   sourceBlockId: z.number().int().nullish(),
+  /** Chapters and transcript of a `video` block, in time order; the backend sends `[]` when it has none. */
+  videoChapters: z.array(VideoChapterSchema).default([]),
+  transcript: z.array(TranscriptLineSchema).default([]),
   rowVersion: z.number().int(),
   createTime: BackendDateTimeSchema.nullish(),
   updateTime: BackendDateTimeSchema.nullish(),
@@ -418,6 +439,26 @@ export const BlockInputSchema = z.object({
   isRequired: z.boolean().optional(),
   assets: z.array(AssetUseInputSchema).max(COURSE_LIMITS.assetsPerBlock),
   steps: z.array(StepInputSchema).max(COURSE_LIMITS.stepsPerBlock),
+  /**
+   * A tree save replaces them, so a client that does not edit them sends back what it loaded; left
+   * out (or empty) they are cleared. Only a `video` block may have them.
+   */
+  videoChapters: z
+    .array(
+      VideoChapterSchema.extend({
+        title: z.string().max(COURSE_LIMITS.chapterTitle),
+      }),
+    )
+    .max(COURSE_LIMITS.videoChapters)
+    .optional(),
+  transcript: z
+    .array(
+      TranscriptLineSchema.extend({
+        text: z.string().max(COURSE_LIMITS.transcriptText),
+      }),
+    )
+    .max(COURSE_LIMITS.transcriptLines)
+    .optional(),
 });
 export type BlockInput = z.infer<typeof BlockInputSchema>;
 
