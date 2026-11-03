@@ -23,7 +23,7 @@ The previous `lesson-player-modes` checklist is in git history at `0efffaf`.
 
 ## Phase 1: Backend
 
-- [ ] **B1: Refactor the draft write**
+- [x] **B1: Refactor the draft write**
   - `LearningRequests.DraftContent`: every `DraftRequest` field but `expectedVersion`, same constraints;
     `DraftRequest.content()`.
   - `LearningContentService.applyDraft(Course, CourseRevision, DraftContent, actor)`:
@@ -31,7 +31,8 @@ The previous `lesson-player-modes` checklist is in git history at `0efffaf`.
     - `clearDraftTree`, the revision fields, the reward points, `writeTree`.
   - `saveDraft` keeps its lock and version check, then calls `applyDraft`.
   - Acceptance: no behaviour change; `mvn -o clean test` green.
-- [ ] **B2: Create with a draft**
+  - Checked: commit f110b53 on `feat/course-wizard-create`; `mvn -o clean test` 453 run, 0 failed, 42 skipped.
+- [x] **B2: Create with a draft**
   - `CreateCourse` gains `@Valid DraftContent draft` (nullable). `create` calls `applyDraft` after `newRevision`
     when it is present; the title rule is plan Decision 3.
   - Integration tests:
@@ -42,13 +43,28 @@ The previous `lesson-player-modes` checklist is in git history at `0efffaf`.
     - a caller without manage rights is refused.
   - `docs/api/LEARNING.md` and `LEARNING_CURL.md` document `draft`.
   - Acceptance: `mvn -o clean test` green.
+  - Checked: commit b8529eb; 6 new tests in `CourseCreateWithDraftIT`; `mvn -o clean test` 459 run, 0 failed, 42 skipped.
+    The title fallback needed `DraftContent.withTitle`, because `applyDraft` writes `draft.title` (null) over it.
 
 ### Checkpoint A
 
-- [ ] The main session restarts :8019 from `~/my-projects/corebanking-academy-wizard`.
-- [ ] `curl` as `quantri`: the create with a draft, the create without one, `DUPLICATE`, and an invalid draft that
-      leaves no course.
-- [ ] `mvn -o clean test` green. The app child starts Phase 2.
+- [x] The main session reviewed both diffs and restarted :8019 from `~/my-projects/corebanking-academy-wizard`
+      (`b8529eb`) on 2026-11-03.
+- [x] `curl` as `quantri` (org 1):
+  - `WIZ-CB-01` with a two-chapter draft: course 10, revision 12, title "Khóa thử wizard" (the draft title over
+    `title`), objectives and 40 reward points; `GET /courses/10` reads back "Chương 1" → "Bài 1" and
+    "Chương 2" → "Bài 2".
+  - `WIZ-CB-02` without a draft: course 11, title "Không nháp", no chapters.
+  - `WIZ-CB-01` again: `LEARNING-DUPLICATE`.
+  - An unknown `programId` in the draft fails in the service with `LEARNING-NOT_FOUND`, and the code `WIZ-CB-04` was
+    free afterwards (a later create took it). A bad `blockType` fails earlier, at bean validation, with the field
+    `draft.chapters[0]…`.
+  - `WIZ-CB-06` with a program, module, level and a required text block: created at `rowVersion` 1, then published
+    with that version (`state` published). The response version is usable for a publish right after a create.
+  - Note for the app: publishing needs a `level`; `draftChecks` does not list it today.
+  - The test courses (`WIZ-CB-*`, ids 10 to 16) stay on the local DB.
+- [x] `mvn -o clean test` in a temporary worktree at `b8529eb` (not the one :8019 runs from): exit 0;
+      `CourseCreateWithDraftIT` 6 tests. The app child starts Phase 2.
 
 ## Phase 2: App
 
