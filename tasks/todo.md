@@ -1,127 +1,148 @@
-# Tasks: `course-publish-targets`
+# Tasks: `ui-polish`
 
-Spec: [SPEC-course-publish-targets.md](../SPEC-course-publish-targets.md) · Plan: [plan.md](plan.md).
-The previous `course-final-exam` checklist is in git history at `2c91339`.
+Spec: [SPEC-ui-polish.md](../SPEC-ui-polish.md) · Plan: [plan.md](plan.md).
+The previous `course-publish-targets` checklist is in git history at `23b2930`.
 
-- **Repositories:**
-  - backend: `corebanking-academy`, branch `feat/course-publish-targets` from `feat/course-final-exam` (`61ff927`),
-    in its own worktree `~/my-projects/corebanking-academy-publish-targets`;
-  - app: this one, branch `feat/course-authoring`.
+Run `nvm use` first. Focused tests: `npx nx test ui`, `npx nx test lms`. Whole gate: `npm run check`.
 
-  Nothing is pushed.
+## Task 1: Token-coloured thin scrollbar app-wide, nav variant on the sidebar
 
-- **Local stack:**
-  - The backend on :8019 is the main session's background task. Never run `mvn` in the worktree it runs from, and
-    never start another backend. Message the main session for a restart.
-  - The app runs on :4200 against `localhost:8019`.
-  - Accounts: `quantri` (admin, authoring); `hocvien` (learner for the checkpoint row).
-  - Passwords come only from `LOCAL_DEMO_PASSWORD` in the backend's `.env.local`, and are never printed.
-  - In the browser, sign in with the one-shot token method, never by typing the password.
-  - Course 19 (`WIZ-FE-01`) has an open draft revision; published revision 21.
-- **Never** touch the shared server `103.121.90.119`. No SQL, no DB edits; checkpoint data goes through the API.
-- Backend Javadoc and comments in Vietnamese (`DEVELOPMENT_GUIDELINES.md`). Run long commands in the foreground.
+**Description:** Add the scrollbar colour tokens, one inherited rule on `html`, a `ui.scrollbar($tone)` mixin, and
+use the nav tone on the sidebar so the dark panel shows one thin, dark-tinted bar.
 
-## Phase 1: Backend
+**Acceptance criteria:**
 
-- [x] **B1: Request and shares**
-  - `PublishRequest` and `PublishAssignment` (plan Decision 2); the publish endpoint takes `PublishRequest`.
-  - One transaction: publish, then shares (Decision 3, 5). Active shares skipped; a refusal becomes
-    `CORE-VALIDATION_FAILED` on `shareOrgIds[j]` (Decision 4).
-  - Acceptance: `{expectedVersion}` alone unchanged; `mvn -o clean test` green.
-  - Checked: d197119 — mvn -o clean test: 470 run, 0 failed, 42 skipped.
-- [x] **B2: Assignments**
-  - Each row through `assign` with the values of Decision 6; a `BusinessException` or `AccessDeniedException` becomes
-    `CORE-VALIDATION_FAILED` on `assignments[i]` and rolls everything back.
-  - Acceptance: `mvn -o clean test` green.
-  - Checked: 1e4d10e — mvn -o clean test (run with the B3 IT present): 477 run, 0 failed, 42 skipped. Lock: `pg_advisory_xact_lock` is re-entrant in one session, so nested `acquire` is safe.
-- [x] **B3: Tests and docs**
-  - `CoursePublishTargetsIT` with the spec's Testing cases (two rows and a share; no extras; empty target rolls back;
-    owner share refused; existing share unchanged; due before start; retry refused by version).
-  - `docs/api/LEARNING.md` and `LEARNING_CURL.md`.
-  - Acceptance: `mvn -o clean test` green.
-  - Checked: 0b4b9f8 — mvn -o clean test: 477 run, 0 failed, 42 skipped (CoursePublishTargetsIT: 7 run, 0 failed).
+- [ ] `scrollbar-thumb` (from `border-strong`), `scrollbar-thumb-hover` (from `text-muted`), `scrollbar-track`
+      (`transparent`) and `nav-scrollbar-thumb` (`white` ~24% over transparent) exist in light and dark;
+      `nav-scrollbar-thumb` is in `$palette-color-keys` and set from `text` in `cobalt` and `giay` (light and dark).
+- [ ] `html` has `scrollbar-color: thumb track; scrollbar-width: thin` in `@layer base`; `ui.scrollbar(nav)` is used
+      on the sidebar; tabs keep `scrollbar-width: none`.
+- [ ] The sidebar shows a single scroll area (`.sidebar__nav`), or the outer one keeps `auto` with the nav tone if
+      the fixed parts do not fit a 600px-tall viewport (decision recorded here).
 
-### Checkpoint A
+**Verification:**
 
-- [x] The main session reviewed the three diffs and restarted :8019 from
-      `~/my-projects/corebanking-academy-publish-targets` (`0b4b9f8`) on 2026-11-03. `LearningPublishService` runs the
-      publish, the shares and the rows in one transaction; the nested `LearningWriteLock.acquire` is a
-      `pg_advisory_xact_lock`, which the same transaction can take again.
-- [x] Plan Decision 11 through the API, on course 19's draft revision 22 (`rowVersion` 3), as `quantri`:
-  - Only one local org exists (org 1, the owner), so a successful share could not be made without seeding; it is
-    left to `CoursePublishTargetsIT`.
-  - Refused, each leaving revision 22 a draft with no assignment and no share:
-    - a valid row for `hocvien` plus `shareOrgIds` [1] gave `CORE-VALIDATION_FAILED` on `shareOrgIds[0]`
-      (`LEARNING-INVALID_REFERENCE`);
-    - rows for `hocvien` and team 2 (no member) gave `assignments[1]` (`LEARNING-EMPTY_TARGET`), so row 0 was rolled
-      back too;
-    - a due date before the start gave `assignments[0]` (`OUT_OF_RANGE`).
-  - A publish with one row for `hocvien` (start 2026-11-04, due 2026-12-04, reminder 3 days) succeeded (published
-    revision 22) in under 0.1 s. Assignment 8 has revision 22, requirement `optional` (the revision default),
-    `continue`, idempotency key `publish-22-0`; its recipient is `000004` on the new enrollment 20 (revision 22).
-    The learning report shows enrollment 20 with `assigned` false until the start date, as for any future
-    assignment.
-  - The same body again gave `LEARNING-CONFLICT` (version check); still one assignment.
-  - Counts read through the API and one read-only psql query on localhost; no write outside the API.
-- [x] `mvn -o clean test` in a temporary worktree at `0b4b9f8`: 477 run, 0 failures, 0 errors, 42 skipped;
-      `CoursePublishTargetsIT` 7/7. The app child starts Phase 2.
+- [ ] `npx nx test ui` (guard: no colour literal outside tokens; palette keys complete)
+- [ ] Browser: computed `scrollbar-color` on `html` and `.sidebar__nav` in bidv and cobalt, light and dark
 
-## Phase 2: App
+**Dependencies:** None
 
-- [x] **F1: Contracts and mock**
-  - `PublishCourseCommandSchema` (reusing the assignment `TargetInput` schema); the publish endpoint body.
-  - Fixtures captured from the local backend.
-  - The mock publish applies rows and shares through its assignment and share logic and refuses an empty target on
-    `assignments[i]`.
-  - Acceptance: `npx nx test contracts` and `npx nx test mocks` green.
-  - Checked: contracts, mocks and lms (envelope, error mapping and the full suite) tests, lint and typecheck green. Also
-    added to the envelope: `errors[]` is now read (`FieldError`, `ApiError.fieldErrors`, `AppError.fieldErrors`),
-    because the row mapping needs it; the mock refuses with the same shape.
-- [x] **F2: Shared picker**
-  - `shared/assignment-target/`: `TargetPicker` and `TargetOptionsStore` (Decision 7); `assign-form` uses them.
-  - Acceptance: the assignments specs pass; `lms` lint (module boundaries) and typecheck clean.
-  - Checked: assignments spec (7) and the new `target-picker.spec.ts` (3) pass; `lms` lint (0 errors) and typecheck clean.
-    The host sets the groups' owner org through the `TARGET_OWNER_ORG` token (the caller's org without it).
-- [x] **F3: Step 4**
-  - Store state, loads and commands (Decision 9); "Giao khóa học" (picker, rows, reminder switch, "Đã giao trước
-    đó", empty line) and "Chia sẻ cho đơn vị khác" (owner and shared units locked); the confirmation counts; the row
-    error mapping; create mode.
-  - Acceptance: specs for rows (add, delete, form checks), the switch, the share list, the publish command in edit
-    and create mode, and a row error mapped back.
-  - Checked: new `course-review.spec.ts` (14), `publish-targets.spec.ts` (12) and picker spec; full `lms` suite green
-    (1699 tests); lint 0 errors, typecheck clean. Differences: the org list is read in create mode too (the share list
-    needs it); the picker's add button is the secondary variant, not ghost; a row with no due date sends no reminder.
-- [x] **F4: Docs**
-  - The spec's implementation notes; the migration entry.
-  - Acceptance: `npm run check` green.
-  - Checked: `npm run check` NOT completed (stopped at the user's request). Before it: prettier clean on the F4 files; all
-    four `lms`/`contracts`/`mocks` suites, lint and typecheck were green at F3. Run it at Checkpoint B.
+**Files likely touched:** `libs/ui/src/styles/ui/_tokens.scss`, `libs/ui/src/styles/ui/_mixins.scss`,
+`libs/ui/src/styles/global/_base.scss`, `apps/lms/src/app/layout/sidebar/sidebar.scss`,
+`apps/lms/src/app/layout/shell/app-shell.scss`
 
-### Checkpoint B
+**Estimated scope:** M
 
-- [x] Main-session review of `05a7f80`, `ed29dab`, `19f439a` and `63022b4` against angular.md §14 and
-      visual-design.md: the picker and `TargetOptionsStore` live in `shared/assignment-target/` and import nothing
-      from `features/`; step 4 state is outside the draft; a refusal naming `assignments[i]` / `shareOrgIds[j]` marks
-      that row or unit and is not repeated in the alert. One fix by the main session, `a5af8dc`: the envelope's
-      `errors[]` now falls back to null when a detail has another shape, so a malformed detail cannot turn a refusal
-      into a parse failure.
-- [x] `npm run check` green on `a5af8dc` (14 tasks; `contracts` 260, `ui` 514, `mocks` 313, `lms` 1698 specs).
-- [x] Browser on the local stack (:8019 on `0b4b9f8`), token sign-in as `quantri`, course 19:
-  - Step 4 of the published course reads "Đã giao trước đó: 1 đợt — quản lý tại Giao học & hạn", the picker, the
-    empty line, the switch, and "Ban Quản lý và phát triển Core Banking (đơn vị sở hữu)" ticked and locked. The
-    page is read only until "Mở bản nháp để sửa" (draft revision 23).
-  - Rows for team 2 (no member) and team 11: the confirmation added "2 đối tượng được giao, 0 đơn vị được chia sẻ.";
-    the server refused and row 1 showed "Đối tượng giao không có học viên hợp lệ hoặc vượt giới hạn 500 người.",
-    with no alert. Revision 23 stayed a draft.
-  - Row 1 deleted, published: toast "Đã xuất bản khóa học. 1 đối tượng được giao, 0 đơn vị được chia sẻ.", back to
-    the list. Through the API: revision 23 published, assignment 10 on revision 23 (start the local midnight of
-    2026-11-04, no due date, so no reminder), and `hocvien.tichhop` (`000007`) has enrollment 21 on revision 23,
-    `assigned` true.
-  - A successful share was not tried: the local stack has one org, the owner. It is covered by
-    `CoursePublishTargetsIT` and the mock specs.
-  - "Giao học & hạn": the list shows assignments 10 and 8; in "Giao khóa học" the moved picker added "Ban Quản lý và
-    phát triển Core Banking và đơn vị cấp dưới" to the targets. The form was closed without sending.
-- [x] 375 px dark: one column, no horizontal scroll. 768 px light: one column of 720 px. 1280 px light: two columns
-      (576 and 384 px). Keyboard in create mode: Tab moves from the type list to the unit select (focus ring) to
-      "Gồm cả các đơn vị cấp dưới", skipping the disabled "Thêm đối tượng".
-- [x] The spec is marked built.
+## Task 2: Stepper of numbered steps joined by connectors
+
+**Description:** Restyle `ui-stepper`: no card per step; circle, then title over subtitle; a 1px connector after each
+step but the last, primary after a done step; vertical below `md`. Behaviour and API unchanged.
+
+**Acceptance criteria:**
+
+- [ ] `.stepper__item` carries `is-done` for done steps; its `::after` connector is `primary`, otherwise `border`;
+      the last item has none; connector minimum length `ui.space(4)`.
+- [ ] Circles: pending `surface-2`/`text-secondary`, current `primary`/`on-primary`, done `primary-subtle`/`primary`
+      with the check; no border, background or shadow on the step; titles wrap, never truncate.
+- [ ] Below `md`: vertical list with a vertical connector; keyboard, `aria-current`, "Đã hoàn thành", `linear`
+      unchanged.
+
+**Verification:**
+
+- [ ] `npx nx test ui` (new cases: `is-done` on items before the current one, none on the last connector's item
+      logic, existing a11y cases still green)
+- [ ] Browser: course editor steps 1, 2, 4 at 1280, 1024 and 375px, light and dark; design-system page
+
+**Dependencies:** None
+
+**Files likely touched:** `libs/ui/src/styles/components/_stepper.scss`,
+`libs/ui/src/lib/organisms/stepper/stepper.html`, `libs/ui/src/lib/organisms/stepper/stepper.spec.ts`
+
+**Estimated scope:** S
+
+## Checkpoint A
+
+- [ ] `npx nx test ui` and `npx nx test lms` green
+- [ ] Screenshots of scrollbar and stepper (1280/375, light/dark)
+- [ ] User accepts the stepper look and the `bar` z key before Phase 2
+
+## Task 3: `ShellInsets` + `appBottomBar`; the owl rises by the inset
+
+**Description:** A root `ShellInsets` service with a `bottom` signal, an `appBottomBar` directive that writes its
+host's height there while mounted, and the owl adding that inset to its `bottom`.
+
+**Acceptance criteria:**
+
+- [ ] The directive sets `ShellInsets.bottom` to the host's border-box height (ResizeObserver) and back to 0 on
+      destroy, disconnecting the observer.
+- [ ] `app-owl` binds `--owl-inset` from the signal; `owl.scss` uses `bottom: calc(ui.space(4) + var(--owl-inset, 0px))`
+      in both its default and `--beside-toolbar` placements.
+- [ ] With no bar mounted, the owl's position is unchanged.
+
+**Verification:**
+
+- [ ] `npx nx test lms` (new `shell-insets.spec.ts`; `owl.spec.ts` case for the inset style)
+
+**Dependencies:** None
+
+**Files likely touched:** `apps/lms/src/app/layout/shell-insets.ts` (new), `apps/lms/src/app/layout/shell-insets.spec.ts`
+(new), `apps/lms/src/app/layout/owl/owl.ts`, `apps/lms/src/app/layout/owl/owl.scss`,
+`apps/lms/src/app/layout/owl/owl.spec.ts`
+
+**Estimated scope:** M
+
+## Task 4: Course-editor footer pinned to the viewport bottom
+
+**Description:** Make `.course-editor__foot` sticky at the bottom with a surface fill and a 1px top border, register
+it with `appBottomBar`, and keep focused fields clear of it.
+
+**Acceptance criteria:**
+
+- [ ] New stacking key `bar: 20` in `$z-indexes`; the footer is `position: sticky; bottom: 0; z-index: ui.z(bar)`,
+      `surface` fill, 1px top `border`, `padding-block: ui.space(3)`, no shadow; same buttons and order in create and
+      edit mode.
+- [ ] The footer has `appBottomBar`; the owl sits above it; the lesson drawer and dialogs cover it.
+- [ ] Tab to any field scrolls it into view above the bar (`scroll-margin-bottom` on the form's controls, or
+      `scroll-padding-bottom` while the editor is mounted).
+
+**Verification:**
+
+- [ ] `npx nx test lms` (`course-editor.spec.ts`: the footer carries the directive in both modes)
+- [ ] Browser: step 2 with a long outline at 1280/375, light/dark; scroll, Tab to the last field, open the drawer
+
+**Dependencies:** Task 3
+
+**Files likely touched:** `libs/ui/src/styles/ui/_tokens.scss`,
+`apps/lms/src/app/features/admin-content/course-editor/course-editor.html`,
+`apps/lms/src/app/features/admin-content/course-editor/course-editor.scss`,
+`apps/lms/src/app/features/admin-content/course-editor/course-editor.ts`,
+`apps/lms/src/app/features/admin-content/course-editor/course-editor.spec.ts`
+
+**Estimated scope:** M
+
+## Checkpoint B
+
+- [ ] `npm run check` green
+- [ ] Browser checks of Tasks 1–4 together, screenshots in the report
+- [ ] angular.md §14 and visual-design.md checklists pass
+
+## Task 5: Docs and spec status
+
+**Description:** Record the new stepper and the scrollbar mixin in the UI library doc, amend the spec (owl only,
+`bar` z key, themes in `_tokens.scss`) and mark it built.
+
+**Acceptance criteria:**
+
+- [ ] `docs/conventions/ui-library.md`: stepper row describes connectors; `ui.scrollbar` listed with the mixins;
+      `ShellInsets`/`appBottomBar` noted where layout pieces are listed, if such a list exists.
+- [ ] `SPEC-ui-polish.md` status "built", amendments listed; results of both checkpoints recorded here.
+
+**Verification:**
+
+- [ ] `npm run check` (format)
+
+**Dependencies:** Tasks 1–4
+
+**Files likely touched:** `docs/conventions/ui-library.md`, `SPEC-ui-polish.md`, `tasks/todo.md`
+
+**Estimated scope:** S

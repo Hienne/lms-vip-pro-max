@@ -1,137 +1,102 @@
-# Implementation Plan: `course-publish-targets`
+# Implementation Plan: `ui-polish`
 
-Spec: [SPEC-course-publish-targets.md](../SPEC-course-publish-targets.md) (built 2026-11-04; amended below). Map:
-[SPEC-course-authoring.md](../SPEC-course-authoring.md). Tasks: [todo.md](todo.md).
-
-This plan replaces the one for `course-final-exam`. That plan is done; it is in git history at `2c91339`.
+Spec: [SPEC-ui-polish.md](../SPEC-ui-polish.md) (approved 2026-11-04; amended below). Tasks: [todo.md](todo.md).
+The previous `course-publish-targets` plan is in git history at `23b2930`.
 
 ## Overview
 
-Step 4 of the course editor gets "Giao khóa học" (assignment rows) and "Chia sẻ cho đơn vị khác" (new shares). The
-publish call carries both, and the backend applies the publish, the shares and the assignments in one transaction:
-all or nothing, with a failing row named in the error. No DB change.
+Three UI changes: a token-coloured thin scrollbar across the app (nav variant on the sidebar), a stepper of
+numbered steps joined by connectors instead of four cards, and a course-editor footer pinned to the bottom of the
+viewport with the owl lifted above it.
 
-## What was checked while planning (2026-11-03)
+## Findings from the codebase (answers to the spec's open checks)
 
-**Backend (`feat/course-final-exam` at `61ff927`, not merged yet)**
+- **`primary-subtle`** exists in the base light and dark maps and in every theme (`ngoc`, `cobalt`, `giay`, light and
+  dark) in `_tokens.scss`. Safe for the done circle.
+- **Themes live in `libs/ui/src/styles/ui/_tokens.scss` (`$palettes`)**, not `_palettes.scss`; that file only emits
+  them and fails the build on a key missing from `$palette-color-keys` or a light key the dark map leaves out.
+- **Light sidebars:** `cobalt` and `giay` mix their `nav-hover` from `text`, not `white`. A `nav-scrollbar-thumb`
+  mixed from `white` would vanish there, so it joins `$palette-color-keys` and those two themes (light and dark)
+  set it from `text`.
+- **Sidebar scroll:** the host `app-sidebar.app-shell__sidebar` has `height: 100dvh; overflow-y: auto`, and the
+  inner `.sidebar__nav` scrolls too. The full-height bar in the screenshot is the outer one. Task 1 confirms in the
+  browser which one overflows and leaves only `.sidebar__nav` scrolling (the outer becomes `overflow: hidden` only
+  if brand + role + footer still fit at a 600px-tall viewport; otherwise it keeps `auto` with the nav colours).
+- **Chat launcher = the owl.** `app-chat-widget` is the panel the owl opens (the owl hides while it is open). Only
+  the owl needs the inset; the open panel is an overlay and may cover the footer, like the drawer.
+- **Stacking:** `$z-indexes` has no key below `header: 30`. The pinned footer needs one.
 
-- **Publish** is `POST /courses/{courseId}/revisions/{revisionId}/publish` with a `VersionRequest` body
-  (`expectedVersion`).
-- **`LearningAssignmentService.assign(courseId, AssignmentRequest)`** is `@Transactional`. In order it:
-  `lock.acquire`, `requireAssignCourse`, the idempotency check, `dueAt` before `startAt` →
-  `BusinessException.validation("dueAt", "OUT_OF_RANGE", …)`, `requirePublished`, `resolveTarget`. It throws
-  `EMPTY_TARGET`, and `AccessDeniedException` for a recipient out of scope.
-- `AssignmentRequest(revisionId, assigningOrgId, title, startAt, dueAt, requirement, enrollmentMode, reminderEnabled,
-reminderDaysBefore, idempotencyKey, targets)`; `TargetInput(targetType, userId, teamId, orgId, groupId,
-includeDescendants)`. `LearningLimits.MAX_ASSIGNMENT_TARGETS` 100, `MAX_LEARNERS_PER_ASSIGNMENT` 500.
-- **`share(courseId, ShareRequest{orgId, includeDescendants, canAssign, canSelfEnroll, active})`** refuses the owner
-  org with `INVALID_REFERENCE`.
+## Architecture decisions
 
-**App (`feat/course-authoring` at `2c91339`)**
+1. **Scrollbar through inheritance.** `scrollbar-color` and `scrollbar-width` inherit, so one rule on `html` in
+   `@layer base` reaches every scroll area. A `ui.scrollbar($tone)` mixin covers the nav tone (and re-sets the
+   default where an area must). No `::-webkit-scrollbar`.
+2. **Connector as a pseudo-element** on `.stepper__item` (`::after`, not the last item), so it is out of the
+   accessibility tree with no markup change. The item gets an `is-done` class (today only the button has it) so the
+   connector after a done step turns primary. Vertical layout below `md` with the same pseudo-element turned
+   vertical.
+3. **Footer pinned with `position: sticky`**, not `fixed`: it stays inside the page column, so the sidebar, the
+   rail and the docked assistant need no maths, and it rests in place at the end of the form.
+4. **Owl inset through a root signal.** `ShellInsets.bottom` (px) in `apps/lms/src/app/layout`, written by an
+   `appBottomBar` directive (ResizeObserver, reset on destroy) and read by `app-owl` as a `--owl-inset` style
+   binding on its host. Generic, so another page can pin a bar later without touching the owl.
+5. **New tokens (amends the spec's "four colours"):** colours `scrollbar-thumb`, `scrollbar-thumb-hover`,
+   `scrollbar-track`, `nav-scrollbar-thumb`, and the stacking key `bar: 20` (below `header`). This is the one
+   token addition beyond the spec; flagged for review at Checkpoint A.
 
-- `TargetPicker` (`features/admin-org/assignments/components/target-picker`) is an "add one target" picker: a
-  segmented type, the selects for that type, "Gồm đơn vị con", and an add button that emits a `TargetPick`
-  (`TargetInput` plus a label). It injects `AssignmentsStore` for `people$`, `orgs$`, `teams$` (by `pickTargetOrg`)
-  and `groups$` (by the caller's org). Only `assign-form` uses it.
-- Module boundaries (`docs/conventions/workspace.md`, angular.md §4): features never import each other's internals;
-  `shared/` never imports `features/`. So the picker and its option data move to `shared/`.
-- The course-shares store uses `courseEndpoints.shares` and `share`. The assign form's defaults are
-  `REMIND_DAYS = 3` and `enrollmentMode 'continue'`.
-- Mockup step 4: `lms-mockup/src/pages/admin-content.js`, about lines 230–250.
+## Dependency graph
 
-## Decisions (amendments to the spec)
+```text
+Task 1 scrollbar (ui tokens, base, mixin, sidebar)      independent
+Task 2 stepper (ui organism)                            independent
+Task 3 ShellInsets + appBottomBar + owl inset           independent
+          └── Task 4 sticky footer in course-editor (uses appBottomBar, z key `bar`)
+Task 5 docs + spec status                               after 1–4
+```
 
-1. **Open questions** (by approval, 2026-11-03): no per-row requirement override; the limits are 20 rows and 50
-   shares per publish.
-2. **Request shape.** `PublishRequest(@NotNull Long expectedVersion, @Size(max=20) @Valid List<PublishAssignment>
-assignments, @Size(max=50) List<@NotNull @Positive Long> shareOrgIds)`, null lists read as empty.
-   `PublishAssignment(@NotNull OffsetDateTime startAt, OffsetDateTime dueAt, boolean reminderEnabled,
-@Min(0) @Max(365) int reminderDaysBefore, @NotNull @Valid TargetInput target)`. The publish endpoint takes it in
-   place of `VersionRequest`; `{expectedVersion}` alone is unchanged.
-3. **One transaction.** A new orchestrating method (for example `LearningPublishService.publish`, or the existing
-   publish method extended) runs the publish, then the shares, then the assignments, all in the caller's
-   transaction. `assign` and `share` join it (default propagation); nothing uses `REQUIRES_NEW`.
-4. **Row errors.** Each share and each assignment call is wrapped. A `BusinessException` or an
-   `AccessDeniedException` from row `i` is rethrown as `CORE-VALIDATION_FAILED` with one error, field
-   `assignments[i]` (or `shareOrgIds[j]`), the original message code and its message. The rethrow marks the
-   transaction for rollback, so the revision stays a draft. Bean-validation failures keep their usual field paths
-   (`assignments[0].target`, …).
-5. **Shares add only.** An org with an active share is skipped (no write, no event). Anything else goes through
-   `share` with `includeDescendants` true, `canAssign` true, `canSelfEnroll` false, `active` true.
-6. **Assignment values.** `revisionId` = the revision just published; `assigningOrgId` = the course's owner org;
-   `title` null; `requirement` = the revision's `defaultRequirement`; `enrollmentMode` `continue`;
-   `idempotencyKey` `publish-{revisionId}-{index}`; one target per assignment.
-7. **Shared picker (app).** The picker moves to `shared/assignment-target/` with a component-provided
-   `TargetOptionsStore` (people, orgs, teams by the picked org, learning groups by an owner org set by the host).
-   `AssignmentsStore` stops loading those four lists for the picker and reads names from its own data as before, or
-   from the new store where it only fed the picker. `assign-form` behaves the same.
-8. **Rows are added by the picker (amends the spec's per-row "Loại").** Step 4 shows the shared picker; "Thêm đối
-   tượng" adds the pick as a row. A row shows the target label, "Bắt đầu" (default today), "Hạn hoàn thành" (empty)
-   and "Xóa dòng". The type switch and its reset stay in the picker, as on "Giao học & hạn". This keeps one picker,
-   one behaviour, and fewer selects on the page.
-9. **Editor state.** The store gains `publishRows`, `reminderEnabled` (true) and `newShareOrgIds`, outside the
-   draft. In edit mode it loads the course's shares, the org list and the assignment count for "Đã giao trước đó".
-   `publish()` and `createAndPublish()` send them; success clears them and reloads; a `CORE-VALIDATION_FAILED` with
-   a field `assignments[i]` or `shareOrgIds[j]` marks that row or unit with the message.
-10. **Branches.**
-    - The backend builds on `course-final-exam`: branch `feat/course-publish-targets` from `feat/course-final-exam`
-      (`61ff927`), in a new worktree `~/my-projects/corebanking-academy-publish-targets`. Its PR waits for the two
-      earlier backend PRs.
-    - The app stays on `feat/course-authoring`.
-11. **Checkpoint data** goes through the API only. As `quantri`, on course 19 (`WIZ-FE-01`, which has an open draft
-    revision): publish with a row for the learner `hocvien` (not yet enrolled in course 19) and a share to a unit
-    other than org 1. Then a second draft with an empty-target row (an org with no active learner, or a learning
-    group with no member) is refused on `assignments[0]` and stays a draft. `hocvien.tichhop` is already enrolled
-    and is not used for the row.
+Tasks 1, 2 and 3 touch disjoint files and could run in parallel; Task 1 and Task 4 both edit `_tokens.scss`
+(different maps), so run them in order or merge carefully. Default: sequential, 1 → 2 → 3 → 4 → 5.
 
-## Phases
+## Task list
 
-### Phase 1: Backend (child session, worktree `~/my-projects/corebanking-academy-publish-targets`) → Checkpoint A
+### Phase 1: Library
 
-- **B1. Request and shares.** `PublishRequest`, `PublishAssignment`, the endpoint body, the orchestration, the
-  share step with the skip rule and the `shareOrgIds[j]` error.
-- **B2. Assignments.** The assignment step with the values of Decision 6 and the `assignments[i]` error, including
-  `AccessDeniedException`.
-- **B3. Tests and docs.** The spec's integration tests (`CoursePublishTargetsIT`); `LEARNING.md` and
-  `LEARNING_CURL.md`.
-- **Checkpoint A (main session):**
-  - review the diffs; restart :8019 from the new worktree;
-  - run Decision 11 with `curl`: the enrollment, the assignment and the share exist after a good publish; the refused
-    publish leaves a draft and no new assignment or share;
-  - `{expectedVersion}` alone still publishes;
-  - `mvn -o clean test` green, in a temporary worktree.
+- [ ] Task 1: Token-coloured thin scrollbar app-wide, nav variant on the sidebar
+- [ ] Task 2: Stepper of numbered steps joined by connectors
 
-### Phase 2: App (child session, this checkout) → Checkpoint B
+### Checkpoint A
 
-- **F1. Contracts and mock.** `PublishCourseCommandSchema`; the publish endpoint body; fixtures captured from the
-  local backend; the mock publish applies rows and shares and refuses an empty target on `assignments[i]`.
-- **F2. Shared picker.** The move of Decision 7; the assignments screen's specs pass unchanged in behaviour.
-- **F3. Step 4.** The store state of Decision 9; the "Giao khóa học" and "Chia sẻ cho đơn vị khác" sections; the
-  confirmation counts; the row error mapping; create mode.
-- **F4. Docs.** The spec's implementation notes and the migration entry.
-- **Checkpoint B (main session):**
-  - review each diff, then `npm run check`;
-  - in the browser as `quantri`: on a draft, add a row and a share, publish, see the toast and the reset; the learner
-    sees the course in "Khóa học của tôi"; a refused row is marked;
-  - "Giao học & hạn" still assigns with the moved picker;
-  - 375, 768 and 1280 px, light and dark, keyboard.
+- [ ] `npx nx test ui` and `npx nx test lms` green
+- [ ] Browser: scrollbar computed styles (html, sidebar nav) in bidv, cobalt; stepper at 1280/375 light/dark
+- [ ] Review with the user (look of the stepper, the `bar` z key)
 
-## Before merging (the user)
+### Phase 2: Pinned footer
 
-- No SQL.
-- Pull requests, opened 2026-11-04. Merge in this order:
-  1. [hmhug19/corebanking-academy#24](https://github.com/hmhug19/corebanking-academy/pull/24) (`course-wizard-create`, base `main`);
-  2. [hmhug19/corebanking-academy#25](https://github.com/hmhug19/corebanking-academy/pull/25) (`course-final-exam`, stacked on #24);
-  3. [hmhug19/corebanking-academy#26](https://github.com/hmhug19/corebanking-academy/pull/26) (this module, stacked on #25);
-  4. wait for the deploy;
-  5. [Hienne/lms-vip-pro-max#59](https://github.com/Hienne/lms-vip-pro-max/pull/59) (the app, all three modules).
+- [ ] Task 3: `ShellInsets` + `appBottomBar`; the owl rises by the inset
+- [ ] Task 4: Course-editor footer pinned to the viewport bottom
 
-## Risks
+### Checkpoint B
 
-- **Long transaction.** A publish with 20 rows of 500 learners writes up to 10 000 enrollments in one transaction.
-  The limits bound it; the IT measures nothing, but the checkpoint notes the time of one real publish.
-- **Locks.** `assign` takes `lock.acquire` per course inside the publish transaction. The publish already holds the
-  course row; the child checks that the same lock is re-entrant or taken once.
-- **Idempotency keys.** `publish-{revisionId}-{index}` is unique per revision; a refused publish rolls the keys back
-  with everything else, so a retry is clean.
-- **Picker move.** It touches the assignments screen. Its specs are the guard; the checkpoint assigns once there.
+- [ ] `npm run check` green
+- [ ] Browser on `/admin/courses/new` and `/admin/courses/:id/edit`: pinned footer, owl above it, drawer covers it,
+      Tab to the last field not hidden; 1280/375 light/dark
+- [ ] angular.md §14 and visual-design.md checklists
+
+### Phase 3: Docs
+
+- [ ] Task 5: `ui-library.md` rows, spec amended and marked built, results in `todo.md`
+
+## Risks and mitigations
+
+| Risk                                                                                   | Impact | Mitigation                                                                                                             |
+| -------------------------------------------------------------------------------------- | ------ | ---------------------------------------------------------------------------------------------------------------------- |
+| macOS overlay scrollbars hide the result; Windows (the user's screenshot) not testable | Med    | Check computed `scrollbar-color`/`-width`; screenshot with "Show scroll bars: Always" if allowed; say so in the report |
+| `scrollbar-color` on `html` changes areas that set `scrollbar-width: none` (tabs)       | Low    | The local rule wins over the inherited one; the tabs spec/visual check covers it                                       |
+| Long titles ("Đối tượng & xuất bản") squeeze the connectors at ~1024px with the sidebar | Med    | Connector has a minimum length (`ui.space(4)`); titles wrap, never truncate; check at 1024px too                         |
+| Sticky footer fails if an ancestor has `overflow` other than visible                   | Med    | Check the shell main/content chain in Task 4; the page scrolls the window today (not `--fill`)                          |
+| Owl inset leaks if the editor is destroyed mid-resize                                   | Low    | The directive resets to 0 in `DestroyRef.onDestroy` and disconnects the observer; spec covers it                       |
+| Theme guard rejects a new colour key                                                   | Low    | Add `nav-scrollbar-thumb` to `$palette-color-keys` and set it in both modes of each theme that overrides it            |
+
+## Open questions
+
+None blocking. Checkpoint A asks the user to accept the `bar: 20` stacking key and the stepper's look.
