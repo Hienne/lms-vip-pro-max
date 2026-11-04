@@ -10,11 +10,11 @@ the module and review ID, ending with the attribution line.
 
 **Acceptance criteria:**
 
-- [ ] `pdf-block/pdf.worker.ts` only imports `pdfjs-dist/build/pdf.worker.min.mjs`. `PdfEngine.open` creates one
+- [x] `pdf-block/pdf.worker.ts` only imports `pdfjs-dist/build/pdf.worker.min.mjs`. `PdfEngine.open` creates one
       module worker from it on first use, sets `GlobalWorkerOptions.workerPort`, and reuses it. `WORKER` and
       `workerSrc` are gone.
-- [ ] The `pdf.worker.min.mjs` asset entry is removed from `apps/lms/project.json`.
-- [ ] The production build has a `worker-*.js` holding pdf.js (`WorkerMessageHandler`) and no `.mjs` file.
+- [x] The `pdf.worker.min.mjs` asset entry is removed from `apps/lms/project.json`.
+- [x] The production build has a `worker-*.js` holding pdf.js (`WorkerMessageHandler`) and no `.mjs` file.
 
 **Verification:** `npx nx test lms` (spec: one `Worker` for two `open` calls, `Worker` stubbed);
 `npx nx build lms -c production` then `ls dist/apps/lms/browser`.

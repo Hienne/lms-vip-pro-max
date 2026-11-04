@@ -18,8 +18,11 @@ export interface PdfFile {
   destroy(): void;
 }
 
-/** The worker is copied next to the app as an asset (`apps/lms/project.json`). */
-const WORKER = 'pdfjs/pdf.worker.min.mjs';
+/**
+ * One worker for every document, started on first use. pdf.js never terminates a port it was given.
+ * `pdf.worker.ts` is bundled as a `.js` chunk, so the server's type for `.mjs` does not matter.
+ */
+let worker: Worker | undefined;
 
 /**
  * The only place that knows pdf.js. The library is imported on first use, so it stays out of the
@@ -29,10 +32,10 @@ const WORKER = 'pdfjs/pdf.worker.min.mjs';
 export class PdfEngine {
   async open(url: string): Promise<PdfFile> {
     const pdfjs = await import('pdfjs-dist');
-    pdfjs.GlobalWorkerOptions.workerSrc = new URL(
-      WORKER,
-      document.baseURI,
-    ).href;
+    worker ??= new Worker(new URL('./pdf.worker', import.meta.url), {
+      type: 'module',
+    });
+    pdfjs.GlobalWorkerOptions.workerPort = worker;
     // The content endpoint authorises by the `academy_media` cookie.
     const loading = pdfjs.getDocument({ url, withCredentials: true });
     const doc = await loading.promise;
