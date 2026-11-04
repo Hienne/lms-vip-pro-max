@@ -75,10 +75,10 @@ roles if changed); browser `read_page`
 
 **Acceptance criteria:**
 
-- [ ] `features/reports/report-screen/components/report-picker` follows the `org-picker` pattern.
-- [ ] Inputs: `label`, `options {id,name,meta?}`, `selected`, `busy`, `disabled`, `disabledReason`, `error`,
+- [x] `features/reports/report-screen/components/report-picker` follows the `org-picker` pattern.
+- [x] Inputs: `label`, `options {id,name,meta?}`, `selected`, `busy`, `disabled`, `disabledReason`, `error`,
       `required`, `emptyLabel`. Outputs: `queried` (300 ms debounce), `picked`.
-- [ ] Options read "meta · name" when `meta` is set. "Xóa" clears. The disabled reason is the field hint.
+- [x] Options read "meta · name" when `meta` is set. "Xóa" clears. The disabled reason is the field hint.
 
 **Verification:** `npx nx test lms` (keys, pick, clear, disabled reason, debounce with fake timers)
 
