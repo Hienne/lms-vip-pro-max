@@ -3,10 +3,22 @@
 .learn-kpis {
   @include ui.grid(
     (
-      sm: 2,
-      lg: 4,
-    )
+      base: 2,
+      xl: 4,
+    ),
+    3
   );
+
+  > * {
+    min-width: 0;
+  }
+
+  @include ui.bp(xl) {
+    > :not(:last-child) {
+      padding-inline-end: ui.space(3);
+      border-inline-end: 1px solid ui.color(border);
+    }
+  }
 
   &__link {
     color: inherit;
@@ -15,14 +27,20 @@
     &:hover .learn-kpis__value {
       text-decoration: underline;
     }
+
+    &:focus-visible {
+      @include ui.focus-ring;
+    }
   }
 
   &__item {
     @include ui.stack(1);
     margin: 0;
+    overflow-wrap: anywhere;
 
     dt {
       @include ui.text(sm, muted);
+      min-height: calc(#{ui.text-size(sm)} * #{ui.leading(normal)} * 2);
     }
 
     dd {
@@ -32,7 +50,7 @@
 
   &__value {
     @include ui.num;
-    @include ui.text(xl);
+    @include ui.text(2xl);
     font-weight: ui.weight(semibold);
   }
 

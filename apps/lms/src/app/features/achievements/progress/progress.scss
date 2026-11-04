@@ -5,8 +5,11 @@
 }
 
 .learning-progress {
-  &__kpis-placeholder {
-    min-height: 4rem;
+  &__kpis-placeholder,
+  &__history-placeholder,
+  &__competency-placeholder,
+  &__table-placeholder {
+    min-height: ui.space(18);
   }
 
   &__note {
@@ -14,91 +17,19 @@
     margin: ui.space(3) 0 ui.space(5);
   }
 
-  // The competency card and the exam history: stacked on narrow screens, side by side on wide ones.
-  &__insights {
-    @include ui.stack(5);
-    margin-top: ui.space(5);
-
-    @include ui.bp(lg) {
-      display: grid;
-      grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
-      align-items: start;
-      gap: ui.space(8);
-    }
-  }
-
-  &__competency,
-  &__history {
-    @include ui.stack(3);
-    min-width: 0;
-
-    h2 {
-      margin: 0;
-    }
-  }
-
-  &__history-placeholder {
-    min-height: 12rem;
-  }
-
-  &__attempts {
-    @include ui.stack(3);
-    margin: 0;
-    padding: 0;
-    list-style: none;
-  }
-
-  &__attempt {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
-    column-gap: ui.space(3);
-    color: inherit;
-    text-decoration: none;
-
-    &:hover .learning-progress__attempt-title {
-      text-decoration: underline;
-    }
-  }
-
-  &__attempt-title {
-    font-weight: ui.weight(medium);
-  }
-
-  &__attempt-time {
-    @include ui.text(sm, muted);
-    grid-column: 1;
-  }
-
-  &__attempt-score {
-    @include ui.num;
-    grid-column: 2;
-    grid-row: 1 / span 2;
-    align-self: center;
-    text-align: right;
-  }
-
-  &__fail {
-    color: ui.color(danger);
-    font-weight: ui.weight(medium);
-  }
-
-  &__muted {
-    @include ui.text(sm, muted);
-    margin: 0;
-  }
-
-  &__competency-placeholder {
-    min-height: 16rem;
-  }
-
   &__table {
     @include ui.stack(4);
-    margin-top: ui.space(5);
+    padding-block-start: ui.space(4);
   }
 
-  &__filters {
+  &__filters,
+  &__toolbar {
     @include ui.row(3);
-    flex-wrap: wrap;
+  }
+
+  &__search {
+    flex: 1 1 ui.layout(sidebar);
+    min-width: 0;
   }
 
   &__status {
@@ -112,49 +43,238 @@
     flex-wrap: nowrap;
   }
 
-  &__table-placeholder {
-    min-height: 16rem;
-  }
-
-  &__no-match {
-    @include ui.row(3);
+  &__sort {
+    @include ui.row(2);
     @include ui.text(sm, muted);
-    justify-content: flex-start;
+    flex-wrap: nowrap;
+    min-width: 0;
+    margin-inline-start: auto;
 
-    p {
-      margin: 0;
+    select {
+      width: auto;
+      min-width: 0;
     }
   }
 
+  &__table-wrap {
+    border: 1px solid ui.color(border);
+    border-radius: ui.radius(card);
+    background: ui.color(surface);
+  }
+
+  &__courses {
+    table-layout: fixed;
+
+    th {
+      white-space: normal;
+    }
+
+    td {
+      min-width: 0;
+      overflow-wrap: anywhere;
+    }
+  }
+
+  &__col-course {
+    width: 32%;
+  }
+
+  &__col-progress {
+    width: 22%;
+  }
+
+  &__col-status {
+    width: 18%;
+  }
+
+  &__col-date {
+    width: 14%;
+  }
+
+  &__course {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: center;
+    gap: ui.space(2);
+  }
+
+  &__course-name,
+  &__progress {
+    @include ui.stack(1);
+    min-width: 0;
+  }
+
   &__title {
-    display: inline-block;
-    max-width: 14rem;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+    @include ui.clamp(2);
+    overflow-wrap: anywhere;
+    color: ui.color(primary);
+    text-decoration: none;
+
+    &:hover {
+      text-decoration: underline;
+    }
+
+    &:focus-visible {
+      @include ui.focus-ring;
+    }
   }
 
   &__code {
     @include ui.mono;
     color: ui.color(text-muted);
-    white-space: nowrap;
+    overflow-wrap: anywhere;
   }
 
   &__pct {
     @include ui.row(2);
     flex-wrap: nowrap;
-    min-width: 6rem;
 
     ui-progress {
       flex: 1 1 auto;
+      min-width: 0;
     }
   }
 
   &__num {
     @include ui.num;
+    min-width: ui.space(10);
+    text-align: end;
+    font-weight: ui.weight(semibold);
   }
 
+  &__detail-row {
+    background: ui.color(surface-2);
+  }
+
+  &__detail {
+    @include ui.row-between(4);
+  }
+
+  &__facts {
+    @include ui.row(6);
+    margin: 0;
+
+    > div {
+      @include ui.stack(1);
+    }
+
+    dt {
+      @include ui.text(sm, muted);
+    }
+
+    dd {
+      @include ui.num;
+      margin: 0;
+    }
+  }
+
+  &__insight-panel {
+    max-width: ui.layout(reading);
+    padding-block: ui.space(6);
+  }
+
+  &__competency,
+  &__history {
+    @include ui.stack(4);
+    min-width: 0;
+
+    h2 {
+      @include ui.text(xl);
+      margin: 0;
+      font-weight: ui.weight(semibold);
+    }
+  }
+
+  &__attempts {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  &__attempt {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    column-gap: ui.space(3);
+    padding-block: ui.space(4);
+    border-bottom: 1px solid ui.color(border);
+    color: inherit;
+    text-decoration: none;
+
+    &:hover .learning-progress__attempt-title {
+      text-decoration: underline;
+    }
+
+    &:focus-visible {
+      @include ui.focus-ring;
+    }
+  }
+
+  &__attempt-title {
+    font-weight: ui.weight(medium);
+    overflow-wrap: anywhere;
+  }
+
+  &__attempt-time {
+    @include ui.text(sm, muted);
+    grid-column: 1;
+  }
+
+  &__attempt-score {
+    @include ui.num;
+    grid-column: 2;
+    grid-row: 1 / span 2;
+    align-self: center;
+    text-align: end;
+  }
+
+  &__fail {
+    color: ui.color(danger);
+    font-weight: ui.weight(medium);
+  }
+
+  &__muted,
   &__late {
     @include ui.text(sm, muted);
+    margin: 0;
+  }
+
+  @include ui.bp-below(md) {
+    &__search {
+      flex-basis: 100%;
+    }
+
+    &__sort {
+      margin-inline-start: 0;
+      max-width: 100%;
+    }
+
+    &__courses colgroup {
+      display: none;
+    }
+
+    &__course-row td {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: ui.space(3);
+
+      &::before {
+        @include ui.text(sm, muted);
+      }
+
+      &:first-child {
+        display: block;
+        margin-block-end: ui.space(2);
+
+        &::before {
+          display: none;
+        }
+      }
+    }
+
+    &__progress {
+      flex: 1 1 auto;
+      max-width: 65%;
+    }
   }
 }

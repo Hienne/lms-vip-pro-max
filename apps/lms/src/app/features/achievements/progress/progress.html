@@ -22,11 +22,7 @@
   (retry)="store.retrySummary()"
 />
 } @else if (store.isSummaryLoading$()) {
-<div
-  uiSkeleton
-  variant="block"
-  class="learning-progress__kpis-placeholder"
-></div>
+<div uiSkeleton variant="block" class="learning-progress__kpis-placeholder"></div>
 } @else { @if (store.summary$(); as summary) {
 <app-progress-counts
   [counts]="summary.counts"
@@ -40,199 +36,325 @@
 >
   <a uiButton variant="primary" routerLink="/catalog">Xem danh mục khóa học</a>
 </ui-empty>
-} } @if (!store.isEmpty$()) {
-<div class="learning-progress__insights">
-  <section
-    class="learning-progress__competency"
-    aria-labelledby="progress-competency"
-  >
-    <h2 id="progress-competency">Năng lực theo nhóm kiến thức</h2>
-    @if (store.competencyError$(); as error) {
-    <ui-error-state
-      title="Không tải được năng lực theo nhóm kiến thức"
-      [message]="error.message"
-      (retry)="store.retryCompetency()"
-    />
-    } @else if (store.competency$(); as rows) {
-    <app-competency-view size="large" [rows]="rows" />
-    } @else {
-    <div
-      uiSkeleton
-      variant="block"
-      class="learning-progress__competency-placeholder"
-      aria-busy="true"
-    ></div>
-    }
-  </section>
-
-  <section
-    class="learning-progress__history"
-    aria-labelledby="progress-history"
-  >
-    <h2 id="progress-history">Lịch sử thi</h2>
-    @if (store.attemptsError$(); as error) {
-    <ui-error-state
-      title="Không tải được lịch sử thi"
-      [message]="error.message"
-      (retry)="store.retryAttempts()"
-    />
-    } @else if (store.attempts$(); as attempts) { @if (attempts.length) {
-    <ul class="learning-progress__attempts">
-      @for (attempt of attempts; track attempt.attemptId) {
-      <li>
-        <a
-          class="learning-progress__attempt"
-          [routerLink]="['/quiz', attempt.quizId, 'result', attempt.attemptId]"
-        >
-          <span class="learning-progress__attempt-title"
-            >{{ attempt.quizTitle }}</span
-          >
-          <span class="learning-progress__attempt-time">
-            {{ attempt.submittedAt | fmtDatetime }} @if (attempt.status ===
-            'AUTO_SUBMITTED') { · tự nộp }
-          </span>
-          <span class="learning-progress__attempt-score">
-            @if (attempt.scorePercent !== null) {
-            <strong>{{ attempt.scorePercent | fmtPct: 2 }}</strong>
-            } @if (attempt.passed === true) { &ngsp;Đạt } @else if
-            (attempt.passed === false) { &ngsp;<span
-              class="learning-progress__fail"
-              >Chưa đạt</span
-            >
-            }
-          </span>
-        </a>
-      </li>
-      }
-    </ul>
-    } @else {
-    <p class="learning-progress__muted">Bạn chưa có bài thi nào được chấm.</p>
-    } } @else {
-    <div
-      uiSkeleton
-      variant="block"
-      class="learning-progress__history-placeholder"
-      aria-busy="true"
-    ></div>
-    }
-  </section>
-</div>
-} @if (!store.isEmpty$() && !store.summaryError$() &&
+} } @if (!store.isEmpty$() && !store.summaryError$() &&
 !store.isSummaryLoading$()) {
-<section class="learning-progress__table" aria-label="Danh sách khóa học">
-  <div class="learning-progress__filters">
-    <ui-search
-      label="Tìm khóa học"
-      placeholder="Tên hoặc mã khóa học…"
-      [value]="store.filters$().q"
-      (searched)="store.search($event)"
-    />
-    <ui-segmented
-      class="learning-progress__status"
-      label="Trạng thái học"
-      [options]="statuses"
-      [value]="store.filters$().learningStatus"
-      (valueChange)="store.filterStatus($event)"
-    />
-    <label class="learning-progress__overdue">
-      <input
-        type="checkbox"
-        uiCheckbox
-        [checked]="store.filters$().overdueOnly"
-        (change)="store.filterOverdue(overdue.checked)"
-        #overdue
-      />
-      Chỉ khóa quá hạn
-    </label>
-  </div>
-
-  @if (store.coursesError$(); as error) {
-  <ui-error-state
-    title="Không tải được danh sách khóa học"
-    [message]="error.message"
-    (retry)="store.retryCourses()"
-  />
-  } @else if (store.isCoursesLoading$()) {
-  <div
-    uiSkeleton
-    variant="block"
-    class="learning-progress__table-placeholder"
-  ></div>
-  } @else {
-  <ui-data-table
-    caption="Tiến độ từng khóa học"
-    [columns]="columns"
-    [rows]="store.rows$()"
-    [total]="store.total$()"
-    [sort]="store.sort$()"
-    [page]="store.page$()"
-    [pageSize]="pageSize"
-    (sortChange)="store.sortBy($event)"
-    (pageChange)="store.goToPage($event)"
+<ui-tabs
+  label="Tiến độ học tập"
+  [tabs]="tabs"
+  [selected]="store.tab$()"
+  (selectedChange)="store.selectTab($event)"
+>
+  <section
+    uiTabPanel="courses"
+    class="learning-progress__table"
+    aria-label="Danh sách khóa học"
   >
-    <div slot="empty" class="learning-progress__no-match">
-      <p>Không có khóa học phù hợp bộ lọc.</p>
+    <div class="learning-progress__filters">
+      <ui-search
+        class="learning-progress__search"
+        width="100%"
+        label="Tìm khóa học"
+        placeholder="Tên hoặc mã khóa học…"
+        [value]="store.filters$().q"
+        (searched)="store.search($event)"
+      />
+      <ui-segmented
+        class="learning-progress__status"
+        label="Trạng thái học"
+        [options]="statuses"
+        [value]="store.filters$().learningStatus"
+        (valueChange)="store.filterStatus($event)"
+      />
+      <label class="learning-progress__overdue">
+        <input
+          type="checkbox"
+          uiCheckbox
+          [checked]="store.filters$().overdueOnly"
+          (change)="store.filterOverdue(overdue.checked)"
+          #overdue
+        />
+        Chỉ khóa quá hạn
+      </label>
+    </div>
+    <div class="learning-progress__toolbar">
+      @if (!store.isCoursesLoading$() && !store.coursesError$()) {
+      <p class="learning-progress__muted" role="status">
+        {{ store.total$() }} khóa học
+      </p>
+      }
+      <label class="learning-progress__sort">
+        <span>Sắp xếp</span>
+        <select
+          uiSelect
+          size="sm"
+          (change)="store.sortByValue(sort.value)"
+          #sort
+        >
+          @for (option of sortOptions; track option.value) {
+          <option
+            [value]="option.value"
+            [selected]="option.value === store.sortValue$()"
+          >
+            {{ option.label }}
+          </option>
+          }
+        </select>
+      </label>
       @if (store.hasFilters$()) {
       <button
         uiButton
         variant="ghost"
         size="sm"
-        type="button"
         (click)="store.clearFilters()"
       >
         Xóa bộ lọc
       </button>
       }
     </div>
-    <ng-template uiDataTableCell="title" [of]="store.rows$()" let-row>
-      <a
-        uiTablePrimary
-        class="learning-progress__title"
-        [routerLink]="row.link"
-        [title]="row.title"
-        >{{ row.title }}</a
-      >
-    </ng-template>
-    <ng-template uiDataTableCell="code" [of]="store.rows$()" let-row>
-      <span class="learning-progress__code">{{ row.card.code }}</span>
-    </ng-template>
-    <ng-template uiDataTableCell="progress" [of]="store.rows$()" let-row>
-      <div class="learning-progress__pct">
-        <ui-progress
-          size="sm"
-          [value]="row.pct"
-          [label]="'Tiến độ ' + row.title"
-        />
-        <span class="learning-progress__num">{{ row.pct }}%</span>
-      </div>
-    </ng-template>
-    <ng-template uiDataTableCell="required" [of]="store.rows$()" let-row>
-      <span class="learning-progress__num">{{ row.requiredDone }}</span>
-    </ng-template>
-    <ng-template uiDataTableCell="status" [of]="store.rows$()" let-row>
-      <app-course-status dot [status]="row.status" [overdue]="row.overdue" />
-    </ng-template>
-    <ng-template uiDataTableCell="startedAt" [of]="store.rows$()" let-row>
-      {{ row.card.startedAt | fmtDate }}
-    </ng-template>
-    <ng-template uiDataTableCell="lastAccessAt" [of]="store.rows$()" let-row>
-      {{ row.card.lastAccessAt | fmtRelative }}
-    </ng-template>
-    <ng-template uiDataTableCell="completedAt" [of]="store.rows$()" let-row>
-      {{ row.card.completedAt | fmtDate }} @if (row.completedLate) {
-      <span class="learning-progress__late">(trễ hạn)</span>
+    @if (store.coursesError$(); as error) {
+    <ui-error-state
+      title="Không tải được danh sách khóa học"
+      [message]="error.message"
+      (retry)="store.retryCourses()"
+    />
+    } @else if (store.isCoursesLoading$()) {
+    <div
+      uiSkeleton
+      variant="block"
+      class="learning-progress__table-placeholder"
+    ></div>
+    } @else if (store.rows$().length) {
+    <div uiTableWrap class="learning-progress__table-wrap">
+      <table uiTable responsive class="learning-progress__courses">
+        <caption class="sr-only">Tiến độ từng khóa học</caption>
+        <colgroup>
+          <col class="learning-progress__col-course" />
+          <col class="learning-progress__col-progress" />
+          <col class="learning-progress__col-status" />
+          <col class="learning-progress__col-date" />
+          <col class="learning-progress__col-date" />
+        </colgroup>
+        <thead>
+          <tr>
+            @for (column of columns; track column.key) {
+            <th
+              scope="col"
+              [attr.aria-sort]="
+                store.sort$().key === column.key
+                  ? (store.sort$().dir === 'asc' ? 'ascending' : 'descending')
+                  : null
+              "
+            >
+              @if (column.sortable === false) { {{ column.label }} } @else {
+              <button type="button" (click)="store.toggleSort(column.key)">
+                {{ column.label }} @if (store.sort$().key === column.key) {
+                <ui-icon
+                  size="sm"
+                  [name]="
+                    store.sort$().dir === 'asc' ? 'chevron-up' : 'chevron-down'
+                  "
+                />
+                }
+              </button>
+              }
+            </th>
+            }
+          </tr>
+        </thead>
+        <tbody>
+          @for (row of store.rows$(); track row.id) {
+          <tr
+            class="learning-progress__course-row"
+            [class.is-selected]="row.expanded"
+          >
+            <td data-label="Khóa học">
+              <div class="learning-progress__course">
+                <button
+                  uiIconButton
+                  [label]="row.toggleLabel"
+                  [attr.aria-expanded]="row.expanded"
+                  [attr.aria-controls]="row.expanded ? row.detailsId : null"
+                  (click)="store.toggleDetails(row.id)"
+                >
+                  <ui-icon
+                    size="sm"
+                    [name]="row.expanded ? 'chevron-down' : 'chevron-right'"
+                  />
+                </button>
+                <div class="learning-progress__course-name">
+                  <a
+                    uiTablePrimary
+                    class="learning-progress__title"
+                    [routerLink]="row.link"
+                    [title]="row.title"
+                  >
+                    {{ row.title }}
+                  </a>
+                  <span class="learning-progress__code">
+                    {{ row.card.code }}
+                  </span>
+                </div>
+              </div>
+            </td>
+            <td data-label="Tiến độ">
+              <div class="learning-progress__progress">
+                <div class="learning-progress__pct">
+                  <span class="learning-progress__num">{{ row.pct }}%</span>
+                  <ui-progress
+                    size="sm"
+                    [value]="row.pct"
+                    [label]="'Tiến độ ' + row.title"
+                  />
+                </div>
+                <span class="learning-progress__muted">
+                  {{ row.requiredDone }} bài bắt buộc
+                </span>
+              </div>
+            </td>
+            <td data-label="Trạng thái">
+              <app-course-status
+                dot
+                [status]="row.status"
+                [overdue]="row.overdue"
+              />
+            </td>
+            <td data-label="Hạn hoàn thành">
+              <span [class.learning-progress__fail]="row.overdue">
+                {{ row.card.dueAt | fmtDate }}
+              </span>
+            </td>
+            <td data-label="Truy cập gần nhất">
+              {{ row.card.lastAccessAt | fmtRelative }}
+            </td>
+          </tr>
+          @if (row.expanded) {
+          <tr class="learning-progress__detail-row">
+            <td colspan="5">
+              <div
+                class="learning-progress__detail"
+                [id]="row.detailsId"
+                role="region"
+                [attr.aria-label]="'Chi tiết ' + row.title"
+              >
+                <dl class="learning-progress__facts">
+                  <div>
+                    <dt>Bắt đầu</dt>
+                    <dd>{{ row.card.startedAt | fmtDate }}</dd>
+                  </div>
+                  <div>
+                    <dt>Hoàn thành</dt>
+                    <dd>
+                      {{ row.card.completedAt | fmtDate }}
+                      @if (row.completedLate) {
+                      <span class="learning-progress__late">(trễ hạn)</span>
+                      }
+                    </dd>
+                  </div>
+                  <div>
+                    <dt>Điểm cao nhất</dt>
+                    <dd>
+                      @if (row.bestScore !== null) {
+                      {{ row.bestScore | fmtPct: 2 }}
+                      } @else { — }
+                    </dd>
+                  </div>
+                </dl>
+                <a uiButton variant="ghost" size="sm" [routerLink]="row.link">
+                  Mở khóa học
+                </a>
+              </div>
+            </td>
+          </tr>
+          }
+          }
+        </tbody>
+      </table>
+    </div>
+    <ui-pagination
+      [total]="store.total$()"
+      [page]="store.page$()"
+      [pageSize]="pageSize"
+      (pageChange)="store.goToPage($event)"
+    />
+    } @else {
+    <p class="learning-progress__muted">Không có khóa học phù hợp bộ lọc.</p>
+    }
+  </section>
+  <div uiTabPanel="competency" class="learning-progress__insight-panel">
+    <section
+      class="learning-progress__competency"
+      aria-labelledby="progress-competency"
+    >
+      <h2 id="progress-competency">Năng lực theo nhóm kiến thức</h2>
+      @if (store.competencyError$(); as error) {
+      <ui-error-state
+        title="Không tải được năng lực theo nhóm kiến thức"
+        [message]="error.message"
+        (retry)="store.retryCompetency()"
+      />
+      } @else if (store.competency$(); as rows) {
+      <app-competency-view size="large" [rows]="rows" />
+      } @else {
+      <div
+        uiSkeleton
+        variant="block"
+        class="learning-progress__competency-placeholder"
+        aria-busy="true"
+      ></div>
       }
-    </ng-template>
-    <ng-template uiDataTableCell="dueAt" [of]="store.rows$()" let-row>
-      {{ row.card.dueAt | fmtDate }}
-    </ng-template>
-    <ng-template uiDataTableCell="bestScore" [of]="store.rows$()" let-row>
-      <span class="learning-progress__num">
-        @if (row.bestScore !== null) { {{ row.bestScore | fmtPct: 2 }} } @else {
-        — }
-      </span>
-    </ng-template>
-  </ui-data-table>
-  }
-</section>
+    </section>
+  </div>
+  <div uiTabPanel="history" class="learning-progress__insight-panel">
+    <section
+      class="learning-progress__history"
+      aria-labelledby="progress-history"
+    >
+      <h2 id="progress-history">Lịch sử thi</h2>
+      @if (store.attemptsError$(); as error) {
+      <ui-error-state
+        title="Không tải được lịch sử thi"
+        [message]="error.message"
+        (retry)="store.retryAttempts()"
+      />
+      } @else if (store.attempts$(); as attempts) { @if (attempts.length) {
+      <ul class="learning-progress__attempts">
+        @for (attempt of attempts; track attempt.attemptId) {
+        <li>
+          <a
+            class="learning-progress__attempt"
+            [routerLink]="['/quiz', attempt.quizId, 'result', attempt.attemptId]"
+          >
+            <span class="learning-progress__attempt-title">{{ attempt.quizTitle }}</span
+            >
+            <span class="learning-progress__attempt-time">
+              {{ attempt.submittedAt | fmtDatetime }} @if (attempt.status ===
+              'AUTO_SUBMITTED') { · tự nộp }
+            </span>
+            <span class="learning-progress__attempt-score">
+              @if (attempt.scorePercent !== null) {
+              <strong>{{ attempt.scorePercent | fmtPct: 2 }}</strong>
+              } @if (attempt.passed === true) { &ngsp;Đạt } @else if
+              (attempt.passed === false) { &ngsp;<span
+                class="learning-progress__fail"
+                >Chưa đạt</span
+              >
+              }
+            </span>
+          </a>
+        </li>
+        }
+      </ul>
+      } @else {
+      <p class="learning-progress__muted">Bạn chưa có bài thi nào được chấm.</p>
+      } } @else {
+      <div
+        uiSkeleton
+        variant="block"
+        class="learning-progress__history-placeholder"
+        aria-busy="true"
+      ></div>
+      }
+    </section>
+  </div>
+</ui-tabs>
 }

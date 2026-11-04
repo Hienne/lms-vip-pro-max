@@ -3,8 +3,6 @@ import { RouterLink } from '@angular/router';
 import {
   Button,
   Checkbox,
-  DataTable,
-  DataTableCell,
   Empty,
   ErrorState,
   FmtDatePipe,
@@ -12,13 +10,21 @@ import {
   FmtPctPipe,
   FmtRelativePipe,
   Icon,
+  IconButton,
   PageHeader,
+  Pagination,
   Progress,
   Search,
+  Select,
   Segmented,
   Skeleton,
+  Table,
   TablePrimary,
+  TableWrap,
+  TabPanel,
+  Tabs,
   type SegmentedOption,
+  type TabItem,
 } from '@lms/ui';
 import { CompetencyView } from '../../../shared/learning/competency/competency-view';
 import { ProgressCounts } from '../../../shared/learning/progress-counts/progress-counts';
@@ -38,8 +44,6 @@ import {
     Checkbox,
     CompetencyView,
     CourseStatus,
-    DataTable,
-    DataTableCell,
     Empty,
     ErrorState,
     FmtDatePipe,
@@ -47,14 +51,21 @@ import {
     FmtPctPipe,
     FmtRelativePipe,
     Icon,
+    IconButton,
     PageHeader,
+    Pagination,
     Progress,
     ProgressCounts,
     RouterLink,
     Search,
+    Select,
     Segmented,
     Skeleton,
+    Table,
     TablePrimary,
+    TableWrap,
+    TabPanel,
+    Tabs,
     UnavailableNote,
   ],
   providers: [ProgressStore],
@@ -64,6 +75,11 @@ import {
 export class LearningProgress {
   protected readonly store = inject(ProgressStore);
   protected readonly pageSize = PROGRESS_PAGE_SIZE;
+  protected readonly tabs: readonly TabItem[] = [
+    { id: 'courses', label: 'Khóa học' },
+    { id: 'competency', label: 'Năng lực' },
+    { id: 'history', label: 'Lịch sử thi' },
+  ];
   protected readonly statuses: readonly SegmentedOption<ProgressStatusFilter>[] =
     [
       { value: 'all', label: 'Tất cả' },
@@ -73,14 +89,23 @@ export class LearningProgress {
     ];
   protected readonly columns = [
     { key: 'title', label: 'Khóa học' },
-    { key: 'code', label: 'Mã', sortable: false },
     { key: 'progress', label: 'Tiến độ' },
-    { key: 'required', label: 'Bài bắt buộc', sortable: false },
     { key: 'status', label: 'Trạng thái', sortable: false },
-    { key: 'startedAt', label: 'Bắt đầu' },
+    { key: 'dueAt', label: 'Hạn hoàn thành' },
     { key: 'lastAccessAt', label: 'Truy cập gần nhất' },
-    { key: 'completedAt', label: 'Hoàn thành' },
-    { key: 'dueAt', label: 'Hạn' },
-    { key: 'bestScore', label: 'Điểm cao nhất', sortable: false },
+  ];
+  protected readonly sortOptions = [
+    { value: 'lastAccessAt,desc', label: 'Truy cập gần nhất' },
+    { value: 'lastAccessAt,asc', label: 'Truy cập cũ nhất' },
+    { value: 'title,asc', label: 'Tên khóa học A–Z' },
+    { value: 'title,desc', label: 'Tên khóa học Z–A' },
+    { value: 'progressPercent,desc', label: 'Tiến độ cao nhất' },
+    { value: 'progressPercent,asc', label: 'Tiến độ thấp nhất' },
+    { value: 'dueAt,asc', label: 'Hạn hoàn thành gần nhất' },
+    { value: 'dueAt,desc', label: 'Hạn hoàn thành xa nhất' },
+    { value: 'startedAt,desc', label: 'Bắt đầu gần nhất' },
+    { value: 'startedAt,asc', label: 'Bắt đầu cũ nhất' },
+    { value: 'completedAt,desc', label: 'Hoàn thành gần nhất' },
+    { value: 'completedAt,asc', label: 'Hoàn thành cũ nhất' },
   ];
 }

@@ -205,6 +205,12 @@ describe('Learn', () => {
       );
       expect(due[0].querySelector('app-due-date')).not.toBeNull();
       expect(el.querySelectorAll('app-reminder-item')).toHaveLength(3);
+      const disclosure = el.querySelector<HTMLDetailsElement>(
+        '.learn__reminder-disclosure',
+      )!;
+      expect(disclosure.open).toBe(false);
+      disclosure.querySelector('summary')!.click();
+      expect(disclosure.open).toBe(true);
       expect(
         Array.from(el.querySelectorAll('aside a')).some(
           (a) => a.getAttribute('href') === '/notifications',
@@ -288,8 +294,8 @@ describe('Learn', () => {
       expect(rows[0].querySelector('ui-progress')).not.toBeNull();
       expect(
         el
-          .querySelector('#learn-competency')!
-          .compareDocumentPosition(journey()!) &
+          .querySelector('#learn-programs')!
+          .compareDocumentPosition(el.querySelector('#learn-competency')!) &
           Node.DOCUMENT_POSITION_FOLLOWING,
       ).toBeTruthy();
       expect(
@@ -350,7 +356,7 @@ describe('Learn', () => {
       }
     });
 
-    it('lists "Công cụ học nhanh" with two links, below the due list and above the reminders', () => {
+    it('lists the two quick tools after the deadline panel and its reminders', () => {
       const tools = el.querySelector('#learn-tools')!;
       expect(tools.tagName).toBe('H2');
       expect(tools.textContent).toContain('Công cụ học nhanh');
@@ -375,7 +381,7 @@ describe('Learn', () => {
         position('#learn-due') & Node.DOCUMENT_POSITION_FOLLOWING,
       ).toBeTruthy();
       expect(
-        tools.compareDocumentPosition(el.querySelector('#learn-reminders')!) &
+        el.querySelector('#learn-reminders')!.compareDocumentPosition(tools) &
           Node.DOCUMENT_POSITION_FOLLOWING,
       ).toBeTruthy();
     });
@@ -402,20 +408,21 @@ describe('Learn', () => {
       );
     }
 
-    it('follows the continue card with the total and the streak, a link to the leaderboard', async () => {
+    it('keeps rewards in the side column and links to the leaderboard', async () => {
       await open();
       expect(cells()).toEqual(['Điểm thưởng', '80', 'Chuỗi 2 ngày']);
       expect(figure()!.querySelector('a')?.getAttribute('href')).toBe(
         '/leaderboard',
       );
       const card = el.querySelector('app-continue-card')!;
-      expect(card.parentElement).toBe(figure()!.parentElement);
+      expect(card.closest('.learn__main')).not.toBeNull();
+      expect(figure()!.closest('.learn__side')).not.toBeNull();
       expect(
         card.compareDocumentPosition(figure()!) &
           Node.DOCUMENT_POSITION_FOLLOWING,
       ).toBeTruthy();
       expect(
-        figure()!.compareDocumentPosition(el.querySelector('app-learn-kpis')!) &
+        el.querySelector('app-learn-kpis')!.compareDocumentPosition(figure()!) &
           Node.DOCUMENT_POSITION_FOLLOWING,
       ).toBeTruthy();
       expect(
@@ -575,7 +582,7 @@ describe('Learn', () => {
       expect(heading.textContent).toContain('Biểu đồ năng lực');
       const link = card().querySelector('a')!;
       expect(link.textContent?.trim()).toBe('Chi tiết');
-      expect(link.getAttribute('href')).toBe('/progress');
+      expect(link.getAttribute('href')).toBe('/progress?tab=competency');
       expect(card().querySelector('button')).toBeNull();
       expect(
         el.querySelector('#learn-courses')!.compareDocumentPosition(heading) &

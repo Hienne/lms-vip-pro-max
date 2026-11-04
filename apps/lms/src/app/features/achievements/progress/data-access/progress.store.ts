@@ -31,6 +31,11 @@ export const PROGRESS_PAGE_SIZE = 20;
 export const EXAM_HISTORY_SIZE = 6;
 
 export type ProgressStatusFilter = 'all' | LearningStatus;
+export type ProgressTab = 'courses' | 'competency' | 'history';
+
+function tabFrom(value: unknown): ProgressTab {
+  return value === 'competency' || value === 'history' ? value : 'courses';
+}
 
 /** A table column's key to the sort field the backend accepts. */
 const SORT_FIELD: Readonly<Record<string, string>> = {
@@ -73,6 +78,9 @@ export interface ProgressRow {
   /** The server's best score on the course's final exam; null when none was graded. */
   readonly bestScore: number | null;
   readonly link: string;
+  readonly expanded: boolean;
+  readonly detailsId: string;
+  readonly toggleLabel: string;
 }
 
 const pad = (n: number): string => String(n).padStart(2, '0');
@@ -100,6 +108,8 @@ export class ProgressStore {
   private readonly initial = this.route.snapshot.queryParams;
 
   private readonly state = {
+    tab: signal<ProgressTab>(tabFrom(this.initial['tab'])),
+    expandedRowId: signal<string | null>(null),
     filters: signal<ProgressFilters>(filtersFrom(this.initial)),
     sort: signal<DataTableSort>(sortFrom(this.initial['sort'])),
     page: signal(Math.max(1, Number(this.initial['page']) || 1)),
@@ -170,8 +180,10 @@ export class ProgressStore {
   );
 
   // Selectors
+  readonly tab$ = this.state.tab.asReadonly();
   readonly filters$ = this.state.filters.asReadonly();
   readonly sort$ = this.state.sort.asReadonly();
+  readonly sortValue$ = computed(() => sortParam(this.state.sort()));
   readonly page$ = this.state.page.asReadonly();
 
   readonly summaryError$ = this.summaryData.error;
@@ -202,7 +214,9 @@ export class ProgressStore {
   readonly isAttemptsLoading$ = this.attemptsData.isLoading;
 
   readonly rows$ = computed((): readonly ProgressRow[] =>
-    (this.state.shown()?.items ?? []).map(toRow),
+    (this.state.shown()?.items ?? []).map((card) =>
+      toRow(card, this.state.expandedRowId()),
+    ),
   );
   readonly total$ = computed(() => this.state.shown()?.totalElements ?? 0);
 
@@ -225,6 +239,14 @@ export class ProgressStore {
   });
 
   // Setters: the only writers of state
+  private setTab(tab: ProgressTab): void {
+    this.state.tab.set(tab);
+  }
+
+  private setExpandedRowId(id: string | null): void {
+    this.state.expandedRowId.set(id);
+  }
+
   private setFilters(filters: ProgressFilters): void {
     this.state.filters.set(filters);
   }
@@ -238,6 +260,27 @@ export class ProgressStore {
   }
 
   // Commands: a changed choice starts again at the first page and is written to the URL
+  selectTab(tab: string): void {
+    this.setTab(tabFrom(tab));
+    this.syncUrl();
+  }
+
+  toggleDetails(id: string): void {
+    this.setExpandedRowId(this.state.expandedRowId() === id ? null : id);
+  }
+
+  toggleSort(key: string): void {
+    const current = this.state.sort();
+    this.sortBy({
+      key,
+      dir: current.key === key && current.dir === 'asc' ? 'desc' : 'asc',
+    });
+  }
+
+  sortByValue(value: string): void {
+    this.sortBy(sortFrom(value));
+  }
+
   search(q: string): void {
     this.filter({ q });
   }
@@ -252,6 +295,7 @@ export class ProgressStore {
   }
 
   clearFilters(): void {
+    this.setExpandedRowId(null);
     this.setFilters(NO_FILTERS);
     this.setPage(1);
     this.syncUrl();
@@ -259,12 +303,14 @@ export class ProgressStore {
 
   sortBy(sort: DataTableSort): void {
     if (!SORT_FIELD[sort.key]) return;
+    this.setExpandedRowId(null);
     this.setSort(sort);
     this.setPage(1);
     this.syncUrl();
   }
 
   goToPage(page: number): void {
+    this.setExpandedRowId(null);
     this.setPage(page);
     this.syncUrl();
   }
@@ -290,6 +336,7 @@ export class ProgressStore {
   }
 
   private filter(change: Partial<ProgressFilters>): void {
+    this.setExpandedRowId(null);
     this.setFilters({ ...this.state.filters(), ...change });
     this.setPage(1);
     this.syncUrl();
@@ -302,6 +349,7 @@ export class ProgressStore {
     const isDefaultSort =
       sort.key === DEFAULT_SORT.key && sort.dir === DEFAULT_SORT.dir;
     const queryParams: Params = {
+      tab: this.state.tab() === 'courses' ? null : this.state.tab(),
       q: f.q.trim() || null,
       status: f.learningStatus === 'all' ? null : f.learningStatus,
       overdue: f.overdueOnly ? 'true' : null,
@@ -333,12 +381,14 @@ function filtersFrom(params: Params): ProgressFilters {
 }
 
 /** A server row as the table shows it; every number is the server's. */
-function toRow(card: CourseCard): ProgressRow {
+function toRow(card: CourseCard, expandedId: string | null): ProgressRow {
   const required = card.requiredLessonCount ?? 0;
+  const expanded = String(card.courseId) === expandedId;
+  const title = card.title || card.code;
   return {
     id: String(card.courseId),
     card,
-    title: card.title || card.code,
+    title,
     status: toCourseStatus(card.learningStatus),
     overdue: card.overdue ?? false,
     pct: Math.round(card.progressPercent ?? 0),
@@ -346,5 +396,8 @@ function toRow(card: CourseCard): ProgressRow {
     completedLate: card.deadlineStatus === 'completed_late',
     bestScore: card.bestScorePercent ?? null,
     link: `/course/${card.courseId}`,
+    expanded,
+    detailsId: `progress-course-${card.courseId}`,
+    toggleLabel: `${expanded ? 'Thu gọn' : 'Xem chi tiết'} ${title}`,
   };
 }
