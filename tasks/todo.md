@@ -26,9 +26,9 @@ continue, the alert and the focus)
 
 **Acceptance criteria:**
 
-- [ ] The store records `visited$`. Each `steps` item passed to `ui-stepper` has
+- [x] The store records `visited$`. Each `steps` item passed to `ui-stepper` has
       `completed = visited && valid && !current`.
-- [ ] Clicking a header still moves. An invalid visited step shows its number, with no ✓ and no "Đã hoàn thành".
+- [x] Clicking a header still moves. An invalid visited step shows its number, with no ✓ and no "Đã hoàn thành".
 
 **Verification:** `npx nx test lms` (✓ appears after a valid continue and goes away when the title is cleared)
 

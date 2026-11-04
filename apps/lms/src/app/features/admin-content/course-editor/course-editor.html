@@ -55,7 +55,7 @@
 <ui-stepper
   class="course-editor__steps"
   label="Các bước soạn khóa học"
-  [steps]="steps"
+  [steps]="store.steps$()"
   [selectedIndex]="store.step$()"
   (selectedIndexChange)="store.goToStep($event)"
 />

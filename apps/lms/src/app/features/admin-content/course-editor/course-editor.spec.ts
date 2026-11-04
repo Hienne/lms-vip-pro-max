@@ -41,6 +41,11 @@ describe('CourseEditor', () => {
   const currentStep = () =>
     screen.el.querySelector('.stepper__step[aria-current="step"]')
       ?.textContent ?? '';
+  /** The labels of the steps that show ✓. */
+  const doneSteps = () =>
+    Array.from(
+      screen.el.querySelectorAll('.stepper__step.is-done .stepper__title'),
+    ).map((title) => title.textContent?.trim());
 
   describe('the pinned footer', () => {
     /** Records what the bottom-bar directive observes. */
@@ -1015,6 +1020,25 @@ describe('CourseEditor', () => {
 
       expect(currentStep()).toContain('Nội dung khóa học');
       expect(screen.text()).not.toContain('Còn thông tin chưa hợp lệ');
+    });
+
+    it('marks a step done only while it is visited, valid and not open', async () => {
+      await screen.open('/admin/courses/new');
+      expect(doneSteps()).toEqual([]);
+
+      await step('Nội dung khóa học');
+      expect(doneSteps()).toEqual([]);
+
+      await step('Thông tin cơ bản');
+      await fillBasics();
+      await screen.click(screen.button('Tiếp tục'));
+      expect(doneSteps()).toEqual(['Thông tin cơ bản']);
+      expect(screen.text()).toContain('Đã hoàn thành');
+
+      await step('Thông tin cơ bản');
+      await screen.type(screen.field('Tên khóa học') as HTMLInputElement, '');
+      await step('Bài thi & điều kiện');
+      expect(doneSteps()).not.toContain('Thông tin cơ bản');
     });
 
     it('does not create without a code, and says so on the field', async () => {
