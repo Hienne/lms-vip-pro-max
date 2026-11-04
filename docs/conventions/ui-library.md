@@ -133,6 +133,9 @@ SCSS only. There is no PostCSS step and no utility framework; the Sass compiler 
     `accent`), `ui.num`, `ui.mono`, `ui.truncate`, `ui.clamp($lines)`. A small label (sidebar group,
     table header, menu group) is `ui.text(sm, muted)` with `ui.weight(medium)`, in sentence case;
     there is no eyebrow mixin (`visual-design.md`).
+  - **Scrollbars**: `html` sets the thin, token-coloured bar once (`scrollbar-color` and
+    `scrollbar-width` inherit, so every scroll area follows); `@include ui.scrollbar(nav)` gives an
+    area on the nav panel the nav thumb. Only the standard properties, never `::-webkit-scrollbar`.
   - **Accessibility and motion**: `ui.sr-only`, `ui.focus-ring`, `ui.animate(enter | reward-pop |
 shimmer | spin)` (reduced motion shows the end state).
 - **Spacing** uses the mockup's 4px steps only: 1, 2, 3, 4, 5, 6, 8, 10, 12, 18. The mockup's
@@ -170,7 +173,7 @@ shimmer | spin)` (reduced motion shows the end state).
 | `@keyframes enter/reward-pop/shimmer/spin`, `.animate-enter`, `.animate-reward` | `--animate-enter/reward-pop/shimmer/spin`                       | `@include ui.animate(enter)`                |
 | `--sidebar-width`, `--content-max`                                              | `--container-sidebar`, `--container-content`                    | `ui.layout(sidebar)`, `ui.layout(content)`  |
 | `--header-height`, `--control-height(-sm)`, `--touch-min`                       | `--spacing-header`, `--spacing-control(-sm)`, `--spacing-touch` | `ui.layout(header)`, `ui.layout(touch)`     |
-| `--z-header/sidebar/drawer/modal/toast`                                         | `--z-index-header/sidebar/drawer/modal/toast`                   | `ui.z(modal)`                               |
+| `--z-bar/header/sidebar/drawer/modal/toast`                                     | `--z-index-bar/header/sidebar/drawer/modal/toast`               | `ui.z(modal)`                               |
 
 Tokens added on top of the mockup (the mockup hard-coded these values): `--color-white`,
 `--color-on-danger` (dark: a dark ink, because white on the dark danger red is 2.4:1),
@@ -371,23 +374,24 @@ and never call `Date.now()` themselves. Specs provide `{ provide: NOW, useValue:
 
 ## Composite widgets and overlays
 
-| Mockup piece                                  | Build on                                                                                        |
-| --------------------------------------------- | ----------------------------------------------------------------------------------------------- |
-| `UI.Tabs` (`.tabs`)                           | `@angular/aria` tabs                                                                            |
-| `UI.Segmented` (`.segmented`)                 | `@angular/aria` toolbar (toggle buttons) or listbox (single value)                              |
-| `ui.menu` (`.menu`), row "more" actions       | `@angular/aria` menu                                                                            |
-| Catalog tree (`.tree`)                        | `@angular/aria` tree                                                                            |
-| Searchable select / combobox                  | `@angular/aria` combobox                                                                        |
-| Accordions in lesson/quiz review              | `@angular/aria` accordion                                                                       |
-| `ui.modal`, `ui.confirm` (`.modal`)           | CDK `Dialog`; `ConfirmDialog` organism + a `confirm()` helper returning `Observable<boolean>`   |
-| `ui.drawer` (`.drawer`), mobile sidebar       | `uiDrawer` directive on an `<ng-template>` (CDK `Dialog`, busy overlay, `uiDrawerDismiss`)      |
-| Form buttons in a drawer footer (Hủy + Lưu)   | `ui-form-actions` molecule: required `formId`, `submitLabel`, `cancelLabel`; extra actions slot |
-| `ui.toast` (`.toasts`)                        | `Toaster` service (root, presentation-only) + CDK overlay; text also sent to `LiveAnnouncer`    |
-| Tooltip                                       | `uiTooltip` directive on CDK overlay                                                            |
-| Non-modal panel under a button (theme picker) | `uiPopover` directive on CDK overlay + CDK focus trap (`@angular/aria` has no popover pattern)  |
-| Single choice among colour swatches           | `ui-swatch-group` molecule on the `@angular/aria` listbox (vertical; swatches are token keys)   |
-| Wizard stepper (`.stepper`)                   | CDK stepper                                                                                     |
-| Sortable lists (`.sort-item`, `.drag-handle`) | CDK drag-drop, with keyboard move buttons                                                       |
+| Mockup piece                                  | Build on                                                                                                                      |
+| --------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| `UI.Tabs` (`.tabs`)                           | `@angular/aria` tabs                                                                                                          |
+| `UI.Segmented` (`.segmented`)                 | `@angular/aria` toolbar (toggle buttons) or listbox (single value)                                                            |
+| `ui.menu` (`.menu`), row "more" actions       | `@angular/aria` menu                                                                                                          |
+| Catalog tree (`.tree`)                        | `@angular/aria` tree                                                                                                          |
+| Searchable select / combobox                  | `@angular/aria` combobox                                                                                                      |
+| Accordions in lesson/quiz review              | `@angular/aria` accordion                                                                                                     |
+| `ui.modal`, `ui.confirm` (`.modal`)           | CDK `Dialog`; `ConfirmDialog` organism + a `confirm()` helper returning `Observable<boolean>`                                 |
+| `ui.drawer` (`.drawer`), mobile sidebar       | `uiDrawer` directive on an `<ng-template>` (CDK `Dialog`, busy overlay, `uiDrawerDismiss`)                                    |
+| Form buttons in a drawer footer (Hủy + Lưu)   | `ui-form-actions` molecule: required `formId`, `submitLabel`, `cancelLabel`; extra actions slot                               |
+| `ui.toast` (`.toasts`)                        | `Toaster` service (root, presentation-only) + CDK overlay; text also sent to `LiveAnnouncer`                                  |
+| Tooltip                                       | `uiTooltip` directive on CDK overlay                                                                                          |
+| Non-modal panel under a button (theme picker) | `uiPopover` directive on CDK overlay + CDK focus trap (`@angular/aria` has no popover pattern)                                |
+| Single choice among colour swatches           | `ui-swatch-group` molecule on the `@angular/aria` listbox (vertical; swatches are token keys)                                 |
+| Wizard stepper (`.stepper`)                   | CDK stepper; numbered steps joined by 1px connectors (primary up to the current step), no cards, vertical below `md`          |
+| Bar pinned to the viewport bottom             | `appBottomBar` directive (`apps/lms/src/app/layout/shell-insets.ts`) reports its height to `ShellInsets`; the owl rises by it |
+| Sortable lists (`.sort-item`, `.drag-handle`) | CDK drag-drop, with keyboard move buttons                                                                                     |
 
 **Drawers.** `uiDrawer` opens the template it sits on while its condition is true and
 closes it when the condition turns false (even while busy). `uiDrawerBusy` blocks every way the

@@ -13,7 +13,7 @@ beforeEach(() => {
 // jsdom has no ResizeObserver; a bar pinned to the bottom (`appBottomBar`) observes its height.
 // Specs that read what it reports stub their own.
 globalThis.ResizeObserver ??= class {
-  observe(): void {}
-  unobserve(): void {}
-  disconnect(): void {}
+  observe = vi.fn();
+  unobserve = vi.fn();
+  disconnect = vi.fn();
 };

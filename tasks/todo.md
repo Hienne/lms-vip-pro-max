@@ -126,9 +126,14 @@ it with `appBottomBar`, and keep focused fields clear of it.
 
 ## Checkpoint B
 
-- [ ] `npm run check` green
-- [ ] Browser checks of Tasks 1–4 together, screenshots in the report
-- [ ] angular.md §14 and visual-design.md checklists pass
+- [x] `npm run check` green (`format:check`, then lint, typecheck, test, build, check-bundle on every project with `--parallel=1`; exit 0). A first run failed on three `no-empty-function` errors in the jsdom `ResizeObserver` stub and on Prettier in five files; both fixed.
+- [x] Browser checks on `/admin/courses/new` (create mode; edit mode is covered by the spec, not opened in the browser):
+  - 1280x700: the footer's `top` stays at 635 and `bottom` at 700 at scroll 0, 300 and the end; `z-index` 20; the owl's `--owl-inset` is 65px and the owl sits at 571–619, above the footer. `scroll-padding-bottom` on `html` is 65px.
+  - Step 2 with six chapters (document 1745px high): at the end of the page the last content ends at 611, above the footer top (635). Focusing the last textarea on step 1 leaves it clear of the bar (530 < 635).
+  - 375x812 dark: the footer is flush at the bottom with the surface fill and wrapped buttons; the owl sits above it.
+  - Not done: opening the lesson drawer over the footer (drawer `z` 60 is above `bar` 20 by token, not seen in the browser); the dev-only "Demo" pill overlaps the "Tiếp tục" button in the bottom-right corner (it does not exist in production).
+- [x] angular.md §14: no NgModule or legacy syntax; files named per §2; `ShellInsets` is a layout service (not a store) with a private `state`, a read-only `bottom` and a `setBottom()` setter; no `HttpClient` in components; no `effect()` added; no hardcoded design values (tokens only; `22ch` and the 28px circle are the existing stepper sizes); specs cover the changed behaviour.
+- [x] visual-design.md checklist at 1280 and 375, light and dark: no eyebrow, icon tile, gradient, coloured edge or shadow on the stepper or the bar; the stepper uses `primary` only for progress; one deliberate difference from the mockup, listed here: the done circle is `primary-subtle` with a check instead of `success-subtle`.
 
 ## Task 5: Docs and spec status
 
@@ -137,13 +142,13 @@ it with `appBottomBar`, and keep focused fields clear of it.
 
 **Acceptance criteria:**
 
-- [ ] `docs/conventions/ui-library.md`: stepper row describes connectors; `ui.scrollbar` listed with the mixins;
+- [x] `docs/conventions/ui-library.md`: stepper row describes connectors; `ui.scrollbar` listed with the mixins;
       `ShellInsets`/`appBottomBar` noted where layout pieces are listed, if such a list exists.
-- [ ] `SPEC-ui-polish.md` status "built", amendments listed; results of both checkpoints recorded here.
+- [x] `SPEC-ui-polish.md` status "built", amendments listed; results of both checkpoints recorded here.
 
 **Verification:**
 
-- [ ] `npm run check` (format)
+- [x] `npm run check` (format)
 
 **Dependencies:** Tasks 1–4
 

@@ -1,6 +1,6 @@
 # Spec: `ui-polish`
 
-Status: **approved 2026-11-04; planned in `tasks/plan.md` (amendments there).** Depends on nothing. Three small UI changes, one spec: each is
+Status: **built 2026-11-04; plan and results in `tasks/plan.md` and `tasks/todo.md`.** Depends on nothing. Three small UI changes, one spec: each is
 a few files and they share the same checks, so no capability map.
 
 ## Objective
@@ -192,3 +192,17 @@ export class ShellInsets {
 
 None blocking. The plan step confirms whether `primary-subtle` exists in every theme and whether the shell's
 sidebar or the nav is the one that scrolls today.
+
+## Amendments made while building
+
+- Themes live in `_tokens.scss` (`$palettes`), not `_palettes.scss`; `nav-scrollbar-thumb` joined `$palette-color-keys`
+  and `cobalt` and `giay` set it from `text`.
+- New stacking key `bar: 20` (below `header`).
+- Only the owl needs the inset (`app-chat-widget` is the panel the owl opens).
+- The sidebar's outer element is `overflow: hidden`; only `.sidebar__nav` scrolls.
+- The pending connector uses `border-strong` (the `border` token is invisible on the page background), and from
+  `md` the step text is capped at `22ch` so subtitles wrap and the connectors keep room.
+- `appBottomBar` also sets `scroll-padding-bottom` on `html`, so a field focused with Tab stays above the bar.
+- The wizard footer's negative margins cancel the page padding, so the fill spans the page column and rests flush at
+  the end of the form.
+- `apps/lms/src/test-setup.ts` stubs `ResizeObserver` for jsdom.

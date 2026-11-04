@@ -91,7 +91,7 @@ describe('Owl', () => {
   it('rises by the inset a pinned bar reports, and not at all without one', () => {
     const host = el.querySelector('app-owl') as HTMLElement;
     expect(host.style.getPropertyValue('--owl-inset')).toBe('0px');
-    TestBed.inject(ShellInsets).bottom.set(72);
+    TestBed.inject(ShellInsets).setBottom(72);
     fixture.detectChanges();
     expect(host.style.getPropertyValue('--owl-inset')).toBe('72px');
   });

@@ -14,8 +14,14 @@ import {
  */
 @Injectable({ providedIn: 'root' })
 export class ShellInsets {
+  private readonly state = { bottom: signal(0) };
+
   /** Height in px of the pinned bar. */
-  readonly bottom = signal(0);
+  readonly bottom = this.state.bottom.asReadonly();
+
+  setBottom(height: number): void {
+    this.state.bottom.set(height);
+  }
 }
 
 /**
@@ -31,14 +37,14 @@ export class BottomBar {
     const root = inject(DOCUMENT).documentElement;
     const observer = new ResizeObserver(() => {
       const height = element.offsetHeight;
-      insets.bottom.set(height);
+      insets.setBottom(height);
       // a field focused with Tab scrolls into view above the bar
       root.style.scrollPaddingBottom = `${height}px`;
     });
     observer.observe(element);
     inject(DestroyRef).onDestroy(() => {
       observer.disconnect();
-      insets.bottom.set(0);
+      insets.setBottom(0);
       root.style.removeProperty('scroll-padding-bottom');
     });
   }
