@@ -1,102 +1,107 @@
-# Implementation Plan: `ui-polish`
+# Implementation Plan: UX review Wave 0
 
-Spec: [SPEC-ui-polish.md](../SPEC-ui-polish.md) (approved 2026-11-04; amended below). Tasks: [todo.md](todo.md).
-The previous `course-publish-targets` plan is in git history at `23b2930`.
+Spec: [SPEC-ux-wave0.md](../SPEC-ux-wave0.md) (approved 2026-11-04; amended below). Tasks: [todo.md](todo.md).
+Review plan: [PLAN.md](../docs/reviews/2026-11-04-ux-review/PLAN.md). The previous `ui-polish` plan is in git history
+(merged in PR #60).
 
 ## Overview
 
-Three UI changes: a token-coloured thin scrollbar across the app (nav variant on the sidebar), a stepper of
-numbered steps joined by connectors instead of four cards, and a course-editor footer pinned to the bottom of the
-viewport with the owl lifted above it.
+Three app-only modules: the pdf.js worker bundled as a script chunk (`pdf-worker-mime`), the four unbuilt screens marked
+"Sắp ra mắt" with a proper coming-soon page and the dev-only links hidden (`unfinished-screens`), and the question bank
+actions gated while the program bank is missing (`question-bank-gate`).
 
-## Findings from the codebase (answers to the spec's open checks)
+## Findings from the codebase
 
-- **`primary-subtle`** exists in the base light and dark maps and in every theme (`ngoc`, `cobalt`, `giay`, light and
-  dark) in `_tokens.scss`. Safe for the done circle.
-- **Themes live in `libs/ui/src/styles/ui/_tokens.scss` (`$palettes`)**, not `_palettes.scss`; that file only emits
-  them and fails the build on a key missing from `$palette-color-keys` or a light key the dark map leaves out.
-- **Light sidebars:** `cobalt` and `giay` mix their `nav-hover` from `text`, not `white`. A `nav-scrollbar-thumb`
-  mixed from `white` would vanish there, so it joins `$palette-color-keys` and those two themes (light and dark)
-  set it from `text`.
-- **Sidebar scroll:** the host `app-sidebar.app-shell__sidebar` has `height: 100dvh; overflow-y: auto`, and the
-  inner `.sidebar__nav` scrolls too. The full-height bar in the screenshot is the outer one. Task 1 confirms in the
-  browser which one overflows and leaves only `.sidebar__nav` scrolling (the outer becomes `overflow: hidden` only
-  if brand + role + footer still fit at a 600px-tall viewport; otherwise it keeps `auto` with the nav colours).
-- **Chat launcher = the owl.** `app-chat-widget` is the panel the owl opens (the owl hides while it is open). Only
-  the owl needs the inset; the open panel is an overlay and may cover the footer, like the drawer.
-- **Stacking:** `$z-indexes` has no key below `header: 30`. The pinned footer needs one.
+- `apps/lms/project.json` already sets `webWorkerTsConfig`, and `sha256-hasher.ts` uses the
+  `new Worker(new URL('./sha256.worker', import.meta.url), { type: 'module' })` pattern. Angular emits it as
+  `worker-<hash>.js`. The pdf worker follows the same pattern. pdf.js 6.4 (`pdfjs-dist@6.4.299`) accepts
+  `GlobalWorkerOptions.workerPort`.
+- The worker is about 1.2 MB. Budgets only cover `initial` and component styles, so a lazy worker does not trip them.
+  `tools/check-production-bundle.mjs` is a marker check (dev-only strings), not a size check. No guard change is
+  needed.
+- **CI check method (the spec's open question):** the worker is loaded lazily, so its name is not in `index.html`.
+  The Dockerfile build stage writes `workers.txt`, one `worker-*.js` name per line, next to `version.txt`. It also
+  fails the image build if any `.mjs` file is left in the output. The deploy job's verify step reads
+  `workers.txt?commit=$GITHUB_SHA` and runs `curl -sI` on each name, asserting 200 and a `javascript` content type.
+  This covers the sha256 worker too.
+- The menu is built in `core/menu/menu-catalog.ts` (`navFor`, `homePathFor`), called once in
+  `core/session/to-profile.ts`. Exactly four screens have no `load`: `admin/lessons`, `admin/system`, `knowledge`,
+  `issues`.
+- `RoutePlaceholder` already injects `APP_CONFIG` and reads `data.mockupPage`. The route `title` is available from
+  the route.
+- `assessment-screen.store.ts` already exposes `integrationPending$` (false with `mockBackend`). The CTAs are in
+  `assessment-screen.html` lines ~6–24, the pending empty state at ~122, the config alert at ~555 and the picker
+  pagination at ~598.
 
 ## Architecture decisions
 
-1. **Scrollbar through inheritance.** `scrollbar-color` and `scrollbar-width` inherit, so one rule on `html` in
-   `@layer base` reaches every scroll area. A `ui.scrollbar($tone)` mixin covers the nav tone (and re-sets the
-   default where an area must). No `::-webkit-scrollbar`.
-2. **Connector as a pseudo-element** on `.stepper__item` (`::after`, not the last item), so it is out of the
-   accessibility tree with no markup change. The item gets an `is-done` class (today only the button has it) so the
-   connector after a done step turns primary. Vertical layout below `md` with the same pseudo-element turned
-   vertical.
-3. **Footer pinned with `position: sticky`**, not `fixed`: it stays inside the page column, so the sidebar, the
-   rail and the docked assistant need no maths, and it rests in place at the end of the form.
-4. **Owl inset through a root signal.** `ShellInsets.bottom` (px) in `apps/lms/src/app/layout`, written by an
-   `appBottomBar` directive (ResizeObserver, reset on destroy) and read by `app-owl` as a `--owl-inset` style
-   binding on its host. Generic, so another page can pin a bar later without touching the owl.
-5. **New tokens (amends the spec's "four colours"):** colours `scrollbar-thumb`, `scrollbar-thumb-hover`,
-   `scrollbar-track`, `nav-scrollbar-thumb`, and the stacking key `bar: 20` (below `header`). This is the one
-   token addition beyond the spec; flagged for review at Checkpoint A.
+1. **The worker is a bundled module worker created once.** A module-level `let port: Worker | undefined`, set on the
+   first `open`, is passed through `workerPort`. pdf.js does not terminate a port it was given, so it is reused
+   across documents.
+2. **`upcoming` is derived, not configured.** `MenuItem.upcoming = !menuGroup(code).screens[0].load`. Building a
+   screen clears the label with no other edit.
+3. **The coming-soon page reads the home path from the session.** It uses the session store's `homePath`, the same
+   value the router uses after sign-in. There is no hard-coded `/`.
+4. **Amendment to the spec's Boundaries:** one commit per task (the `/build` loop), each naming its module and review
+   ID, instead of one commit per module.
 
 ## Dependency graph
 
 ```text
-Task 1 scrollbar (ui tokens, base, mixin, sidebar)      independent
-Task 2 stepper (ui organism)                            independent
-Task 3 ShellInsets + appBottomBar + owl inset           independent
-          └── Task 4 sticky footer in course-editor (uses appBottomBar, z key `bar`)
-Task 5 docs + spec status                               after 1–4
+T1 pdf worker bundle ── T2 Dockerfile workers.txt + CI verify
+T3 menu upcoming ── T4 sidebar label + dev-only link
+T5 coming-soon page          (independent)
+T6 login dev-only note       (independent)
+T7 question bank gate + copy ── T8 pagination only when > 1 page
 ```
 
-Tasks 1, 2 and 3 touch disjoint files and could run in parallel; Task 1 and Task 4 both edit `_tokens.scss`
-(different maps), so run them in order or merge carefully. Default: sequential, 1 → 2 → 3 → 4 → 5.
+The three chains touch different files and could run in parallel. The default is sequential, T1 → T8.
 
 ## Task list
 
-### Phase 1: Library
+### Phase 1: `pdf-worker-mime`
 
-- [ ] Task 1: Token-coloured thin scrollbar app-wide, nav variant on the sidebar
-- [ ] Task 2: Stepper of numbered steps joined by connectors
+- [ ] T1: Bundle the pdf.js worker and pass it as `workerPort`
+- [ ] T2: Build manifest of workers, with a post-deploy MIME check in CI
 
 ### Checkpoint A
 
-- [ ] `npx nx test ui` and `npx nx test lms` green
-- [ ] Browser: scrollbar computed styles (html, sidebar nav) in bidv, cobalt; stepper at 1280/375 light/dark
-- [ ] Review with the user (look of the stepper, the `bar` z key)
+- [ ] `npx nx test lms` green; `npx nx build lms -c production` has a pdf `worker-*.js` and no `.mjs`
+- [ ] Browser (`lms-local-backend`): a PDF lesson renders; the worker request is a `.js` chunk
 
-### Phase 2: Pinned footer
+### Phase 2: `unfinished-screens`
 
-- [ ] Task 3: `ShellInsets` + `appBottomBar`; the owl rises by the inset
-- [ ] Task 4: Course-editor footer pinned to the viewport bottom
+- [ ] T3: `MenuItem.upcoming` and `homePathFor` skipping upcoming functions
+- [ ] T4: Sidebar shows "Sắp ra mắt"; "Design System v2" only with dev tools
+- [ ] T5: Coming-soon page replaces the migration placeholder
+- [ ] T6: Login mockup note only with dev tools or the mock backend
 
 ### Checkpoint B
 
+- [ ] `npx nx test lms` green
+- [ ] Browser: production-config flags (`devTools: false`) and dev config, 1280/375, light/dark, rail
+
+### Phase 3: `question-bank-gate`
+
+- [ ] T7: Gate "Thêm câu hỏi" / "Tạo bài kiểm tra" and rewrite the pending copy
+- [ ] T8: Pagination rows render only when there is more than one page
+
+### Checkpoint C (complete)
+
 - [ ] `npm run check` green
-- [ ] Browser on `/admin/courses/new` and `/admin/courses/:id/edit`: pinned footer, owl above it, drawer covers it,
-      Tab to the last field not hidden; 1280/375 light/dark
-- [ ] angular.md §14 and visual-design.md checklists
-
-### Phase 3: Docs
-
-- [ ] Task 5: `ui-library.md` rows, spec amended and marked built, results in `todo.md`
+- [ ] angular.md §14 and visual-design.md checklists; screenshots
+- [ ] P1, P4 and the interim P2 re-tested as the review reproduced them; spec marked built
 
 ## Risks and mitigations
 
-| Risk                                                                                    | Impact | Mitigation                                                                                                             |
-| --------------------------------------------------------------------------------------- | ------ | ---------------------------------------------------------------------------------------------------------------------- |
-| macOS overlay scrollbars hide the result; Windows (the user's screenshot) not testable  | Med    | Check computed `scrollbar-color`/`-width`; screenshot with "Show scroll bars: Always" if allowed; say so in the report |
-| `scrollbar-color` on `html` changes areas that set `scrollbar-width: none` (tabs)       | Low    | The local rule wins over the inherited one; the tabs spec/visual check covers it                                       |
-| Long titles ("Đối tượng & xuất bản") squeeze the connectors at ~1024px with the sidebar | Med    | Connector has a minimum length (`ui.space(4)`); titles wrap, never truncate; check at 1024px too                       |
-| Sticky footer fails if an ancestor has `overflow` other than visible                    | Med    | Check the shell main/content chain in Task 4; the page scrolls the window today (not `--fill`)                         |
-| Owl inset leaks if the editor is destroyed mid-resize                                   | Low    | The directive resets to 0 in `DestroyRef.onDestroy` and disconnects the observer; spec covers it                       |
-| Theme guard rejects a new colour key                                                    | Low    | Add `nav-scrollbar-thumb` to `$palette-color-keys` and set it in both modes of each theme that overrides it            |
+| Risk | Impact | Mitigation |
+| ---- | ------ | ---------- |
+| pdf.js fails to start from a bundled worker (for example `import.meta` or top-level code differences) | High | T1 is first. The browser check at Checkpoint A comes before anything else. Fallback: build a Blob URL from the fetched `.mjs` and record it in the plan |
+| Vitest/jsdom has no `Worker` | Low | Stub `globalThis.Worker` in the spec, as the sha256 hasher spec does (or skip if that spec uses another seam) |
+| The CI verify step cannot be run from this machine | Med | Verify the Dockerfile part locally with `docker build`. The verify step is shell only and reviewed. The first `main` deploy proves it |
+| Production config cannot sign in locally for the browser check | Med | Override `APP_CONFIG.devTools` in a browser check (dev server with a temporary env), or rely on specs for the flag and screenshot the dev config |
+| "Sắp ra mắt" squeezes long labels in the 240px sidebar | Low | The label wraps under the name (block, `xs`). Check at 1280 with the longest label "Hệ thống & nhật ký" |
 
 ## Open questions
 
-None blocking. Checkpoint A asks the user to accept the `bar: 20` stacking key and the stepper's look.
+None.
