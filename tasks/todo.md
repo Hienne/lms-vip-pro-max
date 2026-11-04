@@ -26,9 +26,9 @@ the module and review ID, ending with the attribution line.
 
 **Acceptance criteria:**
 
-- [ ] The Dockerfile build stage fails if `dist/apps/lms/browser` holds any `.mjs`. It writes `workers.txt` listing
+- [x] The Dockerfile build stage fails if `dist/apps/lms/browser` holds any `.mjs`. It writes `workers.txt` listing
       every `worker-*.js` (at least one line).
-- [ ] In `ci.yml`, "Verify public frontend revision" reads `workers.txt?commit=$GITHUB_SHA` and, for each line, checks
+- [x] In `ci.yml`, "Verify public frontend revision" reads `workers.txt?commit=$GITHUB_SHA` and, for each line, checks
       that `curl -sI` returns 200 with `content-type` containing `javascript`. The step fails otherwise.
 
 **Verification:** `docker build --build-arg APP_REVISION=local .` succeeds, and `workers.txt` is in `/artifact`
