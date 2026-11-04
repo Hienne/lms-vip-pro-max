@@ -1,7 +1,4 @@
-<div
-  class="report-picker"
-  [class.report-picker--clearable]="selected() && !disabled()"
->
+<div class="report-picker" [class.report-picker--clearable]="clearable()">
   <ui-field
     [label]="label()"
     [required]="required()"
@@ -19,7 +16,7 @@
       (valueChange)="typed($event)"
     />
   </ui-field>
-  @if (selected() && !disabled()) {
+  @if (clearable()) {
   <button
     uiIconButton
     type="button"

@@ -88,6 +88,10 @@ export class ReportPicker {
     const id = this.selected()?.id;
     return id === undefined ? [] : [id];
   });
+  /** "Xóa" clears a choice, or one reported as not found. */
+  protected readonly clearable = computed(
+    () => (!!this.selected() || !!this.error()) && !this.disabled(),
+  );
   protected readonly label$ = optionLabel;
   protected readonly errorId = `report-picker-${nextId++}-error`;
 

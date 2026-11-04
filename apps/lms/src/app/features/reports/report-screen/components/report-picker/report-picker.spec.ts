@@ -120,6 +120,17 @@ describe('ReportPicker', () => {
     expect(host.picks).toEqual([null]);
   });
 
+  it('offers "Xóa" for a choice it reports as not found', async () => {
+    const { root, host, settle } = await render();
+    host.error.set('Không tìm thấy khóa học này trong phạm vi của bạn.');
+    await settle();
+    const clear = root.querySelector<HTMLButtonElement>(
+      'button[aria-label="Xóa Khóa học"]',
+    );
+    clear!.click();
+    expect(host.picks).toEqual([null]);
+  });
+
   it('has no "Xóa" while nothing is picked', async () => {
     const { root } = await render();
     expect(

@@ -131,6 +131,14 @@ describe('ReportScreen', () => {
     );
   });
 
+  it('keeps the quiz picker waiting while the course of the link is not found', async () => {
+    const { root, text } = await open('/reports/results?courseId=9999');
+    const quiz =
+      root.querySelectorAll<HTMLInputElement>('[role="combobox"]')[3];
+    expect(quiz.getAttribute('aria-disabled')).toBe('true');
+    expect(text()).not.toContain('Không có dữ liệu phù hợp');
+  });
+
   it('says a report from a bad link does not exist', async () => {
     const { text } = await open('/reports/programs');
     expect(text()).toContain('Không có báo cáo này. Chọn một báo cáo ở trên.');

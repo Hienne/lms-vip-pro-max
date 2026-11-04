@@ -42,7 +42,7 @@
       [options]="store.pickers.matches$()[field.key]"
       [selected]="store.pickers.selected$()[field.key]"
       [busy]="store.pickers.busy$()[field.key]"
-      [disabled]="!!field.parent && !store.pickers.picks$()[field.parent.key]"
+      [disabled]="!!field.parent && !store.pickers.selected$()[field.parent.key]"
       [disabledReason]="field.parent?.reason ?? ''"
       [error]="store.pickers.errors$()[field.key]"
       [required]="field.key === 'quizId' && store.dimension$() === 'learners'"
@@ -105,7 +105,9 @@
   >Không có báo cáo này. Chọn một báo cáo ở trên.</ui-alert
 >} @else if(store.needsQuiz$()){<ui-alert
   >Chọn khóa học và bài kiểm tra để xem cả học viên chưa thi.</ui-alert
->} @else if(store.isLoading$()){
+>} @else if(store.pickers.blocked$() && !store.error$()){
+<!-- A filter of the link is not in scope (its picker says so) or still resolving. -->
+} @else if(store.isLoading$()){
 <p role="status"><span uiSpinner></span>Đang tải báo cáo…</p>
 } @else if(store.error$();as error){<ui-error-state
   [message]="error.message"
