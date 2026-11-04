@@ -1,5 +1,6 @@
 import {
   assetEndpoints,
+  courseEndpoints,
   StartUploadCommandSchema,
   type AnyEndpoint,
   type AssetStatus,
@@ -21,6 +22,10 @@ const SHA256 = /^[0-9a-f]{64}$/;
 /** What the server reads from a finished file; the mock never opens the bytes. */
 const VIDEO_SECONDS = 120;
 const PDF_PAGES = 8;
+
+/** A 1×1 grey PNG: what the mock serves for any image, since it never keeps the bytes. */
+const PLACEHOLDER_PNG =
+  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAAAAAA6fptVAAAACklEQVR4nGM4AQAAygDJmcpdfgAAAABJRU5ErkJggg==';
 
 /** The library sorts the backend accepts: anything else is a validation failure. */
 const SORTS: Readonly<Record<string, (a: LibraryAsset) => string>> = {
@@ -85,6 +90,7 @@ export class AssetLibrary {
       [assetEndpoints.completeUpload, (r) => this.complete(r)],
       [assetEndpoints.cancelUpload, (r) => this.cancel(r)],
       [assetEndpoints.deleteAsset, (r) => this.remove(r)],
+      [courseEndpoints.getAssetContent, (r) => this.content(r)],
     ];
   }
 
@@ -310,6 +316,28 @@ export class AssetLibrary {
       totalElements: matching.length,
       totalPages: Math.ceil(matching.length / size),
     });
+  }
+
+  /**
+   * The file of an asset that exists. The mock keeps no bytes: an image comes back as a grey
+   * placeholder and any other file as a short text, enough for a preview or a download.
+   */
+  private content(request: FakeRequest): FakeReply {
+    this.deps.callerId(request);
+    const assetId = Number(request.params['assetId']);
+    const asset = [...this.deps.seeded, ...this.deps.assets].find(
+      (a) => a.id === assetId,
+    );
+    if (!asset || this.deleted.has(assetId)) return refuse('learningNotFound');
+    const file = asset.mimeType.startsWith('image/')
+      ? new Blob(
+          [Uint8Array.from(atob(PLACEHOLDER_PNG), (c) => c.charCodeAt(0))],
+          { type: 'image/png' },
+        )
+      : new Blob([`Tệp ${asset.originalName} (bản giả lập).`], {
+          type: asset.mimeType,
+        });
+    return { ...ok(null), file };
   }
 
   private remove(request: FakeRequest): FakeReply {

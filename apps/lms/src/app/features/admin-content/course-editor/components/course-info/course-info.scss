@@ -27,6 +27,7 @@
   }
 
   &__kind,
+  &__cover,
   &__objectives {
     @include ui.stack(2);
     margin: 0;
@@ -43,6 +44,34 @@
 
   &__objectives {
     align-items: flex-start;
+  }
+
+  &__cover-image {
+    display: block;
+    width: 100%;
+    max-width: 24rem;
+    aspect-ratio: 16 / 9;
+    object-fit: cover;
+    border: 1px solid ui.color(border);
+    border-radius: ui.radius(md);
+    background: ui.color(surface-2);
+  }
+
+  &__cover-note {
+    @include ui.text(sm, muted);
+  }
+
+  &__actions {
+    @include ui.row(2);
+    flex-wrap: wrap;
+  }
+
+  &__drop-title {
+    font-weight: ui.weight(semibold);
+  }
+
+  &__drop-hint {
+    @include ui.text(xs);
   }
 
   &__objective {

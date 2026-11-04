@@ -1,4 +1,5 @@
-// Course card: text only (design-system-review.md §3.7). The category, at most one status badge,
+// Course card (design-system-review.md §3.7): the cover image when there is one, edge to edge at
+// 16:9 (no placeholder art without it), then the category, at most one status badge,
 // the title, a meta line ("Bắt buộc · 22 phút · 2 bài · Cơ bản"), progress and the status line.
 // The card itself is `uiCard interactive`, one link.
 @use 'ui';
@@ -14,8 +15,19 @@
   gap: ui.space(2);
   height: 100%;
   padding: ui.space(4);
+  overflow: hidden;
   color: inherit;
   text-decoration: none;
+
+  &__cover {
+    display: block;
+    width: calc(100% + 2 * #{ui.space(4)});
+    max-width: none;
+    margin: calc(-1 * #{ui.space(4)}) calc(-1 * #{ui.space(4)}) ui.space(1);
+    aspect-ratio: 16 / 9;
+    object-fit: cover;
+    background: ui.color(surface-2);
+  }
 
   &__head {
     @include ui.row-between(2);

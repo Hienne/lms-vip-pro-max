@@ -357,6 +357,87 @@ describe('CourseEditor', () => {
       expect(screen.callsTo(assetEndpoints.startUpload)).toBe(0);
     });
 
+    describe('the cover image', () => {
+      const cover = () =>
+        screen.el.querySelector<HTMLInputElement>(
+          '.course-info__cover label.dropzone input[type=file]',
+        )!;
+      const image = () =>
+        screen.el.querySelector<HTMLImageElement>('.course-info__cover-image');
+      const cardImage = () =>
+        screen.el.querySelector<HTMLImageElement>('.course-card__cover');
+
+      const original = {
+        create: URL.createObjectURL,
+        revoke: URL.revokeObjectURL,
+      };
+      const revoked: string[] = [];
+      beforeEach(() => {
+        let next = 0;
+        revoked.length = 0;
+        URL.createObjectURL = vi.fn(() => `blob:cover-${++next}`);
+        URL.revokeObjectURL = vi.fn((url: string) => void revoked.push(url));
+      });
+      afterEach(() => {
+        URL.createObjectURL = original.create;
+        URL.revokeObjectURL = original.revoke;
+      });
+
+      it('uploads an image, shows it on the card and saves it with the draft, until it is removed', async () => {
+        await screen.open('/admin/courses/6/edit');
+        expect(image()).toBeNull();
+        expect(cardImage()).toBeNull();
+
+        const file = new File(['png'], 'bia.png', { type: 'image/png' });
+        vi.useFakeTimers();
+        pick(cover(), file);
+        await advance(POLL_MS * 3);
+        vi.useRealTimers();
+        await screen.settle();
+
+        expect(screen.lastCall(assetEndpoints.startUpload)?.body).toMatchObject(
+          { originalName: 'bia.png', mimeType: 'image/png' },
+        );
+        expect(kept()).toEqual([]);
+        // Read with the token, not by the `<img>`: an author holds no media cookie.
+        const read = screen.lastCall(courseEndpoints.getAssetContent);
+        expect(read?.query).toEqual({});
+        expect(image()?.getAttribute('src')).toBe('blob:cover-1');
+        expect(cardImage()?.getAttribute('src')).toBe('blob:cover-1');
+        expect(cardImage()?.alt).toBe('');
+        expect(screen.text()).toContain('Có thay đổi chưa lưu');
+
+        await screen.click(screen.button('Lưu nháp'));
+        const assetId = Number(read?.params['assetId']);
+        expect(
+          (screen.lastCall(courseEndpoints.saveDraft)?.body as SaveDraftCommand)
+            .coverAssetId,
+        ).toBe(assetId);
+        expect(screen.text()).not.toContain('Có thay đổi chưa lưu');
+
+        await screen.click(screen.button('Gỡ ảnh bìa'));
+        expect(image()).toBeNull();
+        expect(cardImage()).toBeNull();
+        expect(revoked).toContain('blob:cover-1');
+        await screen.click(screen.button('Lưu nháp'));
+        expect(
+          screen.lastCall(courseEndpoints.saveDraft)?.body,
+        ).not.toHaveProperty('coverAssetId');
+      });
+
+      it('refuses a file that is not an image before uploading', async () => {
+        await screen.open('/admin/courses/6/edit');
+        pick(cover(), pdf());
+        await screen.settle();
+
+        expect(screen.text()).toContain(
+          'Sai định dạng: chỉ chấp nhận PNG, JPG, JPEG, WEBP.',
+        );
+        expect(screen.callsTo(assetEndpoints.startUpload)).toBe(0);
+        expect(image()).toBeNull();
+      });
+    });
+
     it('cancels a file while it is being checked, without touching the server', async () => {
       vi.spyOn(hasher, 'hash').mockReturnValue(NEVER);
       await screen.open('/admin/courses/6/edit');

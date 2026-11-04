@@ -84,7 +84,9 @@
       [ownerName]="store.ownerName$()"
       [programs]="store.programs$()"
       [modules]="store.modules$()"
+      [coverAssetId]="draftValue().coverAssetId"
       (programPicked)="store.pickProgram($event)"
+      (coverRemoved)="removeCover()"
     />
     } @case (1) {
     <app-course-outline

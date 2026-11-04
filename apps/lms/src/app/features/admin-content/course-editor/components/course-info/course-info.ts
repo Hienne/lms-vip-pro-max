@@ -1,7 +1,14 @@
-import { Component, computed, input, output } from '@angular/core';
+import { Component, computed, inject, input, output } from '@angular/core';
 import { FormField, type FieldTree } from '@angular/forms/signals';
-import type { BusinessModule, TrainingProgram } from '@lms/contracts';
+import type {
+  BusinessModule,
+  LibraryAsset,
+  TrainingProgram,
+} from '@lms/contracts';
 import {
+  Button,
+  DrawerOutlet,
+  Dropzone,
   Field,
   Icon,
   IconButton,
@@ -10,6 +17,7 @@ import {
   OptionCard,
   Select,
   Textarea,
+  UploadItem,
 } from '@lms/ui';
 import {
   CourseCard,
@@ -17,16 +25,29 @@ import {
 } from '../../../../../shared/course/course-card';
 import { LEVEL_LABEL } from '../../../../../shared/course/course-labels';
 import { draftTotals, type CourseDraftValue } from '../../course-draft';
+import {
+  acceptOf,
+  COVER_KEY,
+  CourseEditorStore,
+} from '../../data-access/course-editor.store';
+import { isCancellable, itemState } from '../../data-access/upload-entry';
+import { AssetLibrary } from '../asset-library/asset-library';
+import { AssetLibraryStore } from '../asset-library/data-access/asset-library.store';
 
 /**
- * Step 1 of the editor: the course's name, place in the catalogue, level, kind, summary and
- * learning objectives, beside a preview of the card learners will see. It edits the page's form
- * through the field tree it is given.
+ * Step 1 of the editor: the course's name, place in the catalogue, level, kind, summary, cover
+ * image and learning objectives, beside a preview of the card learners will see. It edits the
+ * page's form through the field tree it is given. The cover is uploaded by the store as soon as it
+ * is chosen (or picked from the library) and joins the draft once it is ready.
  */
 @Component({
   selector: 'app-course-info',
   imports: [
+    AssetLibrary,
+    Button,
     CourseCard,
+    DrawerOutlet,
+    Dropzone,
     Field,
     FormField,
     Icon,
@@ -36,7 +57,9 @@ import { draftTotals, type CourseDraftValue } from '../../course-draft';
     OptionCard,
     Select,
     Textarea,
+    UploadItem,
   ],
+  providers: [AssetLibraryStore],
   templateUrl: './course-info.html',
   styleUrl: './course-info.scss',
 })
@@ -47,10 +70,32 @@ export class CourseInfo {
   readonly ownerName = input('');
   readonly programs = input.required<readonly TrainingProgram[]>();
   readonly modules = input.required<readonly BusinessModule[]>();
+  /** The cover the draft will be saved with: the stored one, or the one chosen in this page. */
+  readonly coverAssetId = input<number | null>(null);
   /** The chosen program, so the page lists the modules of its field. */
   readonly programPicked = output<string>();
+  /** "Gỡ ảnh bìa": the page clears the cover from the draft. */
+  readonly coverRemoved = output<void>();
 
+  protected readonly store = inject(CourseEditorStore);
+  protected readonly library = inject(AssetLibraryStore);
   protected readonly levels = Object.entries(LEVEL_LABEL);
+  protected readonly accept = acceptOf('image');
+  protected readonly coverKey = COVER_KEY;
+  protected readonly itemState = itemState;
+  protected readonly isCancellable = isCancellable;
+
+  protected readonly cover = this.store.coverPreview(() => this.coverAssetId());
+  protected readonly coverSrc = computed(() => {
+    const cover = this.cover();
+    return cover.state === 'ready' ? cover.src : null;
+  });
+
+  /** The cover upload while it is on its way or refused; a finished one shows as the image. */
+  protected readonly coverUpload = computed(() => {
+    const entry = this.store.uploads$()[COVER_KEY];
+    return entry && entry.state !== 'done' ? entry : undefined;
+  });
 
   protected readonly preview = computed((): CourseCardView => {
     const value = this.draft()().value();
@@ -72,6 +117,7 @@ export class CourseInfo {
       status: 'not_started',
       statusLabel: 'Chưa bắt đầu',
       link: '.',
+      coverUrl: this.coverSrc(),
     };
   });
 
@@ -85,5 +131,20 @@ export class CourseInfo {
     this.draft()
       .objectives()
       .value.update((list) => list.filter((_, i) => i !== index));
+  }
+
+  /** A file from the dropzone or the picker; the store checks it against the image rules. */
+  protected chooseCover(files: readonly File[]): void {
+    const file = files[0];
+    if (file) this.store.uploadCover(file);
+  }
+
+  protected openLibrary(): void {
+    this.library.open(COVER_KEY, 'image');
+  }
+
+  protected useLibraryAsset(asset: LibraryAsset): void {
+    this.store.pickCover(asset);
+    this.library.close();
   }
 }

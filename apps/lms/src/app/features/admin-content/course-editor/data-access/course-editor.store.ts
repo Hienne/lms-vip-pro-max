@@ -7,6 +7,7 @@ import {
   Injector,
   linkedSignal,
   signal,
+  type Signal,
 } from '@angular/core';
 import {
   takeUntilDestroyed,
@@ -35,6 +36,7 @@ import {
   firstValueFrom,
   map,
   Observable,
+  of,
   switchMap,
   takeUntil,
   throwError,
@@ -130,6 +132,17 @@ interface UploadContext {
   /** The kept upload this one continues. */
   readonly resumed?: KeptUpload;
 }
+
+/**
+ * The key the cover image's upload runs under, beside the blocks' keys. The cover is not in a
+ * lesson, so its upload is not kept across reloads: the author picks the file again.
+ */
+export const COVER_KEY = 'cover';
+
+/** The cover image as the editor shows it. */
+export type CoverPreview =
+  | { readonly state: 'none' | 'loading' | 'failed' }
+  | { readonly state: 'ready'; readonly src: string };
 
 /** The code the server answers with when a course code is already taken. */
 export const DUPLICATE_CODE = 'LEARNING-DUPLICATE';
@@ -799,6 +812,42 @@ export class CourseEditorStore {
     });
   }
 
+  /**
+   * The cover image to show for the asset `assetId` names. An author holds no media cookie (only a
+   * learner's study session sets one), so the file is read with the session's token and handed to
+   * the `<img>` as an object URL, released when the cover changes or the page goes.
+   */
+  coverPreview(assetId: () => number | null): Signal<CoverPreview> {
+    return toSignal(
+      toObservable(computed(assetId), { injector: this.injector }).pipe(
+        switchMap((id) =>
+          id ? this.coverFile(id) : of<CoverPreview>({ state: 'none' }),
+        ),
+      ),
+      { initialValue: { state: 'none' }, injector: this.injector },
+    );
+  }
+
+  /** Checks a picked cover image against the image rules, then uploads it. */
+  uploadCover(file: File): void {
+    this.upload({
+      blockKey: COVER_KEY,
+      blockType: 'image',
+      blockIndex: -1,
+      file,
+    });
+  }
+
+  /** A ready image of the library becomes the cover like a finished upload. */
+  pickCover(asset: LibraryAsset): void {
+    this.attach({ blockKey: COVER_KEY, blockType: 'image', asset });
+  }
+
+  /** Forgets the cover chosen in this page: a running upload stops, a finished one is dropped. */
+  dropCover(): void {
+    this.cancel(COVER_KEY);
+  }
+
   /** "Hủy" on a row that is hashing or sending: stops it and cancels it on the server. */
   cancel(blockKey: string): void {
     this.release(blockKey);
@@ -848,6 +897,30 @@ export class CourseEditorStore {
     this.courseData.reload();
   }
 
+  /** One cover file as an object URL, which is revoked when the subscriber leaves. */
+  private coverFile(assetId: number): Observable<CoverPreview> {
+    return new Observable<CoverPreview>((subscriber) => {
+      let src: string | undefined;
+      subscriber.next({ state: 'loading' });
+      const read = this.client
+        .call(courseEndpoints.getAssetContent, {
+          params: { assetId },
+          query: {},
+        })
+        .subscribe({
+          next: (blob) => {
+            src = URL.createObjectURL(blob);
+            subscriber.next({ state: 'ready', src });
+          },
+          error: () => subscriber.next({ state: 'failed' }),
+        });
+      return () => {
+        read.unsubscribe();
+        if (src) URL.revokeObjectURL(src);
+      };
+    });
+  }
+
   /** Shows why the file is not acceptable for the block, or returns false when it is. */
   private refuse({ blockKey, blockType, file }: UploadRequest): boolean {
     const rule = UPLOAD_RULES[blockType];
@@ -869,9 +942,10 @@ export class CourseEditorStore {
     const { blockKey, blockType, blockIndex, file } = request;
     this.release(blockKey);
     const target = this.state.editingLesson();
-    const position = target
-      ? `${target.chapter}.${target.lesson}.${blockIndex}`
-      : undefined;
+    const position =
+      target && blockKey !== COVER_KEY
+        ? `${target.chapter}.${target.lesson}.${blockIndex}`
+        : undefined;
     // A file picked over an interrupted upload replaces it: the old one is forgotten.
     for (const stale of this.state.kept()) {
       if (stale.position === position && stale.uploadId !== resumed?.uploadId) {
