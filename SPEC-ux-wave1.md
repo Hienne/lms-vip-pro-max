@@ -7,11 +7,11 @@ Three packages that need no backend change. `question-bank`, the fourth Wave 1 p
 own spec and capability map later. `report-filters` and `progress-reports` both change `features/reports`, so they
 run in that order. `course-editor-guards` runs on its own track.
 
-| Module id              | Review IDs                     | Area                                   | Size |
-| ---------------------- | ------------------------------ | -------------------------------------- | ---- |
-| `course-editor-guards` | B12, U13, B6, U18 (editor)     | `features/admin-content/course-editor` | M    |
-| `report-filters`       | P3 / U1, U21, CSV reason       | `features/reports`                     | M    |
-| `progress-reports`     | P3 / U2 (D2)                   | `features/reports`, `libs/contracts`   | M    |
+| Module id              | Review IDs                 | Area                                   | Size |
+| ---------------------- | -------------------------- | -------------------------------------- | ---- |
+| `course-editor-guards` | B12, U13, B6, U18 (editor) | `features/admin-content/course-editor` | M    |
+| `report-filters`       | P3 / U1, U21, CSV reason   | `features/reports`                     | M    |
+| `progress-reports`     | P3 / U2 (D2)               | `features/reports`, `libs/contracts`   | M    |
 
 Decisions (2026-11-04):
 
@@ -118,12 +118,12 @@ and always know why something is empty or disabled.
   `error`. Outputs: `queried` (debounced 300 ms), `picked`. It owns no data.
 - Four instances in the filter form, each feeding the next:
 
-  | Picker          | Source                                                                    | Filtered by          | When empty                            |
-  | --------------- | ------------------------------------------------------------------------- | -------------------- | ------------------------------------- |
-  | Đơn vị          | `GET /api/v1/orgs/tree`, flattened, matched locally on name and code      | —                    | "Toàn bộ phạm vi được cấp"            |
-  | Phòng / nhóm    | `GET /api/v1/orgs/{orgId}/teams`                                          | Đơn vị (disabled until one is picked, with the reason "Chọn đơn vị trước") | "Tất cả phòng / nhóm" |
-  | Khóa học        | `GET /api/v1/courses?q=` (the list the admin course screen uses)           | Đơn vị when the endpoint accepts it | "Tất cả khóa học"         |
-  | Bài kiểm tra    | the course quiz list endpoint used by `/admin/quizzes` (`assessmentV1Endpoints.courseQuizList`) | Khóa học (disabled until one is picked) | "Tất cả bài kiểm tra" |
+  | Picker       | Source                                                                                          | Filtered by                                                                | When empty                 |
+  | ------------ | ----------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------- | -------------------------- |
+  | Đơn vị       | `GET /api/v1/orgs/tree`, flattened, matched locally on name and code                            | —                                                                          | "Toàn bộ phạm vi được cấp" |
+  | Phòng / nhóm | `GET /api/v1/orgs/{orgId}/teams`                                                                | Đơn vị (disabled until one is picked, with the reason "Chọn đơn vị trước") | "Tất cả phòng / nhóm"      |
+  | Khóa học     | `GET /api/v1/courses?q=` (the list the admin course screen uses)                                | Đơn vị when the endpoint accepts it                                        | "Tất cả khóa học"          |
+  | Bài kiểm tra | the course quiz list endpoint used by `/admin/quizzes` (`assessmentV1Endpoints.courseQuizList`) | Khóa học (disabled until one is picked)                                    | "Tất cả bài kiểm tra"      |
 
 - Options read "mã · tên" when there is a code, so two courses named "test" can be told apart (U9 in reports).
 - Changing a parent clears its children.
@@ -220,7 +220,7 @@ contracts and the screens.
   - "Trạng thái": Tất cả, Chưa bắt đầu, Đang học, Hoàn thành;
   - "Chỉ quá hạn" (checkbox);
   - "Ghi danh từ ngày" / "Đến trước ngày".
-  All filters live in the URL, as in module 2.
+    All filters live in the URL, as in module 2.
 - A segmented control "Theo khóa học / Theo đơn vị / Theo học viên":
   - **Theo khóa học / Theo đơn vị** (`/groups?groupBy=course|org`): columns Tên, Lượt học, Học viên, Hoàn thành,
     Đang học, Chưa bắt đầu, Quá hạn, Tỷ lệ hoàn thành, Tiến độ TB. Clicking a row sets the matching filter and
@@ -240,7 +240,7 @@ contracts and the screens.
 2. `/reports/progress` groups by course and by unit. A row click drills into learners. Sorting and paging go to the
    server.
 3. The CSV downloads with the current filters. Reloading the page keeps the filters and the view (`view=course|org|
-   learners` in the URL).
+learners` in the URL).
 4. With `mockBackend: true` the same screens work from the seed.
 
 ### Testing

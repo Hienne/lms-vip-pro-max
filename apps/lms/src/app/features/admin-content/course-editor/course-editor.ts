@@ -152,8 +152,8 @@ export class CourseEditor implements HasUnsavedChanges {
   protected continue(): void {
     const step = this.store.step$();
     if (this.store.continue()) return;
-    this.stepFields()[step]
-      ?.find((field) => field().invalid())?.()
+    this.stepFields()
+      [step]?.find((field) => field().invalid())?.()
       .errorSummary()[0]
       ?.fieldTree()
       .focusBoundControl();

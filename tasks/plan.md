@@ -25,7 +25,7 @@ Three modules:
 - **Course codes in the learner list:** `/enrollments` returns `courseCode`.
 - **Report routes:** `reports` and `reports/:dim` already load `ReportScreen`. `dimension$` parses `:dim` with
   `AssessmentReportTypeSchema`, so `progress` needs its own branch: a `ReportView` union of `'overview' | 'progress'
-  | AssessmentReportType`. No new route is needed.
+| AssessmentReportType`. No new route is needed.
 - **Pattern to copy:** `course-shares/components/org-picker`, an `@angular/aria` `Combobox`, `ComboboxPopup` and
   `ComboboxWidget` over a `Listbox` with `focusMode="activedescendant"`.
 - **Mocks:** `libs/mocks/src/lib/reports` already holds the assessment report mocks. The learning report handlers go
@@ -51,7 +51,7 @@ Three modules:
    - the team comes from its org's teams;
    - the course comes from `getCourse`, falling back to `instructorCourses?q=` if access is refused;
    - the quiz comes from the course's quiz list.
-   If an id is not resolved, the store sets `unresolved$` and no report request is made.
+     If an id is not resolved, the store sets `unresolved$` and no report request is made.
 
 ## Dependency graph
 
@@ -112,16 +112,16 @@ Default order: A1 → A4, then B1 → B4, then C1 → C4.
 
 ## Risks and mitigations
 
-| Risk | Impact | Mitigation |
-| ---- | ------ | ---------- |
-| The step validity reader couples the store to the form tree | Med | The component passes plain `() => boolean` readers per step; the store specs use fakes |
-| `focus first invalid` misses controls inside child components | Med | Use the field's `id` from `ui-field` (query `[aria-invalid="true"]` in the step's panel) and cover it in the spec |
-| The read-only change misses a control (the drawer opened from a keyboard shortcut, drag handles) | Med | The spec queries every control by text and `aria-label` in published mode; check the browser at Checkpoint A |
-| Combobox behaviour differs from `org-picker` under `@angular/aria` 22.2 | Low | Copy the working pattern; the picker spec covers the keys |
-| The org tree is large for a local filter | Low | Flatten once per screen and keep it memoised; the server tree is already scoped |
-| A URL id outside the user's scope leaks a name | Low | Resolve only through scoped endpoints; anything that cannot be resolved shows the not-found message |
-| Captured fixtures need the local backend running | Med | Run the `backend` launch config. If it is not reachable, stop and report rather than hand-writing fixtures |
-| The mobile card layout of `ui-data-table` hides the drill-down click | Low | The row action is a link in the Tên cell, not a row click only |
+| Risk                                                                                             | Impact | Mitigation                                                                                                        |
+| ------------------------------------------------------------------------------------------------ | ------ | ----------------------------------------------------------------------------------------------------------------- |
+| The step validity reader couples the store to the form tree                                      | Med    | The component passes plain `() => boolean` readers per step; the store specs use fakes                            |
+| `focus first invalid` misses controls inside child components                                    | Med    | Use the field's `id` from `ui-field` (query `[aria-invalid="true"]` in the step's panel) and cover it in the spec |
+| The read-only change misses a control (the drawer opened from a keyboard shortcut, drag handles) | Med    | The spec queries every control by text and `aria-label` in published mode; check the browser at Checkpoint A      |
+| Combobox behaviour differs from `org-picker` under `@angular/aria` 22.2                          | Low    | Copy the working pattern; the picker spec covers the keys                                                         |
+| The org tree is large for a local filter                                                         | Low    | Flatten once per screen and keep it memoised; the server tree is already scoped                                   |
+| A URL id outside the user's scope leaks a name                                                   | Low    | Resolve only through scoped endpoints; anything that cannot be resolved shows the not-found message               |
+| Captured fixtures need the local backend running                                                 | Med    | Run the `backend` launch config. If it is not reachable, stop and report rather than hand-writing fixtures        |
+| The mobile card layout of `ui-data-table` hides the drill-down click                             | Low    | The row action is a link in the Tên cell, not a row click only                                                    |
 
 ## Open questions
 

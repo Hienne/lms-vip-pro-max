@@ -1,5 +1,9 @@
 import { signal } from '@angular/core';
-import { completedSteps, shownInvalidSteps, type StepCheck } from './step-progress';
+import {
+  completedSteps,
+  shownInvalidSteps,
+  type StepCheck,
+} from './step-progress';
 
 /** A step check over plain signals, standing in for the form's fields. */
 function fakeCheck(invalid: boolean, touched = false) {
@@ -35,28 +39,68 @@ describe('step progress', () => {
     const steps = 4;
 
     it('completes a step that was visited, is valid and is not the current one', () => {
-      const checks = [fakeCheck(false).check, fakeCheck(false).check, fakeCheck(false).check];
-      expect(completedSteps(steps, checks, [0, 1], 1)).toEqual([true, false, false, false]);
+      const checks = [
+        fakeCheck(false).check,
+        fakeCheck(false).check,
+        fakeCheck(false).check,
+      ];
+      expect(completedSteps(steps, checks, [0, 1], 1)).toEqual([
+        true,
+        false,
+        false,
+        false,
+      ]);
     });
 
     it('does not complete a visited step with errors, touched or not', () => {
-      const checks = [fakeCheck(true).check, fakeCheck(false).check, fakeCheck(false).check];
-      expect(completedSteps(steps, checks, [0, 1], 1)).toEqual([false, false, false, false]);
+      const checks = [
+        fakeCheck(true).check,
+        fakeCheck(false).check,
+        fakeCheck(false).check,
+      ];
+      expect(completedSteps(steps, checks, [0, 1], 1)).toEqual([
+        false,
+        false,
+        false,
+        false,
+      ]);
     });
 
     it('does not complete a valid step that was never visited', () => {
-      const checks = [fakeCheck(false).check, fakeCheck(false).check, fakeCheck(false).check];
-      expect(completedSteps(steps, checks, [0], 0)).toEqual([false, false, false, false]);
+      const checks = [
+        fakeCheck(false).check,
+        fakeCheck(false).check,
+        fakeCheck(false).check,
+      ];
+      expect(completedSteps(steps, checks, [0], 0)).toEqual([
+        false,
+        false,
+        false,
+        false,
+      ]);
     });
 
     it('never completes a step without a check (the publish step)', () => {
-      const checks = [fakeCheck(false).check, fakeCheck(false).check, fakeCheck(false).check];
-      expect(completedSteps(steps, checks, [0, 1, 2, 3], 0)).toEqual([false, true, true, false]);
+      const checks = [
+        fakeCheck(false).check,
+        fakeCheck(false).check,
+        fakeCheck(false).check,
+      ];
+      expect(completedSteps(steps, checks, [0, 1, 2, 3], 0)).toEqual([
+        false,
+        true,
+        true,
+        false,
+      ]);
     });
 
     it('drops the mark when the step becomes invalid', () => {
       const first = fakeCheck(false);
-      const checks = [first.check, fakeCheck(false).check, fakeCheck(false).check];
+      const checks = [
+        first.check,
+        fakeCheck(false).check,
+        fakeCheck(false).check,
+      ];
       expect(completedSteps(steps, checks, [0, 1], 1)[0]).toBe(true);
       first.state.invalid.set(true);
       expect(completedSteps(steps, checks, [0, 1], 1)[0]).toBe(false);
