@@ -2,6 +2,9 @@ import {
   assignmentEndpoints,
   courseEndpoints,
   learnerEndpoints,
+  learningReportEndpoints,
+  type LearningReportEnrollmentRow,
+  type LearningStatus,
   feedbackEndpoints,
   certificateEndpoints,
   personalEndpoints,
@@ -44,6 +47,13 @@ import { LearnerNotes } from './learner-notes';
 import { LearnerReminders } from './learner-reminders';
 import { dashboardOf, programGroupsOf } from './learner-dashboard';
 import {
+  filterRows,
+  groupRows,
+  learningCounts,
+  rowsCsv,
+  sortRows,
+} from './learning-reports';
+import {
   LearnerEnrollments,
   type EnrollmentRecord,
 } from './learner-enrollments';
@@ -80,6 +90,8 @@ export interface LearningDirectory {
   ): string | undefined;
   /** The status of a quiz in the assessment service; `undefined` when it does not exist. */
   quizStatus(quizId: number): string | undefined;
+  /** Who the caller's report grants cover; refuses (403) a caller with no report grant. */
+  reportScope(request: FakeRequest): (person: LearningPerson) => boolean;
 }
 
 type Mutable<T> = { -readonly [K in keyof T]: T[K] };
@@ -262,6 +274,26 @@ export class LearningBackend {
       [learnerEndpoints.dashboard, (r) => this.dashboard(r)],
       [learnerEndpoints.dashboardPrograms, (r) => this.dashboardPrograms(r)],
       [learnerEndpoints.exportProgress, (r) => this.exportProgress(r)],
+      [
+        learningReportEndpoints.summary,
+        (r) =>
+          ok({
+            dataAsOf: now(),
+            timeZone: 'Asia/Ho_Chi_Minh',
+            counts: learningCounts(this.reportRows(r)),
+          }),
+      ],
+      [
+        learningReportEndpoints.groups,
+        (r) =>
+          ok(paged(groupRows(this.reportRows(r), r.query['groupBy']), r.query)),
+      ],
+      [
+        learningReportEndpoints.enrollments,
+        (r) =>
+          ok(paged(sortRows(this.reportRows(r), r.query['sort']), r.query)),
+      ],
+      [learningReportEndpoints.exportEnrollments, (r) => this.exportReport(r)],
       [
         learnerEndpoints.reminders,
         (r) => ok(this.reminders.due(this.directory.callerId(r))),
@@ -1225,6 +1257,66 @@ export class LearningBackend {
   }
 
   /** Mirrors the backend's CSV: UTF-8 BOM, quoted cells, a leading `'` before a formula. */
+  /**
+   * Every enrolment in the caller's report scope that matches the filter, with the names the
+   * report resolves. The org and team are the learner's current ones: the seed keeps no snapshot.
+   */
+  private reportRows(request: FakeRequest): LearningReportEnrollmentRow[] {
+    const covers = this.directory.reportScope(request);
+    const people = new Map(this.directory.people().map((p) => [p.userId, p]));
+    const rows = this.enrollments.all().flatMap((enrolled) => {
+      const person = people.get(enrolled.enrollment.userId);
+      const record = this.courses.find(
+        (r) => r.course.id === enrolled.enrollment.courseId,
+      );
+      if (!person || !record?.published || !covers(person)) return [];
+      const card = this.learnerCard(record, enrolled);
+      const e = enrolled.enrollment;
+      const orgId = e.orgIdSnapshot ?? person.orgId;
+      const teamId = e.teamIdSnapshot ?? person.teamId;
+      const row: LearningReportEnrollmentRow = {
+        enrollment: {
+          id: e.id,
+          userId: e.userId,
+          courseId: e.courseId,
+          courseCode: card.code,
+          courseTitle: card.title ?? card.code,
+          revisionId: e.revisionId,
+          programId: card.programId ?? null,
+          programName: card.programName ?? null,
+          orgId,
+          teamId,
+          status: (card.learningStatus ?? 'not_started') as LearningStatus,
+          progressPercent: card.progressPercent ?? 0,
+          assigned: !!card.assigned,
+          mandatory: card.requirement === 'mandatory',
+          enrolledAt: e.enrolledAt ?? null,
+          startedAt: e.startedAt ?? null,
+          lastAccessAt: e.lastAccessAt ?? null,
+          completedAt: e.completedAt ?? null,
+          dueAt: card.dueAt ?? null,
+          overdue: !!card.overdue,
+          canStudy: true,
+        },
+        fullName: this.directory.nameOf('user', e.userId) ?? null,
+        orgName:
+          orgId === null ? null : (this.directory.nameOf('org', orgId) ?? null),
+        teamName:
+          teamId === null
+            ? null
+            : (this.directory.nameOf('team', teamId) ?? null),
+      };
+      return [row];
+    });
+    return filterRows(rows, request.query);
+  }
+
+  private exportReport(request: FakeRequest): FakeReply {
+    const rows = sortRows(this.reportRows(request), request.query['sort']);
+    if (rows.length > this.exportRowLimit) refuse('exportTooLarge');
+    return { status: 200, body: envelopeOk(null), file: rowsCsv(rows) };
+  }
+
   private exportProgress(request: FakeRequest): FakeReply {
     const rows = this.learnerCards(request, true);
     if (rows.length > this.exportRowLimit) refuse('exportTooLarge');

@@ -140,12 +140,14 @@ roles if changed); browser `read_page`
 
 **Acceptance criteria:**
 
-- [ ] `libs/contracts/src/lib/reports/learning-reports.{schema,endpoints}.ts` hold `Counts`, `Summary`, `Group`,
+- [x] `libs/contracts/src/lib/reports/learning-reports.{schema,endpoints}.ts` hold `Counts`, `Summary`, `Group`,
       `Enrollment`, `EnrollmentRow`, `LearningReportFilter`, and the endpoints `summary`, `groups`, `enrollments` and
       `exportEnrollments`, all exported from the index.
-- [ ] `learning-reports.captured.ts` is captured from the local backend (`contracts-and-mocks.md`), and the schemas
+- [x] `learning-reports.captured.ts` is captured from the local backend (`contracts-and-mocks.md`), and the schemas
       parse it.
-- [ ] `libs/mocks/src/lib/reports` answers the four endpoints from the seed. Scope matches the other report mocks.
+- [x] `libs/mocks/src/lib/reports` answers the four endpoints from the seed. Scope matches the other report mocks.
+      Built in `libs/mocks/src/lib/learning/learning-reports.ts` and the learning backend instead, which own the
+      seeded enrolments; the scope comes from the caller's report grants (GLOBAL, ORG subtree, TEAM).
 
 **Verification:** `npx nx test contracts`, `npx nx test mocks`
 
