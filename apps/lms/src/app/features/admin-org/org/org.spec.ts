@@ -94,6 +94,17 @@ describe('Org', () => {
     await settle();
   }
 
+  async function chooseTeamAction(team: HTMLElement, label: string) {
+    button(team, 'Thao tác cho').click();
+    await settle();
+    const item = Array.from(
+      document.querySelectorAll<HTMLElement>('[role="menuitem"]'),
+    ).find((entry) => entry.textContent?.trim() === label);
+    expect(item).toBeDefined();
+    item?.click();
+    await settle();
+  }
+
   it('reads the roots from the tree endpoint and shows the first one with its facts', async () => {
     await open('super.admin', '000001');
     expect(calls(organizationEndpoints.orgTree)[0][1].query).toEqual({
@@ -203,8 +214,7 @@ describe('Org', () => {
     await open('super.admin', '000001');
     const first = cards()[0];
     const name = first.querySelector('strong')?.textContent as string;
-    button(first, `Sửa ${name}`).click();
-    await settle();
+    await chooseTeamAction(first, 'Sửa nhóm');
     expect(inputOf('Tên nhóm').value).toBe(name);
     await type(inputOf('Tên nhóm'), 'AAA Tên đã đổi');
     button(dialog() as HTMLElement, 'Lưu').click();
@@ -221,8 +231,8 @@ describe('Org', () => {
       (c) => !c.textContent?.includes('Chưa có thành viên'),
     ) as HTMLElement;
     const name = withMembers.querySelector('strong')?.textContent as string;
-    button(withMembers, `Xóa ${name}`).click();
-    await settle();
+    await chooseTeamAction(withMembers, 'Xóa nhóm');
+    expect(calls(organizationEndpoints.deleteTeam)).toHaveLength(0);
     button(alertDialog() as HTMLElement, 'Xóa').click();
     await settle();
     expect(document.body.textContent).toContain(
@@ -239,8 +249,8 @@ describe('Org', () => {
     button(dialog() as HTMLElement, 'Lưu').click();
     await settle();
     const temporary = card('AAA Nhóm tạm') as HTMLElement;
-    button(temporary, 'Xóa AAA Nhóm tạm').click();
-    await settle();
+    await chooseTeamAction(temporary, 'Xóa nhóm');
+    expect(calls(organizationEndpoints.deleteTeam)).toHaveLength(0);
     button(alertDialog() as HTMLElement, 'Xóa').click();
     await settle();
     expect(calls(organizationEndpoints.deleteTeam)).toHaveLength(1);

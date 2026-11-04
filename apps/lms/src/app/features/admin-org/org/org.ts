@@ -6,26 +6,27 @@ import {
   Badge,
   Button,
   Card,
-  CardBody,
   CardHeader,
   DrawerOutlet,
   Empty,
   ErrorState,
   FormActions,
   Icon,
-  IconButton,
-  List,
-  ListIcon,
-  ListItem,
+  Menu,
   PageHeader,
   Pagination,
   Spinner,
   Tree,
+  type MenuEntry,
 } from '@lms/ui';
 import { OrgForm } from './components/org-form/org-form';
 import { OrgImport } from './components/org-import/org-import';
 import { TeamForm } from './components/team-form/team-form';
-import { OrgStore, TEAMS_PAGE_SIZE } from './data-access/org.store';
+import {
+  OrgStore,
+  TEAMS_PAGE_SIZE,
+  type TeamAction,
+} from './data-access/org.store';
 import { OrgTreeStore } from './data-access/org-tree.store';
 
 /** Units, departments and teams (the mockup's `org` page): browse the tree and keep it tidy. */
@@ -42,10 +43,7 @@ import { OrgTreeStore } from './data-access/org-tree.store';
     ErrorState,
     FormActions,
     Icon,
-    IconButton,
-    List,
-    ListIcon,
-    ListItem,
+    Menu,
     OrgForm,
     OrgImport,
     PageHeader,
@@ -63,4 +61,15 @@ export class Org {
   protected readonly store = inject(OrgStore);
   protected readonly previewSize = TEAM_PREVIEW_SIZE;
   protected readonly pageSize = TEAMS_PAGE_SIZE;
+  protected readonly teamActions: readonly MenuEntry<TeamAction>[] = [
+    { kind: 'item', value: 'edit', label: 'Sửa nhóm', icon: 'pen-line' },
+    { kind: 'separator' },
+    {
+      kind: 'item',
+      value: 'delete',
+      label: 'Xóa nhóm',
+      icon: 'trash-2',
+      tone: 'danger',
+    },
+  ];
 }

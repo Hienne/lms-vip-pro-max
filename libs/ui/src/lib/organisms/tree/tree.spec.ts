@@ -43,6 +43,7 @@ const NODES: readonly TreeNode<{ status: string }>[] = [
     <ui-tree
       label="Cây nội dung"
       [nodes]="nodes"
+      [wrapLabels]="wrapLabels()"
       [trailing]="badgeTpl()"
       [(expanded)]="expanded"
       [(selected)]="selected"
@@ -54,6 +55,7 @@ const NODES: readonly TreeNode<{ status: string }>[] = [
 })
 class Host {
   readonly nodes = NODES;
+  readonly wrapLabels = signal(false);
   readonly expanded = signal<readonly string[]>(['d1']);
   readonly selected = signal<string | undefined>(undefined);
   readonly badgeTpl =
@@ -95,6 +97,21 @@ async function render() {
 }
 
 describe('Tree', () => {
+  it('preserves selection and expansion when labels wrap', async () => {
+    const { root, host, item, settle } = await render();
+    host.selected.set('p1');
+    host.wrapLabels.set(true);
+    await settle();
+    expect(root.querySelector('.tree--wrap-labels')).not.toBeNull();
+    expect(item('Nghiệp vụ').getAttribute('aria-expanded')).toBe('true');
+    expect(item('Nền tảng').getAttribute('aria-selected')).toBe('true');
+    host.wrapLabels.set(false);
+    await settle();
+    expect(root.querySelector('.tree--wrap-labels')).toBeNull();
+    expect(host.selected()).toBe('p1');
+    expect(host.expanded()).toEqual(['d1']);
+  });
+
   it('is a named tree whose items carry level, expansion and selection state', async () => {
     const { root, item } = await render();
     expect(

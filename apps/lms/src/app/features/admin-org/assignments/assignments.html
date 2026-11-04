@@ -1,6 +1,6 @@
 <ui-page-header
-  title="Giao học & hạn hoàn thành"
-  description="Giao khóa học cho cá nhân, phòng/nhóm, đơn vị hoặc nhóm học tập, kèm hạn hoàn thành. Học viên được xác định ngay lúc giao."
+  title="Giao khóa học"
+  description="Quản lý lượt giao, đối tượng học và hạn hoàn thành."
 >
   <div slot="actions">
     @if (store.tab$() === 'groups') {
@@ -15,19 +15,20 @@
   </div>
 </ui-page-header>
 
-<section uiCard>
+<section class="assignments__workspace">
   <ui-tabs
     label="Giao học"
+    wrap
     [tabs]="tabs()"
     [selected]="store.tab$()"
     (selectedChange)="store.showTab($event)"
   >
-    <div uiTabPanel="assignments">
+    <div uiTabPanel="assignments" class="assignments__panel">
       @if (store.tab$() === 'assignments') {
       <ng-container [ngTemplateOutlet]="assignmentsPanel" />
       }
     </div>
-    <div uiTabPanel="groups">
+    <div uiTabPanel="groups" class="assignments__panel">
       @if (store.tab$() === 'groups') {
       <ng-container [ngTemplateOutlet]="groupsPanel" />
       }
@@ -53,15 +54,10 @@
     <a uiButton routerLink="/admin/courses">Đến danh sách khóa học</a>
   </ui-empty>
   } @else {
-  <div uiCardHeader class="assignments__toolbar">
+  <div class="assignments__toolbar">
     <label class="assignments__filter">
       <span>Khóa học</span>
-      <select
-        uiSelect
-        size="sm"
-        #course
-        (change)="store.pickCourse(course.value)"
-      >
+      <select uiSelect #course (change)="store.pickCourse(course.value)">
         @for (option of store.courses$(); track option.courseId) {
         <option
           [value]="option.courseId"
@@ -76,63 +72,82 @@
       >{{ store.total$() }} lượt giao</span
     >
   </div>
-  <ui-data-table
-    caption="Lượt giao khóa học"
-    [columns]="[
-      { key: 'title', label: 'Đợt giao', sortable: false },
-      { key: 'period', label: 'Thời gian', sortable: false },
-      { key: 'requirement', label: 'Yêu cầu', sortable: false },
-      { key: 'status', label: 'Trạng thái', sortable: false },
-      { key: 'actions', label: 'Thao tác', kind: 'actions' },
-    ]"
-    [rows]="store.rows$()"
-    [total]="store.total$()"
-    [page]="store.page$()"
-    [pageSize]="pageSize"
-    (pageChange)="store.goToPage($event)"
+  <section
+    uiCard
+    class="assignments__table"
+    [class.assignments__table--empty]="!store.total$()"
+    aria-label="Lượt giao khóa học"
   >
-    <ui-empty
-      slot="empty"
-      variant="inline"
-      title="Khóa học này chưa được giao"
-      description="Giao cho cá nhân, phòng/nhóm, đơn vị hoặc nhóm học tập."
-    />
-    <ng-template uiDataTableCell="title" [of]="store.rows$()" let-row>
-      <div uiTablePrimary>{{ row.title }}</div>
-      <div uiTableSub>Giao ngày {{ row.assignment.createTime | fmtDate }}</div>
-    </ng-template>
-    <ng-template uiDataTableCell="period" [of]="store.rows$()" let-row>
-      <div class="assignments__period">
-        <span class="assignments__muted"
-          >{{ row.assignment.startAt | fmtDate }} →</span
+    <ui-data-table
+      caption="Lượt giao khóa học"
+      [columns]="[
+        { key: 'title', label: 'Đợt giao', sortable: false },
+        { key: 'start', label: 'Bắt đầu', sortable: false },
+        { key: 'due', label: 'Hạn hoàn thành', sortable: false },
+        { key: 'requirement', label: 'Yêu cầu', sortable: false },
+        { key: 'status', label: 'Trạng thái', sortable: false },
+        { key: 'actions', label: 'Thao tác', kind: 'actions' },
+      ]"
+      [rows]="store.rows$()"
+      [total]="store.total$()"
+      [page]="store.page$()"
+      [pageSize]="pageSize"
+      (pageChange)="store.goToPage($event)"
+    >
+      <ui-empty
+        slot="empty"
+        variant="inline"
+        title="Khóa học này chưa được giao"
+        description="Giao cho cá nhân, phòng/nhóm, đơn vị hoặc nhóm học tập."
+      />
+      <ng-template uiDataTableCell="title" [of]="store.rows$()" let-row>
+        <div uiTablePrimary class="assignments__title" [attr.title]="row.title">
+          {{ row.title }}
+        </div>
+        <div uiTableSub>
+          Giao ngày {{ row.assignment.createTime | fmtDate }}
+        </div>
+      </ng-template>
+      <ng-template uiDataTableCell="start" [of]="store.rows$()" let-row>
+        <span class="assignments__date">
+          {{ row.assignment.startAt | fmtDate }}
+        </span>
+      </ng-template>
+      <ng-template uiDataTableCell="due" [of]="store.rows$()" let-row>
+        <div class="assignments__deadline">
+          @if (row.assignment.dueAt) {
+          <span class="assignments__date">
+            {{ row.assignment.dueAt | fmtDate }}
+          </span>
+          }
+          <app-due-date [dueAt]="row.assignment.dueAt" relativeOnly />
+        </div>
+      </ng-template>
+      <ng-template uiDataTableCell="requirement" [of]="store.rows$()" let-row>
+        {{ requirementLabel[row.assignment.requirement] }}
+      </ng-template>
+      <ng-template uiDataTableCell="status" [of]="store.rows$()" let-row>
+        <span
+          uiBadge
+          [dot]="statusView(row.assignment.status).dot ?? false"
+          [outline]="statusView(row.assignment.status).outline ?? false"
+          [tone]="statusView(row.assignment.status).tone"
+          >{{ statusView(row.assignment.status).label }}</span
         >
-        <app-due-date [dueAt]="row.assignment.dueAt" />
-      </div>
-    </ng-template>
-    <ng-template uiDataTableCell="requirement" [of]="store.rows$()" let-row>
-      {{ requirementLabel[row.assignment.requirement] }}
-    </ng-template>
-    <ng-template uiDataTableCell="status" [of]="store.rows$()" let-row>
-      <span
-        uiBadge
-        [dot]="statusView(row.assignment.status).dot ?? false"
-        [outline]="statusView(row.assignment.status).outline ?? false"
-        [tone]="statusView(row.assignment.status).tone"
-        >{{ statusView(row.assignment.status).label }}</span
-      >
-    </ng-template>
-    <ng-template uiDataTableCell="actions" [of]="store.rows$()" let-row>
-      <button
-        uiButton
-        size="sm"
-        variant="ghost"
-        [attr.aria-label]="'Xem ' + row.title"
-        (click)="store.view(row.assignment.id)"
-      >
-        Xem
-      </button>
-    </ng-template>
-  </ui-data-table>
+      </ng-template>
+      <ng-template uiDataTableCell="actions" [of]="store.rows$()" let-row>
+        <button
+          uiButton
+          size="sm"
+          variant="ghost"
+          [attr.aria-label]="'Xem ' + row.title"
+          (click)="store.view(row.assignment.id)"
+        >
+          Xem
+        </button>
+      </ng-template>
+    </ui-data-table>
+  </section>
   }
 </ng-template>
 
@@ -146,46 +161,65 @@
   } @else if (store.groupsLoading$()) {
   <div class="assignments__loading"><span uiSpinner></span></div>
   } @else {
-  <ui-data-table
-    caption="Nhóm học tập"
-    [columns]="[
-      { key: 'name', label: 'Nhóm', sortable: false },
-      { key: 'description', label: 'Mô tả', sortable: false },
-      { key: 'updated', label: 'Cập nhật', sortable: false },
-      { key: 'actions', label: 'Thao tác', kind: 'actions' },
-    ]"
-    [rows]="store.groups$()"
-    [total]="store.groups$().length"
-    [pageSize]="100"
+  <section
+    uiCard
+    class="assignments__table"
+    [class.assignments__table--empty]="!store.groups$().length"
+    aria-label="Nhóm học tập"
   >
-    <ui-empty
-      slot="empty"
-      variant="inline"
-      title="Chưa có nhóm học tập"
-      description="Nhóm học tập gom người từ nhiều phòng để giao khóa học cùng lúc."
-    />
-    <ng-template uiDataTableCell="name" [of]="store.groups$()" let-row>
-      <div uiTablePrimary>{{ row.group.name }}</div>
-      <div uiTableSub>{{ row.group.code }}</div>
-    </ng-template>
-    <ng-template uiDataTableCell="description" [of]="store.groups$()" let-row>
-      <span class="assignments__muted">{{ row.group.description || '—' }}</span>
-    </ng-template>
-    <ng-template uiDataTableCell="updated" [of]="store.groups$()" let-row>
-      {{ row.group.updateTime | fmtDate }}
-    </ng-template>
-    <ng-template uiDataTableCell="actions" [of]="store.groups$()" let-row>
-      <button
-        uiButton
-        size="sm"
-        variant="ghost"
-        [attr.aria-label]="'Thành viên ' + row.group.name"
-        (click)="store.editMembers(row.group.id)"
-      >
-        <ui-icon name="users" size="sm" />Thành viên
-      </button>
-    </ng-template>
-  </ui-data-table>
+    <ui-data-table
+      caption="Nhóm học tập"
+      [columns]="[
+        { key: 'name', label: 'Nhóm', sortable: false },
+        { key: 'description', label: 'Mô tả', sortable: false },
+        { key: 'updated', label: 'Cập nhật', sortable: false },
+        { key: 'actions', label: 'Thao tác', kind: 'actions' },
+      ]"
+      [rows]="store.groups$()"
+      [total]="store.groups$().length"
+      [pageSize]="100"
+    >
+      <ui-empty
+        slot="empty"
+        variant="inline"
+        title="Chưa có nhóm học tập"
+        description="Nhóm học tập gom người từ nhiều phòng để giao khóa học cùng lúc."
+      />
+      <ng-template uiDataTableCell="name" [of]="store.groups$()" let-row>
+        <div
+          uiTablePrimary
+          class="assignments__title"
+          [attr.title]="row.group.name"
+        >
+          {{ row.group.name }}
+        </div>
+        <div class="assignments__code">{{ row.group.code }}</div>
+      </ng-template>
+      <ng-template uiDataTableCell="description" [of]="store.groups$()" let-row>
+        <span
+          class="assignments__description"
+          [attr.title]="row.group.description"
+          >{{ row.group.description || '—' }}</span
+        >
+      </ng-template>
+      <ng-template uiDataTableCell="updated" [of]="store.groups$()" let-row>
+        <span class="assignments__date">
+          {{ row.group.updateTime | fmtDate }}
+        </span>
+      </ng-template>
+      <ng-template uiDataTableCell="actions" [of]="store.groups$()" let-row>
+        <button
+          uiButton
+          size="sm"
+          variant="ghost"
+          [attr.aria-label]="'Thành viên ' + row.group.name"
+          (click)="store.editMembers(row.group.id)"
+        >
+          <ui-icon name="users" size="sm" />Thành viên
+        </button>
+      </ng-template>
+    </ui-data-table>
+  </section>
   }
 </ng-template>
 

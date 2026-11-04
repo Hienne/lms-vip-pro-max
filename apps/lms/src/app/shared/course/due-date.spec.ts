@@ -10,11 +10,18 @@ const inDays = (days: number) => new Date(TODAY + days * DAY).toISOString();
 
 @Component({
   imports: [DueDate],
-  template: `<app-due-date [dueAt]="dueAt()" [done]="done()" />`,
+  template: `
+    <app-due-date
+      [dueAt]="dueAt()"
+      [done]="done()"
+      [relativeOnly]="relativeOnly()"
+    />
+  `,
 })
 class Host {
   readonly dueAt = signal<string | null | undefined>(inDays(12));
   readonly done = signal(false);
+  readonly relativeOnly = signal(false);
 }
 
 function render(change: (host: Host) => void = () => undefined) {
@@ -32,6 +39,22 @@ function render(change: (host: Host) => void = () => undefined) {
 }
 
 describe('DueDate', () => {
+  it.each([
+    { days: 12, expected: 'Còn 12 ngày', tone: 'muted' },
+    { days: 2, expected: 'Còn 2 ngày', tone: 'warning' },
+    { days: -2, expected: 'Quá hạn 2 ngày', tone: 'danger' },
+  ])(
+    'keeps the countdown and tone without a date suffix for $days days',
+    ({ days, expected, tone }) => {
+      const { text, el } = render((h) => {
+        h.dueAt.set(inDays(days));
+        h.relativeOnly.set(true);
+      });
+      expect(text).toBe(expected);
+      expect(el.classList.contains(`due-date--${tone}`)).toBe(true);
+    },
+  );
+
   it('says "Còn n ngày · date" in a muted tone when the deadline is far', () => {
     const { text, el } = render();
     expect(text).toBe('Còn 12 ngày · 22/07/2026');
