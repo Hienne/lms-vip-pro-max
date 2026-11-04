@@ -90,6 +90,15 @@
     }
   }
 
+  // After the label, wrapping under a long one; muted text only, no badge or colour.
+  &__soon {
+    @include ui.text(xs);
+    margin-left: ui.space(1);
+    color: ui.color(nav-muted);
+    font-weight: ui.weight(regular);
+    white-space: nowrap;
+  }
+
   &__section {
     @include ui.text(sm);
     padding: ui.space(3) ui.space(5) ui.space(1);

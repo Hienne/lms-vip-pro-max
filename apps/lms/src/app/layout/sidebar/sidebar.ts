@@ -1,11 +1,17 @@
-import { Component, computed, input, output } from '@angular/core';
+import { Component, computed, inject, input, output } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { Icon, Mai, Tooltip } from '@lms/ui';
-import { activeHref, type NavSection } from '../../core/menu/menu-catalog';
+import { APP_CONFIG } from '../../core/config/app-config';
+import {
+  activeHref,
+  type MenuItem,
+  type NavSection,
+} from '../../core/menu/menu-catalog';
 
 /**
  * The user's navigation (the mockup's `sidebar`): brand, role line, the sections of the nav
- * `toProfile` built from the functions the backend lists for the user, and the design-system link.
+ * `toProfile` built from the functions the backend lists for the user, and, with `devTools`, the
+ * design-system link. An entry whose screen is not built yet says "Sắp ra mắt" after its label.
  * It owns no state: the shell passes the nav and the path in, and the
  * current page is marked with `aria-current="page"` by longest-prefix match.
  *
@@ -19,6 +25,9 @@ import { activeHref, type NavSection } from '../../core/menu/menu-catalog';
   styleUrl: './sidebar.scss',
 })
 export class Sidebar {
+  /** The design system is an internal page: production users never see its link. */
+  protected readonly showDesignLink = inject(APP_CONFIG).devTools;
+
   readonly nav = input.required<readonly NavSection[]>();
   /** The role line, e.g. "Giảng viên, Học viên". */
   readonly roleText = input.required<string>();
@@ -36,4 +45,9 @@ export class Sidebar {
   protected readonly toggleLabel = computed(() =>
     this.collapsed() ? 'Mở rộng thanh bên' : 'Thu gọn thanh bên',
   );
+
+  /** The rail has no visible label, so its tooltip carries the state too. */
+  protected itemTooltip(item: MenuItem): string {
+    return item.upcoming ? `${item.label} · Sắp ra mắt` : item.label;
+  }
 }

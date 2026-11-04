@@ -60,9 +60,9 @@ the module and review ID, ending with the attribution line.
 
 **Acceptance criteria:**
 
-- [ ] An upcoming item shows "Sắp ra mắt" after its label in `ui.text(xs, muted)` (wrapping under it when long). No
+- [x] An upcoming item shows "Sắp ra mắt" after its label in `ui.text(xs, muted)` (wrapping under it when long). No
       badge, colour or row opacity. In the rail, the tooltip is "{label} · Sắp ra mắt".
-- [ ] The design link renders only when `APP_CONFIG.devTools` is on. The footer keeps the collapse button.
+- [x] The design link renders only when `APP_CONFIG.devTools` is on. The footer keeps the collapse button.
 
 **Verification:** `npx nx test lms` (`sidebar.spec.ts`: label, rail tooltip, link per flag)
 
