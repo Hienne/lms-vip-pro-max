@@ -39,8 +39,8 @@ the module and review ID, ending with the attribution line.
 
 ## Checkpoint A
 
-- [ ] `npx nx test lms` green; the production build checked as in T1
-- [ ] Browser (`lms-local-backend`, a PDF lesson): pages render; Network shows the worker as `worker-*.js`; screenshot
+- [x] `npx nx test lms` green; the production build checked as in T1
+- [x] Browser (`lms-local-backend`, a PDF lesson): pages render; Network shows the worker as `worker-*.js`; screenshot
 
 ## T3: `MenuItem.upcoming` and `homePathFor` skipping upcoming functions (P4)
 
@@ -93,9 +93,9 @@ the module and review ID, ending with the attribution line.
 
 ## Checkpoint B
 
-- [ ] `npx nx test lms` green
-- [ ] Browser, dev config: the sidebar marks the four entries; the coming-soon page; 1280/375, light/dark, rail
-- [ ] Production flags: specs cover them. If the dev server can run with `devTools: false`, also screenshot the
+- [x] `npx nx test lms` green
+- [x] Browser, dev config: the sidebar marks the four entries; the coming-soon page; 1280/375, light/dark, rail
+- [x] Production flags: specs cover them. If the dev server can run with `devTools: false`, also screenshot the
       sidebar and the login page without the dev links
 
 ## T7: Gate "Thêm câu hỏi" / "Tạo bài kiểm tra" and rewrite the pending copy (P2 interim)
@@ -130,9 +130,20 @@ only if a selector is needed · **Size:** S
 
 ## Checkpoint C (complete)
 
-- [ ] `npm run check` green
-- [ ] Browser (`lms-local-backend`): `/admin/questions`, `/admin/quizzes`, `/admin/quizzes/new?courseId=3` at
+- [x] `npm run check` green
+- [x] Browser (`lms-local-backend`): `/admin/questions`, `/admin/quizzes`, `/admin/quizzes/new?courseId=3` at
       1280/375, light/dark; screenshots
-- [ ] angular.md §14 and visual-design.md checklists reported
-- [ ] P1, P4 and the interim P2 re-tested as the review reproduced them
-- [ ] `SPEC-ux-wave0.md` status "built"; PLAN.md Wave 0 marked done
+- [x] angular.md §14 and visual-design.md checklists reported
+- [x] P1, P4 and the interim P2 re-tested as the review reproduced them
+- [x] `SPEC-ux-wave0.md` status "built"; PLAN.md Wave 0 marked done
+
+## Notes from the build
+
+- Browser checks ran on the seeded mock (`mockBackend`, temporary and not committed). The shared backend needs a demo
+  password this build did not have, and no local backend was running. The PDF check used a throwaway local server that
+  answers every `/api` request with a one-page PDF: the page rendered and the worker loaded as `worker-*.js`.
+- Not checked in a browser: `/admin/questions`, `/admin/quizzes` and `/admin/quizzes/new` while the program bank is
+  pending (they need the real backend), and the sidebar with `devTools: false` (the demo sign-in needs dev tools).
+  Specs cover both.
+- The Dockerfile build ran locally and wrote `workers.txt`. The CI verify step ran against a local static server.
+  The first `main` deploy proves it on the real host.

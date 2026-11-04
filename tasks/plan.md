@@ -94,13 +94,13 @@ The three chains touch different files and could run in parallel. The default is
 
 ## Risks and mitigations
 
-| Risk | Impact | Mitigation |
-| ---- | ------ | ---------- |
-| pdf.js fails to start from a bundled worker (for example `import.meta` or top-level code differences) | High | T1 is first. The browser check at Checkpoint A comes before anything else. Fallback: build a Blob URL from the fetched `.mjs` and record it in the plan |
-| Vitest/jsdom has no `Worker` | Low | Stub `globalThis.Worker` in the spec, as the sha256 hasher spec does (or skip if that spec uses another seam) |
-| The CI verify step cannot be run from this machine | Med | Verify the Dockerfile part locally with `docker build`. The verify step is shell only and reviewed. The first `main` deploy proves it |
-| Production config cannot sign in locally for the browser check | Med | Override `APP_CONFIG.devTools` in a browser check (dev server with a temporary env), or rely on specs for the flag and screenshot the dev config |
-| "Sắp ra mắt" squeezes long labels in the 240px sidebar | Low | The label wraps under the name (block, `xs`). Check at 1280 with the longest label "Hệ thống & nhật ký" |
+| Risk                                                                                                  | Impact | Mitigation                                                                                                                                              |
+| ----------------------------------------------------------------------------------------------------- | ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| pdf.js fails to start from a bundled worker (for example `import.meta` or top-level code differences) | High   | T1 is first. The browser check at Checkpoint A comes before anything else. Fallback: build a Blob URL from the fetched `.mjs` and record it in the plan |
+| Vitest/jsdom has no `Worker`                                                                          | Low    | Stub `globalThis.Worker` in the spec, as the sha256 hasher spec does (or skip if that spec uses another seam)                                           |
+| The CI verify step cannot be run from this machine                                                    | Med    | Verify the Dockerfile part locally with `docker build`. The verify step is shell only and reviewed. The first `main` deploy proves it                   |
+| Production config cannot sign in locally for the browser check                                        | Med    | Override `APP_CONFIG.devTools` in a browser check (dev server with a temporary env), or rely on specs for the flag and screenshot the dev config        |
+| "Sắp ra mắt" squeezes long labels in the 240px sidebar                                                | Low    | The label wraps under the name (block, `xs`). Check at 1280 with the longest label "Hệ thống & nhật ký"                                                 |
 
 ## Open questions
 

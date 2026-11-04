@@ -1,16 +1,16 @@
 # Spec: UX review, Wave 0
 
 Plan: [docs/reviews/2026-11-04-ux-review/PLAN.md](docs/reviews/2026-11-04-ux-review/PLAN.md) §4 Wave 0. Review:
-[README.md](docs/reviews/2026-11-04-ux-review/README.md). Status: **approved 2026-11-04; planned in `tasks/plan.md` (amendments there).**
+[README.md](docs/reviews/2026-11-04-ux-review/README.md). Status: **built 2026-11-04 (one commit per task, see `tasks/plan.md`).**
 
 Three small packages that need no product decision and no backend change. Each one is a section of this spec, gets
 its own commit series and can ship alone. No capability map: none depends on another.
 
-| Module id            | Review IDs            | Repo | Size |
-| -------------------- | --------------------- | ---- | ---- |
-| `pdf-worker-mime`    | P1 / B1               | app  | XS   |
-| `unfinished-screens` | P4 / B3, U17          | app  | S    |
-| `question-bank-gate` | P2 (interim)          | app  | S    |
+| Module id            | Review IDs   | Repo | Size |
+| -------------------- | ------------ | ---- | ---- |
+| `pdf-worker-mime`    | P1 / B1      | app  | XS   |
+| `unfinished-screens` | P4 / B3, U17 | app  | S    |
+| `question-bank-gate` | P2 (interim) | app  | S    |
 
 Decisions (2026-11-04): bundle the pdf.js worker as `.js` instead of changing the server; the four unfinished screens
 stay in the menu marked "Sắp ra mắt"; the question bank keeps its menu entry with the actions gated; `/design-system`
@@ -214,7 +214,7 @@ export interface MenuItem {
 
 - **Always:** test first; `npm run check` green; angular.md §14 and the visual-design.md checklist at 1280 and 375px,
   light and dark; one commit per task (plan amendment). Commit messages name the review IDs (for example `fix(lesson): bundle the
-  pdf.js worker as a script chunk (P1)`).
+pdf.js worker as a script chunk (P1)`).
 - **Ask first:** changing the bundle guard beyond the worker chunk; hiding a menu entry instead of marking it;
   touching the backend repo; any new dependency.
 - **Never:** "mockup", "Angular", "API" or "migrate" in copy a production user can reach; a badge or a status colour
