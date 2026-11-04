@@ -114,7 +114,7 @@
       @if (lesson.lessonType === 'quiz') {
       <span>Bài kiểm tra</span>
       } @else { @for (block of lesson.blocks; track block.key) {
-      <span>{{ blockTypes[block.blockType].label }}</span>
+      <span>{{ blockLabels[block.blockType] }}</span>
       } }
       <span>{{ lesson.minutes }} phút</span>
     </div>

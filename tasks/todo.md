@@ -55,7 +55,7 @@ and none with a delete, move or drag `aria-label`; draft mode unchanged)
 **Acceptance criteria:**
 
 - [x] Each chapter title input is labelled "Tên chương {n}". "Thêm chương" focuses the new one.
-- [ ] `read_page` shows "Tên khóa học" as the title input's name, and every wizard `ui-field` named by its label. Any
+- [x] `read_page` shows "Tên khóa học" as the title input's name, and every wizard `ui-field` named by its label. Any
       control that fails is fixed.
 - [x] No unnamed `tab` or `tabpanel` role is left from the stepper or the CDK steps.
 
@@ -67,8 +67,8 @@ roles if changed); browser `read_page`
 
 ## Checkpoint A
 
-- [ ] `npx nx test lms` green
-- [ ] Browser: `/admin/courses/new` with an empty step 1 and "Tiếp tục"; a published course in every step; 1280 and
+- [x] `npx nx test lms` green
+- [x] Browser: `/admin/courses/new` with an empty step 1 and "Tiếp tục"; a published course in every step; 1280 and
       375px, light and dark; screenshots and `read_page` notes
 
 ## B1: `report-picker` component (U1)

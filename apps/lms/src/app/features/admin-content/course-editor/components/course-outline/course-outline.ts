@@ -73,7 +73,11 @@ export class CourseOutline {
   private readonly dialog = inject(Dialog);
   private readonly injector = inject(Injector);
 
-  protected readonly blockTypes = BLOCK_TYPES;
+  /** Block labels by type, keyed loosely for the lesson template's untyped context. */
+  protected readonly blockLabels: Readonly<Record<string, string>> =
+    Object.fromEntries(
+      Object.entries(BLOCK_TYPES).map(([type, { label }]) => [type, label]),
+    );
   protected readonly problemOf = lessonProblem;
   protected readonly totals = computed(() =>
     draftTotals(this.draft()().value()),
