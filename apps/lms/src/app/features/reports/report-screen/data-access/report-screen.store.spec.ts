@@ -18,6 +18,7 @@ import {
 } from '../../../../core/session/session.testing';
 import { FileSaver } from '../../../../core/files/file-saver';
 import { ReportScreenStore } from './report-screen.store';
+import { envelopeOk } from '@lms/mocks';
 
 describe('assessment report integration', () => {
   let harness: RouterTestingHarness;
@@ -126,5 +127,101 @@ describe('assessment report integration', () => {
     await settle();
     expect(store.filters$().userId).toBe('000099');
     expect(store.total$()).toBe(0);
+  });
+  it('renders real overview charts and switches the grouped table without another report request', async () => {
+    const store = await open('/reports');
+    const data = store.overview$();
+    if (!data) throw new Error('Overview missing');
+    expect(
+      store.resultChart$().reduce((sum, item) => sum + item.value, 0),
+    ).toBe(data.learners);
+    expect(store.resultChart$()[0].value).toBe(data.passedLearners);
+    expect(store.scoreComparison$().every((g) => g.averageScore !== null)).toBe(
+      true,
+    );
+    const spy = vi.spyOn(TestBed.inject(MockBackend), 'handle');
+    const element = harness.routeNativeElement as HTMLElement;
+    expect(
+      element.querySelector('a[aria-current="page"]')?.textContent,
+    ).toContain('Tổng quan');
+    const toggle = [
+      ...element.querySelectorAll<HTMLButtonElement>('button'),
+    ].find((b) => b.textContent?.includes('Theo đơn vị'));
+    toggle?.click();
+    await settle();
+    expect(store.grouping$()).toBe('org');
+    expect(store.groupTotal$()).toBe(data.byOrg.length);
+    expect(store.groupedRows$().map((g) => g.id)).toEqual(
+      data.byOrg.slice(0, 10).map((g) => String(g.id ?? 'unknown')),
+    );
+    expect(spy.mock.calls.some(([e]) => e === api.overview)).toBe(false);
+  });
+  it('shows empty charts and missing scores instead of inventing zero-percent results', async () => {
+    const backend = TestBed.inject(MockBackend),
+      handle = backend.handle.bind(backend);
+    vi.spyOn(backend, 'handle').mockImplementation((endpoint, request) =>
+      endpoint === api.overview
+        ? {
+            status: 200,
+            body: envelopeOk({
+              gradedAttempts: 0,
+              learners: 0,
+              passedLearners: 0,
+              passRate: null,
+              averageScore: null,
+              inProgressAttempts: 0,
+              byQuiz: [],
+              byOrg: [],
+            }),
+          }
+        : handle(endpoint, request),
+    );
+    const store = await open('/reports');
+    expect(store.resultChart$()).toEqual([]);
+    expect(store.scoreComparison$()).toEqual([]);
+    const element = harness.routeNativeElement as HTMLElement;
+    expect(element.textContent).toContain('Chưa có điểm đã chấm');
+    expect(element.querySelector('ui-donut-chart')).toBeNull();
+    expect(
+      [...element.querySelectorAll('.report-screen__metrics dd')].filter(
+        (el) => el.textContent?.trim() === '—',
+      ),
+    ).toHaveLength(2);
+  });
+  it('applies the filter form to overview charts and resets both the inputs and results', async () => {
+    const store = await open('/reports');
+    const initial = store.overview$()?.gradedAttempts;
+    const element = harness.routeNativeElement as HTMLElement;
+    const field = element.querySelector<HTMLInputElement>(
+      'ui-field[label="ID bài kiểm tra"] input',
+    );
+    if (!field) throw new Error('Quiz filter missing');
+    field.value = '99999';
+    field.dispatchEvent(new Event('input', { bubbles: true }));
+    await settle();
+    element
+      .querySelector('form')
+      ?.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+    await settle();
+    expect(store.activeFilterCount$()).toBe(1);
+    expect(store.overview$()?.gradedAttempts).toBe(0);
+    expect(store.resultChart$()).toEqual([]);
+    const reset = [
+      ...element.querySelectorAll<HTMLButtonElement>('button'),
+    ].find((button) => button.textContent?.includes('Đặt lại'));
+    reset?.click();
+    await settle();
+    expect(field.value).toBe('');
+    expect(store.activeFilterCount$()).toBe(0);
+    expect(store.overview$()?.gradedAttempts).toBe(initial);
+    store.applyFilters({
+      from: '2026-11-01T02:00:00.000Z',
+      to: '2026-11-01T02:00:00.001Z',
+    });
+    await settle();
+    expect(store.overview$()?.gradedAttempts).toBe(initial);
+    store.applyFilters({ to: '2026-11-01T02:00:00.000Z' });
+    await settle();
+    expect(store.overview$()?.gradedAttempts).toBe(0);
   });
 });

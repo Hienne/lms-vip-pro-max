@@ -78,7 +78,8 @@ export const CompetencyV1Schema = z.object({
 export const QuestionSummaryV1Schema = z.object({
   id: z.number().int(),
   code: z.string(),
-  courseId: z.number().int(),
+  programId: z.number().int().nullable().optional(),
+  courseId: z.number().int().nullable(),
   lessonId: z.number().int().nullable(),
   competencyId: z.number().int(),
   competencyName: z.string().nullable(),
@@ -97,7 +98,8 @@ export const QuestionSummaryV1Schema = z.object({
 export const QuestionDetailV1Schema = z.object({
   id: z.number().int(),
   code: z.string(),
-  courseId: z.number().int(),
+  programId: z.number().int().nullable().optional(),
+  courseId: z.number().int().nullable(),
   lessonId: z.number().int().nullable(),
   competencyId: z.number().int(),
   questionType: QuestionTypeV1Schema,

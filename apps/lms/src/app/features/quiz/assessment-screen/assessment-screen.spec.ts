@@ -1,9 +1,13 @@
+import { Dialog } from '@angular/cdk/dialog';
+import { HttpTestingController } from '@angular/common/http/testing';
+import { ActivatedRoute, convertToParamMap, Router } from '@angular/router';
+import { EMPTY, of } from 'rxjs';
+import { provideEnvelopeHttpClient } from '../../../core/http/http.testing';
 import { RouterTestingHarness } from '@angular/router/testing';
 import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { createAppRoutes } from '../../../app.routes';
 import {
-  APP_CONFIG,
   parseAppConfig,
   provideAppConfig,
 } from '../../../core/config/app-config';
@@ -15,20 +19,18 @@ import {
 import { SessionStore } from '../../../core/session/session.store';
 import { TokenStore } from '../../../core/session/token-store';
 import { MockBackend } from '../../../core/dev/mock-api/mock-api.interceptor';
-import { computed, Injectable, signal } from '@angular/core';
+import { Injectable, signal } from '@angular/core';
 import { AssessmentScreen } from './assessment-screen';
 import { AssessmentScreenStore } from './data-access/assessment-screen.store';
+import { LeavePrompt } from '../../../core/routing/unsaved-changes.guard';
 
-/** The store as it is while the backend lacks the program question bank, with the seeded data. */
-@Injectable()
-class PendingStore extends AssessmentScreenStore {
-  override readonly integrationPending$ = computed(() => true);
-}
 import {
   programAssessmentEndpoints as api,
+  trainingCatalogEndpoints,
+  courseEndpoints,
   type ProgramQuestionRequest,
 } from '@lms/contracts';
-import { envelopeError } from '@lms/mocks';
+import { envelopeError, envelopeOk } from '@lms/mocks';
 import {
   FakeSessionStore,
   fakeSession,
@@ -315,86 +317,111 @@ describe('AssessmentScreen (admin)', () => {
       'Thêm câu hỏi',
     );
   });
-  it('does not send proposed program requests or log out a real-backend session before integration', async () => {
-    TestBed.overrideProvider(APP_CONFIG, {
-      useValue: parseAppConfig(
-        testAppConfig({ mockApi: true, mockBackend: false }),
-      ),
-    });
-    await open('/admin/questions');
+  function enterQuizTitle(value: string): void {
+    const input = el.querySelector<HTMLInputElement>(
+      'ui-field[label="Tên bài kiểm tra"] input',
+    );
+    if (!input) throw Error('Quiz title field missing');
+    input.value = value;
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+  }
+  function chooseQuestion(code: string): void {
+    const label = [...el.querySelectorAll('.assessment__pool label')].find(
+      (x) => x.textContent?.includes(code + ' ·'),
+    );
+    const input = label?.querySelector<HTMLInputElement>('input');
+    if (!input) throw Error('Pool question missing: ' + code);
+    input.checked = true;
+    input.dispatchEvent(new Event('change', { bubbles: true }));
+  }
+  it('creates a quiz from programId using another course of the same program', async () => {
     const spy = vi.spyOn(TestBed.inject(MockBackend), 'handle');
-    store().editQuestion(null);
-    store().retry();
-    await settle();
-    expect(store().integrationPending$()).toBe(true);
-    expect(store().editorOpen$()).toBe(false);
-    expect(text()).toContain(
-      'Ngân hàng câu hỏi theo chương trình chưa sẵn sàng',
-    );
-    expect(text()).toContain(
-      'Bài kiểm tra hiện có vẫn dùng bộ câu hỏi đã gán.',
-    );
-    expect(text()).not.toMatch(/API|Thêm câu hỏi/);
+    await open('/admin/quizzes/new?programId=2');
+    const leavePrompt = vi.fn(() => of(true));
+    TestBed.inject(LeavePrompt).use(leavePrompt);
+    expect(store().selectedProgramId$()).toBe(2);
     expect(
-      spy.mock.calls.some(([e]) =>
-        e.path.startsWith('/api/assessment-program/'),
+      store()
+        .courses$()
+        ?.items.every((c) => c.programId === 2),
+    ).toBe(true);
+    expect(
+      spy.mock.calls.some(
+        ([e, r]) =>
+          e === courseEndpoints.instructorCourses &&
+          r.query['programId'] === '2',
       ),
-    ).toBe(false);
-    expect(TestBed.inject(TokenStore).read()).toBeTruthy();
+    ).toBe(true);
+    enterQuizTitle('Bài thi theo chương trình');
+    chooseQuestion('CH-CIF-01');
+    await settle();
+    store().selectCourse('5');
+    await settle();
+    el = harness.routeNativeElement as HTMLElement;
+    expect(
+      el.querySelector<HTMLInputElement>(
+        'ui-field[label="Tên bài kiểm tra"] input',
+      )?.value,
+    ).toBe('Bài thi theo chương trình');
+    expect(store().selectedProgramId$()).toBe(2);
+    el.querySelector('form')?.dispatchEvent(
+      new Event('submit', { bubbles: true, cancelable: true }),
+    );
+    await settle();
+    expect(
+      spy.mock.calls.find(([e]) => e === api.createQuiz)?.[1].body,
+    ).toMatchObject({ courseId: 5, title: 'Bài thi theo chương trình' });
+    expect(
+      spy.mock.calls.find(([e]) => e === api.replacePool)?.[1].body,
+    ).toMatchObject({ items: [{ questionId: 1 }] });
+    expect(store().quizSaveError$()).toBeUndefined();
+    expect(leavePrompt).not.toHaveBeenCalled();
+    expect(TestBed.inject(Router).url).toMatch(/^\/admin\/quizzes\/\d+/);
+    el = harness.routeNativeElement as HTMLElement;
+    enterQuizTitle('Thay đổi chưa lưu sau khi tạo');
+    await settle();
+    const screen = harness.routeDebugElement
+      ?.componentInstance as AssessmentScreen;
+    expect(screen.hasUnsavedChanges()).toBe(true);
   });
-
-  describe('while the program question bank is missing', () => {
-    const REASON =
-      'Cần ngân hàng câu hỏi theo chương trình để tạo bài kiểm tra mới.';
-
-    beforeEach(() => {
-      TestBed.overrideProvider(APP_CONFIG, {
-        useValue: parseAppConfig(
-          testAppConfig({ mockApi: true, mockBackend: false }),
-        ),
-      });
-    });
-
-    it('offers no "Thêm câu hỏi" on the question bank', async () => {
-      await open('/admin/questions');
-      expect(el.querySelector('ui-page-header button')).toBeNull();
-    });
-
-    it('disables "Tạo bài kiểm tra" and says why', async () => {
-      await open('/admin/quizzes');
-      const create = el.querySelector<HTMLElement>(
-        'ui-page-header a[uiButton]',
-      );
-      expect(create?.textContent).toContain('Tạo bài kiểm tra');
-      expect(create?.getAttribute('aria-disabled')).toBe('true');
-      const reason = el.querySelector(
-        `#${create?.getAttribute('aria-describedby')}`,
-      );
-      expect(reason?.textContent?.trim()).toBe(REASON);
-    });
-
-    it('explains the empty builder and keeps its save disabled', async () => {
-      // The builder needs the course loaded, which the seeded backend serves only with mockBackend.
-      TestBed.overrideProvider(APP_CONFIG, {
-        useValue: parseAppConfig(
-          testAppConfig({ mockApi: true, mockBackend: true }),
-        ),
-      });
-      TestBed.overrideComponent(AssessmentScreen, {
-        set: {
-          providers: [
-            { provide: AssessmentScreenStore, useClass: PendingStore },
-          ],
-        },
-      });
-      await open('/admin/quizzes/new?courseId=3');
-      expect(el.querySelector('ui-alert')?.textContent).toContain(REASON);
-      const save = [...el.querySelectorAll('button')].find((b) =>
-        b.textContent?.includes('Lưu cấu hình'),
-      );
-      expect(save?.disabled).toBe(true);
-      expect(text()).not.toContain('khi hệ thống cập nhật hỗ trợ');
-    });
+  it('keeps quiz settings but clears incompatible selected questions on a program change', async () => {
+    await open('/admin/quizzes/new?programId=2');
+    enterQuizTitle('Giữ thông tin bài thi');
+    chooseQuestion('CH-CIF-01');
+    await settle();
+    store().selectProgram('3');
+    await settle();
+    expect(store().selectedProgramId$()).toBe(3);
+    expect(
+      store()
+        .courses$()
+        ?.items.every((c) => c.programId === 3),
+    ).toBe(true);
+    expect(
+      el.querySelector<HTMLInputElement>(
+        'ui-field[label="Tên bài kiểm tra"] input',
+      )?.value,
+    ).toBe('Giữ thông tin bài thi');
+    expect(el.querySelectorAll('.assessment__pool input:checked')).toHaveLength(
+      0,
+    );
+  });
+  it('blocks a course/program mismatch from a deep link until the author selects a matching course', async () => {
+    await open('/admin/quizzes/new?programId=3&courseId=1');
+    expect(store().courseProgramMismatch$()).toBe(true);
+    expect(text()).toContain('không thuộc chương trình đã chọn');
+    expect(el.querySelector('form')).toBeNull();
+    store().selectCourse('2');
+    await settle();
+    expect(store().courseProgramMismatch$()).toBe(false);
+    expect(store().selectedProgramId$()).toBe(3);
+    expect(el.querySelector('form')).toBeTruthy();
+  });
+  it('links the question bank to quiz creation with its selected program', async () => {
+    await open('/admin/questions?programId=2');
+    expect(el.querySelector('ui-page-header a')?.getAttribute('href')).toBe(
+      '/admin/quizzes/new?programId=2',
+    );
   });
 
   describe('question picker pagination', () => {
@@ -450,5 +477,157 @@ describe('AssessmentScreen (admin)', () => {
     expect(
       el.querySelector<HTMLButtonElement>('ui-page-header button')?.disabled,
     ).toBe(false);
+  });
+});
+
+describe('Assessment program catalogue with the real backend', () => {
+  let backend: HttpTestingController;
+  let store: AssessmentScreenStore;
+  const program = (id: number, ownerOrgId = 1) => ({
+    id,
+    ownerOrgId,
+    code: 'P' + id,
+    name: 'Chương trình ' + id,
+    status: 'published',
+    rowVersion: 0,
+  });
+  const page = (id: number, index = 0, totalPages = 1, ownerOrgId = 1) => ({
+    items: [program(id, ownerOrgId)],
+    page: index,
+    size: 100,
+    totalPages,
+    totalElements: totalPages,
+  });
+  beforeEach(() => {
+    TestBed.configureTestingModule({
+      providers: [
+        ...provideEnvelopeHttpClient(),
+        provideAppConfig(testAppConfig({ mockApi: true, mockBackend: false })),
+        { provide: SessionStore, useClass: FakeSessionStore },
+        {
+          provide: Router,
+          useValue: { url: '/admin/questions', events: EMPTY },
+        },
+        {
+          provide: ActivatedRoute,
+          useValue: {
+            paramMap: of(convertToParamMap({})),
+            queryParamMap: of(convertToParamMap({ programId: '2' })),
+          },
+        },
+        { provide: Dialog, useValue: {} },
+        AssessmentScreenStore,
+      ],
+    });
+    backend = TestBed.inject(HttpTestingController);
+    store = TestBed.inject(AssessmentScreenStore);
+  });
+  afterEach(() => {
+    TestBed.tick();
+    for (const req of backend.match((r) => r.url === '/api/v1/questions')) {
+      if (req.cancelled) continue;
+      req.flush(
+        envelopeOk({
+          items: [],
+          page: 0,
+          size: 20,
+          totalPages: 0,
+          totalElements: 0,
+        }),
+      );
+    }
+    backend.verify();
+  });
+  function request(ownerOrgId = 1, index = 0) {
+    TestBed.tick();
+    for (const option of backend.match((r) => r.url === '/api/v1/competencies'))
+      option.flush(envelopeOk([]));
+    const req = backend.expectOne(
+      (r) =>
+        r.url === trainingCatalogEndpoints.listPrograms.path &&
+        r.params.get('page') === String(index),
+    );
+    expect(req.request.method).toBe('GET');
+    expect(req.request.params.get('ownerOrgId')).toBe(String(ownerOrgId));
+    expect(req.request.params.get('size')).toBe('100');
+    expect(req.request.params.has('q')).toBe(false);
+    return req;
+  }
+  it('loads the catalogue and real program question contract', () => {
+    fakeSession().user.set(seedProfile('000002'));
+    request().flush(envelopeOk(page(2)));
+    TestBed.tick();
+    expect(store.programs$()?.items).toMatchObject([
+      { id: 2, name: 'Chương trình 2' },
+    ]);
+    expect(store.selectedProgramId$()).toBe(2);
+    const questions = backend.expectOne((r) => r.url === '/api/v1/questions');
+    expect(questions.request.params.get('programId')).toBe('2');
+    expect(questions.request.params.has('courseId')).toBe(false);
+    questions.flush(
+      envelopeOk({
+        items: [
+          {
+            id: 11,
+            code: 'P2-Q1',
+            programId: 2,
+            courseId: null,
+            lessonId: null,
+            competencyId: 1,
+            competencyName: 'Năng lực',
+            questionType: 'SINGLE',
+            contentPreview: 'Câu hỏi',
+            difficulty: 'EASY',
+            points: 1,
+            status: 'ACTIVE',
+            contentVersion: 1,
+            optionCount: 2,
+            correctCount: 1,
+            usedInQuizCount: 0,
+            rowVersion: 0,
+            updateTime: null,
+          },
+        ],
+        page: 0,
+        size: 20,
+        totalPages: 1,
+        totalElements: 1,
+      }),
+    );
+    TestBed.tick();
+    expect(store.questionRows$()[0]).toMatchObject({
+      programId: 2,
+      correctCount: 1,
+    });
+  });
+  it('searches all catalogue pages locally without sending an unsupported q filter', () => {
+    fakeSession().user.set(seedProfile('000002'));
+    request().flush(envelopeOk(page(1, 0, 2)));
+    request(1, 1).flush(envelopeOk(page(2, 1, 2)));
+    TestBed.tick();
+    store.searchPrograms('P2');
+    TestBed.tick();
+    expect(store.programs$()?.items.map((p) => p.id)).toEqual([2]);
+    expect(store.selectedProgramId$()).toBe(2);
+    backend.expectNone(
+      (r) => r.url === trainingCatalogEndpoints.listPrograms.path,
+    );
+  });
+  it('waits for the session org and reloads its catalogue when the org changes', () => {
+    TestBed.tick();
+    for (const req of backend.match((r) => r.url === '/api/v1/competencies'))
+      req.flush(envelopeOk([]));
+    backend.expectNone(() => true);
+    const profile = seedProfile('000002');
+    if (!profile.org) throw Error('Fixture org missing');
+    fakeSession().user.set(profile);
+    request().flush(envelopeOk(page(2)));
+    TestBed.tick();
+    fakeSession().user.set({ ...profile, org: { ...profile.org, id: 2 } });
+    request(2).flush(envelopeOk(page(5, 0, 1, 2)));
+    TestBed.tick();
+    expect(store.programs$()?.items.map((p) => p.id)).toEqual([5]);
+    expect(store.selectedProgramId$()).toBe(2);
+    expect(store.bankProgramMissing$()?.id).toBe(2);
   });
 });

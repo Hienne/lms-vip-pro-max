@@ -38,6 +38,22 @@ describe('toProfile', () => {
     expect(profile.menus).toContain('COURSE_MANAGEMENT');
   });
 
+  it('keeps course authoring while excluding shared-bank management from an OWN instructor grant', () => {
+    const profile = toProfile({
+      ...seedMe('000005'),
+      roleGrants: [
+        {
+          roleCode: 'INSTRUCTOR',
+          roleName: 'Giảng viên',
+          scope: { type: 'OWN' },
+        },
+      ],
+    });
+    expect(profile.menus).toContain('COURSE_MANAGEMENT');
+    expect(profile.menus).toContain('QUIZ_MANAGEMENT');
+    expect(profile.menus).not.toContain('QUESTION_BANK');
+  });
+
   it('lists the functions the app has a screen for, in the backend order, as menus and as the nav', () => {
     const profile = toProfile(seedMe('000002'));
     expect(

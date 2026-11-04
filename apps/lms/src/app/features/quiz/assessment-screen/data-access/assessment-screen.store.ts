@@ -2,21 +2,31 @@ import { Dialog } from '@angular/cdk/dialog';
 import { computed, inject, Injectable, signal } from '@angular/core';
 import { ActivatedRoute, NavigationEnd, Router } from '@angular/router';
 import { toSignal } from '@angular/core/rxjs-interop';
-import { filter, firstValueFrom, of, switchMap, tap } from 'rxjs';
+import {
+  EMPTY,
+  expand,
+  filter,
+  firstValueFrom,
+  of,
+  reduce,
+  switchMap,
+  tap,
+} from 'rxjs';
 import {
   programAssessmentEndpoints as api,
-  assessmentV1Endpoints,
   courseEndpoints,
+  trainingCatalogEndpoints,
+  type TrainingProgram,
   type ProgramQuestionQuery,
   type ProgramQuestionRequest,
   type QuizRequestV1,
   type QuizDetailV1,
   type QuizPoolRequestV1,
 } from '@lms/contracts';
-import { APP_CONFIG } from '../../../../core/config/app-config';
 import { serverData } from '../../../../core/data-access/server-data';
 import { serverMutation } from '../../../../core/data-access/server-mutation';
 import { EndpointClient } from '../../../../core/http/endpoint-client';
+import { SessionStore } from '../../../../core/session/session.store';
 import { confirm, type DataTableSort } from '@lms/ui';
 
 const positiveId = (value: string | null | undefined): number | undefined => {
@@ -24,28 +34,11 @@ const positiveId = (value: string | null | undefined): number | undefined => {
   return Number.isSafeInteger(id) && id > 0 ? id : undefined;
 };
 
-/** Program-scoped bank and course-scoped quizzes; pending program API integration. */
+/** Program-scoped bank and course-scoped quizzes; v1 program bank integration. */
 @Injectable()
 export class AssessmentScreenStore {
   private readonly client = inject(EndpointClient);
-  private readonly appConfig = inject(APP_CONFIG);
-  private readonly quizApi = this.appConfig.mockBackend
-    ? api
-    : assessmentV1Endpoints;
-  readonly integrationPending$ = computed(
-    () =>
-      !this.appConfig.mockBackend &&
-      [
-        api.programs,
-        api.questions,
-        api.question,
-        api.createQuestion,
-        api.updateQuestion,
-        api.bulkQuestionStatus,
-        api.bulkDeleteQuestions,
-        api.replacePool,
-      ].some((endpoint) => endpoint.served === 'mock'),
-  );
+  private readonly session = inject(SessionStore);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly dialog = inject(Dialog);
@@ -57,7 +50,7 @@ export class AssessmentScreenStore {
   );
   private readonly state = {
     courseId: signal<number | undefined>(undefined),
-    programId: signal<number | undefined>(undefined),
+    programId: signal<number | null | undefined>(undefined),
     programSearch: signal(''),
     programPage: signal(0),
     courseSearch: signal(''),
@@ -77,6 +70,7 @@ export class AssessmentScreenStore {
     selectedIds: signal<number[]>([]),
     // A successful settings write must not be repeated as a create if the separate pool write fails.
     saveReceipt: signal<QuizDetailV1 | undefined>(undefined),
+    completedSave: signal<QuizDetailV1 | undefined>(undefined),
   };
   readonly routeId$ = computed(() => this.params()?.get('id') ?? '');
   readonly routeScreen$ = computed(() => {
@@ -90,8 +84,32 @@ export class AssessmentScreenStore {
           ? 'config'
           : '';
   });
+  readonly isNewQuiz$ = computed(
+    () => this.routeScreen$() === 'config' && this.routeId$() === 'new',
+  );
+  readonly canCreateQuiz$ = computed(() =>
+    this.session.menus$().includes('QUIZ_MANAGEMENT'),
+  );
+  readonly canManageBank$ = computed(() =>
+    this.session.menus$().includes('QUESTION_BANK'),
+  );
+  readonly courseProgramFilter$ = computed(() => {
+    if (this.routeScreen$() === 'config' && !this.isNewQuiz$())
+      return undefined;
+    return this.state.programId() === undefined
+      ? positiveId(this.queryParams()?.get('programId'))
+      : (this.state.programId() ?? undefined);
+  });
+  readonly courseProgramFilterMissing$ = computed(() => {
+    const id = this.courseProgramFilter$();
+    return id &&
+      this.programsData.value() &&
+      !this.programsData.value()?.some((p) => p.id === id)
+      ? id
+      : undefined;
+  });
   private readonly coursesData = serverData(
-    (query: { q?: string; page: number; size: number }) =>
+    (query: { q?: string; programId?: number; page: number; size: number }) =>
       this.client.call(courseEndpoints.instructorCourses, { query }),
     {
       params: () =>
@@ -99,29 +117,62 @@ export class AssessmentScreenStore {
           ? undefined
           : {
               q: this.state.courseSearch() || undefined,
+              programId: this.courseProgramFilter$(),
               page: this.state.coursePage(),
               size: 50,
             },
     },
   );
   private readonly programsData = serverData(
-    (query: { q?: string; page: number; size: number }) =>
-      this.client.call(api.programs, { query }),
+    (ownerOrgId: number) =>
+      this.client
+        .call(trainingCatalogEndpoints.listPrograms, {
+          query: { ownerOrgId, page: 0, size: 100 },
+        })
+        .pipe(
+          expand((page) =>
+            page.page + 1 < page.totalPages
+              ? this.client.call(trainingCatalogEndpoints.listPrograms, {
+                  query: { ownerOrgId, page: page.page + 1, size: 100 },
+                })
+              : EMPTY,
+          ),
+          reduce(
+            (programs, page) => [...programs, ...page.items],
+            [] as TrainingProgram[],
+          ),
+        ),
     {
-      params: () =>
-        this.integrationPending$()
-          ? undefined
-          : {
-              q: this.state.programSearch() || undefined,
-              page: this.state.programPage(),
-              size: 50,
-            },
+      // Reuse the course editor's catalogue source for bank and quiz scope selectors.
+      params: () => this.session.user$()?.org?.id,
     },
   );
-  readonly programs$ = this.programsData.value;
+  readonly programOptions$ = computed(() => this.programsData.value() ?? []);
+  readonly programs$ = computed(() => {
+    const programs = this.programsData.value();
+    if (!programs) return undefined;
+    // The existing catalogue API has no q filter; search its loaded names/codes locally.
+    const q = this.state.programSearch().trim().toLocaleLowerCase('vi');
+    const matching = programs.filter(
+      (p) => !q || `${p.name} ${p.code}`.toLocaleLowerCase('vi').includes(q),
+    );
+    const size = 50;
+    const totalPages = Math.ceil(matching.length / size);
+    const page = Math.min(
+      this.state.programPage(),
+      Math.max(0, totalPages - 1),
+    );
+    return {
+      items: matching.slice(page * size, (page + 1) * size),
+      page,
+      size,
+      totalPages,
+      totalElements: matching.length,
+    };
+  });
   readonly programSearch$ = this.state.programSearch.asReadonly();
   private readonly configData = serverData(
-    (id: number) => this.client.call(this.quizApi.quiz, { params: { id } }),
+    (id: number) => this.client.call(api.quiz, { params: { id } }),
     {
       params: () =>
         this.routeScreen$() === 'config'
@@ -137,15 +188,27 @@ export class AssessmentScreenStore {
     () =>
       this.config$()?.courseId ??
       this.state.courseId() ??
-      positiveId(this.queryParams()?.get('courseId')) ??
+      (this.state.programId() === undefined
+        ? positiveId(this.queryParams()?.get('courseId'))
+        : undefined) ??
       this.courses$()?.items[0]?.courseId,
   );
   readonly selectedCourseTitle$ = computed(
     () =>
       this.courses$()?.items.find(
         (x) => x.courseId === this.selectedCourseId$(),
-      )?.title ?? `Khóa học #${this.selectedCourseId$() ?? ''}`,
+      )?.title ??
+      (this.courseData.value()?.course.id === this.selectedCourseId$()
+        ? this.courseData.value()?.revision.title
+        : undefined) ??
+      `Khóa học #${this.selectedCourseId$() ?? ''}`,
   );
+  readonly selectedCourseMissing$ = computed(() => {
+    const id = this.selectedCourseId$();
+    return id && !this.courses$()?.items.some((c) => c.courseId === id)
+      ? id
+      : undefined;
+  });
   private readonly courseData = serverData(
     (id: number) =>
       this.client.call(courseEndpoints.getCourse, {
@@ -159,21 +222,33 @@ export class AssessmentScreenStore {
   );
   private readonly competenciesData = serverData(
     () => this.client.call(api.competencies, { query: {} }),
-    { params: () => (this.integrationPending$() ? undefined : true) },
+    { params: () => (this.session.user$() ? true : undefined) },
   );
   readonly competencies$ = computed(() => this.competenciesData.value() ?? []);
-  readonly selectedProgramId$ = computed(() =>
-    this.routeScreen$() === 'config'
-      ? (this.courseData.value()?.revision.programId ?? undefined)
-      : (this.state.programId() ??
-        this.programs$()?.items.find(
-          (p) => p.id === positiveId(this.queryParams()?.get('programId')),
-        )?.id ??
-        this.programs$()?.items[0]?.id),
+  readonly selectedProgramId$ = computed(() => {
+    if (this.routeScreen$() === 'questions')
+      return this.courseProgramFilter$() ?? this.programs$()?.items[0]?.id;
+    const id = this.selectedCourseId$();
+    return (
+      (this.courseData.value()?.course.id === id
+        ? this.courseData.value()?.revision.programId
+        : undefined) ??
+      this.courses$()?.items.find((c) => c.courseId === id)?.programId ??
+      this.courseProgramFilter$()
+    );
+  });
+  readonly courseProgramMismatch$ = computed(
+    () =>
+      this.isNewQuiz$() &&
+      !!this.courseProgramFilter$() &&
+      !!this.selectedCourseId$() &&
+      this.courseData.value()?.course.id === this.selectedCourseId$() &&
+      this.courseData.value()?.revision.programId !==
+        this.courseProgramFilter$(),
   );
   readonly selectedProgramTitle$ = computed(
     () =>
-      this.programs$()?.items.find((p) => p.id === this.selectedProgramId$())
+      this.programsData.value()?.find((p) => p.id === this.selectedProgramId$())
         ?.name ??
       this.courses$()?.items.find(
         (c) => c.courseId === this.selectedCourseId$(),
@@ -182,18 +257,34 @@ export class AssessmentScreenStore {
         ? 'Chương trình #' + this.selectedProgramId$()
         : 'Chưa gắn chương trình'),
   );
+  readonly bankProgramMissing$ = computed(() => {
+    const id = this.selectedProgramId$();
+    return id && !this.programs$()?.items.some((p) => p.id === id)
+      ? { id, name: this.selectedProgramTitle$() }
+      : undefined;
+  });
+  readonly publishBlockedReason$ = computed(() => {
+    const detail = this.configDetail$();
+    return detail && detail.activePoolSize < detail.quiz.questionCount
+      ? `Bộ đề có ${detail.activePoolSize} câu đang dùng, cần ít nhất ${detail.quiz.questionCount} câu trước khi xuất bản.`
+      : '';
+  });
   private readonly questionQuery = computed<ProgramQuestionQuery | undefined>(
     () => {
       const programId = this.selectedProgramId$();
       if (
-        this.integrationPending$() ||
+        !this.session.user$() ||
         !programId ||
+        this.courseProgramMismatch$() ||
         !['questions', 'config'].includes(this.routeScreen$())
       )
         return undefined;
       const f = this.state.questionFilters();
       return {
         programId,
+        ...(this.routeScreen$() === 'config'
+          ? { courseId: this.selectedCourseId$() }
+          : {}),
         page: this.state.questionPage() - 1,
         size: 20,
         sort: `${this.state.questionSort().key},${this.state.questionSort().dir}`,
@@ -222,7 +313,7 @@ export class AssessmentScreenStore {
   );
   private readonly quizzesData = serverData(
     (query: { courseId: number; page: number; size: number; sort: string }) =>
-      this.client.call(this.quizApi.courseQuizList, { query }),
+      this.client.call(api.courseQuizList, { query }),
     {
       params: () =>
         this.routeScreen$() === 'quizzes' && this.selectedCourseId$()
@@ -239,9 +330,7 @@ export class AssessmentScreenStore {
     (id: number) => this.client.call(api.question, { params: { id } }),
     {
       params: () =>
-        !this.integrationPending$() && this.state.editorOpen()
-          ? this.state.questionId()
-          : undefined,
+        this.state.editorOpen() ? this.state.questionId() : undefined,
     },
   );
   readonly questions$ = this.questionsData.value;
@@ -343,12 +432,12 @@ export class AssessmentScreenStore {
           ? receipt
           : this.configDetail$();
       const save = current
-        ? this.client.call(this.quizApi.updateQuiz, {
+        ? this.client.call(api.updateQuiz, {
             params: { id: current.quiz.id },
             query: { expectedVersion: current.quiz.rowVersion },
             body: input.command,
           })
-        : this.client.call(this.quizApi.createQuiz, { body: input.command });
+        : this.client.call(api.createQuiz, { body: input.command });
       return save.pipe(
         tap((detail) => this.setSaveReceipt(detail)),
         switchMap((detail) => {
@@ -362,16 +451,11 @@ export class AssessmentScreenStore {
           }));
           return JSON.stringify(before) === JSON.stringify(after)
             ? of(detail)
-            : this.client.call(
-                this.integrationPending$()
-                  ? this.quizApi.replacePool
-                  : api.replacePool,
-                {
-                  params: { id: detail.quiz.id },
-                  query: { expectedVersion: detail.quiz.rowVersion },
-                  body: input.pool,
-                },
-              );
+            : this.client.call(api.replacePool, {
+                params: { id: detail.quiz.id },
+                query: { expectedVersion: detail.quiz.rowVersion },
+                body: input.pool,
+              });
         }),
         tap((detail) => this.setSaveReceipt(detail)),
       );
@@ -380,6 +464,7 @@ export class AssessmentScreenStore {
       errors: 'alert',
       success: () => 'Đã lưu cấu hình và bộ câu hỏi',
       onSuccess: (detail) => {
+        this.state.completedSave.set(detail);
         this.configData.reload();
         void this.router.navigate(['/admin/quizzes', detail.quiz.id], {
           queryParams: { courseId: detail.quiz.courseId },
@@ -400,9 +485,7 @@ export class AssessmentScreenStore {
         body: { expectedVersion: detail.quiz.rowVersion },
       };
       return this.client.call(
-        action === 'publish'
-          ? this.quizApi.publishQuiz
-          : this.quizApi.closeQuiz,
+        action === 'publish' ? api.publishQuiz : api.closeQuiz,
         input,
       );
     },
@@ -416,6 +499,7 @@ export class AssessmentScreenStore {
     },
   );
   readonly questionSaveError$ = this.questionSave.error;
+  readonly completedQuizSave$ = this.state.completedSave.asReadonly();
   readonly invalidQuizId$ = computed(
     () =>
       this.routeScreen$() === 'config' &&
@@ -483,7 +567,7 @@ export class AssessmentScreenStore {
         : this.selectedIds$().filter((x) => x !== id),
     );
   }
-  private setProgramId(value: number | undefined): void {
+  private setProgramId(value: number | null | undefined): void {
     this.state.programId.set(value);
   }
   private setProgramSearch(value: string): void {
@@ -494,37 +578,43 @@ export class AssessmentScreenStore {
   }
   selectProgram(value: string): void {
     if (this.editorOpen$() || this.isSaving$()) return;
-    this.setProgramId(positiveId(value));
+    if (this.partialSave$()) return;
+    this.setProgramId(positiveId(value) ?? null);
+    this.setCourseId(undefined);
+    this.setCoursePage(0);
+    this.setCourseSearch('');
+    this.setQuizPage(1);
     this.setQuestionPage(1);
   }
   searchPrograms(value: string): void {
     if (this.editorOpen$() || this.isSaving$()) return;
     this.setProgramSearch(value);
-    this.setProgramId(undefined);
+    this.setProgramId(null);
     this.setProgramPage(0);
     this.setQuestionPage(1);
   }
   nextProgramPage(delta: number): void {
     const page = this.programs$();
     if (!page || this.editorOpen$() || this.isSaving$()) return;
-    this.setProgramId(undefined);
+    this.setProgramId(null);
     this.setProgramPage(
       Math.max(0, Math.min(page.totalPages - 1, page.page + delta)),
     );
     this.setQuestionPage(1);
   }
   selectCourse(value: string): void {
-    if (this.editorOpen$() || this.isSaving$()) return;
+    if (this.editorOpen$() || this.isSaving$() || this.partialSave$()) return;
     this.setCourseId(positiveId(value));
     this.setQuestionPage(1);
     this.setQuizPage(1);
   }
   searchCourses(value: string): void {
-    if (this.editorOpen$() || this.isSaving$()) return;
+    if (this.editorOpen$() || this.isSaving$() || this.partialSave$()) return;
     this.setCourseSearch(value);
     this.setCoursePage(0);
   }
   nextCoursePage(delta: number): void {
+    if (this.partialSave$() || this.isSaving$()) return;
     const page = this.courses$();
     if (page)
       this.setCoursePage(
@@ -532,12 +622,7 @@ export class AssessmentScreenStore {
       );
   }
   editQuestion(id: number | null): void {
-    if (
-      this.integrationPending$() ||
-      !this.selectedProgramId$() ||
-      this.isSaving$()
-    )
-      return;
+    if (!this.selectedProgramId$() || this.isSaving$()) return;
     this.questionSave.reset();
     this.setQuestionId(id ?? undefined);
     this.setEditorOpen(true);
@@ -550,7 +635,7 @@ export class AssessmentScreenStore {
   }
   saveQuestion(command: ProgramQuestionRequest): void {
     if (
-      !this.integrationPending$() &&
+      command.programId === this.selectedProgramId$() &&
       !this.isSaving$() &&
       !this.questionLoading$() &&
       !this.questionLoadError$()
@@ -558,18 +643,14 @@ export class AssessmentScreenStore {
       this.questionSave.run(command);
   }
   saveQuiz(command: QuizRequestV1, pool: QuizPoolRequestV1): void {
-    if (!this.isSaving$() && !this.invalidQuizId$()) {
-      // Until BE supports program pools, preserve its existing pool while allowing settings edits.
-      const nextPool = this.integrationPending$()
-        ? {
-            items: (this.configDetail$()?.pool ?? []).map((p) => ({
-              questionId: p.questionId,
-              sortNo: p.sortNo,
-              points: p.pointsOverride,
-            })),
-          }
-        : pool;
-      this.quizSave.run({ command, pool: nextPool });
+    if (
+      command.courseId === this.selectedCourseId$() &&
+      !this.isSaving$() &&
+      !this.invalidQuizId$() &&
+      !this.courseProgramMismatch$() &&
+      this.selectedProgramId$()
+    ) {
+      this.quizSave.run({ command, pool });
     }
   }
   async changeQuizState(action: 'publish' | 'close'): Promise<void> {
@@ -591,12 +672,7 @@ export class AssessmentScreenStore {
     if (accepted) this.quizState.run(action);
   }
   async bulkQuestions(action: 'ACTIVE' | 'INACTIVE' | 'delete'): Promise<void> {
-    if (
-      this.integrationPending$() ||
-      !this.selectedIds$().length ||
-      this.isBulkSaving$()
-    )
-      return;
+    if (!this.selectedIds$().length || this.isBulkSaving$()) return;
     if (
       action === 'delete' &&
       !(await firstValueFrom(

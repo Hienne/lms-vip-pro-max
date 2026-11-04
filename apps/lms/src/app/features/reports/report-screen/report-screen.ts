@@ -3,21 +3,25 @@ import { RouterLink } from '@angular/router';
 import {
   form,
   FormField,
-  submit,
+  FormRoot,
   validateStandardSchema,
 } from '@angular/forms/signals';
 import { z } from 'zod';
 import { AssessmentReportExportQuerySchema } from '@lms/contracts';
 import {
   Alert,
-  BarChart,
+  DonutChart,
   Button,
   Card,
   DataTable,
+  DataTableCell,
   Empty,
   ErrorState,
   Field,
   Input,
+  Icon,
+  FmtNumPipe,
+  FmtPctPipe,
   PageHeader,
   Select,
   Spinner,
@@ -68,17 +72,22 @@ const filterSchema = z
 @Component({
   selector: 'app-report-screen',
   imports: [
-    BarChart,
+    DonutChart,
     RouterLink,
     FormField,
+    FormRoot,
     Alert,
     Button,
     Card,
     DataTable,
+    DataTableCell,
     Empty,
     ErrorState,
     Field,
     Input,
+    Icon,
+    FmtNumPipe,
+    FmtPctPipe,
     PageHeader,
     Select,
     Spinner,
@@ -91,7 +100,7 @@ export class ReportScreen {
   protected readonly store = inject(ReportScreenStore);
   protected readonly dims = REPORT_DIMENSIONS;
   protected readonly groupColumns: readonly DataTableColumn[] = [
-    { key: 'name', label: 'Tên', sortable: false },
+    { key: 'name', label: 'Bài kiểm tra / đơn vị', sortable: false },
     { key: 'gradedAttempts', label: 'Lượt chấm', sortable: false },
     { key: 'learners', label: 'Học viên', sortable: false },
     { key: 'passedLearners', label: 'Học viên đạt', sortable: false },
@@ -111,28 +120,43 @@ export class ReportScreen {
     passed: '',
     groupBy: 'user' as 'user' | 'org',
   }));
-  protected readonly filterForm = form(this.filterModel, (path) =>
-    validateStandardSchema(path, filterSchema),
+  protected readonly filterForm = form(
+    this.filterModel,
+    (path) => validateStandardSchema(path, filterSchema),
+    { submission: { action: async () => this.applyFilters() } },
   );
-  protected applyFilters(event: Event): void {
-    event.preventDefault();
-    void submit(this.filterForm, async () => {
-      const f = this.filterModel();
-      this.store.applyFilters(
-        AssessmentReportExportQuerySchema.parse({
-          orgId: f.orgId ? Number(f.orgId) : undefined,
-          teamId: f.teamId ? Number(f.teamId) : undefined,
-          courseId: f.courseId ? Number(f.courseId) : undefined,
-          quizId: f.quizId ? Number(f.quizId) : undefined,
-          userId: f.userId || undefined,
-          from: f.from ? new Date(f.from).toISOString() : undefined,
-          to: f.to ? new Date(f.to).toISOString() : undefined,
-          status: f.status || undefined,
-          learnerStatus: f.learnerStatus || undefined,
-          passed: f.passed ? f.passed === 'true' : undefined,
-          groupBy: f.groupBy,
-        }),
-      );
+  private applyFilters(): void {
+    const f = this.filterModel();
+    this.store.applyFilters(
+      AssessmentReportExportQuerySchema.parse({
+        orgId: f.orgId ? Number(f.orgId) : undefined,
+        teamId: f.teamId ? Number(f.teamId) : undefined,
+        courseId: f.courseId ? Number(f.courseId) : undefined,
+        quizId: f.quizId ? Number(f.quizId) : undefined,
+        userId: f.userId || undefined,
+        from: f.from ? new Date(f.from).toISOString() : undefined,
+        to: f.to ? new Date(f.to).toISOString() : undefined,
+        status: f.status || undefined,
+        learnerStatus: f.learnerStatus || undefined,
+        passed: f.passed ? f.passed === 'true' : undefined,
+        groupBy: f.groupBy,
+      }),
+    );
+  }
+  protected resetFilters(): void {
+    this.filterForm().reset({
+      orgId: '',
+      teamId: '',
+      courseId: '',
+      quizId: '',
+      userId: '',
+      from: '',
+      to: '',
+      status: '',
+      learnerStatus: '',
+      passed: '',
+      groupBy: 'user',
     });
+    this.store.applyFilters({});
   }
 }
