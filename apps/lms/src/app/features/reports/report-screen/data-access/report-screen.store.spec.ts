@@ -146,22 +146,19 @@ describe('assessment report integration', () => {
       ]);
     });
 
-    it('reads courses as "code · name" from the server search, narrowed by the unit', async () => {
+    it('reads courses from the server search, narrowed by the unit', async () => {
       const spy = vi.spyOn(TestBed.inject(MockBackend), 'handle');
       const store = await open('/reports/results?orgId=1');
       expect(store.pickers.options$.courseId()).toContainEqual({
         id: 1,
         name: 'Tổng quan hệ thống Core Banking',
-        meta: 'NV-101',
       });
       store.pickers.search('courseId', 'change');
       await settle();
       expect(
         spy.mock.calls.filter(([e]) => e === learning.groups).at(-1)?.[1].query,
       ).toMatchObject({ groupBy: 'course', orgId: '1', q: 'change' });
-      expect(store.pickers.options$.courseId().map((c) => c.meta)).toEqual([
-        'VH-201',
-      ]);
+      expect(store.pickers.options$.courseId().map((c) => c.id)).toEqual([2]);
     });
 
     it('lists the quizzes of the picked course and clears the children of a changed parent', async () => {
@@ -196,11 +193,7 @@ describe('assessment report integration', () => {
       expect(store.pickers.selected$()).toEqual({
         orgId: { id: 1, name: 'Ban Quản lý và phát triển Core Banking' },
         teamId: { id: 7, name: 'Nhóm BA&QC Tiền gửi' },
-        courseId: {
-          id: 1,
-          name: 'Tổng quan hệ thống Core Banking',
-          meta: 'NV-101',
-        },
+        courseId: { id: 1, name: 'Tổng quan hệ thống Core Banking' },
         quizId: { id: 1, name: 'Luyện tập Core Banking' },
       });
       expect(store.pickers.errors$().courseId).toBeUndefined();

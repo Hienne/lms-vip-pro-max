@@ -38,7 +38,7 @@ export function learningCounts(
 const numberIs = (value: string | undefined, actual: number | null) =>
   value === undefined || value === '' || Number(value) === actual;
 
-/** The report filter: ids match exactly, `q` searches the learner and the course. */
+/** The report filter: ids match exactly, `q` searches the course code and title. */
 export function filterRows(
   rows: readonly LearningReportEnrollmentRow[],
   query: Query,
@@ -46,7 +46,7 @@ export function filterRows(
   const q = query['q']?.trim().toLocaleLowerCase('vi');
   const from = query['from'] ? Date.parse(query['from']) : undefined;
   const to = query['to'] ? Date.parse(query['to']) : undefined;
-  return rows.filter(({ enrollment: e, fullName }) => {
+  return rows.filter(({ enrollment: e }) => {
     const enrolled = e.enrolledAt ? Date.parse(e.enrolledAt) : undefined;
     return (
       (!query['userId'] || e.userId === query['userId']) &&
@@ -60,8 +60,8 @@ export function filterRows(
       (from === undefined || (enrolled !== undefined && enrolled >= from)) &&
       (to === undefined || (enrolled !== undefined && enrolled < to)) &&
       (!q ||
-        [e.userId, fullName, e.courseCode, e.courseTitle].some((text) =>
-          text?.toLocaleLowerCase('vi').includes(q),
+        [e.courseCode, e.courseTitle].some((text) =>
+          text.toLocaleLowerCase('vi').includes(q),
         ))
     );
   });
@@ -71,10 +71,7 @@ const GROUP_KEY: Record<
   LearningReportGroupBy,
   (row: LearningReportEnrollmentRow) => [string | null, string | null]
 > = {
-  course: ({ enrollment: e }) => [
-    String(e.courseId),
-    `${e.courseCode} ${e.courseTitle}`,
-  ],
+  course: ({ enrollment: e }) => [String(e.courseId), e.courseTitle],
   org: ({ enrollment: e, orgName }) => [
     e.orgId === null ? null : String(e.orgId),
     orgName,

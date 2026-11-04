@@ -51,15 +51,7 @@ const NOT_FOUND: Record<PickerKey, string> = {
 /** The most groups one picker lists; the backend's page limit. */
 const LIMIT = 100;
 
-/** A course group is named "CODE Title"; the code becomes the option's meta. */
-function courseOption(group: LearningReportGroup): ReportPickerOption {
-  const name = group.name ?? group.id;
-  const [, code, title] = /^([A-Z0-9][A-Z0-9._-]*) (.+)$/.exec(name) ?? [];
-  return code
-    ? { id: Number(group.id), name: title, meta: code }
-    : { id: Number(group.id), name };
-}
-
+/** A group as an option. A course group is named by its title alone: the report carries no code. */
 const groupOption = (group: LearningReportGroup): ReportPickerOption => ({
   id: Number(group.id),
   name: group.name ?? group.id,
@@ -168,7 +160,7 @@ export function reportPickers(applied: Signal<ReportFilters>) {
   const options: Record<PickerKey, Signal<readonly ReportPickerOption[]>> = {
     orgId: computed(() => (orgs.value() ?? []).map(groupOption)),
     teamId: computed(() => (teams.value() ?? []).map(groupOption)),
-    courseId: computed(() => (courses.value() ?? []).map(courseOption)),
+    courseId: computed(() => (courses.value() ?? []).map(groupOption)),
     quizId: computed(() => (quizzes.value() ?? []).flatMap(quizOption)),
   };
 
@@ -187,7 +179,7 @@ export function reportPickers(applied: Signal<ReportFilters>) {
     return {
       orgId: find(ids.orgId, orgs.value() && options.orgId()),
       teamId: find(ids.teamId, appliedTeam.value()?.map(groupOption)),
-      courseId: find(ids.courseId, appliedCourse.value()?.map(courseOption)),
+      courseId: find(ids.courseId, appliedCourse.value()?.map(groupOption)),
       quizId: find(ids.quizId, appliedQuiz.value()?.flatMap(quizOption)),
     };
   });
