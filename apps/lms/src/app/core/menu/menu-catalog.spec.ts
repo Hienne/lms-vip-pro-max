@@ -100,7 +100,52 @@ describe('menu catalog', () => {
     });
   });
 
+  describe('upcoming', () => {
+    const UPCOMING = [
+      'LESSON_MANAGEMENT',
+      'SYSTEM_AUDIT',
+      'KNOWLEDGE_HUB',
+      'ISSUE_HUB',
+    ];
+
+    it('marks exactly the functions whose entry screen is not built', () => {
+      const items = allSections().flatMap((s) => s.items);
+      expect(
+        items
+          .filter((i) => i.upcoming)
+          .map((i) => i.code)
+          .sort(),
+      ).toEqual([...UPCOMING].sort());
+    });
+
+    it('carries the flag on the sidebar of a user', () => {
+      const nav = navOf([
+        fn(1, 'COURSE_LEARNING', 1),
+        fn(2, 'KNOWLEDGE_HUB', 2),
+      ]);
+      const byCode = Object.fromEntries(
+        nav.flatMap((s) => s.items).map((i) => [i.code, i.upcoming]),
+      );
+      expect(byCode).toEqual({ COURSE_LEARNING: false, KNOWLEDGE_HUB: true });
+    });
+  });
+
   describe('homePathFor', () => {
+    it('skips a function whose entry screen is not built', () => {
+      expect(
+        homePathFor(
+          knownFunctions([
+            fn(1, 'PROFILE', 1),
+            fn(2, 'KNOWLEDGE_HUB', 2),
+            fn(3, 'REPORTING', 3),
+          ]),
+        ),
+      ).toBe(entryHref('REPORTING'));
+      expect(homePathFor(knownFunctions([fn(1, 'KNOWLEDGE_HUB', 1)]))).toBe(
+        '/profile',
+      );
+    });
+
     it('is the entry screen of the first function after the profile', () => {
       expect(homePathFor(knownFunctions(SEED_FUNCTIONS))).toBe(
         entryHref('COURSE_LEARNING'),

@@ -46,10 +46,10 @@ the module and review ID, ending with the attribution line.
 
 **Acceptance criteria:**
 
-- [ ] `MenuItem.upcoming` is true exactly when the function's entry screen has no `load`. Today that is
+- [x] `MenuItem.upcoming` is true exactly when the function's entry screen has no `load`. Today that is
       `LESSON_MANAGEMENT`, `SYSTEM_AUDIT`, `KNOWLEDGE_HUB` and `ISSUE_HUB`.
-- [ ] `homePathFor` returns the first non-PROFILE function that is not upcoming, and `/profile` if there is none.
-- [ ] `allSections()` items carry `upcoming` too, since they share the type.
+- [x] `homePathFor` returns the first non-PROFILE function that is not upcoming, and `/profile` if there is none.
+- [x] `allSections()` items carry `upcoming` too, since they share the type.
 
 **Verification:** `npx nx test lms` (`menu-catalog.spec.ts`)
 
