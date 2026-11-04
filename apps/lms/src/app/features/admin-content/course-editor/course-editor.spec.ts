@@ -38,6 +38,9 @@ describe('CourseEditor', () => {
         screen.el.querySelectorAll<HTMLElement>('.stepper__step'),
       ).find((s) => s.textContent?.includes(label)),
     );
+  const currentStep = () =>
+    screen.el.querySelector('.stepper__step[aria-current="step"]')
+      ?.textContent ?? '';
 
   describe('the pinned footer', () => {
     /** Records what the bottom-bar directive observes. */
@@ -989,6 +992,29 @@ describe('CourseEditor', () => {
       expect(screen.callsTo(courseEndpoints.createCourse)).toBe(0);
       expect(screen.callsTo(assessmentV1Endpoints.courseQuizList)).toBe(0);
       expect(kept).not.toHaveBeenCalled();
+    });
+
+    it('stays on an empty first step on "Tiếp tục", lists it and focuses its first error', async () => {
+      await screen.open('/admin/courses/new');
+      await screen.click(screen.button('Tiếp tục'));
+
+      expect(currentStep()).toContain('Thông tin cơ bản');
+      expect(screen.text()).toContain(
+        'Còn thông tin chưa hợp lệ ở: Thông tin cơ bản.',
+      );
+      expect(screen.text()).toContain('Nhập tên khóa học.');
+      expect(screen.text()).toContain('Nhập mã khóa học.');
+      expect(document.activeElement).toBe(screen.field('Tên khóa học'));
+      expect(screen.callsTo(courseEndpoints.createCourse)).toBe(0);
+    });
+
+    it('moves on with "Tiếp tục" once the first step is valid', async () => {
+      await screen.open('/admin/courses/new');
+      await fillBasics();
+      await screen.click(screen.button('Tiếp tục'));
+
+      expect(currentStep()).toContain('Nội dung khóa học');
+      expect(screen.text()).not.toContain('Còn thông tin chưa hợp lệ');
     });
 
     it('does not create without a code, and says so on the field', async () => {

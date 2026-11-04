@@ -10,12 +10,12 @@ Run `nvm use` first. Focused tests: `npx nx test lms`, `npx nx test contracts`, 
 
 **Acceptance criteria:**
 
-- [ ] The editor store decides step validity from the readers the component registers for steps 0, 1 and 2. The
+- [x] The editor store decides step validity from the readers the component registers for steps 0, 1 and 2. The
       component's `invalidSteps` computed is replaced by a store selector.
-- [ ] `continue()` marks the current step's fields as touched. If they are invalid, the step stays, the danger alert
+- [x] `continue()` marks the current step's fields as touched. If they are invalid, the step stays, the danger alert
       shows, and the first `[aria-invalid="true"]` control in the step gets focus. If they are valid, the next step
       opens.
-- [ ] "Lưu nháp" and "Xuất bản khóa học" behave as today.
+- [x] "Lưu nháp" and "Xuất bản khóa học" behave as today.
 
 **Verification:** `npx nx test lms` (store spec with fake readers; `course-editor.spec.ts` checks blocked and allowed
 continue, the alert and the focus)

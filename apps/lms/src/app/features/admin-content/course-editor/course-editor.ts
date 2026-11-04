@@ -114,20 +114,28 @@ export class CourseEditor implements HasUnsavedChanges {
     () => this.store.isDraft$() && fingerprint(this.model()) !== this.saved(),
   );
 
-  /** Steps holding a field the last submit found wrong. */
-  protected readonly invalidSteps = computed(() => {
-    if (!this.courseForm().touched()) return [];
+  /**
+   * The fields of steps 1 to 3 in the order the page shows them; the publish step is checked by
+   * the publish itself.
+   */
+  private readonly stepFields = () => {
     const f = this.courseForm;
     return [
-      f.code().invalid() ||
-        f.title().invalid() ||
-        f.programId().invalid() ||
-        f.summary().invalid() ||
-        f.objectives().invalid(),
-      f.chapters().invalid(),
-      f.rewardPoints().invalid(),
-    ].flatMap((invalid, step) => (invalid ? [step] : []));
-  });
+      [f.title, f.programId, f.code, f.summary, f.objectives],
+      [f.chapters],
+      [f.rewardPoints],
+    ];
+  };
+
+  constructor() {
+    this.store.registerStepChecks(
+      this.stepFields().map((fields) => ({
+        invalid: () => fields.some((field) => field().invalid()),
+        touched: () => fields.some((field) => field().touched()),
+        touch: () => fields.forEach((field) => field().markAsTouched()),
+      })),
+    );
+  }
 
   protected readonly editingLesson = computed((): LessonValue | undefined => {
     const target = this.store.editingLesson$();
@@ -138,6 +146,17 @@ export class CourseEditor implements HasUnsavedChanges {
 
   hasUnsavedChanges(): boolean {
     return !this.store.left$() && this.dirty();
+  }
+
+  /** "Tiếp tục": when the step stays because of an error, the first one gets focus. */
+  protected continue(): void {
+    const step = this.store.step$();
+    if (this.store.continue()) return;
+    this.stepFields()[step]
+      ?.find((field) => field().invalid())?.()
+      .errorSummary()[0]
+      ?.fieldTree()
+      .focusBoundControl();
   }
 
   protected publish(): void {

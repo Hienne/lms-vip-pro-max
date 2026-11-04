@@ -67,6 +67,7 @@ import {
   type UploadProgress,
 } from './chunked-upload';
 import { KeptUploads, type KeptUpload } from './kept-uploads.storage';
+import { shownInvalidSteps, type StepCheck } from './step-progress';
 import {
   countsText,
   dateInput,
@@ -214,6 +215,8 @@ export class CourseEditorStore {
 
   private readonly state = {
     step: signal(this.initialStep()),
+    /** The checks of steps 1 to 3 over the form, handed over once by the page. */
+    stepChecks: signal<readonly StepCheck[]>([]),
     editingLesson: signal<LessonTarget | null>(null),
     /** When the last save went through, as the page shows it ("14:05"). */
     savedAt: signal<string | null>(null),
@@ -432,6 +435,10 @@ export class CourseEditorStore {
 
   // Selectors
   readonly step$ = this.state.step.asReadonly();
+  /** Steps holding a field whose error the author has been shown. */
+  readonly invalidSteps$ = computed(() =>
+    shownInvalidSteps(this.state.stepChecks()),
+  );
   readonly editingLesson$ = this.state.editingLesson.asReadonly();
   readonly savedAt$ = this.state.savedAt.asReadonly();
   readonly left$ = this.state.left.asReadonly();
@@ -578,6 +585,10 @@ export class CourseEditorStore {
     this.state.step.set(step);
   }
 
+  private setStepChecks(checks: readonly StepCheck[]): void {
+    this.state.stepChecks.set(checks);
+  }
+
   private setEditingLesson(target: LessonTarget | null): void {
     this.state.editingLesson.set(target);
   }
@@ -647,6 +658,24 @@ export class CourseEditorStore {
   // Commands
   goToStep(step: number): void {
     this.setStep(Math.max(0, Math.min(EDITOR_STEPS.length - 1, step)));
+  }
+
+  /** The page hands over how to check each step's fields, once, when it builds its form. */
+  registerStepChecks(checks: readonly StepCheck[]): void {
+    this.setStepChecks(checks);
+  }
+
+  /**
+   * "Tiếp tục": shows the current step's errors and stays while it has any, else opens the next
+   * step. Returns whether it moved, so the page can focus the first error when it did not.
+   */
+  continue(): boolean {
+    const step = this.state.step();
+    const check = this.state.stepChecks()[step];
+    check?.touch();
+    if (check?.invalid()) return false;
+    this.goToStep(step + 1);
+    return true;
   }
 
   /** The modules select lists the modules of the chosen program's field. */

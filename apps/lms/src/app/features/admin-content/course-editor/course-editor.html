@@ -60,9 +60,9 @@
   (selectedIndexChange)="store.goToStep($event)"
 />
 
-@if (invalidSteps().length) {
+@if (store.invalidSteps$().length) {
 <ui-alert tone="danger" class="course-editor__notice">
-  Còn thông tin chưa hợp lệ ở: @for (step of invalidSteps(); track step; let
+  Còn thông tin chưa hợp lệ ở: @for (step of store.invalidSteps$(); track step; let
   last = $last) {
   <button uiLinkButton type="button" (click)="store.goToStep(step)">
     {{ steps[step].label }}</button
@@ -121,11 +121,7 @@
     <ui-icon name="archive" size="sm" />Lưu nháp
   </button>
   } @if (store.step$() < steps.length - 1) {
-  <button
-    uiButton
-    variant="primary"
-    (click)="store.goToStep(store.step$() + 1)"
-  >
+  <button uiButton variant="primary" (click)="continue()">
     Tiếp tục<ui-icon name="chevron-right" size="sm" />
   </button>
   } @else if (store.isDraft$()) {
