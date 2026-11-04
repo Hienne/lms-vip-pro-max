@@ -1,4 +1,10 @@
-import { computed, inject, Injectable, linkedSignal } from '@angular/core';
+import {
+  computed,
+  inject,
+  Injectable,
+  linkedSignal,
+  signal,
+} from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { map, type Observable } from 'rxjs';
@@ -10,7 +16,7 @@ import {
   type AssessmentReportExportQuery,
   type Page,
 } from '@lms/contracts';
-import type { DataTableColumn, DataTableSort } from '@lms/ui';
+import type { DataTableColumn, DataTableSort, DonutDatum } from '@lms/ui';
 import { EndpointClient } from '../../../../core/http/endpoint-client';
 import { serverData } from '../../../../core/data-access/server-data';
 import { serverMutation } from '../../../../core/data-access/server-mutation';
@@ -149,6 +155,8 @@ export class ReportScreenStore {
       page: 1,
       sort: DEFAULT_SORT[this.dimension$() ?? 'results'],
     })),
+    grouping: signal<'quiz' | 'org'>('quiz'),
+    groupPage: signal(1),
   };
   readonly filters$ = this.state.filters.asReadonly();
   private readonly commonFilters = computed<AssessmentReportFilter>(() => {
@@ -275,12 +283,24 @@ export class ReportScreenStore {
     },
   );
   readonly overview$ = this.overview.value;
-  readonly scoreChart$ = computed(() =>
-    (this.overview$()?.byQuiz ?? []).flatMap((group) =>
-      group.averageScore === null
-        ? []
-        : [{ label: group.name ?? 'Chưa xác định', value: group.averageScore }],
-    ),
+  readonly resultChart$ = computed<readonly DonutDatum[]>(() => {
+    const data = this.overview$();
+    return data && data.learners > 0
+      ? [
+          { label: 'Đã đạt', value: data.passedLearners, tone: 'success' },
+          {
+            label: 'Chưa ghi nhận đạt',
+            value: Math.max(0, data.learners - data.passedLearners),
+            tone: 'neutral',
+          },
+        ]
+      : [];
+  });
+  readonly scoreComparison$ = computed(() =>
+    [...(this.overview$()?.byQuiz ?? [])]
+      .filter((group) => group.averageScore !== null)
+      .sort((a, b) => b.gradedAttempts - a.gradedAttempts)
+      .slice(0, 6),
   );
   readonly byQuiz$ = computed(() =>
     (this.overview$()?.byQuiz ?? []).map((g) => ({
@@ -296,6 +316,41 @@ export class ReportScreenStore {
       name: g.name ?? 'Chưa xác định',
     })),
   );
+  readonly grouping$ = this.state.grouping.asReadonly();
+  readonly groupPage$ = this.state.groupPage.asReadonly();
+  private readonly groupedRows = computed(() =>
+    this.grouping$() === 'quiz' ? this.byQuiz$() : this.byOrg$(),
+  );
+  readonly groupTotal$ = computed(() => this.groupedRows().length);
+  readonly groupedRows$ = computed(() =>
+    this.groupedRows().slice(
+      (this.groupPage$() - 1) * 10,
+      this.groupPage$() * 10,
+    ),
+  );
+  readonly activeFilterCount$ = computed(
+    () =>
+      Object.entries(this.tableRequest()?.query ?? this.commonFilters()).filter(
+        ([key, value]) =>
+          !['page', 'size', 'sort', 'groupBy'].includes(key) &&
+          value !== undefined &&
+          value !== '',
+      ).length,
+  );
+  readonly description$ = computed(() => {
+    switch (this.dimension$()) {
+      case 'results':
+        return 'Tra cứu điểm, số câu đúng và kết quả của từng lượt thi.';
+      case 'learners':
+        return 'Theo dõi học viên chưa thi, đang làm và đã có kết quả theo bài kiểm tra.';
+      case 'competency':
+        return 'Phân tích kết quả theo nhóm năng lực của học viên hoặc đơn vị.';
+      case 'questions':
+        return 'Theo dõi lượt phát, lượt trả lời đúng và tỷ lệ sai theo phiên bản câu hỏi.';
+      default:
+        return 'Theo dõi kết quả kiểm tra, mức độ tham gia và năng lực trong phạm vi được cấp.';
+    }
+  });
   readonly rows$ = computed(() => this.detail.value()?.items ?? []);
   readonly total$ = computed(() => this.detail.value()?.totalElements ?? 0);
   readonly columns$ = computed<readonly DataTableColumn[]>(() => {
@@ -332,9 +387,20 @@ export class ReportScreenStore {
   private setTable(value: { page: number; sort: DataTableSort }): void {
     this.state.table.set(value);
   }
+  private setGrouping(value: 'quiz' | 'org'): void {
+    this.state.grouping.set(value);
+  }
+  setGroupPage(value: number): void {
+    this.state.groupPage.set(value);
+  }
+  selectGrouping(value: 'quiz' | 'org'): void {
+    this.setGrouping(value);
+    this.setGroupPage(1);
+  }
   applyFilters(value: AssessmentReportExportQuery): void {
     this.setFilters(value);
     this.setTable({ ...this.state.table(), page: 1 });
+    this.setGroupPage(1);
   }
   changePage(page: number): void {
     this.setTable({ ...this.state.table(), page });

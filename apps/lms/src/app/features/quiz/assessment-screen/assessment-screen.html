@@ -3,8 +3,7 @@
   [description]="store.routeScreen$() === 'questions' ? 'Quản lý câu hỏi dùng chung cho các khóa học trong cùng chương trình.' : 'Quản lý bài kiểm tra của khóa học; chọn câu hỏi từ chương trình tương ứng.'"
 >
   <div slot="actions" class="assessment__actions">
-    @if (store.routeScreen$() === 'questions') { @if
-    (!store.integrationPending$()) {
+    @if (store.routeScreen$() === 'questions') {
     <button
       uiButton
       variant="primary"
@@ -13,25 +12,28 @@
     >
       <ui-icon name="plus" size="sm" /> Thêm câu hỏi
     </button>
+    @if (store.canCreateQuiz$()) {
+    <a
+      uiButton
+      routerLink="/admin/quizzes/new"
+      [queryParams]="{programId:store.selectedProgramId$()}"
+      [disabled]="!store.selectedProgramId$() || store.isLoading$() || !!store.error$() || store.editorOpen$()"
+      >Tạo bài kiểm tra</a
+    >
     } } @else if (store.routeScreen$() === 'quizzes') {
-    <span [uiTooltip]="store.integrationPending$() ? newQuizBlocked : ''">
-      <a
-        uiButton
-        variant="primary"
-        routerLink="/admin/quizzes/new"
-        [queryParams]="{courseId:store.selectedCourseId$()}"
-        [disabled]="store.integrationPending$() || !store.selectedCourseId$() || store.isLoading$() || !!store.error$()"
-        [attr.aria-describedby]="store.integrationPending$() ? 'new-quiz-blocked' : null"
-      >
-        <ui-icon name="plus" size="sm" /> Tạo bài kiểm tra
-      </a>
-    </span>
-    @if (store.integrationPending$()) {
-    <span id="new-quiz-blocked" class="sr-only">{{newQuizBlocked}}</span>
-    } }
+    <a
+      uiButton
+      variant="primary"
+      routerLink="/admin/quizzes/new"
+      [queryParams]="{courseId:store.selectedCourseId$(),programId:store.selectedProgramId$()}"
+      [disabled]="!store.selectedCourseId$() || store.isLoading$() || !!store.error$()"
+    >
+      <ui-icon name="plus" size="sm" /> Tạo bài kiểm tra
+    </a>
+    }
   </div>
 </ui-page-header>
-@if (store.routeScreen$() !== 'config') {
+@if (store.routeScreen$() !== 'config' || store.isNewQuiz$()) {
 <section uiCard padded class="stack assessment__section">
   <div class="assessment__scope">
     @if (store.routeScreen$() === 'questions') {
@@ -50,7 +52,9 @@
         (change)="store.selectProgram($any($event.target).value)"
       >
         <option value="" disabled>— Chọn chương trình —</option>
-        @for(program of store.programs$()?.items ?? []; track program.id) {
+        @if (store.bankProgramMissing$(); as program) {
+        <option [value]="program.id" [selected]="true">{{program.name}}</option>
+        } @for(program of store.programs$()?.items ?? []; track program.id) {
         <option
           [value]="program.id"
           [selected]="program.id === store.selectedProgramId$()"
@@ -80,6 +84,27 @@
       </button>
     </div>
     } } @else {
+    <ui-field label="Chương trình">
+      <select
+        uiSelect
+        aria-label="Chương trình của bài kiểm tra"
+        [value]="store.courseProgramFilter$() ?? ''"
+        [disabled]="store.isSaving$() || store.partialSave$()"
+        (change)="store.selectProgram($any($event.target).value)"
+      >
+        <option value="">Tất cả chương trình</option>
+        @if (store.courseProgramFilterMissing$(); as id) {
+        <option [value]="id" [selected]="true">Chương trình #{{id}}</option>
+        } @for (program of store.programOptions$(); track program.id) {
+        <option
+          [value]="program.id"
+          [selected]="program.id === store.courseProgramFilter$()"
+        >
+          {{program.name}}
+        </option>
+        }
+      </select>
+    </ui-field>
     <ui-search
       label="Tìm khóa học quản lý"
       placeholder="Tìm khóa học…"
@@ -91,11 +116,16 @@
         uiSelect
         aria-label="Khóa học quản lý"
         [value]="store.selectedCourseId$() ?? ''"
-        [disabled]="store.editorOpen$() || store.isSaving$()"
+        [disabled]="store.editorOpen$() || store.isSaving$() || store.partialSave$()"
         (change)="store.selectCourse($any($event.target).value)"
       >
-        <option value="">— Chọn khóa học —</option>
-        @for (course of store.courses$()?.items ?? []; track course.courseId) {
+        <option value="" disabled>— Chọn khóa học —</option>
+        @if (store.selectedCourseMissing$(); as id) {
+        <option [value]="id" [selected]="true">
+          {{store.selectedCourseTitle$()}}
+        </option>
+        } @for (course of store.courses$()?.items ?? []; track course.courseId)
+        {
         <option
           [value]="course.courseId"
           [selected]="course.courseId === store.selectedCourseId$()"
@@ -125,12 +155,12 @@
     } }
   </div>
 </section>
-} @if (store.integrationPending$() && store.routeScreen$() === 'questions') {
-<ui-empty
-  title="Ngân hàng câu hỏi theo chương trình chưa sẵn sàng"
-  description="Câu hỏi dùng chung trong chương trình sẽ quản lý được tại đây sau bản cập nhật tới. Bài kiểm tra hiện có vẫn dùng bộ câu hỏi đã gán."
-/>
-} @else if (store.isLoading$()) {
+@if (store.isNewQuiz$()) {
+<p class="assessment__muted">
+  Bài kiểm tra thuộc khóa học đã chọn và dùng câu hỏi chung của chương trình đó.
+  Đổi chương trình sẽ bỏ các câu hỏi đang chọn; các thông tin khác được giữ lại.
+</p>
+} } @if (store.isLoading$()) {
 <div class="assessment__loading" role="status">
   <span uiSpinner></span><span class="sr-only">Đang tải dữ liệu</span>
 </div>
@@ -140,12 +170,16 @@
   [message]="error.message"
   (retry)="store.retry()"
 />
+} @else if (store.courseProgramMismatch$()) {<ui-alert tone="danger"
+  >Khóa học trong đường dẫn không thuộc chương trình đã chọn. Hãy chọn lại khóa
+  học phù hợp ở phía trên.</ui-alert
+>
 } @else if(store.invalidQuizId$()){<ui-alert tone="danger"
   >ID bài kiểm tra không hợp lệ.</ui-alert
 >} @else if (store.routeScreen$() === 'questions' ? !store.selectedProgramId$()
 : !store.selectedCourseId$()) {
 <ui-empty
-  [title]="store.routeScreen$() === 'questions' ? 'Chưa có chương trình được phép quản lý' : 'Chưa có khóa học được phép quản lý'"
+  [title]="store.routeScreen$() === 'questions' ? 'Chưa có chương trình được phép quản lý' : store.courseProgramFilter$() ? 'Chương trình chưa có khóa học được phép quản lý' : 'Chưa có khóa học được phép quản lý'"
 />
 } @else { @switch (store.routeScreen$()) { @case ('questions') {
 <p class="assessment__count">
@@ -553,30 +587,31 @@
     </section>
     <section uiCard padded class="stack">
       <h2>Bộ câu hỏi</h2>
+      @if(store.canManageBank$() && store.selectedProgramId$()) {
+      <a
+        uiButton
+        variant="ghost"
+        [routerLink]="['/admin/questions']"
+        [queryParams]="{programId:store.selectedProgramId$()}"
+        >Quản lý câu hỏi của chương trình</a
+      >
+      }
       <p>
         Chương trình: <strong>{{store.selectedProgramTitle$()}}</strong>. Có thể
         dùng câu hỏi chung của các khóa học trong chương trình này.
       </p>
-      @if (store.integrationPending$()) { @if (isNewQuiz()) {
-      <ui-alert>{{newQuizBlocked}}</ui-alert>
-      } @else {
-      <ui-alert
-        >Bộ câu hỏi hiện tại được giữ nguyên. Chọn thêm câu hỏi từ chương trình
-        sẽ có sau bản cập nhật tới.</ui-alert
-      >
-      } } @if (!store.selectedProgramId$()) {
+      @if (!store.selectedProgramId$()) {
       <ui-alert
         >Khóa học chưa gắn chương trình. Hãy cập nhật chương trình của khóa học
         trước khi chọn câu hỏi.</ui-alert
       >
-      } @if (!store.integrationPending$()) {
+      }
       <ui-search
         label="Tìm câu hỏi trong chương trình"
         placeholder="Tìm mã hoặc nội dung câu hỏi…"
         [value]="store.questionFilters$().q"
         (searched)="store.setQuestionFilter('q',$event)"
       />
-      }
       <p>
         Đã chọn {{configValue().questionIds.length}} câu · mỗi lượt lấy
         {{configValue().questionCount}} câu. Bản nháp được phép lưu khi bộ câu
@@ -590,7 +625,7 @@
             uiCheckbox
             type="checkbox"
             [checked]="poolSelected(q.id)"
-            [disabled]="store.integrationPending$()"
+            [disabled]="q.status !== 'ACTIVE' && !poolSelected(q.id)"
             (change)="selectPool(q.id,$any($event.target).checked)"
           /><span
             ><strong>{{q.code}} · {{q.contentPreview}}</strong
@@ -688,14 +723,14 @@
         uiButton
         type="submit"
         variant="primary"
-        [disabled]="store.isSaving$() || (isNewQuiz() && store.integrationPending$())"
+        [disabled]="store.isSaving$() || store.courseProgramMismatch$() || !store.selectedProgramId$()"
       >
         Lưu cấu hình
       </button>
       @if(store.config$();as config){@if(config.status !== 'PUBLISHED'){<button
         uiButton
         type="button"
-        [disabled]="store.isSaving$() || configDirty()"
+        [disabled]="store.isSaving$() || configDirty() || !!store.publishBlockedReason$()"
         (click)="store.changeQuizState('publish')"
       >
         Xuất bản</button
@@ -707,7 +742,9 @@
         (click)="store.changeQuizState('close')"
       >
         Đóng bài kiểm tra</button
-      >}}
+      >}} @if (store.publishBlockedReason$()) {
+      <p class="assessment__muted">{{store.publishBlockedReason$()}}</p>
+      }
       <p class="assessment__muted">
         Lưu thay đổi trước khi xuất bản hoặc đóng đề. Quyền và điều kiện xuất
         bản được hệ thống kiểm tra.

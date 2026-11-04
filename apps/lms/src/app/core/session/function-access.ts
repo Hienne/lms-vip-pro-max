@@ -18,13 +18,19 @@ export function canOpenFunction(
       );
     case 'COURSE_MANAGEMENT':
     case 'LESSON_MANAGEMENT':
-    case 'QUESTION_BANK':
     case 'QUIZ_MANAGEMENT':
     case 'COURSE_ASSIGNMENT':
       return grants.some(
         (g) =>
           (g.roleCode === 'SUPER_ADMIN' && g.scope.type === 'GLOBAL') ||
           ['ADMIN', 'INSTRUCTOR'].includes(g.roleCode),
+      );
+    case 'QUESTION_BANK':
+      return grants.some(
+        (g) =>
+          (g.roleCode === 'SUPER_ADMIN' && g.scope.type === 'GLOBAL') ||
+          (['ADMIN', 'INSTRUCTOR'].includes(g.roleCode) &&
+            ['GLOBAL', 'ORG'].includes(g.scope.type)),
       );
     case 'USER_MANAGEMENT':
     case 'ORGANIZATION_MANAGEMENT':
