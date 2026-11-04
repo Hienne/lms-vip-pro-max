@@ -22,8 +22,23 @@ Run `nvm use` first (Node 24). Full table in `docs/conventions/workspace.md`.
   everything else (sign-in included) goes through `apps/lms/proxy.conf.mjs` to the shared backend.
   Set `mockBackend: true` in `environment.ts` to run fully on the seeded mock, signing in from
   the Demo menu.
+- **Backend:** if the task does not change the backend, use the shared server (the default
+  `npm start` proxy, or `mockBackend: true` for a seeded run) and do not start a local backend
+  (`lms-local-backend`, the local stack). Run a local backend only when the task edits backend
+  code. Never commit a `mockBackend: true` change made for a browser check.
 - `npx nx test <project>` (`lms`, `ui`, `contracts`, `mocks`): one project's specs.
 - `npm run check`: format, lint, typecheck, test, build and bundle guard on every project.
+  It is heavy (vitest uses every core, about 1.3 GB per worker, beside the build), and on a
+  16 GB machine it can exhaust memory and swap until it looks hung. Before running it:
+  - stop `nx serve` / preview servers and idle Nx daemons (`npx nx daemon --stop`);
+  - run it in the background with output to a file, and run it once, not alongside another
+    `nx` or `vitest` run;
+  - if the machine is short on memory, run `npx nx run-many -t lint typecheck test build check-bundle --parallel=1`
+    after `npm run format:check`.
+
+  Read its result from the output file when it finishes. Do not wait on it with a `grep` loop:
+  `format:check` failing stops the chain before any `nx` text appears, so the loop never ends.
+  Look for the final `EXIT` code or the first `[warn]` / `✖` line instead.
 
 ## Docs
 

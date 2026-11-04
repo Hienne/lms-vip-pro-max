@@ -15,6 +15,7 @@ import {
   Stepper,
 } from '@lms/ui';
 import type { HasUnsavedChanges } from '../../../core/routing/unsaved-changes.guard';
+import { BottomBar } from '../../../layout/shell-insets';
 import { CatalogStatus } from '../../../shared/status/catalog-status';
 import { CourseInfo } from './components/course-info/course-info';
 import { CourseOutline } from './components/course-outline/course-outline';
@@ -48,6 +49,7 @@ const fingerprint = (value: CourseDraftValue) =>
   imports: [
     Alert,
     AlertAction,
+    BottomBar,
     Breadcrumb,
     Button,
     CatalogStatus,

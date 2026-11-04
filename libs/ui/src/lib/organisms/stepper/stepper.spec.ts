@@ -74,6 +74,18 @@ describe('Stepper', () => {
     expect(steps()[2].classList.contains('is-done')).toBe(false);
   });
 
+  it('marks the item of a done step so its connector turns primary, and adds no connector markup', async () => {
+    const { root } = await render();
+    const items = Array.from(root.querySelectorAll('li.stepper__item'));
+    expect(items.map((li) => li.classList.contains('is-done'))).toEqual([
+      true,
+      false,
+      false,
+      false,
+    ]);
+    items.forEach((li) => expect(li.children).toHaveLength(1));
+  });
+
   it('goes to a clicked step and reports it through selectedIndexChange', async () => {
     const { steps, settle, host } = await render();
     steps()[3].click();

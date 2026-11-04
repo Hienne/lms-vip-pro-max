@@ -6,7 +6,7 @@
 :host {
   position: fixed;
   right: ui.space(4);
-  bottom: ui.space(4);
+  bottom: calc(#{ui.space(4)} + var(--owl-inset, 0px));
   z-index: ui.z(header);
   display: flex;
   align-items: flex-end;

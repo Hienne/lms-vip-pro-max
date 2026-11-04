@@ -10,6 +10,7 @@ import {
 } from '../../core/knowledge/document-tracker.store';
 import { AgentChatStore } from '../../core/assistant/agent-chat.store';
 import { AGENT_LAUNCHER_ID } from '../../core/assistant/agent-launcher';
+import { ShellInsets } from '../shell-insets';
 import { Owl } from './owl';
 
 const base = knowledgeDocumentFixtures[0];
@@ -86,6 +87,14 @@ describe('Owl', () => {
     tracker.owlState$.set(state);
     fixture.detectChanges();
   };
+
+  it('rises by the inset a pinned bar reports, and not at all without one', () => {
+    const host = el.querySelector('app-owl') as HTMLElement;
+    expect(host.style.getPropertyValue('--owl-inset')).toBe('0px');
+    TestBed.inject(ShellInsets).setBottom(72);
+    fixture.detectChanges();
+    expect(host.style.getPropertyValue('--owl-inset')).toBe('72px');
+  });
 
   it('sits still with no bubble when nothing is going on', () => {
     expect(button().dataset['state']).toBe('idle');

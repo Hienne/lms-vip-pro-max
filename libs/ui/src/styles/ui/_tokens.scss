@@ -83,6 +83,11 @@ $colors: (
   // the focus ring on the nav panel (no longer an edge on the active item)
   nav-indicator: var(--color-accent),
   nav-border: color-mix(in srgb, var(--color-white) 8%, transparent),
+  // scrollbars: the references follow the mode; the nav thumb sits on nav-bg like nav-hover
+  scrollbar-thumb: var(--color-border-strong),
+  scrollbar-thumb-hover: var(--color-text-muted),
+  scrollbar-track: transparent,
+  nav-scrollbar-thumb: color-mix(in srgb, var(--color-white) 24%, transparent),
 );
 
 // ---- Colour: data viz (distinguishable, always paired with a label or symbol) ----
@@ -178,7 +183,8 @@ $palette-color-keys: (
   nav-active-bg,
   nav-active-text,
   nav-indicator,
-  nav-border
+  nav-border,
+  nav-scrollbar-thumb
 );
 $palette-chart-keys: (1, 2, grid);
 $palette-shadow-keys: (sm, md, lg);
@@ -398,6 +404,7 @@ $animations: (
 
 // ---- Stacking (read through ui.z) ----
 $z-indexes: (
+  bar: 20,
   header: 30,
   sidebar: 40,
   drawer: 60,
@@ -576,6 +583,11 @@ $palettes: (
           nav-muted: #4f596a,
           nav-strong: #243042,
           nav-hover: color-mix(in srgb, var(--color-text) 6%, transparent),
+          nav-scrollbar-thumb: color-mix(
+              in srgb,
+              var(--color-text) 24%,
+              transparent
+            ),
           nav-active-bg: #dfe4eb,
           nav-active-text: #1b3a8c,
           nav-indicator: #b94328,
@@ -632,6 +644,11 @@ $palettes: (
           nav-muted: #99a3b3,
           nav-strong: #d5dce6,
           nav-hover: color-mix(in srgb, var(--color-text) 6%, transparent),
+          nav-scrollbar-thumb: color-mix(
+              in srgb,
+              var(--color-text) 24%,
+              transparent
+            ),
           nav-active-bg: #27303c,
           nav-active-text: #d5dce6,
           nav-indicator: #e07a5f,
@@ -710,6 +727,11 @@ $palettes: (
           nav-muted: #5f6168,
           nav-strong: #16181d,
           nav-hover: color-mix(in srgb, var(--color-text) 5%, transparent),
+          nav-scrollbar-thumb: color-mix(
+              in srgb,
+              var(--color-text) 24%,
+              transparent
+            ),
           nav-active-bg: #e6e0d4,
           nav-active-text: #16181d,
           nav-indicator: #c2512b,
@@ -766,6 +788,11 @@ $palettes: (
           nav-muted: #b1afa8,
           nav-strong: #ece8df,
           nav-hover: color-mix(in srgb, var(--color-text) 6%, transparent),
+          nav-scrollbar-thumb: color-mix(
+              in srgb,
+              var(--color-text) 24%,
+              transparent
+            ),
           nav-active-bg: #22262d,
           nav-active-text: #ece8df,
           nav-indicator: #e0703f,

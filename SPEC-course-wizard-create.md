@@ -113,6 +113,8 @@ DraftContent = DraftRequest without expectedVersion
 
 ## Open questions
 
+Answered by approval on 2026-11-03 with the defaults below; see `tasks/plan.md` Decision 1 at `e838065`.
+
 1. **Before the first save:** is it fine that a quiz lesson cannot pick its quiz until the course is saved, and
    that an interrupted upload cannot be resumed until then? The alternative is an automatic save when the admin
    first opens a quiz lesson or uploads a file, which breaks "nothing stored until Lưu nháp".

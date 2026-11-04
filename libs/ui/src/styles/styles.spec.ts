@@ -70,6 +70,10 @@ const LIGHT_PROPERTIES = [
   '--color-nav-active-text',
   '--color-nav-indicator',
   '--color-nav-border',
+  '--color-nav-scrollbar-thumb',
+  '--color-scrollbar-thumb',
+  '--color-scrollbar-thumb-hover',
+  '--color-scrollbar-track',
   '--color-chart-1',
   '--color-chart-2',
   '--color-chart-3',
@@ -153,6 +157,7 @@ const LIGHT_PROPERTIES = [
   '--animate-reward-pop',
   '--animate-shimmer',
   '--animate-spin',
+  '--z-index-bar',
   '--z-index-header',
   '--z-index-sidebar',
   '--z-index-drawer',
@@ -236,6 +241,22 @@ const SPACING_KEYS = compile(
   .map((name) => name.slice(3));
 
 describe('ui style module', () => {
+  it('builds the scrollbar mixin from the scrollbar tokens, in a default and a nav tone', () => {
+    const css = compile(`
+      @use 'ui';
+      .a { @include ui.scrollbar; }
+      .b { @include ui.scrollbar(nav); }
+    `);
+    expect(css).toContain(
+      'scrollbar-color: var(--color-scrollbar-thumb) var(--color-scrollbar-track)',
+    );
+    expect(css).toContain(
+      'scrollbar-color: var(--color-nav-scrollbar-thumb) var(--color-scrollbar-track)',
+    );
+    expect(css).toContain('scrollbar-width: thin');
+    expect(css).not.toContain('::-webkit-scrollbar');
+  });
+
   it('compiles to nothing when only used', () => {
     expect(compile("@use 'ui';").trim()).toBe('');
   });
@@ -333,6 +354,16 @@ describe('global stylesheet', () => {
     expect([...new Set(names(':root'))].sort()).toEqual(
       [...LIGHT_PROPERTIES].sort(),
     );
+  });
+
+  it('gives every scroll area the thin token-coloured bar from the html element', () => {
+    const html = all
+      .filter((rule) => rule.selector === 'html')
+      .map((rule) => rule.body)
+      .join(';');
+    expect(html).toContain('scrollbar-color: var(--color-scrollbar-thumb)');
+    expect(html).toContain('scrollbar-width: thin');
+    expect(css).not.toContain('::-webkit-scrollbar');
   });
 
   it('emits the dark overrides behind both conditions', () => {
