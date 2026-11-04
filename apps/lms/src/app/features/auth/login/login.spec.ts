@@ -285,3 +285,43 @@ describe('Login', () => {
     });
   });
 });
+
+describe('Login: the internal note', () => {
+  async function note(config: {
+    devTools: boolean;
+    mockBackend: boolean;
+  }): Promise<string | null> {
+    TestBed.configureTestingModule({
+      providers: [
+        provideEnvelopeHttpClient(),
+        provideAppConfig(parseAppConfig(testAppConfig(config))),
+        provideRouter(createAppRoutes({ devTools: true })),
+        SessionStore,
+      ],
+    });
+    TestBed.inject(SessionStore).restore();
+    TestBed.tick();
+    await Promise.resolve();
+    const harness = await RouterTestingHarness.create();
+    await harness.navigateByUrl('/login');
+    TestBed.tick();
+    const el = harness.routeNativeElement as HTMLElement;
+    return el.querySelector('.login__note')?.textContent ?? null;
+  }
+
+  it('is hidden from production users', async () => {
+    expect(await note({ devTools: false, mockBackend: false })).toBeNull();
+  });
+
+  it('shows with dev tools', async () => {
+    expect(await note({ devTools: true, mockBackend: false })).toContain(
+      'Bản mockup v2',
+    );
+  });
+
+  it('shows with the mock backend', async () => {
+    expect(await note({ devTools: false, mockBackend: true })).toContain(
+      'Xem Design System',
+    );
+  });
+});

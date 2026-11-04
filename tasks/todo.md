@@ -85,7 +85,7 @@ the module and review ID, ending with the attribution line.
 
 **Acceptance criteria:**
 
-- [ ] `.login__note` renders only when `devTools || mockBackend`.
+- [x] `.login__note` renders only when `devTools || mockBackend`.
 
 **Verification:** `npx nx test lms` (`login.spec.ts`: hidden with both flags off, shown with either on)
 
