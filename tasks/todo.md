@@ -102,14 +102,14 @@ the module and review ID, ending with the attribution line.
 
 **Acceptance criteria:**
 
-- [ ] With `integrationPending$`, "Thêm câu hỏi" is not rendered. The empty state reads "Ngân hàng câu hỏi theo
+- [x] With `integrationPending$`, "Thêm câu hỏi" is not rendered. The empty state reads "Ngân hàng câu hỏi theo
       chương trình chưa sẵn sàng" / "Câu hỏi dùng chung trong chương trình sẽ quản lý được tại đây sau bản cập nhật
       tới. Bài kiểm tra hiện có vẫn dùng bộ câu hỏi đã gán."
-- [ ] With `integrationPending$`, "Tạo bài kiểm tra" is disabled. Its tooltip and `aria-describedby` text is "Cần ngân
+- [x] With `integrationPending$`, "Tạo bài kiểm tra" is disabled. Its tooltip and `aria-describedby` text is "Cần ngân
       hàng câu hỏi theo chương trình để tạo bài kiểm tra mới." On `/admin/quizzes/new` the same sentence shows in a
       `ui-alert`, and saving is disabled. The config alert reads "Bộ câu hỏi hiện tại được giữ nguyên. Chọn thêm câu
       hỏi từ chương trình sẽ có sau bản cập nhật tới."
-- [ ] With `mockBackend`, everything is as before.
+- [x] With `mockBackend`, everything is as before.
 
 **Verification:** `npx nx test lms` (`assessment-screen.spec.ts`: both CTAs pending vs mock, the new copy, and the old
 "đang chờ kết nối API" assertion replaced)

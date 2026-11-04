@@ -15,7 +15,15 @@ import {
 import { SessionStore } from '../../../core/session/session.store';
 import { TokenStore } from '../../../core/session/token-store';
 import { MockBackend } from '../../../core/dev/mock-api/mock-api.interceptor';
+import { computed, Injectable } from '@angular/core';
+import { AssessmentScreen } from './assessment-screen';
 import { AssessmentScreenStore } from './data-access/assessment-screen.store';
+
+/** The store as it is while the backend lacks the program question bank, with the seeded data. */
+@Injectable()
+class PendingStore extends AssessmentScreenStore {
+  override readonly integrationPending$ = computed(() => true);
+}
 import {
   programAssessmentEndpoints as api,
   type ProgramQuestionRequest,
@@ -320,12 +328,88 @@ describe('AssessmentScreen (admin)', () => {
     await settle();
     expect(store().integrationPending$()).toBe(true);
     expect(store().editorOpen$()).toBe(false);
-    expect(text()).toContain('đang chờ kết nối API');
+    expect(text()).toContain(
+      'Ngân hàng câu hỏi theo chương trình chưa sẵn sàng',
+    );
+    expect(text()).toContain(
+      'Bài kiểm tra hiện có vẫn dùng bộ câu hỏi đã gán.',
+    );
+    expect(text()).not.toMatch(/API|Thêm câu hỏi/);
     expect(
       spy.mock.calls.some(([e]) =>
         e.path.startsWith('/api/assessment-program/'),
       ),
     ).toBe(false);
     expect(TestBed.inject(TokenStore).read()).toBeTruthy();
+  });
+
+  describe('while the program question bank is missing', () => {
+    const REASON =
+      'Cần ngân hàng câu hỏi theo chương trình để tạo bài kiểm tra mới.';
+
+    beforeEach(() => {
+      TestBed.overrideProvider(APP_CONFIG, {
+        useValue: parseAppConfig(
+          testAppConfig({ mockApi: true, mockBackend: false }),
+        ),
+      });
+    });
+
+    it('offers no "Thêm câu hỏi" on the question bank', async () => {
+      await open('/admin/questions');
+      expect(el.querySelector('ui-page-header button')).toBeNull();
+    });
+
+    it('disables "Tạo bài kiểm tra" and says why', async () => {
+      await open('/admin/quizzes');
+      const create = el.querySelector<HTMLElement>(
+        'ui-page-header a[uiButton]',
+      );
+      expect(create?.textContent).toContain('Tạo bài kiểm tra');
+      expect(create?.getAttribute('aria-disabled')).toBe('true');
+      const reason = el.querySelector(
+        `#${create?.getAttribute('aria-describedby')}`,
+      );
+      expect(reason?.textContent?.trim()).toBe(REASON);
+    });
+
+    it('explains the empty builder and keeps its save disabled', async () => {
+      // The builder needs the course loaded, which the seeded backend serves only with mockBackend.
+      TestBed.overrideProvider(APP_CONFIG, {
+        useValue: parseAppConfig(
+          testAppConfig({ mockApi: true, mockBackend: true }),
+        ),
+      });
+      TestBed.overrideComponent(AssessmentScreen, {
+        set: {
+          providers: [
+            { provide: AssessmentScreenStore, useClass: PendingStore },
+          ],
+        },
+      });
+      await open('/admin/quizzes/new?courseId=3');
+      expect(el.querySelector('ui-alert')?.textContent).toContain(REASON);
+      const save = [...el.querySelectorAll('button')].find((b) =>
+        b.textContent?.includes('Lưu cấu hình'),
+      );
+      expect(save?.disabled).toBe(true);
+      expect(text()).not.toContain('khi hệ thống cập nhật hỗ trợ');
+    });
+  });
+
+  it('keeps "Tạo bài kiểm tra" with the mock backend', async () => {
+    await open('/admin/quizzes?courseId=3');
+    expect(
+      el
+        .querySelector('ui-page-header a[uiButton]')
+        ?.getAttribute('aria-disabled'),
+    ).toBeNull();
+  });
+
+  it('keeps "Thêm câu hỏi" with the mock backend', async () => {
+    await open('/admin/questions?programId=2');
+    expect(
+      el.querySelector<HTMLButtonElement>('ui-page-header button')?.disabled,
+    ).toBe(false);
   });
 });

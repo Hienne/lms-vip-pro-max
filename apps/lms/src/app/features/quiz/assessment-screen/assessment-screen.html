@@ -3,7 +3,8 @@
   [description]="store.routeScreen$() === 'questions' ? 'Quản lý câu hỏi dùng chung cho các khóa học trong cùng chương trình.' : 'Quản lý bài kiểm tra của khóa học; chọn câu hỏi từ chương trình tương ứng.'"
 >
   <div slot="actions" class="assessment__actions">
-    @if (store.routeScreen$() === 'questions') {
+    @if (store.routeScreen$() === 'questions') { @if
+    (!store.integrationPending$()) {
     <button
       uiButton
       variant="primary"
@@ -12,17 +13,22 @@
     >
       <ui-icon name="plus" size="sm" /> Thêm câu hỏi
     </button>
-    } @else if (store.routeScreen$() === 'quizzes') {
-    <a
-      uiButton
-      variant="primary"
-      routerLink="/admin/quizzes/new"
-      [queryParams]="{courseId:store.selectedCourseId$()}"
-      [disabled]="!store.selectedCourseId$() || store.isLoading$() || !!store.error$()"
-    >
-      <ui-icon name="plus" size="sm" /> Tạo bài kiểm tra
-    </a>
-    }
+    } } @else if (store.routeScreen$() === 'quizzes') {
+    <span [uiTooltip]="store.integrationPending$() ? newQuizBlocked : ''">
+      <a
+        uiButton
+        variant="primary"
+        routerLink="/admin/quizzes/new"
+        [queryParams]="{courseId:store.selectedCourseId$()}"
+        [disabled]="store.integrationPending$() || !store.selectedCourseId$() || store.isLoading$() || !!store.error$()"
+        [attr.aria-describedby]="store.integrationPending$() ? 'new-quiz-blocked' : null"
+      >
+        <ui-icon name="plus" size="sm" /> Tạo bài kiểm tra
+      </a>
+    </span>
+    @if (store.integrationPending$()) {
+    <span id="new-quiz-blocked" class="sr-only">{{newQuizBlocked}}</span>
+    } }
   </div>
 </ui-page-header>
 @if (store.routeScreen$() !== 'config') {
@@ -121,8 +127,8 @@
 </section>
 } @if (store.integrationPending$() && store.routeScreen$() === 'questions') {
 <ui-empty
-  title="Ngân hàng theo chương trình đang chờ kết nối API"
-  description="Chức năng chọn câu hỏi dùng chung trong chương trình cần được cập nhật trên hệ thống trước khi sử dụng."
+  title="Ngân hàng câu hỏi theo chương trình chưa sẵn sàng"
+  description="Câu hỏi dùng chung trong chương trình sẽ quản lý được tại đây sau bản cập nhật tới. Bài kiểm tra hiện có vẫn dùng bộ câu hỏi đã gán."
 />
 } @else if (store.isLoading$()) {
 <div class="assessment__loading" role="status">
@@ -551,12 +557,14 @@
         Chương trình: <strong>{{store.selectedProgramTitle$()}}</strong>. Có thể
         dùng câu hỏi chung của các khóa học trong chương trình này.
       </p>
-      @if (store.integrationPending$()) {
+      @if (store.integrationPending$()) { @if (isNewQuiz()) {
+      <ui-alert>{{newQuizBlocked}}</ui-alert>
+      } @else {
       <ui-alert
-        >Bộ câu hỏi hiện tại được giữ nguyên. Chọn thêm câu hỏi trong chương
-        trình sẽ khả dụng khi hệ thống cập nhật hỗ trợ.</ui-alert
+        >Bộ câu hỏi hiện tại được giữ nguyên. Chọn thêm câu hỏi từ chương trình
+        sẽ có sau bản cập nhật tới.</ui-alert
       >
-      } @if (!store.selectedProgramId$()) {
+      } } @if (!store.selectedProgramId$()) {
       <ui-alert
         >Khóa học chưa gắn chương trình. Hãy cập nhật chương trình của khóa học
         trước khi chọn câu hỏi.</ui-alert
@@ -678,7 +686,7 @@
         uiButton
         type="submit"
         variant="primary"
-        [disabled]="store.isSaving$()"
+        [disabled]="store.isSaving$() || (isNewQuiz() && store.integrationPending$())"
       >
         Lưu cấu hình
       </button>
