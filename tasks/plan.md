@@ -1,107 +1,129 @@
-# Implementation Plan: UX review Wave 0
+# Implementation Plan: UX review Wave 1 (app only)
 
-Spec: [SPEC-ux-wave0.md](../SPEC-ux-wave0.md) (approved 2026-11-04; amended below). Tasks: [todo.md](todo.md).
-Review plan: [PLAN.md](../docs/reviews/2026-11-04-ux-review/PLAN.md). The previous `ui-polish` plan is in git history
-(merged in PR #60).
+Spec: [SPEC-ux-wave1.md](../SPEC-ux-wave1.md) (approved 2026-11-04; amended below). Tasks: [todo.md](todo.md).
+Review plan: [PLAN.md](../docs/reviews/2026-11-04-ux-review/PLAN.md). The Wave 0 plan is in git history (merged in
+PR #63).
 
 ## Overview
 
-Three app-only modules: the pdf.js worker bundled as a script chunk (`pdf-worker-mime`), the four unbuilt screens marked
-"Sắp ra mắt" with a proper coming-soon page and the dev-only links hidden (`unfinished-screens`), and the question bank
-actions gated while the program bank is missing (`question-bank-gate`).
+Three modules:
 
-## Findings from the codebase
+- `course-editor-guards`: per-step validation, honest ✓ marks, a read-only published revision, and the a11y checks.
+- `report-filters`: report pickers instead of numeric ids, filters in the URL, and a reason for every disabled state.
+- `progress-reports`: learning-progress contracts and mock, KPIs on Tổng quan, and a "Tiến độ & hoàn thành" tab.
 
-- `apps/lms/project.json` already sets `webWorkerTsConfig`, and `sha256-hasher.ts` uses the
-  `new Worker(new URL('./sha256.worker', import.meta.url), { type: 'module' })` pattern. Angular emits it as
-  `worker-<hash>.js`. The pdf worker follows the same pattern. pdf.js 6.4 (`pdfjs-dist@6.4.299`) accepts
-  `GlobalWorkerOptions.workerPort`.
-- The worker is about 1.2 MB. Budgets only cover `initial` and component styles, so a lazy worker does not trip them.
-  `tools/check-production-bundle.mjs` is a marker check (dev-only strings), not a size check. No guard change is
-  needed.
-- **CI check method (the spec's open question):** the worker is loaded lazily, so its name is not in `index.html`.
-  The Dockerfile build stage writes `workers.txt`, one `worker-*.js` name per line, next to `version.txt`. It also
-  fails the image build if any `.mjs` file is left in the output. The deploy job's verify step reads
-  `workers.txt?commit=$GITHUB_SHA` and runs `curl -sI` on each name, asserting 200 and a `javascript` content type.
-  This covers the sha256 worker too.
-- The menu is built in `core/menu/menu-catalog.ts` (`navFor`, `homePathFor`), called once in
-  `core/session/to-profile.ts`. Exactly four screens have no `load`: `admin/lessons`, `admin/system`, `knowledge`,
-  `issues`.
-- `RoutePlaceholder` already injects `APP_CONFIG` and reads `data.mockupPage`. The route `title` is available from
-  the route.
-- `assessment-screen.store.ts` already exposes `integrationPending$` (false with `mockBackend`). The CTAs are in
-  `assessment-screen.html` lines ~6–24, the pending empty state at ~122, the config alert at ~555 and the picker
-  pagination at ~598.
+## Findings from the codebase (answers to the spec's open questions)
+
+- **Course picker source:** the admin course list is `courseEndpoints.instructorCourses`
+  (`GET /api/v1/instructor/courses`, `CourseListQuerySchema`: q, fieldId, programId, moduleId, …). It has **no
+  `orgId`**. The Khóa học picker therefore searches by `q` alone and does not narrow by Đơn vị. Narrowing it would be a
+  backend change, which the spec says to ask about first, so this plan does not include it. The report still filters
+  by both values.
+- **Quiz picker source:** `assessmentV1Endpoints.courseQuizList` (`/api/v1/courses/{courseId}/quizzes`), already
+  used by `/admin/quizzes`.
+- **Org sources:** `organization.endpoints.ts`: `/api/v1/orgs/tree` and `/api/v1/orgs/{orgId}/teams`.
+- **Course codes in the learner list:** `/enrollments` returns `courseCode`.
+- **Report routes:** `reports` and `reports/:dim` already load `ReportScreen`. `dimension$` parses `:dim` with
+  `AssessmentReportTypeSchema`, so `progress` needs its own branch: a `ReportView` union of `'overview' | 'progress'
+  | AssessmentReportType`. No new route is needed.
+- **Pattern to copy:** `course-shares/components/org-picker`, an `@angular/aria` `Combobox`, `ComboboxPopup` and
+  `ComboboxWidget` over a `Listbox` with `focusMode="activedescendant"`.
+- **Mocks:** `libs/mocks/src/lib/reports` already holds the assessment report mocks. The learning report handlers go
+  beside them.
+- **Editor:** `invalidSteps` is a component `computed` in `course-editor.ts`, and `goToStep` clamps without
+  validating. The edit controls sit inside `<fieldset [disabled]="!store.isDraft$()">`. `ui-field` already wires
+  `for` and `id`, so U18 on the title is most likely a stale finding. Task A4 checks it in the browser.
 
 ## Architecture decisions
 
-1. **The worker is a bundled module worker created once.** A module-level `let port: Worker | undefined`, set on the
-   first `open`, is passed through `workerPort`. pdf.js does not terminate a port it was given, so it is reused
-   across documents.
-2. **`upcoming` is derived, not configured.** `MenuItem.upcoming = !menuGroup(code).screens[0].load`. Building a
-   screen clears the label with no other edit.
-3. **The coming-soon page reads the home path from the session.** It uses the session store's `homePath`, the same
-   value the router uses after sign-in. There is no hard-coded `/`.
-4. **Amendment to the spec's Boundaries:** one commit per task (the `/build` loop), each naming its module and review
-   ID, instead of one commit per module.
+1. **The editor store owns step validity.** The store gets a `StepFields` map and the commands `continue()` and
+   `visit(step)`, plus `visited$`. The form tree stays in the component (Signal Forms). The component hands the store
+   a validity reader per step once, so the store can decide without owning the form.
+2. **Read-only via `isDraft$`, not the fieldset.** Each subcomponent takes an `editable` input, and the edit controls
+   are wrapped in `@if (editable())`. The fieldset stays as a second guard.
+3. **`ReportView` union in the report store.** Overview, progress and the four exam types each have their own
+   request builder. URL parsing and writing is one pair of pure functions, `filtersFromQuery` and `queryFromFilters`,
+   tested on their own.
+4. **One picker component, four instances.** The parent-child rules live in the store (`pickOrg`, `pickTeam`,
+   `pickCourse`, `pickQuiz` clear the children). The picker only reports what was typed and what was picked.
+5. **Name resolution for URL ids.** On load, each id in the URL is resolved through its picker source:
+   - the org comes from the tree;
+   - the team comes from its org's teams;
+   - the course comes from `getCourse`, falling back to `instructorCourses?q=` if access is refused;
+   - the quiz comes from the course's quiz list.
+   If an id is not resolved, the store sets `unresolved$` and no report request is made.
 
 ## Dependency graph
 
 ```text
-T1 pdf worker bundle ── T2 Dockerfile workers.txt + CI verify
-T3 menu upcoming ── T4 sidebar label + dev-only link
-T5 coming-soon page          (independent)
-T6 login dev-only note       (independent)
-T7 question bank gate + copy ── T8 pagination only when > 1 page
+Track A (editor):   A1 step validity + Tiếp tục ── A2 ✓ rule ── A3 read-only published ── A4 a11y checks
+Track B (reports):  B1 picker ── B2 URL filters ── B3 wire pickers ── B4 copy + CSV reasons
+Track C (reports):  C1 contracts + mock ── C2 Tổng quan KPIs ── C3 progress groups ── C4 progress learners + CSV
+                    (C2–C4 after B2/B3: they reuse the URL helpers and the pickers)
 ```
 
-The three chains touch different files and could run in parallel. The default is sequential, T1 → T8.
+Track A is independent of B and C. B and C both edit `report-screen.*`, so C starts after B3. C1 only touches
+`libs/contracts` and `libs/mocks`, so it can run any time.
+
+Default order: A1 → A4, then B1 → B4, then C1 → C4.
 
 ## Task list
 
-### Phase 1: `pdf-worker-mime`
+### Phase A: `course-editor-guards`
 
-- [ ] T1: Bundle the pdf.js worker and pass it as `workerPort`
-- [ ] T2: Build manifest of workers, with a post-deploy MIME check in CI
+- [ ] A1: Store-owned step validity; "Tiếp tục" blocks with errors and focuses the first invalid control
+- [ ] A2: ✓ only for visited, valid, non-current steps
+- [ ] A3: Published revision renders no edit controls
+- [ ] A4: A11y: chapter title label and focus, title name, no unnamed tab or tabpanel
 
 ### Checkpoint A
 
-- [ ] `npx nx test lms` green; `npx nx build lms -c production` has a pdf `worker-*.js` and no `.mjs`
-- [ ] Browser (`lms-local-backend`): a PDF lesson renders; the worker request is a `.js` chunk
+- [ ] `npx nx test lms` green
+- [ ] Browser: create mode, empty step 1, Tiếp tục; a published course; 1280 and 375px, light and dark; `read_page`
+      accessibility tree
 
-### Phase 2: `unfinished-screens`
+### Phase B: `report-filters`
 
-- [ ] T3: `MenuItem.upcoming` and `homePathFor` skipping upcoming functions
-- [ ] T4: Sidebar shows "Sắp ra mắt"; "Design System v2" only with dev tools
-- [ ] T5: Coming-soon page replaces the migration placeholder
-- [ ] T6: Login mockup note only with dev tools or the mock backend
+- [ ] B1: `report-picker` component
+- [ ] B2: Filters in the URL (pure helpers + store), tab links keep the filters
+- [ ] B3: Four pickers wired with parent-child clearing; "Tình trạng học viên" by pickers; unresolved ids
+- [ ] B4: Per-tab descriptions, CSV reasons, the bad-URL copy, wrapping tab bar
 
 ### Checkpoint B
 
 - [ ] `npx nx test lms` green
-- [ ] Browser: production-config flags (`devTools: false`) and dev config, 1280/375, light/dark, rail
+- [ ] Browser as `super.admin` and `baocao`: pickers, URL share, `?courseId=9999`, CSV reasons at 1280, ~800 and
+      375px
 
-### Phase 3: `question-bank-gate`
+### Phase C: `progress-reports`
 
-- [ ] T7: Gate "Thêm câu hỏi" / "Tạo bài kiểm tra" and rewrite the pending copy
-- [ ] T8: Pagination rows render only when there is more than one page
+- [ ] C1: Learning report contracts, captured fixtures, mock handlers
+- [ ] C2: Tổng quan "Tiến độ học" KPIs above "Kết quả thi", with an error per section
+- [ ] C3: `/reports/progress` filters and the "Theo khóa học / Theo đơn vị" views with drill-down
+- [ ] C4: "Theo học viên" view, sorting and paging on the server, CSV export
 
 ### Checkpoint C (complete)
 
 - [ ] `npm run check` green
-- [ ] angular.md §14 and visual-design.md checklists; screenshots
-- [ ] P1, P4 and the interim P2 re-tested as the review reproduced them; spec marked built
+- [ ] Browser as `baocao`, `quantri.ban` and `giangvien` (local backend), and with `mockBackend`; 1280 and 375px,
+      light and dark; screenshots
+- [ ] angular.md §14 and visual-design.md checklists; B12, B6, U13, U18, P3/U1, U21 and U2 re-tested
+- [ ] `SPEC-ux-wave1.md` marked built; Wave 1 app-only packages marked done in `PLAN.md`
 
 ## Risks and mitigations
 
-| Risk                                                                                                  | Impact | Mitigation                                                                                                                                              |
-| ----------------------------------------------------------------------------------------------------- | ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| pdf.js fails to start from a bundled worker (for example `import.meta` or top-level code differences) | High   | T1 is first. The browser check at Checkpoint A comes before anything else. Fallback: build a Blob URL from the fetched `.mjs` and record it in the plan |
-| Vitest/jsdom has no `Worker`                                                                          | Low    | Stub `globalThis.Worker` in the spec, as the sha256 hasher spec does (or skip if that spec uses another seam)                                           |
-| The CI verify step cannot be run from this machine                                                    | Med    | Verify the Dockerfile part locally with `docker build`. The verify step is shell only and reviewed. The first `main` deploy proves it                   |
-| Production config cannot sign in locally for the browser check                                        | Med    | Override `APP_CONFIG.devTools` in a browser check (dev server with a temporary env), or rely on specs for the flag and screenshot the dev config        |
-| "Sắp ra mắt" squeezes long labels in the 240px sidebar                                                | Low    | The label wraps under the name (block, `xs`). Check at 1280 with the longest label "Hệ thống & nhật ký"                                                 |
+| Risk | Impact | Mitigation |
+| ---- | ------ | ---------- |
+| The step validity reader couples the store to the form tree | Med | The component passes plain `() => boolean` readers per step; the store specs use fakes |
+| `focus first invalid` misses controls inside child components | Med | Use the field's `id` from `ui-field` (query `[aria-invalid="true"]` in the step's panel) and cover it in the spec |
+| The read-only change misses a control (the drawer opened from a keyboard shortcut, drag handles) | Med | The spec queries every control by text and `aria-label` in published mode; check the browser at Checkpoint A |
+| Combobox behaviour differs from `org-picker` under `@angular/aria` 22.2 | Low | Copy the working pattern; the picker spec covers the keys |
+| The org tree is large for a local filter | Low | Flatten once per screen and keep it memoised; the server tree is already scoped |
+| A URL id outside the user's scope leaks a name | Low | Resolve only through scoped endpoints; anything that cannot be resolved shows the not-found message |
+| Captured fixtures need the local backend running | Med | Run the `backend` launch config. If it is not reachable, stop and report rather than hand-writing fixtures |
+| The mobile card layout of `ui-data-table` hides the drill-down click | Low | The row action is a link in the Tên cell, not a row click only |
 
 ## Open questions
 
-None.
+None. The course picker is not narrowed by unit (no `orgId` on the course list). It is recorded here and in the spec
+amendments.
