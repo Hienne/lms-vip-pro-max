@@ -1,4 +1,5 @@
 import { Dialog } from '@angular/cdk/dialog';
+import { NgTemplateOutlet } from '@angular/common';
 import { Component, computed, inject, input, output } from '@angular/core';
 import { FormField, type FieldTree } from '@angular/forms/signals';
 import {
@@ -32,7 +33,8 @@ import {
 /**
  * Step 2 of the editor: chapters and their lessons. Chapters are renamed in place, lessons are
  * reordered by drag or the move buttons and opened in the lesson drawer. It edits the page's form
- * through the field tree it is given.
+ * through the field tree it is given. A published revision (`editable` false) shows the outline as
+ * text, with no control that would change it.
  */
 @Component({
   selector: 'app-course-outline',
@@ -48,6 +50,7 @@ import {
     IconButton,
     Input,
     LinkButton,
+    NgTemplateOutlet,
     SortableItem,
     SortableList,
   ],
@@ -56,6 +59,7 @@ import {
 })
 export class CourseOutline {
   readonly draft = input.required<FieldTree<CourseDraftValue>>();
+  readonly editable = input(true);
   readonly editLesson = output<LessonTarget>();
 
   private readonly dialog = inject(Dialog);

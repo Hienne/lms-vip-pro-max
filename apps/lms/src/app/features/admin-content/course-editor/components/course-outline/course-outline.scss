@@ -31,6 +31,20 @@
     font-weight: ui.weight(semibold);
   }
 
+  &__chapter-name {
+    @include ui.text(md);
+    flex: 1 1 auto;
+    margin: 0;
+    font-weight: ui.weight(semibold);
+  }
+
+  &__lessons {
+    @include ui.stack(2);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
   &__lesson {
     @include ui.row(2);
     flex-wrap: nowrap;

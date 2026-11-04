@@ -91,6 +91,60 @@ describe('CourseEditor', () => {
     expect(screen.button('Lưu nháp')).toBeTruthy();
   });
 
+  describe('a published revision', () => {
+    /** Every edit control by its text or `aria-label`. */
+    const editControls =
+      /Sửa\b|Thêm bài học|Thêm chương|Thêm mục tiêu|Xóa|Chuyển lên|Chuyển xuống|Kéo/;
+    const controls = () =>
+      Array.from(
+        screen.el.querySelectorAll<HTMLElement>(
+          '.course-editor__body button, .course-editor__body [role="button"], .course-editor__body [cdkDragHandle]',
+        ),
+      ).map(
+        (b) => `${b.textContent?.trim()} ${b.getAttribute('aria-label') ?? ''}`,
+      );
+
+    it('renders no edit control in its steps, and keeps its values in sight', async () => {
+      await screen.open('/admin/courses/1/edit');
+      expect(controls().filter((name) => editControls.test(name))).toEqual([]);
+      expect(screen.field('Tên khóa học')).toBeTruthy();
+
+      await step('Nội dung khóa học');
+      expect(controls().filter((name) => editControls.test(name))).toEqual([]);
+      expect(
+        screen.el.querySelector('[uiSortableList], ui-sortable-item'),
+      ).toBeNull();
+      expect(
+        screen.el.querySelectorAll('.course-outline__lesson-title').length,
+      ).toBeGreaterThan(0);
+      expect(
+        screen.el.querySelector('.course-outline__chapter-name')?.textContent,
+      ).toBeTruthy();
+
+      await step('Bài thi & điều kiện');
+      expect(controls().filter((name) => editControls.test(name))).toEqual([]);
+    });
+
+    it('keeps only "Quay lại" and "Tiếp tục" in the footer', async () => {
+      await screen.open('/admin/courses/1/edit');
+      await step('Nội dung khóa học');
+      const footer = screen.el.querySelector('footer.course-editor__foot')!;
+      expect(
+        Array.from(footer.querySelectorAll('button, a')).map((b) =>
+          b.textContent?.trim(),
+        ),
+      ).toEqual(['Quay lại', 'Tiếp tục']);
+    });
+
+    it('shows the edit controls again once the draft is open', async () => {
+      await screen.open('/admin/courses/1/edit');
+      await screen.click(screen.button('Mở bản nháp để sửa'));
+      await step('Nội dung khóa học');
+      expect(screen.button('Thêm chương')).toBeTruthy();
+      expect(screen.button('Thêm bài học')).toBeTruthy();
+    });
+  });
+
   it('saves the whole draft with the revision version, then reads it again', async () => {
     await screen.open('/admin/courses/6/edit');
     const title = screen.field('Tên khóa học') as HTMLInputElement;

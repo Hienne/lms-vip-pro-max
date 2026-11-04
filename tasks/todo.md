@@ -38,10 +38,10 @@ continue, the alert and the focus)
 
 **Acceptance criteria:**
 
-- [ ] `course-outline`, `course-info` and `course-rules` take `editable` (from `isDraft$`). Their edit, add, delete,
+- [x] `course-outline`, `course-info` and `course-rules` take `editable` (from `isDraft$`). Their edit, add, delete,
       move, drag and upload controls are not rendered when it is false, and the lesson drawer cannot open. The values
       stay visible.
-- [ ] The banner and its "Mở bản nháp để sửa" are unchanged. The footer of a published revision shows only "Quay lại"
+- [x] The banner and its "Mở bản nháp để sửa" are unchanged. The footer of a published revision shows only "Quay lại"
       and "Tiếp tục".
 
 **Verification:** `npx nx test lms` (published mode: no control with the texts "Sửa", "Thêm bài học", "Thêm chương",

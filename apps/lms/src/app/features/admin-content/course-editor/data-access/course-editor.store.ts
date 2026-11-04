@@ -712,7 +712,9 @@ export class CourseEditorStore {
     this.setProgramId(Number.isInteger(id) && id > 0 ? id : undefined);
   }
 
+  /** Opens a lesson in the drawer; a published revision is not edited, so it stays shut. */
   editLesson(target: LessonTarget): void {
+    if (!this.isDraft$()) return;
     this.setEditingLesson(target);
   }
 

@@ -118,6 +118,7 @@
           placeholder="Học viên có thể…"
           [attr.aria-label]="'Mục tiêu ' + (i + 1)"
         />
+        @if (editable()) {
         <button
           uiIconButton
           type="button"
@@ -126,11 +127,13 @@
         >
           <ui-icon name="x" size="sm" />
         </button>
+        }
       </div>
-      }
+      } @if (editable()) {
       <button uiLinkButton type="button" (click)="addObjective()">
         <ui-icon name="plus" size="sm" />Thêm mục tiêu
       </button>
+      }
     </fieldset>
   </section>
 
