@@ -69,7 +69,10 @@ describe('CommunityQuestions', () => {
     buttons[0].click();
     await page.settle();
     expect(select.value).toBe('');
-    expect(request()).toMatchObject({ q: 'Oracle', resolutionStatus: 'solved' });
+    expect(request()).toMatchObject({
+      q: 'Oracle',
+      resolutionStatus: 'solved',
+    });
     expect(request()?.['tagIds']).toBeUndefined();
   });
 });

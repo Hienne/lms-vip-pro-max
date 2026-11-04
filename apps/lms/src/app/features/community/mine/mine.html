@@ -91,9 +91,9 @@
       <tr>
         <td data-label="Tiêu đề" class="mine__title">
           @if (row.status === 'draft') {
-          <span uiTablePrimary [title]="row.card.title || 'Chưa có tiêu đề'">{{
-            row.card.title || 'Chưa có tiêu đề'
-          }}</span>
+          <span uiTablePrimary [title]="row.card.title || 'Chưa có tiêu đề'"
+            >{{ row.card.title || 'Chưa có tiêu đề' }}</span
+          >
           } @else {
           <a uiTablePrimary [title]="row.card.title" [routerLink]="row.link"
             >{{ row.card.title }}</a
@@ -175,7 +175,7 @@
 } @else if (store.saved$().length) {
 <ul class="community-list__rows" aria-label="Bài đã lưu">
   @for (card of store.saved$(); track card.contentId) {
-  <li class="mine__saved-row">
+  <li>
     <app-content-row [card]="card" />
     <button
       uiButton

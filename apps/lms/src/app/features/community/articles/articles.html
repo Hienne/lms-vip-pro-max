@@ -34,7 +34,9 @@
         (change)="store.filterTag(tag.value)"
         #tag
       >
-        <option value="" [selected]="!store.filters$().tagId">Tất cả thẻ</option>
+        <option value="" [selected]="!store.filters$().tagId">
+          Tất cả thẻ
+        </option>
         @for (option of tags.tags$() ?? []; track option.tagId) {
         <option
           [value]="option.tagId"
