@@ -1,7 +1,13 @@
 @use 'ui';
 
+// The page is at least the viewport under the sticky header, so the footer bar rests at the bottom
+// of the viewport even when the step is short (it then sits in flow, `margin-top: auto`).
 :host {
   @include ui.page(wide);
+  display: flex;
+  flex-direction: column;
+  min-height: calc(100dvh - #{ui.layout(header)});
+  padding-bottom: 0;
 }
 
 .course-editor {
@@ -38,32 +44,35 @@
     margin-bottom: ui.space(6);
   }
 
+  // The bottom margin keeps the last block of the step clear of the bar.
   &__body {
     min-width: 0;
-    margin: 0;
+    margin: 0 0 ui.space(6);
     padding: 0;
     border: 0;
   }
 
-  // Pinned to the bottom of the viewport; at the end of the form it rests flush with the page
-  // bottom (the negative margins cancel the host's padding so the fill spans the page column).
+  // A bar floating `2vh` above the bottom of the viewport, across the page column. In flow it rests
+  // the same `2vh` above the page bottom (`margin-top: auto` pushes it down in a short step), so it
+  // does not jump when it starts to stick. It floats over the content, so it carries the shadow.
   &__foot {
     @include ui.row(2);
     position: sticky;
-    bottom: 0;
+    bottom: 2vh;
     z-index: ui.z(bar);
     flex-wrap: wrap;
-    margin: ui.space(6) calc(-1 * #{ui.space(4)}) calc(-1 * #{ui.space(10)});
+    margin: auto 0 2vh;
     padding: ui.space(3) ui.space(4);
     background: ui.color(surface);
-    border-top: 1px solid ui.color(border);
+    border: 1px solid ui.color(border);
+    border-radius: ui.radius(card);
+    box-shadow: ui.shadow(md);
 
     @include ui.bp(md) {
-      margin-inline: calc(-1 * #{ui.space(6)});
-      margin-bottom: calc(-1 * #{ui.space(12)});
       padding-inline: ui.space(6);
     }
   }
+
 
   &__spacer {
     flex: 1 1 auto;
