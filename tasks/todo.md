@@ -12,18 +12,18 @@ use the nav tone on the sidebar so the dark panel shows one thin, dark-tinted ba
 
 **Acceptance criteria:**
 
-- [ ] `scrollbar-thumb` (from `border-strong`), `scrollbar-thumb-hover` (from `text-muted`), `scrollbar-track`
+- [x] `scrollbar-thumb` (from `border-strong`), `scrollbar-thumb-hover` (from `text-muted`), `scrollbar-track`
       (`transparent`) and `nav-scrollbar-thumb` (`white` ~24% over transparent) exist in light and dark;
       `nav-scrollbar-thumb` is in `$palette-color-keys` and set from `text` in `cobalt` and `giay` (light and dark).
-- [ ] `html` has `scrollbar-color: thumb track; scrollbar-width: thin` in `@layer base`; `ui.scrollbar(nav)` is used
+- [x] `html` has `scrollbar-color: thumb track; scrollbar-width: thin` in `@layer base`; `ui.scrollbar(nav)` is used
       on the sidebar; tabs keep `scrollbar-width: none`.
-- [ ] The sidebar shows a single scroll area (`.sidebar__nav`), or the outer one keeps `auto` with the nav tone if
-      the fixed parts do not fit a 600px-tall viewport (decision recorded here).
+- [x] The sidebar shows a single scroll area (`.sidebar__nav`), or the outer one keeps `auto` with the nav tone if
+      the fixed parts do not fit a 600px-tall viewport (decision recorded here: the outer `app-shell__sidebar` keeps `overflow-y: auto` with the nav tone; whether it overflows is checked at Checkpoint A).
 
 **Verification:**
 
-- [ ] `npx nx test ui` (guard: no colour literal outside tokens; palette keys complete)
-- [ ] Browser: computed `scrollbar-color` on `html` and `.sidebar__nav` in bidv and cobalt, light and dark
+- [x] `npx nx test ui` (guard: no colour literal outside tokens; palette keys complete)
+- [ ] Browser (at Checkpoint A): computed `scrollbar-color` on `html` and `.sidebar__nav` in bidv and cobalt, light and dark
 
 **Dependencies:** None
 

@@ -49,6 +49,7 @@
     top: 0;
     height: 100dvh;
     overflow-y: auto;
+    @include ui.scrollbar(nav);
     z-index: ui.z(sidebar);
 
     // Below `lg` the sidebar lives in the drawer instead.

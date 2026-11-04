@@ -8,6 +8,8 @@
 @layer base {
   html {
     -webkit-text-size-adjust: 100%;
+    // Inherited by every scroll area: thin, token-coloured, no arrow buttons.
+    @include ui.scrollbar;
     scroll-padding-top: calc(#{ui.layout(header)} + #{ui.space(4)});
   }
 

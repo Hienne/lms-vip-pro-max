@@ -105,6 +105,18 @@ $-tones: (
   line-clamp: $lines;
 }
 
+// ---- Scrollbars ----
+// The thin, token-coloured bar. `html` sets the default (the properties inherit, so every scroll
+// area follows); include this where an area needs the `nav` tone for the sidebar panel.
+@mixin scrollbar($tone: default) {
+  @if $tone != default and $tone != nav {
+    @error 'scrollbar tone must be default or nav, got #{$tone}';
+  }
+  $thumb: if($tone == nav, color(nav-scrollbar-thumb), color(scrollbar-thumb));
+  scrollbar-color: $thumb color(scrollbar-track);
+  scrollbar-width: thin;
+}
+
 // ---- Accessibility ----
 @mixin sr-only {
   position: absolute;

@@ -81,6 +81,7 @@
     padding-bottom: ui.space(3);
     overflow-y: auto;
     overscroll-behavior: contain;
+    @include ui.scrollbar(nav);
   }
 
   &__label {
