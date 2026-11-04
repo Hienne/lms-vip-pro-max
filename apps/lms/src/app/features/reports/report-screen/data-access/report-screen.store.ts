@@ -18,10 +18,12 @@ import { FileSaver } from '../../../../core/files/file-saver';
 import {
   filtersFromQuery,
   queryFromFilters,
+  TAB_FILTERS,
   tabQuery,
   type ReportFilters,
   type ReportTab,
 } from './report-query';
+import { reportPickers } from './report-pickers';
 
 export const REPORT_DIMENSIONS = [
   { id: 'results', label: 'Kết quả từng lượt thi' },
@@ -155,6 +157,8 @@ export class ReportScreenStore {
   };
   readonly filters$ = computed<ReportFilters>(() => this.urlQuery().filters);
   readonly page$ = computed(() => this.urlQuery().page);
+  /** The unit, team, course and quiz pickers, and whether the URL's ids are known to be in scope. */
+  readonly pickers = reportPickers(this.filters$);
   readonly sort$ = this.state.sort.asReadonly();
   /** The tab bar: each link keeps the current filters the tab reads. */
   readonly tabs$ = computed(() => {
@@ -181,12 +185,14 @@ export class ReportScreenStore {
       this.client.call(api.overview, { query }),
     {
       params: () =>
-        !this.params()?.get('dim') ? this.commonFilters() : undefined,
+        !this.params()?.get('dim') && !this.pickers.blocked$()
+          ? this.commonFilters()
+          : undefined,
     },
   );
   private readonly tableRequest = computed<TableRequest | undefined>(() => {
     const type = this.dimension$();
-    if (!type) return undefined;
+    if (!type || this.pickers.blocked$()) return undefined;
     const f = this.filters$(),
       sort = this.sort$();
     const paging = {
@@ -333,7 +339,7 @@ export class ReportScreenStore {
     () => this.overview.isLoading() || this.detail.isLoading(),
   );
   readonly error$ = computed(
-    () => this.overview.error() ?? this.detail.error(),
+    () => this.pickers.error$() ?? this.overview.error() ?? this.detail.error(),
   );
   readonly exporting$ = this.exportMutation.isPending;
   readonly canExport$ = computed(() => !!this.tableRequest());
@@ -365,14 +371,20 @@ export class ReportScreenStore {
     const request = this.tableRequest();
     if (request && !this.exporting$()) this.exportMutation.run(request);
   }
+  /** Writes the filters the current tab reads, so a shared link carries no unused key. */
   private navigate(filters: ReportFilters, page: number): void {
     void this.router.navigate([], {
       relativeTo: this.route,
-      queryParams: queryFromFilters(filters, page),
+      queryParams: queryFromFilters(
+        filters,
+        page,
+        TAB_FILTERS[this.dimension$() ?? 'overview'],
+      ),
       replaceUrl: true,
     });
   }
   retry(): void {
+    this.pickers.retry();
     this.overview.reload();
     this.detail.reload();
   }

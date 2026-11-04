@@ -102,14 +102,20 @@ roles if changed); browser `read_page`
 
 **Acceptance criteria:**
 
-- [ ] Đơn vị (flattened `orgs/tree`, matched locally), Phòng / nhóm (`orgs/{orgId}/teams`, disabled with "Chọn đơn
+- [x] Đơn vị (flattened `orgs/tree`, matched locally), Phòng / nhóm (`orgs/{orgId}/teams`, disabled with "Chọn đơn
       vị trước"), Khóa học (`instructorCourses?q=`, "mã · tên"), Bài kiểm tra (`courseQuizList`, disabled with
       "Chọn khóa học trước").
-- [ ] Changing a parent clears its children.
-- [ ] No "ID …" inputs are left. On "Tình trạng học viên" the quiz picker is required and comes first, and the alert
+- [x] Changing a parent clears its children.
+- [x] No "ID …" inputs are left. On "Tình trạng học viên" the quiz picker is required and comes first, and the alert
       reads "Chọn khóa học và bài kiểm tra để xem cả học viên chưa thi."
-- [ ] URL ids are resolved to names. An id that cannot be resolved sets the picker error "Không tìm thấy … trong
+- [x] URL ids are resolved to names. An id that cannot be resolved sets the picker error "Không tìm thấy … trong
       phạm vi của bạn." and blocks the report request.
+
+      Amended ("Use report data"): the report roles cannot read `orgs/tree`, `orgs/{id}/teams` or the course quiz
+      list, so the sources are the report endpoints: units and teams from `reports/learning/groups?groupBy=org|team`,
+      courses from `groupBy=course` (searched on the server, narrowed by unit and team), quizzes from the exam
+      overview `byQuiz` of the picked course. On "Tình trạng học viên" Khóa học and Bài kiểm tra come first, since the
+      quiz waits for the course.
 
 **Verification:** `npx nx test lms` (store: clearing, resolution, blocked request; screen: learners flow)
 

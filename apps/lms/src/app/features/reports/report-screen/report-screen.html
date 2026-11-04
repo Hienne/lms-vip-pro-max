@@ -28,23 +28,21 @@
   aria-label="Bộ lọc báo cáo"
 >
   <div class="grid-4">
-    <ui-field label="ID đơn vị" hint="Để trống: toàn bộ phạm vi được cấp."
-      ><input uiInput inputmode="numeric" [formField]="filterForm.orgId"
-    /></ui-field>
-    <ui-field label="ID phòng / nhóm"
-      ><input uiInput inputmode="numeric" [formField]="filterForm.teamId"
-    /></ui-field>
-    @if(store.dimension$() !== 'learners'){<ui-field label="ID khóa học"
-      ><input
-        uiInput
-        inputmode="numeric"
-        [formField]="filterForm.courseId" /></ui-field
-    >}
-    <ui-field
-      label="ID bài kiểm tra"
-      [required]="store.dimension$() === 'learners'"
-      ><input uiInput inputmode="numeric" [formField]="filterForm.quizId"
-    /></ui-field>
+    @for (field of pickerFields(); track field.key) {
+    <app-report-picker
+      [label]="field.label"
+      [emptyLabel]="field.emptyLabel"
+      [options]="store.pickers.matches$()[field.key]"
+      [selected]="store.pickers.selected$()[field.key]"
+      [busy]="store.pickers.busy$()[field.key]"
+      [disabled]="!!field.parent && !store.pickers.picks$()[field.parent.key]"
+      [disabledReason]="field.parent?.reason ?? ''"
+      [error]="store.pickers.errors$()[field.key]"
+      [required]="field.key === 'quizId' && store.dimension$() === 'learners'"
+      (queried)="store.pickers.search(field.key, $event)"
+      (picked)="store.pickers.pick(field.key, $event)"
+    />
+    }
   </div>
   @if(store.dimension$() !== 'learners'){
   <div class="grid-2">
@@ -100,8 +98,7 @@
   >Loại báo cáo này chưa có API tương ứng. Chọn một báo cáo được hỗ trợ ở
   trên.</ui-alert
 >} @else if(store.needsQuiz$()){<ui-alert
-  >Nhập ID bài kiểm tra và áp dụng bộ lọc để xem cả học viên chưa thi. Bộ lọc
-  ngày nộp không áp dụng cho báo cáo này.</ui-alert
+  >Chọn khóa học và bài kiểm tra để xem cả học viên chưa thi.</ui-alert
 >} @else if(store.isLoading$()){
 <p role="status"><span uiSpinner></span>Đang tải báo cáo…</p>
 } @else if(store.error$();as error){<ui-error-state

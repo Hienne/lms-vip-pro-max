@@ -1,7 +1,10 @@
 import { TestBed } from '@angular/core/testing';
 import { provideRouter, Router } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
-import { assessmentReportEndpoints as api } from '@lms/contracts';
+import {
+  assessmentReportEndpoints as api,
+  learningReportEndpoints as learning,
+} from '@lms/contracts';
 import { createAppRoutes } from '../../../../app.routes';
 import { provideAppConfig } from '../../../../core/config/app-config';
 import { testAppConfig } from '../../../../core/config/app-config.testing';
@@ -40,9 +43,10 @@ describe('assessment report integration', () => {
       await new Promise((resolve) => setTimeout(resolve, 0));
     }
   }
+  /** As `quantri.ban`, an admin of org 1, whose report scope holds the seeded enrolments. */
   async function open(path: string) {
-    signInToMockBackend('baocao');
-    fakeSession().user.set(seedProfile('000006'));
+    signInToMockBackend('quantri.ban');
+    fakeSession().user.set(seedProfile('000003'));
     harness = await RouterTestingHarness.create();
     await harness.navigateByUrl(path);
     await settle();
@@ -55,7 +59,6 @@ describe('assessment report integration', () => {
     const spy = vi.spyOn(TestBed.inject(MockBackend), 'handle');
     store.applyFilters({
       orgId: 1,
-      teamId: 1,
       courseId: 1,
       quizId: 1,
       userId: '000004',
@@ -95,7 +98,7 @@ describe('assessment report integration', () => {
     expect(spy.mock.calls.some(([e]) => e === api.learners)).toBe(false);
     store.applyFilters({
       quizId: 1,
-      courseId: 9,
+      courseId: 1,
       from: '2026-12-01T00:00:00Z',
       orgId: 1,
       learnerStatus: 'FAILED',
@@ -127,6 +130,103 @@ describe('assessment report integration', () => {
     expect(store.filters$().userId).toBe('000099');
     expect(store.total$()).toBe(0);
   });
+  describe('pickers', () => {
+    it('lists the units and, once one is picked, its teams', async () => {
+      const store = await open('/reports/results');
+      const { pickers } = store;
+      expect(pickers.options$.orgId()).toEqual([
+        { id: 1, name: 'Ban Quản lý và phát triển Core Banking' },
+      ]);
+      expect(pickers.options$.teamId()).toEqual([]);
+      pickers.pick('orgId', pickers.options$.orgId()[0]);
+      await settle();
+      expect(pickers.options$.teamId().map((t) => t.name)).toEqual([
+        'Nhóm BA&QC Tiền gửi',
+        'Nhóm Tích hợp Core Banking',
+      ]);
+    });
+
+    it('reads courses as "code · name" from the server search, narrowed by the unit', async () => {
+      const spy = vi.spyOn(TestBed.inject(MockBackend), 'handle');
+      const store = await open('/reports/results?orgId=1');
+      expect(store.pickers.options$.courseId()).toContainEqual({
+        id: 1,
+        name: 'Tổng quan hệ thống Core Banking',
+        meta: 'NV-101',
+      });
+      store.pickers.search('courseId', 'change');
+      await settle();
+      expect(
+        spy.mock.calls.filter(([e]) => e === learning.groups).at(-1)?.[1].query,
+      ).toMatchObject({ groupBy: 'course', orgId: '1', q: 'change' });
+      expect(store.pickers.options$.courseId().map((c) => c.meta)).toEqual([
+        'VH-201',
+      ]);
+    });
+
+    it('lists the quizzes of the picked course and clears the children of a changed parent', async () => {
+      const store = await open('/reports/results?orgId=1&teamId=7&courseId=1');
+      const { pickers } = store;
+      pickers.pick('quizId', { id: 1, name: 'Luyện tập Core Banking' });
+      await settle();
+      expect(pickers.options$.quizId().map((q) => q.name)).toEqual([
+        'Luyện tập Core Banking',
+      ]);
+      pickers.pick('courseId', { id: 4, name: 'Văn hóa', meta: 'HN-101' });
+      expect(pickers.picks$()).toEqual({
+        orgId: 1,
+        teamId: 7,
+        courseId: 4,
+        quizId: undefined,
+      });
+      pickers.pick('orgId', null);
+      expect(pickers.picks$()).toEqual({
+        orgId: undefined,
+        teamId: undefined,
+        courseId: undefined,
+        quizId: undefined,
+      });
+      expect(store.filters$()).toMatchObject({ orgId: 1, courseId: 1 });
+    });
+
+    it('shows the names of the ids a shared link applies', async () => {
+      const store = await open(
+        '/reports/results?orgId=1&teamId=7&courseId=1&quizId=1',
+      );
+      expect(store.pickers.selected$()).toEqual({
+        orgId: { id: 1, name: 'Ban Quản lý và phát triển Core Banking' },
+        teamId: { id: 7, name: 'Nhóm BA&QC Tiền gửi' },
+        courseId: {
+          id: 1,
+          name: 'Tổng quan hệ thống Core Banking',
+          meta: 'NV-101',
+        },
+        quizId: { id: 1, name: 'Luyện tập Core Banking' },
+      });
+      expect(store.pickers.errors$().courseId).toBeUndefined();
+    });
+
+    it('requests no report for an id outside the scope, and says so on its picker', async () => {
+      const spy = vi.spyOn(TestBed.inject(MockBackend), 'handle');
+      const store = await open('/reports/results?courseId=9999');
+      expect(store.pickers.errors$().courseId).toBe(
+        'Không tìm thấy khóa học này trong phạm vi của bạn.',
+      );
+      expect(spy.mock.calls.some(([e]) => e === api.results)).toBe(false);
+      store.pickers.pick('courseId', null);
+      expect(store.pickers.errors$().courseId).toBeUndefined();
+    });
+
+    it('requests no overview for a unit outside the scope', async () => {
+      const spy = vi.spyOn(TestBed.inject(MockBackend), 'handle');
+      const store = await open('/reports?orgId=99');
+      expect(store.pickers.errors$().orgId).toBe(
+        'Không tìm thấy đơn vị này trong phạm vi của bạn.',
+      );
+      expect(spy.mock.calls.some(([e]) => e === api.overview)).toBe(false);
+    });
+  });
+
   describe('filters in the URL', () => {
     it('reads the filters and the page from the query string', async () => {
       const spy = vi.spyOn(TestBed.inject(MockBackend), 'handle');

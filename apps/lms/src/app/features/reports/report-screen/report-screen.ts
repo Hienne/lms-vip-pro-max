@@ -1,4 +1,4 @@
-import { Component, inject, linkedSignal } from '@angular/core';
+import { Component, computed, inject, linkedSignal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import {
   form,
@@ -24,18 +24,44 @@ import {
   type DataTableColumn,
 } from '@lms/ui';
 import { ReportScreenStore } from './data-access/report-screen.store';
-const id = z
-  .string()
-  .refine(
-    (v) => !v || (/^[1-9]\d*$/.test(v) && Number.isSafeInteger(Number(v))),
-    'Nhập ID là số nguyên dương.',
-  );
+import type { PickerKey } from './data-access/report-pickers';
+import { ReportPicker } from './components/report-picker/report-picker';
+
+interface PickerField {
+  readonly key: PickerKey;
+  readonly label: string;
+  /** What an empty choice means. */
+  readonly emptyLabel: string;
+  /** The picker this one waits for, and the reason it gives meanwhile. */
+  readonly parent?: { readonly key: PickerKey; readonly reason: string };
+}
+
+const PICKERS: Record<PickerKey, PickerField> = {
+  orgId: {
+    key: 'orgId',
+    label: 'Đơn vị',
+    emptyLabel: 'Toàn bộ phạm vi được cấp',
+  },
+  teamId: {
+    key: 'teamId',
+    label: 'Phòng / nhóm',
+    emptyLabel: 'Tất cả phòng / nhóm',
+    parent: { key: 'orgId', reason: 'Chọn đơn vị trước' },
+  },
+  courseId: {
+    key: 'courseId',
+    label: 'Khóa học',
+    emptyLabel: 'Tất cả khóa học',
+  },
+  quizId: {
+    key: 'quizId',
+    label: 'Bài kiểm tra',
+    emptyLabel: 'Tất cả bài kiểm tra',
+    parent: { key: 'courseId', reason: 'Chọn khóa học trước' },
+  },
+};
 const filterSchema = z
   .object({
-    orgId: id,
-    teamId: id,
-    courseId: id,
-    quizId: id,
     userId: z.string().max(20),
     from: z.string(),
     to: z.string(),
@@ -73,6 +99,7 @@ function toLocalInput(iso: string | undefined): string {
 @Component({
   selector: 'app-report-screen',
   imports: [
+    ReportPicker,
     BarChart,
     RouterLink,
     FormField,
@@ -102,14 +129,16 @@ export class ReportScreen {
     { key: 'passRate', label: 'Đạt (%)', sortable: false },
     { key: 'averageScore', label: 'Điểm TB (%)', sortable: false },
   ];
+  /** "Tình trạng học viên" needs a quiz, so its course and quiz come first. */
+  protected readonly pickerFields = computed(() =>
+    this.store.dimension$() === 'learners'
+      ? [PICKERS.courseId, PICKERS.quizId, PICKERS.orgId, PICKERS.teamId]
+      : [PICKERS.orgId, PICKERS.teamId, PICKERS.courseId, PICKERS.quizId],
+  );
   /** The form shows the filters the URL applies, until the user edits them. */
   private readonly filterModel = linkedSignal(() => {
     const f = this.store.filters$();
     return {
-      orgId: f.orgId ? String(f.orgId) : '',
-      teamId: f.teamId ? String(f.teamId) : '',
-      courseId: f.courseId ? String(f.courseId) : '',
-      quizId: f.quizId ? String(f.quizId) : '',
       userId: f.userId ?? '',
       from: toLocalInput(f.from),
       to: toLocalInput(f.to),
@@ -128,10 +157,7 @@ export class ReportScreen {
       const f = this.filterModel();
       this.store.applyFilters(
         AssessmentReportExportQuerySchema.parse({
-          orgId: f.orgId ? Number(f.orgId) : undefined,
-          teamId: f.teamId ? Number(f.teamId) : undefined,
-          courseId: f.courseId ? Number(f.courseId) : undefined,
-          quizId: f.quizId ? Number(f.quizId) : undefined,
+          ...this.store.pickers.picks$(),
           userId: f.userId || undefined,
           from: f.from ? new Date(f.from).toISOString() : undefined,
           to: f.to ? new Date(f.to).toISOString() : undefined,
