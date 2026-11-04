@@ -121,7 +121,7 @@ only if a selector is needed · **Size:** S
 
 **Acceptance criteria:**
 
-- [ ] Every "Trang x / y" row in the assessment screens renders only when `totalPages > 1`. "Trang 1 / 0" can no
+- [x] Every "Trang x / y" row in the assessment screens renders only when `totalPages > 1`. "Trang 1 / 0" can no
       longer appear.
 
 **Verification:** `npx nx test lms` (0, 1 and 2 pages)

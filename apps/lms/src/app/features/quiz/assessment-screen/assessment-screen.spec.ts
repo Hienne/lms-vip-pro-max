@@ -15,7 +15,7 @@ import {
 import { SessionStore } from '../../../core/session/session.store';
 import { TokenStore } from '../../../core/session/token-store';
 import { MockBackend } from '../../../core/dev/mock-api/mock-api.interceptor';
-import { computed, Injectable } from '@angular/core';
+import { computed, Injectable, signal } from '@angular/core';
 import { AssessmentScreen } from './assessment-screen';
 import { AssessmentScreenStore } from './data-access/assessment-screen.store';
 
@@ -394,6 +394,45 @@ describe('AssessmentScreen (admin)', () => {
       );
       expect(save?.disabled).toBe(true);
       expect(text()).not.toContain('khi hệ thống cập nhật hỗ trợ');
+    });
+  });
+
+  describe('question picker pagination', () => {
+    /** Reports a number of pages without loading them, whatever the seeded program holds. */
+    function withPages(totalPages: number | undefined) {
+      @Injectable()
+      class PagedStore extends AssessmentScreenStore {
+        override readonly questions$ = signal(
+          totalPages === undefined
+            ? undefined
+            : ({ items: [], totalPages, page: 0 } as never),
+        );
+      }
+      TestBed.overrideComponent(AssessmentScreen, {
+        set: {
+          providers: [{ provide: AssessmentScreenStore, useClass: PagedStore }],
+        },
+      });
+    }
+    const pager = () =>
+      [...el.querySelectorAll('span')].find((e) =>
+        /Trang \d+ \//.test(e.textContent ?? ''),
+      );
+
+    it.each([undefined, 0, 1])('is hidden with %s pages', async (pages) => {
+      withPages(pages);
+      await open('/admin/quizzes/new?courseId=3');
+      expect(pager()).toBeUndefined();
+      expect(text()).not.toContain('Trang trước');
+    });
+
+    it('shows with two pages', async () => {
+      withPages(2);
+      await open('/admin/quizzes/new?courseId=3');
+      expect(pager()?.textContent?.replace(/\s+/g, ' ').trim()).toBe(
+        'Trang 1 / 2',
+      );
+      expect(text()).toContain('Trang sau');
     });
   });
 

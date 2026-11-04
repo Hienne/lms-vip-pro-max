@@ -602,6 +602,7 @@
         <p>Chưa có câu hỏi.</p>
         }
       </fieldset>
+      @if ((store.questions$()?.totalPages ?? 0) > 1) {
       <div class="row">
         <button
           uiButton
@@ -624,6 +625,7 @@
           Trang sau
         </button>
       </div>
+      }
     </section>
   </div>
   <aside class="stack stack--gap-6">
