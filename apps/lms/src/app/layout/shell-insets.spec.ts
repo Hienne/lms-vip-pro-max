@@ -17,7 +17,9 @@ class FakeResizeObserver {
 
 @Component({
   imports: [BottomBar],
-  template: `@if (shown()) {<div appBottomBar></div>}`,
+  template: `@if (shown()) {
+    <div appBottomBar></div>
+  }`,
 })
 class Host {
   readonly shown = signal(true);

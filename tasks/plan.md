@@ -88,14 +88,14 @@ Tasks 1, 2 and 3 touch disjoint files and could run in parallel; Task 1 and Task
 
 ## Risks and mitigations
 
-| Risk                                                                                   | Impact | Mitigation                                                                                                             |
-| -------------------------------------------------------------------------------------- | ------ | ---------------------------------------------------------------------------------------------------------------------- |
-| macOS overlay scrollbars hide the result; Windows (the user's screenshot) not testable | Med    | Check computed `scrollbar-color`/`-width`; screenshot with "Show scroll bars: Always" if allowed; say so in the report |
+| Risk                                                                                    | Impact | Mitigation                                                                                                             |
+| --------------------------------------------------------------------------------------- | ------ | ---------------------------------------------------------------------------------------------------------------------- |
+| macOS overlay scrollbars hide the result; Windows (the user's screenshot) not testable  | Med    | Check computed `scrollbar-color`/`-width`; screenshot with "Show scroll bars: Always" if allowed; say so in the report |
 | `scrollbar-color` on `html` changes areas that set `scrollbar-width: none` (tabs)       | Low    | The local rule wins over the inherited one; the tabs spec/visual check covers it                                       |
-| Long titles ("Đối tượng & xuất bản") squeeze the connectors at ~1024px with the sidebar | Med    | Connector has a minimum length (`ui.space(4)`); titles wrap, never truncate; check at 1024px too                         |
-| Sticky footer fails if an ancestor has `overflow` other than visible                   | Med    | Check the shell main/content chain in Task 4; the page scrolls the window today (not `--fill`)                          |
+| Long titles ("Đối tượng & xuất bản") squeeze the connectors at ~1024px with the sidebar | Med    | Connector has a minimum length (`ui.space(4)`); titles wrap, never truncate; check at 1024px too                       |
+| Sticky footer fails if an ancestor has `overflow` other than visible                    | Med    | Check the shell main/content chain in Task 4; the page scrolls the window today (not `--fill`)                         |
 | Owl inset leaks if the editor is destroyed mid-resize                                   | Low    | The directive resets to 0 in `DestroyRef.onDestroy` and disconnects the observer; spec covers it                       |
-| Theme guard rejects a new colour key                                                   | Low    | Add `nav-scrollbar-thumb` to `$palette-color-keys` and set it in both modes of each theme that overrides it            |
+| Theme guard rejects a new colour key                                                    | Low    | Add `nav-scrollbar-thumb` to `$palette-color-keys` and set it in both modes of each theme that overrides it            |
 
 ## Open questions
 

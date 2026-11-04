@@ -583,7 +583,11 @@ $palettes: (
           nav-muted: #4f596a,
           nav-strong: #243042,
           nav-hover: color-mix(in srgb, var(--color-text) 6%, transparent),
-          nav-scrollbar-thumb: color-mix(in srgb, var(--color-text) 24%, transparent),
+          nav-scrollbar-thumb: color-mix(
+              in srgb,
+              var(--color-text) 24%,
+              transparent
+            ),
           nav-active-bg: #dfe4eb,
           nav-active-text: #1b3a8c,
           nav-indicator: #b94328,
@@ -640,7 +644,11 @@ $palettes: (
           nav-muted: #99a3b3,
           nav-strong: #d5dce6,
           nav-hover: color-mix(in srgb, var(--color-text) 6%, transparent),
-          nav-scrollbar-thumb: color-mix(in srgb, var(--color-text) 24%, transparent),
+          nav-scrollbar-thumb: color-mix(
+              in srgb,
+              var(--color-text) 24%,
+              transparent
+            ),
           nav-active-bg: #27303c,
           nav-active-text: #d5dce6,
           nav-indicator: #e07a5f,
@@ -719,7 +727,11 @@ $palettes: (
           nav-muted: #5f6168,
           nav-strong: #16181d,
           nav-hover: color-mix(in srgb, var(--color-text) 5%, transparent),
-          nav-scrollbar-thumb: color-mix(in srgb, var(--color-text) 24%, transparent),
+          nav-scrollbar-thumb: color-mix(
+              in srgb,
+              var(--color-text) 24%,
+              transparent
+            ),
           nav-active-bg: #e6e0d4,
           nav-active-text: #16181d,
           nav-indicator: #c2512b,
@@ -776,7 +788,11 @@ $palettes: (
           nav-muted: #b1afa8,
           nav-strong: #ece8df,
           nav-hover: color-mix(in srgb, var(--color-text) 6%, transparent),
-          nav-scrollbar-thumb: color-mix(in srgb, var(--color-text) 24%, transparent),
+          nav-scrollbar-thumb: color-mix(
+              in srgb,
+              var(--color-text) 24%,
+              transparent
+            ),
           nav-active-bg: #22262d,
           nav-active-text: #ece8df,
           nav-indicator: #e0703f,

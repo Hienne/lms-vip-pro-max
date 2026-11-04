@@ -22,7 +22,7 @@ one component, `course-editor`, serves both). The scrollbar change reaches every
 
 | Topic         | Decision                                                                                             |
 | ------------- | ---------------------------------------------------------------------------------------------------- |
-| Scrollbar     | App-wide, one rule in the `ui` library; a variant for the dark nav panel                              |
+| Scrollbar     | App-wide, one rule in the `ui` library; a variant for the dark nav panel                             |
 | Stepper style | No cards: number circle + title/subtitle, joined by a 1px connector; vertical below `md`             |
 | Owl collision | The owl (and the chat launcher, same corner) rises above the pinned footer while the footer is shown |
 
