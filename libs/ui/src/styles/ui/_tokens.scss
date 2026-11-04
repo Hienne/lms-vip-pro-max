@@ -404,6 +404,7 @@ $animations: (
 
 // ---- Stacking (read through ui.z) ----
 $z-indexes: (
+  bar: 20,
   header: 30,
   sidebar: 40,
   drawer: 60,

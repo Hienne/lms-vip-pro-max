@@ -39,6 +39,30 @@ describe('CourseEditor', () => {
       ).find((s) => s.textContent?.includes(label)),
     );
 
+  describe('the pinned footer', () => {
+    /** Records what the bottom-bar directive observes. */
+    const observed: Element[] = [];
+    class RecordingObserver {
+      observe = (el: Element) => void observed.push(el);
+      disconnect = vi.fn();
+    }
+    beforeEach(() => {
+      observed.length = 0;
+      vi.stubGlobal('ResizeObserver', RecordingObserver);
+    });
+    afterEach(() => vi.unstubAllGlobals());
+
+    it.each([
+      ['create', '/admin/courses/new'],
+      ['edit', '/admin/courses/6/edit'],
+    ])('reports its height as the bottom inset in %s mode', async (_, url) => {
+      await screen.open(url);
+      const foot = screen.el.querySelector('footer.course-editor__foot');
+      expect(foot).not.toBeNull();
+      expect(observed).toContain(foot);
+    });
+  });
+
   it('shows a published course read-only until the author opens a draft', async () => {
     await screen.open('/admin/courses/1/edit');
 

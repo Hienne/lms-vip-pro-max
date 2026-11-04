@@ -54,6 +54,16 @@ describe('appBottomBar', () => {
     expect(insets.bottom()).toBe(72);
   });
 
+  it('keeps focused fields clear of the bar and lets go of that on destroy', () => {
+    const root = document.documentElement;
+    const { fixture } = mount();
+    FakeResizeObserver.instances[0].fire();
+    expect(root.style.scrollPaddingBottom).toBe('72px');
+    fixture.componentInstance.shown.set(false);
+    fixture.detectChanges();
+    expect(root.style.scrollPaddingBottom).toBe('');
+  });
+
   it('observes the bar it sits on', () => {
     const { bar } = mount();
     expect(FakeResizeObserver.instances[0].observe).toHaveBeenCalledWith(bar);

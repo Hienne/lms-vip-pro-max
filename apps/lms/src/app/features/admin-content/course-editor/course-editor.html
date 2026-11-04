@@ -102,7 +102,7 @@
   </fieldset>
 </form>
 
-<footer class="course-editor__foot">
+<footer class="course-editor__foot" appBottomBar>
   @if (store.step$() > 0) {
   <button uiButton variant="ghost" (click)="store.goToStep(store.step$() - 1)">
     <ui-icon name="chevron-left" size="sm" />Quay lại

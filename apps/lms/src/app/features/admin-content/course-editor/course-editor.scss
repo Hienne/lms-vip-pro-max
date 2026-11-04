@@ -45,12 +45,24 @@
     border: 0;
   }
 
+  // Pinned to the bottom of the viewport; at the end of the form it rests flush with the page
+  // bottom (the negative margins cancel the host's padding so the fill spans the page column).
   &__foot {
     @include ui.row(2);
+    position: sticky;
+    bottom: 0;
+    z-index: ui.z(bar);
     flex-wrap: wrap;
-    margin-top: ui.space(6);
-    padding-top: ui.space(4);
+    margin: ui.space(6) calc(-1 * #{ui.space(4)}) calc(-1 * #{ui.space(10)});
+    padding: ui.space(3) ui.space(4);
+    background: ui.color(surface);
     border-top: 1px solid ui.color(border);
+
+    @include ui.bp(md) {
+      margin-inline: calc(-1 * #{ui.space(6)});
+      margin-bottom: calc(-1 * #{ui.space(12)});
+      padding-inline: ui.space(6);
+    }
   }
 
   &__spacer {

@@ -1,3 +1,4 @@
+import { DOCUMENT } from '@angular/common';
 import {
   DestroyRef,
   Directive,
@@ -19,20 +20,26 @@ export class ShellInsets {
 
 /**
  * Put on a bar pinned to the bottom of the viewport: it reports its height to `ShellInsets` while
- * mounted and gives the space back when it is destroyed.
+ * mounted, keeps focused fields clear of it (`scroll-padding-bottom` on the root) and gives the
+ * space back when it is destroyed.
  */
 @Directive({ selector: '[appBottomBar]' })
 export class BottomBar {
   constructor() {
     const insets = inject(ShellInsets);
     const element = inject<ElementRef<HTMLElement>>(ElementRef).nativeElement;
-    const observer = new ResizeObserver(() =>
-      insets.bottom.set(element.offsetHeight),
-    );
+    const root = inject(DOCUMENT).documentElement;
+    const observer = new ResizeObserver(() => {
+      const height = element.offsetHeight;
+      insets.bottom.set(height);
+      // a field focused with Tab scrolls into view above the bar
+      root.style.scrollPaddingBottom = `${height}px`;
+    });
     observer.observe(element);
     inject(DestroyRef).onDestroy(() => {
       observer.disconnect();
       insets.bottom.set(0);
+      root.style.removeProperty('scroll-padding-bottom');
     });
   }
 }

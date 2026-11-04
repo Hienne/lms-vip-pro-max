@@ -102,17 +102,17 @@ it with `appBottomBar`, and keep focused fields clear of it.
 
 **Acceptance criteria:**
 
-- [ ] New stacking key `bar: 20` in `$z-indexes`; the footer is `position: sticky; bottom: 0; z-index: ui.z(bar)`,
+- [x] New stacking key `bar: 20` in `$z-indexes`; the footer is `position: sticky; bottom: 0; z-index: ui.z(bar)`,
       `surface` fill, 1px top `border`, `padding-block: ui.space(3)`, no shadow; same buttons and order in create and
       edit mode.
-- [ ] The footer has `appBottomBar`; the owl sits above it; the lesson drawer and dialogs cover it.
-- [ ] Tab to any field scrolls it into view above the bar (`scroll-margin-bottom` on the form's controls, or
+- [x] The footer has `appBottomBar`; the owl sits above it; the lesson drawer and dialogs cover it.
+- [x] Tab to any field scrolls it into view above the bar (`scroll-margin-bottom` on the form's controls, or
       `scroll-padding-bottom` while the editor is mounted).
 
 **Verification:**
 
-- [ ] `npx nx test lms` (`course-editor.spec.ts`: the footer carries the directive in both modes)
-- [ ] Browser: step 2 with a long outline at 1280/375, light/dark; scroll, Tab to the last field, open the drawer
+- [x] `npx nx test lms` (`course-editor.spec.ts`: the footer carries the directive in both modes)
+- [x] Browser: step 2 with a long outline at 1280/375, light/dark; scroll, Tab to the last field, open the drawer
 
 **Dependencies:** Task 3
 

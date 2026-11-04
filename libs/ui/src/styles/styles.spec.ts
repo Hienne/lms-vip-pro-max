@@ -157,6 +157,7 @@ const LIGHT_PROPERTIES = [
   '--animate-reward-pop',
   '--animate-shimmer',
   '--animate-spin',
+  '--z-index-bar',
   '--z-index-header',
   '--z-index-sidebar',
   '--z-index-drawer',
