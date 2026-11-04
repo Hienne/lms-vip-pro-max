@@ -1,7 +1,25 @@
 @use 'ui';
 
+// A whole-page notice, left-aligned: title, one line, one action.
 .route-placeholder {
   max-width: ui.layout(content);
-  margin-inline: auto;
   padding: ui.space(8) ui.space(4);
+
+  &__title {
+    margin: 0 0 ui.space(2);
+  }
+
+  &__text {
+    @include ui.text(md, muted);
+    margin: 0 0 ui.space(5);
+  }
+
+  &__actions {
+    @include ui.row;
+  }
+
+  &__dev {
+    @include ui.text(sm, muted);
+    margin: ui.space(5) 0 0;
+  }
 }

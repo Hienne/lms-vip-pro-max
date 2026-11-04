@@ -10,11 +10,18 @@ export interface MenuItem {
   /** The backend's name for the function. */
   readonly label: string;
   readonly section: string;
+  /** The function's entry screen is not built yet: the sidebar marks it "Sắp ra mắt". */
+  readonly upcoming: boolean;
 }
 
 export interface NavSection {
   readonly section: string;
   readonly items: readonly MenuItem[];
+}
+
+/** Whether the function's entry screen has no component yet (`Screen.load` is missing). */
+function isUpcoming(code: FunctionCode): boolean {
+  return !menuGroup(code).screens[0].load;
 }
 
 /** The screen a function's sidebar entry links to: the first screen of its group. */
@@ -78,6 +85,7 @@ export function navFor(
         icon: nav.icon,
         label: fn.name,
         section: nav.section,
+        upcoming: isUpcoming(fn.code),
       };
     }),
   );
@@ -85,10 +93,12 @@ export function navFor(
 
 /**
  * Where `/` and the login page send a user: the entry screen of the first function (after the
- * profile, which every account has) the app has a screen for; the profile when there is none.
+ * profile, which every account has) the app has a screen built for; the profile when there is none.
  */
 export function homePathFor(functions: readonly KnownFunction[]): string {
-  const first = functions.find((fn) => fn.code !== 'PROFILE');
+  const first = functions.find(
+    (fn) => fn.code !== 'PROFILE' && !isUpcoming(fn.code),
+  );
   return first ? entryHref(first.code) : '/profile';
 }
 
@@ -109,6 +119,7 @@ export function allSections(): readonly NavSection[] {
       icon: menuGroup(code).nav.icon,
       label: menuLabel(code),
       section: menuGroup(code).nav.section,
+      upcoming: isUpcoming(code),
     })),
   );
 }

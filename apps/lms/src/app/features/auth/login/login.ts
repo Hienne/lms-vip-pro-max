@@ -17,6 +17,7 @@ import {
   Input,
   Mai,
 } from '@lms/ui';
+import { APP_CONFIG } from '../../../core/config/app-config';
 import { LoginStore } from './data-access/login.store';
 import { LoginFormSchema } from './login.form';
 
@@ -56,6 +57,12 @@ const BRAND_POINTS: readonly { icon: IconName; text: string }[] = [
 })
 export class Login {
   protected readonly store = inject(LoginStore);
+
+  /** The mockup line and design-system link are for development and demo builds only. */
+  protected readonly showNote = (() => {
+    const config = inject(APP_CONFIG);
+    return config.devTools || config.mockBackend;
+  })();
 
   protected readonly brandPoints = BRAND_POINTS;
   protected readonly failureHeading = FAILURE_HEADING;

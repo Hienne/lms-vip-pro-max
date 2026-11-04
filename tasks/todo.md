@@ -1,157 +1,149 @@
-# Tasks: `ui-polish`
+# Tasks: UX review Wave 0
 
-Spec: [SPEC-ui-polish.md](../SPEC-ui-polish.md) · Plan: [plan.md](plan.md).
-The previous `course-publish-targets` checklist is in git history at `23b2930`.
+Spec: [SPEC-ux-wave0.md](../SPEC-ux-wave0.md) · Plan: [plan.md](plan.md).
+The previous `ui-polish` checklist is in git history (merged in PR #60).
 
-Run `nvm use` first. Focused tests: `npx nx test ui`, `npx nx test lms`. Whole gate: `npm run check`.
+Run `nvm use` first. Focused tests: `npx nx test lms`. Whole gate: `npm run check`. Commit per task, message naming
+the module and review ID, ending with the attribution line.
 
-## Task 1: Token-coloured thin scrollbar app-wide, nav variant on the sidebar
-
-**Description:** Add the scrollbar colour tokens, one inherited rule on `html`, a `ui.scrollbar($tone)` mixin, and
-use the nav tone on the sidebar so the dark panel shows one thin, dark-tinted bar.
+## T1: Bundle the pdf.js worker and pass it as `workerPort` (P1)
 
 **Acceptance criteria:**
 
-- [x] `scrollbar-thumb` (from `border-strong`), `scrollbar-thumb-hover` (from `text-muted`), `scrollbar-track`
-      (`transparent`) and `nav-scrollbar-thumb` (`white` ~24% over transparent) exist in light and dark;
-      `nav-scrollbar-thumb` is in `$palette-color-keys` and set from `text` in `cobalt` and `giay` (light and dark).
-- [x] `html` has `scrollbar-color: thumb track; scrollbar-width: thin` in `@layer base`; `ui.scrollbar(nav)` is used
-      on the sidebar; tabs keep `scrollbar-width: none`.
-- [x] The sidebar shows a single scroll area (`.sidebar__nav`), or the outer one keeps `auto` with the nav tone if
-      the fixed parts do not fit a 600px-tall viewport (decision: at a 600px-tall viewport the brand, role and footer leave the nav 357px and the outer sidebar never overflows, so `app-shell__sidebar` is `overflow: hidden` and only `.sidebar__nav` scrolls, with the nav tone).
+- [x] `pdf-block/pdf.worker.ts` only imports `pdfjs-dist/build/pdf.worker.min.mjs`. `PdfEngine.open` creates one
+      module worker from it on first use, sets `GlobalWorkerOptions.workerPort`, and reuses it. `WORKER` and
+      `workerSrc` are gone.
+- [x] The `pdf.worker.min.mjs` asset entry is removed from `apps/lms/project.json`.
+- [x] The production build has a `worker-*.js` holding pdf.js (`WorkerMessageHandler`) and no `.mjs` file.
 
-**Verification:**
+**Verification:** `npx nx test lms` (spec: one `Worker` for two `open` calls, `Worker` stubbed);
+`npx nx build lms -c production` then `ls dist/apps/lms/browser`.
 
-- [x] `npx nx test ui` (guard: no colour literal outside tokens; palette keys complete)
-- [x] Browser (Checkpoint A): computed `scrollbar-color` on `html` and `.sidebar__nav` in bidv and cobalt, light and dark
+**Dependencies:** none · **Files:** `pdf-engine.ts`, `pdf.worker.ts` (new), `pdf-engine.spec.ts` (new or existing),
+`apps/lms/project.json` · **Size:** S
 
-**Dependencies:** None
-
-**Files likely touched:** `libs/ui/src/styles/ui/_tokens.scss`, `libs/ui/src/styles/ui/_mixins.scss`,
-`libs/ui/src/styles/global/_base.scss`, `apps/lms/src/app/layout/sidebar/sidebar.scss`,
-`apps/lms/src/app/layout/shell/app-shell.scss`
-
-**Estimated scope:** M
-
-## Task 2: Stepper of numbered steps joined by connectors
-
-**Description:** Restyle `ui-stepper`: no card per step; circle, then title over subtitle; a 1px connector after each
-step but the last, primary after a done step; vertical below `md`. Behaviour and API unchanged.
+## T2: Build manifest of workers, with a post-deploy MIME check in CI (P1)
 
 **Acceptance criteria:**
 
-- [x] `.stepper__item` carries `is-done` for done steps; its `::after` connector is `primary`, otherwise `border`;
-      the last item has none; connector minimum length `ui.space(4)`.
-- [x] Circles: pending `surface-2`/`text-secondary`, current `primary`/`on-primary`, done `primary-subtle`/`primary`
-      with the check; no border, background or shadow on the step; titles wrap, never truncate.
-- [x] Below `md`: vertical list with a vertical connector; keyboard, `aria-current`, "Đã hoàn thành", `linear`
-      unchanged.
+- [x] The Dockerfile build stage fails if `dist/apps/lms/browser` holds any `.mjs`. It writes `workers.txt` listing
+      every `worker-*.js` (at least one line).
+- [x] In `ci.yml`, "Verify public frontend revision" reads `workers.txt?commit=$GITHUB_SHA` and, for each line, checks
+      that `curl -sI` returns 200 with `content-type` containing `javascript`. The step fails otherwise.
 
-**Verification:**
+**Verification:** `docker build --build-arg APP_REVISION=local .` succeeds, and `workers.txt` is in `/artifact`
+(`docker create` + `docker cp`). If Docker is not available here, say so. Read through the CI shell with
+`set -euo pipefail`.
 
-- [x] `npx nx test ui` (new cases: `is-done` on items before the current one, none on the last connector's item
-      logic, existing a11y cases still green)
-- [x] Browser: course editor steps 1 and 2 at 1280, 1024 and 375px, light and dark (step 4 uses the same markup; design-system page not opened)
-
-**Dependencies:** None
-
-**Files likely touched:** `libs/ui/src/styles/components/_stepper.scss`,
-`libs/ui/src/lib/organisms/stepper/stepper.html`, `libs/ui/src/lib/organisms/stepper/stepper.spec.ts`
-
-**Estimated scope:** S
+**Dependencies:** T1 · **Files:** `Dockerfile`, `.github/workflows/ci.yml` · **Size:** XS
 
 ## Checkpoint A
 
-- [x] `npx nx test ui` (517) and `npx nx test lms` (1698) green
-- [x] Browser checks (built-in pane, `lms` on :4201 with `mockBackend: true` set locally, not committed):
-  - `html` computed `scrollbar-color` is `border-strong` over transparent with `scrollbar-width: thin` (light `rgb(138,150,148)`, dark `rgb(92,110,107)`); `.sidebar__nav` carries the nav thumb (white 24% in bidv, `text` 24% in cobalt light and dark); outer sidebar is `overflow: hidden`.
-  - Stepper at 1280 (light and dark), 1024 and 375: one row with connectors, primary up to the current step (`rgb(0,107,104)`), grey after; vertical list with a vertical connector at 375; done circle `primary-subtle` with the check. Cobalt (light sidebar) checked in both modes.
-  - Two refinements found in the browser and made: the pending connector uses `border-strong` (the spec's `border` is `#e3eae9`, invisible on the page background; flagged for the user), and the step text is capped at `22ch` from `md` so long subtitles wrap and leave the connectors about 46px at 1024.
-  - macOS hides overlay scrollbars, so the drawn bar was not seen; Windows was not checked.
-- [ ] User accepts the stepper look and the `bar` z key (the user accepted both in principle; not stopped on)
+- [x] `npx nx test lms` green; the production build checked as in T1
+- [x] Browser (`lms-local-backend`, a PDF lesson): pages render; Network shows the worker as `worker-*.js`; screenshot
 
-## Task 3: `ShellInsets` + `appBottomBar`; the owl rises by the inset
-
-**Description:** A root `ShellInsets` service with a `bottom` signal, an `appBottomBar` directive that writes its
-host's height there while mounted, and the owl adding that inset to its `bottom`.
+## T3: `MenuItem.upcoming` and `homePathFor` skipping upcoming functions (P4)
 
 **Acceptance criteria:**
 
-- [x] The directive sets `ShellInsets.bottom` to the host's border-box height (ResizeObserver) and back to 0 on
-      destroy, disconnecting the observer.
-- [x] `app-owl` binds `--owl-inset` from the signal; `owl.scss` uses `bottom: calc(ui.space(4) + var(--owl-inset, 0px))`
-      on the host, so both placements (`--beside-toolbar` only moves `right`) rise.
-- [x] With no bar mounted, the owl's position is unchanged.
+- [x] `MenuItem.upcoming` is true exactly when the function's entry screen has no `load`. Today that is
+      `LESSON_MANAGEMENT`, `SYSTEM_AUDIT`, `KNOWLEDGE_HUB` and `ISSUE_HUB`.
+- [x] `homePathFor` returns the first non-PROFILE function that is not upcoming, and `/profile` if there is none.
+- [x] `allSections()` items carry `upcoming` too, since they share the type.
 
-**Verification:**
+**Verification:** `npx nx test lms` (`menu-catalog.spec.ts`)
 
-- [x] `npx nx test lms` (new `shell-insets.spec.ts`; `owl.spec.ts` case for the inset style)
+**Dependencies:** none · **Files:** `core/menu/menu-catalog.ts`, its spec, and any fixture or test building a
+`MenuItem` literal · **Size:** S
 
-**Dependencies:** None
-
-**Files likely touched:** `apps/lms/src/app/layout/shell-insets.ts` (new), `apps/lms/src/app/layout/shell-insets.spec.ts`
-(new), `apps/lms/src/app/layout/owl/owl.ts`, `apps/lms/src/app/layout/owl/owl.scss`,
-`apps/lms/src/app/layout/owl/owl.spec.ts`
-
-**Estimated scope:** M
-
-## Task 4: Course-editor footer pinned to the viewport bottom
-
-**Description:** Make `.course-editor__foot` sticky at the bottom with a surface fill and a 1px top border, register
-it with `appBottomBar`, and keep focused fields clear of it.
+## T4: Sidebar shows "Sắp ra mắt"; "Design System v2" only with dev tools (P4, U17)
 
 **Acceptance criteria:**
 
-- [x] New stacking key `bar: 20` in `$z-indexes`; the footer is `position: sticky; bottom: 0; z-index: ui.z(bar)`,
-      `surface` fill, 1px top `border`, `padding-block: ui.space(3)`, no shadow; same buttons and order in create and
-      edit mode.
-- [x] The footer has `appBottomBar`; the owl sits above it; the lesson drawer and dialogs cover it.
-- [x] Tab to any field scrolls it into view above the bar (`scroll-margin-bottom` on the form's controls, or
-      `scroll-padding-bottom` while the editor is mounted).
+- [x] An upcoming item shows "Sắp ra mắt" after its label in `ui.text(xs, muted)` (wrapping under it when long). No
+      badge, colour or row opacity. In the rail, the tooltip is "{label} · Sắp ra mắt".
+- [x] The design link renders only when `APP_CONFIG.devTools` is on. The footer keeps the collapse button.
 
-**Verification:**
+**Verification:** `npx nx test lms` (`sidebar.spec.ts`: label, rail tooltip, link per flag)
 
-- [x] `npx nx test lms` (`course-editor.spec.ts`: the footer carries the directive in both modes)
-- [x] Browser: step 2 with a long outline at 1280/375, light/dark; scroll, Tab to the last field, open the drawer
+**Dependencies:** T3 · **Files:** `layout/sidebar/sidebar.{html,scss,ts,spec.ts}` · **Size:** S
 
-**Dependencies:** Task 3
+## T5: Coming-soon page replaces the migration placeholder (P4)
 
-**Files likely touched:** `libs/ui/src/styles/ui/_tokens.scss`,
-`apps/lms/src/app/features/admin-content/course-editor/course-editor.html`,
-`apps/lms/src/app/features/admin-content/course-editor/course-editor.scss`,
-`apps/lms/src/app/features/admin-content/course-editor/course-editor.ts`,
-`apps/lms/src/app/features/admin-content/course-editor/course-editor.spec.ts`
+**Acceptance criteria:**
 
-**Estimated scope:** M
+- [x] The page is left-aligned with no icon. Its h2 is the route's title. Text: "Chức năng này đang được hoàn thiện và
+      sẽ có trong bản cập nhật tới." It has a secondary "Về trang chủ" button to the session's `homePath`.
+- [x] No "mockup", "Angular" or "migrate" copy. The "Xem tiến độ migrate" link stays with `devTools` only.
+
+**Verification:** `npx nx test lms` (`route-placeholder.spec.ts`, new or extended)
+
+**Dependencies:** none (T3 makes `homePath` skip upcoming) · **Files:**
+`features/errors/route-placeholder/route-placeholder.{html,scss,ts,spec.ts}` · **Size:** S
+
+## T6: Login mockup note only with dev tools or the mock backend (U17)
+
+**Acceptance criteria:**
+
+- [x] `.login__note` renders only when `devTools || mockBackend`.
+
+**Verification:** `npx nx test lms` (`login.spec.ts`: hidden with both flags off, shown with either on)
+
+**Dependencies:** none · **Files:** `features/auth/login/login.{html,ts,spec.ts}` · **Size:** XS
 
 ## Checkpoint B
 
-- [x] `npm run check` green (`format:check`, then lint, typecheck, test, build, check-bundle on every project with `--parallel=1`; exit 0). A first run failed on three `no-empty-function` errors in the jsdom `ResizeObserver` stub and on Prettier in five files; both fixed.
-- [x] Browser checks on `/admin/courses/new` (create mode; edit mode is covered by the spec, not opened in the browser):
-  - 1280x700: the footer's `top` stays at 635 and `bottom` at 700 at scroll 0, 300 and the end; `z-index` 20; the owl's `--owl-inset` is 65px and the owl sits at 571–619, above the footer. `scroll-padding-bottom` on `html` is 65px.
-  - Step 2 with six chapters (document 1745px high): at the end of the page the last content ends at 611, above the footer top (635). Focusing the last textarea on step 1 leaves it clear of the bar (530 < 635).
-  - 375x812 dark: the footer is flush at the bottom with the surface fill and wrapped buttons; the owl sits above it.
-  - Not done: opening the lesson drawer over the footer (drawer `z` 60 is above `bar` 20 by token, not seen in the browser); the dev-only "Demo" pill overlaps the "Tiếp tục" button in the bottom-right corner (it does not exist in production).
-- [x] angular.md §14: no NgModule or legacy syntax; files named per §2; `ShellInsets` is a layout service (not a store) with a private `state`, a read-only `bottom` and a `setBottom()` setter; no `HttpClient` in components; no `effect()` added; no hardcoded design values (tokens only; `22ch` and the 28px circle are the existing stepper sizes); specs cover the changed behaviour.
-- [x] visual-design.md checklist at 1280 and 375, light and dark: no eyebrow, icon tile, gradient, coloured edge or shadow on the stepper or the bar; the stepper uses `primary` only for progress; one deliberate difference from the mockup, listed here: the done circle is `primary-subtle` with a check instead of `success-subtle`.
+- [x] `npx nx test lms` green
+- [x] Browser, dev config: the sidebar marks the four entries; the coming-soon page; 1280/375, light/dark, rail
+- [x] Production flags: specs cover them. If the dev server can run with `devTools: false`, also screenshot the
+      sidebar and the login page without the dev links
 
-## Task 5: Docs and spec status
-
-**Description:** Record the new stepper and the scrollbar mixin in the UI library doc, amend the spec (owl only,
-`bar` z key, themes in `_tokens.scss`) and mark it built.
+## T7: Gate "Thêm câu hỏi" / "Tạo bài kiểm tra" and rewrite the pending copy (P2 interim)
 
 **Acceptance criteria:**
 
-- [x] `docs/conventions/ui-library.md`: stepper row describes connectors; `ui.scrollbar` listed with the mixins;
-      `ShellInsets`/`appBottomBar` noted where layout pieces are listed, if such a list exists.
-- [x] `SPEC-ui-polish.md` status "built", amendments listed; results of both checkpoints recorded here.
+- [x] With `integrationPending$`, "Thêm câu hỏi" is not rendered. The empty state reads "Ngân hàng câu hỏi theo
+      chương trình chưa sẵn sàng" / "Câu hỏi dùng chung trong chương trình sẽ quản lý được tại đây sau bản cập nhật
+      tới. Bài kiểm tra hiện có vẫn dùng bộ câu hỏi đã gán."
+- [x] With `integrationPending$`, "Tạo bài kiểm tra" is disabled. Its tooltip and `aria-describedby` text is "Cần ngân
+      hàng câu hỏi theo chương trình để tạo bài kiểm tra mới." On `/admin/quizzes/new` the same sentence shows in a
+      `ui-alert`, and saving is disabled. The config alert reads "Bộ câu hỏi hiện tại được giữ nguyên. Chọn thêm câu
+      hỏi từ chương trình sẽ có sau bản cập nhật tới."
+- [x] With `mockBackend`, everything is as before.
 
-**Verification:**
+**Verification:** `npx nx test lms` (`assessment-screen.spec.ts`: both CTAs pending vs mock, the new copy, and the old
+"đang chờ kết nối API" assertion replaced)
 
-- [x] `npm run check` (format)
+**Dependencies:** none · **Files:** `features/quiz/assessment-screen/assessment-screen.{html,spec.ts}`, and the store
+only if a selector is needed · **Size:** S
 
-**Dependencies:** Tasks 1–4
+## T8: Pagination rows render only when there is more than one page (P2 interim)
 
-**Files likely touched:** `docs/conventions/ui-library.md`, `SPEC-ui-polish.md`, `tasks/todo.md`
+**Acceptance criteria:**
 
-**Estimated scope:** S
+- [x] Every "Trang x / y" row in the assessment screens renders only when `totalPages > 1`. "Trang 1 / 0" can no
+      longer appear.
+
+**Verification:** `npx nx test lms` (0, 1 and 2 pages)
+
+**Dependencies:** T7 (same files) · **Files:** `assessment-screen.{html,spec.ts}` · **Size:** XS
+
+## Checkpoint C (complete)
+
+- [x] `npm run check` green
+- [x] Browser (`lms-local-backend`): `/admin/questions`, `/admin/quizzes`, `/admin/quizzes/new?courseId=3` at
+      1280/375, light/dark; screenshots
+- [x] angular.md §14 and visual-design.md checklists reported
+- [x] P1, P4 and the interim P2 re-tested as the review reproduced them
+- [x] `SPEC-ux-wave0.md` status "built"; PLAN.md Wave 0 marked done
+
+## Notes from the build
+
+- Browser checks ran on the seeded mock (`mockBackend`, temporary and not committed). The shared backend needs a demo
+  password this build did not have, and no local backend was running. The PDF check used a throwaway local server that
+  answers every `/api` request with a one-page PDF: the page rendered and the worker loaded as `worker-*.js`.
+- Not checked in a browser: `/admin/questions`, `/admin/quizzes` and `/admin/quizzes/new` while the program bank is
+  pending (they need the real backend), and the sidebar with `devTools: false` (the demo sign-in needs dev tools).
+  Specs cover both.
+- The Dockerfile build ran locally and wrote `workers.txt`. The CI verify step ran against a local static server.
+  The first `main` deploy proves it on the real host.

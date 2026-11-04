@@ -1,4 +1,4 @@
-import { Component, inject, linkedSignal } from '@angular/core';
+import { Component, computed, inject, linkedSignal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import {
   form,
@@ -30,6 +30,7 @@ import {
   Select,
   Spinner,
   Textarea,
+  Tooltip,
   type DataTableColumn,
 } from '@lms/ui';
 import {
@@ -218,6 +219,7 @@ function quizValue(
     Select,
     Spinner,
     Textarea,
+    Tooltip,
   ],
   providers: [AssessmentScreenStore],
   templateUrl: './assessment-screen.html',
@@ -225,6 +227,13 @@ function quizValue(
 })
 export class AssessmentScreen {
   protected readonly store = inject(AssessmentScreenStore);
+  /** Why a new quiz cannot be made while the program question bank is missing. */
+  protected readonly newQuizBlocked =
+    'Cần ngân hàng câu hỏi theo chương trình để tạo bài kiểm tra mới.';
+  protected readonly isNewQuiz = computed(
+    () =>
+      this.store.routeScreen$() === 'config' && this.store.routeId$() === 'new',
+  );
   protected readonly letters = [
     'A',
     'B',

@@ -177,13 +177,15 @@ describe('route table', () => {
     expect(router.url).toBe('/design-system');
   });
 
-  it('lets a user holding the function in and renders the placeholder naming the mockup page', async () => {
+  it('lets a user holding the function in and renders the coming-soon page titled with the screen', async () => {
     signInAs('admin');
     await harness.navigateByUrl('/admin/system');
     expect(router.url).toBe('/admin/system');
-    expect((harness.routeNativeElement as HTMLElement).textContent).toContain(
-      '“system”',
+    const page = harness.routeNativeElement as HTMLElement;
+    expect(page.querySelector('h2')?.textContent).toContain(
+      'Hệ thống & nhật ký',
     );
+    expect(page.textContent).toContain('đang được hoàn thiện');
   });
 
   it.each([

@@ -1,22 +1,23 @@
 import { Component, inject } from '@angular/core';
 import { ActivatedRoute, RouterLink } from '@angular/router';
-import { Button, Empty, Icon } from '@lms/ui';
+import { Button } from '@lms/ui';
 import { APP_CONFIG } from '../../../core/config/app-config';
+import { SessionStore } from '../../../core/session/session.store';
 
 /**
- * Stands in for a mockup route whose screen is not migrated yet, so every sidebar link lands
- * somewhere. The route's `data.mockupPage` names the mockup page it will become; development and
- * staging builds link to the migration board.
+ * The page of a function whose screen is not built yet, so every sidebar link lands somewhere.
+ * The sidebar marks these entries "Sắp ra mắt". It is titled with the route's title; development
+ * and staging builds also link to the migration board, which production users never see.
  */
 @Component({
   selector: 'app-route-placeholder',
-  imports: [Empty, Button, Icon, RouterLink],
+  imports: [Button, RouterLink],
   templateUrl: './route-placeholder.html',
   styleUrl: './route-placeholder.scss',
 })
 export class RoutePlaceholder {
-  protected readonly mockupPage = String(
-    inject(ActivatedRoute).snapshot.data['mockupPage'] ?? '',
-  );
+  protected readonly title = inject(ActivatedRoute).snapshot.title ?? '';
   protected readonly showBoard = inject(APP_CONFIG).devTools;
+  private readonly session = inject(SessionStore);
+  protected readonly homePath = () => this.session.homePath$() ?? '/';
 }

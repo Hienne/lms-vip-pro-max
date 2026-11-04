@@ -31,17 +31,23 @@
           class="sidebar__link"
           [routerLink]="item.href"
           [attr.aria-current]="item.href === active() ? 'page' : null"
-          [uiTooltip]="rail ? item.label : ''"
+          [uiTooltip]="rail ? itemTooltip(item) : ''"
         >
           <ui-icon [name]="item.icon" />
-          <span class="sidebar__label">{{ item.label }}</span>
+          <span class="sidebar__label"
+            >{{ item.label }} @if (item.upcoming) {
+            <span class="sidebar__soon">Sắp ra mắt</span>
+            }</span
+          >
         </a>
       </li>
       }
     </ul>
     }
   </nav>
+  @if (showDesignLink || collapsible()) {
   <div class="sidebar__footer">
+    @if (showDesignLink) {
     <a
       class="sidebar__design-link"
       routerLink="/design-system"
@@ -51,7 +57,7 @@
         >Design System v2</span
       >
     </a>
-    @if (collapsible()) {
+    } @if (collapsible()) {
     <button
       type="button"
       class="sidebar__toggle"
@@ -64,4 +70,5 @@
     </button>
     }
   </div>
+  }
 </div>

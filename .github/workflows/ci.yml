@@ -129,3 +129,12 @@ jobs:
             "http://103.121.90.119/version.txt?commit=$GITHUB_SHA")
           test "$revision" = "$GITHUB_SHA"
           curl --fail --silent --show-error --output /dev/null http://103.121.90.119/
+          # Web workers must be served as JavaScript or the browser refuses to start them.
+          workers=$(curl --fail --silent --show-error --retry 3 --retry-delay 3 \
+            "http://103.121.90.119/workers.txt?commit=$GITHUB_SHA")
+          test -n "$workers"
+          while read -r worker; do
+            headers=$(curl --fail --silent --show-error --head "http://103.121.90.119/$worker")
+            echo "$headers" | head -1 | grep -q ' 200'
+            echo "$headers" | grep -i '^content-type:' | grep -qi 'javascript'
+          done <<< "$workers"
