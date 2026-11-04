@@ -77,15 +77,15 @@ host's height there while mounted, and the owl adding that inset to its `bottom`
 
 **Acceptance criteria:**
 
-- [ ] The directive sets `ShellInsets.bottom` to the host's border-box height (ResizeObserver) and back to 0 on
+- [x] The directive sets `ShellInsets.bottom` to the host's border-box height (ResizeObserver) and back to 0 on
       destroy, disconnecting the observer.
-- [ ] `app-owl` binds `--owl-inset` from the signal; `owl.scss` uses `bottom: calc(ui.space(4) + var(--owl-inset, 0px))`
-      in both its default and `--beside-toolbar` placements.
-- [ ] With no bar mounted, the owl's position is unchanged.
+- [x] `app-owl` binds `--owl-inset` from the signal; `owl.scss` uses `bottom: calc(ui.space(4) + var(--owl-inset, 0px))`
+      on the host, so both placements (`--beside-toolbar` only moves `right`) rise.
+- [x] With no bar mounted, the owl's position is unchanged.
 
 **Verification:**
 
-- [ ] `npx nx test lms` (new `shell-insets.spec.ts`; `owl.spec.ts` case for the inset style)
+- [x] `npx nx test lms` (new `shell-insets.spec.ts`; `owl.spec.ts` case for the inset style)
 
 **Dependencies:** None
 

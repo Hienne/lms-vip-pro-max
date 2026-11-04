@@ -7,6 +7,7 @@ import {
   AGENT_PANEL_ID,
 } from '../../core/assistant/agent-launcher';
 import { DocumentTrackerStore } from '../../core/knowledge/document-tracker.store';
+import { ShellInsets } from '../shell-insets';
 import { OwlFace } from './owl-face/owl-face';
 
 /**
@@ -22,6 +23,7 @@ import { OwlFace } from './owl-face/owl-face';
   host: {
     '[class.owl--beside-toolbar]': 'besideToolbar()',
     '[class.owl--with-panel]': 'panelOpen()',
+    '[style.--owl-inset.px]': 'inset()',
     '(keydown.escape)': 'dismiss()',
   },
   templateUrl: './owl.html',
@@ -31,6 +33,8 @@ export class Owl {
   private readonly tracker = inject(DocumentTrackerStore);
   private readonly chat = inject(AgentChatStore);
   private readonly router = inject(Router);
+  /** Height of a bar pinned to the bottom of the page; the owl rises above it. */
+  protected readonly inset = inject(ShellInsets).bottom;
 
   /** Moves the owl left, off the dev toolbar that is pinned to the same corner. */
   readonly besideToolbar = input(false);
