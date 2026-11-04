@@ -10,14 +10,16 @@
     Xuất CSV
   </button></ui-page-header
 >
-<nav class="row report-screen__navigation" aria-label="Các báo cáo chi tiết">
-  <a uiButton variant="ghost" routerLink="/reports">Tổng quan</a>@for(dim of
-  dims;track dim.id){<a
+<nav class="row report-screen__navigation" aria-label="Các báo cáo">
+  @for (tab of store.tabs$(); track tab.id) {
+  <a
     uiButton
     variant="ghost"
-    [routerLink]="['/reports',dim.id]"
-    >{{dim.label}}</a
-  >}
+    [routerLink]="tab.path"
+    [queryParams]="tab.queryParams"
+    >{{ tab.label }}</a
+  >
+  }
 </nav>
 <form
   class="stack report-screen__filters"

@@ -23,10 +23,7 @@ import {
   Spinner,
   type DataTableColumn,
 } from '@lms/ui';
-import {
-  ReportScreenStore,
-  REPORT_DIMENSIONS,
-} from './data-access/report-screen.store';
+import { ReportScreenStore } from './data-access/report-screen.store';
 const id = z
   .string()
   .refine(
@@ -65,6 +62,14 @@ const filterSchema = z
         message: 'Đến ngày phải sau từ ngày.',
       });
   });
+/** An ISO date-time as a `datetime-local` value, in the browser's time zone. */
+function toLocalInput(iso: string | undefined): string {
+  if (!iso) return '';
+  const date = new Date(iso);
+  const local = new Date(date.getTime() - date.getTimezoneOffset() * 60_000);
+  return local.toISOString().slice(0, 16);
+}
+
 @Component({
   selector: 'app-report-screen',
   imports: [
@@ -89,7 +94,6 @@ const filterSchema = z
 })
 export class ReportScreen {
   protected readonly store = inject(ReportScreenStore);
-  protected readonly dims = REPORT_DIMENSIONS;
   protected readonly groupColumns: readonly DataTableColumn[] = [
     { key: 'name', label: 'Tên', sortable: false },
     { key: 'gradedAttempts', label: 'Lượt chấm', sortable: false },
@@ -98,19 +102,23 @@ export class ReportScreen {
     { key: 'passRate', label: 'Đạt (%)', sortable: false },
     { key: 'averageScore', label: 'Điểm TB (%)', sortable: false },
   ];
-  private readonly filterModel = linkedSignal(() => ({
-    orgId: '',
-    teamId: '',
-    courseId: '',
-    quizId: '',
-    userId: this.store.incomingUserId$(),
-    from: '',
-    to: '',
-    status: '',
-    learnerStatus: '',
-    passed: '',
-    groupBy: 'user' as 'user' | 'org',
-  }));
+  /** The form shows the filters the URL applies, until the user edits them. */
+  private readonly filterModel = linkedSignal(() => {
+    const f = this.store.filters$();
+    return {
+      orgId: f.orgId ? String(f.orgId) : '',
+      teamId: f.teamId ? String(f.teamId) : '',
+      courseId: f.courseId ? String(f.courseId) : '',
+      quizId: f.quizId ? String(f.quizId) : '',
+      userId: f.userId ?? '',
+      from: toLocalInput(f.from),
+      to: toLocalInput(f.to),
+      status: f.status ?? '',
+      learnerStatus: f.learnerStatus ?? '',
+      passed: f.passed === undefined ? '' : String(f.passed),
+      groupBy: (f.groupBy ?? 'user') as 'user' | 'org',
+    };
+  });
   protected readonly filterForm = form(this.filterModel, (path) =>
     validateStandardSchema(path, filterSchema),
   );

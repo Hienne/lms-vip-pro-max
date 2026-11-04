@@ -88,9 +88,9 @@ roles if changed); browser `read_page`
 
 **Acceptance criteria:**
 
-- [ ] Pure `filtersFromQuery` and `queryFromFilters` cover orgId, teamId, courseId, quizId, from, to, userId,
+- [x] Pure `filtersFromQuery` and `queryFromFilters` cover orgId, teamId, courseId, quizId, from, to, userId,
       status, passed, learnerStatus, groupBy and page. Empty values are dropped and bad values are ignored.
-- [ ] "Áp dụng bộ lọc" navigates with `replaceUrl`. The store's filters come from the URL. Tab links carry the
+- [x] "Áp dụng bộ lọc" navigates with `replaceUrl`. The store's filters come from the URL. Tab links carry the
       filters each tab supports.
 
 **Verification:** `npx nx test lms` (helper round trip; store reads the URL; tab link query params)

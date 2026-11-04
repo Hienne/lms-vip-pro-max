@@ -1,5 +1,5 @@
 import { computed, inject, Injectable, linkedSignal } from '@angular/core';
-import { ActivatedRoute } from '@angular/router';
+import { ActivatedRoute, convertToParamMap, Router } from '@angular/router';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { map, type Observable } from 'rxjs';
 import {
@@ -15,6 +15,13 @@ import { EndpointClient } from '../../../../core/http/endpoint-client';
 import { serverData } from '../../../../core/data-access/server-data';
 import { serverMutation } from '../../../../core/data-access/server-mutation';
 import { FileSaver } from '../../../../core/files/file-saver';
+import {
+  filtersFromQuery,
+  queryFromFilters,
+  tabQuery,
+  type ReportFilters,
+  type ReportTab,
+} from './report-query';
 
 export const REPORT_DIMENSIONS = [
   { id: 'results', label: 'Kết quả từng lượt thi' },
@@ -127,10 +134,12 @@ export class ReportScreenStore {
   private readonly client = inject(EndpointClient);
   private readonly saver = inject(FileSaver);
   private readonly route = inject(ActivatedRoute);
+  private readonly router = inject(Router);
   private readonly params = toSignal(this.route.paramMap);
   private readonly queryParams = toSignal(this.route.queryParamMap);
-  readonly incomingUserId$ = computed(
-    () => this.queryParams()?.get('userId') ?? '',
+  /** The applied filters and the page live in the URL, so a shared link opens the same report. */
+  private readonly urlQuery = computed(() =>
+    filtersFromQuery(this.queryParams() ?? convertToParamMap({})),
   );
   readonly dimension$ = computed(() => {
     const parsed = AssessmentReportTypeSchema.safeParse(
@@ -142,15 +151,27 @@ export class ReportScreenStore {
     () => !!this.params()?.get('dim') && !this.dimension$(),
   );
   private readonly state = {
-    filters: linkedSignal<AssessmentReportExportQuery>(() => ({
-      userId: this.incomingUserId$() || undefined,
-    })),
-    table: linkedSignal(() => ({
-      page: 1,
-      sort: DEFAULT_SORT[this.dimension$() ?? 'results'],
-    })),
+    sort: linkedSignal(() => DEFAULT_SORT[this.dimension$() ?? 'results']),
   };
-  readonly filters$ = this.state.filters.asReadonly();
+  readonly filters$ = computed<ReportFilters>(() => this.urlQuery().filters);
+  readonly page$ = computed(() => this.urlQuery().page);
+  readonly sort$ = this.state.sort.asReadonly();
+  /** The tab bar: each link keeps the current filters the tab reads. */
+  readonly tabs$ = computed(() => {
+    const filters = this.filters$();
+    const tabs: readonly { id: ReportTab; label: string; path: string[] }[] = [
+      { id: 'overview', label: 'Tổng quan', path: ['/reports'] },
+      ...REPORT_DIMENSIONS.map((d) => ({
+        id: d.id,
+        label: d.label,
+        path: ['/reports', d.id],
+      })),
+    ];
+    return tabs.map((tab) => ({
+      ...tab,
+      queryParams: tabQuery(tab.id, filters),
+    }));
+  });
   private readonly commonFilters = computed<AssessmentReportFilter>(() => {
     const { orgId, teamId, courseId, quizId, from, to } = this.filters$();
     return { orgId, teamId, courseId, quizId, from, to };
@@ -167,11 +188,11 @@ export class ReportScreenStore {
     const type = this.dimension$();
     if (!type) return undefined;
     const f = this.filters$(),
-      table = this.state.table();
+      sort = this.sort$();
     const paging = {
-      page: table.page - 1,
+      page: this.page$() - 1,
       size: 20,
-      sort: `${table.sort.key},${table.sort.dir}`,
+      sort: `${sort.key},${sort.dir}`,
     };
     switch (type) {
       case 'learners':
@@ -308,8 +329,6 @@ export class ReportScreenStore {
         }))
       : [];
   });
-  readonly page$ = computed(() => this.state.table().page);
-  readonly sort$ = computed(() => this.state.table().sort);
   readonly isLoading$ = computed(
     () => this.overview.isLoading() || this.detail.isLoading(),
   );
@@ -326,27 +345,32 @@ export class ReportScreenStore {
       REPORT_DIMENSIONS.find((d) => d.id === this.dimension$())?.label ??
       'Tổng quan kết quả thi',
   );
-  private setFilters(value: AssessmentReportExportQuery): void {
-    this.state.filters.set(value);
+  private setSort(value: DataTableSort): void {
+    this.state.sort.set(value);
   }
-  private setTable(value: { page: number; sort: DataTableSort }): void {
-    this.state.table.set(value);
-  }
-  applyFilters(value: AssessmentReportExportQuery): void {
-    this.setFilters(value);
-    this.setTable({ ...this.state.table(), page: 1 });
+  /** Writes the filters to the URL in place, from the first page; the report follows the URL. */
+  applyFilters(value: ReportFilters): void {
+    this.navigate(value, 1);
   }
   changePage(page: number): void {
-    this.setTable({ ...this.state.table(), page });
+    this.navigate(this.filters$(), page);
   }
   changeSort(sort: DataTableSort): void {
     const type = this.dimension$();
-    if (type && SORTS[type].includes(sort.key))
-      this.setTable({ page: 1, sort });
+    if (!type || !SORTS[type].includes(sort.key)) return;
+    this.setSort(sort);
+    if (this.page$() > 1) this.navigate(this.filters$(), 1);
   }
   exportCsv(): void {
     const request = this.tableRequest();
     if (request && !this.exporting$()) this.exportMutation.run(request);
+  }
+  private navigate(filters: ReportFilters, page: number): void {
+    void this.router.navigate([], {
+      relativeTo: this.route,
+      queryParams: queryFromFilters(filters, page),
+      replaceUrl: true,
+    });
   }
   retry(): void {
     this.overview.reload();

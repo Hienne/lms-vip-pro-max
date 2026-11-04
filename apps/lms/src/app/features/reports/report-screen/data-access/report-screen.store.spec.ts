@@ -1,5 +1,5 @@
 import { TestBed } from '@angular/core/testing';
-import { provideRouter } from '@angular/router';
+import { provideRouter, Router } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
 import { assessmentReportEndpoints as api } from '@lms/contracts';
 import { createAppRoutes } from '../../../../app.routes';
@@ -126,5 +126,60 @@ describe('assessment report integration', () => {
     await settle();
     expect(store.filters$().userId).toBe('000099');
     expect(store.total$()).toBe(0);
+  });
+  describe('filters in the URL', () => {
+    it('reads the filters and the page from the query string', async () => {
+      const spy = vi.spyOn(TestBed.inject(MockBackend), 'handle');
+      const store = await open(
+        '/reports/results?orgId=1&passed=false&page=2&quizId=abc',
+      );
+      expect(store.filters$()).toEqual({ orgId: 1, passed: false });
+      expect(store.page$()).toBe(2);
+      const query = spy.mock.calls
+        .filter(([e]) => e === api.results)
+        .at(-1)?.[1].query;
+      expect(query).toMatchObject({ orgId: '1', passed: 'false', page: '1' });
+      expect(query).not.toHaveProperty('quizId');
+    });
+
+    it('writes applied filters to the URL in place, from the first page', async () => {
+      const store = await open('/reports/results?page=3');
+      const navigate = vi.spyOn(TestBed.inject(Router), 'navigate');
+      store.applyFilters({ orgId: 1, userId: '', passed: false });
+      await settle();
+      expect(TestBed.inject(Router).url).toBe(
+        '/reports/results?orgId=1&passed=false',
+      );
+      expect(navigate.mock.calls.at(-1)?.[1]).toMatchObject({
+        replaceUrl: true,
+      });
+      expect(store.page$()).toBe(1);
+    });
+
+    it('keeps the page in the URL', async () => {
+      const store = await open('/reports/results?orgId=1');
+      store.changePage(2);
+      await settle();
+      expect(TestBed.inject(Router).url).toBe(
+        '/reports/results?orgId=1&page=2',
+      );
+    });
+
+    it('carries on each tab link the filters that tab reads', async () => {
+      const store = await open(
+        '/reports/results?orgId=1&quizId=4&userId=000004&passed=true',
+      );
+      const tabs = Object.fromEntries(
+        store.tabs$().map((t) => [t.id, t.queryParams]),
+      );
+      expect(tabs['overview']).toEqual({ orgId: '1', quizId: '4' });
+      expect(tabs['learners']).toEqual({ orgId: '1', quizId: '4' });
+      expect(tabs['results']).toEqual({
+        orgId: '1',
+        quizId: '4',
+        userId: '000004',
+        passed: 'true',
+      });
+    });
   });
 });
