@@ -40,16 +40,16 @@ step but the last, primary after a done step; vertical below `md`. Behaviour and
 
 **Acceptance criteria:**
 
-- [ ] `.stepper__item` carries `is-done` for done steps; its `::after` connector is `primary`, otherwise `border`;
+- [x] `.stepper__item` carries `is-done` for done steps; its `::after` connector is `primary`, otherwise `border`;
       the last item has none; connector minimum length `ui.space(4)`.
-- [ ] Circles: pending `surface-2`/`text-secondary`, current `primary`/`on-primary`, done `primary-subtle`/`primary`
+- [x] Circles: pending `surface-2`/`text-secondary`, current `primary`/`on-primary`, done `primary-subtle`/`primary`
       with the check; no border, background or shadow on the step; titles wrap, never truncate.
-- [ ] Below `md`: vertical list with a vertical connector; keyboard, `aria-current`, "Đã hoàn thành", `linear`
+- [x] Below `md`: vertical list with a vertical connector; keyboard, `aria-current`, "Đã hoàn thành", `linear`
       unchanged.
 
 **Verification:**
 
-- [ ] `npx nx test ui` (new cases: `is-done` on items before the current one, none on the last connector's item
+- [x] `npx nx test ui` (new cases: `is-done` on items before the current one, none on the last connector's item
       logic, existing a11y cases still green)
 - [ ] Browser: course editor steps 1, 2, 4 at 1280, 1024 and 375px, light and dark; design-system page
 
