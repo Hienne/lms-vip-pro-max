@@ -11,6 +11,7 @@ import { RESOLUTION_LABELS } from '../../data-access/community-labels';
  */
 @Component({
   selector: 'app-content-row',
+  host: { '[class.content-row--question]': 'isQuestion()' },
   imports: [Badge, FmtDatePipe, FmtNumPipe, FmtRelativePipe, RouterLink],
   templateUrl: './content-row.html',
   styleUrl: './content-row.scss',

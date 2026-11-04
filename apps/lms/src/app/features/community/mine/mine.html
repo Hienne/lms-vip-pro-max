@@ -71,7 +71,7 @@
   }
 </div>
 } @else if (store.mineRows$().length) {
-<div uiTableWrap>
+<div uiTableWrap class="mine__table">
   <table uiTable responsive>
     <caption class="sr-only">
       Nội dung của tôi
@@ -89,11 +89,15 @@
     <tbody>
       @for (row of store.mineRows$(); track row.card.contentId) {
       <tr>
-        <td data-label="Tiêu đề">
+        <td data-label="Tiêu đề" class="mine__title">
           @if (row.status === 'draft') {
-          <span uiTablePrimary>{{ row.card.title || 'Chưa có tiêu đề' }}</span>
+          <span uiTablePrimary [title]="row.card.title || 'Chưa có tiêu đề'">{{
+            row.card.title || 'Chưa có tiêu đề'
+          }}</span>
           } @else {
-          <a uiTablePrimary [routerLink]="row.link">{{ row.card.title }}</a>
+          <a uiTablePrimary [title]="row.card.title" [routerLink]="row.link"
+            >{{ row.card.title }}</a
+          >
           } @if (row.status !== 'draft' && row.editDraft) {
           <div uiTableSub>Có bản nháp mới</div>
           }
@@ -117,12 +121,13 @@
           <a
             uiButton
             size="sm"
+            variant="ghost"
             [routerLink]="['/community/contents', row.card.contentId, 'edit']"
           >
             {{ row.status === 'draft' ? 'Sửa nháp' : 'Sửa' }}
           </a>
           } @else {
-          <a uiButton size="sm" [routerLink]="row.link">Xem</a>
+          <a uiButton size="sm" variant="ghost" [routerLink]="row.link">Xem</a>
           }
         </td>
       </tr>
