@@ -223,6 +223,24 @@ describe('CourseEditor', () => {
     expect(video?.transcript).toEqual(ARCHITECTURE_VIDEO.transcript);
   });
 
+  it('focuses the new chapter’s title, labelled with its number, after "Thêm chương"', async () => {
+    await screen.open('/admin/courses/6/edit');
+    await step('Nội dung khóa học');
+    await screen.click(screen.button('Thêm chương'));
+
+    const titles = Array.from(
+      screen.el.querySelectorAll<HTMLInputElement>(
+        'input.course-outline__chapter-title',
+      ),
+    );
+    expect(titles.map((t) => t.getAttribute('aria-label'))).toEqual([
+      'Tên chương 1',
+      'Tên chương 2',
+    ]);
+    expect(document.activeElement).toBe(titles[1]);
+    expect(titles[1].disabled).toBe(false);
+  });
+
   it('adds a chapter and a lesson with a text block, then saves them', async () => {
     await screen.open('/admin/courses/6/edit');
     await step('Nội dung khóa học');

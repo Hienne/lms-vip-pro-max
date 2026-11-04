@@ -17,7 +17,8 @@ export interface StepperItem {
  * `linear` rule and arrow-key focus; the markup and look are ours. The current step carries
  * `aria-current="step"`, done steps show a check and say "Đã hoàn thành". `selectedIndex` is a
  * two-way model; it only changes when the CDK allows the move. The step content itself is the
- * page's: render the panel for `selectedIndex` next to the stepper.
+ * page's: render the panel for `selectedIndex` next to the stepper. The headers drop the CDK's
+ * `tab` role: they are buttons in a list, with no tablist or tabpanel to belong to.
  */
 @Component({
   selector: 'ui-stepper',

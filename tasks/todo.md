@@ -54,10 +54,10 @@ and none with a delete, move or drag `aria-label`; draft mode unchanged)
 
 **Acceptance criteria:**
 
-- [ ] Each chapter title input is labelled "Tên chương {n}". "Thêm chương" focuses the new one.
+- [x] Each chapter title input is labelled "Tên chương {n}". "Thêm chương" focuses the new one.
 - [ ] `read_page` shows "Tên khóa học" as the title input's name, and every wizard `ui-field` named by its label. Any
       control that fails is fixed.
-- [ ] No unnamed `tab` or `tabpanel` role is left from the stepper or the CDK steps.
+- [x] No unnamed `tab` or `tabpanel` role is left from the stepper or the CDK steps.
 
 **Verification:** `npx nx test lms` (`course-outline.spec.ts` checks the label and focus; a stepper spec checks the
 roles if changed); browser `read_page`

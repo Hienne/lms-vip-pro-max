@@ -1,6 +1,14 @@
 import { Dialog } from '@angular/cdk/dialog';
 import { NgTemplateOutlet } from '@angular/common';
-import { Component, computed, inject, input, output } from '@angular/core';
+import {
+  afterNextRender,
+  Component,
+  computed,
+  inject,
+  Injector,
+  input,
+  output,
+} from '@angular/core';
 import { FormField, type FieldTree } from '@angular/forms/signals';
 import {
   Badge,
@@ -63,6 +71,7 @@ export class CourseOutline {
   readonly editLesson = output<LessonTarget>();
 
   private readonly dialog = inject(Dialog);
+  private readonly injector = inject(Injector);
 
   protected readonly blockTypes = BLOCK_TYPES;
   protected readonly problemOf = lessonProblem;
@@ -74,8 +83,14 @@ export class CourseOutline {
     return this.draft().chapters().value;
   }
 
+  /** Adds a chapter and puts the cursor in its title, once the title is on the page. */
   protected addChapter(): void {
+    const index = this.chapters().length;
     this.chapters.update((list) => [...list, newChapter(list.length + 1)]);
+    afterNextRender(
+      () => this.draft().chapters[index]?.title().focusBoundControl(),
+      { injector: this.injector },
+    );
   }
 
   protected async removeChapter(index: number): Promise<void> {
