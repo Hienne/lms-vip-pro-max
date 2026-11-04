@@ -3,18 +3,74 @@
 @use 'ui';
 
 .community-list {
+  &__layout {
+    display: grid;
+    gap: ui.space(6);
+    align-items: start;
+  }
+
+  &__content {
+    min-width: 0;
+  }
+
+  &__topics {
+    display: none;
+  }
+
+  @include ui.bp(xl) {
+    &__layout:has(> aside) {
+      grid-template-columns: minmax(0, 1fr) ui.layout(sidebar);
+    }
+
+    &__topics {
+      @include ui.stack(1);
+      margin-block-start: ui.space(4);
+      padding: ui.space(4);
+      border: 1px solid ui.color(border);
+      border-radius: ui.radius(card);
+      background: ui.color(surface);
+      max-height: ui.layout(reading);
+      overflow-y: auto;
+
+      h2 {
+        @include ui.text(md);
+        font-family: ui.font(sans);
+        font-weight: ui.weight(semibold);
+        margin-block-end: ui.space(2);
+      }
+
+      button {
+        justify-content: flex-start;
+        text-align: start;
+        white-space: normal;
+        overflow-wrap: anywhere;
+
+        &[aria-pressed='true'] {
+          background: ui.color(primary-subtle);
+          color: ui.color(primary);
+        }
+      }
+    }
+  }
+
   &__toolbar {
     @include ui.row(3);
     flex-wrap: wrap;
     margin-block: ui.space(4);
+    padding: ui.space(3);
+    border: 1px solid ui.color(border);
+    border-radius: ui.radius(field);
+    background: ui.color(surface);
   }
 
   &__search {
-    flex: 1 1 18rem;
+    flex: 1 1 ui.space(18);
+    min-width: 0;
   }
 
   &__select {
-    flex: 0 1 12rem;
+    flex: 0 1 auto;
+    min-width: ui.space(18);
     width: auto;
   }
 
@@ -22,11 +78,18 @@
     @include ui.row-between(3);
     flex-wrap: wrap;
     margin-block-end: ui.space(3);
+    min-width: 0;
+
+    ui-segmented {
+      max-width: 100%;
+      overflow-x: auto;
+    }
   }
 
   &__count {
     @include ui.row(2);
     @include ui.text(sm, muted);
+    margin-block: ui.space(3);
 
     strong {
       @include ui.num;
@@ -38,22 +101,38 @@
   &__sort {
     @include ui.row(2);
     @include ui.text(sm, muted);
+    flex-wrap: nowrap;
+
+    select {
+      width: auto;
+      min-width: 0;
+    }
   }
 
   &__rows {
     list-style: none;
     margin: 0;
     padding: 0;
-    // Each row draws its own bottom line, so the frame leaves the bottom edge to the last row.
-    border: 1px solid ui.color(border);
-    border-bottom: 0;
-    border-radius: ui.radius(card);
+    border-top: 1px solid ui.color(border);
     background: ui.color(surface);
-    overflow: hidden;
   }
 
   &__placeholder {
     height: ui.space(18);
     margin: ui.space(3);
+  }
+
+  @include ui.bp-below(sm) {
+    &__toolbar {
+      gap: ui.space(2);
+    }
+
+    &__search {
+      flex-basis: 100%;
+    }
+
+    &__select {
+      flex: 1 1 auto;
+    }
   }
 }

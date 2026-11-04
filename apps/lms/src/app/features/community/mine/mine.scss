@@ -17,16 +17,43 @@
 
   &__action {
     text-align: end;
+    white-space: nowrap;
   }
 
-  &__saved-row {
-    position: relative;
+  &__table {
+    border-block: 1px solid ui.color(border);
+    background: ui.color(surface);
   }
 
-  // The row's own badge column sits at the end; the unsave button takes its place on saved rows.
+  @include ui.bp(md) {
+    &__title {
+      width: 50%;
+      max-width: ui.layout(reading);
+
+      .table__primary {
+        display: block;
+        max-width: ui.layout(panel);
+        @include ui.truncate;
+        text-decoration: none;
+
+        &:is(a):hover {
+          color: ui.color(primary);
+          text-decoration: underline;
+        }
+      }
+    }
+  }
+
+  @include ui.bp-below(md) {
+    &__title {
+      font-weight: ui.weight(semibold);
+      min-width: 0;
+      overflow-wrap: anywhere;
+    }
+  }
+
+  // Keep the action in flow so it never covers a title or a status on narrow screens.
   &__unsave {
-    position: absolute;
-    inset-block-start: ui.space(4);
-    inset-inline-end: ui.space(4);
+    margin: 0 ui.space(3) ui.space(3);
   }
 }
