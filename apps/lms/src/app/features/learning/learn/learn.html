@@ -52,6 +52,7 @@
       <ui-tabs
         label="Khóa học theo trạng thái"
         compact
+        wrap
         [tabs]="tabs()"
         [selected]="store.tab$()"
         (selectedChange)="store.showTab($event)"
@@ -94,10 +95,10 @@
       </ui-tabs>
     </section>
 
-    <div class="learn__secondary">
+    <section uiCard class="learn__secondary" aria-label="Lộ trình và năng lực">
       @if (store.programsError$(); as error) {
       <section
-        class="learn__section learn__panel"
+        class="learn__section"
         aria-labelledby="learn-programs"
       >
         <h2 id="learn-programs">Lộ trình theo chương trình</h2>
@@ -109,7 +110,7 @@
       </section>
       } @else if (store.isProgramsLoading$()) {
       <section
-        class="learn__section learn__panel"
+        class="learn__section"
         aria-labelledby="learn-programs"
       >
         <h2 id="learn-programs">Lộ trình theo chương trình</h2>
@@ -122,7 +123,7 @@
       </section>
       } @else if (store.programs$().length) {
       <section
-        class="learn__section learn__panel"
+        class="learn__section"
         aria-labelledby="learn-programs"
       >
         <h2 id="learn-programs">Lộ trình theo chương trình</h2>
@@ -149,11 +150,11 @@
       </section>
       }
       <section
-        class="learn__section learn__panel"
+        class="learn__section"
         aria-labelledby="learn-competency"
       >
         <div class="learn__heading">
-          <h2 id="learn-competency">Biểu đồ năng lực</h2>
+          <h2 id="learn-competency">Năng lực</h2>
           <a routerLink="/progress" [queryParams]="{ tab: 'competency' }">
             Chi tiết
           </a>
@@ -165,7 +166,11 @@
           (retry)="store.retryCompetency()"
         />
         } @else if (store.competency$(); as rows) {
+        @if (store.hasCompetencyData$()) {
         <app-competency-view size="compact" [rows]="rows" />
+        } @else {
+        <p class="learn__muted">Chưa có dữ liệu kiểm tra.</p>
+        }
         } @else {
         <div
           uiSkeleton
@@ -175,11 +180,15 @@
         ></div>
         }
       </section>
-    </div>
+    </section>
   </div>
 
   <aside class="learn__side">
-    <section class="learn__section learn__panel" aria-labelledby="learn-due">
+    <section
+      uiCard
+      class="learn__section learn__panel"
+      aria-labelledby="learn-due"
+    >
       <h2 id="learn-due">Hạn hoàn thành</h2>
       @if (store.dueError$(); as error) {
       <ui-error-state
@@ -196,7 +205,7 @@
           <a [routerLink]="row.link" class="learn__due-title"
             >{{ row.title }}</a
           >
-          <app-due-date [dueAt]="row.dueAt" />
+          <app-due-date [dueAt]="row.dueAt" highlight />
           <span class="learn__due-pct">{{ row.pct | fmtPct }}</span>
         </li>
         }
@@ -238,7 +247,11 @@
       }
     </section>
 
-    <section class="learn__section learn__panel" aria-labelledby="learn-tools">
+    <section
+      uiCard
+      class="learn__section learn__panel"
+      aria-labelledby="learn-tools"
+    >
       <h2 id="learn-tools">Công cụ học nhanh</h2>
       <ul class="learn__tools">
         <li>
@@ -266,6 +279,7 @@
 
     @if (store.points$(); as points) {
     <section
+      uiCard
       class="learn__section learn__panel learn__rewards"
       aria-label="Điểm thưởng và chuỗi học"
     >

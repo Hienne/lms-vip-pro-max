@@ -3,8 +3,8 @@ import { RouterLink } from '@angular/router';
 import type { MyPoints } from '@lms/contracts';
 
 /**
- * The learner's points as one figure, label over number like the score figures beside it, linking to
- * the leaderboard. The total and the streak are the server's.
+ * The learner's points and streak as two aligned figures linking to the leaderboard.
+ * Both values are the server's; only earned points use the achievement tone.
  */
 @Component({
   selector: 'app-points-figure',

@@ -1,7 +1,19 @@
 <a routerLink="/leaderboard" class="points-figure">
   <dl class="points-figure__item">
-    <dt>Điểm thưởng</dt>
-    <dd class="points-figure__value">{{ points().total }}</dd>
-    <dd class="points-figure__detail">Chuỗi {{ points().streakDays }} ngày</dd>
+    <div>
+      <dt>Điểm thưởng</dt>
+      <dd
+        class="points-figure__value"
+        [class.points-figure__earned]="points().total > 0"
+      >
+        {{ points().total }}
+      </dd>
+    </div>
+    <div>
+      <dt>Chuỗi học</dt>
+      <dd class="points-figure__value">
+        {{ points().streakDays }} ngày
+      </dd>
+    </div>
   </dl>
 </a>

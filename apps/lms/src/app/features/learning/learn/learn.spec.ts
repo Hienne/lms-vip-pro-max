@@ -410,7 +410,7 @@ describe('Learn', () => {
 
     it('keeps rewards in the side column and links to the leaderboard', async () => {
       await open();
-      expect(cells()).toEqual(['Điểm thưởng', '80', 'Chuỗi 2 ngày']);
+      expect(cells()).toEqual(['Điểm thưởng', '80', 'Chuỗi học', '2 ngày']);
       expect(figure()!.querySelector('a')?.getAttribute('href')).toBe(
         '/leaderboard',
       );
@@ -437,12 +437,12 @@ describe('Learn', () => {
         streakDays: 0,
       });
       await open();
-      expect(cells()).toEqual(['Điểm thưởng', '0', 'Chuỗi 0 ngày']);
+      expect(cells()).toEqual(['Điểm thưởng', '0', 'Chuỗi học', '0 ngày']);
     });
 
     it('shows for a learner whose courses have no quiz', async () => {
       await open('giangvien', '000005');
-      expect(cells()).toEqual(['Điểm thưởng', '40', 'Chuỗi 2 ngày']);
+      expect(cells()).toEqual(['Điểm thưởng', '40', 'Chuỗi học', '2 ngày']);
     });
 
     it('is hidden when the read fails, and nothing else is', async () => {
@@ -458,12 +458,12 @@ describe('Learn', () => {
     it('does not wait for the summary', async () => {
       fail(learnerEndpoints.progressSummary);
       await open();
-      expect(cells()).toEqual(['Điểm thưởng', '80', 'Chuỗi 2 ngày']);
+      expect(cells()).toEqual(['Điểm thưởng', '80', 'Chuỗi học', '2 ngày']);
     });
   });
 
   describe('a learner who has not taken a quiz yet', () => {
-    it('sees dashes and "Chưa làm bài kiểm tra", and no "Đạt" verdict', async () => {
+    it('combines empty quiz results without a pass verdict', async () => {
       await open('hocvien.tichhop', '000007');
       const cells = Array.from(
         el.querySelectorAll(
@@ -471,12 +471,9 @@ describe('Learn', () => {
         ),
       ).map((node) => node.textContent?.replace(/\s+/g, ' ').trim());
       expect(cells).toEqual([
-        'Điểm kiểm tra gần nhất',
+        'Kết quả kiểm tra',
         '—',
         'Chưa làm bài kiểm tra',
-        'Điểm cao nhất',
-        '—',
-        'Đạt 0/2 bài kiểm tra',
       ]);
       expect(el.querySelector('app-learn-kpis')!.textContent).not.toMatch(
         /Đạt ·/,
@@ -485,7 +482,7 @@ describe('Learn', () => {
   });
 
   describe('a learner whose courses have no quiz', () => {
-    it('sees dashes under both score figures and no error', async () => {
+    it('shows one empty score figure without an error', async () => {
       await open('giangvien', '000005');
       const scores = Array.from(
         el.querySelectorAll('app-learn-kpis a:nth-of-type(n+2) dd'),
@@ -493,11 +490,9 @@ describe('Learn', () => {
       expect(scores).toEqual([
         '—',
         'Chưa có bài kiểm tra',
-        '—',
-        'Chưa có bài kiểm tra',
       ]);
       expect(text()).not.toContain('Không tải được');
-      expect(el.querySelectorAll('app-learn-kpis dt')).toHaveLength(4);
+      expect(el.querySelectorAll('app-learn-kpis dt')).toHaveLength(3);
     });
   });
 
@@ -579,7 +574,7 @@ describe('Learn', () => {
       await open();
       const heading = el.querySelector('#learn-competency')!;
       expect(heading.tagName).toBe('H2');
-      expect(heading.textContent).toContain('Biểu đồ năng lực');
+      expect(heading.textContent).toContain('Năng lực');
       const link = card().querySelector('a')!;
       expect(link.textContent?.trim()).toBe('Chi tiết');
       expect(link.getAttribute('href')).toBe('/progress?tab=competency');
@@ -608,7 +603,7 @@ describe('Learn', () => {
           : MockBackend.prototype.handle.call(backend, e, request),
       );
       await open();
-      expect(card().textContent).toContain('Chưa có dữ liệu năng lực');
+      expect(card().textContent).toContain('Chưa có dữ liệu kiểm tra.');
       expect(card().querySelector('ui-radar-chart')).toBeNull();
     });
 

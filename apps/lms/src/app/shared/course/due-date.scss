@@ -17,4 +17,11 @@
     color: ui.color(danger);
     font-weight: ui.weight(semibold);
   }
+
+  &--highlight {
+    display: inline-block;
+    padding: ui.space(1) ui.space(2);
+    border-radius: ui.radius(sm);
+    background: ui.color(danger-subtle);
+  }
 }

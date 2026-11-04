@@ -8,14 +8,6 @@
       <p class="continue-card__context">{{ view.context }}</p>
       }
     </div>
-    <div class="continue-card__progress">
-      <ui-progress
-        size="sm"
-        [value]="view.pct"
-        [label]="'Tiến độ ' + view.courseTitle"
-      />
-      <span class="continue-card__pct">{{ view.pct }}%</span>
-    </div>
     <a
       uiButton
       class="continue-card__action"
@@ -24,6 +16,14 @@
       [queryParams]="view.query"
       >Tiếp tục học</a
     >
+    <div class="continue-card__progress">
+      <ui-progress
+        size="sm"
+        [value]="view.pct"
+        [label]="'Tiến độ ' + view.courseTitle"
+      />
+      <span class="continue-card__pct">{{ view.pct }}%</span>
+    </div>
   </div>
   } @else {
   <p class="continue-card__context">Bạn chưa có khóa học đang học.</p>

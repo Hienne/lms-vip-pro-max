@@ -16,13 +16,14 @@ interface Kpi {
   readonly detail: string;
   readonly href: string | null;
   readonly query: Record<string, string> | null;
+  readonly overdue?: number;
 }
 
 /**
- * The learner's four figures as one row of label over number, no card per number
+ * The learner's figures as one row of label over number, no card per number
  * (visual-design.md): the assigned courses, the completion rate, the last and the best score. Every
  * number and verdict is the server's. The completion rate comes from the dashboard; when that read
- * fails only its figure shows the retry, the other three stay.
+ * fails only its figure shows the retry. Empty score figures collapse into one result.
  */
 @Component({
   selector: 'app-learn-kpis',
@@ -45,7 +46,8 @@ export class LearnKpis {
       unit: 'count',
       verdict: '',
       failed: false,
-      detail: `${counts.mandatory} bắt buộc · ${counts.overdue} quá hạn`,
+      detail: `${counts.mandatory} bắt buộc`,
+      overdue: counts.overdue,
       href: '/catalog',
       query: { scope: 'assigned' },
     };
@@ -71,12 +73,12 @@ export class LearnKpis {
     const assessment = this.summary().assessment;
     const none = 'Chưa có bài kiểm tra';
     if (!isAssessmentAvailable(assessment)) {
-      return [
-        this.score('Điểm kiểm tra gần nhất', null, none),
-        this.score('Điểm cao nhất', null, none),
-      ];
+      return [this.score('Kết quả kiểm tra', null, none)];
     }
     const { last } = assessment;
+    if (!last && assessment.bestScorePercent === null) {
+      return [this.score('Kết quả kiểm tra', null, 'Chưa làm bài kiểm tra')];
+    }
     return [
       last
         ? this.score(

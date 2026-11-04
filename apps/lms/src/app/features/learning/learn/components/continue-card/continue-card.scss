@@ -24,13 +24,6 @@
     @include ui.stack(4);
     align-items: flex-start;
     min-width: 0;
-
-    @include ui.bp(md) {
-      display: grid;
-      grid-template-columns: minmax(0, 1fr) auto;
-      align-items: center;
-      gap: ui.space(3) ui.space(5);
-    }
   }
 
   &__text {
@@ -40,6 +33,7 @@
 
   &__lesson {
     @include ui.text(xl);
+    font-family: ui.font(sans);
     font-weight: ui.weight(semibold);
     margin: 0;
     overflow-wrap: anywhere;
@@ -55,6 +49,7 @@
     @include ui.row(3);
     flex-wrap: nowrap;
     width: 100%;
+    max-width: ui.layout(reading);
     min-width: 0;
 
     ui-progress {
@@ -66,12 +61,5 @@
   &__pct {
     @include ui.num;
     @include ui.text(sm);
-  }
-
-  &__action {
-    @include ui.bp(md) {
-      grid-column: 2;
-      grid-row: 1 / span 2;
-    }
   }
 }

@@ -15,6 +15,7 @@ const inDays = (days: number) => new Date(TODAY + days * DAY).toISOString();
       [dueAt]="dueAt()"
       [done]="done()"
       [relativeOnly]="relativeOnly()"
+      [highlight]="highlight()"
     />
   `,
 })
@@ -22,6 +23,7 @@ class Host {
   readonly dueAt = signal<string | null | undefined>(inDays(12));
   readonly done = signal(false);
   readonly relativeOnly = signal(false);
+  readonly highlight = signal(false);
 }
 
 function render(change: (host: Host) => void = () => undefined) {
@@ -39,6 +41,18 @@ function render(change: (host: Host) => void = () => undefined) {
 }
 
 describe('DueDate', () => {
+  it('highlights only an overdue date when the list requests emphasis', () => {
+    const { el } = render((h) => {
+      h.dueAt.set(inDays(-2));
+      h.highlight.set(true);
+    });
+    expect(el.classList.contains('due-date--highlight')).toBe(true);
+    const future = render((h) => h.highlight.set(true));
+    expect(future.el.classList.contains('due-date--highlight')).toBe(false);
+    const plain = render((h) => h.dueAt.set(inDays(-2)));
+    expect(plain.el.classList.contains('due-date--highlight')).toBe(false);
+  });
+
   it.each([
     { days: 12, expected: 'Còn 12 ngày', tone: 'muted' },
     { days: 2, expected: 'Còn 2 ngày', tone: 'warning' },

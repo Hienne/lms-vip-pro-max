@@ -29,6 +29,10 @@
       align-items: start;
       gap: ui.space(6);
     }
+
+    @include ui.bp(xl) {
+      grid-template-columns: minmax(0, 1fr) ui.layout(popover);
+    }
   }
 
   &__main,
@@ -54,12 +58,12 @@
     }
   }
 
-  &__panel,
-  &__summary {
+  &__panel {
     padding: ui.space(4);
-    border: 1px solid ui.color(border);
-    border-radius: ui.radius(card);
-    background: ui.color(surface);
+  }
+
+  &__summary {
+    padding-block: ui.space(2);
   }
 
   &__side &__panel h2 {
@@ -105,6 +109,19 @@
   &__secondary {
     @include ui.grid((xl: 2));
     align-items: start;
+    padding: ui.space(4);
+
+    > section + section {
+      padding-block-start: ui.space(4);
+      border-block-start: 1px solid ui.color(border);
+
+      @include ui.bp(xl) {
+        padding-block-start: 0;
+        padding-inline-start: ui.space(4);
+        border-block-start: 0;
+        border-inline-start: 1px solid ui.color(border);
+      }
+    }
 
     > section:only-child {
       grid-column: 1 / -1;
@@ -152,7 +169,7 @@
     }
 
     app-due-date {
-      grid-column: 1;
+      grid-column: 1 / -1;
       grid-row: 2;
       min-width: 0;
     }

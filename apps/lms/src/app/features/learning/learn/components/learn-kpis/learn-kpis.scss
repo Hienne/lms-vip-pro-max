@@ -20,6 +20,17 @@
     }
   }
 
+  &--compact {
+    @include ui.bp(md) {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+
+      > :not(:last-child) {
+        padding-inline-end: ui.space(3);
+        border-inline-end: 1px solid ui.color(border);
+      }
+    }
+  }
+
   &__link {
     color: inherit;
     text-decoration: none;
@@ -40,7 +51,6 @@
 
     dt {
       @include ui.text(sm, muted);
-      min-height: calc(#{ui.text-size(sm)} * #{ui.leading(normal)} * 2);
     }
 
     dd {

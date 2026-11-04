@@ -147,15 +147,30 @@
   }
 
   &__detail {
-    @include ui.row-between(4);
+    display: grid;
+    grid-template-columns: minmax(0, max-content) max-content;
+    align-items: start;
+    justify-content: start;
+    gap: ui.space(6);
+    padding-block: ui.space(2);
+    // Match the course title's inset: the disclosure button and its grid gap.
+    padding-inline-start: calc(#{ui.layout(touch)} + #{ui.space(2)});
+
+    > a {
+      justify-self: start;
+    }
   }
 
   &__facts {
-    @include ui.row(6);
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: ui.space(3) ui.space(6);
     margin: 0;
+    min-width: 0;
 
     > div {
       @include ui.stack(1);
+      min-width: 0;
     }
 
     dt {
@@ -239,6 +254,16 @@
   }
 
   @include ui.bp-below(md) {
+    &__detail {
+      grid-template-columns: minmax(0, 1fr);
+      gap: ui.space(3);
+      padding-inline-start: 0;
+    }
+
+    &__facts {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
     &__search {
       flex-basis: 100%;
     }

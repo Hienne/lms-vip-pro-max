@@ -13,6 +13,7 @@ import { dueReminders } from '../../../../core/learning/due-reminders';
 import { SessionStore } from '../../../../core/session/session.store';
 import type { CourseCardView } from '../../../../shared/course/course-card';
 import { toCourseCardView } from '../../../../shared/course/course-card-view';
+import { withData } from '../../../../shared/learning/competency/competency-data';
 import { isReminderOverdue } from '../../../../shared/learning/reminder-item/reminder-item';
 
 export type LearnTab =
@@ -243,6 +244,9 @@ export class LearnStore {
   );
 
   readonly competency$ = this.competencyData.value;
+  readonly hasCompetencyData$ = computed(
+    () => withData(this.competency$() ?? []).length > 0,
+  );
   readonly competencyError$ = this.competencyData.error;
   readonly isCompetencyLoading$ = this.competencyData.isLoading;
 
