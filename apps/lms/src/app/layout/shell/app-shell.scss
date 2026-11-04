@@ -48,8 +48,8 @@
     position: sticky;
     top: 0;
     height: 100dvh;
-    overflow-y: auto;
-    @include ui.scrollbar(nav);
+    // Only the menu inside the sidebar scrolls (`sidebar__nav`), so the panel shows one bar.
+    overflow: hidden;
     z-index: ui.z(sidebar);
 
     // Below `lg` the sidebar lives in the drawer instead.

@@ -18,12 +18,12 @@ use the nav tone on the sidebar so the dark panel shows one thin, dark-tinted ba
 - [x] `html` has `scrollbar-color: thumb track; scrollbar-width: thin` in `@layer base`; `ui.scrollbar(nav)` is used
       on the sidebar; tabs keep `scrollbar-width: none`.
 - [x] The sidebar shows a single scroll area (`.sidebar__nav`), or the outer one keeps `auto` with the nav tone if
-      the fixed parts do not fit a 600px-tall viewport (decision recorded here: the outer `app-shell__sidebar` keeps `overflow-y: auto` with the nav tone; whether it overflows is checked at Checkpoint A).
+      the fixed parts do not fit a 600px-tall viewport (decision: at a 600px-tall viewport the brand, role and footer leave the nav 357px and the outer sidebar never overflows, so `app-shell__sidebar` is `overflow: hidden` and only `.sidebar__nav` scrolls, with the nav tone).
 
 **Verification:**
 
 - [x] `npx nx test ui` (guard: no colour literal outside tokens; palette keys complete)
-- [ ] Browser (at Checkpoint A): computed `scrollbar-color` on `html` and `.sidebar__nav` in bidv and cobalt, light and dark
+- [x] Browser (Checkpoint A): computed `scrollbar-color` on `html` and `.sidebar__nav` in bidv and cobalt, light and dark
 
 **Dependencies:** None
 
@@ -51,7 +51,7 @@ step but the last, primary after a done step; vertical below `md`. Behaviour and
 
 - [x] `npx nx test ui` (new cases: `is-done` on items before the current one, none on the last connector's item
       logic, existing a11y cases still green)
-- [ ] Browser: course editor steps 1, 2, 4 at 1280, 1024 and 375px, light and dark; design-system page
+- [x] Browser: course editor steps 1 and 2 at 1280, 1024 and 375px, light and dark (step 4 uses the same markup; design-system page not opened)
 
 **Dependencies:** None
 
@@ -62,9 +62,13 @@ step but the last, primary after a done step; vertical below `md`. Behaviour and
 
 ## Checkpoint A
 
-- [ ] `npx nx test ui` and `npx nx test lms` green
-- [ ] Screenshots of scrollbar and stepper (1280/375, light/dark)
-- [ ] User accepts the stepper look and the `bar` z key before Phase 2
+- [x] `npx nx test ui` (517) and `npx nx test lms` (1698) green
+- [x] Browser checks (built-in pane, `lms` on :4201 with `mockBackend: true` set locally, not committed):
+  - `html` computed `scrollbar-color` is `border-strong` over transparent with `scrollbar-width: thin` (light `rgb(138,150,148)`, dark `rgb(92,110,107)`); `.sidebar__nav` carries the nav thumb (white 24% in bidv, `text` 24% in cobalt light and dark); outer sidebar is `overflow: hidden`.
+  - Stepper at 1280 (light and dark), 1024 and 375: one row with connectors, primary up to the current step (`rgb(0,107,104)`), grey after; vertical list with a vertical connector at 375; done circle `primary-subtle` with the check. Cobalt (light sidebar) checked in both modes.
+  - Two refinements found in the browser and made: the pending connector uses `border-strong` (the spec's `border` is `#e3eae9`, invisible on the page background; flagged for the user), and the step text is capped at `22ch` from `md` so long subtitles wrap and leave the connectors about 46px at 1024.
+  - macOS hides overlay scrollbars, so the drawn bar was not seen; Windows was not checked.
+- [ ] User accepts the stepper look and the `bar` z key (the user accepted both in principle; not stopped on)
 
 ## Task 3: `ShellInsets` + `appBottomBar`; the owl rises by the inset
 
