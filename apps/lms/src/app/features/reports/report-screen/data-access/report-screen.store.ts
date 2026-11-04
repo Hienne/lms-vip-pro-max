@@ -342,9 +342,25 @@ export class ReportScreenStore {
     () => this.pickers.error$() ?? this.overview.error() ?? this.detail.error(),
   );
   readonly exporting$ = this.exportMutation.isPending;
-  readonly canExport$ = computed(() => !!this.tableRequest());
+  /** Why "Xuất CSV" is disabled; `undefined` while it can export or the rows are still loading. */
+  readonly exportReason$ = computed(() => {
+    if (!this.dimension$()) return 'Chọn một báo cáo chi tiết để xuất CSV.';
+    if (this.needsQuiz$()) return 'Chọn bài kiểm tra để xuất.';
+    const page = this.detail.value();
+    return this.pickers.blocked$() || (page && !page.totalElements)
+      ? 'Không có dữ liệu để xuất.'
+      : undefined;
+  });
+  readonly canExport$ = computed(
+    () => !this.exportReason$() && !!this.detail.value(),
+  );
   readonly needsQuiz$ = computed(
     () => this.dimension$() === 'learners' && !this.filters$().quizId,
+  );
+  readonly description$ = computed(() =>
+    this.params()?.get('dim')
+      ? 'Báo cáo thi theo phạm vi được cấp. Đơn vị/nhóm lấy theo thời điểm thi hoặc ghi danh.'
+      : 'Tiến độ học và kết quả thi theo phạm vi được cấp.',
   );
   readonly title$ = computed(
     () =>

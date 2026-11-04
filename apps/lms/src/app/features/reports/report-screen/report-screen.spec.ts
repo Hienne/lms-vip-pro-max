@@ -89,4 +89,50 @@ describe('ReportScreen', () => {
     expect(spy.mock.calls.some(([e]) => e === api.learners)).toBe(true);
     expect(text()).not.toContain('Chọn khóa học và bài kiểm tra');
   });
+
+  describe('Xuất CSV', () => {
+    const exportButton = (root: HTMLElement) =>
+      Array.from(root.querySelectorAll('button')).find((b) =>
+        b.textContent?.includes('Xuất CSV'),
+      )!;
+    const reason = (root: HTMLElement) => {
+      const button = exportButton(root);
+      return button
+        .getAttribute('aria-describedby')
+        ?.split(' ')
+        .map((id) => root.ownerDocument.getElementById(id)?.textContent?.trim())
+        .join(' ');
+    };
+
+    it.each([
+      ['/reports', 'Chọn một báo cáo chi tiết để xuất CSV.'],
+      ['/reports/learners', 'Chọn bài kiểm tra để xuất.'],
+      ['/reports/results?userId=000099', 'Không có dữ liệu để xuất.'],
+    ])('on %s says why it is disabled', async (path, text) => {
+      const { root } = await open(path);
+      expect(exportButton(root).disabled).toBe(true);
+      expect(reason(root)).toBe(text);
+      expect(
+        exportButton(root).closest('[uiTooltip], .report-screen__export'),
+      ).not.toBeNull();
+    });
+
+    it('is enabled, with no reason, when there are rows', async () => {
+      const { root } = await open('/reports/results');
+      expect(exportButton(root).disabled).toBe(false);
+      expect(exportButton(root).hasAttribute('aria-describedby')).toBe(false);
+    });
+  });
+
+  it('describes the view it shows', async () => {
+    const { text } = await open('/reports');
+    expect(text()).toContain(
+      'Tiến độ học và kết quả thi theo phạm vi được cấp.',
+    );
+  });
+
+  it('says a report from a bad link does not exist', async () => {
+    const { text } = await open('/reports/programs');
+    expect(text()).toContain('Không có báo cáo này. Chọn một báo cáo ở trên.');
+  });
 });

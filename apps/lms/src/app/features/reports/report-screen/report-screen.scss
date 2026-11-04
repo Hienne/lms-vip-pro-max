@@ -6,10 +6,13 @@
 }
 .report-screen {
   &__navigation {
-    overflow-x: auto;
-    flex-wrap: nowrap;
-    a {
-      flex-shrink: 0;
+    flex-wrap: wrap;
+  }
+  // The wrapper takes the hover for the tooltip: a disabled button gets no pointer events.
+  &__export {
+    display: inline-flex;
+    button:disabled {
+      pointer-events: none;
     }
   }
   &__filters {

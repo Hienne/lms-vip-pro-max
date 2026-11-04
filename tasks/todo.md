@@ -126,10 +126,10 @@ roles if changed); browser `read_page`
 
 **Acceptance criteria:**
 
-- [ ] The description follows the view. The overview description is "Tiến độ học và kết quả thi theo phạm vi được
+- [x] The description follows the view. The overview description is "Tiến độ học và kết quả thi theo phạm vi được
       cấp."
-- [ ] A disabled "Xuất CSV" has a tooltip and an `aria-describedby` text. The three reasons are the ones in the spec.
-- [ ] The unsupported copy becomes "Không có báo cáo này. Chọn một báo cáo ở trên." The tab bar wraps at about
+- [x] A disabled "Xuất CSV" has a tooltip and an `aria-describedby` text. The three reasons are the ones in the spec.
+- [x] The unsupported copy becomes "Không có báo cáo này. Chọn một báo cáo ở trên." The tab bar wraps at about
       800px.
 
 **Verification:** `npx nx test lms`

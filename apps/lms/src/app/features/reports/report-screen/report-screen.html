@@ -1,14 +1,21 @@
-<ui-page-header
-  [title]="store.title$()"
-  description="Báo cáo thi theo phạm vi được cấp. Đơn vị/nhóm lấy theo thời điểm thi hoặc ghi danh."
-  ><button
+<ui-page-header [title]="store.title$()" [description]="store.description$()"
+  ><span
     slot="actions"
-    uiButton
-    [disabled]="!store.canExport$() || store.exporting$()"
-    (click)="store.exportCsv()"
-  >
-    Xuất CSV
-  </button></ui-page-header
+    class="report-screen__export"
+    [uiTooltip]="store.exportReason$() ?? ''"
+    ><button
+      uiButton
+      [disabled]="!store.canExport$() || store.exporting$()"
+      [attr.aria-describedby]="store.exportReason$() ? 'report-export-reason' : null"
+      (click)="store.exportCsv()"
+    >
+      Xuất CSV</button
+    >@if (store.exportReason$(); as reason) {<span
+      id="report-export-reason"
+      class="sr-only"
+      >{{ reason }}</span
+    >}</span
+  ></ui-page-header
 >
 <nav class="row report-screen__navigation" aria-label="Các báo cáo">
   @for (tab of store.tabs$(); track tab.id) {
@@ -95,8 +102,7 @@
   </div>
 </form>
 @if(store.unsupported$()){<ui-alert
-  >Loại báo cáo này chưa có API tương ứng. Chọn một báo cáo được hỗ trợ ở
-  trên.</ui-alert
+  >Không có báo cáo này. Chọn một báo cáo ở trên.</ui-alert
 >} @else if(store.needsQuiz$()){<ui-alert
   >Chọn khóa học và bài kiểm tra để xem cả học viên chưa thi.</ui-alert
 >} @else if(store.isLoading$()){

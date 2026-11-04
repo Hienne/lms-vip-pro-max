@@ -21,6 +21,7 @@ import {
   PageHeader,
   Select,
   Spinner,
+  Tooltip,
   type DataTableColumn,
 } from '@lms/ui';
 import { ReportScreenStore } from './data-access/report-screen.store';
@@ -114,6 +115,7 @@ function toLocalInput(iso: string | undefined): string {
     PageHeader,
     Select,
     Spinner,
+    Tooltip,
   ],
   providers: [ReportScreenStore],
   templateUrl: './report-screen.html',
