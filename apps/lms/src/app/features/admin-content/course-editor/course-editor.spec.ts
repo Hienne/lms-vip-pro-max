@@ -362,8 +362,6 @@ describe('CourseEditor', () => {
         screen.el.querySelector<HTMLInputElement>(
           '.course-info__cover label.dropzone input[type=file]',
         )!;
-      const image = () =>
-        screen.el.querySelector<HTMLImageElement>('.course-info__cover-image');
       const cardImage = () =>
         screen.el.querySelector<HTMLImageElement>('.course-card__cover');
 
@@ -385,7 +383,6 @@ describe('CourseEditor', () => {
 
       it('uploads an image, shows it on the card and saves it with the draft, until it is removed', async () => {
         await screen.open('/admin/courses/6/edit');
-        expect(image()).toBeNull();
         expect(cardImage()).toBeNull();
 
         const file = new File(['png'], 'bia.png', { type: 'image/png' });
@@ -402,7 +399,6 @@ describe('CourseEditor', () => {
         // Read with the token, not by the `<img>`: an author holds no media cookie.
         const read = screen.lastCall(courseEndpoints.getAssetContent);
         expect(read?.query).toEqual({});
-        expect(image()?.getAttribute('src')).toBe('blob:cover-1');
         expect(cardImage()?.getAttribute('src')).toBe('blob:cover-1');
         expect(cardImage()?.alt).toBe('');
         expect(screen.text()).toContain('Có thay đổi chưa lưu');
@@ -415,8 +411,10 @@ describe('CourseEditor', () => {
         ).toBe(assetId);
         expect(screen.text()).not.toContain('Có thay đổi chưa lưu');
 
-        await screen.click(screen.button('Gỡ ảnh bìa'));
-        expect(image()).toBeNull();
+        expect(screen.button('Thay ảnh')).toBeTruthy();
+        expect(cover()).toBeNull();
+
+        await screen.click(screen.button('Gỡ ảnh'));
         expect(cardImage()).toBeNull();
         expect(revoked).toContain('blob:cover-1');
         await screen.click(screen.button('Lưu nháp'));
@@ -434,7 +432,7 @@ describe('CourseEditor', () => {
           'Sai định dạng: chỉ chấp nhận PNG, JPG, JPEG, WEBP.',
         );
         expect(screen.callsTo(assetEndpoints.startUpload)).toBe(0);
-        expect(image()).toBeNull();
+        expect(cardImage()).toBeNull();
       });
     });
 

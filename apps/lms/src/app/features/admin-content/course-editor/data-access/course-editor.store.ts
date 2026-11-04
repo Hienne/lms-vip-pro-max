@@ -36,7 +36,6 @@ import {
   firstValueFrom,
   map,
   Observable,
-  of,
   switchMap,
   takeUntil,
   throwError,
@@ -54,6 +53,10 @@ import {
   sameTarget,
   type TargetPick,
 } from '../../../../shared/assignment-target/target-labels';
+import {
+  coverPreview,
+  type CoverPreview,
+} from '../../../../shared/course/cover-image';
 import { courseCatalogStatus } from '../../../../shared/status/catalog-status';
 import {
   FILE_USAGE,
@@ -138,11 +141,6 @@ interface UploadContext {
  * lesson, so its upload is not kept across reloads: the author picks the file again.
  */
 export const COVER_KEY = 'cover';
-
-/** The cover image as the editor shows it. */
-export type CoverPreview =
-  | { readonly state: 'none' | 'loading' | 'failed' }
-  | { readonly state: 'ready'; readonly src: string };
 
 /** The code the server answers with when a course code is already taken. */
 export const DUPLICATE_CODE = 'LEARNING-DUPLICATE';
@@ -812,20 +810,9 @@ export class CourseEditorStore {
     });
   }
 
-  /**
-   * The cover image to show for the asset `assetId` names. An author holds no media cookie (only a
-   * learner's study session sets one), so the file is read with the session's token and handed to
-   * the `<img>` as an object URL, released when the cover changes or the page goes.
-   */
+  /** The cover image to show for the asset `assetId` names; an author reads it with no block. */
   coverPreview(assetId: () => number | null): Signal<CoverPreview> {
-    return toSignal(
-      toObservable(computed(assetId), { injector: this.injector }).pipe(
-        switchMap((id) =>
-          id ? this.coverFile(id) : of<CoverPreview>({ state: 'none' }),
-        ),
-      ),
-      { initialValue: { state: 'none' }, injector: this.injector },
-    );
+    return coverPreview(this.client, this.injector, assetId);
   }
 
   /** Checks a picked cover image against the image rules, then uploads it. */
@@ -895,30 +882,6 @@ export class CourseEditorStore {
 
   retryLoad(): void {
     this.courseData.reload();
-  }
-
-  /** One cover file as an object URL, which is revoked when the subscriber leaves. */
-  private coverFile(assetId: number): Observable<CoverPreview> {
-    return new Observable<CoverPreview>((subscriber) => {
-      let src: string | undefined;
-      subscriber.next({ state: 'loading' });
-      const read = this.client
-        .call(courseEndpoints.getAssetContent, {
-          params: { assetId },
-          query: {},
-        })
-        .subscribe({
-          next: (blob) => {
-            src = URL.createObjectURL(blob);
-            subscriber.next({ state: 'ready', src });
-          },
-          error: () => subscriber.next({ state: 'failed' }),
-        });
-      return () => {
-        read.unsubscribe();
-        if (src) URL.revokeObjectURL(src);
-      };
-    });
   }
 
   /** Shows why the file is not acceptable for the block, or returns false when it is. */

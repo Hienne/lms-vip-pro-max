@@ -119,8 +119,14 @@
     } }
   </div>
 
-  @if (store.view$() === 'enrolled') {
-  <aside class="course__side" aria-label="Tiến độ">
+  @if (store.view$() === 'enrolled' || coverSrc()) {
+  <aside
+    class="course__side"
+    [attr.aria-label]="store.view$() === 'enrolled' ? 'Tiến độ' : 'Ảnh bìa'"
+  >
+    @if (coverSrc(); as src) {
+    <img class="course__cover" [src]="src" alt="" />
+    } @if (store.view$() === 'enrolled') {
     <section uiCard class="course__progress">
       <ui-ring [value]="card.progressPercent ?? 0" [size]="112" />
       <dl class="course__facts">
@@ -162,6 +168,7 @@
       </p>
       }
     </section>
+    }
   </aside>
   }
 </div>

@@ -24,6 +24,7 @@ import {
   type CourseCardView,
 } from '../../../../../shared/course/course-card';
 import { LEVEL_LABEL } from '../../../../../shared/course/course-labels';
+import { coverSrc } from '../../../../../shared/course/cover-image';
 import { draftTotals, type CourseDraftValue } from '../../course-draft';
 import {
   acceptOf,
@@ -35,8 +36,9 @@ import { AssetLibrary } from '../asset-library/asset-library';
 import { AssetLibraryStore } from '../asset-library/data-access/asset-library.store';
 
 /**
- * Step 1 of the editor: the course's name, place in the catalogue, level, kind, summary, cover
- * image and learning objectives, beside a preview of the card learners will see. It edits the
+ * Step 1 of the editor: the course's name, place in the catalogue, level, kind, summary and
+ * learning objectives, beside a preview of the card learners will see with the cover image's
+ * controls under it. It edits the
  * page's form through the field tree it is given. The cover is uploaded by the store as soon as it
  * is chosen (or picked from the library) and joins the draft once it is ready.
  */
@@ -86,10 +88,7 @@ export class CourseInfo {
   protected readonly isCancellable = isCancellable;
 
   protected readonly cover = this.store.coverPreview(() => this.coverAssetId());
-  protected readonly coverSrc = computed(() => {
-    const cover = this.cover();
-    return cover.state === 'ready' ? cover.src : null;
-  });
+  protected readonly coverSrc = computed(() => coverSrc(this.cover()));
 
   /** The cover upload while it is on its way or refused; a finished one shows as the image. */
   protected readonly coverUpload = computed(() => {
@@ -137,6 +136,13 @@ export class CourseInfo {
   protected chooseCover(files: readonly File[]): void {
     const file = files[0];
     if (file) this.store.uploadCover(file);
+  }
+
+  /** "Thay ảnh": the hidden input is emptied so the same file can be picked again. */
+  protected pickedCover(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    this.chooseCover(Array.from(input.files ?? []));
+    input.value = '';
   }
 
   protected openLibrary(): void {

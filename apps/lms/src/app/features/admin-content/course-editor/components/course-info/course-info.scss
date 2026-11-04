@@ -27,7 +27,6 @@
   }
 
   &__kind,
-  &__cover,
   &__objectives {
     @include ui.stack(2);
     margin: 0;
@@ -46,15 +45,17 @@
     align-items: flex-start;
   }
 
-  &__cover-image {
-    display: block;
-    width: 100%;
-    max-width: 24rem;
-    aspect-ratio: 16 / 9;
-    object-fit: cover;
-    border: 1px solid ui.color(border);
-    border-radius: ui.radius(md);
-    background: ui.color(surface-2);
+  // The cover's controls sit under the card preview, which shows the image itself.
+  &__cover {
+    @include ui.stack(2);
+    margin-top: ui.space(2);
+    padding-top: ui.space(4);
+    border-top: 1px solid ui.color(border);
+  }
+
+  &__cover-title {
+    @include ui.text(sm);
+    font-weight: ui.weight(medium);
   }
 
   &__cover-note {
@@ -68,10 +69,6 @@
 
   &__drop-title {
     font-weight: ui.weight(semibold);
-  }
-
-  &__drop-hint {
-    @include ui.text(xs);
   }
 
   &__objective {
