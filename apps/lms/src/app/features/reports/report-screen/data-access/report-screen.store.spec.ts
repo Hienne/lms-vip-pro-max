@@ -205,7 +205,9 @@ describe('assessment report integration', () => {
       expect(store.pickers.errors$().courseId).toBe(
         'Không tìm thấy khóa học này trong phạm vi của bạn.',
       );
-      expect(spy.mock.calls.some(([e]) => e === api.results)).toBe(false);
+      expect(
+        spy.mock.calls.some(([e]) => e === api.results || e === api.overview),
+      ).toBe(false);
       store.pickers.pick('courseId', null);
       expect(store.pickers.errors$().courseId).toBeUndefined();
     });

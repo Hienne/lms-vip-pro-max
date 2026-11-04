@@ -1,4 +1,7 @@
-<div class="report-picker">
+<div
+  class="report-picker"
+  [class.report-picker--clearable]="selected() && !disabled()"
+>
   <ui-field
     [label]="label()"
     [required]="required()"

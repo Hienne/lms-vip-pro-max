@@ -132,7 +132,16 @@ export function reportPickers(applied: Signal<ReportFilters>) {
       client
         .call(assessment.overview, { query: { courseId } })
         .pipe(map((overview) => overview.byQuiz)),
-    { params: () => picks$().courseId },
+    {
+      // Never for a URL course outside the scope: this read is the exam report itself.
+      params: () => {
+        const id = picks$().courseId;
+        return id !== undefined &&
+          (id !== applied().courseId || resolved().courseId)
+          ? id
+          : undefined;
+      },
+    },
   );
 
   // The URL's ids, each read on its own so a shared link shows names before anything is picked.

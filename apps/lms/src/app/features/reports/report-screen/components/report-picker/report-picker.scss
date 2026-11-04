@@ -4,6 +4,12 @@
   position: relative;
   min-width: 0;
 
+  // Room for "Xóa", so a long name does not run under it.
+  &--clearable input {
+    padding-inline-end: ui.space(8);
+    text-overflow: ellipsis;
+  }
+
   &__clear {
     position: absolute;
     inset-block-start: ui.space(6);
