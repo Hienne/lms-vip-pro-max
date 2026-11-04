@@ -1,16 +1,14 @@
 <div class="route-placeholder">
-  <ui-empty
-    icon="layers"
-    [headingLevel]="2"
-    title="Trang đang được chuyển đổi"
-    [description]="
-      'Màn hình “' + mockupPage + '” của bản mockup chưa được chuyển sang Angular.'
-    "
-  >
-    @if (showBoard) {
-    <a uiButton variant="secondary" routerLink="/dev/migration">
-      <ui-icon name="clipboard-check" size="sm" />Xem tiến độ migrate
-    </a>
-    }
-  </ui-empty>
+  <h2 class="route-placeholder__title">{{ title }}</h2>
+  <p class="route-placeholder__text">
+    Chức năng này đang được hoàn thiện và sẽ có trong bản cập nhật tới.
+  </p>
+  <div class="route-placeholder__actions">
+    <a uiButton variant="secondary" [routerLink]="homePath()">Về trang chủ</a>
+  </div>
+  @if (showBoard) {
+  <p class="route-placeholder__dev">
+    <a routerLink="/dev/migration">Xem tiến độ migrate</a>
+  </p>
+  }
 </div>

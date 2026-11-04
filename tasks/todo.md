@@ -72,9 +72,9 @@ the module and review ID, ending with the attribution line.
 
 **Acceptance criteria:**
 
-- [ ] The page is left-aligned with no icon. Its h2 is the route's title. Text: "Chức năng này đang được hoàn thiện và
+- [x] The page is left-aligned with no icon. Its h2 is the route's title. Text: "Chức năng này đang được hoàn thiện và
       sẽ có trong bản cập nhật tới." It has a secondary "Về trang chủ" button to the session's `homePath`.
-- [ ] No "mockup", "Angular" or "migrate" copy. The "Xem tiến độ migrate" link stays with `devTools` only.
+- [x] No "mockup", "Angular" or "migrate" copy. The "Xem tiến độ migrate" link stays with `devTools` only.
 
 **Verification:** `npx nx test lms` (`route-placeholder.spec.ts`, new or extended)
 
