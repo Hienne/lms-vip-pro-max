@@ -1,4 +1,4 @@
-import { computed, inject, Injectable } from '@angular/core';
+import { computed, inject, Injectable, Injector } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute } from '@angular/router';
 import {
@@ -13,6 +13,7 @@ import { invalidation } from '../../../../core/data-access/invalidation';
 import { serverData } from '../../../../core/data-access/server-data';
 import { serverMutation } from '../../../../core/data-access/server-mutation';
 import { EndpointClient } from '../../../../core/http/endpoint-client';
+import { coverPreview } from '../../../../shared/course/cover-image';
 import { LEVEL_LABEL } from '../../../../shared/course/course-labels';
 
 export type CourseView = 'loading' | 'missing' | 'not-enrolled' | 'enrolled';
@@ -54,6 +55,7 @@ const stateOf = (progress: LessonProgress | undefined): LessonState =>
 export class CourseStore {
   private readonly client = inject(EndpointClient);
   private readonly route = inject(ActivatedRoute);
+  private readonly injector = inject(Injector);
 
   private readonly refresh = invalidation();
 
@@ -115,6 +117,15 @@ export class CourseStore {
   readonly card$ = computed(() => this.courseData.value()?.card);
   readonly content$ = computed(() => this.courseData.value()?.content);
   readonly detail$ = this.detailData.value;
+  /**
+   * The revision's cover image. The server decides whether a learner may read it without a block;
+   * until it does, a refusal shows no image.
+   */
+  readonly cover$ = coverPreview(
+    this.client,
+    this.injector,
+    () => this.content$()?.revision.coverAssetId,
+  );
   readonly loadError$ = computed(
     () => this.courseData.error() ?? this.detailData.error(),
   );

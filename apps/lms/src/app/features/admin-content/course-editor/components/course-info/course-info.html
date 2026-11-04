@@ -141,5 +141,103 @@
       Thẻ cập nhật theo dữ liệu bạn đang nhập: đây là những gì học viên nhìn
       thấy.
     </p>
+
+    <section class="course-info__cover" aria-labelledby="course-cover-title">
+      <h3 id="course-cover-title" class="course-info__cover-title">Ảnh bìa</h3>
+      @switch (cover().state) { @case ('loading') {
+      <p class="course-info__cover-note" aria-live="polite">
+        Đang tải ảnh bìa…
+      </p>
+      } @case ('failed') {
+      <p class="course-info__cover-note">
+        Không tải được ảnh để xem trước. Ảnh vẫn được lưu cùng khóa học.
+      </p>
+      } } @if (coverUpload(); as entry) {
+      <ui-upload-item
+        [name]="entry.name"
+        [size]="entry.sizeBytes"
+        icon="image"
+        [state]="itemState(entry)"
+        [progress]="entry.percent"
+        [status]="entry.status"
+        >{{ entry.message }}</ui-upload-item
+      >
+      @if (isCancellable(entry)) {
+      <div class="course-info__actions">
+        <button uiButton type="button" size="sm" (click)="store.dropCover()">
+          Hủy
+        </button>
+      </div>
+      } @else if (entry.state === 'stalled') {
+      <div class="course-info__actions">
+        <button
+          uiButton
+          type="button"
+          size="sm"
+          (click)="store.recheck(coverKey)"
+        >
+          Kiểm tra lại
+        </button>
+      </div>
+      } @else if (entry.state === 'error' && entry.reprocess) {
+      <div class="course-info__actions">
+        <button
+          uiButton
+          type="button"
+          size="sm"
+          (click)="store.reprocess(coverKey)"
+        >
+          Xử lý lại
+        </button>
+      </div>
+      } } @if (coverAssetId()) {
+      <div class="course-info__actions">
+        <button uiButton type="button" size="sm" (click)="picker.click()">
+          Thay ảnh
+        </button>
+        <button uiButton type="button" size="sm" (click)="openLibrary()">
+          Chọn từ thư viện
+        </button>
+        <button
+          uiButton
+          type="button"
+          size="sm"
+          variant="ghost"
+          (click)="coverRemoved.emit()"
+        >
+          Gỡ ảnh
+        </button>
+      </div>
+      } @else {
+      <label uiDropzone [accept]="accept" (files)="chooseCover($event)">
+        <ui-icon name="upload" />
+        <div class="course-info__drop-title">Kéo thả hoặc chọn ảnh</div>
+        <input type="file" hidden />
+      </label>
+      <div class="course-info__actions">
+        <button uiButton type="button" size="sm" (click)="openLibrary()">
+          Chọn từ thư viện
+        </button>
+      </div>
+      }
+      <p class="course-info__note">
+        JPG, PNG hoặc WebP, tối đa 5 MB. Nên dùng ảnh ngang 16:9, từ 1280 × 720.
+      </p>
+      <input
+        #picker
+        type="file"
+        hidden
+        [accept]="accept"
+        (change)="pickedCover($event)"
+      />
+    </section>
   </aside>
 </div>
+
+<ng-template
+  [uiDrawer]="library.target$() !== null"
+  uiDrawerTitle="Thư viện tài nguyên"
+  (uiDrawerDismiss)="library.close()"
+>
+  <app-asset-library (picked)="useLibraryAsset($event)" />
+</ng-template>

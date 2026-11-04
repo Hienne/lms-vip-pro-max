@@ -7,6 +7,7 @@ import {
   Injector,
   linkedSignal,
   signal,
+  type Signal,
 } from '@angular/core';
 import {
   takeUntilDestroyed,
@@ -52,6 +53,10 @@ import {
   sameTarget,
   type TargetPick,
 } from '../../../../shared/assignment-target/target-labels';
+import {
+  coverPreview,
+  type CoverPreview,
+} from '../../../../shared/course/cover-image';
 import { courseCatalogStatus } from '../../../../shared/status/catalog-status';
 import {
   FILE_USAGE,
@@ -130,6 +135,12 @@ interface UploadContext {
   /** The kept upload this one continues. */
   readonly resumed?: KeptUpload;
 }
+
+/**
+ * The key the cover image's upload runs under, beside the blocks' keys. The cover is not in a
+ * lesson, so its upload is not kept across reloads: the author picks the file again.
+ */
+export const COVER_KEY = 'cover';
 
 /** The code the server answers with when a course code is already taken. */
 export const DUPLICATE_CODE = 'LEARNING-DUPLICATE';
@@ -799,6 +810,31 @@ export class CourseEditorStore {
     });
   }
 
+  /** The cover image to show for the asset `assetId` names; an author reads it with no block. */
+  coverPreview(assetId: () => number | null): Signal<CoverPreview> {
+    return coverPreview(this.client, this.injector, assetId);
+  }
+
+  /** Checks a picked cover image against the image rules, then uploads it. */
+  uploadCover(file: File): void {
+    this.upload({
+      blockKey: COVER_KEY,
+      blockType: 'image',
+      blockIndex: -1,
+      file,
+    });
+  }
+
+  /** A ready image of the library becomes the cover like a finished upload. */
+  pickCover(asset: LibraryAsset): void {
+    this.attach({ blockKey: COVER_KEY, blockType: 'image', asset });
+  }
+
+  /** Forgets the cover chosen in this page: a running upload stops, a finished one is dropped. */
+  dropCover(): void {
+    this.cancel(COVER_KEY);
+  }
+
   /** "Hủy" on a row that is hashing or sending: stops it and cancels it on the server. */
   cancel(blockKey: string): void {
     this.release(blockKey);
@@ -869,9 +905,10 @@ export class CourseEditorStore {
     const { blockKey, blockType, blockIndex, file } = request;
     this.release(blockKey);
     const target = this.state.editingLesson();
-    const position = target
-      ? `${target.chapter}.${target.lesson}.${blockIndex}`
-      : undefined;
+    const position =
+      target && blockKey !== COVER_KEY
+        ? `${target.chapter}.${target.lesson}.${blockIndex}`
+        : undefined;
     // A file picked over an interrupted upload replaces it: the old one is forgotten.
     for (const stale of this.state.kept()) {
       if (stale.position === position && stale.uploadId !== resumed?.uploadId) {

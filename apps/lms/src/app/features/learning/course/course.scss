@@ -37,6 +37,16 @@
     @include ui.stack(5);
   }
 
+  &__cover {
+    display: block;
+    width: 100%;
+    aspect-ratio: 16 / 9;
+    object-fit: cover;
+    border: 1px solid ui.color(border);
+    border-radius: ui.radius(card);
+    background: ui.color(surface-2);
+  }
+
   &__heading {
     margin: 0 0 ui.space(3);
     font-size: ui.text-size(lg);

@@ -31,6 +31,8 @@ export interface CourseCardView {
   readonly bestScore?: number | null;
   /** Router path of the course page. */
   readonly link: string;
+  /** The cover image's address; the card has no art without one. */
+  readonly coverUrl?: string | null;
 }
 
 const PROGRESS_TONE: Partial<Record<CourseStatus, ProgressTone>> = {
@@ -48,7 +50,8 @@ function formatMinutes(total: number): string {
 }
 
 /**
- * A course in a catalog or dashboard grid (the mockup's `UI.CourseCard`), text only: no cover art.
+ * A course in a catalog or dashboard grid (the mockup's `UI.CourseCard`): the cover image when the
+ * course has one, else text only (no placeholder art).
  * The whole card is one link to the course page.
  */
 @Component({

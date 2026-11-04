@@ -45,6 +45,32 @@
     align-items: flex-start;
   }
 
+  // The cover's controls sit under the card preview, which shows the image itself.
+  &__cover {
+    @include ui.stack(2);
+    margin-top: ui.space(2);
+    padding-top: ui.space(4);
+    border-top: 1px solid ui.color(border);
+  }
+
+  &__cover-title {
+    @include ui.text(sm);
+    font-weight: ui.weight(medium);
+  }
+
+  &__cover-note {
+    @include ui.text(sm, muted);
+  }
+
+  &__actions {
+    @include ui.row(2);
+    flex-wrap: wrap;
+  }
+
+  &__drop-title {
+    font-weight: ui.weight(semibold);
+  }
+
   &__objective {
     @include ui.row(2);
     flex-wrap: nowrap;

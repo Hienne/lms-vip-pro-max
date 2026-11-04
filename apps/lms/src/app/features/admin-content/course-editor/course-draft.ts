@@ -82,6 +82,8 @@ export interface CourseDraftValue {
   readonly moduleId: string;
   readonly level: CourseLevel | '';
   readonly defaultRequirement: Requirement;
+  /** The cover image, a ready image of the library; `null` for none. */
+  readonly coverAssetId: number | null;
   readonly coverIcon: string;
   readonly objectives: readonly string[];
   readonly rewardPoints: number;
@@ -216,6 +218,7 @@ export function emptyDraftValue(): CourseDraftValue {
     moduleId: '',
     level: '',
     defaultRequirement: 'mandatory',
+    coverAssetId: null,
     coverIcon: '',
     objectives: [],
     rewardPoints: 0,
@@ -234,6 +237,7 @@ export function toDraftValue(detail: CourseDetail): CourseDraftValue {
     moduleId: revision.moduleId ? String(revision.moduleId) : '',
     level: revision.level ?? '',
     defaultRequirement: revision.defaultRequirement ?? 'mandatory',
+    coverAssetId: revision.coverAssetId ?? null,
     coverIcon: revision.coverIcon ?? '',
     objectives: detail.objectives.map((o) => o.description),
     rewardPoints: detail.completionRule?.rewardPoints ?? 0,
@@ -308,6 +312,7 @@ function toDraftContent(value: CourseDraftValue): DraftContent {
     ...(value.summary.trim() ? { summary: value.summary.trim() } : {}),
     ...(value.level ? { level: value.level } : {}),
     defaultRequirement: value.defaultRequirement,
+    ...(value.coverAssetId ? { coverAssetId: value.coverAssetId } : {}),
     ...(value.coverIcon ? { coverIcon: value.coverIcon } : {}),
     objectives: value.objectives.map((o) => o.trim()).filter(Boolean),
     rewardPoints: Math.max(0, Math.round(value.rewardPoints || 0)),
