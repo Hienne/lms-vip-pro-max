@@ -209,13 +209,6 @@ export const BACKEND_RESPONSES = {
     message:
       'Sự kiện tiến độ đã cũ hoặc không đúng thứ tự. Vui lòng đồng bộ lại.',
   },
-  catalogInUse: {
-    status: 200,
-    code: 'LEARNING-CATALOG_IN_USE',
-    title: 'Chưa thể xóa',
-    message:
-      'Mục này còn nội dung bên trong nên không thể xóa. Hãy chuyển sang Lưu trữ.',
-  },
   learningConflict: {
     status: 200,
     code: 'LEARNING-CONFLICT',

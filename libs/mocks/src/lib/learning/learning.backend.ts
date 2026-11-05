@@ -28,7 +28,6 @@ import {
   type ReplaceMembersCommand,
   type PublishAssignment,
   type RevokeRecipientCommand,
-  type CatalogTreeCourse,
   type SaveCatalogItemCommand,
   type SaveDraftCommand,
   PublishCourseCommandSchema,
@@ -257,16 +256,6 @@ export class LearningBackend {
         trainingCatalogEndpoints.updateProgram,
         (r) => this.updateCatalog(r, this.programs),
       ],
-      [trainingCatalogEndpoints.tree, (r) => this.catalogTree(r)],
-      [trainingCatalogEndpoints.copyProgram, (r) => this.copyProgram(r)],
-      [
-        trainingCatalogEndpoints.deleteField,
-        (r) => this.deleteCatalog(r, 'field'),
-      ],
-      [
-        trainingCatalogEndpoints.deleteProgram,
-        (r) => this.deleteCatalog(r, 'program'),
-      ],
       [
         trainingCatalogEndpoints.listModules,
         (r) => this.listCatalog(r, this.modules, 'fieldId'),
@@ -466,134 +455,6 @@ export class LearningBackend {
       updateTime: now(),
     });
     return ok(row);
-  }
-
-  /** Fields, programs and courses of the caller's own org; a course sits under its latest program. */
-  private catalogTree(request: FakeRequest): FakeReply {
-    const owner = num(request.query['ownerOrgId']);
-    const caller = this.directory.callerId(request);
-    const person = this.directory.people().find((p) => p.userId === caller);
-    if (owner === undefined || person?.orgId !== owner) {
-      return refuse('accessDenied');
-    }
-    const bySort = <T extends { sortNo?: number | null; id: number }>(
-      a: T,
-      b: T,
-    ) => (a.sortNo ?? 0) - (b.sortNo ?? 0) || a.id - b.id;
-    const courseNodes = this.courses
-      .filter((record) => record.course.ownerOrgId === owner)
-      .flatMap((record) => {
-        const detail = record.published ?? record.draft;
-        const programId = detail?.revision.programId;
-        return detail && programId
-          ? [
-              {
-                programId,
-                course: {
-                  id: record.course.id,
-                  code: record.course.code,
-                  title: detail.revision.title ?? record.course.code,
-                  lifecycleStatus: record.course
-                    .lifecycleStatus as CatalogTreeCourse['lifecycleStatus'],
-                  published: record.course.publishedRevisionId !== null,
-                },
-              },
-            ]
-          : [];
-      });
-    return ok({
-      fields: this.fields
-        .filter((field) => field.ownerOrgId === owner)
-        .sort(bySort)
-        .map((field) => ({
-          ...field,
-          programs: this.programs
-            .filter((program) => program.fieldId === field.id)
-            .sort(bySort)
-            .map((program) => ({
-              ...program,
-              fieldId: field.id,
-              courses: courseNodes
-                .filter((node) => node.programId === program.id)
-                .map((node) => node.course),
-            })),
-        })),
-    });
-  }
-
-  /** A free `<code>-COPY`, `<code>-COPY2`, ... within the 50 characters the backend allows. */
-  private copyCode(code: string, taken: (candidate: string) => boolean) {
-    for (let n = 1; ; n++) {
-      const suffix = n === 1 ? '-COPY' : `-COPY${n}`;
-      const candidate = code.slice(0, 50 - suffix.length) + suffix;
-      if (!taken(candidate)) return candidate;
-    }
-  }
-
-  private copyProgram(request: FakeRequest): FakeReply {
-    const source = this.programs.find(
-      (p) => p.id === num(request.params['id']),
-    );
-    if (!source) return refuse('resourceNotFound');
-    const copy: Mutable<TrainingProgram> = {
-      ...source,
-      id: this.id(),
-      code: this.copyCode(source.code, (candidate) =>
-        this.programs.some(
-          (p) => p.code.toLowerCase() === candidate.toLowerCase(),
-        ),
-      ),
-      name: `${source.name.slice(0, 255 - ' (bản sao)'.length)} (bản sao)`,
-      status: 'draft',
-      copiedFromProgramId: source.id,
-      rowVersion: 0,
-      createTime: now(),
-      updateTime: now(),
-    };
-    this.programs.push(copy);
-    for (const record of [...this.courses]) {
-      const detail = record.published ?? record.draft;
-      if (
-        record.course.ownerOrgId === source.ownerOrgId &&
-        detail?.revision.programId === source.id
-      ) {
-        this.cloneCourse(
-          record,
-          this.copyCode(record.course.code, (candidate) =>
-            this.courses.some(
-              (c) => c.course.code.toLowerCase() === candidate.toLowerCase(),
-            ),
-          ),
-          copy.id,
-        );
-      }
-    }
-    return ok(copy);
-  }
-
-  /** A field with no programs or modules, a program with no courses, goes; otherwise it is in use. */
-  private deleteCatalog(
-    request: FakeRequest,
-    kind: 'field' | 'program',
-  ): FakeReply {
-    const rows: Mutable<TrainingField | TrainingProgram>[] =
-      kind === 'field' ? this.fields : this.programs;
-    const index = rows.findIndex((r) => r.id === num(request.params['id']));
-    if (index < 0) return refuse('resourceNotFound');
-    const row = rows[index];
-    if (row.rowVersion !== num(request.query['expectedVersion'])) {
-      return refuse('learningConflict');
-    }
-    const inUse =
-      kind === 'field'
-        ? this.programs.some((p) => p.fieldId === row.id) ||
-          this.modules.some((m) => m.fieldId === row.id)
-        : this.courses.some(
-            (c) => (c.published ?? c.draft)?.revision.programId === row.id,
-          );
-    if (inUse) return refuse('catalogInUse');
-    rows.splice(index, 1);
-    return ok(null);
   }
 
   // ---- courses ------------------------------------------------------------------------------
@@ -1184,21 +1045,12 @@ export class LearningBackend {
     ) {
       refuse('stateConflict');
     }
-    return ok(this.cloneCourse(record, code));
-  }
-
-  /** A draft copy of the course's latest revision, in the same program unless one is given. */
-  private cloneCourse(
-    record: CourseRecord,
-    code: string,
-    programId?: number,
-  ): CourseDetail {
     const base = this.latest(record);
     const courseId = this.id();
     const revision = {
       ...this.emptyRevision(courseId, 1, base.revision.title ?? null),
       ...{
-        programId: programId ?? base.revision.programId,
+        programId: base.revision.programId,
         moduleId: base.revision.moduleId,
         summary: base.revision.summary,
         level: base.revision.level,
@@ -1232,7 +1084,7 @@ export class LearningBackend {
       false,
     );
     this.courses.push({ course, published: null, draft });
-    return draft;
+    return ok(draft);
   }
 
   private listShares(request: FakeRequest): FakeReply {
