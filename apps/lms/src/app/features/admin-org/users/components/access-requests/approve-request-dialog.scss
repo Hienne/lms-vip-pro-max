@@ -1,0 +1,21 @@
+@use 'ui';
+
+.approve-summary {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: ui.space(1) ui.space(4);
+  margin: 0 0 ui.space(3);
+
+  dt {
+    @include ui.text(sm, secondary);
+  }
+
+  dd {
+    margin: 0;
+  }
+}
+
+.approve-note {
+  margin: 0 0 ui.space(4);
+  @include ui.text(sm, secondary);
+}

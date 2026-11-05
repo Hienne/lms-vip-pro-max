@@ -99,12 +99,22 @@
       } }
     </ng-template>
     <ng-template uiDataTableCell="actions" [of]="rows()" let-request>
-      @if (request.status === 'PENDING') {
+      @if (request.status === 'PENDING') { @if (request.kind === 'REGISTER') {
+      <button
+        uiButton
+        size="sm"
+        variant="primary"
+        [disabled]="store.isRejecting$() || store.isApproving$()"
+        (click)="approve(request)"
+      >
+        Duyệt
+      </button>
+      }
       <button
         uiButton
         size="sm"
         variant="ghost"
-        [disabled]="store.isRejecting$()"
+        [disabled]="store.isRejecting$() || store.isApproving$()"
         (click)="reject(request)"
       >
         Từ chối

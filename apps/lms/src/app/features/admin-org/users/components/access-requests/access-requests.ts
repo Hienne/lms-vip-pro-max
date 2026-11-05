@@ -28,6 +28,7 @@ import {
   ACCESS_REQUESTS_PAGE_SIZE,
   AccessRequestsStore,
 } from '../../data-access/access-requests.store';
+import { askApproval } from './approve-request-dialog';
 import { askRejectionNote } from './reject-request-dialog';
 
 /** A table row: the table wants an `id`, the request's own key is `requestId`. */
@@ -47,8 +48,8 @@ const STATUS_VIEW: Record<AccessRequestStatus, StatusView> = {
 
 /**
  * The "Yêu cầu" panel of the Người dùng screen: the table of visitors' requests to register or to
- * reset a password (SPEC-access-requests). The primary action of a pending row ("Duyệt", "Đặt lại
- * mật khẩu") belongs to the sibling modules; this panel only lists and rejects.
+ * reset a password (SPEC-access-requests). A pending registration can be approved or rejected; the
+ * primary action of a reset request ("Đặt lại mật khẩu") belongs to its own module.
  */
 @Component({
   selector: 'app-access-requests',
@@ -88,6 +89,12 @@ export class AccessRequests {
     askRejectionNote(this.dialog, request.fullName || request.staffCode)
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe((note) => this.store.reject(request.requestId, note));
+  }
+
+  protected approve(request: AccessRequest): void {
+    askApproval(this.dialog, request)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((note) => this.store.approve(request.requestId, note));
   }
 
   protected kindLabel(kind: AccessRequestKind): string {

@@ -92,6 +92,19 @@ export class AccessRequestsStore {
     },
   );
 
+  private readonly approval = serverMutation(
+    (input: { readonly requestId: number; readonly note?: string }) =>
+      this.client.call(identityEndpoints.approveAccessRequest, {
+        params: { requestId: input.requestId },
+        body: input.note ? { note: input.note } : {},
+      }),
+    {
+      errors: 'toast',
+      success: () => 'Đã duyệt yêu cầu',
+      invalidates: this.changed,
+    },
+  );
+
   readonly query$ = this.state.query.asReadonly();
   readonly kind$ = this.state.kind.asReadonly();
   readonly status$ = this.state.status.asReadonly();
@@ -102,6 +115,7 @@ export class AccessRequestsStore {
   );
   readonly loadError$ = this.listData.error;
   readonly isRejecting$ = this.rejection.isPending;
+  readonly isApproving$ = this.approval.isPending;
 
   readonly rows$ = computed(
     (): readonly AccessRequest[] => this.state.shown()?.items ?? [],
@@ -158,6 +172,10 @@ export class AccessRequestsStore {
 
   reject(requestId: number, note?: string): void {
     this.rejection.run({ requestId, note: note?.trim() || undefined });
+  }
+
+  approve(requestId: number, note?: string): void {
+    this.approval.run({ requestId, note: note?.trim() || undefined });
   }
 
   retryLoad(): void {

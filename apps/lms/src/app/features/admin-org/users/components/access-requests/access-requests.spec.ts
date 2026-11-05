@@ -2,7 +2,7 @@ import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
 import { identityEndpoints } from '@lms/contracts';
-import { backendRefusal } from '@lms/mocks';
+import { backendRefusal, envelopeOk } from '@lms/mocks';
 import type { MockInstance } from 'vitest';
 import { createAppRoutes } from '../../../../../app.routes';
 import {
@@ -191,11 +191,14 @@ describe('AccessRequests', () => {
         .forEach((c) => (c.innerHTML = '')),
     );
 
-    it('offers "Từ chối" on pending rows only, and no disabled placeholder beside it', async () => {
+    it('offers "Duyệt" on pending registrations only and "Từ chối" on every pending row, with no disabled placeholder', async () => {
       await open();
-      expect(
-        rows().every((r) => r.querySelectorAll('button').length === 1),
-      ).toBe(true);
+      const labels = (row: Element) =>
+        Array.from(row.querySelectorAll('button')).map((b) =>
+          b.textContent?.trim(),
+        );
+      expect(labels(rowOf('000101'))).toEqual(['Duyệt', 'Từ chối']);
+      expect(labels(rowOf('000004'))).toEqual(['Từ chối']);
       expect(panel.querySelectorAll('tbody [disabled]')).toHaveLength(0);
       await choose(select('Trạng thái'), 'REJECTED');
       expect(rowOf('000103').querySelector('button')).toBeNull();
@@ -287,6 +290,111 @@ describe('AccessRequests', () => {
       await settle();
       expect(document.body.textContent).toContain('Xung đột dữ liệu');
       expect(document.body.textContent).not.toContain('Đã từ chối yêu cầu');
+      expect(rows()).toHaveLength(3);
+    });
+  });
+
+  describe('approving', () => {
+    const dialog = () => document.querySelector('[role="dialog"]');
+    const footerButton = (label: string) =>
+      Array.from(dialog()?.querySelectorAll('button') ?? []).find((b) =>
+        b.textContent?.includes(label),
+      ) as HTMLButtonElement;
+    const approveButton = (needle: string) =>
+      Array.from(rowOf(needle).querySelectorAll('button')).find((b) =>
+        b.textContent?.includes('Duyệt'),
+      ) as HTMLButtonElement;
+    const approvals = () =>
+      handle.mock.calls.filter(
+        ([e]) => e === identityEndpoints.approveAccessRequest,
+      );
+    const approvedRow = {
+      requestId: 1,
+      kind: 'REGISTER',
+      status: 'APPROVED',
+      staffCode: '000101',
+      fullName: 'Nguyễn Văn An',
+      email: 'an.nguyen@example.com',
+      orgId: 1,
+      orgName: 'Ban Quản lý và phát triển Core Banking',
+      targetUserId: '000101',
+      accountFound: true,
+      createdTime: '2026-11-05T08:15:00+07:00',
+      resolvedBy: '000001',
+      resolvedTime: '2026-11-05T10:00:00+07:00',
+      resolutionNote: 'Đúng đối tượng',
+    };
+    /** The approve endpoint is not in the in-app mock: the backend answers it, so the spec stands in. */
+    const backendApproves = () =>
+      handle.mockImplementation((endpoint, request) =>
+        endpoint === identityEndpoints.approveAccessRequest
+          ? { status: 200, body: envelopeOk(approvedRow) }
+          : original(endpoint, request),
+      );
+    afterEach(() =>
+      document
+        .querySelectorAll('.cdk-overlay-container')
+        .forEach((c) => (c.innerHTML = '')),
+    );
+
+    it('opens a dialog that says what will be created, with an optional note capped at 500 characters', async () => {
+      await open();
+      approveButton('000101').click();
+      await settle();
+      const content = text(dialog() as HTMLElement);
+      expect(content).toContain('Nguyễn Văn An');
+      expect(content).toContain('000101');
+      expect(content).toContain('vai trò học viên');
+      expect(
+        dialog()?.querySelector('textarea')?.getAttribute('maxlength'),
+      ).toBe('500');
+      expect(footerButton('Duyệt yêu cầu')).toBeTruthy();
+      expect(approvals()).toHaveLength(0);
+    });
+
+    it('approves with the trimmed note, closes, and says so once', async () => {
+      await open();
+      backendApproves();
+      approveButton('000101').click();
+      await settle();
+      const note = dialog()?.querySelector('textarea') as HTMLTextAreaElement;
+      note.value = '  Đúng đối tượng  ';
+      note.dispatchEvent(new Event('input', { bubbles: true }));
+      await settle();
+      footerButton('Duyệt yêu cầu').click();
+      await settle();
+      expect(approvals()).toHaveLength(1);
+      expect(approvals()[0][1]).toMatchObject({
+        params: { requestId: '1' },
+        body: { note: 'Đúng đối tượng' },
+      });
+      expect(dialog()).toBeNull();
+      expect(document.body.textContent).toContain('Đã duyệt yêu cầu');
+    });
+
+    it('sends nothing on cancel', async () => {
+      await open();
+      approveButton('000101').click();
+      await settle();
+      footerButton('Hủy').click();
+      await settle();
+      expect(dialog()).toBeNull();
+      expect(approvals()).toHaveLength(0);
+    });
+
+    it('shows the refusal and keeps the row when the staff code was taken meanwhile', async () => {
+      await open();
+      handle.mockImplementation((endpoint, request) =>
+        endpoint === identityEndpoints.approveAccessRequest
+          ? backendRefusal('identifierExists')
+          : original(endpoint, request),
+      );
+      approveButton('000101').click();
+      await settle();
+      footerButton('Duyệt yêu cầu').click();
+      await settle();
+      expect(document.body.textContent).not.toContain('Đã duyệt yêu cầu');
+      expect(document.body.textContent).toContain('đã được sử dụng');
       expect(rows()).toHaveLength(3);
     });
   });

@@ -41,7 +41,7 @@ Plan: [plan-self-registration.md](plan-self-registration.md) · Spec: [SPEC-self
 
 ## R6: Approve button and dialog
 
-- [ ] "Duyệt" on pending `REGISTER` rows, `ApproveRequestDialog` (note, duplicate refusal shown in the dialog),
+- [x] "Duyệt" on pending `REGISTER` rows, `ApproveRequestDialog` (note, duplicate refusal shown in the dialog),
       toast, count drops, `AccessRequestsChanged` bumped; `PASSWORD_RESET` rows unchanged.
 - **Verify:** `npx nx test lms` · **Deps:** R2 · **Size:** S
 
