@@ -147,6 +147,7 @@ describe('AppShell', () => {
         '/quiz',
         '/community/questions',
         '/admin/courses',
+        '/admin/catalog',
         '/admin/lessons',
         '/admin/questions',
         '/admin/quizzes',
@@ -162,6 +163,7 @@ describe('AppShell', () => {
       [
         '/profile',
         '/admin/courses',
+        '/admin/catalog',
         '/admin/lessons',
         '/admin/questions',
         '/admin/quizzes',

@@ -16,6 +16,7 @@ export const FunctionCodeSchema = z.enum([
   'COURSE_LEARNING',
   'LEARNING_PROGRESS',
   'QUIZ_TAKING',
+  'TRAINING_CATALOG',
   'COURSE_MANAGEMENT',
   'LESSON_MANAGEMENT',
   'QUESTION_BANK',

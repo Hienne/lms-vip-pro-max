@@ -196,7 +196,7 @@ describe('route table', () => {
     ['learner', '/admin/courses', 'COURSE_MANAGEMENT'],
     ['instructor', '/admin/roles', 'ROLE_MANAGEMENT'],
     ['admin', '/learn', 'COURSE_LEARNING'],
-    ['learner', '/admin/catalog', 'COURSE_MANAGEMENT'],
+    ['learner', '/admin/catalog', 'TRAINING_CATALOG'],
     ['learner', '/instructor', 'COURSE_MANAGEMENT'],
     ['reportViewer', '/catalog', 'COURSE_LEARNING'],
     ['reportViewer', '/leaderboard', 'LEARNING_PROGRESS'],

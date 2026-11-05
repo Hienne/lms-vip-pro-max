@@ -28,17 +28,17 @@ Run `nvm use` before any F command.
 
 ## Phase 2: Contracts, mocks, sidebar
 
-- [ ] **T5 (F): contracts for tree, copy-program, delete**
+- [x] **T5 (F): contracts for tree, copy-program, delete**
   - Acceptance: zod schemas and `defineEndpoint`s `trainingCatalogEndpoints.tree / copyProgram / deleteField / deleteProgram` matching T2-T4; `TrainingCatalogTree` types exported from `index.ts`.
   - Verify: `npx nx test contracts`; typecheck.
   - Files: `training-catalog.schema.ts`, `training-catalog.endpoints.ts`, its spec, `index.ts`. Scope: S.
   - Depends on: T2-T4.
-- [ ] **T6 (F): in-app mock for tree, copy, delete and the PUT status change**
+- [x] **T6 (F): DROPPED by the user: no mock for the new endpoints, the screen is integrated with the real backend only**
   - Acceptance: handlers answer the new endpoints with the same rules as the backend (scoped, copy as draft, delete 409 when not empty); the tree reflects creates, edits and status changes; fixtures include a field with programs and courses, and an empty field.
   - Verify: `npx nx test mocks`.
   - Files: handler + fixtures under `libs/mocks/src/lib/learning/` (or a new `catalog` folder), spec. Scope: M.
   - Depends on: T5.
-- [ ] **T7 (F): sidebar entry**
+- [x] **T7 (F): sidebar entry**
   - Acceptance: `admin/catalog` moves into a `TRAINING_CATALOG` group (`nav: { icon: 'layers' or similar, section: 'Nội dung' }`, `search: {}`), access `TRAINING_CATALOG`; the mock `/me` for admin and instructor contains the function and a learner's does not; menu order places it above "Quản lý khóa học".
   - Verify: `npx nx test lms` for `menu-catalog.spec`, `app.spec`, `app-shell.spec`, `login.spec` (they reference the route).
   - Files: `screens.ts`, `menu-catalog.spec.ts`, shell/app specs, the mock `/me` fixture. Scope: M.

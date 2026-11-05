@@ -65,7 +65,7 @@ describe('FakeBackend', () => {
       expect(SEED_USERS).toHaveLength(8);
       expect(SEED_GRANTS).toHaveLength(9);
       expect(SEED_ROLES).toHaveLength(5);
-      expect(SEED_FUNCTIONS).toHaveLength(19);
+      expect(SEED_FUNCTIONS).toHaveLength(20);
       expect(SEED_USERS.map((u) => u.userId)).toEqual([
         '000001',
         '000002',
