@@ -196,3 +196,28 @@ not by sharing a component.
    `Retry-After` seconds to `AppError` so both public pages can say how long to wait? (Touches shared error code.)
 6. **Throttle behind a proxy.** Carried over from `self-registration`: `getRemoteAddr()` is the proxy's address if the
    backend sits behind one.
+
+## Implementation notes (as built)
+
+- **No mock handlers.** Both endpoints go to the backend; the page and dialog specs stand in for it with canned replies.
+- **Contracts** in `identity/access-request.schema.ts`; `passwordResetRequest` is exempt from the bearer token and the
+  session-expiry handler.
+- **Backend:** `PasswordResetRequestService` (public, throttled with kind `PASSWORD_RESET`, same answer for a matched
+  code, an unknown code, a waiting request and a lost race; a match stores the account and its unit), and
+  `resetPassword` in `AccessRequestService` (12-character `SecureRandom` password from an alphabet without look-alike
+  characters, hash only, `mustChangePassword`, `authorizationVersion` bumped, row approved, two audit rows with no
+  password). The endpoint answers `Cache-Control: no-store`. A resolved, non-reset, target-less, SSO, locked or inactive
+  case answers `CORE-STATE_CONFLICT`; out of scope answers not found.
+- **Screens:** `/forgot-password` is a single centred card like `/register`; the sign-in page links to it. The inbox
+  shows "Đặt lại mật khẩu" on pending resets whose account was found. The dialog has a confirm view and a one-time
+  result view (masked, reveal, copy, "Xong"); the store clears the password when the dialog is destroyed by any route.
+  A refusal shows as an alert inside the dialog.
+- **Verified live** (local backend 8019, `lms-local-backend`): the three answers are identical; the inbox shows the
+  matched row with `accountFound` true and the unknown one false; reset returns a 12-character password with
+  `no-store`; a second reset and a reset of the unknown row answer `STATE_CONFLICT`; the learner's old token gets 401,
+  the old password is refused and the temporary one signs in, with `must_change_password` true; the audit rows and the
+  backend log hold no password. In the browser: `/forgot-password` submit, then the admin inbox reset, masked field,
+  "Xong" closes it and the password is absent from the DOM. Test rows were removed and the demo account restored.
+- **Checks:** backend 444 tests green; `lint typecheck test build check-bundle` green on all four projects.
+- **Not verified:** the forced change on the temporary password's first sign-in in the browser, a unit admin using the
+  button, keyboard-only use, 375 and 768 px widths, light mode. Same throttle-IP caveat as registration.
