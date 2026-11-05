@@ -110,4 +110,17 @@ export class CourseRules {
   protected readonly hasExam = computed(
     () => this.draft().finalQuizId().value() !== '',
   );
+
+  /**
+   * "Gỡ khỏi khóa học": the course stops requiring the exam once the draft is saved. The quiz
+   * itself stays (one final exam per course), so it can be attached again.
+   */
+  protected detach(): void {
+    this.draft().finalQuizId().value.set('');
+  }
+
+  /** "Gắn lại bài thi": the course requires the kept exam again. */
+  protected attach(quizId: number): void {
+    this.draft().finalQuizId().value.set(String(quizId));
+  }
 }
