@@ -1,16 +1,7 @@
 # Spec: UX review, Wave 1 (app only)
 
 Plan: [docs/reviews/2026-11-04-ux-review/PLAN.md](docs/reviews/2026-11-04-ux-review/PLAN.md) §4 Wave 1. Review:
-[README.md](docs/reviews/2026-11-04-ux-review/README.md). Status: **built 2026-11-05 on `claude/ux-wave1`** (approved 2026-11-04; planned in `tasks/plan.md`).
-
-Amendments made while building:
-
-- The pickers read their options from the report endpoints every report role may read (learning report groups
-  for units, teams and courses; the exam overview for quizzes), not from the admin directories.
-- A course option shows the course title only: the report's course group carries no code.
-- The course rules section has no add or remove controls.
-- On "Tình trạng học viên" the course and quiz pickers lead the form; elsewhere the pickers sit in the
-  "Phạm vi & điều kiện chi tiết" panel of the redesigned report screen.
+[README.md](docs/reviews/2026-11-04-ux-review/README.md). Status: **approved 2026-11-04; planned in `tasks/plan.md` (amendments there).**
 
 Three packages that need no backend change. `question-bank`, the fourth Wave 1 package, has backend work and gets its
 own spec and capability map later. `report-filters` and `progress-reports` both change `features/reports`, so they

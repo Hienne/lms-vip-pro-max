@@ -1,7 +1,23 @@
 # Fix plan: UX review 2026-11-04
 
 Source: [README.md](README.md) (IDs `P…`, `B…`, `U…`, `S…` are the review's). Written 2026-11-04.
-Status: **decisions answered 2026-11-04 (§5); Wave 0 built 2026-11-04 (PR open).**
+Status: **decisions answered 2026-11-04 (§5); Wave 0 merged (PR #63). Re-audited 2026-11-05 against app `main`
+`6b5f57c` and backend `main` `9002cfa`; main's code wins wherever it overlaps this plan (§0).**
+
+## 0. Status after the 2026-11-05 audit
+
+| WP id                                                                                                                                                     | State                                                                                                                                                                                                            |
+| --------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Wave 0 (all three)                                                                                                                                        | Done (PR #63). `question-bank-gate` is superseded: `integrationPending` was removed by `199874e`                                                                                                                 |
+| `question-bank`                                                                                                                                           | **Done on main**: app `199874e` (program bank on the v1 API) and backend #28 (`programId` on questions, quiz pool by program, `2026-11-04-program-question-bank.sql`). Dropped from this plan                    |
+| `course-editor-guards`                                                                                                                                    | In progress on `claude/ux-wave1` (A1–A4). Must merge main: the cover controls added by `4e090a6`/`531d6cd` in `course-info.html` go inside `@if (editable())`                                                    |
+| `report-filters`                                                                                                                                          | In progress on `claude/ux-wave1` (B1–B4). Must merge main and rebuild on the `199874e` report-screen redesign (donut, KPIs), keeping main's layout and replacing its five "ID …" inputs                          |
+| `progress-reports`                                                                                                                                        | C1 committed on `claude/ux-wave1`; C2–C4 not started. Built on the merged report screen                                                                                                                          |
+| `header-search`                                                                                                                                           | Partly done: `/admin/users` has the name / email / staff-code search. Still open: list stores reading `q`, the per-area header placeholder and `aria-label`                                                      |
+| `users-admin`                                                                                                                                             | Partly done: the user form lists only the chosen unit's teams (`formTeams$`). Still open: Nhóm disabled until Đơn vị, "Vai trò ngoài phạm vi quản lý" and the BE `hiddenRoleCount`                               |
+| `learner-metrics-clarity`                                                                                                                                 | BE: the leaderboard endpoint is learner-only (403 for others) but the ranking still includes every user (D5 open). App part open                                                                                 |
+| `lesson-player-polish`                                                                                                                                    | Partly done: "Đánh dấu hoàn thành" has an in-flight guard, the hint says "Tối đa 1000 ký tự". Still open: mobile header, link text, one close button, edit and delete own comments (BE PUT/DELETE missing)       |
+| `deadline-reminders`, `assignments-ux`, `admin-table-mobile`, `streak-rule`, `form-error-focus`, `quiz-admin-polish`, `shell-requests`, `copy-and-naming` | Not started. The backend still lacks reminder course fields, batch cancel and the assignment list, and still records `SESSION` for the streak. `quiz-admin-polish` now applies to the program select (`199874e`) |
 
 ## 1. Scope
 
@@ -93,7 +109,7 @@ way `ui-polish` was built. Size: XS ≤ 2 files, S ≤ 5, M ≤ 10, L = capabili
 
 | #   | Question                                       | Answer                                                                                                                                                | Applies to                |
 | --- | ---------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------- |
-| D0  | Which backend branch is production built from? | `feat/course-publish-targets`. Every BE change branches from it                                                                                       | every BE change           |
+| D0  | Which backend branch is production built from? | `main` (2026-11-05: the feature branches are merged, #26–#28). Every BE change branches from `main`                                                   | every BE change           |
 | D1  | Question bank per program or per course?       | Per program: the BE change in `question-bank`                                                                                                         | `question-bank`           |
 | D2  | Progress report cuts and roles                 | Summary KPIs, grouped by course and by unit, the learner list with the overdue filter, CSV. Same roles as the other report tabs, `giangvien` included | `progress-reports`        |
 | D4  | A batch with no active learner                 | Becomes `CANCELLED` automatically once its last recipient is revoked. "Hủy đợt giao" with a required reason is there too                              | `assignments-ux`          |

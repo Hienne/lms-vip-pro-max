@@ -108,7 +108,7 @@ Default order: A1 → A4, then B1 → B4, then C1 → C4.
 - [ ] Browser as `baocao`, `quantri.ban` and `giangvien` (local backend), and with `mockBackend`; 1280 and 375px,
       light and dark; screenshots
 - [ ] angular.md §14 and visual-design.md checklists; B12, B6, U13, U18, P3/U1, U21 and U2 re-tested
-- [x] `SPEC-ux-wave1.md` marked built; Wave 1 app-only packages marked done in `PLAN.md`
+- [ ] `SPEC-ux-wave1.md` marked built; Wave 1 app-only packages marked done in `PLAN.md`
 
 ## Risks and mitigations
 
