@@ -1286,6 +1286,80 @@ describe('CourseEditor', () => {
         });
       });
 
+      describe('editing it', () => {
+        /** Course 6 gets a wizard-made exam, then its "Sửa" form opens. */
+        const openEdit = async () => {
+          await screen.open('/admin/courses/6/edit');
+          await step('Bài thi & điều kiện');
+          await screen.click(button('Tạo bài thi cuối khóa'));
+          await screen.click(button('Tạo bài thi'));
+          await vi.waitFor(() => expect(button('Sửa')).toBeTruthy());
+          await screen.click(button('Sửa'));
+          await vi.waitFor(() =>
+            expect(screen.field('Thời gian (phút)')).toBeTruthy(),
+          );
+        };
+
+        it('fills the form from the stored exam and saves the changes over it', async () => {
+          await openEdit();
+          expect(
+            (screen.field('Số lần thi tối đa') as HTMLInputElement).value,
+          ).toBe('3');
+          await screen.type(
+            screen.field('Thời gian (phút)') as HTMLInputElement,
+            '30',
+          );
+          await screen.click(button('Lưu thay đổi'));
+          await vi.waitFor(() =>
+            expect(screen.callsTo(assessmentV1Endpoints.updateQuiz)).toBe(1),
+          );
+
+          const update = screen.lastCall(assessmentV1Endpoints.updateQuiz);
+          expect(update?.query).toMatchObject({ expectedVersion: '1' });
+          expect(update?.body).toMatchObject({
+            courseId: 6,
+            quizType: 'FINAL_EXAM',
+            selectionMode: 'RANDOM_POOL',
+            timeLimitMinutes: 30,
+            maxAttempts: 3,
+          });
+          await vi.waitFor(() => expect(screen.text()).toContain('30 phút'));
+          expect(screen.callsTo(assessmentV1Endpoints.replacePool)).toBe(2);
+        });
+
+        it('shows the server’s message and reads the exam again when its version moved', async () => {
+          await openEdit();
+          const reads = screen.callsTo(assessmentV1Endpoints.quiz);
+          screen.calls.mockImplementation((endpoint, request) =>
+            endpoint === assessmentV1Endpoints.updateQuiz
+              ? backendRefusal('stateConflict')
+              : original(endpoint, request),
+          );
+          await screen.click(button('Lưu thay đổi'));
+
+          await vi.waitFor(() =>
+            expect(screen.callsTo(assessmentV1Endpoints.quiz)).toBeGreaterThan(
+              reads,
+            ),
+          );
+          expect(
+            screen.el.querySelector('ui-alert[tone="danger"]'),
+          ).toBeTruthy();
+          expect(screen.field('Thời gian (phút)')).toBeTruthy();
+        });
+
+        it('never writes a customised (FIXED) exam', async () => {
+          listQuizzes('PUBLISHED', 'FIXED');
+          await screen.open('/admin/courses/6/edit');
+          await step('Bài thi & điều kiện');
+
+          expect(button('Sửa')).toBeUndefined();
+          expect(screen.callsTo(assessmentV1Endpoints.updateQuiz)).toBe(0);
+          expect(screen.callsTo(assessmentV1Endpoints.replacePool)).toBe(0);
+          expect(screen.callsTo(assessmentV1Endpoints.quiz)).toBe(0);
+        });
+      });
+
       it('requires the chosen exam to be published on the checklist', async () => {
         listQuizzes('DRAFT');
         await screen.open('/admin/courses/6/edit');

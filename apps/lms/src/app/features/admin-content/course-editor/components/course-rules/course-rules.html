@@ -73,7 +73,24 @@
         Bài thi này do bạn chọn câu hỏi thủ công, nên chỉ chỉnh được ở màn Bài
         kiểm tra.
       </p>
-      }
+      } @if (exam.formOpen$() && exam.isWizardManaged$()) { @if
+      (exam.editValue$(); as stored) {
+      <app-course-exam-form
+        submitLabel="Lưu thay đổi"
+        [value]="stored"
+        [busy]="exam.isSaving$()"
+        [error]="exam.saveError$()"
+        (saved)="exam.update($event)"
+        (cancelled)="exam.closeForm()"
+      />
+      } @else if (exam.editError$(); as failure) {
+      <ui-alert tone="danger">
+        Không tải được bài thi: {{ failure.message }}
+        <button uiButton size="sm" type="button" (click)="exam.retryEdit()">
+          Thử lại
+        </button>
+      </ui-alert>
+      } } @else {
       <div class="row row--gap-2">
         @if (exam.isWizardManaged$()) {
         <button uiButton size="sm" type="button" (click)="exam.openForm()">
@@ -90,7 +107,7 @@
         >
         }
       </div>
-      } @else {
+      } } @else {
       <p class="course-rules__note">
         Khóa học chưa có bài thi cuối khóa. @if (exam.bankError$(); as error) {
         Không đếm được câu hỏi của chương trình: {{ error.message }}

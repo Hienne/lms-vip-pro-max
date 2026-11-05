@@ -90,9 +90,9 @@ save = `createQuiz` → `syncPool` → set `finalQuizId` on the draft → save t
 `expectedVersion`) → `syncPool`.
 
 **Acceptance criteria:**
-- [ ] Edited values persist; a version conflict shows the server message and reloads the quiz.
-- [ ] A `FIXED` quiz never gets `updateQuiz`/`replacePool` from the wizard (spec asserts no call).
-- [ ] "Cấu hình nâng cao" links to `/admin/quizzes/:id?courseId=…`.
+- [x] Edited values persist; a version conflict shows the server message and reloads the quiz.
+- [x] A `FIXED` quiz never gets `updateQuiz`/`replacePool` from the wizard (spec asserts no call).
+- [x] "Cấu hình nâng cao" links to `/admin/quizzes/:id?courseId=…`.
 
 **Verification:** `npx nx test lms -- course-exam.store.spec`
 

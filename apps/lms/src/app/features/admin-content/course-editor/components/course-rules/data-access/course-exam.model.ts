@@ -1,4 +1,8 @@
-import type { QuizRequestV1 } from '@lms/contracts';
+import {
+  QuizRequestV1Schema,
+  type QuizDetailV1,
+  type QuizRequestV1,
+} from '@lms/contracts';
 
 /** The five things the short exam form asks for; everything else follows the quiz screen's defaults. */
 export interface ExamFormValue {
@@ -63,5 +67,32 @@ export function toNewQuizRequest(
     retakeWaitHours: 0,
     allowRetakeAfterPass: false,
     requireLessonsCompleted: false,
+  };
+}
+
+/** The values the short form shows for a stored exam. */
+export function toExamValue(detail: QuizDetailV1): ExamFormValue {
+  const { quiz } = detail;
+  return {
+    title: quiz.title,
+    timeLimitMinutes: quiz.timeLimitMinutes,
+    questionCount: quiz.questionCount,
+    passPercent: quiz.passPercent,
+    maxAttempts: quiz.maxAttempts,
+  };
+}
+
+/** The stored exam with only the form's five values changed: its other settings are kept. */
+export function toUpdatedQuizRequest(
+  detail: QuizDetailV1,
+  value: ExamFormValue,
+): QuizRequestV1 {
+  return {
+    ...QuizRequestV1Schema.parse(detail.quiz),
+    title: value.title.trim(),
+    timeLimitMinutes: value.timeLimitMinutes,
+    questionCount: value.questionCount,
+    passPercent: value.passPercent,
+    maxAttempts: value.maxAttempts,
   };
 }

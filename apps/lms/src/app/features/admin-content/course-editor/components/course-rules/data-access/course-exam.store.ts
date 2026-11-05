@@ -6,12 +6,14 @@ import {
   type QuizSummary,
 } from '@lms/contracts';
 import {
+  catchError,
   EMPTY,
   expand,
   map,
   reduce,
   switchMap,
   tap,
+  throwError,
   type Observable,
 } from 'rxjs';
 import { invalidation } from '../../../../../../core/data-access/invalidation';
@@ -23,7 +25,9 @@ import {
   POOL_LIMIT,
   POOL_PAGE_SIZE,
   POOL_PAGES,
+  toExamValue,
   toNewQuizRequest,
+  toUpdatedQuizRequest,
   type ExamFormValue,
 } from './course-exam.model';
 
@@ -89,6 +93,49 @@ export class CourseExamStore {
     },
   );
 
+  /** The exam as stored, read while the form edits it (its version and untouched settings). */
+  private readonly detailData = serverData(
+    (quizId: number) =>
+      this.client.call(assessmentV1Endpoints.quiz, { params: { id: quizId } }),
+    {
+      params: () => {
+        const exam = this.exam$();
+        return this.state.formOpen() && exam && this.isWizardManaged$()
+          ? exam.id
+          : undefined;
+      },
+    },
+  );
+
+  /**
+   * Saves the form's values over the stored exam, then rewrites its pool. A refused version reads
+   * the exam again, so the next try carries the version the server holds.
+   */
+  private readonly updateMutation = serverMutation(
+    (input: { detail: QuizDetailV1; value: ExamFormValue }) =>
+      this.client
+        .call(assessmentV1Endpoints.updateQuiz, {
+          params: { id: input.detail.quiz.id },
+          query: { expectedVersion: input.detail.quiz.rowVersion },
+          body: toUpdatedQuizRequest(input.detail, input.value),
+        })
+        .pipe(
+          switchMap(() => this.syncPool(input.detail.quiz.id)),
+          catchError((error: unknown) => {
+            this.detailData.reload();
+            return throwError(() => error);
+          }),
+        ),
+    {
+      errors: 'alert',
+      success: () => 'Đã lưu bài thi cuối khóa',
+      onSuccess: () => {
+        this.setFormOpen(false);
+        this.editor.reloadQuizzes();
+      },
+    },
+  );
+
   private readonly retryPoolMutation = serverMutation(
     (quizId: number) => this.syncPool(quizId),
     {
@@ -115,11 +162,23 @@ export class CourseExamStore {
   );
   readonly poolLimit = POOL_LIMIT;
   readonly isSaving$ = computed(
-    () => this.createMutation.isPending() || this.retryPoolMutation.isPending(),
+    () =>
+      this.createMutation.isPending() ||
+      this.updateMutation.isPending() ||
+      this.retryPoolMutation.isPending(),
   );
   readonly saveError$ = computed(
-    () => this.createMutation.error() ?? this.retryPoolMutation.error(),
+    () =>
+      this.createMutation.error() ??
+      this.updateMutation.error() ??
+      this.retryPoolMutation.error(),
   );
+  /** The form is editing the exam: its stored values, once read. */
+  readonly editValue$ = computed(() => {
+    const detail = this.detailData.value();
+    return detail ? toExamValue(detail) : undefined;
+  });
+  readonly editError$ = this.detailData.error;
   /** The exam is made and on the draft, but its questions are not written yet. */
   readonly poolPending$ = this.state.poolPendingId.asReadonly();
   readonly quizzesError$ = this.editor.quizzesError$;
@@ -136,6 +195,7 @@ export class CourseExamStore {
 
   openForm(): void {
     this.createMutation.reset();
+    this.updateMutation.reset();
     this.setFormOpen(true);
   }
 
@@ -147,6 +207,18 @@ export class CourseExamStore {
   create(value: ExamFormValue): void {
     const courseId = this.editor.course$()?.course.id;
     if (courseId) this.createMutation.run({ courseId, value });
+  }
+
+  /** Saves the edit of a wizard-managed exam; one the quiz screen customised is never written. */
+  update(value: ExamFormValue): void {
+    const detail = this.detailData.value();
+    if (detail && this.isWizardManaged$()) {
+      this.updateMutation.run({ detail, value });
+    }
+  }
+
+  retryEdit(): void {
+    this.detailData.reload();
   }
 
   retryPool(): void {
