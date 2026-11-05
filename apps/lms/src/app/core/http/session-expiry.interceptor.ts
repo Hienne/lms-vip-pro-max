@@ -1,6 +1,6 @@
 import type { HttpInterceptorFn } from '@angular/common/http';
 import { inject, Injector } from '@angular/core';
-import { authV1Endpoints } from '@lms/contracts';
+import { authV1Endpoints, identityEndpoints } from '@lms/contracts';
 import { catchError, throwError } from 'rxjs';
 import { toAppError } from '../errors/app-error';
 import { ENDPOINT } from './endpoint-client';
@@ -13,6 +13,9 @@ const EXEMPT = new Set<unknown>([
   authV1Endpoints.me,
   authV1Endpoints.login,
   authV1Endpoints.logout,
+  identityEndpoints.registrationUnits,
+  identityEndpoints.registerRequest,
+  identityEndpoints.passwordResetRequest,
 ]);
 
 /**

@@ -51,6 +51,12 @@ export const BACKEND_RESPONSES = {
     title: 'Xung đột dữ liệu',
     message: 'Thao tác không phù hợp với trạng thái dữ liệu hiện tại.',
   },
+  tooManyRequests: {
+    status: 429,
+    code: 'CORE-TOO_MANY_REQUESTS',
+    title: 'Quá nhiều yêu cầu',
+    message: 'Bạn đã gửi quá nhiều yêu cầu. Vui lòng thử lại sau.',
+  },
   internalError: {
     status: 500,
     code: 'CORE-INTERNAL_ERROR',

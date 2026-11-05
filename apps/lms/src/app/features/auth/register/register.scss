@@ -1,0 +1,65 @@
+@use 'ui';
+
+:host {
+  display: block;
+}
+
+.register {
+  display: grid;
+  min-height: 100dvh;
+  place-items: center;
+  padding: ui.space(6) ui.space(4);
+  background: ui.color(bg);
+
+  &__card {
+    display: grid;
+    gap: ui.space(5);
+    width: min(100%, 28rem);
+    padding: ui.space(6);
+    border: 1px solid ui.color(border);
+    border-radius: ui.radius(lg);
+    background: ui.color(surface);
+  }
+
+  &__intro {
+    display: grid;
+    gap: ui.space(2);
+  }
+
+  &__title {
+    margin: 0;
+    font-size: ui.text-size(2xl);
+  }
+
+  &__help {
+    margin: 0;
+    @include ui.text(sm, secondary);
+  }
+
+  &__fields {
+    display: flex;
+    flex-direction: column;
+    gap: ui.space(4);
+  }
+
+  // The password input with the show/hide button inside its right edge.
+  &__password {
+    position: relative;
+
+    input {
+      padding-right: ui.space(12);
+    }
+  }
+
+  &__reveal {
+    position: absolute;
+    top: 50%;
+    right: ui.space(1);
+    transform: translateY(-50%);
+  }
+
+  &__back {
+    margin: 0;
+    @include ui.text(sm, secondary);
+  }
+}

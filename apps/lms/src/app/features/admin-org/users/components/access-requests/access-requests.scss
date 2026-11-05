@@ -1,0 +1,33 @@
+@use 'ui';
+
+.requests {
+  &__loading {
+    display: flex;
+    justify-content: center;
+    padding-block: ui.space(10);
+  }
+
+  &__toolbar {
+    flex-wrap: wrap;
+    gap: ui.space(3);
+  }
+
+  &__filters {
+    flex-wrap: wrap;
+    flex: 1 1 auto;
+  }
+
+  &__filter {
+    width: auto;
+    min-width: 11rem;
+  }
+
+  &__count {
+    @include ui.text(sm, muted);
+  }
+
+  &__missing {
+    display: block;
+    color: ui.color(text-muted);
+  }
+}

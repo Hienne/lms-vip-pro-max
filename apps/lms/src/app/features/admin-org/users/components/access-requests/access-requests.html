@@ -1,0 +1,135 @@
+@if (store.loadError$(); as error) {
+<ui-error-state
+  title="Không tải được danh sách yêu cầu"
+  [message]="error.message"
+  (retry)="store.retryLoad()"
+/>
+} @else if (store.isLoading$()) {
+<div class="requests__loading"><span uiSpinner></span></div>
+} @else {
+<section uiCard>
+  <div uiCardHeader class="requests__toolbar">
+    <div class="row requests__filters">
+      <ui-search
+        label="Tìm yêu cầu"
+        placeholder="Tên, mã cán bộ, email…"
+        [value]="store.query$()"
+        (searched)="store.search($event)"
+      />
+      <select
+        uiSelect
+        class="requests__filter"
+        size="sm"
+        aria-label="Loại yêu cầu"
+        [value]="store.kind$()"
+        (change)="store.filterKind(kind.value)"
+        #kind
+      >
+        <option value="">Tất cả loại</option>
+        <option value="REGISTER">Đăng ký</option>
+        <option value="PASSWORD_RESET">Quên mật khẩu</option>
+      </select>
+      <select
+        uiSelect
+        class="requests__filter"
+        size="sm"
+        aria-label="Trạng thái"
+        [value]="store.status$()"
+        (change)="store.filterStatus(status.value)"
+        #status
+      >
+        <option value="">Tất cả trạng thái</option>
+        <option value="PENDING">Chờ xử lý</option>
+        <option value="APPROVED">Đã duyệt</option>
+        <option value="REJECTED">Đã từ chối</option>
+      </select>
+    </div>
+    <span class="requests__count">{{ store.total$() }} yêu cầu</span>
+  </div>
+
+  <ui-data-table
+    caption="Danh sách yêu cầu"
+    [columns]="[
+      { key: 'sender', label: 'Người gửi', sortable: false },
+      { key: 'kind', label: 'Loại', sortable: false },
+      { key: 'orgName', label: 'Đơn vị', sortable: false },
+      { key: 'createdTime', label: 'Gửi lúc', sortable: false },
+      { key: 'status', label: 'Trạng thái', sortable: false },
+      { key: 'actions', label: 'Thao tác', kind: 'actions' },
+    ]"
+    [rows]="rows()"
+    [total]="store.total$()"
+    [page]="store.page$()"
+    [pageSize]="pageSize"
+    (pageChange)="store.goToPage($event)"
+  >
+    <ui-empty slot="empty" variant="inline" title="Không có yêu cầu nào." />
+
+    <ng-template uiDataTableCell="sender" [of]="rows()" let-request>
+      <span uiTablePrimary>{{ request.fullName || request.staffCode }}</span>
+      <div uiTableSub>
+        {{ request.fullName ? request.staffCode : '' }} @if (request.email) { {{
+        request.fullName ? '·' : '' }} {{ request.email }} } @if (request.kind
+        === 'PASSWORD_RESET' && !request.accountFound) {
+        <span class="requests__missing">Không tìm thấy tài khoản</span>
+        }
+      </div>
+    </ng-template>
+    <ng-template uiDataTableCell="kind" [of]="rows()" let-request>
+      {{ kindLabel(request.kind) }}
+    </ng-template>
+    <ng-template uiDataTableCell="orgName" [of]="rows()" let-request>
+      {{ request.orgName || '—' }}
+    </ng-template>
+    <ng-template uiDataTableCell="createdTime" [of]="rows()" let-request>
+      <span [title]="request.createdTime | fmtDatetime"
+        >{{ request.createdTime | fmtRelative }}</span
+      >
+    </ng-template>
+    <ng-template uiDataTableCell="status" [of]="rows()" let-request>
+      <span uiBadge dot [tone]="statusView(request.status).tone"
+        >{{ statusView(request.status).label }}</span
+      >
+      @if (request.status !== 'PENDING') {
+      <div uiTableSub>
+        {{ request.resolvedBy }} · {{ request.resolvedTime | fmtDatetime }}
+      </div>
+      @if (request.resolutionNote) {
+      <div uiTableSub>{{ request.resolutionNote }}</div>
+      } }
+    </ng-template>
+    <ng-template uiDataTableCell="actions" [of]="rows()" let-request>
+      @if (request.status === 'PENDING') { @if (request.kind === 'REGISTER') {
+      <button
+        uiButton
+        size="sm"
+        variant="primary"
+        [disabled]="store.isRejecting$() || store.isApproving$()"
+        (click)="approve(request)"
+      >
+        Duyệt
+      </button>
+      } @if (request.kind === 'PASSWORD_RESET' && request.accountFound) {
+      <button
+        uiButton
+        size="sm"
+        variant="primary"
+        (click)="resetPassword(request)"
+      >
+        Đặt lại mật khẩu
+      </button>
+      }
+      <button
+        uiButton
+        size="sm"
+        variant="ghost"
+        [disabled]="store.isRejecting$() || store.isApproving$()"
+        (click)="reject(request)"
+      >
+        Từ chối
+      </button>
+      }
+    </ng-template>
+  </ui-data-table>
+</section>
+}

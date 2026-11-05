@@ -137,6 +137,21 @@ describe('Login', () => {
     expect(el.textContent).not.toContain('đã bị khóa');
   });
 
+  it('offers a way to register', async () => {
+    await openLogin();
+    const link = el.querySelector<HTMLAnchorElement>('.login__register a')!;
+    expect(link.textContent).toContain('Đăng ký');
+    expect(link.getAttribute('href')).toBe('/register');
+  });
+
+  it('offers a way to ask for a new password', async () => {
+    await openLogin();
+    const link = el.querySelector<HTMLAnchorElement>(
+      'a[href="/forgot-password"]',
+    )!;
+    expect(link.textContent).toContain('Quên mật khẩu?');
+  });
+
   it('reveals and hides the password', async () => {
     await openLogin();
     const toggle = el.querySelector<HTMLButtonElement>('.login__reveal')!;

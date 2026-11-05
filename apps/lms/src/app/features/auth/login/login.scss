@@ -152,4 +152,9 @@
     right: ui.space(1);
     transform: translateY(-50%);
   }
+
+  &__register {
+    margin: 0;
+    @include ui.text(sm, secondary);
+  }
 }
