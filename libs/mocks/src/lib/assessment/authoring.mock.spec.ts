@@ -1,6 +1,8 @@
 import {
   assessmentV1Endpoints as api,
   authV1Endpoints,
+  courseEndpoints,
+  programAssessmentEndpoints,
   EnvelopeSchema,
   type AnyEndpoint,
   type QuizRequestV1,
@@ -123,5 +125,40 @@ describe('quiz authoring rules on the mock backend', () => {
       body: { expectedVersion: 0 },
     });
     expect(refusal(reply).code).toBe('ASSESSMENT-QUIZ_NOT_READY');
+  });
+
+  describe('for a course created in this session', () => {
+    const createdCourse = () => {
+      const reply = call(courseEndpoints.createCourse, {
+        body: {
+          ownerOrgId: 1,
+          code: 'AUTH-NEW-1',
+          draft: {
+            title: 'Khóa mới tạo',
+            programId: 2,
+            level: 'basic',
+            defaultRequirement: 'mandatory',
+            objectives: [],
+            chapters: [],
+          },
+        },
+      });
+      return (reply.body.data as { course: { id: number } }).course.id;
+    };
+
+    it('lets its manager create a final exam for it', () => {
+      const reply = call(api.createQuiz, {
+        body: request(createdCourse(), 'FINAL_EXAM'),
+      });
+      expect(refusal(reply).status).toBe('SUCCESS');
+    });
+
+    it('lets its manager read the program bank through the course', () => {
+      const courseId = createdCourse();
+      const reply = call(programAssessmentEndpoints.questions, {
+        query: { programId: '2', courseId: String(courseId), status: 'ACTIVE' },
+      });
+      expect(refusal(reply).status).toBe('SUCCESS');
+    });
   });
 });

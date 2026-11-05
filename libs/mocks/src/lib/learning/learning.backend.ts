@@ -205,6 +205,19 @@ export class LearningBackend {
   });
 
   /** How many reminders the person has due: what the mock's bell shows. */
+  /** Who owns a course and the program of its latest revision, for the quiz service. */
+  courseOwnership(courseId: number | null) {
+    const record = this.courses.find((c) => c.course.id === courseId);
+    if (!record) return undefined;
+    const detail = record.draft ?? record.published;
+    return {
+      ownerOrgId: record.course.ownerOrgId,
+      ownerTeamId: record.course.ownerTeamId,
+      ownerUserId: record.course.ownerUserId,
+      programId: detail?.revision.programId ?? null,
+    };
+  }
+
   dueReminderCount(userId: string): number {
     return this.reminders.due(userId).length;
   }

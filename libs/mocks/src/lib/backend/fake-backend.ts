@@ -75,7 +75,10 @@ import {
 } from '../knowledge/knowledge.fixtures';
 import { navCountsFixtures } from '../shell/shell.fixtures';
 import { AssessmentMock } from '../assessment/assessment.mock';
-import { AssessmentAuthoringMock } from '../assessment/authoring.mock';
+import {
+  AssessmentAuthoringMock,
+  type CourseOwnership,
+} from '../assessment/authoring.mock';
 import { LearnerQuizMock } from '../assessment/learner-quiz.mock';
 import { learningReportHandlers } from '../reports/learning-report.handlers';
 import {
@@ -201,8 +204,10 @@ const PROFILE_FIELDS = [
  */
 export class FakeBackend {
   private readonly assessment = new AssessmentMock();
-  private readonly authoring = new AssessmentAuthoringMock((request) =>
-    this.meOf(this.caller(request)),
+  private readonly authoring = new AssessmentAuthoringMock(
+    (request) => this.meOf(this.caller(request)),
+    (courseId): CourseOwnership | undefined =>
+      this.learning.courseOwnership(courseId),
   );
   private readonly learnerQuiz = new LearnerQuizMock();
   private orgs: Mutable<SeedOrg>[] = SEED_ORGS.map((o) => ({ ...o }));
