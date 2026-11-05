@@ -52,8 +52,16 @@ const everyEndpoint: readonly AnyEndpoint[] = [
 describe('FakeBackend and the endpoint registries', () => {
   it('answers every endpoint the app declares, the backend ones and the served: mock ones', () => {
     const backend = new FakeBackend();
+    // The self-registration calls are made against the real backend only (no mock, by decision).
+    const backendOnly: readonly AnyEndpoint[] = [
+      identityEndpoints.registrationUnits,
+      identityEndpoints.registerRequest,
+      identityEndpoints.approveAccessRequest,
+    ];
     for (const endpoint of everyEndpoint) {
-      expect(backend.answers(endpoint), endpoint.path).toBe(true);
+      expect(backend.answers(endpoint), endpoint.path).toBe(
+        !backendOnly.includes(endpoint),
+      );
     }
   });
 

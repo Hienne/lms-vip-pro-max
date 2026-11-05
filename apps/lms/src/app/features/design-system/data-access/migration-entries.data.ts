@@ -821,6 +821,16 @@ export const MIGRATION_ENTRIES = [
     status: 'todo',
   },
   {
+    id: 'route-register',
+    notes:
+      'Không có trong mockup: màn đăng ký của SPEC-self-registration, gọi thẳng API backend.',
+    kind: 'route',
+    mockupSource: null,
+    target: 'register',
+    checklist: [],
+    status: 'todo',
+  },
+  {
     id: 'route-home',
     kind: 'route',
     mockupSource: 'src/pages/auth.js · home',
