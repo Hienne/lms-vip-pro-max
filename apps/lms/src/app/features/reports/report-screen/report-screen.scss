@@ -67,6 +67,10 @@
   &__filter-grid {
     padding-top: ui.space(4);
   }
+  &__check {
+    align-self: end;
+    padding-block: ui.space(2);
+  }
   &__tab:focus-visible,
   &__advanced summary:focus-visible {
     @include ui.focus-ring;

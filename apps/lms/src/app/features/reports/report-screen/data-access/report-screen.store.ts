@@ -29,10 +29,12 @@ import {
   queryFromFilters,
   TAB_FILTERS,
   tabQuery,
+  type ProgressView,
   type ReportFilters,
   type ReportTab,
 } from './report-query';
 import { reportPickers } from './report-pickers';
+import { learningFilter, progressReport } from './progress-report';
 
 export const REPORT_DIMENSIONS = [
   { id: 'results', label: 'Kết quả từng lượt thi' },
@@ -175,8 +177,19 @@ export class ReportScreenStore {
     );
     return parsed.success ? parsed.data : undefined;
   });
+  /** "Tiến độ & hoàn thành", the learning progress tab. */
+  readonly progress$ = computed(() => this.params()?.get('dim') === 'progress');
   readonly unsupported$ = computed(
-    () => !!this.params()?.get('dim') && !this.dimension$(),
+    () =>
+      !!this.params()?.get('dim') && !this.dimension$() && !this.progress$(),
+  );
+  /** The tab shown; `undefined` for a path no tab has. */
+  readonly tab$ = computed<ReportTab | undefined>(() =>
+    this.unsupported$()
+      ? undefined
+      : this.progress$()
+        ? 'progress'
+        : (this.dimension$() ?? 'overview'),
   );
   private readonly state = {
     sort: linkedSignal(() => DEFAULT_SORT[this.dimension$() ?? 'results']),
@@ -187,12 +200,23 @@ export class ReportScreenStore {
   readonly page$ = computed(() => this.urlQuery().page);
   /** The unit, team, course and quiz pickers, and whether the URL's ids are known to be in scope. */
   readonly pickers = reportPickers(this.filters$);
+  /** The groups and the learner list of "Tiến độ & hoàn thành". */
+  readonly progress = progressReport({
+    filters: this.filters$,
+    page: this.page$,
+    active: computed(() => this.progress$() && !this.pickers.blocked$()),
+  });
   readonly sort$ = this.state.sort.asReadonly();
   /** The tab bar: each link keeps the current filters the tab reads. */
   readonly tabs$ = computed(() => {
     const filters = this.filters$();
     const tabs: readonly { id: ReportTab; label: string; path: string[] }[] = [
       { id: 'overview', label: 'Tổng quan', path: ['/reports'] },
+      {
+        id: 'progress',
+        label: 'Tiến độ & hoàn thành',
+        path: ['/reports', 'progress'],
+      },
       ...REPORT_DIMENSIONS.map((d) => ({
         id: d.id,
         label: d.label,
@@ -390,7 +414,11 @@ export class ReportScreenStore {
   );
   readonly activeFilterCount$ = computed(
     () =>
-      Object.entries(this.tableRequest()?.query ?? this.commonFilters()).filter(
+      Object.entries(
+        this.progress$()
+          ? learningFilter(this.filters$())
+          : (this.tableRequest()?.query ?? this.commonFilters()),
+      ).filter(
         ([key, value]) =>
           !['page', 'size', 'sort', 'groupBy'].includes(key) &&
           value !== undefined &&
@@ -398,7 +426,9 @@ export class ReportScreenStore {
       ).length,
   );
   readonly description$ = computed(() => {
-    switch (this.dimension$()) {
+    switch (this.tab$()) {
+      case 'progress':
+        return 'Tiến độ học theo phạm vi được cấp. Đơn vị và nhóm lấy theo thời điểm ghi danh.';
       case 'results':
         return 'Tra cứu điểm, số câu đúng và kết quả của từng lượt thi.';
       case 'learners':
@@ -456,10 +486,11 @@ export class ReportScreenStore {
   readonly needsQuiz$ = computed(
     () => this.dimension$() === 'learners' && !this.filters$().quizId,
   );
-  readonly title$ = computed(
-    () =>
-      REPORT_DIMENSIONS.find((d) => d.id === this.dimension$())?.label ??
-      'Tổng quan kết quả thi',
+  readonly title$ = computed(() =>
+    this.progress$()
+      ? 'Tiến độ & hoàn thành'
+      : (REPORT_DIMENSIONS.find((d) => d.id === this.dimension$())?.label ??
+        'Tổng quan kết quả thi'),
   );
   private setSort(value: DataTableSort): void {
     this.state.sort.set(value);
@@ -478,6 +509,10 @@ export class ReportScreenStore {
   applyFilters(value: ReportFilters): void {
     this.setGroupPage(1);
     this.navigate(value, 1);
+  }
+  /** Shows "Tiến độ & hoàn thành" by course, by unit or by learner, from the first page. */
+  selectView(view: ProgressView): void {
+    this.navigate({ ...this.filters$(), view }, 1);
   }
   changePage(page: number): void {
     this.navigate(this.filters$(), page);
@@ -499,7 +534,7 @@ export class ReportScreenStore {
       queryParams: queryFromFilters(
         filters,
         page,
-        TAB_FILTERS[this.dimension$() ?? 'overview'],
+        TAB_FILTERS[this.tab$() ?? 'overview'],
       ),
       replaceUrl: true,
     });
@@ -509,6 +544,7 @@ export class ReportScreenStore {
   }
   retry(): void {
     this.pickers.retry();
+    this.progress.retry();
     this.overview.reload();
     this.detail.reload();
   }

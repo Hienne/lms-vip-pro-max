@@ -179,11 +179,11 @@ roles if changed); browser `read_page`
 
 **Acceptance criteria:**
 
-- [ ] `progress` is a view of the report store. The tab "Tiến độ & hoàn thành" is listed right after Tổng quan. The
+- [x] `progress` is a view of the report store. The tab "Tiến độ & hoàn thành" is listed right after Tổng quan. The
       description reads "Tiến độ học theo phạm vi được cấp. Đơn vị và nhóm lấy theo thời điểm ghi danh."
-- [ ] Filters: Đơn vị, Phòng / nhóm and Khóa học (the pickers), Trạng thái, "Chỉ quá hạn", and the enrolment date
+- [x] Filters: Đơn vị, Phòng / nhóm and Khóa học (the pickers), Trạng thái, "Chỉ quá hạn", and the enrolment date
       range. They are kept in the URL.
-- [ ] A segmented "Theo khóa học / Theo đơn vị / Theo học viên" (`view` in the URL). The course and unit views call
+- [x] A segmented "Theo khóa học / Theo đơn vị / Theo học viên" (`view` in the URL). The course and unit views call
       `/groups` with the spec's columns. The Tên cell links to the learner view with that filter set.
 
 **Verification:** `npx nx test lms` (request per view, drill-down, URL round trip)

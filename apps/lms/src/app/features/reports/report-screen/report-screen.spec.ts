@@ -242,4 +242,34 @@ describe('ReportScreen', () => {
       expect(text()).toContain('Học viên đã thi');
     });
   });
+
+  describe('Tiến độ & hoàn thành', () => {
+    it('filters by unit, team, course, status, overdue and enrolment dates', async () => {
+      const { labels } = await open('/reports/progress');
+      expect(labels()).toEqual(
+        expect.arrayContaining([
+          'Ghi danh từ ngày',
+          'Đến trước ngày',
+          'Đơn vị',
+          'Phòng / nhóm',
+          'Khóa học',
+          'Trạng thái',
+          'Chỉ quá hạn',
+        ]),
+      );
+      expect(labels()).not.toContain('Bài kiểm tra');
+    });
+
+    it('lists the course groups, each name linking to its learners', async () => {
+      const { root, text } = await open('/reports/progress');
+      expect(text()).toContain('Theo khóa học');
+      expect(text()).toContain('Tỷ lệ hoàn thành');
+      const link = root.querySelector<HTMLAnchorElement>(
+        '.progress-report__name[href]',
+      );
+      expect(link?.getAttribute('href')).toMatch(
+        /^\/reports\/progress\?courseId=\d+&view=learners$/,
+      );
+    });
+  });
 });

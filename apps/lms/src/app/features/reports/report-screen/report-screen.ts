@@ -7,7 +7,10 @@ import {
   validateStandardSchema,
 } from '@angular/forms/signals';
 import { z } from 'zod';
-import { AssessmentReportExportQuerySchema } from '@lms/contracts';
+import {
+  AssessmentReportExportQuerySchema,
+  LearningStatusSchema,
+} from '@lms/contracts';
 import {
   Alert,
   DonutChart,
@@ -26,11 +29,13 @@ import {
   Select,
   Spinner,
   Tooltip,
+  Checkbox,
   type DataTableColumn,
 } from '@lms/ui';
 import { ReportScreenStore } from './data-access/report-screen.store';
 import type { PickerKey } from './data-access/report-pickers';
 import { ReportPicker } from './components/report-picker/report-picker';
+import { ProgressReport } from './components/progress-report/progress-report';
 
 interface PickerField {
   readonly key: PickerKey;
@@ -74,6 +79,8 @@ const EMPTY_FORM = {
   learnerStatus: '',
   passed: '',
   groupBy: 'user' as 'user' | 'org',
+  learningStatus: '',
+  overdue: false,
 };
 
 /** An ISO date-time as a `datetime-local` value, in the browser's time zone. */
@@ -93,6 +100,8 @@ const filterSchema = z
     learnerStatus: z.string(),
     passed: z.string(),
     groupBy: z.enum(['user', 'org']),
+    learningStatus: z.string(),
+    overdue: z.boolean(),
   })
   .superRefine((v, ctx) => {
     if (v.from && !Number.isFinite(Date.parse(v.from)))
@@ -116,6 +125,8 @@ const filterSchema = z
   selector: 'app-report-screen',
   imports: [
     ReportPicker,
+    ProgressReport,
+    Checkbox,
     Tooltip,
     DonutChart,
     RouterLink,
@@ -163,7 +174,9 @@ export class ReportScreen {
   protected readonly scopePickers = computed(() =>
     this.store.dimension$() === 'learners'
       ? [PICKERS.orgId, PICKERS.teamId]
-      : [PICKERS.orgId, PICKERS.teamId, PICKERS.courseId, PICKERS.quizId],
+      : this.store.progress$()
+        ? [PICKERS.orgId, PICKERS.teamId, PICKERS.courseId]
+        : [PICKERS.orgId, PICKERS.teamId, PICKERS.courseId, PICKERS.quizId],
   );
   /** The detailed filters stay open while one of them says a link's id is not found. */
   protected readonly scopeHasError = computed(() =>
@@ -180,6 +193,8 @@ export class ReportScreen {
       learnerStatus: f.learnerStatus ?? '',
       passed: f.passed === undefined ? '' : String(f.passed),
       groupBy: (f.groupBy ?? 'user') as 'user' | 'org',
+      learningStatus: f.learningStatus ?? '',
+      overdue: f.overdue ?? false,
     };
   });
   protected readonly filterForm = form(
@@ -189,8 +204,8 @@ export class ReportScreen {
   );
   private applyFilters(): void {
     const f = this.filterModel();
-    this.store.applyFilters(
-      AssessmentReportExportQuerySchema.parse({
+    this.store.applyFilters({
+      ...AssessmentReportExportQuerySchema.parse({
         ...this.store.pickers.picks$(),
         userId: f.userId || undefined,
         from: f.from ? new Date(f.from).toISOString() : undefined,
@@ -200,7 +215,12 @@ export class ReportScreen {
         passed: f.passed ? f.passed === 'true' : undefined,
         groupBy: f.groupBy,
       }),
-    );
+      learningStatus: LearningStatusSchema.optional().parse(
+        f.learningStatus || undefined,
+      ),
+      overdue: f.overdue || undefined,
+      view: this.store.filters$().view,
+    });
   }
   protected resetFilters(): void {
     this.filterForm().reset({ ...EMPTY_FORM });

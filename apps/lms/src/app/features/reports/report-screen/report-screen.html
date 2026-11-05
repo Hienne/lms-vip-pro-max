@@ -24,7 +24,7 @@
     [routerLink]="tab.path"
     [queryParams]="tab.queryParams"
     class="report-screen__tab"
-    [attr.aria-current]="(tab.id === 'overview' ? !store.dimension$() && !store.unsupported$() : store.dimension$() === tab.id) ? 'page' : null"
+    [attr.aria-current]="store.tab$() === tab.id ? 'page' : null"
     >{{tab.label}}</a
   >
   }
@@ -59,7 +59,7 @@
         (picked)="store.pickers.pick(field.key, $event)"
       />
       } } @else {
-      <ui-field label="Nộp từ ngày"
+      <ui-field [label]="store.progress$() ? 'Ghi danh từ ngày' : 'Nộp từ ngày'"
         ><input uiInput type="datetime-local" [formField]="filterForm.from"
       /></ui-field>
       <ui-field label="Đến trước ngày"
@@ -120,6 +120,19 @@
             <option value="false">Chưa đạt</option>
           </select></ui-field
         >
+        } @if (store.progress$()) {
+        <ui-field label="Trạng thái"
+          ><select uiSelect [formField]="filterForm.learningStatus">
+            <option value="">Tất cả</option>
+            <option value="not_started">Chưa bắt đầu</option>
+            <option value="in_progress">Đang học</option>
+            <option value="completed">Hoàn thành</option>
+          </select></ui-field
+        >
+        <label class="row row--gap-2 report-screen__check"
+          ><input type="checkbox" uiCheckbox [formField]="filterForm.overdue" />
+          Chỉ quá hạn</label
+        >
         } @if (store.dimension$() === 'competency') {
         <ui-field label="Gộp năng lực theo"
           ><select uiSelect [formField]="filterForm.groupBy">
@@ -141,6 +154,8 @@
 />
 } @else if (store.pickers.blocked$() && !store.error$()) {
 <!-- A filter of the link is not in scope (its picker says so) or still resolving. -->
+} @else if (store.progress$()) {
+<app-progress-report />
 } @else if (!store.dimension$()) {
 <section
   uiCard

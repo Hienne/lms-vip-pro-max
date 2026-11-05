@@ -1,15 +1,29 @@
 import type { ParamMap, Params } from '@angular/router';
 import {
   AssessmentReportExportQuerySchema,
+  LearningStatusSchema,
   type AssessmentReportType,
+  type LearningStatus,
 } from '@lms/contracts';
 import { z } from 'zod';
 
+/** How "Tiến độ & hoàn thành" groups the enrolments. */
+export const PROGRESS_VIEWS = ['course', 'org', 'learners'] as const;
+export type ProgressView = (typeof PROGRESS_VIEWS)[number];
+
 /** The filters a report screen applies, as the URL carries them. */
-export type ReportFilters = z.infer<typeof AssessmentReportExportQuerySchema>;
+export type ReportFilters = z.infer<
+  typeof AssessmentReportExportQuerySchema
+> & {
+  /** The learning status of "Tiến độ & hoàn thành". */
+  learningStatus?: LearningStatus;
+  /** Only the overdue enrolments. */
+  overdue?: boolean;
+  view?: ProgressView;
+};
 export type ReportFilterKey = keyof ReportFilters;
-/** A report tab: the overview or one of the exam reports. */
-export type ReportTab = 'overview' | AssessmentReportType;
+/** A report tab: the overview, the learning progress or one of the exam reports. */
+export type ReportTab = 'overview' | 'progress' | AssessmentReportType;
 
 const id = z.coerce.number().int().positive().optional().catch(undefined);
 const dateTime = z
@@ -36,6 +50,13 @@ const QuerySchema = z.object({
     .catch(undefined),
   learnerStatus: shape.learnerStatus.catch(undefined),
   groupBy: shape.groupBy.catch(undefined),
+  learningStatus: LearningStatusSchema.optional().catch(undefined),
+  overdue: z
+    .literal('true')
+    .transform(() => true)
+    .optional()
+    .catch(undefined),
+  view: z.enum(PROGRESS_VIEWS).optional().catch(undefined),
   page: z.coerce.number().int().positive().catch(1),
 });
 
@@ -51,6 +72,9 @@ const KEYS = [
   'passed',
   'learnerStatus',
   'groupBy',
+  'learningStatus',
+  'overdue',
+  'view',
 ] as const satisfies readonly ReportFilterKey[];
 
 const COMMON = [
@@ -65,6 +89,16 @@ const COMMON = [
 /** The filters each tab reads. "Tình trạng học viên" keeps the course its quiz was picked from. */
 export const TAB_FILTERS: Record<ReportTab, readonly ReportFilterKey[]> = {
   overview: COMMON,
+  progress: [
+    'orgId',
+    'teamId',
+    'courseId',
+    'learningStatus',
+    'overdue',
+    'from',
+    'to',
+    'view',
+  ],
   results: [...COMMON, 'userId', 'status', 'passed'],
   learners: ['orgId', 'teamId', 'courseId', 'quizId', 'learnerStatus'],
   competency: [...COMMON, 'groupBy'],

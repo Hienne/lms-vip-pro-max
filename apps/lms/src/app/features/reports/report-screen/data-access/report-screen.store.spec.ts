@@ -362,4 +362,82 @@ describe('assessment report integration', () => {
     await settle();
     expect(store.overview$()?.gradedAttempts).toBe(initial);
   });
+
+  describe('Tiến độ & hoàn thành', () => {
+    const lastQuery = (spy: ReturnType<typeof vi.spyOn>, endpoint: unknown) =>
+      (spy.mock.calls as [unknown, { query: Record<string, string> }][])
+        .filter(([e]) => e === endpoint)
+        .at(-1)?.[1].query;
+
+    it('is the tab after Tổng quan, with its own description', async () => {
+      const store = await open('/reports/progress');
+      expect(
+        store
+          .tabs$()
+          .map((t) => t.id)
+          .slice(0, 2),
+      ).toEqual(['overview', 'progress']);
+      expect(store.tab$()).toBe('progress');
+      expect(store.unsupported$()).toBe(false);
+      expect(store.description$()).toBe(
+        'Tiến độ học theo phạm vi được cấp. Đơn vị và nhóm lấy theo thời điểm ghi danh.',
+      );
+    });
+
+    it('groups by course by default and by unit when the view says so', async () => {
+      const spy = vi.spyOn(TestBed.inject(MockBackend), 'handle');
+      const store = await open(
+        '/reports/progress?learningStatus=in_progress&overdue=true',
+      );
+      expect(lastQuery(spy, learning.groups)).toMatchObject({
+        groupBy: 'course',
+        status: 'in_progress',
+        overdue: 'true',
+        page: '0',
+      });
+      expect(store.progress.groups$().length).toBeGreaterThan(0);
+      store.selectView('org');
+      await settle();
+      expect(TestBed.inject(Router).url).toBe(
+        '/reports/progress?learningStatus=in_progress&overdue=true&view=org',
+      );
+      expect(lastQuery(spy, learning.groups)).toMatchObject({
+        groupBy: 'org',
+      });
+    });
+
+    it('links each group to the learner view with that group set', async () => {
+      const store = await open(
+        '/reports/progress?view=org&learningStatus=completed',
+      );
+      const row = store.progress.groups$().find((g) => g.drill);
+      expect(row?.drill).toEqual({
+        orgId: row?.id,
+        learningStatus: 'completed',
+        view: 'learners',
+      });
+    });
+
+    it('keeps the filters and the view through a reload of the URL', async () => {
+      const store = await open('/reports/progress?view=course');
+      store.applyFilters({
+        orgId: 1,
+        learningStatus: 'completed',
+        overdue: true,
+        from: '2026-01-01T00:00:00.000Z',
+        view: 'course',
+      });
+      await settle();
+      const url = TestBed.inject(Router).url;
+      expect(url).toBe(
+        '/reports/progress?orgId=1&learningStatus=completed&overdue=true&from=2026-01-01T00:00:00.000Z&view=course',
+      );
+      expect(store.filters$()).toMatchObject({
+        orgId: 1,
+        learningStatus: 'completed',
+        overdue: true,
+        view: 'course',
+      });
+    });
+  });
 });
