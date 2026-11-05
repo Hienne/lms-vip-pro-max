@@ -13,7 +13,8 @@ import { COURSE_LIMITS } from '@lms/contracts';
 import type { CourseDraftValue } from './course-draft';
 
 /** Why step 1's program is locked while a final exam is attached. */
-export const PROGRAM_LOCKED_HINT = 'Gỡ bài thi cuối khóa để đổi chương trình.';
+export const PROGRAM_LOCKED_HINT =
+  'Gỡ bài thi cuối khóa ở bước 3 để đổi chương trình.';
 
 /** What the editor checks before a save; the server checks the rest on save and on publish. */
 export function courseDraftSchema(

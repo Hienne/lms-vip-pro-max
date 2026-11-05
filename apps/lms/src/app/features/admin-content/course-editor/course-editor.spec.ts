@@ -1043,7 +1043,7 @@ describe('CourseEditor', () => {
         const program = () => screen.field('Chương trình') as HTMLSelectElement;
         expect(program().disabled).toBe(false);
         expect(screen.text()).not.toContain(
-          'Gỡ bài thi cuối khóa để đổi chương trình.',
+          'Gỡ bài thi cuối khóa ở bước 3 để đổi chương trình.',
         );
 
         await step('Bài thi & điều kiện');
@@ -1051,7 +1051,7 @@ describe('CourseEditor', () => {
         await step('Thông tin cơ bản');
         expect(program().disabled).toBe(true);
         expect(screen.text()).toContain(
-          'Gỡ bài thi cuối khóa để đổi chương trình.',
+          'Gỡ bài thi cuối khóa ở bước 3 để đổi chương trình.',
         );
 
         await step('Bài thi & điều kiện');
@@ -1104,6 +1104,7 @@ describe('CourseEditor', () => {
         listQuizzes('PUBLISHED', 'RANDOM_POOL');
         await screen.open('/admin/courses/6/edit');
         await step('Bài thi & điều kiện');
+        await screen.click(button('Gắn lại bài thi'));
 
         const card = screen.text(screen.el.querySelector('app-course-rules')!);
         expect(card).toContain(
@@ -1126,10 +1127,44 @@ describe('CourseEditor', () => {
         listQuizzes('PUBLISHED', 'FIXED');
         await screen.open('/admin/courses/6/edit');
         await step('Bài thi & điều kiện');
+        await screen.click(button('Gắn lại bài thi'));
 
         expect(button('Sửa')).toBeUndefined();
         expect(screen.text()).toContain('Cấu hình nâng cao');
         expect(screen.text()).toContain('chỉnh được ở màn Bài kiểm tra');
+      });
+
+      it('removes the exam from the course, keeps it to attach again, and saves without it', async () => {
+        listQuizzes('PUBLISHED', 'RANDOM_POOL');
+        await screen.open('/admin/courses/6/edit');
+        await step('Bài thi & điều kiện');
+        await screen.choose(exam(), '2');
+        expect(button('Sửa')).toBeTruthy();
+
+        await screen.click(button('Gỡ khỏi khóa học'));
+        expect(exam().value).toBe('');
+        expect(button('Sửa')).toBeUndefined();
+        expect(screen.text()).toContain(
+          'Khóa học không yêu cầu bài thi. Bài thi “Thi cuối khóa: Tổng quan hệ thống Core Banking” vẫn được giữ',
+        );
+        expect(screen.text()).toContain(
+          'Đạt bài kiểm tra cuối khóa (chưa chọn)',
+        );
+        await step('Thông tin cơ bản');
+        expect(
+          (screen.field('Chương trình') as HTMLSelectElement).disabled,
+        ).toBe(false);
+
+        await step('Bài thi & điều kiện');
+        await screen.click(screen.button('Lưu nháp'));
+        expect(
+          screen.lastCall(courseEndpoints.saveDraft)?.body,
+        ).not.toHaveProperty('finalQuizId');
+
+        await step('Bài thi & điều kiện');
+        await screen.click(button('Gắn lại bài thi'));
+        expect(exam().value).toBe('2');
+        expect(button('Gỡ khỏi khóa học')).toBeTruthy();
       });
 
       it('offers a retry when the quizzes cannot be read, and keeps "no exam" selectable', async () => {

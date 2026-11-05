@@ -171,7 +171,7 @@ unpublished exam that the chain will publish.
 
 **Acceptance criteria:**
 
-- [x] With `finalQuizId` set, step 1's program select is disabled with the hint "Gỡ bài thi cuối khóa để đổi chương trình."
+- [x] With `finalQuizId` set, step 1's program select is disabled with the hint "Gỡ bài thi cuối khóa ở bước 3 để đổi chương trình."
 
 **Verification:** `npx nx test lms -- course-editor.spec`
 
