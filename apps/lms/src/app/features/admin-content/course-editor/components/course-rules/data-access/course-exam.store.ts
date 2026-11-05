@@ -5,27 +5,16 @@ import {
   type QuizDetailV1,
   type QuizSummary,
 } from '@lms/contracts';
-import {
-  catchError,
-  EMPTY,
-  expand,
-  map,
-  reduce,
-  switchMap,
-  tap,
-  throwError,
-  type Observable,
-} from 'rxjs';
+import { catchError, switchMap, tap, throwError, type Observable } from 'rxjs';
 import { invalidation } from '../../../../../../core/data-access/invalidation';
 import { serverData } from '../../../../../../core/data-access/server-data';
 import { EndpointClient } from '../../../../../../core/http/endpoint-client';
 import { SessionStore } from '../../../../../../core/session/session.store';
 import { serverMutation } from '../../../../../../core/data-access/server-mutation';
 import { CourseEditorStore } from '../../../data-access/course-editor.store';
+import { syncExamPool } from './exam-pool';
 import {
   POOL_LIMIT,
-  POOL_PAGE_SIZE,
-  POOL_PAGES,
   toExamValue,
   toNewQuizRequest,
   toUpdatedQuizRequest,
@@ -216,6 +205,8 @@ export class CourseExamStore {
   /** The exam is made and on the draft, but its questions are not written yet. */
   readonly poolPending$ = this.state.poolPendingId.asReadonly();
   readonly quizzesError$ = this.editor.quizzesError$;
+  /** Why publishing the course was stopped at this exam. */
+  readonly publishError$ = this.editor.examPublishError$;
 
   readonly formOpen$ = this.state.formOpen.asReadonly();
 
@@ -293,57 +284,14 @@ export class CourseExamStore {
     this.editor.reloadQuizzes();
   }
 
-  /**
-   * Writes the whole active bank of the program as the exam's pool (the newest questions first,
-   * at most {@link POOL_LIMIT}). The quiz is read first for the version the write must carry.
-   */
   private syncPool(quizId: number): Observable<QuizDetailV1> {
-    return this.client
-      .call(assessmentV1Endpoints.quiz, { params: { id: quizId } })
-      .pipe(
-        switchMap((quiz) =>
-          this.activeQuestionIds().pipe(
-            switchMap((ids) =>
-              this.client.call(assessmentV1Endpoints.replacePool, {
-                params: { id: quizId },
-                query: { expectedVersion: quiz.quiz.rowVersion },
-                body: {
-                  items: ids.map((questionId, sortNo) => ({
-                    questionId,
-                    sortNo,
-                    points: null,
-                  })),
-                },
-              }),
-            ),
-          ),
-        ),
-      );
-  }
-
-  private activeQuestionIds(): Observable<number[]> {
     const course = this.editor.course$();
     const programId = this.editor.storedProgram$()?.id;
-    if (!course || !programId) return EMPTY;
-    const read = (page: number) =>
-      this.client.call(programAssessmentEndpoints.questions, {
-        query: {
+    return course && programId
+      ? syncExamPool(this.client, quizId, {
           programId,
           courseId: course.course.id,
-          status: 'ACTIVE',
-          page,
-          size: POOL_PAGE_SIZE,
-          sort: 'id,desc',
-        },
-      });
-    return read(0).pipe(
-      expand((result) =>
-        result.page + 1 < result.totalPages && result.page + 1 < POOL_PAGES
-          ? read(result.page + 1)
-          : EMPTY,
-      ),
-      map((result) => result.items.map((item) => item.id)),
-      reduce((all, ids) => [...all, ...ids], [] as number[]),
-    );
+        })
+      : throwError(() => new Error('The course has no program yet.'));
   }
 }

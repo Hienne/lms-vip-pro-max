@@ -138,10 +138,10 @@ wizard-managed: `syncPool` → `publishQuiz`) → publish course; the checklist 
 unpublished exam that the chain will publish.
 
 **Acceptance criteria:**
-- [ ] One confirmation publishes both; success toast as today.
-- [ ] Exam refused (e.g. `ASSESSMENT-QUIZ_NOT_READY`) → course not published, step 3 shows the reason.
-- [ ] Exam published, course refused → toast "Bài thi đã xuất bản, khóa học chưa xuất bản" + reason; retry does not call `publishQuiz` again.
-- [ ] A `CLOSED` or `FIXED`-and-draft exam still blocks on the checklist with a link to the quiz screen.
+- [x] One confirmation publishes both; success toast as today.
+- [x] Exam refused (e.g. `ASSESSMENT-QUIZ_NOT_READY`) → course not published, step 3 shows the reason.
+- [x] Exam published, course refused → toast "Bài thi đã xuất bản, khóa học chưa xuất bản" + reason; retry does not call `publishQuiz` again.
+- [x] A `CLOSED` or `FIXED`-and-draft exam still blocks on the checklist with a link to the quiz screen.
 
 **Verification:** `npx nx test lms -- course-editor.spec course-draft.spec`
 

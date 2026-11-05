@@ -1452,6 +1452,115 @@ describe('CourseEditor', () => {
         });
       });
 
+      describe('publishing the course with its draft exam', () => {
+        const drawer = () =>
+          document.querySelector<HTMLElement>('[role="dialog"]') ?? undefined;
+        const press = (label: string) => {
+          const found = [...(drawer()?.querySelectorAll('button') ?? [])].find(
+            (b) => b.textContent?.includes(label),
+          );
+          if (!found) throw Error('Button missing: ' + label);
+          return found;
+        };
+        /** A wizard exam on course 6, with three questions imported so it can be published. */
+        const examWithQuestions = async () => {
+          await screen.open('/admin/courses/6/edit');
+          await step('Bài thi & điều kiện');
+          await screen.click(button('Tạo bài thi cuối khóa'));
+          await screen.click(button('Tạo bài thi'));
+          await vi.waitFor(() => expect(button('Sửa')).toBeTruthy());
+          await screen.click(button('Nhập từ Excel'));
+          const input = drawer()?.querySelector<HTMLInputElement>(
+            'input[type="file"]',
+          ) as HTMLInputElement;
+          Object.defineProperty(input, 'files', {
+            configurable: true,
+            value: [new File([new Uint8Array(10)], 'cau-hoi.xlsx')],
+          });
+          input.dispatchEvent(new Event('change', { bubbles: true }));
+          await screen.settle();
+          await screen.click(press('Kiểm tra'));
+          await screen.click(press('Nhập câu hỏi'));
+          await vi.waitFor(() => expect(drawer()).toBeUndefined());
+          await vi.waitFor(() =>
+            expect(screen.callsTo(assessmentV1Endpoints.replacePool)).toBe(2),
+          );
+        };
+        const publishCourse = async () => {
+          await step('Đối tượng & xuất bản');
+          await screen.click(screen.button('Xuất bản khóa học'));
+        };
+        const confirm = () =>
+          screen.click(screen.button('Xuất bản', screen.alertDialog()!));
+        const order = () =>
+          screen.calls.mock.calls
+            .map(([endpoint]) => endpoint)
+            .filter(
+              (endpoint) =>
+                endpoint === assessmentV1Endpoints.publishQuiz ||
+                endpoint === courseEndpoints.publish,
+            );
+
+        it('names the exam in the one confirmation, then publishes it before the course', async () => {
+          await examWithQuestions();
+          await publishCourse();
+
+          expect(screen.text(screen.alertDialog()!)).toContain(
+            'sẽ được xuất bản cùng khóa học',
+          );
+          await confirm();
+          await vi.waitFor(() => expect(screen.url()).toBe('/admin/courses'));
+
+          expect(order()).toEqual([
+            assessmentV1Endpoints.publishQuiz,
+            courseEndpoints.publish,
+          ]);
+          expect(screen.text(document.body)).toContain('Đã xuất bản khóa học');
+        });
+
+        it('does not publish the course when the exam is refused, and says why on step 3', async () => {
+          await screen.open('/admin/courses/6/edit');
+          await step('Bài thi & điều kiện');
+          await screen.click(button('Tạo bài thi cuối khóa'));
+          await screen.click(button('Tạo bài thi'));
+          await vi.waitFor(() => expect(button('Sửa')).toBeTruthy());
+          await publishCourse();
+          await confirm();
+
+          await vi.waitFor(() =>
+            expect(currentStep()).toContain('Bài thi & điều kiện'),
+          );
+          expect(screen.callsTo(courseEndpoints.publish)).toBe(0);
+          expect(screen.text()).toContain('Chưa đủ câu đang dùng.');
+          expect(screen.url()).toBe('/admin/courses/6/edit');
+        });
+
+        it('keeps the published exam when the course is refused, and a retry does not publish it again', async () => {
+          await examWithQuestions();
+          let refuse = true;
+          screen.calls.mockImplementation((endpoint, request) =>
+            endpoint === courseEndpoints.publish && refuse
+              ? backendRefusal('quizLessonUnlinked')
+              : original(endpoint, request),
+          );
+          await publishCourse();
+          await confirm();
+
+          await vi.waitFor(() =>
+            expect(screen.text(document.body)).toContain(
+              'Bài thi đã xuất bản, khóa học chưa xuất bản',
+            ),
+          );
+          expect(screen.callsTo(assessmentV1Endpoints.publishQuiz)).toBe(1);
+
+          refuse = false;
+          await screen.click(screen.button('Xuất bản khóa học'));
+          await confirm();
+          await vi.waitFor(() => expect(screen.url()).toBe('/admin/courses'));
+          expect(screen.callsTo(assessmentV1Endpoints.publishQuiz)).toBe(1);
+        });
+      });
+
       it('requires the chosen exam to be published on the checklist', async () => {
         listQuizzes('DRAFT');
         await screen.open('/admin/courses/6/edit');

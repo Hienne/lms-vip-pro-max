@@ -63,7 +63,7 @@ T2 quiz screen D7 (indep.)  │                         │
 - [ ] F2–F4 work end to end on the mock; full run-many check green; review with human
 
 ### Phase 3: Publish and finish
-- [ ] T9: Publishing the course publishes its draft exam (D2)
+- [x] T9: Publishing the course publishes its draft exam (D2)
 - [ ] T10: Lock the program once an exam is attached (conditional on open question 4)
 - [ ] T11: Visual-design pass, browser matrix, full check
 

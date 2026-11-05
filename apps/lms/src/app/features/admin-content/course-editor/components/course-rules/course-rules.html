@@ -68,7 +68,12 @@
           <dd>{{ statusLabel[quiz.status] }}</dd>
         </div>
       </dl>
-      @if (exam.bankShortfall$(); as shortfall) {
+      @if (exam.publishError$(); as failure) {
+      <ui-alert tone="danger">
+        Chưa xuất bản được bài thi, nên khóa học chưa được xuất bản: {{
+        failure.message }}
+      </ui-alert>
+      } @if (exam.bankShortfall$(); as shortfall) {
       <ui-alert tone="warning" [announce]="false">
         Ngân hàng có {{ shortfall.active }} câu đang dùng, bài thi cần {{
         shortfall.needed }} câu.
