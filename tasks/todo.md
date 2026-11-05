@@ -148,6 +148,8 @@ unpublished exam that the chain will publish.
 **Dependencies:** T5 · **Files:** `course-editor/data-access/course-editor.store.ts`, `course-draft.ts`, `components/course-review/*` (confirmation text), specs · **Scope:** M
 
 ### T10: Lock the program once an exam is attached *(only if open question 4 = lock)*
+
+> **Skipped (not built):** open question 4 is undecided, so this task stays unchecked. Until it is decided, changing the program in step 1 after an exam exists is not blocked.
 **Acceptance criteria:**
 - [ ] With `finalQuizId` set, step 1's program select is disabled with the hint "Gỡ bài thi cuối khóa để đổi chương trình."
 
