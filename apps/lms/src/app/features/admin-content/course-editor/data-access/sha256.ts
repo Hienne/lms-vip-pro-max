@@ -25,11 +25,30 @@ export interface HashOptions {
 const readWithBlob = async (slice: Blob): Promise<Uint8Array> =>
   new Uint8Array(await slice.arrayBuffer());
 
+/** The digest of a blob, and the digest of each `sliceBytes` slice of it. */
+export interface BlobDigest {
+  /** The lower-case hex SHA-256 of the whole blob. */
+  readonly hex: string;
+  /**
+   * The lower-case hex SHA-256 of each slice, in order (empty for an empty blob). When the slice
+   * size is a part size, these are the parts' hashes, so a part need not be read again.
+   */
+  readonly sliceHashes: readonly string[];
+}
+
 /** The lower-case hex SHA-256 of `blob`. */
 export async function sha256Blob(
   blob: Blob,
   options: HashOptions = {},
 ): Promise<string> {
+  return (await sha256Digest(blob, options)).hex;
+}
+
+/** The SHA-256 of `blob` and of each of its slices, read once. */
+export async function sha256Digest(
+  blob: Blob,
+  options: HashOptions = {},
+): Promise<BlobDigest> {
   const {
     sliceBytes = SLICE_BYTES,
     onProgress,
@@ -40,13 +59,19 @@ export async function sha256Blob(
     throw new RangeError('The slice size must be a positive whole number.');
   }
   const hash = sha256.create();
+  const sliceHashes: string[] = [];
   for (let start = 0; start < blob.size; start += sliceBytes) {
     signal?.throwIfAborted();
     const end = Math.min(start + sliceBytes, blob.size);
-    hash.update(await read(blob.slice(start, end)));
+    const bytes = await read(blob.slice(start, end));
+    hash.update(bytes);
+    // A blob of one slice has one digest: the whole one, taken below.
+    if (blob.size > sliceBytes) sliceHashes.push(bytesToHex(sha256(bytes)));
     onProgress?.(end, blob.size);
   }
   signal?.throwIfAborted();
   if (blob.size === 0) onProgress?.(0, 0);
-  return bytesToHex(hash.digest());
+  const hex = bytesToHex(hash.digest());
+  if (blob.size > 0 && blob.size <= sliceBytes) sliceHashes.push(hex);
+  return { hex, sliceHashes };
 }
