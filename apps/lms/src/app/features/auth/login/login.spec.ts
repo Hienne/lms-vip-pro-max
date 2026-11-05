@@ -144,6 +144,14 @@ describe('Login', () => {
     expect(link.getAttribute('href')).toBe('/register');
   });
 
+  it('offers a way to ask for a new password', async () => {
+    await openLogin();
+    const link = el.querySelector<HTMLAnchorElement>(
+      'a[href="/forgot-password"]',
+    )!;
+    expect(link.textContent).toContain('Quên mật khẩu?');
+  });
+
   it('reveals and hides the password', async () => {
     await openLogin();
     const toggle = el.querySelector<HTMLButtonElement>('.login__reveal')!;

@@ -13,6 +13,7 @@ const PUBLIC_ENDPOINTS = new Set<unknown>([
   authV1Endpoints.login,
   identityEndpoints.registrationUnits,
   identityEndpoints.registerRequest,
+  identityEndpoints.passwordResetRequest,
 ]);
 
 export const bearerInterceptor: HttpInterceptorFn = (req, next) => {

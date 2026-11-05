@@ -58,6 +58,7 @@ describe('route table', () => {
       new Set([
         'login',
         'register',
+        'forgot-password',
         'change-password',
         'profile',
         'learn',

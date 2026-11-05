@@ -15,6 +15,7 @@ const EXEMPT = new Set<unknown>([
   authV1Endpoints.logout,
   identityEndpoints.registrationUnits,
   identityEndpoints.registerRequest,
+  identityEndpoints.passwordResetRequest,
 ]);
 
 /**
