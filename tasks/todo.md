@@ -50,7 +50,7 @@ draft and continues on `/admin/courses/:id/edit?step=1`.
 
 ## Checkpoint A
 - [x] `npx nx test lms` and `npx nx test mocks` green (lms: only the 4 `target-picker.spec` failures, which also fail on baseline `d7699b4`: `Receiver must be an instance of class URL`)
-- [ ] F1 (create → step 2) and F6 (quiz create) work on `mockBackend` in the browser (covered by specs; browser run deferred to T11)
+- [x] F1 (create → step 2) and F6 (quiz create) work on `mockBackend` in the browser
 - [ ] Review with human before Phase 2
 
 ---
@@ -124,8 +124,8 @@ import drawer (course fixed) and, for `QUESTION_BANK` users, a bank link.
 **Dependencies:** T4, T7 · **Files:** `course-exam.store.ts`, `course-rules.html`, `course-editor.spec.ts` · **Scope:** S
 
 ## Checkpoint B
-- [ ] F2–F4 work end to end on `mockBackend`
-- [ ] `npx nx run-many -t lint typecheck test build check-bundle --parallel=1` green
+- [x] F2–F4 work end to end on `mockBackend` (create, edit, too-small-bank warning checked in the browser; the Excel drawer itself is covered by specs)
+- [ ] `npx nx run-many -t lint typecheck test build check-bundle --parallel=1` green (only the 4 `target-picker` specs fail, same on the base commit; build and check-bundle pass)
 - [ ] Review with human before Phase 3
 
 ---
@@ -160,7 +160,7 @@ unpublished exam that the chain will publish.
 ### T11: Visual-design pass, browser matrix, full check
 **Acceptance criteria:**
 - [ ] visual-design.md checklist passes for step 3, the short form and the drawer.
-- [ ] F1–F5 checked on `mockBackend` at 1440 px and 375 px, light and dark; screenshots shared.
+- [ ] F1–F5 checked on `mockBackend` at 1440 px and 375 px, light and dark (F1–F4 and F6 seen; F5's publish click not run in the browser because the test course has no lessons, covered by specs)
 - [ ] Full check green; `mockBackend` reverted.
 
 **Verification:** run-many check (background, output to file); browser screenshots
