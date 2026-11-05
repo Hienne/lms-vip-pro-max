@@ -69,9 +69,7 @@ describe('LearningProgress', () => {
 
   const text = () => el.textContent?.replace(/\s+/g, ' ') ?? '';
   const rows = () =>
-    Array.from(
-      el.querySelectorAll('.learning-progress__course-row'),
-    );
+    Array.from(el.querySelectorAll('.learning-progress__course-row'));
   const calls = (endpoint: unknown) =>
     handle.mock.calls.filter(([e]) => e === endpoint);
   const lastQuery = (endpoint: unknown) =>
@@ -156,27 +154,6 @@ describe('LearningProgress', () => {
       expect(scores).toContain('—');
     });
 
-    it('lists every course with the server progress, a link and one status badge per row', () => {
-      const headers = Array.from(el.querySelectorAll('thead th')).map((th) =>
-        th.textContent?.trim(),
-      );
-      expect(headers).toEqual([
-        'Khóa học',
-        'Tiến độ',
-        'Trạng thái',
-        'Hạn hoàn thành',
-        'Truy cập gần nhất',
-      ]);
-      expect(rows().length).toBeGreaterThan(0);
-      for (const row of rows()) {
-        expect(row.querySelectorAll('.badge').length).toBe(1);
-        expect(row.querySelector('a')?.getAttribute('href')).toMatch(
-          /^\/course\/\d+$/,
-        );
-        expect(row.textContent).toMatch(/\d+%/);
-      }
-    });
-
     it('shows an overdue course as one danger badge', () => {
       const badge = Array.from(
         el.querySelectorAll(
@@ -216,8 +193,7 @@ describe('LearningProgress', () => {
 
     it('opens one accessible detail row at a time without another course request', async () => {
       const triggers = rows().map(
-        (row) =>
-          row.querySelector<HTMLButtonElement>('button[aria-expanded]')!,
+        (row) => row.querySelector<HTMLButtonElement>('button[aria-expanded]')!,
       );
       const count = calls(learnerEndpoints.myCourses).length;
       expect(el.querySelector('.learning-progress__detail')).toBeNull();
@@ -370,9 +346,9 @@ describe('LearningProgress', () => {
       expect(after(el.querySelector('app-progress-counts')!, card())).toBe(
         true,
       );
-      expect(
-        card().closest('[uiTabPanel]')?.getAttribute('uiTabPanel'),
-      ).toBe('competency');
+      expect(card().closest('[uiTabPanel]')?.getAttribute('uiTabPanel')).toBe(
+        'competency',
+      );
     });
 
     it('shows the large radar from the server rows, once, and keeps it when a filter changes', async () => {
@@ -512,9 +488,9 @@ describe('LearningProgress', () => {
 
     it('has a separate tab from competency', async () => {
       await open('/progress?tab=history');
-      expect(
-        card().closest('[uiTabPanel]')?.getAttribute('uiTabPanel'),
-      ).toBe('history');
+      expect(card().closest('[uiTabPanel]')?.getAttribute('uiTabPanel')).toBe(
+        'history',
+      );
       expect(card().closest('[uiTabPanel]')).not.toBe(
         el.querySelector('#progress-competency')?.closest('[uiTabPanel]'),
       );

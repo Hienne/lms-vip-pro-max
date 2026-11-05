@@ -1,5 +1,14 @@
 import { Dialog } from '@angular/cdk/dialog';
-import { Component, computed, inject, input, output } from '@angular/core';
+import { NgTemplateOutlet } from '@angular/common';
+import {
+  afterNextRender,
+  Component,
+  computed,
+  inject,
+  Injector,
+  input,
+  output,
+} from '@angular/core';
 import { FormField, type FieldTree } from '@angular/forms/signals';
 import {
   Badge,
@@ -32,7 +41,8 @@ import {
 /**
  * Step 2 of the editor: chapters and their lessons. Chapters are renamed in place, lessons are
  * reordered by drag or the move buttons and opened in the lesson drawer. It edits the page's form
- * through the field tree it is given.
+ * through the field tree it is given. A published revision (`editable` false) shows the outline as
+ * text, with no control that would change it.
  */
 @Component({
   selector: 'app-course-outline',
@@ -48,6 +58,7 @@ import {
     IconButton,
     Input,
     LinkButton,
+    NgTemplateOutlet,
     SortableItem,
     SortableList,
   ],
@@ -56,11 +67,17 @@ import {
 })
 export class CourseOutline {
   readonly draft = input.required<FieldTree<CourseDraftValue>>();
+  readonly editable = input(true);
   readonly editLesson = output<LessonTarget>();
 
   private readonly dialog = inject(Dialog);
+  private readonly injector = inject(Injector);
 
-  protected readonly blockTypes = BLOCK_TYPES;
+  /** Block labels by type, keyed loosely for the lesson template's untyped context. */
+  protected readonly blockLabels: Readonly<Record<string, string>> =
+    Object.fromEntries(
+      Object.entries(BLOCK_TYPES).map(([type, { label }]) => [type, label]),
+    );
   protected readonly problemOf = lessonProblem;
   protected readonly totals = computed(() =>
     draftTotals(this.draft()().value()),
@@ -70,8 +87,14 @@ export class CourseOutline {
     return this.draft().chapters().value;
   }
 
+  /** Adds a chapter and puts the cursor in its title, once the title is on the page. */
   protected addChapter(): void {
+    const index = this.chapters().length;
     this.chapters.update((list) => [...list, newChapter(list.length + 1)]);
+    afterNextRender(
+      () => this.draft().chapters[index]?.title().focusBoundControl(),
+      { injector: this.injector },
+    );
   }
 
   protected async removeChapter(index: number): Promise<void> {

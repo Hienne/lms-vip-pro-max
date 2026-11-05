@@ -1,29 +1,31 @@
 <ui-page-header title="Báo cáo đào tạo" [description]="store.description$()">
-  @if (store.dimension$()) {
-  <button
+  <span
     slot="actions"
-    uiButton
-    [disabled]="!store.canExport$() || store.exporting$()"
-    [busy]="store.exporting$()"
-    (click)="store.exportCsv()"
+    class="report-screen__export"
+    [uiTooltip]="store.exportReason$() ?? ''"
+    ><button
+      uiButton
+      [disabled]="!store.canExport$() || store.exporting$()"
+      [busy]="store.exporting$()"
+      [attr.aria-describedby]="store.exportReason$() ? 'report-export-reason' : null"
+      (click)="store.exportCsv()"
+    >
+      <ui-icon name="download" size="sm" /> Xuất CSV</button
+    >@if (store.exportReason$(); as reason) {<span
+      id="report-export-reason"
+      class="sr-only"
+      >{{ reason }}</span
+    >}</span
   >
-    <ui-icon name="download" size="sm" /> Xuất CSV
-  </button>
-  }
 </ui-page-header>
 <nav class="report-screen__navigation" aria-label="Các báo cáo chi tiết">
+  @for (tab of store.tabs$(); track tab.id) {
   <a
-    routerLink="/reports"
+    [routerLink]="tab.path"
+    [queryParams]="tab.queryParams"
     class="report-screen__tab"
-    [attr.aria-current]="!store.dimension$() && !store.unsupported$() ? 'page' : null"
-    >Tổng quan</a
-  >
-  @for (dim of dims; track dim.id) {
-  <a
-    [routerLink]="['/reports', dim.id]"
-    class="report-screen__tab"
-    [attr.aria-current]="store.dimension$() === dim.id ? 'page' : null"
-    >{{dim.label}}</a
+    [attr.aria-current]="store.tab$() === tab.id ? 'page' : null"
+    >{{tab.label}}</a
   >
   }
 </nav>
@@ -41,28 +43,23 @@
       >
     </div>
     <div class="report-screen__filter-main">
-      @if (store.dimension$() === 'learners') {
-      <ui-field
-        label="ID bài kiểm tra"
-        hint="Nhập ID để xem cả học viên chưa thi."
-        [required]="true"
-        ><input
-          uiInput
-          inputmode="numeric"
-          placeholder="Nhập ID bài kiểm tra"
-          [formField]="filterForm.quizId"
-      /></ui-field>
-      <ui-field label="Tình trạng học viên"
-        ><select uiSelect [formField]="filterForm.learnerStatus">
-          <option value="">Tất cả tình trạng</option>
-          <option value="NOT_STARTED">Chưa thi</option>
-          <option value="IN_PROGRESS">Đang làm</option>
-          <option value="FAILED">Chưa đạt</option>
-          <option value="PASSED">Đạt</option>
-        </select></ui-field
-      >
-      } @else {
-      <ui-field label="Nộp từ ngày"
+      @if (store.dimension$() === 'learners') { @for (field of leadPickers();
+      track field.key) {
+      <app-report-picker
+        [label]="field.label"
+        [emptyLabel]="field.emptyLabel"
+        [options]="store.pickers.matches$()[field.key]"
+        [selected]="store.pickers.selected$()[field.key]"
+        [busy]="store.pickers.busy$()[field.key]"
+        [disabled]="!!field.parent && !store.pickers.selected$()[field.parent.key]"
+        [disabledReason]="field.parent?.reason ?? ''"
+        [error]="store.pickers.errors$()[field.key]"
+        [required]="field.key === 'quizId' && store.dimension$() === 'learners'"
+        (queried)="store.pickers.search(field.key, $event)"
+        (picked)="store.pickers.pick(field.key, $event)"
+      />
+      } } @else {
+      <ui-field [label]="store.progress$() ? 'Ghi danh từ ngày' : 'Nộp từ ngày'"
         ><input uiInput type="datetime-local" [formField]="filterForm.from"
       /></ui-field>
       <ui-field label="Đến trước ngày"
@@ -76,24 +73,33 @@
         </button>
       </div>
     </div>
-    <details class="report-screen__advanced">
+    <details class="report-screen__advanced" [open]="scopeHasError()">
       <summary>Phạm vi &amp; điều kiện chi tiết</summary>
       <div class="grid-4 report-screen__filter-grid">
-        <ui-field
-          label="ID đơn vị"
-          hint="Để trống để xem toàn bộ phạm vi được cấp."
-          ><input uiInput inputmode="numeric" [formField]="filterForm.orgId"
-        /></ui-field>
-        <ui-field label="ID phòng / nhóm"
-          ><input uiInput inputmode="numeric" [formField]="filterForm.teamId"
-        /></ui-field>
-        @if (store.dimension$() !== 'learners') {
-        <ui-field label="ID khóa học"
-          ><input uiInput inputmode="numeric" [formField]="filterForm.courseId"
-        /></ui-field>
-        <ui-field label="ID bài kiểm tra"
-          ><input uiInput inputmode="numeric" [formField]="filterForm.quizId"
-        /></ui-field>
+        @for (field of scopePickers(); track field.key) {
+        <app-report-picker
+          [label]="field.label"
+          [emptyLabel]="field.emptyLabel"
+          [options]="store.pickers.matches$()[field.key]"
+          [selected]="store.pickers.selected$()[field.key]"
+          [busy]="store.pickers.busy$()[field.key]"
+          [disabled]="!!field.parent && !store.pickers.selected$()[field.parent.key]"
+          [disabledReason]="field.parent?.reason ?? ''"
+          [error]="store.pickers.errors$()[field.key]"
+          [required]="field.key === 'quizId' && store.dimension$() === 'learners'"
+          (queried)="store.pickers.search(field.key, $event)"
+          (picked)="store.pickers.pick(field.key, $event)"
+        />
+        } @if (store.dimension$() === 'learners') {
+        <ui-field label="Tình trạng học viên"
+          ><select uiSelect [formField]="filterForm.learnerStatus">
+            <option value="">Tất cả tình trạng</option>
+            <option value="NOT_STARTED">Chưa thi</option>
+            <option value="IN_PROGRESS">Đang làm</option>
+            <option value="FAILED">Chưa đạt</option>
+            <option value="PASSED">Đạt</option>
+          </select></ui-field
+        >
         } @if (store.dimension$() === 'results') {
         <ui-field label="Mã cán bộ"
           ><input uiInput [formField]="filterForm.userId"
@@ -114,6 +120,19 @@
             <option value="false">Chưa đạt</option>
           </select></ui-field
         >
+        } @if (store.progress$()) {
+        <ui-field label="Trạng thái"
+          ><select uiSelect [formField]="filterForm.learningStatus">
+            <option value="">Tất cả</option>
+            <option value="not_started">Chưa bắt đầu</option>
+            <option value="in_progress">Đang học</option>
+            <option value="completed">Hoàn thành</option>
+          </select></ui-field
+        >
+        <label class="row row--gap-2 report-screen__check"
+          ><input type="checkbox" uiCheckbox [formField]="filterForm.overdue" />
+          Chỉ quá hạn</label
+        >
         } @if (store.dimension$() === 'competency') {
         <ui-field label="Gộp năng lực theo"
           ><select uiSelect [formField]="filterForm.groupBy">
@@ -127,46 +146,79 @@
   </form>
 </section>
 @if (store.unsupported$()) {
-<ui-alert
-  >Loại báo cáo này chưa được hỗ trợ. Chọn một báo cáo ở phía trên.</ui-alert
->
+<ui-alert>Không có báo cáo này. Chọn một báo cáo ở trên.</ui-alert>
 } @else if (store.needsQuiz$()) {
 <ui-empty
   title="Chọn bài kiểm tra để xem học viên"
-  description="Nhập ID bài kiểm tra và áp dụng bộ lọc. Báo cáo này bao gồm cả học viên chưa thi; không lọc theo ngày nộp."
+  description="Chọn khóa học và bài kiểm tra để xem cả học viên chưa thi."
 />
-} @else if (store.isLoading$()) {
-<p class="row" role="status"><span uiSpinner></span>Đang tải báo cáo…</p>
-} @else if (store.error$(); as error) {
-<ui-error-state [message]="error.message" (retry)="store.retry()" />
-} @else if (store.dimension$()) {
-<section uiCard class="report-screen__detail">
-  <div class="row-between report-screen__section-heading">
-    <div>
-      <h2>{{store.title$()}}</h2>
-      <p>{{store.total$() | fmtNum}} dòng phù hợp với bộ lọc</p>
-    </div>
-    <span class="report-screen__muted">Xuất CSV để nhận toàn bộ kết quả</span>
+} @else if (store.pickers.blocked$() && !store.error$()) {
+<!-- A filter of the link is not in scope (its picker says so) or still resolving. -->
+} @else if (store.progress$()) {
+<app-progress-report />
+} @else if (!store.dimension$()) {
+<section
+  uiCard
+  class="report-screen__metrics"
+  aria-labelledby="report-learning-title"
+>
+  <div class="report-screen__part-heading">
+    <h2 id="report-learning-title">Tiến độ học</h2>
   </div>
-  <ui-data-table
-    [caption]="store.title$()"
-    [columns]="store.columns$()"
-    [rows]="store.rows$()"
-    [total]="store.total$()"
-    [page]="store.page$()"
-    [pageSize]="20"
-    [sort]="store.sort$()"
-    (pageChange)="store.changePage($event)"
-    (sortChange)="store.changeSort($event)"
-  >
-    <ui-empty
-      slot="empty"
-      variant="inline"
-      title="Không có dữ liệu phù hợp"
-      description="Thử thay đổi phạm vi hoặc đặt lại bộ lọc."
-    />
-  </ui-data-table>
+  @if (store.learningLoading$()) {
+  <p class="row report-screen__part-state" role="status">
+    <span uiSpinner></span>Đang tải tiến độ học…
+  </p>
+  } @else if (store.learningError$(); as error) {
+  <ui-error-state [message]="error.message" (retry)="store.retryLearning()" />
+  } @else if (store.learning$(); as counts) { @if (counts.enrollments) {
+  <dl>
+    <div>
+      <dt>Lượt học</dt>
+      <dd>{{counts.enrollments | fmtNum}}</dd>
+    </div>
+    <div>
+      <dt>Học viên</dt>
+      <dd>{{counts.learners | fmtNum}}</dd>
+    </div>
+    <div>
+      <dt>Hoàn thành</dt>
+      <dd>{{counts.completed | fmtNum}}</dd>
+    </div>
+    <div>
+      <dt>Đang học</dt>
+      <dd>{{counts.inProgress | fmtNum}}</dd>
+    </div>
+    <div>
+      <dt>Chưa bắt đầu</dt>
+      <dd>{{counts.notStarted | fmtNum}}</dd>
+    </div>
+    <div [class.report-screen__kpi--danger]="counts.overdue > 0">
+      <dt>Quá hạn</dt>
+      <dd>{{counts.overdue | fmtNum}}</dd>
+    </div>
+    <div>
+      <dt>Tỷ lệ hoàn thành</dt>
+      <dd>{{counts.completionRate | fmtPct:2}}</dd>
+    </div>
+    <div>
+      <dt>Tiến độ trung bình</dt>
+      <dd>{{counts.averageProgress | fmtPct:2}}</dd>
+    </div>
+  </dl>
+  } @else {
+  <ui-empty variant="inline" title="Chưa có lượt học trong phạm vi đã chọn" />
+  }
+  <p class="report-screen__as-of">
+    Số liệu tính đến {{store.learningAsOf$()}}.
+  </p>
+  }
 </section>
+<h2 class="report-screen__part-title">Kết quả thi</h2>
+@if (store.examLoading$()) {
+<p class="row" role="status"><span uiSpinner></span>Đang tải kết quả thi…</p>
+} @else if (store.examError$(); as error) {
+<ui-error-state [message]="error.message" (retry)="store.retry()" />
 } @else if (store.overview$(); as data) {
 <section
   uiCard
@@ -356,6 +408,38 @@
       slot="empty"
       variant="inline"
       title="Chưa có dữ liệu trong phạm vi đã chọn"
+    />
+  </ui-data-table>
+</section>
+} } @else if (store.isLoading$()) {
+<p class="row" role="status"><span uiSpinner></span>Đang tải báo cáo…</p>
+} @else if (store.error$(); as error) {
+<ui-error-state [message]="error.message" (retry)="store.retry()" />
+} @else if (store.dimension$()) {
+<section uiCard class="report-screen__detail">
+  <div class="row-between report-screen__section-heading">
+    <div>
+      <h2>{{store.title$()}}</h2>
+      <p>{{store.total$() | fmtNum}} dòng phù hợp với bộ lọc</p>
+    </div>
+    <span class="report-screen__muted">Xuất CSV để nhận toàn bộ kết quả</span>
+  </div>
+  <ui-data-table
+    [caption]="store.title$()"
+    [columns]="store.columns$()"
+    [rows]="store.rows$()"
+    [total]="store.total$()"
+    [page]="store.page$()"
+    [pageSize]="20"
+    [sort]="store.sort$()"
+    (pageChange)="store.changePage($event)"
+    (sortChange)="store.changeSort($event)"
+  >
+    <ui-empty
+      slot="empty"
+      variant="inline"
+      title="Không có dữ liệu phù hợp"
+      description="Thử thay đổi phạm vi hoặc đặt lại bộ lọc."
     />
   </ui-data-table>
 </section>

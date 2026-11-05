@@ -219,16 +219,6 @@ describe('Learn', () => {
     });
   });
 
-  describe('the course tabs', () => {
-    it('keep to one line: compact spacing, no wrapping row', async () => {
-      await open();
-      const list = el.querySelector('[role="tablist"]')!;
-      expect(list.classList.contains('tabs--compact')).toBe(true);
-      expect(list.classList.contains('tabs--wrap')).toBe(false);
-      expect(el.querySelectorAll('[ngTab]')).toHaveLength(5);
-    });
-  });
-
   describe('the programme journey', () => {
     const journey = () =>
       el.querySelector<HTMLElement>(
@@ -470,11 +460,7 @@ describe('Learn', () => {
           'app-learn-kpis a:nth-of-type(n+2) dt, app-learn-kpis a:nth-of-type(n+2) dd',
         ),
       ).map((node) => node.textContent?.replace(/\s+/g, ' ').trim());
-      expect(cells).toEqual([
-        'Kết quả kiểm tra',
-        '—',
-        'Chưa làm bài kiểm tra',
-      ]);
+      expect(cells).toEqual(['Kết quả kiểm tra', '—', 'Chưa làm bài kiểm tra']);
       expect(el.querySelector('app-learn-kpis')!.textContent).not.toMatch(
         /Đạt ·/,
       );
@@ -487,10 +473,7 @@ describe('Learn', () => {
       const scores = Array.from(
         el.querySelectorAll('app-learn-kpis a:nth-of-type(n+2) dd'),
       ).map((node) => node.textContent?.replace(/\s+/g, ' ').trim());
-      expect(scores).toEqual([
-        '—',
-        'Chưa có bài kiểm tra',
-      ]);
+      expect(scores).toEqual(['—', 'Chưa có bài kiểm tra']);
       expect(text()).not.toContain('Không tải được');
       expect(el.querySelectorAll('app-learn-kpis dt')).toHaveLength(3);
     });

@@ -54,6 +54,14 @@ describe('Stepper', () => {
     expect(steps()[1].querySelector('.stepper__sub')).toBeNull();
   });
 
+  it('exposes plain buttons in a list, with no tab or tabpanel role', async () => {
+    const { root, steps } = await render();
+    expect(
+      root.querySelectorAll('[role="tab"], [role="tabpanel"]'),
+    ).toHaveLength(0);
+    expect(steps().every((s) => s.tagName === 'BUTTON')).toBe(true);
+  });
+
   it('marks the current step with aria-current="step" and no other', async () => {
     const { steps } = await render();
     expect(steps().map((s) => s.getAttribute('aria-current'))).toEqual([

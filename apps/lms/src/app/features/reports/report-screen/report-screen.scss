@@ -7,9 +7,16 @@
 .report-screen {
   &__navigation {
     display: flex;
+    flex-wrap: wrap;
     gap: ui.space(1);
-    overflow-x: auto;
     border-bottom: 1px solid ui.color(border);
+  }
+  // The wrapper takes the hover for the tooltip: a disabled button gets no pointer events.
+  &__export {
+    display: inline-flex;
+    button:disabled {
+      pointer-events: none;
+    }
   }
   &__tab {
     flex-shrink: 0;
@@ -60,6 +67,10 @@
   &__filter-grid {
     padding-top: ui.space(4);
   }
+  &__check {
+    align-self: end;
+    padding-block: ui.space(2);
+  }
   &__tab:focus-visible,
   &__advanced summary:focus-visible {
     @include ui.focus-ring;
@@ -100,7 +111,31 @@
       dl > div + div {
         border-left: 1px solid ui.color(border);
       }
+      // A second row of four starts at the edge, with no rule before it.
+      dl > div:nth-child(4n + 1) {
+        border-left: 0;
+      }
     }
+  }
+  &__kpi--danger dd {
+    color: ui.color(danger);
+  }
+  &__part-heading {
+    padding: ui.space(5) ui.space(5) 0;
+    h2 {
+      font-size: ui.text-size(md);
+    }
+  }
+  &__part-state,
+  &__as-of {
+    margin: 0;
+    padding: 0 ui.space(5) ui.space(5);
+  }
+  &__as-of {
+    @include ui.text(sm, muted);
+  }
+  &__part-title {
+    font-size: ui.text-size(lg);
   }
   &__analytics {
     display: grid;

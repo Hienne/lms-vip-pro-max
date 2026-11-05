@@ -28,6 +28,8 @@ export * from './lib/reports/reports.schema';
 export * from './lib/reports/reports.endpoints';
 export * from './lib/reports/assessment-reports.schema';
 export * from './lib/reports/assessment-reports.endpoints';
+export * from './lib/reports/learning-reports.schema';
+export * from './lib/reports/learning-reports.endpoints';
 export * from './lib/personal/personal.schema';
 export * from './lib/personal/personal.endpoints';
 export * from './lib/certificate/certificate.schema';

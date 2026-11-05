@@ -11,6 +11,7 @@
       <button
         type="button"
         cdkStepHeader
+        [attr.role]="null"
         class="stepper__step"
         [class.is-done]="step.done"
         [attr.aria-current]="cdk.selectedIndex === i ? 'step' : null"

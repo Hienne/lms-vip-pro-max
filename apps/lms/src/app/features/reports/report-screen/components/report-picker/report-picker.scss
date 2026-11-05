@@ -1,0 +1,82 @@
+@use 'ui';
+
+.report-picker {
+  position: relative;
+  min-width: 0;
+
+  // Room for "Xóa", so a long name does not run under it.
+  &--clearable input {
+    padding-inline-end: ui.space(8);
+    text-overflow: ellipsis;
+  }
+
+  &__clear {
+    position: absolute;
+    inset-block-start: ui.space(6);
+    inset-inline-end: ui.space(1);
+  }
+
+  &__error {
+    @include ui.row(1);
+    @include ui.text(sm);
+    margin: ui.space(1) 0 0;
+    color: ui.color(danger);
+  }
+
+  &__results {
+    @include ui.stack(1);
+    position: absolute;
+    inset-inline: 0;
+    z-index: ui.z(bar);
+    margin-block-start: ui.space(1);
+    padding: ui.space(1);
+    border: 1px solid ui.color(border);
+    border-radius: ui.radius(card);
+    background: ui.color(surface);
+    box-shadow: ui.shadow(lg);
+  }
+
+  &__list {
+    max-height: 14rem;
+    overflow-y: auto;
+
+    &:empty {
+      display: none;
+    }
+  }
+
+  &__option {
+    @include ui.row(1);
+    @include ui.text(sm);
+    min-height: ui.space(10);
+    padding-inline: ui.space(3);
+    border-radius: ui.radius(sm);
+    cursor: pointer;
+
+    &:hover,
+    &[data-active='true'] {
+      background: ui.color(surface-2);
+    }
+
+    &[aria-selected='true'] {
+      background: ui.color(primary-subtle);
+      color: ui.color(primary);
+    }
+  }
+
+  &__meta {
+    @include ui.mono;
+    flex: none;
+  }
+
+  &__name {
+    min-width: 0;
+    overflow-wrap: anywhere;
+  }
+
+  &__note {
+    @include ui.text(sm, muted);
+    margin: 0;
+    padding: ui.space(2) ui.space(3);
+  }
+}

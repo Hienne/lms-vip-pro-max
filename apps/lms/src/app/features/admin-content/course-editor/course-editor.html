@@ -55,15 +55,15 @@
 <ui-stepper
   class="course-editor__steps"
   label="Các bước soạn khóa học"
-  [steps]="steps"
+  [steps]="store.steps$()"
   [selectedIndex]="store.step$()"
   (selectedIndexChange)="store.goToStep($event)"
 />
 
-@if (invalidSteps().length) {
+@if (store.invalidSteps$().length) {
 <ui-alert tone="danger" class="course-editor__notice">
-  Còn thông tin chưa hợp lệ ở: @for (step of invalidSteps(); track step; let
-  last = $last) {
+  Còn thông tin chưa hợp lệ ở: @for (step of store.invalidSteps$(); track step;
+  let last = $last) {
   <button uiLinkButton type="button" (click)="store.goToStep(step)">
     {{ steps[step].label }}</button
   >{{ last ? '.' : ',' }} }
@@ -81,6 +81,7 @@
     <app-course-info
       [draft]="courseForm"
       [create]="store.isCreate$()"
+      [editable]="store.isDraft$()"
       [ownerName]="store.ownerName$()"
       [programs]="store.programs$()"
       [modules]="store.modules$()"
@@ -91,6 +92,7 @@
     } @case (1) {
     <app-course-outline
       [draft]="courseForm"
+      [editable]="store.isDraft$()"
       (editLesson)="store.editLesson($event)"
     />
     } @case (2) {
@@ -123,11 +125,7 @@
     <ui-icon name="archive" size="sm" />Lưu nháp
   </button>
   } @if (store.step$() < steps.length - 1) {
-  <button
-    uiButton
-    variant="primary"
-    (click)="store.goToStep(store.step$() + 1)"
-  >
+  <button uiButton variant="primary" (click)="continue()">
     Tiếp tục<ui-icon name="chevron-right" size="sm" />
   </button>
   } @else if (store.isDraft$()) {

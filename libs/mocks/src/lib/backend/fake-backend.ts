@@ -246,6 +246,7 @@ export class FakeBackend {
         .filter((u) => u.status === 'active')
         .map((u) => ({ userId: u.userId, orgId: u.orgId, teamId: u.teamId })),
     quizStatus: (quizId) => this.authoring.quizStatus(quizId),
+    reportScope: (request) => this.reportScope(request),
     nameOf: (type, id) => {
       switch (type) {
         case 'user':
@@ -737,6 +738,35 @@ export class FakeBackend {
         roleCodes.includes(this.roleOf(g).code) &&
         (scope === undefined || g.scope === scope),
     );
+  }
+
+  /**
+   * Who the caller's report grants (SUPER_ADMIN, ADMIN, INSTRUCTOR, REPORT_VIEWER, never OWN)
+   * cover: everyone for a GLOBAL grant, an org and its subtree, or one team.
+   */
+  private reportScope(request: FakeRequest) {
+    const grants = this.activeGrants(this.caller(request).userId).filter(
+      (g) =>
+        ['SUPER_ADMIN', 'ADMIN', 'INSTRUCTOR', 'REPORT_VIEWER'].includes(
+          this.roleOf(g).code,
+        ) && g.scope !== 'OWN',
+    );
+    if (!grants.length) return refuse('accessDenied');
+    const orgs = new Set(
+      grants.flatMap((g) =>
+        g.scope === 'ORG' && g.orgId !== null ? this.subtree(g.orgId) : [],
+      ),
+    );
+    const teams = new Set(
+      grants.flatMap((g) =>
+        g.scope === 'TEAM' && g.teamId !== null ? [g.teamId] : [],
+      ),
+    );
+    const global = grants.some((g) => g.scope === 'GLOBAL');
+    return (person: { orgId: number | null; teamId: number | null }) =>
+      global ||
+      (person.orgId !== null && orgs.has(person.orgId)) ||
+      (person.teamId !== null && teams.has(person.teamId));
   }
 
   private isSuperAdmin(user: DbUser): boolean {

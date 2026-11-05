@@ -1,0 +1,128 @@
+<section uiCard class="progress-report" aria-labelledby="progress-report-title">
+  <div class="row-between row--gap-3 progress-report__heading">
+    <div>
+      <h2 id="progress-report-title">{{store.title$()}}</h2>
+      <p>{{report.total$() | fmtNum}} dòng phù hợp với bộ lọc</p>
+    </div>
+    <ui-segmented
+      label="Xem tiến độ"
+      [options]="views"
+      [value]="report.view$()"
+      (valueChange)="store.selectView($event)"
+    />
+  </div>
+  @if (report.loading$()) {
+  <p class="row progress-report__state" role="status">
+    <span uiSpinner></span>Đang tải tiến độ học…
+  </p>
+  } @else if (report.error$(); as error) {
+  <ui-error-state [message]="error.message" (retry)="report.retry()" />
+  } @else if (report.view$() !== 'learners') {
+  <ui-data-table
+    [caption]="report.view$() === 'org' ? 'Tiến độ học theo đơn vị' : 'Tiến độ học theo khóa học'"
+    [columns]="groupColumns"
+    [rows]="report.groups$()"
+    [total]="report.groupTotal$()"
+    [page]="store.page$()"
+    [pageSize]="pageSize"
+    (pageChange)="store.changePage($event)"
+  >
+    <ng-template uiDataTableCell="name" [of]="report.groups$()" let-group>
+      @if (group.drill) {
+      <a
+        uiTablePrimary
+        class="progress-report__name"
+        [routerLink]="[]"
+        [queryParams]="group.drill"
+        [title]="group.name ?? group.id"
+        >{{group.name ?? group.id}}</a
+      >
+      } @else {
+      <span class="progress-report__name"
+        >{{group.name ?? 'Chưa xác định'}}</span
+      >
+      }
+    </ng-template>
+    @for (key of numberKeys; track key) {
+    <ng-template [uiDataTableCell]="key" [of]="report.groups$()" let-group
+      ><span class="progress-report__number"
+        >{{group[key] | fmtNum}}</span
+      ></ng-template
+    >
+    }
+    <ng-template
+      uiDataTableCell="completionRate"
+      [of]="report.groups$()"
+      let-group
+      ><span class="progress-report__number"
+        >{{group.completionRate | fmtPct:1}}</span
+      ></ng-template
+    >
+    <ng-template
+      uiDataTableCell="averageProgress"
+      [of]="report.groups$()"
+      let-group
+      ><span class="progress-report__number"
+        >{{group.averageProgress | fmtPct:1}}</span
+      ></ng-template
+    >
+    <ui-empty
+      slot="empty"
+      variant="inline"
+      title="Không có lượt học phù hợp với bộ lọc."
+    />
+  </ui-data-table>
+  } @else {
+  <ui-data-table
+    caption="Tiến độ học theo học viên"
+    [columns]="learnerColumns"
+    [rows]="report.learners$()"
+    [total]="report.learnerTotal$()"
+    [page]="store.page$()"
+    [pageSize]="pageSize"
+    [sort]="report.sort$()"
+    (pageChange)="store.changePage($event)"
+    (sortChange)="store.changeSort($event)"
+  >
+    <ng-template uiDataTableCell="fullName" [of]="report.learners$()" let-row
+      ><span uiTablePrimary>{{row.fullName}}</span></ng-template
+    >
+    <ng-template uiDataTableCell="orgName" [of]="report.learners$()" let-row
+      >{{row.orgName}}@if (row.teamName) {<span class="progress-report__sub"
+        >{{row.teamName}}</span
+      >}</ng-template
+    >
+    <ng-template uiDataTableCell="course" [of]="report.learners$()" let-row
+      ><span class="progress-report__name" [title]="row.courseTitle"
+        >{{row.courseCode}} · {{row.courseTitle}}</span
+      ></ng-template
+    >
+    <ng-template
+      uiDataTableCell="progressPercent"
+      [of]="report.learners$()"
+      let-row
+      ><span class="progress-report__number"
+        >{{row.progressPercent | fmtNum}}</span
+      ></ng-template
+    >
+    <ng-template uiDataTableCell="dueAt" [of]="report.learners$()" let-row
+      >{{row.dueAt | fmtDate}}</ng-template
+    >
+    <ng-template uiDataTableCell="overdue" [of]="report.learners$()" let-row
+      >@if (row.overdue) {<span uiBadge tone="danger" dot>Quá hạn</span
+      >}</ng-template
+    >
+    <ng-template
+      uiDataTableCell="lastAccessAt"
+      [of]="report.learners$()"
+      let-row
+      >{{row.lastAccessAt | fmtDatetime}}</ng-template
+    >
+    <ui-empty
+      slot="empty"
+      variant="inline"
+      title="Không có lượt học phù hợp với bộ lọc."
+    />
+  </ui-data-table>
+  }
+</section>

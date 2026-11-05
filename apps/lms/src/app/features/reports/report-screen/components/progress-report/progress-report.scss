@@ -1,0 +1,36 @@
+@use 'ui';
+
+.progress-report {
+  min-width: 0;
+  overflow: hidden;
+
+  &__heading {
+    flex-wrap: wrap;
+    padding: ui.space(5);
+    border-bottom: 1px solid ui.color(border);
+    h2 {
+      font-size: ui.text-size(lg);
+    }
+    p {
+      @include ui.text(sm, muted);
+      margin-top: ui.space(1);
+    }
+  }
+  &__state {
+    padding: ui.space(5);
+  }
+  &__name {
+    @include ui.truncate;
+    display: block;
+    max-width: 32ch;
+  }
+  &__sub {
+    @include ui.text(sm, muted);
+    display: block;
+  }
+  &__number {
+    @include ui.num;
+    display: block;
+    text-align: right;
+  }
+}

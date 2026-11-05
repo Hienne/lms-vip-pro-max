@@ -1,4 +1,4 @@
-import { Component, inject, linkedSignal } from '@angular/core';
+import { Component, computed, inject, linkedSignal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import {
   form,
@@ -7,7 +7,10 @@ import {
   validateStandardSchema,
 } from '@angular/forms/signals';
 import { z } from 'zod';
-import { AssessmentReportExportQuerySchema } from '@lms/contracts';
+import {
+  AssessmentReportExportQuerySchema,
+  LearningStatusSchema,
+} from '@lms/contracts';
 import {
   Alert,
   DonutChart,
@@ -25,24 +28,71 @@ import {
   PageHeader,
   Select,
   Spinner,
+  Tooltip,
+  Checkbox,
   type DataTableColumn,
 } from '@lms/ui';
-import {
-  ReportScreenStore,
-  REPORT_DIMENSIONS,
-} from './data-access/report-screen.store';
-const id = z
-  .string()
-  .refine(
-    (v) => !v || (/^[1-9]\d*$/.test(v) && Number.isSafeInteger(Number(v))),
-    'Nhập ID là số nguyên dương.',
-  );
+import { ReportScreenStore } from './data-access/report-screen.store';
+import type { PickerKey } from './data-access/report-pickers';
+import { ReportPicker } from './components/report-picker/report-picker';
+import { ProgressReport } from './components/progress-report/progress-report';
+
+interface PickerField {
+  readonly key: PickerKey;
+  readonly label: string;
+  /** What an empty choice means. */
+  readonly emptyLabel: string;
+  /** The picker this one waits for, and the reason it gives meanwhile. */
+  readonly parent?: { readonly key: PickerKey; readonly reason: string };
+}
+
+const PICKERS: Record<PickerKey, PickerField> = {
+  orgId: {
+    key: 'orgId',
+    label: 'Đơn vị',
+    emptyLabel: 'Toàn bộ phạm vi được cấp',
+  },
+  teamId: {
+    key: 'teamId',
+    label: 'Phòng / nhóm',
+    emptyLabel: 'Tất cả phòng / nhóm',
+    parent: { key: 'orgId', reason: 'Chọn đơn vị trước' },
+  },
+  courseId: {
+    key: 'courseId',
+    label: 'Khóa học',
+    emptyLabel: 'Tất cả khóa học',
+  },
+  quizId: {
+    key: 'quizId',
+    label: 'Bài kiểm tra',
+    emptyLabel: 'Tất cả bài kiểm tra',
+    parent: { key: 'courseId', reason: 'Chọn khóa học trước' },
+  },
+};
+
+const EMPTY_FORM = {
+  userId: '',
+  from: '',
+  to: '',
+  status: '',
+  learnerStatus: '',
+  passed: '',
+  groupBy: 'user' as 'user' | 'org',
+  learningStatus: '',
+  overdue: false,
+};
+
+/** An ISO date-time as a `datetime-local` value, in the browser's time zone. */
+function toLocalInput(iso: string | undefined): string {
+  if (!iso) return '';
+  const date = new Date(iso);
+  const local = new Date(date.getTime() - date.getTimezoneOffset() * 60_000);
+  return local.toISOString().slice(0, 16);
+}
+
 const filterSchema = z
   .object({
-    orgId: id,
-    teamId: id,
-    courseId: id,
-    quizId: id,
     userId: z.string().max(20),
     from: z.string(),
     to: z.string(),
@@ -50,6 +100,8 @@ const filterSchema = z
     learnerStatus: z.string(),
     passed: z.string(),
     groupBy: z.enum(['user', 'org']),
+    learningStatus: z.string(),
+    overdue: z.boolean(),
   })
   .superRefine((v, ctx) => {
     if (v.from && !Number.isFinite(Date.parse(v.from)))
@@ -72,6 +124,10 @@ const filterSchema = z
 @Component({
   selector: 'app-report-screen',
   imports: [
+    ReportPicker,
+    ProgressReport,
+    Checkbox,
+    Tooltip,
     DonutChart,
     RouterLink,
     FormField,
@@ -98,7 +154,6 @@ const filterSchema = z
 })
 export class ReportScreen {
   protected readonly store = inject(ReportScreenStore);
-  protected readonly dims = REPORT_DIMENSIONS;
   protected readonly groupColumns: readonly DataTableColumn[] = [
     { key: 'name', label: 'Bài kiểm tra / đơn vị', sortable: false },
     { key: 'gradedAttempts', label: 'Lượt chấm', sortable: false },
@@ -107,19 +162,41 @@ export class ReportScreen {
     { key: 'passRate', label: 'Đạt (%)', sortable: false },
     { key: 'averageScore', label: 'Điểm TB (%)', sortable: false },
   ];
-  private readonly filterModel = linkedSignal(() => ({
-    orgId: '',
-    teamId: '',
-    courseId: '',
-    quizId: '',
-    userId: this.store.incomingUserId$(),
-    from: '',
-    to: '',
-    status: '',
-    learnerStatus: '',
-    passed: '',
-    groupBy: 'user' as 'user' | 'org',
-  }));
+  /**
+   * "Tình trạng học viên" needs a quiz, so its course and quiz pickers lead the form; elsewhere
+   * the pickers set the scope under "Phạm vi & điều kiện chi tiết".
+   */
+  protected readonly leadPickers = computed(() =>
+    this.store.dimension$() === 'learners'
+      ? [PICKERS.courseId, PICKERS.quizId]
+      : [],
+  );
+  protected readonly scopePickers = computed(() =>
+    this.store.dimension$() === 'learners'
+      ? [PICKERS.orgId, PICKERS.teamId]
+      : this.store.progress$()
+        ? [PICKERS.orgId, PICKERS.teamId, PICKERS.courseId]
+        : [PICKERS.orgId, PICKERS.teamId, PICKERS.courseId, PICKERS.quizId],
+  );
+  /** The detailed filters stay open while one of them says a link's id is not found. */
+  protected readonly scopeHasError = computed(() =>
+    Object.values(this.store.pickers.errors$()).some(Boolean),
+  );
+  /** The form shows the filters the URL applies, until the user edits them. */
+  private readonly filterModel = linkedSignal(() => {
+    const f = this.store.filters$();
+    return {
+      userId: f.userId ?? '',
+      from: toLocalInput(f.from),
+      to: toLocalInput(f.to),
+      status: f.status ?? '',
+      learnerStatus: f.learnerStatus ?? '',
+      passed: f.passed === undefined ? '' : String(f.passed),
+      groupBy: (f.groupBy ?? 'user') as 'user' | 'org',
+      learningStatus: f.learningStatus ?? '',
+      overdue: f.overdue ?? false,
+    };
+  });
   protected readonly filterForm = form(
     this.filterModel,
     (path) => validateStandardSchema(path, filterSchema),
@@ -127,12 +204,9 @@ export class ReportScreen {
   );
   private applyFilters(): void {
     const f = this.filterModel();
-    this.store.applyFilters(
-      AssessmentReportExportQuerySchema.parse({
-        orgId: f.orgId ? Number(f.orgId) : undefined,
-        teamId: f.teamId ? Number(f.teamId) : undefined,
-        courseId: f.courseId ? Number(f.courseId) : undefined,
-        quizId: f.quizId ? Number(f.quizId) : undefined,
+    this.store.applyFilters({
+      ...AssessmentReportExportQuerySchema.parse({
+        ...this.store.pickers.picks$(),
         userId: f.userId || undefined,
         from: f.from ? new Date(f.from).toISOString() : undefined,
         to: f.to ? new Date(f.to).toISOString() : undefined,
@@ -141,22 +215,16 @@ export class ReportScreen {
         passed: f.passed ? f.passed === 'true' : undefined,
         groupBy: f.groupBy,
       }),
-    );
+      learningStatus: LearningStatusSchema.optional().parse(
+        f.learningStatus || undefined,
+      ),
+      overdue: f.overdue || undefined,
+      view: this.store.filters$().view,
+    });
   }
   protected resetFilters(): void {
-    this.filterForm().reset({
-      orgId: '',
-      teamId: '',
-      courseId: '',
-      quizId: '',
-      userId: '',
-      from: '',
-      to: '',
-      status: '',
-      learnerStatus: '',
-      passed: '',
-      groupBy: 'user',
-    });
+    this.filterForm().reset({ ...EMPTY_FORM });
+    this.store.pickers.clear();
     this.store.applyFilters({});
   }
 }

@@ -73,6 +73,11 @@ import {
 } from './chunked-upload';
 import { KeptUploads, type KeptUpload } from './kept-uploads.storage';
 import {
+  completedSteps,
+  shownInvalidSteps,
+  type StepCheck,
+} from './step-progress';
+import {
   countsText,
   dateInput,
   namesPublishRow,
@@ -225,6 +230,10 @@ export class CourseEditorStore {
 
   private readonly state = {
     step: signal(this.initialStep()),
+    /** The steps the author has opened, which may show ✓ once they are valid and left. */
+    visited: signal<readonly number[]>([this.initialStep()]),
+    /** The checks of steps 1 to 3 over the form, handed over once by the page. */
+    stepChecks: signal<readonly StepCheck[]>([]),
     editingLesson: signal<LessonTarget | null>(null),
     /** When the last save went through, as the page shows it ("14:05"). */
     savedAt: signal<string | null>(null),
@@ -443,6 +452,24 @@ export class CourseEditorStore {
 
   // Selectors
   readonly step$ = this.state.step.asReadonly();
+  readonly visited$ = this.state.visited.asReadonly();
+  /** The stepper's steps, each completed only while visited, valid and not open. */
+  readonly steps$ = computed((): readonly StepperItem[] => {
+    const done = completedSteps(
+      EDITOR_STEPS.length,
+      this.state.stepChecks(),
+      this.state.visited(),
+      this.state.step(),
+    );
+    return EDITOR_STEPS.map((step, index) => ({
+      ...step,
+      completed: done[index],
+    }));
+  });
+  /** Steps holding a field whose error the author has been shown. */
+  readonly invalidSteps$ = computed(() =>
+    shownInvalidSteps(this.state.stepChecks()),
+  );
   readonly editingLesson$ = this.state.editingLesson.asReadonly();
   readonly savedAt$ = this.state.savedAt.asReadonly();
   readonly left$ = this.state.left.asReadonly();
@@ -589,6 +616,14 @@ export class CourseEditorStore {
     this.state.step.set(step);
   }
 
+  private setVisited(visited: readonly number[]): void {
+    this.state.visited.set(visited);
+  }
+
+  private setStepChecks(checks: readonly StepCheck[]): void {
+    this.state.stepChecks.set(checks);
+  }
+
   private setEditingLesson(target: LessonTarget | null): void {
     this.state.editingLesson.set(target);
   }
@@ -657,7 +692,29 @@ export class CourseEditorStore {
 
   // Commands
   goToStep(step: number): void {
-    this.setStep(Math.max(0, Math.min(EDITOR_STEPS.length - 1, step)));
+    const target = Math.max(0, Math.min(EDITOR_STEPS.length - 1, step));
+    this.setStep(target);
+    if (!this.state.visited().includes(target)) {
+      this.setVisited([...this.state.visited(), target]);
+    }
+  }
+
+  /** The page hands over how to check each step's fields, once, when it builds its form. */
+  registerStepChecks(checks: readonly StepCheck[]): void {
+    this.setStepChecks(checks);
+  }
+
+  /**
+   * "Tiếp tục": shows the current step's errors and stays while it has any, else opens the next
+   * step. Returns whether it moved, so the page can focus the first error when it did not.
+   */
+  continue(): boolean {
+    const step = this.state.step();
+    const check = this.state.stepChecks()[step];
+    check?.touch();
+    if (check?.invalid()) return false;
+    this.goToStep(step + 1);
+    return true;
   }
 
   /** The modules select lists the modules of the chosen program's field. */
@@ -666,7 +723,9 @@ export class CourseEditorStore {
     this.setProgramId(Number.isInteger(id) && id > 0 ? id : undefined);
   }
 
+  /** Opens a lesson in the drawer; a published revision is not edited, so it stays shut. */
   editLesson(target: LessonTarget): void {
+    if (!this.isDraft$()) return;
     this.setEditingLesson(target);
   }
 
@@ -1219,7 +1278,7 @@ export class CourseEditorStore {
         catchError((error: unknown) => {
           if (toAppError(error).messageCode === DUPLICATE_CODE) {
             this.setTakenCode(command.code);
-            this.setStep(0);
+            this.goToStep(0);
           }
           return throwError(() => error);
         }),

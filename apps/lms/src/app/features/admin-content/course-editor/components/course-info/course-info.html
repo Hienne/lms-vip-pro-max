@@ -118,6 +118,7 @@
           placeholder="Học viên có thể…"
           [attr.aria-label]="'Mục tiêu ' + (i + 1)"
         />
+        @if (editable()) {
         <button
           uiIconButton
           type="button"
@@ -126,11 +127,13 @@
         >
           <ui-icon name="x" size="sm" />
         </button>
+        }
       </div>
-      }
+      } @if (editable()) {
       <button uiLinkButton type="button" (click)="addObjective()">
         <ui-icon name="plus" size="sm" />Thêm mục tiêu
       </button>
+      }
     </fieldset>
   </section>
 
@@ -152,7 +155,9 @@
       <p class="course-info__cover-note">
         Không tải được ảnh để xem trước. Ảnh vẫn được lưu cùng khóa học.
       </p>
-      } } @if (coverUpload(); as entry) {
+      } }
+      <!-- A published revision shows its cover on the card above, with no way to change it. -->
+      @if (editable()) { @if (coverUpload(); as entry) {
       <ui-upload-item
         [name]="entry.name"
         [size]="entry.sizeBytes"
@@ -230,6 +235,7 @@
         [accept]="accept"
         (change)="pickedCover($event)"
       />
+      }
     </section>
   </aside>
 </div>

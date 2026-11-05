@@ -38,6 +38,14 @@ describe('CourseEditor', () => {
         screen.el.querySelectorAll<HTMLElement>('.stepper__step'),
       ).find((s) => s.textContent?.includes(label)),
     );
+  const currentStep = () =>
+    screen.el.querySelector('.stepper__step[aria-current="step"]')
+      ?.textContent ?? '';
+  /** The labels of the steps that show ✓. */
+  const doneSteps = () =>
+    Array.from(
+      screen.el.querySelectorAll('.stepper__step.is-done .stepper__title'),
+    ).map((title) => title.textContent?.trim());
 
   describe('the pinned footer', () => {
     /** Records what the bottom-bar directive observes. */
@@ -81,6 +89,63 @@ describe('CourseEditor', () => {
     });
     expect(screen.text()).not.toContain('Đây là bản đang xuất bản');
     expect(screen.button('Lưu nháp')).toBeTruthy();
+  });
+
+  describe('a published revision', () => {
+    /** Every edit control by its text or `aria-label`. */
+    const editControls =
+      /Sửa\b|Thêm bài học|Thêm chương|Thêm mục tiêu|Xóa|Chuyển lên|Chuyển xuống|Kéo|Thay ảnh|Chọn từ thư viện|Gỡ ảnh/;
+    const controls = () =>
+      Array.from(
+        screen.el.querySelectorAll<HTMLElement>(
+          '.course-editor__body button, .course-editor__body [role="button"], .course-editor__body [cdkDragHandle]',
+        ),
+      ).map(
+        (b) => `${b.textContent?.trim()} ${b.getAttribute('aria-label') ?? ''}`,
+      );
+
+    it('renders no edit control in its steps, and keeps its values in sight', async () => {
+      await screen.open('/admin/courses/1/edit');
+      expect(controls().filter((name) => editControls.test(name))).toEqual([]);
+      expect(screen.field('Tên khóa học')).toBeTruthy();
+      expect(screen.el.querySelector('input[type="file"]')).toBeNull();
+      expect(screen.el.querySelector('[uiDropzone]')).toBeNull();
+      expect(screen.el.querySelector('app-course-card')).toBeTruthy();
+
+      await step('Nội dung khóa học');
+      expect(controls().filter((name) => editControls.test(name))).toEqual([]);
+      expect(
+        screen.el.querySelector('[uiSortableList], ui-sortable-item'),
+      ).toBeNull();
+      expect(
+        screen.el.querySelectorAll('.course-outline__lesson-title').length,
+      ).toBeGreaterThan(0);
+      expect(
+        screen.el.querySelector('.course-outline__chapter-name')?.textContent,
+      ).toBeTruthy();
+
+      await step('Bài thi & điều kiện');
+      expect(controls().filter((name) => editControls.test(name))).toEqual([]);
+    });
+
+    it('keeps only "Quay lại" and "Tiếp tục" in the footer', async () => {
+      await screen.open('/admin/courses/1/edit');
+      await step('Nội dung khóa học');
+      const footer = screen.el.querySelector('footer.course-editor__foot')!;
+      expect(
+        Array.from(footer.querySelectorAll('button, a')).map((b) =>
+          b.textContent?.trim(),
+        ),
+      ).toEqual(['Quay lại', 'Tiếp tục']);
+    });
+
+    it('shows the edit controls again once the draft is open', async () => {
+      await screen.open('/admin/courses/1/edit');
+      await screen.click(screen.button('Mở bản nháp để sửa'));
+      await step('Nội dung khóa học');
+      expect(screen.button('Thêm chương')).toBeTruthy();
+      expect(screen.button('Thêm bài học')).toBeTruthy();
+    });
   });
 
   it('saves the whole draft with the revision version, then reads it again', async () => {
@@ -159,6 +224,24 @@ describe('CourseEditor', () => {
       .find((b) => b.blockType === 'video');
     expect(video?.videoChapters).toEqual(ARCHITECTURE_VIDEO.videoChapters);
     expect(video?.transcript).toEqual(ARCHITECTURE_VIDEO.transcript);
+  });
+
+  it('focuses the new chapter’s title, labelled with its number, after "Thêm chương"', async () => {
+    await screen.open('/admin/courses/6/edit');
+    await step('Nội dung khóa học');
+    await screen.click(screen.button('Thêm chương'));
+
+    const titles = Array.from(
+      screen.el.querySelectorAll<HTMLInputElement>(
+        'input.course-outline__chapter-title',
+      ),
+    );
+    expect(titles.map((t) => t.getAttribute('aria-label'))).toEqual([
+      'Tên chương 1',
+      'Tên chương 2',
+    ]);
+    expect(document.activeElement).toBe(titles[1]);
+    expect(titles[1].disabled).toBe(false);
   });
 
   it('adds a chapter and a lesson with a text block, then saves them', async () => {
@@ -1068,6 +1151,48 @@ describe('CourseEditor', () => {
       expect(screen.callsTo(courseEndpoints.createCourse)).toBe(0);
       expect(screen.callsTo(assessmentV1Endpoints.courseQuizList)).toBe(0);
       expect(kept).not.toHaveBeenCalled();
+    });
+
+    it('stays on an empty first step on "Tiếp tục", lists it and focuses its first error', async () => {
+      await screen.open('/admin/courses/new');
+      await screen.click(screen.button('Tiếp tục'));
+
+      expect(currentStep()).toContain('Thông tin cơ bản');
+      expect(screen.text()).toContain(
+        'Còn thông tin chưa hợp lệ ở: Thông tin cơ bản.',
+      );
+      expect(screen.text()).toContain('Nhập tên khóa học.');
+      expect(screen.text()).toContain('Nhập mã khóa học.');
+      expect(document.activeElement).toBe(screen.field('Tên khóa học'));
+      expect(screen.callsTo(courseEndpoints.createCourse)).toBe(0);
+    });
+
+    it('moves on with "Tiếp tục" once the first step is valid', async () => {
+      await screen.open('/admin/courses/new');
+      await fillBasics();
+      await screen.click(screen.button('Tiếp tục'));
+
+      expect(currentStep()).toContain('Nội dung khóa học');
+      expect(screen.text()).not.toContain('Còn thông tin chưa hợp lệ');
+    });
+
+    it('marks a step done only while it is visited, valid and not open', async () => {
+      await screen.open('/admin/courses/new');
+      expect(doneSteps()).toEqual([]);
+
+      await step('Nội dung khóa học');
+      expect(doneSteps()).toEqual([]);
+
+      await step('Thông tin cơ bản');
+      await fillBasics();
+      await screen.click(screen.button('Tiếp tục'));
+      expect(doneSteps()).toEqual(['Thông tin cơ bản']);
+      expect(screen.text()).toContain('Đã hoàn thành');
+
+      await step('Thông tin cơ bản');
+      await screen.type(screen.field('Tên khóa học') as HTMLInputElement, '');
+      await step('Bài thi & điều kiện');
+      expect(doneSteps()).not.toContain('Thông tin cơ bản');
     });
 
     it('does not create without a code, and says so on the field', async () => {
