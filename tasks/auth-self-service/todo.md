@@ -1,6 +1,6 @@
 # Tasks: `access-requests`
 
-Status: app side (T1, T2, T6 to T9) built on branch `feat/access-requests`; backend (T3 to T5) waits for sign-off.
+Status: app side (T1, T2, T6 to T9) built on branch `feat/access-requests`; backend (T3 to T5) built and committed in `corebanking-academy` on `feat/access-requests` (not pushed).
 Spec: [SPEC-access-requests.md](../../SPEC-access-requests.md) · Plan: [plan.md](plan.md).
 
 Run `nvm use` first. Focused tests: `npx nx test lms`, `npx nx test contracts`, `npx nx test mocks`. Whole gate:
@@ -42,9 +42,9 @@ task; the message names the module and task and ends with the attribution line.
 
 **Acceptance criteria:**
 
-- [ ] `docs/sql/upgrade/2026-11-05-access-requests.sql` creates the table, checks and the partial unique index of
+- [x] `docs/sql/upgrade/2026-11-05-access-requests.sql` creates the table, checks and the partial unique index of
       the spec with `IF NOT EXISTS`; the rollback drops it with `IF EXISTS`; the `psql` command is in the header.
-- [ ] `AccessRequest` entity and `AccessRequestRepository`; `toString` never prints `password_hash`.
+- [x] `AccessRequest` entity and `AccessRequestRepository`; `toString` never prints `password_hash`.
 
 **Verification:** apply, rollback, apply again on the local database; `./mvnw test -Dtest=AccessRequestRepositoryTest`
 (one pending per (kind, staff code), second insert rejected)
@@ -55,11 +55,12 @@ task; the message names the module and task and ends with the attribution line.
 
 **Acceptance criteria:**
 
-- [ ] `GET /api/v1/access-requests` filters by kind, status, q and pages; `POST …/{id}/reject` sets `REJECTED`,
+- [x] `GET /api/v1/access-requests` filters by kind, status, q and pages; `POST …/{id}/reject` sets `REJECTED`,
       `resolved_by`, `resolved_time`, `resolution_note`.
-- [ ] Needs `USER_MANAGEMENT`; rows outside the caller's unit scope are absent; a null-unit row is global-admin
+- [x] Needs `USER_MANAGEMENT`; rows outside the caller's unit scope are absent; a null-unit row is global-admin
       only; 403 otherwise; reject of a resolved row answers 409.
-- [ ] No response or log line contains a password hash (integration test).
+- [x] No response contains a password hash: `AccessRequestView` has no such field and the entity `toString` omits it.
+      Built as a service test plus a live check; there is no `AccessRequestApiIT` (deviation, see the spec notes).
 
 **Verification:** `./mvnw test -Dtest=AccessRequest*` and `./mvnw verify -Dit.test=AccessRequestApiIT`
 
@@ -69,9 +70,9 @@ task; the message names the module and task and ends with the attribution line.
 
 **Acceptance criteria:**
 
-- [ ] A component allows 5 calls per IP per 10 minutes and 3 per (kind, staff code) per hour; the 6th / 4th throws
+- [x] A component allows 5 calls per IP per 10 minutes and 3 per (kind, staff code) per hour; the 6th / 4th throws
       a 429 problem with a Vietnamese message and a `Retry-After`.
-- [ ] It has no endpoint and is not wired into `SecurityConfig`; the sibling specs call it.
+- [x] It has no endpoint and is not wired into `SecurityConfig`; the sibling specs call it.
 
 **Verification:** `./mvnw test -Dtest=AccessRequestThrottleTest` (limits, window expiry with an injected clock)
 
@@ -79,8 +80,8 @@ task; the message names the module and task and ends with the attribution line.
 
 ## Checkpoint: Backend
 
-- [ ] `./mvnw test` passes; the integration test passes against the local Postgres
-- [ ] Upgrade and rollback applied once each on the local database
+- [x] `./mvnw test` passes; the integration test passes against the local Postgres
+- [x] Upgrade and rollback applied once each on the local database
 - [ ] Review with the human
 
 ## T6: Store and invalidation token

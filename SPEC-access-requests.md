@@ -218,7 +218,7 @@ accessRequests: defineEndpoint({
 
 ## Implementation notes (as built, app side)
 
-Built in T1, T2 and T6 to T9 on branch `feat/access-requests`; the backend (T3 to T5) is not built yet.
+Built in T1, T2 and T6 to T9 on branch `feat/access-requests`; the backend (T3 to T5) is built in `corebanking-academy` (commit `1963829` on `feat/access-requests`, not pushed).
 
 - The endpoints sit in `identityEndpoints`, beside the users endpoints, not in `adminOrgEndpoints`: they are
   `/api/v1` endpoints the backend will have, so `FakeBackend` answers them. Schemas are in
@@ -232,4 +232,7 @@ Built in T1, T2 and T6 to T9 on branch `feat/access-requests`; the backend (T3 t
   `confirm()`; focus starts in the note field.
 - In the narrow card layout a resolved row shows an empty "Thao tác:" label (the `ui-data-table` prints every
   column). Not changed here.
-- Not verified yet: the real backend, the unit-admin 403 on reject by id, the throttle, the SQL scripts.
+- Backend as built: `AccessRequestService`/`Controller` (list, reject), `AccessRequestThrottle` (not wired to any endpoint), upgrade and rollback scripts, and the table merged into `learning_hub_identity.sql` so the Testcontainers schema has it. Full suite 422 tests, 0 errors.
+- Verified live on a local backend (port 8019, local DB): global admin sees all pending rows; unit admin `quantri.ban` sees only its unit; out-of-scope and null-unit rows answer `CORE-RESOURCE_NOT_FOUND` for the unit admin; a global admin can reject a null-unit row with no body; a second reject answers `CORE-STATE_CONFLICT`; a 501-character note answers `CORE-VALIDATION_FAILED`; no token answers 401; the reject writes an `ACCESS_REQUEST_REJECT` audit row.
+- Deviations: no `AccessRequestApiIT` (service tests and the live check cover it); no 403 case was exercised (a caller without scope gets not-found, not 403); the mock sorts on `createdTime` while the backend sorts on `createTime` (the app sends no sort, so nothing breaks).
+- Not verified: the throttle under real traffic (unit-tested only), the pending count against the real backend from the Angular app (curl only).
