@@ -59,11 +59,11 @@ only, but a registration always has a unit).
 
 ## Endpoints
 
-| Key (registry)                              | Endpoint                                         | Auth   | Notes                                |
-| ------------------------------------------- | ------------------------------------------------ | ------ | ------------------------------------ |
-| `identityEndpoints.registrationUnits`       | `GET /api/v1/auth/registration-units`            | public | units for the form                   |
-| `identityEndpoints.registerRequest`         | `POST /api/v1/auth/register-request`             | public | body above; answers the fixed result |
-| `identityEndpoints.approveAccessRequest`    | `POST /api/v1/access-requests/{requestId}/approve` | admin  | body `{ note?: string }`             |
+| Key (registry)                           | Endpoint                                           | Auth   | Notes                                |
+| ---------------------------------------- | -------------------------------------------------- | ------ | ------------------------------------ |
+| `identityEndpoints.registrationUnits`    | `GET /api/v1/auth/registration-units`              | public | units for the form                   |
+| `identityEndpoints.registerRequest`      | `POST /api/v1/auth/register-request`               | public | body above; answers the fixed result |
+| `identityEndpoints.approveAccessRequest` | `POST /api/v1/access-requests/{requestId}/approve` | admin  | body `{ note?: string }`             |
 
 `SecurityConfig` gains the two public paths (`GET` units, `POST` register-request) and nothing else. Responses are
 parsed by zod schemas in `libs/contracts/src/lib/identity/`; the register command is strict and its `toString`
@@ -121,14 +121,14 @@ rollback script, as before.
 
 ## Project structure
 
-| Where                                                           | What                                                                |
-| --------------------------------------------------------------- | ------------------------------------------------------------------- |
-| `libs/contracts/src/lib/identity/`                              | register command, units response, approve command, endpoints        |
-| `libs/mocks/`                                                   | handlers and fixtures                                               |
-| `apps/lms/src/app/features/auth/{login,register}/`              | link on login, the register screen                                  |
-| `apps/lms/src/app/core/routing/screens.ts`                      | `register` entry in `open` (public, guestOnly, bare)                |
-| `apps/lms/src/app/features/admin-org/users/components/access-requests/` | approve button and dialog                                  |
-| `corebanking-academy/.../identity/{controller,service,dto}`     | `RegistrationController`, `RegistrationService`, approve in `AccessRequestService`, `SecurityConfig` |
+| Where                                                                   | What                                                                                                 |
+| ----------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
+| `libs/contracts/src/lib/identity/`                                      | register command, units response, approve command, endpoints                                         |
+| `libs/mocks/`                                                           | handlers and fixtures                                                                                |
+| `apps/lms/src/app/features/auth/{login,register}/`                      | link on login, the register screen                                                                   |
+| `apps/lms/src/app/core/routing/screens.ts`                              | `register` entry in `open` (public, guestOnly, bare)                                                 |
+| `apps/lms/src/app/features/admin-org/users/components/access-requests/` | approve button and dialog                                                                            |
+| `corebanking-academy/.../identity/{controller,service,dto}`             | `RegistrationController`, `RegistrationService`, approve in `AccessRequestService`, `SecurityConfig` |
 
 ## Code style
 
@@ -186,3 +186,34 @@ instead of new ones where it can.
 3. **Role on approval.** Default `LEARNER` with `OWN` scope, as the map's assumption 1 says. Should the approving
    admin be able to pick a role instead?
 4. **Username.** Equal to the staff code, lower case. Acceptable, or should the visitor choose one?
+
+## Implementation notes (as built)
+
+Built in R1, R3 to R6 on branch `feat/access-requests` in both repos (backend commits `c1744ab`, `5d52e3a`; not
+pushed). R2 (mock) was dropped on the user's instruction: the screens call the real backend API.
+
+- **No mock handlers.** The register, units and approve endpoints are not in `FakeBackend`; with the default
+  config they go to the backend (`LMS_API_TARGET=http://localhost:8019 npm start`, the `lms-local-backend` launch
+  entry). The approve dialog spec stands in for the backend with a canned reply.
+- **Contracts** in `identity/access-request.schema.ts`; the public calls are exempt from the bearer token and the
+  session-expiry handler.
+- **Backend:** `RegistrationController` / `RegistrationService` (public, throttled, same answer in every case,
+  not transactional so a lost race on the pending index is answered like a duplicate), `approve` in
+  `AccessRequestService` (creates the account, copies the stored hash, `LEARNER`/`OWN` written directly, three audit
+  rows). The table was already in place, so there is no upgrade script. A rejected or approved request has its
+  hash cleared.
+- **Page:** a single centred card (the pattern of the change-password page), not the sign-in page's split layout.
+  A throttled request shows the backend's message in an alert; the wait from `Retry-After` is not shown (`AppError`
+  does not carry headers).
+- **Approve refusal** (code taken meanwhile) shows as an error toast, not inside the dialog.
+- **Verified live** (local backend on 8019, `lms-local-backend`): units list; register; a repeated request and an
+  existing code answer identically; bad unit refused; login fails before approval; the inbox lists the request with no
+  password or hash in the body; approve creates the account with the `LEARNER` `OWN` grant and three audit rows; a
+  second approve answers `CORE-STATE_CONFLICT`; the new user signs in with the chosen password and is not asked to
+  change it; the sixth call from one IP answers 429 with `Retry-After`. In the browser: the whole flow from `/register`
+  to the learner home, the 429 alert, and `/register` at 375 px in dark mode with no horizontal scroll.
+- **Not verified:** a unit admin approving from the UI (the scope rule is service-tested and was curl-checked for
+  reject); keyboard-only pass and 768 px; light/dark at 1280 px on the approve dialog.
+- **Throttle IP:** the controller uses `getRemoteAddr()`. Behind a proxy that is the proxy's address, so every
+  visitor would share one bucket. Forwarded headers were not trusted; configuring the proxy chain needs your decision.
+- Open questions 1 to 4 kept their defaults (public unit list, email required, `LEARNER`/`OWN`, username = code).

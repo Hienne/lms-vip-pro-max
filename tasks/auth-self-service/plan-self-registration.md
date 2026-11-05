@@ -39,9 +39,9 @@ Dependencies: R2 ← R1; R3 ← R1; R4 ← R3; R5 ← R2; R6 ← R2. R3/R4 and R
 
 ## Risks
 
-| Risk | Impact | Mitigation |
-| ---- | ------ | ---------- |
-| Public answer differs when a code exists | High | one fixed answer, a service test for the three cases |
-| Plain or hashed password leaks (response, log, `toString`) | High | no field in any response schema, redacted `toString`, grep test over captured logs |
-| Throttle bypass via spoofed forwarding headers | Medium | read the client IP the way the framework resolves it; do not trust `X-Forwarded-For` blindly (ask first if a proxy setting is needed) |
-| Approve races a manual user create | Medium | re-check identifiers inside the transaction under the existing write lock |
+| Risk                                                       | Impact | Mitigation                                                                                                                            |
+| ---------------------------------------------------------- | ------ | ------------------------------------------------------------------------------------------------------------------------------------- |
+| Public answer differs when a code exists                   | High   | one fixed answer, a service test for the three cases                                                                                  |
+| Plain or hashed password leaks (response, log, `toString`) | High   | no field in any response schema, redacted `toString`, grep test over captured logs                                                    |
+| Throttle bypass via spoofed forwarding headers             | Medium | read the client IP the way the framework resolves it; do not trust `X-Forwarded-For` blindly (ask first if a proxy setting is needed) |
+| Approve races a manual user create                         | Medium | re-check identifiers inside the transaction under the existing write lock                                                             |
