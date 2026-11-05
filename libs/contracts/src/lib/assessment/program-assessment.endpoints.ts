@@ -7,6 +7,7 @@ import {
   QuestionSummaryV1Schema,
   QuestionRequestV1Schema,
   QuestionQueryV1Schema,
+  QuestionImportQuerySchema,
 } from './assessment-v1.schema';
 
 const programId = z.number().int().positive();
@@ -26,6 +27,9 @@ export const ProgramQuestionQuerySchema = QuestionQueryV1Schema.omit({
   courseId: true,
   lessonId: true,
 }).extend({ programId, courseId: z.number().int().positive().optional() });
+export const ProgramQuestionImportQuerySchema = QuestionImportQuerySchema.omit({
+  courseId: true,
+}).extend({ programId, courseId: z.number().int().positive().optional() });
 export type ProgramQuestionDetail = z.infer<typeof ProgramQuestionDetailSchema>;
 export type ProgramQuestionRequest = z.infer<
   typeof ProgramQuestionRequestSchema
@@ -35,6 +39,10 @@ export type ProgramQuestionQuery = z.infer<typeof ProgramQuestionQuerySchema>;
 /** Program-scoped authoring DTOs on the verified v1 controller; legacy course inputs stay separate. */
 export const programAssessmentEndpoints = {
   ...legacy,
+  importQuestions: defineEndpoint({
+    ...legacy.importQuestions,
+    query: ProgramQuestionImportQuerySchema,
+  }),
   questions: defineEndpoint({
     ...legacy.questions,
     query: ProgramQuestionQuerySchema,

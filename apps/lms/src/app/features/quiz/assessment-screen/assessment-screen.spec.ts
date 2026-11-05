@@ -508,11 +508,15 @@ describe('AssessmentScreen (admin)', () => {
       await settle();
     };
 
-    it('opens a drawer with the template, a course and the file zone', async () => {
+    it('opens a drawer for the selected program without requiring a course', async () => {
       await openDrawer();
       expect(drawer()?.textContent).toContain('Nhập câu hỏi từ Excel');
       expect(drawer()?.textContent).toContain('Tải mẫu Excel');
-      expect(drawer()?.textContent).toContain('Nhập vào khóa học');
+      expect(drawer()?.textContent).toContain(
+        'Nền tảng nghiệp vụ Core Banking',
+      );
+      expect(drawer()?.textContent).not.toContain('Nhập vào khóa học');
+      expect(drawer()?.querySelector('select')).toBeNull();
       expect(press(drawer(), 'Nhập câu hỏi').disabled).toBe(true);
       expect(press(drawer(), 'Kiểm tra').disabled).toBe(true);
     });
@@ -533,8 +537,16 @@ describe('AssessmentScreen (admin)', () => {
       press(drawer(), 'Nhập câu hỏi').click();
       await settle();
       expect(calls()).toHaveLength(2);
-      expect(calls()[0][1].query).toMatchObject({ dryRun: 'true' });
-      expect(calls()[1][1].query).toMatchObject({ dryRun: 'false' });
+      expect(calls()[0][1].query).toMatchObject({
+        programId: '2',
+        dryRun: 'true',
+      });
+      expect(calls()[1][1].query).toMatchObject({
+        programId: '2',
+        dryRun: 'false',
+      });
+      expect(calls()[0][1].query).not.toHaveProperty('courseId');
+      expect(calls()[1][1].query).not.toHaveProperty('courseId');
       expect(drawer()).toBeUndefined();
       expect(document.body.textContent).toContain('Đã nhập 3 câu hỏi');
       expect(store().questions$()?.totalElements).toBe(before + 3);
@@ -548,6 +560,7 @@ describe('AssessmentScreen (admin)', () => {
       expect(document.body.textContent).toContain(
         'Tệp nhập chưa hợp lệ. Vui lòng kiểm tra các lỗi chi tiết.',
       );
+      expect(drawer()?.textContent).toContain('Dòng 2 · Đáp án đúng');
       expect(press(drawer(), 'Nhập câu hỏi').disabled).toBe(true);
     });
 

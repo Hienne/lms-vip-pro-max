@@ -1,19 +1,20 @@
 import { InjectionToken, type Signal } from '@angular/core';
 
-/** The course a drawer opened from a course screen imports into; the drawer does not ask. */
+/** The course editor's source course, passed for authorization; questions belong to its program. */
 export interface QuestionImportCourse {
   readonly courseId: number;
   readonly title: string;
 }
 
 /**
- * What the "Nhập từ Excel" drawer needs from the screen that opens it: which program's courses it
- * may import into (or the one course it must), and what to do once it is done. The question bank
+ * What the "Nhập từ Excel" drawer needs from the screen that opens it: the program receiving
+ * questions, an optional source course for authorization, and what to do once it is done. The question bank
  * screen and the course editor's exam step each provide one.
  */
 export interface QuestionImportHost {
-  /** The program whose courses the drawer lists. */
+  /** The bank receiving the imported questions. */
   readonly programId$: Signal<number | undefined>;
+  readonly programName$: Signal<string | undefined>;
   /** Set when the screen already knows the course: the drawer shows its name and asks nothing. */
   readonly fixedCourse$?: Signal<QuestionImportCourse | undefined>;
   /** A written import: the screen closes the drawer and reads its questions again. */

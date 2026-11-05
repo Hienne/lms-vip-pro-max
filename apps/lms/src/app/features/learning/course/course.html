@@ -92,7 +92,13 @@
         <app-course-outline [chapters]="store.outline$()" />
       </section>
     </section>
-    @if (store.view$() === 'enrolled') { @if (store.quizError$(); as error) {
+    @if (store.view$() === 'enrolled') { @if (store.requiredQuizCount$() &&
+    card.learningStatus !== 'completed') {
+    <ui-alert tone="info" [announce]="false">
+      Để hoàn thành khóa học, cần học xong nội dung bắt buộc và đạt điểm yêu cầu
+      của {{ store.requiredQuizCount$() }} bài kiểm tra bắt buộc.
+    </ui-alert>
+    } @if (store.quizError$(); as error) {
     <section aria-labelledby="course-quizzes">
       <h2 id="course-quizzes" class="course__heading">Bài kiểm tra</h2>
       <ui-error-state

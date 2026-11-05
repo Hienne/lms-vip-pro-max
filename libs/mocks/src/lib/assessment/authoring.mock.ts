@@ -11,11 +11,11 @@ import {
   type Me,
   type QuestionDetailV1,
   type QuizDetailV1,
-  XLSX_MIME_TYPE,
 } from '@lms/contracts';
 import type { FakeReply, FakeRequest } from '../backend/fake-backend';
 import { envelopeError, envelopeOk } from '../envelope';
 import { assessmentQuestionFixtures } from './assessment.mock';
+import { questionImportTemplateBlob } from './question-import-template';
 import {
   trainingProgramFixtures,
   courseDetailFixtures,
@@ -180,8 +180,17 @@ export class AssessmentAuthoringMock {
    * `ASSESSMENT-IMPORT_INVALID`, and nothing is written. `overwrite` replaces them instead.
    */
   private importQuestions(r: FakeRequest, me: Me): FakeReply {
-    const courseId = Number(r.query['courseId']);
-    if (!this.canManage(me, courseId))
+    const courseId = r.query['courseId'] ? Number(r.query['courseId']) : null;
+    const programId = r.query['programId']
+      ? Number(r.query['programId'])
+      : courseDetailFixtures.find((c) => c.course.id === courseId)?.revision
+          .programId;
+    const programScoped = !!r.query['programId'];
+    if (
+      courseId !== null
+        ? !this.canManage(me, courseId)
+        : !this.canManageProgram(me, programId ?? 0)
+    )
       return fail('CORE-ACCESS_DENIED', 'Không đủ quyền.', 403);
     const body = r.body;
     const file =
@@ -196,17 +205,32 @@ export class AssessmentAuthoringMock {
       name.includes('loi') ||
       file.size > 5 * 1024 * 1024
     )
-      return fail(
-        'ASSESSMENT-IMPORT_INVALID',
-        'Tệp nhập chưa hợp lệ. Vui lòng kiểm tra các lỗi chi tiết.',
-      );
+      return {
+        status: 200,
+        body: envelopeError(
+          'ASSESSMENT-IMPORT_INVALID',
+          'Không thể nhập câu hỏi',
+          'Tệp nhập chưa hợp lệ. Vui lòng kiểm tra các lỗi chi tiết.',
+          [
+            {
+              field: 'Questions[2].dap_an_dung',
+              code: 'INVALID_VALUE',
+              message: 'Chọn đáp án đúng theo vị trí A, B, C… của phương án.',
+            },
+          ],
+        ),
+      };
     const dryRun = r.query['dryRun'] !== 'false';
     const overwrite = r.query['overwrite'] === 'true';
     const codes = ['NHAP-01', 'NHAP-02', 'NHAP-03'];
-    const existing = codes.filter((code) =>
-      this.questions.some((q) => q.courseId === courseId && q.code === code),
-    );
-    if (existing.length && !overwrite)
+    const existing = this.questions.filter((q) => codes.includes(q.code));
+    if (
+      existing.some(
+        (q) =>
+          !overwrite ||
+          (programScoped ? q.programId !== programId : q.courseId !== courseId),
+      )
+    )
       return fail(
         'ASSESSMENT-IMPORT_INVALID',
         'Tệp nhập chưa hợp lệ. Vui lòng kiểm tra các lỗi chi tiết.',
@@ -220,16 +244,13 @@ export class AssessmentAuthoringMock {
       updated: 0,
     };
     if (dryRun) return ok(result);
-    const programId = this.courseOf(courseId)?.programId ?? 0;
     this.questions = [
-      ...this.questions.filter(
-        (q) => !(q.courseId === courseId && codes.includes(q.code)),
-      ),
+      ...this.questions.filter((q) => !existing.some((old) => old.id === q.id)),
       ...codes.map((code, i) => ({
-        id: this.nextId++,
+        id: existing.find((q) => q.code === code)?.id ?? this.nextId++,
         code,
-        programId,
-        courseId,
+        programId: programId ?? 0,
+        courseId: existing.find((q) => q.code === code)?.courseId ?? courseId,
         lessonId: null,
         competencyId: 1,
         questionType: 'SINGLE' as const,
@@ -245,8 +266,10 @@ export class AssessmentAuthoringMock {
           correct: sortNo === 0,
           sortNo,
         })),
-        usedInQuizzes: [],
-        rowVersion: 0,
+        usedInQuizzes:
+          existing.find((q) => q.code === code)?.usedInQuizzes ?? [],
+        rowVersion:
+          (existing.find((q) => q.code === code)?.rowVersion ?? -1) + 1,
         createTime: now(),
         updateTime: now(),
       })),
@@ -376,9 +399,7 @@ export class AssessmentAuthoringMock {
     if (endpoint === api.questionImportTemplate)
       return {
         ...ok(null),
-        file: new Blob(['Mẫu nhập câu hỏi (bản giả lập).'], {
-          type: XLSX_MIME_TYPE,
-        }),
+        file: questionImportTemplateBlob(),
       };
     if (endpoint === api.importQuestions) return this.importQuestions(r, me);
     const id = Number(r.params['id']);

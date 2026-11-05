@@ -2,14 +2,14 @@
   [uiDrawer]="true"
   uiDrawerTitle="Nhập câu hỏi từ Excel"
   [uiDrawerFooter]="footer"
-  [uiDrawerBusy]="store.isImporting$()"
-  uiDrawerBusyLabel="Đang nhập câu hỏi…"
+  [uiDrawerBusy]="store.isBusy$()"
+  [uiDrawerBusyLabel]="store.isChecking$() ? 'Đang kiểm tra tệp…' : 'Đang nhập câu hỏi…'"
   (uiDrawerDismiss)="store.close()"
 >
   <div class="question-import">
     <p class="question-import__lead">
-      Thêm câu hỏi vào ngân hàng của một khóa học từ tệp Excel theo mẫu. Tệp có
-      lỗi thì không câu nào được nhập.
+      Chọn chương trình ở ngoài rồi nhập danh sách câu hỏi theo mẫu Excel. Mỗi
+      dòng là một câu hỏi. Nếu tệp có lỗi thì không câu nào được nhập.
     </p>
     <div>
       <button
@@ -22,41 +22,28 @@
       </button>
     </div>
 
+    <dl class="question-import__scope">
+      <dt>Chương trình nhận câu hỏi</dt>
+      <dd>{{store.programName$()}}</dd>
+    </dl>
     @if (store.fixedCourse$(); as course) {
     <p class="question-import__course">
-      Nhập vào khóa học <strong>{{ course.title }}</strong>. Câu hỏi thuộc ngân
-      hàng của chương trình chứa khóa học này.
+      Đang soạn khóa học <strong>{{ course.title }}</strong>. Câu hỏi dùng chung
+      cho các khóa học trong chương trình này.
     </p>
-    } @else if (store.coursesError$(); as error) {
-    <ui-alert tone="danger"
-      >Không tải được danh sách khóa học: {{ error.message }}</ui-alert
-    >
-    } @else if (!store.isLoadingCourses$() && !store.courses$().length) {
-    <ui-alert tone="info" [announce]="false"
-      >Chương trình chưa có khóa học bạn được phép quản lý.</ui-alert
-    >
-    } @else {
-    <ui-field
-      label="Nhập vào khóa học"
-      hint="Câu hỏi thuộc ngân hàng của chương trình chứa khóa học này."
-    >
-      <select
-        uiSelect
-        [value]="store.courseId$() ?? ''"
-        [disabled]="store.isBusy$()"
-        (change)="store.selectCourse($any($event.target).value)"
-      >
-        @for (course of store.courses$(); track course.courseId) {
-        <option
-          [value]="course.courseId"
-          [selected]="course.courseId === store.courseId$()"
-        >
-          {{ course.title }}
-        </option>
-        }
-      </select>
-    </ui-field>
     }
+    <details>
+      <summary class="question-import__help">
+        Mã nhóm năng lực dùng trong Excel
+      </summary>
+      <ul class="question-import__codes">
+        @for (competency of store.competencies$(); track competency.id) {
+        <li><strong>{{competency.code}}</strong> — {{competency.name}}</li>
+        } @empty {
+        <li>Chưa có nhóm năng lực đang sử dụng trong danh mục.</li>
+        }
+      </ul>
+    </details>
 
     <label class="question-import__check">
       <input
@@ -66,7 +53,7 @@
         [disabled]="store.isBusy$()"
         (change)="store.setOverwriteExisting($any($event.target).checked)"
       />
-      Ghi đè câu hỏi trùng mã trong khóa học
+      Ghi đè câu hỏi trùng mã trong chương trình này
     </label>
 
     <label
@@ -93,17 +80,36 @@
         [status]="store.fileStatus$()"
       />
     </div>
-    }
+    } @if (store.error$(); as error) {
+    <ui-alert tone="danger">{{error.message}}</ui-alert>
+    @if (store.rowErrors$().length) {
+    <ul class="question-import__errors" aria-label="Lỗi dữ liệu Excel">
+      @for (item of store.rowErrors$(); track $index) {
+      <li>
+        <strong>@if(item.row){Dòng {{item.row}} · }{{item.column}}</strong>
+        <p>{{item.message}}</p>
+      </li>
+      }
+    </ul>
+    } }
   </div>
 </ng-template>
 
-<ng-template #footer let-close="close">
+<ng-template #footer>
   <div class="question-import__actions">
-    <button uiButton type="button" (click)="close()">Hủy</button>
+    <button
+      uiButton
+      type="button"
+      [disabled]="store.isBusy$()"
+      (click)="store.close()"
+    >
+      Hủy
+    </button>
     <button
       uiButton
       type="button"
       [disabled]="!store.canCheck$()"
+      [busy]="store.isChecking$()"
       (click)="store.check()"
     >
       Kiểm tra
@@ -113,6 +119,7 @@
       type="button"
       variant="primary"
       [disabled]="!store.canImport$()"
+      [busy]="store.isImporting$()"
       (click)="store.import()"
     >
       Nhập câu hỏi

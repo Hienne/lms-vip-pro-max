@@ -993,8 +993,11 @@ describe('CourseEditor', () => {
         await step('Bài thi & điều kiện');
 
         expect(screen.text()).toContain('Bài kiểm tra cuối khóa');
+        expect(screen.text()).toContain(
+          'Học viên phải đạt điểm yêu cầu của bài đã chọn.',
+        );
         expect(labels()).toEqual([
-          'Không yêu cầu bài kiểm tra',
+          'Không yêu cầu bài thi cuối khóa',
           'Thi cuối khóa: Tổng quan hệ thống Core Banking',
         ]);
         expect(screen.text()).toContain(
@@ -1064,7 +1067,7 @@ describe('CourseEditor', () => {
         await screen.open('/admin/courses/6/edit');
         await step('Bài thi & điều kiện');
 
-        expect(labels()).toEqual(['Không yêu cầu bài kiểm tra']);
+        expect(labels()).toEqual(['Không yêu cầu bài thi cuối khóa']);
         expect(screen.text()).toContain('Khóa học chưa có bài thi cuối khóa.');
       });
 
@@ -1180,7 +1183,7 @@ describe('CourseEditor', () => {
           'Không tải được danh sách bài kiểm tra',
         );
         expect(button('Thử lại')).toBeTruthy();
-        expect(labels()).toEqual(['Không yêu cầu bài kiểm tra']);
+        expect(labels()).toEqual(['Không yêu cầu bài thi cuối khóa']);
       });
 
       describe('creating it from the short form', () => {
@@ -1495,8 +1498,8 @@ describe('CourseEditor', () => {
             expect(screen.text()).not.toContain('bài thi cần 1 câu'),
           );
           expect(
-            screen.lastCall(assessmentV1Endpoints.importQuestions)?.query,
-          ).toMatchObject({ courseId: '6', dryRun: 'false' });
+            screen.lastCall(programAssessmentEndpoints.importQuestions)?.query,
+          ).toMatchObject({ programId: '4', courseId: '6', dryRun: 'false' });
           expect(drawer()).toBeUndefined();
           await vi.waitFor(() =>
             expect(

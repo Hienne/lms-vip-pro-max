@@ -37,6 +37,40 @@
     margin: 0;
     color: ui.color(danger);
   }
+  &__scope {
+    margin: 0;
+    @include ui.stack(1);
+    dt {
+      @include ui.text(sm, muted);
+    }
+    dd {
+      margin: 0;
+      font-weight: ui.weight(semibold);
+    }
+  }
+  &__help {
+    cursor: pointer;
+    color: ui.color(primary);
+  }
+  &__codes {
+    margin-top: ui.space(3);
+    padding-left: ui.space(4);
+    @include ui.text(sm, secondary);
+  }
+  &__errors {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    @include ui.stack(3);
+    @include ui.text(sm);
+    strong {
+      font-weight: ui.weight(semibold);
+    }
+    p {
+      margin: ui.space(1) 0 0;
+      color: ui.color(text-secondary);
+    }
+  }
 
   &__actions {
     @include ui.row(2);

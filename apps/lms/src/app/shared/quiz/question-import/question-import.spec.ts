@@ -1,6 +1,6 @@
 import { signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
-import { assessmentV1Endpoints as api } from '@lms/contracts';
+import { programAssessmentEndpoints as api } from '@lms/contracts';
 import {
   parseAppConfig,
   provideAppConfig,
@@ -28,6 +28,7 @@ describe('QuestionImport with a fixed course', () => {
   const closeImport = vi.fn();
   const host: QuestionImportHost = {
     programId$: signal(2),
+    programName$: signal('Nền tảng nghiệp vụ Core Banking'),
     fixedCourse$: signal({ courseId: 1, title: 'Tổng quan hệ thống' }),
     finishImport,
     closeImport,
@@ -102,6 +103,7 @@ describe('QuestionImport with a fixed course', () => {
       ([endpoint]) => endpoint === api.importQuestions,
     );
     expect(imports.map(([, r]) => r.query['courseId'])).toEqual(['1', '1']);
+    expect(imports.map(([, r]) => r.query['programId'])).toEqual(['2', '2']);
     expect(finishImport).toHaveBeenCalledTimes(1);
   });
 });

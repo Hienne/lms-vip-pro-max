@@ -153,7 +153,7 @@ describe('Course', () => {
     });
 
     it('does not warn about a deadline that is still ahead', () => {
-      expect(el.querySelector('ui-alert')).toBeNull();
+      expect(text()).not.toContain('Khóa học đã quá hạn');
     });
 
     it('reads the course once, and the detail once by the enrolment of the card, never the lists', () => {
@@ -176,6 +176,46 @@ describe('Course', () => {
         el.querySelector('ui-page-header')?.textContent?.replace(/\s+/g, ' '),
       ).toContain('Nghiệp vụ Core Banking · Tổng quan · NV-101');
     });
+  });
+
+  it('explains that the selected final exam must pass, without counting its outline link twice', async () => {
+    const backend = TestBed.inject(MockBackend);
+    handle.mockImplementation((endpoint, request) => {
+      const reply = MockBackend.prototype.handle.call(
+        backend,
+        endpoint,
+        request,
+      );
+      if (endpoint === learnerEndpoints.course && reply && 'body' in reply) {
+        const data = reply.body.data as {
+          content: {
+            finalQuizId: number;
+            chapters: {
+              lessons: {
+                lesson: {
+                  lessonType: string;
+                  quizId: number | null;
+                  isRequired: boolean;
+                };
+              }[];
+            }[];
+          };
+        };
+        data.content.finalQuizId = 2;
+        for (const chapter of data.content.chapters) {
+          for (const { lesson } of chapter.lessons) {
+            if (lesson.lessonType === 'quiz') {
+              lesson.quizId = 2;
+              lesson.isRequired = true;
+            }
+          }
+        }
+      }
+      return reply;
+    });
+    await open(1);
+    expect(text()).toContain('đạt điểm yêu cầu của 1 bài kiểm tra bắt buộc');
+    expect(text()).toContain('62%');
   });
 
   describe('the cover image', () => {
