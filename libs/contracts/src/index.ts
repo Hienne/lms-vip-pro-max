@@ -5,6 +5,7 @@ export * from './lib/http/page';
 export * from './lib/http/patch';
 export * from './lib/identity/identity.schema';
 export * from './lib/identity/user.schema';
+export * from './lib/identity/access-request.schema';
 export * from './lib/identity/identity.endpoints';
 export * from './lib/organization/organization.schema';
 export * from './lib/organization/organization.endpoints';

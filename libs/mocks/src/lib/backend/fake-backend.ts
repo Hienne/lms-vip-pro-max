@@ -11,6 +11,7 @@ import {
   PASSWORD_MIN_LENGTH,
   shellEndpoints,
   USER_LIMITS,
+  type AccessRequest,
   type AnyEndpoint,
   type Envelope,
   type PendingAction,
@@ -32,6 +33,7 @@ import {
   type UserSummary,
   XLSX_MIME_TYPE,
 } from '@lms/contracts';
+import { ACCESS_REQUEST_SEED } from './access-requests.seed';
 import {
   BACKEND_RESPONSES,
   backendRefusal,
@@ -210,6 +212,9 @@ export class FakeBackend {
     password: SEED_PASSWORD,
     createSeq: index,
   }));
+  private accessRequests: Mutable<AccessRequest>[] = ACCESS_REQUEST_SEED.map(
+    (r) => ({ ...r }),
+  );
   private grants: DbGrant[] = SEED_GRANTS.map((g) => ({ ...g }));
   private tokens = new Map<string, string>();
   private tokenSeq = 0;
@@ -287,6 +292,8 @@ export class FakeBackend {
     [identityEndpoints.grantRole, (r) => this.grantRole(r)],
     [identityEndpoints.revokeRole, (r) => this.revokeRole(r)],
     [identityEndpoints.listRoles, (r) => this.listRoles(r)],
+    [identityEndpoints.accessRequests, (r) => this.listAccessRequests(r)],
+    [identityEndpoints.rejectAccessRequest, (r) => this.rejectAccessRequest(r)],
     [organizationEndpoints.listOrgs, (r) => this.listOrgs(r)],
     [organizationEndpoints.orgTree, (r) => this.orgTree(r)],
     [organizationEndpoints.orgContents, (r) => this.orgContents(r)],
@@ -1208,6 +1215,63 @@ export class FakeBackend {
     user.mustChangePassword = false;
     this.revokeTokensOf(user.userId);
     return ok(null);
+  }
+
+  // ---- access requests --------------------------------------------------------------------------
+
+  private listAccessRequests(request: FakeRequest): FakeReply {
+    const actor = this.caller_(request, 'USER_MANAGEMENT');
+    const query = this.pageQuery(
+      request,
+      ['createdTime', 'staffCode'],
+      'createdTime,desc',
+    );
+    const q = (request.query['q'] ?? '').trim().toLowerCase();
+    if (q.length > 100) return invalid('q tối đa 100 ký tự.');
+    const kind = request.query['kind'];
+    if (kind && !['REGISTER', 'PASSWORD_RESET'].includes(kind)) {
+      return invalid('kind không hợp lệ.');
+    }
+    const status = request.query['status'];
+    if (status && !['PENDING', 'APPROVED', 'REJECTED'].includes(status)) {
+      return invalid('status không hợp lệ.');
+    }
+    const rows = this.accessRequests.filter(
+      (r) =>
+        this.canSeeOrg(actor, r.orgId) &&
+        (!kind || r.kind === kind) &&
+        (!status || r.status === status) &&
+        (!q ||
+          [r.staffCode, r.fullName ?? '', r.email ?? '']
+            .join('\n')
+            .toLowerCase()
+            .includes(q)),
+    );
+    return ok(
+      this.paged(rows, query, (r, field) =>
+        field === 'staffCode' ? r.staffCode : r.createdTime,
+      ),
+    );
+  }
+
+  private rejectAccessRequest(request: FakeRequest): FakeReply {
+    const actor = this.caller_(request, 'USER_MANAGEMENT');
+    const row = this.accessRequests.find(
+      (r) => String(r.requestId) === request.params['requestId'],
+    );
+    if (!row || !this.canSeeOrg(actor, row.orgId)) {
+      return refuse('resourceNotFound');
+    }
+    if (row.status !== 'PENDING') return refuse('stateConflict');
+    const note = (request.body as { note?: string } | undefined)?.note?.trim();
+    if (note && note.length > 500) {
+      return invalid('note tối đa 500 ký tự.');
+    }
+    row.status = 'REJECTED';
+    row.resolvedBy = actor.userId;
+    row.resolvedTime = new Date().toISOString();
+    row.resolutionNote = note || null;
+    return ok({ ...row });
   }
 
   // ---- users ------------------------------------------------------------------------------------

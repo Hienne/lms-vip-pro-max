@@ -25,6 +25,12 @@ describe('identity endpoints', () => {
       ['grantRole', 'post', '/api/v1/users/{userId}/role-grants'],
       ['revokeRole', 'delete', '/api/v1/users/{userId}/role-grants/{grantId}'],
       ['listRoles', 'get', '/api/v1/roles'],
+      ['accessRequests', 'get', '/api/v1/access-requests'],
+      [
+        'rejectAccessRequest',
+        'post',
+        '/api/v1/access-requests/{requestId}/reject',
+      ],
     ]);
   });
 

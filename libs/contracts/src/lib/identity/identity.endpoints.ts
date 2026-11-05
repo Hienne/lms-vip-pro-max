@@ -2,6 +2,11 @@ import { z } from 'zod';
 import { defineEndpoint } from '../http/endpoint';
 import { PageSchema } from '../http/page';
 import {
+  AccessRequestSchema,
+  AccessRequestsQuerySchema,
+  RejectAccessRequestCommandSchema,
+} from './access-request.schema';
+import {
   CreatedGrantSchema,
   CreateUserCommandSchema,
   GrantRequestSchema,
@@ -14,6 +19,7 @@ import {
 } from './user.schema';
 
 const userParams = z.object({ userId: z.string() });
+const requestParams = z.object({ requestId: z.number().int() });
 const grantParams = z.object({ userId: z.string(), grantId: z.number().int() });
 
 /** The backend's users, role-grants and roles endpoints (/api/v1). */
@@ -74,5 +80,20 @@ export const identityEndpoints = {
     method: 'get',
     path: '/api/v1/roles',
     response: z.array(RoleOptionSchema),
+  }),
+  /** Visitors' requests to register or to reset a password, cut to the caller's unit scope. */
+  accessRequests: defineEndpoint({
+    method: 'get',
+    path: '/api/v1/access-requests',
+    query: AccessRequestsQuerySchema,
+    response: PageSchema(AccessRequestSchema),
+  }),
+  /** Refuse a pending request, with an optional note; a resolved request answers 409. */
+  rejectAccessRequest: defineEndpoint({
+    method: 'post',
+    path: '/api/v1/access-requests/{requestId}/reject',
+    params: requestParams,
+    body: RejectAccessRequestCommandSchema,
+    response: AccessRequestSchema,
   }),
 } as const;
