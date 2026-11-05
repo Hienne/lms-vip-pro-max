@@ -9,7 +9,7 @@ import { serverData } from '../../../../core/data-access/server-data';
 import { serverMutation } from '../../../../core/data-access/server-mutation';
 import { FileSaver } from '../../../../core/files/file-saver';
 import { EndpointClient } from '../../../../core/http/endpoint-client';
-import { AssessmentScreenStore } from './assessment-screen.store';
+import { QUESTION_IMPORT_HOST } from './question-import.host';
 
 export const QUESTION_IMPORT_TEMPLATE_NAME = 'question-import-template.xlsx';
 
@@ -21,13 +21,13 @@ const MAX_MB = QUESTION_IMPORT_LIMITS.maxBytes / (1024 * 1024);
  * picked `.xlsx`, its check (`dryRun=true`) and its import (`dryRun=false`). Provided by the
  * drawer, so the file is forgotten when it closes. The app checks only the extension and the size;
  * every rule inside the file is the server's, and a refusal is the usual toast. A written import
- * asks the screen to close the drawer and reload the bank.
+ * asks the screen that opened the drawer (its {@link QUESTION_IMPORT_HOST}) to close it and reload.
  */
 @Injectable()
 export class QuestionImportStore {
   private readonly client = inject(EndpointClient);
   private readonly saver = inject(FileSaver);
-  private readonly screen = inject(AssessmentScreenStore);
+  private readonly host = inject(QUESTION_IMPORT_HOST);
 
   private readonly state = {
     /** `undefined` follows the first course of the program. */
@@ -45,7 +45,11 @@ export class QuestionImportStore {
       this.client.call(courseEndpoints.instructorCourses, {
         query: { programId, page: 0, size: 50 },
       }),
-    { params: () => this.screen.selectedProgramId$() },
+    {
+      // A screen that names the course needs no list of courses.
+      params: () =>
+        this.host.fixedCourse$?.() ? undefined : this.host.programId$(),
+    },
   );
 
   private readonly templateMutation = serverMutation(
@@ -83,7 +87,7 @@ export class QuestionImportStore {
       errors: 'toast',
       success: (_, result) =>
         `Đã nhập ${result.created} câu hỏi, ghi đè ${result.updated} câu`,
-      onSuccess: () => this.screen.finishImport(),
+      onSuccess: () => this.host.finishImport(),
     },
   );
 
@@ -91,9 +95,14 @@ export class QuestionImportStore {
   readonly courses$ = computed(() => this.coursesData.value()?.items ?? []);
   readonly coursesError$ = this.coursesData.error;
   readonly isLoadingCourses$ = this.coursesData.isLoading;
-  /** The chosen course, or the program's first while none is chosen. */
+  /** The course the screen fixed, when it did: the drawer then shows its name and asks nothing. */
+  readonly fixedCourse$ = computed(() => this.host.fixedCourse$?.());
+  /** The fixed course, else the chosen one, else the program's first. */
   readonly courseId$ = computed<number | undefined>(
-    () => this.state.courseId() ?? this.courses$()[0]?.courseId,
+    () =>
+      this.fixedCourse$()?.courseId ??
+      this.state.courseId() ??
+      this.courses$()[0]?.courseId,
   );
   readonly overwrite$ = this.state.overwrite.asReadonly();
   readonly file$ = this.state.file.asReadonly();
@@ -203,7 +212,7 @@ export class QuestionImportStore {
   }
 
   close(): void {
-    this.screen.closeImport();
+    this.host.closeImport();
   }
 }
 

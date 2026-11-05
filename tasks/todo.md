@@ -103,12 +103,12 @@ save = `createQuiz` → `syncPool` → set `finalQuizId` on the draft → save t
 an optional fixed course hides the course select.
 
 **Acceptance criteria:**
-- [ ] Quiz screen provides the host; its four import specs pass unchanged.
-- [ ] With `fixedCourseId$` set, the drawer shows the course name as text and imports into it.
+- [x] Quiz screen provides the host; its four import specs pass unchanged.
+- [x] With `fixedCourseId$` set, the drawer shows the course name as text and imports into it.
 
 **Verification:** `npx nx test lms -- assessment-screen.spec`
 
-**Dependencies:** None (parallel with T4–T6) · **Files:** `quiz/assessment-screen/data-access/question-import.store.ts`, `question-import/*`, `assessment-screen.store.ts`, new `question-import.host.ts` · **Scope:** M
+**Dependencies:** None (parallel with T4–T6) · **Files:** moved to `shared/quiz/question-import/` (so the course editor can use it without importing a feature's internals), with new `data-access/question-import.host.ts`; `quiz/assessment-screen/assessment-screen.ts` provides the host · **Scope:** M
 
 ### T8: Bank too small: warning and import in step 3
 **Description:** When active bank < question count, step 3 states both numbers and offers the

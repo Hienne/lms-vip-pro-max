@@ -22,7 +22,12 @@
       </button>
     </div>
 
-    @if (store.coursesError$(); as error) {
+    @if (store.fixedCourse$(); as course) {
+    <p class="question-import__course">
+      Nhập vào khóa học <strong>{{ course.title }}</strong>. Câu hỏi thuộc ngân
+      hàng của chương trình chứa khóa học này.
+    </p>
+    } @else if (store.coursesError$(); as error) {
     <ui-alert tone="danger"
       >Không tải được danh sách khóa học: {{ error.message }}</ui-alert
     >

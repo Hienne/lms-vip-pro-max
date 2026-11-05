@@ -56,7 +56,7 @@ T2 quiz screen D7 (indep.)  │                         │
 - [x] T4: Step 3 reads the exam and the bank (three states, no form yet)
 - [x] T5: Create the final exam from the short form
 - [x] T6: Edit a wizard-managed exam; read-only summary for a FIXED one
-- [ ] T7: Decouple the import drawer behind `QUESTION_IMPORT_HOST`
+- [x] T7: Decouple the import drawer behind `QUESTION_IMPORT_HOST`
 - [ ] T8: Bank too small: warning and import in step 3
 
 ### Checkpoint B
