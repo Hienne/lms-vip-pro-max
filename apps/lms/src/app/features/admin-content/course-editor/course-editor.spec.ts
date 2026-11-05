@@ -14,6 +14,7 @@ import {
   ARCHITECTURE_VIDEO,
   backendRefusal,
   envelopeError,
+  envelopeOk,
   type FakeReply,
   type FakeRequest,
 } from '@lms/mocks';
@@ -1121,6 +1122,168 @@ describe('CourseEditor', () => {
         );
         expect(button('Thử lại')).toBeTruthy();
         expect(labels()).toEqual(['Không yêu cầu bài kiểm tra']);
+      });
+
+      describe('creating it from the short form', () => {
+        const openForm = async () => {
+          await screen.open('/admin/courses/6/edit');
+          await step('Bài thi & điều kiện');
+          await screen.click(button('Tạo bài thi cuối khóa'));
+        };
+        const value = (label: string) =>
+          (screen.field(label) as HTMLInputElement).value;
+
+        it('starts from the quiz screen defaults', async () => {
+          await openForm();
+
+          expect(value('Tên bài thi')).toBe(
+            'Thi cuối khóa: An toàn thông tin cho cán bộ CNTT',
+          );
+          expect(value('Thời gian (phút)')).toBe('15');
+          expect(value('Số câu mỗi lượt')).toBe('1');
+          expect(value('Điểm đạt (%)')).toBe('70');
+          expect(value('Số lần thi tối đa')).toBe('3');
+        });
+
+        it('limits the default question count to the bank and to ten', async () => {
+          bankOf(24);
+          await openForm();
+          expect(value('Số câu mỗi lượt')).toBe('10');
+        });
+
+        it('explains an invalid value on its field and creates nothing', async () => {
+          await openForm();
+          await screen.type(
+            screen.field('Thời gian (phút)') as HTMLInputElement,
+            '0',
+          );
+          await screen.click(button('Tạo bài thi'));
+
+          expect(screen.text()).toContain('Thời gian tối thiểu 1.');
+          expect(screen.callsTo(assessmentV1Endpoints.createQuiz)).toBe(0);
+        });
+
+        it('creates a random-pool final exam, fills its pool, and puts it on the draft', async () => {
+          await openForm();
+          await screen.type(
+            screen.field('Tên bài thi') as HTMLInputElement,
+            'Thi hết khóa ATTT',
+          );
+          await screen.type(
+            screen.field('Số lần thi tối đa') as HTMLInputElement,
+            '2',
+          );
+          await screen.click(button('Tạo bài thi'));
+          await vi.waitFor(() =>
+            expect(screen.callsTo(courseEndpoints.saveDraft)).toBe(1),
+          );
+
+          expect(
+            screen.lastCall(assessmentV1Endpoints.createQuiz)?.body,
+          ).toMatchObject({
+            courseId: 6,
+            title: 'Thi hết khóa ATTT',
+            quizType: 'FINAL_EXAM',
+            selectionMode: 'RANDOM_POOL',
+            timeLimitMinutes: 15,
+            passPercent: 70,
+            maxAttempts: 2,
+            shuffleQuestions: true,
+            shuffleOptions: true,
+            reviewPolicy: 'AFTER_SUBMIT',
+            scoringMode: 'ALL_OR_NOTHING',
+            scoreMethod: 'BEST',
+            openAt: null,
+            closeAt: null,
+            graceSeconds: 0,
+            retakeWaitHours: 0,
+          });
+          expect(screen.callsTo(assessmentV1Endpoints.replacePool)).toBe(1);
+          expect(
+            screen.lastCall(courseEndpoints.saveDraft)?.body,
+          ).toMatchObject({
+            finalQuizId: expect.any(Number),
+          });
+          await vi.waitFor(() =>
+            expect(screen.text()).toContain('Thi hết khóa ATTT'),
+          );
+          expect(screen.text(document.body)).toContain(
+            'Đã lưu bài thi cuối khóa',
+          );
+          expect(button('Sửa')).toBeTruthy();
+        });
+
+        it('keeps the exam when its pool is refused, and retries only the pool', async () => {
+          let refuse = true;
+          screen.calls.mockImplementation((endpoint, request) =>
+            endpoint === assessmentV1Endpoints.replacePool && refuse
+              ? backendRefusal('internalError')
+              : original(endpoint, request),
+          );
+          await openForm();
+          await screen.click(button('Tạo bài thi'));
+          await vi.waitFor(() =>
+            expect(screen.text()).toContain('chưa ghi được câu hỏi'),
+          );
+          expect(screen.callsTo(assessmentV1Endpoints.createQuiz)).toBe(1);
+
+          refuse = false;
+          await screen.click(button('Thử lại'));
+          await vi.waitFor(() =>
+            expect(screen.text()).not.toContain('chưa ghi được câu hỏi'),
+          );
+          expect(screen.callsTo(assessmentV1Endpoints.createQuiz)).toBe(1);
+          expect(screen.callsTo(assessmentV1Endpoints.replacePool)).toBe(2);
+        });
+
+        it('writes at most 500 questions and says the newest are used', async () => {
+          const pageOf = (page: number) => ({
+            items: Array.from({ length: 100 }, (_, i) => ({
+              id: 10_000 - page * 100 - i,
+              code: `Q${i}`,
+              programId: 4,
+              courseId: 6,
+              lessonId: null,
+              competencyId: 1,
+              competencyName: 'Quản lý CIF',
+              questionType: 'SINGLE',
+              contentPreview: 'Câu hỏi',
+              difficulty: 'EASY',
+              points: 1,
+              status: 'ACTIVE',
+              contentVersion: 1,
+              optionCount: 4,
+              correctCount: 1,
+              usedInQuizCount: 0,
+              rowVersion: 0,
+              updateTime: '2026-11-01T02:00:00Z',
+            })),
+            page,
+            size: 100,
+            totalElements: 650,
+            totalPages: 7,
+          });
+          let pool: unknown[] = [];
+          screen.calls.mockImplementation((endpoint, request) => {
+            if (endpoint === programAssessmentEndpoints.questions)
+              return {
+                status: 200,
+                body: envelopeOk(pageOf(Number(request.query['page'] ?? 0))),
+              } as FakeReply;
+            if (endpoint === assessmentV1Endpoints.replacePool) {
+              pool = (request.body as { items: unknown[] }).items;
+              return original(endpoint, {
+                ...request,
+                body: { items: [] },
+              });
+            }
+            return original(endpoint, request);
+          });
+          await openForm();
+          expect(screen.text()).toContain('Bài thi dùng 500 câu mới nhất');
+          await screen.click(button('Tạo bài thi'));
+          await vi.waitFor(() => expect(pool).toHaveLength(500));
+        });
       });
 
       it('requires the chosen exam to be published on the checklist', async () => {

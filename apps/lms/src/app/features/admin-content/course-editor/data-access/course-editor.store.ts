@@ -234,6 +234,8 @@ export class CourseEditorStore {
     visited: signal<readonly number[]>([this.initialStep()]),
     /** The checks of steps 1 to 3 over the form, handed over once by the page. */
     stepChecks: signal<readonly StepCheck[]>([]),
+    /** How the page puts a new final exam into its form and saves the draft, handed over once. */
+    examAttacher: signal<((quizId: number) => void) | null>(null),
     editingLesson: signal<LessonTarget | null>(null),
     /** When the last save went through, as the page shows it ("14:05"). */
     savedAt: signal<string | null>(null),
@@ -636,6 +638,10 @@ export class CourseEditorStore {
     this.state.visited.set(visited);
   }
 
+  private setExamAttacher(attach: ((quizId: number) => void) | null): void {
+    this.state.examAttacher.set(attach);
+  }
+
   private setStepChecks(checks: readonly StepCheck[]): void {
     this.state.stepChecks.set(checks);
   }
@@ -718,6 +724,17 @@ export class CourseEditorStore {
   /** The page hands over how to check each step's fields, once, when it builds its form. */
   registerStepChecks(checks: readonly StepCheck[]): void {
     this.setStepChecks(checks);
+  }
+
+  /** The page hands over how a newly made final exam joins the draft (the form's field, then a save). */
+  registerExamAttacher(attach: (quizId: number) => void): void {
+    this.setExamAttacher(attach);
+  }
+
+  /** A final exam was made for this course: the draft references it, and the quizzes are read again. */
+  attachExam(quizId: number): void {
+    this.state.examAttacher()?.(quizId);
+    this.quizzesData.reload();
   }
 
   /**

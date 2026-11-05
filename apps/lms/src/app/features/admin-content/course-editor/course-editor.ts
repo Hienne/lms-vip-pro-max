@@ -142,6 +142,10 @@ export class CourseEditor implements HasUnsavedChanges {
   };
 
   constructor() {
+    this.store.registerExamAttacher((quizId) => {
+      this.model.update((value) => ({ ...value, finalQuizId: String(quizId) }));
+      this.store.save(this.command());
+    });
     this.store.registerStepChecks(
       this.stepFields().map((fields) => ({
         invalid: () => fields.some((field) => field().invalid()),

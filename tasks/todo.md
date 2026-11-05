@@ -76,10 +76,10 @@ active bank count for the course's program; step 3 renders the three states with
 save = `createQuiz` → `syncPool` → set `finalQuizId` on the draft → save the draft.
 
 **Acceptance criteria:**
-- [ ] Defaults: 15 / `min(10, bank)` / 70 / 3; other fields per D4; validation messages in Vietnamese.
-- [ ] After save the draft references the new quiz and the card shows the wizard-managed state.
-- [ ] Pool write fails after create → quiz kept, card offers "Thử lại" which retries only the pool.
-- [ ] Pool takes at most 500 ids (newest first) and the card says so when capped.
+- [x] Defaults: 15 / `min(10, bank)` / 70 / 3; other fields per D4; validation messages in Vietnamese.
+- [x] After save the draft references the new quiz and the card shows the wizard-managed state.
+- [x] Pool write fails after create → quiz kept, card offers "Thử lại" which retries only the pool.
+- [x] Pool takes at most 500 ids (newest first) and the card says so when capped.
 
 **Verification:** `npx nx test lms -- course-exam.store.spec course-editor.spec`
 

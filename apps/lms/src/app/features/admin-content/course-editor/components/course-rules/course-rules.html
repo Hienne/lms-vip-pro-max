@@ -27,7 +27,21 @@
           Thử lại
         </button>
       </ui-alert>
-      } @else if (exam.exam$(); as quiz) {
+      } @else if (exam.exam$(); as quiz) { @if (exam.poolPending$()) {
+      <ui-alert tone="danger">
+        Đã tạo bài thi nhưng chưa ghi được câu hỏi vào bài thi. @if
+        (exam.saveError$(); as failure) { {{ failure.message }} }
+        <button
+          uiButton
+          size="sm"
+          type="button"
+          [disabled]="exam.isSaving$()"
+          (click)="exam.retryPool()"
+        >
+          Thử lại
+        </button>
+      </ui-alert>
+      }
       <dl class="course-rules__summary">
         <div>
           <dt>Tên bài thi</dt>
@@ -88,11 +102,25 @@
         <strong>{{ name }}</strong>
         } có {{ exam.activeBank$() }} câu đang dùng. }
       </p>
+      @if (store.course$()) { @if (exam.formOpen$()) {
+      <app-course-exam-form
+        submitLabel="Tạo bài thi"
+        [value]="newExam()"
+        [busy]="exam.isSaving$()"
+        [error]="exam.saveError$()"
+        (saved)="exam.create($event)"
+        (cancelled)="exam.closeForm()"
+      />
+      } @else {
       <div class="row row--gap-2">
         <button uiButton size="sm" type="button" (click)="exam.openForm()">
           Tạo bài thi cuối khóa
         </button>
       </div>
+      } } } @if (exam.isBankCapped$()) {
+      <p class="course-rules__note">
+        Bài thi dùng {{ exam.poolLimit }} câu mới nhất trong ngân hàng.
+      </p>
       }
     </div>
   </section>

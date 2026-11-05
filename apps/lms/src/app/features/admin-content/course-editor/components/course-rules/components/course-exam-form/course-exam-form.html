@@ -1,0 +1,60 @@
+<div class="course-exam-form">
+  <ui-field label="Tên bài thi" required>
+    <input
+      uiInput
+      [formField]="examForm.title"
+      (keydown.enter)="save($event)"
+    />
+  </ui-field>
+  <div class="course-exam-form__numbers">
+    <ui-field label="Thời gian (phút)" required>
+      <input
+        uiInput
+        type="number"
+        [formField]="examForm.timeLimitMinutes"
+        (keydown.enter)="save($event)"
+      />
+    </ui-field>
+    <ui-field label="Số câu mỗi lượt" required>
+      <input
+        uiInput
+        type="number"
+        [formField]="examForm.questionCount"
+        (keydown.enter)="save($event)"
+      />
+    </ui-field>
+    <ui-field label="Điểm đạt (%)" required>
+      <input
+        uiInput
+        type="number"
+        [formField]="examForm.passPercent"
+        (keydown.enter)="save($event)"
+      />
+    </ui-field>
+    <ui-field label="Số lần thi tối đa" required>
+      <input
+        uiInput
+        type="number"
+        [formField]="examForm.maxAttempts"
+        (keydown.enter)="save($event)"
+      />
+    </ui-field>
+  </div>
+  @if (error(); as failure) {
+  <ui-alert tone="danger">{{ failure.message }}</ui-alert>
+  }
+  <div class="row row--gap-2">
+    <button
+      uiButton
+      type="button"
+      variant="primary"
+      [disabled]="busy()"
+      (click)="save()"
+    >
+      {{ submitLabel() }}
+    </button>
+    <button uiButton type="button" [disabled]="busy()" (click)="cancel()">
+      Hủy
+    </button>
+  </div>
+</div>

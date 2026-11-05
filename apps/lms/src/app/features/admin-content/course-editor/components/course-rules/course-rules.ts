@@ -14,6 +14,8 @@ import {
 } from '@lms/ui';
 import type { CourseDraftValue } from '../../course-draft';
 import { CourseEditorStore } from '../../data-access/course-editor.store';
+import { CourseExamForm } from './components/course-exam-form/course-exam-form';
+import { newExamValue } from './data-access/course-exam.model';
 import { CourseExamStore } from './data-access/course-exam.store';
 
 const QUIZ_STATUS: Record<QuizSummary['status'], string> = {
@@ -42,6 +44,7 @@ const QUIZ_STATUS_LABEL: Record<QuizSummary['status'], string> = {
     Button,
     Card,
     CardBody,
+    CourseExamForm,
     Field,
     FormField,
     Icon,
@@ -79,6 +82,11 @@ export class CourseRules {
         ]
       : options;
   });
+
+  /** The form's starting values for a new exam. */
+  protected readonly newExam = computed(() =>
+    newExamValue(this.draft().title().value(), this.exam.activeBank$()),
+  );
 
   protected readonly statusLabel = QUIZ_STATUS_LABEL;
 
