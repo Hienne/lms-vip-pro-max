@@ -16,7 +16,7 @@ publishing the course publishes its draft exam first. The quiz screen stops aski
   course's final quiz, the bank count, the pool sync and the exam mutations. `CourseEditorStore`
   keeps the draft, auto-create and the publish chain; it only reads the exam id/status it needs.
 - **Pool sync is one function** (`syncPool(quizId)`): page `GET /questions?programId&courseId&status=ACTIVE`
-  (size 100, max 5 pages = 500 ids) then `PUT /quizzes/{id}/questions`. Used by exam save and by the
+  (size 100, max 20 pages = 2000 ids) then `PUT /quizzes/{id}/questions`. Used by exam save and by the
   publish chain, never for a `FIXED` quiz.
 - **Import drawer is decoupled from the quiz screen** through an injection token
   (`QUESTION_IMPORT_HOST`: `programId$`, optional `fixedCourseId$`, `finishImport()`, `closeImport()`),
@@ -40,19 +40,23 @@ T2 quiz screen D7 (indep.)  │                         │
                                                           T5 ─► T9 publish chain ─► T10 program lock*
                                                                                    ─► T11 polish + verify
 ```
+
 `*` T10 only if open question 4 is answered "lock".
 
 ## Task List
 
 ### Phase 1: Foundation
+
 - [x] T1: Mock parity for final exams
 - [x] T2: Quiz screen create form without the program select (D7)
 - [x] T3: Create the course when leaving step 1 (D1)
 
 ### Checkpoint A
+
 - [ ] `nx test lms mocks` green; F1 and F6 work on the mock in the browser; review with human
 
 ### Phase 2: Exam in step 3
+
 - [x] T4: Step 3 reads the exam and the bank (three states, no form yet)
 - [x] T5: Create the final exam from the short form
 - [x] T6: Edit a wizard-managed exam; read-only summary for a FIXED one
@@ -60,14 +64,17 @@ T2 quiz screen D7 (indep.)  │                         │
 - [x] T8: Bank too small: warning and import in step 3
 
 ### Checkpoint B
+
 - [ ] F2–F4 work end to end on the mock; full run-many check green; review with human
 
 ### Phase 3: Publish and finish
+
 - [x] T9: Publishing the course publishes its draft exam (D2)
-- [ ] T10: Lock the program once an exam is attached (conditional on open question 4)
+- [x] T10: Lock the program once an exam is attached (open question 4 = lock)
 - [ ] T11: Visual-design pass, browser matrix, full check
 
 ### Checkpoint C (done)
+
 - [ ] All spec success criteria 1–7 met on the mock
 - [ ] Real-backend run of F1–F5 with `giangvien` once the backend prerequisite is deployed
 
@@ -79,14 +86,14 @@ T2 quiz screen D7 (indep.)  │                         │
 
 ## Risks and Mitigations
 
-| Risk | Impact | Mitigation |
-|---|---|---|
+| Risk                                                      | Impact                                          | Mitigation                                                                        |
+| --------------------------------------------------------- | ----------------------------------------------- | --------------------------------------------------------------------------------- |
 | Backend `feat/course-final-exam` not on the shared server | High: `finalQuizId` dropped on the real backend | Build and verify on the mock; real-backend sign-off is a separate checkpoint item |
-| Publish chain not atomic | Med | Remember the finished exam publish; explicit message; retry skips it |
-| Pool cap 500 | Low | Take the newest 500 ACTIVE and say so in step 3 |
-| Auto-create hits a taken code | Low | Existing `takenCode` path: stay on step 1 with the field error |
-| `CourseEditorStore` (1300+ lines) grows further | Med | Exam logic goes to `CourseExamStore`; editor store gets only the chain hook |
-| Import drawer refactor breaks the quiz screen | Med | T7 keeps the quiz screen's import specs unchanged and green |
+| Publish chain not atomic                                  | Med                                             | Remember the finished exam publish; explicit message; retry skips it              |
+| Pool cap 2000                                             | Low                                             | Take the newest 2000 ACTIVE and say so in step 3                                  |
+| Auto-create hits a taken code                             | Low                                             | Existing `takenCode` path: stay on step 1 with the field error                    |
+| `CourseEditorStore` (1300+ lines) grows further           | Med                                             | Exam logic goes to `CourseExamStore`; editor store gets only the chain hook       |
+| Import drawer refactor breaks the quiz screen             | Med                                             | T7 keeps the quiz screen's import specs unchanged and green                       |
 
 ## Open Questions (from the spec)
 

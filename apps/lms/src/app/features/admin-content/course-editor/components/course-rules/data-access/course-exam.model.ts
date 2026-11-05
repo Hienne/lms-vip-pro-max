@@ -13,8 +13,8 @@ export interface ExamFormValue {
   readonly maxAttempts: number;
 }
 
-/** A quiz pool takes at most this many questions. */
-export const POOL_LIMIT = 500;
+/** A quiz pool takes at most this many questions (backend `MAX_POOL_SIZE`). */
+export const POOL_LIMIT = 2000;
 const POOL_PAGE_SIZE = 100;
 export const POOL_PAGES = POOL_LIMIT / POOL_PAGE_SIZE;
 export { POOL_PAGE_SIZE };

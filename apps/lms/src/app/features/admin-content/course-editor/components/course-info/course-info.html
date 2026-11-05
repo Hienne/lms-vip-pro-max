@@ -8,7 +8,11 @@
       />
     </ui-field>
     <div class="course-info__pair">
-      <ui-field label="Chương trình" required>
+      <ui-field
+        label="Chương trình"
+        required
+        [hint]="draft().programId().disabled() ? programLockedHint : ''"
+      >
         <select
           uiSelect
           [formField]="draft().programId"

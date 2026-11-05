@@ -26,6 +26,7 @@ import {
 import { LEVEL_LABEL } from '../../../../../shared/course/course-labels';
 import { coverSrc } from '../../../../../shared/course/cover-image';
 import { draftTotals, type CourseDraftValue } from '../../course-draft';
+import { PROGRAM_LOCKED_HINT } from '../../course-draft.schema';
 import {
   acceptOf,
   COVER_KEY,
@@ -86,6 +87,7 @@ export class CourseInfo {
   protected readonly levels = Object.entries(LEVEL_LABEL);
   protected readonly accept = acceptOf('image');
   protected readonly coverKey = COVER_KEY;
+  protected readonly programLockedHint = PROGRAM_LOCKED_HINT;
   protected readonly itemState = itemState;
   protected readonly isCancellable = isCancellable;
 

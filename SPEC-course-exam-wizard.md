@@ -35,7 +35,7 @@ The "Cấu hình nâng cao" link keeps the full quiz screen for everything else.
   bank and stay editable by that course's managers.
 - **A quiz needs only `courseId`.** The backend derives the program from the course's latest
   revision and rejects pool questions from another program. At most one `FINAL_EXAM` per course.
-- **A quiz pool is explicit** even for `RANDOM_POOL`: `PUT /quizzes/{id}/questions` with up to 500
+- **A quiz pool is explicit** even for `RANDOM_POOL`: `PUT /quizzes/{id}/questions` with up to 2000
   items. Publishing a quiz needs ≥ `questionCount` ACTIVE questions in the pool.
 - **Course final exam on the draft** (`finalQuizId`, `FINAL_EXAM_UNPUBLISHED` on publish) exists
   only on backend branch `feat/course-final-exam` (`1607d18`, `4ab9e1f`). **It is not on
@@ -44,19 +44,20 @@ The "Cấu hình nâng cao" link keeps the full quiz screen for everything else.
 
 ## Decisions
 
-| # | Decision | Why |
-|---|---|---|
-| D1 | Leaving step 1 in create mode ("Tiếp tục") creates the course, then continues on the edit URL at step 2. | Step 3 always has a `courseId`. Accepted cost: abandoned drafts. |
-| D2 | Publishing the course publishes its draft final exam first, inside the same confirmation. | `FINAL_EXAM_UNPUBLISHED` otherwise. Not atomic: see Risks. |
-| D3 | The wizard creates questions only as **course-sourced** questions (Excel import with `courseId`). No backend code change; ask backend to document this path as supported, not "legacy". | Instructors with OWN/TEAM scope can add to the bank of their own course's program, which is the case that blocks them today. |
-| D4 | The short form uses the quiz screen's defaults: 15 min, 70 %, 3 attempts, `RANDOM_POOL`, shuffle questions and options, review after submit, no open/close dates, `ALL_OR_NOTHING`, `BEST`, 0 grace, retake wait 0. Question count defaults to `min(10, active bank size)`. | One set of defaults across both screens. |
-| D5 | The wizard's exam uses the **whole active bank** as its pool, rewritten on every wizard save of the exam and right before the auto-publish. | Random selection over the shared bank is what "lấy ngẫu nhiên" means to users; questions imported later join automatically. |
-| D6 | If the exam was customised on the quiz screen (`FIXED` selection), step 3 shows a read-only summary with "Cấu hình nâng cao" and never rewrites its pool. | Protect manual work. |
-| D7 | The quiz screen's create form drops the program select; it shows "Câu hỏi lấy từ ngân hàng của chương trình X" once a course is picked. | The program is derived from the course. |
+| #   | Decision                                                                                                                                                                                                                                                                    | Why                                                                                                                          |
+| --- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| D1  | Leaving step 1 in create mode ("Tiếp tục") creates the course, then continues on the edit URL at step 2.                                                                                                                                                                    | Step 3 always has a `courseId`. Accepted cost: abandoned drafts.                                                             |
+| D2  | Publishing the course publishes its draft final exam first, inside the same confirmation.                                                                                                                                                                                   | `FINAL_EXAM_UNPUBLISHED` otherwise. Not atomic: see Risks.                                                                   |
+| D3  | The wizard creates questions only as **course-sourced** questions (Excel import with `courseId`). No backend code change; ask backend to document this path as supported, not "legacy".                                                                                     | Instructors with OWN/TEAM scope can add to the bank of their own course's program, which is the case that blocks them today. |
+| D4  | The short form uses the quiz screen's defaults: 15 min, 70 %, 3 attempts, `RANDOM_POOL`, shuffle questions and options, review after submit, no open/close dates, `ALL_OR_NOTHING`, `BEST`, 0 grace, retake wait 0. Question count defaults to `min(10, active bank size)`. | One set of defaults across both screens.                                                                                     |
+| D5  | The wizard's exam uses the **whole active bank** as its pool, rewritten on every wizard save of the exam and right before the auto-publish.                                                                                                                                 | Random selection over the shared bank is what "lấy ngẫu nhiên" means to users; questions imported later join automatically.  |
+| D6  | If the exam was customised on the quiz screen (`FIXED` selection), step 3 shows a read-only summary with "Cấu hình nâng cao" and never rewrites its pool.                                                                                                                   | Protect manual work.                                                                                                         |
+| D7  | The quiz screen's create form drops the program select; it shows "Câu hỏi lấy từ ngân hàng của chương trình X" once a course is picked.                                                                                                                                     | The program is derived from the course.                                                                                      |
 
 ## Scope
 
 In:
+
 1. Auto-create on leaving step 1 (create mode only).
 2. Step 3 rewrite: exam card with three states — none / wizard-managed / customised.
 3. Short exam form (create and edit), bank count, pool sync, Excel import drawer reuse.
@@ -65,6 +66,7 @@ In:
 6. Copy, focus and empty states per `docs/conventions/visual-design.md`.
 
 Out:
+
 - Practice quizzes and quiz lessons inside the outline (unchanged).
 - Creating a single question inline in the wizard (Excel only; the full bank screen stays).
 - Backend endpoint that publishes course and exam in one transaction (follow-up if D2 misbehaves).
@@ -77,11 +79,11 @@ On success: `moveToEditor(created)` with `step=1`, toast "Đã lưu nháp". On a
 step 1 with the existing field error. On another error: alert, stay. While pending: button busy.
 
 **F2 — step 3, no exam.** Card "Bài thi cuối khóa" shows bank count ("Ngân hàng chương trình
-*Nền tảng…* có 24 câu đang dùng") and the short form collapsed behind "Tạo bài thi cuối khóa".
+_Nền tảng…_ có 24 câu đang dùng") and the short form collapsed behind "Tạo bài thi cuối khóa".
 "Không yêu cầu bài thi" remains the default (completion = lessons only).
 
 **F3 — save exam.** Create: `createQuiz` (DRAFT, `FINAL_EXAM`, D4 values) → pool = all ACTIVE bank
-questions (paged reads, max 500) → set `finalQuizId` on the draft → save draft. Edit: `updateQuiz`
+questions (paged reads, max 2000) → set `finalQuizId` on the draft → save draft. Edit: `updateQuiz`
 → pool rewrite (D5). Pool write failure after a create keeps the quiz (receipt pattern from the quiz
 screen) and offers "Thử lại".
 
@@ -89,8 +91,9 @@ screen) and offers "Thử lại".
 "Nhập từ Excel" (opens the existing `QuestionImport` drawer, course fixed to this course), and for
 users with `QUESTION_BANK`, a link to the bank screen. After an import the count and pool refresh.
 
-**F5 — publish.** Confirmation text adds "Bài thi cuối khóa *X* sẽ được xuất bản cùng khóa học."
+**F5 — publish.** Confirmation text adds "Bài thi cuối khóa _X_ sẽ được xuất bản cùng khóa học."
 Chain: save draft → (exam DRAFT? pool rewrite → `publishQuiz`) → `publish` course.
+
 - Exam publish refused (`ASSESSMENT-QUIZ_NOT_READY` etc.): stop, course stays draft, step 3 shows why.
 - Exam published, course refused: toast "Bài thi đã xuất bản, khóa học chưa xuất bản" + the
   course's reason; retry skips the exam step.
@@ -143,11 +146,7 @@ commands; `serverData` / `serverMutation`; components render selectors and call 
 export class CourseExamStore {
   private readonly state = { formOpen: signal(false) };
 
-  private readonly bankCount = serverData(
-    (query: { programId: number; courseId: number }) =>
-      this.client.call(api.questions, { query: { ...query, status: 'ACTIVE', page: 0, size: 1 } }),
-    { params: () => this.bankQuery(), reloadOn: this.bankChanges },
-  );
+  private readonly bankCount = serverData((query: { programId: number; courseId: number }) => this.client.call(api.questions, { query: { ...query, status: 'ACTIVE', page: 0, size: 1 } }), { params: () => this.bankQuery(), reloadOn: this.bankChanges });
 
   readonly activeBank$ = computed(() => this.bankCount.value()?.totalElements);
   readonly isWizardManaged$ = computed(() => this.exam$()?.selectionMode !== 'FIXED');
@@ -161,7 +160,7 @@ decoration, one coloured badge per row at most).
 
 - **Contracts/mocks (Vitest):** mock enforces one FINAL_EXAM per course, pool program check,
   publish needs ≥ `questionCount` ACTIVE.
-- **Store specs:** `CourseExamStore` (count, pool paging ≤ 500, receipt on pool failure, FIXED
+- **Store specs:** `CourseExamStore` (count, pool paging ≤ 2000, receipt on pool failure, FIXED
   untouched); `CourseEditorStore` (auto-create on continue, publish chain incl. both refusals).
 - **Screen specs (`course-editor.spec.ts`):** F1–F5 end to end on the mock backend; quiz screen F6.
 - **Browser:** one run on `mockBackend` per flow F1–F5, 1440 px and 375 px, light and dark.
@@ -195,21 +194,20 @@ decoration, one coloured badge per row at most).
 
 ## Risks
 
-| Risk | Mitigation |
-|---|---|
-| Backend prerequisite not deployed → `finalQuizId` silently dropped on the real server | Blocker for real-backend sign-off; build and test on the mock meanwhile. |
-| D2 not atomic (exam published, course refused) | Explicit message and retry skipping the exam; escalate to a backend endpoint if seen often. |
-| Pool > 500 active questions | Use the first 500 by id desc and say so; ask backend whether `RANDOM_POOL` can mean "whole bank". |
-| Abandoned drafts from D1 | Accepted; drafts stay visible in "Quản lý khóa học" filtered by "Nháp". |
-| Course-sourced path (D3) removed later by backend | Ask backend to document it as supported before shipping. |
+| Risk                                                                                  | Mitigation                                                                                  |
+| ------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------- |
+| Backend prerequisite not deployed → `finalQuizId` silently dropped on the real server | Blocker for real-backend sign-off; build and test on the mock meanwhile.                    |
+| D2 not atomic (exam published, course refused)                                        | Explicit message and retry skipping the exam; escalate to a backend endpoint if seen often. |
+| Pool > 2000 active questions                                                          | Use the first 2000 by id desc and say so (backend raised `MAX_POOL_SIZE` from 500 to 2000). |
+| Abandoned drafts from D1                                                              | Accepted; drafts stay visible in "Quản lý khóa học" filtered by "Nháp".                     |
+| Course-sourced path (D3) removed later by backend                                     | Ask backend to document it as supported before shipping.                                    |
 
 ## Open Questions
 
-1. **Backend prerequisite:** who merges and deploys `feat/course-final-exam` (and
-   `feat/course-publish-targets`, which it contains) to origin/main and the shared server, and when?
-2. **D3 confirmation:** backend agrees the `courseId` question path and Excel import are a supported
-   way for course managers to add to their program bank?
-3. **Pool size:** is the 500-item pool cap acceptable, or should backend support "whole bank" random
-   selection?
-4. **Course program change after an exam exists:** block the program select in step 1 once an exam
-   is attached (recommended), or warn only?
+1. **Backend prerequisite:** answered. hmhug19/corebanking-academy#30 lands `feat/course-final-exam`
+   (with publish targets) on main; it still has to be merged and deployed to the shared server.
+2. **D3 confirmation:** answered, yes. hmhug19/corebanking-academy#31 makes the `courseId` path the
+   supported way for course managers of any scope; `programId` may be sent with it.
+3. **Pool size:** answered. #31 raises the cap to 2000; the wizard takes the newest 2000.
+4. **Course program change after an exam exists:** answered, lock. Step 1's program select is
+   disabled while `finalQuizId` is set (T10).

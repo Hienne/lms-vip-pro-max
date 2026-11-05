@@ -1037,6 +1037,29 @@ describe('CourseEditor', () => {
         ).not.toHaveProperty('finalQuizId');
       });
 
+      it('locks the program on step 1 while a final exam is attached', async () => {
+        listQuizzes();
+        await screen.open('/admin/courses/6/edit');
+        const program = () => screen.field('Chương trình') as HTMLSelectElement;
+        expect(program().disabled).toBe(false);
+        expect(screen.text()).not.toContain(
+          'Gỡ bài thi cuối khóa để đổi chương trình.',
+        );
+
+        await step('Bài thi & điều kiện');
+        await screen.choose(exam(), '2');
+        await step('Thông tin cơ bản');
+        expect(program().disabled).toBe(true);
+        expect(screen.text()).toContain(
+          'Gỡ bài thi cuối khóa để đổi chương trình.',
+        );
+
+        await step('Bài thi & điều kiện');
+        await screen.choose(exam(), '');
+        await step('Thông tin cơ bản');
+        expect(program().disabled).toBe(false);
+      });
+
       it('says to create one when the course has no final exam', async () => {
         await screen.open('/admin/courses/6/edit');
         await step('Bài thi & điều kiện');
@@ -1237,7 +1260,7 @@ describe('CourseEditor', () => {
           expect(screen.callsTo(assessmentV1Endpoints.replacePool)).toBe(2);
         });
 
-        it('writes at most 500 questions and says the newest are used', async () => {
+        it('writes at most 2000 questions and says the newest are used', async () => {
           const pageOf = (page: number) => ({
             items: Array.from({ length: 100 }, (_, i) => ({
               id: 10_000 - page * 100 - i,
@@ -1261,8 +1284,8 @@ describe('CourseEditor', () => {
             })),
             page,
             size: 100,
-            totalElements: 650,
-            totalPages: 7,
+            totalElements: 2050,
+            totalPages: 21,
           });
           let pool: unknown[] = [];
           screen.calls.mockImplementation((endpoint, request) => {
@@ -1281,9 +1304,9 @@ describe('CourseEditor', () => {
             return original(endpoint, request);
           });
           await openForm();
-          expect(screen.text()).toContain('Bài thi dùng 500 câu mới nhất');
+          expect(screen.text()).toContain('Bài thi dùng 2000 câu mới nhất');
           await screen.click(button('Tạo bài thi'));
-          await vi.waitFor(() => expect(pool).toHaveLength(500));
+          await vi.waitFor(() => expect(pool).toHaveLength(2000));
         });
       });
 
