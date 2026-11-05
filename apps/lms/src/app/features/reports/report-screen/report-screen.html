@@ -141,38 +141,69 @@
 />
 } @else if (store.pickers.blocked$() && !store.error$()) {
 <!-- A filter of the link is not in scope (its picker says so) or still resolving. -->
-} @else if (store.isLoading$()) {
-<p class="row" role="status"><span uiSpinner></span>Đang tải báo cáo…</p>
-} @else if (store.error$(); as error) {
-<ui-error-state [message]="error.message" (retry)="store.retry()" />
-} @else if (store.dimension$()) {
-<section uiCard class="report-screen__detail">
-  <div class="row-between report-screen__section-heading">
-    <div>
-      <h2>{{store.title$()}}</h2>
-      <p>{{store.total$() | fmtNum}} dòng phù hợp với bộ lọc</p>
-    </div>
-    <span class="report-screen__muted">Xuất CSV để nhận toàn bộ kết quả</span>
+} @else if (!store.dimension$()) {
+<section
+  uiCard
+  class="report-screen__metrics"
+  aria-labelledby="report-learning-title"
+>
+  <div class="report-screen__part-heading">
+    <h2 id="report-learning-title">Tiến độ học</h2>
   </div>
-  <ui-data-table
-    [caption]="store.title$()"
-    [columns]="store.columns$()"
-    [rows]="store.rows$()"
-    [total]="store.total$()"
-    [page]="store.page$()"
-    [pageSize]="20"
-    [sort]="store.sort$()"
-    (pageChange)="store.changePage($event)"
-    (sortChange)="store.changeSort($event)"
-  >
-    <ui-empty
-      slot="empty"
-      variant="inline"
-      title="Không có dữ liệu phù hợp"
-      description="Thử thay đổi phạm vi hoặc đặt lại bộ lọc."
-    />
-  </ui-data-table>
+  @if (store.learningLoading$()) {
+  <p class="row report-screen__part-state" role="status">
+    <span uiSpinner></span>Đang tải tiến độ học…
+  </p>
+  } @else if (store.learningError$(); as error) {
+  <ui-error-state [message]="error.message" (retry)="store.retryLearning()" />
+  } @else if (store.learning$(); as counts) { @if (counts.enrollments) {
+  <dl>
+    <div>
+      <dt>Lượt học</dt>
+      <dd>{{counts.enrollments | fmtNum}}</dd>
+    </div>
+    <div>
+      <dt>Học viên</dt>
+      <dd>{{counts.learners | fmtNum}}</dd>
+    </div>
+    <div>
+      <dt>Hoàn thành</dt>
+      <dd>{{counts.completed | fmtNum}}</dd>
+    </div>
+    <div>
+      <dt>Đang học</dt>
+      <dd>{{counts.inProgress | fmtNum}}</dd>
+    </div>
+    <div>
+      <dt>Chưa bắt đầu</dt>
+      <dd>{{counts.notStarted | fmtNum}}</dd>
+    </div>
+    <div [class.report-screen__kpi--danger]="counts.overdue > 0">
+      <dt>Quá hạn</dt>
+      <dd>{{counts.overdue | fmtNum}}</dd>
+    </div>
+    <div>
+      <dt>Tỷ lệ hoàn thành</dt>
+      <dd>{{counts.completionRate | fmtPct:2}}</dd>
+    </div>
+    <div>
+      <dt>Tiến độ trung bình</dt>
+      <dd>{{counts.averageProgress | fmtPct:2}}</dd>
+    </div>
+  </dl>
+  } @else {
+  <ui-empty variant="inline" title="Chưa có lượt học trong phạm vi đã chọn" />
+  }
+  <p class="report-screen__as-of">
+    Số liệu tính đến {{store.learningAsOf$()}}.
+  </p>
+  }
 </section>
+<h2 class="report-screen__part-title">Kết quả thi</h2>
+@if (store.examLoading$()) {
+<p class="row" role="status"><span uiSpinner></span>Đang tải kết quả thi…</p>
+} @else if (store.examError$(); as error) {
+<ui-error-state [message]="error.message" (retry)="store.retry()" />
 } @else if (store.overview$(); as data) {
 <section
   uiCard
@@ -362,6 +393,38 @@
       slot="empty"
       variant="inline"
       title="Chưa có dữ liệu trong phạm vi đã chọn"
+    />
+  </ui-data-table>
+</section>
+} } @else if (store.isLoading$()) {
+<p class="row" role="status"><span uiSpinner></span>Đang tải báo cáo…</p>
+} @else if (store.error$(); as error) {
+<ui-error-state [message]="error.message" (retry)="store.retry()" />
+} @else if (store.dimension$()) {
+<section uiCard class="report-screen__detail">
+  <div class="row-between report-screen__section-heading">
+    <div>
+      <h2>{{store.title$()}}</h2>
+      <p>{{store.total$() | fmtNum}} dòng phù hợp với bộ lọc</p>
+    </div>
+    <span class="report-screen__muted">Xuất CSV để nhận toàn bộ kết quả</span>
+  </div>
+  <ui-data-table
+    [caption]="store.title$()"
+    [columns]="store.columns$()"
+    [rows]="store.rows$()"
+    [total]="store.total$()"
+    [page]="store.page$()"
+    [pageSize]="20"
+    [sort]="store.sort$()"
+    (pageChange)="store.changePage($event)"
+    (sortChange)="store.changeSort($event)"
+  >
+    <ui-empty
+      slot="empty"
+      variant="inline"
+      title="Không có dữ liệu phù hợp"
+      description="Thử thay đổi phạm vi hoặc đặt lại bộ lọc."
     />
   </ui-data-table>
 </section>

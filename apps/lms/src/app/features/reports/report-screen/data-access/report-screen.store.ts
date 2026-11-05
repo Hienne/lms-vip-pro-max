@@ -14,6 +14,9 @@ import {
   type AssessmentReportType,
   type AssessmentReportFilter,
   type AssessmentReportExportQuery,
+  learningReportEndpoints as learning,
+  type LearningReportFilter,
+  type LearningReportSummary,
   type Page,
 } from '@lms/contracts';
 import type { DataTableColumn, DataTableSort, DonutDatum } from '@lms/ui';
@@ -116,6 +119,23 @@ interface TableRequest {
   type: AssessmentReportType;
   query: AssessmentReportExportQuery & { page: number; size: number };
 }
+/** "dd/MM/yyyy HH:mm (zone)": the instant as the server's time zone reads it. */
+function asOf(summary: LearningReportSummary): string {
+  const parts = Object.fromEntries(
+    new Intl.DateTimeFormat('en-GB', {
+      timeZone: summary.timeZone,
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      hourCycle: 'h23',
+    })
+      .formatToParts(new Date(summary.dataAsOf))
+      .map((part) => [part.type, part.value]),
+  );
+  return `${parts['day']}/${parts['month']}/${parts['year']} ${parts['hour']}:${parts['minute']} (${summary.timeZone})`;
+}
 function row(value: object, id: string): ReportRow {
   return {
     id,
@@ -196,6 +216,19 @@ export class ReportScreenStore {
         !this.params()?.get('dim') && !this.pickers.blocked$()
           ? this.commonFilters()
           : undefined,
+    },
+  );
+  /** The learning progress of the overview: by unit, team and course, never by quiz or date. */
+  private readonly learningSummary = serverData(
+    (query: LearningReportFilter) =>
+      this.client.call(learning.summary, { query }),
+    {
+      params: () => {
+        if (this.params()?.get('dim') || this.pickers.blocked$())
+          return undefined;
+        const { orgId, teamId, courseId } = this.filters$();
+        return { orgId, teamId, courseId };
+      },
     },
   );
   private readonly tableRequest = computed<TableRequest | undefined>(() => {
@@ -378,6 +411,17 @@ export class ReportScreenStore {
         return 'Tiến độ học và kết quả thi theo phạm vi được cấp.';
     }
   });
+  readonly learning$ = computed(() => this.learningSummary.value()?.counts);
+  readonly learningAsOf$ = computed(() => {
+    const summary = this.learningSummary.value();
+    return summary ? asOf(summary) : '';
+  });
+  readonly learningLoading$ = this.learningSummary.isLoading;
+  readonly learningError$ = this.learningSummary.error;
+  readonly examLoading$ = this.overview.isLoading;
+  readonly examError$ = computed(
+    () => this.pickers.error$() ?? this.overview.error(),
+  );
   readonly rows$ = computed(() => this.detail.value()?.items ?? []);
   readonly total$ = computed(() => this.detail.value()?.totalElements ?? 0);
   readonly columns$ = computed<readonly DataTableColumn[]>(() => {
@@ -459,6 +503,9 @@ export class ReportScreenStore {
       ),
       replaceUrl: true,
     });
+  }
+  retryLearning(): void {
+    this.learningSummary.reload();
   }
   retry(): void {
     this.pickers.retry();

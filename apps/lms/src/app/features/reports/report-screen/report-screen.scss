@@ -107,7 +107,31 @@
       dl > div + div {
         border-left: 1px solid ui.color(border);
       }
+      // A second row of four starts at the edge, with no rule before it.
+      dl > div:nth-child(4n + 1) {
+        border-left: 0;
+      }
     }
+  }
+  &__kpi--danger dd {
+    color: ui.color(danger);
+  }
+  &__part-heading {
+    padding: ui.space(5) ui.space(5) 0;
+    h2 {
+      font-size: ui.text-size(md);
+    }
+  }
+  &__part-state,
+  &__as-of {
+    margin: 0;
+    padding: 0 ui.space(5) ui.space(5);
+  }
+  &__as-of {
+    @include ui.text(sm, muted);
+  }
+  &__part-title {
+    font-size: ui.text-size(lg);
   }
   &__analytics {
     display: grid;

@@ -164,10 +164,10 @@ roles if changed); browser `read_page`
 
 **Acceptance criteria:**
 
-- [ ] The overview shows "Tiến độ học" first: the KPI row (label over value, no cards) for Lượt học, Học viên, Hoàn
+- [x] The overview shows "Tiến độ học" first: the KPI row (label over value, no cards) for Lượt học, Học viên, Hoàn
       thành, Đang học, Chưa bắt đầu, Quá hạn (danger tone only when above 0), Tỷ lệ hoàn thành and Tiến độ trung
       bình. Under it, the muted "Số liệu tính đến … (…)" line.
-- [ ] "Kết quả thi" is unchanged below. Each section has its own loading, error (`ui-error-state` with retry) and
+- [x] "Kết quả thi" is unchanged below. Each section has its own loading, error (`ui-error-state` with retry) and
       empty state.
 
 **Verification:** `npx nx test lms` (rendering, overdue tone, one section failing while the other shows)

@@ -1,7 +1,12 @@
 import { TestBed } from '@angular/core/testing';
 import { provideRouter, Router } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
-import { assessmentReportEndpoints as api } from '@lms/contracts';
+import {
+  assessmentReportEndpoints as api,
+  learningReportEndpoints as learning,
+  type LearningReportSummary,
+} from '@lms/contracts';
+import { envelopeError, envelopeOk } from '@lms/mocks';
 import { createAppRoutes } from '../../../app.routes';
 import { provideAppConfig } from '../../../core/config/app-config';
 import { testAppConfig } from '../../../core/config/app-config.testing';
@@ -143,5 +148,98 @@ describe('ReportScreen', () => {
   it('says a report from a bad link does not exist', async () => {
     const { text } = await open('/reports/programs');
     expect(text()).toContain('Không có báo cáo này. Chọn một báo cáo ở trên.');
+  });
+
+  describe('Tổng quan', () => {
+    const SUMMARY: LearningReportSummary = {
+      dataAsOf: '2026-11-04T09:49:21Z',
+      timeZone: 'Asia/Ho_Chi_Minh',
+      counts: {
+        enrollments: 21,
+        learners: 3,
+        courses: 9,
+        assigned: 18,
+        mandatory: 18,
+        completed: 9,
+        inProgress: 5,
+        notStarted: 7,
+        overdue: 5,
+        averageProgress: 49.01,
+        completionRate: 42.86,
+      },
+    };
+    /** Answers the learning summary with `reply`, and the rest from the mock backend. */
+    function answerSummary(reply: () => object) {
+      const backend = TestBed.inject(MockBackend),
+        handle = backend.handle.bind(backend);
+      vi.spyOn(backend, 'handle').mockImplementation((endpoint, request) =>
+        endpoint === learning.summary
+          ? { status: 200, body: reply() as never }
+          : handle(endpoint, request),
+      );
+    }
+    const kpis = (root: HTMLElement) =>
+      Array.from(
+        root.querySelectorAll<HTMLElement>(
+          '[aria-labelledby="report-learning-title"] dl > div',
+        ),
+      ).map((div) => ({
+        label: div.querySelector('dt')?.textContent?.trim(),
+        value: div.querySelector('dd')?.textContent?.trim(),
+        danger: div.classList.contains('report-screen__kpi--danger'),
+      }));
+
+    it('shows the learning KPIs first, then the exam results', async () => {
+      answerSummary(() => envelopeOk(SUMMARY));
+      const { root, text } = await open('/reports');
+      const headings = Array.from(root.querySelectorAll('h2')).map((h) =>
+        h.textContent?.trim(),
+      );
+      expect(headings.indexOf('Tiến độ học')).toBeGreaterThanOrEqual(0);
+      expect(headings.indexOf('Tiến độ học')).toBeLessThan(
+        headings.indexOf('Kết quả thi'),
+      );
+      expect(kpis(root)).toEqual([
+        { label: 'Lượt học', value: '21', danger: false },
+        { label: 'Học viên', value: '3', danger: false },
+        { label: 'Hoàn thành', value: '9', danger: false },
+        { label: 'Đang học', value: '5', danger: false },
+        { label: 'Chưa bắt đầu', value: '7', danger: false },
+        { label: 'Quá hạn', value: '5', danger: true },
+        { label: 'Tỷ lệ hoàn thành', value: '42,86%', danger: false },
+        { label: 'Tiến độ trung bình', value: '49,01%', danger: false },
+      ]);
+      expect(text()).toContain(
+        'Số liệu tính đến 04/11/2026 16:49 (Asia/Ho_Chi_Minh).',
+      );
+    });
+
+    it('keeps the overdue figure neutral at zero', async () => {
+      answerSummary(() =>
+        envelopeOk({ ...SUMMARY, counts: { ...SUMMARY.counts, overdue: 0 } }),
+      );
+      const { root } = await open('/reports');
+      expect(kpis(root).find((k) => k.label === 'Quá hạn')).toEqual({
+        label: 'Quá hạn',
+        value: '0',
+        danger: false,
+      });
+    });
+
+    it('shows a learning error with a retry while the exam results stay', async () => {
+      answerSummary(() =>
+        envelopeError(
+          'CORE-INTERNAL_ERROR',
+          'Lỗi',
+          'Không tải được tiến độ học.',
+        ),
+      );
+      const { root, text } = await open('/reports');
+      const learningPart = root.querySelector(
+        '[aria-labelledby="report-learning-title"]',
+      )!;
+      expect(learningPart.querySelector('ui-error-state')).not.toBeNull();
+      expect(text()).toContain('Học viên đã thi');
+    });
   });
 });
