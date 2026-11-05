@@ -63,6 +63,7 @@ const QUIZ_STATUS_LABEL: Record<QuizSummary['status'], string> = {
         const exam = inject(CourseExamStore);
         return {
           programId$: exam.programId$,
+          programName$: exam.programName$,
           fixedCourse$: exam.importCourse$,
           finishImport: () => exam.finishImport(),
           closeImport: () => exam.closeImport(),

@@ -1,57 +1,55 @@
 import { computed, inject, Injectable, signal } from '@angular/core';
+import { map } from 'rxjs';
 import {
-  assessmentV1Endpoints as api,
-  courseEndpoints,
+  programAssessmentEndpoints as api,
   QUESTION_IMPORT_LIMITS,
   type QuestionImportResult,
 } from '@lms/contracts';
-import { serverData } from '../../../../core/data-access/server-data';
 import { serverMutation } from '../../../../core/data-access/server-mutation';
+import { serverData } from '../../../../core/data-access/server-data';
 import { FileSaver } from '../../../../core/files/file-saver';
 import { EndpointClient } from '../../../../core/http/endpoint-client';
 import { QUESTION_IMPORT_HOST } from './question-import.host';
 
 export const QUESTION_IMPORT_TEMPLATE_NAME = 'question-import-template.xlsx';
-
-/** The size limit in the copy: binary megabytes, written "MB" as users read it. */
 const MAX_MB = QUESTION_IMPORT_LIMITS.maxBytes / (1024 * 1024);
+const COLUMN_LABELS: Record<string, string> = {
+  ma: 'Mã câu hỏi',
+  noi_dung: 'Nội dung câu hỏi',
+  loai: 'Loại câu hỏi',
+  phuong_an: 'Phương án',
+  dap_an_dung: 'Đáp án đúng',
+  giai_thich: 'Giải thích',
+  do_kho: 'Độ khó',
+  nhom_kien_thuc: 'Nhóm năng lực',
+  diem: 'Điểm',
+  trang_thai: 'Trạng thái',
+};
+interface ImportInput {
+  file: File;
+  programId: number;
+  courseId?: number;
+  overwrite: boolean;
+}
+interface CheckedFile extends ImportInput {
+  result: QuestionImportResult;
+}
 
-/**
- * The "Nhập từ Excel" drawer of the question bank: the course to import into, the template, the
- * picked `.xlsx`, its check (`dryRun=true`) and its import (`dryRun=false`). Provided by the
- * drawer, so the file is forgotten when it closes. The app checks only the extension and the size;
- * every rule inside the file is the server's, and a refusal is the usual toast. A written import
- * asks the screen that opened the drawer (its {@link QUESTION_IMPORT_HOST}) to close it and reload.
- */
+/** Imports into the selected program. The server validates every row before an atomic write. */
 @Injectable()
 export class QuestionImportStore {
   private readonly client = inject(EndpointClient);
   private readonly saver = inject(FileSaver);
   private readonly host = inject(QUESTION_IMPORT_HOST);
-
   private readonly state = {
-    /** `undefined` follows the first course of the program. */
-    courseId: signal<number | undefined>(undefined),
     overwrite: signal(false),
     file: signal<File | undefined>(undefined),
     fileError: signal<string | undefined>(undefined),
-    /** The check of the current file and settings; cleared by any change to them. */
-    checked: signal<QuestionImportResult | undefined>(undefined),
+    checked: signal<CheckedFile | undefined>(undefined),
   };
-
-  /** A question is imported into one course's bank, so the drawer asks which of the program's. */
-  private readonly coursesData = serverData(
-    (programId: number) =>
-      this.client.call(courseEndpoints.instructorCourses, {
-        query: { programId, page: 0, size: 50 },
-      }),
-    {
-      // A screen that names the course needs no list of courses.
-      params: () =>
-        this.host.fixedCourse$?.() ? undefined : this.host.programId$(),
-    },
+  private readonly competenciesData = serverData(() =>
+    this.client.call(api.competencies, { query: { status: 'ACTIVE' } }),
   );
-
   private readonly templateMutation = serverMutation(
     () => this.client.call(api.questionImportTemplate),
     {
@@ -59,24 +57,26 @@ export class QuestionImportStore {
       onSuccess: (blob) => this.saver.save(blob, QUESTION_IMPORT_TEMPLATE_NAME),
     },
   );
-
   private readonly checkMutation = serverMutation(
-    (input: { file: File; courseId: number; overwrite: boolean }) =>
-      this.client.call(api.importQuestions, {
-        query: {
-          courseId: input.courseId,
-          dryRun: true,
-          overwrite: input.overwrite,
-        },
-        body: { file: input.file },
-      }),
-    { errors: 'toast', onSuccess: (result) => this.setChecked(result) },
+    (input: ImportInput) =>
+      this.client
+        .call(api.importQuestions, {
+          query: {
+            programId: input.programId,
+            courseId: input.courseId,
+            dryRun: true,
+            overwrite: input.overwrite,
+          },
+          body: { file: input.file },
+        })
+        .pipe(map((result) => ({ ...input, result }))),
+    { errors: 'alert', onSuccess: (checked) => this.setChecked(checked) },
   );
-
   private readonly importMutation = serverMutation(
-    (input: { file: File; courseId: number; overwrite: boolean }) =>
+    (input: ImportInput) =>
       this.client.call(api.importQuestions, {
         query: {
+          programId: input.programId,
           courseId: input.courseId,
           dryRun: false,
           overwrite: input.overwrite,
@@ -84,61 +84,65 @@ export class QuestionImportStore {
         body: { file: input.file },
       }),
     {
-      errors: 'toast',
+      errors: 'alert',
       success: (_, result) =>
         `Đã nhập ${result.created} câu hỏi, ghi đè ${result.updated} câu`,
       onSuccess: () => this.host.finishImport(),
     },
   );
-
-  readonly limitsHint = `Tệp ${QUESTION_IMPORT_LIMITS.extension}, tối đa ${MAX_MB} MB và ${QUESTION_IMPORT_LIMITS.maxRows} dòng dữ liệu.`;
-  readonly courses$ = computed(() => this.coursesData.value()?.items ?? []);
-  readonly coursesError$ = this.coursesData.error;
-  readonly isLoadingCourses$ = this.coursesData.isLoading;
-  /** The course the screen fixed, when it did: the drawer then shows its name and asks nothing. */
+  readonly programId$ = this.host.programId$;
+  readonly programName$ = this.host.programName$;
   readonly fixedCourse$ = computed(() => this.host.fixedCourse$?.());
-  /** The fixed course, else the chosen one, else the program's first. */
-  readonly courseId$ = computed<number | undefined>(
-    () =>
-      this.fixedCourse$()?.courseId ??
-      this.state.courseId() ??
-      this.courses$()[0]?.courseId,
+  readonly competencies$ = computed(() =>
+    (this.competenciesData.value() ?? []).filter((c) => c.status === 'ACTIVE'),
   );
+  readonly limitsHint = `Tệp ${QUESTION_IMPORT_LIMITS.extension}, tối đa ${MAX_MB} MB và ${QUESTION_IMPORT_LIMITS.maxRows} dòng dữ liệu.`;
   readonly overwrite$ = this.state.overwrite.asReadonly();
   readonly file$ = this.state.file.asReadonly();
   readonly fileError$ = this.state.fileError.asReadonly();
-  /** Hidden again once the import of that file is refused. */
-  readonly checked$ = computed(() =>
-    this.importMutation.error() ? undefined : this.state.checked(),
+  readonly checked$ = computed(() => {
+    const checked = this.state.checked();
+    return checked &&
+      !this.importMutation.error() &&
+      checked.programId === this.programId$() &&
+      checked.courseId === this.fixedCourse$()?.courseId &&
+      checked.file === this.file$() &&
+      checked.overwrite === this.overwrite$()
+      ? checked.result
+      : undefined;
+  });
+  readonly error$ = computed(
+    () => this.checkMutation.error() ?? this.importMutation.error(),
+  );
+  readonly rowErrors$ = computed(() =>
+    (this.error$()?.fieldErrors ?? []).map((error) => {
+      const match = /^Questions\[(\d+)\]\.?(.*)$/.exec(error.field);
+      return {
+        row: match?.[1],
+        column:
+          COLUMN_LABELS[match?.[2] ?? error.field] ??
+          (match ? 'Dữ liệu câu hỏi' : 'Tệp Excel'),
+        message: error.message,
+      };
+    }),
   );
   readonly isDownloading$ = this.templateMutation.isPending;
   readonly isChecking$ = this.checkMutation.isPending;
   readonly isImporting$ = this.importMutation.isPending;
   readonly isBusy$ = computed(() => this.isChecking$() || this.isImporting$());
   readonly canCheck$ = computed(
-    () =>
-      this.state.file() !== undefined &&
-      this.courseId$() !== undefined &&
-      !this.isBusy$(),
+    () => !!this.file$() && !!this.programId$() && !this.isBusy$(),
   );
-  /** Only after a successful check of the current file and settings, never while a request is out. */
   readonly canImport$ = computed(
     () => this.canCheck$() && this.checked$() !== undefined,
   );
-  /** The line under the picked file: where its check stands. */
   readonly fileStatus$ = computed(() => {
     const checked = this.checked$();
     if (this.isChecking$()) return 'Đang kiểm tra…';
-    if (checked) {
-      return `Hợp lệ: ${checked.toCreate} câu mới, ${checked.toUpdate} câu ghi đè`;
-    }
-    return 'Chưa kiểm tra';
+    return checked
+      ? `Hợp lệ: ${checked.toCreate} câu mới, ${checked.toUpdate} câu ghi đè`
+      : 'Chưa kiểm tra';
   });
-
-  // Setters: the only writers of state
-  private setCourseId(id: number | undefined): void {
-    this.state.courseId.set(id);
-  }
   private setOverwrite(value: boolean): void {
     this.state.overwrite.set(value);
   }
@@ -148,39 +152,23 @@ export class QuestionImportStore {
   private setFileError(message: string | undefined): void {
     this.state.fileError.set(message);
   }
-  private setChecked(result: QuestionImportResult | undefined): void {
-    this.state.checked.set(result);
+  private setChecked(checked: CheckedFile | undefined): void {
+    this.state.checked.set(checked);
   }
 
-  // Commands
   downloadTemplate(): void {
-    this.templateMutation.run(undefined);
+    if (!this.isDownloading$()) this.templateMutation.run(undefined);
   }
-
-  /** Any change to the file or the settings voids the check of the earlier ones. */
   private forgetCheck(): void {
     this.checkMutation.reset();
     this.importMutation.reset();
     this.setChecked(undefined);
   }
-
-  selectCourse(value: string): void {
-    if (this.isBusy$()) return;
-    const id = Number(value);
-    this.forgetCheck();
-    this.setCourseId(Number.isSafeInteger(id) && id > 0 ? id : undefined);
-  }
-
   setOverwriteExisting(value: boolean): void {
     if (this.isBusy$()) return;
     this.forgetCheck();
     this.setOverwrite(value);
   }
-
-  /**
-   * Takes the picked file, or refuses a wrong type or size without sending it. Ignored while a
-   * request is out: resetting it would drop the answer the server still writes.
-   */
   pick(file: File | undefined): void {
     if (this.isBusy$()) return;
     this.forgetCheck();
@@ -188,15 +176,18 @@ export class QuestionImportStore {
     this.setFileError(problem);
     this.setFile(problem ? undefined : file);
   }
-
-  private input() {
-    const file = this.state.file();
-    const courseId = this.courseId$();
-    return file && courseId
-      ? { file, courseId, overwrite: this.state.overwrite() }
+  private input(): ImportInput | undefined {
+    const file = this.file$(),
+      programId = this.programId$();
+    return file && programId
+      ? {
+          file,
+          programId,
+          courseId: this.fixedCourse$()?.courseId,
+          overwrite: this.overwrite$(),
+        }
       : undefined;
   }
-
   check(): void {
     const input = this.input();
     if (!input || this.isBusy$()) return;
@@ -204,25 +195,21 @@ export class QuestionImportStore {
     this.setChecked(undefined);
     this.checkMutation.run(input);
   }
-
   import(): void {
     const input = this.input();
-    if (!input || !this.canImport$()) return;
-    this.importMutation.run(input);
+    if (input && this.canImport$()) this.importMutation.run(input);
   }
-
   close(): void {
-    this.host.closeImport();
+    if (!this.isBusy$()) this.host.closeImport();
   }
 }
 
-/** The app's own checks before sending: the extension and the size, nothing inside the file. */
+/** File contents and row rules are validated by the server. */
 export function fileProblem(file: File): string | undefined {
-  if (!file.name.toLowerCase().endsWith(QUESTION_IMPORT_LIMITS.extension)) {
+  if (!file.name.toLowerCase().endsWith(QUESTION_IMPORT_LIMITS.extension))
     return 'Chỉ nhận tệp Excel .xlsx.';
-  }
-  if (file.size > QUESTION_IMPORT_LIMITS.maxBytes) {
+  if (!file.size) return 'Tệp Excel đang rỗng. Chọn lại tệp có dữ liệu.';
+  if (file.size > QUESTION_IMPORT_LIMITS.maxBytes)
     return `Tệp lớn hơn ${MAX_MB} MB.`;
-  }
   return undefined;
 }

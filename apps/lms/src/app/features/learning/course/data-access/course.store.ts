@@ -116,6 +116,21 @@ export class CourseStore {
   // Selectors
   readonly card$ = computed(() => this.courseData.value()?.card);
   readonly content$ = computed(() => this.courseData.value()?.content);
+  /** Display only; completion and passing scores come from the server. */
+  readonly requiredQuizCount$ = computed(() => {
+    const content = this.content$();
+    const ids = new Set(
+      (content?.chapters ?? []).flatMap((chapter) =>
+        chapter.lessons.flatMap(({ lesson }) =>
+          lesson.lessonType === 'quiz' && lesson.isRequired && lesson.quizId
+            ? [lesson.quizId]
+            : [],
+        ),
+      ),
+    );
+    if (content?.finalQuizId) ids.add(content.finalQuizId);
+    return ids.size;
+  });
   readonly detail$ = this.detailData.value;
   /**
    * The revision's cover image. The server decides whether a learner may read it without a block;
@@ -136,7 +151,13 @@ export class CourseStore {
 
   /** The course's final exam, the one the page features; `undefined` when it has none. */
   readonly finalExam$ = computed(() =>
-    this.quizData.value()?.find((c) => c.quiz.quizType === 'FINAL_EXAM'),
+    this.quizData
+      .value()
+      ?.find((c) =>
+        this.content$()?.finalQuizId
+          ? c.quiz.id === this.content$()?.finalQuizId
+          : c.quiz.quizType === 'FINAL_EXAM',
+      ),
   );
 
   /** Every other quiz of the course, in the server's order. */

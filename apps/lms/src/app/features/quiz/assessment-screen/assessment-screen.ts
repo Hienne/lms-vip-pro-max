@@ -233,6 +233,7 @@ function quizValue(
         const store = inject(AssessmentScreenStore);
         return {
           programId$: store.selectedProgramId$,
+          programName$: store.selectedProgramTitle$,
           finishImport: () => store.finishImport(),
           closeImport: () => store.closeImport(),
         };

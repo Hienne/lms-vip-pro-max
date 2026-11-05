@@ -1,5 +1,24 @@
 # Contracts, zod and the in-app mock API
 
+Question Excel import on `/admin/questions` uses the program selected outside the drawer.
+`programAssessmentEndpoints.importQuestions` calls the existing multipart endpoint
+`POST /api/v1/questions/import?programId&dryRun&overwrite`, part `file`, without `courseId`.
+The course editor uses the same shared drawer through `QUESTION_IMPORT_HOST`; it additionally sends
+its fixed `courseId` as authorization context, while questions remain in the program bank. The bank page
+does not require a course or fetch a course picker. The legacy course endpoint contract remains separate.
+Download the actual workbook through
+`GET /api/v1/questions/import-template`; the same verified workbook is bundled with the dev mock.
+The drawer checks the file first and enables import only for the checked file/program/overwrite
+settings. Any changed input invalidates the check. Server errors such as `Questions[3].dap_an_dung`
+are shown as row/column messages in the drawer. The mock still simulates three fixed imported rows
+and does not parse Excel contents; real workbook parsing/atomicity is verified in `QuestionTransferApiIT`.
+
+Course drafts send nullable `finalQuizId`; the backend validates a final exam of that same course and stores it
+per revision. `CourseDetail.finalQuizId` and `completionRule.finalQuizId` reflect that saved selection. The learner
+page explains required quizzes and renders server progress; it never awards completion locally. Only passing
+required quiz lessons and the selected final exam, together with required content, can complete the enrollment.
+The backend upgrade `2026-11-05-required-final-quiz.sql` must precede deployment of this contract.
+
 One chain keeps types, runtime validation and the dev mock in sync:
 
 ```text

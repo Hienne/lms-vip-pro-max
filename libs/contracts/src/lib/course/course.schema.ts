@@ -137,6 +137,8 @@ export const CourseCompletionRuleSchema = z.object({
   id: z.number().int(),
   revisionId: z.number().int(),
   requireAllRequiredLessons: z.boolean().nullish(),
+  requireAllRequiredQuizzes: z.boolean().nullish(),
+  finalQuizId: z.number().int().positive().nullish(),
   rewardPoints: z.number().int().nullish(),
   rowVersion: z.number().int(),
   createTime: BackendDateTimeSchema.nullish(),
