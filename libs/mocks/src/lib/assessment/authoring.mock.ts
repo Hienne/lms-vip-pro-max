@@ -10,6 +10,7 @@ import {
   type Me,
   type QuestionDetailV1,
   type QuizDetailV1,
+  XLSX_MIME_TYPE,
 } from '@lms/contracts';
 import type { FakeReply, FakeRequest } from '../backend/fake-backend';
 import { envelopeError, envelopeOk } from '../envelope';
@@ -160,6 +161,93 @@ export class AssessmentAuthoringMock {
       activePoolSize: 2,
     };
   });
+  /**
+   * The mock reads no Excel: every accepted file holds the same three questions. A file named
+   * `loi`, a wrong type, a file over 5 MiB, or a second import (the codes exist) is the backend's
+   * `ASSESSMENT-IMPORT_INVALID`, and nothing is written. `overwrite` replaces them instead.
+   */
+  private importQuestions(r: FakeRequest, me: Me): FakeReply {
+    const courseId = Number(r.query['courseId']);
+    if (!this.canManage(me, courseId))
+      return fail('CORE-ACCESS_DENIED', 'Không đủ quyền.', 403);
+    const body = r.body;
+    const file =
+      body instanceof FormData
+        ? body.get('file')
+        : (body as { file?: unknown } | null)?.file;
+    if (!(file instanceof Blob) || !(file as File).name)
+      return fail('CORE-VALIDATION_FAILED', 'Cần chọn một tệp.');
+    const name = (file as File).name.toLowerCase();
+    if (
+      !name.endsWith('.xlsx') ||
+      name.includes('loi') ||
+      file.size > 5 * 1024 * 1024
+    )
+      return fail(
+        'ASSESSMENT-IMPORT_INVALID',
+        'Tệp nhập chưa hợp lệ. Vui lòng kiểm tra các lỗi chi tiết.',
+      );
+    const dryRun = r.query['dryRun'] !== 'false';
+    const overwrite = r.query['overwrite'] === 'true';
+    const codes = ['NHAP-01', 'NHAP-02', 'NHAP-03'];
+    const existing = codes.filter((code) =>
+      this.questions.some((q) => q.courseId === courseId && q.code === code),
+    );
+    if (existing.length && !overwrite)
+      return fail(
+        'ASSESSMENT-IMPORT_INVALID',
+        'Tệp nhập chưa hợp lệ. Vui lòng kiểm tra các lỗi chi tiết.',
+      );
+    const result = {
+      dryRun,
+      rowCount: codes.length,
+      toCreate: codes.length - existing.length,
+      toUpdate: existing.length,
+      created: 0,
+      updated: 0,
+    };
+    if (dryRun) return ok(result);
+    const programId =
+      courseDetailFixtures.find((c) => c.course.id === courseId)?.revision
+        .programId ?? 0;
+    this.questions = [
+      ...this.questions.filter(
+        (q) => !(q.courseId === courseId && codes.includes(q.code)),
+      ),
+      ...codes.map((code, i) => ({
+        id: this.nextId++,
+        code,
+        programId,
+        courseId,
+        lessonId: null,
+        competencyId: 1,
+        questionType: 'SINGLE' as const,
+        content: `Câu hỏi nhập từ tệp ${i + 1}`,
+        explanation: '',
+        difficulty: 'MEDIUM' as const,
+        points: 1,
+        status: 'ACTIVE' as const,
+        contentVersion: 1,
+        options: ['A', 'B'].map((content, sortNo) => ({
+          id: this.nextId++,
+          content,
+          correct: sortNo === 0,
+          sortNo,
+        })),
+        usedInQuizzes: [],
+        rowVersion: 0,
+        createTime: now(),
+        updateTime: now(),
+      })),
+    ];
+    this.refreshPools();
+    return ok({
+      ...result,
+      dryRun: false,
+      created: result.toCreate,
+      updated: result.toUpdate,
+    });
+  }
   answers(endpoint: AnyEndpoint): boolean {
     return [
       ...Object.values(api),
@@ -276,6 +364,14 @@ export class AssessmentAuthoringMock {
           updateTime: now(),
         },
       ]);
+    if (endpoint === api.questionImportTemplate)
+      return {
+        ...ok(null),
+        file: new Blob(['Mẫu nhập câu hỏi (bản giả lập).'], {
+          type: XLSX_MIME_TYPE,
+        }),
+      };
+    if (endpoint === api.importQuestions) return this.importQuestions(r, me);
     const id = Number(r.params['id']);
     const question = this.questions.find((q) => q.id === id),
       detail = this.quizzes.find((q) => q.quiz.id === id);

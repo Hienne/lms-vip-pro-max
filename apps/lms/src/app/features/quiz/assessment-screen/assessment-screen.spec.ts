@@ -313,9 +313,11 @@ describe('AssessmentScreen (admin)', () => {
         .questionRows$()
         .every((q) => q.programId === 3),
     ).toBe(true);
-    expect(el.querySelector('ui-page-header button')?.textContent).toContain(
-      'Thêm câu hỏi',
-    );
+    expect(
+      [...el.querySelectorAll('ui-page-header button')].map((b) =>
+        b.textContent?.trim(),
+      ),
+    ).toContain('Thêm câu hỏi');
   });
   function enterQuizTitle(value: string): void {
     const input = el.querySelector<HTMLInputElement>(
@@ -417,11 +419,132 @@ describe('AssessmentScreen (admin)', () => {
     expect(store().selectedProgramId$()).toBe(3);
     expect(el.querySelector('form')).toBeTruthy();
   });
-  it('links the question bank to quiz creation with its selected program', async () => {
+  it('offers the Excel import, not quiz creation, on the question bank', async () => {
     await open('/admin/questions?programId=2');
-    expect(el.querySelector('ui-page-header a')?.getAttribute('href')).toBe(
-      '/admin/quizzes/new?programId=2',
+    expect(el.querySelector('ui-page-header a')).toBeNull();
+    const labels = [...el.querySelectorAll('ui-page-header button')].map((b) =>
+      b.textContent?.trim(),
     );
+    expect(labels).toEqual(['Nhập từ Excel', 'Thêm câu hỏi']);
+    expect(text()).not.toContain('Tạo bài kiểm tra');
+  });
+  it('shows the bank counts, whatever the list filters are', async () => {
+    await open('/admin/questions?programId=2');
+    store().setQuestionFilter('questionType', 'MULTIPLE');
+    await settle();
+    const kpis = [...el.querySelectorAll('ui-kpi')].map((k) =>
+      k.textContent?.replace(/\s+/g, ' ').trim(),
+    );
+    expect(kpis).toHaveLength(4);
+    expect(kpis[0]).toContain('Đang sử dụng');
+    expect(kpis[1]).toContain('Một đáp án đúng');
+    expect(kpis[2]).toContain('Nhiều đáp án đúng');
+    expect(kpis[3]).toContain('Ngưng sử dụng');
+    expect(
+      Object.values(store().summary$()).every((n) => n !== undefined),
+    ).toBe(true);
+  });
+  it('selects and clears every row of the page from the header checkbox', async () => {
+    await open('/admin/questions?programId=2');
+    const header = el.querySelector<HTMLInputElement>(
+      'thead input[type=checkbox]',
+    );
+    expect(header).toBeTruthy();
+    header!.checked = true;
+    header!.dispatchEvent(new Event('change', { bubbles: true }));
+    await settle();
+    expect(store().selectedIds$()).toEqual(
+      store()
+        .questionRows$()
+        .map((q) => q.id),
+    );
+    expect(store().allSelected$()).toBe(true);
+    header!.checked = false;
+    header!.dispatchEvent(new Event('change', { bubbles: true }));
+    await settle();
+    expect(store().selectedIds$()).toEqual([]);
+  });
+
+  describe('import from Excel', () => {
+    const drawer = () =>
+      document.querySelector<HTMLElement>('[role="dialog"]') ?? undefined;
+    const press = (root: ParentNode | null | undefined, label: string) => {
+      const found = [...(root?.querySelectorAll('button') ?? [])].find((b) =>
+        b.textContent?.includes(label),
+      );
+      if (!found) throw Error('Button missing: ' + label);
+      return found;
+    };
+    const pick = async (name: string) => {
+      const input = drawer()?.querySelector<HTMLInputElement>(
+        'input[type="file"]',
+      ) as HTMLInputElement;
+      Object.defineProperty(input, 'files', {
+        configurable: true,
+        value: [new File([new Uint8Array(10)], name)],
+      });
+      input.dispatchEvent(new Event('change', { bubbles: true }));
+      await settle();
+    };
+    const openDrawer = async () => {
+      await open('/admin/questions?programId=2');
+      press(el.querySelector('ui-page-header'), 'Nhập từ Excel').click();
+      await settle();
+    };
+
+    it('opens a drawer with the template, a course and the file zone', async () => {
+      await openDrawer();
+      expect(drawer()?.textContent).toContain('Nhập câu hỏi từ Excel');
+      expect(drawer()?.textContent).toContain('Tải mẫu Excel');
+      expect(drawer()?.textContent).toContain('Nhập vào khóa học');
+      expect(press(drawer(), 'Nhập câu hỏi').disabled).toBe(true);
+      expect(press(drawer(), 'Kiểm tra').disabled).toBe(true);
+    });
+
+    it('checks a file, imports it, then closes and reloads the bank', async () => {
+      const spy = vi.spyOn(TestBed.inject(MockBackend), 'handle');
+      const calls = () =>
+        spy.mock.calls.filter(([endpoint]) => endpoint === api.importQuestions);
+      await openDrawer();
+      await pick('cau-hoi.xlsx');
+      press(drawer(), 'Kiểm tra').click();
+      await settle();
+      expect(drawer()?.textContent).toContain(
+        'Hợp lệ: 3 câu mới, 0 câu ghi đè',
+      );
+      const before = store().questions$()?.totalElements ?? 0;
+
+      press(drawer(), 'Nhập câu hỏi').click();
+      await settle();
+      expect(calls()).toHaveLength(2);
+      expect(calls()[0][1].query).toMatchObject({ dryRun: 'true' });
+      expect(calls()[1][1].query).toMatchObject({ dryRun: 'false' });
+      expect(drawer()).toBeUndefined();
+      expect(document.body.textContent).toContain('Đã nhập 3 câu hỏi');
+      expect(store().questions$()?.totalElements).toBe(before + 3);
+    });
+
+    it('keeps the import disabled for an invalid file', async () => {
+      await openDrawer();
+      await pick('du-lieu-loi.xlsx');
+      press(drawer(), 'Kiểm tra').click();
+      await settle();
+      expect(document.body.textContent).toContain(
+        'Tệp nhập chưa hợp lệ. Vui lòng kiểm tra các lỗi chi tiết.',
+      );
+      expect(press(drawer(), 'Nhập câu hỏi').disabled).toBe(true);
+    });
+
+    it('refuses a non-xlsx file without a request', async () => {
+      const spy = vi.spyOn(TestBed.inject(MockBackend), 'handle');
+      await openDrawer();
+      await pick('cau-hoi.csv');
+      expect(drawer()?.textContent).toContain('Chỉ nhận tệp Excel .xlsx.');
+      expect(press(drawer(), 'Kiểm tra').disabled).toBe(true);
+      expect(
+        spy.mock.calls.some(([endpoint]) => endpoint === api.importQuestions),
+      ).toBe(false);
+    });
   });
 
   describe('question picker pagination', () => {
@@ -561,6 +684,25 @@ describe('Assessment program catalogue with the real backend', () => {
       { id: 2, name: 'Chương trình 2' },
     ]);
     expect(store.selectedProgramId$()).toBe(2);
+    const counts = backend.match(
+      (r) =>
+        r.url === '/api/v1/questions' &&
+        (r.params.has('status') || r.params.has('questionType')) &&
+        r.params.get('size') === '1',
+    );
+    expect(counts).toHaveLength(4);
+    for (const count of counts) {
+      expect(count.request.params.get('programId')).toBe('2');
+      count.flush(
+        envelopeOk({
+          items: [],
+          page: 0,
+          size: 1,
+          totalPages: 0,
+          totalElements: 0,
+        }),
+      );
+    }
     const questions = backend.expectOne((r) => r.url === '/api/v1/questions');
     expect(questions.request.params.get('programId')).toBe('2');
     expect(questions.request.params.has('courseId')).toBe(false);

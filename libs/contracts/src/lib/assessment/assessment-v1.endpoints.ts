@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { defineEndpoint } from '../http/endpoint';
 import { PageSchema } from '../http/page';
+import { XLSX_MIME_TYPE } from '../organization/organization.schema';
 import {
   QuizSummaryPageSchema,
   QuizSummaryQuerySchema,
@@ -11,6 +12,9 @@ import {
   QuestionDetailV1Schema,
   QuestionQueryV1Schema,
   QuestionRequestV1Schema,
+  QuestionImportCommandSchema,
+  QuestionImportQuerySchema,
+  QuestionImportResultSchema,
   QuizRequestV1Schema,
   QuizDetailV1Schema,
   QuizPoolRequestV1Schema,
@@ -31,6 +35,25 @@ export const assessmentV1Endpoints = {
     path: '/api/v1/questions',
     query: QuestionQueryV1Schema,
     response: PageSchema(QuestionSummaryV1Schema),
+  }),
+  /** The Excel template of the question import (an `.xlsx` file, no envelope). */
+  questionImportTemplate: defineEndpoint({
+    method: 'get',
+    path: '/api/v1/questions/import-template',
+    responseType: 'blob',
+    response: z.instanceof(Blob).refine((blob) => blob.type === XLSX_MIME_TYPE),
+  }),
+  /**
+   * Checks (`dryRun=true`) or imports up to 1000 questions into a course's bank from an `.xlsx`
+   * file. An invalid file is an `ASSESSMENT-IMPORT_INVALID` refusal and nothing is written.
+   */
+  importQuestions: defineEndpoint({
+    method: 'post',
+    path: '/api/v1/questions/import',
+    query: QuestionImportQuerySchema,
+    body: QuestionImportCommandSchema,
+    encoding: 'multipart',
+    response: QuestionImportResultSchema,
   }),
   question: defineEndpoint({
     method: 'get',

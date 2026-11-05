@@ -6,21 +6,21 @@
     @if (store.routeScreen$() === 'questions') {
     <button
       uiButton
+      type="button"
+      [disabled]="!store.selectedProgramId$() || store.isLoading$() || !!store.error$() || store.editorOpen$() || store.isSaving$()"
+      (click)="store.openImport()"
+    >
+      <ui-icon name="upload" size="sm" /> Nhập từ Excel
+    </button>
+    <button
+      uiButton
       variant="primary"
       [disabled]="!store.selectedProgramId$() || store.isLoading$() || !!store.error$() || store.editorOpen$() || store.isSaving$()"
       (click)="store.editQuestion(null)"
     >
       <ui-icon name="plus" size="sm" /> Thêm câu hỏi
     </button>
-    @if (store.canCreateQuiz$()) {
-    <a
-      uiButton
-      routerLink="/admin/quizzes/new"
-      [queryParams]="{programId:store.selectedProgramId$()}"
-      [disabled]="!store.selectedProgramId$() || store.isLoading$() || !!store.error$() || store.editorOpen$()"
-      >Tạo bài kiểm tra</a
-    >
-    } } @else if (store.routeScreen$() === 'quizzes') {
+    } @else if (store.routeScreen$() === 'quizzes') {
     <a
       uiButton
       variant="primary"
@@ -33,7 +33,32 @@
     }
   </div>
 </ui-page-header>
-@if (store.routeScreen$() !== 'config' || store.isNewQuiz$()) {
+@if (store.routeScreen$() === 'questions' && store.selectedProgramId$()) {
+<div class="assessment__kpis">
+  <ui-kpi
+    icon="circle-help"
+    label="Đang sử dụng"
+    [value]="store.summary$().active ?? '—'"
+  />
+  <ui-kpi
+    icon="circle-check"
+    label="Một đáp án đúng"
+    [value]="store.summary$().single ?? '—'"
+  />
+  <ui-kpi
+    icon="list"
+    tone="info"
+    label="Nhiều đáp án đúng"
+    [value]="store.summary$().multiple ?? '—'"
+  />
+  <ui-kpi
+    icon="archive"
+    tone="warning"
+    label="Ngưng sử dụng"
+    [value]="store.summary$().inactive ?? '—'"
+  />
+</div>
+} @if (store.routeScreen$() !== 'config' || store.isNewQuiz$()) {
 <section uiCard padded class="stack assessment__section">
   <div class="assessment__scope">
     @if (store.routeScreen$() === 'questions') {
@@ -154,40 +179,8 @@
     </button>
     } }
   </div>
-</section>
-@if (store.isNewQuiz$()) {
-<p class="assessment__muted">
-  Bài kiểm tra thuộc khóa học đã chọn và dùng câu hỏi chung của chương trình đó.
-  Đổi chương trình sẽ bỏ các câu hỏi đang chọn; các thông tin khác được giữ lại.
-</p>
-} } @if (store.isLoading$()) {
-<div class="assessment__loading" role="status">
-  <span uiSpinner></span><span class="sr-only">Đang tải dữ liệu</span>
-</div>
-} @else if (store.error$(); as error) {
-<ui-error-state
-  title="Không tải được dữ liệu"
-  [message]="error.message"
-  (retry)="store.retry()"
-/>
-} @else if (store.courseProgramMismatch$()) {<ui-alert tone="danger"
-  >Khóa học trong đường dẫn không thuộc chương trình đã chọn. Hãy chọn lại khóa
-  học phù hợp ở phía trên.</ui-alert
->
-} @else if(store.invalidQuizId$()){<ui-alert tone="danger"
-  >ID bài kiểm tra không hợp lệ.</ui-alert
->} @else if (store.routeScreen$() === 'questions' ? !store.selectedProgramId$()
-: !store.selectedCourseId$()) {
-<ui-empty
-  [title]="store.routeScreen$() === 'questions' ? 'Chưa có chương trình được phép quản lý' : store.courseProgramFilter$() ? 'Chương trình chưa có khóa học được phép quản lý' : 'Chưa có khóa học được phép quản lý'"
-/>
-} @else { @switch (store.routeScreen$()) { @case ('questions') {
-<p class="assessment__count">
-  {{store.questions$()?.totalElements ?? 0}} câu hỏi ·
-  {{store.selectedProgramTitle$()}}
-</p>
-<section uiCard>
-  <div uiCardHeader class="assessment__filters">
+  @if (store.routeScreen$() === 'questions' && store.selectedProgramId$()) {
+  <div class="assessment__filters">
     <div class="row row--gap-3">
       <ui-search
         label="Tìm câu hỏi"
@@ -218,11 +211,11 @@
       </select>
       <select
         uiSelect
-        aria-label="Lọc nhóm năng lực"
+        aria-label="Lọc nhóm kiến thức"
         [value]="store.questionFilters$().competencyId"
         (change)="store.setQuestionFilter('competencyId',$any($event.target).value)"
       >
-        <option value="">Năng lực: Tất cả</option>
+        <option value="">Nhóm kiến thức: Tất cả</option>
         @for(x of store.competencies$();track x.id){
         <option [value]="x.id">{{x.name}}</option>
         }
@@ -239,7 +232,40 @@
         <option value="INACTIVE">Ngưng sử dụng</option>
       </select>
     </div>
+    <span class="assessment__result-count"
+      >{{store.questions$()?.totalElements ?? 0}} kết quả</span
+    >
   </div>
+  }
+</section>
+@if (store.isNewQuiz$()) {
+<p class="assessment__muted">
+  Bài kiểm tra thuộc khóa học đã chọn và dùng câu hỏi chung của chương trình đó.
+  Đổi chương trình sẽ bỏ các câu hỏi đang chọn; các thông tin khác được giữ lại.
+</p>
+} } @if (store.isLoading$()) {
+<div class="assessment__loading" role="status">
+  <span uiSpinner></span><span class="sr-only">Đang tải dữ liệu</span>
+</div>
+} @else if (store.error$(); as error) {
+<ui-error-state
+  title="Không tải được dữ liệu"
+  [message]="error.message"
+  (retry)="store.retry()"
+/>
+} @else if (store.courseProgramMismatch$()) {<ui-alert tone="danger"
+  >Khóa học trong đường dẫn không thuộc chương trình đã chọn. Hãy chọn lại khóa
+  học phù hợp ở phía trên.</ui-alert
+>
+} @else if(store.invalidQuizId$()){<ui-alert tone="danger"
+  >ID bài kiểm tra không hợp lệ.</ui-alert
+>} @else if (store.routeScreen$() === 'questions' ? !store.selectedProgramId$()
+: !store.selectedCourseId$()) {
+<ui-empty
+  [title]="store.routeScreen$() === 'questions' ? 'Chưa có chương trình được phép quản lý' : store.courseProgramFilter$() ? 'Chương trình chưa có khóa học được phép quản lý' : 'Chưa có khóa học được phép quản lý'"
+/>
+} @else { @switch (store.routeScreen$()) { @case ('questions') {
+<section uiCard>
   @if(store.selectedIds$().length){
   <div class="assessment__bulk">
     <strong>Đã chọn {{store.selectedIds$().length}}</strong
@@ -282,6 +308,22 @@
     <ng-template uiDataTableCell="code" [of]="store.questionRows$()" let-row>
       <span class="assessment__code">{{row.code}}</span>
     </ng-template>
+    <ng-template uiDataTableHeader="selected"
+      ><input
+        uiCheckbox
+        type="checkbox"
+        aria-label="Chọn tất cả câu hỏi trong trang"
+        [checked]="store.allSelected$()"
+        [indeterminate]="store.someSelected$()"
+        (change)="store.toggleAllQuestions($any($event.target).checked)"
+    /></ng-template>
+    <ng-template
+      uiDataTableCell="usedInQuizCount"
+      [of]="store.questionRows$()"
+      let-row
+      >@if (row.usedInQuizCount) { {{row.usedInQuizCount}} bài thi } @else {
+      <span class="assessment__muted">—</span> }</ng-template
+    >
     <ng-template uiDataTableCell="selected" [of]="store.questionRows$()" let-row
       ><input
         uiCheckbox
@@ -752,4 +794,6 @@
     </section>
   </aside>
 </form>
-} } }
+} } } @if (store.importOpen$()) {
+<app-question-import />
+}

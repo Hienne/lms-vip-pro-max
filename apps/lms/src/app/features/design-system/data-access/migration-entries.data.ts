@@ -530,7 +530,7 @@ export const MIGRATION_ENTRIES = [
     kind: 'component',
     mockupSource: 'UI.DataTable, .bulk-bar',
     level: 'organism',
-    targets: ['DataTable', 'DataTableCell'],
+    targets: ['DataTable', 'DataTableCell', 'DataTableHeader'],
     checklist: ['H'],
     status: 'in-progress',
     owner: 'Hienne',

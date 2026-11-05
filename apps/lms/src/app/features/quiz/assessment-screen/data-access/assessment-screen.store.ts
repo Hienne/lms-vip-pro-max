@@ -23,6 +23,7 @@ import {
   type QuizDetailV1,
   type QuizPoolRequestV1,
 } from '@lms/contracts';
+import { invalidation } from '../../../../core/data-access/invalidation';
 import { serverData } from '../../../../core/data-access/server-data';
 import { serverMutation } from '../../../../core/data-access/server-mutation';
 import { EndpointClient } from '../../../../core/http/endpoint-client';
@@ -57,6 +58,7 @@ export class AssessmentScreenStore {
     coursePage: signal(0),
     questionId: signal<number | undefined>(undefined),
     editorOpen: signal(false),
+    importOpen: signal(false),
     questionFilters: signal({
       q: '',
       questionType: '',
@@ -317,6 +319,43 @@ export class AssessmentScreenStore {
     (query: ProgramQuestionQuery) => this.client.call(api.questions, { query }),
     { params: () => this.questionQuery() },
   );
+  /** Bumped when the bank changes (save, bulk change, import) so the summary counts reload. */
+  private readonly bankChanges = invalidation();
+  private readonly summaryQuery = computed(() => {
+    const programId = this.selectedProgramId$();
+    return this.session.user$() &&
+      programId &&
+      this.routeScreen$() === 'questions'
+      ? { programId, page: 0, size: 1 }
+      : undefined;
+  });
+  /** One question of the program's bank, only to read how many match `extra`. */
+  private summaryCount(extra: Partial<ProgramQuestionQuery>) {
+    return serverData(
+      (query: ProgramQuestionQuery) =>
+        this.client.call(api.questions, { query }),
+      {
+        params: () => {
+          const base = this.summaryQuery();
+          return base ? { ...base, ...extra } : undefined;
+        },
+        reloadOn: this.bankChanges,
+      },
+    );
+  }
+  private readonly activeCount = this.summaryCount({ status: 'ACTIVE' });
+  private readonly inactiveCount = this.summaryCount({ status: 'INACTIVE' });
+  private readonly singleCount = this.summaryCount({ questionType: 'SINGLE' });
+  private readonly multipleCount = this.summaryCount({
+    questionType: 'MULTIPLE',
+  });
+  /** The whole bank's counts, whatever the list filters say; a count is undefined until it loads. */
+  readonly summary$ = computed(() => ({
+    active: this.activeCount.value()?.totalElements,
+    single: this.singleCount.value()?.totalElements,
+    multiple: this.multipleCount.value()?.totalElements,
+    inactive: this.inactiveCount.value()?.totalElements,
+  }));
   private readonly quizzesData = serverData(
     (query: { courseId: number; page: number; size: number; sort: string }) =>
       this.client.call(api.courseQuizList, { query }),
@@ -347,6 +386,7 @@ export class AssessmentScreenStore {
   );
   readonly quizPage$ = this.state.quizPage.asReadonly();
   readonly editorOpen$ = this.state.editorOpen.asReadonly();
+  readonly importOpen$ = this.state.importOpen.asReadonly();
   readonly questionDraft$ = this.questionData.value;
   readonly questionLoading$ = this.questionData.isLoading;
   readonly questionLoadError$ = this.questionData.error;
@@ -354,6 +394,20 @@ export class AssessmentScreenStore {
   readonly questionPage$ = this.state.questionPage.asReadonly();
   readonly questionSort$ = this.state.questionSort.asReadonly();
   readonly selectedIds$ = this.state.selectedIds.asReadonly();
+  /** The header checkbox: every row of the current page is selected. */
+  readonly allSelected$ = computed(() => {
+    const rows = this.questionRows$();
+    const selected = this.state.selectedIds();
+    return rows.length > 0 && rows.every((row) => selected.includes(row.id));
+  });
+  /** Some, but not all, rows of the current page are selected. */
+  readonly someSelected$ = computed(
+    () =>
+      !this.allSelected$() &&
+      this.questionRows$().some((row) =>
+        this.state.selectedIds().includes(row.id),
+      ),
+  );
   readonly isLoading$ = computed(
     () =>
       this.programsData.isLoading() ||
@@ -408,6 +462,7 @@ export class AssessmentScreenStore {
         this.setEditorOpen(false);
         this.questionsData.reload();
       },
+      invalidates: this.bankChanges,
     },
   );
   private readonly bulkMutation = serverMutation(
@@ -426,6 +481,7 @@ export class AssessmentScreenStore {
         this.setSelectedIds([]);
         this.questionsData.reload();
       },
+      invalidates: this.bankChanges,
     },
   );
   private readonly quizSave = serverMutation(
@@ -531,6 +587,9 @@ export class AssessmentScreenStore {
   setEditorOpen(value: boolean): void {
     this.state.editorOpen.set(value);
   }
+  private setImportOpen(value: boolean): void {
+    this.state.importOpen.set(value);
+  }
   private setQuestionId(value: number | undefined): void {
     this.state.questionId.set(value);
   }
@@ -571,6 +630,15 @@ export class AssessmentScreenStore {
       checked
         ? [...new Set([...this.selectedIds$(), id])]
         : this.selectedIds$().filter((x) => x !== id),
+    );
+  }
+  /** Selects or clears the rows of the current page; other pages keep their selection. */
+  toggleAllQuestions(checked: boolean): void {
+    const page = this.questionRows$().map((row) => row.id);
+    this.setSelectedIds(
+      checked
+        ? [...new Set([...this.selectedIds$(), ...page])]
+        : this.selectedIds$().filter((id) => !page.includes(id)),
     );
   }
   private setProgramId(value: number | null | undefined): void {
@@ -693,6 +761,22 @@ export class AssessmentScreenStore {
     )
       return;
     this.bulkMutation.run({ ids: [...this.selectedIds$()], action });
+  }
+  /** The "Nhập từ Excel" drawer; not while a question is being edited or saved. */
+  openImport(): void {
+    if (this.editorOpen$() || this.isSaving$() || !this.selectedProgramId$())
+      return;
+    this.setImportOpen(true);
+  }
+  closeImport(): void {
+    this.setImportOpen(false);
+  }
+  /** A written import closes the drawer and reloads the list and the counts. */
+  finishImport(): void {
+    this.setImportOpen(false);
+    this.setSelectedIds([]);
+    this.questionsData.reload();
+    this.bankChanges.bump();
   }
   retry(): void {
     this.setSaveReceipt(undefined);

@@ -34,6 +34,20 @@
     margin-bottom: ui.space(3);
   }
 }
+.assessment__kpis {
+  display: grid;
+  gap: ui.space(4);
+  margin-bottom: ui.space(6);
+  @include ui.bp(md) {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  @include ui.bp(lg) {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+.assessment__result-count {
+  @include ui.text(sm, muted);
+}
 .assessment__filters {
   display: flex;
   flex-direction: column;

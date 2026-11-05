@@ -160,6 +160,31 @@ export const QuestionQueryV1Schema = QuizSummaryQuerySchema.omit({
   difficulty: QuestionDifficultyV1Schema.optional(),
   status: AssessmentItemStatusV1Schema.optional(),
 });
+/**
+ * The Excel import of questions into one course's bank. `dryRun=true` only checks the file and
+ * `false` writes it; `overwrite` replaces questions with the same code instead of refusing them.
+ */
+export const QuestionImportQuerySchema = z.object({
+  courseId: z.number().int().positive(),
+  dryRun: z.boolean(),
+  overwrite: z.boolean().optional(),
+});
+export const QuestionImportCommandSchema = z.object({ file: z.file() });
+export const QuestionImportResultSchema = z.object({
+  dryRun: z.boolean(),
+  rowCount: z.number().int(),
+  toCreate: z.number().int(),
+  toUpdate: z.number().int(),
+  created: z.number().int(),
+  updated: z.number().int(),
+});
+export const QUESTION_IMPORT_LIMITS = {
+  maxBytes: 5 * 1024 * 1024,
+  extension: '.xlsx',
+  maxRows: 1000,
+} as const;
+export type QuestionImportQuery = z.infer<typeof QuestionImportQuerySchema>;
+export type QuestionImportResult = z.infer<typeof QuestionImportResultSchema>;
 export const QuizRequestV1Schema = z.object({
   courseId: z.number().int().positive(),
   title: z.string().min(1).max(255),

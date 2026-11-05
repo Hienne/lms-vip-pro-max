@@ -206,6 +206,7 @@ export {
   type DataTableColumn,
   type DataTableSort,
 } from './lib/organisms/data-table/data-table';
+export { DataTableHeader } from './lib/organisms/data-table/data-table-header.directive';
 export {
   DataTableCell,
   type DataTableCellContext,

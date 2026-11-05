@@ -14,8 +14,10 @@
           [class.col-actions]="column.kind === 'actions'"
           [attr.aria-sort]="ariaSort(column.key)"
         >
-          @if (column.sortable === false || column.kind === 'actions') { {{
-          column.label }} } @else {
+          @if (headerTemplates().get(column.key); as header) {
+          <ng-container [ngTemplateOutlet]="header" />
+          } @else if (column.sortable === false || column.kind === 'actions') {
+          {{ column.label }} } @else {
           <button type="button" (click)="toggle(column.key)">
             {{ column.label }} @if (sort()?.key === column.key) {
             <ui-icon

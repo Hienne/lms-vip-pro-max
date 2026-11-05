@@ -11,6 +11,7 @@ import { Table } from '../../atoms/table/table.directive';
 import { TableWrap } from '../../atoms/table/table-wrap.directive';
 import { Pagination } from '../../molecules/pagination/pagination';
 import { DataTableCell } from './data-table-cell.directive';
+import { DataTableHeader } from './data-table-header.directive';
 
 export interface DataTableColumn {
   readonly key: string;
@@ -52,6 +53,12 @@ export class DataTable<T extends { readonly id: string | number }> {
   readonly pageChange = output<number>();
 
   private readonly cells = contentChildren(DataTableCell);
+  private readonly headers = contentChildren(DataTableHeader);
+
+  protected readonly headerTemplates = computed(
+    () =>
+      new Map(this.headers().map((header) => [header.key(), header.template])),
+  );
 
   protected readonly templates = computed(
     () => new Map(this.cells().map((cell) => [cell.key(), cell.template])),

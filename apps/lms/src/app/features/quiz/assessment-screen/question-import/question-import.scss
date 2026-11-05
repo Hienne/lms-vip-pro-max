@@ -1,0 +1,41 @@
+@use 'ui';
+
+.question-import {
+  @include ui.stack(4);
+
+  &__lead {
+    margin: 0;
+    color: ui.color(text-muted);
+  }
+
+  &__check {
+    @include ui.row(2);
+    flex-wrap: nowrap;
+  }
+
+  &__drop {
+    padding: ui.space(5) ui.space(4);
+  }
+
+  &__drop-title {
+    display: block;
+    color: ui.color(text);
+    font-weight: ui.weight(medium);
+  }
+
+  &__drop-hint {
+    @include ui.text(sm, muted);
+    display: block;
+    margin-top: ui.space(1);
+  }
+
+  &__error {
+    margin: 0;
+    color: ui.color(danger);
+  }
+
+  &__actions {
+    @include ui.row(2);
+    justify-content: flex-end;
+  }
+}

@@ -1,0 +1,116 @@
+<ng-template
+  [uiDrawer]="true"
+  uiDrawerTitle="Nhập câu hỏi từ Excel"
+  [uiDrawerFooter]="footer"
+  [uiDrawerBusy]="store.isImporting$()"
+  uiDrawerBusyLabel="Đang nhập câu hỏi…"
+  (uiDrawerDismiss)="store.close()"
+>
+  <div class="question-import">
+    <p class="question-import__lead">
+      Thêm câu hỏi vào ngân hàng của một khóa học từ tệp Excel theo mẫu. Tệp có
+      lỗi thì không câu nào được nhập.
+    </p>
+    <div>
+      <button
+        uiButton
+        type="button"
+        [disabled]="store.isDownloading$()"
+        (click)="store.downloadTemplate()"
+      >
+        <ui-icon name="download" size="sm" />Tải mẫu Excel
+      </button>
+    </div>
+
+    @if (store.coursesError$(); as error) {
+    <ui-alert tone="danger"
+      >Không tải được danh sách khóa học: {{ error.message }}</ui-alert
+    >
+    } @else if (!store.isLoadingCourses$() && !store.courses$().length) {
+    <ui-alert tone="info" [announce]="false"
+      >Chương trình chưa có khóa học bạn được phép quản lý.</ui-alert
+    >
+    } @else {
+    <ui-field
+      label="Nhập vào khóa học"
+      hint="Câu hỏi thuộc ngân hàng của chương trình chứa khóa học này."
+    >
+      <select
+        uiSelect
+        [value]="store.courseId$() ?? ''"
+        [disabled]="store.isBusy$()"
+        (change)="store.selectCourse($any($event.target).value)"
+      >
+        @for (course of store.courses$(); track course.courseId) {
+        <option
+          [value]="course.courseId"
+          [selected]="course.courseId === store.courseId$()"
+        >
+          {{ course.title }}
+        </option>
+        }
+      </select>
+    </ui-field>
+    }
+
+    <label class="question-import__check">
+      <input
+        uiCheckbox
+        type="checkbox"
+        [checked]="store.overwrite$()"
+        [disabled]="store.isBusy$()"
+        (change)="store.setOverwriteExisting($any($event.target).checked)"
+      />
+      Ghi đè câu hỏi trùng mã trong khóa học
+    </label>
+
+    <label
+      uiDropzone
+      class="question-import__drop"
+      accept=".xlsx"
+      (files)="store.pick($event[0])"
+    >
+      <span class="question-import__drop-title"
+        >Kéo thả tệp vào đây hoặc chọn tệp</span
+      >
+      <span class="question-import__drop-hint">{{ store.limitsHint }}</span>
+      <input type="file" hidden />
+    </label>
+
+    @if (store.fileError$(); as message) {
+    <p class="question-import__error" role="alert">{{ message }}</p>
+    } @else if (store.file$(); as file) {
+    <div aria-live="polite">
+      <ui-upload-item
+        [name]="file.name"
+        [size]="file.size"
+        icon="file-spreadsheet"
+        [status]="store.fileStatus$()"
+      />
+    </div>
+    }
+  </div>
+</ng-template>
+
+<ng-template #footer let-close="close">
+  <div class="question-import__actions">
+    <button uiButton type="button" (click)="close()">Hủy</button>
+    <button
+      uiButton
+      type="button"
+      [disabled]="!store.canCheck$()"
+      (click)="store.check()"
+    >
+      Kiểm tra
+    </button>
+    <button
+      uiButton
+      type="button"
+      variant="primary"
+      [disabled]="!store.canImport$()"
+      (click)="store.import()"
+    >
+      Nhập câu hỏi
+    </button>
+  </div>
+</ng-template>

@@ -2,6 +2,7 @@ import { Component, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { DataTable, type DataTableSort } from './data-table';
 import { DataTableCell } from './data-table-cell.directive';
+import { DataTableHeader } from './data-table-header.directive';
 
 interface Row {
   readonly id: string;
@@ -15,7 +16,7 @@ const ROWS: readonly Row[] = [
 ];
 
 @Component({
-  imports: [DataTable, DataTableCell],
+  imports: [DataTable, DataTableCell, DataTableHeader],
   template: `<ui-data-table
     caption="Danh sách thử"
     [columns]="columns"
@@ -30,6 +31,7 @@ const ROWS: readonly Row[] = [
     <ng-template uiDataTableCell="name" [of]="rows()" let-row>
       <strong>{{ row.name }}</strong>
     </ng-template>
+    <ng-template uiDataTableHeader="id"><i>Chọn tất cả</i></ng-template>
     <p slot="empty">Chưa có dữ liệu</p>
   </ui-data-table>`,
 })
@@ -67,7 +69,14 @@ describe('DataTable', () => {
     );
     expect(
       Array.from(table.querySelectorAll('th'), (th) => th.textContent?.trim()),
-    ).toEqual(['Tên', 'Đơn vị', '']);
+    ).toEqual(['Tên', 'Đơn vị', 'Chọn tất cả']);
+  });
+
+  it('renders a header template in place of the label, without a sort button', () => {
+    const { root } = render();
+    const th = root.querySelectorAll('th')[2];
+    expect(th.querySelector('i')?.textContent).toBe('Chọn tất cả');
+    expect(th.querySelector('button')).toBeNull();
   });
 
   it('renders a cell template where there is one and row[key] elsewhere', () => {
