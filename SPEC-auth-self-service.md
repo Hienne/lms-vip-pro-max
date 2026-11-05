@@ -4,7 +4,7 @@ Status: **map approved 2026-11-05 (shared `access-requests` module; the inbox is
 
 - [SPEC-access-requests.md](SPEC-access-requests.md): approved 2026-11-05; app side and backend built (backend committed locally, not pushed).
 - [SPEC-self-registration.md](SPEC-self-registration.md): approved 2026-11-05; built (backend committed locally, not pushed).
-- `password-reset-request`: not yet written.
+- [SPEC-password-reset-request.md](SPEC-password-reset-request.md): written 2026-11-05, waits for approval.
 
 `SPEC.md` holds the map of the learner-features initiative and stays as it is. This initiative gets its own map file.
 
