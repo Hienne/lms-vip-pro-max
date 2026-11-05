@@ -50,22 +50,22 @@ Run `nvm use` before any F command.
 
 ## Phase 3: Screen
 
-- [ ] **T8 (F): store: tree, selection, search, commands**
+- [x] **T8 (F): store: tree, selection, search, commands**
   - Acceptance: state from the tree endpoint; selected node id, expanded ids, search text; computed visible tree filtered by search (keeps ancestors of a match); commands `select`, `toggle`, `search`, `save` (create or update through the existing endpoints), `setStatus` (PUT with the full item and new status), `copy`, `remove`, `reload`; server errors exposed as signals; no module code.
   - Verify: `npx nx test lms` for the store spec: build, filter, each command success and error (409, version conflict, duplicate code).
   - Files: `training-catalog.store.ts`, its spec. Scope: S-M.
   - Depends on: T5, T6.
-- [ ] **T9 (F): page shell and tree component**
+- [x] **T9 (F): page shell and tree component**
   - Acceptance: two-column layout (tree card + detail card), tree with expand/collapse, status shown once per node, search field "Tìm trong cây…", keyboard navigation and roles per the `ui` tree pattern, header with "Thêm lĩnh vực"; loading, error and empty states; tabs and module UI removed.
   - Verify: component spec (ARIA roles, arrow keys, filter); preview with the mock at desktop and 375px.
   - Files: `training-catalog.{ts,html,scss}`, `components/catalog-tree/*`, spec. Scope: M.
   - Depends on: T8.
-- [ ] **T10 (F): detail panel and actions**
+- [x] **T10 (F): detail panel and actions**
   - Acceptance: for the selected node: title, code, status, description, child list; actions per type as in the mockup (field: add program, edit, publish/pause, archive, delete; program: add course (link to `/admin/courses/new?program=<id>`), edit, copy, publish/pause, archive, delete; course: edit (link), copy, pause/resume, archive); confirm dialogs use the mockup's titles and messages; delete is offered when the node has no children, "Lưu trữ" when it has; toasts on success; server messages on failure.
   - Verify: component spec for each node type/status; preview click-through with the mock.
   - Files: `components/catalog-detail/*`, store wiring, spec. Scope: M.
   - Depends on: T9.
-- [ ] **T11 (F): item form for field and program**
+- [x] **T11 (F): item form for field and program**
   - Acceptance: drawer form (Mã, Tên, Mô tả for programs and fields) drops the module kind and the field-select for modules; a new program is created under the selected field; code and name limits from `CATALOG_LIMITS`; duplicate-code error shown on the code field.
   - Verify: form spec; preview add/edit for both kinds.
   - Files: `components/catalog-item-form/*`, spec. Scope: S.

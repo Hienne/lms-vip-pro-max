@@ -1,33 +1,34 @@
-import { NgTemplateOutlet } from '@angular/common';
-import { Component, computed, inject } from '@angular/core';
+import { Component, inject } from '@angular/core';
+import { RouterLink } from '@angular/router';
 import {
   Button,
   Card,
   CardHeader,
-  DataTable,
-  DataTableCell,
   DrawerOutlet,
   Empty,
   ErrorState,
   FormActions,
   Icon,
   PageHeader,
-  Select,
+  Search,
   Spinner,
-  TablePrimary,
-  TableSub,
-  TabPanel,
-  Tabs,
-  type TabItem,
+  Tree,
 } from '@lms/ui';
-import { CatalogStatus } from '../../../shared/status/catalog-status';
+import {
+  CatalogStatus,
+  courseCatalogStatus,
+} from '../../../shared/status/catalog-status';
 import { CatalogItemForm } from './components/catalog-item-form/catalog-item-form';
-import { TrainingCatalogStore } from './data-access/training-catalog.store';
+import {
+  NODE_NOUN,
+  TrainingCatalogStore,
+} from './data-access/training-catalog.store';
 
 /**
- * The training catalogue (the mockup's `adminCatalog`): the fields, business modules and programs
- * courses are filed under. The backend keeps three flat lists, so the mockup's tree becomes three
- * tabs; courses are managed on their own screen.
+ * The training catalogue (the mockup's `adminCatalog`): the tree Lĩnh vực → Chương trình → Khóa
+ * học with a detail panel for the picked node. Fields and programs are added, edited, published,
+ * paused, archived and (when empty) deleted here, programs are copied; courses have their own
+ * screens and are linked.
  */
 @Component({
   selector: 'app-training-catalog',
@@ -37,21 +38,16 @@ import { TrainingCatalogStore } from './data-access/training-catalog.store';
     CardHeader,
     CatalogItemForm,
     CatalogStatus,
-    DataTable,
-    DataTableCell,
     DrawerOutlet,
     Empty,
     ErrorState,
     FormActions,
     Icon,
-    NgTemplateOutlet,
     PageHeader,
-    Select,
+    RouterLink,
+    Search,
     Spinner,
-    TablePrimary,
-    TableSub,
-    TabPanel,
-    Tabs,
+    Tree,
   ],
   providers: [TrainingCatalogStore],
   templateUrl: './training-catalog.html',
@@ -59,13 +55,6 @@ import { TrainingCatalogStore } from './data-access/training-catalog.store';
 })
 export class TrainingCatalog {
   protected readonly store = inject(TrainingCatalogStore);
-
-  protected readonly tabs = computed((): readonly TabItem[] => {
-    const counts = this.store.counts$();
-    return [
-      { id: 'fields', label: 'Lĩnh vực', count: counts.fields },
-      { id: 'modules', label: 'Phân hệ', count: counts.modules },
-      { id: 'programs', label: 'Chương trình', count: counts.programs },
-    ];
-  });
+  protected readonly noun = NODE_NOUN;
+  protected readonly courseStatus = courseCatalogStatus;
 }

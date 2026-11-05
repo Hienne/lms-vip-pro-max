@@ -5,23 +5,133 @@
 }
 
 .training-catalog {
-  &__toolbar {
-    justify-content: flex-start;
-  }
-
-  &__filter {
-    @include ui.row(2);
-    @include ui.text(sm, muted);
-    white-space: nowrap;
-  }
-
   &__loading {
     display: flex;
     justify-content: center;
     padding-block: ui.space(10);
   }
 
-  &__desc {
+  &__split {
+    display: grid;
+    gap: ui.space(5);
+    align-items: start;
+
+    @include ui.bp(lg) {
+      grid-template-columns: ui.layout(sidebar) minmax(0, 1fr);
+    }
+  }
+
+  &__tree {
+    min-width: 0;
+
+    h3 {
+      font-family: ui.font(sans);
+    }
+  }
+
+  &__search {
+    padding: ui.space(3) ui.space(3) 0;
+  }
+
+  &__nodes {
+    padding: ui.space(2);
+  }
+
+  &__detail {
+    min-width: 0;
+  }
+
+  &__head {
+    @include ui.row-between(3);
+    align-items: flex-start;
+    padding: ui.space(5);
+    border-bottom: 1px solid ui.color(border);
+  }
+
+  &__title {
+    @include ui.grow;
+    @include ui.stack(1);
+
+    h2 {
+      @include ui.text(xl);
+      margin: 0;
+      overflow-wrap: anywhere;
+    }
+  }
+
+  &__kind {
     @include ui.text(sm, muted);
+  }
+
+  &__code {
+    @include ui.mono;
+  }
+
+  &__body {
+    @include ui.stack(5);
+    padding: ui.space(5);
+  }
+
+  &__desc {
+    @include ui.text(md, muted);
+    margin: 0;
+  }
+
+  &__children,
+  &__actions {
+    @include ui.stack(3);
+
+    h3 {
+      @include ui.text(md);
+      margin: 0;
+      font-family: ui.font(sans);
+      font-weight: ui.weight(semibold);
+    }
+  }
+
+  &__list {
+    @include ui.stack(1);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  &__item {
+    @include ui.row(2);
+    width: 100%;
+    padding: ui.space(2) ui.space(3);
+    border: 1px solid ui.color(border);
+    border-radius: ui.radius(md);
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+
+    &:hover {
+      background: ui.color(surface-muted);
+    }
+  }
+
+  &__item-name {
+    @include ui.grow;
+    @include ui.text(sm);
+    overflow-wrap: anywhere;
+  }
+
+  &__none {
+    @include ui.text(sm, muted);
+    margin: 0;
+    padding: ui.space(2);
+  }
+
+  &__buttons {
+    @include ui.row(2);
+    flex-wrap: wrap;
+  }
+
+  &__hint {
+    @include ui.text(xs, muted);
+    margin: 0;
   }
 }
