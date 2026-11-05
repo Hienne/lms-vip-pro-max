@@ -1,6 +1,11 @@
 import { LiveAnnouncer } from '@angular/cdk/a11y';
 import { TestBed } from '@angular/core/testing';
-import { MAX_TOASTS, Toaster, TOAST_DURATION_MS } from './toaster';
+import {
+  ERROR_TOAST_DURATION_MS,
+  MAX_TOASTS,
+  Toaster,
+  TOAST_DURATION_MS,
+} from './toaster';
 
 function setup() {
   const toaster = TestBed.inject(Toaster);
@@ -98,14 +103,17 @@ describe('Toaster', () => {
     expect(toasts()).toHaveLength(0);
   });
 
-  it('keeps errors until they are closed', () => {
+  it('keeps errors for 5 seconds', () => {
     const { toaster, toasts, flush } = setup();
     toaster.error('Không lưu được');
     flush();
 
-    vi.advanceTimersByTime(TOAST_DURATION_MS * 10);
+    vi.advanceTimersByTime(ERROR_TOAST_DURATION_MS - 1);
     flush();
     expect(toasts()).toHaveLength(1);
+    vi.advanceTimersByTime(1);
+    flush();
+    expect(toasts()).toHaveLength(0);
   });
 
   it('pauses the timer while hovered and resumes with the time left', () => {

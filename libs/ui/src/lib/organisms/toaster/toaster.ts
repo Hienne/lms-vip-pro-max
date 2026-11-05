@@ -13,8 +13,10 @@ export interface Toast {
   readonly message?: string;
 }
 
-/** How long a non-error toast stays (the mockup's 4200ms). Errors stay until closed. */
+/** How long a non-error toast stays (the mockup's 4200ms). */
 export const TOAST_DURATION_MS = 4200;
+/** How long an error toast stays: a little longer, so its message can be read. */
+export const ERROR_TOAST_DURATION_MS = 5000;
 /** Visible stack size: showing one more drops the oldest. */
 export const MAX_TOASTS = 4;
 
@@ -29,8 +31,8 @@ interface Timer {
 
 /**
  * Root, presentation-only system feedback. Toasts stack bottom-right on a CDK overlay, oldest
- * first. Non-error toasts dismiss themselves after {@link TOAST_DURATION_MS}, paused while hovered
- * or focused; errors stay until closed. Every toast is also sent to the `LiveAnnouncer` (assertive
+ * first. Toasts dismiss themselves after {@link TOAST_DURATION_MS} ({@link ERROR_TOAST_DURATION_MS}
+ * for errors), paused while hovered or focused. Every toast is also sent to the `LiveAnnouncer` (assertive
  * for errors, polite otherwise), so the outlet itself is not a live region.
  *
  * `inject(Toaster).success('Đã lưu thay đổi', 'Chi tiết tùy chọn')`
@@ -105,16 +107,14 @@ export class Toaster {
       .forEach((t) => this.clearTimer(t.id));
     this.state.toasts.set([...kept, toast]);
 
-    if (kind !== 'error') {
-      const timer: Timer = {
-        handle: undefined,
-        remaining: TOAST_DURATION_MS,
-        startedAt: 0,
-        holds: new Set(),
-      };
-      this.timers.set(id, timer);
-      this.start(id, timer);
-    }
+    const timer: Timer = {
+      handle: undefined,
+      remaining: kind === 'error' ? ERROR_TOAST_DURATION_MS : TOAST_DURATION_MS,
+      startedAt: 0,
+      holds: new Set(),
+    };
+    this.timers.set(id, timer);
+    this.start(id, timer);
     this.attach();
     void this.announcer.announce(
       message ? `${title}. ${message}` : title,
