@@ -470,9 +470,16 @@ export class ReportScreenStore {
   readonly error$ = computed(
     () => this.pickers.error$() ?? this.overview.error() ?? this.detail.error(),
   );
-  readonly exporting$ = this.exportMutation.isPending;
+  readonly exporting$ = computed(
+    () => this.exportMutation.isPending() || this.progress.exporting$(),
+  );
   /** Why "Xuất CSV" is disabled; `undefined` while it can export or the rows are still loading. */
   readonly exportReason$ = computed(() => {
+    if (this.progress$())
+      return this.pickers.blocked$() ||
+        (this.progress.loaded$() && !this.progress.total$())
+        ? 'Không có dữ liệu để xuất.'
+        : undefined;
     if (!this.dimension$()) return 'Chọn một báo cáo chi tiết để xuất CSV.';
     if (this.needsQuiz$()) return 'Chọn bài kiểm tra để xuất.';
     const page = this.detail.value();
@@ -481,7 +488,9 @@ export class ReportScreenStore {
       : undefined;
   });
   readonly canExport$ = computed(
-    () => !this.exportReason$() && !!this.detail.value(),
+    () =>
+      !this.exportReason$() &&
+      (this.progress$() ? this.progress.loaded$() : !!this.detail.value()),
   );
   readonly needsQuiz$ = computed(
     () => this.dimension$() === 'learners' && !this.filters$().quizId,
@@ -518,12 +527,18 @@ export class ReportScreenStore {
     this.navigate(this.filters$(), page);
   }
   changeSort(sort: DataTableSort): void {
+    if (this.progress$()) {
+      if (this.progress.setSort(sort) && this.page$() > 1)
+        this.navigate(this.filters$(), 1);
+      return;
+    }
     const type = this.dimension$();
     if (!type || !SORTS[type].includes(sort.key)) return;
     this.setSort(sort);
     if (this.page$() > 1) this.navigate(this.filters$(), 1);
   }
   exportCsv(): void {
+    if (this.progress$()) return this.progress.exportCsv();
     const request = this.tableRequest();
     if (request && !this.exporting$()) this.exportMutation.run(request);
   }

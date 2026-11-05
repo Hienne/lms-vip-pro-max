@@ -195,11 +195,11 @@ roles if changed); browser `read_page`
 
 **Acceptance criteria:**
 
-- [ ] `/enrollments` shows the spec's columns, sorts on the backend's keys, and pages on the server. Quá hạn is a
+- [x] `/enrollments` shows the spec's columns, sorts on the backend's keys, and pages on the server. Quá hạn is a
       single danger `uiBadge` with `dot`.
-- [ ] "Xuất CSV" calls `exportEnrollments` with the current filters and sort and saves `bao-cao-tien-do.csv`. A
+- [x] "Xuất CSV" calls `exportEnrollments` with the current filters and sort and saves `bao-cao-tien-do.csv`. A
       server error (for example over 10,000 rows) shows its message in a toast.
-- [ ] Empty: "Không có lượt học phù hợp với bộ lọc."
+- [x] Empty: "Không có lượt học phù hợp với bộ lọc."
 
 **Verification:** `npx nx test lms` (columns, sort and page requests, export call, error toast)
 

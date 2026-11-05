@@ -271,5 +271,33 @@ describe('ReportScreen', () => {
         /^\/reports\/progress\?courseId=\d+&view=learners$/,
       );
     });
+
+    it('lists the learners with one danger badge for an overdue enrolment', async () => {
+      const { root, text } = await open('/reports/progress?view=learners');
+      for (const label of [
+        'Mã cán bộ',
+        'Học viên',
+        'Đơn vị',
+        'Khóa học',
+        'Tiến độ (%)',
+        'Trạng thái',
+        'Hạn',
+        'Quá hạn',
+        'Học gần nhất',
+      ])
+        expect(text()).toContain(label);
+      root.querySelectorAll('.badge').forEach((badge) => {
+        expect(badge.textContent?.trim()).toBe('Quá hạn');
+        expect(badge.classList).toContain('badge--danger');
+        expect(badge.classList).toContain('badge--dot');
+      });
+    });
+
+    it('says when no enrolment matches', async () => {
+      const { text } = await open(
+        '/reports/progress?view=learners&learningStatus=completed&overdue=true',
+      );
+      expect(text()).toContain('Không có lượt học phù hợp với bộ lọc.');
+    });
   });
 });

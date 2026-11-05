@@ -21,7 +21,8 @@ import {
 } from '../../../../core/session/session.testing';
 import { FileSaver } from '../../../../core/files/file-saver';
 import { ReportScreenStore } from './report-screen.store';
-import { envelopeOk } from '@lms/mocks';
+import { envelopeError, envelopeOk } from '@lms/mocks';
+import { Toaster } from '@lms/ui';
 
 describe('assessment report integration', () => {
   let harness: RouterTestingHarness;
@@ -437,6 +438,83 @@ describe('assessment report integration', () => {
         learningStatus: 'completed',
         overdue: true,
         view: 'course',
+      });
+    });
+
+    describe('Theo học viên', () => {
+      it('lists the enrolments, sorted and paged on the server', async () => {
+        const spy = vi.spyOn(TestBed.inject(MockBackend), 'handle');
+        const store = await open('/reports/progress?view=learners');
+        expect(lastQuery(spy, learning.enrollments)).toMatchObject({
+          page: '0',
+          size: '20',
+          sort: 'id,asc',
+        });
+        expect(store.progress.learners$().length).toBeGreaterThan(0);
+        store.changeSort({ key: 'progressPercent', dir: 'desc' });
+        await settle();
+        expect(lastQuery(spy, learning.enrollments)).toMatchObject({
+          sort: 'progressPercent,desc',
+        });
+        store.changeSort({ key: 'userId', dir: 'asc' });
+        expect(store.progress.sort$()).toEqual({
+          key: 'progressPercent',
+          dir: 'desc',
+        });
+        store.changePage(2);
+        await settle();
+        expect(lastQuery(spy, learning.enrollments)).toMatchObject({
+          page: '1',
+        });
+      });
+
+      it('exports the current filters and sort as bao-cao-tien-do.csv', async () => {
+        const spy = vi.spyOn(TestBed.inject(MockBackend), 'handle');
+        const store = await open(
+          '/reports/progress?view=learners&overdue=true&learningStatus=in_progress',
+        );
+        store.changeSort({ key: 'dueAt', dir: 'asc' });
+        await settle();
+        expect(store.canExport$()).toBe(true);
+        store.exportCsv();
+        await settle();
+        const query = lastQuery(spy, learning.exportEnrollments);
+        expect(query).toMatchObject({
+          overdue: 'true',
+          status: 'in_progress',
+          sort: 'dueAt,asc',
+        });
+        expect(query).not.toHaveProperty('page');
+        expect(save).toHaveBeenCalledWith(
+          expect.any(Blob),
+          'bao-cao-tien-do.csv',
+        );
+      });
+
+      it('shows the server refusal of a large export in a toast', async () => {
+        const backend = TestBed.inject(MockBackend),
+          handle = backend.handle.bind(backend);
+        vi.spyOn(backend, 'handle').mockImplementation((endpoint, request) =>
+          endpoint === learning.exportEnrollments
+            ? {
+                status: 400,
+                body: envelopeError(
+                  'LEARNING-EXPORT_TOO_LARGE',
+                  'Quá nhiều dòng',
+                  'Tối đa 10.000 dòng mỗi lần xuất.',
+                ) as never,
+              }
+            : handle(endpoint, request),
+        );
+        const toast = vi.spyOn(TestBed.inject(Toaster), 'error');
+        const store = await open('/reports/progress?view=learners');
+        store.exportCsv();
+        await settle();
+        expect(toast).toHaveBeenCalled();
+        expect(JSON.stringify(toast.mock.calls.at(-1))).toContain(
+          'Tối đa 10.000 dòng mỗi lần xuất.',
+        );
+        expect(save).not.toHaveBeenCalled();
       });
     });
   });

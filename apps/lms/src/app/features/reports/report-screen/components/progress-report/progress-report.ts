@@ -6,6 +6,9 @@ import {
   DataTableCell,
   Empty,
   ErrorState,
+  Badge,
+  FmtDatePipe,
+  FmtDatetimePipe,
   FmtNumPipe,
   FmtPctPipe,
   Segmented,
@@ -39,6 +42,9 @@ const COUNT_COLUMNS: readonly DataTableColumn[] = [
     DataTableCell,
     Empty,
     ErrorState,
+    Badge,
+    FmtDatePipe,
+    FmtDatetimePipe,
     FmtNumPipe,
     FmtPctPipe,
     Segmented,
@@ -60,6 +66,18 @@ export class ProgressReport {
   protected readonly groupColumns: readonly DataTableColumn[] = [
     { key: 'name', label: 'Tên', sortable: false },
     ...COUNT_COLUMNS,
+  ];
+  /** The sortable columns are the server's sort keys. */
+  protected readonly learnerColumns: readonly DataTableColumn[] = [
+    { key: 'userId', label: 'Mã cán bộ', sortable: false },
+    { key: 'fullName', label: 'Học viên', sortable: false },
+    { key: 'orgName', label: 'Đơn vị', sortable: false },
+    { key: 'course', label: 'Khóa học', sortable: false },
+    { key: 'progressPercent', label: 'Tiến độ (%)' },
+    { key: 'status', label: 'Trạng thái', sortable: false },
+    { key: 'dueAt', label: 'Hạn' },
+    { key: 'overdue', label: 'Quá hạn', sortable: false },
+    { key: 'lastAccessAt', label: 'Học gần nhất' },
   ];
   protected readonly numberKeys = COUNT_COLUMNS.map((c) => c.key).filter(
     (key) => key !== 'completionRate' && key !== 'averageProgress',
