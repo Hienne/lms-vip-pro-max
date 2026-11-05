@@ -1,107 +1,249 @@
 <ui-page-header
-  title="Lĩnh vực & chương trình"
-  description="Lĩnh vực, phân hệ nghiệp vụ và chương trình dùng để xếp khóa học. Thay đổi có hiệu lực ngay, không cần triển khai lại."
+  title="Lĩnh vực → Chương trình → Khóa học"
+  description="Cấu trúc đào tạo được quản lý hoàn toàn bằng dữ liệu: thêm, sửa, sao chép, xuất bản hay tạm dừng mà không cần sửa mã nguồn."
 >
   <div slot="actions">
-    <button uiButton variant="primary" (click)="store.edit(null)">
-      <ui-icon name="plus" size="sm" />Thêm {{ store.noun$() }}
+    <button uiButton variant="primary" (click)="store.add()">
+      <ui-icon name="plus" size="sm" />Thêm lĩnh vực
     </button>
   </div>
 </ui-page-header>
 
-<section uiCard>
-  <ui-tabs
-    label="Danh mục đào tạo"
-    [tabs]="tabs()"
-    [selected]="store.tab$()"
-    (selectedChange)="store.showTab($event)"
-  >
-    @for (tab of tabs(); track tab.id) {
-    <div [uiTabPanel]="tab.id">
-      @if (store.tab$() === tab.id) {
-      <ng-container [ngTemplateOutlet]="panel" />
+@if (store.loadError$(); as error) {
+<ui-error-state
+  title="Không tải được danh mục đào tạo"
+  [message]="error.message"
+  (retry)="store.retryLoad()"
+/>
+} @else if (store.isLoading$()) {
+<div class="training-catalog__loading"><span uiSpinner></span></div>
+} @else if (!store.fields$().length) {
+<ui-empty
+  title="Chưa có lĩnh vực nào"
+  description="Thêm lĩnh vực đầu tiên để bắt đầu xếp chương trình và khóa học."
+/>
+} @else {
+<div class="training-catalog__split">
+  <section uiCard class="training-catalog__tree" aria-labelledby="tree-title">
+    <div uiCardHeader>
+      <h3 id="tree-title">Cây nội dung</h3>
+    </div>
+    <div class="training-catalog__search">
+      <ui-search
+        label="Tìm trong cây nội dung"
+        placeholder="Tìm trong cây…"
+        width="100%"
+        [value]="store.search$()"
+        (searched)="store.search($event)"
+      />
+    </div>
+    <div class="training-catalog__nodes">
+      @if (store.nodes$().length) {
+      <ui-tree
+        label="Cây nội dung"
+        wrapLabels
+        [nodes]="store.nodes$()"
+        [trailing]="trailing"
+        [expanded]="store.expanded$()"
+        (expandedChange)="store.expand($event)"
+        [selected]="store.selectedId$()"
+        (selectedChange)="store.select($event)"
+      />
+      } @else {
+      <p class="training-catalog__none">Không có mục nào khớp.</p>
       }
     </div>
-    }
-  </ui-tabs>
-</section>
+  </section>
 
-<ng-template #panel>
-  @if (store.tab$() === 'modules') {
-  <div uiCardHeader class="training-catalog__toolbar">
-    <label class="training-catalog__filter">
-      <span>Lĩnh vực</span>
-      <select
-        uiSelect
-        size="sm"
-        #field
-        (change)="store.showModulesOf(field.value)"
-      >
-        @for (option of store.fields$(); track option.id) {
-        <option
-          [value]="option.id"
-          [selected]="option.id === store.moduleFieldId$()"
+  @if (store.selected$(); as node) {
+  <section uiCard class="training-catalog__detail" aria-label="Chi tiết">
+    <div class="training-catalog__head">
+      <div class="training-catalog__title">
+        <span class="training-catalog__kind"
+          >{{ noun[node.kind] }} ·
+          <span class="training-catalog__code"
+            >{{ node.kind === 'field' ? node.field.code : node.kind ===
+            'program' ? node.program.code : node.course.code }}</span
+          ></span
         >
-          {{ option.name }}
-        </option>
+        <h2>
+          {{ node.kind === 'field' ? node.field.name : node.kind === 'program' ?
+          node.program.name : node.course.title }}
+        </h2>
+      </div>
+      @switch (node.kind) { @case ('field') {
+      <app-catalog-status [status]="node.field.status" />
+      } @case ('program') {
+      <app-catalog-status [status]="node.program.status" />
+      } @case ('course') {
+      <app-catalog-status
+        [status]="courseStatus({
+          publicationState: node.course.published ? 'published' : 'draft',
+          lifecycleStatus: node.course.lifecycleStatus
+        })"
+      />
+      } }
+    </div>
+
+    <div class="training-catalog__body">
+      @if (node.kind !== 'course') { @let description = node.kind === 'field' ?
+      node.field.description : node.program.description; @if (description) {
+      <p class="training-catalog__desc">{{ description }}</p>
+      } @let children = node.kind === 'field' ? node.field.programs :
+      node.program.courses;
+      <div class="training-catalog__children">
+        <h3>
+          {{ node.kind === 'field' ? 'Chương trình' : 'Khóa học' }} ({{
+          children.length }})
+        </h3>
+        @if (children.length) {
+        <ul class="training-catalog__list">
+          @if (node.kind === 'field') { @for (program of node.field.programs;
+          track program.id) {
+          <li>
+            <button
+              type="button"
+              class="training-catalog__item"
+              (click)="store.select('program-' + program.id)"
+            >
+              <ui-icon name="network" size="sm" />
+              <span class="training-catalog__item-name"
+                >{{ program.name }}</span
+              >
+              <app-catalog-status [status]="program.status" />
+            </button>
+          </li>
+          } } @else { @for (course of node.program.courses; track course.id) {
+          <li>
+            <button
+              type="button"
+              class="training-catalog__item"
+              (click)="store.select('course-' + course.id)"
+            >
+              <ui-icon name="book-open" size="sm" />
+              <span class="training-catalog__item-name"
+                >{{ course.title }}</span
+              >
+              <app-catalog-status
+                [status]="courseStatus({
+                  publicationState: course.published ? 'published' : 'draft',
+                  lifecycleStatus: course.lifecycleStatus
+                })"
+              />
+            </button>
+          </li>
+          } }
+        </ul>
+        } @else {
+        <p class="training-catalog__none">Chưa có mục con.</p>
         }
-      </select>
-    </label>
-  </div>
-  } @if (store.loadError$(); as error) {
-  <ui-error-state
-    title="Không tải được danh mục đào tạo"
-    [message]="error.message"
-    (retry)="store.retryLoad()"
-  />
-  } @else if (store.isLoading$()) {
-  <div class="training-catalog__loading"><span uiSpinner></span></div>
-  } @else {
-  <ui-data-table
-    [caption]="'Danh sách ' + store.noun$()"
-    [columns]="[
-        { key: 'name', label: 'Tên', sortable: false },
-        { key: 'field', label: store.tab$() === 'fields' ? 'Mô tả' : 'Lĩnh vực', sortable: false },
-        { key: 'status', label: 'Trạng thái', sortable: false },
-        { key: 'actions', label: 'Thao tác', kind: 'actions' },
-      ]"
-    [rows]="store.rows$()"
-    [total]="store.rows$().length"
-    [pageSize]="100"
-  >
-    <ui-empty
-      slot="empty"
-      variant="inline"
-      [title]="'Chưa có ' + store.noun$() + ' nào'"
-      description="Thêm mục đầu tiên để bắt đầu xếp khóa học."
-    />
-    <ng-template uiDataTableCell="name" [of]="store.rows$()" let-row>
-      <div uiTablePrimary>{{ row.item.name }}</div>
-      <div uiTableSub>{{ row.item.code }}</div>
-    </ng-template>
-    <ng-template uiDataTableCell="field" [of]="store.rows$()" let-row>
-      @if (store.tab$() === 'fields') {
-      <span class="training-catalog__desc"
-        >{{ row.item.description || '—' }}</span
-      >
-      } @else { {{ row.fieldName || '—' }} }
-    </ng-template>
-    <ng-template uiDataTableCell="status" [of]="store.rows$()" let-row>
-      <app-catalog-status [status]="row.item.status" />
-    </ng-template>
-    <ng-template uiDataTableCell="actions" [of]="store.rows$()" let-row>
-      <button
-        uiButton
-        size="sm"
-        variant="ghost"
-        [attr.aria-label]="'Sửa ' + row.item.name"
-        (click)="store.edit(row.item)"
-      >
-        <ui-icon name="pen-line" size="sm" />Sửa
-      </button>
-    </ng-template>
-  </ui-data-table>
+      </div>
+      }
+
+      <div class="training-catalog__actions">
+        <h3>Thao tác</h3>
+        <div class="training-catalog__buttons">
+          @switch (node.kind) { @case ('field') {
+          <button
+            uiButton
+            variant="primary"
+            [disabled]="store.isBusy$()"
+            (click)="store.add(node.field)"
+          >
+            <ui-icon name="plus" size="sm" />Thêm chương trình
+          </button>
+          } @case ('program') {
+          <a uiButton variant="primary" routerLink="/admin/courses/new">
+            <ui-icon name="plus" size="sm" />Thêm khóa học
+          </a>
+          } @case ('course') {
+          <a
+            uiButton
+            variant="primary"
+            [routerLink]="['/admin/courses', node.course.id, 'edit']"
+          >
+            <ui-icon name="pen-line" size="sm" />Sửa khóa học
+          </a>
+          } } @if (node.kind !== 'course') {
+          <button
+            uiButton
+            [disabled]="store.isBusy$()"
+            (click)="store.edit(node)"
+          >
+            <ui-icon name="pen-line" size="sm" />Sửa
+          </button>
+          } @if (node.kind === 'program') {
+          <button
+            uiButton
+            [disabled]="store.isBusy$()"
+            (click)="store.copyProgram(node.program)"
+          >
+            <ui-icon name="copy" size="sm" />Sao chép
+          </button>
+          } @if (node.kind !== 'course') { @let status = node.kind === 'field' ?
+          node.field.status : node.program.status; @if (status !== 'published')
+          {
+          <button
+            uiButton
+            [disabled]="store.isBusy$()"
+            (click)="store.changeStatus(node, 'published')"
+          >
+            <ui-icon name="check" size="sm" />Xuất bản
+          </button>
+          } @else {
+          <button
+            uiButton
+            [disabled]="store.isBusy$()"
+            (click)="store.changeStatus(node, 'paused')"
+          >
+            <ui-icon name="circle-pause" size="sm" />Tạm dừng
+          </button>
+          } @if (status !== 'archived') {
+          <button
+            uiButton
+            variant="ghost"
+            [disabled]="store.isBusy$()"
+            (click)="store.changeStatus(node, 'archived')"
+          >
+            <ui-icon name="archive" size="sm" />Lưu trữ
+          </button>
+          } @let empty = node.kind === 'field' ? !node.field.programs.length :
+          !node.program.courses.length; @if (empty) {
+          <button
+            uiButton
+            variant="danger-ghost"
+            [disabled]="store.isBusy$()"
+            (click)="store.delete(node)"
+          >
+            <ui-icon name="trash-2" size="sm" />Xóa
+          </button>
+          } }
+        </div>
+        @if (node.kind === 'course') {
+        <p class="training-catalog__hint">
+          Sao chép, tạm dừng và lưu trữ khóa học ở màn Khóa học.
+        </p>
+        } @else {
+        <p class="training-catalog__hint">
+          Tạm dừng: không dùng cho mục mới, nội dung đang có và tiến độ học được
+          giữ nguyên. Lưu trữ: ngừng hẳn, lịch sử được giữ. Chỉ xóa được mục
+          không còn mục con.
+        </p>
+        }
+      </div>
+    </div>
+  </section>
   }
+</div>
+}
+
+<ng-template #trailing let-node>
+  @switch (node.data?.kind) { @case ('field') { @if (node.data.field.status !==
+  'published') {
+  <app-catalog-status [status]="node.data.field.status" />
+  } } @case ('program') { @if (node.data.program.status !== 'published') {
+  <app-catalog-status [status]="node.data.program.status" />
+  } } }
 </ng-template>
 
 <ng-template
@@ -116,8 +258,6 @@
   <app-catalog-item-form
     [kind]="editing.kind"
     [item]="editing.item"
-    [fields]="store.fields$()"
-    [defaultFieldId]="store.moduleFieldId$()"
     (submitted)="store.save($event)"
   />
   }

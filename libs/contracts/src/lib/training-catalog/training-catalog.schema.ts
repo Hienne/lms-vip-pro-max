@@ -104,3 +104,60 @@ export const ExpectedVersionQuerySchema = z.object({
   expectedVersion: z.number().int().nonnegative(),
 });
 export type ExpectedVersionQuery = z.infer<typeof ExpectedVersionQuerySchema>;
+
+/** A course lifecycle (not the catalogue status): `PATCH /courses/{id}/state` moves it. */
+export const TreeCourseLifecycleSchema = z.enum([
+  'active',
+  'paused',
+  'archived',
+]);
+export type TreeCourseLifecycle = z.infer<typeof TreeCourseLifecycleSchema>;
+
+/** A course in the tree; `published` is true once it has a published revision. */
+export const CatalogTreeCourseSchema = z.object({
+  id: z.number().int(),
+  code: z.string(),
+  title: z.string(),
+  lifecycleStatus: TreeCourseLifecycleSchema,
+  published: z.boolean(),
+});
+export type CatalogTreeCourse = z.infer<typeof CatalogTreeCourseSchema>;
+
+/** A program with its courses; carries what a status change by PUT needs (`rowVersion`, `sortNo`). */
+export const CatalogTreeProgramSchema = z.object({
+  id: z.number().int(),
+  fieldId: z.number().int(),
+  ownerOrgId: z.number().int(),
+  code: z.string(),
+  name: z.string(),
+  description: z.string().nullish(),
+  status: CatalogStatusSchema,
+  sortNo: z.number().int().nullish(),
+  rowVersion: z.number().int(),
+  courses: z.array(CatalogTreeCourseSchema),
+});
+export type CatalogTreeProgram = z.infer<typeof CatalogTreeProgramSchema>;
+
+export const CatalogTreeFieldSchema = z.object({
+  id: z.number().int(),
+  ownerOrgId: z.number().int(),
+  code: z.string(),
+  name: z.string(),
+  description: z.string().nullish(),
+  status: CatalogStatusSchema,
+  sortNo: z.number().int().nullish(),
+  rowVersion: z.number().int(),
+  programs: z.array(CatalogTreeProgramSchema),
+});
+export type CatalogTreeField = z.infer<typeof CatalogTreeFieldSchema>;
+
+/** Fields, programs and courses of one owner org in one call, ordered by sort number then id. */
+export const CatalogTreeSchema = z.object({
+  fields: z.array(CatalogTreeFieldSchema),
+});
+export type CatalogTree = z.infer<typeof CatalogTreeSchema>;
+
+export const ListCatalogTreeQuerySchema = z.object({
+  ownerOrgId: z.number().int().positive(),
+});
+export type ListCatalogTreeQuery = z.infer<typeof ListCatalogTreeQuerySchema>;

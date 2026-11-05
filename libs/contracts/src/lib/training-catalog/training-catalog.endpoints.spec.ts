@@ -2,6 +2,8 @@ import { toUrl } from '../http/endpoint';
 import { trainingCatalogEndpoints } from './training-catalog.endpoints';
 import {
   BusinessModuleSchema,
+  CatalogTreeSchema,
+  ListCatalogTreeQuerySchema,
   ListByOwnerOrgQuerySchema,
   SaveCatalogItemCommandSchema,
   TrainingProgramSchema,
@@ -25,6 +27,10 @@ describe('training catalog endpoints', () => {
       ['listModules', 'get', '/api/v1/training-catalog/modules'],
       ['createModule', 'post', '/api/v1/training-catalog/modules'],
       ['updateModule', 'put', '/api/v1/training-catalog/modules/{id}'],
+      ['tree', 'get', '/api/v1/training-catalog/tree'],
+      ['copyProgram', 'post', '/api/v1/training-catalog/programs/{id}/copy'],
+      ['deleteField', 'delete', '/api/v1/training-catalog/fields/{id}'],
+      ['deleteProgram', 'delete', '/api/v1/training-catalog/programs/{id}'],
     ]);
     expect(toUrl(trainingCatalogEndpoints.updateProgram, { id: 4 })).toBe(
       '/api/v1/training-catalog/programs/4',
@@ -85,5 +91,73 @@ describe('training catalog endpoints', () => {
         rowVersion: 0,
       }).fieldId,
     ).toBe(3);
+  });
+
+  describe('tree', () => {
+    const tree = {
+      fields: [
+        {
+          id: 1,
+          ownerOrgId: 7,
+          code: 'NV',
+          name: 'Nghiệp vụ',
+          description: null,
+          status: 'published',
+          sortNo: 0,
+          rowVersion: 3,
+          programs: [
+            {
+              id: 4,
+              fieldId: 1,
+              ownerOrgId: 7,
+              code: 'NV-01',
+              name: 'Tiền gửi',
+              description: 'Mô tả',
+              status: 'draft',
+              sortNo: 1,
+              rowVersion: 0,
+              courses: [
+                {
+                  id: 9,
+                  code: 'C-1',
+                  title: 'Khóa 1',
+                  lifecycleStatus: 'active',
+                  published: true,
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    };
+
+    it('parses the nested response the backend sends', () => {
+      const parsed = CatalogTreeSchema.parse(tree);
+      expect(parsed.fields[0].programs[0].courses[0].title).toBe('Khóa 1');
+      expect(parsed.fields[0].programs[0].rowVersion).toBe(0);
+    });
+
+    it('refuses a course status the backend does not use', () => {
+      const bad = structuredClone(tree);
+      bad.fields[0].programs[0].courses[0].lifecycleStatus = 'published';
+      expect(CatalogTreeSchema.safeParse(bad).success).toBe(false);
+    });
+
+    it('requires the owner org to read the tree', () => {
+      expect(ListCatalogTreeQuerySchema.safeParse({}).success).toBe(false);
+      expect(ListCatalogTreeQuerySchema.parse({ ownerOrgId: 7 })).toEqual({
+        ownerOrgId: 7,
+      });
+    });
+
+    it('deletes with the row version, answering no data', () => {
+      expect(toUrl(trainingCatalogEndpoints.deleteProgram, { id: 4 })).toBe(
+        '/api/v1/training-catalog/programs/4',
+      );
+      expect(trainingCatalogEndpoints.deleteField.query).toBeDefined();
+      expect(trainingCatalogEndpoints.deleteField.response.parse(null)).toBe(
+        null,
+      );
+    });
   });
 });

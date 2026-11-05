@@ -352,6 +352,14 @@ export const SEED_FUNCTIONS: readonly FunctionInfo[] = [
     parentFunctionId: null,
     sortNo: 170,
   },
+  {
+    id: 20,
+    code: 'TRAINING_CATALOG',
+    name: 'Lĩnh vực và chương trình',
+    routePattern: '/admin/catalog',
+    parentFunctionId: null,
+    sortNo: 55,
+  },
 ];
 
 export const SEED_ROLES: readonly SeedRole[] = [
@@ -361,7 +369,7 @@ export const SEED_ROLES: readonly SeedRole[] = [
     name: 'Quản trị viên gốc',
     description:
       'Quản trị toàn hệ thống và cấp/thu hồi ADMIN hoặc SUPER_ADMIN.',
-    functionIds: [1, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 17, 18, 19],
+    functionIds: [1, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 17, 18, 19, 20],
   },
   {
     roleId: 2,
@@ -369,7 +377,7 @@ export const SEED_ROLES: readonly SeedRole[] = [
     name: 'Quản trị viên',
     description:
       'Quản trị nghiệp vụ theo GLOBAL/ORG; không cấp quyền quản trị.',
-    functionIds: [1, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 17, 18, 19],
+    functionIds: [1, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 17, 18, 19, 20],
   },
   {
     roleId: 3,
@@ -383,7 +391,7 @@ export const SEED_ROLES: readonly SeedRole[] = [
     code: 'INSTRUCTOR',
     name: 'Giảng viên',
     description: 'Giảng viên hoặc cán bộ quản lý nội dung theo scope được cấp.',
-    functionIds: [1, 5, 6, 7, 8, 13, 17, 18],
+    functionIds: [1, 5, 6, 7, 8, 13, 17, 18, 20],
   },
   {
     roleId: 5,

@@ -16,6 +16,7 @@ export function canOpenFunction(
       return grants.some(
         (g) => g.roleCode === 'LEARNER' && g.scope.type === 'OWN',
       );
+    case 'TRAINING_CATALOG':
     case 'COURSE_MANAGEMENT':
     case 'LESSON_MANAGEMENT':
     case 'QUIZ_MANAGEMENT':

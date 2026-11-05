@@ -198,6 +198,20 @@ export const SCREEN_TABLE = {
         },
       ],
     },
+    TRAINING_CATALOG: {
+      nav: { icon: 'layers', section: 'Nội dung' },
+      screens: [
+        {
+          path: 'admin/catalog',
+          title: 'Lĩnh vực & chương trình',
+          mockupPage: 'adminCatalog',
+          load: () =>
+            import(
+              '../../features/admin-content/training-catalog/training-catalog'
+            ).then((m) => m.TrainingCatalog),
+        },
+      ],
+    },
     COURSE_MANAGEMENT: {
       nav: { icon: 'book-open', section: 'Nội dung' },
       search: {},
@@ -566,16 +580,6 @@ export const SCREEN_TABLE = {
         import('../../features/learning/catalog/catalog').then(
           (m) => m.Catalog,
         ),
-    },
-    {
-      path: 'admin/catalog',
-      access: 'COURSE_MANAGEMENT',
-      title: 'Lĩnh vực & chương trình',
-      mockupPage: 'adminCatalog',
-      load: () =>
-        import(
-          '../../features/admin-content/training-catalog/training-catalog'
-        ).then((m) => m.TrainingCatalog),
     },
     {
       path: 'leaderboard',
