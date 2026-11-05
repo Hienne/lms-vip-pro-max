@@ -1,9 +1,9 @@
 import type { MockInstance } from 'vitest';
 import { TestBed } from '@angular/core/testing';
-import { provideRouter } from '@angular/router';
+import { provideRouter, Router } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
 import { identityEndpoints } from '@lms/contracts';
-import { SEED_USERS } from '@lms/mocks';
+import { envelopeOk, SEED_USERS } from '@lms/mocks';
 import { createAppRoutes } from '../../../app.routes';
 import {
   parseAppConfig,
@@ -147,7 +147,7 @@ describe('Users', () => {
     expect(text()).toContain('Không có người dùng phù hợp');
 
     await choose(status, '');
-    button(el, 'Người dùng').click();
+    button(el.querySelector('thead') as HTMLElement, 'Người dùng').click();
     await settle();
     expect(calls(identityEndpoints.listUsers).at(-1)?.[1].query).toMatchObject({
       sort: 'fullName,asc',
@@ -375,5 +375,72 @@ describe('Users', () => {
     const team = field('Nhóm').querySelector('select') as HTMLSelectElement;
     await choose(team, '');
     expect(dialog()?.textContent).toContain('sẽ thu hồi');
+  });
+
+  describe('the requests tab', () => {
+    const tabs = () =>
+      Array.from(el.querySelectorAll<HTMLElement>('[role="tab"]'));
+    const tabOf = (name: string) =>
+      tabs().find((t) => t.textContent?.includes(name)) as HTMLElement;
+
+    it('adds a "Yêu cầu" tab with the pending count beside "Người dùng", which stays the default', async () => {
+      await open('super.admin', '000001');
+      expect(
+        tabs().map((t) => t.textContent?.replace(/\s+/g, ' ').trim()),
+      ).toEqual(['Người dùng', 'Yêu cầu 3']);
+      expect(tabOf('Người dùng').getAttribute('aria-selected')).toBe('true');
+      expect(rows()).toHaveLength(SEED_USERS.length);
+      expect(el.querySelector('app-access-requests')).toBeNull();
+      const asked = calls(identityEndpoints.accessRequests);
+      expect(
+        asked.every(
+          ([, r]) => (r.query as Record<string, string>)['size'] === '1',
+        ),
+      ).toBe(true);
+    });
+
+    it('shows no count when nothing is pending', async () => {
+      handle.mockImplementation((endpoint, request) =>
+        endpoint === identityEndpoints.accessRequests
+          ? ({
+              status: 200,
+              body: envelopeOk({
+                items: [],
+                page: 0,
+                size: 1,
+                totalElements: 0,
+                totalPages: 0,
+              }),
+            } as never)
+          : MockBackend.prototype.handle.call(
+              TestBed.inject(MockBackend),
+              endpoint as never,
+              request as never,
+            ),
+      );
+      await open('super.admin', '000001');
+      expect(tabOf('Yêu cầu').textContent?.replace(/\s+/g, ' ').trim()).toBe(
+        'Yêu cầu',
+      );
+    });
+
+    it('opens on ?tab=requests, so a link and the back button work', async () => {
+      await open('super.admin', '000001', '/admin/users?tab=requests');
+      expect(tabOf('Yêu cầu').getAttribute('aria-selected')).toBe('true');
+      expect(el.querySelector('app-access-requests')).not.toBeNull();
+      expect(el.querySelector('[slot="actions"]')).toBeNull();
+    });
+
+    it('writes the tab to the URL when it is chosen, and drops it for the default', async () => {
+      await open('super.admin', '000001');
+      tabOf('Yêu cầu').click();
+      await settle();
+      expect(TestBed.inject(Router).url).toBe('/admin/users?tab=requests');
+      expect(el.querySelector('app-access-requests')).not.toBeNull();
+      tabOf('Người dùng').click();
+      await settle();
+      expect(TestBed.inject(Router).url).toBe('/admin/users');
+      expect(el.querySelector('[slot="actions"]')).not.toBeNull();
+    });
   });
 });

@@ -30,13 +30,14 @@ export class AccessRequestsStore {
   private readonly client = inject(EndpointClient);
   private readonly changed = inject(AccessRequestsChanged);
 
+  /** The list is read only while its tab is open. */
+  private readonly listShown = signal(false);
+
   private readonly state = {
     query: signal(''),
     kind: signal<AccessRequestKind | ''>(''),
     status: signal<AccessRequestStatus | ''>('PENDING'),
     page: signal(1),
-    /** The list is read only while its tab is open. */
-    listShown: signal(false),
     /** The last page the server sent: the table stays while the next one loads. */
     shown: linkedSignal<
       Page<AccessRequest> | undefined,
@@ -63,7 +64,7 @@ export class AccessRequestsStore {
     (query: AccessRequestsQuery) =>
       this.client.call(identityEndpoints.accessRequests, { query }),
     {
-      params: () => (this.state.listShown() ? this.request() : undefined),
+      params: () => (this.listShown() ? this.request() : undefined),
       reloadOn: this.changed,
     },
   );
@@ -129,11 +130,11 @@ export class AccessRequestsStore {
 
   // Commands: a changed filter starts again at the first page
   showList(): void {
-    this.state.listShown.set(true);
+    this.listShown.set(true);
   }
 
   hideList(): void {
-    this.state.listShown.set(false);
+    this.listShown.set(false);
   }
 
   search(query: string): void {
