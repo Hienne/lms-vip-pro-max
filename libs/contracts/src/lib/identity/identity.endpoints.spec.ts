@@ -31,6 +31,13 @@ describe('identity endpoints', () => {
         'post',
         '/api/v1/access-requests/{requestId}/reject',
       ],
+      [
+        'approveAccessRequest',
+        'post',
+        '/api/v1/access-requests/{requestId}/approve',
+      ],
+      ['registrationUnits', 'get', '/api/v1/auth/registration-units'],
+      ['registerRequest', 'post', '/api/v1/auth/register-request'],
     ]);
   });
 

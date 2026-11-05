@@ -1,4 +1,9 @@
 import { z } from 'zod';
+import {
+  PASSWORD_MAX_BYTES,
+  PASSWORD_MIN_LENGTH,
+  passwordByteLength,
+} from '../auth/auth-v1.schema';
 import { PageQuerySchema } from '../http/page';
 
 // Mirrors the backend's access requests (/api/v1/access-requests): what a visitor asked for from
@@ -56,3 +61,53 @@ export const RejectAccessRequestCommandSchema = z.object({
 export type RejectAccessRequestCommand = z.infer<
   typeof RejectAccessRequestCommandSchema
 >;
+
+/** Approve a pending registration, with an optional note; the server creates the account. */
+export const ApproveAccessRequestCommandSchema = z.object({
+  note: z.string().max(ACCESS_REQUEST_LIMITS.note).optional(),
+});
+export type ApproveAccessRequestCommand = z.infer<
+  typeof ApproveAccessRequestCommandSchema
+>;
+
+/** Field rules of the public registration form; the form and the schema share them. */
+export const REGISTRATION_LIMITS = {
+  staffCode: 20,
+  fullName: 255,
+  email: 100,
+} as const;
+
+/** A staff code as the backend takes it: letters, digits, dot, underscore and dash. */
+export const STAFF_CODE_PATTERN = /^[A-Za-z0-9._-]{1,20}$/;
+
+/**
+ * `POST /auth/register-request` (public). The password travels once, over TLS, and the server
+ * stores only its hash; no response ever carries it. The "confirm password" field of the form is
+ * checked in the browser and is not part of the command.
+ */
+export const RegisterRequestCommandSchema = z.strictObject({
+  staffCode: z.string().regex(STAFF_CODE_PATTERN),
+  fullName: z.string().trim().min(1).max(REGISTRATION_LIMITS.fullName),
+  email: z.email().max(REGISTRATION_LIMITS.email),
+  orgId: z.number().int().positive(),
+  password: z
+    .string()
+    .min(PASSWORD_MIN_LENGTH)
+    .refine((v) => passwordByteLength(v) <= PASSWORD_MAX_BYTES),
+});
+export type RegisterRequestCommand = z.infer<
+  typeof RegisterRequestCommandSchema
+>;
+
+/** The one answer of the register request, whether or not the code already has an account. */
+export const RegisterRequestResultSchema = z.strictObject({
+  message: z.string(),
+});
+export type RegisterRequestResult = z.infer<typeof RegisterRequestResultSchema>;
+
+/** A unit a visitor can register into (`GET /auth/registration-units`, public): id and name only. */
+export const RegistrationUnitSchema = z.strictObject({
+  orgId: z.number().int(),
+  name: z.string(),
+});
+export type RegistrationUnit = z.infer<typeof RegistrationUnitSchema>;

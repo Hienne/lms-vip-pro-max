@@ -1,6 +1,9 @@
 import {
   AccessRequestSchema,
   AccessRequestsQuerySchema,
+  ApproveAccessRequestCommandSchema,
+  RegisterRequestCommandSchema,
+  RegistrationUnitSchema,
   RejectAccessRequestCommandSchema,
 } from './access-request.schema';
 
@@ -71,6 +74,67 @@ describe('access request schemas', () => {
     ).toEqual({ note: 'x'.repeat(500) });
     expect(() =>
       RejectAccessRequestCommandSchema.parse({ note: 'x'.repeat(501) }),
+    ).toThrow();
+  });
+
+  it('limits the approval note like the rejection note', () => {
+    expect(ApproveAccessRequestCommandSchema.parse({})).toEqual({});
+    expect(() =>
+      ApproveAccessRequestCommandSchema.parse({ note: 'x'.repeat(501) }),
+    ).toThrow();
+  });
+});
+
+describe('RegisterRequestCommandSchema', () => {
+  const ok = {
+    staffCode: '000321',
+    fullName: 'Nguyễn Văn An',
+    email: 'an@example.test',
+    orgId: 1,
+    password: 'Demo@123',
+  };
+
+  it('accepts exactly the form fields and keeps the staff code a string', () => {
+    expect(RegisterRequestCommandSchema.parse(ok)).toEqual(ok);
+  });
+
+  it('refuses extra fields such as a confirmation or a role', () => {
+    expect(() =>
+      RegisterRequestCommandSchema.parse({ ...ok, confirmPassword: 'x' }),
+    ).toThrow();
+    expect(() =>
+      RegisterRequestCommandSchema.parse({ ...ok, roleId: 1 }),
+    ).toThrow();
+  });
+
+  it('applies the staff code, email and password rules', () => {
+    expect(() =>
+      RegisterRequestCommandSchema.parse({ ...ok, staffCode: 'a b' }),
+    ).toThrow();
+    expect(() =>
+      RegisterRequestCommandSchema.parse({ ...ok, staffCode: 'x'.repeat(21) }),
+    ).toThrow();
+    expect(() =>
+      RegisterRequestCommandSchema.parse({ ...ok, email: 'not-an-email' }),
+    ).toThrow();
+    expect(() =>
+      RegisterRequestCommandSchema.parse({ ...ok, password: '12345' }),
+    ).toThrow();
+    // 37 two-byte characters are 74 bytes: over the bcrypt limit though under 72 characters.
+    expect(() =>
+      RegisterRequestCommandSchema.parse({ ...ok, password: 'ế'.repeat(37) }),
+    ).toThrow();
+  });
+});
+
+describe('RegistrationUnitSchema', () => {
+  it('carries only the id and the name', () => {
+    expect(RegistrationUnitSchema.parse({ orgId: 3, name: 'Ban A' })).toEqual({
+      orgId: 3,
+      name: 'Ban A',
+    });
+    expect(() =>
+      RegistrationUnitSchema.parse({ orgId: 3, name: 'Ban A', code: 'X' }),
     ).toThrow();
   });
 });

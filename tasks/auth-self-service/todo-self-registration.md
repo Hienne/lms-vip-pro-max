@@ -4,7 +4,7 @@ Plan: [plan-self-registration.md](plan-self-registration.md) · Spec: [SPEC-self
 
 ## R1: Contracts and endpoints
 
-- [ ] `RegisterRequestCommandSchema` (strict, password rules, no echo), `RegistrationUnitSchema` (`orgId`, `name`
+- [x] `RegisterRequestCommandSchema` (strict, password rules, no echo), `RegistrationUnitSchema` (`orgId`, `name`
       only), `ApproveAccessRequestCommandSchema` (`note?` ≤500); endpoints `registrationUnits`, `registerRequest`,
       `approveAccessRequest` in `identityEndpoints`; the two public ones marked public.
 - **Verify:** `npx nx test contracts` · **Deps:** none · **Size:** S
