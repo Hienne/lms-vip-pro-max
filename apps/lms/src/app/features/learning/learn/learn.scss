@@ -5,114 +5,209 @@
 }
 
 .learn {
+  &__catalog {
+    @include ui.row(1);
+    @include ui.text(sm);
+    color: ui.color(primary);
+    text-decoration: none;
+
+    &:hover {
+      text-decoration: underline;
+    }
+
+    &:focus-visible {
+      @include ui.focus-ring;
+    }
+  }
+
   &__layout {
     @include ui.stack(6);
 
     @include ui.bp(lg) {
       display: grid;
-      grid-template-columns: minmax(0, 1fr) 18rem;
+      grid-template-columns: minmax(0, 1fr) ui.layout(sidebar);
       align-items: start;
-      gap: ui.space(8);
+      gap: ui.space(6);
+    }
+
+    @include ui.bp(xl) {
+      grid-template-columns: minmax(0, 1fr) ui.layout(popover);
     }
   }
 
   &__main,
   &__side {
-    @include ui.stack(6);
+    @include ui.stack(5);
     min-width: 0;
   }
 
   &__section {
     @include ui.stack(3);
+    min-width: 0;
+
+    h2 {
+      @include ui.text(xl);
+      margin: 0;
+      font-weight: ui.weight(semibold);
+    }
+
+    h3 {
+      @include ui.text(md);
+      margin: 0;
+      font-weight: ui.weight(semibold);
+    }
   }
 
-  // The continue card and the points figure share a row from lg, and stack below it.
+  &__panel {
+    padding: ui.space(4);
+  }
+
+  &__summary {
+    padding-block: ui.space(2);
+  }
+
+  &__side &__panel h2 {
+    @include ui.text(lg);
+    font-family: ui.font(sans);
+  }
+
   &__resume {
-    @include ui.stack(4);
+    min-width: 0;
+  }
 
-    @include ui.bp(lg) {
-      display: grid;
-      grid-template-columns: minmax(0, 1fr) auto;
-      align-items: center;
-      gap: ui.space(8);
+  &__heading {
+    @include ui.row-between(2);
+    align-items: baseline;
 
-      // No points figure: the card takes the whole row.
-      &:not(:has(app-points-figure)) {
-        grid-template-columns: minmax(0, 1fr);
+    a {
+      @include ui.text(sm);
+      color: ui.color(primary);
+      white-space: nowrap;
+      text-decoration: none;
+
+      &:hover {
+        text-decoration: underline;
+      }
+
+      &:focus-visible {
+        @include ui.focus-ring;
       }
     }
   }
 
-  &__heading {
-    @include ui.row-between(3);
+  &__grid {
+    @include ui.grid((md: 2));
+    margin: ui.space(3) 0 0;
+    padding: 0;
+    list-style: none;
 
-    h2 {
-      margin: 0;
+    li {
+      min-width: 0;
     }
   }
 
-  &__grid {
-    @include ui.grid(
-      (
-        md: 2,
-      )
-    );
-    margin: ui.space(4) 0 0;
-    padding: 0;
-    list-style: none;
+  &__secondary {
+    @include ui.grid((xl: 2));
+    align-items: start;
+    padding: ui.space(4);
+
+    > section + section {
+      padding-block-start: ui.space(4);
+      border-block-start: 1px solid ui.color(border);
+
+      @include ui.bp(xl) {
+        padding-block-start: 0;
+        padding-inline-start: ui.space(4);
+        border-block-start: 0;
+        border-inline-start: 1px solid ui.color(border);
+      }
+    }
+
+    > section:only-child {
+      grid-column: 1 / -1;
+    }
+
+    h2 {
+      @include ui.text(lg);
+      font-family: ui.font(sans);
+    }
   }
 
-  &__resume-placeholder {
-    min-height: 9rem;
-  }
-
-  &__counts-placeholder {
-    min-height: 4rem;
-  }
-
-  &__card-placeholder {
-    min-height: 12rem;
-  }
-
-  &__competency-placeholder {
-    min-height: 14rem;
-  }
-
-  &__journey-placeholder {
-    min-height: 8rem;
-  }
-
+  &__resume-placeholder,
+  &__counts-placeholder,
+  &__card-placeholder,
+  &__competency-placeholder,
+  &__journey-placeholder,
   &__due-placeholder {
-    min-height: 8rem;
+    min-height: ui.space(18);
   }
 
   &__due,
-  &__reminders {
-    @include ui.stack(3);
+  &__reminders,
+  &__journey,
+  &__tools {
     margin: 0;
     padding: 0;
     list-style: none;
   }
 
   &__due li {
-    @include ui.row-between(3);
-    flex-wrap: wrap;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: ui.space(1) ui.space(3);
+    align-items: baseline;
+    padding-block: ui.space(3);
+    border-bottom: 1px solid ui.color(border);
+
+    &:first-child {
+      padding-block-start: 0;
+    }
+
+    &:last-child {
+      border-bottom: 0;
+      padding-block-end: 0;
+    }
+
+    app-due-date {
+      grid-column: 1 / -1;
+      grid-row: 2;
+      min-width: 0;
+    }
+  }
+
+  &__due-title {
+    @include ui.text(sm);
+    grid-column: 1;
+    min-width: 0;
+    color: ui.color(text);
+    font-weight: ui.weight(medium);
+    text-decoration: none;
+    overflow-wrap: anywhere;
+
+    &:hover {
+      color: ui.color(primary);
+      text-decoration: underline;
+    }
+
+    &:focus-visible {
+      @include ui.focus-ring;
+    }
   }
 
   &__due-pct {
     @include ui.num;
     @include ui.text(sm);
+    grid-column: 2;
+    grid-row: 1;
+    text-align: end;
   }
 
   &__journey {
     @include ui.stack(4);
-    margin: 0;
-    padding: 0;
-    list-style: none;
   }
 
   &__step {
-    @include ui.stack(1);
+    @include ui.stack(2);
   }
 
   &__step-head {
@@ -121,8 +216,10 @@
   }
 
   &__step-name {
+    @include ui.text(sm);
     min-width: 0;
     font-weight: ui.weight(medium);
+    overflow-wrap: anywhere;
   }
 
   &__step-pct {
@@ -130,36 +227,66 @@
     @include ui.text(sm);
   }
 
-  &__tools {
-    @include ui.stack(1);
-    margin: 0;
-    padding: 0;
-    list-style: none;
-  }
-
   &__tool {
     @include ui.row-between(3);
-    padding: ui.space(2) 0;
+    flex-wrap: nowrap;
+    padding-block: ui.space(3);
+    border-bottom: 1px solid ui.color(border);
     color: inherit;
     text-decoration: none;
 
     &:hover &-title {
+      color: ui.color(primary);
       text-decoration: underline;
     }
+
+    &:focus-visible {
+      @include ui.focus-ring;
+    }
+  }
+
+  &__tools li:last-child &__tool {
+    border-bottom: 0;
+    padding-block-end: 0;
   }
 
   &__tool-text {
     @include ui.stack(1);
     min-width: 0;
+    overflow-wrap: anywhere;
   }
 
   &__tool-title {
+    @include ui.text(sm);
     font-weight: ui.weight(medium);
   }
 
-  &__due-title {
-    min-width: 0;
-    flex: 1 1 8rem;
+  &__reminder-disclosure {
+    padding-block-start: ui.space(3);
+    border-top: 1px solid ui.color(border);
+
+    summary {
+      @include ui.text(sm);
+      color: ui.color(primary);
+      font-weight: ui.weight(medium);
+      cursor: pointer;
+
+      &:focus-visible {
+        @include ui.focus-ring;
+      }
+    }
+
+    .learn__section {
+      padding-block-start: ui.space(4);
+    }
+  }
+
+  &__reminders {
+    @include ui.stack(3);
+  }
+
+  &__rewards app-points-figure {
+    display: block;
   }
 
   &__muted {

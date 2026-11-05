@@ -1,4 +1,7 @@
 <a uiCard interactive class="course-card" [routerLink]="course().link">
+  @if (course().coverUrl; as cover) {
+  <img class="course-card__cover" [src]="cover" alt="" loading="lazy" />
+  }
   <div class="course-card__head">
     <span class="course-card__category"
       >{{ course().domain }} · {{ course().module }}</span

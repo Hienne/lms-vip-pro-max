@@ -260,6 +260,10 @@ export function reportPickers(applied: Signal<ReportFilters>) {
       });
       if (option) state.known.update((known) => ({ ...known, [key]: option }));
     },
+    /** Clears every picker, as "Đặt lại" does. */
+    clear(): void {
+      state.picks.set(byKey(() => undefined));
+    },
     search(key: PickerKey, query: string): void {
       state.queries.update((queries) => ({ ...queries, [key]: query }));
     },

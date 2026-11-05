@@ -1,6 +1,13 @@
 import { NgTemplateOutlet } from '@angular/common';
 import { Tree as AriaTree, TreeItem, TreeItemGroup } from '@angular/aria/tree';
-import { Component, computed, input, model, TemplateRef } from '@angular/core';
+import {
+  booleanAttribute,
+  Component,
+  computed,
+  input,
+  model,
+  TemplateRef,
+} from '@angular/core';
 import { Icon } from '../../atoms/icon/icon';
 import type { IconName } from '../../atoms/icon/icon-registry';
 
@@ -34,6 +41,8 @@ export class Tree<T = unknown> {
   readonly nodes = input.required<readonly TreeNode<T>[]>();
   /** Accessible name of the tree, e.g. "Cây nội dung". */
   readonly label = input.required<string>();
+  /** Lets long names wrap in a narrow navigation pane instead of truncating them. */
+  readonly wrapLabels = input(false, { transform: booleanAttribute });
   readonly trailing = input<TemplateRef<TreeTrailingContext<T>>>();
   /** Ids of the expanded nodes. */
   readonly expanded = model<readonly string[]>([]);

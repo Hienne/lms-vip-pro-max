@@ -1,6 +1,6 @@
 <ui-page-header
   title="Đơn vị, phòng & nhóm"
-  description="Cây đơn vị và phòng ban theo phạm vi của bạn; mỗi đơn vị có quản trị viên và các nhóm chuyên môn riêng."
+  description="Đơn vị, phòng ban và nhóm chuyên môn trong phạm vi quản lý."
 >
   <div slot="actions" class="row">
     <button uiButton type="button" (click)="store.openImport()">
@@ -31,6 +31,7 @@
     <div class="org__tree">
       <ui-tree
         label="Cây đơn vị và phòng ban"
+        wrapLabels
         [nodes]="store.treeNodes$()"
         [trailing]="trailing"
         [expanded]="store.treeExpanded$()"
@@ -45,19 +46,16 @@
     <div uiCard class="org__head">
       <div class="org__head-main">
         <div class="org__head-text">
+          <h2 class="org__title">{{ selected.name }}</h2>
           <div class="org__head-meta">
             <span class="org__code">{{ selected.code }}</span>
-            <span uiBadge tone="neutral" [outline]="true"
-              >{{ selected.orgType === 'UNIT' ? 'Đơn vị' : 'Phòng' }}</span
-            >
+            <span>{{ selected.orgType === 'UNIT' ? 'Đơn vị' : 'Phòng' }}</span>
             @if (selected.status !== 'active') {
             <span uiBadge tone="warning">Tạm dừng</span>
             }
           </div>
-          <h2 class="org__title">{{ selected.name }}</h2>
           @if (store.org$()) {
           <p class="org__admins">
-            <ui-icon name="shield" size="sm" />
             <span
               >Quản trị viên: @for (admin of store.administrators$(); track
               admin.userId; let last = $last) {
@@ -70,15 +68,20 @@
         </div>
         @if (store.org$(); as org) {
         <div class="org__head-actions">
-          <button uiButton (click)="store.editOrg(org)">
+          <button uiButton size="sm" (click)="store.editOrg(org)">
             <ui-icon name="pen-line" size="sm" />Sửa
           </button>
           @if (store.canManageOrgs$()) { @if (org.status === 'active') {
-          <button uiButton variant="ghost" (click)="store.toggleOrgStatus(org)">
+          <button
+            uiButton
+            size="sm"
+            variant="ghost"
+            (click)="store.toggleOrgStatus(org)"
+          >
             <ui-icon name="circle-pause" size="sm" />Tạm dừng
           </button>
           } @else {
-          <button uiButton (click)="store.toggleOrgStatus(org)">
+          <button uiButton size="sm" (click)="store.toggleOrgStatus(org)">
             <ui-icon name="check" size="sm" />Kích hoạt
           </button>
           } }
@@ -117,39 +120,31 @@
       @for (team of store.teams$(); track team.id) {
       <article uiCard class="org__group">
         <div class="org__group-head">
-          <span uiListIcon><ui-icon name="users" size="sm" /></span>
           <div class="org__group-title">
             <strong [attr.title]="team.name">{{ team.name }}</strong>
             <span class="org__meta">
-              {{ team.code || 'Chưa có mã' }} · {{ team.memberCount }} thành
-              viên
+              {{ team.code || 'Chưa có mã' }} · {{ team.memberCount }} thành viên
             </span>
           </div>
-          <div class="org__group-actions">
-            <button
-              uiIconButton
-              size="sm"
-              label="Sửa {{ team.name }}"
-              (click)="store.editTeam(team)"
-            >
-              <ui-icon name="pen-line" size="sm" />
-            </button>
-            <button
-              uiIconButton
-              size="sm"
-              variant="danger"
-              label="Xóa {{ team.name }}"
-              (click)="store.deleteTeam(team)"
-            >
-              <ui-icon name="trash-2" size="sm" />
-            </button>
-          </div>
+          <ui-menu
+            [label]="'Thao tác cho ' + team.name"
+            icon="ellipsis"
+            iconOnly
+            variant="ghost"
+            size="sm"
+            [entries]="teamActions"
+            [disabled]="store.isSavingTeam$() || store.isDeletingTeam$()"
+            (selected)="store.actOnTeam(team, $event)"
+          />
         </div>
         @if (team.memberPreview.length) {
-        <ul uiList>
+        <ul class="org__members">
           @for (member of team.memberPreview; track member.userId) {
           <li>
-            <a uiListItem [routerLink]="['/admin/users', member.userId]">
+            <a
+              class="org__member"
+              [routerLink]="['/admin/users', member.userId]"
+            >
               <ui-avatar [name]="member.fullName" size="sm" />
               <span class="org__member-name">{{ member.fullName }}</span>
             </a>
@@ -179,9 +174,7 @@
     } } @else if (store.contentsLoading$()) {
     <div class="org__loading"><span uiSpinner></span></div>
     } @else {
-    <div uiCard>
-      <ui-empty variant="inline" title="Chưa có nhóm nào" />
-    </div>
+    <ui-empty variant="inline" title="Chưa có nhóm nào" />
     } }
   </section>
 </div>

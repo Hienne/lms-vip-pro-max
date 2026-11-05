@@ -1,32 +1,60 @@
 @use 'ui';
 
+:host {
+  display: block;
+  min-width: 0;
+}
+
 .continue-card {
   @include ui.stack(4);
-  align-items: flex-start;
+  padding: ui.space(5);
 
-  &__text {
-    @include ui.stack(1);
+  > a {
+    align-self: flex-start;
   }
 
   &__title {
-    margin: 0;
-    font-size: ui.text-size(lg);
+    @include ui.text(lg);
+    font-family: ui.font(sans);
     font-weight: ui.weight(semibold);
+    margin: 0;
+  }
+
+  &__body {
+    @include ui.stack(4);
+    align-items: flex-start;
+    min-width: 0;
+  }
+
+  &__text {
+    @include ui.stack(2);
+    min-width: 0;
+  }
+
+  &__lesson {
+    @include ui.text(xl);
+    font-family: ui.font(sans);
+    font-weight: ui.weight(semibold);
+    margin: 0;
+    overflow-wrap: anywhere;
   }
 
   &__context {
     @include ui.text(sm, muted);
     margin: 0;
+    overflow-wrap: anywhere;
   }
 
   &__progress {
     @include ui.row(3);
     flex-wrap: nowrap;
     width: 100%;
-    max-width: 28rem;
+    max-width: ui.layout(reading);
+    min-width: 0;
 
     ui-progress {
       flex: 1 1 auto;
+      min-width: 0;
     }
   }
 

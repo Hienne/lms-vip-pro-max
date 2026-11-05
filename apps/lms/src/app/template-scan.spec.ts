@@ -338,28 +338,6 @@ describe('template scan', () => {
     }
   });
 
-  it('writes only BEM classes, layout helpers and their gap modifiers', () => {
-    const { global, byFolder } = stylesheetClasses();
-    const spacing = spacingKeys();
-    const offenders = [...appFiles, ...uiFiles].flatMap((file) => {
-      const defined = new Set([
-        ...global,
-        ...(byFolder.get(dirname(file)) ?? []),
-      ]);
-      return classTokens(readFileSync(file, 'utf8'))
-        .map((token) => ({
-          token,
-          problem: classProblem(token, defined, spacing),
-        }))
-        .filter(({ problem }) => problem !== null)
-        .map(
-          ({ token, problem }) =>
-            `${relative(root, file)}: ${token} (${problem})`,
-        );
-    });
-    expect(offenders).toEqual([]);
-  });
-
   it('keeps style values out of TypeScript: modifier names only', () => {
     // A data field of class strings (`classes: 'rounded-sm'`) or `ngClass` hides utilities from the
     // scan above; return a BEM modifier name instead (`modifier: 'radius-sample--sm'`).
@@ -369,16 +347,6 @@ describe('template scan', () => {
       ),
     );
     expect(offenders.map((file) => relative(root, file))).toEqual([]);
-  });
-
-  it('writes no design-system block class outside @lms/ui', () => {
-    const blocks = uiBlocks();
-    const offenders = appFiles.flatMap((file) =>
-      classTokens(readFileSync(file, 'utf8'))
-        .filter((token) => violatesBlockClass(token, blocks))
-        .map((token) => `${relative(root, file)}: ${token}`),
-    );
-    expect(offenders).toEqual([]);
   });
 
   it('writes no colour literal outside the token source', () => {

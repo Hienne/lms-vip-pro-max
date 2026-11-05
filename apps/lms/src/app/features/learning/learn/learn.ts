@@ -2,6 +2,7 @@ import { Component, computed, inject } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import {
   Button,
+  Card,
   Empty,
   ErrorState,
   FmtPctPipe,
@@ -34,7 +35,7 @@ const TAB_LABEL: Record<LearnTab, string> = {
 @Component({
   selector: 'app-learn',
   imports: [
-    Button,
+    Card,
     CompetencyView,
     ContinueCard,
     CourseCard,

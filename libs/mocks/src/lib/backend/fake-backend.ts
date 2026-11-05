@@ -202,10 +202,6 @@ export class FakeBackend {
   private readonly authoring = new AssessmentAuthoringMock((request) =>
     this.meOf(this.caller(request)),
   );
-  private readonly programAuthoring = new AssessmentAuthoringMock(
-    (request) => this.meOf(this.caller(request)),
-    true,
-  );
   private readonly learnerQuiz = new LearnerQuizMock();
   private orgs: Mutable<SeedOrg>[] = SEED_ORGS.map((o) => ({ ...o }));
   private teams: Mutable<SeedTeam>[] = SEED_TEAMS.map((t) => ({ ...t }));
@@ -325,7 +321,6 @@ export class FakeBackend {
     return (
       this.handlers.has(endpoint) ||
       this.authoring.answers(endpoint) ||
-      this.programAuthoring.answers(endpoint) ||
       this.assessment.answers(endpoint) ||
       this.learnerQuiz.answers(endpoint) ||
       learningReportHandlers.has(endpoint)
@@ -334,9 +329,7 @@ export class FakeBackend {
 
   /** Answers one call, or `undefined` when `endpoint` is not the backend's. */
   handle(endpoint: AnyEndpoint, request: FakeRequest): FakeReply | undefined {
-    const authoring = this.programAuthoring.answers(endpoint)
-      ? this.programAuthoring
-      : this.authoring;
+    const authoring = this.authoring;
     if (authoring.answers(endpoint)) {
       try {
         return authoring.handle(endpoint, request);

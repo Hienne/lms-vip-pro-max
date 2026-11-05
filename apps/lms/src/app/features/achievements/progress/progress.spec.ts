@@ -69,9 +69,7 @@ describe('LearningProgress', () => {
 
   const text = () => el.textContent?.replace(/\s+/g, ' ') ?? '';
   const rows = () =>
-    Array.from(
-      el.querySelectorAll('section[aria-label="Danh sách khóa học"] tbody tr'),
-    );
+    Array.from(el.querySelectorAll('.learning-progress__course-row'));
   const calls = (endpoint: unknown) =>
     handle.mock.calls.filter(([e]) => e === endpoint);
   const lastQuery = (endpoint: unknown) =>
@@ -141,43 +139,19 @@ describe('LearningProgress', () => {
       ).toBe('Điểm thi trung bình');
     });
 
-    it('adds a "Điểm cao nhất" column, last and not sortable, with the server score or a dash', () => {
-      const headers = Array.from(el.querySelectorAll('thead th'));
-      const last = headers.at(-1)!;
-      expect(last.textContent?.trim()).toBe('Điểm cao nhất');
-      expect(last.querySelector('button')).toBeNull();
-      const cells = rows().map((row) =>
-        row.querySelector('td:last-child')!.textContent?.trim(),
-      );
-      expect(cells).toContain('40%');
-      expect(cells).toContain('—');
-    });
-
-    it('lists every course with the server progress, a link and one status badge per row', () => {
-      const headers = Array.from(el.querySelectorAll('thead th')).map((th) =>
-        th.textContent?.trim(),
-      );
-      expect(headers).toEqual(
-        expect.arrayContaining([
-          'Khóa học',
-          'Mã',
-          'Tiến độ',
-          'Bài bắt buộc',
-          'Trạng thái',
-          'Bắt đầu',
-          'Truy cập gần nhất',
-          'Hoàn thành',
-          'Hạn',
-        ]),
-      );
-      expect(rows().length).toBeGreaterThan(0);
+    it('keeps the server best scores and missing scores in the row details', async () => {
+      const scores: string[] = [];
       for (const row of rows()) {
-        expect(row.querySelectorAll('.badge').length).toBe(1);
-        expect(row.querySelector('a')?.getAttribute('href')).toMatch(
-          /^\/course\/\d+$/,
+        row.querySelector<HTMLButtonElement>('button[aria-expanded]')!.click();
+        await settle();
+        const detail = el.querySelector('.learning-progress__detail')!;
+        expect(detail.textContent).toContain('Điểm cao nhất');
+        scores.push(
+          detail.querySelector('dl > div:last-child dd')!.textContent!.trim(),
         );
-        expect(row.textContent).toMatch(/\d+%/);
       }
+      expect(scores).toContain('40%');
+      expect(scores).toContain('—');
     });
 
     it('shows an overdue course as one danger badge', () => {
@@ -202,6 +176,59 @@ describe('LearningProgress', () => {
       await settle();
       expect(lastQuery(learnerEndpoints.myCourses)['sort']).toBe('title,asc');
       expect(TestBed.inject(Router).url).toContain('sort=title,asc');
+    });
+
+    it('still sorts by dates that moved into the row details', async () => {
+      const select = el.querySelector<HTMLSelectElement>(
+        '.learning-progress__sort select',
+      )!;
+      select.value = 'startedAt,desc';
+      select.dispatchEvent(new Event('change', { bubbles: true }));
+      await settle();
+      expect(lastQuery(learnerEndpoints.myCourses)['sort']).toBe(
+        'startedAt,desc',
+      );
+      expect(TestBed.inject(Router).url).toContain('sort=startedAt,desc');
+    });
+
+    it('opens one accessible detail row at a time without another course request', async () => {
+      const triggers = rows().map(
+        (row) => row.querySelector<HTMLButtonElement>('button[aria-expanded]')!,
+      );
+      const count = calls(learnerEndpoints.myCourses).length;
+      expect(el.querySelector('.learning-progress__detail')).toBeNull();
+      triggers[0].click();
+      await settle();
+      const detail = el.querySelector<HTMLElement>(
+        '.learning-progress__detail',
+      )!;
+      expect(triggers[0].getAttribute('aria-expanded')).toBe('true');
+      expect(triggers[0].getAttribute('aria-controls')).toBe(detail.id);
+      expect(detail.getAttribute('role')).toBe('region');
+      expect(detail.textContent).toContain('Bắt đầu');
+      expect(detail.textContent).toContain('Hoàn thành');
+      expect(detail.querySelector('a')?.getAttribute('href')).toBe(
+        rows()[0].querySelector('a')?.getAttribute('href'),
+      );
+      triggers[1].click();
+      await settle();
+      expect(el.querySelectorAll('.learning-progress__detail')).toHaveLength(1);
+      expect(triggers[0].getAttribute('aria-expanded')).toBe('false');
+      expect(triggers[0].getAttribute('aria-controls')).toBeNull();
+      triggers[1].click();
+      await settle();
+      expect(el.querySelector('.learning-progress__detail')).toBeNull();
+      expect(calls(learnerEndpoints.myCourses)).toHaveLength(count);
+    });
+
+    it('closes the row details when the table filters change', async () => {
+      rows()[0]
+        .querySelector<HTMLButtonElement>('button[aria-expanded]')!
+        .click();
+      await settle();
+      el.querySelector<HTMLInputElement>('input[type=checkbox]')!.click();
+      await settle();
+      expect(el.querySelector('.learning-progress__detail')).toBeNull();
     });
 
     it('filters by the overdue flag and starts again at the first page', async () => {
@@ -252,14 +279,65 @@ describe('LearningProgress', () => {
     });
   });
 
+  describe('the progress tabs', () => {
+    const tabs = () =>
+      Array.from(el.querySelectorAll<HTMLButtonElement>('[role="tab"]'));
+    const activePanel = () =>
+      el.querySelector<HTMLElement>('[role="tabpanel"]:not([inert])');
+
+    it('starts with courses and makes the other panels inert', async () => {
+      await open();
+      expect(tabs().map((tab) => tab.textContent?.trim())).toEqual([
+        'Khóa học',
+        'Năng lực',
+        'Lịch sử thi',
+      ]);
+      expect(activePanel()?.getAttribute('aria-label')).toBe(
+        'Danh sách khóa học',
+      );
+      expect(el.querySelectorAll('[role="tabpanel"][inert]')).toHaveLength(2);
+    });
+
+    it('restores the tab from the URL and preserves course filters on a tab change', async () => {
+      await open('/progress?tab=history&overdue=true');
+      expect(tabs()[2].getAttribute('aria-selected')).toBe('true');
+      expect(activePanel()?.querySelector('#progress-history')).not.toBeNull();
+      const requests = calls(learnerEndpoints.myCourses).length;
+      tabs()[0].click();
+      await settle();
+      expect(TestBed.inject(Router).url).toBe('/progress?overdue=true');
+      expect(
+        el.querySelector<HTMLInputElement>('input[type=checkbox]')!.checked,
+      ).toBe(true);
+      tabs()[1].click();
+      await settle();
+      expect(
+        activePanel()?.querySelector('#progress-competency'),
+      ).not.toBeNull();
+      expect(TestBed.inject(Router).url).toContain('tab=competency');
+      expect(TestBed.inject(Router).url).toContain('overdue=true');
+      expect(calls(learnerEndpoints.myCourses)).toHaveLength(requests);
+    });
+
+    it('keeps the selected tab out of the CSV query', async () => {
+      await open('/progress?tab=history&overdue=true');
+      button('Xuất CSV')!.click();
+      await settle();
+      expect(lastQuery(learnerEndpoints.exportProgress)).toEqual({
+        sort: 'lastAccessAt,desc',
+        overdue: 'true',
+      });
+    });
+  });
+
   describe('the competency card', () => {
     const card = () =>
       el.querySelector<HTMLElement>(
         'section[aria-labelledby="progress-competency"]',
       )!;
 
-    it('is titled "Năng lực theo nhóm kiến thức", after the counts and before the table, with no select', async () => {
-      await open();
+    it('keeps competency in its own tab after the counts, with no select', async () => {
+      await open('/progress?tab=competency');
       expect(el.querySelector('#progress-competency')?.tagName).toBe('H2');
       expect(card().textContent).toContain('Năng lực theo nhóm kiến thức');
       expect(card().querySelector('select, [role="combobox"]')).toBeNull();
@@ -268,16 +346,13 @@ describe('LearningProgress', () => {
       expect(after(el.querySelector('app-progress-counts')!, card())).toBe(
         true,
       );
-      expect(
-        after(
-          card(),
-          el.querySelector('section[aria-label="Danh sách khóa học"]')!,
-        ),
-      ).toBe(true);
+      expect(card().closest('[uiTabPanel]')?.getAttribute('uiTabPanel')).toBe(
+        'competency',
+      );
     });
 
     it('shows the large radar from the server rows, once, and keeps it when a filter changes', async () => {
-      await open();
+      await open('/progress?tab=competency');
       const view = card().querySelector('app-competency-view')!;
       expect(view.classList).toContain('competency-view--large');
       expect(view.querySelector('ui-radar-chart')).not.toBeNull();
@@ -286,6 +361,8 @@ describe('LearningProgress', () => {
       );
       expect(calls(learnerQuizEndpoints.myCompetency)).toHaveLength(1);
       expect(lastQuery(learnerQuizEndpoints.myCompetency)).toEqual({});
+      button('Khóa học')!.click();
+      await settle();
       (el.querySelector('input[type="checkbox"]') as HTMLInputElement).click();
       await settle();
       expect(calls(learnerQuizEndpoints.myCompetency)).toHaveLength(1);
@@ -296,7 +373,7 @@ describe('LearningProgress', () => {
         status: 200,
         body: envelopeOk([]),
       } as ReturnType<typeof backendRefusal>);
-      await open();
+      await open('/progress?tab=competency');
       expect(card().textContent).toContain('Chưa có dữ liệu năng lực');
       expect(card().querySelector('ui-radar-chart')).toBeNull();
     });
@@ -306,7 +383,7 @@ describe('LearningProgress', () => {
         learnerQuizEndpoints.myCompetency,
         backendRefusal('internalError'),
       );
-      await open();
+      await open('/progress?tab=competency');
       expect(card().textContent).toContain(
         'Không tải được năng lực theo nhóm kiến thức',
       );
@@ -362,7 +439,7 @@ describe('LearningProgress', () => {
     });
 
     it('asks for the six latest graded attempts, newest first', async () => {
-      await open();
+      await open('/progress?tab=history');
       expect(calls(learnerQuizEndpoints.myAttempts)).toHaveLength(1);
       expect(lastQuery(learnerQuizEndpoints.myAttempts)).toMatchObject({
         graded: 'true',
@@ -387,7 +464,7 @@ describe('LearningProgress', () => {
           }),
         ]),
       );
-      await open();
+      await open('/progress?tab=history');
       const items = Array.from(card().querySelectorAll('li a'));
       expect(items.map((a) => a.getAttribute('href'))).toEqual([
         '/quiz/1/result/7',
@@ -409,13 +486,14 @@ describe('LearningProgress', () => {
       ).toEqual(['Chưa đạt']);
     });
 
-    it('sits with the competency card, which comes first', async () => {
-      await open();
-      expect(
-        card().parentElement!.contains(
-          el.querySelector('section[aria-labelledby="progress-competency"]'),
-        ),
-      ).toBe(true);
+    it('has a separate tab from competency', async () => {
+      await open('/progress?tab=history');
+      expect(card().closest('[uiTabPanel]')?.getAttribute('uiTabPanel')).toBe(
+        'history',
+      );
+      expect(card().closest('[uiTabPanel]')).not.toBe(
+        el.querySelector('#progress-competency')?.closest('[uiTabPanel]'),
+      );
       expect(
         el
           .querySelector('#progress-competency')!
@@ -426,7 +504,7 @@ describe('LearningProgress', () => {
 
     it('says so when nothing was graded', async () => {
       answer(learnerQuizEndpoints.myAttempts, page([]));
-      await open();
+      await open('/progress?tab=history');
       expect(card().textContent).toContain(
         'Bạn chưa có bài thi nào được chấm.',
       );
@@ -435,7 +513,7 @@ describe('LearningProgress', () => {
 
     it('fails alone, with a retry, while the rest of the page stays', async () => {
       answer(learnerQuizEndpoints.myAttempts, backendRefusal('internalError'));
-      await open();
+      await open('/progress?tab=history');
       expect(card().textContent).toContain('Không tải được lịch sử thi');
       expect(kpi('Tổng số khóa')).toBeTruthy();
       expect(rows().length).toBeGreaterThan(0);
@@ -475,7 +553,7 @@ describe('LearningProgress', () => {
       await open();
     });
 
-    it('sees no average, no error, and still the column with dashes', () => {
+    it('sees no average or error and keeps the course list available', () => {
       expect(kpi('Điểm thi trung bình')).toBeUndefined();
       expect(text()).not.toContain('Không tải được');
       expect(kpi('Tổng số khóa')).toBeTruthy();

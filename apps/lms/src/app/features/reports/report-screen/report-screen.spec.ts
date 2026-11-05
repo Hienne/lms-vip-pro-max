@@ -55,7 +55,8 @@ describe('ReportScreen', () => {
 
   it('filters by name, with no id inputs left', async () => {
     const { root, labels } = await open('/reports/results');
-    expect(labels().slice(0, 4)).toEqual([
+    const pickers = ['Đơn vị', 'Phòng / nhóm', 'Khóa học', 'Bài kiểm tra'];
+    expect(labels().filter((label) => pickers.includes(label ?? ''))).toEqual([
       'Đơn vị',
       'Phòng / nhóm',
       'Khóa học',

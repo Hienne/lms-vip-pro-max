@@ -5,25 +5,47 @@
 }
 
 .assignments {
+  &__workspace {
+    min-width: 0;
+  }
+
+  &__panel {
+    padding-top: ui.space(5);
+  }
+
   &__toolbar {
-    flex-wrap: wrap;
-    gap: ui.space(3);
+    @include ui.row-between(3);
+    align-items: flex-end;
+    margin-bottom: ui.space(5);
   }
 
   &__filter {
-    @include ui.row(2);
+    @include ui.stack(2);
     @include ui.text(sm, muted);
-    white-space: nowrap;
+    flex: 1;
     min-width: 0;
+    max-width: ui.layout(assistant);
 
     select {
+      width: 100%;
       min-width: 0;
-      max-width: 28rem;
     }
   }
 
   &__count {
     @include ui.text(sm, muted);
+    @include ui.num;
+    padding-bottom: ui.space(2);
+  }
+
+  &__table {
+    min-width: 0;
+    overflow: hidden;
+
+    &--empty {
+      border: 0;
+      background: transparent;
+    }
   }
 
   &__loading {
@@ -32,13 +54,38 @@
     padding-block: ui.space(10);
   }
 
-  &__period {
-    @include ui.row(2);
-    flex-wrap: wrap;
-    @include ui.text(sm);
+  &__title {
+    @include ui.truncate;
+    max-width: ui.layout(sidebar);
+
+    @include ui.bp-below(md) {
+      max-width: 100%;
+      white-space: normal;
+      overflow-wrap: anywhere;
+    }
   }
 
-  &__muted {
+  &__deadline {
+    @include ui.stack(1);
+    align-items: flex-start;
+  }
+
+  &__date {
+    @include ui.num;
+    display: inline-block;
+    white-space: nowrap;
+  }
+
+  &__code {
+    @include ui.mono;
+    margin-top: ui.space(1);
+    color: ui.color(text-muted);
+    overflow-wrap: anywhere;
+  }
+
+  &__description {
     @include ui.text(sm, muted);
+    @include ui.clamp(2);
+    overflow-wrap: anywhere;
   }
 }

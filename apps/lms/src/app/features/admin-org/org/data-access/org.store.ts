@@ -28,6 +28,7 @@ import { SessionStore } from '../../../../core/session/session.store';
 import { OrgTreeStore } from './org-tree.store';
 
 export const TEAMS_PAGE_SIZE = 6;
+export type TeamAction = 'edit' | 'delete';
 
 type OrgSave =
   | { readonly kind: 'create'; readonly command: CreateOrgCommand }
@@ -222,6 +223,7 @@ export class OrgStore {
 
   readonly isSavingOrg$ = this.orgMutation.isPending;
   readonly isSavingTeam$ = this.teamMutation.isPending;
+  readonly isDeletingTeam$ = this.deleteMutation.isPending;
   readonly orgEditorTitle$ = computed(() =>
     this.state.editingOrg()?.org ? 'Sửa đơn vị' : 'Thêm đơn vị / phòng',
   );
@@ -276,6 +278,11 @@ export class OrgStore {
   editTeam(team: TeamInfo | null): void {
     this.teamMutation.reset();
     this.setEditingTeam({ team });
+  }
+
+  actOnTeam(team: TeamInfo, action: TeamAction): void {
+    if (action === 'edit') this.editTeam(team);
+    else if (action === 'delete') this.deleteTeam(team);
   }
 
   cancelTeamEdit(): void {

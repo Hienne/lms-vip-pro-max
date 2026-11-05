@@ -1,4 +1,4 @@
-<div class="learn-kpis">
+<div class="learn-kpis" [class.learn-kpis--compact]="scores().length === 1">
   <ng-template #figure let-kpi>
     <dl class="learn-kpis__item">
       <dt>{{ kpi.label }}</dt>
@@ -9,7 +9,11 @@
       <dd class="learn-kpis__detail">
         @if (kpi.verdict) {
         <span [class.learn-kpis__fail]="kpi.failed">{{ kpi.verdict }}</span>
-        · } {{ kpi.detail }}
+        · } {{ kpi.detail }} @if (kpi.overdue !== undefined) { ·
+        <span [class.learn-kpis__fail]="kpi.overdue > 0">
+          {{ kpi.overdue }} quá hạn
+        </span>
+        }
       </dd>
     </dl>
   </ng-template>

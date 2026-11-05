@@ -1,26 +1,30 @@
 <section uiCard padded class="continue-card" aria-label="Tiếp tục học">
+  <h2 class="continue-card__title">Tiếp tục học</h2>
   @if (resume(); as view) {
-  <div class="continue-card__text">
-    <h2 class="continue-card__title">{{ view.lessonTitle }}</h2>
-    @if (view.context) {
-    <p class="continue-card__context">{{ view.context }}</p>
-    }
+  <div class="continue-card__body">
+    <div class="continue-card__text">
+      <h3 class="continue-card__lesson">{{ view.lessonTitle }}</h3>
+      @if (view.context) {
+      <p class="continue-card__context">{{ view.context }}</p>
+      }
+    </div>
+    <a
+      uiButton
+      class="continue-card__action"
+      variant="primary"
+      [routerLink]="view.link"
+      [queryParams]="view.query"
+      >Tiếp tục học</a
+    >
+    <div class="continue-card__progress">
+      <ui-progress
+        size="sm"
+        [value]="view.pct"
+        [label]="'Tiến độ ' + view.courseTitle"
+      />
+      <span class="continue-card__pct">{{ view.pct }}%</span>
+    </div>
   </div>
-  <div class="continue-card__progress">
-    <ui-progress
-      size="sm"
-      [value]="view.pct"
-      [label]="'Tiến độ ' + view.courseTitle"
-    />
-    <span class="continue-card__pct">{{ view.pct }}%</span>
-  </div>
-  <a
-    uiButton
-    variant="primary"
-    [routerLink]="view.link"
-    [queryParams]="view.query"
-    >Tiếp tục học</a
-  >
   } @else {
   <p class="continue-card__context">Bạn chưa có khóa học đang học.</p>
   <a uiButton variant="primary" routerLink="/catalog">Khám phá khóa học</a>

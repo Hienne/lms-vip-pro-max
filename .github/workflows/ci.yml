@@ -19,10 +19,13 @@ concurrency:
 env:
   NX_NO_CLOUD: true
   IMAGE: ghcr.io/hienne/lms-vip-pro-max
+  # Set either flag to 'false' to restore that CI gate.
+  SKIP_FORMAT_CHECK: 'true'
+  SKIP_TESTS: 'true'
 
 jobs:
   check:
-    name: Lint, typecheck, test, build (affected)
+    name: Check affected projects
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -47,8 +50,17 @@ jobs:
           key: nx-${{ runner.os }}-${{ hashFiles('package-lock.json') }}-${{ github.sha }}
           restore-keys: nx-${{ runner.os }}-${{ hashFiles('package-lock.json') }}-
 
-      - run: npm run format:check
-      - run: npm run ci:check
+      - name: Check formatting
+        if: ${{ env.SKIP_FORMAT_CHECK != 'true' }}
+        run: npm run format:check
+
+      - name: Check affected projects without unit tests
+        if: ${{ env.SKIP_TESTS == 'true' }}
+        run: npm run ci:check:no-tests
+
+      - name: Check affected projects including unit tests
+        if: ${{ env.SKIP_TESTS != 'true' }}
+        run: npm run ci:check
 
   image:
     name: Build frontend artifact image

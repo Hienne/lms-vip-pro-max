@@ -1,4 +1,4 @@
-import { Component, computed, inject, linkedSignal } from '@angular/core';
+import { Component, inject, linkedSignal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import {
   form,
@@ -30,7 +30,6 @@ import {
   Select,
   Spinner,
   Textarea,
-  Tooltip,
   type DataTableColumn,
 } from '@lms/ui';
 import {
@@ -219,7 +218,6 @@ function quizValue(
     Select,
     Spinner,
     Textarea,
-    Tooltip,
   ],
   providers: [AssessmentScreenStore],
   templateUrl: './assessment-screen.html',
@@ -227,13 +225,6 @@ function quizValue(
 })
 export class AssessmentScreen {
   protected readonly store = inject(AssessmentScreenStore);
-  /** Why a new quiz cannot be made while the program question bank is missing. */
-  protected readonly newQuizBlocked =
-    'Cần ngân hàng câu hỏi theo chương trình để tạo bài kiểm tra mới.';
-  protected readonly isNewQuiz = computed(
-    () =>
-      this.store.routeScreen$() === 'config' && this.store.routeId$() === 'new',
-  );
   protected readonly letters = [
     'A',
     'B',
@@ -277,9 +268,35 @@ export class AssessmentScreen {
     validateStandardSchema(path, questionSchema),
   );
   protected readonly questionValue = this.questionModel.asReadonly();
-  private readonly configModel = linkedSignal(() =>
-    quizValue(this.store.configDetail$(), this.store.selectedCourseId$()),
-  );
+  private readonly configModel = linkedSignal<
+    {
+      detail: QuizDetailV1 | undefined;
+      courseId: number | undefined;
+      programId: number | undefined;
+      routeId: string;
+    },
+    ReturnType<typeof quizValue>
+  >({
+    source: () => ({
+      detail: this.store.configDetail$(),
+      courseId: this.store.selectedCourseId$(),
+      programId: this.store.selectedProgramId$(),
+      routeId: this.store.routeId$(),
+    }),
+    computation: (next, previous) => {
+      if (next.routeId === 'new' && previous?.source.routeId === 'new') {
+        return {
+          ...previous.value,
+          courseId: String(next.courseId ?? ''),
+          questionIds:
+            next.programId === previous.source.programId
+              ? previous.value.questionIds
+              : [],
+        };
+      }
+      return quizValue(next.detail, next.courseId);
+    },
+  });
   protected readonly configForm = form(this.configModel, (path) =>
     validateStandardSchema(path, configSchema),
   );
@@ -402,11 +419,21 @@ export class AssessmentScreen {
     return this.configValue().questionIds.includes(String(id));
   }
   protected configDirty(): boolean {
+    const detail = this.store.configDetail$();
+    const saved = this.store.completedQuizSave$();
+    const savedMatches =
+      saved?.quiz.courseId === this.store.selectedCourseId$() &&
+      (this.store.routeId$() === 'new' ||
+        saved?.quiz.id === Number(this.store.routeId$()));
+    const baseline =
+      savedMatches &&
+      saved &&
+      (!detail || saved.quiz.rowVersion >= detail.quiz.rowVersion)
+        ? saved
+        : detail;
     return (
       JSON.stringify(this.configModel()) !==
-      JSON.stringify(
-        quizValue(this.store.configDetail$(), this.store.selectedCourseId$()),
-      )
+      JSON.stringify(quizValue(baseline, this.store.selectedCourseId$()))
     );
   }
 }

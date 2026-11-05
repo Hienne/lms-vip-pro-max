@@ -1,119 +1,159 @@
-<ui-page-header [title]="store.title$()" [description]="store.description$()"
-  ><span
+<ui-page-header title="Báo cáo đào tạo" [description]="store.description$()">
+  <span
     slot="actions"
     class="report-screen__export"
     [uiTooltip]="store.exportReason$() ?? ''"
     ><button
       uiButton
       [disabled]="!store.canExport$() || store.exporting$()"
+      [busy]="store.exporting$()"
       [attr.aria-describedby]="store.exportReason$() ? 'report-export-reason' : null"
       (click)="store.exportCsv()"
     >
-      Xuất CSV</button
+      <ui-icon name="download" size="sm" /> Xuất CSV</button
     >@if (store.exportReason$(); as reason) {<span
       id="report-export-reason"
       class="sr-only"
       >{{ reason }}</span
     >}</span
-  ></ui-page-header
->
-<nav class="row report-screen__navigation" aria-label="Các báo cáo">
+  >
+</ui-page-header>
+<nav class="report-screen__navigation" aria-label="Các báo cáo chi tiết">
   @for (tab of store.tabs$(); track tab.id) {
   <a
-    uiButton
-    variant="ghost"
     [routerLink]="tab.path"
     [queryParams]="tab.queryParams"
-    >{{ tab.label }}</a
+    class="report-screen__tab"
+    [attr.aria-current]="(tab.id === 'overview' ? !store.dimension$() && !store.unsupported$() : store.dimension$() === tab.id) ? 'page' : null"
+    >{{tab.label}}</a
   >
   }
 </nav>
-<form
-  class="stack report-screen__filters"
-  novalidate
-  (submit)="applyFilters($event)"
-  aria-label="Bộ lọc báo cáo"
->
-  <div class="grid-4">
-    @for (field of pickerFields(); track field.key) {
-    <app-report-picker
-      [label]="field.label"
-      [emptyLabel]="field.emptyLabel"
-      [options]="store.pickers.matches$()[field.key]"
-      [selected]="store.pickers.selected$()[field.key]"
-      [busy]="store.pickers.busy$()[field.key]"
-      [disabled]="!!field.parent && !store.pickers.selected$()[field.parent.key]"
-      [disabledReason]="field.parent?.reason ?? ''"
-      [error]="store.pickers.errors$()[field.key]"
-      [required]="field.key === 'quizId' && store.dimension$() === 'learners'"
-      (queried)="store.pickers.search(field.key, $event)"
-      (picked)="store.pickers.pick(field.key, $event)"
-    />
-    }
-  </div>
-  @if(store.dimension$() !== 'learners'){
-  <div class="grid-2">
-    <ui-field label="Nộp từ ngày"
-      ><input
-        uiInput
-        type="datetime-local"
-        [formField]="filterForm.from" /></ui-field
-    ><ui-field label="Đến trước ngày"
-      ><input uiInput type="datetime-local" [formField]="filterForm.to"
-    /></ui-field>
-  </div>
-  } @if(store.dimension$() === 'results'){
-  <div class="grid-3">
-    <ui-field label="Mã cán bộ"
-      ><input uiInput [formField]="filterForm.userId" /></ui-field
-    ><ui-field label="Trạng thái lượt thi"
-      ><select uiSelect [formField]="filterForm.status">
-        <option value="">Tất cả</option>
-        <option value="IN_PROGRESS">Đang làm</option>
-        <option value="SUBMITTED">Đã nộp</option>
-        <option value="AUTO_SUBMITTED">Tự nộp</option>
-        <option value="VOIDED">Đã hủy</option>
-      </select></ui-field
-    ><ui-field label="Kết quả"
-      ><select uiSelect [formField]="filterForm.passed">
-        <option value="">Tất cả</option>
-        <option value="true">Đạt</option>
-        <option value="false">Chưa đạt</option>
-      </select></ui-field
-    >
-  </div>
-  } @if(store.dimension$() === 'learners'){<ui-field label="Tình trạng học viên"
-    ><select uiSelect [formField]="filterForm.learnerStatus">
-      <option value="">Tất cả</option>
-      <option value="NOT_STARTED">Chưa thi</option>
-      <option value="IN_PROGRESS">Đang làm</option>
-      <option value="FAILED">Chưa đạt</option>
-      <option value="PASSED">Đạt</option>
-    </select></ui-field
-  >} @if(store.dimension$() === 'competency'){<ui-field
-    label="Gộp năng lực theo"
-    ><select uiSelect [formField]="filterForm.groupBy">
-      <option value="user">Học viên</option>
-      <option value="org">Đơn vị</option>
-    </select></ui-field
-  >}
-  <div>
-    <button uiButton type="submit" variant="primary">Áp dụng bộ lọc</button>
-  </div>
-</form>
-@if(store.unsupported$()){<ui-alert
-  >Không có báo cáo này. Chọn một báo cáo ở trên.</ui-alert
->} @else if(store.needsQuiz$()){<ui-alert
-  >Chọn khóa học và bài kiểm tra để xem cả học viên chưa thi.</ui-alert
->} @else if(store.pickers.blocked$() && !store.error$()){
-<!-- A filter of the link is not in scope (its picker says so) or still resolving. -->
-} @else if(store.isLoading$()){
-<p role="status"><span uiSpinner></span>Đang tải báo cáo…</p>
-} @else if(store.error$();as error){<ui-error-state
-  [message]="error.message"
-  (retry)="store.retry()"
-/>} @else if(store.dimension$()){
 <section uiCard>
+  <form
+    class="stack report-screen__filters"
+    [formRoot]="filterForm"
+    aria-label="Bộ lọc báo cáo"
+  >
+    <div class="row-between row--gap-2 report-screen__filter-heading">
+      <h2>Bộ lọc báo cáo</h2>
+      <span class="report-screen__muted"
+        >{{store.activeFilterCount$() ? store.activeFilterCount$() + ' điều kiện
+        đang áp dụng' : 'Toàn bộ dữ liệu trong phạm vi được cấp'}}</span
+      >
+    </div>
+    <div class="report-screen__filter-main">
+      @if (store.dimension$() === 'learners') { @for (field of leadPickers();
+      track field.key) {
+      <app-report-picker
+        [label]="field.label"
+        [emptyLabel]="field.emptyLabel"
+        [options]="store.pickers.matches$()[field.key]"
+        [selected]="store.pickers.selected$()[field.key]"
+        [busy]="store.pickers.busy$()[field.key]"
+        [disabled]="!!field.parent && !store.pickers.selected$()[field.parent.key]"
+        [disabledReason]="field.parent?.reason ?? ''"
+        [error]="store.pickers.errors$()[field.key]"
+        [required]="field.key === 'quizId' && store.dimension$() === 'learners'"
+        (queried)="store.pickers.search(field.key, $event)"
+        (picked)="store.pickers.pick(field.key, $event)"
+      />
+      } } @else {
+      <ui-field label="Nộp từ ngày"
+        ><input uiInput type="datetime-local" [formField]="filterForm.from"
+      /></ui-field>
+      <ui-field label="Đến trước ngày"
+        ><input uiInput type="datetime-local" [formField]="filterForm.to"
+      /></ui-field>
+      }
+      <div class="row row--gap-2 report-screen__filter-actions">
+        <button uiButton variant="primary" type="submit">Áp dụng bộ lọc</button
+        ><button uiButton variant="ghost" (click)="resetFilters()">
+          Đặt lại
+        </button>
+      </div>
+    </div>
+    <details class="report-screen__advanced" [open]="scopeHasError()">
+      <summary>Phạm vi &amp; điều kiện chi tiết</summary>
+      <div class="grid-4 report-screen__filter-grid">
+        @for (field of scopePickers(); track field.key) {
+        <app-report-picker
+          [label]="field.label"
+          [emptyLabel]="field.emptyLabel"
+          [options]="store.pickers.matches$()[field.key]"
+          [selected]="store.pickers.selected$()[field.key]"
+          [busy]="store.pickers.busy$()[field.key]"
+          [disabled]="!!field.parent && !store.pickers.selected$()[field.parent.key]"
+          [disabledReason]="field.parent?.reason ?? ''"
+          [error]="store.pickers.errors$()[field.key]"
+          [required]="field.key === 'quizId' && store.dimension$() === 'learners'"
+          (queried)="store.pickers.search(field.key, $event)"
+          (picked)="store.pickers.pick(field.key, $event)"
+        />
+        } @if (store.dimension$() === 'learners') {
+        <ui-field label="Tình trạng học viên"
+          ><select uiSelect [formField]="filterForm.learnerStatus">
+            <option value="">Tất cả tình trạng</option>
+            <option value="NOT_STARTED">Chưa thi</option>
+            <option value="IN_PROGRESS">Đang làm</option>
+            <option value="FAILED">Chưa đạt</option>
+            <option value="PASSED">Đạt</option>
+          </select></ui-field
+        >
+        } @if (store.dimension$() === 'results') {
+        <ui-field label="Mã cán bộ"
+          ><input uiInput [formField]="filterForm.userId"
+        /></ui-field>
+        <ui-field label="Trạng thái lượt thi"
+          ><select uiSelect [formField]="filterForm.status">
+            <option value="">Tất cả</option>
+            <option value="IN_PROGRESS">Đang làm</option>
+            <option value="SUBMITTED">Đã nộp</option>
+            <option value="AUTO_SUBMITTED">Tự nộp</option>
+            <option value="VOIDED">Đã hủy</option>
+          </select></ui-field
+        >
+        <ui-field label="Kết quả"
+          ><select uiSelect [formField]="filterForm.passed">
+            <option value="">Tất cả</option>
+            <option value="true">Đạt</option>
+            <option value="false">Chưa đạt</option>
+          </select></ui-field
+        >
+        } @if (store.dimension$() === 'competency') {
+        <ui-field label="Gộp năng lực theo"
+          ><select uiSelect [formField]="filterForm.groupBy">
+            <option value="user">Học viên</option>
+            <option value="org">Đơn vị</option>
+          </select></ui-field
+        >
+        }
+      </div>
+    </details>
+  </form>
+</section>
+@if (store.unsupported$()) {
+<ui-alert>Không có báo cáo này. Chọn một báo cáo ở trên.</ui-alert>
+} @else if (store.needsQuiz$()) {
+<ui-empty
+  title="Chọn bài kiểm tra để xem học viên"
+  description="Chọn khóa học và bài kiểm tra để xem cả học viên chưa thi."
+/>
+} @else if (store.pickers.blocked$() && !store.error$()) {
+<!-- A filter of the link is not in scope (its picker says so) or still resolving. -->
+} @else if (store.isLoading$()) {
+<p class="row" role="status"><span uiSpinner></span>Đang tải báo cáo…</p>
+} @else if (store.error$(); as error) {
+<ui-error-state [message]="error.message" (retry)="store.retry()" />
+} @else if (store.dimension$()) {
+<section uiCard class="report-screen__detail">
+  <div class="row-between report-screen__section-heading">
+    <div>
+      <h2>{{store.title$()}}</h2>
+      <p>{{store.total$() | fmtNum}} dòng phù hợp với bộ lọc</p>
+    </div>
+    <span class="report-screen__muted">Xuất CSV để nhận toàn bộ kết quả</span>
+  </div>
   <ui-data-table
     [caption]="store.title$()"
     [columns]="store.columns$()"
@@ -124,65 +164,205 @@
     [sort]="store.sort$()"
     (pageChange)="store.changePage($event)"
     (sortChange)="store.changeSort($event)"
-    ><ui-empty slot="empty" title="Không có dữ liệu phù hợp"
-  /></ui-data-table>
+  >
+    <ui-empty
+      slot="empty"
+      variant="inline"
+      title="Không có dữ liệu phù hợp"
+      description="Thử thay đổi phạm vi hoặc đặt lại bộ lọc."
+    />
+  </ui-data-table>
 </section>
-}@else if(store.overview$();as data){
-<dl class="report-screen__totals">
-  <div>
-    <dt>Lượt đã chấm</dt>
-    <dd>{{data.gradedAttempts}}</dd>
-  </div>
-  <div>
-    <dt>Học viên đã thi</dt>
-    <dd>{{data.learners}}</dd>
-  </div>
-  <div>
-    <dt>Học viên đạt</dt>
-    <dd>{{data.passedLearners}}</dd>
-  </div>
-  <div>
-    <dt>Tỷ lệ đạt</dt>
-    <dd>{{data.passRate === null ? '—' : data.passRate + '%'}}</dd>
-  </div>
-  <div>
-    <dt>Điểm trung bình</dt>
-    <dd>{{data.averageScore === null ? '—' : data.averageScore + '%'}}</dd>
-  </div>
-  <div>
-    <dt>Lượt đang làm</dt>
-    <dd>{{data.inProgressAttempts}}</dd>
-  </div>
-</dl>
-<section class="stack">
-  <h2>Điểm trung bình theo bài kiểm tra</h2>
-  @if(store.scoreChart$().length){<ui-bar-chart
-    label="Điểm trung bình theo bài kiểm tra"
-    [data]="store.scoreChart$()"
-    [max]="100"
-    unit="%"
-  />}@else{
-  <p>Chưa có điểm đã chấm.</p>
-  }
+} @else if (store.overview$(); as data) {
+<section
+  uiCard
+  aria-label="Chỉ số kết quả kiểm tra"
+  class="report-screen__metrics"
+>
+  <dl>
+    <div>
+      <dt>Học viên đã thi</dt>
+      <dd>{{data.learners | fmtNum}}</dd>
+      <p>{{data.byQuiz.length | fmtNum}} bài kiểm tra có dữ liệu</p>
+    </div>
+    <div>
+      <dt>Tỷ lệ học viên đạt</dt>
+      <dd>{{data.passRate === null ? '—' : (data.passRate | fmtPct:1)}}</dd>
+      <p>{{data.passedLearners | fmtNum}} học viên đã đạt</p>
+    </div>
+    <div>
+      <dt>Điểm trung bình</dt>
+      <dd>
+        {{data.averageScore === null ? '—' : (data.averageScore | fmtPct:1)}}
+      </dd>
+      <p>Tính trên các lượt đã chấm</p>
+    </div>
+    <div>
+      <dt>Lượt đã chấm</dt>
+      <dd>{{data.gradedAttempts | fmtNum}}</dd>
+      <p>{{data.inProgressAttempts | fmtNum}} lượt đang làm</p>
+    </div>
+  </dl>
 </section>
-<section class="stack">
-  <h2>Theo bài kiểm tra</h2>
+<div class="report-screen__analytics">
+  <section
+    uiCard
+    class="stack stack--gap-5 report-screen__chart-panel"
+    aria-labelledby="report-scores-title"
+  >
+    <div class="row-between report-screen__section-heading">
+      <div>
+        <h2 id="report-scores-title">Điểm trung bình theo bài kiểm tra</h2>
+        <p>Tối đa 6 bài có nhiều lượt đã chấm nhất · thang điểm 100%</p>
+      </div>
+    </div>
+    @if (store.scoreComparison$().length) {
+    <ol class="stack report-screen__comparison">
+      @for (group of store.scoreComparison$(); track group.id) {
+      <li>
+        <div class="report-screen__bar-label">
+          <span [title]="group.name ?? 'Chưa xác định'"
+            >{{group.name ?? 'Chưa xác định'}}</span
+          ><strong>{{group.averageScore | fmtPct:1}}</strong>
+        </div>
+        <div class="report-screen__bar-track" aria-hidden="true">
+          <span [style.--value]="(group.averageScore ?? 0) + '%'"></span>
+        </div>
+        <span class="report-screen__bar-note"
+          >{{group.gradedAttempts | fmtNum}} lượt đã chấm · {{group.learners |
+          fmtNum}} học viên</span
+        >
+      </li>
+      }
+    </ol>
+    } @else {<ui-empty
+      variant="inline"
+      title="Chưa có điểm đã chấm"
+      description="Biểu đồ sẽ hiển thị khi có lượt thi được chấm trong phạm vi đã chọn."
+    />}
+  </section>
+  <section
+    uiCard
+    class="stack stack--gap-5 report-screen__chart-panel"
+    aria-labelledby="report-results-title"
+  >
+    <div class="row-between report-screen__section-heading">
+      <div>
+        <h2 id="report-results-title">Phân bố kết quả</h2>
+        <p>Trong số học viên đã tham gia thi</p>
+      </div>
+    </div>
+    @if (store.resultChart$().length) {<ui-donut-chart
+      label="Số học viên đã đạt và chưa ghi nhận đạt"
+      [data]="store.resultChart$()"
+    />} @else {<ui-empty
+      variant="inline"
+      title="Chưa có học viên tham gia"
+      description="Thử mở rộng khoảng thời gian hoặc phạm vi báo cáo."
+    />}
+    <div class="row-between report-screen__participation">
+      <span>Lượt thi đang làm</span
+      ><strong>{{data.inProgressAttempts | fmtNum}}</strong>
+    </div>
+    <p class="report-screen__footnote">
+      Chưa ghi nhận đạt bao gồm học viên đang làm hoặc chưa có lượt thi đạt.
+    </p>
+  </section>
+</div>
+<section
+  uiCard
+  class="report-screen__detail"
+  aria-labelledby="report-breakdown-title"
+>
+  <div class="row-between report-screen__section-heading">
+    <div>
+      <h2 id="report-breakdown-title">Phân tích theo phạm vi</h2>
+      <p>
+        {{store.groupTotal$() | fmtNum}} {{store.grouping$() === 'quiz' ? 'bài
+        kiểm tra' : 'đơn vị'}} · đơn vị ghi nhận tại thời điểm thi
+      </p>
+    </div>
+    <div class="row row--gap-1" role="group" aria-label="Nhóm số liệu">
+      <button
+        uiButton
+        size="sm"
+        [variant]="store.grouping$() === 'quiz' ? 'secondary' : 'ghost'"
+        [attr.aria-pressed]="store.grouping$() === 'quiz'"
+        (click)="store.selectGrouping('quiz')"
+      >
+        Theo bài kiểm tra
+      </button>
+      <button
+        uiButton
+        size="sm"
+        [variant]="store.grouping$() === 'org' ? 'secondary' : 'ghost'"
+        [attr.aria-pressed]="store.grouping$() === 'org'"
+        (click)="store.selectGrouping('org')"
+      >
+        Theo đơn vị
+      </button>
+    </div>
+  </div>
   <ui-data-table
-    caption="Theo bài kiểm tra"
+    caption="Phân tích kết quả theo bài kiểm tra hoặc đơn vị"
     [columns]="groupColumns"
-    [rows]="store.byQuiz$()"
-    [total]="data.byQuiz.length"
-    [pageSize]="data.byQuiz.length || 20"
-  />
-</section>
-<section class="stack">
-  <h2>Theo đơn vị lúc thi</h2>
-  <ui-data-table
-    caption="Theo đơn vị lúc thi"
-    [columns]="groupColumns"
-    [rows]="store.byOrg$()"
-    [total]="data.byOrg.length"
-    [pageSize]="data.byOrg.length || 20"
-  />
+    [rows]="store.groupedRows$()"
+    [total]="store.groupTotal$()"
+    [page]="store.groupPage$()"
+    [pageSize]="10"
+    (pageChange)="store.setGroupPage($event)"
+  >
+    <ng-template uiDataTableCell="name" [of]="store.groupedRows$()" let-group
+      ><span class="report-screen__group-name" [title]="group.name"
+        >{{group.name}}</span
+      ></ng-template
+    >
+    <ng-template
+      uiDataTableCell="gradedAttempts"
+      [of]="store.groupedRows$()"
+      let-group
+      ><span class="report-screen__number"
+        >{{group.gradedAttempts | fmtNum}}</span
+      ></ng-template
+    >
+    <ng-template
+      uiDataTableCell="learners"
+      [of]="store.groupedRows$()"
+      let-group
+      ><span class="report-screen__number"
+        >{{group.learners | fmtNum}}</span
+      ></ng-template
+    >
+    <ng-template
+      uiDataTableCell="passedLearners"
+      [of]="store.groupedRows$()"
+      let-group
+      ><span class="report-screen__number"
+        >{{group.passedLearners | fmtNum}}</span
+      ></ng-template
+    >
+    <ng-template
+      uiDataTableCell="passRate"
+      [of]="store.groupedRows$()"
+      let-group
+      ><span class="report-screen__number"
+        >{{group.passRate === null ? '—' : (group.passRate | fmtPct:1)}}</span
+      ></ng-template
+    >
+    <ng-template
+      uiDataTableCell="averageScore"
+      [of]="store.groupedRows$()"
+      let-group
+      ><span class="report-screen__number"
+        >{{group.averageScore === null ? '—' : (group.averageScore |
+        fmtPct:1)}}</span
+      ></ng-template
+    >
+    <ui-empty
+      slot="empty"
+      variant="inline"
+      title="Chưa có dữ liệu trong phạm vi đã chọn"
+    />
+  </ui-data-table>
 </section>
 }

@@ -78,6 +78,7 @@
   <app-ds-demo label="Tree" [needs]="['tree']">
     <ui-tree
       label="Cây nội dung"
+      wrapLabels
       [nodes]="contentTree"
       [trailing]="status"
       [expanded]="store.expanded$()"

@@ -68,10 +68,7 @@ const inOrg = (
 
 /** Development fixtures for the verified Java wire shapes; never a replacement for Java security or grading. */
 export class AssessmentAuthoringMock {
-  constructor(
-    private readonly caller: (request: FakeRequest) => Me,
-    private readonly programMode = false,
-  ) {}
+  constructor(private readonly caller: (request: FakeRequest) => Me) {}
   private nextId = 1000;
 
   /** The status of a quiz, for the learning service's publish check; `undefined` when it is gone. */
@@ -164,11 +161,11 @@ export class AssessmentAuthoringMock {
     };
   });
   answers(endpoint: AnyEndpoint): boolean {
-    return (
-      this.programMode
-        ? Object.values(programApi).filter((e) => e.served === 'mock')
-        : [...Object.values(api), ...Object.values(reports)]
-    ).some((e) => e === endpoint);
+    return [
+      ...Object.values(api),
+      ...Object.values(programApi),
+      ...Object.values(reports),
+    ].some((e) => e === endpoint);
   }
   private canManageProgram(me: Me, programId: number): boolean {
     const program = trainingProgramFixtures.find((p) => p.id === programId);
@@ -182,7 +179,7 @@ export class AssessmentAuthoringMock {
               inOrg(g.scope.orgId, program.ownerOrgId)))),
     );
   }
-  private canManage(me: Me, courseId: number): boolean {
+  private canManage(me: Me, courseId: number | null): boolean {
     const course = courseDetailFixtures.find(
       (c) => c.course.id === courseId,
     )?.course;
@@ -208,9 +205,47 @@ export class AssessmentAuthoringMock {
       }
     });
   }
+  private refreshPools(): void {
+    for (const detail of this.quizzes) {
+      detail.pool = detail.pool.map((entry) => {
+        const question = this.questions.find((q) => q.id === entry.questionId);
+        return question
+          ? {
+              ...entry,
+              code: question.code,
+              contentPreview: question.content,
+              questionType: question.questionType,
+              difficulty: question.difficulty,
+              status: question.status,
+              effectivePoints: entry.pointsOverride ?? question.points,
+            }
+          : entry;
+      });
+      detail.activePoolSize = detail.pool.filter(
+        (entry) => entry.status === 'ACTIVE',
+      ).length;
+    }
+  }
+  private shortageAfterDeactivation(ids: readonly number[]): boolean {
+    return this.quizzes.some(
+      (detail) =>
+        detail.quiz.status === 'PUBLISHED' &&
+        detail.pool.some((p) => ids.includes(p.questionId)) &&
+        detail.pool.filter(
+          (p) =>
+            !ids.includes(p.questionId) &&
+            this.questions.some(
+              (q) => q.id === p.questionId && q.status === 'ACTIVE',
+            ),
+        ).length < detail.quiz.questionCount,
+    );
+  }
   handle(endpoint: AnyEndpoint, r: FakeRequest): FakeReply | undefined {
     if (!this.answers(endpoint)) return undefined;
-    if (this.programMode) {
+    const programMode = Object.entries(programApi).some(
+      ([key, value]) => value === endpoint && value !== Reflect.get(api, key),
+    );
+    if (programMode) {
       const original = endpoint;
       const key = Object.keys(api).find(
         (key) => Reflect.get(programApi, key) === original,
@@ -241,20 +276,6 @@ export class AssessmentAuthoringMock {
           updateTime: now(),
         },
       ]);
-    if (this.programMode && endpoint === programApi.programs)
-      return ok(
-        page(
-          trainingProgramFixtures.filter(
-            (p) =>
-              this.canManageProgram(me, p.id) &&
-              (!r.query['q'] ||
-                (p.name + ' ' + p.code)
-                  .toLocaleLowerCase('vi')
-                  .includes(r.query['q'].toLocaleLowerCase('vi'))),
-          ),
-          r.query,
-        ),
-      );
     const id = Number(r.params['id']);
     const question = this.questions.find((q) => q.id === id),
       detail = this.quizzes.find((q) => q.quiz.id === id);
@@ -291,7 +312,7 @@ export class AssessmentAuthoringMock {
         return fail('ASSESSMENT-NOT_FOUND', 'Không tìm thấy câu hỏi.');
       if (
         rows.some((q) =>
-          this.programMode
+          programMode
             ? !this.canManageProgram(me, q.programId)
             : !this.canManage(me, q.courseId),
         )
@@ -309,6 +330,11 @@ export class AssessmentAuthoringMock {
         const status = Reflect.get(raw, 'status');
         if (status !== 'ACTIVE' && status !== 'INACTIVE')
           return fail('CORE-VALIDATION_FAILED', 'Trạng thái không hợp lệ.');
+        if (status === 'INACTIVE' && this.shortageAfterDeactivation(ids))
+          return fail(
+            'ASSESSMENT-QUIZ_NOT_READY',
+            'Ngưng sử dụng làm bài kiểm tra đã xuất bản thiếu câu hỏi.',
+          );
         for (const q of rows) {
           q.status = status;
           q.rowVersion++;
@@ -321,6 +347,7 @@ export class AssessmentAuthoringMock {
               p.status,
           }));
       }
+      this.refreshPools();
       return ok({ affected: rows.length });
     }
     const programId =
@@ -334,8 +361,12 @@ export class AssessmentAuthoringMock {
       api.updateQuestion,
     ].some((e) => e === endpoint);
     if (
-      this.programMode && questionOperation
-        ? !this.canManageProgram(me, programId)
+      programMode && questionOperation
+        ? !(endpoint === api.questions && r.query['courseId']
+            ? this.canManage(me, courseId) &&
+              courseDetailFixtures.find((c) => c.course.id === courseId)
+                ?.revision.programId === programId
+            : this.canManageProgram(me, programId))
         : !this.canManage(me, courseId)
     )
       return fail(
@@ -347,9 +378,7 @@ export class AssessmentAuthoringMock {
       const q = r.query;
       const rows = this.questions.filter(
         (x) =>
-          (this.programMode
-            ? x.programId === programId
-            : x.courseId === courseId) &&
+          (programMode ? x.programId === programId : x.courseId === courseId) &&
           (!q['q'] ||
             (x.code + ' ' + x.content)
               .toLowerCase()
@@ -404,7 +433,7 @@ export class AssessmentAuthoringMock {
           })
         : fail('ASSESSMENT-NOT_FOUND', 'Không tìm thấy.');
     if (endpoint === api.createQuestion || endpoint === api.updateQuestion) {
-      const parsed = this.programMode
+      const parsed = programMode
         ? ProgramQuestionRequestSchema.safeParse(raw)
         : QuestionRequestV1Schema.safeParse(raw);
       if (!parsed.success)
@@ -423,14 +452,14 @@ export class AssessmentAuthoringMock {
           courseId:
             'courseId' in parsed.data
               ? parsed.data.courseId
-              : (question?.courseId ?? 0),
+              : (question?.courseId ?? null),
           lessonId: 'lessonId' in parsed.data ? parsed.data.lessonId : null,
         },
         count = command.options.filter((o) => o.correct).length;
       if (command.questionType === 'SINGLE' ? count !== 1 : count < 2)
         return fail('CORE-VALIDATION_FAILED', 'Đáp án đúng không hợp lệ.');
       if (
-        this.programMode &&
+        programMode &&
         question &&
         question.programId !== Number(Reflect.get(raw, 'programId'))
       )
@@ -438,8 +467,17 @@ export class AssessmentAuthoringMock {
           'CORE-VALIDATION_FAILED',
           'Không thể chuyển câu hỏi sang chương trình khác.',
         );
+      if (
+        question &&
+        command.status === 'INACTIVE' &&
+        this.shortageAfterDeactivation([question.id])
+      )
+        return fail(
+          'ASSESSMENT-QUIZ_NOT_READY',
+          'Ngưng sử dụng làm bài kiểm tra đã xuất bản thiếu câu hỏi.',
+        );
       const item: QuestionDetailV1 & { programId: number } = {
-        programId: this.programMode
+        programId: programMode
           ? programId
           : (courseDetailFixtures.find((c) => c.course.id === command.courseId)
               ?.revision.programId ?? 0),
@@ -461,6 +499,7 @@ export class AssessmentAuthoringMock {
         ...this.questions.filter((q) => q.id !== item.id),
         item,
       ];
+      this.refreshPools();
       return ok(item);
     }
     if (endpoint === api.courseQuizList)
@@ -527,19 +566,15 @@ export class AssessmentAuthoringMock {
             !this.questions.some(
               (q) =>
                 q.id === p.questionId &&
-                (this.programMode
-                  ? q.programId ===
-                    courseDetailFixtures.find((c) => c.course.id === courseId)
-                      ?.revision.programId
-                  : q.courseId === courseId),
+                q.programId ===
+                  courseDetailFixtures.find((c) => c.course.id === courseId)
+                    ?.revision.programId,
             ),
         )
       )
         return fail(
           'CORE-VALIDATION_FAILED',
-          this.programMode
-            ? 'Câu hỏi không thuộc chương trình của khóa học.'
-            : 'Câu hỏi không thuộc khóa.',
+          'Câu hỏi không thuộc chương trình của khóa học.',
         );
       detail.pool = parsed.data.items.map((p) => {
         const q = this.questions.find((q) => q.id === p.questionId);
@@ -583,6 +618,7 @@ export class AssessmentAuthoringMock {
     if (!grants.length)
       return fail('CORE-ACCESS_DENIED', 'Không đủ quyền báo cáo.', 403);
     // Fixed synthetic rows, scoped to org 1 / team 1. No browser-side scoring or aggregation.
+    const submittedAt = '2026-11-01T02:00:00Z';
     const q = r.query,
       visible =
         grants.some(
@@ -592,7 +628,11 @@ export class AssessmentAuthoringMock {
             (g.scope.type === 'TEAM' && g.scope.teamId === 1),
         ) &&
         (!q['orgId'] || inOrg(Number(q['orgId']), 1)) &&
-        (!q['teamId'] || q['teamId'] === '1');
+        (!q['teamId'] || q['teamId'] === '1') &&
+        (!q['quizId'] || q['quizId'] === '1') &&
+        (!q['courseId'] || q['courseId'] === '1') &&
+        (!q['from'] || Date.parse(submittedAt) >= Date.parse(q['from'])) &&
+        (!q['to'] || Date.parse(submittedAt) < Date.parse(q['to']));
     if (endpoint === reports.overview)
       return ok({
         gradedAttempts: visible ? 1 : 0,
@@ -640,7 +680,6 @@ export class AssessmentAuthoringMock {
               : 'questions';
     if (type === 'learners' && !q['quizId'])
       return fail('CORE-VALIDATION_FAILED', 'Chọn bài kiểm tra.');
-    const submittedAt = '2026-11-01T02:00:00Z';
     const match =
       visible &&
       (!q['quizId'] || q['quizId'] === '1') &&
@@ -650,8 +689,8 @@ export class AssessmentAuthoringMock {
       (!q['passed'] || q['passed'] === 'false') &&
       (!q['learnerStatus'] || q['learnerStatus'] === 'FAILED') &&
       (type === 'learners' ||
-        ((!q['from'] || q['from'] <= submittedAt) &&
-          (!q['to'] || q['to'] > submittedAt)));
+        ((!q['from'] || Date.parse(q['from']) <= Date.parse(submittedAt)) &&
+          (!q['to'] || Date.parse(q['to']) > Date.parse(submittedAt))));
     const common = {
       userId: '000004',
       userName: 'Học viên Demo',

@@ -2,6 +2,7 @@
   ngTree
   #tree="ngTree"
   class="tree"
+  [class.tree--wrap-labels]="wrapLabels()"
   [attr.aria-label]="label()"
   [value]="selection()"
   (valueChange)="select($event)"

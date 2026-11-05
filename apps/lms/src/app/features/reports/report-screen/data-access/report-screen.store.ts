@@ -1,4 +1,10 @@
-import { computed, inject, Injectable, linkedSignal } from '@angular/core';
+import {
+  computed,
+  inject,
+  Injectable,
+  linkedSignal,
+  signal,
+} from '@angular/core';
 import { ActivatedRoute, convertToParamMap, Router } from '@angular/router';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { map, type Observable } from 'rxjs';
@@ -10,7 +16,7 @@ import {
   type AssessmentReportExportQuery,
   type Page,
 } from '@lms/contracts';
-import type { DataTableColumn, DataTableSort } from '@lms/ui';
+import type { DataTableColumn, DataTableSort, DonutDatum } from '@lms/ui';
 import { EndpointClient } from '../../../../core/http/endpoint-client';
 import { serverData } from '../../../../core/data-access/server-data';
 import { serverMutation } from '../../../../core/data-access/server-mutation';
@@ -154,6 +160,8 @@ export class ReportScreenStore {
   );
   private readonly state = {
     sort: linkedSignal(() => DEFAULT_SORT[this.dimension$() ?? 'results']),
+    grouping: signal<'quiz' | 'org'>('quiz'),
+    groupPage: signal(1),
   };
   readonly filters$ = computed<ReportFilters>(() => this.urlQuery().filters);
   readonly page$ = computed(() => this.urlQuery().page);
@@ -302,12 +310,24 @@ export class ReportScreenStore {
     },
   );
   readonly overview$ = this.overview.value;
-  readonly scoreChart$ = computed(() =>
-    (this.overview$()?.byQuiz ?? []).flatMap((group) =>
-      group.averageScore === null
-        ? []
-        : [{ label: group.name ?? 'Chưa xác định', value: group.averageScore }],
-    ),
+  readonly resultChart$ = computed<readonly DonutDatum[]>(() => {
+    const data = this.overview$();
+    return data && data.learners > 0
+      ? [
+          { label: 'Đã đạt', value: data.passedLearners, tone: 'success' },
+          {
+            label: 'Chưa ghi nhận đạt',
+            value: Math.max(0, data.learners - data.passedLearners),
+            tone: 'neutral',
+          },
+        ]
+      : [];
+  });
+  readonly scoreComparison$ = computed(() =>
+    [...(this.overview$()?.byQuiz ?? [])]
+      .filter((group) => group.averageScore !== null)
+      .sort((a, b) => b.gradedAttempts - a.gradedAttempts)
+      .slice(0, 6),
   );
   readonly byQuiz$ = computed(() =>
     (this.overview$()?.byQuiz ?? []).map((g) => ({
@@ -323,6 +343,41 @@ export class ReportScreenStore {
       name: g.name ?? 'Chưa xác định',
     })),
   );
+  readonly grouping$ = this.state.grouping.asReadonly();
+  readonly groupPage$ = this.state.groupPage.asReadonly();
+  private readonly groupedRows = computed(() =>
+    this.grouping$() === 'quiz' ? this.byQuiz$() : this.byOrg$(),
+  );
+  readonly groupTotal$ = computed(() => this.groupedRows().length);
+  readonly groupedRows$ = computed(() =>
+    this.groupedRows().slice(
+      (this.groupPage$() - 1) * 10,
+      this.groupPage$() * 10,
+    ),
+  );
+  readonly activeFilterCount$ = computed(
+    () =>
+      Object.entries(this.tableRequest()?.query ?? this.commonFilters()).filter(
+        ([key, value]) =>
+          !['page', 'size', 'sort', 'groupBy'].includes(key) &&
+          value !== undefined &&
+          value !== '',
+      ).length,
+  );
+  readonly description$ = computed(() => {
+    switch (this.dimension$()) {
+      case 'results':
+        return 'Tra cứu điểm, số câu đúng và kết quả của từng lượt thi.';
+      case 'learners':
+        return 'Theo dõi học viên chưa thi, đang làm và đã có kết quả theo bài kiểm tra.';
+      case 'competency':
+        return 'Phân tích kết quả theo nhóm năng lực của học viên hoặc đơn vị.';
+      case 'questions':
+        return 'Theo dõi lượt phát, lượt trả lời đúng và tỷ lệ sai theo phiên bản câu hỏi.';
+      default:
+        return 'Tiến độ học và kết quả thi theo phạm vi được cấp.';
+    }
+  });
   readonly rows$ = computed(() => this.detail.value()?.items ?? []);
   readonly total$ = computed(() => this.detail.value()?.totalElements ?? 0);
   readonly columns$ = computed<readonly DataTableColumn[]>(() => {
@@ -357,11 +412,6 @@ export class ReportScreenStore {
   readonly needsQuiz$ = computed(
     () => this.dimension$() === 'learners' && !this.filters$().quizId,
   );
-  readonly description$ = computed(() =>
-    this.params()?.get('dim')
-      ? 'Báo cáo thi theo phạm vi được cấp. Đơn vị/nhóm lấy theo thời điểm thi hoặc ghi danh.'
-      : 'Tiến độ học và kết quả thi theo phạm vi được cấp.',
-  );
   readonly title$ = computed(
     () =>
       REPORT_DIMENSIONS.find((d) => d.id === this.dimension$())?.label ??
@@ -370,8 +420,19 @@ export class ReportScreenStore {
   private setSort(value: DataTableSort): void {
     this.state.sort.set(value);
   }
+  private setGrouping(value: 'quiz' | 'org'): void {
+    this.state.grouping.set(value);
+  }
+  setGroupPage(value: number): void {
+    this.state.groupPage.set(value);
+  }
+  selectGrouping(value: 'quiz' | 'org'): void {
+    this.setGrouping(value);
+    this.setGroupPage(1);
+  }
   /** Writes the filters to the URL in place, from the first page; the report follows the URL. */
   applyFilters(value: ReportFilters): void {
+    this.setGroupPage(1);
     this.navigate(value, 1);
   }
   changePage(page: number): void {

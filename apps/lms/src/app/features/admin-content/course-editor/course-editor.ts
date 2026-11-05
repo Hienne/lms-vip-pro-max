@@ -31,6 +31,7 @@ import {
 } from './course-draft';
 import { courseCodeSchema, courseDraftSchema } from './course-draft.schema';
 import {
+  COVER_KEY,
   CourseEditorStore,
   EDITOR_STEPS,
 } from './data-access/course-editor.store';
@@ -92,11 +93,23 @@ export class CourseEditor implements HasUnsavedChanges {
       submission: {
         action: async () =>
           this.store.isCreate$()
-            ? this.store.create(this.model())
+            ? this.store.create(this.draftValue())
             : this.store.save(this.command()),
       },
     },
   );
+
+  /**
+   * The draft as it is saved: the form's value, with the cover image uploaded or picked in this
+   * page once it is ready (like a block's file, it joins the draft when it is there).
+   */
+  protected readonly draftValue = computed((): CourseDraftValue => {
+    const cover = this.store.uploads$()[COVER_KEY];
+    const value = this.model();
+    return cover?.state === 'done' && cover.asset
+      ? { ...value, coverAssetId: cover.asset.assetId }
+      : value;
+  });
 
   /** Create mode shows the form at once; edit mode waits for the course to be read. */
   protected readonly ready = computed(
@@ -111,7 +124,8 @@ export class CourseEditor implements HasUnsavedChanges {
   });
 
   protected readonly dirty = computed(
-    () => this.store.isDraft$() && fingerprint(this.model()) !== this.saved(),
+    () =>
+      this.store.isDraft$() && fingerprint(this.draftValue()) !== this.saved(),
   );
 
   /**
@@ -162,9 +176,15 @@ export class CourseEditor implements HasUnsavedChanges {
   protected publish(): void {
     void submit(this.courseForm, async () =>
       this.store.isCreate$()
-        ? this.store.createAndPublish(this.model())
+        ? this.store.createAndPublish(this.draftValue())
         : this.store.publish(this.command()),
     );
+  }
+
+  /** "Gỡ ảnh bìa": the cover chosen in this page is dropped, and the stored one with it. */
+  protected removeCover(): void {
+    this.store.dropCover();
+    this.model.update((value) => ({ ...value, coverAssetId: null }));
   }
 
   protected applyLesson(lesson: LessonValue): void {
@@ -188,7 +208,7 @@ export class CourseEditor implements HasUnsavedChanges {
 
   private command() {
     const { expectedVersion: _version, ...command } = toSaveDraftCommand(
-      this.model(),
+      this.draftValue(),
       0,
     );
     return command;

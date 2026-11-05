@@ -1,16 +1,34 @@
 @use 'ui';
 
 .points-figure {
+  display: block;
   color: inherit;
   text-decoration: none;
+
+  &:focus-visible {
+    @include ui.focus-ring;
+  }
 
   &:hover &__value {
     text-decoration: underline;
   }
 
   &__item {
-    @include ui.stack(1);
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: ui.space(4);
     margin: 0;
+
+    > div {
+      @include ui.stack(1);
+      min-width: 0;
+      overflow-wrap: anywhere;
+
+      & + div {
+        padding-inline-start: ui.space(4);
+        border-inline-start: 1px solid ui.color(border);
+      }
+    }
 
     dt {
       @include ui.text(sm, muted);
@@ -25,9 +43,10 @@
     @include ui.num;
     @include ui.text(xl);
     font-weight: ui.weight(semibold);
+    order: -1;
   }
 
-  &__detail {
-    @include ui.text(sm, muted);
+  &__earned {
+    color: ui.color(accent-ink);
   }
 }

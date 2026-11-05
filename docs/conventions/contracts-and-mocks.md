@@ -505,43 +505,30 @@ fabricated backend endpoint in this audit.
   modified. Live authorization/data-scope tests still require an available
   backend and authorized test accounts.
 
-## Program question bank FE update (2026-11-01)
+## Program question bank integration (2026-11-04)
 
-This supersedes the course-only UI scope in the audit above. A question belongs
-only to a program; a quiz still belongs to a course. Its bank selector derives
-programId from the course detail revision, never from a user-editable query.
-No Java, database, deployed permissions, or verified v1 contracts were changed.
+A question belongs to a program; a quiz remains attached to a course. The course
+editor and bank reuse trainingCatalogEndpoints.listPrograms:
+GET /api/v1/training-catalog/programs?ownerOrgId=<session.org.id>&page=0&size=100.
+Further pages are loaded before local name/code search and 50-item selector paging.
 
-- Routes: /admin/questions, /admin/quizzes, /admin/quizzes/new and /admin/quizzes/:id.
-- The bank selects/searches/pages programs, with programId in list/create/update
-  commands and question detail/summary responses. There is no required courseId
-  or lessonId. Answer options, correctCount, contentVersion, rowVersion and
-  expectedVersion keep their camelCase wire shapes and optimistic concurrency.
-- Question editing cannot move a question to another program. Bulk selection is
-  cleared when switching program or page. Questions from multiple courses in the
-  same program are shown in the quiz selector; another program is excluded.
-- Add/create actions use PageHeader's actions slot and the shared Button atom.
-  No global CSS or other forms were restyled.
+programAssessmentEndpoints is the program DTO audience of the actual v1
+QuestionController. It shares quiz endpoints with assessmentV1Endpoints and has
+no mock-only paths or readiness flag. Full-mock development uses one authoring
+state so course lists, program questions and quiz pool versions stay consistent.
+Legacy course DTOs remain available for existing clients/import tools.
 
-### Pending integration proposal (served: mock)
+| API                                                  | Input                                                                                                                 | Unwrapped data                                    |
+| ---------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------- |
+| GET /api/v1/questions                                | programId; optional courseId for the quiz picker; q, questionType, difficulty, competencyId, status, page, size, sort | Page<ProgramQuestionSummary>                      |
+| GET /api/v1/questions/{id}                           | numeric id                                                                                                            | ProgramQuestionDetail                             |
+| POST /api/v1/questions                               | ProgramQuestionRequest                                                                                                | ProgramQuestionDetail                             |
+| PUT /api/v1/questions/{id}?expectedVersion=N         | id/version + same request                                                                                             | updated detail with rowVersion                    |
+| POST /api/v1/questions/bulk-status                   | {ids:[1,9],status:"INACTIVE"}                                                                                         | {affected:2}                                      |
+| POST /api/v1/questions/bulk-delete                   | {ids:[1,9]}                                                                                                           | {affected:2}; questions used in pools are refused |
+| PUT /api/v1/quizzes/{id}/questions?expectedVersion=N | {items:[{questionId:9,sortNo:0,points:null}]}                                                                         | QuizDetailV1 with new rowVersion                  |
 
-programAssessmentEndpoints declares isolated /api/assessment-program paths.
-These are FE proposals, not existing Java endpoints. Confirm final paths and
-resource authorization before marking them backend; do not send programId to
-existing courseId-only v1 endpoints and pretend it changed their scope.
-
-| Method/path after /api/assessment-program     | Input                                                                                           | Unwrapped data                                                                                |
-| --------------------------------------------- | ----------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------- |
-| GET /programs                                 | q?, page=0, size=50                                                                             | Page<TrainingProgram>, already restricted to manageable programs                              |
-| GET /questions                                | programId required; q?, questionType?, difficulty?, competencyId?, status?, page?, size?, sort? | Page<ProgramQuestionSummary>                                                                  |
-| GET /questions/{id}                           | numeric id                                                                                      | ProgramQuestionDetail                                                                         |
-| POST /questions                               | ProgramQuestionRequest                                                                          | ProgramQuestionDetail                                                                         |
-| PUT /questions/{id}?expectedVersion=N         | id/version + same JSON request                                                                  | updated ProgramQuestionDetail                                                                 |
-| POST /questions/bulk-status                   | {ids:[1,9],status:"INACTIVE"}                                                                   | {affected:2}                                                                                  |
-| POST /questions/bulk-delete                   | {ids:[1,9]}                                                                                     | {affected:2}; refuse questions still in use                                                   |
-| PUT /quizzes/{id}/questions?expectedVersion=N | {items:[{questionId:9,sortNo:0,points:null}]}                                                   | QuizDetailV1 with new rowVersion; validate every question against the course's actual program |
-
-Request example (no envelope and no courseId/lessonId):
+Request example (direct JSON, no envelope):
 
 ```json
 {
@@ -562,19 +549,36 @@ Request example (no envelope and no courseId/lessonId):
 ```
 
 Detail adds id, programId, contentVersion, rowVersion, createTime, updateTime,
-usedInQuizzes; options gain numeric id and sortNo. Summary adds contentPreview,
-competencyName, optionCount, correctCount and usedInQuizCount. Update option ids
-are preserved; newly added options omit id. A stale version must fail without
-closing/resetting the FE form. Scope and cross-program pool validation remain
-server requirements; fixture checks are not production authorization.
+usedInQuizzes; options gain numeric id and sortNo. Backend detail also retains
+nullable courseId/lessonId for legacy origins; the program view omits them.
+Summary adds contentPreview, competencyName, optionCount, correctCount and
+usedInQuizCount. Existing option IDs and expectedVersion are preserved on edit;
+a refused save leaves the form open. Question ownership cannot move programs.
+Single and bulk deactivation cannot make a published pool too small.
 
-For a coherent isolated preview, the program proposal also mirrors quiz
-list/detail/create/update/publish/close under /api/assessment-program/quizzes,
-using the unchanged QuizRequestV1/QuizDetailV1 shapes. Program and legacy mock
-stores are separate so their IDs and row versions cannot mix. In real-backend
-mode, quizzes continue using verified v1 endpoints: settings and existing pools
-are preserved, and the program pool picker stays read-only until integration.
-The bank shows a pending-integration state without issuing fake-auth requests
-or writing mocked questions into real quizzes. The full program workflow is
-reviewable with the existing full-mock development build on port 4311. Source
-mockBackend remains false; no real backend feature is claimed complete.
+Direct program-bank authoring requires SUPER_ADMIN/GLOBAL or ADMIN/INSTRUCTOR
+with GLOBAL/ORG covering the program's real owner org. Course OWN/TEAM scope does
+not grant writes to a shared bank. Legacy questions with a course origin retain
+their existing course authorization for ID/bulk compatibility. The quiz picker passes courseId as context:
+the server checks course management, the actual latest revision's program, and
+matching owner org before returning shared candidates. It can select a question
+from another course of that program or one created without a course. A different
+program is refused. FE menu eligibility mirrors this; actual grants are unchanged.
+
+Quiz creation accepts the context link /admin/quizzes/new?programId=...:
+the course picker calls /api/v1/instructor/courses with programId, and the form
+still posts the selected courseId to /api/v1/quizzes. The question bank links to
+this route; quiz management also filters courses by program. A conflicting
+courseId/programId deep link blocks the builder until a matching course is
+selected. Changing program preserves quiz settings and clears incompatible
+selected questions; a partially created draft locks its scope while retrying the
+pool save. Inactive candidates cannot be added, and the publish action explains
+when the saved pool has too few active questions, using the server's activePoolSize.
+
+The backend upgrade docs/sql/upgrade/2026-11-04-program-question-bank.sql must run
+before deploying the Java change. Existing course origins are retained; programId
+is backfilled only when absent and determinable from the latest revision. Unmapped
+legacy questions stay on the course API until reviewed. Rollback refuses
+course-less questions and cross-course pools rather than discarding them. No
+migration was applied to a shared database. Deployment/proxy configuration must
+point at the upgraded backend; source environment.mockBackend stays false.

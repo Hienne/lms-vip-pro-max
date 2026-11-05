@@ -94,7 +94,7 @@ describe('CourseEditor', () => {
   describe('a published revision', () => {
     /** Every edit control by its text or `aria-label`. */
     const editControls =
-      /Sửa\b|Thêm bài học|Thêm chương|Thêm mục tiêu|Xóa|Chuyển lên|Chuyển xuống|Kéo/;
+      /Sửa\b|Thêm bài học|Thêm chương|Thêm mục tiêu|Xóa|Chuyển lên|Chuyển xuống|Kéo|Thay ảnh|Chọn từ thư viện|Gỡ ảnh/;
     const controls = () =>
       Array.from(
         screen.el.querySelectorAll<HTMLElement>(
@@ -108,6 +108,9 @@ describe('CourseEditor', () => {
       await screen.open('/admin/courses/1/edit');
       expect(controls().filter((name) => editControls.test(name))).toEqual([]);
       expect(screen.field('Tên khóa học')).toBeTruthy();
+      expect(screen.el.querySelector('input[type="file"]')).toBeNull();
+      expect(screen.el.querySelector('[uiDropzone]')).toBeNull();
+      expect(screen.el.querySelector('app-course-card')).toBeTruthy();
 
       await step('Nội dung khóa học');
       expect(controls().filter((name) => editControls.test(name))).toEqual([]);
@@ -435,6 +438,85 @@ describe('CourseEditor', () => {
       );
       expect(screen.button('Chọn tệp khác', drawer)).toBeTruthy();
       expect(screen.callsTo(assetEndpoints.startUpload)).toBe(0);
+    });
+
+    describe('the cover image', () => {
+      const cover = () =>
+        screen.el.querySelector<HTMLInputElement>(
+          '.course-info__cover label.dropzone input[type=file]',
+        )!;
+      const cardImage = () =>
+        screen.el.querySelector<HTMLImageElement>('.course-card__cover');
+
+      const original = {
+        create: URL.createObjectURL,
+        revoke: URL.revokeObjectURL,
+      };
+      const revoked: string[] = [];
+      beforeEach(() => {
+        let next = 0;
+        revoked.length = 0;
+        URL.createObjectURL = vi.fn(() => `blob:cover-${++next}`);
+        URL.revokeObjectURL = vi.fn((url: string) => void revoked.push(url));
+      });
+      afterEach(() => {
+        URL.createObjectURL = original.create;
+        URL.revokeObjectURL = original.revoke;
+      });
+
+      it('uploads an image, shows it on the card and saves it with the draft, until it is removed', async () => {
+        await screen.open('/admin/courses/6/edit');
+        expect(cardImage()).toBeNull();
+
+        const file = new File(['png'], 'bia.png', { type: 'image/png' });
+        vi.useFakeTimers();
+        pick(cover(), file);
+        await advance(POLL_MS * 3);
+        vi.useRealTimers();
+        await screen.settle();
+
+        expect(screen.lastCall(assetEndpoints.startUpload)?.body).toMatchObject(
+          { originalName: 'bia.png', mimeType: 'image/png' },
+        );
+        expect(kept()).toEqual([]);
+        // Read with the token, not by the `<img>`: an author holds no media cookie.
+        const read = screen.lastCall(courseEndpoints.getAssetContent);
+        expect(read?.query).toEqual({});
+        expect(cardImage()?.getAttribute('src')).toBe('blob:cover-1');
+        expect(cardImage()?.alt).toBe('');
+        expect(screen.text()).toContain('Có thay đổi chưa lưu');
+
+        await screen.click(screen.button('Lưu nháp'));
+        const assetId = Number(read?.params['assetId']);
+        expect(
+          (screen.lastCall(courseEndpoints.saveDraft)?.body as SaveDraftCommand)
+            .coverAssetId,
+        ).toBe(assetId);
+        expect(screen.text()).not.toContain('Có thay đổi chưa lưu');
+
+        expect(screen.button('Thay ảnh')).toBeTruthy();
+        expect(cover()).toBeNull();
+
+        await screen.click(screen.button('Gỡ ảnh'));
+        expect(cardImage()).toBeNull();
+        expect(revoked).toContain('blob:cover-1');
+        await screen.click(screen.button('Lưu nháp'));
+        expect(
+          screen.lastCall(courseEndpoints.saveDraft)?.body,
+        ).not.toHaveProperty('coverAssetId');
+      });
+
+      it('refuses a file that is not an image before uploading', async () => {
+        await screen.open('/admin/courses/6/edit');
+        pick(cover(), pdf());
+        await screen.settle();
+
+        expect(screen.text()).toContain(
+          'Sai định dạng: chỉ chấp nhận PNG, JPG, JPEG, WEBP.',
+        );
+        expect(screen.callsTo(assetEndpoints.startUpload)).toBe(0);
+        expect(cardImage()).toBeNull();
+      });
     });
 
     it('cancels a file while it is being checked, without touching the server', async () => {

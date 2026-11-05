@@ -23,7 +23,6 @@ import { QuizIntroStore } from './data-access/quiz-intro.store';
 @Component({
   selector: 'app-quiz-intro',
   imports: [
-    Alert,
     Breadcrumb,
     Button,
     Card,

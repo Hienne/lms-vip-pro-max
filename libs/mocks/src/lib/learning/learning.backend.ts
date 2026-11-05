@@ -374,6 +374,8 @@ export class LearningBackend {
     const ids = new Set<number>();
     for (const record of this.courses) {
       for (const detail of [record.published, record.draft]) {
+        const cover = detail?.revision.coverAssetId;
+        if (cover) ids.add(cover);
         for (const chapter of detail?.chapters ?? []) {
           for (const lesson of chapter.lessons) {
             for (const block of lesson.blocks) {
@@ -841,6 +843,7 @@ export class LearningBackend {
       summary: command.summary ?? null,
       level: command.level ?? null,
       defaultRequirement: command.defaultRequirement,
+      coverAssetId: command.coverAssetId ?? null,
       coverIcon: command.coverIcon ?? null,
       rowVersion: draft.revision.rowVersion + 1,
       updateTime: now(),
@@ -1039,6 +1042,7 @@ export class LearningBackend {
         summary: base.revision.summary,
         level: base.revision.level,
         defaultRequirement: base.revision.defaultRequirement,
+        coverAssetId: base.revision.coverAssetId,
         coverIcon: base.revision.coverIcon,
       },
     };

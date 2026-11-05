@@ -3,21 +3,25 @@ import { RouterLink } from '@angular/router';
 import {
   form,
   FormField,
-  submit,
+  FormRoot,
   validateStandardSchema,
 } from '@angular/forms/signals';
 import { z } from 'zod';
 import { AssessmentReportExportQuerySchema } from '@lms/contracts';
 import {
   Alert,
-  BarChart,
+  DonutChart,
   Button,
   Card,
   DataTable,
+  DataTableCell,
   Empty,
   ErrorState,
   Field,
   Input,
+  Icon,
+  FmtNumPipe,
+  FmtPctPipe,
   PageHeader,
   Select,
   Spinner,
@@ -61,6 +65,25 @@ const PICKERS: Record<PickerKey, PickerField> = {
     parent: { key: 'courseId', reason: 'Chọn khóa học trước' },
   },
 };
+
+const EMPTY_FORM = {
+  userId: '',
+  from: '',
+  to: '',
+  status: '',
+  learnerStatus: '',
+  passed: '',
+  groupBy: 'user' as 'user' | 'org',
+};
+
+/** An ISO date-time as a `datetime-local` value, in the browser's time zone. */
+function toLocalInput(iso: string | undefined): string {
+  if (!iso) return '';
+  const date = new Date(iso);
+  const local = new Date(date.getTime() - date.getTimezoneOffset() * 60_000);
+  return local.toISOString().slice(0, 16);
+}
+
 const filterSchema = z
   .object({
     userId: z.string().max(20),
@@ -89,33 +112,30 @@ const filterSchema = z
         message: 'Đến ngày phải sau từ ngày.',
       });
   });
-/** An ISO date-time as a `datetime-local` value, in the browser's time zone. */
-function toLocalInput(iso: string | undefined): string {
-  if (!iso) return '';
-  const date = new Date(iso);
-  const local = new Date(date.getTime() - date.getTimezoneOffset() * 60_000);
-  return local.toISOString().slice(0, 16);
-}
-
 @Component({
   selector: 'app-report-screen',
   imports: [
     ReportPicker,
-    BarChart,
+    Tooltip,
+    DonutChart,
     RouterLink,
     FormField,
+    FormRoot,
     Alert,
     Button,
     Card,
     DataTable,
+    DataTableCell,
     Empty,
     ErrorState,
     Field,
     Input,
+    Icon,
+    FmtNumPipe,
+    FmtPctPipe,
     PageHeader,
     Select,
     Spinner,
-    Tooltip,
   ],
   providers: [ReportScreenStore],
   templateUrl: './report-screen.html',
@@ -124,18 +144,30 @@ function toLocalInput(iso: string | undefined): string {
 export class ReportScreen {
   protected readonly store = inject(ReportScreenStore);
   protected readonly groupColumns: readonly DataTableColumn[] = [
-    { key: 'name', label: 'Tên', sortable: false },
+    { key: 'name', label: 'Bài kiểm tra / đơn vị', sortable: false },
     { key: 'gradedAttempts', label: 'Lượt chấm', sortable: false },
     { key: 'learners', label: 'Học viên', sortable: false },
     { key: 'passedLearners', label: 'Học viên đạt', sortable: false },
     { key: 'passRate', label: 'Đạt (%)', sortable: false },
     { key: 'averageScore', label: 'Điểm TB (%)', sortable: false },
   ];
-  /** "Tình trạng học viên" needs a quiz, so its course and quiz come first. */
-  protected readonly pickerFields = computed(() =>
+  /**
+   * "Tình trạng học viên" needs a quiz, so its course and quiz pickers lead the form; elsewhere
+   * the pickers set the scope under "Phạm vi & điều kiện chi tiết".
+   */
+  protected readonly leadPickers = computed(() =>
     this.store.dimension$() === 'learners'
-      ? [PICKERS.courseId, PICKERS.quizId, PICKERS.orgId, PICKERS.teamId]
+      ? [PICKERS.courseId, PICKERS.quizId]
+      : [],
+  );
+  protected readonly scopePickers = computed(() =>
+    this.store.dimension$() === 'learners'
+      ? [PICKERS.orgId, PICKERS.teamId]
       : [PICKERS.orgId, PICKERS.teamId, PICKERS.courseId, PICKERS.quizId],
+  );
+  /** The detailed filters stay open while one of them says a link's id is not found. */
+  protected readonly scopeHasError = computed(() =>
+    Object.values(this.store.pickers.errors$()).some(Boolean),
   );
   /** The form shows the filters the URL applies, until the user edits them. */
   private readonly filterModel = linkedSignal(() => {
@@ -150,25 +182,29 @@ export class ReportScreen {
       groupBy: (f.groupBy ?? 'user') as 'user' | 'org',
     };
   });
-  protected readonly filterForm = form(this.filterModel, (path) =>
-    validateStandardSchema(path, filterSchema),
+  protected readonly filterForm = form(
+    this.filterModel,
+    (path) => validateStandardSchema(path, filterSchema),
+    { submission: { action: async () => this.applyFilters() } },
   );
-  protected applyFilters(event: Event): void {
-    event.preventDefault();
-    void submit(this.filterForm, async () => {
-      const f = this.filterModel();
-      this.store.applyFilters(
-        AssessmentReportExportQuerySchema.parse({
-          ...this.store.pickers.picks$(),
-          userId: f.userId || undefined,
-          from: f.from ? new Date(f.from).toISOString() : undefined,
-          to: f.to ? new Date(f.to).toISOString() : undefined,
-          status: f.status || undefined,
-          learnerStatus: f.learnerStatus || undefined,
-          passed: f.passed ? f.passed === 'true' : undefined,
-          groupBy: f.groupBy,
-        }),
-      );
-    });
+  private applyFilters(): void {
+    const f = this.filterModel();
+    this.store.applyFilters(
+      AssessmentReportExportQuerySchema.parse({
+        ...this.store.pickers.picks$(),
+        userId: f.userId || undefined,
+        from: f.from ? new Date(f.from).toISOString() : undefined,
+        to: f.to ? new Date(f.to).toISOString() : undefined,
+        status: f.status || undefined,
+        learnerStatus: f.learnerStatus || undefined,
+        passed: f.passed ? f.passed === 'true' : undefined,
+        groupBy: f.groupBy,
+      }),
+    );
+  }
+  protected resetFilters(): void {
+    this.filterForm().reset({ ...EMPTY_FORM });
+    this.store.pickers.clear();
+    this.store.applyFilters({});
   }
 }

@@ -17,6 +17,7 @@ import {
 } from '@lms/ui';
 import { DueDate } from '../../../shared/course/due-date';
 import { RequiredMark } from '../../../shared/course/required-mark';
+import { coverSrc } from '../../../shared/course/cover-image';
 import { QuizCard } from '../../../shared/quiz/quiz-card/quiz-card';
 import { CourseOutline } from './components/course-outline/course-outline';
 import { CourseStore } from './data-access/course.store';
@@ -54,6 +55,7 @@ const ONE_DECIMAL = new Intl.NumberFormat('vi-VN', {
 })
 export class Course {
   protected readonly store = inject(CourseStore);
+  protected readonly coverSrc = computed(() => coverSrc(this.store.cover$()));
 
   protected readonly crumbs = computed((): readonly BreadcrumbItem[] => {
     const card = this.store.card$();

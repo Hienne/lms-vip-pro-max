@@ -70,9 +70,19 @@ describe('CourseCard', () => {
     ).toEqual(['Bắt buộc', '1g 8p', '4 bài', 'Cơ bản']);
   });
 
-  it('has no cover art and no icon', () => {
+  it('has no cover art and no icon without a cover image', () => {
     const { card } = render();
     expect(card.querySelector('[class*="course-card__cover"]')).toBeNull();
+    expect(card.querySelector('ui-icon')).toBeNull();
+  });
+
+  it('shows the cover image first, lazily and as decoration', () => {
+    const { card } = render({ coverUrl: '/api/v1/learning-assets/7/content' });
+    const image = card.firstElementChild as HTMLImageElement;
+    expect(image.className).toBe('course-card__cover');
+    expect(image.getAttribute('src')).toBe('/api/v1/learning-assets/7/content');
+    expect(image.alt).toBe('');
+    expect(image.getAttribute('loading')).toBe('lazy');
     expect(card.querySelector('ui-icon')).toBeNull();
   });
 

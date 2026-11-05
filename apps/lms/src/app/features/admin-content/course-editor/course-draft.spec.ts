@@ -190,6 +190,20 @@ describe('course draft', () => {
     );
   });
 
+  it('round-trips the cover image, left out when there is none', () => {
+    const value = toDraftValue({
+      ...eod,
+      revision: { ...eod.revision, coverAssetId: 42 },
+    });
+    expect(value.coverAssetId).toBe(42);
+    expect(toSaveDraftCommand(value, 1).coverAssetId).toBe(42);
+    expect(toCreateCourseCommand(value, 'X', 1).draft?.coverAssetId).toBe(42);
+
+    const none = { ...value, coverAssetId: null };
+    expect(toSaveDraftCommand(none, 1)).not.toHaveProperty('coverAssetId');
+    expect(emptyDraftValue().coverAssetId).toBeNull();
+  });
+
   describe('the final exam', () => {
     it('round-trips the final quiz as a select value, left out when empty', () => {
       const value = toDraftValue({ ...eod, finalQuizId: 2 });

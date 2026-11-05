@@ -6,7 +6,10 @@
 }
 .report-screen {
   &__navigation {
+    display: flex;
     flex-wrap: wrap;
+    gap: ui.space(1);
+    border-bottom: 1px solid ui.color(border);
   }
   // The wrapper takes the hover for the tooltip: a disabled button gets no pointer events.
   &__export {
@@ -15,32 +18,168 @@
       pointer-events: none;
     }
   }
-  &__filters {
-    padding: ui.space(4);
-    border: 1px solid ui.color(border);
-    border-radius: ui.radius(card);
-    background: ui.color(surface);
-  }
-  &__totals {
-    @include ui.grid(
-      (
-        md: 3,
-        lg: 6,
-      ),
-      4
-    );
-    margin: 0;
-    div {
-      @include ui.stack(1);
+  &__tab {
+    flex-shrink: 0;
+    padding: ui.space(3) ui.space(4);
+    border-bottom: 1px solid transparent;
+    color: ui.color(text-secondary);
+    font-weight: ui.weight(medium);
+    text-decoration: none;
+    &:hover,
+    &[aria-current='page'] {
+      color: ui.color(primary);
     }
-    dt {
-      @include ui.text(sm, muted);
+    &[aria-current='page'] {
+      border-color: ui.color(primary);
+    }
+  }
+  &__filters,
+  &__chart-panel {
+    padding: ui.space(5);
+    min-width: 0;
+  }
+  &__filter-heading h2 {
+    font-size: ui.text-size(md);
+  }
+  &__filter-main {
+    display: grid;
+    gap: ui.space(4);
+    align-items: start;
+    @include ui.bp(md) {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+    @include ui.bp(lg) {
+      grid-template-columns: repeat(2, minmax(0, 1fr)) auto;
+    }
+  }
+  &__filter-actions {
+    @include ui.bp(lg) {
+      padding-top: ui.space(6);
+    }
+  }
+  &__advanced {
+    border-top: 1px solid ui.color(border);
+    padding-top: ui.space(3);
+    summary {
+      cursor: pointer;
+    }
+  }
+  &__filter-grid {
+    padding-top: ui.space(4);
+  }
+  &__tab:focus-visible,
+  &__advanced summary:focus-visible {
+    @include ui.focus-ring;
+  }
+  &__muted,
+  &__footnote,
+  &__bar-note,
+  &__advanced summary,
+  &__metrics dt,
+  &__metrics p,
+  &__section-heading p {
+    @include ui.text(sm, muted);
+  }
+  &__metrics {
+    dl {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      margin: 0;
+    }
+    dl > div {
+      padding: ui.space(5);
+      min-width: 0;
     }
     dd {
       @include ui.num;
-      @include ui.text(xl);
+      font-size: ui.text-size(3xl);
       font-weight: ui.weight(semibold);
+      line-height: ui.leading(tight);
+      margin: ui.space(2) 0;
+    }
+    p {
       margin: 0;
     }
+    @include ui.bp(lg) {
+      dl {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+      }
+      dl > div + div {
+        border-left: 1px solid ui.color(border);
+      }
+    }
+  }
+  &__analytics {
+    display: grid;
+    gap: ui.space(5);
+    @include ui.bp(lg) {
+      grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr);
+    }
+  }
+  &__section-heading {
+    h2 {
+      font-size: ui.text-size(lg);
+    }
+    p {
+      margin-top: ui.space(1);
+    }
+  }
+  &__comparison {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+  &__bar-label {
+    display: flex;
+    justify-content: space-between;
+    gap: ui.space(4);
+    font-size: ui.text-size(sm);
+    span {
+      @include ui.truncate;
+    }
+    strong {
+      flex-shrink: 0;
+    }
+  }
+  &__bar-label strong,
+  &__participation strong {
+    @include ui.num;
+    font-weight: ui.weight(semibold);
+  }
+  &__bar-track {
+    height: ui.space(2);
+    background: ui.color(surface-sunken);
+    border-radius: ui.radius(full);
+    margin: ui.space(2) 0;
+    span {
+      display: block;
+      width: clamp(0%, var(--value), 100%);
+      height: 100%;
+      background: ui.chart(1);
+      border-radius: inherit;
+    }
+  }
+  &__participation {
+    padding-top: ui.space(4);
+    border-top: 1px solid ui.color(border);
+    font-size: ui.text-size(sm);
+  }
+  &__detail {
+    min-width: 0;
+    overflow: hidden;
+  }
+  &__detail > &__section-heading {
+    padding: ui.space(5);
+    border-bottom: 1px solid ui.color(border);
+  }
+  &__group-name {
+    @include ui.truncate;
+    display: block;
+    max-width: 28ch;
+  }
+  &__number {
+    @include ui.num;
+    display: block;
+    text-align: right;
   }
 }

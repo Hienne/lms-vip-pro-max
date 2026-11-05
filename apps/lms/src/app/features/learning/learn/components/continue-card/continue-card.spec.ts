@@ -32,7 +32,8 @@ function render(resume: ContinueView | null) {
 describe('ContinueCard', () => {
   it('names the lesson, its chapter and course, and shows the server percentage', () => {
     const el = render(view);
-    expect(el.querySelector('h2')?.textContent).toContain('Kiến trúc tổng thể');
+    expect(el.querySelector('h2')?.textContent).toBe('Tiếp tục học');
+    expect(el.querySelector('h3')?.textContent).toContain('Kiến trúc tổng thể');
     expect(el.textContent).toContain(
       'Chương 1 · Tổng quan hệ thống Core Banking',
     );

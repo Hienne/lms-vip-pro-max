@@ -138,11 +138,6 @@ describe('AppShell', () => {
       ],
     ],
     [
-      'viewer',
-      '/reports',
-      ['/profile', '/reports', '/assistant', '/community/questions'],
-    ],
-    [
       'instructor',
       '/learn',
       [
@@ -570,14 +565,6 @@ describe('AppShell', () => {
         expect(bell?.getAttribute('aria-label')).toBe('Thông báo, 2 chưa đọc');
         expect(bell?.classList).toContain('icon-btn--dot');
       });
-    });
-
-    it('has a plain bell when nothing is unread', async () => {
-      signInAs('viewer');
-      const el = await open('/reports');
-      const bell = el.querySelector('a[href="/notifications"]');
-      expect(bell?.getAttribute('aria-label')).toBe('Thông báo');
-      expect(bell?.classList).not.toContain('icon-btn--dot');
     });
 
     it('reloads the counts after a navigation', async () => {

@@ -3,11 +3,12 @@ import { provideRouter } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
 import {
   certificateEndpoints,
+  courseEndpoints,
   learnerEndpoints,
   learnerQuizEndpoints,
   type Certificate,
 } from '@lms/contracts';
-import { backendRefusal } from '@lms/mocks';
+import { backendRefusal, envelopeOk } from '@lms/mocks';
 import type { MockInstance } from 'vitest';
 import { createAppRoutes } from '../../../app.routes';
 import {
@@ -174,6 +175,69 @@ describe('Course', () => {
       expect(
         el.querySelector('ui-page-header')?.textContent?.replace(/\s+/g, ' '),
       ).toContain('Nghiệp vụ Core Banking · Tổng quan · NV-101');
+    });
+  });
+
+  describe('the cover image', () => {
+    const original = {
+      create: URL.createObjectURL,
+      revoke: URL.revokeObjectURL,
+    };
+    afterEach(() => {
+      URL.createObjectURL = original.create;
+      URL.revokeObjectURL = original.revoke;
+    });
+
+    /** Course 1 with a cover, whose file the server answers (`readable`) or refuses. */
+    async function openWithCover(readable: boolean) {
+      URL.createObjectURL = vi.fn(() => 'blob:cover');
+      URL.revokeObjectURL = vi.fn();
+      const backend = TestBed.inject(MockBackend);
+      handle.mockImplementation((endpoint, request) => {
+        if (endpoint === courseEndpoints.getAssetContent) {
+          return readable
+            ? {
+                status: 200,
+                body: envelopeOk(null),
+                file: new Blob(['png'], { type: 'image/png' }),
+              }
+            : backendRefusal('accessDenied');
+        }
+        const reply = MockBackend.prototype.handle.call(
+          backend,
+          endpoint,
+          request,
+        );
+        if (
+          endpoint !== learnerEndpoints.course ||
+          !reply ||
+          !('body' in reply)
+        ) {
+          return reply;
+        }
+        const data = reply.body.data as {
+          content: { revision: Record<string, unknown> };
+        };
+        data.content.revision['coverAssetId'] = 77;
+        return reply;
+      });
+      await open(1);
+    }
+
+    it('shows the revision’s cover beside the progress, read with no block', async () => {
+      await openWithCover(true);
+      const image = el.querySelector<HTMLImageElement>('.course__cover');
+      expect(image?.getAttribute('src')).toBe('blob:cover');
+      expect(image?.alt).toBe('');
+      expect(calls(courseEndpoints.getAssetContent)[0][1].params).toEqual({
+        assetId: '77',
+      });
+    });
+
+    it('shows nothing while the server refuses the file', async () => {
+      await openWithCover(false);
+      expect(el.querySelector('.course__cover')).toBeNull();
+      expect(heading()).toBe('Tổng quan hệ thống Core Banking');
     });
   });
 

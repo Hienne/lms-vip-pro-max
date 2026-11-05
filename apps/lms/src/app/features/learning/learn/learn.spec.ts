@@ -205,21 +205,17 @@ describe('Learn', () => {
       );
       expect(due[0].querySelector('app-due-date')).not.toBeNull();
       expect(el.querySelectorAll('app-reminder-item')).toHaveLength(3);
+      const disclosure = el.querySelector<HTMLDetailsElement>(
+        '.learn__reminder-disclosure',
+      )!;
+      expect(disclosure.open).toBe(false);
+      disclosure.querySelector('summary')!.click();
+      expect(disclosure.open).toBe(true);
       expect(
         Array.from(el.querySelectorAll('aside a')).some(
           (a) => a.getAttribute('href') === '/notifications',
         ),
       ).toBe(true);
-    });
-  });
-
-  describe('the course tabs', () => {
-    it('keep to one line: compact spacing, no wrapping row', async () => {
-      await open();
-      const list = el.querySelector('[role="tablist"]')!;
-      expect(list.classList.contains('tabs--compact')).toBe(true);
-      expect(list.classList.contains('tabs--wrap')).toBe(false);
-      expect(el.querySelectorAll('[ngTab]')).toHaveLength(5);
     });
   });
 
@@ -288,8 +284,8 @@ describe('Learn', () => {
       expect(rows[0].querySelector('ui-progress')).not.toBeNull();
       expect(
         el
-          .querySelector('#learn-competency')!
-          .compareDocumentPosition(journey()!) &
+          .querySelector('#learn-programs')!
+          .compareDocumentPosition(el.querySelector('#learn-competency')!) &
           Node.DOCUMENT_POSITION_FOLLOWING,
       ).toBeTruthy();
       expect(
@@ -350,7 +346,7 @@ describe('Learn', () => {
       }
     });
 
-    it('lists "Công cụ học nhanh" with two links, below the due list and above the reminders', () => {
+    it('lists the two quick tools after the deadline panel and its reminders', () => {
       const tools = el.querySelector('#learn-tools')!;
       expect(tools.tagName).toBe('H2');
       expect(tools.textContent).toContain('Công cụ học nhanh');
@@ -375,7 +371,7 @@ describe('Learn', () => {
         position('#learn-due') & Node.DOCUMENT_POSITION_FOLLOWING,
       ).toBeTruthy();
       expect(
-        tools.compareDocumentPosition(el.querySelector('#learn-reminders')!) &
+        el.querySelector('#learn-reminders')!.compareDocumentPosition(tools) &
           Node.DOCUMENT_POSITION_FOLLOWING,
       ).toBeTruthy();
     });
@@ -402,20 +398,21 @@ describe('Learn', () => {
       );
     }
 
-    it('follows the continue card with the total and the streak, a link to the leaderboard', async () => {
+    it('keeps rewards in the side column and links to the leaderboard', async () => {
       await open();
-      expect(cells()).toEqual(['Điểm thưởng', '80', 'Chuỗi 2 ngày']);
+      expect(cells()).toEqual(['Điểm thưởng', '80', 'Chuỗi học', '2 ngày']);
       expect(figure()!.querySelector('a')?.getAttribute('href')).toBe(
         '/leaderboard',
       );
       const card = el.querySelector('app-continue-card')!;
-      expect(card.parentElement).toBe(figure()!.parentElement);
+      expect(card.closest('.learn__main')).not.toBeNull();
+      expect(figure()!.closest('.learn__side')).not.toBeNull();
       expect(
         card.compareDocumentPosition(figure()!) &
           Node.DOCUMENT_POSITION_FOLLOWING,
       ).toBeTruthy();
       expect(
-        figure()!.compareDocumentPosition(el.querySelector('app-learn-kpis')!) &
+        el.querySelector('app-learn-kpis')!.compareDocumentPosition(figure()!) &
           Node.DOCUMENT_POSITION_FOLLOWING,
       ).toBeTruthy();
       expect(
@@ -430,12 +427,12 @@ describe('Learn', () => {
         streakDays: 0,
       });
       await open();
-      expect(cells()).toEqual(['Điểm thưởng', '0', 'Chuỗi 0 ngày']);
+      expect(cells()).toEqual(['Điểm thưởng', '0', 'Chuỗi học', '0 ngày']);
     });
 
     it('shows for a learner whose courses have no quiz', async () => {
       await open('giangvien', '000005');
-      expect(cells()).toEqual(['Điểm thưởng', '40', 'Chuỗi 2 ngày']);
+      expect(cells()).toEqual(['Điểm thưởng', '40', 'Chuỗi học', '2 ngày']);
     });
 
     it('is hidden when the read fails, and nothing else is', async () => {
@@ -451,26 +448,19 @@ describe('Learn', () => {
     it('does not wait for the summary', async () => {
       fail(learnerEndpoints.progressSummary);
       await open();
-      expect(cells()).toEqual(['Điểm thưởng', '80', 'Chuỗi 2 ngày']);
+      expect(cells()).toEqual(['Điểm thưởng', '80', 'Chuỗi học', '2 ngày']);
     });
   });
 
   describe('a learner who has not taken a quiz yet', () => {
-    it('sees dashes and "Chưa làm bài kiểm tra", and no "Đạt" verdict', async () => {
+    it('combines empty quiz results without a pass verdict', async () => {
       await open('hocvien.tichhop', '000007');
       const cells = Array.from(
         el.querySelectorAll(
           'app-learn-kpis a:nth-of-type(n+2) dt, app-learn-kpis a:nth-of-type(n+2) dd',
         ),
       ).map((node) => node.textContent?.replace(/\s+/g, ' ').trim());
-      expect(cells).toEqual([
-        'Điểm kiểm tra gần nhất',
-        '—',
-        'Chưa làm bài kiểm tra',
-        'Điểm cao nhất',
-        '—',
-        'Đạt 0/2 bài kiểm tra',
-      ]);
+      expect(cells).toEqual(['Kết quả kiểm tra', '—', 'Chưa làm bài kiểm tra']);
       expect(el.querySelector('app-learn-kpis')!.textContent).not.toMatch(
         /Đạt ·/,
       );
@@ -478,19 +468,14 @@ describe('Learn', () => {
   });
 
   describe('a learner whose courses have no quiz', () => {
-    it('sees dashes under both score figures and no error', async () => {
+    it('shows one empty score figure without an error', async () => {
       await open('giangvien', '000005');
       const scores = Array.from(
         el.querySelectorAll('app-learn-kpis a:nth-of-type(n+2) dd'),
       ).map((node) => node.textContent?.replace(/\s+/g, ' ').trim());
-      expect(scores).toEqual([
-        '—',
-        'Chưa có bài kiểm tra',
-        '—',
-        'Chưa có bài kiểm tra',
-      ]);
+      expect(scores).toEqual(['—', 'Chưa có bài kiểm tra']);
       expect(text()).not.toContain('Không tải được');
-      expect(el.querySelectorAll('app-learn-kpis dt')).toHaveLength(4);
+      expect(el.querySelectorAll('app-learn-kpis dt')).toHaveLength(3);
     });
   });
 
@@ -572,10 +557,10 @@ describe('Learn', () => {
       await open();
       const heading = el.querySelector('#learn-competency')!;
       expect(heading.tagName).toBe('H2');
-      expect(heading.textContent).toContain('Biểu đồ năng lực');
+      expect(heading.textContent).toContain('Năng lực');
       const link = card().querySelector('a')!;
       expect(link.textContent?.trim()).toBe('Chi tiết');
-      expect(link.getAttribute('href')).toBe('/progress');
+      expect(link.getAttribute('href')).toBe('/progress?tab=competency');
       expect(card().querySelector('button')).toBeNull();
       expect(
         el.querySelector('#learn-courses')!.compareDocumentPosition(heading) &
@@ -601,7 +586,7 @@ describe('Learn', () => {
           : MockBackend.prototype.handle.call(backend, e, request),
       );
       await open();
-      expect(card().textContent).toContain('Chưa có dữ liệu năng lực');
+      expect(card().textContent).toContain('Chưa có dữ liệu kiểm tra.');
       expect(card().querySelector('ui-radar-chart')).toBeNull();
     });
 

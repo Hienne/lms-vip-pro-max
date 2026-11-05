@@ -34,7 +34,7 @@ describe('PointsFigure', () => {
       Array.from(root.querySelectorAll('dt, dd')).map((node) =>
         node.textContent?.replace(/\s+/g, ' ').trim(),
       ),
-    ).toEqual(['Điểm thưởng', '80', 'Chuỗi 2 ngày']);
+    ).toEqual(['Điểm thưởng', '80', 'Chuỗi học', '2 ngày']);
   });
 
   it('shows a learner with nothing yet as 0 points and a streak of 0 days', () => {
@@ -47,6 +47,6 @@ describe('PointsFigure', () => {
       Array.from(root.querySelectorAll('dd')).map((node) =>
         node.textContent?.replace(/\s+/g, ' ').trim(),
       ),
-    ).toEqual(['0', 'Chuỗi 0 ngày']);
+    ).toEqual(['0', '0 ngày']);
   });
 });

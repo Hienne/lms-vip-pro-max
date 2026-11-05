@@ -112,6 +112,20 @@ describe('Assignments', () => {
     expect(screen.text(detail)).toContain('Học viên tiền gửi Demo');
     expect(rows()[0]).toContain('Cán bộ mới quý IV');
     expect(rows()[0]).toContain('Đang hiệu lực');
+    const firstRow = screen.el.querySelector('tbody tr')!;
+    const date = (iso: string) =>
+      new Date(iso).toLocaleDateString('vi-VN', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+      });
+    expect(
+      screen.text(firstRow.querySelector('[data-label="Bắt đầu"]')!).trim(),
+    ).toBe(date(body.startAt));
+    const deadline = screen.text(
+      firstRow.querySelector('[data-label="Hạn hoàn thành"]')!,
+    );
+    expect(deadline.match(/\d{2}\/\d{2}\/\d{4}/g)).toEqual([date(body.dueAt!)]);
   });
 
   it('needs a target and a due date after the start', async () => {

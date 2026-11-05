@@ -1,11 +1,31 @@
 // Tree: ported from the mockup's `.tree` block (components.css). Applied by `ui-tree`; the rows
 // are `role="treeitem"` items of the aria tree, selected by `aria-selected`.
+@use 'ui';
+
 @layer components {
   .tree {
     margin: 0;
     padding: 0;
     list-style: none;
     font-size: var(--text-sm);
+
+    &--wrap-labels {
+      .tree__node {
+        align-items: flex-start;
+        padding-block: ui.space(2);
+      }
+
+      .tree__toggle,
+      .tree__node > ui-icon {
+        flex: none;
+      }
+
+      .tree__label {
+        min-width: 0;
+        white-space: normal;
+        overflow-wrap: anywhere;
+      }
+    }
 
     &--nested {
       margin-left: 14px;
