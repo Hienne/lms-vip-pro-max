@@ -40,7 +40,8 @@ import {
   type QuizDetailV1,
 } from '@lms/contracts';
 import { AssessmentScreenStore } from './data-access/assessment-screen.store';
-import { QuestionImport } from './question-import/question-import';
+import { QuestionImport } from '../../../shared/quiz/question-import/question-import';
+import { QUESTION_IMPORT_HOST } from '../../../shared/quiz/question-import/data-access/question-import.host';
 
 const questionSchema = SaveQuestionSchema.omit({
   domainId: true,
@@ -224,7 +225,20 @@ function quizValue(
     Spinner,
     Textarea,
   ],
-  providers: [AssessmentScreenStore],
+  providers: [
+    AssessmentScreenStore,
+    {
+      provide: QUESTION_IMPORT_HOST,
+      useFactory: () => {
+        const store = inject(AssessmentScreenStore);
+        return {
+          programId$: store.selectedProgramId$,
+          finishImport: () => store.finishImport(),
+          closeImport: () => store.closeImport(),
+        };
+      },
+    },
+  ],
   templateUrl: './assessment-screen.html',
   styleUrl: './assessment-screen.scss',
 })

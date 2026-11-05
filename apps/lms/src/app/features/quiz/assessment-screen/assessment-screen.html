@@ -108,7 +108,7 @@
         Chương trình sau
       </button>
     </div>
-    } } @else {
+    } } @else { @if (store.routeScreen$() !== 'config') {
     <ui-field label="Chương trình">
       <select
         uiSelect
@@ -130,6 +130,7 @@
         }
       </select>
     </ui-field>
+    }
     <ui-search
       label="Tìm khóa học quản lý"
       placeholder="Tìm khóa học…"
@@ -179,7 +180,12 @@
     </button>
     } }
   </div>
-  @if (store.routeScreen$() === 'questions' && store.selectedProgramId$()) {
+  @if (store.routeScreen$() === 'config' && store.selectedProgramId$()) {
+  <p>
+    Câu hỏi lấy từ ngân hàng của chương trình
+    <strong>{{store.selectedProgramTitle$()}}</strong>.
+  </p>
+  } @if (store.routeScreen$() === 'questions' && store.selectedProgramId$()) {
   <div class="assessment__filters">
     <div class="row row--gap-3">
       <ui-search
@@ -241,7 +247,6 @@
 @if (store.isNewQuiz$()) {
 <p class="assessment__muted">
   Bài kiểm tra thuộc khóa học đã chọn và dùng câu hỏi chung của chương trình đó.
-  Đổi chương trình sẽ bỏ các câu hỏi đang chọn; các thông tin khác được giữ lại.
 </p>
 } } @if (store.isLoading$()) {
 <div class="assessment__loading" role="status">

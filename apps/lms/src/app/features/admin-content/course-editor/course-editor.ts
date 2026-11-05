@@ -142,6 +142,10 @@ export class CourseEditor implements HasUnsavedChanges {
   };
 
   constructor() {
+    this.store.registerExamAttacher((quizId) => {
+      this.model.update((value) => ({ ...value, finalQuizId: String(quizId) }));
+      this.store.save(this.command());
+    });
     this.store.registerStepChecks(
       this.stepFields().map((fields) => ({
         invalid: () => fields.some((field) => field().invalid()),
@@ -165,7 +169,7 @@ export class CourseEditor implements HasUnsavedChanges {
   /** "Tiếp tục": when the step stays because of an error, the first one gets focus. */
   protected continue(): void {
     const step = this.store.step$();
-    if (this.store.continue()) return;
+    if (this.store.continue(this.draftValue())) return;
     this.stepFields()
       [step]?.find((field) => field().invalid())?.()
       .errorSummary()[0]

@@ -7,6 +7,7 @@ import {
   QuizRequestV1Schema,
   QuizPoolRequestV1Schema,
   type AnyEndpoint,
+  type Course,
   type Me,
   type QuestionDetailV1,
   type QuizDetailV1,
@@ -67,9 +68,21 @@ const inOrg = (
   return false;
 };
 
+/** Who owns a course and which program its latest revision is in: what the quiz rules look at. */
+export type CourseOwnership = Pick<
+  Course,
+  'ownerOrgId' | 'ownerTeamId' | 'ownerUserId'
+> & { readonly programId: number | null };
+
 /** Development fixtures for the verified Java wire shapes; never a replacement for Java security or grading. */
 export class AssessmentAuthoringMock {
-  constructor(private readonly caller: (request: FakeRequest) => Me) {}
+  constructor(
+    private readonly caller: (request: FakeRequest) => Me,
+    /** The course as the learning service holds it now, a course made in this session included. */
+    private readonly courseOf: (
+      courseId: number | null,
+    ) => CourseOwnership | undefined,
+  ) {}
   private nextId = 1000;
 
   /** The status of a quiz, for the learning service's publish check; `undefined` when it is gone. */
@@ -207,9 +220,7 @@ export class AssessmentAuthoringMock {
       updated: 0,
     };
     if (dryRun) return ok(result);
-    const programId =
-      courseDetailFixtures.find((c) => c.course.id === courseId)?.revision
-        .programId ?? 0;
+    const programId = this.courseOf(courseId)?.programId ?? 0;
     this.questions = [
       ...this.questions.filter(
         (q) => !(q.courseId === courseId && codes.includes(q.code)),
@@ -268,9 +279,7 @@ export class AssessmentAuthoringMock {
     );
   }
   private canManage(me: Me, courseId: number | null): boolean {
-    const course = courseDetailFixtures.find(
-      (c) => c.course.id === courseId,
-    )?.course;
+    const course = this.courseOf(courseId);
     if (!course) return false;
     return me.roleGrants.some((g) => {
       if (g.roleCode === 'SUPER_ADMIN' && g.scope.type === 'GLOBAL')
@@ -460,8 +469,7 @@ export class AssessmentAuthoringMock {
       programMode && questionOperation
         ? !(endpoint === api.questions && r.query['courseId']
             ? this.canManage(me, courseId) &&
-              courseDetailFixtures.find((c) => c.course.id === courseId)
-                ?.revision.programId === programId
+              this.courseOf(courseId)?.programId === programId
             : this.canManageProgram(me, programId))
         : !this.canManage(me, courseId)
     )
@@ -575,8 +583,7 @@ export class AssessmentAuthoringMock {
       const item: QuestionDetailV1 & { programId: number } = {
         programId: programMode
           ? programId
-          : (courseDetailFixtures.find((c) => c.course.id === command.courseId)
-              ?.revision.programId ?? 0),
+          : (this.courseOf(command.courseId)?.programId ?? 0),
         ...command,
         id: question?.id ?? this.nextId++,
         code: command.code || `Q${this.nextId}`,
@@ -630,6 +637,19 @@ export class AssessmentAuthoringMock {
           detail.quiz.rowVersion !== Number(r.query['expectedVersion']))
       )
         return fail('ASSESSMENT-CONFLICT', 'Dữ liệu đã thay đổi.');
+      if (
+        parsed.data.quizType === 'FINAL_EXAM' &&
+        this.quizzes.some(
+          (q) =>
+            q.quiz.courseId === parsed.data.courseId &&
+            q.quiz.quizType === 'FINAL_EXAM' &&
+            q.quiz.id !== detail?.quiz.id,
+        )
+      )
+        return fail(
+          'ASSESSMENT-DUPLICATE',
+          'Khóa học đã có bài thi cuối khóa.',
+        );
       const item: QuizDetailV1 = {
         quiz: {
           ...parsed.data,
@@ -662,9 +682,7 @@ export class AssessmentAuthoringMock {
             !this.questions.some(
               (q) =>
                 q.id === p.questionId &&
-                q.programId ===
-                  courseDetailFixtures.find((c) => c.course.id === courseId)
-                    ?.revision.programId,
+                q.programId === this.courseOf(courseId)?.programId,
             ),
         )
       )

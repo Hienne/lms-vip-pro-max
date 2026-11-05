@@ -386,6 +386,22 @@ describe('AssessmentScreen (admin)', () => {
       ?.componentInstance as AssessmentScreen;
     expect(screen.hasUnsavedChanges()).toBe(true);
   });
+  it('creates a quiz from the course alone and shows the program as text', async () => {
+    await open('/admin/quizzes/new?programId=2');
+    expect(
+      el.querySelector('select[aria-label="Chương trình của bài kiểm tra"]'),
+    ).toBeNull();
+    expect(
+      el.querySelector('select[aria-label="Khóa học quản lý"]'),
+    ).toBeTruthy();
+    expect(text()).toContain('Câu hỏi lấy từ ngân hàng của chương trình');
+  });
+  it('keeps the program filter on the quiz list', async () => {
+    await open('/admin/quizzes');
+    expect(
+      el.querySelector('select[aria-label="Chương trình của bài kiểm tra"]'),
+    ).toBeTruthy();
+  });
   it('keeps quiz settings but clears incompatible selected questions on a program change', async () => {
     await open('/admin/quizzes/new?programId=2');
     enterQuizTitle('Giữ thông tin bài thi');

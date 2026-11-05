@@ -1,5 +1,6 @@
 import {
   applyEach,
+  disabled,
   max,
   maxLength,
   min,
@@ -11,6 +12,9 @@ import {
 import { COURSE_LIMITS } from '@lms/contracts';
 import type { CourseDraftValue } from './course-draft';
 
+/** Why step 1's program is locked while a final exam is attached. */
+export const PROGRAM_LOCKED_HINT = 'Gỡ bài thi cuối khóa để đổi chương trình.';
+
 /** What the editor checks before a save; the server checks the rest on save and on publish. */
 export function courseDraftSchema(
   path: SchemaPathTree<CourseDraftValue>,
@@ -20,6 +24,11 @@ export function courseDraftSchema(
     message: `Tên khóa học tối đa ${COURSE_LIMITS.title} ký tự.`,
   });
   required(path.programId, { message: 'Chọn chương trình.' });
+  // The exam's pool comes from this program's bank, so the program cannot move under it.
+  disabled(path.programId, {
+    when: ({ valueOf }) =>
+      valueOf(path.finalQuizId) !== '' ? PROGRAM_LOCKED_HINT : false,
+  });
   maxLength(path.summary, COURSE_LIMITS.summary, {
     message: `Mô tả tối đa ${COURSE_LIMITS.summary} ký tự.`,
   });

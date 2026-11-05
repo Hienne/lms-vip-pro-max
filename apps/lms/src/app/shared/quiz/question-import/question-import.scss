@@ -3,6 +3,10 @@
 .question-import {
   @include ui.stack(4);
 
+  &__course {
+    margin: 0;
+  }
+
   &__lead {
     margin: 0;
     color: ui.color(text-muted);

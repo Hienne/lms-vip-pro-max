@@ -4,6 +4,7 @@ import {
   assessmentV1Endpoints,
   assetEndpoints,
   courseEndpoints,
+  programAssessmentEndpoints,
   MEDIA_PROCESSING_UNAVAILABLE_CODE,
   type AnyEndpoint,
   type CreateCourseCommand,
@@ -13,10 +14,12 @@ import {
   ARCHITECTURE_VIDEO,
   backendRefusal,
   envelopeError,
+  envelopeOk,
   type FakeReply,
   type FakeRequest,
 } from '@lms/mocks';
 import { NEVER } from 'rxjs';
+import { fakeSession } from '../../../core/session/session.testing';
 import { setUpAdminScreen } from '../../../core/dev/mock-api/admin-screen.testing';
 import { MockBackend } from '../../../core/dev/mock-api/mock-api.interceptor';
 import { CourseEditor } from './course-editor';
@@ -954,7 +957,7 @@ describe('CourseEditor', () => {
         ) as FakeReply;
 
       /** The quizzes of course 1 stand in for the edited course's; `status` is the final exam's. */
-      const listQuizzes = (status = 'PUBLISHED') =>
+      const listQuizzes = (status = 'PUBLISHED', selectionMode = 'FIXED') =>
         screen.calls.mockImplementation((endpoint, request) => {
           if (endpoint !== assessmentV1Endpoints.courseQuizList)
             return original(endpoint, request);
@@ -963,10 +966,17 @@ describe('CourseEditor', () => {
             query: { ...request.query, courseId: '1' },
           });
           const { items } = reply.body.data as {
-            items: { quizType: string; status: string }[];
+            items: {
+              quizType: string;
+              status: string;
+              selectionMode: string;
+            }[];
           };
           for (const item of items)
-            if (item.quizType === 'FINAL_EXAM') item.status = status;
+            if (item.quizType === 'FINAL_EXAM') {
+              item.status = status;
+              item.selectionMode = selectionMode;
+            }
           return reply;
         });
 
@@ -983,9 +993,6 @@ describe('CourseEditor', () => {
         await step('Bài thi & điều kiện');
 
         expect(screen.text()).toContain('Bài kiểm tra cuối khóa');
-        expect(screen.text()).toContain(
-          'Cấu hình thời gian, số câu, điểm đạt, số lần thi tại màn Bài kiểm tra.',
-        );
         expect(labels()).toEqual([
           'Không yêu cầu bài kiểm tra',
           'Thi cuối khóa: Tổng quan hệ thống Core Banking',
@@ -1030,6 +1037,29 @@ describe('CourseEditor', () => {
         ).not.toHaveProperty('finalQuizId');
       });
 
+      it('locks the program on step 1 while a final exam is attached', async () => {
+        listQuizzes();
+        await screen.open('/admin/courses/6/edit');
+        const program = () => screen.field('Chương trình') as HTMLSelectElement;
+        expect(program().disabled).toBe(false);
+        expect(screen.text()).not.toContain(
+          'Gỡ bài thi cuối khóa để đổi chương trình.',
+        );
+
+        await step('Bài thi & điều kiện');
+        await screen.choose(exam(), '2');
+        await step('Thông tin cơ bản');
+        expect(program().disabled).toBe(true);
+        expect(screen.text()).toContain(
+          'Gỡ bài thi cuối khóa để đổi chương trình.',
+        );
+
+        await step('Bài thi & điều kiện');
+        await screen.choose(exam(), '');
+        await step('Thông tin cơ bản');
+        expect(program().disabled).toBe(false);
+      });
+
       it('says to create one when the course has no final exam', async () => {
         await screen.open('/admin/courses/6/edit');
         await step('Bài thi & điều kiện');
@@ -1038,16 +1068,520 @@ describe('CourseEditor', () => {
         expect(screen.text()).toContain('Khóa học chưa có bài thi cuối khóa.');
       });
 
-      it('links to the quiz screen to create the final exam of this course', async () => {
+      /** The program bank of the edited course holds this many active questions. */
+      const bankOf = (count: number) =>
+        screen.calls.mockImplementation((endpoint, request) => {
+          const reply = original(endpoint, request);
+          if (endpoint === programAssessmentEndpoints.questions)
+            (reply.body.data as { totalElements: number }).totalElements =
+              count;
+          return reply;
+        });
+
+      const button = (label: string) =>
+        screen.button(label, screen.el.querySelector('app-course-rules')!);
+
+      it('says how many questions the bank holds and offers to create the exam when there is none', async () => {
+        bankOf(24);
         await screen.open('/admin/courses/6/edit');
         await step('Bài thi & điều kiện');
 
-        const link = Array.from(screen.el.querySelectorAll('a')).find((a) =>
-          a.textContent?.includes('Tạo bài thi cuối khóa'),
+        expect(screen.text()).toContain('Khóa học chưa có bài thi cuối khóa.');
+        expect(screen.text()).toMatch(
+          /Ngân hàng chương trình .+ có 24 câu đang dùng\./,
         );
-        expect(link?.getAttribute('href')).toBe(
-          '/admin/quizzes/new?courseId=6&quizType=FINAL_EXAM',
+        expect(button('Tạo bài thi cuối khóa')).toBeTruthy();
+        expect(
+          screen.lastCall(programAssessmentEndpoints.questions)?.query,
+        ).toMatchObject({
+          programId: '4',
+          courseId: '6',
+          status: 'ACTIVE',
+        });
+      });
+
+      it('summarises an exam the wizard manages, with "Sửa" and the advanced settings', async () => {
+        listQuizzes('PUBLISHED', 'RANDOM_POOL');
+        await screen.open('/admin/courses/6/edit');
+        await step('Bài thi & điều kiện');
+
+        const card = screen.text(screen.el.querySelector('app-course-rules')!);
+        expect(card).toContain(
+          'Thi cuối khóa: Tổng quan hệ thống Core Banking',
         );
+        expect(card).toContain('15 phút');
+        expect(card).toContain('2 câu');
+        expect(card).toContain('80%');
+        expect(card).toContain('Đã xuất bản');
+        expect(button('Sửa')).toBeTruthy();
+        const advanced = Array.from(screen.el.querySelectorAll('a')).find((a) =>
+          a.textContent?.includes('Cấu hình nâng cao'),
+        );
+        expect(advanced?.getAttribute('href')).toBe(
+          '/admin/quizzes/2?courseId=1',
+        );
+      });
+
+      it('shows a customised (FIXED) exam without "Sửa"', async () => {
+        listQuizzes('PUBLISHED', 'FIXED');
+        await screen.open('/admin/courses/6/edit');
+        await step('Bài thi & điều kiện');
+
+        expect(button('Sửa')).toBeUndefined();
+        expect(screen.text()).toContain('Cấu hình nâng cao');
+        expect(screen.text()).toContain('chỉnh được ở màn Bài kiểm tra');
+      });
+
+      it('offers a retry when the quizzes cannot be read, and keeps "no exam" selectable', async () => {
+        screen.calls.mockImplementation((endpoint, request) =>
+          endpoint === assessmentV1Endpoints.courseQuizList
+            ? backendRefusal('internalError')
+            : original(endpoint, request),
+        );
+        await screen.open('/admin/courses/6/edit');
+        await step('Bài thi & điều kiện');
+
+        expect(screen.text()).toContain(
+          'Không tải được danh sách bài kiểm tra',
+        );
+        expect(button('Thử lại')).toBeTruthy();
+        expect(labels()).toEqual(['Không yêu cầu bài kiểm tra']);
+      });
+
+      describe('creating it from the short form', () => {
+        const openForm = async () => {
+          await screen.open('/admin/courses/6/edit');
+          await step('Bài thi & điều kiện');
+          await screen.click(button('Tạo bài thi cuối khóa'));
+        };
+        const value = (label: string) =>
+          (screen.field(label) as HTMLInputElement).value;
+
+        it('starts from the quiz screen defaults', async () => {
+          await openForm();
+
+          expect(value('Tên bài thi')).toBe(
+            'Thi cuối khóa: An toàn thông tin cho cán bộ CNTT',
+          );
+          expect(value('Thời gian (phút)')).toBe('15');
+          expect(value('Số câu mỗi lượt')).toBe('1');
+          expect(value('Điểm đạt (%)')).toBe('70');
+          expect(value('Số lần thi tối đa')).toBe('3');
+        });
+
+        it('limits the default question count to the bank and to ten', async () => {
+          bankOf(24);
+          await openForm();
+          expect(value('Số câu mỗi lượt')).toBe('10');
+        });
+
+        it('explains an invalid value on its field and creates nothing', async () => {
+          await openForm();
+          await screen.type(
+            screen.field('Thời gian (phút)') as HTMLInputElement,
+            '0',
+          );
+          await screen.click(button('Tạo bài thi'));
+
+          expect(screen.text()).toContain('Thời gian tối thiểu 1.');
+          expect(screen.callsTo(assessmentV1Endpoints.createQuiz)).toBe(0);
+        });
+
+        it('creates a random-pool final exam, fills its pool, and puts it on the draft', async () => {
+          await openForm();
+          await screen.type(
+            screen.field('Tên bài thi') as HTMLInputElement,
+            'Thi hết khóa ATTT',
+          );
+          await screen.type(
+            screen.field('Số lần thi tối đa') as HTMLInputElement,
+            '2',
+          );
+          await screen.click(button('Tạo bài thi'));
+          await vi.waitFor(() =>
+            expect(screen.callsTo(courseEndpoints.saveDraft)).toBe(1),
+          );
+
+          expect(
+            screen.lastCall(assessmentV1Endpoints.createQuiz)?.body,
+          ).toMatchObject({
+            courseId: 6,
+            title: 'Thi hết khóa ATTT',
+            quizType: 'FINAL_EXAM',
+            selectionMode: 'RANDOM_POOL',
+            timeLimitMinutes: 15,
+            passPercent: 70,
+            maxAttempts: 2,
+            shuffleQuestions: true,
+            shuffleOptions: true,
+            reviewPolicy: 'AFTER_SUBMIT',
+            scoringMode: 'ALL_OR_NOTHING',
+            scoreMethod: 'BEST',
+            openAt: null,
+            closeAt: null,
+            graceSeconds: 0,
+            retakeWaitHours: 0,
+          });
+          expect(screen.callsTo(assessmentV1Endpoints.replacePool)).toBe(1);
+          expect(
+            screen.lastCall(courseEndpoints.saveDraft)?.body,
+          ).toMatchObject({
+            finalQuizId: expect.any(Number),
+          });
+          await vi.waitFor(() =>
+            expect(screen.text()).toContain('Thi hết khóa ATTT'),
+          );
+          expect(screen.text(document.body)).toContain(
+            'Đã lưu bài thi cuối khóa',
+          );
+          expect(button('Sửa')).toBeTruthy();
+        });
+
+        it('keeps the exam when its pool is refused, and retries only the pool', async () => {
+          let refuse = true;
+          screen.calls.mockImplementation((endpoint, request) =>
+            endpoint === assessmentV1Endpoints.replacePool && refuse
+              ? backendRefusal('internalError')
+              : original(endpoint, request),
+          );
+          await openForm();
+          await screen.click(button('Tạo bài thi'));
+          await vi.waitFor(() =>
+            expect(screen.text()).toContain('chưa ghi được câu hỏi'),
+          );
+          expect(screen.callsTo(assessmentV1Endpoints.createQuiz)).toBe(1);
+
+          refuse = false;
+          await screen.click(button('Thử lại'));
+          await vi.waitFor(() =>
+            expect(screen.text()).not.toContain('chưa ghi được câu hỏi'),
+          );
+          expect(screen.callsTo(assessmentV1Endpoints.createQuiz)).toBe(1);
+          expect(screen.callsTo(assessmentV1Endpoints.replacePool)).toBe(2);
+        });
+
+        it('writes at most 2000 questions and says the newest are used', async () => {
+          const pageOf = (page: number) => ({
+            items: Array.from({ length: 100 }, (_, i) => ({
+              id: 10_000 - page * 100 - i,
+              code: `Q${i}`,
+              programId: 4,
+              courseId: 6,
+              lessonId: null,
+              competencyId: 1,
+              competencyName: 'Quản lý CIF',
+              questionType: 'SINGLE',
+              contentPreview: 'Câu hỏi',
+              difficulty: 'EASY',
+              points: 1,
+              status: 'ACTIVE',
+              contentVersion: 1,
+              optionCount: 4,
+              correctCount: 1,
+              usedInQuizCount: 0,
+              rowVersion: 0,
+              updateTime: '2026-11-01T02:00:00Z',
+            })),
+            page,
+            size: 100,
+            totalElements: 2050,
+            totalPages: 21,
+          });
+          let pool: unknown[] = [];
+          screen.calls.mockImplementation((endpoint, request) => {
+            if (endpoint === programAssessmentEndpoints.questions)
+              return {
+                status: 200,
+                body: envelopeOk(pageOf(Number(request.query['page'] ?? 0))),
+              } as FakeReply;
+            if (endpoint === assessmentV1Endpoints.replacePool) {
+              pool = (request.body as { items: unknown[] }).items;
+              return original(endpoint, {
+                ...request,
+                body: { items: [] },
+              });
+            }
+            return original(endpoint, request);
+          });
+          await openForm();
+          expect(screen.text()).toContain('Bài thi dùng 2000 câu mới nhất');
+          await screen.click(button('Tạo bài thi'));
+          await vi.waitFor(() => expect(pool).toHaveLength(2000));
+        });
+      });
+
+      describe('editing it', () => {
+        /** Course 6 gets a wizard-made exam, then its "Sửa" form opens. */
+        const openEdit = async () => {
+          await screen.open('/admin/courses/6/edit');
+          await step('Bài thi & điều kiện');
+          await screen.click(button('Tạo bài thi cuối khóa'));
+          await screen.click(button('Tạo bài thi'));
+          await vi.waitFor(() => expect(button('Sửa')).toBeTruthy());
+          await screen.click(button('Sửa'));
+          await vi.waitFor(() =>
+            expect(screen.field('Thời gian (phút)')).toBeTruthy(),
+          );
+        };
+
+        it('fills the form from the stored exam and saves the changes over it', async () => {
+          await openEdit();
+          expect(
+            (screen.field('Số lần thi tối đa') as HTMLInputElement).value,
+          ).toBe('3');
+          await screen.type(
+            screen.field('Thời gian (phút)') as HTMLInputElement,
+            '30',
+          );
+          await screen.click(button('Lưu thay đổi'));
+          await vi.waitFor(() =>
+            expect(screen.callsTo(assessmentV1Endpoints.updateQuiz)).toBe(1),
+          );
+
+          const update = screen.lastCall(assessmentV1Endpoints.updateQuiz);
+          expect(update?.query).toMatchObject({ expectedVersion: '1' });
+          expect(update?.body).toMatchObject({
+            courseId: 6,
+            quizType: 'FINAL_EXAM',
+            selectionMode: 'RANDOM_POOL',
+            timeLimitMinutes: 30,
+            maxAttempts: 3,
+          });
+          await vi.waitFor(() => expect(screen.text()).toContain('30 phút'));
+          expect(screen.callsTo(assessmentV1Endpoints.replacePool)).toBe(2);
+        });
+
+        it('shows the server’s message and reads the exam again when its version moved', async () => {
+          await openEdit();
+          const reads = screen.callsTo(assessmentV1Endpoints.quiz);
+          screen.calls.mockImplementation((endpoint, request) =>
+            endpoint === assessmentV1Endpoints.updateQuiz
+              ? backendRefusal('stateConflict')
+              : original(endpoint, request),
+          );
+          await screen.click(button('Lưu thay đổi'));
+
+          await vi.waitFor(() =>
+            expect(screen.callsTo(assessmentV1Endpoints.quiz)).toBeGreaterThan(
+              reads,
+            ),
+          );
+          expect(
+            screen.el.querySelector('ui-alert[tone="danger"]'),
+          ).toBeTruthy();
+          expect(screen.field('Thời gian (phút)')).toBeTruthy();
+        });
+
+        it('never writes a customised (FIXED) exam', async () => {
+          listQuizzes('PUBLISHED', 'FIXED');
+          await screen.open('/admin/courses/6/edit');
+          await step('Bài thi & điều kiện');
+
+          expect(button('Sửa')).toBeUndefined();
+          expect(screen.callsTo(assessmentV1Endpoints.updateQuiz)).toBe(0);
+          expect(screen.callsTo(assessmentV1Endpoints.replacePool)).toBe(0);
+          expect(screen.callsTo(assessmentV1Endpoints.quiz)).toBe(0);
+        });
+      });
+
+      describe('when the bank is smaller than the exam', () => {
+        /** The wizard's exam on course 6 asks for one question, the bank holds none. */
+        const createExam = async () => {
+          await screen.open('/admin/courses/6/edit');
+          await step('Bài thi & điều kiện');
+          await screen.click(button('Tạo bài thi cuối khóa'));
+          await screen.click(button('Tạo bài thi'));
+          await vi.waitFor(() => expect(button('Sửa')).toBeTruthy());
+        };
+        const drawer = () =>
+          document.querySelector<HTMLElement>('[role="dialog"]') ?? undefined;
+        const press = (label: string) => {
+          const found = [...(drawer()?.querySelectorAll('button') ?? [])].find(
+            (b) => b.textContent?.includes(label),
+          );
+          if (!found) throw Error('Button missing: ' + label);
+          return found;
+        };
+        const importFile = async () => {
+          const input = drawer()?.querySelector<HTMLInputElement>(
+            'input[type="file"]',
+          ) as HTMLInputElement;
+          Object.defineProperty(input, 'files', {
+            configurable: true,
+            value: [new File([new Uint8Array(10)], 'cau-hoi.xlsx')],
+          });
+          input.dispatchEvent(new Event('change', { bubbles: true }));
+          await screen.settle();
+          await screen.click(press('Kiểm tra'));
+          await screen.click(press('Nhập câu hỏi'));
+        };
+
+        it('states both numbers and offers the import and the bank', async () => {
+          await createExam();
+
+          expect(screen.text()).toContain(
+            'Ngân hàng có 0 câu đang dùng, bài thi cần 1 câu.',
+          );
+          expect(button('Nhập từ Excel')).toBeTruthy();
+          const bank = Array.from(screen.el.querySelectorAll('a')).find((a) =>
+            a.textContent?.includes('Mở ngân hàng câu hỏi'),
+          );
+          expect(bank?.getAttribute('href')).toBe(
+            '/admin/questions?programId=4',
+          );
+        });
+
+        it('drops the bank link for someone without the question bank menu', async () => {
+          await createExam();
+          fakeSession().user.update((user) =>
+            user
+              ? {
+                  ...user,
+                  menus: user.menus.filter((m) => m !== 'QUESTION_BANK'),
+                }
+              : user,
+          );
+          await screen.settle();
+
+          expect(button('Nhập từ Excel')).toBeTruthy();
+          expect(screen.text()).not.toContain('Mở ngân hàng câu hỏi');
+        });
+
+        it('imports into this course, then the warning goes and the pool takes the new questions', async () => {
+          await createExam();
+          await screen.click(button('Nhập từ Excel'));
+          expect(drawer()?.textContent).toContain(
+            'An toàn thông tin cho cán bộ CNTT',
+          );
+          expect(drawer()?.querySelector('select')).toBeNull();
+          await importFile();
+
+          await vi.waitFor(() =>
+            expect(screen.text()).not.toContain('bài thi cần 1 câu'),
+          );
+          expect(
+            screen.lastCall(assessmentV1Endpoints.importQuestions)?.query,
+          ).toMatchObject({ courseId: '6', dryRun: 'false' });
+          expect(drawer()).toBeUndefined();
+          await vi.waitFor(() =>
+            expect(
+              (
+                screen.lastCall(assessmentV1Endpoints.replacePool)?.body as {
+                  items: unknown[];
+                }
+              ).items,
+            ).toHaveLength(3),
+          );
+        });
+      });
+
+      describe('publishing the course with its draft exam', () => {
+        const drawer = () =>
+          document.querySelector<HTMLElement>('[role="dialog"]') ?? undefined;
+        const press = (label: string) => {
+          const found = [...(drawer()?.querySelectorAll('button') ?? [])].find(
+            (b) => b.textContent?.includes(label),
+          );
+          if (!found) throw Error('Button missing: ' + label);
+          return found;
+        };
+        /** A wizard exam on course 6, with three questions imported so it can be published. */
+        const examWithQuestions = async () => {
+          await screen.open('/admin/courses/6/edit');
+          await step('Bài thi & điều kiện');
+          await screen.click(button('Tạo bài thi cuối khóa'));
+          await screen.click(button('Tạo bài thi'));
+          await vi.waitFor(() => expect(button('Sửa')).toBeTruthy());
+          await screen.click(button('Nhập từ Excel'));
+          const input = drawer()?.querySelector<HTMLInputElement>(
+            'input[type="file"]',
+          ) as HTMLInputElement;
+          Object.defineProperty(input, 'files', {
+            configurable: true,
+            value: [new File([new Uint8Array(10)], 'cau-hoi.xlsx')],
+          });
+          input.dispatchEvent(new Event('change', { bubbles: true }));
+          await screen.settle();
+          await screen.click(press('Kiểm tra'));
+          await screen.click(press('Nhập câu hỏi'));
+          await vi.waitFor(() => expect(drawer()).toBeUndefined());
+          await vi.waitFor(() =>
+            expect(screen.callsTo(assessmentV1Endpoints.replacePool)).toBe(2),
+          );
+        };
+        const publishCourse = async () => {
+          await step('Đối tượng & xuất bản');
+          await screen.click(screen.button('Xuất bản khóa học'));
+        };
+        const confirm = () =>
+          screen.click(screen.button('Xuất bản', screen.alertDialog()!));
+        const order = () =>
+          screen.calls.mock.calls
+            .map(([endpoint]) => endpoint)
+            .filter(
+              (endpoint) =>
+                endpoint === assessmentV1Endpoints.publishQuiz ||
+                endpoint === courseEndpoints.publish,
+            );
+
+        it('names the exam in the one confirmation, then publishes it before the course', async () => {
+          await examWithQuestions();
+          await publishCourse();
+
+          expect(screen.text(screen.alertDialog()!)).toContain(
+            'sẽ được xuất bản cùng khóa học',
+          );
+          await confirm();
+          await vi.waitFor(() => expect(screen.url()).toBe('/admin/courses'));
+
+          expect(order()).toEqual([
+            assessmentV1Endpoints.publishQuiz,
+            courseEndpoints.publish,
+          ]);
+          expect(screen.text(document.body)).toContain('Đã xuất bản khóa học');
+        });
+
+        it('does not publish the course when the exam is refused, and says why on step 3', async () => {
+          await screen.open('/admin/courses/6/edit');
+          await step('Bài thi & điều kiện');
+          await screen.click(button('Tạo bài thi cuối khóa'));
+          await screen.click(button('Tạo bài thi'));
+          await vi.waitFor(() => expect(button('Sửa')).toBeTruthy());
+          await publishCourse();
+          await confirm();
+
+          await vi.waitFor(() =>
+            expect(currentStep()).toContain('Bài thi & điều kiện'),
+          );
+          expect(screen.callsTo(courseEndpoints.publish)).toBe(0);
+          expect(screen.text()).toContain('Chưa đủ câu đang dùng.');
+          expect(screen.url()).toBe('/admin/courses/6/edit');
+        });
+
+        it('keeps the published exam when the course is refused, and a retry does not publish it again', async () => {
+          await examWithQuestions();
+          let refuse = true;
+          screen.calls.mockImplementation((endpoint, request) =>
+            endpoint === courseEndpoints.publish && refuse
+              ? backendRefusal('quizLessonUnlinked')
+              : original(endpoint, request),
+          );
+          await publishCourse();
+          await confirm();
+
+          await vi.waitFor(() =>
+            expect(screen.text(document.body)).toContain(
+              'Bài thi đã xuất bản, khóa học chưa xuất bản',
+            ),
+          );
+          expect(screen.callsTo(assessmentV1Endpoints.publishQuiz)).toBe(1);
+
+          refuse = false;
+          await screen.click(screen.button('Xuất bản khóa học'));
+          await confirm();
+          await vi.waitFor(() => expect(screen.url()).toBe('/admin/courses'));
+          expect(screen.callsTo(assessmentV1Endpoints.publishQuiz)).toBe(1);
+        });
       });
 
       it('requires the chosen exam to be published on the checklist', async () => {
@@ -1082,14 +1616,13 @@ describe('CourseEditor', () => {
         );
       });
 
-      it('shows only "save first" in create mode', async () => {
+      it('no longer asks to save the draft first in create mode', async () => {
         await screen.open('/admin/courses/new');
         await step('Bài thi & điều kiện');
 
-        expect(screen.text()).toContain('Lưu nháp trước để chọn bài kiểm tra');
-        expect(
-          screen.field('Bài kiểm tra dùng để xét hoàn thành'),
-        ).toBeUndefined();
+        expect(screen.text()).not.toContain(
+          'Lưu nháp trước để chọn bài kiểm tra',
+        );
         expect(screen.callsTo(assessmentV1Endpoints.courseQuizList)).toBe(0);
         expect(screen.text()).toContain(
           'Đạt bài kiểm tra cuối khóa (chưa chọn)',
@@ -1177,13 +1710,55 @@ describe('CourseEditor', () => {
       expect(screen.callsTo(courseEndpoints.createCourse)).toBe(0);
     });
 
-    it('moves on with "Tiếp tục" once the first step is valid', async () => {
+    it('creates the course on "Tiếp tục" once the first step is valid, and opens step 2 on its edit URL', async () => {
+      const navigate = vi.spyOn(TestBed.inject(Router), 'navigate');
       await screen.open('/admin/courses/new');
+      const page = screen.page<CourseEditor>();
       await fillBasics();
       await screen.click(screen.button('Tiếp tục'));
 
+      expect(screen.callsTo(courseEndpoints.createCourse)).toBe(1);
+      expect(navigate).toHaveBeenCalledWith(
+        ['/admin/courses', expect.any(Number), 'edit'],
+        { replaceUrl: true, queryParams: { step: 1 } },
+      );
+      expect(page.hasUnsavedChanges()).toBe(false);
+      await vi.waitFor(() =>
+        expect(screen.url()).toMatch(/^\/admin\/courses\/\d+\/edit\?step=1$/),
+      );
       expect(currentStep()).toContain('Nội dung khóa học');
+      expect(screen.text(document.body)).toContain('Đã lưu nháp');
       expect(screen.text()).not.toContain('Còn thông tin chưa hợp lệ');
+    });
+
+    it('stays on the first step with the code error when "Tiếp tục" meets a taken code', async () => {
+      await screen.open('/admin/courses/new');
+      await fillBasics('VH-301');
+      await screen.click(screen.button('Tiếp tục'));
+
+      expect(screen.callsTo(courseEndpoints.createCourse)).toBe(1);
+      expect(screen.url()).toBe('/admin/courses/new');
+      expect(currentStep()).toContain('Thông tin cơ bản');
+      expect(screen.text()).toContain('Mã khóa học đã tồn tại.');
+    });
+
+    it('stays on the first step with an alert when "Tiếp tục" is refused for another reason', async () => {
+      await screen.open('/admin/courses/new');
+      await fillBasics();
+      screen.calls.mockImplementation((endpoint, request) =>
+        endpoint === courseEndpoints.createCourse
+          ? backendRefusal('internalError')
+          : (MockBackend.prototype.handle.call(
+              TestBed.inject(MockBackend),
+              endpoint,
+              request,
+            ) as FakeReply),
+      );
+      await screen.click(screen.button('Tiếp tục'));
+
+      expect(screen.url()).toBe('/admin/courses/new');
+      expect(currentStep()).toContain('Thông tin cơ bản');
+      expect(screen.el.querySelector('ui-alert[tone="danger"]')).toBeTruthy();
     });
 
     it('marks a step done only while it is visited, valid and not open', async () => {
@@ -1195,7 +1770,7 @@ describe('CourseEditor', () => {
 
       await step('Thông tin cơ bản');
       await fillBasics();
-      await screen.click(screen.button('Tiếp tục'));
+      await step('Nội dung khóa học');
       expect(doneSteps()).toEqual(['Thông tin cơ bản']);
       expect(screen.text()).toContain('Đã hoàn thành');
 

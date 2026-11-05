@@ -377,10 +377,32 @@ export interface DraftCheck {
   readonly optional?: boolean;
 }
 
+/**
+ * The chosen final exam must be published, or be a draft the course publish publishes with it: the
+ * wizard's own (random pool). A closed one, or a draft the author selected questions for by hand,
+ * is published on the quiz screen first.
+ */
+function finalExamCheck(
+  exam: Pick<QuizSummary, 'status' | 'selectionMode'> | undefined,
+): DraftCheck {
+  const withCourse = exam?.status === 'DRAFT' && exam.selectionMode !== 'FIXED';
+  return withCourse
+    ? {
+        label: 'Bài kiểm tra cuối khóa sẽ được xuất bản cùng khóa học',
+        ok: true,
+        step: 2,
+      }
+    : {
+        label: 'Bài kiểm tra cuối khóa đã xuất bản',
+        ok: exam?.status === 'PUBLISHED',
+        step: 2,
+      };
+}
+
 /** The mockup's "Kiểm tra trước khi xuất bản"; the server still checks on publish. */
 export function draftChecks(
   value: CourseDraftValue,
-  quizzes: readonly Pick<QuizSummary, 'id' | 'status'>[] = [],
+  quizzes: readonly Pick<QuizSummary, 'id' | 'status' | 'selectionMode'>[] = [],
 ): readonly DraftCheck[] {
   const lessons = value.chapters.flatMap((c) => c.lessons);
   const finalQuizId = idOf(value.finalQuizId);
@@ -409,15 +431,7 @@ export function draftChecks(
       step: 2,
       optional: true,
     },
-    ...(finalQuizId
-      ? [
-          {
-            label: 'Bài kiểm tra cuối khóa đã xuất bản',
-            ok: finalQuiz?.status === 'PUBLISHED',
-            step: 2,
-          },
-        ]
-      : []),
+    ...(finalQuizId ? [finalExamCheck(finalQuiz)] : []),
   ];
 }
 

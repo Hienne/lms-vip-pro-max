@@ -1,0 +1,11 @@
+@use 'ui';
+
+.course-exam-form {
+  @include ui.stack(4);
+
+  &__numbers {
+    display: grid;
+    gap: ui.space(4);
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}

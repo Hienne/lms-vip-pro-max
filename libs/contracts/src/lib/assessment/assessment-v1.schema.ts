@@ -240,7 +240,7 @@ export const QuizPoolRequestV1Schema = z.object({
         points: z.number().min(0.01).max(9999.99).nullable(),
       }),
     )
-    .max(500),
+    .max(2000),
 });
 export type QuestionSummaryV1 = z.infer<typeof QuestionSummaryV1Schema>;
 export type QuestionDetailV1 = z.infer<typeof QuestionDetailV1Schema>;

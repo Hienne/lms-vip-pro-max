@@ -234,7 +234,9 @@ describe('course draft', () => {
       expect(find(none, 'đã xuất bản')).toBeUndefined();
 
       const chosen = { ...base, finalQuizId: '2' };
-      const draft = draftChecks(chosen, [{ id: 2, status: 'DRAFT' }]);
+      const draft = draftChecks(chosen, [
+        { id: 2, status: 'DRAFT', selectionMode: 'FIXED' },
+      ]);
       expect(find(draft, 'Đã cấu hình bài kiểm tra cuối khóa')?.ok).toBe(true);
       expect(find(draft, 'Bài kiểm tra cuối khóa đã xuất bản')).toMatchObject({
         ok: false,
@@ -244,10 +246,42 @@ describe('course draft', () => {
         undefined,
       );
 
-      const published = draftChecks(chosen, [{ id: 2, status: 'PUBLISHED' }]);
+      const published = draftChecks(chosen, [
+        { id: 2, status: 'PUBLISHED', selectionMode: 'FIXED' },
+      ]);
       expect(find(published, 'Bài kiểm tra cuối khóa đã xuất bản')?.ok).toBe(
         true,
       );
+    });
+
+    it('lets a draft exam of the wizard through, since the publish brings it along', () => {
+      const chosen = {
+        ...toDraftValue(eod),
+        objectives: ['Mục tiêu'],
+        finalQuizId: '2',
+      };
+      const checks = draftChecks(chosen, [
+        { id: 2, status: 'DRAFT', selectionMode: 'RANDOM_POOL' },
+      ]);
+
+      expect(
+        checks.find((c) => c.label.includes('xuất bản cùng khóa học')),
+      ).toMatchObject({ ok: true, step: 2 });
+      expect(checks.map((c) => c.label)).not.toContain(
+        'Bài kiểm tra cuối khóa đã xuất bản',
+      );
+    });
+
+    it.each([
+      ['a closed exam', 'CLOSED', 'RANDOM_POOL'],
+      ['a draft exam the author filled by hand', 'DRAFT', 'FIXED'],
+    ] as const)('still blocks %s', (_, status, selectionMode) => {
+      const chosen = { ...toDraftValue(eod), finalQuizId: '2' };
+      const checks = draftChecks(chosen, [{ id: 2, status, selectionMode }]);
+
+      expect(
+        checks.find((c) => c.label === 'Bài kiểm tra cuối khóa đã xuất bản'),
+      ).toMatchObject({ ok: false, step: 2 });
     });
   });
 

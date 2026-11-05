@@ -36,8 +36,10 @@ import {
   firstValueFrom,
   map,
   Observable,
+  of,
   switchMap,
   takeUntil,
+  tap,
   throwError,
   timer,
   type Subscription,
@@ -48,7 +50,7 @@ import { serverMutation } from '../../../../core/data-access/server-mutation';
 import { EndpointClient } from '../../../../core/http/endpoint-client';
 import { NetworkStore } from '../../../../core/network/network.store';
 import { SessionStore } from '../../../../core/session/session.store';
-import { toAppError } from '../../../../core/errors/app-error';
+import { toAppError, type AppError } from '../../../../core/errors/app-error';
 import {
   sameTarget,
   type TargetPick,
@@ -88,6 +90,7 @@ import {
   type PublishTargets,
 } from './publish-targets';
 import { Sha256Hasher } from './sha256-hasher';
+import { syncExamPool } from '../components/course-rules/data-access/exam-pool';
 import {
   hashingStatus,
   isCancellable,
@@ -151,7 +154,11 @@ export const COVER_KEY = 'cover';
 export const DUPLICATE_CODE = 'LEARNING-DUPLICATE';
 
 /** What a publish starts from: the open draft to save, or a new course to create first. */
-type PublishInput = { readonly targets: PublishTargets } & (
+type PublishInput = {
+  readonly targets: PublishTargets;
+  /** The draft exam the publish brings along: the wizard's, still a draft. */
+  readonly exam?: { readonly id: number; readonly title: string };
+} & (
   | { readonly kind: 'save'; readonly command: SaveDraftCommand }
   | { readonly kind: 'create'; readonly command: CreateCourseCommand }
 );
@@ -234,6 +241,14 @@ export class CourseEditorStore {
     visited: signal<readonly number[]>([this.initialStep()]),
     /** The checks of steps 1 to 3 over the form, handed over once by the page. */
     stepChecks: signal<readonly StepCheck[]>([]),
+    /** The exam a publish already published: a retry of the course does not publish it again. */
+    publishedExamId: signal<number | null>(null),
+    /** Why the exam of the last publish was refused, shown on step 3. */
+    examPublishError: signal<AppError | null>(null),
+    /** The last publish told its failure elsewhere (step 3, a toast): the page alert stays out. */
+    failureShown: signal(false),
+    /** How the page puts a new final exam into its form and saves the draft, handed over once. */
+    examAttacher: signal<((quizId: number) => void) | null>(null),
     editingLesson: signal<LessonTarget | null>(null),
     /** When the last save went through, as the page shows it ("14:05"). */
     savedAt: signal<string | null>(null),
@@ -375,14 +390,13 @@ export class CourseEditorStore {
     },
   );
 
-  private readonly createMutation = serverMutation(
-    (command: CreateCourseCommand) => this.createCourse(command),
-    {
-      errors: 'alert',
-      success: () => 'Đã lưu nháp',
-      onSuccess: (created) => this.moveToEditor(created),
-    },
+  /** "Lưu nháp" on a new course: it continues on the same step of the edit URL. */
+  private readonly createMutation = this.newCreateMutation(() =>
+    this.state.step(),
   );
+
+  /** "Tiếp tục" on step 1 of a new course: the edit URL opens on step 2. */
+  private readonly createAndContinueMutation = this.newCreateMutation(() => 1);
 
   /**
    * Saves the draft (or creates the course), then publishes the revision that came back. A refusal
@@ -394,35 +408,17 @@ export class CourseEditorStore {
    */
   private readonly publishMutation = serverMutation(
     (input: PublishInput) => {
+      this.setExamPublishError(null);
+      this.setFailureShown(false);
       const saved$ =
         input.kind === 'create'
           ? this.createCourse(input.command)
           : this.saveDraft(input.command);
       return saved$.pipe(
         switchMap((saved) =>
-          this.client
-            .call(courseEndpoints.publish, {
-              params: {
-                courseId: saved.course.id,
-                revisionId: saved.revision.id,
-              },
-              body: toPublishCommand(saved.revision.rowVersion, input.targets),
-            })
-            .pipe(
-              catchError((error: unknown) => {
-                this.markRefused(error, input.targets);
-                if (input.kind === 'create') {
-                  this.toaster.error(
-                    'Đã lưu nháp, chưa xuất bản',
-                    this.refusalText(error, input.targets),
-                  );
-                  this.moveToEditor(saved);
-                } else {
-                  this.changes.bump();
-                }
-                return throwError(() => error);
-              }),
-            ),
+          this.publishExam(input, saved).pipe(
+            switchMap(() => this.publishCourse(input, saved)),
+          ),
         ),
       );
     },
@@ -507,6 +503,19 @@ export class CourseEditorStore {
   });
   readonly quizzes$ = computed(() => this.quizzesData.value()?.items ?? []);
   readonly quizzesError$ = this.quizzesData.error;
+  /** Why the exam of the last publish was refused: step 3 says so. */
+  readonly examPublishError$ = this.state.examPublishError.asReadonly();
+  /** The stored program of the course: where its exam's questions come from. */
+  readonly storedProgram$ = computed(() => {
+    const programId = this.courseData.value()?.revision.programId;
+    return programId
+      ? {
+          id: programId,
+          name: this.programsData.value()?.items.find((p) => p.id === programId)
+            ?.name,
+        }
+      : undefined;
+  });
   readonly programs$ = computed(() => this.programsData.value()?.items ?? []);
   readonly modules$ = computed(() =>
     this.fieldId() ? (this.modulesData.value()?.items ?? []) : [],
@@ -517,6 +526,7 @@ export class CourseEditorStore {
     () =>
       this.saveMutation.isPending() ||
       this.createMutation.isPending() ||
+      this.createAndContinueMutation.isPending() ||
       this.publishMutation.isPending(),
   );
   /**
@@ -527,9 +537,11 @@ export class CourseEditorStore {
     const error =
       this.saveMutation.error() ??
       this.createMutation.error() ??
+      this.createAndContinueMutation.error() ??
       this.publishMutation.error();
     return error?.messageCode === DUPLICATE_CODE ||
-      namesPublishRow(error?.fieldErrors)
+      namesPublishRow(error?.fieldErrors) ||
+      this.state.failureShown()
       ? undefined
       : error;
   });
@@ -624,6 +636,22 @@ export class CourseEditorStore {
     this.state.visited.set(visited);
   }
 
+  private setPublishedExamId(id: number | null): void {
+    this.state.publishedExamId.set(id);
+  }
+
+  private setExamPublishError(error: AppError | null): void {
+    this.state.examPublishError.set(error);
+  }
+
+  private setFailureShown(shown: boolean): void {
+    this.state.failureShown.set(shown);
+  }
+
+  private setExamAttacher(attach: ((quizId: number) => void) | null): void {
+    this.state.examAttacher.set(attach);
+  }
+
   private setStepChecks(checks: readonly StepCheck[]): void {
     this.state.stepChecks.set(checks);
   }
@@ -708,15 +736,34 @@ export class CourseEditorStore {
     this.setStepChecks(checks);
   }
 
+  /** The page hands over how a newly made final exam joins the draft (the form's field, then a save). */
+  registerExamAttacher(attach: (quizId: number) => void): void {
+    this.setExamAttacher(attach);
+  }
+
+  /** A final exam was made for this course: the draft references it, and the quizzes are read again. */
+  attachExam(quizId: number): void {
+    this.state.examAttacher()?.(quizId);
+    this.quizzesData.reload();
+  }
+
   /**
    * "Tiếp tục": shows the current step's errors and stays while it has any, else opens the next
    * step. Returns whether it moved, so the page can focus the first error when it did not.
+   * Leaving step 1 of a new course stores it as a draft first (the page moves on to the edit URL
+   * when that is done), so the later steps always have a course to attach to.
    */
-  continue(): boolean {
+  continue(draft: CourseDraftValue): boolean {
     const step = this.state.step();
     const check = this.state.stepChecks()[step];
     check?.touch();
     if (check?.invalid()) return false;
+    if (this.isCreate$() && step === 0) {
+      const command = this.createCommand(draft);
+      if (!command) return false;
+      this.createAndContinueMutation.run(command);
+      return true;
+    }
     this.goToStep(step + 1);
     return true;
   }
@@ -763,12 +810,17 @@ export class CourseEditorStore {
     const revision = this.course$()?.revision;
     const targets = this.targetsToPublish();
     if (!revision || !targets) return;
-    this.confirmPublish(targets, () =>
-      this.publishMutation.run({
-        kind: 'save',
-        command: { ...command, expectedVersion: revision.rowVersion },
-        targets,
-      }),
+    const exam = this.examToPublish(command.finalQuizId);
+    this.confirmPublish(
+      targets,
+      () =>
+        this.publishMutation.run({
+          kind: 'save',
+          command: { ...command, expectedVersion: revision.rowVersion },
+          targets,
+          exam,
+        }),
+      exam?.title,
     );
   }
 
@@ -945,6 +997,11 @@ export class CourseEditorStore {
 
   retryLoad(): void {
     this.courseData.reload();
+  }
+
+  /** Reads the course's quizzes again (after a failed read, or a quiz made elsewhere). */
+  reloadQuizzes(): void {
+    this.quizzesData.reload();
   }
 
   /** Shows why the file is not acceptable for the block, or returns false when it is. */
@@ -1252,14 +1309,22 @@ export class CourseEditorStore {
         : message;
   }
 
-  private confirmPublish(targets: PublishTargets, publish: () => void): void {
+  private confirmPublish(
+    targets: PublishTargets,
+    publish: () => void,
+    examTitle?: string,
+  ): void {
     const counts =
       targets.rows.length || targets.shareOrgIds.length
         ? ` ${countsText(targets.rows.length, targets.shareOrgIds.length)}`
         : '';
     confirm(this.dialog, {
       title: 'Xuất bản khóa học?',
-      message: `Bản nháp được lưu rồi xuất bản. Học viên được giao thấy nội dung mới ngay, tiến độ đã có được giữ.${counts}`,
+      message: `Bản nháp được lưu rồi xuất bản. Học viên được giao thấy nội dung mới ngay, tiến độ đã có được giữ.${counts}${
+        examTitle
+          ? ` Bài thi cuối khóa “${examTitle}” sẽ được xuất bản cùng khóa học.`
+          : ''
+      }`,
       confirmLabel: 'Xuất bản',
       tone: 'primary',
     })
@@ -1290,15 +1355,115 @@ export class CourseEditorStore {
   }
 
   /**
+   * The exam the course publish brings along: the draft's final exam when it is a draft the
+   * wizard manages (a `FIXED` one is the author's own and is published on the quiz screen), and
+   * not one this page already published on an earlier try.
+   */
+  private examToPublish(
+    finalQuizId: number | undefined,
+  ): { id: number; title: string } | undefined {
+    const exam = this.quizzesData
+      .value()
+      ?.items.find((quiz) => quiz.id === finalQuizId);
+    return exam &&
+      exam.status === 'DRAFT' &&
+      exam.selectionMode !== 'FIXED' &&
+      exam.id !== this.state.publishedExamId()
+      ? { id: exam.id, title: exam.title }
+      : undefined;
+  }
+
+  /**
+   * Fills the exam's pool from the bank as it is now, then publishes it. A refusal stops the
+   * publish: the course stays a draft and step 3 shows the reason.
+   */
+  private publishExam(
+    input: PublishInput,
+    saved: CourseDetail,
+  ): Observable<unknown> {
+    const exam = input.exam;
+    const programId = saved.revision.programId;
+    if (input.kind !== 'save' || !exam || !programId) return of(null);
+    return syncExamPool(this.client, exam.id, {
+      programId,
+      courseId: saved.course.id,
+    }).pipe(
+      switchMap((pool) =>
+        this.client.call(assessmentV1Endpoints.publishQuiz, {
+          params: { id: exam.id },
+          body: { expectedVersion: pool.quiz.rowVersion },
+        }),
+      ),
+      tap(() => this.setPublishedExamId(exam.id)),
+      catchError((error: unknown) => {
+        this.setExamPublishError(toAppError(error));
+        this.setFailureShown(true);
+        this.goToStep(2);
+        this.changes.bump();
+        this.quizzesData.reload();
+        return throwError(() => error);
+      }),
+    );
+  }
+
+  private publishCourse(input: PublishInput, saved: CourseDetail) {
+    return this.client
+      .call(courseEndpoints.publish, {
+        params: {
+          courseId: saved.course.id,
+          revisionId: saved.revision.id,
+        },
+        body: toPublishCommand(saved.revision.rowVersion, input.targets),
+      })
+      .pipe(
+        catchError((error: unknown) => {
+          this.markRefused(error, input.targets);
+          if (input.kind === 'create') {
+            this.toaster.error(
+              'Đã lưu nháp, chưa xuất bản',
+              this.refusalText(error, input.targets),
+            );
+            this.moveToEditor(saved);
+          } else {
+            this.changes.bump();
+            if (input.exam && input.exam.id === this.state.publishedExamId()) {
+              this.toaster.error(
+                'Bài thi đã xuất bản, khóa học chưa xuất bản',
+                this.refusalText(error, input.targets),
+              );
+              this.setFailureShown(true);
+              this.quizzesData.reload();
+            }
+          }
+          return throwError(() => error);
+        }),
+      );
+  }
+
+  /**
    * The course exists now: leaving does not ask, and the page continues as the edit screen of the
    * new course, on the same step, without a history entry for `/new`.
    */
-  private moveToEditor(created: CourseDetail): void {
+  private moveToEditor(
+    created: CourseDetail,
+    step: number = this.state.step(),
+  ): void {
     this.setLeft(true);
     void this.router.navigate(['/admin/courses', created.course.id, 'edit'], {
       replaceUrl: true,
-      queryParams: { step: this.state.step() },
+      queryParams: { step },
     });
+  }
+
+  private newCreateMutation(landOn: () => number) {
+    return serverMutation(
+      (command: CreateCourseCommand) => this.createCourse(command),
+      {
+        errors: 'alert',
+        success: () => 'Đã lưu nháp',
+        onSuccess: (created) => this.moveToEditor(created, landOn()),
+      },
+    );
   }
 
   /** The step the URL names (`?step=`), read once when the editor opens. */

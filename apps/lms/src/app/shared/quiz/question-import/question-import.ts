@@ -10,7 +10,7 @@ import {
   Select,
   UploadItem,
 } from '@lms/ui';
-import { QuestionImportStore } from '../data-access/question-import.store';
+import { QuestionImportStore } from './data-access/question-import.store';
 
 /**
  * The "Nhập từ Excel" drawer of the question bank: course, template, file, check, import. The
