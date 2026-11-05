@@ -9,7 +9,7 @@ Plan: [plan-self-registration.md](plan-self-registration.md) · Spec: [SPEC-self
       `approveAccessRequest` in `identityEndpoints`; the two public ones marked public.
 - **Verify:** `npx nx test contracts` · **Deps:** none · **Size:** S
 
-## R2: Mock API and fixtures
+## R2: Mock API and fixtures (dropped: the user asked for the real backend API, no mock)
 
 - [ ] `FakeBackend` answers the three endpoints: fixed register answer for new / waiting / existing code, throttle
       after 5 calls, approve creates the user with the learner grant and marks the row `APPROVED`; three units.
@@ -17,21 +17,21 @@ Plan: [plan-self-registration.md](plan-self-registration.md) · Spec: [SPEC-self
 
 ## R3: Backend public register, units, throttle wiring
 
-- [ ] `GET /auth/registration-units`, `POST /auth/register-request` public in `SecurityConfig` (only these two);
+- [x] `GET /auth/registration-units`, `POST /auth/register-request` public in `SecurityConfig` (only these two);
       `RegistrationService` stores a `REGISTER` row with a hashed password, identical answer in all three cases,
       `AccessRequestThrottle` applied (429 + `Retry-After`), redacted `toString`, no password in logs.
 - **Verify:** `mvn -o test -Dtest='Registration*'`; the whole suite stays green · **Deps:** R1 · **Size:** M
 
 ## R4: Backend approve
 
-- [ ] `POST /access-requests/{id}/approve`: scope check, re-check identifiers, create the `LOCAL` account with the
+- [x] `POST /access-requests/{id}/approve`: scope check, re-check identifiers, create the `LOCAL` account with the
       stored hash and `mustChangePassword=false`, grant `LEARNER`/`OWN`, mark `APPROVED`, clear the hash, audit
       `ACCESS_REQUEST_APPROVE` + `USER_CREATED`; a clash leaves the row pending; reject also clears the hash.
 - **Verify:** `mvn -o test -Dtest='AccessRequest*'`; whole suite · **Deps:** R3 · **Size:** M
 
 ## Checkpoint: Backend
 
-- [ ] Full backend suite green; live curl: register → listed → approve → sign in works, not before; commit locally
+- [x] Full backend suite green; live curl: register → listed → approve → sign in works, not before; commit locally
 
 ## R5: Register screen and login link
 
