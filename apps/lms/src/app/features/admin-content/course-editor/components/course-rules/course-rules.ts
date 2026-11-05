@@ -14,6 +14,8 @@ import {
 } from '@lms/ui';
 import type { CourseDraftValue } from '../../course-draft';
 import { CourseEditorStore } from '../../data-access/course-editor.store';
+import { QuestionImport } from '../../../../../shared/quiz/question-import/question-import';
+import { QUESTION_IMPORT_HOST } from '../../../../../shared/quiz/question-import/data-access/question-import.host';
 import { CourseExamForm } from './components/course-exam-form/course-exam-form';
 import { newExamValue } from './data-access/course-exam.model';
 import { CourseExamStore } from './data-access/course-exam.store';
@@ -49,10 +51,25 @@ const QUIZ_STATUS_LABEL: Record<QuizSummary['status'], string> = {
     FormField,
     Icon,
     Input,
+    QuestionImport,
     RouterLink,
     Select,
   ],
-  providers: [CourseExamStore],
+  providers: [
+    CourseExamStore,
+    {
+      provide: QUESTION_IMPORT_HOST,
+      useFactory: () => {
+        const exam = inject(CourseExamStore);
+        return {
+          programId$: exam.programId$,
+          fixedCourse$: exam.importCourse$,
+          finishImport: () => exam.finishImport(),
+          closeImport: () => exam.closeImport(),
+        };
+      },
+    },
+  ],
   templateUrl: './course-rules.html',
   styleUrl: './course-rules.scss',
 })

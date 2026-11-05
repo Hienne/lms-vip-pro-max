@@ -19,6 +19,7 @@ import {
 import { invalidation } from '../../../../../../core/data-access/invalidation';
 import { serverData } from '../../../../../../core/data-access/server-data';
 import { EndpointClient } from '../../../../../../core/http/endpoint-client';
+import { SessionStore } from '../../../../../../core/session/session.store';
 import { serverMutation } from '../../../../../../core/data-access/server-mutation';
 import { CourseEditorStore } from '../../../data-access/course-editor.store';
 import {
@@ -40,12 +41,15 @@ import {
 export class CourseExamStore {
   private readonly client = inject(EndpointClient);
   private readonly editor = inject(CourseEditorStore);
+  private readonly session = inject(SessionStore);
 
   private readonly state = {
     /** The short exam form (create or edit) is open. */
     formOpen: signal(false),
     /** A new exam whose pool could not be written: it waits for "Thử lại". */
     poolPendingId: signal<number | null>(null),
+    /** The "Nhập từ Excel" drawer is open. */
+    importOpen: signal(false),
   };
 
   private readonly bankChanges = invalidation();
@@ -136,6 +140,15 @@ export class CourseExamStore {
     },
   );
 
+  /** After an import the questions are in the bank: a wizard-managed exam takes them in too. */
+  private readonly resyncMutation = serverMutation(
+    (quizId: number) => this.syncPool(quizId),
+    {
+      errors: 'toast',
+      onSuccess: () => this.editor.reloadQuizzes(),
+    },
+  );
+
   private readonly retryPoolMutation = serverMutation(
     (quizId: number) => this.syncPool(quizId),
     {
@@ -173,6 +186,27 @@ export class CourseExamStore {
       this.updateMutation.error() ??
       this.retryPoolMutation.error(),
   );
+  /** The questions the exam draws per attempt, when the bank holds fewer. */
+  readonly bankShortfall$ = computed(() => {
+    const exam = this.exam$();
+    const active = this.activeBank$();
+    return exam && active !== undefined && active < exam.questionCount
+      ? { active, needed: exam.questionCount }
+      : undefined;
+  });
+  readonly importOpen$ = this.state.importOpen.asReadonly();
+  /** The bank screen is for those whose menu has it; others import here or ask someone who can. */
+  readonly canOpenBank$ = computed(() =>
+    this.session.menus$().includes('QUESTION_BANK'),
+  );
+  readonly programId$ = computed(() => this.editor.storedProgram$()?.id);
+  /** The drawer imports into this course only. */
+  readonly importCourse$ = computed(() => {
+    const course = this.editor.course$();
+    return course
+      ? { courseId: course.course.id, title: course.revision.title }
+      : undefined;
+  });
   /** The form is editing the exam: its stored values, once read. */
   readonly editValue$ = computed(() => {
     const detail = this.detailData.value();
@@ -191,6 +225,26 @@ export class CourseExamStore {
 
   private setPoolPendingId(id: number | null): void {
     this.state.poolPendingId.set(id);
+  }
+
+  private setImportOpen(open: boolean): void {
+    this.state.importOpen.set(open);
+  }
+
+  openImport(): void {
+    this.setImportOpen(true);
+  }
+
+  closeImport(): void {
+    this.setImportOpen(false);
+  }
+
+  /** A written import: the count is read again and the exam's pool follows the bigger bank. */
+  finishImport(): void {
+    this.setImportOpen(false);
+    this.bankChanges.bump();
+    const exam = this.exam$();
+    if (exam && this.isWizardManaged$()) this.resyncMutation.run(exam.id);
   }
 
   openForm(): void {

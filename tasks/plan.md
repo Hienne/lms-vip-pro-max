@@ -57,7 +57,7 @@ T2 quiz screen D7 (indep.)  │                         │
 - [x] T5: Create the final exam from the short form
 - [x] T6: Edit a wizard-managed exam; read-only summary for a FIXED one
 - [x] T7: Decouple the import drawer behind `QUESTION_IMPORT_HOST`
-- [ ] T8: Bank too small: warning and import in step 3
+- [x] T8: Bank too small: warning and import in step 3
 
 ### Checkpoint B
 - [ ] F2–F4 work end to end on the mock; full run-many check green; review with human

@@ -115,9 +115,9 @@ an optional fixed course hides the course select.
 import drawer (course fixed) and, for `QUESTION_BANK` users, a bank link.
 
 **Acceptance criteria:**
-- [ ] Warning shows "Ngân hàng có N câu đang dùng, bài thi cần M câu."; disappears after an import that fills the gap, without reload.
-- [ ] After import the count reloads and a wizard-managed exam's pool is re-synced.
-- [ ] Users without `QUESTION_BANK` see no bank link.
+- [x] Warning shows "Ngân hàng có N câu đang dùng, bài thi cần M câu."; disappears after an import that fills the gap, without reload.
+- [x] After import the count reloads and a wizard-managed exam's pool is re-synced.
+- [x] Users without `QUESTION_BANK` see no bank link.
 
 **Verification:** `npx nx test lms -- course-editor.spec`
 

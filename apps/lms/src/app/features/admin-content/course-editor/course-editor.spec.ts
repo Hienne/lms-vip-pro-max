@@ -19,6 +19,7 @@ import {
   type FakeRequest,
 } from '@lms/mocks';
 import { NEVER } from 'rxjs';
+import { fakeSession } from '../../../core/session/session.testing';
 import { setUpAdminScreen } from '../../../core/dev/mock-api/admin-screen.testing';
 import { MockBackend } from '../../../core/dev/mock-api/mock-api.interceptor';
 import { CourseEditor } from './course-editor';
@@ -1357,6 +1358,97 @@ describe('CourseEditor', () => {
           expect(screen.callsTo(assessmentV1Endpoints.updateQuiz)).toBe(0);
           expect(screen.callsTo(assessmentV1Endpoints.replacePool)).toBe(0);
           expect(screen.callsTo(assessmentV1Endpoints.quiz)).toBe(0);
+        });
+      });
+
+      describe('when the bank is smaller than the exam', () => {
+        /** The wizard's exam on course 6 asks for one question, the bank holds none. */
+        const createExam = async () => {
+          await screen.open('/admin/courses/6/edit');
+          await step('Bài thi & điều kiện');
+          await screen.click(button('Tạo bài thi cuối khóa'));
+          await screen.click(button('Tạo bài thi'));
+          await vi.waitFor(() => expect(button('Sửa')).toBeTruthy());
+        };
+        const drawer = () =>
+          document.querySelector<HTMLElement>('[role="dialog"]') ?? undefined;
+        const press = (label: string) => {
+          const found = [...(drawer()?.querySelectorAll('button') ?? [])].find(
+            (b) => b.textContent?.includes(label),
+          );
+          if (!found) throw Error('Button missing: ' + label);
+          return found;
+        };
+        const importFile = async () => {
+          const input = drawer()?.querySelector<HTMLInputElement>(
+            'input[type="file"]',
+          ) as HTMLInputElement;
+          Object.defineProperty(input, 'files', {
+            configurable: true,
+            value: [new File([new Uint8Array(10)], 'cau-hoi.xlsx')],
+          });
+          input.dispatchEvent(new Event('change', { bubbles: true }));
+          await screen.settle();
+          await screen.click(press('Kiểm tra'));
+          await screen.click(press('Nhập câu hỏi'));
+        };
+
+        it('states both numbers and offers the import and the bank', async () => {
+          await createExam();
+
+          expect(screen.text()).toContain(
+            'Ngân hàng có 0 câu đang dùng, bài thi cần 1 câu.',
+          );
+          expect(button('Nhập từ Excel')).toBeTruthy();
+          const bank = Array.from(screen.el.querySelectorAll('a')).find((a) =>
+            a.textContent?.includes('Mở ngân hàng câu hỏi'),
+          );
+          expect(bank?.getAttribute('href')).toBe(
+            '/admin/questions?programId=4',
+          );
+        });
+
+        it('drops the bank link for someone without the question bank menu', async () => {
+          await createExam();
+          fakeSession().user.update((user) =>
+            user
+              ? {
+                  ...user,
+                  menus: user.menus.filter((m) => m !== 'QUESTION_BANK'),
+                }
+              : user,
+          );
+          await screen.settle();
+
+          expect(button('Nhập từ Excel')).toBeTruthy();
+          expect(screen.text()).not.toContain('Mở ngân hàng câu hỏi');
+        });
+
+        it('imports into this course, then the warning goes and the pool takes the new questions', async () => {
+          await createExam();
+          await screen.click(button('Nhập từ Excel'));
+          expect(drawer()?.textContent).toContain(
+            'An toàn thông tin cho cán bộ CNTT',
+          );
+          expect(drawer()?.querySelector('select')).toBeNull();
+          await importFile();
+
+          await vi.waitFor(() =>
+            expect(screen.text()).not.toContain('bài thi cần 1 câu'),
+          );
+          expect(
+            screen.lastCall(assessmentV1Endpoints.importQuestions)?.query,
+          ).toMatchObject({ courseId: '6', dryRun: 'false' });
+          expect(drawer()).toBeUndefined();
+          await vi.waitFor(() =>
+            expect(
+              (
+                screen.lastCall(assessmentV1Endpoints.replacePool)?.body as {
+                  items: unknown[];
+                }
+              ).items,
+            ).toHaveLength(3),
+          );
         });
       });
 

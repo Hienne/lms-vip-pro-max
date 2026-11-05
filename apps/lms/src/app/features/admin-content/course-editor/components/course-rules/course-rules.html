@@ -68,7 +68,25 @@
           <dd>{{ statusLabel[quiz.status] }}</dd>
         </div>
       </dl>
-      @if (!exam.isWizardManaged$()) {
+      @if (exam.bankShortfall$(); as shortfall) {
+      <ui-alert tone="warning" [announce]="false">
+        Ngân hàng có {{ shortfall.active }} câu đang dùng, bài thi cần {{
+        shortfall.needed }} câu.
+        <button uiButton size="sm" type="button" (click)="exam.openImport()">
+          Nhập từ Excel
+        </button>
+        @if (exam.canOpenBank$() && exam.programId$(); as programId) {
+        <a
+          uiButton
+          size="sm"
+          variant="ghost"
+          routerLink="/admin/questions"
+          [queryParams]="{ programId }"
+          >Mở ngân hàng câu hỏi</a
+        >
+        }
+      </ui-alert>
+      } @if (!exam.isWizardManaged$()) {
       <p class="course-rules__note">
         Bài thi này do bạn chọn câu hỏi thủ công, nên chỉ chỉnh được ở màn Bài
         kiểm tra.
@@ -167,3 +185,6 @@
     </div>
   </section>
 </div>
+@if (exam.importOpen$()) {
+<app-question-import />
+}
