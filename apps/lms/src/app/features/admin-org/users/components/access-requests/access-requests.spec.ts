@@ -91,6 +91,7 @@ describe('AccessRequests', () => {
       'Đơn vị',
       'Gửi lúc',
       'Trạng thái',
+      'Thao tác',
     ]);
     expect(rows()).toHaveLength(3);
     expect(
@@ -170,10 +171,123 @@ describe('AccessRequests', () => {
     expect(rows()).toHaveLength(3);
   });
 
-  it('leaves the primary-action slot empty: no disabled placeholder button', async () => {
-    await open();
-    expect(rowOf('Nguyễn Văn An').querySelectorAll('[disabled]')).toHaveLength(
-      0,
+  describe('rejecting a request', () => {
+    const dialog = () => document.querySelector<HTMLElement>('[role="dialog"]');
+    const rejectButton = (needle: string) =>
+      Array.from(rowOf(needle).querySelectorAll('button')).find((b) =>
+        b.textContent?.includes('Từ chối'),
+      ) as HTMLButtonElement;
+    const footerButton = (label: string) =>
+      Array.from(dialog()?.querySelectorAll('button') ?? []).find((b) =>
+        b.textContent?.includes(label),
+      ) as HTMLButtonElement;
+    const rejections = () =>
+      handle.mock.calls.filter(
+        ([e]) => e === identityEndpoints.rejectAccessRequest,
+      );
+    afterEach(() =>
+      document
+        .querySelectorAll('.cdk-overlay-container')
+        .forEach((c) => (c.innerHTML = '')),
     );
+
+    it('offers "Từ chối" on pending rows only, and no disabled placeholder beside it', async () => {
+      await open();
+      expect(
+        rows().every((r) => r.querySelectorAll('button').length === 1),
+      ).toBe(true);
+      expect(panel.querySelectorAll('tbody [disabled]')).toHaveLength(0);
+      await choose(select('Trạng thái'), 'REJECTED');
+      expect(rowOf('000103').querySelector('button')).toBeNull();
+    });
+
+    it('opens a dialog naming the sender, with an optional note capped at 500 characters', async () => {
+      await open();
+      rejectButton('Nguyễn Văn An').click();
+      await settle();
+      expect(dialog()?.textContent).toContain('Nguyễn Văn An');
+      const note = dialog()?.querySelector('textarea') as HTMLTextAreaElement;
+      expect(note.getAttribute('maxlength')).toBe('500');
+      expect(footerButton('Từ chối yêu cầu')).toBeTruthy();
+      expect(rejections()).toHaveLength(0);
+    });
+
+    it('rejects without a note: the row leaves, the count drops, one toast', async () => {
+      await open();
+      rejectButton('Nguyễn Văn An').click();
+      await settle();
+      footerButton('Từ chối yêu cầu').click();
+      await settle();
+      expect(rejections()).toHaveLength(1);
+      expect(rejections()[0][1]).toMatchObject({
+        params: { requestId: '1' },
+        body: {},
+      });
+      expect(dialog()).toBeNull();
+      expect(rows()).toHaveLength(2);
+      expect(text()).toContain('2 yêu cầu');
+      const tab = (harness.routeNativeElement as HTMLElement).querySelector(
+        '[role="tab"][aria-selected="true"]',
+      );
+      expect(text(tab as HTMLElement)).toBe('Yêu cầu 2');
+      expect(document.body.textContent).toContain('Đã từ chối yêu cầu');
+    });
+
+    it('sends the trimmed note', async () => {
+      await open();
+      rejectButton('000999').click();
+      await settle();
+      const note = dialog()?.querySelector('textarea') as HTMLTextAreaElement;
+      note.value = '  Không có tài khoản này  ';
+      note.dispatchEvent(new Event('input', { bubbles: true }));
+      await settle();
+      footerButton('Từ chối yêu cầu').click();
+      await settle();
+      expect(rejections()[0][1]).toMatchObject({
+        body: { note: 'Không có tài khoản này' },
+      });
+    });
+
+    it('leaves the row untouched on cancel and on Escape, and gives focus back', async () => {
+      await open();
+      const opener = rejectButton('Nguyễn Văn An');
+      opener.focus();
+      opener.click();
+      await settle();
+      footerButton('Hủy').click();
+      await settle();
+      expect(dialog()).toBeNull();
+      expect(document.activeElement).toBe(opener);
+      opener.click();
+      await settle();
+      dialog()?.dispatchEvent(
+        new KeyboardEvent('keydown', {
+          key: 'Escape',
+          code: 'Escape',
+          keyCode: 27,
+          bubbles: true,
+        }),
+      );
+      await settle();
+      expect(dialog()).toBeNull();
+      expect(rejections()).toHaveLength(0);
+      expect(rows()).toHaveLength(3);
+    });
+
+    it('shows the refusal once and keeps the row when the server refuses', async () => {
+      await open();
+      handle.mockImplementation((endpoint, request) =>
+        endpoint === identityEndpoints.rejectAccessRequest
+          ? backendRefusal('stateConflict')
+          : original(endpoint, request),
+      );
+      rejectButton('Nguyễn Văn An').click();
+      await settle();
+      footerButton('Từ chối yêu cầu').click();
+      await settle();
+      expect(document.body.textContent).toContain('Xung đột dữ liệu');
+      expect(document.body.textContent).not.toContain('Đã từ chối yêu cầu');
+      expect(rows()).toHaveLength(3);
+    });
   });
 });

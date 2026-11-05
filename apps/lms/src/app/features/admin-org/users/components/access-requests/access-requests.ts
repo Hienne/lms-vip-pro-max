@@ -1,4 +1,6 @@
+import { Dialog } from '@angular/cdk/dialog';
 import { Component, computed, DestroyRef, inject } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import type {
   AccessRequest,
   AccessRequestKind,
@@ -6,6 +8,7 @@ import type {
 } from '@lms/contracts';
 import {
   Badge,
+  Button,
   Card,
   CardHeader,
   DataTable,
@@ -25,6 +28,7 @@ import {
   ACCESS_REQUESTS_PAGE_SIZE,
   AccessRequestsStore,
 } from '../../data-access/access-requests.store';
+import { askRejectionNote } from './reject-request-dialog';
 
 /** A table row: the table wants an `id`, the request's own key is `requestId`. */
 export type AccessRequestRow = AccessRequest & { readonly id: number };
@@ -50,6 +54,7 @@ const STATUS_VIEW: Record<AccessRequestStatus, StatusView> = {
   selector: 'app-access-requests',
   imports: [
     Badge,
+    Button,
     Card,
     CardHeader,
     DataTable,
@@ -69,6 +74,8 @@ const STATUS_VIEW: Record<AccessRequestStatus, StatusView> = {
 })
 export class AccessRequests {
   protected readonly store = inject(AccessRequestsStore);
+  private readonly dialog = inject(Dialog);
+  private readonly destroyRef = inject(DestroyRef);
   protected readonly pageSize = ACCESS_REQUESTS_PAGE_SIZE;
 
   protected readonly rows = computed((): readonly AccessRequestRow[] =>
@@ -76,6 +83,12 @@ export class AccessRequests {
       .rows$()
       .map((request) => ({ ...request, id: request.requestId })),
   );
+
+  protected reject(request: AccessRequest): void {
+    askRejectionNote(this.dialog, request.fullName || request.staffCode)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((note) => this.store.reject(request.requestId, note));
+  }
 
   protected kindLabel(kind: AccessRequestKind): string {
     return KIND_LABEL[kind];

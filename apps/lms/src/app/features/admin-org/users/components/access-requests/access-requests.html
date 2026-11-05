@@ -55,6 +55,7 @@
       { key: 'orgName', label: 'Đơn vị', sortable: false },
       { key: 'createdTime', label: 'Gửi lúc', sortable: false },
       { key: 'status', label: 'Trạng thái', sortable: false },
+      { key: 'actions', label: 'Thao tác', kind: 'actions' },
     ]"
     [rows]="rows()"
     [total]="store.total$()"
@@ -96,6 +97,19 @@
       @if (request.resolutionNote) {
       <div uiTableSub>{{ request.resolutionNote }}</div>
       } }
+    </ng-template>
+    <ng-template uiDataTableCell="actions" [of]="rows()" let-request>
+      @if (request.status === 'PENDING') {
+      <button
+        uiButton
+        size="sm"
+        variant="ghost"
+        [disabled]="store.isRejecting$()"
+        (click)="reject(request)"
+      >
+        Từ chối
+      </button>
+      }
     </ng-template>
   </ui-data-table>
 </section>
