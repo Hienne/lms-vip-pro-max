@@ -45,8 +45,8 @@ T2 quiz screen D7 (indep.)  │                         │
 ## Task List
 
 ### Phase 1: Foundation
-- [ ] T1: Mock parity for final exams
-- [ ] T2: Quiz screen create form without the program select (D7)
+- [x] T1: Mock parity for final exams
+- [x] T2: Quiz screen create form without the program select (D7)
 - [ ] T3: Create the course when leaving step 1 (D1)
 
 ### Checkpoint A

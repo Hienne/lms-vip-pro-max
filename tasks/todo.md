@@ -15,8 +15,8 @@ angular.md §14 checklist, visual-design checklist for UI changes. Paths below a
 wizard's create path is tested against the real rule.
 
 **Acceptance criteria:**
-- [ ] `createQuiz`/`updateQuiz` with `FINAL_EXAM` on a course that already has one is refused with the backend's code and message.
-- [ ] Existing pool rules (program of the course, ≥ `questionCount` ACTIVE to publish) are covered by a spec.
+- [x] `createQuiz`/`updateQuiz` with `FINAL_EXAM` on a course that already has one is refused with the backend's code and message.
+- [x] Existing pool rules (program of the course, ≥ `questionCount` ACTIVE to publish) are covered by a spec.
 
 **Verification:** `npx nx test mocks`
 
@@ -27,9 +27,9 @@ wizard's create path is tested against the real rule.
 the list screen keeps its program filter.
 
 **Acceptance criteria:**
-- [ ] The create form has no program `<select>`; under the course select it reads "Câu hỏi lấy từ ngân hàng của chương trình *X*".
-- [ ] A deep link with `programId` still narrows the course list; `courseProgramMismatch` still blocks a course from another program.
-- [ ] Existing quiz-screen specs stay green.
+- [x] The create form has no program `<select>`; under the course select it reads "Câu hỏi lấy từ ngân hàng của chương trình *X*".
+- [x] A deep link with `programId` still narrows the course list; `courseProgramMismatch` still blocks a course from another program.
+- [x] Existing quiz-screen specs stay green.
 
 **Verification:** `npx nx test lms -- assessment-screen.spec`; browser check of `/admin/quizzes/new`
 
