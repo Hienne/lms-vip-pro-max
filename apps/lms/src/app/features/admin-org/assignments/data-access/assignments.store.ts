@@ -59,7 +59,7 @@ interface AssignmentsQuery {
 }
 
 interface Assigning {
-  /** Made when the drawer opens and sent again on a retry, so a lost reply never assigns twice. */
+  /** Made when the editor opens and sent again on a retry, so a lost reply never assigns twice. */
   readonly idempotencyKey: string;
   readonly courseId: number | undefined;
 }
@@ -73,7 +73,7 @@ const newIdempotencyKey = (): string => `assign-${crypto.randomUUID()}`;
 
 /**
  * Course assignment (the mockup's `assignments`): an org's assignments of one published course,
- * the assign drawer with several targets, the detail of one assignment with per-recipient revoke,
+ * the assignment editor with several targets, the detail of one assignment with per-recipient revoke,
  * and the org's learning groups. The server resolves targets into recipients once, when the
  * assignment is made; due dates and progress are its results. There is no API yet to change a due
  * date, send a reminder or delete an assignment.
@@ -102,7 +102,7 @@ export class AssignmentsStore {
       },
     }),
     page: signal(1),
-    /** The assign drawer; a link from the course list opens it on that course. */
+    /** The assignment editor; a link from the course list opens it on that course. */
     assigning: signal<Assigning | null>(
       this.linkedCourseId
         ? {
@@ -407,6 +407,7 @@ export class AssignmentsStore {
   }
 
   cancelAssign(): void {
+    if (this.isAssigning$()) return;
     this.setAssigning(null);
   }
 

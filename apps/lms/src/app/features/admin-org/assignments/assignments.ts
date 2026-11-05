@@ -1,5 +1,13 @@
 import { NgTemplateOutlet } from '@angular/common';
-import { Component, computed, inject } from '@angular/core';
+import {
+  afterRenderEffect,
+  Component,
+  computed,
+  ElementRef,
+  inject,
+  untracked,
+  viewChild,
+} from '@angular/core';
 import { RouterLink } from '@angular/router';
 import {
   Badge,
@@ -36,11 +44,12 @@ import {
 
 /**
  * Course assignment and deadlines (the mockup's `assignments`): an org's assignments of one
- * published course, the assign drawer, the detail of an assignment with per-learner revoke, and
+ * published course, the assignment editor, the detail of an assignment with per-learner revoke, and
  * the learning groups courses can be assigned to.
  */
 @Component({
   selector: 'app-assignments',
+  host: { '[class.assignments--editing]': 'store.assigning$() !== null' },
   imports: [
     AssignForm,
     AssignmentDetail,
@@ -74,6 +83,28 @@ import {
 })
 export class Assignments {
   protected readonly store = inject(AssignmentsStore);
+  private readonly element = inject<ElementRef<HTMLElement>>(ElementRef);
+  private readonly assignForm = viewChild(AssignForm);
+
+  constructor() {
+    // A full-page editor replaces the list without a router navigation; move focus to its title.
+    afterRenderEffect(() => {
+      this.store.assigning$();
+      untracked(() => {
+        const heading =
+          this.element.nativeElement.querySelector<HTMLElement>('h1');
+        heading?.setAttribute('tabindex', '-1');
+        heading?.focus();
+      });
+    });
+  }
+
+  hasUnsavedChanges(): boolean {
+    return (
+      this.store.isAssigning$() ||
+      (this.assignForm()?.hasUnsavedChanges() ?? false)
+    );
+  }
 
   protected readonly pageSize = ASSIGNMENTS_PAGE_SIZE;
   protected readonly requirementLabel = REQUIREMENT_LABEL;

@@ -4,6 +4,13 @@
   @include ui.page(wide);
 }
 
+:host(.assignments--editing) {
+  display: flex;
+  flex-direction: column;
+  min-height: calc(100dvh - #{ui.layout(header)});
+  padding-bottom: 0;
+}
+
 .assignments {
   &__workspace {
     min-width: 0;

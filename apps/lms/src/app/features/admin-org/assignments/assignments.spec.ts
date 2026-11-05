@@ -21,11 +21,14 @@ describe('Assignments', () => {
       (o) => o.textContent?.includes(label),
     );
 
-  /** Opens the assign drawer and adds org 1 with its subtree as the target. */
+  const editor = () => screen.el.querySelector<HTMLElement>('app-assign-form')!;
+
+  /** Opens the full-page editor and adds org 1 with its subtree as the target. */
   async function startAssigning(): Promise<HTMLElement> {
     await screen.open('/admin/assignments');
     await screen.click(screen.button('Giao khóa học'));
-    const drawer = screen.drawer()!;
+    const drawer = editor();
+    expect(screen.drawer()).toBeNull();
     await screen.choose(
       screen.field('Đơn vị', drawer) as HTMLSelectElement,
       '1',
@@ -56,19 +59,20 @@ describe('Assignments', () => {
     );
   });
 
-  it('opens the assign drawer on the course a link names', async () => {
+  it('opens the assignment page on the course a link names', async () => {
     const published = seedCourseDetails().filter(
       (d) => d.course.publishedRevisionId,
     );
     const linked = String(published[published.length - 1].course.id);
     await screen.open(`/admin/assignments?course=${linked}`);
 
-    const drawer = screen.drawer()!;
-    expect(screen.text(drawer)).toContain('Giao khóa học');
+    const drawer = editor();
+    expect(screen.drawer()).toBeNull();
+    expect(screen.text(drawer)).toContain('Giao khóa học mới');
     expect((screen.field('Khóa học', drawer) as HTMLSelectElement).value).toBe(
       linked,
     );
-    expect(courseSelect().value).toBe(linked);
+    expect(screen.el.querySelector('.assignments__filter')).toBeNull();
   });
 
   it('assigns the published revision to the chosen targets, then shows who it reached', async () => {
@@ -131,7 +135,7 @@ describe('Assignments', () => {
   it('needs a target and a due date after the start', async () => {
     await screen.open('/admin/assignments');
     await screen.click(screen.button('Giao khóa học'));
-    const drawer = screen.drawer()!;
+    const drawer = editor();
     const start = screen.field('Ngày bắt đầu', drawer) as HTMLInputElement;
     await screen.type(
       screen.field('Hạn hoàn thành', drawer) as HTMLInputElement,
@@ -160,7 +164,8 @@ describe('Assignments', () => {
       screen.lastCall(assignmentEndpoints.assignCourse)
         ?.body as AssignCourseCommand
     ).idempotencyKey;
-    expect(screen.drawer()).not.toBeNull();
+    expect(editor()).not.toBeNull();
+    expect(screen.drawer()).toBeNull();
 
     screen.calls.mockImplementation(original);
     await submit(drawer);
@@ -172,6 +177,82 @@ describe('Assignments', () => {
           ?.body as AssignCourseCommand
       ).idempotencyKey,
     ).toBe(first);
+  });
+
+  it('keeps the summary in sync with targets, dates, requirement and reminders', async () => {
+    const page = await startAssigning();
+    const summary = page.querySelector<HTMLElement>('.assign-form__summary')!;
+    expect(screen.text(summary)).toContain('Gồm các đơn vị cấp dưới');
+    await screen.type(
+      screen.field('Tên đợt giao', page) as HTMLInputElement,
+      'Đào tạo tháng 11',
+    );
+    await screen.type(
+      screen.field('Hạn hoàn thành', page) as HTMLInputElement,
+      '2027-01-15',
+    );
+    await screen.choose(
+      screen.field('Yêu cầu', page) as HTMLSelectElement,
+      'optional',
+    );
+    await screen.choose(
+      screen.field('Người đã từng học', page) as HTMLSelectElement,
+      'retake',
+    );
+    expect(screen.text(summary)).toContain('Đào tạo tháng 11');
+    expect(screen.text(summary)).toContain('15/01/2027');
+    expect(screen.text(summary)).toContain('Tự chọn');
+    expect(screen.text(summary)).toContain('Học lại từ đầu');
+    await screen.click(
+      page.querySelector<HTMLInputElement>('input[uiSwitch]')!,
+    );
+    expect(screen.text(summary)).toContain('Không nhắc');
+    const remove = page.querySelector<HTMLButtonElement>(
+      '.assign-form__target button',
+    )!;
+    await screen.click(remove);
+    expect(screen.text(summary)).toContain('Chưa chọn đối tượng nhận');
+    expect(
+      screen.page<{ hasUnsavedChanges(): boolean }>().hasUnsavedChanges(),
+    ).toBe(true);
+  });
+
+  it('retries loading courses in the editor without losing the draft', async () => {
+    const backend = TestBed.inject(MockBackend);
+    const original: MockBackend['handle'] = (endpoint, request) =>
+      MockBackend.prototype.handle.call(backend, endpoint, request);
+    screen.calls.mockImplementation((endpoint, request) =>
+      endpoint === courseEndpoints.instructorCourses
+        ? backendRefusal('internalError')
+        : original(endpoint, request),
+    );
+    await screen.open('/admin/assignments?course=1');
+    expect(screen.text(editor())).toContain('Không tải được khóa học');
+    await screen.type(
+      screen.field('Tên đợt giao', editor()) as HTMLInputElement,
+      'Bản nháp cần giữ',
+    );
+    screen.calls.mockImplementation(original);
+    await screen.click(screen.button('Thử lại', editor()));
+    expect(screen.text(editor())).not.toContain('Không tải được khóa học');
+    expect(
+      (screen.field('Tên đợt giao', editor()) as HTMLInputElement).value,
+    ).toBe('Bản nháp cần giữ');
+    expect(
+      (screen.field('Khóa học', editor()) as HTMLSelectElement).options.length,
+    ).toBeGreaterThan(1);
+  });
+
+  it('returns to the list on cancel without creating an assignment', async () => {
+    await startAssigning();
+    await screen.click(screen.button('Hủy', editor()));
+    expect(editor()).toBeNull();
+    expect(courseSelect()).not.toBeNull();
+    expect(screen.callsTo(assignmentEndpoints.assignCourse)).toBe(0);
+    expect(
+      screen.page<{ hasUnsavedChanges(): boolean }>().hasUnsavedChanges(),
+    ).toBe(false);
+    expect(screen.el.querySelectorAll('h1')).toHaveLength(1);
   });
 
   it('revokes one learner with a reason', async () => {

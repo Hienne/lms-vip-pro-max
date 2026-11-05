@@ -1,3 +1,6 @@
+@if (store.assigning$(); as assigning) {
+<app-assign-form [courseId]="assigning.courseId" />
+} @else {
 <ui-page-header
   title="Giao khóa học"
   description="Quản lý lượt giao, đối tượng học và hạn hoàn thành."
@@ -35,6 +38,8 @@
     </div>
   </ui-tabs>
 </section>
+
+}
 
 <ng-template #assignmentsPanel>
   @if (store.loadError$(); as error) {
@@ -229,29 +234,6 @@
     </ui-data-table>
   </section>
   }
-</ng-template>
-
-<ng-template
-  [uiDrawer]="store.assigning$() !== null"
-  uiDrawerSize="lg"
-  uiDrawerTitle="Giao khóa học"
-  [uiDrawerFooter]="assignFooter"
-  [uiDrawerBusy]="store.isAssigning$()"
-  uiDrawerBusyLabel="Đang giao…"
-  (uiDrawerDismiss)="store.cancelAssign()"
->
-  @if (store.assigning$(); as assigning) {
-  <app-assign-form [courseId]="assigning.courseId" />
-  }
-</ng-template>
-<ng-template #assignFooter let-close="close">
-  <ui-form-actions
-    formId="assign-form"
-    submitLabel="Giao khóa học"
-    cancelLabel="Hủy"
-    [saving]="store.isAssigning$()"
-    (cancel)="close()"
-  />
 </ng-template>
 
 <ng-template
