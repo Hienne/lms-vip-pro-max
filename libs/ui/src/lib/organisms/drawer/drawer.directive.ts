@@ -43,6 +43,10 @@ export class DrawerOutlet {
   readonly uiDrawerFooter = input<TemplateRef<DrawerContext>>();
   /** Which edge it slides from, read when it opens. Defaults to `end`. */
   readonly uiDrawerSide = input<DrawerSide>();
+  /** Compact centered dialog for short forms; read when opened. */
+  readonly uiDrawerVariant = input<'drawer' | 'dialog'>('drawer');
+  /** Wider drawer for forms with paired fields; read when opened. */
+  readonly uiDrawerSize = input<'md' | 'lg'>('md');
   /** While true the user cannot close the drawer and an overlay covers its body and footer. */
   readonly uiDrawerBusy = input(false);
   /** Text of the busy overlay, read by screen readers. The library ships no default copy. */
@@ -63,12 +67,19 @@ export class DrawerOutlet {
 
   private show(): void {
     if (this.ref) return;
-    const ref = openLiveDrawer(this.dialog, this.body, this.uiDrawerSide(), {
-      title: this.uiDrawerTitle,
-      footer: this.uiDrawerFooter,
-      busy: this.uiDrawerBusy,
-      busyLabel: this.uiDrawerBusyLabel,
-    });
+    const ref = openLiveDrawer(
+      this.dialog,
+      this.body,
+      this.uiDrawerSide(),
+      {
+        title: this.uiDrawerTitle,
+        footer: this.uiDrawerFooter,
+        busy: this.uiDrawerBusy,
+        busyLabel: this.uiDrawerBusyLabel,
+      },
+      this.uiDrawerVariant(),
+      this.uiDrawerSize(),
+    );
     this.ref = ref;
     ref.closed.subscribe(() => {
       if (this.ref !== ref) return;

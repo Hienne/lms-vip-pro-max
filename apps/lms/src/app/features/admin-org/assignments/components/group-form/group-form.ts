@@ -19,6 +19,7 @@ import { AssignmentsStore } from '../../data-access/assignments.store';
   imports: [Alert, Field, FormField, FormRoot, Input, Textarea],
   template: `
     <form id="group-form" class="stack" [formRoot]="groupForm">
+      <p class="text-muted">Tạo nhóm để giao khóa học chung.</p>
       @if (store.createGroupError$(); as error) {
         <ui-alert tone="danger">{{ error.message }}</ui-alert>
       }

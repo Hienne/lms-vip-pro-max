@@ -1,3 +1,5 @@
+@use 'ui';
+
 // Drawer: ported from the mockup's `.drawer` block (components.css). Applied by `ui-drawer`; the
 // pane classes come from `openDrawer`. The side follows the text direction (CDK `start` / `end`).
 @layer components {
@@ -6,6 +8,33 @@
     width: min(35rem, 100vw);
     height: 100vh;
     z-index: var(--z-index-drawer);
+  }
+
+  .drawer-pane--lg {
+    width: min(100vw, #{ui.layout(reading)});
+  }
+
+  .drawer-pane--dialog {
+    width: min(#{ui.layout(assistant)}, calc(100vw - #{ui.space(6)}));
+    height: auto;
+    max-height: calc(100dvh - #{ui.space(6)});
+
+    .drawer {
+      max-height: calc(100dvh - #{ui.space(6)});
+      border: 1px solid ui.color(border);
+      border-radius: ui.radius(card);
+      overflow: hidden;
+      animation: none;
+    }
+
+    .drawer__header,
+    .drawer__footer {
+      flex-shrink: 0;
+    }
+
+    .drawer__body {
+      flex: 0 1 auto;
+    }
   }
 
   .drawer {

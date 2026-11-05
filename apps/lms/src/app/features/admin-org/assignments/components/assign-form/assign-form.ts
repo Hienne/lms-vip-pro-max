@@ -1,4 +1,10 @@
-import { Component, inject, input, linkedSignal } from '@angular/core';
+import {
+  Component,
+  computed,
+  inject,
+  input,
+  linkedSignal,
+} from '@angular/core';
 import { form, FormField, FormRoot } from '@angular/forms/signals';
 import {
   Alert,
@@ -62,6 +68,12 @@ export class AssignForm {
   private readonly model = linkedSignal(() =>
     newAssignFormValue(this.courseId(), this.now()),
   );
+  protected readonly selectedCourse = computed(() =>
+    this.store
+      .courses$()
+      .find((course) => String(course.courseId) === this.model().courseId),
+  );
+
   protected readonly assignForm = form(this.model, assignFormSchema, {
     submission: {
       action: async () => this.store.assign(toAssignRequest(this.model())),

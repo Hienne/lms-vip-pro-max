@@ -5,6 +5,9 @@
   <button uiButton variant="ghost" (click)="store.open('start')">
     <ui-icon name="layers" size="sm" /> Drawer bên trái
   </button>
+  <button uiButton variant="ghost" (click)="store.open('dialog')">
+    Hộp thoại ngắn
+  </button>
 </div>
 <p class="drawer-demo__note">
   Bẫy focus, Esc để đóng, trả focus về nút mở. Toàn chiều rộng trên màn hình
@@ -13,7 +16,8 @@
 
 <ng-template
   [uiDrawer]="store.openSide$() !== null"
-  [uiDrawerSide]="store.openSide$() ?? 'end'"
+  [uiDrawerSide]="store.side$()"
+  [uiDrawerVariant]="store.variant$()"
   uiDrawerTitle="Drawer mẫu"
   [uiDrawerFooter]="footer"
   (uiDrawerDismiss)="store.close()"

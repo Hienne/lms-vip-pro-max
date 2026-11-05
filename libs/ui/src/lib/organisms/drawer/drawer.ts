@@ -97,6 +97,8 @@ export function openLiveDrawer(
   body: TemplateRef<DrawerContext>,
   sideOption: DrawerSide | undefined,
   live: DrawerLive,
+  variant: 'drawer' | 'dialog' = 'drawer',
+  size: 'md' | 'lg' = 'md',
 ): DialogRef<void, Drawer> {
   const side = sideOption ?? 'end';
   const position = createGlobalPositionStrategy(Injector.NULL);
@@ -111,9 +113,18 @@ export function openLiveDrawer(
     ariaModal: true,
     ariaLabelledBy: data.titleId,
     backdropClass: 'dialog-backdrop',
-    panelClass: ['drawer-pane', `drawer-pane--${side}`],
+    panelClass: [
+      'drawer-pane',
+      `drawer-pane--${side}`,
+      `drawer-pane--${variant}`,
+      `drawer-pane--${size}`,
+    ],
     maxWidth: '100vw',
     positionStrategy:
-      side === 'start' ? position.start('0') : position.end('0'),
+      variant === 'dialog'
+        ? position.centerHorizontally().centerVertically()
+        : side === 'start'
+          ? position.start('0')
+          : position.end('0'),
   });
 }

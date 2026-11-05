@@ -3,12 +3,17 @@
 .assign-form {
   @include ui.stack(5);
 
-  &__targets {
-    @include ui.stack(3);
+  &__section {
+    @include ui.stack(4);
     margin: 0;
     padding: 0;
     border: 0;
     min-width: 0;
+
+    & + & {
+      padding-top: ui.space(4);
+      border-top: 1px solid ui.color(border);
+    }
   }
 
   &__legend {
@@ -16,6 +21,13 @@
     margin-block-end: ui.space(2);
     font-weight: ui.weight(semibold);
     @include ui.text(sm);
+  }
+
+  &__code {
+    @include ui.mono;
+    @include ui.text(sm, muted);
+    margin: ui.space(1) 0 0;
+    overflow-wrap: anywhere;
   }
 
   &__chosen {
@@ -55,17 +67,22 @@
     gap: ui.space(4);
 
     @include ui.bp(sm) {
-      grid-template-columns: 1fr 1fr;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
     }
   }
 
   &__reminder {
     display: grid;
     gap: ui.space(3);
+    align-items: center;
+
+    @include ui.bp(sm) {
+      grid-template-columns: minmax(0, 1fr) auto;
+    }
   }
 
   &__days {
-    max-width: 12rem;
+    max-width: ui.layout(popover);
   }
 
   &__toggle {

@@ -54,33 +54,37 @@
     <a uiButton routerLink="/admin/courses">Đến danh sách khóa học</a>
   </ui-empty>
   } @else {
-  <div class="assignments__toolbar">
-    <label class="assignments__filter">
-      <span>Khóa học</span>
-      <select uiSelect #course (change)="store.pickCourse(course.value)">
-        @for (option of store.courses$(); track option.courseId) {
-        <option
-          [value]="option.courseId"
-          [selected]="option.courseId === store.courseId$()"
+  <section uiCard class="assignments__surface" aria-label="Lượt giao khóa học">
+    <div class="assignments__toolbar">
+      <label class="assignments__filter">
+        <span>Khóa học</span>
+        <select
+          uiSelect
+          #course
+          [attr.title]="store.course$()?.title"
+          (change)="store.pickCourse(course.value)"
         >
-          {{ option.code }} · {{ option.title }}
-        </option>
+          @for (option of store.courses$(); track option.courseId) {
+          <option
+            [value]="option.courseId"
+            [selected]="option.courseId === store.courseId$()"
+          >
+            {{ option.title }}
+          </option>
+          }
+        </select>
+        @if (store.course$(); as selectedCourse) {
+        <span class="assignments__code">{{ selectedCourse.code }}</span>
         }
-      </select>
-    </label>
-    <span class="assignments__count" aria-live="polite"
-      >{{ store.total$() }} lượt giao</span
-    >
-  </div>
-  <section
-    uiCard
-    class="assignments__table"
-    [class.assignments__table--empty]="!store.total$()"
-    aria-label="Lượt giao khóa học"
-  >
-    <ui-data-table
-      caption="Lượt giao khóa học"
-      [columns]="[
+      </label>
+      <span class="assignments__count" aria-live="polite"
+        >{{ store.total$() }} lượt giao</span
+      >
+    </div>
+    <div class="assignments__table">
+      <ui-data-table
+        caption="Lượt giao khóa học"
+        [columns]="[
         { key: 'title', label: 'Đợt giao', sortable: false },
         { key: 'start', label: 'Bắt đầu', sortable: false },
         { key: 'due', label: 'Hạn hoàn thành', sortable: false },
@@ -88,65 +92,74 @@
         { key: 'status', label: 'Trạng thái', sortable: false },
         { key: 'actions', label: 'Thao tác', kind: 'actions' },
       ]"
-      [rows]="store.rows$()"
-      [total]="store.total$()"
-      [page]="store.page$()"
-      [pageSize]="pageSize"
-      (pageChange)="store.goToPage($event)"
-    >
-      <ui-empty
-        slot="empty"
-        variant="inline"
-        title="Khóa học này chưa được giao"
-        description="Giao cho cá nhân, phòng/nhóm, đơn vị hoặc nhóm học tập."
-      />
-      <ng-template uiDataTableCell="title" [of]="store.rows$()" let-row>
-        <div uiTablePrimary class="assignments__title" [attr.title]="row.title">
-          {{ row.title }}
-        </div>
-        <div uiTableSub>
-          Giao ngày {{ row.assignment.createTime | fmtDate }}
-        </div>
-      </ng-template>
-      <ng-template uiDataTableCell="start" [of]="store.rows$()" let-row>
-        <span class="assignments__date">
-          {{ row.assignment.startAt | fmtDate }}
-        </span>
-      </ng-template>
-      <ng-template uiDataTableCell="due" [of]="store.rows$()" let-row>
-        <div class="assignments__deadline">
-          @if (row.assignment.dueAt) {
+        [rows]="store.rows$()"
+        [total]="store.total$()"
+        [page]="store.page$()"
+        [pageSize]="pageSize"
+        (pageChange)="store.goToPage($event)"
+      >
+        <ui-empty
+          slot="empty"
+          variant="inline"
+          title="Khóa học này chưa được giao"
+          description="Chọn đối tượng học và hạn hoàn thành để giao khóa học này."
+        >
+          <button uiButton variant="ghost" (click)="store.startAssign()">
+            Giao khóa học này <ui-icon name="arrow-right" size="sm" />
+          </button>
+        </ui-empty>
+        <ng-template uiDataTableCell="title" [of]="store.rows$()" let-row>
+          <div
+            uiTablePrimary
+            class="assignments__title"
+            [attr.title]="row.title"
+          >
+            {{ row.title }}
+          </div>
+          <div uiTableSub>
+            Giao ngày {{ row.assignment.createTime | fmtDate }}
+          </div>
+        </ng-template>
+        <ng-template uiDataTableCell="start" [of]="store.rows$()" let-row>
           <span class="assignments__date">
-            {{ row.assignment.dueAt | fmtDate }}
+            {{ row.assignment.startAt | fmtDate }}
           </span>
-          }
-          <app-due-date [dueAt]="row.assignment.dueAt" relativeOnly />
-        </div>
-      </ng-template>
-      <ng-template uiDataTableCell="requirement" [of]="store.rows$()" let-row>
-        {{ requirementLabel[row.assignment.requirement] }}
-      </ng-template>
-      <ng-template uiDataTableCell="status" [of]="store.rows$()" let-row>
-        <span
-          uiBadge
-          [dot]="statusView(row.assignment.status).dot ?? false"
-          [outline]="statusView(row.assignment.status).outline ?? false"
-          [tone]="statusView(row.assignment.status).tone"
-          >{{ statusView(row.assignment.status).label }}</span
-        >
-      </ng-template>
-      <ng-template uiDataTableCell="actions" [of]="store.rows$()" let-row>
-        <button
-          uiButton
-          size="sm"
-          variant="ghost"
-          [attr.aria-label]="'Xem ' + row.title"
-          (click)="store.view(row.assignment.id)"
-        >
-          Xem
-        </button>
-      </ng-template>
-    </ui-data-table>
+        </ng-template>
+        <ng-template uiDataTableCell="due" [of]="store.rows$()" let-row>
+          <div class="assignments__deadline">
+            @if (row.assignment.dueAt) {
+            <span class="assignments__date">
+              {{ row.assignment.dueAt | fmtDate }}
+            </span>
+            }
+            <app-due-date [dueAt]="row.assignment.dueAt" relativeOnly />
+          </div>
+        </ng-template>
+        <ng-template uiDataTableCell="requirement" [of]="store.rows$()" let-row>
+          {{ requirementLabel[row.assignment.requirement] }}
+        </ng-template>
+        <ng-template uiDataTableCell="status" [of]="store.rows$()" let-row>
+          <span
+            uiBadge
+            [dot]="statusView(row.assignment.status).dot ?? false"
+            [outline]="statusView(row.assignment.status).outline ?? false"
+            [tone]="statusView(row.assignment.status).tone"
+            >{{ statusView(row.assignment.status).label }}</span
+          >
+        </ng-template>
+        <ng-template uiDataTableCell="actions" [of]="store.rows$()" let-row>
+          <button
+            uiButton
+            size="sm"
+            variant="ghost"
+            [attr.aria-label]="'Xem ' + row.title"
+            (click)="store.view(row.assignment.id)"
+          >
+            Xem
+          </button>
+        </ng-template>
+      </ui-data-table>
+    </div>
   </section>
   }
 </ng-template>
@@ -161,12 +174,7 @@
   } @else if (store.groupsLoading$()) {
   <div class="assignments__loading"><span uiSpinner></span></div>
   } @else {
-  <section
-    uiCard
-    class="assignments__table"
-    [class.assignments__table--empty]="!store.groups$().length"
-    aria-label="Nhóm học tập"
-  >
+  <section uiCard class="assignments__table" aria-label="Nhóm học tập">
     <ui-data-table
       caption="Nhóm học tập"
       [columns]="[
@@ -199,7 +207,7 @@
         <span
           class="assignments__description"
           [attr.title]="row.group.description"
-          >{{ row.group.description || '—' }}</span
+          >{{ row.group.description || 'Chưa có mô tả' }}</span
         >
       </ng-template>
       <ng-template uiDataTableCell="updated" [of]="store.groups$()" let-row>
@@ -225,6 +233,7 @@
 
 <ng-template
   [uiDrawer]="store.assigning$() !== null"
+  uiDrawerSize="lg"
   uiDrawerTitle="Giao khóa học"
   [uiDrawerFooter]="assignFooter"
   [uiDrawerBusy]="store.isAssigning$()"
@@ -255,6 +264,7 @@
 
 <ng-template
   [uiDrawer]="store.creatingGroup$()"
+  uiDrawerVariant="dialog"
   uiDrawerTitle="Tạo nhóm học tập"
   [uiDrawerFooter]="groupFooter"
   [uiDrawerBusy]="store.isCreatingGroup$()"

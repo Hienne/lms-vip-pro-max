@@ -400,6 +400,10 @@ user close, and the page maps it to the store's cancel command. `openDrawer` is 
 `@lms/ui`: there is no imperative way to show a drawer. `@lms/ui` ships no screen copy, so the
 title, busy label and form-actions labels always come from the screen.
 
+Short forms can use `uiDrawerVariant="dialog"` for a centered, content-height dialog.
+`uiDrawerSize="lg"` widens a side drawer to the reading measure for paired fields.
+Both keep the same footer, busy protection, focus trap and dismissal behavior.
+
 **Popovers.** `button[uiPopover]="template"` with a required `popoverLabel` opens the template
 in a non-modal `role="dialog"` panel (`ui-popover-panel`, width `ui.layout(popover)`, full width
 between the page gutters below `md`), anchored under the button. The button gets `aria-haspopup`,

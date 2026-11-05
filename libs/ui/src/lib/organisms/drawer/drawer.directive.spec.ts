@@ -10,6 +10,8 @@ import { DrawerOutlet } from './drawer.directive';
     <ng-template
       [uiDrawer]="open()"
       [uiDrawerTitle]="title()"
+      [uiDrawerVariant]="variant()"
+      [uiDrawerSize]="size()"
       [uiDrawerFooter]="footer"
       [uiDrawerBusy]="busy()"
       uiDrawerBusyLabel="Đang lưu…"
@@ -23,14 +25,17 @@ import { DrawerOutlet } from './drawer.directive';
   `,
 })
 class Host {
+  readonly variant = signal<'drawer' | 'dialog'>('drawer');
+  readonly size = signal<'md' | 'lg'>('md');
   readonly open = signal(false);
   readonly title = signal('Drawer mẫu');
   readonly busy = signal(false);
   readonly dismissed = signal(0);
 }
 
-function setup() {
+function setup(variant: 'drawer' | 'dialog' = 'drawer') {
   const fixture = TestBed.createComponent(Host);
+  fixture.componentInstance.variant.set(variant);
   document.body.appendChild(fixture.nativeElement);
   fixture.detectChanges();
   const opener = fixture.nativeElement.querySelector(
@@ -54,15 +59,16 @@ afterEach(() => {
   document.body.replaceChildren();
 });
 
-describe('uiDrawer', () => {
+describe.each(['drawer', 'dialog'] as const)('uiDrawer (%s)', (variant) => {
   it('opens with its title, body and footer when the condition turns true', async () => {
-    const { host } = setup();
+    const { host } = setup(variant);
     await settle();
     expect(panel()).toBeNull();
 
     host.open.set(true);
     await settle();
 
+    expect(document.querySelector(`.drawer-pane--${variant}`)).not.toBeNull();
     const drawer = panel() as HTMLElement;
     const heading = document.getElementById(
       drawer.getAttribute('aria-labelledby') ?? '',
@@ -75,7 +81,7 @@ describe('uiDrawer', () => {
   });
 
   it('closes without a dismissal when the condition turns false', async () => {
-    const { host } = setup();
+    const { host } = setup(variant);
     host.open.set(true);
     await settle();
 
@@ -87,7 +93,7 @@ describe('uiDrawer', () => {
   });
 
   it('reports a dismissal on Escape', async () => {
-    const { host } = setup();
+    const { host } = setup(variant);
     host.open.set(true);
     await settle();
 
@@ -105,7 +111,7 @@ describe('uiDrawer', () => {
   });
 
   it('reports a dismissal on a backdrop click', async () => {
-    const { host } = setup();
+    const { host } = setup(variant);
     host.open.set(true);
     await settle();
 
@@ -116,7 +122,7 @@ describe('uiDrawer', () => {
   });
 
   it('reports a dismissal on the close button', async () => {
-    const { host } = setup();
+    const { host } = setup(variant);
     host.open.set(true);
     await settle();
 
@@ -127,7 +133,7 @@ describe('uiDrawer', () => {
   });
 
   it('reports a dismissal on close() from the template context', async () => {
-    const { host } = setup();
+    const { host } = setup(variant);
     host.open.set(true);
     await settle();
 
@@ -138,7 +144,7 @@ describe('uiDrawer', () => {
   });
 
   it('opens again after the state says so once it was dismissed', async () => {
-    const { host } = setup();
+    const { host } = setup(variant);
     host.open.set(true);
     await settle();
     (document.querySelector('[aria-label="Đóng"]') as HTMLElement).click();
@@ -153,7 +159,7 @@ describe('uiDrawer', () => {
   });
 
   it('updates the title of an open drawer', async () => {
-    const { host } = setup();
+    const { host } = setup(variant);
     host.open.set(true);
     await settle();
 
@@ -168,7 +174,7 @@ describe('uiDrawer', () => {
   });
 
   it('gives focus back to the opener', async () => {
-    const { host, opener } = setup();
+    const { host, opener } = setup(variant);
     host.open.set(true);
     await settle();
     await vi.waitFor(() =>
@@ -182,7 +188,7 @@ describe('uiDrawer', () => {
   });
 
   it('closes the drawer, without a dismissal, when its host is destroyed', async () => {
-    const { fixture, host } = setup();
+    const { fixture, host } = setup(variant);
     host.open.set(true);
     await settle();
     expect(panel()).not.toBeNull();
@@ -205,7 +211,7 @@ describe('uiDrawer', () => {
       );
 
     async function openBusy() {
-      const ctx = setup();
+      const ctx = setup(variant);
       ctx.host.open.set(true);
       await settle();
       ctx.host.busy.set(true);

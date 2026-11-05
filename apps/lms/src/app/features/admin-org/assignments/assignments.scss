@@ -13,10 +13,16 @@
     padding-top: ui.space(5);
   }
 
+  &__surface {
+    overflow: hidden;
+    min-width: 0;
+  }
+
   &__toolbar {
     @include ui.row-between(3);
     align-items: flex-end;
-    margin-bottom: ui.space(5);
+    padding: ui.space(4);
+    border-bottom: 1px solid ui.color(border);
   }
 
   &__filter {
@@ -24,7 +30,7 @@
     @include ui.text(sm, muted);
     flex: 1;
     min-width: 0;
-    max-width: ui.layout(assistant);
+    max-width: ui.layout(reading);
 
     select {
       width: 100%;
@@ -35,16 +41,15 @@
   &__count {
     @include ui.text(sm, muted);
     @include ui.num;
-    padding-bottom: ui.space(2);
+    white-space: nowrap;
   }
 
   &__table {
     min-width: 0;
     overflow: hidden;
 
-    &--empty {
-      border: 0;
-      background: transparent;
+    & > ui-data-table {
+      display: block;
     }
   }
 
@@ -56,7 +61,7 @@
 
   &__title {
     @include ui.truncate;
-    max-width: ui.layout(sidebar);
+    max-width: ui.layout(panel);
 
     @include ui.bp-below(md) {
       max-width: 100%;
@@ -68,6 +73,18 @@
   &__deadline {
     @include ui.stack(1);
     align-items: flex-start;
+  }
+
+  @include ui.bp-below(md) {
+    &__toolbar {
+      align-items: stretch;
+      flex-direction: column;
+    }
+
+    &__description {
+      max-width: 100%;
+      white-space: normal;
+    }
   }
 
   &__date {
@@ -85,7 +102,9 @@
 
   &__description {
     @include ui.text(sm, muted);
-    @include ui.clamp(2);
+    @include ui.truncate;
+    display: block;
+    max-width: ui.layout(panel);
     overflow-wrap: anywhere;
   }
 }
