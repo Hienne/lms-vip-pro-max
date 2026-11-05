@@ -191,14 +191,15 @@ describe('AccessRequests', () => {
         .forEach((c) => (c.innerHTML = '')),
     );
 
-    it('offers "Duyệt" on pending registrations only and "Từ chối" on every pending row, with no disabled placeholder', async () => {
+    it('offers "Duyệt" on pending registrations, "Đặt lại mật khẩu" on found-account resets and "Từ chối" on every pending row, with no disabled placeholder', async () => {
       await open();
       const labels = (row: Element) =>
         Array.from(row.querySelectorAll('button')).map((b) =>
           b.textContent?.trim(),
         );
       expect(labels(rowOf('000101'))).toEqual(['Duyệt', 'Từ chối']);
-      expect(labels(rowOf('000004'))).toEqual(['Từ chối']);
+      expect(labels(rowOf('000004'))).toEqual(['Đặt lại mật khẩu', 'Từ chối']);
+      expect(labels(rowOf('000999'))).toEqual(['Từ chối']);
       expect(panel.querySelectorAll('tbody [disabled]')).toHaveLength(0);
       await choose(select('Trạng thái'), 'REJECTED');
       expect(rowOf('000103').querySelector('button')).toBeNull();
@@ -396,6 +397,132 @@ describe('AccessRequests', () => {
       expect(document.body.textContent).not.toContain('Đã duyệt yêu cầu');
       expect(document.body.textContent).toContain('đã được sử dụng');
       expect(rows()).toHaveLength(3);
+    });
+  });
+
+  describe('resetting a password', () => {
+    const dialog = () => document.querySelector('[role="dialog"]');
+    const button = (root: ParentNode, label: string) =>
+      Array.from(root.querySelectorAll('button')).find(
+        (b) =>
+          b.textContent?.includes(label) ||
+          b.getAttribute('aria-label')?.includes(label),
+      ) as HTMLButtonElement;
+    const resets = () =>
+      handle.mock.calls.filter(
+        ([e]) => e === identityEndpoints.resetPasswordForRequest,
+      );
+    const resetRow = {
+      requestId: 2,
+      kind: 'PASSWORD_RESET',
+      status: 'APPROVED',
+      staffCode: '000004',
+      fullName: 'Học viên tiền gửi Demo',
+      email: null,
+      orgId: 1,
+      orgName: 'Ban Quản lý và phát triển Core Banking',
+      targetUserId: '000004',
+      accountFound: true,
+      createdTime: '2026-11-05T08:15:00+07:00',
+      resolvedBy: '000001',
+      resolvedTime: '2026-11-05T10:00:00+07:00',
+      resolutionNote: null,
+    };
+    const backendResets = () =>
+      handle.mockImplementation((endpoint, request) =>
+        endpoint === identityEndpoints.resetPasswordForRequest
+          ? {
+              status: 200,
+              body: envelopeOk({
+                request: resetRow,
+                temporaryPassword: 'Xk7mPq2RtV9b',
+              }),
+            }
+          : original(endpoint, request),
+      );
+    afterEach(() =>
+      document
+        .querySelectorAll('.cdk-overlay-container')
+        .forEach((c) => (c.innerHTML = '')),
+    );
+
+    it('offers the reset only on a forgot-password request whose account was found', async () => {
+      await open();
+      expect(button(rowOf('000004'), 'Đặt lại mật khẩu')).toBeTruthy();
+      expect(button(rowOf('000101'), 'Đặt lại mật khẩu')).toBeUndefined();
+      expect(button(rowOf('000999'), 'Đặt lại mật khẩu')).toBeUndefined();
+    });
+
+    it('asks first and sends nothing until confirmed', async () => {
+      await open();
+      button(rowOf('000004'), 'Đặt lại mật khẩu').click();
+      await settle();
+      expect(text(dialog() as HTMLElement)).toContain('000004');
+      expect(resets()).toHaveLength(0);
+      button(dialog() as HTMLElement, 'Hủy').click();
+      await settle();
+      expect(dialog()).toBeNull();
+      expect(resets()).toHaveLength(0);
+    });
+
+    it('shows the temporary password once, masked until revealed, and drops it on Xong', async () => {
+      await open();
+      backendResets();
+      button(rowOf('000004'), 'Đặt lại mật khẩu').click();
+      await settle();
+      const note = dialog()?.querySelector('textarea') as HTMLTextAreaElement;
+      note.value = '  đã gọi lại  ';
+      note.dispatchEvent(new Event('input', { bubbles: true }));
+      await settle();
+      button(dialog() as HTMLElement, 'Đặt lại mật khẩu').click();
+      await settle();
+      expect(resets()[0][1]).toMatchObject({
+        params: { requestId: '2' },
+        body: { note: 'đã gọi lại' },
+      });
+      const field = dialog()?.querySelector(
+        'input[aria-label="Mật khẩu tạm"]',
+      ) as HTMLInputElement;
+      expect(field.type).toBe('password');
+      expect(field.value).toBe('Xk7mPq2RtV9b');
+      button(dialog() as HTMLElement, 'Hiện mật khẩu').click();
+      await settle();
+      expect(field.type).toBe('text');
+
+      const written: string[] = [];
+      Object.defineProperty(navigator, 'clipboard', {
+        configurable: true,
+        value: { writeText: async (v: string) => void written.push(v) },
+      });
+      button(dialog() as HTMLElement, 'Sao chép').click();
+      await settle();
+      expect(written).toEqual(['Xk7mPq2RtV9b']);
+
+      button(dialog() as HTMLElement, 'Xong').click();
+      await settle();
+      expect(dialog()).toBeNull();
+      expect(document.body.textContent).not.toContain('Xk7mPq2RtV9b');
+      expect(document.body.innerHTML.includes('Xk7mPq2RtV9b')).toBe(false);
+    });
+
+    it('shows a refusal inside the dialog and leaves it open', async () => {
+      await open();
+      handle.mockImplementation((endpoint, request) =>
+        endpoint === identityEndpoints.resetPasswordForRequest
+          ? backendRefusal('stateConflict')
+          : original(endpoint, request),
+      );
+      button(rowOf('000004'), 'Đặt lại mật khẩu').click();
+      await settle();
+      button(dialog() as HTMLElement, 'Đặt lại mật khẩu').click();
+      await settle();
+      expect(dialog()).not.toBeNull();
+      expect(text(dialog() as HTMLElement)).toContain(
+        'Chưa đặt lại được mật khẩu',
+      );
+      expect(
+        dialog()?.querySelector('input[aria-label="Mật khẩu tạm"]'),
+      ).toBeNull();
     });
   });
 });

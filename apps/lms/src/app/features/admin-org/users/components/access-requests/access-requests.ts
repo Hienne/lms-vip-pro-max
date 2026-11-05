@@ -1,5 +1,11 @@
 import { Dialog } from '@angular/cdk/dialog';
-import { Component, computed, DestroyRef, inject } from '@angular/core';
+import {
+  Component,
+  computed,
+  DestroyRef,
+  inject,
+  Injector,
+} from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import type {
   AccessRequest,
@@ -29,6 +35,7 @@ import {
   AccessRequestsStore,
 } from '../../data-access/access-requests.store';
 import { askApproval } from './approve-request-dialog';
+import { askPasswordReset } from './reset-password-dialog';
 import { askRejectionNote } from './reject-request-dialog';
 
 /** A table row: the table wants an `id`, the request's own key is `requestId`. */
@@ -49,7 +56,7 @@ const STATUS_VIEW: Record<AccessRequestStatus, StatusView> = {
 /**
  * The "Yêu cầu" panel of the Người dùng screen: the table of visitors' requests to register or to
  * reset a password (SPEC-access-requests). A pending registration can be approved or rejected; the
- * primary action of a reset request ("Đặt lại mật khẩu") belongs to its own module.
+ * reset request gets "Đặt lại mật khẩu" (SPEC-password-reset-request) when its account was found.
  */
 @Component({
   selector: 'app-access-requests',
@@ -76,6 +83,7 @@ const STATUS_VIEW: Record<AccessRequestStatus, StatusView> = {
 export class AccessRequests {
   protected readonly store = inject(AccessRequestsStore);
   private readonly dialog = inject(Dialog);
+  private readonly injector = inject(Injector);
   private readonly destroyRef = inject(DestroyRef);
   protected readonly pageSize = ACCESS_REQUESTS_PAGE_SIZE;
 
@@ -95,6 +103,10 @@ export class AccessRequests {
     askApproval(this.dialog, request)
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe((note) => this.store.approve(request.requestId, note));
+  }
+
+  protected resetPassword(request: AccessRequest): void {
+    askPasswordReset(this.dialog, request, this.injector);
   }
 
   protected kindLabel(kind: AccessRequestKind): string {

@@ -38,6 +38,8 @@ export class AccessRequestsStore {
     kind: signal<AccessRequestKind | ''>(''),
     status: signal<AccessRequestStatus | ''>('PENDING'),
     page: signal(1),
+    /** The temporary password of the reset just made; held only until the dialog closes. */
+    temporaryPassword: signal<string | null>(null),
     /** The last page the server sent: the table stays while the next one loads. */
     shown: linkedSignal<
       Page<AccessRequest> | undefined,
@@ -105,6 +107,21 @@ export class AccessRequestsStore {
     },
   );
 
+  /** Resets the account of a password-reset request; the answer carries the temporary password once. */
+  private readonly passwordReset = serverMutation(
+    (input: { readonly requestId: number; readonly note?: string }) =>
+      this.client.call(identityEndpoints.resetPasswordForRequest, {
+        params: { requestId: input.requestId },
+        body: input.note ? { note: input.note } : {},
+      }),
+    {
+      errors: 'alert',
+      onSuccess: (result) =>
+        this.setTemporaryPassword(result.temporaryPassword),
+      invalidates: this.changed,
+    },
+  );
+
   readonly query$ = this.state.query.asReadonly();
   readonly kind$ = this.state.kind.asReadonly();
   readonly status$ = this.state.status.asReadonly();
@@ -116,6 +133,9 @@ export class AccessRequestsStore {
   readonly loadError$ = this.listData.error;
   readonly isRejecting$ = this.rejection.isPending;
   readonly isApproving$ = this.approval.isPending;
+  readonly isResettingPassword$ = this.passwordReset.isPending;
+  readonly resetPasswordError$ = this.passwordReset.error;
+  readonly temporaryPassword$ = this.state.temporaryPassword.asReadonly();
 
   readonly rows$ = computed(
     (): readonly AccessRequest[] => this.state.shown()?.items ?? [],
@@ -136,6 +156,10 @@ export class AccessRequestsStore {
 
   private setStatus(status: AccessRequestStatus | ''): void {
     this.state.status.set(status);
+  }
+
+  private setTemporaryPassword(password: string | null): void {
+    this.state.temporaryPassword.set(password);
   }
 
   private setPage(page: number): void {
@@ -176,6 +200,16 @@ export class AccessRequestsStore {
 
   approve(requestId: number, note?: string): void {
     this.approval.run({ requestId, note: note?.trim() || undefined });
+  }
+
+  resetPassword(requestId: number, note?: string): void {
+    this.passwordReset.run({ requestId, note: note?.trim() || undefined });
+  }
+
+  /** Forgets the temporary password and any refusal; called when the reset dialog closes. */
+  clearPasswordReset(): void {
+    this.setTemporaryPassword(null);
+    this.passwordReset.reset();
   }
 
   retryLoad(): void {

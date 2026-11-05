@@ -109,6 +109,15 @@
       >
         Duyệt
       </button>
+      } @if (request.kind === 'PASSWORD_RESET' && request.accountFound) {
+      <button
+        uiButton
+        size="sm"
+        variant="primary"
+        (click)="resetPassword(request)"
+      >
+        Đặt lại mật khẩu
+      </button>
       }
       <button
         uiButton
