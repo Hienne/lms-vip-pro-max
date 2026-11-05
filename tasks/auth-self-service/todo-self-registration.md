@@ -35,7 +35,7 @@ Plan: [plan-self-registration.md](plan-self-registration.md) · Spec: [SPEC-self
 
 ## R5: Register screen and login link
 
-- [ ] `features/auth/register/` (form, store, component, spec), `register` entry in `screens.ts` (`public`,
+- [x] `features/auth/register/` (form, store, component, spec), `register` entry in `screens.ts` (`public`,
       `guestOnly`, `bare`), "Chưa có tài khoản? Đăng ký" link on login; confirmation, 429 and error states.
 - **Verify:** `npx nx test lms`; manual on the mock at 375 and 1280 px · **Deps:** R2 · **Size:** M
 

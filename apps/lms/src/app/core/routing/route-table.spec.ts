@@ -57,6 +57,7 @@ describe('route table', () => {
     expect(new Set(SCREEN_ENTRIES.map(({ screen }) => screen.path))).toEqual(
       new Set([
         'login',
+        'register',
         'change-password',
         'profile',
         'learn',

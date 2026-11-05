@@ -1,0 +1,123 @@
+<main class="register">
+  <div class="register__card">
+    <ui-mai [size]="36" />
+    @if (store.message$(); as message) {
+    <div class="register__intro">
+      <h1 class="register__title">Đã gửi yêu cầu</h1>
+      <p class="register__help">{{ message }}</p>
+    </div>
+    <a uiButton variant="primary" size="lg" block routerLink="/login"
+      >Về trang đăng nhập</a
+    >
+    } @else {
+    <div class="register__intro">
+      <h1 class="register__title">Đăng ký tài khoản</h1>
+      <p class="register__help">
+        Gửi thông tin để quản trị viên xem xét. Bạn đăng nhập được sau khi yêu
+        cầu được duyệt.
+      </p>
+    </div>
+
+    @if (store.error$(); as failure) {
+    <ui-alert tone="danger" heading="Chưa gửi được yêu cầu"
+      >{{ failure.message }}</ui-alert
+    >
+    } @if (store.unitsError$(); as failure) {
+    <ui-alert tone="danger" heading="Không tải được danh sách đơn vị">
+      {{ failure.message }}
+      <button
+        uiButton
+        variant="ghost"
+        size="sm"
+        type="button"
+        (click)="store.loadUnitsAgain()"
+      >
+        Thử lại
+      </button>
+    </ui-alert>
+    }
+
+    <form class="register__fields" [formRoot]="registerForm">
+      <ui-field label="Mã cán bộ" required>
+        <input
+          uiInput
+          autocomplete="username"
+          [formField]="registerForm.staffCode"
+        />
+      </ui-field>
+      <ui-field label="Họ và tên" required>
+        <input
+          uiInput
+          autocomplete="name"
+          [formField]="registerForm.fullName"
+        />
+      </ui-field>
+      <ui-field label="Email" required>
+        <input
+          uiInput
+          type="email"
+          autocomplete="email"
+          [formField]="registerForm.email"
+        />
+      </ui-field>
+      <ui-field label="Đơn vị" required>
+        <select uiSelect [formField]="registerForm.orgId">
+          <option value="" [selected]="!registerForm.orgId().value()">
+            — Chọn đơn vị —
+          </option>
+          @for (unit of store.units$(); track unit.orgId) {
+          <option
+            [value]="unit.orgId"
+            [selected]="registerForm.orgId().value() === '' + unit.orgId"
+          >
+            {{ unit.name }}
+          </option>
+          }
+        </select>
+      </ui-field>
+      <ui-field label="Mật khẩu" required hint="Tối thiểu 6 ký tự.">
+        <div class="register__password">
+          <input
+            uiInput
+            autocomplete="new-password"
+            [type]="showPassword() ? 'text' : 'password'"
+            [formField]="registerForm.password"
+          />
+          <button
+            uiIconButton
+            type="button"
+            size="sm"
+            class="register__reveal"
+            [label]="showPassword() ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'"
+            [attr.aria-pressed]="showPassword()"
+            (click)="togglePassword()"
+          >
+            <ui-icon [name]="showPassword() ? 'eye-off' : 'eye'" />
+          </button>
+        </div>
+      </ui-field>
+      <ui-field label="Nhập lại mật khẩu" required>
+        <input
+          uiInput
+          autocomplete="new-password"
+          [type]="showPassword() ? 'text' : 'password'"
+          [formField]="registerForm.confirm"
+        />
+      </ui-field>
+      <button
+        uiButton
+        variant="primary"
+        size="lg"
+        block
+        type="submit"
+        [busy]="store.isSending$()"
+      >
+        Gửi yêu cầu
+      </button>
+    </form>
+    <p class="register__back">
+      Đã có tài khoản? <a routerLink="/login">Đăng nhập</a>
+    </p>
+    }
+  </div>
+</main>

@@ -525,6 +525,16 @@ export const SCREEN_TABLE = {
         import('../../features/auth/login/login').then((m) => m.Login),
     },
     {
+      path: 'register',
+      title: 'Đăng ký tài khoản',
+      mockupPage: 'register',
+      layout: 'bare',
+      public: true,
+      guestOnly: true,
+      load: () =>
+        import('../../features/auth/register/register').then((m) => m.Register),
+    },
+    {
       path: 'change-password',
       title: 'Đổi mật khẩu',
       mockupPage: 'changePassword',
