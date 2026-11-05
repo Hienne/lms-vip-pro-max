@@ -14,6 +14,7 @@ import {
 } from '@lms/ui';
 import type { CourseDraftValue } from '../../course-draft';
 import { CourseEditorStore } from '../../data-access/course-editor.store';
+import { CourseExamStore } from './data-access/course-exam.store';
 
 const QUIZ_STATUS: Record<QuizSummary['status'], string> = {
   DRAFT: ' · Nháp',
@@ -21,11 +22,18 @@ const QUIZ_STATUS: Record<QuizSummary['status'], string> = {
   CLOSED: ' · Đã đóng',
 };
 
+const QUIZ_STATUS_LABEL: Record<QuizSummary['status'], string> = {
+  DRAFT: 'Nháp',
+  PUBLISHED: 'Đã xuất bản',
+  CLOSED: 'Đã đóng',
+};
+
 /**
  * Step 3 of the editor: the course's final exam and the reward for completing it. Completion
  * itself is measured by the server: every required lesson, a video watched past its threshold, a
- * PDF read to its last page, and the final exam when one is chosen. The exam's own settings
- * (time, questions, pass score, attempts) live on the quiz screen.
+ * PDF read to its last page, and the final exam when one is chosen. The card shows the exam in one
+ * of three states: none, one the wizard manages (random pool over the program's bank) and one the
+ * quiz screen customised (read-only here).
  */
 @Component({
   selector: 'app-course-rules',
@@ -41,6 +49,7 @@ const QUIZ_STATUS: Record<QuizSummary['status'], string> = {
     RouterLink,
     Select,
   ],
+  providers: [CourseExamStore],
   templateUrl: './course-rules.html',
   styleUrl: './course-rules.scss',
 })
@@ -48,6 +57,7 @@ export class CourseRules {
   readonly draft = input.required<FieldTree<CourseDraftValue>>();
 
   protected readonly store = inject(CourseEditorStore);
+  protected readonly exam = inject(CourseExamStore);
 
   /** The course's final exams to pick from; a quiz that is not published says so. */
   protected readonly examOptions = computed(() => {
@@ -69,6 +79,8 @@ export class CourseRules {
         ]
       : options;
   });
+
+  protected readonly statusLabel = QUIZ_STATUS_LABEL;
 
   protected readonly hasExam = computed(
     () => this.draft().finalQuizId().value() !== '',

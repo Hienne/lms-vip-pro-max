@@ -4,7 +4,7 @@
       <h2 class="course-rules__title">Bài kiểm tra cuối khóa</h2>
       <ui-field
         label="Bài kiểm tra dùng để xét hoàn thành"
-        hint="Cấu hình thời gian, số câu, điểm đạt, số lần thi tại màn Bài kiểm tra."
+        hint="Mỗi khóa học có tối đa một bài thi cuối khóa."
       >
         <select uiSelect [formField]="draft().finalQuizId">
           <option value="" [selected]="!hasExam()">
@@ -20,23 +20,79 @@
           }
         </select>
       </ui-field>
-      @if (store.quizzesError$(); as error) {
+      @if (exam.quizzesError$(); as error) {
       <ui-alert tone="danger">
         Không tải được danh sách bài kiểm tra: {{ error.message }}
+        <button uiButton size="sm" type="button" (click)="exam.retryQuizzes()">
+          Thử lại
+        </button>
       </ui-alert>
-      } @else if (!examOptions().length) {
-      <ui-alert tone="info" [announce]="false">
-        Khóa học chưa có bài thi cuối khóa. @if (store.canCreateQuiz$() &&
-        store.course$(); as course) {
+      } @else if (exam.exam$(); as quiz) {
+      <dl class="course-rules__summary">
+        <div>
+          <dt>Tên bài thi</dt>
+          <dd>{{ quiz.title }}</dd>
+        </div>
+        <div>
+          <dt>Thời gian</dt>
+          <dd>{{ quiz.timeLimitMinutes }} phút</dd>
+        </div>
+        <div>
+          <dt>Số câu</dt>
+          <dd>{{ quiz.questionCount }} câu</dd>
+        </div>
+        <div>
+          <dt>Điểm đạt</dt>
+          <dd>{{ quiz.passPercent }}%</dd>
+        </div>
+        <div>
+          <dt>Số lần thi</dt>
+          <dd>{{ quiz.maxAttempts }}</dd>
+        </div>
+        <div>
+          <dt>Trạng thái</dt>
+          <dd>{{ statusLabel[quiz.status] }}</dd>
+        </div>
+      </dl>
+      @if (!exam.isWizardManaged$()) {
+      <p class="course-rules__note">
+        Bài thi này do bạn chọn câu hỏi thủ công, nên chỉ chỉnh được ở màn Bài
+        kiểm tra.
+      </p>
+      }
+      <div class="row row--gap-2">
+        @if (exam.isWizardManaged$()) {
+        <button uiButton size="sm" type="button" (click)="exam.openForm()">
+          Sửa
+        </button>
+        } @if (store.canCreateQuiz$()) {
         <a
           uiButton
           size="sm"
-          routerLink="/admin/quizzes/new"
-          [queryParams]="{ courseId: course.course.id, quizType: 'FINAL_EXAM' }"
-          >Tạo bài thi cuối khóa</a
+          variant="ghost"
+          [routerLink]="['/admin/quizzes', quiz.id]"
+          [queryParams]="{ courseId: quiz.courseId }"
+          >Cấu hình nâng cao</a
         >
-        } @else { Tạo bài kiểm tra loại Thi cuối khóa ở màn Bài kiểm tra. }
-      </ui-alert>
+        }
+      </div>
+      } @else {
+      <p class="course-rules__note">
+        Khóa học chưa có bài thi cuối khóa. @if (exam.bankError$(); as error) {
+        Không đếm được câu hỏi của chương trình: {{ error.message }}
+        <button uiButton size="sm" type="button" (click)="exam.retryBank()">
+          Thử lại
+        </button>
+        } @else if (exam.activeBank$() !== undefined) { Ngân hàng chương trình
+        @if (exam.programName$(); as name) {
+        <strong>{{ name }}</strong>
+        } có {{ exam.activeBank$() }} câu đang dùng. }
+      </p>
+      <div class="row row--gap-2">
+        <button uiButton size="sm" type="button" (click)="exam.openForm()">
+          Tạo bài thi cuối khóa
+        </button>
+      </div>
       }
     </div>
   </section>

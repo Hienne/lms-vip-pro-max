@@ -13,6 +13,27 @@
     @include ui.text(lg);
   }
 
+  &__summary {
+    display: grid;
+    gap: ui.space(2) ui.space(6);
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    margin: 0;
+
+    dt {
+      @include ui.text(sm, muted);
+    }
+
+    dd {
+      margin: 0;
+      @include ui.num;
+    }
+  }
+
+  &__note {
+    @include ui.text(sm, muted);
+    margin: 0;
+  }
+
   &__list {
     @include ui.stack(2);
     margin: 0;

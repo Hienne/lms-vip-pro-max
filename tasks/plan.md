@@ -53,7 +53,7 @@ T2 quiz screen D7 (indep.)  │                         │
 - [ ] `nx test lms mocks` green; F1 and F6 work on the mock in the browser; review with human
 
 ### Phase 2: Exam in step 3
-- [ ] T4: Step 3 reads the exam and the bank (three states, no form yet)
+- [x] T4: Step 3 reads the exam and the bank (three states, no form yet)
 - [ ] T5: Create the final exam from the short form
 - [ ] T6: Edit a wizard-managed exam; read-only summary for a FIXED one
 - [ ] T7: Decouple the import drawer behind `QUESTION_IMPORT_HOST`

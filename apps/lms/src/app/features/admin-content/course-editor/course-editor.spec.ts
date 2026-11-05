@@ -4,6 +4,7 @@ import {
   assessmentV1Endpoints,
   assetEndpoints,
   courseEndpoints,
+  programAssessmentEndpoints,
   MEDIA_PROCESSING_UNAVAILABLE_CODE,
   type AnyEndpoint,
   type CreateCourseCommand,
@@ -954,7 +955,7 @@ describe('CourseEditor', () => {
         ) as FakeReply;
 
       /** The quizzes of course 1 stand in for the edited course's; `status` is the final exam's. */
-      const listQuizzes = (status = 'PUBLISHED') =>
+      const listQuizzes = (status = 'PUBLISHED', selectionMode = 'FIXED') =>
         screen.calls.mockImplementation((endpoint, request) => {
           if (endpoint !== assessmentV1Endpoints.courseQuizList)
             return original(endpoint, request);
@@ -963,10 +964,17 @@ describe('CourseEditor', () => {
             query: { ...request.query, courseId: '1' },
           });
           const { items } = reply.body.data as {
-            items: { quizType: string; status: string }[];
+            items: {
+              quizType: string;
+              status: string;
+              selectionMode: string;
+            }[];
           };
           for (const item of items)
-            if (item.quizType === 'FINAL_EXAM') item.status = status;
+            if (item.quizType === 'FINAL_EXAM') {
+              item.status = status;
+              item.selectionMode = selectionMode;
+            }
           return reply;
         });
 
@@ -983,9 +991,6 @@ describe('CourseEditor', () => {
         await step('Bài thi & điều kiện');
 
         expect(screen.text()).toContain('Bài kiểm tra cuối khóa');
-        expect(screen.text()).toContain(
-          'Cấu hình thời gian, số câu, điểm đạt, số lần thi tại màn Bài kiểm tra.',
-        );
         expect(labels()).toEqual([
           'Không yêu cầu bài kiểm tra',
           'Thi cuối khóa: Tổng quan hệ thống Core Banking',
@@ -1038,16 +1043,84 @@ describe('CourseEditor', () => {
         expect(screen.text()).toContain('Khóa học chưa có bài thi cuối khóa.');
       });
 
-      it('links to the quiz screen to create the final exam of this course', async () => {
+      /** The program bank of the edited course holds this many active questions. */
+      const bankOf = (count: number) =>
+        screen.calls.mockImplementation((endpoint, request) => {
+          const reply = original(endpoint, request);
+          if (endpoint === programAssessmentEndpoints.questions)
+            (reply.body.data as { totalElements: number }).totalElements =
+              count;
+          return reply;
+        });
+
+      const button = (label: string) =>
+        screen.button(label, screen.el.querySelector('app-course-rules')!);
+
+      it('says how many questions the bank holds and offers to create the exam when there is none', async () => {
+        bankOf(24);
         await screen.open('/admin/courses/6/edit');
         await step('Bài thi & điều kiện');
 
-        const link = Array.from(screen.el.querySelectorAll('a')).find((a) =>
-          a.textContent?.includes('Tạo bài thi cuối khóa'),
+        expect(screen.text()).toContain('Khóa học chưa có bài thi cuối khóa.');
+        expect(screen.text()).toMatch(
+          /Ngân hàng chương trình .+ có 24 câu đang dùng\./,
         );
-        expect(link?.getAttribute('href')).toBe(
-          '/admin/quizzes/new?courseId=6&quizType=FINAL_EXAM',
+        expect(button('Tạo bài thi cuối khóa')).toBeTruthy();
+        expect(
+          screen.lastCall(programAssessmentEndpoints.questions)?.query,
+        ).toMatchObject({
+          programId: '4',
+          courseId: '6',
+          status: 'ACTIVE',
+        });
+      });
+
+      it('summarises an exam the wizard manages, with "Sửa" and the advanced settings', async () => {
+        listQuizzes('PUBLISHED', 'RANDOM_POOL');
+        await screen.open('/admin/courses/6/edit');
+        await step('Bài thi & điều kiện');
+
+        const card = screen.text(screen.el.querySelector('app-course-rules')!);
+        expect(card).toContain(
+          'Thi cuối khóa: Tổng quan hệ thống Core Banking',
         );
+        expect(card).toContain('15 phút');
+        expect(card).toContain('2 câu');
+        expect(card).toContain('80%');
+        expect(card).toContain('Đã xuất bản');
+        expect(button('Sửa')).toBeTruthy();
+        const advanced = Array.from(screen.el.querySelectorAll('a')).find((a) =>
+          a.textContent?.includes('Cấu hình nâng cao'),
+        );
+        expect(advanced?.getAttribute('href')).toBe(
+          '/admin/quizzes/2?courseId=1',
+        );
+      });
+
+      it('shows a customised (FIXED) exam without "Sửa"', async () => {
+        listQuizzes('PUBLISHED', 'FIXED');
+        await screen.open('/admin/courses/6/edit');
+        await step('Bài thi & điều kiện');
+
+        expect(button('Sửa')).toBeUndefined();
+        expect(screen.text()).toContain('Cấu hình nâng cao');
+        expect(screen.text()).toContain('chỉnh được ở màn Bài kiểm tra');
+      });
+
+      it('offers a retry when the quizzes cannot be read, and keeps "no exam" selectable', async () => {
+        screen.calls.mockImplementation((endpoint, request) =>
+          endpoint === assessmentV1Endpoints.courseQuizList
+            ? backendRefusal('internalError')
+            : original(endpoint, request),
+        );
+        await screen.open('/admin/courses/6/edit');
+        await step('Bài thi & điều kiện');
+
+        expect(screen.text()).toContain(
+          'Không tải được danh sách bài kiểm tra',
+        );
+        expect(button('Thử lại')).toBeTruthy();
+        expect(labels()).toEqual(['Không yêu cầu bài kiểm tra']);
       });
 
       it('requires the chosen exam to be published on the checklist', async () => {

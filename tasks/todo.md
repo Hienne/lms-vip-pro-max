@@ -49,8 +49,8 @@ draft and continues on `/admin/courses/:id/edit?step=1`.
 **Dependencies:** None · **Files:** `admin-content/course-editor/data-access/course-editor.store.ts`, `course-editor.ts`, `components/course-rules/course-rules.html`, `course-editor.spec.ts` · **Scope:** M
 
 ## Checkpoint A
-- [ ] `npx nx test lms` and `npx nx test mocks` green
-- [ ] F1 (create → step 2) and F6 (quiz create) work on `mockBackend` in the browser
+- [x] `npx nx test lms` and `npx nx test mocks` green (lms: only the 4 `target-picker.spec` failures, which also fail on baseline `d7699b4`: `Receiver must be an instance of class URL`)
+- [ ] F1 (create → step 2) and F6 (quiz create) work on `mockBackend` in the browser (covered by specs; browser run deferred to T11)
 - [ ] Review with human before Phase 2
 
 ---
@@ -62,10 +62,10 @@ draft and continues on `/admin/courses/:id/edit?step=1`.
 active bank count for the course's program; step 3 renders the three states without a form.
 
 **Acceptance criteria:**
-- [ ] No exam: card shows the bank sentence ("Ngân hàng chương trình *X* có N câu đang dùng") and a "Tạo bài thi cuối khóa" button.
-- [ ] Wizard-managed exam (`RANDOM_POOL`): title, time, count, pass %, attempts, status; "Sửa" and "Cấu hình nâng cao".
-- [ ] `FIXED` exam: same summary, only "Cấu hình nâng cao".
-- [ ] Load errors show an inline alert with retry; the "Không yêu cầu bài thi" choice still works.
+- [x] No exam: card shows the bank sentence ("Ngân hàng chương trình *X* có N câu đang dùng") and a "Tạo bài thi cuối khóa" button.
+- [x] Wizard-managed exam (`RANDOM_POOL`): title, time, count, pass %, attempts, status; "Sửa" and "Cấu hình nâng cao".
+- [x] `FIXED` exam: same summary, only "Cấu hình nâng cao".
+- [x] Load errors show an inline alert with retry; the "Không yêu cầu bài thi" choice still works.
 
 **Verification:** `npx nx test lms -- course-exam.store.spec course-editor.spec`
 

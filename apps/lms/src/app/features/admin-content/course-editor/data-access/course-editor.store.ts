@@ -506,6 +506,17 @@ export class CourseEditorStore {
   });
   readonly quizzes$ = computed(() => this.quizzesData.value()?.items ?? []);
   readonly quizzesError$ = this.quizzesData.error;
+  /** The stored program of the course: where its exam's questions come from. */
+  readonly storedProgram$ = computed(() => {
+    const programId = this.courseData.value()?.revision.programId;
+    return programId
+      ? {
+          id: programId,
+          name: this.programsData.value()?.items.find((p) => p.id === programId)
+            ?.name,
+        }
+      : undefined;
+  });
   readonly programs$ = computed(() => this.programsData.value()?.items ?? []);
   readonly modules$ = computed(() =>
     this.fieldId() ? (this.modulesData.value()?.items ?? []) : [],
@@ -954,6 +965,11 @@ export class CourseEditorStore {
 
   retryLoad(): void {
     this.courseData.reload();
+  }
+
+  /** Reads the course's quizzes again (after a failed read, or a quiz made elsewhere). */
+  reloadQuizzes(): void {
+    this.quizzesData.reload();
   }
 
   /** Shows why the file is not acceptable for the block, or returns false when it is. */
