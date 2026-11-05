@@ -31,8 +31,16 @@
       </ui-alert>
       } @else if (!examOptions().length) {
       <ui-alert tone="info" [announce]="false">
-        Khóa học chưa có bài thi cuối khóa. Tạo bài kiểm tra loại Thi cuối khóa
-        ở màn Bài kiểm tra.
+        Khóa học chưa có bài thi cuối khóa. @if (store.canCreateQuiz$() &&
+        store.course$(); as course) {
+        <a
+          uiButton
+          size="sm"
+          routerLink="/admin/quizzes/new"
+          [queryParams]="{ courseId: course.course.id, quizType: 'FINAL_EXAM' }"
+          >Tạo bài thi cuối khóa</a
+        >
+        } @else { Tạo bài kiểm tra loại Thi cuối khóa ở màn Bài kiểm tra. }
       </ui-alert>
       } }
     </div>

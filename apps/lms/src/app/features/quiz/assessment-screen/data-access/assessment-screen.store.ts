@@ -87,6 +87,12 @@ export class AssessmentScreenStore {
   readonly isNewQuiz$ = computed(
     () => this.routeScreen$() === 'config' && this.routeId$() === 'new',
   );
+  /** The type a new quiz starts as: `?quizType=FINAL_EXAM` comes from the course editor's link. */
+  readonly newQuizType$ = computed(() =>
+    this.queryParams()?.get('quizType') === 'FINAL_EXAM'
+      ? ('FINAL_EXAM' as const)
+      : ('PRACTICE' as const),
+  );
   readonly canCreateQuiz$ = computed(() =>
     this.session.menus$().includes('QUIZ_MANAGEMENT'),
   );

@@ -1,7 +1,17 @@
 import { Component, computed, inject, input } from '@angular/core';
+import { RouterLink } from '@angular/router';
 import { FormField, type FieldTree } from '@angular/forms/signals';
 import type { QuizSummary } from '@lms/contracts';
-import { Alert, Card, CardBody, Field, Icon, Input, Select } from '@lms/ui';
+import {
+  Alert,
+  Button,
+  Card,
+  CardBody,
+  Field,
+  Icon,
+  Input,
+  Select,
+} from '@lms/ui';
 import type { CourseDraftValue } from '../../course-draft';
 import { CourseEditorStore } from '../../data-access/course-editor.store';
 
@@ -19,7 +29,18 @@ const QUIZ_STATUS: Record<QuizSummary['status'], string> = {
  */
 @Component({
   selector: 'app-course-rules',
-  imports: [Alert, Card, CardBody, Field, FormField, Icon, Input, Select],
+  imports: [
+    Alert,
+    Button,
+    Card,
+    CardBody,
+    Field,
+    FormField,
+    Icon,
+    Input,
+    RouterLink,
+    Select,
+  ],
   templateUrl: './course-rules.html',
   styleUrl: './course-rules.scss',
 })

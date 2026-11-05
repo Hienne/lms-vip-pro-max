@@ -478,6 +478,10 @@ export class CourseEditorStore {
   readonly isCreate$ = computed(
     () => this.route.snapshot.data['mode'] === 'create',
   );
+  /** Whether the user may open the quiz screen to author the course's final exam. */
+  readonly canCreateQuiz$ = computed(() =>
+    this.session.menus$().includes('QUIZ_MANAGEMENT'),
+  );
   /** The code the last create was refused for, because it is taken. */
   readonly takenCode$ = this.state.takenCode.asReadonly();
   readonly ownerName$ = computed(() => this.session.user$()?.org?.name ?? '');

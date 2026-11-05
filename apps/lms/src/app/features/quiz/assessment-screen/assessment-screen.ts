@@ -156,6 +156,7 @@ function questionValue(
 function quizValue(
   detail: QuizDetailV1 | undefined,
   courseId: number | undefined,
+  newQuizType: 'PRACTICE' | 'FINAL_EXAM' = 'PRACTICE',
 ) {
   const q = detail?.quiz;
   return {
@@ -183,7 +184,7 @@ function quizValue(
           : q?.reviewPolicy === 'AFTER_CLOSE'
             ? ('after_close' as const)
             : ('after_submit' as const),
-    quizType: q?.quizType ?? ('PRACTICE' as const),
+    quizType: q?.quizType ?? newQuizType,
     scoringMode: q?.scoringMode ?? ('ALL_OR_NOTHING' as const),
     scoreMethod: q?.scoreMethod ?? ('BEST' as const),
     graceSeconds: q?.graceSeconds ?? 0,
@@ -274,6 +275,7 @@ export class AssessmentScreen {
       courseId: number | undefined;
       programId: number | undefined;
       routeId: string;
+      newQuizType: 'PRACTICE' | 'FINAL_EXAM';
     },
     ReturnType<typeof quizValue>
   >({
@@ -282,6 +284,7 @@ export class AssessmentScreen {
       courseId: this.store.selectedCourseId$(),
       programId: this.store.selectedProgramId$(),
       routeId: this.store.routeId$(),
+      newQuizType: this.store.newQuizType$(),
     }),
     computation: (next, previous) => {
       if (next.routeId === 'new' && previous?.source.routeId === 'new') {
@@ -294,7 +297,7 @@ export class AssessmentScreen {
               : [],
         };
       }
-      return quizValue(next.detail, next.courseId);
+      return quizValue(next.detail, next.courseId, next.newQuizType);
     },
   });
   protected readonly configForm = form(this.configModel, (path) =>

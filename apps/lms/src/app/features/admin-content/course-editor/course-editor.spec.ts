@@ -1035,8 +1035,18 @@ describe('CourseEditor', () => {
         await step('Bài thi & điều kiện');
 
         expect(labels()).toEqual(['Không yêu cầu bài kiểm tra']);
-        expect(screen.text()).toContain(
-          'Khóa học chưa có bài thi cuối khóa. Tạo bài kiểm tra loại Thi cuối khóa ở màn Bài kiểm tra.',
+        expect(screen.text()).toContain('Khóa học chưa có bài thi cuối khóa.');
+      });
+
+      it('links to the quiz screen to create the final exam of this course', async () => {
+        await screen.open('/admin/courses/6/edit');
+        await step('Bài thi & điều kiện');
+
+        const link = Array.from(screen.el.querySelectorAll('a')).find((a) =>
+          a.textContent?.includes('Tạo bài thi cuối khóa'),
+        );
+        expect(link?.getAttribute('href')).toBe(
+          '/admin/quizzes/new?courseId=6&quizType=FINAL_EXAM',
         );
       });
 
