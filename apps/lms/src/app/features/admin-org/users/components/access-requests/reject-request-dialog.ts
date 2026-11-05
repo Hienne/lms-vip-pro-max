@@ -34,6 +34,7 @@ let nextId = 0;
       <ui-field label="Ghi chú (không bắt buộc)">
         <textarea
           uiTextarea
+          cdkFocusInitial
           rows="3"
           [attr.maxlength]="limit"
           [value]="note()"
