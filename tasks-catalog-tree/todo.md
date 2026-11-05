@@ -5,7 +5,7 @@ Run `nvm use` before any F command.
 
 ## Phase 1: Backend
 
-- [ ] **T1 (B): `TRAINING_CATALOG` function, admin and instructor**
+- [x] **T1 (B): `TRAINING_CATALOG` function, admin and instructor**
   - Acceptance: function row ("Lĩnh vực & chương trình", `/admin/catalog`, section/sort next to `COURSE_MANAGEMENT`) in `docs/sql/learning_hub_identity.sql`, granted to the admin and instructor roles; a one-off SQL for existing databases next to it; `/me` returns it for both roles and not for a learner.
   - Verify: IT on `/me` for admin, instructor, learner; `mvn test` for that class.
   - Files: `docs/sql/learning_hub_identity.sql`, a migration/one-off script, one IT. Scope: S.
