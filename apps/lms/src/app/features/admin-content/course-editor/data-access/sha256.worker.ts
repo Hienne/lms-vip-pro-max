@@ -1,5 +1,5 @@
 /// <reference lib="webworker" />
-import { sha256Blob } from './sha256';
+import { sha256Digest } from './sha256';
 
 /** What the page asks of the worker: hash a file or part, or stop hashing it. */
 export type HashRequest =
@@ -14,7 +14,12 @@ export type HashReply =
       readonly hashed: number;
       readonly total: number;
     }
-  | { readonly id: number; readonly type: 'done'; readonly hex: string }
+  | {
+      readonly id: number;
+      readonly type: 'done';
+      readonly hex: string;
+      readonly sliceHashes: readonly string[];
+    }
   | {
       readonly id: number;
       readonly type: 'error';
@@ -33,7 +38,7 @@ addEventListener('message', (event: MessageEvent<HashRequest>) => {
   const { id, blob, sliceBytes } = request;
   const controller = new AbortController();
   running.set(id, controller);
-  sha256Blob(blob, {
+  sha256Digest(blob, {
     sliceBytes,
     signal: controller.signal,
     onProgress: (hashed, total) =>
@@ -44,7 +49,9 @@ addEventListener('message', (event: MessageEvent<HashRequest>) => {
         total,
       } satisfies HashReply),
   })
-    .then((hex) => postMessage({ id, type: 'done', hex } satisfies HashReply))
+    .then(({ hex, sliceHashes }) =>
+      postMessage({ id, type: 'done', hex, sliceHashes } satisfies HashReply),
+    )
     .catch((error: unknown) =>
       postMessage({
         id,

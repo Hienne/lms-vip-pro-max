@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import { SLICE_BYTES, sha256Blob } from './sha256';
+import { SLICE_BYTES, sha256Blob, sha256Digest } from './sha256';
 
 /** jsdom's `Blob` has no `arrayBuffer()`; a browser's does, and that is the default reader. */
 const readSlice = (blob: Blob): Promise<Uint8Array> =>
@@ -68,6 +68,40 @@ describe('sha256Blob', () => {
     });
     expect(digest).toBe(oneShot(bytes));
     expect(sliceSizes).toEqual([SLICE_BYTES, SLICE_BYTES, 12_345]);
+  });
+
+  describe('the digest of each slice', () => {
+    const digest = (blob: Blob, options = {}) =>
+      sha256Digest(blob, { read: readSlice, ...options });
+
+    it('gives the digest of every slice beside the whole one, from one read', async () => {
+      const bytes = pattern(250);
+      let reads = 0;
+      const result = await digest(new Blob([bytes]), {
+        sliceBytes: 100,
+        read: (blob: Blob) => {
+          reads++;
+          return readSlice(blob);
+        },
+      });
+      expect(reads).toBe(3);
+      expect(result.hex).toBe(oneShot(bytes));
+      expect(result.sliceHashes).toEqual([
+        oneShot(bytes.slice(0, 100)),
+        oneShot(bytes.slice(100, 200)),
+        oneShot(bytes.slice(200)),
+      ]);
+    });
+
+    it('gives the whole digest as the only slice of a blob that fits one slice', async () => {
+      const bytes = pattern(100);
+      const result = await digest(new Blob([bytes]), { sliceBytes: 100 });
+      expect(result.sliceHashes).toEqual([oneShot(bytes)]);
+    });
+
+    it('has no slice for the empty blob', async () => {
+      expect((await digest(new Blob([]))).sliceHashes).toEqual([]);
+    });
   });
 
   it('never reads the whole file at once', async () => {

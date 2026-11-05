@@ -16,7 +16,8 @@ import {
 import { toAppError } from '../../../../core/errors/app-error';
 import { ApiError } from '../../../../core/http/api-error';
 import type { EndpointClient } from '../../../../core/http/endpoint-client';
-import type { Hasher } from './sha256-hasher';
+import { SLICE_BYTES } from './sha256';
+import type { HashEvent, Hasher } from './sha256-hasher';
 
 /** How often the server is asked whether it finished processing a file. */
 export const POLL_MS = 3_000;
@@ -26,6 +27,9 @@ export const POLL_LIMIT_MS = 15 * 60_000;
 export const SERVER_RETRY_MS = 5_000;
 /** Server errors in a row (no answer in between) before the upload is given up. */
 export const SERVER_RETRIES = 6;
+
+/** Parts in flight at once. */
+export const PART_CONCURRENCY = 3;
 
 const MISMATCH_CODE = 'LEARNING-UPLOAD_FILE_MISMATCH';
 const EXPIRED_CODE = 'LEARNING-UPLOAD_EXPIRED';
@@ -253,7 +257,10 @@ class Flow {
     this.run.check();
   }
 
-  hash(blob: Blob, onProgress?: (percent: number) => void): Promise<string> {
+  hash(
+    blob: Blob,
+    onProgress?: (percent: number) => void,
+  ): Promise<Extract<HashEvent, { type: 'done' }>> {
     return this.run
       .call(
         this.hasher.hash(blob).pipe(
@@ -269,7 +276,109 @@ class Flow {
           filter((event) => event.type === 'done'),
         ),
       )
-      .then((event) => (event as { hex: string }).hex);
+      .then((event) => event as Extract<HashEvent, { type: 'done' }>);
+  }
+
+  /**
+   * Sends the parts `first` lacks, `PART_CONCURRENCY` at a time: each worker takes the next missing
+   * part. A part's hash comes from the whole-file pass when the parts are the slices it hashed.
+   * The first failure stops the other workers and their requests; so does the cancel.
+   */
+  async sendParts(
+    uploadId: string,
+    file: File,
+    first: Upload,
+    sliceHashes: readonly string[],
+  ): Promise<void> {
+    const { partSize } = first;
+    const total = Math.ceil(file.size / partSize);
+    const reuse = partSize === SLICE_BYTES && sliceHashes.length === total;
+    const has = (current: Upload, partNumber: number) =>
+      current.parts.some((part) => part.partNumber === partNumber);
+    const missing = Array.from({ length: total }, (_, i) => i + 1).filter(
+      (partNumber) => !has(first, partNumber),
+    );
+    let uploadedBytes = first.uploadedBytes;
+    // Answers arrive in any order: the bar only moves forward.
+    const report = (current: Upload) => {
+      uploadedBytes = Math.max(uploadedBytes, current.uploadedBytes);
+      this.run.emit({
+        type: 'uploading',
+        uploadId,
+        uploadedBytes,
+        totalBytes: first.totalBytes,
+      });
+    };
+    report(first);
+
+    const stop = new Subject<void>();
+    let stopped = false;
+    let next = 0;
+
+    const sendPart = async (partNumber: number): Promise<void> => {
+      const part = file.slice(
+        (partNumber - 1) * partSize,
+        Math.min(partNumber * partSize, file.size),
+      );
+      const partHash = reuse
+        ? sliceHashes[partNumber - 1]
+        : (await this.hash(part)).hex;
+      for (;;) {
+        if (stopped) return;
+        try {
+          const answer = await this.run.call(
+            this.client
+              .call(assetEndpoints.uploadPart, {
+                params: { uploadId, partNumber },
+                headers: { 'X-Part-SHA256': partHash },
+                body: part,
+              })
+              .pipe(takeUntil(stop)),
+          );
+          this.answered();
+          report(answer);
+          return;
+        } catch (error) {
+          if (stopped) return;
+          await this.pause(error);
+          if (stopped) return;
+          // The part may have landed before the answer was lost: the manifest says.
+          const manifest = await this.send(
+            () => this.status(uploadId).pipe(takeUntil(stop)),
+            true,
+          );
+          if (has(manifest, partNumber)) {
+            this.answered();
+            report(manifest);
+            return;
+          }
+        }
+      }
+    };
+
+    const worker = async (): Promise<void> => {
+      try {
+        while (!stopped) {
+          this.run.check();
+          const partNumber = missing[next++];
+          if (partNumber === undefined) return;
+          await sendPart(partNumber);
+        }
+      } catch (error) {
+        // The first failure ends the upload; what the others throw after it is noise.
+        if (stopped) return;
+        stopped = true;
+        stop.next();
+        throw error;
+      }
+    };
+
+    await Promise.all(
+      Array.from(
+        { length: Math.min(PART_CONCURRENCY, missing.length) },
+        worker,
+      ),
+    );
   }
 
   status(uploadId: string): Observable<Upload> {
@@ -342,7 +451,7 @@ const defaultOnline = (signal: AbortSignal): Promise<void> =>
 /**
  * Uploads one file in the parts the server asks for (SPEC-asset-library → Upload flow): hash the
  * whole file, start (or take up the upload with `resume.uploadId`), send the parts the server does
- * not have yet one at a time, complete, and poll until the server says `ready`. Every outcome is
+ * not have yet (three at a time), complete, and poll until the server says `ready`. Every outcome is
  * a row (`UploadProgress`); nothing here throws. Unsubscribing stops sending at once (it does not
  * cancel the upload on the server: `cancelUpload` does, and a reload resumes).
  */
@@ -374,8 +483,9 @@ export function chunkedUpload(
     ) {
       throw mismatch;
     }
-    const checksumSha256 = await flow.hash(file, (percent) =>
-      run.emit({ type: 'hashing', percent }),
+    const { hex: checksumSha256, sliceHashes } = await flow.hash(
+      file,
+      (percent) => run.emit({ type: 'hashing', percent }),
     );
     if (resume && resume.checksumSha256 !== checksumSha256) throw mismatch;
 
@@ -400,46 +510,7 @@ export function chunkedUpload(
     });
 
     if (upload.status === 'uploading') {
-      const total = Math.ceil(file.size / upload.partSize);
-      const bytes = (current: Upload) => ({
-        type: 'uploading' as const,
-        uploadId,
-        uploadedBytes: current.uploadedBytes,
-        totalBytes: current.totalBytes,
-      });
-      run.emit(bytes(upload));
-      for (let partNumber = 1; partNumber <= total; partNumber++) {
-        const has = (current: Upload) =>
-          current.parts.some((part) => part.partNumber === partNumber);
-        if (has(upload)) continue;
-        const part = file.slice(
-          (partNumber - 1) * upload.partSize,
-          Math.min(partNumber * upload.partSize, file.size),
-        );
-        const partHash = await flow.hash(part);
-        for (;;) {
-          try {
-            upload = await run.call(
-              client.call(assetEndpoints.uploadPart, {
-                params: { uploadId, partNumber },
-                headers: { 'X-Part-SHA256': partHash },
-                body: part,
-              }),
-            );
-            flow.answered();
-            break;
-          } catch (error) {
-            await flow.pause(error);
-            // The part may have landed before the answer was lost: the manifest says.
-            upload = await flow.send(() => flow.status(uploadId), true);
-            if (has(upload)) {
-              flow.answered();
-              break;
-            }
-          }
-        }
-        run.emit(bytes(upload));
-      }
+      await flow.sendParts(uploadId, file, upload, sliceHashes);
       upload = await flow.send(() => flow.complete(uploadId));
     }
     await flow.settle(upload);

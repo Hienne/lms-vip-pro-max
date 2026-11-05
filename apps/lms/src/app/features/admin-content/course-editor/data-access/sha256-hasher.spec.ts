@@ -78,10 +78,19 @@ describe('Sha256Hasher', () => {
       const { id } = worker.posted[0];
       expect(worker.posted[0]).toEqual({ id, blob });
       worker.reply({ id, type: 'progress', hashed: 3, total: 3 });
-      worker.reply({ id, type: 'done', hex: 'ab'.repeat(32) });
+      worker.reply({
+        id,
+        type: 'done',
+        hex: 'ab'.repeat(32),
+        sliceHashes: ['cd'.repeat(32)],
+      });
       expect(events).toEqual([
         { type: 'progress', hashed: 3, total: 3 },
-        { type: 'done', hex: 'ab'.repeat(32) },
+        {
+          type: 'done',
+          hex: 'ab'.repeat(32),
+          sliceHashes: ['cd'.repeat(32)],
+        },
       ]);
       expect(outcome.done).toBe(true);
     });
@@ -90,7 +99,12 @@ describe('Sha256Hasher', () => {
       run();
       const worker = FakeWorker.instances[0];
       const { id } = worker.posted[0];
-      worker.reply({ id: id + 1, type: 'done', hex: 'ff'.repeat(32) });
+      worker.reply({
+        id: id + 1,
+        type: 'done',
+        hex: 'ff'.repeat(32),
+        sliceHashes: [],
+      });
       expect(events).toEqual([]);
       expect(outcome.done).toBeUndefined();
     });
@@ -129,7 +143,7 @@ describe('Sha256Hasher', () => {
       const subscription = run();
       const worker = FakeWorker.instances[0];
       const { id } = worker.posted[0];
-      worker.reply({ id, type: 'done', hex: 'ab'.repeat(32) });
+      worker.reply({ id, type: 'done', hex: 'ab'.repeat(32), sliceHashes: [] });
       subscription.unsubscribe();
       expect(worker.posted).toHaveLength(1);
     });
@@ -173,6 +187,9 @@ describe('Sha256Hasher', () => {
         {
           type: 'done',
           hex: 'ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad',
+          sliceHashes: [
+            'ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad',
+          ],
         },
       ]);
     });

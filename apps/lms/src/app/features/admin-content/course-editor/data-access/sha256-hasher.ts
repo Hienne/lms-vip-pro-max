@@ -1,6 +1,6 @@
 import { Service } from '@angular/core';
 import { Observable } from 'rxjs';
-import { sha256Blob } from './sha256';
+import { sha256Digest } from './sha256';
 import type { HashReply, HashRequest } from './sha256.worker';
 
 /** What hashing a file or a part reports: progress while it reads, then the digest. */
@@ -10,11 +10,16 @@ export type HashEvent =
       readonly hashed: number;
       readonly total: number;
     }
-  | { readonly type: 'done'; readonly hex: string };
+  | {
+      readonly type: 'done';
+      readonly hex: string;
+      /** The SHA-256 of each `SLICE_BYTES` slice, in order. */
+      readonly sliceHashes: readonly string[];
+    };
 
 /** What the upload flow needs of a hasher, so a spec can swap it. */
 export interface Hasher {
-  /** Emits progress, then `done` with the lower-case hex SHA-256; unsubscribing stops it. */
+  /** Emits progress, then `done` with the lower-case hex SHA-256 and each slice's; unsubscribing stops it. */
   hash(blob: Blob): Observable<HashEvent>;
 }
 
@@ -33,13 +38,13 @@ export class Sha256Hasher implements Hasher {
     return new Observable<HashEvent>((subscriber) => {
       if (typeof Worker === 'undefined') {
         const controller = new AbortController();
-        sha256Blob(blob, {
+        sha256Digest(blob, {
           signal: controller.signal,
           onProgress: (hashed, total) =>
             subscriber.next({ type: 'progress', hashed, total }),
         }).then(
-          (hex) => {
-            subscriber.next({ type: 'done', hex });
+          ({ hex, sliceHashes }) => {
+            subscriber.next({ type: 'done', hex, sliceHashes });
             subscriber.complete();
           },
           (error: unknown) => subscriber.error(error),
@@ -63,7 +68,11 @@ export class Sha256Hasher implements Hasher {
         }
         finished = true;
         if (reply.type === 'done') {
-          subscriber.next({ type: 'done', hex: reply.hex });
+          subscriber.next({
+            type: 'done',
+            hex: reply.hex,
+            sliceHashes: reply.sliceHashes,
+          });
           subscriber.complete();
         } else {
           subscriber.error(

@@ -10,7 +10,7 @@ import {
   type FakeReply,
   type FakeRequest,
 } from '@lms/mocks';
-import { map, Observable, timer } from 'rxjs';
+import { delay, map, Observable, timer } from 'rxjs';
 import type { MockInstance } from 'vitest';
 import {
   parseAppConfig,
@@ -26,13 +26,14 @@ import { EndpointClient } from '../../../../core/http/endpoint-client';
 import {
   cancelUpload,
   chunkedUpload,
+  PART_CONCURRENCY,
   pollUpload,
   POLL_MS,
   POLL_LIMIT_MS,
   reprocessUpload,
   type UploadProgress,
 } from './chunked-upload';
-import { digestOf, FakeHasher } from './fake-hasher.testing';
+import { digestOf, FakeHasher, sliceSizes } from './fake-hasher.testing';
 import type { HashEvent, Hasher } from './sha256-hasher';
 
 const PART = 8 * 1024 * 1024;
@@ -125,7 +126,7 @@ describe('chunkedUpload', () => {
   describe('a file in parts', () => {
     const file = () => fileOf(PART * 2 + 5);
 
-    it('hashes the file, starts, sends each part in order, completes and polls to ready', async () => {
+    it('hashes the file, starts, sends each part, completes and polls to ready', async () => {
       await run(upload(file()), POLL_MS * 3);
       expect(types()[0]).toBe('hashing');
       expect(types()).toContain('started');
@@ -167,8 +168,58 @@ describe('chunkedUpload', () => {
         hex(PART),
         hex(5),
       ]);
-      // the whole file once, then each part
-      expect(hasher.hashed).toEqual([PART * 2 + 5, PART, PART, 5]);
+    });
+
+    it('hashes the file once and reuses its slice hashes for the parts', async () => {
+      await run(upload(file()), POLL_MS * 3);
+      expect(hasher.hashed).toEqual([PART * 2 + 5]);
+      expect(sentParts().map((p) => p.checksum)).toEqual(
+        sliceSizes(PART * 2 + 5).map(hex),
+      );
+    });
+
+    it('hashes each part itself when the slice hashes do not line up with the parts', async () => {
+      const unaligned: Hasher = {
+        hash: (blob) =>
+          hasher
+            .hash(blob)
+            .pipe(
+              map((event) =>
+                event.type === 'done' ? { ...event, sliceHashes: [] } : event,
+              ),
+            ),
+      };
+      await run(chunkedUpload(client, unaligned, file(), 1), POLL_MS * 3);
+      expect(hasher.hashed.slice().sort()).toEqual(
+        [PART * 2 + 5, PART, PART, 5].sort(),
+      );
+      expect(sentParts().map((p) => p.checksum)).toEqual([
+        hex(PART),
+        hex(PART),
+        hex(5),
+      ]);
+      expect(last()).toMatchObject({ type: 'ready' });
+    });
+
+    it('hashes each part itself when the server asks for parts of another size', async () => {
+      const half = PART / 2;
+      handle.mockImplementation((endpoint, request) => {
+        const reply = original(endpoint, request) as FakeReply;
+        const data = reply.body.data as object | null;
+        return endpoint === assetEndpoints.startUpload && data
+          ? {
+              ...reply,
+              body: { ...reply.body, data: { ...data, partSize: half } },
+            }
+          : reply;
+      });
+      await run(upload(fileOf(PART + 5)), 0);
+      expect(hasher.hashed.slice(1)).toEqual([half, half, 5]);
+      expect(sentParts().map((p) => p.checksum)).toEqual([
+        hex(half),
+        hex(half),
+        hex(5),
+      ]);
     });
 
     it('reports hashing in percent and uploaded bytes after every part', async () => {
@@ -185,20 +236,142 @@ describe('chunkedUpload', () => {
         events.find((e) => e.type === 'uploading' && e.uploadedBytes > 0),
       ).toMatchObject({ totalBytes: PART * 2 + 5 });
     });
+  });
 
-    it('sends one part at a time', async () => {
-      let inFlight = 0;
-      let most = 0;
-      handle.mockImplementation((endpoint, request) => {
-        if (endpoint === assetEndpoints.uploadPart) {
-          inFlight++;
-          most = Math.max(most, inFlight);
-          inFlight--;
-        }
-        return original(endpoint, request);
+  describe('parts in parallel', () => {
+    const PARTS = 6;
+    const file = () => fileOf(PART * PARTS - 7);
+
+    /**
+     * Answers each part after `delayMs(partNumber)`, from the answer the backend gave when it got
+     * the request, and counts the part requests in flight. Everything else goes straight through.
+     */
+    function slowParts(delayMs: (partNumber: number) => number) {
+      const counts = { inFlight: 0, most: 0, started: [] as number[] };
+      const real = client as unknown as {
+        call(endpoint: AnyEndpoint, options: unknown): Observable<unknown>;
+      };
+      const slow = {
+        call: (endpoint: AnyEndpoint, options: { params?: object }) => {
+          if (endpoint !== assetEndpoints.uploadPart) {
+            return real.call(endpoint, options);
+          }
+          const partNumber = Number(
+            (options.params as { partNumber: number }).partNumber,
+          );
+          return new Observable((subscriber) => {
+            counts.inFlight++;
+            counts.most = Math.max(counts.most, counts.inFlight);
+            counts.started.push(partNumber);
+            const inner = real
+              .call(endpoint, options)
+              .pipe(delay(delayMs(partNumber)))
+              .subscribe(subscriber);
+            return () => {
+              counts.inFlight--;
+              inner.unsubscribe();
+            };
+          });
+        },
+      } as unknown as EndpointClient;
+      return { counts, slow };
+    }
+    const calls = () => handle.mock.calls.map(([endpoint]) => endpoint);
+
+    it(`keeps at most ${PART_CONCURRENCY} part requests in flight and sends every part once`, async () => {
+      const { counts, slow } = slowParts(() => 100);
+      await run(chunkedUpload(slow, hasher, file(), 1), POLL_MS * 3);
+      expect(PART_CONCURRENCY).toBe(3);
+      expect(counts.most).toBe(PART_CONCURRENCY);
+      expect(
+        sentParts()
+          .map((p) => p.part)
+          .sort(),
+      ).toEqual(Array.from({ length: PARTS }, (_, i) => i + 1));
+      expect(last()).toMatchObject({ type: 'ready' });
+    });
+
+    it('never moves the bar back when the answers arrive out of order', async () => {
+      // Part 1 answers last, with the smallest count the server ever gave.
+      const { slow } = slowParts((part) => (part === 1 ? 500 : 10));
+      await run(chunkedUpload(slow, hasher, file(), 1), POLL_MS * 3);
+      const bytes = events.flatMap((e) =>
+        e.type === 'uploading' ? [e.uploadedBytes] : [],
+      );
+      expect(bytes.length).toBe(PARTS + 1);
+      expect(bytes).toEqual([...bytes].sort((a, b) => a - b));
+      expect(bytes.at(-1)).toBe(PART * PARTS - 7);
+    });
+
+    it('completes once, after every part has been answered', async () => {
+      const { slow } = slowParts((part) => (part === 1 ? 500 : 10));
+      await run(chunkedUpload(slow, hasher, file(), 1), POLL_MS * 3);
+      const order = calls();
+      const complete = order.indexOf(assetEndpoints.completeUpload);
+      expect(called(assetEndpoints.completeUpload)).toHaveLength(1);
+      expect(
+        order.filter((e, i) => e === assetEndpoints.uploadPart && i > complete),
+      ).toEqual([]);
+      expect(called(assetEndpoints.uploadPart)).toHaveLength(PARTS);
+    });
+
+    it('fails the upload when a part is refused, and sends no more parts', async () => {
+      const { counts, slow } = slowParts((part) => (part === 2 ? 10 : 100));
+      handle.mockImplementation((endpoint, request) =>
+        endpoint === assetEndpoints.uploadPart && secondPart(request)
+          ? backendRefusal('uploadExpired')
+          : original(endpoint, request),
+      );
+      await run(chunkedUpload(slow, hasher, file(), 1), POLL_MS * 3);
+      expect(last()).toMatchObject({
+        type: 'failed',
+        code: 'LEARNING-UPLOAD_EXPIRED',
       });
-      await run(upload(file()), POLL_MS * 3);
-      expect(most).toBe(1);
+      expect(outcome.done).toBe(true);
+      expect(counts.started).toEqual([1, 2, 3]);
+      expect(counts.inFlight).toBe(0);
+      expect(called(assetEndpoints.completeUpload)).toHaveLength(0);
+    });
+
+    it('sends nothing more and stops the requests in flight when the caller unsubscribes', async () => {
+      const { counts, slow } = slowParts(() => 100);
+      const subscription = chunkedUpload(slow, hasher, file(), 1).subscribe();
+      await settle(50);
+      expect(counts.inFlight).toBe(PART_CONCURRENCY);
+      subscription.unsubscribe();
+      expect(counts.inFlight).toBe(0);
+      await settle(POLL_MS * 10);
+      expect(counts.started).toEqual([1, 2, 3]);
+      expect(called(assetEndpoints.completeUpload)).toHaveLength(0);
+    });
+
+    it('does not send a part again when the server took it and only its answer was lost', async () => {
+      const { slow } = slowParts((part) => part * 10);
+      let lost = false;
+      handle.mockImplementation((endpoint, request) => {
+        const reply = original(endpoint, request);
+        if (
+          endpoint === assetEndpoints.uploadPart &&
+          request.params['partNumber'] === '3' &&
+          !lost
+        ) {
+          lost = true;
+          return offline();
+        }
+        return reply;
+      });
+      const online = vi.fn(() => Promise.resolve());
+      await run(
+        chunkedUpload(slow, hasher, file(), 1, { online }),
+        POLL_MS * 3,
+      );
+      expect(online).toHaveBeenCalledTimes(1);
+      expect(
+        sentParts()
+          .map((p) => p.part)
+          .sort(),
+      ).toEqual(Array.from({ length: PARTS }, (_, i) => i + 1));
+      expect(last()).toMatchObject({ type: 'ready' });
     });
   });
 
@@ -274,7 +447,7 @@ describe('chunkedUpload', () => {
         online: () => new Promise<void>(() => undefined),
       }).subscribe();
       await settle();
-      expect(sentParts().map((p) => p.part)).toEqual([1, 2]);
+      expect(sentParts().map((p) => p.part)).toEqual([1, 2, 3]);
       subscription.unsubscribe();
       handle.mockReset();
       handle.mockImplementation(original);
@@ -284,9 +457,9 @@ describe('chunkedUpload', () => {
       expect(called(assetEndpoints.startUpload)[0][1].body).toMatchObject({
         requestId: first.uploadId,
       });
-      expect(sentParts().map((p) => p.part)).toEqual([2, 3]);
+      expect(sentParts().map((p) => p.part)).toEqual([2]);
       expect(events.find((e) => e.type === 'uploading')).toMatchObject({
-        uploadedBytes: PART,
+        uploadedBytes: PART + 5,
       });
       expect(last()).toMatchObject({ type: 'ready' });
     });
@@ -411,7 +584,13 @@ describe('chunkedUpload', () => {
       const slow: Hasher = {
         hash: (blob) =>
           timer(1000).pipe(
-            map((): HashEvent => ({ type: 'done', hex: hex(blob.size) })),
+            map(
+              (): HashEvent => ({
+                type: 'done',
+                hex: hex(blob.size),
+                sliceHashes: [],
+              }),
+            ),
           ),
       };
       const subscription = chunkedUpload(
@@ -515,7 +694,7 @@ describe('chunkedUpload', () => {
       expect(types()).toContain('waiting');
       expect(online).toHaveBeenCalledTimes(1);
       expect(called(assetEndpoints.uploadStatus).length).toBeGreaterThan(0);
-      expect(sentParts().map((p) => p.part)).toEqual([1, 2, 2, 3]);
+      expect(sentParts().map((p) => p.part)).toEqual([1, 2, 3, 2]);
       expect(last()).toMatchObject({ type: 'ready' });
     });
 
@@ -541,9 +720,10 @@ describe('chunkedUpload', () => {
     it('retries a server error after a pause, not at once', async () => {
       failOnce(assetEndpoints.uploadPart, unavailable, secondPart);
       await run(upload(fileOf(PART * 2 + 5)), 0);
-      expect(last()).toMatchObject({ type: 'waiting' });
-      expect(sentParts().map((p) => p.part)).toEqual([1, 2]);
+      expect(types()).toContain('waiting');
+      expect(sentParts().map((p) => p.part)).toEqual([1, 2, 3]);
       await settle(POLL_MS * 4);
+      expect(sentParts().map((p) => p.part)).toEqual([1, 2, 3, 2]);
       expect(last()).toMatchObject({ type: 'ready' });
     });
 
