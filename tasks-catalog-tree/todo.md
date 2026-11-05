@@ -9,21 +9,21 @@ Run `nvm use` before any F command.
   - Acceptance: function row ("Lĩnh vực & chương trình", `/admin/catalog`, section/sort next to `COURSE_MANAGEMENT`) in `docs/sql/learning_hub_identity.sql`, granted to the admin and instructor roles; a one-off SQL for existing databases next to it; `/me` returns it for both roles and not for a learner.
   - Verify: IT on `/me` for admin, instructor, learner; `mvn test` for that class.
   - Files: `docs/sql/learning_hub_identity.sql`, a migration/one-off script, one IT. Scope: S.
-- [ ] **T2 (B): `GET /api/v1/training-catalog/tree?ownerOrgId=`**
+- [x] **T2 (B): `GET /api/v1/training-catalog/tree?ownerOrgId=`**
   - Acceptance: fields → programs → courses, each field/program with `id, ownerOrgId, fieldId, code, name, description, status, sortNo, rowVersion`; each course with `id, code, title, status`; cut to the caller's scope (`access.requireManage`); ordered by `sortNo`, `id`; fields without programs and programs without courses are present with empty children.
   - Verify: IT: scoping (other org 403), empty children, ordering, a learner is refused; `mvn test`.
   - Files: `LearningCatalogController`, `LearningCatalogService`, `LearningViews`, repository, IT. Scope: M.
-- [ ] **T3 (B): `POST /training-catalog/programs/{id}/copy`**
+- [x] **T3 (B): `POST /training-catalog/programs/{id}/copy`**
   - Acceptance: new program in the same field, status `draft`, code `<code>-COPY` (unique-suffixed on a clash), name `<name> (bản sao)`, `copiedFromProgramId` set; every course of the source copied as a draft into it (reuse the course copy logic), no learners, assignments or shares; audit entry; returns the new program view.
   - Verify: IT: copy with 2 courses, code clash, other-org refusal; `mvn test`.
   - Files: controller, `LearningCatalogService`, `LearningContentService` (reuse), `AuditAction` if needed, IT. Scope: M.
-- [ ] **T4 (B): `DELETE` for fields and programs (empty only)**
+- [x] **T4 (B): `DELETE` for fields and programs (empty only)**
   - Acceptance: `DELETE /training-catalog/fields/{id}` and `/programs/{id}` remove the row only when it has no children (a field with no programs; a program with no course revisions); otherwise `409` with a Vietnamese message that says to archive instead; audit entry; scope-checked.
   - Verify: IT: delete empty, blocked with children (409), other-org refusal, gone from the tree; `mvn test`.
   - Files: controller, service, repository, `LearningResponseCode` if needed, IT. Scope: M.
 
 ### Checkpoint: Backend
-- [ ] `mvn test` green; the four endpoints work against a local run (curl or the ITs)
+- [x] `mvn test` green; the four endpoints work against a local run (curl or the ITs)
 - [ ] Review with the human before the frontend phase
 
 ## Phase 2: Contracts, mocks, sidebar
