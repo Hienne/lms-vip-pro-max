@@ -15,9 +15,9 @@ Status: DRAFT v2, waiting for approval. No code is written until approved.
 
 The request bundles two independently testable capabilities, so it is split.
 
-| Module id | Responsibility | Depends on |
-|---|---|---|
-| `catalog-tree` | Sidebar entry, tree endpoint, state/copy/delete endpoints, tree + detail screen (BE + FE) | — |
+| Module id        | Responsibility                                                                              | Depends on                                                    |
+| ---------------- | ------------------------------------------------------------------------------------------- | ------------------------------------------------------------- |
+| `catalog-tree`   | Sidebar entry, tree endpoint, state/copy/delete endpoints, tree + detail screen (BE + FE)   | —                                                             |
 | `remove-modules` | Remove phân hệ end to end (DB, BE, contracts, mocks, course editor, learner catalog filter) | `catalog-tree` (the screen must already stop showing modules) |
 
 Build order: `catalog-tree` → `remove-modules`. Files: this `SPEC.md` is the map and the spec of
@@ -74,20 +74,20 @@ node and can add, edit, copy, publish, pause, lock and delete or archive it, as 
    `TRAINING_CATALOG` group in `screens.ts`, section "Nội dung". Route access changes from
    `COURSE_MANAGEMENT` to `TRAINING_CATALOG`; nobody who has the screen today loses it.
 2. Course-level actions in the tree reuse existing endpoints (`/courses/{id}/copy`, `PATCH
-   /courses/{id}/state`); "Thêm khóa học" links to `/admin/courses/new?program=…`.
+/courses/{id}/state`); "Thêm khóa học" links to `/admin/courses/new?program=…`.
 3. Business rules (delete blocking, publish preconditions, copy) stay on the server; the UI renders
    results and server errors.
 4. Backend changes are verified against a local run; everything else uses the shared backend.
 
 ### Backend work (gap)
 
-| Mockup action | Backend today | Needed |
-|---|---|---|
-| Tree | `GET fields`, `GET programs` paged per `ownerOrgId` | **New** `GET /training-catalog/tree?ownerOrgId=` returning fields → programs → courses (id, code, name, status), scoped by caller; no pagination, bounded |
-| Add / edit field, program | `POST/PUT` with `expectedVersion` | none |
-| Publish / pause / lock | `PUT` already takes `status` (`draft/published/paused/archived`) with `expectedVersion` | none: status changes are a PUT with the full item (the tree returns what it needs); "Khóa" = `archived`; courses use `PATCH /courses/{id}/state` |
-| Copy | Courses: yes. Programs: no | **New** `POST /programs/{id}/copy` (copies courses as drafts, sets `copiedFromProgramId`, code `-COPY`, name "(bản sao)", status draft) |
-| Delete | none | **New** `DELETE` for field and program: removed only when it has no children, otherwise `409` with the mockup's message and the UI offers "Lưu trữ" (archive). Courses are never deleted here (the course screens own that) |
+| Mockup action             | Backend today                                                                           | Needed                                                                                                                                                                                                                      |
+| ------------------------- | --------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Tree                      | `GET fields`, `GET programs` paged per `ownerOrgId`                                     | **New** `GET /training-catalog/tree?ownerOrgId=` returning fields → programs → courses (id, code, name, status), scoped by caller; no pagination, bounded                                                                   |
+| Add / edit field, program | `POST/PUT` with `expectedVersion`                                                       | none                                                                                                                                                                                                                        |
+| Publish / pause / lock    | `PUT` already takes `status` (`draft/published/paused/archived`) with `expectedVersion` | none: status changes are a PUT with the full item (the tree returns what it needs); "Khóa" = `archived`; courses use `PATCH /courses/{id}/state`                                                                            |
+| Copy                      | Courses: yes. Programs: no                                                              | **New** `POST /programs/{id}/copy` (copies courses as drafts, sets `copiedFromProgramId`, code `-COPY`, name "(bản sao)", status draft)                                                                                     |
+| Delete                    | none                                                                                    | **New** `DELETE` for field and program: removed only when it has no children, otherwise `409` with the mockup's message and the UI offers "Lưu trữ" (archive). Courses are never deleted here (the course screens own that) |
 
 ### Scope
 

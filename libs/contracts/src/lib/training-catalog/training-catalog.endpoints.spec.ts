@@ -151,9 +151,9 @@ describe('training catalog endpoints', () => {
     });
 
     it('deletes with the row version, answering no data', () => {
-      expect(
-        toUrl(trainingCatalogEndpoints.deleteProgram, { id: 4 }),
-      ).toBe('/api/v1/training-catalog/programs/4');
+      expect(toUrl(trainingCatalogEndpoints.deleteProgram, { id: 4 })).toBe(
+        '/api/v1/training-catalog/programs/4',
+      );
       expect(trainingCatalogEndpoints.deleteField.query).toBeDefined();
       expect(trainingCatalogEndpoints.deleteField.response.parse(null)).toBe(
         null,

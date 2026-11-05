@@ -54,14 +54,14 @@ the UI actions follow once the endpoints exist.
 
 ## Risks and mitigations
 
-| Risk | Impact | Mitigation |
-|---|---|---|
-| Moving the route from `COURSE_MANAGEMENT` to a new function breaks users whose role lacks the new row | High | T1 grants admin and instructor; T7 spec asserts both; deploy script documented in T1 |
-| Tree endpoint returns many courses for a big org | Med | Bound it (only id, code, name, status per course), org-scoped; add a size cap and test |
-| Delete races with a course being added | Low | Server re-checks children inside the transaction; UI shows the 409 message |
-| PUT-for-status overwrites a concurrent edit | Med | `expectedVersion` from the tree row; on conflict show the message and reload the tree |
-| Accessible tree widget is heavy | Med | Use the `@angular/aria` / CDK tree if present in `ui`; check `docs/conventions/ui-library.md` before building a new one |
-| `mockBackend` drifts from the real backend | Med | Mock handlers get the same specs as the contract shapes; verify once against the real backend in T12 |
+| Risk                                                                                                  | Impact | Mitigation                                                                                                              |
+| ----------------------------------------------------------------------------------------------------- | ------ | ----------------------------------------------------------------------------------------------------------------------- |
+| Moving the route from `COURSE_MANAGEMENT` to a new function breaks users whose role lacks the new row | High   | T1 grants admin and instructor; T7 spec asserts both; deploy script documented in T1                                    |
+| Tree endpoint returns many courses for a big org                                                      | Med    | Bound it (only id, code, name, status per course), org-scoped; add a size cap and test                                  |
+| Delete races with a course being added                                                                | Low    | Server re-checks children inside the transaction; UI shows the 409 message                                              |
+| PUT-for-status overwrites a concurrent edit                                                           | Med    | `expectedVersion` from the tree row; on conflict show the message and reload the tree                                   |
+| Accessible tree widget is heavy                                                                       | Med    | Use the `@angular/aria` / CDK tree if present in `ui`; check `docs/conventions/ui-library.md` before building a new one |
+| `mockBackend` drifts from the real backend                                                            | Med    | Mock handlers get the same specs as the contract shapes; verify once against the real backend in T12                    |
 
 ## Definition of done per task
 

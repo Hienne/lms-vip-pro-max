@@ -23,6 +23,7 @@ Run `nvm use` before any F command.
   - Files: controller, service, repository, `LearningResponseCode` if needed, IT. Scope: M.
 
 ### Checkpoint: Backend
+
 - [x] `mvn test` green; the four endpoints work against a local run (curl or the ITs)
 - [ ] Review with the human before the frontend phase
 
@@ -45,6 +46,7 @@ Run `nvm use` before any F command.
   - Depends on: T1.
 
 ### Checkpoint: Contracts, mocks, sidebar
+
 - [ ] `npx nx run-many -t lint typecheck test --projects=contracts,mocks,lms`
 - [ ] With `mockBackend: true` (not committed) the entry shows for admin/instructor and opens the old screen
 
@@ -72,6 +74,7 @@ Run `nvm use` before any F command.
   - Depends on: T8.
 
 ### Checkpoint: Screen
+
 - [ ] `npx nx run-many -t lint typecheck test --projects=lms`
 - [ ] Full flow works on the mock: add field, add program, copy, pause, archive, delete empty
 - [ ] Review with the human
@@ -85,6 +88,7 @@ Run `nvm use` before any F command.
   - Depends on: T1-T11.
 
 ### Checkpoint: Complete
+
 - [ ] All spec success criteria met
 - [ ] Nothing committed with `mockBackend: true`
 - [ ] Ready for review; `remove-modules` spec is next
