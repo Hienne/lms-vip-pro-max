@@ -630,6 +630,19 @@ export class AssessmentAuthoringMock {
           detail.quiz.rowVersion !== Number(r.query['expectedVersion']))
       )
         return fail('ASSESSMENT-CONFLICT', 'Dữ liệu đã thay đổi.');
+      if (
+        parsed.data.quizType === 'FINAL_EXAM' &&
+        this.quizzes.some(
+          (q) =>
+            q.quiz.courseId === parsed.data.courseId &&
+            q.quiz.quizType === 'FINAL_EXAM' &&
+            q.quiz.id !== detail?.quiz.id,
+        )
+      )
+        return fail(
+          'ASSESSMENT-DUPLICATE',
+          'Khóa học đã có bài thi cuối khóa.',
+        );
       const item: QuizDetailV1 = {
         quiz: {
           ...parsed.data,
