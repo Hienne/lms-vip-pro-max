@@ -165,7 +165,7 @@ export class CourseEditor implements HasUnsavedChanges {
   /** "Tiếp tục": when the step stays because of an error, the first one gets focus. */
   protected continue(): void {
     const step = this.store.step$();
-    if (this.store.continue()) return;
+    if (this.store.continue(this.draftValue())) return;
     this.stepFields()
       [step]?.find((field) => field().invalid())?.()
       .errorSummary()[0]

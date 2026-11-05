@@ -47,7 +47,7 @@ T2 quiz screen D7 (indep.)  │                         │
 ### Phase 1: Foundation
 - [x] T1: Mock parity for final exams
 - [x] T2: Quiz screen create form without the program select (D7)
-- [ ] T3: Create the course when leaving step 1 (D1)
+- [x] T3: Create the course when leaving step 1 (D1)
 
 ### Checkpoint A
 - [ ] `nx test lms mocks` green; F1 and F6 work on the mock in the browser; review with human

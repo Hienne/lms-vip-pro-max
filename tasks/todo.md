@@ -40,9 +40,9 @@ the list screen keeps its program filter.
 draft and continues on `/admin/courses/:id/edit?step=1`.
 
 **Acceptance criteria:**
-- [ ] Valid step 1 + "Tiếp tục" → one `createCourse` call, URL becomes the edit URL with `step=1`, toast "Đã lưu nháp", no leave prompt.
-- [ ] Taken code → stays on step 1 with the code field error; other refusal → alert, stays; button busy while pending.
-- [ ] Step 3 no longer contains "Lưu nháp trước để chọn bài kiểm tra".
+- [x] Valid step 1 + "Tiếp tục" → one `createCourse` call, URL becomes the edit URL with `step=1`, toast "Đã lưu nháp", no leave prompt.
+- [x] Taken code → stays on step 1 with the code field error; other refusal → alert, stays; button busy while pending.
+- [x] Step 3 no longer contains "Lưu nháp trước để chọn bài kiểm tra".
 
 **Verification:** `npx nx test lms -- course-editor.spec`
 

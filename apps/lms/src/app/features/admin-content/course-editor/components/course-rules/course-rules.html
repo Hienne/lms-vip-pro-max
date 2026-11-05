@@ -2,11 +2,6 @@
   <section uiCard>
     <div uiCardBody class="stack">
       <h2 class="course-rules__title">Bài kiểm tra cuối khóa</h2>
-      @if (store.isCreate$()) {
-      <ui-alert tone="info" [announce]="false">
-        Lưu nháp trước để chọn bài kiểm tra
-      </ui-alert>
-      } @else {
       <ui-field
         label="Bài kiểm tra dùng để xét hoàn thành"
         hint="Cấu hình thời gian, số câu, điểm đạt, số lần thi tại màn Bài kiểm tra."
@@ -42,7 +37,7 @@
         >
         } @else { Tạo bài kiểm tra loại Thi cuối khóa ở màn Bài kiểm tra. }
       </ui-alert>
-      } }
+      }
     </div>
   </section>
 

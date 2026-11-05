@@ -1082,14 +1082,13 @@ describe('CourseEditor', () => {
         );
       });
 
-      it('shows only "save first" in create mode', async () => {
+      it('no longer asks to save the draft first in create mode', async () => {
         await screen.open('/admin/courses/new');
         await step('Bài thi & điều kiện');
 
-        expect(screen.text()).toContain('Lưu nháp trước để chọn bài kiểm tra');
-        expect(
-          screen.field('Bài kiểm tra dùng để xét hoàn thành'),
-        ).toBeUndefined();
+        expect(screen.text()).not.toContain(
+          'Lưu nháp trước để chọn bài kiểm tra',
+        );
         expect(screen.callsTo(assessmentV1Endpoints.courseQuizList)).toBe(0);
         expect(screen.text()).toContain(
           'Đạt bài kiểm tra cuối khóa (chưa chọn)',
@@ -1177,13 +1176,55 @@ describe('CourseEditor', () => {
       expect(screen.callsTo(courseEndpoints.createCourse)).toBe(0);
     });
 
-    it('moves on with "Tiếp tục" once the first step is valid', async () => {
+    it('creates the course on "Tiếp tục" once the first step is valid, and opens step 2 on its edit URL', async () => {
+      const navigate = vi.spyOn(TestBed.inject(Router), 'navigate');
       await screen.open('/admin/courses/new');
+      const page = screen.page<CourseEditor>();
       await fillBasics();
       await screen.click(screen.button('Tiếp tục'));
 
+      expect(screen.callsTo(courseEndpoints.createCourse)).toBe(1);
+      expect(navigate).toHaveBeenCalledWith(
+        ['/admin/courses', expect.any(Number), 'edit'],
+        { replaceUrl: true, queryParams: { step: 1 } },
+      );
+      expect(page.hasUnsavedChanges()).toBe(false);
+      await vi.waitFor(() =>
+        expect(screen.url()).toMatch(/^\/admin\/courses\/\d+\/edit\?step=1$/),
+      );
       expect(currentStep()).toContain('Nội dung khóa học');
+      expect(screen.text(document.body)).toContain('Đã lưu nháp');
       expect(screen.text()).not.toContain('Còn thông tin chưa hợp lệ');
+    });
+
+    it('stays on the first step with the code error when "Tiếp tục" meets a taken code', async () => {
+      await screen.open('/admin/courses/new');
+      await fillBasics('VH-301');
+      await screen.click(screen.button('Tiếp tục'));
+
+      expect(screen.callsTo(courseEndpoints.createCourse)).toBe(1);
+      expect(screen.url()).toBe('/admin/courses/new');
+      expect(currentStep()).toContain('Thông tin cơ bản');
+      expect(screen.text()).toContain('Mã khóa học đã tồn tại.');
+    });
+
+    it('stays on the first step with an alert when "Tiếp tục" is refused for another reason', async () => {
+      await screen.open('/admin/courses/new');
+      await fillBasics();
+      screen.calls.mockImplementation((endpoint, request) =>
+        endpoint === courseEndpoints.createCourse
+          ? backendRefusal('internalError')
+          : (MockBackend.prototype.handle.call(
+              TestBed.inject(MockBackend),
+              endpoint,
+              request,
+            ) as FakeReply),
+      );
+      await screen.click(screen.button('Tiếp tục'));
+
+      expect(screen.url()).toBe('/admin/courses/new');
+      expect(currentStep()).toContain('Thông tin cơ bản');
+      expect(screen.el.querySelector('ui-alert[tone="danger"]')).toBeTruthy();
     });
 
     it('marks a step done only while it is visited, valid and not open', async () => {
@@ -1195,7 +1236,7 @@ describe('CourseEditor', () => {
 
       await step('Thông tin cơ bản');
       await fillBasics();
-      await screen.click(screen.button('Tiếp tục'));
+      await step('Nội dung khóa học');
       expect(doneSteps()).toEqual(['Thông tin cơ bản']);
       expect(screen.text()).toContain('Đã hoàn thành');
 

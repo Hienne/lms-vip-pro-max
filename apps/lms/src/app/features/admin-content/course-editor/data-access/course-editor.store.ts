@@ -375,14 +375,13 @@ export class CourseEditorStore {
     },
   );
 
-  private readonly createMutation = serverMutation(
-    (command: CreateCourseCommand) => this.createCourse(command),
-    {
-      errors: 'alert',
-      success: () => 'Đã lưu nháp',
-      onSuccess: (created) => this.moveToEditor(created),
-    },
+  /** "Lưu nháp" on a new course: it continues on the same step of the edit URL. */
+  private readonly createMutation = this.newCreateMutation(() =>
+    this.state.step(),
   );
+
+  /** "Tiếp tục" on step 1 of a new course: the edit URL opens on step 2. */
+  private readonly createAndContinueMutation = this.newCreateMutation(() => 1);
 
   /**
    * Saves the draft (or creates the course), then publishes the revision that came back. A refusal
@@ -517,6 +516,7 @@ export class CourseEditorStore {
     () =>
       this.saveMutation.isPending() ||
       this.createMutation.isPending() ||
+      this.createAndContinueMutation.isPending() ||
       this.publishMutation.isPending(),
   );
   /**
@@ -527,6 +527,7 @@ export class CourseEditorStore {
     const error =
       this.saveMutation.error() ??
       this.createMutation.error() ??
+      this.createAndContinueMutation.error() ??
       this.publishMutation.error();
     return error?.messageCode === DUPLICATE_CODE ||
       namesPublishRow(error?.fieldErrors)
@@ -711,12 +712,20 @@ export class CourseEditorStore {
   /**
    * "Tiếp tục": shows the current step's errors and stays while it has any, else opens the next
    * step. Returns whether it moved, so the page can focus the first error when it did not.
+   * Leaving step 1 of a new course stores it as a draft first (the page moves on to the edit URL
+   * when that is done), so the later steps always have a course to attach to.
    */
-  continue(): boolean {
+  continue(draft: CourseDraftValue): boolean {
     const step = this.state.step();
     const check = this.state.stepChecks()[step];
     check?.touch();
     if (check?.invalid()) return false;
+    if (this.isCreate$() && step === 0) {
+      const command = this.createCommand(draft);
+      if (!command) return false;
+      this.createAndContinueMutation.run(command);
+      return true;
+    }
     this.goToStep(step + 1);
     return true;
   }
@@ -1293,12 +1302,26 @@ export class CourseEditorStore {
    * The course exists now: leaving does not ask, and the page continues as the edit screen of the
    * new course, on the same step, without a history entry for `/new`.
    */
-  private moveToEditor(created: CourseDetail): void {
+  private moveToEditor(
+    created: CourseDetail,
+    step: number = this.state.step(),
+  ): void {
     this.setLeft(true);
     void this.router.navigate(['/admin/courses', created.course.id, 'edit'], {
       replaceUrl: true,
-      queryParams: { step: this.state.step() },
+      queryParams: { step },
     });
+  }
+
+  private newCreateMutation(landOn: () => number) {
+    return serverMutation(
+      (command: CreateCourseCommand) => this.createCourse(command),
+      {
+        errors: 'alert',
+        success: () => 'Đã lưu nháp',
+        onSuccess: (created) => this.moveToEditor(created, landOn()),
+      },
+    );
   }
 
   /** The step the URL names (`?step=`), read once when the editor opens. */
