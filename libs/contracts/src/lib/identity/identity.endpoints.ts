@@ -5,6 +5,10 @@ import {
   AccessRequestSchema,
   AccessRequestsQuerySchema,
   ApproveAccessRequestCommandSchema,
+  PasswordResetRequestCommandSchema,
+  PasswordResetRequestResultSchema,
+  ResetPasswordCommandSchema,
+  ResetPasswordResultSchema,
   RegisterRequestCommandSchema,
   RegisterRequestResultSchema,
   RegistrationUnitSchema,
@@ -120,5 +124,20 @@ export const identityEndpoints = {
     path: '/api/v1/auth/register-request',
     body: RegisterRequestCommandSchema,
     response: RegisterRequestResultSchema,
+  }),
+  /** Public: ask for a password reset by staff code; the answer is the same for any code. */
+  passwordResetRequest: defineEndpoint({
+    method: 'post',
+    path: '/api/v1/auth/password-reset-request',
+    body: PasswordResetRequestCommandSchema,
+    response: PasswordResetRequestResultSchema,
+  }),
+  /** Admin: set a temporary password for the request's account; the answer carries it once. */
+  resetPasswordForRequest: defineEndpoint({
+    method: 'post',
+    path: '/api/v1/access-requests/{requestId}/reset-password',
+    params: requestParams,
+    body: ResetPasswordCommandSchema,
+    response: ResetPasswordResultSchema,
   }),
 } as const;

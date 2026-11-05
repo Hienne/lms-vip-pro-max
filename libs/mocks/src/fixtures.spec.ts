@@ -57,6 +57,8 @@ describe('FakeBackend and the endpoint registries', () => {
       identityEndpoints.registrationUnits,
       identityEndpoints.registerRequest,
       identityEndpoints.approveAccessRequest,
+      identityEndpoints.passwordResetRequest,
+      identityEndpoints.resetPasswordForRequest,
     ];
     for (const endpoint of everyEndpoint) {
       expect(backend.answers(endpoint), endpoint.path).toBe(

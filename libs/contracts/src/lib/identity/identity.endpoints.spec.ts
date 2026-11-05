@@ -38,6 +38,12 @@ describe('identity endpoints', () => {
       ],
       ['registrationUnits', 'get', '/api/v1/auth/registration-units'],
       ['registerRequest', 'post', '/api/v1/auth/register-request'],
+      ['passwordResetRequest', 'post', '/api/v1/auth/password-reset-request'],
+      [
+        'resetPasswordForRequest',
+        'post',
+        '/api/v1/access-requests/{requestId}/reset-password',
+      ],
     ]);
   });
 

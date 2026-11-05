@@ -2,6 +2,9 @@ import {
   AccessRequestSchema,
   AccessRequestsQuerySchema,
   ApproveAccessRequestCommandSchema,
+  PasswordResetRequestCommandSchema,
+  ResetPasswordCommandSchema,
+  ResetPasswordResultSchema,
   RegisterRequestCommandSchema,
   RegistrationUnitSchema,
   RejectAccessRequestCommandSchema,
@@ -135,6 +138,48 @@ describe('RegistrationUnitSchema', () => {
     });
     expect(() =>
       RegistrationUnitSchema.parse({ orgId: 3, name: 'Ban A', code: 'X' }),
+    ).toThrow();
+  });
+});
+
+describe('password reset contracts', () => {
+  it('takes only a staff code, and refuses extra fields or a bad code', () => {
+    expect(
+      PasswordResetRequestCommandSchema.parse({ staffCode: '000004' }),
+    ).toEqual({
+      staffCode: '000004',
+    });
+    expect(() =>
+      PasswordResetRequestCommandSchema.parse({
+        staffCode: '000004',
+        email: 'a@b.c',
+      }),
+    ).toThrow();
+    expect(() =>
+      PasswordResetRequestCommandSchema.parse({ staffCode: 'a b' }),
+    ).toThrow();
+  });
+
+  it('limits the reset note like the other notes', () => {
+    expect(ResetPasswordCommandSchema.parse({})).toEqual({});
+    expect(() =>
+      ResetPasswordCommandSchema.parse({ note: 'x'.repeat(501) }),
+    ).toThrow();
+  });
+
+  it('carries the temporary password only in the reset result, never in a row', () => {
+    expect(() => ResetPasswordResultSchema.parse({ request: row })).toThrow();
+    expect(() =>
+      ResetPasswordResultSchema.parse({ request: row, temporaryPassword: '' }),
+    ).toThrow();
+    expect(
+      ResetPasswordResultSchema.parse({
+        request: row,
+        temporaryPassword: 'Ab3dEf7hJk9m',
+      }).temporaryPassword,
+    ).toBe('Ab3dEf7hJk9m');
+    expect(() =>
+      AccessRequestSchema.parse({ ...row, temporaryPassword: 'x' }),
     ).toThrow();
   });
 });

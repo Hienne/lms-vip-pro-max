@@ -4,7 +4,7 @@ Plan: [plan-password-reset-request.md](plan-password-reset-request.md) · Spec: 
 
 ## P1: Contracts and endpoints
 
-- [ ] `PasswordResetRequestCommandSchema` (strict, `staffCode` only), `PasswordResetRequestResultSchema`,
+- [x] `PasswordResetRequestCommandSchema` (strict, `staffCode` only), `PasswordResetRequestResultSchema`,
       `ResetPasswordResultSchema` (`request`, `temporaryPassword`); endpoints `passwordResetRequest` (public) and
       `resetPasswordForRequest`; schema and registry specs; the two endpoints added to the backend-only list in
       `libs/mocks/src/fixtures.spec.ts`.

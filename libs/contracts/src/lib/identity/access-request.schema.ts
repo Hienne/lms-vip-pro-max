@@ -111,3 +111,37 @@ export const RegistrationUnitSchema = z.strictObject({
   name: z.string(),
 });
 export type RegistrationUnit = z.infer<typeof RegistrationUnitSchema>;
+
+/**
+ * `POST /auth/password-reset-request` (public): only the staff code. The answer is the same
+ * message whether or not an account has that code.
+ */
+export const PasswordResetRequestCommandSchema = z.strictObject({
+  staffCode: z.string().regex(STAFF_CODE_PATTERN),
+});
+export type PasswordResetRequestCommand = z.infer<
+  typeof PasswordResetRequestCommandSchema
+>;
+
+export const PasswordResetRequestResultSchema = z.strictObject({
+  message: z.string(),
+});
+export type PasswordResetRequestResult = z.infer<
+  typeof PasswordResetRequestResultSchema
+>;
+
+/** Reset a password for a pending request, with an optional note. */
+export const ResetPasswordCommandSchema = z.object({
+  note: z.string().max(ACCESS_REQUEST_LIMITS.note).optional(),
+});
+export type ResetPasswordCommand = z.infer<typeof ResetPasswordCommandSchema>;
+
+/**
+ * The one answer that carries a secret: the temporary password, shown to the admin once. It is
+ * never part of a request row and no other response has it.
+ */
+export const ResetPasswordResultSchema = z.strictObject({
+  request: AccessRequestSchema,
+  temporaryPassword: z.string().min(1),
+});
+export type ResetPasswordResult = z.infer<typeof ResetPasswordResultSchema>;
