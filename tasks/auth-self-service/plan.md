@@ -42,40 +42,46 @@ actions later, each with its own spec and plan.
 ## Task list
 
 ### Phase 1: Contract and mock
+
 - [ ] T1: Contract schemas and endpoints
 - [ ] T2: Mock API and fixtures
 
 ### Checkpoint: Contract
+
 - [ ] `npx nx test contracts mocks` green; reviewed with the human
 
 ### Phase 2: Backend (can run in parallel with Phase 3)
+
 - [ ] T3: Upgrade and rollback scripts, entity, repository
 - [ ] T4: List and reject endpoints with scope
 - [ ] T5: Throttle component
 
 ### Checkpoint: Backend
+
 - [ ] `./mvnw test` and the integration test green; upgrade and rollback applied on the local database
 
 ### Phase 3: Tab in the app
+
 - [ ] T6: Store and invalidation token
 - [ ] T7: Tab strip on Người dùng
 - [ ] T8: Requests table, filters, empty / error states
 - [ ] T9: Reject dialog
 
 ### Checkpoint: Complete
+
 - [ ] End to end on the local backend, then on the mock; `npm run check` green; visual-design checklist
 
 ## Risks and mitigations
 
-| Risk | Impact | Mitigation |
-| ---- | ------ | ---------- |
-| Unit-scope rule is not reusable as is from `IdentityAccessPolicy` | Med | Read it in T4 first; extract a small shared method instead of copying, and say so in the task report |
-| Users page split causes churn with `users-admin` | Med | T7 only wraps the existing content in a tab panel; no edit to its store or template body |
-| In-memory throttle is wrong on several nodes | Low | Open question 1; documented, upgradeable to a table |
-| Local backend stack not running | Med | Follow `SPEC-local-stack.md`; fall back to the mock for the app tasks |
-| Password hash leaking via logs or DTO `toString` | High | T3 entity excludes it from `toString`; T4 integration test asserts no body or log carries it |
+| Risk                                                              | Impact | Mitigation                                                                                           |
+| ----------------------------------------------------------------- | ------ | ---------------------------------------------------------------------------------------------------- |
+| Unit-scope rule is not reusable as is from `IdentityAccessPolicy` | Med    | Read it in T4 first; extract a small shared method instead of copying, and say so in the task report |
+| Users page split causes churn with `users-admin`                  | Med    | T7 only wraps the existing content in a tab panel; no edit to its store or template body             |
+| In-memory throttle is wrong on several nodes                      | Low    | Open question 1; documented, upgradeable to a table                                                  |
+| Local backend stack not running                                   | Med    | Follow `SPEC-local-stack.md`; fall back to the mock for the app tasks                                |
+| Password hash leaking via logs or DTO `toString`                  | High   | T3 entity excludes it from `toString`; T4 integration test asserts no body or log carries it         |
 
 ## Open questions (spec defaults apply until answered)
 
 1. Single-node backend? 2. Null-unit requests visible to unit admins? 3. Retention of resolved rows? 4. Cheaper
-count endpoint?
+   count endpoint?

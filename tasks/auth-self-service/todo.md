@@ -1,5 +1,6 @@
 # Tasks: `access-requests`
 
+Status: app side (T1, T2, T6 to T9) built on branch `feat/access-requests`; backend (T3 to T5) waits for sign-off.
 Spec: [SPEC-access-requests.md](../../SPEC-access-requests.md) · Plan: [plan.md](plan.md).
 
 Run `nvm use` first. Focused tests: `npx nx test lms`, `npx nx test contracts`, `npx nx test mocks`. Whole gate:
@@ -10,9 +11,9 @@ task; the message names the module and task and ends with the attribution line.
 
 **Acceptance criteria:**
 
-- [ ] `AccessRequestSchema` (strict, no password field), `AccessRequestsQuerySchema`, `RejectAccessRequestCommandSchema`
+- [x] `AccessRequestSchema` (strict, no password field), `AccessRequestsQuerySchema`, `RejectAccessRequestCommandSchema`
       (`note` optional, max 500), kind and status enums.
-- [ ] `adminOrgEndpoints.accessRequests` (GET, paged) and `adminOrgEndpoints.rejectAccessRequest` (POST) are
+- [x] `adminOrgEndpoints.accessRequests` (GET, paged) and `adminOrgEndpoints.rejectAccessRequest` (POST) are
       registered with the paths of the spec.
 
 **Verification:** `npx nx test contracts` (registry row for both; schema rejects `passwordHash`; accepts null `targetUserId`)
@@ -23,9 +24,9 @@ task; the message names the module and task and ends with the attribution line.
 
 **Acceptance criteria:**
 
-- [ ] Five fixture rows: both kinds, all three statuses, a reset request with no matching account, a row in
+- [x] Five fixture rows: both kinds, all three statuses, a reset request with no matching account, a row in
       another unit.
-- [ ] The admin-org mock answers `accessRequests` (filters kind, status, q, page; scoped to the caller) and
+- [x] The admin-org mock answers `accessRequests` (filters kind, status, q, page; scoped to the caller) and
       `rejectAccessRequest` (409 on a resolved row, 403 without `USER_MANAGEMENT`).
 
 **Verification:** `npx nx test mocks`
@@ -86,8 +87,8 @@ task; the message names the module and task and ends with the attribution line.
 
 **Acceptance criteria:**
 
-- [ ] `core/admin/access-requests-changed.ts` holds the `accessRequestsChanged` invalidation.
-- [ ] `AccessRequestsStore`: `requests` with filters (`status` defaults to `PENDING`, a filter change resets
+- [x] `core/admin/access-requests-changed.ts` holds the `accessRequestsChanged` invalidation.
+- [x] `AccessRequestsStore`: `requests` with filters (`status` defaults to `PENDING`, a filter change resets
       `page`), `reject` mutation (toast on error, success text "Đã từ chối yêu cầu"), `pendingCount$` from a
       `status=PENDING&size=1` call, reloading on reject and on the token.
 
@@ -100,11 +101,11 @@ list and count, token bump, 403 / 409 toast)
 
 **Acceptance criteria:**
 
-- [ ] Tabs "Người dùng" and "Yêu cầu"; the active tab is `?tab=requests` (default `users`); back button and a
+- [x] Tabs "Người dùng" and "Yêu cầu"; the active tab is `?tab=requests` (default `users`); back button and a
       direct link work.
-- [ ] The label shows "Yêu cầu (n)" only when n > 0, as text. The user list, its store and its template body are
+- [x] The label shows "Yêu cầu (n)" only when n > 0, as text. The user list, its store and its template body are
       unchanged on the default tab.
-- [ ] Keyboard behaviour comes from the `ui` tabs primitive.
+- [x] Keyboard behaviour comes from the `ui` tabs primitive.
 
 **Verification:** `npx nx test lms` (`users.spec.ts`: tab switch by query, count only above 0, default tab
 untouched); manual at 375 / 768 / 1280 px on the mock
@@ -115,11 +116,11 @@ untouched); manual at 375 / 768 / 1280 px on the mock
 
 **Acceptance criteria:**
 
-- [ ] Toolbar: search, "Loại yêu cầu", "Trạng thái" (default Chờ xử lý), result count.
-- [ ] Columns: Người gửi (name or code, email under), Loại, Đơn vị, Gửi lúc (relative, absolute in the title),
+- [x] Toolbar: search, "Loại yêu cầu", "Trạng thái" (default Chờ xử lý), result count.
+- [x] Columns: Người gửi (name or code, email under), Loại, Đơn vị, Gửi lúc (relative, absolute in the title),
       Trạng thái, action. A reset request with no account shows "Không tìm thấy tài khoản". Resolved rows show who,
       when and the note, with no actions.
-- [ ] Empty "Không có yêu cầu nào."; loading spinner; `ui-error-state` with retry. The primary-action slot is empty
+- [x] Empty "Không có yêu cầu nào."; loading spinner; `ui-error-state` with retry. The primary-action slot is empty
       and nothing disabled stands in for it.
 
 **Verification:** `npx nx test lms` (`access-requests.spec.ts`: columns, no-account line, resolved rows, empty,
@@ -131,8 +132,8 @@ error with retry); visual-design checklist on the mock
 
 **Acceptance criteria:**
 
-- [ ] "Từ chối" on a pending row opens a dialog with an optional note (max 500) and the confirm "Từ chối yêu cầu".
-- [ ] Confirming rejects, closes the dialog, removes the row from the pending list and drops the count by one.
+- [x] "Từ chối" on a pending row opens a dialog with an optional note (max 500) and the confirm "Từ chối yêu cầu".
+- [x] Confirming rejects, closes the dialog, removes the row from the pending list and drops the count by one.
       Escape and cancel leave the row untouched; focus returns to the row action.
 
 **Verification:** `npx nx test lms` (with and without a note, cancel, focus return, keyboard path)

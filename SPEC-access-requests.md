@@ -57,10 +57,10 @@ learning_hub.access_requests
 
 ## Endpoints
 
-| Key (registry)                       | Endpoint                                      | Notes                                                     |
-| ------------------------------------ | --------------------------------------------- | --------------------------------------------------------- |
-| `adminOrgEndpoints.accessRequests`   | `GET /api/v1/access-requests`                 | query `kind`, `status`, `q`, `page`, `size`; paged list   |
-| `adminOrgEndpoints.rejectAccessRequest` | `POST /api/v1/access-requests/{id}/reject` | body `{ note?: string }`; only a `PENDING` row            |
+| Key (registry)                          | Endpoint                                          | Notes                                                   |
+| --------------------------------------- | ------------------------------------------------- | ------------------------------------------------------- |
+| `identityEndpoints.accessRequests`      | `GET /api/v1/access-requests`                     | query `kind`, `status`, `q`, `page`, `size`; paged list |
+| `identityEndpoints.rejectAccessRequest` | `POST /api/v1/access-requests/{requestId}/reject` | body `{ note?: string }`; only a `PENDING` row          |
 
 Response row (`AccessRequestSchema`): `requestId`, `kind`, `status`, `staffCode`, `fullName`, `email`, `orgId`,
 `orgName`, `targetUserId`, `accountFound` (boolean), `createdTime`, `resolvedBy`, `resolvedTime`,
@@ -146,14 +146,14 @@ psql … -f docs/sql/upgrade/2026-11-05-access-requests.rollback.sql
 
 ## Project structure
 
-| Where                                                        | What                                                         |
-| ------------------------------------------------------------ | ------------------------------------------------------------ |
-| `libs/contracts/src/lib/identity/` (or `admin-org/`)         | `AccessRequestSchema`, query and reject command, endpoints   |
-| `libs/mocks/`                                                | fixtures and the backend branch                              |
-| `apps/lms/src/app/features/admin-org/users/`                 | tab, component, store (above)                                |
-| `apps/lms/src/app/core/admin/access-requests-changed.ts`     | the invalidation token                                       |
-| `corebanking-academy/.../identity/{controller,service,repository,entity,dto}` | request entity, repository, service, controller |
-| `corebanking-academy/docs/sql/upgrade/`                      | upgrade and rollback scripts                                 |
+| Where                                                                         | What                                                       |
+| ----------------------------------------------------------------------------- | ---------------------------------------------------------- |
+| `libs/contracts/src/lib/identity/` (or `admin-org/`)                          | `AccessRequestSchema`, query and reject command, endpoints |
+| `libs/mocks/`                                                                 | fixtures and the backend branch                            |
+| `apps/lms/src/app/features/admin-org/users/`                                  | tab, component, store (above)                              |
+| `apps/lms/src/app/core/admin/access-requests-changed.ts`                      | the invalidation token                                     |
+| `corebanking-academy/.../identity/{controller,service,repository,entity,dto}` | request entity, repository, service, controller            |
+| `corebanking-academy/docs/sql/upgrade/`                                       | upgrade and rollback scripts                               |
 
 ## Code style
 
@@ -196,8 +196,7 @@ accessRequests: defineEndpoint({
 
 1. Local backend with seeded rows, as a global admin: Người dùng → "Yêu cầu" lists them, the label shows the
    pending count, filters work, "Từ chối" with a note moves a row to Đã từ chối and drops the count by one.
-2. As a unit admin: rows of another unit are absent from the list and from the count; rejecting one by id answers
-   403.
+2. As a unit admin: rows of another unit are absent from the list and from the count; rejecting one by id answers 403.
 3. Rejecting a rejected request answers 409 and the UI shows the error toast.
 4. The 6th request from one IP inside 10 minutes answers 429 (backend test); no response carries a password hash.
 5. Mock (`mockBackend: true`): the same flow on the five fixture rows.
@@ -216,3 +215,21 @@ accessRequests: defineEndpoint({
    trail?
 4. **Tab label count source.** A second small list call (`size=1`) is used for the count. If the backend offers a
    cheaper count, switch to it.
+
+## Implementation notes (as built, app side)
+
+Built in T1, T2 and T6 to T9 on branch `feat/access-requests`; the backend (T3 to T5) is not built yet.
+
+- The endpoints sit in `identityEndpoints`, beside the users endpoints, not in `adminOrgEndpoints`: they are
+  `/api/v1` endpoints the backend will have, so `FakeBackend` answers them. Schemas are in
+  `libs/contracts/src/lib/identity/access-request.schema.ts`.
+- A rejected request that is already resolved answers the backend's `CORE-STATE_CONFLICT` envelope (HTTP 200, as
+  every business refusal in `contracts-and-mocks.md`), not a bare HTTP 409. The Java endpoint must do the same.
+- The tab count uses the `ui` tabs' neutral count chip (as the user page does), shown only above 0.
+- The pending count is read by `AccessRequestsStore`, which `Users` provides, so the tab label has it while the
+  list is closed. The list is read only while the requests panel exists.
+- The reject dialog is `RejectRequestDialog` in the feature folder, opened with the CDK `Dialog` like
+  `confirm()`; focus starts in the note field.
+- In the narrow card layout a resolved row shows an empty "Thao tác:" label (the `ui-data-table` prints every
+  column). Not changed here.
+- Not verified yet: the real backend, the unit-admin 403 on reject by id, the throttle, the SQL scripts.

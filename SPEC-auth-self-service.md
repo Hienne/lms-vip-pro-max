@@ -2,7 +2,7 @@
 
 Status: **map approved 2026-11-05 (shared `access-requests` module; the inbox is a tab on Người dùng). Module specs are written one at a time, each waits for its own approval before planning:**
 
-- [SPEC-access-requests.md](SPEC-access-requests.md): written, waits for approval.
+- [SPEC-access-requests.md](SPEC-access-requests.md): approved 2026-11-05; app side built, backend waits for sign-off.
 - `self-registration`, `password-reset-request`: not yet written.
 
 `SPEC.md` holds the map of the learner-features initiative and stays as it is. This initiative gets its own map file.
@@ -23,11 +23,11 @@ Users: visitors (anonymous) on the sign-in page; admins in the user-management a
 
 ## Modules
 
-| Module id                | Responsibility                                                                                                                                                          | BE work                                                                  | DB change                | Depends on        |
-| ------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------ | ------------------------ | ----------------- |
-| `access-requests`        | The shared request record, its contract and the admin inbox: list, filter by kind and status, reject. Rate limit and a permission for the inbox.                         | `access_requests` list / reject endpoints, function permission, throttle | `access_requests` table  | —                 |
-| `self-registration`      | "Đăng ký" link and form on the sign-in page; a request of kind `REGISTER`; admin approval that creates the account (pending until approved) and shows it in the inbox  | public `POST` register request, approve endpoint creating the user       | none beyond the table    | access-requests   |
-| `password-reset-request` | "Quên mật khẩu?" link and form on the sign-in page; a request of kind `PASSWORD_RESET`; admin action that sets a temporary password and flags `mustChangePassword`      | public `POST` reset request, admin resolve endpoint                      | none beyond the table    | access-requests   |
+| Module id                | Responsibility                                                                                                                                                        | BE work                                                                  | DB change               | Depends on      |
+| ------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------ | ----------------------- | --------------- |
+| `access-requests`        | The shared request record, its contract and the admin inbox: list, filter by kind and status, reject. Rate limit and a permission for the inbox.                      | `access_requests` list / reject endpoints, function permission, throttle | `access_requests` table | —               |
+| `self-registration`      | "Đăng ký" link and form on the sign-in page; a request of kind `REGISTER`; admin approval that creates the account (pending until approved) and shows it in the inbox | public `POST` register request, approve endpoint creating the user       | none beyond the table   | access-requests |
+| `password-reset-request` | "Quên mật khẩu?" link and form on the sign-in page; a request of kind `PASSWORD_RESET`; admin action that sets a temporary password and flags `mustChangePassword`    | public `POST` reset request, admin resolve endpoint                      | none beyond the table   | access-requests |
 
 Build order:
 
