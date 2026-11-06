@@ -76,12 +76,30 @@ export const BlockProgressSchema = z.object({
 });
 export type BlockProgress = z.infer<typeof BlockProgressSchema>;
 
+/** Conditions evaluated by the server for this enrollment and its frozen revision. */
+export const CompletionSummarySchema = z.object({
+  completedRequiredLessons: z.number().int().nonnegative(),
+  requiredLessons: z.number().int().nonnegative(),
+  lessonsSatisfied: z.boolean(),
+  finalQuizId: z.number().int().nullable(),
+  finalExamStatus: z.enum([
+    'NOT_REQUIRED',
+    'NOT_TAKEN',
+    'NOT_PASSED',
+    'PASSED',
+  ]),
+  allSatisfied: z.boolean(),
+});
+export type CompletionSummary = z.infer<typeof CompletionSummarySchema>;
+
 /** The caller's enrolment with the revision they received and their progress per lesson and block. */
 export const EnrollmentDetailSchema = z.object({
   enrollment: CourseEnrollmentSchema,
   content: CourseDetailSchema,
   lessons: z.array(LessonProgressSchema),
   blocks: z.array(BlockProgressSchema),
+  /** Optional during rollout; an absent evaluation must never be inferred as passed. */
+  completion: CompletionSummarySchema.optional(),
 });
 export type EnrollmentDetail = z.infer<typeof EnrollmentDetailSchema>;
 

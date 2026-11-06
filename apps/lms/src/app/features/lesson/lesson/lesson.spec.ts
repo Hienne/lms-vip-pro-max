@@ -183,7 +183,7 @@ describe('Lesson', () => {
         el.querySelectorAll('app-lesson-outline .toc__sr'),
       ).map((s) => s.textContent?.trim());
       expect(outlineStates.at(-1)).toBe('Đã hoàn thành');
-      expect(text()).toMatch(/Khóa học\s+\d+%/);
+      expect(text()).toMatch(/Tiến độ học\s+\d+%/);
     });
 
     it('puts the step bar right under the block and above the feedback', () => {

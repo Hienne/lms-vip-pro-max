@@ -130,7 +130,15 @@
   @if (store.view$() === 'enrolled') {
   <aside class="course__side" aria-label="Tiến độ">
     <section uiCard class="course__progress">
-      <ui-ring [value]="card.progressPercent ?? 0" [size]="112" />
+      <p>Tiến độ học {{ (card.progressPercent ?? 0) | fmtPct }}</p>
+      <ui-progress
+        [value]="card.progressPercent ?? 0"
+        label="Tiến độ học các bài bắt buộc"
+      />
+      <p>
+        {{ card.learningStatus === 'completed' ? 'Đã hoàn thành khóa' : 'Chưa
+        hoàn thành khóa' }}
+      </p>
       <dl class="course__facts">
         <div>
           <dt>Đã học</dt>
@@ -158,13 +166,37 @@
     </section>
     <section aria-labelledby="course-rule">
       <h2 id="course-rule" class="course__heading">Điều kiện hoàn thành</h2>
+      @if (store.detail$()?.completion; as completion) {
       <ul class="course__objectives">
         <li>
-          Học đủ {{ card.requiredLessonCount ?? store.lessonTally$().total }}
-          bài bắt buộc
+          Bài bắt buộc: {{ completion.completedRequiredLessons }}/{{
+          completion.requiredLessons }} — {{ completion.lessonsSatisfied ? 'Đã
+          hoàn thành' : 'Chưa hoàn thành' }}
+        </li>
+        <li>
+          Bài thi cuối khóa: @switch (completion.finalExamStatus) { @case
+          ('NOT_REQUIRED') { Không yêu cầu } @case ('NOT_TAKEN') { Chưa thi }
+          @case ('NOT_PASSED') { Chưa đạt } @case ('PASSED') { Đã đạt } }
         </li>
       </ul>
-      @if (rewardPoints() > 0) {
+      @if (!completion.allSatisfied && card.learningStatus !== 'completed') {
+      <p class="course__note">
+        Cần hoàn thành tất cả điều kiện bắt buộc để hoàn thành khóa.
+      </p>
+      @if (completion.finalQuizId && completion.finalExamStatus !== 'PASSED') {
+      <a uiButton [routerLink]="['/quiz', completion.finalQuizId]"
+        >Đến bài thi cuối khóa</a
+      >
+      } } @else if (!completion.allSatisfied) {
+      <p class="course__note">
+        Khóa đã được công nhận hoàn thành trước đó. Các điều kiện trên phản ánh
+        kết quả hiện tại.
+      </p>
+      } } @else {
+      <p class="course__note">
+        Chưa có thông tin đánh giá điều kiện hoàn thành.
+      </p>
+      } @if (rewardPoints() > 0) {
       <p class="course__reward">
         +{{ rewardPoints() }} điểm thưởng khi hoàn thành
       </p>
