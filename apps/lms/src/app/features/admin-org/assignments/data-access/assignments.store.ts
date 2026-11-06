@@ -102,7 +102,7 @@ export class AssignmentsStore {
       },
     }),
     page: signal(1),
-    /** The assignment editor; a link from the course list opens it on that course. */
+    /** The assign drawer; a link from the course list opens it on that course. */
     assigning: signal<Assigning | null>(
       this.linkedCourseId
         ? {
@@ -220,7 +220,6 @@ export class AssignmentsStore {
         this.setAssigning(null);
         this.setCourseId(detail.assignment.courseId);
         this.setPage(1);
-        this.setViewingId(detail.assignment.id);
       },
       invalidates: this.assignmentChanges,
     },
