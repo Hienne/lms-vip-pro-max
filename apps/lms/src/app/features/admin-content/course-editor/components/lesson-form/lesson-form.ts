@@ -1,3 +1,4 @@
+import { Dialog } from '@angular/cdk/dialog';
 import {
   Component,
   computed,
@@ -27,6 +28,7 @@ import {
 import {
   Alert,
   Button,
+  confirm,
   DrawerOutlet,
   Dropzone,
   Field,
@@ -57,8 +59,10 @@ import {
   isBusy,
   isCancellable,
   itemState,
+  UPLOADS_CANCELLED,
   type UploadEntry,
 } from '../../data-access/upload-entry';
+import { firstValueFrom } from 'rxjs';
 
 /** A block as the form edits it: process steps as one line each, "Tiêu đề | Mô tả". */
 type BlockFormValue = Omit<BlockValue, 'steps'> & { stepsText: string };
@@ -140,6 +144,7 @@ export class LessonForm {
 
   protected readonly store = inject(CourseEditorStore);
   protected readonly library = inject(AssetLibraryStore);
+  private readonly dialog = inject(Dialog);
   /** Files chosen in this editor, by block key. */
   protected readonly uploads = this.store.uploads$;
   /** Uploads a reload stopped, by the index of their block in this lesson. */
@@ -244,7 +249,21 @@ export class LessonForm {
     });
   }
 
-  protected removeBlock(index: number): void {
+  /** Removes a block; one whose file is still uploading asks first, and its upload is stopped. */
+  protected async removeBlock(index: number): Promise<void> {
+    const key = this.model().blocks[index].key;
+    if (isBusy(this.uploads()[key])) {
+      const confirmed = await firstValueFrom(
+        confirm(this.dialog, {
+          title: 'Xóa khối nội dung?',
+          message: UPLOADS_CANCELLED,
+          confirmLabel: 'Xóa khối',
+          tone: 'danger',
+        }),
+      );
+      if (!confirmed) return;
+      this.store.cancelUploads([key]);
+    }
     this.model.update((value) => ({
       ...value,
       blocks: value.blocks.filter((_, i) => i !== index),

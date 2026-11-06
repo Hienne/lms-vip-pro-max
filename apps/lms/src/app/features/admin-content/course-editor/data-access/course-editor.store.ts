@@ -1029,6 +1029,21 @@ export class CourseEditorStore {
     this.removeUpload(blockKey);
   }
 
+  /**
+   * The blocks these keys name are gone (deleted with their lesson, chapter or by hand): their
+   * uploads on their way stop and the server forgets them.
+   */
+  cancelUploads(blockKeys: readonly string[]): void {
+    for (const key of blockKeys) {
+      const entry = this.state.uploads()[key];
+      if (!isBusy(entry)) continue;
+      this.running.get(key)?.unsubscribe();
+      this.running.delete(key);
+      if (entry?.uploadId) this.cancelOnServer(entry.uploadId);
+      this.removeUpload(key);
+    }
+  }
+
   /** "Hủy" on an interrupted upload: the server forgets it. */
   cancelInterrupted(uploadId: string): void {
     this.cancelOnServer(uploadId);

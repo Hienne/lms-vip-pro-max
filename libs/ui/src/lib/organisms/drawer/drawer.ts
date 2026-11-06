@@ -73,14 +73,12 @@ export class Drawer {
     effect(() => {
       this.ref.disableClose = this.data.busy() || this.guarded();
     });
-    this.ref.keydownEvents
-      .pipe(takeUntilDestroyed())
-      .subscribe((event) => {
-        if (event.key === 'Escape' && this.guarded() && !this.data.busy()) {
-          event.preventDefault();
-          this.data.closeRequested?.();
-        }
-      });
+    this.ref.keydownEvents.pipe(takeUntilDestroyed()).subscribe((event) => {
+      if (event.key === 'Escape' && this.guarded() && !this.data.busy()) {
+        event.preventDefault();
+        this.data.closeRequested?.();
+      }
+    });
     this.ref.backdropClick.pipe(takeUntilDestroyed()).subscribe(() => {
       if (this.guarded() && !this.data.busy()) this.data.closeRequested?.();
     });

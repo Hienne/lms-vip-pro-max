@@ -2120,7 +2120,9 @@ describe('CourseEditor', () => {
           ),
         );
       const closeDrawer = (drawer: HTMLElement) =>
-        tap(drawer.querySelector<HTMLButtonElement>('button[aria-label="Đóng"]'));
+        tap(
+          drawer.querySelector<HTMLButtonElement>('button[aria-label="Đóng"]'),
+        );
 
       it('closes at once when nothing begun in the drawer is uploading', async () => {
         await screen.open('/admin/courses/6/edit');
@@ -2216,6 +2218,82 @@ describe('CourseEditor', () => {
       });
     });
 
+    describe('deleting what holds a running upload', () => {
+      const WARNING = 'Tệp đang tải sẽ bị hủy';
+      const answer = (label: string) =>
+        tap(
+          Array.from(
+            screen.alertDialog()!.querySelectorAll<HTMLButtonElement>('button'),
+          ).find((b) => b.textContent?.trim() === label),
+        );
+      const lastUploadId = () =>
+        (
+          screen.lastCall(assetEndpoints.startUpload)?.body as {
+            requestId: string;
+          }
+        ).requestId;
+      /** The lesson is saved while its file uploads, so the outline can delete it. */
+      async function uploadingLesson() {
+        const drawer = await startPdfUpload();
+        const uploadId = lastUploadId();
+        await tap(screen.button('Lưu', drawer));
+        return uploadId;
+      }
+
+      it('warns when deleting the lesson, keeps the upload on "Hủy", cancels it on "Xóa"', async () => {
+        const uploadId = await uploadingLesson();
+
+        await tap(screen.button('Xóa bài học'));
+        expect(screen.text(screen.alertDialog()!)).toContain(WARNING);
+        await answer('Hủy');
+        expect(screen.callsTo(assetEndpoints.cancelUpload)).toBe(0);
+        expect(footerText()).toContain('Còn 1 tệp đang tải');
+
+        await tap(screen.button('Xóa bài học'));
+        await answer('Xóa');
+        expect(screen.lastCall(assetEndpoints.cancelUpload)?.params).toEqual({
+          uploadId,
+        });
+        expect(footerText()).not.toContain('tệp đang tải');
+      });
+
+      it('warns when deleting the chapter and cancels its uploads', async () => {
+        const uploadId = await uploadingLesson();
+
+        await tap(screen.button('Xóa chương 1'));
+        expect(screen.text(screen.alertDialog()!)).toContain(WARNING);
+        await answer('Xóa chương');
+
+        expect(screen.lastCall(assetEndpoints.cancelUpload)?.params).toEqual({
+          uploadId,
+        });
+        expect(footerText()).not.toContain('tệp đang tải');
+      });
+
+      it('warns when deleting the block in the drawer and cancels its upload', async () => {
+        const drawer = await startPdfUpload();
+        const uploadId = lastUploadId();
+
+        await tap(screen.button('Xóa khối Tài liệu PDF', drawer));
+        expect(screen.text(screen.alertDialog()!)).toContain(WARNING);
+        await answer('Xóa khối');
+
+        expect(screen.lastCall(assetEndpoints.cancelUpload)?.params).toEqual({
+          uploadId,
+        });
+        expect(screen.button('Xóa khối Tài liệu PDF', drawer)).toBeUndefined();
+      });
+
+      it('deletes a lesson with no upload as before, with no such warning', async () => {
+        await screen.open('/admin/courses/6/edit');
+        await step('Nội dung khóa học');
+        vi.useFakeTimers();
+        await tap(screen.button('Xóa bài học'));
+
+        expect(screen.text(screen.alertDialog()!)).not.toContain(WARNING);
+      });
+    });
+
     describe('the cover of a new course', () => {
       it('blocks "Tiếp tục" on step 1 while the cover uploads', async () => {
         await screen.open('/admin/courses/new');
@@ -2238,7 +2316,8 @@ describe('CourseEditor', () => {
     });
 
     describe('upload progress on a lesson row', () => {
-      const row = () => screen.el.querySelector<HTMLElement>('ui-sortable-item')!;
+      const row = () =>
+        screen.el.querySelector<HTMLElement>('ui-sortable-item')!;
       const progress = () =>
         row().querySelector<HTMLElement>('.course-outline__upload');
       /** Saves the lesson that is uploading, so the outline shows its progress. */
@@ -2252,7 +2331,9 @@ describe('CourseEditor', () => {
 
         expect(progress()).not.toBeNull();
         expect(progress()!.textContent).toMatch(/\d+%/);
-        expect(progress()!.querySelector('[role="progressbar"]')).not.toBeNull();
+        expect(
+          progress()!.querySelector('[role="progressbar"]'),
+        ).not.toBeNull();
         expect(row().textContent).not.toContain('Thiếu tệp');
       });
 
@@ -2273,9 +2354,9 @@ describe('CourseEditor', () => {
         await advance(100);
         await tap(screen.button('Lưu', drawer));
 
-        expect(
-          row().querySelectorAll('.course-outline__upload'),
-        ).toHaveLength(1);
+        expect(row().querySelectorAll('.course-outline__upload')).toHaveLength(
+          1,
+        );
         progress()!.dispatchEvent(new Event('mouseenter'));
         await advance(400);
         const tip = document.querySelector('[role="tooltip"]')?.textContent;
@@ -2319,9 +2400,7 @@ describe('CourseEditor', () => {
         await advance(POLL_MS * 3);
         vi.useRealTimers();
         await screen.settle();
-        expect(
-          row().querySelector('.course-outline__upload-error'),
-        ).toBeNull();
+        expect(row().querySelector('.course-outline__upload-error')).toBeNull();
         expect(progress()).toBeNull();
       });
 

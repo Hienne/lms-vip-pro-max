@@ -44,6 +44,8 @@ export const sendingStatus = (sent: number, total: number): string =>
 export const WAITING_STATUS = 'Mất kết nối, sẽ tiếp tục khi có mạng.';
 export const PROCESSING_STATUS = 'Đang xử lý tệp…';
 export const STALLED_MESSAGE = 'Máy chủ chưa xử lý xong. Kiểm tra lại sau.';
+/** Added to a delete confirmation when the deleted blocks have files still uploading. */
+export const UPLOADS_CANCELLED = 'Tệp đang tải sẽ bị hủy.';
 export const MISMATCH_MESSAGE = 'Tệp không khớp tệp đang tải lên.';
 
 /** The upload item's state for a row; `done` rows are not shown as uploads. */

@@ -94,6 +94,7 @@
       [draft]="courseForm"
       [editable]="store.isDraft$()"
       [uploads]="store.uploads$()"
+      (uploadsDropped)="store.cancelUploads($event)"
       (editLesson)="store.editLesson($event)"
     />
     } @case (2) {
