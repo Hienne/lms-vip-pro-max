@@ -12,11 +12,12 @@ import {
   identityEndpoints,
   MAX_PAGE_SIZE,
   type AssignCourseCommand,
-  type CourseAssignment,
+  type AssignmentSummary,
   type CourseCard,
   type CreateGroupCommand,
   type LearningGroup,
   type Page,
+  type RescheduleAssignmentCommand,
 } from '@lms/contracts';
 import { switchMap } from 'rxjs';
 import { invalidation } from '../../../../core/data-access/invalidation';
@@ -33,9 +34,20 @@ export type AssignmentsTab = 'assignments' | 'groups';
 /** A table row: the table wants a string `id`. */
 export interface AssignmentRow {
   readonly id: string;
-  readonly assignment: CourseAssignment;
+  readonly summary: AssignmentSummary;
+  readonly assignment: AssignmentSummary['assignment'];
+  /** The course title, else a fallback with the assignment id. */
   readonly title: string;
+  readonly revoked: boolean;
+  /** Every active recipient has finished: nobody left to remind. */
+  readonly done: boolean;
 }
+
+/** What the schedule form sends; the store adds the assignment's version. */
+export type ScheduleRequest = Omit<
+  RescheduleAssignmentCommand,
+  'expectedVersion'
+>;
 
 /** A learning group as the groups table lists it. */
 export interface GroupRow {
@@ -53,7 +65,8 @@ export type AssignRequest = Omit<
 > & { readonly courseId: number };
 
 interface AssignmentsQuery {
-  readonly courseId: number;
+  /** Absent: every course. */
+  readonly courseId: number | undefined;
   readonly orgId: number;
   readonly page: number;
 }
@@ -72,11 +85,11 @@ const idParam = (value: string | null): number | undefined => {
 const newIdempotencyKey = (): string => `assign-${crypto.randomUUID()}`;
 
 /**
- * Course assignment (the mockup's `assignments`): an org's assignments of one published course,
- * the assignment editor with several targets, the detail of one assignment with per-recipient revoke,
- * and the org's learning groups. The server resolves targets into recipients once, when the
- * assignment is made; due dates and progress are its results. There is no API yet to change a due
- * date, send a reminder or delete an assignment.
+ * Course assignment (the mockup's `assignments`): an org's assignments across courses or of one
+ * course with the server's recipient counts, the assignment editor with several targets, schedule
+ * changes, reminders, revoking an assignment or one recipient, and the org's learning groups. The
+ * server resolves targets into recipients once, when the assignment is made; counts, due dates and
+ * progress are its results.
  */
 @Injectable()
 export class AssignmentsStore {
@@ -90,17 +103,8 @@ export class AssignmentsStore {
 
   private readonly state = {
     tab: signal<AssignmentsTab>('assignments'),
-    /** The course whose assignments are listed: the linked one, else the first assignable. */
-    courseId: linkedSignal<readonly CourseCard[], number | undefined>({
-      source: () => this.courses$(),
-      computation: (courses, previous) => {
-        const has = (id: number | undefined) =>
-          id !== undefined && courses.some((c) => c.courseId === id);
-        if (has(previous?.value)) return previous?.value;
-        if (has(this.linkedCourseId)) return this.linkedCourseId;
-        return courses[0]?.courseId;
-      },
-    }),
+    /** The course whose assignments are listed: the linked one, else every course. */
+    courseId: signal<number | undefined>(this.linkedCourseId),
     page: signal(1),
     /** The assign drawer; a link from the course list opens it on that course. */
     assigning: signal<Assigning | null>(
@@ -113,12 +117,15 @@ export class AssignmentsStore {
     ),
     viewingId: signal<number | null>(null),
     revokingId: signal<number | null>(null),
+    reschedulingId: signal<number | null>(null),
+    withdrawingId: signal<number | null>(null),
+    remindingId: signal<number | null>(null),
     creatingGroup: signal(false),
     membersOfId: signal<number | null>(null),
     /** The last page the server sent: the table stays while the next one loads. */
     shown: linkedSignal<
-      Page<CourseAssignment> | undefined,
-      Page<CourseAssignment> | undefined
+      Page<AssignmentSummary> | undefined,
+      Page<AssignmentSummary> | undefined
     >({
       source: () => this.assignmentsData.value(),
       computation: (next, previous) => next ?? previous?.value,
@@ -139,20 +146,20 @@ export class AssignmentsStore {
 
   private readonly assignmentsData = serverData(
     ({ courseId, orgId, page }: AssignmentsQuery) =>
-      this.client.call(assignmentEndpoints.courseAssignments, {
-        params: { courseId },
+      this.client.call(assignmentEndpoints.orgAssignments, {
         query: {
           assigningOrgId: orgId,
+          ...(courseId ? { courseId } : {}),
           page: page - 1,
           size: ASSIGNMENTS_PAGE_SIZE,
+          sort: 'id,desc',
         },
       }),
     {
       params: (): AssignmentsQuery | undefined => {
-        const courseId = this.state.courseId();
         const orgId = this.orgId();
-        return courseId && orgId
-          ? { courseId, orgId, page: this.state.page() }
+        return orgId
+          ? { courseId: this.state.courseId(), orgId, page: this.state.page() }
           : undefined;
       },
       reloadOn: this.assignmentChanges,
@@ -216,9 +223,8 @@ export class AssignmentsStore {
         title: 'Đã giao khóa học',
         detail: `${detail.recipients.length} học viên nhận lượt giao.`,
       }),
-      onSuccess: (detail) => {
+      onSuccess: () => {
         this.setAssigning(null);
-        this.setCourseId(detail.assignment.courseId);
         this.setPage(1);
       },
       invalidates: this.assignmentChanges,
@@ -238,6 +244,60 @@ export class AssignmentsStore {
         detail: 'Tiến độ đã học của học viên vẫn được giữ.',
       }),
       onSuccess: () => this.setRevokingId(null),
+      invalidates: this.assignmentChanges,
+    },
+  );
+
+  private readonly rescheduleMutation = serverMutation(
+    ({ id, ...command }: RescheduleAssignmentCommand & { id: number }) =>
+      this.client.call(assignmentEndpoints.rescheduleAssignment, {
+        params: { assignmentId: id },
+        body: command,
+      }),
+    {
+      errors: 'alert',
+      success: () => ({
+        title: 'Đã cập nhật hạn',
+        detail: 'Học viên nhận hạn mới ngay.',
+      }),
+      onSuccess: () => this.setReschedulingId(null),
+      invalidates: this.assignmentChanges,
+    },
+  );
+
+  private readonly remindMutation = serverMutation(
+    (assignmentId: number) =>
+      this.client.call(assignmentEndpoints.remindAssignment, {
+        params: { assignmentId },
+      }),
+    {
+      errors: 'toast',
+      success: (_id, result) =>
+        result.reminded
+          ? {
+              title: `Đã gửi nhắc ${result.reminded} học viên`,
+              detail: 'Học viên nhận thông báo trong ứng dụng.',
+            }
+          : {
+              title: 'Không có học viên cần nhắc',
+              detail: 'Người chưa hoàn thành đã được nhắc hôm nay.',
+            },
+    },
+  );
+
+  private readonly withdrawMutation = serverMutation(
+    ({ id, reason }: { id: number; reason: string }) =>
+      this.client.call(assignmentEndpoints.revokeAssignment, {
+        params: { assignmentId: id },
+        body: { reason },
+      }),
+    {
+      errors: 'alert',
+      success: () => ({
+        title: 'Đã thu hồi lượt giao',
+        detail: 'Tiến độ đã học của học viên vẫn được giữ.',
+      }),
+      onSuccess: () => this.setWithdrawingId(null),
       invalidates: this.assignmentChanges,
     },
   );
@@ -291,11 +351,22 @@ export class AssignmentsStore {
   );
 
   readonly rows$ = computed((): readonly AssignmentRow[] =>
-    (this.state.shown()?.items ?? []).map((assignment) => ({
-      id: String(assignment.id),
-      assignment,
-      title: assignment.title || `Lượt giao #${assignment.id}`,
+    (this.state.shown()?.items ?? []).map((summary) => ({
+      id: String(summary.assignment.id),
+      summary,
+      assignment: summary.assignment,
+      title: summary.courseTitle || `Lượt giao #${summary.assignment.id}`,
+      revoked: summary.assignment.status === 'revoked',
+      done: summary.people > 0 && summary.completed === summary.people,
     })),
+  );
+  /** The row whose schedule is being changed. */
+  readonly rescheduling$ = computed(() =>
+    this.rows$().find((r) => r.assignment.id === this.state.reschedulingId()),
+  );
+  /** The row being revoked as a whole. */
+  readonly withdrawing$ = computed(() =>
+    this.rows$().find((r) => r.assignment.id === this.state.withdrawingId()),
   );
   readonly total$ = computed(() => this.state.shown()?.totalElements ?? 0);
 
@@ -327,9 +398,7 @@ export class AssignmentsStore {
   readonly isLoading$ = computed(
     () =>
       this.coursesData.isLoading() ||
-      (this.state.courseId() !== undefined &&
-        this.state.shown() === undefined &&
-        this.assignmentsData.isLoading()),
+      (this.state.shown() === undefined && this.assignmentsData.isLoading()),
   );
   readonly loadError$ = computed(
     () => this.coursesData.error() ?? this.assignmentsData.error(),
@@ -340,6 +409,14 @@ export class AssignmentsStore {
   readonly isAssigning$ = this.assignMutation.isPending;
   readonly assignError$ = this.assignMutation.error;
   readonly isRevoking$ = this.revokeMutation.isPending;
+  readonly isRescheduling$ = this.rescheduleMutation.isPending;
+  readonly rescheduleError$ = this.rescheduleMutation.error;
+  readonly isWithdrawing$ = this.withdrawMutation.isPending;
+  readonly withdrawError$ = this.withdrawMutation.error;
+  /** The assignment a reminder is being sent for. */
+  readonly remindingId$ = computed(() =>
+    this.remindMutation.isPending() ? this.state.remindingId() : null,
+  );
   readonly isCreatingGroup$ = this.createGroupMutation.isPending;
   readonly createGroupError$ = this.createGroupMutation.error;
   readonly isSavingMembers$ = this.membersMutation.isPending;
@@ -373,6 +450,18 @@ export class AssignmentsStore {
 
   private setRevokingId(id: number | null): void {
     this.state.revokingId.set(id);
+  }
+
+  private setReschedulingId(id: number | null): void {
+    this.state.reschedulingId.set(id);
+  }
+
+  private setWithdrawingId(id: number | null): void {
+    this.state.withdrawingId.set(id);
+  }
+
+  private setRemindingId(id: number | null): void {
+    this.state.remindingId.set(id);
   }
 
   private setCreatingGroup(creating: boolean): void {
@@ -441,6 +530,44 @@ export class AssignmentsStore {
 
   revoke(recipientId: number, reason: string): void {
     this.revokeMutation.run({ recipientId, reason });
+  }
+
+  startReschedule(assignmentId: number): void {
+    this.rescheduleMutation.reset();
+    this.setReschedulingId(assignmentId);
+  }
+
+  cancelReschedule(): void {
+    if (!this.isRescheduling$()) this.setReschedulingId(null);
+  }
+
+  reschedule(request: ScheduleRequest): void {
+    const row = this.rescheduling$();
+    if (!row) return;
+    this.rescheduleMutation.run({
+      ...request,
+      id: row.assignment.id,
+      expectedVersion: row.assignment.rowVersion,
+    });
+  }
+
+  remind(assignmentId: number): void {
+    this.setRemindingId(assignmentId);
+    this.remindMutation.run(assignmentId);
+  }
+
+  startWithdraw(assignmentId: number): void {
+    this.withdrawMutation.reset();
+    this.setWithdrawingId(assignmentId);
+  }
+
+  cancelWithdraw(): void {
+    if (!this.isWithdrawing$()) this.setWithdrawingId(null);
+  }
+
+  withdraw(reason: string): void {
+    const row = this.withdrawing$();
+    if (row) this.withdrawMutation.run({ id: row.assignment.id, reason });
   }
 
   startCreateGroup(): void {

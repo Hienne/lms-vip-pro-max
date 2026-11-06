@@ -1,0 +1,22 @@
+@use 'ui';
+
+.schedule-form {
+  &__hint {
+    @include ui.text(sm, muted);
+    margin: 0;
+  }
+
+  &__pair {
+    display: grid;
+    gap: ui.space(4);
+
+    @include ui.bp(sm) {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+
+  &__toggle {
+    @include ui.row(2);
+    @include ui.text(sm);
+  }
+}

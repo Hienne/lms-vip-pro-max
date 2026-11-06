@@ -21,6 +21,22 @@ describe('assignment endpoints', () => {
       ['courseAssignments', 'get', '/api/v1/courses/{courseId}/assignments'],
       ['assignCourse', 'post', '/api/v1/courses/{courseId}/assignments'],
       ['getAssignment', 'get', '/api/v1/learning-assignments/{assignmentId}'],
+      ['orgAssignments', 'get', '/api/v1/learning-assignments'],
+      [
+        'rescheduleAssignment',
+        'put',
+        '/api/v1/learning-assignments/{assignmentId}/schedule',
+      ],
+      [
+        'remindAssignment',
+        'post',
+        '/api/v1/learning-assignments/{assignmentId}/remind',
+      ],
+      [
+        'revokeAssignment',
+        'post',
+        '/api/v1/learning-assignments/{assignmentId}/revoke',
+      ],
       [
         'revokeRecipient',
         'post',
