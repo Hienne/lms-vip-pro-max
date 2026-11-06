@@ -3,12 +3,13 @@ import { TestBed } from '@angular/core/testing';
 import { provideRouter, Router } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
 import {
+  courseEndpoints,
   learnerEndpoints,
   LearnerFacetsSchema,
   trainingCatalogEndpoints,
   type LearnerFacets,
 } from '@lms/contracts';
-import { backendRefusal, type FakeReply } from '@lms/mocks';
+import { backendRefusal, envelopeOk, type FakeReply } from '@lms/mocks';
 import { createAppRoutes } from '../../../app.routes';
 import {
   parseAppConfig,
@@ -26,6 +27,37 @@ import {
   seedProfile,
 } from '../../../core/session/session.testing';
 import { SessionStore } from '../../../core/session/session.store';
+
+/**
+ * Gives the first card of every `list` reply the cover asset 77, whose file the server answers
+ * (`readable`) or refuses; everything else is the mock's.
+ */
+function withCover(
+  handle: MockInstance<MockBackend['handle']>,
+  list: unknown,
+  readable: boolean,
+) {
+  const backend = TestBed.inject(MockBackend);
+  URL.createObjectURL = vi.fn(() => 'blob:cover');
+  URL.revokeObjectURL = vi.fn();
+  handle.mockImplementation((endpoint, request) => {
+    if (endpoint === courseEndpoints.getAssetContent) {
+      return readable
+        ? {
+            status: 200,
+            body: envelopeOk(null),
+            file: new Blob(['png'], { type: 'image/png' }),
+          }
+        : backendRefusal('accessDenied');
+    }
+    const reply = MockBackend.prototype.handle.call(backend, endpoint, request);
+    if (endpoint === list && reply && 'body' in reply) {
+      const page = reply.body.data as { items: Record<string, unknown>[] };
+      if (page.items[0]) page.items[0]['coverAssetId'] = 77;
+    }
+    return reply;
+  });
+}
 
 describe('Catalog', () => {
   let harness: RouterTestingHarness;
@@ -268,6 +300,41 @@ describe('Catalog', () => {
 
     expect(text()).toContain('Không có khóa học phù hợp');
     expect(text()).toContain('Thử bỏ bớt bộ lọc');
+  });
+
+  describe('course covers', () => {
+    const original = {
+      create: URL.createObjectURL,
+      revoke: URL.revokeObjectURL,
+    };
+    afterEach(() => {
+      URL.createObjectURL = original.create;
+      URL.revokeObjectURL = original.revoke;
+    });
+
+    it('shows the cover the server names, read once', async () => {
+      withCover(handle, learnerEndpoints.catalog, true);
+      await open();
+      const covers = el.querySelectorAll<HTMLImageElement>(
+        'img.course-card__cover',
+      );
+      expect(covers).toHaveLength(1);
+      expect(covers[0].getAttribute('src')).toBe('blob:cover');
+      expect(
+        handle.mock.calls.filter(
+          ([e]) => e === courseEndpoints.getAssetContent,
+        ),
+      ).toHaveLength(1);
+    });
+
+    it('shows no progress on a course the learner has not enrolled in', async () => {
+      await open();
+      const visitor = Array.from(el.querySelectorAll('app-course-card')).find(
+        (card) => card.textContent?.includes('Chưa đăng ký'),
+      )!;
+      expect(visitor.querySelector('ui-progress')).toBeNull();
+      expect(visitor.querySelector('.course-card__pct')).toBeNull();
+    });
   });
 
   it('shows a load error with a retry that reads again', async () => {

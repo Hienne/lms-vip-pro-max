@@ -8,7 +8,6 @@ import {
   FmtPctPipe,
   Icon,
   PageHeader,
-  Progress,
   Skeleton,
   Tabs,
   TabPanel,
@@ -16,7 +15,6 @@ import {
 } from '@lms/ui';
 import { CourseCard } from '../../../shared/course/course-card';
 import { DueDate } from '../../../shared/course/due-date';
-import { CompetencyView } from '../../../shared/learning/competency/competency-view';
 import { PointsFigure } from '../../../shared/learning/points-figure/points-figure';
 import { ReminderItem } from '../../../shared/learning/reminder-item/reminder-item';
 import { ContinueCard } from './components/continue-card/continue-card';
@@ -36,7 +34,6 @@ const TAB_LABEL: Record<LearnTab, string> = {
   selector: 'app-learn',
   imports: [
     Card,
-    CompetencyView,
     ContinueCard,
     CourseCard,
     DueDate,
@@ -47,7 +44,6 @@ const TAB_LABEL: Record<LearnTab, string> = {
     LearnKpis,
     PageHeader,
     PointsFigure,
-    Progress,
     ReminderItem,
     RouterLink,
     Skeleton,

@@ -12,7 +12,7 @@
   >} @case ('break') {<br />} @default {{{ piece.text }}} } }
 </ng-template>
 
-<div class="markdown">
+<div class="markdown" [class.markdown--nested]="nested()">
   @for (block of blocks(); track $index) { @if (block.kind === 'heading') { @if
   (block.level === 3) {
   <h3>

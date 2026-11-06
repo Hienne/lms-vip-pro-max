@@ -201,6 +201,7 @@ export class LearningBackend {
     assets: this.assets,
     seeded: libraryAssetFixtures,
     used: () => this.usedAssetIds(),
+    coverOfVisibleCourse: (assetId) => this.coverOfVisibleCourse(assetId),
     id: () => this.id(),
   });
 
@@ -382,6 +383,24 @@ export class LearningBackend {
     return this.nextId++;
   }
 
+  /**
+   * Whether `assetId` is the cover of a published, active course; `undefined` when no draft or
+   * published revision uses it as its cover.
+   */
+  private coverOfVisibleCourse(assetId: number): boolean | undefined {
+    const covering = this.courses.filter((record) =>
+      [record.published, record.draft].some(
+        (detail) => detail?.revision.coverAssetId === assetId,
+      ),
+    );
+    if (covering.length === 0) return undefined;
+    return covering.some(
+      (record) =>
+        record.published?.revision.coverAssetId === assetId &&
+        record.course.lifecycleStatus === 'active',
+    );
+  }
+
   /** The assets some draft or published tree of any course still uses. */
   private usedAssetIds(): Set<number> {
     const ids = new Set<number>();
@@ -517,6 +536,7 @@ export class LearningBackend {
       bestScorePercent: null,
       rating: this.feedback.courseRating(record.course.id),
       certificateId: null,
+      coverAssetId: revision.revision.coverAssetId ?? null,
     };
   }
 

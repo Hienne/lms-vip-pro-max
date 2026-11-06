@@ -14,6 +14,8 @@ interface Kpi {
   readonly verdict: string;
   readonly failed: boolean;
   readonly detail: string;
+  /** Longer words kept off the one-line footnote, as the figure's tooltip. */
+  readonly title: string | null;
   readonly href: string | null;
   readonly query: Record<string, string> | null;
   readonly overdue?: number;
@@ -21,7 +23,8 @@ interface Kpi {
 
 /**
  * The learner's figures as one row of label over number, no card per number
- * (visual-design.md): the assigned courses, the completion rate, the last and the best score. Every
+ * (visual-design.md): the assigned courses, the completion rate, the last and the best score. Each
+ * footnote stays on one line; the last quiz's title moves into the figure's tooltip. Every
  * number and verdict is the server's. The completion rate comes from the dashboard; when that read
  * fails only its figure shows the retry. Empty score figures collapse into one result.
  */
@@ -47,6 +50,7 @@ export class LearnKpis {
       verdict: '',
       failed: false,
       detail: `${counts.mandatory} bắt buộc`,
+      title: null,
       overdue: counts.overdue,
       href: '/catalog',
       query: { scope: 'assigned' },
@@ -64,6 +68,7 @@ export class LearnKpis {
       detail: counts
         ? `${counts.completed}/${counts.courses} khóa đã xong`
         : '',
+      title: null,
       href: null,
       query: null,
     };
@@ -84,8 +89,9 @@ export class LearnKpis {
         ? this.score(
             'Điểm kiểm tra gần nhất',
             last.scorePercent,
-            last.quizTitle,
+            '',
             last.passed,
+            last.quizTitle,
           )
         : this.score('Điểm kiểm tra gần nhất', null, 'Chưa làm bài kiểm tra'),
       this.score(
@@ -101,6 +107,7 @@ export class LearnKpis {
     value: number | null,
     detail: string,
     passed: boolean | null = null,
+    title: string | null = null,
   ): Kpi {
     return {
       label,
@@ -109,6 +116,7 @@ export class LearnKpis {
       verdict: passed === null ? '' : passed ? 'Đạt' : 'Chưa đạt',
       failed: passed === false,
       detail,
+      title,
       href: '/progress',
       query: null,
     };

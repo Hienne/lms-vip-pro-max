@@ -86,6 +86,12 @@ describe('LearnStore', () => {
     expect(resume?.link).toMatch(/^\/lesson\/\d+\/\d+$/);
     expect(resume?.pct).toBeGreaterThan(0);
     expect(resume?.context).toContain(' · ');
+    expect(resume?.context.startsWith(resume.courseTitle)).toBe(true);
+    expect(resume?.position?.number).toBeGreaterThan(0);
+    expect(resume?.position?.total).toBeGreaterThanOrEqual(
+      resume?.position?.number ?? 0,
+    );
+    expect(resume?.hasCover).toBe(false);
   });
 
   it('has no resume card for a learner with nothing in progress', async () => {
@@ -195,40 +201,15 @@ describe('LearnStore', () => {
     expect(store.remindersError$()).toBeUndefined();
   });
 
-  it('reads the competencies of every course, with no course filter', async () => {
-    const store = await open();
-    const calls = handle.mock.calls.filter(
-      ([e]) => e === learnerQuizEndpoints.myCompetency,
-    );
-    expect(calls).toHaveLength(1);
-    expect(calls[0][1].query).toEqual({});
-    expect(store.competency$()?.length).toBeGreaterThan(0);
-    expect(store.competencyError$()).toBeUndefined();
-    expect(store.isCompetencyLoading$()).toBe(false);
-  });
-
-  it('is loading the competencies until the first read arrives', () => {
-    signInToMockBackend('hocvien');
-    fakeSession().user.set(seedProfile('000004'));
-    const store = TestBed.inject(LearnStore);
-    expect(store.isCompetencyLoading$()).toBe(true);
-    expect(store.competency$()).toBeUndefined();
-  });
-
-  it('keeps the summary when the competency read fails, and reads again on retry', async () => {
-    fail(learnerQuizEndpoints.myCompetency);
-    const store = await open();
-    expect(store.competencyError$()).toBeTruthy();
-    expect(store.competency$()).toBeUndefined();
-    expect(store.summaryError$()).toBeUndefined();
-    expect(store.summary$()?.counts.total).toBeGreaterThan(0);
-    expect(store.courses$().length).toBeGreaterThan(0);
-
-    handle.mockImplementation(original);
-    store.retryCompetency();
-    await settle();
-    expect(store.competencyError$()).toBeUndefined();
-    expect(store.competency$()?.length).toBeGreaterThan(0);
+  it('reads neither the programmes nor the competencies, which the progress page shows', async () => {
+    await open();
+    expect(
+      handle.mock.calls.some(
+        ([e]) =>
+          e === learnerQuizEndpoints.myCompetency ||
+          e === learnerEndpoints.dashboardPrograms,
+      ),
+    ).toBe(false);
   });
 
   it('reads the points once, and a failing read leaves no points and no other error', async () => {

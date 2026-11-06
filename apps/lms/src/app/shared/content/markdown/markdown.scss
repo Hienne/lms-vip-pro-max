@@ -28,6 +28,16 @@
     font-weight: ui.weight(semibold);
   }
 
+  &--nested {
+    h3 {
+      font-size: ui.text-size(md);
+    }
+
+    h4 {
+      font-size: ui.text-size(sm);
+    }
+  }
+
   ul,
   ol {
     @include ui.stack(1);

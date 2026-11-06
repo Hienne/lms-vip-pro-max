@@ -5,35 +5,48 @@
   min-width: 0;
 }
 
+// The page's anchor: the course cover on the left (about 40%) and, beside it, the lesson to resume,
+// where it sits, the progress and the one primary. Without a cover it is text only. On a phone the
+// cover sits on top.
 .continue-card {
-  @include ui.stack(4);
-  padding: ui.space(5);
+  overflow: hidden;
 
-  > a {
-    align-self: flex-start;
+  &--cover {
+    @include ui.bp(md) {
+      display: grid;
+      grid-template-columns: minmax(0, 2fr) minmax(0, 3fr);
+      align-items: center;
+    }
   }
 
-  &__title {
-    @include ui.text(lg);
-    font-family: ui.font(sans);
-    font-weight: ui.weight(semibold);
-    margin: 0;
+  &__cover {
+    display: block;
+    width: 100%;
+    aspect-ratio: 16 / 9;
+    object-fit: cover;
+    background: ui.color(surface-2);
   }
 
   &__body {
     @include ui.stack(4);
     align-items: flex-start;
     min-width: 0;
+    padding: ui.space(5);
   }
 
   &__text {
-    @include ui.stack(2);
+    @include ui.stack(1);
     min-width: 0;
+  }
+
+  &__title {
+    @include ui.text(lg);
+    font-weight: ui.weight(semibold);
+    margin: 0;
   }
 
   &__lesson {
     @include ui.text(xl);
-    font-family: ui.font(sans);
     font-weight: ui.weight(semibold);
     margin: 0;
     overflow-wrap: anywhere;
@@ -61,5 +74,6 @@
   &__pct {
     @include ui.num;
     @include ui.text(sm);
+    flex: none;
   }
 }

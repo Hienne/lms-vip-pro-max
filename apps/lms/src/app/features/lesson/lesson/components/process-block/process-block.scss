@@ -1,7 +1,9 @@
 @use 'ui';
 
+// Steps are read like text: the reading measure, not the full column of a video or a PDF.
 .process {
   @include ui.stack(4);
+  max-width: ui.layout(reading);
   margin: 0;
   padding: 0;
   list-style: none;

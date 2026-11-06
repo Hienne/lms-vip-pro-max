@@ -47,7 +47,6 @@
   &__item {
     @include ui.stack(1);
     margin: 0;
-    overflow-wrap: anywhere;
 
     dt {
       @include ui.text(sm, muted);
@@ -64,8 +63,10 @@
     font-weight: ui.weight(semibold);
   }
 
+  // One line under every figure, so the row keeps one height; longer words live in the tooltip.
   &__detail {
     @include ui.text(sm, muted);
+    @include ui.truncate;
   }
 
   &__fail {

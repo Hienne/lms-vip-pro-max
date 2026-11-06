@@ -7,18 +7,54 @@
   border-radius: ui.radius(card);
   background: ui.color(surface);
 
-  &__head {
-    @include ui.row-between(3);
+  &__heading {
+    margin: 0;
+  }
+
+  // The whole closed row is the button: title, then the summary, then the chevron at the end. Title
+  // and summary wrap together on a phone; the chevron stays at the end of the first line.
+  &__toggle {
+    @include ui.row(3);
+    flex-wrap: nowrap;
+    align-items: flex-start;
+    width: 100%;
+    padding: 0;
+    border: 0;
+    background: none;
+    color: inherit;
+    font: inherit;
+    text-align: start;
+    cursor: pointer;
+
+    &:focus-visible {
+      @include ui.focus-ring;
+    }
   }
 
   &__title {
-    margin: 0;
     font-size: ui.text-size(lg);
     font-weight: ui.weight(semibold);
   }
 
-  &__none {
+  &__label {
+    @include ui.row(3);
+    @include ui.grow;
+  }
+
+  &__summary {
+    @include ui.row(2);
     @include ui.text(sm, muted);
+    @include ui.num;
+  }
+
+  &__chevron {
+    flex: none;
+    margin-block-start: ui.space(1);
+    color: ui.color(text-secondary);
+  }
+
+  &__body {
+    @include ui.stack(4);
   }
 
   &__skeleton {

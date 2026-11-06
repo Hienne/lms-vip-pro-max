@@ -2,6 +2,7 @@ import {
   computed,
   inject,
   Injectable,
+  Injector,
   linkedSignal,
   signal,
 } from '@angular/core';
@@ -20,6 +21,7 @@ import { serverData } from '../../../../core/data-access/server-data';
 import { EndpointClient } from '../../../../core/http/endpoint-client';
 import type { CourseCardView } from '../../../../shared/course/course-card';
 import { toCourseCardView } from '../../../../shared/course/course-card-view';
+import { coverPreviews } from '../../../../shared/course/cover-image';
 
 export const CATALOG_PAGE_SIZE = 12;
 
@@ -112,6 +114,7 @@ function filtersFrom(params: Params): CatalogFilters {
 @Injectable()
 export class CatalogStore {
   private readonly client = inject(EndpointClient);
+  private readonly injector = inject(Injector);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
 
@@ -194,8 +197,20 @@ export class CatalogStore {
       ).length,
   );
 
+  /** The covers of the page's cards, read once each while the page lives. */
+  private readonly covers = coverPreviews(this.client, this.injector, () =>
+    (this.state.shown()?.items ?? []).map((card) => card.coverAssetId),
+  );
+
   readonly cards$ = computed((): readonly CourseCardView[] =>
-    (this.state.shown()?.items ?? []).map(toCourseCardView),
+    (this.state.shown()?.items ?? []).map((card) =>
+      toCourseCardView(
+        card,
+        card.coverAssetId == null
+          ? undefined
+          : this.covers().get(card.coverAssetId),
+      ),
+    ),
   );
 
   // Setters: the only writers of state

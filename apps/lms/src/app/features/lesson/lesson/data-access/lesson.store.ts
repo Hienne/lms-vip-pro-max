@@ -43,6 +43,7 @@ import { readFocus, writeFocus } from './lesson-focus';
 import { lessonNotes } from './lesson-notes';
 import { StudyChannel, type ClaimTarget } from './study-channel';
 import { StudySessionStorage } from './study-session.storage';
+import { completionHint } from './completion-hint';
 
 export type LessonView =
   | 'loading'
@@ -494,12 +495,26 @@ export class LessonStore {
     const progress =
       (active && blocks.get(active.id)) ??
       this.detail$()?.blocks.find((b) => b.blockId === active?.id);
+    const done = active?.status === 'completed';
+    const percent = active?.percent ?? 0;
+    const threshold = active?.detail.block.completionThreshold ?? null;
+    const manual = active?.detail.block.completionMode === 'manual';
     return {
-      done: active?.status === 'completed',
+      done,
       completedAt: progress?.completedAt ?? null,
-      percent: active?.percent ?? 0,
-      threshold: active?.detail.block.completionThreshold ?? null,
-      manual: active?.detail.block.completionMode === 'manual',
+      percent,
+      threshold,
+      manual,
+      /** The block still waits on "Đánh dấu hoàn thành", which then is the view's one primary. */
+      needsMark: manual && !done,
+      hint:
+        active && !done
+          ? completionHint(
+              active.detail.block.completionMode,
+              percent,
+              threshold,
+            )
+          : null,
     };
   });
 
@@ -606,6 +621,12 @@ export class LessonStore {
   selectBlock(blockId: number): void {
     this.state.selected.set(blockId);
     this.state.jump.set(null);
+  }
+
+  /** A block chosen in "Mục lục": it opens, and the outline drawer of a narrow screen gets out of the way. */
+  chooseBlock(blockId: number): void {
+    this.selectBlock(blockId);
+    this.closeOutline();
   }
 
   /** "Tải xuống" on an attachment. */

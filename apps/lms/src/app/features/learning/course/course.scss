@@ -37,9 +37,12 @@
     @include ui.stack(5);
   }
 
+  // The course's one real image, at the top of the main column (SPEC-learning-ui): 16:9, kept short
+  // on a wide screen so the outline stays in the first screenful.
   &__cover {
     display: block;
     width: 100%;
+    max-height: 20rem;
     aspect-ratio: 16 / 9;
     object-fit: cover;
     border: 1px solid ui.color(border);

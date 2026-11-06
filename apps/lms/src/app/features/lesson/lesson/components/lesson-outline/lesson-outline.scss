@@ -22,6 +22,13 @@
     @include ui.row(2);
     flex-wrap: nowrap;
     align-items: flex-start;
+    padding-inline: ui.space(2);
+    border-radius: ui.radius(sm);
+
+    // The lesson on screen is a filled row, so it reads without its colour too.
+    &--current {
+      background: ui.color(primary-subtle);
+    }
   }
 
   &__state {
@@ -33,11 +40,27 @@
     color: ui.color(success);
   }
 
-  &__dot {
-    width: 0.5rem;
-    height: 0.5rem;
+  // Three shapes, so the states differ without colour: an empty ring (not started), a ring with a
+  // dot (started), a check (done).
+  &__ring {
+    display: grid;
+    place-items: center;
+    width: 0.75rem;
+    height: 0.75rem;
+    border: 1.5px solid ui.color(text-muted);
     border-radius: ui.radius(full);
-    background: ui.color(primary);
+
+    &--started {
+      border-color: ui.color(primary);
+
+      &::after {
+        width: 0.25rem;
+        height: 0.25rem;
+        border-radius: ui.radius(full);
+        background: ui.color(primary);
+        content: '';
+      }
+    }
   }
 
   &__title {
@@ -59,6 +82,61 @@
       color: ui.color(primary);
       font-weight: ui.weight(semibold);
     }
+  }
+
+  // The current lesson's blocks, indented under it: the same marks, a smaller title and the kind.
+  &__blocks-item {
+    list-style: none;
+  }
+
+  &__blocks {
+    @include ui.stack(1);
+    margin: 0;
+    padding: 0 0 0 ui.space(5);
+    list-style: none;
+  }
+
+  &__block {
+    @include ui.row(2);
+    flex-wrap: nowrap;
+    align-items: flex-start;
+    width: 100%;
+    padding: ui.space(1) ui.space(2);
+    border: 0;
+    border-radius: ui.radius(sm);
+    background: none;
+    color: ui.color(text);
+    font: inherit;
+    text-align: start;
+    cursor: pointer;
+
+    &:hover {
+      background: ui.color(surface-2);
+    }
+
+    &:focus-visible {
+      @include ui.focus-ring;
+    }
+
+    &--active {
+      font-weight: ui.weight(semibold);
+    }
+  }
+
+  &__block-text {
+    @include ui.grow;
+    display: flex;
+    flex-direction: column;
+  }
+
+  &__block-title {
+    @include ui.text(sm);
+  }
+
+  &__block-meta {
+    @include ui.text(xs, muted);
+    @include ui.num;
+    font-weight: ui.weight(regular);
   }
 
   &__kind {

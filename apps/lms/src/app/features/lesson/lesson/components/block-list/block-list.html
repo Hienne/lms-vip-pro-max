@@ -1,26 +1,19 @@
-<nav aria-label="Các khối trong bài học">
-  <ol class="blocks">
+<div class="blocks">
+  <label class="blocks__position" for="lesson-block-select"
+    >Khối {{ position() }}/{{ blocks().length }}</label
+  >
+  <select
+    uiSelect
+    id="lesson-block-select"
+    class="blocks__select"
+    (change)="choose($event)"
+  >
     @for (block of blocks(); track block.id) {
-    <li>
-      <button
-        type="button"
-        class="blocks__item"
-        [class.blocks__item--active]="block.id === activeId()"
-        [attr.aria-current]="block.id === activeId() ? 'true' : null"
-        (click)="selected.emit(block.id)"
-      >
-        <span class="blocks__title">{{ block.title }}</span>
-        <span class="blocks__meta"
-          >{{ typeLabel[block.detail.block.blockType] }}</span
-        >
-        <span class="blocks__state">
-          @if (block.status === 'completed') {
-          <ui-icon name="check" size="sm" />
-          <span class="blocks__sr">Đã hoàn thành</span>
-          } @else if (block.status === 'in_progress') { {{ block.percent }}% }
-        </span>
-      </button>
-    </li>
+    <option [value]="block.id" [selected]="block.id === activeId()">
+      {{ block.title }} · {{ typeLabel[block.detail.block.blockType] }} @switch
+      (block.status) { @case ('completed') { · Đã hoàn thành } @case
+      ('in_progress') { · {{ block.percent }}% } }
+    </option>
     }
-  </ol>
-</nav>
+  </select>
+</div>

@@ -370,6 +370,11 @@ export const CourseCardSchema = z.object({
    * otherwise. The server's rule; the app never infers a certificate from `learningStatus`.
    */
   certificateId: z.number().int().nullish(),
+  /**
+   * The card revision's cover image, an asset the caller reads through `getAssetContent`; null when the
+   * course has none. Who may read it is the server's rule (SPEC-learning-ui).
+   */
+  coverAssetId: z.number().int().nullish(),
 });
 export type CourseCard = z.infer<typeof CourseCardSchema>;
 

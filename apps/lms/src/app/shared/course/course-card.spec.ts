@@ -86,6 +86,30 @@ describe('CourseCard', () => {
     expect(card.querySelector('ui-icon')).toBeNull();
   });
 
+  it('keeps the 16:9 place of a cover it is still reading, as a plain box', () => {
+    const { card } = render({ hasCover: true, coverUrl: null });
+    const box = card.firstElementChild as HTMLElement;
+    expect(box.tagName).toBe('DIV');
+    expect(box.className).toBe('course-card__cover');
+    expect(box.getAttribute('aria-hidden')).toBe('true');
+    expect(box.children).toHaveLength(0);
+  });
+
+  it('shows no progress for a course the learner has not enrolled in', () => {
+    const { card } = render({
+      enrolled: false,
+      pct: 0,
+      bestScore: null,
+      status: 'not_started',
+      statusLabel: 'Chưa đăng ký',
+    });
+    expect(card.querySelector('ui-progress')).toBeNull();
+    expect(card.querySelector('.course-card__pct')).toBeNull();
+    expect(text(card.querySelector('.course-card__status'))).toBe(
+      'Chưa đăng ký',
+    );
+  });
+
   it('says "Bắt buộc" as text, not a badge, and nothing for an optional course', () => {
     const { card } = render();
     expect(text(card.querySelector('.course-card__required'))).toBe('Bắt buộc');

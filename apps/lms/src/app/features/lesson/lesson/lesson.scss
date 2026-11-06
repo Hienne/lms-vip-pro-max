@@ -22,6 +22,23 @@
     margin: 0;
   }
 
+  // A phone has no room for "course · chapter": it shows where the lesson sits instead.
+  &__where-full {
+    display: none;
+
+    @include ui.bp(md) {
+      display: inline;
+    }
+  }
+
+  &__where-short {
+    @include ui.num;
+
+    @include ui.bp(md) {
+      display: none;
+    }
+  }
+
   &__save {
     @include ui.text(sm, muted);
     @include ui.row(2);
@@ -29,6 +46,30 @@
     flex-wrap: nowrap;
     min-height: 2rem;
     margin: 0;
+  }
+
+  // On a phone the bar keeps room for "Bài 2/4": a saved state is a check there, its words read
+  // only by assistive technology. A failure keeps its words and "Thử lại" at every width.
+  &__saved-icon {
+    color: ui.color(success);
+
+    @include ui.bp(md) {
+      display: none;
+    }
+  }
+
+  &__saved-text {
+    @include ui.sr-only;
+
+    @include ui.bp(md) {
+      position: static;
+      width: auto;
+      height: auto;
+      margin: 0;
+      overflow: visible;
+      clip-path: none;
+      white-space: normal;
+    }
   }
 
   &__toc-toggle {
@@ -77,6 +118,22 @@
     min-width: 0;
   }
 
+  // The compact block picker: below `lg`, and in focus mode, where "Mục lục" (which lists the
+  // blocks on a wide screen) is not on screen.
+  &__blocks {
+    display: block;
+
+    @include ui.bp(lg) {
+      display: none;
+    }
+  }
+
+  &__layout--focus &__blocks {
+    @include ui.bp(lg) {
+      display: block;
+    }
+  }
+
   &__head {
     @include ui.stack(1);
   }
@@ -116,14 +173,44 @@
     margin: 0;
   }
 
-  &__done {
-    min-height: 2.5rem;
+  // Under the block, ahead of the feedback: back, what completes the block, and the one primary.
+  // From `md` it is one row that sticks to the bottom of the viewport while a long block scrolls,
+  // floating over the content there, so it carries the bar's shadow like the course editor's foot.
+  // On a phone its buttons wrap to several rows, too tall to float over the block: it stays in
+  // flow there, with the state line first.
+  &__stepbar {
+    @include ui.row(3);
+    padding: ui.space(3) ui.space(4);
+    border: 1px solid ui.color(border);
+    border-radius: ui.radius(card);
+    background: ui.color(surface);
+
+    @include ui.bp(md) {
+      position: sticky;
+      bottom: ui.space(3);
+      z-index: ui.z(bar);
+      box-shadow: ui.shadow(md);
+    }
   }
 
-  &__done-line {
+  &__state {
     @include ui.row(2);
+    @include ui.text(sm, muted);
+    @include ui.num;
+    flex-basis: 100%;
+    order: -1;
+    min-width: 0;
     margin: 0;
-    color: ui.color(text-secondary);
+
+    &:empty {
+      display: none;
+    }
+
+    @include ui.bp(md) {
+      @include ui.grow;
+      flex-basis: auto;
+      order: 0;
+    }
   }
 
   &__steps {

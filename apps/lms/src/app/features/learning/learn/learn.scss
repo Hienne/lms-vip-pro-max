@@ -5,7 +5,8 @@
 }
 
 .learn {
-  &__catalog {
+  &__catalog,
+  &__more {
     @include ui.row(1);
     @include ui.text(sm);
     color: ui.color(primary);
@@ -30,9 +31,7 @@
       gap: ui.space(6);
     }
 
-    @include ui.bp(xl) {
-      grid-template-columns: minmax(0, 1fr) ui.layout(popover);
-    }
+    // The rail keeps its narrow width at every size, so the course grid gets the room.
   }
 
   &__main,
@@ -66,7 +65,17 @@
     padding-block: ui.space(2);
   }
 
-  &__side &__panel h2 {
+  &__more {
+    align-self: flex-start;
+  }
+
+  // "Công cụ học nhanh" is a list of links, not a card: it sits on the page under the rail's cards.
+  &__links {
+    padding-inline: ui.space(4);
+  }
+
+  &__side &__panel h2,
+  &__side &__links h2 {
     @include ui.text(lg);
     font-family: ui.font(sans);
   }
@@ -95,8 +104,12 @@
     }
   }
 
+  // As many columns as cards of about 16rem fit: one on a phone, two beside the rail at 1280 px,
+  // three from about 1440 px. A fixed count at a breakpoint would squeeze cards next to the rail.
   &__grid {
-    @include ui.grid((md: 2));
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 16rem), 1fr));
+    gap: ui.space(4);
     margin: ui.space(3) 0 0;
     padding: 0;
     list-style: none;
@@ -106,45 +119,15 @@
     }
   }
 
-  &__secondary {
-    @include ui.grid((xl: 2));
-    align-items: start;
-    padding: ui.space(4);
-
-    > section + section {
-      padding-block-start: ui.space(4);
-      border-block-start: 1px solid ui.color(border);
-
-      @include ui.bp(xl) {
-        padding-block-start: 0;
-        padding-inline-start: ui.space(4);
-        border-block-start: 0;
-        border-inline-start: 1px solid ui.color(border);
-      }
-    }
-
-    > section:only-child {
-      grid-column: 1 / -1;
-    }
-
-    h2 {
-      @include ui.text(lg);
-      font-family: ui.font(sans);
-    }
-  }
-
   &__resume-placeholder,
   &__counts-placeholder,
   &__card-placeholder,
-  &__competency-placeholder,
-  &__journey-placeholder,
   &__due-placeholder {
     min-height: ui.space(18);
   }
 
   &__due,
   &__reminders,
-  &__journey,
   &__tools {
     margin: 0;
     padding: 0;
@@ -200,31 +183,6 @@
     grid-column: 2;
     grid-row: 1;
     text-align: end;
-  }
-
-  &__journey {
-    @include ui.stack(4);
-  }
-
-  &__step {
-    @include ui.stack(2);
-  }
-
-  &__step-head {
-    @include ui.row-between(3);
-    flex-wrap: nowrap;
-  }
-
-  &__step-name {
-    @include ui.text(sm);
-    min-width: 0;
-    font-weight: ui.weight(medium);
-    overflow-wrap: anywhere;
-  }
-
-  &__step-pct {
-    @include ui.num;
-    @include ui.text(sm);
   }
 
   &__tool {

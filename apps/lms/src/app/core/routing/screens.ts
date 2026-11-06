@@ -100,10 +100,7 @@ export const SCREEN_TABLE = {
       screens: [
         {
           path: 'learn',
-          requires: [
-            learnerEndpoints.dashboard,
-            learnerEndpoints.dashboardPrograms,
-          ],
+          requires: [learnerEndpoints.dashboard],
           title: 'Trang chủ học tập',
           mockupPage: 'dashboard',
           load: () =>
