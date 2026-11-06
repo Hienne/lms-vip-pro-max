@@ -22,12 +22,18 @@ import {
   IconButton,
   Input,
   LinkButton,
+  Progress,
   SortableItem,
   SortableList,
+  Tooltip,
   type SortableMove,
 } from '@lms/ui';
 import { firstValueFrom } from 'rxjs';
 import type { LessonTarget } from '../../data-access/course-editor.store';
+import {
+  lessonUploadOf,
+  type UploadEntry,
+} from '../../data-access/upload-entry';
 import {
   BLOCK_TYPES,
   draftTotals,
@@ -36,6 +42,7 @@ import {
   newLesson,
   type ChapterValue,
   type CourseDraftValue,
+  type LessonValue,
 } from '../../course-draft';
 
 /**
@@ -59,8 +66,10 @@ import {
     Input,
     LinkButton,
     NgTemplateOutlet,
+    Progress,
     SortableItem,
     SortableList,
+    Tooltip,
   ],
   templateUrl: './course-outline.html',
   styleUrl: './course-outline.scss',
@@ -68,6 +77,8 @@ import {
 export class CourseOutline {
   readonly draft = input.required<FieldTree<CourseDraftValue>>();
   readonly editable = input(true);
+  /** The files chosen in this editor by block key: a lesson row shows the ones still on their way. */
+  readonly uploads = input<Readonly<Record<string, UploadEntry>>>({});
   readonly editLesson = output<LessonTarget>();
 
   private readonly dialog = inject(Dialog);
@@ -79,6 +90,11 @@ export class CourseOutline {
       Object.entries(BLOCK_TYPES).map(([type, { label }]) => [type, label]),
     );
   protected readonly problemOf = lessonProblem;
+  protected readonly uploadOf = (lesson: LessonValue) =>
+    lessonUploadOf(
+      lesson.blocks.map((b) => b.key),
+      this.uploads(),
+    );
   protected readonly totals = computed(() =>
     draftTotals(this.draft()().value()),
   );

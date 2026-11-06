@@ -2132,6 +2132,101 @@ describe('CourseEditor', () => {
       });
     });
 
+    describe('upload progress on a lesson row', () => {
+      const row = () => screen.el.querySelector<HTMLElement>('ui-sortable-item')!;
+      const progress = () =>
+        row().querySelector<HTMLElement>('.course-outline__upload');
+      /** Saves the lesson that is uploading, so the outline shows its progress. */
+      async function saveWhileUploading() {
+        const drawer = await startPdfUpload();
+        await tap(screen.button('Lưu', drawer));
+      }
+
+      it('shows a bar and a percentage on the row while the file uploads', async () => {
+        await saveWhileUploading();
+
+        expect(progress()).not.toBeNull();
+        expect(progress()!.textContent).toMatch(/\d+%/);
+        expect(progress()!.querySelector('[role="progressbar"]')).not.toBeNull();
+        expect(row().textContent).not.toContain('Thiếu tệp');
+      });
+
+      it('names the file and its status in a tooltip', async () => {
+        await saveWhileUploading();
+
+        progress()!.dispatchEvent(new Event('mouseenter'));
+        await advance(400);
+        const tip = document.querySelector('[role="tooltip"]');
+        expect(tip?.textContent).toContain('quyen.pdf');
+        expect(tip?.textContent).toContain('Mất kết nối');
+      });
+
+      it('combines several files of one lesson into one bar', async () => {
+        const drawer = await startPdfUpload();
+        await tap(screen.button(/^\s*Tài liệu PDF/, drawer));
+        pick(dropzones().at(-1)!, pdf('hai.pdf'));
+        await advance(100);
+        await tap(screen.button('Lưu', drawer));
+
+        expect(
+          row().querySelectorAll('.course-outline__upload'),
+        ).toHaveLength(1);
+        progress()!.dispatchEvent(new Event('mouseenter'));
+        await advance(400);
+        const tip = document.querySelector('[role="tooltip"]')?.textContent;
+        expect(tip).toContain('quyen.pdf');
+        expect(tip).toContain('hai.pdf');
+      });
+
+      it('shows "Lỗi tải" when the file fails, opens the lesson on click, and clears when done', async () => {
+        await saveWhileUploading();
+        screen.calls.mockImplementation((e, r): FakeReply => {
+          const reply = original(e, r);
+          if (e !== assetEndpoints.completeUpload) return reply;
+          const body = reply.body as { data: object };
+          return {
+            ...reply,
+            body: {
+              ...body,
+              data: {
+                ...body.data,
+                status: 'failed',
+                errorCode: MEDIA_PROCESSING_UNAVAILABLE_CODE,
+                errorMessage: 'Máy chủ chưa xử lý được tệp.',
+              },
+            },
+          } as FakeReply;
+        });
+        await advance(SERVER_RETRY_MS * 4 + POLL_MS * 3);
+
+        expect(progress()).toBeNull();
+        const failed = row().querySelector<HTMLButtonElement>(
+          '.course-outline__upload-error',
+        );
+        expect(failed?.textContent).toContain('Lỗi tải');
+        await tap(failed!);
+        expect(screen.text(screen.drawer()!)).toContain(
+          'Máy chủ chưa xử lý được tệp.',
+        );
+
+        online();
+        await tap(screen.button('Xử lý lại', screen.drawer()!));
+        await advance(POLL_MS * 3);
+        vi.useRealTimers();
+        await screen.settle();
+        expect(
+          row().querySelector('.course-outline__upload-error'),
+        ).toBeNull();
+        expect(progress()).toBeNull();
+      });
+
+      it('shows nothing on a lesson without a running upload', async () => {
+        await screen.open('/admin/courses/6/edit');
+        await step('Nội dung khóa học');
+        expect(progress()).toBeNull();
+      });
+    });
+
     describe('the outline rows', () => {
       const lessonRow = () =>
         screen.el.querySelector<HTMLElement>('ui-sortable-item')!;

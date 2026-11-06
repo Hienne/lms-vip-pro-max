@@ -72,3 +72,46 @@ export const isBusy = (entry: UploadEntry | undefined): boolean =>
 /** Whether the author can still cancel: while the bytes are read or sent. */
 export const isCancellable = (entry: UploadEntry): boolean =>
   ['hashing', 'uploading', 'waiting'].includes(entry.state);
+
+/** What a lesson row shows of its blocks' uploads. */
+export interface LessonUpload {
+  /** One or more files failed or stalled: the row says "Lỗi tải" and opens the lesson. */
+  readonly failed: boolean;
+  /** The running files' progress combined, weighted by size, 0–100. */
+  readonly percent: number;
+  /** Each file's name and status line, for the tooltip. */
+  readonly tooltip: string;
+}
+
+/**
+ * The uploads of a lesson's blocks as its row shows them, or none when nothing is on its way or
+ * has failed. A finished upload is no longer shown.
+ */
+export function lessonUploadOf(
+  blockKeys: readonly string[],
+  uploads: Readonly<Record<string, UploadEntry>>,
+): LessonUpload | null {
+  const entries = blockKeys
+    .map((key) => uploads[key])
+    .filter((entry): entry is UploadEntry => !!entry && entry.state !== 'done');
+  if (!entries.length) return null;
+  const running = entries.filter(isBusy).filter((e) => e.state !== 'stalled');
+  const failed = entries.some((e) => !running.includes(e));
+  const total = running.reduce((sum, e) => sum + e.sizeBytes, 0);
+  const percent = running.length
+    ? Math.round(
+        total > 0
+          ? running.reduce((s, e) => s + (e.percent ?? 100) * e.sizeBytes, 0) /
+              total
+          : running.reduce((s, e) => s + (e.percent ?? 100), 0) /
+              running.length,
+      )
+    : 0;
+  return {
+    failed,
+    percent,
+    tooltip: entries
+      .map((e) => `${e.name}: ${e.status ?? e.message ?? ''}`.trim())
+      .join(' · '),
+  };
+}

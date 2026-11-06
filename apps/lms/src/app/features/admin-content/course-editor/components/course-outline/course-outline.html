@@ -50,6 +50,30 @@
               [ngTemplateOutlet]="lessonText"
               [ngTemplateOutletContext]="{ $implicit: lesson }"
             />
+            @if (uploadOf(lesson); as upload) { @if (upload.failed) {
+            <button
+              type="button"
+              class="course-outline__upload-error"
+              (click)="editLesson.emit({ chapter: ci, lesson: li })"
+            >
+              <ui-icon name="triangle-alert" size="sm" />Lỗi tải
+            </button>
+            } @else {
+            <span
+              class="course-outline__upload"
+              tabindex="0"
+              [uiTooltip]="upload.tooltip"
+            >
+              <ui-progress
+                size="sm"
+                [value]="upload.percent"
+                [label]="'Đang tải lên ' + lesson.title"
+              />
+              <span class="course-outline__upload-percent"
+                >{{ upload.percent }}%</span
+              >
+            </span>
+            } }
             <button
               uiIconButton
               type="button"
@@ -118,7 +142,7 @@
       <span>{{ lesson.minutes }} phút</span>
     </div>
   </div>
-  @if (problemOf(lesson); as problem) {
+  @if (problemOf(lesson); as problem) { @if (!uploadOf(lesson)) {
   <span uiBadge tone="warning">{{ problem }}</span>
-  }
+  } }
 </ng-template>

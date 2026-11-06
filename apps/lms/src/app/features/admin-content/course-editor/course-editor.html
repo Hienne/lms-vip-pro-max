@@ -93,6 +93,7 @@
     <app-course-outline
       [draft]="courseForm"
       [editable]="store.isDraft$()"
+      [uploads]="store.uploads$()"
       (editLesson)="store.editLesson($event)"
     />
     } @case (2) {
