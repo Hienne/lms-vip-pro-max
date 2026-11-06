@@ -54,7 +54,7 @@ describe('AssetLibrary in the lesson form', () => {
 
     expect(libraryDrawer()).toBeUndefined();
     expect(screen.text(lesson)).toContain('quy-trinh-doi-soat.pdf');
-    await screen.click(screen.button('Áp dụng', lesson));
+    await screen.click(screen.button('Lưu', lesson));
     await screen.click(screen.button('Lưu nháp'));
     const saved = screen.lastCall(courseEndpoints.saveDraft)
       ?.body as SaveDraftCommand;

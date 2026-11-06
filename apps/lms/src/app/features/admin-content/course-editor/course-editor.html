@@ -115,24 +115,31 @@
   <a uiButton variant="ghost" routerLink="/admin/courses">Hủy</a>
   }
   <span class="course-editor__spacer"></span>
-  @if (store.isDraft$()) {
+  @if (uploadHint(); as hint) {
+  <span class="course-editor__hint" role="status">{{ hint }}</span>
+  } @if (store.isDraft$()) {
   <button
     uiButton
     type="submit"
     form="course-editor-form"
-    [disabled]="store.isSaving$()"
+    [disabled]="store.isSaving$() || store.pendingUploads$() > 0"
   >
     <ui-icon name="archive" size="sm" />Lưu nháp
   </button>
   } @if (store.step$() < steps.length - 1) {
-  <button uiButton variant="primary" (click)="continue()">
+  <button
+    uiButton
+    variant="primary"
+    [disabled]="continueBlocked()"
+    (click)="continue()"
+  >
     Tiếp tục<ui-icon name="chevron-right" size="sm" />
   </button>
   } @else if (store.isDraft$()) {
   <button
     uiButton
     variant="primary"
-    [disabled]="store.isSaving$()"
+    [disabled]="store.isSaving$() || store.pendingUploads$() > 0"
     (click)="publish()"
   >
     <ui-icon name="check" size="sm" />Xuất bản khóa học
@@ -154,7 +161,7 @@
 <ng-template #footer let-close="close">
   <ui-form-actions
     formId="lesson-form"
-    submitLabel="Áp dụng"
+    submitLabel="Lưu"
     cancelLabel="Hủy"
     (cancel)="close()"
   />

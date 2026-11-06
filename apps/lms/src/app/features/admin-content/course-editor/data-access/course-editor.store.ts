@@ -63,6 +63,7 @@ import { courseCatalogStatus } from '../../../../shared/status/catalog-status';
 import {
   FILE_USAGE,
   toCreateCourseCommand,
+  type AssetValue,
   type CourseDraftValue,
 } from '../course-draft';
 import {
@@ -93,6 +94,7 @@ import { Sha256Hasher } from './sha256-hasher';
 import { syncExamPool } from '../components/course-rules/data-access/exam-pool';
 import {
   hashingStatus,
+  isBusy,
   isCancellable,
   MISMATCH_MESSAGE,
   PROCESSING_STATUS,
@@ -249,6 +251,10 @@ export class CourseEditorStore {
     failureShown: signal(false),
     /** How the page puts a new final exam into its form and saves the draft, handed over once. */
     examAttacher: signal<((quizId: number) => void) | null>(null),
+    /** How the page puts a finished upload's asset into its block of the draft, handed over once. */
+    assetAttacher: signal<
+      ((blockKey: string, asset: AssetValue) => void) | null
+    >(null),
     editingLesson: signal<LessonTarget | null>(null),
     /** When the last save went through, as the page shows it ("14:05"). */
     savedAt: signal<string | null>(null),
@@ -601,6 +607,15 @@ export class CourseEditorStore {
   /** The files chosen in this editor by block key, and where each one's upload stands. */
   readonly uploads$ = this.state.uploads.asReadonly();
 
+  /** Files still on their way (the cover included): a block saved now would have no asset. */
+  readonly pendingUploads$ = computed(
+    () => Object.values(this.state.uploads()).filter(isBusy).length,
+  );
+  /** Whether the cover image is still on its way. */
+  readonly coverUploading$ = computed(() =>
+    isBusy(this.state.uploads()[COVER_KEY]),
+  );
+
   /** The open lesson's blocks (by index) with an upload to continue; a running one is not listed. */
   readonly interrupted$ = computed(
     (): Readonly<Record<number, InterruptedUpload>> => {
@@ -650,6 +665,12 @@ export class CourseEditorStore {
 
   private setExamAttacher(attach: ((quizId: number) => void) | null): void {
     this.state.examAttacher.set(attach);
+  }
+
+  private setAssetAttacher(
+    attach: ((blockKey: string, asset: AssetValue) => void) | null,
+  ): void {
+    this.state.assetAttacher.set(attach);
   }
 
   private setStepChecks(checks: readonly StepCheck[]): void {
@@ -739,6 +760,16 @@ export class CourseEditorStore {
   /** The page hands over how a newly made final exam joins the draft (the form's field, then a save). */
   registerExamAttacher(attach: (quizId: number) => void): void {
     this.setExamAttacher(attach);
+  }
+
+  /**
+   * The page hands over how a finished upload's asset joins its block of the draft, once. The
+   * block is found by its key wherever it sits then, so moving things around mixes nothing up.
+   */
+  registerAssetAttacher(
+    attach: (blockKey: string, asset: AssetValue) => void,
+  ): void {
+    this.setAssetAttacher(attach);
   }
 
   /** A final exam was made for this course: the draft references it, and the quizzes are read again. */
@@ -1154,18 +1185,20 @@ export class CourseEditorStore {
       });
       return;
     }
+    const asset: AssetValue = {
+      assetId,
+      usage: FILE_USAGE[blockType] ?? 'attachment',
+      name,
+      sizeBytes,
+    };
     this.setUpload(blockKey, {
       state: 'done',
       name,
       sizeBytes,
       uploadId,
-      asset: {
-        assetId,
-        usage: FILE_USAGE[blockType] ?? 'attachment',
-        name,
-        sizeBytes,
-      },
+      asset,
     });
+    if (blockKey !== COVER_KEY) this.state.assetAttacher()?.(blockKey, asset);
     this.toaster.success(
       'Tải lên thành công',
       `${name} · đã kiểm tra định dạng và dung lượng`,

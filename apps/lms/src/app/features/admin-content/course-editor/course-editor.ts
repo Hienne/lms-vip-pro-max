@@ -1,4 +1,10 @@
-import { Component, computed, inject, linkedSignal } from '@angular/core';
+import {
+  Component,
+  computed,
+  inject,
+  linkedSignal,
+  untracked,
+} from '@angular/core';
 import { form, FormRoot, submit } from '@angular/forms/signals';
 import { RouterLink } from '@angular/router';
 import {
@@ -26,6 +32,7 @@ import {
   emptyDraftValue,
   toDraftValue,
   toSaveDraftCommand,
+  withAsset,
   type CourseDraftValue,
   type LessonValue,
 } from './course-draft';
@@ -91,10 +98,11 @@ export class CourseEditor implements HasUnsavedChanges {
     },
     {
       submission: {
-        action: async () =>
-          this.store.isCreate$()
-            ? this.store.create(this.draftValue())
-            : this.store.save(this.command()),
+        action: async () => {
+          if (this.store.pendingUploads$()) return;
+          if (this.store.isCreate$()) this.store.create(this.draftValue());
+          else this.store.save(this.command());
+        },
       },
     },
   );
@@ -141,7 +149,40 @@ export class CourseEditor implements HasUnsavedChanges {
     ];
   };
 
+  /** "Tiếp tục" on step 1 of a new course creates the course and moves to its URL: the cover must be done. */
+  protected readonly continueBlocked = computed(
+    () =>
+      this.store.isCreate$() &&
+      this.store.step$() === 0 &&
+      this.store.coverUploading$(),
+  );
+
+  /** Why saving waits: a block saved now would have no asset. */
+  protected readonly uploadHint = computed(() => {
+    const pending = this.store.pendingUploads$();
+    if (this.continueBlocked()) return 'Ảnh bìa đang tải lên';
+    return pending ? `Còn ${pending} tệp đang tải` : '';
+  });
+
   constructor() {
+    this.store.registerAssetAttacher((blockKey, asset) =>
+      this.model.update((value) => ({
+        ...value,
+        chapters: value.chapters.map((chapter) => ({
+          ...chapter,
+          lessons: chapter.lessons.map((lesson) =>
+            lesson.blocks.some((b) => b.key === blockKey)
+              ? {
+                  ...lesson,
+                  blocks: lesson.blocks.map((b) =>
+                    b.key === blockKey ? withAsset(b, asset) : b,
+                  ),
+                }
+              : lesson,
+          ),
+        })),
+      })),
+    );
     this.store.registerExamAttacher((quizId) => {
       this.model.update((value) => ({ ...value, finalQuizId: String(quizId) }));
       this.store.save(this.command());
@@ -155,10 +196,15 @@ export class CourseEditor implements HasUnsavedChanges {
     );
   }
 
+  /**
+   * The lesson in the drawer as it was when opened. The draft is read untracked: a finished
+   * upload joins its block in the draft while the drawer is open, and that must not reset the
+   * form the author is typing in (the form's own files already include the finished upload).
+   */
   protected readonly editingLesson = computed((): LessonValue | undefined => {
     const target = this.store.editingLesson$();
     return target
-      ? this.model().chapters[target.chapter]?.lessons[target.lesson]
+      ? untracked(this.model).chapters[target.chapter]?.lessons[target.lesson]
       : undefined;
   });
 
@@ -178,6 +224,7 @@ export class CourseEditor implements HasUnsavedChanges {
   }
 
   protected publish(): void {
+    if (this.store.pendingUploads$()) return;
     void submit(this.courseForm, async () =>
       this.store.isCreate$()
         ? this.store.createAndPublish(this.draftValue())

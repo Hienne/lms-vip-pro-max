@@ -3,11 +3,6 @@
   <ui-alert tone="danger">
     Khối "{{ missingFiles()[0].title }}" chưa có tệp: tải tệp lên hoặc xóa khối.
   </ui-alert>
-  } @if (lessonForm().touched() && busyBlocks().length) {
-  <ui-alert tone="danger">
-    Tệp của khối "{{ busyBlocks()[0].title }}" chưa tải xong: đợi hoặc hủy tải
-    lên.
-  </ui-alert>
   }
   <div class="lesson-form__pair">
     <ui-field label="Tên bài học" required>
