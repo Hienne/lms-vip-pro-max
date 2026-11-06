@@ -43,6 +43,7 @@ export class QuizAttemptsStore {
   private readonly state = {
     /** The 1-based page of the history table. */
     page: signal(1),
+    pageSize: signal(ATTEMPTS_PAGE_SIZE),
   };
 
   readonly quizId$ = routeId(this.route, 'id');
@@ -70,6 +71,7 @@ export class QuizAttemptsStore {
   readonly loadError$ = this.historyData.error;
   readonly isExporting$ = this.download.isPending;
   readonly page$ = this.state.page.asReadonly();
+  readonly pageSize$ = this.state.pageSize.asReadonly();
 
   /** Newest first, as a learner reads a history. */
   private readonly rows$ = computed((): readonly AttemptView[] => {
@@ -106,12 +108,19 @@ export class QuizAttemptsStore {
   readonly total$ = computed(() => this.rows$().length);
 
   readonly pageRows$ = computed(() => {
-    const start = (this.page$() - 1) * ATTEMPTS_PAGE_SIZE;
-    return this.rows$().slice(start, start + ATTEMPTS_PAGE_SIZE);
+    const size = this.pageSize$();
+    const start = (this.page$() - 1) * size;
+    return this.rows$().slice(start, start + size);
   });
 
   setPage(page: number): void {
     this.state.page.set(page);
+  }
+
+  /** A new page size starts again at the first page. */
+  changePageSize(size: number): void {
+    this.state.pageSize.set(size);
+    this.setPage(1);
   }
 
   retry(): void {

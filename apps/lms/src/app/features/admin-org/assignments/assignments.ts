@@ -33,10 +33,7 @@ import { GroupForm } from './components/group-form/group-form';
 import { GroupMembers } from './components/group-members/group-members';
 import { ScheduleForm } from './components/schedule-form/schedule-form';
 import { WithdrawForm } from './components/withdraw-form/withdraw-form';
-import {
-  ASSIGNMENTS_PAGE_SIZE,
-  AssignmentsStore,
-} from './data-access/assignments.store';
+import { AssignmentsStore } from './data-access/assignments.store';
 
 /**
  * Course assignment and deadlines (the mockup's `assignments`): an org's assignments across courses
@@ -92,7 +89,6 @@ export class Assignments {
     );
   }
 
-  protected readonly pageSize = ASSIGNMENTS_PAGE_SIZE;
   protected readonly typeLabel = TARGET_TYPE_LABEL;
 
   protected readonly tabs = computed((): readonly TabItem[] => {

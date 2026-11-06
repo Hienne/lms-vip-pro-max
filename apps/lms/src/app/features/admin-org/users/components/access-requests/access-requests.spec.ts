@@ -175,7 +175,7 @@ describe('AccessRequests', () => {
     const dialog = () => document.querySelector<HTMLElement>('[role="dialog"]');
     const rejectButton = (needle: string) =>
       Array.from(rowOf(needle).querySelectorAll('button')).find((b) =>
-        b.textContent?.includes('Từ chối'),
+        b.getAttribute('aria-label')?.includes('Từ chối'),
       ) as HTMLButtonElement;
     const footerButton = (label: string) =>
       Array.from(dialog()?.querySelectorAll('button') ?? []).find((b) =>
@@ -195,11 +195,24 @@ describe('AccessRequests', () => {
       await open();
       const labels = (row: Element) =>
         Array.from(row.querySelectorAll('button')).map((b) =>
-          b.textContent?.trim(),
+          b.getAttribute('aria-label'),
         );
-      expect(labels(rowOf('000101'))).toEqual(['Duyệt', 'Từ chối']);
-      expect(labels(rowOf('000004'))).toEqual(['Đặt lại mật khẩu', 'Từ chối']);
-      expect(labels(rowOf('000999'))).toEqual(['Từ chối']);
+      // Icon-only buttons: the accessible name (and tooltip) is the action plus the sender.
+      expect(labels(rowOf('000101'))).toEqual([
+        expect.stringMatching(/^Duyệt /),
+        expect.stringMatching(/^Từ chối /),
+      ]);
+      expect(labels(rowOf('000004'))).toEqual([
+        expect.stringMatching(/^Đặt lại mật khẩu cho /),
+        expect.stringMatching(/^Từ chối /),
+      ]);
+      expect(labels(rowOf('000999'))).toEqual([
+        expect.stringMatching(/^Từ chối /),
+      ]);
+      // The action is not also written out as text.
+      expect(rowOf('000101').querySelector('button')?.textContent?.trim()).toBe(
+        '',
+      );
       expect(panel.querySelectorAll('tbody [disabled]')).toHaveLength(0);
       await choose(select('Trạng thái'), 'REJECTED');
       expect(rowOf('000103').querySelector('button')).toBeNull();
@@ -303,7 +316,7 @@ describe('AccessRequests', () => {
       ) as HTMLButtonElement;
     const approveButton = (needle: string) =>
       Array.from(rowOf(needle).querySelectorAll('button')).find((b) =>
-        b.textContent?.includes('Duyệt'),
+        b.getAttribute('aria-label')?.includes('Duyệt'),
       ) as HTMLButtonElement;
     const approvals = () =>
       handle.mock.calls.filter(

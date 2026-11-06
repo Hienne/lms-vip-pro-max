@@ -306,9 +306,10 @@
     [total]="store.questions$()?.totalElements ?? 0"
     [sort]="store.questionSort$()"
     [page]="store.questionPage$()"
-    [pageSize]="20"
+    [pageSize]="store.questionPageSize$()"
     (sortChange)="store.setQuestionSort($event)"
     (pageChange)="store.setQuestionPage($event)"
+    (pageSizeChange)="store.setQuestionPageSize($event)"
   >
     <ng-template uiDataTableCell="code" [of]="store.questionRows$()" let-row>
       <span class="assessment__code">{{row.code}}</span>
@@ -367,15 +368,13 @@
     >
     <ng-template uiDataTableCell="actions" [of]="store.questionRows$()" let-row
       ><button
-        uiButton
+        uiIconButton
         size="sm"
-        variant="ghost"
-        [attr.aria-label]="'Sửa câu hỏi ' + row.code"
+        [label]="'Sửa câu hỏi ' + row.code"
         (click)="store.editQuestion(row.id)"
       >
-        <ui-icon name="pen-line" size="sm" />Sửa
-      </button></ng-template
-    >
+        <ui-icon name="pen-line" size="sm" /></button
+    ></ng-template>
     <ui-empty slot="empty" title="Không có câu hỏi phù hợp" />
   </ui-data-table>
 </section>
@@ -531,8 +530,9 @@
     [rows]="store.quizList$()"
     [total]="store.quizTotal$()"
     [page]="store.quizPage$()"
-    [pageSize]="20"
+    [pageSize]="store.quizPageSize$()"
     (pageChange)="store.setQuizPage($event)"
+    (pageSizeChange)="store.setQuizPageSize($event)"
   >
     <ng-template uiDataTableCell="status" [of]="store.quizList$()" let-row
       ><span uiBadge [tone]="row.status === 'PUBLISHED' ? 'success' : 'neutral'"
@@ -542,14 +542,13 @@
     >
     <ng-template uiDataTableCell="actions" [of]="store.quizList$()" let-row
       ><a
-        uiButton
+        uiIconButton
         size="sm"
-        variant="ghost"
+        [label]="'Cấu hình ' + row.title"
         [routerLink]="['/admin/quizzes',row.id]"
         [queryParams]="{courseId:row.courseId}"
-        >Cấu hình</a
-      ></ng-template
-    >
+        ><ui-icon name="settings" size="sm" /></a
+    ></ng-template>
   </ui-data-table>
 </section>
 } @case ('config') {

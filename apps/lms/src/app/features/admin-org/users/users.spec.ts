@@ -74,7 +74,7 @@ describe('Users', () => {
     rows().find((row) => row.textContent?.includes(name)) as Element;
   const button = (root: ParentNode, label: string) =>
     Array.from(root.querySelectorAll<HTMLButtonElement>('button')).find((b) =>
-      b.textContent?.includes(label),
+      `${b.textContent} ${b.getAttribute('aria-label') ?? ''}`.includes(label),
     ) as HTMLButtonElement;
   const dialog = () => document.querySelector<HTMLElement>('[role="dialog"]');
   const alertDialog = () =>
