@@ -99,6 +99,18 @@ export class NotificationsStore {
       }));
   });
   readonly count$ = computed(() => this.items$().length);
+  readonly canLearn$ = this.canLearn;
+  /** Whoever manages courses also gets the questions learners ask on them. */
+  readonly canManage$ = computed(() =>
+    this.session.menus$().includes('COURSE_MANAGEMENT'),
+  );
+  readonly description$ = computed(() =>
+    this.canLearn$() && this.canManage$()
+      ? 'Nhắc hạn các khóa học được giao và câu hỏi của học viên.'
+      : this.canManage$()
+        ? 'Câu hỏi và báo cáo của học viên trên các khóa học bạn quản lý.'
+        : 'Nhắc hạn các khóa học được giao.',
+  );
 
   // Commands
   markRead(reminderId: number): void {

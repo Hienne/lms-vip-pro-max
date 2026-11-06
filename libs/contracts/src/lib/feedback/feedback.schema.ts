@@ -62,6 +62,44 @@ export const LessonFeedbackSchema = z.object({
   mine: z.array(FeedbackViewSchema),
 });
 
+/**
+ * A question or report seen from the instructor's side, on a course they manage: where it was
+ * sent (lesson, course) and who sent it. `authorName` is null when the sender can no longer be found.
+ */
+export const InstructorFeedbackViewSchema = z.object({
+  id: z.number().int(),
+  kind: z.enum(['question', 'report']),
+  text: z.string(),
+  anchor: AnchorSchema,
+  status: FeedbackStatusSchema,
+  reply: z.string().nullable(),
+  replyTime: z.iso.datetime({ offset: true }).nullable(),
+  createTime: z.iso.datetime({ offset: true }),
+  lessonId: z.number().int(),
+  lessonTitle: z.string(),
+  courseId: z.number().int(),
+  courseCode: z.string(),
+  courseTitle: z.string(),
+  authorName: z.string().nullable(),
+});
+
+/** How many questions and reports wait for an answer (`status` is `new`); the bell shows it. */
+export const InstructorFeedbackSummarySchema = z.object({
+  newCount: z.number().int().nonnegative(),
+});
+
+export const InstructorFeedbackQuerySchema = z.object({
+  status: FeedbackStatusSchema.optional(),
+  page: z.number().int().nonnegative().optional(),
+  size: z.number().int().min(1).max(100).optional(),
+});
+
+/** The answer, 1 to 1000 characters after trimming; `resolve` closes the item instead of leaving it answered. */
+export const ReplyFeedbackCommandSchema = z.object({
+  reply: z.string().trim().min(1).max(FEEDBACK_MAX_LENGTH),
+  resolve: z.boolean().optional(),
+});
+
 export const RateLessonCommandSchema = z.object({
   stars: z.number().int().min(1).max(5),
 });
@@ -85,5 +123,12 @@ export type LessonRatingResult = z.infer<typeof LessonRatingResultSchema>;
 export type LessonCommentView = z.infer<typeof LessonCommentViewSchema>;
 export type FeedbackView = z.infer<typeof FeedbackViewSchema>;
 export type LessonFeedback = z.infer<typeof LessonFeedbackSchema>;
+export type InstructorFeedbackView = z.infer<
+  typeof InstructorFeedbackViewSchema
+>;
+export type InstructorFeedbackSummary = z.infer<
+  typeof InstructorFeedbackSummarySchema
+>;
+export type ReplyFeedbackCommand = z.infer<typeof ReplyFeedbackCommandSchema>;
 export type RateLessonCommand = z.infer<typeof RateLessonCommandSchema>;
 export type SendFeedbackCommand = z.infer<typeof SendFeedbackCommandSchema>;

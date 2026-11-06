@@ -91,6 +91,11 @@ describe('AppShell', () => {
       )
       .filter((r) => !r.cancelled)
       .forEach((r) => r.error(new ProgressEvent('error')));
+    // An instructor's bell counts the questions waiting for an answer; there are none.
+    backend
+      .match((r) => r.url === '/api/v1/instructor/feedback/summary')
+      .filter((r) => !r.cancelled)
+      .forEach((r) => r.flush(envelopeOk({ newCount: 0 })));
     // The owl's tracker asks for the user's unfinished uploads; there are none.
     backend
       .match((r) => r.url === '/api/v1/knowledge/documents')
@@ -563,10 +568,24 @@ describe('AppShell', () => {
       const el = await open('/learn', { notifications: 2, inbox: 0 });
       await vi.waitFor(() => {
         TestBed.tick();
-        const bell = el.querySelector('a[href="/notifications"]');
+        const bell = el.querySelector('app-notification-bell button');
         expect(bell?.getAttribute('aria-label')).toBe('Thông báo, 2 chưa đọc');
         expect(bell?.classList).toContain('icon-btn--dot');
       });
+    });
+
+    it('opens a dropdown with a link to the notifications page and does not navigate', async () => {
+      signInAs('learner');
+      const el = await open('/learn', { notifications: 0, inbox: 0 });
+      el.querySelector<HTMLButtonElement>(
+        'app-notification-bell button',
+      )!.click();
+      TestBed.tick();
+      const all = document.querySelector<HTMLAnchorElement>(
+        '.popover a[href="/notifications"]',
+      );
+      expect(all?.textContent).toContain('Xem tất cả thông báo');
+      expect(router.url).toBe('/learn');
     });
 
     it('reloads the counts after a navigation', async () => {

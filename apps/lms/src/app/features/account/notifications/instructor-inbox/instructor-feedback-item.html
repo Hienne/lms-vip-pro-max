@@ -1,0 +1,61 @@
+@let it = item();
+<article class="entry">
+  <p class="entry__meta">
+    <span uiBadge outline>{{ kindLabel() }}</span>
+    <span uiBadge [tone]="state().tone">{{ state().text }}</span>
+    <span class="entry__who">{{ it.authorName ?? 'Học viên' }}</span>
+    · {{ it.createTime | fmtRelative }}
+  </p>
+  <p class="entry__where">
+    {{ it.courseTitle }} · {{ it.lessonTitle }} · {{ anchorText(it.anchor) }}
+  </p>
+  <p class="entry__text">{{ it.text }}</p>
+
+  @if (it.reply && !editing()) {
+  <div class="entry__reply">
+    <p class="entry__meta">
+      Trả lời @if (it.replyTime) { · {{ it.replyTime | fmtRelative }} }
+    </p>
+    <p class="entry__text">{{ it.reply }}</p>
+  </div>
+  } @if (editing()) {
+  <form class="entry__form" [formRoot]="replyForm">
+    <ui-field
+      label="Nội dung trả lời"
+      hint="Học viên thấy trả lời này. Tối đa 1000 ký tự."
+    >
+      <textarea uiTextarea rows="3" [formField]="replyForm.reply"></textarea>
+    </ui-field>
+    <label class="entry__resolve">
+      <input type="checkbox" uiCheckbox [formField]="replyForm.resolve" />
+      Đóng sau khi trả lời
+    </label>
+    <div class="entry__actions">
+      <button uiButton size="sm" type="submit" [disabled]="busy()">
+        Gửi trả lời
+      </button>
+      <button
+        uiButton
+        variant="ghost"
+        size="sm"
+        type="button"
+        (click)="editing.set(false)"
+      >
+        Hủy
+      </button>
+    </div>
+  </form>
+  } @else {
+  <div class="entry__actions">
+    <button
+      uiButton
+      variant="secondary"
+      size="sm"
+      type="button"
+      (click)="edit()"
+    >
+      {{ it.reply ? 'Sửa trả lời' : 'Trả lời' }}
+    </button>
+  </div>
+  }
+</article>

@@ -24,14 +24,7 @@
   </form>
   <div class="header__actions">
     <app-theme-picker />
-    <a
-      uiIconButton
-      routerLink="/notifications"
-      [dot]="unread() > 0"
-      [label]="bellLabel()"
-    >
-      <ui-icon name="bell" />
-    </a>
+    <app-notification-bell [unread]="unread()" />
     @if (user(); as me) {
     <ui-menu
       [label]="me.fullName"

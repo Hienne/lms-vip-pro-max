@@ -1,0 +1,51 @@
+<section class="inbox" aria-labelledby="inbox-title">
+  <div class="inbox__head">
+    <h2 id="inbox-title" class="inbox__title">Câu hỏi của học viên</h2>
+    <ui-segmented
+      label="Lọc câu hỏi"
+      [options]="filters"
+      [value]="store.filter$()"
+      (valueChange)="store.setFilter($event)"
+    />
+  </div>
+
+  @if (store.loadError$(); as error) {
+  <ui-error-state
+    title="Không tải được câu hỏi"
+    [message]="error.message"
+    (retry)="store.retry()"
+  />
+  } @else if (store.isLoading$()) {
+  <ul uiList>
+    @for (n of placeholders; track n) {
+    <li uiListItem>
+      <span uiSkeleton variant="text" class="inbox__line"></span>
+    </li>
+    }
+  </ul>
+  } @else if (store.items$().length === 0) {
+  <ui-empty
+    variant="inline"
+    [title]="store.filter$() === 'new' ? 'Không có câu hỏi nào chờ trả lời.' : 'Chưa có câu hỏi nào.'"
+  />
+  } @else {
+  <ul uiList>
+    @for (item of store.items$(); track item.id) {
+    <li uiListItem>
+      <app-instructor-feedback-item
+        [item]="item"
+        [busy]="store.isSending$()"
+        (reply)="store.reply(item.id, $event)"
+      />
+    </li>
+    }
+  </ul>
+  @if (store.total$() > pageSize) {
+  <ui-pagination
+    [total]="store.total$()"
+    [page]="store.page$()"
+    [pageSize]="pageSize"
+    (pageChange)="store.goToPage($event)"
+  />
+  } }
+</section>

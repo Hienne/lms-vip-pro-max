@@ -1,0 +1,58 @@
+@use 'ui';
+
+.bell {
+  @include ui.stack(3);
+  min-width: 18rem;
+  max-width: 24rem;
+
+  &__group {
+    @include ui.stack(1);
+  }
+
+  &__heading {
+    margin: 0;
+    color: ui.color(text-muted);
+  }
+
+  &__list {
+    @include ui.stack(1);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  &__item {
+    @include ui.stack(1);
+    padding: ui.space(2);
+    border-radius: ui.radius(md);
+    color: ui.color(text);
+    text-decoration: none;
+
+    &:hover {
+      background: ui.color(surface-2);
+    }
+  }
+
+  &__title {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  &__meta,
+  &__empty {
+    max-width: none;
+    margin: 0;
+    color: ui.color(text-muted);
+  }
+
+  &__line {
+    width: 60%;
+  }
+
+  &__all {
+    padding-top: ui.space(2);
+    border-top: 1px solid ui.color(border);
+    color: ui.color(primary);
+  }
+}

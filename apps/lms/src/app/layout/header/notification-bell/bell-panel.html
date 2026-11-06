@@ -1,0 +1,51 @@
+<div class="bell">
+  @if (isLoading$()) {
+  <span uiSkeleton variant="text" class="bell__line"></span>
+  } @else if (isEmpty$()) {
+  <p class="bell__empty">Không có thông báo mới.</p>
+  } @else { @if (showReminders() && dueTotal$() > 0) {
+  <section class="bell__group" aria-label="Nhắc hạn">
+    <h3 class="bell__heading">Nhắc hạn ({{ dueTotal$() }})</h3>
+    <ul class="bell__list">
+      @for (reminder of dueReminders$(); track reminder.id) {
+      <li>
+        <a
+          class="bell__item"
+          routerLink="/notifications"
+          (click)="navigated.emit()"
+        >
+          <span class="bell__title">Khóa học được giao sắp đến hạn</span>
+          <span class="bell__meta"
+            >Nhắc {{ reminder.scheduledAt | fmtRelative }}</span
+          >
+        </a>
+      </li>
+      }
+    </ul>
+  </section>
+  } @if (showQuestions() && questionTotal$() > 0) {
+  <section class="bell__group" aria-label="Câu hỏi chưa trả lời">
+    <h3 class="bell__heading">Câu hỏi chưa trả lời ({{ questionTotal$() }})</h3>
+    <ul class="bell__list">
+      @for (question of questions$(); track question.id) {
+      <li>
+        <a
+          class="bell__item"
+          routerLink="/notifications"
+          (click)="navigated.emit()"
+        >
+          <span class="bell__title">{{ question.text }}</span>
+          <span class="bell__meta"
+            >{{ question.authorName ?? 'Học viên' }} · {{ question.lessonTitle
+            }}</span
+          >
+        </a>
+      </li>
+      }
+    </ul>
+  </section>
+  } }
+  <a class="bell__all" routerLink="/notifications" (click)="navigated.emit()"
+    >Xem tất cả thông báo</a
+  >
+</div>

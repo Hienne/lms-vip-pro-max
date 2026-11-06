@@ -2,12 +2,16 @@ import { z } from 'zod';
 import { defineEndpoint } from '../http/endpoint';
 import { PageSchema } from '../http/page';
 import {
+  InstructorFeedbackQuerySchema,
+  InstructorFeedbackSummarySchema,
+  InstructorFeedbackViewSchema,
   LessonCommentViewSchema,
   FeedbackViewSchema,
   LessonCommentsQuerySchema,
   LessonFeedbackSchema,
   LessonRatingResultSchema,
   RateLessonCommandSchema,
+  ReplyFeedbackCommandSchema,
   SendFeedbackCommandSchema,
 } from './feedback.schema';
 
@@ -44,6 +48,33 @@ export const feedbackEndpoints = {
     path: `${LEARNING}/lessons/{lessonId}/feedback`,
     params: lessonParams,
     body: SendFeedbackCommandSchema,
+    response: FeedbackViewSchema,
+  }),
+  /**
+   * The instructor's inbox: questions and reports on the courses the caller manages, newest first.
+   * Anyone who manages no course gets an empty page.
+   */
+  instructorFeedback: defineEndpoint({
+    method: 'get',
+    path: '/api/v1/instructor/feedback',
+    query: InstructorFeedbackQuerySchema,
+    response: PageSchema(InstructorFeedbackViewSchema),
+  }),
+  /** How many of those wait for an answer; 0 for anyone who manages no course. */
+  instructorFeedbackSummary: defineEndpoint({
+    method: 'get',
+    path: '/api/v1/instructor/feedback/summary',
+    response: InstructorFeedbackSummarySchema,
+  }),
+  /**
+   * Answer one: it becomes `answered`, or `resolved` with `resolve`. The caller must manage the
+   * course; answering again replaces the last answer.
+   */
+  replyFeedback: defineEndpoint({
+    method: 'post',
+    path: '/api/v1/instructor/feedback/{feedbackId}/reply',
+    params: z.object({ feedbackId: z.number().int() }),
+    body: ReplyFeedbackCommandSchema,
     response: FeedbackViewSchema,
   }),
   /** A page of the lesson's comments, newest first, for "Xem thêm nhận xét". */

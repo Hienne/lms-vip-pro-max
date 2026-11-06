@@ -10,9 +10,9 @@ import {
   type ElementRef,
 } from '@angular/core';
 import { map } from 'rxjs';
-import { RouterLink } from '@angular/router';
 import { Icon, IconButton, Input, Menu, type MenuEntry } from '@lms/ui';
 import type { Profile } from '../../core/session/profile';
+import { NotificationBell } from './notification-bell/notification-bell';
 import { searchPlaceholder } from './search-target';
 import { ThemePicker } from './theme-picker/theme-picker';
 
@@ -20,12 +20,12 @@ export type UserMenuValue = 'profile' | 'notifications' | 'sign-out';
 
 /**
  * The page header (the mockup's `.header`): the navigation button below the `lg` breakpoint, the
- * global search, the theme picker, the notification bell and the user menu. It renders what the
+ * global search, the theme picker, the notification bell (a dropdown, see `NotificationBell`) and the user menu. It renders what the
  * shell passes in and reports intent through outputs; the theme picker talks to `ThemeStore` itself.
  */
 @Component({
   selector: 'app-header',
-  imports: [Icon, IconButton, Input, Menu, RouterLink, ThemePicker],
+  imports: [Icon, IconButton, Input, Menu, NotificationBell, ThemePicker],
   templateUrl: './header.html',
   styleUrl: './header.scss',
 })
@@ -51,10 +51,6 @@ export class Header {
     const user = this.user();
     return searchPlaceholder(user ? user.menus : []);
   });
-
-  protected readonly bellLabel = computed(() =>
-    this.unread() > 0 ? `Thông báo, ${this.unread()} chưa đọc` : 'Thông báo',
-  );
 
   protected readonly entries = computed<MenuEntry<UserMenuValue>[]>(() => {
     const user = this.user();

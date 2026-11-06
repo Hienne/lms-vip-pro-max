@@ -1,0 +1,49 @@
+@use 'ui';
+
+.entry {
+  @include ui.stack(2);
+
+  &__meta {
+    @include ui.row(2);
+    flex-wrap: wrap;
+    max-width: none;
+    margin: 0;
+    color: ui.color(text-muted);
+  }
+
+  &__who {
+    color: ui.color(text);
+    font-weight: 600;
+  }
+
+  &__where {
+    max-width: none;
+    margin: 0;
+    color: ui.color(text-muted);
+  }
+
+  &__text {
+    max-width: none;
+    margin: 0;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+  }
+
+  &__reply {
+    @include ui.stack(1);
+    padding-inline-start: ui.space(3);
+    border-inline-start: 1px solid ui.color(border);
+  }
+
+  &__form {
+    @include ui.stack(2);
+  }
+
+  &__resolve {
+    @include ui.row(2);
+  }
+
+  &__actions {
+    @include ui.row(2);
+  }
+}
