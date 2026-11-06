@@ -21,22 +21,23 @@ import { Select } from '../../atoms/select/select.directive';
   imports: [Icon, Select],
   host: { class: 'pagination' },
   template: `
-    <span>Hiển thị {{ from() }}–{{ to() }} / {{ total() }}</span>
-    @if (sizes().length) {
-      <select
-        uiSelect
-        size="sm"
-        aria-label="Số dòng mỗi trang"
-        class="pagination__size"
-        (change)="pickSize($event)"
-      >
-        @for (n of sizes(); track n) {
-          <option [value]="n" [selected]="n === pageSize()">
-            {{ n }} / trang
-          </option>
-        }
-      </select>
-    }
+    <div class="pagination__info">
+      <span>Hiển thị {{ from() }}–{{ to() }} / {{ total() }}</span>
+      @if (sizes().length) {
+        <select
+          uiSelect
+          size="sm"
+          aria-label="Số dòng mỗi trang"
+          (change)="pickSize($event)"
+        >
+          @for (n of sizes(); track n) {
+            <option [value]="n" [selected]="n === pageSize()">
+              {{ n }} dòng / trang
+            </option>
+          }
+        </select>
+      }
+    </div>
     @if (pages() > 1) {
       <nav class="pagination__pages" aria-label="Phân trang">
         <button
