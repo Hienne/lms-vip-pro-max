@@ -35,31 +35,29 @@ function render(activeId: number) {
 }
 
 describe('BlockList', () => {
-  it('lists every block with its kind and state, and marks the active one', () => {
+  it('says where the active block sits and lists every block with its kind and state', () => {
     const { el } = render(2);
-    const items = Array.from(el.querySelectorAll('button'));
-    expect(
-      items.map((b) => b.querySelector('.blocks__title')?.textContent),
-    ).toEqual(['Khối 1', 'Khối 2', 'Khối 3']);
-    expect(items[0].textContent).toContain('Video');
-    expect(items[0].textContent).toContain('Đã hoàn thành');
-    expect(items[1].textContent).toContain('Tài liệu PDF');
-    expect(items[1].textContent).toContain('40%');
-    expect(items[2].querySelector('.blocks__state')?.textContent?.trim()).toBe(
-      '',
+    expect(el.querySelector('label')?.textContent?.trim()).toBe('Khối 2/3');
+    const select = el.querySelector('select')!;
+    expect(select.id).toBe(el.querySelector('label')!.getAttribute('for'));
+    const options = Array.from(select.options).map((o) =>
+      o.textContent?.replace(/\s+/g, ' ').trim(),
     );
-    expect(items.map((b) => b.getAttribute('aria-current'))).toEqual([
-      null,
-      'true',
-      null,
+    expect(options).toEqual([
+      'Khối 1 · Video · Đã hoàn thành',
+      'Khối 2 · Tài liệu PDF · 40%',
+      'Khối 3 · Bài đọc',
     ]);
+    expect(select.selectedIndex).toBe(1);
   });
 
-  it('emits the chosen block, and is reachable and operable by keyboard as buttons', () => {
+  it('emits the chosen block, and nothing for the block already on screen', () => {
     const { el, picked } = render(1);
-    const buttons = Array.from(el.querySelectorAll('button'));
-    expect(buttons.every((b) => b.tabIndex === 0)).toBe(true);
-    buttons[2].click();
+    const select = el.querySelector('select')!;
+    select.value = '3';
+    select.dispatchEvent(new Event('change'));
+    select.value = '1';
+    select.dispatchEvent(new Event('change'));
     expect(picked).toEqual([3]);
   });
 });

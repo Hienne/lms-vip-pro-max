@@ -1,7 +1,6 @@
-import { computed, inject, Injectable, signal } from '@angular/core';
+import { computed, inject, Injectable, Injector, signal } from '@angular/core';
 import {
   learnerEndpoints,
-  learnerQuizEndpoints,
   type CourseCard,
   type LearningReminder,
   type MyCoursesQuery,
@@ -13,7 +12,7 @@ import { dueReminders } from '../../../../core/learning/due-reminders';
 import { SessionStore } from '../../../../core/session/session.store';
 import type { CourseCardView } from '../../../../shared/course/course-card';
 import { toCourseCardView } from '../../../../shared/course/course-card-view';
-import { withData } from '../../../../shared/learning/competency/competency-data';
+import { coverPreviews, coverSrc } from '../../../../shared/course/cover-image';
 import { isReminderOverdue } from '../../../../shared/learning/reminder-item/reminder-item';
 
 export type LearnTab =
@@ -35,8 +34,6 @@ export const LEARN_TABS: readonly LearnTab[] = [
 export const GRID_SIZE = 6;
 export const DUE_SHOWN = 5;
 export const REMINDERS_SHOWN = 3;
-/** The most the server pages: a learner has a handful of programmes, so one page is all of them. */
-export const PROGRAMS_SHOWN = 100;
 
 const TAB_QUERY: Record<LearnTab, MyCoursesQuery> = {
   in_progress: {
@@ -61,9 +58,16 @@ const TAB_QUERY: Record<LearnTab, MyCoursesQuery> = {
 
 export interface ContinueView {
   readonly courseTitle: string;
-  /** "chapter · course" once the enrolment detail is read, else the course alone. */
+  /** The lesson to resume once the enrolment detail is read, else the course title. */
   readonly lessonTitle: string;
+  /** "course · chapter" once the enrolment detail is read, else empty. */
   readonly context: string;
+  /** The course has a cover: its 16:9 place is kept while it is read. */
+  readonly hasCover: boolean;
+  /** The cover's object URL once read; null while loading or without one. */
+  readonly coverUrl: string | null;
+  /** Where the lesson sits among the course's lessons ("Bài 2/4"), once the detail is read. */
+  readonly position: { readonly number: number; readonly total: number } | null;
   readonly pct: number;
   readonly link: string;
   /** `block` of the lesson link: the block the learner left off at. */
@@ -86,12 +90,13 @@ export interface ReminderRow {
 
 /**
  * The learner's home (SPEC-learner-home): where to resume, the counts, the courses by state, what
- * falls due, the competency radar and the reminders. Every read is independent, so one failing section does not blank
+ * falls due and the reminders. Every read is independent, so one failing section does not blank
  * the page. Nothing is computed here: the server's numbers and filters, shown.
  */
 @Injectable()
 export class LearnStore {
   private readonly client = inject(EndpointClient);
+  private readonly injector = inject(Injector);
   private readonly session = inject(SessionStore);
   private readonly now = inject(NOW);
 
@@ -113,13 +118,6 @@ export class LearnStore {
    */
   private readonly dashboardData = serverData(() =>
     this.client.call(learnerEndpoints.dashboard),
-  );
-
-  /** The programmes the caller has courses in, with the server's progress for each. */
-  private readonly programsData = serverData(() =>
-    this.client.call(learnerEndpoints.dashboardPrograms, {
-      query: { size: PROGRAMS_SHOWN },
-    }),
   );
 
   /** The caller's learning points; the page shows one figure from them and hides it when the read fails. */
@@ -156,10 +154,11 @@ export class LearnStore {
     { params: () => TAB_QUERY[this.state.tab()] },
   );
 
-  /** The caller's competencies over every course; the server decides which have a percent. */
-  private readonly competencyData = serverData(() =>
-    this.client.call(learnerQuizEndpoints.myCompetency, { query: {} }),
-  );
+  /** The covers of the resume card and of the tab's cards, read once each while the page lives. */
+  private readonly covers = coverPreviews(this.client, this.injector, () => [
+    this.resumeCard()?.coverAssetId,
+    ...(this.coursesData.value()?.items ?? []).map((card) => card.coverAssetId),
+  ]);
 
   private readonly dueData = serverData(() =>
     this.client.call(learnerEndpoints.myCourses, {
@@ -217,17 +216,21 @@ export class LearnStore {
     const courseTitle = card.title || card.code;
     const lessonId = card.lastLessonId;
     const chapters = this.detailData.value()?.content.chapters ?? [];
-    const found = lessonId
-      ? chapters
-          .flatMap((c) =>
-            c.lessons.map((l) => ({ chapter: c.chapter, lesson: l.lesson })),
-          )
-          .find((entry) => entry.lesson.id === lessonId)
-      : undefined;
+    const lessons = chapters.flatMap((c) =>
+      c.lessons.map((l) => ({ chapter: c.chapter, lesson: l.lesson })),
+    );
+    const index = lessonId
+      ? lessons.findIndex((entry) => entry.lesson.id === lessonId)
+      : -1;
+    const found = index >= 0 ? lessons[index] : undefined;
+    const cover = this.coverOf(card);
     return {
       courseTitle,
       lessonTitle: found?.lesson.title ?? courseTitle,
-      context: found ? `${found.chapter.title} · ${courseTitle}` : '',
+      context: found ? `${courseTitle} · ${found.chapter.title}` : '',
+      hasCover: card.coverAssetId != null && cover?.state !== 'failed',
+      coverUrl: cover ? coverSrc(cover) : null,
+      position: found ? { number: index + 1, total: lessons.length } : null,
       pct: Math.round(card.progressPercent ?? 0),
       link: lessonId
         ? `/lesson/${card.courseId}/${lessonId}`
@@ -240,19 +243,10 @@ export class LearnStore {
   readonly isCoursesLoading$ = this.coursesData.isLoading;
 
   readonly courses$ = computed((): readonly CourseCardView[] =>
-    (this.coursesData.value()?.items ?? []).map(toCourseCardView),
+    (this.coursesData.value()?.items ?? []).map((card) =>
+      toCourseCardView(card, this.coverOf(card)),
+    ),
   );
-
-  readonly competency$ = this.competencyData.value;
-  readonly hasCompetencyData$ = computed(
-    () => withData(this.competency$() ?? []).length > 0,
-  );
-  readonly competencyError$ = this.competencyData.error;
-  readonly isCompetencyLoading$ = this.competencyData.isLoading;
-
-  readonly programs$ = computed(() => this.programsData.value()?.items ?? []);
-  readonly programsError$ = this.programsData.error;
-  readonly isProgramsLoading$ = this.programsData.isLoading;
 
   readonly dueError$ = this.dueData.error;
   readonly isDueLoading$ = this.dueData.isLoading;
@@ -292,6 +286,12 @@ export class LearnStore {
       }));
   });
 
+  private coverOf(card: CourseCard) {
+    return card.coverAssetId == null
+      ? undefined
+      : this.covers().get(card.coverAssetId);
+  }
+
   // Setters: the only writers of state
   private setTab(tab: LearnTab): void {
     this.state.tab.set(tab);
@@ -317,14 +317,6 @@ export class LearnStore {
 
   retryCourses(): void {
     this.coursesData.reload();
-  }
-
-  retryCompetency(): void {
-    this.competencyData.reload();
-  }
-
-  retryPrograms(): void {
-    this.programsData.reload();
   }
 
   retryDue(): void {

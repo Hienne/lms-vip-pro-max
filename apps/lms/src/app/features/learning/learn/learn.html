@@ -37,6 +37,9 @@
       } @else {
       <div uiSkeleton variant="block" class="learn__counts-placeholder"></div>
       }
+      <a class="learn__more" routerLink="/progress"
+        >Tiến độ học tập <ui-icon name="chevron-right" size="sm"
+      /></a>
     </section>
 
     <section
@@ -52,7 +55,6 @@
       <ui-tabs
         label="Khóa học theo trạng thái"
         compact
-        wrap
         [tabs]="tabs()"
         [selected]="store.tab$()"
         (selectedChange)="store.showTab($event)"
@@ -94,93 +96,6 @@
         }
       </ui-tabs>
     </section>
-
-    <section uiCard class="learn__secondary" aria-label="Lộ trình và năng lực">
-      @if (store.programsError$(); as error) {
-      <section
-        class="learn__section"
-        aria-labelledby="learn-programs"
-      >
-        <h2 id="learn-programs">Lộ trình theo chương trình</h2>
-        <ui-error-state
-          title="Không tải được lộ trình"
-          [message]="error.message"
-          (retry)="store.retryPrograms()"
-        />
-      </section>
-      } @else if (store.isProgramsLoading$()) {
-      <section
-        class="learn__section"
-        aria-labelledby="learn-programs"
-      >
-        <h2 id="learn-programs">Lộ trình theo chương trình</h2>
-        <div
-          uiSkeleton
-          variant="block"
-          class="learn__journey-placeholder"
-          aria-busy="true"
-        ></div>
-      </section>
-      } @else if (store.programs$().length) {
-      <section
-        class="learn__section"
-        aria-labelledby="learn-programs"
-      >
-        <h2 id="learn-programs">Lộ trình theo chương trình</h2>
-        <ul class="learn__journey">
-          @for (program of store.programs$(); track program.id) {
-          <li class="learn__step">
-            <div class="learn__step-head">
-              <span class="learn__step-name">{{ program.name }}</span>
-              <span class="learn__step-pct"
-                >{{ program.averageProgress | fmtPct: 2 }}</span
-              >
-            </div>
-            <ui-progress
-              size="sm"
-              [value]="program.averageProgress"
-              [label]="'Tiến độ ' + program.name"
-            />
-            <span class="learn__muted"
-              >{{ program.completed }}/{{ program.courses }} khóa đã xong</span
-            >
-          </li>
-          }
-        </ul>
-      </section>
-      }
-      <section
-        class="learn__section"
-        aria-labelledby="learn-competency"
-      >
-        <div class="learn__heading">
-          <h2 id="learn-competency">Năng lực</h2>
-          <a routerLink="/progress" [queryParams]="{ tab: 'competency' }">
-            Chi tiết
-          </a>
-        </div>
-        @if (store.competencyError$(); as error) {
-        <ui-error-state
-          title="Không tải được biểu đồ năng lực"
-          [message]="error.message"
-          (retry)="store.retryCompetency()"
-        />
-        } @else if (store.competency$(); as rows) {
-        @if (store.hasCompetencyData$()) {
-        <app-competency-view size="compact" [rows]="rows" />
-        } @else {
-        <p class="learn__muted">Chưa có dữ liệu kiểm tra.</p>
-        }
-        } @else {
-        <div
-          uiSkeleton
-          variant="block"
-          class="learn__competency-placeholder"
-          aria-busy="true"
-        ></div>
-        }
-      </section>
-    </section>
   </div>
 
   <aside class="learn__side">
@@ -212,8 +127,7 @@
       </ul>
       } @else {
       <p class="learn__muted">Không có khóa học sắp đến hạn.</p>
-      }
-      @if (store.remindersError$() || store.reminders$().length) {
+      } @if (store.remindersError$() || store.reminders$().length) {
       <details class="learn__reminder-disclosure">
         <summary>Xem nhắc hạn</summary>
         @if (store.remindersError$(); as error) {
@@ -247,11 +161,7 @@
       }
     </section>
 
-    <section
-      uiCard
-      class="learn__section learn__panel"
-      aria-labelledby="learn-tools"
-    >
+    <section class="learn__section learn__links" aria-labelledby="learn-tools">
       <h2 id="learn-tools">Công cụ học nhanh</h2>
       <ul class="learn__tools">
         <li>

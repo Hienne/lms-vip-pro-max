@@ -47,7 +47,11 @@ const feedback = (
   ...extra,
 });
 
-async function render(inputs: Record<string, unknown> = {}) {
+/** Renders the section opened, as most tests read its content; `closed` leaves it as it starts. */
+async function render(
+  inputs: Record<string, unknown> = {},
+  { closed = false } = {},
+) {
   const fixture = TestBed.createComponent(LessonFeedback);
   const defaults = { comments: [], questions: [], reports: [], ...inputs };
   for (const [name, value] of Object.entries(defaults)) {
@@ -55,7 +59,11 @@ async function render(inputs: Record<string, unknown> = {}) {
   }
   fixture.detectChanges();
   await fixture.whenStable();
-  return probe(fixture);
+  const found = probe(fixture);
+  if (!closed && found.toggle().getAttribute('aria-expanded') === 'false') {
+    await found.open();
+  }
+  return found;
 }
 
 function probe(
@@ -82,9 +90,16 @@ function probe(
     Array.from(el.querySelectorAll<HTMLElement>('.feedback__panel'));
   const shown = () =>
     panels().find((p) => !p.hasAttribute('inert') && !p.hidden)!;
+  const toggle = () =>
+    el.querySelector<HTMLButtonElement>('.feedback__toggle')!;
   return {
     fixture,
     el,
+    toggle,
+    open: async () => {
+      toggle().click();
+      await settle();
+    },
     rated,
     sent,
     more: () => more,
@@ -120,6 +135,53 @@ function probe(
 }
 
 describe('LessonFeedback', () => {
+  describe('closed by default', () => {
+    it('starts as one row: the title, the stars and how many comments and questions', async () => {
+      const { el, toggle, text } = await render(
+        {
+          rating: { average: 4.5, count: 12 },
+          commentTotal: 2,
+          questions: [feedback(1, 'question', 'Hỏi về đối soát')],
+        },
+        { closed: true },
+      );
+      expect(toggle().getAttribute('aria-expanded')).toBe('false');
+      expect(toggle().closest('h2')).not.toBeNull();
+      expect(text()).toContain('Đánh giá & trao đổi');
+      expect(text()).toContain('2 nhận xét · 1 câu hỏi');
+      expect(el.querySelector('ui-stars')).not.toBeNull();
+      expect(el.querySelector('#feedback-body')).toBeNull();
+      expect(el.querySelector('textarea')).toBeNull();
+    });
+
+    it('opens and closes on a click on the row', async () => {
+      const { el, toggle, open } = await render({}, { closed: true });
+      await open();
+      expect(toggle().getAttribute('aria-expanded')).toBe('true');
+      expect(toggle().getAttribute('aria-controls')).toBe('feedback-body');
+      expect(el.querySelector('#feedback-body textarea')).not.toBeNull();
+      await open();
+      expect(toggle().getAttribute('aria-expanded')).toBe('false');
+    });
+
+    it('stays open after a send', async () => {
+      const { toggle, type, submit, set } = await render({ lessonId: 16 });
+      await type('Một nhận xét đủ dài');
+      await submit();
+      await set('sent', { comment: 1 });
+      expect(toggle().getAttribute('aria-expanded')).toBe('true');
+    });
+
+    it('opens on its own when loading failed, so the error is seen', async () => {
+      const { toggle, text } = await render(
+        { error: { message: 'Máy chủ bận.' } },
+        { closed: true },
+      );
+      expect(toggle().getAttribute('aria-expanded')).toBe('true');
+      expect(text()).toContain('Máy chủ bận.');
+    });
+  });
+
   describe('header and rating', () => {
     it('says there is no rating yet', async () => {
       const { text } = await render();
@@ -299,11 +361,15 @@ describe('LessonFeedback', () => {
     });
 
     it('starts over on the comments tab with empty forms when another lesson comes on screen', async () => {
-      const { type, set, tab, shown } = await render({ lessonId: 16 });
+      const { type, set, tab, shown, toggle, open } = await render({
+        lessonId: 16,
+      });
       await type('Nhận xét dở dang');
       await tab('Báo nội dung');
       await type('Báo cáo dở dang');
       await set('lessonId', 17);
+      expect(toggle().getAttribute('aria-expanded')).toBe('false');
+      await open();
       expect(shown().querySelector('textarea')!.value).toBe('');
       expect(
         shown().querySelector('button[type="submit"]')!.textContent,

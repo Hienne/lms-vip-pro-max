@@ -27,6 +27,7 @@ import {
   ErrorState,
   Field,
   FmtRelativePipe,
+  Icon,
   Rating,
   Skeleton,
   Stars,
@@ -89,8 +90,10 @@ const reportStatus = (status: FeedbackStatus | null): StatusLabel =>
     : { text: 'Đã xử lý', tone: 'success' };
 
 /**
- * "Đánh giá & trao đổi" under the lesson: the stars, then three tabs (comments, questions to the
- * instructor, reports), each with its own form and its own list. It owns the forms only; the data,
+ * "Đánh giá & trao đổi" under the lesson. It starts as one row (the stars and how many comments and
+ * questions there are) so it never stands between the learner and the next step; a click opens the
+ * stars, then three tabs (comments, questions to the instructor, reports), each with its own form and
+ * its own list. A load failure opens it so the error is not hidden. It owns the forms only; the data,
  * the commands and the confirm before a report are the store's.
  */
 @Component({
@@ -103,6 +106,7 @@ const reportStatus = (status: FeedbackStatus | null): StatusLabel =>
     FmtRelativePipe,
     FormField,
     FormRoot,
+    Icon,
     Rating,
     Skeleton,
     Stars,
@@ -146,6 +150,10 @@ export class LessonFeedback {
   protected readonly questionStatus = questionStatus;
   protected readonly reportStatus = reportStatus;
 
+  /** Opened by the learner; a new lesson starts closed again. */
+  protected readonly expanded = signal(false);
+  protected readonly open = computed(() => this.expanded() || !!this.error());
+
   protected readonly tab = signal<string>('comment');
   protected readonly tabs = computed(() => [
     { id: 'comment', label: 'Nhận xét', count: this.commentTotal() },
@@ -181,6 +189,7 @@ export class LessonFeedback {
     untracked(() => {
       if (id !== this.lesson && this.lesson !== undefined) {
         this.tab.set('comment');
+        this.expanded.set(false);
         for (const kind of KINDS) this.forms[kind]().reset({ text: '' });
       }
       this.lesson = id;

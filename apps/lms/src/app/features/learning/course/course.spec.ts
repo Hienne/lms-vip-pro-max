@@ -264,19 +264,24 @@ describe('Course', () => {
       await open(1);
     }
 
-    it('shows the revision’s cover beside the progress, read with no block', async () => {
+    it('shows the revision’s cover first in the main column, read with no block', async () => {
       await openWithCover(true);
       const image = el.querySelector<HTMLImageElement>('.course__cover');
       expect(image?.getAttribute('src')).toBe('blob:cover');
       expect(image?.alt).toBe('');
+      expect(el.querySelector('.course__main')?.firstElementChild).toBe(image);
+      expect(el.querySelector('.course__side .course__cover')).toBeNull();
       expect(calls(courseEndpoints.getAssetContent)[0][1].params).toEqual({
         assetId: '77',
       });
     });
 
-    it('shows nothing while the server refuses the file', async () => {
+    it('shows nothing while the server refuses the file, not even an empty box', async () => {
       await openWithCover(false);
       expect(el.querySelector('.course__cover')).toBeNull();
+      expect(
+        el.querySelector('.course__main')?.firstElementChild?.tagName,
+      ).toBe('SECTION');
       expect(heading()).toBe('Tổng quan hệ thống Core Banking');
     });
   });

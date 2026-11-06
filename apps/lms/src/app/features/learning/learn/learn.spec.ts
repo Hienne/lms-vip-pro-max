@@ -1,7 +1,11 @@
 import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
-import { learnerEndpoints, learnerQuizEndpoints } from '@lms/contracts';
+import {
+  courseEndpoints,
+  learnerEndpoints,
+  learnerQuizEndpoints,
+} from '@lms/contracts';
 import { backendRefusal, envelopeOk } from '@lms/mocks';
 import type { MockInstance } from 'vitest';
 import { createAppRoutes } from '../../../app.routes';
@@ -21,6 +25,37 @@ import {
   fakeSession,
   seedProfile,
 } from '../../../core/session/session.testing';
+
+/**
+ * Gives the first card of every `list` reply the cover asset 77, whose file the server answers
+ * (`readable`) or refuses; everything else is the mock's.
+ */
+function withCover(
+  handle: MockInstance<MockBackend['handle']>,
+  list: unknown,
+  readable: boolean,
+) {
+  const backend = TestBed.inject(MockBackend);
+  URL.createObjectURL = vi.fn(() => 'blob:cover');
+  URL.revokeObjectURL = vi.fn();
+  handle.mockImplementation((endpoint, request) => {
+    if (endpoint === courseEndpoints.getAssetContent) {
+      return readable
+        ? {
+            status: 200,
+            body: envelopeOk(null),
+            file: new Blob(['png'], { type: 'image/png' }),
+          }
+        : backendRefusal('accessDenied');
+    }
+    const reply = MockBackend.prototype.handle.call(backend, endpoint, request);
+    if (endpoint === list && reply && 'body' in reply) {
+      const page = reply.body.data as { items: Record<string, unknown>[] };
+      if (page.items[0]) page.items[0]['coverAssetId'] = 77;
+    }
+    return reply;
+  });
+}
 
 describe('Learn', () => {
   let harness: RouterTestingHarness;
@@ -113,13 +148,16 @@ describe('Learn', () => {
           expect.stringMatching(/^\d+(,\d+)?%$/),
           expect.stringMatching(/^\d+\/\d+ khóa đã xong$/),
         ],
-        [
-          'Điểm kiểm tra gần nhất',
-          '66,67%',
-          'Chưa đạt · Luyện tập: Tổng quan hệ thống Core Banking',
-        ],
+        ['Điểm kiểm tra gần nhất', '66,67%', 'Chưa đạt'],
         ['Điểm cao nhất', '90%', 'Đạt 1/5 bài kiểm tra'],
       ]);
+    });
+
+    it('names the last quiz in a title, not in the footnote', () => {
+      const last = el.querySelectorAll('app-learn-kpis dl')[2];
+      expect(last.getAttribute('title')).toBe(
+        'Luyện tập: Tổng quan hệ thống Core Banking',
+      );
     });
 
     it('reads the completion rate from the dashboard and computes no percent', () => {
@@ -190,6 +228,10 @@ describe('Learn', () => {
       ).toBe(true);
     });
 
+    it('keeps the tabs on one scrolling row instead of wrapping them', () => {
+      expect(el.querySelector('.tabs')!.classList).not.toContain('tabs--wrap');
+    });
+
     it('links "Xem tất cả" to the assigned catalogue', () => {
       const link = Array.from(el.querySelectorAll('a')).find((a) =>
         a.textContent?.includes('Xem tất cả'),
@@ -219,111 +261,69 @@ describe('Learn', () => {
     });
   });
 
-  describe('the programme journey', () => {
-    const journey = () =>
-      el.querySelector<HTMLElement>(
-        'section[aria-labelledby="learn-programs"]',
-      );
-    /** Answers the programmes with a fixed page, the rest as the mock does. */
-    function answerPrograms(items: unknown[]) {
-      const backend = TestBed.inject(MockBackend);
-      handle.mockImplementation((e, request) =>
-        e === learnerEndpoints.dashboardPrograms
-          ? {
-              status: 200,
-              body: envelopeOk({
-                items,
-                page: 0,
-                size: 100,
-                totalElements: items.length,
-                totalPages: 1,
-              }),
-            }
-          : MockBackend.prototype.handle.call(backend, e, request),
-      );
-    }
-
-    const group = {
-      id: '1',
-      name: 'Nền tảng nghiệp vụ Core Banking',
-      enrollments: 3,
-      learners: 1,
-      courses: 3,
-      completed: 1,
-      inProgress: 1,
-      notStarted: 1,
-      overdue: 1,
-      averageProgress: 50,
-      completionRate: 33.33,
+  describe('course covers', () => {
+    const original = {
+      create: URL.createObjectURL,
+      revoke: URL.revokeObjectURL,
     };
+    afterEach(() => {
+      URL.createObjectURL = original.create;
+      URL.revokeObjectURL = original.revoke;
+    });
 
-    it('lists a row per programme: name, the server percent, a bar and the courses done', async () => {
-      answerPrograms([
-        group,
-        {
-          ...group,
-          id: '2',
-          name: 'Vận hành',
-          courses: 2,
-          completed: 0,
-          averageProgress: 12.5,
-        },
-      ]);
+    it('shows the cover the server names on the first card, and none on the others', async () => {
+      withCover(handle, learnerEndpoints.myCourses, true);
       await open();
-      const rows = Array.from(journey()!.querySelectorAll('li'));
+      const covers = el.querySelectorAll<HTMLImageElement>(
+        'app-course-card img.course-card__cover',
+      );
+      expect(covers).toHaveLength(1);
+      expect(covers[0].getAttribute('src')).toBe('blob:cover');
       expect(
-        rows.map((row) =>
-          ['.learn__step-name', '.learn__step-pct', '.learn__muted'].map(
-            (selector) => row.querySelector(selector)?.textContent?.trim(),
-          ),
-        ),
-      ).toEqual([
-        ['Nền tảng nghiệp vụ Core Banking', '50%', '1/3 khóa đã xong'],
-        ['Vận hành', '12,5%', '0/2 khóa đã xong'],
-      ]);
-      expect(rows[0].querySelector('ui-progress')).not.toBeNull();
+        handle.mock.calls.filter(
+          ([e]) => e === courseEndpoints.getAssetContent,
+        )[0][1].params,
+      ).toEqual({ assetId: '77' });
+    });
+
+    it('leaves a card text only when the server refuses its cover', async () => {
+      withCover(handle, learnerEndpoints.myCourses, false);
+      await open();
+      expect(cards().length).toBeGreaterThan(0);
       expect(
-        el
-          .querySelector('#learn-programs')!
-          .compareDocumentPosition(el.querySelector('#learn-competency')!) &
-          Node.DOCUMENT_POSITION_FOLLOWING,
-      ).toBeTruthy();
+        el.querySelector('app-course-card .course-card__cover'),
+      ).toBeNull();
+    });
+  });
+
+  describe('what the page leaves to the progress page', () => {
+    beforeEach(() => open());
+
+    it('has no programme journey and no competency card, and reads neither', () => {
+      expect(text()).not.toContain('Lộ trình theo chương trình');
+      expect(el.querySelector('#learn-programs')).toBeNull();
+      expect(el.querySelector('#learn-competency')).toBeNull();
+      expect(el.querySelector('app-competency-view')).toBeNull();
       expect(
         handle.mock.calls.some(
-          ([e, r]) =>
-            e === learnerEndpoints.dashboardPrograms &&
-            r.query['size'] === '100',
+          ([e]) =>
+            e === learnerEndpoints.dashboardPrograms ||
+            e === learnerQuizEndpoints.myCompetency,
         ),
-      ).toBe(true);
+      ).toBe(false);
     });
 
-    it('serves the mock learner their programmes', async () => {
-      await open();
-      expect(journey()!.querySelectorAll('li').length).toBeGreaterThan(0);
-    });
-
-    it('is absent when the page is empty', async () => {
-      answerPrograms([]);
-      await open();
-      expect(journey()).toBeNull();
-      expect(text()).not.toContain('Lộ trình theo chương trình');
-      expect(text()).not.toContain('Không tải được');
-    });
-
-    it('fails alone, with a retry', async () => {
-      fail(learnerEndpoints.dashboardPrograms);
-      await open();
-      expect(journey()!.textContent).toContain('Không tải được lộ trình');
-      expect(cards().length).toBeGreaterThan(0);
-      expect(el.querySelectorAll('app-learn-kpis dt')).toHaveLength(4);
-
-      handle.mockRestore();
-      handle = vi.spyOn(TestBed.inject(MockBackend), 'handle');
-      Array.from(journey()!.querySelectorAll('button'))
-        .find((b) => b.textContent?.includes('Thử lại'))!
-        .click();
-      await settle();
-      expect(journey()!.querySelectorAll('li').length).toBeGreaterThan(0);
+    it('links "Tiến độ học tập" to the progress page, under the figures', () => {
+      const link =
+        section('Số liệu học tập').querySelector<HTMLAnchorElement>(
+          'a.learn__more',
+        )!;
+      expect(link.textContent?.trim()).toBe('Tiến độ học tập');
+      expect(link.getAttribute('href')).toBe('/progress');
+      expect(
+        el.querySelector('app-learn-kpis')!.compareDocumentPosition(link) &
+          Node.DOCUMENT_POSITION_FOLLOWING,
+      ).toBeTruthy();
     });
   });
 
@@ -365,6 +365,7 @@ describe('Learn', () => {
         'Chứng nhận các khóa đã hoàn thành',
       );
       expect(links.every((a) => a.querySelector('ui-icon'))).toBe(true);
+      expect(tools.closest('section')!.hasAttribute('uicard')).toBe(false);
       const position = (selector: string) =>
         el.querySelector(selector)!.compareDocumentPosition(tools);
       expect(
@@ -544,68 +545,6 @@ describe('Learn', () => {
       expect(text()).not.toContain('Nhắc hạn');
       expect(text()).not.toContain('Không tải được nhắc hạn');
       expect(cards().length).toBeGreaterThan(0);
-    });
-  });
-
-  describe('the competency card', () => {
-    const card = () =>
-      el.querySelector<HTMLElement>(
-        'section[aria-labelledby="learn-competency"]',
-      )!;
-
-    it('sits under "Khóa học của tôi", with a "Chi tiết" link to the progress page', async () => {
-      await open();
-      const heading = el.querySelector('#learn-competency')!;
-      expect(heading.tagName).toBe('H2');
-      expect(heading.textContent).toContain('Năng lực');
-      const link = card().querySelector('a')!;
-      expect(link.textContent?.trim()).toBe('Chi tiết');
-      expect(link.getAttribute('href')).toBe('/progress?tab=competency');
-      expect(card().querySelector('button')).toBeNull();
-      expect(
-        el.querySelector('#learn-courses')!.compareDocumentPosition(heading) &
-          Node.DOCUMENT_POSITION_FOLLOWING,
-      ).toBeTruthy();
-    });
-
-    it('shows the radar when three competencies have data', async () => {
-      await open();
-      const view = card().querySelector('app-competency-view')!;
-      expect(view.classList).toContain('competency-view--compact');
-      expect(view.querySelector('ui-radar-chart')).not.toBeNull();
-      expect(view.textContent).toContain(
-        'Tỷ lệ đúng trên mọi lượt thi đã chấm',
-      );
-    });
-
-    it('shows the inline empty state when no competency has data', async () => {
-      const backend = TestBed.inject(MockBackend);
-      handle.mockImplementation((e, request) =>
-        e === learnerQuizEndpoints.myCompetency
-          ? { status: 200, body: envelopeOk([]) }
-          : MockBackend.prototype.handle.call(backend, e, request),
-      );
-      await open();
-      expect(card().textContent).toContain('Chưa có dữ liệu kiểm tra.');
-      expect(card().querySelector('ui-radar-chart')).toBeNull();
-    });
-
-    it('fails alone, with a retry, and leaves the rest of the page', async () => {
-      fail(learnerQuizEndpoints.myCompetency);
-      await open();
-      expect(card().textContent).toContain('Không tải được biểu đồ năng lực');
-      expect(card().querySelector('app-competency-view')).toBeNull();
-      expect(el.querySelector('app-continue-card')).not.toBeNull();
-      expect(el.querySelectorAll('app-learn-kpis dt')).toHaveLength(4);
-      expect(cards().length).toBeGreaterThan(0);
-
-      handle.mockRestore();
-      handle = vi.spyOn(TestBed.inject(MockBackend), 'handle');
-      Array.from(card().querySelectorAll('button'))
-        .find((b) => b.textContent?.includes('Thử lại'))!
-        .click();
-      await settle();
-      expect(card().querySelector('ui-radar-chart')).not.toBeNull();
     });
   });
 

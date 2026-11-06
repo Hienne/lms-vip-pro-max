@@ -4,15 +4,27 @@
       <ui-icon name="arrow-left" size="sm" />Thoát
     </a>
     <p class="lesson__where">
-      @if (store.card$(); as card) { {{ card.title }} @if
-      (store.chapterTitle$()) { · {{ store.chapterTitle$() }} } }
+      @if (store.card$(); as card) {
+      <span class="lesson__where-full"
+        >{{ card.title }} @if (store.chapterTitle$()) { · {{
+        store.chapterTitle$() }} }</span
+      >
+      } @if (store.lesson$()) {
+      <span class="lesson__where-short"
+        >Bài {{ store.lessonPosition$().number }}/{{
+        store.lessonPosition$().total }}</span
+      >
+      }
     </p>
     <p class="lesson__save" aria-live="polite">
       @if (store.save$() === 'failed') { Chưa lưu được tiến độ
       <button uiButton variant="ghost" size="sm" (click)="store.retry()">
         Thử lại
       </button>
-      } @else if (store.save$() === 'saved') { Đã lưu tiến độ }
+      } @else if (store.save$() === 'saved') {
+      <ui-icon class="lesson__saved-icon" name="check" size="sm" />
+      <span class="lesson__saved-text">Đã lưu tiến độ</span>
+      }
     </p>
     @if (store.lesson$()) {
     <button
@@ -134,6 +146,7 @@
       <p class="lesson__note">Bài học chưa có nội dung.</p>
       } @else { @if (store.blocks$().length > 1) {
       <app-block-list
+        class="lesson__blocks"
         [blocks]="store.blocks$()"
         [activeId]="store.activeBlock$()?.id"
         (selected)="store.selectBlock($event)"
@@ -209,23 +222,44 @@
         } } }
       </section>
 
-      <div class="lesson__done">
-        @if (store.completion$(); as done) { @if (done.done) {
-        <p class="lesson__done-line">
+      <nav class="lesson__stepbar" aria-label="Chuyển khối và bài học">
+        @if (store.prevBlockId$(); as previous) {
+        <button uiButton (click)="store.selectBlock(previous)">
+          <ui-icon name="arrow-left" size="sm" />Khối trước
+        </button>
+        } @else if (store.prevLessonLink$(); as link) {
+        <a uiButton [routerLink]="link">
+          <ui-icon name="arrow-left" size="sm" />Bài trước
+        </a>
+        } @let done = store.completion$();
+        <p class="lesson__state" aria-live="polite">
+          @if (done.done) {
           <ui-icon name="check" size="sm" />Đã hoàn thành @if (done.completedAt)
-          { · {{ done.completedAt | fmtDate }} }
+          { · {{ done.completedAt | fmtDate }} } } @else if (done.hint) { {{
+          done.hint }} }
         </p>
-        } @else if (done.manual) {
+        @if (done.needsMark) {
         <button uiButton variant="primary" (click)="store.markComplete()">
           Đánh dấu hoàn thành
         </button>
-        } @else if (active.detail.block.completionMode === 'video_coverage') {
-        <p class="lesson__done-line">
-          Đã xem {{ done.percent }}% @if (done.threshold !== null) { · cần {{
-          done.threshold }}% }
-        </p>
-        } }
-      </div>
+        } @if (store.nextBlockId$(); as next) {
+        <button
+          uiButton
+          [variant]="done.needsMark ? 'secondary' : 'primary'"
+          (click)="store.selectBlock(next)"
+        >
+          Khối tiếp theo<ui-icon name="arrow-right" size="sm" />
+        </button>
+        } @else if (store.nextLessonLink$(); as link) {
+        <a
+          uiButton
+          [variant]="done.needsMark ? 'secondary' : 'primary'"
+          [routerLink]="link"
+        >
+          Bài tiếp theo<ui-icon name="arrow-right" size="sm" />
+        </a>
+        }
+      </nav>
 
       <app-lesson-feedback
         [lessonId]="store.lessonId$()"
@@ -248,25 +282,6 @@
         (retry)="store.retryFeedback()"
       />
 
-      <nav class="lesson__steps" aria-label="Chuyển khối và bài học">
-        @if (store.prevBlockId$(); as previous) {
-        <button uiButton (click)="store.selectBlock(previous)">
-          <ui-icon name="arrow-left" size="sm" />Khối trước
-        </button>
-        } @else if (store.prevLessonLink$(); as link) {
-        <a uiButton [routerLink]="link">
-          <ui-icon name="arrow-left" size="sm" />Bài trước
-        </a>
-        } @if (store.nextBlockId$(); as next) {
-        <button uiButton variant="primary" (click)="store.selectBlock(next)">
-          Khối tiếp theo<ui-icon name="arrow-right" size="sm" />
-        </button>
-        } @else if (store.nextLessonLink$(); as link) {
-        <a uiButton variant="primary" [routerLink]="link">
-          Bài tiếp theo<ui-icon name="arrow-right" size="sm" />
-        </a>
-        }
-      </nav>
       } }
     </div>
 
@@ -305,7 +320,12 @@
         [value]="store.courseProgress$()"
         label="Tiến độ khóa học"
       />
-      <app-lesson-outline [chapters]="store.outline$()" />
+      <app-lesson-outline
+        [chapters]="store.outline$()"
+        [blocks]="store.blocks$()"
+        [activeBlockId]="store.activeBlock$()?.id"
+        (blockSelected)="store.chooseBlock($event)"
+      />
     </div>
     <div uiTabPanel="notes" class="lesson__side-panel">
       <app-lesson-notes

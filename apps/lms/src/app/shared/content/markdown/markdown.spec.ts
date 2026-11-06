@@ -17,6 +17,17 @@ const HOSTILE_HTML =
   '<a href="https://example.com/a" onclick="z()" style="color:red">an toàn</a>';
 
 describe('Markdown', () => {
+  it('keeps its heading sizes unless it sits under a heading of its own', () => {
+    expect(render('## A').querySelector('.markdown--nested')).toBeNull();
+    const fixture = TestBed.createComponent(Markdown);
+    fixture.componentRef.setInput('source', '## A');
+    fixture.componentRef.setInput('nested', true);
+    fixture.detectChanges();
+    expect(
+      (fixture.nativeElement as HTMLElement).querySelector('.markdown--nested'),
+    ).not.toBeNull();
+  });
+
   it('renders the editor subset as elements', () => {
     const el = render(
       '## Tiêu đề\nĐoạn **đậm** và *nghiêng*.\n- một\n- hai\n1. ba',

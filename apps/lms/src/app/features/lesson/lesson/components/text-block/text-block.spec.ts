@@ -27,6 +27,13 @@ function render(value: LessonBlock): HTMLElement {
 }
 
 describe('TextBlock', () => {
+  it('steps its headings down under the block title', () => {
+    const root = render(block({ body: '## Ý chính' }));
+    expect(
+      root.querySelector('.markdown')?.classList.contains('markdown--nested'),
+    ).toBe(true);
+  });
+
   it('renders the body in the format it was saved in', () => {
     expect(
       render(block({ body: '## Ý chính\n- một' })).querySelector('h3')

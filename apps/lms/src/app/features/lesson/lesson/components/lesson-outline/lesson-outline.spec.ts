@@ -1,6 +1,7 @@
 import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
-import type { OutlineChapter } from '../../data-access/lesson.store';
+import type { BlockDetail } from '@lms/contracts';
+import type { BlockView, OutlineChapter } from '../../data-access/lesson.store';
 import { LessonOutline } from './lesson-outline';
 
 const chapters: readonly OutlineChapter[] = [
@@ -42,13 +43,39 @@ const chapters: readonly OutlineChapter[] = [
   },
 ];
 
-function render(): HTMLElement {
+const blockView = (
+  id: number,
+  status: BlockView['status'],
+  blockType: BlockDetail['block']['blockType'],
+): BlockView => ({
+  id,
+  title: `Khối ${id}`,
+  status,
+  percent: status === 'in_progress' ? 40 : 0,
+  detail: {
+    block: { blockType },
+    assets: [],
+    steps: [],
+  } as unknown as BlockDetail,
+});
+
+function mount(blocks: readonly BlockView[] = [], activeBlockId?: number) {
   TestBed.configureTestingModule({ providers: [provideRouter([])] });
   const fixture = TestBed.createComponent(LessonOutline);
   fixture.componentRef.setInput('chapters', chapters);
+  fixture.componentRef.setInput('blocks', blocks);
+  fixture.componentRef.setInput('activeBlockId', activeBlockId);
   fixture.detectChanges();
-  return fixture.nativeElement as HTMLElement;
+  const chosen: number[] = [];
+  fixture.componentInstance.blockSelected.subscribe((id) => chosen.push(id));
+  return { el: fixture.nativeElement as HTMLElement, chosen };
 }
+
+function render(): HTMLElement {
+  return mount().el;
+}
+
+const el = () => render();
 
 describe('LessonOutline', () => {
   it('lists the chapters and their lessons with a status each', () => {
@@ -82,5 +109,62 @@ describe('LessonOutline', () => {
       'Bài kiểm tra',
     );
     expect(el.querySelectorAll('li')[0].querySelector('a ui-icon')).toBeNull();
+  });
+
+  it('tells the states apart by shape: a check, a ring with a dot, an empty ring', () => {
+    const marks = Array.from(el().querySelectorAll('li > .toc__state')).map(
+      (mark) =>
+        mark.querySelector('ui-icon')
+          ? 'check'
+          : mark.querySelector('.toc__ring--started')
+            ? 'started'
+            : mark.querySelector('.toc__ring')
+              ? 'empty'
+              : 'none',
+    );
+    expect(marks).toEqual(['check', 'started', 'empty']);
+  });
+
+  it('fills the row of the lesson on screen, not only its link', () => {
+    const rows = Array.from(el().querySelectorAll('li'));
+    expect(
+      rows.map((row) => row.classList.contains('toc__lesson--current')),
+    ).toEqual([false, true, false]);
+  });
+
+  it('lists the blocks of the current lesson under it, with their kind and state', () => {
+    const { el, chosen } = mount(
+      [
+        blockView(1, 'completed', 'video'),
+        blockView(2, 'in_progress', 'pdf'),
+        blockView(3, 'not_started', 'text'),
+      ],
+      2,
+    );
+    const group = el.querySelector('.toc__blocks-item')!;
+    expect(group.previousElementSibling?.classList).toContain(
+      'toc__lesson--current',
+    );
+    const rows = Array.from(group.querySelectorAll<HTMLElement>('.toc__block'));
+    expect(
+      rows.map((r) =>
+        r
+          .querySelector('.toc__block-meta')
+          ?.textContent?.replace(/\s+/g, ' ')
+          .trim(),
+      ),
+    ).toEqual(['Video', 'Tài liệu PDF · 40%', 'Bài đọc']);
+    expect(rows.map((r) => r.getAttribute('aria-current'))).toEqual([
+      null,
+      'step',
+      null,
+    ]);
+    rows[2].click();
+    expect(chosen).toEqual([3]);
+  });
+
+  it('lists no blocks for a lesson with only one', () => {
+    const { el } = mount([blockView(1, 'not_started', 'text')], 1);
+    expect(el.querySelector('.toc__blocks')).toBeNull();
   });
 });

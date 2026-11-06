@@ -131,6 +131,15 @@ describe('Lesson', () => {
   describe('a text lesson', () => {
     beforeEach(() => open(lessonUrl(2)));
 
+    it('names the lesson position in the bar for a phone, beside the course and chapter', () => {
+      expect(
+        el.querySelector('.lesson__where-short')?.textContent?.trim(),
+      ).toBe('Bài 3/3');
+      expect(el.querySelector('.lesson__where-full')?.textContent).toContain(
+        'Phân hệ Thanh toán liên ngân hàng',
+      );
+    });
+
     it('shows the title, where it sits in the course and the way out', () => {
       expect(el.querySelector('h1')?.textContent).toBe('Tổng kết');
       expect(text()).toContain('Bài 3/3');
@@ -175,6 +184,42 @@ describe('Lesson', () => {
       ).map((s) => s.textContent?.trim());
       expect(outlineStates.at(-1)).toBe('Đã hoàn thành');
       expect(text()).toMatch(/Khóa học\s+\d+%/);
+    });
+
+    it('puts the step bar right under the block and above the feedback', () => {
+      const order = Array.from(el.querySelector('.lesson__main')!.children)
+        .map((c) =>
+          c.matches('.lesson__block')
+            ? 'block'
+            : c.matches('.lesson__stepbar')
+              ? 'bar'
+              : c.matches('app-lesson-feedback')
+                ? 'feedback'
+                : null,
+        )
+        .filter(Boolean);
+      expect(order).toEqual(['block', 'bar', 'feedback']);
+      expect(el.querySelector('.lesson__done')).toBeNull();
+      expect(el.querySelectorAll('nav.lesson__steps')).toHaveLength(0);
+    });
+
+    it('says how a manual block completes, and makes marking it the one primary', async () => {
+      const state = () =>
+        el
+          .querySelector('.lesson__state')
+          ?.textContent?.replace(/\s+/g, ' ')
+          .trim();
+      const primaries = () =>
+        Array.from(el.querySelectorAll('.btn--primary')).map((b) =>
+          b.textContent?.trim(),
+        );
+      expect(state()).toBe('Đọc xong, bấm Đánh dấu hoàn thành');
+      expect(primaries()).toEqual(['Đánh dấu hoàn thành']);
+
+      button('Đánh dấu hoàn thành')!.click();
+      await settle();
+      expect(state()).toMatch(/^Đã hoàn thành/);
+      expect(primaries()).toEqual([]);
     });
 
     it('offers the previous lesson and no next one at the last lesson', () => {
@@ -394,16 +439,30 @@ describe('Lesson', () => {
     beforeEach(() => open(lessonUrl(1)));
 
     const choose = async (title: string) => {
-      Array.from(el.querySelectorAll<HTMLElement>('app-block-list button'))
+      Array.from(el.querySelectorAll<HTMLElement>('.lesson__side .toc__block'))
         .find((b) => b.textContent?.includes(title))!
         .click();
       await settle();
     };
 
-    it('lists the blocks and starts on the first', () => {
-      const items = Array.from(el.querySelectorAll('app-block-list button'));
+    it('lists the blocks under the lesson in "Mục lục" and starts on the first', () => {
+      const items = Array.from(
+        el.querySelectorAll('.lesson__side .toc__block'),
+      );
       expect(items.length).toBe(4);
-      expect(items[0].getAttribute('aria-current')).toBe('true');
+      expect(items[0].getAttribute('aria-current')).toBe('step');
+      expect(items[0].closest('.toc__blocks-item')).not.toBeNull();
+    });
+
+    it('offers the compact block picker too, for the screens without the outline beside the content', async () => {
+      const picker = el.querySelector('app-block-list.lesson__blocks');
+      expect(picker?.textContent).toContain('Khối 1/4');
+      const select = picker!.querySelector('select')!;
+      expect(select.options.length).toBe(4);
+      select.value = select.options[2].value;
+      select.dispatchEvent(new Event('change'));
+      await settle();
+      expect(picker!.textContent).toContain('Khối 3/4');
     });
 
     it('shows the picture of an image block with the content URL and the usage alt text', async () => {
@@ -460,6 +519,23 @@ describe('Lesson', () => {
       expect(el.querySelector('app-attachment-block')).not.toBeNull();
     });
 
+    it('says a PDF completes at its last page, and leads on with the next block as the primary', () => {
+      expect(el.querySelector('.lesson__state')?.textContent?.trim()).toBe(
+        'Xem đến trang cuối để hoàn thành',
+      );
+      const primaries = Array.from(
+        el.querySelectorAll('.lesson__stepbar .btn--primary'),
+      ).map((b) => b.textContent?.trim());
+      expect(primaries).toEqual(['Khối tiếp theo']);
+    });
+
+    it('says nothing about completion on a block that completes on open', async () => {
+      await choose('Mẫu báo cáo đối soát');
+      expect(el.querySelector('.lesson__state')?.textContent?.trim()).toMatch(
+        /^(Đã hoàn thành.*)?$/,
+      );
+    });
+
     it('opens the PDF block on the content URL of its file', () => {
       expect(el.querySelector('app-pdf-block')).not.toBeNull();
       expect(pdf.opened[0]).toMatch(
@@ -470,14 +546,14 @@ describe('Lesson', () => {
 
     it('moves to a block, keeps it in the URL and closes the old one on the server', async () => {
       const process = Array.from(
-        el.querySelectorAll<HTMLElement>('app-block-list button'),
+        el.querySelectorAll<HTMLElement>('.lesson__side .toc__block'),
       ).find((b) => b.textContent?.includes('Các bước đối soát'))!;
       handle.mockClear();
       process.click();
       await settle();
 
       expect(el.querySelector('app-process-block')).not.toBeNull();
-      expect(process.getAttribute('aria-current')).toBe('true');
+      expect(process.getAttribute('aria-current')).toBe('step');
       expect(TestBed.inject(Router).url).toMatch(/block=\d+/);
       expect(
         calls(learnerEndpoints.saveProgress).map(
@@ -930,9 +1006,14 @@ describe('Lesson', () => {
       document.querySelector('.toasts, [role="status"], [role="alert"]')
         ?.textContent ?? '';
     const lessonId = () => lessons()[1].lesson.id;
+    /** The section starts closed under the step bar; these tests read what it opens to. */
+    const openFeedback = async (url: string) => {
+      await open(url);
+      await press(section().querySelector<HTMLElement>('.feedback__toggle'));
+    };
 
     it('sits after the block and reads the lesson once, for the lesson on screen', async () => {
-      await open(lessonUrl(1));
+      await openFeedback(lessonUrl(1));
       expect(section()).not.toBeNull();
       expect(sectionText()).toContain('Đánh giá & trao đổi');
       expect(sectionText()).toContain('Chưa có đánh giá');
@@ -943,7 +1024,7 @@ describe('Lesson', () => {
     });
 
     it('saves the stars, thanks the learner once and shows the new average', async () => {
-      await open(lessonUrl(1));
+      await openFeedback(lessonUrl(1));
       await press(star(4));
       expect(bodies(feedbackEndpoints.rateLesson)).toEqual([{ stars: 4 }]);
       expect(sectionText()).toContain('Đã ghi nhận 4 sao');
@@ -955,7 +1036,7 @@ describe('Lesson', () => {
     });
 
     it('keeps the last stars when the learner arrows across them', async () => {
-      await open(lessonUrl(1));
+      await openFeedback(lessonUrl(1));
       star(2).click();
       star(3).click();
       star(5).click();
@@ -972,7 +1053,7 @@ describe('Lesson', () => {
     });
 
     it('keeps one rating call in flight and stores the last choice, announcing only that', async () => {
-      await open(lessonUrl(1));
+      await openFeedback(lessonUrl(1));
       const hold = TestBed.inject(ReplyGate).hold(feedbackEndpoints.rateLesson);
       star(4).click();
       await settle();
@@ -1005,7 +1086,7 @@ describe('Lesson', () => {
     });
 
     it('sends nothing more when the learner returns to the stars already on their way', async () => {
-      await open(lessonUrl(1));
+      await openFeedback(lessonUrl(1));
       const hold = TestBed.inject(ReplyGate).hold(feedbackEndpoints.rateLesson);
       star(4).click();
       await settle();
@@ -1020,7 +1101,7 @@ describe('Lesson', () => {
     });
 
     it('sends a comment from the page on screen and lists it first', async () => {
-      await open(lessonUrl(1));
+      await openFeedback(lessonUrl(1));
       await press(
         el.querySelector<HTMLElement>('button[aria-label="Trang sau"]'),
       );
@@ -1047,7 +1128,7 @@ describe('Lesson', () => {
     });
 
     it('keeps what was typed and shows the message when the text is too short', async () => {
-      await open(lessonUrl(1));
+      await openFeedback(lessonUrl(1));
       await type('abcd');
       await send();
       expect(calls(feedbackEndpoints.sendFeedback).length).toBe(0);
@@ -1056,7 +1137,7 @@ describe('Lesson', () => {
     });
 
     it('sends a question privately, with its status and no promise of a notification', async () => {
-      await open(lessonUrl(1));
+      await openFeedback(lessonUrl(1));
       await press(tab('Hỏi giảng viên'));
       await type('Đoạn này giải thích gì?');
       await send();
@@ -1075,7 +1156,7 @@ describe('Lesson', () => {
     });
 
     it('asks before a report is sent, sends nothing on "Hủy", and sends it on confirm', async () => {
-      await open(lessonUrl(1));
+      await openFeedback(lessonUrl(1));
       await press(tab('Báo nội dung'));
       await type('Sai thông tin ở trang 1');
       await send();
@@ -1110,7 +1191,7 @@ describe('Lesson', () => {
     });
 
     it('shows a refusal of the server as a toast and keeps the text', async () => {
-      await open(lessonUrl(1));
+      await openFeedback(lessonUrl(1));
       handle.mockImplementation((endpoint, request) =>
         endpoint === feedbackEndpoints.sendFeedback
           ? backendRefusal('feedbackLimit')
@@ -1163,7 +1244,7 @@ describe('Lesson', () => {
         }
         return real()(endpoint, request);
       });
-      await open(lessonUrl(1));
+      await openFeedback(lessonUrl(1));
       const more = () =>
         Array.from(section().querySelectorAll('button')).find((b) =>
           b.textContent?.includes('Xem thêm nhận xét'),
@@ -1186,7 +1267,7 @@ describe('Lesson', () => {
           ? backendRefusal('internalError')
           : real()(endpoint, request),
       );
-      await open(lessonUrl(1));
+      await openFeedback(lessonUrl(1));
       expect(sectionText()).toContain('Không tải được đánh giá và nhận xét');
 
       handle.mockImplementation(real());

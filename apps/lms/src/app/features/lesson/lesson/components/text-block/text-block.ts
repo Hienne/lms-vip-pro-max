@@ -11,6 +11,7 @@ import { Markdown } from '../../../../../shared/content/markdown/markdown';
       <app-markdown
         [source]="body"
         [format]="block().bodyFormat ?? 'markdown'"
+        nested
       />
     } @else {
       <p class="text-block__empty">Khối này chưa có nội dung.</p>

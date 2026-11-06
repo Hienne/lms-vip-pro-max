@@ -1,52 +1,17 @@
 @use 'ui';
 
+// One row: the position, then the select taking the rest of the width.
 .blocks {
-  display: flex;
-  flex-wrap: wrap;
-  gap: ui.space(2);
-  margin: 0;
-  padding: 0;
-  list-style: none;
+  @include ui.row(3);
+  flex-wrap: nowrap;
 
-  &__item {
-    @include ui.row(2);
-    flex-wrap: nowrap;
-    max-width: 100%;
-    padding: ui.space(2) ui.space(3);
-    border: 1px solid ui.color(border);
-    border-radius: ui.radius(control);
-    background: ui.color(surface);
-    color: ui.color(text);
-    font: inherit;
-    cursor: pointer;
-
-    &:hover {
-      background: ui.color(surface-2);
-    }
-
-    &:focus-visible {
-      @include ui.focus-ring;
-    }
-
-    &--active {
-      border-color: ui.color(primary);
-      background: ui.color(primary-subtle);
-    }
-  }
-
-  &__title {
-    @include ui.truncate;
-    font-weight: ui.weight(medium);
-  }
-
-  &__meta,
-  &__state {
+  &__position {
     @include ui.text(sm, muted);
     @include ui.num;
     flex: none;
   }
 
-  &__sr {
-    @include ui.sr-only;
+  &__select {
+    @include ui.grow;
   }
 }

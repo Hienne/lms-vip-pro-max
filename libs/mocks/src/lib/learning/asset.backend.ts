@@ -23,7 +23,7 @@ const SHA256 = /^[0-9a-f]{64}$/;
 const VIDEO_SECONDS = 120;
 const PDF_PAGES = 8;
 
-/** A 1×1 grey PNG: what the mock serves for any image, since it never keeps the bytes. */
+/** A 1×1 grey PNG: what the mock serves for a seeded image, which has no bytes. */
 const PLACEHOLDER_PNG =
   'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAAAAAA6fptVAAAACklEQVR4nGM4AQAAygDJmcpdfgAAAABJRU5ErkJggg==';
 
@@ -46,6 +46,8 @@ interface UploadRecord {
   readonly expiresAt: string;
   status: AssetStatus;
   readonly parts: Map<number, { sizeBytes: number; checksumSha256: string }>;
+  /** The parts' bytes, so the finished file is served back as uploaded. */
+  readonly blobs: Map<number, Blob>;
   /** Status polls since `complete`: the first sees `processing`, the second `ready`. */
   polls: number;
 }
@@ -58,6 +60,12 @@ export interface AssetLibraryDeps {
   readonly seeded: readonly LearningAsset[];
   /** The asset ids some course draft or revision uses. */
   used(): ReadonlySet<number>;
+  /**
+   * Whether the asset is a course cover, and if so whether one of those courses is published and
+   * active (so every signed-in learner sees it in the catalogue). `undefined` when no course uses it
+   * as its cover.
+   */
+  coverOfVisibleCourse(assetId: number): boolean | undefined;
   id(): number;
 }
 
@@ -78,6 +86,8 @@ export function mediaKindOf(mimeType: string): MediaKind {
 export class AssetLibrary {
   private readonly uploads = new Map<string, UploadRecord>();
   private readonly deleted = new Set<number>();
+  /** The bytes of the files uploaded in this session; seeded files have none. */
+  private readonly bytes = new Map<number, Blob>();
 
   constructor(private readonly deps: AssetLibraryDeps) {}
 
@@ -123,6 +133,7 @@ export class AssetLibrary {
       expiresAt: new Date(now + DAY).toISOString(),
       status: 'uploading',
       parts: new Map(),
+      blobs: new Map(),
       polls: 0,
     };
     this.uploads.set(record.uploadId, record);
@@ -169,6 +180,7 @@ export class AssetLibrary {
       sizeBytes: body.size,
       checksumSha256: checksum,
     });
+    record.blobs.set(partNumber, body);
     return ok(this.view(record));
   }
 
@@ -204,6 +216,10 @@ export class AssetLibrary {
   private finish(record: UploadRecord): void {
     record.status = 'ready';
     const kind = mediaKindOf(record.mimeType);
+    const parts = [...record.blobs.entries()]
+      .sort(([a], [b]) => a - b)
+      .map(([, blob]) => blob);
+    this.bytes.set(record.assetId, new Blob(parts, { type: record.mimeType }));
     this.deps.assets.push({
       id: record.assetId,
       ownerOrgId: record.ownerOrgId,
@@ -319,16 +335,29 @@ export class AssetLibrary {
   }
 
   /**
-   * The file of an asset that exists. The mock keeps no bytes: an image comes back as a grey
-   * placeholder and any other file as a short text, enough for a preview or a download.
+   * The file of an asset that exists. A file uploaded in this session comes back with its bytes; a
+   * seeded one has none, so an image comes back as a grey placeholder and any other file as a short
+   * text, enough for a preview or a download.
+   *
+   * A course cover follows the server's rule (SPEC-learning-ui): anyone signed in may read the cover
+   * of a published, active course (the mock's catalogue shows those to everyone); the cover of a
+   * course nobody can see yet is refused to all but its uploader.
    */
   private content(request: FakeRequest): FakeReply {
-    this.deps.callerId(request);
+    const userId = this.deps.callerId(request);
     const assetId = Number(request.params['assetId']);
     const asset = [...this.deps.seeded, ...this.deps.assets].find(
       (a) => a.id === assetId,
     );
     if (!asset || this.deleted.has(assetId)) return refuse('learningNotFound');
+    if (
+      this.deps.coverOfVisibleCourse(assetId) === false &&
+      asset.uploadedBy !== userId
+    ) {
+      return refuse('accessDenied');
+    }
+    const kept = this.bytes.get(assetId);
+    if (kept) return { ...ok(null), file: kept };
     const file = asset.mimeType.startsWith('image/')
       ? new Blob(
           [Uint8Array.from(atob(PLACEHOLDER_PNG), (c) => c.charCodeAt(0))],

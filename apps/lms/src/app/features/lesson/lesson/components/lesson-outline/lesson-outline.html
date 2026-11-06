@@ -4,12 +4,15 @@
     <h3 class="toc__chapter-title">{{ chapter.title }}</h3>
     <ol class="toc__lessons">
       @for (lesson of chapter.lessons; track lesson.id) {
-      <li class="toc__lesson">
+      <li class="toc__lesson" [class.toc__lesson--current]="lesson.current">
         <span class="toc__state" aria-hidden="true">
           @if (lesson.state === 'completed') {
           <ui-icon name="check" size="sm" />
-          } @else if (lesson.state === 'in_progress') {
-          <span class="toc__dot"></span>
+          } @else {
+          <span
+            class="toc__ring"
+            [class.toc__ring--started]="lesson.state === 'in_progress'"
+          ></span>
           }
         </span>
         <a
@@ -28,7 +31,46 @@
           ('in_progress') {Đang học} @default {Chưa học} }
         </span>
       </li>
-      }
+      @if (lesson.current && blocks().length > 1) {
+      <li class="toc__blocks-item">
+        <ol class="toc__blocks" aria-label="Các khối trong bài học">
+          @for (block of blocks(); track block.id) {
+          <li>
+            <button
+              type="button"
+              class="toc__block"
+              [class.toc__block--active]="block.id === activeBlockId()"
+              [attr.aria-current]="block.id === activeBlockId() ? 'step' : null"
+              (click)="blockSelected.emit(block.id)"
+            >
+              <span class="toc__state" aria-hidden="true">
+                @if (block.status === 'completed') {
+                <ui-icon name="check" size="sm" />
+                } @else {
+                <span
+                  class="toc__ring"
+                  [class.toc__ring--started]="block.status === 'in_progress'"
+                ></span>
+                }
+              </span>
+              <span class="toc__block-text">
+                <span class="toc__block-title">{{ block.title }}</span>
+                <span class="toc__block-meta"
+                  >{{ typeLabel[block.detail.block.blockType] }} @if
+                  (block.status === 'in_progress' && block.percent) { · {{
+                  block.percent }}% }</span
+                >
+              </span>
+              <span class="toc__sr">
+                @switch (block.status) { @case ('completed') {Đã hoàn thành}
+                @case ('in_progress') {Đang học} @default {Chưa học} }
+              </span>
+            </button>
+          </li>
+          }
+        </ol>
+      </li>
+      } }
     </ol>
   </section>
   }

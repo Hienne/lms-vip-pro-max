@@ -69,7 +69,9 @@
 
 <div class="course__layout">
   <div class="course__main">
-    @if (objectives().length) {
+    @if (coverSrc(); as src) {
+    <img class="course__cover" [src]="src" alt="" />
+    } @if (objectives().length) {
     <section aria-labelledby="course-objectives">
       <h2 id="course-objectives" class="course__heading">Mục tiêu đầu ra</h2>
       <ul class="course__objectives">
@@ -125,14 +127,8 @@
     } }
   </div>
 
-  @if (store.view$() === 'enrolled' || coverSrc()) {
-  <aside
-    class="course__side"
-    [attr.aria-label]="store.view$() === 'enrolled' ? 'Tiến độ' : 'Ảnh bìa'"
-  >
-    @if (coverSrc(); as src) {
-    <img class="course__cover" [src]="src" alt="" />
-    } @if (store.view$() === 'enrolled') {
+  @if (store.view$() === 'enrolled') {
+  <aside class="course__side" aria-label="Tiến độ">
     <section uiCard class="course__progress">
       <ui-ring [value]="card.progressPercent ?? 0" [size]="112" />
       <dl class="course__facts">
@@ -174,7 +170,6 @@
       </p>
       }
     </section>
-    }
   </aside>
   }
 </div>

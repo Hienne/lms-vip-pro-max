@@ -7,7 +7,10 @@ import { ContinueCard } from './continue-card';
 const view: ContinueView = {
   courseTitle: 'Tổng quan hệ thống Core Banking',
   lessonTitle: 'Kiến trúc tổng thể',
-  context: 'Chương 1 · Tổng quan hệ thống Core Banking',
+  context: 'Tổng quan hệ thống Core Banking · Chương 1',
+  hasCover: false,
+  coverUrl: null,
+  position: { number: 2, total: 4 },
   pct: 62,
   link: '/lesson/1/3',
   query: { block: 7 },
@@ -30,17 +33,50 @@ function render(resume: ContinueView | null) {
 }
 
 describe('ContinueCard', () => {
-  it('names the lesson, its chapter and course, and shows the server percentage', () => {
+  it('names the lesson as its heading, then course and chapter, and the server percentage with the lesson position', () => {
     const el = render(view);
-    expect(el.querySelector('h2')?.textContent).toBe('Tiếp tục học');
-    expect(el.querySelector('h3')?.textContent).toContain('Kiến trúc tổng thể');
+    expect(el.querySelector('h2')?.textContent).toBe('Kiến trúc tổng thể');
     expect(el.textContent).toContain(
-      'Chương 1 · Tổng quan hệ thống Core Banking',
+      'Tổng quan hệ thống Core Banking · Chương 1',
     );
-    expect(el.textContent).toContain('62%');
+    expect(
+      el
+        .querySelector('.continue-card__pct')
+        ?.textContent?.replace(/\s+/g, ' ')
+        .trim(),
+    ).toBe('62% · Bài 2/4');
     expect(
       el.querySelector('[role=progressbar]')?.getAttribute('aria-valuenow'),
     ).toBe('62');
+  });
+
+  it('shows the cover first, as decoration, beside the text', () => {
+    const el = render({ ...view, hasCover: true, coverUrl: 'blob:cover' });
+    const card = el.querySelector('.continue-card')!;
+    expect(card.classList).toContain('continue-card--cover');
+    const image = card.firstElementChild as HTMLImageElement;
+    expect(image.tagName).toBe('IMG');
+    expect(image.getAttribute('src')).toBe('blob:cover');
+    expect(image.alt).toBe('');
+  });
+
+  it('keeps the place of a cover still being read as a plain box, and is text only without one', () => {
+    const loading = render({ ...view, hasCover: true }).querySelector(
+      '.continue-card__cover',
+    )!;
+    expect(loading.tagName).toBe('DIV');
+    expect(loading.getAttribute('aria-hidden')).toBe('true');
+    TestBed.resetTestingModule();
+    const plain = render(view);
+    expect(plain.querySelector('.continue-card__cover')).toBeNull();
+    expect(plain.querySelector('.continue-card--cover')).toBeNull();
+  });
+
+  it('leaves the position out until the lesson is known', () => {
+    const el = render({ ...view, position: null });
+    expect(el.querySelector('.continue-card__pct')?.textContent?.trim()).toBe(
+      '62%',
+    );
   });
 
   it('has one link only: "Tiếp tục học" to the lesson, with its block', () => {

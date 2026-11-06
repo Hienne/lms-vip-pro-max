@@ -33,6 +33,16 @@ export interface CourseCardView {
   readonly link: string;
   /** The cover image's address; the card has no art without one. */
   readonly coverUrl?: string | null;
+  /**
+   * The course has a cover the card is still reading: the card keeps its 16:9 place until `coverUrl`
+   * arrives, so the grid does not jump. False or absent, a card without `coverUrl` is text only.
+   */
+  readonly hasCover?: boolean;
+  /**
+   * The caller is enrolled. False, the card shows no progress (a "Chưa đăng ký" course has none);
+   * absent, it is treated as enrolled.
+   */
+  readonly enrolled?: boolean;
 }
 
 const PROGRESS_TONE: Partial<Record<CourseStatus, ProgressTone>> = {
@@ -51,7 +61,8 @@ function formatMinutes(total: number): string {
 
 /**
  * A course in a catalog or dashboard grid (the mockup's `UI.CourseCard`): the cover image when the
- * course has one, else text only (no placeholder art).
+ * course has one (a flat `surface-2` box of the same size while it loads), else text only (no
+ * placeholder art).
  * The whole card is one link to the course page.
  */
 @Component({
@@ -76,5 +87,8 @@ export class CourseCard {
   });
   protected readonly completed = computed(
     () => this.course().status === 'completed',
+  );
+  protected readonly showsProgress = computed(
+    () => this.course().enrolled !== false,
   );
 }
