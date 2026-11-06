@@ -23,6 +23,15 @@ export const bearerInterceptor: HttpInterceptorFn = (req, next) => {
   ) {
     return next(req);
   }
+  // Learner media uses the session-bound HttpOnly cookie, like the native PDF/video URLs.
+  if (
+    req.method === 'GET' &&
+    /^\/api\/v1\/learning-assets\/\d+\/content$/.test(req.url) &&
+    req.params.has('blockId') &&
+    req.params.has('enrollmentId')
+  ) {
+    return next(req);
+  }
   const token = inject(TokenStore).read();
   return next(
     token

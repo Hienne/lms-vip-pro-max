@@ -602,6 +602,29 @@ course-less questions and cross-course pools rather than discarding them. No
 migration was applied to a shared database. Deployment/proxy configuration must
 point at the upgraded backend; source environment.mockBackend stays false.
 
+## Learning media, course filters and management dashboards
+
+- Learner attachment downloads call the learning asset content endpoint with both `blockId` and
+  `enrollmentId`. The bearer interceptor leaves this GET without an Authorization header so the
+  session-bound HttpOnly media cookie authenticates it, as for video and PDF. Claim the active learning
+  session first; access, enrollment, block/revision and lease are checked by the backend. Author
+  preview without learner context continues to use Bearer authentication.
+- For an attachment block with completion mode `open`, the player sends `COMPLETE` with
+  `complete=true` only after the blob download succeeds and the same block and enrollment remain
+  active. Opening the block or a failed download does not complete an unfinished attachment. A block
+  already completed stays completed; the frontend does not calculate or overwrite progress.
+- The course-management state filter sends `draft`/`published` for revision state and
+  `paused`/`archived` for course lifecycle. Keep the filters available on a load error so the user
+  can change them or retry. Learner assigned/mandatory counts and due dates use active assignment
+  obligations whose start time has arrived; the server determines eligibility.
+- `/admin` and `/instructor` use `ManagementDashboard` and the real
+  `learningReportEndpoints.summary` response. Counts reflect the scope enforced by the backend;
+  the view provides loading, error/retry and empty states, with links to detailed reports and permitted
+  work areas. They do not derive KPI values from the currently displayed page.
+- The `TRAINING_CATALOG` function remains grant-driven. Existing databases need the backend's
+  `docs/sql/upgrade/2026-11-05-training-catalog-function.sql` deployment step; sign in again after
+  the appropriate grants are applied. Do not assume a 403 means the upgrade has already run.
+
 ## Community question and article cover images
 
 Questions, articles and lessons learned use one existing revision asset with `usage: 'cover'`. The editor uploads
