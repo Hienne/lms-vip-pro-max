@@ -199,6 +199,20 @@ export class CourseEditor implements HasUnsavedChanges {
         })),
       })),
     );
+    this.store.registerBlockDropper((blockKey) =>
+      this.model.update((value) => ({
+        ...value,
+        chapters: value.chapters.map((chapter) => ({
+          ...chapter,
+          lessons: chapter.lessons.map((lesson) => ({
+            ...lesson,
+            blocks: lesson.blocks.filter(
+              (b) => b.key !== blockKey || b.assets.length > 0,
+            ),
+          })),
+        })),
+      })),
+    );
     this.store.registerExamAttacher((quizId) => {
       this.model.update((value) => ({ ...value, finalQuizId: String(quizId) }));
       this.store.save(this.command());

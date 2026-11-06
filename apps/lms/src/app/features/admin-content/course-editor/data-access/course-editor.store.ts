@@ -270,6 +270,7 @@ export class CourseEditorStore {
     /** Where each block sits in the draft (`chapter.lesson.block`) by its key, handed over once. */
     blockPositions: signal<Signal<ReadonlyMap<string, string>> | null>(null),
     /** How the page puts a finished upload's asset into its block of the draft, handed over once. */
+    blockDropper: signal<((blockKey: string) => void) | null>(null),
     assetAttacher: signal<
       ((blockKey: string, asset: AssetValue) => void) | null
     >(null),
@@ -489,7 +490,7 @@ export class CourseEditorStore {
       this.background.publish({
         items,
         drawerOpen,
-        cancel: (id) => this.cancel(id),
+        cancel: (id) => this.cancelFromPanel(id),
         open: (id) => this.openUpload(id),
       }),
     );
@@ -870,6 +871,14 @@ export class CourseEditorStore {
     this.setAssetAttacher(attach);
   }
 
+  /**
+   * The page hands over how a block that has no file left leaves the draft, so cancelling from
+   * the panel never leaves a block without its asset to be saved.
+   */
+  registerBlockDropper(drop: (blockKey: string) => void): void {
+    this.state.blockDropper.set(drop);
+  }
+
   /** The page hands over where each block sits in its draft, so kept uploads follow reordering. */
   registerBlockPositions(positions: Signal<ReadonlyMap<string, string>>): void {
     this.setBlockPositions(positions);
@@ -1134,6 +1143,12 @@ export class CourseEditorStore {
   cancel(blockKey: string): void {
     this.release(blockKey);
     this.removeUpload(blockKey);
+  }
+
+  /** "Hủy" on the shell's panel: the upload stops, and its block, left without a file, leaves the draft. */
+  private cancelFromPanel(blockKey: string): void {
+    this.cancel(blockKey);
+    if (blockKey !== COVER_KEY) this.state.blockDropper()?.(blockKey);
   }
 
   /**

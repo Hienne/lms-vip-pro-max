@@ -2264,6 +2264,21 @@ describe('CourseEditor', () => {
         expect(registry().items$()).toEqual([]);
       });
 
+      it('drops the block of a cancelled upload, so no block without its file stays in the draft', async () => {
+        const drawer = await startPdfUpload();
+        await tap(screen.button('Lưu', drawer));
+        expect(screen.text(screen.el)).not.toContain('Thiếu tệp');
+
+        registry().cancel(registry().items$()[0].id);
+        await advance(10);
+
+        expect(screen.text(screen.el)).not.toContain('Thiếu tệp');
+        await tap(screen.button('Sửa bài học'));
+        const reopened = screen.drawer()!;
+        expect(screen.text(reopened)).not.toContain('quyen.pdf');
+        expect(screen.text(reopened)).not.toContain('Xóa khối');
+      });
+
       it('opens the lesson’s drawer on its step when the shell asks', async () => {
         const drawer = await startPdfUpload();
         await tap(screen.button('Lưu', drawer));
