@@ -3,6 +3,7 @@ import {
   assignmentEndpoints,
   courseEndpoints,
   type AssignCourseCommand,
+  type RescheduleAssignmentCommand,
 } from '@lms/contracts';
 import { backendRefusal, seedCourseDetails } from '@lms/mocks';
 import { setUpAdminScreen } from '../../../core/dev/mock-api/admin-screen.testing';
@@ -27,12 +28,15 @@ describe('Assignments', () => {
       .querySelector('app-assign-form')
       ?.closest<HTMLElement>('[role="dialog"]') ?? null;
 
-  /** Opens the assign drawer and adds org 1 with its subtree as the target. */
+  /** Opens the assign drawer on the first course and adds org 1 with its subtree as the target. */
   async function startAssigning(): Promise<HTMLElement> {
     await screen.open('/admin/assignments');
     await screen.click(screen.button('Giao khóa học'));
     const drawer = editor()!;
     expect(drawer).not.toBeNull();
+    const course = screen.field('Khóa học', drawer) as HTMLSelectElement;
+    expect(course.value).toBe('');
+    await screen.choose(course, course.options[1].value);
     await screen.choose(
       screen.field('Đơn vị', drawer) as HTMLSelectElement,
       '1',
@@ -46,18 +50,23 @@ describe('Assignments', () => {
       drawer.querySelector<HTMLButtonElement>('ui-form-actions [type=submit]')!,
     );
 
-  it('lists the assignments of the first published course for the caller’s org', async () => {
+  it('lists the caller’s org assignments across every course, then filters one course', async () => {
     await screen.open('/admin/assignments');
 
-    const courseId = Number(courseSelect().value);
-    expect(courseId).toBeGreaterThan(0);
-    expect(
-      screen.lastCall(assignmentEndpoints.courseAssignments),
-    ).toMatchObject({
-      params: { courseId: String(courseId) },
-      query: { assigningOrgId: '1', page: '0', size: '10' },
+    expect(courseSelect().value).toBe('');
+    expect(screen.lastCall(assignmentEndpoints.orgAssignments)).toMatchObject({
+      query: { assigningOrgId: '1', page: '0', size: '10', sort: 'id,desc' },
     });
+    expect(
+      screen.lastCall(assignmentEndpoints.orgAssignments)?.query,
+    ).not.toHaveProperty('courseId');
     expect(screen.text()).toContain('Chưa có lượt giao');
+
+    const courseId = courseSelect().options[1].value;
+    await screen.choose(courseSelect(), courseId);
+    expect(
+      screen.lastCall(assignmentEndpoints.orgAssignments)?.query,
+    ).toMatchObject({ courseId });
     expect(Array.from(courseSelect().options).every((o) => o.text.trim())).toBe(
       true,
     );
@@ -91,7 +100,7 @@ describe('Assignments', () => {
     expect(courseSelect().value).toBe(linked);
   });
 
-  it('assigns the published revision to the chosen targets, then closes and lists it', async () => {
+  it('assigns the published revision to the chosen targets, then closes and lists it with its counts', async () => {
     const drawer = await startAssigning();
     await screen.click(option('Nhóm học tập'));
     await screen.choose(
@@ -129,7 +138,9 @@ describe('Assignments', () => {
     expect(editor()).toBeNull();
     expect(screen.drawer()).toBeNull();
     expect(rows()[0]).toContain('Cán bộ mới quý IV');
-    expect(rows()[0]).toContain('Đang hiệu lực');
+    expect(rows()[0]).toContain('Đơn vị ·');
+    expect(rows()[0]).toContain('và 1 đối tượng khác');
+    expect(rows()[0]).toMatch(/\d+% · \d+\/\d+ xong/);
     const firstRow = screen.el.querySelector('tbody tr')!;
     const date = (iso: string) =>
       new Date(iso).toLocaleDateString('vi-VN', {
@@ -320,5 +331,69 @@ describe('Assignments', () => {
     });
     expect(screen.drawer()).toBeNull();
     expect(rows().some((r) => r.includes('Kế toán giao dịch'))).toBe(true);
+  });
+
+  /** Assigns org 1 to the first course and returns the listed row. */
+  async function assignedRow(): Promise<HTMLElement> {
+    const drawer = await startAssigning();
+    await submit(drawer);
+    return screen.el.querySelector<HTMLElement>('tbody tr')!;
+  }
+
+  it('reminds the learners who have not finished, once a day', async () => {
+    const row = await assignedRow();
+    await screen.click(screen.button('Nhắc học', row));
+    expect(screen.callsTo(assignmentEndpoints.remindAssignment)).toBe(1);
+    expect(screen.text(document.body)).toMatch(/Đã gửi nhắc \d+ học viên/);
+
+    await screen.click(screen.button('Nhắc học', row));
+    expect(screen.text(document.body)).toContain('Không có học viên cần nhắc');
+  });
+
+  it('changes the schedule with the assignment version', async () => {
+    const row = await assignedRow();
+    await screen.click(screen.button('Sửa hạn', row));
+    const drawer = screen.drawer()!;
+    expect(screen.text(drawer)).toContain('Sửa lượt giao');
+    await screen.type(
+      screen.field('Hạn hoàn thành', drawer) as HTMLInputElement,
+      '2027-02-01',
+    );
+    await submit(drawer);
+
+    const body = screen.lastCall(assignmentEndpoints.rescheduleAssignment)
+      ?.body as RescheduleAssignmentCommand;
+    expect(body).toMatchObject({ expectedVersion: 0, reminderEnabled: true });
+    expect(new Date(body.dueAt!).getFullYear()).toBe(2027);
+    expect(screen.drawer()).toBeNull();
+  });
+
+  it('revokes a whole assignment with a reason', async () => {
+    const row = await assignedRow();
+    await screen.click(
+      row.querySelector<HTMLButtonElement>('button[uiIconButton]')!,
+    );
+    const dialog = screen.drawer()!;
+    expect(screen.text(dialog)).toContain('Thu hồi lượt giao?');
+    await submit(dialog);
+    expect(screen.text(dialog)).toContain('Nhập lý do thu hồi.');
+    expect(screen.callsTo(assignmentEndpoints.revokeAssignment)).toBe(0);
+
+    await screen.type(
+      screen.field('Lý do thu hồi', dialog) as HTMLTextAreaElement,
+      'Đổi kế hoạch đào tạo',
+    );
+    await submit(dialog);
+
+    expect(screen.lastCall(assignmentEndpoints.revokeAssignment)?.body).toEqual(
+      {
+        reason: 'Đổi kế hoạch đào tạo',
+      },
+    );
+    expect(screen.drawer()).toBeNull();
+    expect(rows()[0]).toContain('Đã thu hồi');
+    expect(
+      screen.button('Nhắc học', screen.el.querySelector('tbody tr')!),
+    ).toBeUndefined();
   });
 });

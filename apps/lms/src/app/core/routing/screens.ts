@@ -637,6 +637,10 @@ export const SCREEN_TABLE = {
       access: 'COURSE_MANAGEMENT',
       title: 'Tổng quan giảng viên',
       mockupPage: 'instructor',
+      load: () =>
+        import('../../features/management-dashboard/management-dashboard').then(
+          (m) => m.ManagementDashboard,
+        ),
     },
     {
       path: 'instructor/inbox',
@@ -649,6 +653,10 @@ export const SCREEN_TABLE = {
       access: 'USER_MANAGEMENT',
       title: 'Tổng quan quản trị',
       mockupPage: 'adminHome',
+      load: () =>
+        import('../../features/management-dashboard/management-dashboard').then(
+          (m) => m.ManagementDashboard,
+        ),
     },
     {
       path: 'admin/import',

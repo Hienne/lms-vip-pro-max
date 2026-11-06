@@ -9,15 +9,6 @@
   </div>
 </ui-page-header>
 
-@if (store.loadError$(); as error) {
-<ui-error-state
-  title="Không tải được danh sách khóa học"
-  [message]="error.message"
-  (retry)="store.retryLoad()"
-/>
-} @else if (store.isLoading$()) {
-<div class="courses__loading"><span uiSpinner></span></div>
-} @else {
 <section uiCard>
   <div uiCardHeader class="courses__toolbar">
     <div class="row courses__filters">
@@ -67,6 +58,15 @@
     >
   </div>
 
+  @if (store.loadError$(); as error) {
+  <ui-error-state
+    title="Không tải được danh sách khóa học"
+    [message]="error.message"
+    (retry)="store.retryLoad()"
+  />
+  } @else if (store.isLoading$()) {
+  <div class="courses__loading"><span uiSpinner></span></div>
+  } @else {
   <ui-data-table
     caption="Danh sách khóa học"
     [columns]="[
@@ -142,8 +142,8 @@
       </div>
     </ng-template>
   </ui-data-table>
+  }
 </section>
-}
 
 <ng-template
   [uiDrawer]="store.copying$() !== null"

@@ -1,0 +1,40 @@
+<ui-page-header
+  [title]="title"
+  description="Tiến độ đào tạo trong phạm vi được cấp. Số liệu theo lần học hiện tại của từng khóa."
+/>
+@if (store.loading$()) {
+<p role="status"><span uiSpinner></span> Đang tải tổng quan…</p>
+} @else if (store.error$(); as error) {
+<ui-error-state [message]="error.message" (retry)="store.retry()" />
+} @else if (store.summary$(); as summary) {
+<section uiCard aria-labelledby="training-summary">
+  <h2 id="training-summary">Tình hình học tập</h2>
+  <dl>
+    <dt>Lượt học hiện tại</dt>
+    <dd>{{ summary.counts.enrollments | fmtNum }}</dd>
+    <dt>Học viên</dt>
+    <dd>{{ summary.counts.learners | fmtNum }}</dd>
+    <dt>Hoàn thành</dt>
+    <dd>{{ summary.counts.completed | fmtNum }}</dd>
+    <dt>Đang học</dt>
+    <dd>{{ summary.counts.inProgress | fmtNum }}</dd>
+    <dt>Chưa bắt đầu</dt>
+    <dd>{{ summary.counts.notStarted | fmtNum }}</dd>
+    <dt>Quá hạn</dt>
+    <dd>{{ summary.counts.overdue | fmtNum }}</dd>
+    <dt>Tỷ lệ hoàn thành</dt>
+    <dd>{{ summary.counts.completionRate | fmtPct }}</dd>
+  </dl>
+  @if (!summary.counts.enrollments) {
+  <p>Chưa có lượt học trong phạm vi được cấp.</p>
+  }
+  <a routerLink="/reports/progress">Xem tiến độ theo khóa học và học viên</a>
+</section>
+}
+<nav aria-label="Công việc đào tạo">
+  <a routerLink="/admin/courses">Quản lý khóa học</a> ·
+  <a routerLink="/admin/questions">Ngân hàng câu hỏi</a> ·
+  <a routerLink="/admin/quizzes">Quản lý bài thi</a>
+  @if (!instructor) { · <a routerLink="/admin/users">Quản lý người dùng</a> ·
+  <a routerLink="/admin/assignments">Giao khóa học</a> }
+</nav>

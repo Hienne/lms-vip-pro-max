@@ -483,11 +483,26 @@ export class LessonStore {
           params: { assetId: input.asset.asset.id },
           query: { blockId: input.blockId, enrollmentId: input.enrollmentId },
         })
-        .pipe(map((blob) => ({ blob, name: input.asset.asset.originalName }))),
+        .pipe(
+          map((blob) => ({
+            blob,
+            name: input.asset.asset.originalName,
+            blockId: input.blockId,
+            enrollmentId: input.enrollmentId,
+          })),
+        ),
     {
       errors: 'toast',
       success: (_, saved) => ({ title: 'Đã tải xuống', detail: saved.name }),
-      onSuccess: (saved) => this.saver.save(saved.blob, saved.name),
+      onSuccess: (saved) => {
+        this.saver.save(saved.blob, saved.name);
+        if (
+          this.activeBlock$()?.id === saved.blockId &&
+          this.card$()?.enrollmentId === saved.enrollmentId
+        ) {
+          this.channel.send({ type: 'COMPLETE', complete: true });
+        }
+      },
     },
   );
 

@@ -146,6 +146,29 @@ export const LearningGroupMemberSchema = z.object({
 });
 export type LearningGroupMember = z.infer<typeof LearningGroupMemberSchema>;
 
+/**
+ * One row of an org's assignment list: the course and revision title it assigned, its targets and the
+ * server's counts over active recipients (`completed` by enrolment status, `overdue` past the
+ * recipient's due date and not completed).
+ */
+export const AssignmentSummarySchema = z.object({
+  assignment: CourseAssignmentSchema,
+  courseCode: z.string().nullish(),
+  courseTitle: z.string().nullish(),
+  targets: z.array(AssignmentTargetSchema),
+  people: z.number().int().nonnegative(),
+  completed: z.number().int().nonnegative(),
+  progressPercent: z.number().int().min(0).max(100),
+  overdue: z.number().int().nonnegative(),
+});
+export type AssignmentSummary = z.infer<typeof AssignmentSummarySchema>;
+
+/** How many learners a manual reminder reached; repeats on the same day reach nobody new. */
+export const RemindResultSchema = z.object({
+  reminded: z.number().int().nonnegative(),
+});
+export type RemindResult = z.infer<typeof RemindResultSchema>;
+
 /** A group with its current members. */
 export const GroupDetailSchema = z.object({
   group: LearningGroupSchema,
@@ -230,3 +253,34 @@ export const ReplaceMembersCommandSchema = z.object({
     .max(ASSIGNMENT_LIMITS.groupMembers),
 });
 export type ReplaceMembersCommand = z.infer<typeof ReplaceMembersCommandSchema>;
+
+/** Sorts the org assignment list accepts. */
+export const ASSIGNMENT_SORTS = ['id', 'startAt', 'dueAt', 'title'] as const;
+
+/** An org's assignments across courses, optionally of one course. */
+export const ListOrgAssignmentsQuerySchema = PageQuerySchema.extend({
+  assigningOrgId: z.number().int().positive(),
+  courseId: z.number().int().positive().optional(),
+});
+export type ListOrgAssignmentsQuery = z.infer<
+  typeof ListOrgAssignmentsQuerySchema
+>;
+
+/**
+ * Replaces an active assignment's schedule for it and its active recipients; `expectedVersion` is the
+ * assignment's `rowVersion`. No `dueAt` means no deadline.
+ */
+export const RescheduleAssignmentCommandSchema = z.object({
+  expectedVersion: z.number().int().nonnegative(),
+  startAt: z.iso.datetime({ offset: true }),
+  dueAt: z.iso.datetime({ offset: true }).optional(),
+  reminderEnabled: z.boolean(),
+  reminderDaysBefore: z
+    .number()
+    .int()
+    .min(0)
+    .max(ASSIGNMENT_LIMITS.reminderDaysBefore),
+});
+export type RescheduleAssignmentCommand = z.infer<
+  typeof RescheduleAssignmentCommandSchema
+>;
