@@ -1,9 +1,6 @@
-@if (store.assigning$(); as assigning) {
-<app-assign-form [courseId]="assigning.courseId" />
-} @else {
 <ui-page-header
-  title="Giao khóa học"
-  description="Quản lý lượt giao, đối tượng học và hạn hoàn thành."
+  title="Giao học & hạn hoàn thành"
+  description="Giao khóa học cho cá nhân, nhóm, phòng hoặc đơn vị."
 >
   <div slot="actions">
     @if (store.tab$() === 'groups') {
@@ -38,8 +35,6 @@
     </div>
   </ui-tabs>
 </section>
-
-}
 
 <ng-template #assignmentsPanel>
   @if (store.loadError$(); as error) {
@@ -91,8 +86,7 @@
         caption="Lượt giao khóa học"
         [columns]="[
         { key: 'title', label: 'Đợt giao', sortable: false },
-        { key: 'start', label: 'Bắt đầu', sortable: false },
-        { key: 'due', label: 'Hạn hoàn thành', sortable: false },
+        { key: 'time', label: 'Thời gian', sortable: false },
         { key: 'requirement', label: 'Yêu cầu', sortable: false },
         { key: 'status', label: 'Trạng thái', sortable: false },
         { key: 'actions', label: 'Thao tác', kind: 'actions' },
@@ -104,14 +98,9 @@
         (pageChange)="store.goToPage($event)"
         (pageSizeChange)="store.changePageSize($event)"
       >
-        <ui-empty
-          slot="empty"
-          variant="inline"
-          title="Khóa học này chưa được giao"
-          description="Chọn đối tượng học và hạn hoàn thành để giao khóa học này."
-        >
-          <button uiButton variant="ghost" (click)="store.startAssign()">
-            Giao khóa học này <ui-icon name="arrow-right" size="sm" />
+        <ui-empty slot="empty" variant="inline" title="Chưa có lượt giao">
+          <button uiButton variant="primary" (click)="store.startAssign()">
+            Giao khóa học
           </button>
         </ui-empty>
         <ng-template uiDataTableCell="title" [of]="store.rows$()" let-row>
@@ -126,18 +115,12 @@
             Giao ngày {{ row.assignment.createTime | fmtDate }}
           </div>
         </ng-template>
-        <ng-template uiDataTableCell="start" [of]="store.rows$()" let-row>
-          <span class="assignments__date">
-            {{ row.assignment.startAt | fmtDate }}
-          </span>
-        </ng-template>
-        <ng-template uiDataTableCell="due" [of]="store.rows$()" let-row>
+        <ng-template uiDataTableCell="time" [of]="store.rows$()" let-row>
           <div class="assignments__deadline">
-            @if (row.assignment.dueAt) {
             <span class="assignments__date">
-              {{ row.assignment.dueAt | fmtDate }}
+              {{ row.assignment.startAt | fmtDate }} → {{ row.assignment.dueAt |
+              fmtDate }}
             </span>
-            }
             <app-due-date [dueAt]="row.assignment.dueAt" relativeOnly />
           </div>
         </ng-template>
@@ -234,6 +217,27 @@
     </ui-data-table>
   </section>
   }
+</ng-template>
+
+<ng-template
+  [uiDrawer]="store.assigning$() !== null"
+  uiDrawerTitle="Giao khóa học"
+  uiDrawerSize="lg"
+  [uiDrawerFooter]="assignFooter"
+  [uiDrawerBusy]="store.isAssigning$()"
+  uiDrawerBusyLabel="Đang giao khóa học…"
+  (uiDrawerDismiss)="store.cancelAssign()"
+>
+  <app-assign-form [courseId]="store.assigning$()?.courseId" />
+</ng-template>
+<ng-template #assignFooter let-close="close">
+  <ui-form-actions
+    formId="assign-form"
+    submitLabel="Giao khóa học"
+    cancelLabel="Hủy"
+    [saving]="store.isAssigning$()"
+    (cancel)="close()"
+  />
 </ng-template>
 
 <ng-template
