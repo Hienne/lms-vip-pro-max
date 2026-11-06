@@ -1,13 +1,11 @@
-import { DatePipe } from '@angular/common';
 import {
   afterRenderEffect,
   Component,
-  ElementRef,
   inject,
   untracked,
   viewChild,
 } from '@angular/core';
-import { Alert, Button, ErrorState, PageHeader, Tabs, TabPanel } from '@lms/ui';
+import { Alert, Button, ErrorState, PageHeader } from '@lms/ui';
 import { RoomCanvas } from './components/room-canvas/room-canvas';
 import { RoomComposer } from './components/room-composer/room-composer';
 import { RoomJoin } from './components/room-join/room-join';
@@ -18,14 +16,11 @@ import { ChatRoomStore } from './data-access/chat-room.store';
   imports: [
     Alert,
     Button,
-    DatePipe,
     ErrorState,
     PageHeader,
     RoomCanvas,
     RoomComposer,
     RoomJoin,
-    Tabs,
-    TabPanel,
   ],
   providers: [ChatRoomStore],
   templateUrl: './chat-room.html',
@@ -35,20 +30,28 @@ import { ChatRoomStore } from './data-access/chat-room.store';
 export class ChatRoom {
   protected readonly store = inject(ChatRoomStore);
   private readonly composer = viewChild(RoomComposer);
-  private readonly messages = viewChild<ElementRef<HTMLDivElement>>('messages');
+  private readonly canvas = viewChild(RoomCanvas);
   constructor() {
     afterRenderEffect(() => {
-      this.store.chats$();
-      const messages = this.messages();
+      const chatting = this.store.chatOpen$();
+      const composer = this.composer();
       untracked(() => {
-        if (messages)
-          messages.nativeElement.scrollTop =
-            messages.nativeElement.scrollHeight;
+        if (chatting && composer) {
+          if (document.pointerLockElement) document.exitPointerLock();
+          composer.focus();
+        }
       });
     });
   }
   protected shortcut(event: KeyboardEvent): void {
-    if (event.key === 'Escape') (document.activeElement as HTMLElement)?.blur();
+    if (event.isComposing || event.repeat) return;
+    if (event.key === 'Escape' && document.pointerLockElement)
+      document.exitPointerLock();
+    if (event.key === 'Escape' && this.store.chatOpen$()) {
+      event.preventDefault();
+      this.store.closeChat();
+      this.canvas()?.focusRoom();
+    }
     if (
       event.key === 'Enter' &&
       this.store.online$() &&
@@ -57,7 +60,7 @@ export class ChatRoom {
       )
     ) {
       event.preventDefault();
-      this.composer()?.focus();
+      this.store.openChat();
     }
   }
 }

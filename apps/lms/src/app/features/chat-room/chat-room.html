@@ -1,6 +1,6 @@
 <ui-page-header
   title="Phòng học chung"
-  description="Di chuyển trong phòng 2D và trò chuyện với người đang tham gia."
+  description="Cùng học và trò chuyện trong phòng 3D hoặc bản đồ 2D."
 >
   <div slot="actions" class="row">
     <button uiButton (click)="store.share()">
@@ -25,85 +25,71 @@
 } @if (store.error$(); as error) { <ui-alert tone="warning" [title]="error" /> }
 @if (store.ticketError$(); as error) {
 <ui-alert tone="danger" [title]="error.message" /> }
-<div class="chat-room__status" role="status">
-  <span
+<div class="chat-room__status">
+  <span role="status"
     >{{ store.statusLabel$() }} · {{ store.players$().length }} người trong
     phòng</span
   >
-  @if (store.entered$() && !store.online$()) {
-  <button
-    uiButton
-    size="sm"
-    [disabled]="store.isConnecting$()"
-    (click)="store.retryConnection()"
-  >
-    Kết nối lại
-  </button>
-  }
+  <div class="row">
+    <div class="row row--gap-1" role="group" aria-label="Góc nhìn phòng học">
+      <button
+        uiButton
+        size="sm"
+        [attr.aria-pressed]="store.viewMode$() === '3d'"
+        (click)="store.changeViewMode('3d')"
+      >
+        Góc nhìn 3D
+      </button>
+      <button
+        uiButton
+        size="sm"
+        [attr.aria-pressed]="store.viewMode$() === '2d'"
+        (click)="store.changeViewMode('2d')"
+      >
+        Bản đồ 2D
+      </button>
+    </div>
+    @if (store.entered$() && !store.online$()) {
+    <button
+      uiButton
+      size="sm"
+      [disabled]="store.isConnecting$()"
+      (click)="store.retryConnection()"
+    >
+      Kết nối lại
+    </button>
+    }
+  </div>
 </div>
-<div class="chat-room__layout">
-  <section class="chat-room__world" aria-label="Phòng học 2D">
-    <app-room-canvas
-      [map]="map"
-      [view]="store.canvas$()"
-      (moved)="store.move($event)"
-      (ready)="store.rendererReady()"
-      (failed)="store.rendererFailed($event)"
+<section class="chat-room__world" aria-label="Không gian phòng học">
+  <app-room-canvas
+    [map]="map"
+    [view]="store.canvas$()"
+    [mode]="store.viewMode$()"
+    (moved)="store.move($event)"
+    (ready)="store.rendererReady()"
+    (failed)="store.rendererFailed($event)"
+  />
+  @if (store.chatOpen$()) {
+  <div class="chat-room__composer">
+    <app-room-composer
+      [disabled]="!store.online$() || store.sending$()"
+      (sent)="store.send($event)"
+      (cancelled)="store.closeChat()"
     />
+  </div>
+  }
+  <div class="chat-room__footer">
     <p class="chat-room__hint">
       WASD hoặc phím mũi tên để di chuyển. Enter để chat, Esc để trở lại phòng.
-      Bàn và ghế chặn đường đi.
+      Bàn và ghế chặn đường đi. @if (store.viewMode$() === '3d') { Nhấp vào
+      phòng để xoay nhìn bằng chuột; trên điện thoại, kéo để nhìn quanh. }
     </p>
-  </section>
-  <aside class="chat-room__panel" aria-label="Trò chuyện và thành viên">
-    <ui-tabs
-      [tabs]="store.tabs$()"
-      label="Nội dung phòng học"
-      [selected]="store.tab$()"
-      (selectedChange)="store.setTab($event)"
-    >
-      <section uiTabPanel="chat" class="chat-room__chat">
-        <div
-          #messages
-          class="chat-room__messages"
-          role="log"
-          aria-label="Tin nhắn phòng học"
-          aria-live="polite"
-          aria-relevant="additions"
-        >
-          @for (message of store.chats$(); track message.id) {
-          <article class="chat-room__message">
-            <div class="chat-room__meta">
-              <strong>{{ message.name }}</strong>@if (message.playerId ===
-              store.me$()) { <span>(bạn)</span> }<time
-                >{{ message.at | date:'HH:mm' }}</time
-              >
-            </div>
-            <p>{{ message.text }}</p>
-          </article>
-          } @empty {
-          <p class="chat-room__empty">
-            {{ store.entered$() ? 'Chưa có tin nhắn. Hãy gửi lời chào đến mọi
-            người.' : 'Vào phòng để bắt đầu trò chuyện.' }}
-          </p>
-          }
-        </div>
-        <app-room-composer
-          [disabled]="!store.online$() || store.sending$()"
-          (sent)="store.send($event)"
-        />
-      </section>
-      <section uiTabPanel="members" class="chat-room__members">
-        @for (player of store.players$(); track player.id) {
-        <p>
-          <strong>{{ player.name }}</strong> @if (player.id === store.me$()) {
-          <span>(bạn)</span> }
-        </p>
-        } @empty {
-        <p class="chat-room__empty">Chưa có người tham gia.</p>
-        }
-      </section>
-    </ui-tabs>
-  </aside>
-</div>
+    @if (store.online$() && !store.chatOpen$()) {
+    <button uiButton size="sm" (click)="store.openChat()">Nhắn tin</button> }
+  </div>
+</section>
+<p class="sr-only" role="status" aria-live="polite">
+  {{ store.announcement$() }}
+</p>
 }

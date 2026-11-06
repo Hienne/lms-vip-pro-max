@@ -8,10 +8,10 @@ import {
 import {
   chatRoomEndpoints,
   chatRoomSocket,
-  type RoomChat,
   type RoomCommand,
   type RoomEvent,
   type RoomIdentity,
+  type RoomMovement,
   type RoomPlayer,
 } from '@lms/contracts';
 import { retry, throwError, timer } from 'rxjs';
@@ -23,9 +23,14 @@ import {
 } from '../../../core/http/endpoint-client';
 import { SessionStore } from '../../../core/session/session.store';
 import { toAppError } from '../../../core/errors/app-error';
-import type { RoomCanvasState } from './chat-room.model';
+import type {
+  RoomCanvasState,
+  RoomSpeech,
+  RoomViewMode,
+} from './chat-room.model';
 
 type ConnectionStatus = 'offline' | 'connecting' | 'online' | 'reconnecting';
+const SPEECH_DURATION_MS = 5500;
 
 @Injectable()
 export class ChatRoomStore {
@@ -39,14 +44,14 @@ export class ChatRoomStore {
     ready: signal(false),
     status: signal<ConnectionStatus>('offline'),
     players: signal<readonly RoomPlayer[]>([]),
-    chats: signal<readonly RoomChat[]>([]),
     me: signal(''),
-    lastChat: signal<RoomChat | null>(null),
+    speech: signal<Readonly<Record<string, RoomSpeech>>>({}),
+    chatOpen: signal(false),
+    viewMode: signal<RoomViewMode>('3d'),
     correction: signal<RoomCanvasState['correction']>(null),
     error: signal(''),
     copied: signal(false),
     sending: signal(false),
-    tab: signal('chat'),
     renderError: signal(''),
   };
   private readonly mapData = serverData(() =>
@@ -75,12 +80,13 @@ export class ChatRoomStore {
   readonly ready$ = this.state.ready.asReadonly();
   readonly status$ = this.state.status.asReadonly();
   readonly players$ = this.state.players.asReadonly();
-  readonly chats$ = this.state.chats.asReadonly();
+  readonly speech$ = this.state.speech.asReadonly();
+  readonly chatOpen$ = this.state.chatOpen.asReadonly();
+  readonly viewMode$ = this.state.viewMode.asReadonly();
   readonly me$ = this.state.me.asReadonly();
   readonly error$ = this.state.error.asReadonly();
   readonly copied$ = this.state.copied.asReadonly();
   readonly sending$ = this.state.sending.asReadonly();
-  readonly tab$ = this.state.tab.asReadonly();
   readonly renderError$ = this.state.renderError.asReadonly();
   readonly map$ = this.mapData.value;
   readonly isLoading$ = this.mapData.isLoading;
@@ -100,15 +106,18 @@ export class ChatRoomStore {
         reconnecting: 'Đang kết nối lại…',
       })[this.status$()],
   );
-  readonly tabs$ = computed(() => [
-    { id: 'chat', label: 'Trò chuyện' },
-    { id: 'members', label: 'Thành viên', count: this.players$().length },
-  ]);
+  readonly announcement$ = computed(() => {
+    const speech = Object.values(this.speech$()).sort(
+      (a, b) => b.expiresAt - a.expiresAt,
+    )[0];
+    return speech ? `${speech.name}: ${speech.text}` : '';
+  });
   readonly canvas$ = computed<RoomCanvasState>(() => ({
     online: this.online$(),
     me: this.me$(),
     players: this.players$(),
-    lastChat: this.state.lastChat(),
+    chatting: this.chatOpen$(),
+    speech: this.speech$(),
     correction: this.state.correction(),
   }));
 
@@ -123,6 +132,10 @@ export class ChatRoomStore {
   private generation = 0;
   private attempts = 0;
   private pongAt = 0;
+  private readonly speechTimers = new Map<
+    string,
+    ReturnType<typeof setTimeout>
+  >();
 
   constructor() {
     this.destroyRef.onDestroy(() => {
@@ -143,14 +156,17 @@ export class ChatRoomStore {
   setPlayers(value: readonly RoomPlayer[]): void {
     this.state.players.set(value);
   }
-  setChats(value: readonly RoomChat[]): void {
-    this.state.chats.set(value);
+  setSpeech(value: Readonly<Record<string, RoomSpeech>>): void {
+    this.state.speech.set(value);
   }
   setMe(value: string): void {
     this.state.me.set(value);
   }
-  setLastChat(value: RoomChat | null): void {
-    this.state.lastChat.set(value);
+  setChatOpen(value: boolean): void {
+    this.state.chatOpen.set(value);
+  }
+  setViewMode(value: RoomViewMode): void {
+    this.state.viewMode.set(value);
   }
   setCorrection(value: RoomCanvasState['correction']): void {
     this.state.correction.set(value);
@@ -163,9 +179,6 @@ export class ChatRoomStore {
   }
   setSending(value: boolean): void {
     this.state.sending.set(value);
-  }
-  setTab(value: string): void {
-    this.state.tab.set(value);
   }
   setRenderError(value: string): void {
     this.state.renderError.set(value);
@@ -200,13 +213,27 @@ export class ChatRoomStore {
     this.setRenderError(message);
     this.setReady(false);
   }
-  move(position: { x: number; y: number }): void {
+  changeViewMode(mode: RoomViewMode): void {
+    if (mode === this.viewMode$()) return;
+    this.closeChat();
+    this.setReady(false);
+    this.setRenderError('');
+    this.setViewMode(mode);
+  }
+  openChat(): void {
+    if (this.online$()) this.setChatOpen(true);
+  }
+  closeChat(): void {
+    this.setChatOpen(false);
+  }
+  move(position: RoomMovement): void {
     if (this.online$()) this.socket?.send({ type: 'move', ...position });
   }
   send(text: string): void {
     if (!this.online$() || this.sending$() || !text.trim()) return;
     this.setError('');
     this.socket?.send({ type: 'chat', text: text.trim() });
+    this.closeChat();
     this.setSending(true);
     this.cooldown = setTimeout(() => this.setSending(false), 800);
   }
@@ -220,9 +247,9 @@ export class ChatRoomStore {
     this.setEntered(false);
     this.setStatus('offline');
     this.setPlayers([]);
-    this.setChats([]);
+    this.clearSpeech();
     this.setMe('');
-    this.setLastChat(null);
+    this.closeChat();
     this.setCorrection(null);
     this.setError('');
   }
@@ -264,8 +291,7 @@ export class ChatRoomStore {
         this.attempts = 0;
         this.setMe(event.id);
         this.setPlayers(event.players);
-        this.setChats(event.history);
-        this.setLastChat(null);
+        this.clearSpeech();
         this.setCorrection(null);
         this.pongAt = Date.now();
         this.heartbeat = setInterval(() => {
@@ -279,11 +305,19 @@ export class ChatRoomStore {
         break;
       case 'left':
         this.setPlayers(this.players$().filter((p) => p.id !== event.id));
+        this.clearSpeech(event.id);
         break;
       case 'moved':
         this.setPlayers(
           this.players$().map((p) =>
-            p.id === event.id ? { ...p, x: event.x, y: event.y } : p,
+            p.id === event.id
+              ? {
+                  ...p,
+                  x: event.x,
+                  y: event.y,
+                  facing: event.facing ?? p.facing,
+                }
+              : p,
           ),
         );
         break;
@@ -291,8 +325,21 @@ export class ChatRoomStore {
         this.setCorrection({ x: event.x, y: event.y });
         break;
       case 'chat':
-        this.setChats([...this.chats$(), event].slice(-100));
-        this.setLastChat(event);
+        this.setSpeech({
+          ...this.speech$(),
+          [event.playerId]: {
+            ...event,
+            expiresAt: Date.now() + SPEECH_DURATION_MS,
+          },
+        });
+        clearTimeout(this.speechTimers.get(event.playerId));
+        this.speechTimers.set(
+          event.playerId,
+          setTimeout(
+            () => this.clearSpeech(event.playerId),
+            SPEECH_DURATION_MS,
+          ),
+        );
         break;
       case 'error':
         this.setError(event.message);
@@ -306,6 +353,8 @@ export class ChatRoomStore {
     this.stopSocket();
     this.setPlayers([]);
     this.setMe('');
+    this.clearSpeech();
+    this.closeChat();
     if (!this.active) return;
     if ([1002, 1008, 1013].includes(code) || this.attempts >= 6) {
       this.active = false;
@@ -331,5 +380,18 @@ export class ChatRoomStore {
     clearInterval(this.heartbeat);
     this.socket?.close();
     this.socket = undefined;
+  }
+  private clearSpeech(playerId?: string): void {
+    if (playerId) {
+      clearTimeout(this.speechTimers.get(playerId));
+      this.speechTimers.delete(playerId);
+      const remaining = { ...this.speech$() };
+      delete remaining[playerId];
+      this.setSpeech(remaining);
+    } else {
+      this.speechTimers.forEach((timer) => clearTimeout(timer));
+      this.speechTimers.clear();
+      this.setSpeech({});
+    }
   }
 }
