@@ -18,7 +18,8 @@ import {
   type FakeReply,
   type FakeRequest,
 } from '@lms/mocks';
-import { NEVER } from 'rxjs';
+import { NEVER, of } from 'rxjs';
+import { LeavePrompt } from '../../../core/routing/unsaved-changes.guard';
 import { fakeSession } from '../../../core/session/session.testing';
 import { setUpAdminScreen } from '../../../core/dev/mock-api/admin-screen.testing';
 import { MockBackend } from '../../../core/dev/mock-api/mock-api.interceptor';
@@ -2215,6 +2216,76 @@ describe('CourseEditor', () => {
         expect(screen.drawer()).toBeNull();
         expect(footerText()).toContain('Còn 1 tệp đang tải');
         expect(screen.callsTo(assetEndpoints.cancelUpload)).toBe(0);
+      });
+    });
+
+    describe('leaving the editor while a file uploads', () => {
+      const LEAVE_MESSAGE =
+        'Còn 1 tệp đang tải. Rời trang sẽ dừng tải; lần sau mở lại, chọn lại đúng tệp để tải tiếp.';
+      const askOnLeave = (leave: boolean) => {
+        const ask = vi.fn((_message?: string) => of(leave));
+        TestBed.inject(LeavePrompt).use(ask);
+        return ask;
+      };
+      const leave = async () => {
+        const router = TestBed.inject(Router);
+        const result = router.navigateByUrl('/admin/courses');
+        await advance(10);
+        return result;
+      };
+
+      it('asks once, with the number of files, and staying keeps the upload running', async () => {
+        const drawer = await startPdfUpload();
+        await tap(screen.button('Lưu', drawer));
+        const ask = askOnLeave(false);
+
+        expect(await leave()).toBe(false);
+        expect(ask).toHaveBeenCalledTimes(1);
+        expect(ask).toHaveBeenCalledWith(LEAVE_MESSAGE);
+        expect(screen.url()).toBe('/admin/courses/6/edit');
+        expect(footerText()).toContain('Còn 1 tệp đang tải');
+      });
+
+      it('asks once even with unsaved changes too', async () => {
+        const drawer = await startPdfUpload();
+        await tap(screen.button('Lưu', drawer));
+        expect(screen.page<CourseEditor>().hasUnsavedChanges()).toBe(true);
+        const ask = askOnLeave(false);
+
+        await leave();
+        expect(ask).toHaveBeenCalledTimes(1);
+      });
+
+      it('leaves when confirmed: the upload stops and stays resumable', async () => {
+        const drawer = await startPdfUpload();
+        await tap(screen.button('Lưu', drawer));
+        askOnLeave(true);
+
+        expect(await leave()).toBe(true);
+        expect(screen.url()).toBe('/admin/courses');
+        expect(
+          JSON.parse(localStorage.getItem('lms.asset-uploads.v1.000002.6')!),
+        ).toHaveLength(1);
+      });
+
+      it('warns on reload and tab close only while uploads run', async () => {
+        const drawer = await startPdfUpload();
+        await tap(screen.button('Lưu', drawer));
+        const page = screen.page<CourseEditor>();
+        expect(page.hasUnsavedChanges()).toBe(true);
+
+        await finishUploads();
+        await screen.click(screen.button('Lưu nháp'));
+        expect(page.hasUnsavedChanges()).toBe(false);
+      });
+
+      it('does not ask without uploads or changes', async () => {
+        await screen.open('/admin/courses/6/edit');
+        const ask = askOnLeave(false);
+        vi.useFakeTimers();
+
+        expect(await leave()).toBe(true);
+        expect(ask).not.toHaveBeenCalled();
       });
     });
 

@@ -226,8 +226,18 @@ export class CourseEditor implements HasUnsavedChanges {
       : undefined;
   });
 
+  /** Unsaved edits, or files still uploading (leaving stops them): one question for both. */
   hasUnsavedChanges(): boolean {
-    return !this.store.left$() && this.dirty();
+    return (
+      !this.store.left$() && (this.dirty() || this.store.pendingUploads$() > 0)
+    );
+  }
+
+  leaveMessage(): string | undefined {
+    const pending = this.store.pendingUploads$();
+    return pending
+      ? `Còn ${pending} tệp đang tải. Rời trang sẽ dừng tải; lần sau mở lại, chọn lại đúng tệp để tải tiếp.`
+      : undefined;
   }
 
   /** "Tiếp tục": when the step stays because of an error, the first one gets focus. */
