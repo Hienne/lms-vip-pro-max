@@ -322,6 +322,7 @@
       />
       <app-lesson-outline
         [chapters]="store.outline$()"
+        [finalQuizId]="store.finalQuizId$()"
         [blocks]="store.blocks$()"
         [activeBlockId]="store.activeBlock$()?.id"
         (blockSelected)="store.chooseBlock($event)"

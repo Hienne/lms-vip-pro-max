@@ -1,34 +1,18 @@
 @use 'ui';
 
 .toc {
-  &__chapter {
-    margin-bottom: ui.space(4);
-  }
-
-  &__chapter-title {
-    @include ui.text(sm, muted);
-    margin: 0 0 ui.space(2);
-    font-weight: ui.weight(medium);
-  }
-
-  &__lessons {
-    @include ui.stack(1);
-    margin: 0;
-    padding: 0;
-    list-style: none;
-  }
-
-  &__lesson {
+  // The state mark and a small note sit at the end of a tree row.
+  &__trailing {
     @include ui.row(2);
+    flex: none;
     flex-wrap: nowrap;
-    align-items: flex-start;
-    padding-inline: ui.space(2);
-    border-radius: ui.radius(sm);
+    margin-inline-start: auto;
+  }
 
-    // The lesson on screen is a filled row, so it reads without its colour too.
-    &--current {
-      background: ui.color(primary-subtle);
-    }
+  &__note {
+    @include ui.text(xs, muted);
+    @include ui.num;
+    white-space: nowrap;
   }
 
   &__state {
@@ -61,88 +45,6 @@
         content: '';
       }
     }
-  }
-
-  &__title {
-    @include ui.grow;
-    padding-block: ui.space(1);
-    color: ui.color(text);
-    text-decoration: none;
-
-    &:is(a):hover {
-      color: ui.color(primary);
-      text-decoration: underline;
-    }
-
-    &:is(a):focus-visible {
-      @include ui.focus-ring;
-    }
-
-    &--current {
-      color: ui.color(primary);
-      font-weight: ui.weight(semibold);
-    }
-  }
-
-  // The current lesson's blocks, indented under it: the same marks, a smaller title and the kind.
-  &__blocks-item {
-    list-style: none;
-  }
-
-  &__blocks {
-    @include ui.stack(1);
-    margin: 0;
-    padding: 0 0 0 ui.space(5);
-    list-style: none;
-  }
-
-  &__block {
-    @include ui.row(2);
-    flex-wrap: nowrap;
-    align-items: flex-start;
-    width: 100%;
-    padding: ui.space(1) ui.space(2);
-    border: 0;
-    border-radius: ui.radius(sm);
-    background: none;
-    color: ui.color(text);
-    font: inherit;
-    text-align: start;
-    cursor: pointer;
-
-    &:hover {
-      background: ui.color(surface-2);
-    }
-
-    &:focus-visible {
-      @include ui.focus-ring;
-    }
-
-    &--active {
-      font-weight: ui.weight(semibold);
-    }
-  }
-
-  &__block-text {
-    @include ui.grow;
-    display: flex;
-    flex-direction: column;
-  }
-
-  &__block-title {
-    @include ui.text(sm);
-  }
-
-  &__block-meta {
-    @include ui.text(xs, muted);
-    @include ui.num;
-    font-weight: ui.weight(regular);
-  }
-
-  &__kind {
-    margin-inline-end: ui.space(1);
-    vertical-align: text-bottom;
-    color: ui.color(text-muted);
   }
 
   &__sr {

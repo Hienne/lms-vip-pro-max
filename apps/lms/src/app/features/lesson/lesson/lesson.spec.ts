@@ -438,20 +438,28 @@ describe('Lesson', () => {
   describe('a lesson with several blocks', () => {
     beforeEach(() => open(lessonUrl(1)));
 
+    // A block is a row at the third level of the outline tree: chapter, lesson, block.
+    const blockRows = () =>
+      Array.from(
+        el.querySelectorAll<HTMLElement>(
+          '.lesson__side [role="treeitem"][aria-level="3"]',
+        ),
+      );
     const choose = async (title: string) => {
-      Array.from(el.querySelectorAll<HTMLElement>('.lesson__side .toc__block'))
+      blockRows()
         .find((b) => b.textContent?.includes(title))!
+        .querySelector<HTMLElement>('.tree__node')!
         .click();
       await settle();
     };
 
     it('lists the blocks under the lesson in "Mục lục" and starts on the first', () => {
-      const items = Array.from(
-        el.querySelectorAll('.lesson__side .toc__block'),
-      );
+      const items = blockRows();
       expect(items.length).toBe(4);
-      expect(items[0].getAttribute('aria-current')).toBe('step');
-      expect(items[0].closest('.toc__blocks-item')).not.toBeNull();
+      expect(items[0].getAttribute('aria-selected')).toBe('true');
+      expect(
+        items[0].parentElement?.closest('[role="treeitem"]'),
+      ).not.toBeNull();
     });
 
     it('offers the compact block picker too, for the screens without the outline beside the content', async () => {
@@ -545,15 +553,15 @@ describe('Lesson', () => {
     });
 
     it('moves to a block, keeps it in the URL and closes the old one on the server', async () => {
-      const process = Array.from(
-        el.querySelectorAll<HTMLElement>('.lesson__side .toc__block'),
-      ).find((b) => b.textContent?.includes('Các bước đối soát'))!;
+      const process = blockRows().find((b) =>
+        b.textContent?.includes('Các bước đối soát'),
+      )!;
       handle.mockClear();
-      process.click();
+      process.querySelector<HTMLElement>('.tree__node')!.click();
       await settle();
 
       expect(el.querySelector('app-process-block')).not.toBeNull();
-      expect(process.getAttribute('aria-current')).toBe('step');
+      expect(process.getAttribute('aria-selected')).toBe('true');
       expect(TestBed.inject(Router).url).toMatch(/block=\d+/);
       expect(
         calls(learnerEndpoints.saveProgress).map(

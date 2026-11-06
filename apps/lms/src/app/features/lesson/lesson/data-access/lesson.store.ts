@@ -240,6 +240,10 @@ export class LessonStore {
 
   // Selectors
   readonly card$ = computed(() => this.courseData.value()?.card);
+  /** The `FINAL_EXAM` the course must pass to complete, when its revision has one. */
+  readonly finalQuizId$ = computed(
+    () => this.courseData.value()?.content.finalQuizId ?? null,
+  );
   readonly detail$ = this.detailData.value;
   readonly loadError$ = computed(
     () => this.courseData.error() ?? this.detailData.error(),
