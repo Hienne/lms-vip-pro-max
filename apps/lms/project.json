@@ -16,6 +16,7 @@
         "tsConfig": "apps/lms/tsconfig.app.json",
         "webWorkerTsConfig": "apps/lms/tsconfig.worker.json",
         "inlineStyleLanguage": "scss",
+        "allowedCommonJsDependencies": ["phaser"],
         "assets": [
           {
             "glob": "**/*",

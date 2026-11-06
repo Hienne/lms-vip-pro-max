@@ -161,6 +161,7 @@
   &__footer {
     flex: none;
     display: flex;
+    flex-wrap: wrap;
     align-items: center;
     gap: ui.space(2);
     padding: ui.space(4);
@@ -172,7 +173,8 @@
     }
   }
 
-  &__design-link {
+  &__design-link,
+  &__room-link {
     @include ui.text(xs);
     flex: 1 1 auto;
     display: flex;
@@ -188,6 +190,13 @@
 
     &:focus-visible {
       outline-color: ui.color(nav-indicator);
+    }
+  }
+
+  &__room-link {
+    flex-basis: 100%;
+    &[aria-current='page'] {
+      color: ui.color(nav-strong);
     }
   }
 

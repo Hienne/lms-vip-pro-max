@@ -526,6 +526,13 @@ export const SCREEN_TABLE = {
    */
   open: [
     {
+      path: 'chat-room',
+      title: 'Phòng học chung',
+      mockupPage: 'chatRoom',
+      load: () =>
+        import('../../features/chat-room/chat-room').then((m) => m.ChatRoom),
+    },
+    {
       path: 'login',
       title: 'Đăng nhập',
       mockupPage: 'login',

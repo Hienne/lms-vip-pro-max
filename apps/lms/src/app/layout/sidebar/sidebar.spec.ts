@@ -83,7 +83,7 @@ describe('Sidebar', () => {
     expect(el.querySelector('.sidebar__toggle')).not.toBeNull();
   });
 
-  it('renders no footer without dev tools and without the collapse button', () => {
+  it('keeps the classroom link available without dev tools or the collapse button', () => {
     TestBed.configureTestingModule({
       providers: [
         provideRouter([]),
@@ -95,6 +95,10 @@ describe('Sidebar', () => {
     fixture.componentRef.setInput('roleText', 'Học viên');
     fixture.detectChanges();
 
-    expect(fixture.nativeElement.querySelector('.sidebar__footer')).toBeNull();
+    const link: HTMLAnchorElement = fixture.nativeElement.querySelector(
+      '.sidebar__room-link',
+    );
+    expect(link.getAttribute('href')).toBe('/chat-room');
+    expect(link.textContent).toContain('Phòng học chung');
   });
 });

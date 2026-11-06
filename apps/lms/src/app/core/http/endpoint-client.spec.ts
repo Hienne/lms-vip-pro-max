@@ -51,6 +51,81 @@ const ping = defineEndpoint({
   response: z.literal(true),
 });
 
+describe('EndpointClient WebSocket transport', () => {
+  const sockets: FakeSocket[] = [];
+  class FakeSocket {
+    static readonly OPEN = 1;
+    readonly readyState = 1;
+    onopen: (() => void) | null = null;
+    onmessage: ((event: MessageEvent) => void) | null = null;
+    onclose: ((event: { code: number }) => void) | null = null;
+    onerror: (() => void) | null = null;
+    readonly send = vi.fn();
+    readonly close = vi.fn();
+    constructor(readonly url: URL) {
+      sockets.push(this);
+    }
+  }
+  const endpoint = {
+    path: '/api/v1/test/socket',
+    request: z.object({ type: z.literal('ping') }),
+    response: z.object({ type: z.literal('pong') }),
+  };
+  const handled: unknown[] = [];
+  beforeEach(() => {
+    sockets.length = 0;
+    handled.length = 0;
+    vi.stubGlobal('WebSocket', FakeSocket);
+    TestBed.configureTestingModule({
+      providers: [
+        provideAppConfig(testAppConfig()),
+        provideHttpClient(),
+        provideHttpClientTesting(),
+        {
+          provide: ErrorHandler,
+          useValue: { handleError: (error: unknown) => handled.push(error) },
+        },
+      ],
+    });
+  });
+  afterEach(() => vi.unstubAllGlobals());
+  it('uses a same-origin ticket and parses both directions', () => {
+    const observer = { opened: vi.fn(), message: vi.fn(), closed: vi.fn() };
+    const connection = TestBed.inject(EndpointClient).connect(
+      endpoint,
+      'one-use-ticket',
+      observer,
+    );
+    const socket = sockets[0];
+    socket.onopen?.();
+    connection.send({ type: 'ping' });
+    socket.onmessage?.(
+      new MessageEvent('message', { data: '{"type":"pong"}' }),
+    );
+    expect(socket.url.origin).toBe(location.origin.replace(/^http/, 'ws'));
+    expect(socket.url.searchParams.get('ticket')).toBe('one-use-ticket');
+    expect(socket.send).toHaveBeenCalledWith('{"type":"ping"}');
+    expect(observer.message).toHaveBeenCalledWith({ type: 'pong' });
+    connection.close();
+    expect(socket.onmessage).toBeNull();
+    expect(socket.onclose).toBeNull();
+  });
+  it('reports invalid server data and closes the socket', () => {
+    const observer = { opened: vi.fn(), message: vi.fn(), closed: vi.fn() };
+    TestBed.inject(EndpointClient).connect(
+      endpoint,
+      'one-use-ticket',
+      observer,
+    );
+    sockets[0].onmessage?.(
+      new MessageEvent('message', { data: '{"type":"unexpected"}' }),
+    );
+    expect(handled[0]).toBeInstanceOf(ContractError);
+    expect(observer.message).not.toHaveBeenCalled();
+    expect(sockets[0].close).toHaveBeenCalledWith(1002);
+  });
+});
+
 const upload = defineEndpoint({
   method: 'post',
   path: '/api/files',

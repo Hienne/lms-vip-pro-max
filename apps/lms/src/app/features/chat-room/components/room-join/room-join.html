@@ -1,0 +1,26 @@
+<form class="room-join" [formRoot]="joinForm">
+  <ui-field
+    label="Tên hiển thị"
+    required
+    hint="Tên xuất hiện trên đầu nhân vật. Tối đa 24 ký tự."
+  >
+    <input
+      uiInput
+      [formField]="joinForm.name"
+      autocomplete="nickname"
+      placeholder="Nhập tên của bạn"
+    />
+  </ui-field>
+  <ui-field label="Màu nhân vật">
+    <select uiSelect [formField]="joinForm.color">
+      <option value="teal">Xanh ngọc</option>
+      <option value="slate">Xám</option>
+      <option value="amber">Nâu vàng</option>
+      <option value="blue">Xanh dương</option>
+      <option value="rose">Hồng</option>
+    </select>
+  </ui-field>
+  <button uiButton variant="primary" type="submit" [disabled]="!ready()">
+    {{ ready() ? 'Vào phòng' : 'Đang tải phòng…' }}
+  </button>
+</form>
