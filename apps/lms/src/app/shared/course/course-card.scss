@@ -1,5 +1,5 @@
-// Course card (design-system-review.md §3.7): the cover image when there is one, edge to edge at
-// 16:9 (no placeholder art without it), then the category, at most one status badge,
+// Course card: the uploaded or bundled default cover, edge to edge at
+// 16:9, then the category, at most one status badge,
 // the title, a meta line ("Bắt buộc · 22 phút · 2 bài · Cơ bản"), progress and the status line.
 // The card itself is `uiCard interactive`, one link.
 @use 'ui';

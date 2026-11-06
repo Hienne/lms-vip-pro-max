@@ -50,11 +50,19 @@ describe('ContentRow', () => {
     const stats = render(card()).querySelector('.content-row__stats')!;
     expect(stats.textContent).toContain('3');
     expect(stats.textContent).toContain('2');
+    expect(
+      stats.parentElement
+        ?.querySelector('app-content-thumbnail img')
+        ?.getAttribute('src'),
+    ).toContain('/images/question-default.webp');
   });
 
   it('has no stats for an article', () => {
     const el = render(card({ kind: 'article', resolutionStatus: null }));
     expect(el.querySelector('.content-row__stats')).toBeNull();
+    expect(
+      el.querySelector('app-content-thumbnail img')?.getAttribute('src'),
+    ).toContain('/images/course-default.webp');
   });
 
   it('shows one resolution badge on an active question', () => {

@@ -3,6 +3,8 @@ import { RouterLink } from '@angular/router';
 import {
   Badge,
   Button,
+  Card,
+  CardHeader,
   Empty,
   ErrorState,
   FmtDatetimePipe,
@@ -11,6 +13,8 @@ import {
   LinkButton,
   PageHeader,
   Skeleton,
+  Table,
+  TableWrap,
 } from '@lms/ui';
 import { ATTEMPTS_PER_QUIZ, QuizHubStore } from './data-access/quiz-hub.store';
 
@@ -23,6 +27,8 @@ import { ATTEMPTS_PER_QUIZ, QuizHubStore } from './data-access/quiz-hub.store';
   imports: [
     Badge,
     Button,
+    Card,
+    CardHeader,
     Empty,
     ErrorState,
     FmtDatetimePipe,
@@ -32,6 +38,8 @@ import { ATTEMPTS_PER_QUIZ, QuizHubStore } from './data-access/quiz-hub.store';
     PageHeader,
     RouterLink,
     Skeleton,
+    Table,
+    TableWrap,
   ],
   providers: [QuizHubStore],
   templateUrl: './quiz-hub.html',

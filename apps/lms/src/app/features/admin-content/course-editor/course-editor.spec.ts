@@ -22,6 +22,7 @@ import { NEVER } from 'rxjs';
 import { fakeSession } from '../../../core/session/session.testing';
 import { setUpAdminScreen } from '../../../core/dev/mock-api/admin-screen.testing';
 import { MockBackend } from '../../../core/dev/mock-api/mock-api.interceptor';
+import { DEFAULT_COURSE_COVER } from '../../../shared/course/course-card';
 import { CourseEditor } from './course-editor';
 import { POLL_MS, SERVER_RETRY_MS } from './data-access/chunked-upload';
 import { digestOf, FakeHasher } from './data-access/fake-hasher.testing';
@@ -469,7 +470,7 @@ describe('CourseEditor', () => {
 
       it('uploads an image, shows it on the card and saves it with the draft, until it is removed', async () => {
         await screen.open('/admin/courses/6/edit');
-        expect(cardImage()).toBeNull();
+        expect(cardImage()?.getAttribute('src')).toBe(DEFAULT_COURSE_COVER);
 
         const file = new File(['png'], 'bia.png', { type: 'image/png' });
         vi.useFakeTimers();
@@ -501,7 +502,7 @@ describe('CourseEditor', () => {
         expect(cover()).toBeNull();
 
         await screen.click(screen.button('Gỡ ảnh'));
-        expect(cardImage()).toBeNull();
+        expect(cardImage()?.getAttribute('src')).toBe(DEFAULT_COURSE_COVER);
         expect(revoked).toContain('blob:cover-1');
         await screen.click(screen.button('Lưu nháp'));
         expect(
@@ -518,7 +519,7 @@ describe('CourseEditor', () => {
           'Sai định dạng: chỉ chấp nhận PNG, JPG, JPEG, WEBP.',
         );
         expect(screen.callsTo(assetEndpoints.startUpload)).toBe(0);
-        expect(cardImage()).toBeNull();
+        expect(cardImage()?.getAttribute('src')).toBe(DEFAULT_COURSE_COVER);
       });
     });
 

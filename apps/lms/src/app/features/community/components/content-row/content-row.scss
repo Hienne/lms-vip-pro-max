@@ -105,3 +105,28 @@
     order: 2;
   }
 }
+
+:host.content-row--thumbnail {
+  grid-template-columns: calc(ui.space(18) * 2) minmax(0, 1fr) auto;
+}
+@include ui.bp-below(sm) {
+  :host.content-row--thumbnail {
+    grid-template-columns: ui.space(18) minmax(0, 1fr);
+  }
+  :host.content-row--thumbnail .content-row__side {
+    grid-column: 2;
+  }
+}
+
+:host.content-row--question.content-row--thumbnail {
+  grid-template-columns: ui.space(18) calc(ui.space(18) * 2) minmax(0, 1fr) auto;
+}
+@include ui.bp-below(sm) {
+  :host.content-row--question.content-row--thumbnail {
+    grid-template-columns: ui.space(18) minmax(0, 1fr);
+  }
+  :host.content-row--question .content-row__stats {
+    grid-column: 2;
+    grid-row: 3;
+  }
+}

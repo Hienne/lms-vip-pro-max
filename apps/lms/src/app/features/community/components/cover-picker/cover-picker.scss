@@ -1,0 +1,41 @@
+@use 'ui';
+
+:host {
+  display: flex;
+  align-items: start;
+  gap: ui.space(4);
+}
+.cover-picker {
+  &__preview {
+    flex: 0 0 calc(ui.space(18) * 3);
+  }
+  &__fields {
+    @include ui.stack(2);
+    min-width: 0;
+  }
+  &__label {
+    @include ui.text(sm);
+    font-weight: ui.weight(semibold);
+  }
+  &__hint {
+    @include ui.text(sm, muted);
+    margin: 0;
+  }
+  &__error {
+    @include ui.text(sm, danger);
+    margin: 0;
+  }
+  &__actions {
+    @include ui.row(2);
+    flex-wrap: wrap;
+  }
+}
+@include ui.bp-below(sm) {
+  :host {
+    flex-direction: column;
+  }
+  .cover-picker__preview {
+    flex: auto;
+    max-width: calc(ui.space(18) * 3);
+  }
+}

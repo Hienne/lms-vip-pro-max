@@ -20,6 +20,7 @@ import {
   type DraftFields,
   type DraftVersions,
 } from '../../data-access/content-authoring';
+import { communityCoverUpload } from '../../data-access/community-cover';
 import { reloadOnConflict } from '../../data-access/conflict';
 import {
   contentFormFrom,
@@ -52,6 +53,7 @@ const sameTags = (a: readonly number[], b: readonly number[]): boolean =>
  */
 @Injectable()
 export class EditorStore {
+  readonly cover = communityCoverUpload();
   private readonly client = inject(EndpointClient);
   private readonly authoring = inject(ContentAuthoring);
   private readonly changes = inject(CommunityChanges);
@@ -215,6 +217,7 @@ export class EditorStore {
   readonly savedAt$ = computed(() => this.state.saved()?.at);
   readonly isBusy$ = computed(
     () =>
+      this.cover.isPending$() ||
       this.createMutation.isPending() ||
       this.saveMutation.isPending() ||
       this.publishMutation.isPending(),
@@ -262,6 +265,7 @@ export class EditorStore {
   }
 
   saveDraft(fields: DraftFields, tagIds: readonly number[]): void {
+    if (this.isBusy$()) return;
     if (this.isNew$()) {
       this.createMutation.run({
         command: this.createCommand(fields, tagIds),

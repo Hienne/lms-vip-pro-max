@@ -57,3 +57,16 @@
     margin: 0 ui.space(3) ui.space(3);
   }
 }
+
+.mine__title-content {
+  display: flex;
+  align-items: center;
+  gap: ui.space(3);
+  min-width: 0;
+}
+.mine__title-content > div {
+  min-width: 0;
+}
+.mine__thumbnail {
+  flex: 0 0 ui.space(18);
+}

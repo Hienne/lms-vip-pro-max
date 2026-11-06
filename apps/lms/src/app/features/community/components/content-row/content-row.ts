@@ -2,6 +2,7 @@ import { Component, computed, input } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import type { ContentCard } from '@lms/contracts';
 import { Badge, FmtDatePipe, FmtNumPipe, FmtRelativePipe } from '@lms/ui';
+import { ContentThumbnail } from '../content-thumbnail/content-thumbnail';
 import { RESOLUTION_LABELS } from '../../data-access/community-labels';
 
 /**
@@ -11,14 +12,27 @@ import { RESOLUTION_LABELS } from '../../data-access/community-labels';
  */
 @Component({
   selector: 'app-content-row',
-  host: { '[class.content-row--question]': 'isQuestion()' },
-  imports: [Badge, FmtDatePipe, FmtNumPipe, FmtRelativePipe, RouterLink],
+  host: {
+    '[class.content-row--question]': 'isQuestion()',
+    '[class.content-row--thumbnail]': 'hasThumbnail()',
+  },
+  imports: [
+    ContentThumbnail,
+    Badge,
+    FmtDatePipe,
+    FmtNumPipe,
+    FmtRelativePipe,
+    RouterLink,
+  ],
   templateUrl: './content-row.html',
   styleUrl: './content-row.scss',
 })
 export class ContentRow {
   readonly card = input.required<ContentCard>();
 
+  protected readonly hasThumbnail = computed(() =>
+    ['question', 'article', 'lesson_learned'].includes(this.card().kind),
+  );
   protected readonly isQuestion = computed(
     () => this.card().kind === 'question',
   );

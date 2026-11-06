@@ -1,4 +1,4 @@
-import { Component, effect, inject, signal } from '@angular/core';
+import { Component, computed, effect, inject, signal } from '@angular/core';
 import { form, FormField, FormRoot } from '@angular/forms/signals';
 import { RouterLink } from '@angular/router';
 import { COMMUNITY_LIMITS } from '@lms/contracts';
@@ -18,6 +18,7 @@ import {
   Textarea,
 } from '@lms/ui';
 import type { HasUnsavedChanges } from '../../../core/routing/unsaved-changes.guard';
+import { CoverPicker } from '../components/cover-picker/cover-picker';
 import { MarkdownEditor } from '../components/markdown-editor/markdown-editor';
 import { TagPicker } from '../components/tag-picker/tag-picker';
 import { RESOLUTION_LABELS } from '../data-access/community-labels';
@@ -34,6 +35,7 @@ import { AskStore } from './data-access/ask.store';
 @Component({
   selector: 'app-community-ask',
   imports: [
+    CoverPicker,
     Badge,
     Breadcrumb,
     Button,
@@ -59,6 +61,8 @@ import { AskStore } from './data-access/ask.store';
 })
 export class CommunityAsk implements HasUnsavedChanges {
   protected readonly store = inject(AskStore);
+  protected readonly cover = this.store.cover;
+  protected readonly hasCover = computed(() => !!this.cover.selection$());
   protected readonly tags = inject(CommunityTagOptions);
   protected readonly resolutionLabels = RESOLUTION_LABELS;
   protected readonly maxTechnologies = COMMUNITY_LIMITS.technologies.max;
@@ -70,7 +74,10 @@ export class CommunityAsk implements HasUnsavedChanges {
     {
       submission: {
         action: async () =>
-          this.store.publish(toDraftFields(this.model()), this.model().tagIds),
+          this.store.publish(
+            toDraftFields(this.model(), { cover: this.cover.selection$() }),
+            this.model().tagIds,
+          ),
       },
     },
   );
@@ -81,7 +88,10 @@ export class CommunityAsk implements HasUnsavedChanges {
   }
 
   protected saveDraft(): void {
-    this.store.saveDraft(toDraftFields(this.model()), this.model().tagIds);
+    this.store.saveDraft(
+      toDraftFields(this.model(), { cover: this.cover.selection$() }),
+      this.model().tagIds,
+    );
   }
 
   protected setTags(tagIds: number[]): void {
@@ -107,7 +117,12 @@ export class CommunityAsk implements HasUnsavedChanges {
     const value = this.model();
     return (
       !this.store.done$() &&
-      !!(value.title.trim() || value.bodyMarkdown.trim() || value.tagIds.length)
+      !!(
+        value.title.trim() ||
+        value.bodyMarkdown.trim() ||
+        value.tagIds.length ||
+        this.hasCover()
+      )
     );
   }
 }

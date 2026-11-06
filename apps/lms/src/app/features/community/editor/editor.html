@@ -76,6 +76,18 @@
           [formField]="editorForm.summary"
         ></textarea>
       </ui-field>
+      } @if (!isAnswer()) {
+      <app-community-cover-picker
+        [kind]="store.kind$() ?? 'article'"
+        [revisionAssetId]="existingCover()"
+        [preview]="cover.preview$()"
+        [hasCover]="hasCover()"
+        [disabled]="store.isBusy$()"
+        [uploading]="cover.isPending$()"
+        [error]="cover.error$()"
+        (fileChosen)="cover.choose($event)"
+        (removed)="cover.remove()"
+      />
       } @if (isLesson()) {
       <ui-alert tone="warning">
         Chỉ mô tả ở mức kỹ thuật. Không đưa mã khách hàng, thông tin đăng nhập

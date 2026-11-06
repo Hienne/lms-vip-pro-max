@@ -27,6 +27,7 @@ import {
   seedProfile,
 } from '../../../core/session/session.testing';
 import { SessionStore } from '../../../core/session/session.store';
+import { DEFAULT_COURSE_COVER } from '../../../shared/course/course-card';
 
 /**
  * Gives the first card of every `list` reply the cover asset 77, whose file the server answers
@@ -318,8 +319,13 @@ describe('Catalog', () => {
       const covers = el.querySelectorAll<HTMLImageElement>(
         'img.course-card__cover',
       );
-      expect(covers).toHaveLength(1);
+      expect(covers).toHaveLength(
+        el.querySelectorAll('app-course-card').length,
+      );
       expect(covers[0].getAttribute('src')).toBe('blob:cover');
+      for (const cover of Array.from(covers).slice(1)) {
+        expect(cover.getAttribute('src')).toBe(DEFAULT_COURSE_COVER);
+      }
       expect(
         handle.mock.calls.filter(
           ([e]) => e === courseEndpoints.getAssetContent,

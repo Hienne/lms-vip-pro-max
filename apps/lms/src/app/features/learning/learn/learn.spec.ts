@@ -20,6 +20,7 @@ import {
   signInToMockBackend,
 } from '../../../core/dev/mock-api/mock-backend.testing';
 import { SessionStore } from '../../../core/session/session.store';
+import { DEFAULT_COURSE_COVER } from '../../../shared/course/course-card';
 import {
   FakeSessionStore,
   fakeSession,
@@ -271,14 +272,17 @@ describe('Learn', () => {
       URL.revokeObjectURL = original.revoke;
     });
 
-    it('shows the cover the server names on the first card, and none on the others', async () => {
+    it('shows the uploaded cover on the first card and the bundled default on the others', async () => {
       withCover(handle, learnerEndpoints.myCourses, true);
       await open();
       const covers = el.querySelectorAll<HTMLImageElement>(
         'app-course-card img.course-card__cover',
       );
-      expect(covers).toHaveLength(1);
+      expect(covers).toHaveLength(cards().length);
       expect(covers[0].getAttribute('src')).toBe('blob:cover');
+      for (const cover of Array.from(covers).slice(1)) {
+        expect(cover.getAttribute('src')).toBe(DEFAULT_COURSE_COVER);
+      }
       expect(
         handle.mock.calls.filter(
           ([e]) => e === courseEndpoints.getAssetContent,
@@ -286,13 +290,15 @@ describe('Learn', () => {
       ).toEqual({ assetId: '77' });
     });
 
-    it('leaves a card text only when the server refuses its cover', async () => {
+    it('uses the bundled default when the server refuses an uploaded cover', async () => {
       withCover(handle, learnerEndpoints.myCourses, false);
       await open();
       expect(cards().length).toBeGreaterThan(0);
       expect(
-        el.querySelector('app-course-card .course-card__cover'),
-      ).toBeNull();
+        el
+          .querySelector('app-course-card .course-card__cover')
+          ?.getAttribute('src'),
+      ).toBe(DEFAULT_COURSE_COVER);
     });
   });
 

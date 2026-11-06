@@ -1,7 +1,11 @@
 import { Component, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
-import { CourseCard, type CourseCardView } from './course-card';
+import {
+  CourseCard,
+  DEFAULT_COURSE_COVER,
+  type CourseCardView,
+} from './course-card';
 import { NOW } from './now';
 
 const TODAY = Date.UTC(2026, 6, 10, 12);
@@ -70,9 +74,15 @@ describe('CourseCard', () => {
     ).toEqual(['Bắt buộc', '1g 8p', '4 bài', 'Cơ bản']);
   });
 
-  it('has no cover art and no icon without a cover image', () => {
+  it('uses the bundled default as a lazy decorative cover when no image was uploaded', () => {
     const { card } = render();
-    expect(card.querySelector('[class*="course-card__cover"]')).toBeNull();
+    const image = card.firstElementChild as HTMLImageElement;
+    expect(image.tagName).toBe('IMG');
+    expect(image.getAttribute('src')).toBe(DEFAULT_COURSE_COVER);
+    expect(image.alt).toBe('');
+    expect(image.getAttribute('loading')).toBe('lazy');
+    expect(image.getAttribute('width')).toBe('1280');
+    expect(image.getAttribute('height')).toBe('720');
     expect(card.querySelector('ui-icon')).toBeNull();
   });
 

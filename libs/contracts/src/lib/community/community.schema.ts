@@ -219,6 +219,7 @@ export type RevisionDetail = z.infer<typeof RevisionDetailSchema>;
 
 /** One row of a content list (questions, answers, articles, lessons, mine, saved). */
 export const ContentCardSchema = z.object({
+  coverRevisionAssetId: z.number().int().positive().nullish(),
   contentId: z.number().int(),
   kind: z.string(),
   title: z.string(),

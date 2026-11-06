@@ -1,8 +1,12 @@
+import { NgOptimizedImage } from '@angular/common';
 import { Component, computed, input } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import type { CourseStatus } from '@lms/contracts';
 import { Badge, Card, FmtPctPipe, Progress, type ProgressTone } from '@lms/ui';
 import { DueDate } from './due-date';
+
+/** Bundled fallback; it is presentation only, never an uploaded course asset. */
+export const DEFAULT_COURSE_COVER = '/images/course-default.webp';
 
 /**
  * What the card shows about a course. The learner feature maps its API result to this; the card
@@ -31,11 +35,11 @@ export interface CourseCardView {
   readonly bestScore?: number | null;
   /** Router path of the course page. */
   readonly link: string;
-  /** The cover image's address; the card has no art without one. */
+  /** The uploaded cover image's address; absent, the card uses the bundled default. */
   readonly coverUrl?: string | null;
   /**
    * The course has a cover the card is still reading: the card keeps its 16:9 place until `coverUrl`
-   * arrives, so the grid does not jump. False or absent, a card without `coverUrl` is text only.
+   * arrives, so the grid does not jump. False or absent, a missing `coverUrl` uses the default.
    */
   readonly hasCover?: boolean;
   /**
@@ -61,18 +65,26 @@ function formatMinutes(total: number): string {
 
 /**
  * A course in a catalog or dashboard grid (the mockup's `UI.CourseCard`): the cover image when the
- * course has one (a flat `surface-2` box of the same size while it loads), else text only (no
- * placeholder art).
+ * course has one (a flat `surface-2` box of the same size while it loads), else the bundled default.
  * The whole card is one link to the course page.
  */
 @Component({
   selector: 'app-course-card',
-  imports: [RouterLink, Card, Badge, FmtPctPipe, Progress, DueDate],
+  imports: [
+    NgOptimizedImage,
+    RouterLink,
+    Card,
+    Badge,
+    FmtPctPipe,
+    Progress,
+    DueDate,
+  ],
   templateUrl: './course-card.html',
   styleUrl: './course-card.scss',
 })
 export class CourseCard {
   readonly course = input.required<CourseCardView>();
+  protected readonly defaultCover = DEFAULT_COURSE_COVER;
 
   protected readonly duration = computed(() => {
     const minutes = this.course().minutes;

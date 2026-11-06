@@ -140,6 +140,12 @@ export class QuizHubStore {
     ),
   );
 
+  /** Emphasize one available row action without changing server eligibility or order. */
+  readonly primaryQuizId$ = computed(
+    () =>
+      this.quizzes$().find((quiz) => quiz.resuming || quiz.canStart)?.quizId,
+  );
+
   /** Attempts grouped by quiz, the quiz tried most recently first. */
   readonly groups$ = computed((): readonly AttemptGroup[] => {
     const groups = new Map<number, MyAttemptRow[]>();

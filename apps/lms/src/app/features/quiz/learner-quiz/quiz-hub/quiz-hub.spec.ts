@@ -42,13 +42,17 @@ describe('QuizHub', () => {
     ).map((a) => a.getAttribute('href'));
     expect(links).toContain('/quiz/1');
     expect(links).toContain('/quiz/2');
-    expect(text()).toContain('Điểm đạt ≥ 70%');
+    const passMark = el.querySelector('.hub__facts div');
+    expect(passMark?.querySelector('dt')?.textContent).toBe('Điểm đạt');
+    expect(passMark?.querySelector('dd')?.textContent).toContain('≥ 70%');
   });
 
-  it('has no primary button: the row actions are secondary', async () => {
+  it('emphasizes one available quiz while keeping every action on its intro', async () => {
     await open();
-    expect(el.querySelectorAll('.hub__row a.btn').length).toBeGreaterThan(0);
-    expect(el.querySelector('.btn--primary')).toBeNull();
+    const primary = el.querySelectorAll<HTMLAnchorElement>('.btn--primary');
+    expect(primary.length).toBe(1);
+    expect(primary[0].getAttribute('href')).toMatch(/^\/quiz\/\d+$/);
+    expect(el.querySelectorAll('.hub__row a.btn').length).toBeGreaterThan(1);
   });
 
   it('says there are no attempts yet before the learner has taken any', async () => {
@@ -75,6 +79,10 @@ describe('QuizHub', () => {
       /cao nhất/i,
     );
     expect(quiz1.querySelectorAll('.hub__attempt').length).toBe(2);
+    expect(quiz1.querySelector('table')?.textContent).toContain(
+      'Thời gian nộp',
+    );
+    expect(quiz1.querySelectorAll('thead th[scope="col"]').length).toBe(5);
     expect(
       quiz1.querySelector('.hub__attempt a')?.getAttribute('href'),
     ).toMatch(/^\/quiz\/1\/result\/\d+$/);

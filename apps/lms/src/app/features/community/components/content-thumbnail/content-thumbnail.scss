@@ -1,0 +1,16 @@
+@use 'ui';
+
+:host {
+  display: block;
+  width: 100%;
+  overflow: hidden;
+  border-radius: ui.radius(sm);
+  background: ui.color(surface-2);
+}
+img {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 16 / 9;
+  object-fit: cover;
+}

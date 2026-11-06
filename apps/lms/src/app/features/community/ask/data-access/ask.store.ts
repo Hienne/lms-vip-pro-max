@@ -9,6 +9,7 @@ import { switchMap, timer } from 'rxjs';
 import { serverData } from '../../../../core/data-access/server-data';
 import { serverMutation } from '../../../../core/data-access/server-mutation';
 import { EndpointClient } from '../../../../core/http/endpoint-client';
+import { communityCoverUpload } from '../../data-access/community-cover';
 import { CommunityChanges } from '../../data-access/community-changes';
 import {
   ContentAuthoring,
@@ -27,6 +28,7 @@ const SUGGESTIONS = 5;
  */
 @Injectable()
 export class AskStore {
+  readonly cover = communityCoverUpload();
   private readonly client = inject(EndpointClient);
   private readonly authoring = inject(ContentAuthoring);
   private readonly changes = inject(CommunityChanges);
@@ -112,7 +114,10 @@ export class AskStore {
   readonly isSaving$ = this.saveMutation.isPending;
   readonly isPublishing$ = this.publishMutation.isPending;
   readonly isBusy$ = computed(
-    () => this.saveMutation.isPending() || this.publishMutation.isPending(),
+    () =>
+      this.cover.isPending$() ||
+      this.saveMutation.isPending() ||
+      this.publishMutation.isPending(),
   );
   readonly done$ = this.state.done.asReadonly();
 
@@ -131,10 +136,12 @@ export class AskStore {
   }
 
   saveDraft(fields: DraftFields, tagIds: readonly number[]): void {
+    if (this.isBusy$()) return;
     this.saveMutation.run(this.command(fields, tagIds));
   }
 
   publish(fields: DraftFields, tagIds: readonly number[]): void {
+    if (this.isBusy$()) return;
     this.publishMutation.run(this.command(fields, tagIds));
   }
 

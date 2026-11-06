@@ -2,68 +2,130 @@
 
 :host {
   @include ui.page(content);
-  @include ui.stack(8);
+  @include ui.stack(6);
 }
 
 .hub {
   &__loading {
     @include ui.stack(4);
   }
-
+  &__section-head {
+    @include ui.row(3);
+    margin-block-end: ui.space(4);
+  }
   &__heading {
-    margin: 0 0 ui.space(3);
+    margin: 0;
     font-size: ui.text-size(lg);
     font-weight: ui.weight(semibold);
   }
-
-  &__list {
+  &__list,
+  &__history {
+    @include ui.stack(4);
     margin: 0;
     padding: 0;
     list-style: none;
   }
-
   &__row {
-    @include ui.row-between(4);
-    padding-block: ui.space(3);
-    border-bottom: 1px solid ui.color(border);
+    @include ui.row-between(5);
+    align-items: flex-start;
+    @include ui.bp(md) {
+      flex-wrap: nowrap;
+      align-items: center;
+    }
   }
-
+  &__item {
+    max-width: none;
+  }
   &__main {
     @include ui.grow;
+    flex-basis: 100%;
+    @include ui.bp(md) {
+      flex-basis: auto;
+    }
   }
-
-  &__title {
+  &__quiz-heading {
+    margin: 0 0 ui.space(1);
+    font-size: ui.text-size(md);
     font-weight: ui.weight(semibold);
   }
-
+  &__title {
+    color: ui.color(primary);
+    text-decoration: none;
+    overflow-wrap: anywhere;
+    &:hover {
+      text-decoration: underline;
+    }
+    &:focus-visible {
+      @include ui.focus-ring;
+    }
+  }
   &__meta {
     @include ui.text(sm, muted);
     margin: 0;
+    overflow-wrap: anywhere;
   }
-
+  &__facts {
+    @include ui.row(4);
+    @include ui.text(sm);
+    margin: ui.space(4) 0 0;
+    div {
+      @include ui.row(1);
+    }
+    dt {
+      color: ui.color(text-secondary);
+    }
+    dd {
+      @include ui.num;
+      margin: 0;
+      font-weight: ui.weight(semibold);
+    }
+  }
+  &__block-reason {
+    @include ui.text(sm, muted);
+    margin: ui.space(3) 0 0;
+  }
   &__group {
-    @include ui.stack(2);
-    padding-block: ui.space(3);
-    border-bottom: 1px solid ui.color(border);
+    min-width: 0;
   }
-
-  &__group-head {
-    @include ui.row-between(3);
+  &__group-head h3 {
+    margin: 0;
   }
-
-  &__attempt {
-    @include ui.row(3);
-    padding-block: ui.space(1);
+  &__attempts {
+    table-layout: fixed;
+    th,
+    td {
+      overflow-wrap: anywhere;
+      white-space: normal;
+    }
+    // Keep the submitted date readable while other columns share the row.
+    th:nth-child(2) {
+      width: 30%;
+    }
   }
-
+  &__number {
+    @include ui.num;
+    @include ui.bp(md) {
+      text-align: right;
+    }
+  }
+  &__actions {
+    @include ui.bp(md) {
+      text-align: right;
+    }
+  }
+  &__timestamp {
+    @include ui.num;
+    @include ui.text(xs, muted);
+  }
   &__attempt-no {
-    min-width: 4rem;
     @include ui.num;
   }
-
   &__score {
     @include ui.num;
-    min-width: 3.5rem;
     font-weight: ui.weight(semibold);
+  }
+  &__group-footer {
+    padding: ui.space(3) ui.space(5);
+    border-block-start: 1px solid ui.color(border);
   }
 }

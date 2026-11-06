@@ -601,3 +601,21 @@ legacy questions stay on the course API until reviewed. Rollback refuses
 course-less questions and cross-course pools rather than discarding them. No
 migration was applied to a shared database. Deployment/proxy configuration must
 point at the upgraded backend; source environment.mockBackend stays false.
+
+## Community question and article cover images
+
+Questions, articles and lessons learned use one existing revision asset with `usage: 'cover'`. The editor uploads
+JPG, PNG or WebP images (up to 5,000,000 bytes) through `communityMediaEndpoints`, acknowledges
+SHA-256 checked parts, completes the upload, and polls until the backend reports `ready`. Draft save
+and publish are disabled while uploading/processing. Choosing the default image removes only the
+cover entry; all other asset metadata survives a draft edit.
+
+List cards carry nullable `coverRevisionAssetId`. The frontend fetches its bytes through the
+revision-scoped authenticated endpoint, never a public storage URL. Published cards keep their
+published cover while a draft changes. Questions use `/images/question-default.webp`; articles and lessons use `/images/course-default.webp`,
+shared with course cards. Both defaults cover missing or unreadable images. It is a display fallback, not an uploaded
+asset or database row. My posts and saved content use the same thumbnail renderer. Questions retain their score, answer
+count and resolution state alongside the thumbnail; answers retain their text layout.
+
+Deploy the matching `corebanking-academy` card projection and cover validation before the frontend.
+No database migration is required.

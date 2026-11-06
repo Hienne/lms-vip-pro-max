@@ -151,7 +151,11 @@
 
     <section class="course-info__cover" aria-labelledby="course-cover-title">
       <h3 id="course-cover-title" class="course-info__cover-title">Ảnh bìa</h3>
-      @switch (cover().state) { @case ('loading') {
+      @if (!coverAssetId()) {
+      <p class="course-info__note">
+        Không chọn ảnh, khóa học sẽ dùng ảnh bìa mặc định.
+      </p>
+      } @switch (cover().state) { @case ('loading') {
       <p class="course-info__cover-note" aria-live="polite">
         Đang tải ảnh bìa…
       </p>

@@ -28,6 +28,8 @@ import {
   type ContentRef,
   type PersonRef,
   type RevisionDetail,
+  type AssetInput,
+  type RevisionAssetView,
 } from '@lms/contracts';
 import type { z } from 'zod';
 import type { FakeReply, FakeRequest } from '../backend/fake-backend';
@@ -58,6 +60,7 @@ type Handler = (request: FakeRequest) => FakeReply;
 type Mutable<T> = { -readonly [K in keyof T]: T[K] };
 
 interface Revision {
+  assets?: RevisionAssetView[];
   revisionId: number;
   revisionNo: number;
   title: string;
@@ -506,7 +509,7 @@ export class CommunityBackend {
       publishedAt: revision.publishedAt,
       revisionVersion: revision.revisionVersion,
       contentVersion: doc.version,
-      assets: [],
+      assets: revision.assets ?? [],
       changeNote: revision.changeNote,
       editor: this.person(revision.editorUserId),
       updateTime: revision.updateTime,
@@ -556,6 +559,9 @@ export class CommunityBackend {
         doc.acceptedRevisionId === this.published(doc)?.revisionId,
       hasDraft: !!this.draftOf(doc) && !!this.published(doc),
       occurredOn: lesson?.occurredOn ?? null,
+      coverRevisionAssetId:
+        revision.assets?.find((asset) => asset.usage === 'cover')
+          ?.revisionAssetId ?? null,
     };
   }
 
@@ -777,6 +783,7 @@ export class CommunityBackend {
       bodyMarkdown: string;
       summary?: string;
       context?: ContentContext;
+      assets?: AssetInput[];
     },
     tagIds: number[],
   ): Doc {
@@ -814,6 +821,10 @@ export class CommunityBackend {
           bodyMarkdown: body.bodyMarkdown,
           summary: body.summary ?? null,
           context: body.context ?? null,
+          assets: (body.assets ?? []).map((asset) => ({
+            ...asset,
+            revisionAssetId: this.id(),
+          })),
           status: 'draft',
           publishedAt: null,
           revisionVersion: 0,
@@ -898,6 +909,10 @@ export class CommunityBackend {
       bodyMarkdown: body.bodyMarkdown,
       summary: body.summary ?? null,
       context: body.context ?? null,
+      assets: (body.assets ?? []).map((asset) => ({
+        ...asset,
+        revisionAssetId: this.id(),
+      })),
       changeNote: body.changeNote ?? null,
       editorUserId: userId,
       updateTime: now(),

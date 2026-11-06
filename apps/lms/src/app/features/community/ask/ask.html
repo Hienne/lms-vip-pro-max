@@ -64,6 +64,16 @@
       </p>
       }
 
+      <app-community-cover-picker
+        kind="question"
+        [preview]="cover.preview$()"
+        [hasCover]="hasCover()"
+        [disabled]="store.isBusy$()"
+        [uploading]="cover.isPending$()"
+        [error]="cover.error$()"
+        (fileChosen)="cover.choose($event)"
+        (removed)="cover.remove()"
+      />
       <div class="ask__field">
         <span class="ask__label">Nội dung</span>
         <p class="ask__muted">

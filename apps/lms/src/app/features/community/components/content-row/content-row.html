@@ -3,6 +3,11 @@
   <span><strong>{{ c.score | fmtNum }}</strong> điểm</span>
   <span><strong>{{ c.answerCount | fmtNum }}</strong> trả lời</span>
 </div>
+} @if (hasThumbnail()) {
+<app-content-thumbnail
+  [revisionAssetId]="c.coverRevisionAssetId"
+  [kind]="c.kind"
+/>
 }
 <div class="content-row__main">
   <a class="content-row__title" [routerLink]="link()">{{ c.title }}</a>

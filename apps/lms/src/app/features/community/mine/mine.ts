@@ -20,6 +20,7 @@ import {
   type SegmentedOption,
 } from '@lms/ui';
 import { CommunityTabs } from '../components/community-tabs/community-tabs';
+import { ContentThumbnail } from '../components/content-thumbnail/content-thumbnail';
 import { ContentRow } from '../components/content-row/content-row';
 import { CONTENT_KIND_LABELS } from '../data-access/community-labels';
 import {
@@ -47,6 +48,7 @@ const STATUS_BADGE: Record<
     Button,
     CommunityTabs,
     ContentRow,
+    ContentThumbnail,
     Empty,
     ErrorState,
     FmtDatePipe,

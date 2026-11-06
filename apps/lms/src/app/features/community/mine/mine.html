@@ -90,17 +90,29 @@
       @for (row of store.mineRows$(); track row.card.contentId) {
       <tr>
         <td data-label="Tiêu đề" class="mine__title">
-          @if (row.status === 'draft') {
-          <span uiTablePrimary [title]="row.card.title || 'Chưa có tiêu đề'"
-            >{{ row.card.title || 'Chưa có tiêu đề' }}</span
-          >
-          } @else {
-          <a uiTablePrimary [title]="row.card.title" [routerLink]="row.link"
-            >{{ row.card.title }}</a
-          >
-          } @if (row.status !== 'draft' && row.editDraft) {
-          <div uiTableSub>Có bản nháp mới</div>
-          }
+          <div class="mine__title-content">
+            @if (row.card.kind === 'article' || row.card.kind ===
+            'lesson_learned' || row.card.kind === 'question') {
+            <app-content-thumbnail
+              class="mine__thumbnail"
+              [revisionAssetId]="row.card.coverRevisionAssetId"
+              [kind]="row.card.kind"
+            />
+            }
+            <div>
+              @if (row.status === 'draft') {
+              <span uiTablePrimary [title]="row.card.title || 'Chưa có tiêu đề'"
+                >{{ row.card.title || 'Chưa có tiêu đề' }}</span
+              >
+              } @else {
+              <a uiTablePrimary [title]="row.card.title" [routerLink]="row.link"
+                >{{ row.card.title }}</a
+              >
+              } @if (row.status !== 'draft' && row.editDraft) {
+              <div uiTableSub>Có bản nháp mới</div>
+              }
+            </div>
+          </div>
         </td>
         <td data-label="Loại">
           {{ kindLabels[row.card.kind] ?? row.card.kind }}

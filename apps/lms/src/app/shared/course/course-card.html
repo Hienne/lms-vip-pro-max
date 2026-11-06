@@ -3,6 +3,15 @@
   <img class="course-card__cover" [src]="cover" alt="" loading="lazy" />
   } @else if (course().hasCover) {
   <div class="course-card__cover" aria-hidden="true"></div>
+  } @else {
+  <img
+    class="course-card__cover"
+    [ngSrc]="defaultCover"
+    width="1280"
+    height="720"
+    alt=""
+    loading="lazy"
+  />
   }
   <div class="course-card__head">
     <span class="course-card__category"

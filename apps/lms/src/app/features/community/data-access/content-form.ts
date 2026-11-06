@@ -6,7 +6,9 @@ import {
 } from '@angular/forms/signals';
 import {
   COMMUNITY_LIMITS,
+  AssetInputSchema,
   type ContentContextInput,
+  type AssetInput,
   type RevisionDetail,
 } from '@lms/contracts';
 import type { DraftFields } from './content-authoring';
@@ -32,6 +34,7 @@ export interface ContentFormValue {
   summary: string;
   bodyMarkdown: string;
   tagIds: number[];
+  assets: AssetInput[];
   technologies: TechnologyRow[];
   environment: string;
   limitations: string;
@@ -53,6 +56,7 @@ export function emptyContentForm(): ContentFormValue {
     summary: '',
     bodyMarkdown: '',
     tagIds: [],
+    assets: [],
     technologies: [],
     environment: '',
     limitations: '',
@@ -73,6 +77,15 @@ export function contentFormFrom(
     summary: revision.summary ?? '',
     bodyMarkdown: revision.bodyMarkdown ?? '',
     tagIds: [...tagIds],
+    assets: (revision.assets ?? []).map((asset) =>
+      AssetInputSchema.parse({
+        assetId: asset.assetId,
+        usage: asset.usage,
+        ...(asset.caption != null ? { caption: asset.caption } : {}),
+        ...(asset.altText != null ? { altText: asset.altText } : {}),
+        sortNo: asset.sortNo ?? 0,
+      }),
+    ),
     technologies: (context.technologies ?? []).map((row) => ({
       name: row.name,
       version: row.version ?? '',
@@ -98,7 +111,7 @@ export function contentFormFrom(
  */
 export function toDraftFields(
   value: ContentFormValue,
-  options: { lesson?: boolean } = {},
+  options: { lesson?: boolean; cover?: AssetInput | null } = {},
 ): DraftFields {
   const technologies = value.technologies
     .map((row) => ({ name: row.name.trim(), version: row.version.trim() }))
@@ -131,7 +144,13 @@ export function toDraftFields(
     bodyMarkdown: value.bodyMarkdown,
     ...(value.summary.trim() ? { summary: value.summary.trim() } : {}),
     context,
-    assets: [],
+    assets:
+      options.cover === undefined
+        ? value.assets
+        : [
+            ...value.assets.filter((asset) => asset.usage !== 'cover'),
+            ...(options.cover ? [options.cover] : []),
+          ],
     ...(value.changeNote.trim() ? { changeNote: value.changeNote.trim() } : {}),
   };
 }

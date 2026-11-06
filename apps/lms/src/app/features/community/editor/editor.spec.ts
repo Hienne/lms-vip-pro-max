@@ -1,7 +1,11 @@
 import { TestBed } from '@angular/core/testing';
 import { Router } from '@angular/router';
-import { communityEndpoints } from '@lms/contracts';
-import { backendRefusal } from '@lms/mocks';
+import {
+  communityEndpoints,
+  communityMediaEndpoints as media,
+} from '@lms/contracts';
+import { backendRefusal, envelopeOk } from '@lms/mocks';
+import { contentFormFrom, toDraftFields } from '../data-access/content-form';
 import { MockBackend } from '../../../core/dev/mock-api/mock-api.interceptor';
 import {
   configureCommunityTesting,
@@ -20,6 +24,141 @@ const type = async (page: CommunityPage, selector: string, value: string) => {
 
 describe('CommunityEditor', () => {
   beforeEach(() => configureCommunityTesting());
+
+  it('preserves attachment metadata while changing or removing only the cover', () => {
+    const value = contentFormFrom(
+      {
+        contentId: 1,
+        revisionId: 2,
+        revisionNo: 1,
+        revisionVersion: 1,
+        contentVersion: 1,
+        title: 'Existing article',
+        bodyMarkdown: 'Existing article body.',
+        revisionStatus: 'draft',
+        assets: [
+          { revisionAssetId: 10, assetId: 20, usage: 'cover', sortNo: 0 },
+          {
+            revisionAssetId: 11,
+            assetId: 21,
+            usage: 'attachment',
+            caption: 'Keep this caption',
+            altText: null,
+            sortNo: 2,
+          },
+        ],
+      },
+      [],
+    );
+    expect(toDraftFields(value).assets).toEqual(value.assets);
+    expect(toDraftFields(value, { cover: null }).assets).toEqual([
+      value.assets[1],
+    ]);
+    expect(
+      toDraftFields(value, {
+        cover: { assetId: 30, usage: 'cover', sortNo: 0 },
+      }).assets,
+    ).toEqual([value.assets[1], { assetId: 30, usage: 'cover', sortNo: 0 }]);
+  });
+
+  it('shows a default cover and rejects an unsupported file before uploading', async () => {
+    const page = await openCommunity('/community/articles/new', 'giangvien');
+    expect(
+      page.el().querySelector('app-content-thumbnail img')?.getAttribute('src'),
+    ).toContain('/images/course-default.webp');
+    const input = page
+      .el()
+      .querySelector<HTMLInputElement>('input[type="file"]')!;
+    Object.defineProperty(input, 'files', {
+      value: [new File(['bad'], 'bad.pdf', { type: 'application/pdf' })],
+    });
+    input.dispatchEvent(new Event('change'));
+    await page.settle();
+    expect(page.text()).toContain('Chọn ảnh JPG, PNG hoặc WebP, tối đa 5 MB.');
+    expect(page.bodies(media.startUpload)).toHaveLength(0);
+  });
+
+  it.each([
+    ['/community/articles/new', communityEndpoints.createArticle],
+    ['/community/questions/new', communityEndpoints.createQuestion],
+  ] as const)(
+    'uploads, saves and removes a cover at %s',
+    async (route, createEndpoint) => {
+      const originalBuffer = Blob.prototype.arrayBuffer;
+      const originalCreate = URL.createObjectURL;
+      const originalRevoke = URL.revokeObjectURL;
+      Blob.prototype.arrayBuffer = async () => new Uint8Array([1, 2, 3]).buffer;
+      URL.createObjectURL = vi.fn(() => 'blob:community-cover');
+      URL.revokeObjectURL = vi.fn();
+      try {
+        const page = await openCommunity(route, 'giangvien');
+        const backend = TestBed.inject(MockBackend);
+        const session = {
+          uploadId: crypto.randomUUID(),
+          assetId: 9123,
+          status: 'uploading',
+          partSize: 8_388_608,
+          totalBytes: 3,
+          uploadedBytes: 0,
+        };
+        page.handle.mockImplementation((endpoint, request) => {
+          if (endpoint === media.startUpload)
+            return { status: 200, body: envelopeOk(session) };
+          if (endpoint === media.uploadPart)
+            return {
+              status: 200,
+              body: envelopeOk({
+                ...session,
+                partNumber: 1,
+                sizeBytes: 3,
+                checksumSha256: 'a'.repeat(64),
+                uploadedBytes: 3,
+              }),
+            };
+          if (endpoint === media.completeUpload)
+            return {
+              status: 200,
+              body: envelopeOk({
+                ...session,
+                status: 'ready',
+                uploadedBytes: 3,
+              }),
+            };
+          if (endpoint === media.content)
+            return {
+              status: 200,
+              body: envelopeOk(null),
+              file: new Blob(['image'], { type: 'image/webp' }),
+            };
+          return MockBackend.prototype.handle.call(backend, endpoint, request);
+        });
+        const input = page
+          .el()
+          .querySelector<HTMLInputElement>('input[type="file"]')!;
+        Object.defineProperty(input, 'files', {
+          value: [new File(['img'], 'cover.webp', { type: 'image/webp' })],
+        });
+        input.dispatchEvent(new Event('change'));
+        await page.waitForText('Dùng ảnh mặc định');
+        expect(page.bodies(media.uploadPart)).toHaveLength(1);
+        await type(page, 'input[autocomplete="off"]', 'Nội dung có ảnh bìa');
+        await page.click('Lưu nháp');
+        expect(page.bodies(createEndpoint)[0]).toMatchObject({
+          assets: [{ assetId: 9123, usage: 'cover', sortNo: 0 }],
+        });
+        await page.waitForText('Sửa bản nháp');
+        await page.click('Dùng ảnh mặc định');
+        await page.click('Lưu nháp');
+        expect(page.bodies(communityEndpoints.saveDraft).at(-1)).toMatchObject({
+          assets: [],
+        });
+      } finally {
+        Blob.prototype.arrayBuffer = originalBuffer;
+        URL.createObjectURL = originalCreate;
+        URL.revokeObjectURL = originalRevoke;
+      }
+    },
+  );
 
   it('creates an article draft and moves to its edit address', async () => {
     const page = await openCommunity('/community/articles/new', 'giangvien');

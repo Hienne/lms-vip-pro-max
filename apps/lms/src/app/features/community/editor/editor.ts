@@ -43,6 +43,7 @@ import {
   publishRules,
   toDraftFields,
 } from '../data-access/content-form';
+import { CoverPicker } from '../components/cover-picker/cover-picker';
 import { EditorStore, type NewKind } from './data-access/editor.store';
 
 const REVISION_STATUS: Readonly<
@@ -60,6 +61,7 @@ const REVISION_STATUS: Readonly<
 @Component({
   selector: 'app-community-editor',
   imports: [
+    CoverPicker,
     Alert,
     Badge,
     Breadcrumb,
@@ -91,6 +93,7 @@ const REVISION_STATUS: Readonly<
 })
 export class CommunityEditor implements HasUnsavedChanges {
   protected readonly store = inject(EditorStore);
+  protected readonly cover = this.store.cover;
   protected readonly tags = inject(CommunityTagOptions);
   protected readonly limits = COMMUNITY_LIMITS;
   protected readonly revisionStatus = REVISION_STATUS;
@@ -100,6 +103,21 @@ export class CommunityEditor implements HasUnsavedChanges {
   ];
 
   private readonly model = signal(emptyContentForm());
+  protected readonly existingCover = computed(() => {
+    if (this.cover.selection$() !== undefined) return undefined;
+    const detail = this.store.detail$();
+    return (detail?.draftRevision ?? detail?.publishedRevision)?.assets?.find(
+      (asset) => asset.usage === 'cover',
+    )?.revisionAssetId;
+  });
+  protected readonly hasCover = computed(() =>
+    this.cover.selection$() !== undefined
+      ? !!this.cover.selection$()
+      : this.model().assets.some((asset) => asset.usage === 'cover'),
+  );
+  private readonly snapshot = computed(() =>
+    JSON.stringify({ ...this.model(), assets: this.fields().assets }),
+  );
   /** The form as it was last loaded or saved, to tell whether leaving loses anything. */
   private readonly baseline = signal(JSON.stringify(emptyContentForm()));
 
@@ -176,6 +194,7 @@ export class CommunityEditor implements HasUnsavedChanges {
       const initial = this.store.initialForm$();
       if (!initial) return;
       untracked(() => {
+        this.cover.reset();
         this.model.set(initial);
         this.baseline.set(JSON.stringify(initial));
       });
@@ -183,7 +202,7 @@ export class CommunityEditor implements HasUnsavedChanges {
     // A save makes the current form the new baseline.
     effect(() => {
       if (this.store.savedAt$()) {
-        untracked(() => this.baseline.set(JSON.stringify(this.model())));
+        untracked(() => this.baseline.set(this.snapshot()));
       }
     });
   }
@@ -216,12 +235,13 @@ export class CommunityEditor implements HasUnsavedChanges {
   }
 
   hasUnsavedChanges(): boolean {
-    return (
-      !this.store.done$() && JSON.stringify(this.model()) !== this.baseline()
-    );
+    return !this.store.done$() && this.snapshot() !== this.baseline();
   }
 
   private fields() {
-    return toDraftFields(this.model(), { lesson: this.isLesson() });
+    return toDraftFields(this.model(), {
+      lesson: this.isLesson(),
+      cover: this.cover.selection$(),
+    });
   }
 }
