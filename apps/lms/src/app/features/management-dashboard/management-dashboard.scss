@@ -1,0 +1,23 @@
+@use 'ui';
+:host {
+  display: grid;
+  gap: ui.space(4);
+}
+dl {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: ui.space(2) ui.space(4);
+}
+dt {
+  @include ui.text(sm, muted);
+}
+dd {
+  margin: 0;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: ui.space(2);
+}
