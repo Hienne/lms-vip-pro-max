@@ -56,6 +56,7 @@ export class UsersStore {
     status: signal<AccountStatus | ''>(''),
     sort: signal<DataTableSort | null>(null),
     page: signal(1),
+    pageSize: signal(USERS_PAGE_SIZE),
     /** The last page the server sent: the table stays while the next one loads. */
     shown: linkedSignal<
       Page<UserSummary> | undefined,
@@ -74,7 +75,7 @@ export class UsersStore {
     const field = order ? SORT_FIELD[order.key] : undefined;
     return {
       page: page() - 1,
-      size: USERS_PAGE_SIZE,
+      size: this.state.pageSize(),
       ...(query().trim() ? { q: query().trim().slice(0, 100) } : {}),
       ...(roleCode() ? { roleCode: roleCode() } : {}),
       ...(orgId() !== undefined ? { orgId: orgId() } : {}),
@@ -98,6 +99,7 @@ export class UsersStore {
   readonly status$ = this.state.status.asReadonly();
   readonly sort$ = this.state.sort.asReadonly();
   readonly page$ = this.state.page.asReadonly();
+  readonly pageSize$ = this.state.pageSize.asReadonly();
 
   readonly roles$ = this.editor.roles$;
   /** Role names by code; a role the caller cannot list is shown by its code. */
@@ -189,6 +191,12 @@ export class UsersStore {
 
   goToPage(page: number): void {
     this.setPage(page);
+  }
+
+  /** A new page size starts again at the first page. */
+  changePageSize(size: number): void {
+    this.state.pageSize.set(size);
+    this.setPage(1);
   }
 
   retryLoad(): void {

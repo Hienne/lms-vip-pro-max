@@ -100,8 +100,9 @@
         [rows]="store.rows$()"
         [total]="store.total$()"
         [page]="store.page$()"
-        [pageSize]="pageSize"
+        [pageSize]="store.pageSize$()"
         (pageChange)="store.goToPage($event)"
+        (pageSizeChange)="store.changePageSize($event)"
       >
         <ui-empty
           slot="empty"
@@ -154,13 +155,12 @@
         </ng-template>
         <ng-template uiDataTableCell="actions" [of]="store.rows$()" let-row>
           <button
-            uiButton
+            uiIconButton
             size="sm"
-            variant="ghost"
-            [attr.aria-label]="'Xem ' + row.title"
+            [label]="'Xem ' + row.title"
             (click)="store.view(row.assignment.id)"
           >
-            Xem
+            <ui-icon name="eye" size="sm" />
           </button>
         </ng-template>
       </ui-data-table>
@@ -191,6 +191,7 @@
       [rows]="store.groups$()"
       [total]="store.groups$().length"
       [pageSize]="100"
+      [pageSizeOptions]="[]"
     >
       <ui-empty
         slot="empty"
@@ -222,13 +223,12 @@
       </ng-template>
       <ng-template uiDataTableCell="actions" [of]="store.groups$()" let-row>
         <button
-          uiButton
+          uiIconButton
           size="sm"
-          variant="ghost"
-          [attr.aria-label]="'Thành viên ' + row.group.name"
+          [label]="'Thành viên ' + row.group.name"
           (click)="store.editMembers(row.group.id)"
         >
-          <ui-icon name="users" size="sm" />Thành viên
+          <ui-icon name="users" size="sm" />
         </button>
       </ng-template>
     </ui-data-table>

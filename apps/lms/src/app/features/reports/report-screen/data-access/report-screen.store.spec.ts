@@ -262,6 +262,15 @@ describe('assessment report integration', () => {
       );
     });
 
+    it('returns to page 1 with the chosen page size, without writing the size to the URL', async () => {
+      const store = await open('/reports/results?orgId=1&page=3');
+      store.changePageSize(50);
+      await settle();
+      expect(store.pageSize$()).toBe(50);
+      expect(store.page$()).toBe(1);
+      expect(TestBed.inject(Router).url).not.toContain('50');
+    });
+
     it('carries on each tab link the filters that tab reads', async () => {
       const store = await open(
         '/reports/results?orgId=1&quizId=4&userId=000004&passed=true',

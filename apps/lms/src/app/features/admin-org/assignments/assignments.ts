@@ -21,6 +21,7 @@ import {
   FmtDatePipe,
   FormActions,
   Icon,
+  IconButton,
   PageHeader,
   Select,
   Spinner,
@@ -37,10 +38,7 @@ import { AssignForm } from './components/assign-form/assign-form';
 import { AssignmentDetail } from './components/assignment-detail/assignment-detail';
 import { GroupForm } from './components/group-form/group-form';
 import { GroupMembers } from './components/group-members/group-members';
-import {
-  ASSIGNMENTS_PAGE_SIZE,
-  AssignmentsStore,
-} from './data-access/assignments.store';
+import { AssignmentsStore } from './data-access/assignments.store';
 
 /**
  * Course assignment and deadlines (the mockup's `assignments`): an org's assignments of one
@@ -67,6 +65,7 @@ import {
     GroupForm,
     GroupMembers,
     Icon,
+    IconButton,
     NgTemplateOutlet,
     PageHeader,
     RouterLink,
@@ -106,7 +105,6 @@ export class Assignments {
     );
   }
 
-  protected readonly pageSize = ASSIGNMENTS_PAGE_SIZE;
   protected readonly requirementLabel = REQUIREMENT_LABEL;
   protected readonly statusView = assignmentStatusView;
 

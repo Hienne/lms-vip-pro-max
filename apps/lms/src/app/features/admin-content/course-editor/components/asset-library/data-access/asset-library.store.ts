@@ -72,6 +72,7 @@ export class AssetLibraryStore {
     query: signal(''),
     sort: signal<DataTableSort>(DEFAULT_SORT),
     page: signal(1),
+    pageSize: signal(LIBRARY_PAGE_SIZE),
     /** The last page the server sent: the table stays while the next one loads. */
     shown: linkedSignal<
       Page<LibraryAsset> | undefined,
@@ -90,7 +91,7 @@ export class AssetLibraryStore {
     const text = query().trim();
     return {
       page: page() - 1,
-      size: LIBRARY_PAGE_SIZE,
+      size: this.state.pageSize(),
       mediaType,
       status: 'ready',
       ...(text ? { q: text.slice(0, 100) } : {}),
@@ -129,6 +130,7 @@ export class AssetLibraryStore {
   readonly query$ = this.state.query.asReadonly();
   readonly sort$ = this.state.sort.asReadonly();
   readonly page$ = this.state.page.asReadonly();
+  readonly pageSize$ = this.state.pageSize.asReadonly();
   readonly loadError$ = this.listData.error;
   readonly isLoading$ = computed(
     () => this.listData.isLoading() && this.state.shown() === undefined,
@@ -188,6 +190,12 @@ export class AssetLibraryStore {
 
   goToPage(page: number): void {
     this.setPage(page);
+  }
+
+  /** A new page size starts again at the first page. */
+  changePageSize(size: number): void {
+    this.state.pageSize.set(size);
+    this.setPage(1);
   }
 
   retryLoad(): void {

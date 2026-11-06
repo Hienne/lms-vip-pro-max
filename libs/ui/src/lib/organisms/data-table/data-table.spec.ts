@@ -27,6 +27,7 @@ const ROWS: readonly Row[] = [
     [pageSize]="2"
     (sortChange)="sorted.push($event)"
     (pageChange)="paged.push($event)"
+    (pageSizeChange)="sizes.push($event)"
   >
     <ng-template uiDataTableCell="name" [of]="rows()" let-row>
       <strong>{{ row.name }}</strong>
@@ -46,6 +47,7 @@ class Host {
   readonly sort = signal<DataTableSort | null>(null);
   readonly sorted: DataTableSort[] = [];
   readonly paged: number[] = [];
+  readonly sizes: number[] = [];
 }
 
 function render() {
@@ -123,6 +125,21 @@ describe('DataTable', () => {
       .querySelectorAll<HTMLButtonElement>('.pagination nav button')[2]
       .click();
     expect(host.paged).toEqual([2]);
+  });
+
+  it('offers 10 / 20 / 50 / 100 rows per page plus the current size, and reports the choice', () => {
+    const { root, host } = render();
+    const select = root.querySelector<HTMLSelectElement>('.pagination select')!;
+    expect(Array.from(select.options, (o) => o.value)).toEqual([
+      '2',
+      '10',
+      '20',
+      '50',
+      '100',
+    ]);
+    select.value = '50';
+    select.dispatchEvent(new Event('change'));
+    expect(host.sizes).toEqual([50]);
   });
 
   it('shows the projected empty state instead of a table when there is nothing', () => {

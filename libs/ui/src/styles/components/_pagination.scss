@@ -12,6 +12,11 @@
     color: var(--color-text-muted);
     font-size: var(--text-sm);
 
+    &__size {
+      width: auto;
+      margin-left: auto;
+    }
+
     &__pages {
       display: flex;
       gap: var(--spacing-1);

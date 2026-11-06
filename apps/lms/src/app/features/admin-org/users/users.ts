@@ -11,6 +11,7 @@ import {
   Empty,
   ErrorState,
   Icon,
+  IconButton,
   PageHeader,
   Search,
   Select,
@@ -27,7 +28,7 @@ import { AccessRequests } from './components/access-requests/access-requests';
 import { UserEditor } from '../components/user-editor/user-editor';
 import { UserEditorStore } from '../data-access/user-editor.store';
 import { AccessRequestsStore } from './data-access/access-requests.store';
-import { USERS_PAGE_SIZE, UsersStore } from './data-access/users.store';
+import { UsersStore } from './data-access/users.store';
 
 /** The users list (the mockup's `users` page): find, add, edit, lock and unlock accounts. */
 @Component({
@@ -44,6 +45,7 @@ import { USERS_PAGE_SIZE, UsersStore } from './data-access/users.store';
     Empty,
     ErrorState,
     Icon,
+    IconButton,
     PageHeader,
     RoleBadge,
     RouterLink,
@@ -62,7 +64,6 @@ import { USERS_PAGE_SIZE, UsersStore } from './data-access/users.store';
 })
 export class Users {
   protected readonly store = inject(UsersStore);
-  protected readonly pageSize = USERS_PAGE_SIZE;
   protected readonly editorStore = inject(UserEditorStore);
   private readonly requests = inject(AccessRequestsStore);
   private readonly router = inject(Router);

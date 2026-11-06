@@ -355,8 +355,9 @@
     [rows]="store.groupedRows$()"
     [total]="store.groupTotal$()"
     [page]="store.groupPage$()"
-    [pageSize]="10"
+    [pageSize]="store.groupPageSize$()"
     (pageChange)="store.setGroupPage($event)"
+    (pageSizeChange)="store.setGroupPageSize($event)"
   >
     <ng-template uiDataTableCell="name" [of]="store.groupedRows$()" let-group
       ><span class="report-screen__group-name" [title]="group.name"
@@ -430,9 +431,10 @@
     [rows]="store.rows$()"
     [total]="store.total$()"
     [page]="store.page$()"
-    [pageSize]="20"
+    [pageSize]="store.pageSize$()"
     [sort]="store.sort$()"
     (pageChange)="store.changePage($event)"
+    (pageSizeChange)="store.changePageSize($event)"
     (sortChange)="store.changeSort($event)"
   >
     <ui-empty

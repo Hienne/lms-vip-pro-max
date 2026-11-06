@@ -67,8 +67,10 @@ export class AssessmentScreenStore {
       status: '',
     }),
     questionPage: signal(1),
+    questionPageSize: signal(20),
     questionSort: signal<DataTableSort>({ key: 'id', dir: 'desc' }),
     quizPage: signal(1),
+    quizPageSize: signal(20),
     selectedIds: signal<number[]>([]),
     // A successful settings write must not be repeated as a create if the separate pool write fails.
     saveReceipt: signal<QuizDetailV1 | undefined>(undefined),
@@ -294,7 +296,7 @@ export class AssessmentScreenStore {
           ? { courseId: this.selectedCourseId$() }
           : {}),
         page: this.state.questionPage() - 1,
-        size: 20,
+        size: this.state.questionPageSize(),
         sort: `${this.state.questionSort().key},${this.state.questionSort().dir}`,
         q: f.q || undefined,
         questionType:
@@ -365,7 +367,7 @@ export class AssessmentScreenStore {
           ? {
               courseId: this.selectedCourseId$() as number,
               page: this.state.quizPage() - 1,
-              size: 20,
+              size: this.state.quizPageSize(),
               sort: 'id,desc',
             }
           : undefined,
@@ -385,6 +387,7 @@ export class AssessmentScreenStore {
     () => this.quizzesData.value()?.totalElements ?? 0,
   );
   readonly quizPage$ = this.state.quizPage.asReadonly();
+  readonly quizPageSize$ = this.state.quizPageSize.asReadonly();
   readonly editorOpen$ = this.state.editorOpen.asReadonly();
   readonly importOpen$ = this.state.importOpen.asReadonly();
   readonly questionDraft$ = this.questionData.value;
@@ -392,6 +395,7 @@ export class AssessmentScreenStore {
   readonly questionLoadError$ = this.questionData.error;
   readonly questionFilters$ = this.state.questionFilters.asReadonly();
   readonly questionPage$ = this.state.questionPage.asReadonly();
+  readonly questionPageSize$ = this.state.questionPageSize.asReadonly();
   readonly questionSort$ = this.state.questionSort.asReadonly();
   readonly selectedIds$ = this.state.selectedIds.asReadonly();
   /** The header checkbox: every row of the current page is selected. */
@@ -621,6 +625,14 @@ export class AssessmentScreenStore {
   }
   setQuizPage(page: number): void {
     this.state.quizPage.set(page);
+  }
+  setQuestionPageSize(size: number): void {
+    this.state.questionPageSize.set(size);
+    this.setQuestionPage(1);
+  }
+  setQuizPageSize(size: number): void {
+    this.state.quizPageSize.set(size);
+    this.setQuizPage(1);
   }
   setSelectedIds(ids: number[]): void {
     this.state.selectedIds.set(ids);

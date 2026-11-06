@@ -195,9 +195,15 @@ export class ReportScreenStore {
     sort: linkedSignal(() => DEFAULT_SORT[this.dimension$() ?? 'results']),
     grouping: signal<'quiz' | 'org'>('quiz'),
     groupPage: signal(1),
+    groupPageSize: signal(10),
+    pageSize: signal(20),
   };
   readonly filters$ = computed<ReportFilters>(() => this.urlQuery().filters);
   readonly page$ = computed(() => this.urlQuery().page);
+  /** Rows per page of the open table; chosen in the page, not kept in the URL. */
+  readonly pageSize$ = computed(() =>
+    this.progress$() ? this.progress.pageSize$() : this.state.pageSize(),
+  );
   /** The unit, team, course and quiz pickers, and whether the URL's ids are known to be in scope. */
   readonly pickers = reportPickers(this.filters$);
   /** The groups and the learner list of "Tiến độ & hoàn thành". */
@@ -262,7 +268,7 @@ export class ReportScreenStore {
       sort = this.sort$();
     const paging = {
       page: this.page$() - 1,
-      size: 20,
+      size: this.state.pageSize(),
       sort: `${sort.key},${sort.dir}`,
     };
     switch (type) {
@@ -402,14 +408,15 @@ export class ReportScreenStore {
   );
   readonly grouping$ = this.state.grouping.asReadonly();
   readonly groupPage$ = this.state.groupPage.asReadonly();
+  readonly groupPageSize$ = this.state.groupPageSize.asReadonly();
   private readonly groupedRows = computed(() =>
     this.grouping$() === 'quiz' ? this.byQuiz$() : this.byOrg$(),
   );
   readonly groupTotal$ = computed(() => this.groupedRows().length);
   readonly groupedRows$ = computed(() =>
     this.groupedRows().slice(
-      (this.groupPage$() - 1) * 10,
-      this.groupPage$() * 10,
+      (this.groupPage$() - 1) * this.groupPageSize$(),
+      this.groupPage$() * this.groupPageSize$(),
     ),
   );
   readonly activeFilterCount$ = computed(
@@ -510,6 +517,10 @@ export class ReportScreenStore {
   setGroupPage(value: number): void {
     this.state.groupPage.set(value);
   }
+  setGroupPageSize(value: number): void {
+    this.state.groupPageSize.set(value);
+    this.setGroupPage(1);
+  }
   selectGrouping(value: 'quiz' | 'org'): void {
     this.setGrouping(value);
     this.setGroupPage(1);
@@ -525,6 +536,12 @@ export class ReportScreenStore {
   }
   changePage(page: number): void {
     this.navigate(this.filters$(), page);
+  }
+  /** A new page size starts again at the first page. */
+  changePageSize(size: number): void {
+    if (this.progress$()) this.progress.setPageSize(size);
+    else this.state.pageSize.set(size);
+    this.navigate(this.filters$(), 1);
   }
   changeSort(sort: DataTableSort): void {
     if (this.progress$()) {

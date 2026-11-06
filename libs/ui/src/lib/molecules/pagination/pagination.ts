@@ -6,18 +6,37 @@ import {
   output,
 } from '@angular/core';
 import { Icon } from '../../atoms/icon/icon';
+import { Select } from '../../atoms/select/select.directive';
 
 /**
  * Page controls of a list (the mockup's `.pagination`): the range shown, and previous / numbered /
  * next buttons when there is more than one page. Stateless: the owner passes the 1-based `page`
  * and reacts to `pageChange`. A page past the end reads as the last one.
+ *
+ * Give `pageSizeOptions` to add a rows-per-page picker (the current `pageSize` is always listed,
+ * even when it is not among the options) and react to `pageSizeChange`.
  */
 @Component({
   selector: 'ui-pagination',
-  imports: [Icon],
+  imports: [Icon, Select],
   host: { class: 'pagination' },
   template: `
     <span>Hiển thị {{ from() }}–{{ to() }} / {{ total() }}</span>
+    @if (sizes().length) {
+      <select
+        uiSelect
+        size="sm"
+        aria-label="Số dòng mỗi trang"
+        class="pagination__size"
+        (change)="pickSize($event)"
+      >
+        @for (n of sizes(); track n) {
+          <option [value]="n" [selected]="n === pageSize()">
+            {{ n }} / trang
+          </option>
+        }
+      </select>
+    }
     @if (pages() > 1) {
       <nav class="pagination__pages" aria-label="Phân trang">
         <button
@@ -53,8 +72,16 @@ export class Pagination {
   readonly total = input.required({ transform: numberAttribute });
   readonly page = input(1, { transform: numberAttribute });
   readonly pageSize = input(10, { transform: numberAttribute });
+  /** Rows-per-page choices; none means no picker. */
+  readonly pageSizeOptions = input<readonly number[]>([]);
   readonly pageChange = output<number>();
+  readonly pageSizeChange = output<number>();
 
+  protected readonly sizes = computed(() => {
+    const options = this.pageSizeOptions();
+    if (!options.length) return [];
+    return [...new Set([...options, this.pageSize()])].sort((a, b) => a - b);
+  });
   protected readonly pages = computed(() =>
     Math.max(1, Math.ceil(this.total() / this.pageSize())),
   );
@@ -70,4 +97,8 @@ export class Pagination {
   protected readonly to = computed(() =>
     Math.min(this.current() * this.pageSize(), this.total()),
   );
+
+  protected pickSize(event: Event): void {
+    this.pageSizeChange.emit(Number((event.target as HTMLSelectElement).value));
+  }
 }

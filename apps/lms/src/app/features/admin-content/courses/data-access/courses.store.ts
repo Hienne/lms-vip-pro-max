@@ -96,6 +96,7 @@ export class CoursesStore {
     status: signal<CatalogStatus | ''>(''),
     sort: signal<DataTableSort | null>({ key: 'updated', dir: 'desc' }),
     page: signal(1),
+    pageSize: signal(COURSES_PAGE_SIZE),
     /** The course being copied: the drawer asks for the new code. */
     copying: signal<CourseRow | null>(null),
     /** The course whose shares the drawer shows. */
@@ -118,7 +119,7 @@ export class CoursesStore {
     const field = order ? SORT_FIELD[order.key] : undefined;
     return {
       page: page() - 1,
-      size: COURSES_PAGE_SIZE,
+      size: this.state.pageSize(),
       ...(query().trim() ? { q: query().trim().slice(0, 100) } : {}),
       ...(fieldId() ? { fieldId: fieldId() } : {}),
       ...(status() ? { state: status() } : {}),
@@ -194,6 +195,7 @@ export class CoursesStore {
   readonly status$ = this.state.status.asReadonly();
   readonly sort$ = this.state.sort.asReadonly();
   readonly page$ = this.state.page.asReadonly();
+  readonly pageSize$ = this.state.pageSize.asReadonly();
   readonly copying$ = this.state.copying.asReadonly();
   readonly sharing$ = this.state.sharing.asReadonly();
 
@@ -335,6 +337,12 @@ export class CoursesStore {
 
   goToPage(page: number): void {
     this.setPage(page);
+  }
+
+  /** A new page size starts again at the first page. */
+  changePageSize(size: number): void {
+    this.state.pageSize.set(size);
+    this.setPage(1);
   }
 
   retryLoad(): void {

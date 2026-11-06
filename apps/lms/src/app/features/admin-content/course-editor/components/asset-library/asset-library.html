@@ -27,9 +27,10 @@
     [total]="store.total$()"
     [sort]="store.sort$()"
     [page]="store.page$()"
-    [pageSize]="pageSize"
+    [pageSize]="store.pageSize$()"
     (sortChange)="store.sortBy($event)"
     (pageChange)="store.goToPage($event)"
+    (pageSizeChange)="store.changePageSize($event)"
   >
     <ui-empty
       slot="empty"
