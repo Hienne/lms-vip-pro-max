@@ -262,13 +262,26 @@ describe('assessment report integration', () => {
       );
     });
 
-    it('returns to page 1 with the chosen page size, without writing the size to the URL', async () => {
+    it('asks for the chosen page size from the first page, and never at a page past the end', async () => {
       const store = await open('/reports/results?orgId=1&page=3');
+      const spy = vi.spyOn(TestBed.inject(MockBackend), 'handle');
       store.changePageSize(50);
       await settle();
+      const queries = (
+        spy.mock.calls as unknown as [
+          unknown,
+          { query?: Record<string, string> },
+        ][]
+      )
+        .map(([, request]) => request.query)
+        .filter((query) => query?.['size'] !== undefined);
+      expect(queries.at(-1)).toMatchObject({ size: '50', page: '0' });
+      expect(
+        queries.filter((q) => q?.['size'] === '50' && q['page'] !== '0'),
+      ).toEqual([]);
       expect(store.pageSize$()).toBe(50);
       expect(store.page$()).toBe(1);
-      expect(TestBed.inject(Router).url).not.toContain('50');
+      expect(TestBed.inject(Router).url).not.toMatch(/size|50/);
     });
 
     it('carries on each tab link the filters that tab reads', async () => {
@@ -378,6 +391,24 @@ describe('assessment report integration', () => {
       (spy.mock.calls as [unknown, { query: Record<string, string> }][])
         .filter(([e]) => e === endpoint)
         .at(-1)?.[1].query;
+
+    it('sends the chosen page size to the progress groups and keeps it across views, apart from the other tabs', async () => {
+      const store = await open('/reports/progress');
+      const spy = vi.spyOn(TestBed.inject(MockBackend), 'handle');
+      store.changePageSize(50);
+      await settle();
+      expect(lastQuery(spy, learning.groups)).toMatchObject({
+        size: '50',
+        page: '0',
+      });
+      store.selectView('learners');
+      await settle();
+      expect(lastQuery(spy, learning.enrollments)).toMatchObject({
+        size: '50',
+        page: '0',
+      });
+      expect(store.pageSize$()).toBe(50);
+    });
 
     it('is the tab after Tổng quan, with its own description', async () => {
       const store = await open('/reports/progress');

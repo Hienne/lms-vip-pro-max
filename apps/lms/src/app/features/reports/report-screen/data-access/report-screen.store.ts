@@ -528,31 +528,36 @@ export class ReportScreenStore {
   /** Writes the filters to the URL in place, from the first page; the report follows the URL. */
   applyFilters(value: ReportFilters): void {
     this.setGroupPage(1);
-    this.navigate(value, 1);
+    void this.navigate(value, 1);
   }
   /** Shows "Tiến độ & hoàn thành" by course, by unit or by learner, from the first page. */
   selectView(view: ProgressView): void {
-    this.navigate({ ...this.filters$(), view }, 1);
+    void this.navigate({ ...this.filters$(), view }, 1);
   }
   changePage(page: number): void {
-    this.navigate(this.filters$(), page);
+    void this.navigate(this.filters$(), page);
   }
   /** A new page size starts again at the first page. */
   changePageSize(size: number): void {
-    if (this.progress$()) this.progress.setPageSize(size);
-    else this.state.pageSize.set(size);
-    this.navigate(this.filters$(), 1);
+    const apply = () => {
+      if (this.progress$()) this.progress.setPageSize(size);
+      else this.state.pageSize.set(size);
+    };
+    // The page lives in the URL: leave a later page first, so the new size is never asked for
+    // at a page past the end.
+    if (this.page$() > 1) void this.navigate(this.filters$(), 1).then(apply);
+    else apply();
   }
   changeSort(sort: DataTableSort): void {
     if (this.progress$()) {
       if (this.progress.setSort(sort) && this.page$() > 1)
-        this.navigate(this.filters$(), 1);
+        void this.navigate(this.filters$(), 1);
       return;
     }
     const type = this.dimension$();
     if (!type || !SORTS[type].includes(sort.key)) return;
     this.setSort(sort);
-    if (this.page$() > 1) this.navigate(this.filters$(), 1);
+    if (this.page$() > 1) void this.navigate(this.filters$(), 1);
   }
   exportCsv(): void {
     if (this.progress$()) return this.progress.exportCsv();
@@ -560,8 +565,8 @@ export class ReportScreenStore {
     if (request && !this.exporting$()) this.exportMutation.run(request);
   }
   /** Writes the filters the current tab reads, so a shared link carries no unused key. */
-  private navigate(filters: ReportFilters, page: number): void {
-    void this.router.navigate([], {
+  private navigate(filters: ReportFilters, page: number): Promise<boolean> {
+    return this.router.navigate([], {
       relativeTo: this.route,
       queryParams: queryFromFilters(
         filters,

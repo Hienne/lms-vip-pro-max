@@ -121,6 +121,27 @@ describe('Pagination', () => {
       expect(host.sizes).toEqual([50]);
     });
 
+    it('does not emit a size the picker never offered', () => {
+      const { root, set, host } = render();
+      set((h) => h.options.set([10, 20, 50]));
+      const select = picker(root)!;
+      const odd = document.createElement('option');
+      odd.value = '1000';
+      select.append(odd);
+      select.value = '1000';
+      select.dispatchEvent(new Event('change'));
+      select.value = '';
+      select.dispatchEvent(new Event('change'));
+      expect(host.sizes).toEqual([]);
+    });
+
+    it('follows a page size changed from outside', () => {
+      const { root, set } = render();
+      set((h) => h.options.set([10, 20, 50]));
+      set((h) => h.pageSize.set(50));
+      expect(picker(root)?.value).toBe('50');
+    });
+
     it('keeps the picker when there is a single page', () => {
       const { root, set } = render();
       set((h) => {

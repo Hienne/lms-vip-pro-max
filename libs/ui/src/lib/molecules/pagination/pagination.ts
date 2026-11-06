@@ -99,6 +99,8 @@ export class Pagination {
   );
 
   protected pickSize(event: Event): void {
-    this.pageSizeChange.emit(Number((event.target as HTMLSelectElement).value));
+    const size = Number((event.target as HTMLSelectElement).value);
+    // Only a size the picker offered goes out, whatever the DOM was made to say.
+    if (this.sizes().includes(size)) this.pageSizeChange.emit(size);
   }
 }

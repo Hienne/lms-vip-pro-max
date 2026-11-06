@@ -50,6 +50,21 @@ class Host {
   readonly sizes: number[] = [];
 }
 
+@Component({
+  imports: [DataTable],
+  template: `<ui-data-table
+    caption="Tất cả dòng"
+    [columns]="[{ key: 'name', label: 'Tên' }]"
+    [rows]="rows"
+    [total]="2"
+    [pageSize]="100"
+    [pageSizeOptions]="[]"
+  />`,
+})
+class AllRowsHost {
+  readonly rows = ROWS;
+}
+
 function render() {
   const fixture = TestBed.createComponent(Host);
   fixture.detectChanges();
@@ -152,5 +167,13 @@ describe('DataTable', () => {
     expect(root.querySelector('[slot=empty]')?.textContent).toBe(
       'Chưa có dữ liệu',
     );
+  });
+
+  it('shows no picker when the owner passes no size options', () => {
+    const fixture = TestBed.createComponent(AllRowsHost);
+    fixture.detectChanges();
+    const root = fixture.nativeElement as HTMLElement;
+    expect(root.querySelector('tbody tr')).not.toBeNull();
+    expect(root.querySelector('.pagination select')).toBeNull();
   });
 });
