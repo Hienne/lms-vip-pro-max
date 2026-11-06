@@ -655,7 +655,7 @@ No database migration is required.
 
 `chatRoomEndpoints` declares the authenticated map and single-use socket ticket at `/api/v1/chat-room`.
 `chatRoomSocket` declares both directions with zod schemas. `EndpointClient.connect` owns native WebSocket
-creation and runtime parsing; the route's `ChatRoomStore` owns presence, history, heartbeat and bounded
+creation and runtime parsing; the route's `ChatRoomStore` owns presence, transient speech, heartbeat and bounded
 reconnection. A new connection always obtains a fresh ticket through `serverMutation`, so bearer/session
 expiry handling stays on the existing HTTP path. No JWT is sent in the socket URL.
 
@@ -664,6 +664,18 @@ all signed-in users. It uses the existing shell, Signal Forms and `@lms/ui`. Pha
 when the canvas mounts; its world coordinates/art colours belong to the renderer, while Angular controls
 use the UI Sass tokens. The backend serves the single map/hitbox source and validates movement.
 
+The requested first-person mode uses Three.js 0.187, lazy-loaded separately from the Phaser 2D view.
+Both renderers use `room.motion.ts` for collision/movement and share eight-way facing in the socket
+contract. Mouse pointer lock is released on Enter/Escape; touch dragging rotates the 3D camera.
+Switching renderers releases their GPU resources/listeners without reconnecting the room.
+
+There is no chat sidebar or chat log. Enter or the mobile-friendly "Nhắn tin" button opens the
+composer immediately above the instructions; sending or Escape closes it. Only active overhead
+bubbles (5.5 seconds) are held in the store and expired by per-player timers. Welcome history from
+older servers is ignored. The updated backend does not retain messages and sends an empty compatibility
+`history` field, so late arrivals/reconnects cannot receive previous speech.
+
 Deploy the matching `corebanking-academy` module and configure WebSocket upgrade for
 `/api/v1/chat-room/socket` on the FE reverse proxy. The development `/api` proxy enables WebSocket.
-No database migration is required. The room/history are held in one backend instance's memory.
+No database migration is required. Presence is held in one backend instance's memory. Deploy BE before
+FE to remove message retention at the protocol level as well as in the interface.

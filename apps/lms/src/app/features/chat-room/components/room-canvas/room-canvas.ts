@@ -7,10 +7,16 @@ import {
   untracked,
   viewChild,
 } from '@angular/core';
-import type { RoomMap } from '@lms/contracts';
+import type { RoomMap, RoomMovement } from '@lms/contracts';
 import { Button } from '@lms/ui';
-import type { RoomScene } from './rendering/room.scene';
-import type { RoomCanvasState } from '../../data-access/chat-room.model';
+import type {
+  RoomCanvasState,
+  RoomViewMode,
+} from '../../data-access/chat-room.model';
+
+interface RoomRenderer {
+  setTouch(x: number, y: number): void;
+}
 
 @Component({
   selector: 'app-room-canvas',
@@ -22,23 +28,28 @@ import type { RoomCanvasState } from '../../data-access/chat-room.model';
 export class RoomCanvas {
   readonly map = input.required<RoomMap>();
   readonly view = input.required<RoomCanvasState>();
-  readonly moved = output<{ x: number; y: number }>();
+  readonly mode = input<RoomViewMode>('3d');
+  readonly moved = output<RoomMovement>();
   readonly ready = output<boolean>();
   readonly failed = output<string>();
   private readonly mount =
     viewChild.required<ElementRef<HTMLDivElement>>('mount');
-  private scene?: RoomScene;
+  private scene?: RoomRenderer;
 
   constructor() {
     afterRenderEffect((onCleanup) => {
       const map = this.map();
+      const mode = this.mode();
       const mount = this.mount().nativeElement;
       let cancelled = false;
       let destroy: (() => void) | undefined;
       untracked(() => {
-        void this.createGame(map, mount, () => cancelled).then((cleanup) => {
-          destroy = cleanup;
-        });
+        void this.createGame(map, mode, mount, () => cancelled).then(
+          (cleanup) => {
+            if (cancelled) cleanup();
+            else destroy = cleanup;
+          },
+        );
       });
       onCleanup(() => {
         cancelled = true;
@@ -48,20 +59,41 @@ export class RoomCanvas {
   }
   private async createGame(
     map: RoomMap,
+    mode: RoomViewMode,
     mount: HTMLDivElement,
     cancelled: () => boolean,
   ): Promise<() => void> {
     try {
+      if (mode === '3d') {
+        const { RoomFirstPerson } = await import(
+          './rendering/room-first-person'
+        );
+        if (cancelled()) return () => undefined;
+        const scene = new RoomFirstPerson(
+          map,
+          mount,
+          () => this.view(),
+          (position) => this.moved.emit(position),
+          (message) => this.failed.emit(message),
+        );
+        this.scene = scene;
+        this.ready.emit(true);
+        return () => {
+          scene.destroy();
+          if (this.scene === scene) this.scene = undefined;
+        };
+      }
       const [engine, renderer] = await Promise.all([
         import('phaser'),
         import('./rendering/room.scene'),
       ]);
       if (cancelled()) return () => undefined;
-      this.scene = new renderer.RoomScene(
+      const scene = new renderer.RoomScene(
         map,
         () => this.view(),
-        (x, y) => this.moved.emit({ x, y }),
+        (position) => this.moved.emit(position),
       );
+      this.scene = scene;
       const game = new engine.default.Game({
         type: engine.default.AUTO,
         parent: mount,
@@ -71,7 +103,7 @@ export class RoomCanvas {
           width: '100%',
           height: '100%',
         },
-        scene: [this.scene],
+        scene: [scene],
         render: { roundPixels: true },
         audio: { noAudio: true },
         callbacks: {
@@ -82,18 +114,23 @@ export class RoomCanvas {
       });
       return () => {
         game.destroy(true);
-        this.scene = undefined;
+        if (this.scene === scene) this.scene = undefined;
       };
     } catch {
       if (!cancelled())
         this.failed.emit(
-          'Không khởi tạo được phòng 2D. Hãy tải lại bản đồ hoặc trình duyệt.',
+          mode === '3d'
+            ? 'Không khởi tạo được phòng 3D. Hãy thử lại hoặc chọn bản đồ 2D.'
+            : 'Không khởi tạo được phòng 2D. Hãy tải lại bản đồ hoặc trình duyệt.',
         );
       return () => undefined;
     }
   }
   protected focus(event: PointerEvent): void {
     (event.currentTarget as HTMLElement).focus();
+  }
+  focusRoom(): void {
+    this.mount().nativeElement.parentElement?.focus();
   }
   protected preventScroll(event: KeyboardEvent): void {
     const target = event.target as HTMLElement;

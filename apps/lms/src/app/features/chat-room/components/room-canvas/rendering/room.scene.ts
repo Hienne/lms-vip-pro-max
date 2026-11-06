@@ -2,20 +2,19 @@ import Phaser from 'phaser';
 import type {
   RoomPlayer as Player,
   RoomMap,
+  RoomFacing,
+  RoomMovement,
   RoomFurniture as Furniture,
 } from '@lms/contracts';
 import type { RoomCanvasState } from '../../../data-access/chat-room.model';
-const PALETTE = {
-  teal: 0x168e85,
-  slate: 0x657a81,
-  amber: 0xd39a39,
-  blue: 0x5188cf,
-  rose: 0xce728a,
-};
+import { RoomAvatar } from './room-avatar';
+import { facingFromVector, moveInRoom } from './room.motion';
 
 interface Actor {
   root: Phaser.GameObjects.Container;
-  body: Phaser.GameObjects.Container;
+  avatar: RoomAvatar;
+  facing: RoomFacing;
+  speechId: string;
   label: Phaser.GameObjects.Text;
   bubble: Phaser.GameObjects.Graphics;
   target: { x: number; y: number };
@@ -28,7 +27,7 @@ export class RoomScene extends Phaser.Scene {
   private keys!: Record<string, Phaser.Input.Keyboard.Key>;
   private previousView?: RoomCanvasState;
   private lastSent = 0;
-  private lastPosition = { x: -1, y: -1 };
+  private lastPosition = { x: -1, y: -1, facing: '' };
   private touch = { x: 0, y: 0 };
   private focused = true;
   private readonly reducedMotion = matchMedia(
@@ -38,7 +37,7 @@ export class RoomScene extends Phaser.Scene {
   constructor(
     private layout: RoomMap,
     private view: () => RoomCanvasState,
-    private moved: (x: number, y: number) => void,
+    private moved: (position: RoomMovement) => void,
   ) {
     super('classroom');
   }
@@ -217,22 +216,7 @@ export class RoomScene extends Phaser.Scene {
     if (this.actors.has(player.id)) return;
     const root = this.add.container(player.x, player.y);
     const shadow = this.add.ellipse(0, 2, 29, 12, 0x233c34, 0.17);
-    const body = this.add.container(0, 0);
-    const g = this.add.graphics();
-    g.fillStyle(0x33444a)
-      .fillRoundedRect(-10, -10, 8, 12, 2)
-      .fillRoundedRect(3, -10, 8, 12, 2);
-    g.fillStyle(PALETTE[player.color]).fillRoundedRect(-13, -29, 26, 23, 8);
-    g.fillStyle(0xf2cba6)
-      .fillRoundedRect(-16, -24, 5, 14, 3)
-      .fillRoundedRect(11, -24, 5, 14, 3);
-    g.fillStyle(0xf2cba6).fillRoundedRect(-11, -49, 22, 23, 8);
-    g.fillStyle(0x393832)
-      .fillRoundedRect(-12, -51, 24, 10, 6)
-      .fillRect(-12, -45, 5, 8);
-    g.fillStyle(0x423f38).fillCircle(-4, -37, 1.4).fillCircle(5, -37, 1.4);
-    g.lineStyle(1, 0xb77461).lineBetween(-2, -32, 3, -32);
-    body.add(g);
+    const avatar = new RoomAvatar(this, player.color);
     const bubble = this.add.graphics();
     const label = this.add
       .text(0, -62, player.name, {
@@ -245,10 +229,12 @@ export class RoomScene extends Phaser.Scene {
         padding: { x: 10, y: 6 },
       })
       .setOrigin(0.5, 1);
-    root.add([shadow, body, bubble, label]);
+    root.add([shadow, avatar.body, bubble, label]);
     const actor = {
       root,
-      body,
+      avatar,
+      facing: player.facing ?? 'north',
+      speechId: '',
       bubble,
       label,
       target: { x: player.x, y: player.y },
@@ -275,7 +261,7 @@ export class RoomScene extends Phaser.Scene {
     if (view.me !== previous?.me) {
       this.actors.forEach((a) => a.root.destroy());
       this.actors.clear();
-      this.lastPosition = { x: -1, y: -1 };
+      this.lastPosition = { x: -1, y: -1, facing: '' };
     }
     const ids = new Set(view.players.map((p) => p.id));
     this.actors.forEach((actor, id) => {
@@ -287,8 +273,16 @@ export class RoomScene extends Phaser.Scene {
     view.players.forEach((player) => {
       this.addActor(player);
       const actor = this.actors.get(player.id);
-      if (actor && player.id !== view.me)
+      if (actor && player.id !== view.me) {
+        actor.facing =
+          player.facing ??
+          facingFromVector(
+            player.x - actor.target.x,
+            player.y - actor.target.y,
+            actor.facing,
+          );
         actor.target = { x: player.x, y: player.y };
+      }
     });
     if (view.me !== previous?.me) this.resize();
     if (view.correction && view.correction !== previous?.correction) {
@@ -296,28 +290,22 @@ export class RoomScene extends Phaser.Scene {
         .get(view.me)
         ?.root.setPosition(view.correction.x, view.correction.y);
     }
-    if (view.lastChat && view.lastChat !== previous?.lastChat) {
-      const actor = this.actors.get(view.lastChat.playerId);
-      if (actor) {
-        actor.label.setText(view.lastChat.text);
-        actor.until = this.time.now + 5500;
-        this.paintLabel(actor, true);
-      }
+    if (view.chatting && !previous?.chatting) {
+      this.input.keyboard?.resetKeys();
+      this.touch = { x: 0, y: 0 };
     }
-  }
-  private walkable(x: number, y: number): boolean {
-    const r = this.layout.radius,
-      { width: w, height: h } = this.layout;
-    return (
-      x >= 32 + r &&
-      y >= 48 + r &&
-      x <= w - 32 - r &&
-      y <= h - 32 - r &&
-      !this.layout.objects.some(
-        (o) =>
-          x + r > o.x && x - r < o.x + o.w && y + r > o.y && y - r < o.y + o.h,
-      )
-    );
+    this.actors.forEach((actor, id) => {
+      const speech = view.speech[id];
+      const active =
+        speech && speech.expiresAt > Date.now() ? speech : undefined;
+      if (actor.speechId === (active?.id ?? '')) return;
+      actor.speechId = active?.id ?? '';
+      actor.label.setText(active?.text ?? actor.name);
+      actor.until = active
+        ? this.time.now + Math.max(0, active.expiresAt - Date.now())
+        : 0;
+      this.paintLabel(actor, !!active);
+    });
   }
   override update(time: number, delta: number): void {
     this.synchronize();
@@ -330,12 +318,12 @@ export class RoomScene extends Phaser.Scene {
     }
     const self = this.actors.get(this.view().me);
     const typing =
-      ['INPUT', 'TEXTAREA', 'BUTTON'].includes(
+      ['INPUT', 'TEXTAREA', 'BUTTON', 'SELECT'].includes(
         document.activeElement?.tagName ?? '',
       ) || (document.activeElement as HTMLElement)?.isContentEditable;
     let dx = 0,
       dy = 0;
-    if (self && this.focused && !typing) {
+    if (self && this.focused && !typing && !this.view().chatting) {
       dx =
         Number(this.keys['D'].isDown || this.keys['RIGHT'].isDown) -
         Number(this.keys['A'].isDown || this.keys['LEFT'].isDown) +
@@ -346,27 +334,33 @@ export class RoomScene extends Phaser.Scene {
         this.touch.y;
       const length = Math.hypot(dx, dy);
       if (length) {
+        self.facing = facingFromVector(dx, dy, self.facing);
         const distance = (this.layout.speed * Math.min(delta, 40)) / 1000;
         dx = (dx / length) * distance;
         dy = (dy / length) * distance;
-        const steps = Math.max(1, Math.ceil(distance / 4));
-        for (let i = 0; i < steps; i++) {
-          if (this.walkable(self.root.x + dx / steps, self.root.y))
-            self.root.x += dx / steps;
-          if (this.walkable(self.root.x, self.root.y + dy / steps))
-            self.root.y += dy / steps;
-        }
+        const next = moveInRoom(
+          this.layout,
+          { x: self.root.x, y: self.root.y },
+          dx,
+          dy,
+        );
+        self.root.setPosition(next.x, next.y);
       }
     }
     if (
       self &&
       time - this.lastSent > 65 &&
       (self.root.x !== this.lastPosition.x ||
-        self.root.y !== this.lastPosition.y)
+        self.root.y !== this.lastPosition.y ||
+        self.facing !== this.lastPosition.facing)
     ) {
-      this.moved(self.root.x, self.root.y);
+      this.moved({ x: self.root.x, y: self.root.y, facing: self.facing });
       this.lastSent = time;
-      this.lastPosition = { x: self.root.x, y: self.root.y };
+      this.lastPosition = {
+        x: self.root.x,
+        y: self.root.y,
+        facing: self.facing,
+      };
     }
     this.actors.forEach((actor, id) => {
       const distance = Math.hypot(
@@ -378,11 +372,12 @@ export class RoomScene extends Phaser.Scene {
         actor.root.x = Phaser.Math.Linear(actor.root.x, actor.target.x, blend);
         actor.root.y = Phaser.Math.Linear(actor.root.y, actor.target.y, blend);
       }
-      actor.body.y = this.reducedMotion
-        ? 0
-        : (id === this.view().me ? Math.hypot(dx, dy) > 0 : distance > 1)
-          ? Math.sin(time / 85) * 2
-          : 0;
+      actor.avatar.draw(
+        actor.facing,
+        id === this.view().me ? Math.hypot(dx, dy) > 0 : distance > 1,
+        time,
+        this.reducedMotion,
+      );
       actor.root.setDepth(actor.root.y + 4);
       if (actor.until && time > actor.until) {
         actor.until = 0;
