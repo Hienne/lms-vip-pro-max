@@ -30,6 +30,8 @@ export interface UploadEntry {
   readonly reprocess?: boolean;
   /** The kept upload ran out on the server: "Tải lên lại". */
   readonly expired?: boolean;
+  /** The file was turned down before any upload (wrong type, too big): not an upload to list. */
+  readonly refused?: boolean;
 }
 
 const megabytes = (bytes: number): string =>

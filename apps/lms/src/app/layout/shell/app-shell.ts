@@ -18,6 +18,7 @@ import { Header } from '../header/header';
 import { NetBanner } from '../net-banner/net-banner';
 import { Owl } from '../owl/owl';
 import { Sidebar } from '../sidebar/sidebar';
+import { UploadPanel } from '../upload-panel/upload-panel';
 import { ShellStore } from './data-access/shell.store';
 
 /**
@@ -36,6 +37,7 @@ import { ShellStore } from './data-access/shell.store';
     NgComponentOutlet,
     Owl,
     ChatWidget,
+    UploadPanel,
   ],
   host: { '(window:beforeunload)': 'warnBeforeUnload($event)' },
   providers: [ShellStore],

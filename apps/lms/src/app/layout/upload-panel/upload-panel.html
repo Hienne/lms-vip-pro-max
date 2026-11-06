@@ -1,0 +1,93 @@
+@if (store.shown$()) {
+<section class="upload-panel" aria-label="Tệp đang tải lên">
+  <header class="upload-panel__head">
+    <h2 class="upload-panel__title">
+      {{ store.running$() ? 'Đang tải lên (' + store.running$() + ')' : 'Đã tải
+      xong' }}
+    </h2>
+    @if (store.minimised$()) {
+    <span class="upload-panel__percent">{{ store.overall$() }}%</span>
+    }
+    <button
+      uiIconButton
+      type="button"
+      size="sm"
+      [label]="store.minimised$() ? 'Mở rộng' : 'Thu nhỏ'"
+      [attr.aria-expanded]="!store.minimised$()"
+      (click)="store.toggleMinimised()"
+    >
+      <ui-icon
+        [name]="store.minimised$() ? 'chevron-up' : 'chevron-down'"
+        size="sm"
+      />
+    </button>
+  </header>
+
+  @if (!store.minimised$()) {
+  <ul
+    class="upload-panel__list"
+    [class.upload-panel__list--scroll]="store.expanded$()"
+  >
+    @for (row of store.rows$(); track row.id) {
+    <li class="upload-panel__row">
+      <button
+        type="button"
+        class="upload-panel__open"
+        (click)="store.open(row.id)"
+      >
+        <span class="upload-panel__name">{{ row.name }}</span>
+        <span class="upload-panel__place">{{ row.place }}</span>
+      </button>
+      @switch (row.state) { @case ('done') {
+      <span class="upload-panel__done">
+        <ui-icon name="check" size="sm" />Đã tải lên
+      </span>
+      } @case ('error') {
+      <span class="upload-panel__error">
+        <ui-icon name="triangle-alert" size="sm" />{{ row.status || 'Lỗi tải' }}
+      </span>
+      } @case ('stalled') {
+      <span class="upload-panel__error">
+        <ui-icon name="triangle-alert" size="sm" />{{ row.status || 'Lỗi tải' }}
+      </span>
+      } @default {
+      <div class="upload-panel__progress">
+        <ui-progress
+          size="sm"
+          [value]="row.percent"
+          [label]="'Đang tải ' + row.name"
+        />
+        <span class="upload-panel__row-percent">{{ row.percent }}%</span>
+      </div>
+      @if (row.status && row.state !== 'uploading' && row.state !== 'hashing') {
+      <span class="upload-panel__status">{{ row.status }}</span>
+      } } } @if (row.cancellable) {
+      <button
+        uiButton
+        type="button"
+        size="sm"
+        variant="ghost"
+        class="upload-panel__cancel"
+        (click)="store.cancel(row.id)"
+      >
+        Hủy
+      </button>
+      }
+    </li>
+    }
+  </ul>
+  @if (store.canExpand$()) {
+  <button
+    uiButton
+    type="button"
+    size="sm"
+    variant="ghost"
+    class="upload-panel__more"
+    (click)="store.toggleExpanded()"
+  >
+    {{ store.expanded$() ? 'Thu gọn' : 'Xem tất cả (' + store.items$().length +
+    ')' }}
+  </button>
+  } }
+</section>
+}

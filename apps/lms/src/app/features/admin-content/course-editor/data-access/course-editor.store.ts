@@ -51,6 +51,10 @@ import { serverData } from '../../../../core/data-access/server-data';
 import { serverMutation } from '../../../../core/data-access/server-mutation';
 import { EndpointClient } from '../../../../core/http/endpoint-client';
 import { NetworkStore } from '../../../../core/network/network.store';
+import {
+  BackgroundUploads,
+  type BackgroundUpload,
+} from '../../../../core/uploads/background-uploads';
 import { SessionStore } from '../../../../core/session/session.store';
 import { toAppError, type AppError } from '../../../../core/errors/app-error';
 import {
@@ -154,6 +158,13 @@ interface UploadContext {
  */
 export const COVER_KEY = 'cover';
 
+/** "Chương 1 · Bài 2" for the block at `position` (`chapter.lesson.block`); the cover is "Ảnh bìa". */
+function placeOf(blockKey: string, position: string | undefined): string {
+  if (blockKey === COVER_KEY) return 'Ảnh bìa';
+  const [chapter, lesson] = (position ?? '').split('.').map(Number);
+  return position ? `Chương ${chapter + 1} · Bài ${lesson + 1}` : 'Bài học';
+}
+
 /** The code the server answers with when a course code is already taken. */
 export const DUPLICATE_CODE = 'LEARNING-DUPLICATE';
 
@@ -227,6 +238,7 @@ export class CourseEditorStore {
   private readonly network = inject(NetworkStore);
   private readonly keptStorage = inject(KeptUploads);
   private readonly toaster = inject(Toaster);
+  private readonly background = inject(BackgroundUploads);
   private readonly now = inject(NOW);
   /** Ids for the assignment rows, so a row keeps its identity while others come and go. */
   private nextRowId = 0;
@@ -466,10 +478,28 @@ export class CourseEditorStore {
     if (positions) untracked(() => this.followBlocks(positions, uploads));
   });
 
-  constructor() {
-    this.destroyRef.onDestroy(() =>
-      this.running.forEach((upload) => upload.unsubscribe()),
+  /**
+   * The shell panel reads the registry, not this store. Publishing is the sync with that boundary:
+   * one concern, the two things the panel shows (the files, and whether the drawer is open).
+   */
+  private readonly publishUploads = effect(() => {
+    const items = this.backgroundUploads();
+    const drawerOpen = this.state.editingLesson() !== null;
+    untracked(() =>
+      this.background.publish({
+        items,
+        drawerOpen,
+        cancel: (id) => this.cancel(id),
+        open: (id) => this.openUpload(id),
+      }),
     );
+  });
+
+  constructor() {
+    this.destroyRef.onDestroy(() => {
+      this.running.forEach((upload) => upload.unsubscribe());
+      this.background.clear();
+    });
   }
 
   // Selectors
@@ -639,6 +669,36 @@ export class CourseEditorStore {
   readonly pendingUploads$ = computed(
     () => Object.values(this.state.uploads()).filter(isBusy).length,
   );
+  /** The files as the shell panel lists them: where each one belongs, how far it is, what it can do. */
+  private readonly backgroundUploads = computed(
+    (): readonly BackgroundUpload[] => {
+      const positions =
+        this.state.blockPositions()?.() ?? new Map<string, string>();
+      return Object.entries(this.state.uploads()).flatMap(([key, entry]) => {
+        // A file from the library never uploaded, and a refused one never started.
+        if (entry.refused || (entry.state === 'done' && !entry.uploadId))
+          return [];
+        return [
+          {
+            id: key,
+            name: entry.name,
+            place: placeOf(key, positions.get(key)),
+            percent:
+              entry.state === 'done'
+                ? 100
+                : (entry.percent ?? (entry.state === 'processing' ? 100 : 0)),
+            state: entry.state,
+            status:
+              entry.state === 'error' || entry.state === 'stalled'
+                ? entry.message
+                : entry.status,
+            cancellable: isCancellable(entry),
+          },
+        ];
+      });
+    },
+  );
+
   /** Whether the cover image is still on its way. */
   readonly coverUploading$ = computed(() =>
     isBusy(this.state.uploads()[COVER_KEY]),
@@ -846,6 +906,24 @@ export class CourseEditorStore {
   pickProgram(value: string): void {
     const id = Number(value);
     this.setProgramId(Number.isInteger(id) && id > 0 ? id : undefined);
+  }
+
+  /** The panel's row was clicked: the lesson the file belongs to opens, or step 1 for the cover. */
+  openUpload(blockKey: string): void {
+    if (blockKey === COVER_KEY) {
+      this.goToStep(0);
+      return;
+    }
+    const [chapter, lesson] = (
+      this.state.blockPositions()?.().get(blockKey) ?? ''
+    )
+      .split('.')
+      .map(Number);
+    if (chapter === undefined || lesson === undefined || Number.isNaN(lesson)) {
+      return;
+    }
+    this.goToStep(1);
+    this.editLesson({ chapter, lesson });
   }
 
   /** Opens a lesson in the drawer; a published revision is not edited, so it stays shut. */
@@ -1134,7 +1212,12 @@ export class CourseEditorStore {
           : undefined;
     if (message === undefined) return false;
     this.release(blockKey);
-    this.setUpload(blockKey, { ...base, state: 'error', message });
+    this.setUpload(blockKey, {
+      ...base,
+      state: 'error',
+      message,
+      refused: true,
+    });
     return true;
   }
 
