@@ -134,6 +134,17 @@ describe('study protocol', () => {
       position,
     });
 
+    it('goes out in whole seconds, so the end of a video never exceeds the stored duration', () => {
+      const { command } = toCommand(state, playing(9.914), {
+        type: 'PAUSE',
+        playing: false,
+        positionSeconds: 11.136125,
+      });
+      expect(command.videoPositionSeconds).toBe(11);
+      expect(command.watchedFromSeconds).toBe(9);
+      expect(command.watchedToSeconds).toBe(11);
+    });
+
     it('is absent on the first event after OPEN: nothing has played yet', () => {
       const open = toCommand(state, NOT_PLAYING, {
         type: 'OPEN',
