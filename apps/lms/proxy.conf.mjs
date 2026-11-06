@@ -20,6 +20,7 @@ export default {
     target,
     secure: false,
     changeOrigin: true,
+    ws: true,
     agent: new Agent({ proxyEnv: process.env }),
   },
 };

@@ -1,0 +1,10 @@
+@use 'ui';
+.room-join {
+  display: grid;
+  gap: ui.space(4);
+  align-items: start;
+  padding: ui.space(4) 0;
+  @include ui.bp(md) {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 0.6fr) auto;
+  }
+}

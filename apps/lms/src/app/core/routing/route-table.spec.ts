@@ -77,6 +77,7 @@ describe('route table', () => {
         'saved',
         'flashcards',
         'assistant',
+        'chat-room',
         'notifications',
         'instructor',
         'instructor/inbox',

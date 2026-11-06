@@ -1,0 +1,18 @@
+<form class="room-composer" [formRoot]="chatForm">
+  <ui-field
+    label="Tin nhắn chung"
+    [hint]="count() + '/280 ký tự · Enter để gửi, Esc để di chuyển'"
+  >
+    <input
+      #input
+      uiInput
+      [formField]="chatForm.text"
+      autocomplete="off"
+      placeholder="Nhập tin nhắn…"
+      [readOnly]="disabled()"
+    />
+  </ui-field>
+  <button uiButton variant="primary" type="submit" [disabled]="disabled()">
+    Gửi
+  </button>
+</form>

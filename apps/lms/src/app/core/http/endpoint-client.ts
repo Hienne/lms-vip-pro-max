@@ -25,6 +25,23 @@ export type StreamEndpoint = AnyEndpoint & {
   readonly responseType?: 'ndjson';
 };
 
+export interface SocketEndpoint {
+  readonly path: string;
+  readonly request: z.ZodType;
+  readonly response: z.ZodType;
+}
+
+export interface SocketConnection<Request> {
+  send(command: Request): void;
+  close(): void;
+}
+
+export interface SocketObserver<Response> {
+  opened(): void;
+  message(event: Response): void;
+  closed(code: number): void;
+}
+
 type Declared<S> = [S] extends [undefined] ? false : true;
 
 type Part<K extends string, S> = [S] extends [undefined]
@@ -135,6 +152,52 @@ function toFormData(body: unknown): FormData {
  */
 @Service()
 export class EndpointClient {
+  /** A same-origin socket authenticated by a short-lived, single-use ticket, never by a JWT URL. */
+  connect<E extends SocketEndpoint>(
+    endpoint: E,
+    ticket: string,
+    observer: SocketObserver<z.output<E['response']>>,
+  ): SocketConnection<z.input<E['request']>> {
+    const url = new URL(endpoint.path, location.origin);
+    url.protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
+    url.searchParams.set('ticket', ticket);
+    const socket = new WebSocket(url);
+    socket.onopen = () => observer.opened();
+    socket.onmessage = ({ data }: MessageEvent<unknown>) => {
+      try {
+        const parsed = endpoint.response.safeParse(
+          typeof data === 'string' ? JSON.parse(data) : data,
+        );
+        if (!parsed.success) {
+          this.errorHandler.handleError(new ContractError(parsed.error.issues));
+          socket.close(1002);
+          return;
+        }
+        observer.message(parsed.data as z.output<E['response']>);
+      } catch {
+        this.errorHandler.handleError(
+          new Error('Invalid WebSocket JSON response'),
+        );
+        socket.close(1002);
+      }
+    };
+    socket.onerror = () => socket.close();
+    socket.onclose = ({ code }) => observer.closed(code);
+    return {
+      send: (command) => {
+        if (socket.readyState === WebSocket.OPEN)
+          socket.send(JSON.stringify(endpoint.request.parse(command)));
+      },
+      close: () => {
+        socket.onopen = null;
+        socket.onmessage = null;
+        socket.onclose = null;
+        socket.onerror = null;
+        socket.close();
+      },
+    };
+  }
+
   private readonly http = inject(HttpClient);
   private readonly errorHandler = inject(ErrorHandler);
   private readonly config = inject(APP_CONFIG);
