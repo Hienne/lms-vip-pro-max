@@ -165,7 +165,22 @@ export class CourseEditor implements HasUnsavedChanges {
     return pending ? `Còn ${pending} tệp đang tải` : '';
   });
 
+  /** Where each block of the draft sits, by key: what a kept upload records. */
+  private readonly blockPositions = computed(
+    (): ReadonlyMap<string, string> =>
+      new Map(
+        this.model().chapters.flatMap((chapter, ci) =>
+          chapter.lessons.flatMap((lesson, li) =>
+            lesson.blocks.map(
+              (block, bi) => [block.key, `${ci}.${li}.${bi}`] as const,
+            ),
+          ),
+        ),
+      ),
+  );
+
   constructor() {
+    this.store.registerBlockPositions(this.blockPositions);
     this.store.registerAssetAttacher((blockKey, asset) =>
       this.model.update((value) => ({
         ...value,

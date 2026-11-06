@@ -2218,6 +2218,100 @@ describe('CourseEditor', () => {
       });
     });
 
+    describe('the kept upload follows reordering', () => {
+      const KEPT = 'lms.asset-uploads.v1.000002.6';
+      const kept = () => JSON.parse(localStorage.getItem(KEPT) ?? '[]');
+      const rows = () =>
+        Array.from(screen.el.querySelectorAll<HTMLElement>('ui-sortable-item'));
+      const moveFirstDown = (fake: boolean) => {
+        const button = rows()[0].querySelector<HTMLButtonElement>(
+          'button[aria-label="Chuyển xuống"]',
+        );
+        return fake ? tap(button!) : screen.click(button);
+      };
+      /** A second lesson with a text block, added after the first. */
+      async function addSecondLesson(fake: boolean) {
+        const click = (el: HTMLElement | undefined) =>
+          fake ? tap(el) : screen.click(el);
+        await click(screen.button('Thêm bài học'));
+        const drawer = screen.drawer()!;
+        const title = screen.field('Tên bài học', drawer) as HTMLInputElement;
+        title.value = 'Bài thứ hai';
+        title.dispatchEvent(new Event('input', { bubbles: true }));
+        await click(screen.button('Văn bản / Markdown', drawer));
+        await click(screen.button('Lưu', drawer));
+      }
+
+      it('moves a running upload’s position with its lesson, and the asset lands in the moved block', async () => {
+        const drawer = await startPdfUpload();
+        expect(kept()).toMatchObject([{ position: '0.0.1' }]);
+        await tap(screen.button('Lưu', drawer));
+        await addSecondLesson(true);
+
+        await moveFirstDown(true);
+        expect(kept()).toMatchObject([{ position: '0.1.1' }]);
+
+        await finishUploads();
+        await screen.click(screen.button('Lưu nháp'));
+        const lessons = (
+          screen.lastCall(courseEndpoints.saveDraft)?.body as SaveDraftCommand
+        ).chapters[0].lessons;
+        expect(lessons[0].blocks).toHaveLength(1);
+        expect(lessons[1].blocks[1].assets).toHaveLength(1);
+      });
+
+      it('offers an interrupted upload on the moved lesson after a save and a reload', async () => {
+        await screen.open('/admin/courses/6/edit');
+        await step('Nội dung khóa học');
+        await screen.click(screen.button('Sửa bài học'));
+        await screen.click(screen.button('Tệp đính kèm', screen.drawer()!));
+        await screen.click(screen.button('Lưu', screen.drawer()!));
+        await screen.click(screen.button('Lưu nháp'));
+        await screen.click(screen.button('Sửa bài học'));
+        cutNetwork();
+        vi.useFakeTimers();
+        pick(dropzones().at(-1)!, pdf());
+        await advance(100);
+        vi.useRealTimers();
+        expect(kept()).toMatchObject([{ position: '0.0.1' }]);
+
+        const router = TestBed.inject(Router);
+        await router.navigateByUrl('/admin/courses');
+        await screen.settle();
+        await router.navigateByUrl('/admin/courses/6/edit');
+        await screen.settle();
+        online();
+
+        await step('Nội dung khóa học');
+        await addSecondLesson(false);
+        await moveFirstDown(false);
+        await screen.click(screen.button('Lưu nháp'));
+        expect(kept()).toMatchObject([{ position: '0.1.1' }]);
+
+        await router.navigateByUrl('/admin/courses');
+        await screen.settle();
+        await router.navigateByUrl('/admin/courses/6/edit');
+        await screen.settle();
+        await step('Nội dung khóa học');
+        await screen.click(
+          rows()[0].querySelector(
+            'button[aria-label="Sửa bài học"]',
+          ) as HTMLElement,
+        );
+        expect(screen.text(screen.drawer()!)).not.toContain(
+          'Tải lên bị gián đoạn',
+        );
+        await screen.click(screen.button('Hủy', screen.drawer()!) ?? undefined);
+
+        await screen.click(
+          rows()[1].querySelector(
+            'button[aria-label="Sửa bài học"]',
+          ) as HTMLElement,
+        );
+        expect(screen.text(screen.drawer()!)).toContain('Tải lên bị gián đoạn');
+      });
+    });
+
     describe('deleting what holds a running upload', () => {
       const WARNING = 'Tệp đang tải sẽ bị hủy';
       const answer = (label: string) =>

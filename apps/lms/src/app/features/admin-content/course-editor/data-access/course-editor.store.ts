@@ -2,11 +2,13 @@ import { Dialog } from '@angular/cdk/dialog';
 import {
   computed,
   DestroyRef,
+  effect,
   inject,
   Injectable,
   Injector,
   linkedSignal,
   signal,
+  untracked,
   type Signal,
 } from '@angular/core';
 import {
@@ -236,6 +238,8 @@ export class CourseEditorStore {
   private readonly running = new Map<string, Subscription>();
   /** What each running or stopped row needs to go on once the picked file is out of sight. */
   private readonly contexts = new Map<string, UploadContext>();
+  /** The block each kept upload belongs to, by upload id, so its place can follow the block. */
+  private readonly keptOwners = new Map<string, string>();
 
   private readonly state = {
     step: signal(this.initialStep()),
@@ -251,6 +255,8 @@ export class CourseEditorStore {
     failureShown: signal(false),
     /** How the page puts a new final exam into its form and saves the draft, handed over once. */
     examAttacher: signal<((quizId: number) => void) | null>(null),
+    /** Where each block sits in the draft (`chapter.lesson.block`) by its key, handed over once. */
+    blockPositions: signal<Signal<ReadonlyMap<string, string>> | null>(null),
     /** How the page puts a finished upload's asset into its block of the draft, handed over once. */
     assetAttacher: signal<
       ((blockKey: string, asset: AssetValue) => void) | null
@@ -447,6 +453,18 @@ export class CourseEditorStore {
       invalidates: this.changes,
     },
   );
+
+  /**
+   * A kept upload records where its block sat (`chapter.lesson.block`) because the block's key does
+   * not survive a reload. Blocks move when lessons are reordered, so the record follows them. This
+   * effect is the sync with the kept-uploads storage, one concern, and runs on the two signals
+   * that can move a record: the blocks' places and the uploads (a new one becomes kept).
+   */
+  private readonly keepPositionsCurrent = effect(() => {
+    const positions = this.state.blockPositions()?.();
+    const uploads = this.state.uploads();
+    if (positions) untracked(() => this.followBlocks(positions, uploads));
+  });
 
   constructor() {
     this.destroyRef.onDestroy(() =>
@@ -683,6 +701,12 @@ export class CourseEditorStore {
     this.state.assetAttacher.set(attach);
   }
 
+  private setBlockPositions(
+    positions: Signal<ReadonlyMap<string, string>> | null,
+  ): void {
+    this.state.blockPositions.set(positions);
+  }
+
   private setStepChecks(checks: readonly StepCheck[]): void {
     this.state.stepChecks.set(checks);
   }
@@ -784,6 +808,11 @@ export class CourseEditorStore {
     attach: (blockKey: string, asset: AssetValue) => void,
   ): void {
     this.setAssetAttacher(attach);
+  }
+
+  /** The page hands over where each block sits in its draft, so kept uploads follow reordering. */
+  registerBlockPositions(positions: Signal<ReadonlyMap<string, string>>): void {
+    this.setBlockPositions(positions);
   }
 
   /** A final exam was made for this course: the draft references it, and the quizzes are read again. */
@@ -1296,6 +1325,50 @@ export class CourseEditorStore {
       reprocess: event.retryProcessing,
       expired: event.code === EXPIRED_CODE,
     });
+  }
+
+  /**
+   * Keeps every kept upload's place on its block. A running upload knows its block; one a reload
+   * stopped is taken to belong to the block that sits at its place now. After a save the draft's
+   * keys are new, so the owners are found again by place.
+   */
+  private followBlocks(
+    positions: ReadonlyMap<string, string>,
+    uploads: Readonly<Record<string, UploadEntry>>,
+  ): void {
+    const kept = this.state.kept();
+    if (!kept.length) return;
+    const ids = new Set(kept.map((k) => k.uploadId));
+    for (const [key, entry] of Object.entries(uploads)) {
+      if (entry.uploadId && ids.has(entry.uploadId)) {
+        this.keptOwners.set(entry.uploadId, key);
+      }
+    }
+    const placed = [...this.keptOwners.values()].filter((key) =>
+      positions.has(key),
+    );
+    if (this.keptOwners.size && !placed.length && positions.size) {
+      // The draft was read again after a save: every key is new.
+      this.keptOwners.clear();
+    }
+    const keyAt = new Map(
+      [...positions].map(([key, position]) => [position, key] as const),
+    );
+    for (const upload of kept) {
+      if (this.keptOwners.has(upload.uploadId)) continue;
+      const key = keyAt.get(upload.position);
+      if (key) this.keptOwners.set(upload.uploadId, key);
+    }
+    let moved = false;
+    const next = kept.map((upload) => {
+      const position = positions.get(
+        this.keptOwners.get(upload.uploadId) ?? '',
+      );
+      if (!position || position === upload.position) return upload;
+      moved = true;
+      return { ...upload, position };
+    });
+    if (moved) this.setKept(next);
   }
 
   /** Stops the upload running on a block, and cancels it on the server while it is still sending. */
