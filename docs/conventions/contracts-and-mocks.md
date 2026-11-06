@@ -19,6 +19,14 @@ page explains required quizzes and renders server progress; it never awards comp
 required quiz lessons and the selected final exam, together with required content, can complete the enrollment.
 The backend upgrade `2026-11-05-required-final-quiz.sql` must precede deployment of this contract.
 
+Learning completion also requires `2026-11-06-learning-completion.sql`. Enrollment/card `progressPercent`
+now averages required lessons only; a separate final exam does not enter that denominator.
+Enrollment details include `completion`, evaluated for the exact enrollment/revision: required-lesson counts,
+`lessonsSatisfied`, `finalQuizId`, `finalExamStatus` and `allSatisfied`. The course page renders this result;
+100% learning progress can coexist with an incomplete course. The field is optional during rollout and in
+legacy captures; absence displays unavailable evaluation, never a locally inferred pass. Historical
+`completed` enrollments remain recognized even if a later regrade changes the current evaluation.
+
 One chain keeps types, runtime validation and the dev mock in sync:
 
 ```text

@@ -123,6 +123,23 @@ describe('learner endpoints', () => {
     expect(detail.blocks[0].lastEventSequence).toBe(6);
     expect(detail.blocks[0].mediaAssetId).toBe(12);
     expect(detail.blocks[0].watchedSeconds).toBe(45.5);
+    const completion = {
+      completedRequiredLessons: 2,
+      requiredLessons: 2,
+      lessonsSatisfied: true,
+      finalQuizId: 9,
+      finalExamStatus: 'NOT_PASSED',
+      allSatisfied: false,
+    };
+    expect(
+      EnrollmentDetailSchema.parse({ ...detail, completion }).completion,
+    ).toEqual(completion);
+    expect(
+      EnrollmentDetailSchema.safeParse({
+        ...detail,
+        completion: { ...completion, finalExamStatus: 'UNKNOWN' },
+      }).success,
+    ).toBe(false);
   });
 
   it('checks a progress event against the backend rules', () => {
