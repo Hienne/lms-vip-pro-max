@@ -1,0 +1,11 @@
+@use 'ui';
+.room-composer {
+  @include ui.row(2);
+  align-items: start;
+  padding: ui.space(4);
+  border-top: 1px solid ui.color(border);
+  ui-field {
+    flex: 1;
+    min-width: 0;
+  }
+}

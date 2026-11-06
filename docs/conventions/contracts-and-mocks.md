@@ -619,3 +619,20 @@ count and resolution state alongside the thumbnail; answers retain their text la
 
 Deploy the matching `corebanking-academy` card projection and cover validation before the frontend.
 No database migration is required.
+
+## Realtime classroom
+
+`chatRoomEndpoints` declares the authenticated map and single-use socket ticket at `/api/v1/chat-room`.
+`chatRoomSocket` declares both directions with zod schemas. `EndpointClient.connect` owns native WebSocket
+creation and runtime parsing; the route's `ChatRoomStore` owns presence, history, heartbeat and bounded
+reconnection. A new connection always obtains a fresh ticket through `serverMutation`, so bearer/session
+expiry handling stays on the existing HTTP path. No JWT is sent in the socket URL.
+
+The `/chat-room` screen is in the signed-in `open` screen table and linked from the sidebar footer for
+all signed-in users. It uses the existing shell, Signal Forms and `@lms/ui`. Phaser 3.90 is loaded only
+when the canvas mounts; its world coordinates/art colours belong to the renderer, while Angular controls
+use the UI Sass tokens. The backend serves the single map/hitbox source and validates movement.
+
+Deploy the matching `corebanking-academy` module and configure WebSocket upgrade for
+`/api/v1/chat-room/socket` on the FE reverse proxy. The development `/api` proxy enables WebSocket.
+No database migration is required. The room/history are held in one backend instance's memory.

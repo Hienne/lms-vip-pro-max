@@ -1,0 +1,85 @@
+@use 'ui';
+:host {
+  @include ui.page(wide);
+}
+.chat-room {
+  &__status {
+    @include ui.row-between(3);
+    @include ui.text(sm, muted);
+    padding: ui.space(3) 0;
+    min-height: ui.layout(control);
+  }
+  &__layout {
+    display: grid;
+    border: 1px solid ui.color(border);
+    border-radius: ui.radius(card);
+    overflow: hidden;
+    background: ui.color(surface);
+    @include ui.bp(lg) {
+      grid-template-columns: minmax(0, 1fr) ui.layout(panel);
+    }
+  }
+  &__world {
+    min-width: 0;
+  }
+  &__hint {
+    @include ui.text(xs, muted);
+    margin: 0;
+    padding: ui.space(3) ui.space(4);
+    border-top: 1px solid ui.color(border);
+  }
+  &__panel {
+    min-width: 0;
+    border-top: 1px solid ui.color(border);
+    @include ui.bp(lg) {
+      border-top: 0;
+      border-left: 1px solid ui.color(border);
+    }
+  }
+  &__messages {
+    height: clamp(ui.layout(menu), 45dvh, calc(ui.layout(reading) * 0.6));
+    overflow-y: auto;
+    padding: ui.space(4);
+  }
+  &__message {
+    padding: ui.space(3) 0;
+    border-bottom: 1px solid ui.color(border);
+    p {
+      @include ui.text(sm);
+      margin: ui.space(2) 0 0;
+      overflow-wrap: anywhere;
+      white-space: pre-wrap;
+    }
+  }
+  &__meta {
+    @include ui.row(2);
+    @include ui.text(xs, muted);
+    strong {
+      @include ui.text(sm);
+      font-weight: ui.weight(medium);
+      overflow-wrap: anywhere;
+    }
+    time {
+      margin-left: auto;
+      flex-shrink: 0;
+    }
+  }
+  &__empty {
+    @include ui.text(sm, muted);
+    margin: 0;
+  }
+  &__members {
+    min-height: ui.layout(menu);
+    padding: ui.space(4);
+    p {
+      @include ui.text(sm);
+      overflow-wrap: anywhere;
+    }
+    strong {
+      font-weight: ui.weight(medium);
+    }
+    span {
+      color: ui.color(text-muted);
+    }
+  }
+}

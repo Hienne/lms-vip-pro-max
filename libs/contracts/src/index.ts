@@ -57,3 +57,5 @@ export * from './lib/community/community.schema';
 export * from './lib/community/community.endpoints';
 
 export * from './lib/community/community-media.endpoints';
+export * from './lib/chat-room/chat-room.schema';
+export * from './lib/chat-room/chat-room.endpoints';

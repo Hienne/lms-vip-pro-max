@@ -45,8 +45,17 @@
     </ul>
     }
   </nav>
-  @if (showDesignLink || collapsible()) {
   <div class="sidebar__footer">
+    <a
+      class="sidebar__room-link"
+      routerLink="/chat-room"
+      [uiTooltip]="rail ? 'Phòng học chung' : ''"
+      [attr.aria-current]="activePath() === '/chat-room' ? 'page' : null"
+    >
+      <ui-icon name="message-square" size="sm" /><span class="sidebar__label"
+        >Phòng học chung</span
+      >
+    </a>
     @if (showDesignLink) {
     <a
       class="sidebar__design-link"
@@ -70,5 +79,4 @@
     </button>
     }
   </div>
-  }
 </div>
