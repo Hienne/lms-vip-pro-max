@@ -3,7 +3,6 @@ import { toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute } from '@angular/router';
 import { certificateEndpoints } from '@lms/contracts';
 import { map } from 'rxjs';
-import { APP_CONFIG } from '../../../../core/config/app-config';
 import { serverData } from '../../../../core/data-access/server-data';
 import { EndpointClient } from '../../../../core/http/endpoint-client';
 
@@ -78,9 +77,6 @@ export class CertificateStore {
   });
   /** The last crumb and the page title; the course code while the title is unknown. */
   readonly title$ = computed(() => this.document$()?.title);
-
-  /** The mock backend answers with made-up data, which the document says. */
-  readonly isDemo = inject(APP_CONFIG).mockBackend;
 
   retry(): void {
     this.data.reload();

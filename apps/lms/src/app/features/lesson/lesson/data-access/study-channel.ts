@@ -189,7 +189,10 @@ export class StudyChannel {
 
   /** `CLOSE` for the block on screen; a video closes its range where the player is now. */
   private closeEvent(): StudyEvent {
-    const position = this.target?.video ? this.deps.position?.() : undefined;
+    // Without a player, the last reported position stands in: a video event always carries one.
+    const position = this.target?.video
+      ? (this.deps.position?.() ?? this.tracker.position ?? undefined)
+      : undefined;
     return position === undefined
       ? { type: 'CLOSE', playing: false }
       : { type: 'CLOSE', playing: false, positionSeconds: position };
@@ -446,7 +449,13 @@ export class StudyChannel {
     this.heartbeat = interval(HEARTBEAT_MS).subscribe(() => {
       // A playing video reports every 10 s itself, with its range.
       if (this.deps.visible() && !this.tracker.playing) {
-        this.send({ type: 'HEARTBEAT', playing: false });
+        // The server requires a position on every event of a video block.
+        const position = this.target?.video ? this.tracker.position : null;
+        this.send(
+          position === null
+            ? { type: 'HEARTBEAT', playing: false }
+            : { type: 'HEARTBEAT', playing: false, positionSeconds: position },
+        );
       }
     });
   }

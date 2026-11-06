@@ -1,6 +1,6 @@
 import { SEED_PASSWORD, SEED_USERS, seedMe } from '@lms/mocks';
 
-/** A demo account of the mock backend, for the dev toolbar's "sign in as". */
+/** A demo account of the mock backend, for specs that sign in to the mock backend. */
 export interface MockAccount {
   readonly userId: string;
   readonly username: string;

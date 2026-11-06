@@ -20,12 +20,11 @@ Run `nvm use` first (Node 24). Full table in `docs/conventions/workspace.md`.
 
 - `npm start`: app on :4200. The in-app mock API answers only the endpoints the backend lacks;
   everything else (sign-in included) goes through `apps/lms/proxy.conf.mjs` to the shared backend.
-  Set `mockBackend: true` in `environment.ts` to run fully on the seeded mock, signing in from
-  the Demo menu.
+  There is no seeded-mock mode of the running app: sign in with a real account.
 - **Backend:** if the task does not change the backend, use the shared server (the default
-  `npm start` proxy, or `mockBackend: true` for a seeded run) and do not start a local backend
-  (`lms-local-backend`, the local stack). Run a local backend only when the task edits backend
-  code. Never commit a `mockBackend: true` change made for a browser check.
+  `npm start` proxy) and do not start a local backend (`lms-local-backend`, the local stack). To
+  use a backend on this machine, run `LMS_API_TARGET=http://localhost:8019 npm start`; start one
+  only when the task edits backend code.
 - `npx nx test <project>` (`lms`, `ui`, `contracts`, `mocks`): one project's specs.
 - `npm run check`: format, lint, typecheck, test, build and bundle guard on every project.
   It is heavy (vitest uses every core, about 1.3 GB per worker, beside the build), and on a

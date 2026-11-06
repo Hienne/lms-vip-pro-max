@@ -302,10 +302,7 @@ describe('Login', () => {
 });
 
 describe('Login: the internal note', () => {
-  async function note(config: {
-    devTools: boolean;
-    mockBackend: boolean;
-  }): Promise<string | null> {
+  async function note(config: { devTools: boolean }): Promise<string | null> {
     TestBed.configureTestingModule({
       providers: [
         provideEnvelopeHttpClient(),
@@ -325,18 +322,10 @@ describe('Login: the internal note', () => {
   }
 
   it('is hidden from production users', async () => {
-    expect(await note({ devTools: false, mockBackend: false })).toBeNull();
+    expect(await note({ devTools: false })).toBeNull();
   });
 
   it('shows with dev tools', async () => {
-    expect(await note({ devTools: true, mockBackend: false })).toContain(
-      'Bản mockup v2',
-    );
-  });
-
-  it('shows with the mock backend', async () => {
-    expect(await note({ devTools: false, mockBackend: true })).toContain(
-      'Xem Design System',
-    );
+    expect(await note({ devTools: true })).toContain('Bản mockup v2');
   });
 });

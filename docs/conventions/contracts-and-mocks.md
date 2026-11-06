@@ -262,7 +262,8 @@ document. Two switches in `AppConfig` choose, per endpoint, who answers:
   store asks `EndpointClient.isServed(endpoint)` whether the build can answer an endpoint instead
   of reading `mockApi`, and a menu group lists the endpoints it `requires`: while one is not
   served the function is left out of the user's menus. These endpoints are not on the backend yet.
-- **`mockBackend`: endpoints the backend has.** `MockBackend` (also the mock-only answerer) extends `FakeBackend`
+- **`mockBackend`: specs only.** No environment file sets it, so the running app sends every
+  endpoint the backend has to the real backend. `MockBackend` (also the mock-only answerer) extends `FakeBackend`
   (`@lms/mocks/backend`), an in-memory, **stateful** copy of the backend seeded from its data
   (`seed.ts`: the 7 demo users, orgs, teams, roles, the 16 functions). It answers the v1 identity,
   organisation and auth endpoints with the real HTTP status and envelope, so a POST changes what
@@ -288,11 +289,10 @@ document. Two switches in `AppConfig` choose, per endpoint, who answers:
   builds production and staging and fails if either contains it (staging is checked with
   `--fixtures-only`, since it keeps the dev toolbar on purpose). A development build fails the
   check.
-- To use the real backend, set `mockApi` and `mockBackend` to false in `environment.ts`; the dev
-  proxy (`apps/lms/proxy.conf.mjs`) sends `/api` to `http://localhost:8019`. Sign in with a real
-  account; the toolbar's account list is the seeded one and only works against the mock backend.
-  The offline, session-expired and forbidden-URL simulations stay. The toolbar is not part of the
-  production build.
+- The running app always uses a real backend: the dev proxy (`apps/lms/proxy.conf.mjs`) sends `/api`
+  to the shared one, or to a local one with `LMS_API_TARGET=http://localhost:8019 npm start`. Sign
+  in with a real account; the toolbar has no demo-account list. The offline, session-expired and
+  forbidden-URL simulations stay. The toolbar is not part of the production build.
 - Mid-session 401: see "Expired session" under error handling.
 
 ## Identity and organisation contract decisions

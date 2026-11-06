@@ -8,7 +8,6 @@ import { SessionStore } from '../../session/session.store';
 import { seedProfile } from '../../session/session.testing';
 import type { Profile } from '../../session/profile';
 import { provideEnvelopeHttpClient } from '../../http/http.testing';
-import { MOCK_ACCOUNTS } from '../mock-api/mock-accounts';
 import { DevToolbar } from './dev-toolbar';
 
 class FakeSession {
@@ -16,10 +15,6 @@ class FakeSession {
   readonly user$ = this.user.asReadonly();
   readonly isSignedIn$ = () => this.user() !== null;
   expire = vi.fn(() => this.user.set(null));
-  signIn = vi.fn((command: { username: string }) => {
-    const account = MOCK_ACCOUNTS.find((a) => a.username === command.username);
-    if (account) this.user.set(seedProfile(account.userId));
-  });
 }
 
 describe('DevToolbar', () => {
@@ -67,40 +62,15 @@ describe('DevToolbar', () => {
     });
   }
 
-  describe('with the mock backend', () => {
-    beforeEach(() => create({ mockApi: true, mockBackend: true }));
+  describe('the menu', () => {
+    beforeEach(() => create({ mockApi: true }));
 
-    it('lists the eight demo accounts and the incident simulations', async () => {
+    it('lists the incident simulations and offers no demo accounts', async () => {
       await open();
-      expect(MOCK_ACCOUNTS).toHaveLength(8);
-      expect(labels()).toHaveLength(MOCK_ACCOUNTS.length + 4);
-      expect(menu()?.textContent).toContain('Đăng nhập bằng tài khoản demo');
-      expect(item('Quản trị viên gốc — Quản trị gốc Demo')).toBeDefined();
+      expect(labels()).toHaveLength(4);
+      expect(menu()?.textContent).not.toContain('tài khoản demo');
       expect(labels()).toContain('Mô phỏng mất kết nối');
       expect(labels()).toContain('Mở Design System');
-    });
-
-    it('signs in as the chosen demo user, says so and goes home', async () => {
-      await open();
-      item('Học viên, Giảng viên — Giảng viên Demo').click();
-      TestBed.tick();
-      expect(session.signIn).toHaveBeenCalledWith({
-        username: 'giangvien',
-        password: 'Demo@123',
-      });
-      await vi.waitFor(() => {
-        TestBed.tick();
-        expect(router.navigateByUrl).toHaveBeenCalledWith('/');
-      });
-      expect(document.body.textContent).toContain(
-        'Đã đăng nhập bằng Giảng viên Demo',
-      );
-    });
-
-    it('disables the account that is already signed in', async () => {
-      await open();
-      const row = item('Học viên tiền gửi Demo');
-      expect(row.getAttribute('aria-disabled')).toBe('true');
     });
 
     it('switches the connection off and back on', async () => {
@@ -139,12 +109,5 @@ describe('DevToolbar', () => {
       TestBed.tick();
       expect(router.navigateByUrl).toHaveBeenCalledWith('/design-system');
     });
-  });
-
-  it('offers no demo accounts against a real backend', async () => {
-    create({ mockApi: true, mockBackend: false });
-    await open();
-    expect(menu()?.textContent).toContain('Mô phỏng mất kết nối');
-    expect(menu()?.textContent).not.toContain('tài khoản demo');
   });
 });

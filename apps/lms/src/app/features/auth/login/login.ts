@@ -59,10 +59,7 @@ export class Login {
   protected readonly store = inject(LoginStore);
 
   /** The mockup line and design-system link are for development and demo builds only. */
-  protected readonly showNote = (() => {
-    const config = inject(APP_CONFIG);
-    return config.devTools || config.mockBackend;
-  })();
+  protected readonly showNote = inject(APP_CONFIG).devTools;
 
   protected readonly brandPoints = BRAND_POINTS;
   protected readonly failureHeading = FAILURE_HEADING;

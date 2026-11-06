@@ -10,7 +10,6 @@ export const environment: AppConfigInput = {
   name: 'staging',
   production: true,
   mockApi: false,
-  mockBackend: false,
   devTools: true,
 };
 

@@ -173,7 +173,6 @@ describe('Certificate', () => {
         '27/10/2026',
         'Mã xác thực',
         'CBA-FE-DEMO-C4-000004-1',
-        'Bản xem trước · dữ liệu môi trường demo',
       ]);
       expect(document().querySelector('ui-mai')).not.toBeNull();
     });
@@ -209,39 +208,6 @@ describe('Certificate', () => {
         'đã hoàn thành khóa đào tạo FE-DEMO-C4 với kết quả',
       );
       expect(text(document())).not.toContain('(FE-DEMO-C4)');
-    });
-
-    it('says the data is made up', async () => {
-      serve(certificate());
-      await open('/certificate/12');
-      expect(text(document())).toContain(
-        'Bản xem trước · dữ liệu môi trường demo',
-      );
-    });
-  });
-
-  describe('the demo line', () => {
-    function storeFor(mockBackend: boolean): CertificateStore {
-      TestBed.configureTestingModule({
-        providers: [
-          CertificateStore,
-          provideAppConfig(
-            parseAppConfig(testAppConfig({ mockApi: true, mockBackend })),
-          ),
-          {
-            provide: ActivatedRoute,
-            useValue: { paramMap: of(convertToParamMap({ id: '12' })) },
-          },
-          { provide: EndpointClient, useValue: { call: () => NEVER } },
-        ],
-      });
-      return TestBed.inject(CertificateStore);
-    }
-
-    it('belongs to the mock backend only', () => {
-      expect(storeFor(true).isDemo).toBe(true);
-      TestBed.resetTestingModule();
-      expect(storeFor(false).isDemo).toBe(false);
     });
   });
 

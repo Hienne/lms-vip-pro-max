@@ -16,18 +16,18 @@ export const AppConfigSchema = z.object({
   name: z.enum(['development', 'staging', 'production']),
   production: z.boolean(),
   /**
-   * Turns the in-app mock API on: it answers the endpoints the backend does not have (role
+   * Turns the in-app mock API on: it answers only the endpoints the backend does not have (role
    * management, a user's courses, attempts and activity, the shell badges) from fixtures. Only the
    * development environment file also supplies the mock interceptor (`mockInterceptors`), so
    * staging and production bundles hold no fixtures.
    */
   mockApi: z.boolean(),
   /**
-   * With `mockApi`, the mock also answers the endpoints the backend does have, from a seeded
-   * in-memory copy of its demo database, and the dev toolbar can sign in as a demo user. Turn it
-   * off to send those endpoints to the real backend while the mock-only ones stay mocked.
+   * Unit specs only: with `mockApi`, the mock also answers the endpoints the backend does have,
+   * from a seeded in-memory copy of its demo database. No environment file sets it, so a running
+   * app always sends those endpoints to the real backend.
    */
-  mockBackend: z.boolean(),
+  mockBackend: z.boolean().default(false),
   /**
    * Internal tooling for the team: the migration progress board and owner/pull request details on
    * the design-system placeholders. True in development and staging, false in production, so

@@ -93,11 +93,6 @@
   &__code {
     @include ui.mono;
   }
-
-  &__demo {
-    margin: 0;
-    @include ui.text(xs, muted);
-  }
 }
 
 // One A4 landscape sheet holding the document alone: the page header and its breadcrumb go, the
