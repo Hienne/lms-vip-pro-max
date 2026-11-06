@@ -400,6 +400,10 @@ describe('global stylesheet', () => {
     );
   });
 
+  it('does not underline the links inside a table', () => {
+    expect(css).toMatch(/\.table a\s*\{[^}]*text-decoration-line:\s*none/);
+  });
+
   it('declares the layer order first', () => {
     expect(css).toMatch(/@layer reset, base, components, helpers;/);
   });
