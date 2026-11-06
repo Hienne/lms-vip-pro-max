@@ -540,7 +540,7 @@ export const MIGRATION_ENTRIES = [
     kind: 'component',
     mockupSource: '.modal, ui.modal, ui.confirm',
     level: 'organism',
-    targets: ['ConfirmDialog', 'confirm'],
+    targets: ['ConfirmDialog', 'confirm', 'choose'],
     checklist: ['H'],
     status: 'done',
     owner: 'Hienne',
