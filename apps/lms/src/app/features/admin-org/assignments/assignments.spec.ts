@@ -80,9 +80,9 @@ describe('Assignments', () => {
     );
     expect(picker).not.toBeNull();
     await screen.choose(picker!, '20');
-    expect(
-      screen.lastCall(assignmentEndpoints.courseAssignments),
-    ).toMatchObject({ query: { page: '0', size: '20' } });
+    expect(screen.lastCall(assignmentEndpoints.orgAssignments)).toMatchObject({
+      query: { page: '0', size: '20' },
+    });
   });
 
   it('opens the assign drawer on the course a link names', async () => {
@@ -370,9 +370,7 @@ describe('Assignments', () => {
 
   it('revokes a whole assignment with a reason', async () => {
     const row = await assignedRow();
-    await screen.click(
-      row.querySelector<HTMLButtonElement>('button[uiIconButton]')!,
-    );
+    await screen.click(screen.button('Thu hồi', row));
     const dialog = screen.drawer()!;
     expect(screen.text(dialog)).toContain('Thu hồi lượt giao?');
     await submit(dialog);
