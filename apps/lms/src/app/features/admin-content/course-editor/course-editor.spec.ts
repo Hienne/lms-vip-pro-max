@@ -42,6 +42,12 @@ describe('CourseEditor', () => {
         screen.el.querySelectorAll<HTMLElement>('.stepper__step'),
       ).find((s) => s.textContent?.includes(label)),
     );
+  /** The edit button of the outline row whose lesson is called `title`. */
+  const editLessonButton = (title: string) =>
+    Array.from(screen.el.querySelectorAll<HTMLElement>('ui-sortable-item'))
+      .find((row) => row.textContent?.includes(title))
+      ?.querySelector<HTMLButtonElement>('button[aria-label="Sửa bài học"]') ??
+    undefined;
   const currentStep = () =>
     screen.el.querySelector('.stepper__step[aria-current="step"]')
       ?.textContent ?? '';
@@ -213,9 +219,7 @@ describe('CourseEditor', () => {
     await screen.click(screen.button('Mở bản nháp để sửa'));
     await step('Nội dung khóa học');
     await screen.click(
-      screen.el.querySelector<HTMLElement>(
-        '[aria-label="Sửa Kiến trúc tổng thể hệ thống Core Banking"]',
-      ) ?? undefined,
+      editLessonButton('Kiến trúc tổng thể hệ thống Core Banking'),
     );
     await screen.click(screen.button('Áp dụng', screen.drawer()!));
     await screen.click(screen.button('Lưu nháp'));
@@ -348,7 +352,7 @@ describe('CourseEditor', () => {
     };
     const openLesson = async () => {
       await step('Nội dung khóa học');
-      await screen.click(screen.button('Sửa Nguyên tắc quyền tối thiểu'));
+      await screen.click(screen.button('Sửa bài học'));
       return screen.drawer()!;
     };
     const failParts = () =>
@@ -363,7 +367,7 @@ describe('CourseEditor', () => {
       await screen.click(screen.button('Tệp đính kèm', drawer));
       await screen.click(screen.button('Áp dụng', drawer));
       await screen.click(screen.button('Lưu nháp'));
-      await screen.click(screen.button('Sửa Nguyên tắc quyền tối thiểu'));
+      await screen.click(screen.button('Sửa bài học'));
 
       failParts();
       vi.useFakeTimers();
@@ -779,7 +783,7 @@ describe('CourseEditor', () => {
         blocks: [],
       });
 
-      await screen.click(screen.button('Sửa Thi cuối khóa'));
+      await screen.click(editLessonButton('Thi cuối khóa'));
       expect(
         (screen.field('Bài kiểm tra', screen.drawer()!) as HTMLSelectElement)
           .value,
@@ -1963,6 +1967,34 @@ describe('CourseEditor', () => {
       );
       expect(screen.field('Bài kiểm tra', drawer)).toBeUndefined();
       expect(screen.callsTo(assessmentV1Endpoints.courseQuizList)).toBe(0);
+    });
+  });
+  describe('background uploads', () => {
+    describe('the outline rows', () => {
+      const lessonRow = () =>
+        screen.el.querySelector<HTMLElement>('ui-sortable-item')!;
+      const iconButtons = (row: HTMLElement) =>
+        Array.from(row.querySelectorAll<HTMLButtonElement>('button'));
+
+      it('shows the lesson actions as icon-only buttons named by their tooltip', async () => {
+        await screen.open('/admin/courses/6/edit');
+        await step('Nội dung khóa học');
+        const buttons = iconButtons(lessonRow());
+
+        expect(buttons.map((b) => b.getAttribute('aria-label'))).toEqual([
+          'Sửa bài học',
+          'Xóa bài học',
+          'Chuyển lên',
+          'Chuyển xuống',
+        ]);
+        expect(buttons.map((b) => b.textContent?.trim())).toEqual([
+          '',
+          '',
+          '',
+          '',
+        ]);
+        expect(buttons[2].disabled).toBe(true);
+      });
     });
   });
 });

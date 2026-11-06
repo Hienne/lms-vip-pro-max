@@ -20,7 +20,7 @@ describe('AssetLibrary in the lesson form', () => {
   async function openLibrary(chip: string) {
     await screen.open('/admin/courses/6/edit');
     await step('Nội dung khóa học');
-    await screen.click(screen.button('Sửa Nguyên tắc quyền tối thiểu'));
+    await screen.click(screen.button('Sửa bài học'));
     const lesson = screen.drawer()!;
     await screen.click(screen.button(chip, lesson));
     await screen.click(screen.button('Chọn từ thư viện', lesson));
@@ -132,7 +132,7 @@ describe('AssetLibrary in the lesson form', () => {
   it('offers a retry when the library cannot be read', async () => {
     await screen.open('/admin/courses/6/edit');
     await step('Nội dung khóa học');
-    await screen.click(screen.button('Sửa Nguyên tắc quyền tối thiểu'));
+    await screen.click(screen.button('Sửa bài học'));
     const lesson = screen.drawer()!;
     await screen.click(screen.button('Tài liệu PDF', lesson));
     const original = screen.calls.getMockImplementation();

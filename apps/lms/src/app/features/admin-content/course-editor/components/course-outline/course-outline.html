@@ -51,21 +51,20 @@
               [ngTemplateOutletContext]="{ $implicit: lesson }"
             />
             <button
-              uiButton
+              uiIconButton
               type="button"
               size="sm"
-              variant="ghost"
-              [attr.aria-label]="'Sửa ' + lesson.title"
+              label="Sửa bài học"
               (click)="editLesson.emit({ chapter: ci, lesson: li })"
             >
-              <ui-icon name="pen-line" size="sm" />Sửa
+              <ui-icon name="pen-line" size="sm" />
             </button>
             <button
               uiIconButton
               type="button"
               size="sm"
               variant="danger"
-              [label]="'Xóa ' + lesson.title"
+              label="Xóa bài học"
               (click)="removeLesson(ci, li)"
             >
               <ui-icon name="trash-2" size="sm" />
