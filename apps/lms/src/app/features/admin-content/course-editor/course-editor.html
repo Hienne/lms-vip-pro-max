@@ -153,6 +153,8 @@
   [uiDrawer]="!!editingLesson()"
   uiDrawerTitle="Sửa bài học"
   [uiDrawerFooter]="footer"
+  [uiDrawerGuard]="store.lessonUploading$()"
+  (uiDrawerCloseRequest)="askToCloseLesson()"
   (uiDrawerDismiss)="store.closeLesson()"
 >
   @if (editingLesson(); as lesson) {

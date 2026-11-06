@@ -2111,6 +2111,111 @@ describe('CourseEditor', () => {
       });
     });
 
+    describe('closing the lesson drawer while a file uploads', () => {
+      const ask = () => screen.alertDialog();
+      const answer = (label: string) =>
+        tap(
+          Array.from(ask()!.querySelectorAll<HTMLButtonElement>('button')).find(
+            (b) => b.textContent?.trim() === label,
+          ),
+        );
+      const closeDrawer = (drawer: HTMLElement) =>
+        tap(drawer.querySelector<HTMLButtonElement>('button[aria-label="Đóng"]'));
+
+      it('closes at once when nothing begun in the drawer is uploading', async () => {
+        await screen.open('/admin/courses/6/edit');
+        await step('Nội dung khóa học');
+        await screen.click(screen.button('Sửa bài học'));
+        vi.useFakeTimers();
+        await closeDrawer(screen.drawer()!);
+
+        expect(ask()).toBeNull();
+        expect(screen.drawer()).toBeNull();
+      });
+
+      it('asks with only "Lưu" and "Hủy", and "Lưu" saves the lesson and keeps uploading', async () => {
+        const drawer = await startPdfUpload();
+        await closeDrawer(drawer);
+
+        expect(ask()).not.toBeNull();
+        expect(
+          Array.from(ask()!.querySelectorAll('button')).map(
+            (b) => b.getAttribute('aria-label') || b.textContent?.trim(),
+          ),
+        ).toEqual(['Đóng hộp thoại', 'Hủy', 'Lưu']);
+
+        await answer('Lưu');
+        expect(ask()).toBeNull();
+        expect(screen.drawer()).toBeNull();
+        expect(footerText()).toContain('Còn 1 tệp đang tải');
+
+        await finishUploads();
+        await screen.click(screen.button('Lưu nháp'));
+        const saved = screen.lastCall(courseEndpoints.saveDraft)
+          ?.body as SaveDraftCommand;
+        expect(saved.chapters[0].lessons[0].blocks[1].assets).toHaveLength(1);
+      });
+
+      it('"Hủy" drops the lesson changes and cancels the upload on the server', async () => {
+        const drawer = await startPdfUpload();
+        const uploadId = (
+          screen.lastCall(assetEndpoints.startUpload)?.body as {
+            requestId: string;
+          }
+        ).requestId;
+        await closeDrawer(drawer);
+        await answer('Hủy');
+
+        expect(ask()).toBeNull();
+        expect(screen.drawer()).toBeNull();
+        expect(screen.lastCall(assetEndpoints.cancelUpload)?.params).toEqual({
+          uploadId,
+        });
+        expect(footerText()).not.toContain('tệp đang tải');
+        expect(screen.text()).not.toContain('Có thay đổi chưa lưu');
+      });
+
+      it('closing the question returns to the drawer unchanged', async () => {
+        const drawer = await startPdfUpload();
+        await closeDrawer(drawer);
+        await tap(
+          ask()!.querySelector<HTMLButtonElement>(
+            'button[aria-label="Đóng hộp thoại"]',
+          ),
+        );
+
+        expect(ask()).toBeNull();
+        expect(screen.drawer()).toBe(drawer);
+        expect(screen.text(drawer)).toContain('quyen.pdf');
+      });
+
+      it('"Lưu" with an invalid form keeps the drawer open and the upload running', async () => {
+        const drawer = await startPdfUpload();
+        const title = screen.field('Tên bài học', drawer) as HTMLInputElement;
+        title.value = '';
+        title.dispatchEvent(new Event('input', { bubbles: true }));
+        await advance(10);
+        await closeDrawer(drawer);
+        await answer('Lưu');
+
+        expect(screen.drawer()).toBe(drawer);
+        expect(screen.text(drawer)).toContain('Nhập tên bài học');
+        expect(screen.text(drawer)).toContain('Mất kết nối');
+      });
+
+      it('leaves an upload that was running before the drawer opened alone', async () => {
+        const drawer = await startPdfUpload();
+        await tap(screen.button('Lưu', drawer));
+        await tap(screen.button('Sửa bài học'));
+        await closeDrawer(screen.drawer()!);
+
+        expect(ask()).toBeNull();
+        expect(screen.drawer()).toBeNull();
+        expect(footerText()).toContain('Còn 1 tệp đang tải');
+        expect(screen.callsTo(assetEndpoints.cancelUpload)).toBe(0);
+      });
+    });
+
     describe('the cover of a new course', () => {
       it('blocks "Tiếp tục" on step 1 while the cover uploads', async () => {
         await screen.open('/admin/courses/new');

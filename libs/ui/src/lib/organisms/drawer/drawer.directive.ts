@@ -51,6 +51,14 @@ export class DrawerOutlet {
   readonly uiDrawerBusy = input(false);
   /** Text of the busy overlay, read by screen readers. The library ships no default copy. */
   readonly uiDrawerBusyLabel = input<string>();
+  /**
+   * While true the user's ways of closing (Esc, backdrop, the close button, `close()`) do not close
+   * the drawer: they emit `uiDrawerCloseRequest` and the page answers by clearing the state
+   * `uiDrawer` reads, or by staying.
+   */
+  readonly uiDrawerGuard = input(false);
+  /** The user tried to close the drawer while `uiDrawerGuard` is true. */
+  readonly uiDrawerCloseRequest = output<void>();
   /** The user closed the drawer. */
   readonly uiDrawerDismiss = output<void>();
 
@@ -76,6 +84,8 @@ export class DrawerOutlet {
         footer: this.uiDrawerFooter,
         busy: this.uiDrawerBusy,
         busyLabel: this.uiDrawerBusyLabel,
+        guarded: this.uiDrawerGuard,
+        closeRequested: () => this.uiDrawerCloseRequest.emit(),
       },
       this.uiDrawerVariant(),
       this.uiDrawerSize(),

@@ -29,7 +29,7 @@ import {
   type LibraryAsset,
   type SaveDraftCommand,
 } from '@lms/contracts';
-import { confirm, NOW, Toaster, type StepperItem } from '@lms/ui';
+import { choose, confirm, NOW, Toaster, type StepperItem } from '@lms/ui';
 import {
   catchError,
   filter,
@@ -256,6 +256,8 @@ export class CourseEditorStore {
       ((blockKey: string, asset: AssetValue) => void) | null
     >(null),
     editingLesson: signal<LessonTarget | null>(null),
+    /** The block keys whose upload began in the open lesson's drawer session. */
+    sessionUploads: signal<readonly string[]>([]),
     /** When the last save went through, as the page shows it ("14:05"). */
     savedAt: signal<string | null>(null),
     /** Set once the course is created or published, so leaving does not ask about unsaved changes. */
@@ -473,6 +475,14 @@ export class CourseEditorStore {
     shownInvalidSteps(this.state.stepChecks()),
   );
   readonly editingLesson$ = this.state.editingLesson.asReadonly();
+  /** Whether the open lesson has an upload begun in this drawer session still on its way. */
+  readonly lessonUploading$ = computed(() => {
+    const uploads = this.state.uploads();
+    return (
+      this.state.editingLesson() !== null &&
+      this.state.sessionUploads().some((key) => isBusy(uploads[key]))
+    );
+  });
   readonly savedAt$ = this.state.savedAt.asReadonly();
   readonly left$ = this.state.left.asReadonly();
 
@@ -681,6 +691,10 @@ export class CourseEditorStore {
     this.state.editingLesson.set(target);
   }
 
+  private setSessionUploads(keys: readonly string[]): void {
+    this.state.sessionUploads.set(keys);
+  }
+
   private setSavedAt(at: string | null): void {
     this.state.savedAt.set(at);
   }
@@ -808,11 +822,39 @@ export class CourseEditorStore {
   /** Opens a lesson in the drawer; a published revision is not edited, so it stays shut. */
   editLesson(target: LessonTarget): void {
     if (!this.isDraft$()) return;
+    this.setSessionUploads([]);
     this.setEditingLesson(target);
   }
 
   closeLesson(): void {
+    this.setSessionUploads([]);
     this.setEditingLesson(null);
+  }
+
+  /**
+   * The author tried to close the lesson drawer while a file begun in it uploads. "Lưu" saves the
+   * lesson (`save` is the drawer's own submit, which stays open when the form is invalid) and the
+   * upload goes on; "Hủy" drops the changes and stops the uploads begun in this drawer session;
+   * closing the question stays in the drawer.
+   */
+  askToCloseLesson(save: () => Promise<unknown> | undefined): void {
+    choose(this.dialog, {
+      title: 'Còn tệp đang tải lên',
+      message:
+        'Lưu bài học để tệp tiếp tục tải ngầm, hoặc hủy thay đổi và dừng các tệp vừa chọn.',
+      confirmLabel: 'Lưu',
+      cancelLabel: 'Hủy',
+    })
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((answer) => {
+        if (answer === true) void save();
+        else if (answer === false) this.discardLesson();
+      });
+  }
+
+  private discardLesson(): void {
+    this.state.sessionUploads().forEach((key) => this.cancel(key));
+    this.closeLesson();
   }
 
   openDraft(): void {
@@ -1056,6 +1098,12 @@ export class CourseEditorStore {
     const { blockKey, blockType, blockIndex, file } = request;
     this.release(blockKey);
     const target = this.state.editingLesson();
+    if (target && blockKey !== COVER_KEY) {
+      this.setSessionUploads([
+        ...this.state.sessionUploads().filter((key) => key !== blockKey),
+        blockKey,
+      ]);
+    }
     const position =
       target && blockKey !== COVER_KEY
         ? `${target.chapter}.${target.lesson}.${blockIndex}`

@@ -4,6 +4,7 @@ import {
   inject,
   linkedSignal,
   untracked,
+  viewChild,
 } from '@angular/core';
 import { form, FormRoot, submit } from '@angular/forms/signals';
 import { RouterLink } from '@angular/router';
@@ -201,6 +202,8 @@ export class CourseEditor implements HasUnsavedChanges {
    * upload joins its block in the draft while the drawer is open, and that must not reset the
    * form the author is typing in (the form's own files already include the finished upload).
    */
+  private readonly lessonForm = viewChild(LessonForm);
+
   protected readonly editingLesson = computed((): LessonValue | undefined => {
     const target = this.store.editingLesson$();
     return target
@@ -236,6 +239,11 @@ export class CourseEditor implements HasUnsavedChanges {
   protected removeCover(): void {
     this.store.dropCover();
     this.model.update((value) => ({ ...value, coverAssetId: null }));
+  }
+
+  /** Esc, the backdrop or a close button while a file begun here uploads: ask what to do first. */
+  protected askToCloseLesson(): void {
+    this.store.askToCloseLesson(() => this.lessonForm()?.save());
   }
 
   protected applyLesson(lesson: LessonValue): void {

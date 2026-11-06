@@ -15,6 +15,7 @@ import {
   maxLength,
   min,
   required,
+  submit,
 } from '@angular/forms/signals';
 import {
   BlockTypeSchema,
@@ -220,6 +221,11 @@ export class LessonForm {
             !isBusy(this.uploads()[b.key]),
         ),
   );
+
+  /** The drawer's "Lưu" when it is not the footer button that was pressed; false while invalid. */
+  save(): Promise<boolean> {
+    return submit(this.lessonForm);
+  }
 
   protected addBlock(type: BlockType): void {
     const { steps: _steps, ...block } = newBlock(type);

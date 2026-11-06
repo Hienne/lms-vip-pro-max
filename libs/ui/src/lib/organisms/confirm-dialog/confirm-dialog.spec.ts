@@ -1,7 +1,7 @@
 import { Dialog } from '@angular/cdk/dialog';
 import { Component } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
-import { confirm, type ConfirmOptions } from './confirm-dialog';
+import { choose, confirm, type ConfirmOptions } from './confirm-dialog';
 
 @Component({ template: `<button id="opener">Mở hộp thoại</button>` })
 class Host {}
@@ -191,5 +191,34 @@ describe('confirm', () => {
     button('Hủy')?.click();
     await vi.waitFor(() => expect(results).toEqual([false]));
     await vi.waitFor(() => expect(document.activeElement).toBe(opener));
+  });
+});
+
+describe('choose', () => {
+  const run = (act: () => void) => {
+    const { opener: _opener } = setup();
+    const dialog = TestBed.inject(Dialog);
+    const results: (boolean | undefined)[] = [];
+    choose(dialog, OPTIONS).subscribe((result) => results.push(result));
+    return { results, act };
+  };
+
+  it('tells the close icon (undefined) from the cancel button (false) and confirm (true)', async () => {
+    const closed = run(() => undefined);
+    await settle();
+    (
+      document.querySelector('[aria-label="Đóng hộp thoại"]') as HTMLElement
+    ).click();
+    await vi.waitFor(() => expect(closed.results).toEqual([undefined]));
+
+    const cancelled = run(() => undefined);
+    await settle();
+    button('Hủy')?.click();
+    await vi.waitFor(() => expect(cancelled.results).toEqual([false]));
+
+    const confirmed = run(() => undefined);
+    await settle();
+    button('Xóa')?.click();
+    await vi.waitFor(() => expect(confirmed.results).toEqual([true]));
   });
 });
