@@ -11,10 +11,14 @@ import {
   PageHeader,
   Skeleton,
 } from '@lms/ui';
+import { InstructorInbox } from './instructor-inbox/instructor-inbox';
 import { ReminderItem } from '../../../shared/learning/reminder-item/reminder-item';
 import { NotificationsStore } from './data-access/notifications.store';
 
-/** The learner's due deadline reminders (the mockup's `notifications` page, E.3). */
+/**
+ * Everything that waits for the user: a learner's due deadline reminders (the mockup's
+ * `notifications` page, E.3) and, for whoever manages courses, the questions learners asked.
+ */
 @Component({
   selector: 'app-notifications',
   imports: [
@@ -23,6 +27,7 @@ import { NotificationsStore } from './data-access/notifications.store';
     ErrorState,
     Icon,
     IconButton,
+    InstructorInbox,
     List,
     ListItem,
     PageHeader,

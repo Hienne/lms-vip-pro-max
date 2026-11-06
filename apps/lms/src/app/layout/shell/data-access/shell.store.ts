@@ -20,6 +20,7 @@ import {
   Router,
 } from '@angular/router';
 import {
+  feedbackEndpoints,
   learnerEndpoints,
   type NavCounts,
   shellEndpoints,
@@ -29,6 +30,7 @@ import { catchError, filter, map, of, switchMap, take, tap } from 'rxjs';
 import type { UserMenuValue } from '../../header/header';
 import { searchTarget } from '../../header/search-target';
 import { EndpointClient } from '../../../core/http/endpoint-client';
+import { InstructorFeedbackChanged } from '../../../core/learning/instructor-feedback-changed';
 import { RemindersChanged } from '../../../core/learning/reminders-changed';
 import { LearningChanges } from '../../../core/data-access/learning-changes';
 import {
@@ -80,6 +82,7 @@ export class ShellStore {
   private readonly destroyRef = inject(DestroyRef);
   private readonly storage = inject(LOCAL_STORAGE);
   private readonly remindersChanged = inject(RemindersChanged);
+  private readonly questionsChanged = inject(InstructorFeedbackChanged);
 
   constructor() {
     inject(LeavePrompt).use(() =>
@@ -200,10 +203,40 @@ export class ShellStore {
       value ?? (this.session.isSignedIn$() ? previous?.value : undefined) ?? 0,
   });
 
-  readonly unread$ = computed(() =>
-    this.client.isServed(shellEndpoints.navCounts)
-      ? this.counts().notifications
-      : this.reminderCount(),
+  /**
+   * An instructor's bell also counts the questions waiting for an answer, derived by the server
+   * from the courses they manage. Read on the same triggers and whenever one is answered; a
+   * refusal or a failure is 0.
+   */
+  private readonly questionsResource = rxResource({
+    params: () => {
+      const user = this.session.user$();
+      return user && this.session.menus$().includes('COURSE_MANAGEMENT')
+        ? {
+            userId: user.userId,
+            path: this.path$(),
+            changes: this.questionsChanged.version(),
+          }
+        : undefined;
+    },
+    stream: () =>
+      this.client.call(feedbackEndpoints.instructorFeedbackSummary).pipe(
+        map((summary) => summary.newCount),
+        catchError(() => of(0)),
+      ),
+  });
+
+  private readonly questionCount = linkedSignal<number | undefined, number>({
+    source: () => this.questionsResource.value(),
+    computation: (value, previous) =>
+      value ?? (this.session.isSignedIn$() ? previous?.value : undefined) ?? 0,
+  });
+
+  readonly unread$ = computed(
+    () =>
+      (this.client.isServed(shellEndpoints.navCounts)
+        ? this.counts().notifications
+        : this.reminderCount()) + this.questionCount(),
   );
 
   /** The router outlet's `activate` and `deactivate` events keep track of the current page. */

@@ -1,0 +1,18 @@
+@use 'ui';
+
+.inbox {
+  @include ui.stack(3);
+
+  &__head {
+    @include ui.row-between(3);
+    flex-wrap: wrap;
+  }
+
+  &__title {
+    margin: 0;
+  }
+
+  &__line {
+    width: 60%;
+  }
+}

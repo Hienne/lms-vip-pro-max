@@ -1,7 +1,4 @@
-<ui-page-header
-  title="Thông báo"
-  description="Nhắc hạn các khóa học được giao."
->
+<ui-page-header title="Thông báo" [description]="store.description$()">
   @if (store.count$() > 1) {
   <div slot="actions">
     <button
@@ -17,7 +14,7 @@
   }
 </ui-page-header>
 
-@if (store.loadError$(); as error) {
+@if (store.canLearn$()) { @if (store.loadError$(); as error) {
 <ui-error-state
   title="Không tải được thông báo"
   [message]="error.message"
@@ -64,4 +61,8 @@
   </li>
   }
 </ul>
+} } @else if (!store.canManage$()) {
+<ui-empty variant="inline" title="Không có nhắc hạn nào." />
+} @if (store.canManage$()) {
+<app-instructor-inbox />
 }

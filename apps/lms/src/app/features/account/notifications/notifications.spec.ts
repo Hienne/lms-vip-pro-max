@@ -1,8 +1,8 @@
 import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
-import { learnerEndpoints } from '@lms/contracts';
-import { backendRefusal } from '@lms/mocks';
+import { feedbackEndpoints, learnerEndpoints } from '@lms/contracts';
+import { backendRefusal, envelopeOk } from '@lms/mocks';
 import type { MockInstance } from 'vitest';
 import { createAppRoutes } from '../../../app.routes';
 import {
@@ -130,9 +130,31 @@ describe('Notifications', () => {
   });
 
   describe('someone who is not a learner', () => {
-    it('sees the empty line, no error and no request', async () => {
+    it('sees no reminders and no request for them, only the questions of learners', async () => {
+      const original: MockBackend['handle'] = (endpoint, request) =>
+        MockBackend.prototype.handle.call(
+          TestBed.inject(MockBackend),
+          endpoint,
+          request,
+        );
+      handle.mockImplementation((endpoint, request) =>
+        endpoint === feedbackEndpoints.instructorFeedback
+          ? {
+              status: 200,
+              body: envelopeOk({
+                items: [],
+                page: 0,
+                size: 10,
+                totalElements: 0,
+                totalPages: 0,
+              }),
+            }
+          : original(endpoint, request),
+      );
       await open('quantri', '000002');
-      expect(text()).toContain('Không có nhắc hạn nào.');
+      expect(text()).toContain('Câu hỏi của học viên');
+      expect(text()).toContain('Không có câu hỏi nào chờ trả lời.');
+      expect(text()).not.toContain('Không có nhắc hạn nào.');
       expect(el.querySelector('ui-error-state')).toBeNull();
       expect(
         handle.mock.calls.filter(([e]) => e === learnerEndpoints.reminders),
