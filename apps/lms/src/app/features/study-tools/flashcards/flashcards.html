@@ -1,0 +1,314 @@
+<ui-page-header
+  title="Flashcard ôn tập"
+  description="Chọn bộ thẻ và bắt đầu ôn tập theo cách của bạn."
+/>
+
+@if (round(); as deck) {
+<div
+  class="study-focus"
+  role="dialog"
+  aria-modal="true"
+  aria-label="Phiên ôn tập khóa học"
+  (keydown.escape)="!saveRating.isPending() && !saveStar.isPending() && finish()"
+  cdkTrapFocus
+  [cdkTrapFocusAutoCapture]="true"
+>
+  <div class="study-focus__panel">
+    <div class="study-focus__heading">
+      <div>
+        <h2>Ôn tập khóa học</h2>
+        <p>Tập trung vào từng thẻ, lật để xem đáp án.</p>
+      </div>
+      <button
+        uiButton
+        variant="ghost"
+        type="button"
+        [disabled]="saveRating.isPending() || saveStar.isPending()"
+        (click)="finish()"
+      >
+        Kết thúc
+      </button>
+    </div>
+    @if (current()) {
+    <div class="study-focus__progress">
+      <span>Tiến độ lượt ôn</span
+      ><span>{{ index() + 1 }} / {{ deck.length }}</span>
+    </div>
+    <progress
+      class="study-focus__bar"
+      [value]="index() + 1"
+      [max]="deck.length"
+      aria-label="Tiến độ lượt ôn"
+    ></progress>
+    } @if (current(); as card) {
+    <section class="flashcards__study">
+      @if (answer.error(); as error) {
+      <ui-error-state
+        title="Không tải được đáp án"
+        [message]="error.message"
+        (retry)="answer.reload()"
+      />
+      }
+      <div
+        class="flip-card"
+        [class.flip-card--back]="!!answer.value() && faceBack()"
+      >
+        <button
+          class="flip-card__inner"
+          type="button"
+          (click)="reveal(card)"
+          [disabled]="answer.isLoading()"
+          [attr.aria-label]="answer.value() && faceBack() ? 'Đáp án: ' + (answer.value()?.options?.join(', ') ?? '') + '. Nhấn để xem lại câu hỏi' : 'Câu hỏi: ' + card.prompt + '. Nhấn để xem đáp án'"
+        >
+          <span
+            class="flip-card__face flip-card__front"
+            [attr.aria-hidden]="!!answer.value() && faceBack()"
+          >
+            <span class="flip-card__label"
+              >{{ card.competencyName }} · Câu hỏi</span
+            >
+            <span class="flip-card__content">{{ card.prompt }}</span>
+            <span class="flip-card__hint"
+              >{{ answer.isLoading() ? 'Đang tải đáp án…' : 'Nhấn để xem đáp án'
+              }}</span
+            >
+          </span>
+          <span
+            class="flip-card__face flip-card__back"
+            [attr.aria-hidden]="!answer.value() || !faceBack()"
+          >
+            <span class="flip-card__label">Đáp án</span>
+            <span class="flip-card__content">
+              @if (answer.value(); as solution) { @for (option of
+              solution.options; track $index) {
+              <span class="flip-card__answer">{{ option }}</span> } @if
+              (solution.explanation) {
+              <span class="flip-card__explanation"
+                >{{ solution.explanation }}</span
+              >
+              } }
+            </span>
+            <span class="flip-card__hint">Nhấn để xem lại câu hỏi</span>
+          </span>
+        </button>
+      </div>
+      <div
+        class="flashcards__actions study-focus__rating"
+        [class.study-focus__rating--hidden]="!answer.value() || !faceBack()"
+        [attr.aria-hidden]="!answer.value() || !faceBack()"
+      >
+        <button
+          uiButton
+          variant="secondary"
+          type="button"
+          [disabled]="!answer.value() || !faceBack() || saveRating.isPending() || saveStar.isPending()"
+          (click)="submitRating(card, 'AGAIN')"
+        >
+          <ui-icon name="rotate-ccw" size="sm" /> Cần ôn lại
+        </button>
+        <button
+          uiButton
+          variant="primary"
+          type="button"
+          [disabled]="saveRating.isPending() || saveStar.isPending()"
+          (click)="submitRating(card, 'KNOWN')"
+        >
+          <ui-icon name="check" size="sm" /> Đã nhớ
+        </button>
+      </div>
+    </section>
+    <div class="flashcards__actions">
+      <button
+        uiButton
+        variant="ghost"
+        type="button"
+        [disabled]="index() === 0 || saveRating.isPending() || saveStar.isPending()"
+        (click)="move(index() - 1)"
+      >
+        <ui-icon name="chevron-left" size="sm" /> Thẻ trước
+      </button>
+      <button
+        uiButton
+        variant="secondary"
+        type="button"
+        [attr.aria-pressed]="card.starred"
+        [disabled]="saveStar.isPending() || saveRating.isPending()"
+        (click)="toggleStar(card)"
+      >
+        <ui-icon name="star" size="sm" /> {{ card.starred ? 'Bỏ đánh dấu' :
+        'Đánh dấu' }}
+      </button>
+      <button
+        uiButton
+        variant="ghost"
+        type="button"
+        [disabled]="saveRating.isPending() || saveStar.isPending()"
+        (click)="move(index() + 1)"
+      >
+        Thẻ sau <ui-icon name="chevron-right" size="sm" />
+      </button>
+    </div>
+    } @else {
+    <section uiCard class="flashcards__card">
+      <h2>Kết thúc lượt ôn</h2>
+      <p>
+        {{ knownCount() }} thẻ đã nhớ · {{ againCount() }} thẻ cần ôn lại · {{
+        deck.length - rated().size }} thẻ chưa đánh giá
+      </p>
+      <div class="flashcards__actions">
+        @if (againCount()) {
+        <button uiButton variant="primary" type="button" (click)="retryRound()">
+          Ôn lại {{ againCount() }} thẻ
+        </button>
+        }
+        <button uiButton variant="secondary" type="button" (click)="finish()">
+          Kết thúc
+        </button>
+      </div>
+    </section>
+    }
+  </div>
+</div>
+} @else {
+<div class="flashcards__source">
+  <ui-segmented
+    label="Chọn nguồn thẻ"
+    [options]="sources"
+    [value]="source()"
+    (valueChange)="source.set($event)"
+  />
+</div>
+<app-personal-flashcards [hidden]="source() !== 'personal'" />
+<section uiCard class="flashcards__card" [hidden]="source() !== 'course'">
+  <div class="flashcards__heading">
+    <div>
+      <h2>Bộ thẻ khóa học</h2>
+      <p class="flashcards__meta">
+        Chọn khóa học và nhóm kiến thức bạn muốn ôn.
+      </p>
+    </div>
+  </div>
+  <div class="flashcards__filters">
+    <label
+      >Lĩnh vực
+      <select
+        uiSelect
+        #fieldSelect
+        [value]="field() ?? ''"
+        (change)="filterCourses(+fieldSelect.value || undefined, undefined, keyword())"
+      >
+        <option value="">Tất cả</option>
+        @for (item of facets.value()?.fields ?? []; track item.id) {
+        <option [value]="item.id">{{ item.name }}</option>
+        }
+      </select>
+    </label>
+    <label
+      >Chương trình
+      <select
+        uiSelect
+        #programSelect
+        [value]="program() ?? ''"
+        (change)="filterCourses(field(), +programSelect.value || undefined, keyword())"
+      >
+        <option value="">Tất cả</option>
+        @for (item of programs(); track item.id) {
+        <option [value]="item.id">{{ item.name }}</option>
+        }
+      </select>
+    </label>
+    <ui-search
+      width="100%"
+      label="Tìm khóa học"
+      placeholder="Tìm khóa học…"
+      [value]="keyword()"
+      (searched)="filterCourses(field(), program(), $event)"
+    />
+  </div>
+  @if (courses.error(); as error) {
+  <ui-error-state
+    title="Không tải được khóa học"
+    [message]="error.message"
+    (retry)="courses.reload()"
+  />
+  } @else if (courses.value(); as list) {
+  <label
+    >Khóa học
+    <select
+      uiSelect
+      #courseSelect
+      [value]="courseId()"
+      (change)="pickCourse(+courseSelect.value)"
+    >
+      <option value="0">Chọn khóa học</option>
+      @for (item of list.items; track item.courseId) {
+      <option [value]="item.courseId">{{ item.title }}</option>
+      }
+    </select>
+  </label>
+  <ui-pagination
+    [total]="list.totalElements"
+    [page]="page()"
+    [pageSize]="pageSize"
+    (pageChange)="pickCourse(0); page.set($event)"
+  />
+  } @else {
+  <p role="status">Đang tải khóa học…</p>
+  } @if (courseId()) { @if (cards.error(); as error) {
+  <ui-error-state
+    title="Không tải được thẻ ôn tập"
+    [message]="error.message"
+    (retry)="cards.reload()"
+  />
+  } @else if (cards.value()) {
+  <div class="flashcards__filters">
+    <label
+      >Nhóm kiến thức
+      <select
+        uiSelect
+        #group
+        [value]="competency()"
+        (change)="competency.set(+group.value)"
+      >
+        <option value="0">Tất cả</option>
+        @for (item of groups(); track item[0]) {
+        <option [value]="item[0]">{{ item[1] }}</option>
+        }
+      </select>
+    </label>
+    <div class="flashcards__scope">
+      <span>Phạm vi ôn</span
+      ><ui-segmented
+        label="Phạm vi ôn"
+        [options]="scopeOptions"
+        [value]="mode()"
+        (valueChange)="mode.set($event)"
+      />
+    </div>
+  </div>
+  <div class="flashcards__actions">
+    <span>{{ available().length }} thẻ khả dụng</span>
+    <label
+      ><input
+        type="checkbox"
+        #mix
+        [checked]="shuffle()"
+        (change)="shuffle.set(mix.checked)"
+      />
+      Trộn thẻ</label
+    >
+    <button
+      uiButton
+      variant="primary"
+      type="button"
+      [disabled]="!available().length"
+      (click)="start(available())"
+    >
+      <ui-icon name="play" size="sm" /> Bắt đầu ôn
+    </button>
+  </div>
+  } @else {
+  <p role="status">Đang tải thẻ ôn tập…</p>
+  } }
+</section>
+}

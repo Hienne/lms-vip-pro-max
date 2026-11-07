@@ -1,0 +1,473 @@
+<section uiCard class="flashcards__card">
+  <div class="flashcards__list-header">
+    <h2>Bắt đầu ôn</h2>
+    <button
+      uiButton
+      type="button"
+      variant="secondary"
+      (click)="creatingDeck.set(true); editingDeck.set(false); deckName.set('')"
+    >
+      <ui-icon name="plus" size="sm" /> Tạo bộ thẻ
+    </button>
+  </div>
+  @if (decks.error(); as error) {
+  <ui-error-state
+    title="Không tải được bộ thẻ"
+    [message]="error.message"
+    (retry)="decks.reload()"
+  />
+  }
+  <div class="flashcards__workspace">
+    <div class="flashcards__manage">
+      <label class="flashcards__deck"
+        >Chọn bộ thẻ
+        <select
+          uiSelect
+          #deck
+          [value]="deckId()"
+          (change)="selectDeck(+deck.value)"
+        >
+          <option value="0">Chọn bộ thẻ</option>
+          @for (item of decks.value() ?? []; track item.id) {
+          <option [value]="item.id">
+            {{ item.name }} · {{ item.cardCount }} thẻ
+          </option>
+          }
+        </select>
+      </label>
+      @if (creatingDeck() || editingDeck()) {
+      <div class="flashcards__create">
+        <input
+          uiInput
+          #name
+          type="text"
+          placeholder="Tên bộ thẻ"
+          aria-label="Tên bộ thẻ"
+          maxlength="150"
+          [value]="deckName()"
+          (input)="deckName.set(name.value)"
+        />
+        <button
+          uiButton
+          type="button"
+          [disabled]="!deckName().trim() || saveDeck.isPending()"
+          (click)="saveDeck.run({ id: editingDeck() ? deckId() : 0, name: deckName().trim() })"
+        >
+          <ui-icon [name]="editingDeck() ? 'check' : 'plus'" size="sm" /> {{
+          editingDeck() ? 'Lưu tên' : 'Tạo bộ thẻ' }}
+        </button>
+        @if (editingDeck() || creatingDeck()) {
+        <button
+          uiButton
+          type="button"
+          (click)="editingDeck.set(false); creatingDeck.set(false); deckName.set('')"
+        >
+          Hủy
+        </button>
+        }
+      </div>
+      }
+    </div>
+    @if (deckId()) {
+    <section
+      class="flashcards__study-options"
+      aria-labelledby="study-options-title"
+    >
+      <div class="flashcards__scope">
+        <span id="study-options-title">Chọn thẻ để ôn</span>
+        <ui-segmented
+          label="Chọn thẻ để ôn"
+          [options]="scopeOptions"
+          [value]="scope()"
+          (valueChange)="scope.set($event)"
+        />
+      </div>
+      <div class="flashcards__actions">
+        <span class="flashcards__meta"
+          >{{ availableCards().length }} thẻ phù hợp</span
+        >
+        <label
+          ><input
+            #mix
+            type="checkbox"
+            [checked]="shuffle()"
+            (change)="shuffle.set(mix.checked)"
+          />
+          Trộn thẻ</label
+        >
+        <button
+          uiButton
+          variant="primary"
+          type="button"
+          [disabled]="!availableCards().length"
+          (click)="start()"
+        >
+          <ui-icon name="play" size="sm" /> Bắt đầu ôn
+        </button>
+      </div>
+    </section>
+    }
+  </div>
+  @if (deckId()) { @if (cards.error(); as error) {
+  <ui-error-state
+    title="Không tải được thẻ"
+    [message]="error.message"
+    (retry)="cards.reload()"
+  />
+  } @if (round(); as items) {
+  <div
+    class="study-focus"
+    role="dialog"
+    aria-modal="true"
+    aria-label="Phiên ôn tập cá nhân"
+    (keydown.escape)="!progress.isPending() && round.set(null)"
+    cdkTrapFocus
+    [cdkTrapFocusAutoCapture]="true"
+  >
+    <div class="study-focus__panel">
+      <div class="study-focus__heading">
+        <div>
+          <h2>Ôn tập bộ thẻ</h2>
+          <p>Tập trung vào từng thẻ, lật để xem đáp án.</p>
+        </div>
+        <button
+          uiButton
+          variant="ghost"
+          type="button"
+          [disabled]="progress.isPending()"
+          (click)="round.set(null)"
+        >
+          Kết thúc
+        </button>
+      </div>
+      @if (items[index()]) {
+      <div class="study-focus__progress">
+        <span>Tiến độ lượt ôn</span
+        ><span>{{ index() + 1 }} / {{ items.length }}</span>
+      </div>
+      <progress
+        class="study-focus__bar"
+        [value]="index() + 1"
+        [max]="items.length"
+        aria-label="Tiến độ lượt ôn"
+      ></progress>
+      } @if (items[index()]; as card) {
+      <p class="flashcards__meta">Thẻ {{ index() + 1 }}/{{ items.length }}</p>
+      <div class="flip-card" [class.flip-card--back]="revealed()">
+        <button
+          class="flip-card__inner"
+          type="button"
+          (click)="revealed.set(!revealed())"
+          [attr.aria-label]="revealed() ? 'Đáp án: ' + card.answer + '. Nhấn để xem lại câu hỏi' : 'Câu hỏi: ' + card.prompt + '. Nhấn để xem đáp án'"
+        >
+          <span
+            class="flip-card__face flip-card__front"
+            [attr.aria-hidden]="revealed()"
+          >
+            <span class="flip-card__label">Câu hỏi</span>
+            <span class="flip-card__content">{{ card.prompt }}</span>
+            <span class="flip-card__hint">Nhấn để xem đáp án</span>
+          </span>
+          <span
+            class="flip-card__face flip-card__back"
+            [attr.aria-hidden]="!revealed()"
+          >
+            <span class="flip-card__label">Đáp án</span>
+            <span class="flip-card__content">{{ card.answer }}</span>
+            <span class="flip-card__hint">Nhấn để xem lại câu hỏi</span>
+          </span>
+        </button>
+      </div>
+      <div
+        class="flashcards__actions study-focus__rating"
+        [class.study-focus__rating--hidden]="!revealed()"
+        [attr.aria-hidden]="!revealed()"
+      >
+        <button
+          uiButton
+          type="button"
+          variant="secondary"
+          [disabled]="!revealed() || progress.isPending()"
+          (click)="rate(card, 'AGAIN')"
+        >
+          <ui-icon name="rotate-ccw" size="sm" /> Cần ôn lại
+        </button>
+        <button
+          uiButton
+          type="button"
+          variant="primary"
+          [disabled]="progress.isPending()"
+          (click)="rate(card, 'KNOWN')"
+        >
+          <ui-icon name="check" size="sm" /> Đã nhớ
+        </button>
+      </div>
+      <div class="flashcards__actions">
+        <button
+          uiButton
+          type="button"
+          [disabled]="index() === 0 || progress.isPending()"
+          (click)="index.set(index() - 1); revealed.set(false)"
+        >
+          <ui-icon name="chevron-left" size="sm" /> Thẻ trước
+        </button>
+        <button
+          uiButton
+          type="button"
+          [disabled]="progress.isPending()"
+          (click)="progress.run({cardId: card.id, starred: !card.starred})"
+        >
+          <ui-icon name="star" size="sm" /> {{ card.starred ? 'Bỏ đánh dấu' :
+          'Đánh dấu' }}
+        </button>
+        <button
+          uiButton
+          type="button"
+          [disabled]="progress.isPending()"
+          (click)="index.set(index() + 1); revealed.set(false)"
+        >
+          Thẻ sau <ui-icon name="chevron-right" size="sm" />
+        </button>
+      </div>
+      } @else {
+      <p>Đã xem hết bộ thẻ.</p>
+      <div class="flashcards__actions">
+        <button uiButton size="sm" type="button" (click)="round.set(null)">
+          Kết thúc
+        </button>
+      </div>
+      }
+    </div>
+  </div>
+  } @else if (managing()) {
+  <div class="flashcards__list">
+    <div class="flashcards__list-header">
+      <div class="flashcards__list-title">
+        <h3>Quản lý thẻ</h3>
+        <span class="flashcards__meta"
+          >{{ cards.value()?.length ?? 0 }} thẻ</span
+        >
+      </div>
+      <div class="flashcards__actions">
+        <button
+          uiButton
+          variant="ghost"
+          type="button"
+          (click)="editingDeck.set(true); creatingDeck.set(false); deckName.set((decks.value() ?? [])[deck.selectedIndex - 1]?.name ?? '')"
+        >
+          Đổi tên bộ
+        </button>
+        <button
+          uiButton
+          variant="danger-ghost"
+          type="button"
+          (click)="deleteDeck()"
+        >
+          Xóa bộ
+        </button>
+        <button
+          uiButton
+          variant="ghost"
+          type="button"
+          (click)="managing.set(false)"
+        >
+          Đóng quản lý
+        </button>
+        <button
+          uiButton
+          type="button"
+          (click)="addingMany.set(false); editingCard.set(0); prompt.set(''); answer.set('')"
+        >
+          <ui-icon name="plus" size="sm" /> Thêm thẻ
+        </button>
+        <button
+          uiButton
+          type="button"
+          (click)="editingCard.set(null); addingMany.set(true)"
+        >
+          <ui-icon name="layers" size="sm" /> Thêm nhiều thẻ
+        </button>
+      </div>
+    </div>
+    @if (addingMany()) {
+    <div class="flashcards__editor">
+      <h3>Thêm nhiều thẻ</h3>
+      <p>Mỗi thẻ gồm câu hỏi và đáp án. Điền cả hai mặt trước khi lưu.</p>
+      @for (draft of drafts(); track draft.key; let i = $index) {
+      <div class="flashcards__filters">
+        <span>{{ i + 1 }}</span>
+        <label
+          >Câu hỏi<textarea
+            uiTextarea
+            #q
+            [value]="draft.prompt"
+            maxlength="4000"
+            (input)="updateDraft(draft.key, 'prompt', q.value)"
+          ></textarea>
+        </label>
+        <label
+          >Đáp án<textarea
+            uiTextarea
+            #a
+            [value]="draft.answer"
+            maxlength="40000"
+            (input)="updateDraft(draft.key, 'answer', a.value)"
+          ></textarea>
+        </label>
+        <button uiButton type="button" (click)="removeDraft(draft.key)">
+          Xóa
+        </button>
+      </div>
+      }
+      <div class="flashcards__actions">
+        <button
+          uiButton
+          type="button"
+          (click)="addDraft()"
+          [disabled]="drafts().length >= 100"
+        >
+          Thêm thẻ
+        </button>
+        <button
+          uiButton
+          type="button"
+          (click)="submitDrafts()"
+          [disabled]="saveMany.isPending()"
+        >
+          Lưu các thẻ
+        </button>
+        <button
+          uiButton
+          type="button"
+          (click)="addingMany.set(false)"
+          [disabled]="saveMany.isPending()"
+        >
+          Hủy
+        </button>
+      </div>
+    </div>
+    } @if (editingCard() !== null) {
+    <div class="flashcards__editor">
+      <h3>{{ editingCard() ? 'Chỉnh sửa thẻ' : 'Thêm thẻ' }}</h3>
+      <div class="flashcards__fields">
+        <label
+          >Câu hỏi
+          <textarea
+            uiTextarea
+            #question
+            [value]="prompt()"
+            (input)="prompt.set(question.value)"
+            maxlength="4000"
+          ></textarea>
+        </label>
+        <label
+          >Đáp án
+          <textarea
+            uiTextarea
+            #response
+            [value]="answer()"
+            (input)="answer.set(response.value)"
+            maxlength="40000"
+          ></textarea>
+        </label>
+      </div>
+      <div class="flashcards__actions">
+        <button
+          uiButton
+          variant="primary"
+          type="button"
+          [disabled]="!prompt().trim() || !answer().trim() || saveCard.isPending()"
+          (click)="saveCard.run({id: editingCard(), prompt: prompt().trim(), answer: answer().trim()})"
+        >
+          Lưu thẻ
+        </button>
+        <button uiButton type="button" (click)="editingCard.set(null)">
+          Hủy
+        </button>
+      </div>
+    </div>
+    } @for (card of cards.value() ?? []; track card.id; let i = $index) {
+    <div class="flashcards__row">
+      <span class="flashcards__number">{{ i + 1 }}</span>
+      <div class="flashcards__content">
+        <span class="flashcards__prompt">{{ card.prompt }}</span>
+        <span class="flashcards__answer">{{ card.answer }}</span>
+      </div>
+      <div class="flashcards__actions">
+        <button
+          uiButton
+          variant="ghost"
+          size="sm"
+          type="button"
+          (click)="editCard(card)"
+        >
+          Sửa
+        </button>
+        <button
+          uiButton
+          variant="danger-ghost"
+          size="sm"
+          type="button"
+          (click)="deleteCard(card)"
+        >
+          Xóa
+        </button>
+      </div>
+    </div>
+    } @empty {
+    <p class="flashcards__empty">
+      Bộ thẻ chưa có nội dung. Chọn “Thêm thẻ” để bắt đầu.
+    </p>
+    }
+  </div>
+  } }
+</section>
+<section class="flashcards__decks" aria-labelledby="personal-decks-title">
+  <div class="flashcards__list-header">
+    <h2 id="personal-decks-title">Bộ thẻ của tôi</h2>
+    @if (deckId()) {
+    <button
+      uiButton
+      variant="ghost"
+      type="button"
+      (click)="managing.set(!managing())"
+    >
+      {{ managing() ? 'Đóng quản lý' : 'Quản lý bộ đã chọn' }}
+    </button>
+    }
+  </div>
+  @if (decks.isLoading()) {
+  <p class="flashcards__meta" role="status">Đang tải bộ thẻ…</p>
+  } @else {
+  <div class="flashcards__deck-grid">
+    @for (item of decks.value() ?? []; track item.id) {
+    <article uiCard class="flashcards__deck-item">
+      <h3>{{ item.name }}</h3>
+      <p class="flashcards__meta">{{ item.cardCount }} thẻ</p>
+      <div class="flashcards__actions">
+        <button
+          uiButton
+          variant="ghost"
+          type="button"
+          (click)="selectDeck(item.id)"
+        >
+          Chọn để ôn <ui-icon name="chevron-right" size="sm" />
+        </button>
+        <button
+          uiButton
+          variant="ghost"
+          type="button"
+          (click)="selectDeck(item.id, true)"
+        >
+          Quản lý
+        </button>
+      </div>
+    </article>
+    } @empty { @if (!decks.error()) {
+    <p class="flashcards__meta">
+      Chưa có bộ thẻ. Chọn “Tạo bộ thẻ” để bắt đầu.
+    </p>
+    } }
+  </div>
+  }
+</section>

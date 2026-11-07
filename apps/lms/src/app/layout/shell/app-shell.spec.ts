@@ -731,7 +731,7 @@ describe('AppShell', () => {
       expect(document.activeElement).toBe(el.querySelector('main#main'));
     });
 
-    it('focuses the page heading after navigating, or main without one', async () => {
+    it('focuses the page heading after navigating', async () => {
       signInAs('learner');
       const fixture = TestBed.createComponent(AppShell);
       const root = fixture.nativeElement as HTMLElement;
@@ -742,10 +742,10 @@ describe('AppShell', () => {
         await fixture.whenStable();
         TestBed.tick();
       };
-      // A route placeholder has no level-1 heading.
       await go('/flashcards');
-      expect(root.querySelector('main h1')).toBeNull();
-      expect(document.activeElement).toBe(root.querySelector('main'));
+      const flashcardHeading = root.querySelector('main h1');
+      expect(flashcardHeading?.textContent).toContain('Flashcard ôn tập');
+      expect(document.activeElement).toBe(flashcardHeading);
       await go('/403');
       const h1 = root.querySelector('main h1');
       expect(h1).not.toBeNull();

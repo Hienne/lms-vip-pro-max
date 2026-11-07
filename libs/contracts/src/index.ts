@@ -62,3 +62,6 @@ export * from './lib/community/community-media.endpoints';
 export * from './lib/community/community-review.endpoints';
 export * from './lib/chat-room/chat-room.schema';
 export * from './lib/chat-room/chat-room.endpoints';
+export * from './lib/assessment/flashcard.endpoints';
+
+export * from './lib/assessment/personal-flashcard.endpoints';

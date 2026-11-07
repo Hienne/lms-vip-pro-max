@@ -1,0 +1,158 @@
+@use 'ui';
+
+.flip-card {
+  perspective: 1000px;
+  min-width: 0;
+  overflow: clip;
+
+  &__inner {
+    position: relative;
+    display: grid;
+    width: 100%;
+    min-height: clamp(10rem, 32dvh, 19rem);
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: inherit;
+    text-align: left;
+    cursor: pointer;
+    transform-style: preserve-3d;
+    transition: transform ui.duration(slow) cubic-bezier(0.2, 0.7, 0.2, 1);
+    will-change: transform;
+  }
+
+  &--back &__inner {
+    transform: rotateY(180deg);
+  }
+
+  &__inner:focus-visible {
+    outline: 2px solid ui.color(primary);
+    outline-offset: 4px;
+    border-radius: ui.radius(card);
+  }
+
+  &__face {
+    grid-area: 1 / 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    gap: ui.space(5);
+    min-width: 0;
+    padding: ui.space(5);
+    border: 1px solid ui.color(border);
+    border-radius: ui.radius(card);
+    background: ui.color(surface);
+    backface-visibility: hidden;
+  }
+
+  &__back {
+    transform: rotateY(180deg);
+  }
+
+  &__label,
+  &__hint {
+    @include ui.text(sm, muted);
+  }
+
+  &__content {
+    display: block;
+    align-self: center;
+    width: 100%;
+    max-width: 44rem;
+    overflow-wrap: anywhere;
+    white-space: pre-wrap;
+    text-align: center;
+    @include ui.text(lg);
+  }
+
+  &__answer,
+  &__explanation {
+    display: block;
+  }
+
+  &__explanation {
+    @include ui.text(sm, muted);
+    margin-top: ui.space(3);
+  }
+
+  &__hint {
+    text-align: center;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .flip-card__inner {
+    transition: none;
+  }
+}
+
+.study-focus {
+  position: fixed;
+  z-index: ui.z(modal);
+  inset: 0;
+  display: grid;
+  place-items: center;
+  overflow: auto;
+  overscroll-behavior: contain;
+  padding: ui.space(4);
+  background: ui.color(overlay);
+
+  &__panel {
+    display: grid;
+    gap: ui.space(3);
+    width: min(100%, 56rem);
+    max-height: calc(100dvh - 2rem);
+    overflow-x: hidden;
+    overflow-y: auto;
+    padding: ui.space(5);
+    border: 1px solid ui.color(border);
+    border-radius: ui.radius(card);
+    background: ui.color(surface);
+    color: ui.color(text);
+  }
+
+  &__heading,
+  &__progress {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: ui.space(3);
+  }
+
+  &__heading h2,
+  &__heading p {
+    margin: 0;
+  }
+
+  &__heading p,
+  &__progress {
+    @include ui.text(sm, muted);
+  }
+
+  &__bar {
+    width: 100%;
+    height: ui.space(2);
+    accent-color: ui.color(primary);
+  }
+
+  &__rating {
+    min-height: 2.5rem;
+  }
+
+  &__rating--hidden {
+    visibility: hidden;
+  }
+
+  .flashcards__study,
+  .flashcards__actions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: ui.space(3);
+  }
+
+  .flashcards__study {
+    flex-direction: column;
+    min-width: 0;
+  }
+}
