@@ -19,9 +19,8 @@ concurrency:
 env:
   NX_NO_CLOUD: true
   IMAGE: ghcr.io/hienne/lms-vip-pro-max
-  # Set either flag to 'false' to restore that CI gate.
+  # Set to 'false' to restore the Prettier gate. Unit tests do not run in CI.
   SKIP_FORMAT_CHECK: 'true'
-  SKIP_TESTS: 'true'
 
 jobs:
   check:
@@ -32,6 +31,7 @@ jobs:
       - uses: actions/checkout@v7
         with:
           fetch-depth: 0 # nx affected compares against the base commit
+          filter: blob:none # full commit history, file contents fetched on demand
           persist-credentials: false
 
       - uses: actions/setup-node@v7
@@ -54,17 +54,13 @@ jobs:
         if: ${{ env.SKIP_FORMAT_CHECK != 'true' }}
         run: npm run format:check
 
-      - name: Check affected projects without unit tests
-        if: ${{ env.SKIP_TESTS == 'true' }}
-        run: npm run ci:check:no-tests
-
-      - name: Check affected projects including unit tests
-        if: ${{ env.SKIP_TESTS != 'true' }}
+      - name: Check affected projects (lint, typecheck, build, bundle guard)
         run: npm run ci:check
 
+  # Runs alongside `check`: the image build is self-contained (own npm ci and
+  # build), and nothing is deployed until `deploy` sees both jobs green.
   image:
     name: Build frontend artifact image
-    needs: check
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     permissions:
@@ -77,14 +73,22 @@ jobs:
         with:
           persist-credentials: false
 
+      - uses: docker/setup-buildx-action@v3
+
+      # The npm ci layer is reused across runs while the lockfile is unchanged.
       - name: Build image
-        run: |
-          set -euo pipefail
-          docker build --pull \
-            --build-arg APP_REVISION="$GITHUB_SHA" \
-            --label org.opencontainers.image.source="https://github.com/$GITHUB_REPOSITORY" \
-            --label org.opencontainers.image.revision="$GITHUB_SHA" \
-            -t "$IMAGE:$GITHUB_SHA" .
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          pull: true
+          load: true
+          tags: ${{ env.IMAGE }}:${{ github.sha }}
+          build-args: APP_REVISION=${{ github.sha }}
+          labels: |
+            org.opencontainers.image.source=https://github.com/${{ github.repository }}
+            org.opencontainers.image.revision=${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max,ignore-error=true
 
       # Published by digest so the server deploys exactly the bytes built here.
       - name: Publish immutable image
@@ -103,7 +107,7 @@ jobs:
 
   deploy:
     name: Deploy frontend to Ubuntu
-    needs: image
+    needs: [check, image]
     if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
     runs-on: ubuntu-24.04
     timeout-minutes: 10
