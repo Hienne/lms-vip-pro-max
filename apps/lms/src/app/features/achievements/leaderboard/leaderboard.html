@@ -1,7 +1,22 @@
 <ui-page-header
   title="Bảng xếp hạng & thành tích"
-  description="Điểm thưởng tính tự động từ bài học hoàn thành, bài kiểm tra đạt, khóa học hoàn thành và chuỗi ngày học."
+  description="XP được ghi tự động khi bạn hoàn thành bài học, đạt bài kiểm tra hoặc hoàn thành khóa học."
 />
+
+@if (store.isXpNoticeShown$()) {
+<ui-alert class="leaderboard__notice" [announce]="false">
+  Điểm thưởng nay là XP, tính từ các hoạt động học của bạn. Chuỗi ngày học vẫn
+  được ghi nhận nhưng không cộng XP.
+  <button
+    uiAlertAction
+    uiButton
+    variant="ghost"
+    (click)="store.dismissXpNotice()"
+  >
+    Đã hiểu
+  </button>
+</ui-alert>
+}
 
 <ui-segmented
   class="leaderboard__scope"
@@ -19,7 +34,7 @@
     aria-labelledby="leaderboard-points"
   >
     <p id="leaderboard-points" class="leaderboard__points-title">
-      Điểm thưởng của bạn@if (store.rank$(); as rank) { · hạng {{ rank }}}
+      XP của bạn@if (store.rank$(); as rank) { · hạng {{ rank }}}
     </p>
     @if (store.pointsError$(); as error) {
     <ui-error-state

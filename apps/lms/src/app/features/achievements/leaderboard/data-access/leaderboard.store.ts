@@ -7,6 +7,7 @@ import {
   type LeaderboardScope,
   type PointParts,
 } from '@lms/contracts';
+import { LOCAL_STORAGE } from '../../../../core/storage/local-storage';
 import { serverData } from '../../../../core/data-access/server-data';
 import { EndpointClient } from '../../../../core/http/endpoint-client';
 
@@ -16,12 +17,15 @@ export const LEADERBOARD_PAGE_SIZE = 20;
 /** The scope the server uses when none is asked, and the one the URL leaves out. */
 export const DEFAULT_SCOPE: LeaderboardScope = 'org';
 
-/** The four sources of points, in the order and the words the mockup lists them. */
+/** Where the dismissal of the "points became XP" notice is kept, per browser. */
+export const XP_NOTICE_STORAGE_KEY = 'lms.xp-notice-dismissed';
+
+/** The four sources of XP. A streak earns none, so it is not a part. */
 const PART_LABELS: readonly { key: keyof PointParts; label: string }[] = [
   { key: 'lessons', label: 'Bài học hoàn thành' },
   { key: 'quizzes', label: 'Bài kiểm tra đạt' },
+  { key: 'firstTryBonus', label: 'Đạt ngay lần đầu' },
   { key: 'courses', label: 'Khóa học hoàn thành' },
-  { key: 'streak', label: 'Chuỗi ngày học' },
 ];
 
 export interface PartRow {
@@ -47,6 +51,7 @@ export class LeaderboardStore {
   private readonly client = inject(EndpointClient);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
+  private readonly storage = inject(LOCAL_STORAGE);
 
   private readonly initial = this.route.snapshot.queryParams;
 
@@ -74,7 +79,11 @@ export class LeaderboardStore {
     this.client.call(learnerEndpoints.myPoints),
   );
 
+  private readonly noticeDismissed = signal(this.readNoticeDismissed());
+
   // Selectors
+  /** The one-time notice that points became XP and a streak no longer earns any. */
+  readonly isXpNoticeShown$ = computed(() => !this.noticeDismissed());
   readonly scope$ = this.state.scope.asReadonly();
   readonly page$ = this.state.page.asReadonly();
 
@@ -115,6 +124,23 @@ export class LeaderboardStore {
         }))
       : [];
   });
+
+  dismissXpNotice(): void {
+    this.noticeDismissed.set(true);
+    try {
+      this.storage?.setItem(XP_NOTICE_STORAGE_KEY, '1');
+    } catch {
+      // Storage can be full or blocked: the notice is gone for this visit only.
+    }
+  }
+
+  private readNoticeDismissed(): boolean {
+    try {
+      return this.storage?.getItem(XP_NOTICE_STORAGE_KEY) === '1';
+    } catch {
+      return false;
+    }
+  }
 
   // Setters: the only writers of state
   private setScope(scope: LeaderboardScope): void {

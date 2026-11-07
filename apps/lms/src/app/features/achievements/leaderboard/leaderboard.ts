@@ -1,6 +1,9 @@
 import { NgTemplateOutlet } from '@angular/common';
 import { Component, inject } from '@angular/core';
 import {
+  Alert,
+  AlertAction,
+  Button,
   Card,
   ErrorState,
   PageHeader,
@@ -19,6 +22,9 @@ import {
 @Component({
   selector: 'app-leaderboard',
   imports: [
+    Alert,
+    AlertAction,
+    Button,
     Card,
     ErrorState,
     NgTemplateOutlet,

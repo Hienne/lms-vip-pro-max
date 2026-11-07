@@ -5,6 +5,11 @@
 }
 
 .leaderboard {
+  &__notice {
+    display: flex;
+    margin-top: ui.space(4);
+  }
+
   &__scope {
     display: block;
     max-width: 100%;

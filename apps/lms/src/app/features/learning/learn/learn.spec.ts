@@ -430,7 +430,7 @@ describe('Learn', () => {
     it('shows a learner with no points as 0 and a streak of 0 days', async () => {
       answerPoints({
         total: 0,
-        parts: { lessons: 0, quizzes: 0, courses: 0, streak: 0 },
+        parts: { lessons: 0, quizzes: 0, firstTryBonus: 0, courses: 0 },
         streakDays: 0,
       });
       await open();

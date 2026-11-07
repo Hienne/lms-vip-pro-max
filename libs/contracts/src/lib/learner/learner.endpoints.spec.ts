@@ -559,8 +559,8 @@ describe('learner endpoints', () => {
 
     it('splits the total into its four parts', () => {
       const points = MyPointsSchema.parse(captured.points);
-      const { lessons, quizzes, courses, streak } = points.parts;
-      expect(points.total).toBe(lessons + quizzes + courses + streak);
+      const { lessons, quizzes, firstTryBonus, courses } = points.parts;
+      expect(points.total).toBe(lessons + quizzes + firstTryBonus + courses);
       expect(points.streakDays).toBe(2);
     });
 
@@ -587,7 +587,7 @@ describe('learner endpoints', () => {
       expect(
         MyPointsSchema.safeParse({ ...captured.points, total: -1 }).success,
       ).toBe(false);
-      const { streak: _streak, ...parts } = captured.points.parts;
+      const { courses: _courses, ...parts } = captured.points.parts;
       expect(
         MyPointsSchema.safeParse({ ...captured.points, parts }).success,
       ).toBe(false);

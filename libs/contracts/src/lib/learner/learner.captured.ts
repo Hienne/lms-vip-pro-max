@@ -824,8 +824,8 @@ export const capturedLearner = {
     parts: {
       lessons: 30,
       quizzes: 30,
+      firstTryBonus: 20,
       courses: 0,
-      streak: 20,
     },
     streakDays: 2,
   },

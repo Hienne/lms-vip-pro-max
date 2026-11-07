@@ -56,7 +56,7 @@ describe('the points and the leaderboard of the mock backend', () => {
       ...boardLearnerFixtures.map((learner) => learner.points),
     ]) {
       expect(total).toBe(
-        parts.lessons + parts.quizzes + parts.courses + parts.streak,
+        parts.lessons + parts.quizzes + parts.firstTryBonus + parts.courses,
       );
     }
   });

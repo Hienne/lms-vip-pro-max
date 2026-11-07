@@ -381,20 +381,20 @@ export const LeaderboardPageSchema = z.object({
 });
 export type LeaderboardPage = z.infer<typeof LeaderboardPageSchema>;
 
-/** The points of each source; `total` is their sum. */
+/** The XP of each source, read from the ledger; `total` is their sum. A streak earns no XP. */
 export const PointPartsSchema = z.object({
   /** Lessons completed, each counted once however many cycles or revisions. */
   lessons: z.number().int().nonnegative(),
   /** Distinct quizzes passed. */
   quizzes: z.number().int().nonnegative(),
+  /** The bonus of each quiz passed on the first try with a high score. */
+  firstTryBonus: z.number().int().nonnegative(),
   /** The reward of each course completed. */
   courses: z.number().int().nonnegative(),
-  /** The current streak, capped by the server. */
-  streak: z.number().int().nonnegative(),
 });
 export type PointParts = z.infer<typeof PointPartsSchema>;
 
-/** `MyPoints`: the caller's total, its parts and the streak behind the last part. It has no rank. */
+/** `MyPoints`: the caller's XP total, its parts and the current working-day streak (display only). It has no rank. */
 export const MyPointsSchema = z.object({
   total: z.number().int().nonnegative(),
   parts: PointPartsSchema,

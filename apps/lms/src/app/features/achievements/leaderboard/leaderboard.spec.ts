@@ -22,7 +22,10 @@ import {
   fakeSession,
   seedProfile,
 } from '../../../core/session/session.testing';
-import { LeaderboardStore } from './data-access/leaderboard.store';
+import {
+  LeaderboardStore,
+  XP_NOTICE_STORAGE_KEY,
+} from './data-access/leaderboard.store';
 import { Leaderboard } from './leaderboard';
 
 describe('Leaderboard', () => {
@@ -42,6 +45,7 @@ describe('Leaderboard', () => {
       ],
     });
     handle = vi.spyOn(TestBed.inject(MockBackend), 'handle');
+    localStorage.removeItem(XP_NOTICE_STORAGE_KEY);
   });
 
   async function settle(): Promise<void> {
@@ -102,7 +106,7 @@ describe('Leaderboard', () => {
         'Bảng xếp hạng & thành tích',
       );
       expect(text()).toContain(
-        'Điểm thưởng tính tự động từ bài học hoàn thành, bài kiểm tra đạt, khóa học hoàn thành và chuỗi ngày học.',
+        'XP được ghi tự động khi bạn hoàn thành bài học, đạt bài kiểm tra hoặc hoàn thành khóa học.',
       );
     });
 
@@ -170,7 +174,7 @@ describe('Leaderboard', () => {
     it('shows the points card: the total, the rank in this scope and the four parts', () => {
       const card = el.querySelector('.leaderboard__points')!;
       expect(text(card.querySelector('.leaderboard__points-title')!)).toBe(
-        'Điểm thưởng của bạn · hạng 2',
+        'XP của bạn · hạng 2',
       );
       expect(text(card.querySelector('.leaderboard__total')!)).toBe('80');
       expect(
@@ -181,8 +185,8 @@ describe('Leaderboard', () => {
       ).toEqual([
         ['Bài học hoàn thành', '+30'],
         ['Bài kiểm tra đạt', '+30'],
+        ['Đạt ngay lần đầu', '+20'],
         ['Khóa học hoàn thành', '+0'],
-        ['Chuỗi ngày học', '+20'],
       ]);
     });
 
@@ -202,7 +206,7 @@ describe('Leaderboard', () => {
       expect(rows()).toHaveLength(1);
       expect(text(el.querySelector('.leaderboard__count')!)).toBe('1 học viên');
       expect(text(el.querySelector('.leaderboard__points-title')!)).toBe(
-        'Điểm thưởng của bạn · hạng 1',
+        'XP của bạn · hạng 1',
       );
     });
 
@@ -269,7 +273,7 @@ describe('Leaderboard', () => {
       expect(text(el.querySelector('.leaderboard__total')!)).toBe('80');
       // The rank is the board's: without it the title carries none.
       expect(text(el.querySelector('.leaderboard__points-title')!)).toBe(
-        'Điểm thưởng của bạn',
+        'XP của bạn',
       );
     });
 
@@ -337,7 +341,24 @@ describe('Leaderboard', () => {
         store()
           .parts$()
           .map((part) => part.key),
-      ).toEqual(['lessons', 'quizzes', 'courses', 'streak']);
+      ).toEqual(['lessons', 'quizzes', 'firstTryBonus', 'courses']);
+    });
+  });
+
+  describe('the notice that points became XP', () => {
+    const notice = () => el.querySelector('.leaderboard__notice');
+
+    it('shows once, says a streak earns no XP, and is remembered once dismissed', async () => {
+      await open();
+      expect(text(notice()!)).toContain('Chuỗi ngày học vẫn được ghi nhận');
+      expect(text(notice()!)).toContain('không cộng XP');
+
+      el.querySelector<HTMLButtonElement>(
+        '.leaderboard__notice button',
+      )!.click();
+      await settle();
+      expect(notice()).toBeNull();
+      expect(localStorage.getItem(XP_NOTICE_STORAGE_KEY)).toBe('1');
     });
   });
 });
@@ -375,6 +396,7 @@ describe('Leaderboard with a fake store', () => {
               points$: signal(undefined),
               rank$: signal(null),
               parts$: signal([]),
+              isXpNoticeShown$: signal(false),
               ...Object.fromEntries(
                 Object.entries(overrides).map(([key, value]) => [
                   key,
