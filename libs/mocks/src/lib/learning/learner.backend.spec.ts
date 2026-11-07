@@ -370,7 +370,46 @@ describe('the learner reads of the mock backend', () => {
 
     it('lists nothing for a person with none, and never a reminder not yet scheduled', () => {
       expect(list(login('giangvien'))).toEqual([]);
-      expect(list(login('hocvien.tichhop'))).toEqual([]);
+    });
+
+    describe('the notices of a badge or a level', () => {
+      const markSeen = (token: string, reminderId: number) =>
+        call(learnerEndpoints.markReminderSeen, token, {
+          params: { reminderId: String(reminderId) },
+        });
+
+      it('lists them with their kind and subject, no recipient and no toast shown yet', () => {
+        const notices = list(login('hocvien.tichhop'));
+        expect(notices.map((n) => [n.kind, n.subject])).toEqual([
+          ['BADGE_EARNED', 'Khóa học đầu tiên'],
+          ['LEVEL_UP', 'Giao dịch viên'],
+        ]);
+        expect(notices.every((n) => n.recipientId === null)).toBe(true);
+        expect(notices.every((n) => n.sentAt === null)).toBe(true);
+      });
+
+      it('records that the toast was shown and keeps the notice listed until it is read', () => {
+        const token = login('hocvien.tichhop');
+        const [first] = list(token);
+        const seen = LearningReminderSchema.parse(
+          markSeen(token, first.id).body.data,
+        );
+        expect(seen.status).toBe('pending');
+        expect(seen.sentAt).toBeTruthy();
+        expect(markSeen(token, first.id).body.data).toMatchObject({
+          sentAt: seen.sentAt,
+        });
+        expect(list(token)).toHaveLength(2);
+        markRead(token, first.id);
+        expect(list(token)).toHaveLength(1);
+      });
+
+      it("refuses another user's notice", () => {
+        const [first] = list(login('hocvien.tichhop'));
+        expect(markSeen(login('hocvien'), first.id).body.messageCode).toBe(
+          'CORE-ACCESS_DENIED',
+        );
+      });
     });
 
     it('sets a reminder to sent, so it leaves the list', () => {

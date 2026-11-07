@@ -1,3 +1,11 @@
+@if (notice(); as notice) {
+<div class="reminder-item">
+  <div class="reminder-item__title">{{ notice.title }}</div>
+  <div class="reminder-item__meta">
+    {{ notice.text }} · {{ reminder().scheduledAt | fmtRelative }}
+  </div>
+</div>
+} @else {
 <div class="reminder-item">
   <div class="reminder-item__title">
     {{ overdue() ? 'Khóa học được giao đã quá hạn' : 'Khóa học được giao sắp đến
@@ -11,3 +19,4 @@
     · nhắc lúc {{ reminder().scheduledAt | fmtRelative }}
   </div>
 </div>
+}

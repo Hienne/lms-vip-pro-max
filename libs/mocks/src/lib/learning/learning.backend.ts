@@ -334,6 +334,16 @@ export class LearningBackend {
             ),
           ),
       ],
+      [
+        learnerEndpoints.markReminderSeen,
+        (r) =>
+          ok(
+            this.reminders.seen(
+              this.directory.callerId(r),
+              num(r.params['reminderId']) ?? 0,
+            ),
+          ),
+      ],
       [learnerEndpoints.myPoints, (r) => ok(this.board.points(r))],
       [learnerEndpoints.myStreak, (r) => ok(this.streaks.streak(r))],
       [learnerEndpoints.myLevel, (r) => ok(this.levels.level(r))],

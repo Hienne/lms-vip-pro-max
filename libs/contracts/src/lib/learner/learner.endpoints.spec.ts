@@ -7,6 +7,7 @@ import {
   EnrollmentDetailSchema,
   LeaderboardViewSchema,
   LearnerPreferencesSchema,
+  LearningReminderSchema,
   UnitLeaderboardQuerySchema,
   UnitLeaderboardSchema,
   LeaderboardQuerySchema,
@@ -77,6 +78,11 @@ describe('learner endpoints', () => {
         '/api/v1/me/learning/enrollments/{enrollmentId}/blocks/{blockId}/progress',
       ],
       ['reminders', 'get', '/api/v1/me/learning/reminders'],
+      [
+        'markReminderSeen',
+        'post',
+        '/api/v1/me/learning/reminders/{reminderId}/seen',
+      ],
       [
         'markReminderRead',
         'post',
@@ -563,6 +569,32 @@ describe('learner endpoints', () => {
         MyStreakSchema.safeParse({
           ...captured.streak,
           days: [{ ...day, date: '12/10' }],
+        }).success,
+      ).toBe(false);
+    });
+  });
+
+  describe('reminder notices', () => {
+    it('parses the notices captured from the backend', () => {
+      const badge = LearningReminderSchema.parse(captured.reminderBadgeEarned);
+      expect(badge).toMatchObject({
+        kind: 'BADGE_EARNED',
+        subject: 'Khóa học đầu tiên',
+        recipientId: null,
+        sentAt: null,
+      });
+      expect(
+        LearningReminderSchema.parse(captured.reminderLevelUp).sentAt,
+      ).not.toBeNull();
+    });
+
+    it('reads a row without a kind as a deadline reminder, and refuses an unknown kind', () => {
+      const { kind: _kind, ...bare } = captured.reminderBadgeEarned;
+      expect(LearningReminderSchema.parse(bare).kind).toBe('DEADLINE');
+      expect(
+        LearningReminderSchema.safeParse({
+          ...captured.reminderBadgeEarned,
+          kind: 'CONFETTI',
         }).success,
       ).toBe(false);
     });

@@ -22,6 +22,7 @@ import {
 import {
   feedbackEndpoints,
   learnerEndpoints,
+  type LearningReminder,
   type NavCounts,
   shellEndpoints,
 } from '@lms/contracts';
@@ -32,6 +33,7 @@ import { searchTarget } from '../../header/search-target';
 import { EndpointClient } from '../../../core/http/endpoint-client';
 import { InstructorFeedbackChanged } from '../../../core/learning/instructor-feedback-changed';
 import { RemindersChanged } from '../../../core/learning/reminders-changed';
+import { noticeCopy } from '../../../shared/learning/notice-copy';
 import { LearningChanges } from '../../../core/data-access/learning-changes';
 import {
   hasUnsavedChanges,
@@ -194,10 +196,34 @@ export class ShellStore {
     },
     stream: () =>
       this.client.call(learnerEndpoints.reminders).pipe(
+        tap((reminders) => this.announceNotices(reminders)),
         map((reminders) => reminders.length),
         catchError(() => of(0)),
       ),
   });
+
+  /** Notices whose toast was shown in this session, so a reload of the bell never shows one twice. */
+  private readonly announced = new Set<number>();
+
+  /**
+   * A gentle toast, once, for each badge or level notice not yet seen, then the server is told it was seen. The
+   * notice stays on the notifications page until it is read. If the server cannot be told, the toast shows again
+   * at the next visit, which is the lesser harm.
+   */
+  private announceNotices(reminders: readonly LearningReminder[]): void {
+    for (const reminder of reminders) {
+      const copy = noticeCopy(reminder);
+      if (!copy || reminder.sentAt || this.announced.has(reminder.id)) continue;
+      this.announced.add(reminder.id);
+      this.toaster.info(copy.title, copy.text);
+      this.client
+        .call(learnerEndpoints.markReminderSeen, {
+          params: { reminderId: reminder.id },
+        })
+        .pipe(catchError(() => of(undefined)))
+        .subscribe();
+    }
+  }
 
   private readonly reminderCount = linkedSignal<number | undefined, number>({
     source: () => this.remindersResource.value(),

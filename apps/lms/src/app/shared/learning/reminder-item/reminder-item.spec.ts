@@ -12,6 +12,7 @@ const reminder = (dueAtSnapshot: string | null): LearningReminder => ({
   scheduledAt: '2026-10-26T09:00:00',
   dueAtSnapshot,
   status: 'pending',
+  kind: 'DEADLINE',
   rowVersion: 0,
 });
 
@@ -53,6 +54,45 @@ describe('ReminderItem', () => {
     expect(
       el.querySelector('.reminder-item__due--overdue')?.textContent,
     ).toContain('25/10/2026');
+  });
+});
+
+describe('ReminderItem of a notice', () => {
+  function renderNotice(
+    kind: 'BADGE_EARNED' | 'LEVEL_UP',
+    subject: string | null,
+  ) {
+    TestBed.configureTestingModule({
+      providers: [{ provide: NOW, useValue: () => NOW_MS }],
+    });
+    const fixture = TestBed.createComponent(Host);
+    fixture.componentInstance.reminder.set({
+      ...reminder('2026-10-26T09:00:00'),
+      recipientId: null,
+      kind,
+      subject,
+    });
+    fixture.detectChanges();
+    return fixture.nativeElement as HTMLElement;
+  }
+
+  it('says a badge was earned, with its name and no due date', () => {
+    const el = renderNotice('BADGE_EARNED', 'Khóa học đầu tiên');
+    expect(el.textContent).toContain('Bạn đạt huy hiệu mới');
+    expect(el.textContent).toContain('Huy hiệu Khóa học đầu tiên.');
+    expect(el.textContent).not.toContain('Hạn hoàn thành');
+  });
+
+  it('says a level was reached, with its name', () => {
+    const el = renderNotice('LEVEL_UP', 'Giao dịch viên');
+    expect(el.textContent).toContain('Bạn lên cấp mới');
+    expect(el.textContent).toContain('Bạn đã đạt cấp Giao dịch viên.');
+  });
+
+  it('still reads without a subject, and offers no praise', () => {
+    const el = renderNotice('LEVEL_UP', null);
+    expect(el.textContent).toContain('Xem cấp độ trong hồ sơ.');
+    expect(el.textContent).not.toMatch(/chúc mừng|tuyệt vời|xuất sắc/i);
   });
 });
 

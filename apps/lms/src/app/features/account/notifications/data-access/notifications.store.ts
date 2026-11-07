@@ -16,13 +16,15 @@ export interface ReminderItem {
   readonly reminder: LearningReminder;
   /** The due date has passed: the item says "đã quá hạn" and its date turns to the danger colour. */
   readonly isOverdue: boolean;
+  /** A badge or level notice rather than a deadline reminder: it links to the profile and is never overdue. */
+  readonly isNotice: boolean;
 }
 
 const time = (value: string | null | undefined): number =>
   value ? new Date(value).getTime() : Number.POSITIVE_INFINITY;
 
 /**
- * The learner's due deadline reminders (SPEC-learning-reminders). The server decides which are
+ * The learner's due deadline reminders (SPEC-learning-reminders) and the notices of a badge or a level they earned. The server decides which are
  * due; reading one sets it to `sent`, so it leaves the list after the reload. Only a learner has
  * reminders: anyone else is not asked, and a 403 reads as an empty list.
  */
@@ -88,15 +90,23 @@ export class NotificationsStore {
   readonly items$ = computed((): readonly ReminderItem[] => {
     if (!this.canLearn()) return [];
     const now = this.now();
-    return [...(this.remindersData.value() ?? [])]
-      .sort(
+    const all = this.remindersData.value() ?? [];
+    const notices = all.filter((reminder) => reminder.kind !== 'DEADLINE');
+    const deadlines = all.filter((reminder) => reminder.kind === 'DEADLINE');
+    return [
+      ...notices.sort((a, b) => b.id - a.id),
+      ...deadlines.sort(
         (a, b) => time(a.dueAtSnapshot) - time(b.dueAtSnapshot) || a.id - b.id,
-      )
-      .map((reminder) => ({
+      ),
+    ].map((reminder) => {
+      const isNotice = reminder.kind !== 'DEADLINE';
+      return {
         id: reminder.id,
         reminder,
-        isOverdue: isReminderOverdue(reminder, now),
-      }));
+        isNotice,
+        isOverdue: !isNotice && isReminderOverdue(reminder, now),
+      };
+    });
   });
   readonly count$ = computed(() => this.items$().length);
   readonly canLearn$ = this.canLearn;
@@ -106,10 +116,10 @@ export class NotificationsStore {
   );
   readonly description$ = computed(() =>
     this.canLearn$() && this.canManage$()
-      ? 'Nhắc hạn các khóa học được giao và câu hỏi của học viên.'
+      ? 'Nhắc hạn các khóa học được giao, huy hiệu, cấp độ mới và câu hỏi của học viên.'
       : this.canManage$()
         ? 'Câu hỏi và báo cáo của học viên trên các khóa học bạn quản lý.'
-        : 'Nhắc hạn các khóa học được giao.',
+        : 'Nhắc hạn các khóa học được giao, huy hiệu và cấp độ mới.',
   );
 
   // Commands

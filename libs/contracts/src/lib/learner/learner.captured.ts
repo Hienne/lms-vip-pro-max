@@ -15,6 +15,9 @@
  * 2026-11-07 and are to be captured again on the running backend (the second is a caller whose unit has fewer than
  * five learners).
  *
+ * `reminderBadgeEarned` and `reminderLevelUp` are shaped from the notice integration tests of 2026-11-07 and are to be
+ * captured again on the running backend (the second has had its toast shown, so `sentAt` is set).
+ *
  * `preferences` and `preferencesHidden` are shaped from the leaderboard opt-out integration tests of 2026-11-07 and
  * are to be captured again on the running backend (visible by default, and after the learner hides their name).
  *
@@ -914,6 +917,40 @@ export const capturedLearner = {
         progress: null,
       },
     ],
+  },
+  reminderBadgeEarned: {
+    id: 9001,
+    recipientId: null,
+    scheduledAt: '2026-11-07T08:15:00Z',
+    dueAtSnapshot: '2026-11-07T08:15:00Z',
+    channel: 'in_app',
+    status: 'pending',
+    sentAt: null,
+    attemptCount: 0,
+    lastErrorCode: null,
+    idempotencyKey: 'badge:000004:1',
+    kind: 'BADGE_EARNED',
+    subject: 'Khóa học đầu tiên',
+    rowVersion: 0,
+    createTime: '2026-11-07T08:15:00Z',
+    updateTime: '2026-11-07T08:15:00Z',
+  },
+  reminderLevelUp: {
+    id: 9002,
+    recipientId: null,
+    scheduledAt: '2026-11-07T08:16:00Z',
+    dueAtSnapshot: '2026-11-07T08:16:00Z',
+    channel: 'in_app',
+    status: 'pending',
+    sentAt: '2026-11-07T08:17:00Z',
+    attemptCount: 0,
+    lastErrorCode: null,
+    idempotencyKey: 'level:000004:2',
+    kind: 'LEVEL_UP',
+    subject: 'Giao dịch viên',
+    rowVersion: 1,
+    createTime: '2026-11-07T08:16:00Z',
+    updateTime: '2026-11-07T08:17:00Z',
   },
   preferences: { showOnLeaderboard: true },
   preferencesHidden: { showOnLeaderboard: false },

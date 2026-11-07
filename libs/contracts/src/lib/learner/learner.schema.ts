@@ -109,9 +109,21 @@ export type EnrollmentDetail = z.infer<typeof EnrollmentDetailSchema>;
 export const ReminderStatusSchema = z.enum(['pending', 'sent', 'cancelled']);
 export type ReminderStatus = z.infer<typeof ReminderStatusSchema>;
 
+/**
+ * What a row of the reminders feed is: a deadline reminder, or a gamification notice. A notice has no recipient;
+ * its `subject` is the badge's or the level's name, and it exists only for an award the learner earned by an
+ * event (a badge backfilled when it was created sends none).
+ */
+export const ReminderKindSchema = z.enum([
+  'DEADLINE',
+  'BADGE_EARNED',
+  'LEVEL_UP',
+]);
+export type ReminderKind = z.infer<typeof ReminderKindSchema>;
+
 export const LearningReminderSchema = z.object({
   id: z.number().int(),
-  recipientId: z.number().int(),
+  recipientId: z.number().int().nullish(),
   scheduledAt: BackendDateTimeSchema.nullish(),
   dueAtSnapshot: BackendDateTimeSchema.nullish(),
   channel: z.string().nullish(),
@@ -120,6 +132,9 @@ export const LearningReminderSchema = z.object({
   attemptCount: z.number().int().nullish(),
   lastErrorCode: z.string().nullish(),
   idempotencyKey: z.string().nullish(),
+  /** An older backend sends no kind: every row of it is a deadline reminder. */
+  kind: ReminderKindSchema.default('DEADLINE'),
+  subject: z.string().nullish(),
   rowVersion: z.number().int(),
   createTime: BackendDateTimeSchema.nullish(),
   updateTime: BackendDateTimeSchema.nullish(),

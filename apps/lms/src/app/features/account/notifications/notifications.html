@@ -40,6 +40,9 @@
       [overdue]="item.isOverdue"
     />
     <div class="notifications__actions">
+      @if (item.isNotice) {
+      <a uiButton variant="ghost" size="sm" routerLink="/profile">Xem hồ sơ</a>
+      } @else {
       <a
         uiButton
         variant="ghost"
@@ -48,6 +51,7 @@
         [queryParams]="item.isOverdue ? { sort: 'dueAt,asc', overdue: true } : { sort: 'dueAt,asc' }"
         >Xem khóa học của tôi</a
       >
+      }
       <button
         uiIconButton
         label="Đánh dấu đã đọc"
