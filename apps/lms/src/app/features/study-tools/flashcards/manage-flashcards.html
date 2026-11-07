@@ -1,0 +1,228 @@
+<ui-page-header
+  title="Quản lý flashcard"
+  description="Chọn câu hỏi và duyệt công bố đáp án ôn tập theo khóa học."
+/>
+<section uiCard class="flashcards__card">
+  <ui-search
+    width="100%"
+    label="Tìm khóa học"
+    placeholder="Tìm khóa học…"
+    [value]="courseSearch()"
+    (searched)="searchCourses($event)"
+  />
+  @if (courses.error(); as error) {
+  <ui-error-state
+    title="Không tải được khóa học"
+    [message]="error.message"
+    (retry)="courses.reload()"
+  />
+  } @else if (courses.value(); as list) {
+  <label
+    >Khóa học
+    <select
+      uiSelect
+      #course
+      [value]="courseId()"
+      (change)="selectCourse(+course.value)"
+    >
+      <option value="0">Chọn khóa học</option>
+      @for (item of list.items; track item.courseId) {
+      <option [value]="item.courseId">{{ item.title }}</option>
+      }
+    </select>
+  </label>
+  <ui-pagination
+    [total]="list.totalElements"
+    [page]="coursePage()"
+    [pageSize]="pageSize"
+    (pageChange)="selectCourse(0); coursePage.set($event)"
+  />
+  } @else {
+  <p role="status">Đang tải khóa học…</p>
+  }
+</section>
+
+@if (courseId()) {
+<section uiCard class="flashcards__card">
+  <h2>Thẻ của khóa học</h2>
+  @if (cards.error(); as error) {
+  <ui-error-state
+    title="Không tải được flashcard"
+    [message]="error.message"
+    (retry)="cards.reload()"
+  />
+  } @else if (cards.value(); as list) {
+  <div uiTableWrap>
+    <table uiTable responsive>
+      <thead>
+        <tr>
+          <th scope="col">Câu hỏi</th>
+          <th scope="col">Trạng thái</th>
+          <th scope="col">Thao tác</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (item of list; track item.id) {
+        <tr>
+          <td data-label="Câu hỏi">{{ item.prompt }}</td>
+          <td data-label="Trạng thái">
+            @switch (item.status) { @case ('PUBLISHED') { {{ item.current ? 'Đã
+            công bố' : 'Cần duyệt lại' }} } @case ('DRAFT') { Bản nháp }
+            @default { Đã thu hồi } }
+          </td>
+          <td data-label="Thao tác">
+            @if (item.status === 'PUBLISHED') {
+            <button
+              uiButton
+              type="button"
+              variant="ghost"
+              size="sm"
+              [disabled]="save.isPending()"
+              (click)="change(item.questionId, 'WITHDRAWN')"
+            >
+              Thu hồi
+            </button>
+            }
+          </td>
+        </tr>
+        } @empty {
+        <tr>
+          <td colspan="3">Khóa học chưa có thẻ.</td>
+        </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+  } @else {
+  <p role="status">Đang tải flashcard…</p>
+  }
+</section>
+
+<section uiCard class="flashcards__card">
+  <h2>Ngân hàng câu hỏi</h2>
+  <p class="flashcards__meta">
+    Công bố sẽ cho phép học viên của khóa xem đáp án để ôn tập.
+  </p>
+  @if (selectedCourse()?.programId) {
+  <ui-search
+    width="100%"
+    label="Tìm câu hỏi"
+    placeholder="Tìm theo mã hoặc nội dung…"
+    [value]="questionSearch()"
+    (searched)="selectPage(false); questionSearch.set($event); questionPage.set(1)"
+  />
+  @if (questions.error(); as error) {
+  <ui-error-state
+    title="Không tải được ngân hàng câu hỏi"
+    [message]="error.message"
+    (retry)="questions.reload()"
+  />
+  } @else if (questions.value(); as list) {
+  <div class="flashcards__actions">
+    <span>Đã chọn {{ selected().size }} câu trên trang</span>
+    <button
+      uiButton
+      type="button"
+      [disabled]="!selected().size || batch.isPending()"
+      (click)="publishSelected()"
+    >
+      Công bố đã chọn
+    </button>
+    <button
+      uiButton
+      type="button"
+      [disabled]="batch.isPending()"
+      (click)="selectPage(false)"
+    >
+      Bỏ chọn
+    </button>
+  </div>
+  @if (batchResult(); as result) {
+  <p>Đã xử lý {{ result.length }} câu.</p>
+  @for (item of result; track item.id) { @if (item.message) {
+  <p>Câu {{ item.id }} · {{ item.message }}</p>
+  } } }
+  <div uiTableWrap>
+    <table uiTable responsive>
+      <thead>
+        <tr>
+          <th scope="col">
+            <input
+              type="checkbox"
+              aria-label="Chọn câu hỏi trên trang"
+              #selectAll
+              (change)="selectPage(selectAll.checked)"
+            />
+          </th>
+          <th scope="col">Câu hỏi</th>
+          <th scope="col">Thao tác</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (item of list.items; track item.id) { @let existing =
+        byQuestion().get(item.id);
+        <tr>
+          <td>
+            <input
+              type="checkbox"
+              [attr.aria-label]="'Chọn câu ' + item.id"
+              #pick
+              [checked]="selected().has(item.id)"
+              [disabled]="batch.isPending() || (existing?.status === 'PUBLISHED' && existing?.current)"
+              (change)="toggleQuestion(item.id, item.rowVersion, pick.checked)"
+            />
+          </td>
+          <td data-label="Câu hỏi">
+            {{ item.code }} · {{ item.contentPreview }}
+          </td>
+          <td data-label="Thao tác">
+            @if (existing?.status === 'PUBLISHED' && existing?.current) { Đã
+            công bố } @else {
+            <div class="flashcards__actions">
+              @if (!existing) {
+              <button
+                uiButton
+                type="button"
+                variant="ghost"
+                size="sm"
+                [disabled]="save.isPending() || cards.isLoading()"
+                (click)="change(item.id, 'DRAFT')"
+              >
+                Thêm bản nháp
+              </button>
+              }
+              <button
+                uiButton
+                type="button"
+                variant="secondary"
+                size="sm"
+                [disabled]="save.isPending() || cards.isLoading()"
+                (click)="change(item.id, 'PUBLISHED', item.rowVersion)"
+              >
+                {{ existing?.status === 'PUBLISHED' ? 'Duyệt lại' : 'Công bố' }}
+              </button>
+            </div>
+            }
+          </td>
+        </tr>
+        } @empty {
+        <tr>
+          <td colspan="2">Không tìm thấy câu hỏi.</td>
+        </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+  <ui-pagination
+    [total]="list.totalElements"
+    [page]="questionPage()"
+    [pageSize]="pageSize"
+    (pageChange)="selectPage(false); questionPage.set($event)"
+  />
+  } @else {
+  <p role="status">Đang tải câu hỏi…</p>
+  } } @else {
+  <p>Gắn chương trình cho khóa học để chọn câu hỏi.</p>
+  }
+</section>
+}

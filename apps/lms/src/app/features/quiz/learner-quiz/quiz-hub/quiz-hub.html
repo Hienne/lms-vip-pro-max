@@ -2,15 +2,19 @@
   title="Bài kiểm tra"
   description="Bài kiểm tra của các khóa bạn đang học và các lượt thi đã làm."
 >
-  <button
-    slot="actions"
-    uiButton
-    [disabled]="store.isExporting$() || !store.groups$().length"
-    [busy]="store.isExporting$()"
-    (click)="store.exportCsv()"
-  >
-    <ui-icon name="download" size="sm" />Tải CSV
-  </button>
+  <div slot="actions" class="hub__header-actions">
+    <a uiButton variant="secondary" routerLink="/flashcards"
+      ><ui-icon name="layers" size="sm" />Ôn bằng flashcard</a
+    >
+    <button
+      uiButton
+      [disabled]="store.isExporting$() || !store.groups$().length"
+      [busy]="store.isExporting$()"
+      (click)="store.exportCsv()"
+    >
+      <ui-icon name="download" size="sm" />Tải CSV
+    </button>
+  </div>
 </ui-page-header>
 
 @if (store.loadError$(); as error) {

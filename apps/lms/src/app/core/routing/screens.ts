@@ -6,6 +6,7 @@ import {
   gamificationEndpoints,
   learnerEndpoints,
   learnerQuizEndpoints,
+  flashcardEndpoints,
   assessmentReportEndpoints,
   certificateEndpoints,
   personalEndpoints,
@@ -652,10 +653,26 @@ export const SCREEN_TABLE = {
         ),
     },
     {
+      path: 'admin/flashcards',
+      access: 'QUESTION_BANK',
+      title: 'Quản lý flashcard',
+      mockupPage: 'flashcards',
+      requires: [flashcardEndpoints.managed],
+      load: () =>
+        import('../../features/study-tools/flashcards/manage-flashcards').then(
+          (m) => m.ManageFlashcards,
+        ),
+    },
+    {
       path: 'flashcards',
       access: 'QUIZ_TAKING',
       title: 'Flashcard ôn tập',
       mockupPage: 'flashcards',
+      requires: [flashcardEndpoints.list],
+      load: () =>
+        import('../../features/study-tools/flashcards/flashcards').then(
+          (m) => m.Flashcards,
+        ),
     },
     {
       path: 'saved',

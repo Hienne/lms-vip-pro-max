@@ -1,0 +1,76 @@
+@use 'ui';
+@use './flip-card';
+
+:host {
+  @include ui.page(wide);
+}
+
+.flashcards {
+  &__card {
+    @include ui.stack(4);
+    padding: ui.space(5);
+    margin-block: ui.space(4);
+
+    h2,
+    h3,
+    p,
+    ul {
+      margin-block: 0;
+      overflow-wrap: anywhere;
+    }
+  }
+
+  &__meta {
+    @include ui.text(sm, muted);
+  }
+
+  &__filters,
+  &__actions,
+  &__toolbar {
+    @include ui.row(3);
+    align-items: center;
+  }
+
+  &__toolbar {
+    justify-content: space-between;
+  }
+
+  &__filters {
+    align-items: end;
+
+    label,
+    ui-search {
+      flex: 1 1 ui.layout(sidebar);
+      min-width: 0;
+    }
+  }
+
+  label {
+    @include ui.text(sm);
+  }
+}
+
+.flashcards {
+  &__source {
+    margin-block: ui.space(4);
+  }
+  &__heading {
+    display: flex;
+    justify-content: space-between;
+    gap: ui.space(3);
+  }
+  &__heading p {
+    margin-top: ui.space(1);
+  }
+  &__scope {
+    display: grid;
+    gap: ui.space(2);
+  }
+  &__scope > span {
+    @include ui.text(sm);
+  }
+}
+
+:host [hidden] {
+  display: none !important;
+}

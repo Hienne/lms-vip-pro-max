@@ -28,8 +28,8 @@ import { isAssessmentAvailable } from '../../../../shared/learning/assessment-ov
 
 export const PROGRESS_PAGE_SIZE = 5;
 
-/** "Lịch sử thi" shows the latest few graded attempts, as the mockup does; there is no paging. */
-export const EXAM_HISTORY_SIZE = 6;
+/** Number of graded attempts requested per history page. */
+export const EXAM_HISTORY_SIZE = 10;
 
 export type ProgressStatusFilter = 'all' | LearningStatus;
 export type ProgressTab = 'courses' | 'competency' | 'history';

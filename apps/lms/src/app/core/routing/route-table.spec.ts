@@ -76,6 +76,7 @@ describe('route table', () => {
         'certificate/:id',
         'saved',
         'flashcards',
+        'admin/flashcards',
         'assistant',
         'chat-room',
         'notifications',

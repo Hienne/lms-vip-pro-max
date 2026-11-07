@@ -438,13 +438,13 @@ describe('LearningProgress', () => {
       ...change,
     });
 
-    it('asks for the six latest graded attempts, newest first', async () => {
+    it('asks for ten graded attempts per page, newest first', async () => {
       await open('/progress?tab=history');
       expect(calls(learnerQuizEndpoints.myAttempts)).toHaveLength(1);
       expect(lastQuery(learnerQuizEndpoints.myAttempts)).toMatchObject({
         graded: 'true',
         sort: 'submittedAt,desc',
-        size: '6',
+        size: '10',
         page: '0',
       });
     });
