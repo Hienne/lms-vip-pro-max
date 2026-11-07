@@ -6,7 +6,13 @@ import { PointsFigure } from './points-figure';
 
 const POINTS: MyPoints = {
   total: 80,
-  parts: { lessons: 30, quizzes: 30, firstTryBonus: 20, courses: 0 },
+  parts: {
+    lessons: 30,
+    quizzes: 30,
+    firstTryBonus: 20,
+    courses: 0,
+    community: 0,
+  },
   streakDays: 2,
 };
 
@@ -40,7 +46,13 @@ describe('PointsFigure', () => {
   it('shows a learner with nothing yet as 0 points and a streak of 0 days', () => {
     const root = render({
       total: 0,
-      parts: { lessons: 0, quizzes: 0, firstTryBonus: 0, courses: 0 },
+      parts: {
+        lessons: 0,
+        quizzes: 0,
+        firstTryBonus: 0,
+        courses: 0,
+        community: 0,
+      },
       streakDays: 0,
     });
     expect(

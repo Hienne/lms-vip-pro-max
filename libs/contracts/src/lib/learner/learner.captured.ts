@@ -826,6 +826,7 @@ export const capturedLearner = {
       quizzes: 30,
       firstTryBonus: 20,
       courses: 0,
+      community: 0,
     },
     streakDays: 2,
   },

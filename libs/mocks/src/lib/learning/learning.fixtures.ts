@@ -892,17 +892,35 @@ export const learnerReminderFixtures: Readonly<
 export const learnerPointsFixtures: Readonly<Record<string, MyPoints>> = {
   '000004': {
     total: 80,
-    parts: { lessons: 30, quizzes: 30, firstTryBonus: 20, courses: 0 },
+    parts: {
+      lessons: 30,
+      quizzes: 30,
+      firstTryBonus: 20,
+      courses: 0,
+      community: 0,
+    },
     streakDays: 2,
   },
   '000005': {
     total: 40,
-    parts: { lessons: 20, quizzes: 0, firstTryBonus: 20, courses: 0 },
+    parts: {
+      lessons: 20,
+      quizzes: 0,
+      firstTryBonus: 20,
+      courses: 0,
+      community: 0,
+    },
     streakDays: 2,
   },
   '000007': {
     total: 90,
-    parts: { lessons: 40, quizzes: 30, firstTryBonus: 20, courses: 0 },
+    parts: {
+      lessons: 40,
+      quizzes: 30,
+      firstTryBonus: 20,
+      courses: 0,
+      community: 0,
+    },
     streakDays: 2,
   },
 };
@@ -929,7 +947,13 @@ export const boardLearnerFixtures: readonly BoardLearner[] = [
     teamId: 8,
     points: {
       total: 80,
-      parts: { lessons: 30, quizzes: 30, firstTryBonus: 20, courses: 0 },
+      parts: {
+        lessons: 30,
+        quizzes: 30,
+        firstTryBonus: 20,
+        courses: 0,
+        community: 0,
+      },
       streakDays: 2,
     },
   },
@@ -940,7 +964,13 @@ export const boardLearnerFixtures: readonly BoardLearner[] = [
     teamId: 6,
     points: {
       total: 0,
-      parts: { lessons: 0, quizzes: 0, firstTryBonus: 0, courses: 0 },
+      parts: {
+        lessons: 0,
+        quizzes: 0,
+        firstTryBonus: 0,
+        courses: 0,
+        community: 0,
+      },
       streakDays: 0,
     },
   },

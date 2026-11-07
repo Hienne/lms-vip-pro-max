@@ -391,6 +391,8 @@ export const PointPartsSchema = z.object({
   firstTryBonus: z.number().int().nonnegative(),
   /** The reward of each course completed. */
   courses: z.number().int().nonnegative(),
+  /** The XP of community answers accepted or marked helpful, capped per day by the server. */
+  community: z.number().int().nonnegative(),
 });
 export type PointParts = z.infer<typeof PointPartsSchema>;
 

@@ -187,6 +187,7 @@ describe('Leaderboard', () => {
         ['Bài kiểm tra đạt', '+30'],
         ['Đạt ngay lần đầu', '+20'],
         ['Khóa học hoàn thành', '+0'],
+        ['Cộng đồng', '+0'],
       ]);
     });
 
@@ -341,7 +342,13 @@ describe('Leaderboard', () => {
         store()
           .parts$()
           .map((part) => part.key),
-      ).toEqual(['lessons', 'quizzes', 'firstTryBonus', 'courses']);
+      ).toEqual([
+        'lessons',
+        'quizzes',
+        'firstTryBonus',
+        'courses',
+        'community',
+      ]);
     });
   });
 

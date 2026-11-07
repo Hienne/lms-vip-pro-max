@@ -20,12 +20,13 @@ export const DEFAULT_SCOPE: LeaderboardScope = 'org';
 /** Where the dismissal of the "points became XP" notice is kept, per browser. */
 export const XP_NOTICE_STORAGE_KEY = 'lms.xp-notice-dismissed';
 
-/** The four sources of XP. A streak earns none, so it is not a part. */
+/** The sources of XP. A streak earns none, so it is not a part. */
 const PART_LABELS: readonly { key: keyof PointParts; label: string }[] = [
   { key: 'lessons', label: 'Bài học hoàn thành' },
   { key: 'quizzes', label: 'Bài kiểm tra đạt' },
   { key: 'firstTryBonus', label: 'Đạt ngay lần đầu' },
   { key: 'courses', label: 'Khóa học hoàn thành' },
+  { key: 'community', label: 'Cộng đồng' },
 ];
 
 export interface PartRow {
