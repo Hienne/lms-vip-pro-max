@@ -12,6 +12,7 @@ const POINTS: MyPoints = {
     firstTryBonus: 20,
     courses: 0,
     community: 0,
+    adjustments: 0,
   },
   streakDays: 2,
 };
@@ -52,6 +53,7 @@ describe('PointsFigure', () => {
         firstTryBonus: 0,
         courses: 0,
         community: 0,
+        adjustments: 0,
       },
       streakDays: 0,
     });

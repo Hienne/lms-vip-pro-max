@@ -27,6 +27,7 @@ const PART_LABELS: readonly { key: keyof PointParts; label: string }[] = [
   { key: 'firstTryBonus', label: 'Đạt ngay lần đầu' },
   { key: 'courses', label: 'Khóa học hoàn thành' },
   { key: 'community', label: 'Cộng đồng' },
+  { key: 'adjustments', label: 'Điều chỉnh' },
 ];
 
 export interface PartRow {

@@ -393,8 +393,40 @@ export const PointPartsSchema = z.object({
   courses: z.number().int().nonnegative(),
   /** The XP of community answers accepted or marked helpful, capped per day by the server. */
   community: z.number().int().nonnegative(),
+  /** The net of an admin's corrections; the only part that can be negative. */
+  adjustments: z.number().int(),
 });
 export type PointParts = z.infer<typeof PointPartsSchema>;
+
+/** Largest correction an admin can enter, in either direction (the server's limit). */
+export const MAX_XP_ADJUSTMENT = 100_000;
+
+/** `AdjustXp`: a signed, non-zero XP amount for one learner and the reason, which is mandatory. */
+export const AdjustXpCommandSchema = z.object({
+  userId: z.string().min(1),
+  amount: z
+    .number()
+    .int()
+    .refine((value) => value !== 0, { message: 'Số XP phải khác 0.' })
+    .refine((value) => Math.abs(value) <= MAX_XP_ADJUSTMENT, {
+      message: `Số XP không quá ${MAX_XP_ADJUSTMENT}.`,
+    }),
+  reason: z
+    .string()
+    .trim()
+    .min(1, { message: 'Cần nhập lý do điều chỉnh.' })
+    .max(500),
+});
+export type AdjustXpCommand = z.infer<typeof AdjustXpCommandSchema>;
+
+/** `XpAdjustmentResult`: the compensating row that was written and the learner's total after it. */
+export const XpAdjustmentResultSchema = z.object({
+  entryId: z.number().int(),
+  userId: z.string(),
+  amount: z.number().int(),
+  total: z.number().int(),
+});
+export type XpAdjustmentResult = z.infer<typeof XpAdjustmentResultSchema>;
 
 /** `MyPoints`: the caller's XP total, its parts and the current working-day streak (display only). It has no rank. */
 export const MyPointsSchema = z.object({

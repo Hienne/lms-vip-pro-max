@@ -78,6 +78,7 @@ describe('learner endpoints', () => {
         '/api/v1/me/learning/reminders/{reminderId}/read',
       ],
       ['myPoints', 'get', '/api/v1/me/learning/points'],
+      ['adjustXp', 'post', '/api/v1/admin/learning/xp-adjustments'],
       ['myStreak', 'get', '/api/v1/me/learning/streak'],
       ['leaderboard', 'get', '/api/v1/me/learning/leaderboard'],
     ]);
@@ -559,10 +560,16 @@ describe('learner endpoints', () => {
 
     it('splits the total into its four parts', () => {
       const points = MyPointsSchema.parse(captured.points);
-      const { lessons, quizzes, firstTryBonus, courses, community } =
-        points.parts;
+      const {
+        lessons,
+        quizzes,
+        firstTryBonus,
+        courses,
+        community,
+        adjustments,
+      } = points.parts;
       expect(points.total).toBe(
-        lessons + quizzes + firstTryBonus + courses + community,
+        lessons + quizzes + firstTryBonus + courses + community + adjustments,
       );
       expect(points.streakDays).toBe(2);
     });

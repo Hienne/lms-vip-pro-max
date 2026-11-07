@@ -5,6 +5,7 @@ import {
   authV1Endpoints,
   identityEndpoints,
   knowledgeEndpoints,
+  learnerEndpoints,
   organizationEndpoints,
   passwordByteLength,
   PASSWORD_MAX_BYTES,
@@ -66,6 +67,7 @@ import {
 import { envelopeError, envelopeOk } from '../envelope';
 import { CommunityBackend } from '../community/community.backend';
 import { LearningBackend } from '../learning/learning.backend';
+import { learnerPointsFixtures } from '../learning/learning.fixtures';
 import {
   knowledgeAnswerFixture,
   knowledgeDocumentFixtures,
@@ -294,6 +296,7 @@ export class FakeBackend {
     [identityEndpoints.getUser, (r) => this.getUser(r)],
     [identityEndpoints.updateUser, (r) => this.updateUser(r)],
     [identityEndpoints.setUserStatus, (r) => this.setUserStatus(r)],
+    [learnerEndpoints.adjustXp, (r) => this.adjustXp(r)],
     [identityEndpoints.grantRole, (r) => this.grantRole(r)],
     [identityEndpoints.revokeRole, (r) => this.revokeRole(r)],
     [identityEndpoints.listRoles, (r) => this.listRoles(r)],
@@ -1521,6 +1524,32 @@ export class FakeBackend {
     target.status = status;
     if (status !== 'active') this.revokeTokensOf(target.userId);
     return ok(this.detail(actor, target));
+  }
+
+  /** An XP correction: a global admin only, a reason, a non-zero amount, never a negative total. */
+  private adjustXp(request: FakeRequest): FakeReply {
+    const actor = this.caller(request);
+    if (!this.isGlobalAdmin(actor)) return refuse('accessDenied');
+    const body = this.bodyOf(request, ['userId', 'amount', 'reason']);
+    const reason =
+      typeof body['reason'] === 'string' ? body['reason'].trim() : '';
+    if (!reason) return invalid('Cần nhập lý do điều chỉnh.');
+    const amount = body['amount'];
+    if (
+      typeof amount !== 'number' ||
+      !Number.isInteger(amount) ||
+      amount === 0 ||
+      Math.abs(amount) > 100_000
+    ) {
+      return invalid('Số XP phải khác 0 và không quá 100000.');
+    }
+    const target = this.user(String(body['userId'] ?? ''));
+    if (!target) return refuse('resourceNotFound');
+    const total = (learnerPointsFixtures[target.userId]?.total ?? 0) + amount;
+    if (total < 0) {
+      return invalid('Điều chỉnh không được làm tổng XP của học viên âm.');
+    }
+    return ok({ entryId: 1, userId: target.userId, amount, total });
   }
 
   /** The last active SUPER_ADMIN GLOBAL stays: neither its status nor its grant may go. */

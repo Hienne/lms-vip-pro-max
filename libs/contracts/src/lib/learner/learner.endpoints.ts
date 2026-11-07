@@ -15,7 +15,9 @@ import {
   LearningProgressOverviewSchema,
   LearningReminderSchema,
   MyCoursesQuerySchema,
+  AdjustXpCommandSchema,
   MyPointsSchema,
+  XpAdjustmentResultSchema,
   MyStreakSchema,
   OpenSessionCommandSchema,
   ProgressExportQuerySchema,
@@ -150,6 +152,17 @@ export const learnerEndpoints = {
     method: 'get',
     path: '/api/v1/me/learning/points',
     response: MyPointsSchema,
+  }),
+  /**
+   * A system admin's correction of a learner's XP: one extra ledger row with a mandatory reason and an
+   * audit entry. Anyone who is not a system admin is refused with `CORE-ACCESS_DENIED`; a missing reason,
+   * a zero amount or a correction that would make the total negative is `CORE-VALIDATION_FAILED`.
+   */
+  adjustXp: defineEndpoint({
+    method: 'post',
+    path: '/api/v1/admin/learning/xp-adjustments',
+    body: AdjustXpCommandSchema,
+    response: XpAdjustmentResultSchema,
   }),
   /**
    * The caller's streak in working days (weekends and bank holidays neither count nor break it) and

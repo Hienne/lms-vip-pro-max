@@ -188,6 +188,7 @@ describe('Leaderboard', () => {
         ['Đạt ngay lần đầu', '+20'],
         ['Khóa học hoàn thành', '+0'],
         ['Cộng đồng', '+0'],
+        ['Điều chỉnh', '+0'],
       ]);
     });
 
@@ -348,6 +349,7 @@ describe('Leaderboard', () => {
         'firstTryBonus',
         'courses',
         'community',
+        'adjustments',
       ]);
     });
   });

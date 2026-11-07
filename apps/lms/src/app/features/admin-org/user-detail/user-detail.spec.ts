@@ -2,7 +2,7 @@ import type { MockInstance } from 'vitest';
 import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
-import { identityEndpoints } from '@lms/contracts';
+import { identityEndpoints, learnerEndpoints } from '@lms/contracts';
 import { SEED_USERS } from '@lms/mocks';
 import { createAppRoutes } from '../../../app.routes';
 import {
@@ -180,6 +180,77 @@ describe('UserDetail', () => {
     tab('Khóa học được giao').click();
     await settle();
     expect(text()).toContain('Khóa học được giao');
+  });
+
+  describe('the XP correction', () => {
+    async function fill(amount: string, reason: string) {
+      const input = el.querySelector<HTMLInputElement>(
+        'app-xp-adjust-form input',
+      )!;
+      input.value = amount;
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+      const textarea = el.querySelector<HTMLTextAreaElement>(
+        'app-xp-adjust-form textarea',
+      )!;
+      textarea.value = reason;
+      textarea.dispatchEvent(new Event('input', { bubbles: true }));
+      await settle();
+      button(el, 'Ghi điều chỉnh').click();
+      await settle();
+    }
+
+    it('is offered to a global admin, who sends the amount and the reason', async () => {
+      await open('000004');
+      tab('Điều chỉnh XP').click();
+      await settle();
+
+      await fill('50', '  Cộng bù do lỗi đồng bộ ');
+
+      expect(calls(learnerEndpoints.adjustXp)).toHaveLength(1);
+      expect(calls(learnerEndpoints.adjustXp)[0][1].body).toEqual({
+        userId: '000004',
+        amount: 50,
+        reason: 'Cộng bù do lỗi đồng bộ',
+      });
+      expect(text()).toContain('Đã điều chỉnh +50 XP');
+    });
+
+    it('sends nothing without a reason or with an amount that is not a number', async () => {
+      await open('000004');
+      tab('Điều chỉnh XP').click();
+      await settle();
+
+      await fill('50', '');
+      expect(text()).toContain('Nhập lý do điều chỉnh.');
+      await fill('abc', 'Lý do');
+      expect(text()).toContain('Nhập số nguyên khác 0');
+
+      expect(calls(learnerEndpoints.adjustXp)).toHaveLength(0);
+    });
+
+    it('shows the server refusal when the correction would make the total negative', async () => {
+      await open('000004');
+      tab('Điều chỉnh XP').click();
+      await settle();
+
+      await fill('-9999', 'Gian lận');
+
+      expect(text()).toContain('không được làm tổng XP');
+    });
+
+    it('is not offered when the caller is not a global admin', async () => {
+      signInToMockBackend('super.admin');
+      fakeSession().user.set({
+        ...seedProfile('000001'),
+        scopeSummary: 'limited',
+      });
+      harness = await RouterTestingHarness.create();
+      await harness.navigateByUrl('/admin/users/000004');
+      await settle();
+      el = harness.routeNativeElement as HTMLElement;
+
+      expect(tab('Điều chỉnh XP')).toBeUndefined();
+    });
   });
 });
 
