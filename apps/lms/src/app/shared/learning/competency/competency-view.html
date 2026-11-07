@@ -1,25 +1,98 @@
 @if (showRadar()) {
-<ui-radar-chart
-  class="competency-view__chart"
-  [data]="radarData()"
-  label="Biểu đồ năng lực"
-  seriesLabel="Tỷ lệ đúng trên mọi lượt thi đã chấm"
-/>
-} @else if (rowsWithData().length > 0) {
-<ul class="competency-view__list">
-  @for (row of rowsWithData(); track row.competencyId) {
-  <li class="competency-view__item">
-    <span class="competency-view__name">{{ row.name }}</span>
-    <span class="competency-view__meta"
-      >{{ row.correctCount }}/{{ row.totalQuestions }} câu đúng</span
-    >
-    <span class="competency-view__percent"
-      >{{ row.percent | fmtPct: digits }}</span
-    >
-  </li>
+<section class="competency-view__panel" aria-label="Biểu đồ năng lực">
+  <h3 class="competency-view__heading">Biểu đồ năng lực</h3>
+  <ui-radar-chart
+    class="competency-view__chart"
+    [data]="radarData()"
+    [showTable]="false"
+    label="Biểu đồ năng lực"
+    seriesLabel="Tỷ lệ điểm trên các lượt thi đã chấm"
+  />
+  @if (size() === 'compact') {
+  <details class="competency-view__disclosure">
+    <summary>Điểm nổi bật</summary>
+    <table class="competency-view__list">
+      <thead>
+        <tr>
+          <th scope="col">Kết quả</th>
+          <th scope="col">Nhóm kiến thức</th>
+          <th scope="col">Câu đúng</th>
+          <th scope="col">Tỷ lệ điểm</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Cao nhất</td>
+          <td>{{ rankedRows()[0].name }}</td>
+          <td>
+            {{ rankedRows()[0].correctCount }}/{{ rankedRows()[0].totalQuestions
+            }}
+          </td>
+          <td>{{ rankedRows()[0].percent | fmtPct: digits }}</td>
+        </tr>
+        <tr>
+          <td>Thấp nhất</td>
+          <td>{{ rankedRows()[rankedRows().length - 1].name }}</td>
+          <td>
+            {{ rankedRows()[rankedRows().length - 1].correctCount }}/{{
+            rankedRows()[rankedRows().length - 1].totalQuestions }}
+          </td>
+          <td>
+            {{ rankedRows()[rankedRows().length - 1].percent | fmtPct: digits }}
+          </td>
+        </tr>
+      </tbody>
+    </table>
+    <p class="competency-view__meta">
+      Đã có kết quả ở {{ rowsWithData().length }} nhóm kiến thức.
+    </p>
+  </details>
   }
-</ul>
-} @else {
+</section>
+} @if (rowsWithData().length > 0 && (size() === 'large' || !showRadar())) {
+<section
+  class="competency-view__panel"
+  aria-label="Kết quả theo nhóm kiến thức"
+>
+  <h3 class="competency-view__heading">Kết quả theo nhóm kiến thức</h3>
+  <p class="competency-view__explanation">
+    Tỷ lệ điểm = tổng điểm đạt / tổng điểm tối đa của các lượt thi đã chấm. Số
+    câu đúng có thể khác tỷ lệ điểm.
+  </p>
+  <table class="competency-view__list">
+    <thead>
+      <tr>
+        <th scope="col">Nhóm kiến thức</th>
+        <th scope="col">Câu đúng</th>
+        <th scope="col">Tỷ lệ điểm</th>
+      </tr>
+    </thead>
+    <tbody>
+      @for (row of rows(); track row.competencyId) {
+      <tr class="competency-view__item">
+        <td class="competency-view__name">{{ row.name }}</td>
+        <td class="competency-view__meta">
+          @if (row.percent !== null) { {{ row.correctCount }}/{{
+          row.totalQuestions }} } @else { — }
+        </td>
+        <td class="competency-view__percent">
+          @if (row.percent !== null) {
+          <div class="competency-view__score">
+            <ui-progress
+              size="sm"
+              [value]="row.percent"
+              [label]="'Tỷ lệ điểm ' + row.name"
+            />
+            <span>{{ row.percent | fmtPct: digits }}</span>
+          </div>
+          } @else { Chưa có dữ liệu }
+        </td>
+      </tr>
+      }
+    </tbody>
+  </table>
+</section>
+} @else if (rowsWithData().length === 0) {
 <ui-empty
   variant="inline"
   title="Chưa có dữ liệu năng lực"

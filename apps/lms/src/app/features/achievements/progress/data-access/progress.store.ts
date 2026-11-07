@@ -13,6 +13,7 @@ import {
   type CourseCard,
   type CourseStatus,
   type LearningStatus,
+  type MyAttemptsQuery,
   type MyCoursesQuery,
   type Page,
   type ProgressExportQuery,
@@ -25,7 +26,7 @@ import { EndpointClient } from '../../../../core/http/endpoint-client';
 import { toCourseStatus } from '../../../../shared/course/course-labels';
 import { isAssessmentAvailable } from '../../../../shared/learning/assessment-overview';
 
-export const PROGRESS_PAGE_SIZE = 20;
+export const PROGRESS_PAGE_SIZE = 5;
 
 /** "Lịch sử thi" shows the latest few graded attempts, as the mockup does; there is no paging. */
 export const EXAM_HISTORY_SIZE = 6;
@@ -142,6 +143,21 @@ export class ProgressStore {
     }),
   );
 
+  private readonly weeklyData = serverData(() =>
+    this.client.call(learnerEndpoints.weeklyActivity, { query: { weeks: 8 } }),
+  );
+  readonly weekly$ = this.weeklyData.value;
+  readonly weeklyError$ = this.weeklyData.error;
+  readonly weeklyBars$ = computed(() =>
+    (this.weekly$()?.weeks ?? []).map((week) => ({
+      label: week.weekStart.slice(5).split('-').reverse().join('/'),
+      value: week.activeDays,
+    })),
+  );
+  retryWeekly(): void {
+    this.weeklyData.reload();
+  }
+
   private readonly summaryData = serverData(() =>
     this.client.call(learnerEndpoints.progressSummary),
   );
@@ -151,16 +167,52 @@ export class ProgressStore {
     this.client.call(learnerQuizEndpoints.myCompetency, { query: {} }),
   );
 
-  /** The latest graded attempts over every quiz, newest first. */
-  private readonly attemptsData = serverData(() =>
-    this.client.call(learnerQuizEndpoints.myAttempts, {
-      query: {
-        graded: true,
-        sort: 'submittedAt,desc',
-        page: 0,
-        size: EXAM_HISTORY_SIZE,
-      },
+  private readonly historySearch = signal('');
+  private readonly historyResult = signal('all');
+  private readonly historyPage = signal(1);
+  readonly historySearch$ = this.historySearch.asReadonly();
+  readonly historyResult$ = this.historyResult.asReadonly();
+  readonly historyPage$ = this.historyPage.asReadonly();
+  readonly historyHasFilters$ = computed(
+    () => !!this.historySearch() || this.historyResult() !== 'all',
+  );
+  clearHistoryFilters(): void {
+    this.historySearch.set('');
+    this.historyResult.set('all');
+    this.historyPage.set(1);
+  }
+  private readonly historyQuery = computed(
+    (): MyAttemptsQuery => ({
+      graded: true,
+      sort: 'submittedAt,desc',
+      page: this.historyPage() - 1,
+      size: EXAM_HISTORY_SIZE,
+      ...(this.historySearch().trim()
+        ? { q: this.historySearch().trim().slice(0, 100) }
+        : {}),
+      ...(this.historyResult() === 'all'
+        ? {}
+        : { passed: this.historyResult() === 'passed' }),
     }),
+  );
+  private readonly attemptsData = serverData(
+    (query: MyAttemptsQuery) =>
+      this.client.call(learnerQuizEndpoints.myAttempts, { query }),
+    { params: () => this.historyQuery() },
+  );
+  searchHistory(value: string): void {
+    this.historySearch.set(value);
+    this.historyPage.set(1);
+  }
+  filterHistoryResult(value: string): void {
+    this.historyResult.set(value);
+    this.historyPage.set(1);
+  }
+  goToHistoryPage(page: number): void {
+    this.historyPage.set(page);
+  }
+  readonly historyTotal$ = computed(
+    () => this.attemptsData.value()?.totalElements ?? 0,
   );
 
   private readonly coursesData = serverData(
@@ -210,6 +262,7 @@ export class ProgressStore {
   });
 
   readonly attempts$ = computed(() => this.attemptsData.value()?.items);
+  readonly filteredAttempts$ = computed(() => this.attempts$() ?? []);
   readonly attemptsError$ = this.attemptsData.error;
   readonly isAttemptsLoading$ = this.attemptsData.isLoading;
 
