@@ -1,10 +1,12 @@
 <div class="badge-admin">
   @if (store.badgesError$(); as error) {
-  <ui-error-state
-    title="Không tải được huy hiệu"
-    [message]="error.message"
-    (retry)="store.retryLoad()"
-  />
+  <div class="badge-admin__state">
+    <ui-error-state
+      title="Không tải được huy hiệu"
+      [message]="error.message"
+      (retry)="store.retryLoad()"
+    />
+  </div>
   } @else if (store.editing$() !== 'closed') {
   <form class="badge-admin__form" [formRoot]="badgeForm">
     <h2>
@@ -78,7 +80,7 @@
     </div>
   </form>
   } @else if (store.isBadgesLoading$()) {
-  <span uiSpinner></span>
+  <div class="badge-admin__state"><span uiSpinner></span></div>
   } @else {
   <div class="badge-admin__bar">
     <p class="badge-admin__hint">
@@ -164,6 +166,8 @@
     </table>
   </div>
   } @else {
-  <ui-empty variant="inline" title="Chưa có huy hiệu nào." />
+  <div class="badge-admin__empty">
+    <ui-empty variant="inline" title="Chưa có huy hiệu nào." />
+  </div>
   } }
 </div>
