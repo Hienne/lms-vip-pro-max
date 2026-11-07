@@ -131,10 +131,13 @@
     </div>
     }
   </div>
-  } @if (store.notShown$()) {
-  <p class="thread__muted">
-    Còn {{ store.notShown$() }} bình luận chưa hiển thị.
-  </p>
+  } @if (store.total$() > store.pageSize) {
+  <ui-pagination
+    [total]="store.total$()"
+    [page]="store.page$()"
+    [pageSize]="store.pageSize"
+    (pageChange)="store.goToPage($event)"
+  />
   } } @if (canComment()) { @if (store.target$()?.kind === 'new') {
   <ng-container
     [ngTemplateOutlet]="composerTpl"

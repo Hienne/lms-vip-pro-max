@@ -43,18 +43,44 @@ export class CommentsStore {
 
   private readonly state = {
     contentId: signal<number | undefined>(undefined),
+    reviewThreadId: signal<number | undefined>(undefined),
+    page: signal(1),
     target: signal<CommentDraftTarget | undefined>(undefined),
     /** One id per opened composer, so a retried send does not post twice. */
     requestId: signal(crypto.randomUUID()),
   };
 
   private readonly commentsData = serverData(
-    (contentId: number) =>
+    ({
+      contentId,
+      reviewThreadId,
+      page,
+    }: {
+      contentId: number;
+      reviewThreadId?: number;
+      page: number;
+    }) =>
       this.client.call(communityEndpoints.comments, {
         params: { contentId },
-        query: { size: PAGE_SIZE },
+        query: {
+          size: PAGE_SIZE,
+          page: page - 1,
+          ...(reviewThreadId ? { reviewThreadId } : {}),
+        },
       }),
-    { params: () => this.state.contentId(), reloadOn: this.refresh },
+    {
+      params: () => {
+        const contentId = this.state.contentId();
+        return contentId
+          ? {
+              contentId,
+              reviewThreadId: this.state.reviewThreadId(),
+              page: this.state.page(),
+            }
+          : undefined;
+      },
+      reloadOn: this.refresh,
+    },
   );
 
   private readonly sendMutation = serverMutation(
@@ -74,6 +100,9 @@ export class CommentsStore {
               body: {
                 clientRequestId: this.state.requestId(),
                 bodyMarkdown: body,
+                ...(this.state.reviewThreadId()
+                  ? { reviewThreadId: this.state.reviewThreadId() }
+                  : {}),
                 ...(target.kind === 'reply'
                   ? { parentCommentId: target.parentCommentId }
                   : {}),
@@ -156,12 +185,21 @@ export class CommentsStore {
     return page ? Math.max(0, page.totalElements - page.items.length) : 0;
   });
   readonly isLoading$ = this.commentsData.isLoading;
+  readonly total$ = computed(
+    () => this.commentsData.value()?.totalElements ?? 0,
+  );
+  readonly page$ = this.state.page.asReadonly();
+  readonly pageSize = PAGE_SIZE;
   readonly error$ = this.commentsData.error;
   readonly target$ = this.state.target.asReadonly();
   readonly isSending$ = this.sendMutation.isPending;
   readonly isBusy$ = computed(
     () => this.sendMutation.isPending() || this.deleteMutation.isPending(),
   );
+
+  private setPage(page: number): void {
+    this.state.page.set(page);
+  }
 
   // Setters
   private setContentId(contentId: number): void {
@@ -174,8 +212,18 @@ export class CommentsStore {
   }
 
   // Commands
-  load(contentId: number): void {
+  private setReviewThreadId(value: number | undefined): void {
+    this.state.reviewThreadId.set(value);
+  }
+
+  load(contentId: number, reviewThreadId?: number): void {
     this.setContentId(contentId);
+    this.setReviewThreadId(reviewThreadId);
+    this.setPage(1);
+  }
+
+  goToPage(page: number): void {
+    this.setPage(page);
   }
 
   openComposer(target: CommentDraftTarget): void {

@@ -180,6 +180,13 @@ export type LessonLearned = z.infer<typeof LessonLearnedSchema>;
 
 /** The `context` of a revision; keys the app does not know are dropped. */
 export const ContentContextSchema = z.object({
+  review: z
+    .object({
+      problem: z.string().optional(),
+      constraints: z.string().optional(),
+      decisionsNeeded: z.array(z.string()).optional(),
+    })
+    .nullish(),
   technologies: z.array(TechnologySchema).nullish(),
   environment: z.string().nullish(),
   limitations: z.string().nullish(),
@@ -527,6 +534,13 @@ export const AssetInputSchema = z.strictObject({
 export type AssetInput = z.infer<typeof AssetInputSchema>;
 
 export const ContentContextInputSchema = z.strictObject({
+  review: z
+    .strictObject({
+      problem: z.string().max(10_000),
+      constraints: z.string().max(20_000).optional(),
+      decisionsNeeded: z.array(z.string().max(3_000)).max(20),
+    })
+    .optional(),
   technologies: z
     .array(
       z.strictObject({

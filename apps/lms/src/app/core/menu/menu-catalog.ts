@@ -69,24 +69,53 @@ function groupBySection(items: readonly MenuItem[]): readonly NavSection[] {
 }
 
 /**
- * The sidebar of a user: one entry per function, labelled with the backend's name and linked to
- * its first screen, grouped by section in the order the backend sorts them. `toProfile` builds it
+ * The sidebar follows server-granted functions, with four destinations for Community.
+ * Other functions link to their first screen, grouped in backend order. `toProfile` builds it
  * once; the sidebar only renders it.
  */
 export function navFor(
   functions: readonly KnownFunction[],
 ): readonly NavSection[] {
   return groupBySection(
-    functions.map((fn) => {
+    functions.flatMap((fn): MenuItem[] => {
+      if (fn.code === 'COMMUNITY') {
+        return (
+          [
+            {
+              href: '/community/questions',
+              label: 'Hỏi đáp',
+              icon: 'message-square',
+            },
+            {
+              href: '/community/articles',
+              label: 'Bài viết',
+              icon: 'file-text',
+            },
+            {
+              href: '/community/reviews',
+              label: 'Review kiến trúc',
+              icon: 'layers',
+            },
+            { href: '/community/me', label: 'Của tôi', icon: 'user' },
+          ] as const
+        ).map((item) => ({
+          ...item,
+          code: fn.code,
+          section: 'Cộng đồng',
+          upcoming: false,
+        }));
+      }
       const { nav } = menuGroup(fn.code);
-      return {
-        code: fn.code,
-        href: entryHref(fn.code),
-        icon: nav.icon,
-        label: fn.name,
-        section: nav.section,
-        upcoming: isUpcoming(fn.code),
-      };
+      return [
+        {
+          code: fn.code,
+          href: entryHref(fn.code),
+          icon: nav.icon,
+          label: fn.name,
+          section: nav.section,
+          upcoming: isUpcoming(fn.code),
+        },
+      ];
     }),
   );
 }

@@ -53,7 +53,7 @@ describe('route table', () => {
   const signInAs = (key: keyof typeof USERS) =>
     session.user.set(seedProfile(USERS[key]));
 
-  it('lists every route of the mockup router except the ones with their own entry', () => {
+  it('lists the approved app routes including architecture reviews', () => {
     expect(new Set(SCREEN_ENTRIES.map(({ screen }) => screen.path))).toEqual(
       new Set([
         'login',
@@ -107,6 +107,10 @@ describe('route table', () => {
         'community/contents/:id/edit',
         'community/articles',
         'community/articles/new',
+        'community/reviews',
+        'community/reviews/new',
+        'community/reviews/:id',
+        'community/reviews/:id/edit',
         'community/me',
         'community/moderation',
         '403',

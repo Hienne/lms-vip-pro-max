@@ -1,0 +1,15 @@
+<form class="review-action" [formRoot]="fields">
+  <h2>{{ copy.title }}</h2>
+  <ui-field [label]="copy.label" [hint]="copy.hint">
+    <textarea uiTextarea rows="6" [formField]="fields.text"></textarea>
+  </ui-field>
+  @if (action === 'invite') {
+  <ui-field label="Hạn phản hồi lời mời" hint="Không bắt buộc."
+    ><input uiInput type="datetime-local" [formField]="fields.expiresAt"
+  /></ui-field>
+  }
+  <div class="review-action__buttons">
+    <button uiButton type="button" (click)="cancel()">Hủy</button
+    ><button uiButton variant="primary" type="submit">{{ copy.title }}</button>
+  </div>
+</form>

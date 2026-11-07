@@ -8,12 +8,13 @@ import { CommunityTabs } from './community-tabs';
 class Empty {}
 
 describe('CommunityTabs', () => {
-  it('links the three lists and marks the current one', async () => {
+  it('links the four community destinations and marks the current one', async () => {
     TestBed.configureTestingModule({
       providers: [
         provideRouter([
           { path: 'community/questions', component: Empty },
           { path: 'community/articles', component: Empty },
+          { path: 'community/reviews', component: Empty },
           { path: 'community/me', component: Empty },
         ]),
       ],
@@ -28,16 +29,19 @@ describe('CommunityTabs', () => {
     expect(links.map((a) => a.textContent?.trim())).toEqual([
       'Hỏi đáp',
       'Bài viết',
+      'Review kiến trúc',
       'Của tôi',
     ]);
     expect(links.map((a) => a.getAttribute('href'))).toEqual([
       '/community/questions',
       '/community/articles',
+      '/community/reviews',
       '/community/me',
     ]);
     expect(links.map((a) => a.getAttribute('aria-current'))).toEqual([
       null,
       'page',
+      null,
       null,
     ]);
     expect(el.querySelector('nav')?.getAttribute('aria-label')).toBe(

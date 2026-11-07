@@ -10,7 +10,7 @@ import {
 import { NgTemplateOutlet } from '@angular/common';
 import { form, FormField, FormRoot, maxLength } from '@angular/forms/signals';
 import { COMMUNITY_LIMITS, type CommentView } from '@lms/contracts';
-import { Button, FmtDatetimePipe, Textarea } from '@lms/ui';
+import { Button, FmtDatetimePipe, Pagination, Textarea } from '@lms/ui';
 import { SessionStore } from '../../../../core/session/session.store';
 import { Markdown } from '../../../../shared/content/markdown/markdown';
 import {
@@ -26,6 +26,7 @@ import {
   selector: 'app-comment-thread',
   imports: [
     Button,
+    Pagination,
     FmtDatetimePipe,
     FormField,
     FormRoot,
@@ -44,6 +45,7 @@ export class CommentThread {
   readonly contentId = input.required<number>();
   /** The server lets the user comment here (`capabilities.canComment`). */
   readonly canComment = input(false);
+  readonly reviewThreadId = input<number>();
   /** Shown instead of "Thêm bình luận" when the content no longer takes comments. */
   readonly closedMessage = input<string>();
 
@@ -64,7 +66,8 @@ export class CommentThread {
   constructor() {
     effect(() => {
       const contentId = this.contentId();
-      untracked(() => this.store.load(contentId));
+      const reviewThreadId = this.reviewThreadId();
+      untracked(() => this.store.load(contentId, reviewThreadId));
     });
   }
 

@@ -483,6 +483,42 @@ export const SCREEN_TABLE = {
             ),
         },
         {
+          path: 'community/reviews/new',
+          title: 'Tạo đề nghị review',
+          mockupPage: 'CM-REVIEW-NEW',
+          load: () =>
+            import('../../features/community/editor/editor').then(
+              (m) => m.CommunityEditor,
+            ),
+        },
+        {
+          path: 'community/reviews/:id/edit',
+          title: 'Sửa thiết kế',
+          mockupPage: 'CM-REVIEW-EDIT',
+          load: () =>
+            import('../../features/community/editor/editor').then(
+              (m) => m.CommunityEditor,
+            ),
+        },
+        {
+          path: 'community/reviews/:id',
+          title: 'Review kiến trúc',
+          mockupPage: 'CM-REVIEW-DETAIL',
+          load: () =>
+            import('../../features/community/review-detail/review-detail').then(
+              (m) => m.CommunityReviewDetail,
+            ),
+        },
+        {
+          path: 'community/reviews',
+          title: 'Review kiến trúc',
+          mockupPage: 'CM-REVIEW',
+          load: () =>
+            import('../../features/community/reviews/reviews').then(
+              (m) => m.CommunityReviews,
+            ),
+        },
+        {
           path: 'community/me',
           title: 'Của tôi',
           mockupPage: 'CM-06',

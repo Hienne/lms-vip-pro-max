@@ -40,6 +40,12 @@ export interface ContentFormValue {
   limitations: string;
   lesson: LessonFields;
   changeNote: string;
+  review: {
+    problem: string;
+    constraints: string;
+    decisions: string;
+    dueAt: string;
+  };
 }
 
 export const EMPTY_LESSON: LessonFields = {
@@ -52,6 +58,7 @@ export const EMPTY_LESSON: LessonFields = {
 
 export function emptyContentForm(): ContentFormValue {
   return {
+    review: { problem: '', constraints: '', decisions: '', dueAt: '' },
     title: '',
     summary: '',
     bodyMarkdown: '',
@@ -73,6 +80,12 @@ export function contentFormFrom(
   const context = (revision.context ?? {}) as ContentContextInput;
   const lesson = context.lessonLearned;
   return {
+    review: {
+      problem: context.review?.problem ?? '',
+      constraints: context.review?.constraints ?? '',
+      decisions: context.review?.decisionsNeeded?.join('\n') ?? '',
+      dueAt: '',
+    },
     title: revision.title ?? '',
     summary: revision.summary ?? '',
     bodyMarkdown: revision.bodyMarkdown ?? '',
@@ -111,13 +124,30 @@ export function contentFormFrom(
  */
 export function toDraftFields(
   value: ContentFormValue,
-  options: { lesson?: boolean; cover?: AssetInput | null } = {},
+  options: {
+    lesson?: boolean;
+    review?: boolean;
+    cover?: AssetInput | null;
+    design?: AssetInput | null;
+  } = {},
 ): DraftFields {
   const technologies = value.technologies
     .map((row) => ({ name: row.name.trim(), version: row.version.trim() }))
     .filter((row) => row.name)
     .map((row) => (row.version ? row : { name: row.name }));
   const context: ContentContextInput = {
+    ...(options.review
+      ? {
+          review: {
+            problem: value.review.problem,
+            constraints: value.review.constraints,
+            decisionsNeeded: value.review.decisions
+              .split('\n')
+              .map((v) => v.trim())
+              .filter(Boolean),
+          },
+        }
+      : {}),
     ...(technologies.length ? { technologies } : {}),
     ...(value.environment.trim()
       ? { environment: value.environment.trim() }
@@ -144,13 +174,15 @@ export function toDraftFields(
     bodyMarkdown: value.bodyMarkdown,
     ...(value.summary.trim() ? { summary: value.summary.trim() } : {}),
     context,
-    assets:
-      options.cover === undefined
-        ? value.assets
-        : [
-            ...value.assets.filter((asset) => asset.usage !== 'cover'),
-            ...(options.cover ? [options.cover] : []),
-          ],
+    assets: [
+      ...value.assets.filter(
+        (asset) =>
+          (options.cover === undefined || asset.usage !== 'cover') &&
+          (options.design === undefined || asset.usage !== 'design_file'),
+      ),
+      ...(options.cover ? [options.cover] : []),
+      ...(options.design ? [options.design] : []),
+    ],
     ...(value.changeNote.trim() ? { changeNote: value.changeNote.trim() } : {}),
   };
 }

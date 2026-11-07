@@ -14,6 +14,7 @@ export const RESOLUTION_LABELS: Readonly<Record<string, ResolutionLabel>> = {
 };
 
 export const CONTENT_KIND_LABELS: Readonly<Record<string, string>> = {
+  architecture_review: 'Review kiến trúc',
   question: 'Câu hỏi',
   answer: 'Câu trả lời',
   article: 'Bài viết',

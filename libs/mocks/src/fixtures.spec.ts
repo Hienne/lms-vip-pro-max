@@ -6,6 +6,7 @@ import {
   authV1Endpoints,
   certificateEndpoints,
   communityEndpoints,
+  communityReviewEndpoints,
   feedbackEndpoints,
   personalEndpoints,
   reportEndpoints,
@@ -38,6 +39,7 @@ const everyEndpoint: readonly AnyEndpoint[] = [
   ...Object.values(agentEndpoints),
   ...Object.values(authV1Endpoints),
   ...Object.values(communityEndpoints),
+  ...Object.values(communityReviewEndpoints),
   ...Object.values(identityEndpoints),
   ...Object.values(knowledgeEndpoints),
   ...Object.values(learnerQuizEndpoints),
@@ -52,13 +54,17 @@ const everyEndpoint: readonly AnyEndpoint[] = [
 describe('FakeBackend and the endpoint registries', () => {
   it('answers every endpoint the app declares, the backend ones and the served: mock ones', () => {
     const backend = new FakeBackend();
-    // The self-registration calls are made against the real backend only (no mock, by decision).
+    // Self-registration, instructor inbox and architecture reviews use the real backend only.
     const backendOnly: readonly AnyEndpoint[] = [
       identityEndpoints.registrationUnits,
       identityEndpoints.registerRequest,
       identityEndpoints.approveAccessRequest,
       identityEndpoints.passwordResetRequest,
       identityEndpoints.resetPasswordForRequest,
+      feedbackEndpoints.instructorFeedback,
+      feedbackEndpoints.instructorFeedbackSummary,
+      feedbackEndpoints.replyFeedback,
+      ...Object.values(communityReviewEndpoints),
     ];
     for (const endpoint of everyEndpoint) {
       expect(backend.answers(endpoint), endpoint.path).toBe(
@@ -85,7 +91,10 @@ describe('FakeBackend and the endpoint registries', () => {
   });
 
   it('serves no community endpoint from the mock-only list', () => {
-    for (const endpoint of Object.values(communityEndpoints)) {
+    for (const endpoint of [
+      ...Object.values(communityEndpoints),
+      ...Object.values(communityReviewEndpoints),
+    ]) {
       expect(endpoint.served, endpoint.path).toBeUndefined();
     }
   });

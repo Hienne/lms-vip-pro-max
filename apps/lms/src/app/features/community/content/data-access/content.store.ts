@@ -311,6 +311,12 @@ export class ContentStore {
       const detail = this.detailData.value();
       if (!detail) return;
       untracked(() => {
+        if (detail.kind === 'architecture_review') {
+          void this.router.navigate(['/community/reviews', detail.contentId], {
+            replaceUrl: true,
+          });
+          return;
+        }
         if (detail.kind === 'answer' && detail.questionId) {
           void this.router.navigate(
             ['/community/contents', detail.questionId],

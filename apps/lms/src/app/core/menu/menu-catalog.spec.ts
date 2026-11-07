@@ -27,6 +27,27 @@ const navOf = (functions: readonly FunctionInfo[]) =>
   navFor(knownFunctions(functions));
 
 describe('menu catalog', () => {
+  it('exposes exactly four community destinations only when the server grants COMMUNITY', () => {
+    const nav = navOf([fn(1, 'COMMUNITY', 1)]);
+    expect(nav).toHaveLength(1);
+    expect(nav[0].section).toBe('Cộng đồng');
+    expect(nav[0].items.map((item) => item.href)).toEqual([
+      '/community/questions',
+      '/community/articles',
+      '/community/reviews',
+      '/community/me',
+    ]);
+    expect(new Set(nav[0].items.map((item) => item.href)).size).toBe(4);
+    expect(
+      navOf([fn(1, 'PROFILE', 1)])
+        .flatMap((section) => section.items)
+        .some((item) => item.href.startsWith('/community/')),
+    ).toBe(false);
+    expect(activeHref(nav, '/community/reviews/12/edit')).toBe(
+      '/community/reviews',
+    );
+    expect(entryHref('COMMUNITY')).toBe('/community/questions');
+  });
   it('has one entry screen and one section for every function code the backend knows', () => {
     const items = allSections().flatMap((section) => section.items);
     expect(items.map((item) => item.code).sort()).toEqual(

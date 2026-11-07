@@ -59,7 +59,9 @@ export class ContentRow {
   );
 
   protected readonly link = computed(() => [
-    '/community/contents',
+    this.card().kind === 'architecture_review'
+      ? '/community/reviews'
+      : '/community/contents',
     this.card().contentId,
   ]);
 }

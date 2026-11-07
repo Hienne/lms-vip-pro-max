@@ -95,16 +95,16 @@ helpers are deprecated and not used.
 Use the `package.json` scripts with Node 24 active (`nvm use`); for a single
 project run the Nx target directly (`npx nx test ui`).
 
-| Script                                          | Does                                                                            |
-| ----------------------------------------------- | ------------------------------------------------------------------------------- |
-| `npm start` · `npm run dev`                     | the app on :4200 against the in-app mock API (same command)                     |
-| `npm run build` · `build:staging` · `build:dev` | app build per environment → `dist/apps/lms`, `dist/apps/lms-staging`            |
-| `npm test` · `test:watch` · `test:coverage`     | Vitest across all projects; watch uses the root `vitest.config.mts`             |
-| `npm run lint` · `lint:fix` · `typecheck`       | across all projects                                                             |
-| `npm run format` · `format:check`               | Prettier                                                                        |
-| `npm run check`                                 | full checks on every project, including format and tests: run before pushing    |
-| `npm run ci:check`                              | CI only: `nx affected -t lint typecheck build check-bundle`, no unit tests      |
-| `npm run ci:build`                              | CI only: production + staging builds                                            |
+| Script                                          | Does                                                                         |
+| ----------------------------------------------- | ---------------------------------------------------------------------------- |
+| `npm start` · `npm run dev`                     | the app on :4200 against the in-app mock API (same command)                  |
+| `npm run build` · `build:staging` · `build:dev` | app build per environment → `dist/apps/lms`, `dist/apps/lms-staging`         |
+| `npm test` · `test:watch` · `test:coverage`     | Vitest across all projects; watch uses the root `vitest.config.mts`          |
+| `npm run lint` · `lint:fix` · `typecheck`       | across all projects                                                          |
+| `npm run format` · `format:check`               | Prettier                                                                     |
+| `npm run check`                                 | full checks on every project, including format and tests: run before pushing |
+| `npm run ci:check`                              | CI only: `nx affected -t lint typecheck build check-bundle`, no unit tests   |
+| `npm run ci:build`                              | CI only: production + staging builds                                         |
 
 ### Run against a local backend
 
@@ -173,7 +173,7 @@ in two of them, and the course `DEMO-MEDIA` with a PDF and a video lesson.
   restore `.nx/cache` → `npm run ci:check` (affected lint, typecheck, build and
   bundle guard; they block deploy on failure). CI does not run unit
   tests; run `npm run check` locally. The workflow sets `SKIP_FORMAT_CHECK:
-  'true'`; set it to `'false'` to restore `npm run format:check`.
+'true'`; set it to `'false'` to restore `npm run format:check`.
 - **image** (parallel with check): buildx build of the root `Dockerfile` with
   the GitHub Actions layer cache (the `npm ci` layer is reused), which runs
   the production build and stamps `version.txt` with the commit. On push to

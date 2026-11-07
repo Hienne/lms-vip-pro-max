@@ -137,10 +137,13 @@ describe('AppShell', () => {
         '/learn',
         '/progress',
         '/quiz',
-        '/community/questions',
         '/knowledge',
         '/assistant',
         '/issues',
+        '/community/questions',
+        '/community/articles',
+        '/community/reviews',
+        '/community/me',
       ],
     ],
     [
@@ -151,7 +154,6 @@ describe('AppShell', () => {
         '/learn',
         '/progress',
         '/quiz',
-        '/community/questions',
         '/admin/courses',
         '/admin/catalog',
         '/admin/lessons',
@@ -161,6 +163,10 @@ describe('AppShell', () => {
         '/knowledge',
         '/assistant',
         '/issues',
+        '/community/questions',
+        '/community/articles',
+        '/community/reviews',
+        '/community/me',
       ],
     ],
     [
@@ -182,6 +188,9 @@ describe('AppShell', () => {
         '/admin/system',
         '/assistant',
         '/community/questions',
+        '/community/articles',
+        '/community/reviews',
+        '/community/me',
       ],
     ],
   ] as const)(
@@ -469,7 +478,7 @@ describe('AppShell', () => {
       const el = await open('/learn');
       toggle(el)?.click();
       TestBed.tick();
-      expect(hrefs(el)).toHaveLength(8);
+      expect(hrefs(el)).toHaveLength(11);
       expect(
         el.querySelector('nav a[href="/progress"]')?.textContent?.trim(),
       ).toBe('Tiến độ học tập');
@@ -514,7 +523,7 @@ describe('AppShell', () => {
       expect(button?.getAttribute('aria-expanded')).toBe('false');
 
       await openDrawer(el);
-      expect(dialog()?.querySelectorAll('nav a')).toHaveLength(8);
+      expect(dialog()?.querySelectorAll('nav a')).toHaveLength(11);
       expect(dialog()?.querySelector('.sidebar__toggle')).toBeNull();
       expect(button?.getAttribute('aria-expanded')).toBe('true');
     });

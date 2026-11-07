@@ -5,7 +5,7 @@ import { ActivatedRoute, Router } from '@angular/router';
 import {
   communityEndpoints,
   type ContentDetail,
-  type CreateContentCommand,
+  type CreateReviewCommand,
   type RevisionDetail,
 } from '@lms/contracts';
 import { map, of, switchMap, tap, type Observable } from 'rxjs';
@@ -28,7 +28,7 @@ import {
 } from '../../data-access/content-form';
 
 /** What a new post is: "Bài viết" or "Bài học sự cố". */
-export type NewKind = 'article' | 'lesson_learned';
+export type NewKind = 'article' | 'lesson_learned' | 'architecture_review';
 
 interface DraftWrite {
   readonly fields: DraftFields;
@@ -54,6 +54,7 @@ const sameTags = (a: readonly number[], b: readonly number[]): boolean =>
 @Injectable()
 export class EditorStore {
   readonly cover = communityCoverUpload();
+  readonly design = communityCoverUpload(true);
   private readonly client = inject(EndpointClient);
   private readonly authoring = inject(ContentAuthoring);
   private readonly changes = inject(CommunityChanges);
@@ -76,9 +77,11 @@ export class EditorStore {
 
   private readonly state = {
     newKind: signal<NewKind>(
-      this.route.snapshot.queryParamMap.get('type') === 'lesson'
-        ? 'lesson_learned'
-        : 'article',
+      this.route.snapshot.routeConfig?.path?.includes('reviews')
+        ? 'architecture_review'
+        : this.route.snapshot.queryParamMap.get('type') === 'lesson'
+          ? 'lesson_learned'
+          : 'article',
     ),
     /** The server's last answer about the draft; unset until the first save of this visit. */
     saved: signal<Saved | undefined>(undefined),
@@ -126,7 +129,7 @@ export class EditorStore {
       command,
       publish,
     }: {
-      command: CreateContentCommand;
+      command: CreateReviewCommand;
       publish: boolean;
     }) =>
       publish
@@ -141,8 +144,19 @@ export class EditorStore {
         const published = !created.draftRevision;
         void this.router.navigate(
           published
-            ? ['/community/contents', created.contentId]
-            : ['/community/contents', created.contentId, 'edit'],
+            ? [
+                created.kind === 'architecture_review'
+                  ? '/community/reviews'
+                  : '/community/contents',
+                created.contentId,
+              ]
+            : [
+                created.kind === 'architecture_review'
+                  ? '/community/reviews'
+                  : '/community/contents',
+                created.contentId,
+                'edit',
+              ],
           { replaceUrl: true },
         );
       },
@@ -177,7 +191,9 @@ export class EditorStore {
         const target =
           published.kind === 'answer' ? this.questionId() : published.contentId;
         void this.router.navigate([
-          '/community/contents',
+          published.kind === 'architecture_review'
+            ? '/community/reviews'
+            : '/community/contents',
           target ?? published.contentId,
         ]);
       },
@@ -218,6 +234,7 @@ export class EditorStore {
   readonly isBusy$ = computed(
     () =>
       this.cover.isPending$() ||
+      this.design.isPending$() ||
       this.createMutation.isPending() ||
       this.saveMutation.isPending() ||
       this.publishMutation.isPending(),
@@ -264,11 +281,15 @@ export class EditorStore {
     });
   }
 
-  saveDraft(fields: DraftFields, tagIds: readonly number[]): void {
+  saveDraft(
+    fields: DraftFields,
+    tagIds: readonly number[],
+    dueAt?: string,
+  ): void {
     if (this.isBusy$()) return;
     if (this.isNew$()) {
       this.createMutation.run({
-        command: this.createCommand(fields, tagIds),
+        command: this.createCommand(fields, tagIds, dueAt),
         publish: false,
       });
     } else {
@@ -276,10 +297,14 @@ export class EditorStore {
     }
   }
 
-  publish(fields: DraftFields, tagIds: readonly number[]): void {
+  publish(
+    fields: DraftFields,
+    tagIds: readonly number[],
+    dueAt?: string,
+  ): void {
     if (this.isNew$()) {
       this.createMutation.run({
-        command: this.createCommand(fields, tagIds),
+        command: this.createCommand(fields, tagIds, dueAt),
         publish: true,
       });
     } else {
@@ -315,8 +340,10 @@ export class EditorStore {
   private createCommand(
     fields: DraftFields,
     tagIds: readonly number[],
-  ): CreateContentCommand {
+    dueAt?: string,
+  ): CreateReviewCommand {
     return {
+      ...(dueAt ? { dueAt: new Date(dueAt).toISOString() } : {}),
       clientRequestId: this.clientRequestId,
       ...createFields(fields),
       visibility: 'organization',
