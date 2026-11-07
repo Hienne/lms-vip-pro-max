@@ -171,14 +171,15 @@ in two of them, and the course `DEMO-MEDIA` with a PDF and a video lesson.
 
 - **check** (every PR and push to `main`): `npm ci` → `nx-set-shas` →
   restore `.nx/cache` → `npm run ci:check` (affected lint, typecheck, build and
-  bundle guard; they block the image job on failure). CI does not run unit
+  bundle guard; they block deploy on failure). CI does not run unit
   tests; run `npm run check` locally. The workflow sets `SKIP_FORMAT_CHECK:
   'true'`; set it to `'false'` to restore `npm run format:check`.
-- **image** (after check): `docker build` of the root `Dockerfile`, which runs
+- **image** (parallel with check): buildx build of the root `Dockerfile` with
+  the GitHub Actions layer cache (the `npm ci` layer is reused), which runs
   the production build and stamps `version.txt` with the commit. On push to
   `main` the image is pushed to `ghcr.io/hienne/lms-vip-pro-max` and its
   digest handed to deploy; PRs only build it.
-- **deploy** (push to `main`): SSH to the Ubuntu server with the
+- **deploy** (push to `main`, needs both check and image): SSH to the Ubuntu server with the
   `UBUNTU_FE_DEPLOY_SSH_KEY` secret. The key's forced command runs the
   root-owned FE deploy script, which copies the image's `/artifact` into the
   Nginx web root, verifies it and rolls back on failure. The job then checks
