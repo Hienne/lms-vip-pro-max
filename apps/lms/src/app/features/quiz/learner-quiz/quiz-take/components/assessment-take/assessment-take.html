@@ -10,20 +10,40 @@
   <button
     uiButton
     variant="primary"
-    [disabled]="submitting()"
+    [disabled]="answersLocked()"
     (click)="submitted.emit()"
   >
     Nộp bài
   </button>
 </header>
-@if (saveError(); as error) {
+@let policy = focusPolicy(); @if (policy.locked) {
+<ui-alert
+  [tone]="policy.submitError ? 'danger' : 'warning'"
+  class="take__alert"
+>
+  Đã rời màn hình làm bài {{ policy.count }} lần. @if (policy.submitError; as
+  error) { Chưa nộp được bài. {{ error }}
+  <button uiButton size="sm" (click)="retrySubmit.emit()">Thử nộp lại</button>
+  } @else { Đang tự động nộp bài… }
+</ui-alert>
+} @else { @if (policy.count) {
+<ui-alert tone="warning" class="take__alert">
+  Đã rời màn hình làm bài {{ policy.count }}/{{ policy.limit }} lần. Hệ thống tự
+  động nộp bài nếu vượt {{ policy.limit }} lần.
+</ui-alert>
+} @else {
+<p class="take__alert take__rule">
+  Giữ tab làm bài đang hoạt động và con trỏ trong trang. Hệ thống tự động nộp
+  bài nếu rời màn hình quá {{ policy.limit }} lần.
+</p>
+} @if (saveError(); as error) {
 <ui-alert tone="warning" class="take__alert">
   Chưa lưu được đáp án. {{ error }}
   <button uiButton size="sm" [disabled]="saving()" (click)="retrySave.emit()">
     Thử lại
   </button>
 </ui-alert>
-}
+} }
 <div class="take__layout">
   <section class="take__question" aria-labelledby="question-heading">
     <div class="take__question-bar">
@@ -37,6 +57,7 @@
         variant="ghost"
         size="sm"
         [attr.aria-pressed]="q.flagged"
+        [disabled]="answersLocked()"
         (click)="flagged.emit(q.attemptQuestionId)"
       >
         <ui-icon name="flag" size="sm" />{{ q.flagged ? 'Bỏ đánh dấu' : 'Đánh
@@ -58,7 +79,7 @@
           [name]="'answer-' + q.attemptQuestionId"
           [attr.aria-label]="option.content"
           [checked]="option.selected"
-          [disabled]="submitting()"
+          [disabled]="answersLocked()"
           (change)="select($event, q.attemptQuestionId, option.id)"
         />
       </ui-option-card>
@@ -77,7 +98,7 @@
         Câu tiếp<ui-icon name="chevron-right" size="sm" />
       </button>
       } @else {
-      <button uiButton [disabled]="submitting()" (click)="submitted.emit()">
+      <button uiButton [disabled]="answersLocked()" (click)="submitted.emit()">
         Xem lại và nộp bài
       </button>
       }
@@ -104,7 +125,7 @@
       (goto)="goto.emit($event)"
     />
     <app-question-legend />
-    <button uiButton [disabled]="submitting()" (click)="submitted.emit()">
+    <button uiButton [disabled]="answersLocked()" (click)="submitted.emit()">
       Nộp bài
     </button>
   </section>

@@ -6,7 +6,45 @@
   (pointerdown)="focus($event)"
 >
   <div #mount class="room-canvas__mount"></div>
-  @if (view().online) {
+  @if (view().online) { @if (gesturesEnabled()) {
+  <div class="room-canvas__gestures">
+    <div class="row row--gap-1" role="group" aria-label="Động tác nhân vật">
+      <button
+        uiButton
+        size="sm"
+        [disabled]="view().chatting"
+        (click)="performGesture('jump', $event)"
+      >
+        Nhảy
+      </button>
+      <button
+        uiButton
+        size="sm"
+        [disabled]="view().chatting"
+        (click)="performGesture('wave', $event)"
+      >
+        Vẫy chào
+      </button>
+    </div>
+  </div>
+  <p
+    class="room-canvas__gesture-notice"
+    [class.room-canvas__gesture-notice--active]="gestureNotice()"
+    role="status"
+  >
+    {{ gestureNotice() }}
+  </p>
+  } @if (mode() === '3d') {
+  <button
+    uiButton
+    size="sm"
+    class="room-canvas__portrait"
+    [attr.aria-pressed]="portrait()"
+    (click)="togglePortrait()"
+  >
+    Cận cảnh nhân vật
+  </button>
+  }
   <div class="room-canvas__controls" aria-label="Điều khiển cảm ứng">
     <button
       uiButton

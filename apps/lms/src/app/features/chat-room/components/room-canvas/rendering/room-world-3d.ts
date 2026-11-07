@@ -7,12 +7,35 @@ export const WORLD_SCALE = 80;
 export class RoomWorld3D {
   readonly root = new THREE.Group();
   private readonly cube = new THREE.BoxGeometry(1, 1, 1);
-  private readonly ball = new THREE.SphereGeometry(1, 12, 8);
+  private readonly ball = new THREE.SphereGeometry(1, 24, 16);
+  private readonly robe = new THREE.LatheGeometry(
+    [
+      [0, 0.22],
+      [0.26, 0.22],
+      [0.35, 0.25],
+      [0.375, 0.3],
+      [0.367, 0.36],
+      [0.306, 0.55],
+      [0.285, 0.65],
+      [0.308, 0.83],
+      [0.285, 0.94],
+      [0.23, 1.02],
+      [0.155, 1.07],
+      [0, 1.07],
+    ].map(([radius, height]) => new THREE.Vector2(radius, height)),
+    24,
+  );
   private readonly cylinder = new THREE.CylinderGeometry(1, 0.8, 1, 12);
   private readonly materials = new Map<number, THREE.MeshStandardMaterial>();
   private readonly textures: THREE.Texture[] = [];
+  private readonly walls = {
+    left: new THREE.Group(),
+    right: new THREE.Group(),
+    north: new THREE.Group(),
+    south: new THREE.Group(),
+  };
 
-  constructor(map: RoomMap) {
+  constructor(private map: RoomMap) {
     const w = map.width / WORLD_SCALE,
       d = map.height / WORLD_SCALE;
     const floor = this.box(
@@ -41,7 +64,7 @@ export class RoomWorld3D {
     const texture = new THREE.CanvasTexture(canvas);
     texture.colorSpace = THREE.SRGBColorSpace;
     texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
-    texture.repeat.set(3, 2);
+    texture.repeat.set(w / 4.65, d / 4.75);
     this.textures.push(texture);
     const floorMaterial = new THREE.MeshStandardMaterial({
       map: texture,
@@ -53,21 +76,9 @@ export class RoomWorld3D {
       right = w - left,
       near = 48 / WORLD_SCALE,
       far = d - 32 / WORLD_SCALE;
-    const ceiling = this.box(
-      this.root,
-      w / 2,
-      2.85,
-      d / 2,
-      w,
-      0.1,
-      d,
-      0xf6f4e9,
-    );
-    ceiling.castShadow = false;
-    ceiling.receiveShadow = false;
-    ceiling.material = new THREE.MeshBasicMaterial({ color: 0xf0f3ed });
+    this.root.add(...Object.values(this.walls));
     this.box(
-      this.root,
+      this.walls.left,
       left - 0.07,
       1.4,
       (near + far) / 2,
@@ -77,7 +88,7 @@ export class RoomWorld3D {
       0xf1f3e9,
     );
     this.box(
-      this.root,
+      this.walls.right,
       right + 0.07,
       1.4,
       (near + far) / 2,
@@ -87,7 +98,7 @@ export class RoomWorld3D {
       0xf1f3e9,
     );
     this.box(
-      this.root,
+      this.walls.north,
       w / 2,
       1.4,
       near - 0.07,
@@ -97,7 +108,7 @@ export class RoomWorld3D {
       0xe4ecdf,
     );
     this.box(
-      this.root,
+      this.walls.south,
       w / 2,
       1.4,
       far + 0.07,
@@ -107,8 +118,9 @@ export class RoomWorld3D {
       0xe4ecdf,
     );
     for (const x of [left, right]) {
+      const wall = x === left ? this.walls.left : this.walls.right;
       this.box(
-        this.root,
+        wall,
         x,
         0.08,
         (near + far) / 2,
@@ -117,13 +129,31 @@ export class RoomWorld3D {
         far - near,
         0x82a28a,
       );
-      for (const z of [2.5, 5.1, 7.7])
-        this.window(x + (x === left ? 0.035 : -0.035), z);
+      for (let z = near + 1.9; z < far - 1; z += 2.6)
+        this.window(wall, x + (x === left ? 0.035 : -0.035), z);
     }
-    this.box(this.root, w / 2, 0.08, near, right - left, 0.16, 0.04, 0x82a28a);
-    this.box(this.root, w / 2, 1.05, far - 0.025, 1.05, 2.1, 0.06, 0xb7c9b5);
     this.box(
-      this.root,
+      this.walls.north,
+      w / 2,
+      0.08,
+      near,
+      right - left,
+      0.16,
+      0.04,
+      0x82a28a,
+    );
+    this.box(
+      this.walls.south,
+      w / 2,
+      1.05,
+      far - 0.025,
+      1.05,
+      2.1,
+      0.06,
+      0xb7c9b5,
+    );
+    this.box(
+      this.walls.south,
       w / 2 - 0.36,
       1.05,
       far - 0.07,
@@ -133,17 +163,14 @@ export class RoomWorld3D {
       0x4d6857,
     );
     for (const object of map.objects) this.furniture(object);
-    const rug = this.box(
-      this.root,
-      560 / WORLD_SCALE,
-      0.012,
-      500 / WORLD_SCALE,
-      2.8,
-      0.02,
-      1.95,
-      0xc5d6bd,
-    );
-    rug.receiveShadow = true;
+    if (map.activityArea) this.drawActivityArea(map.activityArea);
+  }
+
+  showInterior(camera: THREE.Vector3): void {
+    this.walls.left.visible = camera.x > 32 / WORLD_SCALE;
+    this.walls.right.visible = camera.x < (this.map.width - 32) / WORLD_SCALE;
+    this.walls.north.visible = camera.z > 48 / WORLD_SCALE;
+    this.walls.south.visible = camera.z < (this.map.height - 32) / WORLD_SCALE;
   }
 
   material(color: number): THREE.MeshStandardMaterial {
@@ -189,13 +216,55 @@ export class RoomWorld3D {
     parent.add(mesh);
     return mesh;
   }
-  private window(x: number, z: number): void {
-    this.box(this.root, x, 1.7, z, 0.04, 1.25, 1.45, 0xcee7e5);
+  dressAvatar(parent: THREE.Group, color: number): void {
+    const mesh = new THREE.Mesh(this.robe, this.material(color));
+    mesh.scale.z = 0.73;
+    mesh.castShadow = true;
+    parent.add(mesh);
+  }
+  private window(wall: THREE.Group, x: number, z: number): void {
+    this.box(wall, x, 1.7, z, 0.04, 1.25, 1.45, 0xcee7e5);
     for (const edge of [-0.75, 0.75])
-      this.box(this.root, x, 1.7, z + edge, 0.08, 1.35, 0.05, 0xffffff);
+      this.box(wall, x, 1.7, z + edge, 0.08, 1.35, 0.05, 0xffffff);
     for (const y of [1.05, 2.35])
-      this.box(this.root, x, y, z, 0.08, 0.05, 1.55, 0xffffff);
-    this.box(this.root, x, 1.7, z, 0.08, 1.25, 0.04, 0xffffff);
+      this.box(wall, x, y, z, 0.08, 0.05, 1.55, 0xffffff);
+    this.box(wall, x, 1.7, z, 0.08, 1.25, 0.04, 0xffffff);
+  }
+  private drawActivityArea(area: NonNullable<RoomMap['activityArea']>): void {
+    const canvas = document.createElement('canvas');
+    canvas.width = 1024;
+    canvas.height = 384;
+    const paint = canvas.getContext('2d');
+    if (!paint) return;
+    paint.fillStyle = '#bed3bc';
+    paint.fillRect(0, 0, canvas.width, canvas.height);
+    paint.strokeStyle = '#88aa90';
+    paint.lineWidth = 5;
+    paint.strokeRect(24, 22, canvas.width - 48, canvas.height - 44);
+    paint.fillStyle = '#52795e';
+    paint.font = '600 50px Segoe UI, sans-serif';
+    paint.textAlign = 'center';
+    paint.fillText('Khu giao lưu', canvas.width * 0.37, 102);
+    const texture = new THREE.CanvasTexture(canvas);
+    texture.colorSpace = THREE.SRGBColorSpace;
+    texture.anisotropy = 4;
+    this.textures.push(texture);
+    const mat = new THREE.MeshStandardMaterial({
+      map: texture,
+      roughness: 0.95,
+    });
+    const floorMark = new THREE.Mesh(
+      new THREE.PlaneGeometry(area.w / WORLD_SCALE, area.h / WORLD_SCALE),
+      mat,
+    );
+    floorMark.rotation.x = -Math.PI / 2;
+    floorMark.position.set(
+      (area.x + area.w / 2) / WORLD_SCALE,
+      0.015,
+      (area.y + area.h / 2) / WORLD_SCALE,
+    );
+    floorMark.receiveShadow = true;
+    this.root.add(floorMark);
   }
   private furniture(o: RoomFurniture): void {
     const group = new THREE.Group();
@@ -316,6 +385,7 @@ export class RoomWorld3D {
     });
     geometries.add(this.cube);
     geometries.add(this.ball);
+    geometries.add(this.robe);
     geometries.add(this.cylinder);
     geometries.forEach((g) => g.dispose());
     this.materials.forEach((m) => materials.add(m));

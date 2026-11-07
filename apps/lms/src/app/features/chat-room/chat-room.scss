@@ -34,4 +34,34 @@
   &__composer {
     border-top: 1px solid ui.color(border);
   }
+  &__game {
+    padding: ui.space(4);
+    border-bottom: 1px solid ui.color(border);
+    h2,
+    h3,
+    p {
+      margin: 0;
+    }
+    h2 {
+      @include ui.text(lg);
+    }
+    h3 {
+      @include ui.text(md);
+    }
+    p {
+      @include ui.text(sm, muted);
+    }
+    > :not(:first-child) {
+      margin-top: ui.space(3);
+    }
+  }
+  &__game-header {
+    @include ui.row-between(3);
+    flex-wrap: wrap;
+  }
+  &__choices {
+    display: flex;
+    flex-wrap: wrap;
+    gap: ui.space(2);
+  }
 }

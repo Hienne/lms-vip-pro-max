@@ -46,7 +46,14 @@ export class AssessmentTake {
   readonly submitting = input(false);
   /** The server's message when a choice could not be saved; shown with "Thử lại". */
   readonly saveError = input<string>();
+  readonly focusPolicy = input.required<{
+    readonly count: number;
+    readonly limit: number;
+    readonly locked: boolean;
+    readonly submitError?: string;
+  }>();
   readonly retrySave = output<void>();
+  readonly retrySubmit = output<void>();
   readonly answerSelected = output<{
     questionId: number;
     optionId: number;
@@ -55,6 +62,9 @@ export class AssessmentTake {
   readonly flagged = output<number>();
   readonly goto = output<number>();
   readonly submitted = output<void>();
+  protected readonly answersLocked = computed(
+    () => this.submitting() || this.focusPolicy().locked,
+  );
 
   protected readonly question = computed(
     () => this.questions()[this.current()],

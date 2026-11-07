@@ -37,16 +37,25 @@ export class ChatRoom {
       const composer = this.composer();
       untracked(() => {
         if (chatting && composer) {
-          if (document.pointerLockElement) document.exitPointerLock();
           composer.focus();
         }
       });
     });
   }
   protected shortcut(event: KeyboardEvent): void {
-    if (event.isComposing || event.repeat) return;
-    if (event.key === 'Escape' && document.pointerLockElement)
-      document.exitPointerLock();
+    if (event.isComposing) return;
+    const target = event.target as HTMLElement;
+    if (
+      event.code === 'Space' &&
+      this.store.gesturesEnabled$() &&
+      !this.store.chatOpen$() &&
+      (target === document.body || target?.classList?.contains('room-canvas'))
+    ) {
+      event.preventDefault();
+      if (!event.repeat) this.store.performGesture('jump');
+      return;
+    }
+    if (event.repeat) return;
     if (event.key === 'Escape' && this.store.chatOpen$()) {
       event.preventDefault();
       this.store.closeChat();
@@ -55,9 +64,7 @@ export class ChatRoom {
     if (
       event.key === 'Enter' &&
       this.store.online$() &&
-      !['INPUT', 'TEXTAREA', 'BUTTON', 'SELECT'].includes(
-        (event.target as HTMLElement)?.tagName,
-      )
+      !['INPUT', 'TEXTAREA', 'BUTTON', 'SELECT'].includes(target?.tagName)
     ) {
       event.preventDefault();
       this.store.openChat();
