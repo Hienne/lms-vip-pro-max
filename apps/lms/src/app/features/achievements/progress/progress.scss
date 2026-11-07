@@ -22,9 +22,43 @@
     padding-block-start: ui.space(4);
   }
 
+  &__competency-link {
+    @include ui.row-between(3);
+    @include ui.text(sm);
+    padding-block: ui.space(2);
+    border-bottom: 1px solid ui.color(border);
+  }
+
+  &__intro {
+    h2 {
+      @include ui.text(xl);
+      margin: 0;
+      font-weight: ui.weight(semibold);
+    }
+
+    p {
+      @include ui.text(sm, muted);
+      margin: ui.space(1) 0 0;
+    }
+  }
+
   &__filters,
   &__toolbar {
     @include ui.row(3);
+  }
+
+  &__history-filters {
+    @include ui.stack(3);
+    padding-block: ui.space(2);
+  }
+
+  &__history-main {
+    @include ui.row(3);
+    align-items: center;
+  }
+
+  &__history-main .learning-progress__search {
+    flex: 1 1 ui.layout(sidebar);
   }
 
   &__search {
@@ -76,19 +110,23 @@
   }
 
   &__col-course {
-    width: 32%;
+    width: 27%;
   }
 
   &__col-progress {
-    width: 22%;
+    width: 20%;
+  }
+
+  &__col-score {
+    width: 12%;
   }
 
   &__col-status {
-    width: 18%;
+    width: 15%;
   }
 
   &__col-date {
-    width: 14%;
+    width: 13%;
   }
 
   &__course {
@@ -183,9 +221,64 @@
     }
   }
 
+  &__overview-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: ui.space(6);
+
+    @include ui.bp(lg) {
+      grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
+      grid-template-rows: auto auto 1fr;
+      row-gap: ui.space(3);
+      align-items: stretch;
+
+      > .learning-progress__competency-summary {
+        display: grid;
+        grid-template-rows: subgrid;
+        grid-row: span 3;
+        align-content: stretch;
+      }
+    }
+  }
+
+  &__competency-summary {
+    min-width: 0;
+    @include ui.stack(3);
+    padding-block: ui.space(5);
+    border-top: 1px solid ui.color(border);
+
+    h2 {
+      @include ui.text(xl);
+      margin: 0;
+      font-weight: ui.weight(semibold);
+    }
+  }
+
+  &__activity {
+    align-self: start;
+    padding: ui.space(4);
+    border: 1px solid ui.color(border);
+    border-radius: ui.radius(card);
+    background: ui.color(surface);
+  }
+
+  &__activity-summary {
+    @include ui.text(sm, muted);
+    margin: ui.space(3) 0 0;
+  }
+
+  &__heading {
+    @include ui.row-between(2);
+  }
+
   &__insight-panel {
     max-width: ui.layout(reading);
     padding-block: ui.space(6);
+  }
+
+  &__competency-panel,
+  &__history-panel {
+    max-width: none;
   }
 
   &__competency,
@@ -198,48 +291,6 @@
       margin: 0;
       font-weight: ui.weight(semibold);
     }
-  }
-
-  &__attempts {
-    margin: 0;
-    padding: 0;
-    list-style: none;
-  }
-
-  &__attempt {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
-    column-gap: ui.space(3);
-    padding-block: ui.space(4);
-    border-bottom: 1px solid ui.color(border);
-    color: inherit;
-    text-decoration: none;
-
-    &:hover .learning-progress__attempt-title {
-      text-decoration: underline;
-    }
-
-    &:focus-visible {
-      @include ui.focus-ring;
-    }
-  }
-
-  &__attempt-title {
-    font-weight: ui.weight(medium);
-    overflow-wrap: anywhere;
-  }
-
-  &__attempt-time {
-    @include ui.text(sm, muted);
-    grid-column: 1;
-  }
-
-  &__attempt-score {
-    @include ui.num;
-    grid-column: 2;
-    grid-row: 1 / span 2;
-    align-self: center;
-    text-align: end;
   }
 
   &__fail {
