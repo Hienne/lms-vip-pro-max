@@ -111,6 +111,58 @@ describe('the points and the leaderboard of the mock backend', () => {
     expect(last.offset).toBe(1);
   });
 
+  describe('hiding the name', () => {
+    const board = (username: string) =>
+      LeaderboardViewSchema.parse(
+        call(learnerEndpoints.leaderboard, login(username), {
+          scope: 'all',
+        }).body.data,
+      );
+    const hide = (username: string, show: boolean) =>
+      call(
+        learnerEndpoints.updateMyPreferences,
+        login(username),
+        {},
+        { showOnLeaderboard: show },
+      );
+    const ids = (view: LeaderboardView) => view.top.map((row) => row.userId);
+
+    it('is visible by default and the choice is kept', () => {
+      const read = () =>
+        call(learnerEndpoints.myPreferences, login('hocvien')).body.data;
+      expect(read()).toEqual({ showOnLeaderboard: true });
+      hide('hocvien', false);
+      expect(read()).toEqual({ showOnLeaderboard: false });
+      hide('hocvien', true);
+      expect(read()).toEqual({ showOnLeaderboard: true });
+    });
+
+    it("leaves the learner out of others' boards and closes the ranks, but not out of their own", () => {
+      const before = board('hocvien.tichhop');
+      const ownBefore = board('hocvien').me.rank;
+      hide('hocvien', false);
+      const others = board('hocvien.tichhop');
+      expect(ids(others)).not.toContain('000004');
+      expect(others.top).toHaveLength(before.top.length - 1);
+      const last = (view: LeaderboardView) =>
+        Math.max(...view.top.map((row) => row.rank));
+      expect(last(others)).toBe(last(before) - 1);
+      const own = board('hocvien');
+      expect(ids(own)).toContain('000004');
+      expect(own.me.rank).toBe(ownBefore);
+    });
+
+    it('refuses a body without the value and someone who is not a learner', () => {
+      expect(
+        call(learnerEndpoints.updateMyPreferences, login('hocvien'), {}, {})
+          .body.messageCode,
+      ).toBe('CORE-VALIDATION_FAILED');
+      expect(
+        call(learnerEndpoints.myPreferences, login('quantri')).body.messageCode,
+      ).toBe('CORE-ACCESS_DENIED');
+    });
+  });
+
   describe('the unit board', () => {
     const units = (username: string, query: Record<string, string> = {}) =>
       UnitLeaderboardSchema.parse(

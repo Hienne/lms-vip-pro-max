@@ -8,6 +8,7 @@ import {
   DashboardProgramsQuerySchema,
   EnrollmentDetailSchema,
   LeaderboardViewSchema,
+  LearnerPreferencesSchema,
   UnitLeaderboardQuerySchema,
   UnitLeaderboardSchema,
   LeaderboardQuerySchema,
@@ -219,5 +220,18 @@ export const learnerEndpoints = {
     path: '/api/v1/me/learning/leaderboard/units',
     query: UnitLeaderboardQuerySchema,
     response: UnitLeaderboardSchema,
+  }),
+  /** The caller's own preferences (visible on leaderboards by default). Only a learner has them. */
+  myPreferences: defineEndpoint({
+    method: 'get',
+    path: '/api/v1/me/learning/preferences',
+    response: LearnerPreferencesSchema,
+  }),
+  /** Shows or hides the caller's name on other learners' leaderboards; answers the preferences now in force. */
+  updateMyPreferences: defineEndpoint({
+    method: 'put',
+    path: '/api/v1/me/learning/preferences',
+    body: LearnerPreferencesSchema,
+    response: LearnerPreferencesSchema,
   }),
 } as const;

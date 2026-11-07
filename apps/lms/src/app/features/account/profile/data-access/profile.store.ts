@@ -3,6 +3,7 @@ import {
   authV1Endpoints,
   learnerEndpoints,
   type Badge,
+  type LearnerPreferences,
   type UpdateMeCommand,
 } from '@lms/contracts';
 import { registeredIcon, type IconName } from '@lms/ui';
@@ -62,16 +63,36 @@ export class ProfileStore {
     },
   );
 
+  /** Params that skip the call for anyone who is not a learner. */
+  private learnerParams(): { userId: string } | undefined {
+    const user = this.session.user$();
+    const isLearner = user?.grants.some(
+      (grant) => grant.roleCode === 'LEARNER' && grant.scope.type === 'OWN',
+    );
+    return user && isLearner ? { userId: user.userId } : undefined;
+  }
+
   private readonly badgeData = serverData(
     () => this.client.call(learnerEndpoints.myBadges),
     {
-      params: () => {
-        const user = this.session.user$();
-        const isLearner = user?.grants.some(
-          (grant) => grant.roleCode === 'LEARNER' && grant.scope.type === 'OWN',
-        );
-        return user && isLearner ? { userId: user.userId } : undefined;
-      },
+      params: () => this.learnerParams(),
+    },
+  );
+
+  private readonly preferenceData = serverData(
+    () => this.client.call(learnerEndpoints.myPreferences),
+    { params: () => this.learnerParams() },
+  );
+
+  private readonly preferenceMutation = serverMutation(
+    (command: LearnerPreferences) =>
+      this.client.call(learnerEndpoints.updateMyPreferences, {
+        body: command,
+      }),
+    {
+      errors: 'toast',
+      success: () => 'Đã lưu lựa chọn',
+      onSuccess: () => this.preferenceData.reload(),
     },
   );
 
@@ -89,6 +110,20 @@ export class ProfileStore {
   /** A learner has a badge section once the server has answered; anyone else has none. */
   readonly hasBadges$ = computed(() => this.badgeData.value() !== undefined);
   readonly badgesError$ = this.badgeData.error;
+
+  /** A learner has the leaderboard choice once the server has answered; anyone else has none. */
+  readonly hasPreferences$ = computed(
+    () => this.preferenceData.value() !== undefined,
+  );
+  /** Whether the learner's name shows on other learners' leaderboards. */
+  readonly showOnLeaderboard$ = computed(
+    () => this.preferenceData.value()?.showOnLeaderboard ?? true,
+  );
+  readonly isSavingPreference$ = this.preferenceMutation.isPending;
+
+  setShowOnLeaderboard(show: boolean): void {
+    this.preferenceMutation.run({ showOnLeaderboard: show });
+  }
 
   retryBadges(): void {
     this.badgeData.reload();

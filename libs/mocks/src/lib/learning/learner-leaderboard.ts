@@ -1,11 +1,13 @@
 import {
   LeaderboardQuerySchema,
+  LearnerPreferencesSchema,
   UnitLeaderboardQuerySchema,
   type LeaderboardView,
   type UnitLeaderboard,
   type LeaderboardPeriod,
   type LeaderboardRow,
   type LeaderboardScope,
+  type LearnerPreferences,
   type MyPoints,
 } from '@lms/contracts';
 import type { FakeRequest } from '../backend/fake-backend';
@@ -43,6 +45,9 @@ const numeric = (value: string | undefined): number | undefined =>
  * Only a learner may ask.
  */
 export class LearnerLeaderboard {
+  /** Learners who hid their name from other learners' boards. */
+  private readonly hidden = new Set<string>();
+
   constructor(private readonly directory: LearningDirectory) {}
 
   /** `GET /points`: the caller's fixed figures. */
@@ -158,6 +163,22 @@ export class LearnerLeaderboard {
     };
   }
 
+  /** `GET /preferences`: visible unless the caller hid their name. */
+  preferences(request: FakeRequest): LearnerPreferences {
+    const caller = this.caller(request);
+    return { showOnLeaderboard: !this.hidden.has(caller.userId) };
+  }
+
+  /** `PUT /preferences`: hides or shows the caller's name; only the caller's own can be set. */
+  updatePreferences(request: FakeRequest): LearnerPreferences {
+    const caller = this.caller(request);
+    const parsed = LearnerPreferencesSchema.safeParse(request.body);
+    if (!parsed.success) return refuse('validationFailed');
+    if (parsed.data.showOnLeaderboard) this.hidden.delete(caller.userId);
+    else this.hidden.add(caller.userId);
+    return parsed.data;
+  }
+
   private caller(request: FakeRequest): Learner {
     const userId = this.directory.callerId(request);
     const learner = this.learners().find((entry) => entry.userId === userId);
@@ -177,8 +198,12 @@ export class LearnerLeaderboard {
     return [...seeded, ...boardLearnerFixtures];
   }
 
+  /** Who the caller's board lists: the scope's learners, without those who hid their name (the caller stays). */
   private members(caller: Learner, scope: LeaderboardScope): Learner[] {
-    const everyone = this.learners();
+    const everyone = this.learners().filter(
+      (entry) =>
+        !this.hidden.has(entry.userId) || entry.userId === caller.userId,
+    );
     if (scope === 'all') return everyone;
     if (scope === 'org')
       return everyone.filter((entry) => entry.orgId === caller.orgId);

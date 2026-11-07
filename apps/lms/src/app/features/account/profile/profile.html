@@ -94,6 +94,29 @@
     </ul>
     }
   </section>
+  } @if (store.hasPreferences$()) {
+  <section
+    uiCard
+    padded
+    class="profile__preferences"
+    aria-labelledby="profile-preferences"
+  >
+    <h2 id="profile-preferences">Bảng xếp hạng</h2>
+    <label class="profile__toggle">
+      <input
+        type="checkbox"
+        uiSwitch
+        [checked]="store.showOnLeaderboard$()"
+        [disabled]="store.isSavingPreference$()"
+        (change)="store.setShowOnLeaderboard($any($event.target).checked)"
+      />
+      Hiện tên của tôi trên bảng xếp hạng
+    </label>
+    <p class="profile__meta">
+      Khi tắt, người khác không thấy tên bạn và thứ hạng của họ khép lại. Bạn
+      vẫn thấy thứ hạng của mình, và XP của bạn vẫn được tính vào đơn vị.
+    </p>
+  </section>
   }
 
   <div class="grid-2">

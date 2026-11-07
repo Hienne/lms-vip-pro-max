@@ -42,6 +42,22 @@
     }
   }
 
+  &__preferences {
+    display: grid;
+    gap: ui.space(2);
+
+    h2 {
+      @include ui.text(md);
+      font-weight: ui.weight(semibold);
+    }
+  }
+
+  &__toggle {
+    display: flex;
+    align-items: center;
+    gap: ui.space(3);
+  }
+
   &__badge-list {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(16rem, 1fr));

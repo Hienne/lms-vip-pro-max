@@ -340,6 +340,11 @@ export class LearningBackend {
       [learnerEndpoints.myBadges, (r) => ok(this.badges.badges(r))],
       [learnerEndpoints.leaderboard, (r) => ok(this.board.leaderboard(r))],
       [learnerEndpoints.unitLeaderboard, (r) => ok(this.board.units(r))],
+      [learnerEndpoints.myPreferences, (r) => ok(this.board.preferences(r))],
+      [
+        learnerEndpoints.updateMyPreferences,
+        (r) => ok(this.board.updatePreferences(r)),
+      ],
       [personalEndpoints.lessonNotes, (r) => ok(this.notes.notesOf(r))],
       [personalEndpoints.addNote, (r) => ok(this.notes.addNote(r))],
       [personalEndpoints.deleteNote, (r) => ok(this.notes.deleteNote(r))],

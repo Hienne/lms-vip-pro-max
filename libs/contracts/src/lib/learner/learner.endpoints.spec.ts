@@ -6,6 +6,7 @@ import { capturedLessonPlayer } from './lesson-player.captured';
 import {
   EnrollmentDetailSchema,
   LeaderboardViewSchema,
+  LearnerPreferencesSchema,
   UnitLeaderboardQuerySchema,
   UnitLeaderboardSchema,
   LeaderboardQuerySchema,
@@ -88,6 +89,8 @@ describe('learner endpoints', () => {
       ['myBadges', 'get', '/api/v1/me/learning/badges'],
       ['leaderboard', 'get', '/api/v1/me/learning/leaderboard'],
       ['unitLeaderboard', 'get', '/api/v1/me/learning/leaderboard/units'],
+      ['myPreferences', 'get', '/api/v1/me/learning/preferences'],
+      ['updateMyPreferences', 'put', '/api/v1/me/learning/preferences'],
     ]);
     expect(
       toUrl(learnerEndpoints.saveProgress, { enrollmentId: 2, blockId: 31 }),
@@ -561,6 +564,25 @@ describe('learner endpoints', () => {
           ...captured.streak,
           days: [{ ...day, date: '12/10' }],
         }).success,
+      ).toBe(false);
+    });
+  });
+
+  describe('preferences', () => {
+    it('parses the responses captured from the backend', () => {
+      expect(
+        LearnerPreferencesSchema.parse(captured.preferences).showOnLeaderboard,
+      ).toBe(true);
+      expect(
+        LearnerPreferencesSchema.parse(captured.preferencesHidden)
+          .showOnLeaderboard,
+      ).toBe(false);
+    });
+
+    it('refuses a missing or non-boolean value', () => {
+      expect(LearnerPreferencesSchema.safeParse({}).success).toBe(false);
+      expect(
+        LearnerPreferencesSchema.safeParse({ showOnLeaderboard: 'no' }).success,
       ).toBe(false);
     });
   });

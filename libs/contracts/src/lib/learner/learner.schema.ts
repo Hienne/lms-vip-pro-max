@@ -442,6 +442,16 @@ export const UnitLeaderboardSchema = z.object({
 });
 export type UnitLeaderboard = z.infer<typeof UnitLeaderboardSchema>;
 
+/**
+ * `LearnerPreferences`: the learner's own choices. `showOnLeaderboard` false hides the name from other learners'
+ * personal leaderboards, whose ranks close up; the learner still sees their own rank and their XP still counts for
+ * their unit. The default is visible. The same shape is the body of the update.
+ */
+export const LearnerPreferencesSchema = z.object({
+  showOnLeaderboard: z.boolean(),
+});
+export type LearnerPreferences = z.infer<typeof LearnerPreferencesSchema>;
+
 /** The XP of each source, read from the ledger; `total` is their sum. A streak earns no XP. */
 export const PointPartsSchema = z.object({
   /** Lessons completed, each counted once however many cycles or revisions. */

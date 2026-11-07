@@ -15,6 +15,9 @@
  * 2026-11-07 and are to be captured again on the running backend (the second is a caller whose unit has fewer than
  * five learners).
  *
+ * `preferences` and `preferencesHidden` are shaped from the leaderboard opt-out integration tests of 2026-11-07 and
+ * are to be captured again on the running backend (visible by default, and after the learner hides their name).
+ *
  * `badges` is shaped from the badge integration tests of 2026-11-07 and is to be captured again on the running backend.
  *
  * `points` was captured on 2026-11-01 as `hocvien` (`GET /points`). `leaderboard`, `leaderboardTeam` and
@@ -912,6 +915,8 @@ export const capturedLearner = {
       },
     ],
   },
+  preferences: { showOnLeaderboard: true },
+  preferencesHidden: { showOnLeaderboard: false },
   unitLeaderboard: {
     period: 'month',
     offset: 0,
