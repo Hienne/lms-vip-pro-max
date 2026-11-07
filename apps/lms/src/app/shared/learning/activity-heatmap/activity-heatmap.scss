@@ -1,0 +1,104 @@
+@use 'ui';
+
+:host {
+  display: block;
+}
+
+/// One hue (`primary`) in four steps over the empty fill; the empty and rest fills are neutrals.
+@mixin shade($level) {
+  @if $level == 1 {
+    background-color: color-mix(
+      in srgb,
+      ui.color(primary) 25%,
+      ui.color(surface)
+    );
+  } @else if $level == 2 {
+    background-color: color-mix(
+      in srgb,
+      ui.color(primary) 50%,
+      ui.color(surface)
+    );
+  } @else if $level == 3 {
+    background-color: color-mix(
+      in srgb,
+      ui.color(primary) 75%,
+      ui.color(surface)
+    );
+  } @else if $level == 4 {
+    background-color: ui.color(primary);
+  }
+}
+
+.activity-heatmap {
+  @include ui.stack(3);
+
+  &__scroll {
+    overflow-x: auto;
+    padding: ui.space(1);
+  }
+
+  &__grid {
+    @include ui.stack(1);
+    width: max-content;
+  }
+
+  &__row {
+    display: flex;
+    gap: ui.space(1);
+  }
+
+  &__cell,
+  &__swatch {
+    box-sizing: border-box;
+    flex: none;
+    inline-size: ui.space(3);
+    block-size: ui.space(3);
+    border-radius: ui.radius(sm);
+    background-color: ui.color(surface-sunken);
+
+    &[data-level='1'] {
+      @include shade(1);
+    }
+
+    &[data-level='2'] {
+      @include shade(2);
+    }
+
+    &[data-level='3'] {
+      @include shade(3);
+    }
+
+    &[data-level='4'] {
+      @include shade(4);
+    }
+
+    // A rest day: hatched, so it reads as "off" apart from any shade it earned.
+    &--rest {
+      background-image: repeating-linear-gradient(
+        135deg,
+        transparent 0,
+        transparent 2px,
+        color-mix(in srgb, ui.color(border-strong) 70%, transparent) 2px,
+        color-mix(in srgb, ui.color(border-strong) 70%, transparent) 3px
+      );
+    }
+  }
+
+  &__cell:focus-visible {
+    @include ui.focus-ring;
+  }
+
+  &__legend {
+    @include ui.row(1);
+    @include ui.text(sm, muted);
+    margin: 0;
+
+    span:last-child {
+      margin-inline-start: 0;
+    }
+
+    .activity-heatmap__swatch--rest {
+      margin-inline-start: ui.space(3);
+    }
+  }
+}

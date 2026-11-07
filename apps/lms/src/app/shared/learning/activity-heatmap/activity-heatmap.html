@@ -1,0 +1,34 @@
+<div class="activity-heatmap">
+  <div class="activity-heatmap__scroll">
+    <div ngGrid class="activity-heatmap__grid" [attr.aria-label]="label()">
+      @for (row of rows(); track $index) {
+      <div ngGridRow class="activity-heatmap__row">
+        @for (cell of row; track cell.date) {
+        <div
+          ngGridCell
+          class="activity-heatmap__cell"
+          [class.activity-heatmap__cell--rest]="cell.restDay"
+          [attr.data-level]="cell.level"
+          [attr.aria-label]="cell.label"
+          [uiTooltip]="cell.label"
+        ></div>
+        }
+      </div>
+      }
+    </div>
+  </div>
+  <p class="activity-heatmap__legend" aria-hidden="true">
+    <span>Ít</span>
+    <span class="activity-heatmap__swatch" data-level="0"></span>
+    <span class="activity-heatmap__swatch" data-level="1"></span>
+    <span class="activity-heatmap__swatch" data-level="2"></span>
+    <span class="activity-heatmap__swatch" data-level="3"></span>
+    <span class="activity-heatmap__swatch" data-level="4"></span>
+    <span>Nhiều</span>
+    <span
+      class="activity-heatmap__swatch activity-heatmap__swatch--rest"
+      data-level="0"
+    ></span>
+    <span>Ngày nghỉ</span>
+  </p>
+</div>

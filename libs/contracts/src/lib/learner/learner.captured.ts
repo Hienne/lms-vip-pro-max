@@ -829,6 +829,23 @@ export const capturedLearner = {
     },
     streakDays: 2,
   },
+  /**
+   * Shaped from the response of `GET /streak` in the backend's `LearningStreakIT` (2026-11-07), shortened
+   * to one week; the real answer holds 26 weeks. Recapture it from the local stack once the endpoint is
+   * deployed. Wed 2026-11-04 is a holiday, Sat 2026-11-07 a rest day the learner studied on.
+   */
+  streak: {
+    currentStreak: 2,
+    longestStreak: 5,
+    days: [
+      { date: '2026-11-02', lessons: 0, quizzes: 0, restDay: false },
+      { date: '2026-11-03', lessons: 2, quizzes: 1, restDay: false },
+      { date: '2026-11-04', lessons: 0, quizzes: 0, restDay: true },
+      { date: '2026-11-05', lessons: 1, quizzes: 0, restDay: false },
+      { date: '2026-11-06', lessons: 4, quizzes: 0, restDay: false },
+      { date: '2026-11-07', lessons: 1, quizzes: 0, restDay: true },
+    ],
+  },
   leaderboard: {
     page: {
       items: [

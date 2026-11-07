@@ -403,6 +403,32 @@ export const MyPointsSchema = z.object({
 export type MyPoints = z.infer<typeof MyPointsSchema>;
 
 /**
+ * `LearningStreakViews.HeatmapDay`: one calendar day (Asia/Ho_Chi_Minh) of the activity heatmap. `lessons`
+ * and `quizzes` are the lessons completed and the quizzes submitted that day; `restDay` is a weekend or a
+ * bank holiday (a make-up Saturday is a working day). Learning on a rest day shows here and adds nothing
+ * to the streak.
+ */
+export const HeatmapDaySchema = z.object({
+  date: z.iso.date(),
+  lessons: z.number().int().nonnegative(),
+  quizzes: z.number().int().nonnegative(),
+  restDay: z.boolean(),
+});
+export type HeatmapDay = z.infer<typeof HeatmapDaySchema>;
+
+/**
+ * `LearningStreakViews.MyStreak`: the caller's streak in working days and the heatmap data. `days` covers
+ * the last 26 weeks up to today, starts on a Monday and holds one row per day, days without activity
+ * included. The server decides what qualifies a day and which days are rest days; the app only shades.
+ */
+export const MyStreakSchema = z.object({
+  currentStreak: z.number().int().nonnegative(),
+  longestStreak: z.number().int().nonnegative(),
+  days: z.array(HeatmapDaySchema),
+});
+export type MyStreak = z.infer<typeof MyStreakSchema>;
+
+/**
  * `LearningAnalytics.Counts`: the server's counts over a set of enrolments. Both percents are the
  * server's: `completionRate` is completed / total and `averageProgress` the mean of the courses'
  * progress, each to two decimals.

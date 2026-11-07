@@ -42,6 +42,44 @@
 </ui-empty>
 } } @if (!store.isEmpty$() && !store.summaryError$() &&
 !store.isSummaryLoading$()) {
+<section class="learning-progress__rhythm" aria-labelledby="progress-rhythm">
+  <h2 id="progress-rhythm">Nhịp học</h2>
+  @if (store.streakError$(); as error) {
+  <ui-error-state
+    title="Không tải được chuỗi ngày học"
+    [message]="error.message"
+    (retry)="store.retryStreak()"
+  />
+  } @else if (store.streak$(); as streak) {
+  <dl class="learning-progress__streak">
+    <div>
+      <dt>Chuỗi hiện tại</dt>
+      <dd>{{ streak.currentStreak }} ngày làm việc</dd>
+    </div>
+    <div>
+      <dt>Chuỗi dài nhất</dt>
+      <dd>{{ streak.longestStreak }} ngày làm việc</dd>
+    </div>
+  </dl>
+  <p class="learning-progress__muted">
+    Chuỗi chỉ đếm ngày làm việc. Cuối tuần và ngày nghỉ của ngân hàng không tính
+    và không làm đứt chuỗi; học vào những ngày đó vẫn hiện trên lịch.
+  </p>
+  <app-activity-heatmap
+    [days]="streak.days"
+    label="Hoạt động học 26 tuần gần nhất"
+  />
+  } @else {
+  <div
+    uiSkeleton
+    variant="block"
+    class="learning-progress__rhythm-placeholder"
+    aria-busy="true"
+  ></div>
+  }
+</section>
+} @if (!store.isEmpty$() && !store.summaryError$() &&
+!store.isSummaryLoading$()) {
 <ui-tabs
   label="Tiến độ học tập"
   [tabs]="tabs"

@@ -14,6 +14,7 @@ import {
   LearningProgressOverviewSchema,
   MyCoursesQuerySchema,
   MyPointsSchema,
+  MyStreakSchema,
   OpenSessionCommandSchema,
   ProgressExportQuerySchema,
   ProgressResultSchema,
@@ -77,6 +78,7 @@ describe('learner endpoints', () => {
         '/api/v1/me/learning/reminders/{reminderId}/read',
       ],
       ['myPoints', 'get', '/api/v1/me/learning/points'],
+      ['myStreak', 'get', '/api/v1/me/learning/streak'],
       ['leaderboard', 'get', '/api/v1/me/learning/leaderboard'],
     ]);
     expect(
@@ -492,6 +494,37 @@ describe('learner endpoints', () => {
       expect(toUrl(learnerEndpoints.course, { courseId: 8 })).toBe(
         '/api/v1/me/learning/courses/8',
       );
+    });
+  });
+
+  describe('streak', () => {
+    it('parses the response captured from the backend', () => {
+      expect(
+        learnerEndpoints.myStreak.response.safeParse(captured.streak).success,
+      ).toBe(true);
+    });
+
+    it('keeps a rest day with activity and refuses a negative count or a bad date', () => {
+      const streak = MyStreakSchema.parse(captured.streak);
+      expect(streak.days.at(-1)).toEqual({
+        date: '2026-11-07',
+        lessons: 1,
+        quizzes: 0,
+        restDay: true,
+      });
+      const day = captured.streak.days[0];
+      expect(
+        MyStreakSchema.safeParse({
+          ...captured.streak,
+          days: [{ ...day, lessons: -1 }],
+        }).success,
+      ).toBe(false);
+      expect(
+        MyStreakSchema.safeParse({
+          ...captured.streak,
+          days: [{ ...day, date: '12/10' }],
+        }).success,
+      ).toBe(false);
     });
   });
 

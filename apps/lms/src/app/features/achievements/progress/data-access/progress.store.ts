@@ -146,6 +146,11 @@ export class ProgressStore {
     this.client.call(learnerEndpoints.progressSummary),
   );
 
+  /** The streak in working days and the 26-week heatmap; the server decides what counts. */
+  private readonly streakData = serverData(() =>
+    this.client.call(learnerEndpoints.myStreak),
+  );
+
   /** The caller's competencies over every course; the server decides which have a percent. */
   private readonly competencyData = serverData(() =>
     this.client.call(learnerQuizEndpoints.myCompetency, { query: {} }),
@@ -186,6 +191,9 @@ export class ProgressStore {
   readonly sortValue$ = computed(() => sortParam(this.state.sort()));
   readonly page$ = this.state.page.asReadonly();
 
+  readonly streak$ = this.streakData.value;
+  readonly streakError$ = this.streakData.error;
+  readonly isStreakLoading$ = this.streakData.isLoading;
   readonly summaryError$ = this.summaryData.error;
   readonly isSummaryLoading$ = this.summaryData.isLoading;
   readonly coursesError$ = this.coursesData.error;
@@ -321,6 +329,10 @@ export class ProgressStore {
 
   retrySummary(): void {
     this.summaryData.reload();
+  }
+
+  retryStreak(): void {
+    this.streakData.reload();
   }
 
   retryCompetency(): void {

@@ -12,6 +12,30 @@
     min-height: ui.space(18);
   }
 
+  &__rhythm {
+    @include ui.stack(3);
+    margin-block-end: ui.space(5);
+  }
+
+  &__rhythm-placeholder {
+    min-height: ui.space(18);
+  }
+
+  &__streak {
+    @include ui.row(6);
+    margin: 0;
+
+    dt {
+      @include ui.text(sm, muted);
+    }
+
+    dd {
+      @include ui.num;
+      margin: 0;
+      font-weight: ui.weight(semibold);
+    }
+  }
+
   &__note {
     display: block;
     margin: ui.space(3) 0 ui.space(5);

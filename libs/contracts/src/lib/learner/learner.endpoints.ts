@@ -16,6 +16,7 @@ import {
   LearningReminderSchema,
   MyCoursesQuerySchema,
   MyPointsSchema,
+  MyStreakSchema,
   OpenSessionCommandSchema,
   ProgressExportQuerySchema,
   ProgressResultSchema,
@@ -149,6 +150,16 @@ export const learnerEndpoints = {
     method: 'get',
     path: '/api/v1/me/learning/points',
     response: MyPointsSchema,
+  }),
+  /**
+   * The caller's streak in working days (weekends and bank holidays neither count nor break it) and
+   * the per-day data of the 26-week heatmap. A caller who is not a learner is refused with
+   * `CORE-ACCESS_DENIED`.
+   */
+  myStreak: defineEndpoint({
+    method: 'get',
+    path: '/api/v1/me/learning/streak',
+    response: MyStreakSchema,
   }),
   /**
    * Learners ranked by points in a scope (`team`, `org` by default, `all`), a page at a time, plus the
