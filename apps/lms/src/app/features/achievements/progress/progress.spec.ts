@@ -637,6 +637,44 @@ describe('LearningProgress', () => {
     });
   });
 
+  describe('the streak and the heatmap', () => {
+    it('shows the server streak in working days and 26 weeks of days with no pagination', async () => {
+      await open();
+      expect(calls(learnerEndpoints.myStreak).length).toBe(1);
+      const figures = Array.from(
+        el.querySelectorAll('.learning-progress__streak div'),
+      ).map((node) =>
+        Array.from(node.querySelectorAll('dt, dd')).map((part) =>
+          part.textContent?.trim(),
+        ),
+      );
+      expect(figures).toEqual([
+        ['Chuỗi hiện tại', '3 ngày làm việc'],
+        ['Chuỗi dài nhất', '8 ngày làm việc'],
+      ]);
+      const cells = el.querySelectorAll('.activity-heatmap__cell');
+      expect(cells.length).toBeGreaterThanOrEqual(25 * 7);
+      expect(cells.length).toBeLessThanOrEqual(26 * 7);
+      expect(
+        Array.from(cells).every((cell) => cell.getAttribute('aria-label')),
+      ).toBe(true);
+    });
+
+    it('says rest days neither count nor break the streak and never mentions a lost streak', async () => {
+      await open();
+      expect(text()).toContain('không tính và không làm đứt chuỗi');
+      expect(text()).not.toMatch(/mất chuỗi|đứt chuỗi của bạn|đã mất/i);
+    });
+
+    it('shows its own error with a retry while the rest of the page stays', async () => {
+      answer(learnerEndpoints.myStreak, backendRefusal('internalError'));
+      await open();
+      expect(text()).toContain('Không tải được chuỗi ngày học');
+      expect(kpi('Tổng số khóa')).toBeTruthy();
+      expect(el.querySelector('.activity-heatmap')).toBeNull();
+    });
+  });
+
   describe('failed reads', () => {
     it('shows the table error with a retry while the counts stay', async () => {
       answer(learnerEndpoints.myCourses, backendRefusal('internalError'));

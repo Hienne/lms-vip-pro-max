@@ -66,6 +66,35 @@ describe('Notifications', () => {
         b.getAttribute('aria-label') === label,
     );
 
+  describe('a learner with a badge notice and a level notice', () => {
+    beforeEach(() => open('hocvien.tichhop', '000007'));
+
+    it('lists the newest notice first, each with its own copy', () => {
+      expect(items()).toHaveLength(2);
+      expect(items()[0].textContent).toContain('Bạn lên cấp mới');
+      expect(items()[0].textContent).toContain(
+        'Bạn đã đạt cấp Giao dịch viên.',
+      );
+      expect(items()[1].textContent).toContain('Bạn đạt huy hiệu mới');
+      expect(items()[1].textContent).toContain('Huy hiệu Khóa học đầu tiên.');
+    });
+
+    it('links a notice to the profile and never calls it overdue', () => {
+      for (const li of items()) {
+        expect(li.querySelector('a')?.getAttribute('href')).toBe('/profile');
+        expect(li.textContent).not.toContain('quá hạn');
+        expect(li.querySelector('.reminder-item__due--overdue')).toBeNull();
+      }
+    });
+
+    it('reads a notice like any reminder, and it leaves the list', async () => {
+      items()[0].querySelector('button')!.click();
+      await settle();
+      expect(items()).toHaveLength(1);
+      expect(items()[0].textContent).toContain('Bạn đạt huy hiệu mới');
+    });
+  });
+
   describe('a learner with three due reminders', () => {
     beforeEach(() => open());
 

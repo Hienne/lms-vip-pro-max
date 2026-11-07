@@ -1,8 +1,13 @@
 import {
   LeaderboardQuerySchema,
-  type LeaderboardPage,
+  LearnerPreferencesSchema,
+  UnitLeaderboardQuerySchema,
+  type LeaderboardView,
+  type UnitLeaderboard,
+  type LeaderboardPeriod,
   type LeaderboardRow,
   type LeaderboardScope,
+  type LearnerPreferences,
   type MyPoints,
 } from '@lms/contracts';
 import type { FakeRequest } from '../backend/fake-backend';
@@ -23,15 +28,26 @@ interface Learner {
 
 const byName = new Intl.Collator('vi');
 
+/** Rows of the top of the board. */
+const TOP = 10;
+
+/** A unit with fewer learners is not ranked. */
+const MIN_UNIT_LEARNERS = 5;
+
 const numeric = (value: string | undefined): number | undefined =>
   value === undefined || value === '' ? undefined : Number(value);
 
 /**
  * The learning points and the leaderboard. Each learner's points are fixed (`learnerPointsFixtures`);
  * what the mock does is what a list does: pick the scope's members, order them (points, then name),
- * give ties one rank (1, 1, 3) and cut a page. Only a learner may ask.
+ * give ties one rank (1, 1, 3) and cut the top ten. The fixtures hold one total per learner, so the mock reads it
+ * as the XP of the current month and of all time, a third of it as the current week, and nothing for earlier periods.
+ * Only a learner may ask.
  */
 export class LearnerLeaderboard {
+  /** Learners who hid their name from other learners' boards. */
+  private readonly hidden = new Set<string>();
+
   constructor(private readonly directory: LearningDirectory) {}
 
   /** `GET /points`: the caller's fixed figures. */
@@ -39,29 +55,128 @@ export class LearnerLeaderboard {
     return this.caller(request).points;
   }
 
-  /** `GET /leaderboard`: the scope's learners, ranked, one page, and the caller's own row. */
-  leaderboard(request: FakeRequest): LeaderboardPage {
+  /** `GET /leaderboard`: the scope's learners ranked by the period's XP, the top ten and the caller's own row. */
+  leaderboard(request: FakeRequest): LeaderboardView {
     const caller = this.caller(request);
     const parsed = LeaderboardQuerySchema.safeParse({
       scope: request.query['scope'],
-      page: numeric(request.query['page']),
-      size: numeric(request.query['size']),
+      period: request.query['period'],
+      offset: numeric(request.query['offset']),
     });
     if (!parsed.success) return refuse('validationFailed');
-    const { scope = 'org', page = 0, size = 20 } = parsed.data;
+    const { scope = 'org', period = 'month', offset = 0 } = parsed.data;
+    const back = period === 'all' ? 0 : offset;
 
-    const rows = this.rank(this.members(caller, scope), caller.userId);
-    const mine = rows.find((row) => row.me);
-    return {
-      page: {
-        items: rows.slice(page * size, page * size + size),
-        page,
-        size,
-        totalElements: rows.length,
-        totalPages: Math.ceil(rows.length / size),
-      },
-      me: mine ?? { ...this.row(caller, null), me: true },
+    const rows = this.rank(
+      this.members(caller, scope),
+      caller.userId,
+      period,
+      back,
+    );
+    const top = rows.slice(0, TOP);
+    const at = rows.findIndex((row) => row.me);
+    const outside = at >= TOP;
+    const above = outside ? rows.slice(Math.max(TOP, at - 2), at) : [];
+    const mine = rows[at] ?? {
+      ...this.row(caller, null, this.xp(caller, period, back)),
+      me: true,
     };
+    const higher = outside
+      ? rows
+          .slice(0, at)
+          .reverse()
+          .find((row) => row.points > mine.points)
+      : undefined;
+    return {
+      period,
+      offset: back,
+      from: null,
+      to: null,
+      top,
+      me: mine,
+      above,
+      gapToAbove: higher ? higher.points - mine.points : null,
+    };
+  }
+
+  /**
+   * `GET /leaderboard/units`: the units with at least five learners ranked by the average XP per active learner (a
+   * learner with XP in the period), with the share of active learners as the participation rate, the top ten and
+   * the caller's unit.
+   */
+  units(request: FakeRequest): UnitLeaderboard {
+    const caller = this.caller(request);
+    const parsed = UnitLeaderboardQuerySchema.safeParse({
+      period: request.query['period'],
+      offset: numeric(request.query['offset']),
+    });
+    if (!parsed.success) return refuse('validationFailed');
+    const { period = 'month', offset = 0 } = parsed.data;
+    const back = period === 'all' ? 0 : offset;
+
+    const byUnit = new Map<number, Learner[]>();
+    for (const learner of this.learners()) {
+      if (learner.orgId === null) continue;
+      byUnit.set(learner.orgId, [
+        ...(byUnit.get(learner.orgId) ?? []),
+        learner,
+      ]);
+    }
+    const ranked = [...byUnit]
+      .filter(([, members]) => members.length >= MIN_UNIT_LEARNERS)
+      .map(([orgId, members]) => {
+        const xp = members
+          .map((member) => this.xp(member, period, back))
+          .filter((value) => value !== 0);
+        return {
+          orgId,
+          unitName: this.directory.nameOf('org', orgId) ?? String(orgId),
+          averageXp: xp.length
+            ? Math.round((xp.reduce((a, b) => a + b, 0) * 10) / xp.length) / 10
+            : 0,
+          participationPercent: Math.round((xp.length * 100) / members.length),
+        };
+      })
+      .sort(
+        (a, b) =>
+          b.averageXp - a.averageXp || byName.compare(a.unitName, b.unitName),
+      )
+      .map((unit, index, all) => ({
+        ...unit,
+        rank: all.findIndex((o) => o.averageXp === unit.averageXp) + 1,
+        mine: unit.orgId === caller.orgId,
+        index,
+      }))
+      .map(({ index: _index, ...unit }) => unit);
+    const myUnit = ranked.find((unit) => unit.mine) ?? null;
+    return {
+      period,
+      offset: back,
+      from: null,
+      to: null,
+      top: ranked.slice(0, TOP),
+      myUnit,
+      myUnitTooSmall:
+        caller.orgId !== null &&
+        myUnit === null &&
+        (byUnit.get(caller.orgId)?.length ?? 0) < MIN_UNIT_LEARNERS,
+    };
+  }
+
+  /** `GET /preferences`: visible unless the caller hid their name. */
+  preferences(request: FakeRequest): LearnerPreferences {
+    const caller = this.caller(request);
+    return { showOnLeaderboard: !this.hidden.has(caller.userId) };
+  }
+
+  /** `PUT /preferences`: hides or shows the caller's name; only the caller's own can be set. */
+  updatePreferences(request: FakeRequest): LearnerPreferences {
+    const caller = this.caller(request);
+    const parsed = LearnerPreferencesSchema.safeParse(request.body);
+    if (!parsed.success) return refuse('validationFailed');
+    if (parsed.data.showOnLeaderboard) this.hidden.delete(caller.userId);
+    else this.hidden.add(caller.userId);
+    return parsed.data;
   }
 
   private caller(request: FakeRequest): Learner {
@@ -83,8 +198,12 @@ export class LearnerLeaderboard {
     return [...seeded, ...boardLearnerFixtures];
   }
 
+  /** Who the caller's board lists: the scope's learners, without those who hid their name (the caller stays). */
   private members(caller: Learner, scope: LeaderboardScope): Learner[] {
-    const everyone = this.learners();
+    const everyone = this.learners().filter(
+      (entry) =>
+        !this.hidden.has(entry.userId) || entry.userId === caller.userId,
+    );
     if (scope === 'all') return everyone;
     if (scope === 'org')
       return everyone.filter((entry) => entry.orgId === caller.orgId);
@@ -93,26 +212,45 @@ export class LearnerLeaderboard {
       : everyone.filter((entry) => entry.teamId === caller.teamId);
   }
 
-  /** Points first, then the name; equal points share the rank of the first of them. */
+  /** The learner's XP in the period: the fixture total now, a third of it this week, nothing before. */
+  private xp(
+    learner: Learner,
+    period: LeaderboardPeriod,
+    back: number,
+  ): number {
+    if (period === 'all') return learner.points.total;
+    if (back > 0) return 0;
+    return period === 'week'
+      ? Math.floor(learner.points.total / 3)
+      : learner.points.total;
+  }
+
+  /** XP first, then the name; equal XP share the rank of the first of them. */
   private rank(
     members: readonly Learner[],
     callerId: string,
+    period: LeaderboardPeriod,
+    back: number,
   ): LeaderboardRow[] {
-    const ordered = [...members].sort(
+    const scored = members.map((entry) => ({
+      entry,
+      xp: this.xp(entry, period, back),
+    }));
+    scored.sort(
       (a, b) =>
-        b.points.total - a.points.total ||
-        byName.compare(a.fullName, b.fullName),
+        b.xp - a.xp || byName.compare(a.entry.fullName, b.entry.fullName),
     );
-    return ordered.map((entry) => ({
-      ...this.row(
-        entry,
-        ordered.findIndex((o) => o.points.total === entry.points.total) + 1,
-      ),
+    return scored.map(({ entry, xp }) => ({
+      ...this.row(entry, scored.findIndex((o) => o.xp === xp) + 1, xp),
       me: entry.userId === callerId,
     }));
   }
 
-  private row<Rank extends number | null>(entry: Learner, rank: Rank) {
+  private row<Rank extends number | null>(
+    entry: Learner,
+    rank: Rank,
+    points: number,
+  ) {
     return {
       rank,
       userId: entry.userId,
@@ -121,7 +259,7 @@ export class LearnerLeaderboard {
         entry.teamId === null
           ? null
           : (this.directory.nameOf('team', entry.teamId) ?? null),
-      points: entry.points.total,
+      points,
       streakDays: entry.points.streakDays,
     };
   }

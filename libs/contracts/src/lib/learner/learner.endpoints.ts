@@ -7,7 +7,10 @@ import {
   DashboardGroupSchema,
   DashboardProgramsQuerySchema,
   EnrollmentDetailSchema,
-  LeaderboardPageSchema,
+  LeaderboardViewSchema,
+  LearnerPreferencesSchema,
+  UnitLeaderboardQuerySchema,
+  UnitLeaderboardSchema,
   LeaderboardQuerySchema,
   LearnerCourseSchema,
   LearnerFacetsSchema,
@@ -15,7 +18,12 @@ import {
   LearningProgressOverviewSchema,
   LearningReminderSchema,
   MyCoursesQuerySchema,
+  AdjustXpCommandSchema,
+  MyBadgesSchema,
+  MyLevelSchema,
   MyPointsSchema,
+  XpAdjustmentResultSchema,
+  MyStreakSchema,
   OpenSessionCommandSchema,
   ProgressExportQuerySchema,
   ProgressResultSchema,
@@ -150,6 +158,16 @@ export const learnerEndpoints = {
     path: '/api/v1/me/learning/reminders',
     response: z.array(LearningReminderSchema),
   }),
+  /**
+   * Says the toast of a notice was shown: sets `sentAt` and keeps the row in the feed until it is read. Saying it
+   * twice changes nothing; someone else's row is refused with `CORE-ACCESS_DENIED`.
+   */
+  markReminderSeen: defineEndpoint({
+    method: 'post',
+    path: '/api/v1/me/learning/reminders/{reminderId}/seen',
+    params: z.object({ reminderId: z.number().int() }),
+    response: LearningReminderSchema,
+  }),
   markReminderRead: defineEndpoint({
     method: 'post',
     path: '/api/v1/me/learning/reminders/{reminderId}/read',
@@ -166,14 +184,79 @@ export const learnerEndpoints = {
     response: MyPointsSchema,
   }),
   /**
-   * Learners ranked by points in a scope (`team`, `org` by default, `all`), a page at a time, plus the
-   * caller's own row with its rank in that scope. An unknown scope or a `size` above 100 answers
-   * `CORE-VALIDATION_FAILED`.
+   * The caller's level, computed by the server (never drops). A caller who is not a learner is refused
+   * with `CORE-ACCESS_DENIED`.
+   */
+  myLevel: defineEndpoint({
+    method: 'get',
+    path: '/api/v1/me/learning/level',
+    response: MyLevelSchema,
+  }),
+  /**
+   * A system admin's correction of a learner's XP: one extra ledger row with a mandatory reason and an
+   * audit entry. Anyone who is not a system admin is refused with `CORE-ACCESS_DENIED`; a missing reason,
+   * a zero amount or a correction that would make the total negative is `CORE-VALIDATION_FAILED`.
+   */
+  adjustXp: defineEndpoint({
+    method: 'post',
+    path: '/api/v1/admin/learning/xp-adjustments',
+    body: AdjustXpCommandSchema,
+    response: XpAdjustmentResultSchema,
+  }),
+  /**
+   * The caller's streak in working days (weekends and bank holidays neither count nor break it) and
+   * the per-day data of the 26-week heatmap. A caller who is not a learner is refused with
+   * `CORE-ACCESS_DENIED`.
+   */
+  myStreak: defineEndpoint({
+    method: 'get',
+    path: '/api/v1/me/learning/streak',
+    response: MyStreakSchema,
+  }),
+  /**
+   * The caller's badges: earned (newest first) and not yet earned with their condition, a programme badge showing
+   * the courses done out of all. The first read creates the starter set. A non-learner is refused with
+   * `CORE-ACCESS_DENIED`.
+   */
+  myBadges: defineEndpoint({
+    method: 'get',
+    path: '/api/v1/me/learning/badges',
+    response: MyBadgesSchema,
+  }),
+  /**
+   * Learners ranked by the XP of a period (`week`, `month` by default, `all`; `offset` steps back to an earlier
+   * one) in a scope (`team`, `org` by default, `all`): the top ten and the caller's own row, with the one or
+   * two just above them when they are outside it. No paging. An unknown scope or period, or an `offset`
+   * outside 0-520, answers `CORE-VALIDATION_FAILED`.
    */
   leaderboard: defineEndpoint({
     method: 'get',
     path: '/api/v1/me/learning/leaderboard',
     query: LeaderboardQuerySchema,
-    response: LeaderboardPageSchema,
+    response: LeaderboardViewSchema,
+  }),
+  /**
+   * The unit (branch) ranking by average XP per active learner in a period (`week`, `month` by default, `all`;
+   * `offset` steps back), with the participation rate: the top ten units with at least five learners and the
+   * caller's own unit. An unknown period or an `offset` outside 0-520 answers `CORE-VALIDATION_FAILED`.
+   */
+  unitLeaderboard: defineEndpoint({
+    method: 'get',
+    path: '/api/v1/me/learning/leaderboard/units',
+    query: UnitLeaderboardQuerySchema,
+    response: UnitLeaderboardSchema,
+  }),
+  /** The caller's own preferences (visible on leaderboards by default). Only a learner has them. */
+  myPreferences: defineEndpoint({
+    method: 'get',
+    path: '/api/v1/me/learning/preferences',
+    response: LearnerPreferencesSchema,
+  }),
+  /** Shows or hides the caller's name on other learners' leaderboards; answers the preferences now in force. */
+  updateMyPreferences: defineEndpoint({
+    method: 'put',
+    path: '/api/v1/me/learning/preferences',
+    body: LearnerPreferencesSchema,
+    response: LearnerPreferencesSchema,
   }),
 } as const;

@@ -30,6 +30,95 @@
     </div>
   </section>
 
+  @if (store.level$(); as level) {
+  <section uiCard padded class="profile__level" aria-labelledby="profile-level">
+    <h2 id="profile-level">Cấp độ</h2>
+    <p class="profile__level-name">{{ level.name }}</p>
+    <p class="profile__meta">{{ level.xp }} XP</p>
+    @if (level.xpToNext !== null && level.progressPercent !== null) {
+    <ui-progress
+      [value]="level.progressPercent"
+      size="sm"
+      label="Tiến độ tới cấp kế tiếp"
+    />
+    <p class="profile__meta">Còn {{ level.xpToNext }} XP để lên cấp kế tiếp.</p>
+    } @else {
+    <p class="profile__meta">Bạn đang ở cấp cao nhất.</p>
+    }
+    <p class="profile__meta">
+      Cấp độ không mở thêm quyền và không ảnh hưởng đến việc bạn được giao.
+    </p>
+  </section>
+  } @if (store.hasBadges$()) {
+  <section
+    uiCard
+    padded
+    class="profile__badges"
+    aria-labelledby="profile-badges"
+  >
+    <h2 id="profile-badges">Huy hiệu</h2>
+    @if (store.earnedBadges$().length > 0) {
+    <h3 class="profile__subhead">Đã đạt</h3>
+    <ul class="profile__badge-list" aria-label="Huy hiệu đã đạt">
+      @for (badge of store.earnedBadges$(); track badge.id) {
+      <li class="profile__badge">
+        <ui-icon [name]="badge.icon" />
+        <span class="profile__badge-text">
+          <span class="profile__badge-name">{{ badge.name }}</span>
+          <span class="profile__meta">{{ badge.description }}</span>
+          <span class="profile__meta"
+            >Đạt ngày {{ badge.earnedAt | date: 'dd/MM/yyyy' }}@if
+            (badge.retired) { · Huy hiệu đã ngừng cấp}</span
+          >
+        </span>
+      </li>
+      }
+    </ul>
+    } @else {
+    <p class="profile__meta">Bạn chưa đạt huy hiệu nào.</p>
+    } @if (store.pendingBadges$().length > 0) {
+    <h3 class="profile__subhead">Chưa đạt</h3>
+    <ul class="profile__badge-list" aria-label="Huy hiệu chưa đạt">
+      @for (badge of store.pendingBadges$(); track badge.id) {
+      <li class="profile__badge profile__badge--pending">
+        <ui-icon [name]="badge.icon" />
+        <span class="profile__badge-text">
+          <span class="profile__badge-name">{{ badge.name }}</span>
+          <span class="profile__meta"
+            >{{ badge.condition }}@if (badge.courses) { · {{ badge.courses }}
+            }</span
+          >
+        </span>
+      </li>
+      }
+    </ul>
+    }
+  </section>
+  } @if (store.hasPreferences$()) {
+  <section
+    uiCard
+    padded
+    class="profile__preferences"
+    aria-labelledby="profile-preferences"
+  >
+    <h2 id="profile-preferences">Bảng xếp hạng</h2>
+    <label class="profile__toggle">
+      <input
+        type="checkbox"
+        uiSwitch
+        [checked]="store.showOnLeaderboard$()"
+        [disabled]="store.isSavingPreference$()"
+        (change)="store.setShowOnLeaderboard($any($event.target).checked)"
+      />
+      Hiện tên của tôi trên bảng xếp hạng
+    </label>
+    <p class="profile__meta">
+      Khi tắt, người khác không thấy tên bạn và thứ hạng của họ khép lại. Bạn
+      vẫn thấy thứ hạng của mình, và XP của bạn vẫn được tính vào đơn vị.
+    </p>
+  </section>
+  }
+
   <div class="grid-2">
     <section uiCard>
       <div uiCardHeader><h2>Thông tin cá nhân</h2></div>

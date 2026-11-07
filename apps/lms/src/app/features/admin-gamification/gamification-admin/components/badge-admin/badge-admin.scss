@@ -1,0 +1,36 @@
+@use 'ui';
+
+.badge-admin {
+  @include ui.stack(4);
+
+  &__bar {
+    @include ui.row(3);
+    justify-content: space-between;
+    align-items: flex-start;
+  }
+
+  &__hint {
+    @include ui.text(sm, muted);
+    max-width: 60ch;
+  }
+
+  &__form {
+    @include ui.stack(4);
+    max-width: 48rem;
+  }
+
+  &__grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+    gap: ui.space(3);
+  }
+
+  &__locked {
+    @include ui.text(sm, muted);
+  }
+
+  &__actions,
+  &__row-actions {
+    @include ui.row(3);
+  }
+}

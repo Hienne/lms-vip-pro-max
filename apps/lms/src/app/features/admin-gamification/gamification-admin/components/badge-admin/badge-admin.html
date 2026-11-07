@@ -1,0 +1,169 @@
+<div class="badge-admin">
+  @if (store.badgesError$(); as error) {
+  <ui-error-state
+    title="Không tải được huy hiệu"
+    [message]="error.message"
+    (retry)="store.retryLoad()"
+  />
+  } @else if (store.editing$() !== 'closed') {
+  <form class="badge-admin__form" [formRoot]="badgeForm">
+    <h2>
+      @if (editedBadge(); as badge) { Sửa huy hiệu "{{ badge.name }}" } @else {
+      Tạo huy hiệu }
+    </h2>
+    <div class="badge-admin__grid">
+      <ui-field label="Tên huy hiệu" required>
+        <input uiInput [formField]="badgeForm.name" />
+      </ui-field>
+      <ui-field
+        label="Biểu tượng"
+        hint="Tên biểu tượng Lucide, ví dụ award, flame, route."
+        required
+      >
+        <input uiInput [formField]="badgeForm.icon" />
+      </ui-field>
+    </div>
+    <ui-field label="Mô tả" required>
+      <input uiInput [formField]="badgeForm.description" />
+    </ui-field>
+
+    @if (ruleLocked()) {
+    <p class="badge-admin__locked">
+      Đã có {{ editedBadge()?.holders }} người nhận huy hiệu này nên luật nhận
+      không đổi được: <strong>{{ editedBadge()?.condition }}</strong>.
+    </p>
+    } @else {
+    <div class="badge-admin__grid">
+      <ui-field label="Luật nhận" required>
+        <select uiSelect [formField]="badgeForm.ruleType">
+          @for (type of ruleTypes; track type) {
+          <option [value]="type">{{ ruleLabel[type] }}</option>
+          }
+        </select>
+      </ui-field>
+      @if (isProgramRule()) {
+      <ui-field label="Chương trình" required>
+        <select uiSelect [formField]="badgeForm.paramProgramId">
+          <option value="">Chọn chương trình</option>
+          @for (program of store.programs$(); track program.id) {
+          <option [value]="program.id">{{ program.name }}</option>
+          }
+        </select>
+      </ui-field>
+      } @else {
+      <ui-field label="N" hint="Từ 1 đến 1000." required>
+        <input uiInput inputmode="numeric" [formField]="badgeForm.paramN" />
+      </ui-field>
+      }
+    </div>
+    }
+
+    <div class="badge-admin__actions">
+      <button
+        uiButton
+        type="button"
+        variant="ghost"
+        (click)="store.closeBadgeForm()"
+      >
+        Hủy
+      </button>
+      <button
+        uiButton
+        type="submit"
+        variant="primary"
+        [disabled]="store.isSavingBadge$()"
+      >
+        @if (editedBadge()) { Lưu huy hiệu } @else { Tạo huy hiệu }
+      </button>
+    </div>
+  </form>
+  } @else if (store.isBadgesLoading$()) {
+  <span uiSpinner></span>
+  } @else {
+  <div class="badge-admin__bar">
+    <p class="badge-admin__hint">
+      Huy hiệu đã có người nhận thì không đổi được luật. Huy hiệu mới được trao
+      ở nền cho những người đã đủ điều kiện, không gửi thông báo.
+    </p>
+    <button uiButton type="button" variant="primary" (click)="store.newBadge()">
+      <ui-icon name="plus" size="sm" />Tạo huy hiệu
+    </button>
+  </div>
+
+  @if (store.badges$()?.length) {
+  <div uiTableWrap>
+    <table uiTable responsive>
+      <caption class="sr-only">
+        Huy hiệu
+      </caption>
+      <thead>
+        <tr>
+          <th scope="col">Huy hiệu</th>
+          <th scope="col">Người nhận</th>
+          <th scope="col">Trao cho người đã đủ điều kiện</th>
+          <th scope="col">Trạng thái</th>
+          <th scope="col"><span class="sr-only">Thao tác</span></th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (badge of store.badges$(); track badge.badgeId) {
+        <tr>
+          <td data-label="Huy hiệu">
+            <span uiTablePrimary>{{ badge.name }}</span>
+            <div uiTableSub>{{ badge.condition }}</div>
+          </td>
+          <td data-label="Người nhận">{{ badge.holders }}</td>
+          <td data-label="Trao bù">
+            @switch (badge.backfillStatus) { @case ('RUNNING') {
+            <ui-progress
+              label="Tiến độ trao huy hiệu"
+              [value]="percent(badge.backfillDone, badge.backfillTotal)"
+            />
+            <div uiTableSub>
+              {{ badge.backfillDone }}/{{ badge.backfillTotal }} người
+            </div>
+            } @case ('FAILED') {
+            <span uiBadge tone="danger">Lỗi, chưa trao xong</span>
+            } @default {
+            <span>Đã xong ({{ badge.backfillTotal }} người)</span>
+            } }
+          </td>
+          <td data-label="Trạng thái">
+            @if (badge.status === 'active') {
+            <span uiBadge tone="success" dot>Đang dùng</span>
+            } @else {
+            <span uiBadge tone="neutral">Đã ngừng dùng</span>
+            }
+          </td>
+          <td data-label="Thao tác">
+            <div class="badge-admin__row-actions">
+              <button
+                uiButton
+                type="button"
+                variant="ghost"
+                (click)="store.editBadge(badge)"
+              >
+                Sửa
+              </button>
+              @if (badge.status === 'active') {
+              <button
+                uiButton
+                type="button"
+                variant="ghost"
+                [disabled]="store.isRetiringBadge$()"
+                (click)="store.retireBadge(badge)"
+              >
+                Ngừng dùng
+              </button>
+              }
+            </div>
+          </td>
+        </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+  } @else {
+  <ui-empty variant="inline" title="Chưa có huy hiệu nào." />
+  } }
+</div>

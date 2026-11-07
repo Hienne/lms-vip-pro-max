@@ -1,0 +1,264 @@
+<ui-page-header
+  title="Tác động gamification"
+  description="Số liệu tổng hợp của học viên trong phạm vi báo cáo của bạn. Không có số liệu theo từng người."
+>
+  <button
+    slot="actions"
+    uiButton
+    [disabled]="!store.canExport$() || store.isExporting$()"
+    [busy]="store.isExporting$()"
+    (click)="store.exportCsv()"
+  >
+    <ui-icon name="download" size="sm" /> Xuất CSV
+  </button>
+</ui-page-header>
+
+<section uiCard class="gamification-impact__filters">
+  <form
+    class="gamification-impact__form"
+    [formRoot]="filterForm"
+    aria-label="Bộ lọc báo cáo"
+  >
+    <ui-field label="Từ ngày" hint="Mặc định 28 ngày gần nhất.">
+      <input uiInput type="date" [formField]="filterForm.from" />
+    </ui-field>
+    <ui-field label="Đến ngày">
+      <input uiInput type="date" [formField]="filterForm.to" />
+    </ui-field>
+    <ui-field label="Đơn vị">
+      <select uiSelect [formField]="filterForm.orgId">
+        <option value="">Toàn bộ phạm vi được cấp</option>
+        @for (unit of store.unitOptions$(); track unit.id) {
+        <option [value]="unit.id">{{ unit.name }}</option>
+        }
+      </select>
+    </ui-field>
+    <button uiButton type="submit" variant="primary">Áp dụng bộ lọc</button>
+  </form>
+</section>
+
+@if (store.error$(); as error) {
+<ui-error-state
+  title="Không tải được báo cáo"
+  [message]="error.message"
+  [retryable]="error.kind !== 'forbidden'"
+  (retry)="store.retry()"
+/>
+} @else if (store.report$(); as report) { @if (report.learners === 0) {
+<ui-empty
+  title="Không có học viên trong phạm vi này"
+  description="Thử chọn đơn vị khác hoặc bỏ lọc đơn vị."
+/>
+} @else {
+<p class="gamification-impact__period">
+  Kỳ báo cáo: {{ report.from | fmtDate }} – {{ report.to | fmtDate }}. Phạm vi
+  có <strong>{{ report.learners }}</strong> học viên. @if (report.launchedAt) {
+  Gamification ra mắt lúc {{ report.launchedAt | fmtDatetime }}. }
+</p>
+
+<section class="gamification-impact__figures" aria-label="Chỉ số chính">
+  <dl class="gamification-impact__figure">
+    <dt>Tỷ lệ hoàn thành khóa được giao</dt>
+    <dd>{{ rate(report.assigned.completionRatePercent) }}</dd>
+    <dd class="gamification-impact__note">
+      {{ rates(report.assigned) }} khóa được giao
+    </dd>
+  </dl>
+  <dl class="gamification-impact__figure">
+    <dt>Tỷ lệ hoàn thành đúng hạn</dt>
+    <dd>{{ rate(report.assigned.onTimeRatePercent) }}</dd>
+    <dd class="gamification-impact__note">
+      {{ report.assigned.completedOnTime }}/{{ report.assigned.assigned }} khóa
+      được giao
+    </dd>
+  </dl>
+  <dl class="gamification-impact__figure">
+    <dt>Tỷ lệ tắt hiển thị tên</dt>
+    <dd>{{ rate(report.optOut.ratePercent) }}</dd>
+    <dd class="gamification-impact__note">
+      {{ report.optOut.hidden }}/{{ report.optOut.learners }} học viên
+    </dd>
+  </dl>
+</section>
+
+<section uiCard class="gamification-impact__panel">
+  <h2>Học viên hoạt động theo tuần</h2>
+  @if (report.weeklyActive.length) {
+  <ui-bar-chart
+    label="Số học viên hoạt động mỗi tuần, tuần bắt đầu từ thứ Hai"
+    unit=" học viên"
+    [data]="weeks(report.weeklyActive)"
+  />
+  } @else {
+  <ui-empty variant="inline" title="Chưa có hoạt động nào trong kỳ." />
+  }
+</section>
+
+<section uiCard class="gamification-impact__panel">
+  <h2>So sánh trước và sau ra mắt</h2>
+  @if (report.comparison; as comparison) {
+  <p class="gamification-impact__note">
+    Hai cửa sổ liền kề {{ comparison.windowDays }} ngày quanh lúc ra mắt, không
+    phụ thuộc kỳ đã chọn.
+  </p>
+  <div uiTableWrap>
+    <table uiTable responsive>
+      <caption class="sr-only">
+        So sánh trước và sau ra mắt
+      </caption>
+      <thead>
+        <tr>
+          <th scope="col">Chỉ số</th>
+          <th scope="col">
+            Trước ({{ comparison.before.from | fmtDate }} – {{
+            comparison.before.to | fmtDate }})
+          </th>
+          <th scope="col">
+            @if (comparison.after; as after) { Sau ({{ after.from | fmtDate }} –
+            {{ after.to | fmtDate }}) } @else { Sau }
+          </th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td data-label="Chỉ số">
+            <span uiTablePrimary>Học viên hoạt động trung bình mỗi tuần</span>
+          </td>
+          <td data-label="Trước">
+            {{ comparison.before.weeklyActiveLearners ?? '—' }}
+          </td>
+          <td data-label="Sau">
+            {{ comparison.after?.weeklyActiveLearners ?? '—' }}
+          </td>
+        </tr>
+        <tr>
+          <td data-label="Chỉ số">
+            <span uiTablePrimary>Tỷ lệ hoàn thành khóa được giao</span>
+          </td>
+          <td data-label="Trước">
+            {{ rate(comparison.before.assigned.completionRatePercent) }}
+          </td>
+          <td data-label="Sau">
+            {{ comparison.after ?
+            rate(comparison.after.assigned.completionRatePercent) : '—' }}
+          </td>
+        </tr>
+        <tr>
+          <td data-label="Chỉ số">
+            <span uiTablePrimary>Tỷ lệ hoàn thành đúng hạn</span>
+          </td>
+          <td data-label="Trước">
+            {{ rate(comparison.before.assigned.onTimeRatePercent) }}
+          </td>
+          <td data-label="Sau">
+            {{ comparison.after ?
+            rate(comparison.after.assigned.onTimeRatePercent) : '—' }}
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+  @if (!comparison.after) {
+  <p class="gamification-impact__note">
+    Chưa có ngày nào sau khi ra mắt để so sánh.
+  </p>
+  } } @else {
+  <ui-empty variant="inline" title="Chưa có mốc ra mắt để so sánh." />
+  }
+</section>
+
+<div class="gamification-impact__pair">
+  <section uiCard class="gamification-impact__panel">
+    <h2>XP theo nguồn</h2>
+    @if (report.xpBySource.length) {
+    <div uiTableWrap>
+      <table uiTable responsive>
+        <caption class="sr-only">
+          XP theo nguồn
+        </caption>
+        <thead>
+          <tr>
+            <th scope="col">Nguồn</th>
+            <th scope="col">XP</th>
+            <th scope="col">Học viên</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (source of report.xpBySource; track source.source) {
+          <tr>
+            <td data-label="Nguồn">
+              <span uiTablePrimary>{{ sourceLabel[source.source] }}</span>
+            </td>
+            <td data-label="XP">{{ source.xp }}</td>
+            <td data-label="Học viên">{{ source.learners }}</td>
+          </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+    } @else {
+    <ui-empty variant="inline" title="Chưa có XP nào trong kỳ." />
+    }
+  </section>
+
+  <section uiCard class="gamification-impact__panel">
+    <h2>Huy hiệu được trao</h2>
+    @if (report.badges.length) {
+    <div uiTableWrap>
+      <table uiTable responsive>
+        <caption class="sr-only">
+          Huy hiệu được trao trong kỳ
+        </caption>
+        <thead>
+          <tr>
+            <th scope="col">Huy hiệu</th>
+            <th scope="col">Số lượt trao</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (badge of report.badges; track badge.badgeId) {
+          <tr>
+            <td data-label="Huy hiệu">
+              <span uiTablePrimary>{{ badge.name }}</span>
+            </td>
+            <td data-label="Số lượt trao">{{ badge.awarded }}</td>
+          </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+    } @else {
+    <ui-empty variant="inline" title="Chưa có huy hiệu nào." />
+    }
+  </section>
+</div>
+
+<section uiCard class="gamification-impact__panel">
+  <h2>Học viên theo cấp</h2>
+  <div uiTableWrap>
+    <table uiTable responsive>
+      <caption class="sr-only">
+        Số học viên theo cấp
+      </caption>
+      <thead>
+        <tr>
+          <th scope="col">Cấp</th>
+          <th scope="col">Học viên</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (level of report.levels; track level.level) {
+        <tr>
+          <td data-label="Cấp">
+            <span uiTablePrimary>Cấp {{ level.level }} - {{ level.name }}</span>
+          </td>
+          <td data-label="Học viên">{{ level.learners }}</td>
+        </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+</section>
+} } @else {
+<div class="gamification-impact__loading"><span uiSpinner></span></div>
+}

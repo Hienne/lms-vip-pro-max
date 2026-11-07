@@ -27,6 +27,7 @@ import {
   type SegmentedOption,
   type TabItem,
 } from '@lms/ui';
+import { ActivityHeatmap } from '../../../shared/learning/activity-heatmap/activity-heatmap';
 import { withData } from '../../../shared/learning/competency/competency-data';
 import { CompetencyView } from '../../../shared/learning/competency/competency-view';
 import { ProgressCounts } from '../../../shared/learning/progress-counts/progress-counts';
@@ -43,6 +44,7 @@ import {
 @Component({
   selector: 'app-progress',
   imports: [
+    ActivityHeatmap,
     BarChart,
     Button,
     Checkbox,

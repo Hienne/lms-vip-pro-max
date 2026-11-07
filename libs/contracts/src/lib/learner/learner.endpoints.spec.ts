@@ -5,7 +5,11 @@ import { capturedLearner as captured } from './learner.captured';
 import { capturedLessonPlayer } from './lesson-player.captured';
 import {
   EnrollmentDetailSchema,
-  LeaderboardPageSchema,
+  LeaderboardViewSchema,
+  LearnerPreferencesSchema,
+  LearningReminderSchema,
+  UnitLeaderboardQuerySchema,
+  UnitLeaderboardSchema,
   LeaderboardQuerySchema,
   LearnerCourseSchema,
   AssessmentOverviewSchema,
@@ -14,6 +18,9 @@ import {
   LearningProgressOverviewSchema,
   MyCoursesQuerySchema,
   MyPointsSchema,
+  MyBadgesSchema,
+  MyLevelSchema,
+  MyStreakSchema,
   OpenSessionCommandSchema,
   ProgressExportQuerySchema,
   ProgressResultSchema,
@@ -77,12 +84,24 @@ describe('learner endpoints', () => {
       ],
       ['reminders', 'get', '/api/v1/me/learning/reminders'],
       [
+        'markReminderSeen',
+        'post',
+        '/api/v1/me/learning/reminders/{reminderId}/seen',
+      ],
+      [
         'markReminderRead',
         'post',
         '/api/v1/me/learning/reminders/{reminderId}/read',
       ],
       ['myPoints', 'get', '/api/v1/me/learning/points'],
+      ['myLevel', 'get', '/api/v1/me/learning/level'],
+      ['adjustXp', 'post', '/api/v1/admin/learning/xp-adjustments'],
+      ['myStreak', 'get', '/api/v1/me/learning/streak'],
+      ['myBadges', 'get', '/api/v1/me/learning/badges'],
       ['leaderboard', 'get', '/api/v1/me/learning/leaderboard'],
+      ['unitLeaderboard', 'get', '/api/v1/me/learning/leaderboard/units'],
+      ['myPreferences', 'get', '/api/v1/me/learning/preferences'],
+      ['updateMyPreferences', 'put', '/api/v1/me/learning/preferences'],
     ]);
     expect(
       toUrl(learnerEndpoints.saveProgress, { enrollmentId: 2, blockId: 31 }),
@@ -500,6 +519,189 @@ describe('learner endpoints', () => {
     });
   });
 
+  describe('level', () => {
+    it('parses the response captured from the backend', () => {
+      const level = MyLevelSchema.parse(captured.level);
+      expect(level).toEqual({
+        level: 2,
+        name: 'Giao dịch viên',
+        xp: 200,
+        xpToNext: 400,
+        progressPercent: 0,
+      });
+    });
+
+    it('accepts the top level with no next level and refuses a progress above 100', () => {
+      expect(
+        MyLevelSchema.safeParse({
+          level: 6,
+          name: 'Chuyên gia Core Banking',
+          xp: 7000,
+          xpToNext: null,
+          progressPercent: null,
+        }).success,
+      ).toBe(true);
+      expect(
+        MyLevelSchema.safeParse({ ...captured.level, progressPercent: 101 })
+          .success,
+      ).toBe(false);
+    });
+  });
+
+  describe('streak', () => {
+    it('parses the response captured from the backend', () => {
+      expect(
+        learnerEndpoints.myStreak.response.safeParse(captured.streak).success,
+      ).toBe(true);
+    });
+
+    it('keeps a rest day with activity and refuses a negative count or a bad date', () => {
+      const streak = MyStreakSchema.parse(captured.streak);
+      expect(streak.days.at(-1)).toEqual({
+        date: '2026-11-07',
+        lessons: 1,
+        quizzes: 0,
+        restDay: true,
+      });
+      const day = captured.streak.days[0];
+      expect(
+        MyStreakSchema.safeParse({
+          ...captured.streak,
+          days: [{ ...day, lessons: -1 }],
+        }).success,
+      ).toBe(false);
+      expect(
+        MyStreakSchema.safeParse({
+          ...captured.streak,
+          days: [{ ...day, date: '12/10' }],
+        }).success,
+      ).toBe(false);
+    });
+  });
+
+  describe('reminder notices', () => {
+    it('parses the notices captured from the backend', () => {
+      const badge = LearningReminderSchema.parse(captured.reminderBadgeEarned);
+      expect(badge).toMatchObject({
+        kind: 'BADGE_EARNED',
+        subject: 'Khóa học đầu tiên',
+        recipientId: null,
+        sentAt: null,
+      });
+      expect(
+        LearningReminderSchema.parse(captured.reminderLevelUp).sentAt,
+      ).not.toBeNull();
+    });
+
+    it('reads a row without a kind as a deadline reminder, and refuses an unknown kind', () => {
+      const { kind: _kind, ...bare } = captured.reminderBadgeEarned;
+      expect(LearningReminderSchema.parse(bare).kind).toBe('DEADLINE');
+      expect(
+        LearningReminderSchema.safeParse({
+          ...captured.reminderBadgeEarned,
+          kind: 'CONFETTI',
+        }).success,
+      ).toBe(false);
+    });
+  });
+
+  describe('preferences', () => {
+    it('parses the responses captured from the backend', () => {
+      expect(
+        LearnerPreferencesSchema.parse(captured.preferences).showOnLeaderboard,
+      ).toBe(true);
+      expect(
+        LearnerPreferencesSchema.parse(captured.preferencesHidden)
+          .showOnLeaderboard,
+      ).toBe(false);
+    });
+
+    it('refuses a missing or non-boolean value', () => {
+      expect(LearnerPreferencesSchema.safeParse({}).success).toBe(false);
+      expect(
+        LearnerPreferencesSchema.safeParse({ showOnLeaderboard: 'no' }).success,
+      ).toBe(false);
+    });
+  });
+
+  describe('unit leaderboard', () => {
+    it('parses the response captured from the backend', () => {
+      const board = UnitLeaderboardSchema.parse(captured.unitLeaderboard);
+      expect(board.top.map((row) => row.rank)).toEqual([1, 2]);
+      expect(board.myUnit).toEqual(board.top[1]);
+      expect(board.myUnitTooSmall).toBe(false);
+    });
+
+    it('has no unit for a caller whose unit is too small, and says so', () => {
+      const board = UnitLeaderboardSchema.parse(
+        captured.unitLeaderboardTooSmall,
+      );
+      expect(board.myUnit).toBeNull();
+      expect(board.myUnitTooSmall).toBe(true);
+    });
+
+    it('refuses a participation rate above 100 and an unknown period', () => {
+      const board = captured.unitLeaderboard;
+      expect(
+        UnitLeaderboardSchema.safeParse({
+          ...board,
+          top: [{ ...board.top[0], participationPercent: 101 }],
+        }).success,
+      ).toBe(false);
+      expect(
+        UnitLeaderboardSchema.safeParse({ ...board, period: 'year' }).success,
+      ).toBe(false);
+      expect(
+        UnitLeaderboardQuerySchema.safeParse({ period: 'year' }).success,
+      ).toBe(false);
+      expect(
+        UnitLeaderboardQuerySchema.safeParse({ offset: 521 }).success,
+      ).toBe(false);
+    });
+  });
+
+  describe('badges', () => {
+    it('parses the response captured from the backend', () => {
+      const badges = MyBadgesSchema.parse(captured.badges);
+      expect(badges.earned.map((badge) => badge.earnedAt)).not.toContain(null);
+      expect(badges.notEarned.map((badge) => badge.earnedAt)).toEqual([
+        null,
+        null,
+        null,
+      ]);
+    });
+
+    it('carries the courses x of y only on a programme badge not yet earned', () => {
+      const [, programme] = MyBadgesSchema.parse(captured.badges).notEarned;
+      expect(programme.progress).toEqual({ done: 1, total: 4 });
+    });
+
+    it('accepts a retired badge a learner keeps', () => {
+      const [badge] = captured.badges.earned;
+      expect(
+        MyBadgesSchema.safeParse({
+          earned: [{ ...badge, retired: true }],
+          notEarned: [],
+        }).success,
+      ).toBe(true);
+    });
+
+    it('refuses a badge with no condition or a negative progress', () => {
+      const [badge] = captured.badges.notEarned;
+      const { condition: _condition, ...noCondition } = badge;
+      expect(
+        MyBadgesSchema.safeParse({ earned: [], notEarned: [noCondition] })
+          .success,
+      ).toBe(false);
+      expect(
+        MyBadgesSchema.safeParse({
+          earned: [],
+          notEarned: [{ ...badge, progress: { done: -1, total: 2 } }],
+        }).success,
+      ).toBe(false);
+    });
+  });
+
   describe('points and leaderboard', () => {
     const responses = {
       myPoints: captured.points,
@@ -514,68 +716,108 @@ describe('learner endpoints', () => {
       },
     );
 
-    it('parses the team scope and a page that does not hold the caller', () => {
+    it('parses the team scope and a caller outside the top ten', () => {
       expect(
-        LeaderboardPageSchema.parse(captured.leaderboardTeam).page.items,
+        LeaderboardViewSchema.parse(captured.leaderboardTeam).top,
       ).toHaveLength(1);
-      const last = LeaderboardPageSchema.parse(captured.leaderboardLastPage);
-      expect(last.page.items.some((row) => row.me)).toBe(false);
-      expect(last.me).toMatchObject({ me: true, rank: 2 });
+      const outside = LeaderboardViewSchema.parse(
+        captured.leaderboardOutsideTop,
+      );
+      expect(outside.top).toHaveLength(10);
+      expect(outside.top.some((row) => row.me)).toBe(false);
+      expect(outside.me).toMatchObject({ me: true, rank: 13 });
+      expect(outside.above.map((row) => row.rank)).toEqual([11, 12]);
+      expect(outside.gapToAbove).toBe(70);
     });
 
     it('keeps the ties and the caller as the server sent them', () => {
-      const board = LeaderboardPageSchema.parse(captured.leaderboard);
-      expect(board.page.items.map((row) => row.rank)).toEqual([1, 2, 3]);
-      expect(board.page.items.filter((row) => row.me)).toEqual([board.me]);
+      const board = LeaderboardViewSchema.parse(captured.leaderboard);
+      expect(board.top.map((row) => row.rank)).toEqual([1, 2, 3]);
+      expect(board.top.filter((row) => row.me)).toEqual([board.me]);
+      expect(board.above).toEqual([]);
+      expect(board.gapToAbove).toBeNull();
+    });
+
+    it('has no paging and no count of learners', () => {
+      const board = LeaderboardViewSchema.parse(captured.leaderboard);
+      expect(Object.keys(board).sort()).toEqual([
+        'above',
+        'from',
+        'gapToAbove',
+        'me',
+        'offset',
+        'period',
+        'to',
+        'top',
+      ]);
     });
 
     it('splits the total into its four parts', () => {
       const points = MyPointsSchema.parse(captured.points);
-      const { lessons, quizzes, courses, streak } = points.parts;
-      expect(points.total).toBe(lessons + quizzes + courses + streak);
+      const {
+        lessons,
+        quizzes,
+        firstTryBonus,
+        courses,
+        community,
+        adjustments,
+      } = points.parts;
+      expect(points.total).toBe(
+        lessons + quizzes + firstTryBonus + courses + community + adjustments,
+      );
       expect(points.streakDays).toBe(2);
     });
 
-    it('accepts a caller with no rank and a row with no team', () => {
+    it('accepts a caller with no rank, a row with no team and an all-time period', () => {
       const board = captured.leaderboardTeam;
-      const [row] = board.page.items;
+      const [row] = board.top;
       expect(
-        LeaderboardPageSchema.safeParse({
-          page: { ...board.page, items: [{ ...row, teamName: null }] },
+        LeaderboardViewSchema.safeParse({
+          ...board,
+          period: 'all',
+          from: null,
+          to: null,
+          top: [{ ...row, teamName: null }],
           me: { ...board.me, rank: null, teamName: null },
         }).success,
       ).toBe(true);
     });
 
-    it('refuses a row without a rank, a negative total and a part left out', () => {
+    it('refuses a row without a rank, an unknown period and a part left out', () => {
       const board = captured.leaderboard;
-      const { rank: _rank, ...unranked } = board.page.items[0];
+      const { rank: _rank, ...unranked } = board.top[0];
       expect(
-        LeaderboardPageSchema.safeParse({
-          ...board,
-          page: { ...board.page, items: [unranked] },
-        }).success,
+        LeaderboardViewSchema.safeParse({ ...board, top: [unranked] }).success,
+      ).toBe(false);
+      expect(
+        LeaderboardViewSchema.safeParse({ ...board, period: 'year' }).success,
       ).toBe(false);
       expect(
         MyPointsSchema.safeParse({ ...captured.points, total: -1 }).success,
       ).toBe(false);
-      const { streak: _streak, ...parts } = captured.points.parts;
+      const { courses: _courses, ...parts } = captured.points.parts;
       expect(
         MyPointsSchema.safeParse({ ...captured.points, parts }).success,
       ).toBe(false);
     });
 
-    it('accepts the scopes and refuses another, or a size above 100', () => {
+    it('accepts the scopes and periods and refuses others or an offset out of range', () => {
       for (const scope of ['team', 'org', 'all']) {
         expect(LeaderboardQuerySchema.safeParse({ scope }).success).toBe(true);
+      }
+      for (const period of ['week', 'month', 'all']) {
+        expect(LeaderboardQuerySchema.safeParse({ period }).success).toBe(true);
       }
       expect(LeaderboardQuerySchema.safeParse({ scope: 'x' }).success).toBe(
         false,
       );
-      expect(LeaderboardQuerySchema.safeParse({ size: 101 }).success).toBe(
+      expect(LeaderboardQuerySchema.safeParse({ period: 'year' }).success).toBe(
         false,
       );
-      expect(LeaderboardQuerySchema.safeParse({ page: -1 }).success).toBe(
+      expect(LeaderboardQuerySchema.safeParse({ offset: -1 }).success).toBe(
+        false,
+      );
+      expect(LeaderboardQuerySchema.safeParse({ offset: 521 }).success).toBe(
         false,
       );
     });

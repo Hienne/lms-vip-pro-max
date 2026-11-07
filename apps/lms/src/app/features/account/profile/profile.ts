@@ -1,3 +1,4 @@
+import { DatePipe } from '@angular/common';
 import { Component, computed, inject, linkedSignal } from '@angular/core';
 import {
   form,
@@ -19,6 +20,8 @@ import {
   Icon,
   Input,
   PageHeader,
+  Progress,
+  Switch,
 } from '@lms/ui';
 import { PasswordChangeStore } from '../../../shared/account/password-change.store';
 import { PasswordForm } from '../../../shared/account/password-form/password-form';
@@ -46,6 +49,7 @@ import {
     Card,
     CardBody,
     CardHeader,
+    DatePipe,
     Field,
     FormField,
     FormRoot,
@@ -53,7 +57,9 @@ import {
     Input,
     PageHeader,
     PasswordForm,
+    Progress,
     RoleBadge,
+    Switch,
   ],
   providers: [ProfileStore, PasswordChangeStore],
   templateUrl: './profile.html',

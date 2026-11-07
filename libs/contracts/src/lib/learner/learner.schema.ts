@@ -109,9 +109,21 @@ export type EnrollmentDetail = z.infer<typeof EnrollmentDetailSchema>;
 export const ReminderStatusSchema = z.enum(['pending', 'sent', 'cancelled']);
 export type ReminderStatus = z.infer<typeof ReminderStatusSchema>;
 
+/**
+ * What a row of the reminders feed is: a deadline reminder, or a gamification notice. A notice has no recipient;
+ * its `subject` is the badge's or the level's name, and it exists only for an award the learner earned by an
+ * event (a badge backfilled when it was created sends none).
+ */
+export const ReminderKindSchema = z.enum([
+  'DEADLINE',
+  'BADGE_EARNED',
+  'LEVEL_UP',
+]);
+export type ReminderKind = z.infer<typeof ReminderKindSchema>;
+
 export const LearningReminderSchema = z.object({
   id: z.number().int(),
-  recipientId: z.number().int(),
+  recipientId: z.number().int().nullish(),
   scheduledAt: BackendDateTimeSchema.nullish(),
   dueAtSnapshot: BackendDateTimeSchema.nullish(),
   channel: z.string().nullish(),
@@ -120,6 +132,9 @@ export const LearningReminderSchema = z.object({
   attemptCount: z.number().int().nullish(),
   lastErrorCode: z.string().nullish(),
   idempotencyKey: z.string().nullish(),
+  /** An older backend sends no kind: every row of it is a deadline reminder. */
+  kind: ReminderKindSchema.default('DEADLINE'),
+  subject: z.string().nullish(),
   rowVersion: z.number().int(),
   createTime: BackendDateTimeSchema.nullish(),
   updateTime: BackendDateTimeSchema.nullish(),
@@ -340,24 +355,35 @@ export type ProgressExportQuery = z.infer<typeof ProgressExportQuerySchema>;
 export const LeaderboardScopeSchema = z.enum(['team', 'org', 'all']);
 export type LeaderboardScope = z.infer<typeof LeaderboardScopeSchema>;
 
-/** `scope` defaults to `org` on the server; `size` is at most 100. */
+/** The span the board adds XP over: a Monday-Sunday week, a calendar month (Vietnam time), or all time. */
+export const LeaderboardPeriodSchema = z.enum(['week', 'month', 'all']);
+export type LeaderboardPeriod = z.infer<typeof LeaderboardPeriodSchema>;
+
+/** The furthest back `offset` may step, in weeks or months (the server's limit). */
+export const MAX_LEADERBOARD_OFFSET = 520;
+
+/**
+ * `scope` defaults to `org` and `period` to `month` on the server. `offset` steps back to an earlier week or
+ * month (0 is the current one) and is ignored for `all`.
+ */
 export const LeaderboardQuerySchema = z.object({
   scope: LeaderboardScopeSchema.optional(),
-  page: z.number().int().nonnegative().optional(),
-  size: z.number().int().min(1).max(100).optional(),
+  period: LeaderboardPeriodSchema.optional(),
+  offset: z.number().int().min(0).max(MAX_LEADERBOARD_OFFSET).optional(),
 });
 export type LeaderboardQuery = z.infer<typeof LeaderboardQuerySchema>;
 
 /**
- * One learner on the board. The server ranks by total points, ties share a rank (1, 1, 3) and a
- * learner with no points comes after everyone else. `teamName` is null for a learner with no team.
+ * One learner on the board. The server ranks by the XP of the period, ties share a rank (1, 1, 3) and a
+ * learner with no XP comes after everyone else. `teamName` is null for a learner with no team.
  */
 export const LeaderboardRowSchema = z.object({
   rank: z.number().int().positive(),
   userId: z.string(),
   fullName: z.string(),
   teamName: z.string().nullish(),
-  points: z.number().int().nonnegative(),
+  /** XP earned in the period; an admin's correction can make it negative. */
+  points: z.number().int(),
   /** Consecutive learning days, as the server counts them. */
   streakDays: z.number().int().nonnegative(),
   /** True on the caller's own row. */
@@ -374,33 +400,167 @@ export const LeaderboardMeSchema = LeaderboardRowSchema.extend({
 });
 export type LeaderboardMe = z.infer<typeof LeaderboardMeSchema>;
 
-/** `LeaderboardPage`: a page of rows and the caller's own row, whether or not it is on the page. */
-export const LeaderboardPageSchema = z.object({
-  page: PageSchema(LeaderboardRowSchema),
+/**
+ * `Leaderboard`: the top ten of a period and scope, and the caller's own row. It has no paging and no
+ * count of learners. A caller outside the top ten finds the one or two just above them in `above` and
+ * the XP they lack to pass the nearest one with more in `gapToAbove`; inside the top ten their row is
+ * in `top` (`me: true`) and both are empty. `from` and `to` are the first and last day of the period.
+ */
+export const LeaderboardViewSchema = z.object({
+  period: LeaderboardPeriodSchema,
+  offset: z.number().int().nonnegative(),
+  from: z.string().nullable(),
+  to: z.string().nullable(),
+  top: z.array(LeaderboardRowSchema),
   me: LeaderboardMeSchema,
+  above: z.array(LeaderboardRowSchema),
+  gapToAbove: z.number().int().positive().nullable(),
 });
-export type LeaderboardPage = z.infer<typeof LeaderboardPageSchema>;
+export type LeaderboardView = z.infer<typeof LeaderboardViewSchema>;
 
-/** The points of each source; `total` is their sum. */
+/** `period` and `offset` as on the personal board; the unit board has no scope. */
+export const UnitLeaderboardQuerySchema = z.object({
+  period: LeaderboardPeriodSchema.optional(),
+  offset: z.number().int().min(0).max(MAX_LEADERBOARD_OFFSET).optional(),
+});
+export type UnitLeaderboardQuery = z.infer<typeof UnitLeaderboardQuerySchema>;
+
+/**
+ * One unit (branch) on the unit board. `averageXp` is the XP per active learner of the period (a learner with
+ * XP in it) and `participationPercent` the share of the unit's learners who learned on at least one day, both
+ * computed by the server. Ties share a rank (1, 1, 3).
+ */
+export const UnitRowSchema = z.object({
+  rank: z.number().int().positive(),
+  orgId: z.number().int().positive(),
+  unitName: z.string(),
+  averageXp: z.number(),
+  participationPercent: z.number().int().min(0).max(100),
+  /** True on the caller's own unit. */
+  mine: z.boolean(),
+});
+export type UnitRow = z.infer<typeof UnitRowSchema>;
+
+/**
+ * `UnitLeaderboard`: the top ten units with at least five learners and the caller's own unit. `myUnit` is null
+ * when the caller has no unit or their unit has too few learners to be ranked (`myUnitTooSmall`). The bottom of
+ * the ranking is never returned. `from` and `to` are the first and last day of the period.
+ */
+export const UnitLeaderboardSchema = z.object({
+  period: LeaderboardPeriodSchema,
+  offset: z.number().int().nonnegative(),
+  from: z.string().nullable(),
+  to: z.string().nullable(),
+  top: z.array(UnitRowSchema),
+  myUnit: UnitRowSchema.nullable(),
+  myUnitTooSmall: z.boolean(),
+});
+export type UnitLeaderboard = z.infer<typeof UnitLeaderboardSchema>;
+
+/**
+ * `LearnerPreferences`: the learner's own choices. `showOnLeaderboard` false hides the name from other learners'
+ * personal leaderboards, whose ranks close up; the learner still sees their own rank and their XP still counts for
+ * their unit. The default is visible. The same shape is the body of the update.
+ */
+export const LearnerPreferencesSchema = z.object({
+  showOnLeaderboard: z.boolean(),
+});
+export type LearnerPreferences = z.infer<typeof LearnerPreferencesSchema>;
+
+/** The XP of each source, read from the ledger; `total` is their sum. A streak earns no XP. */
 export const PointPartsSchema = z.object({
   /** Lessons completed, each counted once however many cycles or revisions. */
   lessons: z.number().int().nonnegative(),
   /** Distinct quizzes passed. */
   quizzes: z.number().int().nonnegative(),
+  /** The bonus of each quiz passed on the first try with a high score. */
+  firstTryBonus: z.number().int().nonnegative(),
   /** The reward of each course completed. */
   courses: z.number().int().nonnegative(),
-  /** The current streak, capped by the server. */
-  streak: z.number().int().nonnegative(),
+  /** The XP of community answers accepted or marked helpful, capped per day by the server. */
+  community: z.number().int().nonnegative(),
+  /** The net of an admin's corrections; the only part that can be negative. */
+  adjustments: z.number().int(),
 });
 export type PointParts = z.infer<typeof PointPartsSchema>;
 
-/** `MyPoints`: the caller's total, its parts and the streak behind the last part. It has no rank. */
+/** Largest correction an admin can enter, in either direction (the server's limit). */
+export const MAX_XP_ADJUSTMENT = 100_000;
+
+/** `AdjustXp`: a signed, non-zero XP amount for one learner and the reason, which is mandatory. */
+export const AdjustXpCommandSchema = z.object({
+  userId: z.string().min(1),
+  amount: z
+    .number()
+    .int()
+    .refine((value) => value !== 0, { message: 'Số XP phải khác 0.' })
+    .refine((value) => Math.abs(value) <= MAX_XP_ADJUSTMENT, {
+      message: `Số XP không quá ${MAX_XP_ADJUSTMENT}.`,
+    }),
+  reason: z
+    .string()
+    .trim()
+    .min(1, { message: 'Cần nhập lý do điều chỉnh.' })
+    .max(500),
+});
+export type AdjustXpCommand = z.infer<typeof AdjustXpCommandSchema>;
+
+/** `XpAdjustmentResult`: the compensating row that was written and the learner's total after it. */
+export const XpAdjustmentResultSchema = z.object({
+  entryId: z.number().int(),
+  userId: z.string(),
+  amount: z.number().int(),
+  total: z.number().int(),
+});
+export type XpAdjustmentResult = z.infer<typeof XpAdjustmentResultSchema>;
+
+/**
+ * `MyLevel`: the caller's job-themed level, computed by the server from total XP and the ladder in the
+ * current config. `level` is the highest ever reached, so it never drops. At the top level `xpToNext` and
+ * `progressPercent` are null.
+ */
+export const MyLevelSchema = z.object({
+  level: z.number().int().positive(),
+  name: z.string().min(1),
+  xp: z.number().int().nonnegative(),
+  xpToNext: z.number().int().nonnegative().nullable(),
+  progressPercent: z.number().int().min(0).max(100).nullable(),
+});
+export type MyLevel = z.infer<typeof MyLevelSchema>;
+
+/** `MyPoints`: the caller's XP total, its parts and the current working-day streak (display only). It has no rank. */
 export const MyPointsSchema = z.object({
   total: z.number().int().nonnegative(),
   parts: PointPartsSchema,
   streakDays: z.number().int().nonnegative(),
 });
 export type MyPoints = z.infer<typeof MyPointsSchema>;
+
+/**
+ * `LearningStreakViews.HeatmapDay`: one calendar day (Asia/Ho_Chi_Minh) of the activity heatmap. `lessons`
+ * and `quizzes` are the lessons completed and the quizzes submitted that day; `restDay` is a weekend or a
+ * bank holiday (a make-up Saturday is a working day). Learning on a rest day shows here and adds nothing
+ * to the streak.
+ */
+export const HeatmapDaySchema = z.object({
+  date: z.iso.date(),
+  lessons: z.number().int().nonnegative(),
+  quizzes: z.number().int().nonnegative(),
+  restDay: z.boolean(),
+});
+export type HeatmapDay = z.infer<typeof HeatmapDaySchema>;
+
+/**
+ * `LearningStreakViews.MyStreak`: the caller's streak in working days and the heatmap data. `days` covers
+ * the last 26 weeks up to today, starts on a Monday and holds one row per day, days without activity
+ * included. The server decides what qualifies a day and which days are rest days; the app only shades.
+ */
+export const MyStreakSchema = z.object({
+  currentStreak: z.number().int().nonnegative(),
+  longestStreak: z.number().int().nonnegative(),
+  days: z.array(HeatmapDaySchema),
+});
+export type MyStreak = z.infer<typeof MyStreakSchema>;
 
 /**
  * `LearningAnalytics.Counts`: the server's counts over a set of enrolments. Both percents are the
@@ -522,3 +682,34 @@ export const DashboardGroupSchema = DashboardCountsSchema.omit({
   name: z.string(),
 });
 export type DashboardGroup = z.infer<typeof DashboardGroupSchema>;
+
+/** The courses of a programme done out of all of them, shown as "x/y khóa" on a programme badge. */
+export const BadgeProgressSchema = z.object({
+  done: z.number().int().nonnegative(),
+  total: z.number().int().nonnegative(),
+});
+export type BadgeProgress = z.infer<typeof BadgeProgressSchema>;
+
+/**
+ * One badge on the profile. `earnedAt` is null for a badge not yet earned, which carries its `condition`; `retired`
+ * marks a badge an admin stopped awarding that this learner keeps. `progress` is set only on a programme badge not
+ * yet earned. `icon` is a Lucide name chosen by an admin, so the app shows a fallback for one it does not bundle.
+ */
+export const BadgeSchema = z.object({
+  badgeId: z.number().int().positive(),
+  name: z.string(),
+  description: z.string(),
+  icon: z.string(),
+  condition: z.string(),
+  earnedAt: z.string().nullable(),
+  retired: z.boolean(),
+  progress: BadgeProgressSchema.nullable(),
+});
+export type Badge = z.infer<typeof BadgeSchema>;
+
+/** `MyBadges`: the badges earned (newest first), then the ones not yet earned in the server's order. */
+export const MyBadgesSchema = z.object({
+  earned: z.array(BadgeSchema),
+  notEarned: z.array(BadgeSchema),
+});
+export type MyBadges = z.infer<typeof MyBadgesSchema>;

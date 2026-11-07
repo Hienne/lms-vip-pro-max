@@ -22,7 +22,10 @@ import {
   fakeSession,
   seedProfile,
 } from '../../../core/session/session.testing';
-import { LeaderboardStore } from './data-access/leaderboard.store';
+import {
+  LeaderboardStore,
+  XP_NOTICE_STORAGE_KEY,
+} from './data-access/leaderboard.store';
 import { Leaderboard } from './leaderboard';
 
 describe('Leaderboard', () => {
@@ -42,6 +45,7 @@ describe('Leaderboard', () => {
       ],
     });
     handle = vi.spyOn(TestBed.inject(MockBackend), 'handle');
+    localStorage.removeItem(XP_NOTICE_STORAGE_KEY);
   });
 
   async function settle(): Promise<void> {
@@ -80,9 +84,11 @@ describe('Leaderboard', () => {
     >;
   const store = () => harness.routeDebugElement!.injector.get(LeaderboardStore);
   const option = (label: string) =>
-    Array.from(el.querySelectorAll<HTMLElement>('[role="option"]')).find((o) =>
-      o.textContent?.includes(label),
-    )!;
+    Array.from(
+      el.querySelectorAll<HTMLElement>(
+        'ui-segmented:not(.leaderboard__view) [role="option"]',
+      ),
+    ).find((o) => o.textContent?.includes(label))!;
 
   /** Lets the mock answer one endpoint with a refusal, the rest as usual. */
   function fail(endpoint: unknown, key: Parameters<typeof backendRefusal>[0]) {
@@ -102,25 +108,50 @@ describe('Leaderboard', () => {
         'Bảng xếp hạng & thành tích',
       );
       expect(text()).toContain(
-        'Điểm thưởng tính tự động từ bài học hoàn thành, bài kiểm tra đạt, khóa học hoàn thành và chuỗi ngày học.',
+        'XP được ghi tự động khi bạn hoàn thành bài học, đạt bài kiểm tra hoặc hoàn thành khóa học.',
       );
     });
 
     it('offers the three scopes and starts on Đơn vị', () => {
-      const labels = Array.from(el.querySelectorAll('[role="option"]')).map(
-        (o) => text(o),
-      );
+      const labels = Array.from(
+        el.querySelectorAll(
+          'ui-segmented:not(.leaderboard__view) [role="option"]',
+        ),
+      )
+        .map((o) => text(o))
+        .slice(0, 3);
       expect(labels).toEqual(['Nhóm của tôi', 'Đơn vị', 'Toàn hệ thống']);
       expect(option('Đơn vị').getAttribute('aria-selected')).toBe('true');
       expect(lastQuery()).toMatchObject({
         scope: 'org',
-        page: '0',
-        size: '20',
+        period: 'month',
+        offset: '0',
       });
     });
 
-    it('counts the learners and lists them in the server order with ties sharing a rank', () => {
-      expect(text(el.querySelector('.leaderboard__count')!)).toBe('5 học viên');
+    it('offers the three periods and starts on Tháng, with no page size and no count', () => {
+      const labels = Array.from(
+        el.querySelectorAll(
+          'ui-segmented:not(.leaderboard__view) [role="option"]',
+        ),
+      )
+        .map((o) => text(o))
+        .slice(3);
+      expect(labels).toEqual(['Tuần', 'Tháng', 'Tất cả']);
+      expect(option('Tháng').getAttribute('aria-selected')).toBe('true');
+      expect(lastQuery()).not.toHaveProperty('page');
+      expect(lastQuery()).not.toHaveProperty('size');
+      expect(el.querySelector('.leaderboard__count')).toBeNull();
+      expect(el.querySelector('ui-pagination')).toBeNull();
+    });
+
+    it('says XP is not used to appraise work performance', () => {
+      expect(text(el.querySelector('.leaderboard__appraisal')!)).toContain(
+        'không dùng để đánh giá hiệu suất công việc',
+      );
+    });
+
+    it('lists the learners in the server order with ties sharing a rank', () => {
       expect(
         rows().map((row) => [
           text(row.querySelector('.leaderboard__rank')!),
@@ -140,10 +171,8 @@ describe('Leaderboard', () => {
       expect(text(first.querySelector('.leaderboard__meta')!)).toBe(
         'Nhóm Tích hợp Core Banking · chuỗi 2 ngày',
       );
-      expect(text(first.querySelector('.leaderboard__score')!)).toBe('90 điểm');
-      expect(text(second.querySelector('.leaderboard__score')!)).toBe(
-        '80 điểm',
-      );
+      expect(text(first.querySelector('.leaderboard__score')!)).toBe('90 XP');
+      expect(text(second.querySelector('.leaderboard__score')!)).toBe('80 XP');
     });
 
     it('marks only the caller: the selected-row token, aria-current and "(bạn)"', () => {
@@ -170,7 +199,7 @@ describe('Leaderboard', () => {
     it('shows the points card: the total, the rank in this scope and the four parts', () => {
       const card = el.querySelector('.leaderboard__points')!;
       expect(text(card.querySelector('.leaderboard__points-title')!)).toBe(
-        'Điểm thưởng của bạn · hạng 2',
+        'XP của bạn · hạng 2',
       );
       expect(text(card.querySelector('.leaderboard__total')!)).toBe('80');
       expect(
@@ -181,8 +210,10 @@ describe('Leaderboard', () => {
       ).toEqual([
         ['Bài học hoàn thành', '+30'],
         ['Bài kiểm tra đạt', '+30'],
+        ['Đạt ngay lần đầu', '+20'],
         ['Khóa học hoàn thành', '+0'],
-        ['Chuỗi ngày học', '+20'],
+        ['Cộng đồng', '+0'],
+        ['Điều chỉnh', '+0'],
       ]);
     });
 
@@ -197,12 +228,11 @@ describe('Leaderboard', () => {
       await open();
       option('Nhóm của tôi').click();
       await settle();
-      expect(lastQuery()).toMatchObject({ scope: 'team', page: '0' });
+      expect(lastQuery()).toMatchObject({ scope: 'team', period: 'month' });
       expect(TestBed.inject(Router).url).toBe('/leaderboard?scope=team');
       expect(rows()).toHaveLength(1);
-      expect(text(el.querySelector('.leaderboard__count')!)).toBe('1 học viên');
       expect(text(el.querySelector('.leaderboard__points-title')!)).toBe(
-        'Điểm thưởng của bạn · hạng 1',
+        'XP của bạn · hạng 1',
       );
     });
 
@@ -228,13 +258,93 @@ describe('Leaderboard', () => {
       expect(lastQuery()).toMatchObject({ scope: 'org' });
     });
 
-    it('starts again at the first page', async () => {
-      await open('/leaderboard?page=2');
-      expect(lastQuery()).toMatchObject({ page: '1' });
+    it('keeps the period when the scope changes', async () => {
+      await open('/leaderboard?period=week');
       option('Toàn hệ thống').click();
       await settle();
-      expect(lastQuery()).toMatchObject({ scope: 'all', page: '0' });
-      expect(TestBed.inject(Router).url).toBe('/leaderboard?scope=all');
+      expect(lastQuery()).toMatchObject({ scope: 'all', period: 'week' });
+      expect(TestBed.inject(Router).url).toBe(
+        '/leaderboard?scope=all&period=week',
+      );
+    });
+  });
+
+  describe('choosing a period', () => {
+    it('asks the server for it, shows its rows, and keeps it in the URL', async () => {
+      await open();
+      option('Tuần').click();
+      await settle();
+      expect(lastQuery()).toMatchObject({ period: 'week', offset: '0' });
+      expect(TestBed.inject(Router).url).toBe('/leaderboard?period=week');
+      expect(
+        rows().map((row) => text(row.querySelector('.leaderboard__score')!))[0],
+      ).toBe('30 XP');
+    });
+
+    it('leaves the default period out of the URL', async () => {
+      await open('/leaderboard?period=all');
+      option('Tháng').click();
+      await settle();
+      expect(lastQuery()).toMatchObject({ period: 'month' });
+      expect(TestBed.inject(Router).url).toBe('/leaderboard');
+    });
+
+    it('opens a shared link on its period and how far back it steps', async () => {
+      await open('/leaderboard?scope=all&period=week&offset=2');
+      expect(option('Tuần').getAttribute('aria-selected')).toBe('true');
+      expect(lastQuery()).toMatchObject({
+        scope: 'all',
+        period: 'week',
+        offset: '2',
+      });
+    });
+
+    it('opens an unknown period on Tháng and a bad offset on the current one', async () => {
+      await open('/leaderboard?period=decade&offset=-3');
+      expect(option('Tháng').getAttribute('aria-selected')).toBe('true');
+      expect(lastQuery()).toMatchObject({ period: 'month', offset: '0' });
+    });
+
+    it('ignores an offset on all', async () => {
+      await open('/leaderboard?period=all&offset=4');
+      expect(lastQuery()).toMatchObject({ period: 'all', offset: '0' });
+    });
+  });
+
+  describe('stepping to an earlier period', () => {
+    const step = (label: string) =>
+      Array.from(el.querySelectorAll<HTMLButtonElement>('button')).find((b) =>
+        b.textContent?.includes(label),
+      )!;
+
+    it('steps back and forward, and keeps the offset in the URL', async () => {
+      await open();
+      expect(step('Kỳ sau').disabled).toBe(true);
+      step('Kỳ trước').click();
+      await settle();
+      expect(lastQuery()).toMatchObject({ period: 'month', offset: '1' });
+      expect(TestBed.inject(Router).url).toBe('/leaderboard?offset=1');
+      expect(step('Kỳ sau').disabled).toBe(false);
+      step('Kỳ sau').click();
+      await settle();
+      expect(lastQuery()).toMatchObject({ offset: '0' });
+      expect(TestBed.inject(Router).url).toBe('/leaderboard');
+    });
+
+    it('has nothing to step through for all time', async () => {
+      await open('/leaderboard?period=all');
+      expect(
+        Array.from(el.querySelectorAll('button')).some((b) =>
+          b.textContent?.includes('Kỳ trước'),
+        ),
+      ).toBe(false);
+    });
+
+    it('goes back to the current period when the period changes', async () => {
+      await open('/leaderboard?offset=3');
+      option('Tuần').click();
+      await settle();
+      expect(lastQuery()).toMatchObject({ period: 'week', offset: '0' });
     });
   });
 
@@ -243,16 +353,6 @@ describe('Leaderboard', () => {
       await open('/leaderboard?scope=team', 'giangvien', '000005');
       expect(rows()).toHaveLength(1);
       expect(text(rows()[0].querySelector('.leaderboard__rank')!)).toBe('1');
-      expect(text(el.querySelector('.leaderboard__count')!)).toBe('1 học viên');
-    });
-  });
-
-  describe('a page that does not hold the caller', () => {
-    it('adds "Vị trí của bạn" with the caller row after the list', async () => {
-      await open('/leaderboard?scope=all&page=3');
-      expect(lastQuery()).toMatchObject({ scope: 'all', page: '2' });
-      expect(rows()).toEqual([]);
-      expect(text()).toContain('Vị trí của bạn');
     });
   });
 
@@ -263,13 +363,13 @@ describe('Leaderboard', () => {
       expect(text(el.querySelector('.leaderboard__ranking')!)).toContain(
         'Không tải được bảng xếp hạng',
       );
-      expect(el.querySelectorAll('.leaderboard__ranking button')).toHaveLength(
-        1,
-      );
+      expect(
+        el.querySelectorAll('.leaderboard__ranking ui-error-state button'),
+      ).toHaveLength(1);
       expect(text(el.querySelector('.leaderboard__total')!)).toBe('80');
       // The rank is the board's: without it the title carries none.
       expect(text(el.querySelector('.leaderboard__points-title')!)).toBe(
-        'Điểm thưởng của bạn',
+        'XP của bạn',
       );
     });
 
@@ -284,7 +384,7 @@ describe('Leaderboard', () => {
         ),
       );
       el.querySelector<HTMLButtonElement>(
-        '.leaderboard__ranking button',
+        '.leaderboard__ranking ui-error-state button',
       )!.click();
       await settle();
       expect(rows().length).toBe(5);
@@ -307,14 +407,43 @@ describe('Leaderboard', () => {
     });
   });
 
-  describe('the store', () => {
-    it('moves to a page, keeps the scope, and writes the page to the URL', async () => {
-      await open('/leaderboard?scope=all');
-      store().goToPage(2);
+  describe('the unit view', () => {
+    it('opens from the URL, ranks the unit by average XP and never calls the personal board', async () => {
+      await open('/leaderboard?view=units');
+      expect(calls(learnerEndpoints.unitLeaderboard)).toHaveLength(1);
+      expect(calls(learnerEndpoints.leaderboard)).toHaveLength(0);
+      const board = text(el.querySelector('.leaderboard__ranking')!);
+      expect(board).toContain('XP/người');
+      expect(board).toContain('Tham gia 80% học viên');
+      expect(board).toContain('(đơn vị của bạn)');
+    });
+
+    it('switches view and writes it to the URL, leaving the default out', async () => {
+      await open();
+      store().selectView('units');
       await settle();
-      expect(lastQuery()).toMatchObject({ scope: 'all', page: '1' });
-      expect(TestBed.inject(Router).url).toBe('/leaderboard?scope=all&page=2');
-      expect(store().page$()).toBe(2);
+      expect(TestBed.inject(Router).url).toBe('/leaderboard?view=units');
+      store().selectView('people');
+      await settle();
+      expect(TestBed.inject(Router).url).toBe('/leaderboard');
+    });
+
+    it('reads an unknown view as the personal board', async () => {
+      await open('/leaderboard?view=galaxy');
+      expect(store().view$()).toBe('people');
+    });
+  });
+
+  describe('the store', () => {
+    it('steps back one period, keeps the scope, and writes both to the URL', async () => {
+      await open('/leaderboard?scope=all');
+      store().stepBack();
+      await settle();
+      expect(lastQuery()).toMatchObject({ scope: 'all', offset: '1' });
+      expect(TestBed.inject(Router).url).toBe(
+        '/leaderboard?scope=all&offset=1',
+      );
+      expect(store().offset$()).toBe(1);
     });
 
     it('ignores a scope it does not know', async () => {
@@ -326,9 +455,18 @@ describe('Leaderboard', () => {
       expect(calls(learnerEndpoints.leaderboard)).toHaveLength(before);
     });
 
-    it('reads a bad page of the URL as the first', async () => {
-      await open('/leaderboard?page=abc');
-      expect(lastQuery()).toMatchObject({ page: '0' });
+    it('refuses to step forward from the current period or back from all', async () => {
+      await open();
+      store().stepForward();
+      await settle();
+      expect(store().offset$()).toBe(0);
+      store().selectPeriod('all');
+      await settle();
+      store().stepBack();
+      await settle();
+      expect(store().offset$()).toBe(0);
+      store().selectPeriod('decade');
+      expect(store().period$()).toBe('all');
     });
 
     it('exposes the four parts in the mockup order', async () => {
@@ -337,7 +475,31 @@ describe('Leaderboard', () => {
         store()
           .parts$()
           .map((part) => part.key),
-      ).toEqual(['lessons', 'quizzes', 'courses', 'streak']);
+      ).toEqual([
+        'lessons',
+        'quizzes',
+        'firstTryBonus',
+        'courses',
+        'community',
+        'adjustments',
+      ]);
+    });
+  });
+
+  describe('the notice that points became XP', () => {
+    const notice = () => el.querySelector('.leaderboard__notice');
+
+    it('shows once, says a streak earns no XP, and is remembered once dismissed', async () => {
+      await open();
+      expect(text(notice()!)).toContain('Chuỗi ngày học vẫn được ghi nhận');
+      expect(text(notice()!)).toContain('không cộng XP');
+
+      el.querySelector<HTMLButtonElement>(
+        '.leaderboard__notice button',
+      )!.click();
+      await settle();
+      expect(notice()).toBeNull();
+      expect(localStorage.getItem(XP_NOTICE_STORAGE_KEY)).toBe('1');
     });
   });
 });
@@ -361,20 +523,28 @@ describe('Leaderboard with a fake store', () => {
           {
             provide: LeaderboardStore,
             useValue: {
+              view$: signal('people'),
               scope$: signal(scope),
-              page$: signal(1),
+              period$: signal('month'),
+              offset$: signal(0),
+              canStepBack$: signal(true),
+              canStepForward$: signal(false),
+              periodLabel$: signal('Tháng 11/2026'),
               boardError$: signal(undefined),
               isBoardLoading$: signal(false),
-              rows$: signal([]),
-              total$: signal(0),
+              top$: signal([]),
+              above$: signal([]),
+              gapToAbove$: signal(null),
               me$: signal(undefined),
-              isMeOffPage$: signal(false),
+              isMeInTop$: signal(false),
+              isMeBelowTop$: signal(false),
               isEmpty$: signal(false),
               pointsError$: signal(undefined),
               isPointsLoading$: signal(false),
               points$: signal(undefined),
               rank$: signal(null),
               parts$: signal([]),
+              isXpNoticeShown$: signal(false),
               ...Object.fromEntries(
                 Object.entries(overrides).map(([key, value]) => [
                   key,
@@ -391,7 +561,7 @@ describe('Leaderboard with a fake store', () => {
     return fixture.nativeElement as HTMLElement;
   }
 
-  it('shows a skeleton for the board and for the points, and no count', () => {
+  it('shows a skeleton for the board and for the points', () => {
     const node = render('org', {
       isBoardLoading$: true,
       isPointsLoading$: true,
@@ -402,19 +572,17 @@ describe('Leaderboard with a fake store', () => {
     expect(
       node.querySelector('.leaderboard__points-placeholder'),
     ).not.toBeNull();
-    expect(node.querySelector('.leaderboard__count')).toBeNull();
     expect(node.querySelector('.leaderboard__list')).toBeNull();
   });
 
   it('tells a caller with no team why the team board is empty, and shows their own row with a dash', () => {
     const node = render('team', {
       isEmpty$: true,
-      isMeOffPage$: true,
+      isMeBelowTop$: true,
       me$: me,
     });
     const text = node.textContent?.replace(/\s+/g, ' ') ?? '';
     expect(text).toContain('Bạn chưa thuộc nhóm nào');
-    expect(text).toContain('0 học viên');
     expect(text).toContain('Vị trí của bạn');
     expect(node.querySelector('.leaderboard__rank')?.textContent?.trim()).toBe(
       '—',
@@ -430,11 +598,50 @@ describe('Leaderboard with a fake store', () => {
     expect(node.textContent).not.toContain('Bạn chưa thuộc nhóm nào');
   });
 
-  it('pages a board of more than twenty learners', () => {
-    const node = render('all', { total$: 45 });
-    expect(node.querySelector('ui-pagination')).not.toBeNull();
-    expect(node.querySelector('ui-pagination')?.textContent).toContain(
-      '1–20 / 45',
+  const entry = (rank: number, userId: string, points: number, me = false) => ({
+    rank,
+    userId,
+    fullName: `Người ${userId}`,
+    teamName: null,
+    points,
+    streakDays: 0,
+    me,
+  });
+
+  it('puts the caller below the top ten with the two above and the XP gap, and no pagination', () => {
+    const node = render('all', {
+      top$: Array.from({ length: 10 }, (_, i) =>
+        entry(i + 1, `t${i}`, 200 - i),
+      ),
+      isMeBelowTop$: true,
+      me$: entry(13, 'me', 30, true),
+      above$: [entry(11, 'a1', 101), entry(12, 'a2', 100)],
+      gapToAbove$: 70,
+    });
+    const lists = Array.from(node.querySelectorAll('.leaderboard__list'));
+    expect(lists).toHaveLength(2);
+    expect(lists[0].querySelectorAll('li')).toHaveLength(10);
+    expect(
+      Array.from(lists[1].querySelectorAll('li')).map((li) =>
+        li.querySelector('.leaderboard__rank')?.textContent?.trim(),
+      ),
+    ).toEqual(['11', '12', '13']);
+    expect(lists[1].querySelectorAll('[aria-current="true"]')).toHaveLength(1);
+    expect(node.querySelector('.leaderboard__gap')?.textContent).toContain(
+      '70 XP',
     );
+    expect(node.querySelector('ui-pagination')).toBeNull();
+  });
+
+  it('highlights the caller in place inside the top ten, with no separate position and no gap', () => {
+    const node = render('org', {
+      top$: [entry(1, 'a', 90), entry(2, 'me', 80, true)],
+      isMeInTop$: true,
+      me$: entry(2, 'me', 80, true),
+    });
+    expect(node.querySelectorAll('.leaderboard__list')).toHaveLength(1);
+    expect(node.querySelectorAll('[aria-current="true"]')).toHaveLength(1);
+    expect(node.textContent).not.toContain('Vị trí của bạn');
+    expect(node.querySelector('.leaderboard__gap')).toBeNull();
   });
 });

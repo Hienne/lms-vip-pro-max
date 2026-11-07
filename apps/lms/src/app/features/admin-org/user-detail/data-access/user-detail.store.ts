@@ -1,9 +1,15 @@
 import { computed, inject, Injectable, signal } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { ActivatedRoute } from '@angular/router';
-import { adminOrgEndpoints, identityEndpoints } from '@lms/contracts';
+import {
+  adminOrgEndpoints,
+  identityEndpoints,
+  learnerEndpoints,
+  type XpAdjustmentResult,
+} from '@lms/contracts';
 import type { TabItem } from '@lms/ui';
 import { map } from 'rxjs';
+import { serverMutation } from '../../../../core/data-access/server-mutation';
 import { serverData } from '../../../../core/data-access/server-data';
 import { EndpointClient } from '../../../../core/http/endpoint-client';
 import { scopeLabel } from '../../../../shared/status/scope-label';
@@ -14,7 +20,8 @@ export type UserDetailTab =
   | 'grants'
   | 'courses'
   | 'attempts'
-  | 'audit';
+  | 'audit'
+  | 'xp';
 
 /**
  * The user page (the mockup's `userDetail`): one user from the backend with the tab being read.
@@ -29,6 +36,7 @@ export class UserDetailStore {
 
   private readonly state = {
     tab: signal<UserDetailTab>('info'),
+    lastAdjustment: signal<XpAdjustmentResult | undefined>(undefined),
   };
 
   private readonly userId = toSignal(
@@ -68,7 +76,27 @@ export class UserDetailStore {
     { params: () => this.onTab('audit') },
   );
 
+  /** A correction of the learner's XP; the server enforces who may and which values are valid. */
+  private readonly adjustMutation = serverMutation(
+    (input: { readonly amount: number; readonly reason: string }) =>
+      this.client.call(learnerEndpoints.adjustXp, {
+        body: { userId: this.userId() ?? '', ...input },
+      }),
+    {
+      errors: 'alert',
+      success: () => 'Đã ghi điều chỉnh XP',
+      onSuccess: (result) => this.state.lastAdjustment.set(result),
+    },
+  );
+
   readonly tab$ = this.state.tab.asReadonly();
+  readonly isAdjustingXp$ = this.adjustMutation.isPending;
+  readonly adjustXpError$ = this.adjustMutation.error;
+  readonly lastAdjustment$ = this.state.lastAdjustment.asReadonly();
+  /** Display only: the XP tab is offered to global admins; the server decides every correction. */
+  readonly canAdjustXp$ = computed(
+    () => this.editor.me$()?.scopeSummary === 'global',
+  );
   readonly detail$ = this.detailData.value;
   readonly isLoading$ = this.detailData.isLoading;
   readonly loadError$ = this.detailData.error;
@@ -101,6 +129,7 @@ export class UserDetailStore {
           { id: 'audit', label: 'Hoạt động' },
         ]
       : []),
+    ...(this.canAdjustXp$() ? [{ id: 'xp', label: 'Điều chỉnh XP' }] : []),
   ]);
 
   // Setters: the only writers of state
@@ -111,6 +140,11 @@ export class UserDetailStore {
   // Commands
   selectTab(tab: string): void {
     this.setTab(tab as UserDetailTab);
+  }
+
+  adjustXp(amount: number, reason: string): void {
+    this.state.lastAdjustment.set(undefined);
+    this.adjustMutation.run({ amount, reason });
   }
 
   retryLoad(): void {

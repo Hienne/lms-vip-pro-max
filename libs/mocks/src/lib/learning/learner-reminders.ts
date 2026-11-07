@@ -35,12 +35,31 @@ export class LearnerReminders {
           attemptCount: 0,
           lastErrorCode: null,
           idempotencyKey: null,
+          kind: state.notice?.kind ?? 'DEADLINE',
+          subject: state.notice?.subject ?? null,
           rowVersion: 0,
           createTime: inDays(state.scheduledInDays - 1),
           updateTime: inDays(state.scheduledInDays - 1),
         },
       })),
     );
+  }
+
+  /** Records that the toast of the caller's reminder was shown: `sentAt` is set and the row stays pending. */
+  seen(userId: string, id: number): LearningReminder {
+    const row = this.rows.find((candidate) => candidate.reminder.id === id);
+    if (!row) return refuse('resourceNotFound');
+    if (row.userId !== userId) return refuse('accessDenied');
+    if (!row.reminder.sentAt) {
+      const stamp = new Date().toISOString();
+      row.reminder = {
+        ...row.reminder,
+        sentAt: stamp,
+        updateTime: stamp,
+        rowVersion: row.reminder.rowVersion + 1,
+      };
+    }
+    return { ...row.reminder };
   }
 
   /** The caller's pending reminders that have fallen due. */

@@ -31,6 +31,7 @@ import { GrantPicker } from '../components/grant-picker/grant-picker';
 import { UserEditor } from '../components/user-editor/user-editor';
 import { UserEditorStore } from '../data-access/user-editor.store';
 import { UserDetailStore } from './data-access/user-detail.store';
+import { XpAdjustForm } from './components/xp-adjust-form/xp-adjust-form';
 
 /**
  * One user (the mockup's `userDetail`): header with the edit and status actions, then the info and
@@ -68,6 +69,7 @@ import { UserDetailStore } from './data-access/user-detail.store';
     TableWrap,
     Tabs,
     UserEditor,
+    XpAdjustForm,
   ],
   providers: [UserEditorStore, UserDetailStore],
   templateUrl: './user-detail.html',

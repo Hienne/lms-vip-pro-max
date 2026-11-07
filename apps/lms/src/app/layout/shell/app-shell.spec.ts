@@ -185,7 +185,7 @@ describe('AppShell', () => {
         '/admin/assignments',
         '/community/moderation',
         '/reports',
-        '/admin/system',
+        '/admin/gamification',
         '/assistant',
         '/community/questions',
         '/community/articles',

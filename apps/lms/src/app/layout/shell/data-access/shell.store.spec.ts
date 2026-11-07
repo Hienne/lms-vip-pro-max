@@ -2,6 +2,7 @@ import { HttpTestingController } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 import { provideRouter, Router } from '@angular/router';
 import { envelopeError, envelopeOk } from '@lms/mocks';
+import { Toaster } from '@lms/ui';
 import { createAppRoutes } from '../../../app.routes';
 import {
   parseAppConfig,
@@ -24,6 +25,7 @@ const NAV_COUNTS = '/api/me/nav-counts';
 const reminder = (id: number) => ({
   id,
   recipientId: 40 + id,
+  kind: 'DEADLINE',
   scheduledAt: '2026-10-26T09:00:00',
   dueAtSnapshot: '2026-10-30T17:00:00',
   status: 'pending',
@@ -81,6 +83,66 @@ describe('ShellStore: the bell count', () => {
 
   describe('while navCounts is not served', () => {
     beforeEach(() => configure(false));
+
+    describe('the notices of a badge or a level', () => {
+      const notice = (id: number, kind: string, sentAt: string | null) => ({
+        ...reminder(id),
+        recipientId: null,
+        kind,
+        subject: kind === 'LEVEL_UP' ? 'Giao dịch viên' : 'Khóa học đầu tiên',
+        sentAt,
+      });
+      const toasts = () => TestBed.inject(Toaster).toasts();
+
+      it('shows one gentle toast for each unseen notice, tells the server, and counts them in the bell', async () => {
+        const store = await start('000004');
+        pending(REMINDERS).forEach((r) =>
+          r.flush(
+            envelopeOk([
+              reminder(1),
+              notice(2, 'BADGE_EARNED', null),
+              notice(3, 'LEVEL_UP', null),
+              notice(4, 'LEVEL_UP', '2026-11-07T08:00:00Z'),
+            ]),
+          ),
+        );
+        await settle();
+        expect(toasts().map((toast) => toast.title)).toEqual([
+          'Bạn đạt huy hiệu mới',
+          'Bạn lên cấp mới',
+        ]);
+        expect(toasts().every((toast) => toast.kind === 'info')).toBe(true);
+        const seen = [2, 3].map((id) =>
+          backend.expectOne(`${REMINDERS}/${id}/seen`),
+        );
+        seen.forEach((request) => request.flush(envelopeOk(reminder(1))));
+        expect(store.unread$()).toBe(4);
+      });
+
+      it('does not show the same toast again when the bell reloads', async () => {
+        await start('000004');
+        pending(REMINDERS).forEach((r) =>
+          r.flush(envelopeOk([notice(2, 'BADGE_EARNED', null)])),
+        );
+        await settle();
+        backend.expectOne(`${REMINDERS}/2/seen`).flush(envelopeOk(reminder(1)));
+        TestBed.inject(RemindersChanged).bump();
+        await settle();
+        pending(REMINDERS).forEach((r) =>
+          r.flush(envelopeOk([notice(2, 'BADGE_EARNED', null)])),
+        );
+        await settle();
+        expect(toasts()).toHaveLength(1);
+        backend.expectNone(`${REMINDERS}/2/seen`);
+      });
+
+      it('shows no toast for a deadline reminder', async () => {
+        await start('000004');
+        pending(REMINDERS).forEach((r) => r.flush(envelopeOk([reminder(1)])));
+        await settle();
+        expect(toasts()).toHaveLength(0);
+      });
+    });
 
     it("is the length of the learner's due reminders", async () => {
       const store = await start('000004');

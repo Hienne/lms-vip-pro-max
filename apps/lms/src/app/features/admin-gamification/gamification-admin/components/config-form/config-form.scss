@@ -1,0 +1,48 @@
+@use 'ui';
+
+.config-form {
+  @include ui.stack(6);
+
+  &__section {
+    @include ui.stack(3);
+  }
+
+  &__hint {
+    @include ui.text(sm, muted);
+    max-width: 60ch;
+  }
+
+  &__grid {
+    @include ui.grid(
+      (
+        md: 2,
+        lg: 3,
+      ),
+      4
+    );
+  }
+
+  &__levels {
+    @include ui.stack(3);
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  &__level {
+    display: grid;
+    grid-template-columns: ui.space(6) minmax(0, 2fr) minmax(0, 1fr) auto;
+    align-items: start;
+    gap: ui.space(3);
+  }
+
+  &__level > button {
+    align-self: end;
+  }
+
+  &__no {
+    @include ui.num;
+    @include ui.text(sm, muted);
+    padding-top: ui.space(8);
+  }
+}

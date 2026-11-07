@@ -1,0 +1,95 @@
+<ui-page-header
+  title="Cấu hình gamification"
+  description="XP, cấp độ và lịch ngày làm việc của chuỗi ngày học. Mỗi lần lưu tạo một phiên bản mới và được ghi nhật ký."
+/>
+
+@if (store.loadError$(); as error) {
+<ui-error-state
+  title="Không tải được cấu hình"
+  [message]="error.message"
+  [retryable]="error.kind !== 'forbidden'"
+  (retry)="store.retryLoad()"
+/>
+} @else if (store.isLoading$()) {
+<div class="gamification-admin__loading"><span uiSpinner></span></div>
+} @else {
+<ui-tabs
+  class="gamification-admin__tabs"
+  label="Cấu hình gamification"
+  [tabs]="store.tabs"
+  [selected]="store.tab$()"
+  (selectedChange)="store.selectTab($event)"
+>
+  <div uiTabPanel="config">
+    <app-config-form />
+  </div>
+
+  <div uiTabPanel="calendar">
+    <app-calendar-editor />
+  </div>
+
+  <div uiTabPanel="badges">
+    <app-badge-admin />
+  </div>
+
+  <div uiTabPanel="history">
+    @if (store.historyError$(); as error) {
+    <ui-error-state
+      title="Không tải được lịch sử"
+      [message]="error.message"
+      (retry)="store.retryLoad()"
+    />
+    } @else {
+    <div uiTableWrap>
+      <table uiTable responsive>
+        <caption class="sr-only">
+          Các phiên bản cấu hình
+        </caption>
+        <thead>
+          <tr>
+            <th scope="col">Phiên bản</th>
+            <th scope="col">Người lưu</th>
+            <th scope="col">Lúc lưu</th>
+            <th scope="col">Bài học</th>
+            <th scope="col">Đạt kiểm tra</th>
+            <th scope="col">Thưởng lần đầu</th>
+            <th scope="col">Cộng đồng</th>
+            <th scope="col">Số cấp</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (version of store.versions$(); track version.versionNo) {
+          <tr>
+            <td data-label="Phiên bản">
+              <span uiTablePrimary>{{ version.versionNo }}</span>
+              @if (version.current) {
+              <span uiBadge tone="success" dot>Đang áp dụng</span>
+              }
+            </td>
+            <td data-label="Người lưu">
+              {{ version.createdBy ?? 'Mặc định của hệ thống' }}
+            </td>
+            <td data-label="Lúc lưu">
+              @if (version.createdAt) { {{ version.createdAt | fmtDatetime }} }
+              @else { — }
+            </td>
+            <td data-label="Bài học">{{ version.lessonXp }}</td>
+            <td data-label="Đạt kiểm tra">{{ version.quizPassXp }}</td>
+            <td data-label="Thưởng lần đầu">
+              {{ version.firstTryBonusXp }}
+              <div uiTableSub>từ {{ version.firstTryThresholdPercent }}%</div>
+            </td>
+            <td data-label="Cộng đồng">
+              {{ version.communityXp }}
+              <div uiTableSub>tối đa {{ version.communityDailyCap }}/ngày</div>
+            </td>
+            <td data-label="Số cấp">{{ version.levels.length }}</td>
+          </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+    }
+  </div>
+</ui-tabs>
+}

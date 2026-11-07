@@ -1,6 +1,7 @@
-import { Component, input } from '@angular/core';
+import { Component, computed, input } from '@angular/core';
 import type { LearningReminder } from '@lms/contracts';
 import { FmtDatePipe, FmtRelativePipe } from '@lms/ui';
+import { noticeCopy } from '../notice-copy';
 
 /** The due date has passed: the one rule for "đã quá hạn", shared by every list of reminders. */
 export function isReminderOverdue(
@@ -26,4 +27,6 @@ export function isReminderOverdue(
 export class ReminderItem {
   readonly reminder = input.required<LearningReminder>();
   readonly overdue = input.required<boolean>();
+  /** The copy of a badge or level notice; null for a deadline reminder. */
+  protected readonly notice = computed(() => noticeCopy(this.reminder()));
 }

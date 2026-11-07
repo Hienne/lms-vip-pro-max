@@ -28,6 +28,7 @@
       [navOpen]="store.navOpen$()"
       [user]="user"
       [unread]="store.unread$()"
+      [levelName]="level.name$()"
       (menu)="store.openNav()"
       (searched)="store.search($event)"
       (picked)="store.pick($event)"

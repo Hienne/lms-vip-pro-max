@@ -11,10 +11,23 @@
  * learner's scores: `courses` is every course `hocvien` has (FE-DEMO-C1 has a final exam score of 12.5 and
  * QZ-E2E-01 of 100, the others none); `progressSummary.assessment` is the overview of five quizzes.
  *
- * `points`, `leaderboard`, `leaderboardTeam` and `leaderboardLastPage` were captured on 2026-11-01 as `hocvien`
- * once the backend computed learning points: `points` is `GET /points`; `leaderboard` is the default `org`
- * scope (three learners, `hocvien` second); `leaderboardTeam` is `scope=team` (only `hocvien`);
- * `leaderboardLastPage` is `scope=all&page=2&size=1`, so the caller's row (`me`) is off the page.
+ * `unitLeaderboard` and `unitLeaderboardTooSmall` are shaped from the unit leaderboard integration tests of
+ * 2026-11-07 and are to be captured again on the running backend (the second is a caller whose unit has fewer than
+ * five learners).
+ *
+ * `reminderBadgeEarned` and `reminderLevelUp` are shaped from the notice integration tests of 2026-11-07 and are to be
+ * captured again on the running backend (the second has had its toast shown, so `sentAt` is set).
+ *
+ * `preferences` and `preferencesHidden` are shaped from the leaderboard opt-out integration tests of 2026-11-07 and
+ * are to be captured again on the running backend (visible by default, and after the learner hides their name).
+ *
+ * `badges` is shaped from the badge integration tests of 2026-11-07 and is to be captured again on the running backend.
+ *
+ * `points` was captured on 2026-11-01 as `hocvien` (`GET /points`). `leaderboard`, `leaderboardTeam` and
+ * `leaderboardOutsideTop` are shaped from the leaderboard integration tests of 2026-11-07 (top ten by period, no
+ * paging) and are to be captured again on the running backend: `leaderboard` is the default `org` scope and
+ * `month` period (three learners, `hocvien` second); `leaderboardTeam` is `scope=team` (only `hocvien`);
+ * `leaderboardOutsideTop` is `scope=all` with the caller thirteenth, so `above` and `gapToAbove` are filled.
  *
  * `dashboard`, `dashboardPrograms` and `dashboardProgramsPage2` were captured on 2026-11-02 as `hocvien` after the
  * reporting tables were created: `GET /dashboard`, `GET /dashboard/programs?size=100` (four programmes) and
@@ -824,47 +837,208 @@ export const capturedLearner = {
     parts: {
       lessons: 30,
       quizzes: 30,
+      firstTryBonus: 20,
       courses: 0,
-      streak: 20,
+      community: 0,
+      adjustments: 0,
     },
     streakDays: 2,
   },
-  leaderboard: {
-    page: {
-      items: [
-        {
-          rank: 1,
-          userId: '000007',
-          fullName: 'Học viên tích hợp Demo',
-          teamName: 'Nhóm Tích hợp Core Banking',
-          points: 90,
-          streakDays: 2,
-          me: false,
-        },
-        {
-          rank: 2,
-          userId: '000004',
-          fullName: 'Học viên tiền gửi Demo',
-          teamName: 'Nhóm BA&QC Tiền gửi',
-          points: 80,
-          streakDays: 2,
-          me: true,
-        },
-        {
-          rank: 3,
-          userId: '000005',
-          fullName: 'Giảng viên Demo',
-          teamName: 'Nhóm phát triển Core Banking',
-          points: 40,
-          streakDays: 2,
-          me: false,
-        },
-      ],
-      page: 0,
-      size: 20,
-      totalElements: 3,
-      totalPages: 1,
+  /**
+   * Shaped from the response of `GET /level` in the backend's `LevelIT` (2026-11-07): a learner with exactly
+   * 200 XP, the first step of level 2. Recapture it from the local stack once the endpoint is deployed.
+   */
+  level: {
+    level: 2,
+    name: 'Giao dịch viên',
+    xp: 200,
+    xpToNext: 400,
+    progressPercent: 0,
+  },
+  /**
+   * Shaped from the response of `GET /streak` in the backend's `LearningStreakIT` (2026-11-07), shortened
+   * to one week; the real answer holds 26 weeks. Recapture it from the local stack once the endpoint is
+   * deployed. Wed 2026-11-04 is a holiday, Sat 2026-11-07 a rest day the learner studied on.
+   */
+  streak: {
+    currentStreak: 2,
+    longestStreak: 5,
+    days: [
+      { date: '2026-11-02', lessons: 0, quizzes: 0, restDay: false },
+      { date: '2026-11-03', lessons: 2, quizzes: 1, restDay: false },
+      { date: '2026-11-04', lessons: 0, quizzes: 0, restDay: true },
+      { date: '2026-11-05', lessons: 1, quizzes: 0, restDay: false },
+      { date: '2026-11-06', lessons: 4, quizzes: 0, restDay: false },
+      { date: '2026-11-07', lessons: 1, quizzes: 0, restDay: true },
+    ],
+  },
+  badges: {
+    earned: [
+      {
+        badgeId: 1,
+        name: 'Khóa học đầu tiên',
+        description: 'Hoàn thành khóa học đầu tiên của bạn.',
+        icon: 'graduation-cap',
+        condition: 'Hoàn thành khóa học đầu tiên',
+        earnedAt: '2026-11-03T04:12:00Z',
+        retired: false,
+        progress: null,
+      },
+    ],
+    notEarned: [
+      {
+        badgeId: 2,
+        name: 'Mười khóa học',
+        description: 'Hoàn thành 10 khóa học.',
+        icon: 'library',
+        condition: 'Hoàn thành 10 khóa học',
+        earnedAt: null,
+        retired: false,
+        progress: null,
+      },
+      {
+        badgeId: 3,
+        name: 'Thành thạo Tiền gửi',
+        description: 'Hoàn thành mọi khóa học của chương trình Tiền gửi.',
+        icon: 'route',
+        condition: 'Hoàn thành mọi khóa học của chương trình Tiền gửi',
+        earnedAt: null,
+        retired: false,
+        progress: { done: 1, total: 4 },
+      },
+      {
+        badgeId: 4,
+        name: 'Đều đặn 5 ngày',
+        description: 'Duy trì chuỗi 5 ngày làm việc liên tiếp.',
+        icon: 'flame',
+        condition: 'Duy trì chuỗi 5 ngày làm việc liên tiếp',
+        earnedAt: null,
+        retired: false,
+        progress: null,
+      },
+    ],
+  },
+  reminderBadgeEarned: {
+    id: 9001,
+    recipientId: null,
+    scheduledAt: '2026-11-07T08:15:00Z',
+    dueAtSnapshot: '2026-11-07T08:15:00Z',
+    channel: 'in_app',
+    status: 'pending',
+    sentAt: null,
+    attemptCount: 0,
+    lastErrorCode: null,
+    idempotencyKey: 'badge:000004:1',
+    kind: 'BADGE_EARNED',
+    subject: 'Khóa học đầu tiên',
+    rowVersion: 0,
+    createTime: '2026-11-07T08:15:00Z',
+    updateTime: '2026-11-07T08:15:00Z',
+  },
+  reminderLevelUp: {
+    id: 9002,
+    recipientId: null,
+    scheduledAt: '2026-11-07T08:16:00Z',
+    dueAtSnapshot: '2026-11-07T08:16:00Z',
+    channel: 'in_app',
+    status: 'pending',
+    sentAt: '2026-11-07T08:17:00Z',
+    attemptCount: 0,
+    lastErrorCode: null,
+    idempotencyKey: 'level:000004:2',
+    kind: 'LEVEL_UP',
+    subject: 'Giao dịch viên',
+    rowVersion: 1,
+    createTime: '2026-11-07T08:16:00Z',
+    updateTime: '2026-11-07T08:17:00Z',
+  },
+  preferences: { showOnLeaderboard: true },
+  preferencesHidden: { showOnLeaderboard: false },
+  unitLeaderboard: {
+    period: 'month',
+    offset: 0,
+    from: '2026-11-01',
+    to: '2026-11-30',
+    top: [
+      {
+        rank: 1,
+        orgId: 12,
+        unitName: 'Chi nhánh Sở giao dịch 1',
+        averageXp: 75,
+        participationPercent: 40,
+        mine: false,
+      },
+      {
+        rank: 2,
+        orgId: 7,
+        unitName: 'Chi nhánh Hà Nội',
+        averageXp: 60,
+        participationPercent: 20,
+        mine: true,
+      },
+    ],
+    myUnit: {
+      rank: 2,
+      orgId: 7,
+      unitName: 'Chi nhánh Hà Nội',
+      averageXp: 60,
+      participationPercent: 20,
+      mine: true,
     },
+    myUnitTooSmall: false,
+  },
+  unitLeaderboardTooSmall: {
+    period: 'month',
+    offset: 0,
+    from: '2026-11-01',
+    to: '2026-11-30',
+    top: [
+      {
+        rank: 1,
+        orgId: 12,
+        unitName: 'Chi nhánh Sở giao dịch 1',
+        averageXp: 75,
+        participationPercent: 40,
+        mine: false,
+      },
+    ],
+    myUnit: null,
+    myUnitTooSmall: true,
+  },
+  leaderboard: {
+    period: 'month',
+    offset: 0,
+    from: '2026-11-01',
+    to: '2026-11-30',
+    top: [
+      {
+        rank: 1,
+        userId: '000007',
+        fullName: 'Học viên tích hợp Demo',
+        teamName: 'Nhóm Tích hợp Core Banking',
+        points: 90,
+        streakDays: 2,
+        me: false,
+      },
+      {
+        rank: 2,
+        userId: '000004',
+        fullName: 'Học viên tiền gửi Demo',
+        teamName: 'Nhóm BA&QC Tiền gửi',
+        points: 80,
+        streakDays: 2,
+        me: true,
+      },
+      {
+        rank: 3,
+        userId: '000005',
+        fullName: 'Giảng viên Demo',
+        teamName: 'Nhóm phát triển Core Banking',
+        points: 40,
+        streakDays: 2,
+        me: false,
+      },
+    ],
     me: {
       rank: 2,
       userId: '000004',
@@ -874,25 +1048,25 @@ export const capturedLearner = {
       streakDays: 2,
       me: true,
     },
+    above: [],
+    gapToAbove: null,
   },
   leaderboardTeam: {
-    page: {
-      items: [
-        {
-          rank: 1,
-          userId: '000004',
-          fullName: 'Học viên tiền gửi Demo',
-          teamName: 'Nhóm BA&QC Tiền gửi',
-          points: 80,
-          streakDays: 2,
-          me: true,
-        },
-      ],
-      page: 0,
-      size: 20,
-      totalElements: 1,
-      totalPages: 1,
-    },
+    period: 'month',
+    offset: 0,
+    from: '2026-11-01',
+    to: '2026-11-30',
+    top: [
+      {
+        rank: 1,
+        userId: '000004',
+        fullName: 'Học viên tiền gửi Demo',
+        teamName: 'Nhóm BA&QC Tiền gửi',
+        points: 80,
+        streakDays: 2,
+        me: true,
+      },
+    ],
     me: {
       rank: 1,
       userId: '000004',
@@ -902,34 +1076,136 @@ export const capturedLearner = {
       streakDays: 2,
       me: true,
     },
+    above: [],
+    gapToAbove: null,
   },
-  leaderboardLastPage: {
-    page: {
-      items: [
-        {
-          rank: 3,
-          userId: '000005',
-          fullName: 'Giảng viên Demo',
-          teamName: 'Nhóm phát triển Core Banking',
-          points: 40,
-          streakDays: 2,
-          me: false,
-        },
-      ],
-      page: 2,
-      size: 1,
-      totalElements: 3,
-      totalPages: 3,
-    },
+  leaderboardOutsideTop: {
+    period: 'month',
+    offset: 0,
+    from: '2026-11-01',
+    to: '2026-11-30',
+    top: [
+      {
+        rank: 1,
+        userId: '910021',
+        fullName: 'Học viên thêm L',
+        teamName: 'Nhóm khác',
+        points: 111,
+        streakDays: 2,
+        me: false,
+      },
+      {
+        rank: 2,
+        userId: '910020',
+        fullName: 'Học viên thêm K',
+        teamName: 'Nhóm khác',
+        points: 110,
+        streakDays: 2,
+        me: false,
+      },
+      {
+        rank: 3,
+        userId: '910019',
+        fullName: 'Học viên thêm J',
+        teamName: 'Nhóm khác',
+        points: 109,
+        streakDays: 2,
+        me: false,
+      },
+      {
+        rank: 4,
+        userId: '910018',
+        fullName: 'Học viên thêm I',
+        teamName: 'Nhóm khác',
+        points: 108,
+        streakDays: 2,
+        me: false,
+      },
+      {
+        rank: 5,
+        userId: '910017',
+        fullName: 'Học viên thêm H',
+        teamName: 'Nhóm khác',
+        points: 107,
+        streakDays: 2,
+        me: false,
+      },
+      {
+        rank: 6,
+        userId: '910016',
+        fullName: 'Học viên thêm G',
+        teamName: 'Nhóm khác',
+        points: 106,
+        streakDays: 2,
+        me: false,
+      },
+      {
+        rank: 7,
+        userId: '910015',
+        fullName: 'Học viên thêm F',
+        teamName: 'Nhóm khác',
+        points: 105,
+        streakDays: 2,
+        me: false,
+      },
+      {
+        rank: 8,
+        userId: '910014',
+        fullName: 'Học viên thêm E',
+        teamName: 'Nhóm khác',
+        points: 104,
+        streakDays: 2,
+        me: false,
+      },
+      {
+        rank: 9,
+        userId: '910013',
+        fullName: 'Học viên thêm D',
+        teamName: 'Nhóm khác',
+        points: 103,
+        streakDays: 2,
+        me: false,
+      },
+      {
+        rank: 10,
+        userId: '910012',
+        fullName: 'Học viên thêm C',
+        teamName: 'Nhóm khác',
+        points: 102,
+        streakDays: 2,
+        me: false,
+      },
+    ],
     me: {
-      rank: 2,
+      rank: 13,
       userId: '000004',
       fullName: 'Học viên tiền gửi Demo',
       teamName: 'Nhóm BA&QC Tiền gửi',
-      points: 80,
+      points: 30,
       streakDays: 2,
       me: true,
     },
+    above: [
+      {
+        rank: 11,
+        userId: '910011',
+        fullName: 'Học viên thêm B',
+        teamName: 'Nhóm khác',
+        points: 101,
+        streakDays: 2,
+        me: false,
+      },
+      {
+        rank: 12,
+        userId: '910010',
+        fullName: 'Học viên thêm A',
+        teamName: 'Nhóm khác',
+        points: 100,
+        streakDays: 2,
+        me: false,
+      },
+    ],
+    gapToAbove: 70,
   },
   dashboard: {
     dataAsOf: '2026-11-02T08:20:59.296708Z',

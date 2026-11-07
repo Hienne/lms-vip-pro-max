@@ -288,6 +288,12 @@
       }
     </div>
 
+    @if (store.canAdjustXp$()) {
+    <div uiTabPanel="xp">
+      <app-xp-adjust-form />
+    </div>
+    }
+
     <div uiTabPanel="audit">
       @if (store.audit$(); as audit) { @if (audit.length) {
       <ul uiList>

@@ -19,6 +19,54 @@ import { SessionStore } from '../../../core/session/session.store';
 
 const ME_URL = '/api/v1/auth/me';
 const PASSWORD_URL = '/api/v1/auth/password';
+const LEVEL_URL = '/api/v1/me/learning/level';
+const BADGES_URL = '/api/v1/me/learning/badges';
+const PREFERENCES_URL = '/api/v1/me/learning/preferences';
+
+const BADGE = {
+  badgeId: 1,
+  name: 'Khóa học đầu tiên',
+  description: 'Hoàn thành khóa học đầu tiên của bạn.',
+  icon: 'graduation-cap',
+  condition: 'Hoàn thành khóa học đầu tiên',
+  earnedAt: '2026-11-03T04:12:00Z',
+  retired: false,
+  progress: null,
+};
+
+const BADGES = {
+  earned: [BADGE],
+  notEarned: [
+    {
+      badgeId: 2,
+      name: 'Thành thạo Tiền gửi',
+      description: 'Hoàn thành mọi khóa học của chương trình Tiền gửi.',
+      icon: 'route',
+      condition: 'Hoàn thành mọi khóa học của chương trình Tiền gửi',
+      earnedAt: null,
+      retired: false,
+      progress: { done: 1, total: 4 },
+    },
+    {
+      badgeId: 3,
+      name: 'Huy hiệu lạ',
+      description: 'Biểu tượng admin chọn mà ứng dụng chưa có.',
+      icon: 'skateboard',
+      condition: 'Hoàn thành 3 khóa học được giao trước hạn',
+      earnedAt: null,
+      retired: false,
+      progress: null,
+    },
+  ],
+};
+
+const LEVEL = {
+  level: 2,
+  name: 'Giao dịch viên',
+  xp: 300,
+  xpToNext: 300,
+  progressPercent: 25,
+};
 
 describe('Profile', () => {
   let harness: RouterTestingHarness;
@@ -36,6 +84,10 @@ describe('Profile', () => {
     });
     backend = TestBed.inject(HttpTestingController);
   });
+  beforeEach(() => {
+    level = LEVEL;
+    badges = BADGES;
+  });
   afterEach(() => {
     document
       .querySelectorAll('.cdk-overlay-container')
@@ -49,12 +101,47 @@ describe('Profile', () => {
     TestBed.tick();
   }
 
+  /** The level the server answers a learner; null once to answer with a refusal. */
+  let level: object | null = LEVEL;
+  /** The badges the server answers a learner; null to answer with a refusal. */
+  let badges: object | null = BADGES;
+  /** Whether the learner shows on leaderboards, as the server last answered. */
+  let showOnLeaderboard = true;
+
   async function open(userId = '000005', change?: object) {
     fakeSession().user.set({ ...seedProfile(userId), ...change });
     harness = await RouterTestingHarness.create();
     await harness.navigateByUrl('/profile');
     await settle();
+    for (const request of backend.match(LEVEL_URL)) {
+      if (level) request.flush(envelopeOk(level));
+      else
+        request.flush(backendRefusal('accessDenied').body, {
+          status: 403,
+          statusText: 'Forbidden',
+        });
+    }
+    for (const request of backend.match(BADGES_URL)) {
+      if (badges) request.flush(envelopeOk(badges));
+      else
+        request.flush(backendRefusal('accessDenied').body, {
+          status: 403,
+          statusText: 'Forbidden',
+        });
+    }
+    await answerPreferences();
+    await settle();
     el = harness.routeNativeElement as HTMLElement;
+  }
+
+  async function answerPreferences() {
+    await settle();
+    for (const request of backend.match(
+      (r) => r.url === PREFERENCES_URL && r.method === 'GET',
+    )) {
+      request.flush(envelopeOk({ showOnLeaderboard }));
+    }
+    await settle();
   }
 
   const text = () => el.textContent?.replace(/\s+/g, ' ') ?? '';
@@ -85,6 +172,143 @@ describe('Profile', () => {
     expect(text()).toContain('Học viên · Cá nhân');
     expect(text()).toContain('Báo cáo');
     expect(input('Họ và tên').value).toBe(user.fullName);
+  });
+
+  it('shows the learner level with its XP, the XP still needed and the note that levels unlock nothing', async () => {
+    await open('000004');
+    const section = el.querySelector('.profile__level') as HTMLElement;
+    expect(section.textContent).toContain('Cấp độ');
+    expect(section.textContent).toContain('Giao dịch viên');
+    expect(section.textContent).toContain('300 XP');
+    expect(section.textContent).toContain('Còn 300 XP để lên cấp kế tiếp');
+    expect(section.textContent).toContain('không mở thêm quyền');
+    expect(
+      section
+        .querySelector('[role="progressbar"]')
+        ?.getAttribute('aria-valuenow'),
+    ).toBe('25');
+  });
+
+  it('shows no bar at the top level', async () => {
+    level = {
+      ...LEVEL,
+      level: 6,
+      name: 'Chuyên gia Core Banking',
+      xp: 7200,
+      xpToNext: null,
+      progressPercent: null,
+    };
+    await open('000004');
+    const section = el.querySelector('.profile__level') as HTMLElement;
+    expect(section.textContent).toContain('Chuyên gia Core Banking');
+    expect(section.textContent).toContain('cấp cao nhất');
+    expect(section.querySelector('[role="progressbar"]')).toBeNull();
+  });
+
+  describe('the badge grid', () => {
+    const names = (label: string) =>
+      Array.from(el.querySelectorAll(`[aria-label="${label}"] li`)).map((li) =>
+        li.textContent?.replace(/\s+/g, ' ').trim(),
+      );
+
+    it('lists the earned badges, then the ones not yet earned with their condition', async () => {
+      await open('000004');
+      expect(names('Huy hiệu đã đạt')).toEqual([
+        'Khóa học đầu tiênHoàn thành khóa học đầu tiên của bạn.Đạt ngày 03/11/2026',
+      ]);
+      const pending = names('Huy hiệu chưa đạt');
+      expect(pending).toHaveLength(2);
+      expect(pending[0]).toContain(
+        'Hoàn thành mọi khóa học của chương trình Tiền gửi',
+      );
+      expect(pending[1]).toContain('Hoàn thành 3 khóa học được giao trước hạn');
+    });
+
+    it('shows "x/y khóa" on a programme badge only, and no percentage bar', async () => {
+      await open('000004');
+      expect(names('Huy hiệu chưa đạt')[0]).toContain('1/4 khóa');
+      expect(names('Huy hiệu chưa đạt')[1]).not.toContain('khóa ·');
+      expect(el.querySelector('.profile__badges ui-progress')).toBeNull();
+      expect(text()).not.toMatch(/\d+% /);
+    });
+
+    it('dims the badges not yet earned and not the earned ones', async () => {
+      await open('000004');
+      expect(el.querySelectorAll('.profile__badge--pending')).toHaveLength(2);
+      expect(el.querySelectorAll('.profile__badge')).toHaveLength(3);
+    });
+
+    it('shows a Lucide icon for each badge, with a fallback for one the app does not bundle', async () => {
+      await open('000004');
+      const icons = Array.from(el.querySelectorAll('.profile__badges ui-icon'));
+      expect(icons).toHaveLength(3);
+      expect(icons.every((icon) => icon.querySelector('svg'))).toBe(true);
+    });
+
+    it('marks a retired badge a learner kept', async () => {
+      badges = { earned: [{ ...BADGE, retired: true }], notEarned: [] };
+      await open('000004');
+      expect(text()).toContain('Huy hiệu đã ngừng cấp');
+      expect(el.querySelector('[aria-label="Huy hiệu chưa đạt"]')).toBeNull();
+    });
+
+    it('says so when nothing is earned yet', async () => {
+      badges = { earned: [], notEarned: BADGES.notEarned };
+      await open('000004');
+      expect(text()).toContain('Bạn chưa đạt huy hiệu nào.');
+    });
+
+    it('shows no badges to someone who is not a learner and asks for none', async () => {
+      await open('000001');
+      expect(el.querySelector('.profile__badges')).toBeNull();
+    });
+  });
+
+  describe('the leaderboard choice', () => {
+    const toggle = () =>
+      el.querySelector<HTMLInputElement>('.profile__preferences input')!;
+
+    beforeEach(() => (showOnLeaderboard = true));
+
+    it('shows a switch that is on by default, with what turning it off does', async () => {
+      await open('000004');
+      expect(toggle().checked).toBe(true);
+      expect(toggle().getAttribute('role')).toBe('switch');
+      expect(text()).toContain('thứ hạng của họ khép lại');
+      expect(text()).toContain('XP của bạn vẫn được tính vào đơn vị');
+    });
+
+    it('PUTs the choice, then shows what the server now holds', async () => {
+      await open('000004');
+      toggle().click();
+      await settle();
+      const put = backend.expectOne(
+        (r) => r.url === PREFERENCES_URL && r.method === 'PUT',
+      );
+      expect(put.request.body).toEqual({ showOnLeaderboard: false });
+      showOnLeaderboard = false;
+      put.flush(envelopeOk({ showOnLeaderboard: false }));
+      await answerPreferences();
+      expect(toggle().checked).toBe(false);
+    });
+
+    it('keeps the state after a reload', async () => {
+      showOnLeaderboard = false;
+      await open('000004');
+      expect(toggle().checked).toBe(false);
+    });
+
+    it('is not shown to someone who is not a learner', async () => {
+      await open('000001');
+      expect(el.querySelector('.profile__preferences')).toBeNull();
+    });
+  });
+
+  it('shows no level to someone who is not a learner and asks for none', async () => {
+    const admin = { ...seedProfile('000001') };
+    await open('000001');
+    expect(el.querySelector('.profile__level')).toBeNull();
+    expect(admin.userId).toBe('000001');
   });
 
   it('keeps Save disabled until a field changes', async () => {

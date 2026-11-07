@@ -1,7 +1,12 @@
 import { Component, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { Icon, type IconSize } from './icon';
-import { ICON_CATALOG, ICONS, type IconName } from './icon-registry';
+import {
+  ICON_CATALOG,
+  ICONS,
+  registeredIcon,
+  type IconName,
+} from './icon-registry';
 
 @Component({
   imports: [Icon],
@@ -87,6 +92,8 @@ describe('icon registry', () => {
       'square',
       'panel-right-open',
       'panel-right-close',
+      'alarm-clock-check',
+      'route',
     ]);
     for (const { name } of ICON_CATALOG) {
       expect(ICONS[name]).toBeDefined();
@@ -102,5 +109,13 @@ describe('icon registry', () => {
     // @ts-expect-error not a registered icon
     const unknown: IconName = 'not-an-icon';
     expect(unknown).toBe('not-an-icon');
+  });
+});
+
+describe('registeredIcon', () => {
+  it('keeps a registered name and falls back for one the app does not bundle', () => {
+    expect(registeredIcon('flame', 'award')).toBe('flame');
+    expect(registeredIcon('skateboard', 'award')).toBe('award');
+    expect(registeredIcon('toString', 'award')).toBe('award');
   });
 });

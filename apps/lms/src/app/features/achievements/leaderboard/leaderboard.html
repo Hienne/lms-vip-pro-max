@@ -1,15 +1,52 @@
 <ui-page-header
   title="Bảng xếp hạng & thành tích"
-  description="Điểm thưởng tính tự động từ bài học hoàn thành, bài kiểm tra đạt, khóa học hoàn thành và chuỗi ngày học."
+  description="XP được ghi tự động khi bạn hoàn thành bài học, đạt bài kiểm tra hoặc hoàn thành khóa học."
 />
 
-<ui-segmented
-  class="leaderboard__scope"
-  label="Phạm vi xếp hạng"
-  [options]="scopes"
-  [value]="store.scope$()"
-  (valueChange)="store.selectScope($event)"
-/>
+<p class="leaderboard__appraisal">
+  XP chỉ để ghi nhận quá trình học, không dùng để đánh giá hiệu suất công việc.
+</p>
+
+@if (store.isXpNoticeShown$()) {
+<ui-alert class="leaderboard__notice" [announce]="false">
+  Điểm thưởng nay là XP, tính từ các hoạt động học của bạn. Chuỗi ngày học vẫn
+  được ghi nhận nhưng không cộng XP.
+  <button
+    uiAlertAction
+    uiButton
+    variant="ghost"
+    (click)="store.dismissXpNotice()"
+  >
+    Đã hiểu
+  </button>
+</ui-alert>
+}
+
+<div class="leaderboard__filters">
+  <ui-segmented
+    class="leaderboard__scope leaderboard__view"
+    label="Bảng xếp hạng"
+    [options]="views"
+    [value]="store.view$()"
+    (valueChange)="store.selectView($event)"
+  />
+  @if (store.view$() === 'people') {
+  <ui-segmented
+    class="leaderboard__scope"
+    label="Phạm vi xếp hạng"
+    [options]="scopes"
+    [value]="store.scope$()"
+    (valueChange)="store.selectScope($event)"
+  />
+  }
+  <ui-segmented
+    class="leaderboard__scope"
+    label="Kỳ xếp hạng"
+    [options]="periods"
+    [value]="store.period$()"
+    (valueChange)="store.selectPeriod($event)"
+  />
+</div>
 
 <div class="leaderboard__layout">
   <section
@@ -19,7 +56,7 @@
     aria-labelledby="leaderboard-points"
   >
     <p id="leaderboard-points" class="leaderboard__points-title">
-      Điểm thưởng của bạn@if (store.rank$(); as rank) { · hạng {{ rank }}}
+      XP của bạn@if (store.rank$(); as rank) { · hạng {{ rank }}}
     </p>
     @if (store.pointsError$(); as error) {
     <ui-error-state
@@ -50,12 +87,83 @@
   <section class="leaderboard__ranking" aria-labelledby="leaderboard-ranking">
     <div class="leaderboard__ranking-head">
       <h2 id="leaderboard-ranking">Xếp hạng</h2>
-      @if (!store.isBoardLoading$() && !store.boardError$()) {
-      <span class="leaderboard__count">{{ store.total$() }} học viên</span>
+      @if (store.period$() !== 'all') {
+      <div class="leaderboard__stepper">
+        <button
+          uiButton
+          variant="ghost"
+          size="sm"
+          type="button"
+          [attr.aria-label]="store.period$() === 'week' ? 'Tuần trước' : 'Tháng trước'"
+          [disabled]="!store.canStepBack$()"
+          (click)="store.stepBack()"
+        >
+          Kỳ trước
+        </button>
+        <span class="leaderboard__period" aria-live="polite"
+          >{{ store.periodLabel$() }}</span
+        >
+        <button
+          uiButton
+          variant="ghost"
+          size="sm"
+          type="button"
+          [attr.aria-label]="store.period$() === 'week' ? 'Tuần sau' : 'Tháng sau'"
+          [disabled]="!store.canStepForward$()"
+          (click)="store.stepForward()"
+        >
+          Kỳ sau
+        </button>
+      </div>
+      } @else {
+      <span class="leaderboard__period">{{ store.periodLabel$() }}</span>
       }
     </div>
 
-    @if (store.boardError$(); as error) {
+    @if (store.view$() === 'units') { @if (store.unitsError$(); as error) {
+    <ui-error-state
+      title="Không tải được bảng xếp hạng đơn vị"
+      [message]="error.message"
+      [retryable]="error.kind !== 'forbidden'"
+      (retry)="store.retryUnits()"
+    />
+    } @else if (store.isUnitsLoading$()) {
+    <div
+      uiSkeleton
+      variant="block"
+      class="leaderboard__ranking-placeholder"
+    ></div>
+    } @else {
+    <p class="leaderboard__empty">
+      Xếp hạng theo XP trung bình của mỗi học viên đang hoạt động. Chỉ đơn vị có
+      từ 5 học viên được xếp hạng.
+    </p>
+    @if (store.isUnitsEmpty$()) {
+    <p class="leaderboard__empty">
+      Chưa có đơn vị nào đủ số học viên để xếp hạng.
+    </p>
+    } @else {
+    <ol class="leaderboard__list" aria-label="Top 10 đơn vị">
+      @for (unit of store.unitTop$(); track unit.orgId) {
+      <ng-container
+        [ngTemplateOutlet]="unitEntry"
+        [ngTemplateOutletContext]="{ $implicit: unit }"
+      />
+      }
+    </ol>
+    } @if (store.isMyUnitBelowTop$()) { @if (store.myUnit$(); as unit) {
+    <p class="leaderboard__me-caption">Đơn vị của bạn</p>
+    <ol class="leaderboard__list" aria-label="Đơn vị của bạn">
+      <ng-container
+        [ngTemplateOutlet]="unitEntry"
+        [ngTemplateOutletContext]="{ $implicit: unit }"
+      />
+    </ol>
+    } } @if (store.isMyUnitTooSmall$()) {
+    <p class="leaderboard__me-caption">
+      Đơn vị của bạn chưa đủ số học viên để xếp hạng.
+    </p>
+    } } } @else { @if (store.boardError$(); as error) {
     <ui-error-state
       title="Không tải được bảng xếp hạng"
       [message]="error.message"
@@ -75,32 +183,57 @@
       trong phạm vi này. }
     </p>
     } @else {
-    <ol class="leaderboard__list" aria-label="Bảng xếp hạng">
-      @for (row of store.rows$(); track row.userId) {
+    <ol class="leaderboard__list" aria-label="Top 10 học viên">
+      @for (row of store.top$(); track row.userId) {
       <ng-container
         [ngTemplateOutlet]="entry"
         [ngTemplateOutletContext]="{ $implicit: row }"
       />
       }
     </ol>
-    } @if (store.total$() > pageSize) {
-    <ui-pagination
-      [total]="store.total$()"
-      [page]="store.page$()"
-      [pageSize]="pageSize"
-      (pageChange)="store.goToPage($event)"
-    />
-    } @if (store.isMeOffPage$(); as offPage) { @if (store.me$(); as me) {
+    } @if (store.isMeBelowTop$()) { @if (store.me$(); as me) {
     <p class="leaderboard__me-caption">Vị trí của bạn</p>
     <ol class="leaderboard__list" aria-label="Vị trí của bạn">
+      @for (row of store.above$(); track row.userId) {
+      <ng-container
+        [ngTemplateOutlet]="entry"
+        [ngTemplateOutletContext]="{ $implicit: row }"
+      />
+      }
       <ng-container
         [ngTemplateOutlet]="entry"
         [ngTemplateOutletContext]="{ $implicit: me }"
       />
     </ol>
-    } } }
+    @if (store.gapToAbove$(); as gap) {
+    <p class="leaderboard__gap">Cách người xếp ngay trên {{ gap }} XP.</p>
+    } } } } }
   </section>
 </div>
+
+<ng-template #unitEntry let-unit>
+  <li
+    class="leaderboard__row"
+    [class.leaderboard__row--me]="unit.mine"
+    [attr.aria-current]="unit.mine ? 'true' : null"
+  >
+    <span class="leaderboard__rank">{{ unit.rank }}</span>
+    <span class="leaderboard__who">
+      <span class="leaderboard__title"
+        >{{ unit.unitName }}@if (unit.mine) {
+        <span class="leaderboard__you"> (đơn vị của bạn)</span>
+        }</span
+      >
+      <span class="leaderboard__meta"
+        >Tham gia {{ unit.participationPercent }}% học viên</span
+      >
+    </span>
+    <span class="leaderboard__score"
+      >{{ unit.averageXp }}
+      <span class="leaderboard__unit">XP/người</span></span
+    >
+  </li>
+</ng-template>
 
 <ng-template #entry let-row>
   <li
@@ -121,7 +254,7 @@
       >
     </span>
     <span class="leaderboard__score"
-      >{{ row.points }} <span class="leaderboard__unit">điểm</span></span
+      >{{ row.points }} <span class="leaderboard__unit">XP</span></span
     >
   </li>
 </ng-template>
