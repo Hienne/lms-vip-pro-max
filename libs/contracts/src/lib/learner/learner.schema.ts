@@ -428,6 +428,20 @@ export const XpAdjustmentResultSchema = z.object({
 });
 export type XpAdjustmentResult = z.infer<typeof XpAdjustmentResultSchema>;
 
+/**
+ * `MyLevel`: the caller's job-themed level, computed by the server from total XP and the ladder in the
+ * current config. `level` is the highest ever reached, so it never drops. At the top level `xpToNext` and
+ * `progressPercent` are null.
+ */
+export const MyLevelSchema = z.object({
+  level: z.number().int().positive(),
+  name: z.string().min(1),
+  xp: z.number().int().nonnegative(),
+  xpToNext: z.number().int().nonnegative().nullable(),
+  progressPercent: z.number().int().min(0).max(100).nullable(),
+});
+export type MyLevel = z.infer<typeof MyLevelSchema>;
+
 /** `MyPoints`: the caller's XP total, its parts and the current working-day streak (display only). It has no rank. */
 export const MyPointsSchema = z.object({
   total: z.number().int().nonnegative(),

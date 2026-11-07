@@ -30,6 +30,27 @@
     </div>
   </section>
 
+  @if (store.level$(); as level) {
+  <section uiCard padded class="profile__level" aria-labelledby="profile-level">
+    <h2 id="profile-level">Cấp độ</h2>
+    <p class="profile__level-name">{{ level.name }}</p>
+    <p class="profile__meta">{{ level.xp }} XP</p>
+    @if (level.xpToNext !== null && level.progressPercent !== null) {
+    <ui-progress
+      [value]="level.progressPercent"
+      size="sm"
+      label="Tiến độ tới cấp kế tiếp"
+    />
+    <p class="profile__meta">Còn {{ level.xpToNext }} XP để lên cấp kế tiếp.</p>
+    } @else {
+    <p class="profile__meta">Bạn đang ở cấp cao nhất.</p>
+    }
+    <p class="profile__meta">
+      Cấp độ không mở thêm quyền và không ảnh hưởng đến việc bạn được giao.
+    </p>
+  </section>
+  }
+
   <div class="grid-2">
     <section uiCard>
       <div uiCardHeader><h2>Thông tin cá nhân</h2></div>

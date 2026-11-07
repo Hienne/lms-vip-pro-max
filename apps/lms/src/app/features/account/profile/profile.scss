@@ -16,6 +16,22 @@
     @include ui.text(sm, muted);
   }
 
+  &__level {
+    display: grid;
+    gap: ui.space(2);
+
+    h2 {
+      @include ui.text(md);
+      font-weight: ui.weight(semibold);
+    }
+  }
+
+  &__level-name {
+    @include ui.text(xl);
+    font-family: ui.font(display);
+    font-weight: ui.weight(semibold);
+  }
+
   &__actions {
     display: flex;
     justify-content: flex-end;

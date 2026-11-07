@@ -19,6 +19,15 @@ import { SessionStore } from '../../../core/session/session.store';
 
 const ME_URL = '/api/v1/auth/me';
 const PASSWORD_URL = '/api/v1/auth/password';
+const LEVEL_URL = '/api/v1/me/learning/level';
+
+const LEVEL = {
+  level: 2,
+  name: 'Giao dịch viên',
+  xp: 300,
+  xpToNext: 300,
+  progressPercent: 25,
+};
 
 describe('Profile', () => {
   let harness: RouterTestingHarness;
@@ -36,6 +45,9 @@ describe('Profile', () => {
     });
     backend = TestBed.inject(HttpTestingController);
   });
+  beforeEach(() => {
+    level = LEVEL;
+  });
   afterEach(() => {
     document
       .querySelectorAll('.cdk-overlay-container')
@@ -49,10 +61,22 @@ describe('Profile', () => {
     TestBed.tick();
   }
 
+  /** The level the server answers a learner; null once to answer with a refusal. */
+  let level: object | null = LEVEL;
+
   async function open(userId = '000005', change?: object) {
     fakeSession().user.set({ ...seedProfile(userId), ...change });
     harness = await RouterTestingHarness.create();
     await harness.navigateByUrl('/profile');
+    await settle();
+    for (const request of backend.match(LEVEL_URL)) {
+      if (level) request.flush(envelopeOk(level));
+      else
+        request.flush(backendRefusal('accessDenied').body, {
+          status: 403,
+          statusText: 'Forbidden',
+        });
+    }
     await settle();
     el = harness.routeNativeElement as HTMLElement;
   }
@@ -85,6 +109,44 @@ describe('Profile', () => {
     expect(text()).toContain('Học viên · Cá nhân');
     expect(text()).toContain('Báo cáo');
     expect(input('Họ và tên').value).toBe(user.fullName);
+  });
+
+  it('shows the learner level with its XP, the XP still needed and the note that levels unlock nothing', async () => {
+    await open('000004');
+    const section = el.querySelector('.profile__level') as HTMLElement;
+    expect(section.textContent).toContain('Cấp độ');
+    expect(section.textContent).toContain('Giao dịch viên');
+    expect(section.textContent).toContain('300 XP');
+    expect(section.textContent).toContain('Còn 300 XP để lên cấp kế tiếp');
+    expect(section.textContent).toContain('không mở thêm quyền');
+    expect(
+      section
+        .querySelector('[role="progressbar"]')
+        ?.getAttribute('aria-valuenow'),
+    ).toBe('25');
+  });
+
+  it('shows no bar at the top level', async () => {
+    level = {
+      ...LEVEL,
+      level: 6,
+      name: 'Chuyên gia Core Banking',
+      xp: 7200,
+      xpToNext: null,
+      progressPercent: null,
+    };
+    await open('000004');
+    const section = el.querySelector('.profile__level') as HTMLElement;
+    expect(section.textContent).toContain('Chuyên gia Core Banking');
+    expect(section.textContent).toContain('cấp cao nhất');
+    expect(section.querySelector('[role="progressbar"]')).toBeNull();
+  });
+
+  it('shows no level to someone who is not a learner and asks for none', async () => {
+    const admin = { ...seedProfile('000001') };
+    await open('000001');
+    expect(el.querySelector('.profile__level')).toBeNull();
+    expect(admin.userId).toBe('000001');
   });
 
   it('keeps Save disabled until a field changes', async () => {

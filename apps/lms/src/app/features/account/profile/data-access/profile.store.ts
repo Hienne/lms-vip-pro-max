@@ -1,5 +1,6 @@
 import { computed, inject, Injectable } from '@angular/core';
 import { authV1Endpoints, type UpdateMeCommand } from '@lms/contracts';
+import { MyLevelStore } from '../../../../core/learning/my-level.store';
 import { serverMutation } from '../../../../core/data-access/server-mutation';
 import { EndpointClient } from '../../../../core/http/endpoint-client';
 import { SessionStore } from '../../../../core/session/session.store';
@@ -15,6 +16,7 @@ import { scopeLabel } from '../../../../shared/status/scope-label';
 export class ProfileStore {
   private readonly client = inject(EndpointClient);
   private readonly session = inject(SessionStore);
+  private readonly myLevel = inject(MyLevelStore);
 
   private readonly saveMutation = serverMutation(
     (command: UpdateMeCommand) =>
@@ -27,6 +29,8 @@ export class ProfileStore {
   );
 
   readonly user$ = this.session.user$;
+  /** The learner's level from the server; undefined for anyone who has none or while it loads. */
+  readonly level$ = this.myLevel.level$;
   /** Accounts synced from SSO are read-only here: the source system owns their fields. */
   readonly readOnly$ = computed(() => this.user$()?.authProvider === 'SSO');
   readonly isSaving$ = this.saveMutation.isPending;

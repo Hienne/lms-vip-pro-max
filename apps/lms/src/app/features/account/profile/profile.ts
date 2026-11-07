@@ -19,6 +19,7 @@ import {
   Icon,
   Input,
   PageHeader,
+  Progress,
 } from '@lms/ui';
 import { PasswordChangeStore } from '../../../shared/account/password-change.store';
 import { PasswordForm } from '../../../shared/account/password-form/password-form';
@@ -53,6 +54,7 @@ import {
     Input,
     PageHeader,
     PasswordForm,
+    Progress,
     RoleBadge,
   ],
   providers: [ProfileStore, PasswordChangeStore],

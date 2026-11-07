@@ -33,6 +33,8 @@ export class Header {
   readonly navOpen = input(false);
   readonly user = input<Profile | null>(null);
   readonly unread = input(0);
+  /** The learner's level name for the user menu, with no XP; null for anyone without one. */
+  readonly levelName = input<string | null>(null);
   readonly menu = output<void>();
   readonly searched = output<string>();
   readonly picked = output<UserMenuValue>();
@@ -59,6 +61,9 @@ export class Header {
         kind: 'label',
         label: user ? `${user.fullName} · ${user.email ?? user.username}` : '',
       },
+      ...(this.levelName()
+        ? [{ kind: 'label' as const, label: `Cấp độ: ${this.levelName()}` }]
+        : []),
       { kind: 'item', value: 'profile', label: 'Hồ sơ cá nhân', icon: 'user' },
       {
         kind: 'item',

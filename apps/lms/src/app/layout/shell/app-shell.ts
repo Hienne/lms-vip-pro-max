@@ -13,6 +13,7 @@ import { DrawerOutlet } from '@lms/ui';
 import { AgentChatStore } from '../../core/assistant/agent-chat.store';
 import { APP_CONFIG } from '../../core/config/app-config';
 import { DEV_FEATURES } from '../../core/dev/dev-features';
+import { MyLevelStore } from '../../core/learning/my-level.store';
 import { ChatWidget } from '../chat-widget/chat-widget';
 import { Header } from '../header/header';
 import { NetBanner } from '../net-banner/net-banner';
@@ -46,6 +47,7 @@ import { ShellStore } from './data-access/shell.store';
 })
 export class AppShell {
   protected readonly store = inject(ShellStore);
+  protected readonly level = inject(MyLevelStore);
   /** Whether the quick assistant is docked, so the frame makes room for it. */
   protected readonly chat = inject(AgentChatStore);
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);

@@ -16,6 +16,7 @@ import {
   LearningReminderSchema,
   MyCoursesQuerySchema,
   AdjustXpCommandSchema,
+  MyLevelSchema,
   MyPointsSchema,
   XpAdjustmentResultSchema,
   MyStreakSchema,
@@ -152,6 +153,15 @@ export const learnerEndpoints = {
     method: 'get',
     path: '/api/v1/me/learning/points',
     response: MyPointsSchema,
+  }),
+  /**
+   * The caller's level, computed by the server (never drops). A caller who is not a learner is refused
+   * with `CORE-ACCESS_DENIED`.
+   */
+  myLevel: defineEndpoint({
+    method: 'get',
+    path: '/api/v1/me/learning/level',
+    response: MyLevelSchema,
   }),
   /**
    * A system admin's correction of a learner's XP: one extra ledger row with a mandatory reason and an

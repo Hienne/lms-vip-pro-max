@@ -832,6 +832,17 @@ export const capturedLearner = {
     streakDays: 2,
   },
   /**
+   * Shaped from the response of `GET /level` in the backend's `LevelIT` (2026-11-07): a learner with exactly
+   * 200 XP, the first step of level 2. Recapture it from the local stack once the endpoint is deployed.
+   */
+  level: {
+    level: 2,
+    name: 'Giao dịch viên',
+    xp: 200,
+    xpToNext: 400,
+    progressPercent: 0,
+  },
+  /**
    * Shaped from the response of `GET /streak` in the backend's `LearningStreakIT` (2026-11-07), shortened
    * to one week; the real answer holds 26 weeks. Recapture it from the local stack once the endpoint is
    * deployed. Wed 2026-11-04 is a holiday, Sat 2026-11-07 a rest day the learner studied on.

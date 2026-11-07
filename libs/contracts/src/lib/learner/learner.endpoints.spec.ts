@@ -14,6 +14,7 @@ import {
   LearningProgressOverviewSchema,
   MyCoursesQuerySchema,
   MyPointsSchema,
+  MyLevelSchema,
   MyStreakSchema,
   OpenSessionCommandSchema,
   ProgressExportQuerySchema,
@@ -78,6 +79,7 @@ describe('learner endpoints', () => {
         '/api/v1/me/learning/reminders/{reminderId}/read',
       ],
       ['myPoints', 'get', '/api/v1/me/learning/points'],
+      ['myLevel', 'get', '/api/v1/me/learning/level'],
       ['adjustXp', 'post', '/api/v1/admin/learning/xp-adjustments'],
       ['myStreak', 'get', '/api/v1/me/learning/streak'],
       ['leaderboard', 'get', '/api/v1/me/learning/leaderboard'],
@@ -495,6 +497,35 @@ describe('learner endpoints', () => {
       expect(toUrl(learnerEndpoints.course, { courseId: 8 })).toBe(
         '/api/v1/me/learning/courses/8',
       );
+    });
+  });
+
+  describe('level', () => {
+    it('parses the response captured from the backend', () => {
+      const level = MyLevelSchema.parse(captured.level);
+      expect(level).toEqual({
+        level: 2,
+        name: 'Giao dịch viên',
+        xp: 200,
+        xpToNext: 400,
+        progressPercent: 0,
+      });
+    });
+
+    it('accepts the top level with no next level and refuses a progress above 100', () => {
+      expect(
+        MyLevelSchema.safeParse({
+          level: 6,
+          name: 'Chuyên gia Core Banking',
+          xp: 7000,
+          xpToNext: null,
+          progressPercent: null,
+        }).success,
+      ).toBe(true);
+      expect(
+        MyLevelSchema.safeParse({ ...captured.level, progressPercent: 101 })
+          .success,
+      ).toBe(false);
     });
   });
 

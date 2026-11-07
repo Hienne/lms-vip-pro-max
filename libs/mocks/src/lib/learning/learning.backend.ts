@@ -44,6 +44,7 @@ import { LearnerStudy } from './learner-session.backend';
 import { LearningRefused, ok, refuse, refuseField } from './learning-reply';
 import { LearnerCertificates } from './learner-certificates';
 import { LearnerLeaderboard } from './learner-leaderboard';
+import { LearnerLevel } from './learner-level';
 import { LearnerStreak } from './learner-streak';
 import { LearnerFeedback } from './learner-feedback';
 import { LearnerNotes } from './learner-notes';
@@ -177,6 +178,7 @@ export class LearningBackend {
   private readonly board: LearnerLeaderboard;
 
   private readonly streaks: LearnerStreak;
+  private readonly levels: LearnerLevel;
 
   private notes = new LearnerNotes(
     this.enrollments,
@@ -234,6 +236,7 @@ export class LearningBackend {
   constructor(private readonly directory: LearningDirectory) {
     this.board = new LearnerLeaderboard(directory);
     this.streaks = new LearnerStreak(directory);
+    this.levels = new LearnerLevel(directory);
   }
 
   /** The endpoints this service answers, for the fake backend's table. */
@@ -330,6 +333,7 @@ export class LearningBackend {
       ],
       [learnerEndpoints.myPoints, (r) => ok(this.board.points(r))],
       [learnerEndpoints.myStreak, (r) => ok(this.streaks.streak(r))],
+      [learnerEndpoints.myLevel, (r) => ok(this.levels.level(r))],
       [learnerEndpoints.leaderboard, (r) => ok(this.board.leaderboard(r))],
       [personalEndpoints.lessonNotes, (r) => ok(this.notes.notesOf(r))],
       [personalEndpoints.addNote, (r) => ok(this.notes.addNote(r))],
