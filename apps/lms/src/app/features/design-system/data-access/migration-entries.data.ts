@@ -1334,6 +1334,17 @@ export const MIGRATION_ENTRIES = [
     },
   },
   {
+    id: 'route-admin-gamification',
+    notes:
+      'Màn mới, không có trong mockup: cấu hình XP, bậc thang cấp độ và lịch ngày làm việc cho quản trị hệ thống. Mục "Hệ thống & nhật ký" của menu mở màn này; màn nhật ký hệ thống vẫn chưa xây.',
+    kind: 'route',
+    mockupSource: null,
+    target: 'admin/gamification',
+    checklist: [],
+    status: 'in-progress',
+    owner: 'Hienne',
+  },
+  {
     id: 'route-admin-system',
     kind: 'route',
     mockupSource: 'src/pages/admin-org.js · system',
@@ -1350,6 +1361,17 @@ export const MIGRATION_ENTRIES = [
     target: 'reports',
     checklist: ['D.1'],
     status: 'todo',
+  },
+  {
+    id: 'route-reports-gamification',
+    notes:
+      'Màn mới, không có trong mockup: báo cáo tác động gamification (chỉ số tổng hợp theo kỳ và đơn vị, CSV khớp số trên màn hình). Mở từ thanh điều hướng của trang Báo cáo; phạm vi do server chốt.',
+    kind: 'route',
+    mockupSource: null,
+    target: 'reports/gamification',
+    checklist: [],
+    status: 'in-progress',
+    owner: 'Hienne',
   },
   {
     id: 'route-reports-dim',
