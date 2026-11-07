@@ -259,6 +259,7 @@ export class FakeBackend {
         .map((u) => ({ userId: u.userId, orgId: u.orgId, teamId: u.teamId })),
     quizStatus: (quizId) => this.authoring.quizStatus(quizId),
     reportScope: (request) => this.reportScope(request),
+    isSystemAdmin: (request) => this.isGlobalAdmin(this.caller(request)),
     nameOf: (type, id) => {
       switch (type) {
         case 'user':

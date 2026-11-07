@@ -1,0 +1,21 @@
+@use 'ui';
+
+:host {
+  @include ui.page(wide);
+}
+
+.gamification-admin {
+  &__loading {
+    display: flex;
+    justify-content: center;
+    padding-block: ui.space(10);
+  }
+
+  &__tabs {
+    margin-top: ui.space(4);
+  }
+}
+
+[uiTabPanel] {
+  padding-top: ui.space(5);
+}

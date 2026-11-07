@@ -1,0 +1,69 @@
+@use 'ui';
+
+:host {
+  @include ui.page(wide);
+  @include ui.stack(5);
+  min-width: 0;
+}
+
+.gamification-impact {
+  &__filters {
+    padding: ui.space(5);
+  }
+
+  &__form {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: ui.space(3);
+  }
+
+  &__period,
+  &__note {
+    @include ui.text(sm, muted);
+  }
+
+  &__figures {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+    gap: ui.space(5);
+  }
+
+  &__figure {
+    margin: 0;
+    @include ui.stack(1);
+
+    dt {
+      @include ui.text(sm, muted);
+    }
+
+    dd {
+      margin: 0;
+      font-size: ui.text-size(xl);
+      font-weight: ui.weight(semibold);
+    }
+
+    dd.gamification-impact__note {
+      font-size: inherit;
+      font-weight: inherit;
+    }
+  }
+
+  &__panel {
+    padding: ui.space(5);
+    min-width: 0;
+    @include ui.stack(4);
+  }
+
+  &__pair {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(20rem, 1fr));
+    gap: ui.space(5);
+  }
+
+  &__loading {
+    display: flex;
+    justify-content: center;
+    padding-block: ui.space(10);
+  }
+}

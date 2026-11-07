@@ -1,0 +1,85 @@
+<div class="calendar-editor">
+  <p class="calendar-editor__hint">
+    Thứ Bảy và Chủ nhật mặc định là ngày nghỉ. Chỉ nhập ngày nghỉ lễ và ngày làm
+    bù. Ngày nghỉ không tính vào chuỗi ngày học và cũng không làm đứt chuỗi.
+  </p>
+
+  <div class="calendar-editor__year">
+    <button
+      uiIconButton
+      label="Năm trước"
+      [disabled]="!store.canStepBack$()"
+      (click)="store.stepYear(-1)"
+    >
+      <ui-icon name="chevron-left" size="sm" />
+    </button>
+    <h2>Năm {{ store.year$() }}</h2>
+    <button
+      uiIconButton
+      label="Năm sau"
+      [disabled]="!store.canStepForward$()"
+      (click)="store.stepYear(1)"
+    >
+      <ui-icon name="chevron-right" size="sm" />
+    </button>
+  </div>
+
+  @if (store.calendarError$(); as error) {
+  <ui-error-state
+    title="Không tải được lịch"
+    [message]="error.message"
+    (retry)="store.retryLoad()"
+  />
+  } @else if (store.isCalendarLoading$()) {
+  <span uiSpinner></span>
+  } @else {
+  <form class="calendar-editor__form" [formRoot]="calendarForm">
+    @if (calendarForm.days.length) {
+    <ul class="calendar-editor__days">
+      @for (day of calendarForm.days; track $index) {
+      <li class="calendar-editor__day">
+        <ui-field [label]="'Ngày ' + ($index + 1)" required>
+          <input uiInput type="date" [formField]="day.date" />
+        </ui-field>
+        <ui-field [label]="'Loại ngày ' + ($index + 1)" required>
+          <select uiSelect [formField]="day.type">
+            @for (type of types; track type) {
+            <option [value]="type">{{ typeLabel[type] }}</option>
+            }
+          </select>
+        </ui-field>
+        <ui-field [label]="'Ghi chú ' + ($index + 1)">
+          <input uiInput [formField]="day.note" />
+        </ui-field>
+        <button
+          uiIconButton
+          [label]="'Xóa ngày ' + ($index + 1)"
+          (click)="removeDay($index)"
+        >
+          <ui-icon name="trash-2" size="sm" />
+        </button>
+      </li>
+      }
+    </ul>
+    } @else {
+    <ui-empty
+      variant="inline"
+      title="Năm này chưa có ngày nghỉ hay ngày làm bù nào."
+    />
+    }
+    <div class="calendar-editor__actions">
+      <button uiButton type="button" variant="ghost" (click)="addDay()">
+        <ui-icon name="plus" size="sm" />Thêm ngày
+      </button>
+      <button
+        uiButton
+        type="submit"
+        variant="primary"
+        [disabled]="store.isSavingCalendar$()"
+      >
+        Lưu lịch năm {{ store.year$() }}
+      </button>
+    </div>
+  </form>
+  }
+</div>

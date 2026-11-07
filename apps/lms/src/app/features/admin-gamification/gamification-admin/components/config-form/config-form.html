@@ -1,0 +1,104 @@
+<form class="config-form" [formRoot]="configForm">
+  <section class="config-form__section" aria-labelledby="config-xp-title">
+    <h2 id="config-xp-title">XP cho mỗi hoạt động</h2>
+    <p class="config-form__hint">
+      Lưu là tạo một phiên bản mới, áp dụng từ lúc lưu. XP đã ghi trước đó giữ
+      nguyên số cũ. Điểm thưởng của từng khóa học do khóa đó đặt.
+    </p>
+    <div class="config-form__grid">
+      <ui-field label="Hoàn thành bài học" required>
+        <input uiInput inputmode="numeric" [formField]="configForm.lessonXp" />
+      </ui-field>
+      <ui-field label="Đạt bài kiểm tra" required>
+        <input
+          uiInput
+          inputmode="numeric"
+          [formField]="configForm.quizPassXp"
+        />
+      </ui-field>
+      <ui-field label="Thưởng đạt ngay lần đầu" required>
+        <input
+          uiInput
+          inputmode="numeric"
+          [formField]="configForm.firstTryBonusXp"
+        />
+      </ui-field>
+      <ui-field
+        label="Ngưỡng điểm để được thưởng (%)"
+        hint="Từ 0 đến 100."
+        required
+      >
+        <input
+          uiInput
+          inputmode="numeric"
+          [formField]="configForm.firstTryThresholdPercent"
+        />
+      </ui-field>
+      <ui-field label="Đóng góp hữu ích trong cộng đồng" required>
+        <input
+          uiInput
+          inputmode="numeric"
+          [formField]="configForm.communityXp"
+        />
+      </ui-field>
+      <ui-field label="Tối đa XP cộng đồng mỗi ngày" required>
+        <input
+          uiInput
+          inputmode="numeric"
+          [formField]="configForm.communityDailyCap"
+        />
+      </ui-field>
+    </div>
+  </section>
+
+  <section class="config-form__section" aria-labelledby="config-levels-title">
+    <h2 id="config-levels-title">Bậc thang cấp độ</h2>
+    <p class="config-form__hint">
+      Cấp đầu tiên bắt đầu từ 0 XP và mỗi cấp sau cần nhiều XP hơn cấp trước.
+      Học viên đã đạt cấp nào thì giữ cấp đó dù bậc thang đổi.
+    </p>
+    <ol class="config-form__levels">
+      @for (level of configForm.levels; track $index) {
+      <li class="config-form__level">
+        <span class="config-form__no">{{ $index + 1 }}</span>
+        <ui-field [label]="'Tên cấp ' + ($index + 1)" required>
+          <input uiInput [formField]="level.name" />
+        </ui-field>
+        <ui-field [label]="'Từ XP (cấp ' + ($index + 1) + ')'" required>
+          <input uiInput inputmode="numeric" [formField]="level.minXp" />
+        </ui-field>
+        <button
+          uiIconButton
+          [label]="'Xóa cấp ' + ($index + 1)"
+          [disabled]="configForm.levels.length === 1"
+          (click)="removeLevel($index)"
+        >
+          <ui-icon name="trash-2" size="sm" />
+        </button>
+      </li>
+      }
+    </ol>
+    <div>
+      <button
+        uiButton
+        type="button"
+        variant="ghost"
+        [disabled]="configForm.levels.length >= maxLevels"
+        (click)="addLevel()"
+      >
+        <ui-icon name="plus" size="sm" />Thêm cấp
+      </button>
+    </div>
+  </section>
+
+  <div>
+    <button
+      uiButton
+      type="submit"
+      variant="primary"
+      [disabled]="store.isSavingConfig$()"
+    >
+      Lưu phiên bản mới
+    </button>
+  </div>
+</form>

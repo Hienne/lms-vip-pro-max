@@ -1,6 +1,7 @@
 import {
   assignmentEndpoints,
   courseEndpoints,
+  gamificationEndpoints,
   learnerEndpoints,
   learningReportEndpoints,
   type LearningReportEnrollmentRow,
@@ -45,6 +46,7 @@ import { LearningRefused, ok, refuse, refuseField } from './learning-reply';
 import { LearnerCertificates } from './learner-certificates';
 import { LearnerLeaderboard } from './learner-leaderboard';
 import { LearnerBadges } from './learner-badges';
+import { GamificationAdmin } from './gamification-admin';
 import { LearnerLevel } from './learner-level';
 import { LearnerStreak } from './learner-streak';
 import { LearnerFeedback } from './learner-feedback';
@@ -95,6 +97,8 @@ export interface LearningDirectory {
   ): string | undefined;
   /** The status of a quiz in the assessment service; `undefined` when it does not exist. */
   quizStatus(quizId: number): string | undefined;
+  /** Whether the caller is a system admin (an admin role with a GLOBAL grant). */
+  isSystemAdmin(request: FakeRequest): boolean;
   /** Who the caller's report grants cover; refuses (403) a caller with no report grant. */
   reportScope(request: FakeRequest): (person: LearningPerson) => boolean;
 }
@@ -181,6 +185,7 @@ export class LearningBackend {
   private readonly streaks: LearnerStreak;
   private readonly levels: LearnerLevel;
   private readonly badges: LearnerBadges;
+  private readonly gamification: GamificationAdmin;
 
   private notes = new LearnerNotes(
     this.enrollments,
@@ -240,6 +245,7 @@ export class LearningBackend {
     this.streaks = new LearnerStreak(directory);
     this.levels = new LearnerLevel(directory);
     this.badges = new LearnerBadges(directory);
+    this.gamification = new GamificationAdmin(directory);
   }
 
   /** The endpoints this service answers, for the fake backend's table. */
@@ -348,6 +354,38 @@ export class LearningBackend {
       [learnerEndpoints.myStreak, (r) => ok(this.streaks.streak(r))],
       [learnerEndpoints.myLevel, (r) => ok(this.levels.level(r))],
       [learnerEndpoints.myBadges, (r) => ok(this.badges.badges(r))],
+      [gamificationEndpoints.config, (r) => ok(this.gamification.current(r))],
+      [
+        gamificationEndpoints.configVersions,
+        (r) => ok(this.gamification.history(r)),
+      ],
+      [gamificationEndpoints.saveConfig, (r) => ok(this.gamification.save(r))],
+      [
+        gamificationEndpoints.calendar,
+        (r) => ok(this.gamification.calendar(r)),
+      ],
+      [
+        gamificationEndpoints.saveCalendar,
+        (r) => ok(this.gamification.saveCalendar(r)),
+      ],
+      [gamificationEndpoints.badges, (r) => ok(this.gamification.badgeList(r))],
+      [
+        gamificationEndpoints.createBadge,
+        (r) => ok(this.gamification.createBadge(r)),
+      ],
+      [
+        gamificationEndpoints.updateBadge,
+        (r) => ok(this.gamification.updateBadge(r)),
+      ],
+      [
+        gamificationEndpoints.retireBadge,
+        (r) => ok(this.gamification.retireBadge(r)),
+      ],
+      [gamificationEndpoints.impact, (r) => ok(this.gamification.impact(r))],
+      [
+        gamificationEndpoints.exportImpact,
+        (r) => this.gamification.exportImpact(r),
+      ],
       [learnerEndpoints.leaderboard, (r) => ok(this.board.leaderboard(r))],
       [learnerEndpoints.unitLeaderboard, (r) => ok(this.board.units(r))],
       [learnerEndpoints.myPreferences, (r) => ok(this.board.preferences(r))],

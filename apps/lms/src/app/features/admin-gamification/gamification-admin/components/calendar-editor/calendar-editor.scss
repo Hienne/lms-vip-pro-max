@@ -1,0 +1,40 @@
+@use 'ui';
+
+.calendar-editor {
+  @include ui.stack(4);
+
+  &__hint {
+    @include ui.text(sm, muted);
+    max-width: 60ch;
+  }
+
+  &__year {
+    @include ui.row(2);
+  }
+
+  &__form {
+    @include ui.stack(4);
+  }
+
+  &__days {
+    @include ui.stack(3);
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  &__day {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 2fr) auto;
+    align-items: start;
+    gap: ui.space(3);
+  }
+
+  &__day > button {
+    align-self: end;
+  }
+
+  &__actions {
+    @include ui.row(3);
+  }
+}

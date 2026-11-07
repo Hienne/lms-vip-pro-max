@@ -3,6 +3,7 @@ import {
   assessmentV1Endpoints,
   adminOrgEndpoints,
   communityEndpoints,
+  gamificationEndpoints,
   learnerEndpoints,
   learnerQuizEndpoints,
   assessmentReportEndpoints,
@@ -380,6 +381,15 @@ export const SCREEN_TABLE = {
             ),
         },
         {
+          path: 'reports/gamification',
+          title: 'Tác động gamification',
+          mockupPage: 'gamificationImpact',
+          load: () =>
+            import(
+              '../../features/admin-gamification/gamification-impact/gamification-impact'
+            ).then((m) => m.GamificationImpact),
+        },
+        {
           path: 'reports/:dim',
           title: 'Báo cáo',
           mockupPage: 'reportDetail',
@@ -392,7 +402,17 @@ export const SCREEN_TABLE = {
     },
     SYSTEM_AUDIT: {
       nav: { icon: 'settings', section: 'Theo dõi' },
+      requires: [gamificationEndpoints.config],
       screens: [
+        {
+          path: 'admin/gamification',
+          title: 'Cấu hình gamification',
+          mockupPage: 'gamificationAdmin',
+          load: () =>
+            import(
+              '../../features/admin-gamification/gamification-admin/gamification-admin'
+            ).then((m) => m.GamificationAdmin),
+        },
         {
           path: 'admin/system',
           title: 'Hệ thống & nhật ký',
