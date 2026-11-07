@@ -227,11 +227,11 @@ Each step ends on its criterion; finish it before starting the next.
 5. **Verify.**
    - angular.md §14 checklist passes; `npm run check` green.
    - Side by side with the mockup in the browser at 375, 768 and 1280 px, light
-     and dark: same content, copy, tokens and states, with the look that
-     `docs/conventions/visual-design.md` sets. Differences are deliberate (a11y
+     and dark: same content, copy, tokens and states, minus what
+     `docs/conventions/visual-design.md` lists. Differences are deliberate (a11y
      fix, removed hardcoded value, banned pattern replaced) and listed in the
      report.
-   - The checklist in `docs/conventions/visual-design.md` passes.
+   - Nothing that `docs/conventions/visual-design.md` lists appears.
    - Each error state forced through the dev toolbar (`Prefer: code=…`) renders
      with retry.
    - Keyboard-only pass over the page.

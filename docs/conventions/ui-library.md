@@ -244,8 +244,10 @@ component, so watch the warnings: a component that exceeds the budget moves its 
 `template-scan.spec.ts` fails when a template, class binding or class string in the app or the UI
 library uses anything but a BEM class some stylesheet defines, a layout helper, or a helper's gap
 modifier with a spacing key; when an app template writes a design-system block class; when a `.scss`
-outside the token source has a hex or `rgb()` colour; and when anything references Tailwind or
-PostCSS. `libs/ui/src/styles/styles.spec.ts` compiles the style library and locks its contract (see the
+outside the token source has a hex or `rgb()` colour; when anything references Tailwind or
+PostCSS; and when a file adds a banned look from `visual-design.md` (eyebrow, uppercase, gradient,
+glass, `xl` radius, entrance motion, coloured edge) outside its listed exceptions and known
+violations. `libs/ui/src/styles/styles.spec.ts` compiles the style library and locks its contract (see the
 spec for the list).
 
 ## Theme, palettes and dark mode
@@ -421,6 +423,6 @@ not guessed from memory.
 - Spec covers rendered classes/ARIA per variant and every output.
 - Demo added to the `/design-system` route (the living catalogue, ported from
   the mockup's design-system page) in light and dark.
-- Passes the checklist in `docs/conventions/visual-design.md`; the demo shows
+- Contains nothing that `docs/conventions/visual-design.md` lists; the demo shows
   realistic content and density, not showcase filler.
 - Keyboard and screen-reader behaviour checked for interactive pieces.

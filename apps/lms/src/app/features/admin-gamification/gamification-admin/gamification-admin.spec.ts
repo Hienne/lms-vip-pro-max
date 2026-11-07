@@ -452,7 +452,12 @@ describe('GamificationAdmin', () => {
       await open();
       tab('Huy hiệu')?.click();
       await settle();
-      button('Ngừng dùng')?.click();
+      expect(button('Ngừng dùng')).toBeUndefined();
+      button('Thêm thao tác cho Khóa học đầu tiên')?.click();
+      await settle();
+      Array.from(document.querySelectorAll<HTMLElement>('[role="menuitem"]'))
+        .find((item) => item.textContent?.includes('Ngừng dùng'))
+        ?.click();
       await settle();
       const dialog = document.querySelector('[role="alertdialog"]');
       expect(dialog?.textContent).toContain(

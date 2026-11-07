@@ -6,9 +6,7 @@
 
 .gamification-admin {
   &__loading {
-    display: flex;
-    justify-content: center;
-    padding-block: ui.space(10);
+    padding: ui.space(5);
   }
 
   // The tabs live in one card, as on the user detail screen. Each panel pads itself, so the history

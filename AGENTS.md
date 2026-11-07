@@ -62,11 +62,10 @@ matching doc before starting the work it covers:
   token maps through the `ui` Sass module (`ui.color(primary)`, `ui.space(3)`):
   an unknown key fails the build and a colour literal outside the token source
   fails the guard spec.
-- **Designed, not generated.** The look follows
-  `docs/conventions/visual-design.md`, over the mockup and over existing code:
-  no eyebrows, icon tiles, heroes, gradients, coloured edge stripes, badge soup,
-  or status colours used for decoration, even where the mockup or a
-  neighbouring file has them.
+- **Designed, not generated.** Nothing that
+  `docs/conventions/visual-design.md` lists: no eyebrows, icon tiles, heroes,
+  gradients, coloured edge stripes, badge soup, or status colours used for
+  decoration, even where the mockup or a neighbouring file has them.
 - **Business rules stay on the server.** Scoring, progress %, permissions and
   unit scope in the mockup's `api/*.js` are backend spec; the app renders
   server results and uses roles only for navigation and display.
@@ -76,6 +75,6 @@ matching doc before starting the work it covers:
 ## Done
 
 A task is done when `npm run check` is green, the
-angular.md §14 checklist passes, any UI change passes the checklist in
-`docs/conventions/visual-design.md`, and any converted screen passes the verify
+angular.md §14 checklist passes, any UI change contains nothing that
+`docs/conventions/visual-design.md` lists, and any converted screen passes the verify
 step in `docs/migration/mockup-to-angular.md`. Report what was verified and how.

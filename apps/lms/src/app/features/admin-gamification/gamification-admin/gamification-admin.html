@@ -50,12 +50,15 @@
           <thead>
             <tr>
               <th scope="col">Phiên bản</th>
+              <th scope="col">Trạng thái</th>
               <th scope="col">Người lưu</th>
               <th scope="col">Lúc lưu</th>
               <th scope="col">Bài học</th>
               <th scope="col">Đạt kiểm tra</th>
               <th scope="col">Thưởng lần đầu</th>
+              <th scope="col">Ngưỡng thưởng</th>
               <th scope="col">Cộng đồng</th>
+              <th scope="col">Trần cộng đồng/ngày</th>
               <th scope="col">Số cấp</th>
             </tr>
           </thead>
@@ -64,9 +67,11 @@
             <tr>
               <td data-label="Phiên bản">
                 <span uiTablePrimary>{{ version.versionNo }}</span>
+              </td>
+              <td data-label="Trạng thái">
                 @if (version.current) {
                 <span uiBadge tone="success" dot>Đang áp dụng</span>
-                }
+                } @else { — }
               </td>
               <td data-label="Người lưu">
                 {{ version.createdBy ?? 'Mặc định của hệ thống' }}
@@ -77,15 +82,13 @@
               </td>
               <td data-label="Bài học">{{ version.lessonXp }}</td>
               <td data-label="Đạt kiểm tra">{{ version.quizPassXp }}</td>
-              <td data-label="Thưởng lần đầu">
-                {{ version.firstTryBonusXp }}
-                <div uiTableSub>từ {{ version.firstTryThresholdPercent }}%</div>
+              <td data-label="Thưởng lần đầu">{{ version.firstTryBonusXp }}</td>
+              <td data-label="Ngưỡng thưởng">
+                {{ version.firstTryThresholdPercent }}%
               </td>
-              <td data-label="Cộng đồng">
-                {{ version.communityXp }}
-                <div uiTableSub>
-                  tối đa {{ version.communityDailyCap }}/ngày
-                </div>
+              <td data-label="Cộng đồng">{{ version.communityXp }}</td>
+              <td data-label="Trần cộng đồng/ngày">
+                {{ version.communityDailyCap }}
               </td>
               <td data-label="Số cấp">{{ version.levels.length }}</td>
             </tr>

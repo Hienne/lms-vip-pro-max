@@ -39,9 +39,19 @@
     margin: 0;
   }
 
-  &__actions,
-  &__row-actions {
+  &__actions {
     @include ui.row(3);
+  }
+
+  &__row-actions {
+    @include ui.row(1);
+    justify-content: flex-end;
+  }
+
+  // Failed is the one red on the row as text; the status column keeps the row's only badge.
+  &__failed {
+    @include ui.text(sm);
+    color: ui.color(danger);
   }
 
   &__empty,

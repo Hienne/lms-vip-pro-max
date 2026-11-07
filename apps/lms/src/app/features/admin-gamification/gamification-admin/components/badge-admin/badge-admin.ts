@@ -12,7 +12,9 @@ import {
   ErrorState,
   Field,
   Icon,
+  IconButton,
   Input,
+  Menu,
   Progress,
   Select,
   Spinner,
@@ -20,6 +22,7 @@ import {
   TablePrimary,
   TableSub,
   TableWrap,
+  type MenuEntry,
 } from '@lms/ui';
 import { GamificationAdminStore } from '../../data-access/gamification-admin.store';
 import {
@@ -48,7 +51,9 @@ import {
     FormField,
     FormRoot,
     Icon,
+    IconButton,
     Input,
+    Menu,
     Progress,
     Select,
     Spinner,
@@ -64,6 +69,10 @@ export class BadgeAdmin {
   protected readonly store = inject(GamificationAdminStore);
   protected readonly ruleLabel = RULE_LABEL;
   protected readonly ruleTypes = RULE_TYPES;
+  /** The row menu of an active badge; retiring is destructive, so it stays out of the row. */
+  protected readonly rowMenu: readonly MenuEntry<'retire'>[] = [
+    { kind: 'item', value: 'retire', label: 'Ngừng dùng', tone: 'danger' },
+  ];
 
   /** The badge being edited, or `null` for a new one. */
   protected readonly editedBadge = computed(() => {

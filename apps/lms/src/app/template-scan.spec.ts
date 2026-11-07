@@ -11,7 +11,8 @@ import { THEME_PALETTES } from './core/theme/theme.store';
  *    use the atom instead;
  *  - no stylesheet outside the token source writes a colour literal;
  *  - nothing references Tailwind or PostCSS any more;
- *  - only `ThemeStore` writes the theme and palette attributes.
+ *  - only `ThemeStore` writes the theme and palette attributes;
+ *  - no file adds a banned look (docs/conventions/visual-design.md).
  */
 
 const root = join(import.meta.dirname, '../../../..');
@@ -101,6 +102,58 @@ const MOCKUP_BLOCKS = [
   'mai',
   'mai-badge',
 ];
+
+/**
+ * Banned looks a file can be scanned for (docs/conventions/visual-design.md).
+ * `eyebrow` is checked in templates and TypeScript too; the rest in stylesheets only.
+ */
+const BANNED_LOOKS: Record<string, RegExp> = {
+  eyebrow: /\beyebrow\b/,
+  uppercase: /text-transform\s*:\s*uppercase/,
+  gradient: /gradient\(/,
+  glass: /backdrop-filter/,
+  'radius-xl': /radius\(xl\)|--radius-xl\b/,
+  'entrance-motion': /animate\(enter\)/,
+  'coloured-edge': /border-(?:left|top)(?:-width)?\s*:\s*(?:[2-9]|\d{2,})px/,
+};
+
+/** Uses of a banned look that are not decoration: path (from the repo root) → looks. */
+const LOOK_EXCEPTIONS: Record<string, string[]> = {
+  // Draws the chevron of the native select.
+  'libs/ui/src/styles/components/_select.scss': ['gradient'],
+  // The shimmer of a loading skeleton.
+  'libs/ui/src/styles/components/_skeleton.scss': ['gradient'],
+  // Hatching marks the days without data; it carries information.
+  'apps/lms/src/app/shared/learning/activity-heatmap/activity-heatmap.scss': [
+    'gradient',
+  ],
+  // An overlay opening; visual-design.md bans entrance motion on page content only.
+  'libs/ui/src/styles/components/_popover.scss': ['entrance-motion'],
+};
+
+/**
+ * Banned looks still in the code (visual-design.md → Known violations). Fixing one means deleting
+ * its entry here and its row in the doc; the spec fails while a fixed entry is still listed.
+ * Never add an entry.
+ */
+const KNOWN_VIOLATIONS: Record<string, string[]> = {
+  'apps/lms/src/app/features/design-system/design-system/components/hero/hero.scss':
+    ['gradient', 'radius-xl', 'entrance-motion'],
+  'apps/lms/src/app/features/design-system/design-system/components/space-section/space-section.scss':
+    ['entrance-motion'],
+  'apps/lms/src/app/features/learning/learn/components/course-tile/course-tile.scss':
+    ['uppercase'],
+  'apps/lms/src/app/features/learning/learn/components/learn-hero/learn-hero.scss':
+    ['gradient', 'uppercase'],
+  'apps/lms/src/app/layout/header/header.scss': ['glass'],
+  'libs/ui/src/styles/components/_dialog.scss': ['radius-xl'],
+};
+
+const withoutComments = (text: string): string =>
+  text
+    .replace(/<!--[\s\S]*?-->/g, '')
+    .replace(/\/\*[\s\S]*?\*\//g, '')
+    .replace(/^\s*\/\/.*$/gm, '');
 
 const BEM =
   /^[a-z][a-z0-9]*(?:-[a-z0-9]+)*(?:__[a-z0-9]+(?:-[a-z0-9]+)*)?(?:--[a-z0-9]+(?:-[a-z0-9]+)*)?$/;
@@ -360,6 +413,36 @@ describe('template scan', () => {
         ),
       );
     expect(offenders.map((file) => relative(root, file))).toEqual([]);
+  });
+
+  describe('banned looks', () => {
+    /** `path: look` for every banned look found, outside the token source and the exceptions. */
+    const found = (() => {
+      const hits: string[] = [];
+      for (const file of [...scssFiles, ...appFiles, ...uiFiles]) {
+        if (file === tokenSource) continue;
+        const path = relative(root, file).replaceAll('\\', '/');
+        const text = withoutComments(readFileSync(file, 'utf8'));
+        for (const [look, pattern] of Object.entries(BANNED_LOOKS)) {
+          if (!file.endsWith('.scss') && look !== 'eyebrow') continue;
+          if (LOOK_EXCEPTIONS[path]?.includes(look)) continue;
+          if (pattern.test(text)) hits.push(`${path}: ${look}`);
+        }
+      }
+      return hits;
+    })();
+    const known = Object.entries(KNOWN_VIOLATIONS).flatMap(([path, looks]) =>
+      looks.map((look) => `${path}: ${look}`),
+    );
+
+    it('adds no banned look (visual-design.md)', () => {
+      expect(found.filter((hit) => !known.includes(hit))).toEqual([]);
+    });
+
+    it('lists only known violations that are still in the code', () => {
+      // A fixed one: delete its entry in KNOWN_VIOLATIONS and its row in visual-design.md.
+      expect(known.filter((hit) => !found.includes(hit))).toEqual([]);
+    });
   });
 
   it('references neither Tailwind nor PostCSS', () => {

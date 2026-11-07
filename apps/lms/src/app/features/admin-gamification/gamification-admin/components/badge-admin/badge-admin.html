@@ -101,6 +101,7 @@
       <thead>
         <tr>
           <th scope="col">Huy hiệu</th>
+          <th scope="col">Luật nhận</th>
           <th scope="col">Người nhận</th>
           <th scope="col">Trao cho người đã đủ điều kiện</th>
           <th scope="col">Trạng thái</th>
@@ -112,10 +113,10 @@
         <tr>
           <td data-label="Huy hiệu">
             <span uiTablePrimary>{{ badge.name }}</span>
-            <div uiTableSub>{{ badge.condition }}</div>
           </td>
+          <td data-label="Luật nhận">{{ badge.condition }}</td>
           <td data-label="Người nhận">{{ badge.holders }}</td>
-          <td data-label="Trao bù">
+          <td data-label="Trao cho người đã đủ điều kiện">
             @switch (badge.backfillStatus) { @case ('RUNNING') {
             <ui-progress
               label="Tiến độ trao huy hiệu"
@@ -125,7 +126,7 @@
               {{ badge.backfillDone }}/{{ badge.backfillTotal }} người
             </div>
             } @case ('FAILED') {
-            <span uiBadge tone="danger">Lỗi, chưa trao xong</span>
+            <span class="badge-admin__failed">Lỗi, chưa trao xong</span>
             } @default {
             <span>Đã xong ({{ badge.backfillTotal }} người)</span>
             } }
@@ -140,23 +141,25 @@
           <td data-label="Thao tác">
             <div class="badge-admin__row-actions">
               <button
-                uiButton
+                uiIconButton
                 type="button"
-                variant="ghost"
+                size="sm"
+                [label]="'Sửa ' + badge.name"
                 (click)="store.editBadge(badge)"
               >
-                Sửa
+                <ui-icon name="pen-line" size="sm" />
               </button>
               @if (badge.status === 'active') {
-              <button
-                uiButton
-                type="button"
+              <ui-menu
+                [label]="'Thêm thao tác cho ' + badge.name"
+                icon="ellipsis"
+                iconOnly
                 variant="ghost"
+                size="sm"
                 [disabled]="store.isRetiringBadge$()"
-                (click)="store.retireBadge(badge)"
-              >
-                Ngừng dùng
-              </button>
+                [entries]="rowMenu"
+                (selected)="store.retireBadge(badge)"
+              />
               }
             </div>
           </td>
