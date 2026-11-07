@@ -1,6 +1,8 @@
 <form class="config-form" [formRoot]="configForm">
   <section class="config-form__section" aria-labelledby="config-xp-title">
-    <h2 id="config-xp-title">XP cho mỗi hoạt động</h2>
+    <h2 id="config-xp-title" class="config-form__title">
+      XP cho mỗi hoạt động
+    </h2>
     <p class="config-form__hint">
       Lưu là tạo một phiên bản mới, áp dụng từ lúc lưu. XP đã ghi trước đó giữ
       nguyên số cũ. Điểm thưởng của từng khóa học do khóa đó đặt.
@@ -52,7 +54,9 @@
   </section>
 
   <section class="config-form__section" aria-labelledby="config-levels-title">
-    <h2 id="config-levels-title">Bậc thang cấp độ</h2>
+    <h2 id="config-levels-title" class="config-form__title">
+      Bậc thang cấp độ
+    </h2>
     <p class="config-form__hint">
       Cấp đầu tiên bắt đầu từ 0 XP và mỗi cấp sau cần nhiều XP hơn cấp trước.
       Học viên đã đạt cấp nào thì giữ cấp đó dù bậc thang đổi.
@@ -78,7 +82,7 @@
       </li>
       }
     </ol>
-    <div>
+    <div class="config-form__add">
       <button
         uiButton
         type="button"
@@ -91,14 +95,16 @@
     </div>
   </section>
 
-  <div>
+  <div class="config-form__footer">
     <button
       uiButton
       type="submit"
       variant="primary"
       [disabled]="store.isSavingConfig$()"
+      [busy]="store.isSavingConfig$()"
     >
       Lưu phiên bản mới
     </button>
+    <p class="config-form__note">Chỉ áp dụng cho XP phát sinh sau khi lưu.</p>
   </div>
 </form>

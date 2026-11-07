@@ -1,6 +1,7 @@
 import { Component, inject } from '@angular/core';
 import {
   Badge,
+  Card,
   ErrorState,
   FmtDatetimePipe,
   PageHeader,
@@ -27,6 +28,7 @@ import { GamificationAdminStore } from './data-access/gamification-admin.store';
     Badge,
     BadgeAdmin,
     CalendarEditor,
+    Card,
     ConfigForm,
     ErrorState,
     FmtDatetimePipe,

@@ -1,22 +1,31 @@
 @use 'ui';
 
 .badge-admin {
-  @include ui.stack(4);
+  display: block;
 
+  // The table runs edge to edge in the card; everything else pads itself.
   &__bar {
     @include ui.row(3);
     justify-content: space-between;
     align-items: flex-start;
+    padding: ui.space(5);
+    border-bottom: 1px solid ui.color(border);
   }
 
   &__hint {
     @include ui.text(sm, muted);
-    max-width: 60ch;
+    max-width: 64ch;
+    margin: 0;
   }
 
   &__form {
     @include ui.stack(4);
+    padding: ui.space(5);
     max-width: 48rem;
+
+    h2 {
+      @include ui.text(lg);
+    }
   }
 
   &__grid {
@@ -27,10 +36,16 @@
 
   &__locked {
     @include ui.text(sm, muted);
+    margin: 0;
   }
 
   &__actions,
   &__row-actions {
     @include ui.row(3);
+  }
+
+  &__empty,
+  &__state {
+    padding: ui.space(5);
   }
 }

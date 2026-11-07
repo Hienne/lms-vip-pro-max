@@ -1,7 +1,7 @@
 @use 'ui';
 
 :host {
-  @include ui.page(wide);
+  @include ui.page;
 }
 
 .gamification-admin {
@@ -11,11 +11,13 @@
     padding-block: ui.space(10);
   }
 
-  &__tabs {
+  // The tabs live in one card, as on the user detail screen. Each panel pads itself, so the history
+  // table and the badge table can run edge to edge.
+  &__card {
     margin-top: ui.space(4);
   }
-}
 
-[uiTabPanel] {
-  padding-top: ui.space(5);
+  &__empty {
+    padding: ui.space(5);
+  }
 }

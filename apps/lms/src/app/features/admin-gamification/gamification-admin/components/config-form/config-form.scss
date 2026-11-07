@@ -1,15 +1,25 @@
 @use 'ui';
 
 .config-form {
-  @include ui.stack(6);
+  display: block;
 
   &__section {
-    @include ui.stack(3);
+    @include ui.stack(4);
+    padding: ui.space(5);
+
+    & + & {
+      border-top: 1px solid ui.color(border);
+    }
+  }
+
+  &__title {
+    @include ui.text(lg);
   }
 
   &__hint {
     @include ui.text(sm, muted);
-    max-width: 60ch;
+    max-width: 64ch;
+    margin: 0;
   }
 
   &__grid {
@@ -44,5 +54,20 @@
     @include ui.num;
     @include ui.text(sm, muted);
     padding-top: ui.space(8);
+  }
+
+  &__add {
+    @include ui.row(3);
+  }
+
+  &__footer {
+    @include ui.row(3);
+    padding: ui.space(4) ui.space(5);
+    border-top: 1px solid ui.color(border);
+  }
+
+  &__note {
+    @include ui.text(sm, muted);
+    margin: 0;
   }
 }

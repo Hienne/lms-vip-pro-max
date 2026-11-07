@@ -2,14 +2,21 @@
 
 .calendar-editor {
   @include ui.stack(4);
+  padding: ui.space(5);
 
   &__hint {
     @include ui.text(sm, muted);
-    max-width: 60ch;
+    max-width: 64ch;
+    margin: 0;
   }
 
   &__year {
     @include ui.row(2);
+
+    h2 {
+      @include ui.text(lg);
+      @include ui.num;
+    }
   }
 
   &__form {
@@ -36,5 +43,7 @@
 
   &__actions {
     @include ui.row(3);
+    padding-top: ui.space(4);
+    border-top: 1px solid ui.color(border);
   }
 }
