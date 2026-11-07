@@ -565,10 +565,12 @@
           </tbody>
         </table>
       </div>
-      } @else {
+      } @else if (store.historyHasFilters$()) {
       <p class="learning-progress__muted">
         Không có lượt thi phù hợp với bộ lọc.
       </p>
+      } @else {
+      <p class="learning-progress__muted">Bạn chưa có bài thi nào được chấm.</p>
       }
       <ui-pagination
         [total]="store.historyTotal$()"

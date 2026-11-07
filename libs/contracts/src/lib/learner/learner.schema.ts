@@ -562,6 +562,19 @@ export const MyStreakSchema = z.object({
 });
 export type MyStreak = z.infer<typeof MyStreakSchema>;
 
+/** `GET /dashboard/activity/weekly`: the days with any learning activity in each of the caller's last weeks, oldest first. */
+export const WeeklyActivitySchema = z.object({
+  timeZone: z.string(),
+  weeks: z.array(
+    z.object({
+      weekStart: z.string(),
+      weekEnd: z.string(),
+      activeDays: z.number().int().min(0).max(7),
+    }),
+  ),
+});
+export type WeeklyActivity = z.infer<typeof WeeklyActivitySchema>;
+
 /**
  * `LearningAnalytics.Counts`: the server's counts over a set of enrolments. Both percents are the
  * server's: `completionRate` is completed / total and `averageProgress` the mean of the courses'

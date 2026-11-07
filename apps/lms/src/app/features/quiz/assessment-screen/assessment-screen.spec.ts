@@ -435,9 +435,13 @@ describe('AssessmentScreen (admin)', () => {
     expect(store().selectedProgramId$()).toBe(3);
     expect(el.querySelector('form')).toBeTruthy();
   });
-  it('offers the Excel import, not quiz creation, on the question bank', async () => {
+  it('offers the Excel import and flashcard management, not quiz creation, on the question bank', async () => {
     await open('/admin/questions?programId=2');
-    expect(el.querySelector('ui-page-header a')).toBeNull();
+    const links = [...el.querySelectorAll('ui-page-header a')].map((a) => [
+      a.textContent?.trim(),
+      a.getAttribute('href'),
+    ]);
+    expect(links).toEqual([['Quản lý flashcard', '/admin/flashcards']]);
     const labels = [...el.querySelectorAll('ui-page-header button')].map((b) =>
       b.textContent?.trim(),
     );

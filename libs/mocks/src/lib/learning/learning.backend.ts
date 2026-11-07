@@ -352,6 +352,7 @@ export class LearningBackend {
       ],
       [learnerEndpoints.myPoints, (r) => ok(this.board.points(r))],
       [learnerEndpoints.myStreak, (r) => ok(this.streaks.streak(r))],
+      [learnerEndpoints.weeklyActivity, (r) => ok(this.streaks.weekly(r))],
       [learnerEndpoints.myLevel, (r) => ok(this.levels.level(r))],
       [learnerEndpoints.myBadges, (r) => ok(this.badges.badges(r))],
       [gamificationEndpoints.config, (r) => ok(this.gamification.current(r))],
