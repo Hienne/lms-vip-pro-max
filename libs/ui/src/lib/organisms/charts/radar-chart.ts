@@ -17,6 +17,7 @@ export interface RadarDatum {
 export class RadarChart {
   readonly data = input.required<readonly RadarDatum[]>();
   readonly label = input('Biểu đồ năng lực');
+  readonly showTable = input(true);
   readonly seriesLabel = input('Của bạn (lần thi tốt nhất)');
   /** Decimals kept in a value: the server's percents have up to two. */
   protected readonly digits = 2;

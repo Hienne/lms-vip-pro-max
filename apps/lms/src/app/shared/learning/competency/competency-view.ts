@@ -1,6 +1,6 @@
 import { Component, computed, input } from '@angular/core';
 import type { MyCompetency } from '@lms/contracts';
-import { Empty, FmtPctPipe, RadarChart } from '@lms/ui';
+import { Empty, FmtPctPipe, Progress, RadarChart } from '@lms/ui';
 import { toRadarData, withData } from './competency-data';
 
 export type CompetencyViewSize = 'compact' | 'large';
@@ -16,12 +16,13 @@ const PERCENT_DIGITS = 2;
  */
 @Component({
   selector: 'app-competency-view',
-  imports: [Empty, FmtPctPipe, RadarChart],
+  imports: [Empty, FmtPctPipe, Progress, RadarChart],
   templateUrl: './competency-view.html',
   styleUrl: './competency-view.scss',
   host: {
     '[class.competency-view--compact]': "size() === 'compact'",
     '[class.competency-view--large]': "size() === 'large'",
+    '[class.competency-view--has-radar]': 'showRadar()',
   },
 })
 export class CompetencyView {
@@ -34,4 +35,7 @@ export class CompetencyView {
     () => this.rowsWithData().length >= MIN_RADAR_AXES,
   );
   protected readonly radarData = computed(() => toRadarData(this.rows()));
+  protected readonly rankedRows = computed(() =>
+    [...this.rowsWithData()].sort((a, b) => b.percent - a.percent),
+  );
 }

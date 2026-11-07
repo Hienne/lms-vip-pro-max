@@ -1,13 +1,44 @@
 @use 'ui';
 
 :host {
-  display: block;
+  display: grid;
+  gap: ui.space(4);
   min-width: 0;
 }
 
 .competency-view {
+  &__panel {
+    min-width: 0;
+    padding: ui.space(4);
+    border: 1px solid ui.color(border);
+    border-radius: ui.radius(card);
+    background: ui.color(surface);
+  }
+
+  &__heading {
+    @include ui.text(lg);
+    margin: 0 0 ui.space(3);
+    font-weight: ui.weight(semibold);
+  }
+
   &__chart {
     margin-inline: auto;
+  }
+
+  &__explanation {
+    @include ui.text(sm, muted);
+    margin: 0 0 ui.space(3);
+  }
+
+  &__score {
+    @include ui.row(2);
+    flex-wrap: nowrap;
+    justify-content: flex-end;
+
+    ui-progress {
+      flex: 1 1 auto;
+      min-width: ui.space(10);
+    }
   }
 
   &__name {
@@ -15,17 +46,25 @@
   }
 
   &__list {
-    @include ui.stack(2);
-    margin: 0;
-    padding: 0;
-    list-style: none;
-  }
+    width: 100%;
+    border-collapse: collapse;
+    text-align: left;
 
-  &__item {
-    display: grid;
-    grid-template-columns: 1fr auto auto;
-    align-items: baseline;
-    gap: ui.space(4);
+    th,
+    td {
+      padding: ui.space(3) ui.space(2);
+      border-bottom: 1px solid ui.color(border);
+    }
+
+    th {
+      @include ui.text(sm, muted);
+      font-weight: ui.weight(medium);
+    }
+
+    th:not(:first-child),
+    td:not(:first-child) {
+      text-align: right;
+    }
   }
 
   &__meta {
@@ -39,28 +78,37 @@
     text-align: right;
     font-weight: ui.weight(semibold);
   }
-
-  @include ui.bp-below(sm) {
-    &__item {
-      grid-template-columns: 1fr auto;
-    }
-
-    &__meta {
-      grid-column: 1;
-      grid-row: 2;
-    }
-
-    &__percent {
-      grid-column: 2;
-      grid-row: 1 / span 2;
-    }
-  }
 }
 
 :host(.competency-view--compact) .competency-view__chart {
-  max-width: calc(#{ui.space(12)} * 8);
+  max-width: calc(#{ui.space(12)} * 12);
 }
 
 :host(.competency-view--large) .competency-view__chart {
   max-width: calc(#{ui.space(12)} * 11);
+}
+
+:host(.competency-view--large.competency-view--has-radar) {
+  @include ui.bp(lg) {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    align-items: start;
+    gap: ui.space(6);
+  }
+}
+
+:host(.competency-view--compact.competency-view--has-radar) {
+  .competency-view__disclosure {
+    overflow-x: auto;
+    margin-top: ui.space(2);
+
+    summary {
+      color: ui.color(primary);
+      font-weight: ui.weight(medium);
+      cursor: pointer;
+      &:focus-visible {
+        @include ui.focus-ring;
+      }
+    }
+  }
 }
