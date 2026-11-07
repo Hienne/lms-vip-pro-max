@@ -2008,7 +2008,7 @@ describe('CourseEditor', () => {
       TestBed.tick();
     };
     /** A click on fake time: `screen.click` settles on real timers, which a waiting upload needs off. */
-    const tap = async (target: HTMLElement | undefined) => {
+    const tap = async (target: HTMLElement | null | undefined) => {
       target!.click();
       await advance(10);
     };
@@ -2426,7 +2426,7 @@ describe('CourseEditor', () => {
         const button = rows()[0].querySelector<HTMLButtonElement>(
           'button[aria-label="Chuyển xuống"]',
         );
-        return fake ? tap(button!) : screen.click(button);
+        return fake ? tap(button!) : screen.click(button!);
       };
       /** A second lesson with a text block, added after the first. */
       async function addSecondLesson(fake: boolean) {
