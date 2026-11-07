@@ -1,0 +1,5 @@
+{
+  "name": "@lms/contracts",
+  "private": true,
+  "sideEffects": false
+}

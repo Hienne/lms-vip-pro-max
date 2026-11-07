@@ -1,66 +1,71 @@
-<section class="learn-hero" aria-labelledby="learn-greeting">
-  <ui-mai class="learn-hero__mai" [size]="360" petal="white" core="white" />
-  <div class="learn-hero__main">
-    <span class="learn-hero__date">{{ today() }}</span>
-    <h1 id="learn-greeting">{{ greeting() }}</h1>
-    @if (headline()) {
-    <p class="learn-hero__headline">{{ headline() }}</p>
-    } @if (resumeFailed()) {
-    <p class="learn-hero__headline">
-      Không tải được khóa học đang học.
-      <button uiButton variant="on-dark" size="sm" (click)="retryResume.emit()">
-        Thử lại
-      </button>
-    </p>
-    } @else if (resume(); as view) {
-    <div class="learn-hero__continue">
-      <a
-        uiButton
-        variant="on-dark"
-        size="lg"
-        [routerLink]="view.link"
-        [queryParams]="view.query"
-      >
-        <ui-icon name="play" />Tiếp tục học
-      </a>
-      <span class="learn-hero__lesson">
-        {{ view.lessonTitle }} @if (view.context) {
-        <span class="learn-hero__context">{{ view.context }}</span>
-        }
-      </span>
-    </div>
-    } @else if (!resumeLoading()) {
-    <div class="learn-hero__continue">
-      <a uiButton variant="on-dark" size="lg" routerLink="/catalog">
-        <ui-icon name="library" />Khám phá khóa học
-      </a>
-    </div>
-    }
-  </div>
-
+<ui-page-header title="Học tập" [description]="summary()">
   @if (pointsFailed()) {
-  <div class="learn-hero__reward">
+  <div slot="actions" class="learn-hero__reward">
     <span class="learn-hero__reward-label">Không tải được điểm thưởng</span>
-    <button uiButton variant="on-dark" size="sm" (click)="retryPoints.emit()">
+    <button uiButton variant="ghost" size="sm" (click)="retryPoints.emit()">
       Thử lại
     </button>
   </div>
   } @else if (points(); as figure) {
   <a
+    slot="actions"
     class="learn-hero__reward"
     routerLink="/leaderboard"
     [attr.aria-label]="
       'Điểm thưởng ' + figure.total + ', xem bảng xếp hạng'
     "
   >
-    <ui-mai [size]="36" petal="accent" core="on-accent" />
+    <ui-mai [size]="20" petal="accent" core="on-accent" />
     <span>
       <span class="learn-hero__points">{{ figure.total }}</span>
       {{ ' ' }}
       <span class="learn-hero__reward-label"
-        >Điểm thưởng · chuỗi {{ figure.streakDays }} ngày</span
+        >điểm thưởng · chuỗi {{ figure.streakDays }} ngày</span
       >
     </span>
   </a>
   }
-</section>
+</ui-page-header>
+
+@if (resumeFailed()) {
+<div uiCard class="learn-hero__continue">
+  <p class="learn-hero__lesson">Không tải được khóa học đang học.</p>
+  <button uiButton variant="secondary" (click)="retryResume.emit()">
+    Thử lại
+  </button>
+</div>
+} @else if (resume(); as view) {
+<div uiCard class="learn-hero__continue">
+  <div class="learn-hero__resume">
+    <p class="learn-hero__lesson">
+      <span class="learn-hero__lesson-title">{{ view.lessonTitle }}</span>
+      @if (view.context) {
+      <span class="learn-hero__context">{{ view.context }}</span>
+      }
+    </p>
+    <div class="learn-hero__progress">
+      <ui-progress
+        size="sm"
+        [value]="view.pct"
+        [label]="'Tiến độ ' + view.courseTitle"
+      />
+      <span class="learn-hero__pct">{{ view.pct }}%</span>
+    </div>
+  </div>
+  <a
+    uiButton
+    variant="primary"
+    [routerLink]="view.link"
+    [queryParams]="view.query"
+  >
+    <ui-icon name="play" size="sm" />Tiếp tục học
+  </a>
+</div>
+} @else if (!resumeLoading()) {
+<div uiCard class="learn-hero__continue">
+  <p class="learn-hero__lesson">Bạn chưa có khóa học đang học.</p>
+  <a uiButton variant="primary" routerLink="/catalog">
+    <ui-icon name="library" size="sm" />Khám phá khóa học
+  </a>
+</div>
+}

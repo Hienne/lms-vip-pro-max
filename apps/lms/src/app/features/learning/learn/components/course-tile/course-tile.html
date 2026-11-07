@@ -1,30 +1,25 @@
 <a uiCard interactive class="course-tile" [routerLink]="course().link">
-  <div class="course-tile__cover course-tile__cover--{{ coverTone() }}">
+  @if (course().coverUrl || course().hasCover) {
+  <div class="course-tile__cover">
     @if (course().coverUrl; as cover) {
     <img class="course-tile__image" [src]="cover" alt="" loading="lazy" />
-    } @else if (!course().hasCover) {
-    <ui-icon class="course-tile__art" [name]="art()" size="lg" />
     }
-    <span class="course-tile__badges">
-      @if (course().required) {
-      <span uiBadge tone="danger">Bắt buộc</span>
-      } @else {
-      <span uiBadge outline>Tự chọn</span>
-      } @if (completed()) {
+  </div>
+  }
+  <div class="course-tile__body">
+    <div class="course-tile__head">
+      <span class="course-tile__category"
+        >{{ course().domain }} · {{ course().module }}</span
+      >
+      @if (completed()) {
       <span uiBadge tone="success">Hoàn thành</span>
       } @else if (course().failed) {
       <span uiBadge tone="danger">Chưa đạt</span>
-      } @else if (course().overdue) {
-      <span uiBadge tone="danger">Quá hạn</span>
       }
-    </span>
-  </div>
-  <div class="course-tile__body">
-    <span class="course-tile__category"
-      >{{ course().domain }} · {{ course().module }}</span
-    >
+    </div>
     <h3 class="course-tile__title">{{ course().title }}</h3>
     <p class="course-tile__meta">
+      <span>{{ course().required ? 'Bắt buộc' : 'Tự chọn' }}</span>
       @if (duration(); as duration) {
       <span><ui-icon name="clock" size="sm" />{{ duration }}</span>
       }

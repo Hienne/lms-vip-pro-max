@@ -1,98 +1,21 @@
 @use 'ui';
 
-// The mockup's hero: a deep-teal panel with the hoa mai as a faint watermark on the right.
+// The top of the learner's home: the shared page header with the points as a quiet link in its
+// actions, then one card with the lesson to resume.
 :host {
   display: block;
 }
 
 .learn-hero {
-  position: relative;
-  overflow: hidden;
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: ui.space(6);
-  padding: ui.space(6) ui.space(5);
-  border-radius: ui.radius(card);
-  background: linear-gradient(
-    135deg,
-    ui.color(hero-from) 0%,
-    ui.color(hero-to) 100%
-  );
-  color: ui.color(white);
-
-  @include ui.bp(md) {
-    padding: ui.space(8);
-  }
-
-  &__mai {
-    position: absolute;
-    top: -70px;
-    right: -50px;
-    opacity: 0.06;
-    pointer-events: none;
-  }
-
-  &__main {
-    position: relative;
-    @include ui.stack(2);
-    max-width: 640px;
-    min-width: 0;
-
-    h1 {
-      @include ui.text(2xl);
-      margin: 0;
-      color: ui.color(white);
-    }
-  }
-
-  &__date {
-    @include ui.text(xs);
-    color: ui.color(hero-subtle);
-    font-weight: ui.weight(medium);
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-  }
-
-  &__headline {
-    @include ui.text(md);
-    margin: 0;
-    color: ui.color(hero-muted);
-  }
-
-  &__continue {
-    @include ui.row(4);
-    margin-top: ui.space(4);
-  }
-
-  &__lesson {
-    @include ui.text(sm);
-    display: block;
-    min-width: 0;
-    color: ui.color(white);
-    font-weight: ui.weight(medium);
-  }
-
-  &__context {
-    display: block;
-    color: ui.color(hero-subtle);
-    font-weight: ui.weight(regular);
-  }
-
   &__reward {
-    position: relative;
-    @include ui.row(3);
+    @include ui.row(2);
+    @include ui.text(sm);
     flex-wrap: nowrap;
-    padding: ui.space(4) ui.space(5);
-    border: 1px solid color-mix(in srgb, ui.color(white) 18%, transparent);
-    border-radius: ui.radius(card);
-    background: ui.color(hero-chip);
-    color: ui.color(white);
+    color: ui.color(text-secondary);
     text-decoration: none;
 
     &:is(a):hover {
-      background: color-mix(in srgb, ui.color(white) 16%, transparent);
+      color: ui.color(text);
     }
 
     &:is(a):focus-visible {
@@ -102,16 +25,57 @@
 
   &__points {
     @include ui.num;
-    @include ui.text(2xl);
-    display: block;
-    color: ui.color(hero-accent);
-    font-weight: ui.weight(bold);
-    line-height: 1.1;
+    color: ui.color(text);
+    font-weight: ui.weight(semibold);
   }
 
-  &__reward-label {
-    @include ui.text(xs);
-    display: block;
-    color: ui.color(hero-muted);
+  &__continue {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: ui.space(4);
+    padding: ui.space(4) ui.space(5);
+
+    > a,
+    > button {
+      flex: none;
+    }
+  }
+
+  &__resume {
+    @include ui.stack(2);
+    flex: 1 1 20rem;
+    min-width: 0;
+  }
+
+  &__lesson {
+    @include ui.stack(1);
+    margin: 0;
+    min-width: 0;
+  }
+
+  &__lesson-title {
+    font-weight: ui.weight(semibold);
+  }
+
+  &__context {
+    @include ui.text(sm, muted);
+  }
+
+  &__progress {
+    @include ui.row(3);
+    flex-wrap: nowrap;
+    max-width: 24rem;
+
+    ui-progress {
+      flex: 1;
+    }
+  }
+
+  &__pct {
+    @include ui.num;
+    @include ui.text(sm);
+    font-weight: ui.weight(semibold);
   }
 }

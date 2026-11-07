@@ -185,12 +185,7 @@ export class LearnStore {
   readonly summaryError$ = this.summaryData.error;
   readonly isSummaryLoading$ = this.summaryData.isLoading;
 
-  /** The learner's given name (the last word of the full name), for the greeting. */
-  readonly givenName$ = computed(
-    () => this.session.user$()?.fullName.trim().split(/\s+/).pop() ?? '',
-  );
-
-  /** Today, as the hero's date line. */
+  /** Today, as the date beside the page title. */
   readonly today$ = computed(() =>
     new Date(this.now()).toLocaleDateString('vi-VN', {
       weekday: 'long',
@@ -300,7 +295,7 @@ export class LearnStore {
     const summary = this.summaryData.value();
     if (!summary || this.dueData.isLoading()) return '';
     if (summary.counts.overdue) {
-      return `Bạn có ${summary.counts.overdue} khóa đã quá hạn — ưu tiên hoàn thành sớm nhé.`;
+      return `Bạn có ${summary.counts.overdue} khóa đã quá hạn, nên hoàn thành trước.`;
     }
     const next = this.due$()[0];
     if (!next) return 'Bạn đã theo kịp toàn bộ lộ trình được giao.';

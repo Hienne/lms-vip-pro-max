@@ -8,7 +8,7 @@
 }
 
 .learn {
-  &__hero,
+  &__top,
   &__kpis {
     min-width: 0;
   }
@@ -97,7 +97,7 @@
     padding: ui.space(4) ui.space(5);
   }
 
-  // The rail's lists: one row per link, an icon tile on the left, a rule between rows.
+  // The rail's lists: one row per link, a plain icon on the left, a rule between rows.
   &__rows,
   &__reminders {
     margin: 0;
@@ -126,18 +126,13 @@
     }
   }
 
+  // A plain icon, no tile behind it; red only for an overdue course.
   &__row-icon {
-    display: grid;
+    display: inline-flex;
     flex: none;
-    place-items: center;
-    width: 36px;
-    height: 36px;
-    border-radius: ui.radius(sm);
-    background: ui.color(surface-2);
-    color: ui.color(text-secondary);
+    color: ui.color(text-muted);
 
     &--danger {
-      background: ui.color(danger-subtle);
       color: ui.color(danger);
     }
   }

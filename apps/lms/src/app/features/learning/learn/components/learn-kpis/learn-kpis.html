@@ -1,18 +1,9 @@
-<div class="learn-kpis" [class.learn-kpis--compact]="scores().length === 1">
+<div
+  uiCard
+  class="learn-kpis"
+  [class.learn-kpis--compact]="scores().length === 1"
+>
   <ng-template #figure let-kpi>
-    @if (kpi.ring) {
-    <ui-ring
-      class="learn-kpis__ring"
-      [value]="kpi.value ?? 0"
-      [size]="56"
-      [stroke]="6"
-      label=""
-    />
-    } @else {
-    <span class="learn-kpis__icon learn-kpis__icon--{{ kpi.tone }}">
-      <ui-icon [name]="kpi.icon" />
-    </span>
-    }
     <dl class="learn-kpis__item" [attr.title]="kpi.title">
       <dt>{{ kpi.label }}</dt>
       <dd class="learn-kpis__value">
@@ -33,9 +24,7 @@
   </ng-template>
 
   <a
-    uiCard
-    interactive
-    class="learn-kpis__card"
+    class="learn-kpis__cell"
     routerLink="/catalog"
     [queryParams]="assigned().query"
   >
@@ -45,7 +34,7 @@
   </a>
 
   @if (dashboardFailed()) {
-  <div uiCard class="learn-kpis__card">
+  <div class="learn-kpis__cell">
     <dl class="learn-kpis__item">
       <dt>{{ completion().label }}</dt>
       <dd class="learn-kpis__detail">Không tải được</dd>
@@ -62,13 +51,13 @@
     </dl>
   </div>
   } @else {
-  <div uiCard class="learn-kpis__card" [attr.aria-busy]="!dashboard()">
+  <div class="learn-kpis__cell" [attr.aria-busy]="!dashboard()">
     <ng-container
       *ngTemplateOutlet="figure; context: { $implicit: completion() }"
     />
   </div>
   } @for (kpi of scores(); track kpi.label) {
-  <a uiCard interactive class="learn-kpis__card" [routerLink]="kpi.href">
+  <a class="learn-kpis__cell" [routerLink]="kpi.href">
     <ng-container *ngTemplateOutlet="figure; context: { $implicit: kpi }" />
   </a>
   }

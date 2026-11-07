@@ -86,15 +86,14 @@ These are still in the code. Do not copy or extend them. Fix one only when the t
 then delete its row here and, for a guarded item, its entry in `KNOWN_VIOLATIONS` in
 `apps/lms/src/app/template-scan.spec.ts` (the spec fails while a fixed entry is still listed).
 
-| Pattern                   | Where                                                                                                                  |
-| ------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
-| Hero, gradient, uppercase | `features/learning/learn/components/learn-hero`, `features/learning/learn/components/course-tile` (uppercase)          |
-| Glass                     | `layout/header/header.scss` (`backdrop-filter`)                                                                        |
-| Badges for attributes     | `features/account/profile` (staff code and account type as outline badges)                                             |
-| Two inline row actions    | `features/admin-org/users` (edit and lock inline)                                                                      |
-| `/design-system` page     | hero (gradient, `xl`, entrance motion), space section (entrance motion), principles grid (icon tiles), chips           |
-| Extra radii               | `xl` on the dialog (`libs/ui/src/styles/components/_dialog.scss`), `full` on chips, Cobalt's `control: 999px`          |
-| Tokens                    | the `hero-*` colour tokens; Cobalt's gradient hero; Giấy's dot-grid texture                                            |
-| Entrance motion token     | the `enter` keyframe moves 8px over `base` (the change to 4px and `fast` is central: do not override it per component) |
-| Copy                      | the sign-in slogan and "Chào mừng trở lại"; the always-on mockup note                                                  |
-| Chart colours             | `chart` 3 equals `warning`, 4 is Tailwind violet, 5 equals `danger`                                                    |
+| Pattern                | Where                                                                                                                  |
+| ---------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| Glass                  | `layout/header/header.scss` (`backdrop-filter`)                                                                        |
+| Badges for attributes  | `features/account/profile` (staff code and account type as outline badges)                                             |
+| Two inline row actions | `features/admin-org/users` (edit and lock inline)                                                                      |
+| `/design-system` page  | hero (gradient, `xl`, entrance motion), space section (entrance motion), principles grid (icon tiles), chips           |
+| Extra radii            | `xl` on the dialog (`libs/ui/src/styles/components/_dialog.scss`), `full` on chips, Cobalt's `control: 999px`          |
+| Tokens                 | the `hero-*` colour tokens; Cobalt's gradient hero; Giấy's dot-grid texture                                            |
+| Entrance motion token  | the `enter` keyframe moves 8px over `base` (the change to 4px and `fast` is central: do not override it per component) |
+| Copy                   | the sign-in slogan and "Chào mừng trở lại"; the always-on mockup note                                                  |
+| Chart colours          | `chart` 3 equals `warning`, 4 is Tailwind violet, 5 equals `danger`                                                    |

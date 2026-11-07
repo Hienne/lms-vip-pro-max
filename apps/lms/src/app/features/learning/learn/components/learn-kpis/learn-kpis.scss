@@ -1,17 +1,13 @@
 @use 'ui';
 
+// One card split into cells by hairlines: two columns on a phone, all four from md up.
 .learn-kpis {
-  @include ui.grid(
-    (
-      base: 1,
-      md: 2,
-      xl: 4,
-    ),
-    4
-  );
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  overflow: hidden;
 
-  > * {
-    min-width: 0;
+  @include ui.bp(md) {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 
   &--compact {
@@ -20,47 +16,24 @@
     }
   }
 
-  &__card {
-    display: flex;
-    align-items: center;
-    gap: ui.space(4);
-    padding: ui.space(5);
+  &__cell {
+    display: block;
+    min-width: 0;
+    padding: ui.space(4) ui.space(5);
+    // Hairlines between cells: the card's own background shows through a 1px gap.
+    box-shadow:
+      1px 0 0 ui.color(border),
+      0 1px 0 ui.color(border);
     color: inherit;
     text-decoration: none;
+
+    &:is(a):hover {
+      background: ui.color(surface-2);
+    }
 
     &:focus-visible {
       @include ui.focus-ring;
     }
-  }
-
-  &__icon {
-    display: grid;
-    flex: none;
-    place-items: center;
-    width: 44px;
-    height: 44px;
-    border-radius: ui.radius(md);
-    background: ui.color(primary-subtle);
-    color: ui.color(primary);
-
-    &--info {
-      background: ui.color(info-subtle);
-      color: ui.color(info);
-    }
-
-    &--danger {
-      background: ui.color(danger-subtle);
-      color: ui.color(danger);
-    }
-
-    &--reward {
-      background: ui.color(accent);
-      color: ui.color(on-accent);
-    }
-  }
-
-  &__ring {
-    flex: none;
   }
 
   &__item {
@@ -85,7 +58,7 @@
     @include ui.num;
     @include ui.text(2xl);
     order: 1;
-    font-weight: ui.weight(bold);
+    font-weight: ui.weight(semibold);
     line-height: 1.1;
 
     small {
@@ -98,11 +71,10 @@
   &__detail {
     @include ui.text(xs, muted);
     order: 3;
-    font-weight: ui.weight(semibold);
   }
 
   &__fail {
     color: ui.color(danger);
-    font-weight: ui.weight(semibold);
+    font-weight: ui.weight(medium);
   }
 }

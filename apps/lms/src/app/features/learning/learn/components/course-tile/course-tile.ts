@@ -7,7 +7,6 @@ import {
   FmtPctPipe,
   Icon,
   Progress,
-  type IconName,
   type ProgressTone,
 } from '@lms/ui';
 import type { CourseCardView } from '../../../../../shared/course/course-card';
@@ -17,23 +16,6 @@ const PROGRESS_TONE: Partial<Record<CourseStatus, ProgressTone>> = {
   completed: 'success',
   failed: 'danger',
 };
-
-/** The mockup's pastel cover colours, taken from the theme's tokens, and the art on each. */
-const COVER_TONES = ['primary', 'info', 'accent'] as const;
-const COVER_ART: readonly IconName[] = [
-  'layers',
-  'workflow',
-  'database',
-  'shield',
-  'book-open',
-];
-
-/** A stable number from the id, so a course keeps its colour and art between visits. */
-function hash(id: string): number {
-  let total = 0;
-  for (const char of id) total = (total * 31 + char.charCodeAt(0)) % 9973;
-  return total;
-}
 
 /** The mockup's `UI.Minutes`: "45 phút", "1g 8p" or "2 giờ". */
 function formatMinutes(total: number): string {
@@ -45,10 +27,10 @@ function formatMinutes(total: number): string {
 }
 
 /**
- * A course on the learner's home as the mockup draws it (`UI.CourseCard`): a cover band with the
- * "Bắt buộc" or "Tự chọn" mark and the status on it, then the category, title, meta line with
- * icons, progress and the status line. The cover is the uploaded image when there is one, else a
- * pastel band with an icon. Progress, status and overdue are the server's. The whole tile is one
+ * A course on the learner's home: the uploaded cover when the course has one (no placeholder art
+ * otherwise), the category with at most one status badge (completed or failed; overdue shows once, in the due date), the title,
+ * a meta line ("Bắt buộc" or "Tự chọn" as plain text, duration, lessons, level), progress and the
+ * status line. Progress, status and overdue are the server's. The whole tile is one
  * link to the course.
  */
 @Component({
@@ -60,13 +42,6 @@ function formatMinutes(total: number): string {
 export class CourseTile {
   readonly course = input.required<CourseCardView>();
 
-  private readonly seed = computed(() => hash(this.course().id));
-  protected readonly coverTone = computed(
-    () => COVER_TONES[this.seed() % COVER_TONES.length],
-  );
-  protected readonly art = computed(
-    () => COVER_ART[this.seed() % COVER_ART.length],
-  );
   protected readonly duration = computed(() => {
     const minutes = this.course().minutes;
     return minutes === undefined ? null : formatMinutes(minutes);

@@ -114,18 +114,14 @@ describe('Learn', () => {
   describe('a learner with a course in progress', () => {
     beforeEach(() => open());
 
-    it('opens with the hero: a greeting, the first thing to attend to and the resume link', () => {
+    it('opens with the page title, the first thing to attend to and the resume card', () => {
       const hero = el.querySelector('app-learn-hero')!;
       expect(el.querySelectorAll('h1')).toHaveLength(1);
-      expect(
-        hero.querySelector('h1')?.textContent?.replace(/\s+/g, ' '),
-      ).toMatch(/^\s*Chào \S+, hôm nay học gì tiếp nhỉ\?\s*$/);
-      expect(hero.querySelector('.learn-hero__date')?.textContent).toMatch(
-        /\d{2}\/\d{2}\/\d{4}/,
-      );
-      expect(hero.querySelector('.learn-hero__headline')?.textContent).toMatch(
-        /quá hạn|Khóa gần hạn nhất|theo kịp/,
-      );
+      expect(hero.querySelector('h1')?.textContent?.trim()).toBe('Học tập');
+      expect(text()).not.toMatch(/Chào|hôm nay học gì/);
+      const desc = hero.querySelector('ui-page-header .page-header__desc');
+      expect(desc?.textContent).toMatch(/\d{2}\/\d{2}\/\d{4}/);
+      expect(desc?.textContent).toMatch(/quá hạn|Khóa gần hạn nhất|theo kịp/);
       expect(
         hero.compareDocumentPosition(el.querySelector('app-learn-kpis')!) &
           Node.DOCUMENT_POSITION_FOLLOWING,
@@ -140,6 +136,9 @@ describe('Learn', () => {
       expect(hero.querySelector('.learn-hero__lesson')?.textContent).toContain(
         ' · ',
       );
+      expect(
+        hero.querySelector('.learn-hero__continue ui-progress'),
+      ).not.toBeNull();
     });
 
     const kpis = () =>
@@ -284,7 +283,7 @@ describe('Learn', () => {
       URL.revokeObjectURL = original.revoke;
     });
 
-    it('shows the uploaded cover on the first tile and a pastel band with an icon on the others', async () => {
+    it('shows the uploaded cover on the first tile and no cover or placeholder art on the others', async () => {
       withCover(handle, learnerEndpoints.myCourses, true);
       await open();
       const tiles = Array.from(cards());
@@ -294,7 +293,7 @@ describe('Learn', () => {
       ).toBe('blob:cover');
       for (const tile of tiles.slice(1)) {
         expect(tile.querySelector('img')).toBeNull();
-        expect(tile.querySelector('.course-tile__art')).not.toBeNull();
+        expect(tile.querySelector('.course-tile__cover')).toBeNull();
       }
       expect(
         handle.mock.calls.filter(
@@ -303,14 +302,14 @@ describe('Learn', () => {
       ).toEqual({ assetId: '77' });
     });
 
-    it('falls back to the pastel band when the server refuses an uploaded cover', async () => {
+    it('drops the cover when the server refuses an uploaded cover', async () => {
       withCover(handle, learnerEndpoints.myCourses, false);
       await open();
       expect(cards().length).toBeGreaterThan(0);
       expect(el.querySelector('app-course-tile img')).toBeNull();
       expect(
-        el.querySelector('app-course-tile .course-tile__art'),
-      ).not.toBeNull();
+        el.querySelector('app-course-tile .course-tile__cover'),
+      ).toBeNull();
     });
   });
 
@@ -410,9 +409,9 @@ describe('Learn', () => {
       );
     }
 
-    it('sits in the hero and links to the leaderboard', async () => {
+    it('sits beside the page title and links to the leaderboard', async () => {
       await open();
-      expect(shown()).toBe('80 Điểm thưởng · chuỗi 2 ngày');
+      expect(shown()).toBe('80 điểm thưởng · chuỗi 2 ngày');
       expect(reward()?.getAttribute('href')).toBe('/leaderboard');
       expect(reward()?.getAttribute('aria-label')).toContain(
         'xem bảng xếp hạng',
@@ -437,12 +436,12 @@ describe('Learn', () => {
         streakDays: 0,
       });
       await open();
-      expect(shown()).toBe('0 Điểm thưởng · chuỗi 0 ngày');
+      expect(shown()).toBe('0 điểm thưởng · chuỗi 0 ngày');
     });
 
     it('shows for a learner whose courses have no quiz', async () => {
       await open('giangvien', '000005');
-      expect(shown()).toBe('40 Điểm thưởng · chuỗi 2 ngày');
+      expect(shown()).toBe('40 điểm thưởng · chuỗi 2 ngày');
     });
 
     it('says so with a retry when the read fails, and nothing else fails', async () => {
@@ -461,7 +460,7 @@ describe('Learn', () => {
     it('does not wait for the summary', async () => {
       fail(learnerEndpoints.progressSummary);
       await open();
-      expect(shown()).toBe('80 Điểm thưởng · chuỗi 2 ngày');
+      expect(shown()).toBe('80 điểm thưởng · chuỗi 2 ngày');
     });
   });
 

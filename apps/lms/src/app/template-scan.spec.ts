@@ -141,10 +141,6 @@ const KNOWN_VIOLATIONS: Record<string, string[]> = {
     ['gradient', 'radius-xl', 'entrance-motion'],
   'apps/lms/src/app/features/design-system/design-system/components/space-section/space-section.scss':
     ['entrance-motion'],
-  'apps/lms/src/app/features/learning/learn/components/course-tile/course-tile.scss':
-    ['uppercase'],
-  'apps/lms/src/app/features/learning/learn/components/learn-hero/learn-hero.scss':
-    ['gradient', 'uppercase'],
   'apps/lms/src/app/layout/header/header.scss': ['glass'],
   'libs/ui/src/styles/components/_dialog.scss': ['radius-xl'],
 };

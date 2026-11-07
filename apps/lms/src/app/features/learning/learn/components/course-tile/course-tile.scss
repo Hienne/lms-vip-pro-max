@@ -13,28 +13,13 @@
   color: inherit;
   text-decoration: none;
 
+  // Only an uploaded cover: a grey place while it is read, then the image.
   &__cover {
     position: relative;
-    display: grid;
-    place-items: center;
-    height: 112px;
+    aspect-ratio: 16 / 9;
+    max-height: 140px;
+    width: 100%;
     background: ui.color(surface-2);
-    color: ui.color(primary);
-
-    &--primary {
-      background: ui.color(primary-subtle);
-      color: ui.color(primary);
-    }
-
-    &--info {
-      background: ui.color(info-subtle);
-      color: ui.color(info);
-    }
-
-    &--accent {
-      background: ui.color(accent-subtle);
-      color: ui.color(accent-ink);
-    }
   }
 
   &__image {
@@ -45,19 +30,10 @@
     object-fit: cover;
   }
 
-  &__art {
-    width: 40px;
-    height: 40px;
-  }
-
-  &__badges {
-    position: absolute;
-    top: ui.space(2);
-    right: ui.space(2);
-    left: ui.space(2);
-    display: flex;
-    justify-content: space-between;
-    gap: ui.space(2);
+  &__head {
+    @include ui.row-between(2);
+    flex-wrap: nowrap;
+    min-width: 0;
   }
 
   &__body {
@@ -71,9 +47,7 @@
   &__category {
     @include ui.text(xs, muted);
     @include ui.truncate;
-    font-weight: ui.weight(medium);
-    letter-spacing: 0.06em;
-    text-transform: uppercase;
+    min-width: 0;
   }
 
   &__title {
