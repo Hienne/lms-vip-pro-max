@@ -2,11 +2,13 @@ import { Dialog } from '@angular/cdk/dialog';
 import {
   computed,
   DestroyRef,
+  effect,
   inject,
   Injectable,
   Injector,
   linkedSignal,
   signal,
+  untracked,
   type Signal,
 } from '@angular/core';
 import {
@@ -29,7 +31,7 @@ import {
   type LibraryAsset,
   type SaveDraftCommand,
 } from '@lms/contracts';
-import { confirm, NOW, Toaster, type StepperItem } from '@lms/ui';
+import { choose, confirm, NOW, Toaster, type StepperItem } from '@lms/ui';
 import {
   catchError,
   filter,
@@ -49,6 +51,10 @@ import { serverData } from '../../../../core/data-access/server-data';
 import { serverMutation } from '../../../../core/data-access/server-mutation';
 import { EndpointClient } from '../../../../core/http/endpoint-client';
 import { NetworkStore } from '../../../../core/network/network.store';
+import {
+  BackgroundUploads,
+  type BackgroundUpload,
+} from '../../../../core/uploads/background-uploads';
 import { SessionStore } from '../../../../core/session/session.store';
 import { toAppError, type AppError } from '../../../../core/errors/app-error';
 import {
@@ -63,6 +69,7 @@ import { courseCatalogStatus } from '../../../../shared/status/catalog-status';
 import {
   FILE_USAGE,
   toCreateCourseCommand,
+  type AssetValue,
   type CourseDraftValue,
 } from '../course-draft';
 import {
@@ -93,6 +100,7 @@ import { Sha256Hasher } from './sha256-hasher';
 import { syncExamPool } from '../components/course-rules/data-access/exam-pool';
 import {
   hashingStatus,
+  isBusy,
   isCancellable,
   MISMATCH_MESSAGE,
   PROCESSING_STATUS,
@@ -149,6 +157,13 @@ interface UploadContext {
  * lesson, so its upload is not kept across reloads: the author picks the file again.
  */
 export const COVER_KEY = 'cover';
+
+/** "Chương 1 · Bài 2" for the block at `position` (`chapter.lesson.block`); the cover is "Ảnh bìa". */
+function placeOf(blockKey: string, position: string | undefined): string {
+  if (blockKey === COVER_KEY) return 'Ảnh bìa';
+  const [chapter, lesson] = (position ?? '').split('.').map(Number);
+  return position ? `Chương ${chapter + 1} · Bài ${lesson + 1}` : 'Bài học';
+}
 
 /** The code the server answers with when a course code is already taken. */
 export const DUPLICATE_CODE = 'LEARNING-DUPLICATE';
@@ -223,6 +238,7 @@ export class CourseEditorStore {
   private readonly network = inject(NetworkStore);
   private readonly keptStorage = inject(KeptUploads);
   private readonly toaster = inject(Toaster);
+  private readonly background = inject(BackgroundUploads);
   private readonly now = inject(NOW);
   /** Ids for the assignment rows, so a row keeps its identity while others come and go. */
   private nextRowId = 0;
@@ -234,6 +250,8 @@ export class CourseEditorStore {
   private readonly running = new Map<string, Subscription>();
   /** What each running or stopped row needs to go on once the picked file is out of sight. */
   private readonly contexts = new Map<string, UploadContext>();
+  /** The block each kept upload belongs to, by upload id, so its place can follow the block. */
+  private readonly keptOwners = new Map<string, string>();
 
   private readonly state = {
     step: signal(this.initialStep()),
@@ -249,7 +267,16 @@ export class CourseEditorStore {
     failureShown: signal(false),
     /** How the page puts a new final exam into its form and saves the draft, handed over once. */
     examAttacher: signal<((quizId: number) => void) | null>(null),
+    /** Where each block sits in the draft (`chapter.lesson.block`) by its key, handed over once. */
+    blockPositions: signal<Signal<ReadonlyMap<string, string>> | null>(null),
+    /** How the page puts a finished upload's asset into its block of the draft, handed over once. */
+    blockDropper: signal<((blockKey: string) => void) | null>(null),
+    assetAttacher: signal<
+      ((blockKey: string, asset: AssetValue) => void) | null
+    >(null),
     editingLesson: signal<LessonTarget | null>(null),
+    /** The block keys whose upload began in the open lesson's drawer session. */
+    sessionUploads: signal<readonly string[]>([]),
     /** When the last save went through, as the page shows it ("14:05"). */
     savedAt: signal<string | null>(null),
     /** Set once the course is created or published, so leaving does not ask about unsaved changes. */
@@ -440,10 +467,40 @@ export class CourseEditorStore {
     },
   );
 
-  constructor() {
-    this.destroyRef.onDestroy(() =>
-      this.running.forEach((upload) => upload.unsubscribe()),
+  /**
+   * A kept upload records where its block sat (`chapter.lesson.block`) because the block's key does
+   * not survive a reload. Blocks move when lessons are reordered, so the record follows them. This
+   * effect is the sync with the kept-uploads storage, one concern, and runs on the two signals
+   * that can move a record: the blocks' places and the uploads (a new one becomes kept).
+   */
+  private readonly keepPositionsCurrent = effect(() => {
+    const positions = this.state.blockPositions()?.();
+    const uploads = this.state.uploads();
+    if (positions) untracked(() => this.followBlocks(positions, uploads));
+  });
+
+  /**
+   * The shell panel reads the registry, not this store. Publishing is the sync with that boundary:
+   * one concern, the two things the panel shows (the files, and whether the drawer is open).
+   */
+  private readonly publishUploads = effect(() => {
+    const items = this.backgroundUploads();
+    const drawerOpen = this.state.editingLesson() !== null;
+    untracked(() =>
+      this.background.publish({
+        items,
+        drawerOpen,
+        cancel: (id) => this.cancelFromPanel(id),
+        open: (id) => this.openUpload(id),
+      }),
     );
+  });
+
+  constructor() {
+    this.destroyRef.onDestroy(() => {
+      this.running.forEach((upload) => upload.unsubscribe());
+      this.background.clear();
+    });
   }
 
   // Selectors
@@ -467,6 +524,14 @@ export class CourseEditorStore {
     shownInvalidSteps(this.state.stepChecks()),
   );
   readonly editingLesson$ = this.state.editingLesson.asReadonly();
+  /** Whether the open lesson has an upload begun in this drawer session still on its way. */
+  readonly lessonUploading$ = computed(() => {
+    const uploads = this.state.uploads();
+    return (
+      this.state.editingLesson() !== null &&
+      this.state.sessionUploads().some((key) => isBusy(uploads[key]))
+    );
+  });
   readonly savedAt$ = this.state.savedAt.asReadonly();
   readonly left$ = this.state.left.asReadonly();
 
@@ -601,6 +666,45 @@ export class CourseEditorStore {
   /** The files chosen in this editor by block key, and where each one's upload stands. */
   readonly uploads$ = this.state.uploads.asReadonly();
 
+  /** Files still on their way (the cover included): a block saved now would have no asset. */
+  readonly pendingUploads$ = computed(
+    () => Object.values(this.state.uploads()).filter(isBusy).length,
+  );
+  /** The files as the shell panel lists them: where each one belongs, how far it is, what it can do. */
+  private readonly backgroundUploads = computed(
+    (): readonly BackgroundUpload[] => {
+      const positions =
+        this.state.blockPositions()?.() ?? new Map<string, string>();
+      return Object.entries(this.state.uploads()).flatMap(([key, entry]) => {
+        // A file from the library never uploaded, and a refused one never started.
+        if (entry.refused || (entry.state === 'done' && !entry.uploadId))
+          return [];
+        return [
+          {
+            id: key,
+            name: entry.name,
+            place: placeOf(key, positions.get(key)),
+            percent:
+              entry.state === 'done'
+                ? 100
+                : (entry.percent ?? (entry.state === 'processing' ? 100 : 0)),
+            state: entry.state,
+            status:
+              entry.state === 'error' || entry.state === 'stalled'
+                ? entry.message
+                : entry.status,
+            cancellable: isCancellable(entry),
+          },
+        ];
+      });
+    },
+  );
+
+  /** Whether the cover image is still on its way. */
+  readonly coverUploading$ = computed(() =>
+    isBusy(this.state.uploads()[COVER_KEY]),
+  );
+
   /** The open lesson's blocks (by index) with an upload to continue; a running one is not listed. */
   readonly interrupted$ = computed(
     (): Readonly<Record<number, InterruptedUpload>> => {
@@ -652,12 +756,28 @@ export class CourseEditorStore {
     this.state.examAttacher.set(attach);
   }
 
+  private setAssetAttacher(
+    attach: ((blockKey: string, asset: AssetValue) => void) | null,
+  ): void {
+    this.state.assetAttacher.set(attach);
+  }
+
+  private setBlockPositions(
+    positions: Signal<ReadonlyMap<string, string>> | null,
+  ): void {
+    this.state.blockPositions.set(positions);
+  }
+
   private setStepChecks(checks: readonly StepCheck[]): void {
     this.state.stepChecks.set(checks);
   }
 
   private setEditingLesson(target: LessonTarget | null): void {
     this.state.editingLesson.set(target);
+  }
+
+  private setSessionUploads(keys: readonly string[]): void {
+    this.state.sessionUploads.set(keys);
   }
 
   private setSavedAt(at: string | null): void {
@@ -741,6 +861,29 @@ export class CourseEditorStore {
     this.setExamAttacher(attach);
   }
 
+  /**
+   * The page hands over how a finished upload's asset joins its block of the draft, once. The
+   * block is found by its key wherever it sits then, so moving things around mixes nothing up.
+   */
+  registerAssetAttacher(
+    attach: (blockKey: string, asset: AssetValue) => void,
+  ): void {
+    this.setAssetAttacher(attach);
+  }
+
+  /**
+   * The page hands over how a block that has no file left leaves the draft, so cancelling from
+   * the panel never leaves a block without its asset to be saved.
+   */
+  registerBlockDropper(drop: (blockKey: string) => void): void {
+    this.state.blockDropper.set(drop);
+  }
+
+  /** The page hands over where each block sits in its draft, so kept uploads follow reordering. */
+  registerBlockPositions(positions: Signal<ReadonlyMap<string, string>>): void {
+    this.setBlockPositions(positions);
+  }
+
   /** A final exam was made for this course: the draft references it, and the quizzes are read again. */
   attachExam(quizId: number): void {
     this.state.examAttacher()?.(quizId);
@@ -774,14 +917,60 @@ export class CourseEditorStore {
     this.setProgramId(Number.isInteger(id) && id > 0 ? id : undefined);
   }
 
+  /** The panel's row was clicked: the lesson the file belongs to opens, or step 1 for the cover. */
+  openUpload(blockKey: string): void {
+    if (blockKey === COVER_KEY) {
+      this.goToStep(0);
+      return;
+    }
+    const [chapter, lesson] = (
+      this.state.blockPositions()?.().get(blockKey) ?? ''
+    )
+      .split('.')
+      .map(Number);
+    if (chapter === undefined || lesson === undefined || Number.isNaN(lesson)) {
+      return;
+    }
+    this.goToStep(1);
+    this.editLesson({ chapter, lesson });
+  }
+
   /** Opens a lesson in the drawer; a published revision is not edited, so it stays shut. */
   editLesson(target: LessonTarget): void {
     if (!this.isDraft$()) return;
+    this.setSessionUploads([]);
     this.setEditingLesson(target);
   }
 
   closeLesson(): void {
+    this.setSessionUploads([]);
     this.setEditingLesson(null);
+  }
+
+  /**
+   * The author tried to close the lesson drawer while a file begun in it uploads. "Lưu" saves the
+   * lesson (`save` is the drawer's own submit, which stays open when the form is invalid) and the
+   * upload goes on; "Hủy" drops the changes and stops the uploads begun in this drawer session;
+   * closing the question stays in the drawer.
+   */
+  askToCloseLesson(save: () => Promise<unknown> | undefined): void {
+    choose(this.dialog, {
+      title: 'Còn tệp đang tải lên',
+      message:
+        'Lưu bài học để tệp tiếp tục tải ngầm, hoặc hủy thay đổi và dừng các tệp vừa chọn.',
+      confirmLabel: 'Lưu',
+      cancelLabel: 'Hủy',
+    })
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((answer) => {
+        if (answer === true) void save();
+        else if (answer === false) this.discardLesson();
+      });
+  }
+
+  private discardLesson(): void {
+    this.state.sessionUploads().forEach((key) => this.cancel(key));
+    this.closeLesson();
   }
 
   openDraft(): void {
@@ -956,6 +1145,27 @@ export class CourseEditorStore {
     this.removeUpload(blockKey);
   }
 
+  /** "Hủy" on the shell's panel: the upload stops, and its block, left without a file, leaves the draft. */
+  private cancelFromPanel(blockKey: string): void {
+    this.cancel(blockKey);
+    if (blockKey !== COVER_KEY) this.state.blockDropper()?.(blockKey);
+  }
+
+  /**
+   * The blocks these keys name are gone (deleted with their lesson, chapter or by hand): their
+   * uploads on their way stop and the server forgets them.
+   */
+  cancelUploads(blockKeys: readonly string[]): void {
+    for (const key of blockKeys) {
+      const entry = this.state.uploads()[key];
+      if (!isBusy(entry)) continue;
+      this.running.get(key)?.unsubscribe();
+      this.running.delete(key);
+      if (entry?.uploadId) this.cancelOnServer(entry.uploadId);
+      this.removeUpload(key);
+    }
+  }
+
   /** "Hủy" on an interrupted upload: the server forgets it. */
   cancelInterrupted(uploadId: string): void {
     this.cancelOnServer(uploadId);
@@ -1017,7 +1227,12 @@ export class CourseEditorStore {
           : undefined;
     if (message === undefined) return false;
     this.release(blockKey);
-    this.setUpload(blockKey, { ...base, state: 'error', message });
+    this.setUpload(blockKey, {
+      ...base,
+      state: 'error',
+      message,
+      refused: true,
+    });
     return true;
   }
 
@@ -1025,6 +1240,12 @@ export class CourseEditorStore {
     const { blockKey, blockType, blockIndex, file } = request;
     this.release(blockKey);
     const target = this.state.editingLesson();
+    if (target && blockKey !== COVER_KEY) {
+      this.setSessionUploads([
+        ...this.state.sessionUploads().filter((key) => key !== blockKey),
+        blockKey,
+      ]);
+    }
     const position =
       target && blockKey !== COVER_KEY
         ? `${target.chapter}.${target.lesson}.${blockIndex}`
@@ -1154,18 +1375,20 @@ export class CourseEditorStore {
       });
       return;
     }
+    const asset: AssetValue = {
+      assetId,
+      usage: FILE_USAGE[blockType] ?? 'attachment',
+      name,
+      sizeBytes,
+    };
     this.setUpload(blockKey, {
       state: 'done',
       name,
       sizeBytes,
       uploadId,
-      asset: {
-        assetId,
-        usage: FILE_USAGE[blockType] ?? 'attachment',
-        name,
-        sizeBytes,
-      },
+      asset,
     });
+    if (blockKey !== COVER_KEY) this.state.assetAttacher()?.(blockKey, asset);
     this.toaster.success(
       'Tải lên thành công',
       `${name} · đã kiểm tra định dạng và dung lượng`,
@@ -1200,6 +1423,50 @@ export class CourseEditorStore {
       reprocess: event.retryProcessing,
       expired: event.code === EXPIRED_CODE,
     });
+  }
+
+  /**
+   * Keeps every kept upload's place on its block. A running upload knows its block; one a reload
+   * stopped is taken to belong to the block that sits at its place now. After a save the draft's
+   * keys are new, so the owners are found again by place.
+   */
+  private followBlocks(
+    positions: ReadonlyMap<string, string>,
+    uploads: Readonly<Record<string, UploadEntry>>,
+  ): void {
+    const kept = this.state.kept();
+    if (!kept.length) return;
+    const ids = new Set(kept.map((k) => k.uploadId));
+    for (const [key, entry] of Object.entries(uploads)) {
+      if (entry.uploadId && ids.has(entry.uploadId)) {
+        this.keptOwners.set(entry.uploadId, key);
+      }
+    }
+    const placed = [...this.keptOwners.values()].filter((key) =>
+      positions.has(key),
+    );
+    if (this.keptOwners.size && !placed.length && positions.size) {
+      // The draft was read again after a save: every key is new.
+      this.keptOwners.clear();
+    }
+    const keyAt = new Map(
+      [...positions].map(([key, position]) => [position, key] as const),
+    );
+    for (const upload of kept) {
+      if (this.keptOwners.has(upload.uploadId)) continue;
+      const key = keyAt.get(upload.position);
+      if (key) this.keptOwners.set(upload.uploadId, key);
+    }
+    let moved = false;
+    const next = kept.map((upload) => {
+      const position = positions.get(
+        this.keptOwners.get(upload.uploadId) ?? '',
+      );
+      if (!position || position === upload.position) return upload;
+      moved = true;
+      return { ...upload, position };
+    });
+    if (moved) this.setKept(next);
   }
 
   /** Stops the upload running on a block, and cancels it on the server while it is still sending. */

@@ -14,6 +14,7 @@ import {
   seedProfile,
 } from '../../core/session/session.testing';
 import { AgentChatStore } from '../../core/assistant/agent-chat.store';
+import { BackgroundUploads } from '../../core/uploads/background-uploads';
 import { AppShell } from './app-shell';
 import { LeavePrompt } from '../../core/routing/unsaved-changes.guard';
 import { LOCAL_STORAGE } from '../../core/storage/local-storage';
@@ -275,6 +276,34 @@ describe('AppShell', () => {
     expect(el.querySelector('.app-shell')?.classList).not.toContain(
       'app-shell--fill',
     );
+  });
+
+  it('shows the background uploads beside the owl on app pages only', async () => {
+    signInAs('learner');
+    const registry = TestBed.inject(BackgroundUploads);
+    registry.publish({
+      items: [
+        {
+          id: 'a',
+          name: 'bai-giang.mp4',
+          place: 'Chương 1 · Bài 2',
+          percent: 30,
+          state: 'uploading',
+          cancellable: true,
+        },
+      ],
+      drawerOpen: false,
+      cancel: vi.fn(),
+      open: vi.fn(),
+    });
+    const el = await open('/learn');
+    TestBed.tick();
+    expect(el.querySelector('app-upload-panel')?.textContent).toContain(
+      'Đang tải lên (1)',
+    );
+
+    const focus = await open('/lesson/c1/l1');
+    expect(focus.querySelector('app-upload-panel')).toBeNull();
   });
 
   it('lets a workspace page fill the viewport and quiets the owl there', async () => {

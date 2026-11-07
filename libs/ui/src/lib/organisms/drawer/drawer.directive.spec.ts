@@ -14,6 +14,8 @@ import { DrawerOutlet } from './drawer.directive';
       [uiDrawerSize]="size()"
       [uiDrawerFooter]="footer"
       [uiDrawerBusy]="busy()"
+      [uiDrawerGuard]="guard()"
+      (uiDrawerCloseRequest)="requested.set(requested() + 1)"
       uiDrawerBusyLabel="Đang lưu…"
       (uiDrawerDismiss)="dismissed.set(dismissed() + 1)"
       let-close="close"
@@ -31,6 +33,8 @@ class Host {
   readonly title = signal('Drawer mẫu');
   readonly busy = signal(false);
   readonly dismissed = signal(0);
+  readonly guard = signal(false);
+  readonly requested = signal(0);
 }
 
 function setup(variant: 'drawer' | 'dialog' = 'drawer') {
@@ -197,6 +201,54 @@ describe.each(['drawer', 'dialog'] as const)('uiDrawer (%s)', (variant) => {
 
     await vi.waitFor(() => expect(panel()).toBeNull());
     expect(host.dismissed()).toBe(0);
+  });
+
+  describe('while guarded', () => {
+    const key = (name: string) =>
+      panel()?.dispatchEvent(
+        new KeyboardEvent('keydown', {
+          key: name,
+          code: name,
+          keyCode: name === 'Escape' ? 27 : 0,
+          bubbles: true,
+        }),
+      );
+
+    it('asks the page instead of closing on Escape, the backdrop and the close button', async () => {
+      const { host } = setup(variant);
+      host.guard.set(true);
+      host.open.set(true);
+      await settle();
+
+      key('Escape');
+      await settle();
+      document.querySelector<HTMLElement>('.dialog-backdrop')?.click();
+      await settle();
+      document.querySelector<HTMLElement>('[aria-label="Đóng"]')?.click();
+      await settle();
+      document.querySelector<HTMLElement>('#inner-close')?.click();
+      await settle();
+
+      expect(host.requested()).toBe(4);
+      expect(host.dismissed()).toBe(0);
+      expect(panel()).not.toBeNull();
+    });
+
+    it('closes again as soon as the guard is lifted', async () => {
+      const { host } = setup(variant);
+      host.guard.set(true);
+      host.open.set(true);
+      await settle();
+      host.guard.set(false);
+      await settle();
+
+      document.querySelector<HTMLElement>('[aria-label="Đóng"]')?.click();
+      await settle();
+
+      expect(host.requested()).toBe(0);
+      expect(host.dismissed()).toBe(1);
+      expect(panel()).toBeNull();
+    });
   });
 
   describe('while busy', () => {

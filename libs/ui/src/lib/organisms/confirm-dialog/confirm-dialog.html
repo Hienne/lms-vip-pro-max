@@ -1,6 +1,10 @@
 <div class="dialog__header">
   <h2 class="dialog__title" [id]="data.titleId">{{ data.title }}</h2>
-  <button uiIconButton label="Đóng hộp thoại" (click)="close(false)">
+  <button
+    uiIconButton
+    label="Đóng hộp thoại"
+    (click)="close(data.distinctClose ? undefined : false)"
+  >
     <ui-icon name="x" />
   </button>
 </div>

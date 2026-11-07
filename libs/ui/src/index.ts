@@ -115,6 +115,7 @@ export {
 // ConfirmDialog, confirm, Drawer (10)
 export {
   ConfirmDialog,
+  choose,
   confirm,
   type ConfirmOptions,
   type ConfirmTone,

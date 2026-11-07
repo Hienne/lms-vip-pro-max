@@ -1,0 +1,164 @@
+@use 'ui';
+
+// Beside the owl, in the same bottom corner: left of the owl's button, rising with the pinned
+// footer like the owl. The chat panel takes the owl's place while open, so the panel then moves
+// left of the chat panel (a phone shows the chat as a full-screen sheet, so the panel is hidden
+// there). The host takes no pointer events, only the panel does.
+:host {
+  position: fixed;
+  right: calc(#{ui.space(4)} + #{ui.space(10)} + #{ui.space(2)});
+  bottom: calc(#{ui.space(4)} + var(--panel-inset, 0px));
+  z-index: ui.z(header);
+  max-width: calc(100vw - #{ui.space(8)});
+  pointer-events: none;
+
+  @include ui.bp(md) {
+    right: calc(#{ui.space(4)} + #{ui.space(12)} + #{ui.space(2)});
+  }
+}
+
+:host(.upload-panel--beside-toolbar) {
+  right: calc(#{ui.space(4)} + 6rem + #{ui.space(10)} + #{ui.space(2)});
+
+  @include ui.bp(md) {
+    right: calc(#{ui.space(4)} + 6rem + #{ui.space(12)} + #{ui.space(2)});
+  }
+}
+
+:host(.upload-panel--chat-open) {
+  @include ui.bp-below(sm) {
+    display: none;
+  }
+
+  @include ui.bp(sm) {
+    right: calc(#{ui.space(4)} + #{ui.layout(assistant)} + #{ui.space(2)});
+  }
+}
+
+.upload-panel {
+  display: flex;
+  flex-direction: column;
+  gap: ui.space(2);
+  width: 22rem;
+  max-width: 100%;
+  padding: ui.space(3);
+  color: ui.color(text);
+  background: ui.color(surface);
+  border: 1px solid ui.color(border);
+  border-radius: ui.radius(card);
+  box-shadow: ui.shadow(md);
+  pointer-events: auto;
+
+  &__head {
+    @include ui.row(2);
+    flex-wrap: nowrap;
+  }
+
+  &__title {
+    @include ui.text(sm);
+    flex: 1 1 auto;
+    margin: 0;
+    font-weight: ui.weight(semibold);
+  }
+
+  &__percent {
+    @include ui.text(sm, muted);
+    @include ui.num;
+  }
+
+  &__list {
+    @include ui.stack(3);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+
+    // The whole list in place: it scrolls once it is taller than about 320px.
+    &--scroll {
+      max-height: calc(#{ui.space(10)} * 8);
+      overflow-y: auto;
+    }
+  }
+
+  &__row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: ui.space(1) ui.space(2);
+    align-items: center;
+  }
+
+  // The name and its place open the lesson (or step 1 for the cover).
+  &__open {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    padding: 0;
+    color: inherit;
+    text-align: start;
+    background: none;
+    border: 0;
+    border-radius: ui.radius(control);
+    cursor: pointer;
+
+    &:focus-visible {
+      @include ui.focus-ring;
+    }
+  }
+
+  &__name {
+    @include ui.text(sm);
+    @include ui.truncate;
+    font-weight: ui.weight(medium);
+  }
+
+  &__place {
+    @include ui.text(xs, muted);
+    @include ui.truncate;
+  }
+
+  &__progress {
+    @include ui.row(2);
+    grid-column: 1;
+    flex-wrap: nowrap;
+
+    ui-progress {
+      flex: 1 1 auto;
+    }
+  }
+
+  &__row-percent {
+    @include ui.text(xs, muted);
+    @include ui.num;
+    min-width: 4ch;
+    text-align: right;
+  }
+
+  &__cancel {
+    grid-column: 2;
+    grid-row: 1 / span 2;
+  }
+
+  &__status {
+    @include ui.text(xs, muted);
+    grid-column: 1;
+  }
+
+  &__done,
+  &__error {
+    @include ui.row(1);
+    @include ui.text(sm);
+    grid-column: 1;
+  }
+
+  &__done {
+    color: ui.color(success);
+  }
+
+  // Red is state here: the upload failed.
+  &__error {
+    color: ui.color(danger);
+  }
+
+  &__more {
+    align-self: flex-start;
+  }
+}

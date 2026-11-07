@@ -1,3 +1,4 @@
+import { Dialog } from '@angular/cdk/dialog';
 import {
   Component,
   computed,
@@ -15,6 +16,7 @@ import {
   maxLength,
   min,
   required,
+  submit,
 } from '@angular/forms/signals';
 import {
   BlockTypeSchema,
@@ -26,6 +28,7 @@ import {
 import {
   Alert,
   Button,
+  confirm,
   DrawerOutlet,
   Dropzone,
   Field,
@@ -42,6 +45,7 @@ import {
   BLOCK_TYPES,
   FILE_USAGE,
   newBlock,
+  withAsset,
   type AssetValue,
   type BlockValue,
   type LessonValue,
@@ -55,8 +59,10 @@ import {
   isBusy,
   isCancellable,
   itemState,
+  UPLOADS_CANCELLED,
   type UploadEntry,
 } from '../../data-access/upload-entry';
+import { firstValueFrom } from 'rxjs';
 
 /** A block as the form edits it: process steps as one line each, "Tiêu đề | Mô tả". */
 type BlockFormValue = Omit<BlockValue, 'steps'> & { stepsText: string };
@@ -106,8 +112,9 @@ const quizLabel = (quiz: QuizSummary): string =>
 /**
  * The lesson drawer (the mockup's `lessonDrawer`): title, length, kind and the content blocks,
  * each with its file, text or steps. A file is uploaded as soon as it is chosen (the store runs
- * it, so it goes on while the drawer is closed) and joins its block when the lesson is applied;
- * "Áp dụng" changes the course draft, "Lưu nháp" saves it.
+ * it, so it goes on while the drawer is closed); "Lưu" puts the lesson in the course draft even
+ * while a file is still uploading, and the asset joins its block when the upload is done.
+ * "Lưu nháp" saves the draft.
  */
 @Component({
   selector: 'app-lesson-form',
@@ -137,6 +144,7 @@ export class LessonForm {
 
   protected readonly store = inject(CourseEditorStore);
   protected readonly library = inject(AssetLibraryStore);
+  private readonly dialog = inject(Dialog);
   /** Files chosen in this editor, by block key. */
   protected readonly uploads = this.store.uploads$;
   /** Uploads a reload stopped, by the index of their block in this lesson. */
@@ -203,7 +211,10 @@ export class LessonForm {
       : options;
   });
 
-  /** File blocks (attachments aside) without their file: the lesson cannot be applied. */
+  /**
+   * File blocks (attachments aside) with neither their file nor an upload on its way: the lesson
+   * cannot be saved. A block whose file is still uploading is saved; the asset joins it when done.
+   */
   protected readonly missingFiles = computed(() =>
     this.model().lessonType === 'quiz'
       ? []
@@ -211,14 +222,15 @@ export class LessonForm {
           (b) =>
             b.blockType !== 'attachment' &&
             this.holdsFile(b.blockType) &&
-            !this.files()[b.key]?.length,
+            !this.files()[b.key]?.length &&
+            !isBusy(this.uploads()[b.key]),
         ),
   );
 
-  /** File blocks whose file is still on its way: the lesson cannot be applied before it is there. */
-  protected readonly busyBlocks = computed(() =>
-    this.model().blocks.filter((b) => isBusy(this.uploads()[b.key])),
-  );
+  /** The drawer's "Lưu" when it is not the footer button that was pressed; false while invalid. */
+  save(): Promise<boolean> {
+    return submit(this.lessonForm);
+  }
 
   protected addBlock(type: BlockType): void {
     const { steps: _steps, ...block } = newBlock(type);
@@ -237,7 +249,21 @@ export class LessonForm {
     });
   }
 
-  protected removeBlock(index: number): void {
+  /** Removes a block; one whose file is still uploading asks first, and its upload is stopped. */
+  protected async removeBlock(index: number): Promise<void> {
+    const key = this.model().blocks[index].key;
+    if (isBusy(this.uploads()[key])) {
+      const confirmed = await firstValueFrom(
+        confirm(this.dialog, {
+          title: 'Xóa khối nội dung?',
+          message: UPLOADS_CANCELLED,
+          confirmLabel: 'Xóa khối',
+          tone: 'danger',
+        }),
+      );
+      if (!confirmed) return;
+      this.store.cancelUploads([key]);
+    }
     this.model.update((value) => ({
       ...value,
       blocks: value.blocks.filter((_, i) => i !== index),
@@ -284,7 +310,7 @@ export class LessonForm {
   }
 
   private apply(): void {
-    if (this.missingFiles().length || this.busyBlocks().length) return;
+    if (this.missingFiles().length) return;
     const value = this.model();
     const files = this.files();
     this.submitted.emit({
@@ -310,8 +336,5 @@ function withUpload(
   upload: UploadEntry | undefined,
 ): readonly AssetValue[] {
   const asset = upload?.state === 'done' ? upload.asset : undefined;
-  if (!asset) return block.assets;
-  return block.blockType === 'attachment'
-    ? [...block.assets.filter((a) => a.assetId !== asset.assetId), asset]
-    : [asset];
+  return asset ? withAsset(block, asset).assets : block.assets;
 }

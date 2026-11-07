@@ -5,6 +5,8 @@ import { type Observable, of } from 'rxjs';
 /** A routed component with a form implements this to be asked about before it is left. */
 export interface HasUnsavedChanges {
   hasUnsavedChanges(): boolean;
+  /** What the question says instead of the default, when the page has a more specific reason. */
+  leaveMessage?(): string | undefined;
 }
 
 export function hasUnsavedChanges(page: unknown): boolean {
@@ -21,14 +23,14 @@ export function hasUnsavedChanges(page: unknown): boolean {
  */
 @Injectable({ providedIn: 'root' })
 export class LeavePrompt {
-  private asker?: () => Observable<boolean>;
+  private asker?: (message?: string) => Observable<boolean>;
 
-  use(asker: () => Observable<boolean>): void {
+  use(asker: (message?: string) => Observable<boolean>): void {
     this.asker = asker;
   }
 
-  ask(): Observable<boolean> {
-    return this.asker?.() ?? of(true);
+  ask(message?: string): Observable<boolean> {
+    return this.asker?.(message) ?? of(true);
   }
 }
 
@@ -37,4 +39,8 @@ export class LeavePrompt {
  * pages without the method leave freely. `beforeunload` for reload and tab close is the shell's job.
  */
 export const unsavedChangesGuard: CanDeactivateFn<unknown> = (page) =>
-  hasUnsavedChanges(page) ? inject(LeavePrompt).ask() : true;
+  hasUnsavedChanges(page)
+    ? inject(LeavePrompt).ask(
+        (page as Partial<HasUnsavedChanges>).leaveMessage?.(),
+      )
+    : true;

@@ -18,7 +18,9 @@ import {
   type FakeReply,
   type FakeRequest,
 } from '@lms/mocks';
-import { NEVER } from 'rxjs';
+import { NEVER, of } from 'rxjs';
+import { LeavePrompt } from '../../../core/routing/unsaved-changes.guard';
+import { BackgroundUploads } from '../../../core/uploads/background-uploads';
 import { fakeSession } from '../../../core/session/session.testing';
 import { setUpAdminScreen } from '../../../core/dev/mock-api/admin-screen.testing';
 import { MockBackend } from '../../../core/dev/mock-api/mock-api.interceptor';
@@ -42,6 +44,12 @@ describe('CourseEditor', () => {
         screen.el.querySelectorAll<HTMLElement>('.stepper__step'),
       ).find((s) => s.textContent?.includes(label)),
     );
+  /** The edit button of the outline row whose lesson is called `title`. */
+  const editLessonButton = (title: string) =>
+    Array.from(screen.el.querySelectorAll<HTMLElement>('ui-sortable-item'))
+      .find((row) => row.textContent?.includes(title))
+      ?.querySelector<HTMLButtonElement>('button[aria-label="Sửa bài học"]') ??
+    undefined;
   const currentStep = () =>
     screen.el.querySelector('.stepper__step[aria-current="step"]')
       ?.textContent ?? '';
@@ -213,11 +221,9 @@ describe('CourseEditor', () => {
     await screen.click(screen.button('Mở bản nháp để sửa'));
     await step('Nội dung khóa học');
     await screen.click(
-      screen.el.querySelector<HTMLElement>(
-        '[aria-label="Sửa Kiến trúc tổng thể hệ thống Core Banking"]',
-      ) ?? undefined,
+      editLessonButton('Kiến trúc tổng thể hệ thống Core Banking'),
     );
-    await screen.click(screen.button('Áp dụng', screen.drawer()!));
+    await screen.click(screen.button('Lưu', screen.drawer()!));
     await screen.click(screen.button('Lưu nháp'));
 
     const { chapters } = screen.lastCall(courseEndpoints.saveDraft)
@@ -270,7 +276,7 @@ describe('CourseEditor', () => {
       screen.field('Nội dung', drawer) as HTMLTextAreaElement,
       '## Vai trò',
     );
-    await screen.click(screen.button('Áp dụng', drawer));
+    await screen.click(screen.button('Lưu', drawer));
 
     expect(screen.drawer()).toBeNull();
     expect(screen.text()).toContain('Phân quyền theo vai trò');
@@ -348,7 +354,7 @@ describe('CourseEditor', () => {
     };
     const openLesson = async () => {
       await step('Nội dung khóa học');
-      await screen.click(screen.button('Sửa Nguyên tắc quyền tối thiểu'));
+      await screen.click(screen.button('Sửa bài học'));
       return screen.drawer()!;
     };
     const failParts = () =>
@@ -361,9 +367,9 @@ describe('CourseEditor', () => {
       await screen.open('/admin/courses/6/edit');
       const drawer = await openLesson();
       await screen.click(screen.button('Tệp đính kèm', drawer));
-      await screen.click(screen.button('Áp dụng', drawer));
+      await screen.click(screen.button('Lưu', drawer));
       await screen.click(screen.button('Lưu nháp'));
-      await screen.click(screen.button('Sửa Nguyên tắc quyền tối thiểu'));
+      await screen.click(screen.button('Sửa bài học'));
 
       failParts();
       vi.useFakeTimers();
@@ -386,7 +392,7 @@ describe('CourseEditor', () => {
       await screen.open('/admin/courses/6/edit');
       const drawer = await openLesson();
       await screen.click(screen.button('Tài liệu PDF', drawer));
-      await screen.click(screen.button('Áp dụng', drawer));
+      await screen.click(screen.button('Lưu', drawer));
 
       expect(screen.drawer()).not.toBeNull();
       expect(screen.text(drawer)).toContain('chưa có tệp');
@@ -415,7 +421,7 @@ describe('CourseEditor', () => {
       expect(screen.text(document.body)).toContain('Tải lên thành công');
       expect(kept()).toEqual([]);
 
-      await screen.click(screen.button('Áp dụng', drawer));
+      await screen.click(screen.button('Lưu', drawer));
       await screen.click(screen.button('Lưu nháp'));
 
       const saved = screen.lastCall(courseEndpoints.saveDraft)
@@ -532,8 +538,6 @@ describe('CourseEditor', () => {
       await screen.settle();
 
       expect(screen.text(drawer)).toContain('Đang kiểm tra tệp… 0%');
-      await screen.click(screen.button('Áp dụng', drawer));
-      expect(screen.text(drawer)).toContain('chưa tải xong');
 
       await screen.click(screen.button('Hủy', drawer));
       expect(screen.text(drawer)).not.toContain('quyen.pdf');
@@ -765,7 +769,7 @@ describe('CourseEditor', () => {
         screen.field('Bài kiểm tra', drawer) as HTMLSelectElement,
         '2',
       );
-      await screen.click(screen.button('Áp dụng', drawer));
+      await screen.click(screen.button('Lưu', drawer));
       await screen.click(screen.button('Lưu nháp'));
 
       const { chapters } = screen.lastCall(courseEndpoints.saveDraft)
@@ -779,7 +783,7 @@ describe('CourseEditor', () => {
         blocks: [],
       });
 
-      await screen.click(screen.button('Sửa Thi cuối khóa'));
+      await screen.click(editLessonButton('Thi cuối khóa'));
       expect(
         (screen.field('Bài kiểm tra', screen.drawer()!) as HTMLSelectElement)
           .value,
@@ -789,7 +793,7 @@ describe('CourseEditor', () => {
     it('sends no quizId for a lesson that has none yet, and says so in the outline', async () => {
       listQuizzes();
       const drawer = await addQuizLesson();
-      await screen.click(screen.button('Áp dụng', drawer));
+      await screen.click(screen.button('Lưu', drawer));
       expect(screen.text()).toContain('Chưa chọn bài kiểm tra');
       await screen.click(screen.button('Lưu nháp'));
 
@@ -825,7 +829,7 @@ describe('CourseEditor', () => {
         screen.field('Bài kiểm tra', drawer) as HTMLSelectElement,
         '2',
       );
-      await screen.click(screen.button('Áp dụng', drawer));
+      await screen.click(screen.button('Lưu', drawer));
       screen.calls.mockImplementation((endpoint, request) =>
         endpoint === courseEndpoints.saveDraft
           ? backendRefusal('quizInvalid')
@@ -1712,7 +1716,7 @@ describe('CourseEditor', () => {
         'Bài đầu tiên',
       );
       await screen.click(screen.button('Văn bản / Markdown', drawer));
-      await screen.click(screen.button('Áp dụng', drawer));
+      await screen.click(screen.button('Lưu', drawer));
     }
 
     it('opens an empty wizard without reading any course, quiz or kept upload', async () => {
@@ -1963,6 +1967,768 @@ describe('CourseEditor', () => {
       );
       expect(screen.field('Bài kiểm tra', drawer)).toBeUndefined();
       expect(screen.callsTo(assessmentV1Endpoints.courseQuizList)).toBe(0);
+    });
+  });
+  describe('background uploads', () => {
+    const pdf = (name = 'quyen.pdf') =>
+      new File(['%PDF-1.4 /Type /Page'], name, { type: 'application/pdf' });
+    const original = (endpoint: AnyEndpoint, request: FakeRequest): FakeReply =>
+      MockBackend.prototype.handle.call(
+        TestBed.inject(MockBackend),
+        endpoint,
+        request,
+      ) as FakeReply;
+    const offline = (): FakeReply => ({
+      status: 0,
+      body: envelopeError('CORE-OFFLINE', 'Offline', 'offline'),
+    });
+    /** Parts fail as if the network was cut: uploads wait, and go on once `online()` is called. */
+    const cutNetwork = () =>
+      screen.calls.mockImplementation((e, r) =>
+        e === assetEndpoints.uploadPart ? offline() : original(e, r),
+      );
+    const online = () => screen.calls.mockImplementation(original);
+    const dropzones = () =>
+      Array.from(
+        screen
+          .drawer()!
+          .querySelectorAll<HTMLInputElement>(
+            'label.dropzone input[type=file]',
+          ),
+      );
+    const pick = (input: HTMLInputElement, file: File) => {
+      Object.defineProperty(input, 'files', {
+        value: [file],
+        configurable: true,
+      });
+      input.dispatchEvent(new Event('change', { bubbles: true }));
+    };
+    const advance = async (ms: number) => {
+      await vi.advanceTimersByTimeAsync(ms);
+      TestBed.tick();
+    };
+    /** A click on fake time: `screen.click` settles on real timers, which a waiting upload needs off. */
+    const tap = async (target: HTMLElement | undefined) => {
+      target!.click();
+      await advance(10);
+    };
+    /**
+     * Opens the first lesson of course 6, adds a PDF block and starts uploading its file offline.
+     * Fake time stays on, because the waiting upload holds timers that real time would drop.
+     */
+    async function startPdfUpload() {
+      await screen.open('/admin/courses/6/edit');
+      await step('Nội dung khóa học');
+      await screen.click(screen.button('Sửa bài học'));
+      const drawer = screen.drawer()!;
+      await screen.click(screen.button('Tài liệu PDF', drawer));
+      cutNetwork();
+      vi.useFakeTimers();
+      pick(dropzones().at(-1)!, pdf());
+      await advance(100);
+      return drawer;
+    }
+    /** The network is back: the waiting uploads finish. */
+    async function finishUploads() {
+      online();
+      await advance(SERVER_RETRY_MS * 4 + POLL_MS * 3);
+      vi.useRealTimers();
+      await screen.settle();
+    }
+    const footerText = () =>
+      screen.text(screen.el.querySelector('footer.course-editor__foot')!);
+
+    afterEach(() => {
+      vi.useRealTimers();
+      vi.restoreAllMocks();
+      localStorage.clear();
+    });
+
+    describe('saving a lesson while its file uploads', () => {
+      it('saves the lesson as "Lưu", keeps uploading, and attaches the asset when it is done', async () => {
+        const drawer = await startPdfUpload();
+        expect(screen.text(drawer)).toContain('Mất kết nối');
+
+        await tap(screen.button('Lưu', drawer));
+        expect(screen.drawer()).toBeNull();
+        expect(footerText()).toContain('Còn 1 tệp đang tải');
+        expect(screen.button('Lưu nháp')!.disabled).toBe(true);
+
+        await finishUploads();
+        expect(footerText()).not.toContain('tệp đang tải');
+        expect(screen.button('Lưu nháp')!.disabled).toBe(false);
+
+        await screen.click(screen.button('Lưu nháp'));
+        const saved = screen.lastCall(courseEndpoints.saveDraft)
+          ?.body as SaveDraftCommand;
+        expect(saved.chapters[0].lessons[0].blocks[1]).toMatchObject({
+          blockType: 'pdf',
+          assets: [{ assetId: expect.any(Number), usage: 'primary' }],
+        });
+      });
+
+      it('shows the live upload when the lesson is opened again', async () => {
+        const drawer = await startPdfUpload();
+        await tap(screen.button('Lưu', drawer));
+
+        await tap(screen.button('Sửa bài học'));
+        expect(screen.text(screen.drawer()!)).toContain('Mất kết nối');
+        expect(screen.text(screen.drawer()!)).toContain('quyen.pdf');
+      });
+
+      it('still refuses a file block that has neither a file nor an upload', async () => {
+        await screen.open('/admin/courses/6/edit');
+        await step('Nội dung khóa học');
+        await screen.click(screen.button('Sửa bài học'));
+        const drawer = screen.drawer()!;
+        await screen.click(screen.button('Tài liệu PDF', drawer));
+        await screen.click(screen.button('Lưu', drawer));
+
+        expect(screen.drawer()).not.toBeNull();
+        expect(screen.text(drawer)).toContain('chưa có tệp');
+      });
+
+      it('lets several lessons upload at once, counting each in the lock on saving', async () => {
+        const drawer = await startPdfUpload();
+        await tap(screen.button(/^\s*Tài liệu PDF/, drawer));
+        pick(dropzones().at(-1)!, pdf('hai.pdf'));
+        await advance(100);
+        await tap(screen.button('Lưu', drawer));
+
+        expect(footerText()).toContain('Còn 2 tệp đang tải');
+        expect(screen.callsTo(assetEndpoints.startUpload)).toBe(2);
+      });
+
+      it('blocks "Xuất bản" while a file uploads', async () => {
+        const drawer = await startPdfUpload();
+        await tap(screen.button('Lưu', drawer));
+        await tap(
+          Array.from(
+            screen.el.querySelectorAll<HTMLElement>('.stepper__step'),
+          ).find((s) => s.textContent?.includes('Đối tượng & xuất bản')),
+        );
+
+        expect(screen.button('Xuất bản khóa học')!.disabled).toBe(true);
+        expect(footerText()).toContain('Còn 1 tệp đang tải');
+      });
+    });
+
+    describe('closing the lesson drawer while a file uploads', () => {
+      const ask = () => screen.alertDialog();
+      const answer = (label: string) =>
+        tap(
+          Array.from(ask()!.querySelectorAll<HTMLButtonElement>('button')).find(
+            (b) => b.textContent?.trim() === label,
+          ),
+        );
+      const closeDrawer = (drawer: HTMLElement) =>
+        tap(
+          drawer.querySelector<HTMLButtonElement>('button[aria-label="Đóng"]'),
+        );
+
+      it('closes at once when nothing begun in the drawer is uploading', async () => {
+        await screen.open('/admin/courses/6/edit');
+        await step('Nội dung khóa học');
+        await screen.click(screen.button('Sửa bài học'));
+        vi.useFakeTimers();
+        await closeDrawer(screen.drawer()!);
+
+        expect(ask()).toBeNull();
+        expect(screen.drawer()).toBeNull();
+      });
+
+      it('asks with only "Lưu" and "Hủy", and "Lưu" saves the lesson and keeps uploading', async () => {
+        const drawer = await startPdfUpload();
+        await closeDrawer(drawer);
+
+        expect(ask()).not.toBeNull();
+        expect(
+          Array.from(ask()!.querySelectorAll('button')).map(
+            (b) => b.getAttribute('aria-label') || b.textContent?.trim(),
+          ),
+        ).toEqual(['Đóng hộp thoại', 'Hủy', 'Lưu']);
+
+        await answer('Lưu');
+        expect(ask()).toBeNull();
+        expect(screen.drawer()).toBeNull();
+        expect(footerText()).toContain('Còn 1 tệp đang tải');
+
+        await finishUploads();
+        await screen.click(screen.button('Lưu nháp'));
+        const saved = screen.lastCall(courseEndpoints.saveDraft)
+          ?.body as SaveDraftCommand;
+        expect(saved.chapters[0].lessons[0].blocks[1].assets).toHaveLength(1);
+      });
+
+      it('"Hủy" drops the lesson changes and cancels the upload on the server', async () => {
+        const drawer = await startPdfUpload();
+        const uploadId = (
+          screen.lastCall(assetEndpoints.startUpload)?.body as {
+            requestId: string;
+          }
+        ).requestId;
+        await closeDrawer(drawer);
+        await answer('Hủy');
+
+        expect(ask()).toBeNull();
+        expect(screen.drawer()).toBeNull();
+        expect(screen.lastCall(assetEndpoints.cancelUpload)?.params).toEqual({
+          uploadId,
+        });
+        expect(footerText()).not.toContain('tệp đang tải');
+        expect(screen.text()).not.toContain('Có thay đổi chưa lưu');
+      });
+
+      it('closing the question returns to the drawer unchanged', async () => {
+        const drawer = await startPdfUpload();
+        await closeDrawer(drawer);
+        await tap(
+          ask()!.querySelector<HTMLButtonElement>(
+            'button[aria-label="Đóng hộp thoại"]',
+          ),
+        );
+
+        expect(ask()).toBeNull();
+        expect(screen.drawer()).toBe(drawer);
+        expect(screen.text(drawer)).toContain('quyen.pdf');
+      });
+
+      it('"Lưu" with an invalid form keeps the drawer open and the upload running', async () => {
+        const drawer = await startPdfUpload();
+        const title = screen.field('Tên bài học', drawer) as HTMLInputElement;
+        title.value = '';
+        title.dispatchEvent(new Event('input', { bubbles: true }));
+        await advance(10);
+        await closeDrawer(drawer);
+        await answer('Lưu');
+
+        expect(screen.drawer()).toBe(drawer);
+        expect(screen.text(drawer)).toContain('Nhập tên bài học');
+        expect(screen.text(drawer)).toContain('Mất kết nối');
+      });
+
+      it('leaves an upload that was running before the drawer opened alone', async () => {
+        const drawer = await startPdfUpload();
+        await tap(screen.button('Lưu', drawer));
+        await tap(screen.button('Sửa bài học'));
+        await closeDrawer(screen.drawer()!);
+
+        expect(ask()).toBeNull();
+        expect(screen.drawer()).toBeNull();
+        expect(footerText()).toContain('Còn 1 tệp đang tải');
+        expect(screen.callsTo(assetEndpoints.cancelUpload)).toBe(0);
+      });
+    });
+
+    describe('the background-upload registry', () => {
+      const registry = () => TestBed.inject(BackgroundUploads);
+      const chooseStep = (label: string) =>
+        tap(
+          Array.from(
+            screen.el.querySelectorAll<HTMLElement>('.stepper__step'),
+          ).find((s) => s.textContent?.includes(label)),
+        );
+
+      it('receives the file with its place and state, and the drawer flag', async () => {
+        const drawer = await startPdfUpload();
+        expect(registry().drawerOpen$()).toBe(true);
+        await tap(screen.button('Lưu', drawer));
+
+        expect(registry().drawerOpen$()).toBe(false);
+        expect(registry().items$()).toMatchObject([
+          {
+            id: expect.any(String),
+            name: 'quyen.pdf',
+            place: 'Chương 1 · Bài 1',
+            state: 'waiting',
+            cancellable: true,
+          },
+        ]);
+      });
+
+      it('cancels the upload on the server when the shell asks', async () => {
+        const drawer = await startPdfUpload();
+        await tap(screen.button('Lưu', drawer));
+        const uploadId = (
+          screen.lastCall(assetEndpoints.startUpload)?.body as {
+            requestId: string;
+          }
+        ).requestId;
+
+        registry().cancel(registry().items$()[0].id);
+        await advance(10);
+
+        expect(screen.lastCall(assetEndpoints.cancelUpload)?.params).toEqual({
+          uploadId,
+        });
+        expect(registry().items$()).toEqual([]);
+      });
+
+      it('drops the block of a cancelled upload, so no block without its file stays in the draft', async () => {
+        const drawer = await startPdfUpload();
+        await tap(screen.button('Lưu', drawer));
+        expect(screen.text(screen.el)).not.toContain('Thiếu tệp');
+
+        registry().cancel(registry().items$()[0].id);
+        await advance(10);
+
+        expect(screen.text(screen.el)).not.toContain('Thiếu tệp');
+        await tap(screen.button('Sửa bài học'));
+        const reopened = screen.drawer()!;
+        expect(screen.text(reopened)).not.toContain('quyen.pdf');
+        expect(screen.text(reopened)).not.toContain('Xóa khối');
+      });
+
+      it('opens the lesson’s drawer on its step when the shell asks', async () => {
+        const drawer = await startPdfUpload();
+        await tap(screen.button('Lưu', drawer));
+        await chooseStep('Bài thi & điều kiện');
+        expect(currentStep()).toContain('Bài thi & điều kiện');
+
+        registry().open(registry().items$()[0].id);
+        await advance(10);
+
+        expect(currentStep()).toContain('Nội dung khóa học');
+        expect(screen.text(screen.drawer()!)).toContain('quyen.pdf');
+      });
+
+      it('lists the cover as "Ảnh bìa" and opens step 1 for it', async () => {
+        await screen.open('/admin/courses/6/edit');
+        cutNetwork();
+        vi.useFakeTimers();
+        pick(
+          screen.el.querySelector<HTMLInputElement>(
+            '.course-info__cover label.dropzone input[type=file]',
+          )!,
+          new File(['png'], 'bia.png', { type: 'image/png' }),
+        );
+        await advance(100);
+        expect(registry().items$()).toMatchObject([
+          { name: 'bia.png', place: 'Ảnh bìa', cancellable: true },
+        ]);
+
+        await chooseStep('Nội dung khóa học');
+        registry().open(registry().items$()[0].id);
+        await advance(10);
+        expect(currentStep()).toContain('Thông tin cơ bản');
+      });
+
+      it('lists a finished upload as done, and a refused file not at all', async () => {
+        const drawer = await startPdfUpload();
+        await tap(screen.button('Lưu', drawer));
+        await finishUploads();
+        expect(registry().items$()).toMatchObject([
+          { name: 'quyen.pdf', state: 'done', percent: 100 },
+        ]);
+      });
+
+      it('does not list a file refused for its type', async () => {
+        await screen.open('/admin/courses/6/edit');
+        await step('Nội dung khóa học');
+        await screen.click(screen.button('Sửa bài học'));
+        await screen.click(screen.button('Video', screen.drawer()!));
+        pick(
+          dropzones().at(-1)!,
+          new File(['x'], 'bai.exe', { type: 'application/octet-stream' }),
+        );
+        await screen.settle();
+
+        expect(registry().items$()).toEqual([]);
+      });
+
+      it('is empty once the editor is left', async () => {
+        const drawer = await startPdfUpload();
+        await tap(screen.button('Lưu', drawer));
+        expect(registry().items$()).toHaveLength(1);
+
+        await TestBed.inject(Router).navigateByUrl('/admin/courses');
+        await advance(10);
+        expect(registry().items$()).toEqual([]);
+      });
+    });
+
+    describe('leaving the editor while a file uploads', () => {
+      const LEAVE_MESSAGE =
+        'Còn 1 tệp đang tải. Rời trang sẽ dừng tải; lần sau mở lại, chọn lại đúng tệp để tải tiếp.';
+      const askOnLeave = (leave: boolean) => {
+        const ask = vi.fn((_message?: string) => of(leave));
+        TestBed.inject(LeavePrompt).use(ask);
+        return ask;
+      };
+      const leave = async () => {
+        const router = TestBed.inject(Router);
+        const result = router.navigateByUrl('/admin/courses');
+        await advance(10);
+        return result;
+      };
+
+      it('asks once, with the number of files, and staying keeps the upload running', async () => {
+        const drawer = await startPdfUpload();
+        await tap(screen.button('Lưu', drawer));
+        const ask = askOnLeave(false);
+
+        expect(await leave()).toBe(false);
+        expect(ask).toHaveBeenCalledTimes(1);
+        expect(ask).toHaveBeenCalledWith(LEAVE_MESSAGE);
+        expect(screen.url()).toBe('/admin/courses/6/edit');
+        expect(footerText()).toContain('Còn 1 tệp đang tải');
+      });
+
+      it('asks once even with unsaved changes too', async () => {
+        const drawer = await startPdfUpload();
+        await tap(screen.button('Lưu', drawer));
+        expect(screen.page<CourseEditor>().hasUnsavedChanges()).toBe(true);
+        const ask = askOnLeave(false);
+
+        await leave();
+        expect(ask).toHaveBeenCalledTimes(1);
+      });
+
+      it('leaves when confirmed: the upload stops and stays resumable', async () => {
+        const drawer = await startPdfUpload();
+        await tap(screen.button('Lưu', drawer));
+        askOnLeave(true);
+
+        expect(await leave()).toBe(true);
+        expect(screen.url()).toBe('/admin/courses');
+        expect(
+          JSON.parse(localStorage.getItem('lms.asset-uploads.v1.000002.6')!),
+        ).toHaveLength(1);
+      });
+
+      it('warns on reload and tab close only while uploads run', async () => {
+        const drawer = await startPdfUpload();
+        await tap(screen.button('Lưu', drawer));
+        const page = screen.page<CourseEditor>();
+        expect(page.hasUnsavedChanges()).toBe(true);
+
+        await finishUploads();
+        await screen.click(screen.button('Lưu nháp'));
+        expect(page.hasUnsavedChanges()).toBe(false);
+      });
+
+      it('does not ask without uploads or changes', async () => {
+        await screen.open('/admin/courses/6/edit');
+        const ask = askOnLeave(false);
+        vi.useFakeTimers();
+
+        expect(await leave()).toBe(true);
+        expect(ask).not.toHaveBeenCalled();
+      });
+    });
+
+    describe('the kept upload follows reordering', () => {
+      const KEPT = 'lms.asset-uploads.v1.000002.6';
+      const kept = () => JSON.parse(localStorage.getItem(KEPT) ?? '[]');
+      const rows = () =>
+        Array.from(screen.el.querySelectorAll<HTMLElement>('ui-sortable-item'));
+      const moveFirstDown = (fake: boolean) => {
+        const button = rows()[0].querySelector<HTMLButtonElement>(
+          'button[aria-label="Chuyển xuống"]',
+        );
+        return fake ? tap(button!) : screen.click(button);
+      };
+      /** A second lesson with a text block, added after the first. */
+      async function addSecondLesson(fake: boolean) {
+        const click = (el: HTMLElement | undefined) =>
+          fake ? tap(el) : screen.click(el);
+        await click(screen.button('Thêm bài học'));
+        const drawer = screen.drawer()!;
+        const title = screen.field('Tên bài học', drawer) as HTMLInputElement;
+        title.value = 'Bài thứ hai';
+        title.dispatchEvent(new Event('input', { bubbles: true }));
+        await click(screen.button('Văn bản / Markdown', drawer));
+        await click(screen.button('Lưu', drawer));
+      }
+
+      it('moves a running upload’s position with its lesson, and the asset lands in the moved block', async () => {
+        const drawer = await startPdfUpload();
+        expect(kept()).toMatchObject([{ position: '0.0.1' }]);
+        await tap(screen.button('Lưu', drawer));
+        await addSecondLesson(true);
+
+        await moveFirstDown(true);
+        expect(kept()).toMatchObject([{ position: '0.1.1' }]);
+
+        await finishUploads();
+        await screen.click(screen.button('Lưu nháp'));
+        const lessons = (
+          screen.lastCall(courseEndpoints.saveDraft)?.body as SaveDraftCommand
+        ).chapters[0].lessons;
+        expect(lessons[0].blocks).toHaveLength(1);
+        expect(lessons[1].blocks[1].assets).toHaveLength(1);
+      });
+
+      it('offers an interrupted upload on the moved lesson after a save and a reload', async () => {
+        await screen.open('/admin/courses/6/edit');
+        await step('Nội dung khóa học');
+        await screen.click(screen.button('Sửa bài học'));
+        await screen.click(screen.button('Tệp đính kèm', screen.drawer()!));
+        await screen.click(screen.button('Lưu', screen.drawer()!));
+        await screen.click(screen.button('Lưu nháp'));
+        await screen.click(screen.button('Sửa bài học'));
+        cutNetwork();
+        vi.useFakeTimers();
+        pick(dropzones().at(-1)!, pdf());
+        await advance(100);
+        vi.useRealTimers();
+        expect(kept()).toMatchObject([{ position: '0.0.1' }]);
+
+        const router = TestBed.inject(Router);
+        await router.navigateByUrl('/admin/courses');
+        await screen.settle();
+        await router.navigateByUrl('/admin/courses/6/edit');
+        await screen.settle();
+        online();
+
+        await step('Nội dung khóa học');
+        await addSecondLesson(false);
+        await moveFirstDown(false);
+        await screen.click(screen.button('Lưu nháp'));
+        expect(kept()).toMatchObject([{ position: '0.1.1' }]);
+
+        await router.navigateByUrl('/admin/courses');
+        await screen.settle();
+        await router.navigateByUrl('/admin/courses/6/edit');
+        await screen.settle();
+        await step('Nội dung khóa học');
+        await screen.click(
+          rows()[0].querySelector(
+            'button[aria-label="Sửa bài học"]',
+          ) as HTMLElement,
+        );
+        expect(screen.text(screen.drawer()!)).not.toContain(
+          'Tải lên bị gián đoạn',
+        );
+        await screen.click(screen.button('Hủy', screen.drawer()!) ?? undefined);
+
+        await screen.click(
+          rows()[1].querySelector(
+            'button[aria-label="Sửa bài học"]',
+          ) as HTMLElement,
+        );
+        expect(screen.text(screen.drawer()!)).toContain('Tải lên bị gián đoạn');
+      });
+    });
+
+    describe('deleting what holds a running upload', () => {
+      const WARNING = 'Tệp đang tải sẽ bị hủy';
+      const answer = (label: string) =>
+        tap(
+          Array.from(
+            screen.alertDialog()!.querySelectorAll<HTMLButtonElement>('button'),
+          ).find((b) => b.textContent?.trim() === label),
+        );
+      const lastUploadId = () =>
+        (
+          screen.lastCall(assetEndpoints.startUpload)?.body as {
+            requestId: string;
+          }
+        ).requestId;
+      /** The lesson is saved while its file uploads, so the outline can delete it. */
+      async function uploadingLesson() {
+        const drawer = await startPdfUpload();
+        const uploadId = lastUploadId();
+        await tap(screen.button('Lưu', drawer));
+        return uploadId;
+      }
+
+      it('warns when deleting the lesson, keeps the upload on "Hủy", cancels it on "Xóa"', async () => {
+        const uploadId = await uploadingLesson();
+
+        await tap(screen.button('Xóa bài học'));
+        expect(screen.text(screen.alertDialog()!)).toContain(WARNING);
+        await answer('Hủy');
+        expect(screen.callsTo(assetEndpoints.cancelUpload)).toBe(0);
+        expect(footerText()).toContain('Còn 1 tệp đang tải');
+
+        await tap(screen.button('Xóa bài học'));
+        await answer('Xóa');
+        expect(screen.lastCall(assetEndpoints.cancelUpload)?.params).toEqual({
+          uploadId,
+        });
+        expect(footerText()).not.toContain('tệp đang tải');
+      });
+
+      it('warns when deleting the chapter and cancels its uploads', async () => {
+        const uploadId = await uploadingLesson();
+
+        await tap(screen.button('Xóa chương 1'));
+        expect(screen.text(screen.alertDialog()!)).toContain(WARNING);
+        await answer('Xóa chương');
+
+        expect(screen.lastCall(assetEndpoints.cancelUpload)?.params).toEqual({
+          uploadId,
+        });
+        expect(footerText()).not.toContain('tệp đang tải');
+      });
+
+      it('warns when deleting the block in the drawer and cancels its upload', async () => {
+        const drawer = await startPdfUpload();
+        const uploadId = lastUploadId();
+
+        await tap(screen.button('Xóa khối Tài liệu PDF', drawer));
+        expect(screen.text(screen.alertDialog()!)).toContain(WARNING);
+        await answer('Xóa khối');
+
+        expect(screen.lastCall(assetEndpoints.cancelUpload)?.params).toEqual({
+          uploadId,
+        });
+        expect(screen.button('Xóa khối Tài liệu PDF', drawer)).toBeUndefined();
+      });
+
+      it('deletes a lesson with no upload as before, with no such warning', async () => {
+        await screen.open('/admin/courses/6/edit');
+        await step('Nội dung khóa học');
+        vi.useFakeTimers();
+        await tap(screen.button('Xóa bài học'));
+
+        expect(screen.text(screen.alertDialog()!)).not.toContain(WARNING);
+      });
+    });
+
+    describe('the cover of a new course', () => {
+      it('blocks "Tiếp tục" on step 1 while the cover uploads', async () => {
+        await screen.open('/admin/courses/new');
+        cutNetwork();
+        vi.useFakeTimers();
+        pick(
+          screen.el.querySelector<HTMLInputElement>(
+            '.course-info__cover label.dropzone input[type=file]',
+          )!,
+          new File(['png'], 'bia.png', { type: 'image/png' }),
+        );
+        await advance(100);
+
+        expect(screen.button('Tiếp tục')!.disabled).toBe(true);
+        expect(footerText()).toContain('Ảnh bìa đang tải lên');
+
+        await finishUploads();
+        expect(screen.button('Tiếp tục')!.disabled).toBe(false);
+      });
+    });
+
+    describe('upload progress on a lesson row', () => {
+      const row = () =>
+        screen.el.querySelector<HTMLElement>('ui-sortable-item')!;
+      const progress = () =>
+        row().querySelector<HTMLElement>('.course-outline__upload');
+      /** Saves the lesson that is uploading, so the outline shows its progress. */
+      async function saveWhileUploading() {
+        const drawer = await startPdfUpload();
+        await tap(screen.button('Lưu', drawer));
+      }
+
+      it('shows a bar and a percentage on the row while the file uploads', async () => {
+        await saveWhileUploading();
+
+        expect(progress()).not.toBeNull();
+        expect(progress()!.textContent).toMatch(/\d+%/);
+        expect(
+          progress()!.querySelector('[role="progressbar"]'),
+        ).not.toBeNull();
+        expect(row().textContent).not.toContain('Thiếu tệp');
+      });
+
+      it('names the file and its status in a tooltip', async () => {
+        await saveWhileUploading();
+
+        progress()!.dispatchEvent(new Event('mouseenter'));
+        await advance(400);
+        const tip = document.querySelector('[role="tooltip"]');
+        expect(tip?.textContent).toContain('quyen.pdf');
+        expect(tip?.textContent).toContain('Mất kết nối');
+      });
+
+      it('combines several files of one lesson into one bar', async () => {
+        const drawer = await startPdfUpload();
+        await tap(screen.button(/^\s*Tài liệu PDF/, drawer));
+        pick(dropzones().at(-1)!, pdf('hai.pdf'));
+        await advance(100);
+        await tap(screen.button('Lưu', drawer));
+
+        expect(row().querySelectorAll('.course-outline__upload')).toHaveLength(
+          1,
+        );
+        progress()!.dispatchEvent(new Event('mouseenter'));
+        await advance(400);
+        const tip = document.querySelector('[role="tooltip"]')?.textContent;
+        expect(tip).toContain('quyen.pdf');
+        expect(tip).toContain('hai.pdf');
+      });
+
+      it('shows "Lỗi tải" when the file fails, opens the lesson on click, and clears when done', async () => {
+        await saveWhileUploading();
+        screen.calls.mockImplementation((e, r): FakeReply => {
+          const reply = original(e, r);
+          if (e !== assetEndpoints.completeUpload) return reply;
+          const body = reply.body as { data: object };
+          return {
+            ...reply,
+            body: {
+              ...body,
+              data: {
+                ...body.data,
+                status: 'failed',
+                errorCode: MEDIA_PROCESSING_UNAVAILABLE_CODE,
+                errorMessage: 'Máy chủ chưa xử lý được tệp.',
+              },
+            },
+          } as FakeReply;
+        });
+        await advance(SERVER_RETRY_MS * 4 + POLL_MS * 3);
+
+        expect(progress()).toBeNull();
+        const failed = row().querySelector<HTMLButtonElement>(
+          '.course-outline__upload-error',
+        );
+        expect(failed?.textContent).toContain('Lỗi tải');
+        await tap(failed!);
+        expect(screen.text(screen.drawer()!)).toContain(
+          'Máy chủ chưa xử lý được tệp.',
+        );
+
+        online();
+        await tap(screen.button('Xử lý lại', screen.drawer()!));
+        await advance(POLL_MS * 3);
+        vi.useRealTimers();
+        await screen.settle();
+        expect(row().querySelector('.course-outline__upload-error')).toBeNull();
+        expect(progress()).toBeNull();
+      });
+
+      it('shows nothing on a lesson without a running upload', async () => {
+        await screen.open('/admin/courses/6/edit');
+        await step('Nội dung khóa học');
+        expect(progress()).toBeNull();
+      });
+    });
+
+    describe('the outline rows', () => {
+      const lessonRow = () =>
+        screen.el.querySelector<HTMLElement>('ui-sortable-item')!;
+      const iconButtons = (row: HTMLElement) =>
+        Array.from(row.querySelectorAll<HTMLButtonElement>('button'));
+
+      it('shows the lesson actions as icon-only buttons named by their tooltip', async () => {
+        await screen.open('/admin/courses/6/edit');
+        await step('Nội dung khóa học');
+        const buttons = iconButtons(lessonRow());
+
+        expect(buttons.map((b) => b.getAttribute('aria-label'))).toEqual([
+          'Sửa bài học',
+          'Xóa bài học',
+          'Chuyển lên',
+          'Chuyển xuống',
+        ]);
+        expect(buttons.map((b) => b.textContent?.trim())).toEqual([
+          '',
+          '',
+          '',
+          '',
+        ]);
+        expect(buttons[2].disabled).toBe(true);
+      });
     });
   });
 });

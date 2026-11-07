@@ -85,10 +85,12 @@ export class ShellStore {
   private readonly questionsChanged = inject(InstructorFeedbackChanged);
 
   constructor() {
-    inject(LeavePrompt).use(() =>
+    inject(LeavePrompt).use((message) =>
       confirm(this.dialog, {
         title: 'Rời trang khi chưa lưu?',
-        message: 'Các thay đổi chưa lưu sẽ bị mất nếu bạn rời khỏi trang này.',
+        message:
+          message ??
+          'Các thay đổi chưa lưu sẽ bị mất nếu bạn rời khỏi trang này.',
         confirmLabel: 'Rời trang',
         cancelLabel: 'Ở lại',
         tone: 'warning',

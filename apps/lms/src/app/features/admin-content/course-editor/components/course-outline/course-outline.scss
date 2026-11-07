@@ -68,6 +68,35 @@
     flex-wrap: wrap;
   }
 
+  // The progress of the files still uploading: a fixed-width bar and its percentage.
+  &__upload {
+    @include ui.row(2);
+    flex: none;
+    flex-wrap: nowrap;
+
+    ui-progress {
+      width: 120px;
+    }
+  }
+
+  &__upload-percent {
+    @include ui.text(xs, muted);
+    @include ui.num;
+    min-width: 4ch;
+    text-align: right;
+  }
+
+  // A failed or stalled upload: red is state here. It opens the lesson, where the retry lives.
+  &__upload-error {
+    @include ui.row(1);
+    @include ui.text(sm);
+    flex: none;
+    border: 0;
+    background: none;
+    color: ui.color(danger);
+    cursor: pointer;
+  }
+
   &__empty {
     @include ui.text(sm, muted);
   }

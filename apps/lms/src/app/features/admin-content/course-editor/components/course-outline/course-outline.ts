@@ -22,12 +22,20 @@ import {
   IconButton,
   Input,
   LinkButton,
+  Progress,
   SortableItem,
   SortableList,
+  Tooltip,
   type SortableMove,
 } from '@lms/ui';
 import { firstValueFrom } from 'rxjs';
 import type { LessonTarget } from '../../data-access/course-editor.store';
+import {
+  isBusy,
+  lessonUploadOf,
+  UPLOADS_CANCELLED,
+  type UploadEntry,
+} from '../../data-access/upload-entry';
 import {
   BLOCK_TYPES,
   draftTotals,
@@ -36,6 +44,7 @@ import {
   newLesson,
   type ChapterValue,
   type CourseDraftValue,
+  type LessonValue,
 } from '../../course-draft';
 
 /**
@@ -59,8 +68,10 @@ import {
     Input,
     LinkButton,
     NgTemplateOutlet,
+    Progress,
     SortableItem,
     SortableList,
+    Tooltip,
   ],
   templateUrl: './course-outline.html',
   styleUrl: './course-outline.scss',
@@ -68,7 +79,11 @@ import {
 export class CourseOutline {
   readonly draft = input.required<FieldTree<CourseDraftValue>>();
   readonly editable = input(true);
+  /** The files chosen in this editor by block key: a lesson row shows the ones still on their way. */
+  readonly uploads = input<Readonly<Record<string, UploadEntry>>>({});
   readonly editLesson = output<LessonTarget>();
+  /** Blocks deleted with files still uploading: the page stops those uploads. */
+  readonly uploadsDropped = output<readonly string[]>();
 
   private readonly dialog = inject(Dialog);
   private readonly injector = inject(Injector);
@@ -79,6 +94,11 @@ export class CourseOutline {
       Object.entries(BLOCK_TYPES).map(([type, { label }]) => [type, label]),
     );
   protected readonly problemOf = lessonProblem;
+  protected readonly uploadOf = (lesson: LessonValue) =>
+    lessonUploadOf(
+      lesson.blocks.map((b) => b.key),
+      this.uploads(),
+    );
   protected readonly totals = computed(() =>
     draftTotals(this.draft()().value()),
   );
@@ -97,14 +117,23 @@ export class CourseOutline {
     );
   }
 
+  /** The keys of the blocks of `lessons` whose file is still on its way. */
+  private uploadingKeys(lessons: readonly LessonValue[]): readonly string[] {
+    const uploads = this.uploads();
+    return lessons
+      .flatMap((lesson) => lesson.blocks.map((b) => b.key))
+      .filter((key) => isBusy(uploads[key]));
+  }
+
   protected async removeChapter(index: number): Promise<void> {
     const chapter = this.chapters()[index];
+    const uploading = this.uploadingKeys(chapter.lessons);
     if (
       chapter.lessons.length &&
       !(await firstValueFrom(
         confirm(this.dialog, {
           title: 'Xóa chương?',
-          message: `Chương có ${chapter.lessons.length} bài học sẽ bị xóa cùng khi lưu.`,
+          message: `Chương có ${chapter.lessons.length} bài học sẽ bị xóa cùng khi lưu.${uploading.length ? ` ${UPLOADS_CANCELLED}` : ''}`,
           confirmLabel: 'Xóa chương',
           tone: 'danger',
         }),
@@ -112,6 +141,7 @@ export class CourseOutline {
     ) {
       return;
     }
+    this.uploadsDropped.emit(uploading);
     this.chapters.update((list) => list.filter((_, i) => i !== index));
   }
 
@@ -135,15 +165,19 @@ export class CourseOutline {
   }
 
   protected async removeLesson(chapter: number, lesson: number): Promise<void> {
+    const uploading = this.uploadingKeys([
+      this.chapters()[chapter].lessons[lesson],
+    ]);
     const confirmed = await firstValueFrom(
       confirm(this.dialog, {
         title: 'Xóa bài học?',
-        message: 'Bài học và các khối nội dung sẽ bị xóa khi lưu.',
+        message: `Bài học và các khối nội dung sẽ bị xóa khi lưu.${uploading.length ? ` ${UPLOADS_CANCELLED}` : ''}`,
         confirmLabel: 'Xóa',
         tone: 'danger',
       }),
     );
     if (!confirmed) return;
+    this.uploadsDropped.emit(uploading);
     this.updateChapter(chapter, (c) => ({
       ...c,
       lessons: c.lessons.filter((_, i) => i !== lesson),
