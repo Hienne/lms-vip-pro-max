@@ -1,19 +1,28 @@
 @use 'ui';
 
 :host {
-  @include ui.stack(1);
+  @include ui.row(2);
+  flex-wrap: wrap;
   align-items: center;
 }
 
 .vote {
-  &__score {
-    @include ui.num;
-    font-weight: ui.weight(semibold);
-    font-size: ui.text-size(lg);
+  &__helpful {
+    background: ui.color(surface);
+    color: ui.color(text);
+    border: 1px solid ui.color(border);
   }
 
-  button[aria-pressed='true'] {
+  &__score {
+    @include ui.num;
+    padding-inline-start: ui.space(2);
+    border-inline-start: 1px solid ui.color(border);
+  }
+
+  &__helpful[aria-pressed='true'],
+  &__unhelpful[aria-pressed='true'] {
     color: ui.color(primary);
     background: ui.color(primary-subtle);
+    border-color: ui.color(primary);
   }
 }

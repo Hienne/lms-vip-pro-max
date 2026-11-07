@@ -79,6 +79,8 @@ import {
   LucideStar,
   LucideSun,
   LucideTarget,
+  LucideThumbsDown,
+  LucideThumbsUp,
   LucideTrash2,
   LucideTriangleAlert,
   LucideTrophy,
@@ -101,6 +103,8 @@ import {
  * type-checking. Register a new icon here before using it.
  */
 export const ICONS = {
+  'thumbs-up': LucideThumbsUp.icon,
+  'thumbs-down': LucideThumbsDown.icon,
   archive: LucideArchive.icon,
   'arrow-left': LucideArrowLeft.icon,
   'arrow-right': LucideArrowRight.icon,

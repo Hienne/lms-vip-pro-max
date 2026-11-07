@@ -7,10 +7,12 @@
 .markdown-editor {
   &__bar {
     @include ui.row-between(3);
+    flex-wrap: wrap;
   }
 
   &__tools {
     @include ui.row(1);
+    flex-wrap: wrap;
   }
 
   &__input {
@@ -42,5 +44,6 @@
     @include ui.row-between(3);
     margin: 0;
     @include ui.text(xs, muted);
+    flex-wrap: wrap;
   }
 }

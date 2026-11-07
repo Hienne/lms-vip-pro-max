@@ -21,9 +21,9 @@
   #box
   uiTextarea
   class="markdown-editor__input"
-  rows="14"
+  [rows]="rows()"
   [attr.aria-label]="label()"
-  [attr.aria-invalid]="invalid() ? 'true' : null"
+  [attr.aria-invalid]="invalid() && touched() ? 'true' : null"
   [attr.maxlength]="bodyMax"
   [value]="value()"
   [disabled]="disabled()"
