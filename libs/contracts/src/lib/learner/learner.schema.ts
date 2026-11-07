@@ -403,6 +403,45 @@ export const LeaderboardViewSchema = z.object({
 });
 export type LeaderboardView = z.infer<typeof LeaderboardViewSchema>;
 
+/** `period` and `offset` as on the personal board; the unit board has no scope. */
+export const UnitLeaderboardQuerySchema = z.object({
+  period: LeaderboardPeriodSchema.optional(),
+  offset: z.number().int().min(0).max(MAX_LEADERBOARD_OFFSET).optional(),
+});
+export type UnitLeaderboardQuery = z.infer<typeof UnitLeaderboardQuerySchema>;
+
+/**
+ * One unit (branch) on the unit board. `averageXp` is the XP per active learner of the period (a learner with
+ * XP in it) and `participationPercent` the share of the unit's learners who learned on at least one day, both
+ * computed by the server. Ties share a rank (1, 1, 3).
+ */
+export const UnitRowSchema = z.object({
+  rank: z.number().int().positive(),
+  orgId: z.number().int().positive(),
+  unitName: z.string(),
+  averageXp: z.number(),
+  participationPercent: z.number().int().min(0).max(100),
+  /** True on the caller's own unit. */
+  mine: z.boolean(),
+});
+export type UnitRow = z.infer<typeof UnitRowSchema>;
+
+/**
+ * `UnitLeaderboard`: the top ten units with at least five learners and the caller's own unit. `myUnit` is null
+ * when the caller has no unit or their unit has too few learners to be ranked (`myUnitTooSmall`). The bottom of
+ * the ranking is never returned. `from` and `to` are the first and last day of the period.
+ */
+export const UnitLeaderboardSchema = z.object({
+  period: LeaderboardPeriodSchema,
+  offset: z.number().int().nonnegative(),
+  from: z.string().nullable(),
+  to: z.string().nullable(),
+  top: z.array(UnitRowSchema),
+  myUnit: UnitRowSchema.nullable(),
+  myUnitTooSmall: z.boolean(),
+});
+export type UnitLeaderboard = z.infer<typeof UnitLeaderboardSchema>;
+
 /** The XP of each source, read from the ledger; `total` is their sum. A streak earns no XP. */
 export const PointPartsSchema = z.object({
   /** Lessons completed, each counted once however many cycles or revisions. */

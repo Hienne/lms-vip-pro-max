@@ -9,10 +9,22 @@ import {
   type LeaderboardQuery,
   type LeaderboardScope,
   type PointParts,
+  type UnitLeaderboardQuery,
 } from '@lms/contracts';
 import { LOCAL_STORAGE } from '../../../../core/storage/local-storage';
 import { serverData } from '../../../../core/data-access/server-data';
 import { EndpointClient } from '../../../../core/http/endpoint-client';
+
+/** What the board ranks: learners, or units (branches). */
+export type LeaderboardView = 'people' | 'units';
+
+/** The view the URL leaves out. */
+export const DEFAULT_VIEW: LeaderboardView = 'people';
+
+/** The view of a shared or reloaded URL; an unknown value is dropped, not an error. */
+function viewFrom(value: unknown): LeaderboardView {
+  return value === 'units' ? 'units' : DEFAULT_VIEW;
+}
 
 /** The scope the server uses when none is asked, and the one the URL leaves out. */
 export const DEFAULT_SCOPE: LeaderboardScope = 'org';
@@ -83,6 +95,7 @@ export class LeaderboardStore {
   private readonly initial = this.route.snapshot.queryParams;
 
   private readonly state = {
+    view: signal<LeaderboardView>(viewFrom(this.initial['view'])),
     scope: signal<LeaderboardScope>(scopeFrom(this.initial['scope'])),
     period: signal<LeaderboardPeriod>(periodFrom(this.initial['period'])),
     /** Periods back from the current one; always 0 for `all`. */
@@ -101,10 +114,24 @@ export class LeaderboardStore {
     }),
   );
 
+  /** The personal board is read only while it is the view shown, as the unit board is. */
   private readonly boardData = serverData(
     (query: LeaderboardQuery) =>
       this.client.call(learnerEndpoints.leaderboard, { query }),
-    { params: () => this.query() },
+    {
+      params: () => (this.state.view() === 'people' ? this.query() : undefined),
+    },
+  );
+
+  private readonly unitData = serverData(
+    (query: UnitLeaderboardQuery) =>
+      this.client.call(learnerEndpoints.unitLeaderboard, { query }),
+    {
+      params: () =>
+        this.state.view() === 'units'
+          ? { period: this.state.period(), offset: this.state.offset() }
+          : undefined,
+    },
   );
 
   private readonly pointsData = serverData(() =>
@@ -116,6 +143,7 @@ export class LeaderboardStore {
   // Selectors
   /** The one-time notice that points became XP and a streak no longer earns any. */
   readonly isXpNoticeShown$ = computed(() => !this.noticeDismissed());
+  readonly view$ = this.state.view.asReadonly();
   readonly scope$ = this.state.scope.asReadonly();
   readonly period$ = this.state.period.asReadonly();
   readonly offset$ = this.state.offset.asReadonly();
@@ -161,7 +189,10 @@ export class LeaderboardStore {
 
   /** The span the board covers: the month, the week's days, or all time. */
   readonly periodLabel$ = computed(() => {
-    const board = this.boardData.value();
+    const board =
+      this.state.view() === 'units'
+        ? this.unitData.value()
+        : this.boardData.value();
     if (board === undefined || board.from === null || board.to === null) {
       return this.state.period() === 'all' ? 'Tất cả thời gian' : '';
     }
@@ -170,6 +201,31 @@ export class LeaderboardStore {
       return `Tháng ${Number(month)}/${year}`;
     }
     return `${dayMonth(board.from)} – ${dayMonth(board.to)}`;
+  });
+
+  readonly unitsError$ = this.unitData.error;
+  readonly isUnitsLoading$ = this.unitData.isLoading;
+  /** The top ten units, in the server's order. */
+  readonly unitTop$ = computed(() => this.unitData.value()?.top ?? []);
+  /** The caller's unit; null when they have none or it is too small to be ranked. */
+  readonly myUnit$ = computed(() => this.unitData.value()?.myUnit ?? null);
+  /** The caller's unit has fewer learners than a unit needs to be ranked. */
+  readonly isMyUnitTooSmall$ = computed(
+    () => this.unitData.value()?.myUnitTooSmall ?? false,
+  );
+  /** The caller's unit is ranked but outside the top ten, so it is shown below them. */
+  readonly isMyUnitBelowTop$ = computed(() => {
+    const board = this.unitData.value();
+    return (
+      board !== undefined &&
+      board.myUnit !== null &&
+      !board.top.some((unit) => unit.mine)
+    );
+  });
+  /** No unit has enough learners to be ranked. */
+  readonly isUnitsEmpty$ = computed(() => {
+    const board = this.unitData.value();
+    return board !== undefined && board.top.length === 0;
   });
 
   readonly pointsError$ = this.pointsData.error;
@@ -208,6 +264,10 @@ export class LeaderboardStore {
   }
 
   // Setters: the only writers of state
+  private setView(view: LeaderboardView): void {
+    this.state.view.set(view);
+  }
+
   private setScope(scope: LeaderboardScope): void {
     this.state.scope.set(scope);
   }
@@ -221,6 +281,13 @@ export class LeaderboardStore {
   }
 
   // Commands: a new scope or period starts at the current one, and the choices are written to the URL
+  selectView(value: string): void {
+    const view = viewFrom(value);
+    if (view === this.state.view()) return;
+    this.setView(view);
+    this.syncUrl();
+  }
+
   selectScope(value: string): void {
     const scope = LeaderboardScopeSchema.safeParse(value);
     if (!scope.success || scope.data === this.state.scope()) return;
@@ -254,6 +321,10 @@ export class LeaderboardStore {
     this.boardData.reload();
   }
 
+  retryUnits(): void {
+    this.unitData.reload();
+  }
+
   retryPoints(): void {
     this.pointsData.reload();
   }
@@ -261,6 +332,7 @@ export class LeaderboardStore {
   /** Writes the choices to the query string without a history entry; defaults are left out. */
   private syncUrl(): void {
     const queryParams: Params = {
+      view: this.state.view() === DEFAULT_VIEW ? null : this.state.view(),
       scope: this.state.scope() === DEFAULT_SCOPE ? null : this.state.scope(),
       period:
         this.state.period() === DEFAULT_PERIOD ? null : this.state.period(),

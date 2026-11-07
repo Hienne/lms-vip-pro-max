@@ -11,6 +11,10 @@
  * learner's scores: `courses` is every course `hocvien` has (FE-DEMO-C1 has a final exam score of 12.5 and
  * QZ-E2E-01 of 100, the others none); `progressSummary.assessment` is the overview of five quizzes.
  *
+ * `unitLeaderboard` and `unitLeaderboardTooSmall` are shaped from the unit leaderboard integration tests of
+ * 2026-11-07 and are to be captured again on the running backend (the second is a caller whose unit has fewer than
+ * five learners).
+ *
  * `badges` is shaped from the badge integration tests of 2026-11-07 and is to be captured again on the running backend.
  *
  * `points` was captured on 2026-11-01 as `hocvien` (`GET /points`). `leaderboard`, `leaderboardTeam` and
@@ -907,6 +911,57 @@ export const capturedLearner = {
         progress: null,
       },
     ],
+  },
+  unitLeaderboard: {
+    period: 'month',
+    offset: 0,
+    from: '2026-11-01',
+    to: '2026-11-30',
+    top: [
+      {
+        rank: 1,
+        orgId: 12,
+        unitName: 'Chi nhánh Sở giao dịch 1',
+        averageXp: 75,
+        participationPercent: 40,
+        mine: false,
+      },
+      {
+        rank: 2,
+        orgId: 7,
+        unitName: 'Chi nhánh Hà Nội',
+        averageXp: 60,
+        participationPercent: 20,
+        mine: true,
+      },
+    ],
+    myUnit: {
+      rank: 2,
+      orgId: 7,
+      unitName: 'Chi nhánh Hà Nội',
+      averageXp: 60,
+      participationPercent: 20,
+      mine: true,
+    },
+    myUnitTooSmall: false,
+  },
+  unitLeaderboardTooSmall: {
+    period: 'month',
+    offset: 0,
+    from: '2026-11-01',
+    to: '2026-11-30',
+    top: [
+      {
+        rank: 1,
+        orgId: 12,
+        unitName: 'Chi nhánh Sở giao dịch 1',
+        averageXp: 75,
+        participationPercent: 40,
+        mine: false,
+      },
+    ],
+    myUnit: null,
+    myUnitTooSmall: true,
   },
   leaderboard: {
     period: 'month',

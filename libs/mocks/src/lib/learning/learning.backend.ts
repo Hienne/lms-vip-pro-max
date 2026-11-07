@@ -339,6 +339,7 @@ export class LearningBackend {
       [learnerEndpoints.myLevel, (r) => ok(this.levels.level(r))],
       [learnerEndpoints.myBadges, (r) => ok(this.badges.badges(r))],
       [learnerEndpoints.leaderboard, (r) => ok(this.board.leaderboard(r))],
+      [learnerEndpoints.unitLeaderboard, (r) => ok(this.board.units(r))],
       [personalEndpoints.lessonNotes, (r) => ok(this.notes.notesOf(r))],
       [personalEndpoints.addNote, (r) => ok(this.notes.addNote(r))],
       [personalEndpoints.deleteNote, (r) => ok(this.notes.deleteNote(r))],

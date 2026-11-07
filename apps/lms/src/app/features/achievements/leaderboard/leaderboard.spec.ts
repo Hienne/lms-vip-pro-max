@@ -84,9 +84,11 @@ describe('Leaderboard', () => {
     >;
   const store = () => harness.routeDebugElement!.injector.get(LeaderboardStore);
   const option = (label: string) =>
-    Array.from(el.querySelectorAll<HTMLElement>('[role="option"]')).find((o) =>
-      o.textContent?.includes(label),
-    )!;
+    Array.from(
+      el.querySelectorAll<HTMLElement>(
+        'ui-segmented:not(.leaderboard__view) [role="option"]',
+      ),
+    ).find((o) => o.textContent?.includes(label))!;
 
   /** Lets the mock answer one endpoint with a refusal, the rest as usual. */
   function fail(endpoint: unknown, key: Parameters<typeof backendRefusal>[0]) {
@@ -111,7 +113,11 @@ describe('Leaderboard', () => {
     });
 
     it('offers the three scopes and starts on Đơn vị', () => {
-      const labels = Array.from(el.querySelectorAll('[role="option"]'))
+      const labels = Array.from(
+        el.querySelectorAll(
+          'ui-segmented:not(.leaderboard__view) [role="option"]',
+        ),
+      )
         .map((o) => text(o))
         .slice(0, 3);
       expect(labels).toEqual(['Nhóm của tôi', 'Đơn vị', 'Toàn hệ thống']);
@@ -124,7 +130,11 @@ describe('Leaderboard', () => {
     });
 
     it('offers the three periods and starts on Tháng, with no page size and no count', () => {
-      const labels = Array.from(el.querySelectorAll('[role="option"]'))
+      const labels = Array.from(
+        el.querySelectorAll(
+          'ui-segmented:not(.leaderboard__view) [role="option"]',
+        ),
+      )
         .map((o) => text(o))
         .slice(3);
       expect(labels).toEqual(['Tuần', 'Tháng', 'Tất cả']);
@@ -397,6 +407,33 @@ describe('Leaderboard', () => {
     });
   });
 
+  describe('the unit view', () => {
+    it('opens from the URL, ranks the unit by average XP and never calls the personal board', async () => {
+      await open('/leaderboard?view=units');
+      expect(calls(learnerEndpoints.unitLeaderboard)).toHaveLength(1);
+      expect(calls(learnerEndpoints.leaderboard)).toHaveLength(0);
+      const board = text(el.querySelector('.leaderboard__ranking')!);
+      expect(board).toContain('XP/người');
+      expect(board).toContain('Tham gia 80% học viên');
+      expect(board).toContain('(đơn vị của bạn)');
+    });
+
+    it('switches view and writes it to the URL, leaving the default out', async () => {
+      await open();
+      store().selectView('units');
+      await settle();
+      expect(TestBed.inject(Router).url).toBe('/leaderboard?view=units');
+      store().selectView('people');
+      await settle();
+      expect(TestBed.inject(Router).url).toBe('/leaderboard');
+    });
+
+    it('reads an unknown view as the personal board', async () => {
+      await open('/leaderboard?view=galaxy');
+      expect(store().view$()).toBe('people');
+    });
+  });
+
   describe('the store', () => {
     it('steps back one period, keeps the scope, and writes both to the URL', async () => {
       await open('/leaderboard?scope=all');
@@ -486,6 +523,7 @@ describe('Leaderboard with a fake store', () => {
           {
             provide: LeaderboardStore,
             useValue: {
+              view$: signal('people'),
               scope$: signal(scope),
               period$: signal('month'),
               offset$: signal(0),

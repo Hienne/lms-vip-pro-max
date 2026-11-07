@@ -3,6 +3,7 @@ import {
   LeaderboardViewSchema,
   learnerEndpoints,
   MyPointsSchema,
+  UnitLeaderboardSchema,
   type AnyEndpoint,
   type LeaderboardView,
 } from '@lms/contracts';
@@ -108,6 +109,55 @@ describe('the points and the leaderboard of the mock backend', () => {
     expect(last.top.map((row) => row.points)).toEqual([0, 0, 0, 0, 0]);
     expect(last.top.map((row) => row.rank)).toEqual([1, 1, 1, 1, 1]);
     expect(last.offset).toBe(1);
+  });
+
+  describe('the unit board', () => {
+    const units = (username: string, query: Record<string, string> = {}) =>
+      UnitLeaderboardSchema.parse(
+        call(learnerEndpoints.unitLeaderboard, login(username), query).body
+          .data,
+      );
+
+    it('ranks the one unit of five learners by the average XP of its active learners', () => {
+      const board = units('hocvien');
+      expect(board.top).toHaveLength(1);
+      expect(board.top[0]).toMatchObject({
+        rank: 1,
+        averageXp: 72.5,
+        participationPercent: 80,
+        mine: true,
+      });
+      expect(board.myUnit).toEqual(board.top[0]);
+      expect(board.myUnitTooSmall).toBe(false);
+    });
+
+    it('takes the period like the personal board, with nothing before this month', () => {
+      expect(units('hocvien', { period: 'week' }).top[0].averageXp).toBe(23.8);
+      const earlier = units('hocvien', { offset: '1' });
+      expect(earlier.top[0]).toMatchObject({
+        averageXp: 0,
+        participationPercent: 0,
+      });
+      expect(earlier.offset).toBe(1);
+    });
+
+    it.each<Record<string, string>>([
+      { period: 'year' },
+      { offset: '-1' },
+      { offset: '521' },
+    ])('refuses the query %j as a validation failure', (query) => {
+      const reply = call(
+        learnerEndpoints.unitLeaderboard,
+        login('hocvien'),
+        query,
+      );
+      expect(reply.body.messageCode).toBe('CORE-VALIDATION_FAILED');
+    });
+
+    it('refuses someone who is not a learner', () => {
+      const reply = call(learnerEndpoints.unitLeaderboard, login('quantri'));
+      expect(reply.body.messageCode).toBe('CORE-ACCESS_DENIED');
+    });
   });
 
   it('puts a learner with no XP after everyone, with a rank and no streak', () => {

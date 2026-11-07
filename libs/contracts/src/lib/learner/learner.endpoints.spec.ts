@@ -6,6 +6,8 @@ import { capturedLessonPlayer } from './lesson-player.captured';
 import {
   EnrollmentDetailSchema,
   LeaderboardViewSchema,
+  UnitLeaderboardQuerySchema,
+  UnitLeaderboardSchema,
   LeaderboardQuerySchema,
   LearnerCourseSchema,
   AssessmentOverviewSchema,
@@ -85,6 +87,7 @@ describe('learner endpoints', () => {
       ['myStreak', 'get', '/api/v1/me/learning/streak'],
       ['myBadges', 'get', '/api/v1/me/learning/badges'],
       ['leaderboard', 'get', '/api/v1/me/learning/leaderboard'],
+      ['unitLeaderboard', 'get', '/api/v1/me/learning/leaderboard/units'],
     ]);
     expect(
       toUrl(learnerEndpoints.saveProgress, { enrollmentId: 2, blockId: 31 }),
@@ -558,6 +561,42 @@ describe('learner endpoints', () => {
           ...captured.streak,
           days: [{ ...day, date: '12/10' }],
         }).success,
+      ).toBe(false);
+    });
+  });
+
+  describe('unit leaderboard', () => {
+    it('parses the response captured from the backend', () => {
+      const board = UnitLeaderboardSchema.parse(captured.unitLeaderboard);
+      expect(board.top.map((row) => row.rank)).toEqual([1, 2]);
+      expect(board.myUnit).toEqual(board.top[1]);
+      expect(board.myUnitTooSmall).toBe(false);
+    });
+
+    it('has no unit for a caller whose unit is too small, and says so', () => {
+      const board = UnitLeaderboardSchema.parse(
+        captured.unitLeaderboardTooSmall,
+      );
+      expect(board.myUnit).toBeNull();
+      expect(board.myUnitTooSmall).toBe(true);
+    });
+
+    it('refuses a participation rate above 100 and an unknown period', () => {
+      const board = captured.unitLeaderboard;
+      expect(
+        UnitLeaderboardSchema.safeParse({
+          ...board,
+          top: [{ ...board.top[0], participationPercent: 101 }],
+        }).success,
+      ).toBe(false);
+      expect(
+        UnitLeaderboardSchema.safeParse({ ...board, period: 'year' }).success,
+      ).toBe(false);
+      expect(
+        UnitLeaderboardQuerySchema.safeParse({ period: 'year' }).success,
+      ).toBe(false);
+      expect(
+        UnitLeaderboardQuerySchema.safeParse({ offset: 521 }).success,
       ).toBe(false);
     });
   });

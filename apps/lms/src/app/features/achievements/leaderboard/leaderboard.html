@@ -24,12 +24,21 @@
 
 <div class="leaderboard__filters">
   <ui-segmented
+    class="leaderboard__scope leaderboard__view"
+    label="Bảng xếp hạng"
+    [options]="views"
+    [value]="store.view$()"
+    (valueChange)="store.selectView($event)"
+  />
+  @if (store.view$() === 'people') {
+  <ui-segmented
     class="leaderboard__scope"
     label="Phạm vi xếp hạng"
     [options]="scopes"
     [value]="store.scope$()"
     (valueChange)="store.selectScope($event)"
   />
+  }
   <ui-segmented
     class="leaderboard__scope"
     label="Kỳ xếp hạng"
@@ -111,7 +120,50 @@
       }
     </div>
 
-    @if (store.boardError$(); as error) {
+    @if (store.view$() === 'units') { @if (store.unitsError$(); as error) {
+    <ui-error-state
+      title="Không tải được bảng xếp hạng đơn vị"
+      [message]="error.message"
+      [retryable]="error.kind !== 'forbidden'"
+      (retry)="store.retryUnits()"
+    />
+    } @else if (store.isUnitsLoading$()) {
+    <div
+      uiSkeleton
+      variant="block"
+      class="leaderboard__ranking-placeholder"
+    ></div>
+    } @else {
+    <p class="leaderboard__empty">
+      Xếp hạng theo XP trung bình của mỗi học viên đang hoạt động. Chỉ đơn vị có
+      từ 5 học viên được xếp hạng.
+    </p>
+    @if (store.isUnitsEmpty$()) {
+    <p class="leaderboard__empty">
+      Chưa có đơn vị nào đủ số học viên để xếp hạng.
+    </p>
+    } @else {
+    <ol class="leaderboard__list" aria-label="Top 10 đơn vị">
+      @for (unit of store.unitTop$(); track unit.orgId) {
+      <ng-container
+        [ngTemplateOutlet]="unitEntry"
+        [ngTemplateOutletContext]="{ $implicit: unit }"
+      />
+      }
+    </ol>
+    } @if (store.isMyUnitBelowTop$()) { @if (store.myUnit$(); as unit) {
+    <p class="leaderboard__me-caption">Đơn vị của bạn</p>
+    <ol class="leaderboard__list" aria-label="Đơn vị của bạn">
+      <ng-container
+        [ngTemplateOutlet]="unitEntry"
+        [ngTemplateOutletContext]="{ $implicit: unit }"
+      />
+    </ol>
+    } } @if (store.isMyUnitTooSmall$()) {
+    <p class="leaderboard__me-caption">
+      Đơn vị của bạn chưa đủ số học viên để xếp hạng.
+    </p>
+    } } } @else { @if (store.boardError$(); as error) {
     <ui-error-state
       title="Không tải được bảng xếp hạng"
       [message]="error.message"
@@ -155,9 +207,33 @@
     </ol>
     @if (store.gapToAbove$(); as gap) {
     <p class="leaderboard__gap">Cách người xếp ngay trên {{ gap }} XP.</p>
-    } } } }
+    } } } } }
   </section>
 </div>
+
+<ng-template #unitEntry let-unit>
+  <li
+    class="leaderboard__row"
+    [class.leaderboard__row--me]="unit.mine"
+    [attr.aria-current]="unit.mine ? 'true' : null"
+  >
+    <span class="leaderboard__rank">{{ unit.rank }}</span>
+    <span class="leaderboard__who">
+      <span class="leaderboard__title"
+        >{{ unit.unitName }}@if (unit.mine) {
+        <span class="leaderboard__you"> (đơn vị của bạn)</span>
+        }</span
+      >
+      <span class="leaderboard__meta"
+        >Tham gia {{ unit.participationPercent }}% học viên</span
+      >
+    </span>
+    <span class="leaderboard__score"
+      >{{ unit.averageXp }}
+      <span class="leaderboard__unit">XP/người</span></span
+    >
+  </li>
+</ng-template>
 
 <ng-template #entry let-row>
   <li

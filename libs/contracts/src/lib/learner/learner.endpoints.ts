@@ -8,6 +8,8 @@ import {
   DashboardProgramsQuerySchema,
   EnrollmentDetailSchema,
   LeaderboardViewSchema,
+  UnitLeaderboardQuerySchema,
+  UnitLeaderboardSchema,
   LeaderboardQuerySchema,
   LearnerCourseSchema,
   LearnerFacetsSchema,
@@ -206,5 +208,16 @@ export const learnerEndpoints = {
     path: '/api/v1/me/learning/leaderboard',
     query: LeaderboardQuerySchema,
     response: LeaderboardViewSchema,
+  }),
+  /**
+   * The unit (branch) ranking by average XP per active learner in a period (`week`, `month` by default, `all`;
+   * `offset` steps back), with the participation rate: the top ten units with at least five learners and the
+   * caller's own unit. An unknown period or an `offset` outside 0-520 answers `CORE-VALIDATION_FAILED`.
+   */
+  unitLeaderboard: defineEndpoint({
+    method: 'get',
+    path: '/api/v1/me/learning/leaderboard/units',
+    query: UnitLeaderboardQuerySchema,
+    response: UnitLeaderboardSchema,
   }),
 } as const;

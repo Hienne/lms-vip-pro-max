@@ -12,6 +12,7 @@ import {
   type SegmentedOption,
 } from '@lms/ui';
 import type { LeaderboardPeriod, LeaderboardScope } from '@lms/contracts';
+import type { LeaderboardView } from './data-access/leaderboard.store';
 import { LeaderboardStore } from './data-access/leaderboard.store';
 
 /** The top ten learners by XP of a period, the caller's own place and points (the mockup's `leaderboard` page). */
@@ -38,6 +39,10 @@ export class Leaderboard {
     { value: 'team', label: 'Nhóm của tôi' },
     { value: 'org', label: 'Đơn vị' },
     { value: 'all', label: 'Toàn hệ thống' },
+  ];
+  protected readonly views: readonly SegmentedOption<LeaderboardView>[] = [
+    { value: 'people', label: 'Học viên' },
+    { value: 'units', label: 'Các đơn vị' },
   ];
   protected readonly periods: readonly SegmentedOption<LeaderboardPeriod>[] = [
     { value: 'week', label: 'Tuần' },

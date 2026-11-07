@@ -1,6 +1,8 @@
 import {
   LeaderboardQuerySchema,
+  UnitLeaderboardQuerySchema,
   type LeaderboardView,
+  type UnitLeaderboard,
   type LeaderboardPeriod,
   type LeaderboardRow,
   type LeaderboardScope,
@@ -26,6 +28,9 @@ const byName = new Intl.Collator('vi');
 
 /** Rows of the top of the board. */
 const TOP = 10;
+
+/** A unit with fewer learners is not ranked. */
+const MIN_UNIT_LEARNERS = 5;
 
 const numeric = (value: string | undefined): number | undefined =>
   value === undefined || value === '' ? undefined : Number(value);
@@ -86,6 +91,70 @@ export class LearnerLeaderboard {
       me: mine,
       above,
       gapToAbove: higher ? higher.points - mine.points : null,
+    };
+  }
+
+  /**
+   * `GET /leaderboard/units`: the units with at least five learners ranked by the average XP per active learner (a
+   * learner with XP in the period), with the share of active learners as the participation rate, the top ten and
+   * the caller's unit.
+   */
+  units(request: FakeRequest): UnitLeaderboard {
+    const caller = this.caller(request);
+    const parsed = UnitLeaderboardQuerySchema.safeParse({
+      period: request.query['period'],
+      offset: numeric(request.query['offset']),
+    });
+    if (!parsed.success) return refuse('validationFailed');
+    const { period = 'month', offset = 0 } = parsed.data;
+    const back = period === 'all' ? 0 : offset;
+
+    const byUnit = new Map<number, Learner[]>();
+    for (const learner of this.learners()) {
+      if (learner.orgId === null) continue;
+      byUnit.set(learner.orgId, [
+        ...(byUnit.get(learner.orgId) ?? []),
+        learner,
+      ]);
+    }
+    const ranked = [...byUnit]
+      .filter(([, members]) => members.length >= MIN_UNIT_LEARNERS)
+      .map(([orgId, members]) => {
+        const xp = members
+          .map((member) => this.xp(member, period, back))
+          .filter((value) => value !== 0);
+        return {
+          orgId,
+          unitName: this.directory.nameOf('org', orgId) ?? String(orgId),
+          averageXp: xp.length
+            ? Math.round((xp.reduce((a, b) => a + b, 0) * 10) / xp.length) / 10
+            : 0,
+          participationPercent: Math.round((xp.length * 100) / members.length),
+        };
+      })
+      .sort(
+        (a, b) =>
+          b.averageXp - a.averageXp || byName.compare(a.unitName, b.unitName),
+      )
+      .map((unit, index, all) => ({
+        ...unit,
+        rank: all.findIndex((o) => o.averageXp === unit.averageXp) + 1,
+        mine: unit.orgId === caller.orgId,
+        index,
+      }))
+      .map(({ index: _index, ...unit }) => unit);
+    const myUnit = ranked.find((unit) => unit.mine) ?? null;
+    return {
+      period,
+      offset: back,
+      from: null,
+      to: null,
+      top: ranked.slice(0, TOP),
+      myUnit,
+      myUnitTooSmall:
+        caller.orgId !== null &&
+        myUnit === null &&
+        (byUnit.get(caller.orgId)?.length ?? 0) < MIN_UNIT_LEARNERS,
     };
   }
 
