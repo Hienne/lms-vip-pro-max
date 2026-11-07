@@ -33,6 +33,7 @@ import {
 import type { HasUnsavedChanges } from '../../../core/routing/unsaved-changes.guard';
 import { Markdown } from '../../../shared/content/markdown/markdown';
 import { CommentThread } from '../components/comment-thread/comment-thread';
+import { ContentThumbnail } from '../components/content-thumbnail/content-thumbnail';
 import {
   REVIEW_STATUS,
   INVITATION_ACTION,
@@ -61,6 +62,7 @@ import { ReviewDetailStore } from './data-access/review-detail.store';
     Select,
     Textarea,
     CommentThread,
+    ContentThumbnail,
   ],
   providers: [ReviewDetailStore],
   templateUrl: './review-detail.html',

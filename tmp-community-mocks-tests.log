@@ -1,0 +1,30 @@
+
+ RUN  v4.1.11 D:/SCH/lms-vip-pro-max/libs/mocks
+
+ ✓ |mocks| src/lib/assessment/authoring.mock.spec.ts (8 tests) 18ms
+ ✓ |mocks| src/fixtures.spec.ts (23 tests) 39ms
+ ✓ |mocks| src/lib/assessment/learner-quiz.mock.spec.ts (10 tests) 25ms
+ ✓ |mocks| src/lib/backend/access-requests.backend.spec.ts (8 tests) 23ms
+ ✓ |mocks| src/lib/backend/postman.contract.spec.ts (26 tests) 31ms
+ ✓ |mocks| src/lib/backend/fake-backend.spec.ts (71 tests) 116ms
+ ✓ |mocks| src/lib/learning/asset.backend.spec.ts (28 tests) 37ms
+ ✓ |mocks| src/lib/learning/course-cover.backend.spec.ts (4 tests) 19ms
+ ✓ |mocks| src/lib/learning/course-create.backend.spec.ts (9 tests) 23ms
+ ✓ |mocks| src/lib/learning/course-publish.backend.spec.ts (6 tests) 20ms
+ ✓ |mocks| src/lib/learning/course-tree.backend.spec.ts (3 tests) 19ms
+ ✓ |mocks| src/lib/learning/learner-certificates.spec.ts (8 tests) 22ms
+ ✓ |mocks| src/lib/learning/learner-feedback.spec.ts (13 tests) 26ms
+ ✓ |mocks| src/lib/learning/learner-leaderboard.spec.ts (15 tests) 21ms
+ ✓ |mocks| src/lib/learning/learner-notes.spec.ts (8 tests) 33ms
+ ✓ |mocks| src/lib/learning/learner-session.backend.spec.ts (15 tests) 56ms
+ ✓ |mocks| src/lib/learning/learner.backend.spec.ts (42 tests) 61ms
+ ✓ |mocks| src/lib/learning/learning-reports.backend.spec.ts (7 tests) 23ms
+ ✓ |mocks| src/lib/learning/share.backend.spec.ts (6 tests) 14ms
+ ✓ |mocks| src/lib/shell/shell.fixtures.spec.ts (6 tests) 4ms
+ ✓ |mocks| src/lib/community/community.backend.spec.ts (24 tests) 44ms
+
+ Test Files  21 passed (21)
+      Tests  340 passed (340)
+   Start at  16:17:05
+   Duration  5.72s (transform 1.52s, setup 0ms, import 7.83s, tests 676ms, environment 1ms)
+

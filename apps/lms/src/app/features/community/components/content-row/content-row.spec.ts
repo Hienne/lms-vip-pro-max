@@ -47,22 +47,21 @@ describe('ContentRow', () => {
   });
 
   it('shows the score and the answer count of a question', () => {
-    const stats = render(card()).querySelector('.content-row__stats')!;
+    const el = render(card());
+    const stats = el.querySelector('.content-row__stats')!;
     expect(stats.textContent).toContain('3');
     expect(stats.textContent).toContain('2');
     expect(
-      stats.parentElement
-        ?.querySelector('app-content-thumbnail img')
-        ?.getAttribute('src'),
-    ).toContain('/images/question-default.webp');
+      el.querySelector('app-content-thumbnail img')?.getAttribute('src'),
+    ).toContain('/images/community-defaults.png');
   });
 
-  it('has no stats for an article', () => {
+  it('shows the server score for an article', () => {
     const el = render(card({ kind: 'article', resolutionStatus: null }));
-    expect(el.querySelector('.content-row__stats')).toBeNull();
+    expect(el.querySelector('.content-row__stats')?.textContent).toContain('3');
     expect(
       el.querySelector('app-content-thumbnail img')?.getAttribute('src'),
-    ).toContain('/images/course-default.webp');
+    ).toContain('/images/community-defaults.png');
   });
 
   it('shows one resolution badge on an active question', () => {

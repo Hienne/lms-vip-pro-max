@@ -197,6 +197,12 @@ export class ReviewDetailStore {
   );
 
   readonly detail$ = this.detail.value;
+  readonly coverId$ = computed(
+    () =>
+      (
+        this.detail$()?.publishedRevision ?? this.detail$()?.draftRevision
+      )?.assets?.find((asset) => asset.usage === 'cover')?.revisionAssetId,
+  );
   readonly isLoading$ = this.detail.isLoading;
   readonly error$ = this.detail.error;
   readonly tab$ = this.state.tab.asReadonly();

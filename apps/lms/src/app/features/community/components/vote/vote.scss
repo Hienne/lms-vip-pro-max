@@ -7,6 +7,11 @@
 }
 
 .vote {
+  &__points {
+    @include ui.num;
+    @include ui.text(sm);
+    font-weight: ui.weight(semibold);
+  }
   &__helpful {
     background: ui.color(surface);
     color: ui.color(text);

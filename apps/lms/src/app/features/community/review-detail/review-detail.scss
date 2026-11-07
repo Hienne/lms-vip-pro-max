@@ -3,7 +3,7 @@
   @include ui.page(wide);
 }
 .review-detail {
-  @include ui.stack(6);
+  @include ui.stack(4);
   &__header-actions {
     @include ui.row(3);
     flex-wrap: wrap;
@@ -20,7 +20,7 @@
   }
   &__layout {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) 240px;
+    grid-template-columns: minmax(0, 1fr) calc(ui.space(18) * 3);
     gap: ui.space(8);
     align-items: start;
   }
@@ -110,6 +110,11 @@
     flex-wrap: wrap;
   }
   &__aside {
+    @include ui.stack(4);
+    padding: ui.space(5);
+    background: ui.color(surface);
+    border: 1px solid ui.color(border);
+    border-radius: ui.radius(card);
     color: ui.color(text-muted);
     font-size: ui.text-size(sm);
     h2 {
@@ -131,6 +136,11 @@
       list-style: none;
       margin-bottom: ui.space(3);
     }
+  }
+  &__conclusion-shortcut {
+    @include ui.stack(3);
+    border-top: 1px solid ui.color(border);
+    padding-top: ui.space(4);
   }
   @include ui.bp-below(lg) {
     &__layout {

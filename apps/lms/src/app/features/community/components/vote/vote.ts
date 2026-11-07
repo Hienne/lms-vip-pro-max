@@ -16,6 +16,7 @@ export type VoteValue = -1 | 0 | 1;
 })
 export class Vote {
   readonly score = input.required<number>();
+  readonly mode = input<'helpful' | 'score'>('helpful');
   readonly myVote = input<number>(0);
   readonly canVote = input(true);
   readonly busy = input(false);

@@ -9,10 +9,34 @@
   </div>
 </ui-page-header>
 
-<app-community-tabs />
-
 <div class="community-list__layout">
   <div class="community-list__content">
+    <div class="community-list__bar">
+      <ui-segmented
+        label="Loại bài"
+        [options]="types"
+        [value]="store.type$()"
+        (valueChange)="store.showType($event)"
+      />
+
+      @if (store.type$() === 'article') {
+      <label class="community-list__sort">
+        <span>Sắp xếp</span>
+        <select
+          uiSelect
+          size="sm"
+          [value]="store.sort$()"
+          (change)="store.sortBy(sort.value)"
+          #sort
+        >
+          <option value="new">Mới nhất</option>
+          <option value="score">Điểm cao nhất</option>
+          <option value="activity">Hoạt động gần nhất</option>
+        </select>
+      </label>
+      }
+    </div>
+
     <form
       class="community-list__toolbar"
       role="search"
@@ -47,32 +71,6 @@
         }
       </select>
     </form>
-
-    <div class="community-list__bar">
-      <ui-segmented
-        label="Loại bài"
-        [options]="types"
-        [value]="store.type$()"
-        (valueChange)="store.showType($event)"
-      />
-
-      @if (store.type$() === 'article') {
-      <label class="community-list__sort">
-        <span>Sắp xếp</span>
-        <select
-          uiSelect
-          size="sm"
-          [value]="store.sort$()"
-          (change)="store.sortBy(sort.value)"
-          #sort
-        >
-          <option value="new">Mới nhất</option>
-          <option value="score">Điểm cao nhất</option>
-          <option value="activity">Hoạt động gần nhất</option>
-        </select>
-      </label>
-      }
-    </div>
 
     <p class="community-list__count" role="status" aria-live="polite">
       <strong>{{ store.total$() }}</strong>
@@ -133,29 +131,4 @@
     </ui-empty>
     }
   </div>
-  @if (tags.tags$()?.length) {
-  <aside class="community-list__topics" aria-label="Thẻ">
-    <h2>Thẻ</h2>
-    <button
-      uiButton
-      size="sm"
-      variant="ghost"
-      [attr.aria-pressed]="!store.filters$().tagId"
-      (click)="store.filterTag('')"
-    >
-      Tất cả thẻ
-    </button>
-    @for (option of tags.tags$() ?? []; track option.tagId) {
-    <button
-      uiButton
-      size="sm"
-      variant="ghost"
-      [attr.aria-pressed]="option.tagId === store.filters$().tagId"
-      (click)="store.filterTag('' + option.tagId)"
-    >
-      {{ option.name }}
-    </button>
-    }
-  </aside>
-  }
 </div>

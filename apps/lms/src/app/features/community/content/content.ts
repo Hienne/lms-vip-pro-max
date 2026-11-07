@@ -32,6 +32,7 @@ import { CommentThread } from '../components/comment-thread/comment-thread';
 import type { LifecycleDialogAction } from '../components/lifecycle-dialog/lifecycle-dialog';
 import { MarkdownEditor } from '../components/markdown-editor/markdown-editor';
 import { Vote } from '../components/vote/vote';
+import { ContentThumbnail } from '../components/content-thumbnail/content-thumbnail';
 import { RESOLUTION_LABELS } from '../data-access/community-labels';
 import {
   emptyContentForm,
@@ -76,6 +77,7 @@ const LESSON_SECTIONS = [
     RouterLink,
     Skeleton,
     Vote,
+    ContentThumbnail,
   ],
   providers: [ContentStore],
   templateUrl: './content.html',

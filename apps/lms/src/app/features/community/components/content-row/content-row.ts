@@ -1,7 +1,7 @@
 import { Component, computed, input } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import type { ContentCard } from '@lms/contracts';
-import { Badge, FmtDatePipe, FmtNumPipe, FmtRelativePipe } from '@lms/ui';
+import { Badge, FmtDatePipe, FmtNumPipe, FmtRelativePipe, Icon } from '@lms/ui';
 import { ContentThumbnail } from '../content-thumbnail/content-thumbnail';
 import { RESOLUTION_LABELS } from '../../data-access/community-labels';
 
@@ -18,6 +18,7 @@ import { RESOLUTION_LABELS } from '../../data-access/community-labels';
   },
   imports: [
     ContentThumbnail,
+    Icon,
     Badge,
     FmtDatePipe,
     FmtNumPipe,
@@ -31,7 +32,9 @@ export class ContentRow {
   readonly card = input.required<ContentCard>();
 
   protected readonly hasThumbnail = computed(() =>
-    ['question', 'article', 'lesson_learned'].includes(this.card().kind),
+    ['question', 'article', 'lesson_learned', 'architecture_review'].includes(
+      this.card().kind,
+    ),
   );
   protected readonly isQuestion = computed(
     () => this.card().kind === 'question',

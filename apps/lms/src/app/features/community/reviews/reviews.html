@@ -10,7 +10,6 @@
     >Tạo đề nghị review</a
   >
 </ui-page-header>
-<app-community-tabs />
 <div class="reviews">
   <div class="reviews__filters">
     <ui-segmented
@@ -46,6 +45,11 @@
       <div class="reviews__list">
         @for (item of store.items$(); track item.contentId) {
         <article class="reviews__item">
+          <app-content-thumbnail
+            [contentId]="item.contentId"
+            kind="architecture_review"
+            [revisionAssetId]="item.coverRevisionAssetId"
+          />
           <div class="reviews__content">
             <h2>
               <a [routerLink]="['/community/reviews', item.contentId]"
@@ -62,17 +66,26 @@
               @for (tag of item.tags; track tag.tagId) {
               <span> · {{ tag.name }}</span> }
             </p>
+            <div class="reviews__metrics">
+              <span
+                ><ui-icon name="message-square" size="sm" />{{
+                item.openThreadCount }} góp ý chưa xử lý</span
+              >
+              <span
+                ><ui-icon name="users" size="sm" />{{ item.invitedCount }} người
+                được mời</span
+              >
+              @if (item.dueAt) {
+              <span class="reviews__due"
+                ><ui-icon name="calendar" size="sm" />Hạn {{ item.dueAt |
+                fmtDate }}</span
+              >
+              }
+            </div>
           </div>
           <div class="reviews__state">
             @if (statuses[item.reviewStatus]; as state) {
             <span uiBadge [tone]="state.tone">{{ state.label }}</span> }
-            <p>
-              {{ item.openThreadCount }} góp ý chưa xử lý · {{ item.invitedCount
-              }} người được mời
-            </p>
-            @if (item.dueAt) {
-            <p>Hạn {{ item.dueAt | fmtDate }}</p>
-            }
           </div>
         </article>
         }
@@ -93,17 +106,5 @@
       >
       } }
     </section>
-    <aside class="reviews__guide">
-      <h2>Một hồ sơ review gồm</h2>
-      <ul>
-        <li>Vấn đề cần giải quyết</li>
-        <li>Ràng buộc và phương án</li>
-        <li>Quyết định cần thống nhất</li>
-        <li>Góp ý gắn với phiên bản</li>
-      </ul>
-      <h2>Trước khi chốt kết luận</h2>
-      <p>Xử lý các góp ý còn mở trên phiên bản được chốt.</p>
-      <a routerLink="/community/reviews/new">Chuẩn bị đề nghị mới →</a>
-    </aside>
   </div>
 </div>

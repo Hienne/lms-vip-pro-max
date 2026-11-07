@@ -360,6 +360,11 @@
       } } }
     </section>
     <aside class="review-detail__aside">
+      <app-content-thumbnail
+        [contentId]="detail.contentId"
+        kind="architecture_review"
+        [revisionAssetId]="store.coverId$()"
+      />
       <h2>Thông tin review</h2>
       <dl>
         <dt>Góp ý chưa xử lý</dt>
@@ -370,7 +375,19 @@
           detail.visibility === 'guild' ? 'Trong Guild' : 'Người được cấp quyền'
           }}
         </dd>
+        @if (detail.dueAt) {
+        <dt>Hạn review</dt>
+        <dd>{{ detail.dueAt | fmtDate }}</dd>
+        }
       </dl>
+      <button
+        uiButton
+        type="button"
+        variant="ghost"
+        (click)="store.showTab('invitations')"
+      >
+        Xem người phản biện
+      </button>
       @if (detail.tags?.length) {
       <h2>Chủ đề</h2>
       <ul>
@@ -383,6 +400,18 @@
         Kết luận giữ nguyên thiết kế đã chốt. Nếu cần thay đổi, tạo vòng review
         tiếp theo.
       </p>
+      <div class="review-detail__conclusion-shortcut">
+        <h2>Kết luận</h2>
+        <button uiButton type="button" (click)="store.showTab('conclusion')">
+          {{ detail.conclusion ? 'Xem kết luận' : 'Chuẩn bị kết luận' }}
+        </button>
+        @if (detail.openThreadCount) {
+        <p>
+          Xử lý {{ detail.openThreadCount }} góp ý còn mở trên phiên bản hiện
+          tại trước khi chốt.
+        </p>
+        }
+      </div>
     </aside>
   </div>
 </div>

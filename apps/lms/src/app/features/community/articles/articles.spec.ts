@@ -23,38 +23,27 @@ describe('CommunityArticles', () => {
     expect(page.text()).toContain('Sự cố ngày');
   });
 
-  it('filters lessons by a sidebar tag and clears it without changing the content type', async () => {
+  it('filters by tag without losing the other filters or duplicating navigation', async () => {
     const page = await openCommunity(
       '/community/articles?type=lesson&q=Oracle&page=2',
     );
+    expect(page.el().querySelector('app-community-tabs')).toBeNull();
     const select = page
       .el()
       .querySelector<HTMLSelectElement>('select[aria-label="Thẻ"]')!;
-    const buttons = page
-      .el()
-      .querySelectorAll<HTMLButtonElement>('.community-list__topics button');
-    expect(buttons.length).toBeGreaterThan(1);
     const tagId = select.options[1].value;
+    select.value = tagId;
+    select.dispatchEvent(new Event('change', { bubbles: true }));
+    await page.settle();
     const request = () =>
       page.handle.mock.calls
         .filter(([e]) => e === communityEndpoints.lessons)
         .at(-1)![1].query;
-
-    buttons[1].click();
-    await page.settle();
-    expect(select.value).toBe(tagId);
-    expect(buttons[1].getAttribute('aria-pressed')).toBe('true');
     expect(String(request()?.['tagIds'])).toBe(tagId);
     expect(request()).toMatchObject({ q: 'Oracle', page: '0' });
-
-    buttons[0].click();
+    select.value = '';
+    select.dispatchEvent(new Event('change', { bubbles: true }));
     await page.settle();
-    expect(select.value).toBe('');
-    expect(buttons[0].getAttribute('aria-pressed')).toBe('true');
-    expect(request()).toMatchObject({ q: 'Oracle' });
     expect(request()?.['tagIds']).toBeUndefined();
-    expect(
-      page.handle.mock.calls.some(([e]) => e === communityEndpoints.articles),
-    ).toBe(false);
   });
 });

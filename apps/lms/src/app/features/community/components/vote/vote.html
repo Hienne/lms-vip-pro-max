@@ -1,3 +1,24 @@
+@if (mode() === 'score') {
+<button
+  uiIconButton
+  [label]="upLabel()"
+  [attr.aria-pressed]="myVote() === 1"
+  [disabled]="!canVote() || busy()"
+  (click)="cast(1)"
+>
+  <ui-icon name="arrow-up" size="sm" />
+</button>
+<span class="vote__points" aria-live="polite">{{ score() | fmtNum }} điểm</span>
+<button
+  uiIconButton
+  [label]="downLabel()"
+  [attr.aria-pressed]="myVote() === -1"
+  [disabled]="!canVote() || busy()"
+  (click)="cast(-1)"
+>
+  <ui-icon name="chevron-down" size="sm" />
+</button>
+} @else {
 <button
   uiButton
   size="sm"
@@ -23,3 +44,4 @@
 >
   <ui-icon name="thumbs-down" size="sm" />
 </button>
+}

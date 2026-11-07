@@ -1,10 +1,6 @@
-@let c = card(); @if (isQuestion()) {
-<div class="content-row__stats">
-  <span><strong>{{ c.score | fmtNum }}</strong> điểm</span>
-  <span><strong>{{ c.answerCount | fmtNum }}</strong> trả lời</span>
-</div>
-} @if (hasThumbnail()) {
+@let c = card(); @if (hasThumbnail()) {
 <app-content-thumbnail
+  [contentId]="c.contentId"
   [revisionAssetId]="c.coverRevisionAssetId"
   [kind]="c.kind"
 />
@@ -27,6 +23,22 @@
     <span>Có bản nháp chưa đăng</span>
     }
   </p>
+  <div class="content-row__stats">
+    <span
+      ><ui-icon
+        [name]="isQuestion() ? 'arrow-up' : 'thumbs-up'"
+        size="sm"
+      /><strong>{{ c.score | fmtNum }}</strong> điểm</span
+    >
+    @if (isQuestion()) {
+    <span
+      ><ui-icon name="message-square" size="sm" /><strong
+        >{{ c.answerCount | fmtNum }}</strong
+      >
+      câu trả lời</span
+    >
+    }
+  </div>
 </div>
 @if (status(); as s) {
 <div class="content-row__side">

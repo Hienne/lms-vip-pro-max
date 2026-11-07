@@ -139,10 +139,10 @@
       } @if (design.isPending$()) {
       <p role="status">Đang tải và kiểm tra tệp…</p>
       } @if (design.error$(); as error) {
-      <ui-alert tone="danger">{{ error }}</ui-alert> } } @if (!isAnswer() &&
-      !isReview()) {
+      <ui-alert tone="danger">{{ error }}</ui-alert> } } @if (!isAnswer()) {
       <app-community-cover-picker
         [kind]="store.kind$() ?? 'article'"
+        [contentId]="store.detail$()?.contentId ?? 0"
         [revisionAssetId]="existingCover()"
         [preview]="cover.preview$()"
         [hasCover]="hasCover()"

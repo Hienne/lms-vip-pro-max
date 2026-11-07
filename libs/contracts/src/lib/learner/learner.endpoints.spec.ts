@@ -58,6 +58,11 @@ describe('learner endpoints', () => {
       ['myCourses', 'get', '/api/v1/me/learning/courses'],
       ['course', 'get', '/api/v1/me/learning/courses/{courseId}'],
       ['facets', 'get', '/api/v1/me/learning/facets'],
+      [
+        'weeklyActivity',
+        'get',
+        '/api/v1/me/learning/dashboard/activity/weekly',
+      ],
       ['progressSummary', 'get', '/api/v1/me/learning/progress/summary'],
       ['dashboard', 'get', '/api/v1/me/learning/dashboard'],
       ['dashboardPrograms', 'get', '/api/v1/me/learning/dashboard/programs'],

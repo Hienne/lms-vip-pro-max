@@ -14,8 +14,7 @@
     }
   }
   &__layout {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) 240px;
+    display: block;
     gap: ui.space(8);
   }
   &__summary {
@@ -31,9 +30,9 @@
   }
   &__item {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-columns: calc(ui.space(10) * 4) minmax(0, 1fr) auto;
     gap: ui.space(5);
-    padding: ui.space(6);
+    padding: ui.space(5);
     border-bottom: 1px solid ui.color(border);
     &:last-child {
       border-bottom: 0;
@@ -42,7 +41,7 @@
   &__content {
     min-width: 0;
     h2 {
-      font-size: ui.text-size(lg);
+      font-size: ui.text-size(md);
       font-weight: ui.weight(semibold);
       margin: 0 0 ui.space(3);
     }
@@ -69,52 +68,36 @@
   }
   &__state {
     text-align: right;
-    align-self: center;
+    align-self: start;
     color: ui.color(text-muted);
     font-size: ui.text-size(sm);
     p {
       margin: ui.space(3) 0 0;
     }
   }
-  &__guide {
-    color: ui.color(text-muted);
-    h2 {
-      font: inherit;
-      font-weight: ui.weight(semibold);
-      color: ui.color(text);
-      margin: 0 0 ui.space(4);
-    }
-    ul {
-      padding: 0;
-      list-style: none;
-      margin: 0 0 ui.space(6);
-      border-bottom: 1px solid ui.color(border);
-    }
-    li {
-      padding-bottom: ui.space(4);
-    }
-    a {
-      color: ui.color(primary);
-    }
-  }
-  @include ui.bp-below(lg) {
-    &__layout {
-      grid-template-columns: minmax(0, 1fr);
-    }
-    &__guide {
-      display: none;
-    }
-  }
   @include ui.bp-below(md) {
     &__item {
-      grid-template-columns: minmax(0, 1fr);
+      grid-template-columns: calc(ui.space(12) * 2) minmax(0, 1fr);
       padding: ui.space(4);
     }
     &__state {
       text-align: left;
+      grid-column: 2;
     }
     &__summary {
       font-size: ui.text-size(sm);
     }
+  }
+  &__metrics {
+    @include ui.row(4);
+    @include ui.text(sm, muted);
+    flex-wrap: wrap;
+    margin-top: ui.space(3);
+    span {
+      @include ui.row(2);
+    }
+  }
+  &__due {
+    margin-inline-start: auto;
   }
 }

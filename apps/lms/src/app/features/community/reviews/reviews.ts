@@ -6,13 +6,14 @@ import {
   Empty,
   ErrorState,
   FmtDatePipe,
+  Icon,
   PageHeader,
   Pagination,
   Search,
   Segmented,
   type SegmentedOption,
 } from '@lms/ui';
-import { CommunityTabs } from '../components/community-tabs/community-tabs';
+import { ContentThumbnail } from '../components/content-thumbnail/content-thumbnail';
 import { REVIEW_STATUS } from '../data-access/review-labels';
 import { ReviewsStore } from './data-access/reviews.store';
 
@@ -21,7 +22,8 @@ import { ReviewsStore } from './data-access/reviews.store';
   imports: [
     Badge,
     Button,
-    CommunityTabs,
+    ContentThumbnail,
+    Icon,
     Empty,
     ErrorState,
     FmtDatePipe,

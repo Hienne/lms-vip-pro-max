@@ -1,0 +1,940 @@
+Warning: Failed to copy native module to cache after 1 attempt (EPERM). Loading from original location instead. This may cause file locking issues on Windows.
+
+ NX   Running target test for 4 projects:
+
+- lms
+- ui
+- contracts
+- mocks
+
+With additional flags:
+  --maxWorkers=2
+
+
+
+> nx run contracts:test --maxWorkers=2
+
+> vitest run --maxWorkers=2
+
+(node:46008) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+ RUN  v4.1.11 D:/SCH/lms-vip-pro-max/libs/contracts
+
+(node:26096) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:42672) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ❯ |contracts| src/lib/course/course.endpoints.spec.ts (0 test)
+ ❯ |contracts| src/lib/learner/learner.endpoints.spec.ts (0 test)
+(node:36032) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:36452) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ❯ |contracts| src/lib/assessment/learner-quiz.endpoints.spec.ts (0 test)
+ ❯ |contracts| src/lib/feedback/feedback.endpoints.spec.ts (0 test)
+(node:40432) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:25796) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ❯ |contracts| src/lib/personal/personal.endpoints.spec.ts (0 test)
+ ❯ |contracts| src/lib/learning-asset/asset.endpoints.spec.ts (0 test)
+(node:36688) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:32520) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ❯ |contracts| src/lib/community/community.schema.spec.ts (0 test)
+ ❯ |contracts| src/lib/reports/learning-reports.endpoints.spec.ts (0 test)
+(node:3312) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ❯ |contracts| src/lib/organization/organization.endpoints.spec.ts (0 test)
+(node:15660) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ❯ |contracts| src/lib/assistant-agent/agent.schema.spec.ts (0 test)
+(node:42720) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ❯ |contracts| src/lib/identity/access-request.schema.spec.ts (0 test)
+(node:22852) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ❯ |contracts| src/lib/certificate/certificate.endpoints.spec.ts (0 test)
+(node:43348) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ❯ |contracts| src/lib/assignment/assignment.endpoints.spec.ts (0 test)
+(node:7268) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ❯ |contracts| src/lib/training-catalog/training-catalog.endpoints.spec.ts (0 test)
+(node:24436) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ❯ |contracts| src/lib/identity/identity.endpoints.spec.ts (0 test)
+(node:16404) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ❯ |contracts| src/lib/course/course-card.schema.spec.ts (0 test)
+(node:27984) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ❯ |contracts| src/lib/auth/auth-v1.endpoints.spec.ts (0 test)
+(node:36052) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ❯ |contracts| src/lib/http/envelope.spec.ts (0 test)
+(node:35708) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ❯ |contracts| src/lib/learner/learner.schema.spec.ts (0 test)
+(node:41528) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ❯ |contracts| src/lib/http/page.spec.ts (0 test)
+(node:46368) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ❯ |contracts| src/lib/shell/shell.endpoints.spec.ts (0 test)
+(node:41128) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ❯ |contracts| src/lib/admin-org/admin-org.endpoints.spec.ts (0 test)
+(node:10344) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ❯ |contracts| src/lib/http/endpoint.spec.ts (0 test)
+(node:45296) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ❯ |contracts| src/lib/community/community.endpoints.spec.ts (0 test)
+(node:48116) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ❯ |contracts| src/lib/learning/learning.schema.spec.ts (0 test)
+(node:39564) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ❯ |contracts| src/lib/http/patch.spec.ts (0 test)
+
+⎯⎯⎯⎯⎯⎯ Failed Suites 26 ⎯⎯⎯⎯⎯⎯
+
+ FAIL  |contracts| src/lib/admin-org/admin-org.endpoints.spec.ts [ src/lib/admin-org/admin-org.endpoints.spec.ts ]
+Error: EPERM: operation not permitted, rename 'C:\Users\tutp\AppData\Local\Packages\sandbox.{4dc2123c-43b8-4c73-9c3f-5026860acb0c}\AC\Temp\mCAFwSQFqGibUoV2Ku4C8\ssr\.tmp-1794042478188-0ydkxwqfnadp' -> 'C:\Users\tutp\AppData\Local\Packages\sandbox.{4dc2123c-43b8-4c73-9c3f-5026860acb0c}\AC\Temp\mCAFwSQFqGibUoV2Ku4C8\ssr\168c9db48e39e5bbd80623c4d4acc9af006f821f'
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/26]⎯
+
+ FAIL  |contracts| src/lib/assistant-agent/agent.schema.spec.ts [ src/lib/assistant-agent/agent.schema.spec.ts ]
+Error: EPERM: operation not permitted, rename 'C:\Users\tutp\AppData\Local\Packages\sandbox.{4dc2123c-43b8-4c73-9c3f-5026860acb0c}\AC\Temp\mCAFwSQFqGibUoV2Ku4C8\ssr\.tmp-1794042476867-oogyylxgx19' -> 'C:\Users\tutp\AppData\Local\Packages\sandbox.{4dc2123c-43b8-4c73-9c3f-5026860acb0c}\AC\Temp\mCAFwSQFqGibUoV2Ku4C8\ssr\bab147e760ef3c4c2cb7fd8656525cda948fb6fc'
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/26]⎯
+
+ FAIL  |contracts| src/lib/assessment/learner-quiz.endpoints.spec.ts [ src/lib/assessment/learner-quiz.endpoints.spec.ts ]
+Error: EPERM: operation not permitted, rename 'C:\Users\tutp\AppData\Local\Packages\sandbox.{4dc2123c-43b8-4c73-9c3f-5026860acb0c}\AC\Temp\mCAFwSQFqGibUoV2Ku4C8\ssr\.tmp-1794042476142-moxzhoz95sd' -> 'C:\Users\tutp\AppData\Local\Packages\sandbox.{4dc2123c-43b8-4c73-9c3f-5026860acb0c}\AC\Temp\mCAFwSQFqGibUoV2Ku4C8\ssr\3a9010699308556510ffc70716622cf7e175b499'
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/26]⎯
+
+ FAIL  |contracts| src/lib/assignment/assignment.endpoints.spec.ts [ src/lib/assignment/assignment.endpoints.spec.ts ]
+Error: EPERM: operation not permitted, rename 'C:\Users\tutp\AppData\Local\Packages\sandbox.{4dc2123c-43b8-4c73-9c3f-5026860acb0c}\AC\Temp\mCAFwSQFqGibUoV2Ku4C8\ssr\.tmp-1794042477206-0kkqm0uvz5i' -> 'C:\Users\tutp\AppData\Local\Packages\sandbox.{4dc2123c-43b8-4c73-9c3f-5026860acb0c}\AC\Temp\mCAFwSQFqGibUoV2Ku4C8\ssr\903abe3ee8499d477c60197d8480e8fc5500e988'
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/26]⎯
+
+ FAIL  |contracts| src/lib/auth/auth-v1.endpoints.spec.ts [ src/lib/auth/auth-v1.endpoints.spec.ts ]
+Error: EPERM: operation not permitted, rename 'C:\Users\tutp\AppData\Local\Packages\sandbox.{4dc2123c-43b8-4c73-9c3f-5026860acb0c}\AC\Temp\mCAFwSQFqGibUoV2Ku4C8\ssr\.tmp-1794042477665-33ke9rmpoiq' -> 'C:\Users\tutp\AppData\Local\Packages\sandbox.{4dc2123c-43b8-4c73-9c3f-5026860acb0c}\AC\Temp\mCAFwSQFqGibUoV2Ku4C8\ssr\2ac4cc62ae7eabbdc83ee9807f871280f7b451cb'
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/26]⎯
+
+ FAIL  |contracts| src/lib/certificate/certificate.endpoints.spec.ts [ src/lib/certificate/certificate.endpoints.spec.ts ]
+Error: EPERM: operation not permitted, rename 'C:\Users\tutp\AppData\Local\Packages\sandbox.{4dc2123c-43b8-4c73-9c3f-5026860acb0c}\AC\Temp\mCAFwSQFqGibUoV2Ku4C8\ssr\.tmp-1794042477140-sqb4313gvbh' -> 'C:\Users\tutp\AppData\Local\Packages\sandbox.{4dc2123c-43b8-4c73-9c3f-5026860acb0c}\AC\Temp\mCAFwSQFqGibUoV2Ku4C8\ssr\a6465b142b0e0d68f6edf72abee0636523ff5739'
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[6/26]⎯
+
+ FAIL  |contracts| src/lib/community/community.endpoints.spec.ts [ src/lib/community/community.endpoints.spec.ts ]
+Error: EPERM: operation not permitted, rename 'C:\Users\tutp\AppData\Local\Packages\sandbox.{4dc2123c-43b8-4c73-9c3f-5026860acb0c}\AC\Temp\mCAFwSQFqGibUoV2Ku4C8\ssr\.tmp-1794042478398-qn19jrt311d' -> 'C:\Users\tutp\AppData\Local\Packages\sandbox.{4dc2123c-43b8-4c73-9c3f-5026860acb0c}\AC\Temp\mCAFwSQFqGibUoV2Ku4C8\ssr\bbbb87a67b46639eb441ffa0c5cdf8860ab16129'
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[7/26]⎯
+
+ FAIL  |contracts| src/lib/community/community.schema.spec.ts [ src/lib/community/community.schema.spec.ts ]
+Error: EPERM: operation not permitted, rename 'C:\Users\tutp\AppData\Local\Packages\sandbox.{4dc2123c-43b8-4c73-9c3f-5026860acb0c}\AC\Temp\mCAFwSQFqGibUoV2Ku4C8\ssr\.tmp-1794042476532-4mkezl1vfah' -> 'C:\Users\tutp\AppData\Local\Packages\sandbox.{4dc2123c-43b8-4c73-9c3f-5026860acb0c}\AC\Temp\mCAFwSQFqGibUoV2Ku4C8\ssr\2a6b6091405e947000803678d99b9eac47522a2e'
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[8/26]⎯
+
+ FAIL  |contracts| src/lib/feedback/feedback.endpoints.spec.ts [ src/lib/feedback/feedback.endpoints.spec.ts ]
+Error: EPERM: operation not permitted, rename 'C:\Users\tutp\AppData\Local\Packages\sandbox.{4dc2123c-43b8-4c73-9c3f-5026860acb0c}\AC\Temp\mCAFwSQFqGibUoV2Ku4C8\ssr\.tmp-1794042476171-5icr4ot73qc' -> 'C:\Users\tutp\AppData\Local\Packages\sandbox.{4dc2123c-43b8-4c73-9c3f-5026860acb0c}\AC\Temp\mCAFwSQFqGibUoV2Ku4C8\ssr\b4670d1f9515cfc5437524538f760239c1692bf6'
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[9/26]⎯
+
+ FAIL  |contracts| src/lib/course/course-card.schema.spec.ts [ src/lib/course/course-card.schema.spec.ts ]
+Error: EPERM: operation not permitted, rename 'C:\Users\tutp\AppData\Local\Packages\sandbox.{4dc2123c-43b8-4c73-9c3f-5026860acb0c}\AC\Temp\mCAFwSQFqGibUoV2Ku4C8\ssr\.tmp-1794042477551-1g3t8v042f8' -> 'C:\Users\tutp\AppData\Local\Packages\sandbox.{4dc2123c-43b8-4c73-9c3f-5026860acb0c}\AC\Temp\mCAFwSQFqGibUoV2Ku4C8\ssr\0a4305b7f60ad580f8c739fe0db1e75d44211a6d'
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[10/26]⎯
+
+ FAIL  |contracts| src/lib/course/course.endpoints.spec.ts [ src/lib/course/course.endpoints.spec.ts ]
+Error: EPERM: operation not permitted, rename 'C:\Users\tutp\AppData\Local\Packages\sandbox.{4dc2123c-43b8-4c73-9c3f-5026860acb0c}\AC\Temp\mCAFwSQFqGibUoV2Ku4C8\ssr\.tmp-1794042475935-dmn5g13zkei' -> 'C:\Users\tutp\AppData\Local\Packages\sandbox.{4dc2123c-43b8-4c73-9c3f-5026860acb0c}\AC\Temp\mCAFwSQFqGibUoV2Ku4C8\ssr\f6b7010ee29a872bb75c8bc969a4f87de50ac111'
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[11/26]⎯
+
+ FAIL  |contracts| src/lib/identity/access-request.schema.spec.ts [ src/lib/identity/access-request.schema.spec.ts ]
+Error: EPERM: operation not permitted, rename 'C:\Users\tutp\AppData\Local\Packages\sandbox.{4dc2123c-43b8-4c73-9c3f-5026860acb0c}\AC\Temp\mCAFwSQFqGibUoV2Ku4C8\ssr\.tmp-1794042477004-e5oaf5e1lic' -> 'C:\Users\tutp\AppData\Local\Packages\sandbox.{4dc2123c-43b8-4c73-9c3f-5026860acb0c}\AC\Temp\mCAFwSQFqGibUoV2Ku4C8\ssr\f3ab7c6921af0f3112b282e3587d04d0530fb79c'
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[12/26]⎯
+
+ FAIL  |contracts| src/lib/identity/identity.endpoints.spec.ts [ src/lib/identity/identity.endpoints.spec.ts ]
+Error: EPERM: operation not permitted, rename 'C:\Users\tutp\AppData\Local\Packages\sandbox.{4dc2123c-43b8-4c73-9c3f-5026860acb0c}\AC\Temp\mCAFwSQFqGibUoV2Ku4C8\ssr\.tmp-1794042477420-wpmpuu16bm8' -> 'C:\Users\tutp\AppData\Local\Packages\sandbox.{4dc2123c-43b8-4c73-9c3f-5026860acb0c}\AC\Temp\mCAFwSQFqGibUoV2Ku4C8\ssr\c4edb2fef8675bd262eb3abe1acf7ca086252860'
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[13/26]⎯
+
+ FAIL  |contracts| src/lib/http/endpoint.spec.ts [ src/lib/http/endpoint.spec.ts ]
+Error: EPERM: operation not permitted, rename 'C:\Users\tutp\AppData\Local\Packages\sandbox.{4dc2123c-43b8-4c73-9c3f-5026860acb0c}\AC\Temp\mCAFwSQFqGibUoV2Ku4C8\ssr\.tmp-1794042478252-8ex5dbchnzv' -> 'C:\Users\tutp\AppData\Local\Packages\sandbox.{4dc2123c-43b8-4c73-9c3f-5026860acb0c}\AC\Temp\mCAFwSQFqGibUoV2Ku4C8\ssr\7f1c6ca6c351a5f6016c52952d33b8c359481e57'
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[14/26]⎯
+
+ FAIL  |contracts| src/lib/http/envelope.spec.ts [ src/lib/http/envelope.spec.ts ]
+Error: EPERM: operation not permitted, rename 'C:\Users\tutp\AppData\Local\Packages\sandbox.{4dc2123c-43b8-4c73-9c3f-5026860acb0c}\AC\Temp\mCAFwSQFqGibUoV2Ku4C8\ssr\.tmp-1794042477753-bmq6q6r96m' -> 'C:\Users\tutp\AppData\Local\Packages\sandbox.{4dc2123c-43b8-4c73-9c3f-5026860acb0c}\AC\Temp\mCAFwSQFqGibUoV2Ku4C8\ssr\7325730a50ee054652846295620f0a7e885052c8'
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[15/26]⎯
+
+ FAIL  |contracts| src/lib/http/page.spec.ts [ src/lib/http/page.spec.ts ]
+Error: EPERM: operation not permitted, rename 'C:\Users\tutp\AppData\Local\Packages\sandbox.{4dc2123c-43b8-4c73-9c3f-5026860acb0c}\AC\Temp\mCAFwSQFqGibUoV2Ku4C8\ssr\.tmp-1794042477950-ndz9qbj7cfs' -> 'C:\Users\tutp\AppData\Local\Packages\sandbox.{4dc2123c-43b8-4c73-9c3f-5026860acb0c}\AC\Temp\mCAFwSQFqGibUoV2Ku4C8\ssr\8040109bbb37f104107956790e3aabd01678e143'
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[16/26]⎯
+
+ FAIL  |contracts| src/lib/http/patch.spec.ts [ src/lib/http/patch.spec.ts ]
+Error: EPERM: operation not permitted, rename 'C:\Users\tutp\AppData\Local\Packages\sandbox.{4dc2123c-43b8-4c73-9c3f-5026860acb0c}\AC\Temp\mCAFwSQFqGibUoV2Ku4C8\ssr\.tmp-1794042478592-9t67hdrlmp' -> 'C:\Users\tutp\AppData\Local\Packages\sandbox.{4dc2123c-43b8-4c73-9c3f-5026860acb0c}\AC\Temp\mCAFwSQFqGibUoV2Ku4C8\ssr\d23c5b8b23bcd6ae767a26c9038c67f2734b7325'
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[17/26]⎯
+
+ FAIL  |contracts| src/lib/learner/learner.endpoints.spec.ts [ src/lib/learner/learner.endpoints.spec.ts ]
+Error: EPERM: operation not permitted, rename 'C:\Users\tutp\AppData\Local\Packages\sandbox.{4dc2123c-43b8-4c73-9c3f-5026860acb0c}\AC\Temp\mCAFwSQFqGibUoV2Ku4C8\ssr\.tmp-1794042475942-ggbqfbdwfbl' -> 'C:\Users\tutp\AppData\Local\Packages\sandbox.{4dc2123c-43b8-4c73-9c3f-5026860acb0c}\AC\Temp\mCAFwSQFqGibUoV2Ku4C8\ssr\c9d6cc5fa1034e55d75a71f3fba31bd5f69db80a'
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[18/26]⎯
+
+ FAIL  |contracts| src/lib/learner/learner.schema.spec.ts [ src/lib/learner/learner.schema.spec.ts ]
+Error: EPERM: operation not permitted, rename 'C:\Users\tutp\AppData\Local\Packages\sandbox.{4dc2123c-43b8-4c73-9c3f-5026860acb0c}\AC\Temp\mCAFwSQFqGibUoV2Ku4C8\ssr\.tmp-1794042477881-3m8yv0irjyt' -> 'C:\Users\tutp\AppData\Local\Packages\sandbox.{4dc2123c-43b8-4c73-9c3f-5026860acb0c}\AC\Temp\mCAFwSQFqGibUoV2Ku4C8\ssr\f4760eb2d195ecd929302eb3d7a5bd599cc4b523'
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[19/26]⎯
+
+ FAIL  |contracts| src/lib/learning-asset/asset.endpoints.spec.ts [ src/lib/learning-asset/asset.endpoints.spec.ts ]
+Error: EPERM: operation not permitted, rename 'C:\Users\tutp\AppData\Local\Packages\sandbox.{4dc2123c-43b8-4c73-9c3f-5026860acb0c}\AC\Temp\mCAFwSQFqGibUoV2Ku4C8\ssr\.tmp-1794042476377-9b7rwvo39la' -> 'C:\Users\tutp\AppData\Local\Packages\sandbox.{4dc2123c-43b8-4c73-9c3f-5026860acb0c}\AC\Temp\mCAFwSQFqGibUoV2Ku4C8\ssr\090abd0c5ef0b8851fc3fe844727eca2b3af1d2a'
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[20/26]⎯
+
+ FAIL  |contracts| src/lib/personal/personal.endpoints.spec.ts [ src/lib/personal/personal.endpoints.spec.ts ]
+Error: EPERM: operation not permitted, rename 'C:\Users\tutp\AppData\Local\Packages\sandbox.{4dc2123c-43b8-4c73-9c3f-5026860acb0c}\AC\Temp\mCAFwSQFqGibUoV2Ku4C8\ssr\.tmp-1794042476342-y53vwvhsedj' -> 'C:\Users\tutp\AppData\Local\Packages\sandbox.{4dc2123c-43b8-4c73-9c3f-5026860acb0c}\AC\Temp\mCAFwSQFqGibUoV2Ku4C8\ssr\af71daa8e15448fb6d7eb741ce25a439e315b86b'
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[21/26]⎯
+
+ FAIL  |contracts| src/lib/learning/learning.schema.spec.ts [ src/lib/learning/learning.schema.spec.ts ]
+Error: EPERM: operation not permitted, rename 'C:\Users\tutp\AppData\Local\Packages\sandbox.{4dc2123c-43b8-4c73-9c3f-5026860acb0c}\AC\Temp\mCAFwSQFqGibUoV2Ku4C8\ssr\.tmp-1794042478457-sse1ku29pgi' -> 'C:\Users\tutp\AppData\Local\Packages\sandbox.{4dc2123c-43b8-4c73-9c3f-5026860acb0c}\AC\Temp\mCAFwSQFqGibUoV2Ku4C8\ssr\38668e2785ca56354ef379c9c1b3337dabe3ba0f'
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[22/26]⎯
+
+ FAIL  |contracts| src/lib/reports/learning-reports.endpoints.spec.ts [ src/lib/reports/learning-reports.endpoints.spec.ts ]
+Error: EPERM: operation not permitted, rename 'C:\Users\tutp\AppData\Local\Packages\sandbox.{4dc2123c-43b8-4c73-9c3f-5026860acb0c}\AC\Temp\mCAFwSQFqGibUoV2Ku4C8\ssr\.tmp-1794042476621-8zb8gtfn66p' -> 'C:\Users\tutp\AppData\Local\Packages\sandbox.{4dc2123c-43b8-4c73-9c3f-5026860acb0c}\AC\Temp\mCAFwSQFqGibUoV2Ku4C8\ssr\ac4960974cfa85000f3e4b01c4b2b2637764f008'
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[23/26]⎯
+
+ FAIL  |contracts| src/lib/shell/shell.endpoints.spec.ts [ src/lib/shell/shell.endpoints.spec.ts ]
+Error: EPERM: operation not permitted, rename 'C:\Users\tutp\AppData\Local\Packages\sandbox.{4dc2123c-43b8-4c73-9c3f-5026860acb0c}\AC\Temp\mCAFwSQFqGibUoV2Ku4C8\ssr\.tmp-1794042478066-u28m0th2fn' -> 'C:\Users\tutp\AppData\Local\Packages\sandbox.{4dc2123c-43b8-4c73-9c3f-5026860acb0c}\AC\Temp\mCAFwSQFqGibUoV2Ku4C8\ssr\3d5c131d94dc28d4e9aa72b3bc6611b5be97ccc6'
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[24/26]⎯
+
+ FAIL  |contracts| src/lib/organization/organization.endpoints.spec.ts [ src/lib/organization/organization.endpoints.spec.ts ]
+Error: EPERM: operation not permitted, rename 'C:\Users\tutp\AppData\Local\Packages\sandbox.{4dc2123c-43b8-4c73-9c3f-5026860acb0c}\AC\Temp\mCAFwSQFqGibUoV2Ku4C8\ssr\.tmp-1794042476766-umpgtb4v0xi' -> 'C:\Users\tutp\AppData\Local\Packages\sandbox.{4dc2123c-43b8-4c73-9c3f-5026860acb0c}\AC\Temp\mCAFwSQFqGibUoV2Ku4C8\ssr\38ba102f4fdb680b661338bedd3e0f580313132a'
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[25/26]⎯
+
+ FAIL  |contracts| src/lib/training-catalog/training-catalog.endpoints.spec.ts [ src/lib/training-catalog/training-catalog.endpoints.spec.ts ]
+Error: EPERM: operation not permitted, rename 'C:\Users\tutp\AppData\Local\Packages\sandbox.{4dc2123c-43b8-4c73-9c3f-5026860acb0c}\AC\Temp\mCAFwSQFqGibUoV2Ku4C8\ssr\.tmp-1794042477356-jhq8l7ixr0k' -> 'C:\Users\tutp\AppData\Local\Packages\sandbox.{4dc2123c-43b8-4c73-9c3f-5026860acb0c}\AC\Temp\mCAFwSQFqGibUoV2Ku4C8\ssr\b9262a0a7169fcd6b27599c7b30c7c17187403ca'
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[26/26]⎯
+
+
+ Test Files  26 failed (26)
+      Tests  no tests
+   Start at  16:07:55
+   Duration  2.92s (transform 0ms, setup 0ms, import 0ms, tests 0ms, environment 2ms)
+
+Warning: command "vitest run --maxWorkers=2" exited with non-zero status code
+> nx run ui:test --maxWorkers=2
+
+> vitest run --maxWorkers=2
+
+(node:12700) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+ RUN  v4.1.11 D:/SCH/lms-vip-pro-max/libs/ui
+
+(node:12700) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:12700) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |ui| src/styles/styles.spec.ts (73 tests) 553ms
+ ✓ |ui| src/lib/organisms/drawer/drawer.directive.spec.ts (34 tests) 706ms
+ ✓ |ui| src/lib/molecules/field/field.spec.ts (14 tests) 370ms
+stderr | src/lib/organisms/confirm-dialog/confirm-dialog.spec.ts > confirm > resolves true when the user confirms
+Element matching '[cdkFocusInitial]' is not focusable. HTMLButtonElement {
+  __ngContext__: 9,
+  Symbol(SameObject caches): [Object: null prototype] {
+    classList: DOMTokenList {},
+    attributes: NamedNodeMap {}
+  }
+}
+
+stderr | src/lib/organisms/confirm-dialog/confirm-dialog.spec.ts > confirm > resolves false on the cancel button
+Element matching '[cdkFocusInitial]' is not focusable. HTMLButtonElement {
+  __ngContext__: 25,
+  Symbol(SameObject caches): [Object: null prototype] {
+    classList: DOMTokenList {},
+    attributes: NamedNodeMap {}
+  }
+}
+
+stderr | src/lib/organisms/confirm-dialog/confirm-dialog.spec.ts > confirm > resolves false on the close icon
+Element matching '[cdkFocusInitial]' is not focusable. HTMLButtonElement {
+  __ngContext__: 41,
+  Symbol(SameObject caches): [Object: null prototype] {
+    classList: DOMTokenList {},
+    attributes: NamedNodeMap {}
+  }
+}
+
+stderr | src/lib/organisms/confirm-dialog/confirm-dialog.spec.ts > confirm > resolves false on Escape
+Element matching '[cdkFocusInitial]' is not focusable. HTMLButtonElement {
+  __ngContext__: 57,
+  Symbol(SameObject caches): [Object: null prototype] {
+    classList: DOMTokenList {},
+    attributes: NamedNodeMap {}
+  }
+}
+
+stderr | src/lib/organisms/confirm-dialog/confirm-dialog.spec.ts > confirm > resolves false on a backdrop click
+Element matching '[cdkFocusInitial]' is not focusable. HTMLButtonElement {
+  __ngContext__: 73,
+  Symbol(SameObject caches): [Object: null prototype] {
+    classList: DOMTokenList {},
+    attributes: NamedNodeMap {}
+  }
+}
+
+stderr | src/lib/organisms/confirm-dialog/confirm-dialog.spec.ts > confirm > does not open until subscribed
+Element matching '[cdkFocusInitial]' is not focusable. HTMLButtonElement {
+  __ngContext__: 89,
+  Symbol(SameObject caches): [Object: null prototype] {
+    classList: DOMTokenList {},
+    attributes: NamedNodeMap {}
+  }
+}
+
+stderr | src/lib/organisms/confirm-dialog/confirm-dialog.spec.ts > confirm > is labelled by its title and described by its message
+Element matching '[cdkFocusInitial]' is not focusable. HTMLButtonElement {
+  __ngContext__: 105,
+  Symbol(SameObject caches): [Object: null prototype] {
+    classList: DOMTokenList {},
+    attributes: NamedNodeMap {}
+  }
+}
+
+stderr | src/lib/organisms/confirm-dialog/confirm-dialog.spec.ts > confirm > uses the primary button by default and the danger button for the danger tone
+Element matching '[cdkFocusInitial]' is not focusable. HTMLButtonElement {
+  __ngContext__: 121,
+  Symbol(SameObject caches): [Object: null prototype] {
+    classList: DOMTokenList {},
+    attributes: NamedNodeMap {}
+  }
+}
+
+stderr | src/lib/organisms/confirm-dialog/confirm-dialog.spec.ts > confirm > uses the primary button by default and the danger button for the danger tone
+Element matching '[cdkFocusInitial]' is not focusable. HTMLButtonElement {
+  __ngContext__: 131,
+  Symbol(SameObject caches): [Object: null prototype] {
+    classList: DOMTokenList {},
+    attributes: NamedNodeMap {}
+  }
+}
+
+stderr | src/lib/organisms/confirm-dialog/confirm-dialog.spec.ts > confirm > has no icon beside the title, only the close button
+Element matching '[cdkFocusInitial]' is not focusable. HTMLButtonElement {
+  __ngContext__: 147,
+  Symbol(SameObject caches): [Object: null prototype] {
+    classList: DOMTokenList {},
+    attributes: NamedNodeMap {}
+  }
+}
+
+stderr | src/lib/organisms/confirm-dialog/confirm-dialog.spec.ts > confirm > uses Vietnamese labels by default
+Element matching '[cdkFocusInitial]' is not focusable. HTMLButtonElement {
+  __ngContext__: 163,
+  Symbol(SameObject caches): [Object: null prototype] {
+    classList: DOMTokenList {},
+    attributes: NamedNodeMap {}
+  }
+}
+
+stderr | src/lib/organisms/confirm-dialog/confirm-dialog.spec.ts > confirm > moves focus into the dialog, traps it and restores it on close
+Element matching '[cdkFocusInitial]' is not focusable. HTMLButtonElement {
+  __ngContext__: 179,
+  Symbol(SameObject caches): [Object: null prototype] {
+    classList: DOMTokenList {},
+    attributes: NamedNodeMap {}
+  }
+}
+
+stderr | src/lib/organisms/confirm-dialog/confirm-dialog.spec.ts > choose > tells the close icon (undefined) from the cancel button (false) and confirm (true)
+Element matching '[cdkFocusInitial]' is not focusable. HTMLButtonElement {
+  __ngContext__: 195,
+  Symbol(SameObject caches): [Object: null prototype] {
+    classList: DOMTokenList {},
+    attributes: NamedNodeMap {}
+  }
+}
+
+stderr | src/lib/organisms/confirm-dialog/confirm-dialog.spec.ts > choose > tells the close icon (undefined) from the cancel button (false) and confirm (true)
+Element matching '[cdkFocusInitial]' is not focusable. HTMLButtonElement {
+  __ngContext__: 207,
+  Symbol(SameObject caches): [Object: null prototype] {
+    classList: DOMTokenList {},
+    attributes: NamedNodeMap {}
+  }
+}
+
+stderr | src/lib/organisms/confirm-dialog/confirm-dialog.spec.ts > choose > tells the close icon (undefined) from the cancel button (false) and confirm (true)
+Element matching '[cdkFocusInitial]' is not focusable. HTMLButtonElement {
+  __ngContext__: 219,
+  Symbol(SameObject caches): [Object: null prototype] {
+    classList: DOMTokenList {},
+    attributes: NamedNodeMap {}
+  }
+}
+
+ ✓ |ui| src/lib/organisms/confirm-dialog/confirm-dialog.spec.ts (12 tests) 181ms
+ ✓ |ui| src/lib/organisms/tree/tree.spec.ts (9 tests) 217ms
+stderr | src/lib/molecules/tabs/tabs.spec.ts > Tabs > is a named tab list with one tab per item
+ERROR TypeError: Receiver must be an instance of class URL
+    at get href (node:internal/url:1005:10)
+    at isURL (node:internal/util/inspect:208:23)
+    at formatRaw (node:internal/util/inspect:1123:16)
+    at formatValue (node:internal/util/inspect:925:10)
+    at formatProperty (node:internal/util/inspect:2283:11)
+    at formatRaw (node:internal/util/inspect:1169:9)
+    at formatValue (node:internal/util/inspect:925:10)
+    at formatProperty (node:internal/util/inspect:2283:11)
+    at formatRaw (node:internal/util/inspect:1169:9)
+    at formatValue (node:internal/util/inspect:925:10)
+ERROR TypeError: Receiver must be an instance of class URL
+    at get href (node:internal/url:1005:10)
+    at isURL (node:internal/util/inspect:208:23)
+    at formatRaw (node:internal/util/inspect:1123:16)
+    at formatValue (node:internal/util/inspect:925:10)
+    at formatProperty (node:internal/util/inspect:2283:11)
+    at formatRaw (node:internal/util/inspect:1169:9)
+    at formatValue (node:internal/util/inspect:925:10)
+    at formatProperty (node:internal/util/inspect:2283:11)
+    at formatRaw (node:internal/util/inspect:1169:9)
+    at formatValue (node:internal/util/inspect:925:10)
+ERROR TypeError: Receiver must be an instance of class URL
+    at get href (node:internal/url:1005:10)
+    at isURL (node:internal/util/inspect:208:23)
+    at formatRaw (node:internal/util/inspect:1123:16)
+    at formatValue (node:internal/util/inspect:925:10)
+    at formatProperty (node:internal/util/inspect:2283:11)
+    at formatRaw (node:internal/util/inspect:1169:9)
+    at formatValue (node:internal/util/inspect:925:10)
+    at formatProperty (node:internal/util/inspect:2283:11)
+    at formatRaw (node:internal/util/inspect:1169:9)
+    at formatValue (node:internal/util/inspect:925:10)
+
+stderr | src/lib/molecules/tabs/tabs.spec.ts > Tabs > keeps the strip scrolling unless it is asked to wrap
+ERROR TypeError: Receiver must be an instance of class URL
+    at get href (node:internal/url:1005:10)
+    at isURL (node:internal/util/inspect:208:23)
+    at formatRaw (node:internal/util/inspect:1123:16)
+    at formatValue (node:internal/util/inspect:925:10)
+    at formatProperty (node:internal/util/inspect:2283:11)
+    at formatRaw (node:internal/util/inspect:1169:9)
+    at formatValue (node:internal/util/inspect:925:10)
+    at formatProperty (node:internal/util/inspect:2283:11)
+    at formatRaw (node:internal/util/inspect:1169:9)
+    at formatValue (node:internal/util/inspect:925:10)
+ERROR TypeError: Receiver must be an instance of class URL
+    at get href (node:internal/url:1005:10)
+    at isURL (node:internal/util/inspect:208:23)
+    at formatRaw (node:internal/util/inspect:1123:16)
+    at formatValue (node:internal/util/inspect:925:10)
+    at formatProperty (node:internal/util/inspect:2283:11)
+    at formatRaw (node:internal/util/inspect:1169:9)
+    at formatValue (node:internal/util/inspect:925:10)
+    at formatProperty (node:internal/util/inspect:2283:11)
+    at formatRaw (node:internal/util/inspect:1169:9)
+    at formatValue (node:internal/util/inspect:925:10)
+ERROR TypeError: Receiver must be an instance of class URL
+    at get href (node:internal/url:1005:10)
+    at isURL (node:internal/util/inspect:208:23)
+    at formatRaw (node:internal/util/inspect:1123:16)
+    at formatValue (node:internal/util/inspect:925:10)
+    at formatProperty (node:internal/util/inspect:2283:11)
+    at formatRaw (node:internal/util/inspect:1169:9)
+    at formatValue (node:internal/util/inspect:925:10)
+    at formatProperty (node:internal/util/inspect:2283:11)
+    at formatRaw (node:internal/util/inspect:1169:9)
+    at formatValue (node:internal/util/inspect:925:10)
+
+stderr | src/lib/molecules/tabs/tabs.spec.ts > Tabs > keeps the strip scrolling unless it is asked to wrap
+ERROR TypeError: Receiver must be an instance of class URL
+    at get href (node:internal/url:1005:10)
+    at isURL (node:internal/util/inspect:208:23)
+    at formatRaw (node:internal/util/inspect:1123:16)
+    at formatValue (node:internal/util/inspect:925:10)
+    at formatProperty (node:internal/util/inspect:2283:11)
+    at formatRaw (node:internal/util/inspect:1169:9)
+    at formatValue (node:internal/util/inspect:925:10)
+    at formatProperty (node:internal/util/inspect:2283:11)
+    at formatRaw (node:internal/util/inspect:1169:9)
+    at formatValue (node:internal/util/inspect:925:10)
+ERROR TypeError: Receiver must be an instance of class URL
+    at get href (node:internal/url:1005:10)
+    at isURL (node:internal/util/inspect:208:23)
+    at formatRaw (node:internal/util/inspect:1123:16)
+    at formatValue (node:internal/util/inspect:925:10)
+    at formatProperty (node:internal/util/inspect:2283:11)
+    at formatRaw (node:internal/util/inspect:1169:9)
+    at formatValue (node:internal/util/inspect:925:10)
+    at formatProperty (node:internal/util/inspect:2283:11)
+    at formatRaw (node:internal/util/inspect:1169:9)
+    at formatValue (node:internal/util/inspect:925:10)
+ERROR TypeError: Receiver must be an instance of class URL
+    at get href (node:internal/url:1005:10)
+    at isURL (node:internal/util/inspect:208:23)
+    at formatRaw (node:internal/util/inspect:1123:16)
+    at formatValue (node:internal/util/inspect:925:10)
+    at formatProperty (node:internal/util/inspect:2283:11)
+    at formatRaw (node:internal/util/inspect:1169:9)
+    at formatValue (node:internal/util/inspect:925:10)
+    at formatProperty (node:internal/util/inspect:2283:11)
+    at formatRaw (node:internal/util/inspect:1169:9)
+    at formatValue (node:internal/util/inspect:925:10)
+
+stderr | src/lib/molecules/tabs/tabs.spec.ts > Tabs > tightens the spacing only when it is asked to be compact
+ERROR TypeError: Receiver must be an instance of class URL
+    at get href (node:internal/url:1005:10)
+    at isURL (node:internal/util/inspect:208:23)
+    at formatRaw (node:internal/util/inspect:1123:16)
+    at formatValue (node:internal/util/inspect:925:10)
+    at formatProperty (node:internal/util/inspect:2283:11)
+    at formatRaw (node:internal/util/inspect:1169:9)
+    at formatValue (node:internal/util/inspect:925:10)
+    at formatProperty (node:internal/util/inspect:2283:11)
+    at formatRaw (node:internal/util/inspect:1169:9)
+    at formatValue (node:internal/util/inspect:925:10)
+ERROR TypeError: Receiver must be an instance of class URL
+    at get href (node:internal/url:1005:10)
+    at isURL (node:internal/util/inspect:208:23)
+    at formatRaw (node:internal/util/inspect:1123:16)
+    at formatValue (node:internal/util/inspect:925:10)
+    at formatProperty (node:internal/util/inspect:2283:11)
+    at formatRaw (node:internal/util/inspect:1169:9)
+    at formatValue (node:internal/util/inspect:925:10)
+    at formatProperty (node:internal/util/inspect:2283:11)
+    at formatRaw (node:internal/util/inspect:1169:9)
+    at formatValue (node:internal/util/inspect:925:10)
+ERROR TypeError: Receiver must be an instance of class URL
+    at get href (node:internal/url:1005:10)
+    at isURL (node:internal/util/inspect:208:23)
+    at formatRaw (node:internal/util/inspect:1123:16)
+    at formatValue (node:internal/util/inspect:925:10)
+    at formatProperty (node:internal/util/inspect:2283:11)
+    at formatRaw (node:internal/util/inspect:1169:9)
+    at formatValue (node:internal/util/inspect:925:10)
+    at formatProperty (node:internal/util/inspect:2283:11)
+    at formatRaw (node:internal/util/inspect:1169:9)
+    at formatValue (node:internal/util/inspect:925:10)
+
+stderr | src/lib/molecules/tabs/tabs.spec.ts > Tabs > tightens the spacing only when it is asked to be compact
+ERROR TypeError: Receiver must be an instance of class URL
+    at get href (node:internal/url:1005:10)
+    at isURL (node:internal/util/inspect:208:23)
+    at formatRaw (node:internal/util/inspect:1123:16)
+    at formatValue (node:internal/util/inspect:925:10)
+    at formatProperty (node:internal/util/inspect:2283:11)
+    at formatRaw (node:internal/util/inspect:1169:9)
+    at formatValue (node:internal/util/inspect:925:10)
+    at formatProperty (node:internal/util/inspect:2283:11)
+    at formatRaw (node:internal/util/inspect:1169:9)
+    at formatValue (node:internal/util/inspect:925:10)
+ERROR TypeError: Receiver must be an instance of class URL
+    at get href (node:internal/url:1005:10)
+    at isURL (node:internal/util/inspect:208:23)
+    at formatRaw (node:internal/util/inspect:1123:16)
+    at formatValue (node:internal/util/inspect:925:10)
+    at formatProperty (node:internal/util/inspect:2283:11)
+    at formatRaw (node:internal/util/inspect:1169:9)
+    at formatValue (node:internal/util/inspect:925:10)
+    at formatProperty (node:internal/util/inspect:2283:11)
+    at formatRaw (node:internal/util/inspect:1169:9)
+    at formatValue (node:internal/util/inspect:925:10)
+ERROR TypeError: Receiver must be an instance of class URL
+    at get href (node:internal/url:1005:10)
+    at isURL (node:internal/util/inspect:208:23)
+    at formatRaw (node:internal/util/inspect:1123:16)
+    at formatValue (node:internal/util/inspect:925:10)
+    at formatProperty (node:internal/util/inspect:2283:11)
+    at formatRaw (node:internal/util/inspect:1169:9)
+    at formatValue (node:internal/util/inspect:925:10)
+    at formatProperty (node:internal/util/inspect:2283:11)
+    at formatRaw (node:internal/util/inspect:1169:9)
+    at formatValue (node:internal/util/inspect:925:10)
+
+stderr | src/lib/molecules/tabs/tabs.spec.ts > Tabs > includes the count in the accessible name and shows an optional icon
+ERROR TypeError: Receiver must be an instance of class URL
+    at get href (node:internal/url:1005:10)
+    at isURL (node:internal/util/inspect:208:23)
+    at formatRaw (node:internal/util/inspect:1123:16)
+    at formatValue (node:internal/util/inspect:925:10)
+    at formatProperty (node:internal/util/inspect:2283:11)
+    at formatRaw (node:internal/util/inspect:1169:9)
+    at formatValue (node:internal/util/inspect:925:10)
+    at formatProperty (node:internal/util/inspect:2283:11)
+    at formatRaw (node:internal/util/inspect:1169:9)
+    at formatValue (node:internal/util/inspect:925:10)
+ERROR TypeError: Receiver must be an instance of class URL
+    at get href (node:internal/url:1005:10)
+    at isURL (node:internal/util/inspect:208:23)
+    at formatRaw (node:internal/util/inspect:1123:16)
+    at formatValue (node:internal/util/inspect:925:10)
+    at formatProperty (node:internal/util/inspect:2283:11)
+    at formatRaw (node:internal/util/inspect:1169:9)
+    at formatValue (node:internal/util/inspect:925:10)
+    at formatProperty (node:internal/util/inspect:2283:11)
+    at formatRaw (node:internal/util/inspect:1169:9)
+    at formatValue (node:internal/util/inspect:925:10)
+ERROR TypeError: Receiver must be an instance of class URL
+    at get href (node:internal/url:1005:10)
+    at isURL (node:internal/util/inspect:208:23)
+    at formatRaw (node:internal/util/inspect:1123:16)
+    at formatValue (node:internal/util/inspect:925:10)
+    at formatProperty (node:internal/util/inspect:2283:11)
+    at formatRaw (node:internal/util/inspect:1169:9)
+    at formatValue (node:internal/util/inspect:925:10)
+    at formatProperty (node:internal/util/inspect:2283:11)
+    at formatRaw (node:internal/util/inspect:1169:9)
+    at formatValue (node:internal/util/inspect:925:10)
+
+stderr | src/lib/molecules/tabs/tabs.spec.ts > Tabs > marks the selected tab and shows only its panel, which it controls
+ERROR TypeError: Receiver must be an instance of class URL
+    at get href (node:internal/url:1005:10)
+    at isURL (node:internal/util/inspect:208:23)
+    at formatRaw (node:internal/util/inspect:1123:16)
+    at formatValue (node:internal/util/inspect:925:10)
+    at formatProperty (node:internal/util/inspect:2283:11)
+    at formatRaw (node:internal/util/inspect:1169:9)
+    at formatValue (node:internal/util/inspect:925:10)
+    at formatProperty (node:internal/util/inspect:2283:11)
+    at formatRaw (node:internal/util/inspect:1169:9)
+    at formatValue (node:internal/util/inspect:925:10)
+ERROR TypeError: Receiver must be an instance of class URL
+    at get href (node:internal/url:1005:10)
+    at isURL (node:internal/util/inspect:208:23)
+    at formatRaw (node:internal/util/inspect:1123:16)
+    at formatValue (node:internal/util/inspect:925:10)
+    at formatProperty (node:internal/util/inspect:2283:11)
+    at formatRaw (node:internal/util/inspect:1169:9)
+    at formatValue (node:internal/util/inspect:925:10)
+    at formatProperty (node:internal/util/inspect:2283:11)
+    at formatRaw (node:internal/util/inspect:1169:9)
+    at formatValue (node:internal/util/inspect:925:10)
+ERROR TypeError: Receiver must be an instance of class URL
+    at get href (node:internal/url:1005:10)
+    at isURL (node:internal/util/inspect:208:23)
+    at formatRaw (node:internal/util/inspect:1123:16)
+    at formatValue (node:internal/util/inspect:925:10)
+    at formatProperty (node:internal/util/inspect:2283:11)
+    at formatRaw (node:internal/util/inspect:1169:9)
+    at formatValue (node:internal/util/inspect:925:10)
+    at formatProperty (node:internal/util/inspect:2283:11)
+    at formatRaw (node:internal/util/inspect:1169:9)
+    at formatValue (node:internal/util/inspect:925:10)
+
+stderr | src/lib/molecules/tabs/tabs.spec.ts > Tabs > selects on click and reports it through selectedChange
+ERROR TypeError: Receiver must be an instance of class URL
+    at get href (node:internal/url:1005:10)
+    at isURL (node:internal/util/inspect:208:23)
+    at formatRaw (node:internal/util/inspect:1123:16)
+    at formatValue (node:internal/util/inspect:925:10)
+    at formatProperty (node:internal/util/inspect:2283:11)
+    at formatRaw (node:internal/util/inspect:1169:9)
+    at formatValue (node:internal/util/inspect:925:10)
+    at formatProperty (node:internal/util/inspect:2283:11)
+    at formatRaw (node:internal/util/inspect:1169:9)
+    at formatValue (node:internal/util/inspect:925:10)
+ERROR TypeError: Receiver must be an instance of class URL
+    at get href (node:internal/url:1005:10)
+    at isURL (node:internal/util/inspect:208:23)
+    at formatRaw (node:internal/util/inspect:1123:16)
+    at formatValue (node:internal/util/inspect:925:10)
+    at formatProperty (node:internal/util/inspect:2283:11)
+    at formatRaw (node:internal/util/inspect:1169:9)
+    at formatValue (node:internal/util/inspect:925:10)
+    at formatProperty (node:internal/util/inspect:2283:11)
+    at formatRaw (node:internal/util/inspect:1169:9)
+    at formatValue (node:internal/util/inspect:925:10)
+ERROR TypeError: Receiver must be an instance of class URL
+    at get href (node:internal/url:1005:10)
+    at isURL (node:internal/util/inspect:208:23)
+    at formatRaw (node:internal/util/inspect:1123:16)
+    at formatValue (node:internal/util/inspect:925:10)
+    at formatProperty (node:internal/util/inspect:2283:11)
+    at formatRaw (node:internal/util/inspect:1169:9)
+    at formatValue (node:internal/util/inspect:925:10)
+    at formatProperty (node:internal/util/inspect:2283:11)
+    at formatRaw (node:internal/util/inspect:1169:9)
+    at formatValue (node:internal/util/inspect:925:10)
+
+stderr | src/lib/molecules/tabs/tabs.spec.ts > Tabs > follows the selected input from outside
+ERROR TypeError: Receiver must be an instance of class URL
+    at get href (node:internal/url:1005:10)
+    at isURL (node:internal/util/inspect:208:23)
+    at formatRaw (node:internal/util/inspect:1123:16)
+    at formatValue (node:internal/util/inspect:925:10)
+    at formatProperty (node:internal/util/inspect:2283:11)
+    at formatRaw (node:internal/util/inspect:1169:9)
+    at formatValue (node:internal/util/inspect:925:10)
+    at formatProperty (node:internal/util/inspect:2283:11)
+    at formatRaw (node:internal/util/inspect:1169:9)
+    at formatValue (node:internal/util/inspect:925:10)
+ERROR TypeError: Receiver must be an instance of class URL
+    at get href (node:internal/url:1005:10)
+    at isURL (node:internal/util/inspect:208:23)
+    at formatRaw (node:internal/util/inspect:1123:16)
+    at formatValue (node:internal/util/inspect:925:10)
+    at formatProperty (node:internal/util/inspect:2283:11)
+    at formatRaw (node:internal/util/inspect:1169:9)
+    at formatValue (node:internal/util/inspect:925:10)
+    at formatProperty (node:internal/util/inspect:2283:11)
+    at formatRaw (node:internal/util/inspect:1169:9)
+    at formatValue (node:internal/util/inspect:925:10)
+ERROR TypeError: Receiver must be an instance of class URL
+    at get href (node:internal/url:1005:10)
+    at isURL (node:internal/util/inspect:208:23)
+    at formatRaw (node:internal/util/inspect:1123:16)
+    at formatValue (node:internal/util/inspect:925:10)
+    at formatProperty (node:internal/util/inspect:2283:11)
+    at formatRaw (node:internal/util/inspect:1169:9)
+    at formatValue (node:internal/util/inspect:925:10)
+    at formatProperty (node:internal/util/inspect:2283:11)
+    at formatRaw (node:internal/util/inspect:1169:9)
+    at formatValue (node:internal/util/inspect:925:10)
+
+stderr | src/lib/molecules/tabs/tabs.spec.ts > Tabs > keeps one tab in the tab order and moves with arrows, Home and End
+ERROR TypeError: Receiver must be an instance of class URL
+    at get href (node:internal/url:1005:10)
+    at isURL (node:internal/util/inspect:208:23)
+    at formatRaw (node:internal/util/inspect:1123:16)
+    at formatValue (node:internal/util/inspect:925:10)
+    at formatProperty (node:internal/util/inspect:2283:11)
+    at formatRaw (node:internal/util/inspect:1169:9)
+    at formatValue (node:internal/util/inspect:925:10)
+    at formatProperty (node:internal/util/inspect:2283:11)
+    at formatRaw (node:internal/util/inspect:1169:9)
+    at formatValue (node:internal/util/inspect:925:10)
+ERROR TypeError: Receiver must be an instance of class URL
+    at get href (node:internal/url:1005:10)
+    at isURL (node:internal/util/inspect:208:23)
+    at formatRaw (node:internal/util/inspect:1123:16)
+    at formatValue (node:internal/util/inspect:925:10)
+    at formatProperty (node:internal/util/inspect:2283:11)
+    at formatRaw (node:internal/util/inspect:1169:9)
+    at formatValue (node:internal/util/inspect:925:10)
+    at formatProperty (node:internal/util/inspect:2283:11)
+    at formatRaw (node:internal/util/inspect:1169:9)
+    at formatValue (node:internal/util/inspect:925:10)
+ERROR TypeError: Receiver must be an instance of class URL
+    at get href (node:internal/url:1005:10)
+    at isURL (node:internal/util/inspect:208:23)
+    at formatRaw (node:internal/util/inspect:1123:16)
+    at formatValue (node:internal/util/inspect:925:10)
+    at formatProperty (node:internal/util/inspect:2283:11)
+    at formatRaw (node:internal/util/inspect:1169:9)
+    at formatValue (node:internal/util/inspect:925:10)
+    at formatProperty (node:internal/util/inspect:2283:11)
+    at formatRaw (node:internal/util/inspect:1169:9)
+    at formatValue (node:internal/util/inspect:925:10)
+
+ ✓ |ui| src/lib/molecules/tabs/tabs.spec.ts (8 tests) 155ms
+ ✓ |ui| src/lib/organisms/toaster/toaster.spec.ts (13 tests) 145ms
+ ✓ |ui| src/lib/organisms/menu/menu.spec.ts (10 tests) 153ms
+ ✓ |ui| src/lib/organisms/drawer/drawer.spec.ts (7 tests) 154ms
+ ✓ |ui| src/lib/molecules/sortable/sortable.spec.ts (8 tests) 154ms
+ ✓ |ui| src/lib/organisms/popover/popover.directive.spec.ts (7 tests) 125ms
+ ✓ |ui| src/lib/molecules/field/error-summary.spec.ts (6 tests) 141ms
+ ✓ |ui| src/lib/atoms/button/button.directive.spec.ts (19 tests) 102ms
+ ✓ |ui| src/lib/organisms/charts/charts.spec.ts (5 tests) 139ms
+ ✓ |ui| src/lib/organisms/data-table/data-table.spec.ts (10 tests) 176ms
+ ✓ |ui| src/lib/molecules/pagination/pagination.spec.ts (13 tests) 79ms
+ ✓ |ui| src/lib/organisms/stepper/stepper.spec.ts (10 tests) 127ms
+ ✓ |ui| src/lib/molecules/upload/upload-item.spec.ts (11 tests) 99ms
+ ✓ |ui| src/lib/atoms/badge/badge.directive.spec.ts (10 tests) 55ms
+ ✓ |ui| src/lib/molecules/breadcrumb/breadcrumb.spec.ts (5 tests) 59ms
+ ✓ |ui| src/lib/atoms/tooltip/tooltip.directive.spec.ts (9 tests) 92ms
+ ✓ |ui| src/lib/molecules/kpi/kpi.spec.ts (6 tests) 69ms
+ ✓ |ui| src/lib/atoms/icon/icon.spec.ts (11 tests) 43ms
+ ✓ |ui| src/lib/molecules/rating/rating.spec.ts (10 tests) 99ms
+ ✓ |ui| src/lib/molecules/timer/timer.spec.ts (11 tests) 66ms
+ ✓ |ui| src/lib/atoms/icon-button/icon-button.directive.spec.ts (6 tests) 64ms
+ ✓ |ui| src/lib/molecules/swatch-group/swatch-group.spec.ts (7 tests) 68ms
+ ✓ |ui| src/lib/molecules/upload/dropzone.spec.ts (7 tests) 43ms
+ ✓ |ui| src/lib/molecules/option-card/option-card.spec.ts (8 tests) 77ms
+ ✓ |ui| src/lib/molecules/segmented/segmented.spec.ts (7 tests) 80ms
+ ✓ |ui| src/lib/atoms/mai/mai.spec.ts (6 tests) 50ms
+ ✓ |ui| src/lib/atoms/mai-badge/mai-badge.spec.ts (4 tests) 112ms
+ ✓ |ui| src/lib/atoms/ring/ring.spec.ts (5 tests) 46ms
+ ✓ |ui| src/lib/molecules/form-actions/form-actions.spec.ts (5 tests) 53ms
+ ✓ |ui| src/lib/molecules/error-state/error-state.spec.ts (5 tests) 70ms
+ ✓ |ui| src/lib/atoms/avatar/avatar.spec.ts (17 tests) 55ms
+ ✓ |ui| src/lib/molecules/search/search.spec.ts (6 tests) 62ms
+ ✓ |ui| src/lib/atoms/format/format.pipes.spec.ts (73 tests) 59ms
+ ✓ |ui| src/lib/organisms/page-header/page-header.spec.ts (5 tests) 51ms
+ ✓ |ui| src/lib/molecules/alert/alert.spec.ts (8 tests) 46ms
+ ✓ |ui| src/lib/atoms/spinner/spinner.directive.spec.ts (2 tests) 27ms
+ ✓ |ui| src/lib/atoms/card/card.directive.spec.ts (5 tests) 38ms
+ ✓ |ui| src/lib/atoms/progress/progress.spec.ts (9 tests) 43ms
+ ✓ |ui| src/lib/atoms/checkbox/checkbox.directive.spec.ts (2 tests) 28ms
+ ✓ |ui| src/lib/atoms/input/input.directive.spec.ts (4 tests) 41ms
+ ✓ |ui| src/lib/atoms/chip/chip.directive.spec.ts (5 tests) 42ms
+ ✓ |ui| src/lib/atoms/table/table.directive.spec.ts (3 tests) 36ms
+ ✓ |ui| src/lib/atoms/select/select.directive.spec.ts (3 tests) 30ms
+ ✓ |ui| src/lib/atoms/link-button/link-button.directive.spec.ts (2 tests) 25ms
+ ✓ |ui| src/lib/molecules/tip/tip.spec.ts (2 tests) 32ms
+ ✓ |ui| src/lib/molecules/empty/empty.spec.ts (6 tests) 54ms
+ ✓ |ui| src/lib/atoms/list/list.directive.spec.ts (1 test) 27ms
+ ✓ |ui| src/lib/atoms/textarea/textarea.directive.spec.ts (1 test) 24ms
+ ✓ |ui| src/lib/atoms/skeleton/skeleton.directive.spec.ts (3 tests) 27ms
+ ✓ |ui| src/lib/atoms/switch/switch.directive.spec.ts (2 tests) 26ms
+
+ Test Files  55 passed (55)
+      Tests  550 passed (550)
+   Start at  16:08:02
+   Duration  103.22s (transform 1.73s, setup 8.42s, import 187.16s, tests 5.69s, environment 1.76s)
+
+
+> nx run mocks:test --maxWorkers=2
+
+> vitest run --maxWorkers=2
+
+(node:41640) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+ RUN  v4.1.11 D:/SCH/lms-vip-pro-max/libs/mocks
+
+(node:12820) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:4048) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ❯ |mocks| src/lib/learning/learner.backend.spec.ts (0 test)
+ ❯ |mocks| src/lib/backend/fake-backend.spec.ts (0 test)
+(node:40888) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:44340) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ❯ |mocks| src/lib/community/community.backend.spec.ts (0 test)
+ ❯ |mocks| src/lib/learning/learner-session.backend.spec.ts (0 test)
+(node:41752) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:29968) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ❯ |mocks| src/lib/learning/learner-notes.spec.ts (0 test)
+ ❯ |mocks| src/lib/learning/asset.backend.spec.ts (0 test)
+(node:43800) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:29916) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ❯ |mocks| src/fixtures.spec.ts (0 test)
+ ❯ |mocks| src/lib/backend/postman.contract.spec.ts (0 test)
+(node:35968) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:29860) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ❯ |mocks| src/lib/learning/learner-feedback.spec.ts (0 test)
+ ❯ |mocks| src/lib/assessment/learner-quiz.mock.spec.ts (0 test)
+(node:38976) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:45400) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ❯ |mocks| src/lib/backend/access-requests.backend.spec.ts (0 test)
+ ❯ |mocks| src/lib/learning/course-create.backend.spec.ts (0 test)
+(node:37808) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:32412) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ❯ |mocks| src/lib/learning/learner-leaderboard.spec.ts (0 test)
+ ❯ |mocks| src/lib/learning/course-publish.backend.spec.ts (0 test)
+(node:14936) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:31204) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ❯ |mocks| src/lib/learning/learner-certificates.spec.ts (0 test)
+ ❯ |mocks| src/lib/learning/course-cover.backend.spec.ts (0 test)
+(node:45456) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:45432) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ❯ |mocks| src/lib/learning/learning-reports.backend.spec.ts (0 test)
+ ❯ |mocks| src/lib/learning/course-tree.backend.spec.ts (0 test)
+(node:22148) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:44212) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ❯ |mocks| src/lib/assessment/authoring.mock.spec.ts (0 test)
+ ❯ |mocks| src/lib/learning/share.backend.spec.ts (0 test)
+(node:46556) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ❯ |mocks| src/lib/shell/shell.fixtures.spec.ts (0 test)
+
+⎯⎯⎯⎯⎯⎯ Failed Suites 21 ⎯⎯⎯⎯⎯⎯
+
+ FAIL  |mocks| src/fixtures.spec.ts [ src/fixtures.spec.ts ]
+Error: EPERM: operation not permitted, rename 'C:\Users\tutp\AppData\Local\Packages\sandbox.{4dc2123c-43b8-4c73-9c3f-5026860acb0c}\AC\Temp\T-S4zI9SK-glLkzJL2ZoR\ssr\.tmp-1794042586707-04wpoo3rk7rc' -> 'C:\Users\tutp\AppData\Local\Packages\sandbox.{4dc2123c-43b8-4c73-9c3f-5026860acb0c}\AC\Temp\T-S4zI9SK-glLkzJL2ZoR\ssr\ab21eba333c47187c04b182a9b15a484a5473c85'
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/21]⎯
+
+ FAIL  |mocks| src/lib/assessment/authoring.mock.spec.ts [ src/lib/assessment/authoring.mock.spec.ts ]
+Error: EPERM: operation not permitted, rename 'C:\Users\tutp\AppData\Local\Packages\sandbox.{4dc2123c-43b8-4c73-9c3f-5026860acb0c}\AC\Temp\T-S4zI9SK-glLkzJL2ZoR\ssr\.tmp-1794042587720-zxxeb9loi9' -> 'C:\Users\tutp\AppData\Local\Packages\sandbox.{4dc2123c-43b8-4c73-9c3f-5026860acb0c}\AC\Temp\T-S4zI9SK-glLkzJL2ZoR\ssr\a8cd54e76267446c98d6fed184b8fe6dbade230e'
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/21]⎯
+
+ FAIL  |mocks| src/lib/assessment/learner-quiz.mock.spec.ts [ src/lib/assessment/learner-quiz.mock.spec.ts ]
+Error: EPERM: operation not permitted, rename 'C:\Users\tutp\AppData\Local\Packages\sandbox.{4dc2123c-43b8-4c73-9c3f-5026860acb0c}\AC\Temp\T-S4zI9SK-glLkzJL2ZoR\ssr\.tmp-1794042586893-qwgjcvt5yi' -> 'C:\Users\tutp\AppData\Local\Packages\sandbox.{4dc2123c-43b8-4c73-9c3f-5026860acb0c}\AC\Temp\T-S4zI9SK-glLkzJL2ZoR\ssr\06f6cbf955965c4ea437279748bc817f243b7bd5'
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/21]⎯
+
+ FAIL  |mocks| src/lib/backend/access-requests.backend.spec.ts [ src/lib/backend/access-requests.backend.spec.ts ]
+Error: EPERM: operation not permitted, rename 'C:\Users\tutp\AppData\Local\Packages\sandbox.{4dc2123c-43b8-4c73-9c3f-5026860acb0c}\AC\Temp\T-S4zI9SK-glLkzJL2ZoR\ssr\.tmp-1794042587029-uskhk3aigel' -> 'C:\Users\tutp\AppData\Local\Packages\sandbox.{4dc2123c-43b8-4c73-9c3f-5026860acb0c}\AC\Temp\T-S4zI9SK-glLkzJL2ZoR\ssr\b2ccc6ac202ffbbf10ee8bf353ca77d1e9a69fb2'
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/21]⎯
+
+ FAIL  |mocks| src/lib/backend/fake-backend.spec.ts [ src/lib/backend/fake-backend.spec.ts ]
+Error: EPERM: operation not permitted, rename 'C:\Users\tutp\AppData\Local\Packages\sandbox.{4dc2123c-43b8-4c73-9c3f-5026860acb0c}\AC\Temp\T-S4zI9SK-glLkzJL2ZoR\ssr\.tmp-1794042586184-3jb41s48jyn' -> 'C:\Users\tutp\AppData\Local\Packages\sandbox.{4dc2123c-43b8-4c73-9c3f-5026860acb0c}\AC\Temp\T-S4zI9SK-glLkzJL2ZoR\ssr\af768bcc282a29d19fd4f195bdc3be18efbae7af'
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/21]⎯
+
+ FAIL  |mocks| src/lib/backend/postman.contract.spec.ts [ src/lib/backend/postman.contract.spec.ts ]
+Error: EPERM: operation not permitted, rename 'C:\Users\tutp\AppData\Local\Packages\sandbox.{4dc2123c-43b8-4c73-9c3f-5026860acb0c}\AC\Temp\T-S4zI9SK-glLkzJL2ZoR\ssr\.tmp-1794042586722-uc2xtay30r' -> 'C:\Users\tutp\AppData\Local\Packages\sandbox.{4dc2123c-43b8-4c73-9c3f-5026860acb0c}\AC\Temp\T-S4zI9SK-glLkzJL2ZoR\ssr\2646a9aad9837b5483f567ada029c4f2a7790d5d'
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[6/21]⎯
+
+ FAIL  |mocks| src/lib/community/community.backend.spec.ts [ src/lib/community/community.backend.spec.ts ]
+Error: EPERM: operation not permitted, rename 'C:\Users\tutp\AppData\Local\Packages\sandbox.{4dc2123c-43b8-4c73-9c3f-5026860acb0c}\AC\Temp\T-S4zI9SK-glLkzJL2ZoR\ssr\.tmp-1794042586364-5dbdar7r6x9' -> 'C:\Users\tutp\AppData\Local\Packages\sandbox.{4dc2123c-43b8-4c73-9c3f-5026860acb0c}\AC\Temp\T-S4zI9SK-glLkzJL2ZoR\ssr\16378771f63c496d2ad71c010854109851ce6009'
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[7/21]⎯
+
+ FAIL  |mocks| src/lib/shell/shell.fixtures.spec.ts [ src/lib/shell/shell.fixtures.spec.ts ]
+Error: EPERM: operation not permitted, rename 'C:\Users\tutp\AppData\Local\Packages\sandbox.{4dc2123c-43b8-4c73-9c3f-5026860acb0c}\AC\Temp\T-S4zI9SK-glLkzJL2ZoR\ssr\.tmp-1794042587867-v2ug2eh189' -> 'C:\Users\tutp\AppData\Local\Packages\sandbox.{4dc2123c-43b8-4c73-9c3f-5026860acb0c}\AC\Temp\T-S4zI9SK-glLkzJL2ZoR\ssr\e26c4ae8683f1a3ea90326be5c634ca83a0c45c9'
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[8/21]⎯
+
+ FAIL  |mocks| src/lib/learning/asset.backend.spec.ts [ src/lib/learning/asset.backend.spec.ts ]
+Error: EPERM: operation not permitted, rename 'C:\Users\tutp\AppData\Local\Packages\sandbox.{4dc2123c-43b8-4c73-9c3f-5026860acb0c}\AC\Temp\T-S4zI9SK-glLkzJL2ZoR\ssr\.tmp-1794042586540-7g4jzd6ikop' -> 'C:\Users\tutp\AppData\Local\Packages\sandbox.{4dc2123c-43b8-4c73-9c3f-5026860acb0c}\AC\Temp\T-S4zI9SK-glLkzJL2ZoR\ssr\6aec051e5d96abee6f1abae7c8555769ebaa5be4'
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[9/21]⎯
+
+ FAIL  |mocks| src/lib/learning/course-cover.backend.spec.ts [ src/lib/learning/course-cover.backend.spec.ts ]
+Error: EPERM: operation not permitted, rename 'C:\Users\tutp\AppData\Local\Packages\sandbox.{4dc2123c-43b8-4c73-9c3f-5026860acb0c}\AC\Temp\T-S4zI9SK-glLkzJL2ZoR\ssr\.tmp-1794042587376-iy8liln8sa8' -> 'C:\Users\tutp\AppData\Local\Packages\sandbox.{4dc2123c-43b8-4c73-9c3f-5026860acb0c}\AC\Temp\T-S4zI9SK-glLkzJL2ZoR\ssr\8683549de906b2c33e9c68b43ae7fb8de06d794f'
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[10/21]⎯
+
+ FAIL  |mocks| src/lib/learning/course-create.backend.spec.ts [ src/lib/learning/course-create.backend.spec.ts ]
+Error: EPERM: operation not permitted, rename 'C:\Users\tutp\AppData\Local\Packages\sandbox.{4dc2123c-43b8-4c73-9c3f-5026860acb0c}\AC\Temp\T-S4zI9SK-glLkzJL2ZoR\ssr\.tmp-1794042587053-8bhs93obw4i' -> 'C:\Users\tutp\AppData\Local\Packages\sandbox.{4dc2123c-43b8-4c73-9c3f-5026860acb0c}\AC\Temp\T-S4zI9SK-glLkzJL2ZoR\ssr\099310fbd7ad54fdf59f497612b0a79f2644b76b'
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[11/21]⎯
+
+ FAIL  |mocks| src/lib/learning/course-publish.backend.spec.ts [ src/lib/learning/course-publish.backend.spec.ts ]
+Error: EPERM: operation not permitted, rename 'C:\Users\tutp\AppData\Local\Packages\sandbox.{4dc2123c-43b8-4c73-9c3f-5026860acb0c}\AC\Temp\T-S4zI9SK-glLkzJL2ZoR\ssr\.tmp-1794042587212-h5qmud9iht' -> 'C:\Users\tutp\AppData\Local\Packages\sandbox.{4dc2123c-43b8-4c73-9c3f-5026860acb0c}\AC\Temp\T-S4zI9SK-glLkzJL2ZoR\ssr\26f76824cf6b38440c35c86d8fcbb3625b58bcdc'
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[12/21]⎯
+
+ FAIL  |mocks| src/lib/learning/course-tree.backend.spec.ts [ src/lib/learning/course-tree.backend.spec.ts ]
+Error: EPERM: operation not permitted, rename 'C:\Users\tutp\AppData\Local\Packages\sandbox.{4dc2123c-43b8-4c73-9c3f-5026860acb0c}\AC\Temp\T-S4zI9SK-glLkzJL2ZoR\ssr\.tmp-1794042587579-ssns9xy1yeb' -> 'C:\Users\tutp\AppData\Local\Packages\sandbox.{4dc2123c-43b8-4c73-9c3f-5026860acb0c}\AC\Temp\T-S4zI9SK-glLkzJL2ZoR\ssr\b6d3782dbdeedf07230418754f85a555bdc06106'
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[13/21]⎯
+
+ FAIL  |mocks| src/lib/learning/learner-certificates.spec.ts [ src/lib/learning/learner-certificates.spec.ts ]
+Error: EPERM: operation not permitted, rename 'C:\Users\tutp\AppData\Local\Packages\sandbox.{4dc2123c-43b8-4c73-9c3f-5026860acb0c}\AC\Temp\T-S4zI9SK-glLkzJL2ZoR\ssr\.tmp-1794042587348-n6ldy6410i' -> 'C:\Users\tutp\AppData\Local\Packages\sandbox.{4dc2123c-43b8-4c73-9c3f-5026860acb0c}\AC\Temp\T-S4zI9SK-glLkzJL2ZoR\ssr\f64a48804e307a52d7f0a99f8062745bec91b811'
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[14/21]⎯
+
+ FAIL  |mocks| src/lib/learning/learner-feedback.spec.ts [ src/lib/learning/learner-feedback.spec.ts ]
+Error: EPERM: operation not permitted, rename 'C:\Users\tutp\AppData\Local\Packages\sandbox.{4dc2123c-43b8-4c73-9c3f-5026860acb0c}\AC\Temp\T-S4zI9SK-glLkzJL2ZoR\ssr\.tmp-1794042586869-rbsouz3sjse' -> 'C:\Users\tutp\AppData\Local\Packages\sandbox.{4dc2123c-43b8-4c73-9c3f-5026860acb0c}\AC\Temp\T-S4zI9SK-glLkzJL2ZoR\ssr\93419260bab7c54fccb91a7fa8784a41b4ad98ed'
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[15/21]⎯
+
+ FAIL  |mocks| src/lib/learning/learner-leaderboard.spec.ts [ src/lib/learning/learner-leaderboard.spec.ts ]
+Error: EPERM: operation not permitted, rename 'C:\Users\tutp\AppData\Local\Packages\sandbox.{4dc2123c-43b8-4c73-9c3f-5026860acb0c}\AC\Temp\T-S4zI9SK-glLkzJL2ZoR\ssr\.tmp-1794042587187-4r5xcgrsvxs' -> 'C:\Users\tutp\AppData\Local\Packages\sandbox.{4dc2123c-43b8-4c73-9c3f-5026860acb0c}\AC\Temp\T-S4zI9SK-glLkzJL2ZoR\ssr\82721c4b561db609f6f932622078f4daa422d225'
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[16/21]⎯
+
+ FAIL  |mocks| src/lib/learning/learner-notes.spec.ts [ src/lib/learning/learner-notes.spec.ts ]
+Error: EPERM: operation not permitted, rename 'C:\Users\tutp\AppData\Local\Packages\sandbox.{4dc2123c-43b8-4c73-9c3f-5026860acb0c}\AC\Temp\T-S4zI9SK-glLkzJL2ZoR\ssr\.tmp-1794042586542-q07b8v73k1m' -> 'C:\Users\tutp\AppData\Local\Packages\sandbox.{4dc2123c-43b8-4c73-9c3f-5026860acb0c}\AC\Temp\T-S4zI9SK-glLkzJL2ZoR\ssr\3362cfe33f69c577e985c15b21af0ba045d4e923'
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[17/21]⎯
+
+ FAIL  |mocks| src/lib/learning/learner-session.backend.spec.ts [ src/lib/learning/learner-session.backend.spec.ts ]
+Error: EPERM: operation not permitted, rename 'C:\Users\tutp\AppData\Local\Packages\sandbox.{4dc2123c-43b8-4c73-9c3f-5026860acb0c}\AC\Temp\T-S4zI9SK-glLkzJL2ZoR\ssr\.tmp-1794042586367-cbzeny1pmov' -> 'C:\Users\tutp\AppData\Local\Packages\sandbox.{4dc2123c-43b8-4c73-9c3f-5026860acb0c}\AC\Temp\T-S4zI9SK-glLkzJL2ZoR\ssr\02b9883c15ea3d1b67be36d20f8197a90dcad1e6'
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[18/21]⎯
+
+ FAIL  |mocks| src/lib/learning/learner.backend.spec.ts [ src/lib/learning/learner.backend.spec.ts ]
+Error: EPERM: operation not permitted, rename 'C:\Users\tutp\AppData\Local\Packages\sandbox.{4dc2123c-43b8-4c73-9c3f-5026860acb0c}\AC\Temp\T-S4zI9SK-glLkzJL2ZoR\ssr\.tmp-1794042586170-mnyvuv960wh' -> 'C:\Users\tutp\AppData\Local\Packages\sandbox.{4dc2123c-43b8-4c73-9c3f-5026860acb0c}\AC\Temp\T-S4zI9SK-glLkzJL2ZoR\ssr\28616166f1b30b1e3005342984eea057b73232a1'
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[19/21]⎯
+
+ FAIL  |mocks| src/lib/learning/learning-reports.backend.spec.ts [ src/lib/learning/learning-reports.backend.spec.ts ]
+Error: EPERM: operation not permitted, rename 'C:\Users\tutp\AppData\Local\Packages\sandbox.{4dc2123c-43b8-4c73-9c3f-5026860acb0c}\AC\Temp\T-S4zI9SK-glLkzJL2ZoR\ssr\.tmp-1794042587505-ix65m5s815p' -> 'C:\Users\tutp\AppData\Local\Packages\sandbox.{4dc2123c-43b8-4c73-9c3f-5026860acb0c}\AC\Temp\T-S4zI9SK-glLkzJL2ZoR\ssr\f5f380ea70edb637fe487190fb2e8b00d62eb9db'
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[20/21]⎯
+
+ FAIL  |mocks| src/lib/learning/share.backend.spec.ts [ src/lib/learning/share.backend.spec.ts ]
+Error: EPERM: operation not permitted, rename 'C:\Users\tutp\AppData\Local\Packages\sandbox.{4dc2123c-43b8-4c73-9c3f-5026860acb0c}\AC\Temp\T-S4zI9SK-glLkzJL2ZoR\ssr\.tmp-1794042587743-7jr18c30s7w' -> 'C:\Users\tutp\AppData\Local\Packages\sandbox.{4dc2123c-43b8-4c73-9c3f-5026860acb0c}\AC\Temp\T-S4zI9SK-glLkzJL2ZoR\ssr\2c89b2787526916a3b662a25322241d135141636'
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[21/21]⎯
+
+
+ Test Files  21 failed (21)
+      Tests  no tests
+   Start at  16:09:45
+   Duration  1.90s (transform 0ms, setup 0ms, import 0ms, tests 0ms, environment 1ms)
+

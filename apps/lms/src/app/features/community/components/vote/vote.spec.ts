@@ -15,6 +15,18 @@ function render(inputs: Record<string, unknown>) {
 }
 
 describe('Vote', () => {
+  it('keeps both voting directions in compact question mode', () => {
+    const { el, up, down, sent } = render({
+      score: -2,
+      myVote: -1,
+      mode: 'score',
+    });
+    expect(el.querySelectorAll('button')).toHaveLength(2);
+    expect(el.textContent).toContain('-2 điểm');
+    up.click();
+    down.click();
+    expect(sent).toEqual([1, 0]);
+  });
   it('sends +1 and -1', () => {
     const { up, down, sent } = render({ score: 4, myVote: 0 });
     up.click();

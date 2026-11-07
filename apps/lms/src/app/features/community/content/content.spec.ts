@@ -4,6 +4,35 @@ import { configureCommunityTesting, openCommunity } from '../community.testing';
 describe('CommunityContent', () => {
   beforeEach(() => configureCommunityTesting());
 
+  it('builds an article outline from its body and requests related content by topic', async () => {
+    const page = await openCommunity('/community/contents/110', 'giangvien');
+    const links = Array.from(
+      page.el().querySelectorAll<HTMLAnchorElement>('.content__outline a'),
+    );
+    expect(links.map((link) => link.textContent?.trim())).toEqual([
+      'Trước khi release',
+      'Sau khi release',
+    ]);
+    for (const link of links) {
+      const id = link.getAttribute('href')!.split('#')[1];
+      expect(page.el().querySelector(`[id="${id}"]`)?.textContent?.trim()).toBe(
+        link.textContent?.trim(),
+      );
+    }
+    const related = page.handle.mock.calls.find(
+      ([endpoint]) => endpoint === communityEndpoints.articles,
+    );
+    expect(related?.[1].query).toMatchObject({ page: '0', size: '4' });
+    expect(related?.[1].query['tagIds']).toBeTruthy();
+    expect(
+      page
+        .el()
+        .querySelector(
+          '.content__related-link[href="/community/contents/110"]',
+        ),
+    ).toBeNull();
+  });
+
   it('shows the question, its context and its answers with the accepted one marked', async () => {
     const page = await openCommunity('/community/contents/101');
 

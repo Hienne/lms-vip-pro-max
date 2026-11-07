@@ -1,0 +1,35 @@
+
+ RUN  v4.1.11 D:/SCH/lms-vip-pro-max/libs/contracts
+
+ ✓ |contracts| src/lib/course/course.endpoints.spec.ts (24 tests) 24ms
+ ✓ |contracts| src/lib/learner/learner.endpoints.spec.ts (45 tests) 27ms
+ ✓ |contracts| src/lib/community/community.schema.spec.ts (15 tests) 12ms
+ ✓ |contracts| src/lib/assessment/learner-quiz.endpoints.spec.ts (20 tests) 17ms
+ ✓ |contracts| src/lib/feedback/feedback.endpoints.spec.ts (22 tests) 12ms
+ ✓ |contracts| src/lib/organization/organization.endpoints.spec.ts (11 tests) 13ms
+ ✓ |contracts| src/lib/identity/access-request.schema.spec.ts (14 tests) 12ms
+ ✓ |contracts| src/lib/assignment/assignment.endpoints.spec.ts (5 tests) 9ms
+ ✓ |contracts| src/lib/reports/learning-reports.endpoints.spec.ts (13 tests) 11ms
+ ✓ |contracts| src/lib/certificate/certificate.endpoints.spec.ts (11 tests) 9ms
+ ✓ |contracts| src/lib/assistant-agent/agent.schema.spec.ts (18 tests) 10ms
+ ✓ |contracts| src/lib/learning-asset/asset.endpoints.spec.ts (17 tests) 10ms
+ ✓ |contracts| src/lib/training-catalog/training-catalog.endpoints.spec.ts (8 tests) 9ms
+ ✓ |contracts| src/lib/personal/personal.endpoints.spec.ts (10 tests) 8ms
+ ✓ |contracts| src/lib/course/course-card.schema.spec.ts (4 tests) 7ms
+ ✓ |contracts| src/lib/identity/identity.endpoints.spec.ts (7 tests) 7ms
+ ✓ |contracts| src/lib/auth/auth-v1.endpoints.spec.ts (6 tests) 7ms
+ ✓ |contracts| src/lib/http/page.spec.ts (7 tests) 4ms
+ ✓ |contracts| src/lib/learner/learner.schema.spec.ts (4 tests) 5ms
+ ✓ |contracts| src/lib/admin-org/admin-org.endpoints.spec.ts (3 tests) 5ms
+ ✓ |contracts| src/lib/http/envelope.spec.ts (7 tests) 6ms
+ ✓ |contracts| src/lib/shell/shell.endpoints.spec.ts (6 tests) 4ms
+ ✓ |contracts| src/lib/http/endpoint.spec.ts (7 tests) 3ms
+ ✓ |contracts| src/lib/community/community.endpoints.spec.ts (3 tests) 4ms
+ ✓ |contracts| src/lib/learning/learning.schema.spec.ts (5 tests) 2ms
+ ✓ |contracts| src/lib/http/patch.spec.ts (3 tests) 3ms
+
+ Test Files  26 passed (26)
+      Tests  295 passed (295)
+   Start at  16:17:02
+   Duration  3.16s (transform 563ms, setup 0ms, import 2.88s, tests 240ms, environment 2ms)
+

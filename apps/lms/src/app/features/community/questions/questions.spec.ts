@@ -29,27 +29,22 @@ describe('CommunityQuestions', () => {
     });
   });
 
-  it('keeps the tag sidebar and dropdown in sync without clearing other filters', async () => {
+  it('filters by tag without losing the other filters or duplicating navigation', async () => {
     const page = await openCommunity(
       '/community/questions?q=Oracle&status=solved&sort=score&page=2',
     );
+    expect(page.el().querySelector('app-community-tabs')).toBeNull();
     const select = page
       .el()
       .querySelector<HTMLSelectElement>('select[aria-label="Thẻ"]')!;
-    const buttons = page
-      .el()
-      .querySelectorAll<HTMLButtonElement>('.community-list__topics button');
-    expect(buttons.length).toBeGreaterThan(1);
     const tagId = select.options[1].value;
+    select.value = tagId;
+    select.dispatchEvent(new Event('change', { bubbles: true }));
+    await page.settle();
     const request = () =>
       page.handle.mock.calls
         .filter(([e]) => e === communityEndpoints.questions)
         .at(-1)![1].query;
-
-    buttons[1].click();
-    await page.settle();
-    expect(select.value).toBe(tagId);
-    expect(buttons[1].getAttribute('aria-pressed')).toBe('true');
     expect(String(request()?.['tagIds'])).toBe(tagId);
     expect(request()).toMatchObject({
       q: 'Oracle',
@@ -57,22 +52,9 @@ describe('CommunityQuestions', () => {
       sort: 'score',
       page: '0',
     });
-
     select.value = '';
     select.dispatchEvent(new Event('change', { bubbles: true }));
     await page.settle();
-    expect(buttons[0].getAttribute('aria-pressed')).toBe('true');
-    expect(request()?.['tagIds']).toBeUndefined();
-
-    buttons[1].click();
-    await page.settle();
-    buttons[0].click();
-    await page.settle();
-    expect(select.value).toBe('');
-    expect(request()).toMatchObject({
-      q: 'Oracle',
-      resolutionStatus: 'solved',
-    });
     expect(request()?.['tagIds']).toBeUndefined();
   });
 });

@@ -1,0 +1,187 @@
+
+ NX   Running target test for 4 projects:
+
+- lms
+- ui
+- contracts
+- mocks
+
+With additional flags:
+  --maxWorkers=2
+
+
+
+> nx run contracts:test --maxWorkers=2
+
+> vitest run --maxWorkers=2
+
+(node:3552) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+
+ RUN  v4.1.11 D:/SCH/lms-vip-pro-max/libs/contracts
+
+(node:35364) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:47676) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |contracts| src/lib/auth/auth-v1.endpoints.spec.ts (6 tests) 7ms
+ ✓ |contracts| src/lib/admin-org/admin-org.endpoints.spec.ts (3 tests) 5ms
+(node:42536) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:29984) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |contracts| src/lib/assistant-agent/agent.schema.spec.ts (18 tests) 10ms
+(node:44908) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |contracts| src/lib/assessment/learner-quiz.endpoints.spec.ts (20 tests) 17ms
+(node:9008) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |contracts| src/lib/certificate/certificate.endpoints.spec.ts (11 tests) 11ms
+ ✓ |contracts| src/lib/assignment/assignment.endpoints.spec.ts (5 tests) 11ms
+(node:40984) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:39932) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |contracts| src/lib/course/course-card.schema.spec.ts (4 tests) 8ms
+ ✓ |contracts| src/lib/course/course.endpoints.spec.ts (24 tests) 20ms
+(node:49088) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:36756) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |contracts| src/lib/community/community.endpoints.spec.ts (3 tests) 3ms
+ ✓ |contracts| src/lib/community/community.schema.spec.ts (15 tests) 15ms
+(node:40852) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:13540) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |contracts| src/lib/http/endpoint.spec.ts (7 tests) 3ms
+ ✓ |contracts| src/lib/feedback/feedback.endpoints.spec.ts (22 tests) 13ms
+(node:30172) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:8616) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |contracts| src/lib/http/envelope.spec.ts (7 tests) 5ms
+ ✓ |contracts| src/lib/http/page.spec.ts (7 tests) 7ms
+(node:45608) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:47360) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |contracts| src/lib/http/patch.spec.ts (3 tests) 2ms
+ ✓ |contracts| src/lib/identity/access-request.schema.spec.ts (14 tests) 12ms
+(node:39620) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:45444) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |contracts| src/lib/identity/identity.endpoints.spec.ts (7 tests) 7ms
+(node:42356) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |contracts| src/lib/learning-asset/asset.endpoints.spec.ts (17 tests) 10ms
+ ✓ |contracts| src/lib/learning/learning.schema.spec.ts (5 tests) 2ms
+(node:36368) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:49140) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |contracts| src/lib/learner/learner.schema.spec.ts (4 tests) 5ms
+ ❯ |contracts| src/lib/learner/learner.endpoints.spec.ts (45 tests | 1 failed) 33ms
+     × declare the backend paths and methods 7ms
+     ✓ parses an enrolment with its content and progress 2ms
+     ✓ checks a progress event against the backend rules 1ms
+     ✓ claims a session for a block, with the previous pair only when the tab holds one 0ms
+     ✓ parses the study session the backend grants and the receipt of a progress result 1ms
+       ✓ parses the summary the backend sends 1ms
+       ✓ refuses a summary without the assigned and mandatory counts 0ms
+         ✓ parses an available overview 0ms
+         ✓ parses an available overview before any graded attempt 0ms
+         ✓ parses an unavailable assessment as it is 0ms
+         ✓ refuses an available assessment without its figures 0ms
+         ✓ reads the figures of the summary captured for hocvien 0ms
+       ✓ refuses a summary without counts 0ms
+       ✓ takes the assigned, failed and overdue flags on both lists 1ms
+       ✓ takes a typed status and the overdue flag on the table query 0ms
+       ✓ exports the table query without paging 0ms
+       ✓ declares the export as a file 1ms
+       ✓ parses the response captured from the backend for catalog 2ms
+       ✓ parses the response captured from the backend for myCourses 1ms
+       ✓ parses the response captured from the backend for course 0ms
+       ✓ parses the response captured from the backend for facets 1ms
+       ✓ parses the response captured from the backend for progressSummary 0ms
+       ✓ reads the names and the failed flag the card carries 0ms
+       ✓ carries the best final exam score on the card, null without one 1ms
+       ✓ parses a card that carries no score field, as the instructor list sends 0ms
+       ✓ lists the facets with the field of each programme and module 1ms
+       ✓ keeps the outline of a course the caller has not enrolled in, without blocks 0ms
+       ✓ refuses a course without its card or its content 0ms
+       ✓ builds the course url from the id 0ms
+       ✓ parses the response captured from the backend for myPoints 0ms
+       ✓ parses the response captured from the backend for leaderboard 1ms
+       ✓ parses the team scope and a page that does not hold the caller 0ms
+       ✓ keeps the ties and the caller as the server sent them 0ms
+       ✓ splits the total into its four parts 0ms
+       ✓ accepts a caller with no rank and a row with no team 0ms
+       ✓ refuses a row without a rank, a negative total and a part left out 0ms
+       ✓ accepts the scopes and refuses another, or a size above 100 0ms
+       ✓ parses the dashboard and the programmes captured from the backend 3ms
+       ✓ keeps the percents as the server sent them, decimals included 0ms
+       ✓ reads a page that is not the first and an empty one 0ms
+       ✓ accepts a dashboard with nothing to resume and no deadlines 0ms
+       ✓ refuses a dashboard without its counts and a page size over 100 0ms
+     ✓ gives the demo video its lists on the read the lesson page uses 1ms
+     ✓ gives the demo video its chapters and transcript 0ms
+     ✓ gives a block that is not a video two empty lists 0ms
+(node:13508) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:27892) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |contracts| src/lib/organization/organization.endpoints.spec.ts (11 tests) 12ms
+ ✓ |contracts| src/lib/personal/personal.endpoints.spec.ts (10 tests) 8ms
+(node:48496) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:45968) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |contracts| src/lib/shell/shell.endpoints.spec.ts (6 tests) 5ms
+(node:45336) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+ ✓ |contracts| src/lib/reports/learning-reports.endpoints.spec.ts (13 tests) 11ms
+ ✓ |contracts| src/lib/training-catalog/training-catalog.endpoints.spec.ts (8 tests) 9ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  |contracts| src/lib/learner/learner.endpoints.spec.ts > learner endpoints > declare the backend paths and methods
+AssertionError: expected [ [ 'catalog', 'get', …(1) ], …(16) ] to deeply equal [ [ 'catalog', 'get', …(1) ], …(15) ]
+
+- Expected
++ Received
+
+@@ -18,10 +18,15 @@
+      "facets",
+      "get",
+      "/api/v1/me/learning/facets",
+    ],
+    [
++     "weeklyActivity",
++     "get",
++     "/api/v1/me/learning/dashboard/activity/weekly",
++   ],
++   [
+      "progressSummary",
+      "get",
+      "/api/v1/me/learning/progress/summary",
+    ],
+    [
+
+ ❯ src/lib/learner/learner.endpoints.spec.ts:56:7
+     54|         e.path,
+     55|       ]),
+     56|     ).toEqual([
+       |       ^
+     57|       ['catalog', 'get', '/api/v1/me/learning/catalog'],
+     58|       ['myCourses', 'get', '/api/v1/me/learning/courses'],
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed | 25 passed (26)
+      Tests  1 failed | 294 passed (295)
+   Start at  16:11:33
+   Duration  3.36s (transform 571ms, setup 0ms, import 3.02s, tests 251ms, environment 2ms)
+
