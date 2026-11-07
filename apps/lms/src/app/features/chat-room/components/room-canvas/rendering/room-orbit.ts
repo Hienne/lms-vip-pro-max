@@ -1,14 +1,19 @@
 import * as THREE from 'three';
 import type { RoomFacing, RoomMap, RoomMovement } from '@lms/contracts';
 import type { RoomCanvasState } from '../../../data-access/chat-room.model';
-import { facingFromVector, facingYaw, moveInRoom } from './room.motion';
+import {
+  facingFromVector,
+  facingYaw,
+  gesturePose,
+  moveInRoom,
+} from './room.motion';
 import { RoomAvatar3D } from './room-avatar-3d';
 import { RoomWorld3D, WORLD_SCALE } from './room-world-3d';
 
-/** First-person rendering shares the exact map, footprint and movement protocol with Phaser. */
-export class RoomFirstPerson {
+/** The 3D view shares the map, footprint and movement protocol with Phaser. */
+export class RoomOrbit {
   private readonly scene = new THREE.Scene();
-  private readonly camera = new THREE.PerspectiveCamera(68, 1, 0.04, 70);
+  private readonly camera = new THREE.PerspectiveCamera(47, 1, 0.04, 70);
   private readonly renderer = new THREE.WebGLRenderer({
     antialias: true,
     powerPreference: 'high-performance',
@@ -25,7 +30,8 @@ export class RoomFirstPerson {
   private position: { x: number; y: number };
   private facing: RoomFacing = 'north';
   private yaw = 0;
-  private pitch = -0.08;
+  private elevation = 0.65;
+  private portrait = false;
   private touch = { x: 0, y: 0 };
   private drag?: { id: number; x: number; y: number };
   private previousView?: RoomCanvasState;
@@ -46,9 +52,8 @@ export class RoomFirstPerson {
     this.world = new RoomWorld3D(map);
     this.scene.add(this.world.root);
     this.scene.background = new THREE.Color(0xdce8df);
-    this.scene.fog = new THREE.Fog(0xe6eadd, 16, 35);
+    this.scene.fog = new THREE.Fog(0xe6eadd, 22, 42);
     this.scene.add(new THREE.HemisphereLight(0xeaf4ff, 0xb3a68d, 2));
-    this.sun.position.set(3, 8, 3);
     this.sun.castShadow = !this.coarse;
     this.sun.shadow.mapSize.set(1024, 1024);
     this.sun.shadow.camera.left = -15;
@@ -62,8 +67,10 @@ export class RoomFirstPerson {
       0,
       map.height / WORLD_SCALE / 2,
     );
+    this.sun.position
+      .copy(this.sun.target.position)
+      .add(new THREE.Vector3(-3, 12, -4));
     this.scene.add(this.sun, this.sun.target);
-    this.camera.rotation.order = 'YXZ';
     this.renderer.setPixelRatio(
       Math.min(devicePixelRatio, this.coarse ? 1.25 : 1.5),
     );
@@ -75,6 +82,7 @@ export class RoomFirstPerson {
     const canvas = this.renderer.domElement;
     canvas.style.display = 'block';
     canvas.style.touchAction = 'none';
+    canvas.style.cursor = 'grab';
     canvas.setAttribute('aria-hidden', 'true');
     this.mount.appendChild(canvas);
     this.resizeObserver = new ResizeObserver(() => this.resize());
@@ -84,18 +92,23 @@ export class RoomFirstPerson {
     window.addEventListener('keyup', this.keyUp);
     window.addEventListener('blur', this.blur);
     document.addEventListener('visibilitychange', this.visibility);
-    document.addEventListener('mousemove', this.mouseMove);
     canvas.addEventListener('pointerdown', this.pointerDown);
     canvas.addEventListener('pointermove', this.pointerMove);
     canvas.addEventListener('pointerup', this.pointerUp);
     canvas.addEventListener('pointercancel', this.pointerUp);
+    canvas.addEventListener('lostpointercapture', this.pointerUp);
     canvas.addEventListener('webglcontextlost', this.contextLost);
-    document.addEventListener('pointerlockerror', this.lockError);
     this.frame = requestAnimationFrame(this.update);
   }
 
   setTouch(x: number, y: number): void {
     this.touch = { x, y };
+  }
+
+  setPortrait(portrait: boolean): void {
+    this.portrait = portrait;
+    this.yaw = facingYaw(this.facing) + (portrait ? Math.PI : 0);
+    this.elevation = portrait ? 0.23 : 0.65;
   }
   private resize(): void {
     const width = Math.max(1, this.mount.clientWidth),
@@ -137,56 +150,34 @@ export class RoomFirstPerson {
     this.keys.clear();
     this.touch = { x: 0, y: 0 };
     this.drag = undefined;
+    this.renderer.domElement.style.cursor = 'grab';
   };
   private readonly visibility = (): void => {
     if (document.hidden) this.blur();
     this.previousTime = 0;
   };
-  private readonly mouseMove = (event: MouseEvent): void => {
-    if (
-      document.pointerLockElement === this.renderer.domElement &&
-      this.view().online &&
-      !this.view().chatting
-    )
-      this.look(event.movementX, event.movementY);
-  };
   private readonly pointerDown = (event: PointerEvent): void => {
-    if (!this.view().online || this.view().chatting) return;
-    if (event.pointerType !== 'mouse') {
-      this.drag = { id: event.pointerId, x: event.clientX, y: event.clientY };
-      this.renderer.domElement.setPointerCapture(event.pointerId);
-    } else if (document.pointerLockElement !== this.renderer.domElement) {
-      // Pointer lock is optional: dragging still works when a browser denies capture.
-      this.drag = { id: event.pointerId, x: event.clientX, y: event.clientY };
-      this.renderer.domElement.requestPointerLock()?.catch(() => undefined);
-    }
+    if (this.view().chatting || this.drag || event.button !== 0) return;
+    this.drag = { id: event.pointerId, x: event.clientX, y: event.clientY };
+    this.renderer.domElement.setPointerCapture(event.pointerId);
+    this.renderer.domElement.style.cursor = 'grabbing';
   };
   private readonly pointerMove = (event: PointerEvent): void => {
-    if (
-      !this.drag ||
-      this.drag.id !== event.pointerId ||
-      document.pointerLockElement === this.renderer.domElement ||
-      this.view().chatting
-    )
+    if (!this.drag || this.drag.id !== event.pointerId || this.view().chatting)
       return;
-    this.look(event.clientX - this.drag.x, event.clientY - this.drag.y);
+    this.yaw -= (event.clientX - this.drag.x) * 0.007;
+    this.elevation = THREE.MathUtils.clamp(
+      this.elevation + (event.clientY - this.drag.y) * 0.005,
+      0.12,
+      1.12,
+    );
     this.drag = { id: event.pointerId, x: event.clientX, y: event.clientY };
   };
-  private readonly pointerUp = (): void => {
+  private readonly pointerUp = (event: PointerEvent): void => {
+    if (this.drag?.id !== event.pointerId) return;
     this.drag = undefined;
+    this.renderer.domElement.style.cursor = 'grab';
   };
-  private readonly lockError = (): void => {
-    this.drag = undefined;
-  };
-  private look(x: number, y: number): void {
-    this.yaw -= x * 0.0026;
-    this.pitch = THREE.MathUtils.clamp(this.pitch - y * 0.0026, -1.2, 1.2);
-    this.facing = facingFromVector(
-      -Math.sin(this.yaw),
-      -Math.cos(this.yaw),
-      this.facing,
-    );
-  }
   private readonly contextLost = (event: Event): void => {
     event.preventDefault();
     this.failed('Mất ngữ cảnh 3D. Hãy thử lại hoặc chuyển sang bản đồ 2D.');
@@ -195,26 +186,19 @@ export class RoomFirstPerson {
     if (view === this.previousView) return;
     const previous = this.previousView;
     this.previousView = view;
-    if (view.chatting || !view.online) {
+    if (view.chatting || (previous?.online && !view.online)) {
       this.blur();
-      if (document.pointerLockElement === this.renderer.domElement)
-        document.exitPointerLock();
     }
     if (view.me !== previous?.me) {
       const self = view.players.find((player) => player.id === view.me);
       this.position = self ? { x: self.x, y: self.y } : { ...this.map.spawn };
       this.facing = self?.facing ?? 'north';
-      this.yaw = facingYaw(this.facing);
-      this.pitch = -0.08;
+      this.setPortrait(this.portrait);
       this.lastPosition = { x: -1, y: -1, facing: '' };
     }
     if (view.correction && view.correction !== previous?.correction)
       this.position = { ...view.correction };
-    const ids = new Set(
-      view.players
-        .filter((player) => player.id !== view.me)
-        .map((player) => player.id),
-    );
+    const ids = new Set(view.players.map((player) => player.id));
     this.actors.forEach((actor, id) => {
       if (!ids.has(id)) {
         actor.dispose();
@@ -222,27 +206,26 @@ export class RoomFirstPerson {
         this.actors.delete(id);
       }
     });
-    view.players
-      .filter((player) => player.id !== view.me)
-      .forEach((player) => {
-        let actor = this.actors.get(player.id);
-        if (!actor) {
-          actor = new RoomAvatar3D(this.world, player);
-          this.scene.add(actor.root);
-          this.actors.set(player.id, actor);
-        }
-        actor.target = {
-          x: player.x,
-          y: player.y,
-          facing:
-            player.facing ??
-            facingFromVector(
-              player.x - actor.target.x,
-              player.y - actor.target.y,
-              actor.target.facing,
-            ),
-        };
-      });
+    view.players.forEach((player) => {
+      let actor = this.actors.get(player.id);
+      if (!actor) {
+        actor = new RoomAvatar3D(this.world, player, player.id === view.me);
+        this.scene.add(actor.root);
+        this.actors.set(player.id, actor);
+      }
+      if (player.id === view.me) return;
+      actor.target = {
+        x: player.x,
+        y: player.y,
+        facing:
+          player.facing ??
+          facingFromVector(
+            player.x - actor.target.x,
+            player.y - actor.target.y,
+            actor.target.facing,
+          ),
+      };
+    });
   }
   private readonly update = (time: number): void => {
     if (!this.active) return;
@@ -277,6 +260,7 @@ export class RoomFirstPerson {
         const next = moveInRoom(this.map, this.position, dx, dy);
         walking =
           Math.hypot(next.x - this.position.x, next.y - this.position.y) > 0.01;
+        this.facing = facingFromVector(dx, dy, this.facing);
         this.position = next;
       }
       if (
@@ -290,36 +274,53 @@ export class RoomFirstPerson {
         this.lastPosition = { ...this.position, facing: this.facing };
       }
     }
-    const bob =
-      walking && !this.reducedMotion ? Math.sin(time / 100) * 0.018 : 0;
-    this.camera.position.set(
-      this.position.x / WORLD_SCALE,
-      1.6 + bob,
-      this.position.y / WORLD_SCALE,
-    );
-    this.camera.rotation.set(this.pitch, this.yaw, 0, 'YXZ');
+    const self = this.actors.get(view.me);
+    if (self) self.target = { ...this.position, facing: this.facing };
+    const now = performance.now();
     this.actors.forEach((actor, id) =>
-      actor.update(delta, time, view.speech[id], this.reducedMotion),
+      actor.update(
+        delta,
+        time,
+        view.speech[id],
+        this.reducedMotion,
+        gesturePose(view.gestures[id], now, this.reducedMotion),
+        id === view.me ? walking : undefined,
+      ),
     );
+    this.placeCamera();
     this.renderer.render(this.scene, this.camera);
   };
+
+  private placeCamera(): void {
+    const x = this.position.x / WORLD_SCALE;
+    const z = this.position.y / WORLD_SCALE;
+    const sin = Math.sin(this.yaw);
+    const cos = Math.cos(this.yaw);
+    const radius = this.portrait ? 3.3 : 6.35;
+    const horizontal = radius * Math.cos(this.elevation);
+    const ahead = this.portrait ? 0 : 2.25;
+    this.camera.position.set(
+      x + sin * horizontal,
+      1.12 + radius * Math.sin(this.elevation),
+      z + cos * horizontal,
+    );
+    this.camera.lookAt(x - sin * ahead, 1.04, z - cos * ahead);
+    this.world.showInterior(this.camera.position);
+  }
   destroy(): void {
     this.active = false;
     cancelAnimationFrame(this.frame);
     this.resizeObserver.disconnect();
-    if (document.pointerLockElement === this.renderer.domElement)
-      document.exitPointerLock();
     window.removeEventListener('keydown', this.keyDown);
     window.removeEventListener('keyup', this.keyUp);
     window.removeEventListener('blur', this.blur);
     document.removeEventListener('visibilitychange', this.visibility);
-    document.removeEventListener('mousemove', this.mouseMove);
-    document.removeEventListener('pointerlockerror', this.lockError);
     const canvas = this.renderer.domElement;
     canvas.removeEventListener('pointerdown', this.pointerDown);
     canvas.removeEventListener('pointermove', this.pointerMove);
     canvas.removeEventListener('pointerup', this.pointerUp);
     canvas.removeEventListener('pointercancel', this.pointerUp);
+    canvas.removeEventListener('lostpointercapture', this.pointerUp);
     canvas.removeEventListener('webglcontextlost', this.contextLost);
     this.actors.forEach((actor) => actor.dispose());
     this.actors.clear();

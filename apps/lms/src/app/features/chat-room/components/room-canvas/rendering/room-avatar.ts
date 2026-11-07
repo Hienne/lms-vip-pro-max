@@ -28,14 +28,18 @@ export class RoomAvatar {
     walking: boolean,
     time: number,
     reducedMotion: boolean,
+    lift: number,
+    wave: number,
   ): void {
     const step = walking && !reducedMotion ? Math.floor(time / 100) % 6 : 0;
-    const key = `${facing}:${walking && !reducedMotion}:${step}`;
+    const swing =
+      walking && !reducedMotion ? Math.sin((step * Math.PI) / 3) * 3 : 0;
+    this.body.y = -lift - Math.abs(swing) * 0.45;
+    const waveFrame = Math.round(wave * 10);
+    const key = `${facing}:${step}:${waveFrame}`;
     if (key === this.frame) return;
     this.frame = key;
     const g = this.graphics.clear();
-    const swing =
-      walking && !reducedMotion ? Math.sin((step * Math.PI) / 3) * 3 : 0;
     const back = facing.startsWith('north');
     const east = facing.includes('east'),
       west = facing.includes('west');
@@ -52,9 +56,16 @@ export class RoomAvatar {
       24,
       7,
     );
-    g.fillStyle(0xf2cba6)
-      .fillRoundedRect(-half - 3, -24 - swing, 5, 14, 3)
-      .fillRoundedRect(half - 2, -24 + swing, 5, 14, 3);
+    g.fillStyle(0xf2cba6).fillRoundedRect(-half - 3, -24 - swing, 5, 14, 3);
+    if (waveFrame) {
+      const angle = waveFrame * 0.2;
+      const handX = half - 1 + Math.sin(angle) * 13;
+      const handY = -24 + Math.cos(angle) * 13;
+      g.lineStyle(5, 0xf2cba6).lineBetween(half - 1, -24, handX, handY);
+      g.fillCircle(handX, handY, 3.5);
+    } else {
+      g.fillRoundedRect(half - 2, -24 + swing, 5, 14, 3);
+    }
     g.fillStyle(0xf2cba6).fillRoundedRect(-11 + sign, -49, 22, 23, 8);
     if (back) {
       g.fillStyle(0x393832).fillRoundedRect(
@@ -94,6 +105,5 @@ export class RoomAvatar {
         );
       }
     }
-    this.body.y = walking && !reducedMotion ? -Math.abs(swing) * 0.45 : 0;
   }
 }

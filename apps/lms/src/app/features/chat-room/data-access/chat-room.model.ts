@@ -1,7 +1,10 @@
-import type { RoomChat, RoomPlayer } from '@lms/contracts';
+import type { RoomChat, RoomGesture, RoomPlayer } from '@lms/contracts';
 
 export interface RoomSpeech extends RoomChat {
   readonly expiresAt: number;
+}
+export interface TimedRoomGesture extends RoomGesture {
+  readonly startedAt: number;
 }
 export type RoomViewMode = '3d' | '2d';
 
@@ -12,5 +15,6 @@ export interface RoomCanvasState {
   readonly players: readonly RoomPlayer[];
   readonly chatting: boolean;
   readonly speech: Readonly<Record<string, RoomSpeech>>;
+  readonly gestures: Readonly<Record<string, TimedRoomGesture>>;
   readonly correction: { readonly x: number; readonly y: number } | null;
 }

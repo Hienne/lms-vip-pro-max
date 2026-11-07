@@ -1,4 +1,10 @@
-import { Component, inject } from '@angular/core';
+import {
+  Component,
+  DestroyRef,
+  DOCUMENT,
+  inject,
+  Renderer2,
+} from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { Button, Empty, Skeleton } from '@lms/ui';
 import { AssessmentTake } from './components/assessment-take/assessment-take';
@@ -32,12 +38,14 @@ import { QuizTakeStore } from './data-access/quiz-take.store';
         [saving]="store.isSaving$()"
         [submitting]="store.isSubmitting$()"
         [saveError]="store.saveError$()"
+        [focusPolicy]="store.focusPolicy$()"
         (answerSelected)="
           store.chooseOption($event.questionId, $event.optionId, $event.checked)
         "
         (flagged)="store.toggleFlag($event)"
         (goto)="store.goto($event)"
         (retrySave)="store.retrySave()"
+        (retrySubmit)="store.retryForcedSubmit()"
         (submitted)="store.submit()"
       />
     } @else {
@@ -47,10 +55,37 @@ import { QuizTakeStore } from './data-access/quiz-take.store';
     }
   `,
   styleUrl: './quiz-take.scss',
-  host: { '(document:keydown)': 'store.handleKey($event)' },
+  host: {
+    '(document:keydown)': 'store.handleKey($event)',
+    '(document:visibilitychange)': "store.setPresence('hidden', page.hidden)",
+    '(window:blur)': "store.setPresence('unfocused', true)",
+    '(window:focus)': "store.setPresence('unfocused', false)",
+    '(window:online)': 'store.retryForcedSubmit()',
+  },
 })
 export class QuizTake {
   protected readonly store = inject(QuizTakeStore);
+  protected readonly page = inject(DOCUMENT);
+
+  constructor() {
+    const renderer = inject(Renderer2);
+    const destroy = inject(DestroyRef);
+    // The document root includes the exam and its overlays. Touch lifts are not mouse exits.
+    for (const [event, away] of [
+      ['pointerleave', true],
+      ['pointerenter', false],
+    ] as const) {
+      const stop = renderer.listen(
+        this.page.documentElement,
+        event,
+        (pointer: PointerEvent) => {
+          if (pointer.pointerType === 'mouse')
+            this.store.setPresence('pointer', away);
+        },
+      );
+      destroy.onDestroy(stop);
+    }
+  }
 
   /** The leave guard asks before the learner walks away from a running attempt. */
   hasUnsavedChanges(): boolean {
