@@ -82,9 +82,10 @@
     [total]="store.total$()"
     [sort]="store.sort$()"
     [page]="store.page$()"
-    [pageSize]="pageSize"
+    [pageSize]="store.pageSize$()"
     (sortChange)="store.sortBy($event)"
     (pageChange)="store.goToPage($event)"
+    (pageSizeChange)="store.changePageSize($event)"
   >
     <ui-empty
       slot="empty"
@@ -121,13 +122,12 @@
     <ng-template uiDataTableCell="actions" [of]="store.rows$()" let-row>
       <div class="courses__actions">
         <a
-          uiButton
+          uiIconButton
           size="sm"
-          variant="ghost"
+          [label]="'Sửa ' + row.title"
           [routerLink]="['/admin/courses', row.id, 'edit']"
-          [attr.aria-label]="'Sửa ' + row.title"
         >
-          <ui-icon name="pen-line" size="sm" />Sửa
+          <ui-icon name="pen-line" size="sm" />
         </a>
         <ui-menu
           [label]="'Thêm thao tác cho ' + row.title"

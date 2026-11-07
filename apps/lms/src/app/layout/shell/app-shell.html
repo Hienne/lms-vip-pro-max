@@ -53,6 +53,7 @@
   [besideToolbar]="devToolbar() !== null"
   [quiet]="store.fillsViewport$()"
 />
+<app-upload-panel [besideToolbar]="devToolbar() !== null" />
 @if (!store.fillsViewport$()) {
 <app-chat-widget [besideToolbar]="devToolbar() !== null" />
 } }

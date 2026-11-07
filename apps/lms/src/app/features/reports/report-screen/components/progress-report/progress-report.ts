@@ -18,7 +18,6 @@ import {
   type SegmentedOption,
 } from '@lms/ui';
 import { ReportScreenStore } from '../../data-access/report-screen.store';
-import { PROGRESS_PAGE_SIZE } from '../../data-access/progress-report';
 import type { ProgressView } from '../../data-access/report-query';
 
 const COUNT_COLUMNS: readonly DataTableColumn[] = [
@@ -57,7 +56,6 @@ const COUNT_COLUMNS: readonly DataTableColumn[] = [
 export class ProgressReport {
   protected readonly store = inject(ReportScreenStore);
   protected readonly report = this.store.progress;
-  protected readonly pageSize = PROGRESS_PAGE_SIZE;
   protected readonly views: readonly SegmentedOption<ProgressView>[] = [
     { value: 'course', label: 'Theo khóa học' },
     { value: 'org', label: 'Theo đơn vị' },

@@ -105,9 +105,10 @@
         [total]="store.total$()"
         [sort]="store.sort$()"
         [page]="store.page$()"
-        [pageSize]="pageSize"
+        [pageSize]="store.pageSize$()"
         (sortChange)="store.sortBy($event)"
         (pageChange)="store.goToPage($event)"
+        (pageSizeChange)="store.changePageSize($event)"
       >
         <ui-empty
           slot="empty"
@@ -149,40 +150,42 @@
         <ng-template uiDataTableCell="actions" [of]="store.rows$()" let-user>
           @if (user.editable) {
           <button
-            uiButton
+            uiIconButton
             size="sm"
-            variant="ghost"
+            [label]="'Sửa ' + user.fullName"
             (click)="editorStore.edit(user)"
           >
-            <ui-icon name="pen-line" size="sm" />Sửa
+            <ui-icon name="pen-line" size="sm" />
           </button>
           @if (user.userId !== store.me$()?.userId) { @if (user.status ===
           'active') {
           <button
-            uiButton
+            uiIconButton
             size="sm"
-            variant="danger-ghost"
+            variant="danger"
+            [label]="'Khóa ' + user.fullName"
             (click)="editorStore.setStatus(user, 'locked')"
           >
-            <ui-icon name="lock" size="sm" />Khóa
+            <ui-icon name="lock" size="sm" />
           </button>
           } @else {
           <button
-            uiButton
+            uiIconButton
             size="sm"
-            variant="ghost"
+            [label]="'Mở khóa ' + user.fullName"
             (click)="editorStore.setStatus(user, 'active')"
           >
-            <ui-icon name="lock-open" size="sm" />Mở khóa
+            <ui-icon name="lock-open" size="sm" />
           </button>
           } } } @else {
           <a
-            uiButton
+            uiIconButton
             size="sm"
-            variant="ghost"
+            [label]="'Xem ' + user.fullName"
             [routerLink]="['/admin/users', user.userId]"
-            >Xem</a
           >
+            <ui-icon name="eye" size="sm" />
+          </a>
           }
         </ng-template>
       </ui-data-table>

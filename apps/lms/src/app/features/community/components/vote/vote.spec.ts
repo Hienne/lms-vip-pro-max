@@ -44,4 +44,22 @@ describe('Vote', () => {
       render({ score: 12 }).el.querySelector('.vote__score')?.textContent,
     ).toContain('12');
   });
+
+  it('shows the selected helpful label and can switch away from a downvote', () => {
+    const selected = render({ score: 4, myVote: 1 });
+    expect(selected.up.textContent).toContain('Đã thấy hữu ích');
+    const downvoted = render({ score: -2, myVote: -1 });
+    expect(downvoted.down.getAttribute('aria-pressed')).toBe('true');
+    downvoted.up.click();
+    expect(downvoted.sent).toEqual([1]);
+  });
+
+  it('blocks both controls while the server is processing a vote', () => {
+    const { up, down, sent } = render({ score: 12, busy: true });
+    up.click();
+    down.click();
+    expect(up.disabled).toBe(true);
+    expect(down.disabled).toBe(true);
+    expect(sent).toEqual([]);
+  });
 });

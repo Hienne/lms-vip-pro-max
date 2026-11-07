@@ -12,6 +12,19 @@
     color: var(--color-text-muted);
     font-size: var(--text-sm);
 
+    // The range and the rows-per-page picker sit together on the left, the page buttons on the
+    // right; on a narrow screen they wrap onto their own lines.
+    &__info {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: var(--spacing-3);
+
+      select {
+        width: auto;
+      }
+    }
+
     &__pages {
       display: flex;
       gap: var(--spacing-1);

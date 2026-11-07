@@ -417,7 +417,7 @@ describe('CourseReview step 4: assignment rows and shares', () => {
         'Bài đầu tiên',
       );
       await screen.click(screen.button('Văn bản / Markdown', drawer));
-      await screen.click(screen.button('Áp dụng', drawer));
+      await screen.click(screen.button('Lưu', drawer));
       await screen.click(
         Array.from(
           screen.el.querySelectorAll<HTMLElement>('.stepper__step'),

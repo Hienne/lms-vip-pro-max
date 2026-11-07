@@ -69,6 +69,7 @@ interface AssignmentsQuery {
   readonly courseId: number | undefined;
   readonly orgId: number;
   readonly page: number;
+  readonly size: number;
 }
 
 interface Assigning {
@@ -106,6 +107,7 @@ export class AssignmentsStore {
     /** The course whose assignments are listed: the linked one, else every course. */
     courseId: signal<number | undefined>(this.linkedCourseId),
     page: signal(1),
+    pageSize: signal(ASSIGNMENTS_PAGE_SIZE),
     /** The assign drawer; a link from the course list opens it on that course. */
     assigning: signal<Assigning | null>(
       this.linkedCourseId
@@ -145,13 +147,13 @@ export class AssignmentsStore {
   );
 
   private readonly assignmentsData = serverData(
-    ({ courseId, orgId, page }: AssignmentsQuery) =>
+    ({ courseId, orgId, page, size }: AssignmentsQuery) =>
       this.client.call(assignmentEndpoints.orgAssignments, {
         query: {
           assigningOrgId: orgId,
           ...(courseId ? { courseId } : {}),
           page: page - 1,
-          size: ASSIGNMENTS_PAGE_SIZE,
+          size,
           sort: 'id,desc',
         },
       }),
@@ -159,7 +161,12 @@ export class AssignmentsStore {
       params: (): AssignmentsQuery | undefined => {
         const orgId = this.orgId();
         return orgId
-          ? { courseId: this.state.courseId(), orgId, page: this.state.page() }
+          ? {
+              courseId: this.state.courseId(),
+              orgId,
+              page: this.state.page(),
+              size: this.state.pageSize(),
+            }
           : undefined;
       },
       reloadOn: this.assignmentChanges,
@@ -337,6 +344,7 @@ export class AssignmentsStore {
   readonly tab$ = this.state.tab.asReadonly();
   readonly courseId$ = this.state.courseId.asReadonly();
   readonly page$ = this.state.page.asReadonly();
+  readonly pageSize$ = this.state.pageSize.asReadonly();
   readonly assigning$ = this.state.assigning.asReadonly();
   readonly revokingId$ = this.state.revokingId.asReadonly();
   readonly creatingGroup$ = this.state.creatingGroup.asReadonly();
@@ -484,6 +492,12 @@ export class AssignmentsStore {
 
   goToPage(page: number): void {
     this.setPage(page);
+  }
+
+  /** A new page size starts again at the first page. */
+  changePageSize(size: number): void {
+    this.state.pageSize.set(size);
+    this.setPage(1);
   }
 
   startAssign(): void {

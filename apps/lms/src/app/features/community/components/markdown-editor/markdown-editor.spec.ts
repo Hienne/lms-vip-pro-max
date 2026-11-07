@@ -25,6 +25,19 @@ async function render(initial = '') {
 }
 
 describe('MarkdownEditor', () => {
+  it('shows invalid styling only after the editor has been touched', async () => {
+    const fixture = TestBed.createComponent(MarkdownEditor);
+    fixture.componentRef.setInput('invalid', true);
+    fixture.detectChanges();
+    const textarea = fixture.nativeElement.querySelector(
+      'textarea',
+    ) as HTMLTextAreaElement;
+    expect(textarea.hasAttribute('aria-invalid')).toBe(false);
+    textarea.dispatchEvent(new Event('blur'));
+    fixture.detectChanges();
+    expect(textarea.getAttribute('aria-invalid')).toBe('true');
+  });
+
   it('writes what the user types into the model', async () => {
     const { fixture, box, host } = await render();
     const textarea = box()!;

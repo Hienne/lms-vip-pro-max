@@ -50,22 +50,45 @@
               [ngTemplateOutlet]="lessonText"
               [ngTemplateOutletContext]="{ $implicit: lesson }"
             />
+            @if (uploadOf(lesson); as upload) { @if (upload.failed) {
             <button
-              uiButton
               type="button"
-              size="sm"
-              variant="ghost"
-              [attr.aria-label]="'Sửa ' + lesson.title"
+              class="course-outline__upload-error"
               (click)="editLesson.emit({ chapter: ci, lesson: li })"
             >
-              <ui-icon name="pen-line" size="sm" />Sửa
+              <ui-icon name="triangle-alert" size="sm" />Lỗi tải
+            </button>
+            } @else {
+            <span
+              class="course-outline__upload"
+              tabindex="0"
+              [uiTooltip]="upload.tooltip"
+            >
+              <ui-progress
+                size="sm"
+                [value]="upload.percent"
+                [label]="'Đang tải lên ' + lesson.title"
+              />
+              <span class="course-outline__upload-percent"
+                >{{ upload.percent }}%</span
+              >
+            </span>
+            } }
+            <button
+              uiIconButton
+              type="button"
+              size="sm"
+              label="Sửa bài học"
+              (click)="editLesson.emit({ chapter: ci, lesson: li })"
+            >
+              <ui-icon name="pen-line" size="sm" />
             </button>
             <button
               uiIconButton
               type="button"
               size="sm"
               variant="danger"
-              [label]="'Xóa ' + lesson.title"
+              label="Xóa bài học"
               (click)="removeLesson(ci, li)"
             >
               <ui-icon name="trash-2" size="sm" />
@@ -119,7 +142,7 @@
       <span>{{ lesson.minutes }} phút</span>
     </div>
   </div>
-  @if (problemOf(lesson); as problem) {
+  @if (problemOf(lesson); as problem) { @if (!uploadOf(lesson)) {
   <span uiBadge tone="warning">{{ problem }}</span>
-  }
+  } }
 </ng-template>

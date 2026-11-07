@@ -15,6 +15,9 @@
 
   &__comment {
     @include ui.stack(1);
+    min-width: 0;
+    overflow-wrap: anywhere;
+    padding-block: ui.space(2);
   }
 
   &__replies {
@@ -28,6 +31,13 @@
   &__muted,
   &__deleted {
     @include ui.text(sm, muted);
+  }
+
+  &__meta {
+    @include ui.row(2);
+    flex-wrap: wrap;
+    font-size: ui.text-size(xs);
+    margin: 0;
   }
 
   &__author {
@@ -51,5 +61,12 @@
   &__composer-actions {
     @include ui.row(2);
     justify-content: flex-end;
+  }
+
+  @include ui.bp-below(md) {
+    &__replies {
+      margin-left: ui.space(2);
+      padding-left: ui.space(3);
+    }
   }
 }

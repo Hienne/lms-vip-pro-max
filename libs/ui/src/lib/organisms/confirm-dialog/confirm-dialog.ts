@@ -14,6 +14,11 @@ export type ConfirmOptions = {
   cancelLabel?: string;
   /** `danger` swaps the confirm button for the danger one. */
   tone?: ConfirmTone;
+  /**
+   * The close icon, Escape and the backdrop answer `undefined` instead of `false`, so the caller can
+   * tell "never mind, go back" from the cancel button's "no". Set by {@link choose}.
+   */
+  distinctClose?: boolean;
 };
 
 type ConfirmData = Required<ConfirmOptions> & {
@@ -36,12 +41,12 @@ let nextId = 0;
   templateUrl: './confirm-dialog.html',
 })
 export class ConfirmDialog {
-  private readonly ref = inject<DialogRef<boolean>>(DialogRef);
+  private readonly ref = inject<DialogRef<boolean | undefined>>(DialogRef);
   protected readonly data = inject<ConfirmData>(DIALOG_DATA);
 
   protected readonly danger = computed(() => this.data.tone === 'danger');
 
-  protected close(result: boolean): void {
+  protected close(result: boolean | undefined): void {
     this.ref.close(result);
   }
 }
@@ -55,17 +60,36 @@ export function confirm(
   dialog: Dialog,
   options: ConfirmOptions,
 ): Observable<boolean> {
+  return open(dialog, options).pipe(map((result) => result === true));
+}
+
+/**
+ * Like {@link confirm} with three answers: `true` on the confirm button, `false` on the cancel
+ * button, and `undefined` on the close icon, Escape or the backdrop ("go back").
+ */
+export function choose(
+  dialog: Dialog,
+  options: ConfirmOptions,
+): Observable<boolean | undefined> {
+  return open(dialog, { ...options, distinctClose: true });
+}
+
+function open(
+  dialog: Dialog,
+  options: ConfirmOptions,
+): Observable<boolean | undefined> {
   return defer(() => {
     const id = ++nextId;
     const data: ConfirmData = {
       confirmLabel: 'Xác nhận',
       cancelLabel: 'Hủy',
       tone: 'primary',
+      distinctClose: false,
       ...options,
       titleId: `ui-confirm-title-${id}`,
       messageId: `ui-confirm-message-${id}`,
     };
-    const ref = dialog.open<boolean, ConfirmData, ConfirmDialog>(
+    const ref = dialog.open<boolean | undefined, ConfirmData, ConfirmDialog>(
       ConfirmDialog,
       {
         data,
@@ -77,6 +101,10 @@ export function confirm(
         panelClass: 'dialog-pane',
       },
     );
-    return ref.closed.pipe(map((result) => result === true));
+    return ref.closed.pipe(
+      map((result) =>
+        typeof result === 'boolean' || data.distinctClose ? result : false,
+      ),
+    );
   });
 }

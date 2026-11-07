@@ -148,7 +148,9 @@ describe('Course', () => {
 
     it('states the completion condition and the lessons done out of the required ones', () => {
       expect(text()).toContain('Mục tiêu đầu ra');
-      expect(text()).toContain('Học đủ');
+      expect(text()).toContain(
+        'Chưa có thông tin đánh giá điều kiện hoàn thành.',
+      );
       expect(text()).toMatch(/\d+\/\d+ bài bắt buộc đã hoàn thành/);
     });
 
@@ -216,6 +218,46 @@ describe('Course', () => {
     await open(1);
     expect(text()).toContain('đạt điểm yêu cầu của 1 bài kiểm tra bắt buộc');
     expect(text()).toContain('62%');
+  });
+
+  it('keeps full learning progress separate from an unpassed completion condition', async () => {
+    const backend = TestBed.inject(MockBackend);
+    handle.mockImplementation((endpoint, request) => {
+      const reply = MockBackend.prototype.handle.call(
+        backend,
+        endpoint,
+        request,
+      );
+      if (reply && 'body' in reply) {
+        if (endpoint === learnerEndpoints.course) {
+          const data = reply.body.data as {
+            card: { progressPercent: number; learningStatus: string };
+          };
+          data.card.progressPercent = 100;
+          data.card.learningStatus = 'in_progress';
+        }
+        if (endpoint === learnerEndpoints.enrollment) {
+          const data = reply.body.data as { completion?: unknown };
+          data.completion = {
+            completedRequiredLessons: 2,
+            requiredLessons: 2,
+            lessonsSatisfied: true,
+            finalQuizId: 2,
+            finalExamStatus: 'NOT_PASSED',
+            allSatisfied: false,
+          };
+        }
+      }
+      return reply;
+    });
+    await open(1);
+    expect(text()).toContain('100%');
+    expect(text()).toContain('Chưa hoàn thành khóa');
+    expect(text()).toContain('Bài bắt buộc: 2/2');
+    expect(text()).toContain('Bài thi cuối khóa: Chưa đạt');
+    expect(action('Đến bài thi cuối khóa')?.getAttribute('href')).toBe(
+      '/quiz/2',
+    );
   });
 
   describe('the cover image', () => {

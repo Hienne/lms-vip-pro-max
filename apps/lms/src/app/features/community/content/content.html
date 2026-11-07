@@ -7,7 +7,7 @@
   (retry)="store.retryLoad()"
 />
 } @else if (store.detail$(); as detail) {
-<div class="content">
+<div class="content" [class.content--article]="!isQuestion()">
   @if (store.isArchived$()) {
   <ui-alert heading="Nội dung đã được lưu trữ">
     Nội dung vẫn đọc được nhưng không nhận thêm trả lời, bình luận hoặc bình
@@ -53,297 +53,350 @@
   </ui-alert>
   }
 
-  <ui-page-header [title]="detail.publishedRevision?.title ?? ''">
-    <div slot="actions" class="content__actions">
-      <button
-        uiButton
-        size="sm"
-        type="button"
-        [attr.aria-pressed]="detail.saved"
-        [disabled]="store.isBusy$()"
-        (click)="store.toggleSaved()"
-      >
-        {{ detail.saved ? 'Đã lưu' : 'Lưu' }}
-      </button>
-      <button
-        uiButton
-        size="sm"
-        type="button"
-        [attr.aria-pressed]="store.isFollowing$()"
-        [disabled]="store.isBusy$()"
-        (click)="store.toggleFollow()"
-      >
-        {{ store.isFollowing$() ? 'Đang theo dõi' : 'Theo dõi' }}
-      </button>
-      @if (detail.capabilities.canEditDraft) {
-      <a
-        uiButton
-        size="sm"
-        [routerLink]="['/community/contents', detail.contentId, 'edit']"
-        >Sửa</a
-      >
-      } @if (menu().length) {
-      <ui-menu
-        label="Thêm thao tác"
-        icon="ellipsis"
-        iconOnly
-        size="sm"
-        variant="ghost"
-        [entries]="menu()"
-        (selected)="act(detail, $event)"
-      />
-      }
-    </div>
-  </ui-page-header>
+  <header class="content__header">
+    <h1 class="content__title">{{ detail.publishedRevision?.title ?? '' }}</h1>
+  </header>
 
   <p class="content__meta">
     @if (isQuestion()) { @if (resolutionLabels[detail.resolutionStatus ?? ''];
     as resolution) { @if (!store.isClosed$()) {
     <span uiBadge dot [tone]="resolution.tone">{{ resolution.label }}</span>
-    } } Hỏi ngày {{ detail.publishedRevision?.publishedAt | fmtDate }} } @else {
-    {{ store.kindLabel$() }} @if
+    } } <span class="content__author">{{ detail.author?.displayName }}</span> ·
+    Hỏi ngày {{ detail.publishedRevision?.publishedAt | fmtDate }} } @else { {{
+    store.kindLabel$() }} @if
     (detail.publishedRevision?.context?.lessonLearned?.occurredOn; as
     occurredOn) { · sự cố ngày {{ occurredOn | fmtDate }} } · đăng {{
     detail.publishedRevision?.publishedAt | fmtDate }} · {{
     detail.author?.displayName }} }
   </p>
-
-  <article uiCard>
-    <div uiCardBody class="content__post">
-      <app-vote
-        [score]="detail.score"
-        [myVote]="detail.myVote"
-        [canVote]="detail.capabilities.canVote"
-        [busy]="store.isVoting$()"
-        [blockedReason]="voteBlocked(detail)"
-        (voted)="store.vote(detail.contentId, $event)"
-      />
-      <div class="content__main">
-        @if (detail.kind === 'lesson_learned') { @for (section of
-        lessonSections; track section.key) { @if (lessonText(detail,
-        section.key); as text) {
-        <section class="content__section">
-          <h2 class="content__section-title">{{ section.label }}</h2>
-          <app-markdown [source]="text" />
-        </section>
-        } } }
-        <app-markdown [source]="detail.publishedRevision?.bodyMarkdown ?? ''" />
-
-        @if (isQuestion() && (technologies(detail) ||
-        detail.publishedRevision?.context?.environment)) {
-        <dl class="content__context">
-          @if (technologies(detail); as tech) {
-          <div>
-            <dt>Công nghệ</dt>
-            <dd>{{ tech }}</dd>
-          </div>
-          } @if (detail.publishedRevision?.context?.environment; as environment)
-          {
-          <div>
-            <dt>Môi trường</dt>
-            <dd>{{ environment }}</dd>
-          </div>
-          }
-        </dl>
-        } @if (tagNames(detail); as tags) {
-        <p class="content__muted">Thẻ: {{ tags }}</p>
-        }
-        <p class="content__muted">
-          <span class="content__author">{{ detail.author?.displayName }}</span>
-          · {{ isQuestion() ? 'Hỏi' : 'Đăng' }} ngày {{
-          detail.publishedRevision?.publishedAt | fmtDate }}
-        </p>
-
-        <app-comment-thread
-          [contentId]="detail.contentId"
-          [canComment]="detail.capabilities.canComment"
-          [closedMessage]="store.isClosed$() ? 'Câu hỏi đã đóng nên không nhận thêm bình luận.' : undefined"
-        />
-      </div>
-    </div>
-  </article>
-
-  @if (isQuestion()) {
-  <section class="content__answers" aria-labelledby="answers-title">
-    <div class="content__answers-bar">
-      <h2 id="answers-title" class="content__answers-title">
-        {{ detail.answerCount | fmtNum }} câu trả lời
-      </h2>
-    </div>
-
-    @if (store.answersError$(); as error) {
-    <ui-error-state
-      title="Không tải được câu trả lời"
-      [message]="error.message"
-      (retry)="store.retryAnswers()"
+  <div class="content__actions">
+    <button
+      uiButton
+      size="sm"
+      variant="ghost"
+      type="button"
+      [attr.aria-pressed]="detail.saved"
+      [disabled]="store.isBusy$()"
+      (click)="store.toggleSaved()"
+    >
+      <ui-icon name="bookmark" size="sm" />
+      {{ detail.saved ? 'Đã lưu' : 'Lưu' }}
+    </button>
+    <button
+      uiButton
+      size="sm"
+      variant="ghost"
+      type="button"
+      [attr.aria-pressed]="store.isFollowing$()"
+      [disabled]="store.isBusy$()"
+      (click)="store.toggleFollow()"
+    >
+      <ui-icon name="bell" size="sm" />
+      {{ store.isFollowing$() ? 'Đang theo dõi' : 'Theo dõi' }}
+    </button>
+    @if (detail.capabilities.canAnswer) {
+    <a
+      uiButton
+      size="sm"
+      variant="ghost"
+      [routerLink]="[]"
+      fragment="answer-composer"
+      ><ui-icon name="message-square" size="sm" />Viết câu trả lời</a
+    >
+    } @if (detail.capabilities.canEditDraft) {
+    <a
+      uiButton
+      size="sm"
+      [routerLink]="['/community/contents', detail.contentId, 'edit']"
+      >Sửa</a
+    >
+    } @if (menu().length) {
+    <ui-menu
+      label="Thêm thao tác"
+      icon="ellipsis"
+      iconOnly
+      size="sm"
+      variant="ghost"
+      [entries]="menu()"
+      (selected)="act(detail, $event)"
     />
-    } @else if (store.answersLoading$()) {
-    <div uiSkeleton variant="block" class="content__placeholder"></div>
-    } @else { @for (answer of store.answers$(); track answer.contentId) {
-    <article
-      uiCard
-      [id]="'answer-' + answer.contentId"
-      [attr.aria-label]="isAccepted(answer) ? 'Câu trả lời được chấp nhận' : 'Câu trả lời'"
-    >
-      <div uiCardBody class="content__post">
-        <app-vote
-          [score]="answer.score"
-          [myVote]="answer.myVote"
-          [canVote]="answer.capabilities.canVote"
-          [busy]="store.isVoting$()"
-          [blockedReason]="voteBlocked(answer)"
-          (voted)="store.vote(answer.contentId, $event)"
-        />
-        <div class="content__main">
-          @if (isAccepted(answer)) {
-          <p>
-            <span uiBadge dot tone="success">Câu trả lời được chấp nhận</span>
-          </p>
-          }
-          <app-markdown
-            [source]="answer.publishedRevision?.bodyMarkdown ?? ''"
-          />
+    }
+  </div>
+  <div class="content__layout">
+    <div class="content__feed">
+      <article uiCard>
+        <div uiCardBody class="content__post">
+          <div class="content__main">
+            @if (detail.kind === 'lesson_learned') { @for (section of
+            lessonSections; track section.key) { @if (lessonText(detail,
+            section.key); as text) {
+            <section class="content__section">
+              <h2 class="content__section-title">{{ section.label }}</h2>
+              <app-markdown [source]="text" />
+            </section>
+            } } }
+            <app-markdown
+              [source]="detail.publishedRevision?.bodyMarkdown ?? ''"
+            />
 
-          @if (isAccepted(answer) && !detail.acceptedRevisionIsCurrent &&
-          detail.capabilities.canAccept) {
-          <ui-alert>
-            Câu trả lời đã được sửa sau khi bạn chấp nhận.
-            <button
-              uiAlertAction
-              uiButton
-              size="sm"
-              type="button"
-              [disabled]="store.isBusy$()"
-              (click)="store.accept(answer)"
-            >
-              Chấp nhận bản mới
-            </button>
-          </ui-alert>
-          }
-
-          <div class="content__answer-actions">
-            @if (answer.capabilities.canEditDraft) {
-            <a
-              uiButton
-              size="sm"
-              variant="ghost"
-              [routerLink]="['/community/contents', answer.contentId, 'edit']"
-            >
-              Sửa câu trả lời
-            </a>
-            } @if (detail.capabilities.canAccept) { @if (isAccepted(answer)) {
-            <button
-              uiButton
-              size="sm"
-              variant="ghost"
-              type="button"
-              [disabled]="store.isBusy$()"
-              (click)="store.unaccept()"
-            >
-              Bỏ chấp nhận
-            </button>
-            } @else {
-            <button
-              uiButton
-              size="sm"
-              type="button"
-              [disabled]="store.isBusy$()"
-              (click)="store.accept(answer)"
-            >
-              Chấp nhận câu trả lời
-            </button>
-            } } @if (answer.capabilities.canReport &&
-            !answer.capabilities.canEditDraft) {
-            <button
-              uiButton
-              size="sm"
-              variant="ghost"
-              type="button"
-              (click)="store.report(answer.contentId)"
-            >
-              Báo cáo vi phạm
-            </button>
-            } @if (answer.capabilities.canDelete) {
-            <button
-              uiButton
-              size="sm"
-              variant="danger-ghost"
-              type="button"
-              [disabled]="store.isBusy$()"
-              (click)="store.changeLifecycle(answer, 'soft_delete')"
-            >
-              Xóa
-            </button>
+            @if (isQuestion() && (technologies(detail) ||
+            detail.publishedRevision?.context?.environment)) {
+            <dl class="content__context">
+              @if (technologies(detail); as tech) {
+              <div>
+                <dt>Công nghệ</dt>
+                <dd>{{ tech }}</dd>
+              </div>
+              } @if (detail.publishedRevision?.context?.environment; as
+              environment) {
+              <div>
+                <dt>Môi trường</dt>
+                <dd>{{ environment }}</dd>
+              </div>
+              }
+            </dl>
             }
-          </div>
-          <p class="content__muted">
-            <span class="content__author"
-              >{{ answer.author?.displayName }}</span
-            >
-            · Trả lời ngày {{ answer.publishedRevision?.publishedAt | fmtDate }}
-          </p>
+            <div class="content__feedback">
+              <app-vote
+                [score]="detail.score"
+                [myVote]="detail.myVote"
+                [canVote]="detail.capabilities.canVote"
+                [busy]="store.isVoting$()"
+                [blockedReason]="voteBlocked(detail)"
+                (voted)="store.vote(detail.contentId, $event)"
+              />
+            </div>
 
-          <app-comment-thread
-            [contentId]="answer.contentId"
-            [canComment]="answer.capabilities.canComment"
-            [closedMessage]="store.isClosed$() ? 'Câu hỏi đã đóng nên không nhận thêm bình luận.' : undefined"
-          />
+            @if (!isQuestion()) {
+            <h2 class="content__section-title">Thảo luận</h2>
+            }
+            <app-comment-thread
+              [contentId]="detail.contentId"
+              [canComment]="detail.capabilities.canComment"
+              [closedMessage]="store.isClosed$() ? 'Câu hỏi đã đóng nên không nhận thêm bình luận.' : undefined"
+            />
+          </div>
         </div>
-      </div>
-    </article>
-    } @if (store.answersNotShown$()) {
-    <p class="content__muted">
-      Đang hiển thị {{ store.answers$().length | fmtNum }} câu trả lời đầu tiên;
-      còn {{ store.answersNotShown$() | fmtNum }} câu trả lời chưa hiển thị.
-    </p>
-    } } @if (detail.capabilities.canAnswer) {
-    <form
-      uiCard
-      aria-labelledby="answer-composer-title"
-      [formRoot]="answerForm"
-    >
-      <div uiCardBody class="content__composer">
-        <h2 id="answer-composer-title" class="content__answers-title">
-          Câu trả lời của bạn
-        </h2>
-        <app-markdown-editor
-          label="Nội dung câu trả lời"
-          [formField]="answerForm.bodyMarkdown"
+      </article>
+
+      @if (isQuestion()) {
+      <section class="content__answers" aria-labelledby="answers-title">
+        <div class="content__answers-bar">
+          <h2 id="answers-title" class="content__answers-title">
+            {{ detail.answerCount | fmtNum }} câu trả lời
+          </h2>
+        </div>
+
+        @if (store.answersError$(); as error) {
+        <ui-error-state
+          title="Không tải được câu trả lời"
+          [message]="error.message"
+          (retry)="store.retryAnswers()"
         />
-        @if (answerForm.bodyMarkdown().touched() &&
-        answerForm.bodyMarkdown().invalid()) {
-        <p class="content__error" role="alert">
-          @for (error of answerForm.bodyMarkdown().errors(); track error.kind) {
-          {{ error.message }} }
+        } @else if (store.answersLoading$()) {
+        <div uiSkeleton variant="block" class="content__placeholder"></div>
+        } @else { @for (answer of store.answers$(); track answer.contentId) {
+        <article
+          uiCard
+          [id]="'answer-' + answer.contentId"
+          [attr.aria-label]="isAccepted(answer) ? 'Câu trả lời được chấp nhận' : 'Câu trả lời'"
+        >
+          <div uiCardBody class="content__post">
+            <div class="content__main">
+              @if (isAccepted(answer)) {
+              <p>
+                <span uiBadge dot tone="success"
+                  >Câu trả lời được chấp nhận</span
+                >
+              </p>
+              }
+              <app-markdown
+                [source]="answer.publishedRevision?.bodyMarkdown ?? ''"
+              />
+
+              @if (isAccepted(answer) && !detail.acceptedRevisionIsCurrent &&
+              detail.capabilities.canAccept) {
+              <ui-alert>
+                Câu trả lời đã được sửa sau khi bạn chấp nhận.
+                <button
+                  uiAlertAction
+                  uiButton
+                  size="sm"
+                  type="button"
+                  [disabled]="store.isBusy$()"
+                  (click)="store.accept(answer)"
+                >
+                  Chấp nhận bản mới
+                </button>
+              </ui-alert>
+              }
+
+              <div class="content__answer-actions">
+                @if (answer.capabilities.canEditDraft) {
+                <a
+                  uiButton
+                  size="sm"
+                  variant="ghost"
+                  [routerLink]="['/community/contents', answer.contentId, 'edit']"
+                >
+                  Sửa câu trả lời
+                </a>
+                } @if (detail.capabilities.canAccept) { @if (isAccepted(answer))
+                {
+                <button
+                  uiButton
+                  size="sm"
+                  variant="ghost"
+                  type="button"
+                  [disabled]="store.isBusy$()"
+                  (click)="store.unaccept()"
+                >
+                  Bỏ chấp nhận
+                </button>
+                } @else {
+                <button
+                  uiButton
+                  size="sm"
+                  type="button"
+                  [disabled]="store.isBusy$()"
+                  (click)="store.accept(answer)"
+                >
+                  Chấp nhận câu trả lời
+                </button>
+                } } @if (answer.capabilities.canReport &&
+                !answer.capabilities.canEditDraft) {
+                <button
+                  uiButton
+                  size="sm"
+                  variant="ghost"
+                  type="button"
+                  (click)="store.report(answer.contentId)"
+                >
+                  Báo cáo vi phạm
+                </button>
+                } @if (answer.capabilities.canDelete) {
+                <button
+                  uiButton
+                  size="sm"
+                  variant="danger-ghost"
+                  type="button"
+                  [disabled]="store.isBusy$()"
+                  (click)="store.changeLifecycle(answer, 'soft_delete')"
+                >
+                  Xóa
+                </button>
+                }
+              </div>
+              <p class="content__muted">
+                <span class="content__author"
+                  >{{ answer.author?.displayName }}</span
+                >
+                · Trả lời ngày {{ answer.publishedRevision?.publishedAt |
+                fmtDate }}
+              </p>
+              <div class="content__feedback">
+                <app-vote
+                  [score]="answer.score"
+                  [myVote]="answer.myVote"
+                  [canVote]="answer.capabilities.canVote"
+                  [busy]="store.isVoting$()"
+                  [blockedReason]="voteBlocked(answer)"
+                  (voted)="store.vote(answer.contentId, $event)"
+                />
+              </div>
+
+              <app-comment-thread
+                [contentId]="answer.contentId"
+                [canComment]="answer.capabilities.canComment"
+                [closedMessage]="store.isClosed$() ? 'Câu hỏi đã đóng nên không nhận thêm bình luận.' : undefined"
+              />
+            </div>
+          </div>
+        </article>
+        } @if (store.answersNotShown$()) {
+        <p class="content__muted">
+          Đang hiển thị {{ store.answers$().length | fmtNum }} câu trả lời đầu
+          tiên; còn {{ store.answersNotShown$() | fmtNum }} câu trả lời chưa
+          hiển thị.
+        </p>
+        } } @if (detail.capabilities.canAnswer) {
+        <form
+          uiCard
+          id="answer-composer"
+          aria-labelledby="answer-composer-title"
+          [formRoot]="answerForm"
+        >
+          <div uiCardBody class="content__composer">
+            <h2 id="answer-composer-title" class="content__answers-title">
+              Câu trả lời của bạn
+            </h2>
+            <app-markdown-editor
+              label="Nội dung câu trả lời"
+              [rows]="6"
+              [formField]="answerForm.bodyMarkdown"
+            />
+            @if (answerForm.bodyMarkdown().touched() &&
+            answerForm.bodyMarkdown().invalid()) {
+            <p class="content__error" role="alert">
+              @for (error of answerForm.bodyMarkdown().errors(); track
+              error.kind) { {{ error.message }} }
+            </p>
+            }
+            <div class="content__composer-actions">
+              <button
+                uiButton
+                type="button"
+                [disabled]="store.isAnswering$()"
+                (click)="saveAnswerDraft()"
+              >
+                Lưu nháp
+              </button>
+              <button
+                uiButton
+                variant="primary"
+                type="submit"
+                [disabled]="store.isAnswering$()"
+              >
+                Đăng câu trả lời
+              </button>
+            </div>
+          </div>
+        </form>
+        } @else if (store.isClosed$()) {
+        <p class="content__muted">
+          Câu hỏi đã đóng nên không nhận thêm câu trả lời.
         </p>
         }
-        <div class="content__composer-actions">
-          <button
-            uiButton
-            type="button"
-            [disabled]="store.isAnswering$()"
-            (click)="saveAnswerDraft()"
-          >
-            Lưu nháp
-          </button>
-          <button
-            uiButton
-            variant="primary"
-            type="submit"
-            [disabled]="store.isAnswering$()"
-          >
-            Đăng câu trả lời
-          </button>
+      </section>
+      }
+    </div>
+    <aside class="content__aside" aria-label="Thông tin nội dung">
+      <h2 class="content__info-title">
+        {{ isQuestion() ? 'Thông tin câu hỏi' : 'Thông tin bài viết' }}
+      </h2>
+      <dl class="content__info">
+        <div>
+          <dt>Tác giả</dt>
+          <dd>{{ detail.author?.displayName ?? 'Không rõ' }}</dd>
         </div>
-      </div>
-    </form>
-    } @else if (store.isClosed$()) {
-    <p class="content__muted">
-      Câu hỏi đã đóng nên không nhận thêm câu trả lời.
-    </p>
-    }
-  </section>
-  }
+        <div>
+          <dt>Ngày đăng</dt>
+          <dd>{{ detail.publishedRevision?.publishedAt | fmtDate }}</dd>
+        </div>
+        @if (tagNames(detail); as tags) {
+        <div>
+          <dt>Thẻ</dt>
+          <dd>{{ tags }}</dd>
+        </div>
+        } @if (isQuestion()) {
+        <div>
+          <dt>Câu trả lời</dt>
+          <dd>{{ detail.answerCount | fmtNum }} câu trả lời</dd>
+        </div>
+        }
+      </dl>
+    </aside>
+  </div>
 </div>
 } @else {
 <div class="content" aria-busy="true">

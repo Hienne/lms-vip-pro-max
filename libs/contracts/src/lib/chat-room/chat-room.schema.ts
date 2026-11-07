@@ -15,10 +15,29 @@ export const RoomIdentitySchema = z.object({
 });
 export type RoomIdentity = z.infer<typeof RoomIdentitySchema>;
 
+export const RoomFacingSchema = z.enum([
+  'north',
+  'northeast',
+  'east',
+  'southeast',
+  'south',
+  'southwest',
+  'west',
+  'northwest',
+]);
+export type RoomFacing = z.infer<typeof RoomFacingSchema>;
+export const RoomMovementSchema = z.object({
+  x: z.number(),
+  y: z.number(),
+  facing: RoomFacingSchema.optional(),
+});
+export type RoomMovement = z.infer<typeof RoomMovementSchema>;
+
 export const RoomPlayerSchema = RoomIdentitySchema.extend({
   id: z.string(),
   x: z.number(),
   y: z.number(),
+  facing: RoomFacingSchema.optional(),
 });
 export type RoomPlayer = z.infer<typeof RoomPlayerSchema>;
 
@@ -57,7 +76,7 @@ export const RoomTicketSchema = z.object({
 });
 export const RoomCommandSchema = z.discriminatedUnion('type', [
   RoomIdentitySchema.extend({ type: z.literal('join') }),
-  z.object({ type: z.literal('move'), x: z.number(), y: z.number() }),
+  RoomMovementSchema.extend({ type: z.literal('move') }),
   z.object({
     type: z.literal('chat'),
     text: z.string().trim().min(1).max(280),
@@ -69,7 +88,8 @@ export const RoomEventSchema = z.discriminatedUnion('type', [
     type: z.literal('welcome'),
     id: z.string(),
     players: z.array(RoomPlayerSchema),
-    history: z.array(RoomChatSchema),
+    // Older servers may send this field; clients never retain or display it.
+    history: z.array(RoomChatSchema).optional(),
   }),
   z.object({ type: z.literal('joined'), player: RoomPlayerSchema }),
   z.object({ type: z.literal('left'), id: z.string(), name: z.string() }),
@@ -78,6 +98,7 @@ export const RoomEventSchema = z.discriminatedUnion('type', [
     id: z.string(),
     x: z.number(),
     y: z.number(),
+    facing: RoomFacingSchema.optional(),
   }),
   z.object({ type: z.literal('correction'), x: z.number(), y: z.number() }),
   RoomChatSchema.extend({ type: z.literal('chat') }),

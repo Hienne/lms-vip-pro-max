@@ -39,6 +39,7 @@ export class MarkdownEditor implements FormValueControl<string> {
   readonly invalid = input(false);
   /** Accessible name of the textarea; the screen's field label sits outside. */
   readonly label = input('Nội dung');
+  readonly rows = input(14);
 
   protected readonly bodyMax = COMMUNITY_LIMITS.body.max;
   protected readonly bodyMin = COMMUNITY_LIMITS.body.min;

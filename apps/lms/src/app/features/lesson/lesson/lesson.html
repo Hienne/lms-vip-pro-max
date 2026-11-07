@@ -313,13 +313,17 @@
   >
     <div uiTabPanel="outline" class="lesson__side-panel">
       <p class="lesson__progress">
-        Khóa học {{ store.courseProgress$() | fmtPct }}
+        Tiến độ học {{ store.courseProgress$() | fmtPct }}
       </p>
       <ui-progress
         size="sm"
         [value]="store.courseProgress$()"
-        label="Tiến độ khóa học"
+        label="Tiến độ học các bài bắt buộc"
       />
+      <p class="lesson__progress">
+        Kết quả khóa còn phụ thuộc các điều kiện bắt buộc.
+        <a [routerLink]="courseLink()">Xem điều kiện hoàn thành</a>
+      </p>
       <app-lesson-outline
         [chapters]="store.outline$()"
         [finalQuizId]="store.finalQuizId$()"

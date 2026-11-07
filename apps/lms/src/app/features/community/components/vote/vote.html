@@ -1,21 +1,25 @@
 <button
-  uiIconButton
-  [label]="upLabel()"
+  uiButton
+  size="sm"
+  class="vote__helpful"
+  [attr.aria-label]="upLabel()"
   [attr.aria-pressed]="myVote() === 1"
   [disabled]="!canVote() || busy()"
   (click)="cast(1)"
 >
-  <ui-icon name="chevron-up" />
+  <ui-icon name="thumbs-up" size="sm" />
+  {{ myVote() === 1 ? 'Đã thấy hữu ích' : 'Hữu ích' }}
+  <span class="vote__score" aria-live="polite">
+    {{ score() | fmtNum }}<span class="sr-only"> điểm bình chọn</span>
+  </span>
 </button>
-<span class="vote__score" aria-live="polite">
-  {{ score() | fmtNum }}<span class="sr-only"> điểm</span>
-</span>
 <button
   uiIconButton
+  class="vote__unhelpful"
   [label]="downLabel()"
   [attr.aria-pressed]="myVote() === -1"
   [disabled]="!canVote() || busy()"
   (click)="cast(-1)"
 >
-  <ui-icon name="chevron-down" />
+  <ui-icon name="thumbs-down" size="sm" />
 </button>

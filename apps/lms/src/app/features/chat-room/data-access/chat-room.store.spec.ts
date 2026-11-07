@@ -105,8 +105,8 @@ describe('ChatRoomStore', () => {
       at: '2026-11-06T13:00:00Z',
     });
     expect(store.players$()).toHaveLength(2);
-    expect(store.chats$()[0].text).toBe('<b>Xin chào</b>');
-    expect(store.canvas$().lastChat?.id).toBe('m');
+    expect(store.speech$()['b'].text).toBe('<b>Xin chào</b>');
+    expect(store.canvas$().speech['b'].id).toBe('m');
     observer.message({ type: 'left', id: 'b', name: 'Bình' });
     expect(store.players$()).toHaveLength(1);
   });
@@ -154,5 +154,58 @@ describe('ChatRoomStore', () => {
     expect(store.entered$()).toBe(false);
     expect(store.status$()).toBe('offline');
     http.expectNone('/api/v1/chat-room/tickets');
+  });
+  it('expires speech instead of keeping a chat log and ignores welcome history', async () => {
+    await connect();
+    vi.useFakeTimers();
+    const chat = {
+      type: 'chat' as const,
+      id: 'live',
+      playerId: 'a',
+      name: 'An',
+      color: 'teal' as const,
+      text: 'Chỉ người đang ở đây đọc được',
+      at: '2026-11-06T13:00:00Z',
+    };
+    observer.message(chat);
+    expect(store.speech$()['a'].text).toBe(chat.text);
+    await vi.advanceTimersByTimeAsync(5501);
+    expect(store.speech$()).toEqual({});
+    observer.message({
+      type: 'welcome',
+      id: 'new',
+      players: [],
+      history: [chat],
+    });
+    expect(store.speech$()).toEqual({});
+    expect(store.announcement$()).toBe('');
+  });
+  it('opens chat explicitly, closes it after send, and changes view without reconnecting', async () => {
+    store.openChat();
+    expect(store.chatOpen$()).toBe(false);
+    await connect();
+    expect(store.viewMode$()).toBe('3d');
+    store.openChat();
+    expect(store.canvas$().chatting).toBe(true);
+    store.send('Xin chào');
+    expect(store.chatOpen$()).toBe(false);
+    store.changeViewMode('2d');
+    expect(store.viewMode$()).toBe('2d');
+    expect(store.online$()).toBe(true);
+    store.move({ x: 446, y: 656, facing: 'east' });
+    expect(send).toHaveBeenCalledWith({
+      type: 'move',
+      x: 446,
+      y: 656,
+      facing: 'east',
+    });
+    observer.message({
+      type: 'moved',
+      id: 'a',
+      x: 446,
+      y: 656,
+      facing: 'west',
+    });
+    expect(store.players$()[0].facing).toBe('west');
   });
 });

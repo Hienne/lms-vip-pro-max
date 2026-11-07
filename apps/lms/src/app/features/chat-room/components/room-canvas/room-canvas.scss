@@ -6,7 +6,7 @@
 .room-canvas {
   position: relative;
   width: 100%;
-  height: clamp(ui.layout(panel), 62dvh, ui.layout(reading));
+  height: clamp(ui.layout(panel), 68dvh, ui.layout(reading));
   overflow: hidden;
   background: ui.color(surface-2);
   &:focus-visible {

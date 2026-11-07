@@ -23,7 +23,7 @@ import {
   FmtNumPipe,
   Menu,
   type MenuEntry,
-  PageHeader,
+  Icon,
   Skeleton,
 } from '@lms/ui';
 import type { HasUnsavedChanges } from '../../../core/routing/unsaved-changes.guard';
@@ -72,7 +72,7 @@ const LESSON_SECTIONS = [
     Markdown,
     MarkdownEditor,
     Menu,
-    PageHeader,
+    Icon,
     RouterLink,
     Skeleton,
     Vote,

@@ -24,8 +24,9 @@
     [rows]="report.groups$()"
     [total]="report.groupTotal$()"
     [page]="store.page$()"
-    [pageSize]="pageSize"
+    [pageSize]="store.pageSize$()"
     (pageChange)="store.changePage($event)"
+    (pageSizeChange)="store.changePageSize($event)"
   >
     <ng-template uiDataTableCell="name" [of]="report.groups$()" let-group>
       @if (group.drill) {
@@ -79,9 +80,10 @@
     [rows]="report.learners$()"
     [total]="report.learnerTotal$()"
     [page]="store.page$()"
-    [pageSize]="pageSize"
+    [pageSize]="store.pageSize$()"
     [sort]="report.sort$()"
     (pageChange)="store.changePage($event)"
+    (pageSizeChange)="store.changePageSize($event)"
     (sortChange)="store.changeSort($event)"
   >
     <ng-template uiDataTableCell="fullName" [of]="report.learners$()" let-row

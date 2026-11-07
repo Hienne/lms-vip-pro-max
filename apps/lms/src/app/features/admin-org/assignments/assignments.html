@@ -96,8 +96,9 @@
         [rows]="store.rows$()"
         [total]="store.total$()"
         [page]="store.page$()"
-        [pageSize]="pageSize"
+        [pageSize]="store.pageSize$()"
         (pageChange)="store.goToPage($event)"
+        (pageSizeChange)="store.changePageSize($event)"
       >
         <ui-empty slot="empty" variant="inline" title="Chưa có lượt giao">
           <button uiButton variant="primary" (click)="store.startAssign()">
@@ -170,23 +171,23 @@
           @if (!row.revoked) {
           <div class="assignments__actions">
             <button
-              uiButton
+              uiIconButton
+              type="button"
               size="sm"
-              variant="ghost"
               [disabled]="row.done || !row.assignment.dueAt || store.remindingId$() === row.assignment.id"
-              [attr.aria-label]="'Nhắc học ' + row.title"
+              [label]="'Nhắc học ' + row.title"
               (click)="store.remind(row.assignment.id)"
             >
-              <ui-icon name="bell" size="sm" />Nhắc học
+              <ui-icon name="bell" size="sm" />
             </button>
             <button
-              uiButton
+              uiIconButton
+              type="button"
               size="sm"
-              variant="ghost"
-              [attr.aria-label]="'Sửa hạn ' + row.title"
+              [label]="'Sửa hạn ' + row.title"
               (click)="store.startReschedule(row.assignment.id)"
             >
-              <ui-icon name="pen-line" size="sm" />Sửa hạn
+              <ui-icon name="pen-line" size="sm" />
             </button>
             <button
               uiIconButton
@@ -230,6 +231,7 @@
       [rows]="store.groups$()"
       [total]="store.groups$().length"
       [pageSize]="100"
+      [pageSizeOptions]="[]"
     >
       <ui-empty
         slot="empty"
@@ -261,13 +263,12 @@
       </ng-template>
       <ng-template uiDataTableCell="actions" [of]="store.groups$()" let-row>
         <button
-          uiButton
+          uiIconButton
           size="sm"
-          variant="ghost"
-          [attr.aria-label]="'Thành viên ' + row.group.name"
+          [label]="'Thành viên ' + row.group.name"
           (click)="store.editMembers(row.group.id)"
         >
-          <ui-icon name="users" size="sm" />Thành viên
+          <ui-icon name="users" size="sm" />
         </button>
       </ng-template>
     </ui-data-table>

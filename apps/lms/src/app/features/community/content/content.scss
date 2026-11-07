@@ -1,15 +1,69 @@
 @use 'ui';
 
 :host {
-  @include ui.page(content);
+  @include ui.page(wide);
 }
 
 .content {
   @include ui.stack(4);
 
+  &__header {
+    min-width: 0;
+  }
+
+  &__title {
+    margin: 0;
+    overflow-wrap: anywhere;
+  }
+
+  &__layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) calc(ui.space(18) * 3);
+    gap: ui.space(8);
+    align-items: start;
+  }
+
+  &__feed {
+    @include ui.stack(5);
+    min-width: 0;
+  }
+
+  &__aside {
+    @include ui.stack(4);
+    padding-block: ui.space(3);
+    min-width: 0;
+  }
+
+  &__info-title {
+    margin: 0;
+    font-family: ui.font(sans);
+    font-size: ui.text-size(md);
+    font-weight: ui.weight(semibold);
+  }
+
+  &__info {
+    @include ui.stack(4);
+    margin: 0;
+    @include ui.text(sm);
+
+    dt {
+      @include ui.text(xs, muted);
+      margin-bottom: ui.space(1);
+    }
+
+    dd {
+      margin: 0;
+      overflow-wrap: anywhere;
+    }
+  }
+
   &__actions {
     @include ui.row(2);
     flex-wrap: wrap;
+
+    > ui-menu {
+      margin-inline-start: auto;
+    }
   }
 
   &__meta,
@@ -29,15 +83,25 @@
   }
 
   &__post {
-    display: grid;
-    grid-template-columns: auto minmax(0, 1fr);
-    gap: ui.space(4);
-    align-items: start;
+    min-width: 0;
   }
 
   &__main {
     @include ui.stack(4);
     min-width: 0;
+  }
+
+  &__feedback {
+    padding-top: ui.space(3);
+    border-top: 1px solid ui.color(border);
+  }
+
+  &--article &__post {
+    padding: ui.space(6);
+  }
+
+  &__composer {
+    scroll-margin-top: ui.space(18);
   }
 
   &__section {
@@ -100,5 +164,30 @@
 
   &__placeholder {
     height: ui.space(18);
+  }
+
+  @include ui.bp-below(lg) {
+    &__layout {
+      grid-template-columns: minmax(0, 1fr);
+    }
+
+    &__aside {
+      border-top: 1px solid ui.color(border);
+    }
+
+    &__info {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+
+  @include ui.bp-below(md) {
+    &__layout {
+      gap: ui.space(5);
+    }
+
+    &__composer-actions {
+      flex-wrap: wrap;
+    }
   }
 }

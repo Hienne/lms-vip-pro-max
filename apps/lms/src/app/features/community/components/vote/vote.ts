@@ -1,5 +1,5 @@
 import { Component, computed, input, output } from '@angular/core';
-import { FmtNumPipe, Icon, IconButton } from '@lms/ui';
+import { Button, FmtNumPipe, Icon, IconButton } from '@lms/ui';
 
 export type VoteValue = -1 | 0 | 1;
 
@@ -10,7 +10,7 @@ export type VoteValue = -1 | 0 | 1;
  */
 @Component({
   selector: 'app-vote',
-  imports: [FmtNumPipe, Icon, IconButton],
+  imports: [Button, FmtNumPipe, Icon, IconButton],
   templateUrl: './vote.html',
   styleUrl: './vote.scss',
 })

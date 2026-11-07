@@ -35,6 +35,10 @@
     @include ui.text(xs, muted);
   }
 
+  &__hint {
+    @include ui.text(sm, muted);
+  }
+
   &__notice {
     margin-bottom: ui.space(4);
   }

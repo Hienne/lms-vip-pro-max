@@ -1,4 +1,11 @@
-import { Component, computed, inject, linkedSignal } from '@angular/core';
+import {
+  Component,
+  computed,
+  inject,
+  linkedSignal,
+  untracked,
+  viewChild,
+} from '@angular/core';
 import { form, FormRoot, submit } from '@angular/forms/signals';
 import { RouterLink } from '@angular/router';
 import {
@@ -26,6 +33,7 @@ import {
   emptyDraftValue,
   toDraftValue,
   toSaveDraftCommand,
+  withAsset,
   type CourseDraftValue,
   type LessonValue,
 } from './course-draft';
@@ -91,10 +99,11 @@ export class CourseEditor implements HasUnsavedChanges {
     },
     {
       submission: {
-        action: async () =>
-          this.store.isCreate$()
-            ? this.store.create(this.draftValue())
-            : this.store.save(this.command()),
+        action: async () => {
+          if (this.store.pendingUploads$()) return;
+          if (this.store.isCreate$()) this.store.create(this.draftValue());
+          else this.store.save(this.command());
+        },
       },
     },
   );
@@ -141,7 +150,69 @@ export class CourseEditor implements HasUnsavedChanges {
     ];
   };
 
+  /** "Tiếp tục" on step 1 of a new course creates the course and moves to its URL: the cover must be done. */
+  protected readonly continueBlocked = computed(
+    () =>
+      this.store.isCreate$() &&
+      this.store.step$() === 0 &&
+      this.store.coverUploading$(),
+  );
+
+  /** Why saving waits: a block saved now would have no asset. */
+  protected readonly uploadHint = computed(() => {
+    const pending = this.store.pendingUploads$();
+    if (this.continueBlocked()) return 'Ảnh bìa đang tải lên';
+    return pending ? `Còn ${pending} tệp đang tải` : '';
+  });
+
+  /** Where each block of the draft sits, by key: what a kept upload records. */
+  private readonly blockPositions = computed(
+    (): ReadonlyMap<string, string> =>
+      new Map(
+        this.model().chapters.flatMap((chapter, ci) =>
+          chapter.lessons.flatMap((lesson, li) =>
+            lesson.blocks.map(
+              (block, bi) => [block.key, `${ci}.${li}.${bi}`] as const,
+            ),
+          ),
+        ),
+      ),
+  );
+
   constructor() {
+    this.store.registerBlockPositions(this.blockPositions);
+    this.store.registerAssetAttacher((blockKey, asset) =>
+      this.model.update((value) => ({
+        ...value,
+        chapters: value.chapters.map((chapter) => ({
+          ...chapter,
+          lessons: chapter.lessons.map((lesson) =>
+            lesson.blocks.some((b) => b.key === blockKey)
+              ? {
+                  ...lesson,
+                  blocks: lesson.blocks.map((b) =>
+                    b.key === blockKey ? withAsset(b, asset) : b,
+                  ),
+                }
+              : lesson,
+          ),
+        })),
+      })),
+    );
+    this.store.registerBlockDropper((blockKey) =>
+      this.model.update((value) => ({
+        ...value,
+        chapters: value.chapters.map((chapter) => ({
+          ...chapter,
+          lessons: chapter.lessons.map((lesson) => ({
+            ...lesson,
+            blocks: lesson.blocks.filter(
+              (b) => b.key !== blockKey || b.assets.length > 0,
+            ),
+          })),
+        })),
+      })),
+    );
     this.store.registerExamAttacher((quizId) => {
       this.model.update((value) => ({ ...value, finalQuizId: String(quizId) }));
       this.store.save(this.command());
@@ -155,15 +226,32 @@ export class CourseEditor implements HasUnsavedChanges {
     );
   }
 
+  /**
+   * The lesson in the drawer as it was when opened. The draft is read untracked: a finished
+   * upload joins its block in the draft while the drawer is open, and that must not reset the
+   * form the author is typing in (the form's own files already include the finished upload).
+   */
+  private readonly lessonForm = viewChild(LessonForm);
+
   protected readonly editingLesson = computed((): LessonValue | undefined => {
     const target = this.store.editingLesson$();
     return target
-      ? this.model().chapters[target.chapter]?.lessons[target.lesson]
+      ? untracked(this.model).chapters[target.chapter]?.lessons[target.lesson]
       : undefined;
   });
 
+  /** Unsaved edits, or files still uploading (leaving stops them): one question for both. */
   hasUnsavedChanges(): boolean {
-    return !this.store.left$() && this.dirty();
+    return (
+      !this.store.left$() && (this.dirty() || this.store.pendingUploads$() > 0)
+    );
+  }
+
+  leaveMessage(): string | undefined {
+    const pending = this.store.pendingUploads$();
+    return pending
+      ? `Còn ${pending} tệp đang tải. Rời trang sẽ dừng tải; lần sau mở lại, chọn lại đúng tệp để tải tiếp.`
+      : undefined;
   }
 
   /** "Tiếp tục": when the step stays because of an error, the first one gets focus. */
@@ -178,6 +266,7 @@ export class CourseEditor implements HasUnsavedChanges {
   }
 
   protected publish(): void {
+    if (this.store.pendingUploads$()) return;
     void submit(this.courseForm, async () =>
       this.store.isCreate$()
         ? this.store.createAndPublish(this.draftValue())
@@ -189,6 +278,11 @@ export class CourseEditor implements HasUnsavedChanges {
   protected removeCover(): void {
     this.store.dropCover();
     this.model.update((value) => ({ ...value, coverAssetId: null }));
+  }
+
+  /** Esc, the backdrop or a close button while a file begun here uploads: ask what to do first. */
+  protected askToCloseLesson(): void {
+    this.store.askToCloseLesson(() => this.lessonForm()?.save());
   }
 
   protected applyLesson(lesson: LessonValue): void {

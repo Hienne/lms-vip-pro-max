@@ -14,7 +14,6 @@ import type {
 } from '@lms/contracts';
 import {
   Badge,
-  Button,
   Card,
   CardHeader,
   DataTable,
@@ -23,6 +22,8 @@ import {
   ErrorState,
   FmtDatetimePipe,
   FmtRelativePipe,
+  Icon,
+  IconButton,
   Search,
   Select,
   Spinner,
@@ -30,10 +31,7 @@ import {
   TableSub,
 } from '@lms/ui';
 import type { StatusView } from '../../../../../shared/status/status-view';
-import {
-  ACCESS_REQUESTS_PAGE_SIZE,
-  AccessRequestsStore,
-} from '../../data-access/access-requests.store';
+import { AccessRequestsStore } from '../../data-access/access-requests.store';
 import { askApproval } from './approve-request-dialog';
 import { askPasswordReset } from './reset-password-dialog';
 import { askRejectionNote } from './reject-request-dialog';
@@ -62,7 +60,6 @@ const STATUS_VIEW: Record<AccessRequestStatus, StatusView> = {
   selector: 'app-access-requests',
   imports: [
     Badge,
-    Button,
     Card,
     CardHeader,
     DataTable,
@@ -71,6 +68,8 @@ const STATUS_VIEW: Record<AccessRequestStatus, StatusView> = {
     ErrorState,
     FmtDatetimePipe,
     FmtRelativePipe,
+    Icon,
+    IconButton,
     Search,
     Select,
     Spinner,
@@ -85,7 +84,6 @@ export class AccessRequests {
   private readonly dialog = inject(Dialog);
   private readonly injector = inject(Injector);
   private readonly destroyRef = inject(DestroyRef);
-  protected readonly pageSize = ACCESS_REQUESTS_PAGE_SIZE;
 
   protected readonly rows = computed((): readonly AccessRequestRow[] =>
     this.store

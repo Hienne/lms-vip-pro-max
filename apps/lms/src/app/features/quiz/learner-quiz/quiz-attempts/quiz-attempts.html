@@ -31,8 +31,9 @@
     [rows]="store.pageRows$()"
     [total]="store.total$()"
     [page]="store.page$()"
-    [pageSize]="pageSize"
+    [pageSize]="store.pageSize$()"
     (pageChange)="store.setPage($event)"
+    (pageSizeChange)="store.changePageSize($event)"
   >
     <ng-template uiDataTableCell="attemptNo" [of]="store.pageRows$()" let-row
       >#{{ row.attemptNo }}</ng-template
@@ -70,9 +71,20 @@
     </ng-template>
     <ng-template uiDataTableCell="actions" [of]="store.pageRows$()" let-row>
       @if (row.link) {
-      <a uiButton size="sm" variant="ghost" [routerLink]="row.link"
-        >{{ row.outcome === 'running' ? 'Tiếp tục' : 'Chi tiết' }}</a
+      <a
+        uiIconButton
+        size="sm"
+        [label]="
+          (row.outcome === 'running' ? 'Tiếp tục lần thi #' : 'Chi tiết lần thi #') +
+          row.attemptNo
+        "
+        [routerLink]="row.link"
       >
+        <ui-icon
+          [name]="row.outcome === 'running' ? 'play' : 'eye'"
+          size="sm"
+        />
+      </a>
       }
     </ng-template>
     <ui-empty slot="empty" title="Chưa có lần thi nào" />

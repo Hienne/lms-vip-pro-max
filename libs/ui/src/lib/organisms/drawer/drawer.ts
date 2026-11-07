@@ -10,6 +10,7 @@ import {
   type Signal,
   type TemplateRef,
 } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Icon } from '../../atoms/icon/icon';
 import { IconButton } from '../../atoms/icon-button/icon-button.directive';
 
@@ -34,6 +35,12 @@ export type DrawerLive = {
   /** While true the user cannot close the drawer and an overlay covers the body and footer. */
   busy: Signal<boolean>;
   busyLabel: Signal<string | undefined>;
+  /**
+   * While true no way of closing it works by itself: each one calls `closeRequested` instead, and
+   * the caller decides (it may ask first). Without it every way of closing simply closes.
+   */
+  guarded?: Signal<boolean>;
+  closeRequested?: () => void;
 };
 
 type DrawerData = DrawerLive & {
@@ -64,12 +71,29 @@ export class Drawer {
     // `disableClose` blocks Escape and the backdrop only; the close button and `close()` are
     // guarded below.
     effect(() => {
-      this.ref.disableClose = this.data.busy();
+      this.ref.disableClose = this.data.busy() || this.guarded();
     });
+    this.ref.keydownEvents.pipe(takeUntilDestroyed()).subscribe((event) => {
+      if (event.key === 'Escape' && this.guarded() && !this.data.busy()) {
+        event.preventDefault();
+        this.data.closeRequested?.();
+      }
+    });
+    this.ref.backdropClick.pipe(takeUntilDestroyed()).subscribe(() => {
+      if (this.guarded() && !this.data.busy()) this.data.closeRequested?.();
+    });
+  }
+
+  private guarded(): boolean {
+    return this.data.guarded?.() ?? false;
   }
 
   protected close(): void {
     if (this.data.busy()) return;
+    if (this.guarded()) {
+      this.data.closeRequested?.();
+      return;
+    }
     this.ref.close();
   }
 }

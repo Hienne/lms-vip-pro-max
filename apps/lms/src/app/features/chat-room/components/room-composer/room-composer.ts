@@ -26,6 +26,7 @@ import { Button, Field, Input } from '@lms/ui';
 export class RoomComposer {
   readonly disabled = input(true);
   readonly sent = output<string>();
+  readonly cancelled = output<void>();
   private readonly input =
     viewChild.required<ElementRef<HTMLInputElement>>('input');
   private readonly model = signal({ text: '' });

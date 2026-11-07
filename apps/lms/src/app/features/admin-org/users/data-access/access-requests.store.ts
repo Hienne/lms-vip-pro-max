@@ -38,6 +38,7 @@ export class AccessRequestsStore {
     kind: signal<AccessRequestKind | ''>(''),
     status: signal<AccessRequestStatus | ''>('PENDING'),
     page: signal(1),
+    pageSize: signal(ACCESS_REQUESTS_PAGE_SIZE),
     /** The temporary password of the reset just made; held only until the dialog closes. */
     temporaryPassword: signal<string | null>(null),
     /** The last page the server sent: the table stays while the next one loads. */
@@ -55,7 +56,7 @@ export class AccessRequestsStore {
     const { query, kind, status, page } = this.state;
     return {
       page: page() - 1,
-      size: ACCESS_REQUESTS_PAGE_SIZE,
+      size: this.state.pageSize(),
       ...(query().trim() ? { q: query().trim().slice(0, 100) } : {}),
       ...(kind() ? { kind: kind() as AccessRequestKind } : {}),
       ...(status() ? { status: status() as AccessRequestStatus } : {}),
@@ -126,6 +127,7 @@ export class AccessRequestsStore {
   readonly kind$ = this.state.kind.asReadonly();
   readonly status$ = this.state.status.asReadonly();
   readonly page$ = this.state.page.asReadonly();
+  readonly pageSize$ = this.state.pageSize.asReadonly();
 
   readonly isLoading$ = computed(
     () => this.listData.isLoading() && this.state.shown() === undefined,
@@ -192,6 +194,12 @@ export class AccessRequestsStore {
 
   goToPage(page: number): void {
     this.setPage(page);
+  }
+
+  /** A new page size starts again at the first page. */
+  changePageSize(size: number): void {
+    this.state.pageSize.set(size);
+    this.setPage(1);
   }
 
   reject(requestId: number, note?: string): void {

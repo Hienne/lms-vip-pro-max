@@ -133,6 +133,20 @@ export const COVER_ICONS: readonly IconName[] = [
 ];
 
 let lastKey = 0;
+/** The block with a finished upload's asset: an attachment block collects files, the others hold the latest. */
+export function withAsset<B extends Pick<BlockValue, 'blockType' | 'assets'>>(
+  block: B,
+  asset: AssetValue,
+): B {
+  return {
+    ...block,
+    assets:
+      block.blockType === 'attachment'
+        ? [...block.assets.filter((a) => a.assetId !== asset.assetId), asset]
+        : [asset],
+  };
+}
+
 /** A row key the editor owns; the server's ids change on every save. */
 export const newKey = (): string => `k${++lastKey}`;
 
