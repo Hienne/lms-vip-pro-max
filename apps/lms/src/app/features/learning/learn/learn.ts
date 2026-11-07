@@ -1,23 +1,20 @@
 import { Component, computed, inject } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import {
-  Button,
   Card,
   Empty,
   ErrorState,
   FmtPctPipe,
   Icon,
-  PageHeader,
   Skeleton,
   Tabs,
   TabPanel,
   type TabItem,
 } from '@lms/ui';
-import { CourseCard } from '../../../shared/course/course-card';
 import { DueDate } from '../../../shared/course/due-date';
-import { PointsFigure } from '../../../shared/learning/points-figure/points-figure';
 import { ReminderItem } from '../../../shared/learning/reminder-item/reminder-item';
-import { ContinueCard } from './components/continue-card/continue-card';
+import { CourseTile } from './components/course-tile/course-tile';
+import { LearnHero } from './components/learn-hero/learn-hero';
 import { LearnKpis } from './components/learn-kpis/learn-kpis';
 import { LearnStore, type LearnTab } from './data-access/learn.store';
 
@@ -29,21 +26,22 @@ const TAB_LABEL: Record<LearnTab, string> = {
   assigned: 'Được giao',
 };
 
-/** The learner's home (the mockup's `dashboard` page, F.1): what to do next, then where they stand. */
+/**
+ * The learner's home (the mockup's `dashboard` page, F.1): the hero with what to do next, the
+ * figures, then the courses by state beside what falls due and the quick tools.
+ */
 @Component({
   selector: 'app-learn',
   imports: [
     Card,
-    ContinueCard,
-    CourseCard,
+    CourseTile,
     DueDate,
     Empty,
     ErrorState,
     FmtPctPipe,
     Icon,
+    LearnHero,
     LearnKpis,
-    PageHeader,
-    PointsFigure,
     ReminderItem,
     RouterLink,
     Skeleton,

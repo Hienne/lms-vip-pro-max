@@ -20,7 +20,6 @@ import {
   signInToMockBackend,
 } from '../../../core/dev/mock-api/mock-backend.testing';
 import { SessionStore } from '../../../core/session/session.store';
-import { DEFAULT_COURSE_COVER } from '../../../shared/course/course-card';
 import {
   FakeSessionStore,
   fakeSession,
@@ -100,7 +99,7 @@ describe('Learn', () => {
     Array.from(el.querySelectorAll<HTMLElement>('[ngTab]')).find((node) =>
       node.textContent?.includes(label),
     )!;
-  const cards = () => el.querySelectorAll('app-course-card');
+  const cards = () => el.querySelectorAll('app-course-tile');
 
   /** Fails one endpoint, leaving the rest as the mock answers them. */
   function fail(endpoint: unknown) {
@@ -115,18 +114,31 @@ describe('Learn', () => {
   describe('a learner with a course in progress', () => {
     beforeEach(() => open());
 
-    it('puts the continue card first, below only the heading', () => {
-      expect(el.querySelector('h1')?.textContent).toContain(
-        'Trang chủ học tập',
-      );
-      const first = el.querySelector('app-continue-card')!;
+    it('opens with the hero: a greeting, the first thing to attend to and the resume link', () => {
+      const hero = el.querySelector('app-learn-hero')!;
+      expect(el.querySelectorAll('h1')).toHaveLength(1);
       expect(
-        first.compareDocumentPosition(el.querySelector('app-learn-kpis')!) &
+        hero.querySelector('h1')?.textContent?.replace(/\s+/g, ' '),
+      ).toMatch(/^\s*Chào \S+, hôm nay học gì tiếp nhỉ\?\s*$/);
+      expect(hero.querySelector('.learn-hero__date')?.textContent).toMatch(
+        /\d{2}\/\d{2}\/\d{4}/,
+      );
+      expect(hero.querySelector('.learn-hero__headline')?.textContent).toMatch(
+        /quá hạn|Khóa gần hạn nhất|theo kịp/,
+      );
+      expect(
+        hero.compareDocumentPosition(el.querySelector('app-learn-kpis')!) &
           Node.DOCUMENT_POSITION_FOLLOWING,
       ).toBeTruthy();
-      expect(first.querySelector('a')?.textContent).toContain('Tiếp tục học');
-      expect(first.querySelector('a')?.getAttribute('href')).toMatch(
+      const resume = hero.querySelector<HTMLAnchorElement>(
+        '.learn-hero__continue a',
+      )!;
+      expect(resume.textContent).toContain('Tiếp tục học');
+      expect(resume.getAttribute('href')).toMatch(
         /^\/lesson\/\d+\/\d+(\?block=\d+)?$/,
+      );
+      expect(hero.querySelector('.learn-hero__lesson')?.textContent).toContain(
+        ' · ',
       );
     });
 
@@ -146,15 +158,19 @@ describe('Learn', () => {
         ],
         [
           'Tỷ lệ hoàn thành',
-          expect.stringMatching(/^\d+(,\d+)?%$/),
+          expect.stringMatching(/^\d+%$/),
           expect.stringMatching(/^\d+\/\d+ khóa đã xong$/),
         ],
-        ['Điểm kiểm tra gần nhất', '66,67%', 'Chưa đạt'],
+        [
+          'Điểm kiểm tra gần nhất',
+          '67%',
+          'Chưa đạt · Luyện tập: Tổng quan hệ thống Core Banking',
+        ],
         ['Điểm cao nhất', '90%', 'Đạt 1/5 bài kiểm tra'],
       ]);
     });
 
-    it('names the last quiz in a title, not in the footnote', () => {
+    it('names the last quiz at the end of the footnote and in the whole text as a title', () => {
       const last = el.querySelectorAll('app-learn-kpis dl')[2];
       expect(last.getAttribute('title')).toBe(
         'Luyện tập: Tổng quan hệ thống Core Banking',
@@ -167,11 +183,7 @@ describe('Learn', () => {
       ).toHaveLength(1);
       const [, rate, done] = kpis()[1];
       const [completed, total] = (done ?? '').match(/\d+/g)!.map(Number);
-      expect(rate).toBe(
-        `${new Intl.NumberFormat('vi-VN', { maximumFractionDigits: 2 }).format(
-          Math.round((completed / total) * 10_000) / 100,
-        )}%`,
-      );
+      expect(rate).toBe(`${Math.round((completed / total) * 100)}%`);
     });
 
     it('links the figures to the assigned catalogue and the progress page, and leaves the completion rate plain', () => {
@@ -272,16 +284,17 @@ describe('Learn', () => {
       URL.revokeObjectURL = original.revoke;
     });
 
-    it('shows the uploaded cover on the first card and the bundled default on the others', async () => {
+    it('shows the uploaded cover on the first tile and a pastel band with an icon on the others', async () => {
       withCover(handle, learnerEndpoints.myCourses, true);
       await open();
-      const covers = el.querySelectorAll<HTMLImageElement>(
-        'app-course-card img.course-card__cover',
-      );
-      expect(covers).toHaveLength(cards().length);
-      expect(covers[0].getAttribute('src')).toBe('blob:cover');
-      for (const cover of Array.from(covers).slice(1)) {
-        expect(cover.getAttribute('src')).toBe(DEFAULT_COURSE_COVER);
+      const tiles = Array.from(cards());
+      expect(tiles.length).toBeGreaterThan(1);
+      expect(
+        tiles[0].querySelector('img.course-tile__image')?.getAttribute('src'),
+      ).toBe('blob:cover');
+      for (const tile of tiles.slice(1)) {
+        expect(tile.querySelector('img')).toBeNull();
+        expect(tile.querySelector('.course-tile__art')).not.toBeNull();
       }
       expect(
         handle.mock.calls.filter(
@@ -290,15 +303,14 @@ describe('Learn', () => {
       ).toEqual({ assetId: '77' });
     });
 
-    it('uses the bundled default when the server refuses an uploaded cover', async () => {
+    it('falls back to the pastel band when the server refuses an uploaded cover', async () => {
       withCover(handle, learnerEndpoints.myCourses, false);
       await open();
       expect(cards().length).toBeGreaterThan(0);
+      expect(el.querySelector('app-course-tile img')).toBeNull();
       expect(
-        el
-          .querySelector('app-course-card .course-card__cover')
-          ?.getAttribute('src'),
-      ).toBe(DEFAULT_COURSE_COVER);
+        el.querySelector('app-course-tile .course-tile__art'),
+      ).not.toBeNull();
     });
   });
 
@@ -307,7 +319,7 @@ describe('Learn', () => {
 
     it('has no programme journey and no competency card, and reads neither', () => {
       expect(text()).not.toContain('Lộ trình theo chương trình');
-      expect(el.querySelector('#learn-programs')).toBeNull();
+      expect(el.querySelector('#learn-journey')).toBeNull();
       expect(el.querySelector('#learn-competency')).toBeNull();
       expect(el.querySelector('app-competency-view')).toBeNull();
       expect(
@@ -319,17 +331,11 @@ describe('Learn', () => {
       ).toBe(false);
     });
 
-    it('links "Tiến độ học tập" to the progress page, under the figures', () => {
-      const link =
-        section('Số liệu học tập').querySelector<HTMLAnchorElement>(
-          'a.learn__more',
-        )!;
-      expect(link.textContent?.trim()).toBe('Tiến độ học tập');
-      expect(link.getAttribute('href')).toBe('/progress');
-      expect(
-        el.querySelector('app-learn-kpis')!.compareDocumentPosition(link) &
-          Node.DOCUMENT_POSITION_FOLLOWING,
-      ).toBeTruthy();
+    it('links the two score figures to the progress page', () => {
+      const links = Array.from(
+        el.querySelectorAll<HTMLAnchorElement>('app-learn-kpis a'),
+      ).map((a) => a.getAttribute('href'));
+      expect(links.filter((href) => href === '/progress')).toHaveLength(2);
     });
   });
 
@@ -352,7 +358,7 @@ describe('Learn', () => {
       }
     });
 
-    it('lists the two quick tools after the deadline panel and its reminders', () => {
+    it('lists the three quick tools after the deadline panel and its reminders', () => {
       const tools = el.querySelector('#learn-tools')!;
       expect(tools.tagName).toBe('H2');
       expect(tools.textContent).toContain('Công cụ học nhanh');
@@ -363,15 +369,17 @@ describe('Learn', () => {
           a.getAttribute('href'),
         ]),
       ).toEqual([
+        ['Hỏi trợ lý AI', '/assistant'],
         ['Ghi chú & đánh dấu', '/saved'],
         ['Chứng nhận', '/certificates'],
       ]);
-      expect(links[0].textContent).toContain('Mở đúng trang / mốc video');
-      expect(links[1].textContent).toContain(
+      expect(links[0].textContent).toContain('Tra cứu tài liệu có trích nguồn');
+      expect(links[1].textContent).toContain('Mở đúng trang / mốc video');
+      expect(links[2].textContent).toContain(
         'Chứng nhận các khóa đã hoàn thành',
       );
       expect(links.every((a) => a.querySelector('ui-icon'))).toBe(true);
-      expect(tools.closest('section')!.hasAttribute('uicard')).toBe(false);
+      expect(tools.closest('section')!.hasAttribute('uicard')).toBe(true);
       const position = (selector: string) =>
         el.querySelector(selector)!.compareDocumentPosition(tools);
       expect(
@@ -383,17 +391,14 @@ describe('Learn', () => {
       ).toBeTruthy();
     });
 
-    it('has no AI assistant and no flashcards link', () => {
-      expect(text()).not.toMatch(/trợ lý AI|flashcard/i);
+    it('has no flashcards link: that screen does not exist yet', () => {
+      expect(text()).not.toMatch(/flashcard/i);
     });
   });
 
   describe('the points figure', () => {
-    const figure = () => el.querySelector('app-points-figure');
-    const cells = () =>
-      Array.from(figure()!.querySelectorAll('dt, dd')).map((node) =>
-        node.textContent?.replace(/\s+/g, ' ').trim(),
-      );
+    const reward = () => el.querySelector('.learn-hero__reward');
+    const shown = () => reward()?.textContent?.replace(/\s+/g, ' ').trim();
 
     /** Answers the points read with fixed figures, the rest as the mock does. */
     function answerPoints(data: unknown) {
@@ -405,23 +410,14 @@ describe('Learn', () => {
       );
     }
 
-    it('keeps rewards in the side column and links to the leaderboard', async () => {
+    it('sits in the hero and links to the leaderboard', async () => {
       await open();
-      expect(cells()).toEqual(['Điểm thưởng', '80', 'Chuỗi học', '2 ngày']);
-      expect(figure()!.querySelector('a')?.getAttribute('href')).toBe(
-        '/leaderboard',
+      expect(shown()).toBe('80 Điểm thưởng · chuỗi 2 ngày');
+      expect(reward()?.getAttribute('href')).toBe('/leaderboard');
+      expect(reward()?.getAttribute('aria-label')).toContain(
+        'xem bảng xếp hạng',
       );
-      const card = el.querySelector('app-continue-card')!;
-      expect(card.closest('.learn__main')).not.toBeNull();
-      expect(figure()!.closest('.learn__side')).not.toBeNull();
-      expect(
-        card.compareDocumentPosition(figure()!) &
-          Node.DOCUMENT_POSITION_FOLLOWING,
-      ).toBeTruthy();
-      expect(
-        el.querySelector('app-learn-kpis')!.compareDocumentPosition(figure()!) &
-          Node.DOCUMENT_POSITION_FOLLOWING,
-      ).toBeTruthy();
+      expect(reward()?.closest('app-learn-hero')).not.toBeNull();
       expect(
         handle.mock.calls.filter(([e]) => e === learnerEndpoints.myPoints),
       ).toHaveLength(1);
@@ -441,20 +437,23 @@ describe('Learn', () => {
         streakDays: 0,
       });
       await open();
-      expect(cells()).toEqual(['Điểm thưởng', '0', 'Chuỗi học', '0 ngày']);
+      expect(shown()).toBe('0 Điểm thưởng · chuỗi 0 ngày');
     });
 
     it('shows for a learner whose courses have no quiz', async () => {
       await open('giangvien', '000005');
-      expect(cells()).toEqual(['Điểm thưởng', '40', 'Chuỗi học', '2 ngày']);
+      expect(shown()).toBe('40 Điểm thưởng · chuỗi 2 ngày');
     });
 
-    it('is hidden when the read fails, and nothing else is', async () => {
+    it('says so with a retry when the read fails, and nothing else fails', async () => {
       fail(learnerEndpoints.myPoints);
       await open();
-      expect(figure()).toBeNull();
-      expect(text()).not.toContain('Điểm thưởng');
-      expect(text()).not.toContain('Không tải được');
+      expect(reward()?.tagName).toBe('DIV');
+      expect(shown()).toContain('Không tải được điểm thưởng');
+      expect(reward()?.querySelector('button')?.textContent).toContain(
+        'Thử lại',
+      );
+      expect(text().match(/Không tải được/g)).toHaveLength(1);
       expect(el.querySelectorAll('app-learn-kpis dt')).toHaveLength(4);
       expect(cards().length).toBeGreaterThan(0);
     });
@@ -462,7 +461,7 @@ describe('Learn', () => {
     it('does not wait for the summary', async () => {
       fail(learnerEndpoints.progressSummary);
       await open();
-      expect(cells()).toEqual(['Điểm thưởng', '80', 'Chuỗi học', '2 ngày']);
+      expect(shown()).toBe('80 Điểm thưởng · chuỗi 2 ngày');
     });
   });
 
@@ -534,12 +533,11 @@ describe('Learn', () => {
           : MockBackend.prototype.handle.call(backend, e, request),
       );
       await open();
-      const card = el.querySelector('app-continue-card')!;
-      expect(card.textContent).toContain('Bạn chưa có khóa học đang học.');
-      expect(card.querySelector('a')?.textContent).toContain(
-        'Khám phá khóa học',
-      );
-      expect(card.querySelector('a')?.getAttribute('href')).toBe('/catalog');
+      const link = el.querySelector<HTMLAnchorElement>(
+        'app-learn-hero .learn-hero__continue a',
+      )!;
+      expect(link.textContent).toContain('Khám phá khóa học');
+      expect(link.getAttribute('href')).toBe('/catalog');
       expect(text()).toContain('Không có khóa học ở trạng thái này.');
       expect(text()).toContain('Không có khóa học sắp đến hạn.');
     });
@@ -568,7 +566,7 @@ describe('Learn', () => {
       expect(section('Số liệu học tập').textContent).toContain(
         'Không tải được số liệu học tập',
       );
-      expect(el.querySelector('app-continue-card')).not.toBeNull();
+      expect(el.querySelector('app-learn-hero')).not.toBeNull();
       expect(cards().length).toBeGreaterThan(0);
       expect(el.querySelectorAll('app-reminder-item')).toHaveLength(3);
 

@@ -12,7 +12,7 @@ import { dueReminders } from '../../../../core/learning/due-reminders';
 import { SessionStore } from '../../../../core/session/session.store';
 import type { CourseCardView } from '../../../../shared/course/course-card';
 import { toCourseCardView } from '../../../../shared/course/course-card-view';
-import { coverPreviews, coverSrc } from '../../../../shared/course/cover-image';
+import { coverPreviews } from '../../../../shared/course/cover-image';
 import { isReminderOverdue } from '../../../../shared/learning/reminder-item/reminder-item';
 
 export type LearnTab =
@@ -34,6 +34,9 @@ export const LEARN_TABS: readonly LearnTab[] = [
 export const GRID_SIZE = 6;
 export const DUE_SHOWN = 5;
 export const REMINDERS_SHOWN = 3;
+/** How many in-progress courses are read to pick the one to resume. */
+export const RESUME_CANDIDATES = 5;
+const DAY = 86_400_000;
 
 const TAB_QUERY: Record<LearnTab, MyCoursesQuery> = {
   in_progress: {
@@ -62,10 +65,6 @@ export interface ContinueView {
   readonly lessonTitle: string;
   /** "course · chapter" once the enrolment detail is read, else empty. */
   readonly context: string;
-  /** The course has a cover: its 16:9 place is kept while it is read. */
-  readonly hasCover: boolean;
-  /** The cover's object URL once read; null while loading or without one. */
-  readonly coverUrl: string | null;
   /** Where the lesson sits among the course's lessons ("Bài 2/4"), once the detail is read. */
   readonly position: { readonly number: number; readonly total: number } | null;
   readonly pct: number;
@@ -80,6 +79,8 @@ export interface DueRow {
   readonly dueAt: string;
   /** The card's `progressPercent`, the server's. */
   readonly pct: number;
+  /** The server's overdue flag. */
+  readonly overdue: boolean;
   readonly link: string;
 }
 
@@ -130,14 +131,19 @@ export class LearnStore {
       query: {
         learningStatus: 'in_progress',
         sort: 'lastAccessAt,desc',
-        size: 1,
+        size: RESUME_CANDIDATES,
       },
     }),
   );
 
-  private readonly resumeCard = computed(
-    (): CourseCard | undefined => this.resumeData.value()?.items[0],
-  );
+  /**
+   * The course touched last that still has lessons left. A course whose lessons are all done but
+   * still in progress (the final exam is not passed) is resumed only when no other course is.
+   */
+  private readonly resumeCard = computed((): CourseCard | undefined => {
+    const items = this.resumeData.value()?.items ?? [];
+    return items.find((card) => (card.progressPercent ?? 0) < 100) ?? items[0];
+  });
 
   /** The lesson and chapter titles of `lastLessonId` live in the enrolment's content. */
   private readonly detailData = serverData(
@@ -154,11 +160,10 @@ export class LearnStore {
     { params: () => TAB_QUERY[this.state.tab()] },
   );
 
-  /** The covers of the resume card and of the tab's cards, read once each while the page lives. */
-  private readonly covers = coverPreviews(this.client, this.injector, () => [
-    this.resumeCard()?.coverAssetId,
-    ...(this.coursesData.value()?.items ?? []).map((card) => card.coverAssetId),
-  ]);
+  /** The covers of the tab's cards, read once each while the page lives. */
+  private readonly covers = coverPreviews(this.client, this.injector, () =>
+    (this.coursesData.value()?.items ?? []).map((card) => card.coverAssetId),
+  );
 
   private readonly dueData = serverData(() =>
     this.client.call(learnerEndpoints.myCourses, {
@@ -180,7 +185,28 @@ export class LearnStore {
   readonly summaryError$ = this.summaryData.error;
   readonly isSummaryLoading$ = this.summaryData.isLoading;
 
+  /** The learner's given name (the last word of the full name), for the greeting. */
+  readonly givenName$ = computed(
+    () => this.session.user$()?.fullName.trim().split(/\s+/).pop() ?? '',
+  );
+
+  /** Today, as the hero's date line. */
+  readonly today$ = computed(() =>
+    new Date(this.now()).toLocaleDateString('vi-VN', {
+      weekday: 'long',
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+    }),
+  );
+
   readonly points$ = this.pointsData.value;
+  readonly pointsError$ = this.pointsData.error;
+
+  /** The quick assistant is offered only to a user who has the function. */
+  readonly canAssist$ = computed(() =>
+    this.session.menus$().includes('AI_ASSISTANT'),
+  );
 
   /** The server's counts with the completion rate; `undefined` until read and after an error. */
   readonly dashboardCounts$ = computed(
@@ -223,13 +249,10 @@ export class LearnStore {
       ? lessons.findIndex((entry) => entry.lesson.id === lessonId)
       : -1;
     const found = index >= 0 ? lessons[index] : undefined;
-    const cover = this.coverOf(card);
     return {
       courseTitle,
       lessonTitle: found?.lesson.title ?? courseTitle,
       context: found ? `${courseTitle} · ${found.chapter.title}` : '',
-      hasCover: card.coverAssetId != null && cover?.state !== 'failed',
-      coverUrl: cover ? coverSrc(cover) : null,
       position: found ? { number: index + 1, total: lessons.length } : null,
       pct: Math.round(card.progressPercent ?? 0),
       link: lessonId
@@ -264,9 +287,26 @@ export class LearnStore {
         title: card.title || card.code,
         dueAt: card.dueAt as string,
         pct: card.progressPercent ?? 0,
+        overdue: card.overdue ?? false,
         link: `/course/${card.courseId}`,
       })),
   );
+
+  /**
+   * One sentence on what needs attention first: the overdue count, else the nearest deadline, else
+   * that the learner is on track. Empty until the summary and the due list are read.
+   */
+  readonly headline$ = computed((): string => {
+    const summary = this.summaryData.value();
+    if (!summary || this.dueData.isLoading()) return '';
+    if (summary.counts.overdue) {
+      return `Bạn có ${summary.counts.overdue} khóa đã quá hạn — ưu tiên hoàn thành sớm nhé.`;
+    }
+    const next = this.due$()[0];
+    if (!next) return 'Bạn đã theo kịp toàn bộ lộ trình được giao.';
+    const days = Math.ceil((new Date(next.dueAt).getTime() - this.now()) / DAY);
+    return `Khóa gần hạn nhất: "${next.title}" (${days} ngày).`;
+  });
 
   readonly remindersError$ = this.remindersData.error;
   readonly isRemindersLoading$ = this.remindersData.isLoading;
@@ -309,6 +349,10 @@ export class LearnStore {
 
   retryDashboard(): void {
     this.dashboardData.reload();
+  }
+
+  retryPoints(): void {
+    this.pointsData.reload();
   }
 
   retryResume(): void {
