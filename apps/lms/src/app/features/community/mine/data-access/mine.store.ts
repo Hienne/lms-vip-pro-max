@@ -25,7 +25,13 @@ export type MineTab = 'mine' | 'saved';
 /** The status filter: drafts and published map to `publicationState`, closed to `lifecycleStatus`. */
 export type MineStatus = '' | 'draft' | 'published' | 'closed';
 
-const KINDS = ['question', 'answer', 'article', 'lesson_learned'] as const;
+const KINDS = [
+  'question',
+  'answer',
+  'article',
+  'lesson_learned',
+  'architecture_review',
+] as const;
 const STATUSES: readonly MineStatus[] = ['draft', 'published', 'closed'];
 
 /** One row of "Bài của tôi": the card with the link and action the server's flags allow. */
@@ -52,7 +58,12 @@ function toRow(card: ContentCard): MineRow {
         : 'published';
   return {
     card,
-    link: ['/community/contents', target],
+    link: [
+      card.kind === 'architecture_review'
+        ? '/community/reviews'
+        : '/community/contents',
+      target,
+    ],
     status,
     editDraft:
       !!card.capabilities?.canEditDraft &&

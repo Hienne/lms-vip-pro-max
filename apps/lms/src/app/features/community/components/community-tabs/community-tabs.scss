@@ -1,7 +1,15 @@
 @use 'ui';
 
+:host {
+  display: none;
+  @include ui.bp-below(lg) {
+    display: block;
+  }
+}
+
 .community-tabs {
   @include ui.row(1);
+  flex-wrap: wrap;
   border-bottom: 1px solid ui.color(border);
 
   &__link {

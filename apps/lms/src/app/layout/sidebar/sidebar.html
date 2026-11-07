@@ -25,7 +25,7 @@
       <span class="sidebar__label">{{ section.section }}</span>
     </div>
     <ul class="sidebar__list" [attr.aria-label]="section.section">
-      @for (item of section.items; track item.code) {
+      @for (item of section.items; track item.href) {
       <li>
         <a
           class="sidebar__link"

@@ -18,6 +18,8 @@ import { parseContent, type Inline } from './markdown.parse';
 export class Markdown {
   readonly source = input.required<string>();
   readonly format = input<BodyFormat>('markdown');
+  /** Optional per-document anchor namespace, used by the community table of contents. */
+  readonly headingPrefix = input<string>();
   /**
    * The body sits under a heading of its own at the `lg` size (the lesson's block title): its
    * headings step one size down, so `##` never reads as large as that title.

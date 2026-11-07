@@ -1,6 +1,6 @@
 <ui-page-header
-  title="Tiến độ của tôi"
-  description="Số liệu theo lần học hiện tại. Tiến độ học tính các bài bắt buộc; kết quả hoàn thành còn phụ thuộc bài thi cuối khóa nếu có."
+  title="Tiến độ học tập"
+  description="Theo dõi nội dung đã học, kết quả thi và tình trạng hoàn thành từng khóa."
 >
   <div slot="actions">
     <button
@@ -33,7 +33,7 @@
   [averageScore]="store.averageScore$()"
 />
 <app-unavailable-note class="learning-progress__note" [summary]="summary" />
-} @if (store.isEmpty$()) {
+} @if (store.isEmpty$() && store.tab$() === 'courses') {
 <ui-empty
   title="Bạn chưa có khóa học nào."
   description="Khóa học được giao hoặc bạn đăng ký sẽ hiện ở đây cùng tiến độ."
@@ -78,8 +78,7 @@
   ></div>
   }
 </section>
-} @if (!store.isEmpty$() && !store.summaryError$() &&
-!store.isSummaryLoading$()) {
+} @if (!store.summaryError$() && !store.isSummaryLoading$()) {
 <ui-tabs
   label="Tiến độ học tập"
   [tabs]="tabs"
@@ -91,6 +90,30 @@
     class="learning-progress__table"
     aria-label="Danh sách khóa học"
   >
+    @if (store.competency$()) {
+    <div class="learning-progress__competency-link">
+      <span>
+        @if (assessedCompetencyCount() > 0) { Năng lực: đã có kết quả ở {{
+        assessedCompetencyCount() }} nhóm kiến thức } @else { Năng lực: chưa có
+        kết quả đánh giá }
+      </span>
+      <button
+        uiButton
+        variant="ghost"
+        size="sm"
+        type="button"
+        (click)="store.selectTab('competency')"
+      >
+        Xem chi tiết <ui-icon name="chevron-right" size="sm" />
+      </button>
+    </div>
+    }
+    <div class="learning-progress__intro">
+      <div>
+        <h2>Tiến độ từng khóa học</h2>
+        <p>Theo dõi kết quả học và mở chi tiết từng khóa.</p>
+      </div>
+    </div>
     <div class="learning-progress__filters">
       <ui-search
         class="learning-progress__search"
@@ -169,6 +192,7 @@
         <colgroup>
           <col class="learning-progress__col-course" />
           <col class="learning-progress__col-progress" />
+          <col class="learning-progress__col-score" />
           <col class="learning-progress__col-status" />
           <col class="learning-progress__col-date" />
           <col class="learning-progress__col-date" />
@@ -246,9 +270,13 @@
                   />
                 </div>
                 <span class="learning-progress__muted">
-                  {{ row.requiredDone }} bài bắt buộc
+                  {{ row.requiredDone }} bài bắt buộc hoàn thành
                 </span>
               </div>
+            </td>
+            <td data-label="Điểm thi cao nhất">
+              @if (row.bestScore !== null) { {{ row.bestScore | fmtPct: 2 }} }
+              @else { Chưa có điểm }
             </td>
             <td data-label="Trạng thái">
               <app-course-status
@@ -268,7 +296,7 @@
           </tr>
           @if (row.expanded) {
           <tr class="learning-progress__detail-row">
-            <td colspan="5">
+            <td colspan="6">
               <div
                 class="learning-progress__detail"
                 [id]="row.detailsId"
@@ -316,13 +344,106 @@
     } @else {
     <p class="learning-progress__muted">Không có khóa học phù hợp bộ lọc.</p>
     }
+    <div class="learning-progress__overview-grid">
+      <section
+        class="learning-progress__competency-summary"
+        aria-labelledby="progress-competency-summary"
+      >
+        <div class="learning-progress__heading">
+          <h2 id="progress-competency-summary">Năng lực của tôi</h2>
+          <button
+            uiButton
+            variant="ghost"
+            size="sm"
+            type="button"
+            (click)="store.selectTab('competency')"
+          >
+            Xem năng lực <ui-icon name="chevron-right" size="sm" />
+          </button>
+        </div>
+        <p class="learning-progress__muted">
+          Kết quả tổng hợp từ các lượt thi đã được chấm.
+        </p>
+        @if (store.competencyError$(); as error) {
+        <ui-error-state
+          title="Không tải được năng lực theo nhóm kiến thức"
+          [message]="error.message"
+          (retry)="store.retryCompetency()"
+        />
+        } @else if (store.competency$(); as rows) {
+        <app-competency-view size="compact" [rows]="rows" />
+        } @else {
+        <div
+          uiSkeleton
+          variant="block"
+          class="learning-progress__competency-placeholder"
+          aria-busy="true"
+        ></div>
+        }
+      </section>
+      <section
+        class="learning-progress__competency-summary"
+        aria-labelledby="weekly-activity"
+      >
+        <h2 id="weekly-activity">Nhịp học mỗi tuần</h2>
+        <p class="learning-progress__muted">
+          Số ngày bạn có hoạt động học trong 8 tuần gần nhất.
+        </p>
+        <div class="learning-progress__activity">
+          <h3>Biểu đồ hoạt động</h3>
+          @if (store.weeklyError$(); as error) {
+          <ui-error-state
+            title="Không tải được hoạt động học"
+            [message]="error.message"
+            (retry)="store.retryWeekly()"
+          />
+          } @else if (store.weekly$()) {
+          <ui-bar-chart
+            [data]="store.weeklyBars$()"
+            [max]="7"
+            label="Số ngày có hoạt động học theo tuần"
+            unit=" ngày"
+          />
+          @if (store.weekly$(); as activity) { @if (activity.weeks.length >= 2)
+          {
+          <p class="learning-progress__activity-summary">
+            Tuần này:
+            <strong
+              >{{ activity.weeks[activity.weeks.length - 1].activeDays }}
+              ngày</strong
+            >
+            · Tuần trước:
+            <strong
+              >{{ activity.weeks[activity.weeks.length - 2].activeDays }}
+              ngày</strong
+            >
+            có hoạt động
+          </p>
+          } } } @else {
+          <div
+            uiSkeleton
+            variant="block"
+            class="learning-progress__competency-placeholder"
+            aria-busy="true"
+          ></div>
+          }
+        </div>
+      </section>
+    </div>
   </section>
-  <div uiTabPanel="competency" class="learning-progress__insight-panel">
+  <div
+    uiTabPanel="competency"
+    class="learning-progress__insight-panel learning-progress__competency-panel"
+  >
     <section
       class="learning-progress__competency"
       aria-labelledby="progress-competency"
     >
       <h2 id="progress-competency">Năng lực theo nhóm kiến thức</h2>
+      <p class="learning-progress__muted">
+        Kết quả tổng hợp từ các lượt thi đã được chấm. Chọn kết quả thi trong
+        lịch sử để xem chi tiết.
+      </p>
       @if (store.competencyError$(); as error) {
       <ui-error-state
         title="Không tải được năng lực theo nhóm kiến thức"
@@ -341,7 +462,10 @@
       }
     </section>
   </div>
-  <div uiTabPanel="history" class="learning-progress__insight-panel">
+  <div
+    uiTabPanel="history"
+    class="learning-progress__insight-panel learning-progress__history-panel"
+  >
     <section
       class="learning-progress__history"
       aria-labelledby="progress-history"
@@ -353,38 +477,106 @@
         [message]="error.message"
         (retry)="store.retryAttempts()"
       />
-      } @else if (store.attempts$(); as attempts) { @if (attempts.length) {
-      <ul class="learning-progress__attempts">
-        @for (attempt of attempts; track attempt.attemptId) {
-        <li>
-          <a
-            class="learning-progress__attempt"
-            [routerLink]="['/quiz', attempt.quizId, 'result', attempt.attemptId]"
+      } @else if (store.attempts$()) {
+      <p class="learning-progress__muted">
+        Các lượt thi đã chấm. Chọn tên bài để xem chi tiết kết quả.
+      </p>
+      <div
+        class="learning-progress__history-filters"
+        aria-label="Bộ lọc lịch sử thi"
+      >
+        <div class="learning-progress__history-main">
+          <ui-search
+            class="learning-progress__search"
+            width="100%"
+            label="Tìm bài kiểm tra"
+            placeholder="Tìm tên bài kiểm tra…"
+            [value]="store.historySearch$()"
+            (searched)="store.searchHistory($event)"
+          />
+          <ui-segmented
+            class="learning-progress__status"
+            label="Kết quả thi"
+            [options]="historyResults"
+            [value]="store.historyResult$()"
+            (valueChange)="store.filterHistoryResult($event)"
+          />
+          @if (store.historyHasFilters$()) {
+          <button
+            uiButton
+            variant="ghost"
+            size="sm"
+            type="button"
+            (click)="store.clearHistoryFilters()"
           >
-            <span class="learning-progress__attempt-title"
-              >{{ attempt.quizTitle }}</span
-            >
-            <span class="learning-progress__attempt-time">
-              {{ attempt.submittedAt | fmtDatetime }} @if (attempt.status ===
-              'AUTO_SUBMITTED') { · tự nộp }
-            </span>
-            <span class="learning-progress__attempt-score">
-              @if (attempt.scorePercent !== null) {
-              <strong>{{ attempt.scorePercent | fmtPct: 2 }}</strong>
-              } @if (attempt.passed === true) { &ngsp;Đạt } @else if
-              (attempt.passed === false) { &ngsp;<span
-                class="learning-progress__fail"
-                >Chưa đạt</span
-              >
-              }
-            </span>
-          </a>
-        </li>
-        }
-      </ul>
+            Xóa bộ lọc
+          </button>
+          }
+        </div>
+      </div>
+      @if (store.filteredAttempts$().length) {
+      <div uiTableWrap class="learning-progress__table-wrap">
+        <table uiTable responsive>
+          <caption class="sr-only">
+            Các lượt thi đã chấm gần nhất
+          </caption>
+          <thead>
+            <tr>
+              <th scope="col">Bài kiểm tra</th>
+              <th scope="col">Lần thi</th>
+              <th scope="col">Thời điểm nộp</th>
+              <th scope="col">Câu đúng</th>
+              <th scope="col">Điểm</th>
+              <th scope="col">Kết quả</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (attempt of store.filteredAttempts$(); track attempt.attemptId)
+            {
+            <tr>
+              <td data-label="Bài kiểm tra">
+                <a
+                  uiTablePrimary
+                  [routerLink]="['/quiz', attempt.quizId, 'result', attempt.attemptId]"
+                  >{{ attempt.quizTitle }}</a
+                >
+              </td>
+              <td data-label="Lần thi">{{ attempt.attemptNo }}</td>
+              <td data-label="Thời điểm nộp">
+                {{ attempt.submittedAt | fmtDatetime }} @if (attempt.status ===
+                'AUTO_SUBMITTED') { · Tự nộp }
+              </td>
+              <td data-label="Câu đúng">
+                @if (attempt.correctCount !== null) { {{ attempt.correctCount
+                }}/{{ attempt.totalQuestions }} } @else { — }
+              </td>
+              <td data-label="Điểm">
+                @if (attempt.scorePercent !== null) { {{ attempt.scorePercent |
+                fmtPct: 2 }} } @else { — }
+              </td>
+              <td data-label="Kết quả">
+                @if (attempt.passed === true) { Đạt } @else if (attempt.passed
+                === false) {
+                <span class="learning-progress__fail">Chưa đạt</span> } @else {
+                — }
+              </td>
+            </tr>
+            }
+          </tbody>
+        </table>
+      </div>
       } @else {
-      <p class="learning-progress__muted">Bạn chưa có bài thi nào được chấm.</p>
-      } } @else {
+      <p class="learning-progress__muted">
+        Không có lượt thi phù hợp với bộ lọc.
+      </p>
+      }
+      <ui-pagination
+        [total]="store.historyTotal$()"
+        [page]="store.historyPage$()"
+        [pageSize]="historyPageSize"
+        (pageChange)="store.goToHistoryPage($event)"
+      />
+      } @else {
       <div
         uiSkeleton
         variant="block"

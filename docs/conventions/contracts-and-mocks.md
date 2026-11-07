@@ -664,10 +664,14 @@ all signed-in users. It uses the existing shell, Signal Forms and `@lms/ui`. Pha
 when the canvas mounts; its world coordinates/art colours belong to the renderer, while Angular controls
 use the UI Sass tokens. The backend serves the single map/hitbox source and validates movement.
 
-The requested first-person mode uses Three.js 0.187, lazy-loaded separately from the Phaser 2D view.
+The third-person view uses Three.js 0.187, lazy-loaded separately from the Phaser 2D view.
 Both renderers use `room.motion.ts` for collision/movement and share eight-way facing in the socket
-contract. Mouse pointer lock is released on Enter/Escape; touch dragging rotates the 3D camera.
+contract. Mouse or touch dragging orbits the 3D camera. The close-up button frames the local avatar from the front.
 Switching renderers releases their GPU resources/listeners without reconnecting the room.
+
+The map's `activityArea` marks a walkable gathering space in both renderers. The join capability
+`gestures: true` enables server-broadcast jumping and waving. The server picks the nearest reachable
+player for a wave. Both renderers use the shared gesture timeline and keep the collision footprint at ground level.
 
 There is no chat sidebar or chat log. Enter or the mobile-friendly "Nhắn tin" button opens the
 composer immediately above the instructions; sending or Escape closes it. Only active overhead
@@ -675,7 +679,10 @@ bubbles (5.5 seconds) are held in the store and expired by per-player timers. We
 older servers is ignored. The updated backend does not retain messages and sends an empty compatibility
 `history` field, so late arrivals/reconnects cannot receive previous speech.
 
+Clients opt in to the room quiz with `activities: true` on join. The backend assigns and transfers the
+host, validates one answer per authenticated user per round, and reveals the correct answer when the host
+closes the round. The store renders the latest personalized `game` event in either view.
+
 Deploy the matching `corebanking-academy` module and configure WebSocket upgrade for
 `/api/v1/chat-room/socket` on the FE reverse proxy. The development `/api` proxy enables WebSocket.
-No database migration is required. Presence is held in one backend instance's memory. Deploy BE before
-FE to remove message retention at the protocol level as well as in the interface.
+No database migration is required. Presence and the current quiz round are held in one backend instance's memory.

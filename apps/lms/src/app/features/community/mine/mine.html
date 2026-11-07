@@ -25,8 +25,8 @@
     #kind
   >
     <option value="">Mọi loại</option>
-    @for (option of ['question', 'answer', 'article', 'lesson_learned']; track
-    option) {
+    @for (option of ['question', 'answer', 'article', 'lesson_learned',
+    'architecture_review']; track option) {
     <option [value]="option" [selected]="option === store.kind$()">
       {{ kindLabels[option] }}
     </option>
@@ -134,7 +134,7 @@
             uiButton
             size="sm"
             variant="ghost"
-            [routerLink]="['/community/contents', row.card.contentId, 'edit']"
+            [routerLink]="[row.card.kind === 'architecture_review' ? '/community/reviews' : '/community/contents', row.card.contentId, 'edit']"
           >
             {{ row.status === 'draft' ? 'Sửa nháp' : 'Sửa' }}
           </a>

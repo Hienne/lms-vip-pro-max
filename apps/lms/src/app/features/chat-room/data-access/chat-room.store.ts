@@ -10,6 +10,9 @@ import {
   chatRoomSocket,
   type RoomCommand,
   type RoomEvent,
+  type RoomGameState,
+  type RoomGesture,
+  type RoomGestureKind,
   type RoomIdentity,
   type RoomMovement,
   type RoomPlayer,
@@ -27,6 +30,7 @@ import type {
   RoomCanvasState,
   RoomSpeech,
   RoomViewMode,
+  TimedRoomGesture,
 } from './chat-room.model';
 
 type ConnectionStatus = 'offline' | 'connecting' | 'online' | 'reconnecting';
@@ -46,6 +50,9 @@ export class ChatRoomStore {
     players: signal<readonly RoomPlayer[]>([]),
     me: signal(''),
     speech: signal<Readonly<Record<string, RoomSpeech>>>({}),
+    gestures: signal<Readonly<Record<string, TimedRoomGesture>>>({}),
+    gesturesEnabled: signal(false),
+    gestureNotice: signal(''),
     chatOpen: signal(false),
     viewMode: signal<RoomViewMode>('3d'),
     correction: signal<RoomCanvasState['correction']>(null),
@@ -53,6 +60,8 @@ export class ChatRoomStore {
     copied: signal(false),
     sending: signal(false),
     renderError: signal(''),
+    game: signal<RoomGameState | null>(null),
+    gameOpen: signal(false),
   };
   private readonly mapData = serverData(() =>
     this.client.call(chatRoomEndpoints.map),
@@ -81,6 +90,8 @@ export class ChatRoomStore {
   readonly status$ = this.state.status.asReadonly();
   readonly players$ = this.state.players.asReadonly();
   readonly speech$ = this.state.speech.asReadonly();
+  readonly gesturesEnabled$ = this.state.gesturesEnabled.asReadonly();
+  readonly gestureNotice$ = this.state.gestureNotice.asReadonly();
   readonly chatOpen$ = this.state.chatOpen.asReadonly();
   readonly viewMode$ = this.state.viewMode.asReadonly();
   readonly me$ = this.state.me.asReadonly();
@@ -88,6 +99,17 @@ export class ChatRoomStore {
   readonly copied$ = this.state.copied.asReadonly();
   readonly sending$ = this.state.sending.asReadonly();
   readonly renderError$ = this.state.renderError.asReadonly();
+  readonly game$ = this.state.game.asReadonly();
+  readonly gameOpen$ = this.state.gameOpen.asReadonly();
+  readonly gameActive$ = computed(() => {
+    const round = this.game$()?.round;
+    return !!round && round.correctIndex === undefined;
+  });
+  readonly isHost$ = computed(() => this.game$()?.hostId === this.me$());
+  readonly hostName$ = computed(() => {
+    const hostId = this.game$()?.hostId;
+    return this.players$().find((player) => player.id === hostId)?.name;
+  });
   readonly map$ = this.mapData.value;
   readonly isLoading$ = this.mapData.isLoading;
   readonly loadError$ = this.mapData.error;
@@ -118,6 +140,7 @@ export class ChatRoomStore {
     players: this.players$(),
     chatting: this.chatOpen$(),
     speech: this.speech$(),
+    gestures: this.state.gestures(),
     correction: this.state.correction(),
   }));
 
@@ -128,6 +151,7 @@ export class ChatRoomStore {
   private timeout?: ReturnType<typeof setTimeout>;
   private cooldown?: ReturnType<typeof setTimeout>;
   private copyTimer?: ReturnType<typeof setTimeout>;
+  private gestureNoticeTimer?: ReturnType<typeof setTimeout>;
   private active = false;
   private generation = 0;
   private attempts = 0;
@@ -229,6 +253,23 @@ export class ChatRoomStore {
   move(position: RoomMovement): void {
     if (this.online$()) this.socket?.send({ type: 'move', ...position });
   }
+  performGesture(kind: RoomGestureKind): void {
+    if (this.online$() && this.gesturesEnabled$() && !this.chatOpen$()) {
+      this.socket?.send({ type: 'gesture', kind });
+    }
+  }
+  toggleGame(): void {
+    this.state.gameOpen.update((open) => !open);
+  }
+  startGame(): void {
+    this.sendGameCommand({ type: 'game-start' });
+  }
+  answerGame(roundId: string, choice: number): void {
+    this.sendGameCommand({ type: 'game-answer', roundId, choice });
+  }
+  closeGame(roundId: string): void {
+    this.sendGameCommand({ type: 'game-close', roundId });
+  }
   send(text: string): void {
     if (!this.online$() || this.sending$() || !text.trim()) return;
     this.setError('');
@@ -247,7 +288,10 @@ export class ChatRoomStore {
     this.setEntered(false);
     this.setStatus('offline');
     this.setPlayers([]);
+    this.state.game.set(null);
+    this.state.gameOpen.set(false);
     this.clearSpeech();
+    this.clearGestures();
     this.setMe('');
     this.closeChat();
     this.setCorrection(null);
@@ -265,13 +309,23 @@ export class ChatRoomStore {
       );
     }
   }
+  private sendGameCommand(command: RoomCommand): void {
+    if (!this.online$()) return;
+    this.setError('');
+    this.socket?.send(command);
+  }
   private openSocket(ticket: string): void {
     this.stopSocket();
     const generation = this.generation;
     this.socket = this.client.connect(chatRoomSocket, ticket, {
       opened: () => {
         if (this.identity)
-          this.socket?.send({ type: 'join', ...this.identity });
+          this.socket?.send({
+            type: 'join',
+            ...this.identity,
+            activities: true,
+            gestures: true,
+          });
       },
       message: (event) => {
         if (generation === this.generation) this.receive(event);
@@ -292,6 +346,8 @@ export class ChatRoomStore {
         this.setMe(event.id);
         this.setPlayers(event.players);
         this.clearSpeech();
+        this.clearGestures();
+        this.state.gesturesEnabled.set(event.gestures === true);
         this.setCorrection(null);
         this.pongAt = Date.now();
         this.heartbeat = setInterval(() => {
@@ -306,6 +362,11 @@ export class ChatRoomStore {
       case 'left':
         this.setPlayers(this.players$().filter((p) => p.id !== event.id));
         this.clearSpeech(event.id);
+        this.state.gestures.update((gestures) => {
+          const remaining = { ...gestures };
+          delete remaining[event.id];
+          return remaining;
+        });
         break;
       case 'moved':
         this.setPlayers(
@@ -341,6 +402,12 @@ export class ChatRoomStore {
           ),
         );
         break;
+      case 'game':
+        this.state.game.set(event);
+        break;
+      case 'gesture':
+        this.receiveGesture(event);
+        break;
       case 'error':
         this.setError(event.message);
         break;
@@ -352,8 +419,10 @@ export class ChatRoomStore {
   private disconnected(code: number): void {
     this.stopSocket();
     this.setPlayers([]);
+    this.state.game.set(null);
     this.setMe('');
     this.clearSpeech();
+    this.clearGestures();
     this.closeChat();
     if (!this.active) return;
     if ([1002, 1008, 1013].includes(code) || this.attempts >= 6) {
@@ -393,5 +462,44 @@ export class ChatRoomStore {
       this.speechTimers.clear();
       this.setSpeech({});
     }
+  }
+
+  private receiveGesture(event: RoomGesture): void {
+    this.state.gestures.update((gestures) => ({
+      ...gestures,
+      [event.playerId]: { ...event, startedAt: performance.now() },
+    }));
+    const me = this.me$();
+    let notice = '';
+    if (event.playerId === me) {
+      const target = this.players$().find(
+        (player) => player.id === event.targetId,
+      );
+      notice =
+        event.kind === 'jump'
+          ? 'Bạn nhảy tại chỗ.'
+          : target
+            ? `Bạn vẫy chào ${target.name}.`
+            : 'Bạn vẫy tay.';
+    } else if (event.targetId === me) {
+      const actor = this.players$().find(
+        (player) => player.id === event.playerId,
+      );
+      if (actor) notice = `${actor.name} vẫy chào bạn.`;
+    }
+    if (!notice) return;
+    this.state.gestureNotice.set(notice);
+    clearTimeout(this.gestureNoticeTimer);
+    this.gestureNoticeTimer = setTimeout(
+      () => this.state.gestureNotice.set(''),
+      2400,
+    );
+  }
+
+  private clearGestures(): void {
+    clearTimeout(this.gestureNoticeTimer);
+    this.state.gestures.set({});
+    this.state.gesturesEnabled.set(false);
+    this.state.gestureNotice.set('');
   }
 }

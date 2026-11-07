@@ -1,4 +1,37 @@
 import type { RoomFacing, RoomMap } from '@lms/contracts';
+import type { TimedRoomGesture } from '../../../data-access/chat-room.model';
+
+export interface GesturePose {
+  lift: number;
+  wave: number;
+  facing?: RoomFacing;
+}
+
+const RESTING_POSE: GesturePose = { lift: 0, wave: 0 };
+
+export function gesturePose(
+  gesture: TimedRoomGesture | undefined,
+  now: number,
+  reducedMotion: boolean,
+): GesturePose {
+  if (!gesture) return RESTING_POSE;
+  const progress =
+    (now - gesture.startedAt) / (gesture.kind === 'jump' ? 760 : 1150);
+  if (progress < 0 || progress >= 1) return RESTING_POSE;
+  if (gesture.kind === 'jump') {
+    return reducedMotion
+      ? RESTING_POSE
+      : { lift: 4 * progress * (1 - progress), wave: 0 };
+  }
+  const raise = Math.min(1, progress * 7, (1 - progress) * 7);
+  return {
+    lift: 0,
+    wave: reducedMotion
+      ? 1
+      : raise * (1 + Math.sin(progress * 6 * Math.PI) * 0.14),
+    facing: reducedMotion ? undefined : gesture.facing,
+  };
+}
 
 const OCTANTS: readonly RoomFacing[] = [
   'east',

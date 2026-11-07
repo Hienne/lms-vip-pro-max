@@ -29,7 +29,7 @@ describe('CommunityAsk', () => {
 
     expect(
       page.el().querySelector('app-content-thumbnail img')?.getAttribute('src'),
-    ).toContain('/images/question-default.webp');
+    ).toContain('/images/community-defaults.png');
     expect(page.bodies(communityEndpoints.createQuestion)).toEqual([]);
     expect(page.text()).toContain('Chọn ít nhất 1 thẻ để đăng.');
   });

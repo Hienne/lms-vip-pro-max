@@ -1,0 +1,110 @@
+<ui-page-header
+  title="Review kiến trúc"
+  description="Cùng phản biện thiết kế, ghi nhận quyết định theo từng phiên bản."
+>
+  <a
+    slot="actions"
+    uiButton
+    variant="primary"
+    routerLink="/community/reviews/new"
+    >Tạo đề nghị review</a
+  >
+</ui-page-header>
+<div class="reviews">
+  <div class="reviews__filters">
+    <ui-segmented
+      label="Trạng thái review"
+      [options]="filters"
+      [value]="store.status$()"
+      (valueChange)="store.filter($event)"
+    />
+    <ui-search
+      width="100%"
+      label="Tìm đề nghị review"
+      placeholder="Tìm tên hoặc nội dung thiết kế…"
+      [value]="store.q$()"
+      (searched)="store.search($event)"
+    />
+  </div>
+  <div class="reviews__layout">
+    <section aria-label="Đề nghị review">
+      @if (store.error$(); as error) {
+      <ui-error-state
+        title="Không tải được đề nghị review"
+        [message]="error.message"
+        (retry)="store.retry()"
+      />
+      } @else if (store.isLoading$()) {
+      <p role="status">Đang tải đề nghị review…</p>
+      } @else {
+      <div class="reviews__summary">
+        <span>{{ store.total$() }} đề nghị review</span
+        ><span>Đăng gần đây</span>
+      </div>
+      @if (store.items$().length) {
+      <div class="reviews__list">
+        @for (item of store.items$(); track item.contentId) {
+        <article class="reviews__item">
+          <app-content-thumbnail
+            [contentId]="item.contentId"
+            kind="architecture_review"
+            [revisionAssetId]="item.coverRevisionAssetId"
+          />
+          <div class="reviews__content">
+            <h2>
+              <a [routerLink]="['/community/reviews', item.contentId]"
+                >{{ item.title }}</a
+              >
+            </h2>
+            @if (item.summary) {
+            <p>{{ item.summary }}</p>
+            }
+            <p class="reviews__meta">
+              <strong
+                >{{ item.author?.displayName ?? item.authorUserId }}</strong
+              >
+              @for (tag of item.tags; track tag.tagId) {
+              <span> · {{ tag.name }}</span> }
+            </p>
+            <div class="reviews__metrics">
+              <span
+                ><ui-icon name="message-square" size="sm" />{{
+                item.openThreadCount }} góp ý chưa xử lý</span
+              >
+              <span
+                ><ui-icon name="users" size="sm" />{{ item.invitedCount }} người
+                được mời</span
+              >
+              @if (item.dueAt) {
+              <span class="reviews__due"
+                ><ui-icon name="calendar" size="sm" />Hạn {{ item.dueAt |
+                fmtDate }}</span
+              >
+              }
+            </div>
+          </div>
+          <div class="reviews__state">
+            @if (statuses[item.reviewStatus]; as state) {
+            <span uiBadge [tone]="state.tone">{{ state.label }}</span> }
+          </div>
+        </article>
+        }
+      </div>
+      <ui-pagination
+        [total]="store.total$()"
+        [page]="store.page$()"
+        [pageSize]="20"
+        (pageChange)="store.goToPage($event)"
+      />
+      } @else {
+      <ui-empty
+        title="Chưa có đề nghị phù hợp"
+        description="Đổi bộ lọc hoặc tạo đề nghị review mới."
+        ><a uiButton routerLink="/community/reviews/new"
+          >Tạo đề nghị review</a
+        ></ui-empty
+      >
+      } }
+    </section>
+  </div>
+</div>

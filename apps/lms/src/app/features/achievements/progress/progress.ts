@@ -1,6 +1,7 @@
-import { Component, inject } from '@angular/core';
+import { Component, computed, inject } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import {
+  BarChart,
   Button,
   Checkbox,
   Empty,
@@ -27,11 +28,13 @@ import {
   type TabItem,
 } from '@lms/ui';
 import { ActivityHeatmap } from '../../../shared/learning/activity-heatmap/activity-heatmap';
+import { withData } from '../../../shared/learning/competency/competency-data';
 import { CompetencyView } from '../../../shared/learning/competency/competency-view';
 import { ProgressCounts } from '../../../shared/learning/progress-counts/progress-counts';
 import { UnavailableNote } from '../../../shared/learning/unavailable-note/unavailable-note';
 import { CourseStatus } from '../../../shared/status/course-status';
 import {
+  EXAM_HISTORY_SIZE,
   PROGRESS_PAGE_SIZE,
   ProgressStore,
   type ProgressStatusFilter,
@@ -42,6 +45,7 @@ import {
   selector: 'app-progress',
   imports: [
     ActivityHeatmap,
+    BarChart,
     Button,
     Checkbox,
     CompetencyView,
@@ -77,10 +81,19 @@ import {
 export class LearningProgress {
   protected readonly store = inject(ProgressStore);
   protected readonly pageSize = PROGRESS_PAGE_SIZE;
+  protected readonly historyPageSize = EXAM_HISTORY_SIZE;
+  protected readonly assessedCompetencyCount = computed(
+    () => withData(this.store.competency$() ?? []).length,
+  );
   protected readonly tabs: readonly TabItem[] = [
-    { id: 'courses', label: 'Khóa học' },
+    { id: 'courses', label: 'Tiến độ khóa học' },
     { id: 'competency', label: 'Năng lực' },
     { id: 'history', label: 'Lịch sử thi' },
+  ];
+  protected readonly historyResults: readonly SegmentedOption<string>[] = [
+    { value: 'all', label: 'Tất cả' },
+    { value: 'passed', label: 'Đạt' },
+    { value: 'failed', label: 'Chưa đạt' },
   ];
   protected readonly statuses: readonly SegmentedOption<ProgressStatusFilter>[] =
     [
@@ -91,7 +104,8 @@ export class LearningProgress {
     ];
   protected readonly columns = [
     { key: 'title', label: 'Khóa học' },
-    { key: 'progress', label: 'Tiến độ' },
+    { key: 'progress', label: 'Nội dung đã học' },
+    { key: 'score', label: 'Điểm thi cao nhất', sortable: false },
     { key: 'status', label: 'Trạng thái', sortable: false },
     { key: 'dueAt', label: 'Hạn hoàn thành' },
     { key: 'lastAccessAt', label: 'Truy cập gần nhất' },

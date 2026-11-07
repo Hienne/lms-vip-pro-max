@@ -55,79 +55,87 @@
 
   <header class="content__header">
     <h1 class="content__title">{{ detail.publishedRevision?.title ?? '' }}</h1>
-  </header>
 
-  <p class="content__meta">
-    @if (isQuestion()) { @if (resolutionLabels[detail.resolutionStatus ?? ''];
-    as resolution) { @if (!store.isClosed$()) {
-    <span uiBadge dot [tone]="resolution.tone">{{ resolution.label }}</span>
-    } } <span class="content__author">{{ detail.author?.displayName }}</span> ·
-    Hỏi ngày {{ detail.publishedRevision?.publishedAt | fmtDate }} } @else { {{
-    store.kindLabel$() }} @if
-    (detail.publishedRevision?.context?.lessonLearned?.occurredOn; as
-    occurredOn) { · sự cố ngày {{ occurredOn | fmtDate }} } · đăng {{
-    detail.publishedRevision?.publishedAt | fmtDate }} · {{
-    detail.author?.displayName }} }
-  </p>
-  <div class="content__actions">
-    <button
-      uiButton
-      size="sm"
-      variant="ghost"
-      type="button"
-      [attr.aria-pressed]="detail.saved"
-      [disabled]="store.isBusy$()"
-      (click)="store.toggleSaved()"
-    >
-      <ui-icon name="bookmark" size="sm" />
-      {{ detail.saved ? 'Đã lưu' : 'Lưu' }}
-    </button>
-    <button
-      uiButton
-      size="sm"
-      variant="ghost"
-      type="button"
-      [attr.aria-pressed]="store.isFollowing$()"
-      [disabled]="store.isBusy$()"
-      (click)="store.toggleFollow()"
-    >
-      <ui-icon name="bell" size="sm" />
-      {{ store.isFollowing$() ? 'Đang theo dõi' : 'Theo dõi' }}
-    </button>
-    @if (detail.capabilities.canAnswer) {
-    <a
-      uiButton
-      size="sm"
-      variant="ghost"
-      [routerLink]="[]"
-      fragment="answer-composer"
-      ><ui-icon name="message-square" size="sm" />Viết câu trả lời</a
-    >
-    } @if (detail.capabilities.canEditDraft) {
-    <a
-      uiButton
-      size="sm"
-      [routerLink]="['/community/contents', detail.contentId, 'edit']"
-      >Sửa</a
-    >
-    } @if (menu().length) {
-    <ui-menu
-      label="Thêm thao tác"
-      icon="ellipsis"
-      iconOnly
-      size="sm"
-      variant="ghost"
-      [entries]="menu()"
-      (selected)="act(detail, $event)"
-    />
-    }
-  </div>
+    <p class="content__meta">
+      @if (isQuestion()) { @if (resolutionLabels[detail.resolutionStatus ?? ''];
+      as resolution) { @if (!store.isClosed$()) {
+      <span uiBadge dot [tone]="resolution.tone">{{ resolution.label }}</span>
+      } }
+      <span class="content__author">{{ detail.author?.displayName }}</span> ·
+      Hỏi ngày {{ detail.publishedRevision?.publishedAt | fmtDate }} } @else {
+      {{ store.kindLabel$() }} @if
+      (detail.publishedRevision?.context?.lessonLearned?.occurredOn; as
+      occurredOn) { · sự cố ngày {{ occurredOn | fmtDate }} } · đăng {{
+      detail.publishedRevision?.publishedAt | fmtDate }} · {{
+      detail.author?.displayName }} }
+    </p>
+    <div class="content__actions">
+      <button
+        uiButton
+        size="sm"
+        variant="ghost"
+        type="button"
+        [attr.aria-pressed]="detail.saved"
+        [disabled]="store.isBusy$()"
+        (click)="store.toggleSaved()"
+      >
+        <ui-icon name="bookmark" size="sm" />
+        {{ detail.saved ? 'Đã lưu' : 'Lưu' }}
+      </button>
+      <button
+        uiButton
+        size="sm"
+        variant="ghost"
+        type="button"
+        [attr.aria-pressed]="store.isFollowing$()"
+        [disabled]="store.isBusy$()"
+        (click)="store.toggleFollow()"
+      >
+        <ui-icon name="bell" size="sm" />
+        {{ store.isFollowing$() ? 'Đang theo dõi' : 'Theo dõi' }}
+      </button>
+      @if (detail.capabilities.canAnswer) {
+      <a
+        uiButton
+        size="sm"
+        variant="ghost"
+        [routerLink]="[]"
+        fragment="answer-composer"
+        ><ui-icon name="message-square" size="sm" />Viết câu trả lời</a
+      >
+      } @if (detail.capabilities.canEditDraft) {
+      <a
+        uiButton
+        size="sm"
+        [routerLink]="['/community/contents', detail.contentId, 'edit']"
+        >Sửa</a
+      >
+      } @if (menu().length) {
+      <ui-menu
+        label="Thêm thao tác"
+        icon="ellipsis"
+        iconOnly
+        size="sm"
+        variant="ghost"
+        [entries]="menu()"
+        (selected)="act(detail, $event)"
+      />
+      }
+    </div>
+  </header>
   <div class="content__layout">
     <div class="content__feed">
       <article uiCard>
         <div uiCardBody class="content__post">
           <div class="content__main">
-            @if (detail.kind === 'lesson_learned') { @for (section of
+            @if (!isQuestion()) {
+            <app-content-thumbnail
+              class="content__cover"
+              [contentId]="detail.contentId"
+              [kind]="detail.kind"
+              [revisionAssetId]="store.coverId$()"
+            />
+            } @if (detail.kind === 'lesson_learned') { @for (section of
             lessonSections; track section.key) { @if (lessonText(detail,
             section.key); as text) {
             <section class="content__section">
@@ -136,6 +144,7 @@
             </section>
             } } }
             <app-markdown
+              headingPrefix="community-article"
               [source]="detail.publishedRevision?.bodyMarkdown ?? ''"
             />
 
@@ -158,6 +167,7 @@
             }
             <div class="content__feedback">
               <app-vote
+                [mode]="isQuestion() ? 'score' : 'helpful'"
                 [score]="detail.score"
                 [myVote]="detail.myVote"
                 [canVote]="detail.capabilities.canVote"
@@ -210,6 +220,13 @@
                 >
               </p>
               }
+              <p class="content__muted">
+                <span class="content__author"
+                  >{{ answer.author?.displayName }}</span
+                >
+                · Trả lời ngày {{ answer.publishedRevision?.publishedAt |
+                fmtDate }}
+              </p>
               <app-markdown
                 [source]="answer.publishedRevision?.bodyMarkdown ?? ''"
               />
@@ -287,15 +304,10 @@
                 </button>
                 }
               </div>
-              <p class="content__muted">
-                <span class="content__author"
-                  >{{ answer.author?.displayName }}</span
-                >
-                · Trả lời ngày {{ answer.publishedRevision?.publishedAt |
-                fmtDate }}
-              </p>
+
               <div class="content__feedback">
                 <app-vote
+                  mode="score"
                   [score]="answer.score"
                   [myVote]="answer.myVote"
                   [canVote]="answer.capabilities.canVote"
@@ -371,6 +383,20 @@
       }
     </div>
     <aside class="content__aside" aria-label="Thông tin nội dung">
+      @if (isQuestion()) {
+      <app-content-thumbnail
+        [contentId]="detail.contentId"
+        [kind]="detail.kind"
+        [revisionAssetId]="store.coverId$()"
+      />
+      } @if (!isQuestion() && store.outline$().length) {
+      <nav class="content__outline" aria-label="Mục lục bài viết">
+        <h2 class="content__info-title">Mục lục</h2>
+        @for (heading of store.outline$(); track heading.id) {
+        <a [routerLink]="[]" [fragment]="heading.id">{{ heading.label }}</a>
+        }
+      </nav>
+      }
       <h2 class="content__info-title">
         {{ isQuestion() ? 'Thông tin câu hỏi' : 'Thông tin bài viết' }}
       </h2>
@@ -395,6 +421,39 @@
         </div>
         }
       </dl>
+      @if (store.relatedError$(); as error) {
+      <ui-error-state
+        title="Không tải được nội dung liên quan"
+        [message]="error.message"
+        (retry)="store.retryRelated()"
+      />
+      } @else if (store.relatedLoading$()) {
+      <p role="status">Đang tìm nội dung liên quan…</p>
+      } @else if (store.related$().length) {
+      <section class="content__related" aria-label="Nội dung liên quan">
+        <h2 class="content__info-title">
+          {{ isQuestion() ? 'Câu hỏi liên quan' : 'Bài viết liên quan' }}
+        </h2>
+        @for (item of store.related$(); track item.contentId) {
+        <a
+          class="content__related-link"
+          [routerLink]="['/community/contents', item.contentId]"
+        >
+          <app-content-thumbnail
+            [contentId]="item.contentId"
+            [kind]="item.kind"
+            [revisionAssetId]="item.coverRevisionAssetId"
+          />
+          <span>{{ item.title }}</span>
+        </a>
+        }
+      </section>
+      }
+      <a
+        class="content__back"
+        [routerLink]="isQuestion() ? '/community/questions' : '/community/articles'"
+        >{{ isQuestion() ? 'Xem các câu hỏi' : 'Xem các bài viết' }} →</a
+      >
     </aside>
   </div>
 </div>

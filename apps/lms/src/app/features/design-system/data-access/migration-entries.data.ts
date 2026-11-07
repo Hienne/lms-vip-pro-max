@@ -1107,6 +1107,56 @@ export const MIGRATION_ENTRIES = [
     owner: 'Hienne',
   },
   {
+    id: 'route-community-reviews',
+    kind: 'route',
+    mockupSource: null,
+    target: 'community/reviews',
+    checklist: [],
+    status: 'todo',
+    notes:
+      'Review kiến trúc: tìm kiếm, trạng thái, phân trang và quyền đọc từ API. Đã kiểm tra sáng/tối và luồng trình duyệt local.',
+  },
+  {
+    id: 'route-community-review-new',
+    kind: 'route',
+    mockupSource: null,
+    target: 'community/reviews/new',
+    checklist: [],
+    status: 'todo',
+    notes:
+      'Tạo đề nghị review: nháp, thiết kế có cấu trúc, tệp đính kèm và đăng thiết kế. Upload S3 còn cần xác minh tại môi trường có storage.',
+  },
+  {
+    id: 'route-community-review-detail',
+    kind: 'route',
+    mockupSource: null,
+    target: 'community/reviews/:id',
+    checklist: [],
+    status: 'todo',
+    notes:
+      'Hồ sơ review: mời phản biện, góp ý theo phiên bản, xử lý, chốt, đóng và vòng tiếp theo. Đã kiểm tra API và hai tài khoản qua trình duyệt local.',
+  },
+  {
+    id: 'route-community-review-edit',
+    kind: 'route',
+    mockupSource: null,
+    target: 'community/reviews/:id/edit',
+    checklist: [],
+    status: 'todo',
+    notes:
+      'Sửa bản nháp và đăng phiên bản thiết kế mới. Đã kiểm tra giữ lịch sử phiên bản qua trình duyệt local.',
+  },
+  {
+    id: 'route-chat-room',
+    kind: 'route',
+    mockupSource: null,
+    target: 'chat-room',
+    checklist: [],
+    status: 'todo',
+    notes:
+      'Màn Phòng học chung đã tồn tại; bổ sung mục theo dõi route, chưa xác minh lại trong đợt Review kiến trúc.',
+  },
+  {
     id: 'route-community-me',
     notes:
       'CM-06 Của tôi. Đã chuyển đổi và nối API (backend local); còn bước verify trên trình duyệt.',

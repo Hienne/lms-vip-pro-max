@@ -8,7 +8,7 @@ import type {
 } from '@lms/contracts';
 import type { RoomCanvasState } from '../../../data-access/chat-room.model';
 import { RoomAvatar } from './room-avatar';
-import { facingFromVector, moveInRoom } from './room.motion';
+import { facingFromVector, gesturePose, moveInRoom } from './room.motion';
 
 interface Actor {
   root: Phaser.GameObjects.Container;
@@ -81,9 +81,11 @@ export class RoomScene extends Phaser.Scene {
       this.scale.width / this.layout.width,
       this.scale.height / this.layout.height,
     );
-    camera.setZoom(Math.max(0.62, fit * 0.96));
+    const minimumZoom = 0.5;
+    camera.setZoom(Math.max(minimumZoom, fit * 0.96));
     const me = this.actors.get(this.view().me);
-    if (me && fit < 0.62) camera.startFollow(me.root, true, 0.12, 0.12);
+    if (me && fit * 0.96 < minimumZoom)
+      camera.startFollow(me.root, true, 0.12, 0.12);
     else {
       camera.stopFollow();
       camera.centerOn(this.layout.width / 2, this.layout.height / 2);
@@ -116,25 +118,32 @@ export class RoomScene extends Phaser.Scene {
       .fillRect(28, 71, 8, h - 111)
       .fillRect(w - 36, 71, 8, h - 111);
     // Windows along the classroom walls.
-    for (const x of [238, 812]) {
+    for (const x of [w * 0.2, w * 0.75]) {
       g.fillStyle(0xd1e8e5).fillRoundedRect(x, 29, 74, 28, 4);
       g.lineStyle(3, 0xffffff).strokeRect(x + 3, 31, 68, 24);
       g.lineBetween(x + 37, 31, x + 37, 55);
     }
-    g.fillStyle(0xe2e9dc).fillRoundedRect(437, 415, 246, 172, 22);
-    g.lineStyle(2, 0xd1ddcc).strokeRoundedRect(445, 423, 230, 156, 17);
+    const area = this.layout.activityArea;
+    if (area) {
+      g.fillStyle(0xbed3bc).fillRoundedRect(area.x, area.y, area.w, area.h, 22);
+      g.lineStyle(2, 0x88aa90).strokeRoundedRect(
+        area.x + 8,
+        area.y + 8,
+        area.w - 16,
+        area.h - 16,
+        17,
+      );
+      this.add
+        .text(area.x + area.w / 2, area.y + area.h / 2, 'Khu giao lưu', {
+          fontFamily: 'Segoe UI, sans-serif',
+          fontSize: '30px',
+          color: '#52795e',
+        })
+        .setOrigin(0.5);
+    }
+    g.fillStyle(0xacc5b6).fillRoundedRect(w / 2 - 97, h - 60, 194, 28, 6);
     this.add
-      .text(560, 475, 'Khu tự học', {
-        fontFamily: 'Segoe UI, sans-serif',
-        fontSize: '22px',
-        color: '#8ca58d',
-        align: 'center',
-        lineSpacing: 6,
-      })
-      .setOrigin(0.5);
-    g.fillStyle(0xacc5b6).fillRoundedRect(463, 700, 194, 28, 6);
-    this.add
-      .text(560, 713, 'Lối vào', {
+      .text(w / 2, h - 47, 'Lối vào', {
         fontFamily: 'Segoe UI',
         fontSize: '11px',
         color: '#456958',
@@ -309,21 +318,22 @@ export class RoomScene extends Phaser.Scene {
   }
   override update(time: number, delta: number): void {
     this.synchronize();
-    if (!this.view().online) {
+    const view = this.view();
+    if (!view.online) {
       if (this.actors.size) {
         this.actors.forEach((a) => a.root.destroy());
         this.actors.clear();
       }
       return;
     }
-    const self = this.actors.get(this.view().me);
+    const self = this.actors.get(view.me);
     const typing =
       ['INPUT', 'TEXTAREA', 'BUTTON', 'SELECT'].includes(
         document.activeElement?.tagName ?? '',
       ) || (document.activeElement as HTMLElement)?.isContentEditable;
     let dx = 0,
       dy = 0;
-    if (self && this.focused && !typing && !this.view().chatting) {
+    if (self && this.focused && !typing && !view.chatting) {
       dx =
         Number(this.keys['D'].isDown || this.keys['RIGHT'].isDown) -
         Number(this.keys['A'].isDown || this.keys['LEFT'].isDown) +
@@ -362,22 +372,29 @@ export class RoomScene extends Phaser.Scene {
         facing: self.facing,
       };
     }
+    const now = performance.now();
     this.actors.forEach((actor, id) => {
       const distance = Math.hypot(
         actor.target.x - actor.root.x,
         actor.target.y - actor.root.y,
       );
-      if (id !== this.view().me) {
+      if (id !== view.me) {
         const blend = 1 - Math.exp(-delta / 45);
         actor.root.x = Phaser.Math.Linear(actor.root.x, actor.target.x, blend);
         actor.root.y = Phaser.Math.Linear(actor.root.y, actor.target.y, blend);
       }
+      const pose = gesturePose(view.gestures[id], now, this.reducedMotion);
+      const lift = pose.lift * 38;
       actor.avatar.draw(
-        actor.facing,
-        id === this.view().me ? Math.hypot(dx, dy) > 0 : distance > 1,
+        pose.facing ?? actor.facing,
+        id === view.me ? Math.hypot(dx, dy) > 0 : distance > 1,
         time,
         this.reducedMotion,
+        lift,
+        pose.wave,
       );
+      actor.label.y = -62 - lift;
+      actor.bubble.y = -lift;
       actor.root.setDepth(actor.root.y + 4);
       if (actor.until && time > actor.until) {
         actor.until = 0;

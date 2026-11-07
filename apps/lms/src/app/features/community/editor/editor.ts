@@ -6,7 +6,14 @@ import {
   signal,
   untracked,
 } from '@angular/core';
-import { form, FormField, FormRoot } from '@angular/forms/signals';
+import {
+  applyWhen,
+  form,
+  FormField,
+  FormRoot,
+  validate,
+  maxLength,
+} from '@angular/forms/signals';
 import { RouterLink } from '@angular/router';
 import { COMMUNITY_LIMITS } from '@lms/contracts';
 import {
@@ -94,6 +101,17 @@ const REVISION_STATUS: Readonly<
 export class CommunityEditor implements HasUnsavedChanges {
   protected readonly store = inject(EditorStore);
   protected readonly cover = this.store.cover;
+  protected readonly design = this.store.design;
+  protected readonly isReview = computed(
+    () => this.store.kind$() === 'architecture_review',
+  );
+  protected readonly designName = computed(() => {
+    if (this.design.selection$() === null) return undefined;
+    const selected =
+      this.design.selection$() ??
+      this.model().assets.find((a) => a.usage === 'design_file');
+    return selected ? selected.caption || 'Tệp thiết kế hiện tại' : undefined;
+  });
   protected readonly tags = inject(CommunityTagOptions);
   protected readonly limits = COMMUNITY_LIMITS;
   protected readonly revisionStatus = REVISION_STATUS;
@@ -131,20 +149,69 @@ export class CommunityEditor implements HasUnsavedChanges {
 
   protected readonly editorForm = form(
     this.model,
-    (path) =>
+    (path) => {
+      applyWhen(
+        path,
+        () => this.isReview(),
+        (p) => {
+          validate(p.review.problem, ({ value }) =>
+            value().trim().length < 20
+              ? {
+                  kind: 'required',
+                  message: 'Mô tả vấn đề cần ít nhất 20 ký tự.',
+                }
+              : undefined,
+          );
+          maxLength(p.review.problem, 10_000, {
+            message: 'Vấn đề tối đa 10.000 ký tự.',
+          });
+          maxLength(p.review.constraints, 20_000, {
+            message: 'Ràng buộc tối đa 20.000 ký tự.',
+          });
+          validate(p.review.decisions, ({ value }) => {
+            const lines = value()
+              .split('\n')
+              .map((v) => v.trim())
+              .filter(Boolean);
+            return !lines.length ||
+              lines.length > 20 ||
+              lines.some((v) => v.length > 3_000)
+              ? {
+                  kind: 'decisions',
+                  message: 'Nhập 1–20 quyết định, mỗi dòng tối đa 3.000 ký tự.',
+                }
+              : undefined;
+          });
+          validate(p.review.dueAt, ({ value }) =>
+            !value() || new Date(value()).getTime() > Date.now()
+              ? undefined
+              : { kind: 'date', message: 'Hạn review phải ở tương lai.' },
+          );
+        },
+      );
       publishRules(path, {
-        tags: () => !this.isAnswer(),
+        tags: () => !this.isAnswer() && !this.isReview(),
         lesson: () => this.isLesson(),
-      }),
+      });
+    },
     {
       submission: {
         action: async () =>
-          this.store.publish(this.fields(), this.model().tagIds),
+          this.store.publish(
+            this.fields(),
+            this.model().tagIds,
+            this.isReview() ? this.model().review.dueAt : undefined,
+          ),
       },
     },
   );
 
   protected readonly heading = computed(() => {
+    if (this.isReview())
+      return {
+        title: this.store.isNew$() ? 'Tạo đề nghị review' : 'Sửa thiết kế',
+        description: 'Mô tả vấn đề, phương án và các quyết định cần phản biện.',
+      };
     if (this.store.isNew$()) {
       return this.isLesson()
         ? {
@@ -166,8 +233,9 @@ export class CommunityEditor implements HasUnsavedChanges {
 
   protected readonly breadcrumb = computed((): BreadcrumbItem[] => {
     const detail = this.store.detail$();
-    const root: BreadcrumbItem =
-      this.isQuestion() || this.isAnswer()
+    const root: BreadcrumbItem = this.isReview()
+      ? { label: 'Review kiến trúc', href: '/community/reviews' }
+      : this.isQuestion() || this.isAnswer()
         ? { label: 'Hỏi đáp', href: '/community/questions' }
         : { label: 'Bài viết', href: '/community/articles' };
     const current: BreadcrumbItem = { label: this.heading().title };
@@ -178,12 +246,17 @@ export class CommunityEditor implements HasUnsavedChanges {
       : detail.publishedRevision.title;
     return [
       root,
-      { label: title, href: `/community/contents/${target}` },
+      {
+        label: title,
+        href: `/community/${this.isReview() ? 'reviews' : 'contents'}/${target}`,
+      },
       current,
     ];
   });
 
   protected readonly publishLabel = computed(() => {
+    if (this.isReview())
+      return this.store.isPublished$() ? 'Đăng phiên bản mới' : 'Đăng thiết kế';
     if (this.isAnswer()) return 'Đăng câu trả lời';
     return this.store.isPublished$() ? 'Đăng bản mới' : 'Đăng bài';
   });
@@ -195,6 +268,7 @@ export class CommunityEditor implements HasUnsavedChanges {
       if (!initial) return;
       untracked(() => {
         this.cover.reset();
+        this.design.reset();
         this.model.set(initial);
         this.baseline.set(JSON.stringify(initial));
       });
@@ -207,12 +281,21 @@ export class CommunityEditor implements HasUnsavedChanges {
     });
   }
 
+  protected chooseDesign(event: Event): void {
+    const file = (event.target as HTMLInputElement).files?.[0];
+    if (file) this.design.choose(file);
+  }
+
   protected chooseKind(kind: NewKind): void {
     this.store.chooseKind(kind);
   }
 
   protected saveDraft(): void {
-    this.store.saveDraft(this.fields(), this.model().tagIds);
+    this.store.saveDraft(
+      this.fields(),
+      this.model().tagIds,
+      this.isReview() ? this.model().review.dueAt : undefined,
+    );
   }
 
   protected setTags(tagIds: number[]): void {
@@ -241,6 +324,8 @@ export class CommunityEditor implements HasUnsavedChanges {
   private fields() {
     return toDraftFields(this.model(), {
       lesson: this.isLesson(),
+      review: this.isReview(),
+      design: this.isReview() ? this.design.selection$() : undefined,
       cover: this.cover.selection$(),
     });
   }

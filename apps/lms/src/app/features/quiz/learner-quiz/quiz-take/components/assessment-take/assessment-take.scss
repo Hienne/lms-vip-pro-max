@@ -46,6 +46,10 @@
     margin: ui.space(3) ui.space(4) 0;
   }
 
+  &__rule {
+    @include ui.text(sm, muted);
+  }
+
   &__layout {
     @include ui.page;
     max-width: 74rem;

@@ -1,4 +1,5 @@
 @use 'ui';
+@use 'sass:math';
 
 :host {
   display: block;
@@ -6,6 +7,29 @@
   overflow: hidden;
   border-radius: ui.radius(sm);
   background: ui.color(surface-2);
+  aspect-ratio: 16 / 9;
+  position: relative;
+}
+.thumbnail {
+  &__default {
+    display: block;
+    position: relative;
+    aspect-ratio: 16 / 9;
+    overflow: hidden;
+    img {
+      position: absolute;
+      width: 400%;
+      height: 300%;
+      max-width: none;
+      aspect-ratio: auto;
+    }
+    @for $i from 0 through 11 {
+      &[data-index='#{$i}'] img {
+        left: -($i % 4) * 100%;
+        top: -(math.floor(math.div($i, 4))) * 100%;
+      }
+    }
+  }
 }
 img {
   display: block;

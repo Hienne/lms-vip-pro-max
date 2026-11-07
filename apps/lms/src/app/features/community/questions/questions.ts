@@ -14,7 +14,6 @@ import {
   Skeleton,
   type SegmentedOption,
 } from '@lms/ui';
-import { CommunityTabs } from '../components/community-tabs/community-tabs';
 import { ContentRow } from '../components/content-row/content-row';
 import { CommunityTagOptions } from '../data-access/community-tag-options';
 import {
@@ -27,7 +26,6 @@ import {
   selector: 'app-community-questions',
   imports: [
     Button,
-    CommunityTabs,
     ContentRow,
     Empty,
     ErrorState,

@@ -23,7 +23,9 @@
   title="Bạn không sửa được bài này"
   description="Chỉ tác giả hoặc người phụ trách sửa được khi bài còn đang mở."
 >
-  <a uiButton [routerLink]="['/community/contents', store.detail$()?.contentId]"
+  <a
+    uiButton
+    [routerLink]="[isReview() ? '/community/reviews' : '/community/contents', store.detail$()?.contentId]"
     >Về bài</a
   >
 </ui-empty>
@@ -45,7 +47,7 @@
 
   <section uiCard>
     <div uiCardBody class="editor__body">
-      @if (store.isNew$()) {
+      @if (store.isNew$() && !isReview()) {
       <div class="editor__field">
         <span class="editor__label">Loại bài</span>
         <ui-segmented
@@ -76,9 +78,71 @@
           [formField]="editorForm.summary"
         ></textarea>
       </ui-field>
-      } @if (!isAnswer()) {
+      } @if (isReview()) {
+      <ui-field label="Vấn đề cần giải quyết" hint="Từ 20 đến 10.000 ký tự.">
+        <textarea
+          uiTextarea
+          rows="3"
+          [formField]="editorForm.review.problem"
+        ></textarea>
+      </ui-field>
+      <ui-field label="Ràng buộc và phương án">
+        <textarea
+          uiTextarea
+          rows="3"
+          [formField]="editorForm.review.constraints"
+        ></textarea>
+      </ui-field>
+      <ui-field
+        label="Quyết định cần thống nhất"
+        hint="Mỗi quyết định một dòng, tối đa 20 dòng."
+      >
+        <textarea
+          uiTextarea
+          rows="3"
+          [formField]="editorForm.review.decisions"
+        ></textarea>
+      </ui-field>
+      @if (store.isNew$()) {
+      <ui-field label="Hạn review" hint="Không bắt buộc."
+        ><input
+          uiInput
+          type="datetime-local"
+          [formField]="editorForm.review.dueAt"
+      /></ui-field>
+      }
+      <ui-field
+        label="Tệp thiết kế"
+        hint="PDF, JPG, PNG hoặc WebP, tối đa 5 MB. Không bắt buộc."
+      >
+        <input
+          uiInput
+          type="file"
+          accept="application/pdf,image/jpeg,image/png,image/webp"
+          [disabled]="store.isBusy$()"
+          (change)="chooseDesign($event)"
+        />
+      </ui-field>
+      @if (designName(); as name) {
+      <p>
+        {{ name }}
+        <button
+          uiButton
+          size="sm"
+          type="button"
+          [disabled]="store.isBusy$()"
+          (click)="design.remove()"
+        >
+          Bỏ tệp
+        </button>
+      </p>
+      } @if (design.isPending$()) {
+      <p role="status">Đang tải và kiểm tra tệp…</p>
+      } @if (design.error$(); as error) {
+      <ui-alert tone="danger">{{ error }}</ui-alert> } } @if (!isAnswer()) {
       <app-community-cover-picker
         [kind]="store.kind$() ?? 'article'"
+        [contentId]="store.detail$()?.contentId ?? 0"
         [revisionAssetId]="existingCover()"
         [preview]="cover.preview$()"
         [hasCover]="hasCover()"

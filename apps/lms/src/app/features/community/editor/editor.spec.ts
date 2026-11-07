@@ -25,6 +25,81 @@ const type = async (page: CommunityPage, selector: string, value: string) => {
 describe('CommunityEditor', () => {
   beforeEach(() => configureCommunityTesting());
 
+  it('preserves structured review context and unrelated assets when replacing a design file', () => {
+    const value = contentFormFrom(
+      {
+        contentId: 12,
+        revisionId: 2,
+        revisionNo: 1,
+        revisionVersion: 0,
+        contentVersion: 0,
+        title: 'Review API',
+        bodyMarkdown: 'Thiết kế API cần phản biện.',
+        revisionStatus: 'draft',
+        context: {
+          review: {
+            problem: 'Vấn đề cần phản biện đầy đủ.',
+            constraints: 'Tương thích API',
+            decisionsNeeded: ['Thống nhất retry', 'Giữ idempotency'],
+          },
+        },
+        assets: [
+          { revisionAssetId: 10, assetId: 20, usage: 'design_file', sortNo: 0 },
+          {
+            revisionAssetId: 11,
+            assetId: 21,
+            usage: 'attachment',
+            caption: 'Log tổng hợp',
+            sortNo: 1,
+          },
+        ],
+      },
+      [],
+    );
+    expect(value.review.decisions).toBe('Thống nhất retry\nGiữ idempotency');
+    const fields = toDraftFields(value, {
+      review: true,
+      design: {
+        assetId: 30,
+        usage: 'design_file',
+        caption: 'Thiết kế v2.pdf',
+        sortNo: 0,
+      },
+      cover: { assetId: 40, usage: 'cover', sortNo: 0 },
+    });
+    expect(fields.context?.review).toEqual({
+      problem: 'Vấn đề cần phản biện đầy đủ.',
+      constraints: 'Tương thích API',
+      decisionsNeeded: ['Thống nhất retry', 'Giữ idempotency'],
+    });
+    expect(fields.assets?.map((asset) => asset.assetId)).toEqual([21, 40, 30]);
+    expect(
+      toDraftFields(value, { review: true, cover: null }).assets?.map(
+        (asset) => asset.assetId,
+      ),
+    ).toEqual([20, 21]);
+    expect(
+      toDraftFields(value, { review: true, design: null }).assets?.map(
+        (asset) => asset.assetId,
+      ),
+    ).toEqual([21]);
+  });
+
+  it('opens the dedicated architecture review editor with separate cover and design file controls', async () => {
+    const page = await openCommunity('/community/reviews/new', 'giangvien');
+    expect(page.text()).toContain('Tạo đề nghị review');
+    expect(page.text()).toContain('Vấn đề cần giải quyết');
+    expect(page.text()).toContain('Quyết định cần thống nhất');
+    expect(
+      page.el().querySelector('app-community-cover-picker'),
+    ).not.toBeNull();
+    expect(
+      page.el().querySelector('input[type="file"]')?.getAttribute('accept'),
+    ).toContain('application/pdf');
+    await page.click('Đăng thiết kế');
+    expect(page.text()).toContain('Mô tả vấn đề cần ít nhất 20 ký tự.');
+  });
+
   it('preserves attachment metadata while changing or removing only the cover', () => {
     const value = contentFormFrom(
       {
@@ -65,7 +140,7 @@ describe('CommunityEditor', () => {
     const page = await openCommunity('/community/articles/new', 'giangvien');
     expect(
       page.el().querySelector('app-content-thumbnail img')?.getAttribute('src'),
-    ).toContain('/images/course-default.webp');
+    ).toContain('/images/community-defaults.png');
     const input = page
       .el()
       .querySelector<HTMLInputElement>('input[type="file"]')!;
@@ -134,7 +209,9 @@ describe('CommunityEditor', () => {
         });
         const input = page
           .el()
-          .querySelector<HTMLInputElement>('input[type="file"]')!;
+          .querySelector<HTMLInputElement>(
+            'app-community-cover-picker input[type="file"]',
+          )!;
         Object.defineProperty(input, 'files', {
           value: [new File(['img'], 'cover.webp', { type: 'image/webp' })],
         });

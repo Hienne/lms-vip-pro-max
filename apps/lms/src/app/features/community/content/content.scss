@@ -9,9 +9,14 @@
 
   &__header {
     min-width: 0;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: ui.space(3) ui.space(5);
+    align-items: center;
   }
 
   &__title {
+    grid-column: 1 / -1;
     margin: 0;
     overflow-wrap: anywhere;
   }
@@ -30,7 +35,10 @@
 
   &__aside {
     @include ui.stack(4);
-    padding-block: ui.space(3);
+    padding: ui.space(5);
+    background: ui.color(surface);
+    border: 1px solid ui.color(border);
+    border-radius: ui.radius(card);
     min-width: 0;
   }
 
@@ -64,6 +72,41 @@
     > ui-menu {
       margin-inline-start: auto;
     }
+  }
+  &__outline {
+    @include ui.stack(3);
+    padding-bottom: ui.space(4);
+    border-bottom: 1px solid ui.color(border);
+    a {
+      color: ui.color(primary);
+      text-decoration: none;
+      overflow-wrap: anywhere;
+      &:hover {
+        text-decoration: underline;
+      }
+    }
+  }
+  &__back {
+    color: ui.color(primary);
+  }
+  &__related {
+    @include ui.stack(4);
+    padding-top: ui.space(4);
+    border-top: 1px solid ui.color(border);
+  }
+  &__related-link {
+    display: grid;
+    grid-template-columns: ui.space(18) minmax(0, 1fr);
+    gap: ui.space(3);
+    color: ui.color(primary);
+    text-decoration: none;
+    overflow-wrap: anywhere;
+    &:hover {
+      text-decoration: underline;
+    }
+  }
+  &__cover {
+    max-height: calc(ui.space(18) * 3);
   }
 
   &__meta,
@@ -182,6 +225,9 @@
   }
 
   @include ui.bp-below(md) {
+    &__header {
+      grid-template-columns: minmax(0, 1fr);
+    }
     &__layout {
       gap: ui.space(5);
     }

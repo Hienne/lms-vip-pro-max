@@ -15,13 +15,13 @@
 <div class="markdown" [class.markdown--nested]="nested()">
   @for (block of blocks(); track $index) { @if (block.kind === 'heading') { @if
   (block.level === 3) {
-  <h3>
+  <h3 [attr.id]="headingPrefix() ? headingPrefix() + '-' + $index : null">
     <ng-container
       *ngTemplateOutlet="inline; context: inlineContext(block.inlines)"
     />
   </h3>
   } @else {
-  <h4>
+  <h4 [attr.id]="headingPrefix() ? headingPrefix() + '-' + $index : null">
     <ng-container
       *ngTemplateOutlet="inline; context: inlineContext(block.inlines)"
     />

@@ -1,0 +1,164 @@
+@use 'ui';
+:host {
+  @include ui.page(wide);
+}
+.review-detail {
+  @include ui.stack(4);
+  &__header-actions {
+    @include ui.row(3);
+    flex-wrap: wrap;
+  }
+  &__back {
+    display: inline-block;
+    color: ui.color(primary);
+    margin-bottom: ui.space(4);
+  }
+  &__meta {
+    @include ui.row(4);
+    flex-wrap: wrap;
+    color: ui.color(text-muted);
+  }
+  &__layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) calc(ui.space(18) * 3);
+    gap: ui.space(8);
+    align-items: start;
+  }
+  &__main {
+    @include ui.stack(5);
+    min-width: 0;
+    h2 {
+      margin: 0;
+      font-size: ui.text-size(lg);
+      font-weight: ui.weight(semibold);
+    }
+  }
+  &__version {
+    @include ui.row(4);
+    flex-wrap: wrap;
+    select {
+      width: auto;
+      max-width: 100%;
+    }
+  }
+  &__design {
+    @include ui.stack(4);
+    padding: ui.space(6);
+    background: ui.color(surface);
+    border: 1px solid ui.color(border);
+    border-radius: ui.radius(card);
+    overflow-wrap: anywhere;
+    ul {
+      margin: 0;
+      padding-left: ui.space(5);
+    }
+  }
+  &__muted {
+    margin: 0;
+    color: ui.color(text-muted);
+  }
+  &__thread {
+    @include ui.stack(3);
+    background: ui.color(surface);
+    border: 1px solid ui.color(border);
+    border-radius: ui.radius(card);
+    padding: ui.space(5);
+    overflow-wrap: anywhere;
+  }
+  &__thread-summary {
+    @include ui.stack(3);
+  }
+  &__thread:has(details[open]) &__thread-summary {
+    display: none;
+  }
+  &__discussion {
+    summary {
+      cursor: pointer;
+      color: ui.color(primary);
+      padding: ui.space(2) 0;
+    }
+  }
+  &__thread-head {
+    @include ui.row-between(3);
+    flex-wrap: wrap;
+  }
+  &__resolution {
+    color: ui.color(text-secondary);
+    border-top: 1px solid ui.color(border);
+    padding-top: ui.space(3);
+    margin: 0;
+  }
+  &__composer {
+    @include ui.stack(4);
+    border-top: 1px solid ui.color(border);
+    padding-top: ui.space(5);
+  }
+  &__people {
+    border-top: 1px solid ui.color(border);
+  }
+  &__person {
+    @include ui.row-between(4);
+    padding: ui.space(4) 0;
+    border-bottom: 1px solid ui.color(border);
+    p {
+      margin: ui.space(2) 0 0;
+      color: ui.color(text-muted);
+    }
+  }
+  &__person-actions {
+    @include ui.row(2);
+    flex-wrap: wrap;
+  }
+  &__aside {
+    @include ui.stack(4);
+    padding: ui.space(5);
+    background: ui.color(surface);
+    border: 1px solid ui.color(border);
+    border-radius: ui.radius(card);
+    color: ui.color(text-muted);
+    font-size: ui.text-size(sm);
+    h2 {
+      color: ui.color(text);
+      font-size: ui.text-size(md);
+      font-weight: ui.weight(semibold);
+      margin: 0 0 ui.space(4);
+    }
+    dl,
+    ul {
+      margin: 0 0 ui.space(6);
+      padding: 0;
+    }
+    dd {
+      color: ui.color(text);
+      margin: ui.space(2) 0 ui.space(4);
+    }
+    li {
+      list-style: none;
+      margin-bottom: ui.space(3);
+    }
+  }
+  &__conclusion-shortcut {
+    @include ui.stack(3);
+    border-top: 1px solid ui.color(border);
+    padding-top: ui.space(4);
+  }
+  @include ui.bp-below(lg) {
+    &__layout {
+      grid-template-columns: minmax(0, 1fr);
+    }
+    &__aside {
+      border-top: 1px solid ui.color(border);
+      padding-top: ui.space(5);
+    }
+  }
+  @include ui.bp-below(md) {
+    &__design,
+    &__thread {
+      padding: ui.space(4);
+    }
+    &__person {
+      align-items: flex-start;
+      flex-direction: column;
+    }
+  }
+}

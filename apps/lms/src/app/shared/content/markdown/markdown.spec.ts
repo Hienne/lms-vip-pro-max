@@ -17,6 +17,20 @@ const HOSTILE_HTML =
   '<a href="https://example.com/a" onclick="z()" style="color:red">an toàn</a>';
 
 describe('Markdown', () => {
+  it('adds stable heading anchors only when a page requests an outline', () => {
+    expect(render('## First').querySelector('h3')?.hasAttribute('id')).toBe(
+      false,
+    );
+    const fixture = TestBed.createComponent(Markdown);
+    fixture.componentRef.setInput('source', '## First\nParagraph\n### Second');
+    fixture.componentRef.setInput('headingPrefix', 'community-article');
+    fixture.detectChanges();
+    const element = fixture.nativeElement as HTMLElement;
+    expect(Array.from(element.querySelectorAll('h3, h4'), (h) => h.id)).toEqual(
+      ['community-article-0', 'community-article-2'],
+    );
+  });
+
   it('keeps its heading sizes unless it sits under a heading of its own', () => {
     expect(render('## A').querySelector('.markdown--nested')).toBeNull();
     const fixture = TestBed.createComponent(Markdown);

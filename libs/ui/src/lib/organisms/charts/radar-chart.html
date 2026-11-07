@@ -47,13 +47,14 @@
   <figcaption class="chart-view__legend">
     <i class="chart-view__swatch"></i>{{seriesLabel()}}
   </figcaption>
+  @if (showTable()) {
   <details>
     <summary class="chart-view__summary">Xem dạng bảng</summary>
     <table uiTable>
       <thead>
         <tr>
           <th>Nhóm kiến thức</th>
-          <th>Tỷ lệ đúng</th>
+          <th>Tỷ lệ điểm</th>
         </tr>
       </thead>
       <tbody>
@@ -69,4 +70,5 @@
       </tbody>
     </table>
   </details>
+  }
 </figure>

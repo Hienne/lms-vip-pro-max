@@ -1,0 +1,43 @@
+
+ RUN  v4.1.11 D:/SCH/lms-vip-pro-max/apps/lms
+
+stderr | src/app/features/community/editor/editor.spec.ts > CommunityEditor > uploads, saves and removes a cover at /community/reviews/new
+Mock API: no mock for POST /api/v1/community/reviews; sending it to the network.
+
+ ❯ |lms| src/app/features/community/editor/editor.spec.ts (14 tests | 1 failed | 13 skipped) 11601ms
+     ↓ preserves structured review context and unrelated assets when replacing a design file
+     ↓ opens the dedicated architecture review editor with separate cover and design file controls
+     ↓ preserves attachment metadata while changing or removing only the cover
+     ↓ shows a default cover and rejects an unsupported file before uploading
+     ↓ uploads, saves and removes a cover at /community/articles/new
+     ↓ uploads, saves and removes a cover at /community/questions/new
+     × uploads, saves and removes a cover at /community/reviews/new 11600ms
+     ↓ creates an article draft and moves to its edit address
+     ↓ asks for the incident fields before publishing a lesson learned
+     ↓ edits a published article on a draft and publishes the new revision
+     ↓ publishes on the second try after a refused publish, without a conflict
+     ↓ edits an answer without title or tags and names its question
+     ↓ refuses to edit someone else’s post
+     ↓ keeps the chosen kind in the address
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  |lms| src/app/features/community/editor/editor.spec.ts > CommunityEditor > uploads, saves and removes a cover at /community/reviews/new
+Error: The page never showed "Sửa thiết kế"
+ ❯ Object.waitForText src/app/features/community/community.testing.ts:100:17
+     98|       while (!el().textContent?.replace(/\s+/g, ' ').includes(text)) {
+     99|         if (Date.now() > until)
+    100|           throw new Error(`The page never showed "${text}"`);
+       |                 ^
+    101|         await new Promise((resolve) => setTimeout(resolve, 20));
+    102|         await settle();
+ ❯ src/app/features/community/editor/editor.spec.ts:222:9
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 13 skipped (14)
+   Start at  16:21:06
+   Duration  13.57s (transform 1.41s, setup 364ms, import 970ms, tests 11.60s, environment 490ms)
+

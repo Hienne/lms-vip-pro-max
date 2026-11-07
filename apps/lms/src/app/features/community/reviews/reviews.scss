@@ -1,0 +1,103 @@
+@use 'ui';
+:host {
+  @include ui.page(wide);
+}
+.reviews {
+  @include ui.stack(6);
+  margin-top: ui.space(6);
+  &__filters {
+    @include ui.stack(4);
+    ui-segmented {
+      min-width: 0;
+      max-width: 100%;
+      overflow-x: auto;
+    }
+  }
+  &__layout {
+    display: block;
+    gap: ui.space(8);
+  }
+  &__summary {
+    @include ui.row-between(3);
+    margin-bottom: ui.space(4);
+    color: ui.color(text-muted);
+  }
+  &__list {
+    border: 1px solid ui.color(border);
+    border-radius: ui.radius(card);
+    background: ui.color(surface);
+    overflow: hidden;
+  }
+  &__item {
+    display: grid;
+    grid-template-columns: calc(ui.space(10) * 4) minmax(0, 1fr) auto;
+    gap: ui.space(5);
+    padding: ui.space(5);
+    border-bottom: 1px solid ui.color(border);
+    &:last-child {
+      border-bottom: 0;
+    }
+  }
+  &__content {
+    min-width: 0;
+    h2 {
+      font-size: ui.text-size(md);
+      font-weight: ui.weight(semibold);
+      margin: 0 0 ui.space(3);
+    }
+    a {
+      text-decoration: none;
+      color: ui.color(text);
+      &:hover {
+        color: ui.color(primary);
+        text-decoration: underline;
+      }
+    }
+    p {
+      margin: ui.space(3) 0 0;
+      overflow-wrap: anywhere;
+    }
+  }
+  &__meta {
+    color: ui.color(text-muted);
+    font-size: ui.text-size(sm);
+    strong {
+      color: ui.color(text-secondary);
+      font-weight: ui.weight(medium);
+    }
+  }
+  &__state {
+    text-align: right;
+    align-self: start;
+    color: ui.color(text-muted);
+    font-size: ui.text-size(sm);
+    p {
+      margin: ui.space(3) 0 0;
+    }
+  }
+  @include ui.bp-below(md) {
+    &__item {
+      grid-template-columns: calc(ui.space(12) * 2) minmax(0, 1fr);
+      padding: ui.space(4);
+    }
+    &__state {
+      text-align: left;
+      grid-column: 2;
+    }
+    &__summary {
+      font-size: ui.text-size(sm);
+    }
+  }
+  &__metrics {
+    @include ui.row(4);
+    @include ui.text(sm, muted);
+    flex-wrap: wrap;
+    margin-top: ui.space(3);
+    span {
+      @include ui.row(2);
+    }
+  }
+  &__due {
+    margin-inline-start: auto;
+  }
+}

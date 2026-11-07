@@ -57,7 +57,11 @@ describe('toProfile', () => {
   it('lists the functions the app has a screen for, in the backend order, as menus and as the nav', () => {
     const profile = toProfile(seedMe('000002'));
     expect(
-      profile.nav.flatMap((section) => section.items.map((i) => i.code)).sort(),
+      [
+        ...new Set(
+          profile.nav.flatMap((section) => section.items.map((i) => i.code)),
+        ),
+      ].sort(),
     ).toEqual([...profile.menus].sort());
     expect(profile.menus[0]).toBe('PROFILE');
     expect(profile.menus).toContain('USER_MANAGEMENT');

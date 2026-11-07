@@ -1,0 +1,418 @@
+<a class="review-detail__back" routerLink="/community/reviews"
+  >← Review kiến trúc</a
+>
+<ui-page-header [title]="store.title$()">
+  <div slot="actions" class="review-detail__header-actions">
+    @if (store.detail$(); as detail) { @if (detail.capabilities.canEditDraft) {
+    <a uiButton [routerLink]="['/community/reviews',detail.contentId,'edit']"
+      >{{ detail.publishedRevision ? 'Sửa thiết kế' : 'Tiếp tục soạn' }}</a
+    >
+    } @if (detail.reviewCapabilities.includes('invite')) {
+    <button
+      uiButton
+      type="button"
+      [disabled]="store.busy$()"
+      (click)="store.act({kind:'invite'})"
+    >
+      Mời phản biện
+    </button>
+    } @if (detail.reviewCapabilities.includes('open')) {
+    <button
+      uiButton
+      variant="primary"
+      type="button"
+      [disabled]="store.busy$()"
+      (click)="store.act({kind:'open'})"
+    >
+      Mở lấy ý kiến
+    </button>
+    } @if (detail.reviewCapabilities.includes('follow_up')) {
+    <button
+      uiButton
+      type="button"
+      [disabled]="store.busy$()"
+      (click)="store.act({kind:'follow_up'})"
+    >
+      Tạo vòng review tiếp
+    </button>
+    } }
+  </div>
+</ui-page-header>
+@if (!store.id$()) {
+<ui-empty
+  variant="page"
+  title="Liên kết review không hợp lệ"
+  description="Kiểm tra lại liên kết hoặc chọn một đề nghị trong danh sách."
+>
+  <a uiButton routerLink="/community/reviews">Về danh sách review</a>
+</ui-empty>
+} @else if (store.error$(); as error) {
+<ui-error-state
+  title="Không tải được hồ sơ review"
+  [message]="error.message"
+  (retry)="store.retry()"
+/>
+} @else if (store.isLoading$()) {
+<p role="status">Đang tải hồ sơ review…</p>
+} @else if (store.detail$(); as detail) {
+<div class="review-detail">
+  <div class="review-detail__meta">
+    @if (statuses[detail.reviewStatus]; as state) {
+    <span uiBadge [tone]="state.tone">{{ state.label }}</span> }
+    <span>{{ detail.author?.displayName ?? detail.author?.userId }}</span>
+    @if (detail.dueAt) { <span>Hạn {{ detail.dueAt | fmtDate }}</span> }
+  </div>
+  <ui-segmented
+    label="Hồ sơ review"
+    [options]="tabs"
+    [value]="store.tab$()"
+    (valueChange)="store.showTab($event)"
+  />
+  <div class="review-detail__layout">
+    <section class="review-detail__main">
+      @switch (store.tab$()) { @case ('design') { @if
+      (!detail.publishedRevision) {
+      <ui-alert heading="Thiết kế chưa được đăng"
+        >Tiếp tục soạn và đăng thiết kế trước khi mở lấy ý kiến.</ui-alert
+      >
+      } @else {
+      <div class="review-detail__version">
+        <label for="review-revision">Phiên bản thiết kế</label>
+        <select
+          uiSelect
+          id="review-revision"
+          [value]="store.selectedRevisionId$()"
+          (change)="store.selectRevision(revision.value)"
+          #revision
+        >
+          <option
+            [value]="detail.publishedRevision.revisionId"
+            [selected]="detail.publishedRevision.revisionId === store.selectedRevisionId$()"
+          >
+            Phiên bản {{ detail.publishedRevision.revisionNo }} · hiện tại
+          </option>
+          @for (item of store.history$(); track item.revisionId) { @if
+          (item.revisionId !== detail.publishedRevision.revisionId) {
+          <option
+            [value]="item.revisionId"
+            [selected]="item.revisionId === store.selectedRevisionId$()"
+          >
+            Phiên bản {{ item.revisionNo }}
+          </option>
+          } }
+        </select>
+      </div>
+      @if (store.historyError$(); as error) {
+      <ui-error-state
+        title="Không tải được lịch sử phiên bản"
+        [message]="error.message"
+        (retry)="store.retry()"
+      />
+      } @if (store.historyTotal$() > 20) {
+      <ui-pagination
+        [total]="store.historyTotal$()"
+        [page]="store.historyPage$()"
+        [pageSize]="20"
+        (pageChange)="store.historyPage($event)"
+      />
+      } @if (store.revisionError$(); as error) {
+      <ui-error-state
+        title="Không tải được thiết kế"
+        [message]="error.message"
+        (retry)="store.retry()"
+      />
+      } @else if (store.revisionLoading$()) {
+      <p role="status">Đang tải phiên bản…</p>
+      } @else if (store.revision$(); as revision) {
+      <article class="review-detail__design">
+        <h2>Vấn đề cần giải quyết</h2>
+        <app-markdown [source]="revision.context?.review?.problem ?? ''" /> @if
+        (revision.context?.review?.constraints; as constraints) {
+        <h2>Ràng buộc và phương án</h2>
+        <app-markdown [source]="constraints" /> }
+        <h2>Quyết định cần thống nhất</h2>
+        <ul>
+          @for (decision of revision.context?.review?.decisionsNeeded; track
+          $index) {
+          <li>{{ decision }}</li>
+          }
+        </ul>
+        <h2>Nội dung thiết kế</h2>
+        <app-markdown [source]="revision.bodyMarkdown" /> @if
+        (store.designAssets$().length) {
+        <h2>Tệp thiết kế</h2>
+        @for (file of store.designAssets$(); track file.revisionAssetId) {
+        <button
+          uiButton
+          type="button"
+          [disabled]="store.downloading$()"
+          (click)="store.downloadDesign(file.revisionAssetId,file.caption ?? 'thiet-ke')"
+        >
+          Tải {{ file.caption ?? 'tệp thiết kế' }}
+        </button>
+        } }
+        <p class="review-detail__muted">
+          Phiên bản {{ revision.revisionNo }} · {{ revision.publishedAt |
+          fmtDatetime }}
+        </p>
+      </article>
+      <h2>Góp ý theo phiên bản {{ revision.revisionNo }}</h2>
+      <ui-segmented
+        label="Lọc góp ý"
+        [options]="filters"
+        [value]="store.threadStatus$()"
+        (valueChange)="store.filterThreads($event)"
+      />
+      @if (store.threadsError$(); as error) {
+      <ui-error-state
+        title="Không tải được góp ý"
+        [message]="error.message"
+        (retry)="store.retry()"
+      />
+      } @else if (store.threadsLoading$()) {
+      <p role="status">Đang tải góp ý…</p>
+      } @else { @for (thread of store.threads$(); track thread.threadId) {
+      <article class="review-detail__thread">
+        <header class="review-detail__thread-head">
+          <strong
+            >@switch (thread.anchor.type) { @case ('section') { {{
+            thread.anchor.section }} } @case ('line') { Dòng {{
+            thread.anchor.startLine }}–{{ thread.anchor.endLine }} } @default {
+            Trang {{ thread.anchor.page }} } }</strong
+          ><span
+            uiBadge
+            [tone]="thread.status === 'resolved' ? 'success' : 'neutral'"
+            >{{ thread.status === 'resolved' ? 'Đã xử lý' : 'Chưa xử lý'
+            }}</span
+          >
+        </header>
+        @if (thread.rootComment; as root) {
+        <div class="review-detail__thread-summary">
+          <p class="review-detail__muted">
+            {{ root.author?.displayName ?? root.authorUserId }} · {{
+            root.createTime | fmtDatetime }}
+          </p>
+          <app-markdown
+            [source]="root.bodyMarkdown ?? 'Bình luận đã bị xóa.'"
+          />
+        </div>
+        }
+        <details class="review-detail__discussion">
+          <summary #discussion>Trao đổi và thao tác bình luận</summary>
+          @defer (on interaction(discussion)) {
+          <app-comment-thread
+            [contentId]="detail.contentId"
+            [reviewThreadId]="thread.threadId"
+            [canComment]="store.canComment$() && thread.status === 'open'"
+            closedMessage="Góp ý này đang ở chế độ chỉ đọc."
+          />
+          }
+        </details>
+        @if (thread.resolutionNote) {
+        <p class="review-detail__resolution">
+          {{ thread.resolvedBy?.displayName }} · {{ thread.resolutionNote }}
+        </p>
+        } @for (action of thread.capabilities; track action) {
+        <button
+          uiButton
+          type="button"
+          size="sm"
+          [disabled]="store.busy$()"
+          (click)="store.act({kind:'thread',thread,action})"
+        >
+          {{ action === 'resolve' ? 'Đánh dấu đã xử lý' : 'Mở lại góp ý' }}
+        </button>
+        }
+      </article>
+      } @empty {
+      <p class="review-detail__muted">
+        Chưa có góp ý phù hợp trên phiên bản này.
+      </p>
+      } @if (store.threadsTotal$() > 20) {
+      <ui-pagination
+        [total]="store.threadsTotal$()"
+        [page]="store.threadPage$()"
+        [pageSize]="20"
+        (pageChange)="store.threadPage($event)"
+      />
+      } } @if (store.canComment$()) {
+      <form class="review-detail__composer" [formRoot]="composer">
+        <h2>Góp ý vào phiên bản {{ revision.revisionNo }}</h2>
+        <ui-field label="Mục được góp ý"
+          ><select uiSelect [formField]="composer.section">
+            <option value="">Chọn mục</option>
+            <option value="Vấn đề cần giải quyết">Vấn đề cần giải quyết</option>
+            <option value="Ràng buộc và phương án">
+              Ràng buộc và phương án
+            </option>
+            <option value="Quyết định cần thống nhất">
+              Quyết định cần thống nhất
+            </option>
+            <option value="Nội dung thiết kế">Nội dung thiết kế</option>
+          </select></ui-field
+        >
+        <ui-field
+          label="Nội dung góp ý"
+          hint="Góp ý luôn gắn với phiên bản đang xem."
+        >
+          <textarea uiTextarea rows="4" [formField]="composer.body"></textarea>
+        </ui-field>
+        <div>
+          <button
+            uiButton
+            variant="primary"
+            type="submit"
+            [disabled]="store.busy$()"
+          >
+            Gửi góp ý
+          </button>
+        </div>
+      </form>
+      } } } } @case ('invitations') {
+      <h2>Người phản biện</h2>
+      @if (store.invitationsError$(); as error) {
+      <ui-error-state
+        title="Không tải được lời mời"
+        [message]="error.message"
+        (retry)="store.retry()"
+      />
+      } @else if (store.invitationsLoading$()) {
+      <p role="status">Đang tải lời mời…</p>
+      } @else {
+      <div class="review-detail__people">
+        @for (invitation of store.invitations$(); track invitation.invitationId)
+        {
+        <article class="review-detail__person">
+          <div>
+            <strong
+              >{{ invitation.reviewer.displayName ?? invitation.reviewer.userId
+              }}</strong
+            >
+            <p>
+              {{ invitationStatus[invitation.status] }} @if
+              (invitation.expiresAt) { · Hạn {{ invitation.expiresAt | fmtDate
+              }} }
+            </p>
+          </div>
+          <div class="review-detail__person-actions">
+            @for (action of invitation.capabilities; track action) {
+            <button
+              uiButton
+              type="button"
+              size="sm"
+              [disabled]="store.busy$()"
+              (click)="store.act({kind:'respond',invitation,action})"
+            >
+              {{ invitationAction[action] }}
+            </button>
+            }
+          </div>
+        </article>
+        } @empty {
+        <p class="review-detail__muted">Chưa có lời mời phản biện.</p>
+        }
+      </div>
+      <ui-pagination
+        [total]="store.invitationsTotal$()"
+        [page]="store.invitationPage$()"
+        [pageSize]="20"
+        (pageChange)="store.invitationPage($event)"
+      />
+      } } @case ('conclusion') {
+      <h2>Kết luận review</h2>
+      @if (detail.conclusion) {
+      <div class="review-detail__design">
+        <app-markdown [source]="detail.conclusion" />
+        <p class="review-detail__muted">
+          {{ detail.concludedBy?.displayName }} · {{ detail.concludedAt |
+          fmtDatetime }}
+        </p>
+        @if (detail.concludedRevisionId) {
+        <p>Gắn với mã phiên bản {{ detail.concludedRevisionId }}</p>
+        }
+      </div>
+      } @else {
+      <p class="review-detail__muted">
+        Hồ sơ chưa có kết luận. Cần xử lý toàn bộ góp ý còn mở trên phiên bản
+        hiện tại trước khi chốt.
+      </p>
+      } @if (detail.reviewCapabilities.includes('conclude')) {
+      <button
+        uiButton
+        variant="primary"
+        type="button"
+        [disabled]="store.busy$()"
+        (click)="store.act({kind:'conclude'})"
+      >
+        Chốt kết luận phiên bản hiện tại
+      </button>
+      } @if (detail.reviewCapabilities.includes('close')) {
+      <div>
+        <button
+          uiButton
+          type="button"
+          [disabled]="store.busy$()"
+          (click)="store.act({kind:'close'})"
+        >
+          Đóng đề nghị review
+        </button>
+      </div>
+      } } }
+    </section>
+    <aside class="review-detail__aside">
+      <app-content-thumbnail
+        [contentId]="detail.contentId"
+        kind="architecture_review"
+        [revisionAssetId]="store.coverId$()"
+      />
+      <h2>Thông tin review</h2>
+      <dl>
+        <dt>Góp ý chưa xử lý</dt>
+        <dd>{{ detail.openThreadCount }} trên phiên bản hiện tại</dd>
+        <dt>Phạm vi đọc</dt>
+        <dd>
+          {{ detail.visibility === 'organization' ? 'Trong đơn vị' :
+          detail.visibility === 'guild' ? 'Trong Guild' : 'Người được cấp quyền'
+          }}
+        </dd>
+        @if (detail.dueAt) {
+        <dt>Hạn review</dt>
+        <dd>{{ detail.dueAt | fmtDate }}</dd>
+        }
+      </dl>
+      <button
+        uiButton
+        type="button"
+        variant="ghost"
+        (click)="store.showTab('invitations')"
+      >
+        Xem người phản biện
+      </button>
+      @if (detail.tags?.length) {
+      <h2>Chủ đề</h2>
+      <ul>
+        @for (tag of detail.tags; track tag.tagId) {
+        <li>{{ tag.name }}</li>
+        }
+      </ul>
+      }
+      <p>
+        Kết luận giữ nguyên thiết kế đã chốt. Nếu cần thay đổi, tạo vòng review
+        tiếp theo.
+      </p>
+      <div class="review-detail__conclusion-shortcut">
+        <h2>Kết luận</h2>
+        <button uiButton type="button" (click)="store.showTab('conclusion')">
+          {{ detail.conclusion ? 'Xem kết luận' : 'Chuẩn bị kết luận' }}
+        </button>
+        @if (detail.openThreadCount) {
+        <p>
+          Xử lý {{ detail.openThreadCount }} góp ý còn mở trên phiên bản hiện
+          tại trước khi chốt.
+        </p>
+        }
+      </div>
+    </aside>
+  </div>
+</div>
+}

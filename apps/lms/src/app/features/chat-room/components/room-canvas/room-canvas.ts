@@ -4,10 +4,11 @@ import {
   ElementRef,
   input,
   output,
+  signal,
   untracked,
   viewChild,
 } from '@angular/core';
-import type { RoomMap, RoomMovement } from '@lms/contracts';
+import type { RoomGestureKind, RoomMap, RoomMovement } from '@lms/contracts';
 import { Button } from '@lms/ui';
 import type {
   RoomCanvasState,
@@ -16,6 +17,7 @@ import type {
 
 interface RoomRenderer {
   setTouch(x: number, y: number): void;
+  setPortrait?(portrait: boolean): void;
 }
 
 @Component({
@@ -29,9 +31,13 @@ export class RoomCanvas {
   readonly map = input.required<RoomMap>();
   readonly view = input.required<RoomCanvasState>();
   readonly mode = input<RoomViewMode>('3d');
+  readonly gesturesEnabled = input(false);
+  readonly gestureNotice = input('');
   readonly moved = output<RoomMovement>();
+  readonly gestured = output<RoomGestureKind>();
   readonly ready = output<boolean>();
   readonly failed = output<string>();
+  protected readonly portrait = signal(false);
   private readonly mount =
     viewChild.required<ElementRef<HTMLDivElement>>('mount');
   private scene?: RoomRenderer;
@@ -65,17 +71,16 @@ export class RoomCanvas {
   ): Promise<() => void> {
     try {
       if (mode === '3d') {
-        const { RoomFirstPerson } = await import(
-          './rendering/room-first-person'
-        );
+        const { RoomOrbit } = await import('./rendering/room-orbit');
         if (cancelled()) return () => undefined;
-        const scene = new RoomFirstPerson(
+        const scene = new RoomOrbit(
           map,
           mount,
           () => this.view(),
           (position) => this.moved.emit(position),
           (message) => this.failed.emit(message),
         );
+        scene.setPortrait(this.portrait());
         this.scene = scene;
         this.ready.emit(true);
         return () => {
@@ -127,7 +132,16 @@ export class RoomCanvas {
     }
   }
   protected focus(event: PointerEvent): void {
+    if ((event.target as HTMLElement).closest('button')) return;
     (event.currentTarget as HTMLElement).focus();
+  }
+  protected togglePortrait(): void {
+    this.portrait.update((enabled) => !enabled);
+    this.scene?.setPortrait?.(this.portrait());
+  }
+  protected performGesture(kind: RoomGestureKind, event: MouseEvent): void {
+    this.gestured.emit(kind);
+    if (event.detail > 0) this.focusRoom();
   }
   focusRoom(): void {
     this.mount().nativeElement.parentElement?.focus();

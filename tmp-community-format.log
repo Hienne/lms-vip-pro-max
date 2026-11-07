@@ -1,0 +1,37 @@
+apps/lms/src/app/features/community/_community-list.scss 25ms
+apps/lms/src/app/features/community/articles/articles.html 26ms (unchanged)
+apps/lms/src/app/features/community/articles/articles.spec.ts 52ms (unchanged)
+apps/lms/src/app/features/community/articles/articles.ts 7ms (unchanged)
+apps/lms/src/app/features/community/ask/ask.spec.ts 8ms
+apps/lms/src/app/features/community/components/content-row/content-row.html 3ms (unchanged)
+apps/lms/src/app/features/community/components/content-row/content-row.scss 4ms (unchanged)
+apps/lms/src/app/features/community/components/content-row/content-row.spec.ts 11ms
+apps/lms/src/app/features/community/components/content-row/content-row.ts 6ms (unchanged)
+apps/lms/src/app/features/community/components/content-thumbnail/content-thumbnail.scss 2ms (unchanged)
+apps/lms/src/app/features/community/components/content-thumbnail/content-thumbnail.ts 9ms (unchanged)
+apps/lms/src/app/features/community/components/cover-picker/cover-picker.html 2ms (unchanged)
+apps/lms/src/app/features/community/components/cover-picker/cover-picker.ts 3ms (unchanged)
+apps/lms/src/app/features/community/components/vote/vote.html 2ms (unchanged)
+apps/lms/src/app/features/community/components/vote/vote.scss 2ms (unchanged)
+apps/lms/src/app/features/community/components/vote/vote.spec.ts 8ms
+apps/lms/src/app/features/community/components/vote/vote.ts 4ms (unchanged)
+apps/lms/src/app/features/community/content/content.html 14ms
+apps/lms/src/app/features/community/content/content.scss 7ms
+apps/lms/src/app/features/community/content/content.ts 14ms (unchanged)
+apps/lms/src/app/features/community/content/data-access/content.store.ts 28ms
+apps/lms/src/app/features/community/editor/editor.html 9ms (unchanged)
+apps/lms/src/app/features/community/editor/editor.spec.ts 21ms
+apps/lms/src/app/features/community/questions/questions.html 3ms (unchanged)
+apps/lms/src/app/features/community/questions/questions.spec.ts 4ms (unchanged)
+apps/lms/src/app/features/community/questions/questions.ts 2ms (unchanged)
+apps/lms/src/app/features/community/review-detail/data-access/review-detail.store.ts 26ms (unchanged)
+apps/lms/src/app/features/community/review-detail/review-detail.html 15ms
+apps/lms/src/app/features/community/review-detail/review-detail.scss 6ms (unchanged)
+apps/lms/src/app/features/community/review-detail/review-detail.ts 6ms (unchanged)
+apps/lms/src/app/features/community/reviews/reviews.html 4ms (unchanged)
+apps/lms/src/app/features/community/reviews/reviews.scss 5ms (unchanged)
+apps/lms/src/app/features/community/reviews/reviews.ts 2ms (unchanged)
+apps/lms/src/app/shared/content/markdown/markdown.html 3ms (unchanged)
+apps/lms/src/app/shared/content/markdown/markdown.ts 2ms (unchanged)
+libs/contracts/src/lib/learner/learner.endpoints.spec.ts 29ms
+apps/lms/src/app/features/community/components/content-thumbnail/content-thumbnail.spec.ts 3ms (unchanged)

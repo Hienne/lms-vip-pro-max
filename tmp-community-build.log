@@ -1,0 +1,81 @@
+Warning: Failed to copy native module to cache after 1 attempt (EPERM). Loading from original location instead. This may cause file locking issues on Windows.
+
+> nx run lms:build:development --outputPath=dist/community-ux
+
+Warning: Failed to copy native module to cache after 1 attempt (EPERM). Loading from original location instead. This may cause file locking issues on Windows.
+(node:15520) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+[33m>[39m Building...
+(node:15520) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+[32m√[39m Building...
+[1mInitial chunk files[22m[2m | [22m[1mNames[22m            [2m | [22m [1mRaw size[22m
+[32mchunk-XYRPLT5S.js[39m  [2m | [22m[2m-[22m                [2m | [22m  [36m1.50 MB[39m[2m | [22m
+[32mchunk-WTC5OMZW.js[39m  [2m | [22m[2m-[22m                [2m | [22m[36m998.66 kB[39m[2m | [22m
+[32mmain.js[39m            [2m | [22m[2mmain[22m             [2m | [22m[36m435.45 kB[39m[2m | [22m
+[32mstyles.css[39m         [2m | [22m[2mstyles[22m           [2m | [22m[36m108.67 kB[39m[2m | [22m
+[32mchunk-MVEGWGGJ.js[39m  [2m | [22m[2m-[22m                [2m | [22m [36m18.03 kB[39m[2m | [22m
+[32mchunk-AG4T5HDZ.js[39m  [2m | [22m[2m-[22m                [2m | [22m [36m11.14 kB[39m[2m | [22m
+[32mchunk-VCMG7F2G.js[39m  [2m | [22m[2m-[22m                [2m | [22m [36m10.24 kB[39m[2m | [22m
+[32mchunk-UNNQHEBE.js[39m  [2m | [22m[2m-[22m                [2m | [22m  [36m3.11 kB[39m[2m | [22m
+[32mchunk-V4EIAF3I.js[39m  [2m | [22m[2m-[22m                [2m | [22m  [36m2.95 kB[39m[2m | [22m
+[32mchunk-RXUIEKBR.js[39m  [2m | [22m[2m-[22m                [2m | [22m  [36m2.01 kB[39m[2m | [22m
+[32mchunk-YUA7O5HQ.js[39m  [2m | [22m[2m-[22m                [2m | [22m  [36m2.00 kB[39m[2m | [22m
+[32mchunk-OXPDPN35.js[39m  [2m | [22m[2m-[22m                [2m | [22m  [36m1.48 kB[39m[2m | [22m
+[32mchunk-K7OZM76R.js[39m  [2m | [22m[2m-[22m                [2m | [22m[36m499 bytes[39m[2m | [22m
+[32mchunk-F42SMQDO.js[39m  [2m | [22m[2m-[22m                [2m | [22m[36m495 bytes[39m[2m | [22m
+
+[1m [22m                  [2m | [22m[1mInitial total[22m    [2m | [22m  [1m3.09 MB[22m
+
+[1mLazy chunk files[22m   [2m | [22m[1mNames[22m            [2m | [22m [1mRaw size[22m
+[32mchunk-AJ3CC2TH.js[39m  [2m | [22m[2m-[22m                [2m | [22m [36m17.19 MB[39m[2m | [22m
+[32mchunk-RQ47HHF3.js[39m  [2m | [22m[2m-[22m                [2m | [22m  [36m7.08 MB[39m[2m | [22m
+[32mworker-NM67AF6P.js[39m [2m | [22m[2mpdf-worker[22m       [2m | [22m  [36m1.77 MB[39m[2m | [22m
+[32mchunk-GPPQPAS4.js[39m  [2m | [22m[2mroom-first-person[22m[2m | [22m  [36m1.20 MB[39m[2m | [22m
+[32mchunk-YXM3VCLD.js[39m  [2m | [22m[2mpdf[22m              [2m | [22m[36m857.18 kB[39m[2m | [22m
+[32mchunk-JNPCZP3S.js[39m  [2m | [22m[2mcourse-editor[22m    [2m | [22m[36m382.84 kB[39m[2m | [22m
+[32mchunk-KK4C4T2R.js[39m  [2m | [22m[2mlesson[22m           [2m | [22m[36m278.11 kB[39m[2m | [22m
+[32mchunk-S6FLJEN5.js[39m  [2m | [22m[2mdesign-system[22m    [2m | [22m[36m268.97 kB[39m[2m | [22m
+[32mchunk-O3AIITMK.js[39m  [2m | [22m[2mapp-shell[22m        [2m | [22m[36m230.74 kB[39m[2m | [22m
+[32mchunk-WRO7WJYU.js[39m  [2m | [22m[2massessment-screen[22m[2m | [22m[36m174.67 kB[39m[2m | [22m
+[32mchunk-FWMXM2QL.js[39m  [2m | [22m[2massignments[22m      [2m | [22m[36m171.43 kB[39m[2m | [22m
+[32mchunk-RIESN7IX.js[39m  [2m | [22m[2mreport-screen[22m    [2m | [22m[36m167.05 kB[39m[2m | [22m
+[32mchunk-Q56E7S3U.js[39m  [2m | [22m[2mprogress[22m         [2m | [22m[36m140.06 kB[39m[2m | [22m
+[32mchunk-HATFIZZT.js[39m  [2m | [22m[2mcontent[22m          [2m | [22m[36m128.72 kB[39m[2m | [22m
+[32mchunk-TEPTVX4D.js[39m  [2m | [22m[2mmoderation[22m       [2m | [22m[36m112.23 kB[39m[2m | [22m
+[2m...and 95 more lazy chunks files. Use "--verbose" to show all the files.[22m
+
+Application bundle generation complete. [21.040 seconds] - 2026-11-07T09:16:30.627Z
+
+[33m▲ [43;33m[[43;30mWARNING[43;33m][0m [1mDeprecation[0m [1m[35m[plugin angular-sass][0m
+
+    libs/ui/src/styles/ui/_mixins.scss:115:10:
+[37m      115 │   $thumb: [32m[37mif($tone == nav, color(nav-scrollbar-thumb), color(scro...
+          ╵           [32m^[0m
+
+
+  The Sass if() syntax is deprecated in favor of the modern CSS syntax.
+  
+  Suggestion: if(sass($tone == nav): color(nav-scrollbar-thumb); else: color(scrollbar-thumb))
+  
+  More info: [4mhttps://sass-lang.com/d/if-function[0m
+
+  The plugin "angular-sass" was triggered by this import
+
+    angular:styles/global:styles:12:8:
+[37m      12 │ @import [32m'libs/ui/src/styles/global.scss'[37m;
+         ╵         [32m~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[0m
+
+
+Output location: D:\SCH\lms-vip-pro-max\dist\community-ux
+
+
+
+
+ NX   Successfully ran target build for project lms
+
+
+  Run duration:      22.9s
+  Cache:             0/1 hit (0%)
+  Critical path:     22.8s (1 task)
+  Recoverable time:  <1ms

@@ -214,6 +214,81 @@ describe('QuizTake', () => {
     expect(calls(learnerQuizEndpoints.submitAttempt)).toHaveLength(1);
   });
 
+  const pointerAtPage = (
+    event: 'pointerenter' | 'pointerleave',
+    type = 'mouse',
+  ) => {
+    const pointer = new Event(event);
+    Object.defineProperty(pointer, 'pointerType', { value: type });
+    document.documentElement.dispatchEvent(pointer);
+  };
+
+  const switchWindow = () => {
+    window.dispatchEvent(new Event('blur'));
+    window.dispatchEvent(new Event('focus'));
+  };
+
+  it('counts one exit across browser signals, keeps it on resume, and submits on exit four', async () => {
+    await open();
+    pointerAtPage('pointerleave', 'touch');
+    await settle();
+    expect(text()).not.toContain('Đã rời màn hình');
+
+    pointerAtPage('pointerleave');
+    window.dispatchEvent(new Event('blur'));
+    const hidden = vi.spyOn(document, 'hidden', 'get').mockReturnValue(true);
+    document.dispatchEvent(new Event('visibilitychange'));
+    await settle();
+    expect(text()).toContain('Đã rời màn hình làm bài 1/3 lần');
+    hidden.mockRestore();
+    document.dispatchEvent(new Event('visibilitychange'));
+    window.dispatchEvent(new Event('focus'));
+
+    await harness.navigateByUrl('/quiz/2');
+    await settle();
+    await harness.navigateByUrl('/quiz/2/take');
+    await settle();
+    el = harness.routeNativeElement as HTMLElement;
+    expect(text()).toContain('Đã rời màn hình làm bài 1/3 lần');
+
+    switchWindow();
+    switchWindow();
+    await settle();
+    expect(text()).toContain('Đã rời màn hình làm bài 3/3 lần');
+    expect(calls(learnerQuizEndpoints.submitAttempt)).toHaveLength(0);
+
+    pointerAtPage('pointerleave');
+    await settle();
+    expect(calls(learnerQuizEndpoints.submitAttempt)).toHaveLength(1);
+    expect(TestBed.inject(Router).url).toMatch(/\/quiz\/2\/result\/\d+$/);
+  });
+
+  it('keeps answers locked after a forced submit fails, then retries on reconnect', async () => {
+    await open();
+    failEndpoint(handle, learnerQuizEndpoints.submitAttempt);
+    control('Nộp bài')!.click();
+    await settle();
+    expect(document.querySelector('.dialog-pane')).not.toBeNull();
+
+    for (let i = 0; i < 4; i++) switchWindow();
+    await settle();
+    expect(document.querySelector('.dialog-pane')).toBeNull();
+    expect(text()).toContain('Đã rời màn hình làm bài 4 lần');
+    expect(control('Thử nộp lại')).toBeTruthy();
+    expect(el.querySelector<HTMLInputElement>('fieldset input')?.disabled).toBe(
+      true,
+    );
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: '1' }));
+    expect(calls(learnerQuizEndpoints.saveAnswer)).toHaveLength(0);
+    expect(calls(learnerQuizEndpoints.submitAttempt)).toHaveLength(1);
+
+    restoreReplies(handle);
+    window.dispatchEvent(new Event('online'));
+    await settle();
+    expect(calls(learnerQuizEndpoints.submitAttempt)).toHaveLength(2);
+    expect(TestBed.inject(Router).url).toMatch(/\/quiz\/2\/result\/\d+$/);
+  });
+
   it('chooses an option and moves between questions with the keyboard', async () => {
     await open();
     document.dispatchEvent(new KeyboardEvent('keydown', { key: '2' }));

@@ -27,6 +27,7 @@ import { reportContent } from '../../components/report-dialog/report-dialog';
 import type { VoteValue } from '../../components/vote/vote';
 import { CommunityChanges } from '../../data-access/community-changes';
 import { CONTENT_KIND_LABELS } from '../../data-access/community-labels';
+import { parseContent } from '../../../../shared/content/markdown/markdown.parse';
 import { reloadOnConflict } from '../../data-access/conflict';
 import {
   createFields,
@@ -89,6 +90,29 @@ export class ContentStore {
         query: {},
       }),
     { params: () => this.contentId$(), reloadOn: this.refresh },
+  );
+
+  private readonly relatedData = serverData(
+    ({ kind, tagId }: { kind: string; tagId: number; contentId: number }) =>
+      this.client.call(
+        kind === 'question'
+          ? communityEndpoints.questions
+          : kind === 'lesson_learned'
+            ? communityEndpoints.lessons
+            : communityEndpoints.articles,
+        {
+          query: { tagIds: [tagId], page: 0, size: 4, sort: 'lastActivityAt' },
+        },
+      ),
+    {
+      params: () => {
+        const detail = this.detailData.value();
+        const tagId = detail?.tags?.[0]?.tagId;
+        return detail && tagId && detail.kind !== 'answer'
+          ? { kind: detail.kind, tagId, contentId: detail.contentId }
+          : undefined;
+      },
+    },
   );
 
   /** The answers with their bodies: the list carries only a summary, so each is read in full. */
@@ -311,6 +335,12 @@ export class ContentStore {
       const detail = this.detailData.value();
       if (!detail) return;
       untracked(() => {
+        if (detail.kind === 'architecture_review') {
+          void this.router.navigate(['/community/reviews', detail.contentId], {
+            replaceUrl: true,
+          });
+          return;
+        }
         if (detail.kind === 'answer' && detail.questionId) {
           void this.router.navigate(
             ['/community/contents', detail.questionId],
@@ -338,6 +368,42 @@ export class ContentStore {
 
   // Selectors
   readonly detail$ = this.detailData.value;
+  readonly related$ = computed(() =>
+    (this.relatedData.value()?.items ?? [])
+      .filter((item) => item.contentId !== this.contentId$())
+      .slice(0, 3),
+  );
+  readonly relatedError$ = this.relatedData.error;
+  readonly relatedLoading$ = this.relatedData.isLoading;
+  readonly coverId$ = computed(
+    () =>
+      this.detail$()?.publishedRevision?.assets?.find(
+        (asset) => asset.usage === 'cover',
+      )?.revisionAssetId,
+  );
+  readonly outline$ = computed(() =>
+    parseContent(
+      this.detail$()?.publishedRevision?.bodyMarkdown ?? '',
+      'markdown',
+    ).flatMap((block, index) =>
+      block.kind === 'heading'
+        ? [
+            {
+              id: `community-article-${index}`,
+              label: block.inlines
+                .map((part) =>
+                  'text' in part
+                    ? part.text
+                    : part.kind === 'mention'
+                      ? part.name
+                      : ' ',
+                )
+                .join(''),
+            },
+          ]
+        : [],
+    ),
+  );
   readonly isLoading$ = this.detailData.isLoading;
   readonly loadError$ = this.detailData.error;
   readonly kind$ = computed(() => this.detailData.value()?.kind);
@@ -410,6 +476,9 @@ export class ContentStore {
     this.answerMutation.run({ fields, publish });
   }
 
+  retryRelated(): void {
+    this.relatedData.reload();
+  }
   retryLoad(): void {
     this.detailData.reload();
   }

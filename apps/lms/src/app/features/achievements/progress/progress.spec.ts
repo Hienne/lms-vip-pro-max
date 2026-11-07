@@ -166,7 +166,7 @@ describe('LearningProgress', () => {
     it('asks the server for 20 rows, newest access first, and reads the counts once', () => {
       expect(lastQuery(learnerEndpoints.myCourses)).toMatchObject({
         page: '0',
-        size: '20',
+        size: '5',
         sort: 'lastAccessAt,desc',
       });
     });

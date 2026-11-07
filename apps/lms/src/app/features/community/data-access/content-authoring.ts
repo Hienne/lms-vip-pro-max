@@ -1,8 +1,9 @@
 import { inject, Injectable } from '@angular/core';
 import {
   communityEndpoints,
+  communityReviewEndpoints,
+  type CreateReviewCommand,
   type ContentDetail,
-  type CreateContentCommand,
   type RevisionDetail,
   type SaveContentDraftCommand,
 } from '@lms/contracts';
@@ -10,9 +11,14 @@ import { of, switchMap, type Observable } from 'rxjs';
 import { EndpointClient } from '../../../core/http/endpoint-client';
 
 /** The kinds a screen creates from scratch; answers are created on the question page. */
-export type AuthoredKind = 'question' | 'article' | 'lesson_learned';
+export type AuthoredKind =
+  | 'question'
+  | 'article'
+  | 'lesson_learned'
+  | 'architecture_review';
 
 const CREATE = {
+  architecture_review: communityReviewEndpoints.create,
   question: communityEndpoints.createQuestion,
   article: communityEndpoints.createArticle,
   lesson_learned: communityEndpoints.createLesson,
@@ -51,7 +57,7 @@ export class ContentAuthoring {
   /** Creates the draft; a retry with the same `clientRequestId` returns the same content. */
   create(
     kind: AuthoredKind,
-    command: CreateContentCommand,
+    command: CreateReviewCommand,
   ): Observable<ContentDetail> {
     return this.client.call(CREATE[kind], { body: command });
   }
@@ -59,7 +65,7 @@ export class ContentAuthoring {
   /** Creates the draft and publishes it at once ("Đăng" on a new post). */
   createAndPublish(
     kind: AuthoredKind,
-    command: CreateContentCommand,
+    command: CreateReviewCommand,
   ): Observable<ContentDetail> {
     return this.create(kind, command).pipe(
       switchMap((created) =>

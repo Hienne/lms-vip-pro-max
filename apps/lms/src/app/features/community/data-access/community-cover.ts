@@ -27,7 +27,7 @@ async function checksum(file: Blob): Promise<string> {
 }
 
 /** The editor's pending cover. Unattached uploads are reclaimed by the server's orphan cleanup. */
-export function communityCoverUpload() {
+export function communityCoverUpload(design = false) {
   const client = inject(EndpointClient);
   const state = {
     selection: signal<AssetInput | null | undefined>(undefined),
@@ -113,7 +113,7 @@ export function communityCoverUpload() {
             : throwError(
                 () =>
                   new Error(
-                    'Không xử lý được ảnh. Hãy chọn lại hoặc thử ảnh khác.',
+                    'Không xử lý được tệp. Hãy chọn lại hoặc thử tệp khác.',
                   ),
               ),
         ),
@@ -121,8 +121,13 @@ export function communityCoverUpload() {
     {
       errors: 'alert',
       onSuccess: ({ file, assetId }) => {
-        setPreview(URL.createObjectURL(file));
-        setSelection({ assetId, usage: 'cover', sortNo: 0 });
+        if (!design) setPreview(URL.createObjectURL(file));
+        setSelection({
+          assetId,
+          usage: design ? 'design_file' : 'cover',
+          caption: file.name,
+          sortNo: 0,
+        });
       },
     },
   );
@@ -152,11 +157,19 @@ export function communityCoverUpload() {
     upload.reset();
     setValidation(undefined);
     if (
-      !['image/jpeg', 'image/png', 'image/webp'].includes(file.type) ||
+      !(
+        design
+          ? ['application/pdf', 'image/jpeg', 'image/png', 'image/webp']
+          : ['image/jpeg', 'image/png', 'image/webp']
+      ).includes(file.type) ||
       !file.size ||
       file.size > 5_000_000
     ) {
-      setValidation('Chọn ảnh JPG, PNG hoặc WebP, tối đa 5 MB.');
+      setValidation(
+        design
+          ? 'Chọn tệp PDF, JPG, PNG hoặc WebP, tối đa 5 MB.'
+          : 'Chọn ảnh JPG, PNG hoặc WebP, tối đa 5 MB.',
+      );
       return;
     }
     upload.run(file);

@@ -24,6 +24,7 @@ import {
   concatMap,
   defer,
   EMPTY,
+  filter,
   firstValueFrom,
   Subject,
   tap,
@@ -32,7 +33,11 @@ import { LearningChanges } from '../../../../../core/data-access/learning-change
 import { serverData } from '../../../../../core/data-access/server-data';
 import { toAppError } from '../../../../../core/errors/app-error';
 import { EndpointClient } from '../../../../../core/http/endpoint-client';
+import { SESSION_STORAGE } from '../../../../../core/storage/session-storage';
 import { routeId } from '../../data-access/route-id';
+
+const LEAVE_LIMIT = 3;
+type AwayReason = 'pointer' | 'unfocused' | 'hidden';
 
 type Job =
   | { readonly kind: 'save'; readonly questionId: number }
@@ -63,6 +68,7 @@ export class QuizTakeStore {
   private readonly toaster = inject(Toaster);
   private readonly changes = inject(LearningChanges);
   private readonly clock = inject(NOW);
+  private readonly storage = inject(SESSION_STORAGE);
 
   private readonly state = {
     /** Zero-based index of the question on screen. */
@@ -71,6 +77,11 @@ export class QuizTakeStore {
     isSubmitting: signal(false),
     /** The attempt was submitted from this screen. */
     done: signal(false),
+    away: signal({ pointer: false, unfocused: false, hidden: false }),
+    leaveCount: linkedSignal(() =>
+      this.readLeaveCount(this.sessionData.value()),
+    ),
+    forcedSubmitError: signal<string | undefined>(undefined),
     /** Questions whose last save failed, with the server's message. */
     failed: signal<ReadonlyMap<number, string>>(new Map()),
     /** What the learner has chosen, by attempt question; starts from what the server saved. */
@@ -119,6 +130,18 @@ export class QuizTakeStore {
   readonly current$ = this.state.current.asReadonly();
   readonly isSaving$ = this.state.isSaving.asReadonly();
   readonly isSubmitting$ = this.state.isSubmitting.asReadonly();
+  private readonly mustSubmit$ = computed(
+    () => this.state.leaveCount() > LEAVE_LIMIT,
+  );
+  readonly focusPolicy$ = computed(() => ({
+    count: this.state.leaveCount(),
+    limit: LEAVE_LIMIT,
+    locked: this.mustSubmit$(),
+    submitError: this.state.forcedSubmitError(),
+  }));
+  private readonly answersLocked$ = computed(
+    () => this.isSubmitting$() || this.mustSubmit$(),
+  );
 
   /** The dealt questions with the learner's current choice laid over what the server saved. */
   readonly questions$ = computed((): readonly SessionQuestion[] => {
@@ -167,9 +190,18 @@ export class QuizTakeStore {
     // Time is up: the server grades what it has saved.
     effect(() => {
       const session = this.session$();
-      if (!session || this.state.done()) return;
+      if (!session || this.state.done() || this.mustSubmit$()) return;
       if (session.expired || this.seconds$() === 0)
         untracked(() => void this.submit(true));
+    });
+
+    // A reload can resume an attempt whose forced submission was interrupted.
+    effect(() => {
+      if (this.mustSubmit$()) {
+        untracked(() => {
+          if (!this.state.forcedSubmitError()) void this.submit(true);
+        });
+      }
     });
   }
 
@@ -187,6 +219,41 @@ export class QuizTakeStore {
 
   private setDone(done: boolean): void {
     this.state.done.set(done);
+  }
+
+  private setAway(away: Record<AwayReason, boolean>): void {
+    this.state.away.set(away);
+  }
+
+  private setLeaveCount(count: number): void {
+    this.state.leaveCount.set(count);
+    const session = this.session$();
+    if (!session) return;
+    try {
+      this.storage?.setItem(this.leaveKey(session), String(count));
+    } catch {
+      // The in-memory count still applies when the browser blocks storage.
+    }
+  }
+
+  private setForcedSubmitError(message: string | undefined): void {
+    this.state.forcedSubmitError.set(message);
+  }
+
+  private leaveKey(session: AttemptSession): string {
+    return `lms.quiz-leaves.v1.${session.attemptId}.${session.startedAt}`;
+  }
+
+  private readLeaveCount(session: AttemptSession | undefined): number {
+    if (!session) return 0;
+    try {
+      const count = Number(this.storage?.getItem(this.leaveKey(session)) ?? 0);
+      return Number.isInteger(count) && count > 0
+        ? Math.min(count, LEAVE_LIMIT + 1)
+        : 0;
+    } catch {
+      return 0;
+    }
   }
 
   private setFailed(failed: ReadonlyMap<number, string>): void {
@@ -216,6 +283,28 @@ export class QuizTakeStore {
     this.sessionData.reload();
   }
 
+  /** A tab switch can also move the pointer and blur the window. Count one continuous absence. */
+  setPresence(reason: AwayReason, away: boolean): void {
+    if (!this.inProgress$()) return;
+    const previous = this.state.away();
+    if (previous[reason] === away) return;
+    const next = { ...previous, [reason]: away };
+    if (!away && reason !== 'pointer' && !next.hidden && !next.unfocused) {
+      // A foreground tab may not receive pointerenter until the mouse moves again.
+      next.pointer = false;
+    }
+    this.setAway(next);
+    if (!away || Object.values(previous).some(Boolean) || this.answersLocked$())
+      return;
+    this.setLeaveCount(this.state.leaveCount() + 1);
+    if (this.mustSubmit$()) void this.submit(true);
+  }
+
+  retryForcedSubmit(): void {
+    if (this.mustSubmit$() && this.state.forcedSubmitError())
+      void this.submit(true);
+  }
+
   goto(index: number): void {
     const last = (this.session$()?.questions.length ?? 1) - 1;
     this.setCurrent(Math.min(Math.max(0, index), last));
@@ -225,7 +314,7 @@ export class QuizTakeStore {
     const question = this.questions$().find(
       (q) => q.attemptQuestionId === questionId,
     );
-    if (!question || this.isSubmitting$()) return;
+    if (!question || this.answersLocked$()) return;
     const selected: number[] =
       question.questionType === 'MULTIPLE'
         ? checked
@@ -239,7 +328,7 @@ export class QuizTakeStore {
     const question = this.questions$().find(
       (q) => q.attemptQuestionId === questionId,
     );
-    if (question && !this.isSubmitting$())
+    if (question && !this.answersLocked$())
       this.update(questionId, { flagged: !question.flagged });
   }
 
@@ -275,12 +364,16 @@ export class QuizTakeStore {
 
   /** Sends again every choice whose last save failed. */
   retrySave(): void {
+    if (this.answersLocked$()) return;
     for (const questionId of this.state.failed().keys())
       this.jobs.next({ kind: 'save', questionId });
   }
 
   async submit(auto = false): Promise<void> {
-    if (this.isSubmitting$() || this.state.done()) return;
+    const attemptId = this.session$()?.attemptId;
+    if (attemptId === undefined || this.isSubmitting$() || this.state.done())
+      return;
+    if (!auto && this.mustSubmit$()) return;
     if (!auto) {
       const left = this.questions$().length - this.answeredCount$();
       const flagged = this.flaggedCount$();
@@ -293,7 +386,7 @@ export class QuizTakeStore {
       ]
         .filter(Boolean)
         .join(' ');
-      const ok = await firstValueFrom(
+      const confirmed = firstValueFrom(
         confirm(this.dialog, {
           title: 'Nộp bài kiểm tra?',
           message: note,
@@ -301,8 +394,22 @@ export class QuizTakeStore {
           tone: left ? 'danger' : 'primary',
         }),
       );
-      if (!ok) return;
+      const confirmation = this.dialog.openDialogs.at(-1);
+      const cancelOnAutoSubmit = this.jobs
+        .pipe(filter((job) => job.kind === 'submit' && job.auto))
+        .subscribe(() => confirmation?.close(false));
+      const ok = await confirmed.finally(() =>
+        cancelOnAutoSubmit.unsubscribe(),
+      );
+      if (
+        !ok ||
+        this.session$()?.attemptId !== attemptId ||
+        this.answersLocked$() ||
+        this.state.done()
+      )
+        return;
     }
+    this.setForcedSubmitError(undefined);
     this.setIsSubmitting(true);
     this.jobs.next({ kind: 'submit', auto });
   }
@@ -381,6 +488,14 @@ export class QuizTakeStore {
       .pipe(
         tap((result) => {
           this.setDone(true);
+          const session = this.session$();
+          if (session?.attemptId === attemptId) {
+            try {
+              this.storage?.removeItem(this.leaveKey(session));
+            } catch {
+              // Storage access cannot prevent showing the submitted result.
+            }
+          }
           this.changes.results.bump();
           void this.router.navigate([
             '/quiz',
@@ -392,7 +507,11 @@ export class QuizTakeStore {
         catchError((error: unknown) => {
           this.setIsSubmitting(false);
           const { title, message } = toAppError(error);
-          this.toaster.error(title || 'Chưa nộp được bài', message);
+          if (this.mustSubmit$()) {
+            this.setForcedSubmitError(message);
+          } else {
+            this.toaster.error(title || 'Chưa nộp được bài', message);
+          }
           return EMPTY;
         }),
       );
