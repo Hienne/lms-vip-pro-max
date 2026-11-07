@@ -103,8 +103,7 @@ project run the Nx target directly (`npx nx test ui`).
 | `npm run lint` · `lint:fix` · `typecheck`       | across all projects                                                             |
 | `npm run format` · `format:check`               | Prettier                                                                        |
 | `npm run check`                                 | full checks on every project, including format and tests: run before pushing    |
-| `npm run ci:check`                              | CI only: `nx affected -t lint typecheck test build` (needs `NX_BASE`/`NX_HEAD`) |
-| `npm run ci:check:no-tests`                     | affected lint, typecheck, build and bundle guard, without unit tests            |
+| `npm run ci:check`                              | CI only: `nx affected -t lint typecheck build check-bundle`, no unit tests      |
 | `npm run ci:build`                              | CI only: production + staging builds                                            |
 
 ### Run against a local backend
@@ -171,12 +170,10 @@ in two of them, and the course `DEMO-MEDIA` with a PDF and a video lesson.
 `.github/workflows/ci.yml`:
 
 - **check** (every PR and push to `main`): `npm ci` → `nx-set-shas` →
-  restore `.nx/cache` → affected checks. The workflow currently sets
-  `SKIP_FORMAT_CHECK: 'true'` and `SKIP_TESTS: 'true'`, so it skips Prettier
-  and runs `npm run ci:check:no-tests`. Lint, typecheck, build and the bundle
-  guard still block the image job on failure. Set `SKIP_FORMAT_CHECK` to
-  `'false'` to restore `npm run format:check`, and `SKIP_TESTS` to `'false'`
-  to use the full `npm run ci:check` instead.
+  restore `.nx/cache` → `npm run ci:check` (affected lint, typecheck, build and
+  bundle guard; they block the image job on failure). CI does not run unit
+  tests; run `npm run check` locally. The workflow sets `SKIP_FORMAT_CHECK:
+  'true'`; set it to `'false'` to restore `npm run format:check`.
 - **image** (after check): `docker build` of the root `Dockerfile`, which runs
   the production build and stamps `version.txt` with the commit. On push to
   `main` the image is pushed to `ghcr.io/hienne/lms-vip-pro-max` and its

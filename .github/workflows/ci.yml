@@ -19,9 +19,8 @@ concurrency:
 env:
   NX_NO_CLOUD: true
   IMAGE: ghcr.io/hienne/lms-vip-pro-max
-  # Set either flag to 'false' to restore that CI gate.
+  # Set to 'false' to restore the Prettier gate. Unit tests do not run in CI.
   SKIP_FORMAT_CHECK: 'true'
-  SKIP_TESTS: 'true'
 
 jobs:
   check:
@@ -54,12 +53,7 @@ jobs:
         if: ${{ env.SKIP_FORMAT_CHECK != 'true' }}
         run: npm run format:check
 
-      - name: Check affected projects without unit tests
-        if: ${{ env.SKIP_TESTS == 'true' }}
-        run: npm run ci:check:no-tests
-
-      - name: Check affected projects including unit tests
-        if: ${{ env.SKIP_TESTS != 'true' }}
+      - name: Check affected projects (lint, typecheck, build, bundle guard)
         run: npm run ci:check
 
   image:
