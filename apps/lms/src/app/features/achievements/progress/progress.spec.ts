@@ -108,7 +108,7 @@ describe('LearningProgress', () => {
         'Đang quá hạn',
         'Điểm thi trung bình',
       ]);
-      expect(el.querySelector('h1')?.textContent).toContain('Tiến độ của tôi');
+      expect(el.querySelector('h1')?.textContent).toContain('Tiến độ học tập');
       expect(calls(learnerEndpoints.progressSummary).length).toBe(1);
     });
 
@@ -288,7 +288,7 @@ describe('LearningProgress', () => {
     it('starts with courses and makes the other panels inert', async () => {
       await open();
       expect(tabs().map((tab) => tab.textContent?.trim())).toEqual([
-        'Khóa học',
+        'Tiến độ khóa học',
         'Năng lực',
         'Lịch sử thi',
       ]);
@@ -357,11 +357,11 @@ describe('LearningProgress', () => {
       expect(view.classList).toContain('competency-view--large');
       expect(view.querySelector('ui-radar-chart')).not.toBeNull();
       expect(view.textContent).toContain(
-        'Tỷ lệ đúng trên mọi lượt thi đã chấm',
+        'Tỷ lệ điểm trên các lượt thi đã chấm',
       );
       expect(calls(learnerQuizEndpoints.myCompetency)).toHaveLength(1);
       expect(lastQuery(learnerQuizEndpoints.myCompetency)).toEqual({});
-      button('Khóa học')!.click();
+      button('Tiến độ khóa học')!.click();
       await settle();
       (el.querySelector('input[type="checkbox"]') as HTMLInputElement).click();
       await settle();
@@ -399,9 +399,9 @@ describe('LearningProgress', () => {
       expect(card().querySelector('ui-radar-chart')).not.toBeNull();
     });
 
-    it('is not shown to a learner without courses', async () => {
-      await open('/progress', '000005', 'giangvien');
-      expect(card()).toBeNull();
+    it('is still offered to a learner without courses', async () => {
+      await open('/progress?tab=competency', '000005', 'giangvien');
+      expect(card()).not.toBeNull();
     });
   });
 
@@ -465,19 +465,18 @@ describe('LearningProgress', () => {
         ]),
       );
       await open('/progress?tab=history');
-      const items = Array.from(card().querySelectorAll('li a'));
-      expect(items.map((a) => a.getAttribute('href'))).toEqual([
-        '/quiz/1/result/7',
-        '/quiz/5/result/9',
-      ]);
-      const [failed, passed] = items.map((a) =>
-        a.textContent?.replace(/\s+/g, ' ').trim(),
+      const items = Array.from(card().querySelectorAll('tbody tr'));
+      expect(
+        items.map((tr) => tr.querySelector('a')?.getAttribute('href')),
+      ).toEqual(['/quiz/1/result/7', '/quiz/5/result/9']);
+      const [failed, passed] = items.map((tr) =>
+        tr.textContent?.replace(/\s+/g, ' ').trim(),
       );
       expect(failed).toContain('Luyện tập');
       expect(failed).toContain('42,86% Chưa đạt');
-      expect(failed).not.toContain('tự nộp');
+      expect(failed).not.toContain('Tự nộp');
       expect(passed).toContain('Kiểm tra cuối khóa');
-      expect(passed).toContain('tự nộp');
+      expect(passed).toContain('Tự nộp');
       expect(passed).toContain('100% Đạt');
       expect(
         Array.from(card().querySelectorAll('.learning-progress__fail')).map(
@@ -508,7 +507,8 @@ describe('LearningProgress', () => {
       expect(card().textContent).toContain(
         'Bạn chưa có bài thi nào được chấm.',
       );
-      expect(card().querySelector('li')).toBeNull();
+      expect(card().textContent).not.toContain('phù hợp với bộ lọc');
+      expect(card().querySelector('tbody tr')).toBeNull();
     });
 
     it('fails alone, with a retry, while the rest of the page stays', async () => {
@@ -529,9 +529,9 @@ describe('LearningProgress', () => {
       );
     });
 
-    it('is not shown to a learner without courses', async () => {
-      await open('/progress', '000005', 'giangvien');
-      expect(card()).toBeNull();
+    it('is still offered to a learner without courses', async () => {
+      await open('/progress?tab=history', '000005', 'giangvien');
+      expect(card()).not.toBeNull();
     });
   });
 
@@ -632,7 +632,8 @@ describe('LearningProgress', () => {
         a.textContent?.includes('Xem danh mục khóa học'),
       );
       expect(link?.getAttribute('href')).toBe('/catalog');
-      expect(el.querySelector('table')).toBeNull();
+      expect(el.querySelector('.learning-progress__courses')).toBeNull();
+      expect(rows()).toHaveLength(0);
       expect((button('Xuất CSV') as HTMLButtonElement).disabled).toBe(true);
     });
   });

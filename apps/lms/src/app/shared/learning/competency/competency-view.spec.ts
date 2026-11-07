@@ -52,7 +52,7 @@ describe('CompetencyView', () => {
     expect(root.querySelector('ui-empty')).not.toBeNull();
   });
 
-  it('lists the two rows with data as name, correct answers and percent', async () => {
+  it('lists every row as name, correct answers and percent when fewer than three have data', async () => {
     const { root } = await render([
       row(1, 'Kiến trúc', 14.29),
       row(2, 'Rủi ro', null),
@@ -62,10 +62,11 @@ describe('CompetencyView', () => {
     expect(root.querySelector('ui-empty')).toBeNull();
     const items = Array.from(
       root.querySelectorAll('.competency-view__item'),
-    ).map((li) => Array.from(li.children).map((c) => c.textContent?.trim()));
+    ).map((tr) => Array.from(tr.children).map((c) => c.textContent?.trim()));
     expect(items).toEqual([
-      ['Kiến trúc', '1/7 câu đúng', '14,29%'],
-      ['Vận hành', '1/7 câu đúng', '11,11%'],
+      ['Kiến trúc', '1/7', '14,29%'],
+      ['Rủi ro', '—', 'Chưa có dữ liệu'],
+      ['Vận hành', '1/7', '11,11%'],
     ]);
   });
 
@@ -75,12 +76,32 @@ describe('CompetencyView', () => {
       row(2, 'Vận hành', 11.11),
       row(3, 'Kiểm soát', 33.33),
     ]);
-    expect(root.querySelector('.competency-view__list')).toBeNull();
+    expect(root.querySelector('.competency-view__item')).toBeNull();
     expect(root.querySelector('ui-empty')).toBeNull();
     expect(root.querySelector('.chart-view__legend')?.textContent).toContain(
-      'Tỷ lệ đúng trên mọi lượt thi đã chấm',
+      'Tỷ lệ điểm trên các lượt thi đã chấm',
     );
     expect(root.querySelectorAll('circle')).toHaveLength(3);
+    const highlights = Array.from(
+      root.querySelectorAll('.competency-view__disclosure tbody tr'),
+    ).map((tr) => Array.from(tr.children).map((c) => c.textContent?.trim()));
+    expect(highlights).toEqual([
+      ['Cao nhất', 'Kiểm soát', '1/7', '33,33%'],
+      ['Thấp nhất', 'Vận hành', '1/7', '11,11%'],
+    ]);
+  });
+
+  it('shows the radar and the full list at the large size', async () => {
+    const { fixture, root } = await render([
+      row(1, 'Kiến trúc', 14.29),
+      row(2, 'Vận hành', 11.11),
+      row(3, 'Kiểm soát', 33.33),
+    ]);
+    fixture.componentInstance.size.set('large');
+    await fixture.whenStable();
+    expect(root.querySelector('ui-radar-chart')).not.toBeNull();
+    expect(root.querySelector('.competency-view__disclosure')).toBeNull();
+    expect(root.querySelectorAll('.competency-view__item')).toHaveLength(3);
   });
 
   it('keeps a row without data as an axis, but does not count it towards the three', async () => {
@@ -98,9 +119,11 @@ describe('CompetencyView', () => {
       row(4, 'C', null),
     ]);
     expect(three.root.querySelectorAll('circle')).toHaveLength(4);
-    expect(three.root.querySelector('tbody')?.textContent).toContain(
-      'Chưa có dữ liệu',
-    );
+    three.fixture.componentInstance.size.set('large');
+    await three.fixture.whenStable();
+    const list = three.root.querySelectorAll('.competency-view__item');
+    expect(list).toHaveLength(4);
+    expect(list[3].textContent).toContain('Chưa có dữ liệu');
   });
 
   it('marks its size on the host', async () => {

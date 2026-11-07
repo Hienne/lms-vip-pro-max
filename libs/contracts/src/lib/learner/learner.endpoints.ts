@@ -24,6 +24,7 @@ import {
   MyPointsSchema,
   XpAdjustmentResultSchema,
   MyStreakSchema,
+  WeeklyActivitySchema,
   OpenSessionCommandSchema,
   ProgressExportQuerySchema,
   ProgressResultSchema,
@@ -66,22 +67,14 @@ export const learnerEndpoints = {
     path: '/api/v1/me/learning/facets',
     response: LearnerFacetsSchema,
   }),
-  /** Counts over the caller's current cycles, whatever the table below filters. */
+  /** Days with learning activity per week over the caller's last `weeks` weeks. */
   weeklyActivity: defineEndpoint({
     method: 'get',
     path: '/api/v1/me/learning/dashboard/activity/weekly',
     query: z.object({ weeks: z.number().int().min(1).max(52).optional() }),
-    response: z.object({
-      timeZone: z.string(),
-      weeks: z.array(
-        z.object({
-          weekStart: z.string(),
-          weekEnd: z.string(),
-          activeDays: z.number().int().min(0).max(7),
-        }),
-      ),
-    }),
+    response: WeeklyActivitySchema,
   }),
+  /** Counts over the caller's current cycles, whatever the table below filters. */
   progressSummary: defineEndpoint({
     method: 'get',
     path: '/api/v1/me/learning/progress/summary',

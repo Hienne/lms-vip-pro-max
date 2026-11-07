@@ -79,13 +79,14 @@ describe('AppShell', () => {
       .match('/api/me/nav-counts')
       .filter((r) => !r.cancelled)
       .forEach((r) => r.flush(envelopeOk(counts)));
-    // The learner home behind /learn reads the progress, the course lists and the competencies, and the reports
-    // page its overview; no test here is about them.
+    // The learner home behind /learn reads the progress, the course lists and the competencies, the reports
+    // page its overview, and /flashcards the learner's own decks; no test here is about them.
     backend
       .match(
         (r) =>
           r.url.startsWith('/api/v1/me/learning/') ||
           r.url === '/api/v1/me/competency' ||
+          r.url === '/api/v1/me/flashcard-decks' ||
           r.url === '/api/v1/training-catalog/programs' ||
           r.url === '/api/v1/orgs' ||
           r.url.startsWith('/api/v1/reports/assessment/'),
