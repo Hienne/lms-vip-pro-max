@@ -7,7 +7,7 @@ import {
   DashboardGroupSchema,
   DashboardProgramsQuerySchema,
   EnrollmentDetailSchema,
-  LeaderboardPageSchema,
+  LeaderboardViewSchema,
   LeaderboardQuerySchema,
   LearnerCourseSchema,
   LearnerFacetsSchema,
@@ -185,14 +185,15 @@ export const learnerEndpoints = {
     response: MyStreakSchema,
   }),
   /**
-   * Learners ranked by points in a scope (`team`, `org` by default, `all`), a page at a time, plus the
-   * caller's own row with its rank in that scope. An unknown scope or a `size` above 100 answers
-   * `CORE-VALIDATION_FAILED`.
+   * Learners ranked by the XP of a period (`week`, `month` by default, `all`; `offset` steps back to an earlier
+   * one) in a scope (`team`, `org` by default, `all`): the top ten and the caller's own row, with the one or
+   * two just above them when they are outside it. No paging. An unknown scope or period, or an `offset`
+   * outside 0-520, answers `CORE-VALIDATION_FAILED`.
    */
   leaderboard: defineEndpoint({
     method: 'get',
     path: '/api/v1/me/learning/leaderboard',
     query: LeaderboardQuerySchema,
-    response: LeaderboardPageSchema,
+    response: LeaderboardViewSchema,
   }),
 } as const;

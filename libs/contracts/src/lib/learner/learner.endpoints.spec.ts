@@ -5,7 +5,7 @@ import { capturedLearner as captured } from './learner.captured';
 import { capturedLessonPlayer } from './lesson-player.captured';
 import {
   EnrollmentDetailSchema,
-  LeaderboardPageSchema,
+  LeaderboardViewSchema,
   LeaderboardQuerySchema,
   LearnerCourseSchema,
   AssessmentOverviewSchema,
@@ -574,19 +574,40 @@ describe('learner endpoints', () => {
       },
     );
 
-    it('parses the team scope and a page that does not hold the caller', () => {
+    it('parses the team scope and a caller outside the top ten', () => {
       expect(
-        LeaderboardPageSchema.parse(captured.leaderboardTeam).page.items,
+        LeaderboardViewSchema.parse(captured.leaderboardTeam).top,
       ).toHaveLength(1);
-      const last = LeaderboardPageSchema.parse(captured.leaderboardLastPage);
-      expect(last.page.items.some((row) => row.me)).toBe(false);
-      expect(last.me).toMatchObject({ me: true, rank: 2 });
+      const outside = LeaderboardViewSchema.parse(
+        captured.leaderboardOutsideTop,
+      );
+      expect(outside.top).toHaveLength(10);
+      expect(outside.top.some((row) => row.me)).toBe(false);
+      expect(outside.me).toMatchObject({ me: true, rank: 13 });
+      expect(outside.above.map((row) => row.rank)).toEqual([11, 12]);
+      expect(outside.gapToAbove).toBe(70);
     });
 
     it('keeps the ties and the caller as the server sent them', () => {
-      const board = LeaderboardPageSchema.parse(captured.leaderboard);
-      expect(board.page.items.map((row) => row.rank)).toEqual([1, 2, 3]);
-      expect(board.page.items.filter((row) => row.me)).toEqual([board.me]);
+      const board = LeaderboardViewSchema.parse(captured.leaderboard);
+      expect(board.top.map((row) => row.rank)).toEqual([1, 2, 3]);
+      expect(board.top.filter((row) => row.me)).toEqual([board.me]);
+      expect(board.above).toEqual([]);
+      expect(board.gapToAbove).toBeNull();
+    });
+
+    it('has no paging and no count of learners', () => {
+      const board = LeaderboardViewSchema.parse(captured.leaderboard);
+      expect(Object.keys(board).sort()).toEqual([
+        'above',
+        'from',
+        'gapToAbove',
+        'me',
+        'offset',
+        'period',
+        'to',
+        'top',
+      ]);
     });
 
     it('splits the total into its four parts', () => {
@@ -605,25 +626,29 @@ describe('learner endpoints', () => {
       expect(points.streakDays).toBe(2);
     });
 
-    it('accepts a caller with no rank and a row with no team', () => {
+    it('accepts a caller with no rank, a row with no team and an all-time period', () => {
       const board = captured.leaderboardTeam;
-      const [row] = board.page.items;
+      const [row] = board.top;
       expect(
-        LeaderboardPageSchema.safeParse({
-          page: { ...board.page, items: [{ ...row, teamName: null }] },
+        LeaderboardViewSchema.safeParse({
+          ...board,
+          period: 'all',
+          from: null,
+          to: null,
+          top: [{ ...row, teamName: null }],
           me: { ...board.me, rank: null, teamName: null },
         }).success,
       ).toBe(true);
     });
 
-    it('refuses a row without a rank, a negative total and a part left out', () => {
+    it('refuses a row without a rank, an unknown period and a part left out', () => {
       const board = captured.leaderboard;
-      const { rank: _rank, ...unranked } = board.page.items[0];
+      const { rank: _rank, ...unranked } = board.top[0];
       expect(
-        LeaderboardPageSchema.safeParse({
-          ...board,
-          page: { ...board.page, items: [unranked] },
-        }).success,
+        LeaderboardViewSchema.safeParse({ ...board, top: [unranked] }).success,
+      ).toBe(false);
+      expect(
+        LeaderboardViewSchema.safeParse({ ...board, period: 'year' }).success,
       ).toBe(false);
       expect(
         MyPointsSchema.safeParse({ ...captured.points, total: -1 }).success,
@@ -634,17 +659,23 @@ describe('learner endpoints', () => {
       ).toBe(false);
     });
 
-    it('accepts the scopes and refuses another, or a size above 100', () => {
+    it('accepts the scopes and periods and refuses others or an offset out of range', () => {
       for (const scope of ['team', 'org', 'all']) {
         expect(LeaderboardQuerySchema.safeParse({ scope }).success).toBe(true);
+      }
+      for (const period of ['week', 'month', 'all']) {
+        expect(LeaderboardQuerySchema.safeParse({ period }).success).toBe(true);
       }
       expect(LeaderboardQuerySchema.safeParse({ scope: 'x' }).success).toBe(
         false,
       );
-      expect(LeaderboardQuerySchema.safeParse({ size: 101 }).success).toBe(
+      expect(LeaderboardQuerySchema.safeParse({ period: 'year' }).success).toBe(
         false,
       );
-      expect(LeaderboardQuerySchema.safeParse({ page: -1 }).success).toBe(
+      expect(LeaderboardQuerySchema.safeParse({ offset: -1 }).success).toBe(
+        false,
+      );
+      expect(LeaderboardQuerySchema.safeParse({ offset: 521 }).success).toBe(
         false,
       );
     });

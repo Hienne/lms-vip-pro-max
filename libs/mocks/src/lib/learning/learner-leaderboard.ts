@@ -1,6 +1,7 @@
 import {
   LeaderboardQuerySchema,
-  type LeaderboardPage,
+  type LeaderboardView,
+  type LeaderboardPeriod,
   type LeaderboardRow,
   type LeaderboardScope,
   type MyPoints,
@@ -23,13 +24,18 @@ interface Learner {
 
 const byName = new Intl.Collator('vi');
 
+/** Rows of the top of the board. */
+const TOP = 10;
+
 const numeric = (value: string | undefined): number | undefined =>
   value === undefined || value === '' ? undefined : Number(value);
 
 /**
  * The learning points and the leaderboard. Each learner's points are fixed (`learnerPointsFixtures`);
  * what the mock does is what a list does: pick the scope's members, order them (points, then name),
- * give ties one rank (1, 1, 3) and cut a page. Only a learner may ask.
+ * give ties one rank (1, 1, 3) and cut the top ten. The fixtures hold one total per learner, so the mock reads it
+ * as the XP of the current month and of all time, a third of it as the current week, and nothing for earlier periods.
+ * Only a learner may ask.
  */
 export class LearnerLeaderboard {
   constructor(private readonly directory: LearningDirectory) {}
@@ -39,28 +45,47 @@ export class LearnerLeaderboard {
     return this.caller(request).points;
   }
 
-  /** `GET /leaderboard`: the scope's learners, ranked, one page, and the caller's own row. */
-  leaderboard(request: FakeRequest): LeaderboardPage {
+  /** `GET /leaderboard`: the scope's learners ranked by the period's XP, the top ten and the caller's own row. */
+  leaderboard(request: FakeRequest): LeaderboardView {
     const caller = this.caller(request);
     const parsed = LeaderboardQuerySchema.safeParse({
       scope: request.query['scope'],
-      page: numeric(request.query['page']),
-      size: numeric(request.query['size']),
+      period: request.query['period'],
+      offset: numeric(request.query['offset']),
     });
     if (!parsed.success) return refuse('validationFailed');
-    const { scope = 'org', page = 0, size = 20 } = parsed.data;
+    const { scope = 'org', period = 'month', offset = 0 } = parsed.data;
+    const back = period === 'all' ? 0 : offset;
 
-    const rows = this.rank(this.members(caller, scope), caller.userId);
-    const mine = rows.find((row) => row.me);
+    const rows = this.rank(
+      this.members(caller, scope),
+      caller.userId,
+      period,
+      back,
+    );
+    const top = rows.slice(0, TOP);
+    const at = rows.findIndex((row) => row.me);
+    const outside = at >= TOP;
+    const above = outside ? rows.slice(Math.max(TOP, at - 2), at) : [];
+    const mine = rows[at] ?? {
+      ...this.row(caller, null, this.xp(caller, period, back)),
+      me: true,
+    };
+    const higher = outside
+      ? rows
+          .slice(0, at)
+          .reverse()
+          .find((row) => row.points > mine.points)
+      : undefined;
     return {
-      page: {
-        items: rows.slice(page * size, page * size + size),
-        page,
-        size,
-        totalElements: rows.length,
-        totalPages: Math.ceil(rows.length / size),
-      },
-      me: mine ?? { ...this.row(caller, null), me: true },
+      period,
+      offset: back,
+      from: null,
+      to: null,
+      top,
+      me: mine,
+      above,
+      gapToAbove: higher ? higher.points - mine.points : null,
     };
   }
 
@@ -93,26 +118,45 @@ export class LearnerLeaderboard {
       : everyone.filter((entry) => entry.teamId === caller.teamId);
   }
 
-  /** Points first, then the name; equal points share the rank of the first of them. */
+  /** The learner's XP in the period: the fixture total now, a third of it this week, nothing before. */
+  private xp(
+    learner: Learner,
+    period: LeaderboardPeriod,
+    back: number,
+  ): number {
+    if (period === 'all') return learner.points.total;
+    if (back > 0) return 0;
+    return period === 'week'
+      ? Math.floor(learner.points.total / 3)
+      : learner.points.total;
+  }
+
+  /** XP first, then the name; equal XP share the rank of the first of them. */
   private rank(
     members: readonly Learner[],
     callerId: string,
+    period: LeaderboardPeriod,
+    back: number,
   ): LeaderboardRow[] {
-    const ordered = [...members].sort(
+    const scored = members.map((entry) => ({
+      entry,
+      xp: this.xp(entry, period, back),
+    }));
+    scored.sort(
       (a, b) =>
-        b.points.total - a.points.total ||
-        byName.compare(a.fullName, b.fullName),
+        b.xp - a.xp || byName.compare(a.entry.fullName, b.entry.fullName),
     );
-    return ordered.map((entry) => ({
-      ...this.row(
-        entry,
-        ordered.findIndex((o) => o.points.total === entry.points.total) + 1,
-      ),
+    return scored.map(({ entry, xp }) => ({
+      ...this.row(entry, scored.findIndex((o) => o.xp === xp) + 1, xp),
       me: entry.userId === callerId,
     }));
   }
 
-  private row<Rank extends number | null>(entry: Learner, rank: Rank) {
+  private row<Rank extends number | null>(
+    entry: Learner,
+    rank: Rank,
+    points: number,
+  ) {
     return {
       rank,
       userId: entry.userId,
@@ -121,7 +165,7 @@ export class LearnerLeaderboard {
         entry.teamId === null
           ? null
           : (this.directory.nameOf('team', entry.teamId) ?? null),
-      points: entry.points.total,
+      points,
       streakDays: entry.points.streakDays,
     };
   }

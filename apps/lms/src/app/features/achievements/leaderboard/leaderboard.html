@@ -3,6 +3,10 @@
   description="XP được ghi tự động khi bạn hoàn thành bài học, đạt bài kiểm tra hoặc hoàn thành khóa học."
 />
 
+<p class="leaderboard__appraisal">
+  XP chỉ để ghi nhận quá trình học, không dùng để đánh giá hiệu suất công việc.
+</p>
+
 @if (store.isXpNoticeShown$()) {
 <ui-alert class="leaderboard__notice" [announce]="false">
   Điểm thưởng nay là XP, tính từ các hoạt động học của bạn. Chuỗi ngày học vẫn
@@ -18,13 +22,22 @@
 </ui-alert>
 }
 
-<ui-segmented
-  class="leaderboard__scope"
-  label="Phạm vi xếp hạng"
-  [options]="scopes"
-  [value]="store.scope$()"
-  (valueChange)="store.selectScope($event)"
-/>
+<div class="leaderboard__filters">
+  <ui-segmented
+    class="leaderboard__scope"
+    label="Phạm vi xếp hạng"
+    [options]="scopes"
+    [value]="store.scope$()"
+    (valueChange)="store.selectScope($event)"
+  />
+  <ui-segmented
+    class="leaderboard__scope"
+    label="Kỳ xếp hạng"
+    [options]="periods"
+    [value]="store.period$()"
+    (valueChange)="store.selectPeriod($event)"
+  />
+</div>
 
 <div class="leaderboard__layout">
   <section
@@ -65,8 +78,36 @@
   <section class="leaderboard__ranking" aria-labelledby="leaderboard-ranking">
     <div class="leaderboard__ranking-head">
       <h2 id="leaderboard-ranking">Xếp hạng</h2>
-      @if (!store.isBoardLoading$() && !store.boardError$()) {
-      <span class="leaderboard__count">{{ store.total$() }} học viên</span>
+      @if (store.period$() !== 'all') {
+      <div class="leaderboard__stepper">
+        <button
+          uiButton
+          variant="ghost"
+          size="sm"
+          type="button"
+          [attr.aria-label]="store.period$() === 'week' ? 'Tuần trước' : 'Tháng trước'"
+          [disabled]="!store.canStepBack$()"
+          (click)="store.stepBack()"
+        >
+          Kỳ trước
+        </button>
+        <span class="leaderboard__period" aria-live="polite"
+          >{{ store.periodLabel$() }}</span
+        >
+        <button
+          uiButton
+          variant="ghost"
+          size="sm"
+          type="button"
+          [attr.aria-label]="store.period$() === 'week' ? 'Tuần sau' : 'Tháng sau'"
+          [disabled]="!store.canStepForward$()"
+          (click)="store.stepForward()"
+        >
+          Kỳ sau
+        </button>
+      </div>
+      } @else {
+      <span class="leaderboard__period">{{ store.periodLabel$() }}</span>
       }
     </div>
 
@@ -90,30 +131,31 @@
       trong phạm vi này. }
     </p>
     } @else {
-    <ol class="leaderboard__list" aria-label="Bảng xếp hạng">
-      @for (row of store.rows$(); track row.userId) {
+    <ol class="leaderboard__list" aria-label="Top 10 học viên">
+      @for (row of store.top$(); track row.userId) {
       <ng-container
         [ngTemplateOutlet]="entry"
         [ngTemplateOutletContext]="{ $implicit: row }"
       />
       }
     </ol>
-    } @if (store.total$() > pageSize) {
-    <ui-pagination
-      [total]="store.total$()"
-      [page]="store.page$()"
-      [pageSize]="pageSize"
-      (pageChange)="store.goToPage($event)"
-    />
-    } @if (store.isMeOffPage$(); as offPage) { @if (store.me$(); as me) {
+    } @if (store.isMeBelowTop$()) { @if (store.me$(); as me) {
     <p class="leaderboard__me-caption">Vị trí của bạn</p>
     <ol class="leaderboard__list" aria-label="Vị trí của bạn">
+      @for (row of store.above$(); track row.userId) {
+      <ng-container
+        [ngTemplateOutlet]="entry"
+        [ngTemplateOutletContext]="{ $implicit: row }"
+      />
+      }
       <ng-container
         [ngTemplateOutlet]="entry"
         [ngTemplateOutletContext]="{ $implicit: me }"
       />
     </ol>
-    } } }
+    @if (store.gapToAbove$(); as gap) {
+    <p class="leaderboard__gap">Cách người xếp ngay trên {{ gap }} XP.</p>
+    } } } }
   </section>
 </div>
 
@@ -136,7 +178,7 @@
       >
     </span>
     <span class="leaderboard__score"
-      >{{ row.points }} <span class="leaderboard__unit">điểm</span></span
+      >{{ row.points }} <span class="leaderboard__unit">XP</span></span
     >
   </li>
 </ng-template>

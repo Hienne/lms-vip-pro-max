@@ -11,10 +11,11 @@
  * learner's scores: `courses` is every course `hocvien` has (FE-DEMO-C1 has a final exam score of 12.5 and
  * QZ-E2E-01 of 100, the others none); `progressSummary.assessment` is the overview of five quizzes.
  *
- * `points`, `leaderboard`, `leaderboardTeam` and `leaderboardLastPage` were captured on 2026-11-01 as `hocvien`
- * once the backend computed learning points: `points` is `GET /points`; `leaderboard` is the default `org`
- * scope (three learners, `hocvien` second); `leaderboardTeam` is `scope=team` (only `hocvien`);
- * `leaderboardLastPage` is `scope=all&page=2&size=1`, so the caller's row (`me`) is off the page.
+ * `points` was captured on 2026-11-01 as `hocvien` (`GET /points`). `leaderboard`, `leaderboardTeam` and
+ * `leaderboardOutsideTop` are shaped from the leaderboard integration tests of 2026-11-07 (top ten by period, no
+ * paging) and are to be captured again on the running backend: `leaderboard` is the default `org` scope and
+ * `month` period (three learners, `hocvien` second); `leaderboardTeam` is `scope=team` (only `hocvien`);
+ * `leaderboardOutsideTop` is `scope=all` with the caller thirteenth, so `above` and `gapToAbove` are filled.
  *
  * `dashboard`, `dashboardPrograms` and `dashboardProgramsPage2` were captured on 2026-11-02 as `hocvien` after the
  * reporting tables were created: `GET /dashboard`, `GET /dashboard/programs?size=100` (four programmes) and
@@ -860,41 +861,39 @@ export const capturedLearner = {
     ],
   },
   leaderboard: {
-    page: {
-      items: [
-        {
-          rank: 1,
-          userId: '000007',
-          fullName: 'Học viên tích hợp Demo',
-          teamName: 'Nhóm Tích hợp Core Banking',
-          points: 90,
-          streakDays: 2,
-          me: false,
-        },
-        {
-          rank: 2,
-          userId: '000004',
-          fullName: 'Học viên tiền gửi Demo',
-          teamName: 'Nhóm BA&QC Tiền gửi',
-          points: 80,
-          streakDays: 2,
-          me: true,
-        },
-        {
-          rank: 3,
-          userId: '000005',
-          fullName: 'Giảng viên Demo',
-          teamName: 'Nhóm phát triển Core Banking',
-          points: 40,
-          streakDays: 2,
-          me: false,
-        },
-      ],
-      page: 0,
-      size: 20,
-      totalElements: 3,
-      totalPages: 1,
-    },
+    period: 'month',
+    offset: 0,
+    from: '2026-11-01',
+    to: '2026-11-30',
+    top: [
+      {
+        rank: 1,
+        userId: '000007',
+        fullName: 'Học viên tích hợp Demo',
+        teamName: 'Nhóm Tích hợp Core Banking',
+        points: 90,
+        streakDays: 2,
+        me: false,
+      },
+      {
+        rank: 2,
+        userId: '000004',
+        fullName: 'Học viên tiền gửi Demo',
+        teamName: 'Nhóm BA&QC Tiền gửi',
+        points: 80,
+        streakDays: 2,
+        me: true,
+      },
+      {
+        rank: 3,
+        userId: '000005',
+        fullName: 'Giảng viên Demo',
+        teamName: 'Nhóm phát triển Core Banking',
+        points: 40,
+        streakDays: 2,
+        me: false,
+      },
+    ],
     me: {
       rank: 2,
       userId: '000004',
@@ -904,25 +903,25 @@ export const capturedLearner = {
       streakDays: 2,
       me: true,
     },
+    above: [],
+    gapToAbove: null,
   },
   leaderboardTeam: {
-    page: {
-      items: [
-        {
-          rank: 1,
-          userId: '000004',
-          fullName: 'Học viên tiền gửi Demo',
-          teamName: 'Nhóm BA&QC Tiền gửi',
-          points: 80,
-          streakDays: 2,
-          me: true,
-        },
-      ],
-      page: 0,
-      size: 20,
-      totalElements: 1,
-      totalPages: 1,
-    },
+    period: 'month',
+    offset: 0,
+    from: '2026-11-01',
+    to: '2026-11-30',
+    top: [
+      {
+        rank: 1,
+        userId: '000004',
+        fullName: 'Học viên tiền gửi Demo',
+        teamName: 'Nhóm BA&QC Tiền gửi',
+        points: 80,
+        streakDays: 2,
+        me: true,
+      },
+    ],
     me: {
       rank: 1,
       userId: '000004',
@@ -932,34 +931,136 @@ export const capturedLearner = {
       streakDays: 2,
       me: true,
     },
+    above: [],
+    gapToAbove: null,
   },
-  leaderboardLastPage: {
-    page: {
-      items: [
-        {
-          rank: 3,
-          userId: '000005',
-          fullName: 'Giảng viên Demo',
-          teamName: 'Nhóm phát triển Core Banking',
-          points: 40,
-          streakDays: 2,
-          me: false,
-        },
-      ],
-      page: 2,
-      size: 1,
-      totalElements: 3,
-      totalPages: 3,
-    },
+  leaderboardOutsideTop: {
+    period: 'month',
+    offset: 0,
+    from: '2026-11-01',
+    to: '2026-11-30',
+    top: [
+      {
+        rank: 1,
+        userId: '910021',
+        fullName: 'Học viên thêm L',
+        teamName: 'Nhóm khác',
+        points: 111,
+        streakDays: 2,
+        me: false,
+      },
+      {
+        rank: 2,
+        userId: '910020',
+        fullName: 'Học viên thêm K',
+        teamName: 'Nhóm khác',
+        points: 110,
+        streakDays: 2,
+        me: false,
+      },
+      {
+        rank: 3,
+        userId: '910019',
+        fullName: 'Học viên thêm J',
+        teamName: 'Nhóm khác',
+        points: 109,
+        streakDays: 2,
+        me: false,
+      },
+      {
+        rank: 4,
+        userId: '910018',
+        fullName: 'Học viên thêm I',
+        teamName: 'Nhóm khác',
+        points: 108,
+        streakDays: 2,
+        me: false,
+      },
+      {
+        rank: 5,
+        userId: '910017',
+        fullName: 'Học viên thêm H',
+        teamName: 'Nhóm khác',
+        points: 107,
+        streakDays: 2,
+        me: false,
+      },
+      {
+        rank: 6,
+        userId: '910016',
+        fullName: 'Học viên thêm G',
+        teamName: 'Nhóm khác',
+        points: 106,
+        streakDays: 2,
+        me: false,
+      },
+      {
+        rank: 7,
+        userId: '910015',
+        fullName: 'Học viên thêm F',
+        teamName: 'Nhóm khác',
+        points: 105,
+        streakDays: 2,
+        me: false,
+      },
+      {
+        rank: 8,
+        userId: '910014',
+        fullName: 'Học viên thêm E',
+        teamName: 'Nhóm khác',
+        points: 104,
+        streakDays: 2,
+        me: false,
+      },
+      {
+        rank: 9,
+        userId: '910013',
+        fullName: 'Học viên thêm D',
+        teamName: 'Nhóm khác',
+        points: 103,
+        streakDays: 2,
+        me: false,
+      },
+      {
+        rank: 10,
+        userId: '910012',
+        fullName: 'Học viên thêm C',
+        teamName: 'Nhóm khác',
+        points: 102,
+        streakDays: 2,
+        me: false,
+      },
+    ],
     me: {
-      rank: 2,
+      rank: 13,
       userId: '000004',
       fullName: 'Học viên tiền gửi Demo',
       teamName: 'Nhóm BA&QC Tiền gửi',
-      points: 80,
+      points: 30,
       streakDays: 2,
       me: true,
     },
+    above: [
+      {
+        rank: 11,
+        userId: '910011',
+        fullName: 'Học viên thêm B',
+        teamName: 'Nhóm khác',
+        points: 101,
+        streakDays: 2,
+        me: false,
+      },
+      {
+        rank: 12,
+        userId: '910010',
+        fullName: 'Học viên thêm A',
+        teamName: 'Nhóm khác',
+        points: 100,
+        streakDays: 2,
+        me: false,
+      },
+    ],
+    gapToAbove: 70,
   },
   dashboard: {
     dataAsOf: '2026-11-02T08:20:59.296708Z',

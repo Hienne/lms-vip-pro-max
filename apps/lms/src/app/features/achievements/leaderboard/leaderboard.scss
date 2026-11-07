@@ -10,11 +10,33 @@
     margin-top: ui.space(4);
   }
 
+  &__appraisal {
+    @include ui.text(sm, muted);
+    margin: ui.space(2) 0 0;
+  }
+
+  &__filters {
+    display: flex;
+    flex-wrap: wrap;
+    gap: ui.space(3);
+    margin: ui.space(4) 0 ui.space(5);
+  }
+
   &__scope {
     display: block;
     max-width: 100%;
-    margin: ui.space(4) 0 ui.space(5);
     overflow-x: auto;
+  }
+
+  &__stepper {
+    display: flex;
+    align-items: center;
+    gap: ui.space(2);
+  }
+
+  &__period {
+    @include ui.num;
+    @include ui.text(sm, muted);
   }
 
   // The caller's points come first on a narrow screen and sit beside the ranking on a wide one.
@@ -93,15 +115,12 @@
     }
   }
 
-  &__count {
-    @include ui.text(sm, muted);
-  }
-
   &__ranking-placeholder {
     min-height: 18rem;
   }
 
   &__empty,
+  &__gap,
   &__me-caption {
     @include ui.text(sm, muted);
     margin: 0;

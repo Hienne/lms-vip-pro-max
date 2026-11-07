@@ -1,10 +1,10 @@
 import {
   authV1Endpoints,
-  LeaderboardPageSchema,
+  LeaderboardViewSchema,
   learnerEndpoints,
   MyPointsSchema,
   type AnyEndpoint,
-  type LeaderboardPage,
+  type LeaderboardView,
 } from '@lms/contracts';
 import { FakeBackend, type FakeReply } from '../backend/fake-backend';
 import { SEED_PASSWORD } from '../backend/seed';
@@ -38,13 +38,13 @@ describe('the points and the leaderboard of the mock backend', () => {
   const board = (
     username: string,
     query: Record<string, string> = {},
-  ): LeaderboardPage =>
-    LeaderboardPageSchema.parse(
+  ): LeaderboardView =>
+    LeaderboardViewSchema.parse(
       call(learnerEndpoints.leaderboard, login(username), query).body.data,
     );
 
-  const names = (page: LeaderboardPage) =>
-    page.page.items.map((row) => [row.rank, row.fullName, row.points]);
+  const names = (page: LeaderboardView) =>
+    page.top.map((row) => [row.rank, row.fullName, row.points]);
 
   it("answers the caller's fixed points, whose total is the sum of the parts", () => {
     const points = MyPointsSchema.parse(
@@ -73,7 +73,7 @@ describe('the points and the leaderboard of the mock backend', () => {
 
   it('marks only the caller and gives the rank of the caller in the scope', () => {
     const page = board('hocvien');
-    expect(page.page.items.filter((row) => row.me)).toEqual([
+    expect(page.top.filter((row) => row.me)).toEqual([
       expect.objectContaining({ userId: '000004', rank: 2 }),
     ]);
     expect(page.me).toMatchObject({ userId: '000004', rank: 2, me: true });
@@ -82,37 +82,50 @@ describe('the points and the leaderboard of the mock backend', () => {
   it('lists the team of the caller alone, with the team name on each row', () => {
     const page = board('hocvien', { scope: 'team' });
     expect(names(page)).toEqual([[1, 'Học viên tiền gửi Demo', 80]]);
-    expect(page.page.items[0].teamName).toBe('Nhóm BA&QC Tiền gửi');
+    expect(page.top[0].teamName).toBe('Nhóm BA&QC Tiền gửi');
     expect(page.me.rank).toBe(1);
   });
 
   it('lists every learner in the system for all, here the one org', () => {
-    expect(board('hocvien', { scope: 'all' }).page.totalElements).toBe(5);
+    expect(board('hocvien', { scope: 'all' }).top).toHaveLength(5);
   });
 
-  it('keeps the caller as a row of their own when they are off the page', () => {
-    const page = board('hocvien', { page: '2', size: '2' });
-    expect(names(page)).toEqual([[5, 'Học viên thẻ Demo', 0]]);
-    expect(page.page).toMatchObject({ page: 2, size: 2, totalPages: 3 });
-    expect(page.me).toMatchObject({ rank: 2, points: 80, me: true });
+  it('has no paging fields and no count of learners', () => {
+    const page = board('hocvien');
+    expect(page).not.toHaveProperty('page');
+    expect(page).not.toHaveProperty('totalElements');
+    expect(page.period).toBe('month');
   });
 
-  it('puts a learner with no points after everyone, with a rank and no streak', () => {
-    const last = board('giangvien').page.items.at(-1);
+  it('reads the fixture as this month and all time, a third of it as this week and nothing before', () => {
+    expect(names(board('hocvien', { period: 'week' }))[0]).toEqual([
+      1,
+      'Học viên tích hợp Demo',
+      30,
+    ]);
+    expect(board('hocvien', { period: 'all' }).me.points).toBe(80);
+    const last = board('hocvien', { period: 'month', offset: '1' });
+    expect(last.top.map((row) => row.points)).toEqual([0, 0, 0, 0, 0]);
+    expect(last.top.map((row) => row.rank)).toEqual([1, 1, 1, 1, 1]);
+    expect(last.offset).toBe(1);
+  });
+
+  it('puts a learner with no XP after everyone, with a rank and no streak', () => {
+    const last = board('giangvien').top.at(-1);
     expect(last).toMatchObject({ rank: 5, points: 0, streakDays: 0 });
   });
 
-  it('answers a page past the end with no rows', () => {
-    const page = board('hocvien', { page: '9' });
-    expect(page.page.items).toEqual([]);
-    expect(page.me.rank).toBe(2);
+  it('keeps me in place in the top ten, with nothing above and no gap', () => {
+    const page = board('hocvien');
+    expect(page.above).toEqual([]);
+    expect(page.gapToAbove).toBeNull();
   });
 
   it.each<Record<string, string>>([
     { scope: 'x' },
-    { size: '101' },
-    { size: '0' },
-    { page: '-1' },
+    { period: 'year' },
+    { offset: '-1' },
+    { offset: '521' },
   ])('refuses the query %j as a validation failure', (query) => {
     const reply = call(learnerEndpoints.leaderboard, login('hocvien'), query);
     expect(reply.body.messageCode).toBe('CORE-VALIDATION_FAILED');

@@ -1,8 +1,11 @@
 import { computed, inject, Injectable, signal } from '@angular/core';
 import { ActivatedRoute, Router, type Params } from '@angular/router';
 import {
+  LeaderboardPeriodSchema,
   LeaderboardScopeSchema,
+  MAX_LEADERBOARD_OFFSET,
   learnerEndpoints,
+  type LeaderboardPeriod,
   type LeaderboardQuery,
   type LeaderboardScope,
   type PointParts,
@@ -11,11 +14,11 @@ import { LOCAL_STORAGE } from '../../../../core/storage/local-storage';
 import { serverData } from '../../../../core/data-access/server-data';
 import { EndpointClient } from '../../../../core/http/endpoint-client';
 
-/** Rows per page; the server's default, sent so the page count does not depend on it. */
-export const LEADERBOARD_PAGE_SIZE = 20;
-
 /** The scope the server uses when none is asked, and the one the URL leaves out. */
 export const DEFAULT_SCOPE: LeaderboardScope = 'org';
+
+/** The period the server uses when none is asked, and the one the URL leaves out. */
+export const DEFAULT_PERIOD: LeaderboardPeriod = 'month';
 
 /** Where the dismissal of the "points became XP" notice is kept, per browser. */
 export const XP_NOTICE_STORAGE_KEY = 'lms.xp-notice-dismissed';
@@ -42,11 +45,33 @@ function scopeFrom(value: unknown): LeaderboardScope {
   return scope.success ? scope.data : DEFAULT_SCOPE;
 }
 
+/** The period of a shared or reloaded URL; an unknown value is dropped, not an error. */
+function periodFrom(value: unknown): LeaderboardPeriod {
+  const period = LeaderboardPeriodSchema.safeParse(value);
+  return period.success ? period.data : DEFAULT_PERIOD;
+}
+
+/** How many periods back a URL asks for; anything but a whole number in range reads as the current one. */
+function offsetFrom(value: unknown): number {
+  const offset = Number(value);
+  return Number.isInteger(offset) &&
+    offset > 0 &&
+    offset <= MAX_LEADERBOARD_OFFSET
+    ? offset
+    : 0;
+}
+
+/** `2026-11-02` as `02/11`; the server's calendar day, so no time zone is applied. */
+function dayMonth(date: string): string {
+  const [, month, day] = date.split('-');
+  return `${day}/${month}`;
+}
+
 /**
- * "Bảng xếp hạng & thành tích" (SPEC-learning-leaderboard): the server's ranking for a scope, one page
- * at a time, and the caller's own points. Points, ranks and ties are the server's; this store only
- * chooses the scope and the page, and keeps them in the URL so a reload or a shared link opens the same
- * board.
+ * "Bảng xếp hạng & thành tích" (SPEC-learning-leaderboard): the server's top ten for a scope and a period
+ * (week, month, all; stepping back to an earlier one), the caller's own row and the caller's points. XP,
+ * ranks, ties and the gap to the person above are the server's; this store only chooses the scope, the
+ * period and how far back, and keeps them in the URL so a reload or a shared link opens the same board.
  */
 @Injectable()
 export class LeaderboardStore {
@@ -59,15 +84,20 @@ export class LeaderboardStore {
 
   private readonly state = {
     scope: signal<LeaderboardScope>(scopeFrom(this.initial['scope'])),
-    /** 1-based, as the pagination control counts. */
-    page: signal(Math.max(1, Math.floor(Number(this.initial['page'])) || 1)),
+    period: signal<LeaderboardPeriod>(periodFrom(this.initial['period'])),
+    /** Periods back from the current one; always 0 for `all`. */
+    offset: signal(
+      periodFrom(this.initial['period']) === 'all'
+        ? 0
+        : offsetFrom(this.initial['offset']),
+    ),
   };
 
   private readonly query = computed(
     (): LeaderboardQuery => ({
       scope: this.state.scope(),
-      page: this.state.page() - 1,
-      size: LEADERBOARD_PAGE_SIZE,
+      period: this.state.period(),
+      offset: this.state.offset(),
     }),
   );
 
@@ -87,26 +117,59 @@ export class LeaderboardStore {
   /** The one-time notice that points became XP and a streak no longer earns any. */
   readonly isXpNoticeShown$ = computed(() => !this.noticeDismissed());
   readonly scope$ = this.state.scope.asReadonly();
-  readonly page$ = this.state.page.asReadonly();
+  readonly period$ = this.state.period.asReadonly();
+  readonly offset$ = this.state.offset.asReadonly();
+  /** An earlier period can be stepped back from, until the server's limit; `all` has none. */
+  readonly canStepBack$ = computed(
+    () =>
+      this.state.period() !== 'all' &&
+      this.state.offset() < MAX_LEADERBOARD_OFFSET,
+  );
+  readonly canStepForward$ = computed(
+    () => this.state.period() !== 'all' && this.state.offset() > 0,
+  );
 
   readonly boardError$ = this.boardData.error;
   readonly isBoardLoading$ = this.boardData.isLoading;
-  readonly rows$ = computed(() => this.boardData.value()?.page.items ?? []);
-  readonly total$ = computed(
-    () => this.boardData.value()?.page.totalElements ?? 0,
-  );
+  /** The top ten, in the server's order. */
+  readonly top$ = computed(() => this.boardData.value()?.top ?? []);
   readonly me$ = computed(() => this.boardData.value()?.me);
 
-  /** The caller is not among the rows shown: another page, or not in the scope at all. */
-  readonly isMeOffPage$ = computed(() => {
-    const board = this.boardData.value();
-    return board !== undefined && !board.page.items.some((row) => row.me);
-  });
+  /** The one or two just above the caller, when the caller is outside the top ten. */
+  readonly above$ = computed(() => this.boardData.value()?.above ?? []);
+
+  /** XP the caller lacks to pass the nearest person with more; null in the top ten or with no one above. */
+  readonly gapToAbove$ = computed(
+    () => this.boardData.value()?.gapToAbove ?? null,
+  );
+
+  /** The caller is in the top ten (their row is highlighted in place) rather than shown below it. */
+  readonly isMeInTop$ = computed(
+    () => this.boardData.value()?.top.some((row) => row.me) ?? false,
+  );
+
+  /** The caller's row is shown below the top ten: outside it, or in no ranking at all (a rank of null). */
+  readonly isMeBelowTop$ = computed(
+    () => this.boardData.value() !== undefined && !this.isMeInTop$(),
+  );
 
   /** The scope has no learner to list; only a caller with no team reads `team` and finds it so. */
   readonly isEmpty$ = computed(() => {
     const board = this.boardData.value();
-    return board !== undefined && board.page.totalElements === 0;
+    return board !== undefined && board.top.length === 0;
+  });
+
+  /** The span the board covers: the month, the week's days, or all time. */
+  readonly periodLabel$ = computed(() => {
+    const board = this.boardData.value();
+    if (board === undefined || board.from === null || board.to === null) {
+      return this.state.period() === 'all' ? 'Tất cả thời gian' : '';
+    }
+    if (board.period === 'month') {
+      const [year, month] = board.from.split('-');
+      return `Tháng ${Number(month)}/${year}`;
+    }
+    return `${dayMonth(board.from)} – ${dayMonth(board.to)}`;
   });
 
   readonly pointsError$ = this.pointsData.error;
@@ -149,21 +212,41 @@ export class LeaderboardStore {
     this.state.scope.set(scope);
   }
 
-  private setPage(page: number): void {
-    this.state.page.set(page);
+  private setPeriod(period: LeaderboardPeriod): void {
+    this.state.period.set(period);
   }
 
-  // Commands: a new scope starts again at the first page, and both are written to the URL
+  private setOffset(offset: number): void {
+    this.state.offset.set(offset);
+  }
+
+  // Commands: a new scope or period starts at the current one, and the choices are written to the URL
   selectScope(value: string): void {
     const scope = LeaderboardScopeSchema.safeParse(value);
     if (!scope.success || scope.data === this.state.scope()) return;
     this.setScope(scope.data);
-    this.setPage(1);
     this.syncUrl();
   }
 
-  goToPage(page: number): void {
-    this.setPage(page);
+  selectPeriod(value: string): void {
+    const period = LeaderboardPeriodSchema.safeParse(value);
+    if (!period.success || period.data === this.state.period()) return;
+    this.setPeriod(period.data);
+    this.setOffset(0);
+    this.syncUrl();
+  }
+
+  /** One period earlier: last week, last month, and on back. */
+  stepBack(): void {
+    if (!this.canStepBack$()) return;
+    this.setOffset(this.state.offset() + 1);
+    this.syncUrl();
+  }
+
+  /** One period later, back towards the current one. */
+  stepForward(): void {
+    if (!this.canStepForward$()) return;
+    this.setOffset(this.state.offset() - 1);
     this.syncUrl();
   }
 
@@ -179,7 +262,9 @@ export class LeaderboardStore {
   private syncUrl(): void {
     const queryParams: Params = {
       scope: this.state.scope() === DEFAULT_SCOPE ? null : this.state.scope(),
-      page: this.state.page() > 1 ? this.state.page() : null,
+      period:
+        this.state.period() === DEFAULT_PERIOD ? null : this.state.period(),
+      offset: this.state.offset() > 0 ? this.state.offset() : null,
     };
     void this.router.navigate([], {
       relativeTo: this.route,

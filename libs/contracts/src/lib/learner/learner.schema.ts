@@ -340,24 +340,35 @@ export type ProgressExportQuery = z.infer<typeof ProgressExportQuerySchema>;
 export const LeaderboardScopeSchema = z.enum(['team', 'org', 'all']);
 export type LeaderboardScope = z.infer<typeof LeaderboardScopeSchema>;
 
-/** `scope` defaults to `org` on the server; `size` is at most 100. */
+/** The span the board adds XP over: a Monday-Sunday week, a calendar month (Vietnam time), or all time. */
+export const LeaderboardPeriodSchema = z.enum(['week', 'month', 'all']);
+export type LeaderboardPeriod = z.infer<typeof LeaderboardPeriodSchema>;
+
+/** The furthest back `offset` may step, in weeks or months (the server's limit). */
+export const MAX_LEADERBOARD_OFFSET = 520;
+
+/**
+ * `scope` defaults to `org` and `period` to `month` on the server. `offset` steps back to an earlier week or
+ * month (0 is the current one) and is ignored for `all`.
+ */
 export const LeaderboardQuerySchema = z.object({
   scope: LeaderboardScopeSchema.optional(),
-  page: z.number().int().nonnegative().optional(),
-  size: z.number().int().min(1).max(100).optional(),
+  period: LeaderboardPeriodSchema.optional(),
+  offset: z.number().int().min(0).max(MAX_LEADERBOARD_OFFSET).optional(),
 });
 export type LeaderboardQuery = z.infer<typeof LeaderboardQuerySchema>;
 
 /**
- * One learner on the board. The server ranks by total points, ties share a rank (1, 1, 3) and a
- * learner with no points comes after everyone else. `teamName` is null for a learner with no team.
+ * One learner on the board. The server ranks by the XP of the period, ties share a rank (1, 1, 3) and a
+ * learner with no XP comes after everyone else. `teamName` is null for a learner with no team.
  */
 export const LeaderboardRowSchema = z.object({
   rank: z.number().int().positive(),
   userId: z.string(),
   fullName: z.string(),
   teamName: z.string().nullish(),
-  points: z.number().int().nonnegative(),
+  /** XP earned in the period; an admin's correction can make it negative. */
+  points: z.number().int(),
   /** Consecutive learning days, as the server counts them. */
   streakDays: z.number().int().nonnegative(),
   /** True on the caller's own row. */
@@ -374,12 +385,23 @@ export const LeaderboardMeSchema = LeaderboardRowSchema.extend({
 });
 export type LeaderboardMe = z.infer<typeof LeaderboardMeSchema>;
 
-/** `LeaderboardPage`: a page of rows and the caller's own row, whether or not it is on the page. */
-export const LeaderboardPageSchema = z.object({
-  page: PageSchema(LeaderboardRowSchema),
+/**
+ * `Leaderboard`: the top ten of a period and scope, and the caller's own row. It has no paging and no
+ * count of learners. A caller outside the top ten finds the one or two just above them in `above` and
+ * the XP they lack to pass the nearest one with more in `gapToAbove`; inside the top ten their row is
+ * in `top` (`me: true`) and both are empty. `from` and `to` are the first and last day of the period.
+ */
+export const LeaderboardViewSchema = z.object({
+  period: LeaderboardPeriodSchema,
+  offset: z.number().int().nonnegative(),
+  from: z.string().nullable(),
+  to: z.string().nullable(),
+  top: z.array(LeaderboardRowSchema),
   me: LeaderboardMeSchema,
+  above: z.array(LeaderboardRowSchema),
+  gapToAbove: z.number().int().positive().nullable(),
 });
-export type LeaderboardPage = z.infer<typeof LeaderboardPageSchema>;
+export type LeaderboardView = z.infer<typeof LeaderboardViewSchema>;
 
 /** The XP of each source, read from the ledger; `total` is their sum. A streak earns no XP. */
 export const PointPartsSchema = z.object({
