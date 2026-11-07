@@ -1,0 +1,63 @@
+<a uiCard interactive class="course-tile" [routerLink]="course().link">
+  <div class="course-tile__cover course-tile__cover--{{ coverTone() }}">
+    @if (course().coverUrl; as cover) {
+    <img class="course-tile__image" [src]="cover" alt="" loading="lazy" />
+    } @else if (!course().hasCover) {
+    <ui-icon class="course-tile__art" [name]="art()" size="lg" />
+    }
+    <span class="course-tile__badges">
+      @if (course().required) {
+      <span uiBadge tone="danger">Bắt buộc</span>
+      } @else {
+      <span uiBadge outline>Tự chọn</span>
+      } @if (completed()) {
+      <span uiBadge tone="success">Hoàn thành</span>
+      } @else if (course().failed) {
+      <span uiBadge tone="danger">Chưa đạt</span>
+      } @else if (course().overdue) {
+      <span uiBadge tone="danger">Quá hạn</span>
+      }
+    </span>
+  </div>
+  <div class="course-tile__body">
+    <span class="course-tile__category"
+      >{{ course().domain }} · {{ course().module }}</span
+    >
+    <h3 class="course-tile__title">{{ course().title }}</h3>
+    <p class="course-tile__meta">
+      @if (duration(); as duration) {
+      <span><ui-icon name="clock" size="sm" />{{ duration }}</span>
+      }
+      <span
+        ><ui-icon name="book-open" size="sm" />{{ course().lessons }} bài</span
+      >
+      @if (course().level; as level) {
+      <span><ui-icon name="target" size="sm" />{{ level }}</span>
+      }
+    </p>
+    <div class="course-tile__foot">
+      @if (showsProgress()) {
+      <ui-progress
+        size="sm"
+        [value]="course().pct"
+        [tone]="progressTone()"
+        [label]="'Tiến độ ' + course().title"
+      />
+      }
+      <div class="course-tile__line">
+        <span
+          class="course-tile__status"
+          [class.course-tile__status--failed]="course().status === 'failed'"
+          >{{ course().statusLabel }}@if (bestScore() !== null) { · Điểm cao
+          nhất {{ bestScore() | fmtPct: 2 }}}</span
+        >
+        @if (showsProgress()) {
+        <strong class="course-tile__pct">{{ course().pct }}%</strong>
+        }
+      </div>
+      @if (course().dueAt; as dueAt) {
+      <app-due-date [dueAt]="dueAt" [done]="completed()" />
+      }
+    </div>
+  </div>
+</a>

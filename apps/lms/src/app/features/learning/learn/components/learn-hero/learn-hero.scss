@@ -1,0 +1,117 @@
+@use 'ui';
+
+// The mockup's hero: a deep-teal panel with the hoa mai as a faint watermark on the right.
+:host {
+  display: block;
+}
+
+.learn-hero {
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: ui.space(6);
+  padding: ui.space(6) ui.space(5);
+  border-radius: ui.radius(card);
+  background: linear-gradient(
+    135deg,
+    ui.color(hero-from) 0%,
+    ui.color(hero-to) 100%
+  );
+  color: ui.color(white);
+
+  @include ui.bp(md) {
+    padding: ui.space(8);
+  }
+
+  &__mai {
+    position: absolute;
+    top: -70px;
+    right: -50px;
+    opacity: 0.06;
+    pointer-events: none;
+  }
+
+  &__main {
+    position: relative;
+    @include ui.stack(2);
+    max-width: 640px;
+    min-width: 0;
+
+    h1 {
+      @include ui.text(2xl);
+      margin: 0;
+      color: ui.color(white);
+    }
+  }
+
+  &__date {
+    @include ui.text(xs);
+    color: ui.color(hero-subtle);
+    font-weight: ui.weight(medium);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+  }
+
+  &__headline {
+    @include ui.text(md);
+    margin: 0;
+    color: ui.color(hero-muted);
+  }
+
+  &__continue {
+    @include ui.row(4);
+    margin-top: ui.space(4);
+  }
+
+  &__lesson {
+    @include ui.text(sm);
+    display: block;
+    min-width: 0;
+    color: ui.color(white);
+    font-weight: ui.weight(medium);
+  }
+
+  &__context {
+    display: block;
+    color: ui.color(hero-subtle);
+    font-weight: ui.weight(regular);
+  }
+
+  &__reward {
+    position: relative;
+    @include ui.row(3);
+    flex-wrap: nowrap;
+    padding: ui.space(4) ui.space(5);
+    border: 1px solid color-mix(in srgb, ui.color(white) 18%, transparent);
+    border-radius: ui.radius(card);
+    background: ui.color(hero-chip);
+    color: ui.color(white);
+    text-decoration: none;
+
+    &:is(a):hover {
+      background: color-mix(in srgb, ui.color(white) 16%, transparent);
+    }
+
+    &:is(a):focus-visible {
+      @include ui.focus-ring;
+    }
+  }
+
+  &__points {
+    @include ui.num;
+    @include ui.text(2xl);
+    display: block;
+    color: ui.color(hero-accent);
+    font-weight: ui.weight(bold);
+    line-height: 1.1;
+  }
+
+  &__reward-label {
+    @include ui.text(xs);
+    display: block;
+    color: ui.color(hero-muted);
+  }
+}

@@ -356,3 +356,22 @@ Approved by the user on 2026-11-06.
    follow-ups and not in this spec:
    - the mock never turning publish-time assignments into enrollments;
    - the NV-210 final exam missing on the learner page after a republish.
+
+## Revision 2026-11-07: the learner's home follows the mockup
+
+The user asked for `/learn` to match the mockup and to set `visual-design.md` aside for this screen.
+This supersedes direction B for `/learn` only; the course page, the catalogue and every other
+screen keep the rules above.
+
+- **Back:** the hero (date, greeting by given name, one headline, "Tiếp tục học" with the lesson),
+  the points figure inside the hero, the four KPI cards with icon tiles and the completion ring, the
+  cover band on each course tile ("Bắt buộc" / "Tự chọn" and the status on it, category, meta line
+  with icons), icon tiles on the due and tool rows, and "Khóa học của tôi" inside a card.
+- **Stays out:** "Lộ trình theo chương trình" and the "Năng lực" radar (decision 3 stands), the
+  resume card's cover image, the "Tiến độ học tập" link (the score cards link to `/progress`) and the
+  rewards card in the rail (the points are in the hero).
+- **Kept from before:** the 360px rail, two course columns, "Hỏi trợ lý AI" in the quick tools for
+  users with the function, the resume pick that skips a course with every lesson done, and the
+  points card failing visibly with a retry. Flashcards stay out until that screen exists.
+- **Where:** `LearnHero`, `LearnKpis` and `CourseTile` under `features/learning/learn/components`.
+  `CourseTile` is the home's own tile; the shared `CourseCard` is unchanged.

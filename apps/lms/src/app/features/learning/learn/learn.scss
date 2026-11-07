@@ -2,14 +2,53 @@
 
 :host {
   @include ui.page(wide);
+  display: flex;
+  flex-direction: column;
+  gap: ui.space(6);
 }
 
 .learn {
-  &__catalog,
+  &__hero,
+  &__kpis {
+    min-width: 0;
+  }
+
+  &__layout {
+    @include ui.stack(6);
+
+    @include ui.bp(lg) {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) ui.layout(panel);
+      align-items: start;
+      gap: ui.space(6);
+    }
+  }
+
+  &__main,
+  &__side {
+    @include ui.stack(6);
+    min-width: 0;
+  }
+
+  // The header of a card: its title on the left, a link or nothing on the right, a rule below.
+  &__card-header {
+    @include ui.row-between(3);
+    padding: ui.space(4) ui.space(5);
+    border-bottom: 1px solid ui.color(border);
+
+    h2 {
+      margin: 0;
+      font-family: ui.font(sans);
+      font-size: ui.text-size(md);
+      font-weight: ui.weight(semibold);
+    }
+  }
+
   &__more {
     @include ui.row(1);
     @include ui.text(sm);
     color: ui.color(primary);
+    font-weight: ui.weight(medium);
     text-decoration: none;
 
     &:hover {
@@ -21,67 +60,109 @@
     }
   }
 
-  &__layout {
-    @include ui.stack(6);
-
-    @include ui.bp(lg) {
-      display: grid;
-      grid-template-columns: minmax(0, 1fr) ui.layout(sidebar);
-      align-items: start;
-      gap: ui.space(6);
-    }
-
-    // The rail keeps its narrow width at every size, so the course grid gets the room.
-  }
-
-  &__main,
-  &__side {
-    @include ui.stack(5);
+  &__courses {
     min-width: 0;
   }
 
-  &__section {
-    @include ui.stack(3);
-    min-width: 0;
+  &__courses-body {
+    padding: ui.space(5);
+  }
 
-    h2 {
-      @include ui.text(xl);
-      margin: 0;
-      font-weight: ui.weight(semibold);
-    }
+  // As many columns as cards of about 20rem fit: one on a phone, two beside the rail from about
+  // 1280 px, as in the mockup.
+  &__grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 20rem), 1fr));
+    gap: ui.space(4);
+    margin: 0;
+    padding: 0;
+    list-style: none;
 
-    h3 {
-      @include ui.text(md);
-      margin: 0;
-      font-weight: ui.weight(semibold);
+    li {
+      min-width: 0;
     }
+  }
+
+  &__counts-placeholder,
+  &__card-placeholder,
+  &__due-placeholder {
+    min-height: ui.space(18);
   }
 
   &__panel {
-    padding: ui.space(4);
-  }
-
-  &__summary {
-    padding-block: ui.space(2);
-  }
-
-  &__more {
-    align-self: flex-start;
-  }
-
-  // "Công cụ học nhanh" is a list of links, not a card: it sits on the page under the rail's cards.
-  &__links {
-    padding-inline: ui.space(4);
-  }
-
-  &__side &__panel h2,
-  &__side &__links h2 {
-    @include ui.text(lg);
-    font-family: ui.font(sans);
-  }
-
-  &__resume {
     min-width: 0;
+  }
+
+  &__panel-body {
+    padding: ui.space(4) ui.space(5);
+  }
+
+  // The rail's lists: one row per link, an icon tile on the left, a rule between rows.
+  &__rows,
+  &__reminders {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  &__rows li + li {
+    border-top: 1px solid ui.color(border);
+  }
+
+  &__row {
+    display: flex;
+    align-items: center;
+    gap: ui.space(3);
+    padding: ui.space(3) ui.space(5);
+    color: inherit;
+    text-decoration: none;
+
+    &:hover {
+      background: ui.color(surface-2);
+    }
+
+    &:focus-visible {
+      @include ui.focus-ring;
+    }
+  }
+
+  &__row-icon {
+    display: grid;
+    flex: none;
+    place-items: center;
+    width: 36px;
+    height: 36px;
+    border-radius: ui.radius(sm);
+    background: ui.color(surface-2);
+    color: ui.color(text-secondary);
+
+    &--danger {
+      background: ui.color(danger-subtle);
+      color: ui.color(danger);
+    }
+  }
+
+  &__row-text {
+    @include ui.stack(1);
+    flex: 1;
+    min-width: 0;
+  }
+
+  &__due-title {
+    @include ui.text(sm);
+    @include ui.truncate;
+    font-weight: ui.weight(semibold);
+  }
+
+  &__due-pct {
+    @include ui.num;
+    @include ui.text(sm);
+    font-weight: ui.weight(semibold);
+  }
+
+  &__tool-title {
+    @include ui.text(sm);
+    font-weight: ui.weight(semibold);
   }
 
   &__heading {
@@ -104,123 +185,8 @@
     }
   }
 
-  // As many columns as cards of about 16rem fit: one on a phone, two beside the rail at 1280 px,
-  // three from about 1440 px. A fixed count at a breakpoint would squeeze cards next to the rail.
-  &__grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(min(100%, 16rem), 1fr));
-    gap: ui.space(4);
-    margin: ui.space(3) 0 0;
-    padding: 0;
-    list-style: none;
-
-    li {
-      min-width: 0;
-    }
-  }
-
-  &__resume-placeholder,
-  &__counts-placeholder,
-  &__card-placeholder,
-  &__due-placeholder {
-    min-height: ui.space(18);
-  }
-
-  &__due,
-  &__reminders,
-  &__tools {
-    margin: 0;
-    padding: 0;
-    list-style: none;
-  }
-
-  &__due li {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
-    gap: ui.space(1) ui.space(3);
-    align-items: baseline;
-    padding-block: ui.space(3);
-    border-bottom: 1px solid ui.color(border);
-
-    &:first-child {
-      padding-block-start: 0;
-    }
-
-    &:last-child {
-      border-bottom: 0;
-      padding-block-end: 0;
-    }
-
-    app-due-date {
-      grid-column: 1 / -1;
-      grid-row: 2;
-      min-width: 0;
-    }
-  }
-
-  &__due-title {
-    @include ui.text(sm);
-    grid-column: 1;
-    min-width: 0;
-    color: ui.color(text);
-    font-weight: ui.weight(medium);
-    text-decoration: none;
-    overflow-wrap: anywhere;
-
-    &:hover {
-      color: ui.color(primary);
-      text-decoration: underline;
-    }
-
-    &:focus-visible {
-      @include ui.focus-ring;
-    }
-  }
-
-  &__due-pct {
-    @include ui.num;
-    @include ui.text(sm);
-    grid-column: 2;
-    grid-row: 1;
-    text-align: end;
-  }
-
-  &__tool {
-    @include ui.row-between(3);
-    flex-wrap: nowrap;
-    padding-block: ui.space(3);
-    border-bottom: 1px solid ui.color(border);
-    color: inherit;
-    text-decoration: none;
-
-    &:hover &-title {
-      color: ui.color(primary);
-      text-decoration: underline;
-    }
-
-    &:focus-visible {
-      @include ui.focus-ring;
-    }
-  }
-
-  &__tools li:last-child &__tool {
-    border-bottom: 0;
-    padding-block-end: 0;
-  }
-
-  &__tool-text {
-    @include ui.stack(1);
-    min-width: 0;
-    overflow-wrap: anywhere;
-  }
-
-  &__tool-title {
-    @include ui.text(sm);
-    font-weight: ui.weight(medium);
-  }
-
   &__reminder-disclosure {
-    padding-block-start: ui.space(3);
+    padding: ui.space(3) ui.space(5);
     border-top: 1px solid ui.color(border);
 
     summary {
@@ -233,18 +199,21 @@
         @include ui.focus-ring;
       }
     }
+  }
 
-    .learn__section {
-      padding-block-start: ui.space(4);
+  &__reminder-section {
+    @include ui.stack(3);
+    padding-block-start: ui.space(4);
+
+    h3 {
+      @include ui.text(md);
+      margin: 0;
+      font-weight: ui.weight(semibold);
     }
   }
 
   &__reminders {
     @include ui.stack(3);
-  }
-
-  &__rewards app-points-figure {
-    display: block;
   }
 
   &__muted {

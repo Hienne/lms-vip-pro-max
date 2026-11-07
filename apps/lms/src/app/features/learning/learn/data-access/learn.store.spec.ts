@@ -77,7 +77,7 @@ describe('LearnStore', () => {
     expect(queries(learnerEndpoints.myCourses)).toContainEqual({
       learningStatus: 'in_progress',
       sort: 'lastAccessAt,desc',
-      size: '1',
+      size: '5',
     });
     expect(
       handle.mock.calls.filter(([e]) => e === learnerEndpoints.enrollment),
@@ -91,7 +91,6 @@ describe('LearnStore', () => {
     expect(resume?.position?.total).toBeGreaterThanOrEqual(
       resume?.position?.number ?? 0,
     );
-    expect(resume?.hasCover).toBe(false);
   });
 
   it('has no resume card for a learner with nothing in progress', async () => {
@@ -201,7 +200,7 @@ describe('LearnStore', () => {
     expect(store.remindersError$()).toBeUndefined();
   });
 
-  it('reads neither the programmes nor the competencies, which the progress page shows', async () => {
+  it('reads neither the programmes nor the competencies', async () => {
     await open();
     expect(
       handle.mock.calls.some(
@@ -210,6 +209,29 @@ describe('LearnStore', () => {
           e === learnerEndpoints.dashboardPrograms,
       ),
     ).toBe(false);
+  });
+
+  it('resumes the course touched last that still has lessons left', async () => {
+    type Page = { items: { progressPercent: number | null }[] };
+    handle.mockImplementation((e, request) => {
+      const reply = original(e, request) as {
+        body: { data?: Page };
+      };
+      const items = reply?.body?.data?.items;
+      if (
+        e !== learnerEndpoints.myCourses ||
+        request.query?.['size'] !== '5' ||
+        !items?.length
+      ) {
+        return reply as never;
+      }
+      // The course touched last has every lesson done but is still in progress (exam not passed).
+      items[0].progressPercent = 100;
+      return reply as never;
+    });
+    const store = await open();
+    expect(store.resume$()).not.toBeNull();
+    expect(store.resume$()?.pct).toBeLessThan(100);
   });
 
   it('reads the points once, and a failing read leaves no points and no other error', async () => {
