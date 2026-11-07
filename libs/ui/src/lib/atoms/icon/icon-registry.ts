@@ -1,4 +1,5 @@
 import {
+  LucideAlarmClockCheck,
   LucideArchive,
   LucideArrowLeft,
   LucideArrowRight,
@@ -69,6 +70,7 @@ import {
   LucidePlus,
   LucidePrinter,
   LucideRefreshCw,
+  LucideRoute,
   LucideRotateCcw,
   LucideSearch,
   LucideSend,
@@ -105,6 +107,7 @@ import {
 export const ICONS = {
   'thumbs-up': LucideThumbsUp.icon,
   'thumbs-down': LucideThumbsDown.icon,
+  'alarm-clock-check': LucideAlarmClockCheck.icon,
   archive: LucideArchive.icon,
   'arrow-left': LucideArrowLeft.icon,
   'arrow-right': LucideArrowRight.icon,
@@ -176,6 +179,7 @@ export const ICONS = {
   printer: LucidePrinter.icon,
   'refresh-cw': LucideRefreshCw.icon,
   'rotate-ccw': LucideRotateCcw.icon,
+  route: LucideRoute.icon,
   search: LucideSearch.icon,
   send: LucideSend.icon,
   settings: LucideSettings.icon,
@@ -308,4 +312,11 @@ export const ICON_CATALOG: readonly {
   // The quick assistant's dock toggle.
   { mockup: null, name: 'panel-right-open' },
   { mockup: null, name: 'panel-right-close' },
+  { mockup: null, name: 'alarm-clock-check' },
+  { mockup: null, name: 'route' },
 ];
+
+/** A registered icon by name, or `fallback` for a name the app does not bundle (an admin may pick any Lucide icon). */
+export function registeredIcon(name: string, fallback: IconName): IconName {
+  return Object.hasOwn(ICONS, name) ? (name as IconName) : fallback;
+}

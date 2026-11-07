@@ -32,6 +32,47 @@
     font-weight: ui.weight(semibold);
   }
 
+  &__badges {
+    display: grid;
+    gap: ui.space(2);
+
+    h2 {
+      @include ui.text(md);
+      font-weight: ui.weight(semibold);
+    }
+  }
+
+  &__badge-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(16rem, 1fr));
+    gap: ui.space(3) ui.space(5);
+    margin: 0 0 ui.space(3);
+    padding: 0;
+    list-style: none;
+  }
+
+  &__badge {
+    display: flex;
+    align-items: flex-start;
+    gap: ui.space(3);
+    min-width: 0;
+
+    // A badge not yet earned is dimmed to the muted text colour; its condition says how to earn it.
+    &--pending {
+      color: ui.color(text-muted);
+    }
+  }
+
+  &__badge-text {
+    display: grid;
+    min-width: 0;
+  }
+
+  &__badge-name {
+    font-weight: ui.weight(medium);
+    overflow-wrap: anywhere;
+  }
+
   &__actions {
     display: flex;
     justify-content: flex-end;

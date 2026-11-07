@@ -618,3 +618,34 @@ export const DashboardGroupSchema = DashboardCountsSchema.omit({
   name: z.string(),
 });
 export type DashboardGroup = z.infer<typeof DashboardGroupSchema>;
+
+/** The courses of a programme done out of all of them, shown as "x/y khóa" on a programme badge. */
+export const BadgeProgressSchema = z.object({
+  done: z.number().int().nonnegative(),
+  total: z.number().int().nonnegative(),
+});
+export type BadgeProgress = z.infer<typeof BadgeProgressSchema>;
+
+/**
+ * One badge on the profile. `earnedAt` is null for a badge not yet earned, which carries its `condition`; `retired`
+ * marks a badge an admin stopped awarding that this learner keeps. `progress` is set only on a programme badge not
+ * yet earned. `icon` is a Lucide name chosen by an admin, so the app shows a fallback for one it does not bundle.
+ */
+export const BadgeSchema = z.object({
+  badgeId: z.number().int().positive(),
+  name: z.string(),
+  description: z.string(),
+  icon: z.string(),
+  condition: z.string(),
+  earnedAt: z.string().nullable(),
+  retired: z.boolean(),
+  progress: BadgeProgressSchema.nullable(),
+});
+export type Badge = z.infer<typeof BadgeSchema>;
+
+/** `MyBadges`: the badges earned (newest first), then the ones not yet earned in the server's order. */
+export const MyBadgesSchema = z.object({
+  earned: z.array(BadgeSchema),
+  notEarned: z.array(BadgeSchema),
+});
+export type MyBadges = z.infer<typeof MyBadgesSchema>;

@@ -16,6 +16,7 @@ import {
   LearningReminderSchema,
   MyCoursesQuerySchema,
   AdjustXpCommandSchema,
+  MyBadgesSchema,
   MyLevelSchema,
   MyPointsSchema,
   XpAdjustmentResultSchema,
@@ -183,6 +184,16 @@ export const learnerEndpoints = {
     method: 'get',
     path: '/api/v1/me/learning/streak',
     response: MyStreakSchema,
+  }),
+  /**
+   * The caller's badges: earned (newest first) and not yet earned with their condition, a programme badge showing
+   * the courses done out of all. The first read creates the starter set. A non-learner is refused with
+   * `CORE-ACCESS_DENIED`.
+   */
+  myBadges: defineEndpoint({
+    method: 'get',
+    path: '/api/v1/me/learning/badges',
+    response: MyBadgesSchema,
   }),
   /**
    * Learners ranked by the XP of a period (`week`, `month` by default, `all`; `offset` steps back to an earlier

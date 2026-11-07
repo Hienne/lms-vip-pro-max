@@ -20,6 +20,44 @@ import { SessionStore } from '../../../core/session/session.store';
 const ME_URL = '/api/v1/auth/me';
 const PASSWORD_URL = '/api/v1/auth/password';
 const LEVEL_URL = '/api/v1/me/learning/level';
+const BADGES_URL = '/api/v1/me/learning/badges';
+
+const BADGE = {
+  badgeId: 1,
+  name: 'Khóa học đầu tiên',
+  description: 'Hoàn thành khóa học đầu tiên của bạn.',
+  icon: 'graduation-cap',
+  condition: 'Hoàn thành khóa học đầu tiên',
+  earnedAt: '2026-11-03T04:12:00Z',
+  retired: false,
+  progress: null,
+};
+
+const BADGES = {
+  earned: [BADGE],
+  notEarned: [
+    {
+      badgeId: 2,
+      name: 'Thành thạo Tiền gửi',
+      description: 'Hoàn thành mọi khóa học của chương trình Tiền gửi.',
+      icon: 'route',
+      condition: 'Hoàn thành mọi khóa học của chương trình Tiền gửi',
+      earnedAt: null,
+      retired: false,
+      progress: { done: 1, total: 4 },
+    },
+    {
+      badgeId: 3,
+      name: 'Huy hiệu lạ',
+      description: 'Biểu tượng admin chọn mà ứng dụng chưa có.',
+      icon: 'skateboard',
+      condition: 'Hoàn thành 3 khóa học được giao trước hạn',
+      earnedAt: null,
+      retired: false,
+      progress: null,
+    },
+  ],
+};
 
 const LEVEL = {
   level: 2,
@@ -47,6 +85,7 @@ describe('Profile', () => {
   });
   beforeEach(() => {
     level = LEVEL;
+    badges = BADGES;
   });
   afterEach(() => {
     document
@@ -63,6 +102,8 @@ describe('Profile', () => {
 
   /** The level the server answers a learner; null once to answer with a refusal. */
   let level: object | null = LEVEL;
+  /** The badges the server answers a learner; null to answer with a refusal. */
+  let badges: object | null = BADGES;
 
   async function open(userId = '000005', change?: object) {
     fakeSession().user.set({ ...seedProfile(userId), ...change });
@@ -71,6 +112,14 @@ describe('Profile', () => {
     await settle();
     for (const request of backend.match(LEVEL_URL)) {
       if (level) request.flush(envelopeOk(level));
+      else
+        request.flush(backendRefusal('accessDenied').body, {
+          status: 403,
+          statusText: 'Forbidden',
+        });
+    }
+    for (const request of backend.match(BADGES_URL)) {
+      if (badges) request.flush(envelopeOk(badges));
       else
         request.flush(backendRefusal('accessDenied').body, {
           status: 403,
@@ -140,6 +189,65 @@ describe('Profile', () => {
     expect(section.textContent).toContain('Chuyên gia Core Banking');
     expect(section.textContent).toContain('cấp cao nhất');
     expect(section.querySelector('[role="progressbar"]')).toBeNull();
+  });
+
+  describe('the badge grid', () => {
+    const names = (label: string) =>
+      Array.from(el.querySelectorAll(`[aria-label="${label}"] li`)).map((li) =>
+        li.textContent?.replace(/\s+/g, ' ').trim(),
+      );
+
+    it('lists the earned badges, then the ones not yet earned with their condition', async () => {
+      await open('000004');
+      expect(names('Huy hiệu đã đạt')).toEqual([
+        'Khóa học đầu tiênHoàn thành khóa học đầu tiên của bạn.Đạt ngày 03/11/2026',
+      ]);
+      const pending = names('Huy hiệu chưa đạt');
+      expect(pending).toHaveLength(2);
+      expect(pending[0]).toContain(
+        'Hoàn thành mọi khóa học của chương trình Tiền gửi',
+      );
+      expect(pending[1]).toContain('Hoàn thành 3 khóa học được giao trước hạn');
+    });
+
+    it('shows "x/y khóa" on a programme badge only, and no percentage bar', async () => {
+      await open('000004');
+      expect(names('Huy hiệu chưa đạt')[0]).toContain('1/4 khóa');
+      expect(names('Huy hiệu chưa đạt')[1]).not.toContain('khóa ·');
+      expect(el.querySelector('.profile__badges ui-progress')).toBeNull();
+      expect(text()).not.toMatch(/\d+% /);
+    });
+
+    it('dims the badges not yet earned and not the earned ones', async () => {
+      await open('000004');
+      expect(el.querySelectorAll('.profile__badge--pending')).toHaveLength(2);
+      expect(el.querySelectorAll('.profile__badge')).toHaveLength(3);
+    });
+
+    it('shows a Lucide icon for each badge, with a fallback for one the app does not bundle', async () => {
+      await open('000004');
+      const icons = Array.from(el.querySelectorAll('.profile__badges ui-icon'));
+      expect(icons).toHaveLength(3);
+      expect(icons.every((icon) => icon.querySelector('svg'))).toBe(true);
+    });
+
+    it('marks a retired badge a learner kept', async () => {
+      badges = { earned: [{ ...BADGE, retired: true }], notEarned: [] };
+      await open('000004');
+      expect(text()).toContain('Huy hiệu đã ngừng cấp');
+      expect(el.querySelector('[aria-label="Huy hiệu chưa đạt"]')).toBeNull();
+    });
+
+    it('says so when nothing is earned yet', async () => {
+      badges = { earned: [], notEarned: BADGES.notEarned };
+      await open('000004');
+      expect(text()).toContain('Bạn chưa đạt huy hiệu nào.');
+    });
+
+    it('shows no badges to someone who is not a learner and asks for none', async () => {
+      await open('000001');
+      expect(el.querySelector('.profile__badges')).toBeNull();
+    });
   });
 
   it('shows no level to someone who is not a learner and asks for none', async () => {

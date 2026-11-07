@@ -14,6 +14,7 @@ import {
   LearningProgressOverviewSchema,
   MyCoursesQuerySchema,
   MyPointsSchema,
+  MyBadgesSchema,
   MyLevelSchema,
   MyStreakSchema,
   OpenSessionCommandSchema,
@@ -82,6 +83,7 @@ describe('learner endpoints', () => {
       ['myLevel', 'get', '/api/v1/me/learning/level'],
       ['adjustXp', 'post', '/api/v1/admin/learning/xp-adjustments'],
       ['myStreak', 'get', '/api/v1/me/learning/streak'],
+      ['myBadges', 'get', '/api/v1/me/learning/badges'],
       ['leaderboard', 'get', '/api/v1/me/learning/leaderboard'],
     ]);
     expect(
@@ -555,6 +557,48 @@ describe('learner endpoints', () => {
         MyStreakSchema.safeParse({
           ...captured.streak,
           days: [{ ...day, date: '12/10' }],
+        }).success,
+      ).toBe(false);
+    });
+  });
+
+  describe('badges', () => {
+    it('parses the response captured from the backend', () => {
+      const badges = MyBadgesSchema.parse(captured.badges);
+      expect(badges.earned.map((badge) => badge.earnedAt)).not.toContain(null);
+      expect(badges.notEarned.map((badge) => badge.earnedAt)).toEqual([
+        null,
+        null,
+        null,
+      ]);
+    });
+
+    it('carries the courses x of y only on a programme badge not yet earned', () => {
+      const [, programme] = MyBadgesSchema.parse(captured.badges).notEarned;
+      expect(programme.progress).toEqual({ done: 1, total: 4 });
+    });
+
+    it('accepts a retired badge a learner keeps', () => {
+      const [badge] = captured.badges.earned;
+      expect(
+        MyBadgesSchema.safeParse({
+          earned: [{ ...badge, retired: true }],
+          notEarned: [],
+        }).success,
+      ).toBe(true);
+    });
+
+    it('refuses a badge with no condition or a negative progress', () => {
+      const [badge] = captured.badges.notEarned;
+      const { condition: _condition, ...noCondition } = badge;
+      expect(
+        MyBadgesSchema.safeParse({ earned: [], notEarned: [noCondition] })
+          .success,
+      ).toBe(false);
+      expect(
+        MyBadgesSchema.safeParse({
+          earned: [],
+          notEarned: [{ ...badge, progress: { done: -1, total: 2 } }],
         }).success,
       ).toBe(false);
     });

@@ -1,10 +1,44 @@
 import { computed, inject, Injectable } from '@angular/core';
-import { authV1Endpoints, type UpdateMeCommand } from '@lms/contracts';
+import {
+  authV1Endpoints,
+  learnerEndpoints,
+  type Badge,
+  type UpdateMeCommand,
+} from '@lms/contracts';
+import { registeredIcon, type IconName } from '@lms/ui';
 import { MyLevelStore } from '../../../../core/learning/my-level.store';
+import { serverData } from '../../../../core/data-access/server-data';
 import { serverMutation } from '../../../../core/data-access/server-mutation';
 import { EndpointClient } from '../../../../core/http/endpoint-client';
 import { SessionStore } from '../../../../core/session/session.store';
 import { scopeLabel } from '../../../../shared/status/scope-label';
+
+/** A badge as the grid shows it: the icon the app bundles, and "x/y khóa" for a programme badge. */
+export interface BadgeRow {
+  readonly id: number;
+  readonly name: string;
+  readonly description: string;
+  readonly condition: string;
+  readonly icon: IconName;
+  readonly earnedAt: string | null;
+  readonly retired: boolean;
+  readonly courses: string | null;
+}
+
+function badgeRow(badge: Badge): BadgeRow {
+  return {
+    id: badge.badgeId,
+    name: badge.name,
+    description: badge.description,
+    condition: badge.condition,
+    icon: registeredIcon(badge.icon, 'award'),
+    earnedAt: badge.earnedAt,
+    retired: badge.retired,
+    courses: badge.progress
+      ? `${badge.progress.done}/${badge.progress.total} khóa`
+      : null,
+  };
+}
 
 /**
  * The profile page: the signed-in user from the session, and the one command it offers, saving
@@ -28,9 +62,38 @@ export class ProfileStore {
     },
   );
 
+  private readonly badgeData = serverData(
+    () => this.client.call(learnerEndpoints.myBadges),
+    {
+      params: () => {
+        const user = this.session.user$();
+        const isLearner = user?.grants.some(
+          (grant) => grant.roleCode === 'LEARNER' && grant.scope.type === 'OWN',
+        );
+        return user && isLearner ? { userId: user.userId } : undefined;
+      },
+    },
+  );
+
   readonly user$ = this.session.user$;
   /** The learner's level from the server; undefined for anyone who has none or while it loads. */
   readonly level$ = this.myLevel.level$;
+  /** The badges the learner earned, newest first; empty while loading or for anyone who has none. */
+  readonly earnedBadges$ = computed(
+    () => this.badgeData.value()?.earned.map(badgeRow) ?? [],
+  );
+  /** The badges still to earn, each with its condition; the server's order. */
+  readonly pendingBadges$ = computed(
+    () => this.badgeData.value()?.notEarned.map(badgeRow) ?? [],
+  );
+  /** A learner has a badge section once the server has answered; anyone else has none. */
+  readonly hasBadges$ = computed(() => this.badgeData.value() !== undefined);
+  readonly badgesError$ = this.badgeData.error;
+
+  retryBadges(): void {
+    this.badgeData.reload();
+  }
+
   /** Accounts synced from SSO are read-only here: the source system owns their fields. */
   readonly readOnly$ = computed(() => this.user$()?.authProvider === 'SSO');
   readonly isSaving$ = this.saveMutation.isPending;

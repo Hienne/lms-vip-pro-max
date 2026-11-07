@@ -1,3 +1,4 @@
+import { DatePipe } from '@angular/common';
 import { Component, computed, inject, linkedSignal } from '@angular/core';
 import {
   form,
@@ -47,6 +48,7 @@ import {
     Card,
     CardBody,
     CardHeader,
+    DatePipe,
     Field,
     FormField,
     FormRoot,

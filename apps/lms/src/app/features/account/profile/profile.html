@@ -49,6 +49,51 @@
       Cấp độ không mở thêm quyền và không ảnh hưởng đến việc bạn được giao.
     </p>
   </section>
+  } @if (store.hasBadges$()) {
+  <section
+    uiCard
+    padded
+    class="profile__badges"
+    aria-labelledby="profile-badges"
+  >
+    <h2 id="profile-badges">Huy hiệu</h2>
+    @if (store.earnedBadges$().length > 0) {
+    <h3 class="profile__subhead">Đã đạt</h3>
+    <ul class="profile__badge-list" aria-label="Huy hiệu đã đạt">
+      @for (badge of store.earnedBadges$(); track badge.id) {
+      <li class="profile__badge">
+        <ui-icon [name]="badge.icon" />
+        <span class="profile__badge-text">
+          <span class="profile__badge-name">{{ badge.name }}</span>
+          <span class="profile__meta">{{ badge.description }}</span>
+          <span class="profile__meta"
+            >Đạt ngày {{ badge.earnedAt | date: 'dd/MM/yyyy' }}@if
+            (badge.retired) { · Huy hiệu đã ngừng cấp}</span
+          >
+        </span>
+      </li>
+      }
+    </ul>
+    } @else {
+    <p class="profile__meta">Bạn chưa đạt huy hiệu nào.</p>
+    } @if (store.pendingBadges$().length > 0) {
+    <h3 class="profile__subhead">Chưa đạt</h3>
+    <ul class="profile__badge-list" aria-label="Huy hiệu chưa đạt">
+      @for (badge of store.pendingBadges$(); track badge.id) {
+      <li class="profile__badge profile__badge--pending">
+        <ui-icon [name]="badge.icon" />
+        <span class="profile__badge-text">
+          <span class="profile__badge-name">{{ badge.name }}</span>
+          <span class="profile__meta"
+            >{{ badge.condition }}@if (badge.courses) { · {{ badge.courses }}
+            }</span
+          >
+        </span>
+      </li>
+      }
+    </ul>
+    }
+  </section>
   }
 
   <div class="grid-2">

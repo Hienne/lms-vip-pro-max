@@ -11,6 +11,8 @@
  * learner's scores: `courses` is every course `hocvien` has (FE-DEMO-C1 has a final exam score of 12.5 and
  * QZ-E2E-01 of 100, the others none); `progressSummary.assessment` is the overview of five quizzes.
  *
+ * `badges` is shaped from the badge integration tests of 2026-11-07 and is to be captured again on the running backend.
+ *
  * `points` was captured on 2026-11-01 as `hocvien` (`GET /points`). `leaderboard`, `leaderboardTeam` and
  * `leaderboardOutsideTop` are shaped from the leaderboard integration tests of 2026-11-07 (top ten by period, no
  * paging) and are to be captured again on the running backend: `leaderboard` is the default `org` scope and
@@ -858,6 +860,52 @@ export const capturedLearner = {
       { date: '2026-11-05', lessons: 1, quizzes: 0, restDay: false },
       { date: '2026-11-06', lessons: 4, quizzes: 0, restDay: false },
       { date: '2026-11-07', lessons: 1, quizzes: 0, restDay: true },
+    ],
+  },
+  badges: {
+    earned: [
+      {
+        badgeId: 1,
+        name: 'Khóa học đầu tiên',
+        description: 'Hoàn thành khóa học đầu tiên của bạn.',
+        icon: 'graduation-cap',
+        condition: 'Hoàn thành khóa học đầu tiên',
+        earnedAt: '2026-11-03T04:12:00Z',
+        retired: false,
+        progress: null,
+      },
+    ],
+    notEarned: [
+      {
+        badgeId: 2,
+        name: 'Mười khóa học',
+        description: 'Hoàn thành 10 khóa học.',
+        icon: 'library',
+        condition: 'Hoàn thành 10 khóa học',
+        earnedAt: null,
+        retired: false,
+        progress: null,
+      },
+      {
+        badgeId: 3,
+        name: 'Thành thạo Tiền gửi',
+        description: 'Hoàn thành mọi khóa học của chương trình Tiền gửi.',
+        icon: 'route',
+        condition: 'Hoàn thành mọi khóa học của chương trình Tiền gửi',
+        earnedAt: null,
+        retired: false,
+        progress: { done: 1, total: 4 },
+      },
+      {
+        badgeId: 4,
+        name: 'Đều đặn 5 ngày',
+        description: 'Duy trì chuỗi 5 ngày làm việc liên tiếp.',
+        icon: 'flame',
+        condition: 'Duy trì chuỗi 5 ngày làm việc liên tiếp',
+        earnedAt: null,
+        retired: false,
+        progress: null,
+      },
     ],
   },
   leaderboard: {
