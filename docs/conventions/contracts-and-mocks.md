@@ -19,6 +19,14 @@ page explains required quizzes and renders server progress; it never awards comp
 required quiz lessons and the selected final exam, together with required content, can complete the enrollment.
 The backend upgrade `2026-11-05-required-final-quiz.sql` must precede deployment of this contract.
 
+Learning completion also requires `2026-11-06-learning-completion.sql`. Enrollment/card `progressPercent`
+now averages required lessons only; a separate final exam does not enter that denominator.
+Enrollment details include `completion`, evaluated for the exact enrollment/revision: required-lesson counts,
+`lessonsSatisfied`, `finalQuizId`, `finalExamStatus` and `allSatisfied`. The course page renders this result;
+100% learning progress can coexist with an incomplete course. The field is optional during rollout and in
+legacy captures; absence displays unavailable evaluation, never a locally inferred pass. Historical
+`completed` enrollments remain recognized even if a later regrade changes the current evaluation.
+
 One chain keeps types, runtime validation and the dev mock in sync:
 
 ```text
@@ -602,6 +610,29 @@ course-less questions and cross-course pools rather than discarding them. No
 migration was applied to a shared database. Deployment/proxy configuration must
 point at the upgraded backend; source environment.mockBackend stays false.
 
+## Learning media, course filters and management dashboards
+
+- Learner attachment downloads call the learning asset content endpoint with both `blockId` and
+  `enrollmentId`. The bearer interceptor leaves this GET without an Authorization header so the
+  session-bound HttpOnly media cookie authenticates it, as for video and PDF. Claim the active learning
+  session first; access, enrollment, block/revision and lease are checked by the backend. Author
+  preview without learner context continues to use Bearer authentication.
+- For an attachment block with completion mode `open`, the player sends `COMPLETE` with
+  `complete=true` only after the blob download succeeds and the same block and enrollment remain
+  active. Opening the block or a failed download does not complete an unfinished attachment. A block
+  already completed stays completed; the frontend does not calculate or overwrite progress.
+- The course-management state filter sends `draft`/`published` for revision state and
+  `paused`/`archived` for course lifecycle. Keep the filters available on a load error so the user
+  can change them or retry. Learner assigned/mandatory counts and due dates use active assignment
+  obligations whose start time has arrived; the server determines eligibility.
+- `/admin` and `/instructor` use `ManagementDashboard` and the real
+  `learningReportEndpoints.summary` response. Counts reflect the scope enforced by the backend;
+  the view provides loading, error/retry and empty states, with links to detailed reports and permitted
+  work areas. They do not derive KPI values from the currently displayed page.
+- The `TRAINING_CATALOG` function remains grant-driven. Existing databases need the backend's
+  `docs/sql/upgrade/2026-11-05-training-catalog-function.sql` deployment step; sign in again after
+  the appropriate grants are applied. Do not assume a 403 means the upgrade has already run.
+
 ## Community question and article cover images
 
 Questions, articles and lessons learned use one existing revision asset with `usage: 'cover'`. The editor uploads
@@ -619,3 +650,32 @@ count and resolution state alongside the thumbnail; answers retain their text la
 
 Deploy the matching `corebanking-academy` card projection and cover validation before the frontend.
 No database migration is required.
+
+## Realtime classroom
+
+`chatRoomEndpoints` declares the authenticated map and single-use socket ticket at `/api/v1/chat-room`.
+`chatRoomSocket` declares both directions with zod schemas. `EndpointClient.connect` owns native WebSocket
+creation and runtime parsing; the route's `ChatRoomStore` owns presence, transient speech, heartbeat and bounded
+reconnection. A new connection always obtains a fresh ticket through `serverMutation`, so bearer/session
+expiry handling stays on the existing HTTP path. No JWT is sent in the socket URL.
+
+The `/chat-room` screen is in the signed-in `open` screen table and linked from the sidebar footer for
+all signed-in users. It uses the existing shell, Signal Forms and `@lms/ui`. Phaser 3.90 is loaded only
+when the canvas mounts; its world coordinates/art colours belong to the renderer, while Angular controls
+use the UI Sass tokens. The backend serves the single map/hitbox source and validates movement.
+
+The requested first-person mode uses Three.js 0.187, lazy-loaded separately from the Phaser 2D view.
+Both renderers use `room.motion.ts` for collision/movement and share eight-way facing in the socket
+contract. Mouse pointer lock is released on Enter/Escape; touch dragging rotates the 3D camera.
+Switching renderers releases their GPU resources/listeners without reconnecting the room.
+
+There is no chat sidebar or chat log. Enter or the mobile-friendly "Nhắn tin" button opens the
+composer immediately above the instructions; sending or Escape closes it. Only active overhead
+bubbles (5.5 seconds) are held in the store and expired by per-player timers. Welcome history from
+older servers is ignored. The updated backend does not retain messages and sends an empty compatibility
+`history` field, so late arrivals/reconnects cannot receive previous speech.
+
+Deploy the matching `corebanking-academy` module and configure WebSocket upgrade for
+`/api/v1/chat-room/socket` on the FE reverse proxy. The development `/api` proxy enables WebSocket.
+No database migration is required. Presence is held in one backend instance's memory. Deploy BE before
+FE to remove message retention at the protocol level as well as in the interface.

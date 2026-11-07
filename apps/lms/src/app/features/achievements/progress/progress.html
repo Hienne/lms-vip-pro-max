@@ -1,6 +1,6 @@
 <ui-page-header
   title="Tiến độ của tôi"
-  description="Số liệu theo lần học hiện tại của từng khóa."
+  description="Số liệu theo lần học hiện tại. Tiến độ học tính các bài bắt buộc; kết quả hoàn thành còn phụ thuộc bài thi cuối khóa nếu có."
 >
   <div slot="actions">
     <button
@@ -22,7 +22,11 @@
   (retry)="store.retrySummary()"
 />
 } @else if (store.isSummaryLoading$()) {
-<div uiSkeleton variant="block" class="learning-progress__kpis-placeholder"></div>
+<div
+  uiSkeleton
+  variant="block"
+  class="learning-progress__kpis-placeholder"
+></div>
 } @else { @if (store.summary$(); as summary) {
 <app-progress-counts
   [counts]="summary.counts"
@@ -101,12 +105,7 @@
         </select>
       </label>
       @if (store.hasFilters$()) {
-      <button
-        uiButton
-        variant="ghost"
-        size="sm"
-        (click)="store.clearFilters()"
-      >
+      <button uiButton variant="ghost" size="sm" (click)="store.clearFilters()">
         Xóa bộ lọc
       </button>
       }
@@ -126,7 +125,9 @@
     } @else if (store.rows$().length) {
     <div uiTableWrap class="learning-progress__table-wrap">
       <table uiTable responsive class="learning-progress__courses">
-        <caption class="sr-only">Tiến độ từng khóa học</caption>
+        <caption class="sr-only">
+          Tiến độ từng khóa học
+        </caption>
         <colgroup>
           <col class="learning-progress__col-course" />
           <col class="learning-progress__col-progress" />
@@ -196,7 +197,7 @@
                 </div>
               </div>
             </td>
-            <td data-label="Tiến độ">
+            <td data-label="Tiến độ học">
               <div class="learning-progress__progress">
                 <div class="learning-progress__pct">
                   <span class="learning-progress__num">{{ row.pct }}%</span>
@@ -244,8 +245,8 @@
                   <div>
                     <dt>Hoàn thành</dt>
                     <dd>
-                      {{ row.card.completedAt | fmtDate }}
-                      @if (row.completedLate) {
+                      {{ row.card.completedAt | fmtDate }} @if
+                      (row.completedLate) {
                       <span class="learning-progress__late">(trễ hạn)</span>
                       }
                     </dd>
@@ -253,9 +254,8 @@
                   <div>
                     <dt>Điểm cao nhất</dt>
                     <dd>
-                      @if (row.bestScore !== null) {
-                      {{ row.bestScore | fmtPct: 2 }}
-                      } @else { — }
+                      @if (row.bestScore !== null) { {{ row.bestScore | fmtPct:
+                      2 }} } @else { — }
                     </dd>
                   </div>
                 </dl>
@@ -265,8 +265,7 @@
               </div>
             </td>
           </tr>
-          }
-          }
+          } }
         </tbody>
       </table>
     </div>
@@ -324,7 +323,8 @@
             class="learning-progress__attempt"
             [routerLink]="['/quiz', attempt.quizId, 'result', attempt.attemptId]"
           >
-            <span class="learning-progress__attempt-title">{{ attempt.quizTitle }}</span
+            <span class="learning-progress__attempt-title"
+              >{{ attempt.quizTitle }}</span
             >
             <span class="learning-progress__attempt-time">
               {{ attempt.submittedAt | fmtDatetime }} @if (attempt.status ===

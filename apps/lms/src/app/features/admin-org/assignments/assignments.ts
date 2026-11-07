@@ -1,13 +1,5 @@
 import { NgTemplateOutlet } from '@angular/common';
-import {
-  afterRenderEffect,
-  Component,
-  computed,
-  ElementRef,
-  inject,
-  untracked,
-  viewChild,
-} from '@angular/core';
+import { Component, computed, inject, viewChild } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import {
   Badge,
@@ -21,35 +13,35 @@ import {
   FmtDatePipe,
   FormActions,
   Icon,
+  IconButton,
   PageHeader,
+  Progress,
   Select,
   Spinner,
   TablePrimary,
   TableSub,
   TabPanel,
   Tabs,
+  Tooltip,
   type TabItem,
 } from '@lms/ui';
 import { DueDate } from '../../../shared/course/due-date';
-import { REQUIREMENT_LABEL } from '../../../shared/course/course-labels';
-import { assignmentStatusView } from './assignment-labels';
+import { TARGET_TYPE_LABEL } from '../../../shared/assignment-target/target-labels';
 import { AssignForm } from './components/assign-form/assign-form';
 import { AssignmentDetail } from './components/assignment-detail/assignment-detail';
 import { GroupForm } from './components/group-form/group-form';
 import { GroupMembers } from './components/group-members/group-members';
-import {
-  ASSIGNMENTS_PAGE_SIZE,
-  AssignmentsStore,
-} from './data-access/assignments.store';
+import { ScheduleForm } from './components/schedule-form/schedule-form';
+import { WithdrawForm } from './components/withdraw-form/withdraw-form';
+import { AssignmentsStore } from './data-access/assignments.store';
 
 /**
- * Course assignment and deadlines (the mockup's `assignments`): an org's assignments of one
- * published course, the assignment editor, the detail of an assignment with per-learner revoke, and
- * the learning groups courses can be assigned to.
+ * Course assignment and deadlines (the mockup's `assignments`): an org's assignments across courses
+ * with the server's counts, the assign, schedule and revoke drawers, reminders, the detail of an
+ * assignment with per-learner revoke, and the learning groups courses can be assigned to.
  */
 @Component({
   selector: 'app-assignments',
-  host: { '[class.assignments--editing]': 'store.assigning$() !== null' },
   imports: [
     AssignForm,
     AssignmentDetail,
@@ -67,15 +59,20 @@ import {
     GroupForm,
     GroupMembers,
     Icon,
+    IconButton,
     NgTemplateOutlet,
     PageHeader,
+    Progress,
     RouterLink,
+    ScheduleForm,
     Select,
     Spinner,
     TablePrimary,
     TableSub,
     TabPanel,
     Tabs,
+    Tooltip,
+    WithdrawForm,
   ],
   providers: [AssignmentsStore],
   templateUrl: './assignments.html',
@@ -83,21 +80,7 @@ import {
 })
 export class Assignments {
   protected readonly store = inject(AssignmentsStore);
-  private readonly element = inject<ElementRef<HTMLElement>>(ElementRef);
   private readonly assignForm = viewChild(AssignForm);
-
-  constructor() {
-    // A full-page editor replaces the list without a router navigation; move focus to its title.
-    afterRenderEffect(() => {
-      this.store.assigning$();
-      untracked(() => {
-        const heading =
-          this.element.nativeElement.querySelector<HTMLElement>('h1');
-        heading?.setAttribute('tabindex', '-1');
-        heading?.focus();
-      });
-    });
-  }
 
   hasUnsavedChanges(): boolean {
     return (
@@ -106,9 +89,7 @@ export class Assignments {
     );
   }
 
-  protected readonly pageSize = ASSIGNMENTS_PAGE_SIZE;
-  protected readonly requirementLabel = REQUIREMENT_LABEL;
-  protected readonly statusView = assignmentStatusView;
+  protected readonly typeLabel = TARGET_TYPE_LABEL;
 
   protected readonly tabs = computed((): readonly TabItem[] => {
     const counts = this.store.counts$();

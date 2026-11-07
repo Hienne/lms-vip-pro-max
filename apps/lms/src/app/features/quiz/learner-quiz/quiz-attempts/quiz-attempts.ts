@@ -13,13 +13,13 @@ import {
   FmtScorePipe,
   FmtTimePipe,
   Icon,
+  IconButton,
   PageHeader,
   Skeleton,
   type BreadcrumbItem,
   type DataTableColumn,
 } from '@lms/ui';
 import {
-  ATTEMPTS_PAGE_SIZE,
   QuizAttemptsStore,
   type AttemptView,
 } from './data-access/quiz-attempts.store';
@@ -49,6 +49,7 @@ const COLUMNS: readonly DataTableColumn[] = [
     FmtScorePipe,
     FmtTimePipe,
     Icon,
+    IconButton,
     PageHeader,
     RouterLink,
     Skeleton,
@@ -60,7 +61,6 @@ const COLUMNS: readonly DataTableColumn[] = [
 export class QuizAttempts {
   protected readonly store = inject(QuizAttemptsStore);
   protected readonly columns = COLUMNS;
-  protected readonly pageSize = ATTEMPTS_PAGE_SIZE;
   protected readonly OUTCOME_TEXT: Record<AttemptView['outcome'], string> = {
     passed: 'Đạt',
     failed: 'Chưa đạt',

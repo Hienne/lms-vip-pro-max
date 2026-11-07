@@ -1,0 +1,95 @@
+<ui-page-header
+  title="Phòng học chung"
+  description="Cùng học và trò chuyện trong phòng 3D hoặc bản đồ 2D."
+>
+  <div slot="actions" class="row">
+    <button uiButton (click)="store.share()">
+      {{ store.copied$() ? 'Đã sao chép đường dẫn' : 'Mời bạn học' }}
+    </button>
+    @if (store.entered$()) {
+    <button uiButton (click)="store.leave()">Rời phòng</button> }
+  </div>
+</ui-page-header>
+@if (store.isLoading$()) {
+<p role="status">Đang tải bản đồ phòng học…</p>
+} @if (store.loadError$(); as error) {
+<ui-error-state [message]="error.message" (retry)="store.retryMap()" /> } @if
+(store.renderError$(); as error) {
+<ui-error-state [message]="error" (retry)="store.retryMap()" /> } @if
+(store.map$(); as map) { @if (!store.entered$()) {
+<app-room-join
+  [defaultName]="store.defaultName$()"
+  [ready]="store.ready$()"
+  (joined)="store.join($event)"
+/>
+} @if (store.error$(); as error) { <ui-alert tone="warning" [title]="error" /> }
+@if (store.ticketError$(); as error) {
+<ui-alert tone="danger" [title]="error.message" /> }
+<div class="chat-room__status">
+  <span role="status"
+    >{{ store.statusLabel$() }} · {{ store.players$().length }} người trong
+    phòng</span
+  >
+  <div class="row">
+    <div class="row row--gap-1" role="group" aria-label="Góc nhìn phòng học">
+      <button
+        uiButton
+        size="sm"
+        [attr.aria-pressed]="store.viewMode$() === '3d'"
+        (click)="store.changeViewMode('3d')"
+      >
+        Góc nhìn 3D
+      </button>
+      <button
+        uiButton
+        size="sm"
+        [attr.aria-pressed]="store.viewMode$() === '2d'"
+        (click)="store.changeViewMode('2d')"
+      >
+        Bản đồ 2D
+      </button>
+    </div>
+    @if (store.entered$() && !store.online$()) {
+    <button
+      uiButton
+      size="sm"
+      [disabled]="store.isConnecting$()"
+      (click)="store.retryConnection()"
+    >
+      Kết nối lại
+    </button>
+    }
+  </div>
+</div>
+<section class="chat-room__world" aria-label="Không gian phòng học">
+  <app-room-canvas
+    [map]="map"
+    [view]="store.canvas$()"
+    [mode]="store.viewMode$()"
+    (moved)="store.move($event)"
+    (ready)="store.rendererReady()"
+    (failed)="store.rendererFailed($event)"
+  />
+  @if (store.chatOpen$()) {
+  <div class="chat-room__composer">
+    <app-room-composer
+      [disabled]="!store.online$() || store.sending$()"
+      (sent)="store.send($event)"
+      (cancelled)="store.closeChat()"
+    />
+  </div>
+  }
+  <div class="chat-room__footer">
+    <p class="chat-room__hint">
+      WASD hoặc phím mũi tên để di chuyển. Enter để chat, Esc để trở lại phòng.
+      Bàn và ghế chặn đường đi. @if (store.viewMode$() === '3d') { Nhấp vào
+      phòng để xoay nhìn bằng chuột; trên điện thoại, kéo để nhìn quanh. }
+    </p>
+    @if (store.online$() && !store.chatOpen$()) {
+    <button uiButton size="sm" (click)="store.openChat()">Nhắn tin</button> }
+  </div>
+</section>
+<p class="sr-only" role="status" aria-live="polite">
+  {{ store.announcement$() }}
+</p>
+}

@@ -48,6 +48,7 @@
     "@schematics/angular": "~22.2.0",
     "@swc/helpers": "~0.5.18",
     "@types/node": "^22.0.0",
+    "@types/three": "0.187.0",
     "@typescript-eslint/utils": "^8.58.0",
     "@vitest/coverage-v8": "^4.0.0",
     "@vitest/ui": "^4.0.0",
@@ -79,7 +80,9 @@
     "@lucide/angular": "^1.55.0",
     "@noble/hashes": "2.4.0",
     "pdfjs-dist": "6.4.299",
+    "phaser": "3.90.0",
     "rxjs": "~7.8.0",
+    "three": "0.187.0",
     "zod": "^4.6.5"
   }
 }

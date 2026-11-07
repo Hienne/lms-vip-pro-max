@@ -92,6 +92,16 @@ describe('AccessRequestsStore', () => {
     expect(lastQuery()).toMatchObject({ q: 'an', page: '0' });
   });
 
+  it('asks the server for the chosen page size and starts again at the first page', async () => {
+    const store = await open();
+    store.goToPage(2);
+    store.changePageSize(50);
+    await settle();
+    expect(store.pageSize$()).toBe(50);
+    expect(store.page$()).toBe(1);
+    expect(lastQuery()).toMatchObject({ size: '50', page: '0' });
+  });
+
   it('rejects a request, reloads the list and the count, and bumps the token', async () => {
     const store = await open();
     const changed = TestBed.inject(AccessRequestsChanged);

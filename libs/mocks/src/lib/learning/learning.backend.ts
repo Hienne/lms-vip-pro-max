@@ -13,6 +13,7 @@ import {
   type AssignCourseCommand,
   type AssignmentDetail,
   type AssignmentRecipient,
+  type AssignmentSummary,
   type BusinessModule,
   type ChangeCourseStateCommand,
   type ChapterInput,
@@ -26,6 +27,7 @@ import {
   type GroupDetail,
   type LearningAsset,
   type ReplaceMembersCommand,
+  type RescheduleAssignmentCommand,
   type PublishAssignment,
   type RevokeRecipientCommand,
   type SaveCatalogItemCommand,
@@ -360,6 +362,13 @@ export class LearningBackend {
       [assignmentEndpoints.assignCourse, (r) => this.assignCourse(r)],
       [assignmentEndpoints.getAssignment, (r) => this.getAssignment(r)],
       [assignmentEndpoints.revokeRecipient, (r) => this.revokeRecipient(r)],
+      [assignmentEndpoints.orgAssignments, (r) => this.orgAssignments(r)],
+      [
+        assignmentEndpoints.rescheduleAssignment,
+        (r) => this.rescheduleAssignment(r),
+      ],
+      [assignmentEndpoints.remindAssignment, (r) => this.remindAssignment(r)],
+      [assignmentEndpoints.revokeAssignment, (r) => this.revokeAssignment(r)],
       [assignmentEndpoints.listGroups, (r) => this.listGroups(r)],
       [assignmentEndpoints.createGroup, (r) => this.createGroup(r)],
       [assignmentEndpoints.getGroup, (r) => this.getGroup(r)],
@@ -1670,6 +1679,147 @@ export class LearningBackend {
       i === index ? revoked : r,
     );
     return ok(revoked);
+  }
+
+  /** The org's assignments with the server's counts over active recipients. */
+  private orgAssignments(request: FakeRequest): FakeReply {
+    const orgId = num(request.query['assigningOrgId']);
+    const courseId = num(request.query['courseId']);
+    const [field, direction] = (request.query['sort'] ?? 'id,desc').split(',');
+    const key = (a: AssignmentDetail): string | number =>
+      field === 'id' ? a.assignment.id : (a.assignment[field as 'title'] ?? '');
+    const rows = this.assignments
+      .filter(
+        (a) =>
+          a.assignment.assigningOrgId === orgId &&
+          (courseId === undefined || a.assignment.courseId === courseId),
+      )
+      .sort((a, b) => {
+        const order = key(a) < key(b) ? -1 : key(a) > key(b) ? 1 : 0;
+        return direction === 'desc' ? -order : order;
+      })
+      .map((a) => this.summaryOf(a));
+    return ok(paged(rows, request.query));
+  }
+
+  private summaryOf(detail: AssignmentDetail): AssignmentSummary {
+    const course = this.courses.find(
+      (c) => c.course.id === detail.assignment.courseId,
+    );
+    const active = detail.recipients.filter((r) => r.status === 'active');
+    const finished = (r: AssignmentRecipient) =>
+      this.enrollments.of(r.userId, detail.assignment.courseId)?.enrollment
+        .status === 'completed';
+    const completed = active.filter(finished).length;
+    const overdue = active.filter(
+      (r) =>
+        !finished(r) &&
+        !!r.effectiveDueAt &&
+        Date.parse(r.effectiveDueAt) < Date.now(),
+    ).length;
+    return {
+      assignment: detail.assignment,
+      courseCode: course?.course.code ?? null,
+      courseTitle: course?.published?.revision.title ?? null,
+      targets: detail.targets,
+      people: active.length,
+      completed,
+      progressPercent: active.length
+        ? Math.floor((completed * 100) / active.length)
+        : 0,
+      overdue,
+    };
+  }
+
+  private activeAssignment(request: FakeRequest): AssignmentDetail {
+    const detail = this.assignments.find(
+      (a) => a.assignment.id === num(request.params['assignmentId']),
+    );
+    if (!detail) return refuse('resourceNotFound');
+    if (detail.assignment.status === 'revoked') return refuse('stateConflict');
+    return detail;
+  }
+
+  private rescheduleAssignment(request: FakeRequest): FakeReply {
+    const detail = this.activeAssignment(request);
+    const command = request.body as RescheduleAssignmentCommand;
+    if (command.expectedVersion !== detail.assignment.rowVersion)
+      refuse('stateConflict');
+    if (
+      command.dueAt &&
+      Date.parse(command.dueAt) < Date.parse(command.startAt)
+    ) {
+      refuse('validationFailed');
+    }
+    detail.assignment = {
+      ...detail.assignment,
+      startAt: command.startAt,
+      dueAt: command.dueAt ?? null,
+      reminderEnabled: command.reminderEnabled,
+      reminderDaysBefore: command.reminderDaysBefore,
+      rowVersion: detail.assignment.rowVersion + 1,
+      updateTime: now(),
+    };
+    detail.recipients = detail.recipients.map((r) =>
+      r.status === 'active'
+        ? {
+            ...r,
+            effectiveStartAt: command.startAt,
+            effectiveDueAt: command.dueAt ?? null,
+            rowVersion: r.rowVersion + 1,
+          }
+        : r,
+    );
+    return ok(detail);
+  }
+
+  /** Learners reminded by hand today, per assignment: a repeat the same day reaches nobody new. */
+  private remindedToday = new Map<number, Set<string>>();
+
+  private remindAssignment(request: FakeRequest): FakeReply {
+    const detail = this.activeAssignment(request);
+    if (!detail.assignment.dueAt) refuse('validationFailed');
+    const day = now().slice(0, 10);
+    const key = detail.assignment.id;
+    const reached = this.remindedToday.get(key) ?? new Set<string>();
+    const due = detail.recipients.filter(
+      (r) =>
+        r.status === 'active' &&
+        this.enrollments.of(r.userId, detail.assignment.courseId)?.enrollment
+          .status !== 'completed' &&
+        !reached.has(`${day}:${r.userId}`),
+    );
+    due.forEach((r) => reached.add(`${day}:${r.userId}`));
+    this.remindedToday.set(key, reached);
+    return ok({ reminded: due.length });
+  }
+
+  private revokeAssignment(request: FakeRequest): FakeReply {
+    const detail = this.assignments.find(
+      (a) => a.assignment.id === num(request.params['assignmentId']),
+    );
+    if (!detail) return refuse('resourceNotFound');
+    if (detail.assignment.status === 'revoked') return ok(detail);
+    const { reason } = request.body as RevokeRecipientCommand;
+    if (!reason.trim()) refuse('validationFailed');
+    detail.recipients = detail.recipients.map((r) =>
+      r.status === 'active'
+        ? {
+            ...r,
+            status: 'revoked',
+            revokedAt: now(),
+            revokeReason: reason,
+            rowVersion: r.rowVersion + 1,
+          }
+        : r,
+    );
+    detail.assignment = {
+      ...detail.assignment,
+      status: 'revoked',
+      rowVersion: detail.assignment.rowVersion + 1,
+      updateTime: now(),
+    };
+    return ok(detail);
   }
 
   private listGroups(request: FakeRequest): FakeReply {

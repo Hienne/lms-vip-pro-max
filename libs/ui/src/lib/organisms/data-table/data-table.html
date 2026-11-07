@@ -56,6 +56,8 @@
   [total]="total()"
   [page]="page()"
   [pageSize]="pageSize()"
+  [pageSizeOptions]="pageSizeOptions()"
   (pageChange)="pageChange.emit($event)"
+  (pageSizeChange)="pageSizeChange.emit($event)"
 />
 }

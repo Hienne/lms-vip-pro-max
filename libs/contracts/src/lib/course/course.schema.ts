@@ -330,6 +330,7 @@ export const CourseCardSchema = z.object({
   assignedCount: z.number().int().nullish(),
   enrollmentId: z.number().int().nullish(),
   learningStatus: z.string().nullish(),
+  /** Required-lesson learning progress; 100% does not imply course completion. */
   progressPercent: z.number().nullish(),
   dueAt: BackendDateTimeSchema.nullish(),
   assigned: z.boolean().nullish(),

@@ -1,0 +1,37 @@
+@use 'ui';
+:host {
+  @include ui.page(wide);
+}
+.chat-room {
+  &__status {
+    @include ui.row-between(3);
+    @include ui.text(sm, muted);
+    padding: ui.space(3) 0;
+    min-height: ui.layout(control);
+    flex-wrap: wrap;
+    button[aria-pressed='true'] {
+      border-color: ui.color(primary);
+      background: ui.color(primary-subtle);
+      color: ui.color(primary);
+    }
+  }
+  &__world {
+    min-width: 0;
+    border: 1px solid ui.color(border);
+    border-radius: ui.radius(card);
+    overflow: hidden;
+    background: ui.color(surface);
+  }
+  &__footer {
+    @include ui.row-between(3);
+    padding: ui.space(3) ui.space(4);
+    border-top: 1px solid ui.color(border);
+  }
+  &__hint {
+    @include ui.text(xs, muted);
+    margin: 0;
+  }
+  &__composer {
+    border-top: 1px solid ui.color(border);
+  }
+}

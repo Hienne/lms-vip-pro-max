@@ -22,6 +22,9 @@ export interface DataTableColumn {
   readonly kind?: 'actions';
 }
 
+/** The rows-per-page choices every table offers unless its owner passes its own. */
+export const PAGE_SIZE_OPTIONS: readonly number[] = [10, 20, 50, 100];
+
 export interface DataTableSort {
   readonly key: string;
   readonly dir: 'asc' | 'desc';
@@ -30,7 +33,8 @@ export interface DataTableSort {
 /**
  * A sortable, paged table (the mockup's `UI.DataTable`) with no state of its own: the owner sorts
  * and slices the rows, passes the visible page as `rows` with the `total`, and reacts to
- * `sortChange` and `pageChange`. Cells are `uiDataTableCell` templates by column key. Rows carry
+ * `sortChange`, `pageChange` and `pageSizeChange` (the rows-per-page picker; a new size starts
+ * again at page 1, which is the owner's call). Cells are `uiDataTableCell` templates by column key. Rows carry
  * an `id`. Below 720px each row becomes a card. Project `[slot=empty]` for the no-rows state.
  */
 @Component({
@@ -49,8 +53,10 @@ export class DataTable<T extends { readonly id: string | number }> {
   readonly sort = input<DataTableSort | null>(null);
   readonly page = input(1);
   readonly pageSize = input(10);
+  readonly pageSizeOptions = input<readonly number[]>(PAGE_SIZE_OPTIONS);
   readonly sortChange = output<DataTableSort>();
   readonly pageChange = output<number>();
+  readonly pageSizeChange = output<number>();
 
   private readonly cells = contentChildren(DataTableCell);
   private readonly headers = contentChildren(DataTableHeader);

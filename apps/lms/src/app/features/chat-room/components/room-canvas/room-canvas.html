@@ -1,0 +1,59 @@
+<div
+  class="room-canvas"
+  tabindex="0"
+  role="application"
+  aria-label="Phòng học. Dùng WASD hoặc phím mũi tên để di chuyển, Enter để chat."
+  (pointerdown)="focus($event)"
+>
+  <div #mount class="room-canvas__mount"></div>
+  @if (view().online) {
+  <div class="room-canvas__controls" aria-label="Điều khiển cảm ứng">
+    <button
+      uiButton
+      size="sm"
+      aria-label="Đi lên"
+      (pointerdown)="touch($event, 0, -1)"
+      (pointerup)="stopTouch()"
+      (pointercancel)="stopTouch()"
+      (lostpointercapture)="stopTouch()"
+    >
+      ↑
+    </button>
+    <div>
+      <button
+        uiButton
+        size="sm"
+        aria-label="Đi trái"
+        (pointerdown)="touch($event, -1, 0)"
+        (pointerup)="stopTouch()"
+        (pointercancel)="stopTouch()"
+        (lostpointercapture)="stopTouch()"
+      >
+        ←
+      </button>
+      <button
+        uiButton
+        size="sm"
+        aria-label="Đi xuống"
+        (pointerdown)="touch($event, 0, 1)"
+        (pointerup)="stopTouch()"
+        (pointercancel)="stopTouch()"
+        (lostpointercapture)="stopTouch()"
+      >
+        ↓
+      </button>
+      <button
+        uiButton
+        size="sm"
+        aria-label="Đi phải"
+        (pointerdown)="touch($event, 1, 0)"
+        (pointerup)="stopTouch()"
+        (pointercancel)="stopTouch()"
+        (lostpointercapture)="stopTouch()"
+      >
+        →
+      </button>
+    </div>
+  </div>
+  }
+</div>

@@ -14,10 +14,7 @@ import {
   type DataTableColumn,
   type MenuEntry,
 } from '@lms/ui';
-import {
-  AssetLibraryStore,
-  LIBRARY_PAGE_SIZE,
-} from './data-access/asset-library.store';
+import { AssetLibraryStore } from './data-access/asset-library.store';
 
 const COLUMNS: readonly DataTableColumn[] = [
   { key: 'name', label: 'Tên tệp' },
@@ -64,5 +61,4 @@ export class AssetLibrary {
   protected readonly store = inject(AssetLibraryStore);
   protected readonly columns = COLUMNS;
   protected readonly rowMenu = ROW_MENU;
-  protected readonly pageSize = LIBRARY_PAGE_SIZE;
 }

@@ -27,6 +27,7 @@ const ROWS: readonly Row[] = [
     [pageSize]="2"
     (sortChange)="sorted.push($event)"
     (pageChange)="paged.push($event)"
+    (pageSizeChange)="sizes.push($event)"
   >
     <ng-template uiDataTableCell="name" [of]="rows()" let-row>
       <strong>{{ row.name }}</strong>
@@ -46,6 +47,22 @@ class Host {
   readonly sort = signal<DataTableSort | null>(null);
   readonly sorted: DataTableSort[] = [];
   readonly paged: number[] = [];
+  readonly sizes: number[] = [];
+}
+
+@Component({
+  imports: [DataTable],
+  template: `<ui-data-table
+    caption="Tất cả dòng"
+    [columns]="[{ key: 'name', label: 'Tên' }]"
+    [rows]="rows"
+    [total]="2"
+    [pageSize]="100"
+    [pageSizeOptions]="[]"
+  />`,
+})
+class AllRowsHost {
+  readonly rows = ROWS;
 }
 
 function render() {
@@ -125,6 +142,21 @@ describe('DataTable', () => {
     expect(host.paged).toEqual([2]);
   });
 
+  it('offers 10 / 20 / 50 / 100 rows per page plus the current size, and reports the choice', () => {
+    const { root, host } = render();
+    const select = root.querySelector<HTMLSelectElement>('.pagination select')!;
+    expect(Array.from(select.options, (o) => o.value)).toEqual([
+      '2',
+      '10',
+      '20',
+      '50',
+      '100',
+    ]);
+    select.value = '50';
+    select.dispatchEvent(new Event('change'));
+    expect(host.sizes).toEqual([50]);
+  });
+
   it('shows the projected empty state instead of a table when there is nothing', () => {
     const { root, set } = render();
     set((h) => {
@@ -135,5 +167,13 @@ describe('DataTable', () => {
     expect(root.querySelector('[slot=empty]')?.textContent).toBe(
       'Chưa có dữ liệu',
     );
+  });
+
+  it('shows no picker when the owner passes no size options', () => {
+    const fixture = TestBed.createComponent(AllRowsHost);
+    fixture.detectChanges();
+    const root = fixture.nativeElement as HTMLElement;
+    expect(root.querySelector('tbody tr')).not.toBeNull();
+    expect(root.querySelector('.pagination select')).toBeNull();
   });
 });

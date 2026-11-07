@@ -7,14 +7,19 @@ import { Pagination } from './pagination';
   template: `<ui-pagination
     [total]="total()"
     [page]="page()"
-    [pageSize]="10"
+    [pageSize]="pageSize()"
+    [pageSizeOptions]="options()"
     (pageChange)="changed.push($event)"
+    (pageSizeChange)="sizes.push($event)"
   />`,
 })
 class Host {
   readonly total = signal(25);
   readonly page = signal(1);
+  readonly pageSize = signal(10);
+  readonly options = signal<readonly number[]>([]);
   readonly changed: number[] = [];
+  readonly sizes: number[] = [];
 }
 
 function render() {
@@ -74,5 +79,76 @@ describe('Pagination', () => {
     expect(root.querySelector('nav')).toBeNull();
     set((h) => h.total.set(0));
     expect(text(root.querySelector('span')!)).toBe('Hiển thị 0–0 / 0');
+  });
+
+  describe('page size', () => {
+    const picker = (root: HTMLElement) =>
+      root.querySelector<HTMLSelectElement>('select');
+    const choices = (root: HTMLElement) =>
+      Array.from(picker(root)?.options ?? []).map((o) => o.value);
+
+    it('has no size picker unless options are given', () => {
+      const { root } = render();
+      expect(picker(root)).toBeNull();
+    });
+
+    it('lists the options with the current size selected and a screen-reader name', () => {
+      const { root, set } = render();
+      set((h) => h.options.set([10, 20, 50]));
+      expect(choices(root)).toEqual(['10', '20', '50']);
+      expect(picker(root)?.value).toBe('10');
+      expect(picker(root)?.getAttribute('aria-label')).toBe(
+        'Số dòng mỗi trang',
+      );
+    });
+
+    it('adds a current size that is not among the options, in order', () => {
+      const { root, set } = render();
+      set((h) => {
+        h.options.set([10, 20, 50]);
+        h.pageSize.set(6);
+      });
+      expect(choices(root)).toEqual(['6', '10', '20', '50']);
+      expect(picker(root)?.value).toBe('6');
+    });
+
+    it('emits the chosen size as a number', () => {
+      const { root, set, host } = render();
+      set((h) => h.options.set([10, 20, 50]));
+      const select = picker(root)!;
+      select.value = '50';
+      select.dispatchEvent(new Event('change'));
+      expect(host.sizes).toEqual([50]);
+    });
+
+    it('does not emit a size the picker never offered', () => {
+      const { root, set, host } = render();
+      set((h) => h.options.set([10, 20, 50]));
+      const select = picker(root)!;
+      const odd = document.createElement('option');
+      odd.value = '1000';
+      select.append(odd);
+      select.value = '1000';
+      select.dispatchEvent(new Event('change'));
+      select.value = '';
+      select.dispatchEvent(new Event('change'));
+      expect(host.sizes).toEqual([]);
+    });
+
+    it('follows a page size changed from outside', () => {
+      const { root, set } = render();
+      set((h) => h.options.set([10, 20, 50]));
+      set((h) => h.pageSize.set(50));
+      expect(picker(root)?.value).toBe('50');
+    });
+
+    it('keeps the picker when there is a single page', () => {
+      const { root, set } = render();
+      set((h) => {
+        h.options.set([10, 20]);
+        h.total.set(7);
+      });
+      expect(picker(root)).not.toBeNull();
+    });
   });
 });

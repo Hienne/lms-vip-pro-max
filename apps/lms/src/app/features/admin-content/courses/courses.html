@@ -9,15 +9,6 @@
   </div>
 </ui-page-header>
 
-@if (store.loadError$(); as error) {
-<ui-error-state
-  title="Không tải được danh sách khóa học"
-  [message]="error.message"
-  (retry)="store.retryLoad()"
-/>
-} @else if (store.isLoading$()) {
-<div class="courses__loading"><span uiSpinner></span></div>
-} @else {
 <section uiCard>
   <div uiCardHeader class="courses__toolbar">
     <div class="row courses__filters">
@@ -67,6 +58,15 @@
     >
   </div>
 
+  @if (store.loadError$(); as error) {
+  <ui-error-state
+    title="Không tải được danh sách khóa học"
+    [message]="error.message"
+    (retry)="store.retryLoad()"
+  />
+  } @else if (store.isLoading$()) {
+  <div class="courses__loading"><span uiSpinner></span></div>
+  } @else {
   <ui-data-table
     caption="Danh sách khóa học"
     [columns]="[
@@ -82,9 +82,10 @@
     [total]="store.total$()"
     [sort]="store.sort$()"
     [page]="store.page$()"
-    [pageSize]="pageSize"
+    [pageSize]="store.pageSize$()"
     (sortChange)="store.sortBy($event)"
     (pageChange)="store.goToPage($event)"
+    (pageSizeChange)="store.changePageSize($event)"
   >
     <ui-empty
       slot="empty"
@@ -121,13 +122,12 @@
     <ng-template uiDataTableCell="actions" [of]="store.rows$()" let-row>
       <div class="courses__actions">
         <a
-          uiButton
+          uiIconButton
           size="sm"
-          variant="ghost"
+          [label]="'Sửa ' + row.title"
           [routerLink]="['/admin/courses', row.id, 'edit']"
-          [attr.aria-label]="'Sửa ' + row.title"
         >
-          <ui-icon name="pen-line" size="sm" />Sửa
+          <ui-icon name="pen-line" size="sm" />
         </a>
         <ui-menu
           [label]="'Thêm thao tác cho ' + row.title"
@@ -142,8 +142,8 @@
       </div>
     </ng-template>
   </ui-data-table>
+  }
 </section>
-}
 
 <ng-template
   [uiDrawer]="store.copying$() !== null"

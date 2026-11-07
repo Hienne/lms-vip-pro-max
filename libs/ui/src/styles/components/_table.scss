@@ -32,6 +32,11 @@
       color: var(--color-primary);
     }
 
+    // A link in a cell reads as a title or an action by its colour and weight, not by an underline.
+    a {
+      text-decoration-line: none;
+    }
+
     td {
       padding: var(--spacing-3) var(--spacing-4);
       border-bottom: 1px solid var(--color-border);

@@ -5,18 +5,23 @@ import {
   AssignCourseCommandSchema,
   AssignmentDetailSchema,
   AssignmentRecipientSchema,
+  AssignmentSummarySchema,
   CourseAssignmentSchema,
   CreateGroupCommandSchema,
   GroupDetailSchema,
   LearningGroupSchema,
   ListAssignmentsQuerySchema,
   ListGroupsQuerySchema,
+  ListOrgAssignmentsQuerySchema,
+  RemindResultSchema,
+  RescheduleAssignmentCommandSchema,
   ReplaceMembersCommandSchema,
   RevokeRecipientCommandSchema,
 } from './assignment.schema';
 
 const courseParams = z.object({ courseId: z.number().int() });
 const groupParams = z.object({ groupId: z.number().int() });
+const assignmentParams = z.object({ assignmentId: z.number().int() });
 
 /** The backend's assignment and learning-group endpoints. */
 export const assignmentEndpoints = {
@@ -40,7 +45,37 @@ export const assignmentEndpoints = {
   getAssignment: defineEndpoint({
     method: 'get',
     path: '/api/v1/learning-assignments/{assignmentId}',
-    params: z.object({ assignmentId: z.number().int() }),
+    params: assignmentParams,
+    response: AssignmentDetailSchema,
+  }),
+  /** An org's assignments across courses with recipient counts; managers of the org only. */
+  orgAssignments: defineEndpoint({
+    method: 'get',
+    path: '/api/v1/learning-assignments',
+    query: ListOrgAssignmentsQuerySchema,
+    response: PageSchema(AssignmentSummarySchema),
+  }),
+  /** New dates and reminder for an active assignment and its active recipients. */
+  rescheduleAssignment: defineEndpoint({
+    method: 'put',
+    path: '/api/v1/learning-assignments/{assignmentId}/schedule',
+    params: assignmentParams,
+    body: RescheduleAssignmentCommandSchema,
+    response: AssignmentDetailSchema,
+  }),
+  /** An in-app reminder now for active recipients who have not finished; once a day each. */
+  remindAssignment: defineEndpoint({
+    method: 'post',
+    path: '/api/v1/learning-assignments/{assignmentId}/remind',
+    params: assignmentParams,
+    response: RemindResultSchema,
+  }),
+  /** Revokes every active recipient with one reason; enrolments and progress stay. */
+  revokeAssignment: defineEndpoint({
+    method: 'post',
+    path: '/api/v1/learning-assignments/{assignmentId}/revoke',
+    params: assignmentParams,
+    body: RevokeRecipientCommandSchema,
     response: AssignmentDetailSchema,
   }),
   /** Ends one recipient's obligation; access stays if another source grants it. */

@@ -60,8 +60,9 @@
     [rows]="rows()"
     [total]="store.total$()"
     [page]="store.page$()"
-    [pageSize]="pageSize"
+    [pageSize]="store.pageSize$()"
     (pageChange)="store.goToPage($event)"
+    (pageSizeChange)="store.changePageSize($event)"
   >
     <ui-empty slot="empty" variant="inline" title="Không có yêu cầu nào." />
 
@@ -101,32 +102,33 @@
     <ng-template uiDataTableCell="actions" [of]="rows()" let-request>
       @if (request.status === 'PENDING') { @if (request.kind === 'REGISTER') {
       <button
-        uiButton
+        uiIconButton
         size="sm"
-        variant="primary"
+        [label]="'Duyệt ' + (request.fullName || request.staffCode)"
         [disabled]="store.isRejecting$() || store.isApproving$()"
         (click)="approve(request)"
       >
-        Duyệt
+        <ui-icon name="check" size="sm" />
       </button>
       } @if (request.kind === 'PASSWORD_RESET' && request.accountFound) {
       <button
-        uiButton
+        uiIconButton
         size="sm"
-        variant="primary"
+        [label]="'Đặt lại mật khẩu cho ' + (request.fullName || request.staffCode)"
         (click)="resetPassword(request)"
       >
-        Đặt lại mật khẩu
+        <ui-icon name="key" size="sm" />
       </button>
       }
       <button
-        uiButton
+        uiIconButton
         size="sm"
-        variant="ghost"
+        variant="danger"
+        [label]="'Từ chối ' + (request.fullName || request.staffCode)"
         [disabled]="store.isRejecting$() || store.isApproving$()"
         (click)="reject(request)"
       >
-        Từ chối
+        <ui-icon name="x" size="sm" />
       </button>
       }
     </ng-template>

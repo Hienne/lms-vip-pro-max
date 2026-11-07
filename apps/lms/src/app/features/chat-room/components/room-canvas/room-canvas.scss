@@ -1,0 +1,37 @@
+@use 'ui';
+:host {
+  display: block;
+  min-width: 0;
+}
+.room-canvas {
+  position: relative;
+  width: 100%;
+  height: clamp(ui.layout(panel), 68dvh, ui.layout(reading));
+  overflow: hidden;
+  background: ui.color(surface-2);
+  &:focus-visible {
+    @include ui.focus-ring;
+  }
+  &__mount {
+    position: absolute;
+    inset: 0;
+  }
+  &__controls {
+    display: none;
+    position: absolute;
+    right: ui.space(3);
+    bottom: ui.space(3);
+    text-align: center;
+    touch-action: none;
+    user-select: none;
+    button {
+      width: ui.layout(touch);
+      height: ui.layout(touch);
+      margin: ui.space(1);
+      touch-action: none;
+    }
+    @media (pointer: coarse) {
+      display: block;
+    }
+  }
+}

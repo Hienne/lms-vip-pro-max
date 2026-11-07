@@ -33,16 +33,16 @@ const DAY = 86_400_000;
 const DUE_IN_DAYS = 30;
 const REMIND_DAYS = 3;
 /** A due date ends at the close of the working day, as in the mockup. */
-const DUE_TIME = 'T17:00:00';
+export const DUE_TIME = 'T17:00:00';
 
-const dateInput = (time: number): string => {
+export const dateInput = (time: number): string => {
   const date = new Date(time);
   const pad = (n: number) => String(n).padStart(2, '0');
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
 };
 
 /** A local date and time as an ISO instant, which the backend reads with its offset. */
-const toInstant = (date: string, time: string): string =>
+export const toInstant = (date: string, time: string): string =>
   new Date(`${date}${time}`).toISOString();
 
 export function newAssignFormValue(

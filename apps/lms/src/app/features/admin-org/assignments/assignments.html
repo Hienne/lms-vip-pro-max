@@ -1,9 +1,6 @@
-@if (store.assigning$(); as assigning) {
-<app-assign-form [courseId]="assigning.courseId" />
-} @else {
 <ui-page-header
-  title="Giao khóa học"
-  description="Quản lý lượt giao, đối tượng học và hạn hoàn thành."
+  title="Giao học & hạn hoàn thành"
+  description="Giao khóa học cho cá nhân, nhóm, phòng hoặc đơn vị."
 >
   <div slot="actions">
     @if (store.tab$() === 'groups') {
@@ -39,8 +36,6 @@
   </ui-tabs>
 </section>
 
-}
-
 <ng-template #assignmentsPanel>
   @if (store.loadError$(); as error) {
   <ui-error-state
@@ -69,6 +64,9 @@
           [attr.title]="store.course$()?.title"
           (change)="store.pickCourse(course.value)"
         >
+          <option value="" [selected]="store.courseId$() === undefined">
+            Tất cả khóa học
+          </option>
           @for (option of store.courses$(); track option.courseId) {
           <option
             [value]="option.courseId"
@@ -78,9 +76,6 @@
           </option>
           }
         </select>
-        @if (store.course$(); as selectedCourse) {
-        <span class="assignments__code">{{ selectedCourse.code }}</span>
-        }
       </label>
       <span class="assignments__count" aria-live="polite"
         >{{ store.total$() }} lượt giao</span
@@ -90,78 +85,123 @@
       <ui-data-table
         caption="Lượt giao khóa học"
         [columns]="[
-        { key: 'title', label: 'Đợt giao', sortable: false },
-        { key: 'start', label: 'Bắt đầu', sortable: false },
-        { key: 'due', label: 'Hạn hoàn thành', sortable: false },
-        { key: 'requirement', label: 'Yêu cầu', sortable: false },
-        { key: 'status', label: 'Trạng thái', sortable: false },
+        { key: 'course', label: 'Khóa học', sortable: false },
+        { key: 'targets', label: 'Đối tượng', sortable: false },
+        { key: 'time', label: 'Thời gian', sortable: false },
+        { key: 'people', label: 'Người', sortable: false },
+        { key: 'progress', label: 'Tiến độ', sortable: false },
+        { key: 'overdue', label: 'Quá hạn', sortable: false },
         { key: 'actions', label: 'Thao tác', kind: 'actions' },
       ]"
         [rows]="store.rows$()"
         [total]="store.total$()"
         [page]="store.page$()"
-        [pageSize]="pageSize"
+        [pageSize]="store.pageSize$()"
         (pageChange)="store.goToPage($event)"
+        (pageSizeChange)="store.changePageSize($event)"
       >
-        <ui-empty
-          slot="empty"
-          variant="inline"
-          title="Khóa học này chưa được giao"
-          description="Chọn đối tượng học và hạn hoàn thành để giao khóa học này."
-        >
-          <button uiButton variant="ghost" (click)="store.startAssign()">
-            Giao khóa học này <ui-icon name="arrow-right" size="sm" />
+        <ui-empty slot="empty" variant="inline" title="Chưa có lượt giao">
+          <button uiButton variant="primary" (click)="store.startAssign()">
+            Giao khóa học
           </button>
         </ui-empty>
-        <ng-template uiDataTableCell="title" [of]="store.rows$()" let-row>
-          <div
-            uiTablePrimary
-            class="assignments__title"
-            [attr.title]="row.title"
-          >
-            {{ row.title }}
-          </div>
-          <div uiTableSub>
-            Giao ngày {{ row.assignment.createTime | fmtDate }}
-          </div>
-        </ng-template>
-        <ng-template uiDataTableCell="start" [of]="store.rows$()" let-row>
-          <span class="assignments__date">
-            {{ row.assignment.startAt | fmtDate }}
-          </span>
-        </ng-template>
-        <ng-template uiDataTableCell="due" [of]="store.rows$()" let-row>
-          <div class="assignments__deadline">
-            @if (row.assignment.dueAt) {
-            <span class="assignments__date">
-              {{ row.assignment.dueAt | fmtDate }}
-            </span>
-            }
-            <app-due-date [dueAt]="row.assignment.dueAt" relativeOnly />
-          </div>
-        </ng-template>
-        <ng-template uiDataTableCell="requirement" [of]="store.rows$()" let-row>
-          {{ requirementLabel[row.assignment.requirement] }}
-        </ng-template>
-        <ng-template uiDataTableCell="status" [of]="store.rows$()" let-row>
-          <span
-            uiBadge
-            [dot]="statusView(row.assignment.status).dot ?? false"
-            [outline]="statusView(row.assignment.status).outline ?? false"
-            [tone]="statusView(row.assignment.status).tone"
-            >{{ statusView(row.assignment.status).label }}</span
-          >
-        </ng-template>
-        <ng-template uiDataTableCell="actions" [of]="store.rows$()" let-row>
+        <ng-template uiDataTableCell="course" [of]="store.rows$()" let-row>
           <button
-            uiButton
-            size="sm"
-            variant="ghost"
-            [attr.aria-label]="'Xem ' + row.title"
+            type="button"
+            uiTablePrimary
+            class="assignments__open"
+            [attr.title]="row.title"
+            [attr.aria-label]="'Xem lượt giao ' + row.title"
             (click)="store.view(row.assignment.id)"
           >
-            Xem
+            {{ row.title }}
           </button>
+          <div uiTableSub>
+            {{ row.summary.courseCode }}@if (row.assignment.title) { · {{
+            row.assignment.title }} }@if (row.revoked) { · Đã thu hồi }
+          </div>
+        </ng-template>
+        <ng-template uiDataTableCell="targets" [of]="store.rows$()" let-row>
+          @if (row.summary.targets[0]; as first) {
+          <div class="assignments__target">
+            {{ typeLabel[first.targetType] }} · {{ first.targetNameSnapshot ||
+            '—' }}
+          </div>
+          @if (row.summary.targets.length > 1) {
+          <div uiTableSub>
+            và {{ row.summary.targets.length - 1 }} đối tượng khác
+          </div>
+          } }
+        </ng-template>
+        <ng-template uiDataTableCell="time" [of]="store.rows$()" let-row>
+          <div class="assignments__deadline">
+            <span class="assignments__date">
+              {{ row.assignment.startAt | fmtDate }} → {{ row.assignment.dueAt |
+              fmtDate }}
+            </span>
+            @if (!row.revoked) {
+            <app-due-date
+              [dueAt]="row.assignment.dueAt"
+              [done]="row.done"
+              relativeOnly
+            />
+            }
+          </div>
+        </ng-template>
+        <ng-template uiDataTableCell="people" [of]="store.rows$()" let-row>
+          <span class="assignments__num">{{ row.summary.people }}</span>
+        </ng-template>
+        <ng-template uiDataTableCell="progress" [of]="store.rows$()" let-row>
+          <div class="assignments__progress">
+            <ui-progress [value]="row.summary.progressPercent" size="sm" />
+            <span class="assignments__num assignments__muted"
+              >{{ row.summary.progressPercent }}% · {{ row.summary.completed
+              }}/{{ row.summary.people }} xong</span
+            >
+          </div>
+        </ng-template>
+        <ng-template uiDataTableCell="overdue" [of]="store.rows$()" let-row>
+          @if (row.summary.overdue) {
+          <span uiBadge tone="danger">{{ row.summary.overdue }} người</span>
+          } @else {
+          <span class="assignments__muted">0</span>
+          }
+        </ng-template>
+        <ng-template uiDataTableCell="actions" [of]="store.rows$()" let-row>
+          @if (!row.revoked) {
+          <div class="assignments__actions">
+            <button
+              uiIconButton
+              type="button"
+              size="sm"
+              [disabled]="row.done || !row.assignment.dueAt || store.remindingId$() === row.assignment.id"
+              [label]="'Nhắc học ' + row.title"
+              (click)="store.remind(row.assignment.id)"
+            >
+              <ui-icon name="bell" size="sm" />
+            </button>
+            <button
+              uiIconButton
+              type="button"
+              size="sm"
+              [label]="'Sửa hạn ' + row.title"
+              (click)="store.startReschedule(row.assignment.id)"
+            >
+              <ui-icon name="pen-line" size="sm" />
+            </button>
+            <button
+              uiIconButton
+              type="button"
+              size="sm"
+              variant="danger"
+              [label]="'Thu hồi ' + row.title"
+              uiTooltip="Thu hồi"
+              (click)="store.startWithdraw(row.assignment.id)"
+            >
+              <ui-icon name="trash-2" size="sm" />
+            </button>
+          </div>
+          }
         </ng-template>
       </ui-data-table>
     </div>
@@ -191,6 +231,7 @@
       [rows]="store.groups$()"
       [total]="store.groups$().length"
       [pageSize]="100"
+      [pageSizeOptions]="[]"
     >
       <ui-empty
         slot="empty"
@@ -222,18 +263,79 @@
       </ng-template>
       <ng-template uiDataTableCell="actions" [of]="store.groups$()" let-row>
         <button
-          uiButton
+          uiIconButton
           size="sm"
-          variant="ghost"
-          [attr.aria-label]="'Thành viên ' + row.group.name"
+          [label]="'Thành viên ' + row.group.name"
           (click)="store.editMembers(row.group.id)"
         >
-          <ui-icon name="users" size="sm" />Thành viên
+          <ui-icon name="users" size="sm" />
         </button>
       </ng-template>
     </ui-data-table>
   </section>
   }
+</ng-template>
+
+<ng-template
+  [uiDrawer]="store.assigning$() !== null"
+  uiDrawerTitle="Giao khóa học"
+  uiDrawerSize="lg"
+  [uiDrawerFooter]="assignFooter"
+  [uiDrawerBusy]="store.isAssigning$()"
+  uiDrawerBusyLabel="Đang giao khóa học…"
+  (uiDrawerDismiss)="store.cancelAssign()"
+>
+  <app-assign-form [courseId]="store.assigning$()?.courseId" />
+</ng-template>
+<ng-template #assignFooter let-close="close">
+  <ui-form-actions
+    formId="assign-form"
+    submitLabel="Giao khóa học"
+    cancelLabel="Hủy"
+    [saving]="store.isAssigning$()"
+    (cancel)="close()"
+  />
+</ng-template>
+
+<ng-template
+  [uiDrawer]="store.rescheduling$() !== undefined"
+  uiDrawerTitle="Sửa lượt giao"
+  [uiDrawerFooter]="scheduleFooter"
+  [uiDrawerBusy]="store.isRescheduling$()"
+  uiDrawerBusyLabel="Đang lưu…"
+  (uiDrawerDismiss)="store.cancelReschedule()"
+>
+  <app-schedule-form />
+</ng-template>
+<ng-template #scheduleFooter let-close="close">
+  <ui-form-actions
+    formId="schedule-form"
+    submitLabel="Lưu"
+    cancelLabel="Hủy"
+    [saving]="store.isRescheduling$()"
+    (cancel)="close()"
+  />
+</ng-template>
+
+<ng-template
+  [uiDrawer]="store.withdrawing$() !== undefined"
+  uiDrawerVariant="dialog"
+  uiDrawerTitle="Thu hồi lượt giao?"
+  [uiDrawerFooter]="withdrawFooter"
+  [uiDrawerBusy]="store.isWithdrawing$()"
+  uiDrawerBusyLabel="Đang thu hồi…"
+  (uiDrawerDismiss)="store.cancelWithdraw()"
+>
+  <app-withdraw-form />
+</ng-template>
+<ng-template #withdrawFooter let-close="close">
+  <ui-form-actions
+    formId="withdraw-form"
+    submitLabel="Thu hồi"
+    cancelLabel="Hủy"
+    [saving]="store.isWithdrawing$()"
+    (cancel)="close()"
+  />
 </ng-template>
 
 <ng-template

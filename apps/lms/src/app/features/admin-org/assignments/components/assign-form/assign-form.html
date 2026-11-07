@@ -1,16 +1,3 @@
-<button
-  uiButton
-  variant="ghost"
-  class="assign-form__back"
-  [disabled]="store.isAssigning$()"
-  (click)="store.cancelAssign()"
->
-  <ui-icon name="arrow-left" size="sm" /> Giao khóa học
-</button>
-<ui-page-header
-  title="Giao khóa học mới"
-  description="Chọn khóa học, đối tượng nhận và thời gian hoàn thành."
-/>
 @if (!store.courses$().length && store.loadError$(); as error) {
 <ui-error-state
   title="Không tải được khóa học"
@@ -20,216 +7,134 @@
 } @else if (!store.courses$().length && store.isLoading$()) {
 <p class="assign-form__hint" role="status">Đang tải khóa học…</p>
 }
-<div class="assign-form__layout" [attr.aria-busy]="store.isAssigning$()">
-  <section uiCard class="assign-form__panel">
-    <form
-      id="assign-form"
-      class="assign-form"
-      [formRoot]="assignForm"
-      [inert]="store.isAssigning$()"
+<form
+  id="assign-form"
+  class="assign-form"
+  [formRoot]="assignForm"
+  [inert]="store.isAssigning$()"
+>
+  @if (store.assignError$(); as error) {
+  <ui-alert tone="danger">{{ error.message }}</ui-alert>
+  }
+  <ui-field label="Khóa học" required>
+    <select
+      uiSelect
+      [attr.title]="selectedCourse()?.title"
+      [formField]="assignForm.courseId"
     >
-      @if (store.assignError$(); as error) {
-      <ui-alert tone="danger">{{ error.message }}</ui-alert>
+      <option value="" [selected]="!assignForm.courseId().value()">
+        — Chọn khóa học —
+      </option>
+      @for (course of store.courses$(); track course.courseId) {
+      <option
+        [value]="course.courseId"
+        [selected]="assignForm.courseId().value() === '' + course.courseId"
+      >
+        {{ course.code }} · {{ course.title }}
+      </option>
       }
-      <fieldset class="assign-form__section">
-        <legend class="assign-form__legend">Thông tin đợt giao</legend>
-        <ui-field label="Khóa học" required>
-          <select
-            uiSelect
-            [attr.title]="selectedCourse()?.title"
-            [formField]="assignForm.courseId"
-          >
-            <option value="" [selected]="!assignForm.courseId().value()">
-              — Chọn khóa học —
-            </option>
-            @for (course of store.courses$(); track course.courseId) {
-            <option
-              [value]="course.courseId"
-              [selected]="assignForm.courseId().value() === '' + course.courseId"
-            >
-              {{ course.title }}
-            </option>
-            }
-          </select>
-          @if (selectedCourse(); as course) {
-          <p class="assign-form__code">{{ course.code }}</p>
-          }
-        </ui-field>
-        <ui-field
-          label="Tên đợt giao"
-          hint="Ví dụ: Cán bộ mới quý IV. Để trống nếu không cần."
+    </select>
+  </ui-field>
+
+  <fieldset class="assign-form__group">
+    <legend class="assign-form__legend">Giao cho</legend>
+    <app-target-picker (added)="addTarget($event)" />
+    @if (assignForm.targets().value().length) {
+    <ul class="assign-form__chosen" aria-label="Đối tượng đã chọn">
+      @for (target of assignForm.targets().value(); track $index) {
+      <li class="assign-form__target">
+        <span class="assign-form__target-type"
+          >{{ typeLabel[target.targetType] }}</span
         >
-          <input uiInput [formField]="assignForm.title" />
-        </ui-field>
-      </fieldset>
-
-      <fieldset class="assign-form__section">
-        <legend class="assign-form__legend">Đối tượng nhận</legend>
-        <app-target-picker (added)="addTarget($event)" />
-        @if (assignForm.targets().value().length) {
-        <ul class="assign-form__chosen" aria-label="Đối tượng đã chọn">
-          @for (target of assignForm.targets().value(); track $index) {
-          <li class="assign-form__target">
-            <span class="assign-form__target-type"
-              >{{ typeLabel[target.targetType] }}</span
-            >
-            <span class="assign-form__target-name">{{ target.label }}</span>
-            <button
-              uiIconButton
-              type="button"
-              size="sm"
-              [label]="'Bỏ ' + target.label"
-              (click)="removeTarget($index)"
-            >
-              <ui-icon name="x" size="sm" />
-            </button>
-          </li>
-          }
-        </ul>
-        } @else if (assignForm.targets().touched() &&
-        assignForm.targets().invalid()) {
-        <ui-alert tone="danger"
-          >{{ assignForm.targets().errors()[0].message }}</ui-alert
+        <span class="assign-form__target-name"
+          >{{ target.label }}@if (target.targetType === 'org' &&
+          target.includeDescendants) { và đơn vị cấp dưới }</span
         >
-        } @else {
-        <p class="assign-form__hint">
-          Học viên được xác định lúc giao: người vào đơn vị hoặc nhóm sau đó
-          không tự nhận lượt giao này.
-        </p>
-        }
-      </fieldset>
+        <button
+          uiIconButton
+          type="button"
+          size="sm"
+          [label]="'Bỏ ' + target.label"
+          (click)="removeTarget($index)"
+        >
+          <ui-icon name="x" size="sm" />
+        </button>
+      </li>
+      }
+    </ul>
+    } @else if (assignForm.targets().touched() &&
+    assignForm.targets().invalid()) {
+    <ui-alert tone="danger"
+      >{{ assignForm.targets().errors()[0].message }}</ui-alert
+    >
+    } @else {
+    <p class="assign-form__hint">
+      Học viên được xác định lúc giao: người vào đơn vị hoặc nhóm sau đó không
+      tự nhận lượt giao này.
+    </p>
+    }
+  </fieldset>
 
-      <fieldset class="assign-form__section">
-        <legend class="assign-form__legend">Thời gian và yêu cầu</legend>
-        <div class="assign-form__pair">
-          <ui-field label="Ngày bắt đầu" required>
-            <input uiInput type="date" [formField]="assignForm.startDate" />
-          </ui-field>
-          <ui-field label="Hạn hoàn thành" required>
-            <input uiInput type="date" [formField]="assignForm.dueDate" />
-          </ui-field>
-        </div>
-        <div class="assign-form__pair">
-          <ui-field label="Yêu cầu">
-            <select uiSelect [formField]="assignForm.requirement">
-              @for (option of requirements; track option[0]) {
-              <option
-                [value]="option[0]"
-                [selected]="assignForm.requirement().value() === option[0]"
-              >
-                {{ option[1] }}
-              </option>
-              }
-            </select>
-          </ui-field>
-          <ui-field label="Người đã từng học khóa này">
-            <select uiSelect [formField]="assignForm.enrollmentMode">
-              @for (option of modes; track option[0]) {
-              <option
-                [value]="option[0]"
-                [selected]="assignForm.enrollmentMode().value() === option[0]"
-              >
-                {{ option[1] }}
-              </option>
-              }
-            </select>
-          </ui-field>
-        </div>
-        <div class="assign-form__reminder">
-          <label class="assign-form__toggle">
-            <input
-              type="checkbox"
-              uiSwitch
-              [formField]="assignForm.reminderEnabled"
-            />
-            Nhắc học trước hạn
-          </label>
-          @if (assignForm.reminderEnabled().value()) {
-          <ui-field label="Số ngày trước hạn">
-            <input
-              uiInput
-              type="number"
-              [formField]="assignForm.reminderDaysBefore"
-            />
-          </ui-field>
-          }
-        </div>
-      </fieldset>
-    </form>
-  </section>
+  <div class="assign-form__pair">
+    <ui-field label="Ngày bắt đầu" required>
+      <input uiInput type="date" [formField]="assignForm.startDate" />
+    </ui-field>
+    <ui-field label="Hạn hoàn thành" required>
+      <input uiInput type="date" [formField]="assignForm.dueDate" />
+    </ui-field>
+  </div>
 
-  <section uiCard class="assign-form__aside" aria-label="Tóm tắt lượt giao">
-    <details class="assign-form__summary" open>
-      <summary class="assign-form__summary-toggle">
-        Tóm tắt lượt giao <ui-icon name="chevron-down" size="sm" />
-      </summary>
-      <div class="assign-form__summary-body">
-        @if (selectedCourse(); as course) {
-        <p class="assign-form__course">{{ course.title }}</p>
-        <p class="assign-form__code">{{ course.code }}</p>
-        } @else {
-        <p class="assign-form__hint">Chưa chọn khóa học.</p>
-        } @if (summaryTitle(); as title) {
-        <p class="assign-form__summary-title">{{ title }}</p>
+  <div class="assign-form__reminder">
+    <label class="assign-form__toggle">
+      <input
+        type="checkbox"
+        uiSwitch
+        [formField]="assignForm.reminderEnabled"
+      />
+      Nhắc học trước hạn
+    </label>
+    @if (assignForm.reminderEnabled().value()) {
+    <ui-field label="Số ngày trước hạn">
+      <input
+        uiInput
+        type="number"
+        [formField]="assignForm.reminderDaysBefore"
+      />
+    </ui-field>
+    }
+  </div>
+
+  <div class="assign-form__pair">
+    <ui-field label="Yêu cầu">
+      <select uiSelect [formField]="assignForm.requirement">
+        @for (option of requirements; track option[0]) {
+        <option
+          [value]="option[0]"
+          [selected]="assignForm.requirement().value() === option[0]"
+        >
+          {{ option[1] }}
+        </option>
         }
-        <section class="assign-form__recipients" aria-label="Đối tượng nhận">
-          <p class="assign-form__summary-label">Đối tượng nhận</p>
-          @if (summary().targets.length) {
-          <ul class="assign-form__recipient-list">
-            @for (target of summary().targets; track $index) {
-            <li>
-              <p>{{ target.label }}</p>
-              <p class="assign-form__hint">
-                {{ typeLabel[target.targetType] }}@if (target.targetType ===
-                'org' && target.includeDescendants) { · Gồm các đơn vị cấp dưới
-                }
-              </p>
-            </li>
-            }
-          </ul>
-          } @else {
-          <p class="assign-form__hint">Chưa chọn đối tượng nhận.</p>
-          }
-        </section>
-        <dl class="assign-form__facts">
-          <div>
-            <dt>Bắt đầu</dt>
-            <dd>{{ summary().startDate | fmtDate }}</dd>
-          </div>
-          <div>
-            <dt>Hoàn thành</dt>
-            <dd>{{ summary().dueDate | fmtDate }}</dd>
-          </div>
-          <div>
-            <dt>Yêu cầu</dt>
-            <dd>{{ requirementLabel[summary().requirement] }}</dd>
-          </div>
-          <div>
-            <dt>Tiến độ</dt>
-            <dd>{{ modeLabel[summary().enrollmentMode] }}</dd>
-          </div>
-          <div>
-            <dt>Nhắc hạn</dt>
-            <dd>
-              @if (summary().reminderEnabled) { Trước {{
-              summary().reminderDaysBefore }} ngày } @else { Không nhắc }
-            </dd>
-          </div>
-        </dl>
-      </div>
-    </details>
-  </section>
-</div>
-<footer appBottomBar class="assign-form__footer">
-  <p class="assign-form__footer-hint" role="status">
-    @if (store.isAssigning$()) { Đang giao khóa học… } @else { Kiểm tra thông
-    tin trước khi giao khóa học. }
-  </p>
-  <ui-form-actions
-    formId="assign-form"
-    submitLabel="Giao khóa học"
-    cancelLabel="Hủy"
-    [saving]="store.isAssigning$()"
-    (cancel)="store.cancelAssign()"
-  />
-</footer>
+      </select>
+    </ui-field>
+    <ui-field label="Người đã từng học khóa này">
+      <select uiSelect [formField]="assignForm.enrollmentMode">
+        @for (option of modes; track option[0]) {
+        <option
+          [value]="option[0]"
+          [selected]="assignForm.enrollmentMode().value() === option[0]"
+        >
+          {{ option[1] }}
+        </option>
+        }
+      </select>
+    </ui-field>
+  </div>
+
+  <ui-field
+    label="Tên đợt giao"
+    hint="Ví dụ: Cán bộ mới quý IV. Để trống nếu không cần."
+  >
+    <input uiInput [formField]="assignForm.title" />
+  </ui-field>
+</form>

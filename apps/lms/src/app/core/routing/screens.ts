@@ -526,6 +526,13 @@ export const SCREEN_TABLE = {
    */
   open: [
     {
+      path: 'chat-room',
+      title: 'Phòng học chung',
+      mockupPage: 'chatRoom',
+      load: () =>
+        import('../../features/chat-room/chat-room').then((m) => m.ChatRoom),
+    },
+    {
       path: 'login',
       title: 'Đăng nhập',
       mockupPage: 'login',
@@ -630,6 +637,10 @@ export const SCREEN_TABLE = {
       access: 'COURSE_MANAGEMENT',
       title: 'Tổng quan giảng viên',
       mockupPage: 'instructor',
+      load: () =>
+        import('../../features/management-dashboard/management-dashboard').then(
+          (m) => m.ManagementDashboard,
+        ),
     },
     {
       path: 'instructor/inbox',
@@ -642,6 +653,10 @@ export const SCREEN_TABLE = {
       access: 'USER_MANAGEMENT',
       title: 'Tổng quan quản trị',
       mockupPage: 'adminHome',
+      load: () =>
+        import('../../features/management-dashboard/management-dashboard').then(
+          (m) => m.ManagementDashboard,
+        ),
     },
     {
       path: 'admin/import',

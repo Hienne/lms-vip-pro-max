@@ -12,6 +12,7 @@ import {
   FmtDatePipe,
   FormActions,
   Icon,
+  IconButton,
   Menu,
   PageHeader,
   Search,
@@ -27,7 +28,7 @@ import {
 } from '../../../shared/status/catalog-status';
 import { CourseShares } from './components/course-shares/course-shares';
 import { CopyCourseForm } from './components/copy-course-form/copy-course-form';
-import { COURSES_PAGE_SIZE, CoursesStore } from './data-access/courses.store';
+import { CoursesStore } from './data-access/courses.store';
 
 /** The authoring list of courses (the mockup's `adminCourses`). */
 @Component({
@@ -47,6 +48,7 @@ import { COURSES_PAGE_SIZE, CoursesStore } from './data-access/courses.store';
     FmtDatePipe,
     FormActions,
     Icon,
+    IconButton,
     Menu,
     PageHeader,
     RequiredMark,
@@ -63,6 +65,5 @@ import { COURSES_PAGE_SIZE, CoursesStore } from './data-access/courses.store';
 })
 export class Courses {
   protected readonly store = inject(CoursesStore);
-  protected readonly pageSize = COURSES_PAGE_SIZE;
   protected readonly statuses = Object.entries(CATALOG_STATUS_LABEL);
 }

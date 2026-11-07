@@ -1,0 +1,15 @@
+@use 'ui';
+.room-composer {
+  @include ui.row(2);
+  align-items: start;
+  padding: ui.space(4);
+  flex-wrap: wrap;
+  ui-field {
+    flex: 1;
+    min-width: 0;
+    flex-basis: 100%;
+    @include ui.bp(md) {
+      flex-basis: auto;
+    }
+  }
+}

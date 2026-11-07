@@ -103,6 +103,7 @@ export function progressReport(input: {
   const saver = inject(FileSaver);
   const view$ = computed<ProgressView>(() => input.filters().view ?? 'course');
   const sort = signal<DataTableSort>(DEFAULT_SORT);
+  const pageSize = signal(PROGRESS_PAGE_SIZE);
   const sortParam = computed(() => `${sort().key},${sort().dir}`);
 
   const groups = serverData(
@@ -116,7 +117,7 @@ export function progressReport(input: {
           ...learningFilter(input.filters()),
           groupBy: view,
           page: input.page() - 1,
-          size: PROGRESS_PAGE_SIZE,
+          size: pageSize(),
         };
       },
     },
@@ -131,7 +132,7 @@ export function progressReport(input: {
           ? {
               ...learningFilter(input.filters()),
               page: input.page() - 1,
-              size: PROGRESS_PAGE_SIZE,
+              size: pageSize(),
               sort: sortParam(),
             }
           : undefined,
@@ -186,6 +187,10 @@ export function progressReport(input: {
     loading$: computed(() => groups.isLoading() || enrollments.isLoading()),
     error$: computed(() => groups.error() ?? enrollments.error()),
     exporting$: exportMutation.isPending,
+    pageSize$: pageSize.asReadonly(),
+    setPageSize(value: number): void {
+      pageSize.set(value);
+    },
     /** Sorts the learner view on one of the server's keys; returns whether it changed. */
     setSort(value: DataTableSort): boolean {
       if (!(LEARNING_REPORT_SORTS as readonly string[]).includes(value.key))

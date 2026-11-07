@@ -110,6 +110,17 @@ describe('QuizAttempts', () => {
     expect(rows().length).toBe(2);
   });
 
+  it('shows more attempts at once when a bigger page size is picked', async () => {
+    signInAsLearner();
+    for (let i = 0; i < 12; i++) await takeAttempt(1);
+    await open();
+    const select = el.querySelector<HTMLSelectElement>('ui-pagination select')!;
+    select.value = '20';
+    select.dispatchEvent(new Event('change'));
+    await settle();
+    expect(rows().length).toBe(12);
+  });
+
   it('exposes no writable signal: every write goes through the store', async () => {
     await open();
     expect(writableSignalsOf(harness)).toEqual([]);

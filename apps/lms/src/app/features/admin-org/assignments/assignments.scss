@@ -4,13 +4,6 @@
   @include ui.page(wide);
 }
 
-:host(.assignments--editing) {
-  display: flex;
-  flex-direction: column;
-  min-height: calc(100dvh - #{ui.layout(header)});
-  padding-bottom: 0;
-}
-
 .assignments {
   &__workspace {
     min-width: 0;
@@ -98,6 +91,51 @@
     @include ui.num;
     display: inline-block;
     white-space: nowrap;
+  }
+
+  &__open {
+    @include ui.truncate;
+    display: block;
+    max-width: ui.layout(panel);
+    padding: 0;
+    border: 0;
+    background: none;
+    color: inherit;
+    font: inherit;
+    text-align: start;
+    cursor: pointer;
+
+    &:hover {
+      text-decoration: underline;
+    }
+
+    &:focus-visible {
+      @include ui.focus-ring;
+    }
+  }
+
+  &__target {
+    @include ui.text(sm);
+    overflow-wrap: anywhere;
+  }
+
+  &__num {
+    @include ui.num;
+  }
+
+  &__muted {
+    @include ui.text(xs, muted);
+  }
+
+  &__progress {
+    @include ui.stack(1);
+    min-width: 7.5rem;
+  }
+
+  &__actions {
+    @include ui.row(1);
+    flex-wrap: nowrap;
+    justify-content: flex-end;
   }
 
   &__code {
