@@ -131,23 +131,6 @@ describe('AppShell', () => {
 
   it.each([
     [
-      'learner',
-      '/learn',
-      [
-        '/profile',
-        '/learn',
-        '/progress',
-        '/quiz',
-        '/knowledge',
-        '/assistant',
-        '/issues',
-        '/community/questions',
-        '/community/articles',
-        '/community/reviews',
-        '/community/me',
-      ],
-    ],
-    [
       'instructor',
       '/learn',
       [
@@ -203,15 +186,49 @@ describe('AppShell', () => {
     },
   );
 
-  it('names each entry with the name the backend sends for the function', async () => {
+  function openLearnerGroup(el: HTMLElement, id: string): HTMLElement | null {
+    el.querySelector<HTMLButtonElement>(
+      `[data-header-panel="${id}"] button`,
+    )?.click();
+    TestBed.tick();
+    return el.querySelector(`#learner-nav-${id}`);
+  }
+
+  it('groups learner links in the header, with the profile kept out of navigation', async () => {
     signInAs('learner');
     const el = await open('/learn');
-    expect(el.querySelector('nav a[href="/learn"]')?.textContent?.trim()).toBe(
-      'Học tập',
-    );
+    const nav = el.querySelector('nav[aria-label="Điều hướng học viên"]');
     expect(
-      el.querySelector('nav a[href="/progress"]')?.textContent?.trim(),
-    ).toBe('Tiến độ học tập');
+      Array.from(nav?.querySelectorAll('button') ?? []).map((button) =>
+        button.textContent?.trim(),
+      ),
+    ).toEqual(['Học tập', 'Công cụ học', 'Cộng đồng']);
+    const hrefsOf = (id: string) =>
+      Array.from(openLearnerGroup(el, id)?.querySelectorAll('a') ?? []).map(
+        (link) => link.getAttribute('href'),
+      );
+    expect(hrefsOf('learn')).toEqual([
+      '/learn',
+      '/catalog',
+      '/progress',
+      '/quiz',
+    ]);
+    expect(hrefsOf('tools')).toEqual(
+      expect.arrayContaining([
+        '/assistant',
+        '/saved',
+        '/flashcards',
+        '/certificates',
+      ]),
+    );
+    expect(hrefsOf('community')).toEqual([
+      '/community/questions',
+      '/community/articles',
+      '/community/reviews',
+      '/community/me',
+      '/chat-room',
+    ]);
+    expect(nav?.querySelector('a[href="/profile"]')).toBeNull();
   });
 
   it('shows no entry for a function the app has no screen for', async () => {
@@ -258,28 +275,32 @@ describe('AppShell', () => {
   it('moves the current-page mark when the user navigates', async () => {
     signInAs('learner');
     const el = await open('/learn');
+    openLearnerGroup(el, 'learn');
     expect(
       el.querySelector('nav a[aria-current="page"]')?.getAttribute('href'),
     ).toBe('/learn');
     await router.navigateByUrl('/progress');
     TestBed.tick();
+    expect(el.querySelector('#learner-nav-learn')).toBeNull();
+    openLearnerGroup(el, 'learn');
     expect(
       el.querySelector('nav a[aria-current="page"]')?.getAttribute('href'),
     ).toBe('/progress');
   });
 
   it('links to the design system from the footer', async () => {
-    signInAs('learner');
+    signInAs('instructor');
     const el = await open('/learn');
     expect(
       el.querySelector('.sidebar__design-link')?.getAttribute('href'),
     ).toBe('/design-system');
   });
 
-  it('frames app routes with sidebar and header', async () => {
+  it('frames learner routes with the header and no sidebar column', async () => {
     signInAs('learner');
     const el = await open('/learn');
-    expect(el.querySelector('app-sidebar')).not.toBeNull();
+    expect(el.querySelector('app-sidebar')).toBeNull();
+    expect(el.querySelector('.app-shell--framed')).toBeNull();
     expect(el.querySelector('app-header')).not.toBeNull();
     expect(el.querySelector('main#main')).not.toBeNull();
     expect(el.querySelector('app-owl button')).not.toBeNull();
@@ -455,7 +476,7 @@ describe('AppShell', () => {
       el.querySelector('.app-shell')?.classList.contains('app-shell--rail');
 
     it('collapses to an icon rail and expands again', async () => {
-      signInAs('learner');
+      signInAs('instructor');
       const el = await open('/learn');
       expect(toggle(el)?.getAttribute('aria-label')).toBe('Thu gọn thanh bên');
       expect(toggle(el)?.getAttribute('aria-expanded')).toBe('true');
@@ -475,18 +496,18 @@ describe('AppShell', () => {
     });
 
     it('keeps every link named while collapsed', async () => {
-      signInAs('learner');
+      signInAs('instructor');
       const el = await open('/learn');
       toggle(el)?.click();
       TestBed.tick();
-      expect(hrefs(el)).toHaveLength(11);
+      expect(hrefs(el)).toHaveLength(17);
       expect(
         el.querySelector('nav a[href="/progress"]')?.textContent?.trim(),
       ).toBe('Tiến độ học tập');
     });
 
     it('remembers the choice in this browser', async () => {
-      signInAs('learner');
+      signInAs('instructor');
       const el = await open('/learn');
       toggle(el)?.click();
       expect(storage.get(SIDEBAR_COLLAPSED_KEY)).toBe('true');
@@ -496,7 +517,7 @@ describe('AppShell', () => {
 
     it('starts collapsed when the browser remembers it', async () => {
       storage.set(SIDEBAR_COLLAPSED_KEY, 'true');
-      signInAs('learner');
+      signInAs('instructor');
       expect(rail(await open('/learn'))).toBe(true);
     });
   });
@@ -517,20 +538,20 @@ describe('AppShell', () => {
     }
 
     it('opens the navigation in a drawer from the header menu button', async () => {
-      signInAs('learner');
+      signInAs('instructor');
       const el = await open('/learn');
       const button = el.querySelector<HTMLButtonElement>('app-header button');
       expect(button?.getAttribute('aria-label')).toBe('Mở menu điều hướng');
       expect(button?.getAttribute('aria-expanded')).toBe('false');
 
       await openDrawer(el);
-      expect(dialog()?.querySelectorAll('nav a')).toHaveLength(11);
+      expect(dialog()?.querySelectorAll('nav a')).toHaveLength(17);
       expect(dialog()?.querySelector('.sidebar__toggle')).toBeNull();
       expect(button?.getAttribute('aria-expanded')).toBe('true');
     });
 
     it('closes the drawer when the user navigates', async () => {
-      signInAs('learner');
+      signInAs('instructor');
       const el = await open('/learn');
       await openDrawer(el);
       await router.navigateByUrl('/progress');
@@ -542,7 +563,7 @@ describe('AppShell', () => {
     });
 
     it('closes on Escape and gives focus back to the menu button', async () => {
-      signInAs('learner');
+      signInAs('instructor');
       const el = await open('/learn');
       const button = el.querySelector<HTMLButtonElement>('app-header button');
       button?.focus();
@@ -640,36 +661,54 @@ describe('AppShell', () => {
     });
 
     describe('user menu', () => {
-      const menu = () => document.querySelector<HTMLElement>('[role="menu"]');
-      const items = () =>
-        Array.from(
-          document.querySelectorAll<HTMLElement>('[role="menuitem"]'),
-        ).map((i) => i.textContent?.trim());
+      const menu = () =>
+        document.querySelector<HTMLElement>('#learner-account-menu');
+      const items = () => Array.from(menu()?.querySelectorAll('button') ?? []);
+      const trigger = (el: HTMLElement) =>
+        el.querySelector<HTMLButtonElement>('.header__account-trigger');
 
       async function openMenu(el: HTMLElement) {
-        el.querySelector<HTMLButtonElement>('ui-menu button')?.click();
+        trigger(el)?.click();
         TestBed.tick();
         await vi.waitFor(() => expect(menu()).not.toBeNull());
       }
 
-      it('lists the profile, notifications and sign-out choices', async () => {
+      it('shows the role and account choices on hover without moving focus', async () => {
         signInAs('learner');
         const el = await open('/learn');
-        expect(el.querySelector('ui-menu button')?.textContent).toContain(
+        expect(trigger(el)?.textContent).toContain(
           seedProfile(USERS.learner).fullName,
         );
-        await openMenu(el);
+        const search = el.querySelector<HTMLInputElement>(
+          'input[type="search"]',
+        );
+        search?.focus();
+        const hover = new Event('pointerenter');
+        Object.defineProperty(hover, 'pointerType', { value: 'mouse' });
+        el.querySelector('[data-header-panel="account"]')?.dispatchEvent(hover);
+        TestBed.tick();
+        expect(document.activeElement).toBe(search);
         expect(menu()?.textContent).toContain(
           `${seedProfile(USERS.learner).fullName} · ${seedProfile(USERS.learner).email}`,
         );
-        expect(items()).toEqual(['Hồ sơ cá nhân', 'Thông báo', 'Đăng xuất']);
+        expect(menu()?.textContent).toContain('Vai trò: Học viên');
+        expect(items().map((item) => item.textContent?.trim())).toEqual([
+          'Hồ sơ cá nhân',
+          'Thông báo',
+          'Đăng xuất',
+        ]);
+        document.dispatchEvent(
+          new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }),
+        );
+        TestBed.tick();
+        expect(menu()).toBeNull();
       });
 
       it('opens the profile page', async () => {
         signInAs('learner');
         const el = await open('/learn');
         await openMenu(el);
-        document.querySelectorAll<HTMLElement>('[role="menuitem"]')[0].click();
+        items()[0].click();
         await vi.waitFor(() => expect(router.url).toBe('/profile'));
       });
 
@@ -677,7 +716,7 @@ describe('AppShell', () => {
         signInAs('learner');
         const el = await open('/learn');
         await openMenu(el);
-        document.querySelectorAll<HTMLElement>('[role="menuitem"]')[2].click();
+        items()[2].click();
         await vi.waitFor(() =>
           expect(
             document.querySelector('[role="alertdialog"]')?.textContent,
@@ -702,7 +741,7 @@ describe('AppShell', () => {
         signInAs('learner');
         const el = await open('/learn');
         await openMenu(el);
-        document.querySelectorAll<HTMLElement>('[role="menuitem"]')[2].click();
+        items()[2].click();
         await vi.waitFor(() =>
           expect(document.querySelector('[role="alertdialog"]')).not.toBeNull(),
         );

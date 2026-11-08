@@ -1,4 +1,54 @@
-<header class="header">
+@let learner = learnerNav();
+<header class="header" [class.header--learner]="learner !== null">
+  @if (learner !== null) {
+  <a class="header__brand" routerLink="/" aria-label="Core Banking Academy">
+    <ui-mai [size]="26" />
+    <span>Core Banking Academy</span>
+  </a>
+  <nav class="header__nav" aria-label="Điều hướng học viên">
+    @for (group of learner; track group.id) {
+    <div
+      class="header__group"
+      [attr.data-header-panel]="group.id"
+      (focusout)="leavePanel($event, group.id)"
+    >
+      <button
+        uiButton
+        type="button"
+        variant="ghost"
+        class="header__tab"
+        [class.header__tab--active]="activeGroup() === group.id"
+        [attr.aria-expanded]="panel()?.id === group.id"
+        [attr.aria-controls]="panel()?.id === group.id ? 'learner-nav-' + group.id : null"
+        (click)="togglePanel(group.id)"
+      >
+        {{ group.label }} <ui-icon name="chevron-down" size="sm" />
+      </button>
+      @if (panel()?.id === group.id) {
+      <ul class="menu header__panel" [id]="'learner-nav-' + group.id">
+        @for (link of group.links; track link.href) {
+        <li>
+          <a
+            class="menu__item"
+            [routerLink]="link.href"
+            [attr.aria-current]="link.href === activeHref() ? 'page' : null"
+            (click)="panel.set(null)"
+          >
+            <ui-icon [name]="link.icon" size="sm" />
+            <span
+              >{{ link.label }} @if (link.upcoming) {
+              <small class="header__soon">Sắp ra mắt</small>
+              }</span
+            >
+          </a>
+        </li>
+        }
+      </ul>
+      }
+    </div>
+    }
+  </nav>
+  } @else {
   <button
     uiIconButton
     class="header__menu"
@@ -9,6 +59,7 @@
   >
     <ui-icon name="menu" />
   </button>
+  }
   <form class="header__search" role="search" (submit)="submit($event)">
     <ui-icon name="search" />
     <label class="sr-only" for="gsearch">Tìm kiếm</label>
@@ -25,7 +76,53 @@
   <div class="header__actions">
     <app-theme-picker />
     <app-notification-bell [unread]="unread()" />
-    @if (user(); as me) {
+    @if (user(); as me) { @if (learner !== null) {
+    <div
+      class="header__account"
+      data-header-panel="account"
+      (pointerenter)="showAccount($event)"
+      (pointerleave)="hideAccount()"
+      (focusout)="leavePanel($event, 'account')"
+    >
+      <button
+        uiButton
+        type="button"
+        variant="ghost"
+        class="header__account-trigger"
+        [attr.aria-label]="me.fullName"
+        [attr.aria-expanded]="panel()?.id === 'account'"
+        [attr.aria-controls]="panel()?.id === 'account' ? 'learner-account-menu' : null"
+        (click)="togglePanel('account')"
+      >
+        <ui-icon name="user" size="sm" />
+        <span>{{ me.fullName }}</span>
+        <ui-icon class="header__account-arrow" name="chevron-down" size="sm" />
+      </button>
+      @if (panel()?.id === 'account') {
+      <div
+        id="learner-account-menu"
+        class="menu header__panel header__panel--account"
+      >
+        @for (entry of entries(); track $index) { @switch (entry.kind) { @case
+        ('label') {
+        <div class="menu__label">{{ entry.label }}</div>
+        } @case ('separator') {
+        <div class="menu__sep" role="separator"></div>
+        } @case ('item') {
+        <button
+          type="button"
+          class="menu__item"
+          [class.is-danger]="entry.tone === 'danger'"
+          (click)="chooseAccount(entry.value)"
+        >
+          @if (entry.icon; as icon) { <ui-icon [name]="icon" size="sm" /> } {{
+          entry.label }}
+        </button>
+        } } }
+      </div>
+      }
+    </div>
+    } @else {
     <ui-menu
       [label]="me.fullName"
       icon="user"
@@ -34,6 +131,6 @@
       [entries]="entries()"
       (selected)="picked.emit($event)"
     />
-    }
+    } }
   </div>
 </header>
