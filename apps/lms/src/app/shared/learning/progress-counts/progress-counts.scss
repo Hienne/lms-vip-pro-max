@@ -1,7 +1,7 @@
 @use 'ui';
 
 .progress-counts {
-  @include ui.row(6);
+  @include ui.row(5);
   flex-wrap: wrap;
   margin: 0;
 
@@ -14,9 +14,37 @@
 
     dd {
       @include ui.num;
-      @include ui.text(xl);
+      @include ui.text(2xl);
       margin: 0;
       font-weight: ui.weight(semibold);
+    }
+  }
+
+  &__item--score {
+    padding-inline-start: ui.space(5);
+    border-inline-start: 1px solid ui.color(border);
+  }
+
+  &__filter {
+    font: inherit;
+    color: inherit;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    cursor: pointer;
+
+    &--selected {
+      text-decoration: underline;
+      text-decoration-thickness: 2px;
+      text-underline-offset: 4px;
+    }
+
+    &:hover {
+      text-decoration: underline;
+    }
+
+    &:focus-visible {
+      @include ui.focus-ring;
     }
   }
 

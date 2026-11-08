@@ -1,13 +1,29 @@
 <dl class="progress-counts">
   @for (item of items(); track item.label) {
   <div class="progress-counts__item">
-    <dt>{{ item.label }}</dt>
+    <dt
+      [attr.title]="item.filter === 'overdue' ? 'Khóa quá hạn có thể đang học hoặc chưa bắt đầu.' : null"
+    >
+      {{ item.label }}
+    </dt>
     <dd [class.progress-counts__value--danger]="item.danger">
-      {{ item.value }}
+      @if (interactive() && item.filter; as filter) {
+      <button
+        type="button"
+        class="progress-counts__filter"
+        [class.progress-counts__filter--selected]="selectedFilter() === filter"
+        [attr.aria-pressed]="selectedFilter() === filter"
+        [attr.aria-label]="'Xem khóa học ' + item.label.toLowerCase() + ': ' + item.value"
+        [attr.title]="filter === 'overdue' ? 'Khóa quá hạn có thể đang học hoặc chưa bắt đầu.' : null"
+        (click)="filterSelected.emit(filter)"
+      >
+        {{ item.value }}
+      </button>
+      } @else { {{ item.value }} }
     </dd>
   </div>
   } @let average = averageScore(); @if (average !== undefined) {
-  <div class="progress-counts__item">
+  <div class="progress-counts__item progress-counts__item--score">
     <dt>Điểm thi trung bình</dt>
     <dd>@if (average === null) { — } @else { {{ average | fmtPct: 2 }} }</dd>
   </div>

@@ -31,8 +31,10 @@
 <app-progress-counts
   [counts]="summary.counts"
   [averageScore]="store.averageScore$()"
+  [interactive]="true"
+  [selectedFilter]="selectedCountFilter()"
+  (filterSelected)="store.filterCount($event)"
 />
-<app-unavailable-note class="learning-progress__note" [summary]="summary" />
 } @if (store.isEmpty$() && store.tab$() === 'courses') {
 <ui-empty
   title="Bạn chưa có khóa học nào."
@@ -40,45 +42,7 @@
 >
   <a uiButton variant="primary" routerLink="/catalog">Xem danh mục khóa học</a>
 </ui-empty>
-} } @if (!store.isEmpty$() && !store.summaryError$() &&
-!store.isSummaryLoading$()) {
-<section class="learning-progress__rhythm" aria-labelledby="progress-rhythm">
-  <h2 id="progress-rhythm">Nhịp học</h2>
-  @if (store.streakError$(); as error) {
-  <ui-error-state
-    title="Không tải được chuỗi ngày học"
-    [message]="error.message"
-    (retry)="store.retryStreak()"
-  />
-  } @else if (store.streak$(); as streak) {
-  <dl class="learning-progress__streak">
-    <div>
-      <dt>Chuỗi hiện tại</dt>
-      <dd>{{ streak.currentStreak }} ngày làm việc</dd>
-    </div>
-    <div>
-      <dt>Chuỗi dài nhất</dt>
-      <dd>{{ streak.longestStreak }} ngày làm việc</dd>
-    </div>
-  </dl>
-  <p class="learning-progress__muted">
-    Chuỗi chỉ đếm ngày làm việc. Cuối tuần và ngày nghỉ của ngân hàng không tính
-    và không làm đứt chuỗi; học vào những ngày đó vẫn hiện trên lịch.
-  </p>
-  <app-activity-heatmap
-    [days]="streak.days"
-    label="Hoạt động học 26 tuần gần nhất"
-  />
-  } @else {
-  <div
-    uiSkeleton
-    variant="block"
-    class="learning-progress__rhythm-placeholder"
-    aria-busy="true"
-  ></div>
-  }
-</section>
-} @if (!store.summaryError$() && !store.isSummaryLoading$()) {
+} } @if (!store.summaryError$() && !store.isSummaryLoading$()) {
 <ui-tabs
   label="Tiến độ học tập"
   [tabs]="tabs"
@@ -90,24 +54,6 @@
     class="learning-progress__table"
     aria-label="Danh sách khóa học"
   >
-    @if (store.competency$()) {
-    <div class="learning-progress__competency-link">
-      <span>
-        @if (assessedCompetencyCount() > 0) { Năng lực: đã có kết quả ở {{
-        assessedCompetencyCount() }} nhóm kiến thức } @else { Năng lực: chưa có
-        kết quả đánh giá }
-      </span>
-      <button
-        uiButton
-        variant="ghost"
-        size="sm"
-        type="button"
-        (click)="store.selectTab('competency')"
-      >
-        Xem chi tiết <ui-icon name="chevron-right" size="sm" />
-      </button>
-    </div>
-    }
     <div class="learning-progress__intro">
       <div>
         <h2>Tiến độ từng khóa học</h2>
@@ -383,50 +329,91 @@
       </section>
       <section
         class="learning-progress__competency-summary"
-        aria-labelledby="weekly-activity"
+        aria-labelledby="progress-rhythm"
       >
-        <h2 id="weekly-activity">Nhịp học mỗi tuần</h2>
+        <h2 id="progress-rhythm">Nhịp học</h2>
         <p class="learning-progress__muted">
-          Số ngày bạn có hoạt động học trong 8 tuần gần nhất.
+          Hoạt động học trong 26 tuần gần nhất.
         </p>
-        <div class="learning-progress__activity">
-          <h3>Biểu đồ hoạt động</h3>
-          @if (store.weeklyError$(); as error) {
+        <div class="learning-progress__activity learning-progress__rhythm">
+          @if (store.streakError$(); as error) {
           <ui-error-state
-            title="Không tải được hoạt động học"
+            title="Không tải được chuỗi ngày học"
             [message]="error.message"
-            (retry)="store.retryWeekly()"
+            (retry)="store.retryStreak()"
           />
-          } @else if (store.weekly$()) {
-          <ui-bar-chart
-            [data]="store.weeklyBars$()"
-            [max]="7"
-            label="Số ngày có hoạt động học theo tuần"
-            unit=" ngày"
+          } @else if (store.streak$(); as streak) {
+          <dl class="learning-progress__streak">
+            <div>
+              <dt>Chuỗi hiện tại</dt>
+              <dd>{{ streak.currentStreak }} ngày làm việc</dd>
+            </div>
+            <div>
+              <dt>Chuỗi dài nhất</dt>
+              <dd>{{ streak.longestStreak }} ngày làm việc</dd>
+            </div>
+          </dl>
+          <p class="learning-progress__muted">Chuỗi tính theo ngày làm việc.</p>
+          <app-activity-heatmap
+            [days]="streak.days"
+            label="Hoạt động học 26 tuần gần nhất"
           />
-          @if (store.weekly$(); as activity) { @if (activity.weeks.length >= 2)
-          {
-          <p class="learning-progress__activity-summary">
-            Tuần này:
-            <strong
-              >{{ activity.weeks[activity.weeks.length - 1].activeDays }}
-              ngày</strong
-            >
-            · Tuần trước:
-            <strong
-              >{{ activity.weeks[activity.weeks.length - 2].activeDays }}
-              ngày</strong
-            >
-            có hoạt động
-          </p>
-          } } } @else {
+          <details class="learning-progress__details">
+            <summary>Quy tắc tính chuỗi</summary>
+            <p class="learning-progress__muted">
+              Cuối tuần và ngày nghỉ của ngân hàng không được tính vào chuỗi,
+              nhưng cũng không làm gián đoạn chuỗi. Hoạt động học trong những ngày này vẫn hiển thị trên lịch.
+            </p>
+          </details>
+          } @else {
           <div
             uiSkeleton
             variant="block"
-            class="learning-progress__competency-placeholder"
+            class="learning-progress__rhythm-placeholder"
             aria-busy="true"
           ></div>
           }
+          <details class="learning-progress__details">
+            <summary>Xem theo tuần</summary>
+            <p class="learning-progress__muted">
+              Số ngày có hoạt động học trong 8 tuần gần nhất.
+            </p>
+            @if (store.weeklyError$(); as error) {
+            <ui-error-state
+              title="Không tải được hoạt động học"
+              [message]="error.message"
+              (retry)="store.retryWeekly()"
+            />
+            } @else if (store.weekly$(); as activity) {
+            <ui-bar-chart
+              [data]="store.weeklyBars$()"
+              [max]="7"
+              label="Số ngày có hoạt động học theo tuần"
+              unit=" ngày"
+            />
+            @if (activity.weeks.length >= 2) {
+            <p class="learning-progress__activity-summary">
+              Tuần này:
+              <strong
+                >{{ activity.weeks[activity.weeks.length - 1].activeDays }}
+                ngày</strong
+              >
+              · Tuần trước:
+              <strong
+                >{{ activity.weeks[activity.weeks.length - 2].activeDays }}
+                ngày</strong
+              >
+              có hoạt động
+            </p>
+            } } @else {
+            <div
+              uiSkeleton
+              variant="block"
+              class="learning-progress__competency-placeholder"
+              aria-busy="true"
+            ></div>
+            }
+          </details>
         </div>
       </section>
     </div>
