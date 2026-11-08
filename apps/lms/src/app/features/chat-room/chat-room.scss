@@ -16,6 +16,7 @@
     }
   }
   &__world {
+    position: relative;
     min-width: 0;
     border: 1px solid ui.color(border);
     border-radius: ui.radius(card);
@@ -34,34 +35,19 @@
   &__composer {
     border-top: 1px solid ui.color(border);
   }
-  &__game {
-    padding: ui.space(4);
-    border-bottom: 1px solid ui.color(border);
-    h2,
-    h3,
-    p {
-      margin: 0;
-    }
-    h2 {
-      @include ui.text(lg);
-    }
-    h3 {
-      @include ui.text(md);
-    }
-    p {
-      @include ui.text(sm, muted);
-    }
-    > :not(:first-child) {
-      margin-top: ui.space(3);
+  &__dice-entry,
+  &__dice {
+    position: absolute;
+    z-index: 1;
+    right: ui.space(3);
+    top: calc(ui.space(3) + 2 * ui.layout(control-sm) + ui.space(2));
+    @include ui.bp(md) {
+      top: calc(ui.space(3) + ui.layout(control-sm) + ui.space(2));
     }
   }
-  &__game-header {
-    @include ui.row-between(3);
-    flex-wrap: wrap;
-  }
-  &__choices {
-    display: flex;
-    flex-wrap: wrap;
-    gap: ui.space(2);
+  &__dice {
+    width: min(ui.layout(panel), calc(100% - 2 * ui.space(3)));
+    max-height: calc(clamp(ui.layout(panel), 68dvh, ui.layout(reading)) - 96px);
+    overflow-y: auto;
   }
 }

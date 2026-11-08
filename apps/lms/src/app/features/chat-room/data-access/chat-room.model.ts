@@ -1,10 +1,43 @@
-import type { RoomChat, RoomGesture, RoomPlayer } from '@lms/contracts';
+import type {
+  RoomArea,
+  RoomChat,
+  RoomDiceState,
+  RoomGesture,
+  RoomHighFive,
+  RoomPlayer,
+} from '@lms/contracts';
+
+export function inRoomArea(
+  area: RoomArea | null | undefined,
+  x: number,
+  y: number,
+): boolean {
+  return (
+    !!area &&
+    x >= area.x &&
+    x <= area.x + area.w &&
+    y >= area.y &&
+    y <= area.y + area.h
+  );
+}
 
 export interface RoomSpeech extends RoomChat {
   readonly expiresAt: number;
 }
-export interface TimedRoomGesture extends RoomGesture {
-  readonly startedAt: number;
+export type TimedRoomGesture = (
+  | RoomGesture
+  | {
+      kind: 'high-five';
+      origin: RoomHighFive['from'];
+      partner: RoomHighFive['to'];
+      leading: boolean;
+    }
+) & { readonly startedAt: number };
+
+export interface RoomInvitationView {
+  readonly id: string;
+  readonly name: string;
+  readonly incoming: boolean;
 }
 export type RoomViewMode = '3d' | '2d';
 
@@ -14,6 +47,7 @@ export interface RoomCanvasState {
   readonly me: string;
   readonly players: readonly RoomPlayer[];
   readonly chatting: boolean;
+  readonly dice?: RoomDiceState['result'];
   readonly speech: Readonly<Record<string, RoomSpeech>>;
   readonly gestures: Readonly<Record<string, TimedRoomGesture>>;
   readonly correction: { readonly x: number; readonly y: number } | null;

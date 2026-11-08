@@ -72,6 +72,7 @@ describe('LessonStore', () => {
         provideRouter([
           { path: 'lesson/:courseId/:lessonId', component: Host },
           { path: 'away', component: Away },
+          { path: 'course/:id', component: Away },
         ]),
         { provide: SessionStore, useClass: FakeSessionStore },
       ],
@@ -232,13 +233,13 @@ describe('LessonStore', () => {
     visibility.mockRestore();
   });
 
-  it('shows the result of "Đánh dấu hoàn thành" instead of the loaded progress', async () => {
+  it('shows the result of completing the block on advance', async () => {
     const store = await open(2);
     expect(store.completion$().done).toBe(false);
     expect(store.completion$().manual).toBe(true);
     const course = store.courseProgress$();
 
-    store.markComplete();
+    store.advance();
     settle();
 
     expect(events().at(-1)).toMatchObject({
@@ -309,7 +310,7 @@ describe('LessonStore', () => {
     const [block] = blocksOf(lessonIds()[2]);
     takeOverElsewhere(block);
 
-    store.markComplete();
+    store.advance();
     settle();
 
     // The event was refused as expired, the silent claim was refused as in use.
@@ -319,7 +320,7 @@ describe('LessonStore', () => {
     // Nothing more is saved from here, so the save line must not keep saying it was.
     expect(store.save$()).toBe('idle');
     const count = events().length;
-    store.markComplete();
+    store.advance();
     settle();
     expect(events().length).toBe(count);
   });
@@ -334,17 +335,17 @@ describe('LessonStore', () => {
     );
     handle.mockClear();
 
-    store.markComplete();
+    store.advance();
     settle();
     expect(claims()).toHaveLength(1);
     expect(sent(learnerEndpoints.enrollment)).toHaveLength(1);
     expect(store.save$()).toBe('saved');
 
-    store.markComplete();
+    store.advance();
     settle();
     expect(claims()).toHaveLength(2);
 
-    store.markComplete();
+    store.advance();
     settle();
     // Two re-claims in a row are all it makes: the save is reported as failed.
     expect(claims()).toHaveLength(2);
@@ -365,7 +366,7 @@ describe('LessonStore', () => {
     );
     handle.mockClear();
 
-    store.markComplete();
+    store.advance();
     settle();
     expect(store.save$()).toBe('failed');
     expect(store.completion$().done).toBe(false);
@@ -389,7 +390,7 @@ describe('LessonStore', () => {
         ? backendRefusal('mediaChanged')
         : original(endpoint, request),
     );
-    store.markComplete();
+    store.advance();
     settle();
     expect(store.phase$()).toBe('media-changed');
   });

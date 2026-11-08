@@ -673,16 +673,22 @@ The map's `activityArea` marks a walkable gathering space in both renderers. The
 `gestures: true` enables server-broadcast jumping and waving. The server picks the nearest reachable
 player for a wave. Both renderers use the shared gesture timeline and keep the collision footprint at ground level.
 
+The join form sends an optional `avatar` style and opts in to seating and high fives with
+`interactions: true`. Both renderers use the server's chair index for the seated pose and its
+accepted high-five event for paired animation. The server owns chair occupancy and validates the
+recipient, expiry and reach of every high-five invitation.
+
 There is no chat sidebar or chat log. Enter or the mobile-friendly "Nhắn tin" button opens the
 composer immediately above the instructions; sending or Escape closes it. Only active overhead
 bubbles (5.5 seconds) are held in the store and expired by per-player timers. Welcome history from
 older servers is ignored. The updated backend does not retain messages and sends an empty compatibility
 `history` field, so late arrivals/reconnects cannot receive previous speech.
 
-Clients opt in to the room quiz with `activities: true` on join. The backend assigns and transfers the
-host, validates one answer per authenticated user per round, and reveals the correct answer when the host
-closes the round. The store renders the latest personalized `game` event in either view.
+The current client opts in to the dice table with `dice: true` on join. Both views mark `diceArea`
+on the map. The backend owns each connection's starting balance of 100 play tokens and resolves
+individual rolls after checking the player's position and stake. The turn number makes repeated
+commands safe. Balance and results live for the WebSocket session.
 
 Deploy the matching `corebanking-academy` module and configure WebSocket upgrade for
 `/api/v1/chat-room/socket` on the FE reverse proxy. The development `/api` proxy enables WebSocket.
-No database migration is required. Presence and the current quiz round are held in one backend instance's memory.
+No database migration is required. Presence and dice state are held in one backend instance's memory.

@@ -106,6 +106,7 @@ export class StudyChannel {
   private busy = false;
   private resyncs = 0;
   private afterIdle: (() => void) | null = null;
+  private onSaved: ((saved: boolean) => void) | null = null;
   private heartbeat: Subscription | undefined;
   private destroyed = false;
 
@@ -121,6 +122,7 @@ export class StudyChannel {
       return;
     }
     this.wanted = target;
+    this.finishSave(false);
     // A claim in flight finishes first (`claimed` then claims what is wanted now).
     if (this.state.phase() === 'claiming') return;
     if (this.state.phase() === 'ready' && this.target) {
@@ -146,6 +148,7 @@ export class StudyChannel {
   /** Claims the block again with the ids this tab holds ("Thử lại", "Tải lại bài"). */
   reclaim(): void {
     if (this.destroyed || this.state.phase() === 'claiming') return;
+    this.finishSave(false);
     if (this.busy) {
       // The request in flight is answered first: its answer frees the slot, which would
       // otherwise be the claim's, and the next event would reuse a sequence still in flight.
@@ -159,6 +162,20 @@ export class StudyChannel {
   send(event: StudyEvent): void {
     if (this.destroyed || this.state.phase() !== 'ready') return;
     this.queue(event);
+    this.pump();
+  }
+
+  /** Let the page advance only after the current block's queued writes are acknowledged. */
+  saveBeforeLeaving(
+    event: StudyEvent | undefined,
+    settled: (saved: boolean) => void,
+  ): void {
+    if (this.destroyed || this.state.phase() !== 'ready') {
+      settled(false);
+      return;
+    }
+    this.onSaved = settled;
+    if (event) this.queue(event);
     this.pump();
   }
 
@@ -179,6 +196,7 @@ export class StudyChannel {
   /** Route leave: `CLOSE` the block, best effort, and stop the timer. */
   destroy(): void {
     if (this.destroyed) return;
+    this.finishSave(false);
     if (this.state.phase() === 'ready') {
       this.queue(this.closeEvent());
       this.pump();
@@ -353,6 +371,7 @@ export class StudyChannel {
     if (!this.inFlight) {
       const event = this.waiting.shift();
       if (!event) {
+        this.finishSave(true);
         this.runAfterIdle();
         return;
       }
@@ -393,6 +412,7 @@ export class StudyChannel {
 
   private refused(error: unknown): void {
     this.busy = false;
+    this.finishSave(false);
     if (this.destroyed) {
       // The page is gone: a `CLOSE` that cannot be sent is dropped, not claimed again.
       this.inFlight = null;
@@ -439,6 +459,12 @@ export class StudyChannel {
     const next = this.afterIdle;
     this.afterIdle = null;
     next?.();
+  }
+
+  private finishSave(saved: boolean): void {
+    const callback = this.onSaved;
+    this.onSaved = null;
+    callback?.(saved);
   }
 
   // ---- heartbeat ----

@@ -89,8 +89,9 @@ describe('ChatRoomStore', () => {
       type: 'join',
       name: 'An',
       color: 'teal',
-      activities: true,
+      dice: true,
       gestures: true,
+      interactions: true,
     });
     expect(store.online$()).toBe(true);
     observer.message({

@@ -8,10 +8,13 @@ export const RoomColorSchema = z.enum([
   'rose',
 ]);
 export type RoomColor = z.infer<typeof RoomColorSchema>;
+export const RoomAvatarStyleSchema = z.enum(['male', 'female']);
+export type RoomAvatarStyle = z.infer<typeof RoomAvatarStyleSchema>;
 
 export const RoomIdentitySchema = z.object({
   name: z.string().trim().min(1).max(24),
   color: RoomColorSchema,
+  avatar: RoomAvatarStyleSchema.optional(),
 });
 export type RoomIdentity = z.infer<typeof RoomIdentitySchema>;
 
@@ -38,6 +41,7 @@ export const RoomPlayerSchema = RoomIdentitySchema.extend({
   x: z.number(),
   y: z.number(),
   facing: RoomFacingSchema.optional(),
+  seat: z.int().nonnegative().optional(),
 });
 export type RoomPlayer = z.infer<typeof RoomPlayerSchema>;
 
@@ -62,20 +66,22 @@ const RoomGestureSchema = z.object({
 });
 export type RoomGesture = z.infer<typeof RoomGestureSchema>;
 
+const RoomAreaSchema = z.object({
+  x: z.number(),
+  y: z.number(),
+  w: z.number().positive(),
+  h: z.number().positive(),
+});
+export type RoomArea = z.infer<typeof RoomAreaSchema>;
+
 export const RoomMapSchema = z.object({
   width: z.number().positive(),
   height: z.number().positive(),
   speed: z.number().positive(),
   radius: z.number().positive(),
   spawn: z.object({ x: z.number(), y: z.number() }),
-  activityArea: z
-    .object({
-      x: z.number(),
-      y: z.number(),
-      w: z.number().positive(),
-      h: z.number().positive(),
-    })
-    .nullish(),
+  activityArea: RoomAreaSchema.nullish(),
+  diceArea: RoomAreaSchema.nullish(),
   objects: z.array(
     z.object({
       kind: z.enum(['board', 'shelf', 'plant', 'desk', 'chair']),
@@ -93,47 +99,90 @@ export const RoomTicketSchema = z.object({
   ticket: z.string(),
   expiresAt: z.iso.datetime(),
 });
-const RoomGameStateSchema = z.object({
-  type: z.literal('game'),
-  hostId: z.string(),
-  round: z
+const RoomDiceSideSchema = z.enum(['small', 'big']);
+export type RoomDiceSide = z.infer<typeof RoomDiceSideSchema>;
+const RoomDiceRollSchema = z.object({
+  type: z.literal('dice-roll'),
+  turn: z.int().nonnegative(),
+  side: RoomDiceSideSchema,
+  stake: z.int().positive(),
+});
+export type RoomDiceBet = Pick<
+  z.infer<typeof RoomDiceRollSchema>,
+  'side' | 'stake'
+>;
+const DiceFaceSchema = z.int().min(1).max(6);
+const RoomDiceStateSchema = z.object({
+  type: z.literal('dice-state'),
+  balance: z.int().nonnegative(),
+  turn: z.int().nonnegative(),
+  result: z
     .object({
-      id: z.string(),
-      prompt: z.string(),
-      options: z.array(z.string()).length(4),
-      answered: z.int().nonnegative(),
-      yourChoice: z
-        .int()
-        .min(0)
-        .max(3)
-        .nullish()
-        .transform((choice) => choice ?? null),
-      correctIndex: z.int().min(0).max(3).optional(),
-      correctCount: z.int().nonnegative().optional(),
+      side: RoomDiceSideSchema,
+      stake: z.int().positive(),
+      dice: z.tuple([DiceFaceSchema, DiceFaceSchema, DiceFaceSchema]),
+      total: z.int().min(3).max(18),
+      outcome: z.enum(['small', 'big', 'triple']),
+      won: z.boolean(),
     })
     .optional(),
 });
-export type RoomGameState = z.infer<typeof RoomGameStateSchema>;
+export type RoomDiceState = z.infer<typeof RoomDiceStateSchema>;
+
+const RoomSeatCommandSchema = z.object({
+  type: z.literal('seat'),
+  action: z.enum(['sit', 'stand']),
+  chair: z.int().nonnegative().optional(),
+});
+const HighFiveInviteCommandSchema = z.object({
+  type: z.literal('high-five-invite'),
+});
+const HighFiveReplyCommandSchema = z.object({
+  type: z.literal('high-five-reply'),
+  inviteId: z.string(),
+  accept: z.boolean(),
+});
+export type RoomInteractionCommand = z.infer<
+  | typeof RoomSeatCommandSchema
+  | typeof HighFiveInviteCommandSchema
+  | typeof HighFiveReplyCommandSchema
+>;
+const HighFiveInviteSchema = z.object({
+  type: z.literal('high-five-invite'),
+  id: z.string(),
+  from: z.string(),
+  to: z.string(),
+});
+export type RoomHighFiveInvite = z.infer<typeof HighFiveInviteSchema>;
+const HighFiveParticipantSchema = z.object({
+  id: z.string(),
+  x: z.number(),
+  y: z.number(),
+});
+const HighFiveSchema = z.object({
+  type: z.literal('high-five'),
+  from: HighFiveParticipantSchema,
+  to: HighFiveParticipantSchema,
+});
+export type RoomHighFive = z.infer<typeof HighFiveSchema>;
 
 export const RoomCommandSchema = z.discriminatedUnion('type', [
   RoomIdentitySchema.extend({
     type: z.literal('join'),
-    activities: z.literal(true).optional(),
+    dice: z.literal(true).optional(),
     gestures: z.literal(true).optional(),
+    interactions: z.literal(true).optional(),
   }),
   RoomMovementSchema.extend({ type: z.literal('move') }),
   z.object({
     type: z.literal('chat'),
     text: z.string().trim().min(1).max(280),
   }),
-  z.object({ type: z.literal('game-start') }),
+  RoomDiceRollSchema,
   z.object({ type: z.literal('gesture'), kind: RoomGestureKindSchema }),
-  z.object({ type: z.literal('game-close'), roundId: z.string() }),
-  z.object({
-    type: z.literal('game-answer'),
-    roundId: z.string(),
-    choice: z.int().min(0).max(3),
-  }),
+  RoomSeatCommandSchema,
+  HighFiveInviteCommandSchema,
+  HighFiveReplyCommandSchema,
   z.object({ type: z.literal('ping') }),
 ]);
 export const RoomEventSchema = z.discriminatedUnion('type', [
@@ -142,6 +191,7 @@ export const RoomEventSchema = z.discriminatedUnion('type', [
     id: z.string(),
     players: z.array(RoomPlayerSchema),
     gestures: z.boolean().optional(),
+    interactions: z.boolean().optional(),
     // Older servers may send this field; clients never retain or display it.
     history: z.array(RoomChatSchema).optional(),
   }),
@@ -153,11 +203,16 @@ export const RoomEventSchema = z.discriminatedUnion('type', [
     x: z.number(),
     y: z.number(),
     facing: RoomFacingSchema.optional(),
+    seat: z.int().nonnegative().nullish(),
   }),
   z.object({ type: z.literal('correction'), x: z.number(), y: z.number() }),
   RoomChatSchema.extend({ type: z.literal('chat') }),
   RoomGestureSchema,
-  RoomGameStateSchema,
+  HighFiveInviteSchema,
+  z.object({ type: z.literal('high-five-end'), id: z.string() }),
+  HighFiveSchema,
+  RoomDiceStateSchema,
+  z.object({ type: z.literal('dice-error'), message: z.string() }),
   z.object({ type: z.literal('error'), message: z.string() }),
   z.object({ type: z.literal('pong') }),
 ]);

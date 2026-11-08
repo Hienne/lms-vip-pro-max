@@ -11,6 +11,12 @@
       placeholder="Nhập tên của bạn"
     />
   </ui-field>
+  <ui-field label="Mẫu nhân vật">
+    <select uiSelect [formField]="joinForm.avatar">
+      <option value="male">Nam</option>
+      <option value="female">Nữ</option>
+    </select>
+  </ui-field>
   <ui-field label="Màu nhân vật">
     <select uiSelect [formField]="joinForm.color">
       <option value="teal">Xanh ngọc</option>

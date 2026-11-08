@@ -1,6 +1,7 @@
 import {
   afterRenderEffect,
   Component,
+  computed,
   ElementRef,
   input,
   output,
@@ -8,16 +9,23 @@ import {
   untracked,
   viewChild,
 } from '@angular/core';
-import type { RoomGestureKind, RoomMap, RoomMovement } from '@lms/contracts';
+import type {
+  RoomGestureKind,
+  RoomInteractionCommand,
+  RoomMap,
+  RoomMovement,
+} from '@lms/contracts';
 import { Button } from '@lms/ui';
 import type {
   RoomCanvasState,
+  RoomInvitationView,
   RoomViewMode,
 } from '../../data-access/chat-room.model';
 
 interface RoomRenderer {
   setTouch(x: number, y: number): void;
   setPortrait?(portrait: boolean): void;
+  chairAt(clientX: number, clientY: number): number | undefined;
 }
 
 @Component({
@@ -32,15 +40,25 @@ export class RoomCanvas {
   readonly view = input.required<RoomCanvasState>();
   readonly mode = input<RoomViewMode>('3d');
   readonly gesturesEnabled = input(false);
+  readonly interactionsEnabled = input(false);
+  readonly invitation = input<RoomInvitationView | null>(null);
   readonly gestureNotice = input('');
   readonly moved = output<RoomMovement>();
   readonly gestured = output<RoomGestureKind>();
+  readonly interacted = output<RoomInteractionCommand>();
   readonly ready = output<boolean>();
   readonly failed = output<string>();
   protected readonly portrait = signal(false);
+  protected readonly seated = computed(() => {
+    const view = this.view();
+    return (
+      view.players.find((player) => player.id === view.me)?.seat !== undefined
+    );
+  });
   private readonly mount =
     viewChild.required<ElementRef<HTMLDivElement>>('mount');
   private scene?: RoomRenderer;
+  private chairPointer?: { id: number; x: number; y: number };
 
   constructor() {
     afterRenderEffect((onCleanup) => {
@@ -133,7 +151,40 @@ export class RoomCanvas {
   }
   protected focus(event: PointerEvent): void {
     if ((event.target as HTMLElement).closest('button')) return;
-    (event.currentTarget as HTMLElement).focus();
+    if (
+      event.button === 0 &&
+      event.target instanceof HTMLCanvasElement &&
+      this.interactionsEnabled()
+    ) {
+      this.chairPointer = {
+        id: event.pointerId,
+        x: event.clientX,
+        y: event.clientY,
+      };
+    }
+    (event.currentTarget as HTMLElement).focus({ preventScroll: true });
+  }
+  protected trackChairPointer(event: PointerEvent): void {
+    const pointer = this.chairPointer;
+    if (
+      pointer?.id === event.pointerId &&
+      Math.hypot(pointer.x - event.clientX, pointer.y - event.clientY) > 7
+    ) {
+      this.chairPointer = undefined;
+    }
+  }
+  protected pickChair(event: PointerEvent): void {
+    const pointer = this.chairPointer;
+    this.chairPointer = undefined;
+    if (
+      pointer?.id !== event.pointerId ||
+      this.view().chatting ||
+      this.seated()
+    )
+      return;
+    const chair = this.scene?.chairAt(event.clientX, event.clientY);
+    if (chair !== undefined)
+      this.interacted.emit({ type: 'seat', action: 'sit', chair });
   }
   protected togglePortrait(): void {
     this.portrait.update((enabled) => !enabled);
@@ -143,8 +194,12 @@ export class RoomCanvas {
     this.gestured.emit(kind);
     if (event.detail > 0) this.focusRoom();
   }
+  protected interact(command: RoomInteractionCommand, event: MouseEvent): void {
+    this.interacted.emit(command);
+    if (event.detail > 0) this.focusRoom();
+  }
   focusRoom(): void {
-    this.mount().nativeElement.parentElement?.focus();
+    this.mount().nativeElement.parentElement?.focus({ preventScroll: true });
   }
   protected preventScroll(event: KeyboardEvent): void {
     const target = event.target as HTMLElement;

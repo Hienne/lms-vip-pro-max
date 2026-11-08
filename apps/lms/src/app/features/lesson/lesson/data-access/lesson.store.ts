@@ -227,6 +227,7 @@ export class LessonStore {
 
   /** Reads the player of the video block on screen, which the page hands over (`watchVideo`). */
   private videoPosition: (() => number) | undefined;
+  private readonly advancing = signal(false);
 
   private readonly channel = new StudyChannel({
     client: this.client,
@@ -524,8 +525,6 @@ export class LessonStore {
       percent,
       threshold,
       manual,
-      /** The block still waits on "Đánh dấu hoàn thành", which then is the view's one primary. */
-      needsMark: manual && !done,
       hint:
         active && !done
           ? completionHint(
@@ -535,6 +534,14 @@ export class LessonStore {
             )
           : null,
     };
+  });
+
+  readonly canAdvance$ = computed(() => {
+    const completion = this.completion$();
+    return (
+      !this.advancing() &&
+      (!completion.manual || completion.done || this.phase$() === 'ready')
+    );
   });
 
   /** The enrolment's percentage as the server last said it. */
@@ -772,8 +779,34 @@ export class LessonStore {
     this.state.outlineOpen.set(false);
   }
 
-  markComplete(): void {
-    this.channel.send({ type: 'COMPLETE', complete: true });
+  advance(): void {
+    if (!this.activeBlock$() || !this.canAdvance$()) return;
+    const nextBlock = this.nextBlockId$();
+    const courseId = this.courseId$();
+    const nextLink =
+      this.nextLessonLink$() ??
+      (courseId === undefined ? '/catalog' : `/course/${courseId}`);
+    const go = () => {
+      if (nextBlock !== null && nextBlock !== undefined)
+        this.selectBlock(nextBlock);
+      else void this.router.navigateByUrl(nextLink);
+    };
+
+    if (this.phase$() !== 'ready') {
+      go();
+      return;
+    }
+
+    const completion = this.completion$();
+    const complete = completion.manual && !completion.done;
+    this.advancing.set(true);
+    this.channel.saveBeforeLeaving(
+      complete ? { type: 'COMPLETE', complete: true } : undefined,
+      (saved) => {
+        this.advancing.set(false);
+        if (saved && (!complete || this.completion$().done)) go();
+      },
+    );
   }
 
   /** "Học trên thiết bị này": the learner agreed to move the session here. */

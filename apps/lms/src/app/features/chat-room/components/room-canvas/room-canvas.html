@@ -4,15 +4,18 @@
   role="application"
   aria-label="Phòng học. Dùng WASD hoặc phím mũi tên để di chuyển, Enter để chat."
   (pointerdown)="focus($event)"
+  (pointermove)="trackChairPointer($event)"
+  (pointerup)="pickChair($event)"
 >
   <div #mount class="room-canvas__mount"></div>
-  @if (view().online) { @if (gesturesEnabled()) {
+  @if (view().online) {
   <div class="room-canvas__gestures">
+    @if (gesturesEnabled()) {
     <div class="row row--gap-1" role="group" aria-label="Động tác nhân vật">
       <button
         uiButton
         size="sm"
-        [disabled]="view().chatting"
+        [disabled]="view().chatting || seated()"
         (click)="performGesture('jump', $event)"
       >
         Nhảy
@@ -26,6 +29,53 @@
         Vẫy chào
       </button>
     </div>
+    } @if (interactionsEnabled()) {
+    <div class="row row--gap-1" role="group" aria-label="Tương tác trong phòng">
+      <button
+        uiButton
+        size="sm"
+        [disabled]="view().chatting || seated() || !!invitation()"
+        (click)="interact({ type: 'high-five-invite' }, $event)"
+      >
+        Đập tay
+      </button>
+      <button
+        uiButton
+        size="sm"
+        [disabled]="view().chatting"
+        (click)="interact({ type: 'seat', action: seated() ? 'stand' : 'sit' }, $event)"
+      >
+        {{ seated() ? 'Đứng dậy' : 'Ngồi ghế' }}
+      </button>
+    </div>
+    } @if (invitation(); as invite) {
+    <div class="room-canvas__invitation">
+      <p role="status">
+        {{ invite.incoming ? invite.name + ' mời bạn đập tay.' : 'Đã mời ' +
+        invite.name + ' đập tay.' }}
+      </p>
+      @if (invite.incoming) {
+      <div class="row row--gap-1">
+        <button
+          uiButton
+          size="sm"
+          variant="primary"
+          [disabled]="seated()"
+          (click)="interact({ type: 'high-five-reply', inviteId: invite.id, accept: true }, $event)"
+        >
+          Đồng ý
+        </button>
+        <button
+          uiButton
+          size="sm"
+          (click)="interact({ type: 'high-five-reply', inviteId: invite.id, accept: false }, $event)"
+        >
+          Từ chối
+        </button>
+      </div>
+      }
+    </div>
+    }
   </div>
   <p
     class="room-canvas__gesture-notice"
@@ -34,7 +84,7 @@
   >
     {{ gestureNotice() }}
   </p>
-  } @if (mode() === '3d') {
+  @if (mode() === '3d') {
   <button
     uiButton
     size="sm"
@@ -44,7 +94,7 @@
   >
     Cận cảnh nhân vật
   </button>
-  }
+  } @if (!seated()) {
   <div class="room-canvas__controls" aria-label="Điều khiển cảm ứng">
     <button
       uiButton
@@ -93,5 +143,5 @@
       </button>
     </div>
   </div>
-  }
+  } }
 </div>

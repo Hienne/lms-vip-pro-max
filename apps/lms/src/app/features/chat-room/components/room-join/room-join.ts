@@ -20,9 +20,10 @@ export class RoomJoin {
   readonly defaultName = input('');
   readonly ready = input(false);
   readonly joined = output<RoomIdentity>();
-  private readonly model = linkedSignal<RoomIdentity>(() => ({
+  private readonly model = linkedSignal<Required<RoomIdentity>>(() => ({
     name: this.defaultName(),
     color: 'teal',
+    avatar: 'male',
   }));
   protected readonly joinForm = form(
     this.model,

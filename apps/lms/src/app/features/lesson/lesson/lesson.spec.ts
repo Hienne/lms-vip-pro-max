@@ -171,13 +171,23 @@ describe('Lesson', () => {
       );
     });
 
-    it('completes on "Đánh dấu hoàn thành" and shows the server result in the outline and the course percentage', async () => {
-      const before = text();
-      expect(before).not.toContain('Đã hoàn thành');
-      button('Đánh dấu hoàn thành')!.click();
-      await settle();
-
+    it('completes the last text lesson when returning to the course', async () => {
       expect(button('Đánh dấu hoàn thành')).toBeUndefined();
+      el.querySelector<HTMLButtonElement>(
+        '.lesson__stepbar .btn--primary',
+      )?.click();
+      await vi.waitFor(() =>
+        expect(TestBed.inject(Router).url).toBe(`/course/${COURSE}`),
+      );
+      expect(
+        calls(learnerEndpoints.saveProgress).some(
+          ([, request]) =>
+            (request.body as { eventType: string }).eventType === 'COMPLETE',
+        ),
+      ).toBe(true);
+      await harness.navigateByUrl(lessonUrl(2));
+      await settle();
+      el = harness.routeNativeElement as HTMLElement;
       expect(text()).toContain('Đã hoàn thành');
       const outlineStates = Array.from(
         el.querySelectorAll('app-lesson-outline .toc__sr'),
@@ -203,7 +213,7 @@ describe('Lesson', () => {
       expect(el.querySelectorAll('nav.lesson__steps')).toHaveLength(0);
     });
 
-    it('says how a manual block completes, and makes marking it the one primary', async () => {
+    it('explains automatic completion and offers one action to leave the final lesson', () => {
       const state = () =>
         el
           .querySelector('.lesson__state')
@@ -213,13 +223,8 @@ describe('Lesson', () => {
         Array.from(el.querySelectorAll('.btn--primary')).map((b) =>
           b.textContent?.trim(),
         );
-      expect(state()).toBe('Đọc xong, bấm Đánh dấu hoàn thành');
-      expect(primaries()).toEqual(['Đánh dấu hoàn thành']);
-
-      button('Đánh dấu hoàn thành')!.click();
-      await settle();
-      expect(state()).toMatch(/^Đã hoàn thành/);
-      expect(primaries()).toEqual([]);
+      expect(state()).toBe('Tiến độ sẽ được ghi khi bạn chuyển tiếp');
+      expect(primaries()).toEqual(['Về khóa học']);
     });
 
     it('offers the previous lesson and no next one at the last lesson', () => {
@@ -578,9 +583,11 @@ describe('Lesson', () => {
       }
       expect(button('Khối tiếp theo')).toBeUndefined();
       expect(button('Khối trước')).toBeTruthy();
-      expect(
-        (button('Bài tiếp theo') as HTMLAnchorElement).getAttribute('href'),
-      ).toBe(`/lesson/${COURSE}/${lessons()[2].lesson.id}`);
+      button('Bài tiếp theo')!.click();
+      await settle();
+      expect(TestBed.inject(Router).url).toMatch(
+        new RegExp(`^/lesson/${COURSE}/${lessons()[2].lesson.id}(?:\\?|$)`),
+      );
     });
   });
 
@@ -615,9 +622,12 @@ describe('Lesson', () => {
           ? backendRefusal('internalError')
           : real()(endpoint, request),
       );
-      button('Đánh dấu hoàn thành')!.click();
+      el.querySelector<HTMLButtonElement>(
+        '.lesson__stepbar .btn--primary',
+      )?.click();
       await settle();
       expect(text()).toContain('Chưa lưu được tiến độ');
+      expect(TestBed.inject(Router).url).toContain(lessonUrl(2));
 
       handle.mockImplementation(real());
       button('Thử lại')!.click();
