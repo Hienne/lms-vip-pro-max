@@ -40,6 +40,7 @@ import {
   type QuizDetailV1,
 } from '@lms/contracts';
 import { AssessmentScreenStore } from './data-access/assessment-screen.store';
+import { QuizAttemptGrant } from './components/quiz-attempt-grant/quiz-attempt-grant';
 import { QuestionImport } from '../../../shared/quiz/question-import/question-import';
 import { QUESTION_IMPORT_HOST } from '../../../shared/quiz/question-import/data-access/question-import.host';
 
@@ -220,6 +221,7 @@ function quizValue(
     Kpi,
     PageHeader,
     QuestionImport,
+    QuizAttemptGrant,
     Search,
     Select,
     Spinner,
@@ -358,9 +360,13 @@ export class AssessmentScreen {
       });
     });
   }
-  protected quizSubmit(event: Event): void {
+  protected async quizSubmit(
+    event: Event,
+    questionSettings: HTMLDetailsElement,
+    advancedSettings: HTMLDetailsElement,
+  ): Promise<void> {
     event.preventDefault();
-    void submit(this.configForm, async () => {
+    const accepted = await submit(this.configForm, async () => {
       const q = this.configModel(),
         pool = this.store.configDetail$()?.pool ?? [];
       this.store.saveQuiz(
@@ -404,6 +410,10 @@ export class AssessmentScreen {
         },
       );
     });
+    if (!accepted && this.configForm().invalid()) {
+      questionSettings.open = true;
+      advancedSettings.open = true;
+    }
   }
   protected setCorrect(id: string, checked: boolean): void {
     this.questionModel.update((q) => ({

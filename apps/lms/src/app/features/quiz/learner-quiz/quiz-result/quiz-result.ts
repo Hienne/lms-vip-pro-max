@@ -28,6 +28,7 @@ import { QuizResultStore } from './data-access/quiz-result.store';
     } @else if (store.result$(); as result) {
       <app-assessment-result
         [result]="result"
+        [canRetry]="store.canRetry$()"
         [reviewOpen]="store.reviewOpen$()"
         (reviewOpenChange)="store.setReviewOpen($event)"
       />

@@ -52,6 +52,7 @@ const AUTO_SUBMIT: readonly (LearnerSubmitType | null)[] = [
 })
 export class AssessmentResult {
   readonly result = input.required<LearnerAttemptResult>();
+  readonly canRetry = input.required<boolean>();
   readonly reviewOpen = input(false);
   readonly reviewOpenChange = output<boolean>();
 
@@ -61,11 +62,6 @@ export class AssessmentResult {
       { label: result.quizTitle, href: `/quiz/${result.quizId}` },
       { label: `Kết quả lần ${result.attemptNo}` },
     ];
-  });
-
-  protected readonly canRetry = computed(() => {
-    const { summary } = this.result();
-    return !summary.passed && summary.attemptsLeft > 0;
   });
 
   protected readonly autoSubmitted = computed(() =>
@@ -88,6 +84,25 @@ export class AssessmentResult {
       percent: c.totalQuestions ? (c.correctCount / c.totalQuestions) * 100 : 0,
     })),
   );
+
+  protected readonly suggestedReview = computed(() =>
+    this.result().passed
+      ? undefined
+      : this.competencies()
+          .filter(
+            (group) =>
+              group.totalQuestions > 0 &&
+              group.correctCount < group.totalQuestions,
+          )
+          .sort((left, right) => left.percent - right.percent)[0],
+  );
+
+  protected readonly waitingUntil = computed(() => {
+    const next = this.result().summary.nextAttemptAt;
+    return this.canRetry() && next && Date.parse(next) > Date.now()
+      ? next
+      : null;
+  });
 
   protected readonly reviewNote = computed(() => {
     const labels = {

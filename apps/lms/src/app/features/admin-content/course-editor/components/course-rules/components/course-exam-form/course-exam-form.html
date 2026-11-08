@@ -31,15 +31,44 @@
         (keydown.enter)="save($event)"
       />
     </ui-field>
-    <ui-field label="Số lần thi tối đa" required>
-      <input
-        uiInput
-        type="number"
-        [formField]="examForm.maxAttempts"
-        (keydown.enter)="save($event)"
-      />
-    </ui-field>
   </div>
+  <section class="stack" aria-labelledby="course-exam-retake">
+    <h3 id="course-exam-retake">Thi lại</h3>
+    <div class="course-exam-form__numbers">
+      <ui-field
+        label="Số lần thi tối đa"
+        hint="Tính cả lượt đầu tiên."
+        required
+      >
+        <input
+          uiInput
+          type="number"
+          [formField]="examForm.maxAttempts"
+          (keydown.enter)="save($event)"
+        />
+      </ui-field>
+      <ui-field
+        label="Thời gian chờ thi lại (giờ)"
+        hint="Nhập 0 nếu không cần chờ."
+        required
+      >
+        <input
+          uiInput
+          type="number"
+          [formField]="examForm.retakeWaitHours"
+          (keydown.enter)="save($event)"
+        />
+      </ui-field>
+    </div>
+    <label class="row row--gap-2">
+      <input
+        uiCheckbox
+        type="checkbox"
+        [formField]="examForm.allowRetakeAfterPass"
+      />
+      Cho phép thi lại sau khi đạt
+    </label>
+  </section>
   @if (error(); as failure) {
   <ui-alert tone="danger">{{ failure.message }}</ui-alert>
   }
