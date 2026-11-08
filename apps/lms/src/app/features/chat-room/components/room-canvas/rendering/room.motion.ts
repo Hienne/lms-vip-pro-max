@@ -5,6 +5,13 @@ export interface GesturePose {
   lift: number;
   wave: number;
   facing?: RoomFacing;
+  highFive?: {
+    amount: number;
+    x: number;
+    y: number;
+    yaw: number;
+    leading: boolean;
+  };
 }
 
 const RESTING_POSE: GesturePose = { lift: 0, wave: 0 };
@@ -15,6 +22,27 @@ export function gesturePose(
   reducedMotion: boolean,
 ): GesturePose {
   if (!gesture) return RESTING_POSE;
+  if (gesture.kind === 'high-five') {
+    const progress = (now - gesture.startedAt) / 950;
+    if (progress < 0 || progress >= 1) return RESTING_POSE;
+    const dx = gesture.partner.x - gesture.origin.x;
+    const dy = gesture.partner.y - gesture.origin.y;
+    const distance = Math.hypot(dx, dy);
+    const amount = reducedMotion ? 1 : Math.sin(progress * Math.PI);
+    const step = ((distance - 78) * amount) / (2 * (distance || 1));
+    return {
+      lift: 0,
+      wave: amount,
+      facing: facingFromVector(dx, dy),
+      highFive: {
+        amount,
+        x: dx * step,
+        y: dy * step,
+        yaw: Math.atan2(-dx, -dy),
+        leading: gesture.leading,
+      },
+    };
+  }
   const progress =
     (now - gesture.startedAt) / (gesture.kind === 'jump' ? 760 : 1150);
   if (progress < 0 || progress >= 1) return RESTING_POSE;
@@ -31,6 +59,16 @@ export function gesturePose(
       : raise * (1 + Math.sin(progress * 6 * Math.PI) * 0.14),
     facing: reducedMotion ? undefined : gesture.facing,
   };
+}
+
+export function seatCenter(
+  map: RoomMap,
+  index: number | undefined,
+): { x: number; y: number } | undefined {
+  const chair = index === undefined ? undefined : map.objects[index];
+  if (chair?.kind === 'chair')
+    return { x: chair.x + chair.w / 2, y: chair.y + chair.h / 2 };
+  return undefined;
 }
 
 const OCTANTS: readonly RoomFacing[] = [

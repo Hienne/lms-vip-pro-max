@@ -1,9 +1,9 @@
 import { completionHint } from './completion-hint';
 
 describe('completionHint', () => {
-  it('asks to mark a manual block complete', () => {
+  it('explains when a manual block is saved as complete', () => {
     expect(completionHint('manual', 0, null)).toBe(
-      'Đọc xong, bấm Đánh dấu hoàn thành',
+      'Tiến độ sẽ được ghi khi bạn chuyển tiếp',
     );
   });
 

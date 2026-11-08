@@ -126,6 +126,19 @@ describe('VideoBlock', () => {
     expect(probe.beats).toEqual([]);
   });
 
+  it('reports the fractional duration once when the video finishes', () => {
+    const probe = render();
+    probe.fire('play', false);
+    Object.defineProperty(probe.video(), 'ended', { value: true });
+    Object.defineProperty(probe.video(), 'duration', { value: 11.136125 });
+    probe.time(11.12);
+    probe.fire('pause', true);
+    probe.fire('ended');
+    expect(probe.paused).toEqual([11.136125]);
+    vi.advanceTimersByTime(VIDEO_BEAT_MS * 2);
+    expect(probe.beats).toEqual([]);
+  });
+
   it('reports a seek from the last known position, and whether it was playing', () => {
     const probe = render();
     probe.fire('play', false);

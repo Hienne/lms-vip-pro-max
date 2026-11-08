@@ -74,13 +74,9 @@ export function afterResult(
   };
 }
 
-/**
- * The server checks a position against the asset's stored duration. A player at the end reports
- * the full fractional length (11.136 s), which exceeds a duration kept in whole seconds and is
- * refused as `OUT_OF_RANGE`, so every position goes out as a whole second, rounded down.
- */
-function wholeSecond(seconds: number): number {
-  return Math.floor(seconds);
+/** Match the stored media precision so the final fraction of a second counts. */
+function mediaSecond(seconds: number): number {
+  return Math.round(seconds * 1000) / 1000;
 }
 
 /** The events that never carry a watched range. */
@@ -116,12 +112,12 @@ export function toCommand(
     sequence: state.lastSequence + 1,
     complete: event.complete ?? false,
     ...(position !== undefined
-      ? { videoPositionSeconds: wholeSecond(position) }
+      ? { videoPositionSeconds: mediaSecond(position) }
       : {}),
     ...(closesRange
       ? {
-          watchedFromSeconds: wholeSecond(tracker.position as number),
-          watchedToSeconds: wholeSecond(position),
+          watchedFromSeconds: mediaSecond(tracker.position as number),
+          watchedToSeconds: mediaSecond(position),
         }
       : {}),
     ...(event.pdfPage !== undefined ? { pdfPage: event.pdfPage } : {}),

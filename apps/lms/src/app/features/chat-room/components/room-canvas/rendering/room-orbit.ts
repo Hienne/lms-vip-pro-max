@@ -6,6 +6,7 @@ import {
   facingYaw,
   gesturePose,
   moveInRoom,
+  seatCenter,
 } from './room.motion';
 import { RoomAvatar3D } from './room-avatar-3d';
 import { RoomWorld3D, WORLD_SCALE } from './room-world-3d';
@@ -20,6 +21,7 @@ export class RoomOrbit {
   });
   private readonly world: RoomWorld3D;
   private readonly actors = new Map<string, RoomAvatar3D>();
+  private readonly raycaster = new THREE.Raycaster();
   private readonly keys = new Set<string>();
   private readonly resizeObserver: ResizeObserver;
   private readonly sun = new THREE.DirectionalLight(0xfff4da, 2.7);
@@ -40,6 +42,7 @@ export class RoomOrbit {
   private previousTime = 0;
   private frame = 0;
   private active = true;
+  private seat?: number;
 
   constructor(
     private map: RoomMap,
@@ -103,6 +106,32 @@ export class RoomOrbit {
 
   setTouch(x: number, y: number): void {
     this.touch = { x, y };
+  }
+
+  chairAt(clientX: number, clientY: number): number | undefined {
+    const rect = this.renderer.domElement.getBoundingClientRect();
+    this.raycaster.setFromCamera(
+      new THREE.Vector2(
+        ((clientX - rect.left) * 2) / rect.width - 1,
+        1 - ((clientY - rect.top) * 2) / rect.height,
+      ),
+      this.camera,
+    );
+    for (const hit of this.raycaster.intersectObject(this.world.root, true)) {
+      let chair: number | undefined;
+      let visible = true;
+      for (
+        let object: THREE.Object3D | null = hit.object;
+        object;
+        object = object.parent
+      ) {
+        visible &&= object.visible;
+        if (typeof object.userData['chair'] === 'number')
+          chair = object.userData['chair'];
+      }
+      if (visible) return chair;
+    }
+    return undefined;
   }
 
   setPortrait(portrait: boolean): void {
@@ -186,14 +215,16 @@ export class RoomOrbit {
     if (view === this.previousView) return;
     const previous = this.previousView;
     this.previousView = view;
+    if (view.dice !== previous?.dice) this.world.showDice(view.dice?.dice);
     if (view.chatting || (previous?.online && !view.online)) {
       this.blur();
     }
-    if (view.me !== previous?.me) {
-      const self = view.players.find((player) => player.id === view.me);
+    const self = view.players.find((player) => player.id === view.me);
+    if (view.me !== previous?.me || this.seat !== self?.seat) {
+      this.seat = self?.seat;
       this.position = self ? { x: self.x, y: self.y } : { ...this.map.spawn };
       this.facing = self?.facing ?? 'north';
-      this.setPortrait(this.portrait);
+      if (view.me !== previous?.me) this.setPortrait(this.portrait);
       this.lastPosition = { x: -1, y: -1, facing: '' };
     }
     if (view.correction && view.correction !== previous?.correction)
@@ -213,10 +244,12 @@ export class RoomOrbit {
         this.scene.add(actor.root);
         this.actors.set(player.id, actor);
       }
-      if (player.id === view.me) return;
+      const seat = seatCenter(this.map, player.seat);
+      actor.seated = !!seat;
+      if (player.id === view.me && !seat) return;
       actor.target = {
-        x: player.x,
-        y: player.y,
+        x: seat?.x ?? player.x,
+        y: seat?.y ?? player.y,
         facing:
           player.facing ??
           facingFromVector(
@@ -236,8 +269,20 @@ export class RoomOrbit {
     this.previousTime = time;
     const view = this.view();
     this.synchronize(view);
+    const now = performance.now();
+    const localPose = gesturePose(
+      view.gestures[view.me],
+      now,
+      this.reducedMotion,
+    );
     let walking = false;
-    if (view.online && !view.chatting && !document.hidden) {
+    if (
+      view.online &&
+      !view.chatting &&
+      !document.hidden &&
+      this.seat === undefined &&
+      !localPose.highFive
+    ) {
       const forward =
         Number(this.keys.has('KeyW') || this.keys.has('ArrowUp')) -
         Number(this.keys.has('KeyS') || this.keys.has('ArrowDown')) -
@@ -275,15 +320,17 @@ export class RoomOrbit {
       }
     }
     const self = this.actors.get(view.me);
-    if (self) self.target = { ...this.position, facing: this.facing };
-    const now = performance.now();
+    if (self && !self.seated)
+      self.target = { ...this.position, facing: this.facing };
     this.actors.forEach((actor, id) =>
       actor.update(
         delta,
         time,
         view.speech[id],
         this.reducedMotion,
-        gesturePose(view.gestures[id], now, this.reducedMotion),
+        id === view.me
+          ? localPose
+          : gesturePose(view.gestures[id], now, this.reducedMotion),
         id === view.me ? walking : undefined,
       ),
     );
@@ -296,15 +343,19 @@ export class RoomOrbit {
     const z = this.position.y / WORLD_SCALE;
     const sin = Math.sin(this.yaw);
     const cos = Math.cos(this.yaw);
-    const radius = this.portrait ? 3.3 : 6.35;
+    const radius = this.portrait ? 2.25 : 7.8;
     const horizontal = radius * Math.cos(this.elevation);
-    const ahead = this.portrait ? 0 : 2.25;
+    const ahead = this.portrait ? 0 : 2.9;
     this.camera.position.set(
       x + sin * horizontal,
-      1.12 + radius * Math.sin(this.elevation),
+      (this.portrait ? 0.68 : 1.12) + radius * Math.sin(this.elevation),
       z + cos * horizontal,
     );
-    this.camera.lookAt(x - sin * ahead, 1.04, z - cos * ahead);
+    this.camera.lookAt(
+      x - sin * ahead,
+      this.portrait ? 0.56 : 1.04,
+      z - cos * ahead,
+    );
     this.world.showInterior(this.camera.position);
   }
   destroy(): void {

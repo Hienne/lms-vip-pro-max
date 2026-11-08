@@ -1,0 +1,59 @@
+<section aria-labelledby="room-dice-title">
+  <div class="dice__heading">
+    <h2 id="room-dice-title">Bàn Tài/Xỉu</h2>
+    <button uiButton size="sm" variant="ghost" (click)="closed.emit()">
+      Đóng bàn
+    </button>
+  </div>
+  <p class="dice__balance" aria-live="polite">
+    Số dư <strong>{{ state().balance }} token chơi</strong>
+  </p>
+  <p class="dice__rules">
+    Ba mặt giống nhau thì cả hai cửa đều thua. Thắng nhận thêm bằng số token đã
+    đặt.
+  </p>
+  @if (state().balance > 0) {
+  <form class="dice__form" [formRoot]="betForm">
+    <ui-field label="Cửa đặt">
+      <select uiSelect [formField]="betForm.side">
+        <option value="big">Tài · 11–17</option>
+        <option value="small">Xỉu · 4–10</option>
+      </select>
+    </ui-field>
+    <ui-field label="Token đặt" required>
+      <input
+        uiInput
+        type="number"
+        inputmode="numeric"
+        step="1"
+        [formField]="betForm.stake"
+      />
+    </ui-field>
+    <button uiButton variant="primary" type="submit" [disabled]="pending()">
+      {{ pending() ? 'Đang tung…' : 'Tung 3 súc xắc' }}
+    </button>
+  </form>
+  } @else {
+  <p>Bạn đã hết token của lượt vào phòng này.</p>
+  } @if (error()) {
+  <p class="dice__error" role="alert">{{ error() }}</p>
+  } @if (state().result; as result) {
+  <div class="dice__result" role="status">
+    <div
+      class="dice__faces"
+      [attr.aria-label]="'Ba mặt súc xắc ' + result.dice.join(', ')"
+    >
+      @for (face of result.dice; track $index) {
+      <span aria-hidden="true">{{ faces[face - 1] }}</span>
+      }
+    </div>
+    <p>
+      Tổng <strong>{{ result.total }}</strong> · {{ result.outcome === 'triple'
+      ? 'Bộ ba' : result.outcome === 'big' ? 'Tài' : 'Xỉu' }} ·
+      <strong
+        >{{ result.won ? 'Thắng +' : 'Thua −' }}{{ result.stake }} token</strong
+      >
+    </p>
+  </div>
+  }
+</section>

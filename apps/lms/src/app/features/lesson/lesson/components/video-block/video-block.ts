@@ -116,7 +116,20 @@ export class VideoBlock {
 
   protected pause(): void {
     this.stopBeat();
+    // The native player emits pause before ended when it reaches the end.
+    if (this.player()?.nativeElement.ended) return;
     this.last = this.position();
+    this.paused.emit(this.last);
+  }
+
+  protected ended(): void {
+    this.stopBeat();
+    const duration = this.player()?.nativeElement.duration;
+    this.last =
+      duration !== undefined && Number.isFinite(duration)
+        ? duration
+        : this.position();
+    this.seen(this.last);
     this.paused.emit(this.last);
   }
 
@@ -133,6 +146,7 @@ export class VideoBlock {
   }
 
   protected tick(): void {
+    if (this.player()?.nativeElement.seeking) return;
     this.last = this.position();
     this.seen(this.last);
   }

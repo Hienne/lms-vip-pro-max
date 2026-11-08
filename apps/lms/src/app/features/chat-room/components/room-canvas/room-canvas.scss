@@ -30,6 +30,22 @@
     position: absolute;
     top: ui.space(3);
     left: ui.space(3);
+    display: grid;
+    justify-items: start;
+    gap: ui.space(1);
+    max-width: 58%;
+  }
+  &__invitation {
+    @include ui.text(sm);
+    display: grid;
+    gap: ui.space(2);
+    padding: ui.space(2);
+    border: 1px solid ui.color(border);
+    border-radius: ui.radius(control);
+    background: ui.color(surface);
+    p {
+      margin: 0;
+    }
   }
   &__gesture-notice {
     @include ui.text(sm);

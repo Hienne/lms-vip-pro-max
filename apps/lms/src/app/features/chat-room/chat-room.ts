@@ -8,6 +8,7 @@ import {
 import { Alert, Button, ErrorState, PageHeader } from '@lms/ui';
 import { RoomCanvas } from './components/room-canvas/room-canvas';
 import { RoomComposer } from './components/room-composer/room-composer';
+import { RoomDice } from './components/room-dice/room-dice';
 import { RoomJoin } from './components/room-join/room-join';
 import { ChatRoomStore } from './data-access/chat-room.store';
 
@@ -20,6 +21,7 @@ import { ChatRoomStore } from './data-access/chat-room.store';
     PageHeader,
     RoomCanvas,
     RoomComposer,
+    RoomDice,
     RoomJoin,
   ],
   providers: [ChatRoomStore],
@@ -44,6 +46,13 @@ export class ChatRoom {
   }
   protected shortcut(event: KeyboardEvent): void {
     if (event.isComposing) return;
+    if (this.store.diceOpen$()) {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        this.closeDice();
+      }
+      return;
+    }
     const target = event.target as HTMLElement;
     if (
       event.code === 'Space' &&
@@ -69,5 +78,9 @@ export class ChatRoom {
       event.preventDefault();
       this.store.openChat();
     }
+  }
+  protected closeDice(): void {
+    this.store.closeDice();
+    this.canvas()?.focusRoom();
   }
 }
