@@ -1,4 +1,4 @@
-import { inject, Injectable, signal } from '@angular/core';
+import { computed, inject, Injectable, signal } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
 import { learnerQuizEndpoints } from '@lms/contracts';
 import { serverData } from '../../../../../core/data-access/server-data';
@@ -29,6 +29,30 @@ export class QuizResultStore {
   readonly result$ = this.resultData.value;
   readonly loadError$ = this.resultData.error;
   readonly reviewOpen$ = this.state.reviewOpen.asReadonly();
+
+  // The result has scores and attempt counts; the intro applies the current retake policy.
+  private readonly retakeEligibility = serverData(
+    (quizId: number) =>
+      this.client.call(learnerQuizEndpoints.quizIntro, { params: { quizId } }),
+    {
+      params: () => {
+        const result = this.result$();
+        return result?.summary.everPassed && result.summary.attemptsLeft > 0
+          ? result.quizId
+          : undefined;
+      },
+    },
+  );
+
+  readonly canRetry$ = computed(() => {
+    const summary = this.result$()?.summary;
+    if (!summary || summary.attemptsLeft <= 0) return false;
+    if (!summary.everPassed) return true;
+    const eligibility = this.retakeEligibility.value();
+    return (
+      eligibility?.canStart === true || eligibility?.blockReason === 'WAIT'
+    );
+  });
 
   setReviewOpen(open: boolean): void {
     this.state.reviewOpen.set(open);

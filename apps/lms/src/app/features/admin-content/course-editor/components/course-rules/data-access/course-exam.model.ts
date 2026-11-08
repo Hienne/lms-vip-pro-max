@@ -4,13 +4,15 @@ import {
   type QuizRequestV1,
 } from '@lms/contracts';
 
-/** The five things the short exam form asks for; everything else follows the quiz screen's defaults. */
+/** The settings editable directly from the course editor. */
 export interface ExamFormValue {
   readonly title: string;
   readonly timeLimitMinutes: number;
   readonly questionCount: number;
   readonly passPercent: number;
   readonly maxAttempts: number;
+  readonly retakeWaitHours: number;
+  readonly allowRetakeAfterPass: boolean;
 }
 
 /** A quiz pool takes at most this many questions (backend `MAX_POOL_SIZE`). */
@@ -25,6 +27,7 @@ export const EXAM_LIMITS = {
   questionCount: { min: 1, max: 200 },
   passPercent: { min: 1, max: 100 },
   maxAttempts: { min: 1, max: 20 },
+  retakeWaitHours: { min: 0, max: 720 },
 } as const;
 
 /** The form's starting values for a new exam: 15 minutes, 70 %, 3 attempts, up to 10 questions. */
@@ -38,6 +41,8 @@ export function newExamValue(
     questionCount: Math.max(1, Math.min(10, activeBank ?? 10)),
     passPercent: 70,
     maxAttempts: 3,
+    retakeWaitHours: 0,
+    allowRetakeAfterPass: false,
   };
 }
 
@@ -64,8 +69,8 @@ export function toNewQuizRequest(
     scoreMethod: 'BEST',
     reviewPolicy: 'AFTER_SUBMIT',
     maxAttempts: value.maxAttempts,
-    retakeWaitHours: 0,
-    allowRetakeAfterPass: false,
+    retakeWaitHours: value.retakeWaitHours,
+    allowRetakeAfterPass: value.allowRetakeAfterPass,
     requireLessonsCompleted: false,
   };
 }
@@ -79,10 +84,12 @@ export function toExamValue(detail: QuizDetailV1): ExamFormValue {
     questionCount: quiz.questionCount,
     passPercent: quiz.passPercent,
     maxAttempts: quiz.maxAttempts,
+    retakeWaitHours: quiz.retakeWaitHours,
+    allowRetakeAfterPass: quiz.allowRetakeAfterPass,
   };
 }
 
-/** The stored exam with only the form's five values changed: its other settings are kept. */
+/** Keep settings that are only editable in the full quiz configuration. */
 export function toUpdatedQuizRequest(
   detail: QuizDetailV1,
   value: ExamFormValue,
@@ -94,5 +101,7 @@ export function toUpdatedQuizRequest(
     questionCount: value.questionCount,
     passPercent: value.passPercent,
     maxAttempts: value.maxAttempts,
+    retakeWaitHours: value.retakeWaitHours,
+    allowRetakeAfterPass: value.allowRetakeAfterPass,
   };
 }

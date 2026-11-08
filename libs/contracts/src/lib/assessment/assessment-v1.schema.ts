@@ -1,4 +1,31 @@
 import { z } from 'zod';
+
+export const ExhaustedLearnerSchema = z.object({
+  userId: z.string(),
+  userName: z.string().nullish(),
+  attemptsUsed: z.number().int().positive(),
+});
+
+export const QuizAttemptGrantRequestSchema = z.object({
+  userId: z.string().trim().min(1).max(20),
+  extraAttempts: z.number().int().min(1).max(10),
+  reason: z.string().trim().min(1).max(2000),
+});
+export type QuizAttemptGrantRequest = z.infer<
+  typeof QuizAttemptGrantRequestSchema
+>;
+
+export const QuizAttemptGrantSchema = z.object({
+  id: z.number().int().positive(),
+  quizId: z.number().int().positive(),
+  ...QuizAttemptGrantRequestSchema.shape,
+  userName: z.string().nullish(),
+  grantedBy: z.string(),
+  grantedAt: z.iso.datetime({ offset: true }),
+  revoked: z.boolean(),
+  revokedBy: z.string().nullish(),
+  revokedAt: z.iso.datetime({ offset: true }).nullish(),
+});
 import { BackendDateTimeSchema } from '../http/datetime';
 import { PageSchema } from '../http/page';
 import { LearnerQuizTypeSchema } from './learner-quiz.schema';

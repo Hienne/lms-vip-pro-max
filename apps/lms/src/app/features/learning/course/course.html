@@ -32,6 +32,10 @@
     >
       Đăng ký học
     </button>
+    } @else if (store.nextExamId$(); as quizId) {
+    <a uiButton variant="primary" [routerLink]="['/quiz', quizId]"
+      >Đến bài thi cuối khóa</a
+    >
     } @else if (store.primaryAction$(); as label) {
     <a uiButton variant="primary" [routerLink]="store.resumeLink$()"
       >{{ label }}</a
@@ -41,6 +45,15 @@
     }
   </div>
 </ui-page-header>
+
+@if (store.nextExamId$()) {
+<p class="course__next">
+  Bạn đã học xong các bài bắt buộc. Hãy đạt bài thi cuối khóa để hoàn thành
+  khóa.
+</p>
+} @else if (store.primaryAction$() && store.resumeLessonTitle$(); as title) {
+<p class="course__next">Bài học · <strong>{{ title }}</strong></p>
+}
 
 <p class="course__meta">
   <app-required-mark [required]="card.requirement === 'mandatory'" />
@@ -69,17 +82,22 @@
 
 <div class="course__layout">
   <div class="course__main">
-    @if (coverSrc(); as src) {
-    <img class="course__cover" [src]="src" alt="" />
-    } @if (objectives().length) {
-    <section aria-labelledby="course-objectives">
-      <h2 id="course-objectives" class="course__heading">Mục tiêu đầu ra</h2>
-      <ul class="course__objectives">
-        @for (objective of objectives(); track objective.id) {
-        <li>{{ objective.description }}</li>
-        }
-      </ul>
-    </section>
+    @if (coverSrc() || objectives().length) {
+    <details class="course__overview" [open]="store.view$() !== 'enrolled'">
+      <summary>Giới thiệu khóa học</summary>
+      @if (coverSrc(); as src) {
+      <img class="course__cover" [src]="src" alt="" />
+      } @if (objectives().length) {
+      <section aria-labelledby="course-objectives">
+        <h2 id="course-objectives" class="course__heading">Mục tiêu đầu ra</h2>
+        <ul class="course__objectives">
+          @for (objective of objectives(); track objective.id) {
+          <li>{{ objective.description }}</li>
+          }
+        </ul>
+      </section>
+      }
+    </details>
     }
     <section aria-labelledby="course-outline">
       <h2 id="course-outline" class="course__heading">Nội dung khóa học</h2>
@@ -183,7 +201,8 @@
       <p class="course__note">
         Cần hoàn thành tất cả điều kiện bắt buộc để hoàn thành khóa.
       </p>
-      @if (completion.finalQuizId && completion.finalExamStatus !== 'PASSED') {
+      @if (completion.finalQuizId && completion.finalExamStatus !== 'PASSED' &&
+      !store.nextExamId$()) {
       <a uiButton [routerLink]="['/quiz', completion.finalQuizId]"
         >Đến bài thi cuối khóa</a
       >
