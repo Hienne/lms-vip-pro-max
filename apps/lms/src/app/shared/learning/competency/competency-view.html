@@ -59,7 +59,7 @@
     Tỷ lệ điểm = tổng điểm đạt / tổng điểm tối đa của các lượt thi đã chấm. Số
     câu đúng có thể khác tỷ lệ điểm.
   </p>
-  <table class="competency-view__list">
+  <table class="competency-view__list competency-view__list--results">
     <thead>
       <tr>
         <th scope="col">Nhóm kiến thức</th>
@@ -70,7 +70,18 @@
     <tbody>
       @for (row of rows(); track row.competencyId) {
       <tr class="competency-view__item">
-        <td class="competency-view__name">{{ row.name }}</td>
+        <td class="competency-view__name">
+          <button
+            type="button"
+            class="competency-view__name-button"
+            [class.competency-view__name-button--expanded]="expandedName() === row.competencyId"
+            [attr.aria-expanded]="expandedName() === row.competencyId"
+            [uiTooltip]="row.name"
+            (click)="toggleName(row.competencyId)"
+          >
+            {{ row.name }}
+          </button>
+        </td>
         <td class="competency-view__meta">
           @if (row.percent !== null) { {{ row.correctCount }}/{{
           row.totalQuestions }} } @else { — }

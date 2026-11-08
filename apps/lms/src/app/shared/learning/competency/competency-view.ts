@@ -1,6 +1,6 @@
-import { Component, computed, input } from '@angular/core';
+import { Component, computed, input, signal } from '@angular/core';
 import type { MyCompetency } from '@lms/contracts';
-import { Empty, FmtPctPipe, Progress, RadarChart } from '@lms/ui';
+import { Empty, FmtPctPipe, Progress, RadarChart, Tooltip } from '@lms/ui';
 import { toRadarData, withData } from './competency-data';
 
 export type CompetencyViewSize = 'compact' | 'large';
@@ -16,7 +16,7 @@ const PERCENT_DIGITS = 2;
  */
 @Component({
   selector: 'app-competency-view',
-  imports: [Empty, FmtPctPipe, Progress, RadarChart],
+  imports: [Empty, FmtPctPipe, Progress, RadarChart, Tooltip],
   templateUrl: './competency-view.html',
   styleUrl: './competency-view.scss',
   host: {
@@ -29,7 +29,12 @@ export class CompetencyView {
   readonly rows = input.required<readonly MyCompetency[]>();
   readonly size = input<CompetencyViewSize>('compact');
 
+  protected readonly expandedName = signal<number | null>(null);
   protected readonly digits = PERCENT_DIGITS;
+
+  protected toggleName(id: number): void {
+    this.expandedName.update((current) => (current === id ? null : id));
+  }
   protected readonly rowsWithData = computed(() => withData(this.rows()));
   protected readonly showRadar = computed(
     () => this.rowsWithData().length >= MIN_RADAR_AXES,

@@ -23,7 +23,7 @@ import {
   fakeSession,
   seedProfile,
 } from '../../../core/session/session.testing';
-import { exportFileName } from './data-access/progress.store';
+import { exportFileName, ProgressStore } from './data-access/progress.store';
 
 const TODAY = new Date(2026, 9, 27, 9, 30).getTime();
 
@@ -125,8 +125,42 @@ describe('LearningProgress', () => {
       ).toBe(false);
     });
 
-    it('says once that hours are not there yet', () => {
-      expect(text()).toContain('Giờ học sẽ hiển thị khi hệ thống có dữ liệu.');
+    it('omits the placeholder when hours are unavailable', () => {
+      expect(text()).not.toContain(
+        'Giờ học sẽ hiển thị khi hệ thống có dữ liệu.',
+      );
+    });
+
+    it('uses a summary count to filter the courses without stale filters', async () => {
+      const store = harness.routeDebugElement!.injector.get(ProgressStore);
+      store.filterStatus('completed');
+      store.filterOverdue(true);
+      store.search('old');
+      store.selectTab('history');
+      await settle();
+      kpi('Đang học')!.querySelector<HTMLButtonElement>('button')!.click();
+      await settle();
+      expect(TestBed.inject(Router).url).toContain('status=in_progress');
+      expect(TestBed.inject(Router).url).not.toContain('overdue=true');
+      expect(TestBed.inject(Router).url).not.toContain('q=old');
+      expect(lastQuery(learnerEndpoints.myCourses)['learningStatus']).toBe(
+        'in_progress',
+      );
+      kpi('Đang quá hạn')!.querySelector<HTMLButtonElement>('button')!.click();
+      await settle();
+      expect(TestBed.inject(Router).url).toContain('overdue=true');
+      expect(TestBed.inject(Router).url).not.toContain('status=');
+      kpi('Tổng số khóa')!.querySelector<HTMLButtonElement>('button')!.click();
+      await settle();
+      expect(TestBed.inject(Router).url).not.toContain('overdue=true');
+      expect(
+        lastQuery(learnerEndpoints.myCourses)['learningStatus'],
+      ).toBeUndefined();
+      expect(
+        kpi('Tổng số khóa')!
+          .querySelector('button')
+          ?.getAttribute('aria-pressed'),
+      ).toBe('true');
     });
 
     it('ends the counts with the server average quiz score', () => {
@@ -663,7 +697,7 @@ describe('LearningProgress', () => {
 
     it('says rest days neither count nor break the streak and never mentions a lost streak', async () => {
       await open();
-      expect(text()).toContain('không tính và không làm đứt chuỗi');
+      expect(text()).toContain('không làm gián đoạn chuỗi');
       expect(text()).not.toMatch(/mất chuỗi|đứt chuỗi của bạn|đã mất/i);
     });
 

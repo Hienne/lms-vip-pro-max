@@ -1,7 +1,7 @@
 import { Grid, GridCell, GridRow } from '@angular/aria/grid';
-import { Component, computed, input } from '@angular/core';
+import { Component, computed, inject, input } from '@angular/core';
 import type { HeatmapDay } from '@lms/contracts';
-import { Tooltip } from '@lms/ui';
+import { NOW, Tooltip } from '@lms/ui';
 
 /** The shades of the one colour: 0 is no activity, 1 to 4 grow with lessons completed plus quizzes submitted. */
 export type HeatmapLevel = 0 | 1 | 2 | 3 | 4;
@@ -11,6 +11,7 @@ interface HeatmapCell {
   readonly level: HeatmapLevel;
   readonly restDay: boolean;
   readonly label: string;
+  readonly today: boolean;
 }
 
 /** The only thing the app decides: which of four shades a day's count gets. The counts are the server's. */
@@ -58,6 +59,24 @@ export class ActivityHeatmap {
   /** Names the grid for assistive technology. */
   readonly label = input('Hoạt động học theo ngày');
 
+  private readonly now = inject(NOW);
+  private readonly today = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Ho_Chi_Minh', year: 'numeric', month: '2-digit', day: '2-digit',
+  }).format(this.now());
+
+  protected readonly firstWeekday = computed(() => this.days().length ? weekdayOf(this.days()[0].date) : 0);
+
+  protected readonly months = computed(() => {
+    const days = this.days();
+    if (!days.length) return [];
+    const first = new Date(days[0].date + 'T00:00:00Z');
+    const start = first.getTime() - weekdayOf(days[0].date) * 86400000;
+    return days.filter((day, index) => index === 0 || day.date.endsWith('-01')).map((day) => {
+      const date = new Date(day.date + 'T00:00:00Z');
+      return { label: 'T' + (date.getUTCMonth() + 1), column: Math.floor((date.getTime() - start) / 604800000) + 1 };
+    });
+  });
+
   /** Seven rows, Monday first; each holds that weekday of every week, oldest first. */
   protected readonly rows = computed<HeatmapCell[][]>(() => {
     const rows: HeatmapCell[][] = Array.from({ length: 7 }, () => []);
@@ -67,6 +86,7 @@ export class ActivityHeatmap {
         level: levelOf(day.lessons + day.quizzes),
         restDay: day.restDay,
         label: dayLabel(day),
+        today: day.date === this.today,
       });
     }
     return rows;
