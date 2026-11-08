@@ -31,6 +31,12 @@
     }
   }
 
+  &--learner {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    min-height: 100dvh;
+  }
+
   // A workspace page: the frame is exactly the viewport, and the page fills what the header and
   // the offline banner leave (`flex: 1` and `min-height: 0` on its host), scrolling inside itself.
   &--fill {

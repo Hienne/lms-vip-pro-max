@@ -29,6 +29,7 @@ import {
 import { confirm, Toaster } from '@lms/ui';
 import { catchError, filter, map, of, switchMap, take, tap } from 'rxjs';
 import type { UserMenuValue } from '../../header/header';
+import { learnerNavigation } from '../../header/learner-navigation';
 import { searchTarget } from '../../header/search-target';
 import { EndpointClient } from '../../../core/http/endpoint-client';
 import { InstructorFeedbackChanged } from '../../../core/learning/instructor-feedback-changed';
@@ -148,6 +149,11 @@ export class ShellStore {
 
   readonly user$ = this.session.user$;
   readonly roleText$ = computed(() => this.session.user$()?.roleText ?? '');
+  readonly learnerNav$ = computed(() =>
+    learnerNavigation(this.user$(), (endpoint) =>
+      this.client.isServed(endpoint),
+    ),
+  );
 
   /**
    * Reloaded after sign-in and on every navigation, as the mockup refreshes its badges. The
