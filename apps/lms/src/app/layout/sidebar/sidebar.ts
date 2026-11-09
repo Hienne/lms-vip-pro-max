@@ -39,16 +39,21 @@ export class Sidebar {
   /** The collapse button was pressed. */
   readonly collapseToggle = output();
 
-  /** Entries whose screen is not built are shown in development builds only. */
-  protected readonly sections = computed<readonly NavSection[]>(() => {
-    if (this.showDesignLink) return this.nav();
-    return this.nav()
+  /**
+   * The profile is left out: it opens from the account menu in the header. Entries whose screen is
+   * not built are shown in development builds only.
+   */
+  protected readonly sections = computed<readonly NavSection[]>(() =>
+    this.nav()
       .map((section) => ({
         ...section,
-        items: section.items.filter((item) => !item.upcoming),
+        items: section.items.filter(
+          (item) =>
+            item.code !== 'PROFILE' && (this.showDesignLink || !item.upcoming),
+        ),
       }))
-      .filter((section) => section.items.length > 0);
-  });
+      .filter((section) => section.items.length > 0),
+  );
   protected readonly active = computed(() =>
     activeHref(this.sections(), this.activePath()),
   );
