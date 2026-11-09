@@ -24,14 +24,29 @@
   [ready]="store.ready$()"
   (joined)="store.join($event)"
 />
-} @if (store.error$(); as error) { <ui-alert tone="warning" [title]="error" /> }
-@if (store.ticketError$(); as error) {
-<ui-alert tone="danger" [title]="error.message" /> }
+} @if (store.ticketError$(); as error) {
+<ui-alert tone="danger" heading="Không lấy được vé vào phòng">
+  {{ error.message }} @if (error.responseId) {
+  <span>Mã tra cứu {{ error.responseId }}.</span> }
+</ui-alert>
+} @else if (store.connectionIssue$(); as issue) {
+<ui-alert
+  [tone]="store.status$() === 'reconnecting' ? 'warning' : 'danger'"
+  heading="Kết nối phòng học"
+  >{{ issue }}</ui-alert
+>
+} @else if (store.gamesIssue$(); as issue) {
+<ui-alert tone="warning" heading="Ví token và trò chơi chưa khả dụng"
+  >{{ issue }}</ui-alert
+>
+} @else if (store.error$(); as error) {
+<ui-alert tone="warning">{{ error }}</ui-alert>
+}
 <div class="chat-room__status">
-  <span role="status"
-    >{{ store.statusLabel$() }} · {{ store.players$().length }} người trong
-    phòng</span
-  >
+  <span role="status">
+    {{ store.statusLabel$() }} @if (store.online$()) { · {{
+    store.players$().length }} người trong phòng }
+  </span>
   <div class="row">
     @if (balance !== null) {
     <button uiButton size="sm" (click)="store.openGame('caro')">

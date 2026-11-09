@@ -19,11 +19,12 @@ import {
   type RoomMovement,
   type RoomPlayer,
 } from '@lms/contracts';
-import { retry, throwError, timer } from 'rxjs';
+import { retry, tap, throwError, timer } from 'rxjs';
 import { serverData } from '../../../core/data-access/server-data';
 import { serverMutation } from '../../../core/data-access/server-mutation';
 import {
   EndpointClient,
+  SOCKET_INVALID_RESPONSE,
   type SocketConnection,
 } from '../../../core/http/endpoint-client';
 import { SessionStore } from '../../../core/session/session.store';
@@ -38,7 +39,13 @@ import type {
 import { inRoomArea } from './chat-room.model';
 import { RoomGamesStore } from './room-games.store';
 
-type ConnectionStatus = 'offline' | 'connecting' | 'online' | 'reconnecting';
+type ConnectionStatus =
+  | 'offline'
+  | 'connecting'
+  | 'joining'
+  | 'online'
+  | 'reconnecting';
+type SocketFailure = number | 'join-timeout' | 'heartbeat-timeout';
 const SPEECH_DURATION_MS = 5500;
 
 @Injectable()
@@ -65,6 +72,8 @@ export class ChatRoomStore {
     viewMode: signal<RoomViewMode>('3d'),
     correction: signal<RoomCanvasState['correction']>(null),
     error: signal(''),
+    connectionIssue: signal(''),
+    gamesIssue: signal(''),
     copied: signal(false),
     sending: signal(false),
     renderError: signal(''),
@@ -81,6 +90,11 @@ export class ChatRoomStore {
             ['unauthorized', 'forbidden'].includes(toAppError(error).kind)
               ? throwError(() => error)
               : timer(1500),
+        }),
+        tap({
+          error: () => {
+            if (this.active) this.stopConnecting();
+          },
         }),
       ),
     {
@@ -112,6 +126,8 @@ export class ChatRoomStore {
   readonly viewMode$ = this.state.viewMode.asReadonly();
   readonly me$ = this.state.me.asReadonly();
   readonly error$ = this.state.error.asReadonly();
+  readonly connectionIssue$ = this.state.connectionIssue.asReadonly();
+  readonly gamesIssue$ = this.state.gamesIssue.asReadonly();
   readonly copied$ = this.state.copied.asReadonly();
   readonly sending$ = this.state.sending.asReadonly();
   readonly renderError$ = this.state.renderError.asReadonly();
@@ -119,7 +135,12 @@ export class ChatRoomStore {
   readonly isLoading$ = this.mapData.isLoading;
   readonly loadError$ = this.mapData.error;
   readonly ticketError$ = this.ticketMutation.error;
-  readonly isConnecting$ = this.ticketMutation.isPending;
+  readonly isConnecting$ = computed(
+    () =>
+      this.status$() === 'connecting' ||
+      this.status$() === 'joining' ||
+      this.ticketMutation.isPending(),
+  );
   readonly defaultName$ = computed(
     () => this.session.user$()?.fullName.slice(0, 24) ?? '',
   );
@@ -150,8 +171,9 @@ export class ChatRoomStore {
   readonly statusLabel$ = computed(
     () =>
       ({
-        offline: 'Chưa vào phòng',
+        offline: this.entered$() ? 'Chưa kết nối được' : 'Chưa vào phòng',
         connecting: 'Đang kết nối…',
+        joining: 'Đang chờ xác nhận vào phòng…',
         online: 'Đã kết nối',
         reconnecting: 'Đang kết nối lại…',
       })[this.status$()],
@@ -253,6 +275,7 @@ export class ChatRoomStore {
     this.active = true;
     this.attempts = 0;
     this.setError('');
+    this.state.connectionIssue.set('');
     this.setStatus('connecting');
     this.ticketMutation.reset();
     this.ticketMutation.run(undefined);
@@ -332,6 +355,8 @@ export class ChatRoomStore {
     this.closeChat();
     this.setCorrection(null);
     this.setError('');
+    this.state.connectionIssue.set('');
+    this.state.gamesIssue.set('');
   }
   async share(): Promise<void> {
     try {
@@ -350,6 +375,8 @@ export class ChatRoomStore {
     const generation = this.generation;
     this.socket = this.client.connect(chatRoomSocket, ticket, {
       opened: () => {
+        if (generation !== this.generation) return;
+        this.setStatus('joining');
         if (this.identity)
           this.socket?.send({
             type: 'join',
@@ -366,7 +393,7 @@ export class ChatRoomStore {
         if (generation === this.generation) this.disconnected(code);
       },
     });
-    this.timeout = setTimeout(() => this.disconnected(1006), 8000);
+    this.timeout = setTimeout(() => this.disconnected('join-timeout'), 8000);
   }
   private receive(event: RoomEvent): void {
     switch (event.type) {
@@ -374,6 +401,8 @@ export class ChatRoomStore {
         clearTimeout(this.timeout);
         this.setStatus('online');
         this.setError('');
+        this.state.connectionIssue.set('');
+        this.state.gamesIssue.set('');
         this.attempts = 0;
         this.setMe(event.id);
         this.setPlayers(event.players);
@@ -384,7 +413,8 @@ export class ChatRoomStore {
         this.setCorrection(null);
         this.pongAt = Date.now();
         this.heartbeat = setInterval(() => {
-          if (Date.now() - this.pongAt > 35000) this.disconnected(1006);
+          if (Date.now() - this.pongAt > 35000)
+            this.disconnected('heartbeat-timeout');
           else this.socket?.send({ type: 'ping' });
         }, 10000);
         break;
@@ -462,7 +492,17 @@ export class ChatRoomStore {
         this.receiveHighFive(event);
         break;
       case 'error':
-        this.setError(event.message);
+        if (event.scope === 'games') {
+          this.games.reset();
+          this.state.gamesIssue.set(event.message);
+        } else if (!this.online$()) {
+          this.stopConnecting();
+          this.state.connectionIssue.set(
+            event.message || 'Máy chủ từ chối yêu cầu vào phòng.',
+          );
+        } else {
+          this.setError(event.message);
+        }
         break;
       case 'pong':
         this.pongAt = Date.now();
@@ -473,7 +513,9 @@ export class ChatRoomStore {
         break;
     }
   }
-  private disconnected(code: number): void {
+  private disconnected(failure: SocketFailure): void {
+    const wasOnline = this.online$();
+    const wasJoining = this.status$() === 'joining';
     this.stopSocket();
     this.setPlayers([]);
     this.games.reset();
@@ -481,23 +523,61 @@ export class ChatRoomStore {
     this.clearSpeech();
     this.clearGestures();
     this.closeChat();
+    this.state.gamesIssue.set('');
     if (!this.active) return;
-    if ([1002, 1008, 1013].includes(code) || this.attempts >= 6) {
+    const detail = this.socketFailureDetail(failure, wasOnline, wasJoining);
+    const terminal =
+      failure === 1002 ||
+      failure === SOCKET_INVALID_RESPONSE ||
+      failure === 1008 ||
+      failure === 1013 ||
+      (failure === 1011 && !wasOnline);
+    if (terminal || this.attempts >= 6) {
       this.active = false;
       this.setStatus('offline');
-      this.setError(
-        code === 1013
-          ? 'Phòng đã đầy. Hãy thử lại sau.'
-          : 'Kết nối đã dừng. Hãy thử kết nối lại hoặc đăng nhập lại.',
-      );
+      this.state.connectionIssue.set(detail);
       return;
     }
     this.setStatus('reconnecting');
-    this.setError('Kết nối gián đoạn. Đang thử lại…');
+    this.state.connectionIssue.set(`${detail} Đang tự kết nối lại…`);
     this.retryTimer = setTimeout(
       () => this.ticketMutation.run(undefined),
       Math.min(10000, 1000 * 2 ** this.attempts++),
     );
+  }
+  private socketFailureDetail(
+    failure: SocketFailure,
+    wasOnline: boolean,
+    wasJoining: boolean,
+  ): string {
+    switch (failure) {
+      case 'join-timeout':
+        return wasJoining
+          ? 'WebSocket đã mở nhưng máy chủ chưa xác nhận vào phòng sau 8 giây.'
+          : 'Không mở được WebSocket trong 8 giây.';
+      case 'heartbeat-timeout':
+        return 'Máy chủ không phản hồi kiểm tra kết nối phòng.';
+      case 1002:
+      case SOCKET_INVALID_RESPONSE:
+        return 'Dữ liệu phòng từ máy chủ không tương thích. Hãy tải lại trang hoặc báo quản trị viên.';
+      case 1008:
+        return 'Máy chủ từ chối phiên kết nối phòng (1008). Hãy đăng nhập lại rồi thử.';
+      case 1013:
+        return 'Máy chủ đang bận hoặc phòng đã đầy (1013). Hãy thử lại sau.';
+      default: {
+        const step = wasOnline
+          ? 'Kết nối phòng bị ngắt'
+          : wasJoining
+            ? 'WebSocket đã mở nhưng máy chủ đóng kết nối trước khi xác nhận vào phòng'
+            : 'Không mở được WebSocket';
+        return `${step} (mã ${failure}).`;
+      }
+    }
+  }
+  private stopConnecting(): void {
+    this.active = false;
+    this.stopSocket();
+    this.setStatus('offline');
   }
   private stopSocket(): void {
     this.generation++;

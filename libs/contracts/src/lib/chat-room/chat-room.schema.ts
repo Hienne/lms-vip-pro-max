@@ -287,7 +287,11 @@ export const RoomEventSchema = z.discriminatedUnion('type', [
   RoomCaroStateSchema,
   z.object({ type: z.literal('caro-error'), message: z.string() }),
   z.object({ type: z.literal('dice-error'), message: z.string() }),
-  z.object({ type: z.literal('error'), message: z.string() }),
+  z.object({
+    type: z.literal('error'),
+    message: z.string(),
+    scope: z.literal('games').optional(),
+  }),
   z.object({ type: z.literal('pong') }),
 ]);
 export type RoomEvent = z.infer<typeof RoomEventSchema>;

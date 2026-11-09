@@ -42,6 +42,9 @@ export interface SocketObserver<Response> {
   closed(code: number): void;
 }
 
+// Browsers may send 1000 or an application close code, but reject close(1002).
+export const SOCKET_INVALID_RESPONSE = 4002;
+
 type Declared<S> = [S] extends [undefined] ? false : true;
 
 type Part<K extends string, S> = [S] extends [undefined]
@@ -162,27 +165,32 @@ export class EndpointClient {
     url.protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
     url.searchParams.set('ticket', ticket);
     const socket = new WebSocket(url);
+    let invalidResponse = false;
     socket.onopen = () => observer.opened();
     socket.onmessage = ({ data }: MessageEvent<unknown>) => {
+      let decoded: unknown;
       try {
-        const parsed = endpoint.response.safeParse(
-          typeof data === 'string' ? JSON.parse(data) : data,
-        );
-        if (!parsed.success) {
-          this.errorHandler.handleError(new ContractError(parsed.error.issues));
-          socket.close(1002);
-          return;
-        }
-        observer.message(parsed.data as z.output<E['response']>);
+        decoded = typeof data === 'string' ? JSON.parse(data) : data;
       } catch {
+        invalidResponse = true;
+        socket.close(SOCKET_INVALID_RESPONSE);
         this.errorHandler.handleError(
           new Error('Invalid WebSocket JSON response'),
         );
-        socket.close(1002);
+        return;
       }
+      const parsed = endpoint.response.safeParse(decoded);
+      if (!parsed.success) {
+        invalidResponse = true;
+        socket.close(SOCKET_INVALID_RESPONSE);
+        this.errorHandler.handleError(new ContractError(parsed.error.issues));
+        return;
+      }
+      observer.message(parsed.data as z.output<E['response']>);
     };
     socket.onerror = () => socket.close();
-    socket.onclose = ({ code }) => observer.closed(code);
+    socket.onclose = ({ code }) =>
+      observer.closed(invalidResponse ? SOCKET_INVALID_RESPONSE : code);
     return {
       send: (command) => {
         if (socket.readyState === WebSocket.OPEN)
