@@ -1,7 +1,13 @@
-import { Component, computed, input } from '@angular/core';
+import { Component, computed, input, output } from '@angular/core';
 import type { LearningProgressOverview } from '@lms/contracts';
 import { FmtPctPipe } from '@lms/ui';
 
+export type ProgressCountFilter =
+  | 'all'
+  | 'completed'
+  | 'in_progress'
+  | 'not_started'
+  | 'overdue';
 export type ProgressCountsValue = LearningProgressOverview['counts'];
 
 /**
@@ -18,18 +24,42 @@ export type ProgressCountsValue = LearningProgressOverview['counts'];
 export class ProgressCounts {
   readonly counts = input.required<ProgressCountsValue>();
   readonly averageScore = input<number | null>();
+  readonly interactive = input(false);
+  readonly selectedFilter = input<ProgressCountFilter | null>(null);
+  readonly filterSelected = output<ProgressCountFilter>();
 
   protected readonly items = computed(() => {
     const counts = this.counts();
     return [
-      { label: 'Tổng số khóa', value: counts.total, danger: false },
-      { label: 'Hoàn thành', value: counts.completed, danger: false },
-      { label: 'Đang học', value: counts.inProgress, danger: false },
-      { label: 'Chưa bắt đầu', value: counts.notStarted, danger: false },
+      {
+        label: 'Tổng số khóa',
+        value: counts.total,
+        danger: false,
+        filter: 'all' as const,
+      },
+      {
+        label: 'Hoàn thành',
+        value: counts.completed,
+        danger: false,
+        filter: 'completed' as const,
+      },
+      {
+        label: 'Đang học',
+        value: counts.inProgress,
+        danger: false,
+        filter: 'in_progress' as const,
+      },
+      {
+        label: 'Chưa bắt đầu',
+        value: counts.notStarted,
+        danger: false,
+        filter: 'not_started' as const,
+      },
       {
         label: 'Đang quá hạn',
         value: counts.overdue,
         danger: counts.overdue > 0,
+        filter: 'overdue' as const,
       },
     ];
   });

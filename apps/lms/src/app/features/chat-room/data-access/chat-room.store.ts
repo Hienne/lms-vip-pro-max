@@ -10,9 +10,13 @@ import {
   chatRoomSocket,
   type RoomCommand,
   type RoomEvent,
-  type RoomGameState,
+  type RoomDiceBet,
+  type RoomDiceState,
   type RoomGesture,
   type RoomGestureKind,
+  type RoomHighFive,
+  type RoomHighFiveInvite,
+  type RoomInteractionCommand,
   type RoomIdentity,
   type RoomMovement,
   type RoomPlayer,
@@ -28,10 +32,12 @@ import { SessionStore } from '../../../core/session/session.store';
 import { toAppError } from '../../../core/errors/app-error';
 import type {
   RoomCanvasState,
+  RoomInvitationView,
   RoomSpeech,
   RoomViewMode,
   TimedRoomGesture,
 } from './chat-room.model';
+import { inRoomArea } from './chat-room.model';
 
 type ConnectionStatus = 'offline' | 'connecting' | 'online' | 'reconnecting';
 const SPEECH_DURATION_MS = 5500;
@@ -52,6 +58,8 @@ export class ChatRoomStore {
     speech: signal<Readonly<Record<string, RoomSpeech>>>({}),
     gestures: signal<Readonly<Record<string, TimedRoomGesture>>>({}),
     gesturesEnabled: signal(false),
+    interactionsEnabled: signal(false),
+    invitation: signal<RoomHighFiveInvite | null>(null),
     gestureNotice: signal(''),
     chatOpen: signal(false),
     viewMode: signal<RoomViewMode>('3d'),
@@ -60,8 +68,10 @@ export class ChatRoomStore {
     copied: signal(false),
     sending: signal(false),
     renderError: signal(''),
-    game: signal<RoomGameState | null>(null),
-    gameOpen: signal(false),
+    dice: signal<RoomDiceState | null>(null),
+    diceOpen: signal(false),
+    dicePending: signal(false),
+    diceError: signal(''),
   };
   private readonly mapData = serverData(() =>
     this.client.call(chatRoomEndpoints.map),
@@ -91,6 +101,16 @@ export class ChatRoomStore {
   readonly players$ = this.state.players.asReadonly();
   readonly speech$ = this.state.speech.asReadonly();
   readonly gesturesEnabled$ = this.state.gesturesEnabled.asReadonly();
+  readonly interactionsEnabled$ = this.state.interactionsEnabled.asReadonly();
+  readonly invitation$ = computed<RoomInvitationView | null>(() => {
+    const invite = this.state.invitation();
+    if (!invite) return null;
+    const incoming = invite.to === this.me$();
+    const other = this.players$().find(
+      (player) => player.id === (incoming ? invite.from : invite.to),
+    );
+    return other ? { id: invite.id, name: other.name, incoming } : null;
+  });
   readonly gestureNotice$ = this.state.gestureNotice.asReadonly();
   readonly chatOpen$ = this.state.chatOpen.asReadonly();
   readonly viewMode$ = this.state.viewMode.asReadonly();
@@ -99,17 +119,9 @@ export class ChatRoomStore {
   readonly copied$ = this.state.copied.asReadonly();
   readonly sending$ = this.state.sending.asReadonly();
   readonly renderError$ = this.state.renderError.asReadonly();
-  readonly game$ = this.state.game.asReadonly();
-  readonly gameOpen$ = this.state.gameOpen.asReadonly();
-  readonly gameActive$ = computed(() => {
-    const round = this.game$()?.round;
-    return !!round && round.correctIndex === undefined;
-  });
-  readonly isHost$ = computed(() => this.game$()?.hostId === this.me$());
-  readonly hostName$ = computed(() => {
-    const hostId = this.game$()?.hostId;
-    return this.players$().find((player) => player.id === hostId)?.name;
-  });
+  readonly dice$ = this.state.dice.asReadonly();
+  readonly dicePending$ = this.state.dicePending.asReadonly();
+  readonly diceError$ = this.state.diceError.asReadonly();
   readonly map$ = this.mapData.value;
   readonly isLoading$ = this.mapData.isLoading;
   readonly loadError$ = this.mapData.error;
@@ -119,6 +131,18 @@ export class ChatRoomStore {
     () => this.session.user$()?.fullName.slice(0, 24) ?? '',
   );
   readonly online$ = computed(() => this.status$() === 'online');
+  readonly nearDice$ = computed(() => {
+    const player = this.players$().find((person) => person.id === this.me$());
+    return (
+      this.online$() &&
+      !!this.dice$() &&
+      !!player &&
+      inRoomArea(this.map$()?.diceArea, player.x, player.y)
+    );
+  });
+  readonly diceOpen$ = computed(
+    () => this.nearDice$() && this.state.diceOpen(),
+  );
   readonly statusLabel$ = computed(
     () =>
       ({
@@ -138,7 +162,8 @@ export class ChatRoomStore {
     online: this.online$(),
     me: this.me$(),
     players: this.players$(),
-    chatting: this.chatOpen$(),
+    chatting: this.chatOpen$() || this.diceOpen$(),
+    dice: this.dice$()?.result,
     speech: this.speech$(),
     gestures: this.state.gestures(),
     correction: this.state.correction(),
@@ -152,6 +177,7 @@ export class ChatRoomStore {
   private cooldown?: ReturnType<typeof setTimeout>;
   private copyTimer?: ReturnType<typeof setTimeout>;
   private gestureNoticeTimer?: ReturnType<typeof setTimeout>;
+  private invitationTimer?: ReturnType<typeof setTimeout>;
   private active = false;
   private generation = 0;
   private attempts = 0;
@@ -245,7 +271,10 @@ export class ChatRoomStore {
     this.setViewMode(mode);
   }
   openChat(): void {
-    if (this.online$()) this.setChatOpen(true);
+    if (this.online$()) {
+      this.closeDice();
+      this.setChatOpen(true);
+    }
   }
   closeChat(): void {
     this.setChatOpen(false);
@@ -258,17 +287,35 @@ export class ChatRoomStore {
       this.socket?.send({ type: 'gesture', kind });
     }
   }
-  toggleGame(): void {
-    this.state.gameOpen.update((open) => !open);
+  interact(command: RoomInteractionCommand): void {
+    if (this.online$() && this.interactionsEnabled$()) {
+      this.setError('');
+      this.socket?.send(command);
+    }
   }
-  startGame(): void {
-    this.sendGameCommand({ type: 'game-start' });
+  openDice(): void {
+    if (!this.nearDice$()) return;
+    this.closeChat();
+    this.state.diceError.set('');
+    this.state.diceOpen.set(true);
   }
-  answerGame(roundId: string, choice: number): void {
-    this.sendGameCommand({ type: 'game-answer', roundId, choice });
+  closeDice(): void {
+    this.state.diceOpen.set(false);
   }
-  closeGame(roundId: string): void {
-    this.sendGameCommand({ type: 'game-close', roundId });
+  rollDice(bet: RoomDiceBet): void {
+    const dice = this.dice$();
+    if (
+      !this.diceOpen$() ||
+      !dice ||
+      this.dicePending$() ||
+      !Number.isSafeInteger(bet.stake) ||
+      bet.stake < 1 ||
+      bet.stake > dice.balance
+    )
+      return;
+    this.state.diceError.set('');
+    this.state.dicePending.set(true);
+    this.socket?.send({ type: 'dice-roll', turn: dice.turn, ...bet });
   }
   send(text: string): void {
     if (!this.online$() || this.sending$() || !text.trim()) return;
@@ -288,8 +335,7 @@ export class ChatRoomStore {
     this.setEntered(false);
     this.setStatus('offline');
     this.setPlayers([]);
-    this.state.game.set(null);
-    this.state.gameOpen.set(false);
+    this.resetDice();
     this.clearSpeech();
     this.clearGestures();
     this.setMe('');
@@ -309,11 +355,6 @@ export class ChatRoomStore {
       );
     }
   }
-  private sendGameCommand(command: RoomCommand): void {
-    if (!this.online$()) return;
-    this.setError('');
-    this.socket?.send(command);
-  }
   private openSocket(ticket: string): void {
     this.stopSocket();
     const generation = this.generation;
@@ -323,8 +364,9 @@ export class ChatRoomStore {
           this.socket?.send({
             type: 'join',
             ...this.identity,
-            activities: true,
+            dice: true,
             gestures: true,
+            interactions: true,
           });
       },
       message: (event) => {
@@ -348,6 +390,7 @@ export class ChatRoomStore {
         this.clearSpeech();
         this.clearGestures();
         this.state.gesturesEnabled.set(event.gestures === true);
+        this.state.interactionsEnabled.set(event.interactions === true);
         this.setCorrection(null);
         this.pongAt = Date.now();
         this.heartbeat = setInterval(() => {
@@ -361,6 +404,7 @@ export class ChatRoomStore {
         break;
       case 'left':
         this.setPlayers(this.players$().filter((p) => p.id !== event.id));
+        if (!this.invitation$()) this.clearInvitation();
         this.clearSpeech(event.id);
         this.state.gestures.update((gestures) => {
           const remaining = { ...gestures };
@@ -377,6 +421,10 @@ export class ChatRoomStore {
                   x: event.x,
                   y: event.y,
                   facing: event.facing ?? p.facing,
+                  seat:
+                    event.seat === undefined
+                      ? p.seat
+                      : (event.seat ?? undefined),
                 }
               : p,
           ),
@@ -402,11 +450,27 @@ export class ChatRoomStore {
           ),
         );
         break;
-      case 'game':
-        this.state.game.set(event);
+      case 'dice-state':
+        this.state.dice.set(event);
+        this.state.dicePending.set(false);
+        break;
+      case 'dice-error':
+        this.state.diceError.set(event.message);
+        this.state.dicePending.set(false);
         break;
       case 'gesture':
         this.receiveGesture(event);
+        break;
+      case 'high-five-invite':
+        this.clearInvitation();
+        this.state.invitation.set(event);
+        this.invitationTimer = setTimeout(() => this.clearInvitation(), 10000);
+        break;
+      case 'high-five-end':
+        if (this.state.invitation()?.id === event.id) this.clearInvitation();
+        break;
+      case 'high-five':
+        this.receiveHighFive(event);
         break;
       case 'error':
         this.setError(event.message);
@@ -419,7 +483,7 @@ export class ChatRoomStore {
   private disconnected(code: number): void {
     this.stopSocket();
     this.setPlayers([]);
-    this.state.game.set(null);
+    this.resetDice();
     this.setMe('');
     this.clearSpeech();
     this.clearGestures();
@@ -449,6 +513,12 @@ export class ChatRoomStore {
     clearInterval(this.heartbeat);
     this.socket?.close();
     this.socket = undefined;
+  }
+  private resetDice(): void {
+    this.closeDice();
+    this.state.dice.set(null);
+    this.state.diceError.set('');
+    this.state.dicePending.set(false);
   }
   private clearSpeech(playerId?: string): void {
     if (playerId) {
@@ -487,7 +557,37 @@ export class ChatRoomStore {
       );
       if (actor) notice = `${actor.name} vẫy chào bạn.`;
     }
-    if (!notice) return;
+    if (notice) this.showGestureNotice(notice);
+  }
+
+  private receiveHighFive(event: RoomHighFive): void {
+    const startedAt = performance.now();
+    const { from, to } = event;
+    this.state.gestures.update((gestures) => ({
+      ...gestures,
+      [from.id]: {
+        kind: 'high-five',
+        origin: from,
+        partner: to,
+        leading: true,
+        startedAt,
+      },
+      [to.id]: {
+        kind: 'high-five',
+        origin: to,
+        partner: from,
+        leading: false,
+        startedAt,
+      },
+    }));
+    const self = [from, to].find((player) => player.id === this.me$());
+    if (self) {
+      this.setCorrection({ x: self.x, y: self.y });
+      this.showGestureNotice('Hai bạn vừa đập tay!');
+    }
+  }
+
+  private showGestureNotice(notice: string): void {
     this.state.gestureNotice.set(notice);
     clearTimeout(this.gestureNoticeTimer);
     this.gestureNoticeTimer = setTimeout(
@@ -500,6 +600,13 @@ export class ChatRoomStore {
     clearTimeout(this.gestureNoticeTimer);
     this.state.gestures.set({});
     this.state.gesturesEnabled.set(false);
+    this.state.interactionsEnabled.set(false);
     this.state.gestureNotice.set('');
+    this.clearInvitation();
+  }
+
+  private clearInvitation(): void {
+    clearTimeout(this.invitationTimer);
+    this.state.invitation.set(null);
   }
 }

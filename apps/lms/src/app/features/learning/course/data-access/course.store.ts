@@ -199,15 +199,29 @@ export class CourseStore {
     () => new Map(this.detail$()?.lessons.map((l) => [l.lessonId, l]) ?? []),
   );
 
-  /** Where "Tiếp tục học" goes: the server's last lesson, else the first content lesson. */
-  readonly resumeLessonId$ = computed((): number | undefined => {
+  /** Resume an unfinished lesson or move on to the next required item. */
+  private readonly resumeLesson = computed(() => {
     const detail = this.detail$();
     if (!detail) return undefined;
-    const lessons = (this.content$()?.chapters ?? []).flatMap((c) => c.lessons);
-    const last = detail.enrollment.lastLessonId;
-    if (last && lessons.some((l) => l.lesson.id === last)) return last;
-    return lessons.find((l) => l.lesson.lessonType === 'content')?.lesson.id;
+    const lessons = (this.content$()?.chapters ?? []).flatMap((chapter) =>
+      chapter.lessons.map(({ lesson }) => lesson),
+    );
+    const states = this.lessonStates();
+    const last = lessons.find(
+      (lesson) => lesson.id === detail.enrollment.lastLessonId,
+    );
+    if (last && stateOf(states.get(last.id)) !== 'completed') return last;
+    return (
+      lessons.find(
+        (lesson) =>
+          lesson.isRequired && stateOf(states.get(lesson.id)) !== 'completed',
+      ) ??
+      last ??
+      lessons.find((lesson) => lesson.lessonType === 'content')
+    );
   });
+
+  readonly resumeLessonId$ = computed(() => this.resumeLesson()?.id);
 
   readonly resumeLink$ = computed((): string | null => {
     const lessonId = this.resumeLessonId$();
@@ -215,17 +229,29 @@ export class CourseStore {
     return lessonId && courseId ? `/lesson/${courseId}/${lessonId}` : null;
   });
 
+  readonly resumeLessonTitle$ = computed(() => this.resumeLesson()?.title);
+
+  readonly nextExamId$ = computed(() => {
+    const completion = this.detail$()?.completion;
+    return this.card$()?.learningStatus !== 'completed' &&
+      completion?.lessonsSatisfied &&
+      (completion.finalExamStatus === 'NOT_TAKEN' ||
+        completion.finalExamStatus === 'NOT_PASSED')
+      ? completion.finalQuizId
+      : null;
+  });
+
   /** "Bắt đầu học" before the first lesson, "Tiếp tục học" while learning, nothing once done. */
   readonly primaryAction$ = computed((): string | null => {
-    if (this.view$() !== 'enrolled' || !this.resumeLink$()) return null;
-    switch (this.card$()?.learningStatus) {
-      case 'completed':
-        return null;
-      case 'not_started':
-        return 'Bắt đầu học';
-      default:
-        return 'Tiếp tục học';
-    }
+    const status = this.card$()?.learningStatus;
+    if (
+      this.view$() !== 'enrolled' ||
+      !this.resumeLink$() ||
+      status === 'completed'
+    )
+      return null;
+    if (this.resumeLesson()?.lessonType === 'quiz') return 'Đến bài kiểm tra';
+    return status === 'not_started' ? 'Bắt đầu học' : 'Tiếp tục học';
   });
 
   /**

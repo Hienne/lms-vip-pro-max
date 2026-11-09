@@ -1,5 +1,6 @@
 import * as THREE from 'three';
-import type { RoomMap, RoomFurniture } from '@lms/contracts';
+import type { RoomArea, RoomMap, RoomFurniture } from '@lms/contracts';
+import { inRoomArea } from '../../../data-access/chat-room.model';
 
 export const WORLD_SCALE = 80;
 
@@ -25,9 +26,24 @@ export class RoomWorld3D {
     ].map(([radius, height]) => new THREE.Vector2(radius, height)),
     24,
   );
+  private readonly jacket = new THREE.LatheGeometry(
+    [
+      [0, 0.47],
+      [0.25, 0.47],
+      [0.29, 0.52],
+      [0.295, 0.68],
+      [0.34, 0.86],
+      [0.31, 0.96],
+      [0.21, 1.04],
+      [0.14, 1.07],
+      [0, 1.07],
+    ].map(([radius, height]) => new THREE.Vector2(radius, height)),
+    24,
+  );
   private readonly cylinder = new THREE.CylinderGeometry(1, 0.8, 1, 12);
   private readonly materials = new Map<number, THREE.MeshStandardMaterial>();
   private readonly textures: THREE.Texture[] = [];
+  private readonly dicePips: THREE.Mesh[][] = [];
   private readonly walls = {
     left: new THREE.Group(),
     right: new THREE.Group(),
@@ -162,8 +178,23 @@ export class RoomWorld3D {
       0.04,
       0x4d6857,
     );
-    for (const object of map.objects) this.furniture(object);
-    if (map.activityArea) this.drawActivityArea(map.activityArea);
+    map.objects.forEach((object, index) => this.furniture(object, index));
+    if (map.activityArea)
+      this.drawArea(
+        map.activityArea,
+        'Khu giao lưu',
+        ['#bed3bc', '#88aa90', '#52795e'],
+        0.37,
+        102,
+      );
+    if (map.diceArea)
+      this.drawArea(
+        map.diceArea,
+        'Bàn Tài/Xỉu',
+        ['#e4c89e', '#a66c38', '#6b411e'],
+        0.5,
+        310,
+      );
   }
 
   showInterior(camera: THREE.Vector3): void {
@@ -216,11 +247,15 @@ export class RoomWorld3D {
     parent.add(mesh);
     return mesh;
   }
-  dressAvatar(parent: THREE.Group, color: number): void {
-    const mesh = new THREE.Mesh(this.robe, this.material(color));
+  dressAvatar(parent: THREE.Group, color: number, skirt: boolean): THREE.Mesh {
+    const mesh = new THREE.Mesh(
+      skirt ? this.robe : this.jacket,
+      this.material(color),
+    );
     mesh.scale.z = 0.73;
     mesh.castShadow = true;
     parent.add(mesh);
+    return mesh;
   }
   private window(wall: THREE.Group, x: number, z: number): void {
     this.box(wall, x, 1.7, z, 0.04, 1.25, 1.45, 0xcee7e5);
@@ -230,21 +265,27 @@ export class RoomWorld3D {
       this.box(wall, x, y, z, 0.08, 0.05, 1.55, 0xffffff);
     this.box(wall, x, 1.7, z, 0.08, 1.25, 0.04, 0xffffff);
   }
-  private drawActivityArea(area: NonNullable<RoomMap['activityArea']>): void {
+  private drawArea(
+    area: RoomArea,
+    label: string,
+    colors: readonly [string, string, string],
+    labelX: number,
+    labelY: number,
+  ): void {
     const canvas = document.createElement('canvas');
     canvas.width = 1024;
     canvas.height = 384;
     const paint = canvas.getContext('2d');
     if (!paint) return;
-    paint.fillStyle = '#bed3bc';
+    paint.fillStyle = colors[0];
     paint.fillRect(0, 0, canvas.width, canvas.height);
-    paint.strokeStyle = '#88aa90';
+    paint.strokeStyle = colors[1];
     paint.lineWidth = 5;
     paint.strokeRect(24, 22, canvas.width - 48, canvas.height - 44);
-    paint.fillStyle = '#52795e';
+    paint.fillStyle = colors[2];
     paint.font = '600 50px Segoe UI, sans-serif';
     paint.textAlign = 'center';
-    paint.fillText('Khu giao lưu', canvas.width * 0.37, 102);
+    paint.fillText(label, canvas.width * labelX, labelY);
     const texture = new THREE.CanvasTexture(canvas);
     texture.colorSpace = THREE.SRGBColorSpace;
     texture.anisotropy = 4;
@@ -266,7 +307,22 @@ export class RoomWorld3D {
     floorMark.receiveShadow = true;
     this.root.add(floorMark);
   }
-  private furniture(o: RoomFurniture): void {
+  showDice(faces: readonly number[] = [1, 2, 3]): void {
+    const pips = [
+      [3],
+      [0, 6],
+      [0, 3, 6],
+      [0, 1, 5, 6],
+      [0, 1, 3, 5, 6],
+      [0, 1, 2, 4, 5, 6],
+    ];
+    this.dicePips.forEach((die, index) => {
+      const shown = pips[faces[index] - 1] ?? [];
+      die.forEach((pip, dot) => (pip.visible = shown.includes(dot)));
+    });
+  }
+
+  private furniture(o: RoomFurniture, index: number): void {
     const group = new THREE.Group();
     group.position.set(
       (o.x + o.w / 2) / WORLD_SCALE,
@@ -282,6 +338,36 @@ export class RoomWorld3D {
       for (const x of [-w / 2 + 0.1, w / 2 - 0.1])
         for (const z of [-d / 2 + 0.1, d / 2 - 0.1])
           this.box(group, x, 0.35, z, 0.07, 0.7, 0.07, 0x6a786d);
+      if (inRoomArea(this.map.diceArea, o.x + o.w / 2, o.y + o.h / 2)) {
+        this.box(group, 0, 0.83, 0, w - 0.22, 0.02, d - 0.17, 0x305747);
+        for (const x of [-0.43, 0, 0.43]) {
+          this.box(group, x, 0.98, 0, 0.28, 0.28, 0.28, 0xfff3d4);
+          this.dicePips.push(
+            [
+              [-1, -1],
+              [1, -1],
+              [-1, 0],
+              [0, 0],
+              [1, 0],
+              [-1, 1],
+              [1, 1],
+            ].map(([column, row]) =>
+              this.sphere(
+                group,
+                x + column * 0.075,
+                1.12,
+                row * 0.075,
+                0.024,
+                0.007,
+                0.024,
+                0x3b3025,
+              ),
+            ),
+          );
+        }
+        this.showDice();
+        return;
+      }
       this.box(group, -0.57, 0.84, -0.02, 0.32, 0.035, 0.37, 0x699083);
       this.box(group, 0.23, 0.845, 0, 0.53, 0.028, 0.36, 0xfffbed);
       this.box(group, 0.23, 0.864, 0, 0.012, 0.01, 0.34, 0xb9bda6);
@@ -298,6 +384,7 @@ export class RoomWorld3D {
         );
       this.box(group, 0.73, 0.85, -0.03, 0.025, 0.025, 0.3, 0xaf783e);
     } else if (o.kind === 'chair') {
+      group.userData['chair'] = index;
       this.box(group, 0, 0.44, 0, w, 0.09, d, 0x8cae91);
       this.box(group, 0, 0.73, d / 2 - 0.04, w, 0.54, 0.075, 0x789f80);
       for (const x of [-w / 2 + 0.06, w / 2 - 0.06])
@@ -386,6 +473,7 @@ export class RoomWorld3D {
     geometries.add(this.cube);
     geometries.add(this.ball);
     geometries.add(this.robe);
+    geometries.add(this.jacket);
     geometries.add(this.cylinder);
     geometries.forEach((g) => g.dispose());
     this.materials.forEach((m) => materials.add(m));

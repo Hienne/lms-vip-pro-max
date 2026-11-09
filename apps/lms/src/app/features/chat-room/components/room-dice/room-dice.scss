@@ -1,0 +1,59 @@
+@use 'ui';
+
+:host {
+  display: block;
+  padding: ui.space(4);
+  border: 1px solid ui.color(border);
+  border-radius: ui.radius(card);
+  background: ui.color(surface);
+  box-shadow: ui.shadow(sm);
+}
+
+h2,
+p {
+  margin: 0;
+}
+
+.dice {
+  &__heading {
+    @include ui.row-between(2);
+    h2 {
+      @include ui.text(lg);
+    }
+  }
+  &__balance {
+    @include ui.text(sm);
+    overflow-wrap: anywhere;
+  }
+  &__rules {
+    @include ui.text(xs, muted);
+    margin-top: ui.space(2);
+  }
+  &__form {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: ui.space(2);
+    margin-top: ui.space(3);
+    > button {
+      grid-column: 1 / -1;
+      justify-self: start;
+    }
+  }
+  &__error {
+    @include ui.text(sm);
+    color: ui.color(danger);
+    margin-top: ui.space(2);
+  }
+  &__result {
+    @include ui.text(sm);
+    padding-top: ui.space(2);
+    margin-top: ui.space(2);
+    border-top: 1px solid ui.color(border);
+  }
+  &__faces {
+    display: flex;
+    gap: ui.space(2);
+    font-size: ui.text-size(3xl);
+    line-height: ui.leading(tight);
+  }
+}

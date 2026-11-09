@@ -32,9 +32,11 @@ import {
   type TabItem,
 } from '@lms/ui';
 import { ActivityHeatmap } from '../../../shared/learning/activity-heatmap/activity-heatmap';
-import { withData } from '../../../shared/learning/competency/competency-data';
 import { CompetencyView } from '../../../shared/learning/competency/competency-view';
-import { UnavailableNote } from '../../../shared/learning/unavailable-note/unavailable-note';
+import {
+  ProgressCounts,
+  type ProgressCountFilter,
+} from '../../../shared/learning/progress-counts/progress-counts';
 import { CourseStatus } from '../../../shared/status/course-status';
 import {
   EXAM_HISTORY_SIZE,
@@ -78,7 +80,6 @@ import {
     TableWrap,
     TabPanel,
     Tabs,
-    UnavailableNote,
   ],
   providers: [ProgressStore],
   templateUrl: './progress.html',
@@ -86,11 +87,17 @@ import {
 })
 export class LearningProgress {
   protected readonly store = inject(ProgressStore);
+  protected readonly selectedCountFilter = computed<ProgressCountFilter | null>(
+    () => {
+      const filters = this.store.filters$();
+      if (this.store.tab$() !== 'courses' || filters.q.trim()) return null;
+      if (filters.overdueOnly)
+        return filters.learningStatus === 'all' ? 'overdue' : null;
+      return filters.learningStatus;
+    },
+  );
   protected readonly pageSize = PROGRESS_PAGE_SIZE;
   protected readonly historyPageSize = EXAM_HISTORY_SIZE;
-  protected readonly assessedCompetencyCount = computed(
-    () => withData(this.store.competency$() ?? []).length,
-  );
   protected readonly tabs: readonly TabItem[] = [
     { id: 'courses', label: 'Tiến độ khóa học' },
     { id: 'competency', label: 'Năng lực' },

@@ -15,6 +15,25 @@
     margin: 0 0 ui.space(5);
   }
 
+  &__next {
+    margin: 0 0 ui.space(3);
+  }
+
+  &__overview {
+    > summary {
+      cursor: pointer;
+      font-weight: ui.weight(semibold);
+    }
+
+    &[open] > summary {
+      margin-bottom: ui.space(3);
+    }
+  }
+
+  &__alert {
+    margin-bottom: ui.space(5);
+  }
+
   &__layout {
     display: grid;
     gap: ui.space(6);

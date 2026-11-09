@@ -12,7 +12,7 @@ export function completionHint(
 ): string | null {
   switch (mode) {
     case 'manual':
-      return 'Đọc xong, bấm Đánh dấu hoàn thành';
+      return 'Tiến độ sẽ được ghi khi bạn chuyển tiếp';
     case 'video_coverage':
       return threshold === null
         ? `Đã xem ${percent}%`

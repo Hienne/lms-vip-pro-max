@@ -136,12 +136,19 @@
   }
 }
 .assessment__config {
-  display: grid;
-  gap: ui.space(6);
-  align-items: start;
-  @include ui.bp(lg) {
-    grid-template-columns: minmax(0, 1fr) 22.5rem;
+  @include ui.stack(4);
+}
+.assessment__disclosure {
+  > summary {
+    cursor: pointer;
   }
+
+  &[open] > summary {
+    margin-bottom: ui.space(4);
+  }
+}
+.assessment__candidate-actions {
+  margin-top: ui.space(4);
 }
 .assessment__check {
   @include ui.row(2);

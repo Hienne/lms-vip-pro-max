@@ -6,6 +6,7 @@ import {
 import type { MockInstance } from 'vitest';
 import type { MockBackend } from '../../../../core/dev/mock-api/mock-api.interceptor';
 import {
+  answerIntroWith,
   failEndpoint,
   patchReply,
   provideLearnerQuizSpec,
@@ -52,12 +53,13 @@ describe('QuizResult', () => {
     expect(el.querySelector('[class*="border-top"]')).toBeNull();
   });
 
-  it('makes "Về khóa học" the one primary action, linking to the course', async () => {
+  it('offers a retake as the one primary action after a failed attempt', async () => {
     await openResult(1);
     const primary = el.querySelectorAll('.btn--primary');
     expect(primary).toHaveLength(1);
-    expect(primary[0].textContent).toContain('Về khóa học');
-    expect(primary[0].getAttribute('href')).toBe('/course/1');
+    expect(primary[0].textContent).toContain('Thi lại');
+    expect(primary[0].getAttribute('href')).toBe('/quiz/1');
+    expect(control('Về khóa học')?.getAttribute('href')).toBe('/course/1');
     expect(control('Lịch sử thi')?.getAttribute('href')).toBe(
       '/quiz/1/attempts',
     );
@@ -138,11 +140,21 @@ describe('QuizResult', () => {
       expect(bar.className).not.toMatch(/progress--(success|warning|danger)/);
   });
 
-  it('offers no retake once the quiz is passed', async () => {
-    await openResult(2);
-    expect(el.querySelector('h1')?.textContent).toContain('Bạn đã đạt');
-    expect(control('Thi lại')).toBeUndefined();
-  });
+  it.each([
+    { canStart: false, blockReason: 'PASSED', showsRetake: false },
+    { canStart: true, blockReason: null, showsRetake: true },
+    { canStart: false, blockReason: 'WAIT', showsRetake: true },
+  ] as const)(
+    'follows quiz eligibility after passing ($blockReason)',
+    async ({ canStart, blockReason, showsRetake }) => {
+      answerIntroWith(handle, { canStart, blockReason });
+      await openResult(2);
+      expect(el.querySelector('h1')?.textContent).toContain('Bạn đã đạt');
+      expect(control('Thi lại')?.getAttribute('href')).toBe(
+        showsRetake ? '/quiz/2' : undefined,
+      );
+    },
+  );
 
   it('exposes no writable signal: every write goes through the store', async () => {
     await openResult(1);

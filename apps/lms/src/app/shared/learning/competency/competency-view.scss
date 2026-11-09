@@ -37,18 +37,63 @@
 
     ui-progress {
       flex: 1 1 auto;
-      min-width: ui.space(10);
+      min-width: 0;
     }
+  }
+
+  &__score span {
+    flex: none;
+    min-width: ui.space(12);
+    text-align: right;
+    white-space: nowrap;
   }
 
   &__name {
     min-width: 0;
   }
 
+  &__name-button {
+    display: block;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    text-align: left;
+    color: inherit;
+    background: none;
+    border: 0;
+    padding: 0;
+    font: inherit;
+    cursor: pointer;
+
+    &--expanded {
+      white-space: normal;
+      overflow-wrap: anywhere;
+    }
+
+    &:focus-visible {
+      @include ui.focus-ring;
+    }
+  }
+
   &__list {
     width: 100%;
     border-collapse: collapse;
     text-align: left;
+
+    &--results {
+      table-layout: fixed;
+
+      th:first-child {
+        width: 48%;
+      }
+      th:nth-child(2) {
+        width: 18%;
+      }
+      th:nth-child(3) {
+        width: 34%;
+      }
+    }
 
     th,
     td {
@@ -74,7 +119,6 @@
 
   &__percent {
     @include ui.num;
-    min-width: ui.space(12);
     text-align: right;
     font-weight: ui.weight(semibold);
   }

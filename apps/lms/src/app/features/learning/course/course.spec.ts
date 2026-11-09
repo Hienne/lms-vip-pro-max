@@ -258,6 +258,9 @@ describe('Course', () => {
     expect(action('Đến bài thi cuối khóa')?.getAttribute('href')).toBe(
       '/quiz/2',
     );
+    expect(
+      el.querySelector('.course__actions .btn--primary')?.getAttribute('href'),
+    ).toBe('/quiz/2');
   });
 
   describe('the cover image', () => {
@@ -306,12 +309,15 @@ describe('Course', () => {
       await open(1);
     }
 
-    it('shows the revision’s cover first in the main column, read with no block', async () => {
+    it('keeps the revision cover in the collapsible overview, read with no block', async () => {
       await openWithCover(true);
       const image = el.querySelector<HTMLImageElement>('.course__cover');
       expect(image?.getAttribute('src')).toBe('blob:cover');
       expect(image?.alt).toBe('');
-      expect(el.querySelector('.course__main')?.firstElementChild).toBe(image);
+      const overview =
+        el.querySelector<HTMLDetailsElement>('.course__overview');
+      expect(overview?.querySelector('img')).toBe(image);
+      expect(overview?.open).toBe(false);
       expect(el.querySelector('.course__side .course__cover')).toBeNull();
       expect(calls(courseEndpoints.getAssetContent)[0][1].params).toEqual({
         assetId: '77',
@@ -321,9 +327,7 @@ describe('Course', () => {
     it('shows nothing while the server refuses the file, not even an empty box', async () => {
       await openWithCover(false);
       expect(el.querySelector('.course__cover')).toBeNull();
-      expect(
-        el.querySelector('.course__main')?.firstElementChild?.tagName,
-      ).toBe('SECTION');
+      expect(el.querySelector('.course__overview img')).toBeNull();
       expect(heading()).toBe('Tổng quan hệ thống Core Banking');
     });
   });

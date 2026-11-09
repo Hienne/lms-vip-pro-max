@@ -1,4 +1,4 @@
-import type { HeatmapDay, MyStreak } from '@lms/contracts';
+import type { HeatmapDay, MyStreak, WeeklyActivity } from '@lms/contracts';
 import type { FakeRequest } from '../backend/fake-backend';
 import { learnerPointsFixtures } from './learning.fixtures';
 import type { LearningDirectory } from './learning.backend';
@@ -32,7 +32,23 @@ function heatmap(): HeatmapDay[] {
   return days;
 }
 
-/** `GET /streak`: a learner's fixed streak and heatmap; anyone else is refused. */
+/** The heatmap cut into Monday-to-Sunday weeks, the last `count` of them, as days with any activity. */
+function weeks(count: number): WeeklyActivity['weeks'] {
+  const days = heatmap();
+  const result: WeeklyActivity['weeks'] = [];
+  for (let start = 0; start < days.length; start += 7) {
+    const week = days.slice(start, start + 7);
+    const end = new Date(Date.parse(week[0].date) + 6 * DAY_MS);
+    result.push({
+      weekStart: week[0].date,
+      weekEnd: `${end.getUTCFullYear()}-${pad(end.getUTCMonth() + 1)}-${pad(end.getUTCDate())}`,
+      activeDays: week.filter((day) => day.lessons + day.quizzes > 0).length,
+    });
+  }
+  return result.slice(-count);
+}
+
+/** `GET /streak` and `GET /dashboard/activity/weekly`: a learner's fixed streak, heatmap and weeks; anyone else is refused. */
 export class LearnerStreak {
   constructor(private readonly directory: LearningDirectory) {}
 
@@ -40,5 +56,12 @@ export class LearnerStreak {
     const userId = this.directory.callerId(request);
     if (!(userId in learnerPointsFixtures)) return refuse('accessDenied');
     return { currentStreak: 3, longestStreak: 8, days: heatmap() };
+  }
+
+  weekly(request: FakeRequest): WeeklyActivity {
+    const userId = this.directory.callerId(request);
+    if (!(userId in learnerPointsFixtures)) return refuse('accessDenied');
+    const count = Number(request.query['weeks'] ?? 8);
+    return { timeZone: 'Asia/Ho_Chi_Minh', weeks: weeks(count) };
   }
 }

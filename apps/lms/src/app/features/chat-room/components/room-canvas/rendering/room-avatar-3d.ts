@@ -5,15 +5,23 @@ import { AVATAR_COLORS } from './room-avatar';
 import { facingYaw, type GesturePose } from './room.motion';
 import { RoomWorld3D, WORLD_SCALE } from './room-world-3d';
 
+const AVATAR_SCALE = 0.5;
+const LABEL_HEIGHT = 2.18 * AVATAR_SCALE;
+const LABEL_SCALE = 1.85;
+
 export class RoomAvatar3D {
   readonly root = new THREE.Group();
   readonly body = new THREE.Group();
   private readonly limbs: THREE.Group[] = [];
+  private readonly hands: { fist: THREE.Mesh; palm: THREE.Group }[] = [];
+  private garment!: THREE.Mesh;
+  private belt!: THREE.Mesh;
   private readonly label: THREE.Sprite;
   private readonly canvas = document.createElement('canvas');
   private readonly texture: THREE.CanvasTexture;
   private speechId = '';
   target: { x: number; y: number; facing: RoomFacing };
+  seated = false;
 
   constructor(
     private world: RoomWorld3D,
@@ -27,6 +35,7 @@ export class RoomAvatar3D {
       facing: player.facing ?? 'south',
     };
     this.body.rotation.y = facingYaw(this.target.facing);
+    this.body.scale.setScalar(AVATAR_SCALE);
     this.root.add(this.body);
     this.buildBody();
     this.canvas.width = 512;
@@ -50,21 +59,68 @@ export class RoomAvatar3D {
     const garment = AVATAR_COLORS[this.player.color];
     const body = this.body;
     const sphere = this.world.sphere.bind(this.world);
+    const skirt = this.player.avatar === 'female';
 
-    this.world.dressAvatar(body, garment);
-    sphere(body, 0, 0.54, 0, 0.322, 0.044, 0.238, 0x4b3932);
-    sphere(body, 0.045, 0.83, -0.215, 0.037, 0.26, 0.031, 0xffe2b2).rotation.z =
-      -0.57;
-
-    // The head, fringe and bun each have volume so the silhouette reads from behind.
+    this.garment = this.world.dressAvatar(body, garment, skirt);
+    this.belt = sphere(
+      body,
+      0,
+      0.54,
+      0,
+      skirt ? 0.322 : 0.286,
+      0.038,
+      0.235,
+      0x4b3932,
+    );
     sphere(body, 0, 1.42, -0.035, 0.466, 0.45, 0.418, skin);
-    sphere(body, 0, 1.54, 0.119, 0.479, 0.382, 0.382, hair);
-    sphere(body, -0.13, 1.72, -0.265, 0.3, 0.146, 0.185, hair).rotation.z =
-      0.31;
-    sphere(body, 0.252, 1.73, -0.2, 0.182, 0.126, 0.196, 0x533123).rotation.z =
-      -0.45;
-    sphere(body, 0, 1.36, 0.45, 0.192, 0.186, 0.162, 0x583627);
-    sphere(body, 0, 1.49, 0.449, 0.175, 0.028, 0.127, 0xe0ad64);
+    if (skirt) {
+      sphere(body, 0, 1.55, 0.119, 0.481, 0.385, 0.384, hair);
+      sphere(body, -0.15, 1.72, -0.266, 0.28, 0.13, 0.18, hair).rotation.z =
+        0.42;
+      sphere(body, 0.26, 1.71, -0.22, 0.16, 0.13, 0.19, hair).rotation.z = -0.6;
+      for (const side of [-1, 1]) {
+        const braid = sphere(
+          body,
+          side * 0.4,
+          1.31,
+          0.1,
+          0.12,
+          0.34,
+          0.17,
+          hair,
+        );
+        braid.rotation.z = side * 0.21;
+        sphere(body, side * 0.46, 1.07, 0.11, 0.084, 0.039, 0.08, 0xe5b767);
+        sphere(
+          body,
+          side * 0.09,
+          0.96,
+          -0.19,
+          0.105,
+          0.045,
+          0.045,
+          0xffe6b9,
+        ).rotation.z = side * 0.22;
+      }
+      sphere(body, 0, 0.95, -0.22, 0.054, 0.055, 0.035, 0xe5b767);
+    } else {
+      sphere(body, 0, 1.64, 0.103, 0.458, 0.29, 0.37, hair);
+      sphere(body, -0.11, 1.79, -0.218, 0.319, 0.123, 0.194, hair).rotation.z =
+        0.15;
+      sphere(
+        body,
+        0.29,
+        1.72,
+        -0.145,
+        0.144,
+        0.115,
+        0.178,
+        0x503021,
+      ).rotation.z = -0.43;
+      sphere(body, 0, 0.86, -0.23, 0.035, 0.18, 0.025, 0xf4e3ca);
+      for (const y of [0.73, 0.62])
+        sphere(body, 0.032, y, -0.219, 0.026, 0.026, 0.018, 0xd9b574);
+    }
 
     for (const side of [-1, 1]) {
       sphere(body, side * 0.44, 1.37, -0.025, 0.081, 0.111, 0.08, skin);
@@ -114,6 +170,7 @@ export class RoomAvatar3D {
       const foot = new THREE.Group();
       foot.position.set(side * 0.156, 0.23, 0);
       body.add(foot);
+      if (!skirt) sphere(foot, 0, 0.045, 0.022, 0.123, 0.234, 0.126, 0x343f50);
       sphere(foot, 0, -0.135, -0.05, 0.125, 0.079, 0.165, 0x44302a);
       sphere(foot, 0, -0.181, -0.05, 0.129, 0.028, 0.169, 0xffe9ce);
 
@@ -122,7 +179,25 @@ export class RoomAvatar3D {
       arm.rotation.z = side * 0.32;
       body.add(arm);
       sphere(arm, 0, -0.138, 0, 0.123, 0.207, 0.123, garment);
-      sphere(arm, 0, -0.303, -0.015, 0.088, 0.091, 0.086, skin);
+      const fist = sphere(arm, 0, -0.303, -0.015, 0.088, 0.091, 0.086, skin);
+      const palm = new THREE.Group();
+      palm.position.set(0, -0.34, -0.01);
+      sphere(palm, 0, 0, 0, 0.078, 0.048, 0.072, skin);
+      for (const x of [-0.051, -0.017, 0.017, 0.051])
+        sphere(
+          palm,
+          x,
+          0,
+          -0.071,
+          0.022,
+          0.033,
+          0.062 - Math.abs(x) * 0.3,
+          skin,
+        );
+      sphere(palm, -side * 0.069, 0, -0.017, 0.036, 0.034, 0.047, skin);
+      palm.visible = false;
+      arm.add(palm);
+      this.hands.push({ fist, palm });
       this.limbs.push(foot, arm);
     }
     sphere(body, 0, 1.319, -0.443, 0.038, 0.033, 0.037, skin).castShadow =
@@ -153,34 +228,67 @@ export class RoomAvatar3D {
   ): void {
     const dx = this.target.x / WORLD_SCALE - this.root.position.x,
       dz = this.target.y / WORLD_SCALE - this.root.position.z;
-    const walking = localWalking ?? Math.hypot(dx, dz) > 0.01;
+    const walking =
+      !this.seated &&
+      !pose.highFive &&
+      (localWalking ?? Math.hypot(dx, dz) > 0.01);
     const blend = 1 - Math.exp(-delta / 45);
     this.root.position.x += dx * (this.local ? 1 : blend);
     this.root.position.z += dz * (this.local ? 1 : blend);
-    const yaw = facingYaw(pose.facing ?? this.target.facing);
+    const yaw =
+      pose.highFive?.yaw ?? facingYaw(pose.facing ?? this.target.facing);
     const angle = Math.atan2(
       Math.sin(yaw - this.body.rotation.y),
       Math.cos(yaw - this.body.rotation.y),
     );
     this.body.rotation.y += angle * blend;
     const swing = walking && !reducedMotion ? Math.sin(time / 100) * 0.45 : 0;
-    this.limbs.forEach((limb, i) => {
-      limb.rotation.x = swing * (i === 0 || i === 3 ? 1 : -1);
+    const [leftFoot, leftArm, rightFoot, rightArm] = this.limbs;
+    leftFoot.position.y = rightFoot.position.y = this.seated ? 0.72 : 0.23;
+    leftFoot.rotation.x = this.seated ? 1.2 : swing;
+    rightFoot.rotation.x = this.seated ? 1.2 : -swing;
+    const wave = pose.highFive ? 0 : pose.wave;
+    leftArm.rotation.set(-swing, 0, -0.32 - pose.lift * 0.45);
+    rightArm.rotation.set(
+      wave > 0 ? wave * 0.28 : swing,
+      0,
+      0.32 + wave * 1.9 + pose.lift * 0.45,
+    );
+    leftArm.scale.y = rightArm.scale.y = 1;
+    this.hands.forEach(({ fist, palm }, index) => {
+      palm.visible = !!pose.highFive && (index === 1) === pose.highFive.leading;
+      fist.visible = !palm.visible;
     });
-    this.limbs[1].rotation.z = -0.32 - pose.lift * 0.45;
-    const wavingArm = this.limbs[3];
-    wavingArm.rotation.z = 0.32 + pose.wave * 1.9 + pose.lift * 0.45;
-    if (pose.wave > 0) wavingArm.rotation.x = pose.wave * 0.28;
-    const lift = pose.lift * 0.62;
-    this.body.position.y =
+    if (pose.highFive) {
+      const hand = pose.highFive.leading ? rightArm : leftArm;
+      hand.rotation.set(pose.highFive.amount * 1.78, 0, 0);
+      hand.scale.y = 1 + pose.highFive.amount * 0.33;
+    }
+    this.garment.scale.y = this.seated ? 0.49 : 1;
+    this.garment.position.y = this.seated ? 0.58 : 0;
+    this.belt.visible = !this.seated;
+    const lift = this.seated ? 0.15 : pose.lift * 0.62 * AVATAR_SCALE;
+    const reach = pose.highFive
+      ? 39 * (1 - AVATAR_SCALE) * pose.highFive.amount
+      : 0;
+    this.body.position.set(
+      ((pose.highFive?.x ?? 0) - Math.sin(yaw) * reach) / WORLD_SCALE,
       lift +
-      (walking && !reducedMotion ? Math.abs(Math.sin(time / 100)) * 0.025 : 0);
+        (walking && !reducedMotion
+          ? Math.abs(Math.sin(time / 100)) * 0.025 * AVATAR_SCALE
+          : 0),
+      ((pose.highFive?.y ?? 0) - Math.cos(yaw) * reach) / WORLD_SCALE,
+    );
     const active = speech && speech.expiresAt > Date.now() ? speech : undefined;
     if ((active?.id ?? '') !== this.speechId) {
       this.speechId = active?.id ?? '';
       this.paintLabel(active);
     }
-    this.label.position.y = 2.01 + this.label.scale.y / 2 + lift;
+    this.label.position.set(
+      this.body.position.x,
+      LABEL_HEIGHT + this.label.scale.y / 2 + lift,
+      this.body.position.z,
+    );
   }
   private paintLabel(speech?: RoomSpeech): void {
     // Speech is UI anchored to the head; long bubbles remain readable against the ceiling.
@@ -226,8 +334,8 @@ export class RoomAvatar3D {
     this.texture.repeat.set(1, height / 512);
     this.texture.offset.set(0, 1 - height / 512);
     this.texture.needsUpdate = true;
-    this.label.scale.set(2.55, (height / 512) * 2.55, 1);
-    this.label.position.y = 2.01 + this.label.scale.y / 2;
+    this.label.scale.set(LABEL_SCALE, (height / 512) * LABEL_SCALE, 1);
+    this.label.position.y = LABEL_HEIGHT + this.label.scale.y / 2;
   }
   dispose(): void {
     this.texture.dispose();

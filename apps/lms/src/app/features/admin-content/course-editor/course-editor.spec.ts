@@ -1191,6 +1191,11 @@ describe('CourseEditor', () => {
         expect(labels()).toEqual(['Không yêu cầu bài thi cuối khóa']);
       });
 
+      const retakeAfterPass = () =>
+        screen.el.querySelector<HTMLInputElement>(
+          'app-course-exam-form input[type="checkbox"]',
+        ) ?? undefined;
+
       describe('creating it from the short form', () => {
         const openForm = async () => {
           await screen.open('/admin/courses/6/edit');
@@ -1210,6 +1215,8 @@ describe('CourseEditor', () => {
           expect(value('Số câu mỗi lượt')).toBe('1');
           expect(value('Điểm đạt (%)')).toBe('70');
           expect(value('Số lần thi tối đa')).toBe('3');
+          expect(value('Thời gian chờ thi lại (giờ)')).toBe('0');
+          expect(retakeAfterPass()?.checked).toBe(false);
         });
 
         it('limits the default question count to the bank and to ten', async () => {
@@ -1240,6 +1247,11 @@ describe('CourseEditor', () => {
             screen.field('Số lần thi tối đa') as HTMLInputElement,
             '2',
           );
+          await screen.type(
+            screen.field('Thời gian chờ thi lại (giờ)') as HTMLInputElement,
+            '24',
+          );
+          await screen.click(retakeAfterPass());
           await screen.click(button('Tạo bài thi'));
           await vi.waitFor(() =>
             expect(screen.callsTo(courseEndpoints.saveDraft)).toBe(1),
@@ -1263,7 +1275,8 @@ describe('CourseEditor', () => {
             openAt: null,
             closeAt: null,
             graceSeconds: 0,
-            retakeWaitHours: 0,
+            retakeWaitHours: 24,
+            allowRetakeAfterPass: true,
           });
           expect(screen.callsTo(assessmentV1Endpoints.replacePool)).toBe(1);
           expect(
@@ -1376,6 +1389,11 @@ describe('CourseEditor', () => {
             screen.field('Thời gian (phút)') as HTMLInputElement,
             '30',
           );
+          await screen.type(
+            screen.field('Thời gian chờ thi lại (giờ)') as HTMLInputElement,
+            '12',
+          );
+          await screen.click(retakeAfterPass());
           await screen.click(button('Lưu thay đổi'));
           await vi.waitFor(() =>
             expect(screen.callsTo(assessmentV1Endpoints.updateQuiz)).toBe(1),
@@ -1389,9 +1407,19 @@ describe('CourseEditor', () => {
             selectionMode: 'RANDOM_POOL',
             timeLimitMinutes: 30,
             maxAttempts: 3,
+            retakeWaitHours: 12,
+            allowRetakeAfterPass: true,
           });
           await vi.waitFor(() => expect(screen.text()).toContain('30 phút'));
           expect(screen.callsTo(assessmentV1Endpoints.replacePool)).toBe(2);
+          await screen.click(button('Sửa'));
+          await vi.waitFor(() => {
+            expect(
+              (screen.field('Thời gian chờ thi lại (giờ)') as HTMLInputElement)
+                .value,
+            ).toBe('12');
+            expect(retakeAfterPass()?.checked).toBe(true);
+          });
         });
 
         it('shows the server’s message and reads the exam again when its version moved', async () => {

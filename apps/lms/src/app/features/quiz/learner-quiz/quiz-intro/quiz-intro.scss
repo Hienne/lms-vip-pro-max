@@ -53,7 +53,7 @@
 
   &__start {
     @include ui.row-between(4);
-    margin-top: ui.space(6);
+    margin-top: ui.space(4);
   }
 
   &__reason {

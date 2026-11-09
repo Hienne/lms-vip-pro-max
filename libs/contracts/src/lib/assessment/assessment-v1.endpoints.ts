@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { defineEndpoint } from '../http/endpoint';
-import { PageSchema } from '../http/page';
+import { PageQuerySchema, PageSchema } from '../http/page';
 import { XLSX_MIME_TYPE } from '../organization/organization.schema';
 import {
   QuizSummaryPageSchema,
@@ -18,6 +18,9 @@ import {
   QuizRequestV1Schema,
   QuizDetailV1Schema,
   QuizPoolRequestV1Schema,
+  ExhaustedLearnerSchema,
+  QuizAttemptGrantRequestSchema,
+  QuizAttemptGrantSchema,
 } from './assessment-v1.schema';
 
 /** The backend's quiz authoring endpoints the app calls (/api/v1/quizzes). */
@@ -98,6 +101,25 @@ export const assessmentV1Endpoints = {
     path: '/api/v1/quizzes/{id}',
     params: z.object({ id: z.number().int().positive() }),
     response: QuizDetailV1Schema,
+  }),
+  /** Learners with zero remaining attempts, already filtered and paged by the server. */
+  exhaustedLearners: defineEndpoint({
+    method: 'get',
+    path: '/api/v1/quizzes/{quizId}/exhausted-learners',
+    params: z.object({ quizId: z.number().int().positive() }),
+    query: PageQuerySchema.pick({ page: true, size: true }).extend({
+      userId: z.string().max(20).optional(),
+    }),
+    response: PageSchema(ExhaustedLearnerSchema),
+  }),
+  /** Grants attempts only if the learner is still exhausted when the server writes the grant. */
+  grantExhaustedLearnerAttempts: defineEndpoint({
+    method: 'post',
+    path: '/api/v1/quizzes/{quizId}/grants',
+    params: z.object({ quizId: z.number().int().positive() }),
+    query: z.object({ requireExhausted: z.literal(true) }),
+    body: QuizAttemptGrantRequestSchema,
+    response: QuizAttemptGrantSchema,
   }),
   createQuiz: defineEndpoint({
     method: 'post',

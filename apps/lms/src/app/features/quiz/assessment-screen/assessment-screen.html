@@ -1,7 +1,13 @@
 <ui-page-header
-  [title]="store.routeScreen$() === 'questions' ? 'Ngân hàng câu hỏi' : store.routeScreen$() === 'quizzes' ? 'Bài kiểm tra' : 'Cấu hình bài kiểm tra'"
-  [description]="store.routeScreen$() === 'questions' ? 'Quản lý câu hỏi dùng chung cho các khóa học trong cùng chương trình.' : 'Quản lý bài kiểm tra của khóa học; chọn câu hỏi từ chương trình tương ứng.'"
+  [title]="store.routeScreen$() === 'questions' ? 'Ngân hàng câu hỏi' : store.routeScreen$() === 'quizzes' ? 'Bài kiểm tra' : store.isNewQuiz$() ? 'Tạo bài kiểm tra' : 'Cấu hình bài kiểm tra'"
+  [description]="store.routeScreen$() === 'questions' ? 'Quản lý câu hỏi dùng chung cho các khóa học trong cùng chương trình.' : store.routeScreen$() === 'quizzes' ? 'Quản lý bài kiểm tra theo khóa học.' : ''"
 >
+  @if (store.routeScreen$() === 'config') {
+  <ui-breadcrumb
+    slot="breadcrumb"
+    [items]="[{label:'Bài kiểm tra',href:'/admin/quizzes'},{label:store.config$()?.title || 'Bài mới'}]"
+  />
+  }
   <div slot="actions" class="assessment__actions">
     @if (store.routeScreen$() === 'questions') {
     <a uiButton variant="secondary" routerLink="/admin/flashcards"
@@ -247,11 +253,7 @@
   </div>
   }
 </section>
-@if (store.isNewQuiz$()) {
-<p class="assessment__muted">
-  Bài kiểm tra thuộc khóa học đã chọn và dùng câu hỏi chung của chương trình đó.
-</p>
-} } @if (store.isLoading$()) {
+} @if (store.isLoading$()) {
 <div class="assessment__loading" role="status">
   <span uiSpinner></span><span class="sr-only">Đang tải dữ liệu</span>
 </div>
@@ -554,11 +556,8 @@
     ></ng-template>
   </ui-data-table>
 </section>
-} @case ('config') {
-<ui-breadcrumb
-  [items]="[{label:'Bài kiểm tra',href:'/admin/quizzes'},{label:store.config$()?.title || 'Bài mới'}]"
-/>
-@if(store.quizSaveError$();as error){<ui-alert tone="danger"
+} @case ('config') { @if(store.quizSaveError$();as error){<ui-alert
+  tone="danger"
   >{{error.message}}@if(store.partialSave$()){
   <p>
     Cấu hình đã được ghi trước khi bước tiếp theo thất bại. Dữ liệu form vẫn
@@ -571,208 +570,245 @@
   id="quiz-config"
   class="assessment__config"
   novalidate
-  (submit)="quizSubmit($event)"
+  (submit)="quizSubmit($event, questionSettings, advancedSettings)"
 >
-  <div class="stack stack--gap-6">
-    <section uiCard padded class="stack">
-      <h2>Thông tin chung</h2>
-      <p>{{store.selectedCourseTitle$()}}</p>
-      <ui-field label="Tên bài kiểm tra" required
-        ><input uiInput [formField]="configForm.title" /></ui-field
-      ><ui-field label="Mô tả">
-        <textarea uiTextarea [formField]="configForm.description"></textarea>
-      </ui-field>
-      <div class="assessment__form-grid">
-        <ui-field label="Loại bài kiểm tra"
-          ><select uiSelect [formField]="configForm.quizType">
-            <option value="PRACTICE">Luyện tập</option>
-            <option value="FINAL_EXAM">Kiểm tra cuối khóa</option>
-          </select></ui-field
-        >
-        <ui-field label="Thời gian làm bài (phút)"
-          ><input uiInput type="number" [formField]="configForm.minutes"
-        /></ui-field>
-        <ui-field label="Số câu mỗi lượt"
-          ><input uiInput type="number" [formField]="configForm.questionCount"
-        /></ui-field>
-        <ui-field label="Điểm đạt tối thiểu (%)"
-          ><input
-            uiInput
-            type="number"
-            step="0.01"
-            [formField]="configForm.passPct"
-        /></ui-field>
-        <ui-field label="Số lần thi tối đa"
-          ><input uiInput type="number" [formField]="configForm.maxAttempts"
-        /></ui-field>
-        <ui-field label="Chờ giữa hai lượt (giờ)"
-          ><input
-            uiInput
-            type="number"
-            [formField]="configForm.retakeWaitHours"
-        /></ui-field>
-      </div>
-    </section>
-    <section uiCard padded class="stack">
-      <h2>Cách lấy câu hỏi</h2>
-      <ui-field label="Nguồn câu hỏi"
-        ><select uiSelect [formField]="configForm.source">
-          <option value="random">Lấy ngẫu nhiên từ bộ câu hỏi</option>
-          <option value="manual">Cố định các câu đã chọn</option>
-        </select></ui-field
-      ><label class="assessment__check"
-        ><input
-          uiCheckbox
-          type="checkbox"
-          [formField]="configForm.shuffleQuestions"
-        />Trộn thứ tự câu hỏi</label
-      ><label class="assessment__check"
-        ><input
-          uiCheckbox
-          type="checkbox"
-          [formField]="configForm.shuffleOptions"
-        />Trộn thứ tự phương án</label
-      >
-    </section>
-    <section uiCard padded class="stack">
-      <h2>Bộ câu hỏi</h2>
-      @if(store.canManageBank$() && store.selectedProgramId$()) {
-      <a
-        uiButton
-        variant="ghost"
-        [routerLink]="['/admin/questions']"
-        [queryParams]="{programId:store.selectedProgramId$()}"
-        >Quản lý câu hỏi của chương trình</a
-      >
-      }
-      <p>
-        Chương trình: <strong>{{store.selectedProgramTitle$()}}</strong>. Có thể
-        dùng câu hỏi chung của các khóa học trong chương trình này.
-      </p>
-      @if (!store.selectedProgramId$()) {
-      <ui-alert
-        >Khóa học chưa gắn chương trình. Hãy cập nhật chương trình của khóa học
-        trước khi chọn câu hỏi.</ui-alert
-      >
-      }
-      <ui-search
-        label="Tìm câu hỏi trong chương trình"
-        placeholder="Tìm mã hoặc nội dung câu hỏi…"
-        [value]="store.questionFilters$().q"
-        (searched)="store.setQuestionFilter('q',$event)"
-      />
-      <p>
-        Đã chọn {{configValue().questionIds.length}} câu · mỗi lượt lấy
-        {{configValue().questionCount}} câu. Bản nháp được phép lưu khi bộ câu
-        chưa đủ; hệ thống kiểm tra lại khi xuất bản.
-      </p>
-      <fieldset class="assessment__pool">
-        <legend class="sr-only">Chọn câu hỏi vào bộ đề</legend>
-        @for(q of store.poolRows$();track q.id){<label
-          class="assessment__pool-row"
-          ><input
-            uiCheckbox
-            type="checkbox"
-            [checked]="poolSelected(q.id)"
-            [disabled]="q.status !== 'ACTIVE' && !poolSelected(q.id)"
-            (change)="selectPool(q.id,$any($event.target).checked)"
-          /><span
-            ><strong>{{q.code}} · {{q.contentPreview}}</strong
-            ><small
-              >{{q.status === 'ACTIVE' ? 'Đang dùng' : 'Ngưng sử dụng'}}</small
-            ></span
-          ></label
-        >}@empty{
-        <p>Chưa có câu hỏi.</p>
-        }
-      </fieldset>
-      @if ((store.questions$()?.totalPages ?? 0) > 1) {
-      <div class="row">
-        <button
-          uiButton
-          type="button"
-          size="sm"
-          [disabled]="store.questionPage$() <= 1"
-          (click)="store.setQuestionPage(store.questionPage$()-1)"
-        >
-          Trang trước</button
-        ><span
-          >Trang {{store.questionPage$()}} / {{store.questions$()?.totalPages ??
-          0}}</span
-        ><button
-          uiButton
-          type="button"
-          size="sm"
-          [disabled]="store.questionPage$() >= (store.questions$()?.totalPages ?? 0)"
-          (click)="store.setQuestionPage(store.questionPage$()+1)"
-        >
-          Trang sau
-        </button>
-      </div>
-      }
-    </section>
-  </div>
-  <aside class="stack stack--gap-6">
-    <section uiCard padded class="stack">
-      <h2>Thời gian & quyền xem</h2>
-      <ui-field label="Mở đề" hint="Để trống nếu không giới hạn."
-        ><ui-date-input
-          kind="datetime"
-          [formField]="configForm.openAt" /></ui-field
-      ><ui-field label="Đóng đề" hint="Để trống nếu không giới hạn."
-        ><ui-date-input
-          kind="datetime"
-          [formField]="configForm.closeAt" /></ui-field
-      ><ui-field label="Quyền xem đáp án & giải thích"
-        ><select uiSelect [formField]="configForm.reviewPolicy">
-          <option value="after_submit">Ngay sau khi nộp bài</option>
-          <option value="after_pass">Chỉ khi đã đạt</option>
-          <option value="after_close">Sau khi đóng đề</option>
-          <option value="never">Không cho xem</option>
+  <section uiCard padded class="stack">
+    <h2>Thông tin bài thi</h2>
+    @if (!store.isNewQuiz$()) {
+    <p class="assessment__muted">Khóa học · {{store.selectedCourseTitle$()}}</p>
+    }
+    <ui-field label="Tên bài kiểm tra" required
+      ><input uiInput [formField]="configForm.title"
+    /></ui-field>
+    <div class="assessment__form-grid">
+      <ui-field label="Loại bài kiểm tra"
+        ><select uiSelect [formField]="configForm.quizType">
+          <option value="PRACTICE">Luyện tập</option>
+          <option value="FINAL_EXAM">Kiểm tra cuối khóa</option>
         </select></ui-field
       >
-      <ui-field label="Cách chấm câu nhiều đáp án"
-        ><select uiSelect [formField]="configForm.scoringMode">
-          <option value="ALL_OR_NOTHING">Đúng toàn bộ mới có điểm</option>
-          <option value="PARTIAL">Chấm điểm từng phần</option>
-        </select></ui-field
-      ><ui-field label="Điểm cuối của bài kiểm tra"
-        ><select uiSelect [formField]="configForm.scoreMethod">
-          <option value="BEST">Điểm cao nhất</option>
-          <option value="LAST">Lượt gần nhất</option>
-        </select></ui-field
-      ><ui-field label="Gia hạn nộp bài (giây)"
+      <ui-field label="Thời gian làm bài (phút)"
+        ><input uiInput type="number" [formField]="configForm.minutes"
+      /></ui-field>
+      <ui-field label="Số câu mỗi lượt"
+        ><input uiInput type="number" [formField]="configForm.questionCount"
+      /></ui-field>
+      <ui-field label="Điểm đạt tối thiểu (%)"
         ><input
           uiInput
           type="number"
-          [formField]="configForm.graceSeconds" /></ui-field
-      ><label class="assessment__check"
-        ><input
-          uiCheckbox
-          type="checkbox"
-          [formField]="configForm.allowRetakeAfterPass"
-        />Cho phép thi lại sau khi đạt</label
-      ><label class="assessment__check"
-        ><input
-          uiCheckbox
-          type="checkbox"
-          [formField]="configForm.requireLessonsCompleted"
-        />Yêu cầu hoàn thành các bài học trước</label
-      >
-    </section>
-    <section uiCard padded class="stack">
-      <h2>Lưu & xuất bản</h2>
-      <p>
-        {{store.config$()?.status === 'PUBLISHED' ? 'Đã xuất bản' :
-        store.config$()?.status === 'CLOSED' ? 'Đã đóng' : 'Bản nháp'}}
-      </p>
+          step="0.01"
+          [formField]="configForm.passPct"
+      /></ui-field>
+    </div>
+  </section>
+
+  <section uiCard padded>
+    <details #questionSettings class="assessment__disclosure">
+      <summary>
+        <strong>Bộ câu hỏi</strong>
+        <span class="assessment__muted"
+          >· Đã chọn {{ configValue().questionIds.length }} câu</span
+        >
+      </summary>
+      <div class="stack">
+        @if(store.canManageBank$() && store.selectedProgramId$()) {
+        <a
+          uiButton
+          variant="ghost"
+          [routerLink]="['/admin/questions']"
+          [queryParams]="{programId:store.selectedProgramId$()}"
+          >Quản lý câu hỏi của chương trình</a
+        >
+        }
+        <p>
+          Chương trình: <strong>{{store.selectedProgramTitle$()}}</strong>. Có
+          thể dùng câu hỏi chung của các khóa học trong chương trình này.
+        </p>
+        @if (!store.selectedProgramId$()) {
+        <ui-alert
+          >Khóa học chưa gắn chương trình. Hãy cập nhật chương trình của khóa
+          học trước khi chọn câu hỏi.</ui-alert
+        >
+        }
+        <ui-search
+          label="Tìm câu hỏi trong chương trình"
+          placeholder="Tìm mã hoặc nội dung câu hỏi…"
+          [value]="store.questionFilters$().q"
+          (searched)="store.setQuestionFilter('q',$event)"
+        />
+        <p>
+          Đã chọn {{configValue().questionIds.length}} câu · mỗi lượt lấy
+          {{configValue().questionCount}} câu. Bản nháp được phép lưu khi bộ câu
+          chưa đủ; hệ thống kiểm tra lại khi xuất bản.
+        </p>
+        <fieldset class="assessment__pool">
+          <legend class="sr-only">Chọn câu hỏi vào bộ đề</legend>
+          @for(q of store.poolRows$();track q.id){<label
+            class="assessment__pool-row"
+            ><input
+              uiCheckbox
+              type="checkbox"
+              [checked]="poolSelected(q.id)"
+              [disabled]="q.status !== 'ACTIVE' && !poolSelected(q.id)"
+              (change)="selectPool(q.id,$any($event.target).checked)"
+            /><span
+              ><strong>{{q.code}} · {{q.contentPreview}}</strong
+              ><small
+                >{{q.status === 'ACTIVE' ? 'Đang dùng' : 'Ngưng sử
+                dụng'}}</small
+              ></span
+            ></label
+          >}@empty{
+          <p>Chưa có câu hỏi.</p>
+          }
+        </fieldset>
+        @if ((store.questions$()?.totalPages ?? 0) > 1) {
+        <div class="row">
+          <button
+            uiButton
+            type="button"
+            size="sm"
+            [disabled]="store.questionPage$() <= 1"
+            (click)="store.setQuestionPage(store.questionPage$()-1)"
+          >
+            Trang trước</button
+          ><span
+            >Trang {{store.questionPage$()}} / {{store.questions$()?.totalPages
+            ?? 0}}</span
+          ><button
+            uiButton
+            type="button"
+            size="sm"
+            [disabled]="store.questionPage$() >= (store.questions$()?.totalPages ?? 0)"
+            (click)="store.setQuestionPage(store.questionPage$()+1)"
+          >
+            Trang sau
+          </button>
+        </div>
+        }
+
+        <section class="stack">
+          <h3>Cách lấy câu hỏi</h3>
+          <ui-field label="Nguồn câu hỏi"
+            ><select uiSelect [formField]="configForm.source">
+              <option value="random">Lấy ngẫu nhiên từ bộ câu hỏi</option>
+              <option value="manual">Cố định các câu đã chọn</option>
+            </select></ui-field
+          ><label class="assessment__check"
+            ><input
+              uiCheckbox
+              type="checkbox"
+              [formField]="configForm.shuffleQuestions"
+            />Trộn thứ tự câu hỏi</label
+          ><label class="assessment__check"
+            ><input
+              uiCheckbox
+              type="checkbox"
+              [formField]="configForm.shuffleOptions"
+            />Trộn thứ tự phương án</label
+          >
+        </section>
+      </div>
+    </details>
+  </section>
+  <section uiCard padded>
+    <details #advancedSettings class="assessment__disclosure">
+      <summary>
+        <strong>Cấu hình nâng cao</strong>
+        <span class="assessment__muted">· Lịch thi, đáp án và thi lại</span>
+      </summary>
+      <div class="stack stack--gap-6">
+        <ui-field label="Mô tả">
+          <textarea uiTextarea [formField]="configForm.description"></textarea>
+        </ui-field>
+        <section class="stack">
+          <h3>Thi lại</h3>
+          <div class="assessment__form-grid">
+            <ui-field label="Số lần thi tối đa" hint="Tính cả lượt đầu tiên."
+              ><input
+                uiInput
+                type="number"
+                [formField]="configForm.maxAttempts"
+            /></ui-field>
+            <ui-field
+              label="Thời gian chờ thi lại (giờ)"
+              hint="Nhập 0 nếu không cần chờ."
+              ><input
+                uiInput
+                type="number"
+                [formField]="configForm.retakeWaitHours"
+            /></ui-field>
+          </div>
+          <label class="assessment__check"
+            ><input
+              uiCheckbox
+              type="checkbox"
+              [formField]="configForm.allowRetakeAfterPass"
+            />Cho phép thi lại sau khi đạt</label
+          >
+        </section>
+        <section class="stack">
+          <h3>Lịch thi, chấm điểm và quyền xem</h3>
+          <ui-field label="Mở đề" hint="Để trống nếu không giới hạn."
+            ><input
+              uiInput
+              type="datetime-local"
+              [formField]="configForm.openAt" /></ui-field
+          ><ui-field label="Đóng đề" hint="Để trống nếu không giới hạn."
+            ><input
+              uiInput
+              type="datetime-local"
+              [formField]="configForm.closeAt" /></ui-field
+          ><ui-field label="Quyền xem đáp án & giải thích"
+            ><select uiSelect [formField]="configForm.reviewPolicy">
+              <option value="after_submit">Ngay sau khi nộp bài</option>
+              <option value="after_pass">Chỉ khi đã đạt</option>
+              <option value="after_close">Sau khi đóng đề</option>
+              <option value="never">Không cho xem</option>
+            </select></ui-field
+          >
+          <ui-field label="Cách chấm câu nhiều đáp án"
+            ><select uiSelect [formField]="configForm.scoringMode">
+              <option value="ALL_OR_NOTHING">Đúng toàn bộ mới có điểm</option>
+              <option value="PARTIAL">Chấm điểm từng phần</option>
+            </select></ui-field
+          ><ui-field label="Điểm cuối của bài kiểm tra"
+            ><select uiSelect [formField]="configForm.scoreMethod">
+              <option value="BEST">Điểm cao nhất</option>
+              <option value="LAST">Lượt gần nhất</option>
+            </select></ui-field
+          ><ui-field label="Gia hạn nộp bài (giây)"
+            ><input
+              uiInput
+              type="number"
+              [formField]="configForm.graceSeconds" /></ui-field
+          ><label class="assessment__check"
+            ><input
+              uiCheckbox
+              type="checkbox"
+              [formField]="configForm.requireLessonsCompleted"
+            />Yêu cầu hoàn thành các bài học trước</label
+          >
+        </section>
+      </div>
+    </details>
+  </section>
+  <section uiCard padded class="stack">
+    <h2>Xuất bản bài thi</h2>
+    <p>
+      {{store.config$()?.status === 'PUBLISHED' ? 'Đã xuất bản' :
+      store.config$()?.status === 'CLOSED' ? 'Đã đóng' : 'Bản nháp'}}
+    </p>
+    <div class="row row--gap-2">
       <button
         uiButton
         type="submit"
         variant="primary"
         [disabled]="store.isSaving$() || store.courseProgramMismatch$() || !store.selectedProgramId$()"
       >
-        Lưu cấu hình
+        {{ store.config$()?.status === "PUBLISHED" || store.config$()?.status
+        === "CLOSED" ? "Lưu cấu hình" : "Lưu bản nháp" }}
       </button>
       @if(store.config$();as config){@if(config.status !== 'PUBLISHED'){<button
         uiButton
@@ -789,16 +825,25 @@
         (click)="store.changeQuizState('close')"
       >
         Đóng bài kiểm tra</button
-      >}} @if (store.publishBlockedReason$()) {
-      <p class="assessment__muted">{{store.publishBlockedReason$()}}</p>
-      }
-      <p class="assessment__muted">
-        Lưu thay đổi trước khi xuất bản hoặc đóng đề. Quyền và điều kiện xuất
-        bản được hệ thống kiểm tra.
-      </p>
-    </section>
-  </aside>
+      >}}
+    </div>
+    @if (store.publishBlockedReason$()) {
+    <p class="assessment__muted">{{store.publishBlockedReason$()}}</p>
+    }
+    <p class="assessment__muted">
+      Lưu thay đổi trước khi xuất bản hoặc đóng đề. Quyền và điều kiện xuất bản
+      được hệ thống kiểm tra.
+    </p>
+  </section>
 </form>
-} } } @if (store.importOpen$()) {
+@if (store.config$(); as quiz) {
+<section uiCard padded class="assessment__candidate-actions stack">
+  <h2>Quản lý thí sinh</h2>
+  <p class="assessment__muted">
+    Cấp thêm lượt riêng cho thí sinh đã hết lượt của bài này.
+  </p>
+  <app-quiz-attempt-grant [quizId]="quiz.id" />
+</section>
+} } } } @if (store.importOpen$()) {
 <app-question-import />
 }

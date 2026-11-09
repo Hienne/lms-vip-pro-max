@@ -9,11 +9,18 @@
       <ui-icon name="history" size="sm" />Lịch sử thi
     </a>
     @if (canRetry()) {
-    <a uiButton [routerLink]="['/quiz', r.quizId]">
+    <a
+      uiButton
+      [variant]="!r.summary.passed && !waitingUntil() ? 'primary' : 'secondary'"
+      [routerLink]="['/quiz', r.quizId]"
+    >
       <ui-icon name="rotate-ccw" size="sm" />Thi lại
     </a>
     }
-    <a uiButton variant="primary" [routerLink]="['/course', r.courseId]"
+    <a
+      uiButton
+      [variant]="canRetry() && !r.summary.passed && !waitingUntil() ? 'secondary' : 'primary'"
+      [routerLink]="['/course', r.courseId]"
       >Về khóa học</a
     >
   </div>
@@ -38,12 +45,20 @@
   </p>
 </section>
 
+@if (waitingUntil(); as next) {
+<p class="result__muted">
+  Có thể thử lại từ {{ next | fmtDatetime }} nếu bài thi vẫn mở.
+</p>
+}
+
 <section uiCard class="result__section" aria-labelledby="result-competency">
   <header uiCardHeader>
     <h2 id="result-competency">Phân tích theo nhóm kiến thức</h2>
   </header>
   <div uiCardBody class="result__competencies">
-    @for (c of competencies(); track c.competencyId) {
+    @if (suggestedReview(); as group) {
+    <p class="result__muted">Nên ôn lại <strong>{{ group.name }}</strong>.</p>
+    } @for (c of competencies(); track c.competencyId) {
     <div class="result__competency">
       <span>{{ c.name }}</span>
       <ui-progress size="sm" [value]="c.percent" [label]="c.name" />

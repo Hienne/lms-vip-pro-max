@@ -25,6 +25,7 @@ import { AssessmentScreenStore } from './data-access/assessment-screen.store';
 import { LeavePrompt } from '../../../core/routing/unsaved-changes.guard';
 
 import {
+  assessmentV1Endpoints,
   programAssessmentEndpoints as api,
   trainingCatalogEndpoints,
   courseEndpoints,
@@ -98,6 +99,105 @@ describe('AssessmentScreen (admin)', () => {
     await open('/admin/quizzes/1');
     expect(el.querySelector('form')).toBeTruthy();
     expect(text()).toContain('Lưu cấu hình');
+  });
+
+  it('grants extra attempts to the selected exhausted learner for this quiz', async () => {
+    await open('/admin/quizzes/1');
+    const backend = TestBed.inject(MockBackend);
+    const handle = backend.handle.bind(backend);
+    const spy = vi
+      .spyOn(backend, 'handle')
+      .mockImplementation((endpoint, request) => {
+        if (endpoint === assessmentV1Endpoints.exhaustedLearners) {
+          return {
+            status: 200,
+            body: envelopeOk({
+              items: [
+                {
+                  userId: '000005',
+                  userName: 'Học viên Demo',
+                  attemptsUsed: 3,
+                },
+              ],
+              page: 0,
+              size: 10,
+              totalElements: 1,
+              totalPages: 1,
+            }),
+          };
+        }
+        if (endpoint === assessmentV1Endpoints.grantExhaustedLearnerAttempts) {
+          return {
+            status: 200,
+            body: envelopeOk({
+              id: 1,
+              quizId: 1,
+              userId: '000005',
+              userName: 'Học viên Demo',
+              extraAttempts: 2,
+              reason: 'Sự cố kết nối',
+              grantedBy: '000002',
+              grantedAt: '2026-11-08T06:00:00Z',
+              revoked: false,
+              revokedBy: null,
+              revokedAt: null,
+            }),
+          };
+        }
+        return handle(endpoint, request);
+      });
+
+    const openGrant = Array.from(el.querySelectorAll('button')).find(
+      (button) => button.textContent?.trim() === 'Cấp thêm lượt thi',
+    );
+    expect(openGrant).toBeTruthy();
+    openGrant?.click();
+    await settle();
+
+    const form = document.querySelector<HTMLFormElement>(
+      '#quiz-attempt-grant-form',
+    );
+    const submit = document.querySelector<HTMLButtonElement>(
+      'button[form="quiz-attempt-grant-form"][type="submit"]',
+    );
+    if (!form || !submit) throw new Error('Grant drawer missing');
+    expect(form.textContent).toContain('Học viên Demo');
+    submit.click();
+    await settle();
+    expect(
+      spy.mock.calls.some(
+        ([endpoint]) =>
+          endpoint === assessmentV1Endpoints.grantExhaustedLearnerAttempts,
+      ),
+    ).toBe(false);
+
+    const select = form.querySelector('select');
+    const count = form.querySelector<HTMLInputElement>('input[type="number"]');
+    const reason = form.querySelector('textarea');
+    if (!select || !count || !reason)
+      throw new Error('Grant form fields missing');
+    select.value = '000005';
+    select.dispatchEvent(new Event('input', { bubbles: true }));
+    select.dispatchEvent(new Event('change', { bubbles: true }));
+    count.value = '2';
+    count.dispatchEvent(new Event('input', { bubbles: true }));
+    reason.value = 'Sự cố kết nối';
+    reason.dispatchEvent(new Event('input', { bubbles: true }));
+    await settle();
+    submit.click();
+    await settle();
+
+    expect(
+      spy.mock.calls.find(
+        ([endpoint]) =>
+          endpoint === assessmentV1Endpoints.grantExhaustedLearnerAttempts,
+      )?.[1],
+    ).toMatchObject({
+      params: { quizId: '1' },
+      query: { requireExhausted: 'true' },
+      body: { userId: '000005', extraAttempts: 2, reason: 'Sự cố kết nối' },
+    });
+    expect(document.querySelector('#quiz-attempt-grant-form')).toBeNull();
   });
 
   it('filters/pages on the server and only fetches answer options on opening a detail', async () => {
@@ -435,9 +535,13 @@ describe('AssessmentScreen (admin)', () => {
     expect(store().selectedProgramId$()).toBe(3);
     expect(el.querySelector('form')).toBeTruthy();
   });
-  it('offers the Excel import, not quiz creation, on the question bank', async () => {
+  it('offers the Excel import and flashcard management, not quiz creation, on the question bank', async () => {
     await open('/admin/questions?programId=2');
-    expect(el.querySelector('ui-page-header a')).toBeNull();
+    const links = [...el.querySelectorAll('ui-page-header a')].map((a) => [
+      a.textContent?.trim(),
+      a.getAttribute('href'),
+    ]);
+    expect(links).toEqual([['Quản lý flashcard', '/admin/flashcards']]);
     const labels = [...el.querySelectorAll('ui-page-header button')].map((b) =>
       b.textContent?.trim(),
     );
@@ -517,7 +621,9 @@ describe('AssessmentScreen (admin)', () => {
       );
       expect(drawer()?.textContent).not.toContain('Nhập vào khóa học');
       expect(drawer()?.querySelector('select')).toBeNull();
-      expect(press(drawer(), 'Nhập câu hỏi').disabled).toBe(true);
+      expect(
+        drawer()?.querySelector('[aria-current="step"]')?.textContent,
+      ).toBe('Chọn tệp');
       expect(press(drawer(), 'Kiểm tra').disabled).toBe(true);
     });
 
@@ -529,9 +635,10 @@ describe('AssessmentScreen (admin)', () => {
       await pick('cau-hoi.xlsx');
       press(drawer(), 'Kiểm tra').click();
       await settle();
-      expect(drawer()?.textContent).toContain(
-        'Hợp lệ: 3 câu mới, 0 câu ghi đè',
-      );
+      expect(
+        drawer()?.querySelector('[aria-current="step"]')?.textContent,
+      ).toBe('Xác nhận nhập');
+      expect(drawer()?.textContent).toContain('Tệp đã kiểm tra xong');
       const before = store().questions$()?.totalElements ?? 0;
 
       press(drawer(), 'Nhập câu hỏi').click();
@@ -552,7 +659,7 @@ describe('AssessmentScreen (admin)', () => {
       expect(store().questions$()?.totalElements).toBe(before + 3);
     });
 
-    it('keeps the import disabled for an invalid file', async () => {
+    it('shows the failing rows and returns to file selection for an invalid file', async () => {
       await openDrawer();
       await pick('du-lieu-loi.xlsx');
       press(drawer(), 'Kiểm tra').click();
@@ -561,7 +668,17 @@ describe('AssessmentScreen (admin)', () => {
         'Tệp nhập chưa hợp lệ. Vui lòng kiểm tra các lỗi chi tiết.',
       );
       expect(drawer()?.textContent).toContain('Dòng 2 · Đáp án đúng');
-      expect(press(drawer(), 'Nhập câu hỏi').disabled).toBe(true);
+      expect(
+        drawer()?.querySelector('[aria-current="step"]')?.textContent,
+      ).toBe('Kiểm tra');
+      expect(
+        Array.from(drawer()?.querySelectorAll('button') ?? []).some(
+          (button) => button.textContent?.trim() === 'Nhập câu hỏi',
+        ),
+      ).toBe(false);
+      press(drawer(), 'Quay lại chọn tệp').click();
+      await settle();
+      expect(drawer()?.querySelector('input[type="file"]')).toBeTruthy();
     });
 
     it('refuses a non-xlsx file without a request', async () => {

@@ -23,7 +23,7 @@ import {
   fakeSession,
   seedProfile,
 } from '../../../core/session/session.testing';
-import { exportFileName } from './data-access/progress.store';
+import { exportFileName, ProgressStore } from './data-access/progress.store';
 
 const TODAY = new Date(2026, 9, 27, 9, 30).getTime();
 
@@ -123,8 +123,42 @@ describe('LearningProgress', () => {
       ).toBe(false);
     });
 
-    it('says once that hours are not there yet', () => {
-      expect(text()).toContain('Giờ học sẽ hiển thị khi hệ thống có dữ liệu.');
+    it('omits the placeholder when hours are unavailable', () => {
+      expect(text()).not.toContain(
+        'Giờ học sẽ hiển thị khi hệ thống có dữ liệu.',
+      );
+    });
+
+    it('uses a summary count to filter the courses without stale filters', async () => {
+      const store = harness.routeDebugElement!.injector.get(ProgressStore);
+      store.filterStatus('completed');
+      store.filterOverdue(true);
+      store.search('old');
+      store.selectTab('history');
+      await settle();
+      kpi('Đang học')!.querySelector<HTMLButtonElement>('button')!.click();
+      await settle();
+      expect(TestBed.inject(Router).url).toContain('status=in_progress');
+      expect(TestBed.inject(Router).url).not.toContain('overdue=true');
+      expect(TestBed.inject(Router).url).not.toContain('q=old');
+      expect(lastQuery(learnerEndpoints.myCourses)['learningStatus']).toBe(
+        'in_progress',
+      );
+      kpi('Đang quá hạn')!.querySelector<HTMLButtonElement>('button')!.click();
+      await settle();
+      expect(TestBed.inject(Router).url).toContain('overdue=true');
+      expect(TestBed.inject(Router).url).not.toContain('status=');
+      kpi('Tổng số khóa')!.querySelector<HTMLButtonElement>('button')!.click();
+      await settle();
+      expect(TestBed.inject(Router).url).not.toContain('overdue=true');
+      expect(
+        lastQuery(learnerEndpoints.myCourses)['learningStatus'],
+      ).toBeUndefined();
+      expect(
+        kpi('Tổng số khóa')!
+          .querySelector('button')
+          ?.getAttribute('aria-pressed'),
+      ).toBe('true');
     });
 
     it('ends the counts with the server average quiz score', () => {
@@ -356,7 +390,7 @@ describe('LearningProgress', () => {
       );
       expect(calls(learnerQuizEndpoints.myCompetency)).toHaveLength(1);
       expect(lastQuery(learnerQuizEndpoints.myCompetency)).toEqual({});
-      button('Khóa học')!.click();
+      button('Tiến độ khóa học')!.click();
       await settle();
       (el.querySelector('input[type="checkbox"]') as HTMLInputElement).click();
       await settle();
@@ -394,12 +428,9 @@ describe('LearningProgress', () => {
       expect(card().querySelector('ui-radar-chart')).not.toBeNull();
     });
 
-    it('is not shown to a learner without courses', async () => {
-      await open('/progress', '000005', 'giangvien');
-      expect(card()?.closest('[inert]') ?? null).not.toBeNull();
-      expect(
-        el.querySelector('[role="tabpanel"]:not([inert]) app-competency-view'),
-      ).toBeNull();
+    it('is still offered to a learner without courses', async () => {
+      await open('/progress?tab=competency', '000005', 'giangvien');
+      expect(card()).not.toBeNull();
     });
   });
 
@@ -463,13 +494,12 @@ describe('LearningProgress', () => {
         ]),
       );
       await open('/progress?tab=history');
-      const items = Array.from(card().querySelectorAll('tbody a'));
-      expect(items.map((a) => a.getAttribute('href'))).toEqual([
-        '/quiz/1/result/7',
-        '/quiz/5/result/9',
-      ]);
-      const [failed, passed] = items.map((a) =>
-        a.closest('tr')?.textContent?.replace(/\s+/g, ' ').trim(),
+      const items = Array.from(card().querySelectorAll('tbody tr'));
+      expect(
+        items.map((tr) => tr.querySelector('a')?.getAttribute('href')),
+      ).toEqual(['/quiz/1/result/7', '/quiz/5/result/9']);
+      const [failed, passed] = items.map((tr) =>
+        tr.textContent?.replace(/\s+/g, ' ').trim(),
       );
       expect(failed).toContain('Luyện tập');
       expect(failed).toContain('42,86% Chưa đạt');
@@ -506,6 +536,7 @@ describe('LearningProgress', () => {
       expect(card().textContent).toContain(
         'Bạn chưa có bài thi nào được chấm.',
       );
+      expect(card().textContent).not.toContain('phù hợp với bộ lọc');
       expect(card().querySelector('tbody tr')).toBeNull();
     });
 
@@ -527,12 +558,9 @@ describe('LearningProgress', () => {
       );
     });
 
-    it('is not shown to a learner without courses', async () => {
-      await open('/progress', '000005', 'giangvien');
-      expect(card()?.closest('[inert]') ?? null).not.toBeNull();
-      expect(
-        el.querySelector('[role="tabpanel"]:not([inert]) #progress-history'),
-      ).toBeNull();
+    it('is still offered to a learner without courses', async () => {
+      await open('/progress?tab=history', '000005', 'giangvien');
+      expect(card()).not.toBeNull();
     });
   });
 
@@ -634,9 +662,8 @@ describe('LearningProgress', () => {
         a.textContent?.includes('Xem danh mục khóa học'),
       );
       expect(link?.getAttribute('href')).toBe('/catalog');
-      expect(
-        el.querySelector('[role="tabpanel"]:not([inert]) table'),
-      ).toBeNull();
+      expect(el.querySelector('.learning-progress__courses')).toBeNull();
+      expect(rows()).toHaveLength(0);
       expect((button('Xuất CSV') as HTMLButtonElement).disabled).toBe(true);
     });
   });
@@ -666,7 +693,7 @@ describe('LearningProgress', () => {
 
     it('says rest days neither count nor break the streak and never mentions a lost streak', async () => {
       await open();
-      expect(text()).toContain('không tính và không làm đứt chuỗi');
+      expect(text()).toContain('không làm gián đoạn chuỗi');
       expect(text()).not.toMatch(/mất chuỗi|đứt chuỗi của bạn|đã mất/i);
     });
 

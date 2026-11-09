@@ -9,7 +9,7 @@ import {
   submit,
   validate,
 } from '@angular/forms/signals';
-import { Alert, Button, Field, Input } from '@lms/ui';
+import { Alert, Button, Checkbox, Field, Input } from '@lms/ui';
 import type { AppError } from '../../../../../../../core/errors/app-error';
 import {
   EXAM_LIMITS,
@@ -18,13 +18,10 @@ import {
 
 const isWhole = (value: number) => Number.isInteger(value);
 
-/**
- * The short form of a final exam: title, time, question count, pass score and attempts. It only
- * collects the values; the parent's store saves them.
- */
+/** Collects the final exam settings for the course editor's store. */
 @Component({
   selector: 'app-course-exam-form',
-  imports: [Alert, Button, Field, FormField, Input],
+  imports: [Alert, Button, Checkbox, Field, FormField, Input],
   templateUrl: './course-exam-form.html',
   styleUrl: './course-exam-form.scss',
 })
@@ -50,6 +47,11 @@ export class CourseExamForm {
         [path.questionCount, EXAM_LIMITS.questionCount, 'Số câu'],
         [path.passPercent, EXAM_LIMITS.passPercent, 'Điểm đạt'],
         [path.maxAttempts, EXAM_LIMITS.maxAttempts, 'Số lần thi'],
+        [
+          path.retakeWaitHours,
+          EXAM_LIMITS.retakeWaitHours,
+          'Thời gian chờ thi lại',
+        ],
       ] as const;
       for (const [field, limit, label] of numbers) {
         required(field, { message: `Nhập ${label.toLocaleLowerCase('vi')}.` });

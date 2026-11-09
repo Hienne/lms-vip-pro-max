@@ -6,9 +6,17 @@ import type {
   RoomMovement,
   RoomFurniture as Furniture,
 } from '@lms/contracts';
-import type { RoomCanvasState } from '../../../data-access/chat-room.model';
+import {
+  inRoomArea,
+  type RoomCanvasState,
+} from '../../../data-access/chat-room.model';
 import { RoomAvatar } from './room-avatar';
-import { facingFromVector, gesturePose, moveInRoom } from './room.motion';
+import {
+  facingFromVector,
+  gesturePose,
+  moveInRoom,
+  seatCenter,
+} from './room.motion';
 
 interface Actor {
   root: Phaser.GameObjects.Container;
@@ -20,6 +28,7 @@ interface Actor {
   target: { x: number; y: number };
   name: string;
   until: number;
+  seat?: number;
 }
 
 export class RoomScene extends Phaser.Scene {
@@ -66,6 +75,22 @@ export class RoomScene extends Phaser.Scene {
   setTouch(x: number, y: number): void {
     this.touch = { x, y };
   }
+  chairAt(clientX: number, clientY: number): number | undefined {
+    const rect = this.game.canvas.getBoundingClientRect();
+    const point = this.cameras.main.getWorldPoint(
+      ((clientX - rect.left) * this.scale.width) / rect.width,
+      ((clientY - rect.top) * this.scale.height) / rect.height,
+    );
+    const index = this.layout.objects.findIndex(
+      (object) =>
+        object.kind === 'chair' &&
+        point.x >= object.x &&
+        point.x <= object.x + object.w &&
+        point.y >= object.y &&
+        point.y <= object.y + object.h,
+    );
+    return index >= 0 ? index : undefined;
+  }
   private blur(): void {
     this.focused = false;
     this.touch = { x: 0, y: 0 };
@@ -76,18 +101,19 @@ export class RoomScene extends Phaser.Scene {
   }
   private resize(): void {
     const camera = this.cameras.main;
-    camera.setBounds(0, 0, this.layout.width, this.layout.height);
     const fit = Math.min(
       this.scale.width / this.layout.width,
       this.scale.height / this.layout.height,
     );
-    const minimumZoom = 0.5;
+    const minimumZoom = this.scale.width >= 800 ? 0.27 : 0.5;
     camera.setZoom(Math.max(minimumZoom, fit * 0.96));
     const me = this.actors.get(this.view().me);
-    if (me && fit * 0.96 < minimumZoom)
+    if (me && fit * 0.96 < minimumZoom) {
+      camera.setBounds(0, 0, this.layout.width, this.layout.height);
       camera.startFollow(me.root, true, 0.12, 0.12);
-    else {
+    } else {
       camera.stopFollow();
+      camera.removeBounds();
       camera.centerOn(this.layout.width / 2, this.layout.height / 2);
     }
   }
@@ -141,6 +167,25 @@ export class RoomScene extends Phaser.Scene {
         })
         .setOrigin(0.5);
     }
+    const diceArea = this.layout.diceArea;
+    if (diceArea) {
+      const { x, y, w, h } = diceArea;
+      g.fillStyle(0xe4c89e).fillRoundedRect(x, y, w, h, 22);
+      g.lineStyle(3, 0xa66c38).strokeRoundedRect(
+        x + 8,
+        y + 8,
+        w - 16,
+        h - 16,
+        17,
+      );
+      this.add
+        .text(x + w / 2, y + h * 0.77, 'Bàn Tài/Xỉu', {
+          fontFamily: 'Segoe UI, sans-serif',
+          fontSize: '38px',
+          color: '#6b411e',
+        })
+        .setOrigin(0.5);
+    }
     g.fillStyle(0xacc5b6).fillRoundedRect(w / 2 - 97, h - 60, 194, 28, 6);
     this.add
       .text(w / 2, h - 47, 'Lối vào', {
@@ -167,6 +212,23 @@ export class RoomScene extends Phaser.Scene {
         h - 12,
         5,
       );
+      if (inRoomArea(this.layout.diceArea, x + w / 2, y + h / 2)) {
+        g.fillStyle(0x305747).fillRoundedRect(x + 10, y + 9, w - 20, h - 20, 6);
+        for (const offset of [-42, 0, 42]) {
+          const center = x + w / 2 + offset;
+          g.fillStyle(0xfff3d4).fillRoundedRect(
+            center - 13,
+            y + h / 2 - 13,
+            26,
+            26,
+            4,
+          );
+          g.fillStyle(0x3b3025)
+            .fillCircle(center - 5, y + h / 2 - 5, 2.6)
+            .fillCircle(center + 5, y + h / 2 + 5, 2.6);
+        }
+        return;
+      }
       // Open book, pencil and a small notebook on each desk.
       g.fillStyle(0x789a8e).fillRoundedRect(x + 18, y + 15, 37, 32, 3);
       g.fillStyle(0xfffdf3)
@@ -225,7 +287,7 @@ export class RoomScene extends Phaser.Scene {
     if (this.actors.has(player.id)) return;
     const root = this.add.container(player.x, player.y);
     const shadow = this.add.ellipse(0, 2, 29, 12, 0x233c34, 0.17);
-    const avatar = new RoomAvatar(this, player.color);
+    const avatar = new RoomAvatar(this, player.color, player.avatar);
     const bubble = this.add.graphics();
     const label = this.add
       .text(0, -62, player.name, {
@@ -282,7 +344,12 @@ export class RoomScene extends Phaser.Scene {
     view.players.forEach((player) => {
       this.addActor(player);
       const actor = this.actors.get(player.id);
-      if (actor && player.id !== view.me) {
+      if (!actor) return;
+      const seat = seatCenter(this.layout, player.seat);
+      const position = seat ?? { x: player.x, y: player.y };
+      const seatChanged = actor.seat !== player.seat;
+      actor.seat = player.seat;
+      if (player.id !== view.me || seatChanged) {
         actor.facing =
           player.facing ??
           facingFromVector(
@@ -290,11 +357,17 @@ export class RoomScene extends Phaser.Scene {
             player.y - actor.target.y,
             actor.facing,
           );
-        actor.target = { x: player.x, y: player.y };
+        actor.target = position;
+        if (player.id === view.me)
+          actor.root.setPosition(position.x, position.y);
       }
     });
     if (view.me !== previous?.me) this.resize();
-    if (view.correction && view.correction !== previous?.correction) {
+    if (
+      view.correction &&
+      view.correction !== previous?.correction &&
+      this.actors.get(view.me)?.seat === undefined
+    ) {
       this.actors
         .get(view.me)
         ?.root.setPosition(view.correction.x, view.correction.y);
@@ -327,13 +400,20 @@ export class RoomScene extends Phaser.Scene {
       return;
     }
     const self = this.actors.get(view.me);
+    const now = performance.now();
+    const localPose = gesturePose(
+      view.gestures[view.me],
+      now,
+      this.reducedMotion,
+    );
+    const canMove = self?.seat === undefined && !localPose.highFive;
     const typing =
       ['INPUT', 'TEXTAREA', 'BUTTON', 'SELECT'].includes(
         document.activeElement?.tagName ?? '',
       ) || (document.activeElement as HTMLElement)?.isContentEditable;
     let dx = 0,
       dy = 0;
-    if (self && this.focused && !typing && !view.chatting) {
+    if (self && canMove && this.focused && !typing && !view.chatting) {
       dx =
         Number(this.keys['D'].isDown || this.keys['RIGHT'].isDown) -
         Number(this.keys['A'].isDown || this.keys['LEFT'].isDown) +
@@ -359,6 +439,7 @@ export class RoomScene extends Phaser.Scene {
     }
     if (
       self &&
+      canMove &&
       time - this.lastSent > 65 &&
       (self.root.x !== this.lastPosition.x ||
         self.root.y !== this.lastPosition.y ||
@@ -372,7 +453,6 @@ export class RoomScene extends Phaser.Scene {
         facing: self.facing,
       };
     }
-    const now = performance.now();
     this.actors.forEach((actor, id) => {
       const distance = Math.hypot(
         actor.target.x - actor.root.x,
@@ -383,18 +463,30 @@ export class RoomScene extends Phaser.Scene {
         actor.root.x = Phaser.Math.Linear(actor.root.x, actor.target.x, blend);
         actor.root.y = Phaser.Math.Linear(actor.root.y, actor.target.y, blend);
       }
-      const pose = gesturePose(view.gestures[id], now, this.reducedMotion);
-      const lift = pose.lift * 38;
+      const pose =
+        id === view.me
+          ? localPose
+          : gesturePose(view.gestures[id], now, this.reducedMotion);
+      const seated = actor.seat !== undefined;
+      const lift = seated ? -8 : pose.lift * 38;
+      const shiftX = pose.highFive?.x ?? 0;
+      const shiftY = pose.highFive?.y ?? 0;
       actor.avatar.draw(
         pose.facing ?? actor.facing,
-        id === view.me ? Math.hypot(dx, dy) > 0 : distance > 1,
+        !seated &&
+          !pose.highFive &&
+          (id === view.me ? Math.hypot(dx, dy) > 0 : distance > 1),
         time,
         this.reducedMotion,
         lift,
         pose.wave,
+        seated,
+        pose.highFive !== undefined,
       );
-      actor.label.y = -62 - lift;
-      actor.bubble.y = -lift;
+      actor.avatar.body.x = shiftX;
+      actor.avatar.body.y += shiftY;
+      actor.label.setPosition(shiftX, -62 - lift + shiftY);
+      actor.bubble.setPosition(shiftX, -lift + shiftY);
       actor.root.setDepth(actor.root.y + 4);
       if (actor.until && time > actor.until) {
         actor.until = 0;

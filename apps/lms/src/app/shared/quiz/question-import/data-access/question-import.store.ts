@@ -136,12 +136,14 @@ export class QuestionImportStore {
   readonly canImport$ = computed(
     () => this.canCheck$() && this.checked$() !== undefined,
   );
+  readonly step$ = computed(() =>
+    this.checked$() ? 3 : this.isChecking$() || this.error$() ? 2 : 1,
+  );
   readonly fileStatus$ = computed(() => {
     const checked = this.checked$();
     if (this.isChecking$()) return 'Đang kiểm tra…';
-    return checked
-      ? `Hợp lệ: ${checked.toCreate} câu mới, ${checked.toUpdate} câu ghi đè`
-      : 'Chưa kiểm tra';
+    if (this.error$()) return 'Cần kiểm tra lại';
+    return checked ? 'Đã kiểm tra' : 'Chưa kiểm tra';
   });
   private setOverwrite(value: boolean): void {
     this.state.overwrite.set(value);
@@ -163,6 +165,9 @@ export class QuestionImportStore {
     this.checkMutation.reset();
     this.importMutation.reset();
     this.setChecked(undefined);
+  }
+  editFile(): void {
+    if (!this.isBusy$()) this.forgetCheck();
   }
   setOverwriteExisting(value: boolean): void {
     if (this.isBusy$()) return;

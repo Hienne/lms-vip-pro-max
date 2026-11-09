@@ -1,17 +1,19 @@
-@let chrome = store.chrome$(); @let user = store.user$();
+@let chrome = store.chrome$(); @let user = store.user$(); @let learnerNav =
+store.learnerNav$();
 <a class="skip-link" href="#main" (click)="skipToMain($event)"
   >Bỏ qua tới nội dung chính</a
 >
 <div
   class="app-shell"
-  [class.app-shell--framed]="chrome === 'app'"
-  [class.app-shell--rail]="store.sidebarCollapsed$()"
+  [class.app-shell--framed]="chrome === 'app' && learnerNav === null"
+  [class.app-shell--learner]="chrome === 'app' && learnerNav !== null"
+  [class.app-shell--rail]="learnerNav === null && store.sidebarCollapsed$()"
   [class.app-shell--fill]="store.fillsViewport$()"
   [class.app-shell--docked]="
     chrome === 'app' && chat.isDocked$() && !store.fillsViewport$()
   "
 >
-  @if (chrome === 'app' && user) {
+  @if (chrome === 'app' && user && learnerNav === null) {
   <app-sidebar
     class="app-shell__sidebar"
     [nav]="user.nav"
@@ -26,6 +28,8 @@
     @if (chrome === 'app') {
     <app-header
       [navOpen]="store.navOpen$()"
+      [learnerNav]="learnerNav"
+      [activePath]="store.path$()"
       [user]="user"
       [unread]="store.unread$()"
       [levelName]="level.name$()"
@@ -65,7 +69,7 @@
   uiDrawerSide="start"
   (uiDrawerDismiss)="store.closeNav()"
 >
-  @if (user) {
+  @if (user && learnerNav === null) {
   <app-sidebar
     [nav]="user.nav"
     [roleText]="store.roleText$()"

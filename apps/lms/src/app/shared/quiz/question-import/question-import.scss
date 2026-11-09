@@ -3,8 +3,17 @@
 .question-import {
   @include ui.stack(4);
 
-  &__course {
+  &__steps {
+    @include ui.row(3);
+    @include ui.text(sm, muted);
     margin: 0;
+    padding-inline-start: ui.space(5);
+    column-gap: ui.space(6);
+
+    [aria-current='step'] {
+      color: ui.color(primary);
+      font-weight: ui.weight(semibold);
+    }
   }
 
   &__lead {
@@ -56,6 +65,19 @@
     margin-top: ui.space(3);
     padding-left: ui.space(4);
     @include ui.text(sm, secondary);
+  }
+  &__counts {
+    @include ui.stack(2);
+    margin: ui.space(3) 0 0;
+
+    > div {
+      @include ui.row-between(2);
+    }
+
+    dd {
+      margin: 0;
+      font-weight: ui.weight(semibold);
+    }
   }
   &__errors {
     list-style: none;

@@ -78,4 +78,135 @@
     gap: ui.space(2);
     margin-left: auto;
   }
+
+  &--learner {
+    display: grid;
+    grid-template-areas: 'brand search actions' 'navigation navigation navigation';
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    gap: 0 ui.space(3);
+    height: auto;
+    padding-block: ui.space(2) 0;
+    background: ui.color(surface);
+    backdrop-filter: none;
+
+    @include ui.bp(lg) {
+      grid-template-areas: 'brand navigation search actions';
+      grid-template-columns: auto auto minmax(0, 1fr) auto;
+      height: ui.layout(header);
+      padding-block: 0;
+    }
+
+    .header__search {
+      grid-area: search;
+      width: 100%;
+      justify-self: end;
+    }
+
+    .header__actions {
+      grid-area: actions;
+    }
+  }
+
+  &__brand {
+    grid-area: brand;
+    @include ui.row(2);
+    flex-wrap: nowrap;
+    color: ui.color(text);
+    font-weight: ui.weight(semibold);
+    text-decoration: none;
+    white-space: nowrap;
+
+    span {
+      @include ui.bp-below(md) {
+        display: none;
+      }
+    }
+  }
+
+  &__nav {
+    grid-area: navigation;
+    display: flex;
+    align-self: stretch;
+    align-items: stretch;
+    position: relative;
+    min-width: 0;
+  }
+
+  &__group,
+  &__account {
+    position: relative;
+  }
+
+  &__group {
+    display: flex;
+    align-items: center;
+
+    @include ui.bp-below(lg) {
+      flex: 1;
+      justify-content: center;
+      position: static;
+    }
+  }
+
+  &__tab {
+    white-space: nowrap;
+
+    @include ui.bp-below(sm) {
+      padding-inline: ui.space(2);
+    }
+
+    &--active {
+      color: ui.color(primary);
+      background: ui.color(primary-subtle);
+    }
+  }
+
+  &__account-trigger {
+    white-space: nowrap;
+
+    span {
+      @include ui.clamp(1);
+      max-width: 12rem;
+    }
+
+    @include ui.bp-below(md) {
+      span,
+      .header__account-arrow {
+        display: none;
+      }
+    }
+  }
+
+  &__panel {
+    position: absolute;
+    z-index: 1;
+    top: 100%;
+    inset-inline-start: 0;
+    margin: 0;
+    list-style: none;
+    max-height: 65dvh;
+    overflow: auto;
+    animation: none;
+
+    .menu__item[aria-current='page'] {
+      color: ui.color(primary);
+      background: ui.color(primary-subtle);
+    }
+
+    @include ui.bp-below(lg) {
+      inset-inline-end: 0;
+    }
+
+    &--account {
+      inset-inline-start: auto;
+      inset-inline-end: 0;
+      width: max-content;
+      max-width: min(22rem, calc(100vw - 2 * #{ui.space(4)}));
+      overflow-wrap: anywhere;
+    }
+  }
+
+  &__soon {
+    @include ui.text(sm, muted);
+  }
 }

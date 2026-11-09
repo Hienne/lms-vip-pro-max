@@ -346,6 +346,17 @@ export class ProgressStore {
     this.filter({ q });
   }
 
+  filterCount(
+    value: 'all' | 'completed' | 'in_progress' | 'not_started' | 'overdue',
+  ): void {
+    this.setTab('courses');
+    this.filter({
+      q: '',
+      learningStatus: value === 'overdue' ? 'all' : value,
+      overdueOnly: value === 'overdue',
+    });
+  }
+
   filterStatus(value: string): void {
     const status = LearningStatusSchema.safeParse(value);
     this.filter({ learningStatus: status.success ? status.data : 'all' });

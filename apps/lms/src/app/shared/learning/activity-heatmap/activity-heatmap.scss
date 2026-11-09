@@ -37,6 +37,19 @@
     padding: ui.space(1);
   }
 
+  &__months {
+    display: grid;
+    grid-auto-columns: calc(#{ui.space(3)} + #{ui.space(1)});
+    grid-auto-flow: column;
+    width: max-content;
+    margin-block-end: ui.space(1);
+    @include ui.text(sm, muted);
+
+    span {
+      white-space: nowrap;
+    }
+  }
+
   &__grid {
     @include ui.stack(1);
     width: max-content;
@@ -84,6 +97,12 @@
     }
   }
 
+  &__cell--today,
+  &__swatch--today {
+    outline: 2px solid ui.color(primary);
+    outline-offset: 1px;
+  }
+
   &__cell:focus-visible {
     @include ui.focus-ring;
   }
@@ -97,6 +116,7 @@
       margin-inline-start: 0;
     }
 
+    .activity-heatmap__swatch--today,
     .activity-heatmap__swatch--rest {
       margin-inline-start: ui.space(3);
     }

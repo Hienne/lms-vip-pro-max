@@ -1,13 +1,24 @@
 <div class="activity-heatmap">
   <div class="activity-heatmap__scroll">
+    <div class="activity-heatmap__months" aria-hidden="true">
+      @for (month of months(); track month.column) {
+      <span [style.grid-column]="month.column">{{ month.label }}</span>
+      }
+    </div>
     <div ngGrid class="activity-heatmap__grid" [attr.aria-label]="label()">
       @for (row of rows(); track $index) {
-      <div ngGridRow class="activity-heatmap__row">
+      <div
+        ngGridRow
+        class="activity-heatmap__row"
+        [class.activity-heatmap__row--offset]="$index < firstWeekday()"
+      >
         @for (cell of row; track cell.date) {
         <div
           ngGridCell
           class="activity-heatmap__cell"
           [class.activity-heatmap__cell--rest]="cell.restDay"
+          [class.activity-heatmap__cell--today]="cell.today"
+          [attr.aria-current]="cell.today ? 'date' : null"
           [attr.data-level]="cell.level"
           [attr.aria-label]="cell.label"
           [uiTooltip]="cell.label"
@@ -30,5 +41,9 @@
       data-level="0"
     ></span>
     <span>Ngày nghỉ</span>
+    <span
+      class="activity-heatmap__swatch activity-heatmap__swatch--today"
+    ></span>
+    <span>Hôm nay</span>
   </p>
 </div>

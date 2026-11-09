@@ -134,15 +134,15 @@ describe('study protocol', () => {
       position,
     });
 
-    it('goes out in whole seconds, so the end of a video never exceeds the stored duration', () => {
+    it('keeps the fractional tail of the video in the saved range', () => {
       const { command } = toCommand(state, playing(9.914), {
         type: 'PAUSE',
         playing: false,
         positionSeconds: 11.136125,
       });
-      expect(command.videoPositionSeconds).toBe(11);
-      expect(command.watchedFromSeconds).toBe(9);
-      expect(command.watchedToSeconds).toBe(11);
+      expect(command.videoPositionSeconds).toBe(11.136);
+      expect(command.watchedFromSeconds).toBe(9.914);
+      expect(command.watchedToSeconds).toBe(11.136);
     });
 
     it('is absent on the first event after OPEN: nothing has played yet', () => {

@@ -31,17 +31,6 @@
     phòng</span
   >
   <div class="row">
-    @if (store.game$()) {
-    <button
-      uiButton
-      size="sm"
-      [attr.aria-expanded]="store.gameOpen$()"
-      aria-controls="room-activities"
-      (click)="store.toggleGame()"
-    >
-      {{ store.gameActive$() ? 'Đố vui · Đang mở' : 'Đố vui' }}
-    </button>
-    }
     <div class="row row--gap-1" role="group" aria-label="Góc nhìn phòng học">
       <button
         uiButton
@@ -73,70 +62,40 @@
   </div>
 </div>
 <section class="chat-room__world" aria-label="Không gian phòng học">
-  <section
-    id="room-activities"
-    class="chat-room__game"
-    aria-labelledby="room-activities-title"
-    [hidden]="!store.gameOpen$() || !store.game$()"
-  >
-    @let round = store.game$()?.round;
-    <div class="chat-room__game-header">
-      <div>
-        <h2 id="room-activities-title">Đố vui nhanh</h2>
-        @if (store.hostName$(); as hostName) {
-        <p>
-          {{ store.isHost$() ? 'Bạn đang làm host' : 'Host · ' + hostName }}
-        </p>
-        }
-      </div>
-      @if (store.isHost$()) { @if (round && round.correctIndex === undefined) {
-      <button uiButton size="sm" (click)="store.closeGame(round.id)">
-        Công bố đáp án
-      </button>
-      } @else {
-      <button uiButton variant="primary" size="sm" (click)="store.startGame()">
-        {{ round ? 'Câu tiếp theo' : 'Mở câu hỏi' }}
-      </button>
-      } }
-    </div>
-    @if (round) {
-    <h3>{{ round.prompt }}</h3>
-    <div class="chat-room__choices" role="group" aria-label="Đáp án">
-      @for (option of round.options; track $index) {
-      <button
-        uiButton
-        size="sm"
-        [attr.aria-pressed]="round.yourChoice === $index"
-        [disabled]="round.yourChoice !== null || round.correctIndex !== undefined"
-        (click)="store.answerGame(round.id, $index)"
-      >
-        {{ option }}{{ round.yourChoice === $index ? ' · Bạn đã chọn' : '' }}
-      </button>
-      }
-    </div>
-    <p role="status">
-      @if (round.correctIndex !== undefined) { Đáp án đúng là {{
-      round.options[round.correctIndex] }}. {{ round.correctCount }}/{{
-      round.answered }} người trả lời đúng. } @else { {{ round.answered }} người
-      đã trả lời. {{ round.yourChoice !== null ? 'Đang chờ host công bố đáp án.'
-      : 'Mỗi người được chọn một đáp án.' }} }
-    </p>
-    } @else if (!store.isHost$()) {
-    <p>Đang chờ host mở câu hỏi.</p>
-    }
-  </section>
   <app-room-canvas
     [map]="map"
     [view]="store.canvas$()"
     [mode]="store.viewMode$()"
     [gesturesEnabled]="store.gesturesEnabled$()"
+    [interactionsEnabled]="store.interactionsEnabled$()"
+    [invitation]="store.invitation$()"
     [gestureNotice]="store.gestureNotice$()"
     (moved)="store.move($event)"
     (gestured)="store.performGesture($event)"
+    (interacted)="store.interact($event)"
     (ready)="store.rendererReady()"
     (failed)="store.rendererFailed($event)"
   />
-  @if (store.chatOpen$()) {
+  @if (store.nearDice$()) { @if (store.diceOpen$()) { @if (store.dice$(); as
+  dice) {
+  <app-room-dice
+    class="chat-room__dice"
+    [state]="dice"
+    [pending]="store.dicePending$()"
+    [error]="store.diceError$()"
+    (rolled)="store.rollDice($event)"
+    (closed)="closeDice()"
+  />
+  } } @else {
+  <button
+    uiButton
+    size="sm"
+    class="chat-room__dice-entry"
+    (click)="store.openDice()"
+  >
+    Mở bàn Tài/Xỉu
+  </button>
+  } } @if (store.chatOpen$()) {
   <div class="chat-room__composer">
     <app-room-composer
       [disabled]="!store.online$() || store.sending$()"
@@ -149,8 +108,9 @@
     <p class="chat-room__hint">
       WASD hoặc phím mũi tên để di chuyển. Enter để chat, Esc để trở lại phòng.
       @if (store.gesturesEnabled$()) { Space để nhảy. Đến gần một người để vẫy
-      chào. } @if (store.viewMode$() === '3d') { Kéo trong phòng để xoay camera.
-      }
+      chào. } @if (store.interactionsEnabled$()) { Đến gần rồi bấm vào ghế để
+      ngồi. } @if (store.dice$()) { Bàn Tài/Xỉu nằm ở góc dưới bên phải bản đồ.
+      } @if (store.viewMode$() === '3d') { Kéo trong phòng để xoay camera. }
     </p>
     @if (store.online$() && !store.chatOpen$()) {
     <button uiButton size="sm" (click)="store.openChat()">Nhắn tin</button> }

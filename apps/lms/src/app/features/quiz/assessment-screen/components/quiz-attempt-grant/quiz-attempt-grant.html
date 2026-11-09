@@ -1,0 +1,76 @@
+<button uiButton type="button" (click)="store.open(quizId())">
+  Cấp thêm lượt thi
+</button>
+
+<ng-template
+  [uiDrawer]="store.open$()"
+  uiDrawerTitle="Cấp thêm lượt thi"
+  [uiDrawerFooter]="footer"
+  [uiDrawerBusy]="store.busy$()"
+  uiDrawerBusyLabel="Đang cấp thêm lượt…"
+  (uiDrawerDismiss)="store.close()"
+>
+  <div class="stack">
+    <p>
+      Chọn một thí sinh đã hết lượt của bài thi này. Lượt bổ sung vẫn áp dụng
+      thời gian chờ và các điều kiện dự thi.
+    </p>
+    <ui-search
+      label="Tìm theo mã cán bộ"
+      placeholder="Tìm theo mã cán bộ…"
+      [value]="store.search$()"
+      (searched)="store.setSearch($event)"
+    />
+    @if (store.loadError$(); as error) {
+    <ui-error-state [message]="error.message" (retry)="store.reload()" />
+    } @else if (store.learners$(); as learners) { @if (learners.items.length) {
+    <form id="quiz-attempt-grant-form" class="stack" [formRoot]="grantForm">
+      <ui-field label="Thí sinh đã hết lượt" required>
+        <select uiSelect [formField]="grantForm.userId">
+          <option value="">Chọn thí sinh</option>
+          @for (learner of learners.items; track learner.userId) {
+          <option [value]="learner.userId">
+            {{ learner.userName ? learner.userName + ' · ' : '' }}{{
+            learner.userId }} · Đã thi {{ learner.attemptsUsed }} lượt
+          </option>
+          }
+        </select>
+      </ui-field>
+      <ui-field label="Số lượt cấp thêm" required>
+        <input uiInput type="number" [formField]="grantForm.extraAttempts" />
+      </ui-field>
+      <ui-field label="Lý do cấp thêm lượt" required>
+        <textarea uiTextarea [formField]="grantForm.reason"></textarea>
+      </ui-field>
+    </form>
+    } @else {
+    <ui-empty variant="inline" title="Không có thí sinh đã hết lượt phù hợp" />
+    } @if (learners.totalPages > 1 || store.page$() > 1) {
+    <ui-pagination
+      [total]="learners.totalElements"
+      [page]="store.page$()"
+      [pageSize]="pageSize"
+      (pageChange)="store.setPage($event)"
+    />
+    } } @else {
+    <span uiSpinner aria-label="Đang tải thí sinh"></span>
+    } @if (store.saveError$(); as error) {
+    <ui-alert tone="danger">{{ error.message }}</ui-alert>
+    <div>
+      <button uiButton type="button" (click)="store.reload()">
+        Tải lại danh sách
+      </button>
+    </div>
+    }
+  </div>
+</ng-template>
+
+<ng-template #footer>
+  <ui-form-actions
+    formId="quiz-attempt-grant-form"
+    submitLabel="Cấp lượt"
+    cancelLabel="Hủy"
+    [saving]="store.busy$() || !!store.loadError$() || !store.learners$()?.items?.length"
+    (cancel)="store.close()"
+  />
+</ng-template>

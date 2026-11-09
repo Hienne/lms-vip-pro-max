@@ -14,7 +14,7 @@
 
   &__rhythm {
     @include ui.stack(3);
-    margin-block-end: ui.space(5);
+    min-width: 0;
   }
 
   &__rhythm-placeholder {
@@ -36,21 +36,9 @@
     }
   }
 
-  &__note {
-    display: block;
-    margin: ui.space(3) 0 ui.space(5);
-  }
-
   &__table {
     @include ui.stack(4);
     padding-block-start: ui.space(4);
-  }
-
-  &__competency-link {
-    @include ui.row-between(3);
-    @include ui.text(sm);
-    padding-block: ui.space(2);
-    border-bottom: 1px solid ui.color(border);
   }
 
   &__intro {
@@ -271,6 +259,20 @@
     border: 1px solid ui.color(border);
     border-radius: ui.radius(card);
     background: ui.color(surface);
+  }
+
+  &__details {
+    @include ui.text(sm);
+    min-width: 0;
+
+    summary {
+      color: ui.color(primary);
+      cursor: pointer;
+    }
+
+    > :not(summary) {
+      margin-top: ui.space(3);
+    }
   }
 
   &__activity-summary {
