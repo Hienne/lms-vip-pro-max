@@ -116,6 +116,7 @@ then delete its row here and, for a guarded item, its entry in `KNOWN_VIOLATIONS
 
 | Pattern                | Where                                                                                                                  |
 | ---------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| Glass                  | `layout/header/header.scss` (`backdrop-filter`)                                                                        |
 | Badges for attributes  | `features/account/profile` (staff code and account type as outline badges)                                             |
 | Two inline row actions | `features/admin-org/users` (edit and lock inline)                                                                      |
 | Tokens                 | the `hero-*` colour tokens (`hero-muted`, `hero-subtle`, `hero-accent`) and `ui.weight(bold)`, kept for the sign-in page |

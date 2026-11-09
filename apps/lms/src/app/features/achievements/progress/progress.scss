@@ -108,24 +108,37 @@
     background: ui.color(surface);
   }
 
-  // The course column takes the width the short columns leave (at least 15rem), its title and code
-  // on one line each; the other columns and every header stay on one line. A narrow viewport
-  // scrolls the table inside its wrapper (md and up; below md rows are cards).
-  &__course-cell {
-    @include ui.bp(md) {
-      min-width: 15rem;
-      max-width: 0;
+  &__courses {
+    table-layout: fixed;
+
+    th {
+      white-space: normal;
+    }
+
+    td {
+      min-width: 0;
+      overflow-wrap: anywhere;
     }
   }
 
-  // Tighter cell padding so six columns fit at 1280px without scrolling.
-  &__courses {
-    @include ui.bp(md) {
-      th,
-      td {
-        padding-inline: ui.space(3);
-      }
-    }
+  &__col-course {
+    width: 27%;
+  }
+
+  &__col-progress {
+    width: 20%;
+  }
+
+  &__col-score {
+    width: 12%;
+  }
+
+  &__col-status {
+    width: 15%;
+  }
+
+  &__col-date {
+    width: 13%;
   }
 
   &__course {
@@ -142,8 +155,8 @@
   }
 
   &__title {
-    @include ui.truncate;
-    display: block;
+    @include ui.clamp(2);
+    overflow-wrap: anywhere;
     color: ui.color(primary);
     text-decoration: none;
 
@@ -158,8 +171,8 @@
 
   &__code {
     @include ui.mono;
-    @include ui.truncate;
     color: ui.color(text-muted);
+    overflow-wrap: anywhere;
   }
 
   &__pct {
@@ -335,6 +348,10 @@
     &__sort {
       margin-inline-start: 0;
       max-width: 100%;
+    }
+
+    &__courses colgroup {
+      display: none;
     }
 
     &__course-row td {

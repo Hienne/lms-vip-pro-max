@@ -67,25 +67,7 @@ describe('menu catalog', () => {
       ['PROFILE', 'Tên PROFILE'],
       ['COURSE_LEARNING', 'Tên COURSE_LEARNING'],
       ['LEARNING_PROGRESS', 'Tên LEARNING_PROGRESS'],
-      ['LEARNING_PROGRESS', 'Bảng xếp hạng'],
-      ['COURSE_LEARNING', 'Đã lưu & ghi chú'],
-      ['LEARNING_PROGRESS', 'Chứng nhận'],
     ]);
-  });
-
-  it('lists the leaderboard, saved items and certificates like the mockup, and drops those the build does not serve', () => {
-    const functions = knownFunctions([
-      fn(1, 'COURSE_LEARNING', 1),
-      fn(2, 'LEARNING_PROGRESS', 2),
-    ]);
-    const hrefs = (nav: ReturnType<typeof navFor>, section: string) =>
-      nav.find((s) => s.section === section)?.items.map((i) => i.href);
-    const nav = navFor(functions);
-    expect(hrefs(nav, 'Học tập')).toContain('/leaderboard');
-    expect(hrefs(nav, 'Công cụ học')).toEqual(['/saved', '/certificates']);
-    const none = navFor(functions, () => false);
-    expect(hrefs(none, 'Công cụ học')).toBeUndefined();
-    expect(hrefs(none, 'Học tập')).toContain('/leaderboard');
   });
 
   it('breaks a sortNo tie by id', () => {

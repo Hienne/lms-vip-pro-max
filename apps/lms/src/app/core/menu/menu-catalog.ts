@@ -1,9 +1,5 @@
 import type { AnyEndpoint, FunctionCode, FunctionInfo } from '@lms/contracts';
-import {
-  certificateEndpoints,
-  FunctionCodeSchema,
-  personalEndpoints,
-} from '@lms/contracts';
+import { FunctionCodeSchema } from '@lms/contracts';
 import type { IconName } from '@lms/ui';
 import { FUNCTION_CODES, menuGroup } from '../routing/screens';
 
@@ -72,47 +68,6 @@ function groupBySection(items: readonly MenuItem[]): readonly NavSection[] {
   return sections;
 }
 
-/** A sidebar entry for an open screen, listed under the function that grants it. */
-interface ExtraItem {
-  readonly href: string;
-  readonly icon: IconName;
-  readonly label: string;
-  readonly section: string;
-  /** Left out while this build does not serve the endpoint. */
-  readonly requires?: AnyEndpoint;
-}
-
-/**
- * The mockup's learner entries that are open screens (`access` in the screen table) and so have
- * no function of their own: each shows beside the function whose `access` it borrows.
- */
-const EXTRA_ITEMS: Partial<Record<FunctionCode, readonly ExtraItem[]>> = {
-  COURSE_LEARNING: [
-    {
-      href: '/saved',
-      icon: 'bookmark',
-      label: 'Đã lưu & ghi chú',
-      section: 'Công cụ học',
-      requires: personalEndpoints.saved,
-    },
-  ],
-  LEARNING_PROGRESS: [
-    {
-      href: '/leaderboard',
-      icon: 'trophy',
-      label: 'Bảng xếp hạng',
-      section: 'Học tập',
-    },
-    {
-      href: '/certificates',
-      icon: 'award',
-      label: 'Chứng nhận',
-      section: 'Công cụ học',
-      requires: certificateEndpoints.certificates,
-    },
-  ],
-};
-
 /**
  * The sidebar follows server-granted functions, with four destinations for Community.
  * Other functions link to their first screen, grouped in backend order. `toProfile` builds it
@@ -120,7 +75,6 @@ const EXTRA_ITEMS: Partial<Record<FunctionCode, readonly ExtraItem[]>> = {
  */
 export function navFor(
   functions: readonly KnownFunction[],
-  isServed: IsServed = allServed,
 ): readonly NavSection[] {
   return groupBySection(
     functions.flatMap((fn): MenuItem[] => {
@@ -152,16 +106,6 @@ export function navFor(
         }));
       }
       const { nav } = menuGroup(fn.code);
-      const extras = (EXTRA_ITEMS[fn.code] ?? [])
-        .filter((extra) => !extra.requires || isServed(extra.requires))
-        .map((extra) => ({
-          code: fn.code,
-          href: extra.href,
-          icon: extra.icon,
-          label: extra.label,
-          section: extra.section,
-          upcoming: false,
-        }));
       return [
         {
           code: fn.code,
@@ -171,7 +115,6 @@ export function navFor(
           section: nav.section,
           upcoming: isUpcoming(fn.code),
         },
-        ...extras,
       ];
     }),
   );

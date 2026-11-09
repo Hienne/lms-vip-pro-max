@@ -137,19 +137,16 @@ describe('AppShell', () => {
         '/profile',
         '/learn',
         '/progress',
-        '/leaderboard',
         '/quiz',
-        '/saved',
-        '/certificates',
-        '/knowledge',
-        '/assistant',
-        '/issues',
         '/admin/courses',
         '/admin/catalog',
         '/admin/lessons',
         '/admin/questions',
         '/admin/quizzes',
         '/reports',
+        '/knowledge',
+        '/assistant',
+        '/issues',
         '/community/questions',
         '/community/articles',
         '/community/reviews',
@@ -785,11 +782,10 @@ describe('AppShell', () => {
         await fixture.whenStable();
         TestBed.tick();
       };
-      // Two pages that load nothing, so the test waits on no request.
-      await go('/not-a-page');
-      const notFoundHeading = root.querySelector('main h1');
-      expect(notFoundHeading?.textContent).toContain('Không tìm thấy trang');
-      expect(document.activeElement).toBe(notFoundHeading);
+      await go('/flashcards');
+      const flashcardHeading = root.querySelector('main h1');
+      expect(flashcardHeading?.textContent).toContain('Flashcard ôn tập');
+      expect(document.activeElement).toBe(flashcardHeading);
       await go('/403');
       const h1 = root.querySelector('main h1');
       expect(h1).not.toBeNull();

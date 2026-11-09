@@ -66,7 +66,7 @@ export function toProfile(me: Me, isServed?: IsServed): Profile {
           },
     grants: roleGrants,
     scopeSummary: scopeSummaryOf(roleGrants),
-    nav: navFor(functions, isServed),
+    nav: navFor(functions),
     menus: functions.map((fn) => fn.code),
     homePath: user.mustChangePassword
       ? '/change-password'

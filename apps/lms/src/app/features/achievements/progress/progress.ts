@@ -19,11 +19,7 @@ import {
   Select,
   Segmented,
   Skeleton,
-  Stat,
-  StatStrip,
   Table,
-  TableCell,
-  TableCol,
   TablePrimary,
   TableWrap,
   TabPanel,
@@ -66,16 +62,13 @@ import {
     PageHeader,
     Pagination,
     Progress,
+    ProgressCounts,
     RouterLink,
     Search,
     Select,
     Segmented,
     Skeleton,
-    Stat,
-    StatStrip,
     Table,
-    TableCell,
-    TableCol,
     TablePrimary,
     TableWrap,
     TabPanel,
@@ -115,36 +108,10 @@ export class LearningProgress {
       { value: 'in_progress', label: 'Đang học' },
       { value: 'completed', label: 'Hoàn thành' },
     ];
-  /** The server's course counts as stat cells; the overdue one is danger only while above zero. */
-  protected readonly countStats = computed(() => {
-    const counts = this.store.summary$()?.counts;
-    if (!counts) return [];
-    return [
-      { label: 'Tổng số khóa', value: counts.total, danger: false },
-      { label: 'Hoàn thành', value: counts.completed, danger: false },
-      { label: 'Đang học', value: counts.inProgress, danger: false },
-      { label: 'Chưa bắt đầu', value: counts.notStarted, danger: false },
-      {
-        label: 'Đang quá hạn',
-        value: counts.overdue,
-        danger: counts.overdue > 0,
-      },
-    ];
-  });
-  protected readonly columns: readonly {
-    key: string;
-    label: string;
-    sortable?: boolean;
-    numeric?: boolean;
-  }[] = [
+  protected readonly columns = [
     { key: 'title', label: 'Khóa học' },
     { key: 'progress', label: 'Nội dung đã học' },
-    {
-      key: 'score',
-      label: 'Điểm thi cao nhất',
-      sortable: false,
-      numeric: true,
-    },
+    { key: 'score', label: 'Điểm thi cao nhất', sortable: false },
     { key: 'status', label: 'Trạng thái', sortable: false },
     { key: 'dueAt', label: 'Hạn hoàn thành' },
     { key: 'lastAccessAt', label: 'Truy cập gần nhất' },
