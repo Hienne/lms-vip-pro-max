@@ -29,6 +29,20 @@ p {
     @include ui.text(xs, muted);
     margin-top: ui.space(2);
   }
+  &__round,
+  &__history {
+    @include ui.text(sm);
+    margin-top: ui.space(2);
+  }
+  &__history {
+    summary {
+      cursor: pointer;
+    }
+    ol {
+      margin: ui.space(1) 0 0;
+      padding-inline-start: ui.space(5);
+    }
+  }
   &__form {
     display: grid;
     grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);

@@ -190,7 +190,7 @@ export class RoomWorld3D {
     if (map.diceArea)
       this.drawArea(
         map.diceArea,
-        'Bàn Tài/Xỉu',
+        'Bàn Trên/Dưới',
         ['#e4c89e', '#a66c38', '#6b411e'],
         0.5,
         310,

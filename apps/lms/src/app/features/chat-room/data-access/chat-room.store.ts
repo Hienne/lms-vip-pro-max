@@ -10,8 +10,6 @@ import {
   chatRoomSocket,
   type RoomCommand,
   type RoomEvent,
-  type RoomDiceBet,
-  type RoomDiceState,
   type RoomGesture,
   type RoomGestureKind,
   type RoomHighFive,
@@ -38,6 +36,7 @@ import type {
   TimedRoomGesture,
 } from './chat-room.model';
 import { inRoomArea } from './chat-room.model';
+import { RoomGamesStore } from './room-games.store';
 
 type ConnectionStatus = 'offline' | 'connecting' | 'online' | 'reconnecting';
 const SPEECH_DURATION_MS = 5500;
@@ -47,6 +46,7 @@ export class ChatRoomStore {
   private readonly client = inject(EndpointClient);
   private readonly destroyRef = inject(DestroyRef);
   private readonly session = inject(SessionStore);
+  readonly games = inject(RoomGamesStore);
 
   // Socket events are continuous server values; serverData owns the finite HTTP map request.
   private readonly state = {
@@ -68,10 +68,6 @@ export class ChatRoomStore {
     copied: signal(false),
     sending: signal(false),
     renderError: signal(''),
-    dice: signal<RoomDiceState | null>(null),
-    diceOpen: signal(false),
-    dicePending: signal(false),
-    diceError: signal(''),
   };
   private readonly mapData = serverData(() =>
     this.client.call(chatRoomEndpoints.map),
@@ -119,9 +115,6 @@ export class ChatRoomStore {
   readonly copied$ = this.state.copied.asReadonly();
   readonly sending$ = this.state.sending.asReadonly();
   readonly renderError$ = this.state.renderError.asReadonly();
-  readonly dice$ = this.state.dice.asReadonly();
-  readonly dicePending$ = this.state.dicePending.asReadonly();
-  readonly diceError$ = this.state.diceError.asReadonly();
   readonly map$ = this.mapData.value;
   readonly isLoading$ = this.mapData.isLoading;
   readonly loadError$ = this.mapData.error;
@@ -131,18 +124,29 @@ export class ChatRoomStore {
     () => this.session.user$()?.fullName.slice(0, 24) ?? '',
   );
   readonly online$ = computed(() => this.status$() === 'online');
+  readonly self$ = computed(() =>
+    this.players$().find((person) => person.id === this.me$()),
+  );
+  readonly nearby$ = computed(() => {
+    const self = this.self$();
+    return self
+      ? this.players$().filter(
+          (player) =>
+            player.id !== self.id &&
+            Math.hypot(player.x - self.x, player.y - self.y) <= 145,
+        )
+      : [];
+  });
   readonly nearDice$ = computed(() => {
-    const player = this.players$().find((person) => person.id === this.me$());
+    const player = this.self$();
     return (
       this.online$() &&
-      !!this.dice$() &&
+      this.games.balance$() !== null &&
       !!player &&
+      !player.approaching &&
       inRoomArea(this.map$()?.diceArea, player.x, player.y)
     );
   });
-  readonly diceOpen$ = computed(
-    () => this.nearDice$() && this.state.diceOpen(),
-  );
   readonly statusLabel$ = computed(
     () =>
       ({
@@ -162,8 +166,8 @@ export class ChatRoomStore {
     online: this.online$(),
     me: this.me$(),
     players: this.players$(),
-    chatting: this.chatOpen$() || this.diceOpen$(),
-    dice: this.dice$()?.result,
+    chatting: this.chatOpen$() || this.games.panel$() !== null,
+    dice: this.games.latestDice$(),
     speech: this.speech$(),
     gestures: this.state.gestures(),
     correction: this.state.correction(),
@@ -188,6 +192,7 @@ export class ChatRoomStore {
   >();
 
   constructor() {
+    this.games.connect((command) => this.socket?.send(command));
     this.destroyRef.onDestroy(() => {
       this.leave();
       clearTimeout(this.copyTimer);
@@ -272,7 +277,7 @@ export class ChatRoomStore {
   }
   openChat(): void {
     if (this.online$()) {
-      this.closeDice();
+      this.games.close();
       this.setChatOpen(true);
     }
   }
@@ -289,33 +294,18 @@ export class ChatRoomStore {
   }
   interact(command: RoomInteractionCommand): void {
     if (this.online$() && this.interactionsEnabled$()) {
-      this.setError('');
       this.socket?.send(command);
     }
   }
-  openDice(): void {
-    if (!this.nearDice$()) return;
+  cancelApproach(): void {
+    if (this.self$()?.approaching)
+      this.socket?.send({ type: 'approach-cancel' });
+  }
+  openGame(panel: NonNullable<ReturnType<RoomGamesStore['panel$']>>): void {
+    if (!this.online$() || (panel === 'dice' && !this.nearDice$())) return;
     this.closeChat();
-    this.state.diceError.set('');
-    this.state.diceOpen.set(true);
-  }
-  closeDice(): void {
-    this.state.diceOpen.set(false);
-  }
-  rollDice(bet: RoomDiceBet): void {
-    const dice = this.dice$();
-    if (
-      !this.diceOpen$() ||
-      !dice ||
-      this.dicePending$() ||
-      !Number.isSafeInteger(bet.stake) ||
-      bet.stake < 1 ||
-      bet.stake > dice.balance
-    )
-      return;
-    this.state.diceError.set('');
-    this.state.dicePending.set(true);
-    this.socket?.send({ type: 'dice-roll', turn: dice.turn, ...bet });
+    this.cancelApproach();
+    this.games.open(panel);
   }
   send(text: string): void {
     if (!this.online$() || this.sending$() || !text.trim()) return;
@@ -335,7 +325,7 @@ export class ChatRoomStore {
     this.setEntered(false);
     this.setStatus('offline');
     this.setPlayers([]);
-    this.resetDice();
+    this.games.reset();
     this.clearSpeech();
     this.clearGestures();
     this.setMe('');
@@ -364,7 +354,7 @@ export class ChatRoomStore {
           this.socket?.send({
             type: 'join',
             ...this.identity,
-            dice: true,
+            roomGames: true,
             gestures: true,
             interactions: true,
           });
@@ -421,6 +411,7 @@ export class ChatRoomStore {
                   x: event.x,
                   y: event.y,
                   facing: event.facing ?? p.facing,
+                  approaching: event.approaching ?? p.approaching,
                   seat:
                     event.seat === undefined
                       ? p.seat
@@ -429,6 +420,12 @@ export class ChatRoomStore {
               : p,
           ),
         );
+        if (
+          event.id === this.me$() &&
+          this.games.panel$() === 'dice' &&
+          !this.nearDice$()
+        )
+          this.games.close();
         break;
       case 'correction':
         this.setCorrection({ x: event.x, y: event.y });
@@ -450,14 +447,6 @@ export class ChatRoomStore {
           ),
         );
         break;
-      case 'dice-state':
-        this.state.dice.set(event);
-        this.state.dicePending.set(false);
-        break;
-      case 'dice-error':
-        this.state.diceError.set(event.message);
-        this.state.dicePending.set(false);
-        break;
       case 'gesture':
         this.receiveGesture(event);
         break;
@@ -478,12 +467,16 @@ export class ChatRoomStore {
       case 'pong':
         this.pongAt = Date.now();
         break;
+      default:
+        if (event.type === 'caro-state' && !event.result) this.closeChat();
+        this.games.receive(event);
+        break;
     }
   }
   private disconnected(code: number): void {
     this.stopSocket();
     this.setPlayers([]);
-    this.resetDice();
+    this.games.reset();
     this.setMe('');
     this.clearSpeech();
     this.clearGestures();
@@ -513,12 +506,6 @@ export class ChatRoomStore {
     clearInterval(this.heartbeat);
     this.socket?.close();
     this.socket = undefined;
-  }
-  private resetDice(): void {
-    this.closeDice();
-    this.state.dice.set(null);
-    this.state.diceError.set('');
-    this.state.dicePending.set(false);
   }
   private clearSpeech(playerId?: string): void {
     if (playerId) {

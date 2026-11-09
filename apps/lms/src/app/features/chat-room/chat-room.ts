@@ -1,16 +1,19 @@
 import {
   afterRenderEffect,
   Component,
+  ElementRef,
   inject,
   untracked,
   viewChild,
 } from '@angular/core';
-import { Alert, Button, ErrorState, PageHeader } from '@lms/ui';
+import { Alert, Button, ErrorState, PageHeader, SectionCard } from '@lms/ui';
 import { RoomCanvas } from './components/room-canvas/room-canvas';
+import { RoomCaro } from './components/room-caro/room-caro';
 import { RoomComposer } from './components/room-composer/room-composer';
 import { RoomDice } from './components/room-dice/room-dice';
 import { RoomJoin } from './components/room-join/room-join';
 import { ChatRoomStore } from './data-access/chat-room.store';
+import { RoomGamesStore } from './data-access/room-games.store';
 
 @Component({
   selector: 'app-chat-room',
@@ -20,20 +23,27 @@ import { ChatRoomStore } from './data-access/chat-room.store';
     ErrorState,
     PageHeader,
     RoomCanvas,
+    RoomCaro,
     RoomComposer,
     RoomDice,
     RoomJoin,
+    SectionCard,
   ],
-  providers: [ChatRoomStore],
+  providers: [ChatRoomStore, RoomGamesStore],
   templateUrl: './chat-room.html',
   styleUrl: './chat-room.scss',
   host: { '(window:keydown)': 'shortcut($event)' },
 })
 export class ChatRoom {
   protected readonly store = inject(ChatRoomStore);
+  protected readonly games = inject(RoomGamesStore);
   private readonly composer = viewChild(RoomComposer);
   private readonly canvas = viewChild(RoomCanvas);
+  private readonly gamePanel = viewChild<ElementRef<HTMLElement>>('gamePanel');
   constructor() {
+    afterRenderEffect(() =>
+      this.gamePanel()?.nativeElement.focus({ preventScroll: true }),
+    );
     afterRenderEffect(() => {
       const chatting = this.store.chatOpen$();
       const composer = this.composer();
@@ -46,10 +56,10 @@ export class ChatRoom {
   }
   protected shortcut(event: KeyboardEvent): void {
     if (event.isComposing) return;
-    if (this.store.diceOpen$()) {
+    if (this.games.panel$()) {
       if (event.key === 'Escape') {
         event.preventDefault();
-        this.closeDice();
+        this.closeGame();
       }
       return;
     }
@@ -65,6 +75,11 @@ export class ChatRoom {
       return;
     }
     if (event.repeat) return;
+    if (event.key === 'Escape' && this.store.self$()?.approaching) {
+      event.preventDefault();
+      this.store.cancelApproach();
+      return;
+    }
     if (event.key === 'Escape' && this.store.chatOpen$()) {
       event.preventDefault();
       this.store.closeChat();
@@ -79,8 +94,8 @@ export class ChatRoom {
       this.store.openChat();
     }
   }
-  protected closeDice(): void {
-    this.store.closeDice();
+  protected closeGame(): void {
+    this.games.close();
     this.canvas()?.focusRoom();
   }
 }

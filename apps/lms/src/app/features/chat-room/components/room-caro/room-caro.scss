@@ -1,0 +1,88 @@
+@use 'ui';
+
+:host {
+  display: block;
+}
+
+p {
+  margin: 0;
+}
+
+.caro {
+  &__players,
+  &__status {
+    @include ui.text(sm);
+  }
+  &__rules {
+    @include ui.text(sm, muted);
+    margin-block: ui.space(1);
+  }
+  &__form,
+  &__reply {
+    display: grid;
+    gap: ui.space(2);
+    margin-top: ui.space(2);
+    grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+  }
+  &__form > button {
+    grid-column: 1 / -1;
+    justify-self: start;
+  }
+  &__error {
+    @include ui.text(sm, danger);
+    margin-top: ui.space(2);
+  }
+  &__controls {
+    @include ui.row-between(2);
+    margin-top: ui.space(2);
+  }
+  &__viewport {
+    width: min(100%, 52dvh);
+    aspect-ratio: 1;
+    margin: ui.space(2) auto;
+    border: 1px solid ui.color(border);
+    overflow: auto;
+    overscroll-behavior: contain;
+    touch-action: pan-x pan-y;
+    user-select: none;
+    cursor: grab;
+    &:active {
+      cursor: grabbing;
+    }
+  }
+  &__board {
+    display: grid;
+    grid-template-columns: repeat(var(--caro-size), ui.layout(control-sm));
+    grid-auto-rows: ui.layout(control-sm);
+    width: max-content;
+  }
+  &__cell {
+    @include ui.text(sm);
+    display: grid;
+    place-items: center;
+    min-width: 0;
+    min-height: 0;
+    padding: 0;
+    border: 0;
+    border-right: 1px solid ui.color(border);
+    border-bottom: 1px solid ui.color(border);
+    background: ui.color(surface);
+    cursor: inherit;
+    line-height: 1;
+    &[aria-disabled='false']:hover {
+      background: ui.color(surface-2);
+    }
+    &:focus-visible {
+      @include ui.focus-ring;
+      z-index: 1;
+    }
+    &--x {
+      color: ui.color(primary);
+      font-weight: ui.weight(semibold);
+    }
+    &--o {
+      color: ui.color(text);
+      font-weight: ui.weight(semibold);
+    }
+  }
+}

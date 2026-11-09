@@ -1,0 +1,122 @@
+<ui-section-card title="Caro">
+  <button
+    slot="action"
+    uiButton
+    size="sm"
+    variant="ghost"
+    (click)="closed.emit()"
+  >
+    Đóng
+  </button>
+  @if (state(); as game) {
+  <p class="caro__players">
+    <strong>X</strong> {{ game.xName }} · <strong>O</strong> {{ game.oName }}
+  </p>
+  <p class="caro__status" role="status">
+    @if (game.result === 'draw') { Hòa · Hoàn cược cho hai bên } @else if
+    (game.result) { {{ game.result === game.piece ? 'Bạn thắng' : 'Đối thủ
+    thắng' }} @if (game.stake) { · {{ game.result === game.piece ? '+' : '−'
+    }}{{ game.stake }} token } } @else {
+    <strong>{{ canPlay() ? 'Đến lượt bạn' : 'Lượt của ' + turn() }}</strong>
+    · Bạn là {{ game.piece }} · {{ game.stake }} token mỗi bên }
+  </p>
+  @if (!game.result) {
+  <p class="caro__rules">Còn {{ seconds() }} giây cho lượt này.</p>
+  }
+  <div class="caro__controls">
+    <p class="caro__rules">{{ size }}×{{ size }} · Kéo hoặc vuốt để xem bàn</p>
+    <button uiButton size="sm" (click)="centerBoard()">Về giữa</button>
+  </div>
+  <div
+    #boardViewport
+    class="caro__viewport"
+    (pointerdown)="startPan($event)"
+    (pointermove)="pan($event)"
+    (pointerup)="endPan($event)"
+    (pointercancel)="endPan($event)"
+    (lostpointercapture)="endPan($event)"
+  >
+    <div
+      class="caro__board"
+      role="group"
+      [attr.aria-label]="'Bàn Caro ' + size + ' hàng, ' + size + ' cột'"
+      [style.--caro-size]="size"
+      (keydown)="moveFocus($event)"
+    >
+      @for (piece of cells(); track $index) {
+      <button
+        class="caro__cell"
+        type="button"
+        [class.caro__cell--x]="piece === 'X'"
+        [class.caro__cell--o]="piece === 'O'"
+        [attr.data-cell]="$index"
+        [attr.aria-label]="cellLabel($index, piece)"
+        [attr.aria-disabled]="!canPlay() || piece !== '.'"
+        [attr.tabindex]="$index === centerCell ? 0 : -1"
+        (click)="playCell($event, $index, piece)"
+      >
+        {{ piece === '.' ? '' : piece }}
+      </button>
+      }
+    </div>
+  </div>
+  @if (game.result) {
+  <button uiButton size="sm" (click)="restarted.emit()">Ván mới</button>
+  } } @else { @if (invitation(); as invite) { @if (invite.to === me()) {
+  <p role="status">
+    <strong>{{ invite.fromName }}</strong> thách đấu bạn với mức cược {{
+    invite.stake }} token mỗi bên.
+  </p>
+  <div class="caro__reply">
+    <button
+      uiButton
+      variant="primary"
+      (click)="replied.emit(true)"
+      [disabled]="invite.stake > balance()"
+    >
+      Đồng ý
+    </button>
+    <button uiButton (click)="replied.emit(false)">Từ chối</button>
+  </div>
+  @if (invite.stake > balance()) {
+  <p>Bạn chưa đủ token cho ván này.</p>
+  } } @else {
+  <p role="status">
+    Đang chờ {{ invite.toName }} đồng ý · {{ invite.stake }} token mỗi bên.
+  </p>
+  } } @else {
+  <p class="caro__rules">
+    X và O đánh luân phiên. Đủ đúng 5 quân liên tiếp theo hàng, cột hoặc đường
+    chéo và còn ít nhất một đầu trống thì thắng.
+  </p>
+  <p class="caro__rules">
+    Số dư {{ balance() }} token. Hai bên đặt cùng mức cược, có thể chọn 0 để
+    chơi miễn phí.
+  </p>
+  @if (nearby().length) {
+  <form class="caro__form" [formRoot]="challengeForm">
+    <ui-field label="Người chơi" required>
+      <select uiSelect [formField]="challengeForm.target">
+        <option value="">Chọn người ở gần</option>
+        @for (player of nearby(); track player.id) {
+        <option [value]="player.id">{{ player.name }}</option>
+        }
+      </select>
+    </ui-field>
+    <ui-field label="Token cược" required>
+      <input
+        uiInput
+        type="number"
+        inputmode="numeric"
+        step="1"
+        [formField]="challengeForm.stake"
+      />
+    </ui-field>
+    <button uiButton variant="primary" type="submit">Thách đấu</button>
+  </form>
+  } @else {
+  <p role="status">Đến gần một người rồi mở Caro để thách đấu.</p>
+  } } } @if (error()) {
+  <p role="alert" class="caro__error">{{ error() }}</p>
+  }
+</ui-section-card>

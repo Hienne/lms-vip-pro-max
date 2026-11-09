@@ -43,6 +43,7 @@ export class RoomOrbit {
   private frame = 0;
   private active = true;
   private seat?: number;
+  private approaching = false;
 
   constructor(
     private map: RoomMap,
@@ -220,6 +221,12 @@ export class RoomOrbit {
       this.blur();
     }
     const self = view.players.find((player) => player.id === view.me);
+    if (self && (self.approaching || this.approaching)) {
+      this.position = { x: self.x, y: self.y };
+      this.facing = self.facing ?? this.facing;
+      this.lastPosition = { ...this.position, facing: this.facing };
+    }
+    this.approaching = self?.approaching === true;
     if (view.me !== previous?.me || this.seat !== self?.seat) {
       this.seat = self?.seat;
       this.position = self ? { x: self.x, y: self.y } : { ...this.map.spawn };
@@ -279,6 +286,7 @@ export class RoomOrbit {
     if (
       view.online &&
       !view.chatting &&
+      !this.approaching &&
       !document.hidden &&
       this.seat === undefined &&
       !localPose.highFive
@@ -331,7 +339,7 @@ export class RoomOrbit {
         id === view.me
           ? localPose
           : gesturePose(view.gestures[id], now, this.reducedMotion),
-        id === view.me ? walking : undefined,
+        id === view.me ? walking || this.approaching : undefined,
       ),
     );
     this.placeCamera();

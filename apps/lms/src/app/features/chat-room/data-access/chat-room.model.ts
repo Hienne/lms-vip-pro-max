@@ -1,7 +1,7 @@
 import type {
   RoomArea,
   RoomChat,
-  RoomDiceState,
+  RoomDiceResult,
   RoomGesture,
   RoomHighFive,
   RoomPlayer,
@@ -47,7 +47,7 @@ export interface RoomCanvasState {
   readonly me: string;
   readonly players: readonly RoomPlayer[];
   readonly chatting: boolean;
-  readonly dice?: RoomDiceState['result'];
+  readonly dice?: RoomDiceResult;
   readonly speech: Readonly<Record<string, RoomSpeech>>;
   readonly gestures: Readonly<Record<string, TimedRoomGesture>>;
   readonly correction: { readonly x: number; readonly y: number } | null;
