@@ -83,7 +83,7 @@ describe('ChatMessage', () => {
     expect(badges()[0].getAttribute('aria-label')).toBe(
       'Nguồn 1: Quy-trinh-EOD.pdf, trang 1, dòng 3–9',
     );
-    const answer = el.querySelector('.message__answer') as HTMLElement;
+    const answer = el.querySelector('.message__answer p') as HTMLElement;
     // Text, badge, text, badge, text: each badge stands where its marker was.
     expect(
       Array.from(answer.children).map((child) => child.tagName.toLowerCase()),

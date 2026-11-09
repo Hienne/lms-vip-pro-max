@@ -24,20 +24,12 @@
     <a class="message__link" [routerLink]="link.path">{{ link.title }}</a>
   </p>
   } @else if (reply.text) {
-  <p class="message__answer">
-    @for (part of parts(); track $index) { @if (part.kind === 'text') {
-    <span class="message__run">{{ part.text }}</span>
-    } @else {
-    <button
-      type="button"
-      class="message__cite"
-      [attr.aria-label]="part.name"
-      (click)="showSource(part.citation.n)"
-    >
-      {{ part.citation.n }}
-    </button>
-    } }
-  </p>
+  <app-assistant-markdown
+    class="message__answer"
+    [text]="reply.text"
+    [citations]="reply.citations"
+    (sourceSelected)="showSource($event)"
+  />
   } @if (reply.action; as card) {
   <app-action-card
     [card]="card"

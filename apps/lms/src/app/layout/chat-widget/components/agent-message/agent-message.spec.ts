@@ -104,7 +104,7 @@ describe('AgentMessage', () => {
       }),
     );
     const marks = el.querySelectorAll<HTMLButtonElement>(
-      '.message__answer .message__cite',
+      '.message__answer .md__cite',
     );
     expect(marks).toHaveLength(2);
     expect(marks[0].textContent?.trim()).toBe('1');
@@ -154,7 +154,7 @@ describe('AgentMessage', () => {
       }),
     );
     document.body.appendChild(el);
-    el.querySelectorAll<HTMLButtonElement>('.message__cite')[1].click();
+    el.querySelectorAll<HTMLButtonElement>('.md__cite')[1].click();
     expect(document.activeElement?.id).toBe('agent-source-1-2');
     el.remove();
   });

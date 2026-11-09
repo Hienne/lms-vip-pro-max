@@ -1,0 +1,119 @@
+@use 'ui';
+
+:host {
+  display: block;
+}
+
+.md {
+  @include ui.stack(2);
+  @include ui.text(sm);
+  line-height: ui.leading(relaxed);
+  overflow-wrap: anywhere;
+
+  > * {
+    margin: 0;
+  }
+
+  &__strong {
+    font-weight: ui.weight(semibold);
+  }
+
+  &__em {
+    font-style: italic;
+  }
+
+  p {
+    white-space: pre-line;
+  }
+
+  ul,
+  ol {
+    @include ui.stack(1);
+    padding-left: ui.space(5);
+  }
+
+  ul {
+    list-style: disc;
+  }
+
+  ol {
+    list-style: decimal;
+  }
+
+  code {
+    @include ui.mono;
+    padding: 0 ui.space(1);
+    background: ui.color(surface-2);
+  }
+
+  pre {
+    padding: ui.space(3);
+    overflow-x: auto;
+    background: ui.color(surface-2);
+    white-space: pre;
+
+    code {
+      padding: 0;
+      background: none;
+    }
+  }
+
+  &__link {
+    color: ui.color(primary);
+    font-weight: ui.weight(medium);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+
+    &:focus-visible {
+      @include ui.focus-ring;
+    }
+  }
+
+  // A source number in the sentence: small, raised and teal, like a footnote mark.
+  &__cite {
+    @include ui.num;
+    padding: 0 1px;
+    color: ui.color(primary);
+    font-size: ui.text-size(sm);
+    font-weight: ui.weight(medium);
+    line-height: 0;
+    vertical-align: super;
+    background: none;
+    border: 0;
+    cursor: pointer;
+
+    &:hover {
+      text-decoration: underline;
+    }
+
+    &:focus-visible {
+      @include ui.focus-ring;
+    }
+  }
+
+  &__table {
+    max-width: 100%;
+    overflow-x: auto;
+
+    &:focus-visible {
+      @include ui.focus-ring;
+    }
+  }
+
+  table {
+    border-collapse: collapse;
+  }
+
+  th,
+  td {
+    padding: ui.space(1) ui.space(3);
+    border: 1px solid ui.color(border);
+    text-align: left;
+    vertical-align: top;
+  }
+
+  th {
+    background: ui.color(surface-2);
+    font-weight: ui.weight(semibold);
+  }
+}

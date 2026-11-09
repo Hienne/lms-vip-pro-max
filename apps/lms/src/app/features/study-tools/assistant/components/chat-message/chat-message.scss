@@ -29,9 +29,12 @@
     overflow-wrap: anywhere;
   }
 
-  &__text,
-  &__run {
+  &__text {
     white-space: pre-wrap;
+  }
+
+  &__answer {
+    display: block;
   }
 
   &__answer {

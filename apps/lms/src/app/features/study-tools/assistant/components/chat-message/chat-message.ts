@@ -2,12 +2,13 @@ import { Component, computed, input, output } from '@angular/core';
 import { LinkButton, Spinner } from '@lms/ui';
 import type { Turn } from '../../data-access/assistant.model';
 import { answerParts } from '../../../../../shared/assistant/answer-parts';
+import { AssistantMarkdown } from '../../../../../shared/assistant/assistant-markdown/assistant-markdown';
 import { SourceBadge } from '../../../../../shared/assistant/source-badge/source-badge';
 
 /** One question and the answer to it, in whatever state the answer is. */
 @Component({
   selector: 'app-chat-message',
-  imports: [LinkButton, SourceBadge, Spinner],
+  imports: [AssistantMarkdown, LinkButton, SourceBadge, Spinner],
   templateUrl: './chat-message.html',
   styleUrl: './chat-message.scss',
 })
