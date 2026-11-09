@@ -17,6 +17,18 @@ $breakpoints: (
 
 // ---- Colour: brand, semantic, neutral, sidebar navigation ----
 $colors: (
+  // Fixed certificate artwork colours: the paper must retain its printed identity in either mode.
+  certificate-paper: #fcfaf3,
+  certificate-teal: #003e3b,
+  certificate-gold: #c99a30,
+  certificate-gold-ink: #876000,
+  certificate-ink: #102a29,
+  certificate-caption: #263634,
+  certificate-gallery-bg: #071b17,
+  certificate-gallery-text: #f2f5f1,
+  certificate-gallery-muted: #c3d0ca,
+  certificate-gallery-border: #829b92,
+  certificate-gallery-action: #68e9dc,
   primary: #006b68,
   // 6.36:1 on white
   primary-hover: #005a57,
@@ -84,7 +96,7 @@ $colors: (
   scrollbar-thumb: var(--color-border-strong),
   scrollbar-thumb-hover: var(--color-text-muted),
   scrollbar-track: transparent,
-  nav-scrollbar-thumb: color-mix(in srgb, var(--color-white) 24%, transparent),
+  nav-scrollbar-thumb: color-mix(in srgb, var(--color-white) 24%, transparent)
 );
 
 // ---- Colour: data viz (distinguishable, always paired with a label or symbol) ----
@@ -146,6 +158,7 @@ $font-stacks: (
     ),
 );
 $font-families: (
+  certificate: string.unquote("Georgia, 'Times New Roman', serif"),
   sans: map.get($font-stacks, be-vietnam-pro),
   mono: string.unquote("ui-monospace, 'SF Mono', Menlo, Consolas, monospace"),
   // headings (h1–h3, page titles, KPI values)
@@ -174,7 +187,8 @@ $leadings: (
 $weights: (
   regular: 400,
   medium: 500,
-  semibold: 600, // headings and page titles
+  semibold: 600,
+  // headings and page titles
   bold: 600, // sign-in page only (HEAD's `ui.weight(bold)`); 700 is not bundled, so it is semibold
 );
 $trackings: (
@@ -272,7 +286,7 @@ $radii: (
   // cards, popovers and dialogs
   card: 14px,
   // avatars, switches, progress bars, status dots
-  full: 999px,
+  full: 999px
 );
 
 // Two layers, tinted with the BIDV ink: a contact shadow and a long, soft drop.

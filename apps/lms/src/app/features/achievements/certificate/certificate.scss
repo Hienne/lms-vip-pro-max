@@ -12,9 +12,9 @@
   gap: ui.space(4);
   margin-top: ui.space(5);
   padding: ui.space(5);
-  background: ui.color(surface);
-  color: ui.color(text);
-  border: ui.space(1) double ui.color(accent);
+  background: ui.color(certificate-paper);
+  color: ui.color(certificate-ink);
+  border: ui.space(1) double ui.color(certificate-gold);
   border-radius: ui.radius(card);
 
   @include ui.bp(md) {
@@ -29,8 +29,8 @@
 
   &__brand {
     padding: ui.space(5);
-    background: ui.color(primary);
-    color: ui.color(on-primary);
+    background: ui.color(certificate-teal);
+    color: ui.color(white);
     display: flex;
     align-items: center;
     gap: ui.space(3);
@@ -50,7 +50,7 @@
   &__heading {
     margin: ui.space(3) 0 0;
     font-size: ui.text-size(2xl);
-    color: ui.color(accent-ink);
+    color: ui.color(certificate-gold-ink);
     font-weight: ui.weight(semibold);
   }
 
@@ -60,14 +60,15 @@
   }
 
   &__lead {
-    @include ui.text(md, secondary);
+    color: ui.color(certificate-caption);
+    @include ui.text(md);
   }
 
   // The name is the largest text of the document.
   &__name {
     margin: 0;
     font-size: ui.text-size(3xl);
-    color: ui.color(primary);
+    color: ui.color(certificate-teal);
     font-weight: ui.weight(semibold);
     line-height: ui.leading(tight);
     overflow-wrap: anywhere;
@@ -75,7 +76,7 @@
 
   &__course {
     max-width: 56ch;
-    color: ui.color(text-secondary);
+    color: ui.color(certificate-caption);
 
     strong {
       color: ui.color(text);
@@ -91,7 +92,7 @@
     margin: ui.space(3) 0 0;
 
     dt {
-      @include ui.text(sm, muted);
+      @include ui.text(sm);
     }
 
     dd {

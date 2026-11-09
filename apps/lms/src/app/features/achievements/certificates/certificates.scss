@@ -2,8 +2,26 @@
 :host {
   @include ui.page(wide);
   min-width: 0;
+  // The approved collection is a dark exhibition surface; document colours remain fixed.
+  --color-surface: #{ui.color(certificate-gallery-bg)};
+  --color-surface-2: #{ui.color(certificate-teal)};
+  --color-text: #{ui.color(certificate-gallery-text)};
+  --color-text-secondary: #{ui.color(certificate-gallery-muted)};
+  --color-text-muted: #{ui.color(certificate-gallery-muted)};
+  --color-border-strong: #{ui.color(certificate-gallery-border)};
+  --color-primary: #{ui.color(certificate-gallery-action)};
+  --color-primary-subtle: #{ui.color(certificate-gallery-bg)};
+  background: ui.color(certificate-gallery-bg);
+  color: ui.color(certificate-gallery-text);
 }
 .certificates {
+  &__award,
+  &__recipient,
+  &__course,
+  &__caption {
+    // prettier-ignore
+    font-family: ui.font(certificate); // design-drift-allow: own-font Approved certificate face.
+  }
   &__toolbar {
     display: grid;
     grid-template-columns: minmax(0, 1fr);
@@ -42,62 +60,58 @@
     @include ui.stack(2);
     min-width: 0;
     > a[uiButton] {
-      align-self: start;
+      align-self: flex-end;
       margin-top: auto;
     }
   }
+  // Fixed document coordinates scale together, preserving a landscape thumbnail at every width.
   &__preview {
-    border: ui.space(1) double ui.color(accent);
-    background: ui.color(surface);
-    color: ui.color(text);
-    padding: ui.space(2);
-    min-width: 0;
+    display: block;
+    width: 100%;
+    aspect-ratio: 18 / 11;
+    overflow: hidden;
+  }
+  &__paper {
+    fill: ui.color(certificate-paper);
+  }
+  &__frame {
+    fill: none;
+    stroke: ui.color(certificate-gold);
+    stroke-width: 2;
+  }
+  &__masthead {
+    fill: ui.color(certificate-teal);
   }
   &__brand {
-    background: ui.color(primary);
-    color: ui.color(on-primary);
-    padding: ui.space(2);
-    text-align: center;
+    fill: ui.color(white);
+    font-size: ui.text-size(2xl);
     font-weight: ui.weight(semibold);
   }
-  &__document {
-    @include ui.text(sm);
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    gap: ui.space(2);
-    padding: ui.space(4) ui.space(2);
-    min-height: 16rem;
-    text-align: center;
-    overflow-wrap: anywhere;
-    p {
-      margin: 0;
-    }
-  }
   &__award {
-    font-size: ui.text-size(lg);
-    color: ui.color(accent-ink);
+    fill: ui.color(certificate-gold-ink);
+    font-size: ui.text-size(3xl);
     font-weight: ui.weight(semibold);
   }
   &__recipient {
-    font-size: ui.text-size(xl);
-    color: ui.color(primary);
+    fill: ui.color(primary);
+    font-size: ui.text-size(3xl);
     font-weight: ui.weight(semibold);
+  }
+  &__caption {
+    fill: ui.color(certificate-caption);
+    font-size: ui.text-size(lg);
   }
   &__course {
+    fill: ui.color(certificate-ink);
+    font-size: ui.text-size(xl);
     font-weight: ui.weight(semibold);
   }
-  &__footer {
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: space-between;
-    gap: ui.space(2);
-    border-top: 1px solid ui.color(accent);
-    padding-top: ui.space(2);
-    margin-top: auto;
-    @include ui.text(sm, muted);
+  &__footnote {
+    fill: ui.color(certificate-caption);
+    font-size: ui.text-size(sm);
   }
   &__title {
+    text-decoration: none;
     color: ui.color(text);
     font-weight: ui.weight(semibold);
     overflow-wrap: anywhere;
