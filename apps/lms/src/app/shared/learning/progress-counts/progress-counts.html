@@ -4,7 +4,7 @@
     [label]="item.label"
     [value]="item.value"
     [tone]="item.danger ? 'danger' : 'default'"
-    [note]="item.note"
+    [attr.title]="item.hint"
     [pressed]="selectedFilter() === item.filter"
     (press)="filterSelected.emit(item.filter)"
   />
@@ -13,7 +13,7 @@
     [label]="item.label"
     [value]="item.value"
     [tone]="item.danger ? 'danger' : 'default'"
-    [note]="item.note"
+    [attr.title]="item.hint"
   />
   } } @let average = averageScore(); @if (average !== undefined) {
   <ui-stat
