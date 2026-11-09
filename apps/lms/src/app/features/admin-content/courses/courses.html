@@ -71,12 +71,13 @@
     caption="Danh sách khóa học"
     [columns]="[
       { key: 'title', label: 'Khóa học' },
-      { key: 'level', label: 'Mức độ / loại', sortable: false },
-      { key: 'lessons', label: 'Bài', sortable: false },
-      { key: 'assigned', label: 'Được giao', sortable: false },
-      { key: 'status', label: 'Trạng thái', sortable: false },
-      { key: 'updated', label: 'Cập nhật' },
-      { key: 'actions', label: 'Thao tác', kind: 'actions' },
+      { key: 'level', label: 'Mức độ', sortable: false, width: '7rem', nowrap: true },
+      { key: 'type', label: 'Loại', sortable: false, width: '6.5rem', nowrap: true },
+      { key: 'lessons', label: 'Bài', sortable: false, width: '4.5rem', nowrap: true },
+      { key: 'assigned', label: 'Được giao', sortable: false, width: '6.5rem', nowrap: true },
+      { key: 'status', label: 'Trạng thái', sortable: false, width: '9rem', nowrap: true },
+      { key: 'updated', label: 'Cập nhật', width: '7rem', nowrap: true },
+      { key: 'actions', label: 'Thao tác', kind: 'actions', width: '6rem' },
     ]"
     [rows]="store.rows$()"
     [total]="store.total$()"
@@ -94,18 +95,20 @@
       [description]="store.hasFilters$() ? 'Thử đổi từ khóa hoặc bỏ bớt bộ lọc.' : 'Tạo khóa học đầu tiên để bắt đầu.'"
     />
     <ng-template uiDataTableCell="title" [of]="store.rows$()" let-row>
-      <a uiTablePrimary [routerLink]="['/admin/courses', row.id, 'edit']"
+      <a
+        uiTablePrimary
+        class="courses__title"
+        [uiTooltip]="row.title"
+        [routerLink]="['/admin/courses', row.id, 'edit']"
         >{{ row.title }}</a
       >
-      <div uiTableSub>{{ row.card.code }} · {{ row.programName }}</div>
+      <div uiTableSub class="courses__code">{{ row.card.code }}</div>
     </ng-template>
     <ng-template uiDataTableCell="level" [of]="store.rows$()" let-row>
-      <div class="courses__level">
-        @if (row.level) {
-        <span>{{ row.level }}</span>
-        }
-        <app-required-mark [required]="row.card.requirement !== 'optional'" />
-      </div>
+      {{ row.level || '—' }}
+    </ng-template>
+    <ng-template uiDataTableCell="type" [of]="store.rows$()" let-row>
+      {{ row.card.requirement !== 'optional' ? 'Bắt buộc' : 'Tự chọn' }}
     </ng-template>
     <ng-template uiDataTableCell="lessons" [of]="store.rows$()" let-row>
       <span class="courses__num">{{ row.card.lessonCount ?? 0 }}</span>

@@ -37,7 +37,7 @@
 }
 .chart-view__value {
   fill: ui.color(text);
-  font-weight: ui.weight(bold);
+  font-weight: ui.weight(semibold);
 }
 .chart-view__legend {
   @include ui.row(2);
@@ -48,7 +48,7 @@
   display: inline-block;
   width: ui.space(3);
   height: ui.space(3);
-  border-radius: ui.radius(sm);
+  border-radius: ui.radius(field);
   background: ui.chart(1);
   flex-shrink: 0;
 }

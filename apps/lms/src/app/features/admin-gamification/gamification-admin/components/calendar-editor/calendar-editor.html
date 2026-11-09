@@ -39,7 +39,7 @@
       @for (day of calendarForm.days; track $index) {
       <li class="calendar-editor__day">
         <ui-field [label]="'Ngày ' + ($index + 1)" required>
-          <input uiInput type="date" [formField]="day.date" />
+          <ui-date-input [formField]="day.date" />
         </ui-field>
         <ui-field [label]="'Loại ngày ' + ($index + 1)" required>
           <select uiSelect [formField]="day.type">

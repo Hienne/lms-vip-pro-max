@@ -68,7 +68,11 @@ describe('ReportScreen', () => {
       'Bài kiểm tra',
     ]);
     expect(labels().some((label) => /^ID /.test(label ?? ''))).toBe(false);
-    expect(root.querySelector('input[inputmode="numeric"]')).toBeNull();
+    expect(
+      root.querySelector(
+        'input[inputmode="numeric"]:not([placeholder*="yyyy"])',
+      ),
+    ).toBeNull();
   });
 
   it('runs "Tình trạng học viên" from the pickers alone', async () => {
@@ -181,12 +185,12 @@ describe('ReportScreen', () => {
     const kpis = (root: HTMLElement) =>
       Array.from(
         root.querySelectorAll<HTMLElement>(
-          '[aria-labelledby="report-learning-title"] dl > div',
+          '[aria-labelledby="report-learning-title"] ui-stat',
         ),
-      ).map((div) => ({
-        label: div.querySelector('dt')?.textContent?.trim(),
-        value: div.querySelector('dd')?.textContent?.trim(),
-        danger: div.classList.contains('report-screen__kpi--danger'),
+      ).map((stat) => ({
+        label: stat.querySelector('.stat__label')?.textContent?.trim(),
+        value: stat.querySelector('.stat__value')?.textContent?.trim(),
+        danger: !!stat.querySelector('.stat__value--danger'),
       }));
 
     it('shows the learning KPIs first, then the exam results', async () => {

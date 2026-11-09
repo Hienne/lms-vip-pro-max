@@ -1,8 +1,7 @@
 import { NgTemplateOutlet } from '@angular/common';
 import { Component, computed, input, output } from '@angular/core';
-import { RouterLink } from '@angular/router';
 import type { DashboardCounts, LearningProgressOverview } from '@lms/contracts';
-import { Button, Card } from '@lms/ui';
+import { Button, Stat, StatStrip } from '@lms/ui';
 import { isAssessmentAvailable } from '../../../../../shared/learning/assessment-overview';
 
 interface Kpi {
@@ -31,14 +30,14 @@ const shown = (value: number | null, unit: 'count' | 'percent'): string =>
       : String(value);
 
 /**
- * The learner's figures as one card split into cells: the assigned courses, the completion rate,
+ * The learner's figures as a stat strip: the assigned courses, the completion rate,
  * the last and the best score, without icons. Every number and
  * verdict is the server's. The completion rate comes from the dashboard; when that read fails only
  * its card shows the retry. Empty score figures collapse into one result.
  */
 @Component({
   selector: 'app-learn-kpis',
-  imports: [Button, Card, NgTemplateOutlet, RouterLink],
+  imports: [Button, NgTemplateOutlet, Stat, StatStrip],
   templateUrl: './learn-kpis.html',
   styleUrl: './learn-kpis.scss',
 })

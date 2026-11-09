@@ -13,6 +13,7 @@ import { Icon } from '../../atoms/icon/icon';
 import { Input } from '../../atoms/input/input.directive';
 import { Select } from '../../atoms/select/select.directive';
 import { Textarea } from '../../atoms/textarea/textarea.directive';
+import { DateInput } from '../date-input/date-input';
 
 let nextId = 0;
 
@@ -47,10 +48,11 @@ export class Field {
   private readonly select = contentChild(Select, { read: ElementRef });
   private readonly textarea = contentChild(Textarea, { read: ElementRef });
   private readonly checkbox = contentChild(Checkbox, { read: ElementRef });
+  private readonly dateInput = contentChild(DateInput);
   private readonly control = computed<HTMLElement | undefined>(
     () =>
       (this.textInput() ?? this.select() ?? this.textarea() ?? this.checkbox())
-        ?.nativeElement,
+        ?.nativeElement ?? this.dateInput()?.box()?.nativeElement,
   );
 
   protected readonly controlId = computed(

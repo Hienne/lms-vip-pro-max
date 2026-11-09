@@ -25,6 +25,7 @@ import {
   type MenuEntry,
   Icon,
   Skeleton,
+  PageHeader,
 } from '@lms/ui';
 import type { HasUnsavedChanges } from '../../../core/routing/unsaved-changes.guard';
 import { Markdown } from '../../../shared/content/markdown/markdown';
@@ -57,6 +58,7 @@ const LESSON_SECTIONS = [
 @Component({
   selector: 'app-community-content',
   imports: [
+    PageHeader,
     Alert,
     AlertAction,
     Badge,

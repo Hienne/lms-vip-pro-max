@@ -5,7 +5,7 @@
   </ui-field>
   @if (action === 'invite') {
   <ui-field label="Hạn phản hồi lời mời" hint="Không bắt buộc."
-    ><input uiInput type="datetime-local" [formField]="fields.expiresAt"
+    ><ui-date-input kind="datetime" [formField]="fields.expiresAt"
   /></ui-field>
   }
   <div class="review-action__buttons">

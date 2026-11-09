@@ -9,6 +9,9 @@ import { backendRefusal, seedCourseDetails } from '@lms/mocks';
 import { setUpAdminScreen } from '../../../core/dev/mock-api/admin-screen.testing';
 import { MockBackend } from '../../../core/dev/mock-api/mock-api.interceptor';
 
+/** The date box shows dd/mm/yyyy; the model keeps yyyy-mm-dd. */
+const vn = (iso: string) => iso.split('-').reverse().join('/');
+
 describe('Assignments', () => {
   const screen = setUpAdminScreen();
   const rows = () =>
@@ -164,7 +167,7 @@ describe('Assignments', () => {
     const start = screen.field('Ngày bắt đầu', drawer) as HTMLInputElement;
     await screen.type(
       screen.field('Hạn hoàn thành', drawer) as HTMLInputElement,
-      '2020-01-01',
+      vn('2020-01-01'),
     );
     await submit(drawer);
 
@@ -357,7 +360,7 @@ describe('Assignments', () => {
     expect(screen.text(drawer)).toContain('Sửa lượt giao');
     await screen.type(
       screen.field('Hạn hoàn thành', drawer) as HTMLInputElement,
-      '2027-02-01',
+      vn('2027-02-01'),
     );
     await submit(drawer);
 

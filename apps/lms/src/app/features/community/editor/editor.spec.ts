@@ -136,11 +136,9 @@ describe('CommunityEditor', () => {
     ).toEqual([value.assets[1], { assetId: 30, usage: 'cover', sortNo: 0 }]);
   });
 
-  it('shows a default cover and rejects an unsupported file before uploading', async () => {
+  it('shows no cover until one is chosen and rejects an unsupported file before uploading', async () => {
     const page = await openCommunity('/community/articles/new', 'giangvien');
-    expect(
-      page.el().querySelector('app-content-thumbnail img')?.getAttribute('src'),
-    ).toContain('/images/community-defaults.png');
+    expect(page.el().querySelector('app-content-thumbnail img')).toBeNull();
     const input = page
       .el()
       .querySelector<HTMLInputElement>('input[type="file"]')!;
@@ -216,7 +214,7 @@ describe('CommunityEditor', () => {
           value: [new File(['img'], 'cover.webp', { type: 'image/webp' })],
         });
         input.dispatchEvent(new Event('change'));
-        await page.waitForText('Dùng ảnh mặc định');
+        await page.waitForText('Bỏ ảnh bìa');
         expect(page.bodies(media.uploadPart)).toHaveLength(1);
         await type(page, 'input[autocomplete="off"]', 'Nội dung có ảnh bìa');
         await page.click('Lưu nháp');
@@ -224,7 +222,7 @@ describe('CommunityEditor', () => {
           assets: [{ assetId: 9123, usage: 'cover', sortNo: 0 }],
         });
         await page.waitForText('Sửa bản nháp');
-        await page.click('Dùng ảnh mặc định');
+        await page.click('Bỏ ảnh bìa');
         await page.click('Lưu nháp');
         expect(page.bodies(communityEndpoints.saveDraft).at(-1)).toMatchObject({
           assets: [],

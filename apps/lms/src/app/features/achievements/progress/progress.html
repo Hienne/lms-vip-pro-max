@@ -131,23 +131,25 @@
     ></div>
     } @else if (store.rows$().length) {
     <div uiTableWrap class="learning-progress__table-wrap">
-      <table uiTable responsive class="learning-progress__courses">
+      <table uiTable responsive fixed class="learning-progress__courses">
         <caption class="sr-only">
           Tiến độ từng khóa học
         </caption>
         <colgroup>
-          <col class="learning-progress__col-course" />
-          <col class="learning-progress__col-progress" />
-          <col class="learning-progress__col-score" />
-          <col class="learning-progress__col-status" />
-          <col class="learning-progress__col-date" />
-          <col class="learning-progress__col-date" />
+          <col uiTableCol width="27%" />
+          <col uiTableCol width="20%" />
+          <col uiTableCol width="12%" />
+          <col uiTableCol width="15%" />
+          <col uiTableCol width="13%" />
+          <col uiTableCol width="13%" />
         </colgroup>
         <thead>
           <tr>
             @for (column of columns; track column.key) {
             <th
               scope="col"
+              uiTableCell
+              [numeric]="column.numeric === true"
               [attr.aria-sort]="
                 store.sort$().key === column.key
                   ? (store.sort$().dir === 'asc' ? 'ascending' : 'descending')
@@ -205,7 +207,7 @@
                 </div>
               </div>
             </td>
-            <td data-label="Tiến độ học">
+            <td data-label="Tiến độ học" uiTableCell nowrap>
               <div class="learning-progress__progress">
                 <div class="learning-progress__pct">
                   <span class="learning-progress__num">{{ row.pct }}%</span>
@@ -220,23 +222,23 @@
                 </span>
               </div>
             </td>
-            <td data-label="Điểm thi cao nhất">
+            <td data-label="Điểm thi cao nhất" uiTableCell numeric>
               @if (row.bestScore !== null) { {{ row.bestScore | fmtPct: 2 }} }
               @else { Chưa có điểm }
             </td>
-            <td data-label="Trạng thái">
+            <td data-label="Trạng thái" uiTableCell nowrap>
               <app-course-status
                 dot
                 [status]="row.status"
                 [overdue]="row.overdue"
               />
             </td>
-            <td data-label="Hạn hoàn thành">
+            <td data-label="Hạn hoàn thành" uiTableCell nowrap>
               <span [class.learning-progress__fail]="row.overdue">
                 {{ row.card.dueAt | fmtDate }}
               </span>
             </td>
-            <td data-label="Truy cập gần nhất">
+            <td data-label="Truy cập gần nhất" uiTableCell nowrap>
               {{ row.card.lastAccessAt | fmtRelative }}
             </td>
           </tr>

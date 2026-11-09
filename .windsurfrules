@@ -1,0 +1,1 @@
+Read and follow AGENTS.md at the repository root before any change: it is the one source of rules for every agent and tool on this project (Claude Code, Codex, Cursor, Copilot, Gemini, Windsurf). Before building or restyling UI, also read docs/conventions/visual-design.md and run `npm run guard:design`; a change that fails it is not done.

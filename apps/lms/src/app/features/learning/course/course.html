@@ -68,17 +68,12 @@
   </span>
   } @if (card.dueAt) {
   <app-due-date
+    highlight
     [dueAt]="card.dueAt"
     [done]="card.learningStatus === 'completed'"
   />
   }
 </p>
-
-@if (store.isOverdue$()) {
-<ui-alert tone="danger" class="course__alert">
-  Khóa học đã quá hạn. Hoàn thành sớm để cập nhật trạng thái.
-</ui-alert>
-}
 
 <div class="course__layout">
   <div class="course__main">
@@ -147,16 +142,18 @@
 
   @if (store.view$() === 'enrolled') {
   <aside class="course__side" aria-label="Tiến độ">
-    <section uiCard class="course__progress">
-      <p>Tiến độ học {{ (card.progressPercent ?? 0) | fmtPct }}</p>
+    <ui-section-card title="Tiến độ học" class="course__progress">
+      <p class="course__percent">
+        <strong>{{ (card.progressPercent ?? 0) | fmtPct }}</strong>
+        <span
+          >{{ card.learningStatus === 'completed' ? 'Đã hoàn thành khóa' : 'Chưa
+          hoàn thành khóa' }}</span
+        >
+      </p>
       <ui-progress
         [value]="card.progressPercent ?? 0"
         label="Tiến độ học các bài bắt buộc"
       />
-      <p>
-        {{ card.learningStatus === 'completed' ? 'Đã hoàn thành khóa' : 'Chưa
-        hoàn thành khóa' }}
-      </p>
       <dl class="course__facts">
         <div>
           <dt>Đã học</dt>
@@ -181,11 +178,11 @@
         </div>
         }
       </dl>
-    </section>
+    </ui-section-card>
     <section aria-labelledby="course-rule">
       <h2 id="course-rule" class="course__heading">Điều kiện hoàn thành</h2>
       @if (store.detail$()?.completion; as completion) {
-      <ul class="course__objectives">
+      <ul class="course__rule">
         <li>
           Bài bắt buộc: {{ completion.completedRequiredLessons }}/{{
           completion.requiredLessons }} — {{ completion.lessonsSatisfied ? 'Đã

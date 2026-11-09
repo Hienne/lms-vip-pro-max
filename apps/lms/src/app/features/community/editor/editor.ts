@@ -39,6 +39,7 @@ import {
   type SegmentedOption,
   Skeleton,
   Textarea,
+  DateInput,
 } from '@lms/ui';
 import type { HasUnsavedChanges } from '../../../core/routing/unsaved-changes.guard';
 import { MarkdownEditor } from '../components/markdown-editor/markdown-editor';
@@ -68,6 +69,7 @@ const REVISION_STATUS: Readonly<
 @Component({
   selector: 'app-community-editor',
   imports: [
+    DateInput,
     CoverPicker,
     Alert,
     Badge,

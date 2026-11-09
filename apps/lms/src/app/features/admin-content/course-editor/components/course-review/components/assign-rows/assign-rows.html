@@ -29,22 +29,17 @@
           >
         </div>
         <ui-field label="Bắt đầu">
-          <input
-            uiInput
-            type="date"
+          <ui-date-input
             [value]="view.row.startDate"
-            [attr.aria-label]="'Bắt đầu, ' + view.row.pick.label"
-            [attr.aria-describedby]="view.message ? 'assign-row-' + view.row.id : null"
-            (input)="setStart(view.row.id, $event)"
+            [label]="'Bắt đầu, ' + view.row.pick.label"
+            (valueChange)="setStart(view.row.id, $event)"
           />
         </ui-field>
         <ui-field label="Hạn hoàn thành">
-          <input
-            uiInput
-            type="date"
+          <ui-date-input
             [value]="view.row.dueDate"
-            [attr.aria-label]="'Hạn hoàn thành, ' + view.row.pick.label"
-            (input)="setDue(view.row.id, $event)"
+            [label]="'Hạn hoàn thành, ' + view.row.pick.label"
+            (valueChange)="setDue(view.row.id, $event)"
           />
         </ui-field>
         <button

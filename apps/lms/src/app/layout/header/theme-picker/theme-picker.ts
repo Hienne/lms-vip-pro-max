@@ -3,8 +3,8 @@ import { Icon, IconButton, Popover } from '@lms/ui';
 import { ThemeControls } from '../../../shared/theme-controls/theme-controls';
 
 /**
- * The header's palette button: opens the theme controls (palette and Hệ thống / Sáng / Tối) in a
- * popover. A choice applies at once and the panel stays open so palettes can be compared.
+ * The header's theme button: opens the theme controls (Hệ thống / Sáng / Tối) in a popover. A
+ * choice applies at once.
  */
 @Component({
   selector: 'app-theme-picker',
@@ -12,11 +12,11 @@ import { ThemeControls } from '../../../shared/theme-controls/theme-controls';
   template: `
     <button
       uiIconButton
-      label="Tùy chỉnh giao diện"
-      popoverLabel="Tùy chỉnh giao diện"
+      label="Chế độ giao diện"
+      popoverLabel="Chế độ giao diện"
       [uiPopover]="panel"
     >
-      <ui-icon name="palette" />
+      <ui-icon name="sun" />
     </button>
     <ng-template #panel>
       <app-theme-controls />

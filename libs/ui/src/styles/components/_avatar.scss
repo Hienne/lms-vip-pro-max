@@ -13,7 +13,7 @@
     background: var(--color-primary);
     color: var(--color-on-primary);
     font-size: calc(var(--size) * 0.36);
-    font-weight: var(--font-weight-bold);
+    font-weight: var(--font-weight-semibold);
 
     &--sm {
       --size: 28px;

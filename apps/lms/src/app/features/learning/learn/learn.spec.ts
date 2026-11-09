@@ -142,10 +142,10 @@ describe('Learn', () => {
     });
 
     const kpis = () =>
-      Array.from(el.querySelectorAll('app-learn-kpis dl')).map((dl) =>
-        Array.from(dl.querySelectorAll('dt, dd')).map((node) =>
-          node.textContent?.replace(/\s+/g, ' ').trim(),
-        ),
+      Array.from(el.querySelectorAll('app-learn-kpis ui-stat')).map((stat) =>
+        Array.from(stat.querySelectorAll('dt, dd'))
+          .map((node) => node.textContent?.replace(/\s+/g, ' ').trim())
+          .filter(Boolean),
       );
 
     it('shows four figures: the assigned courses, the completion rate, the last and the best score', () => {
@@ -170,7 +170,7 @@ describe('Learn', () => {
     });
 
     it('names the last quiz at the end of the footnote and in the whole text as a title', () => {
-      const last = el.querySelectorAll('app-learn-kpis dl')[2];
+      const last = el.querySelectorAll('app-learn-kpis ui-stat')[2];
       expect(last.getAttribute('title')).toBe(
         'Luyện tập: Tổng quan hệ thống Core Banking',
       );
@@ -345,13 +345,13 @@ describe('Learn', () => {
       const rows = Array.from(el.querySelectorAll('.learn__due li'));
       expect(rows.length).toBeGreaterThan(0);
       for (const row of rows) {
-        expect(row.querySelector('.learn__due-pct')?.textContent).toMatch(
+        expect(row.querySelector('.list-row__value')?.textContent).toMatch(
           /^\d+%$/,
         );
         expect(
           row
             .querySelector('app-due-date')!
-            .compareDocumentPosition(row.querySelector('.learn__due-pct')!) &
+            .compareDocumentPosition(row.querySelector('.list-row__value')!) &
             Node.DOCUMENT_POSITION_FOLLOWING,
         ).toBeTruthy();
       }
@@ -361,10 +361,12 @@ describe('Learn', () => {
       const tools = el.querySelector('#learn-tools')!;
       expect(tools.tagName).toBe('H2');
       expect(tools.textContent).toContain('Công cụ học nhanh');
-      const links = Array.from(tools.closest('section')!.querySelectorAll('a'));
+      const links = Array.from(
+        tools.closest('ui-section-card')!.querySelectorAll('a'),
+      );
       expect(
         links.map((a) => [
-          a.querySelector('.learn__tool-title')?.textContent?.trim(),
+          a.querySelector('.list-row__title')?.textContent?.trim(),
           a.getAttribute('href'),
         ]),
       ).toEqual([
@@ -378,7 +380,9 @@ describe('Learn', () => {
         'Chứng nhận các khóa đã hoàn thành',
       );
       expect(links.every((a) => a.querySelector('ui-icon'))).toBe(true);
-      expect(tools.closest('section')!.hasAttribute('uicard')).toBe(true);
+      expect(tools.closest('ui-section-card')!.classList.contains('card')).toBe(
+        true,
+      );
       const position = (selector: string) =>
         el.querySelector(selector)!.compareDocumentPosition(tools);
       expect(
@@ -469,9 +473,11 @@ describe('Learn', () => {
       await open('hocvien.tichhop', '000007');
       const cells = Array.from(
         el.querySelectorAll(
-          'app-learn-kpis a:nth-of-type(n+2) dt, app-learn-kpis a:nth-of-type(n+2) dd',
+          'app-learn-kpis ui-stat:nth-of-type(n+3) dt, app-learn-kpis ui-stat:nth-of-type(n+3) dd',
         ),
-      ).map((node) => node.textContent?.replace(/\s+/g, ' ').trim());
+      )
+        .map((node) => node.textContent?.replace(/\s+/g, ' ').trim())
+        .filter(Boolean);
       expect(cells).toEqual(['Kết quả kiểm tra', '—', 'Chưa làm bài kiểm tra']);
       expect(el.querySelector('app-learn-kpis')!.textContent).not.toMatch(
         /Đạt ·/,
@@ -483,8 +489,10 @@ describe('Learn', () => {
     it('shows one empty score figure without an error', async () => {
       await open('giangvien', '000005');
       const scores = Array.from(
-        el.querySelectorAll('app-learn-kpis a:nth-of-type(n+2) dd'),
-      ).map((node) => node.textContent?.replace(/\s+/g, ' ').trim());
+        el.querySelectorAll('app-learn-kpis ui-stat:nth-of-type(n+3) dd'),
+      )
+        .map((node) => node.textContent?.replace(/\s+/g, ' ').trim())
+        .filter(Boolean);
       expect(scores).toEqual(['—', 'Chưa có bài kiểm tra']);
       expect(text()).not.toContain('Không tải được');
       expect(el.querySelectorAll('app-learn-kpis dt')).toHaveLength(3);
@@ -509,7 +517,7 @@ describe('Learn', () => {
         .click();
       await settle();
       expect(kpi.textContent).not.toContain('Không tải được');
-      expect(kpi.textContent).toMatch(/Tỷ lệ hoàn thành \d/);
+      expect(kpi.textContent).toMatch(/Tỷ lệ hoàn thành\s*\d/);
     });
   });
 

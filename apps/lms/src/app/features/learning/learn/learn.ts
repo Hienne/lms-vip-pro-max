@@ -1,11 +1,13 @@
 import { Component, computed, inject } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import {
-  Card,
   Empty,
   ErrorState,
   FmtPctPipe,
   Icon,
+  List,
+  ListRow,
+  SectionCard,
   Skeleton,
   Tabs,
   TabPanel,
@@ -33,7 +35,6 @@ const TAB_LABEL: Record<LearnTab, string> = {
 @Component({
   selector: 'app-learn',
   imports: [
-    Card,
     CourseTile,
     DueDate,
     Empty,
@@ -42,8 +43,11 @@ const TAB_LABEL: Record<LearnTab, string> = {
     Icon,
     LearnHero,
     LearnKpis,
+    List,
+    ListRow,
     ReminderItem,
     RouterLink,
+    SectionCard,
     Skeleton,
     TabPanel,
     Tabs,

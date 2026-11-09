@@ -14,16 +14,18 @@
 
 <div class="learn__layout">
   <div class="learn__main">
-    <section uiCard class="learn__courses" aria-labelledby="learn-courses">
-      <div class="learn__card-header">
-        <h2 id="learn-courses">Khóa học của tôi</h2>
-        <a
-          class="learn__more"
-          routerLink="/catalog"
-          [queryParams]="{ scope: 'assigned' }"
-          >Xem tất cả <ui-icon name="arrow-right" size="sm"
-        /></a>
-      </div>
+    <ui-section-card
+      title="Khóa học của tôi"
+      headingId="learn-courses"
+      flush
+      class="learn__courses"
+    >
+      <a
+        slot="action"
+        routerLink="/catalog"
+        [queryParams]="{ scope: 'assigned' }"
+        >Xem tất cả <ui-icon name="arrow-right" size="sm"
+      /></a>
       <ui-tabs
         label="Khóa học theo trạng thái"
         compact
@@ -67,7 +69,7 @@
         </div>
         }
       </ui-tabs>
-    </section>
+    </ui-section-card>
     <section class="learn__kpis" aria-label="Số liệu học tập">
       @if (store.summaryError$(); as error) {
       <ui-error-state
@@ -89,10 +91,12 @@
   </div>
 
   <aside class="learn__side">
-    <section uiCard class="learn__panel" aria-labelledby="learn-due">
-      <div class="learn__card-header">
-        <h2 id="learn-due">Hạn hoàn thành</h2>
-      </div>
+    <ui-section-card
+      title="Hạn hoàn thành"
+      headingId="learn-due"
+      flush
+      class="learn__panel"
+    >
       @if (store.dueError$(); as error) {
       <div class="learn__panel-body">
         <ui-error-state
@@ -106,25 +110,18 @@
         <div uiSkeleton variant="block" class="learn__due-placeholder"></div>
       </div>
       } @else if (store.due$().length) {
-      <ul class="learn__rows learn__due">
+      <ul uiList class="learn__due">
         @for (row of store.due$(); track row.id) {
         <li>
-          <a [routerLink]="row.link" class="learn__row">
-            <span
-              class="learn__row-icon"
-              [class.learn__row-icon--danger]="row.overdue"
-            >
-              <ui-icon
-                [name]="row.overdue ? 'triangle-alert' : 'calendar'"
-                size="sm"
-              />
-            </span>
-            <span class="learn__row-text">
-              <span class="learn__due-title">{{ row.title }}</span>
-              <app-due-date [dueAt]="row.dueAt" />
-            </span>
-            <span class="learn__due-pct">{{ row.pct | fmtPct }}</span>
-          </a>
+          <ui-list-row
+            [link]="row.link"
+            [icon]="row.overdue ? 'triangle-alert' : 'calendar'"
+            [tone]="row.overdue ? 'danger' : 'default'"
+            [title]="row.title"
+            [value]="row.pct | fmtPct"
+          >
+            <app-due-date slot="subtitle" [dueAt]="row.dueAt" />
+          </ui-list-row>
         </li>
         }
       </ul>
@@ -170,54 +167,45 @@
         }
       </details>
       }
-    </section>
+    </ui-section-card>
 
-    <section uiCard class="learn__panel" aria-labelledby="learn-tools">
-      <div class="learn__card-header">
-        <h2 id="learn-tools">Công cụ học nhanh</h2>
-      </div>
-      <ul class="learn__rows learn__tools">
+    <ui-section-card
+      title="Công cụ học nhanh"
+      headingId="learn-tools"
+      flush
+      class="learn__panel"
+    >
+      <ul uiList class="learn__tools">
         @if (store.canAssist$()) {
         <li>
-          <a routerLink="/assistant" class="learn__row">
-            <span class="learn__row-icon"
-              ><ui-icon name="sparkles" size="sm"
-            /></span>
-            <span class="learn__row-text">
-              <span class="learn__tool-title">Hỏi trợ lý AI</span>
-              <span class="learn__muted">Tra cứu tài liệu có trích nguồn</span>
-            </span>
-            <ui-icon name="chevron-right" size="sm" />
-          </a>
+          <ui-list-row
+            link="/assistant"
+            icon="sparkles"
+            title="Hỏi trợ lý AI"
+            subtitle="Tra cứu tài liệu có trích nguồn"
+            chevron
+          />
         </li>
         }
         <li>
-          <a routerLink="/saved" class="learn__row">
-            <span class="learn__row-icon"
-              ><ui-icon name="bookmark" size="sm"
-            /></span>
-            <span class="learn__row-text">
-              <span class="learn__tool-title">Ghi chú &amp; đánh dấu</span>
-              <span class="learn__muted">Mở đúng trang / mốc video</span>
-            </span>
-            <ui-icon name="chevron-right" size="sm" />
-          </a>
+          <ui-list-row
+            link="/saved"
+            icon="bookmark"
+            title="Ghi chú &amp; đánh dấu"
+            subtitle="Mở đúng trang / mốc video"
+            chevron
+          />
         </li>
         <li>
-          <a routerLink="/certificates" class="learn__row">
-            <span class="learn__row-icon"
-              ><ui-icon name="award" size="sm"
-            /></span>
-            <span class="learn__row-text">
-              <span class="learn__tool-title">Chứng nhận</span>
-              <span class="learn__muted"
-                >Chứng nhận các khóa đã hoàn thành</span
-              >
-            </span>
-            <ui-icon name="chevron-right" size="sm" />
-          </a>
+          <ui-list-row
+            link="/certificates"
+            icon="award"
+            title="Chứng nhận"
+            subtitle="Chứng nhận các khóa đã hoàn thành"
+            chevron
+          />
         </li>
       </ul>
-    </section>
+    </ui-section-card>
   </aside>
 </div>

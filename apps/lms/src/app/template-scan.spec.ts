@@ -1,7 +1,6 @@
 import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { dirname, join, relative } from 'node:path';
 import * as sass from 'sass';
-import { THEME_PALETTES } from './core/theme/theme.store';
 
 /**
  * Guards the styling rules (docs/conventions/ui-library.md → Styling):
@@ -11,7 +10,7 @@ import { THEME_PALETTES } from './core/theme/theme.store';
  *    use the atom instead;
  *  - no stylesheet outside the token source writes a colour literal;
  *  - nothing references Tailwind or PostCSS any more;
- *  - only `ThemeStore` writes the theme and palette attributes;
+ *  - only `ThemeStore` writes the theme attribute;
  *  - no file adds a banned look (docs/conventions/visual-design.md).
  */
 
@@ -137,12 +136,7 @@ const LOOK_EXCEPTIONS: Record<string, string[]> = {
  * Never add an entry.
  */
 const KNOWN_VIOLATIONS: Record<string, string[]> = {
-  'apps/lms/src/app/features/design-system/design-system/components/hero/hero.scss':
-    ['gradient', 'radius-xl', 'entrance-motion'],
-  'apps/lms/src/app/features/design-system/design-system/components/space-section/space-section.scss':
-    ['entrance-motion'],
   'apps/lms/src/app/layout/header/header.scss': ['glass'],
-  'libs/ui/src/styles/components/_dialog.scss': ['radius-xl'],
 };
 
 const withoutComments = (text: string): string =>
@@ -317,39 +311,27 @@ describe('template scan', () => {
     expect(scssFiles.length).toBeGreaterThan(0);
   });
 
-  it.each(['data-theme', 'data-palette'])(
-    'writes %s in ThemeStore only',
-    (attribute) => {
-      const offenders = [...appFiles, ...uiFiles].filter(
-        (file) =>
-          // index.html carries the pre-boot script that applies the stored choice.
-          !file.endsWith('theme.store.ts') &&
-          !file.endsWith('index.html') &&
-          readFileSync(file, 'utf8').includes(attribute),
-      );
-      expect(offenders.map((file) => relative(root, file))).toEqual([]);
-    },
-  );
+  it('writes data-theme in ThemeStore only', () => {
+    const offenders = [...appFiles, ...uiFiles].filter(
+      (file) =>
+        // index.html carries the pre-boot script that applies the stored choice.
+        !file.endsWith('theme.store.ts') &&
+        !file.endsWith('index.html') &&
+        readFileSync(file, 'utf8').includes('data-theme'),
+    );
+    expect(offenders.map((file) => relative(root, file))).toEqual([]);
+  });
 
-  it('keeps the palette list of ThemeStore, the pre-boot script and the tokens in sync', () => {
-    const others = THEME_PALETTES.filter((palette) => palette !== 'bidv');
+  it('has one palette: no data-palette in the tokens, the pre-boot script or the app', () => {
     const css = sass.compile(join(stylesRoot, 'global.scss'), {
       loadPaths,
       logger: sass.Logger.silent,
     }).css;
-    const tokenPalettes = [
-      ...new Set(
-        [...css.matchAll(/:root\[data-palette=([\w-]+)\]/g)].map(
-          (match) => match[1],
-        ),
-      ),
-    ];
-    const script = readFileSync(join(appSource, 'index.html'), 'utf8');
-    const scriptPalettes = [...script.matchAll(/palette === '([\w-]+)'/g)].map(
-      (match) => match[1],
-    );
-    expect(tokenPalettes).toEqual(others);
-    expect(scriptPalettes).toEqual(others);
+    expect(css).not.toContain('data-palette');
+    const offenders = [...appFiles, ...uiFiles, join(appSource, 'index.html')]
+      .filter((file) => !file.endsWith('.spec.ts'))
+      .filter((file) => readFileSync(file, 'utf8').includes('data-palette'));
+    expect(offenders.map((file) => relative(root, file))).toEqual([]);
   });
 
   it('paints the sidebar with the nav tokens only, so a theme can restyle it', () => {
@@ -365,9 +347,9 @@ describe('template scan', () => {
     expect(sidebar).not.toContain('color-mix(');
   });
 
-  it('bundles the self-hosted files of every font a theme can name', () => {
-    // `ui.$font-stacks`: the faces a theme's type group may use; each one is self-hosted
-    // (`@fontsource/<kebab name>`, never Google Fonts) and listed in the build styles.
+  it('uses Be Vietnam Pro only, self-hosted at weights 400, 500 and 600', () => {
+    // `ui.$font-stacks` lists the faces; each one is self-hosted (`@fontsource/<kebab name>`,
+    // never Google Fonts) and listed in the build styles.
     const css = sass.compileString(
       "@use 'ui'; @each $name, $stack in ui.$font-stacks { .f { family: $stack; } }",
       { loadPaths, logger: sass.Logger.silent },
@@ -375,16 +357,24 @@ describe('template scan', () => {
     const families = [...css.matchAll(/family: ["']([^"']+)["']/g)].map(
       (match) => match[1],
     );
-    expect(families).toEqual(
-      expect.arrayContaining(['Be Vietnam Pro', 'Fraunces', 'Nunito Sans']),
-    );
+    expect(families).toEqual(['Be Vietnam Pro']);
     const styles: string[] = JSON.parse(
       readFileSync(join(root, 'apps/lms/project.json'), 'utf8'),
     ).targets.build.options.styles;
-    for (const family of families) {
-      const pkg = `@fontsource/${family.toLowerCase().replaceAll(' ', '-')}/`;
-      expect(styles.some((style) => style.startsWith(pkg))).toBe(true);
-    }
+    expect(styles.filter((style) => style.includes('@fontsource/'))).toEqual([
+      '@fontsource/be-vietnam-pro/400.css',
+      '@fontsource/be-vietnam-pro/500.css',
+      '@fontsource/be-vietnam-pro/600.css',
+    ]);
+  });
+
+  it('keeps the radius scale to field, control, card and full', () => {
+    const css = sass.compileString(
+      "@use 'ui'; @each $name, $v in ui.$radii { .r { #{$name}: $v; } }",
+      { loadPaths, logger: sass.Logger.silent },
+    ).css;
+    const keys = [...css.matchAll(/^\s+([\w-]+):/gm)].map((match) => match[1]);
+    expect(keys.sort()).toEqual(['card', 'control', 'field', 'full']);
   });
 
   it('keeps style values out of TypeScript: modifier names only', () => {

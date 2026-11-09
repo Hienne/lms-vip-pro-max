@@ -52,39 +52,30 @@ class ContentThumbnailStore {
   }
 }
 
-/** Decorative cover: the adjacent title is the accessible link text. */
+/**
+ * Decorative cover: the adjacent title is the accessible link text. It shows only an image the
+ * author uploaded; with none (or one that fails to load) it renders nothing and takes no room.
+ */
 @Component({
   selector: 'app-content-thumbnail',
   imports: [NgOptimizedImage],
   providers: [ContentThumbnailStore],
+  host: { '[class.thumbnail--empty]': '!hasImage()' },
   // Authenticated bytes use object URLs, which NgOptimizedImage explicitly rejects.
   template:
-    '@if (isDefault()) { <span class="thumbnail__default" [attr.data-index]="defaultIndex()"><img ngSrc="/images/community-defaults.png" width="1932" height="814" alt="" loading="lazy" /></span> } @else if (isBlob()) { <img [src]="src()" width="1280" height="720" alt="" loading="lazy" (error)="store.fail(src())" /> } @else { <img [ngSrc]="src()" width="1280" height="720" alt="" loading="lazy" (error)="store.fail(src())" /> }',
+    '@if (hasImage()) { @if (isBlob()) { <img [src]="src()" width="1280" height="720" alt="" loading="lazy" (error)="store.fail(src())" /> } @else { <img [ngSrc]="src()" width="1280" height="720" alt="" loading="lazy" (error)="store.fail(src())" /> } }',
   styleUrl: './content-thumbnail.scss',
 })
 export class ContentThumbnail {
   readonly revisionAssetId = input<number | null>();
   readonly preview = input<string>();
-  readonly kind = input('article');
-  readonly contentId = input<number>(0);
   protected readonly store = inject(ContentThumbnailStore);
-  /** Stable rotation: neighbouring IDs use different covers; list and detail agree. */
-  protected readonly defaultIndex = computed(
-    () =>
-      (Math.abs(this.contentId()) +
-        (this.kind() === 'question'
-          ? 0
-          : this.kind() === 'architecture_review'
-            ? 8
-            : 4)) %
-      12,
-  );
   private readonly cover = this.store.connect(this.revisionAssetId);
   protected readonly isBlob = computed(() => this.src().startsWith('blob:'));
   protected readonly src = computed(
     () => this.preview() || this.cover.value() || '',
   );
-  protected readonly isDefault = computed(
-    () => !this.src() || this.store.failedSource$() === this.src(),
+  protected readonly hasImage = computed(
+    () => !!this.src() && this.store.failedSource$() !== this.src(),
   );
 }

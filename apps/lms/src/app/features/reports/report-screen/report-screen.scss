@@ -5,10 +5,12 @@
   min-width: 0;
 }
 .report-screen {
+  // One row: seven tabs scroll sideways on a narrow screen instead of wrapping.
   &__navigation {
     display: flex;
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
     gap: ui.space(1);
+    overflow-x: auto;
     border-bottom: 1px solid ui.color(border);
   }
   // The wrapper takes the hover for the tooltip: a disabled button gets no pointer events.
@@ -20,6 +22,7 @@
   }
   &__tab {
     flex-shrink: 0;
+    white-space: nowrap;
     padding: ui.space(3) ui.space(4);
     border-bottom: 1px solid transparent;
     color: ui.color(text-secondary);
@@ -79,60 +82,15 @@
   &__footnote,
   &__bar-note,
   &__advanced summary,
-  &__metrics dt,
-  &__metrics p,
   &__section-heading p {
     @include ui.text(sm, muted);
   }
-  &__metrics {
-    dl {
-      display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      margin: 0;
-    }
-    dl > div {
-      padding: ui.space(5);
-      min-width: 0;
-    }
-    dd {
-      @include ui.num;
-      font-size: ui.text-size(3xl);
-      font-weight: ui.weight(semibold);
-      line-height: ui.leading(tight);
-      margin: ui.space(2) 0;
-    }
-    p {
-      margin: 0;
-    }
-    @include ui.bp(lg) {
-      dl {
-        grid-template-columns: repeat(4, minmax(0, 1fr));
-      }
-      dl > div + div {
-        border-left: 1px solid ui.color(border);
-      }
-      // A second row of four starts at the edge, with no rule before it.
-      dl > div:nth-child(4n + 1) {
-        border-left: 0;
-      }
-    }
-  }
-  &__kpi--danger dd {
-    color: ui.color(danger);
-  }
-  &__part-heading {
-    padding: ui.space(5) ui.space(5) 0;
-    h2 {
-      font-size: ui.text-size(md);
-    }
-  }
-  &__part-state,
-  &__as-of {
-    margin: 0;
-    padding: 0 ui.space(5) ui.space(5);
+  &__part {
+    @include ui.stack(3);
   }
   &__as-of {
     @include ui.text(sm, muted);
+    margin: 0;
   }
   &__part-title {
     font-size: ui.text-size(lg);

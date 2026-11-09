@@ -109,15 +109,37 @@
   }
 
   &__progress {
-    @include ui.stack(4);
-    align-items: flex-start;
-    padding: ui.space(5);
+    min-width: 0;
+  }
+
+  // The figure and the state beside it, then the bar, with no empty space between.
+  &__percent {
+    @include ui.row-between(3);
+    margin: 0 0 ui.space(2);
+
+    strong {
+      @include ui.num;
+      font-size: ui.text-size(2xl);
+      font-weight: ui.weight(semibold);
+      line-height: ui.leading(tight);
+    }
+
+    span {
+      @include ui.text(sm, muted);
+    }
+  }
+
+  // The completion rule: no bullets, so its notes and button start where its lines do.
+  &__rule {
+    @include ui.stack(2);
+    margin: 0 0 ui.space(3);
+    padding: 0;
+    list-style: none;
   }
 
   &__facts {
     @include ui.stack(2);
-    width: 100%;
-    margin: 0;
+    margin: ui.space(4) 0 0;
 
     div {
       @include ui.row-between(3);

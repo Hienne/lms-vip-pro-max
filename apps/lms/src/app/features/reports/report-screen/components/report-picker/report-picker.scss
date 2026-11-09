@@ -50,7 +50,7 @@
     @include ui.text(sm);
     min-height: ui.space(10);
     padding-inline: ui.space(3);
-    border-radius: ui.radius(sm);
+    border-radius: ui.radius(field);
     cursor: pointer;
 
     &:hover,

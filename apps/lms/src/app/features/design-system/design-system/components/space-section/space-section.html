@@ -37,14 +37,12 @@
     <div uiCard padded class="space-section__card">
       <strong>Chuyển động</strong>
       <p class="space-section__text">
-        fast 120ms (hover) · base 200ms (xuất hiện: slide-up 8px + fade) · slow
-        320ms (phần thưởng: scale nhẹ). Tôn trọng prefers-reduced-motion.
+        fast 120ms (hover) · base 200ms (overlay mở) · slow 320ms (phần thưởng:
+        scale nhẹ). Nội dung trang không chuyển động khi tải. Tôn trọng
+        prefers-reduced-motion.
       </p>
       <div class="row" data-motion>
         @for (run of [store.replay$()]; track run) {
-        <div uiCard class="space-section__motion space-section__motion--enter">
-          Phần tử thường
-        </div>
         <div
           uiCard
           variant="reward"

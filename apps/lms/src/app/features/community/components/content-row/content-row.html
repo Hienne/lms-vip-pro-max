@@ -1,9 +1,5 @@
 @let c = card(); @if (hasThumbnail()) {
-<app-content-thumbnail
-  [contentId]="c.contentId"
-  [revisionAssetId]="c.coverRevisionAssetId"
-  [kind]="c.kind"
-/>
+<app-content-thumbnail [revisionAssetId]="c.coverRevisionAssetId" />
 }
 <div class="content-row__main">
   <a class="content-row__title" [routerLink]="link()">{{ c.title }}</a>

@@ -92,14 +92,12 @@
   } @default { @if (store.lesson$(); as lesson) {
   <div class="lesson__layout" [class.lesson__layout--focus]="store.focus$()">
     <div class="lesson__main">
-      <div class="lesson__head">
-        <h1 class="lesson__title">{{ lesson.lesson.title }}</h1>
-        <p class="lesson__meta">
-          Bài {{ store.lessonPosition$().number }}/{{
-          store.lessonPosition$().total }} @if (minutes()) { · {{ minutes() }}
-          phút }
-        </p>
-      </div>
+      <ui-page-header
+        [title]="lesson.lesson.title"
+        [description]="
+          'Bài ' + store.lessonPosition$().number + '/' + store.lessonPosition$().total + (minutes() ? ' · ' + minutes() + ' phút' : '')
+        "
+      />
 
       <app-session-alert
         [phase]="store.phase$()"

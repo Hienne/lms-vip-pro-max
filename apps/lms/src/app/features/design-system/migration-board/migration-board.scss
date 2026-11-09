@@ -29,7 +29,7 @@
 
   &__table {
     border: 1px solid ui.color(border);
-    border-radius: ui.radius(lg);
+    border-radius: ui.radius(card);
     background: ui.color(surface);
   }
 
@@ -96,13 +96,13 @@
       display: block;
       margin-bottom: ui.space(3);
       border: 1px solid ui.color(border);
-      border-radius: ui.radius(md);
+      border-radius: ui.radius(control);
     }
 
     &__row {
       margin-bottom: ui.space(3);
       border: 1px solid ui.color(border);
-      border-radius: ui.radius(lg);
+      border-radius: ui.radius(card);
       background: ui.color(surface);
       overflow-wrap: anywhere;
     }

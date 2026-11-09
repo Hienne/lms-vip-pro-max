@@ -20,10 +20,10 @@
     aria-label="Bộ lọc báo cáo"
   >
     <ui-field label="Từ ngày" hint="Mặc định 28 ngày gần nhất.">
-      <input uiInput type="date" [formField]="filterForm.from" />
+      <ui-date-input [formField]="filterForm.from" />
     </ui-field>
     <ui-field label="Đến ngày">
-      <input uiInput type="date" [formField]="filterForm.to" />
+      <ui-date-input [formField]="filterForm.to" />
     </ui-field>
     <ui-field label="Đơn vị">
       <select uiSelect [formField]="filterForm.orgId">

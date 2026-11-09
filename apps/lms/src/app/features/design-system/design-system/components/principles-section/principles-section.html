@@ -2,14 +2,11 @@
   section="principles"
   title="Nguyên tắc &amp; những gì đã sửa từ v1"
 >
-  <ul class="grid-3">
+  <ul class="principles-section__list">
     @for (principle of principles; track principle.title) {
-    <li uiCard padded class="principles-section__card">
-      <span class="principles-section__icon">
-        <ui-icon [name]="principle.icon" />
-      </span>
+    <li>
       <strong>{{ principle.title }}</strong>
-      <p class="principles-section__text">{{ principle.description }}</p>
+      <span class="principles-section__text">{{ principle.description }}</span>
     </li>
     }
   </ul>

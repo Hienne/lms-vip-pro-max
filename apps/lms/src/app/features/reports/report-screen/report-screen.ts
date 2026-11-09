@@ -28,9 +28,12 @@ import {
   PageHeader,
   Select,
   Spinner,
+  Stat,
+  StatStrip,
   Tooltip,
   Checkbox,
   type DataTableColumn,
+  DateInput,
 } from '@lms/ui';
 import { ReportScreenStore } from './data-access/report-screen.store';
 import type { PickerKey } from './data-access/report-pickers';
@@ -124,6 +127,7 @@ const filterSchema = z
 @Component({
   selector: 'app-report-screen',
   imports: [
+    DateInput,
     ReportPicker,
     ProgressReport,
     Checkbox,
@@ -147,6 +151,8 @@ const filterSchema = z
     PageHeader,
     Select,
     Spinner,
+    Stat,
+    StatStrip,
   ],
   providers: [ReportScreenStore],
   templateUrl: './report-screen.html',

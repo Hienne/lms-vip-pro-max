@@ -76,9 +76,42 @@ rest by eye on every changed screen at 1280 and 375px, light and dark.
 - Centred layout, except a single focused form (sign-in) or a whole-page error (403, 404).
 - An eyebrow or an icon in `ui-page-header`.
 - More than one inline action on a table row, or a destructive action inline.
+- A table row action that reads as text: a ghost or `danger-ghost` button, a `uiLinkButton` or a plain
+  link in the actions cell. A row action is `uiIconButton` with its `label` (a tooltip) when an icon
+  says it plainly (view `eye`, edit `pen-line`), else a secondary `uiButton size="sm"` with a verb
+  (Thu hồi, Cấp lại); anything more goes in `ui-menu`. **guarded** (`text-row-action`)
 - Two facts stacked in one admin table cell, or a wrapped admin table row.
 - Two feedback messages for one event (two toasts, or a toast and an alert).
-- A component that branches on `data-palette`, or a palette that brings back anything on this page.
+- A second palette or a component that branches on `data-palette`: BIDV is the only palette, in light and dark.
+
+## Drift guard
+
+Many people and agents build screens here, so the rules are enforced by code, not by memory.
+`npm run guard:design` runs `template-scan.spec.ts` (the **guarded** items above) and
+`design-drift.spec.ts`; it is part of `npm run check` and the only spec step CI runs, so a pull
+request that fails it does not merge.
+
+`design-drift.spec.ts` counts, per file under `apps/lms/src/app`, the ways a screen paints its own
+look instead of taking it from `@lms/ui`:
+
+| Rule              | Counts                                                                                                                                                     | Do instead                                             |
+| ----------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------ |
+| `own-radius`      | `border-radius` in a feature stylesheet                                                                                                                    | the atom's shape (`uiCard`, `uiButton`, `uiInput`)     |
+| `own-shadow`      | `box-shadow`, `ui.shadow()`                                                                                                                                | a 1px border; only `libs/ui` overlays float            |
+| `own-font`        | `font-family`, `ui.font()`                                                                                                                                 | the base heading styles, `ui-page-header`              |
+| `text-xs`         | `ui.text(xs)`, `ui.text-size(xs)`                                                                                                                          | `sm`; `xs` for timestamps and footnotes only           |
+| `subtle-fill`     | a `background` of a `*-subtle` colour                                                                                                                      | no fill; a state the user must notice uses an atom     |
+| `weight-bold`     | `ui.weight(bold)`                                                                                                                                          | regular, medium, semibold                              |
+| `transform-move`  | `translate…()`                                                                                                                                             | nothing moves on page content                          |
+| `own-h1`          | `<h1>` in a template                                                                                                                                       | `<ui-page-header title="…">`                           |
+| `text-row-action` | in a table's actions cell (`data-label="Thao tác"`, a `…action…` class, a `ui-data-table` `actions` template): a ghost button, a link button, a plain link | `uiIconButton` with `label`, or a secondary `uiButton` |
+
+`design-drift.baseline.json` holds the counts that existed when the guard was added. It is a
+ratchet: a file may not go above its count (a file not listed is allowed zero), and a file that
+goes below fails until the baseline is lowered with `npm run guard:design:update`, which only ever
+lowers counts. Never raise a count or add a file by hand; the baseline is owned in `CODEOWNERS`. A
+real exception is one line with a trailing `design-drift-allow: <rule> <reason>` comment, which
+review must accept.
 
 ## Known violations (do not copy)
 
@@ -86,14 +119,11 @@ These are still in the code. Do not copy or extend them. Fix one only when the t
 then delete its row here and, for a guarded item, its entry in `KNOWN_VIOLATIONS` in
 `apps/lms/src/app/template-scan.spec.ts` (the spec fails while a fixed entry is still listed).
 
-| Pattern                | Where                                                                                                                  |
-| ---------------------- | ---------------------------------------------------------------------------------------------------------------------- |
-| Glass                  | `layout/header/header.scss` (`backdrop-filter`)                                                                        |
-| Badges for attributes  | `features/account/profile` (staff code and account type as outline badges)                                             |
-| Two inline row actions | `features/admin-org/users` (edit and lock inline)                                                                      |
-| `/design-system` page  | hero (gradient, `xl`, entrance motion), space section (entrance motion), principles grid (icon tiles), chips           |
-| Extra radii            | `xl` on the dialog (`libs/ui/src/styles/components/_dialog.scss`), `full` on chips, Cobalt's `control: 999px`          |
-| Tokens                 | the `hero-*` colour tokens; Cobalt's gradient hero; Giấy's dot-grid texture                                            |
-| Entrance motion token  | the `enter` keyframe moves 8px over `base` (the change to 4px and `fast` is central: do not override it per component) |
-| Copy                   | the sign-in slogan and "Chào mừng trở lại"; the always-on mockup note                                                  |
-| Chart colours          | `chart` 3 equals `warning`, 4 is Tailwind violet, 5 equals `danger`                                                    |
+| Pattern                | Where                                                                                                                    |
+| ---------------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| Glass                  | `layout/header/header.scss` (`backdrop-filter`)                                                                          |
+| Badges for attributes  | `features/account/profile` (staff code and account type as outline badges)                                               |
+| Two inline row actions | `features/admin-org/users` (edit and lock inline)                                                                        |
+| Tokens                 | the `hero-*` colour tokens (`hero-muted`, `hero-subtle`, `hero-accent`) and `ui.weight(bold)`, kept for the sign-in page |
+| Copy                   | the sign-in slogan and "Chào mừng trở lại"; the sign-in page's feature list and decorative watermark                     |
+| Entrance motion token  | the `enter` keyframe moves 8px over `base` (the change to 4px and `fast` is central: do not override it per component)   |

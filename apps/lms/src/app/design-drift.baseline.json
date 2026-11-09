@@ -1,0 +1,375 @@
+{
+  "apps/lms/src/app/app.scss": {
+    "own-radius": 1
+  },
+  "apps/lms/src/app/features/account/profile/profile.scss": {
+    "own-font": 2,
+    "text-xs": 1
+  },
+  "apps/lms/src/app/features/achievements/certificate/certificate.scss": {
+    "own-radius": 1
+  },
+  "apps/lms/src/app/features/achievements/leaderboard/leaderboard.scss": {
+    "subtle-fill": 1
+  },
+  "apps/lms/src/app/features/achievements/progress/progress.scss": {
+    "own-radius": 2
+  },
+  "apps/lms/src/app/features/admin-content/course-editor/components/asset-library/asset-library.scss": {
+    "text-xs": 1
+  },
+  "apps/lms/src/app/features/admin-content/course-editor/components/course-info/course-info.scss": {
+    "text-xs": 1
+  },
+  "apps/lms/src/app/features/admin-content/course-editor/components/course-outline/course-outline.scss": {
+    "text-xs": 2
+  },
+  "apps/lms/src/app/features/admin-content/course-editor/components/course-review/components/assign-rows/assign-rows.scss": {
+    "text-xs": 1
+  },
+  "apps/lms/src/app/features/admin-content/course-editor/components/lesson-form/lesson-form.scss": {
+    "own-radius": 1,
+    "text-xs": 2
+  },
+  "apps/lms/src/app/features/admin-content/course-editor/course-editor.scss": {
+    "own-radius": 1,
+    "own-shadow": 2,
+    "text-xs": 1
+  },
+  "apps/lms/src/app/features/admin-content/courses/components/course-shares/components/org-picker/org-picker.scss": {
+    "own-radius": 2,
+    "subtle-fill": 1,
+    "text-xs": 1
+  },
+  "apps/lms/src/app/features/admin-content/courses/components/course-shares/course-shares.scss": {
+    "own-radius": 1
+  },
+  "apps/lms/src/app/features/admin-content/training-catalog/training-catalog.scss": {
+    "own-font": 4,
+    "own-radius": 1,
+    "text-xs": 1
+  },
+  "apps/lms/src/app/features/admin-org/assignments/assignments.scss": {
+    "text-xs": 1
+  },
+  "apps/lms/src/app/features/admin-org/assignments/components/assign-form/assign-form.scss": {
+    "own-radius": 1
+  },
+  "apps/lms/src/app/features/admin-org/assignments/components/assignment-detail/assignment-detail.scss": {
+    "text-xs": 1
+  },
+  "apps/lms/src/app/features/admin-org/org/org.scss": {
+    "own-font": 4
+  },
+  "apps/lms/src/app/features/admin-org/roles/components/role-form/role-form.scss": {
+    "text-xs": 1
+  },
+  "apps/lms/src/app/features/admin-org/roles/roles.scss": {
+    "text-xs": 1
+  },
+  "apps/lms/src/app/features/admin-org/user-detail/user-detail.scss": {
+    "text-xs": 3
+  },
+  "apps/lms/src/app/features/admin-org/users/components/access-requests/reset-password-dialog.scss": {
+    "own-font": 2
+  },
+  "apps/lms/src/app/features/auth/change-password/change-password.html": {
+    "own-h1": 1
+  },
+  "apps/lms/src/app/features/auth/change-password/change-password.scss": {
+    "own-radius": 1
+  },
+  "apps/lms/src/app/features/auth/forgot-password/forgot-password.html": {
+    "own-h1": 2
+  },
+  "apps/lms/src/app/features/auth/forgot-password/forgot-password.scss": {
+    "own-radius": 1
+  },
+  "apps/lms/src/app/features/auth/login/login.html": {
+    "own-h1": 1
+  },
+  "apps/lms/src/app/features/auth/login/login.scss": {
+    "text-xs": 1,
+    "transform-move": 1,
+    "weight-bold": 1
+  },
+  "apps/lms/src/app/features/auth/register/register.html": {
+    "own-h1": 2
+  },
+  "apps/lms/src/app/features/auth/register/register.scss": {
+    "own-radius": 1,
+    "transform-move": 1
+  },
+  "apps/lms/src/app/features/chat-room/chat-room.scss": {
+    "own-radius": 1,
+    "subtle-fill": 1,
+    "text-xs": 1
+  },
+  "apps/lms/src/app/features/chat-room/components/room-canvas/room-canvas.scss": {
+    "own-radius": 2,
+    "subtle-fill": 1
+  },
+  "apps/lms/src/app/features/chat-room/components/room-dice/room-dice.scss": {
+    "own-radius": 1,
+    "own-shadow": 2,
+    "text-xs": 1
+  },
+  "apps/lms/src/app/features/community/_community-list.scss": {
+    "own-radius": 1
+  },
+  "apps/lms/src/app/features/community/ask/ask.scss": {
+    "own-radius": 1
+  },
+  "apps/lms/src/app/features/community/components/comment-thread/comment-thread.scss": {
+    "text-xs": 1
+  },
+  "apps/lms/src/app/features/community/components/content-thumbnail/content-thumbnail.scss": {
+    "own-radius": 1
+  },
+  "apps/lms/src/app/features/community/components/lifecycle-dialog/lifecycle-dialog.scss": {
+    "own-radius": 1,
+    "own-shadow": 2,
+    "text-xs": 1
+  },
+  "apps/lms/src/app/features/community/components/markdown-editor/markdown-editor.scss": {
+    "own-font": 2,
+    "own-radius": 1,
+    "text-xs": 1
+  },
+  "apps/lms/src/app/features/community/components/report-dialog/report-dialog.scss": {
+    "own-radius": 1,
+    "own-shadow": 2,
+    "text-xs": 1
+  },
+  "apps/lms/src/app/features/community/components/tag-picker/tag-picker.scss": {
+    "own-radius": 1,
+    "subtle-fill": 1,
+    "text-xs": 2
+  },
+  "apps/lms/src/app/features/community/components/vote/vote.scss": {
+    "subtle-fill": 1
+  },
+  "apps/lms/src/app/features/community/content/content.scss": {
+    "own-font": 2,
+    "own-radius": 1,
+    "text-xs": 1
+  },
+  "apps/lms/src/app/features/community/moderation/moderation.scss": {
+    "own-radius": 1
+  },
+  "apps/lms/src/app/features/community/review-detail/components/review-action-dialog/review-action-dialog.scss": {
+    "own-radius": 1,
+    "own-shadow": 2
+  },
+  "apps/lms/src/app/features/community/review-detail/review-detail.scss": {
+    "own-radius": 3
+  },
+  "apps/lms/src/app/features/community/reviews/reviews.scss": {
+    "own-radius": 1
+  },
+  "apps/lms/src/app/features/design-system/design-system/components/color-section/color-section.scss": {
+    "own-radius": 2,
+    "text-xs": 2
+  },
+  "apps/lms/src/app/features/design-system/design-system/components/data-section/data-section.scss": {
+    "text-xs": 2
+  },
+  "apps/lms/src/app/features/design-system/design-system/components/demo/demo.scss": {
+    "own-radius": 2
+  },
+  "apps/lms/src/app/features/design-system/design-system/components/feedback-section/components/confirm-demo/confirm-demo.scss": {
+    "text-xs": 1
+  },
+  "apps/lms/src/app/features/design-system/design-system/components/feedback-section/components/drawer-demo/drawer-demo.scss": {
+    "text-xs": 1
+  },
+  "apps/lms/src/app/features/design-system/design-system/components/feedback-section/components/menu-demo/menu-demo.scss": {
+    "text-xs": 1
+  },
+  "apps/lms/src/app/features/design-system/design-system/components/feedback-section/feedback-section.scss": {
+    "text-xs": 1
+  },
+  "apps/lms/src/app/features/design-system/design-system/components/forms-section/forms-section.scss": {
+    "text-xs": 1
+  },
+  "apps/lms/src/app/features/design-system/design-system/components/icons-section/icons-section.scss": {
+    "own-radius": 1,
+    "text-xs": 1
+  },
+  "apps/lms/src/app/features/design-system/design-system/components/learning-section/learning-section.scss": {
+    "text-xs": 1
+  },
+  "apps/lms/src/app/features/design-system/design-system/components/nav-section/nav-section.scss": {
+    "text-xs": 1
+  },
+  "apps/lms/src/app/features/design-system/design-system/components/space-section/space-section.scss": {
+    "own-radius": 3,
+    "own-shadow": 2,
+    "subtle-fill": 1,
+    "text-xs": 3
+  },
+  "apps/lms/src/app/features/design-system/design-system/components/type-section/type-section.scss": {
+    "text-xs": 1
+  },
+  "apps/lms/src/app/features/design-system/design-system/design-system.scss": {
+    "own-radius": 1
+  },
+  "apps/lms/src/app/features/design-system/migration-board/migration-board.html": {
+    "own-h1": 1
+  },
+  "apps/lms/src/app/features/design-system/migration-board/migration-board.scss": {
+    "own-radius": 3,
+    "text-xs": 4
+  },
+  "apps/lms/src/app/features/errors/forbidden/forbidden.scss": {
+    "text-xs": 1
+  },
+  "apps/lms/src/app/features/errors/not-found/not-found.scss": {
+    "text-xs": 1
+  },
+  "apps/lms/src/app/features/learning/course/course.scss": {
+    "own-radius": 1
+  },
+  "apps/lms/src/app/features/learning/learn/components/course-tile/course-tile.scss": {
+    "text-xs": 3
+  },
+  "apps/lms/src/app/features/lesson/lesson/components/image-block/image-block.scss": {
+    "own-radius": 1
+  },
+  "apps/lms/src/app/features/lesson/lesson/components/lesson-feedback/lesson-feedback.scss": {
+    "own-radius": 1
+  },
+  "apps/lms/src/app/features/lesson/lesson/components/lesson-notes/lesson-notes.scss": {
+    "own-radius": 1,
+    "text-xs": 1
+  },
+  "apps/lms/src/app/features/lesson/lesson/components/pdf-block/pdf-block.scss": {
+    "own-radius": 1
+  },
+  "apps/lms/src/app/features/lesson/lesson/components/video-block/components/video-chapters/video-chapters.scss": {
+    "own-radius": 1,
+    "subtle-fill": 1
+  },
+  "apps/lms/src/app/features/lesson/lesson/components/video-block/components/video-transcript/video-transcript.scss": {
+    "own-radius": 1,
+    "subtle-fill": 1
+  },
+  "apps/lms/src/app/features/lesson/lesson/components/video-block/video-block.scss": {
+    "own-radius": 1
+  },
+  "apps/lms/src/app/features/lesson/lesson/lesson.scss": {
+    "own-radius": 2,
+    "own-shadow": 2
+  },
+  "apps/lms/src/app/features/quiz/assessment-screen/assessment-screen.scss": {
+    "own-radius": 1,
+    "subtle-fill": 1,
+    "text-xs": 2
+  },
+  "apps/lms/src/app/features/quiz/learner-quiz/quiz-attempts/quiz-attempts.scss": {
+    "text-xs": 1
+  },
+  "apps/lms/src/app/features/quiz/learner-quiz/quiz-hub/quiz-hub.scss": {
+    "text-xs": 1
+  },
+  "apps/lms/src/app/features/quiz/learner-quiz/quiz-take/components/assessment-take/assessment-take.html": {
+    "own-h1": 1
+  },
+  "apps/lms/src/app/features/quiz/learner-quiz/quiz-take/components/assessment-take/assessment-take.scss": {
+    "text-xs": 1
+  },
+  "apps/lms/src/app/features/reports/report-screen/components/report-picker/report-picker.scss": {
+    "own-radius": 2,
+    "own-shadow": 2,
+    "subtle-fill": 1
+  },
+  "apps/lms/src/app/features/reports/report-screen/report-screen.scss": {
+    "own-radius": 2
+  },
+  "apps/lms/src/app/features/study-tools/assistant/assistant.html": {
+    "own-h1": 1
+  },
+  "apps/lms/src/app/features/study-tools/assistant/assistant.scss": {
+    "own-font": 4,
+    "text-xs": 1
+  },
+  "apps/lms/src/app/features/study-tools/assistant/components/chat-message/chat-message.scss": {
+    "own-radius": 1
+  },
+  "apps/lms/src/app/features/study-tools/flashcards/_flip-card.scss": {
+    "own-radius": 3
+  },
+  "apps/lms/src/app/features/study-tools/saved/saved.scss": {
+    "text-xs": 1
+  },
+  "apps/lms/src/app/layout/chat-widget/chat-widget.scss": {
+    "own-radius": 2,
+    "own-shadow": 3
+  },
+  "apps/lms/src/app/layout/chat-widget/components/action-card/action-card.scss": {
+    "own-radius": 1
+  },
+  "apps/lms/src/app/layout/chat-widget/components/agent-composer/agent-composer.scss": {
+    "text-xs": 1
+  },
+  "apps/lms/src/app/layout/chat-widget/components/agent-message/agent-message.scss": {
+    "own-radius": 1,
+    "text-xs": 1
+  },
+  "apps/lms/src/app/layout/chat-widget/components/agent-sources/agent-sources.scss": {
+    "text-xs": 1
+  },
+  "apps/lms/src/app/layout/header/header.scss": {
+    "subtle-fill": 2
+  },
+  "apps/lms/src/app/layout/header/notification-bell/bell-panel.scss": {
+    "own-radius": 1
+  },
+  "apps/lms/src/app/layout/net-banner/net-banner.scss": {
+    "subtle-fill": 1
+  },
+  "apps/lms/src/app/layout/owl/owl-face/owl-face.scss": {
+    "transform-move": 2
+  },
+  "apps/lms/src/app/layout/owl/owl.scss": {
+    "own-radius": 3,
+    "own-shadow": 4,
+    "transform-move": 1
+  },
+  "apps/lms/src/app/layout/sidebar/sidebar.scss": {
+    "own-radius": 3,
+    "text-xs": 4
+  },
+  "apps/lms/src/app/layout/upload-panel/upload-panel.scss": {
+    "own-radius": 2,
+    "own-shadow": 2,
+    "text-xs": 3
+  },
+  "apps/lms/src/app/shared/content/markdown/markdown.scss": {
+    "own-radius": 3
+  },
+  "apps/lms/src/app/shared/course/course-card.scss": {
+    "text-xs": 1
+  },
+  "apps/lms/src/app/shared/course/due-date.scss": {
+    "own-radius": 1,
+    "subtle-fill": 1
+  },
+  "apps/lms/src/app/shared/course/journey.scss": {
+    "own-radius": 2,
+    "text-xs": 1
+  },
+  "apps/lms/src/app/shared/learning/activity-heatmap/activity-heatmap.scss": {
+    "own-radius": 1
+  },
+  "apps/lms/src/app/shared/learning/competency/competency-view.scss": {
+    "own-radius": 1
+  },
+  "apps/lms/src/app/shared/quiz/question-grid.scss": {
+    "own-radius": 2,
+    "own-shadow": 1
+  },
+  "apps/lms/src/app/shared/quiz/question-legend.scss": {
+    "own-radius": 2
+  }
+}

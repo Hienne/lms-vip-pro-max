@@ -71,6 +71,9 @@ const IMPACT = '/api/v1/reports/learning/gamification-impact';
 const UNITS = (url: string) =>
   url.startsWith('/api/v1/reports/learning/groups');
 
+/** The date box shows dd/mm/yyyy; the model keeps yyyy-mm-dd. */
+const vn = (iso: string) => iso.split('-').reverse().join('/');
+
 describe('GamificationImpact', () => {
   let harness: RouterTestingHarness;
   let backend: HttpTestingController;
@@ -182,8 +185,8 @@ describe('GamificationImpact', () => {
 
   it('reads the report again for the chosen period and unit', async () => {
     await open();
-    await type(field('Từ ngày'), '2026-10-01');
-    await type(field('Đến ngày'), '2026-10-31');
+    await type(field('Từ ngày'), vn('2026-10-01'));
+    await type(field('Đến ngày'), vn('2026-10-31'));
     await type(field('Đơn vị'), '5');
     button('Áp dụng bộ lọc')?.click();
     await settle();
@@ -201,8 +204,8 @@ describe('GamificationImpact', () => {
 
   it('sends nothing when the period ends before it starts', async () => {
     await open();
-    await type(field('Từ ngày'), '2026-10-31');
-    await type(field('Đến ngày'), '2026-10-01');
+    await type(field('Từ ngày'), vn('2026-10-31'));
+    await type(field('Đến ngày'), vn('2026-10-01'));
     button('Áp dụng bộ lọc')?.click();
     await settle();
 

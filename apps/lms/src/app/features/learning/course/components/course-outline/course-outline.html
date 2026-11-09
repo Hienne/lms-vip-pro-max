@@ -9,17 +9,7 @@
     @for (lesson of chapter.lessons; track lesson.id) {
     <li class="outline__lesson">
       @if (lesson.state; as state) {
-      <span
-        class="outline__state"
-        [attr.data-status]="state"
-        [class.outline__state--done]="state === 'completed'"
-        [class.outline__state--current]="state === 'in_progress'"
-      >
-        @if (state === 'completed') {
-        <ui-icon name="check" size="sm" />
-        }
-        <span class="outline__sr">{{ stateLabel[state] }}</span>
-      </span>
+      <app-lesson-status class="outline__state" [state]="state" />
       } @if (lesson.link; as link) {
       <a class="outline__title" [routerLink]="link">
         @if (lesson.quiz) {

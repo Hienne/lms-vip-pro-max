@@ -6,9 +6,9 @@ import {
   Field,
   Icon,
   IconButton,
-  Input,
   LinkButton,
   Switch,
+  DateInput,
 } from '@lms/ui';
 import { TargetPicker } from '../../../../../../../shared/assignment-target/target-picker/target-picker';
 import { TARGET_OWNER_ORG } from '../../../../../../../shared/assignment-target/target-picker/data-access/target-options.store';
@@ -24,12 +24,12 @@ import { REMIND_DAYS } from '../../../../data-access/publish-targets';
 @Component({
   selector: 'app-assign-rows',
   imports: [
+    DateInput,
     Card,
     CardBody,
     Field,
     Icon,
     IconButton,
-    Input,
     LinkButton,
     RouterLink,
     Switch,
@@ -50,16 +50,12 @@ export class AssignRows {
   protected readonly typeLabel = TARGET_TYPE_LABEL;
   protected readonly remindDays = REMIND_DAYS;
 
-  protected setStart(id: number, event: Event): void {
-    this.store.setRowDates(id, {
-      startDate: (event.target as HTMLInputElement).value,
-    });
+  protected setStart(id: number, startDate: string): void {
+    this.store.setRowDates(id, { startDate });
   }
 
-  protected setDue(id: number, event: Event): void {
-    this.store.setRowDates(id, {
-      dueDate: (event.target as HTMLInputElement).value,
-    });
+  protected setDue(id: number, dueDate: string): void {
+    this.store.setRowDates(id, { dueDate });
   }
 
   protected setReminder(event: Event): void {

@@ -1,15 +1,13 @@
 <app-content-thumbnail
   class="cover-picker__preview"
-  [kind]="kind()"
-  [contentId]="contentId()"
   [revisionAssetId]="revisionAssetId()"
   [preview]="preview()"
 />
 <div class="cover-picker__fields">
   <span class="cover-picker__label">Ảnh bìa</span>
   <p class="cover-picker__hint">
-    JPG, PNG hoặc WebP, tối đa 5 MB. Nên dùng ảnh ngang 16:9. Không chọn ảnh sẽ
-    dùng ảnh mặc định.
+    JPG, PNG hoặc WebP, tối đa 5 MB. Nên dùng ảnh ngang 16:9. Không chọn ảnh thì
+    bài không có ảnh bìa.
   </p>
   <div class="cover-picker__actions">
     <button
@@ -28,7 +26,7 @@
       [disabled]="disabled()"
       (click)="removed.emit()"
     >
-      Dùng ảnh mặc định
+      Bỏ ảnh bìa
     </button>
     }
   </div>

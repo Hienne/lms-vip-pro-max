@@ -89,6 +89,9 @@ const CONFIG = '/api/v1/admin/learning/gamification/config';
 const VERSIONS = `${CONFIG}/versions`;
 const CALENDAR = `/api/v1/admin/learning/working-calendar/${year}`;
 
+/** The date box shows dd/mm/yyyy; the model keeps yyyy-mm-dd. */
+const vn = (iso: string) => iso.split('-').reverse().join('/');
+
 describe('GamificationAdmin', () => {
   let harness: RouterTestingHarness;
   let backend: HttpTestingController;
@@ -259,7 +262,7 @@ describe('GamificationAdmin', () => {
     tab('Lịch nghỉ')?.click();
     await settle();
     expect(text()).toContain(`Năm ${year}`);
-    expect(field('Ngày 1').value).toBe(`${year}-01-01`);
+    expect(field('Ngày 1').value).toBe(vn(`${year}-01-01`));
     expect(field('Ghi chú 1').value).toBe('Tết Dương lịch');
     expect(field('Loại ngày 2').value).toBe('MAKEUP_WORKDAY');
 
@@ -267,7 +270,7 @@ describe('GamificationAdmin', () => {
     await settle();
     button('Thêm ngày')?.click();
     await settle();
-    await type(field('Ngày 2'), `${year}-09-02`);
+    await type(field('Ngày 2'), vn(`${year}-09-02`));
     await type(field('Ghi chú 2'), 'Quốc khánh');
     button(`Lưu lịch năm ${year}`)?.click();
     await settle();
@@ -290,11 +293,11 @@ describe('GamificationAdmin', () => {
     await open();
     tab('Lịch nghỉ')?.click();
     await settle();
-    await type(field('Ngày 1'), `${year + 1}-01-01`);
-    await type(field('Ngày 2'), `${year}-01-05`);
+    await type(field('Ngày 1'), vn(`${year + 1}-01-01`));
+    await type(field('Ngày 2'), vn(`${year}-01-05`));
     button('Thêm ngày')?.click();
     await settle();
-    await type(field('Ngày 3'), `${year}-01-05`);
+    await type(field('Ngày 3'), vn(`${year}-01-05`));
     button(`Lưu lịch năm ${year}`)?.click();
     await settle();
     backend.expectNone(CALENDAR);

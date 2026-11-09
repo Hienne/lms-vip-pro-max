@@ -11,7 +11,7 @@
     overflow-y: auto;
     padding: ui.space(1);
     border: 1px solid ui.color(border);
-    border-radius: ui.radius(md);
+    border-radius: ui.radius(control);
     background: ui.color(surface);
 
     &:empty {
@@ -24,7 +24,7 @@
     justify-content: space-between;
     min-height: ui.space(10);
     padding-inline: ui.space(3);
-    border-radius: ui.radius(sm);
+    border-radius: ui.radius(field);
     cursor: pointer;
     @include ui.text(sm);
 

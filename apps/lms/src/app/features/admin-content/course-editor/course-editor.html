@@ -13,27 +13,27 @@
 />
 } @else if (store.isLoading$()) {
 <div class="course-editor__loading"><span uiSpinner></span></div>
-} @else if (ready()) {
-<header class="course-editor__head">
-  <div>
-    @if (store.course$(); as detail) {
-    <h1>Sửa khóa học</h1>
-    <p class="course-editor__sub">
-      {{ detail.revision.title || 'Chưa đặt tên' }} · {{ detail.course.code }}
-      <app-catalog-status [status]="store.status$()" />
-    </p>
-    } @else {
-    <h1>Tạo khóa học mới</h1>
-    <p class="course-editor__sub">Chưa lưu</p>
+} @else if (ready()) { @let editing = store.course$();
+<ui-page-header
+  [title]="editing ? 'Sửa khóa học' : 'Tạo khóa học mới'"
+  [description]="
+    editing
+      ? (editing.revision.title || 'Chưa đặt tên') + ' · ' + editing.course.code
+      : 'Chưa lưu'
+  "
+>
+  <div slot="actions" class="course-editor__head-state">
+    @if (store.course$()) {
+    <app-catalog-status [status]="store.status$()" />
     }
+    <span class="course-editor__saved" aria-live="polite">
+      @if (dirty()) {
+      <ui-icon name="pen-line" size="sm" />Có thay đổi chưa lưu } @else if
+      (store.savedAt$(); as at) { <ui-icon name="check" size="sm" />Đã lưu nháp
+      lúc {{ at }} }
+    </span>
   </div>
-  <span class="course-editor__saved" aria-live="polite">
-    @if (dirty()) {
-    <ui-icon name="pen-line" size="sm" />Có thay đổi chưa lưu } @else if
-    (store.savedAt$(); as at) { <ui-icon name="check" size="sm" />Đã lưu nháp
-    lúc {{ at }} }
-  </span>
-</header>
+</ui-page-header>
 
 @if (!store.isDraft$()) {
 <ui-alert tone="info" [announce]="false" class="course-editor__notice">

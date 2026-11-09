@@ -1,50 +1,10 @@
 @use 'ui';
 
 .toc {
-  // The state mark and a small note sit at the end of a tree row.
-  &__trailing {
-    @include ui.row(2);
-    flex: none;
-    flex-wrap: nowrap;
-    margin-inline-start: auto;
-  }
-
-  &__note {
-    @include ui.text(xs, muted);
-    @include ui.num;
-    white-space: nowrap;
-  }
-
+  // The state marker sits at the end of a tree row, level with the first line of the title.
   &__state {
-    display: grid;
-    flex: none;
-    place-items: center;
-    width: 1rem;
     height: 1.5rem;
-    color: ui.color(success);
-  }
-
-  // Three shapes, so the states differ without colour: an empty ring (not started), a ring with a
-  // dot (started), a check (done).
-  &__ring {
-    display: grid;
-    place-items: center;
-    width: 0.75rem;
-    height: 0.75rem;
-    border: 1.5px solid ui.color(text-muted);
-    border-radius: ui.radius(full);
-
-    &--started {
-      border-color: ui.color(primary);
-
-      &::after {
-        width: 0.25rem;
-        height: 0.25rem;
-        border-radius: ui.radius(full);
-        background: ui.color(primary);
-        content: '';
-      }
-    }
+    margin-inline-start: auto;
   }
 
   &__sr {

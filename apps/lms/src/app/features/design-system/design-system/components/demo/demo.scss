@@ -4,7 +4,7 @@
   @include ui.stack(3);
   padding: ui.space(5);
   border: 1px solid ui.color(border);
-  border-radius: ui.radius(lg);
+  border-radius: ui.radius(card);
   background: ui.color(surface);
 
   &--dashed {
@@ -25,7 +25,7 @@
     @include ui.stack(2);
     @include ui.text(sm);
     padding: ui.space(4);
-    border-radius: ui.radius(md);
+    border-radius: ui.radius(control);
     background: ui.color(surface-2);
   }
 

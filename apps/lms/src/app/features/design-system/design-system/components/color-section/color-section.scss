@@ -9,7 +9,7 @@
 .swatch {
   overflow: hidden;
   border: 1px solid ui.color(border);
-  border-radius: ui.radius(md);
+  border-radius: ui.radius(control);
   background: ui.color(surface);
   list-style: none;
 
@@ -48,7 +48,7 @@
 
 .sample {
   padding: ui.space(1) 10px;
-  border-radius: ui.radius(sm);
+  border-radius: ui.radius(field);
   background: var(--sample-bg);
   color: var(--sample-fg);
   font-weight: ui.weight(semibold);

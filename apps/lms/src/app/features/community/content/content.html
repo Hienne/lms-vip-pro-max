@@ -54,7 +54,7 @@
   }
 
   <header class="content__header">
-    <h1 class="content__title">{{ detail.publishedRevision?.title ?? '' }}</h1>
+    <ui-page-header [title]="detail.publishedRevision?.title ?? ''" />
 
     <p class="content__meta">
       @if (isQuestion()) { @if (resolutionLabels[detail.resolutionStatus ?? ''];
@@ -128,11 +128,9 @@
       <article uiCard>
         <div uiCardBody class="content__post">
           <div class="content__main">
-            @if (!isQuestion()) {
+            @if (!isQuestion() && store.coverId$()) {
             <app-content-thumbnail
               class="content__cover"
-              [contentId]="detail.contentId"
-              [kind]="detail.kind"
               [revisionAssetId]="store.coverId$()"
             />
             } @if (detail.kind === 'lesson_learned') { @for (section of
@@ -383,12 +381,8 @@
       }
     </div>
     <aside class="content__aside" aria-label="Thông tin nội dung">
-      @if (isQuestion()) {
-      <app-content-thumbnail
-        [contentId]="detail.contentId"
-        [kind]="detail.kind"
-        [revisionAssetId]="store.coverId$()"
-      />
+      @if (isQuestion() && store.coverId$()) {
+      <app-content-thumbnail [revisionAssetId]="store.coverId$()" />
       } @if (!isQuestion() && store.outline$().length) {
       <nav class="content__outline" aria-label="Mục lục bài viết">
         <h2 class="content__info-title">Mục lục</h2>
@@ -440,8 +434,6 @@
           [routerLink]="['/community/contents', item.contentId]"
         >
           <app-content-thumbnail
-            [contentId]="item.contentId"
-            [kind]="item.kind"
             [revisionAssetId]="item.coverRevisionAssetId"
           />
           <span>{{ item.title }}</span>

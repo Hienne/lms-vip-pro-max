@@ -21,7 +21,7 @@
   &--highlight {
     display: inline-block;
     padding: ui.space(1) ui.space(2);
-    border-radius: ui.radius(sm);
+    border-radius: ui.radius(field);
     background: ui.color(danger-subtle);
   }
 }

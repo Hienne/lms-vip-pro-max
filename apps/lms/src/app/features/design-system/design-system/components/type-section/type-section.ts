@@ -5,12 +5,12 @@ import { DsSection } from '../section/section';
 /** The type scale. `modifier` names a BEM modifier the stylesheet generates from the text-size tokens. */
 const SAMPLES = [
   {
-    label: 'Display · 36/700',
+    label: 'Display · 36/600',
     modifier: 'type-sample--3xl',
     text: 'Chào mừng bạn gia nhập Ban!',
   },
   {
-    label: 'H1 · 28/700',
+    label: 'H1 · 28/600',
     modifier: 'type-sample--2xl',
     text: 'Lộ trình đào tạo của bạn',
   },

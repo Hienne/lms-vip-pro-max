@@ -190,7 +190,7 @@ describe('Lesson', () => {
       el = harness.routeNativeElement as HTMLElement;
       expect(text()).toContain('Đã hoàn thành');
       const outlineStates = Array.from(
-        el.querySelectorAll('app-lesson-outline .toc__sr'),
+        el.querySelectorAll('app-lesson-outline .lesson-status__sr'),
       ).map((s) => s.textContent?.trim());
       expect(outlineStates.at(-1)).toBe('Đã hoàn thành');
       expect(text()).toMatch(/Tiến độ học\s+\d+%/);

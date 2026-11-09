@@ -129,12 +129,12 @@ describe('AppShell', () => {
       a.getAttribute('href'),
     );
 
+  // The profile is not in the sidebar: it opens from the account menu in the header.
   it.each([
     [
       'instructor',
       '/learn',
       [
-        '/profile',
         '/learn',
         '/progress',
         '/quiz',
@@ -157,7 +157,6 @@ describe('AppShell', () => {
       'admin',
       '/admin/system',
       [
-        '/profile',
         '/admin/courses',
         '/admin/catalog',
         '/admin/lessons',
@@ -500,7 +499,7 @@ describe('AppShell', () => {
       const el = await open('/learn');
       toggle(el)?.click();
       TestBed.tick();
-      expect(hrefs(el)).toHaveLength(17);
+      expect(hrefs(el)).toHaveLength(16);
       expect(
         el.querySelector('nav a[href="/progress"]')?.textContent?.trim(),
       ).toBe('Tiến độ học tập');
@@ -545,7 +544,7 @@ describe('AppShell', () => {
       expect(button?.getAttribute('aria-expanded')).toBe('false');
 
       await openDrawer(el);
-      expect(dialog()?.querySelectorAll('nav a')).toHaveLength(17);
+      expect(dialog()?.querySelectorAll('nav a')).toHaveLength(16);
       expect(dialog()?.querySelector('.sidebar__toggle')).toBeNull();
       expect(button?.getAttribute('aria-expanded')).toBe('true');
     });

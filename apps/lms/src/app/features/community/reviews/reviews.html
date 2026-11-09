@@ -44,10 +44,11 @@
       @if (store.items$().length) {
       <div class="reviews__list">
         @for (item of store.items$(); track item.contentId) {
-        <article class="reviews__item">
+        <article
+          class="reviews__item"
+          [class.reviews__item--cover]="item.coverRevisionAssetId !== null && item.coverRevisionAssetId !== undefined"
+        >
           <app-content-thumbnail
-            [contentId]="item.contentId"
-            kind="architecture_review"
             [revisionAssetId]="item.coverRevisionAssetId"
           />
           <div class="reviews__content">

@@ -22,11 +22,6 @@ export {
 } from './lib/molecules/segmented/segmented';
 export { Popover } from './lib/organisms/popover/popover.directive';
 export {
-  SwatchGroup,
-  type Swatch,
-  type SwatchOption,
-} from './lib/molecules/swatch-group/swatch-group';
-export {
   Button,
   type ButtonSize,
   type ButtonType,
@@ -67,6 +62,8 @@ export {
 export { Ring } from './lib/atoms/ring/ring';
 export { Table } from './lib/atoms/table/table.directive';
 export { TableWrap } from './lib/atoms/table/table-wrap.directive';
+export { TableCell } from './lib/atoms/table/table-cell.directive';
+export { TableCol } from './lib/atoms/table/table-col.directive';
 export { TablePrimary } from './lib/atoms/table/table-primary.directive';
 export { TableSub } from './lib/atoms/table/table-sub.directive';
 
@@ -216,3 +213,11 @@ export {
   DataTableCell,
   type DataTableCellContext,
 } from './lib/organisms/data-table/data-table-cell.directive';
+
+// Screen building blocks: SectionCard, StatStrip, Stat, ListRow
+export { SectionCard } from './lib/organisms/section-card/section-card';
+export { StatStrip } from './lib/molecules/stat-strip/stat-strip';
+export { Stat, type StatTone } from './lib/molecules/stat-strip/stat';
+export { ListRow, type ListRowTone } from './lib/molecules/list-row/list-row';
+export { DateInput } from './lib/molecules/date-input/date-input';
+export type { DateInputKind } from './lib/molecules/date-input/date-format';

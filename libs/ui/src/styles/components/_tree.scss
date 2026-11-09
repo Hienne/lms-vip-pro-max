@@ -21,9 +21,14 @@
       }
 
       .tree__label {
-        min-width: 0;
         white-space: normal;
         overflow-wrap: anywhere;
+      }
+
+      // A narrow pane gives the width to the label: a shallow indent per level.
+      .tree--nested {
+        margin-left: 9px;
+        padding-left: var(--spacing-2);
       }
     }
 
@@ -55,7 +60,7 @@
       width: 100%;
       min-height: 38px;
       padding: 0 var(--spacing-2);
-      border-radius: var(--radius-sm);
+      border-radius: var(--radius-field);
       color: var(--color-text);
       cursor: pointer;
 
@@ -71,11 +76,22 @@
       color: var(--color-text-muted);
     }
 
-    &__label {
+    &__text {
+      display: flex;
       flex: 1 1 auto;
+      flex-direction: column;
+      min-width: 0;
+    }
+
+    &__label {
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
+    }
+
+    &__description {
+      color: var(--color-text-muted);
+      font-weight: var(--font-weight-regular);
     }
   }
 }
