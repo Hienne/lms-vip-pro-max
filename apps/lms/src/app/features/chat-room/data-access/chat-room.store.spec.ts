@@ -67,7 +67,7 @@ describe('ChatRoomStore', () => {
     vi.useRealTimers();
   });
 
-  async function connect(): Promise<void> {
+  async function openSocket(): Promise<void> {
     store.join({ name: 'An', color: 'teal' });
     await settle();
     http.expectOne('/api/v1/chat-room/tickets').flush(
@@ -78,6 +78,9 @@ describe('ChatRoomStore', () => {
     );
     await settle();
     observer.opened();
+  }
+  async function connect(): Promise<void> {
+    await openSocket();
     observer.message({
       type: 'welcome',
       id: 'a',
@@ -142,6 +145,31 @@ describe('ChatRoomStore', () => {
       envelopeOk({ ticket: 'new-ticket', expiresAt: '2026-11-06T20:00:00Z' }),
     );
     await settle();
+  });
+  it('explains when the socket opens but the server closes before admitting the player', async () => {
+    await openSocket();
+    expect(store.status$()).toBe('joining');
+    observer.closed(1011);
+    expect(store.status$()).toBe('offline');
+    expect(store.connectionIssue$()).toContain('trước khi xác nhận vào phòng');
+    expect(store.connectionIssue$()).toContain('1011');
+    expect(store.isConnecting$()).toBe(false);
+  });
+  it('keeps the room online when game storage is unavailable', async () => {
+    await connect();
+    observer.message({ type: 'wallet', balance: 50 });
+    observer.message({
+      type: 'error',
+      scope: 'games',
+      message: 'Ví chưa khả dụng.',
+    });
+    expect(store.online$()).toBe(true);
+    expect(store.gamesIssue$()).toBe('Ví chưa khả dụng.');
+    expect(store.connectionIssue$()).toBe('');
+    expect(store.games.balance$()).toBeNull();
+    store.send('Phòng vẫn mở');
+    expect(send).toHaveBeenCalledWith({ type: 'chat', text: 'Phòng vẫn mở' });
+    expect(store.gamesIssue$()).toBe('Ví chưa khả dụng.');
   });
   it('stops retries and ignores stale callbacks after leaving', async () => {
     await connect();

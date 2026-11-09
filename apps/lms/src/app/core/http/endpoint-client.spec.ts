@@ -122,7 +122,9 @@ describe('EndpointClient WebSocket transport', () => {
     );
     expect(handled[0]).toBeInstanceOf(ContractError);
     expect(observer.message).not.toHaveBeenCalled();
-    expect(sockets[0].close).toHaveBeenCalledWith(1002);
+    expect(sockets[0].close).toHaveBeenCalledWith(4002);
+    sockets[0].onclose?.({ code: 1006 });
+    expect(observer.closed).toHaveBeenCalledWith(4002);
   });
 });
 
