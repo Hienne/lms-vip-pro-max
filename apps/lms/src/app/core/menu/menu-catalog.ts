@@ -70,14 +70,15 @@ function groupBySection(items: readonly MenuItem[]): readonly NavSection[] {
 
 /**
  * The sidebar follows server-granted functions, with four destinations for Community.
- * Other functions link to their first screen, grouped in backend order. `toProfile` builds it
+ * Other functions link to their first screen, grouped in backend order. The leaderboard is shared
+ * by signed-in accounts and leaves operation authorization to its endpoints. `toProfile` builds it
  * once; the sidebar only renders it.
  */
 export function navFor(
   functions: readonly KnownFunction[],
 ): readonly NavSection[] {
-  return groupBySection(
-    functions.flatMap((fn): MenuItem[] => {
+  return groupBySection([
+    ...functions.flatMap((fn): MenuItem[] => {
       if (fn.code === 'COMMUNITY') {
         return (
           [
@@ -117,7 +118,19 @@ export function navFor(
         },
       ];
     }),
-  );
+    ...(functions.length
+      ? [
+          {
+            code: 'PROFILE' as const,
+            href: '/leaderboard',
+            icon: 'trophy' as const,
+            label: 'Bảng xếp hạng & thành tích',
+            section: 'Công cụ học',
+            upcoming: false,
+          },
+        ]
+      : []),
+  ]);
 }
 
 /**

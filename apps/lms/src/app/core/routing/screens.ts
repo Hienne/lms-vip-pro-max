@@ -644,7 +644,6 @@ export const SCREEN_TABLE = {
     },
     {
       path: 'leaderboard',
-      access: 'LEARNING_PROGRESS',
       title: 'Bảng xếp hạng & thành tích',
       mockupPage: 'leaderboard',
       load: () =>

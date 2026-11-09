@@ -73,7 +73,7 @@ export function learnerNavigation(
             ...route('flashcards', 'layers'),
             ...route('certificates', 'award'),
             ...route('leaderboard', 'trophy'),
-            ...links,
+            ...links.filter((link) => link.href !== '/leaderboard'),
           ],
         };
       case 'community':

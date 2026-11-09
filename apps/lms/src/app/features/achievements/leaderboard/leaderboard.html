@@ -22,6 +22,37 @@
 </ui-alert>
 }
 
+<section
+  class="leaderboard__achievements"
+  aria-labelledby="leaderboard-achievements"
+>
+  <h2 id="leaderboard-achievements">Thành tích của bạn</h2>
+  <ui-stat-strip>
+    <ui-stat
+      class="leaderboard__earned"
+      label="XP tích lũy"
+      [value]="store.points$()?.total ?? '—'"
+      note="Từ tất cả hoạt động học tập"
+    />
+    <ui-stat
+      class="leaderboard__earned"
+      label="Thứ hạng trong phạm vi đã chọn"
+      [value]="store.rank$() ?? '—'"
+      [note]="store.periodLabel$()"
+    />
+    <ui-stat
+      label="Chuỗi ngày học"
+      [value]="store.me$()?.streakDays ?? '—'"
+      unit=" ngày"
+      note="Không cộng XP"
+    />
+    <ui-stat
+      label="XP từ khóa học hoàn thành"
+      [value]="store.points$()?.parts?.courses ?? '—'"
+      note="Tích lũy từ các khóa học"
+    />
+  </ui-stat-strip>
+</section>
 <div class="leaderboard__filters">
   <ui-segmented
     class="leaderboard__scope leaderboard__view"
@@ -49,15 +80,7 @@
 </div>
 
 <div class="leaderboard__layout">
-  <section
-    uiCard
-    padded
-    class="leaderboard__points"
-    aria-labelledby="leaderboard-points"
-  >
-    <p id="leaderboard-points" class="leaderboard__points-title">
-      XP của bạn@if (store.rank$(); as rank) { · hạng {{ rank }}}
-    </p>
+  <ui-section-card title="Điểm thưởng tích lũy" class="leaderboard__points">
     @if (store.pointsError$(); as error) {
     <ui-error-state
       title="Không tải được điểm thưởng"
@@ -66,6 +89,9 @@
       (retry)="store.retryPoints()"
     />
     } @else if (store.points$(); as points) {
+    <p class="leaderboard__points-title">
+      XP của bạn@if (store.rank$(); as rank) { · hạng {{ rank }}}
+    </p>
     <p class="leaderboard__total">{{ points.total }}</p>
     <dl class="leaderboard__parts">
       @for (part of store.parts$(); track part.key) {
@@ -82,11 +108,10 @@
       class="leaderboard__points-placeholder"
     ></div>
     }
-  </section>
+  </ui-section-card>
 
-  <section class="leaderboard__ranking" aria-labelledby="leaderboard-ranking">
-    <div class="leaderboard__ranking-head">
-      <h2 id="leaderboard-ranking">Xếp hạng</h2>
+  <ui-section-card title="Xếp hạng" class="leaderboard__ranking">
+    <div slot="action" class="leaderboard__ranking-head">
       @if (store.period$() !== 'all') {
       <div class="leaderboard__stepper">
         <button
@@ -208,7 +233,7 @@
     @if (store.gapToAbove$(); as gap) {
     <p class="leaderboard__gap">Cách người xếp ngay trên {{ gap }} XP.</p>
     } } } } }
-  </section>
+  </ui-section-card>
 </div>
 
 <ng-template #unitEntry let-unit>

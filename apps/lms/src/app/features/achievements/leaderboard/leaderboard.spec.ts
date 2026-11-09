@@ -73,7 +73,7 @@ describe('Leaderboard', () => {
     node.textContent?.replace(/\s+/g, ' ').trim() ?? '';
   const rows = () =>
     Array.from(
-      el.querySelectorAll('.leaderboard__ranking > ol:first-of-type li'),
+      el.querySelectorAll('.leaderboard__ranking ol:first-of-type li'),
     );
   const calls = (endpoint: unknown) =>
     handle.mock.calls.filter(([e]) => e === endpoint);
@@ -189,7 +189,9 @@ describe('Leaderboard', () => {
     it('writes "(bạn)" in the same wrapping line as the name, with no truncating element around either', () => {
       const you = el.querySelector('.leaderboard__you')!;
       expect(you.closest('.leaderboard__title')).not.toBeNull();
-      expect(you.closest('[title]')).toBeNull();
+      expect(you.closest('.leaderboard__title')?.hasAttribute('title')).toBe(
+        false,
+      );
     });
 
     it('does not list the caller twice, since the row is on the page', () => {
@@ -215,6 +217,18 @@ describe('Leaderboard', () => {
         ['Cộng đồng', '+0'],
         ['Điều chỉnh', '+0'],
       ]);
+    });
+
+    it('puts personal achievements before the board and labels lifetime XP separately', () => {
+      const achievements = el.querySelector('.leaderboard__achievements')!;
+      expect(achievements.querySelectorAll('ui-stat')).toHaveLength(4);
+      expect(text(achievements)).toContain('XP tích lũy');
+      expect(text(achievements)).toContain('80');
+      expect(
+        achievements.compareDocumentPosition(
+          el.querySelector('.leaderboard__ranking')!,
+        ) & Node.DOCUMENT_POSITION_FOLLOWING,
+      ).toBeTruthy();
     });
 
     it('reads the points once and the board once', () => {
@@ -400,10 +414,10 @@ describe('Leaderboard', () => {
       expect(rows().length).toBe(5);
     });
 
-    it('refuses the route before calling the leaderboard API for a non-learner', async () => {
+    it('opens the shared leaderboard for an administrator', async () => {
       await open('/leaderboard', 'quantri', '000002');
-      expect(TestBed.inject(Router).url).toBe('/403');
-      expect(calls(learnerEndpoints.leaderboard)).toHaveLength(0);
+      expect(TestBed.inject(Router).url).toBe('/leaderboard');
+      expect(calls(learnerEndpoints.leaderboard)).toHaveLength(1);
     });
   });
 

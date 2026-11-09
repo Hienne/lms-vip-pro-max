@@ -5,6 +5,16 @@
 }
 
 .leaderboard {
+  &__earned {
+    color: ui.color(accent-ink);
+  }
+  &__achievements {
+    @include ui.stack(3);
+    margin-top: ui.space(6);
+    h2 {
+      margin: 0;
+    }
+  }
   &__notice {
     display: flex;
     margin-top: ui.space(4);

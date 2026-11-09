@@ -27,9 +27,22 @@ const navOf = (functions: readonly FunctionInfo[]) =>
   navFor(knownFunctions(functions));
 
 describe('menu catalog', () => {
+  it('offers the shared leaderboard without requiring learner permissions', () => {
+    for (const code of [
+      'PROFILE',
+      'REPORTING',
+      'COURSE_MANAGEMENT',
+      'USER_MANAGEMENT',
+    ]) {
+      const links = navOf([fn(1, code, 1)]).flatMap((section) => section.items);
+      expect(links.filter((link) => link.href === '/leaderboard')).toHaveLength(
+        1,
+      );
+    }
+  });
   it('exposes exactly four community destinations only when the server grants COMMUNITY', () => {
     const nav = navOf([fn(1, 'COMMUNITY', 1)]);
-    expect(nav).toHaveLength(1);
+    expect(nav).toHaveLength(2);
     expect(nav[0].section).toBe('Cộng đồng');
     expect(nav[0].items.map((item) => item.href)).toEqual([
       '/community/questions',
@@ -67,6 +80,7 @@ describe('menu catalog', () => {
       ['PROFILE', 'Tên PROFILE'],
       ['COURSE_LEARNING', 'Tên COURSE_LEARNING'],
       ['LEARNING_PROGRESS', 'Tên LEARNING_PROGRESS'],
+      ['PROFILE', 'Bảng xếp hạng & thành tích'],
     ]);
   });
 
@@ -78,6 +92,7 @@ describe('menu catalog', () => {
     expect(items.map((item) => item.code)).toEqual([
       'USER_MANAGEMENT',
       'REPORTING',
+      'PROFILE',
     ]);
   });
 
@@ -85,7 +100,7 @@ describe('menu catalog', () => {
     const items = navOf([fn(1, 'PROFILE', 1), fn(2, 'FUTURE_SCREEN', 2)])
       .flatMap((section) => section.items)
       .map((item) => item.code);
-    expect(items).toEqual(['PROFILE']);
+    expect(items).toEqual(['PROFILE', 'PROFILE']);
   });
 
   it('shows a learner the learner screens and an admin the management ones', () => {
@@ -142,7 +157,11 @@ describe('menu catalog', () => {
       const byCode = Object.fromEntries(
         nav.flatMap((s) => s.items).map((i) => [i.code, i.upcoming]),
       );
-      expect(byCode).toEqual({ COURSE_LEARNING: false, KNOWLEDGE_HUB: true });
+      expect(byCode).toEqual({
+        COURSE_LEARNING: false,
+        KNOWLEDGE_HUB: true,
+        PROFILE: false,
+      });
     });
   });
 
