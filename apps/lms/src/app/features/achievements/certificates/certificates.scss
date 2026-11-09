@@ -1,67 +1,113 @@
 @use 'ui';
-
 :host {
   @include ui.page(wide);
   min-width: 0;
 }
-
 .certificates {
   &__toolbar {
-    @include ui.row(3);
-    margin: ui.space(4) 0;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: ui.space(3);
+    margin: ui.space(5) 0;
+    @include ui.bp(md) {
+      grid-template-columns: minmax(0, 1fr) minmax(0, 0.3fr);
+    }
+    > ui-search {
+      width: 100%;
+    }
+  }
+  &__count {
+    margin: ui.space(3) 0;
+    @include ui.text(sm, muted);
   }
   &__placeholder {
     min-height: 8rem;
     margin-top: ui.space(5);
   }
-
   &__list {
-    margin: ui.space(5) 0 0;
-    padding: 0;
-    list-style: none;
-    border-top: 1px solid ui.color(border);
-  }
-
-  // The title and the meta line sit on the left and the code on the right; on a narrow screen the
-  // code drops under the meta line.
-  &__row {
     display: grid;
     grid-template-columns: minmax(0, 1fr);
-    gap: ui.space(1);
-    padding: ui.space(4) ui.space(2);
-    border-bottom: 1px solid ui.color(border);
-
+    gap: ui.space(6);
+    padding: 0;
+    margin: 0;
+    list-style: none;
     @include ui.bp(md) {
-      grid-template-columns: minmax(0, 1fr) auto;
-      column-gap: ui.space(5);
-      align-items: baseline;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+    @include ui.bp(lg) {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
     }
   }
-
-  &__title {
+  &__row {
+    @include ui.stack(2);
+    min-width: 0;
+    > a[uiButton] {
+      align-self: start;
+      margin-top: auto;
+    }
+  }
+  &__preview {
+    border: ui.space(1) double ui.color(accent);
+    background: ui.color(surface);
+    color: ui.color(text);
+    padding: ui.space(2);
+    min-width: 0;
+  }
+  &__brand {
+    background: ui.color(primary);
+    color: ui.color(on-primary);
+    padding: ui.space(2);
+    text-align: center;
+    font-weight: ui.weight(semibold);
+  }
+  &__document {
+    @include ui.text(sm);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: ui.space(2);
+    padding: ui.space(4) ui.space(2);
+    min-height: 16rem;
+    text-align: center;
+    overflow-wrap: anywhere;
+    p {
+      margin: 0;
+    }
+  }
+  &__award {
+    font-size: ui.text-size(lg);
+    color: ui.color(accent-ink);
+    font-weight: ui.weight(semibold);
+  }
+  &__recipient {
+    font-size: ui.text-size(xl);
     color: ui.color(primary);
     font-weight: ui.weight(semibold);
-    overflow-wrap: anywhere;
-
-    &:focus-visible {
-      @include ui.focus-ring;
-    }
   }
-
+  &__course {
+    font-weight: ui.weight(semibold);
+  }
+  &__footer {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: ui.space(2);
+    border-top: 1px solid ui.color(accent);
+    padding-top: ui.space(2);
+    margin-top: auto;
+    @include ui.text(sm, muted);
+  }
+  &__title {
+    color: ui.color(text);
+    font-weight: ui.weight(semibold);
+    overflow-wrap: anywhere;
+  }
   &__meta {
     @include ui.text(sm, muted);
     overflow-wrap: anywhere;
   }
-
   &__code {
-    @include ui.mono;
-    color: ui.color(text-secondary);
+    @include ui.text(sm, muted);
     overflow-wrap: anywhere;
-
-    @include ui.bp(md) {
-      grid-column: 2;
-      grid-row: 1 / span 2;
-      text-align: right;
-    }
   }
 }

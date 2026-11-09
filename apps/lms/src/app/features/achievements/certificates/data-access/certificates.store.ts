@@ -9,6 +9,7 @@ export const CERTIFICATES_PAGE_SIZE = 100;
 /** A row of the list: what to print and where it leads, so the template only prints it. */
 export interface CertificateRow {
   readonly id: number;
+  readonly fullName: string;
   /** The title of the revision the learner finished, or the course code when it has none. */
   readonly title: string;
   readonly code: string;
@@ -20,6 +21,7 @@ export interface CertificateRow {
 
 const toRow = (certificate: Certificate): CertificateRow => ({
   id: certificate.id,
+  fullName: certificate.fullName,
   title: certificate.courseTitle ?? certificate.courseCode,
   code: certificate.courseCode,
   completedAt: certificate.completedAt,

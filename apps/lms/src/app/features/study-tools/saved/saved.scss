@@ -5,7 +5,13 @@
 }
 .saved {
   &__toolbar {
-    @include ui.row(3);
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: ui.space(3);
+    @include ui.bp(md) {
+      grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) minmax(0, 1fr);
+      align-items: center;
+    }
     margin-bottom: ui.space(5);
     > select {
       max-width: 100%;
@@ -34,11 +40,14 @@
     flex: 1;
     min-width: 0;
     text-align: start;
+    justify-content: flex-start;
     &[aria-pressed='true'] {
       background: ui.color(surface-2);
     }
   }
   &__body {
+    flex: 1;
+    align-items: flex-start;
     @include ui.stack(1);
     min-width: 0;
     overflow-wrap: anywhere;
