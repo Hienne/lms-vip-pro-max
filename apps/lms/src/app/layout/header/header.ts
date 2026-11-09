@@ -6,6 +6,7 @@ import {
   inject,
   input,
   output,
+  signal,
   viewChild,
   type ElementRef,
 } from '@angular/core';
@@ -49,6 +50,9 @@ export class Header {
 
   protected readonly field = viewChild<ElementRef<HTMLInputElement>>('q');
 
+  /** Below `md` the search field is hidden until its icon button opens it as a full-width row. */
+  protected readonly searchOpen = signal(false);
+
   protected readonly placeholder = computed(() => {
     const user = this.user();
     return searchPlaceholder(user ? user.menus : []);
@@ -85,5 +89,16 @@ export class Header {
   protected submit(event: Event): void {
     event.preventDefault();
     this.searched.emit(this.field()?.nativeElement.value ?? '');
+    this.searchOpen.set(false);
+  }
+
+  protected toggleSearch(): void {
+    const open = !this.searchOpen();
+    this.searchOpen.set(open);
+    if (open) queueMicrotask(() => this.field()?.nativeElement.focus());
+  }
+
+  protected closeSearch(): void {
+    this.searchOpen.set(false);
   }
 }

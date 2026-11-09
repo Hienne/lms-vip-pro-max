@@ -20,10 +20,6 @@
 .space-section__motion {
   padding: ui.space(2) ui.space(4);
 
-  &--enter {
-    @include ui.animate(enter);
-  }
-
   &--reward {
     @include ui.animate(reward-pop);
   }
@@ -46,7 +42,7 @@
 
   &__bar {
     height: ui.space(2);
-    border-radius: ui.radius(sm);
+    border-radius: ui.radius(field);
     background: ui.color(primary);
   }
 }
@@ -70,7 +66,7 @@
 .shadow-sample {
   width: 84px;
   height: 56px;
-  border-radius: ui.radius(md);
+  border-radius: ui.radius(control);
   background: ui.color(surface);
 }
 

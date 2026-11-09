@@ -39,8 +39,18 @@ export class Sidebar {
   /** The collapse button was pressed. */
   readonly collapseToggle = output();
 
+  /** Entries whose screen is not built are shown in development builds only. */
+  protected readonly sections = computed<readonly NavSection[]>(() => {
+    if (this.showDesignLink) return this.nav();
+    return this.nav()
+      .map((section) => ({
+        ...section,
+        items: section.items.filter((item) => !item.upcoming),
+      }))
+      .filter((section) => section.items.length > 0);
+  });
   protected readonly active = computed(() =>
-    activeHref(this.nav(), this.activePath()),
+    activeHref(this.sections(), this.activePath()),
   );
   protected readonly toggleLabel = computed(() =>
     this.collapsed() ? 'Mở rộng thanh bên' : 'Thu gọn thanh bên',

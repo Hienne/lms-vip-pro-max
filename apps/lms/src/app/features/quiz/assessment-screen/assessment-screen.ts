@@ -32,6 +32,7 @@ import {
   Spinner,
   Textarea,
   type DataTableColumn,
+  DateInput,
 } from '@lms/ui';
 import {
   SaveQuestionSchema,
@@ -198,6 +199,7 @@ function quizValue(
 @Component({
   selector: 'app-assessment-screen',
   imports: [
+    DateInput,
     RouterLink,
     FormField,
     Alert,

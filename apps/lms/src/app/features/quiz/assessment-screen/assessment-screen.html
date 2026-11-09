@@ -716,14 +716,12 @@
     <section uiCard padded class="stack">
       <h2>Thời gian & quyền xem</h2>
       <ui-field label="Mở đề" hint="Để trống nếu không giới hạn."
-        ><input
-          uiInput
-          type="datetime-local"
+        ><ui-date-input
+          kind="datetime"
           [formField]="configForm.openAt" /></ui-field
       ><ui-field label="Đóng đề" hint="Để trống nếu không giới hạn."
-        ><input
-          uiInput
-          type="datetime-local"
+        ><ui-date-input
+          kind="datetime"
           [formField]="configForm.closeAt" /></ui-field
       ><ui-field label="Quyền xem đáp án & giải thích"
         ><select uiSelect [formField]="configForm.reviewPolicy">

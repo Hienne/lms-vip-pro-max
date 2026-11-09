@@ -12,25 +12,7 @@
 
 <ng-template #trailing let-node>
   @if (node.data.state; as state) {
-  <span class="toc__trailing">
-    @if (node.data.note) {
-    <span class="toc__note">{{ node.data.note }}</span>
-    }
-    <span class="toc__state" aria-hidden="true">
-      @if (state === 'completed') {
-      <ui-icon name="check" size="sm" />
-      } @else {
-      <span
-        class="toc__ring"
-        [class.toc__ring--started]="state === 'in_progress'"
-      ></span>
-      }
-    </span>
-    <span class="toc__sr">
-      @switch (state) { @case ('completed') {Đã hoàn thành} @case
-      ('in_progress') {Đang học} @default {Chưa học} }
-    </span>
-  </span>
+  <app-lesson-status class="toc__state" [state]="state" />
   } @else if (node.data.kind === 'final') {
   <span class="toc__sr">Cần đạt để hoàn thành khóa học</span>
   }

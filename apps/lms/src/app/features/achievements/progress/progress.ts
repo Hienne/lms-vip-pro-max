@@ -19,7 +19,11 @@ import {
   Select,
   Segmented,
   Skeleton,
+  Stat,
+  StatStrip,
   Table,
+  TableCell,
+  TableCol,
   TablePrimary,
   TableWrap,
   TabPanel,
@@ -30,7 +34,6 @@ import {
 import { ActivityHeatmap } from '../../../shared/learning/activity-heatmap/activity-heatmap';
 import { withData } from '../../../shared/learning/competency/competency-data';
 import { CompetencyView } from '../../../shared/learning/competency/competency-view';
-import { ProgressCounts } from '../../../shared/learning/progress-counts/progress-counts';
 import { UnavailableNote } from '../../../shared/learning/unavailable-note/unavailable-note';
 import { CourseStatus } from '../../../shared/status/course-status';
 import {
@@ -61,13 +64,16 @@ import {
     PageHeader,
     Pagination,
     Progress,
-    ProgressCounts,
     RouterLink,
     Search,
     Select,
     Segmented,
     Skeleton,
+    Stat,
+    StatStrip,
     Table,
+    TableCell,
+    TableCol,
     TablePrimary,
     TableWrap,
     TabPanel,
@@ -102,10 +108,36 @@ export class LearningProgress {
       { value: 'in_progress', label: 'Đang học' },
       { value: 'completed', label: 'Hoàn thành' },
     ];
-  protected readonly columns = [
+  /** The server's course counts as stat cells; the overdue one is danger only while above zero. */
+  protected readonly countStats = computed(() => {
+    const counts = this.store.summary$()?.counts;
+    if (!counts) return [];
+    return [
+      { label: 'Tổng số khóa', value: counts.total, danger: false },
+      { label: 'Hoàn thành', value: counts.completed, danger: false },
+      { label: 'Đang học', value: counts.inProgress, danger: false },
+      { label: 'Chưa bắt đầu', value: counts.notStarted, danger: false },
+      {
+        label: 'Đang quá hạn',
+        value: counts.overdue,
+        danger: counts.overdue > 0,
+      },
+    ];
+  });
+  protected readonly columns: readonly {
+    key: string;
+    label: string;
+    sortable?: boolean;
+    numeric?: boolean;
+  }[] = [
     { key: 'title', label: 'Khóa học' },
     { key: 'progress', label: 'Nội dung đã học' },
-    { key: 'score', label: 'Điểm thi cao nhất', sortable: false },
+    {
+      key: 'score',
+      label: 'Điểm thi cao nhất',
+      sortable: false,
+      numeric: true,
+    },
     { key: 'status', label: 'Trạng thái', sortable: false },
     { key: 'dueAt', label: 'Hạn hoàn thành' },
     { key: 'lastAccessAt', label: 'Truy cập gần nhất' },

@@ -1,12 +1,10 @@
 // Emits the tokens of `ui/_tokens.scss` as CSS custom properties: light on :root, dark behind the
 // mockup's two conditions (explicit dark; system dark unless light was chosen). The property names
 // are the contract with every stylesheet and with ThemeStore. Nothing else mentions a theme: the
-// only writer of the `data-theme` and `data-palette` attributes is ThemeStore
-// (apps/lms/src/app/core/theme). The palettes (`data-palette`) override these values; see
-// `_palettes.scss`.
+// only writer of the `data-theme` attribute is ThemeStore (apps/lms/src/app/core/theme). BIDV is
+// the only palette.
 @use 'sass:map';
 @use '../ui';
-@use 'palettes';
 
 @mixin -emit($map, $prefix) {
   @each $key, $value in $map {
@@ -25,7 +23,6 @@
   @include -emit(ui.$breakpoints, breakpoint);
   @include -emit(ui.$colors, color);
   @include -emit(ui.$chart, color-chart);
-  @include palettes.swatches;
   @include -emit(ui.$font-families, font);
   --default-font-family: var(--font-sans);
   --default-mono-font-family: var(--font-mono);
@@ -39,7 +36,6 @@
   }
   @include -emit(ui.$radii, radius);
   @include -emit(ui.$shadows, shadow);
-  @include -emit(ui.$textures, texture);
   @include -emit(ui.$durations, transition-duration);
   @include -emit(ui.$easings, ease);
   --default-transition-duration: var(--transition-duration-base);
@@ -58,13 +54,9 @@
   @include -dark-values;
 }
 
-// Palette overrides (none for the default `bidv`).
-@include palettes.emit;
-
 // Paper is white whatever the screen theme: printing re-declares the light colours, so a page in
 // dark mode does not print light text on white. `:root` is repeated to reach specificity (0,4,0),
-// above the dark values (0,3,0) of the base and of every palette, whatever the order. The
-// default palette's colours are used, not the chosen palette's.
+// above the dark values (0,3,0), whatever the order.
 @media print {
   :root:root:root:root {
     @include -emit(ui.$colors, color);

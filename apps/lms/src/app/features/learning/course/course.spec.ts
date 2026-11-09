@@ -398,11 +398,11 @@ describe('Course', () => {
   });
 
   describe('an overdue course', () => {
-    it('shows the danger alert and the overdue deadline', async () => {
+    it('says the course is overdue once, in the deadline', async () => {
       await open(4);
-      const alert = el.querySelector('ui-alert')!;
-      expect(alert.textContent).toContain('Khóa học đã quá hạn');
-      expect(text()).toContain('Quá hạn');
+      expect(text()).not.toContain('Khóa học đã quá hạn');
+      expect(text().match(/Quá hạn/g)).toHaveLength(1);
+      expect(el.querySelector('.due-date--highlight')).not.toBeNull();
     });
   });
 

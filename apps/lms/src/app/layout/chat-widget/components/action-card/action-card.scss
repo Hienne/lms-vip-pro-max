@@ -5,7 +5,7 @@
   padding: ui.space(3);
   background: ui.color(surface);
   border: 1px solid ui.color(border);
-  border-radius: ui.radius(md);
+  border-radius: ui.radius(control);
 
   &__title {
     @include ui.text(sm);

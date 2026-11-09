@@ -78,7 +78,7 @@ never from a relative path into another project.
 | Validation / types | `zod` (v4 API)                                                                                                                                                                                                                                                  |
 | File hashing       | `@noble/hashes` (exact version, user-approved): an incremental SHA-256 for chunked uploads, run in a Web Worker (`*.worker.ts`, typed by `apps/lms/tsconfig.worker.json`, bundled by `webWorkerTsConfig`)                                                       |
 | Mock API           | in-app interceptor over `@lms/mocks` fixtures (development only), no server process                                                                                                                                                                             |
-| Font               | Be Vietnam Pro (UI default), plus Fraunces and Nunito Sans for themes (`ui.$font-stacks`), all self-hosted (`@fontsource/*` in `apps/lms/project.json` styles); internal networks may block Google Fonts. A font file downloads only when a theme renders in it |
+| Font               | Be Vietnam Pro only, weights 400, 500 and 600, self-hosted (`@fontsource/be-vietnam-pro` in `apps/lms/project.json` styles); internal networks may block Google Fonts |
 
 Adding any other runtime dependency needs the user's approval. Pre-styled UI
 kits (Material, PrimeNG, Spartan…) are out. The style library's compile test uses the
@@ -171,8 +171,9 @@ in two of them, and the course `DEMO-MEDIA` with a PDF and a video lesson.
 
 - **check** (every PR and push to `main`): `npm ci` → `nx-set-shas` →
   restore `.nx/cache` → `npm run ci:check` (affected lint, typecheck, build and
-  bundle guard; they block deploy on failure). CI does not run unit
-  tests; run `npm run check` locally. The workflow sets `SKIP_FORMAT_CHECK:
+  bundle guard; they block deploy on failure), then `npm run guard:design`
+  (the visual-design guards, visual-design.md → Drift guard). CI runs no other
+  unit tests; run `npm run check` locally. The workflow sets `SKIP_FORMAT_CHECK:
 'true'`; set it to `'false'` to restore `npm run format:check`.
 - **image** (parallel with check): buildx build of the root `Dockerfile` with
   the GitHub Actions layer cache (the `npm ci` layer is reused), which runs

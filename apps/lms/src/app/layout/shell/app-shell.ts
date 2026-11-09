@@ -1,6 +1,7 @@
 import {
   afterRenderEffect,
   Component,
+  computed,
   ElementRef,
   inject,
   signal,
@@ -20,6 +21,7 @@ import { NetBanner } from '../net-banner/net-banner';
 import { Owl } from '../owl/owl';
 import { Sidebar } from '../sidebar/sidebar';
 import { UploadPanel } from '../upload-panel/upload-panel';
+import { ShellInsets } from '../shell-insets';
 import { ShellStore } from './data-access/shell.store';
 
 /**
@@ -40,7 +42,11 @@ import { ShellStore } from './data-access/shell.store';
     ChatWidget,
     UploadPanel,
   ],
-  host: { '(window:beforeunload)': 'warnBeforeUnload($event)' },
+  host: {
+    '(window:beforeunload)': 'warnBeforeUnload($event)',
+    '[style.--owl-inset.px]': 'inset()',
+    '[style.--shell-gutter]': 'gutter()',
+  },
   providers: [ShellStore],
   templateUrl: './app-shell.html',
   styleUrl: './app-shell.scss',
@@ -51,6 +57,12 @@ export class AppShell {
   /** Whether the quick assistant is docked, so the frame makes room for it. */
   protected readonly chat = inject(AgentChatStore);
   private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
+  /** Height of a bar a page pins to the bottom; the content ends above it and the owl. */
+  protected readonly inset = inject(ShellInsets).bottom;
+  /** Right space the floating buttons need: wider beside the dev toolbar, which sits in the same corner. */
+  protected readonly gutter = computed(() =>
+    this.devToolbar() ? '10.5rem' : null,
+  );
 
   /** The dev toolbar once its chunk has loaded; stays null where the build has none. */
   protected readonly devToolbar = signal<Type<unknown> | null>(null);

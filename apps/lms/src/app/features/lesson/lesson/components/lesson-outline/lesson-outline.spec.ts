@@ -120,26 +120,22 @@ describe('LessonOutline', () => {
     expect(row('Kiểm tra').getAttribute('aria-expanded')).toBe('true');
     expect(
       ['Tổng quan', 'Dữ liệu', 'Bài kiểm tra giữa khóa'].map((title) =>
-        own(row(title), '.toc__sr')?.textContent?.replace(/\s+/g, ' ').trim(),
+        own(row(title), '.lesson-status__sr')
+          ?.textContent?.replace(/\s+/g, ' ')
+          .trim(),
       ),
     ).toEqual(['Đã hoàn thành', 'Đang học', 'Chưa học']);
   });
 
-  it('tells the states apart by shape: a check, a ring with a dot, an empty ring', () => {
+  it('tells the states apart by icon: a check, a play arrow, a dash', () => {
     const { row } = mount();
-    const shape = (title: string) => {
-      const mark = own(row(title), '.toc__state')!;
-      return mark.querySelector('ui-icon')
-        ? 'check'
-        : mark.querySelector('.toc__ring--started')
-          ? 'started'
-          : mark.querySelector('.toc__ring')
-            ? 'empty'
-            : 'none';
-    };
-    expect(
-      ['Tổng quan', 'Dữ liệu', 'Bài kiểm tra giữa khóa'].map(shape),
-    ).toEqual(['check', 'started', 'empty']);
+    const shape = (title: string) =>
+      own(row(title), '.toc__state')?.querySelector('svg')?.innerHTML ?? 'none';
+    const shapes = ['Tổng quan', 'Dữ liệu', 'Bài kiểm tra giữa khóa'].map(
+      shape,
+    );
+    expect(new Set(shapes).size).toBe(3);
+    expect(shapes).not.toContain('none');
   });
 
   it('marks the lesson on screen as the selected row and gives a quiz lesson its own icon', () => {
@@ -213,7 +209,9 @@ describe('LessonOutline', () => {
       ]);
       expect(
         blockRows.map((r) =>
-          own(r, '.toc__note')?.textContent?.replace(/\s+/g, ' ').trim(),
+          own(r, '.tree__description')
+            ?.textContent?.replace(/\s+/g, ' ')
+            .trim(),
         ),
       ).toEqual(['Video', 'Tài liệu PDF · 40%', 'Bài đọc']);
       expect(blockRows.map((r) => r.getAttribute('aria-selected'))).toEqual([

@@ -1,0 +1,20 @@
+@use 'ui';
+
+:host {
+  display: inline-grid;
+  flex: none;
+  place-items: center;
+  color: ui.color(text-muted);
+}
+
+:host([data-status='completed']) {
+  color: ui.color(success);
+}
+
+:host([data-status='in_progress']) {
+  color: ui.color(primary);
+}
+
+.lesson-status__sr {
+  @include ui.sr-only;
+}

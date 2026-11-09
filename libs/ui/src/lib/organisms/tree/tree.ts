@@ -15,6 +15,8 @@ export interface TreeNode<T = unknown> {
   readonly id: string;
   readonly label: string;
   readonly icon?: IconName;
+  /** A second line of muted text under the label, e.g. a type or a progress note. */
+  readonly description?: string;
   /** Caller data, handed back to the `trailing` template. */
   readonly data?: T;
   readonly children?: readonly TreeNode<T>[];

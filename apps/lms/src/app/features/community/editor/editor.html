@@ -105,10 +105,7 @@
       </ui-field>
       @if (store.isNew$()) {
       <ui-field label="Hạn review" hint="Không bắt buộc."
-        ><input
-          uiInput
-          type="datetime-local"
-          [formField]="editorForm.review.dueAt"
+        ><ui-date-input kind="datetime" [formField]="editorForm.review.dueAt"
       /></ui-field>
       }
       <ui-field
@@ -141,8 +138,6 @@
       } @if (design.error$(); as error) {
       <ui-alert tone="danger">{{ error }}</ui-alert> } } @if (!isAnswer()) {
       <app-community-cover-picker
-        [kind]="store.kind$() ?? 'article'"
-        [contentId]="store.detail$()?.contentId ?? 0"
         [revisionAssetId]="existingCover()"
         [preview]="cover.preview$()"
         [hasCover]="hasCover()"
@@ -158,9 +153,7 @@
         hoặc log chưa che.
       </ui-alert>
       <ui-field label="Ngày xảy ra sự cố">
-        <input
-          uiInput
-          type="date"
+        <ui-date-input
           class="editor__date"
           [formField]="editorForm.lesson.occurredOn"
         />

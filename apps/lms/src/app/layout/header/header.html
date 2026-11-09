@@ -9,7 +9,24 @@
   >
     <ui-icon name="menu" />
   </button>
-  <form class="header__search" role="search" (submit)="submit($event)">
+  <button
+    uiIconButton
+    class="header__search-toggle"
+    label="Tìm kiếm"
+    aria-controls="header-search"
+    [attr.aria-expanded]="searchOpen()"
+    (click)="toggleSearch()"
+  >
+    <ui-icon [name]="searchOpen() ? 'x' : 'search'" />
+  </button>
+  <form
+    id="header-search"
+    class="header__search"
+    [class.header__search--open]="searchOpen()"
+    role="search"
+    (submit)="submit($event)"
+    (keydown.escape)="closeSearch()"
+  >
     <ui-icon name="search" />
     <label class="sr-only" for="gsearch">Tìm kiếm</label>
     <input

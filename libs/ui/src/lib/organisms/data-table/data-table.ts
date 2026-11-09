@@ -8,6 +8,8 @@ import {
 } from '@angular/core';
 import { Icon } from '../../atoms/icon/icon';
 import { Table } from '../../atoms/table/table.directive';
+import { TableCell } from '../../atoms/table/table-cell.directive';
+import { TableCol } from '../../atoms/table/table-col.directive';
 import { TableWrap } from '../../atoms/table/table-wrap.directive';
 import { Pagination } from '../../molecules/pagination/pagination';
 import { DataTableCell } from './data-table-cell.directive';
@@ -20,6 +22,10 @@ export interface DataTableColumn {
   readonly sortable?: boolean;
   /** `actions` is the narrow right-aligned column of row buttons. */
   readonly kind?: 'actions';
+  /** A fixed CSS width (`8rem`, `20%`); the columns without one share the rest. */
+  readonly width?: string;
+  /** Keep the cell on one line (dates, statuses, codes). */
+  readonly nowrap?: boolean;
 }
 
 /** The rows-per-page choices every table offers unless its owner passes its own. */
@@ -30,6 +36,9 @@ export interface DataTableSort {
   readonly dir: 'asc' | 'desc';
 }
 
+/** The narrowest a column without a fixed width gets in a fixed-layout table. */
+const FREE_COLUMN_MIN = '14rem';
+
 /**
  * A sortable, paged table (the mockup's `UI.DataTable`) with no state of its own: the owner sorts
  * and slices the rows, passes the visible page as `rows` with the `total`, and reacts to
@@ -39,7 +48,15 @@ export interface DataTableSort {
  */
 @Component({
   selector: 'ui-data-table',
-  imports: [Icon, NgTemplateOutlet, Pagination, Table, TableWrap],
+  imports: [
+    Icon,
+    NgTemplateOutlet,
+    Pagination,
+    Table,
+    TableCell,
+    TableCol,
+    TableWrap,
+  ],
   templateUrl: './data-table.html',
 })
 export class DataTable<T extends { readonly id: string | number }> {
@@ -57,6 +74,23 @@ export class DataTable<T extends { readonly id: string | number }> {
   readonly sortChange = output<DataTableSort>();
   readonly pageChange = output<number>();
   readonly pageSizeChange = output<number>();
+
+  /** Fixed layout as soon as one column asks for a width. */
+  protected readonly fixed = computed(() =>
+    this.columns().some((column) => column.width !== undefined),
+  );
+
+  /**
+   * In a fixed layout the columns without a width share what is left, which can be nothing on a
+   * narrow page. Each of them keeps `FREE_COLUMN_MIN` and the wrap scrolls sideways instead.
+   */
+  protected readonly minWidth = computed(() => {
+    const columns = this.columns();
+    const free = columns.filter((column) => column.width === undefined).length;
+    if (!this.fixed() || free === 0) return null;
+    const parts = columns.flatMap((column) => (column.width ? [column.width] : []));
+    return `calc(${[...parts, `${free} * ${FREE_COLUMN_MIN}`].join(' + ')})`;
+  });
 
   private readonly cells = contentChildren(DataTableCell);
   private readonly headers = contentChildren(DataTableHeader);

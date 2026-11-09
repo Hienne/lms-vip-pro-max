@@ -51,9 +51,7 @@ describe('/design-system', () => {
   afterEach(() => {
     document.documentElement.removeAttribute('style');
     document.documentElement.removeAttribute('data-theme');
-    document.documentElement.removeAttribute('data-palette');
     localStorage.removeItem('lms.theme');
-    localStorage.removeItem('lms.palette');
   });
 
   it('opens publicly with a table of contents linking to every section', async () => {
@@ -85,19 +83,13 @@ describe('/design-system', () => {
         page.querySelectorAll<HTMLElement>('nav [role="option"]'),
       ).find((o) => o.textContent?.trim() === label) as HTMLElement;
 
-    it('offers the palettes and Hệ thống, Sáng, Tối as two groups in the table of contents', async () => {
+    it('offers Hệ thống, Sáng, Tối in the table of contents', async () => {
       const { page } = await openDesignSystem();
       const groups = Array.from(page.querySelectorAll('nav [role="listbox"]'));
       expect(groups.map((g) => g.getAttribute('aria-label'))).toEqual([
-        'Bảng màu',
         'Chế độ',
       ]);
-      expect(
-        Array.from(groups[0].querySelectorAll('[role="option"]')).map((o) =>
-          o.textContent?.trim(),
-        ),
-      ).toEqual(['BIDV chuẩn', 'Ngọc', 'Cobalt', 'Giấy']);
-      const options = Array.from(groups[1].querySelectorAll('[role="option"]'));
+      const options = Array.from(groups[0].querySelectorAll('[role="option"]'));
       expect(options.map((o) => o.textContent?.trim())).toEqual([
         'Hệ thống',
         'Sáng',
@@ -125,35 +117,6 @@ describe('/design-system', () => {
       TestBed.tick();
       expect(document.documentElement.hasAttribute('data-theme')).toBe(false);
       expect(localStorage.getItem('lms.theme')).toBeNull();
-    });
-
-    it('changes the palette attribute on the root element and remembers the choice', async () => {
-      const { page } = await openDesignSystem();
-      option(page, 'Cobalt').click();
-      TestBed.tick();
-      expect(document.documentElement.getAttribute('data-palette')).toBe(
-        'cobalt',
-      );
-      expect(localStorage.getItem('lms.palette')).toBe('cobalt');
-
-      option(page, 'BIDV chuẩn').click();
-      TestBed.tick();
-      expect(document.documentElement.hasAttribute('data-palette')).toBe(false);
-      expect(localStorage.getItem('lms.palette')).toBeNull();
-    });
-
-    it('recomputes the contrast table after the palette changes', async () => {
-      const { page } = await openDesignSystem();
-      const ratio = () =>
-        page.querySelector('#ds-color tbody tr [data-ratio]')?.textContent;
-      expect(ratio()).toBe('16.98:1');
-
-      option(page, 'Giấy').click();
-      // The tokens take the palette's values with the attribute; here the stylesheet is simulated.
-      document.documentElement.style.setProperty('--color-text', '#5a3a2a');
-      TestBed.tick();
-      await TestBed.inject(ApplicationRef).whenStable();
-      expect(ratio()).not.toBe('16.98:1');
     });
 
     it('recomputes the contrast table after the theme changes', async () => {
@@ -403,18 +366,15 @@ describe('/design-system', () => {
   });
 
   describe('brand', () => {
-    it('shows the flower mark in the table of contents and the hero header', async () => {
+    it('shows the flower mark in the table of contents and a plain page header', async () => {
       const { page } = await openDesignSystem();
       expect(
         page.querySelector('nav ui-mai')?.getAttribute('aria-hidden'),
       ).toBe('true');
-      const hero = page.querySelector('app-hero') as HTMLElement;
-      expect(hero.querySelector('h1')?.textContent).toContain(
-        'Flat, rõ ràng, đáng tin cậy — và dễ chuyển thành code.',
+      expect(page.querySelector('app-hero')).toBeNull();
+      expect(page.querySelector('main h1')?.textContent).toContain(
+        'Design System',
       );
-      expect(hero.textContent).not.toContain('Design System v2');
-      expect(hero.querySelectorAll('li')).toHaveLength(5);
-      expect(hero.querySelector('[aria-hidden="true"] ui-mai')).not.toBeNull();
     });
   });
 
@@ -478,8 +438,8 @@ describe('/design-system', () => {
         section.querySelectorAll('.sample > span:first-child'),
       ).map((label) => label.textContent);
       expect(labels).toEqual([
-        'Display · 36/700',
-        'H1 · 28/700',
+        'Display · 36/600',
+        'H1 · 28/600',
         'H2 · 22/600',
         'H3 · 18/600',
         'Body · 16/400 · lh 1.5',
@@ -494,7 +454,7 @@ describe('/design-system', () => {
   });
 
   describe('spacing, radius, shadow and motion section', () => {
-    it('shows the scales and replays the motion samples on demand', async () => {
+    it('shows the scales and replays the reward sample on demand', async () => {
       const { page } = await openDesignSystem();
       const section = page.querySelector('#ds-space') as HTMLElement;
       expect(section.querySelectorAll('.step')).toHaveLength(7);

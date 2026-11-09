@@ -30,10 +30,12 @@
     @include ui.text(sm, muted);
   }
 
-  &__level {
-    @include ui.row(2);
-    @include ui.text(sm);
-    flex-wrap: wrap;
+  &__title,
+  &__code {
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   &__num {

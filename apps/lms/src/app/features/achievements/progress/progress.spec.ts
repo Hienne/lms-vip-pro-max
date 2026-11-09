@@ -79,7 +79,7 @@ describe('LearningProgress', () => {
       b.textContent?.includes(label),
     );
   const kpi = (label: string) =>
-    Array.from(el.querySelectorAll('.progress-counts__item')).find((node) =>
+    Array.from(el.querySelectorAll('ui-stat')).find((node) =>
       node.textContent?.includes(label),
     );
 
@@ -97,9 +97,9 @@ describe('LearningProgress', () => {
     beforeEach(() => open());
 
     it('shows the server counts as five labelled numbers', () => {
-      const labels = Array.from(
-        el.querySelectorAll('.progress-counts__item dt'),
-      ).map((node) => node.textContent?.trim());
+      const labels = Array.from(el.querySelectorAll('ui-stat dt')).map((node) =>
+        node.textContent?.trim(),
+      );
       expect(labels).toEqual([
         'Tổng số khóa',
         'Hoàn thành',
@@ -108,20 +108,18 @@ describe('LearningProgress', () => {
         'Đang quá hạn',
         'Điểm thi trung bình',
       ]);
-      expect(el.querySelector('h1')?.textContent).toContain('Tiến độ của tôi');
+      expect(el.querySelector('h1')?.textContent).toContain('Tiến độ học tập');
       expect(calls(learnerEndpoints.progressSummary).length).toBe(1);
     });
 
     it('turns the overdue number to danger only while it is above zero', () => {
       const overdue = kpi('Đang quá hạn')!.querySelector('dd')!;
       expect(Number(overdue.textContent)).toBeGreaterThan(0);
-      expect(overdue.classList.contains('progress-counts__value--danger')).toBe(
-        true,
-      );
+      expect(overdue.classList.contains('stat__value--danger')).toBe(true);
       expect(
         kpi('Tổng số khóa')!
           .querySelector('dd')!
-          .classList.contains('progress-counts__value--danger'),
+          .classList.contains('stat__value--danger'),
       ).toBe(false);
     });
 
@@ -134,8 +132,7 @@ describe('LearningProgress', () => {
         kpi('Điểm thi trung bình')!.querySelector('dd')!.textContent?.trim(),
       ).toBe('65,5%');
       expect(
-        Array.from(el.querySelectorAll('.progress-counts__item dt')).at(-1)
-          ?.textContent,
+        Array.from(el.querySelectorAll('ui-stat dt')).at(-1)?.textContent,
       ).toBe('Điểm thi trung bình');
     });
 
@@ -288,7 +285,7 @@ describe('LearningProgress', () => {
     it('starts with courses and makes the other panels inert', async () => {
       await open();
       expect(tabs().map((tab) => tab.textContent?.trim())).toEqual([
-        'Khóa học',
+        'Tiến độ khóa học',
         'Năng lực',
         'Lịch sử thi',
       ]);
@@ -343,9 +340,7 @@ describe('LearningProgress', () => {
       expect(card().querySelector('select, [role="combobox"]')).toBeNull();
       const after = (a: Element, b: Element) =>
         !!(a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING);
-      expect(after(el.querySelector('app-progress-counts')!, card())).toBe(
-        true,
-      );
+      expect(after(el.querySelector('ui-stat-strip')!, card())).toBe(true);
       expect(card().closest('[uiTabPanel]')?.getAttribute('uiTabPanel')).toBe(
         'competency',
       );
@@ -357,7 +352,7 @@ describe('LearningProgress', () => {
       expect(view.classList).toContain('competency-view--large');
       expect(view.querySelector('ui-radar-chart')).not.toBeNull();
       expect(view.textContent).toContain(
-        'Tỷ lệ đúng trên mọi lượt thi đã chấm',
+        'Tỷ lệ điểm trên các lượt thi đã chấm',
       );
       expect(calls(learnerQuizEndpoints.myCompetency)).toHaveLength(1);
       expect(lastQuery(learnerQuizEndpoints.myCompetency)).toEqual({});
@@ -401,7 +396,10 @@ describe('LearningProgress', () => {
 
     it('is not shown to a learner without courses', async () => {
       await open('/progress', '000005', 'giangvien');
-      expect(card()).toBeNull();
+      expect(card()?.closest('[inert]') ?? null).not.toBeNull();
+      expect(
+        el.querySelector('[role="tabpanel"]:not([inert]) app-competency-view'),
+      ).toBeNull();
     });
   });
 
@@ -465,19 +463,19 @@ describe('LearningProgress', () => {
         ]),
       );
       await open('/progress?tab=history');
-      const items = Array.from(card().querySelectorAll('li a'));
+      const items = Array.from(card().querySelectorAll('tbody a'));
       expect(items.map((a) => a.getAttribute('href'))).toEqual([
         '/quiz/1/result/7',
         '/quiz/5/result/9',
       ]);
       const [failed, passed] = items.map((a) =>
-        a.textContent?.replace(/\s+/g, ' ').trim(),
+        a.closest('tr')?.textContent?.replace(/\s+/g, ' ').trim(),
       );
       expect(failed).toContain('Luyện tập');
       expect(failed).toContain('42,86% Chưa đạt');
-      expect(failed).not.toContain('tự nộp');
+      expect(failed).not.toContain('Tự nộp');
       expect(passed).toContain('Kiểm tra cuối khóa');
-      expect(passed).toContain('tự nộp');
+      expect(passed).toContain('Tự nộp');
       expect(passed).toContain('100% Đạt');
       expect(
         Array.from(card().querySelectorAll('.learning-progress__fail')).map(
@@ -508,7 +506,7 @@ describe('LearningProgress', () => {
       expect(card().textContent).toContain(
         'Bạn chưa có bài thi nào được chấm.',
       );
-      expect(card().querySelector('li')).toBeNull();
+      expect(card().querySelector('tbody tr')).toBeNull();
     });
 
     it('fails alone, with a retry, while the rest of the page stays', async () => {
@@ -531,7 +529,10 @@ describe('LearningProgress', () => {
 
     it('is not shown to a learner without courses', async () => {
       await open('/progress', '000005', 'giangvien');
-      expect(card()).toBeNull();
+      expect(card()?.closest('[inert]') ?? null).not.toBeNull();
+      expect(
+        el.querySelector('[role="tabpanel"]:not([inert]) #progress-history'),
+      ).toBeNull();
     });
   });
 
@@ -555,7 +556,8 @@ describe('LearningProgress', () => {
 
     it('sees no average or error and keeps the course list available', () => {
       expect(kpi('Điểm thi trung bình')).toBeUndefined();
-      expect(text()).not.toContain('Không tải được');
+      expect(text()).not.toContain('Không tải được số liệu');
+      expect(el.querySelector('ui-stat-strip ui-error-state')).toBeNull();
       expect(kpi('Tổng số khóa')).toBeTruthy();
       expect(rows().length).toBeGreaterThan(0);
     });
@@ -632,7 +634,9 @@ describe('LearningProgress', () => {
         a.textContent?.includes('Xem danh mục khóa học'),
       );
       expect(link?.getAttribute('href')).toBe('/catalog');
-      expect(el.querySelector('table')).toBeNull();
+      expect(
+        el.querySelector('[role="tabpanel"]:not([inert]) table'),
+      ).toBeNull();
       expect((button('Xuất CSV') as HTMLButtonElement).disabled).toBe(true);
     });
   });
@@ -694,7 +698,7 @@ describe('LearningProgress', () => {
       answer(learnerEndpoints.progressSummary, backendRefusal('internalError'));
       await open();
       expect(text()).toContain('Không tải được số liệu tiến độ');
-      expect(el.querySelector('.progress-counts')).toBeNull();
+      expect(el.querySelector('ui-stat-strip')).toBeNull();
     });
   });
 });

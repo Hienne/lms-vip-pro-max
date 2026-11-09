@@ -13,6 +13,7 @@ import {
   FmtPctPipe,
   PageHeader,
   Progress,
+  SectionCard,
   Skeleton,
   type BreadcrumbItem,
 } from '@lms/ui';
@@ -49,6 +50,7 @@ const ONE_DECIMAL = new Intl.NumberFormat('vi-VN', {
     RequiredMark,
     Progress,
     RouterLink,
+    SectionCard,
     Skeleton,
   ],
   providers: [CourseStore],

@@ -22,6 +22,8 @@
     "format:check": "prettier --check .",
     "check": "npm run format:check && nx run-many -t lint typecheck test build check-bundle",
     "ci:check": "nx affected -t lint typecheck build check-bundle",
+    "guard:design": "node tools/guard-design.mjs",
+    "guard:design:update": "node tools/guard-design.mjs --update",
     "ci:build": "nx build lms -c production && nx build lms -c staging",
     "graph": "nx graph",
     "check:bundle": "nx run lms:check-bundle"
@@ -74,8 +76,6 @@
     "@angular/platform-browser": "~22.2.0",
     "@angular/router": "~22.2.0",
     "@fontsource/be-vietnam-pro": "^5.3.0",
-    "@fontsource/fraunces": "^5.3.0",
-    "@fontsource/nunito-sans": "^5.3.0",
     "@lucide/angular": "^1.55.0",
     "@noble/hashes": "2.4.0",
     "pdfjs-dist": "6.4.299",

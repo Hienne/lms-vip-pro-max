@@ -1,19 +1,13 @@
 @use 'ui';
 
-.principles-section__card {
-  @include ui.stack(2);
-}
-
-.principles-section__icon {
-  display: grid;
-  place-items: center;
-  width: ui.layout(touch);
-  height: ui.layout(touch);
-  border-radius: ui.radius(md);
-  background: ui.color(primary-subtle);
-  color: ui.color(primary);
+.principles-section__list {
+  @include ui.stack(3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
 }
 
 .principles-section__text {
   @include ui.text(sm, secondary);
+  display: block;
 }

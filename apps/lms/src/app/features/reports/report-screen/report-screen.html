@@ -63,10 +63,10 @@
       />
       } } @else {
       <ui-field [label]="store.progress$() ? 'Ghi danh từ ngày' : 'Nộp từ ngày'"
-        ><input uiInput type="datetime-local" [formField]="filterForm.from"
+        ><ui-date-input kind="datetime" [formField]="filterForm.from"
       /></ui-field>
       <ui-field label="Đến trước ngày"
-        ><input uiInput type="datetime-local" [formField]="filterForm.to"
+        ><ui-date-input kind="datetime" [formField]="filterForm.to"
       /></ui-field>
       }
       <div class="row row--gap-2 report-screen__filter-actions">
@@ -160,55 +160,35 @@
 } @else if (store.progress$()) {
 <app-progress-report />
 } @else if (!store.dimension$()) {
-<section
-  uiCard
-  class="report-screen__metrics"
-  aria-labelledby="report-learning-title"
->
-  <div class="report-screen__part-heading">
-    <h2 id="report-learning-title">Tiến độ học</h2>
-  </div>
+<section class="report-screen__part" aria-labelledby="report-learning-title">
+  <h2 class="report-screen__part-title" id="report-learning-title">
+    Tiến độ học
+  </h2>
   @if (store.learningLoading$()) {
-  <p class="row report-screen__part-state" role="status">
-    <span uiSpinner></span>Đang tải tiến độ học…
-  </p>
+  <p class="row" role="status"><span uiSpinner></span>Đang tải tiến độ học…</p>
   } @else if (store.learningError$(); as error) {
   <ui-error-state [message]="error.message" (retry)="store.retryLearning()" />
   } @else if (store.learning$(); as counts) { @if (counts.enrollments) {
-  <dl>
-    <div>
-      <dt>Lượt học</dt>
-      <dd>{{counts.enrollments | fmtNum}}</dd>
-    </div>
-    <div>
-      <dt>Học viên</dt>
-      <dd>{{counts.learners | fmtNum}}</dd>
-    </div>
-    <div>
-      <dt>Hoàn thành</dt>
-      <dd>{{counts.completed | fmtNum}}</dd>
-    </div>
-    <div>
-      <dt>Đang học</dt>
-      <dd>{{counts.inProgress | fmtNum}}</dd>
-    </div>
-    <div>
-      <dt>Chưa bắt đầu</dt>
-      <dd>{{counts.notStarted | fmtNum}}</dd>
-    </div>
-    <div [class.report-screen__kpi--danger]="counts.overdue > 0">
-      <dt>Quá hạn</dt>
-      <dd>{{counts.overdue | fmtNum}}</dd>
-    </div>
-    <div>
-      <dt>Tỷ lệ hoàn thành</dt>
-      <dd>{{counts.completionRate | fmtPct:2}}</dd>
-    </div>
-    <div>
-      <dt>Tiến độ trung bình</dt>
-      <dd>{{counts.averageProgress | fmtPct:2}}</dd>
-    </div>
-  </dl>
+  <ui-stat-strip>
+    <ui-stat label="Lượt học" [value]="counts.enrollments | fmtNum" />
+    <ui-stat label="Học viên" [value]="counts.learners | fmtNum" />
+    <ui-stat label="Hoàn thành" [value]="counts.completed | fmtNum" />
+    <ui-stat label="Đang học" [value]="counts.inProgress | fmtNum" />
+    <ui-stat label="Chưa bắt đầu" [value]="counts.notStarted | fmtNum" />
+    <ui-stat
+      label="Quá hạn"
+      [value]="counts.overdue | fmtNum"
+      [tone]="counts.overdue > 0 ? 'danger' : 'default'"
+    />
+    <ui-stat
+      label="Tỷ lệ hoàn thành"
+      [value]="counts.completionRate | fmtPct: 2"
+    />
+    <ui-stat
+      label="Tiến độ trung bình"
+      [value]="counts.averageProgress | fmtPct: 2"
+    />
+  </ui-stat-strip>
   } @else {
   <ui-empty variant="inline" title="Chưa có lượt học trong phạm vi đã chọn" />
   }
@@ -223,36 +203,28 @@
 } @else if (store.examError$(); as error) {
 <ui-error-state [message]="error.message" (retry)="store.retry()" />
 } @else if (store.overview$(); as data) {
-<section
-  uiCard
-  aria-label="Chỉ số kết quả kiểm tra"
-  class="report-screen__metrics"
->
-  <dl>
-    <div>
-      <dt>Học viên đã thi</dt>
-      <dd>{{data.learners | fmtNum}}</dd>
-      <p>{{data.byQuiz.length | fmtNum}} bài kiểm tra có dữ liệu</p>
-    </div>
-    <div>
-      <dt>Tỷ lệ học viên đạt</dt>
-      <dd>{{data.passRate === null ? '—' : (data.passRate | fmtPct:1)}}</dd>
-      <p>{{data.passedLearners | fmtNum}} học viên đã đạt</p>
-    </div>
-    <div>
-      <dt>Điểm trung bình</dt>
-      <dd>
-        {{data.averageScore === null ? '—' : (data.averageScore | fmtPct:1)}}
-      </dd>
-      <p>Tính trên các lượt đã chấm</p>
-    </div>
-    <div>
-      <dt>Lượt đã chấm</dt>
-      <dd>{{data.gradedAttempts | fmtNum}}</dd>
-      <p>{{data.inProgressAttempts | fmtNum}} lượt đang làm</p>
-    </div>
-  </dl>
-</section>
+<ui-stat-strip aria-label="Chỉ số kết quả kiểm tra">
+  <ui-stat
+    label="Học viên đã thi"
+    [value]="data.learners | fmtNum"
+    [note]="(data.byQuiz.length | fmtNum) + ' bài kiểm tra có dữ liệu'"
+  />
+  <ui-stat
+    label="Tỷ lệ học viên đạt"
+    [value]="data.passRate === null ? '—' : (data.passRate | fmtPct: 1)"
+    [note]="(data.passedLearners | fmtNum) + ' học viên đã đạt'"
+  />
+  <ui-stat
+    label="Điểm trung bình"
+    [value]="data.averageScore === null ? '—' : (data.averageScore | fmtPct: 1)"
+    note="Tính trên các lượt đã chấm"
+  />
+  <ui-stat
+    label="Lượt đã chấm"
+    [value]="data.gradedAttempts | fmtNum"
+    [note]="(data.inProgressAttempts | fmtNum) + ' lượt đang làm'"
+  />
+</ui-stat-strip>
 <div class="report-screen__analytics">
   <section
     uiCard

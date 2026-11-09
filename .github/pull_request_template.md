@@ -5,6 +5,8 @@
 ## Checks
 
 - [ ] `npm run check` is green (format, lint, typecheck, tests, build)
+- [ ] `npm run guard:design` passes and `design-drift.baseline.json` only went down (or is unchanged)
+- [ ] UI change: screenshots attached at 1280 and 375 px, light and dark, beside the screen it copies the structure of (`/progress` for a new screen)
 - [ ] angular.md §14 checklist passes ([docs/conventions/angular.md](../docs/conventions/angular.md))
 - [ ] Converted screen or UI piece: verify step in [docs/migration/mockup-to-angular.md](../docs/migration/mockup-to-angular.md) done, and each verify check ticked in the registry was actually performed
   - [ ] Side by side with the mockup at 375, 768 and 1280 px, light and dark

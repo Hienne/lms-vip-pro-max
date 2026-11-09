@@ -20,6 +20,7 @@ import {
   LinkButton,
   Spinner,
   Stepper,
+  PageHeader,
 } from '@lms/ui';
 import type { HasUnsavedChanges } from '../../../core/routing/unsaved-changes.guard';
 import { BottomBar } from '../../../layout/shell-insets';
@@ -56,6 +57,7 @@ const fingerprint = (value: CourseDraftValue) =>
 @Component({
   selector: 'app-course-editor',
   imports: [
+    PageHeader,
     Alert,
     AlertAction,
     BottomBar,

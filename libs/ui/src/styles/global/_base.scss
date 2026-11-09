@@ -16,8 +16,6 @@
   body {
     min-height: 100vh;
     background-color: ui.color(bg);
-    background-image: ui.texture(page);
-    background-size: ui.texture(page-size);
     color: ui.color(text);
     font-family: ui.font(sans);
     font-size: ui.text-size(md);
@@ -44,7 +42,7 @@
   }
   h1 {
     font-size: ui.text-size(2xl);
-    font-weight: ui.weight(display);
+    font-weight: ui.weight(semibold);
     letter-spacing: ui.tracking(display);
   }
   h2 {
@@ -95,6 +93,12 @@
   // Focus: always visible, never removed.
   :focus-visible {
     @include ui.focus-ring;
+  }
+
+  // A heading or the page body the app focuses by script after navigation (`tabindex="-1"`) is a
+  // target for screen readers, not a control: it gets no ring. Keyboard focus elsewhere keeps it.
+  :is(h1, h2, h3, h4, h5, h6, main)[tabindex='-1']:focus-visible {
+    outline: none;
   }
 
   // Reduced motion: no animation or transition at all.

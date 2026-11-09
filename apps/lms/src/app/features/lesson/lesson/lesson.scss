@@ -106,7 +106,7 @@
     }
 
     @include ui.bp(lg) {
-      grid-template-columns: minmax(0, 1fr) 20rem;
+      grid-template-columns: minmax(0, 1fr) 22.5rem;
     }
 
     &--focus {
@@ -116,9 +116,11 @@
     }
   }
 
+  // A comfortable reading measure: the column stops growing on a wide screen.
   &__main {
     @include ui.stack(5);
     min-width: 0;
+    max-width: 56rem;
   }
 
   // The compact block picker: below `lg`, and in focus mode, where "Mục lục" (which lists the
@@ -135,21 +137,6 @@
     @include ui.bp(lg) {
       display: block;
     }
-  }
-
-  &__head {
-    @include ui.stack(1);
-  }
-
-  &__title {
-    margin: 0;
-    font-size: ui.text-size(xl);
-  }
-
-  &__meta {
-    @include ui.text(sm, muted);
-    @include ui.num;
-    margin: 0;
   }
 
   &__block {

@@ -43,7 +43,7 @@
   }
 
   &__brand-name {
-    font-weight: ui.weight(bold);
+    font-weight: ui.weight(semibold);
     line-height: ui.leading(tight);
   }
 
@@ -60,7 +60,7 @@
     gap: ui.space(2);
     margin: 0 ui.space(4) ui.space(3);
     padding: ui.space(2) ui.space(3);
-    border-radius: ui.radius(sm);
+    border-radius: ui.radius(field);
     background: ui.color(nav-hover);
     color: ui.color(nav-muted);
 
@@ -130,7 +130,7 @@
     gap: ui.space(3);
     min-height: ui.layout(touch);
     padding: 0 ui.space(3);
-    border-radius: ui.radius(sm);
+    border-radius: ui.radius(field);
     color: ui.color(nav-text);
     font-weight: ui.weight(medium);
     text-decoration: none;
@@ -209,7 +209,7 @@
     margin-left: auto;
     padding: 0;
     border: 0;
-    border-radius: ui.radius(sm);
+    border-radius: ui.radius(field);
     background: transparent;
     color: ui.color(nav-muted);
     cursor: pointer;

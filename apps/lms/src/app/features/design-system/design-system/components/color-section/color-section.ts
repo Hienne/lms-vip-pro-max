@@ -24,10 +24,9 @@ export class ColorSection {
 
   constructor() {
     afterRenderEffect(() => {
-      // Read again whenever the effective theme or the palette changes: the tokens change value
+      // Read again whenever the effective theme changes: the tokens change value
       // with them.
       this.theme.effective$();
-      this.theme.palette$();
       untracked(() => this.readTokens());
     });
   }

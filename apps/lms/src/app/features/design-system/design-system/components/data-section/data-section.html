@@ -61,6 +61,83 @@
     </app-ds-demo>
   </div>
 
+  <app-ds-demo label="Số liệu: ui-stat-strip" [needs]="['card']">
+    <div class="data-section__stack">
+      <ui-stat-strip aria-label="Số khóa học mẫu">
+        <ui-stat label="Khóa học được giao" value="6" link="/design-system">
+          <span slot="note">4 bắt buộc · 1 quá hạn</span>
+        </ui-stat>
+        <ui-stat
+          label="Tỷ lệ hoàn thành"
+          value="78"
+          unit="%"
+          note="7/9 khóa đã xong"
+        />
+        <ui-stat label="Đang quá hạn" value="1" tone="danger" />
+        <ui-stat
+          label="Điểm cao nhất"
+          value="90"
+          unit="%"
+          note="Đạt 3/5 bài kiểm tra"
+        />
+      </ui-stat-strip>
+      <p class="data-section__note">
+        Một thẻ chia ô bằng đường kẻ 1px; hai cột trên điện thoại, một hàng từ
+        720px. Không icon, không ô tô màu. Màu đỏ chỉ cho số quá hạn hoặc chưa
+        đạt.
+      </p>
+    </div>
+  </app-ds-demo>
+
+  <div class="grid-2">
+    <app-ds-demo label="Thẻ có tiêu đề: ui-section-card" [needs]="['card']">
+      <ui-section-card title="Khóa học của tôi">
+        <a slot="action" routerLink="[]" fragment="ds-data">Xem tất cả</a>
+        <p class="data-section__note">
+          Nội dung có đệm; dùng cho form, đoạn văn, ô trạng thái.
+        </p>
+      </ui-section-card>
+    </app-ds-demo>
+
+    <app-ds-demo
+      label="Dòng danh sách: ui-list-row"
+      [needs]="['card', 'list', 'icon']"
+    >
+      <ui-section-card title="Hạn hoàn thành" flush>
+        <ul uiList>
+          <li>
+            <ui-list-row
+              link="/design-system"
+              icon="triangle-alert"
+              tone="danger"
+              title="Quy trình quản lý thay đổi"
+              subtitle="Quá hạn 2 ngày"
+              value="40%"
+            />
+          </li>
+          <li>
+            <ui-list-row
+              link="/design-system"
+              icon="calendar"
+              title="Vận hành cuối ngày (EOD/COB)"
+              subtitle="Còn 6 ngày"
+              value="23%"
+            />
+          </li>
+          <li>
+            <ui-list-row
+              link="/design-system"
+              icon="bookmark"
+              title="Ghi chú &amp; đánh dấu"
+              subtitle="Mở đúng trang / mốc video"
+              chevron
+            />
+          </li>
+        </ul>
+      </ui-section-card>
+    </app-ds-demo>
+  </div>
+
   <app-ds-demo
     label="Bảng: native table trong card, responsive dưới 720px"
     [needs]="['table', 'progress-ring', 'card', 'badge-chip']"
@@ -104,6 +181,42 @@
                   >{{ row.status }}</span
                 >
               </td>
+            </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </app-ds-demo>
+
+  <app-ds-demo
+    label="Bảng: uiTableCell nowrap · numeric, uiTableCol width, uiTable fixed"
+    [needs]="['table', 'card']"
+  >
+    <section uiCard>
+      <div uiTableWrap>
+        <table uiTable fixed>
+          <caption class="sr-only">
+            Bảng mẫu với cột cố định
+          </caption>
+          <colgroup>
+            <col />
+            <col uiTableCol width="8rem" />
+            <col uiTableCol width="9rem" />
+          </colgroup>
+          <thead>
+            <tr>
+              <th scope="col">Khóa học</th>
+              <th scope="col" uiTableCell numeric>Điểm cao nhất</th>
+              <th scope="col" uiTableCell nowrap>Hạn hoàn thành</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (row of rows; track row.code) {
+            <tr>
+              <td>{{ row.title }}</td>
+              <td uiTableCell numeric>{{ row.pct }}%</td>
+              <td uiTableCell nowrap>05/03/2026</td>
             </tr>
             }
           </tbody>

@@ -16,7 +16,6 @@ import {
   FmtDatePipe,
   FmtDatetimePipe,
   Icon,
-  Input,
   PageHeader,
   Select,
   Spinner,
@@ -24,6 +23,7 @@ import {
   TablePrimary,
   TableWrap,
   type BarDatum,
+  DateInput,
 } from '@lms/ui';
 import { z } from 'zod';
 import { GamificationImpactStore } from './data-access/gamification-impact.store';
@@ -62,6 +62,7 @@ const filterSchema = z
 @Component({
   selector: 'app-gamification-impact',
   imports: [
+    DateInput,
     BarChart,
     Button,
     Card,
@@ -73,7 +74,6 @@ const filterSchema = z
     FormField,
     FormRoot,
     Icon,
-    Input,
     PageHeader,
     Select,
     Spinner,

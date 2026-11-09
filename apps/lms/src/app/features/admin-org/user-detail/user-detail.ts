@@ -22,6 +22,7 @@ import {
   TableSub,
   TableWrap,
   Tabs,
+  PageHeader,
 } from '@lms/ui';
 import { DueDate } from '../../../shared/course/due-date';
 import { AccountStatus } from '../../../shared/status/account-status';
@@ -41,6 +42,7 @@ import { XpAdjustForm } from './components/xp-adjust-form/xp-adjust-form';
 @Component({
   selector: 'app-user-detail',
   imports: [
+    PageHeader,
     AccountStatus,
     Avatar,
     Badge,

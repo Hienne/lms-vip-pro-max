@@ -62,6 +62,14 @@ matching doc before starting the work it covers:
   token maps through the `ui` Sass module (`ui.color(primary)`, `ui.space(3)`):
   an unknown key fails the build and a colour literal outside the token source
   fails the guard spec.
+- **Look from `@lms/ui`, layout in the feature.** A feature stylesheet arranges (grid, gap,
+  width); shape, shadow, font, small print and fills come from the atoms and organisms. Every page
+  title is `ui-page-header`. A new screen copies the structure of `/progress`
+  (`features/achievements/progress`), not of an older neighbour. A new screen uses `ui-section-card`
+  (titled panels), `ui-stat-strip` + `ui-stat` (figure rows), `ui-list-row` in `ul[uiList]` (link
+  lists) and `uiTableCell` / `uiTableCol` (tables that do not wrap), never a hand-styled card header,
+  figure row or list row (ui-library.md → Screen building blocks). `npm run guard:design` enforces
+  this (visual-design.md → Drift guard) and runs in CI.
 - **Designed, not generated.** Nothing that
   `docs/conventions/visual-design.md` lists: no eyebrows, icon tiles, heroes,
   gradients, coloured edge stripes, badge soup, or status colours used for
@@ -74,7 +82,8 @@ matching doc before starting the work it covers:
 
 ## Done
 
-A task is done when `npm run check` is green, the
+A task is done when `npm run check` is green, `npm run guard:design` passes without raising the
+drift baseline, the
 angular.md §14 checklist passes, any UI change contains nothing that
 `docs/conventions/visual-design.md` lists, and any converted screen passes the verify
 step in `docs/migration/mockup-to-angular.md`. Report what was verified and how.

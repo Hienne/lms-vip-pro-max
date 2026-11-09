@@ -60,34 +60,6 @@
     padding-block: ui.space(2);
   }
 
-  &__state {
-    display: grid;
-    flex: none;
-    place-items: center;
-    width: 1.25rem;
-    height: 1.25rem;
-    border: 1.5px solid ui.color(border-strong);
-    border-radius: ui.radius(full);
-
-    &--done {
-      border-color: ui.color(success);
-      background: ui.color(success);
-      color: ui.color(on-primary);
-    }
-
-    &--current {
-      border-color: ui.color(primary);
-
-      &::after {
-        content: '';
-        width: 0.5rem;
-        height: 0.5rem;
-        border-radius: ui.radius(full);
-        background: ui.color(primary);
-      }
-    }
-  }
-
   &__sr {
     @include ui.sr-only;
   }

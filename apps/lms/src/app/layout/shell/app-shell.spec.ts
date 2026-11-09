@@ -136,7 +136,10 @@ describe('AppShell', () => {
         '/profile',
         '/learn',
         '/progress',
+        '/leaderboard',
         '/quiz',
+        '/saved',
+        '/certificates',
         '/knowledge',
         '/assistant',
         '/issues',
@@ -153,16 +156,19 @@ describe('AppShell', () => {
         '/profile',
         '/learn',
         '/progress',
+        '/leaderboard',
         '/quiz',
+        '/saved',
+        '/certificates',
+        '/knowledge',
+        '/assistant',
+        '/issues',
         '/admin/courses',
         '/admin/catalog',
         '/admin/lessons',
         '/admin/questions',
         '/admin/quizzes',
         '/reports',
-        '/knowledge',
-        '/assistant',
-        '/issues',
         '/community/questions',
         '/community/articles',
         '/community/reviews',
@@ -478,7 +484,7 @@ describe('AppShell', () => {
       const el = await open('/learn');
       toggle(el)?.click();
       TestBed.tick();
-      expect(hrefs(el)).toHaveLength(11);
+      expect(hrefs(el)).toHaveLength(14);
       expect(
         el.querySelector('nav a[href="/progress"]')?.textContent?.trim(),
       ).toBe('Tiến độ học tập');
@@ -523,7 +529,7 @@ describe('AppShell', () => {
       expect(button?.getAttribute('aria-expanded')).toBe('false');
 
       await openDrawer(el);
-      expect(dialog()?.querySelectorAll('nav a')).toHaveLength(11);
+      expect(dialog()?.querySelectorAll('nav a')).toHaveLength(14);
       expect(dialog()?.querySelector('.sidebar__toggle')).toBeNull();
       expect(button?.getAttribute('aria-expanded')).toBe('true');
     });
@@ -742,10 +748,11 @@ describe('AppShell', () => {
         await fixture.whenStable();
         TestBed.tick();
       };
-      await go('/flashcards');
-      const flashcardHeading = root.querySelector('main h1');
-      expect(flashcardHeading?.textContent).toContain('Flashcard ôn tập');
-      expect(document.activeElement).toBe(flashcardHeading);
+      // Two pages that load nothing, so the test waits on no request.
+      await go('/not-a-page');
+      const notFoundHeading = root.querySelector('main h1');
+      expect(notFoundHeading?.textContent).toContain('Không tìm thấy trang');
+      expect(document.activeElement).toBe(notFoundHeading);
       await go('/403');
       const h1 = root.querySelector('main h1');
       expect(h1).not.toBeNull();

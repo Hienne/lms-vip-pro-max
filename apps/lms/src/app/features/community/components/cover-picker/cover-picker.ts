@@ -10,8 +10,6 @@ import { ContentThumbnail } from '../content-thumbnail/content-thumbnail';
   styleUrl: './cover-picker.scss',
 })
 export class CoverPicker {
-  readonly kind = input('article');
-  readonly contentId = input<number>(0);
   readonly revisionAssetId = input<number | null>();
   readonly preview = input<string>();
   readonly hasCover = input(false);

@@ -59,7 +59,7 @@
 
   blockquote {
     padding: ui.space(3) ui.space(4);
-    border-radius: ui.radius(md);
+    border-radius: ui.radius(control);
     background: ui.color(surface-2);
     color: ui.color(text-secondary);
   }
@@ -73,7 +73,7 @@
   code {
     @include ui.mono;
     padding: 0 ui.space(1);
-    border-radius: ui.radius(sm);
+    border-radius: ui.radius(field);
     background: ui.color(surface-2);
   }
 
@@ -81,7 +81,7 @@
     overflow-x: auto;
     padding: ui.space(3) ui.space(4);
     border: 1px solid ui.color(border);
-    border-radius: ui.radius(md);
+    border-radius: ui.radius(control);
     background: ui.color(surface-2);
 
     code {

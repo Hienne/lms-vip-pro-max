@@ -31,10 +31,9 @@ import { RESOLUTION_LABELS } from '../../data-access/community-labels';
 export class ContentRow {
   readonly card = input.required<ContentCard>();
 
-  protected readonly hasThumbnail = computed(() =>
-    ['question', 'article', 'lesson_learned', 'architecture_review'].includes(
-      this.card().kind,
-    ),
+  // A cover shows only when the author uploaded one; otherwise the row has no image column.
+  protected readonly hasThumbnail = computed(
+    () => this.card().coverRevisionAssetId != null,
   );
   protected readonly isQuestion = computed(
     () => this.card().kind === 'question',

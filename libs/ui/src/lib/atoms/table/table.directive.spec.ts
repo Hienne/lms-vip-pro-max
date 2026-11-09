@@ -1,6 +1,8 @@
 import { Component, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { Table } from './table.directive';
+import { TableCell } from './table-cell.directive';
+import { TableCol } from './table-col.directive';
 import { TableWrap } from './table-wrap.directive';
 
 @Component({
@@ -68,5 +70,54 @@ describe('Table', () => {
     host.responsive.set(true);
     fixture.detectChanges();
     expect(table.classList.contains('table--responsive')).toBe(true);
+  });
+});
+
+@Component({
+  imports: [Table, TableCell, TableCol],
+  template: `
+    <table uiTable fixed>
+      <colgroup>
+        <col uiTableCol width="30%" />
+        <col />
+      </colgroup>
+      <tbody>
+        <tr>
+          <td uiTableCell nowrap>05/03/2026</td>
+          <td uiTableCell numeric>82</td>
+          <td uiTableCell>Tổng quan</td>
+        </tr>
+      </tbody>
+    </table>
+  `,
+})
+class HelpersHost {}
+
+describe('Table helpers', () => {
+  function renderHelpers() {
+    const fixture = TestBed.createComponent(HelpersHost);
+    fixture.detectChanges();
+    const root = fixture.nativeElement as HTMLElement;
+    return {
+      table: root.querySelector('table')!,
+      cells: root.querySelectorAll('td'),
+      col: root.querySelector('col')!,
+    };
+  }
+
+  it('fixes the layout and sets a column width from a CSS variable', () => {
+    const { table, col } = renderHelpers();
+    expect(table.classList.contains('table--fixed')).toBe(true);
+    expect(col.classList.contains('table__col')).toBe(true);
+    expect(col.style.getPropertyValue('--table-col-width')).toBe('30%');
+  });
+
+  it('keeps a nowrap cell on one line and right-aligns a numeric one, which never wraps', () => {
+    const { cells } = renderHelpers();
+    expect(cells[0].classList.contains('table__cell--nowrap')).toBe(true);
+    expect(cells[0].classList.contains('table__cell--numeric')).toBe(false);
+    expect(cells[1].classList.contains('table__cell--numeric')).toBe(true);
+    expect(cells[1].classList.contains('table__cell--nowrap')).toBe(true);
+    expect(cells[2].className).toBe('');
   });
 });

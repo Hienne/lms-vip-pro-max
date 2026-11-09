@@ -12,7 +12,7 @@ const SPACING_STEPS = [1, 2, 3, 4, 6, 8, 12].map((step) => ({
   bar: `step__bar--${step}`,
 }));
 
-const RADII = ['sm', 'md', 'lg', 'xl'].map((name) => ({
+const RADII = ['field', 'control', 'card', 'full'].map((name) => ({
   name,
   modifier: `radius-sample--${name}`,
 }));

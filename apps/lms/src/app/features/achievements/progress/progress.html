@@ -28,10 +28,20 @@
   class="learning-progress__kpis-placeholder"
 ></div>
 } @else { @if (store.summary$(); as summary) {
-<app-progress-counts
-  [counts]="summary.counts"
-  [averageScore]="store.averageScore$()"
-/>
+<ui-stat-strip aria-label="Số khóa học">
+  @for (stat of countStats(); track stat.label) {
+  <ui-stat
+    [label]="stat.label"
+    [value]="stat.value"
+    [tone]="stat.danger ? 'danger' : 'default'"
+  />
+  } @let average = store.averageScore$(); @if (average !== undefined) {
+  <ui-stat
+    label="Điểm thi trung bình"
+    [value]="average === null ? '—' : (average | fmtPct: 2)"
+  />
+  }
+</ui-stat-strip>
 <app-unavailable-note class="learning-progress__note" [summary]="summary" />
 } @if (store.isEmpty$() && store.tab$() === 'courses') {
 <ui-empty
@@ -190,18 +200,20 @@
           Tiến độ từng khóa học
         </caption>
         <colgroup>
-          <col class="learning-progress__col-course" />
-          <col class="learning-progress__col-progress" />
-          <col class="learning-progress__col-score" />
-          <col class="learning-progress__col-status" />
-          <col class="learning-progress__col-date" />
-          <col class="learning-progress__col-date" />
+          <col uiTableCol width="100%" />
+          <col uiTableCol width="8rem" />
+          <col />
+          <col />
+          <col />
+          <col />
         </colgroup>
         <thead>
           <tr>
             @for (column of columns; track column.key) {
             <th
               scope="col"
+              uiTableCell
+              [numeric]="column.numeric === true"
               [attr.aria-sort]="
                 store.sort$().key === column.key
                   ? (store.sort$().dir === 'asc' ? 'ascending' : 'descending')
@@ -230,7 +242,7 @@
             class="learning-progress__course-row"
             [class.is-selected]="row.expanded"
           >
-            <td data-label="Khóa học">
+            <td data-label="Khóa học" class="learning-progress__course-cell">
               <div class="learning-progress__course">
                 <button
                   uiIconButton
@@ -259,7 +271,7 @@
                 </div>
               </div>
             </td>
-            <td data-label="Tiến độ học">
+            <td data-label="Tiến độ học" uiTableCell nowrap>
               <div class="learning-progress__progress">
                 <div class="learning-progress__pct">
                   <span class="learning-progress__num">{{ row.pct }}%</span>
@@ -269,28 +281,32 @@
                     [label]="'Tiến độ ' + row.title"
                   />
                 </div>
-                <span class="learning-progress__muted">
-                  {{ row.requiredDone }} bài bắt buộc hoàn thành
-                </span>
+                <span
+                  class="learning-progress__muted"
+                  title="{{ row.requiredDone }} bài bắt buộc hoàn thành"
+                  >{{ row.requiredDone }}<span class="sr-only">
+                    bài bắt buộc hoàn thành</span
+                  ></span
+                >
               </div>
             </td>
-            <td data-label="Điểm thi cao nhất">
+            <td data-label="Điểm thi cao nhất" uiTableCell numeric>
               @if (row.bestScore !== null) { {{ row.bestScore | fmtPct: 2 }} }
               @else { Chưa có điểm }
             </td>
-            <td data-label="Trạng thái">
+            <td data-label="Trạng thái" uiTableCell nowrap>
               <app-course-status
                 dot
                 [status]="row.status"
                 [overdue]="row.overdue"
               />
             </td>
-            <td data-label="Hạn hoàn thành">
+            <td data-label="Hạn hoàn thành" uiTableCell nowrap>
               <span [class.learning-progress__fail]="row.overdue">
                 {{ row.card.dueAt | fmtDate }}
               </span>
             </td>
-            <td data-label="Truy cập gần nhất">
+            <td data-label="Truy cập gần nhất" uiTableCell nowrap>
               {{ row.card.lastAccessAt | fmtRelative }}
             </td>
           </tr>
@@ -343,7 +359,7 @@
     />
     } @else {
     <p class="learning-progress__muted">Không có khóa học phù hợp bộ lọc.</p>
-    }
+    } @if (!store.isEmpty$()) {
     <div class="learning-progress__overview-grid">
       <section
         class="learning-progress__competency-summary"
@@ -430,6 +446,7 @@
         </div>
       </section>
     </div>
+    }
   </section>
   <div
     uiTabPanel="competency"
@@ -567,7 +584,8 @@
       </div>
       } @else {
       <p class="learning-progress__muted">
-        Không có lượt thi phù hợp với bộ lọc.
+        {{ store.historyHasFilters$() ? 'Không có lượt thi phù hợp với bộ lọc.'
+        : 'Bạn chưa có bài thi nào được chấm.' }}
       </p>
       }
       <ui-pagination

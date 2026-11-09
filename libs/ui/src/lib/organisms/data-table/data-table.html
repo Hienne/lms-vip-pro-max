@@ -2,15 +2,31 @@
 <ng-content select="[slot=empty]" />
 } @else {
 <div uiTableWrap>
-  <table uiTable responsive>
+  <table
+    uiTable
+    responsive
+    [fixed]="fixed()"
+    [style.--table-min-width]="minWidth()"
+  >
     <caption class="sr-only">
       {{ caption() }}
     </caption>
+    @if (fixed()) {
+    <colgroup>
+      @for (column of columns(); track column.key) { @if (column.width) {
+      <col uiTableCol [width]="column.width" />
+      } @else {
+      <col />
+      } }
+    </colgroup>
+    }
     <thead>
       <tr>
         @for (column of columns(); track column.key) {
         <th
           scope="col"
+          uiTableCell
+          [nowrap]="column.nowrap === true"
           [class.col-actions]="column.kind === 'actions'"
           [attr.aria-sort]="ariaSort(column.key)"
         >
@@ -36,6 +52,8 @@
       <tr>
         @for (column of columns(); track column.key) {
         <td
+          uiTableCell
+          [nowrap]="column.nowrap === true"
           [class.col-actions]="column.kind === 'actions'"
           [attr.data-label]="column.label"
         >

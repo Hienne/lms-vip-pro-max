@@ -356,7 +356,7 @@ describe('assessment report integration', () => {
     expect(element.textContent).toContain('Chưa có điểm đã chấm');
     expect(element.querySelector('ui-donut-chart')).toBeNull();
     expect(
-      [...element.querySelectorAll('.report-screen__metrics dd')].filter(
+      [...element.querySelectorAll('ui-stat-strip .stat__value')].filter(
         (el) => el.textContent?.trim() === '—',
       ),
     ).toHaveLength(2);

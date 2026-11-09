@@ -19,7 +19,8 @@ concurrency:
 env:
   NX_NO_CLOUD: true
   IMAGE: ghcr.io/hienne/lms-vip-pro-max
-  # Set to 'false' to restore the Prettier gate. Unit tests do not run in CI.
+  # Set to 'false' to restore the Prettier gate. Unit tests do not run in CI, except the design
+  # guards (npm run guard:design).
   SKIP_FORMAT_CHECK: 'true'
 
 jobs:
@@ -56,6 +57,10 @@ jobs:
 
       - name: Check affected projects (lint, typecheck, build, bundle guard)
         run: npm run ci:check
+
+      # The only specs CI runs: the visual-design guards, so no pull request can add drift.
+      - name: Design guards (template scan, drift ratchet)
+        run: npm run guard:design
 
   # Runs alongside `check`: the image build is self-contained (own npm ci and
   # build), and nothing is deployed until `deploy` sees both jobs green.

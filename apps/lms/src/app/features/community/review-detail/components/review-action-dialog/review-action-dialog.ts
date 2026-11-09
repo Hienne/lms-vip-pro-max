@@ -7,7 +7,7 @@ import {
   maxLength,
   validate,
 } from '@angular/forms/signals';
-import { Button, Field, Input, Textarea } from '@lms/ui';
+import { Button, Field, Textarea, DateInput } from '@lms/ui';
 import type { Observable } from 'rxjs';
 
 export type ReviewAction =
@@ -50,7 +50,7 @@ const COPY = {
 
 @Component({
   selector: 'app-review-action-dialog',
-  imports: [Button, Field, Input, Textarea, FormField, FormRoot],
+  imports: [DateInput, Button, Field, Textarea, FormField, FormRoot],
   templateUrl: './review-action-dialog.html',
   styleUrl: './review-action-dialog.scss',
 })

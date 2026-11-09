@@ -16,6 +16,9 @@ import { FakeHasher } from '../../data-access/fake-hasher.testing';
 import { dateInput } from '../../data-access/publish-targets';
 
 /** Step 4 of the editor: who the course is assigned to and shared with, as it is published. */
+/** The date box shows dd/mm/yyyy; the model keeps yyyy-mm-dd. */
+const vn = (iso: string) => iso.split('-').reverse().join('/');
+
 describe('CourseReview step 4: assignment rows and shares', () => {
   const screen = setUpAdminScreen([
     { provide: Sha256Hasher, useValue: new FakeHasher() },
@@ -122,7 +125,7 @@ describe('CourseReview step 4: assignment rows and shares', () => {
 
       expect(rows()).toHaveLength(1);
       expect(screen.text(rows()[0])).toContain('và đơn vị cấp dưới');
-      expect(rowInputs('Bắt đầu')[0].value).toBe(today());
+      expect(rowInputs('Bắt đầu')[0].value).toBe(vn(today()));
       expect(rowInputs('Hạn hoàn thành')[0].value).toBe('');
       expect(screen.text()).not.toContain('Chưa thêm đối tượng');
 
@@ -141,8 +144,8 @@ describe('CourseReview step 4: assignment rows and shares', () => {
     it('names the line whose due date is before the start, and sends nothing', async () => {
       await openStep4();
       await addUnitRow();
-      await screen.type(rowInputs('Bắt đầu')[0], '2026-11-10');
-      await screen.type(rowInputs('Hạn hoàn thành')[0], '2026-11-01');
+      await screen.type(rowInputs('Bắt đầu')[0], vn('2026-11-10'));
+      await screen.type(rowInputs('Hạn hoàn thành')[0], vn('2026-11-01'));
 
       expect(screen.text(rows()[0])).toContain(
         'Dòng 1: hạn phải sau ngày bắt đầu.',
@@ -151,7 +154,7 @@ describe('CourseReview step 4: assignment rows and shares', () => {
       expect(screen.alertDialog()).toBeNull();
       expect(screen.callsTo(courseEndpoints.publish)).toBe(0);
 
-      await screen.type(rowInputs('Hạn hoàn thành')[0], '2026-11-30');
+      await screen.type(rowInputs('Hạn hoàn thành')[0], vn('2026-11-30'));
       expect(screen.text(rows()[0])).not.toContain('Dòng 1');
     });
   });
@@ -200,7 +203,7 @@ describe('CourseReview step 4: assignment rows and shares', () => {
       expect(toggle.checked).toBe(true);
       expect(screen.text()).toContain('Tự động nhắc học viên trước hạn 3 ngày');
       await addUnitRow();
-      await screen.type(rowInputs('Hạn hoàn thành')[0], '2099-01-01');
+      await screen.type(rowInputs('Hạn hoàn thành')[0], vn('2099-01-01'));
       await publish();
       expect(screen.lastCall(courseEndpoints.publish)?.body).toMatchObject({
         assignments: [{ reminderEnabled: true, reminderDaysBefore: 3 }],
@@ -210,7 +213,7 @@ describe('CourseReview step 4: assignment rows and shares', () => {
     it('can be turned off', async () => {
       await openStep4();
       await addUnitRow();
-      await screen.type(rowInputs('Hạn hoàn thành')[0], '2099-01-01');
+      await screen.type(rowInputs('Hạn hoàn thành')[0], vn('2099-01-01'));
       await screen.click(
         screen.el.querySelector<HTMLElement>('.assign-rows__toggle input')!,
       );
@@ -286,8 +289,8 @@ describe('CourseReview step 4: assignment rows and shares', () => {
       );
       await openStep4();
       await addUnitRow();
-      await screen.type(rowInputs('Bắt đầu')[0], '2099-01-01');
-      await screen.type(rowInputs('Hạn hoàn thành')[0], '2099-02-01');
+      await screen.type(rowInputs('Bắt đầu')[0], vn('2099-01-01'));
+      await screen.type(rowInputs('Hạn hoàn thành')[0], vn('2099-02-01'));
       await screen.click(
         screen.el.querySelectorAll<HTMLInputElement>(
           '.share-units__unit input',
@@ -383,7 +386,7 @@ describe('CourseReview step 4: assignment rows and shares', () => {
       expect(screen.url()).toBe('/admin/courses/6/edit');
 
       // Changing the row takes its mark off; the rows are still there to send again.
-      await screen.type(rowInputs('Hạn hoàn thành')[1], '2099-03-01');
+      await screen.type(rowInputs('Hạn hoàn thành')[1], vn('2099-03-01'));
       expect(screen.text(rows()[1])).not.toContain('Đối tượng giao không có');
       expect(rows()).toHaveLength(2);
     });

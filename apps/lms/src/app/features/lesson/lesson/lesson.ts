@@ -15,6 +15,7 @@ import {
   Skeleton,
   TabPanel,
   Tabs,
+  PageHeader,
 } from '@lms/ui';
 import { QuizCard } from '../../../shared/quiz/quiz-card/quiz-card';
 import { AttachmentBlock } from './components/attachment-block/attachment-block';
@@ -34,6 +35,7 @@ import { LessonStore } from './data-access/lesson.store';
 @Component({
   selector: 'app-lesson',
   imports: [
+    PageHeader,
     AttachmentBlock,
     BlockList,
     Button,

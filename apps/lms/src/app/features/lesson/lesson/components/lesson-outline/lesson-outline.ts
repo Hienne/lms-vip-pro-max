@@ -8,12 +8,13 @@ import {
   viewChild,
 } from '@angular/core';
 import { Router } from '@angular/router';
-import { Icon, Tree, type IconName, type TreeNode } from '@lms/ui';
+import { Tree, type IconName, type TreeNode } from '@lms/ui';
 import type {
   BlockView,
   OutlineChapter,
   ProgressState,
 } from '../../data-access/lesson.store';
+import { LessonStatus } from '../../../../../shared/course/lesson-status';
 import { BLOCK_TYPE_LABEL } from '../block-list/block-list';
 
 /** What a tree row carries beyond its label: where it leads, its state and a small note. */
@@ -22,7 +23,6 @@ export interface OutlineNodeData {
   readonly state?: ProgressState;
   readonly link?: string;
   readonly blockId?: number;
-  readonly note?: string;
 }
 
 const BLOCK_ICON: Record<string, IconName> = {
@@ -40,7 +40,7 @@ const FINAL_ID = 'final';
  */
 @Component({
   selector: 'app-lesson-outline',
-  imports: [Icon, Tree],
+  imports: [LessonStatus, Tree],
   templateUrl: './lesson-outline.html',
   styleUrl: './lesson-outline.scss',
 })
@@ -87,12 +87,12 @@ export class LessonOutline {
                           kind: 'block',
                           state: block.status,
                           blockId: block.id,
-                          note:
-                            BLOCK_TYPE_LABEL[block.detail.block.blockType] +
-                            (block.status === 'in_progress' && block.percent
-                              ? ` · ${block.percent}%`
-                              : ''),
                         },
+                        description:
+                          BLOCK_TYPE_LABEL[block.detail.block.blockType] +
+                          (block.status === 'in_progress' && block.percent
+                            ? ` · ${block.percent}%`
+                            : ''),
                       }),
                     )
                   : undefined,

@@ -15,6 +15,7 @@ import {
   Input,
   Select,
   Spinner,
+  DateInput,
 } from '@lms/ui';
 import { GamificationAdminStore } from '../../data-access/gamification-admin.store';
 import {
@@ -31,6 +32,7 @@ import {
 @Component({
   selector: 'app-calendar-editor',
   imports: [
+    DateInput,
     Button,
     Empty,
     ErrorState,

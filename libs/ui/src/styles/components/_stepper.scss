@@ -36,7 +36,7 @@
       width: 100%;
       min-height: var(--spacing-touch);
       padding: var(--spacing-3) var(--spacing-2);
-      border-radius: var(--radius-md);
+      border-radius: var(--radius-control);
       text-align: left;
 
       &:hover:not([aria-disabled='true']) {
@@ -81,7 +81,7 @@
       background: var(--color-surface);
       color: var(--color-text-secondary);
       font-size: var(--text-sm);
-      font-weight: var(--font-weight-bold);
+      font-weight: var(--font-weight-semibold);
     }
 
     &__text {

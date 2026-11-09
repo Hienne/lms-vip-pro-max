@@ -20,8 +20,8 @@ import {
   Spinner,
   TablePrimary,
   TableSub,
+  Tooltip,
 } from '@lms/ui';
-import { RequiredMark } from '../../../shared/course/required-mark';
 import {
   CATALOG_STATUS_LABEL,
   CatalogStatus,
@@ -51,13 +51,13 @@ import { CoursesStore } from './data-access/courses.store';
     IconButton,
     Menu,
     PageHeader,
-    RequiredMark,
     RouterLink,
     Search,
     Select,
     Spinner,
     TablePrimary,
     TableSub,
+    Tooltip,
   ],
   providers: [CoursesStore],
   templateUrl: './courses.html',

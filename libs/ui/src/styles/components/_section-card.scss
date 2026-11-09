@@ -1,0 +1,58 @@
+// Section card: applied by `ui-section-card` (which also carries the `card` look).
+// A header row (title left, optional action right, 1px rule below) over a body.
+@use 'ui';
+
+@layer components {
+  .section-card {
+    display: block;
+    min-width: 0;
+
+    &__header {
+      @include ui.row-between(3);
+      flex-wrap: nowrap;
+      padding: ui.space(4) ui.space(5);
+      border-bottom: 1px solid ui.color(border);
+    }
+
+    &__title {
+      margin: 0;
+      font-family: ui.font(sans);
+      font-size: ui.text-size(md);
+      font-weight: ui.weight(semibold);
+    }
+
+    &__action {
+      @include ui.row(2);
+      flex: none;
+      @include ui.text(sm);
+
+      &:empty {
+        display: none;
+      }
+
+      a {
+        @include ui.row(1);
+        color: ui.color(primary);
+        font-weight: ui.weight(medium);
+        text-decoration: none;
+        white-space: nowrap;
+
+        &:hover {
+          text-decoration: underline;
+        }
+
+        &:focus-visible {
+          @include ui.focus-ring;
+        }
+      }
+    }
+
+    &__body {
+      padding: ui.space(5);
+
+      &--flush {
+        padding: 0;
+      }
+    }
+  }
+}

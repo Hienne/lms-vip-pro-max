@@ -27,9 +27,7 @@ describe('CommunityAsk', () => {
     );
     await page.click('Đăng câu hỏi');
 
-    expect(
-      page.el().querySelector('app-content-thumbnail img')?.getAttribute('src'),
-    ).toContain('/images/community-defaults.png');
+    expect(page.el().querySelector('app-content-thumbnail img')).toBeNull();
     expect(page.bodies(communityEndpoints.createQuestion)).toEqual([]);
     expect(page.text()).toContain('Chọn ít nhất 1 thẻ để đăng.');
   });

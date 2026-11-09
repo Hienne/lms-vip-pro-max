@@ -24,7 +24,7 @@
   &__item {
     @include ui.stack(1);
     padding: ui.space(2);
-    border-radius: ui.radius(md);
+    border-radius: ui.radius(control);
     color: ui.color(text);
     text-decoration: none;
 

@@ -11,7 +11,7 @@
     gap: var(--spacing-3);
     padding: var(--spacing-3) var(--spacing-4);
     border: 1px solid var(--color-border-strong);
-    border-radius: var(--radius-md);
+    border-radius: var(--radius-control);
     background: var(--color-surface);
     cursor: pointer;
     transition:
@@ -69,7 +69,7 @@
     gap: var(--spacing-3);
     padding: var(--spacing-3) var(--spacing-4);
     border: 1px solid var(--color-border);
-    border-radius: var(--radius-md);
+    border-radius: var(--radius-control);
     font-size: var(--text-sm);
 
     &--correct {

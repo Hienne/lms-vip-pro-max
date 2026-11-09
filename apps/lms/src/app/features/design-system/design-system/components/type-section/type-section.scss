@@ -13,7 +13,7 @@
 .type-section__figures {
   @include ui.text(2xl);
   @include ui.num;
-  font-weight: ui.weight(bold);
+  font-weight: ui.weight(semibold);
 }
 
 // A label column beside the sample; the label stacks above it on narrow screens.
@@ -30,8 +30,8 @@
 
 // One sample modifier per text-size token, with the weight the scale pairs it with.
 $-pairing: (
-  3xl: bold,
-  2xl: bold,
+  3xl: semibold,
+  2xl: semibold,
   xl: semibold,
   lg: semibold,
   md: regular,

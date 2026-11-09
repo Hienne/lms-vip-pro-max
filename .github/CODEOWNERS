@@ -5,3 +5,17 @@
 /libs/ui/ @Hienne
 /libs/contracts/ @Hienne
 /docs/ @Hienne
+
+# The design guards and their baseline: loosening them is a design decision.
+/apps/lms/src/app/design-drift.spec.ts @Hienne
+/apps/lms/src/app/design-drift.baseline.json @Hienne
+/apps/lms/src/app/template-scan.spec.ts @Hienne
+/tools/guard-design.mjs @Hienne
+/.github/workflows/ @Hienne
+# Every agent's instructions point at AGENTS.md.
+/AGENTS.md @Hienne
+/CLAUDE.md @Hienne
+/GEMINI.md @Hienne
+/.windsurfrules @Hienne
+/.cursor/ @Hienne
+/.github/copilot-instructions.md @Hienne

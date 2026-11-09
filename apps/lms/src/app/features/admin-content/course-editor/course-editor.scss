@@ -17,17 +17,8 @@
     padding-block: ui.space(10);
   }
 
-  &__head {
-    @include ui.row-between(4);
-    flex-wrap: wrap;
-    align-items: flex-end;
-    margin-bottom: ui.space(4);
-  }
-
-  &__sub {
-    @include ui.row(2);
-    @include ui.text(sm, muted);
-    flex-wrap: wrap;
+  &__head-state {
+    @include ui.row(3);
   }
 
   &__saved {

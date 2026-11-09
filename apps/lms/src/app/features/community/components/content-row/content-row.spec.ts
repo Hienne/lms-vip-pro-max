@@ -51,17 +51,13 @@ describe('ContentRow', () => {
     const stats = el.querySelector('.content-row__stats')!;
     expect(stats.textContent).toContain('3');
     expect(stats.textContent).toContain('2');
-    expect(
-      el.querySelector('app-content-thumbnail img')?.getAttribute('src'),
-    ).toContain('/images/community-defaults.png');
+    expect(el.querySelector('app-content-thumbnail')).toBeNull();
   });
 
   it('shows the server score for an article', () => {
     const el = render(card({ kind: 'article', resolutionStatus: null }));
     expect(el.querySelector('.content-row__stats')?.textContent).toContain('3');
-    expect(
-      el.querySelector('app-content-thumbnail img')?.getAttribute('src'),
-    ).toContain('/images/community-defaults.png');
+    expect(el.querySelector('app-content-thumbnail')).toBeNull();
   });
 
   it('shows one resolution badge on an active question', () => {

@@ -10,13 +10,13 @@
 }
 
 .header {
+  position: relative;
   display: flex;
   align-items: center;
   gap: ui.space(3);
   height: ui.layout(header);
   padding: 0 ui.space(6);
-  background: color-mix(in srgb, ui.color(surface) 92%, transparent);
-  backdrop-filter: saturate(1.4) blur(8px);
+  background: ui.color(surface);
   border-bottom: 1px solid ui.color(border);
 
   @include ui.bp-below(lg) {
@@ -32,6 +32,15 @@
     }
   }
 
+  // Only below `md`: the search field is a row under the header that this button opens.
+  &__search-toggle {
+    display: none;
+
+    @include ui.bp-below(md) {
+      display: inline-grid;
+    }
+  }
+
   &__search {
     display: flex;
     flex: 1;
@@ -39,6 +48,23 @@
     gap: ui.space(2);
     max-width: 420px;
     min-width: 0;
+
+    @include ui.bp-below(md) {
+      display: none;
+      position: absolute;
+      top: 100%;
+      right: 0;
+      left: 0;
+      z-index: 1;
+      max-width: none;
+      padding: ui.space(3) ui.space(4);
+      background: ui.color(surface);
+      border-bottom: 1px solid ui.color(border);
+
+      &#{&}--open {
+        display: flex;
+      }
+    }
 
     input {
       flex: 1;

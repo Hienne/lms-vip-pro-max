@@ -91,6 +91,26 @@
     }
   }
 
+  // Layout helpers: `uiTable fixed`, `uiTableCol` and the `uiTableCell` modifiers.
+  .table--fixed {
+    table-layout: fixed;
+    // Set by `ui-data-table` so a column without a width never shrinks to nothing.
+    min-width: var(--table-min-width, 0);
+  }
+
+  .table__col {
+    width: var(--table-col-width);
+  }
+
+  .table .table__cell--nowrap {
+    white-space: nowrap;
+  }
+
+  .table .table__cell--numeric {
+    @include ui.num;
+    text-align: right;
+  }
+
   // Two lines in one cell: the main text and a muted line under it.
   .table__primary {
     color: var(--color-text);
@@ -106,8 +126,26 @@
   // before the value.
   @include ui.bp-below(md) {
     .table--responsive {
-      thead {
+      min-width: 0;
+
+      thead,
+      col {
         display: none;
+      }
+
+      // A card row wraps like any text; nowrap and right alignment are for table columns.
+      .table__cell--nowrap {
+        white-space: normal;
+      }
+
+      .table__cell--numeric {
+        text-align: left;
+      }
+
+      // The 1% width only shrinks a column to its buttons; in a card it would shrink them away.
+      .col-actions {
+        width: auto;
+        text-align: left;
       }
 
       // One cell per line, so long cells stay readable (the mockup used two columns, `1fr auto`).

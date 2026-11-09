@@ -72,8 +72,28 @@
     }
   }
 
+  // The owl, the upload panel and the dev toolbar float over the bottom-right corner. The framed
+  // page ends above them (bottom space) and, from `md`, keeps a right gutter as wide as they are,
+  // so nothing a table shows, its last column included, ever sits under them while scrolling.
+  // A workspace page (`--fill`) scrolls inside itself and has no owl button.
   &__content {
     flex: 1 1 auto;
+
+    // Below `md` there is no room for a gutter: the page only ends above the buttons.
+    .app-shell--framed & {
+      padding-bottom: calc(
+        #{ui.space(12)} + #{ui.space(8)} + var(--owl-inset, 0px)
+      );
+
+      @include ui.bp(md) {
+        padding-inline-end: var(--shell-gutter, #{ui.space(18)});
+      }
+    }
+
+    .app-shell--framed.app-shell--fill & {
+      padding-block-end: 0;
+      padding-inline-end: 0;
+    }
 
     &--focus {
       min-height: 100dvh;

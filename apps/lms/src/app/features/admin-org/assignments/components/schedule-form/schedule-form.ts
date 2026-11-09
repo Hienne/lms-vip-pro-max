@@ -9,7 +9,7 @@ import {
   validate,
 } from '@angular/forms/signals';
 import { ASSIGNMENT_LIMITS } from '@lms/contracts';
-import { Alert, Field, Input, Switch } from '@lms/ui';
+import { Alert, DateInput, Field, Input, Switch } from '@lms/ui';
 import { AssignmentsStore } from '../../data-access/assignments.store';
 import {
   dateInput,
@@ -25,7 +25,7 @@ const REMIND_DAYS = 3;
  */
 @Component({
   selector: 'app-schedule-form',
-  imports: [Alert, Field, FormField, FormRoot, Input, Switch],
+  imports: [Alert, DateInput, Field, FormField, FormRoot, Input, Switch],
   template: `
     <form id="schedule-form" class="stack" [formRoot]="scheduleForm">
       @if (store.rescheduleError$(); as error) {
@@ -38,10 +38,10 @@ const REMIND_DAYS = 3;
       }
       <div class="schedule-form__pair">
         <ui-field label="Ngày bắt đầu" required>
-          <input uiInput type="date" [formField]="scheduleForm.startDate" />
+          <ui-date-input [formField]="scheduleForm.startDate" />
         </ui-field>
         <ui-field label="Hạn hoàn thành" required>
-          <input uiInput type="date" [formField]="scheduleForm.dueDate" />
+          <ui-date-input [formField]="scheduleForm.dueDate" />
         </ui-field>
       </div>
       <label class="schedule-form__toggle">

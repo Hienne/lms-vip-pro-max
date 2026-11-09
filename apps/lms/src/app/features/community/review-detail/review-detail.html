@@ -360,11 +360,9 @@
       } } }
     </section>
     <aside class="review-detail__aside">
-      <app-content-thumbnail
-        [contentId]="detail.contentId"
-        kind="architecture_review"
-        [revisionAssetId]="store.coverId$()"
-      />
+      @if (store.coverId$()) {
+      <app-content-thumbnail [revisionAssetId]="store.coverId$()" />
+      }
       <h2>Thông tin review</h2>
       <dl>
         <dt>Góp ý chưa xử lý</dt>

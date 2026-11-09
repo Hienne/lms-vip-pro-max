@@ -1,7 +1,7 @@
 // Skeleton: ported from the mockup's `.skeleton` block (components.css). Applied by `uiSkeleton`.
 @layer components {
   .skeleton {
-    border-radius: var(--radius-sm);
+    border-radius: var(--radius-field);
     background: linear-gradient(
       90deg,
       var(--color-surface-2) 0,
@@ -28,7 +28,7 @@
 
     &--block {
       height: 120px;
-      border-radius: var(--radius-lg);
+      border-radius: var(--radius-card);
     }
   }
 }

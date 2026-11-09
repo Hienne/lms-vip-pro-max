@@ -6,16 +6,18 @@
   (retry)="store.retryLoad()"
 />
 } @else if (store.detail$(); as detail) { @let user = detail.user;
-<ui-breadcrumb
-  [items]="[
-    { label: 'Người dùng', href: '/admin/users' },
-    { label: user.fullName },
-  ]"
-/>
+<ui-page-header [title]="user.fullName">
+  <ui-breadcrumb
+    slot="breadcrumb"
+    [items]="[
+      { label: 'Người dùng', href: '/admin/users' },
+      { label: user.fullName },
+    ]"
+  />
+</ui-page-header>
 <section uiCard padded class="user-detail__summary">
   <ui-avatar [name]="user.fullName" size="xl" />
   <div class="grow stack stack--gap-2">
-    <h1>{{ user.fullName }}</h1>
     <div class="row">
       <app-account-status [status]="user.status" />
       @if (user.mustChangePassword) {

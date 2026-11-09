@@ -1,0 +1,45 @@
+// List row: applied by `ui-list-row`, which sits on the `list__item` look. A plain leading icon
+// (no tile), a title with an optional muted subtitle, and an optional trailing value or chevron.
+@use 'ui';
+
+@layer components {
+  .list-row {
+    &__icon {
+      color: ui.color(text-muted);
+
+      // Danger only for an overdue or failed row.
+      &--danger {
+        color: ui.color(danger);
+      }
+    }
+
+    &__text {
+      @include ui.stack(1);
+      flex: 1;
+      min-width: 0;
+    }
+
+    &__title {
+      @include ui.text(sm);
+      @include ui.truncate;
+      font-weight: ui.weight(semibold);
+    }
+
+    &__subtitle {
+      @include ui.text(sm, muted);
+    }
+
+    &__value {
+      @include ui.num;
+      @include ui.text(sm);
+      flex: none;
+      font-weight: ui.weight(semibold);
+    }
+
+    &__chevron {
+      display: inline-flex;
+      flex: none;
+      color: ui.color(text-muted);
+    }
+  }
+}

@@ -9,6 +9,10 @@
   );
 }
 
+.data-section__stack {
+  @include ui.stack(3);
+}
+
 .data-section__note {
   @include ui.text(xs, muted);
 }

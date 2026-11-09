@@ -16,6 +16,7 @@ import {
   NOW,
   Select,
   Switch,
+  DateInput,
 } from '@lms/ui';
 import { REQUIREMENT_LABEL } from '../../../../../shared/course/course-labels';
 import { ENROLLMENT_MODE_LABEL } from '../../assignment-labels';
@@ -41,6 +42,7 @@ import {
 @Component({
   selector: 'app-assign-form',
   imports: [
+    DateInput,
     Alert,
     ErrorState,
     Field,
