@@ -206,8 +206,25 @@ export class AgentChatStore {
     const question = rawQuestion.trim();
     if (!question || this.isAnswering$()) return;
     const id = Math.max(0, ...this.turns$().map((t) => t.id)) + 1;
-    const command = this.commandFor(question);
     this.setTurns([...this.turns$(), { id, question, reply: WAITING }]);
+    this.stream(id, question);
+  }
+
+  /**
+   * Asks a failed or stopped turn's question again and replaces its reply; ignored for any other
+   * turn, and while another answer is on its way.
+   */
+  retry(turnId: number): void {
+    const turn = this.turnOf(turnId);
+    if (!turn || this.isAnswering$()) return;
+    if (turn.reply.status !== 'error' && turn.reply.status !== 'stopped')
+      return;
+    this.patchReply(turnId, WAITING);
+    this.stream(turnId, turn.question);
+  }
+
+  private stream(id: number, question: string): void {
+    const command = this.commandFor(question, id);
     this.setAnsweringId(id);
     if (this.network.offline$()) {
       this.fail(id, OFFLINE_MESSAGE);
@@ -434,9 +451,9 @@ export class AgentChatStore {
   // ---- history and storage ---------------------------------------------------------------------
 
   /** The finished turns (errored and stopped ones are left out), then the new question. */
-  private commandFor(question: string): AgentCommand {
+  private commandFor(question: string, beforeId: number): AgentCommand {
     const history = this.turns$()
-      .filter((turn) => turn.reply.status === 'done')
+      .filter((turn) => turn.id < beforeId && turn.reply.status === 'done')
       .slice(-HISTORY_TURNS)
       .flatMap((turn) => [
         { role: 'user' as const, content: turn.question },

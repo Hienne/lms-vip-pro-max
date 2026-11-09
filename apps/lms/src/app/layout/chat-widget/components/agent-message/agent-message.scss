@@ -83,6 +83,10 @@
     line-height: ui.leading(relaxed);
   }
 
+  &__tools {
+    @include ui.row(1);
+  }
+
   &__note {
     @include ui.text(sm, muted);
     margin: 0;

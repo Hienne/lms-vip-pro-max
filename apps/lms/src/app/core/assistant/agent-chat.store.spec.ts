@@ -310,6 +310,66 @@ describe('AgentChatStore', () => {
     });
   });
 
+  describe('retrying', () => {
+    it('asks a failed question again and replaces its reply', async () => {
+      store.ask('EOD là gì?');
+      await settle();
+      finish(backend.expectOne(STREAM), [
+        {
+          type: 'error',
+          messageCode: 'ASSISTANT-AI_UNAVAILABLE',
+          message: 'Lỗi tạm thời',
+        },
+      ]);
+      await settle();
+      expect(lastReply()?.status).toBe('error');
+
+      store.retry(1);
+      await settle();
+      expect(lastReply()?.status).toBe('waiting');
+      const request = backend.expectOne(STREAM);
+      expect(lastBody(request).messages.at(-1)?.content).toBe('EOD là gì?');
+      finish(request, [done('Đây là EOD.')]);
+      await settle();
+      expect(store.turns$()).toHaveLength(1);
+      expect(lastReply()).toMatchObject({
+        status: 'done',
+        text: 'Đây là EOD.',
+        error: null,
+      });
+    });
+
+    it('retries a stopped reply but not a finished one', async () => {
+      store.ask('Câu một');
+      await settle();
+      backend.expectOne(STREAM);
+      store.stop();
+      expect(lastReply()?.status).toBe('stopped');
+      store.retry(1);
+      await settle();
+      expect(lastReply()?.status).toBe('waiting');
+      finish(backend.expectOne(STREAM), [done('Xong')]);
+      await settle();
+      store.retry(1);
+      await settle();
+      backend.expectNone(STREAM);
+    });
+
+    it('is refused while another reply streams', async () => {
+      store.ask('Câu một');
+      await settle();
+      backend.expectOne(STREAM);
+      store.stop();
+      store.ask('Câu hai');
+      await settle();
+      backend.expectOne(STREAM);
+      store.retry(1);
+      await settle();
+      backend.expectNone(STREAM);
+      expect(store.turns$()[0].reply.status).toBe('stopped');
+    });
+  });
+
   describe('history', () => {
     it('sends the finished turns, with a confirmed or cancelled card’s result, and leaves out errored and stopped ones', async () => {
       await converse('Câu một', [

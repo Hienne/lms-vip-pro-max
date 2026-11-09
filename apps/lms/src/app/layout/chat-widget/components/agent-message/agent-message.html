@@ -39,9 +39,40 @@
   />
   } @if (sourcesShown()) {
   <app-agent-sources [turnId]="turn().id" [citations]="reply.citations" />
+  } @if (reply.status === 'done' && reply.text) {
+  <div class="message__tools">
+    <button
+      uiIconButton
+      size="sm"
+      label="Sao chép câu trả lời"
+      (click)="copy()"
+    >
+      <ui-icon name="copy" size="sm" />
+    </button>
+  </div>
   } @if (reply.status === 'stopped') {
-  <p class="message__note">Đã dừng.</p>
+  <p class="message__note">
+    Đã dừng.
+    <button
+      uiLinkButton
+      type="button"
+      [disabled]="answering()"
+      (click)="retried.emit(turn().id)"
+    >
+      Thử lại
+    </button>
+  </p>
   } @else if (reply.status === 'error') {
-  <p class="message__note message__note--error">{{ reply.error }}</p>
+  <p class="message__note message__note--error">
+    {{ reply.error }}
+    <button
+      uiLinkButton
+      type="button"
+      [disabled]="answering()"
+      (click)="retried.emit(turn().id)"
+    >
+      Thử lại
+    </button>
+  </p>
   }
 </div>

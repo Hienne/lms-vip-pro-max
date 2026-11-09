@@ -11,22 +11,19 @@ import {
   untracked,
   viewChild,
 } from '@angular/core';
+import { toSignal } from '@angular/core/rxjs-interop';
+import { NavigationEnd, Router } from '@angular/router';
 import { Icon, IconButton } from '@lms/ui';
+import { filter } from 'rxjs';
 import {
   AGENT_LAUNCHER_ID,
   AGENT_PANEL_ID,
 } from '../../core/assistant/agent-launcher';
 import { AgentChatStore } from '../../core/assistant/agent-chat.store';
+import { suggestionsFor } from '../../core/assistant/agent-suggestions';
 import { AgentComposer } from './components/agent-composer/agent-composer';
 import { OwlFace } from '../owl/owl-face/owl-face';
 import { AgentMessage } from './components/agent-message/agent-message';
-
-/** One question for each thing the assistant does: documents, screens, the profile. */
-export const SUGGESTIONS = [
-  'Quy trình EOD gồm những bước nào?',
-  'Mở trang Hồ sơ cá nhân',
-  'Đổi chức danh của tôi',
-] as const;
 
 /** How close to the end of the log counts as "following" the newest message, in pixels. */
 const FOLLOW_DISTANCE = 48;
@@ -52,12 +49,22 @@ export class ChatWidget {
   protected readonly store = inject(AgentChatStore);
   private readonly document = inject(DOCUMENT);
   private readonly injector = inject(Injector);
+  private readonly router = inject(Router);
+  private readonly navigated = toSignal(
+    this.router.events.pipe(filter((event) => event instanceof NavigationEnd)),
+    { initialValue: null },
+  );
+  private readonly path = computed(() => {
+    this.navigated();
+    return this.router.url;
+  });
 
   /** Moves the panel left with the owl, off the dev toolbar that is pinned to the same corner. */
   readonly besideToolbar = input(false);
 
   protected readonly panelId = AGENT_PANEL_ID;
-  protected readonly suggestions = SUGGESTIONS;
+  /** The opening questions follow the page the panel is open on. */
+  protected readonly suggestions = computed(() => suggestionsFor(this.path()));
   protected readonly isEmpty = computed(() => this.store.turns$().length === 0);
 
   private readonly composer = viewChild(AgentComposer);
@@ -101,6 +108,11 @@ export class ChatWidget {
   /** Sends a suggested question as it stands; the list goes away, so the cursor goes to the box. */
   protected suggest(question: string): void {
     this.store.ask(question);
+    this.composer()?.focus();
+  }
+
+  protected retry(turnId: number): void {
+    this.store.retry(turnId);
     this.composer()?.focus();
   }
 

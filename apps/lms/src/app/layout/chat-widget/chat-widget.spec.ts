@@ -1,6 +1,6 @@
 import { Component, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
-import { provideRouter } from '@angular/router';
+import { provideRouter, Router } from '@angular/router';
 import { AgentChatStore } from '../../core/assistant/agent-chat.store';
 import { AGENT_LAUNCHER_ID } from '../../core/assistant/agent-launcher';
 import type { AgentTurn } from '../../core/assistant/agent-chat.model';
@@ -49,6 +49,7 @@ function fakeStore() {
       toggleDocked: vi.fn(() => docked.update((value) => !value)),
       confirm: vi.fn(),
       cancel: vi.fn(),
+      retry: vi.fn(),
     },
   };
 }
@@ -61,12 +62,15 @@ function fakeStore() {
 })
 class Host {}
 
+@Component({ selector: 'app-blank', template: '' })
+class Blank {}
+
 describe('ChatWidget', () => {
   async function render() {
     const fake = fakeStore();
     TestBed.configureTestingModule({
       providers: [
-        provideRouter([]),
+        provideRouter([{ path: '**', component: Blank }]),
         { provide: AgentChatStore, useValue: fake.store },
       ],
     });
@@ -309,5 +313,47 @@ describe('ChatWidget', () => {
     expect(document.activeElement).toBe(confirm);
     confirm.click();
     expect(document.activeElement).toBe(el.querySelector('textarea'));
+  });
+
+  it('offers opening questions that follow the page, and the default three elsewhere', async () => {
+    const { fixture, el } = await render();
+    const router = TestBed.inject(Router);
+    const questions = () =>
+      [...el.querySelectorAll('.chat__suggestion')].map((b) =>
+        b.textContent?.trim(),
+      );
+    const fallback = questions();
+    expect(fallback).toHaveLength(3);
+
+    await router.navigateByUrl('/quiz/4/take');
+    await fixture.whenStable();
+    const quiz = questions();
+    expect(quiz).toHaveLength(3);
+    expect(quiz).not.toEqual(fallback);
+
+    await router.navigateByUrl('/community/questions');
+    await fixture.whenStable();
+    expect(questions()).not.toEqual(quiz);
+
+    await router.navigateByUrl('/profile');
+    await fixture.whenStable();
+    expect(questions()).toEqual(fallback);
+  });
+
+  it('retries a turn through the store', async () => {
+    const { fixture, el, turns, store } = await render();
+    turns.set([
+      {
+        id: 4,
+        question: 'Câu lỗi',
+        reply: { ...turn(4, '').reply, status: 'error', error: 'Lỗi' },
+      },
+    ]);
+    await fixture.whenStable();
+    const retry = [...el.querySelectorAll('button')].find(
+      (b) => b.textContent?.trim() === 'Thử lại',
+    );
+    retry?.click();
+    expect(store.retry).toHaveBeenCalledWith(4);
   });
 });

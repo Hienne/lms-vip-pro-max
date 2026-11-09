@@ -49,6 +49,8 @@
     <app-agent-message
       [turn]="turn"
       [busy]="store.isConfirming$()"
+      [answering]="store.isAnswering$()"
+      (retried)="retry($event)"
       (confirmed)="confirm($event)"
       (cancelled)="cancel($event)"
     />
@@ -58,7 +60,7 @@
         Hỏi về tài liệu, mở một màn hình hoặc sửa hồ sơ của bạn. Thử:
       </p>
       <ul class="chat__suggestions">
-        @for (suggestion of suggestions; track suggestion) {
+        @for (suggestion of suggestions(); track suggestion) {
         <li>
           <button
             type="button"
