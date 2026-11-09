@@ -75,7 +75,6 @@
             <button
               uiButton
               type="button"
-              variant="ghost"
               size="sm"
               [disabled]="save.isPending()"
               (click)="change(item.questionId, 'WITHDRAWN')"
@@ -183,7 +182,6 @@
               <button
                 uiButton
                 type="button"
-                variant="ghost"
                 size="sm"
                 [disabled]="save.isPending() || cards.isLoading()"
                 (click)="change(item.id, 'DRAFT')"

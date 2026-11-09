@@ -166,14 +166,16 @@
               <td class="hub__actions">
                 @if (attempt.status === 'IN_PROGRESS') {
                 <a
-                  uiLinkButton
+                  uiButton
+                  size="sm"
                   [routerLink]="['/quiz', group.quizId, 'take']"
                   [attr.aria-label]="'Tiếp tục lượt ' + attempt.attemptNo + ': ' + group.title"
                   >Tiếp tục<ui-icon name="chevron-right" size="sm"
                 /></a>
                 } @else if (attempt.status !== 'VOIDED') {
                 <a
-                  uiLinkButton
+                  uiButton
+                  size="sm"
                   [routerLink]="['/quiz', group.quizId, 'result', attempt.attemptId]"
                   [attr.aria-label]="'Chi tiết lượt ' + attempt.attemptNo + ': ' + group.title"
                   >Chi tiết<ui-icon name="chevron-right" size="sm"

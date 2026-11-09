@@ -324,7 +324,7 @@
             <td data-label="Người xử lý">
               {{ card.assignedModerator?.displayName ?? 'Chưa giao' }}
             </td>
-            <td>
+            <td data-label="Thao tác">
               <button
                 uiButton
                 size="sm"
@@ -408,7 +408,7 @@
               moderator.revokedAt | fmtDatetime }} } @else { Bổ nhiệm {{
               moderator.grantedAt | fmtDatetime }} }
             </td>
-            <td>
+            <td data-label="Thao tác">
               @if (moderator.status === 'revoked') {
               <button
                 uiButton
@@ -422,7 +422,6 @@
               <button
                 uiButton
                 size="sm"
-                variant="danger-ghost"
                 type="button"
                 (click)="moderators.startEdit({ kind: 'revoke', moderator })"
               >

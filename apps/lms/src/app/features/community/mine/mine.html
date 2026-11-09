@@ -130,15 +130,22 @@
         <td data-label="Thao tác" class="mine__action">
           @if (row.editDraft) {
           <a
-            uiButton
+            uiIconButton
             size="sm"
-            variant="ghost"
+            [label]="(row.status === 'draft' ? 'Sửa nháp ' : 'Sửa ') + row.card.title"
             [routerLink]="[row.card.kind === 'architecture_review' ? '/community/reviews' : '/community/contents', row.card.contentId, 'edit']"
           >
-            {{ row.status === 'draft' ? 'Sửa nháp' : 'Sửa' }}
+            <ui-icon name="pen-line" size="sm" />
           </a>
           } @else {
-          <a uiButton size="sm" variant="ghost" [routerLink]="row.link">Xem</a>
+          <a
+            uiIconButton
+            size="sm"
+            [label]="'Xem ' + row.card.title"
+            [routerLink]="row.link"
+          >
+            <ui-icon name="eye" size="sm" />
+          </a>
           }
         </td>
       </tr>

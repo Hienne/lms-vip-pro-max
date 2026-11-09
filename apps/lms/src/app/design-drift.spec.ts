@@ -83,6 +83,26 @@ const RULES: Record<string, Rule> = {
   },
 };
 
+/**
+ * Rules read across lines, inside a table's action cells only: a `<td>` labelled "Thao tác" or
+ * classed `…action…`, or a `ui-data-table` `actions` cell template. A row action is a button
+ * (visual-design.md → Tables), never a text link or a ghost button that reads as text.
+ */
+const CELL_RULES: Record<
+  string,
+  { readonly pattern: RegExp; readonly instead: string }
+> = {
+  'text-row-action': {
+    pattern:
+      /<a\b(?![^>]*\bui(?:Button|IconButton|TablePrimary)\b)[^>]*>|\buiLinkButton\b|<(?:a|button)\b(?=[^>]*\buiButton\b)[^>]*\bvariant="(?:ghost|danger-ghost)"[^>]*>/g,
+    instead:
+      'a row action is uiIconButton (with its label) or a secondary uiButton, a third one goes in ui-menu',
+  },
+};
+
+const ACTION_CELL =
+  /<td\b[^>]*(?:data-label="Thao tác"|class="[^"]*action[^"]*")[^>]*>[\s\S]*?<\/td>|<ng-template\b[^>]*uiDataTableCell="actions"[^>]*>[\s\S]*?<\/ng-template>/g;
+
 type Counts = Record<string, Record<string, number>>;
 
 const ALLOW = /design-drift-allow:\s*([\w-]+)\s+(.{10,})$/;
@@ -107,6 +127,16 @@ function countIn(text: string, kind: 'scss' | 'html'): Record<string, number> {
     for (const [name, rule] of Object.entries(RULES)) {
       if (rule.in !== kind || allowed === name) continue;
       const hits = line.match(rule.pattern)?.length ?? 0;
+      if (hits) counts[name] = (counts[name] ?? 0) + hits;
+    }
+  }
+  if (kind === 'html') {
+    const cells = text.replace(/<!--[\s\S]*?-->/g, '').match(ACTION_CELL) ?? [];
+    for (const [name, rule] of Object.entries(CELL_RULES)) {
+      const hits = cells.reduce(
+        (sum, cell) => sum + (cell.match(rule.pattern)?.length ?? 0),
+        0,
+      );
       if (hits) counts[name] = (counts[name] ?? 0) + hits;
     }
   }
@@ -188,7 +218,7 @@ describe('design drift', () => {
         const allowed = baseline[file]?.[rule] ?? 0;
         if (count > allowed) {
           over.push(
-            `${file}: ${rule} ${count} (allowed ${allowed}). ${RULES[rule].instead}`,
+            `${file}: ${rule} ${count} (allowed ${allowed}). ${(RULES[rule] ?? CELL_RULES[rule]).instead}`,
           );
         }
       }
@@ -211,7 +241,7 @@ describe('design drift', () => {
   it('knows every rule the baseline names', () => {
     const unknown = Object.values(baseline)
       .flatMap((rules) => Object.keys(rules))
-      .filter((rule) => !(rule in RULES));
+      .filter((rule) => !(rule in RULES) && !(rule in CELL_RULES));
     expect(unknown).toEqual([]);
   });
 
@@ -248,6 +278,31 @@ describe('design drift', () => {
           'scss',
         ),
       ).toEqual({ 'own-radius': 1 });
+    });
+
+    it('finds a row action that reads as text, in action cells only', () => {
+      expect(
+        countIn(
+          [
+            '<td data-label="Thao tác">',
+            '  <a',
+            '    uiButton',
+            '    size="sm"',
+            '    variant="ghost"',
+            '    routerLink="/x">Xem</a>',
+            '  <a routerLink="/y">Mở</a>',
+            '</td>',
+            '<td data-label="Khóa học"><a uiTablePrimary routerLink="/z">Z</a></td>',
+            '<td data-label="Ghi chú"><a routerLink="/w">w</a></td>',
+            '<ng-template uiDataTableCell="actions" let-row>',
+            '  <a uiIconButton size="sm" label="Sửa" routerLink="/e"></a>',
+            '  <button uiButton size="sm">Thu hồi</button>',
+            '  <a uiLinkButton routerLink="/r">Xem</a>',
+            '</ng-template>',
+          ].join('\n'),
+          'html',
+        ),
+      ).toEqual({ 'text-row-action': 3 });
     });
 
     it('finds a hand-made page title and a subtle fill', () => {
