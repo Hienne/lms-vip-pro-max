@@ -108,9 +108,8 @@
     background: ui.color(surface);
   }
 
+  // Column widths are the `uiTableCol`s in the template (`uiTable fixed`).
   &__courses {
-    table-layout: fixed;
-
     th {
       white-space: normal;
     }
@@ -119,26 +118,6 @@
       min-width: 0;
       overflow-wrap: anywhere;
     }
-  }
-
-  &__col-course {
-    width: 27%;
-  }
-
-  &__col-progress {
-    width: 20%;
-  }
-
-  &__col-score {
-    width: 12%;
-  }
-
-  &__col-status {
-    width: 15%;
-  }
-
-  &__col-date {
-    width: 13%;
   }
 
   &__course {
@@ -348,10 +327,6 @@
     &__sort {
       margin-inline-start: 0;
       max-width: 100%;
-    }
-
-    &__courses colgroup {
-      display: none;
     }
 
     &__course-row td {

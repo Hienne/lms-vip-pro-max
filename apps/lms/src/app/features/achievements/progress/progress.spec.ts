@@ -79,7 +79,7 @@ describe('LearningProgress', () => {
       b.textContent?.includes(label),
     );
   const kpi = (label: string) =>
-    Array.from(el.querySelectorAll('.progress-counts__item')).find((node) =>
+    Array.from(el.querySelectorAll('ui-stat')).find((node) =>
       node.textContent?.includes(label),
     );
 
@@ -98,7 +98,7 @@ describe('LearningProgress', () => {
 
     it('shows the server counts as five labelled numbers', () => {
       const labels = Array.from(
-        el.querySelectorAll('.progress-counts__item dt'),
+        el.querySelectorAll('ui-stat .stat__label'),
       ).map((node) => node.textContent?.trim());
       expect(labels).toEqual([
         'Tổng số khóa',
@@ -113,15 +113,15 @@ describe('LearningProgress', () => {
     });
 
     it('turns the overdue number to danger only while it is above zero', () => {
-      const overdue = kpi('Đang quá hạn')!.querySelector('dd')!;
+      const overdue = kpi('Đang quá hạn')!.querySelector('.stat__value')!;
       expect(Number(overdue.textContent)).toBeGreaterThan(0);
-      expect(overdue.classList.contains('progress-counts__value--danger')).toBe(
+      expect(overdue.classList.contains('stat__value--danger')).toBe(
         true,
       );
       expect(
         kpi('Tổng số khóa')!
-          .querySelector('dd')!
-          .classList.contains('progress-counts__value--danger'),
+          .querySelector('.stat__value')!
+          .classList.contains('stat__value--danger'),
       ).toBe(false);
     });
 
@@ -165,10 +165,10 @@ describe('LearningProgress', () => {
 
     it('ends the counts with the server average quiz score', () => {
       expect(
-        kpi('Điểm thi trung bình')!.querySelector('dd')!.textContent?.trim(),
+        kpi('Điểm thi trung bình')!.querySelector('.stat__value')!.textContent?.trim(),
       ).toBe('65,5%');
       expect(
-        Array.from(el.querySelectorAll('.progress-counts__item dt')).at(-1)
+        Array.from(el.querySelectorAll('ui-stat .stat__label')).at(-1)
           ?.textContent,
       ).toBe('Điểm thi trung bình');
     });
@@ -729,7 +729,7 @@ describe('LearningProgress', () => {
       answer(learnerEndpoints.progressSummary, backendRefusal('internalError'));
       await open();
       expect(text()).toContain('Không tải được số liệu tiến độ');
-      expect(el.querySelector('.progress-counts')).toBeNull();
+      expect(el.querySelector('ui-stat-strip')).toBeNull();
     });
   });
 });

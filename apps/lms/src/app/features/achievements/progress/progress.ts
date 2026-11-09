@@ -20,6 +20,8 @@ import {
   Segmented,
   Skeleton,
   Table,
+  TableCell,
+  TableCol,
   TablePrimary,
   TableWrap,
   TabPanel,
@@ -69,6 +71,8 @@ import {
     Segmented,
     Skeleton,
     Table,
+    TableCell,
+    TableCol,
     TablePrimary,
     TableWrap,
     TabPanel,
@@ -108,10 +112,20 @@ export class LearningProgress {
       { value: 'in_progress', label: 'Đang học' },
       { value: 'completed', label: 'Hoàn thành' },
     ];
-  protected readonly columns = [
+  protected readonly columns: readonly {
+    key: string;
+    label: string;
+    sortable?: boolean;
+    numeric?: boolean;
+  }[] = [
     { key: 'title', label: 'Khóa học' },
     { key: 'progress', label: 'Nội dung đã học' },
-    { key: 'score', label: 'Điểm thi cao nhất', sortable: false },
+    {
+      key: 'score',
+      label: 'Điểm thi cao nhất',
+      sortable: false,
+      numeric: true,
+    },
     { key: 'status', label: 'Trạng thái', sortable: false },
     { key: 'dueAt', label: 'Hạn hoàn thành' },
     { key: 'lastAccessAt', label: 'Truy cập gần nhất' },

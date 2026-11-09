@@ -32,9 +32,9 @@ function render() {
 }
 
 const pairs = (root: HTMLElement) =>
-  Array.from(root.querySelectorAll('dt')).map((dt) => [
-    dt.textContent?.trim(),
-    dt.nextElementSibling?.textContent?.trim(),
+  Array.from(root.querySelectorAll('ui-stat')).map((stat) => [
+    stat.querySelector('.stat__label')?.textContent?.trim(),
+    stat.querySelector('.stat__value')?.textContent?.trim(),
   ]);
 
 describe('ProgressCounts', () => {
@@ -52,8 +52,8 @@ describe('ProgressCounts', () => {
     const { root, set } = render();
     const overdue = () =>
       root
-        .querySelectorAll('dd')[4]
-        .classList.contains('progress-counts__value--danger');
+        .querySelectorAll('.stat__value')[4]
+        .classList.contains('stat__value--danger');
     expect(overdue()).toBe(true);
     set({
       total: 6,
@@ -65,8 +65,8 @@ describe('ProgressCounts', () => {
       mandatory: 3,
     });
     expect(overdue()).toBe(false);
-    expect(root.querySelectorAll('dd')[0].classList).not.toContain(
-      'progress-counts__value--danger',
+    expect(root.querySelectorAll('.stat__value')[0].classList).not.toContain(
+      'stat__value--danger',
     );
   });
 });

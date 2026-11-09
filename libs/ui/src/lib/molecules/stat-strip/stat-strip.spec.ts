@@ -1,5 +1,5 @@
 import { readFileSync } from 'node:fs';
-import { Component } from '@angular/core';
+import { Component, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { Stat } from './stat';
@@ -45,6 +45,23 @@ class Host {}
 })
 class ManyHost {
   readonly cells = [1, 2, 3, 4, 5, 6, 7, 8];
+}
+
+@Component({
+  imports: [StatStrip, Stat],
+  template: `<ui-stat-strip>
+    <ui-stat
+      label="Đang học"
+      [value]="2"
+      note="Có thể quá hạn"
+      [pressed]="on()"
+      (press)="presses = presses + 1"
+    />
+  </ui-stat-strip>`,
+})
+class ToggleHost {
+  readonly on = signal(false);
+  presses = 0;
 }
 
 function render() {
@@ -120,5 +137,24 @@ describe('StatStrip', () => {
     const css = readFileSync('src/styles/components/_stat-strip.scss', 'utf8');
     expect(css).toMatch(/:has\(> :nth-child\(7\)\)/);
     expect(css).toMatch(/repeat\(4, minmax\(0, 1fr\)\)/);
+  });
+
+  it('makes the whole cell a toggle button with pressed', () => {
+    const fixture = TestBed.createComponent(ToggleHost);
+    fixture.detectChanges();
+    const el = fixture.nativeElement as HTMLElement;
+    const button = el.querySelector<HTMLButtonElement>('ui-stat button')!;
+    expect(button.classList).toContain('stat__cell--toggle');
+    expect(button.getAttribute('aria-pressed')).toBe('false');
+    expect(button.querySelector('.stat__value')?.textContent?.trim()).toBe('2');
+    expect(button.querySelector('.stat__note')?.textContent).toBe(
+      'Có thể quá hạn',
+    );
+    expect(button.querySelector('dl')).toBeNull();
+    button.click();
+    expect(fixture.componentInstance.presses).toBe(1);
+    fixture.componentInstance.on.set(true);
+    fixture.detectChanges();
+    expect(button.getAttribute('aria-pressed')).toBe('true');
   });
 });
