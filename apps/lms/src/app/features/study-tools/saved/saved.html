@@ -1,71 +1,149 @@
 <ui-page-header
   title="Đã lưu & ghi chú"
-  description="Ghi chú gắn với trang PDF hoặc mốc video; bấm để mở đúng vị trí."
+  description="Tìm lại ghi chú và mở bài học đúng trang PDF hoặc mốc video."
 />
-<section uiCard>
-  <ui-tabs
-    [tabs]="store.tabs$()"
-    label="Loại mục đã lưu"
-    [selected]="store.tab$()"
-    (selectedChange)="store.setTab($event)"
+<div class="saved__toolbar">
+  <ui-search
+    label="Tìm trong mục đã lưu"
+    placeholder="Tìm trong ghi chú, bài học…"
+    [value]="store.search$()"
+    (searched)="store.setSearch($event)"
+  />
+  <select
+    uiSelect
+    #lessonFilter
+    aria-label="Lọc theo bài học"
+    [value]="store.lesson$()"
+    (change)="store.setLesson(lessonFilter.value)"
   >
-    @for (tab of store.tabs$(); track tab.id) {
-    <div [uiTabPanel]="tab.id">
-      @if (tab.id === store.tab$()) { @if (store.isLoading$()) {
-      <p class="saved__status" role="status">Đang tải mục đã lưu…</p>
-      } @else if (store.error$(); as error) {
-      <ui-error-state [message]="error.message" (retry)="store.retry()" />
-      } @else {
-      <ul class="saved__list">
-        @for (row of store.rows$(); track row.item.id) {
-        <li class="saved__row">
+    <option value="">Tất cả bài học</option>
+    @for (lesson of store.lessons$(); track lesson[0]) {
+    <option [value]="lesson[0]">{{ lesson[1] }}</option>
+    }
+  </select>
+  <select
+    uiSelect
+    #sortFilter
+    aria-label="Sắp xếp"
+    [value]="store.sort$()"
+    (change)="store.setSort(sortFilter.value)"
+  >
+    <option value="newest">Mới nhất</option>
+    <option value="oldest">Cũ nhất</option>
+  </select>
+</div>
+<ui-tabs
+  [tabs]="store.tabs$()"
+  label="Loại mục đã lưu"
+  [selected]="store.tab$()"
+  (selectedChange)="store.setTab($event)"
+>
+  @for (tab of store.tabs$(); track tab.id) {
+  <div [uiTabPanel]="tab.id">
+    @if (tab.id === store.tab$()) { @if (store.isLoading$()) {
+    <p class="saved__status" role="status">Đang tải mục đã lưu…</p>
+    } @else if (store.error$(); as error) {<ui-error-state
+      [message]="error.message"
+      (retry)="store.retry()"
+    />} @else if (store.rows$().length === 0) {<ui-empty
+      variant="inline"
+      title="Chưa có mục nào."
+      description="Thử đổi từ khóa hoặc bộ lọc. Bạn có thể lưu ghi chú và đánh dấu trong bài học."
+      ><a uiButton variant="secondary" routerLink="/learn">Vào học</a></ui-empty
+    >} @else { @if (tab.id === 'notes') {
+    <div class="saved__layout">
+      <ui-section-card title="Ghi chú của bạn" flush
+        ><ul uiList>
+          @for (row of store.rows$(); track row.item.id) {
+          <li class="saved__row">
+            <button
+              uiButton
+              variant="ghost"
+              uiListItem
+              class="saved__choose"
+              [attr.aria-pressed]="store.selected$()?.item.id === row.item.id"
+              (click)="store.selectNote(row.item.id)"
+            >
+              <span class="saved__body"
+                ><strong>{{ row.title }}</strong
+                ><span
+                  >{{ row.item.lessonTitle }} @if (row.where) { · {{ row.where
+                  }} }</span
+                ><small>{{ row.item.createTime | fmtRelative }}</small></span
+              >
+            </button>
+            <ui-menu
+              iconOnly
+              icon="ellipsis"
+              [label]="'Thao tác với ' + row.title"
+              [entries]="actions"
+              [disabled]="store.isSaving$()"
+              (selected)="store.remove(row.item)"
+            />
+          </li>
+          }
+        </ul></ui-section-card
+      >
+      <ui-section-card title="Nội dung ghi chú">
+        @if (store.selected$(); as row) {
+        <div class="stack">
+          <p>{{ row.item.courseTitle }} · {{ row.item.lessonTitle }}</p>
+          @if (row.where) {
+          <p>{{ row.where }}</p>
+          }
+          <p class="saved__content">{{ row.item.text }}</p>
+          <p>Đã lưu {{ row.item.createTime | fmtRelative }}</p>
           <a
-            class="saved__open"
+            uiButton
+            variant="secondary"
             [routerLink]="row.link"
             [queryParams]="row.query"
-          >
-            <span class="saved__body">
-              <strong>{{ row.title }}</strong>
-              <small>
-                {{ row.item.lessonTitle }} · @if (row.where) {{{ row.where }} ·
-                } {{ row.item.createTime | fmtRelative }}
-              </small>
-            </span>
-            <ui-icon name="chevron-right" size="sm" />
-          </a>
-          <button
-            uiIconButton
-            variant="danger"
-            [label]="'Xóa ' + row.title"
-            [disabled]="store.isSaving$()"
-            (click)="store.remove(row.item)"
-          >
-            <ui-icon name="trash-2" size="sm" />
-          </button>
-        </li>
-        } @empty {
-        <li>
-          <ui-empty
-            variant="inline"
-            title="Chưa có mục nào"
-            description="Trong bài học, dùng tab Ghi chú hoặc nút đánh dấu trên tài liệu để lưu lại."
-          >
-            <a uiButton variant="ghost" size="sm" routerLink="/learn">
-              Vào học
-            </a>
-          </ui-empty>
-        </li>
+            >Mở bài học @if (row.where) { · {{ row.where }} }<ui-icon
+              name="arrow-right"
+              size="sm"
+          /></a>
+        </div>
         }
-      </ul>
-      @if (store.total$() > pageSize) {
-      <ui-pagination
-        [total]="store.total$()"
-        [page]="store.page$() + 1"
-        [pageSize]="pageSize"
-        (pageChange)="store.setPage($event - 1)"
-      />
-      } } }
+      </ui-section-card>
     </div>
-    }
-  </ui-tabs>
-</section>
+    } @else {
+    <div class="saved__groups">
+      @for (group of store.groups$(); track group.id) {
+      <ui-section-card [title]="group.title" flush
+        ><span slot="action">{{ group.rows.length }} đánh dấu</span>
+        <ul uiList>
+          @for (row of group.rows; track row.item.id) {
+          <li class="saved__row">
+            <a
+              uiListItem
+              class="saved__choose"
+              [routerLink]="row.link"
+              [queryParams]="row.query"
+              ><ui-icon
+                [name]="row.item.anchor.type === 'video' ? 'play' : 'file-text'"
+                size="sm" /><span class="saved__body"
+                ><strong>{{ row.title }}</strong><span>{{ row.where }}</span
+                ><small>{{ row.item.createTime | fmtRelative }}</small></span
+              ><ui-icon name="chevron-right" size="sm" /></a
+            ><ui-menu
+              iconOnly
+              icon="ellipsis"
+              [label]="'Thao tác với ' + row.title"
+              [entries]="actions"
+              [disabled]="store.isSaving$()"
+              (selected)="store.remove(row.item)"
+            />
+          </li>
+          }
+        </ul></ui-section-card
+      >}
+    </div>
+    } @if (store.total$() > pageSize) {<ui-pagination
+      [total]="store.total$()"
+      [page]="store.page$()+1"
+      [pageSize]="pageSize"
+      (pageChange)="store.setPage($event-1)"
+    />} }}
+  </div>
+  }
+</ui-tabs>

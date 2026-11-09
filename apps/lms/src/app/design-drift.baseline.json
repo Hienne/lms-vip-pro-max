@@ -299,9 +299,6 @@
   "apps/lms/src/app/features/study-tools/flashcards/_flip-card.scss": {
     "own-radius": 3
   },
-  "apps/lms/src/app/features/study-tools/saved/saved.scss": {
-    "text-xs": 1
-  },
   "apps/lms/src/app/layout/chat-widget/chat-widget.scss": {
     "own-radius": 2,
     "own-shadow": 3

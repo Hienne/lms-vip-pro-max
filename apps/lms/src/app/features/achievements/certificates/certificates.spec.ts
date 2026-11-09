@@ -134,7 +134,7 @@ describe('Certificates', () => {
       expect(
         el.querySelector('.badge, [uiBadge], ui-mai, ui-empty'),
       ).toBeNull();
-      expect(el.querySelector('[uiCard], .card')).toBeNull();
+      expect(el.querySelectorAll('ui-section-card')).toHaveLength(1);
       expect(text()).not.toContain('Đã cấp');
     });
   });

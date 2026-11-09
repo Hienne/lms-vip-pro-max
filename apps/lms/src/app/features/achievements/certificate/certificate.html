@@ -28,18 +28,25 @@
 <article class="certificate" aria-labelledby="certificate-heading">
   <div class="certificate__brand">
     <ui-mai [size]="32" />
-    <p>Core Banking Academy · Ban QL&amp;PT Core Banking</p>
+    <div>
+      <p class="certificate__academy">Core Banking Academy</p>
+      <p>Ban QL&amp;PT Core Banking</p>
+    </div>
   </div>
   <h2 id="certificate-heading" class="certificate__heading">
     Chứng nhận hoàn thành
   </h2>
-  <p class="certificate__lead">Chứng nhận</p>
+  <p class="certificate__lead">Trao cho</p>
   <p class="certificate__name">{{ doc.fullName }}</p>
-  <p class="certificate__course">
-    đã hoàn thành khóa đào tạo <strong>{{ doc.title }}</strong>@if (doc.code) {
-    ({{ doc.code }})}@if (doc.score !== null) { với kết quả bài kiểm tra {{
-    doc.score | fmtPct: 2 }}}.
+  <p class="certificate__lead">Đã hoàn thành khóa đào tạo</p>
+  <p class="certificate__course"><strong>{{ doc.title }}</strong></p>
+  @if (doc.code) {
+  <p class="certificate__lead">{{ doc.code }}</p>
+  } @if (doc.score !== null) {
+  <p class="certificate__lead">
+    Kết quả bài kiểm tra {{ doc.score | fmtPct: 2 }}
   </p>
+  }
   <dl class="certificate__facts">
     <div>
       <dt>Ngày hoàn thành</dt>
@@ -48,6 +55,10 @@
     <div>
       <dt>Mã xác thực</dt>
       <dd class="certificate__code">{{ doc.verificationCode }}</dd>
+    </div>
+    <div>
+      <dt>Đơn vị cấp</dt>
+      <dd>Ban QL&amp;PT Core Banking</dd>
     </div>
   </dl>
 </article>

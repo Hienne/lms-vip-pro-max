@@ -28,16 +28,36 @@
   <a uiButton variant="primary" routerLink="/learn">Xem khóa học của tôi</a>
 </ui-empty>
 } @else {
-<ul class="certificates__list" aria-label="Chứng nhận của tôi">
-  @for (row of store.rows$(); track row.id) {
-  <li class="certificates__row">
-    <a class="certificates__title" [routerLink]="row.link">{{ row.title }}</a>
-    <span class="certificates__meta"
-      >{{ row.code }} · Hoàn thành {{ row.completedAt | fmtDate }}@if (row.score
-      !== null) { · Điểm {{ row.score | fmtPct: 2 }}}</span
-    >
-    <span class="certificates__code">{{ row.verificationCode }}</span>
-  </li>
-  }
-</ul>
+<div class="certificates__toolbar">
+  <ui-search
+    label="Tìm chứng nhận"
+    placeholder="Tìm khóa học hoặc mã chứng nhận…"
+    [value]="store.search$()"
+    (searched)="store.setSearch($event)"
+  /><select
+    uiSelect
+    #sort
+    aria-label="Sắp xếp chứng nhận"
+    [value]="store.sort$()"
+    (change)="store.setSort(sort.value)"
+  >
+    <option value="newest">Mới nhất</option>
+    <option value="oldest">Cũ nhất</option>
+  </select>
+</div>
+<ui-section-card title="Chứng nhận của bạn" flush
+  ><span slot="action">{{ store.rows$().length }} chứng nhận</span>
+  <ul class="certificates__list" aria-label="Chứng nhận của tôi">
+    @for (row of store.rows$(); track row.id) {
+    <li class="certificates__row">
+      <a class="certificates__title" [routerLink]="row.link">{{ row.title }}</a>
+      <span class="certificates__meta"
+        >{{ row.code }} · Hoàn thành {{ row.completedAt | fmtDate }}@if
+        (row.score !== null) { · Điểm {{ row.score | fmtPct: 2 }}}</span
+      >
+      <span class="certificates__code">{{ row.verificationCode }}</span>
+    </li>
+    }
+  </ul>
+</ui-section-card>
 }

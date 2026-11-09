@@ -1,54 +1,53 @@
 @use 'ui';
 :host {
-  @include ui.page(narrow);
+  @include ui.page(wide);
   min-width: 0;
 }
-.saved__list {
-  list-style: none;
-  padding: 0;
-  margin: 0;
-}
-.saved__row {
-  @include ui.row(2);
-  flex-wrap: nowrap;
-  padding-right: ui.space(3);
-  & + & {
-    border-top: 1px solid ui.color(border);
+.saved {
+  &__toolbar {
+    @include ui.row(3);
+    margin-bottom: ui.space(5);
+    > select {
+      max-width: 100%;
+    }
   }
-}
-.saved__open {
-  @include ui.row(3);
-  flex-wrap: nowrap;
-  width: 100%;
-  min-width: 0;
-  padding: ui.space(4) ui.space(5);
-  text-align: left;
-  border: 0;
-  background: transparent;
-  color: ui.color(text);
-  cursor: pointer;
-  text-decoration: none;
-  &:hover {
-    background: ui.color(surface-2);
+  &__layout {
+    display: grid;
+    gap: ui.space(5);
+    margin-top: ui.space(4);
+    @include ui.bp(lg) {
+      grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
+      align-items: start;
+    }
   }
-  &:focus-visible {
-    @include ui.focus-ring;
+  &__groups {
+    @include ui.stack(4);
+    margin-top: ui.space(4);
   }
-}
-.saved__body {
-  flex: 1;
-  min-width: 0;
-  @include ui.stack(1);
-  strong {
-    @include ui.text(sm);
-    font-weight: ui.weight(semibold);
+  &__row {
+    display: flex;
+    align-items: center;
+    min-width: 0;
+    padding-right: ui.space(3);
+  }
+  &__choose {
+    flex: 1;
+    min-width: 0;
+    text-align: start;
+    &[aria-pressed='true'] {
+      background: ui.color(surface-2);
+    }
+  }
+  &__body {
+    @include ui.stack(1);
+    min-width: 0;
     overflow-wrap: anywhere;
   }
-  small {
-    @include ui.text(xs, muted);
+  &__content {
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
   }
-}
-.saved__status {
-  padding: ui.space(5);
-  @include ui.text(sm, muted);
+  &__status {
+    padding: ui.space(5);
+  }
 }

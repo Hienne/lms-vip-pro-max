@@ -1,11 +1,15 @@
 @use 'ui';
 
 :host {
-  @include ui.page(narrow);
+  @include ui.page(wide);
   min-width: 0;
 }
 
 .certificates {
+  &__toolbar {
+    @include ui.row(3);
+    margin: ui.space(4) 0;
+  }
   &__placeholder {
     min-height: 8rem;
     margin-top: ui.space(5);

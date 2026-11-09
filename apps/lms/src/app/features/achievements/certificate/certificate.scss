@@ -1,7 +1,7 @@
 @use 'ui';
 
 :host {
-  @include ui.page(narrow);
+  @include ui.page(wide);
   min-width: 0;
 }
 
@@ -14,7 +14,7 @@
   padding: ui.space(5);
   background: ui.color(surface);
   color: ui.color(text);
-  border: 1px solid ui.color(border);
+  border: ui.space(1) double ui.color(accent);
   border-radius: ui.radius(card);
 
   @include ui.bp(md) {
@@ -28,19 +28,29 @@
   }
 
   &__brand {
+    padding: ui.space(5);
+    background: ui.color(primary);
+    color: ui.color(on-primary);
     display: flex;
     align-items: center;
     gap: ui.space(3);
 
     p {
       margin: 0;
-      @include ui.text(sm, secondary);
+      @include ui.text(sm);
+      color: ui.color(on-primary);
     }
+  }
+
+  &__academy {
+    font-size: ui.text-size(xl);
+    font-weight: ui.weight(semibold);
   }
 
   &__heading {
     margin: ui.space(3) 0 0;
-    font-size: ui.text-size(xl);
+    font-size: ui.text-size(2xl);
+    color: ui.color(accent-ink);
     font-weight: ui.weight(semibold);
   }
 
@@ -57,6 +67,7 @@
   &__name {
     margin: 0;
     font-size: ui.text-size(3xl);
+    color: ui.color(primary);
     font-weight: ui.weight(semibold);
     line-height: ui.leading(tight);
     overflow-wrap: anywhere;
@@ -116,5 +127,9 @@
   .certificate {
     margin-top: 0;
     break-inside: avoid;
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+    gap: ui.space(3);
+    padding: ui.space(5);
   }
 }

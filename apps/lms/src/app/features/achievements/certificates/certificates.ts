@@ -2,6 +2,9 @@ import { Component, inject } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import {
   Button,
+  SectionCard,
+  Search,
+  Select,
   Empty,
   ErrorState,
   FmtDatePipe,
@@ -16,6 +19,9 @@ import { CertificatesStore } from './data-access/certificates.store';
   selector: 'app-certificates',
   imports: [
     Button,
+    SectionCard,
+    Search,
+    Select,
     Empty,
     ErrorState,
     FmtDatePipe,
