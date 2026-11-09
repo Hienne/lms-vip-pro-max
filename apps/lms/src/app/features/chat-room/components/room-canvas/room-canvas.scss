@@ -2,11 +2,12 @@
 :host {
   display: block;
   min-width: 0;
+  min-height: 0;
 }
 .room-canvas {
   position: relative;
   width: 100%;
-  height: clamp(ui.layout(panel), 68dvh, ui.layout(reading));
+  height: 100%;
   overflow: hidden;
   background: ui.color(surface-2);
   &:focus-visible {

@@ -1,10 +1,32 @@
 @use 'ui';
 .room-join {
   display: grid;
-  gap: ui.space(4);
+  gap: ui.space(2);
   align-items: start;
-  padding: ui.space(4) 0;
-  @include ui.bp(md) {
+  padding: ui.space(2) 0;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  @media (max-height: 480px) {
+    padding-block: ui.space(1);
+  }
+  @include ui.bp-below(sm) {
+    > :first-child,
+    > button {
+      grid-column: 1 / -1;
+    }
+    @media (max-height: 620px) {
+      > :first-child {
+        grid-column: 1;
+        grid-row: 1;
+      }
+      > button {
+        grid-column: 2;
+        grid-row: 1;
+        align-self: end;
+      }
+    }
+  }
+  @include ui.bp(sm) {
+    gap: ui.space(4);
     grid-template-columns: minmax(0, 1fr) repeat(2, minmax(0, 0.55fr)) auto;
     > button {
       // Match the field label line and the 6px gap above each control.

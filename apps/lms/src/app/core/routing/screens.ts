@@ -586,6 +586,7 @@ export const SCREEN_TABLE = {
       path: 'chat-room',
       title: 'Phòng học chung',
       mockupPage: 'chatRoom',
+      layout: 'workspace',
       load: () =>
         import('../../features/chat-room/chat-room').then((m) => m.ChatRoom),
     },

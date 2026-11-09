@@ -102,6 +102,7 @@
     display: flex;
     align-self: stretch;
     align-items: stretch;
+    gap: ui.space(2);
     position: relative;
     min-width: 0;
   }
@@ -117,7 +118,6 @@
 
     @include ui.bp-below(lg) {
       flex: 1;
-      justify-content: center;
       position: static;
     }
   }
@@ -125,8 +125,17 @@
   &__tab {
     white-space: nowrap;
 
+    @include ui.bp-below(lg) {
+      width: 100%;
+    }
+
     @include ui.bp-below(sm) {
-      padding-inline: ui.space(2);
+      padding-inline: ui.space(1);
+    }
+    @media (max-width: 383px) {
+      ui-icon {
+        display: none;
+      }
     }
 
     &--active {

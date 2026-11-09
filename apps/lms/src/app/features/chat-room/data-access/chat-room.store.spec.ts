@@ -15,6 +15,7 @@ import { provideEnvelopeHttpClient } from '../../../core/http/http.testing';
 import { SessionStore } from '../../../core/session/session.store';
 import { FakeSessionStore } from '../../../core/session/session.testing';
 import { ChatRoomStore } from './chat-room.store';
+import { RoomGamesStore } from './room-games.store';
 
 describe('ChatRoomStore', () => {
   let store: ChatRoomStore;
@@ -36,6 +37,7 @@ describe('ChatRoomStore', () => {
         provideEnvelopeHttpClient(),
         { provide: SessionStore, useClass: FakeSessionStore },
         ChatRoomStore,
+        RoomGamesStore,
       ],
     });
     vi.spyOn(TestBed.inject(EndpointClient), 'connect').mockImplementation(
@@ -89,7 +91,7 @@ describe('ChatRoomStore', () => {
       type: 'join',
       name: 'An',
       color: 'teal',
-      dice: true,
+      roomGames: true,
       gestures: true,
       interactions: true,
     });

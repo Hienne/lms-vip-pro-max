@@ -684,11 +684,15 @@ bubbles (5.5 seconds) are held in the store and expired by per-player timers. We
 older servers is ignored. The updated backend does not retain messages and sends an empty compatibility
 `history` field, so late arrivals/reconnects cannot receive previous speech.
 
-The current client opts in to the dice table with `dice: true` on join. Both views mark `diceArea`
-on the map. The backend owns each connection's starting balance of 100 play tokens and resolves
-individual rolls after checking the player's position and stake. The turn number makes repeated
-commands safe. Balance and results live for the WebSocket session.
+The client opts in to the wallet, shared dice rounds and Caro with `roomGames: true` on join.
+`RoomGamesStore` owns game panel state and consumes socket events through `ChatRoomStore`.
+Both renderers mark `diceArea` for the 30-second Trên/Dưới rounds. The server settles bets, publishes
+the same result and history to viewers and sends each account its own wallet. Caro uses a server-owned
+50 × 50 board. The view starts in the
+center and supports panning without sending moves. Position updates include `approaching` while
+the server walks a player toward an interaction target.
 
 Deploy the matching `corebanking-academy` module and configure WebSocket upgrade for
 `/api/v1/chat-room/socket` on the FE reverse proxy. The development `/api` proxy enables WebSocket.
-No database migration is required. Presence and dice state are held in one backend instance's memory.
+Apply the backend's `2026-11-09-chat-room-games.sql` upgrade first. Presence and invitations belong to one
+backend instance. Wallets and game data persist in PostgreSQL.

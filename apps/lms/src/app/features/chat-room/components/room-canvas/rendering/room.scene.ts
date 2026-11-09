@@ -37,6 +37,7 @@ export class RoomScene extends Phaser.Scene {
   private previousView?: RoomCanvasState;
   private lastSent = 0;
   private lastPosition = { x: -1, y: -1, facing: '' };
+  private approaching = false;
   private touch = { x: 0, y: 0 };
   private focused = true;
   private readonly reducedMotion = matchMedia(
@@ -179,7 +180,7 @@ export class RoomScene extends Phaser.Scene {
         17,
       );
       this.add
-        .text(x + w / 2, y + h * 0.77, 'Bàn Tài/Xỉu', {
+        .text(x + w / 2, y + h * 0.77, 'Bàn Trên/Dưới', {
           fontFamily: 'Segoe UI, sans-serif',
           fontSize: '38px',
           color: '#6b411e',
@@ -332,6 +333,7 @@ export class RoomScene extends Phaser.Scene {
     if (view.me !== previous?.me) {
       this.actors.forEach((a) => a.root.destroy());
       this.actors.clear();
+      this.approaching = false;
       this.lastPosition = { x: -1, y: -1, facing: '' };
     }
     const ids = new Set(view.players.map((p) => p.id));
@@ -349,7 +351,14 @@ export class RoomScene extends Phaser.Scene {
       const position = seat ?? { x: player.x, y: player.y };
       const seatChanged = actor.seat !== player.seat;
       actor.seat = player.seat;
-      if (player.id !== view.me || seatChanged) {
+      const wasApproaching = player.id === view.me && this.approaching;
+      if (player.id === view.me) this.approaching = player.approaching === true;
+      if (
+        player.id !== view.me ||
+        seatChanged ||
+        player.approaching ||
+        wasApproaching
+      ) {
         actor.facing =
           player.facing ??
           facingFromVector(
@@ -358,8 +367,10 @@ export class RoomScene extends Phaser.Scene {
             actor.facing,
           );
         actor.target = position;
-        if (player.id === view.me)
+        if (player.id === view.me && !this.approaching) {
           actor.root.setPosition(position.x, position.y);
+          this.lastPosition = { ...position, facing: actor.facing };
+        }
       }
     });
     if (view.me !== previous?.me) this.resize();
@@ -406,7 +417,8 @@ export class RoomScene extends Phaser.Scene {
       now,
       this.reducedMotion,
     );
-    const canMove = self?.seat === undefined && !localPose.highFive;
+    const canMove =
+      self?.seat === undefined && !localPose.highFive && !this.approaching;
     const typing =
       ['INPUT', 'TEXTAREA', 'BUTTON', 'SELECT'].includes(
         document.activeElement?.tagName ?? '',
@@ -458,7 +470,7 @@ export class RoomScene extends Phaser.Scene {
         actor.target.x - actor.root.x,
         actor.target.y - actor.root.y,
       );
-      if (id !== view.me) {
+      if (id !== view.me || this.approaching) {
         const blend = 1 - Math.exp(-delta / 45);
         actor.root.x = Phaser.Math.Linear(actor.root.x, actor.target.x, blend);
         actor.root.y = Phaser.Math.Linear(actor.root.y, actor.target.y, blend);
@@ -468,14 +480,16 @@ export class RoomScene extends Phaser.Scene {
           ? localPose
           : gesturePose(view.gestures[id], now, this.reducedMotion);
       const seated = actor.seat !== undefined;
-      const lift = seated ? -8 : pose.lift * 38;
+      const lift = seated ? -2 : pose.lift * 38;
       const shiftX = pose.highFive?.x ?? 0;
       const shiftY = pose.highFive?.y ?? 0;
       actor.avatar.draw(
         pose.facing ?? actor.facing,
         !seated &&
           !pose.highFive &&
-          (id === view.me ? Math.hypot(dx, dy) > 0 : distance > 1),
+          (id === view.me && !this.approaching
+            ? Math.hypot(dx, dy) > 0
+            : distance > 1),
         time,
         this.reducedMotion,
         lift,

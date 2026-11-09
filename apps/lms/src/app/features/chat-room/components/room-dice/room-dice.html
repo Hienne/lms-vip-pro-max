@@ -1,23 +1,30 @@
 <section aria-labelledby="room-dice-title">
   <div class="dice__heading">
-    <h2 id="room-dice-title">Bàn Tài/Xỉu</h2>
+    <h2 id="room-dice-title">Trên/Dưới</h2>
     <button uiButton size="sm" variant="ghost" (click)="closed.emit()">
       Đóng bàn
     </button>
   </div>
-  <p class="dice__balance" aria-live="polite">
-    Số dư <strong>{{ state().balance }} token chơi</strong>
-  </p>
+  <p class="dice__balance">Số dư <strong>{{ balance() }} token</strong></p>
+  @if (state(); as table) {
   <p class="dice__rules">
-    Ba mặt giống nhau thì cả hai cửa đều thua. Thắng nhận thêm bằng số token đã
-    đặt.
+    Một kết quả chung sau mỗi 30 giây. Bộ ba làm cả hai cửa thua. Cửa thắng nhận
+    gấp đôi tiền đặt.
   </p>
-  @if (state().balance > 0) {
+  <p class="dice__round">
+    <strong>Lượt {{ table.round }}</strong> · {{ seconds() ? 'Còn ' + seconds()
+    + ' giây' : 'Đang chốt kết quả…' }}
+  </p>
+  @if (table.bet; as bet) {
+  <p role="status">
+    Đã đặt <strong>{{ bet.stake }} token</strong> cửa {{ labels[bet.side] }}.
+  </p>
+  } @else if (balance() > 0) {
   <form class="dice__form" [formRoot]="betForm">
     <ui-field label="Cửa đặt">
       <select uiSelect [formField]="betForm.side">
-        <option value="big">Tài · 11–17</option>
-        <option value="small">Xỉu · 4–10</option>
+        <option value="upper">Trên · 11–17</option>
+        <option value="lower">Dưới · 4–10</option>
       </select>
     </ui-field>
     <ui-field label="Token đặt" required>
@@ -29,31 +36,57 @@
         [formField]="betForm.stake"
       />
     </ui-field>
-    <button uiButton variant="primary" type="submit" [disabled]="pending()">
-      {{ pending() ? 'Đang tung…' : 'Tung 3 súc xắc' }}
+    <button
+      uiButton
+      variant="primary"
+      type="submit"
+      [disabled]="pending() || !seconds()"
+    >
+      {{ pending() ? 'Đang đặt…' : 'Đặt cược' }}
     </button>
   </form>
   } @else {
-  <p>Bạn đã hết token của lượt vào phòng này.</p>
-  } @if (error()) {
-  <p class="dice__error" role="alert">{{ error() }}</p>
-  } @if (state().result; as result) {
+  <p>Bạn đã hết token.</p>
+  } @if (table.history[0]; as latest) {
   <div class="dice__result" role="status">
     <div
       class="dice__faces"
-      [attr.aria-label]="'Ba mặt súc xắc ' + result.dice.join(', ')"
+      [attr.aria-label]="'Ba mặt súc xắc ' + latest.dice.join(', ')"
     >
-      @for (face of result.dice; track $index) {
+      @for (face of latest.dice; track $index) {
       <span aria-hidden="true">{{ faces[face - 1] }}</span>
       }
     </div>
     <p>
-      Tổng <strong>{{ result.total }}</strong> · {{ result.outcome === 'triple'
-      ? 'Bộ ba' : result.outcome === 'big' ? 'Tài' : 'Xỉu' }} ·
+      Lượt {{ latest.round }} · Tổng <strong>{{ latest.total }}</strong> · {{
+      labels[latest.outcome] }}
+    </p>
+    @if (table.lastBet; as bet) {
+    <p>
       <strong
-        >{{ result.won ? 'Thắng +' : 'Thua −' }}{{ result.stake }} token</strong
+        >{{ bet.side === latest.outcome ? 'Thắng +' : 'Thua −' }}{{ bet.stake }}
+        token</strong
       >
     </p>
+    }
   </div>
+  }
+  <details class="dice__history">
+    <summary>Lịch sử kết quả</summary>
+    <ol>
+      @for (result of table.history; track result.round) {
+      <li>
+        Lượt {{ result.round }} · {{ result.dice.join(' + ') }} = {{
+        result.total }} · {{ labels[result.outcome] }}
+      </li>
+      } @empty {
+      <li>Chưa có kết quả.</li>
+      }
+    </ol>
+  </details>
+  } @else {
+  <p role="status">Đang mở bàn…</p>
+  } @if (error()) {
+  <p class="dice__error" role="alert">{{ error() }}</p>
   }
 </section>

@@ -74,23 +74,53 @@ export class RoomAvatar3D {
     );
     sphere(body, 0, 1.42, -0.035, 0.466, 0.45, 0.418, skin);
     if (skirt) {
-      sphere(body, 0, 1.55, 0.119, 0.481, 0.385, 0.384, hair);
-      sphere(body, -0.15, 1.72, -0.266, 0.28, 0.13, 0.18, hair).rotation.z =
-        0.42;
-      sphere(body, 0.26, 1.71, -0.22, 0.16, 0.13, 0.19, hair).rotation.z = -0.6;
+      const chestnut = 0x603729;
+      sphere(body, 0, 1.58, 0.09, 0.483, 0.385, 0.403, hair);
+      sphere(body, 0.05, 1.27, 0.259, 0.34, 0.378, 0.22, hair).rotation.z =
+        0.13;
+      sphere(
+        body,
+        -0.16,
+        1.745,
+        -0.251,
+        0.299,
+        0.137,
+        0.203,
+        chestnut,
+      ).rotation.z = 0.32;
+      sphere(body, 0.25, 1.725, -0.239, 0.191, 0.129, 0.18, hair).rotation.z =
+        -0.51;
+      sphere(
+        body,
+        -0.22,
+        1.792,
+        -0.311,
+        0.15,
+        0.029,
+        0.079,
+        0x754836,
+      ).rotation.z = 0.3;
       for (const side of [-1, 1]) {
-        const braid = sphere(
+        sphere(
           body,
-          side * 0.4,
-          1.31,
-          0.1,
-          0.12,
-          0.34,
-          0.17,
+          side * 0.414,
+          1.4,
+          0.013,
+          0.101,
+          0.252,
+          0.158,
           hair,
-        );
-        braid.rotation.z = side * 0.21;
-        sphere(body, side * 0.46, 1.07, 0.11, 0.084, 0.039, 0.08, 0xe5b767);
+        ).rotation.z = side * -0.1;
+        sphere(
+          body,
+          side * 0.375,
+          1.205,
+          0.12,
+          0.122,
+          0.225,
+          0.159,
+          chestnut,
+        ).rotation.z = side * -0.21;
         sphere(
           body,
           side * 0.09,
@@ -102,6 +132,25 @@ export class RoomAvatar3D {
           0xffe6b9,
         ).rotation.z = side * 0.22;
       }
+      // A flower clip frames the side part and stays visible from the front and side.
+      const clip = new THREE.Group();
+      clip.position.set(0.365, 1.654, -0.417);
+      clip.rotation.y = -0.32;
+      body.add(clip);
+      for (let petal = 0; petal < 5; petal++) {
+        const angle = (petal * Math.PI * 2) / 5;
+        sphere(
+          clip,
+          Math.cos(angle) * 0.046,
+          Math.sin(angle) * 0.046,
+          0,
+          0.033,
+          0.034,
+          0.024,
+          0xf5b7c6,
+        );
+      }
+      sphere(clip, 0, 0, -0.019, 0.025, 0.025, 0.017, 0xffd483);
       sphere(body, 0, 0.95, -0.22, 0.054, 0.055, 0.035, 0xe5b767);
     } else {
       sphere(body, 0, 1.64, 0.103, 0.458, 0.29, 0.37, hair);
@@ -267,7 +316,7 @@ export class RoomAvatar3D {
     this.garment.scale.y = this.seated ? 0.49 : 1;
     this.garment.position.y = this.seated ? 0.58 : 0;
     this.belt.visible = !this.seated;
-    const lift = this.seated ? 0.15 : pose.lift * 0.62 * AVATAR_SCALE;
+    const lift = this.seated ? 0.22 : pose.lift * 0.62 * AVATAR_SCALE;
     const reach = pose.highFive
       ? 39 * (1 - AVATAR_SCALE) * pose.highFive.amount
       : 0;
