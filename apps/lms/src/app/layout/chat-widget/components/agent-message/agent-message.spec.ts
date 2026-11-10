@@ -81,6 +81,13 @@ describe('AgentMessage', () => {
     ).toContain('Đang chuẩn bị thay đổi…');
   });
 
+  it('says the Community search is running', async () => {
+    const { text } = await render(
+      turn({ status: 'working', toolName: 'search_community' }),
+    );
+    expect(text()).toContain('Đang tìm trong cộng đồng…');
+  });
+
   it('says the answer is being written until its first text arrives', async () => {
     const { el, text } = await render(
       turn({ status: 'composing', toolName: 'search_documents' }),
