@@ -1,14 +1,12 @@
 <ul class="chapters" aria-label="Mốc nội dung video">
   @for (chapter of chapters(); track $index) {
   <li>
-    <button
-      uiChip
+    <span
       class="chapters__item"
       [attr.aria-current]="$index === current() ? 'true' : null"
-      (click)="seek.emit(chapter.startSeconds)"
     >
       {{ clock(chapter.startSeconds) }} · {{ chapter.title }}
-    </button>
+    </span>
   </li>
   }
 </ul>

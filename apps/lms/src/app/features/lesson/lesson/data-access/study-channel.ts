@@ -13,7 +13,6 @@ import {
   enqueue,
   fromClaim,
   NOT_PLAYING,
-  seekEvents,
   toCommand,
   type PlayTracker,
   type ProtocolState,
@@ -105,6 +104,7 @@ export class StudyChannel {
   private inFlight: InFlight | null = null;
   private busy = false;
   private resyncs = 0;
+  private closing = false;
   private afterIdle: (() => void) | null = null;
   private onSaved: ((saved: boolean) => void) | null = null;
   private heartbeat: Subscription | undefined;
@@ -128,8 +128,8 @@ export class StudyChannel {
     if (this.state.phase() === 'ready' && this.target) {
       // The session is still on the old block: what is queued for it goes first (a completion
       // must not be lost), then it is closed there, then the new one is claimed.
-      this.queue(this.closeEvent());
       this.afterIdle = () => this.claimWanted();
+      this.queueClose();
       this.pump();
     } else if (this.busy) {
       // A lease is still being closed: the next block is claimed once that answers.
@@ -160,9 +160,10 @@ export class StudyChannel {
 
   /** The player reports something the learner did. */
   send(event: StudyEvent): void {
-    if (this.destroyed || this.state.phase() !== 'ready') return;
+    if (this.destroyed || this.closing || this.state.phase() !== 'ready')
+      return;
     this.queue(event);
-    this.pump();
+    if (this.state.save() !== 'failed') this.pump();
   }
 
   /** Let the page advance only after the current block's queued writes are acknowledged. */
@@ -170,7 +171,12 @@ export class StudyChannel {
     event: StudyEvent | undefined,
     settled: (saved: boolean) => void,
   ): void {
-    if (this.destroyed || this.state.phase() !== 'ready') {
+    if (
+      this.destroyed ||
+      this.closing ||
+      this.state.phase() !== 'ready' ||
+      this.state.save() === 'failed'
+    ) {
       settled(false);
       return;
     }
@@ -179,37 +185,40 @@ export class StudyChannel {
     this.pump();
   }
 
-  /** A seek: the range played up to where it started is closed first, then the `SEEK`. */
-  seek(from: number, to: number, playing: boolean): void {
-    for (const event of seekEvents(this.tracker, from, to, playing)) {
-      this.send(event);
-    }
-  }
-
   /** Sends the unsent event again after "Chưa lưu được tiến độ". */
   retry(): void {
     if (this.destroyed) return;
-    if (this.state.phase() === 'ready') this.pump();
-    else this.reclaim();
+    if (this.state.phase() === 'ready') {
+      this.resyncs = 0;
+      this.pump();
+    } else this.reclaim();
   }
 
   /** Route leave: `CLOSE` the block, best effort, and stop the timer. */
   destroy(): void {
     if (this.destroyed) return;
     this.finishSave(false);
+    this.destroyed = true;
+    this.afterIdle = null;
+    this.stopHeartbeat();
     if (this.state.phase() === 'ready') {
-      this.queue(this.closeEvent());
+      this.queueClose();
       this.pump();
     }
-    this.destroyed = true;
+  }
+
+  private queueClose(): void {
+    if (this.closing) return;
+    this.closing = true;
     this.stopHeartbeat();
+    this.queue(this.closeEvent());
   }
 
   /** `CLOSE` for the block on screen; a video closes its range where the player is now. */
   private closeEvent(): StudyEvent {
     // Without a player, the last reported position stands in: a video event always carries one.
     const position = this.target?.video
-      ? (this.deps.position?.() ?? this.tracker.position ?? undefined)
+      ? (this.deps.position?.() ?? this.queuedTracker().position ?? undefined)
       : undefined;
     return position === undefined
       ? { type: 'CLOSE', playing: false }
@@ -220,16 +229,29 @@ export class StudyChannel {
     this.waiting = [...enqueue(this.waiting, event)];
   }
 
+  /** A player action follows the queued actions even when the server has not answered yet. */
+  private queuedTracker(): PlayTracker {
+    const last = this.waiting.at(-1);
+    return last
+      ? {
+          playing: last.playing ?? false,
+          position: last.positionSeconds ?? null,
+        }
+      : (this.inFlight?.tracker ?? this.tracker);
+  }
+
   private clearWork(): void {
     this.waiting = [];
     this.inFlight = null;
     this.afterIdle = null;
     this.resyncs = 0;
+    this.closing = false;
   }
 
   // ---- claim ----
 
   private claimWanted(takeover = false): void {
+    if (this.destroyed) return;
     // A claim for a block starts with nothing of the one before it.
     this.clearWork();
     this.target = this.wanted;
@@ -276,6 +298,15 @@ export class StudyChannel {
         next: (session) => this.claimed(target, session, silent),
         error: (error: unknown) => {
           this.busy = false;
+          if (this.destroyed) return;
+          if (!silent && target !== this.wanted) {
+            this.claimWanted();
+            return;
+          }
+          if (silent && this.closing && this.afterIdle) {
+            this.runAfterIdle();
+            return;
+          }
           const failure = toAppError(error);
           this.state.error.set(failure);
           this.settle(actionFor(failure, silent ? 'reclaim' : 'claim'));
@@ -300,11 +331,25 @@ export class StudyChannel {
       this.claimWanted();
       return;
     }
+    const previous = this.protocol;
     this.protocol = fromClaim(session);
     this.state.session.set(session);
     this.state.phase.set('ready');
     this.startHeartbeat();
     if (silent) {
+      if (
+        previous?.sessionId !== session.sessionId ||
+        previous.sessionFence !== session.sessionFence ||
+        previous.lastSequence !== session.lastAcceptedSequence
+      ) {
+        // A new lease has no PLAY event yet. Only count ranges after this claim.
+        this.tracker = {
+          playing: false,
+          position: target.video
+            ? (session.resume?.lastVideoPositionSeconds ?? 0)
+            : null,
+        };
+      }
       this.pump();
       return;
     }
@@ -329,7 +374,15 @@ export class StudyChannel {
     this.protocol = fromClaim(session);
     this.tracker = NOT_PLAYING;
     this.state.phase.set('idle');
-    this.waiting = [{ type: 'CLOSE', playing: false }];
+    this.waiting = [
+      target.video
+        ? {
+            type: 'CLOSE',
+            playing: false,
+            positionSeconds: session.resume?.lastVideoPositionSeconds ?? 0,
+          }
+        : { type: 'CLOSE', playing: false },
+    ];
     this.pump();
   }
 
@@ -345,6 +398,7 @@ export class StudyChannel {
 
   /** Puts a refusal into the phase the page shows. Nothing is sent from a phase but `ready`. */
   private settle(action: RefusalAction): void {
+    this.finishSave(false);
     this.stopHeartbeat();
     this.waiting = [];
     this.inFlight = null;
@@ -412,11 +466,15 @@ export class StudyChannel {
 
   private refused(error: unknown): void {
     this.busy = false;
-    this.finishSave(false);
     if (this.destroyed) {
       // The page is gone: a `CLOSE` that cannot be sent is dropped, not claimed again.
       this.inFlight = null;
       this.waiting = [];
+      return;
+    }
+    if (this.afterIdle && this.inFlight?.event.type === 'CLOSE') {
+      // The next claim can replace an expired or already released lease.
+      this.runAfterIdle();
       return;
     }
     const failure = toAppError(error);
@@ -424,6 +482,7 @@ export class StudyChannel {
     switch (action) {
       case 'reclaim': {
         // The lease ran out: claim again quietly and send the same event with the new ids.
+        this.resyncs += 1;
         const event = this.inFlight?.event;
         this.inFlight = null;
         if (event) this.waiting.unshift(event);
@@ -439,6 +498,7 @@ export class StudyChannel {
         this.claim(true);
         return;
       case 'save-failed':
+        this.finishSave(false);
         // The queue keeps the unsent event; "Thử lại" sends it again unchanged.
         this.state.save.set('failed');
         this.state.error.set(failure);
@@ -450,6 +510,7 @@ export class StudyChannel {
         }
         return;
       default:
+        this.finishSave(false);
         this.state.error.set(failure);
         this.settle(action);
     }
@@ -473,10 +534,13 @@ export class StudyChannel {
     this.stopHeartbeat();
     if (this.destroyed) return;
     this.heartbeat = interval(HEARTBEAT_MS).subscribe(() => {
+      if (this.busy || this.closing || this.state.save() === 'failed') return;
       // A playing video reports every 10 s itself, with its range.
-      if (this.deps.visible() && !this.tracker.playing) {
+      const tracker = this.queuedTracker();
+      if (this.deps.visible() && !tracker.playing) {
         // The server requires a position on every event of a video block.
-        const position = this.target?.video ? this.tracker.position : null;
+        const position = this.target?.video ? tracker.position : null;
+        if (this.target?.video && position === null) return;
         this.send(
           position === null
             ? { type: 'HEARTBEAT', playing: false }

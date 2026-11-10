@@ -1,5 +1,5 @@
 import { TestBed } from '@angular/core/testing';
-import { VIDEO_BEAT_MS, VideoBlock, type VideoSeek } from './video-block';
+import { VIDEO_BEAT_MS, VideoBlock } from './video-block';
 
 interface Probe {
   readonly el: HTMLElement;
@@ -10,7 +10,6 @@ interface Probe {
   readonly played: number[];
   readonly paused: number[];
   readonly beats: number[];
-  readonly seeks: VideoSeek[];
   readonly seconds: number[];
   readonly bookmarks: number[];
   readonly set: (name: string, value: unknown) => void;
@@ -25,14 +24,12 @@ function render(startAt = 0): Probe {
   const played: number[] = [];
   const paused: number[] = [];
   const beats: number[] = [];
-  const seeks: VideoSeek[] = [];
   const seconds: number[] = [];
   const bookmarks: number[] = [];
   let retries = 0;
   fixture.componentInstance.played.subscribe((p) => played.push(p));
   fixture.componentInstance.paused.subscribe((p) => paused.push(p));
   fixture.componentInstance.beat.subscribe((p) => beats.push(p));
-  fixture.componentInstance.jumped.subscribe((s) => seeks.push(s));
   fixture.componentInstance.secondChange.subscribe((s) => seconds.push(s));
   fixture.componentInstance.bookmark.subscribe((s) => bookmarks.push(s));
   fixture.componentInstance.retry.subscribe(() => (retries += 1));
@@ -62,7 +59,6 @@ function render(startAt = 0): Probe {
     played,
     paused,
     beats,
-    seeks,
     seconds,
     bookmarks,
     set: (name, value) => {
@@ -77,13 +73,13 @@ describe('VideoBlock', () => {
   beforeEach(() => vi.useFakeTimers());
   afterEach(() => vi.useRealTimers());
 
-  it('is the native player on the content URL, with controls, metadata only and no autoplay', () => {
+  it('is the native player on the content URL, without native controls, with metadata only and no autoplay', () => {
     const { video } = render();
     const player = video()!;
     expect(player.getAttribute('src')).toBe(
       '/api/v1/learning-assets/7/content',
     );
-    expect(player.controls).toBe(true);
+    expect(player.controls).toBe(false);
     expect(player.getAttribute('preload')).toBe('metadata');
     expect(player.autoplay).toBe(false);
     expect(player.getAttribute('aria-label')).toBe('Video bài giảng');
@@ -94,13 +90,29 @@ describe('VideoBlock', () => {
     probe.fire('loadedmetadata');
     expect(probe.video()!.currentTime).toBe(95);
     probe.fire('seeking');
-    expect(probe.seeks).toEqual([]);
   });
 
   it('stays at the start when there is nothing to resume', () => {
     const probe = render(0);
     probe.fire('loadedmetadata');
     expect(probe.video()!.currentTime).toBe(0);
+  });
+
+  it('reopens an already completed video at the start when it was left at the end', () => {
+    const probe = render(95);
+    probe.set('completed', true);
+    Object.defineProperty(probe.video(), 'duration', { value: 95 });
+    probe.fire('loadedmetadata');
+    expect(probe.video()!.currentTime).toBe(0);
+  });
+
+  it('does not report a heartbeat from an in-progress seek', () => {
+    const probe = render();
+    probe.fire('play', false);
+    Object.defineProperty(probe.video(), 'seeking', { value: true });
+    probe.time(20);
+    vi.advanceTimersByTime(VIDEO_BEAT_MS);
+    expect(probe.beats).toEqual([]);
   });
 
   it('reports a play with its position and a beat every 10 s while it plays', () => {
@@ -139,19 +151,16 @@ describe('VideoBlock', () => {
     expect(probe.beats).toEqual([]);
   });
 
-  it('reports a seek from the last known position, and whether it was playing', () => {
+  it('restores the last playing position after a seek attempt', () => {
     const probe = render();
+    probe.fire('loadedmetadata');
     probe.fire('play', false);
     probe.time(40);
     probe.fire('timeupdate');
     probe.time(300);
     probe.fire('seeking');
-    expect(probe.seeks).toEqual([{ from: 40, to: 300, playing: true }]);
-
-    probe.fire('pause', true);
-    probe.time(10);
-    probe.fire('seeking', true);
-    expect(probe.seeks[1]).toEqual({ from: 300, to: 10, playing: false });
+    expect(probe.video()!.currentTime).toBe(40);
+    expect(probe.seconds).toEqual([40]);
   });
 
   it('tells the whole second only when it changes', () => {
@@ -163,39 +172,10 @@ describe('VideoBlock', () => {
     expect(probe.seconds).toEqual([5, 6]);
   });
 
-  it('moves to a jump and reports it as a seek, like one the learner made', () => {
-    const probe = render();
-    probe.fire('loadedmetadata');
-    probe.time(30);
-    probe.fire('timeupdate');
-    probe.set('jump', { value: 75, seq: 1 });
-    expect(probe.video()!.currentTime).toBe(75);
-    probe.fire('seeking', true);
-    expect(probe.seeks).toEqual([{ from: 30, to: 75, playing: false }]);
-
-    probe.time(10);
-    probe.fire('timeupdate');
-    probe.set('jump', { value: 75, seq: 2 });
-    expect(probe.video()!.currentTime).toBe(75);
-  });
-
-  it('waits for the metadata before it moves to a jump, and does so only once', () => {
-    const probe = render(95);
-    probe.set('jump', { value: 40, seq: 1 });
-    expect(probe.video()!.currentTime).toBe(0);
-    probe.fire('loadedmetadata');
-    expect(probe.video()!.currentTime).toBe(40);
-    probe.fire('seeking', true);
-    expect(probe.seeks).toHaveLength(1);
-
-    probe.time(12);
-    probe.fire('loadedmetadata');
-    expect(probe.video()!.currentTime).toBe(95);
-  });
-
   it('bookmarks the second on screen from a toggle button that shows and waits', () => {
     const probe = render();
-    const button = () => probe.el.querySelector('button')!;
+    const button = () =>
+      probe.el.querySelector<HTMLButtonElement>('.video__bookmark')!;
     expect(button().textContent).toContain('Đánh dấu mốc 0:00');
     probe.time(75.6);
     probe.fire('timeupdate');
@@ -244,9 +224,7 @@ describe('VideoBlock', () => {
       { startSeconds: 20.5, title: 'Tổng kết' },
     ];
     const items = (probe: Probe) =>
-      Array.from(
-        probe.el.querySelectorAll<HTMLButtonElement>('.chapters__item'),
-      );
+      Array.from(probe.el.querySelectorAll<HTMLElement>('.chapters__item'));
 
     it('shows no row for a video without chapters', () => {
       const probe = render();
@@ -261,19 +239,6 @@ describe('VideoBlock', () => {
         '0:10 · Khái niệm chính',
         '0:20 · Tổng kết',
       ]);
-    });
-
-    it('moves the player on a click and reports it as a seek', () => {
-      const probe = render();
-      probe.set('chapters', chapters);
-      probe.fire('play', false);
-      probe.time(3);
-      probe.fire('timeupdate');
-
-      items(probe)[1].click();
-      expect(probe.video()!.currentTime).toBe(10);
-      probe.fire('seeking');
-      expect(probe.seeks).toEqual([{ from: 3, to: 10, playing: true }]);
     });
 
     it('marks the chapter being played and follows the time', () => {
@@ -315,9 +280,7 @@ describe('VideoBlock', () => {
     const details = (probe: Probe) =>
       probe.el.querySelector<HTMLDetailsElement>('details.transcript')!;
     const buttons = (probe: Probe) =>
-      Array.from(
-        probe.el.querySelectorAll<HTMLButtonElement>('.transcript__line'),
-      );
+      Array.from(probe.el.querySelectorAll<HTMLElement>('.transcript__line'));
     const search = (probe: Probe, text: string) => {
       const input = probe.el.querySelector<HTMLInputElement>(
         'input[type="search"]',
@@ -349,19 +312,6 @@ describe('VideoBlock', () => {
         '0:05 Hệ thống Core Banking xử lý sổ cái.',
         '0:10 Tổng kết bài học.',
       ]);
-    });
-
-    it('moves the player on a click and reports it as a seek', () => {
-      const probe = render();
-      probe.set('transcript', lines);
-      probe.fire('play', false);
-      probe.time(1);
-      probe.fire('timeupdate');
-
-      buttons(probe)[1].click();
-      expect(probe.video()!.currentTime).toBe(5);
-      probe.fire('seeking');
-      expect(probe.seeks).toEqual([{ from: 1, to: 5, playing: true }]);
     });
 
     it('marks the line being played and follows the time', () => {

@@ -153,16 +153,11 @@ export class LessonStore {
     { initialValue: idParam(this.route.snapshot.queryParamMap.get('block')) },
   );
 
-  /** `?page=` and `?t=` next to `?block=`: a link from "Đã lưu & ghi chú" to a spot of the block. */
+  /** `?page=` next to `?block=`: a link to a page of the PDF. */
   private readonly queryPage = toSignal(
     this.route.queryParamMap.pipe(map((p) => whole(p.get('page')))),
     { initialValue: whole(this.route.snapshot.queryParamMap.get('page')) },
   );
-  private readonly queryTime = toSignal(
-    this.route.queryParamMap.pipe(map((p) => whole(p.get('t')))),
-    { initialValue: whole(this.route.snapshot.queryParamMap.get('t')) },
-  );
-
   private readonly courseData = serverData(
     (courseId: number) => readLearnerCourse(this.client, courseId),
     { params: () => this.courseId$() },
@@ -188,11 +183,6 @@ export class LessonStore {
   );
 
   private readonly state = {
-    /** The block the learner chose in this lesson; it wins over the URL and the resume point. */
-    selected: linkedSignal<number | undefined, number | undefined>({
-      source: () => this.lessonId$(),
-      computation: () => undefined,
-    }),
     /** The "Mục lục" drawer below `lg`; a new lesson closes it. */
     outlineOpen: linkedSignal<number | undefined, boolean>({
       source: () => this.lessonId$(),
@@ -226,7 +216,7 @@ export class LessonStore {
   private jumpSeq = 0;
 
   /** Reads the player of the video block on screen, which the page hands over (`watchVideo`). */
-  private videoPosition: (() => number) | undefined;
+  private videoPosition: (() => number | undefined) | undefined;
   private readonly advancing = signal(false);
 
   private readonly channel = new StudyChannel({
@@ -327,7 +317,6 @@ export class LessonStore {
     const has = (id: number | null | undefined) =>
       blocks.find((b) => b.id === id);
     return (
-      has(this.state.selected()) ??
       has(this.queryBlockId()) ??
       has(this.detail$()?.enrollment.lastBlockId) ??
       blocks[0]
@@ -431,15 +420,13 @@ export class LessonStore {
   private readonly urlJump = computed(
     (): JumpTo | null => {
       const active = this.activeBlock$();
-      if (!active || active.id !== this.queryBlockId()) return null;
-      const type = active.detail.block.blockType;
-      const value =
-        type === 'pdf'
-          ? this.queryPage()
-          : type === 'video'
-            ? this.queryTime()
-            : undefined;
-      return value === undefined || (type === 'pdf' && value < 1)
+      if (
+        active?.detail.block.blockType !== 'pdf' ||
+        active.id !== this.queryBlockId()
+      )
+        return null;
+      const value = this.queryPage();
+      return value === undefined || value < 1
         ? null
         : { blockId: active.id, value, seq: 0 };
     },
@@ -447,25 +434,30 @@ export class LessonStore {
   );
 
   /** The page the PDF on screen has to show now: an anchor followed here, else the link's. */
-  readonly pdfJump$ = computed(() => this.jumpFor('pdf'), { equal: sameJump });
-  /** The second the video on screen has to move to. */
-  readonly videoJump$ = computed(() => this.jumpFor('video'), {
-    equal: sameJump,
-  });
-
-  private jumpFor(type: 'pdf' | 'video'): JumpTo | null {
-    const active = this.activeBlock$();
-    if (active?.detail.block.blockType !== type) return null;
-    const asked = this.state.jump();
-    return asked?.blockId === active.id ? asked : this.urlJump();
-  }
+  readonly pdfJump$ = computed(
+    () => {
+      const active = this.activeBlock$();
+      if (active?.detail.block.blockType !== 'pdf') return null;
+      const asked = this.state.jump();
+      return asked?.blockId === active.id ? asked : this.urlJump();
+    },
+    { equal: sameJump },
+  );
 
   /** The block's file, loadable only while this tab holds the session (the media cookie). */
   readonly contentUrl$ = computed((): string | null => {
     const active = this.activeBlock$();
     const asset = active?.detail.assets[0]?.asset;
     const enrollmentId = this.card$()?.enrollmentId;
-    if (!active || !asset || !enrollmentId || this.phase$() !== 'ready') {
+    const session = this.channel.session$();
+    if (
+      !active ||
+      !asset ||
+      !enrollmentId ||
+      this.phase$() !== 'ready' ||
+      session?.blockId !== active.id ||
+      session.enrollmentId !== enrollmentId
+    ) {
       return null;
     }
     const url = toUrl(courseEndpoints.getAssetContent, { assetId: asset.id });
@@ -540,6 +532,7 @@ export class LessonStore {
     const completion = this.completion$();
     return (
       !this.advancing() &&
+      (this.phase$() !== 'ready' || this.save$() !== 'failed') &&
       (!completion.manual || completion.done || this.phase$() === 'ready')
     );
   });
@@ -611,10 +604,11 @@ export class LessonStore {
 
   /** The URL follows the active block, so a reload and the back button keep it. */
   private readonly followUrl = effect(() => {
-    const active = this.view$() === 'ready' ? this.activeBlock$() : undefined;
+    const blockId = this.view$() === 'ready' ? this.activeBlockId() : undefined;
     const inUrl = this.queryBlockId();
-    if (active && active.id !== inUrl) {
-      untracked(() => this.writeBlockToUrl(active.id));
+    const navigating = this.router.currentNavigation();
+    if (!navigating && blockId && blockId !== inUrl) {
+      untracked(() => this.writeBlockToUrl(blockId, true));
     }
   });
 
@@ -624,12 +618,10 @@ export class LessonStore {
    */
   private readonly dropEntryAnchor = effect(() => {
     const jump = this.urlJump();
-    const { page, second } = this.state.position();
-    if (!jump) return;
-    const type = this.activeBlock$()?.detail.block.blockType;
-    const shown =
-      type === 'pdf' ? page !== null : jump.value > 0 && second === jump.value;
-    if (shown) untracked(() => this.dropAnchorFromUrl());
+    const { page } = this.state.position();
+    if (jump && page === jump.value && !this.router.currentNavigation()) {
+      untracked(() => this.dropAnchorFromUrl());
+    }
   });
 
   /** A tab whose user signed out must not leave a session id for the next one. */
@@ -645,8 +637,13 @@ export class LessonStore {
 
   // Commands
   selectBlock(blockId: number): void {
-    this.state.selected.set(blockId);
     this.state.jump.set(null);
+    if (
+      blockId !== this.activeBlockId() &&
+      this.blocks$().some((block) => block.id === blockId)
+    ) {
+      this.writeBlockToUrl(blockId);
+    }
   }
 
   /** A block chosen in "Mục lục": it opens, and the outline drawer of a narrow screen gets out of the way. */
@@ -682,6 +679,8 @@ export class LessonStore {
   /** The PDF on screen shows this page. */
   pdfPageChange(page: number): void {
     this.state.position.update((p) => ({ ...p, page }));
+    if (this.state.jump()?.blockId === this.activeBlockId())
+      this.state.jump.set(null);
   }
 
   /** The video on screen is at this whole second. */
@@ -730,11 +729,13 @@ export class LessonStore {
     if (anchor.blockId !== this.activeBlock$()?.id) {
       this.selectBlock(anchor.blockId);
     }
-    this.state.jump.set({
-      blockId: anchor.blockId,
-      value,
-      seq: ++this.jumpSeq,
-    });
+    if (anchor.type === 'pdf') {
+      this.state.jump.set({
+        blockId: anchor.blockId,
+        value,
+        seq: ++this.jumpSeq,
+      });
+    }
     this.closeOutline();
   }
 
@@ -799,9 +800,18 @@ export class LessonStore {
 
     const completion = this.completion$();
     const complete = completion.manual && !completion.done;
+    const position = this.videoPosition?.();
     this.advancing.set(true);
     this.channel.saveBeforeLeaving(
-      complete ? { type: 'COMPLETE', complete: true } : undefined,
+      complete
+        ? {
+            type: 'COMPLETE',
+            complete: true,
+            ...(position === undefined ? {} : { positionSeconds: position }),
+          }
+        : position === undefined
+          ? undefined
+          : { type: 'PAUSE', positionSeconds: position },
       (saved) => {
         this.advancing.set(false);
         if (saved && (!complete || this.completion$().done)) go();
@@ -840,7 +850,7 @@ export class LessonStore {
   }
 
   /** The page tells where the video on screen is now, or none; a closed block ends at that spot. */
-  watchVideo(position: (() => number) | undefined): void {
+  watchVideo(position: (() => number | undefined) | undefined): void {
     this.videoPosition = position;
   }
 
@@ -859,10 +869,6 @@ export class LessonStore {
   }
 
   /** A seek from `from` to `to`; the range played up to `from` is closed first. */
-  videoSeek(from: number, to: number, playing: boolean): void {
-    this.channel.seek(from, to, playing);
-  }
-
   pdfPage(pdfPage: number): void {
     this.channel.send({ type: 'PDF_PAGE', pdfPage });
   }
@@ -884,12 +890,12 @@ export class LessonStore {
     });
   }
 
-  private writeBlockToUrl(blockId: number): void {
+  private writeBlockToUrl(blockId: number, replaceUrl = false): void {
     void this.router.navigate([], {
       relativeTo: this.route,
       queryParams: { block: blockId, page: null, t: null },
       queryParamsHandling: 'merge',
-      replaceUrl: true,
+      replaceUrl,
     });
   }
 }

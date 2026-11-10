@@ -6,21 +6,62 @@
   </button>
 </p>
 } @else {
-<video
-  #player
-  class="video__player"
-  controls
-  preload="metadata"
-  [src]="src()"
-  [attr.aria-label]="title() || null"
-  (loadedmetadata)="loaded()"
-  (play)="play()"
-  (pause)="pause()"
-  (ended)="ended()"
-  (seeking)="seeking()"
-  (timeupdate)="tick()"
-  (error)="failed.set(true)"
-></video>
+<div #stage class="video__stage">
+  <video
+    #player
+    class="video__player"
+    playsinline
+    disablePictureInPicture
+    disableRemotePlayback
+    preload="metadata"
+    [src]="src()"
+    [attr.aria-label]="title() || null"
+    (loadstart)="loadStarted()"
+    (loadedmetadata)="loaded()"
+    (play)="play()"
+    (pause)="pause()"
+    (ended)="ended()"
+    (seeking)="seeking()"
+    (timeupdate)="tick()"
+    (volumechange)="volumeChanged()"
+    (contextmenu)="$event.preventDefault()"
+    (error)="loadFailed()"
+  ></video>
+  <div class="video__controls">
+    <button
+      uiIconButton
+      type="button"
+      size="sm"
+      [label]="playing() ? 'Tạm dừng video' : 'Phát video'"
+      (click)="togglePlayback()"
+    >
+      <ui-icon [name]="playing() ? 'pause' : 'play'" />
+    </button>
+    <span class="video__time" aria-label="Thời gian đã phát"
+      >{{ clock(second()) }} / {{ clock(duration()) }}</span
+    >
+    <button
+      uiIconButton
+      type="button"
+      size="sm"
+      [label]="muted() ? 'Bật âm thanh' : 'Tắt âm thanh'"
+      (click)="toggleMute()"
+    >
+      <ui-icon [name]="muted() ? 'volume-x' : 'volume-2'" />
+    </button>
+    @if (fullscreenAvailable) {
+    <button
+      uiIconButton
+      type="button"
+      size="sm"
+      [label]="fullscreen() ? 'Thoát toàn màn hình video' : 'Toàn màn hình video'"
+      (click)="toggleFullscreen()"
+    >
+      <ui-icon name="maximize" />
+    </button>
+    }
+  </div>
+</div>
 <button
   uiButton
   size="sm"
@@ -38,13 +79,11 @@
   class="video__chapters"
   [chapters]="chapters()"
   [second]="second()"
-  (seek)="seekTo($event)"
 />
 } @if (transcript().length) {
 <app-video-transcript
   class="video__transcript"
   [lines]="transcript()"
   [second]="second()"
-  (seek)="seekTo($event)"
 />
 } }

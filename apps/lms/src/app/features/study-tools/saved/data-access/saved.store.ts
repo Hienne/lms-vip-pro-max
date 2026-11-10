@@ -37,15 +37,15 @@ export interface SavedRow {
   /** "Trang 3", "Video 1:15", or nothing for a note on the whole lesson. */
   readonly where: string;
   readonly link: readonly (string | number)[];
-  /** `?block=&page=` or `?block=&t=`: the lesson opens on the spot (nothing for a whole-lesson note). */
+  /** PDF notes open on the saved page. Video notes open the block at its study resume point. */
   readonly query: Readonly<Record<string, number>>;
 }
 
 const queryOf = (item: SavedItemView): SavedRow['query'] => {
-  const { type, blockId, page, second } = item.anchor;
+  const { type, blockId, page } = item.anchor;
   if (blockId === null) return {};
   if (type === 'pdf' && page !== null) return { block: blockId, page };
-  if (type === 'video' && second !== null) return { block: blockId, t: second };
+  if (type === 'video') return { block: blockId };
   return {};
 };
 
@@ -75,13 +75,15 @@ export class SavedStore {
   private readonly data: ServerData<SavedPage> = serverData(
     (query: { kind: Tab; page: number; size: number }) =>
       this.client.call(personalEndpoints.saved, { query }).pipe(
-        expand((result) =>
+        expand((result, index) =>
+          result.page.page === query.page + index &&
           (result.page.page + 1) * SAVED_PAGE_SIZE < result.page.totalElements
             ? this.client.call(personalEndpoints.saved, {
                 query: { ...query, page: result.page.page + 1 },
               })
             : EMPTY,
         ),
+        filter((result, index) => result.page.page === query.page + index),
         reduce(
           (all: SavedPage | undefined, next: SavedPage): SavedPage =>
             all

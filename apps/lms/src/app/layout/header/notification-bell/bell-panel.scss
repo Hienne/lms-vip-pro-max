@@ -2,35 +2,36 @@
 
 .bell {
   @include ui.stack(3);
-  min-width: 18rem;
-  max-width: 24rem;
-
-  &__group {
-    @include ui.stack(1);
-  }
-
-  &__heading {
-    margin: 0;
-    color: ui.color(text-muted);
-  }
+  width: min(24rem, calc(100vw - #{ui.space(8)}));
 
   &__list {
     @include ui.stack(1);
+    max-height: 52dvh;
+    overflow-y: auto;
+    overscroll-behavior: contain;
     margin: 0;
     padding: 0;
     list-style: none;
   }
 
   &__item {
-    @include ui.stack(1);
+    @include ui.row-between(2);
+    flex-wrap: nowrap;
     padding: ui.space(2);
     border-radius: ui.radius(control);
     color: ui.color(text);
     text-decoration: none;
 
-    &:hover {
+    &--unread,
+    &:any-link:hover {
       background: ui.color(surface-2);
     }
+  }
+
+  &__content {
+    @include ui.stack(1);
+    min-width: 0;
+    flex: 1;
   }
 
   &__title {

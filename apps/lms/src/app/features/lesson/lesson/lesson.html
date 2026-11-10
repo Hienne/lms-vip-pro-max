@@ -166,8 +166,8 @@
         <app-video-block
           [src]="src"
           [startAt]="store.resume$()?.lastVideoPositionSeconds ?? 0"
+          [completed]="store.resume$()?.status === 'completed'"
           [title]="active.title"
-          [jump]="store.videoJump$()"
           [chapters]="active.detail.block.videoChapters"
           [transcript]="active.detail.block.transcript"
           [bookmarked]="store.bookmarked$()"
@@ -175,7 +175,6 @@
           (played)="store.videoPlay($event)"
           (paused)="store.videoPause($event)"
           (beat)="store.videoBeat($event)"
-          (jumped)="store.videoSeek($event.from, $event.to, $event.playing)"
           (secondChange)="store.videoSecond($event)"
           (bookmark)="store.toggleBookmark($event)"
           (retry)="store.reloadMedia()"
@@ -330,6 +329,7 @@
     <div uiTabPanel="notes" class="lesson__side-panel">
       <app-lesson-notes
         [anchorLabel]="store.anchorLabel$()"
+        [activeBlockId]="store.activeBlock$()?.id"
         [notes]="store.notes$()"
         [bookmarks]="store.bookmarks$()"
         [loading]="store.notesLoading$()"

@@ -8,6 +8,8 @@ export interface PdfRender {
 
 export interface PdfFile {
   readonly pageCount: number;
+  /** Height divided by width for each page, in document order. */
+  readonly pageRatios: readonly number[];
   /** Draws `page` (1-based) so it is `width` CSS pixels wide before `zoom`. */
   render(
     page: number,
@@ -38,9 +40,30 @@ export class PdfEngine {
     pdfjs.GlobalWorkerOptions.workerPort = worker;
     // The content endpoint authorises by the `academy_media` cookie.
     const loading = pdfjs.getDocument({ url, withCredentials: true });
-    const doc = await loading.promise;
+    const doc = await loading.promise.catch(async (error: unknown) => {
+      await loading.destroy();
+      throw error;
+    });
+    const pageRatios: number[] = [];
+    try {
+      // Read dimensions without rasterizing, so mixed page sizes don't shift during a scroll.
+      for (let first = 1; first <= doc.numPages; first += 12) {
+        const batch = Array.from(
+          { length: Math.min(12, doc.numPages - first + 1) },
+          (_, index) => doc.getPage(first + index),
+        );
+        for (const page of await Promise.all(batch)) {
+          const { height, width } = page.getViewport({ scale: 1 });
+          pageRatios.push(height / width);
+        }
+      }
+    } catch (error) {
+      await loading.destroy();
+      throw error;
+    }
     return {
       pageCount: doc.numPages,
+      pageRatios,
       render: (number, canvas, width, zoom) => {
         let cancelled = false;
         let task: ReturnType<
@@ -52,7 +75,10 @@ export class PdfEngine {
           const viewport = page.getViewport({
             scale: (width / natural.width) * zoom,
           });
-          const ratio = window.devicePixelRatio || 1;
+          const ratio = Math.min(
+            window.devicePixelRatio || 1,
+            Math.sqrt(8_000_000 / (viewport.width * viewport.height)),
+          );
           canvas.width = Math.floor(viewport.width * ratio);
           canvas.height = Math.floor(viewport.height * ratio);
           canvas.style.width = `${Math.floor(viewport.width)}px`;

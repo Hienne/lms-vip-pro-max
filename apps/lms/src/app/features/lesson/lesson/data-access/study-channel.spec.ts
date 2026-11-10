@@ -220,7 +220,6 @@ describe('StudyChannel', () => {
       const sent = calls.length;
 
       channel.send({ type: 'PAUSE', playing: false, positionSeconds: 3 });
-      channel.seek(0, 5, true);
       channel.retry();
       channel.reclaim();
       channel.takeOver();
@@ -289,9 +288,62 @@ describe('StudyChannel', () => {
     });
   });
 
+  it('saves a paused range even when the PLAY receipt has not arrived', () => {
+    open(VIDEO_A);
+    channel.send({ type: 'PLAY', playing: true, positionSeconds: 0 });
+    channel.send({ type: 'PAUSE', positionSeconds: 3 });
+    drain();
+
+    expect(types()).toEqual(['OPEN', 'PLAY', 'PAUSE']);
+    expect(sentEvents()[2]).toMatchObject({
+      watchedFromSeconds: 0,
+      watchedToSeconds: 3,
+    });
+  });
+
   describe('changing block', () => {
     const failed = () =>
       new ApiError('CORE-INTERNAL_ERROR', undefined, 'Lỗi hệ thống', 500);
+
+    it('keeps one close in flight during rapid Next, Back and route leave', () => {
+      open(BLOCK_A);
+      channel.switchTo(BLOCK_B);
+      channel.switchTo(BLOCK_A);
+      channel.switchTo(BLOCK_B);
+      vi.advanceTimersByTime(HEARTBEAT_MS * 3);
+      expect(types()).toEqual(['OPEN', 'CLOSE']);
+      channel.destroy();
+      drain();
+      expect(types()).toEqual(['OPEN', 'CLOSE']);
+      expect(claims()).toHaveLength(1);
+      expect(peak).toBe(1);
+    });
+
+    it('pauses automatic progress requests until a failed write is retried explicitly', () => {
+      open(VIDEO_A);
+      channel.send({ type: 'PLAY', playing: true, positionSeconds: 0 });
+      events()[1].fail(failed());
+      channel.send({ type: 'HEARTBEAT', playing: true, positionSeconds: 10 });
+      vi.advanceTimersByTime(HEARTBEAT_MS * 3);
+      expect(types()).toEqual(['OPEN', 'PLAY']);
+      channel.retry();
+      expect(sentEvents()[2]).toEqual(sentEvents()[1]);
+      drain();
+      expect(types()).toEqual(['OPEN', 'PLAY', 'PLAY', 'HEARTBEAT']);
+    });
+
+    it('stops reclaiming after repeated expiration of the same event', () => {
+      open(BLOCK_A);
+      vi.advanceTimersByTime(HEARTBEAT_MS);
+      for (let i = 0; i < 2; i++) {
+        events().at(-1)!.fail(expired());
+        claimAnswered();
+      }
+      events().at(-1)!.fail(expired());
+      vi.advanceTimersByTime(HEARTBEAT_MS * 3);
+      expect(claims()).toHaveLength(3);
+      expect(channel.save$()).toBe('failed');
+    });
 
     it('sends what is queued for the old block, then closes it, then claims the new one', () => {
       open(BLOCK_A);
