@@ -18,21 +18,54 @@
     >}</span
   >
 </ui-page-header>
-<nav class="report-screen__navigation" aria-label="Các báo cáo chi tiết">
-  @for (tab of store.tabs$(); track tab.id) {
+<nav class="report-screen__navigation" aria-label="Nhóm báo cáo">
+  @for (tab of store.primaryTabs$(); track tab.id) {
   <a
+    uiButton
+    [variant]="(tab.id === 'results' ? !!store.dimension$() : store.tab$() === tab.id) ? 'secondary' : 'ghost'"
     [routerLink]="tab.path"
     [queryParams]="tab.queryParams"
-    class="report-screen__tab"
-    [attr.aria-current]="store.tab$() === tab.id ? 'page' : null"
+    [attr.aria-current]="(tab.id === 'results' ? !!store.dimension$() : store.tab$() === tab.id) ? 'page' : null"
     >{{tab.label}}</a
   >
   }
-  <a routerLink="/reports/gamification" class="report-screen__tab"
-    >Tác động gamification</a
-  >
 </nav>
-<section uiCard>
+@if (store.dimension$()) {
+<nav class="row row--gap-2" aria-label="Chi tiết đánh giá">
+  @for (tab of store.assessmentTabs$(); track tab.id) {<a
+    uiButton
+    size="sm"
+    [variant]="store.tab$() === tab.id ? 'secondary' : 'ghost'"
+    [routerLink]="tab.path"
+    [queryParams]="tab.queryParams"
+    >{{tab.label}}</a
+  >}
+</nav>
+}
+<div class="row-between">
+  <div class="row row--gap-3">
+    <button
+      uiButton
+      variant="secondary"
+      type="button"
+      [attr.aria-expanded]="store.filtersOpen$() || scopeHasError() || store.needsQuiz$()"
+      aria-controls="report-filters"
+      (click)="store.setFiltersOpen(!store.filtersOpen$())"
+    >
+      <ui-icon name="funnel" size="sm" />Bộ lọc@if (store.activeFilterCount$())
+      { ({{store.activeFilterCount$()}})}
+    </button>
+    <span class="report-screen__muted">Phạm vi được cấp</span>
+  </div>
+  <a uiButton variant="ghost" size="sm" routerLink="/reports/gamification"
+    >Tương tác</a
+  >
+</div>
+<section
+  uiCard
+  id="report-filters"
+  [hidden]="!store.filtersOpen$() && !scopeHasError() && !store.needsQuiz$()"
+>
   <form
     class="stack report-screen__filters"
     [formRoot]="filterForm"
@@ -171,24 +204,25 @@
   } @else if (store.learning$(); as counts) { @if (counts.enrollments) {
   <ui-stat-strip>
     <ui-stat label="Lượt học" [value]="counts.enrollments | fmtNum" />
-    <ui-stat label="Học viên" [value]="counts.learners | fmtNum" />
-    <ui-stat label="Hoàn thành" [value]="counts.completed | fmtNum" />
-    <ui-stat label="Đang học" [value]="counts.inProgress | fmtNum" />
-    <ui-stat label="Chưa bắt đầu" [value]="counts.notStarted | fmtNum" />
+    <ui-stat label="Hoàn thành" [value]="counts.completionRate | fmtPct:1" />
     <ui-stat
-      label="Quá hạn"
-      [value]="counts.overdue | fmtNum"
-      [tone]="counts.overdue > 0 ? 'danger' : 'default'"
+      label="Học viên đạt"
+      [value]="store.overview$()?.passRate == null ? '—' : (store.overview$()!.passRate | fmtPct:1)"
     />
     <ui-stat
-      label="Tỷ lệ hoàn thành"
-      [value]="counts.completionRate | fmtPct: 2"
-    />
-    <ui-stat
-      label="Tiến độ trung bình"
-      [value]="counts.averageProgress | fmtPct: 2"
+      label="Điểm trung bình"
+      [value]="store.overview$()?.averageScore == null ? '—' : (store.overview$()!.averageScore | fmtPct:1)"
     />
   </ui-stat-strip>
+  <ui-section-card title="Tiến độ học">
+    <ui-donut-chart
+      label="Trạng thái lượt học"
+      [data]="store.learningChart$()"
+    />
+    @if (counts.overdue) {
+    <p>{{counts.overdue | fmtNum}} lượt quá hạn</p>
+    }
+  </ui-section-card>
   } @else {
   <ui-empty variant="inline" title="Chưa có lượt học trong phạm vi đã chọn" />
   }
@@ -197,46 +231,15 @@
   </p>
   }
 </section>
-<h2 class="report-screen__part-title">Kết quả thi</h2>
+
 @if (store.examLoading$()) {
 <p class="row" role="status"><span uiSpinner></span>Đang tải kết quả thi…</p>
 } @else if (store.examError$(); as error) {
 <ui-error-state [message]="error.message" (retry)="store.retry()" />
 } @else if (store.overview$(); as data) {
-<ui-stat-strip aria-label="Chỉ số kết quả kiểm tra">
-  <ui-stat
-    label="Học viên đã thi"
-    [value]="data.learners | fmtNum"
-    [note]="(data.byQuiz.length | fmtNum) + ' bài kiểm tra có dữ liệu'"
-  />
-  <ui-stat
-    label="Tỷ lệ học viên đạt"
-    [value]="data.passRate === null ? '—' : (data.passRate | fmtPct: 1)"
-    [note]="(data.passedLearners | fmtNum) + ' học viên đã đạt'"
-  />
-  <ui-stat
-    label="Điểm trung bình"
-    [value]="data.averageScore === null ? '—' : (data.averageScore | fmtPct: 1)"
-    note="Tính trên các lượt đã chấm"
-  />
-  <ui-stat
-    label="Lượt đã chấm"
-    [value]="data.gradedAttempts | fmtNum"
-    [note]="(data.inProgressAttempts | fmtNum) + ' lượt đang làm'"
-  />
-</ui-stat-strip>
+
 <div class="report-screen__analytics">
-  <section
-    uiCard
-    class="stack stack--gap-5 report-screen__chart-panel"
-    aria-labelledby="report-scores-title"
-  >
-    <div class="row-between report-screen__section-heading">
-      <div>
-        <h2 id="report-scores-title">Điểm trung bình theo bài kiểm tra</h2>
-        <p>Tối đa 6 bài có nhiều lượt đã chấm nhất · thang điểm 100%</p>
-      </div>
-    </div>
+  <ui-section-card title="Điểm theo bài kiểm tra">
     @if (store.scoreComparison$().length) {
     <ol class="stack report-screen__comparison">
       @for (group of store.scoreComparison$(); track group.id) {
@@ -261,18 +264,8 @@
       title="Chưa có điểm đã chấm"
       description="Biểu đồ sẽ hiển thị khi có lượt thi được chấm trong phạm vi đã chọn."
     />}
-  </section>
-  <section
-    uiCard
-    class="stack stack--gap-5 report-screen__chart-panel"
-    aria-labelledby="report-results-title"
-  >
-    <div class="row-between report-screen__section-heading">
-      <div>
-        <h2 id="report-results-title">Phân bố kết quả</h2>
-        <p>Trong số học viên đã tham gia thi</p>
-      </div>
-    </div>
+  </ui-section-card>
+  <ui-section-card title="Kết quả thi">
     @if (store.resultChart$().length) {<ui-donut-chart
       label="Số học viên đã đạt và chưa ghi nhận đạt"
       [data]="store.resultChart$()"
@@ -288,105 +281,108 @@
     <p class="report-screen__footnote">
       Chưa ghi nhận đạt bao gồm học viên đang làm hoặc chưa có lượt thi đạt.
     </p>
-  </section>
+  </ui-section-card>
 </div>
-<section
-  uiCard
-  class="report-screen__detail"
-  aria-labelledby="report-breakdown-title"
->
-  <div class="row-between report-screen__section-heading">
-    <div>
-      <h2 id="report-breakdown-title">Phân tích theo phạm vi</h2>
-      <p>
-        {{store.groupTotal$() | fmtNum}} {{store.grouping$() === 'quiz' ? 'bài
-        kiểm tra' : 'đơn vị'}} · đơn vị ghi nhận tại thời điểm thi
-      </p>
-    </div>
-    <div class="row row--gap-1" role="group" aria-label="Nhóm số liệu">
-      <button
-        uiButton
-        size="sm"
-        [variant]="store.grouping$() === 'quiz' ? 'secondary' : 'ghost'"
-        [attr.aria-pressed]="store.grouping$() === 'quiz'"
-        (click)="store.selectGrouping('quiz')"
-      >
-        Theo bài kiểm tra
-      </button>
-      <button
-        uiButton
-        size="sm"
-        [variant]="store.grouping$() === 'org' ? 'secondary' : 'ghost'"
-        [attr.aria-pressed]="store.grouping$() === 'org'"
-        (click)="store.selectGrouping('org')"
-      >
-        Theo đơn vị
-      </button>
-    </div>
-  </div>
-  <ui-data-table
-    caption="Phân tích kết quả theo bài kiểm tra hoặc đơn vị"
-    [columns]="groupColumns"
-    [rows]="store.groupedRows$()"
-    [total]="store.groupTotal$()"
-    [page]="store.groupPage$()"
-    [pageSize]="store.groupPageSize$()"
-    (pageChange)="store.setGroupPage($event)"
-    (pageSizeChange)="store.setGroupPageSize($event)"
+<details>
+  <summary>Xem dữ liệu chi tiết</summary>
+  <section
+    uiCard
+    class="report-screen__detail"
+    aria-labelledby="report-breakdown-title"
   >
-    <ng-template uiDataTableCell="name" [of]="store.groupedRows$()" let-group
-      ><span class="report-screen__group-name" [title]="group.name"
-        >{{group.name}}</span
-      ></ng-template
+    <div class="row-between report-screen__section-heading">
+      <div>
+        <h2 id="report-breakdown-title">Phân tích theo phạm vi</h2>
+        <p>
+          {{store.groupTotal$() | fmtNum}} {{store.grouping$() === 'quiz' ? 'bài
+          kiểm tra' : 'đơn vị'}} · đơn vị ghi nhận tại thời điểm thi
+        </p>
+      </div>
+      <div class="row row--gap-1" role="group" aria-label="Nhóm số liệu">
+        <button
+          uiButton
+          size="sm"
+          [variant]="store.grouping$() === 'quiz' ? 'secondary' : 'ghost'"
+          [attr.aria-pressed]="store.grouping$() === 'quiz'"
+          (click)="store.selectGrouping('quiz')"
+        >
+          Theo bài kiểm tra
+        </button>
+        <button
+          uiButton
+          size="sm"
+          [variant]="store.grouping$() === 'org' ? 'secondary' : 'ghost'"
+          [attr.aria-pressed]="store.grouping$() === 'org'"
+          (click)="store.selectGrouping('org')"
+        >
+          Theo đơn vị
+        </button>
+      </div>
+    </div>
+    <ui-data-table
+      caption="Phân tích kết quả theo bài kiểm tra hoặc đơn vị"
+      [columns]="groupColumns"
+      [rows]="store.groupedRows$()"
+      [total]="store.groupTotal$()"
+      [page]="store.groupPage$()"
+      [pageSize]="store.groupPageSize$()"
+      (pageChange)="store.setGroupPage($event)"
+      (pageSizeChange)="store.setGroupPageSize($event)"
     >
-    <ng-template
-      uiDataTableCell="gradedAttempts"
-      [of]="store.groupedRows$()"
-      let-group
-      ><span class="report-screen__number"
-        >{{group.gradedAttempts | fmtNum}}</span
-      ></ng-template
-    >
-    <ng-template
-      uiDataTableCell="learners"
-      [of]="store.groupedRows$()"
-      let-group
-      ><span class="report-screen__number"
-        >{{group.learners | fmtNum}}</span
-      ></ng-template
-    >
-    <ng-template
-      uiDataTableCell="passedLearners"
-      [of]="store.groupedRows$()"
-      let-group
-      ><span class="report-screen__number"
-        >{{group.passedLearners | fmtNum}}</span
-      ></ng-template
-    >
-    <ng-template
-      uiDataTableCell="passRate"
-      [of]="store.groupedRows$()"
-      let-group
-      ><span class="report-screen__number"
-        >{{group.passRate === null ? '—' : (group.passRate | fmtPct:1)}}</span
-      ></ng-template
-    >
-    <ng-template
-      uiDataTableCell="averageScore"
-      [of]="store.groupedRows$()"
-      let-group
-      ><span class="report-screen__number"
-        >{{group.averageScore === null ? '—' : (group.averageScore |
-        fmtPct:1)}}</span
-      ></ng-template
-    >
-    <ui-empty
-      slot="empty"
-      variant="inline"
-      title="Chưa có dữ liệu trong phạm vi đã chọn"
-    />
-  </ui-data-table>
-</section>
+      <ng-template uiDataTableCell="name" [of]="store.groupedRows$()" let-group
+        ><span class="report-screen__group-name" [title]="group.name"
+          >{{group.name}}</span
+        ></ng-template
+      >
+      <ng-template
+        uiDataTableCell="gradedAttempts"
+        [of]="store.groupedRows$()"
+        let-group
+        ><span class="report-screen__number"
+          >{{group.gradedAttempts | fmtNum}}</span
+        ></ng-template
+      >
+      <ng-template
+        uiDataTableCell="learners"
+        [of]="store.groupedRows$()"
+        let-group
+        ><span class="report-screen__number"
+          >{{group.learners | fmtNum}}</span
+        ></ng-template
+      >
+      <ng-template
+        uiDataTableCell="passedLearners"
+        [of]="store.groupedRows$()"
+        let-group
+        ><span class="report-screen__number"
+          >{{group.passedLearners | fmtNum}}</span
+        ></ng-template
+      >
+      <ng-template
+        uiDataTableCell="passRate"
+        [of]="store.groupedRows$()"
+        let-group
+        ><span class="report-screen__number"
+          >{{group.passRate === null ? '—' : (group.passRate | fmtPct:1)}}</span
+        ></ng-template
+      >
+      <ng-template
+        uiDataTableCell="averageScore"
+        [of]="store.groupedRows$()"
+        let-group
+        ><span class="report-screen__number"
+          >{{group.averageScore === null ? '—' : (group.averageScore |
+          fmtPct:1)}}</span
+        ></ng-template
+      >
+      <ui-empty
+        slot="empty"
+        variant="inline"
+        title="Chưa có dữ liệu trong phạm vi đã chọn"
+      />
+    </ui-data-table>
+  </section>
+</details>
 } } @else if (store.isLoading$()) {
 <p class="row" role="status"><span uiSpinner></span>Đang tải báo cáo…</p>
 } @else if (store.error$(); as error) {

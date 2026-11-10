@@ -5,10 +5,10 @@
   min-width: 0;
 }
 .report-screen {
-  // One row: seven tabs scroll sideways on a narrow screen instead of wrapping.
+  // Three primary report groups remain on one row.
   &__navigation {
     display: flex;
-    flex-wrap: nowrap;
+    flex-wrap: wrap;
     gap: ui.space(1);
     overflow-x: auto;
     border-bottom: 1px solid ui.color(border);
@@ -168,4 +168,8 @@
     display: block;
     text-align: right;
   }
+}
+
+[hidden] {
+  display: none !important;
 }

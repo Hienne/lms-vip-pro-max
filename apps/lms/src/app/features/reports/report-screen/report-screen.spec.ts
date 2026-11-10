@@ -58,6 +58,27 @@ describe('ReportScreen', () => {
     return { root, store, labels, text };
   }
 
+  it('shows three report groups and opens filters with an icon before the label', async () => {
+    const { root } = await open('/reports');
+    const links = root.querySelectorAll('nav[aria-label="Nhóm báo cáo"] a');
+    expect(Array.from(links).map((link) => link.textContent?.trim())).toEqual([
+      'Tổng quan',
+      'Học tập',
+      'Đánh giá',
+    ]);
+    const button = root.querySelector<HTMLButtonElement>(
+      '[aria-controls="report-filters"]',
+    )!;
+    expect(button.firstElementChild?.tagName.toLowerCase()).toBe('ui-icon');
+    expect(button.getAttribute('aria-expanded')).toBe('false');
+    button.click();
+    await settle();
+    expect(button.getAttribute('aria-expanded')).toBe('true');
+    expect(root.querySelector<HTMLElement>('#report-filters')?.hidden).toBe(
+      false,
+    );
+  });
+
   it('filters by name, with no id inputs left', async () => {
     const { root, labels } = await open('/reports/results');
     const pickers = ['Đơn vị', 'Phòng / nhóm', 'Khóa học', 'Bài kiểm tra'];
@@ -203,16 +224,14 @@ describe('ReportScreen', () => {
       expect(headings.indexOf('Tiến độ học')).toBeLessThan(
         headings.indexOf('Kết quả thi'),
       );
-      expect(kpis(root)).toEqual([
+      expect(kpis(root)).toHaveLength(4);
+      expect(kpis(root).slice(0, 2)).toEqual([
         { label: 'Lượt học', value: '21', danger: false },
-        { label: 'Học viên', value: '3', danger: false },
-        { label: 'Hoàn thành', value: '9', danger: false },
-        { label: 'Đang học', value: '5', danger: false },
-        { label: 'Chưa bắt đầu', value: '7', danger: false },
-        { label: 'Quá hạn', value: '5', danger: true },
-        { label: 'Tỷ lệ hoàn thành', value: '42,86%', danger: false },
-        { label: 'Tiến độ trung bình', value: '49,01%', danger: false },
+        { label: 'Hoàn thành', value: '42,9%', danger: false },
       ]);
+      expect(
+        root.querySelectorAll('ui-donut-chart').length,
+      ).toBeGreaterThanOrEqual(1);
       expect(text()).toContain(
         'Số liệu tính đến 04/11/2026 16:49 (Asia/Ho_Chi_Minh).',
       );
@@ -223,11 +242,7 @@ describe('ReportScreen', () => {
         envelopeOk({ ...SUMMARY, counts: { ...SUMMARY.counts, overdue: 0 } }),
       );
       const { root } = await open('/reports');
-      expect(kpis(root).find((k) => k.label === 'Quá hạn')).toEqual({
-        label: 'Quá hạn',
-        value: '0',
-        danger: false,
-      });
+      expect(root.textContent).not.toContain('0 lượt quá hạn');
     });
 
     it('shows a learning error with a retry while the exam results stay', async () => {

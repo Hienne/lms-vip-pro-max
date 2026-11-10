@@ -14,6 +14,7 @@ import {
 import {
   Alert,
   DonutChart,
+  SectionCard,
   Button,
   Card,
   DataTable,
@@ -133,6 +134,7 @@ const filterSchema = z
     Checkbox,
     Tooltip,
     DonutChart,
+    SectionCard,
     RouterLink,
     FormField,
     FormRoot,

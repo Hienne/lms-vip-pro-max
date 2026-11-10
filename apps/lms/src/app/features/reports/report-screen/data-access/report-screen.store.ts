@@ -192,6 +192,7 @@ export class ReportScreenStore {
         : (this.dimension$() ?? 'overview'),
   );
   private readonly state = {
+    filtersOpen: signal(false),
     sort: linkedSignal(() => DEFAULT_SORT[this.dimension$() ?? 'results']),
     grouping: signal<'quiz' | 'org'>('quiz'),
     groupPage: signal(1),
@@ -212,6 +213,36 @@ export class ReportScreenStore {
     page: this.page$,
     active: computed(() => this.progress$() && !this.pickers.blocked$()),
   });
+  readonly filtersOpen$ = this.state.filtersOpen.asReadonly();
+  setFiltersOpen(open: boolean): void {
+    this.state.filtersOpen.set(open);
+  }
+  readonly learningChart$ = computed<readonly DonutDatum[]>(() => {
+    const c = this.learning$();
+    return c && c.enrollments > 0
+      ? [
+          { label: 'Hoàn thành', value: c.completed, tone: 'success' },
+          { label: 'Đang học', value: c.inProgress, tone: 'primary' },
+          { label: 'Chưa bắt đầu', value: c.notStarted, tone: 'neutral' },
+        ]
+      : [];
+  });
+  readonly primaryTabs$ = computed(() =>
+    this.tabs$()
+      .filter((t) => ['overview', 'progress', 'results'].includes(t.id))
+      .map((t) => ({
+        ...t,
+        label:
+          t.id === 'progress'
+            ? 'Học tập'
+            : t.id === 'results'
+              ? 'Đánh giá'
+              : t.label,
+      })),
+  );
+  readonly assessmentTabs$ = computed(() =>
+    this.tabs$().filter((t) => !['overview', 'progress'].includes(t.id)),
+  );
   readonly sort$ = this.state.sort.asReadonly();
   /** The tab bar: each link keeps the current filters the tab reads. */
   readonly tabs$ = computed(() => {

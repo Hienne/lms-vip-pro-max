@@ -2,17 +2,6 @@
 :host {
   @include ui.page(wide);
   min-width: 0;
-  // The approved collection is a dark exhibition surface; document colours remain fixed.
-  --color-surface: #{ui.color(certificate-gallery-bg)};
-  --color-surface-2: #{ui.color(certificate-teal)};
-  --color-text: #{ui.color(certificate-gallery-text)};
-  --color-text-secondary: #{ui.color(certificate-gallery-muted)};
-  --color-text-muted: #{ui.color(certificate-gallery-muted)};
-  --color-border-strong: #{ui.color(certificate-gallery-border)};
-  --color-primary: #{ui.color(certificate-gallery-action)};
-  --color-primary-subtle: #{ui.color(certificate-gallery-bg)};
-  background: ui.color(certificate-gallery-bg);
-  color: ui.color(certificate-gallery-text);
 }
 .certificates {
   &__award,
@@ -93,7 +82,7 @@
     font-weight: ui.weight(semibold);
   }
   &__recipient {
-    fill: ui.color(primary);
+    fill: ui.color(certificate-teal);
     font-size: ui.text-size(3xl);
     font-weight: ui.weight(semibold);
   }
