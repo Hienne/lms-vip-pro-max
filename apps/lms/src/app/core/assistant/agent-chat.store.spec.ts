@@ -30,7 +30,6 @@ import {
   AgentChatStore,
   CUT_OFF_MESSAGE,
   GENERIC_ERROR,
-  HISTORY_TURNS,
   OFFLINE_MESSAGE,
 } from './agent-chat.store';
 
@@ -117,7 +116,11 @@ describe('AgentChatStore', () => {
 
   const lastReply = () => store.turns$().at(-1)?.reply;
   const lastBody = (request: TestRequest) =>
-    request.request.body as { messages: { role: string; content: string }[] };
+    request.request.body as { message: string; conversationId?: number };
+  const conversation = (conversationId: number): AgentStreamEvent => ({
+    type: 'conversation',
+    conversationId,
+  });
 
   describe('availability and the panel', () => {
     it('is available to a signed-in user with the assistant function', () => {
@@ -167,9 +170,7 @@ describe('AgentChatStore', () => {
       store.ask('  EOD là gì?  ');
       await settle();
       const request = backend.expectOne(STREAM);
-      expect(lastBody(request)).toEqual({
-        messages: [{ role: 'user', content: 'EOD là gì?' }],
-      });
+      expect(lastBody(request)).toEqual({ message: 'EOD là gì?' });
       expect(lastReply()).toMatchObject({ status: 'waiting', text: '' });
       expect(store.isAnswering$()).toBe(true);
 
@@ -344,7 +345,7 @@ describe('AgentChatStore', () => {
       await settle();
       expect(lastReply()?.status).toBe('waiting');
       const request = backend.expectOne(STREAM);
-      expect(lastBody(request).messages.at(-1)?.content).toBe('EOD là gì?');
+      expect(lastBody(request).message).toBe('EOD là gì?');
       finish(request, [done('Đây là EOD.')]);
       await settle();
       expect(store.turns$()).toHaveLength(1);
@@ -386,55 +387,69 @@ describe('AgentChatStore', () => {
     });
   });
 
-  describe('history', () => {
-    it('sends the finished turns, with a confirmed or cancelled card’s result, and leaves out errored and stopped ones', async () => {
-      await converse('Câu một', [
-        { type: 'tool', name: 'search_documents' },
-        done('Trả lời một'),
-      ]);
-      await converse('Câu hai', [{ type: 'tool', name: 'search_documents' }]); // cut off: error
-      await converse('Đổi chức danh', agentActionEvents(action('a1')));
-      store.confirm(store.turns$().at(-1)?.id ?? 0);
-      await settle();
-      backend.expectOne(confirmUrl('a1')).flush(
-        envelopeOk({
-          actionId: 'a1',
-          tool: 'update_profile',
-          message: 'Đã cập nhật hồ sơ.',
-          data: seedMe('000004'),
-        }),
-      );
-      await settle();
-
-      store.ask('Câu bốn');
+  describe('conversation', () => {
+    it('sends no history: the first question has no conversation id', async () => {
+      store.ask('Câu một');
       await settle();
       const request = backend.expectOne(STREAM);
-      expect(lastBody(request).messages).toEqual([
-        { role: 'user', content: 'Câu một' },
-        { role: 'assistant', content: 'Trả lời một' },
-        { role: 'user', content: 'Đổi chức danh' },
-        {
-          role: 'assistant',
-          content:
-            'Vui lòng kiểm tra và xác nhận thay đổi bên dưới.\nĐã cập nhật hồ sơ.',
-        },
-        { role: 'user', content: 'Câu bốn' },
-      ]);
+      expect(lastBody(request)).toEqual({ message: 'Câu một' });
+      expect(JSON.stringify(request.request.body)).not.toContain('messages');
+      finish(request, [conversation(42), done('Trả lời một')]);
+      await settle();
+    });
+
+    it('sends the conversation id the first line named with every later question', async () => {
+      await converse('Câu một', [conversation(42), done('Trả lời một')]);
+
+      store.ask('Câu hai');
+      await settle();
+      const request = backend.expectOne(STREAM);
+      expect(lastBody(request)).toEqual({
+        conversationId: 42,
+        message: 'Câu hai',
+      });
       finish(request, [done('x')]);
       await settle();
     });
 
-    it('sends at most the last nine finished turns, so the request stays within the backend’s 20 messages', async () => {
-      for (let i = 1; i <= HISTORY_TURNS + 3; i++) {
-        await converse(`Câu ${i}`, [done(`Trả lời ${i}`)]);
-      }
-      store.ask('Câu cuối');
+    it('retries a failed question inside the same conversation', async () => {
+      await converse('Câu một', [conversation(7), done('Trả lời một')]);
+      await converse('Câu hai', [{ type: 'tool', name: 'search_documents' }]);
+      expect(lastReply()?.status).toBe('error');
+
+      store.retry(2);
       await settle();
       const request = backend.expectOne(STREAM);
-      const messages = lastBody(request).messages;
-      expect(messages).toHaveLength(HISTORY_TURNS * 2 + 1);
-      expect(messages[0]).toEqual({ role: 'user', content: `Câu ${4}` });
-      expect(messages.at(-1)).toEqual({ role: 'user', content: 'Câu cuối' });
+      expect(lastBody(request)).toEqual({
+        conversationId: 7,
+        message: 'Câu hai',
+      });
+      finish(request, [done('x')]);
+      await settle();
+    });
+
+    it('starts a new conversation after the chat is cleared', async () => {
+      await converse('Câu một', [conversation(42), done('Trả lời một')]);
+      store.clear();
+
+      store.ask('Câu mới');
+      await settle();
+      const request = backend.expectOne(STREAM);
+      expect(lastBody(request)).toEqual({ message: 'Câu mới' });
+      finish(request, [done('x')]);
+      await settle();
+    });
+
+    it('keeps the conversation id for this tab, so a reload continues it', async () => {
+      await converse('Câu một', [conversation(42), done('Trả lời một')]);
+      TestBed.tick();
+      await settle();
+
+      setup();
+      store.ask('Sau khi tải lại');
+      await settle();
+      const request = backend.expectOne(STREAM);
+      expect(lastBody(request).conversationId).toBe(42);
       finish(request, [done('x')]);
       await settle();
     });

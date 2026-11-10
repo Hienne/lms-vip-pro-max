@@ -2,24 +2,16 @@ import { z } from 'zod';
 import { MeSchema } from '../auth/auth-v1.schema';
 import { CitationSchema } from '../knowledge/knowledge.schema';
 
-/** The widget's form limit for the last user message; the schema does not trim history. */
+/** The widget's form limit for the message. */
 export const AGENT_MESSAGE_MAX_LENGTH = 500;
-/** Ten turns: five questions and five answers, the backend's cap per request. */
-export const AGENT_HISTORY_MESSAGES = 20;
 
-/** History is text only; the backend never takes tool calls or results from the client. */
-export const AgentMessageSchema = z.object({
-  role: z.enum(['user', 'assistant']),
-  content: z.string(),
-});
-export type AgentMessage = z.infer<typeof AgentMessageSchema>;
-
+/**
+ * The new question and, for a follow-up, the conversation it belongs to. The client sends no
+ * history: the server loads the earlier turns of that conversation itself.
+ */
 export const AgentCommandSchema = z.object({
-  messages: z
-    .array(AgentMessageSchema)
-    .min(1)
-    .max(AGENT_HISTORY_MESSAGES)
-    .refine((messages) => messages.at(-1)?.role === 'user'),
+  conversationId: z.number().int().positive().nullish(),
+  message: z.string().trim().min(1).max(AGENT_MESSAGE_MAX_LENGTH),
 });
 export type AgentCommand = z.infer<typeof AgentCommandSchema>;
 
@@ -48,6 +40,11 @@ export type PendingAction = z.infer<typeof PendingActionSchema>;
 
 /** One line of the NDJSON stream. `tool.name` stays a string so a tool added later still parses. */
 export const AgentStreamEventSchema = z.discriminatedUnion('type', [
+  /** The first line of every stream: the conversation this turn is stored in. */
+  z.object({
+    type: z.literal('conversation'),
+    conversationId: z.number().int().positive(),
+  }),
   z.object({ type: z.literal('tool'), name: z.string() }),
   z.object({ type: z.literal('delta'), text: z.string() }),
   z.object({

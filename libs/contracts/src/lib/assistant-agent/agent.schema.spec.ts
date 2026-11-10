@@ -6,6 +6,7 @@ import {
   AgentStreamEventSchema,
   PendingActionSchema,
 } from './agent.schema';
+import { ChatStreamEventSchema } from '../knowledge/knowledge.schema';
 
 const citation = {
   n: 1,
@@ -94,33 +95,43 @@ describe('agent stream events', () => {
 });
 
 describe('AgentCommandSchema', () => {
-  const user = { role: 'user', content: 'CIF là gì?' } as const;
-  const assistant = { role: 'assistant', content: 'CIF là… [1]' } as const;
-
-  it('accepts a history that ends with the user', () => {
+  it('accepts a first question and a follow-up with the conversation id', () => {
+    expect(AgentCommandSchema.parse({ message: 'CIF là gì?' })).toEqual({
+      message: 'CIF là gì?',
+    });
     expect(
-      AgentCommandSchema.parse({ messages: [user, assistant, user] }).messages,
-    ).toHaveLength(3);
+      AgentCommandSchema.parse({
+        conversationId: 42,
+        message: 'Còn CIF khác?',
+      }),
+    ).toEqual({ conversationId: 42, message: 'Còn CIF khác?' });
   });
 
-  it('rejects a history that ends with the assistant', () => {
-    expect(() =>
-      AgentCommandSchema.parse({ messages: [user, assistant] }),
-    ).toThrow();
+  it('takes no history: the old messages field is not part of the command', () => {
+    expect(
+      AgentCommandSchema.parse({
+        message: 'x',
+        messages: [{ role: 'user', content: 'y' }],
+      }),
+    ).toEqual({ message: 'x' });
   });
 
-  it('rejects an empty history, a system role and more than 20 messages', () => {
-    expect(() => AgentCommandSchema.parse({ messages: [] })).toThrow();
+  it('rejects a blank or over-long message and a bad conversation id', () => {
+    expect(() => AgentCommandSchema.parse({ message: '   ' })).toThrow();
     expect(() =>
-      AgentCommandSchema.parse({
-        messages: [{ role: 'system', content: 'x' }],
-      }),
+      AgentCommandSchema.parse({ message: 'x'.repeat(501) }),
     ).toThrow();
     expect(() =>
-      AgentCommandSchema.parse({
-        messages: Array.from({ length: 21 }, () => user),
-      }),
+      AgentCommandSchema.parse({ conversationId: 0, message: 'x' }),
     ).toThrow();
+  });
+});
+
+describe('the conversation event', () => {
+  it('opens both kinds of stream and carries the id', () => {
+    const event = { type: 'conversation', conversationId: 42 };
+    expect(AgentStreamEventSchema.parse(event)).toEqual(event);
+    expect(ChatStreamEventSchema.parse(event)).toEqual(event);
   });
 });
 

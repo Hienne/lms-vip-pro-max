@@ -370,6 +370,37 @@ describe('AssistantStore', () => {
       expect(store.turns$()[0].answer.status).toBe('done');
     });
 
+    it('sends the conversation id the first line named with the next question, and starts over on request', async () => {
+      await loadDocuments();
+      store.ask('Hỏi một');
+      const first = stream();
+      expect(
+        (first.request.body as { conversationId?: number }).conversationId,
+      ).toBeUndefined();
+      finish(first, [
+        { type: 'conversation', conversationId: 9 },
+        ...knowledgeStreamFixture,
+      ]);
+      await settle();
+
+      store.ask('Còn ngoại lệ?');
+      const second = stream();
+      expect(second.request.body).toEqual({
+        question: 'Còn ngoại lệ?',
+        conversationId: 9,
+      });
+      finish(second, knowledgeNotFoundStreamFixture);
+      await settle();
+
+      store.newConversation();
+      expect(store.turns$()).toEqual([]);
+      store.ask('Chuyện khác');
+      const third = stream();
+      expect(third.request.body).toEqual({ question: 'Chuyện khác' });
+      finish(third, knowledgeNotFoundStreamFixture);
+      await settle();
+    });
+
     it('shows an error event sent in the middle of the stream', async () => {
       await loadDocuments();
       store.ask('Hỏi');

@@ -8,7 +8,11 @@ import {
   signal,
 } from '@angular/core';
 import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
-import { type ChatStreamEvent, knowledgeEndpoints } from '@lms/contracts';
+import {
+  type AskCommand,
+  type ChatStreamEvent,
+  knowledgeEndpoints,
+} from '@lms/contracts';
 import { Toaster } from '@lms/ui';
 import {
   catchError,
@@ -72,6 +76,8 @@ export class AssistantStore {
 
   private readonly state = {
     turns: signal<readonly Turn[]>([]),
+    /** The server conversation the next question continues; null starts a new one. */
+    conversationId: signal<number | null>(null),
     answeringId: signal<number | null>(null),
     uploads: signal<readonly Upload[]>([]),
     page: signal(1),
@@ -207,7 +213,7 @@ export class AssistantStore {
       return;
     }
     this.streaming = this.client
-      .stream(knowledgeEndpoints.askStream, { body: { question } })
+      .stream(knowledgeEndpoints.askStream, { body: this.commandFor(question) })
       .subscribe({
         next: (event) => this.apply(id, event),
         error: (error: unknown) => {
@@ -224,8 +230,26 @@ export class AssistantStore {
       });
   }
 
+  /** The question and the conversation it continues; the server holds the earlier turns. */
+  private commandFor(question: string): AskCommand {
+    const conversationId = this.state.conversationId();
+    return conversationId === null
+      ? { question }
+      : { question, conversationId };
+  }
+
+  /** Starts over: the next question opens a new conversation. Refused while an answer is on its way. */
+  newConversation(): void {
+    if (this.isAnswering$()) return;
+    this.setTurns([]);
+    this.state.conversationId.set(null);
+  }
+
   private apply(id: number, event: ChatStreamEvent): void {
     switch (event.type) {
+      case 'conversation':
+        this.state.conversationId.set(event.conversationId);
+        break;
       case 'retrieved':
         this.patchAnswer(id, { status: 'composing', retrieved: event.count });
         break;

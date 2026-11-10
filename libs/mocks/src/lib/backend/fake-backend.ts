@@ -244,6 +244,7 @@ export class FakeBackend {
   /** Changes the assistant proposed and nobody has confirmed, by action id (the backend keeps them in memory too). */
   private pendingActions = new Map<string, PendingProposal>();
   private nextActionSeq = 1;
+  private nextConversationId = 1;
 
   /** Lowers the row limit of the progress export, to see the refusal without 10,000 rows. */
   limitProgressExport(rows: number): void {
@@ -564,8 +565,22 @@ export class FakeBackend {
     return {
       status: 200,
       body: envelopeOk(null),
-      events: found ? knowledgeStreamFixture : knowledgeNotFoundStreamFixture,
+      events: [
+        this.conversationEvent(request),
+        ...(found ? knowledgeStreamFixture : knowledgeNotFoundStreamFixture),
+      ],
     };
+  }
+
+  /** The first line of an AI stream: the conversation asked about, or a new one. */
+  private conversationEvent(request: FakeRequest) {
+    const named = (request.body as { conversationId?: unknown } | null)
+      ?.conversationId;
+    const conversationId =
+      typeof named === 'number' && Number.isInteger(named) && named > 0
+        ? named
+        : this.nextConversationId++;
+    return { type: 'conversation' as const, conversationId };
   }
 
   // ---- quick assistant: scripted turns and confirmed actions ---------------------------------
@@ -573,16 +588,17 @@ export class FakeBackend {
   private agentStream(request: FakeRequest): FakeReply {
     const user = this.caller(request);
     const parsed = AgentCommandSchema.safeParse(request.body);
-    const last = parsed.success ? parsed.data.messages.at(-1) : undefined;
-    const text = last?.content.trim() ?? '';
-    if (!last || text.length < 1 || text.length > 500) {
+    if (!parsed.success) {
       return invalid('Tin nhắn phải từ 1 đến 500 ký tự.');
     }
 
     return {
       status: 200,
       body: envelopeOk(null),
-      events: this.scriptedTurn(user, text),
+      events: [
+        this.conversationEvent(request),
+        ...this.scriptedTurn(user, parsed.data.message),
+      ],
     };
   }
 

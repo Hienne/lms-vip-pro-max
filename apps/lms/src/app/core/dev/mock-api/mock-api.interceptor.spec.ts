@@ -133,6 +133,7 @@ describe('mockApiInterceptor', () => {
       );
       const lines = String(response?.body).trimEnd().split('\n');
       expect(lines.map((l) => JSON.parse(l).type)).toEqual([
+        'conversation',
         'retrieved',
         'delta',
         'delta',

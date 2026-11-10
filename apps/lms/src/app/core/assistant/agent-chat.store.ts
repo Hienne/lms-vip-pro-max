@@ -25,12 +25,6 @@ import type { ActionCard, AgentReply, AgentTurn } from './agent-chat.model';
 import { AgentChatStorage } from './agent-chat.storage';
 import { toolStatusText } from './agent-status';
 
-/**
- * Finished turns sent back with a question. The backend takes at most 20 messages, so nine
- * question and answer pairs leave room for the new question.
- */
-export const HISTORY_TURNS = 9;
-
 export const OFFLINE_MESSAGE =
   'Mất kết nối — không gửi được câu hỏi. Thử lại khi có mạng.';
 export const CUT_OFF_MESSAGE = 'Kết nối bị ngắt khi đang trả lời.';
@@ -89,6 +83,12 @@ export class AgentChatStore {
       computation: (id) =>
         id ? (this.storage.read(id).docked ?? false) : false,
     }),
+    /** The server conversation the next question continues; null starts a new one. */
+    conversationId: linkedSignal<string | undefined, number | null>({
+      source: this.userId,
+      computation: (id) =>
+        id ? (this.storage.read(id).conversationId ?? null) : null,
+    }),
     answeringId: signal<number | null>(null),
     confirmingId: signal<number | null>(null),
   };
@@ -143,6 +143,7 @@ export class AgentChatStore {
           userId,
           open: this.isOpen$(),
           docked: this.state.docked(),
+          conversationId: this.state.conversationId(),
           turns: this.turns$(),
         }
       : null;
@@ -162,6 +163,10 @@ export class AgentChatStore {
 
   setTurns(turns: readonly AgentTurn[]): void {
     this.state.turns.set(turns);
+  }
+
+  setConversationId(id: number | null): void {
+    this.state.conversationId.set(id);
   }
 
   setOpen(open: boolean): void {
@@ -224,7 +229,7 @@ export class AgentChatStore {
   }
 
   private stream(id: number, question: string): void {
-    const command = this.commandFor(question, id);
+    const command = this.commandFor(question);
     this.setAnsweringId(id);
     if (this.network.offline$()) {
       this.fail(id, OFFLINE_MESSAGE);
@@ -273,6 +278,7 @@ export class AgentChatStore {
   clear(): void {
     if (this.isAnswering$()) return;
     this.setTurns([]);
+    this.setConversationId(null);
   }
 
   // ---- a proposed change -----------------------------------------------------------------------
@@ -387,6 +393,9 @@ export class AgentChatStore {
 
   private apply(id: number, event: AgentStreamEvent): void {
     switch (event.type) {
+      case 'conversation':
+        this.setConversationId(event.conversationId);
+        break;
       case 'tool':
         this.patchReply(id, { status: 'working', toolName: event.name });
         break;
@@ -450,33 +459,19 @@ export class AgentChatStore {
 
   // ---- history and storage ---------------------------------------------------------------------
 
-  /** The finished turns (errored and stopped ones are left out), then the new question. */
-  private commandFor(question: string, beforeId: number): AgentCommand {
-    const history = this.turns$()
-      .filter((turn) => turn.id < beforeId && turn.reply.status === 'done')
-      .slice(-HISTORY_TURNS)
-      .flatMap((turn) => [
-        { role: 'user' as const, content: turn.question },
-        { role: 'assistant' as const, content: this.answerOf(turn) },
-      ]);
-
-    return { messages: [...history, { role: 'user', content: question }] };
-  }
-
-  /** What the assistant said, with the result of its card once the user settled it. */
-  private answerOf(turn: AgentTurn): string {
-    const card = turn.reply.action;
-    const settled =
-      card?.status === 'confirmed' || card?.status === 'cancelled';
-    return settled && card.message
-      ? `${turn.reply.text}\n${card.message}`
-      : turn.reply.text;
+  /** The question and the conversation it continues; the server holds the earlier turns. */
+  private commandFor(question: string): AgentCommand {
+    const conversationId = this.state.conversationId();
+    return conversationId === null
+      ? { message: question }
+      : { conversationId, message: question };
   }
 
   private persist(chat: {
     userId: string;
     open: boolean;
     docked: boolean;
+    conversationId: number | null;
     turns: readonly AgentTurn[];
   }): void {
     if (!chat.open && chat.turns.length === 0) this.storage.clear(chat.userId);
@@ -484,6 +479,7 @@ export class AgentChatStore {
       this.storage.write(chat.userId, {
         open: chat.open,
         docked: chat.docked,
+        ...(chat.conversationId ? { conversationId: chat.conversationId } : {}),
         turns: [...chat.turns],
       });
   }

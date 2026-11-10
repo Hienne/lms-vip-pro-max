@@ -1003,6 +1003,7 @@ describe('FakeBackend', () => {
         body: { question: 'EOD là gì?' },
       });
       expect(stream.events?.map((e) => (e as { type: string }).type)).toEqual([
+        'conversation',
         'retrieved',
         'delta',
         'delta',
@@ -1041,10 +1042,13 @@ describe('FakeBackend', () => {
   describe('the quick assistant', () => {
     const turn = (token: string | null, content: string) =>
       call(agentEndpoints.stream, token, {
-        body: { messages: [{ role: 'user', content }] },
+        body: { message: content },
       });
     const events = (reply: FakeReply) =>
-      (reply.events ?? []).map((e) => AgentStreamEventSchema.parse(e));
+      (reply.events ?? [])
+        .map((e) => AgentStreamEventSchema.parse(e))
+        // The opening `conversation` line has its own test; the rest read what follows it.
+        .filter((e) => e.type !== 'conversation');
     const types = (reply: FakeReply) => events(reply).map((e) => e.type);
     const actionOf = (reply: FakeReply) => {
       const event = events(reply).find((e) => e.type === 'action_required');
@@ -1281,22 +1285,18 @@ describe('FakeBackend', () => {
 
     it('refuses an invalid command before streaming and needs a signed-in user', () => {
       const token = login('hocvien');
-      const bad = (messages: unknown) =>
-        code(call(agentEndpoints.stream, token, { body: { messages } }));
-      expect(bad([])).toBe('CORE-VALIDATION_FAILED');
-      expect(bad([{ role: 'assistant', content: 'x' }])).toBe(
-        'CORE-VALIDATION_FAILED',
-      );
-      expect(bad([{ role: 'user', content: '  ' }])).toBe(
-        'CORE-VALIDATION_FAILED',
-      );
-      expect(bad([{ role: 'user', content: 'x'.repeat(501) }])).toBe(
+      const bad = (body: unknown) =>
+        code(call(agentEndpoints.stream, token, { body }));
+      expect(bad({})).toBe('CORE-VALIDATION_FAILED');
+      expect(bad({ message: '  ' })).toBe('CORE-VALIDATION_FAILED');
+      expect(bad({ message: 'x'.repeat(501) })).toBe('CORE-VALIDATION_FAILED');
+      expect(bad({ conversationId: 0, message: 'x' })).toBe(
         'CORE-VALIDATION_FAILED',
       );
       for (const endpoint of Object.values(agentEndpoints)) {
         const reply = call(endpoint, null, {
           params: { actionId: 'a' },
-          body: { messages: [{ role: 'user', content: 'a' }] },
+          body: { message: 'a' },
         });
         expect(reply.status, endpoint.path).toBe(401);
       }

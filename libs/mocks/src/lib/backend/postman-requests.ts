@@ -109,19 +109,19 @@ export const POSTMAN_REQUESTS: readonly PostmanRequest[] = [
     name: 'Hỏi tài liệu (stream)',
     method: 'POST',
     url: '/api/v1/assistant/agent/stream',
-    body: '{ "messages": [{ "role": "user", "content": "CIF là gì?" }] }',
+    body: '{ "message": "CIF là gì?" }',
   },
   {
     name: 'Mở màn hình (stream)',
     method: 'POST',
     url: '/api/v1/assistant/agent/stream',
-    body: '{ "messages": [{ "role": "user", "content": "Mở trang quản lý người dùng" }] }',
+    body: '{ "message": "Mở trang quản lý người dùng" }',
   },
   {
     name: 'Đề xuất đổi hồ sơ (stream)',
     method: 'POST',
     url: '/api/v1/assistant/agent/stream',
-    body: '{ "messages": [{ "role": "user", "content": "Đổi chức danh của tôi thành Chuyên viên chính" }] }',
+    body: '{ "message": "Đổi chức danh của tôi thành Chuyên viên chính" }',
   },
   {
     name: 'Xác nhận yêu cầu',

@@ -39,10 +39,11 @@ export type DocumentListQuery = z.infer<typeof DocumentListQuerySchema>;
 export const UploadDocumentCommandSchema = z.object({ file: z.file() });
 export type UploadDocumentCommand = z.infer<typeof UploadDocumentCommandSchema>;
 
-/** One question; the backend answers each on its own and keeps no conversation. */
+/** One question; `conversationId` (stream only) names the conversation it continues. */
 export const MAX_QUESTION_LENGTH = 300;
 export const AskCommandSchema = z.object({
   question: z.string().trim().min(1).max(MAX_QUESTION_LENGTH),
+  conversationId: z.number().int().positive().nullish(),
 });
 export type AskCommand = z.infer<typeof AskCommandSchema>;
 
@@ -68,6 +69,11 @@ export type ChatAnswer = z.infer<typeof ChatAnswerSchema>;
 
 /** One line of the NDJSON stream. */
 export const ChatStreamEventSchema = z.discriminatedUnion('type', [
+  /** The first line of every stream: the conversation this turn is stored in. */
+  z.object({
+    type: z.literal('conversation'),
+    conversationId: z.number().int().positive(),
+  }),
   z.object({ type: z.literal('retrieved'), count: z.number().int() }),
   z.object({ type: z.literal('delta'), text: z.string() }),
   z.object({
