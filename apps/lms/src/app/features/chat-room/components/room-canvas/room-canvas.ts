@@ -19,12 +19,11 @@ import { Button } from '@lms/ui';
 import type {
   RoomCanvasState,
   RoomInvitationView,
-  RoomViewMode,
 } from '../../data-access/chat-room.model';
 
 interface RoomRenderer {
   setTouch(x: number, y: number): void;
-  setPortrait?(portrait: boolean): void;
+  setPortrait(portrait: boolean): void;
   chairAt(clientX: number, clientY: number): number | undefined;
 }
 
@@ -38,7 +37,6 @@ interface RoomRenderer {
 export class RoomCanvas {
   readonly map = input.required<RoomMap>();
   readonly view = input.required<RoomCanvasState>();
-  readonly mode = input<RoomViewMode>('3d');
   readonly gesturesEnabled = input(false);
   readonly interactionsEnabled = input(false);
   readonly invitation = input<RoomInvitationView | null>(null);
@@ -63,17 +61,14 @@ export class RoomCanvas {
   constructor() {
     afterRenderEffect((onCleanup) => {
       const map = this.map();
-      const mode = this.mode();
       const mount = this.mount().nativeElement;
       let cancelled = false;
       let destroy: (() => void) | undefined;
       untracked(() => {
-        void this.createGame(map, mode, mount, () => cancelled).then(
-          (cleanup) => {
-            if (cancelled) cleanup();
-            else destroy = cleanup;
-          },
-        );
+        void this.createGame(map, mount, () => cancelled).then((cleanup) => {
+          if (cancelled) cleanup();
+          else destroy = cleanup;
+        });
       });
       onCleanup(() => {
         cancelled = true;
@@ -83,68 +78,30 @@ export class RoomCanvas {
   }
   private async createGame(
     map: RoomMap,
-    mode: RoomViewMode,
     mount: HTMLDivElement,
     cancelled: () => boolean,
   ): Promise<() => void> {
     try {
-      if (mode === '3d') {
-        const { RoomOrbit } = await import('./rendering/room-orbit');
-        if (cancelled()) return () => undefined;
-        const scene = new RoomOrbit(
-          map,
-          mount,
-          () => this.view(),
-          (position) => this.moved.emit(position),
-          (message) => this.failed.emit(message),
-        );
-        scene.setPortrait(this.portrait());
-        this.scene = scene;
-        this.ready.emit(true);
-        return () => {
-          scene.destroy();
-          if (this.scene === scene) this.scene = undefined;
-        };
-      }
-      const [engine, renderer] = await Promise.all([
-        import('phaser'),
-        import('./rendering/room.scene'),
-      ]);
+      const { RoomOrbit } = await import('./rendering/room-orbit');
       if (cancelled()) return () => undefined;
-      const scene = new renderer.RoomScene(
+      const scene = new RoomOrbit(
         map,
+        mount,
         () => this.view(),
         (position) => this.moved.emit(position),
+        (message) => this.failed.emit(message),
       );
+      scene.setPortrait(this.portrait());
       this.scene = scene;
-      const game = new engine.default.Game({
-        type: engine.default.AUTO,
-        parent: mount,
-        backgroundColor: '#e3eae4',
-        scale: {
-          mode: engine.default.Scale.RESIZE,
-          width: '100%',
-          height: '100%',
-        },
-        scene: [scene],
-        render: { roundPixels: true },
-        audio: { noAudio: true },
-        callbacks: {
-          postBoot: () => {
-            if (!cancelled()) this.ready.emit(true);
-          },
-        },
-      });
+      this.ready.emit(true);
       return () => {
-        game.destroy(true);
+        scene.destroy();
         if (this.scene === scene) this.scene = undefined;
       };
     } catch {
       if (!cancelled())
         this.failed.emit(
-          mode === '3d'
-            ? 'Không khởi tạo được phòng 3D. Hãy thử lại hoặc chọn bản đồ 2D.'
-            : 'Không khởi tạo được phòng 2D. Hãy tải lại bản đồ hoặc trình duyệt.',
+          'Không khởi tạo được phòng 3D. Hãy tải lại trang hoặc kiểm tra hỗ trợ WebGL.',
         );
       return () => undefined;
     }
@@ -188,7 +145,7 @@ export class RoomCanvas {
   }
   protected togglePortrait(): void {
     this.portrait.update((enabled) => !enabled);
-    this.scene?.setPortrait?.(this.portrait());
+    this.scene?.setPortrait(this.portrait());
   }
   protected performGesture(kind: RoomGestureKind, event: MouseEvent): void {
     this.gestured.emit(kind);

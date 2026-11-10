@@ -8,6 +8,15 @@ import {
   type NavSection,
 } from '../../core/menu/menu-catalog';
 
+const ENTERTAINMENT_LINK: MenuItem = {
+  code: 'COMMUNITY',
+  href: '/chat-room',
+  icon: 'message-square',
+  label: 'Giải trí',
+  section: 'Cộng đồng',
+  upcoming: false,
+};
+
 /**
  * The user's navigation (the mockup's `sidebar`): brand, role line, the sections of the nav
  * `toProfile` built from the functions the backend lists for the user, and, with `devTools`, the
@@ -43,8 +52,8 @@ export class Sidebar {
    * The profile is left out: it opens from the account menu in the header. Entries whose screen is
    * not built are shown in development builds only.
    */
-  protected readonly sections = computed<readonly NavSection[]>(() =>
-    this.nav()
+  protected readonly sections = computed<readonly NavSection[]>(() => {
+    const sections = this.nav()
       .map((section) => ({
         ...section,
         items: section.items.filter(
@@ -52,8 +61,22 @@ export class Sidebar {
             item.code !== 'PROFILE' && (this.showDesignLink || !item.upcoming),
         ),
       }))
-      .filter((section) => section.items.length > 0),
-  );
+      .filter((section) => section.items.length > 0);
+
+    // This signed-in route is available independently of the Community grant.
+    const community = sections.find(
+      ({ section }) => section === ENTERTAINMENT_LINK.section,
+    );
+    if (community) {
+      community.items.push(ENTERTAINMENT_LINK);
+    } else {
+      sections.push({
+        section: ENTERTAINMENT_LINK.section,
+        items: [ENTERTAINMENT_LINK],
+      });
+    }
+    return sections;
+  });
   protected readonly active = computed(() =>
     activeHref(this.sections(), this.activePath()),
   );

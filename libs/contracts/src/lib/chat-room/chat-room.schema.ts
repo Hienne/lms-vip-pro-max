@@ -83,6 +83,14 @@ export const RoomMapSchema = z.object({
   spawn: z.object({ x: z.number(), y: z.number() }),
   activityArea: RoomAreaSchema.nullish(),
   diceArea: RoomAreaSchema.nullish(),
+  caroTables: z
+    .array(
+      z.object({
+        desk: z.int().nonnegative(),
+        chairs: z.tuple([z.int().nonnegative(), z.int().nonnegative()]),
+      }),
+    )
+    .optional(),
   objects: z.array(
     z.object({
       kind: z.enum(['board', 'shelf', 'plant', 'desk', 'chair']),
@@ -103,6 +111,7 @@ export const RoomTicketSchema = z.object({
 const RoomDiceSideSchema = z.enum(['lower', 'upper']);
 export type RoomDiceSide = z.infer<typeof RoomDiceSideSchema>;
 export const ROOM_MAX_STAKE = 1_000_000;
+export const ROOM_MIN_CARO_STAKE = 10;
 const RoomDiceBetSchema = z.object({
   side: RoomDiceSideSchema,
   stake: z.int().positive().max(ROOM_MAX_STAKE),
@@ -146,6 +155,16 @@ const RoomCaroInvitationSchema = z.object({
   stake: CaroStakeSchema,
 });
 export type RoomCaroInvitation = z.infer<typeof RoomCaroInvitationSchema>;
+const RoomCaroTableSchema = z.object({
+  type: z.literal('caro-table'),
+  table: z.int().positive().optional(),
+  host: z.boolean().optional(),
+  partner: z.string().optional(),
+  stake: CaroStakeSchema.optional(),
+  playing: z.boolean().optional(),
+  paused: z.boolean().optional(),
+});
+export type RoomCaroTable = z.infer<typeof RoomCaroTableSchema>;
 const RoomCaroStateSchema = z.object({
   type: z.literal('caro-state'),
   id: z.uuid(),
@@ -158,6 +177,12 @@ const RoomCaroStateSchema = z.object({
     .length(CARO_MAX_CELLS)
     .refine((board) => !/[^.XO]/.test(board)),
   moves: z.int().min(0).max(CARO_MAX_CELLS),
+  lastCell: z
+    .int()
+    .min(0)
+    .max(CARO_MAX_CELLS - 1)
+    .optional(),
+  timedOut: z.boolean().optional(),
   expiresAt: z.int().positive(),
   serverTime: z.int().positive(),
   result: z.enum(['X', 'O', 'draw']).optional(),
@@ -168,6 +193,7 @@ const RoomSeatCommandSchema = z.object({
   type: z.literal('seat'),
   action: z.enum(['sit', 'stand']),
   chair: z.int().nonnegative().optional(),
+  caro: z.literal(true).optional(),
 });
 const HighFiveInviteCommandSchema = z.object({
   type: z.literal('high-five-invite'),
@@ -221,9 +247,8 @@ export const RoomCommandSchema = z.discriminatedUnion('type', [
   }),
   z.object({ type: z.literal('wallet-rank') }),
   z.object({
-    type: z.literal('caro-invite'),
-    target: z.string(),
-    stake: CaroStakeSchema,
+    type: z.literal('caro-stake'),
+    stake: CaroStakeSchema.min(ROOM_MIN_CARO_STAKE),
   }),
   z.object({
     type: z.literal('caro-reply'),
@@ -283,6 +308,7 @@ export const RoomEventSchema = z.discriminatedUnion('type', [
     ranks: z.array(RoomRankSchema).max(10),
   }),
   RoomCaroInvitationSchema,
+  RoomCaroTableSchema,
   z.object({ type: z.literal('caro-invite-end'), id: z.string() }),
   RoomCaroStateSchema,
   z.object({ type: z.literal('caro-error'), message: z.string() }),

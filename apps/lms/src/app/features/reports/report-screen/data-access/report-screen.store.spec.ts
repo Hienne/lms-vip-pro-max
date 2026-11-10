@@ -148,19 +148,26 @@ describe('assessment report integration', () => {
       ]);
     });
 
-    it('reads courses from the server search, narrowed by the unit', async () => {
+    it('loads courses under the picked unit and team without a typed query', async () => {
       const spy = vi.spyOn(TestBed.inject(MockBackend), 'handle');
       const store = await open('/reports/results?orgId=1');
       expect(store.pickers.options$.courseId()).toContainEqual({
         id: 1,
         name: 'Tổng quan hệ thống Core Banking',
       });
-      store.pickers.search('courseId', 'change');
+      store.pickers.pick('teamId', store.pickers.options$.teamId()[0]);
       await settle();
-      expect(
-        spy.mock.calls.filter(([e]) => e === learning.groups).at(-1)?.[1].query,
-      ).toMatchObject({ groupBy: 'course', orgId: '1', q: 'change' });
-      expect(store.pickers.options$.courseId().map((c) => c.id)).toEqual([2]);
+      const request = spy.mock.calls
+        .filter(
+          ([e, r]) => e === learning.groups && r.query['groupBy'] === 'course',
+        )
+        .at(-1)?.[1].query;
+      expect(request).toMatchObject({
+        groupBy: 'course',
+        orgId: '1',
+        teamId: '7',
+      });
+      expect(request).not.toHaveProperty('q');
     });
 
     it('lists the quizzes of the picked course and clears the children of a changed parent', async () => {

@@ -151,6 +151,7 @@ describe('AppShell', () => {
         '/community/articles',
         '/community/reviews',
         '/community/me',
+        '/chat-room',
       ],
     ],
     [
@@ -174,6 +175,7 @@ describe('AppShell', () => {
         '/community/articles',
         '/community/reviews',
         '/community/me',
+        '/chat-room',
       ],
     ],
   ] as const)(
@@ -182,6 +184,13 @@ describe('AppShell', () => {
       signInAs(role);
       const el = await open(url);
       expect(hrefs(el)).toEqual([...expected]);
+      const roomLink = el.querySelector(
+        'app-sidebar ul[aria-label="Cộng đồng"] a[href="/chat-room"]',
+      );
+      expect(roomLink?.textContent?.trim()).toBe('Giải trí');
+      expect(
+        el.querySelectorAll('app-sidebar a[href="/chat-room"]'),
+      ).toHaveLength(1);
     },
   );
 
@@ -227,6 +236,11 @@ describe('AppShell', () => {
       '/community/me',
       '/chat-room',
     ]);
+    expect(
+      el
+        .querySelector('#learner-nav-community a[href="/chat-room"]')
+        ?.textContent?.trim(),
+    ).toBe('Giải trí');
     expect(nav?.querySelector('a[href="/profile"]')).toBeNull();
   });
 
@@ -499,7 +513,7 @@ describe('AppShell', () => {
       const el = await open('/learn');
       toggle(el)?.click();
       TestBed.tick();
-      expect(hrefs(el)).toHaveLength(16);
+      expect(hrefs(el)).toHaveLength(17);
       expect(
         el.querySelector('nav a[href="/progress"]')?.textContent?.trim(),
       ).toBe('Tiến độ học tập');
@@ -544,7 +558,12 @@ describe('AppShell', () => {
       expect(button?.getAttribute('aria-expanded')).toBe('false');
 
       await openDrawer(el);
-      expect(dialog()?.querySelectorAll('nav a')).toHaveLength(16);
+      expect(dialog()?.querySelectorAll('nav a')).toHaveLength(17);
+      expect(
+        dialog()
+          ?.querySelector('ul[aria-label="Cộng đồng"] a[href="/chat-room"]')
+          ?.textContent?.trim(),
+      ).toBe('Giải trí');
       expect(dialog()?.querySelector('.sidebar__toggle')).toBeNull();
       expect(button?.getAttribute('aria-expanded')).toBe('true');
     });

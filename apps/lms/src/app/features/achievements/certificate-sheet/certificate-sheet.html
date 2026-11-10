@@ -1,0 +1,78 @@
+@let doc = document();
+<article
+  class="certificate"
+  [class.certificate--preview]="preview()"
+  [attr.aria-hidden]="preview() ? 'true' : null"
+  [attr.aria-labelledby]="preview() ? null : 'certificate-heading'"
+>
+  <svg
+    class="certificate__corner"
+    viewBox="0 0 320 205"
+    aria-hidden="true"
+    focusable="false"
+  >
+    <path class="certificate__ribbon" d="M0 0H320C164 20 65 66 0 205Z" />
+    <path
+      class="certificate__trim"
+      d="M0 147C54 77 154 23 304 0H320C173 26 64 84 0 186Z"
+    />
+  </svg>
+  <svg
+    class="certificate__corner certificate__corner--end"
+    viewBox="0 0 320 205"
+    aria-hidden="true"
+    focusable="false"
+  >
+    <path class="certificate__ribbon" d="M0 0H320C164 20 65 66 0 205Z" />
+    <path
+      class="certificate__trim"
+      d="M0 147C54 77 154 23 304 0H320C173 26 64 84 0 186Z"
+    />
+  </svg>
+
+  <div class="certificate__content">
+    <div class="certificate__brand">
+      <div class="certificate__crest">
+        <ui-mai [size]="preview() ? 22 : 44" />
+      </div>
+      <p class="certificate__academy">Core Banking Academy</p>
+      <p>Ban QL&amp;PT Core Banking</p>
+    </div>
+
+    <h2
+      [attr.id]="preview() ? null : 'certificate-heading'"
+      class="certificate__heading"
+    >
+      Chứng nhận hoàn thành
+    </h2>
+    <p class="certificate__lead">Trao cho</p>
+    <p class="certificate__name">{{ doc.fullName }}</p>
+    <p class="certificate__lead">Đã hoàn thành khóa đào tạo</p>
+    <p class="certificate__course"><strong>{{ doc.title }}</strong></p>
+    @if (doc.code && doc.code !== doc.title) {
+    <p class="certificate__lead">{{ doc.code }}</p>
+    } @if (doc.score !== null) {
+    <p class="certificate__lead">
+      Kết quả bài kiểm tra {{ doc.score | fmtPct: 2 }}
+    </p>
+    }
+
+    <div class="certificate__seal" aria-hidden="true">
+      <ui-icon name="award" />
+    </div>
+    <dl class="certificate__facts">
+      <div>
+        <dt>Ngày hoàn thành</dt>
+        <dd>{{ doc.completedAt | fmtDate }}</dd>
+      </div>
+      <div>
+        <dt>Mã xác thực</dt>
+        <dd class="certificate__code">{{ doc.verificationCode }}</dd>
+      </div>
+      <div>
+        <dt>Đơn vị cấp</dt>
+        <dd>Ban QL&amp;PT Core Banking</dd>
+      </div>
+    </dl>
+  </div>
+</article>

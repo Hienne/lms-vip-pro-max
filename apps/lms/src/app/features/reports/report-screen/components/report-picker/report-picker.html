@@ -1,72 +1,38 @@
-<div class="report-picker" [class.report-picker--clearable]="clearable()">
-  <ui-field
-    [label]="label()"
-    [required]="required()"
-    [hint]="disabled() ? disabledReason() : ''"
+<ui-field [label]="label()" [required]="required()" [hint]="hint()">
+  <select
+    uiSelect
+    [disabled]="disabled() || busy()"
+    (change)="choose(dropdown.value)"
+    #dropdown
   >
-    <input
-      uiInput
-      ngCombobox
-      #box
-      #combobox="ngCombobox"
-      autocomplete="off"
-      [placeholder]="emptyLabel()"
-      [disabled]="disabled()"
-      [value]="text()"
-      (valueChange)="typed($event)"
-    />
-  </ui-field>
-  @if (clearable()) {
-  <button
-    uiIconButton
-    type="button"
-    size="sm"
-    class="report-picker__clear"
-    [label]="'Xóa ' + label()"
-    (click)="clear()"
-  >
-    <ui-icon name="x" size="sm" />
-  </button>
-  } @if (error(); as message) {
-  <p class="report-picker__error" [id]="errorId">
-    <ui-icon name="triangle-alert" size="sm" />{{ message }}
-  </p>
-  }
-  <ng-template ngComboboxPopup [combobox]="combobox">
-    <div class="report-picker__results">
-      <div
-        ngComboboxWidget
-        ngListbox
-        #listbox="ngListbox"
-        class="report-picker__list"
-        focusMode="activedescendant"
-        selectionMode="explicit"
-        [tabindex]="-1"
-        [attr.aria-label]="label()"
-        [activeDescendant]="listbox.activeDescendant()"
-        [value]="chosen()"
-        (valueChange)="choose($event)"
-      >
-        @for (option of options(); track option.id) {
-        <div
-          ngOption
-          class="report-picker__option"
-          [value]="option.id"
-          [label]="label$(option)"
-        >
-          @if (option.meta) {
-          <span class="report-picker__meta">{{ option.meta }}</span> · }<span
-            class="report-picker__name"
-            >{{ option.name }}</span
-          >
-        </div>
-        }
-      </div>
-      @if (busy()) {
-      <p class="report-picker__note">Đang tìm…</p>
-      } @else if (!options().length) {
-      <p class="report-picker__note">Không có kết quả phù hợp.</p>
-      }
-    </div>
-  </ng-template>
-</div>
+    <option value="" [selected]="!selected()">{{ emptyLabel() }}</option>
+    @for (option of items(); track option.id) {
+    <option [value]="option.id" [selected]="option.id === selected()?.id">
+      {{ optionLabel(option) }}
+    </option>
+    }
+  </select>
+</ui-field>
+@if (error()) {
+<button
+  uiButton
+  variant="ghost"
+  size="sm"
+  type="button"
+  [attr.aria-label]="'Bỏ lựa chọn ' + label()"
+  (click)="choose('')"
+>
+  Bỏ lựa chọn
+</button>
+} @if (loadFailed()) {
+<button
+  uiButton
+  variant="ghost"
+  size="sm"
+  type="button"
+  [attr.aria-label]="'Tải lại ' + label()"
+  (click)="retried.emit()"
+>
+  Tải lại
+</button>
+}

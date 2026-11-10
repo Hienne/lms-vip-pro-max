@@ -82,23 +82,26 @@
         đang áp dụng' : 'Toàn bộ dữ liệu trong phạm vi được cấp'}}</span
       >
     </div>
-    <div class="report-screen__filter-main">
-      @if (store.dimension$() === 'learners') { @for (field of leadPickers();
-      track field.key) {
+    <div class="grid-4">
+      @for (field of scopePickers(); track field.key) {
       <app-report-picker
         [label]="field.label"
         [emptyLabel]="field.emptyLabel"
-        [options]="store.pickers.matches$()[field.key]"
+        [options]="store.pickers.options$[field.key]()"
         [selected]="store.pickers.selected$()[field.key]"
         [busy]="store.pickers.busy$()[field.key]"
         [disabled]="!!field.parent && !store.pickers.selected$()[field.parent.key]"
         [disabledReason]="field.parent?.reason ?? ''"
         [error]="store.pickers.errors$()[field.key]"
+        [loadFailed]="store.pickers.loadFailed$()[field.key]"
         [required]="field.key === 'quizId' && store.dimension$() === 'learners'"
-        (queried)="store.pickers.search(field.key, $event)"
         (picked)="store.pickers.pick(field.key, $event)"
+        (retried)="store.pickers.retryDropdown(field.key)"
       />
-      } } @else {
+      }
+    </div>
+    <div class="report-screen__filter-main">
+      @if (store.dimension$() !== 'learners') {
       <ui-field [label]="store.progress$() ? 'Ghi danh từ ngày' : 'Nộp từ ngày'"
         ><ui-date-input kind="datetime" [formField]="filterForm.from"
       /></ui-field>
@@ -108,81 +111,71 @@
       }
       <div class="row row--gap-2 report-screen__filter-actions">
         <button uiButton variant="primary" type="submit">Áp dụng bộ lọc</button
-        ><button uiButton variant="ghost" (click)="resetFilters()">
+        ><button
+          uiButton
+          variant="ghost"
+          type="button"
+          (click)="resetFilters()"
+        >
           Đặt lại
         </button>
       </div>
     </div>
-    <details class="report-screen__advanced" [open]="scopeHasError()">
-      <summary>Phạm vi &amp; điều kiện chi tiết</summary>
-      <div class="grid-4 report-screen__filter-grid">
-        @for (field of scopePickers(); track field.key) {
-        <app-report-picker
-          [label]="field.label"
-          [emptyLabel]="field.emptyLabel"
-          [options]="store.pickers.matches$()[field.key]"
-          [selected]="store.pickers.selected$()[field.key]"
-          [busy]="store.pickers.busy$()[field.key]"
-          [disabled]="!!field.parent && !store.pickers.selected$()[field.parent.key]"
-          [disabledReason]="field.parent?.reason ?? ''"
-          [error]="store.pickers.errors$()[field.key]"
-          [required]="field.key === 'quizId' && store.dimension$() === 'learners'"
-          (queried)="store.pickers.search(field.key, $event)"
-          (picked)="store.pickers.pick(field.key, $event)"
-        />
-        } @if (store.dimension$() === 'learners') {
-        <ui-field label="Tình trạng học viên"
-          ><select uiSelect [formField]="filterForm.learnerStatus">
-            <option value="">Tất cả tình trạng</option>
-            <option value="NOT_STARTED">Chưa thi</option>
-            <option value="IN_PROGRESS">Đang làm</option>
-            <option value="FAILED">Chưa đạt</option>
-            <option value="PASSED">Đạt</option>
-          </select></ui-field
-        >
-        } @if (store.dimension$() === 'results') {
-        <ui-field label="Mã cán bộ"
-          ><input uiInput [formField]="filterForm.userId"
-        /></ui-field>
-        <ui-field label="Trạng thái lượt thi"
-          ><select uiSelect [formField]="filterForm.status">
-            <option value="">Tất cả</option>
-            <option value="IN_PROGRESS">Đang làm</option>
-            <option value="SUBMITTED">Đã nộp</option>
-            <option value="AUTO_SUBMITTED">Tự nộp</option>
-            <option value="VOIDED">Đã hủy</option>
-          </select></ui-field
-        >
-        <ui-field label="Kết quả"
-          ><select uiSelect [formField]="filterForm.passed">
-            <option value="">Tất cả</option>
-            <option value="true">Đạt</option>
-            <option value="false">Chưa đạt</option>
-          </select></ui-field
-        >
-        } @if (store.progress$()) {
-        <ui-field label="Trạng thái"
-          ><select uiSelect [formField]="filterForm.learningStatus">
-            <option value="">Tất cả</option>
-            <option value="not_started">Chưa bắt đầu</option>
-            <option value="in_progress">Đang học</option>
-            <option value="completed">Hoàn thành</option>
-          </select></ui-field
-        >
-        <label class="row row--gap-2 report-screen__check"
-          ><input type="checkbox" uiCheckbox [formField]="filterForm.overdue" />
-          Chỉ quá hạn</label
-        >
-        } @if (store.dimension$() === 'competency') {
-        <ui-field label="Gộp năng lực theo"
-          ><select uiSelect [formField]="filterForm.groupBy">
-            <option value="user">Học viên</option>
-            <option value="org">Đơn vị</option>
-          </select></ui-field
-        >
-        }
-      </div>
-    </details>
+    @if (hasExtraFilters()) {
+    <div class="grid-4 report-screen__filter-grid">
+      @if (store.dimension$() === 'learners') {
+      <ui-field label="Tình trạng học viên"
+        ><select uiSelect [formField]="filterForm.learnerStatus">
+          <option value="">Tất cả tình trạng</option>
+          <option value="NOT_STARTED">Chưa thi</option>
+          <option value="IN_PROGRESS">Đang làm</option>
+          <option value="FAILED">Chưa đạt</option>
+          <option value="PASSED">Đạt</option>
+        </select></ui-field
+      >
+      } @if (store.dimension$() === 'results') {
+      <ui-field label="Mã cán bộ"
+        ><input uiInput [formField]="filterForm.userId"
+      /></ui-field>
+      <ui-field label="Trạng thái lượt thi"
+        ><select uiSelect [formField]="filterForm.status">
+          <option value="">Tất cả</option>
+          <option value="IN_PROGRESS">Đang làm</option>
+          <option value="SUBMITTED">Đã nộp</option>
+          <option value="AUTO_SUBMITTED">Tự nộp</option>
+          <option value="VOIDED">Đã hủy</option>
+        </select></ui-field
+      >
+      <ui-field label="Kết quả"
+        ><select uiSelect [formField]="filterForm.passed">
+          <option value="">Tất cả</option>
+          <option value="true">Đạt</option>
+          <option value="false">Chưa đạt</option>
+        </select></ui-field
+      >
+      } @if (store.progress$()) {
+      <ui-field label="Trạng thái"
+        ><select uiSelect [formField]="filterForm.learningStatus">
+          <option value="">Tất cả</option>
+          <option value="not_started">Chưa bắt đầu</option>
+          <option value="in_progress">Đang học</option>
+          <option value="completed">Hoàn thành</option>
+        </select></ui-field
+      >
+      <label class="row row--gap-2 report-screen__check"
+        ><input type="checkbox" uiCheckbox [formField]="filterForm.overdue" />
+        Chỉ quá hạn</label
+      >
+      } @if (store.dimension$() === 'competency') {
+      <ui-field label="Gộp năng lực theo"
+        ><select uiSelect [formField]="filterForm.groupBy">
+          <option value="user">Học viên</option>
+          <option value="org">Đơn vị</option>
+        </select></ui-field
+      >
+      }
+    </div>
+    }
   </form>
 </section>
 @if (store.unsupported$()) {

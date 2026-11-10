@@ -68,7 +68,7 @@ describe('Sidebar', () => {
       .queryAll(By.css('.sidebar__link'))
       .map((link) => link.injector.get(Tooltip).text());
 
-    expect(text).toEqual(['Khóa học', 'Kho tri thức · Sắp ra mắt']);
+    expect(text).toEqual(['Khóa học', 'Kho tri thức · Sắp ra mắt', 'Giải trí']);
   });
 
   it('shows the design-system link only with dev tools', () => {
@@ -83,7 +83,7 @@ describe('Sidebar', () => {
     expect(el.querySelector('.sidebar__toggle')).not.toBeNull();
   });
 
-  it('keeps the classroom link available without dev tools or the collapse button', () => {
+  it('puts the active entertainment link in Community without a grant or dev tools', () => {
     TestBed.configureTestingModule({
       providers: [
         provideRouter([]),
@@ -93,12 +93,15 @@ describe('Sidebar', () => {
     const fixture = TestBed.createComponent(Sidebar);
     fixture.componentRef.setInput('nav', NAV);
     fixture.componentRef.setInput('roleText', 'Học viên');
+    fixture.componentRef.setInput('activePath', '/chat-room');
     fixture.detectChanges();
 
-    const link: HTMLAnchorElement = fixture.nativeElement.querySelector(
-      '.sidebar__room-link',
+    const el: HTMLElement = fixture.nativeElement;
+    const link = el.querySelector(
+      'ul[aria-label="Cộng đồng"] a[href="/chat-room"]',
     );
-    expect(link.getAttribute('href')).toBe('/chat-room');
-    expect(link.textContent).toContain('Phòng học chung');
+    expect(link?.textContent?.trim()).toBe('Giải trí');
+    expect(link?.getAttribute('aria-current')).toBe('page');
+    expect(el.querySelector('.sidebar__footer')).toBeNull();
   });
 });

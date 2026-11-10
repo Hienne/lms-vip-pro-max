@@ -331,6 +331,10 @@ export class LearningBackend {
         (r) => ok(this.reminders.due(this.directory.callerId(r))),
       ],
       [
+        learnerEndpoints.reminderInbox,
+        (r) => ok(this.reminders.inbox(this.directory.callerId(r))),
+      ],
+      [
         learnerEndpoints.markReminderRead,
         (r) =>
           ok(
@@ -345,6 +349,16 @@ export class LearningBackend {
         (r) =>
           ok(
             this.reminders.seen(
+              this.directory.callerId(r),
+              num(r.params['reminderId']) ?? 0,
+            ),
+          ),
+      ],
+      [
+        learnerEndpoints.deleteReminder,
+        (r) =>
+          ok(
+            this.reminders.delete(
               this.directory.callerId(r),
               num(r.params['reminderId']) ?? 0,
             ),
@@ -623,14 +637,14 @@ export class LearningBackend {
   ): boolean {
     const q = query['q']?.trim().toLowerCase();
     const fieldId = num(query['fieldId']);
-    const fieldOf = this.modules.find((m) => m.id === card.moduleId)?.fieldId;
     return (
       (!q || `${card.code} ${card.title ?? ''}`.toLowerCase().includes(q)) &&
-      (fieldId === undefined || fieldOf === fieldId) &&
+      (fieldId === undefined || card.fieldId === fieldId) &&
       (num(query['programId']) === undefined ||
         card.programId === num(query['programId'])) &&
       (num(query['moduleId']) === undefined ||
         card.moduleId === num(query['moduleId'])) &&
+      (query['withoutModule'] !== 'true' || card.moduleName == null) &&
       (!query['level'] || card.level === query['level']) &&
       (!query['requirement'] || card.requirement === query['requirement'])
     );
@@ -1319,6 +1333,13 @@ export class LearningBackend {
         .filter((m) => modules.has(m.id))
         .sort(byOrder)
         .map(({ id, fieldId, code, name }) => ({ id, fieldId, code, name })),
+      fieldsWithUnclassifiedCourses: [
+        ...new Set(
+          cards
+            .filter((card) => card.moduleName == null)
+            .map((card) => card.fieldId ?? null),
+        ),
+      ],
     };
     return ok(facets);
   }

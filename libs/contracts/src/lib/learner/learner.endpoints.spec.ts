@@ -83,6 +83,7 @@ describe('learner endpoints', () => {
         '/api/v1/me/learning/enrollments/{enrollmentId}/blocks/{blockId}/progress',
       ],
       ['reminders', 'get', '/api/v1/me/learning/reminders'],
+      ['reminderInbox', 'get', '/api/v1/me/learning/reminders/inbox'],
       [
         'markReminderSeen',
         'post',
@@ -92,6 +93,11 @@ describe('learner endpoints', () => {
         'markReminderRead',
         'post',
         '/api/v1/me/learning/reminders/{reminderId}/read',
+      ],
+      [
+        'deleteReminder',
+        'delete',
+        '/api/v1/me/learning/reminders/{reminderId}',
       ],
       ['myPoints', 'get', '/api/v1/me/learning/points'],
       ['myLevel', 'get', '/api/v1/me/learning/level'],

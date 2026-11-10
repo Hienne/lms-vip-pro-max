@@ -213,17 +213,14 @@ describe('ChatRoomStore', () => {
     expect(store.speech$()).toEqual({});
     expect(store.announcement$()).toBe('');
   });
-  it('opens chat explicitly, closes it after send, and changes view without reconnecting', async () => {
+  it('opens chat explicitly, closes it after send, and resumes movement', async () => {
     store.openChat();
     expect(store.chatOpen$()).toBe(false);
     await connect();
-    expect(store.viewMode$()).toBe('3d');
     store.openChat();
     expect(store.canvas$().chatting).toBe(true);
     store.send('Xin chào');
     expect(store.chatOpen$()).toBe(false);
-    store.changeViewMode('2d');
-    expect(store.viewMode$()).toBe('2d');
     expect(store.online$()).toBe(true);
     store.move({ x: 446, y: 656, facing: 'east' });
     expect(send).toHaveBeenCalledWith({

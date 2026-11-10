@@ -33,7 +33,6 @@ import type {
   RoomCanvasState,
   RoomInvitationView,
   RoomSpeech,
-  RoomViewMode,
   TimedRoomGesture,
 } from './chat-room.model';
 import { inRoomArea } from './chat-room.model';
@@ -69,7 +68,6 @@ export class ChatRoomStore {
     invitation: signal<RoomHighFiveInvite | null>(null),
     gestureNotice: signal(''),
     chatOpen: signal(false),
-    viewMode: signal<RoomViewMode>('3d'),
     correction: signal<RoomCanvasState['correction']>(null),
     error: signal(''),
     connectionIssue: signal(''),
@@ -123,7 +121,6 @@ export class ChatRoomStore {
   });
   readonly gestureNotice$ = this.state.gestureNotice.asReadonly();
   readonly chatOpen$ = this.state.chatOpen.asReadonly();
-  readonly viewMode$ = this.state.viewMode.asReadonly();
   readonly me$ = this.state.me.asReadonly();
   readonly error$ = this.state.error.asReadonly();
   readonly connectionIssue$ = this.state.connectionIssue.asReadonly();
@@ -148,16 +145,6 @@ export class ChatRoomStore {
   readonly self$ = computed(() =>
     this.players$().find((person) => person.id === this.me$()),
   );
-  readonly nearby$ = computed(() => {
-    const self = this.self$();
-    return self
-      ? this.players$().filter(
-          (player) =>
-            player.id !== self.id &&
-            Math.hypot(player.x - self.x, player.y - self.y) <= 145,
-        )
-      : [];
-  });
   readonly nearDice$ = computed(() => {
     const player = this.self$();
     return (
@@ -242,9 +229,6 @@ export class ChatRoomStore {
   setChatOpen(value: boolean): void {
     this.state.chatOpen.set(value);
   }
-  setViewMode(value: RoomViewMode): void {
-    this.state.viewMode.set(value);
-  }
   setCorrection(value: RoomCanvasState['correction']): void {
     this.state.correction.set(value);
   }
@@ -291,13 +275,6 @@ export class ChatRoomStore {
     this.setRenderError(message);
     this.setReady(false);
   }
-  changeViewMode(mode: RoomViewMode): void {
-    if (mode === this.viewMode$()) return;
-    this.closeChat();
-    this.setReady(false);
-    this.setRenderError('');
-    this.setViewMode(mode);
-  }
   openChat(): void {
     if (this.online$()) {
       this.games.close();
@@ -325,7 +302,12 @@ export class ChatRoomStore {
       this.socket?.send({ type: 'approach-cancel' });
   }
   openGame(panel: NonNullable<ReturnType<RoomGamesStore['panel$']>>): void {
-    if (!this.online$() || (panel === 'dice' && !this.nearDice$())) return;
+    if (
+      !this.online$() ||
+      (panel === 'dice' && !this.nearDice$()) ||
+      (panel === 'caro' && !this.games.caroTable$())
+    )
+      return;
     this.closeChat();
     this.cancelApproach();
     this.games.open(panel);
@@ -508,7 +490,13 @@ export class ChatRoomStore {
         this.pongAt = Date.now();
         break;
       default:
-        if (event.type === 'caro-state' && !event.result) this.closeChat();
+        if (
+          (event.type === 'caro-table' &&
+            event.table &&
+            event.table !== this.games.caroTable$()?.table) ||
+          (event.type === 'caro-invite' && event.to === this.me$())
+        )
+          this.closeChat();
         this.games.receive(event);
         break;
     }

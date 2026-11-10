@@ -20,7 +20,6 @@ const COURSES: readonly ReportPickerOption[] = [
     disabledReason="Chọn đơn vị trước"
     [error]="error()"
     [required]="required()"
-    (queried)="queries.push($event)"
     (picked)="picks.push($event)"
   />`,
 })
@@ -31,162 +30,83 @@ class Host {
   readonly disabled = signal(false);
   readonly error = signal<string | undefined>(undefined);
   readonly required = signal(false);
-  readonly queries: string[] = [];
   readonly picks: (ReportPickerOption | null)[] = [];
 }
 
 async function render() {
   const fixture = TestBed.createComponent(Host);
-  document.body.appendChild(fixture.nativeElement);
+  const root = fixture.nativeElement as HTMLElement;
   const settle = async () => {
     fixture.detectChanges();
     await fixture.whenStable();
   };
   await settle();
-  const root = fixture.nativeElement as HTMLElement;
-  const box = () => root.querySelector<HTMLInputElement>('input')!;
-  const key = async (name: string) => {
-    box().dispatchEvent(
-      new KeyboardEvent('keydown', { key: name, bubbles: true }),
-    );
+  const box = () => root.querySelector<HTMLSelectElement>('select')!;
+  const choose = async (value: string) => {
+    box().value = value;
+    box().dispatchEvent(new Event('change', { bubbles: true }));
     await settle();
   };
-  const type = async (text: string) => {
-    box().value = text;
-    box().dispatchEvent(new Event('input', { bubbles: true }));
-    await settle();
-  };
-  const options = () =>
-    Array.from(root.querySelectorAll<HTMLElement>('[role="option"]')).map((o) =>
-      o.textContent?.replace(/\s+/g, ' ').trim(),
-    );
-  const text = () => root.textContent?.replace(/\s+/g, ' ') ?? '';
-  return {
-    fixture,
-    root,
-    box,
-    key,
-    type,
-    options,
-    text,
-    settle,
-    host: fixture.componentInstance,
-  };
+  return { root, box, choose, settle, host: fixture.componentInstance };
 }
 
 describe('ReportPicker', () => {
-  afterEach(() => vi.useRealTimers());
-
-  it('is a combobox labelled by its field, saying what an empty choice means', async () => {
-    const { box, root } = await render();
-    expect(box().getAttribute('role')).toBe('combobox');
+  it('uses a labelled dropdown and offers all courses without typed input', async () => {
+    const { root, box } = await render();
+    expect(root.querySelector('input')).toBeNull();
     expect(box().labels?.[0]?.textContent).toContain('Khóa học');
-    expect(box().placeholder).toBe('Tất cả khóa học');
-    expect(root.querySelector('[role="listbox"]')).toBeNull();
-  });
-
-  it('lists the options as "code · name" once the box is opened', async () => {
-    const { box, key, options } = await render();
-    box().focus();
-    await key('ArrowDown');
-    expect(options()).toEqual([
+    expect(
+      Array.from(box().options).map((option) => option.textContent?.trim()),
+    ).toEqual([
+      'Tất cả khóa học',
       'TEST-0011 · test',
       'TEST-0012 · test',
       'Không mã',
     ]);
   });
 
-  it('picks the option under the arrow with Enter', async () => {
-    const { box, key, host } = await render();
-    box().focus();
-    await key('ArrowDown');
-    await key('ArrowDown');
-    await key('Enter');
-    expect(host.picks).toEqual([COURSES[1]]);
+  it('picks the option by ID and clears the choice through the first option', async () => {
+    const { choose, host } = await render();
+    await choose('2');
+    await choose('');
+    expect(host.picks).toEqual([COURSES[1], null]);
   });
 
-  it('shows the picked option and clears it with "Xóa"', async () => {
-    const { box, root, host, settle } = await render();
+  it('shows the selected option and clears the selection when its parent changes', async () => {
+    const { box, host, settle } = await render();
     host.selected.set(COURSES[0]);
     await settle();
-    expect(box().value).toBe('TEST-0011 · test');
-
-    const clear = Array.from(root.querySelectorAll('button')).find((b) =>
-      `${b.textContent} ${b.getAttribute('aria-label')}`.includes('Xóa'),
-    );
-    expect(clear?.getAttribute('aria-label')).toBe('Xóa Khóa học');
-    clear!.click();
+    expect(box().value).toBe('1');
+    host.selected.set(null);
+    host.options.set([]);
     await settle();
-    expect(host.picks).toEqual([null]);
+    expect(box().value).toBe('');
   });
 
-  it('offers "Xóa" for a choice it reports as not found', async () => {
+  it('disables the dropdown while waiting for the parent or API response', async () => {
+    const { box, root, host, settle } = await render();
+    host.disabled.set(true);
+    await settle();
+    expect(box().disabled).toBe(true);
+    expect(root.textContent).toContain('Chọn đơn vị trước');
+    host.disabled.set(false);
+    host.busy.set(true);
+    await settle();
+    expect(box().disabled).toBe(true);
+    expect(root.textContent).toContain('Đang tải danh sách');
+  });
+
+  it('lets the user clear an invalid choice from a link', async () => {
     const { root, host, settle } = await render();
     host.error.set('Không tìm thấy khóa học này trong phạm vi của bạn.');
     await settle();
-    const clear = root.querySelector<HTMLButtonElement>(
-      'button[aria-label="Xóa Khóa học"]',
-    );
-    clear!.click();
+    expect(root.textContent).toContain('Không tìm thấy khóa học này');
+    root
+      .querySelector<HTMLButtonElement>(
+        'button[aria-label="Bỏ lựa chọn Khóa học"]',
+      )!
+      .click();
     expect(host.picks).toEqual([null]);
-  });
-
-  it('has no "Xóa" while nothing is picked', async () => {
-    const { root } = await render();
-    expect(
-      Array.from(root.querySelectorAll('button')).some((b) =>
-        (b.getAttribute('aria-label') ?? '').includes('Xóa'),
-      ),
-    ).toBe(false);
-  });
-
-  it('asks for matches only once typing pauses for 300 ms', async () => {
-    vi.useFakeTimers();
-    const { type, host } = await render();
-    await type('t');
-    await type('te');
-    vi.advanceTimersByTime(299);
-    expect(host.queries).toEqual([]);
-    vi.advanceTimersByTime(1);
-    expect(host.queries).toEqual(['te']);
-  });
-
-  it('says why it is disabled, in the hint the box is described by', async () => {
-    const { box, host, settle, text } = await render();
-    host.disabled.set(true);
-    await settle();
-    expect(box().getAttribute('aria-disabled')).toBe('true');
-    expect(text()).toContain('Chọn đơn vị trước');
-    const hint = box()
-      .getAttribute('aria-describedby')
-      ?.split(' ')
-      .map((id) => document.getElementById(id)?.textContent?.trim());
-    expect(hint).toContain('Chọn đơn vị trước');
-  });
-
-  it('shows an error linked to the box', async () => {
-    const { box, host, settle } = await render();
-    host.error.set('Không tìm thấy khóa học này trong phạm vi của bạn.');
-    await settle();
-    const described = box()
-      .getAttribute('aria-describedby')
-      ?.split(' ')
-      .map((id) => document.getElementById(id)?.textContent?.trim());
-    expect(described).toContain(
-      'Không tìm thấy khóa học này trong phạm vi của bạn.',
-    );
-  });
-
-  it('says when the search is running or finds nothing', async () => {
-    const { box, key, host, settle, text } = await render();
-    box().focus();
-    host.options.set([]);
-    host.busy.set(true);
-    await key('ArrowDown');
-    expect(text()).toContain('Đang tìm…');
-    host.busy.set(false);
-    await settle();
-    expect(text()).toContain('Không có kết quả phù hợp.');
   });
 
   it('marks the field required', async () => {

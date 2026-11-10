@@ -6,9 +6,6 @@
     "own-font": 2,
     "text-xs": 1
   },
-  "apps/lms/src/app/features/achievements/certificate/certificate.scss": {
-    "own-radius": 1
-  },
   "apps/lms/src/app/features/achievements/leaderboard/leaderboard.scss": {
     "subtle-fill": 1
   },
@@ -277,11 +274,6 @@
   },
   "apps/lms/src/app/features/quiz/learner-quiz/quiz-take/components/assessment-take/assessment-take.scss": {
     "text-xs": 1
-  },
-  "apps/lms/src/app/features/reports/report-screen/components/report-picker/report-picker.scss": {
-    "own-radius": 2,
-    "own-shadow": 2,
-    "subtle-fill": 1
   },
   "apps/lms/src/app/features/reports/report-screen/report-screen.scss": {
     "own-radius": 2

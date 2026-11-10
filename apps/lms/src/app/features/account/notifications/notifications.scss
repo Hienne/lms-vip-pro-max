@@ -5,12 +5,32 @@
 }
 
 .notifications {
+  &__toolbar {
+    @include ui.row-between(2);
+    margin-block-end: ui.space(3);
+  }
+
+  &__count,
+  &__status {
+    @include ui.text(sm, muted);
+  }
+
   &__item {
     @include ui.row-between(3);
     flex-wrap: wrap;
   }
 
+  &__item--unread {
+    background: ui.color(surface-2);
+
+    .notifications__status {
+      color: ui.color(primary);
+      font-weight: ui.weight(semibold);
+    }
+  }
+
   &__text {
+    @include ui.stack(1);
     flex: 1 1 16rem;
     min-width: 0;
   }
@@ -18,6 +38,17 @@
   &__actions {
     @include ui.row(2);
     flex-wrap: nowrap;
+  }
+
+  @media (hover: hover) and (pointer: fine) {
+    &__delete {
+      opacity: 0;
+    }
+
+    &__item:hover &__delete,
+    &__item:focus-within &__delete {
+      opacity: 1;
+    }
   }
 
   &__line {

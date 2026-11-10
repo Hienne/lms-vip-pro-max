@@ -99,13 +99,19 @@ describe('ReportScreen', () => {
   it('runs "Tình trạng học viên" from the pickers alone', async () => {
     const spy = vi.spyOn(TestBed.inject(MockBackend), 'handle');
     const { root, store, labels, text } = await open('/reports/learners');
-    expect(labels().slice(0, 2)).toEqual(['Khóa học', 'Bài kiểm tra*']);
+    expect(labels().slice(0, 4)).toEqual([
+      'Đơn vị',
+      'Phòng / nhóm',
+      'Khóa học',
+      'Bài kiểm tra*',
+    ]);
     expect(text()).toContain(
       'Chọn khóa học và bài kiểm tra để xem cả học viên chưa thi.',
     );
-    const quiz =
-      root.querySelectorAll<HTMLInputElement>('[role="combobox"]')[1];
-    expect(quiz.getAttribute('aria-disabled')).toBe('true');
+    const quiz = root.querySelectorAll<HTMLSelectElement>(
+      'app-report-picker select',
+    )[3];
+    expect(quiz.disabled).toBe(true);
     expect(text()).toContain('Chọn khóa học trước');
 
     store.pickers.pick('courseId', store.pickers.options$.courseId()[0]);
@@ -164,9 +170,10 @@ describe('ReportScreen', () => {
 
   it('keeps the quiz picker waiting while the course of the link is not found', async () => {
     const { root, text } = await open('/reports/results?courseId=9999');
-    const quiz =
-      root.querySelectorAll<HTMLInputElement>('[role="combobox"]')[3];
-    expect(quiz.getAttribute('aria-disabled')).toBe('true');
+    const quiz = root.querySelectorAll<HTMLSelectElement>(
+      'app-report-picker select',
+    )[3];
+    expect(quiz.disabled).toBe(true);
     expect(text()).not.toContain('Không có dữ liệu phù hợp');
   });
 

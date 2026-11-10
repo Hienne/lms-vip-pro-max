@@ -539,7 +539,7 @@ describe('Lesson', () => {
       const primaries = Array.from(
         el.querySelectorAll('.lesson__stepbar .btn--primary'),
       ).map((b) => b.textContent?.trim());
-      expect(primaries).toEqual(['Khối tiếp theo']);
+      expect(primaries).toEqual(['Nội dung tiếp theo']);
     });
 
     it('says nothing about completion on a block that completes on open', async () => {
@@ -575,14 +575,14 @@ describe('Lesson', () => {
       ).toEqual(['CLOSE', 'OPEN']);
     });
 
-    it('goes through the blocks with "Khối tiếp theo" and "Khối trước", then on to the next lesson', async () => {
-      expect(button('Khối trước')).toBeUndefined();
+    it('goes through the blocks with "Nội dung tiếp theo" and "Nội dung trước", then on to the next lesson', async () => {
+      expect(button('Nội dung trước')).toBeUndefined();
       for (let i = 0; i < 3; i++) {
-        button('Khối tiếp theo')!.click();
+        button('Nội dung tiếp theo')!.click();
         await settle();
       }
-      expect(button('Khối tiếp theo')).toBeUndefined();
-      expect(button('Khối trước')).toBeTruthy();
+      expect(button('Nội dung tiếp theo')).toBeUndefined();
+      expect(button('Nội dung trước')).toBeTruthy();
       button('Bài tiếp theo')!.click();
       await settle();
       expect(TestBed.inject(Router).url).toMatch(

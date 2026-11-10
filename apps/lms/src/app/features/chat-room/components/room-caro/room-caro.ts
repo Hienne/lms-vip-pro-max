@@ -20,29 +20,31 @@ import {
 import {
   ROOM_CARO_BOARD_SIZE,
   ROOM_MAX_STAKE,
+  ROOM_MIN_CARO_STAKE,
   type RoomCaroInvitation,
   type RoomCaroState,
-  type RoomPlayer,
+  type RoomCaroTable,
 } from '@lms/contracts';
-import { Button, Field, Input, SectionCard, Select } from '@lms/ui';
+import { Button, Field, Input, SectionCard } from '@lms/ui';
 
 @Component({
   selector: 'app-room-caro',
-  imports: [Button, Field, Input, SectionCard, Select, FormField, FormRoot],
+  imports: [Button, Field, Input, SectionCard, FormField, FormRoot],
   templateUrl: './room-caro.html',
   styleUrl: './room-caro.scss',
 })
 export class RoomCaro {
   readonly me = input.required<string>();
   readonly balance = input.required<number>();
-  readonly nearby = input.required<readonly RoomPlayer[]>();
+  readonly table = input.required<RoomCaroTable>();
   readonly invitation = input<RoomCaroInvitation | null>(null);
   readonly state = input<RoomCaroState | null>(null);
   readonly seconds = input(0);
   readonly error = input('');
   readonly closed = output<void>();
   readonly restarted = output<void>();
-  readonly challenged = output<{ target: string; stake: number }>();
+  readonly stakeSet = output<number>();
+  readonly stood = output<void>();
   readonly replied = output<boolean>();
   readonly played = output<number>();
 
@@ -67,38 +69,37 @@ export class RoomCaro {
   );
   protected readonly canPlay = computed(
     () =>
+      this.table().playing === true &&
       !this.state()?.result &&
       this.turn() === this.state()?.piece &&
       this.seconds() > 0,
   );
-  private readonly challenge = signal<{ target: string; stake: number | null }>(
-    { target: '', stake: 0 },
-  );
+  protected readonly minimumStake = ROOM_MIN_CARO_STAKE;
+  private readonly challenge = signal<{ stake: number | null }>({
+    stake: this.minimumStake,
+  });
   protected readonly challengeForm = form(
     this.challenge,
     (path) => {
-      required(path.target, { message: 'Chọn người muốn thách đấu.' });
       required(path.stake, { message: 'Nhập mức cược.' });
-      min(path.stake, 0, { message: 'Mức cược tối thiểu là 0.' });
+      min(path.stake, this.minimumStake, {
+        message: `Mức cược tối thiểu là ${this.minimumStake} CPoint mỗi bên.`,
+      });
       max(path.stake, () => Math.min(this.balance(), ROOM_MAX_STAKE), {
-        message: 'Mức cược vượt số token hiện có.',
+        message: 'Mức cược vượt giới hạn hoặc số dư CPoint.',
       });
       validate(path.stake, ({ value }) => {
         const stake = value();
         return stake !== null && !Number.isSafeInteger(stake)
-          ? { kind: 'integer', message: 'Nhập số token nguyên.' }
+          ? { kind: 'integer', message: 'Nhập số CPoint nguyên.' }
           : undefined;
       });
     },
     {
       submission: {
         action: async () => {
-          const { target, stake } = this.challenge();
-          if (
-            stake !== null &&
-            this.nearby().some((player) => player.id === target)
-          )
-            this.challenged.emit({ target, stake });
+          const { stake } = this.challenge();
+          if (stake !== null) this.stakeSet.emit(stake);
         },
       },
     },

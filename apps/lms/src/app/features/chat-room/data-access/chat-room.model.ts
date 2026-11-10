@@ -39,7 +39,6 @@ export interface RoomInvitationView {
   readonly name: string;
   readonly incoming: boolean;
 }
-export type RoomViewMode = '3d' | '2d';
 
 /** Immutable input of the non-Angular game renderer. World coordinates are pixels, not CSS sizes. */
 export interface RoomCanvasState {

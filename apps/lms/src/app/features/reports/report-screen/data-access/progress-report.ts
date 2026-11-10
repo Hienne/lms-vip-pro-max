@@ -27,6 +27,7 @@ export const PROGRESS_PAGE_SIZE = 20;
 
 /** A group row of the course or unit view; `drill` is the learner view filtered to it. */
 export interface ProgressGroupRow extends LearningReportGroup {
+  readonly id: string;
   readonly drill: Params | null;
 }
 
@@ -188,6 +189,8 @@ export function progressReport(input: {
     groups$: computed<readonly ProgressGroupRow[]>(() =>
       (groups.value()?.items ?? []).map((group) => ({
         ...group,
+        id: group.id ?? 'unassigned',
+        name: group.name ?? group.id ?? 'Chưa xác định',
         drill: drill(group),
       })),
     ),

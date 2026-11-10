@@ -1,24 +1,26 @@
-<ui-section-card title="Caro">
-  <button
-    slot="action"
-    uiButton
-    size="sm"
-    variant="ghost"
-    (click)="closed.emit()"
-  >
-    Đóng
-  </button>
+<ui-section-card [title]="'Bàn Caro ' + table().table">
+  <div slot="action" class="row row--gap-1">
+    <button uiButton size="sm" (click)="stood.emit()">Đứng dậy</button>
+    <button uiButton size="sm" variant="ghost" (click)="closed.emit()">
+      Đóng
+    </button>
+  </div>
   @if (state(); as game) {
   <p class="caro__players">
     <strong>X</strong> {{ game.xName }} · <strong>O</strong> {{ game.oName }}
   </p>
-  <p class="caro__status" role="status">
+  <p
+    class="caro__status"
+    [class.caro__status--your-turn]="canPlay()"
+    role="status"
+  >
     @if (game.result === 'draw') { Hòa · Hoàn cược cho hai bên } @else if
     (game.result) { {{ game.result === game.piece ? 'Bạn thắng' : 'Đối thủ
-    thắng' }} @if (game.stake) { · {{ game.result === game.piece ? '+' : '−'
-    }}{{ game.stake }} token } } @else {
+    thắng' }} @if (game.timedOut) { · {{ game.result === game.piece ? 'Đối thủ
+    hết giờ' : 'Bạn hết giờ' }} } @if (game.stake) { · {{ game.result ===
+    game.piece ? '+' : '−' }}{{ game.stake }} CPoint } } @else {
     <strong>{{ canPlay() ? 'Đến lượt bạn' : 'Lượt của ' + turn() }}</strong>
-    · Bạn là {{ game.piece }} · {{ game.stake }} token mỗi bên }
+    · Bạn là {{ game.piece }} · {{ game.stake }} CPoint mỗi bên }
   </p>
   @if (!game.result) {
   <p class="caro__rules">Còn {{ seconds() }} giây cho lượt này.</p>
@@ -49,8 +51,9 @@
         type="button"
         [class.caro__cell--x]="piece === 'X'"
         [class.caro__cell--o]="piece === 'O'"
+        [class.caro__cell--last]="game.lastCell === $index"
         [attr.data-cell]="$index"
-        [attr.aria-label]="cellLabel($index, piece)"
+        [attr.aria-label]="cellLabel($index, piece) + (game.lastCell === $index ? ', nước vừa đánh' : '')"
         [attr.aria-disabled]="!canPlay() || piece !== '.'"
         [attr.tabindex]="$index === centerCell ? 0 : -1"
         (click)="playCell($event, $index, piece)"
@@ -65,7 +68,7 @@
   } } @else { @if (invitation(); as invite) { @if (invite.to === me()) {
   <p role="status">
     <strong>{{ invite.fromName }}</strong> thách đấu bạn với mức cược {{
-    invite.stake }} token mỗi bên.
+    invite.stake }} CPoint mỗi bên.
   </p>
   <div class="caro__reply">
     <button
@@ -79,31 +82,28 @@
     <button uiButton (click)="replied.emit(false)">Từ chối</button>
   </div>
   @if (invite.stake > balance()) {
-  <p>Bạn chưa đủ token cho ván này.</p>
-  } } @else {
+  <p>Bạn chưa đủ CPoint cho ván này.</p>
+  } } @else if (table().paused) {
   <p role="status">
-    Đang chờ {{ invite.toName }} đồng ý · {{ invite.stake }} token mỗi bên.
+    Ván đang chờ hai đối thủ ngồi cùng bàn. Đồng hồ lượt vẫn chạy.
+  </p>
+  } @else {
+  <p role="status">
+    Đang chờ {{ invite.toName }} đồng ý · {{ invite.stake }} CPoint mỗi bên.
   </p>
   } } @else {
   <p class="caro__rules">
-    X và O đánh luân phiên. Đủ đúng 5 quân liên tiếp theo hàng, cột hoặc đường
-    chéo và còn ít nhất một đầu trống thì thắng.
+    Từ 6 quân liên tiếp thì thắng. Đúng 5 quân cần ít nhất một đầu trống.
   </p>
   <p class="caro__rules">
-    Số dư {{ balance() }} token. Hai bên đặt cùng mức cược, có thể chọn 0 để
-    chơi miễn phí.
+    Số dư {{ balance() }} CPoint. Mức cược tối thiểu {{ minimumStake }} CPoint
+    mỗi bên.
   </p>
-  @if (nearby().length) {
+  @if (table().host) { @if (table().stake !== undefined && !table().partner) {
+  <p role="status">Đang chờ bạn chơi · {{ table().stake }} CPoint mỗi bên.</p>
+  }
   <form class="caro__form" [formRoot]="challengeForm">
-    <ui-field label="Người chơi" required>
-      <select uiSelect [formField]="challengeForm.target">
-        <option value="">Chọn người ở gần</option>
-        @for (player of nearby(); track player.id) {
-        <option [value]="player.id">{{ player.name }}</option>
-        }
-      </select>
-    </ui-field>
-    <ui-field label="Token cược" required>
+    <ui-field label="CPoint cược" required>
       <input
         uiInput
         type="number"
@@ -112,10 +112,17 @@
         [formField]="challengeForm.stake"
       />
     </ui-field>
-    <button uiButton variant="primary" type="submit">Thách đấu</button>
+    <button
+      uiButton
+      variant="primary"
+      type="submit"
+      [disabled]="balance() < minimumStake"
+    >
+      Đặt mức cược
+    </button>
   </form>
   } @else {
-  <p role="status">Đến gần một người rồi mở Caro để thách đấu.</p>
+  <p role="status">Đang chờ {{ table().partner }} đặt mức cược.</p>
   } } } @if (error()) {
   <p role="alert" class="caro__error">{{ error() }}</p>
   }

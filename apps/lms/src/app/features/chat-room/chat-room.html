@@ -1,19 +1,20 @@
-@let balance = games.balance$(); @let panel = games.panel$();
-<ui-page-header title="Phòng học chung">
+@let balance = games.balance$(); @let panel = games.panel$(); @let caroTable =
+games.caroTable$();
+<ui-page-header title="Giải trí">
   <div slot="actions" class="row row--gap-1">
     <button uiButton size="sm" (click)="store.share()">
       {{ store.copied$() ? 'Đã sao chép đường dẫn' : 'Mời bạn học' }}
     </button>
     @if (balance !== null) {
     <button uiButton size="sm" (click)="store.openGame('rank')">
-      Top tài phú · {{ balance }} token
+      Top tài phú · {{ balance }} CPoint
     </button>
     } @if (store.entered$()) {
     <button uiButton size="sm" (click)="store.leave()">Rời phòng</button> }
   </div>
 </ui-page-header>
 @if (store.isLoading$()) {
-<p role="status">Đang tải bản đồ phòng học…</p>
+<p role="status">Đang tải bản đồ phòng…</p>
 } @if (store.loadError$(); as error) {
 <ui-error-state [message]="error.message" (retry)="store.retryMap()" /> } @if
 (store.renderError$(); as error) {
@@ -32,11 +33,11 @@
 } @else if (store.connectionIssue$(); as issue) {
 <ui-alert
   [tone]="store.status$() === 'reconnecting' ? 'warning' : 'danger'"
-  heading="Kết nối phòng học"
+  heading="Kết nối phòng"
   >{{ issue }}</ui-alert
 >
 } @else if (store.gamesIssue$(); as issue) {
-<ui-alert tone="warning" heading="Ví token và trò chơi chưa khả dụng"
+<ui-alert tone="warning" heading="Ví CPoint và trò chơi chưa khả dụng"
   >{{ issue }}</ui-alert
 >
 } @else if (store.error$(); as error) {
@@ -48,30 +49,21 @@
     store.players$().length }} người trong phòng }
   </span>
   <div class="row">
-    @if (balance !== null) {
+    @if (caroTable) {
     <button uiButton size="sm" (click)="store.openGame('caro')">
-      {{ games.invitation$()?.to === store.me$() ? 'Lời mời Caro' : 'Caro' }}
+      Bàn Caro {{ caroTable.table }}
     </button>
-    }
-    <div class="row row--gap-1" role="group" aria-label="Góc nhìn phòng học">
-      <button
-        uiButton
-        size="sm"
-        [attr.aria-pressed]="store.viewMode$() === '3d'"
-        (click)="store.changeViewMode('3d')"
-      >
-        Góc nhìn 3D
-      </button>
-      <button
-        uiButton
-        size="sm"
-        [attr.aria-pressed]="store.viewMode$() === '2d'"
-        (click)="store.changeViewMode('2d')"
-      >
-        Bản đồ 2D
-      </button>
-    </div>
-    @if (store.entered$() && !store.online$()) {
+    } @else if (balance !== null && map.caroTables?.length &&
+    store.interactionsEnabled$()) {
+    <button
+      uiButton
+      size="sm"
+      [disabled]="store.self$()?.seat !== undefined"
+      (click)="store.interact({ type: 'seat', action: 'sit', caro: true })"
+    >
+      Ngồi bàn Caro
+    </button>
+    } @if (store.entered$() && !store.online$()) {
     <button
       uiButton
       size="sm"
@@ -83,11 +75,10 @@
     }
   </div>
 </div>
-<section class="chat-room__world" aria-label="Không gian phòng học">
+<section class="chat-room__world" aria-label="Không gian giải trí">
   <app-room-canvas
     [map]="map"
     [view]="store.canvas$()"
-    [mode]="store.viewMode$()"
     [gesturesEnabled]="store.gesturesEnabled$()"
     [interactionsEnabled]="store.interactionsEnabled$()"
     [invitation]="store.invitation$()"
@@ -125,22 +116,23 @@
       (rolled)="games.bet($event)"
       (closed)="closeGame()"
     />
-    } @case ('caro') {
+    } @case ('caro') { @if (caroTable) {
     <app-room-caro
       [me]="store.me$()"
       [balance]="balance"
-      [nearby]="store.nearby$()"
+      [table]="caroTable"
       [invitation]="games.invitation$()"
-      [state]="games.caro$()"
+      [state]="games.visibleCaro$()"
       [seconds]="games.caroSeconds$()"
       [error]="games.caroError$()"
-      (challenged)="games.challenge($event)"
+      (stakeSet)="games.setCaroStake($event)"
       (replied)="games.reply($event)"
       (played)="games.play($event)"
       (closed)="closeGame()"
+      (stood)="store.interact({ type: 'seat', action: 'stand' })"
       (restarted)="games.newCaro()"
     />
-    } @case ('rank') {
+    } } @case ('rank') {
     <ui-section-card class="chat-room__rank" title="Top tài phú">
       <button
         slot="action"
@@ -154,7 +146,9 @@
       @if (games.rank$(); as ranks) {
       <ol>
         @for (player of ranks; track $index) {
-        <li>{{ player.name }} · <strong>{{ player.balance }} token</strong></li>
+        <li>
+          {{ player.name }} · <strong>{{ player.balance }} CPoint</strong>
+        </li>
         } @empty {
         <li>Chưa có người chơi trong bảng.</li>
         }
@@ -177,7 +171,7 @@
   <div class="chat-room__footer">
     <p class="chat-room__hint">
       WASD hoặc phím mũi tên để đi · Enter để chat · Space để nhảy @if (balance
-      !== null) { · Trên/Dưới ở góc dưới bên phải }
+      !== null) { · Caro cạnh bàn Trên/Dưới ở góc dưới bên phải }
     </p>
     @if (store.online$() && !store.chatOpen$()) {
     <button uiButton size="sm" (click)="store.openChat()">Nhắn tin</button> }

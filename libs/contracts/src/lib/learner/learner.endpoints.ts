@@ -13,6 +13,7 @@ import {
   UnitLeaderboardSchema,
   LeaderboardQuerySchema,
   LearnerCourseSchema,
+  LearnerCatalogQuerySchema,
   LearnerFacetsSchema,
   LearningDashboardSchema,
   LearningProgressOverviewSchema,
@@ -40,7 +41,7 @@ export const learnerEndpoints = {
   catalog: defineEndpoint({
     method: 'get',
     path: '/api/v1/me/learning/catalog',
-    query: MyCoursesQuerySchema,
+    query: LearnerCatalogQuerySchema,
     response: PageSchema(CourseCardSchema),
   }),
   /** One card per course at its current cycle, with the obligation and due date from real assignments. */
@@ -151,6 +152,11 @@ export const learnerEndpoints = {
     path: '/api/v1/me/learning/reminders',
     response: z.array(LearningReminderSchema),
   }),
+  reminderInbox: defineEndpoint({
+    method: 'get',
+    path: '/api/v1/me/learning/reminders/inbox',
+    response: z.array(LearningReminderSchema),
+  }),
   /**
    * Says the toast of a notice was shown: sets `sentAt` and keeps the row in the feed until it is read. Saying it
    * twice changes nothing; someone else's row is refused with `CORE-ACCESS_DENIED`.
@@ -164,6 +170,12 @@ export const learnerEndpoints = {
   markReminderRead: defineEndpoint({
     method: 'post',
     path: '/api/v1/me/learning/reminders/{reminderId}/read',
+    params: z.object({ reminderId: z.number().int() }),
+    response: LearningReminderSchema,
+  }),
+  deleteReminder: defineEndpoint({
+    method: 'delete',
+    path: '/api/v1/me/learning/reminders/{reminderId}',
     params: z.object({ reminderId: z.number().int() }),
     response: LearningReminderSchema,
   }),

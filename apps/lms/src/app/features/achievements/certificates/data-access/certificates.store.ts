@@ -2,45 +2,21 @@ import { computed, inject, Injectable, signal } from '@angular/core';
 import { certificateEndpoints, type Certificate } from '@lms/contracts';
 import { serverData } from '../../../../core/data-access/server-data';
 import { EndpointClient } from '../../../../core/http/endpoint-client';
+import type { CertificateDocument } from '../../certificate-sheet/certificate-sheet';
 
 /** The most certificates the server sends in one page; no learner is near it. */
 export const CERTIFICATES_PAGE_SIZE = 100;
 
 /** A row of the list: what to print and where it leads, so the template only prints it. */
-export interface CertificateRow {
+export interface CertificateRow extends CertificateDocument {
   readonly id: number;
-  readonly fullName: string;
-  readonly previewLines: readonly string[];
-  /** The title of the revision the learner finished, or the course code when it has none. */
-  readonly title: string;
   readonly code: string;
-  readonly completedAt: string;
-  readonly score: number | null;
-  readonly verificationCode: string;
   readonly link: readonly (string | number)[];
-}
-
-/** Two bounded preview lines; the full course title remains below the document. */
-function previewLines(title: string): readonly string[] {
-  const words = title.split(/\s+/);
-  const lines: string[] = [''];
-  for (const word of words) {
-    const last = lines.length - 1;
-    const next = lines[last] ? lines[last] + ' ' + word : word;
-    if (next.length <= 40) lines[last] = next;
-    else if (lines.length === 1) lines.push(word);
-    else {
-      lines[1] = lines[1].slice(0, 39) + '…';
-      break;
-    }
-  }
-  return lines;
 }
 
 const toRow = (certificate: Certificate): CertificateRow => ({
   id: certificate.id,
   fullName: certificate.fullName,
-  previewLines: previewLines(certificate.courseTitle ?? certificate.courseCode),
   title: certificate.courseTitle ?? certificate.courseCode,
   code: certificate.courseCode,
   completedAt: certificate.completedAt,

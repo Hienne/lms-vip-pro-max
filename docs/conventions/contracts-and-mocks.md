@@ -659,22 +659,21 @@ creation and runtime parsing; the route's `ChatRoomStore` owns presence, transie
 reconnection. A new connection always obtains a fresh ticket through `serverMutation`, so bearer/session
 expiry handling stays on the existing HTTP path. No JWT is sent in the socket URL.
 
-The `/chat-room` screen is in the signed-in `open` screen table and linked from the sidebar footer for
-all signed-in users. It uses the existing shell, Signal Forms and `@lms/ui`. Phaser 3.90 is loaded only
-when the canvas mounts; its world coordinates/art colours belong to the renderer, while Angular controls
+The `/chat-room` screen is in the signed-in `open` screen table. It appears as “Giải trí” in the
+“Cộng đồng” menu in both the learner header and the staff sidebar. It uses the existing shell, Signal Forms
+and `@lms/ui`. Three.js is loaded when
+the canvas mounts. World coordinates and colours belong to the renderer, while Angular controls
 use the UI Sass tokens. The backend serves the single map/hitbox source and validates movement.
 
-The third-person view uses Three.js 0.187, lazy-loaded separately from the Phaser 2D view.
-Both renderers use `room.motion.ts` for collision/movement and share eight-way facing in the socket
-contract. Mouse or touch dragging orbits the 3D camera. The close-up button frames the local avatar from the front.
-Switching renderers releases their GPU resources/listeners without reconnecting the room.
+The third-person view uses `room.motion.ts` for movement and collision. Mouse or touch dragging
+orbits the 3D camera. The close-up button frames the local avatar from the front.
 
-The map's `activityArea` marks a walkable gathering space in both renderers. The join capability
+The map's `activityArea` marks a walkable gathering space. The join capability
 `gestures: true` enables server-broadcast jumping and waving. The server picks the nearest reachable
-player for a wave. Both renderers use the shared gesture timeline and keep the collision footprint at ground level.
+player for a wave. The renderer uses the shared gesture timeline and keeps the collision footprint at ground level.
 
 The join form sends an optional `avatar` style and opts in to seating and high fives with
-`interactions: true`. Both renderers use the server's chair index for the seated pose and its
+`interactions: true`. The renderer uses the server's chair index for the seated pose and its
 accepted high-five event for paired animation. The server owns chair occupancy and validates the
 recipient, expiry and reach of every high-five invitation.
 
@@ -684,13 +683,15 @@ bubbles (5.5 seconds) are held in the store and expired by per-player timers. We
 older servers is ignored. The updated backend does not retain messages and sends an empty compatibility
 `history` field, so late arrivals/reconnects cannot receive previous speech.
 
-The client opts in to the wallet, shared dice rounds and Caro with `roomGames: true` on join.
+The client opts in to the CPoint wallet, shared dice rounds and Caro with `roomGames: true` on join.
 `RoomGamesStore` owns game panel state and consumes socket events through `ChatRoomStore`.
-Both renderers mark `diceArea` for the 30-second Trên/Dưới rounds. The server settles bets, publishes
+The 3D view marks `diceArea` for the 30-second Trên/Dưới rounds. The server settles bets, publishes
 the same result and history to viewers and sends each account its own wallet. Caro uses a server-owned
-50 × 50 board. The view starts in the
-center and supports panning without sending moves. Position updates include `approaching` while
-the server walks a player toward an interaction target.
+50 × 50 board. Its three room tables start from their seats and use `caro-table` to report occupancy.
+New matches require a stake of at least 10 CPoint per player. State events still accept the stake
+from existing matches.
+The board view starts in the center and supports panning without sending moves. Position updates
+include `approaching` while the server walks a player toward an interaction target.
 
 Deploy the matching `corebanking-academy` module and configure WebSocket upgrade for
 `/api/v1/chat-room/socket` on the FE reverse proxy. The development `/api` proxy enables WebSocket.
