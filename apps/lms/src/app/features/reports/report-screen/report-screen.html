@@ -207,11 +207,11 @@
     <ui-stat label="Hoàn thành" [value]="counts.completionRate | fmtPct:1" />
     <ui-stat
       label="Học viên đạt"
-      [value]="store.overview$()?.passRate == null ? '—' : (store.overview$()!.passRate | fmtPct:1)"
+      [value]="(store.overview$()?.passRate ?? null) === null ? '—' : (store.overview$()!.passRate | fmtPct:1)"
     />
     <ui-stat
       label="Điểm trung bình"
-      [value]="store.overview$()?.averageScore == null ? '—' : (store.overview$()!.averageScore | fmtPct:1)"
+      [value]="(store.overview$()?.averageScore ?? null) === null ? '—' : (store.overview$()!.averageScore | fmtPct:1)"
     />
   </ui-stat-strip>
   <ui-section-card title="Tiến độ học">
