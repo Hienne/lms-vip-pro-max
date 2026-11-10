@@ -193,4 +193,45 @@ describe('agent endpoints', () => {
       '/api/v1/assistant/agent/actions/abc/cancel',
     );
   });
+
+  it('carries the lesson a question is about, and the summarise skill', () => {
+    const context = { courseId: 5, revisionId: 50, lessonId: 9 };
+    expect(
+      AgentCommandSchema.parse({
+        message: 'Tóm tắt bài này',
+        skill: 'tom_tat_bai',
+        context,
+      }).context,
+    ).toEqual(context);
+    expect(
+      AgentCommandSchema.safeParse({
+        message: 'x',
+        context: { courseId: 5, revisionId: 50 },
+      }).success,
+    ).toBe(false);
+  });
+
+  it('reads a lesson source on a citation and still reads a document one', () => {
+    const lesson = {
+      courseId: 5,
+      courseTitle: 'Tín dụng',
+      revisionId: 50,
+      chapterTitle: 'Chương 1',
+      lessonId: 9,
+      lessonTitle: 'Lãi suất',
+      blockId: 3,
+      url: '/lesson/5/9',
+    };
+    const parse = (c: unknown) =>
+      AgentStreamEventSchema.safeParse({
+        type: 'done',
+        answer: 'x [1]',
+        citations: [c],
+      }).success;
+    expect(parse({ ...citation, documentId: 0, lesson })).toBe(true);
+    expect(parse(citation)).toBe(true);
+    expect(
+      parse({ ...citation, lesson: { ...lesson, url: 'lesson/5/9' } }),
+    ).toBe(false);
+  });
 });

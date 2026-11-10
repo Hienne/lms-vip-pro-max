@@ -10,9 +10,19 @@ export const AgentSkillSchema = z.enum([
   'qa_tai_lieu',
   'dieu_huong',
   'ho_so',
+  /** Only with a lesson `context`: the server ignores it elsewhere. */
+  'tom_tat_bai',
   'tro_chuyen',
 ]);
 export type AgentSkill = z.infer<typeof AgentSkillSchema>;
+
+/** The lesson the quick chat was opened from; the server checks the user may read it. */
+export const LessonContextSchema = z.object({
+  courseId: z.number().int().positive(),
+  revisionId: z.number().int().positive(),
+  lessonId: z.number().int().positive(),
+});
+export type LessonContext = z.infer<typeof LessonContextSchema>;
 
 /**
  * The new question and, for a follow-up, the conversation it belongs to. The client sends no
@@ -23,6 +33,8 @@ export const AgentCommandSchema = z.object({
   message: z.string().trim().min(1).max(AGENT_MESSAGE_MAX_LENGTH),
   /** Left out, the server picks the skill itself. */
   skill: AgentSkillSchema.optional(),
+  /** The lesson being studied; sent with every question of a conversation opened from it. */
+  context: LessonContextSchema.optional(),
 });
 export type AgentCommand = z.infer<typeof AgentCommandSchema>;
 

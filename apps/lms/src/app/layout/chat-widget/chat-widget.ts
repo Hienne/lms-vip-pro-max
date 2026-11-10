@@ -28,6 +28,12 @@ import { AgentComposer } from './components/agent-composer/agent-composer';
 import { OwlFace } from '../owl/owl-face/owl-face';
 import { AgentMessage } from './components/agent-message/agent-message';
 
+/** The opening questions of a conversation about a lesson. */
+const LESSON_SUGGESTIONS: readonly { text: string; skill?: AgentSkill }[] = [
+  { text: 'Bài này nói gì?' },
+  { text: 'Tóm tắt bài này', skill: 'tom_tat_bai' },
+];
+
 /** How close to the end of the log counts as "following" the newest message, in pixels. */
 const FOLLOW_DISTANCE = 48;
 
@@ -75,7 +81,9 @@ export class ChatWidget {
 
   protected readonly panelId = AGENT_PANEL_ID;
   /** The opening questions follow the page the panel is open on. */
-  protected readonly suggestions = computed(() => suggestionsFor(this.path()));
+  protected readonly suggestions = computed(() =>
+    this.store.lesson$() ? LESSON_SUGGESTIONS : suggestionsFor(this.path()),
+  );
   /** Follow-up questions, only under the newest answer once it is finished. */
   protected readonly followUps = computed(() => {
     const last = this.store.turns$().at(-1);

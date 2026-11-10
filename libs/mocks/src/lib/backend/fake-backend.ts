@@ -1,6 +1,7 @@
 import {
   adminOrgEndpoints,
   AgentCommandSchema,
+  type ConversationContext,
   RenameConversationCommandSchema,
   agentEndpoints,
   conversationEndpoints,
@@ -65,6 +66,7 @@ import {
   agentActionEvents,
   agentAiErrorEvents,
   agentDocumentEvents,
+  agentLessonEvents,
   agentNavigateEvents,
   agentNotFoundEvents,
   agentRefusedEvents,
@@ -653,6 +655,7 @@ export class FakeBackend {
     user: DbUser,
     request: FakeRequest,
     question: string,
+    context?: ConversationContext,
   ) {
     const named = (request.body as { conversationId?: unknown } | null)
       ?.conversationId;
@@ -662,6 +665,7 @@ export class FakeBackend {
         ? named
         : null,
       question,
+      context,
     );
     if (conversationId === undefined) {
       return refuse('assistantConversationNotFound');
@@ -678,12 +682,21 @@ export class FakeBackend {
       return invalid('Tin nhắn phải từ 1 đến 500 ký tự.');
     }
 
+    const lesson = parsed.data.context;
+    // The label is the course and lesson title the app sends nowhere: the mock names them by id.
+    const label = lesson
+      ? `Khóa ${lesson.courseId} › Bài ${lesson.lessonId}`
+      : undefined;
     const conversation = this.conversationEvent(
       user,
       request,
       parsed.data.message,
+      lesson && label ? { ...lesson, label } : undefined,
     );
-    const turn = this.scriptedTurn(user, parsed.data.message);
+    const turn =
+      lesson && label
+        ? agentLessonEvents(lesson, label, parsed.data.skill === 'tom_tat_bai')
+        : this.scriptedTurn(user, parsed.data.message);
     const turnId = this.book.record(
       user.userId,
       conversation.conversationId,

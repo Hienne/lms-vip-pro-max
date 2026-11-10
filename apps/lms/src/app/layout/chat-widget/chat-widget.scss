@@ -121,6 +121,20 @@
     overflow-y: auto;
   }
 
+  // The lesson the conversation is about, above the log.
+  &__context {
+    @include ui.row(2);
+    @include ui.text(sm, secondary);
+    margin: 0;
+    padding: ui.space(2) ui.space(4);
+    border-bottom: 1px solid ui.color(border);
+
+    span {
+      @include ui.truncate;
+      min-width: 0;
+    }
+  }
+
   // Left-aligned: the hint, then the suggestions as plain links, one per line.
   &__empty {
     @include ui.stack(1);

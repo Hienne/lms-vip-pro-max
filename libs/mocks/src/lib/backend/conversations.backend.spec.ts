@@ -59,6 +59,27 @@ describe('FakeBackend saved conversations', () => {
   const code = (reply: FakeReply): string | undefined =>
     (reply.body as { messageCode?: string }).messageCode;
 
+  it('keeps the lesson a conversation was opened from and cites it with a link', () => {
+    const token = login('hocvien');
+    const context = { courseId: 5, revisionId: 50, lessonId: 9 };
+    const reply = call(agentEndpoints.stream, token, {
+      body: { message: 'Tóm tắt bài này', skill: 'tom_tat_bai', context },
+    });
+
+    const done = reply.events?.find(
+      (event) => (event as { type: string }).type === 'done',
+    ) as {
+      citations: { lesson?: { url: string } }[];
+    };
+    expect(done.citations[0].lesson?.url).toBe('/lesson/5/9');
+    const id = conversationOf(reply);
+    const saved = ConversationDetailSchema.parse(detail(token, id).body.data);
+    expect(saved.context).toMatchObject(context);
+    expect(
+      list(token).items.find((item) => item.id === id)?.context,
+    ).toMatchObject(context);
+  });
+
   it('lists a conversation from either assistant, titled by its first question', () => {
     const token = login('hocvien');
     ask(token, 'Xin chào trợ lý');

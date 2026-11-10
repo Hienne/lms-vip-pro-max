@@ -508,6 +508,108 @@ describe('AgentChatStore', () => {
     });
   });
 
+  describe('a conversation about a lesson', () => {
+    const lesson = {
+      courseId: 5,
+      revisionId: 50,
+      lessonId: 9,
+      label: 'Tín dụng › Lãi suất',
+    };
+    const context = { courseId: 5, revisionId: 50, lessonId: 9 };
+
+    it('opens the panel on a new conversation and sends the lesson with the question and the skill', async () => {
+      store.askAboutLesson(lesson, 'Tóm tắt bài này', 'tom_tat_bai');
+      await settle();
+
+      expect(store.isOpen$()).toBe(true);
+      expect(store.lesson$()).toEqual(lesson);
+      const request = backend.expectOne(STREAM);
+      expect(lastBody(request)).toEqual({
+        message: 'Tóm tắt bài này',
+        skill: 'tom_tat_bai',
+        context,
+      });
+      finish(request, [conversation(11), done('x')]);
+      await settle();
+    });
+
+    it('sends the lesson with every later question of the conversation', async () => {
+      store.askAboutLesson(lesson, 'Bài này nói gì?');
+      await settle();
+      finish(backend.expectOne(STREAM), [conversation(11), done('x')]);
+      await settle();
+
+      store.ask('Còn gì nữa?');
+      await settle();
+      const request = backend.expectOne(STREAM);
+      expect(lastBody(request)).toEqual({
+        conversationId: 11,
+        message: 'Còn gì nữa?',
+        context,
+      });
+      finish(request, [done('y')]);
+      await settle();
+    });
+
+    it('continues the conversation already open on the same lesson, and starts a new one for another lesson', async () => {
+      store.askAboutLesson(lesson, 'Bài này nói gì?');
+      await settle();
+      finish(backend.expectOne(STREAM), [conversation(11), done('x')]);
+      await settle();
+
+      store.askAboutLesson(lesson, 'Tóm tắt bài này', 'tom_tat_bai');
+      await settle();
+      expect(lastBody(backend.expectOne(STREAM))).toMatchObject({
+        conversationId: 11,
+      });
+    });
+
+    it('starts a new conversation for a different lesson and drops the lesson when the chat is cleared', async () => {
+      store.askAboutLesson(lesson, 'Bài này nói gì?');
+      await settle();
+      finish(backend.expectOne(STREAM), [conversation(11), done('x')]);
+      await settle();
+
+      store.askAboutLesson({ ...lesson, lessonId: 10 }, 'Bài này nói gì?');
+      await settle();
+      const request = backend.expectOne(STREAM);
+      expect(lastBody(request)).toEqual({
+        message: 'Bài này nói gì?',
+        context: { ...context, lessonId: 10 },
+      });
+      finish(request, [conversation(12), done('y')]);
+      await settle();
+
+      store.clear();
+      expect(store.lesson$()).toBeNull();
+    });
+
+    it('shows the lesson label again when the saved conversation is reopened', async () => {
+      store.openConversation(9);
+      await settle();
+      backend.expectOne(detailUrl(9)).flush(
+        envelopeOk({
+          id: 9,
+          title: 'Tiêu đề',
+          lastActivityTime: '2026-11-10T09:00:00Z',
+          createTime: '2026-11-10T09:00:00Z',
+          context: lesson,
+          turns: [storedTurn(1)],
+        }),
+      );
+      await settle();
+
+      expect(store.lesson$()).toEqual(lesson);
+      store.ask('Tiếp');
+      await settle();
+      expect(lastBody(backend.expectOne(STREAM))).toEqual({
+        conversationId: 9,
+        message: 'Tiếp',
+        context,
+      });
+    });
+  });
+
   describe('saved conversations', () => {
     it('reopens a saved conversation with its answers, sources and each card in the state the server holds', async () => {
       store.showHistory();

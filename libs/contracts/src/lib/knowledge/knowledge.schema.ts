@@ -63,6 +63,20 @@ export const AskCommandSchema = z.object({
 export type AskCommand = z.infer<typeof AskCommandSchema>;
 
 /** Built by the backend from the chunk's metadata, never read out of the model's text. */
+/** Where a lesson source is read in the app; only course content has it. */
+export const LessonCitationSchema = z.object({
+  courseId: z.number().int().positive(),
+  courseTitle: z.string(),
+  revisionId: z.number().int().positive(),
+  chapterTitle: z.string(),
+  lessonId: z.number().int().positive(),
+  lessonTitle: z.string(),
+  blockId: z.number().int().positive(),
+  /** `/lesson/{courseId}/{lessonId}`. */
+  url: z.string().startsWith('/'),
+});
+export type LessonCitation = z.infer<typeof LessonCitationSchema>;
+
 export const CitationSchema = z.object({
   n: z.number().int().positive(),
   documentId: z.number().int(),
@@ -72,6 +86,8 @@ export const CitationSchema = z.object({
   lineStart: z.number().int(),
   lineEnd: z.number().int(),
   snippet: z.string(),
+  /** Set when the source is a lesson of a course; `documentId` is then 0. */
+  lesson: LessonCitationSchema.optional(),
 });
 export type Citation = z.infer<typeof CitationSchema>;
 

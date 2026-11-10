@@ -72,7 +72,12 @@
       (retried)="history.retryLoad()"
     />
   </div>
-  } @else {
+  } @else { @if (store.lesson$(); as lesson) {
+  <p class="chat__context" [title]="lesson.label">
+    <ui-icon name="book-open" size="sm" />
+    <span>Đang hỏi về bài: {{ lesson.label }}</span>
+  </p>
+  }
   <div
     #log
     class="chat__log"
@@ -96,7 +101,8 @@
     } @empty {
     <div class="chat__empty">
       <p class="chat__hint">
-        Hỏi về tài liệu, mở một màn hình hoặc sửa hồ sơ của bạn. Thử:
+        @if (store.lesson$()) { Hỏi về bài học bạn đang xem. Thử: } @else { Hỏi
+        về tài liệu, mở một màn hình hoặc sửa hồ sơ của bạn. Thử: }
       </p>
       <ul class="chat__suggestions">
         @for (suggestion of suggestions(); track suggestion.text) {

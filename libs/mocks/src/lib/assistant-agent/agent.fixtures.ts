@@ -57,6 +57,47 @@ export const agentDocumentEvents: readonly AgentStreamEvent[] = [
   },
 ];
 
+/** The answer of a conversation opened from a lesson: one source, the lesson itself. */
+export function agentLessonEvents(
+  lesson: { courseId: number; revisionId: number; lessonId: number },
+  label: string,
+  summarise: boolean,
+): readonly AgentStreamEvent[] {
+  const text = summarise
+    ? 'Bài này có hai ý chính: khái niệm và cách áp dụng [1].'
+    : 'Bài này giới thiệu khái niệm và cách áp dụng vào nghiệp vụ [1].';
+  const [courseTitle = label, lessonTitle = label] = label.split(' › ');
+  return [
+    { type: 'tool', name: summarise ? 'read_lesson' : 'search_courses' },
+    { type: 'delta', text },
+    {
+      type: 'done',
+      answer: text,
+      citations: [
+        {
+          n: 1,
+          documentId: 0,
+          fileName: label,
+          page: null,
+          lineStart: 0,
+          lineEnd: 0,
+          snippet: 'Nội dung bài học được trích từ khóa học.',
+          lesson: {
+            courseId: lesson.courseId,
+            courseTitle,
+            revisionId: lesson.revisionId,
+            chapterTitle: 'Chương 1',
+            lessonId: lesson.lessonId,
+            lessonTitle,
+            blockId: 1,
+            url: `/lesson/${lesson.courseId}/${lesson.lessonId}`,
+          },
+        },
+      ],
+    },
+  ];
+}
+
 export const agentNotFoundEvents: readonly AgentStreamEvent[] = [
   { type: 'tool', name: 'search_documents' },
   {

@@ -17,6 +17,8 @@ import {
   type AgentCommand,
   type AgentSkill,
   type AgentStreamEvent,
+  type ConversationContext,
+  type LessonContext,
   type PendingAction,
 } from '@lms/contracts';
 import { finalize, Subscription } from 'rxjs';
@@ -98,6 +100,11 @@ export class AgentChatStore {
       computation: (id) =>
         id ? (this.storage.read(id).conversationId ?? null) : null,
     }),
+    /** The lesson the open conversation is about; every question of it carries the lesson. */
+    lesson: linkedSignal<string | undefined, ConversationContext | null>({
+      source: this.userId,
+      computation: () => null,
+    }),
     answeringId: signal<number | null>(null),
     confirmingId: signal<number | null>(null),
     /** The turn whose rating is on its way, and the one whose last rating did not save. */
@@ -121,6 +128,8 @@ export class AgentChatStore {
   readonly isDocked$ = computed(
     () => this.available$() && this.isOpen$() && this.state.docked(),
   );
+  /** The lesson the panel is about, for its label; null for a conversation about nothing in particular. */
+  readonly lesson$ = this.state.lesson.asReadonly();
   readonly isAnswering$ = computed(() => this.state.answeringId() !== null);
   readonly isConfirming$ = computed(() => this.state.confirmingId() !== null);
   readonly ratingId$ = this.state.ratingId.asReadonly();
@@ -190,6 +199,7 @@ export class AgentChatStore {
           this.loading?.unsubscribe();
           this.setTurns([]);
           this.setConversationId(null);
+          this.state.lesson.set(null);
         }
       });
   }
@@ -246,6 +256,33 @@ export class AgentChatStore {
     const id = Math.max(0, ...this.turns$().map((t) => t.id)) + 1;
     this.setTurns([...this.turns$(), { id, question, reply: WAITING }]);
     this.stream(id, question, skill);
+  }
+
+  /**
+   * Opens the panel on a new conversation about a lesson and asks `question` in it (the server
+   * checks the user may read the lesson). The conversation already open on this lesson continues;
+   * any other, or one about nothing, stays in the history. Ignored while an answer is on its way.
+   */
+  askAboutLesson(
+    lesson: ConversationContext,
+    question: string,
+    skill?: AgentSkill,
+  ): void {
+    if (this.isAnswering$()) return;
+    const open = this.state.lesson();
+    if (
+      open?.lessonId !== lesson.lessonId ||
+      open.revisionId !== lesson.revisionId
+    ) {
+      this.loading?.unsubscribe();
+      this.state.opening.set(false);
+      this.setTurns([]);
+      this.setConversationId(null);
+      this.state.history.set(false);
+      this.state.lesson.set(lesson);
+    }
+    this.setOpen(true);
+    this.ask(question, skill);
   }
 
   /**
@@ -314,6 +351,7 @@ export class AgentChatStore {
     this.state.opening.set(false);
     this.setTurns([]);
     this.setConversationId(null);
+    this.state.lesson.set(null);
     this.state.history.set(false);
   }
 
@@ -348,6 +386,7 @@ export class AgentChatStore {
         if (this.isAnswering$()) return;
         this.setTurns(detail.turns.map(turnFromStored));
         this.setConversationId(detail.id);
+        this.state.lesson.set(detail.context ?? null);
         this.state.history.set(false);
       }),
       error: this.sameUser(userId, (error: unknown) => {
@@ -597,7 +636,19 @@ export class AgentChatStore {
   /** The question and the conversation it continues; the server holds the earlier turns. */
   private commandFor(question: string, skill?: AgentSkill): AgentCommand {
     const conversationId = this.state.conversationId();
-    const base = skill ? { message: question, skill } : { message: question };
+    const lesson = this.state.lesson();
+    const context: LessonContext | undefined = lesson
+      ? {
+          courseId: lesson.courseId,
+          revisionId: lesson.revisionId,
+          lessonId: lesson.lessonId,
+        }
+      : undefined;
+    const base = {
+      message: question,
+      ...(skill ? { skill } : {}),
+      ...(context ? { context } : {}),
+    };
     return conversationId === null ? base : { ...base, conversationId };
   }
 

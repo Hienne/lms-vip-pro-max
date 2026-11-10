@@ -26,7 +26,28 @@
       <span class="lesson__saved-text">Đã lưu tiến độ</span>
       }
     </p>
-    @if (store.lesson$()) {
+    @if (canAsk()) {
+    <button
+      uiButton
+      variant="ghost"
+      size="sm"
+      class="lesson__ask"
+      [disabled]="agent.isAnswering$()"
+      (click)="askAssistant()"
+    >
+      <ui-icon name="sparkles" size="sm" />Hỏi về bài này
+    </button>
+    <button
+      uiButton
+      variant="ghost"
+      size="sm"
+      class="lesson__ask"
+      [disabled]="agent.isAnswering$()"
+      (click)="summarise()"
+    >
+      <ui-icon name="list" size="sm" />Tóm tắt bài này
+    </button>
+    } @if (store.lesson$()) {
     <button
       uiButton
       variant="ghost"

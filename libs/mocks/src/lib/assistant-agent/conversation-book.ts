@@ -1,6 +1,7 @@
 import type {
   AgentStreamEvent,
   ChatStreamEvent,
+  ConversationContext,
   ConversationDetail,
   ConversationSummary,
   Feedback,
@@ -21,6 +22,7 @@ interface Row {
   lastActivityTime: string;
   readonly createTime: string;
   readonly turns: StoredTurn[];
+  readonly context?: ConversationContext;
 }
 
 type TurnEvent = AgentStreamEvent | ChatStreamEvent;
@@ -40,6 +42,7 @@ export class ConversationBook {
     ownerId: string,
     named: number | null,
     question: string,
+    context?: ConversationContext,
   ): number | undefined {
     if (named !== null) {
       return this.find(ownerId, named)?.id;
@@ -52,6 +55,7 @@ export class ConversationBook {
       lastActivityTime: now,
       createTime: now,
       turns: [],
+      ...(context ? { context } : {}),
     };
     this.rows.push(row);
     return row.id;
@@ -226,5 +230,6 @@ function summaryOf(row: Row): ConversationSummary {
     title: row.title,
     lastActivityTime: row.lastActivityTime,
     createTime: row.createTime,
+    ...(row.context ? { context: row.context } : {}),
   };
 }

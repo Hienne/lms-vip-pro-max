@@ -1,7 +1,7 @@
 import { Component, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { provideRouter, Router } from '@angular/router';
-import type { ConversationSummary } from '@lms/contracts';
+import type { ConversationSummary, ConversationContext } from '@lms/contracts';
 import { AgentChatStore } from '../../core/assistant/agent-chat.store';
 import { ConversationsStore } from '../../core/assistant/conversations.store';
 import { AGENT_LAUNCHER_ID } from '../../core/assistant/agent-launcher';
@@ -30,10 +30,12 @@ function fakeStore() {
   const answering = signal(false);
   const docked = signal(false);
   const historyOpen = signal(false);
+  const lesson = signal<ConversationContext | null>(null);
   const items = signal<readonly ConversationSummary[]>([]);
   return {
     docked,
     historyOpen,
+    lesson,
     items,
     available,
     open,
@@ -54,6 +56,7 @@ function fakeStore() {
       isOpening$: signal(false).asReadonly(),
       openError$: signal<string | null>(null).asReadonly(),
       conversationId$: signal<number | null>(null).asReadonly(),
+      lesson$: lesson.asReadonly(),
       showHistory: vi.fn(() => historyOpen.set(true)),
       hideHistory: vi.fn(() => historyOpen.set(false)),
       openConversation: vi.fn(),
@@ -127,6 +130,32 @@ describe('ChatWidget', () => {
       ...el.querySelectorAll('.chat__header button, .chat__header a'),
     ].map((control) => control.getAttribute('aria-label'));
     expect(header).toEqual(['Lịch sử hội thoại', 'Mở rộng', 'Đóng']);
+  });
+
+  it('names the lesson a conversation is about and opens it with questions about that lesson', async () => {
+    const { fixture, el, store, lesson } = await render();
+    expect(el.querySelector('.chat__context')).toBeNull();
+
+    lesson.set({
+      courseId: 5,
+      revisionId: 50,
+      lessonId: 9,
+      label: 'Tín dụng › Lãi suất',
+    });
+    await fixture.whenStable();
+
+    expect(el.querySelector('.chat__context')?.textContent).toContain(
+      'Tín dụng › Lãi suất',
+    );
+    const suggestions = [
+      ...el.querySelectorAll<HTMLButtonElement>('.chat__suggestion'),
+    ];
+    expect(suggestions.map((button) => button.textContent?.trim())).toEqual([
+      'Bài này nói gì?',
+      'Tóm tắt bài này',
+    ]);
+    suggestions[1].click();
+    expect(store.ask).toHaveBeenCalledWith('Tóm tắt bài này', 'tom_tat_bai');
   });
 
   it('renders nothing while closed or when the assistant is not available', async () => {

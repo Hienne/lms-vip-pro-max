@@ -13,12 +13,23 @@ export const CONVERSATION_TITLE_MAX_LENGTH = 80;
 export const TurnSurfaceSchema = z.enum(['AGENT', 'KNOWLEDGE']);
 export type TurnSurface = z.infer<typeof TurnSurfaceSchema>;
 
+/** The lesson a conversation was opened from; `label` is "Khóa › Bài" as it was then. */
+export const ConversationContextSchema = z.object({
+  courseId: z.number().int().positive(),
+  revisionId: z.number().int().positive(),
+  lessonId: z.number().int().positive(),
+  label: z.string(),
+});
+export type ConversationContext = z.infer<typeof ConversationContextSchema>;
+
 /** One row of the list, newest activity first. */
 export const ConversationSummarySchema = z.object({
   id: z.number().int().positive(),
   title: z.string(),
   lastActivityTime: z.iso.datetime(),
   createTime: z.iso.datetime(),
+  /** Absent for a conversation that was not opened from a lesson. */
+  context: ConversationContextSchema.optional(),
 });
 export type ConversationSummary = z.infer<typeof ConversationSummarySchema>;
 

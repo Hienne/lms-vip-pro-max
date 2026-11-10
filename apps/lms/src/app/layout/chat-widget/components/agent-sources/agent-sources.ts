@@ -1,5 +1,6 @@
 import { Component, computed, input } from '@angular/core';
 import type { Citation } from '@lms/contracts';
+import { RouterLink } from '@angular/router';
 import { Popover } from '@lms/ui';
 import {
   citationLocation,
@@ -17,7 +18,7 @@ export function agentSourceId(turnId: number, n: number): string {
  */
 @Component({
   selector: 'app-agent-sources',
-  imports: [Popover],
+  imports: [Popover, RouterLink],
   templateUrl: './agent-sources.html',
   styleUrl: './agent-sources.scss',
 })

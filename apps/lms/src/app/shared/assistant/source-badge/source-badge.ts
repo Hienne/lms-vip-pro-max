@@ -1,5 +1,6 @@
 import { Component, computed, input } from '@angular/core';
 import type { Citation } from '@lms/contracts';
+import { RouterLink } from '@angular/router';
 import { Badge, Popover } from '@lms/ui';
 import { citationLocation, citationName } from '../citation-label';
 
@@ -9,7 +10,7 @@ import { citationLocation, citationName } from '../citation-label';
  */
 @Component({
   selector: 'app-source-badge',
-  imports: [Badge, Popover],
+  imports: [Badge, Popover, RouterLink],
   templateUrl: './source-badge.html',
   styleUrl: './source-badge.scss',
 })
