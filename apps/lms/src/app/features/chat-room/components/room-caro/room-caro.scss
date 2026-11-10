@@ -13,11 +13,23 @@ p {
   &__status {
     @include ui.text(sm);
   }
+  &__status--your-turn {
+    margin-block: ui.space(1);
+    padding: ui.space(2);
+    border: 1px solid ui.color(primary);
+    background: color-mix(in srgb, ui.color(primary) 14%, ui.color(surface));
+    color: ui.color(primary);
+  }
   &__rules {
     @include ui.text(sm, muted);
     margin-block: ui.space(1);
   }
-  &__form,
+  &__form {
+    display: grid;
+    gap: ui.space(2);
+    margin-top: ui.space(2);
+    width: min(100%, ui.layout(panel));
+  }
   &__reply {
     display: grid;
     gap: ui.space(2);
@@ -83,6 +95,11 @@ p {
     &--o {
       color: ui.color(text);
       font-weight: ui.weight(semibold);
+    }
+    &--last {
+      background: color-mix(in srgb, ui.color(primary) 25%, ui.color(surface));
+      outline: 2px solid ui.color(primary);
+      outline-offset: -2px;
     }
   }
 }

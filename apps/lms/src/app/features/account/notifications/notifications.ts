@@ -9,7 +9,9 @@ import {
   List,
   ListItem,
   PageHeader,
+  Segmented,
   Skeleton,
+  type SegmentedOption,
 } from '@lms/ui';
 import { InstructorInbox } from './instructor-inbox/instructor-inbox';
 import { ReminderItem } from '../../../shared/learning/reminder-item/reminder-item';
@@ -33,6 +35,7 @@ import { NotificationsStore } from './data-access/notifications.store';
     PageHeader,
     ReminderItem,
     RouterLink,
+    Segmented,
     Skeleton,
   ],
   providers: [NotificationsStore],
@@ -42,4 +45,9 @@ import { NotificationsStore } from './data-access/notifications.store';
 export class Notifications {
   protected readonly store = inject(NotificationsStore);
   protected readonly placeholders = [1, 2, 3];
+  protected readonly filters: readonly SegmentedOption<string>[] = [
+    { value: 'all', label: 'Tất cả' },
+    { value: 'unread', label: 'Chưa đọc' },
+    { value: 'read', label: 'Đã đọc' },
+  ];
 }

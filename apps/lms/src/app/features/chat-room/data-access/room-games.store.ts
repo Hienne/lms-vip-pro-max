@@ -8,6 +8,7 @@ import {
 import type {
   RoomCaroInvitation,
   RoomCaroState,
+  RoomCaroTable,
   RoomCommand,
   RoomDiceBet,
   RoomDiceState,
@@ -28,6 +29,7 @@ export class RoomGamesStore {
     rank: signal<readonly RoomRank[] | null>(null),
     invitation: signal<RoomCaroInvitation | null>(null),
     caro: signal<RoomCaroState | null>(null),
+    caroTable: signal<RoomCaroTable | null>(null),
     caroError: signal(''),
     now: signal(Date.now()),
   };
@@ -43,6 +45,12 @@ export class RoomGamesStore {
   readonly rank$ = this.state.rank.asReadonly();
   readonly invitation$ = this.state.invitation.asReadonly();
   readonly caro$ = this.state.caro.asReadonly();
+  readonly caroTable$ = this.state.caroTable.asReadonly();
+  readonly visibleCaro$ = computed(() => {
+    const table = this.caroTable$();
+    const game = this.caro$();
+    return table && (table.playing || game?.result) ? game : null;
+  });
   readonly caroError$ = this.state.caroError.asReadonly();
   readonly latestDice$ = computed(() => this.dice$()?.history[0]);
   readonly diceSeconds$ = computed(() => this.seconds(this.dice$()?.closesAt));
@@ -97,9 +105,9 @@ export class RoomGamesStore {
     this.send?.({ type: 'dice-bet', round: dice.round, ...bet });
   }
 
-  challenge(challenge: { target: string; stake: number }): void {
+  setCaroStake(stake: number): void {
     this.state.caroError.set('');
-    this.send?.({ type: 'caro-invite', ...challenge });
+    this.send?.({ type: 'caro-stake', stake });
   }
 
   reply(accept: boolean): void {
@@ -114,7 +122,12 @@ export class RoomGamesStore {
 
   play(cell: number): void {
     const game = this.caro$();
-    if (game && !game.result && game.board[cell] === '.') {
+    if (
+      this.caroTable$()?.playing &&
+      game &&
+      !game.result &&
+      game.board[cell] === '.'
+    ) {
       this.send?.({
         type: 'caro-move',
         gameId: game.id,
@@ -144,6 +157,7 @@ export class RoomGamesStore {
       case 'caro-invite':
         this.newCaro();
         this.state.invitation.set(event);
+        this.open('caro');
         break;
       case 'caro-invite-end':
         if (this.invitation$()?.id === event.id)
@@ -154,7 +168,19 @@ export class RoomGamesStore {
         const fresh = event.id !== this.caro$()?.id;
         this.state.caro.set(event);
         this.state.invitation.set(null);
-        if (fresh && !event.result) this.open('caro');
+        if (fresh && !event.result && this.caroTable$()) this.open('caro');
+        break;
+      }
+      case 'caro-table': {
+        const previous = this.caroTable$();
+        this.state.caroTable.set(event.table ? event : null);
+        if (!event.table) {
+          this.state.invitation.set(null);
+          if (this.panel$() === 'caro') this.close();
+        } else if (event.table !== previous?.table) {
+          this.newCaro();
+          this.open('caro');
+        }
         break;
       }
       case 'caro-error':
@@ -170,6 +196,7 @@ export class RoomGamesStore {
     this.state.rank.set(null);
     this.state.invitation.set(null);
     this.state.caro.set(null);
+    this.state.caroTable.set(null);
     this.state.caroError.set('');
   }
 

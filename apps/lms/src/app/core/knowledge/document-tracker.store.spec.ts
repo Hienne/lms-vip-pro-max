@@ -85,7 +85,7 @@ describe('DocumentTrackerStore', () => {
     vi.useRealTimers();
   });
 
-  const signIn = () => session.user.set(toProfile(seedMe('000005')));
+  const signIn = () => session.user.set(toProfile(seedMe('000004')));
 
   async function settle(): Promise<void> {
     TestBed.tick();
@@ -128,6 +128,18 @@ describe('DocumentTrackerStore', () => {
     expect(store.owlState$()).toBe('idle');
   });
 
+  it('does not load the pending list for a user without the assistant menu', async () => {
+    const profile = toProfile(seedMe('000004'));
+    session.user.set({
+      ...profile,
+      menus: profile.menus.filter((menu) => menu !== 'AI_ASSISTANT'),
+    });
+    TestBed.inject(DocumentTrackerStore);
+    await settle();
+    await tick(60_000);
+    expect(listRequests()).toHaveLength(0);
+  });
+
   it('seeds the pending documents of the signed-in user, so a reload mid-processing keeps the owl busy', async () => {
     signIn();
     const store = TestBed.inject(DocumentTrackerStore);
@@ -155,6 +167,21 @@ describe('DocumentTrackerStore', () => {
   it('polls every few seconds while something is pending', async () => {
     await start(processing);
     await tick(POLL_INTERVAL_MS - 1);
+    expect(listRequests()).toHaveLength(0);
+    await tick(1);
+    expect(listRequests()).toHaveLength(1);
+  });
+
+  it('waits for a slow request, then backs off if the pending status has not changed', async () => {
+    await start(processing);
+    await tick();
+    const [poll] = listRequests();
+    await tick(POLL_INTERVAL_MS * 4);
+    expect(listRequests()).toHaveLength(0);
+    expect(poll.cancelled).toBe(false);
+    poll.flush(page(processing));
+    await settle();
+    await tick(POLL_INTERVAL_MS * 2 - 1);
     expect(listRequests()).toHaveLength(0);
     await tick(1);
     expect(listRequests()).toHaveLength(1);
@@ -196,9 +223,7 @@ describe('DocumentTrackerStore', () => {
 
     TestBed.inject(NetworkStore).goOnline();
     await settle();
-    await tick();
     expect(listRequests()).toHaveLength(1);
-    listRequests();
   });
 
   it('announces a document that became ready, looks it up once and bumps finished', async () => {
@@ -263,7 +288,7 @@ describe('DocumentTrackerStore', () => {
     expect(store.pending$()).toEqual([processing]);
     expect(store.lastFinished$()).toBeNull();
 
-    await tick();
+    await tick(POLL_INTERVAL_MS * 2);
     listRequests()[0].flush(page());
     await settle();
     backend.expectOne(`${LIST}/${processing.id}`).flush(envelopeOk(ready));
@@ -283,8 +308,24 @@ describe('DocumentTrackerStore', () => {
     expect(store.pending$()).toEqual([processing]);
     expect(store.owlState$()).toBe('processing');
 
-    await tick();
+    await tick(POLL_INTERVAL_MS * 2);
     expect(listRequests()).toHaveLength(1);
+  });
+
+  it('stops tracking a document that no longer exists', async () => {
+    const store = await start(processing);
+    await tick();
+    listRequests()[0].flush(page());
+    await settle();
+    const refusal = backendRefusal('resourceNotFound');
+    backend.expectOne(`${LIST}/${processing.id}`).flush(refusal.body, {
+      status: refusal.status,
+      statusText: 'Not Found',
+    });
+    await settle();
+    expect(store.pending$()).toEqual([]);
+    await tick(60_000);
+    expect(listRequests()).toHaveLength(0);
   });
 
   it('forgets everything and stops polling when the user signs out', async () => {
@@ -300,7 +341,7 @@ describe('DocumentTrackerStore', () => {
 
   it('starts from nothing for the next user', async () => {
     const store = await start(processing);
-    session.user.set(toProfile(seedMe('000004')));
+    session.user.set(toProfile(seedMe('000005')));
     await settle();
     expect(store.pending$()).toEqual([]);
     const [seed] = listRequests();

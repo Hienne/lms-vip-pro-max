@@ -5,106 +5,14 @@
   min-width: 0;
 }
 
-.certificate {
-  // The document: a flat panel on the page, as plain as the print it becomes.
-  display: flex;
-  flex-direction: column;
-  gap: ui.space(4);
+app-certificate-sheet {
+  max-inline-size: 64rem;
+  margin: ui.space(5) auto 0;
+}
+
+.certificate__placeholder {
+  min-height: 16rem;
   margin-top: ui.space(5);
-  padding: ui.space(5);
-  background: ui.color(certificate-paper);
-  color: ui.color(certificate-ink);
-  border: ui.space(1) double ui.color(certificate-gold);
-  border-radius: ui.radius(card);
-
-  @include ui.bp(md) {
-    gap: ui.space(5);
-    padding: ui.space(8);
-  }
-
-  &__placeholder {
-    min-height: 16rem;
-    margin-top: ui.space(5);
-  }
-
-  &__brand {
-    padding: ui.space(5);
-    background: ui.color(certificate-teal);
-    color: ui.color(white);
-    display: flex;
-    align-items: center;
-    gap: ui.space(3);
-
-    p {
-      margin: 0;
-      @include ui.text(sm);
-      color: ui.color(on-primary);
-    }
-  }
-
-  &__academy {
-    font-size: ui.text-size(xl);
-    font-weight: ui.weight(semibold);
-  }
-
-  &__heading {
-    margin: ui.space(3) 0 0;
-    font-size: ui.text-size(2xl);
-    color: ui.color(certificate-gold-ink);
-    font-weight: ui.weight(semibold);
-  }
-
-  &__lead,
-  &__course {
-    margin: 0;
-  }
-
-  &__lead {
-    color: ui.color(certificate-caption);
-    @include ui.text(md);
-  }
-
-  // The name is the largest text of the document.
-  &__name {
-    margin: 0;
-    font-size: ui.text-size(3xl);
-    color: ui.color(certificate-teal);
-    font-weight: ui.weight(semibold);
-    line-height: ui.leading(tight);
-    overflow-wrap: anywhere;
-  }
-
-  &__course {
-    max-width: 56ch;
-    color: ui.color(certificate-caption);
-
-    strong {
-      color: ui.color(text);
-      font-weight: ui.weight(semibold);
-    }
-  }
-
-  // Date and code side by side; they wrap under each other on a narrow screen.
-  &__facts {
-    display: flex;
-    flex-wrap: wrap;
-    gap: ui.space(4) ui.space(8);
-    margin: ui.space(3) 0 0;
-
-    dt {
-      @include ui.text(sm);
-    }
-
-    dd {
-      margin: ui.space(1) 0 0;
-      font-weight: ui.weight(semibold);
-      overflow-wrap: anywhere;
-    }
-  }
-
-  &__code {
-    @include ui.mono;
-  }
 }
 
 // One A4 landscape sheet holding the document alone: the page header and its breadcrumb go, the
@@ -125,12 +33,8 @@
     padding: 0;
   }
 
-  .certificate {
-    margin-top: 0;
-    break-inside: avoid;
-    print-color-adjust: exact;
-    -webkit-print-color-adjust: exact;
-    gap: ui.space(3);
-    padding: ui.space(5);
+  app-certificate-sheet {
+    max-inline-size: none;
+    margin: 0;
   }
 }

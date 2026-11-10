@@ -52,69 +52,11 @@
 <ul class="certificates__list" aria-label="Chứng nhận của tôi">
   @for (row of store.rows$(); track row.id) {
   <li class="certificates__row">
-    <svg
+    <app-certificate-sheet
       class="certificates__preview"
-      viewBox="0 0 720 440"
-      aria-hidden="true"
-      focusable="false"
-    >
-      <rect class="certificates__paper" x="1" y="1" width="718" height="438" />
-      <rect
-        class="certificates__frame"
-        x="12"
-        y="12"
-        width="696"
-        height="416"
-      />
-      <rect
-        class="certificates__frame"
-        x="18"
-        y="18"
-        width="684"
-        height="404"
-      />
-      <rect
-        class="certificates__masthead"
-        x="24"
-        y="24"
-        width="672"
-        height="52"
-      />
-      <text class="certificates__brand" x="360" y="58" text-anchor="middle">
-        Core Banking Academy
-      </text>
-      <text class="certificates__award" x="360" y="124" text-anchor="middle">
-        Chứng nhận hoàn thành
-      </text>
-      <text class="certificates__caption" x="360" y="160" text-anchor="middle">
-        Trao cho
-      </text>
-      <text
-        class="certificates__recipient"
-        x="360"
-        y="210"
-        text-anchor="middle"
-        [attr.textLength]="row.fullName.length > 32 ? 620 : null"
-        lengthAdjust="spacingAndGlyphs"
-      >
-        {{ row.fullName }}
-      </text>
-      <text class="certificates__caption" x="360" y="249" text-anchor="middle">
-        Đã hoàn thành khóa đào tạo
-      </text>
-      <text class="certificates__course" text-anchor="middle">
-        @for (line of row.previewLines; track $index) {
-        <tspan x="360" [attr.y]="280 + $index * 30">{{ line }}</tspan>
-        }
-      </text>
-      <path class="certificates__frame" d="M40 350 H680" />
-      <text class="certificates__footnote" x="40" y="380">
-        Hoàn thành {{ row.completedAt | fmtDate }}
-      </text>
-      <text class="certificates__footnote" x="680" y="380" text-anchor="end">
-        {{ row.code }}
-      </text>
-    </svg>
+      [document]="row"
+      [preview]="true"
+    />
     <a class="certificates__title" [routerLink]="row.link">{{ row.title }}</a>
     <span class="certificates__meta"
       >{{ row.code }} · Hoàn thành {{ row.completedAt | fmtDate }}@if (row.score

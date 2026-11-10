@@ -320,6 +320,10 @@ export const LearnerFacetsSchema = z.object({
   fields: z.array(LearnerFacetSchema),
   programs: z.array(LearnerFieldFacetSchema),
   modules: z.array(LearnerFieldFacetSchema),
+  /** Fields with courses that have no module. Null represents courses without a field. */
+  fieldsWithUnclassifiedCourses: z
+    .array(z.number().int().positive().nullable())
+    .optional(),
 });
 export type LearnerFacets = z.infer<typeof LearnerFacetsSchema>;
 
@@ -341,6 +345,11 @@ export const MyCoursesQuerySchema = CourseListQuerySchema.extend({
   failed: z.boolean().optional(),
 });
 export type MyCoursesQuery = z.infer<typeof MyCoursesQuerySchema>;
+
+export const LearnerCatalogQuerySchema = MyCoursesQuerySchema.extend({
+  withoutModule: z.boolean().optional(),
+});
+export type LearnerCatalogQuery = z.infer<typeof LearnerCatalogQuerySchema>;
 
 /** The same filters and sort as the table, no paging; at most 10,000 rows. */
 export const ProgressExportQuerySchema = MyCoursesQuerySchema.omit({

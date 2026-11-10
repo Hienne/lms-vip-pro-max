@@ -140,7 +140,12 @@ describe('Catalog', () => {
     expect(optionTexts('Chương trình')).toEqual(
       facets().programs.map((p) => p.name),
     );
-    expect(optionTexts('Phân hệ')).toEqual(facets().modules.map((m) => m.name));
+    expect(optionTexts('Phân hệ')).toEqual([
+      ...facets().modules.map((m) => m.name),
+      ...(facets().fieldsWithUnclassifiedCourses?.length
+        ? ['Chưa phân loại phân hệ']
+        : []),
+    ]);
     expect(select('Chương trình').textContent).toContain('Hội nhập cán bộ mới');
   });
 
@@ -182,9 +187,12 @@ describe('Catalog', () => {
 
     await choose('Lĩnh vực', String(field.id));
 
-    expect(optionTexts('Phân hệ')).toEqual(
-      all.modules.filter((m) => m.fieldId === field.id).map((m) => m.name),
-    );
+    expect(optionTexts('Phân hệ')).toEqual([
+      ...all.modules.filter((m) => m.fieldId === field.id).map((m) => m.name),
+      ...(all.fieldsWithUnclassifiedCourses?.includes(field.id)
+        ? ['Chưa phân loại phân hệ']
+        : []),
+    ]);
     expect(optionTexts('Chương trình')).toEqual(
       all.programs.filter((p) => p.fieldId === field.id).map((p) => p.name),
     );
@@ -193,6 +201,40 @@ describe('Catalog', () => {
     });
     expect(lastQuery(learnerEndpoints.catalog)).not.toHaveProperty('moduleId');
     expect(TestBed.inject(Router).url).toBe(`/catalog?field=${field.id}`);
+  });
+
+  it('offers an unclassified module from the server and sends the dedicated filter', async () => {
+    const backend = TestBed.inject(MockBackend);
+    handle.mockImplementation((endpoint, request) => {
+      const response = MockBackend.prototype.handle.call(
+        backend,
+        endpoint,
+        request,
+      );
+      if (
+        endpoint !== learnerEndpoints.facets ||
+        !response ||
+        !('body' in response)
+      )
+        return response;
+      const data = LearnerFacetsSchema.parse(response.body.data);
+      return {
+        ...response,
+        body: envelopeOk({ ...data, fieldsWithUnclassifiedCourses: [null] }),
+      };
+    });
+    await open();
+    expect(optionTexts('Phân hệ')).toContain('Chưa phân loại phân hệ');
+    await choose('Phân hệ', 'unclassified');
+    expect(lastQuery(learnerEndpoints.catalog)).toMatchObject({
+      withoutModule: 'true',
+    });
+    expect(lastQuery(learnerEndpoints.catalog)).not.toHaveProperty('moduleId');
+    expect(TestBed.inject(Router).url).toBe('/catalog?module=unclassified');
+    await choose('Phân hệ', '');
+    expect(lastQuery(learnerEndpoints.catalog)).not.toHaveProperty(
+      'withoutModule',
+    );
   });
 
   it.each([

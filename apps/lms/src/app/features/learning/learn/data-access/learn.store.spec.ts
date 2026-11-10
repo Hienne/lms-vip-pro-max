@@ -105,7 +105,8 @@ describe('LearnStore', () => {
     expect(queries(learnerEndpoints.myCourses)).toContainEqual({
       learningStatus: 'in_progress',
       sort: 'lastAccessAt,desc',
-      size: '6',
+      page: '0',
+      size: '50',
     });
     const counts = store.tabCounts$();
     expect(counts.in_progress).toBeGreaterThan(0);
@@ -126,21 +127,24 @@ describe('LearnStore', () => {
     expect(queries(learnerEndpoints.myCourses)).toContainEqual({
       learningStatus: 'not_started',
       sort: 'dueAt,asc',
-      size: '6',
+      page: '0',
+      size: '50',
     });
     store.showTab('mandatory');
     await settle();
     expect(queries(learnerEndpoints.myCourses)).toContainEqual({
       requirement: 'mandatory',
       sort: 'dueAt,asc',
-      size: '6',
+      page: '0',
+      size: '50',
     });
     store.showTab('assigned');
     await settle();
     expect(queries(learnerEndpoints.myCourses)).toContainEqual({
       assigned: 'true',
       sort: 'dueAt,asc',
-      size: '6',
+      page: '0',
+      size: '50',
     });
     store.showTab('bogus');
     expect(store.tab$()).toBe('assigned');

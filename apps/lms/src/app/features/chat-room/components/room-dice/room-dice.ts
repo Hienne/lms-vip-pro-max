@@ -39,15 +39,15 @@ export class RoomDice {
   protected readonly betForm = form(
     this.bet,
     (path) => {
-      required(path.stake, { message: 'Nhập số token muốn đặt.' });
-      min(path.stake, 1, { message: 'Đặt ít nhất 1 token.' });
+      required(path.stake, { message: 'Nhập số CPoint muốn đặt.' });
+      min(path.stake, 1, { message: 'Đặt ít nhất 1 CPoint.' });
       max(path.stake, () => Math.min(this.balance(), ROOM_MAX_STAKE), {
-        message: 'Số token đặt vượt mức hiện có.',
+        message: 'Số CPoint đặt vượt mức hiện có.',
       });
       validate(path.stake, ({ value }) => {
         const stake = value();
         return stake !== null && !Number.isSafeInteger(stake)
-          ? { kind: 'integer', message: 'Nhập số token nguyên.' }
+          ? { kind: 'integer', message: 'Nhập số CPoint nguyên.' }
           : undefined;
       });
     },

@@ -53,11 +53,18 @@
             }
           </div>
           } @else if (store.courses$().length) {
-          <ul class="learn__grid" aria-label="Khóa học">
-            @for (course of store.courses$(); track course.id) {
-            <li><app-course-tile [course]="course" /></li>
-            }
-          </ul>
+          <div
+            class="learn__scroll"
+            role="region"
+            aria-label="Danh sách khóa học"
+            tabindex="0"
+          >
+            <ul class="learn__grid">
+              @for (course of store.courses$(); track course.id) {
+              <li><app-course-tile [course]="course" /></li>
+              }
+            </ul>
+          </div>
           } @else {
           <ui-empty
             variant="inline"

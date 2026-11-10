@@ -13,7 +13,7 @@ import {
   RequirementSchema,
   type CourseCard,
   type CourseLevel,
-  type MyCoursesQuery,
+  type LearnerCatalogQuery,
   type Page,
   type Requirement,
 } from '@lms/contracts';
@@ -45,7 +45,10 @@ export type StatusFilter = '' | (typeof STATUS_FILTERS)[number];
 
 const STATUS_QUERY: Record<
   (typeof STATUS_FILTERS)[number],
-  Pick<MyCoursesQuery, 'learningStatus' | 'failed' | 'overdue' | 'assigned'>
+  Pick<
+    LearnerCatalogQuery,
+    'learningStatus' | 'failed' | 'overdue' | 'assigned'
+  >
 > = {
   not_started: { learningStatus: 'not_started' },
   in_progress: { learningStatus: 'in_progress' },
@@ -66,7 +69,7 @@ const SORTS = Object.keys(SORT_PARAM) as CatalogSort[];
 interface CatalogFilters {
   readonly q: string;
   readonly fieldId: number | undefined;
-  readonly moduleId: number | undefined;
+  readonly moduleId: number | 'unclassified' | undefined;
   readonly programId: number | undefined;
   readonly level: CourseLevel | '';
   readonly requirement: Requirement | '';
@@ -88,6 +91,9 @@ const idParam = (value: string | null): number | undefined => {
   return value && Number.isInteger(id) && id > 0 ? id : undefined;
 };
 
+const moduleParam = (value: string) =>
+  value === 'unclassified' ? value : idParam(value);
+
 /** The filters a shared or reloaded URL carries; an unknown value is dropped, not an error. */
 function filtersFrom(params: Params): CatalogFilters {
   const text = (key: string): string =>
@@ -98,7 +104,7 @@ function filtersFrom(params: Params): CatalogFilters {
   return {
     q: text('q'),
     fieldId: idParam(text('field')),
-    moduleId: idParam(text('module')),
+    moduleId: moduleParam(text('module')),
     programId: idParam(text('program')),
     level: level.success ? level.data : '',
     requirement: requirement.success ? requirement.data : '',
@@ -139,7 +145,7 @@ export class CatalogStore {
     }),
   };
 
-  private readonly request = computed((): MyCoursesQuery => {
+  private readonly request = computed((): LearnerCatalogQuery => {
     const f = this.state.filters();
     return {
       page: this.state.page() - 1,
@@ -149,7 +155,11 @@ export class CatalogStore {
       ...(this.state.scope() === 'assigned' ? { assigned: true } : {}),
       ...(f.q.trim() ? { q: f.q.trim().slice(0, 100) } : {}),
       ...(f.fieldId ? { fieldId: f.fieldId } : {}),
-      ...(f.moduleId ? { moduleId: f.moduleId } : {}),
+      ...(f.moduleId === 'unclassified'
+        ? { withoutModule: true }
+        : f.moduleId
+          ? { moduleId: f.moduleId }
+          : {}),
       ...(f.programId ? { programId: f.programId } : {}),
       ...(f.level ? { level: f.level } : {}),
       ...(f.requirement ? { requirement: f.requirement } : {}),
@@ -158,7 +168,7 @@ export class CatalogStore {
   });
 
   private readonly listData = serverData(
-    (query: MyCoursesQuery) =>
+    (query: LearnerCatalogQuery) =>
       this.client.call(learnerEndpoints.catalog, { query }),
     { params: () => this.request() },
   );
@@ -182,6 +192,14 @@ export class CatalogStore {
   readonly modules$ = computed(() =>
     this.ofChosenField(this.facetsData.value()?.modules ?? []),
   );
+  readonly hasUnclassifiedModule$ = computed(() => {
+    const { fieldId, moduleId } = this.state.filters();
+    const fields = this.facetsData.value()?.fieldsWithUnclassifiedCourses ?? [];
+    return (
+      moduleId === 'unclassified' ||
+      (fieldId ? fields.includes(fieldId) : fields.length > 0)
+    );
+  });
 
   readonly isLoading$ = computed(
     () => this.listData.isLoading() && this.state.shown() === undefined,
@@ -251,7 +269,7 @@ export class CatalogStore {
   }
 
   filterModule(value: string): void {
-    this.filter({ moduleId: idParam(value) });
+    this.filter({ moduleId: moduleParam(value) });
   }
 
   filterProgram(value: string): void {

@@ -223,7 +223,7 @@
       <nav class="lesson__stepbar" aria-label="Chuyển khối và bài học">
         @if (store.prevBlockId$(); as previous) {
         <button uiButton (click)="store.selectBlock(previous)">
-          <ui-icon name="arrow-left" size="sm" />Khối trước
+          <ui-icon name="arrow-left" size="sm" />Nội dung trước
         </button>
         } @else if (store.prevLessonLink$(); as link) {
         <a uiButton [routerLink]="link">
@@ -244,7 +244,7 @@
           [disabled]="!store.canAdvance$()"
           (click)="store.advance()"
         >
-          @if (store.nextBlockId$()) { Khối tiếp theo<ui-icon
+          @if (store.nextBlockId$()) { Nội dung tiếp theo<ui-icon
             name="arrow-right"
             size="sm"
           />

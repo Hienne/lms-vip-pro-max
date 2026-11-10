@@ -87,11 +87,12 @@ describe('Notifications', () => {
       }
     });
 
-    it('reads a notice like any reminder, and it leaves the list', async () => {
+    it('keeps the notice as read under the unread one', async () => {
       items()[0].querySelector('button')!.click();
       await settle();
-      expect(items()).toHaveLength(1);
+      expect(items()).toHaveLength(2);
       expect(items()[0].textContent).toContain('Bạn đạt huy hiệu mới');
+      expect(items()[1].textContent).toContain('Đã đọc');
     });
   });
 
@@ -136,16 +137,20 @@ describe('Notifications', () => {
       expect(button('Đánh dấu đã đọc tất cả')).toBeTruthy();
     });
 
-    it('removes a read item and shows no toast: the item leaving is the feedback', async () => {
+    it('clears the unread highlight without removing the item', async () => {
       items()[0].querySelector('button')!.click();
       await settle();
-      expect(items()).toHaveLength(2);
+      expect(items()).toHaveLength(3);
+      expect(el.querySelectorAll('.notifications__item--unread')).toHaveLength(
+        2,
+      );
+      expect(items().at(-1)?.textContent).toContain('Đã đọc');
       expect(
         document.body.querySelector('ui-toaster [role=status]'),
       ).toBeNull();
     });
 
-    it('marks all of them, in order, and shows the empty line', async () => {
+    it('marks them all while keeping the read history', async () => {
       button('Đánh dấu đã đọc tất cả')!.click();
       await settle();
       expect(
@@ -153,8 +158,46 @@ describe('Notifications', () => {
           ([e]) => e === learnerEndpoints.markReminderRead,
         ),
       ).toHaveLength(3);
-      expect(text()).toContain('Không có nhắc hạn nào.');
+      expect(items()).toHaveLength(3);
+      expect(el.querySelectorAll('.notifications__item--unread')).toHaveLength(
+        0,
+      );
+      expect(text()).toContain('0 chưa đọc');
       expect(button('Đánh dấu đã đọc tất cả')).toBeUndefined();
+    });
+
+    it('deletes only after confirmation and leaves other notifications in the inbox', async () => {
+      const deletions = () =>
+        handle.mock.calls.filter(
+          ([e]) => e === learnerEndpoints.deleteReminder,
+        );
+      const deleteButton = () =>
+        items()[0].querySelector<HTMLButtonElement>(
+          'button[aria-label="Xóa thông báo"]',
+        )!;
+      const dialogButton = (label: string) =>
+        Array.from(
+          document.body.querySelectorAll<HTMLButtonElement>(
+            'ui-confirm-dialog button',
+          ),
+        ).find((node) => node.textContent?.trim() === label)!;
+
+      deleteButton().click();
+      await settle();
+      expect(deletions()).toHaveLength(0);
+      dialogButton('Hủy').click();
+      await settle();
+      expect(deletions()).toHaveLength(0);
+
+      deleteButton().click();
+      await settle();
+      dialogButton('Xóa thông báo').click();
+      await settle();
+      expect(deletions()).toHaveLength(1);
+      expect(items()).toHaveLength(2);
+      expect(el.querySelectorAll('.notifications__item--unread')).toHaveLength(
+        2,
+      );
     });
   });
 
@@ -186,7 +229,7 @@ describe('Notifications', () => {
       expect(text()).not.toContain('Không có nhắc hạn nào.');
       expect(el.querySelector('ui-error-state')).toBeNull();
       expect(
-        handle.mock.calls.filter(([e]) => e === learnerEndpoints.reminders),
+        handle.mock.calls.filter(([e]) => e === learnerEndpoints.reminderInbox),
       ).toHaveLength(0);
     });
   });
@@ -197,7 +240,7 @@ describe('Notifications', () => {
       const original: MockBackend['handle'] = (endpoint, request) =>
         MockBackend.prototype.handle.call(backend, endpoint, request);
       handle.mockImplementation((endpoint, request) =>
-        endpoint === learnerEndpoints.reminders
+        endpoint === learnerEndpoints.reminderInbox
           ? backendRefusal('internalError')
           : original(endpoint, request),
       );

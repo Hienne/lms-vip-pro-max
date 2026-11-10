@@ -6,20 +6,10 @@ import { map } from 'rxjs';
 import { serverData } from '../../../../core/data-access/server-data';
 import { EndpointClient } from '../../../../core/http/endpoint-client';
 
+import type { CertificateDocument } from '../../certificate-sheet/certificate-sheet';
+
 /** The message code the server answers for a certificate that is not the caller's or not earned. */
 const NOT_FOUND = 'LEARNING-NOT_FOUND';
-
-/** What the document prints, so the template only lays it out. */
-export interface CertificateDocument {
-  readonly fullName: string;
-  /** The title of the revision the learner finished, or the course code when it has none. */
-  readonly title: string;
-  /** The course code to show beside the title; null when the title already is the code. */
-  readonly code: string | null;
-  readonly completedAt: string;
-  readonly score: number | null;
-  readonly verificationCode: string;
-}
 
 /**
  * One certificate of the caller, by the enrollment id in the path. A path that holds no id and an

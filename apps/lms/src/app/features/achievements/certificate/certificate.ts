@@ -5,14 +5,12 @@ import {
   Button,
   Empty,
   ErrorState,
-  FmtDatePipe,
-  FmtPctPipe,
   Icon,
-  Mai,
   PageHeader,
   Skeleton,
   type BreadcrumbItem,
 } from '@lms/ui';
+import { CertificateSheet } from '../certificate-sheet/certificate-sheet';
 import { CertificateStore } from './data-access/certificate.store';
 
 /** One certificate as a printable document (the mockup's `certificate` page). */
@@ -21,12 +19,10 @@ import { CertificateStore } from './data-access/certificate.store';
   imports: [
     Breadcrumb,
     Button,
+    CertificateSheet,
     Empty,
     ErrorState,
-    FmtDatePipe,
-    FmtPctPipe,
     Icon,
-    Mai,
     PageHeader,
     RouterLink,
     Skeleton,

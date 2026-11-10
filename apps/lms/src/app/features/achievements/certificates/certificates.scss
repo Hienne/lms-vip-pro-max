@@ -4,13 +4,6 @@
   min-width: 0;
 }
 .certificates {
-  &__award,
-  &__recipient,
-  &__course,
-  &__caption {
-    // prettier-ignore
-    font-family: ui.font(certificate); // design-drift-allow: own-font Approved certificate face.
-  }
   &__toolbar {
     display: grid;
     grid-template-columns: minmax(0, 1fr);
@@ -52,52 +45,6 @@
       align-self: flex-end;
       margin-top: auto;
     }
-  }
-  // Fixed document coordinates scale together, preserving a landscape thumbnail at every width.
-  &__preview {
-    display: block;
-    width: 100%;
-    aspect-ratio: 18 / 11;
-    overflow: hidden;
-  }
-  &__paper {
-    fill: ui.color(certificate-paper);
-  }
-  &__frame {
-    fill: none;
-    stroke: ui.color(certificate-gold);
-    stroke-width: 2;
-  }
-  &__masthead {
-    fill: ui.color(certificate-teal);
-  }
-  &__brand {
-    fill: ui.color(white);
-    font-size: ui.text-size(2xl);
-    font-weight: ui.weight(semibold);
-  }
-  &__award {
-    fill: ui.color(certificate-gold-ink);
-    font-size: ui.text-size(3xl);
-    font-weight: ui.weight(semibold);
-  }
-  &__recipient {
-    fill: ui.color(certificate-teal);
-    font-size: ui.text-size(3xl);
-    font-weight: ui.weight(semibold);
-  }
-  &__caption {
-    fill: ui.color(certificate-caption);
-    font-size: ui.text-size(lg);
-  }
-  &__course {
-    fill: ui.color(certificate-ink);
-    font-size: ui.text-size(xl);
-    font-weight: ui.weight(semibold);
-  }
-  &__footnote {
-    fill: ui.color(certificate-caption);
-    font-size: ui.text-size(sm);
   }
   &__title {
     text-decoration: none;

@@ -1,11 +1,19 @@
 import * as THREE from 'three';
 import type { RoomFacing, RoomPlayer } from '@lms/contracts';
 import type { RoomSpeech } from '../../../data-access/chat-room.model';
-import { AVATAR_COLORS } from './room-avatar';
 import { facingYaw, type GesturePose } from './room.motion';
-import { RoomWorld3D, WORLD_SCALE } from './room-world-3d';
+import { CHAIR_SEAT_TOP, RoomWorld3D, WORLD_SCALE } from './room-world-3d';
+
+const AVATAR_COLORS = {
+  teal: 0x168e85,
+  slate: 0x657a81,
+  amber: 0xd39a39,
+  blue: 0x5188cf,
+  rose: 0xce728a,
+};
 
 const AVATAR_SCALE = 0.5;
+const SEATED_HIP_BASE = 0.49;
 const LABEL_HEIGHT = 2.18 * AVATAR_SCALE;
 const LABEL_SCALE = 1.85;
 
@@ -13,6 +21,7 @@ export class RoomAvatar3D {
   readonly root = new THREE.Group();
   readonly body = new THREE.Group();
   private readonly limbs: THREE.Group[] = [];
+  private readonly seatedLegs: THREE.Group[] = [];
   private readonly hands: { fist: THREE.Mesh; palm: THREE.Group }[] = [];
   private garment!: THREE.Mesh;
   private belt!: THREE.Mesh;
@@ -57,6 +66,9 @@ export class RoomAvatar3D {
     const skin = 0xecb18b;
     const hair = 0x40251c;
     const garment = AVATAR_COLORS[this.player.color];
+    const trousers = 0x343f50;
+    const shoe = 0x44302a;
+    const sole = 0xffe9ce;
     const body = this.body;
     const sphere = this.world.sphere.bind(this.world);
     const skirt = this.player.avatar === 'female';
@@ -219,9 +231,30 @@ export class RoomAvatar3D {
       const foot = new THREE.Group();
       foot.position.set(side * 0.156, 0.23, 0);
       body.add(foot);
-      if (!skirt) sphere(foot, 0, 0.045, 0.022, 0.123, 0.234, 0.126, 0x343f50);
-      sphere(foot, 0, -0.135, -0.05, 0.125, 0.079, 0.165, 0x44302a);
-      sphere(foot, 0, -0.181, -0.05, 0.129, 0.028, 0.169, 0xffe9ce);
+      if (!skirt) sphere(foot, 0, 0.045, 0.022, 0.123, 0.234, 0.126, trousers);
+      sphere(foot, 0, -0.135, -0.05, 0.125, 0.079, 0.165, shoe);
+      sphere(foot, 0, -0.181, -0.05, 0.129, 0.028, 0.169, sole);
+
+      // The shin hangs in front of the cushion and the thigh rests on top.
+      const seatedLeg = new THREE.Group();
+      seatedLeg.position.x = side * 0.156;
+      const legColor = skirt ? skin : trousers;
+      sphere(
+        seatedLeg,
+        0,
+        SEATED_HIP_BASE + 0.105,
+        -0.2,
+        0.123,
+        0.116,
+        0.34,
+        legColor,
+      );
+      sphere(seatedLeg, 0, 0.338, -0.55, 0.103, 0.267, 0.11, legColor);
+      sphere(seatedLeg, 0, 0.128, -0.618, 0.125, 0.079, 0.165, shoe);
+      sphere(seatedLeg, 0, 0.082, -0.618, 0.129, 0.028, 0.169, sole);
+      seatedLeg.visible = false;
+      body.add(seatedLeg);
+      this.seatedLegs.push(seatedLeg);
 
       const arm = new THREE.Group();
       arm.position.set(side * 0.264, 0.88, 0);
@@ -274,6 +307,7 @@ export class RoomAvatar3D {
     reducedMotion: boolean,
     pose: GesturePose,
     localWalking?: boolean,
+    smoothLocalPosition = false,
   ): void {
     const dx = this.target.x / WORLD_SCALE - this.root.position.x,
       dz = this.target.y / WORLD_SCALE - this.root.position.z;
@@ -282,8 +316,9 @@ export class RoomAvatar3D {
       !pose.highFive &&
       (localWalking ?? Math.hypot(dx, dz) > 0.01);
     const blend = 1 - Math.exp(-delta / 45);
-    this.root.position.x += dx * (this.local ? 1 : blend);
-    this.root.position.z += dz * (this.local ? 1 : blend);
+    const positionBlend = this.local && !smoothLocalPosition ? 1 : blend;
+    this.root.position.x += dx * positionBlend;
+    this.root.position.z += dz * positionBlend;
     const yaw =
       pose.highFive?.yaw ?? facingYaw(pose.facing ?? this.target.facing);
     const angle = Math.atan2(
@@ -293,9 +328,10 @@ export class RoomAvatar3D {
     this.body.rotation.y += angle * blend;
     const swing = walking && !reducedMotion ? Math.sin(time / 100) * 0.45 : 0;
     const [leftFoot, leftArm, rightFoot, rightArm] = this.limbs;
-    leftFoot.position.y = rightFoot.position.y = this.seated ? 0.72 : 0.23;
-    leftFoot.rotation.x = this.seated ? 1.2 : swing;
-    rightFoot.rotation.x = this.seated ? 1.2 : -swing;
+    leftFoot.visible = rightFoot.visible = !this.seated;
+    leftFoot.rotation.x = swing;
+    rightFoot.rotation.x = -swing;
+    this.seatedLegs.forEach((leg) => (leg.visible = this.seated));
     const wave = pose.highFive ? 0 : pose.wave;
     leftArm.rotation.set(-swing, 0, -0.32 - pose.lift * 0.45);
     rightArm.rotation.set(
@@ -313,10 +349,13 @@ export class RoomAvatar3D {
       hand.rotation.set(pose.highFive.amount * 1.78, 0, 0);
       hand.scale.y = 1 + pose.highFive.amount * 0.33;
     }
-    this.garment.scale.y = this.seated ? 0.49 : 1;
-    this.garment.position.y = this.seated ? 0.58 : 0;
+    const skirtSeated = this.seated && this.player.avatar === 'female';
+    this.garment.scale.y = skirtSeated ? 0.61 : 1;
+    this.garment.position.y = skirtSeated ? 0.42 : 0;
     this.belt.visible = !this.seated;
-    const lift = this.seated ? 0.22 : pose.lift * 0.62 * AVATAR_SCALE;
+    const lift = this.seated
+      ? CHAIR_SEAT_TOP - SEATED_HIP_BASE * AVATAR_SCALE
+      : pose.lift * 0.62 * AVATAR_SCALE;
     const reach = pose.highFive
       ? 39 * (1 - AVATAR_SCALE) * pose.highFive.amount
       : 0;

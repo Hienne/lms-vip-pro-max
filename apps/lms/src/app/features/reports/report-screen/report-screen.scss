@@ -60,28 +60,20 @@
       padding-top: ui.space(6);
     }
   }
-  &__advanced {
+  &__filter-grid {
     border-top: 1px solid ui.color(border);
     padding-top: ui.space(3);
-    summary {
-      cursor: pointer;
-    }
-  }
-  &__filter-grid {
-    padding-top: ui.space(4);
   }
   &__check {
     align-self: end;
     padding-block: ui.space(2);
   }
-  &__tab:focus-visible,
-  &__advanced summary:focus-visible {
+  &__tab:focus-visible {
     @include ui.focus-ring;
   }
   &__muted,
   &__footnote,
   &__bar-note,
-  &__advanced summary,
   &__section-heading p {
     @include ui.text(sm, muted);
   }

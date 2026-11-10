@@ -54,7 +54,7 @@ export const LearningReportGroupSchema = LearningReportCountsSchema.omit({
   assigned: true,
   mandatory: true,
 }).extend({
-  id: z.string(),
+  id: z.string().nullable(),
   name: z.string().nullable(),
 });
 export type LearningReportGroup = z.infer<typeof LearningReportGroupSchema>;

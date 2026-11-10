@@ -752,6 +752,30 @@ export class AssessmentAuthoringMock {
     );
     if (!grants.length)
       return fail('CORE-ACCESS_DENIED', 'Không đủ quyền báo cáo.', 403);
+    if (endpoint === reports.quizOptions) {
+      const { courseId, quizId, orgId, teamId } = r.query;
+      if (!courseId && !quizId)
+        return fail('CORE-VALIDATION_FAILED', 'Chọn khóa học trước.');
+      const availableTeamIds = [1, 7];
+      const allowed = grants.some(
+        (grant) =>
+          grant.scope.type === 'GLOBAL' ||
+          (grant.scope.type === 'ORG' && inOrg(grant.scope.orgId, 1)) ||
+          (grant.scope.type === 'TEAM' &&
+            availableTeamIds.some(
+              (team) =>
+                team === grant.scope.teamId &&
+                (!teamId || Number(teamId) === team),
+            )),
+      );
+      const matches =
+        allowed &&
+        (!courseId || courseId === '1') &&
+        (!quizId || quizId === '1') &&
+        (!orgId || inOrg(Number(orgId), 1)) &&
+        (!teamId || availableTeamIds.includes(Number(teamId)));
+      return ok(matches ? [{ id: 1, name: 'Luyện tập Core Banking' }] : []);
+    }
     // Fixed synthetic rows, scoped to org 1 / team 1. No browser-side scoring or aggregation.
     const submittedAt = '2026-11-01T02:00:00Z';
     const q = r.query,

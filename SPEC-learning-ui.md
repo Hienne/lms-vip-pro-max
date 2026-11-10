@@ -116,7 +116,7 @@ The cover is lost at three layers. Fixing only the frontend changes nothing.
 
 ### Lesson player (screenshots 06 to 11)
 
-- **Navigation is buried.** "Khối trước / Khối tiếp theo / Bài tiếp theo" sit under the whole
+- **Navigation is buried.** "Nội dung trước / Nội dung tiếp theo / Bài tiếp theo" sit under the whole
   "Đánh giá & trao đổi" panel, which has stars, three tabs, a textarea and the comment list. On a
   short block the learner scrolls past a feedback form to move on. At 375 px the buttons are about
   two screens down.
@@ -196,8 +196,8 @@ Restructure around "what do I do next". Components and data stay; only placement
   sub-rows with type and state. The chip strip above the content is removed at ≥1024 px. Below that
   width, a compact "Khối 2/3 · Tài liệu PDF" select or stepper replaces the strip, never stacked
   chips.
-- **Sticky step bar** at the bottom of the main column: "← Khối trước", a state line ("Đã hoàn thành"
-  or "Cần xem 80% video" from the server's numbers), and the one primary "Khối tiếp theo / Bài tiếp
+- **Sticky step bar** at the bottom of the main column: "← Nội dung trước", a state line ("Đã hoàn thành"
+  or "Cần xem 80% video" from the server's numbers), and the one primary "Nội dung tiếp theo / Bài tiếp
   theo →". "Đánh dấu hoàn thành" joins this bar when the block needs it, so there is one primary
   button per view.
 - **Feedback becomes secondary:** "Đánh giá & trao đổi" sits below the step bar, collapsed by default

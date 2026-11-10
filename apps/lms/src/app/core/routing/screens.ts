@@ -584,7 +584,7 @@ export const SCREEN_TABLE = {
   open: [
     {
       path: 'chat-room',
-      title: 'Phòng học chung',
+      title: 'Giải trí',
       mockupPage: 'chatRoom',
       layout: 'workspace',
       load: () =>

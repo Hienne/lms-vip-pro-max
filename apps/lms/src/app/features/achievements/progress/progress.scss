@@ -21,6 +21,17 @@
     min-height: ui.space(18);
   }
 
+  &__weekly {
+    @include ui.stack(3);
+    min-width: 0;
+
+    h3 {
+      @include ui.text(md);
+      margin: 0;
+      font-weight: ui.weight(semibold);
+    }
+  }
+
   &__streak {
     @include ui.row(6);
     margin: 0;
@@ -110,6 +121,15 @@
 
   // Column widths are the `uiTableCol`s in the template (`uiTable fixed`).
   &__courses {
+    @include ui.bp(md) {
+      min-width: 64rem;
+
+      th,
+      td {
+        padding-inline: ui.space(3);
+      }
+    }
+
     th {
       white-space: normal;
     }
@@ -118,13 +138,6 @@
       min-width: 0;
       overflow-wrap: anywhere;
     }
-  }
-
-  &__course {
-    display: grid;
-    grid-template-columns: auto minmax(0, 1fr);
-    align-items: center;
-    gap: ui.space(2);
   }
 
   &__course-name,
@@ -171,82 +184,7 @@
     font-weight: ui.weight(semibold);
   }
 
-  &__detail-row {
-    background: ui.color(surface-2);
-  }
-
-  &__detail {
-    display: grid;
-    grid-template-columns: minmax(0, max-content) max-content;
-    align-items: start;
-    justify-content: start;
-    gap: ui.space(6);
-    padding-block: ui.space(2);
-    // Match the course title's inset: the disclosure button and its grid gap.
-    padding-inline-start: calc(#{ui.layout(touch)} + #{ui.space(2)});
-
-    > a {
-      justify-self: start;
-    }
-  }
-
-  &__facts {
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: ui.space(3) ui.space(6);
-    margin: 0;
-    min-width: 0;
-
-    > div {
-      @include ui.stack(1);
-      min-width: 0;
-    }
-
-    dt {
-      @include ui.text(sm, muted);
-    }
-
-    dd {
-      @include ui.num;
-      margin: 0;
-    }
-  }
-
-  &__overview-grid {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr);
-    gap: ui.space(6);
-
-    @include ui.bp(lg) {
-      grid-template-columns: minmax(0, 3fr) minmax(0, 2fr);
-      grid-template-rows: auto auto 1fr;
-      row-gap: ui.space(3);
-      align-items: stretch;
-
-      > .learning-progress__competency-summary {
-        display: grid;
-        grid-template-rows: subgrid;
-        grid-row: span 3;
-        align-content: stretch;
-      }
-    }
-  }
-
-  &__competency-summary {
-    min-width: 0;
-    @include ui.stack(3);
-    padding-block: ui.space(5);
-    border-top: 1px solid ui.color(border);
-
-    h2 {
-      @include ui.text(xl);
-      margin: 0;
-      font-weight: ui.weight(semibold);
-    }
-  }
-
   &__activity {
-    align-self: start;
     padding: ui.space(4);
     border: 1px solid ui.color(border);
     border-radius: ui.radius(card);
@@ -272,10 +210,6 @@
     margin: ui.space(3) 0 0;
   }
 
-  &__heading {
-    @include ui.row-between(2);
-  }
-
   &__insight-panel {
     max-width: ui.layout(reading);
     padding-block: ui.space(6);
@@ -286,7 +220,12 @@
     max-width: none;
   }
 
+  &__rhythm-section {
+    margin-block-start: ui.space(6);
+  }
+
   &__competency,
+  &__rhythm-section,
   &__history {
     @include ui.stack(4);
     min-width: 0;
@@ -303,23 +242,16 @@
     font-weight: ui.weight(medium);
   }
 
-  &__muted,
-  &__late {
+  &__sub {
+    display: block;
+  }
+
+  &__muted {
     @include ui.text(sm, muted);
     margin: 0;
   }
 
   @include ui.bp-below(md) {
-    &__detail {
-      grid-template-columns: minmax(0, 1fr);
-      gap: ui.space(3);
-      padding-inline-start: 0;
-    }
-
-    &__facts {
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-    }
-
     &__search {
       flex-basis: 100%;
     }
@@ -347,6 +279,10 @@
           display: none;
         }
       }
+    }
+
+    &__cell-value {
+      text-align: end;
     }
 
     &__progress {
