@@ -858,7 +858,7 @@ export class LessonStore {
     this.channel.send({ type: 'PLAY', playing: true, positionSeconds });
   }
 
-  /** Every 10 s while the video plays; carries the range played since the last report. */
+  /** Every 20 s while the video plays; carries the range played since the last report. */
   videoBeat(positionSeconds: number): void {
     this.channel.send({ type: 'HEARTBEAT', playing: true, positionSeconds });
   }

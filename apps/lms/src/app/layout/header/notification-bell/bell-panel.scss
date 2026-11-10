@@ -1,14 +1,14 @@
 @use 'ui';
 
+:host {
+  display: block;
+}
+
 .bell {
   @include ui.stack(3);
-  width: min(24rem, calc(100vw - #{ui.space(8)}));
 
   &__list {
     @include ui.stack(1);
-    max-height: 52dvh;
-    overflow-y: auto;
-    overscroll-behavior: contain;
     margin: 0;
     padding: 0;
     list-style: none;
@@ -32,12 +32,7 @@
     @include ui.stack(1);
     min-width: 0;
     flex: 1;
-  }
-
-  &__title {
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+    overflow-wrap: anywhere;
   }
 
   &__meta,

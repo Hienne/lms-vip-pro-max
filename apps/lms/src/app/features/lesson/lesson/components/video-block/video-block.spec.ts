@@ -115,17 +115,21 @@ describe('VideoBlock', () => {
     expect(probe.beats).toEqual([]);
   });
 
-  it('reports a play with its position and a beat every 10 s while it plays', () => {
+  it('reports a play with its position and a beat every 20 s while it plays', () => {
     const probe = render();
     probe.time(5);
     probe.fire('play', false);
     expect(probe.played).toEqual([5]);
 
-    probe.time(15);
-    vi.advanceTimersByTime(VIDEO_BEAT_MS);
     probe.time(25);
-    vi.advanceTimersByTime(VIDEO_BEAT_MS);
-    expect(probe.beats).toEqual([15, 25]);
+    vi.advanceTimersByTime(19_999);
+    expect(probe.beats).toEqual([]);
+    vi.advanceTimersByTime(1);
+    expect(probe.beats).toEqual([25]);
+
+    probe.time(45);
+    vi.advanceTimersByTime(20_000);
+    expect(probe.beats).toEqual([25, 45]);
   });
 
   it('stops beating at a pause and reports where it paused', () => {
