@@ -630,6 +630,11 @@ export const PublishableContentSchema = z.object({
   tagIds: tagIdsInput,
 });
 
+/** Answers allow short acknowledgements, but never whitespace-only text. */
+export const PublishableAnswerSchema = PublishableContentSchema.extend({
+  bodyMarkdown: z.string().trim().min(1).max(COMMUNITY_LIMITS.body.max),
+});
+
 /** A question also needs at least one tag. */
 export const PublishableQuestionSchema = PublishableContentSchema.extend({
   tagIds: tagIdsInput.min(1),

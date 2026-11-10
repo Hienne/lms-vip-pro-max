@@ -95,7 +95,13 @@ export class CommunityContent implements HasUnsavedChanges {
   private readonly clearedFor = signal(0);
   protected readonly answerForm = form(
     this.answerModel,
-    (path) => publishRules(path, { tags: false, lesson: false, title: false }),
+    (path) =>
+      publishRules(path, {
+        tags: false,
+        lesson: false,
+        title: false,
+        bodyMin: 1,
+      }),
     {
       submission: {
         action: async () =>
@@ -151,7 +157,7 @@ export class CommunityContent implements HasUnsavedChanges {
       const posted = this.store.answersPosted$();
       if (posted === untracked(this.clearedFor)) return;
       untracked(() => {
-        this.answerModel.set(emptyContentForm());
+        this.answerForm().reset(emptyContentForm());
         this.clearedFor.set(posted);
       });
     });

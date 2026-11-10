@@ -42,7 +42,7 @@ export class MarkdownEditor implements FormValueControl<string> {
   readonly rows = input(14);
 
   protected readonly bodyMax = COMMUNITY_LIMITS.body.max;
-  protected readonly bodyMin = COMMUNITY_LIMITS.body.min;
+  readonly bodyMin = input<number>(COMMUNITY_LIMITS.body.min);
   protected readonly modes: readonly SegmentedOption<Mode>[] = [
     { value: 'write', label: 'Soạn' },
     { value: 'preview', label: 'Xem trước' },

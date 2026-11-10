@@ -165,7 +165,6 @@
             }
             <div class="content__feedback">
               <app-vote
-                [mode]="isQuestion() ? 'score' : 'helpful'"
                 [score]="detail.score"
                 [myVote]="detail.myVote"
                 [canVote]="detail.capabilities.canVote"
@@ -305,7 +304,6 @@
 
               <div class="content__feedback">
                 <app-vote
-                  mode="score"
                   [score]="answer.score"
                   [myVote]="answer.myVote"
                   [canVote]="answer.capabilities.canVote"
@@ -342,6 +340,7 @@
             </h2>
             <app-markdown-editor
               label="Nội dung câu trả lời"
+              [bodyMin]="1"
               [rows]="6"
               [formField]="answerForm.bodyMarkdown"
             />

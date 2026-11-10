@@ -194,6 +194,7 @@ export class CommunityEditor implements HasUnsavedChanges {
       publishRules(path, {
         tags: () => !this.isAnswer() && !this.isReview(),
         lesson: () => this.isLesson(),
+        bodyMin: () => (this.isAnswer() ? 1 : 20),
       });
     },
     {
