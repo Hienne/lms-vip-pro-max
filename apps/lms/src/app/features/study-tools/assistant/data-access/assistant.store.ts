@@ -2,10 +2,12 @@ import { BreakpointObserver } from '@angular/cdk/layout';
 import {
   computed,
   DestroyRef,
+  effect,
   inject,
   Injectable,
   linkedSignal,
   signal,
+  untracked,
 } from '@angular/core';
 import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import {
@@ -23,19 +25,26 @@ import {
   type Subscription,
   tap,
 } from 'rxjs';
+import { ConversationsStore } from '../../../../core/assistant/conversations.store';
 import { invalidation } from '../../../../core/data-access/invalidation';
 import { serverData } from '../../../../core/data-access/server-data';
 import { toAppError } from '../../../../core/errors/app-error';
 import { EndpointClient } from '../../../../core/http/endpoint-client';
 import { DocumentTrackerStore } from '../../../../core/knowledge/document-tracker.store';
 import { NetworkStore } from '../../../../core/network/network.store';
+import { SessionStore } from '../../../../core/session/session.store';
+import { AssistantViewStorage } from './assistant-view.storage';
 import type { Answer, Turn, Upload } from './assistant.model';
+import { turnFromStored } from './stored-turns';
 import { uploadProblem } from './upload-rules';
 
 export const DOCUMENTS_PAGE_SIZE = 20;
 
 /** From the `md` breakpoint the documents panel sits beside the chat; below it, it is a drawer. */
 export const PANEL_BESIDE_QUERY = '(min-width: 720px)';
+
+/** From here the conversation list is a column beside the chat; below it, a drawer. */
+export const HISTORY_BESIDE_QUERY = '(min-width: 1100px)';
 
 export const OFFLINE_MESSAGE =
   'Mất kết nối — không gửi được câu hỏi. Thử lại khi có mạng.';
@@ -62,8 +71,13 @@ export class AssistantStore {
   private readonly network = inject(NetworkStore);
   private readonly toaster = inject(Toaster);
   private readonly breakpoints = inject(BreakpointObserver);
+  private readonly conversations = inject(ConversationsStore);
+  private readonly session = inject(SessionStore);
+  private readonly viewStorage = inject(AssistantViewStorage);
 
   private nextId = 1;
+  /** The saved conversation being read back, if any. */
+  private loading: Subscription | null = null;
 
   /** Whether the viewport is wide enough for the panel beside the chat (an input, not state). */
   private readonly wide = toSignal(
@@ -72,6 +86,12 @@ export class AssistantStore {
       .pipe(map((result) => result.matches)),
     { initialValue: this.breakpoints.isMatched(PANEL_BESIDE_QUERY) },
   );
+  private readonly historyWide = toSignal(
+    this.breakpoints
+      .observe(HISTORY_BESIDE_QUERY)
+      .pipe(map((result) => result.matches)),
+    { initialValue: this.breakpoints.isMatched(HISTORY_BESIDE_QUERY) },
+  );
   private streaming: Subscription | null = null;
 
   private readonly state = {
@@ -79,6 +99,15 @@ export class AssistantStore {
     /** The server conversation the next question continues; null starts a new one. */
     conversationId: signal<number | null>(null),
     answeringId: signal<number | null>(null),
+    /** A saved conversation is being read from the server. */
+    opening: signal(false),
+    /** Why the last attempt to open a saved conversation failed; null when it did not. */
+    openError: signal<string | null>(null),
+    /** Open beside the chat on a wide screen, a closed drawer on a narrow one, until toggled. */
+    historyOpen: linkedSignal<boolean, boolean>({
+      source: () => this.historyWide(),
+      computation: (wide) => wide,
+    }),
     uploads: signal<readonly Upload[]>([]),
     page: signal(1),
     /** Open beside the chat on a wide screen, closed (a drawer) on a narrow one, until toggled. */
@@ -110,6 +139,18 @@ export class AssistantStore {
   readonly uploads$ = this.state.uploads.asReadonly();
   readonly page$ = this.state.page.asReadonly();
   readonly panelOpen$ = this.state.panelOpen.asReadonly();
+  readonly conversationId$ = this.state.conversationId.asReadonly();
+  readonly isOpening$ = this.state.opening.asReadonly();
+  readonly openError$ = this.state.openError.asReadonly();
+  readonly historyOpen$ = this.state.historyOpen.asReadonly();
+  /** The conversation list is a column beside the chat. */
+  readonly historyBeside$ = computed(
+    () => this.historyWide() && this.historyOpen$(),
+  );
+  /** The conversation list is a drawer over the chat. */
+  readonly historyInDrawer$ = computed(
+    () => !this.historyWide() && this.historyOpen$(),
+  );
   /** The panel is a column beside the chat. */
   readonly panelBeside$ = computed(() => this.wide() && this.panelOpen$());
   /** The panel is a drawer over the chat. */
@@ -144,7 +185,33 @@ export class AssistantStore {
         takeUntilDestroyed(),
       )
       .subscribe();
-    inject(DestroyRef).onDestroy(() => this.streaming?.unsubscribe());
+    inject(DestroyRef).onDestroy(() => {
+      this.streaming?.unsubscribe();
+      this.loading?.unsubscribe();
+    });
+
+    // The page shows the list, so it is read from now on; a deleted conversation may be the open one.
+    this.conversations.watch();
+    this.conversations.removed
+      .pipe(takeUntilDestroyed())
+      .subscribe((removed) => {
+        const open = this.state.conversationId();
+        if (removed === 'all' || (open !== null && removed === open)) {
+          this.stop();
+          this.loading?.unsubscribe();
+          this.setTurns([]);
+          this.state.conversationId.set(null);
+        }
+      });
+    // A reload keeps the open conversation: its id is the tab's, its turns are read from the server.
+    const userId = this.session.user$()?.userId;
+    const saved = userId ? this.viewStorage.read(userId) : null;
+    if (saved !== null) this.read(saved, false);
+    effect(() => {
+      const id = this.state.conversationId();
+      const user = this.session.user$()?.userId;
+      if (user) untracked(() => this.viewStorage.write(user, id));
+    });
   }
 
   setTurns(turns: readonly Turn[]): void {
@@ -241,14 +308,59 @@ export class AssistantStore {
   /** Starts over: the next question opens a new conversation. Refused while an answer is on its way. */
   newConversation(): void {
     if (this.isAnswering$()) return;
+    this.loading?.unsubscribe();
+    this.state.opening.set(false);
+    this.state.openError.set(null);
     this.setTurns([]);
     this.state.conversationId.set(null);
+    if (!this.historyWide()) this.state.historyOpen.set(false);
+  }
+
+  // ---- saved conversations ---------------------------------------------------------------------
+
+  toggleHistory(): void {
+    this.state.historyOpen.set(!this.historyOpen$());
+  }
+
+  closeHistory(): void {
+    this.state.historyOpen.set(false);
+  }
+
+  /** Reopens a saved conversation; refused while an answer is on its way. */
+  openConversation(id: number): void {
+    if (this.isAnswering$()) return;
+    this.state.openError.set(null);
+    this.read(id, true);
+  }
+
+  /** Reads a conversation from the server; a restore after a reload fails quietly, an open says why. */
+  private read(id: number, announce: boolean): void {
+    this.loading?.unsubscribe();
+    this.state.opening.set(true);
+    this.loading = this.conversations.detail(id).subscribe({
+      next: (detail) => {
+        this.state.opening.set(false);
+        // A question asked while this was loading is newer than what was saved.
+        if (this.isAnswering$()) return;
+        this.setTurns(detail.turns.map(turnFromStored));
+        this.nextId = Math.max(0, ...detail.turns.map((t) => t.id)) + 1;
+        this.state.conversationId.set(detail.id);
+        if (!this.historyWide()) this.state.historyOpen.set(false);
+      },
+      error: (error: unknown) => {
+        this.state.opening.set(false);
+        if (announce) this.state.openError.set(toAppError(error).message);
+        else this.state.conversationId.set(null);
+      },
+    });
   }
 
   private apply(id: number, event: ChatStreamEvent): void {
     switch (event.type) {
       case 'conversation':
         this.state.conversationId.set(event.conversationId);
+        // The list shows a new conversation as soon as it exists.
+        this.conversations.touch();
         break;
       case 'retrieved':
         this.patchAnswer(id, { status: 'composing', retrieved: event.count });
@@ -265,6 +377,7 @@ export class AssistantStore {
           citations: event.citations,
         });
         this.setAnsweringId(null);
+        this.conversations.touch();
         break;
       case 'error':
         this.fail(id, event.message);
@@ -275,6 +388,7 @@ export class AssistantStore {
   private fail(id: number, error: string): void {
     this.patchAnswer(id, { status: 'error', error });
     this.setAnsweringId(null);
+    this.conversations.touch();
   }
 
   private patchAnswer(

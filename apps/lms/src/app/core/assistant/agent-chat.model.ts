@@ -63,13 +63,15 @@ export const AgentTurnSchema = z.object({
 });
 export type AgentTurn = z.infer<typeof AgentTurnSchema>;
 
-/** What `sessionStorage` holds for one user. */
+/**
+ * What `sessionStorage` holds for one user: where the panel is and which saved conversation is
+ * open. The turns themselves are the server's and are read again on a reload.
+ */
 export const PersistedChatSchema = z.object({
   open: z.boolean(),
   /** The panel is docked to the right edge on a wide screen; stored only when it is. */
   docked: z.boolean().optional(),
   /** The server conversation the next question continues; absent before the first answer. */
   conversationId: z.number().int().positive().optional(),
-  turns: z.array(AgentTurnSchema),
 });
 export type PersistedChat = z.infer<typeof PersistedChatSchema>;

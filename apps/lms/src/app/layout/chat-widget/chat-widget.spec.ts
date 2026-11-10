@@ -1,7 +1,9 @@
 import { Component, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { provideRouter, Router } from '@angular/router';
+import type { ConversationSummary } from '@lms/contracts';
 import { AgentChatStore } from '../../core/assistant/agent-chat.store';
+import { ConversationsStore } from '../../core/assistant/conversations.store';
 import { AGENT_LAUNCHER_ID } from '../../core/assistant/agent-launcher';
 import type { AgentTurn } from '../../core/assistant/agent-chat.model';
 import { ChatWidget } from './chat-widget';
@@ -27,8 +29,12 @@ function fakeStore() {
   const turns = signal<readonly AgentTurn[]>([]);
   const answering = signal(false);
   const docked = signal(false);
+  const historyOpen = signal(false);
+  const items = signal<readonly ConversationSummary[]>([]);
   return {
     docked,
+    historyOpen,
+    items,
     available,
     open,
     turns,
@@ -42,6 +48,13 @@ function fakeStore() {
       isOffline$: signal(false).asReadonly(),
       isConfirming$: signal(false).asReadonly(),
       announcement$: signal('').asReadonly(),
+      isHistoryOpen$: historyOpen.asReadonly(),
+      isOpening$: signal(false).asReadonly(),
+      openError$: signal<string | null>(null).asReadonly(),
+      conversationId$: signal<number | null>(null).asReadonly(),
+      showHistory: vi.fn(() => historyOpen.set(true)),
+      hideHistory: vi.fn(() => historyOpen.set(false)),
+      openConversation: vi.fn(),
       close: vi.fn(() => open.set(false)),
       clear: vi.fn(() => turns.set([])),
       ask: vi.fn(),
@@ -50,6 +63,18 @@ function fakeStore() {
       confirm: vi.fn(),
       cancel: vi.fn(),
       retry: vi.fn(),
+    },
+    history: {
+      items$: items.asReadonly(),
+      isLoading$: signal(false).asReadonly(),
+      loadError$: signal(undefined).asReadonly(),
+      query$: signal('').asReadonly(),
+      isChanging$: signal(false).asReadonly(),
+      setQuery: vi.fn(),
+      rename: vi.fn(),
+      remove: vi.fn(),
+      removeAll: vi.fn(),
+      retryLoad: vi.fn(),
     },
   };
 }
@@ -72,6 +97,7 @@ describe('ChatWidget', () => {
       providers: [
         provideRouter([{ path: '**', component: Blank }]),
         { provide: AgentChatStore, useValue: fake.store },
+        { provide: ConversationsStore, useValue: fake.history },
       ],
     });
     const fixture = TestBed.createComponent(Host);
@@ -97,7 +123,7 @@ describe('ChatWidget', () => {
     const header = [
       ...el.querySelectorAll('.chat__header button, .chat__header a'),
     ].map((control) => control.getAttribute('aria-label'));
-    expect(header).toEqual(['Mở rộng', 'Đóng']);
+    expect(header).toEqual(['Lịch sử hội thoại', 'Mở rộng', 'Đóng']);
   });
 
   it('renders nothing while closed or when the assistant is not available', async () => {
@@ -175,11 +201,11 @@ describe('ChatWidget', () => {
     expect(store.close).toHaveBeenCalled();
   });
 
-  it('offers clear only once there is a conversation, and not while a reply is on its way', async () => {
+  it('offers a new conversation only once there is one, and not while a reply is on its way', async () => {
     const { fixture, el, turns, answering, store } = await render();
     const clear = () =>
       el.querySelector<HTMLButtonElement>(
-        'button[aria-label="Xoá hội thoại"]',
+        'button[aria-label="Hội thoại mới"]',
       ) as HTMLButtonElement;
     expect(clear()).toBeNull();
     turns.set([turn(1, 'Trả lời một')]);
@@ -192,6 +218,55 @@ describe('ChatWidget', () => {
     await fixture.whenStable();
     clear().click();
     expect(store.clear).toHaveBeenCalled();
+  });
+
+  it('swaps the log for the saved conversations from the history button, and back', async () => {
+    const { fixture, el, items, store } = await render();
+    items.set([
+      {
+        id: 7,
+        title: 'Quy trình EOD',
+        lastActivityTime: '2026-11-10T09:00:00Z',
+        createTime: '2026-11-10T09:00:00Z',
+      },
+    ]);
+    const toggle = () =>
+      el.querySelector<HTMLButtonElement>(
+        '.chat__header button[aria-label$="hội thoại"][aria-pressed]',
+      ) as HTMLButtonElement;
+    expect(toggle().getAttribute('aria-pressed')).toBe('false');
+    expect(el.querySelector('app-conversation-list')).toBeNull();
+
+    toggle().click();
+    await fixture.whenStable();
+    expect(store.showHistory).toHaveBeenCalled();
+    expect(el.querySelector('[role="log"]')).toBeNull();
+    expect(el.querySelector('textarea')).toBeNull();
+    expect(el.querySelector('app-conversation-list')?.textContent).toContain(
+      'Quy trình EOD',
+    );
+    expect(toggle().getAttribute('aria-label')).toBe('Quay lại hội thoại');
+
+    toggle().click();
+    await fixture.whenStable();
+    expect(store.hideHistory).toHaveBeenCalled();
+    expect(el.querySelector('[role="log"]')).not.toBeNull();
+  });
+
+  it('reopens a conversation from the list through the store', async () => {
+    const { fixture, el, items, store, historyOpen } = await render();
+    items.set([
+      {
+        id: 7,
+        title: 'Quy trình EOD',
+        lastActivityTime: '2026-11-10T09:00:00Z',
+        createTime: '2026-11-10T09:00:00Z',
+      },
+    ]);
+    historyOpen.set(true);
+    await fixture.whenStable();
+    el.querySelector<HTMLButtonElement>('.history__open')?.click();
+    expect(store.openConversation).toHaveBeenCalledWith(7);
   });
 
   it('offers three suggested questions that are sent as they stand, then puts the cursor in the box', async () => {

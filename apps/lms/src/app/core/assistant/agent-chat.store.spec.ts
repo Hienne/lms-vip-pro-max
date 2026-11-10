@@ -5,7 +5,11 @@ import {
 import { ErrorHandler } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { provideRouter, Router } from '@angular/router';
-import type { AgentStreamEvent, PendingAction } from '@lms/contracts';
+import type {
+  AgentStreamEvent,
+  PendingAction,
+  StoredTurn,
+} from '@lms/contracts';
 import {
   agentActionEvents,
   agentDocumentEvents,
@@ -25,7 +29,7 @@ import {
   FakeSessionStore,
   seedProfile,
 } from '../session/session.testing';
-import type { AgentTurn } from './agent-chat.model';
+import { ConversationsStore } from './conversations.store';
 import {
   AgentChatStore,
   CUT_OFF_MESSAGE,
@@ -38,7 +42,36 @@ const confirmUrl = (id: string) =>
   `/api/v1/assistant/agent/actions/${id}/confirm`;
 const cancelUrl = (id: string) =>
   `/api/v1/assistant/agent/actions/${id}/cancel`;
-const KEY = (userId: string) => `lms.agent-chat.v1.${userId}`;
+const KEY = (userId: string) => `lms.agent-chat.v2.${userId}`;
+const LEGACY_KEY = (userId: string) => `lms.agent-chat.v1.${userId}`;
+const detailUrl = (id: number) => `/api/v1/assistant/conversations/${id}`;
+
+const storedTurn = (
+  id: number,
+  patch: Partial<StoredTurn> = {},
+): StoredTurn => ({
+  id,
+  surface: 'AGENT',
+  question: `Câu ${id}`,
+  answer: `Trả lời ${id}`,
+  citations: [],
+  toolNames: [],
+  navigation: null,
+  actionId: null,
+  action: null,
+  status: 'done',
+  createTime: '2026-11-10T09:00:00Z',
+  ...patch,
+});
+
+const detailBody = (id: number, turns: readonly StoredTurn[]) =>
+  envelopeOk({
+    id,
+    title: 'Tiêu đề',
+    lastActivityTime: '2026-11-10T09:00:00Z',
+    createTime: '2026-11-10T09:00:00Z',
+    turns,
+  });
 
 const ndjson = (events: readonly AgentStreamEvent[]) =>
   events.map((e) => JSON.stringify(e)).join('\n') + '\n';
@@ -111,6 +144,23 @@ describe('AgentChatStore', () => {
     store.ask(question);
     await settle();
     finish(backend.expectOne(STREAM), events);
+    await settle();
+  }
+
+  /** The history reads the list once it is shown; this answers it with an empty one. */
+  async function listed(): Promise<void> {
+    await settle();
+    backend
+      .expectOne('/api/v1/assistant/conversations?size=50')
+      .flush(
+        envelopeOk({
+          items: [],
+          page: 0,
+          size: 50,
+          totalElements: 0,
+          totalPages: 0,
+        }),
+      );
     await settle();
   }
 
@@ -446,12 +496,145 @@ describe('AgentChatStore', () => {
       await settle();
 
       setup();
+      TestBed.tick();
+      await settle();
+      backend.expectOne(detailUrl(42)).flush(detailBody(42, [storedTurn(1)]));
+      await settle();
       store.ask('Sau khi tải lại');
       await settle();
       const request = backend.expectOne(STREAM);
       expect(lastBody(request).conversationId).toBe(42);
       finish(request, [done('x')]);
       await settle();
+    });
+  });
+
+  describe('saved conversations', () => {
+    it('reopens a saved conversation with its answers, sources and each card in the state the server holds', async () => {
+      store.showHistory();
+      await listed();
+      store.openConversation(9);
+      expect(store.isOpening$()).toBe(true);
+      await settle();
+      backend.expectOne(detailUrl(9)).flush(
+        detailBody(9, [
+          storedTurn(1, {
+            citations: [
+              {
+                n: 1,
+                documentId: 3,
+                fileName: 'quy-trinh.pdf',
+                page: 2,
+                lineStart: 4,
+                lineEnd: 6,
+                snippet: 'Đối chiếu số dư.',
+              },
+            ],
+          }),
+          storedTurn(2, {
+            navigation: { path: '/courses', title: 'Khóa học' },
+            actionId: 'a1',
+            action: {
+              ...action('a1'),
+              status: 'expired',
+              message: null,
+            },
+          }),
+          storedTurn(3, { answer: null, status: 'stopped' }),
+        ]),
+      );
+      await settle();
+
+      expect(store.isOpening$()).toBe(false);
+      expect(store.isHistoryOpen$()).toBe(false);
+      expect(store.conversationId$()).toBe(9);
+      const turns = store.turns$();
+      expect(turns.map((t) => t.reply.status)).toEqual([
+        'done',
+        'done',
+        'stopped',
+      ]);
+      expect(turns[0].reply.citations).toHaveLength(1);
+      expect(turns[1].reply.navigatedTo).toEqual({
+        path: '/courses',
+        title: 'Khóa học',
+      });
+      expect(turns[1].reply.action).toMatchObject({
+        status: 'expired',
+        pending: { id: 'a1' },
+      });
+    });
+
+    it('continues the reopened conversation with the next question', async () => {
+      store.openConversation(9);
+      await settle();
+      backend.expectOne(detailUrl(9)).flush(detailBody(9, [storedTurn(1)]));
+      await settle();
+
+      store.ask('Tiếp');
+      await settle();
+      const request = backend.expectOne(STREAM);
+      expect(lastBody(request)).toEqual({ conversationId: 9, message: 'Tiếp' });
+      finish(request, [done('x')]);
+      await settle();
+      expect(store.turns$().map((t) => t.id)).toEqual([1, 2]);
+    });
+
+    it('says why a conversation could not be opened and keeps the one on screen', async () => {
+      await converse('Một', [conversation(5), done('Trả lời một')]);
+      store.showHistory();
+      await listed();
+      store.openConversation(9);
+      await settle();
+      const refusal = backendRefusal('assistantConversationNotFound');
+      backend
+        .expectOne(detailUrl(9))
+        .flush(refusal.body, { status: refusal.status, statusText: 'OK' });
+      await settle();
+
+      expect(store.openError$()).toBe(refusal.body.message);
+      expect(store.isHistoryOpen$()).toBe(true);
+      expect(store.conversationId$()).toBe(5);
+      expect(store.turns$().map((t) => t.question)).toEqual(['Một']);
+    });
+
+    it('does not open another conversation while a reply is on its way', async () => {
+      store.ask('Một');
+      await settle();
+      store.openConversation(9);
+      await settle();
+      backend.expectNone(detailUrl(9));
+      backend
+        .expectOne(STREAM)
+        .flush('', { headers: { 'Content-Type': 'application/x-ndjson' } });
+    });
+
+    it('shows and hides the history', () => {
+      store.showHistory();
+      expect(store.isHistoryOpen$()).toBe(true);
+      store.hideHistory();
+      expect(store.isHistoryOpen$()).toBe(false);
+    });
+
+    it('empties the panel when the open conversation is deleted from the history, and only that one', async () => {
+      await converse('Một', [conversation(5), done('Trả lời một')]);
+      const gone = (
+        TestBed.inject(ConversationsStore) as unknown as {
+          gone: { next: (value: number | 'all') => void };
+        }
+      ).gone;
+
+      gone.next(6);
+      expect(store.turns$()).toHaveLength(1);
+
+      gone.next(5);
+      expect(store.turns$()).toEqual([]);
+      expect(store.conversationId$()).toBeNull();
+
+      await converse('Hai', [conversation(8), done('Trả lời hai')]);
+      gone.next('all');
+      expect(store.turns$()).toEqual([]);
+      expect(store.conversationId$()).toBeNull();
     });
   });
 
@@ -642,30 +825,79 @@ describe('AgentChatStore', () => {
   });
 
   describe('persistence', () => {
-    const finished = (id: number): AgentTurn => ({
-      id,
-      question: `Câu ${id}`,
-      reply: {
-        status: 'done',
-        toolName: null,
-        text: `Trả lời ${id}`,
-        citations: [],
-        navigatedTo: null,
-        action: null,
-        error: null,
-      },
-    });
-
-    it('writes the conversation after a finished turn and restores it for the same user', async () => {
-      await converse('Một', [done('Trả lời một')]);
+    it('keeps only where the panel is and which conversation is open, never the turns', async () => {
+      await converse('Một', [conversation(42), done('Trả lời một')]);
       store.open();
       TestBed.tick();
-      expect(sessionStorage.getItem(KEY('000004'))).toContain('Trả lời một');
 
+      const raw = sessionStorage.getItem(KEY('000004')) ?? '';
+      expect(JSON.parse(raw)).toEqual({ open: true, conversationId: 42 });
+      expect(raw).not.toContain('Trả lời một');
+      expect(raw).not.toContain('Một');
+    });
+
+    it('reads the open conversation back from the server after a reload', async () => {
+      sessionStorage.setItem(
+        KEY('000004'),
+        JSON.stringify({ open: true, conversationId: 42 }),
+      );
       setup();
       TestBed.tick();
-      expect(store.turns$().map((t) => t.question)).toEqual(['Một']);
+      await settle();
       expect(store.isOpen$()).toBe(true);
+      expect(store.isOpening$()).toBe(true);
+      backend
+        .expectOne(detailUrl(42))
+        .flush(detailBody(42, [storedTurn(1), storedTurn(2)]));
+      await settle();
+
+      expect(store.turns$().map((t) => t.question)).toEqual(['Câu 1', 'Câu 2']);
+      expect(store.conversationId$()).toBe(42);
+      expect(store.isOpening$()).toBe(false);
+    });
+
+    it('starts a new conversation when the saved one is gone', async () => {
+      sessionStorage.setItem(
+        KEY('000004'),
+        JSON.stringify({ open: true, conversationId: 42 }),
+      );
+      setup();
+      TestBed.tick();
+      await settle();
+      const refusal = backendRefusal('assistantConversationNotFound');
+      backend
+        .expectOne(detailUrl(42))
+        .flush(refusal.body, { status: refusal.status, statusText: 'OK' });
+      await settle();
+
+      expect(store.turns$()).toEqual([]);
+      expect(store.conversationId$()).toBeNull();
+      expect(store.openError$()).toBeNull();
+      store.ask('Mới');
+      await settle();
+      const request = backend.expectOne(STREAM);
+      expect(lastBody(request)).toEqual({ message: 'Mới' });
+      finish(request, [done('x')]);
+      await settle();
+    });
+
+    it('does not let a question asked during the restore be replaced by the saved turns', async () => {
+      sessionStorage.setItem(
+        KEY('000004'),
+        JSON.stringify({ open: true, conversationId: 42 }),
+      );
+      setup();
+      TestBed.tick();
+      await settle();
+      store.ask('Nhanh tay');
+      await settle();
+      backend.expectOne(detailUrl(42)).flush(detailBody(42, [storedTurn(1)]));
+      await settle();
+
+      expect(store.turns$().map((t) => t.question)).toEqual(['Nhanh tay']);
+      backend
+        .expectOne(STREAM)
+        .flush('', { headers: { 'Content-Type': 'application/x-ndjson' } });
     });
 
     it('restores a docked panel docked', () => {
@@ -680,90 +912,58 @@ describe('AgentChatStore', () => {
     });
 
     it('keeps each user’s conversation apart', async () => {
-      await converse('Một', [done('Trả lời một')]);
+      await converse('Một', [conversation(42), done('Trả lời một')]);
+      TestBed.tick();
       setup('000005');
+      TestBed.tick();
+      await settle();
+      backend.expectNone(detailUrl(42));
       expect(store.turns$()).toEqual([]);
+      expect(store.conversationId$()).toBeNull();
     });
 
-    it('keeps the question and the text so far when the page reloads mid-answer', async () => {
-      store.ask('EOD là gì?');
-      await settle();
-      backend.expectOne(STREAM).event({
-        type: 3,
-        loaded: 1,
-        partialText: JSON.stringify({ type: 'delta', text: 'Chạy ' }) + '\n',
-      } as never);
-      await settle();
-
+    it('ignores and removes an entry that still carries turns', async () => {
+      sessionStorage.setItem(
+        LEGACY_KEY('000004'),
+        JSON.stringify({ open: true, conversationId: 42, turns: [] }),
+      );
       setup();
       TestBed.tick();
-      expect(store.turns$()).toHaveLength(1);
-      expect(store.turns$()[0]).toMatchObject({
-        question: 'EOD là gì?',
-        reply: { status: 'stopped', text: 'Chạy ' },
-      });
-    });
+      await settle();
 
-    it('restores a turn that was streaming at reload as stopped', () => {
-      sessionStorage.setItem(
-        KEY('000004'),
-        JSON.stringify({
-          open: true,
-          turns: [
-            {
-              ...finished(1),
-              reply: {
-                ...finished(1).reply,
-                status: 'composing',
-                text: 'Một nửa',
-              },
-            },
-          ],
-        }),
-      );
-      setup();
-      expect(lastReply()).toMatchObject({ status: 'stopped', text: 'Một nửa' });
-      expect(store.isAnswering$()).toBe(false);
-    });
-
-    it('numbers a new turn after the restored ones', async () => {
-      sessionStorage.setItem(
-        KEY('000004'),
-        JSON.stringify({ open: false, turns: [finished(7)] }),
-      );
-      setup();
-      await converse('Mới', [done('Trả lời mới')]);
-      expect(store.turns$().map((t) => t.id)).toEqual([7, 8]);
+      backend.expectNone(detailUrl(42));
+      expect(store.turns$()).toEqual([]);
+      expect(store.isOpen$()).toBe(false);
+      expect(sessionStorage.getItem(LEGACY_KEY('000004'))).toBeNull();
     });
 
     it('discards data that fails its check', () => {
-      sessionStorage.setItem(KEY('000004'), '{"open":true,"turns":[{"id":1}]}');
+      sessionStorage.setItem(KEY('000004'), '{"open":"yes"}');
       setup();
-      expect(store.turns$()).toEqual([]);
+      expect(store.isOpen$()).toBe(false);
+      expect(store.conversationId$()).toBeNull();
     });
 
-    it('leaves no other user’s conversation in this tab once a user is signed in', () => {
-      sessionStorage.setItem(
-        KEY('000005'),
-        JSON.stringify({ open: true, turns: [finished(1)] }),
-      );
+    it('leaves no other user’s entry in this tab once a user is signed in', () => {
+      sessionStorage.setItem(KEY('000005'), '{"open":true}');
       setup('000004');
       TestBed.tick();
       expect(sessionStorage.getItem(KEY('000005'))).toBeNull();
     });
 
     it('forgets the conversation and its storage on sign-out', async () => {
-      await converse('Một', [done('Trả lời một')]);
+      await converse('Một', [conversation(42), done('Trả lời một')]);
       TestBed.tick();
       expect(sessionStorage.getItem(KEY('000004'))).not.toBeNull();
       fakeSession().user.set(null);
       TestBed.tick();
       expect(store.turns$()).toEqual([]);
+      expect(store.conversationId$()).toBeNull();
       expect(sessionStorage.getItem(KEY('000004'))).toBeNull();
     });
 
-    it('clears the conversation and its storage on request, but not while answering', async () => {
-      await converse('Một', [done('Trả lời một')]);
+    it('starts a new conversation on request, but not while answering', async () => {
+      await converse('Một', [conversation(42), done('Trả lời một')]);
       TestBed.tick();
       store.ask('Hai');
       await settle();
@@ -776,6 +976,7 @@ describe('AgentChatStore', () => {
       store.clear();
       TestBed.tick();
       expect(store.turns$()).toEqual([]);
+      expect(store.conversationId$()).toBeNull();
       expect(sessionStorage.getItem(KEY('000004'))).toBeNull();
     });
   });

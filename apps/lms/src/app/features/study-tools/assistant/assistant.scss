@@ -13,6 +13,14 @@
   grid-template-columns: minmax(0, 1fr) ui.layout(panel);
 }
 
+:host(.assistant--history) {
+  grid-template-columns: ui.layout(panel) minmax(0, 1fr);
+}
+
+:host(.assistant--history.assistant--panel) {
+  grid-template-columns: ui.layout(panel) minmax(0, 1fr) ui.layout(panel);
+}
+
 // Shared by the two bars so their bottom borders line up.
 %bar {
   display: flex;
@@ -36,6 +44,14 @@
   &__bar {
     @extend %bar;
     justify-content: space-between;
+  }
+
+  &__heading {
+    display: flex;
+    flex-wrap: wrap;
+    gap: ui.space(2) ui.space(3);
+    align-items: center;
+    min-width: 0;
   }
 
   &__title {
@@ -89,6 +105,31 @@
   &__note {
     @include ui.text(xs, muted);
     margin: 0;
+  }
+}
+
+.history {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  min-height: 0;
+  border-right: 1px solid ui.color(border);
+  background: ui.color(surface);
+
+  &__bar {
+    @extend %bar;
+  }
+
+  &__title {
+    @include ui.text(md);
+    margin: 0;
+    font-weight: ui.weight(semibold);
+  }
+
+  &__body {
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding: ui.space(4);
   }
 }
 

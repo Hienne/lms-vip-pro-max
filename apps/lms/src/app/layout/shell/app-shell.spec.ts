@@ -98,6 +98,21 @@ describe('AppShell', () => {
       .match((r) => r.url === '/api/v1/instructor/feedback/summary')
       .filter((r) => !r.cancelled)
       .forEach((r) => r.flush(envelopeOk({ newCount: 0 })));
+    // The assistant screen lists the user's saved conversations beside the chat; there are none.
+    backend
+      .match((r) => r.url === '/api/v1/assistant/conversations')
+      .filter((r) => !r.cancelled)
+      .forEach((r) =>
+        r.flush(
+          envelopeOk({
+            items: [],
+            page: 0,
+            size: 50,
+            totalElements: 0,
+            totalPages: 0,
+          }),
+        ),
+      );
     // The owl's tracker asks for the user's unfinished uploads; there are none.
     backend
       .match((r) => r.url === '/api/v1/knowledge/documents')

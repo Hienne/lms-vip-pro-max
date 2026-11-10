@@ -40,5 +40,10 @@
       Thử lại
     </button>
   </p>
+  } @if (answer.action; as action) {
+  <p class="message__note">
+    Đề xuất “{{ action.title }}”: {{ actionStatus[action.status] }}{{
+    action.message ? '. ' + action.message : '' }}
+  </p>
   }
 </div>

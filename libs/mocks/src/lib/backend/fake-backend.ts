@@ -1,7 +1,9 @@
 import {
   adminOrgEndpoints,
   AgentCommandSchema,
+  RenameConversationCommandSchema,
   agentEndpoints,
+  conversationEndpoints,
   authV1Endpoints,
   identityEndpoints,
   knowledgeEndpoints,
@@ -64,6 +66,7 @@ import {
   agentNotFoundEvents,
   agentRefusedEvents,
 } from '../assistant-agent/agent.fixtures';
+import { ConversationBook } from '../assistant-agent/conversation-book';
 import { envelopeError, envelopeOk } from '../envelope';
 import { CommunityBackend } from '../community/community.backend';
 import { LearningBackend } from '../learning/learning.backend';
@@ -244,7 +247,7 @@ export class FakeBackend {
   /** Changes the assistant proposed and nobody has confirmed, by action id (the backend keeps them in memory too). */
   private pendingActions = new Map<string, PendingProposal>();
   private nextActionSeq = 1;
-  private nextConversationId = 1;
+  private book = new ConversationBook();
 
   /** Lowers the row limit of the progress export, to see the refusal without 10,000 rows. */
   limitProgressExport(rows: number): void {
@@ -331,6 +334,11 @@ export class FakeBackend {
     [agentEndpoints.stream, (r) => this.agentStream(r)],
     [agentEndpoints.confirmAction, (r) => this.confirmAction(r)],
     [agentEndpoints.cancelAction, (r) => this.cancelAction(r)],
+    [conversationEndpoints.list, (r) => this.listConversations(r)],
+    [conversationEndpoints.detail, (r) => this.getConversation(r)],
+    [conversationEndpoints.rename, (r) => this.renameConversation(r)],
+    [conversationEndpoints.remove, (r) => this.removeConversation(r)],
+    [conversationEndpoints.removeAll, (r) => this.removeAllConversations(r)],
   ]);
 
   /** True for the endpoints this backend answers; the others are not the backend's. */
@@ -560,26 +568,45 @@ export class FakeBackend {
   }
 
   private askStream(request: FakeRequest): FakeReply {
-    this.actor(request);
-    const found = !this.questionOf(request).toLowerCase().includes('không có');
+    const user = this.actor(request);
+    const question = this.questionOf(request);
+    const found = !question.toLowerCase().includes('không có');
+    const answer = found
+      ? knowledgeStreamFixture
+      : knowledgeNotFoundStreamFixture;
+    const conversation = this.conversationEvent(user, request, question);
+    this.book.record(
+      user.userId,
+      conversation.conversationId,
+      'KNOWLEDGE',
+      question,
+      answer,
+    );
     return {
       status: 200,
       body: envelopeOk(null),
-      events: [
-        this.conversationEvent(request),
-        ...(found ? knowledgeStreamFixture : knowledgeNotFoundStreamFixture),
-      ],
+      events: [conversation, ...answer],
     };
   }
 
   /** The first line of an AI stream: the conversation asked about, or a new one. */
-  private conversationEvent(request: FakeRequest) {
+  private conversationEvent(
+    user: DbUser,
+    request: FakeRequest,
+    question: string,
+  ) {
     const named = (request.body as { conversationId?: unknown } | null)
       ?.conversationId;
-    const conversationId =
+    const conversationId = this.book.open(
+      user.userId,
       typeof named === 'number' && Number.isInteger(named) && named > 0
         ? named
-        : this.nextConversationId++;
+        : null,
+      question,
+    );
+    if (conversationId === undefined) {
+      return refuse('assistantConversationNotFound');
+    }
     return { type: 'conversation' as const, conversationId };
   }
 
@@ -592,13 +619,23 @@ export class FakeBackend {
       return invalid('Tin nhắn phải từ 1 đến 500 ký tự.');
     }
 
+    const conversation = this.conversationEvent(
+      user,
+      request,
+      parsed.data.message,
+    );
+    const turn = this.scriptedTurn(user, parsed.data.message);
+    this.book.record(
+      user.userId,
+      conversation.conversationId,
+      'AGENT',
+      parsed.data.message,
+      turn,
+    );
     return {
       status: 200,
       body: envelopeOk(null),
-      events: [
-        this.conversationEvent(request),
-        ...this.scriptedTurn(user, parsed.data.message),
-      ],
+      events: [conversation, ...turn],
     };
   }
 
@@ -693,9 +730,21 @@ export class FakeBackend {
     this.pendingActions.delete(pending.action.id);
     const changes = pending.action.changes;
     if (changes.some((c) => (user[c.field] ?? null) !== c.from)) {
+      this.book.settle(
+        user.userId,
+        pending.action.id,
+        'failed',
+        BACKEND_RESPONSES.assistantActionStale.message,
+      );
       return refuse('assistantActionStale');
     }
     for (const c of changes) user[c.field] = c.to as string;
+    this.book.settle(
+      user.userId,
+      pending.action.id,
+      'confirmed',
+      'Đã cập nhật hồ sơ.',
+    );
     return ok({
       actionId: pending.action.id,
       tool: pending.action.tool,
@@ -706,7 +755,65 @@ export class FakeBackend {
 
   private cancelAction(request: FakeRequest): FakeReply {
     const user = this.caller(request);
-    this.pendingActions.delete(this.pendingOf(request, user).action.id);
+    const id = this.pendingOf(request, user).action.id;
+    this.pendingActions.delete(id);
+    this.book.settle(user.userId, id, 'cancelled', null);
+    return ok(null);
+  }
+
+  // ---- saved conversations ---------------------------------------------------------------------
+
+  private conversationIdOf(request: FakeRequest): number {
+    const id = Number(request.params['conversationId']);
+    return Number.isInteger(id) ? id : 0;
+  }
+
+  private listConversations(request: FakeRequest): FakeReply {
+    const user = this.caller(request);
+    const query = this.pageQuery(
+      request,
+      ['lastActivityTime'],
+      'lastActivityTime,desc',
+    );
+    const rows = this.book.list(user.userId, request.query['q'] ?? '');
+    const start = query.page * query.size;
+    return ok({
+      items: rows.slice(start, start + query.size),
+      page: query.page,
+      size: query.size,
+      totalElements: rows.length,
+      totalPages: Math.ceil(rows.length / query.size),
+    });
+  }
+
+  private getConversation(request: FakeRequest): FakeReply {
+    const user = this.caller(request);
+    const found = this.book.get(user.userId, this.conversationIdOf(request));
+    return found ? ok(found) : refuse('assistantConversationNotFound');
+  }
+
+  private renameConversation(request: FakeRequest): FakeReply {
+    const user = this.caller(request);
+    const parsed = RenameConversationCommandSchema.safeParse(request.body);
+    if (!parsed.success)
+      return invalid('Tên hội thoại phải từ 1 đến 80 ký tự.');
+    const renamed = this.book.rename(
+      user.userId,
+      this.conversationIdOf(request),
+      parsed.data.title,
+    );
+    return renamed ? ok(renamed) : refuse('assistantConversationNotFound');
+  }
+
+  private removeConversation(request: FakeRequest): FakeReply {
+    const user = this.caller(request);
+    return this.book.remove(user.userId, this.conversationIdOf(request))
+      ? ok(null)
+      : refuse('assistantConversationNotFound');
+  }
+
+  private removeAllConversations(request: FakeRequest): FakeReply {
+    this.book.removeAll(this.caller(request).userId);
     return ok(null);
   }
 

@@ -187,6 +187,12 @@ export const BACKEND_RESPONSES = {
     message:
       'Yêu cầu này đã hết hạn hoặc đã được xử lý. Vui lòng yêu cầu lại trợ lý.',
   },
+  assistantConversationNotFound: {
+    status: 200,
+    code: 'ASSISTANT-CONVERSATION_NOT_FOUND',
+    title: 'Không tìm thấy hội thoại',
+    message: 'Hội thoại này không còn hoặc không phải của bạn.',
+  },
   assistantActionStale: {
     status: 200,
     code: 'ASSISTANT-ACTION_STALE',

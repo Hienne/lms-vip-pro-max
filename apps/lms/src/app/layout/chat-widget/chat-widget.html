@@ -9,17 +9,33 @@
 >
   <header class="chat__header">
     <app-owl-face class="chat__face" />
-    @if (!isEmpty()) {
+    @if (!isEmpty() && !store.isHistoryOpen$()) {
     <button
       uiIconButton
       size="sm"
-      label="Xoá hội thoại"
+      label="Hội thoại mới"
       [disabled]="store.isAnswering$()"
       (click)="store.clear()"
     >
-      <ui-icon name="trash-2" size="sm" />
+      <ui-icon name="plus" size="sm" />
     </button>
     }
+    <button
+      uiIconButton
+      size="sm"
+      [label]="
+        store.isHistoryOpen$() ? 'Quay lại hội thoại' : 'Lịch sử hội thoại'
+      "
+      [attr.aria-pressed]="store.isHistoryOpen$()"
+      (click)="
+        store.isHistoryOpen$() ? store.hideHistory() : store.showHistory()
+      "
+    >
+      <ui-icon
+        [name]="store.isHistoryOpen$() ? 'message-square' : 'history'"
+        size="sm"
+      />
+    </button>
     <button
       uiIconButton
       size="sm"
@@ -37,6 +53,26 @@
     </button>
   </header>
   <p class="sr-only" aria-live="polite">{{ store.announcement$() }}</p>
+  @if (store.isHistoryOpen$()) {
+  <div class="chat__history">
+    <app-conversation-list
+      [items]="history.items$()"
+      [activeId]="store.conversationId$()"
+      [loading]="history.isLoading$()"
+      [failed]="!!history.loadError$()"
+      [searching]="history.query$() !== ''"
+      [openError]="store.openError$()"
+      [busy]="store.isAnswering$() || store.isOpening$() || history.isChanging$()"
+      (searched)="history.setQuery($event)"
+      (created)="store.clear()"
+      (opened)="store.openConversation($event)"
+      (renamed)="history.rename($event.id, $event.title)"
+      (removed)="history.remove($event)"
+      (removedAll)="history.removeAll()"
+      (retried)="history.retryLoad()"
+    />
+  </div>
+  } @else {
   <div
     #log
     class="chat__log"
@@ -84,5 +120,6 @@
       (stop)="store.stop()"
     />
   </div>
+  }
 </section>
 }

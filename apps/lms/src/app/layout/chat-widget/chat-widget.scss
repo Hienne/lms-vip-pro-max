@@ -113,6 +113,14 @@
     }
   }
 
+  // The list of saved conversations takes the log's place.
+  &__history {
+    flex: 1 1 auto;
+    min-height: 8rem;
+    padding: ui.space(4);
+    overflow-y: auto;
+  }
+
   // Left-aligned: the hint, then the suggestions as plain links, one per line.
   &__empty {
     @include ui.stack(1);

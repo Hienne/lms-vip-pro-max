@@ -23,6 +23,8 @@ import { NetworkStore } from '../network/network.store';
 import { SessionStore } from '../session/session.store';
 import type { ActionCard, AgentReply, AgentTurn } from './agent-chat.model';
 import { AgentChatStorage } from './agent-chat.storage';
+import { ConversationsStore } from './conversations.store';
+import { turnFromStored } from './stored-turns';
 import { toolStatusText } from './agent-status';
 
 export const OFFLINE_MESSAGE =
@@ -46,8 +48,9 @@ const WAITING: AgentReply = {
 };
 
 /**
- * The quick assistant: the conversation (kept in this tab's `sessionStorage`), the panel's open
- * state and the card of a proposed change. Every answer, source, navigation target and action is
+ * The quick assistant: the open conversation (its turns are the server's, read again after a
+ * reload; this tab's `sessionStorage` keeps only its id), the panel's open state, the history view
+ * and the card of a proposed change. Every answer, source, navigation target and action is
  * the server's; this store streams them in, refuses a navigation outside the user's own menu, and
  * only confirms a change when the user asks. It starts working when something first injects it,
  * and everything resets when the user changes or signs out.
@@ -58,12 +61,15 @@ export class AgentChatStore {
   private readonly session = inject(SessionStore);
   private readonly network = inject(NetworkStore);
   private readonly storage = inject(AgentChatStorage);
+  private readonly conversations = inject(ConversationsStore);
   private readonly router = inject(Router);
   private readonly destroyRef = inject(DestroyRef);
 
   private streaming: Subscription | null = null;
   /** The confirm or cancel request on its way; at most one, since one card settles at a time. */
   private settling: Subscription | null = null;
+  /** The saved conversation being read back, if any. */
+  private loading: Subscription | null = null;
   private lastUserId: string | undefined;
 
   private readonly userId = computed(() => this.session.user$()?.userId);
@@ -72,7 +78,7 @@ export class AgentChatStore {
   private readonly state = {
     turns: linkedSignal<string | undefined, readonly AgentTurn[]>({
       source: this.userId,
-      computation: (id) => (id ? this.storage.read(id).turns : []),
+      computation: () => [],
     }),
     open: linkedSignal<string | undefined, boolean>({
       source: this.userId,
@@ -91,6 +97,12 @@ export class AgentChatStore {
     }),
     answeringId: signal<number | null>(null),
     confirmingId: signal<number | null>(null),
+    /** The panel shows the list of saved conversations instead of the open one. */
+    history: signal(false),
+    /** A saved conversation is being read from the server. */
+    opening: signal(false),
+    /** Why the last attempt to open a saved conversation failed; null when it did not. */
+    openError: signal<string | null>(null),
   };
 
   readonly turns$ = this.state.turns.asReadonly();
@@ -105,6 +117,11 @@ export class AgentChatStore {
   );
   readonly isAnswering$ = computed(() => this.state.answeringId() !== null);
   readonly isConfirming$ = computed(() => this.state.confirmingId() !== null);
+  readonly isHistoryOpen$ = this.state.history.asReadonly();
+  readonly isOpening$ = this.state.opening.asReadonly();
+  readonly openError$ = this.state.openError.asReadonly();
+  /** The saved conversation the panel is on; null while it holds a new one. */
+  readonly conversationId$ = this.state.conversationId.asReadonly();
   /** The composer is off: a question could not be sent. */
   readonly isOffline$ = this.network.offline$;
   /** Signed in, with the assistant function, and not stuck on a temporary password. */
@@ -132,10 +149,7 @@ export class AgentChatStore {
     }
   });
 
-  /**
-   * The chat as stored, written on every change, a streaming turn included: a reload mid-answer
-   * keeps the question and the text so far, which `AgentChatStorage.read` brings back as stopped.
-   */
+  /** What the tab keeps: where the panel is and which saved conversation is open. */
   private readonly persisted = computed(() => {
     const userId = this.userId();
     return userId
@@ -144,7 +158,6 @@ export class AgentChatStore {
           open: this.isOpen$(),
           docked: this.state.docked(),
           conversationId: this.state.conversationId(),
-          turns: this.turns$(),
         }
       : null;
   });
@@ -159,6 +172,18 @@ export class AgentChatStore {
       const userId = this.userId();
       untracked(() => this.userChanged(userId));
     });
+    // A conversation deleted from the history may be the one open here.
+    this.conversations.removed
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe((removed) => {
+        const open = this.state.conversationId();
+        if (removed === 'all' || (open !== null && removed === open)) {
+          this.stop();
+          this.loading?.unsubscribe();
+          this.setTurns([]);
+          this.setConversationId(null);
+        }
+      });
   }
 
   setTurns(turns: readonly AgentTurn[]): void {
@@ -274,11 +299,58 @@ export class AgentChatStore {
     this.setAnsweringId(null);
   }
 
-  /** Empties the conversation; refused while a reply is on its way. */
+  /** Starts a new conversation (the saved one stays in the history); refused while a reply is on its way. */
   clear(): void {
     if (this.isAnswering$()) return;
+    this.loading?.unsubscribe();
+    this.state.opening.set(false);
     this.setTurns([]);
     this.setConversationId(null);
+    this.state.history.set(false);
+  }
+
+  // ---- saved conversations ---------------------------------------------------------------------
+
+  showHistory(): void {
+    this.conversations.watch();
+    this.state.openError.set(null);
+    this.state.history.set(true);
+  }
+
+  hideHistory(): void {
+    this.state.history.set(false);
+  }
+
+  /** Reopens a saved conversation in the panel; refused while a reply is on its way. */
+  openConversation(id: number): void {
+    if (this.isAnswering$()) return;
+    this.state.openError.set(null);
+    this.read(id, true);
+  }
+
+  /** Reads the conversation from the server; a restore after a reload fails quietly, an open says why. */
+  private read(id: number, announce: boolean): void {
+    this.loading?.unsubscribe();
+    const userId = this.userId();
+    this.state.opening.set(true);
+    this.loading = this.conversations.detail(id).subscribe({
+      next: this.sameUser(userId, (detail) => {
+        this.state.opening.set(false);
+        // A question asked while this was loading is newer than what was saved.
+        if (this.isAnswering$()) return;
+        this.setTurns(detail.turns.map(turnFromStored));
+        this.setConversationId(detail.id);
+        this.state.history.set(false);
+      }),
+      error: this.sameUser(userId, (error: unknown) => {
+        this.state.opening.set(false);
+        if (announce) {
+          this.state.openError.set(toAppError(error).message);
+        } else {
+          this.setConversationId(null);
+        }
+      }),
+    });
   }
 
   // ---- a proposed change -----------------------------------------------------------------------
@@ -395,6 +467,8 @@ export class AgentChatStore {
     switch (event.type) {
       case 'conversation':
         this.setConversationId(event.conversationId);
+        // The list shows a new conversation as soon as it exists.
+        this.conversations.touch();
         break;
       case 'tool':
         this.patchReply(id, { status: 'working', toolName: event.name });
@@ -450,6 +524,7 @@ export class AgentChatStore {
   /** Turn `id` no longer streams; a newer turn that is still answering keeps the composer locked. */
   private answered(id: number): void {
     if (this.state.answeringId() === id) this.setAnsweringId(null);
+    this.conversations.touch();
   }
 
   private dropStream(): void {
@@ -472,16 +547,16 @@ export class AgentChatStore {
     open: boolean;
     docked: boolean;
     conversationId: number | null;
-    turns: readonly AgentTurn[];
   }): void {
-    if (!chat.open && chat.turns.length === 0) this.storage.clear(chat.userId);
-    else
+    if (!chat.open && chat.conversationId === null) {
+      this.storage.clear(chat.userId);
+    } else {
       this.storage.write(chat.userId, {
         open: chat.open,
         docked: chat.docked,
         ...(chat.conversationId ? { conversationId: chat.conversationId } : {}),
-        turns: [...chat.turns],
       });
+    }
   }
 
   /** A sign-out, or another user signing in on this tab, leaves nothing of the old conversation. */
@@ -489,8 +564,18 @@ export class AgentChatStore {
     const previous = this.lastUserId;
     this.lastUserId = userId;
     if (userId !== undefined) this.storage.clearOthers(userId);
+    // First sight of a signed-in user: the open conversation is the server's, so read it back.
+    const restoring = this.state.conversationId();
+    if (previous === undefined && userId !== undefined && restoring !== null) {
+      this.read(restoring, false);
+    }
     if (previous === undefined || previous === userId) return;
     this.dropStream();
+    this.loading?.unsubscribe();
+    this.loading = null;
+    this.state.opening.set(false);
+    this.state.history.set(false);
+    this.state.openError.set(null);
     this.settling?.unsubscribe();
     this.settling = null;
     this.setAnsweringId(null);

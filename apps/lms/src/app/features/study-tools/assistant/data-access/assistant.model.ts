@@ -1,4 +1,4 @@
-import type { Citation } from '@lms/contracts';
+import type { Citation, StoredActionStatus } from '@lms/contracts';
 
 /** Where an answer is in its life; the server's stream drives every step but `stopped`. */
 export type AnswerStatus =
@@ -8,7 +8,14 @@ export type AnswerStatus =
   | 'stopped'
   | 'error';
 
-/** The assistant's side of one turn. The chat lives in the browser only. */
+/** A change the quick assistant proposed in a reopened turn, read-only here: its title and where it ended. */
+export interface AnswerAction {
+  readonly title: string;
+  readonly status: StoredActionStatus;
+  readonly message: string | null;
+}
+
+/** The assistant's side of one turn; the turns are the server's saved conversation. */
 export interface Answer {
   readonly status: AnswerStatus;
   readonly text: string;
@@ -18,6 +25,8 @@ export interface Answer {
   readonly citations: readonly Citation[];
   /** What went wrong, in Vietnamese, when `status` is `error`. */
   readonly error: string | null;
+  /** Only on a reopened turn that proposed a change in the quick assistant. */
+  readonly action?: AnswerAction | null;
 }
 
 /** One question and the answer to it. */
