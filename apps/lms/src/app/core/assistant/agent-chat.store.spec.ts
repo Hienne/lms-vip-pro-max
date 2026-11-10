@@ -10,6 +10,7 @@ import {
   agentActionEvents,
   agentDocumentEvents,
   agentNavigateEvents,
+  BACKEND_RESPONSES,
   backendRefusal,
   envelopeOk,
   seedMe,
@@ -245,6 +246,21 @@ describe('AgentChatStore', () => {
         status: 'error',
         error: 'Dịch vụ AI tạm thời không phản hồi.',
       });
+    });
+
+    it('shows the hourly limit’s message with the wait', async () => {
+      await converse('Một', [
+        {
+          type: 'error',
+          messageCode: BACKEND_RESPONSES.assistantRateLimited.code,
+          message: BACKEND_RESPONSES.assistantRateLimited.message,
+        },
+      ]);
+      expect(lastReply()).toMatchObject({
+        status: 'error',
+        error: 'Bạn đã hỏi nhiều, thử lại sau 57 phút.',
+      });
+      expect(store.isAnswering$()).toBe(false);
     });
 
     it('shows the message of a refusal that comes before the stream', async () => {

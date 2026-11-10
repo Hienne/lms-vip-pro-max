@@ -174,6 +174,12 @@ export const BACKEND_RESPONSES = {
     title: 'Dịch vụ AI chưa sẵn sàng',
     message: 'Dịch vụ AI tạm thời không phản hồi. Vui lòng thử lại sau.',
   },
+  assistantRateLimited: {
+    status: 200,
+    code: 'ASSISTANT-RATE_LIMITED',
+    title: 'Đã hết lượt hỏi',
+    message: 'Bạn đã hỏi nhiều, thử lại sau 57 phút.',
+  },
   assistantActionNotFound: {
     status: 200,
     code: 'ASSISTANT-ACTION_NOT_FOUND',

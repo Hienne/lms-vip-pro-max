@@ -6,6 +6,7 @@ import { ErrorHandler } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import type { ChatStreamEvent, KnowledgeDocument } from '@lms/contracts';
 import {
+  BACKEND_RESPONSES,
   backendRefusal,
   envelopeOk,
   KNOWLEDGE_NOT_FOUND_ANSWER,
@@ -385,6 +386,24 @@ describe('AssistantStore', () => {
         status: 'error',
         error: 'Mô hình không phản hồi.',
       });
+    });
+
+    it('shows the hourly limit’s message with the wait', async () => {
+      await loadDocuments();
+      store.ask('Hỏi');
+      finish(stream(), [
+        {
+          type: 'error',
+          messageCode: BACKEND_RESPONSES.assistantRateLimited.code,
+          message: BACKEND_RESPONSES.assistantRateLimited.message,
+        },
+      ]);
+      await settle();
+      expect(store.turns$()[0].answer).toMatchObject({
+        status: 'error',
+        error: 'Bạn đã hỏi nhiều, thử lại sau 57 phút.',
+      });
+      expect(store.isAnswering$()).toBe(false);
     });
 
     it('reports a stream that ends without a final line as cut off', async () => {
