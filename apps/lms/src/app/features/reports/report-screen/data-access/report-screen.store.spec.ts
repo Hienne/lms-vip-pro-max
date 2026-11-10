@@ -372,7 +372,11 @@ describe('assessment report integration', () => {
       endpoint === api.overview
         ? {
             status: 500,
-            body: envelopeError('CORE-INTERNAL_ERROR', 'Summary unavailable'),
+            body: envelopeError(
+              'CORE-INTERNAL_ERROR',
+              'Không tải được tổng hợp',
+              'Summary unavailable',
+            ),
           }
         : handle(endpoint, request),
     );
