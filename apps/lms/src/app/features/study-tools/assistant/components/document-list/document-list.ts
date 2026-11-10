@@ -5,13 +5,15 @@ import {
   ErrorState,
   FmtDatetimePipe,
   FmtRelativePipe,
+  Icon,
+  IconButton,
   Pagination,
   Skeleton,
 } from '@lms/ui';
-import { STATUS_VIEW } from '../../data-access/knowledge-status';
+import { SCOPE_LABEL, STATUS_VIEW } from '../../data-access/knowledge-status';
 
 /**
- * The shared knowledge base: every document with who added it and where processing stands. It has
+ * The documents the caller may read: who added each, who can find it and where processing stands. It has
  * no heading of its own; the documents panel or drawer around it names it.
  */
 @Component({
@@ -21,6 +23,8 @@ import { STATUS_VIEW } from '../../data-access/knowledge-status';
     ErrorState,
     FmtDatetimePipe,
     FmtRelativePipe,
+    Icon,
+    IconButton,
     Pagination,
     Skeleton,
   ],
@@ -34,9 +38,15 @@ export class DocumentList {
   readonly pageSize = input.required<number>();
   readonly loading = input(false);
   readonly failed = input(false);
+  /** Whether the caller may delete a document; the server checks again. */
+  readonly canRemove = input<(document: KnowledgeDocument) => boolean>(
+    () => false,
+  );
 
   readonly pageChange = output<number>();
   readonly retry = output<void>();
+  readonly remove = output<KnowledgeDocument>();
 
   protected readonly statusView = STATUS_VIEW;
+  protected readonly scopeLabel = SCOPE_LABEL;
 }

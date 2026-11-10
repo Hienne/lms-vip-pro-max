@@ -12,11 +12,22 @@ export const DocumentStatusSchema = z.enum([
 ]);
 export type DocumentStatus = z.infer<typeof DocumentStatusSchema>;
 
+/**
+ * Who finds a document: `personal` only its uploader, `unit` the uploader's unit and its child
+ * units, `global` everyone. Only admins may upload `global`.
+ */
+export const DocumentScopeSchema = z.enum(['personal', 'unit', 'global']);
+export type DocumentScope = z.infer<typeof DocumentScopeSchema>;
+
 export const KnowledgeDocumentSchema = z.object({
   id: z.number().int(),
   fileName: z.string(),
   mimeType: z.string(),
   sizeBytes: z.number().int().nonnegative(),
+  /** Documents saved before scopes existed are `global`, which is also what an older server implies. */
+  scope: DocumentScopeSchema.default('global'),
+  /** The unit of a `unit` document; null otherwise. */
+  scopeOrgId: z.number().int().nullish(),
   status: DocumentStatusSchema,
   errorMessage: z.string().nullable(),
   pageCount: z.number().int().nullable(),
@@ -36,7 +47,11 @@ export const DocumentListQuerySchema = z.object({
 });
 export type DocumentListQuery = z.infer<typeof DocumentListQuerySchema>;
 
-export const UploadDocumentCommandSchema = z.object({ file: z.file() });
+/** `scope` defaults to `unit` on the server when left out. */
+export const UploadDocumentCommandSchema = z.object({
+  file: z.file(),
+  scope: DocumentScopeSchema.optional(),
+});
 export type UploadDocumentCommand = z.infer<typeof UploadDocumentCommandSchema>;
 
 /** One question; `conversationId` (stream only) names the conversation it continues. */

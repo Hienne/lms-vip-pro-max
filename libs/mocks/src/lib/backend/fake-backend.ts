@@ -8,6 +8,7 @@ import {
   RateAnswerCommandSchema,
   authV1Endpoints,
   identityEndpoints,
+  DocumentScopeSchema,
   knowledgeEndpoints,
   learnerEndpoints,
   organizationEndpoints,
@@ -343,6 +344,7 @@ export class FakeBackend {
     [knowledgeEndpoints.documents, (r) => this.listDocuments(r)],
     [knowledgeEndpoints.document, (r) => this.getDocument(r)],
     [knowledgeEndpoints.uploadDocument, (r) => this.uploadDocument(r)],
+    [knowledgeEndpoints.deleteDocument, (r) => this.deleteDocument(r)],
     [knowledgeEndpoints.ask, (r) => this.ask(r)],
     [knowledgeEndpoints.askStream, (r) => this.askStream(r)],
     [agentEndpoints.stream, (r) => this.agentStream(r)],
@@ -514,6 +516,7 @@ export class FakeBackend {
     this.advanceDocuments();
     const rows = this.documents.filter(
       (d) =>
+        this.canReadDocument(actor, d) &&
         (request.query['mine'] !== 'true' ||
           d.uploadedBy.userId === actor.userId) &&
         (statuses.length === 0 || statuses.includes(d.status)),
@@ -522,12 +525,40 @@ export class FakeBackend {
   }
 
   private getDocument(request: FakeRequest): FakeReply {
-    this.actor(request);
+    const actor = this.actor(request);
     this.advanceDocuments();
     const document = this.documents.find(
       (d) => d.id === Number(request.params['documentId']),
     );
-    return document ? ok({ ...document }) : refuse('resourceNotFound');
+    return document && this.canReadDocument(actor, document)
+      ? ok({ ...document })
+      : refuse('resourceNotFound');
+  }
+
+  /** Personal documents belong to their uploader; the mock has one unit, so unit ones are open. */
+  private canReadDocument(actor: DbUser, document: KnowledgeDocument): boolean {
+    return (
+      document.scope !== 'personal' ||
+      document.uploadedBy.userId === actor.userId
+    );
+  }
+
+  private deleteDocument(request: FakeRequest): FakeReply {
+    const actor = this.actor(request);
+    const index = this.documents.findIndex(
+      (d) => d.id === Number(request.params['documentId']),
+    );
+    const document = this.documents[index];
+    if (!document || !this.canReadDocument(actor, document)) {
+      return refuse('resourceNotFound');
+    }
+    const admin = this.hasRole(actor.userId, ['ADMIN', 'SUPER_ADMIN']);
+    if (document.uploadedBy.userId !== actor.userId && !admin) {
+      return refuse('accessDenied');
+    }
+    this.documents.splice(index, 1);
+    this.pendingDocuments.delete(document.id);
+    return ok(null);
   }
 
   private uploadDocument(request: FakeRequest): FakeReply {
@@ -541,6 +572,17 @@ export class FakeBackend {
       return invalid('Cần chọn một tệp.');
     }
     const upload = file as File;
+    const requested =
+      body instanceof FormData
+        ? body.get('scope')
+        : (body as { scope?: unknown } | null)?.scope;
+    const scope = DocumentScopeSchema.catch('unit').parse(requested ?? 'unit');
+    if (
+      scope === 'global' &&
+      !this.hasRole(actor.userId, ['ADMIN', 'SUPER_ADMIN'])
+    ) {
+      return refuse('accessDenied');
+    }
     if (!/\.(pdf|md|docx)$/i.test(upload.name)) {
       return refuse('fileTypeUnsupported');
     }
@@ -551,6 +593,8 @@ export class FakeBackend {
       fileName: upload.name,
       mimeType: upload.type || 'application/octet-stream',
       sizeBytes: upload.size,
+      scope,
+      scopeOrgId: scope === 'unit' ? 1 : null,
       status: 'queued',
       errorMessage: null,
       pageCount: null,

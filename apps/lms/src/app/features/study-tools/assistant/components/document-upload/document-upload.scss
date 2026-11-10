@@ -4,6 +4,14 @@
   @include ui.stack(3);
 }
 
+.scope {
+  @include ui.stack(2);
+
+  &__label {
+    @include ui.text(sm, muted);
+  }
+}
+
 .drop {
   // Compact enough for the documents panel; the dashed edge still says "drop here".
   padding: ui.space(5) ui.space(4);

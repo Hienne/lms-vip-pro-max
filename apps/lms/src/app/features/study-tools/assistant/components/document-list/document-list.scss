@@ -26,7 +26,7 @@
 // One row per document, divided by a hairline.
 .doc {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr) auto auto;
   gap: ui.space(1) ui.space(3);
   align-items: center;
   padding: ui.space(3) 0;
@@ -43,6 +43,11 @@
     @include ui.truncate;
     @include ui.text(sm);
     font-weight: ui.weight(medium);
+  }
+
+  &__remove {
+    grid-column: 3;
+    grid-row: 1;
   }
 
   &__meta,

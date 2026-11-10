@@ -1,4 +1,9 @@
-import type { Citation, Feedback, StoredActionStatus } from '@lms/contracts';
+import type {
+  Citation,
+  DocumentScope,
+  Feedback,
+  StoredActionStatus,
+} from '@lms/contracts';
 
 /** Where an answer is in its life; the server's stream drives every step but `stopped`. */
 export type AnswerStatus =
@@ -48,6 +53,8 @@ export interface Upload {
   readonly file: File;
   readonly name: string;
   readonly size: number;
+  /** Who may find the document, chosen before the file was added. */
+  readonly scope: DocumentScope;
   readonly state: 'waiting' | 'uploading' | 'error';
   readonly error: string | null;
 }

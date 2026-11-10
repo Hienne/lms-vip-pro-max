@@ -23,8 +23,19 @@
       <span uiBadge dot [tone]="statusView[doc.status].tone"
         >{{ statusView[doc.status].label }}</span
       >
+      @if (canRemove()(doc)) {
+      <button
+        uiIconButton
+        type="button"
+        class="doc__remove"
+        [label]="'Xoá ' + doc.fileName"
+        (click)="remove.emit(doc)"
+      >
+        <ui-icon name="trash-2" />
+      </button>
+      }
       <span class="doc__meta">
-        {{ doc.uploadedBy.fullName }} ·
+        {{ doc.uploadedBy.fullName }} · {{ scopeLabel[doc.scope] }} ·
         <time
           [attr.datetime]="doc.createdAt"
           [title]="doc.createdAt | fmtDatetime"

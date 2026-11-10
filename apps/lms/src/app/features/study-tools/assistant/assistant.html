@@ -132,6 +132,9 @@
 <ng-template #documents>
   <app-document-upload
     [uploads]="store.uploads$()"
+    [canShareGlobally]="store.canShareGlobally$()"
+    [scope]="store.uploadScope$()"
+    (scopeChange)="store.setUploadScope($event)"
     (files)="store.addFiles($event)"
     (dismiss)="store.dismissUpload($event)"
   />
@@ -142,6 +145,8 @@
     [pageSize]="pageSize"
     [loading]="store.isLoading$()"
     [failed]="!!store.loadError$()"
+    [canRemove]="store.canRemove"
+    (remove)="store.removeDocument($event)"
     (pageChange)="store.setPage($event)"
     (retry)="store.retryLoad()"
   />

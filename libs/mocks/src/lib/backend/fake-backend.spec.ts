@@ -959,6 +959,49 @@ describe('FakeBackend', () => {
       expect(names).toContain('chung.md');
     });
 
+    it('keeps a personal document to its uploader and lets only admins share with everyone', () => {
+      const instructor = login('giangvien');
+      const created = call(knowledgeEndpoints.uploadDocument, instructor, {
+        body: { file: file('rieng.md'), scope: 'personal' },
+      });
+      const document = created.body.data as KnowledgeDocument;
+      expect(document.scope).toBe('personal');
+      const names = (token: string) =>
+        items(call(knowledgeEndpoints.documents, token)).map((d) => d.fileName);
+      expect(names(instructor)).toContain('rieng.md');
+      expect(names(login('hocvien'))).not.toContain('rieng.md');
+      expect(
+        code(
+          call(knowledgeEndpoints.uploadDocument, instructor, {
+            body: { file: file('chung.md'), scope: 'global' },
+          }),
+        ),
+      ).toBe('CORE-ACCESS_DENIED');
+      const shared = call(knowledgeEndpoints.uploadDocument, login('quantri'), {
+        body: { file: file('chung.md'), scope: 'global' },
+      });
+      expect((shared.body.data as KnowledgeDocument).scope).toBe('global');
+    });
+
+    it('deletes a document for its owner, refuses another learner and hides it afterwards', () => {
+      const owner = login('giangvien');
+      const document = call(knowledgeEndpoints.uploadDocument, owner, {
+        body: { file: file('xoa.md') },
+      }).body.data as KnowledgeDocument;
+      const params = { documentId: String(document.id) };
+      expect(
+        code(
+          call(knowledgeEndpoints.deleteDocument, login('hocvien'), { params }),
+        ),
+      ).toBe('CORE-ACCESS_DENIED');
+      expect(
+        call(knowledgeEndpoints.deleteDocument, owner, { params }).status,
+      ).toBe(200);
+      expect(code(call(knowledgeEndpoints.document, owner, { params }))).toBe(
+        'CORE-RESOURCE_NOT_FOUND',
+      );
+    });
+
     it('refuses an unsupported, empty or oversized file with the backend codes', () => {
       const token = login('giangvien');
       const upload = (body: unknown) =>

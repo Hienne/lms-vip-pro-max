@@ -1,3 +1,4 @@
+import { Dialog } from '@angular/cdk/dialog';
 import { BreakpointObserver } from '@angular/cdk/layout';
 import {
   computed,
@@ -14,14 +15,17 @@ import {
   answerFeedbackEndpoints,
   type AskCommand,
   type ChatStreamEvent,
+  type DocumentScope,
+  type KnowledgeDocument,
   knowledgeEndpoints,
   type RateAnswerCommand,
 } from '@lms/contracts';
-import { Toaster } from '@lms/ui';
+import { confirm, Toaster } from '@lms/ui';
 import {
   catchError,
   concatMap,
   EMPTY,
+  filter,
   finalize,
   map,
   Subject,
@@ -73,6 +77,7 @@ export class AssistantStore {
   private readonly tracker = inject(DocumentTrackerStore);
   private readonly network = inject(NetworkStore);
   private readonly toaster = inject(Toaster);
+  private readonly dialog = inject(Dialog);
   private readonly breakpoints = inject(BreakpointObserver);
   private readonly conversations = inject(ConversationsStore);
   private readonly session = inject(SessionStore);
@@ -116,6 +121,8 @@ export class AssistantStore {
       computation: (wide) => wide,
     }),
     uploads: signal<readonly Upload[]>([]),
+    /** Who finds the next uploaded files; "my unit" until the user picks another. */
+    uploadScope: signal<DocumentScope>('unit'),
     page: signal(1),
     /** Open beside the chat on a wide screen, closed (a drawer) on a narrow one, until toggled. */
     panelOpen: linkedSignal<boolean, boolean>({
@@ -146,6 +153,13 @@ export class AssistantStore {
   readonly ratingId$ = this.state.ratingId.asReadonly();
   readonly ratingFailedId$ = this.state.ratingFailedId.asReadonly();
   readonly uploads$ = this.state.uploads.asReadonly();
+  readonly uploadScope$ = this.state.uploadScope.asReadonly();
+  /** Admins may share a document with the whole system; the server refuses it for anyone else. */
+  readonly canShareGlobally$ = computed(() =>
+    (this.session.user$()?.grants ?? []).some((grant) =>
+      ['ADMIN', 'SUPER_ADMIN'].includes(grant.roleCode),
+    ),
+  );
   readonly page$ = this.state.page.asReadonly();
   readonly panelOpen$ = this.state.panelOpen.asReadonly();
   readonly conversationId$ = this.state.conversationId.asReadonly();
@@ -229,6 +243,10 @@ export class AssistantStore {
 
   setAnsweringId(id: number | null): void {
     this.state.answeringId.set(id);
+  }
+
+  setUploadScope(scope: DocumentScope): void {
+    this.state.uploadScope.set(scope);
   }
 
   setUploads(uploads: readonly Upload[]): void {
@@ -483,6 +501,7 @@ export class AssistantStore {
         file,
         name: file.name,
         size: file.size,
+        scope: this.uploadScope$(),
         state: problem ? 'error' : 'waiting',
         error: problem,
       };
@@ -502,10 +521,51 @@ export class AssistantStore {
     this.documentsData.reload();
   }
 
+  /** Shown on a row: the owner, or an admin for a document that is not personal. The server decides. */
+  readonly canRemove = (document: KnowledgeDocument): boolean =>
+    document.uploadedBy.userId === this.session.user$()?.userId ||
+    (document.scope !== 'personal' && this.canShareGlobally$());
+
+  /** Deletes a document after the user agrees; nothing is sent otherwise. */
+  removeDocument(document: KnowledgeDocument): void {
+    confirm(this.dialog, {
+      title: 'Xoá tài liệu này?',
+      message: `“${document.fileName}” sẽ bị xoá khỏi kho và trợ lý không còn trả lời từ tài liệu này, không khôi phục được.`,
+      confirmLabel: 'Xoá',
+      tone: 'danger',
+    })
+      .pipe(
+        filter(Boolean),
+        concatMap(() =>
+          this.client
+            .call(knowledgeEndpoints.deleteDocument, {
+              params: { documentId: document.id },
+            })
+            .pipe(
+              tap(() => {
+                this.changes.bump();
+                this.toaster.success(`Đã xoá ${document.fileName}`);
+              }),
+              catchError((error: unknown) => {
+                this.toaster.error(
+                  'Không xoá được tài liệu',
+                  toAppError(error).message,
+                );
+                return EMPTY;
+              }),
+            ),
+        ),
+        takeUntilDestroyed(this.destroyRef),
+      )
+      .subscribe();
+  }
+
   private send(upload: Upload) {
     this.patchUpload(upload.id, { state: 'uploading' });
     return this.client
-      .call(knowledgeEndpoints.uploadDocument, { body: { file: upload.file } })
+      .call(knowledgeEndpoints.uploadDocument, {
+        body: { file: upload.file, scope: upload.scope },
+      })
       .pipe(
         tap((document) => {
           this.tracker.track(document);
