@@ -1,5 +1,6 @@
 import {
   CitationSchema,
+  FeedbackSchema,
   PendingActionSchema,
   type PendingAction,
 } from '@lms/contracts';
@@ -60,6 +61,10 @@ export const AgentTurnSchema = z.object({
   id: z.number().int().positive(),
   question: z.string(),
   reply: AgentReplySchema,
+  /** The turn as the server stored it, once it has: the id feedback is sent against. */
+  serverTurnId: z.number().int().positive().optional(),
+  /** The user's thumbs on the answer, as the server saved them. */
+  feedback: FeedbackSchema.nullable().optional(),
 });
 export type AgentTurn = z.infer<typeof AgentTurnSchema>;
 

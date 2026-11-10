@@ -4,6 +4,8 @@ import {
   RenameConversationCommandSchema,
   agentEndpoints,
   conversationEndpoints,
+  answerFeedbackEndpoints,
+  RateAnswerCommandSchema,
   authV1Endpoints,
   identityEndpoints,
   knowledgeEndpoints,
@@ -192,6 +194,18 @@ const fold = (text: string): string =>
     .replace(/đ/g, 'd')
     .toLowerCase();
 
+/** The stream with the stored turn named on its `done` line, as the backend writes it. */
+function withTurnId<E extends { readonly type: string }>(
+  events: readonly E[],
+  turnId: number | undefined,
+): E[] {
+  return events.map((event) =>
+    event.type === 'done' && turnId !== undefined
+      ? { ...event, turnId }
+      : event,
+  );
+}
+
 const PROFILE_FIELDS = [
   { marker: 'chuc danh', field: 'positionName', label: 'Chức danh' },
   { marker: 'email', field: 'email', label: 'Email' },
@@ -334,6 +348,7 @@ export class FakeBackend {
     [agentEndpoints.stream, (r) => this.agentStream(r)],
     [agentEndpoints.confirmAction, (r) => this.confirmAction(r)],
     [agentEndpoints.cancelAction, (r) => this.cancelAction(r)],
+    [answerFeedbackEndpoints.rate, (r) => this.rateAnswer(r)],
     [conversationEndpoints.list, (r) => this.listConversations(r)],
     [conversationEndpoints.detail, (r) => this.getConversation(r)],
     [conversationEndpoints.rename, (r) => this.renameConversation(r)],
@@ -575,7 +590,7 @@ export class FakeBackend {
       ? knowledgeStreamFixture
       : knowledgeNotFoundStreamFixture;
     const conversation = this.conversationEvent(user, request, question);
-    this.book.record(
+    const turnId = this.book.record(
       user.userId,
       conversation.conversationId,
       'KNOWLEDGE',
@@ -585,7 +600,7 @@ export class FakeBackend {
     return {
       status: 200,
       body: envelopeOk(null),
-      events: [conversation, ...answer],
+      events: [conversation, ...withTurnId(answer, turnId)],
     };
   }
 
@@ -625,7 +640,7 @@ export class FakeBackend {
       parsed.data.message,
     );
     const turn = this.scriptedTurn(user, parsed.data.message);
-    this.book.record(
+    const turnId = this.book.record(
       user.userId,
       conversation.conversationId,
       'AGENT',
@@ -635,7 +650,7 @@ export class FakeBackend {
     return {
       status: 200,
       body: envelopeOk(null),
-      events: [conversation, ...turn],
+      events: [conversation, ...withTurnId(turn, turnId)],
     };
   }
 
@@ -810,6 +825,18 @@ export class FakeBackend {
     return this.book.remove(user.userId, this.conversationIdOf(request))
       ? ok(null)
       : refuse('assistantConversationNotFound');
+  }
+
+  private rateAnswer(request: FakeRequest): FakeReply {
+    const user = this.caller(request);
+    const parsed = RateAnswerCommandSchema.safeParse(request.body);
+    if (!parsed.success) return invalid('Đánh giá không hợp lệ.');
+    if (parsed.data.reasonCode && parsed.data.helpful) {
+      return invalid('Chỉ đánh giá chưa tốt mới có lý do.');
+    }
+    const turnId = Number(request.params['turnId']);
+    const saved = this.book.rate(user.userId, turnId, parsed.data);
+    return saved ? ok(saved) : refuse('assistantTurnNotFound');
   }
 
   private removeAllConversations(request: FakeRequest): FakeReply {

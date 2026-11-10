@@ -58,6 +58,8 @@ export const AgentStreamEventSchema = z.discriminatedUnion('type', [
     /** The final text; it replaces what the deltas added up to. */
     answer: z.string(),
     citations: z.array(CitationSchema),
+    /** The stored turn, which the user may rate; absent when the server could not store it. */
+    turnId: z.number().int().positive().optional(),
   }),
   z.object({
     type: z.literal('error'),

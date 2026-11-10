@@ -59,6 +59,7 @@ const storedTurn = (
   navigation: null,
   actionId: null,
   action: null,
+  feedback: null,
   status: 'done',
   createTime: '2026-11-10T09:00:00Z',
   ...patch,
@@ -150,17 +151,15 @@ describe('AgentChatStore', () => {
   /** The history reads the list once it is shown; this answers it with an empty one. */
   async function listed(): Promise<void> {
     await settle();
-    backend
-      .expectOne('/api/v1/assistant/conversations?size=50')
-      .flush(
-        envelopeOk({
-          items: [],
-          page: 0,
-          size: 50,
-          totalElements: 0,
-          totalPages: 0,
-        }),
-      );
+    backend.expectOne('/api/v1/assistant/conversations?size=50').flush(
+      envelopeOk({
+        items: [],
+        page: 0,
+        size: 50,
+        totalElements: 0,
+        totalPages: 0,
+      }),
+    );
     await settle();
   }
 
@@ -978,6 +977,111 @@ describe('AgentChatStore', () => {
       expect(store.turns$()).toEqual([]);
       expect(store.conversationId$()).toBeNull();
       expect(sessionStorage.getItem(KEY('000004'))).toBeNull();
+    });
+  });
+
+  describe('feedback on an answer', () => {
+    const RATE = (id: number) => `/api/v1/assistant/turns/${id}/feedback`;
+    const saved = { helpful: false, reasonCode: 'outdated', note: null };
+
+    async function answered(turnId: number | null = 31): Promise<number> {
+      await converse('Câu hỏi', [
+        conversation(7),
+        {
+          type: 'done',
+          answer: 'Câu trả lời.',
+          citations: [],
+          ...(turnId === null ? {} : { turnId }),
+        },
+      ]);
+      return store.turns$()[0].id;
+    }
+
+    it('learns the stored turn from the done line and has no rating yet', async () => {
+      await answered();
+      expect(store.turns$()[0]).toMatchObject({
+        serverTurnId: 31,
+        feedback: null,
+      });
+    });
+
+    it('sends the thumbs against the stored turn and keeps the server’s copy', async () => {
+      const id = await answered();
+      store.rate(id, { helpful: false, reasonCode: 'outdated' });
+      expect(store.ratingId$()).toBe(id);
+      await settle();
+      const request = backend.expectOne(RATE(31));
+      expect(request.request.method).toBe('PUT');
+      expect(request.request.body).toEqual({
+        helpful: false,
+        reasonCode: 'outdated',
+      });
+      request.flush(envelopeOk(saved));
+      await settle();
+      expect(store.turns$()[0].feedback).toEqual(saved);
+      expect(store.ratingId$()).toBeNull();
+      expect(store.ratingFailedId$()).toBeNull();
+    });
+
+    it('can change the rating, replacing the earlier one', async () => {
+      const id = await answered();
+      store.rate(id, { helpful: false });
+      await settle();
+      backend
+        .expectOne(RATE(31))
+        .flush(envelopeOk({ helpful: false, reasonCode: null, note: null }));
+      await settle();
+      store.rate(id, { helpful: true });
+      await settle();
+      backend
+        .expectOne(RATE(31))
+        .flush(envelopeOk({ helpful: true, reasonCode: null, note: null }));
+      await settle();
+      expect(store.turns$()[0].feedback?.helpful).toBe(true);
+    });
+
+    it('keeps the earlier choice and says so when saving fails', async () => {
+      const id = await answered();
+      store.rate(id, { helpful: true });
+      await settle();
+      backend
+        .expectOne(RATE(31))
+        .flush(envelopeOk({ helpful: true, reasonCode: null, note: null }));
+      await settle();
+      store.rate(id, { helpful: false });
+      await settle();
+      backend
+        .expectOne(RATE(31))
+        .error(new ProgressEvent('error'), { status: 500 });
+      await settle();
+      expect(store.turns$()[0].feedback?.helpful).toBe(true);
+      expect(store.ratingFailedId$()).toBe(id);
+      expect(store.ratingId$()).toBeNull();
+    });
+
+    it('sends nothing for an answer the server did not store', async () => {
+      const id = await answered(null);
+      store.rate(id, { helpful: true });
+      await settle();
+      backend.expectNone(RATE(31));
+      expect(store.ratingId$()).toBeNull();
+    });
+
+    it('reads the saved rating of a reopened turn', async () => {
+      store.openConversation(9);
+      await settle();
+      backend.expectOne(detailUrl(9)).flush(
+        detailBody(9, [
+          storedTurn(5, {
+            feedback: { helpful: true, reasonCode: null, note: null },
+          }),
+        ]),
+      );
+      await settle();
+      expect(store.turns$()[0]).toMatchObject({
+        serverTurnId: 5,
+        feedback: { helpful: true },
+      });
     });
   });
 

@@ -50,7 +50,10 @@
     <app-chat-log
       class="chat__thread"
       [turns]="store.turns$()"
+      [ratingId]="store.ratingId$()"
+      [ratingFailedId]="store.ratingFailedId$()"
       (retry)="store.retry($event)"
+      (rated)="store.rate($event.turnId, $event.command)"
     />
   </div>
   <div class="chat__composer">

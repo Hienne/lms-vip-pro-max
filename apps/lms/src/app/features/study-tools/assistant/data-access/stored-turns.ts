@@ -12,6 +12,8 @@ export const STORED_ERROR_MESSAGE =
 export function turnFromStored(turn: StoredTurn): Turn {
   return {
     id: turn.id,
+    serverTurnId: turn.id,
+    feedback: turn.feedback,
     question: turn.question,
     answer: {
       status:

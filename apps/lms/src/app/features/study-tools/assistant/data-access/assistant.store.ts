@@ -11,15 +11,18 @@ import {
 } from '@angular/core';
 import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import {
+  answerFeedbackEndpoints,
   type AskCommand,
   type ChatStreamEvent,
   knowledgeEndpoints,
+  type RateAnswerCommand,
 } from '@lms/contracts';
 import { Toaster } from '@lms/ui';
 import {
   catchError,
   concatMap,
   EMPTY,
+  finalize,
   map,
   Subject,
   type Subscription,
@@ -74,6 +77,7 @@ export class AssistantStore {
   private readonly conversations = inject(ConversationsStore);
   private readonly session = inject(SessionStore);
   private readonly viewStorage = inject(AssistantViewStorage);
+  private readonly destroyRef = inject(DestroyRef);
 
   private nextId = 1;
   /** The saved conversation being read back, if any. */
@@ -99,6 +103,9 @@ export class AssistantStore {
     /** The server conversation the next question continues; null starts a new one. */
     conversationId: signal<number | null>(null),
     answeringId: signal<number | null>(null),
+    /** The turn whose rating is on its way, and the one whose last rating did not save. */
+    ratingId: signal<number | null>(null),
+    ratingFailedId: signal<number | null>(null),
     /** A saved conversation is being read from the server. */
     opening: signal(false),
     /** Why the last attempt to open a saved conversation failed; null when it did not. */
@@ -136,6 +143,8 @@ export class AssistantStore {
 
   readonly turns$ = this.state.turns.asReadonly();
   readonly isAnswering$ = computed(() => this.state.answeringId() !== null);
+  readonly ratingId$ = this.state.ratingId.asReadonly();
+  readonly ratingFailedId$ = this.state.ratingFailedId.asReadonly();
   readonly uploads$ = this.state.uploads.asReadonly();
   readonly page$ = this.state.page.asReadonly();
   readonly panelOpen$ = this.state.panelOpen.asReadonly();
@@ -273,6 +282,47 @@ export class AssistantStore {
     this.answer(turnId, turn.question);
   }
 
+  /**
+   * Sends the user's thumbs for a finished answer, replacing an earlier one. The turn keeps the
+   * server's saved copy, so a failure leaves the earlier choice showing.
+   */
+  rate(turnId: number, command: RateAnswerCommand): void {
+    const serverTurnId = this.turns$().find(
+      (turn) => turn.id === turnId,
+    )?.serverTurnId;
+    if (serverTurnId === undefined || this.state.ratingId() !== null) return;
+    if (this.network.offline$()) {
+      this.state.ratingFailedId.set(turnId);
+      return;
+    }
+    this.state.ratingFailedId.set(null);
+    this.state.ratingId.set(turnId);
+    const userId = this.session.user$()?.userId;
+    const sameUser = () => this.session.user$()?.userId === userId;
+    this.client
+      .call(answerFeedbackEndpoints.rate, {
+        params: { turnId: serverTurnId },
+        body: command,
+      })
+      .pipe(
+        finalize(() => this.state.ratingId.set(null)),
+        takeUntilDestroyed(this.destroyRef),
+      )
+      .subscribe({
+        next: (feedback) => {
+          if (!sameUser()) return;
+          this.setTurns(
+            this.turns$().map((turn) =>
+              turn.id === turnId ? { ...turn, feedback } : turn,
+            ),
+          );
+        },
+        error: () => {
+          if (sameUser()) this.state.ratingFailedId.set(turnId);
+        },
+      });
+  }
+
   private answer(id: number, question: string): void {
     this.setAnsweringId(id);
     if (this.network.offline$()) {
@@ -376,6 +426,13 @@ export class AssistantStore {
           text: event.answer,
           citations: event.citations,
         });
+        this.setTurns(
+          this.turns$().map((turn) =>
+            turn.id === id
+              ? { ...turn, serverTurnId: event.turnId, feedback: null }
+              : turn,
+          ),
+        );
         this.setAnsweringId(null);
         this.conversations.touch();
         break;

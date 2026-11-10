@@ -1080,6 +1080,7 @@ describe('FakeBackend', () => {
         type: 'done',
         answer: 'Không tìm thấy thông tin này trong tài liệu.',
         citations: [],
+        turnId: expect.any(Number),
       });
     });
 
@@ -1101,6 +1102,7 @@ describe('FakeBackend', () => {
           type: 'done',
           answer: 'Đã mở trang Quản lý người dùng.',
           citations: [],
+          turnId: expect.any(Number),
         },
       ]);
     });
@@ -1114,6 +1116,7 @@ describe('FakeBackend', () => {
         answer:
           'Bạn không có quyền mở màn hình này hoặc màn hình không tồn tại.',
         citations: [],
+        turnId: expect.any(Number),
       });
     });
 

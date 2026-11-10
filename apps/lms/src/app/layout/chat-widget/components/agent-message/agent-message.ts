@@ -1,11 +1,13 @@
 import { DOCUMENT } from '@angular/common';
 import { Component, computed, inject, input, output } from '@angular/core';
 import { RouterLink } from '@angular/router';
+import type { RateAnswerCommand } from '@lms/contracts';
 import { Icon, IconButton, LinkButton, Spinner, Toaster } from '@lms/ui';
 import type { AgentTurn } from '../../../../core/assistant/agent-chat.model';
 import { toolStatusText } from '../../../../core/assistant/agent-status';
 import { ActionCard } from '../action-card/action-card';
 import { AgentSources, agentSourceId } from '../agent-sources/agent-sources';
+import { AnswerFeedback } from '../../../../shared/assistant/answer-feedback/answer-feedback';
 import { AssistantMarkdown } from '../../../../shared/assistant/assistant-markdown/assistant-markdown';
 
 const COMPOSING = 'Đang soạn câu trả lời…';
@@ -16,6 +18,7 @@ const COMPOSING = 'Đang soạn câu trả lời…';
   imports: [
     ActionCard,
     AgentSources,
+    AnswerFeedback,
     AssistantMarkdown,
     Icon,
     IconButton,
@@ -38,6 +41,13 @@ export class AgentMessage {
   /** Another reply is streaming, so "Thử lại" waits. */
   readonly answering = input(false);
   readonly retried = output<number>();
+  /** This turn's rating is on its way, or the last one did not save. */
+  readonly ratingBusy = input(false);
+  readonly ratingFailed = input(false);
+  readonly rated = output<{
+    readonly turnId: number;
+    readonly command: RateAnswerCommand;
+  }>();
 
   /** Every source of a finished reply is listed under it, whether or not the text marks it. */
   protected readonly sourcesShown = computed(() => {

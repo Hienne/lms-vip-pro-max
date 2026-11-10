@@ -85,6 +85,8 @@
 
   &__tools {
     @include ui.row(1);
+    flex-wrap: wrap;
+    align-items: flex-start;
   }
 
   &__note {

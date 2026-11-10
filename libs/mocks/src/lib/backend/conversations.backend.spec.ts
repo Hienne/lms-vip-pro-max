@@ -1,5 +1,6 @@
 import {
   agentEndpoints,
+  answerFeedbackEndpoints,
   authV1Endpoints,
   conversationEndpoints,
   ConversationDetailSchema,
@@ -185,5 +186,65 @@ describe('FakeBackend saved conversations', () => {
     } finally {
       vi.useRealTimers();
     }
+  });
+  describe('feedback on an answer', () => {
+    const doneOf = (reply: FakeReply): number =>
+      (reply.events?.find((e) => e.type === 'done') as { turnId: number })
+        .turnId;
+    const rate = (token: string, turnId: number, body: unknown) =>
+      call(answerFeedbackEndpoints.rate, token, {
+        params: { turnId: String(turnId) },
+        body,
+      });
+
+    it('names the stored turn on the done line and keeps the owner’s rating', () => {
+      const token = login('hocvien');
+      const reply = ask(token, 'Xin chào trợ lý');
+      const turnId = doneOf(reply);
+      expect(turnId).toBeGreaterThan(0);
+
+      const saved = rate(token, turnId, {
+        helpful: false,
+        reasonCode: 'outdated',
+        note: 'Số liệu cũ',
+      });
+      expect(saved.body.data).toEqual({
+        helpful: false,
+        reasonCode: 'outdated',
+        note: 'Số liệu cũ',
+      });
+      rate(token, turnId, { helpful: true });
+
+      const turns = ConversationDetailSchema.parse(
+        detail(token, conversationOf(reply)).body.data,
+      ).turns;
+      expect(turns[0]?.feedback).toEqual({
+        helpful: true,
+        reasonCode: null,
+        note: null,
+      });
+    });
+
+    it('answers a turn of someone else like one that does not exist', () => {
+      const turnId = doneOf(ask(login('hocvien'), 'Chuyện riêng'));
+      const theirs = login('giangvien');
+      expect(code(rate(theirs, turnId, { helpful: true }))).toBe(
+        'ASSISTANT-TURN_NOT_FOUND',
+      );
+      expect(code(rate(theirs, 99999, { helpful: true }))).toBe(
+        'ASSISTANT-TURN_NOT_FOUND',
+      );
+    });
+
+    it('refuses a reason on a thumbs-up and a note over the limit', () => {
+      const token = login('hocvien');
+      const turnId = doneOf(ask(token, 'Câu hỏi'));
+      expect(
+        code(rate(token, turnId, { helpful: true, reasonCode: 'other' })),
+      ).toBe('CORE-VALIDATION_FAILED');
+      expect(
+        code(rate(token, turnId, { helpful: false, note: 'x'.repeat(2001) })),
+      ).toBe('CORE-VALIDATION_FAILED');
+    });
   });
 });

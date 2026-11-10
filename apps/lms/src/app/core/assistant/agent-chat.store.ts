@@ -12,6 +12,8 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Router } from '@angular/router';
 import {
   agentEndpoints,
+  answerFeedbackEndpoints,
+  type RateAnswerCommand,
   type AgentCommand,
   type AgentStreamEvent,
   type PendingAction,
@@ -97,6 +99,9 @@ export class AgentChatStore {
     }),
     answeringId: signal<number | null>(null),
     confirmingId: signal<number | null>(null),
+    /** The turn whose rating is on its way, and the one whose last rating did not save. */
+    ratingId: signal<number | null>(null),
+    ratingFailedId: signal<number | null>(null),
     /** The panel shows the list of saved conversations instead of the open one. */
     history: signal(false),
     /** A saved conversation is being read from the server. */
@@ -117,6 +122,8 @@ export class AgentChatStore {
   );
   readonly isAnswering$ = computed(() => this.state.answeringId() !== null);
   readonly isConfirming$ = computed(() => this.state.confirmingId() !== null);
+  readonly ratingId$ = this.state.ratingId.asReadonly();
+  readonly ratingFailedId$ = this.state.ratingFailedId.asReadonly();
   readonly isHistoryOpen$ = this.state.history.asReadonly();
   readonly isOpening$ = this.state.opening.asReadonly();
   readonly openError$ = this.state.openError.asReadonly();
@@ -353,6 +360,46 @@ export class AgentChatStore {
     });
   }
 
+  // ---- feedback on an answer -------------------------------------------------------------------
+
+  /**
+   * Sends the user's thumbs for a finished answer, replacing an earlier one. The turn keeps the
+   * server's saved copy, so a failure leaves the earlier choice showing. Not `serverMutation`: the
+   * feedback control is the one place the outcome shows.
+   */
+  rate(turnId: number, command: RateAnswerCommand): void {
+    const serverTurnId = this.turnOf(turnId)?.serverTurnId;
+    if (serverTurnId === undefined || this.state.ratingId() !== null) return;
+    if (this.network.offline$()) {
+      this.state.ratingFailedId.set(turnId);
+      return;
+    }
+    this.state.ratingFailedId.set(null);
+    this.state.ratingId.set(turnId);
+    const userId = this.userId();
+    this.client
+      .call(answerFeedbackEndpoints.rate, {
+        params: { turnId: serverTurnId },
+        body: command,
+      })
+      .pipe(
+        finalize(() => this.state.ratingId.set(null)),
+        takeUntilDestroyed(this.destroyRef),
+      )
+      .subscribe({
+        next: this.sameUser(userId, (feedback) =>
+          this.setTurns(
+            this.turns$().map((turn) =>
+              turn.id === turnId ? { ...turn, feedback } : turn,
+            ),
+          ),
+        ),
+        error: this.sameUser(userId, () =>
+          this.state.ratingFailedId.set(turnId),
+        ),
+      });
+  }
+
   // ---- a proposed change -----------------------------------------------------------------------
 
   // Confirm and cancel are not `serverMutation`: the card is the one place the result shows, so a
@@ -494,6 +541,13 @@ export class AgentChatStore {
           text: event.answer,
           citations: event.citations,
         });
+        this.setTurns(
+          this.turns$().map((turn) =>
+            turn.id === id
+              ? { ...turn, serverTurnId: event.turnId, feedback: null }
+              : turn,
+          ),
+        );
         this.answered(id);
         break;
       case 'error':

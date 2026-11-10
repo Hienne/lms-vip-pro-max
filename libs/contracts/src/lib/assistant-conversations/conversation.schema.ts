@@ -54,6 +54,34 @@ export const StoredActionSchema = z.discriminatedUnion('tool', [
 ]);
 export type StoredAction = z.infer<typeof StoredActionSchema>;
 
+/** Why a user marked an answer as not good; the labels are the UI copy for each code. */
+export const FeedbackReasonSchema = z.enum([
+  'incorrect',
+  'irrelevant',
+  'outdated',
+  'missing_source',
+  'other',
+]);
+export type FeedbackReason = z.infer<typeof FeedbackReasonSchema>;
+
+export const FEEDBACK_NOTE_MAX_LENGTH = 2000;
+
+/** The thumbs a user gave one answer; a reason and a note only go with a thumbs-down. */
+export const FeedbackSchema = z.object({
+  helpful: z.boolean(),
+  reasonCode: FeedbackReasonSchema.nullable(),
+  note: z.string().nullable(),
+});
+export type Feedback = z.infer<typeof FeedbackSchema>;
+
+/** What the user sends: one per turn, sent again to change it. */
+export const RateAnswerCommandSchema = z.object({
+  helpful: z.boolean(),
+  reasonCode: FeedbackReasonSchema.optional(),
+  note: z.string().max(FEEDBACK_NOTE_MAX_LENGTH).optional(),
+});
+export type RateAnswerCommand = z.infer<typeof RateAnswerCommandSchema>;
+
 export const StoredTurnSchema = z.object({
   id: z.number().int().positive(),
   surface: TurnSurfaceSchema,
@@ -66,6 +94,8 @@ export const StoredTurnSchema = z.object({
   navigation: z.object({ path: z.string(), title: z.string() }).nullable(),
   actionId: z.string().nullable(),
   action: StoredActionSchema.nullable(),
+  /** The user's own thumbs on this answer; null until they give one. */
+  feedback: FeedbackSchema.nullable(),
   status: StoredTurnStatusSchema,
   createTime: z.iso.datetime(),
 });

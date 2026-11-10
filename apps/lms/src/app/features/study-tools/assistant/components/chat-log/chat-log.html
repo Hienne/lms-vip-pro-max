@@ -4,7 +4,13 @@
     <p>Xin chào! Hãy hỏi mình bất kỳ điều gì về nội dung tài liệu trong kho.</p>
   </div>
   @for (turn of turns(); track turn.id) {
-  <app-chat-message [turn]="turn" (retry)="retry.emit($event)" />
+  <app-chat-message
+    [turn]="turn"
+    [ratingBusy]="ratingId() === turn.id"
+    [ratingFailed]="ratingFailedId() === turn.id"
+    (retry)="retry.emit($event)"
+    (rated)="rated.emit($event)"
+  />
   }
 </div>
 <div #end></div>

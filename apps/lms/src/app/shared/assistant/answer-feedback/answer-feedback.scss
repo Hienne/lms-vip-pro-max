@@ -1,0 +1,69 @@
+@use 'ui';
+
+:host {
+  display: flex;
+  flex-direction: column;
+  gap: ui.space(2);
+  min-width: 0;
+}
+
+.feedback {
+  &__bar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: ui.space(1);
+    align-items: center;
+  }
+
+  &__thumb[aria-pressed='true'],
+  &__reason[aria-pressed='true'] {
+    color: ui.color(primary);
+    border-color: ui.color(primary);
+    font-weight: ui.weight(semibold);
+  }
+
+  &__failed {
+    @include ui.text(sm);
+    color: ui.color(danger);
+  }
+
+  &__picker {
+    display: flex;
+    flex-direction: column;
+    gap: ui.space(2);
+  }
+
+  &__reasons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: ui.space(2);
+    align-items: center;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    min-width: 0;
+  }
+
+  &__legend {
+    @include ui.text(sm, muted);
+    flex-basis: 100%;
+    padding: 0;
+  }
+
+  &__reason {
+    background: ui.color(surface);
+    color: ui.color(text);
+    border: 1px solid ui.color(border);
+  }
+
+  &__note {
+    width: 100%;
+    resize: vertical;
+  }
+
+  &__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: ui.space(2);
+  }
+}

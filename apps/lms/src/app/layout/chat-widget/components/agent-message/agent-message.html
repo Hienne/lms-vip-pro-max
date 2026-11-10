@@ -49,6 +49,14 @@
     >
       <ui-icon name="copy" size="sm" />
     </button>
+    @if (turn().serverTurnId) {
+    <app-answer-feedback
+      [value]="turn().feedback ?? null"
+      [saving]="ratingBusy()"
+      [failed]="ratingFailed()"
+      (rated)="rated.emit({ turnId: turn().id, command: $event })"
+    />
+    }
   </div>
   } @if (reply.status === 'stopped') {
   <p class="message__note">

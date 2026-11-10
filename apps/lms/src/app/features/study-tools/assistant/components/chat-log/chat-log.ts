@@ -6,6 +6,7 @@ import {
   output,
   viewChild,
 } from '@angular/core';
+import type { RateAnswerCommand } from '@lms/contracts';
 import type { Turn } from '../../data-access/assistant.model';
 import { ChatMessage } from '../chat-message/chat-message';
 
@@ -19,6 +20,13 @@ import { ChatMessage } from '../chat-message/chat-message';
 export class ChatLog {
   readonly turns = input.required<readonly Turn[]>();
   readonly retry = output<number>();
+  /** The turn whose rating is on its way, and the one whose last rating did not save. */
+  readonly ratingId = input<number | null>(null);
+  readonly ratingFailedId = input<number | null>(null);
+  readonly rated = output<{
+    readonly turnId: number;
+    readonly command: RateAnswerCommand;
+  }>();
 
   private readonly end = viewChild.required<ElementRef<HTMLElement>>('end');
 

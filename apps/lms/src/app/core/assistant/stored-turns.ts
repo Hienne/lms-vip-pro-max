@@ -28,6 +28,8 @@ function cardOf(action: StoredAction): ActionCard {
 export function turnFromStored(turn: StoredTurn): AgentTurn {
   return {
     id: turn.id,
+    serverTurnId: turn.id,
+    feedback: turn.feedback,
     question: turn.question,
     reply: {
       status:

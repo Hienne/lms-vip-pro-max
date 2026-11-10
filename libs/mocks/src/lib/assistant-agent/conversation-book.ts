@@ -3,6 +3,8 @@ import type {
   ChatStreamEvent,
   ConversationDetail,
   ConversationSummary,
+  Feedback,
+  RateAnswerCommand,
   StoredAction,
   StoredActionStatus,
   StoredTurn,
@@ -62,9 +64,9 @@ export class ConversationBook {
     surface: TurnSurface,
     question: string,
     events: readonly TurnEvent[],
-  ): void {
+  ): number | undefined {
     const row = this.find(ownerId, conversationId);
-    if (!row) return;
+    if (!row) return undefined;
     const now = new Date().toISOString();
     let answer: string | null = null;
     let citations: StoredTurn['citations'] = [];
@@ -98,8 +100,9 @@ export class ConversationBook {
           break;
       }
     }
+    const id = this.nextTurnId++;
     row.turns.push({
-      id: this.nextTurnId++,
+      id,
       surface,
       question,
       answer,
@@ -108,10 +111,32 @@ export class ConversationBook {
       navigation,
       actionId: action?.id ?? null,
       action,
+      feedback: null,
       status,
       createTime: now,
     });
     row.lastActivityTime = now;
+    return id;
+  }
+
+  /** Saves or replaces the owner's thumbs on a turn; `undefined` when it is not the owner's. */
+  rate(
+    ownerId: string,
+    turnId: number,
+    command: RateAnswerCommand,
+  ): Feedback | undefined {
+    const turn = this.rows
+      .filter((row) => row.ownerId === ownerId)
+      .flatMap((row) => row.turns)
+      .find((candidate) => candidate.id === turnId);
+    if (!turn) return undefined;
+    const helpful = command.helpful;
+    turn.feedback = {
+      helpful,
+      reasonCode: helpful ? null : (command.reasonCode ?? null),
+      note: command.note?.trim() || null,
+    };
+    return turn.feedback;
   }
 
   /** A confirm or cancel changes the card the turn kept. */

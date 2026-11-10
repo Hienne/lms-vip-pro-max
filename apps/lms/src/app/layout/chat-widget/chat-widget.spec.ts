@@ -47,6 +47,8 @@ function fakeStore() {
       isAnswering$: answering.asReadonly(),
       isOffline$: signal(false).asReadonly(),
       isConfirming$: signal(false).asReadonly(),
+      ratingId$: signal<number | null>(null).asReadonly(),
+      ratingFailedId$: signal<number | null>(null).asReadonly(),
       announcement$: signal('').asReadonly(),
       isHistoryOpen$: historyOpen.asReadonly(),
       isOpening$: signal(false).asReadonly(),
@@ -63,6 +65,7 @@ function fakeStore() {
       confirm: vi.fn(),
       cancel: vi.fn(),
       retry: vi.fn(),
+      rate: vi.fn(),
     },
     history: {
       items$: items.asReadonly(),
@@ -430,5 +433,21 @@ describe('ChatWidget', () => {
     );
     retry?.click();
     expect(store.retry).toHaveBeenCalledWith(4);
+  });
+  it('offers the thumbs only under a finished answer the server stored, and hands a click to the store with the turn', async () => {
+    const { fixture, el, turns, store } = await render();
+    const done = (id: number, serverTurnId?: number): AgentTurn => ({
+      ...turn(id, 'Câu hỏi'),
+      reply: { ...turn(id, '').reply, status: 'done', text: 'Trả lời.' },
+      ...(serverTurnId ? { serverTurnId, feedback: null } : {}),
+    });
+    turns.set([done(1), done(2, 52)]);
+    await fixture.whenStable();
+    expect(el.querySelectorAll('app-answer-feedback')).toHaveLength(1);
+
+    el.querySelector<HTMLButtonElement>(
+      'app-answer-feedback button[aria-label="Câu trả lời hữu ích"]',
+    )?.click();
+    expect(store.rate).toHaveBeenCalledWith(2, { helpful: true });
   });
 });

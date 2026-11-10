@@ -193,6 +193,12 @@ export const BACKEND_RESPONSES = {
     title: 'Không tìm thấy hội thoại',
     message: 'Hội thoại này không còn hoặc không phải của bạn.',
   },
+  assistantTurnNotFound: {
+    status: 200,
+    code: 'ASSISTANT-TURN_NOT_FOUND',
+    title: 'Không tìm thấy câu trả lời',
+    message: 'Không tìm thấy câu trả lời này.',
+  },
   assistantActionStale: {
     status: 200,
     code: 'ASSISTANT-ACTION_STALE',

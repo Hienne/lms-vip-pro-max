@@ -1,8 +1,9 @@
 import { Component, computed, input, output } from '@angular/core';
-import type { StoredActionStatus } from '@lms/contracts';
+import type { RateAnswerCommand, StoredActionStatus } from '@lms/contracts';
 import { LinkButton, Spinner } from '@lms/ui';
 import type { Turn } from '../../data-access/assistant.model';
 import { answerParts } from '../../../../../shared/assistant/answer-parts';
+import { AnswerFeedback } from '../../../../../shared/assistant/answer-feedback/answer-feedback';
 import { AssistantMarkdown } from '../../../../../shared/assistant/assistant-markdown/assistant-markdown';
 import { SourceBadge } from '../../../../../shared/assistant/source-badge/source-badge';
 
@@ -18,13 +19,26 @@ const ACTION_STATUS: Record<StoredActionStatus, string> = {
 /** One question and the answer to it, in whatever state the answer is. */
 @Component({
   selector: 'app-chat-message',
-  imports: [AssistantMarkdown, LinkButton, SourceBadge, Spinner],
+  imports: [
+    AnswerFeedback,
+    AssistantMarkdown,
+    LinkButton,
+    SourceBadge,
+    Spinner,
+  ],
   templateUrl: './chat-message.html',
   styleUrl: './chat-message.scss',
 })
 export class ChatMessage {
   readonly turn = input.required<Turn>();
   readonly retry = output<number>();
+  /** This turn's rating is on its way, or the last one did not save. */
+  readonly ratingBusy = input(false);
+  readonly ratingFailed = input(false);
+  readonly rated = output<{
+    readonly turnId: number;
+    readonly command: RateAnswerCommand;
+  }>();
 
   protected readonly actionStatus = ACTION_STATUS;
 

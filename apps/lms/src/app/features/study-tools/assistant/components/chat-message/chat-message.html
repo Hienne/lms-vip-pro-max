@@ -40,6 +40,14 @@
       Thử lại
     </button>
   </p>
+  } @if (answer.status === 'done' && answer.text && turn().serverTurnId) {
+  <app-answer-feedback
+    class="message__feedback"
+    [value]="turn().feedback ?? null"
+    [saving]="ratingBusy()"
+    [failed]="ratingFailed()"
+    (rated)="rated.emit({ turnId: turn().id, command: $event })"
+  />
   } @if (answer.action; as action) {
   <p class="message__note">
     Đề xuất “{{ action.title }}”: {{ actionStatus[action.status] }}{{

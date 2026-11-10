@@ -1,4 +1,4 @@
-import type { Citation, StoredActionStatus } from '@lms/contracts';
+import type { Citation, Feedback, StoredActionStatus } from '@lms/contracts';
 
 /** Where an answer is in its life; the server's stream drives every step but `stopped`. */
 export type AnswerStatus =
@@ -34,6 +34,10 @@ export interface Turn {
   readonly id: number;
   readonly question: string;
   readonly answer: Answer;
+  /** The turn as the server stored it, once it has: the id feedback is sent against. */
+  readonly serverTurnId?: number;
+  /** The user's thumbs on the answer, as the server saved them. */
+  readonly feedback?: Feedback | null;
 }
 
 /** A file on its way to the knowledge base. */

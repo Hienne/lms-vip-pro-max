@@ -144,6 +144,50 @@ describe('Assistant', () => {
     expect(input.value).toBe('');
   });
 
+  it('rates a finished answer, and the thumbs show the server’s saved choice', async () => {
+    await open();
+    const input = el.querySelector(
+      'input#assistant-question',
+    ) as HTMLInputElement;
+    input.value = 'EOD là gì?';
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+    await settle();
+    el.querySelector('form')?.dispatchEvent(new Event('submit'));
+    await settle();
+    expect(el.querySelector('app-answer-feedback')).toBeNull();
+
+    backend
+      .expectOne(STREAM)
+      .flush(
+        knowledgeStreamFixture
+          .map((e) =>
+            JSON.stringify(e.type === 'done' ? { ...e, turnId: 41 } : e),
+          )
+          .join('\n'),
+        { headers: { 'Content-Type': 'application/x-ndjson' } },
+      );
+    await settle();
+    const up = el.querySelector<HTMLButtonElement>(
+      'app-answer-feedback button[aria-label="Câu trả lời hữu ích"]',
+    );
+    expect(up?.getAttribute('aria-pressed')).toBe('false');
+
+    up?.click();
+    await settle();
+    const request = backend.expectOne('/api/v1/assistant/turns/41/feedback');
+    expect(request.request.method).toBe('PUT');
+    expect(request.request.body).toEqual({ helpful: true });
+    request.flush(envelopeOk({ helpful: true, reasonCode: null, note: null }));
+    await settle();
+    expect(
+      el
+        .querySelector(
+          'app-answer-feedback button[aria-label="Câu trả lời hữu ích"]',
+        )
+        ?.getAttribute('aria-pressed'),
+    ).toBe('true');
+  });
+
   describe('documents panel', () => {
     const toggle = () =>
       Array.from(el.querySelectorAll<HTMLButtonElement>('.chat__toggle')).find(
@@ -244,6 +288,7 @@ describe('Assistant', () => {
         expiresAt: '2026-11-10T09:10:00Z',
         message: null,
       },
+      feedback: null,
       status: 'done',
       createTime: '2026-11-10T09:00:00Z',
     };

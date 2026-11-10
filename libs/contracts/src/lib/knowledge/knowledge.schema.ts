@@ -82,6 +82,8 @@ export const ChatStreamEventSchema = z.discriminatedUnion('type', [
     /** The final text: what the deltas added up to, or the fixed sentence when nothing was found. */
     answer: z.string(),
     citations: z.array(CitationSchema),
+    /** The stored turn, which the user may rate; absent when the server could not store it. */
+    turnId: z.number().int().positive().optional(),
   }),
   z.object({
     type: z.literal('error'),

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   ConversationDetailSchema,
+  RateAnswerCommandSchema,
   RenameConversationCommandSchema,
   StoredTurnSchema,
 } from './conversation.schema';
@@ -32,6 +33,7 @@ const turn = {
     expiresAt: TIME,
     message: null,
   },
+  feedback: null,
   status: 'done',
   createTime: TIME,
 };
@@ -62,6 +64,28 @@ describe('StoredTurnSchema', () => {
       status: 'stopped',
     });
     expect(parsed.success).toBe(true);
+  });
+
+  it('carries the user’s own feedback, with a reason only on a thumbs-down', () => {
+    const rated = StoredTurnSchema.safeParse({
+      ...turn,
+      feedback: { helpful: false, reasonCode: 'missing_source', note: 'Thiếu' },
+    });
+    expect(rated.success).toBe(true);
+    const unknownReason = StoredTurnSchema.safeParse({
+      ...turn,
+      feedback: { helpful: false, reasonCode: 'rude', note: null },
+    });
+    expect(unknownReason.success).toBe(false);
+    expect(RateAnswerCommandSchema.safeParse({ helpful: true }).success).toBe(
+      true,
+    );
+    expect(
+      RateAnswerCommandSchema.safeParse({
+        helpful: false,
+        note: 'x'.repeat(2001),
+      }).success,
+    ).toBe(false);
   });
 
   it('refuses a card of a tool the app cannot show', () => {
