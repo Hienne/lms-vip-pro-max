@@ -1,9 +1,45 @@
-<section uiCard class="progress-report" aria-labelledby="progress-report-title">
-  <div class="row-between row--gap-3 progress-report__heading">
-    <div>
-      <h2 id="progress-report-title">{{store.title$()}}</h2>
-      <p>{{report.total$() | fmtNum}} dòng phù hợp với bộ lọc</p>
-    </div>
+@if (store.learning$(); as summary) {<ui-stat-strip
+  ><ui-stat
+    label="Nhóm có dữ liệu"
+    [value]="report.total$() | fmtNum" /><ui-stat
+    label="Lượt hoàn thành"
+    [value]="summary.completed | fmtNum" /><ui-stat
+    label="Tiến độ trung bình"
+    [value]="summary.averageProgress | fmtPct:1" /><ui-stat
+    label="Lượt quá hạn"
+    [value]="summary.overdue | fmtNum"
+    [tone]="summary.overdue ? 'danger' : 'default'" /></ui-stat-strip
+>} @if (!report.loading$() && !report.error$() && report.view$() !== 'learners'
+&& report.groups$().length) {
+<div class="progress-report__charts">
+  <ui-section-card title="Hoàn thành theo nhóm"
+    ><ui-horizontal-bar-chart
+      label="Tỷ lệ hoàn thành của tối đa 6 nhóm trong trang hiện tại"
+      [data]="store.progressComparison$()"
+      unit="%"
+      [max]="100"
+    />
+    <p>6 nhóm đầu trong trang hiện tại</p></ui-section-card
+  >
+  <ui-section-card title="Khóa học cần theo dõi"
+    >@if (store.progressOverdue$().length) {<ui-horizontal-bar-chart
+      label="Lượt quá hạn theo nhóm trong trang hiện tại"
+      [data]="store.progressOverdue$()"
+      [danger]="true"
+      unit=" lượt"
+    />} @else {<ui-empty
+      variant="inline"
+      title="Không có lượt quá hạn trong trang này"
+    />}</ui-section-card
+  >
+</div>
+}
+<ui-section-card
+  title="Chi tiết học tập"
+  [flush]="true"
+  class="progress-report"
+>
+  <div slot="action">
     <ui-segmented
       label="Xem tiến độ"
       [options]="views"
@@ -43,6 +79,10 @@
         >{{group.name ?? 'Chưa xác định'}}</span
       >
       }
+      <span class="progress-report__sub"
+        >{{group.completed | fmtNum}} hoàn thành · {{group.inProgress | fmtNum}}
+        đang học · {{group.notStarted | fmtNum}} chưa học</span
+      >
     </ng-template>
     @for (key of numberKeys; track key) {
     <ng-template [uiDataTableCell]="key" [of]="report.groups$()" let-group
@@ -127,4 +167,4 @@
     />
   </ui-data-table>
   }
-</section>
+</ui-section-card>

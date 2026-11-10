@@ -1,0 +1,48 @@
+@use 'ui';
+:host {
+  display: block;
+  min-width: 0;
+}
+.comparison {
+  margin: 0;
+  @include ui.stack(5);
+}
+.comparison__row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: ui.space(2) ui.space(4);
+  align-items: center;
+  @include ui.text(sm);
+  strong {
+    @include ui.num;
+    font-weight: ui.weight(semibold);
+  }
+}
+.comparison__label {
+  overflow-wrap: anywhere;
+}
+.comparison__track {
+  height: ui.space(2);
+  background: ui.color(surface-sunken);
+  border-radius: ui.radius(field);
+  grid-row: 2;
+  grid-column: 1 / -1;
+  overflow: hidden;
+}
+.comparison__fill {
+  display: block;
+  height: 100%;
+  background: ui.chart(1);
+}
+.comparison__fill--danger {
+  background: ui.color(danger);
+}
+@include ui.bp(md) {
+  .comparison__row {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr) auto;
+  }
+  .comparison__track {
+    grid-row: 1;
+    grid-column: 2;
+  }
+}

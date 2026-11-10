@@ -12,6 +12,8 @@ export interface DonutDatum {
 export class DonutChart {
   readonly data = input.required<readonly DonutDatum[]>();
   readonly label = input('Trạng thái tham gia');
+  readonly centerValue = input('');
+  readonly centerLabel = input('');
   protected readonly segments = computed(() => {
     const total = this.data().reduce((sum, d) => sum + d.value, 0) || 1;
     let offset = 0;

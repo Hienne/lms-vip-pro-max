@@ -173,3 +173,39 @@
 [hidden] {
   display: none !important;
 }
+
+// Compact dashboard panels share one grid while each resource keeps its own states.
+.report-screen__dashboard {
+  display: grid;
+  gap: ui.space(5);
+  .report-screen__part,
+  .report-screen__analytics {
+    display: contents;
+  }
+  .report-screen__part-title,
+  ui-stat-strip,
+  .report-screen__as-of {
+    grid-column: 1 / -1;
+  }
+  .report-screen__scores {
+    grid-column: 1 / -1;
+    order: 2;
+  }
+  .report-screen__as-of {
+    order: 3;
+  }
+  @include ui.bp(md) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.report-screen__cell-note {
+  display: block;
+  @include ui.text(sm, muted);
+  margin-top: ui.space(1);
+}
+.report-screen__analytics {
+  @include ui.bp(md) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}

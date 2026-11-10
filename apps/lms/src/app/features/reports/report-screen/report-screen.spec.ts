@@ -258,7 +258,8 @@ describe('ReportScreen', () => {
         '[aria-labelledby="report-learning-title"]',
       )!;
       expect(learningPart.querySelector('ui-error-state')).not.toBeNull();
-      expect(text()).toContain('Học viên đã thi');
+      expect(text()).toContain('Kết quả thi');
+      expect(root.querySelector('ui-donut-chart')).not.toBeNull();
     });
   });
 

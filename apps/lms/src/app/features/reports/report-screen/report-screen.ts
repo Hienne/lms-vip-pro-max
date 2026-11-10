@@ -15,6 +15,7 @@ import {
   Alert,
   DonutChart,
   SectionCard,
+  HorizontalBarChart,
   Button,
   Card,
   DataTable,
@@ -128,6 +129,7 @@ const filterSchema = z
 @Component({
   selector: 'app-report-screen',
   imports: [
+    HorizontalBarChart,
     DateInput,
     ReportPicker,
     ProgressReport,

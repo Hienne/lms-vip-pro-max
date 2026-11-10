@@ -213,6 +213,19 @@ export class ReportScreenStore {
     page: this.page$,
     active: computed(() => this.progress$() && !this.pickers.blocked$()),
   });
+  readonly progressComparison$ = computed(() =>
+    this.progress
+      .groups$()
+      .slice(0, 6)
+      .map((g) => ({ label: g.name ?? String(g.id), value: g.completionRate })),
+  );
+  readonly progressOverdue$ = computed(() =>
+    this.progress
+      .groups$()
+      .filter((g) => g.overdue > 0)
+      .slice(0, 6)
+      .map((g) => ({ label: g.name ?? String(g.id), value: g.overdue })),
+  );
   readonly filtersOpen$ = this.state.filtersOpen.asReadonly();
   setFiltersOpen(open: boolean): void {
     this.state.filtersOpen.set(open);
@@ -274,7 +287,8 @@ export class ReportScreenStore {
       this.client.call(api.overview, { query }),
     {
       params: () =>
-        !this.params()?.get('dim') && !this.pickers.blocked$()
+        (!this.params()?.get('dim') || this.dimension$() === 'results') &&
+        !this.pickers.blocked$()
           ? this.commonFilters()
           : undefined,
     },
@@ -285,10 +299,15 @@ export class ReportScreenStore {
       this.client.call(learning.summary, { query }),
     {
       params: () => {
-        if (this.params()?.get('dim') || this.pickers.blocked$())
+        if (
+          (!this.progress$() && this.params()?.get('dim')) ||
+          this.pickers.blocked$()
+        )
           return undefined;
         const { orgId, teamId, courseId } = this.filters$();
-        return { orgId, teamId, courseId };
+        return this.progress$()
+          ? learningFilter(this.filters$())
+          : { orgId, teamId, courseId };
       },
     },
   );
@@ -490,23 +509,110 @@ export class ReportScreenStore {
   readonly examError$ = computed(
     () => this.pickers.error$() ?? this.overview.error(),
   );
+  readonly pageResultsChart$ = computed<readonly DonutDatum[]>(() =>
+    ['Đạt', 'Chưa đạt', '—'].map((label, i) => ({
+      label: label === '—' ? 'Chưa có kết quả' : label,
+      value: this.rows$().filter((r) => r['passed'] === label).length,
+      tone: i === 0 ? 'success' : 'neutral',
+    })),
+  );
+  readonly pageStatusChart$ = computed<readonly DonutDatum[]>(() =>
+    ['Đang làm', 'Đã nộp', 'Tự nộp', 'Đã hủy'].map((label) => ({
+      label,
+      value: this.rows$().filter((r) => r['status'] === label).length,
+      tone: 'primary',
+    })),
+  );
+  readonly assessmentViews$ = computed(() =>
+    this.assessmentTabs$().map((t) => ({ value: t.id, label: t.label })),
+  );
+  readonly period$ = computed(() => {
+    const { from, to } = this.filters$();
+    if (!from && !to) return 'all';
+    const now = new Date();
+    const end = new Date(
+      now.getFullYear(),
+      now.getMonth(),
+      now.getDate() + 1,
+    ).toISOString();
+    if (to !== end) return 'custom';
+    if (from === new Date(now.getFullYear(), now.getMonth(), 1).toISOString())
+      return 'month';
+    if (
+      from ===
+      new Date(
+        now.getFullYear(),
+        now.getMonth(),
+        now.getDate() - 29,
+      ).toISOString()
+    )
+      return '30days';
+    return 'custom';
+  });
+  readonly scoreBars$ = computed(() =>
+    this.scoreComparison$().map((g) => ({
+      label: g.name ?? 'Chưa xác định',
+      value: g.averageScore ?? 0,
+    })),
+  );
+  selectAssessment(value: string): void {
+    const tab = this.assessmentTabs$().find((t) => t.id === value);
+    if (tab)
+      void this.router.navigate(tab.path, { queryParams: tab.queryParams });
+  }
+  selectPeriod(value: string): void {
+    if (value === 'custom') {
+      this.setFiltersOpen(true);
+      return;
+    }
+    if (value === 'all') {
+      this.applyFilters({ ...this.filters$(), from: undefined, to: undefined });
+      return;
+    }
+    const now = new Date();
+    const from =
+      value === 'month'
+        ? new Date(now.getFullYear(), now.getMonth(), 1)
+        : new Date(now.getFullYear(), now.getMonth(), now.getDate() - 29);
+    const to = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+    this.applyFilters({
+      ...this.filters$(),
+      from: from.toISOString(),
+      to: to.toISOString(),
+    });
+  }
   readonly rows$ = computed(() => this.detail.value()?.items ?? []);
   readonly total$ = computed(() => this.detail.value()?.totalElements ?? 0);
   readonly columns$ = computed<readonly DataTableColumn[]>(() => {
     const type = this.dimension$();
     return type
-      ? COLUMNS[type].map(([key, label]) => ({
-          key,
-          label,
-          sortable: SORTS[type].includes(key),
-        }))
+      ? COLUMNS[type]
+          .filter(
+            ([key]) =>
+              type !== 'results' ||
+              [
+                'userName',
+                'quizTitle',
+                'attemptNo',
+                'scorePercent',
+                'passed',
+                'submittedAt',
+              ].includes(key),
+          )
+          .map(([key, label]) => ({
+            key,
+            label,
+            sortable: SORTS[type].includes(key),
+          }))
       : [];
   });
-  readonly isLoading$ = computed(
-    () => this.overview.isLoading() || this.detail.isLoading(),
+  readonly isLoading$ = computed(() =>
+    this.dimension$() ? this.detail.isLoading() : this.overview.isLoading(),
   );
   readonly error$ = computed(
-    () => this.pickers.error$() ?? this.overview.error() ?? this.detail.error(),
+    () =>
+      this.pickers.error$() ??
+      (this.dimension$() ? this.detail.error() : this.overview.error()),
   );
   readonly exporting$ = computed(
     () => this.exportMutation.isPending() || this.progress.exporting$(),

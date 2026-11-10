@@ -19,6 +19,15 @@
     >
       <title>{{part.label}}: {{part.value}}</title>
     </circle>
+    } @if (centerValue()) {
+    <g transform="rotate(90 80 80)" aria-hidden="true">
+      <text class="chart-view__center-value" x="80" y="78" text-anchor="middle">
+        {{centerValue()}}
+      </text>
+      <text class="chart-view__center-label" x="80" y="99" text-anchor="middle">
+        {{centerLabel()}}
+      </text>
+    </g>
     }
   </svg>
   <figcaption class="chart-view__parts">

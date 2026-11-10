@@ -354,12 +354,51 @@ describe('assessment report integration', () => {
     expect(store.scoreComparison$()).toEqual([]);
     const element = harness.routeNativeElement as HTMLElement;
     expect(element.textContent).toContain('Chưa có điểm đã chấm');
-    expect(element.querySelector('ui-donut-chart')).toBeNull();
+    expect(
+      element.querySelector(
+        'ui-donut-chart[label="Số học viên đã đạt và chưa ghi nhận đạt"]',
+      ),
+    ).toBeNull();
     expect(
       [...element.querySelectorAll('ui-stat-strip .stat__value')].filter(
         (el) => el.textContent?.trim() === '—',
       ),
     ).toHaveLength(2);
+  });
+  it('keeps assessment rows available when the scope summary fails', async () => {
+    const backend = TestBed.inject(MockBackend);
+    const handle = backend.handle.bind(backend);
+    vi.spyOn(backend, 'handle').mockImplementation((endpoint, request) =>
+      endpoint === api.overview
+        ? {
+            status: 500,
+            body: envelopeError('CORE-INTERNAL_ERROR', 'Summary unavailable'),
+          }
+        : handle(endpoint, request),
+    );
+    const store = await open('/reports/results');
+    expect(store.rows$().length).toBeGreaterThan(0);
+    expect(store.error$()).toBeUndefined();
+  });
+  it('applies a local calendar month as a half-open date range and clears it', async () => {
+    const store = await open('/reports/results');
+    store.selectPeriod('month');
+    await settle();
+    const now = new Date();
+    expect(store.filters$().from).toBe(
+      new Date(now.getFullYear(), now.getMonth(), 1).toISOString(),
+    );
+    expect(store.filters$().to).toBe(
+      new Date(
+        now.getFullYear(),
+        now.getMonth(),
+        now.getDate() + 1,
+      ).toISOString(),
+    );
+    store.selectPeriod('all');
+    await settle();
+    expect(store.filters$().from).toBeUndefined();
+    expect(store.filters$().to).toBeUndefined();
   });
   it('applies the filters to the overview charts and resets both the form and the results', async () => {
     const store = await open('/reports');
