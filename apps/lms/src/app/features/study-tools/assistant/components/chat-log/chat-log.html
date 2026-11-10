@@ -11,6 +11,16 @@
     (retry)="retry.emit($event)"
     (rated)="rated.emit($event)"
   />
+  } @if (followUps().length) {
+  <ul class="log__suggestions" aria-label="Gợi ý câu hỏi tiếp theo">
+    @for (question of followUps(); track question) {
+    <li>
+      <button uiButton size="sm" type="button" (click)="asked.emit(question)">
+        {{ question }}
+      </button>
+    </li>
+    }
+  </ul>
   }
 </div>
 <div #end></div>

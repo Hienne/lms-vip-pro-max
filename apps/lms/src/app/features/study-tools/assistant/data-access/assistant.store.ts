@@ -429,7 +429,12 @@ export class AssistantStore {
         this.setTurns(
           this.turns$().map((turn) =>
             turn.id === id
-              ? { ...turn, serverTurnId: event.turnId, feedback: null }
+              ? {
+                  ...turn,
+                  serverTurnId: event.turnId,
+                  feedback: null,
+                  suggestions: event.suggestions ?? [],
+                }
               : turn,
           ),
         );

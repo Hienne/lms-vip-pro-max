@@ -38,6 +38,8 @@ export interface Turn {
   readonly serverTurnId?: number;
   /** The user's thumbs on the answer, as the server saved them. */
   readonly feedback?: Feedback | null;
+  /** Follow-up questions the server offered with this answer. */
+  readonly suggestions?: readonly string[];
 }
 
 /** A file on its way to the knowledge base. */

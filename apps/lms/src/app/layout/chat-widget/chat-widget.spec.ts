@@ -283,8 +283,34 @@ describe('ChatWidget', () => {
       'Đổi chức danh của tôi',
     ]);
     suggestions[1].click();
-    expect(store.ask).toHaveBeenCalledWith('Mở trang Hồ sơ cá nhân');
+    expect(store.ask).toHaveBeenCalledWith(
+      'Mở trang Hồ sơ cá nhân',
+      'dieu_huong',
+    );
     expect(document.activeElement?.id).toBe('agent-composer-box');
+  });
+
+  it('offers follow-ups only under the newest finished answer, and asking one sends it', async () => {
+    const { fixture, el, store, turns, answering } = await render();
+    turns.set([
+      { ...turn(1, 'Một'), suggestions: ['Cũ?'] },
+      { ...turn(2, 'Hai'), suggestions: ['Còn gì nữa?', 'Ví dụ?'] },
+    ]);
+    await fixture.whenStable();
+    const buttons = () => [
+      ...el.querySelectorAll<HTMLButtonElement>('.chat__suggestion'),
+    ];
+    expect(buttons().map((b) => b.textContent?.trim())).toEqual([
+      'Còn gì nữa?',
+      'Ví dụ?',
+    ]);
+
+    buttons()[1].click();
+    expect(store.ask).toHaveBeenCalledWith('Ví dụ?', undefined);
+
+    answering.set(true);
+    await fixture.whenStable();
+    expect(buttons()).toHaveLength(0);
   });
 
   it('shows each turn in order and hides the empty line', async () => {

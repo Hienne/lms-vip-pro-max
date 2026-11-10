@@ -65,6 +65,8 @@ export const AgentTurnSchema = z.object({
   serverTurnId: z.number().int().positive().optional(),
   /** The user's thumbs on the answer, as the server saved them. */
   feedback: FeedbackSchema.nullable().optional(),
+  /** Follow-up questions the server offered with this answer. */
+  suggestions: z.array(z.string()).optional(),
 });
 export type AgentTurn = z.infer<typeof AgentTurnSchema>;
 

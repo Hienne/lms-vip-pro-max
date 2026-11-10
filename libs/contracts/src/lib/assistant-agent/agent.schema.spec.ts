@@ -148,6 +148,35 @@ describe('ActionResultSchema', () => {
   });
 });
 
+describe('follow-up suggestions and skill hints', () => {
+  const doneAgent = { type: 'done', answer: 'Xong.', citations: [] };
+  const doneChat = { ...doneAgent, found: true };
+
+  it('accepts a done line with and without suggestions, for both assistants', () => {
+    for (const schema of [AgentStreamEventSchema, ChatStreamEventSchema]) {
+      const base = schema === AgentStreamEventSchema ? doneAgent : doneChat;
+      expect(schema.safeParse(base).success).toBe(true);
+      expect(
+        schema.safeParse({ ...base, suggestions: ['Còn gì nữa?'] }).success,
+      ).toBe(true);
+      expect(schema.safeParse({ ...base, suggestions: [1] }).success).toBe(
+        false,
+      );
+    }
+  });
+
+  it('accepts a command with a known skill and refuses an unknown one', () => {
+    expect(
+      AgentCommandSchema.safeParse({ message: 'Mở', skill: 'dieu_huong' })
+        .success,
+    ).toBe(true);
+    expect(AgentCommandSchema.safeParse({ message: 'Mở' }).success).toBe(true);
+    expect(
+      AgentCommandSchema.safeParse({ message: 'Mở', skill: 'bay' }).success,
+    ).toBe(false);
+  });
+});
+
 describe('agent endpoints', () => {
   it('registers the stream and the two action calls under /api/v1/assistant/agent', () => {
     expect(Object.keys(agentEndpoints)).toEqual([

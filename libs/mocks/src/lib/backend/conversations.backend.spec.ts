@@ -189,8 +189,11 @@ describe('FakeBackend saved conversations', () => {
   });
   describe('feedback on an answer', () => {
     const doneOf = (reply: FakeReply): number =>
-      (reply.events?.find((e) => e.type === 'done') as { turnId: number })
-        .turnId;
+      (
+        (reply.events as { type: string }[] | undefined)?.find(
+          (e) => e.type === 'done',
+        ) as unknown as { turnId: number }
+      ).turnId;
     const rate = (token: string, turnId: number, body: unknown) =>
       call(answerFeedbackEndpoints.rate, token, {
         params: { turnId: String(turnId) },

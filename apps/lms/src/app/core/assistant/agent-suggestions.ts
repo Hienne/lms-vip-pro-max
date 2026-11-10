@@ -1,39 +1,51 @@
+import type { AgentSkill } from '@lms/contracts';
+
+/** An opening question and the skill it is for, so the server does not have to guess. */
+export interface Suggestion {
+  readonly text: string;
+  readonly skill: AgentSkill;
+}
+
+const doc = (text: string): Suggestion => ({ text, skill: 'qa_tai_lieu' });
+const screen = (text: string): Suggestion => ({ text, skill: 'dieu_huong' });
+const profile = (text: string): Suggestion => ({ text, skill: 'ho_so' });
+
 /** One question for each thing the assistant does: documents, screens, the profile. */
 export const DEFAULT_SUGGESTIONS = [
-  'Quy trình EOD gồm những bước nào?',
-  'Mở trang Hồ sơ cá nhân',
-  'Đổi chức danh của tôi',
-] as const;
+  doc('Quy trình EOD gồm những bước nào?'),
+  screen('Mở trang Hồ sơ cá nhân'),
+  profile('Đổi chức danh của tôi'),
+] as const satisfies readonly Suggestion[];
 
 const LEARNING = [
-  'Tóm tắt những ý chính của bài này',
-  'Quy trình EOD gồm những bước nào?',
-  'Mở trang Tiến độ học tập',
-] as const;
+  doc('Tóm tắt những ý chính của bài này'),
+  doc('Quy trình EOD gồm những bước nào?'),
+  screen('Mở trang Tiến độ học tập'),
+] as const satisfies readonly Suggestion[];
 
 const QUIZ = [
-  'Làm bài kiểm tra có tính điểm như thế nào?',
-  'Mở trang Tiến độ học tập',
-  'Quy trình EOD gồm những bước nào?',
-] as const;
+  doc('Làm bài kiểm tra có tính điểm như thế nào?'),
+  screen('Mở trang Tiến độ học tập'),
+  doc('Quy trình EOD gồm những bước nào?'),
+] as const satisfies readonly Suggestion[];
 
 const ADMIN_CONTENT = [
-  'Cách soạn một khóa học mới',
-  'Cách tạo câu hỏi trong ngân hàng câu hỏi',
-  'Mở trang Quản lý khóa học',
-] as const;
+  doc('Cách soạn một khóa học mới'),
+  doc('Cách tạo câu hỏi trong ngân hàng câu hỏi'),
+  screen('Mở trang Quản lý khóa học'),
+] as const satisfies readonly Suggestion[];
 
 const COMMUNITY = [
-  'Tìm trong cộng đồng bài viết về đối soát cuối ngày',
-  'Mở trang Hỏi đáp cộng đồng',
-  'Quy trình EOD gồm những bước nào?',
-] as const;
+  doc('Tìm trong cộng đồng bài viết về đối soát cuối ngày'),
+  screen('Mở trang Hỏi đáp cộng đồng'),
+  doc('Quy trình EOD gồm những bước nào?'),
+] as const satisfies readonly Suggestion[];
 
 /**
  * Where the user is, for the opening suggestions: the learning screens, a quiz, the screens that
  * edit content, the community, or anywhere else (the default three).
  */
-export function suggestionsFor(path: string): readonly string[] {
+export function suggestionsFor(path: string): readonly Suggestion[] {
   const first = path.split(/[?#]/)[0].split('/').filter(Boolean)[0];
   switch (first) {
     case 'learn':

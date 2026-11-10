@@ -15,6 +15,7 @@ import {
   answerFeedbackEndpoints,
   type RateAnswerCommand,
   type AgentCommand,
+  type AgentSkill,
   type AgentStreamEvent,
   type PendingAction,
 } from '@lms/contracts';
@@ -239,12 +240,12 @@ export class AgentChatStore {
   // ---- conversation ----------------------------------------------------------------------------
 
   /** Asks one question; ignored while another answer is on its way. */
-  ask(rawQuestion: string): void {
+  ask(rawQuestion: string, skill?: AgentSkill): void {
     const question = rawQuestion.trim();
     if (!question || this.isAnswering$()) return;
     const id = Math.max(0, ...this.turns$().map((t) => t.id)) + 1;
     this.setTurns([...this.turns$(), { id, question, reply: WAITING }]);
-    this.stream(id, question);
+    this.stream(id, question, skill);
   }
 
   /**
@@ -260,8 +261,8 @@ export class AgentChatStore {
     this.stream(turnId, turn.question);
   }
 
-  private stream(id: number, question: string): void {
-    const command = this.commandFor(question);
+  private stream(id: number, question: string, skill?: AgentSkill): void {
+    const command = this.commandFor(question, skill);
     this.setAnsweringId(id);
     if (this.network.offline$()) {
       this.fail(id, OFFLINE_MESSAGE);
@@ -544,7 +545,12 @@ export class AgentChatStore {
         this.setTurns(
           this.turns$().map((turn) =>
             turn.id === id
-              ? { ...turn, serverTurnId: event.turnId, feedback: null }
+              ? {
+                  ...turn,
+                  serverTurnId: event.turnId,
+                  feedback: null,
+                  suggestions: event.suggestions ?? [],
+                }
               : turn,
           ),
         );
@@ -589,11 +595,10 @@ export class AgentChatStore {
   // ---- history and storage ---------------------------------------------------------------------
 
   /** The question and the conversation it continues; the server holds the earlier turns. */
-  private commandFor(question: string): AgentCommand {
+  private commandFor(question: string, skill?: AgentSkill): AgentCommand {
     const conversationId = this.state.conversationId();
-    return conversationId === null
-      ? { message: question }
-      : { conversationId, message: question };
+    const base = skill ? { message: question, skill } : { message: question };
+    return conversationId === null ? base : { ...base, conversationId };
   }
 
   private persist(chat: {

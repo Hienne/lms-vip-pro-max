@@ -188,6 +188,46 @@ describe('Assistant', () => {
     ).toBe('true');
   });
 
+  it('offers follow-ups under the newest answer, asks one on click, and drops them with the next question', async () => {
+    await open();
+    const input = el.querySelector(
+      'input#assistant-question',
+    ) as HTMLInputElement;
+    input.value = 'EOD là gì?';
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+    await settle();
+    el.querySelector('form')?.dispatchEvent(new Event('submit'));
+    await settle();
+    expect(el.querySelector('.log__suggestions')).toBeNull();
+
+    backend
+      .expectOne(STREAM)
+      .flush(
+        knowledgeStreamFixture
+          .map((e) =>
+            JSON.stringify(
+              e.type === 'done' ? { ...e, suggestions: ['Còn ngoại lệ?'] } : e,
+            ),
+          )
+          .join('\n'),
+        { headers: { 'Content-Type': 'application/x-ndjson' } },
+      );
+    await settle();
+    const chips = el.querySelectorAll<HTMLButtonElement>(
+      '.log__suggestions button',
+    );
+    expect(Array.from(chips).map((b) => b.textContent?.trim())).toEqual([
+      'Còn ngoại lệ?',
+    ]);
+
+    chips[0].click();
+    await settle();
+    expect(el.querySelector('.log__suggestions')).toBeNull();
+    expect(backend.expectOne(STREAM).request.body).toMatchObject({
+      question: 'Còn ngoại lệ?',
+    });
+  });
+
   describe('documents panel', () => {
     const toggle = () =>
       Array.from(el.querySelectorAll<HTMLButtonElement>('.chat__toggle')).find(

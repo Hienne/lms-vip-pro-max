@@ -84,6 +84,8 @@ export const ChatStreamEventSchema = z.discriminatedUnion('type', [
     citations: z.array(CitationSchema),
     /** The stored turn, which the user may rate; absent when the server could not store it. */
     turnId: z.number().int().positive().optional(),
+    /** Up to three follow-up questions; absent when the model offered none. */
+    suggestions: z.array(z.string()).optional(),
   }),
   z.object({
     type: z.literal('error'),

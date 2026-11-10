@@ -99,20 +99,35 @@
         Hỏi về tài liệu, mở một màn hình hoặc sửa hồ sơ của bạn. Thử:
       </p>
       <ul class="chat__suggestions">
-        @for (suggestion of suggestions(); track suggestion) {
+        @for (suggestion of suggestions(); track suggestion.text) {
         <li>
           <button
             type="button"
             class="chat__suggestion"
             [disabled]="store.isOffline$()"
-            (click)="suggest(suggestion)"
+            (click)="suggest(suggestion.text, suggestion.skill)"
           >
-            {{ suggestion }}
+            {{ suggestion.text }}
           </button>
         </li>
         }
       </ul>
     </div>
+    } @if (followUps().length) {
+    <ul class="chat__suggestions" aria-label="Gợi ý câu hỏi tiếp theo">
+      @for (question of followUps(); track question) {
+      <li>
+        <button
+          type="button"
+          class="chat__suggestion"
+          [disabled]="store.isOffline$()"
+          (click)="suggest(question)"
+        >
+          {{ question }}
+        </button>
+      </li>
+      }
+    </ul>
     }
   </div>
   <div class="chat__composer">

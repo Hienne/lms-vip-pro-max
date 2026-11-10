@@ -980,6 +980,50 @@ describe('AgentChatStore', () => {
     });
   });
 
+  describe('follow-up suggestions and skill hints', () => {
+    it('keeps the suggestions the done line carried on that turn', async () => {
+      await converse('Câu hỏi', [
+        conversation(7),
+        {
+          type: 'done',
+          answer: 'Xong.',
+          citations: [],
+          suggestions: ['Còn gì nữa?', 'Ví dụ?'],
+        },
+      ]);
+      expect(store.turns$()[0].suggestions).toEqual(['Còn gì nữa?', 'Ví dụ?']);
+    });
+
+    it('has none when the done line carried none', async () => {
+      await converse('Câu hỏi', [
+        conversation(7),
+        { type: 'done', answer: 'Xong.', citations: [] },
+      ]);
+      expect(store.turns$()[0].suggestions).toEqual([]);
+    });
+
+    it('sends the skill a button names and nothing when there is none', async () => {
+      store.ask('Mở trang Hồ sơ cá nhân', 'dieu_huong');
+      await settle();
+      const request = backend.expectOne(STREAM);
+      expect(lastBody(request)).toEqual({
+        message: 'Mở trang Hồ sơ cá nhân',
+        skill: 'dieu_huong',
+      });
+      finish(request, [
+        conversation(7),
+        { type: 'done', answer: 'Ok.', citations: [] },
+      ]);
+      await settle();
+      store.ask('Câu tiếp');
+      await settle();
+      expect(lastBody(backend.expectOne(STREAM))).toEqual({
+        conversationId: 7,
+        message: 'Câu tiếp',
+      });
+    });
+  });
+
   describe('feedback on an answer', () => {
     const RATE = (id: number) => `/api/v1/assistant/turns/${id}/feedback`;
     const saved = { helpful: false, reasonCode: 'outdated', note: null };

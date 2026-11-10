@@ -5,6 +5,15 @@ import { CitationSchema } from '../knowledge/knowledge.schema';
 /** The widget's form limit for the message. */
 export const AGENT_MESSAGE_MAX_LENGTH = 500;
 
+/** The skills the server knows; the app names one when it already knows what the question is for. */
+export const AgentSkillSchema = z.enum([
+  'qa_tai_lieu',
+  'dieu_huong',
+  'ho_so',
+  'tro_chuyen',
+]);
+export type AgentSkill = z.infer<typeof AgentSkillSchema>;
+
 /**
  * The new question and, for a follow-up, the conversation it belongs to. The client sends no
  * history: the server loads the earlier turns of that conversation itself.
@@ -12,6 +21,8 @@ export const AGENT_MESSAGE_MAX_LENGTH = 500;
 export const AgentCommandSchema = z.object({
   conversationId: z.number().int().positive().nullish(),
   message: z.string().trim().min(1).max(AGENT_MESSAGE_MAX_LENGTH),
+  /** Left out, the server picks the skill itself. */
+  skill: AgentSkillSchema.optional(),
 });
 export type AgentCommand = z.infer<typeof AgentCommandSchema>;
 
@@ -60,6 +71,8 @@ export const AgentStreamEventSchema = z.discriminatedUnion('type', [
     citations: z.array(CitationSchema),
     /** The stored turn, which the user may rate; absent when the server could not store it. */
     turnId: z.number().int().positive().optional(),
+    /** Up to three follow-up questions; absent when the model offered none. */
+    suggestions: z.array(z.string()).optional(),
   }),
   z.object({
     type: z.literal('error'),

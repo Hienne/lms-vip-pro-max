@@ -13,6 +13,7 @@ import {
 } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { NavigationEnd, Router } from '@angular/router';
+import type { AgentSkill } from '@lms/contracts';
 import { Icon, IconButton } from '@lms/ui';
 import { filter } from 'rxjs';
 import {
@@ -75,6 +76,13 @@ export class ChatWidget {
   protected readonly panelId = AGENT_PANEL_ID;
   /** The opening questions follow the page the panel is open on. */
   protected readonly suggestions = computed(() => suggestionsFor(this.path()));
+  /** Follow-up questions, only under the newest answer once it is finished. */
+  protected readonly followUps = computed(() => {
+    const last = this.store.turns$().at(-1);
+    return last?.reply.status === 'done' && !this.store.isAnswering$()
+      ? (last.suggestions ?? [])
+      : [];
+  });
   protected readonly isEmpty = computed(() => this.store.turns$().length === 0);
 
   private readonly composer = viewChild(AgentComposer);
@@ -116,8 +124,8 @@ export class ChatWidget {
   }
 
   /** Sends a suggested question as it stands; the list goes away, so the cursor goes to the box. */
-  protected suggest(question: string): void {
-    this.store.ask(question);
+  protected suggest(question: string, skill?: AgentSkill): void {
+    this.store.ask(question, skill);
     this.composer()?.focus();
   }
 
