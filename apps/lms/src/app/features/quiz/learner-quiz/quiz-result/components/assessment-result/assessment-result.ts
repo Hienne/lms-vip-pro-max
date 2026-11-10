@@ -1,6 +1,7 @@
 import { Component, computed, input, output } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import type { LearnerAttemptResult, LearnerSubmitType } from '@lms/contracts';
+import type { QuestionExplanation } from '../../data-access/quiz-explain.store';
 import {
   Alert,
   Badge,
@@ -55,6 +56,14 @@ export class AssessmentResult {
   readonly canRetry = input.required<boolean>();
   readonly reviewOpen = input(false);
   readonly reviewOpenChange = output<boolean>();
+  /** "Giải thích" is offered per question; false when the user has no assistant. */
+  readonly explainable = input(false);
+  readonly explanations = input<ReadonlyMap<number, QuestionExplanation>>(
+    new Map(),
+  );
+  /** An explanation is on its way, so no other can start. */
+  readonly explainBusy = input(false);
+  readonly explain = output<number>();
 
   protected readonly crumbs = computed((): readonly BreadcrumbItem[] => {
     const result = this.result();

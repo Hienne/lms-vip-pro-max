@@ -4,6 +4,7 @@ import {
   type LearnerAttemptResult,
 } from '@lms/contracts';
 import type { MockInstance } from 'vitest';
+import { fakeSession } from '../../../../core/session/session.testing';
 import type { MockBackend } from '../../../../core/dev/mock-api/mock-api.interceptor';
 import {
   answerIntroWith,
@@ -95,6 +96,35 @@ describe('QuizResult', () => {
     control('Thu gọn')!.click();
     await settle();
     expect(el.querySelector('.result__review')).toBeNull();
+  });
+
+  it('explains a reviewed question with the lesson as its source, for a user with the assistant', async () => {
+    await openResult(1);
+    fakeSession().user.update((user) =>
+      user ? { ...user, menus: [...user.menus, 'AI_ASSISTANT'] } : user,
+    );
+    control('Xem lại')!.click();
+    await settle();
+    expect(control('Giải thích')).toBeDefined();
+    control('Giải thích')!.click();
+    await settle();
+    expect(text()).toContain('Trợ lý giải thích');
+    expect(el.querySelector('.result__ai a')?.getAttribute('href')).toMatch(
+      /^\/lesson\/\d+\/\d+$/,
+    );
+  });
+
+  it('does not offer to explain a question to a user without the assistant', async () => {
+    await openResult(1);
+    fakeSession().user.update((user) =>
+      user
+        ? { ...user, menus: user.menus.filter((m) => m !== 'AI_ASSISTANT') }
+        : user,
+    );
+    control('Xem lại')!.click();
+    await settle();
+    expect(el.querySelectorAll('.result__question').length).toBeGreaterThan(0);
+    expect(control('Giải thích')).toBeUndefined();
   });
 
   it('offers a retake after a failed attempt while attempts are left', async () => {

@@ -2,6 +2,7 @@ import {
   assessmentV1Endpoints,
   learnerQuizEndpoints as e,
   MyAttemptsQuerySchema,
+  quizExplainEndpoints,
   SaveAnswerBodySchema,
   type AnyEndpoint,
   type AnswerReceipt,
@@ -289,6 +290,7 @@ export class LearnerQuizMock {
   answers(endpoint: AnyEndpoint): boolean {
     return (
       endpoint === assessmentV1Endpoints.courseQuizList ||
+      endpoint === quizExplainEndpoints.explain ||
       Object.values(e).some((item) => item === endpoint)
     );
   }
@@ -332,6 +334,8 @@ export class LearnerQuizMock {
     const attempt = this.attempts.find((a) => a.id === attemptId);
     if (!attempt)
       return refuse('ASSESSMENT-NOT_FOUND', 'Không tìm thấy lượt thi.');
+    if (endpoint === quizExplainEndpoints.explain)
+      return this.explain(attempt, Number(params['displayOrder']));
     if (endpoint === e.attemptSession) return ok(this.session(attempt));
     if (endpoint === e.saveAnswer) return this.save(attempt, params, body);
     if (endpoint === e.submitAttempt) {
@@ -536,6 +540,57 @@ export class LearnerQuizMock {
       serverTime: new Date().toISOString(),
     };
     return ok(receipt);
+  }
+
+  /** The scripted explanation of one reviewed question; the refusals are the server's, before any event. */
+  private explain(attempt: Attempt, displayOrder: number): FakeReply {
+    if (!attempt.submittedAt)
+      return refuse(
+        'ASSESSMENT-ATTEMPT_IN_PROGRESS',
+        'Lượt thi chưa nộp nên chưa có kết quả.',
+      );
+    if (!this.reviewOpen(attempt))
+      return refuse(
+        'ASSESSMENT-REVIEW_NOT_AVAILABLE',
+        'Đề này chưa cho xem đáp án.',
+      );
+    const question = attempt.seed.questions[displayOrder - 1];
+    if (!question)
+      return refuse('ASSESSMENT-NOT_FOUND', 'Không tìm thấy câu hỏi.');
+    const answer = `Đáp án đúng nằm ở phương án được đánh dấu; ${question.explanation} [1].`;
+    return {
+      status: 200,
+      body: envelopeOk(null),
+      events: [
+        { type: 'conversation', conversationId: 1 },
+        { type: 'delta', text: answer },
+        {
+          type: 'done',
+          answer,
+          citations: [
+            {
+              n: 1,
+              documentId: 0,
+              fileName: attempt.seed.quiz.title,
+              page: null,
+              lineStart: 0,
+              lineEnd: 0,
+              snippet: 'Nội dung bài học được trích từ khóa học.',
+              lesson: {
+                courseId: attempt.seed.courseId,
+                courseTitle: `Khóa ${attempt.seed.courseId}`,
+                revisionId: 1,
+                chapterTitle: 'Chương 1',
+                lessonId: 1,
+                lessonTitle: 'Bài 1',
+                blockId: 1,
+                url: `/lesson/${attempt.seed.courseId}/1`,
+              },
+            },
+          ],
+        },
+      ],
+    };
   }
 
   private reviewOpen(attempt: Attempt): boolean {

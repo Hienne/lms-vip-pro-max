@@ -117,7 +117,35 @@
         <ui-alert tone="info"
           ><strong>Giải thích:</strong> {{ item.explanation }}</ui-alert
         >
-        }
+        } @if (explainable()) { @let ai = explanations().get(item.displayOrder);
+        @if (ai?.status === 'done') {
+        <ui-alert tone="info" class="result__ai"
+          ><strong>Trợ lý giải thích:</strong> {{ ai?.text }} @if
+          (ai?.citations?.length) {
+          <span class="result__muted">
+            Nguồn: @for (citation of ai?.citations; track citation.n) { @if
+            (citation.lesson; as lesson) {
+            <a [routerLink]="lesson.url"
+              >[{{ citation.n }}] {{ lesson.lessonTitle }}</a
+            >
+            } }
+          </span>
+          }</ui-alert
+        >
+        } @else if (ai?.status === 'error') {
+        <ui-alert tone="danger">{{ ai?.error }}</ui-alert>
+        } @if (ai?.status !== 'done') {
+        <button
+          uiButton
+          variant="ghost"
+          type="button"
+          [disabled]="explainBusy()"
+          (click)="explain.emit(item.displayOrder)"
+        >
+          {{ ai?.status === 'working' ? 'Đang giải thích…' : ai?.status ===
+          'error' ? 'Thử lại' : 'Giải thích' }}
+        </button>
+        } }
       </li>
       }
     </ol>
