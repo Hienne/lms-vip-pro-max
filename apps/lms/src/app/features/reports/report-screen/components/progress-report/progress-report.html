@@ -12,7 +12,7 @@
 >} @if (!report.loading$() && !report.error$() && report.view$() !== 'learners'
 && report.groups$().length) {
 <div class="progress-report__charts">
-  <ui-section-card title="Hoàn thành theo nhóm"
+  <ui-section-card [title]="store.progressChartTitle$()"
     ><ui-horizontal-bar-chart
       label="Tỷ lệ hoàn thành của tối đa 6 nhóm trong trang hiện tại"
       [data]="store.progressComparison$()"
@@ -21,7 +21,7 @@
     />
     <p>6 nhóm đầu trong trang hiện tại</p></ui-section-card
   >
-  <ui-section-card title="Khóa học cần theo dõi"
+  <ui-section-card title="Lượt học quá hạn"
     >@if (store.progressOverdue$().length) {<ui-horizontal-bar-chart
       label="Lượt quá hạn theo nhóm trong trang hiện tại"
       [data]="store.progressOverdue$()"
@@ -40,12 +40,19 @@
   class="progress-report"
 >
   <div slot="action">
-    <ui-segmented
-      label="Xem tiến độ"
-      [options]="views"
-      [value]="report.view$()"
-      (valueChange)="store.selectView($event)"
-    />
+    <label class="row row--gap-2"
+      >Nhóm báo cáo
+      <select
+        uiSelect
+        #group
+        [value]="report.view$()"
+        (change)="store.selectProgressView(group.value)"
+      >
+        @for (option of views; track option.value) {
+        <option [value]="option.value">{{option.label}}</option>
+        }
+      </select>
+    </label>
   </div>
   @if (report.loading$()) {
   <p class="row progress-report__state" role="status">
@@ -55,7 +62,7 @@
   <ui-error-state [message]="error.message" (retry)="report.retry()" />
   } @else if (report.view$() !== 'learners') {
   <ui-data-table
-    [caption]="report.view$() === 'org' ? 'Tiến độ học theo đơn vị' : 'Tiến độ học theo khóa học'"
+    [caption]="store.progressChartTitle$()"
     [columns]="groupColumns"
     [rows]="report.groups$()"
     [total]="report.groupTotal$()"

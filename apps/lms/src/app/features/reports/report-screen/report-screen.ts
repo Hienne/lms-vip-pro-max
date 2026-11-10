@@ -228,6 +228,7 @@ export class ReportScreen {
       learningStatus: LearningStatusSchema.optional().parse(
         f.learningStatus || undefined,
       ),
+      programId: this.store.filters$().programId,
       overdue: f.overdue || undefined,
       view: this.store.filters$().view,
     });

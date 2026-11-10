@@ -435,6 +435,43 @@ describe('assessment report integration', () => {
         .filter(([e]) => e === endpoint)
         .at(-1)?.[1].query;
 
+    it.each([
+      ['program', 'programId'],
+      ['team', 'teamId'],
+    ] as const)(
+      'loads %s groups and drills into the matching learners',
+      async (view, key) => {
+        const spy = vi.spyOn(TestBed.inject(MockBackend), 'handle');
+        const store = await open(`/reports/progress?view=${view}`);
+        expect(lastQuery(spy, learning.groups)).toMatchObject({
+          groupBy: view,
+        });
+        const group = store.progress.groups$().find((row) => row.drill);
+        expect(group).toBeDefined();
+        expect(group?.drill?.[key]).toBe(group?.id);
+        expect(group?.drill?.['view']).toBe('learners');
+      },
+    );
+
+    it('preserves program scope through the learner view and CSV export', async () => {
+      const spy = vi.spyOn(TestBed.inject(MockBackend), 'handle');
+      const store = await open('/reports/progress?view=program&programId=1');
+      expect(lastQuery(spy, learning.groups)).toMatchObject({
+        groupBy: 'program',
+        programId: '1',
+      });
+      store.selectView('learners');
+      await settle();
+      expect(lastQuery(spy, learning.enrollments)).toMatchObject({
+        programId: '1',
+      });
+      store.exportCsv();
+      await settle();
+      expect(lastQuery(spy, learning.exportEnrollments)).toMatchObject({
+        programId: '1',
+      });
+    });
+
     it('sends the chosen page size to the progress groups and keeps it across views, apart from the other tabs', async () => {
       const store = await open('/reports/progress');
       const spy = vi.spyOn(TestBed.inject(MockBackend), 'handle');

@@ -213,6 +213,23 @@ export class ReportScreenStore {
     page: this.page$,
     active: computed(() => this.progress$() && !this.pickers.blocked$()),
   });
+  readonly progressGroupLabel$ = computed(() =>
+    this.progress.view$() === 'program'
+      ? 'Chương trình'
+      : this.progress.view$() === 'team'
+        ? 'Phòng / nhóm'
+        : this.progress.view$() === 'org'
+          ? 'Đơn vị'
+          : 'Khóa học',
+  );
+  readonly progressChartTitle$ = computed(
+    () =>
+      `Hoàn thành theo ${this.progressGroupLabel$().toLocaleLowerCase('vi')}`,
+  );
+  selectProgressView(value: string): void {
+    if (['course', 'org', 'program', 'team', 'learners'].includes(value))
+      this.selectView(value as ProgressView);
+  }
   readonly progressComparison$ = computed(() =>
     this.progress
       .groups$()

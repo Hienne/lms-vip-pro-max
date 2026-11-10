@@ -8,13 +8,20 @@ import {
 import { z } from 'zod';
 
 /** How "Tiến độ & hoàn thành" groups the enrolments. */
-export const PROGRESS_VIEWS = ['course', 'org', 'learners'] as const;
+export const PROGRESS_VIEWS = [
+  'course',
+  'org',
+  'program',
+  'team',
+  'learners',
+] as const;
 export type ProgressView = (typeof PROGRESS_VIEWS)[number];
 
 /** The filters a report screen applies, as the URL carries them. */
 export type ReportFilters = z.infer<
   typeof AssessmentReportExportQuerySchema
 > & {
+  programId?: number;
   /** The learning status of "Tiến độ & hoàn thành". */
   learningStatus?: LearningStatus;
   /** Only the overdue enrolments. */
@@ -38,6 +45,7 @@ const QuerySchema = z.object({
   orgId: id,
   teamId: id,
   courseId: id,
+  programId: id,
   quizId: id,
   from: dateTime,
   to: dateTime,
@@ -61,6 +69,7 @@ const QuerySchema = z.object({
 });
 
 const KEYS = [
+  'programId',
   'orgId',
   'teamId',
   'courseId',
@@ -90,6 +99,7 @@ const COMMON = [
 export const TAB_FILTERS: Record<ReportTab, readonly ReportFilterKey[]> = {
   overview: COMMON,
   progress: [
+    'programId',
     'orgId',
     'teamId',
     'courseId',

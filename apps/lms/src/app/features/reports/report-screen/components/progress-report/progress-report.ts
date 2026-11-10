@@ -12,7 +12,7 @@ import {
   FmtDatetimePipe,
   FmtNumPipe,
   FmtPctPipe,
-  Segmented,
+  Select,
   Spinner,
   TablePrimary,
   Stat,
@@ -52,7 +52,7 @@ const COUNT_COLUMNS: readonly DataTableColumn[] = [
     FmtDatetimePipe,
     FmtNumPipe,
     FmtPctPipe,
-    Segmented,
+    Select,
     Spinner,
     TablePrimary,
   ],
@@ -65,6 +65,8 @@ export class ProgressReport {
   protected readonly views: readonly SegmentedOption<ProgressView>[] = [
     { value: 'course', label: 'Theo khóa học' },
     { value: 'org', label: 'Theo đơn vị' },
+    { value: 'program', label: 'Theo chương trình' },
+    { value: 'team', label: 'Theo phòng / nhóm' },
     { value: 'learners', label: 'Theo học viên' },
   ];
   protected readonly groupColumns: readonly DataTableColumn[] = [

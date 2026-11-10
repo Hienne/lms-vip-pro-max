@@ -74,12 +74,21 @@ function learnerRow(row: LearningReportEnrollmentRow): ProgressLearnerRow {
 
 /** The filter of the learning report endpoints, from the screen's filters. */
 export function learningFilter(filters: ReportFilters): LearningReportFilter {
-  const { orgId, teamId, courseId, learningStatus, overdue, from, to } =
-    filters;
+  const {
+    orgId,
+    teamId,
+    courseId,
+    programId,
+    learningStatus,
+    overdue,
+    from,
+    to,
+  } = filters;
   return {
     orgId,
     teamId,
     courseId,
+    programId,
     status: learningStatus,
     overdue: overdue || undefined,
     from,
@@ -160,10 +169,17 @@ export function progressReport(input: {
     const id = Number(group.id);
     if (!Number.isInteger(id) || id <= 0) return null;
     const filters = input.filters();
-    const key = view$() === 'org' ? 'orgId' : 'courseId';
+    const key =
+      view$() === 'org'
+        ? 'orgId'
+        : view$() === 'program'
+          ? 'programId'
+          : view$() === 'team'
+            ? 'teamId'
+            : 'courseId';
     // A unit sets the scope anew: the team under the previous unit no longer applies.
     const scope =
-      key === 'orgId' ? { orgId: id, teamId: undefined } : { courseId: id };
+      key === 'orgId' ? { orgId: id, teamId: undefined } : { [key]: id };
     return tabQuery('progress', { ...filters, ...scope, view: 'learners' });
   };
 
