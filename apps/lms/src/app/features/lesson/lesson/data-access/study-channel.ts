@@ -535,7 +535,7 @@ export class StudyChannel {
     if (this.destroyed) return;
     this.heartbeat = interval(HEARTBEAT_MS).subscribe(() => {
       if (this.busy || this.closing || this.state.save() === 'failed') return;
-      // A playing video reports every 10 s itself, with its range.
+      // A playing video sends its own heartbeat with the watched range.
       const tracker = this.queuedTracker();
       if (this.deps.visible() && !tracker.playing) {
         // The server requires a position on every event of a video block.

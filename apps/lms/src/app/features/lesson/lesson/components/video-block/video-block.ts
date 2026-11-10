@@ -17,7 +17,7 @@ import { VideoChapters } from './components/video-chapters/video-chapters';
 import { VideoTranscript } from './components/video-transcript/video-transcript';
 
 /** A playing video reports its range this often; the heartbeat keeps the media cookie alive. */
-export const VIDEO_BEAT_MS = 10_000;
+export const VIDEO_BEAT_MS = 20_000;
 
 /**
  * A video with playback controls that expose no seek actions. The server's resume position
