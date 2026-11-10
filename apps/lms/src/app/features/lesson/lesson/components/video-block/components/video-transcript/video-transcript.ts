@@ -1,4 +1,4 @@
-import { Component, computed, input, output, signal } from '@angular/core';
+import { Component, computed, input, signal } from '@angular/core';
 import { form, FormField } from '@angular/forms/signals';
 import type { TranscriptLine } from '@lms/contracts';
 import { Icon, Input } from '@lms/ui';
@@ -7,7 +7,7 @@ import { fold, startedIndex } from '../../video-time';
 
 /**
  * The timed lines of a video, closed until opened. The search box filters them by a case- and
- * accent-insensitive substring in the browser; a click on a line asks the player to move there.
+ * accent-insensitive substring in the browser.
  */
 @Component({
   selector: 'app-video-transcript',
@@ -19,9 +19,6 @@ export class VideoTranscript {
   readonly lines = input.required<readonly TranscriptLine[]>();
   /** The whole second the player is at. */
   readonly second = input(0);
-
-  /** The second to move the player to. */
-  readonly seek = output<number>();
 
   protected readonly clock = clock;
 

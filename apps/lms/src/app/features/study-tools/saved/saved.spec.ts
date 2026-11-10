@@ -124,11 +124,11 @@ describe('Saved', () => {
       expect(el.querySelector('.saved__icon')).toBeNull();
     });
 
-    it('selects a note and opens its exact saved location', async () => {
+    it('opens the video block without a time jump and PDF notes at their saved page', async () => {
       let link = el.querySelector(
         '.saved__layout ui-section-card:last-child a',
       )!;
-      expect(link.getAttribute('href')).toMatch(/\?block=\d+&t=250$/);
+      expect(link.getAttribute('href')).toMatch(/\?block=\d+$/);
       await press(rows()[1].querySelector('button.saved__choose'));
       link = el.querySelector('.saved__layout ui-section-card:last-child a')!;
       expect(link.getAttribute('href')).toMatch(/\?block=\d+&page=5$/);
@@ -252,6 +252,28 @@ describe('Saved', () => {
       await press(document.querySelector('[role="menuitem"]'));
       await press(inDialog('Xóa'));
       expect(rows().length).toBe(20);
+      expect(el.querySelector('nav[aria-label="Phân trang"]')).toBeNull();
+    });
+
+    it('stops requesting later pages if the server repeats page zero', async () => {
+      const original = real();
+      handle.mockImplementation((endpoint, request) =>
+        endpoint === personalEndpoints.saved
+          ? original(endpoint, {
+              ...request,
+              query: { ...request.query, page: '0' },
+            })
+          : original(endpoint, request),
+      );
+      await press(tab('Đánh dấu'));
+      handle.mockClear();
+      await press(tab('Ghi chú'));
+      expect(
+        calls(personalEndpoints.saved).map(
+          ([, request]) => request.query['page'],
+        ),
+      ).toEqual(['0', '1']);
+      expect(rows()).toHaveLength(20);
       expect(el.querySelector('nav[aria-label="Phân trang"]')).toBeNull();
     });
   });

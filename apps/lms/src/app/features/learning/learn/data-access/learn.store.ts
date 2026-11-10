@@ -6,7 +6,7 @@ import {
   type MyCoursesQuery,
 } from '@lms/contracts';
 import { NOW } from '@lms/ui';
-import { EMPTY, expand, reduce } from 'rxjs';
+import { EMPTY, expand, filter, reduce } from 'rxjs';
 import { serverData } from '../../../../core/data-access/server-data';
 import { EndpointClient } from '../../../../core/http/endpoint-client';
 import { dueReminders } from '../../../../core/learning/due-reminders';
@@ -154,13 +154,15 @@ export class LearnStore {
   private readonly coursesData = serverData(
     (query: MyCoursesQuery) =>
       this.client.call(learnerEndpoints.myCourses, { query }).pipe(
-        expand((result) =>
+        expand((result, index) =>
+          result.page === (query.page ?? 0) + index &&
           result.page + 1 < result.totalPages
             ? this.client.call(learnerEndpoints.myCourses, {
                 query: { ...query, page: result.page + 1 },
               })
             : EMPTY,
         ),
+        filter((result, index) => result.page === (query.page ?? 0) + index),
         reduce((courses, result) => {
           courses.push(...result.items);
           return courses;

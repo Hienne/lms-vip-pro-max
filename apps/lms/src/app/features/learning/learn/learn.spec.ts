@@ -450,7 +450,11 @@ describe('Learn', () => {
 
   describe('the points figure', () => {
     const reward = () => el.querySelector('.learn-hero__reward');
-    const shown = () => reward()?.textContent?.replace(/\s+/g, ' ').trim();
+    const shown = () =>
+      reward()
+        ?.querySelector(':scope > span')
+        ?.textContent?.replace(/\s+/g, ' ')
+        .trim();
 
     /** Answers the points read with fixed figures, the rest as the mock does. */
     function answerPoints(data: unknown) {

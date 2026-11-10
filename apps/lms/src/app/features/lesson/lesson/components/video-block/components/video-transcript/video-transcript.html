@@ -17,16 +17,14 @@
     <ol class="transcript__lines">
       @for (item of shown(); track item.line.startSeconds) {
       <li>
-        <button
-          type="button"
+        <div
           class="transcript__line"
           [attr.aria-current]="item.playing ? 'true' : null"
-          (click)="seek.emit(item.line.startSeconds)"
         >
           <span class="transcript__time"
             >{{ clock(item.line.startSeconds) }}</span
           >{{ ' ' }}<span class="transcript__text">{{ item.line.text }}</span>
-        </button>
+        </div>
       </li>
       }
     </ol>

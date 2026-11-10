@@ -129,22 +129,6 @@ export function toCommand(
 }
 
 /**
- * The events for a seek: a heartbeat that closes the range played up to where the seek started,
- * then the `SEEK` to where it landed. With nothing to close, only the `SEEK`.
- */
-export function seekEvents(
-  tracker: PlayTracker,
-  from: number,
-  to: number,
-  playing: boolean,
-): readonly StudyEvent[] {
-  const seek: StudyEvent = { type: 'SEEK', playing, positionSeconds: to };
-  return tracker.playing && tracker.position !== null && from > tracker.position
-    ? [{ type: 'HEARTBEAT', playing, positionSeconds: from }, seek]
-    : [seek];
-}
-
-/**
  * Adds an event to those waiting for the queue. A heartbeat replaces a heartbeat that is still
  * waiting: the newer one covers the same range and more, so they never pile up behind a slow
  * request.
@@ -197,7 +181,9 @@ export function actionFor(
     case 'LEARNING-SESSION_IN_USE':
       return phase === 'claim' ? 'prompt-takeover' : 'moved';
     case 'LEARNING-SESSION_EXPIRED':
-      return phase === 'event' ? 'reclaim' : 'save-failed';
+      return phase === 'event' && resyncs < MAX_RESYNCS
+        ? 'reclaim'
+        : 'save-failed';
     case 'LEARNING-STALE_EVENT':
     case 'LEARNING-CONFLICT':
       return resyncs < MAX_RESYNCS ? 'resync' : 'save-failed';

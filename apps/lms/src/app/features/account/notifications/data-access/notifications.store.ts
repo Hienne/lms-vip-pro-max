@@ -4,13 +4,13 @@ import {
   DestroyRef,
   inject,
   Injectable,
+  linkedSignal,
   signal,
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { learnerEndpoints, type LearningReminder } from '@lms/contracts';
 import { confirm, NOW } from '@lms/ui';
 import { concatMap, filter, finalize, from, toArray } from 'rxjs';
-import { invalidation } from '../../../../core/data-access/invalidation';
 import { serverData } from '../../../../core/data-access/server-data';
 import { serverMutation } from '../../../../core/data-access/server-mutation';
 import { EndpointClient } from '../../../../core/http/endpoint-client';
@@ -48,9 +48,6 @@ export class NotificationsStore {
   private readonly destroyRef = inject(DestroyRef);
   private readonly inboxFilter = signal<InboxFilter>('all');
 
-  /** Reloads the list after a read, here and (through `RemindersChanged`) in the shell. */
-  private readonly reads = invalidation();
-
   private readonly canLearn = computed(() =>
     this.session.menus$().includes('COURSE_LEARNING'),
   );
@@ -60,16 +57,29 @@ export class NotificationsStore {
     (_: { readonly learner: true }) => dueReminders(this.client, true),
     {
       params: () => (this.canLearn() ? { learner: true as const } : undefined),
-      reloadOn: this.reads,
+      reloadOn: this.changed,
     },
   );
+
+  private readonly readUpdates = linkedSignal(() => {
+    this.remindersData.value();
+    return new Map<number, LearningReminder>();
+  });
 
   private readonly readOne = serverMutation(
     (reminderId: number) =>
       this.client.call(learnerEndpoints.markReminderRead, {
         params: { reminderId },
       }),
-    { errors: 'toast', invalidates: [this.reads, this.changed] },
+    {
+      errors: 'toast',
+      onSuccess: (reminder) => {
+        this.readUpdates.update((rows) =>
+          new Map(rows).set(reminder.id, reminder),
+        );
+      },
+      invalidates: this.changed,
+    },
   );
 
   private readonly removeOne = serverMutation(
@@ -80,7 +90,7 @@ export class NotificationsStore {
     {
       errors: 'toast',
       success: () => 'Đã xóa thông báo',
-      invalidates: [this.reads, this.changed],
+      invalidates: this.changed,
     },
   );
 
@@ -98,7 +108,6 @@ export class NotificationsStore {
         ),
         toArray(),
         finalize(() => {
-          this.reads.bump();
           this.changed.bump();
         }),
       ),
@@ -118,9 +127,10 @@ export class NotificationsStore {
   readonly items$ = computed((): readonly ReminderItem[] => {
     if (!this.canLearn()) return [];
     const now = this.now();
-    const all = (this.remindersData.value() ?? []).filter(
-      (reminder) => reminder.status !== 'cancelled',
-    );
+    const updates = this.readUpdates();
+    const all = (this.remindersData.value() ?? [])
+      .map((reminder) => updates.get(reminder.id) ?? reminder)
+      .filter((reminder) => reminder.status !== 'cancelled');
     const notices = all.filter((reminder) => reminder.kind !== 'DEADLINE');
     const deadlines = all.filter((reminder) => reminder.kind === 'DEADLINE');
     return [

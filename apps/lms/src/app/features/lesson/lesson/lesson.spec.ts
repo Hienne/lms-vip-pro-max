@@ -44,6 +44,7 @@ class StubPdfEngine {
     this.opened.push(url);
     return Promise.resolve({
       pageCount: 4,
+      pageRatios: [1.5, 1.5, 1.5, 1.5],
       render: () => ({ done: Promise.resolve(), cancel: () => undefined }),
       destroy: () => undefined,
     });
@@ -109,6 +110,23 @@ describe('Lesson', () => {
       await new Promise((resolve) => setTimeout(resolve, 0));
     }
     TestBed.tick();
+  }
+
+  async function scrollPdf(page: number): Promise<void> {
+    const stage = el.querySelector<HTMLElement>('.pdf__stage')!;
+    Object.defineProperties(stage, {
+      clientHeight: { value: 600, configurable: true },
+      scrollHeight: { value: 4000, configurable: true },
+    });
+    el.querySelectorAll('.pdf__page').forEach((sheet, index) => {
+      Object.defineProperties(sheet, {
+        offsetTop: { value: index * 1000, configurable: true },
+        offsetHeight: { value: 1000, configurable: true },
+      });
+    });
+    stage.scrollTop = (page - 1) * 1000 + 1;
+    stage.dispatchEvent(new Event('scroll'));
+    await settle();
   }
 
   async function open(url: string) {
@@ -275,6 +293,7 @@ describe('Lesson', () => {
         get: () => now,
         set: (value: number) => (now = value),
       });
+      player()!.dispatchEvent(new Event('loadedmetadata'));
       player()!.dispatchEvent(new Event('play'));
       await settle();
       now = 7;
@@ -332,22 +351,22 @@ describe('Lesson', () => {
       });
     }
 
-    it('shows the chapter row and the transcript the server sent, and seeks from both', async () => {
+    it('shows chapter and transcript timestamps without seek controls', async () => {
       serveLists();
       await open(lessonUrl(0));
 
-      const buttons = Array.from(
-        el.querySelectorAll<HTMLButtonElement>('.chapters__item'),
+      const chapters = Array.from(
+        el.querySelectorAll<HTMLElement>('.chapters__item'),
       );
-      expect(buttons.map((b) => b.textContent?.trim())).toEqual([
+      expect(chapters.map((b) => b.textContent?.trim())).toEqual([
         '0:00 · Giới thiệu',
         '0:12 · Khái niệm chính',
       ]);
       expect(text()).toContain('Transcript (2 đoạn)');
 
-      const player = el.querySelector('video')!;
-      buttons[1].click();
-      expect(player.currentTime).toBe(12);
+      expect(
+        el.querySelector('button.chapters__item, button.transcript__line'),
+      ).toBeNull();
     });
 
     it('shows neither for a video without them', async () => {
@@ -804,7 +823,7 @@ describe('Lesson', () => {
       });
 
       it('saves a note on the page on screen and lists it with its anchor', async () => {
-        await press(labelled('Trang sau'));
+        await scrollPdf(2);
         await typeNote('Đổi CCCD cần cập nhật CIF');
         await save();
 
@@ -883,12 +902,10 @@ describe('Lesson', () => {
       });
 
       it('shows the page of a note when its anchor is followed', async () => {
-        await press(labelled('Trang sau'));
-        await press(labelled('Trang sau'));
+        await scrollPdf(3);
         await typeNote('Trang ba');
         await save();
-        await press(labelled('Trang trước'));
-        await press(labelled('Trang trước'));
+        await scrollPdf(1);
         expect(text()).toContain('Trang 1/4');
 
         await press(
@@ -1120,9 +1137,7 @@ describe('Lesson', () => {
 
     it('sends a comment from the page on screen and lists it first', async () => {
       await openFeedback(lessonUrl(1));
-      await press(
-        el.querySelector<HTMLElement>('button[aria-label="Trang sau"]'),
-      );
+      await scrollPdf(2);
       expect(sectionText()).toContain('Gửi kèm vị trí: Trang 2');
       await type('  Trang hai rất rõ  ');
       await send();

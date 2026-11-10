@@ -5,7 +5,13 @@ import { PdfEngine } from './pdf-engine';
 const pdfjs = vi.hoisted(() => ({
   GlobalWorkerOptions: { workerPort: null as unknown, workerSrc: '' },
   getDocument: vi.fn(() => ({
-    promise: Promise.resolve({ numPages: 3 }),
+    promise: Promise.resolve({
+      numPages: 3,
+      getPage: (page: number) =>
+        Promise.resolve({
+          getViewport: () => ({ width: 200, height: page * 100 }),
+        }),
+    }),
     destroy: vi.fn(),
   })),
 }));
@@ -35,6 +41,7 @@ describe('PdfEngine', () => {
     const second = await engine.open('/b.pdf');
 
     expect(first.pageCount).toBe(3);
+    expect(first.pageRatios).toEqual([0.5, 1, 1.5]);
     expect(second.pageCount).toBe(3);
     expect(FakeWorker.instances).toHaveLength(1);
     expect(FakeWorker.instances[0].options).toEqual({ type: 'module' });

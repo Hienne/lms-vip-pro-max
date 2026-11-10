@@ -61,20 +61,6 @@
     gap: ui.space(3);
     width: 100%;
     padding: ui.space(2) ui.space(3);
-    border: 0;
-    background: transparent;
-    color: ui.color(text);
-    text-align: left;
-    cursor: pointer;
-
-    &:hover {
-      background: ui.color(surface-2);
-    }
-
-    &:focus-visible {
-      @include ui.focus-ring;
-    }
-
     &[aria-current='true'] {
       background: ui.color(primary-subtle);
     }

@@ -3,9 +3,7 @@ import { Icon, IconButton, Popover } from '@lms/ui';
 import { BellPanel } from './bell-panel';
 
 /**
- * The header bell. A click opens a short list of what waits for the user (due reminders for a
- * learner, unanswered questions for an instructor) with a link to the full notifications page; it
- * no longer navigates by itself. The dot says something is unread.
+ * The header bell opens the recent inbox, with unread notices and pending feedback first.
  */
 @Component({
   selector: 'app-notification-bell',

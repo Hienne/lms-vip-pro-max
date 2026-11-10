@@ -666,6 +666,46 @@ describe('AppShell', () => {
       expect(router.url).toBe('/learn');
     });
 
+    it('shows at most 20 notifications, unread first, and keeps a marked item in the dropdown', async () => {
+      signInAs('learner');
+      const el = await open('/learn');
+      el.querySelector<HTMLButtonElement>(
+        'app-notification-bell button',
+      )!.click();
+      TestBed.tick();
+      const rows = Array.from({ length: 22 }, (_, index) => ({
+        id: index + 1,
+        rowVersion: 0,
+        kind: 'BADGE_EARNED',
+        subject: `Huy hiệu ${index + 1}`,
+        status: index === 0 || index === 21 ? 'pending' : 'sent',
+      }));
+      const http = TestBed.inject(HttpTestingController);
+      http
+        .expectOne('/api/v1/me/learning/reminders/inbox')
+        .flush(envelopeOk(rows));
+      TestBed.tick();
+      const list = () =>
+        Array.from(document.querySelectorAll('.bell__list > li'));
+      expect(list()).toHaveLength(20);
+      expect(list()[0].textContent).toContain('Chưa đọc');
+      expect(list()[1].textContent).toContain('Chưa đọc');
+      expect(list()[2].textContent).toContain('Đã đọc');
+      list()[0].querySelector<HTMLButtonElement>('button')!.click();
+      TestBed.tick();
+      http
+        .expectOne('/api/v1/me/learning/reminders/22/read')
+        .flush(envelopeOk({ ...rows[21], status: 'sent', rowVersion: 1 }));
+      TestBed.tick();
+      expect(
+        list().filter((row) => row.textContent?.includes('Chưa đọc')),
+      ).toHaveLength(1);
+      expect(list()[1].textContent).toContain('Huy hiệu 22');
+      expect(list()[1].textContent).toContain('Đã đọc');
+      expect(router.url).toBe('/learn');
+      expect(document.querySelector('.bell__list')).not.toBeNull();
+    });
+
     it('reloads the counts after a navigation', async () => {
       signInAs('learner');
       await open('/learn', { notifications: 2, inbox: 0 });

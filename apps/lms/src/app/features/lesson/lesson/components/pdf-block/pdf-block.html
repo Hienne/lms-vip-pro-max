@@ -6,29 +6,21 @@
   </button>
 </p>
 } @else {
-<div #root class="pdf">
+<div
+  #root
+  class="pdf"
+  [class.pdf--expanded]="expanded()"
+  [attr.role]="expanded() ? 'dialog' : null"
+  [attr.aria-modal]="expanded() ? 'true' : null"
+  [attr.aria-label]="expanded() ? title() || 'Tài liệu PDF' : null"
+  [cdkTrapFocus]="expanded()"
+  (keydown.escape)="closeExpanded()"
+>
   <div class="pdf__bar">
-    <button
-      uiIconButton
-      size="sm"
-      label="Trang trước"
-      [disabled]="!canPrev$()"
-      (click)="go(-1)"
-    >
-      <ui-icon name="chevron-left" />
-    </button>
-    <span class="pdf__page-count" aria-live="polite">
+    @if (!loading$()) {
+    <span class="pdf__page-count">
       Trang {{ page$() }}/{{ pageCount$() }}
     </span>
-    <button
-      uiIconButton
-      size="sm"
-      label="Trang sau"
-      [disabled]="!canNext$()"
-      (click)="go(1)"
-    >
-      <ui-icon name="chevron-right" />
-    </button>
     <button
       uiIconButton
       size="sm"
@@ -59,19 +51,53 @@
     >
       <ui-icon name="zoom-in" />
     </button>
+    <button
+      #fullscreenButton
+      uiIconButton
+      size="sm"
+      [label]="fullscreen() ? 'Thoát toàn màn hình' : 'Toàn màn hình'"
+      [attr.aria-pressed]="fullscreen()"
+      (click)="toggleFullscreen()"
+    >
+      <ui-icon name="maximize" />
+    </button>
+    }
   </div>
   @if (resumedAt$(); as resumed) {
   <p class="pdf__note">Đã mở lại tại trang {{ resumed }}.</p>
   } @if (loading$()) {
   <div uiSkeleton variant="block" class="pdf__loading"></div>
-  }
-  <div class="pdf__stage" [hidden]="loading$()">
-    <canvas
-      #canvas
-      class="pdf__canvas"
-      role="img"
-      [attr.aria-label]="'Trang ' + page$() + ' của ' + (title() || 'tài liệu')"
-    ></canvas>
+  } @if (!loading$()) {
+  <div
+    #stage
+    class="pdf__stage"
+    tabindex="0"
+    role="region"
+    [attr.aria-label]="title() || 'Tài liệu PDF'"
+    (scroll)="scrolled()"
+  >
+    <div class="pdf__pages">
+      @let visible = visiblePages(); @for (ratio of pageRatios(); track $index;
+      let index = $index) { @let page = index + 1;
+      <div
+        #sheet
+        class="pdf__page"
+        [style.width.px]="pageWidth()"
+        [style.height.px]="pageWidth() * ratio"
+      >
+        @if (page >= visible.first && page <= visible.last) {
+        <canvas
+          #canvas
+          class="pdf__canvas"
+          [attr.data-page]="page"
+          role="img"
+          [attr.aria-label]="'Trang ' + page"
+        ></canvas>
+        }
+      </div>
+      }
+    </div>
   </div>
+  }
 </div>
 }

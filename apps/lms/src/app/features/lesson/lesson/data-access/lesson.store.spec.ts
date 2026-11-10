@@ -279,6 +279,25 @@ describe('LessonStore', () => {
     expect(TestBed.inject(Router).url).toContain(`block=${second}`);
   });
 
+  it('honors the previous block URL after Next and opens it only once', async () => {
+    const store = await open(1);
+    await settleRouter();
+    const router = TestBed.inject(Router);
+    const firstUrl = router.url;
+    const [first, second] = blocksOf(lessonIds()[1]);
+
+    store.advance();
+    await settleRouter();
+    expect(store.activeBlock$()?.id).toBe(second);
+    handle.mockClear();
+
+    await router.navigateByUrl(firstUrl);
+    await settleRouter();
+    expect(store.activeBlock$()?.id).toBe(first);
+    expect(claims()).toHaveLength(1);
+    expect(events().map((e) => e['eventType'])).toEqual(['CLOSE', 'OPEN']);
+  });
+
   it('keeps the media unloaded and waits for the click when another device holds the session', async () => {
     takeOverElsewhere(blocksOf(lessonIds()[2])[0]);
     handle.mockClear();
@@ -515,6 +534,7 @@ describe('LessonStore', () => {
       });
       expect(pdfStore.anchorLabel$()).toBe('Trang 3');
       pdfStore.selectBlock(blocksOf(lessonIds()[1])[1]);
+      await settleRouter();
       expect(pdfStore.anchor$()).toEqual({ type: 'none' });
 
       const videoStore = await openAgain(0);
@@ -532,9 +552,11 @@ describe('LessonStore', () => {
       const store = await open(1);
       const pdf = pdfOf(1);
       store.selectBlock(blocksOf(lessonIds()[1])[1]);
+      await settleRouter();
       expect(store.pdfJump$()).toBeNull();
 
       store.followAnchor({ type: 'pdf', blockId: pdf, page: 3, second: null });
+      await settleRouter();
       expect(store.activeBlock$()?.id).toBe(pdf);
       expect(store.pdfJump$()).toMatchObject({ blockId: pdf, value: 3 });
 
@@ -549,7 +571,9 @@ describe('LessonStore', () => {
       const pdf = pdfOf(1);
       store.followAnchor({ type: 'pdf', blockId: pdf, page: 3, second: null });
       store.selectBlock(blocksOf(lessonIds()[1])[1]);
+      await settleRouter();
       store.selectBlock(pdf);
+      await settleRouter();
       expect(store.pdfJump$()).toBeNull();
     });
 
@@ -570,18 +594,15 @@ describe('LessonStore', () => {
       expect(store.outlineOpen$()).toBe(false);
     });
 
-    it('reads ?page of a link on its PDF block, and ?t on its video block', async () => {
+    it('reads ?page on its PDF block and ignores old video timestamp links', async () => {
       const pdf = pdfOf(1);
       const pdfStore = await open(1, `?block=${pdf}&page=3`);
       expect(pdfStore.pdfJump$()).toMatchObject({ blockId: pdf, value: 3 });
-      expect(pdfStore.videoJump$()).toBeNull();
 
       const video = blocksOf(lessonIds()[0])[0];
       const videoStore = await openAgain(0, `?block=${video}&t=75`);
-      expect(videoStore.videoJump$()).toMatchObject({
-        blockId: video,
-        value: 75,
-      });
+      expect(videoStore.activeBlock$()?.id).toBe(video);
+      expect(videoStore.resume$()?.lastVideoPositionSeconds ?? 0).toBe(0);
     });
 
     it.each([
