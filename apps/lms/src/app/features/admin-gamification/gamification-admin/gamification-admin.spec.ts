@@ -174,7 +174,7 @@ describe('GamificationAdmin', () => {
 
   it('starts the form from the version in force, with its ladder', async () => {
     await open();
-    expect(el.querySelector('h1')?.textContent).toBe('Cấu hình gamification');
+    expect(el.querySelector('h1')?.textContent).toBe('Cấu hình điểm thưởng');
     expect(field('Hoàn thành bài học').value).toBe('8');
     expect(field('Ngưỡng điểm để được thưởng').value).toBe('80');
     expect(field('Tên cấp 2').value).toBe('Giao dịch viên');

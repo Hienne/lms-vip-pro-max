@@ -420,7 +420,7 @@ export const SCREEN_TABLE = {
       screens: [
         {
           path: 'admin/gamification',
-          title: 'Cấu hình gamification',
+          title: 'Cấu hình điểm thưởng',
           mockupPage: 'gamificationAdmin',
           load: () =>
             import(
