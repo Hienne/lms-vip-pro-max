@@ -1,0 +1,115 @@
+<section class="study-session" #surface tabindex="-1" aria-label="Lượt ôn tập">
+  <ui-page-header [title]="name()" description="Ôn tập bộ thẻ">
+    <button
+      slot="actions"
+      uiButton
+      variant="ghost"
+      [disabled]="busy()"
+      (click)="finished.emit()"
+    >
+      Kết thúc
+    </button>
+  </ui-page-header>
+  <ui-progress
+    [value]="percent()"
+    label="Tỷ lệ thẻ đã tự đánh giá trong lượt ôn"
+    size="sm"
+  />
+  <div class="row-between" aria-live="polite">
+    <span
+      >{{hasCurrent() ? 'Thẻ ' + (index() + 1) + ' / ' + total() : 'Hoàn tất
+      lượt ôn'}}</span
+    >
+    <span>Đã ôn {{completed()}} / {{total()}}</span>
+  </div>
+  @if (hasCurrent()) { @if (answerError(); as error) {<ui-error-state
+    title="Không tải được đáp án"
+    [message]="error.message"
+    (retry)="retryAnswer.emit()"
+  />}
+  <ui-section-card [title]="revealed() ? 'Đáp án' : 'Câu hỏi'">
+    <div
+      class="study-session__face"
+      #face
+      tabindex="-1"
+      aria-live="polite"
+      aria-atomic="true"
+    >
+      @if (revealed()) { @for (answer of answers(); track $index) {
+      <h2 class="study-session__text">{{answer}}</h2>
+      } @if (explanation()) {
+      <p class="study-session__text">{{explanation()}}</p>
+      } } @else {
+      <h2 class="study-session__text">{{question()}}</h2>
+      }
+    </div>
+    <p class="study-session__hint">
+      {{revealed() ? 'Bạn đã nhớ nội dung này chưa?' : 'Tự trả lời trước khi xem
+      đáp án.'}}
+    </p>
+  </ui-section-card>
+  <div class="row-between">
+    <button
+      uiButton
+      variant="secondary"
+      [attr.aria-pressed]="starred()"
+      [disabled]="busy()"
+      (click)="starToggled.emit()"
+    >
+      <ui-icon name="star" size="sm" />{{starred() ? 'Đã đánh dấu' : 'Đánh
+      dấu'}}
+    </button>
+    <span>{{revealed() ? 'Đã xem đáp án' : 'Chưa xem đáp án'}}</span>
+  </div>
+  <div class="study-session__actions">
+    @if (!revealed()) {<button
+      uiButton
+      variant="primary"
+      [busy]="answerLoading()"
+      [disabled]="busy() || answerLoading()"
+      (click)="answerRequested.emit()"
+    >
+      Xem đáp án <ui-icon name="rotate-ccw" size="sm" /></button
+    >} @else {
+    <button
+      uiButton
+      variant="secondary"
+      [disabled]="busy()"
+      (click)="rated.emit('AGAIN')"
+    >
+      Cần ôn lại
+    </button>
+    <button
+      uiButton
+      variant="primary"
+      [disabled]="busy()"
+      (click)="rated.emit('KNOWN')"
+    >
+      Đã nhớ <ui-icon name="check" size="sm" />
+    </button>
+    }
+  </div>
+  <p class="study-session__hint">
+    Lượt ôn không chấm điểm. Bạn tự đánh giá mức độ ghi nhớ.
+  </p>
+  } @else {
+  <h2 #summary tabindex="-1">Đã hoàn tất lượt ôn</h2>
+  <ui-stat-strip
+    ><ui-stat label="Đã nhớ" [value]="known()" /><ui-stat
+      label="Cần ôn lại"
+      [value]="again()"
+  /></ui-stat-strip>
+  <div class="study-session__actions">
+    @if (again()) {<button
+      uiButton
+      variant="primary"
+      (click)="restarted.emit()"
+    >
+      Ôn lại thẻ chưa nhớ</button
+    >}
+    <button uiButton variant="secondary" (click)="finished.emit()">
+      Về bộ thẻ
+    </button>
+  </div>
+  }
+</section>

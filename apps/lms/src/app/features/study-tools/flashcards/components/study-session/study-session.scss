@@ -1,0 +1,40 @@
+@use 'ui';
+:host {
+  display: block;
+  min-width: 0;
+}
+.study-session {
+  display: grid;
+  gap: ui.space(4);
+  max-width: ui.layout(reading);
+  margin-inline: auto;
+  outline: none;
+}
+.study-session__face {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: ui.space(4);
+  min-height: calc(ui.space(18) * 3);
+  padding-block: ui.space(5);
+  text-align: center;
+}
+.study-session__text {
+  max-width: 44ch;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  margin: 0;
+}
+.study-session__actions {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: ui.space(3);
+  margin-top: ui.space(4);
+}
+.study-session__hint {
+  @include ui.text(sm, muted);
+  text-align: center;
+  margin: 0;
+}

@@ -21,10 +21,8 @@
   </p>
   <div class="content-row__stats">
     <span
-      ><ui-icon
-        [name]="isQuestion() ? 'arrow-up' : 'thumbs-up'"
-        size="sm"
-      /><strong>{{ c.score | fmtNum }}</strong> điểm</span
+      ><ui-icon name="thumbs-up" size="sm" />Hữu ích
+      <strong>{{ c.score | fmtNum }}</strong></span
     >
     @if (isQuestion()) {
     <span

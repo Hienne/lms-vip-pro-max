@@ -1,251 +1,154 @@
-<section uiCard class="flashcards__card">
-  <div class="flashcards__list-header">
-    <h2>Bắt đầu ôn</h2>
-    <button
+@if (store.round$(); as items) {
+<app-flashcard-study
+  [name]="store.selectedDeckName$()"
+  [total]="items.length"
+  [index]="store.index$()"
+  [completed]="store.rated$().size"
+  [known]="store.knownCount$()"
+  [again]="store.againCount$()"
+  [hasCurrent]="!!store.current$()"
+  [question]="store.current$()?.prompt ?? ''"
+  [answers]="store.answerLines$()"
+  [revealed]="store.revealed$()"
+  [busy]="store.progressPending$()"
+  [starred]="store.current$()?.starred ?? false"
+  (answerRequested)="store.revealCurrent()"
+  (rated)="store.rateCurrent($event)"
+  (starToggled)="store.toggleCurrentStar()"
+  (finished)="store.finish()"
+  (restarted)="store.retryRound()"
+/>
+} @else { @if (store.creatingDeck$() || store.editingDeck$()) {
+<ui-section-card
+  [title]="store.editingDeck$() ? 'Đổi tên bộ thẻ' : 'Tạo bộ thẻ'"
+>
+  <div class="flashcards__create">
+    <input
+      uiInput
+      #name
+      aria-label="Tên bộ thẻ"
+      placeholder="Tên bộ thẻ"
+      maxlength="150"
+      [value]="store.deckName$()"
+      (input)="store.setDeckName(name.value)"
+    /><button
       uiButton
-      type="button"
-      variant="secondary"
-      (click)="creatingDeck.set(true); editingDeck.set(false); deckName.set('')"
+      [disabled]="!store.deckName$().trim() || store.saveDeckPending$()"
+      (click)="store.runSaveDeck({id:store.editingDeck$() ? store.deckId$() : 0,name:store.deckName$().trim()})"
     >
-      <ui-icon name="plus" size="sm" /> Tạo bộ thẻ
+      Lưu</button
+    ><button
+      uiButton
+      variant="ghost"
+      [disabled]="store.saveDeckPending$()"
+      (click)="store.setEditingDeck(false);store.setCreatingDeck(false)"
+    >
+      Hủy
     </button>
-  </div>
-  @if (decks.error(); as error) {
-  <ui-error-state
-    title="Không tải được bộ thẻ"
-    [message]="error.message"
-    (retry)="decks.reload()"
-  />
-  }
-  <div class="flashcards__workspace">
-    <div class="flashcards__manage">
-      <label class="flashcards__deck"
-        >Chọn bộ thẻ
-        <select
-          uiSelect
-          #deck
-          [value]="deckId()"
-          (change)="selectDeck(+deck.value)"
-        >
-          <option value="0">Chọn bộ thẻ</option>
-          @for (item of decks.value() ?? []; track item.id) {
-          <option [value]="item.id">
-            {{ item.name }} · {{ item.cardCount }} thẻ
-          </option>
-          }
-        </select>
-      </label>
-      @if (creatingDeck() || editingDeck()) {
-      <div class="flashcards__create">
-        <input
-          uiInput
-          #name
-          type="text"
-          placeholder="Tên bộ thẻ"
-          aria-label="Tên bộ thẻ"
-          maxlength="150"
-          [value]="deckName()"
-          (input)="deckName.set(name.value)"
-        />
-        <button
-          uiButton
-          type="button"
-          [disabled]="!deckName().trim() || saveDeck.isPending()"
-          (click)="saveDeck.run({ id: editingDeck() ? deckId() : 0, name: deckName().trim() })"
-        >
-          <ui-icon [name]="editingDeck() ? 'check' : 'plus'" size="sm" /> {{
-          editingDeck() ? 'Lưu tên' : 'Tạo bộ thẻ' }}
-        </button>
-        @if (editingDeck() || creatingDeck()) {
-        <button
-          uiButton
-          type="button"
-          (click)="editingDeck.set(false); creatingDeck.set(false); deckName.set('')"
-        >
-          Hủy
-        </button>
-        }
-      </div>
-      }
-    </div>
-    @if (deckId()) {
-    <section
-      class="flashcards__study-options"
-      aria-labelledby="study-options-title"
-    >
-      <div class="flashcards__scope">
-        <span id="study-options-title">Chọn thẻ để ôn</span>
-        <ui-segmented
-          label="Chọn thẻ để ôn"
-          [options]="scopeOptions"
-          [value]="scope()"
-          (valueChange)="scope.set($event)"
-        />
-      </div>
-      <div class="flashcards__actions">
-        <span class="flashcards__meta"
-          >{{ availableCards().length }} thẻ phù hợp</span
-        >
-        <label
-          ><input
-            #mix
-            type="checkbox"
-            [checked]="shuffle()"
-            (change)="shuffle.set(mix.checked)"
-          />
-          Trộn thẻ</label
-        >
-        <button
-          uiButton
-          variant="primary"
-          type="button"
-          [disabled]="!availableCards().length"
-          (click)="start()"
-        >
-          <ui-icon name="play" size="sm" /> Bắt đầu ôn
-        </button>
-      </div>
-    </section>
-    }
-  </div>
-  @if (deckId()) { @if (cards.error(); as error) {
-  <ui-error-state
-    title="Không tải được thẻ"
-    [message]="error.message"
-    (retry)="cards.reload()"
-  />
-  } @if (round(); as items) {
-  <div
-    class="study-focus"
-    role="dialog"
-    aria-modal="true"
-    aria-label="Phiên ôn tập cá nhân"
-    (keydown.escape)="!progress.isPending() && round.set(null)"
-    cdkTrapFocus
-    [cdkTrapFocusAutoCapture]="true"
+  </div> </ui-section-card
+>} @if (store.decksError$(); as error) {<ui-error-state
+  title="Không tải được bộ thẻ"
+  [message]="error.message"
+  (retry)="store.reloadDecks()"
+/>} @else if (store.decksLoading$()) {
+<p role="status">Đang tải bộ thẻ…</p>
+} @else {
+<div class="flashcards__deck-grid">
+  @for (item of store.decks$() ?? []; track item.id) {
+  <article
+    uiCard
+    class="flashcards__deck-item"
+    [class.flashcards__deck-item--selected]="store.deckId$()===item.id"
   >
-    <div class="study-focus__panel">
-      <div class="study-focus__heading">
-        <div>
-          <h2>Ôn tập bộ thẻ</h2>
-          <p>Tập trung vào từng thẻ, lật để xem đáp án.</p>
-        </div>
-        <button
+    <div uiCardBody class="stack stack--gap-3">
+      <h3>{{item.name}}</h3>
+      <p>{{item.cardCount ? item.cardCount + ' thẻ' : 'Chưa có thẻ'}}</p>
+      <div class="row-between">
+        @if (item.cardCount) {<button
+          uiButton
+          variant="secondary"
+          [attr.aria-pressed]="store.deckId$()===item.id && !store.managing$()"
+          (click)="store.selectDeck(item.id)"
+        >
+          Ôn bộ này <ui-icon name="arrow-right" size="sm" /></button
+        ><button
           uiButton
           variant="ghost"
-          type="button"
-          [disabled]="progress.isPending()"
-          (click)="round.set(null)"
+          (click)="store.selectDeck(item.id,true)"
         >
-          Kết thúc
-        </button>
-      </div>
-      @if (items[index()]) {
-      <div class="study-focus__progress">
-        <span>Tiến độ lượt ôn</span
-        ><span>{{ index() + 1 }} / {{ items.length }}</span>
-      </div>
-      <progress
-        class="study-focus__bar"
-        [value]="index() + 1"
-        [max]="items.length"
-        aria-label="Tiến độ lượt ôn"
-      ></progress>
-      } @if (items[index()]; as card) {
-      <p class="flashcards__meta">Thẻ {{ index() + 1 }}/{{ items.length }}</p>
-      <div class="flip-card" [class.flip-card--back]="revealed()">
-        <button
-          class="flip-card__inner"
-          type="button"
-          (click)="revealed.set(!revealed())"
-          [attr.aria-label]="revealed() ? 'Đáp án: ' + card.answer + '. Nhấn để xem lại câu hỏi' : 'Câu hỏi: ' + card.prompt + '. Nhấn để xem đáp án'"
-        >
-          <span
-            class="flip-card__face flip-card__front"
-            [attr.aria-hidden]="revealed()"
-          >
-            <span class="flip-card__label">Câu hỏi</span>
-            <span class="flip-card__content">{{ card.prompt }}</span>
-            <span class="flip-card__hint">Nhấn để xem đáp án</span>
-          </span>
-          <span
-            class="flip-card__face flip-card__back"
-            [attr.aria-hidden]="!revealed()"
-          >
-            <span class="flip-card__label">Đáp án</span>
-            <span class="flip-card__content">{{ card.answer }}</span>
-            <span class="flip-card__hint">Nhấn để xem lại câu hỏi</span>
-          </span>
-        </button>
-      </div>
-      <div
-        class="flashcards__actions study-focus__rating"
-        [class.study-focus__rating--hidden]="!revealed()"
-        [attr.aria-hidden]="!revealed()"
-      >
-        <button
+          Quản lý</button
+        >} @else {<span>Thêm nội dung trước khi ôn.</span
+        ><button
           uiButton
-          type="button"
           variant="secondary"
-          [disabled]="!revealed() || progress.isPending()"
-          (click)="rate(card, 'AGAIN')"
+          (click)="store.selectDeck(item.id,true);store.setEditingCard(0);store.setPrompt('');store.setAnswer('')"
         >
-          <ui-icon name="rotate-ccw" size="sm" /> Cần ôn lại
-        </button>
-        <button
-          uiButton
-          type="button"
-          variant="primary"
-          [disabled]="progress.isPending()"
-          (click)="rate(card, 'KNOWN')"
-        >
-          <ui-icon name="check" size="sm" /> Đã nhớ
-        </button>
+          <ui-icon name="plus" size="sm" />Thêm thẻ</button
+        >}
       </div>
-      <div class="flashcards__actions">
-        <button
-          uiButton
-          type="button"
-          [disabled]="index() === 0 || progress.isPending()"
-          (click)="index.set(index() - 1); revealed.set(false)"
+    </div>
+  </article>
+  } @empty {<ui-empty
+    title="Chưa có bộ thẻ"
+    description="Tạo bộ thẻ đầu tiên để bắt đầu ôn tập."
+  />}
+</div>
+} @if (store.deckId$()) { @if (store.cardsError$(); as error) {<ui-error-state
+  title="Không tải được thẻ"
+  [message]="error.message"
+  (retry)="store.reloadCards()"
+/>} @else if (store.cardsLoading$()) {
+<p role="status">Đang tải thẻ…</p>
+} @else if (!store.managing$()) {
+<ui-section-card [title]="store.selectedDeckName$()">
+  <button
+    slot="action"
+    uiButton
+    variant="ghost"
+    (click)="store.selectDeck(0)"
+    aria-label="Đóng thiết lập ôn tập"
+  >
+    <ui-icon name="x" size="sm" />
+  </button>
+  <div class="stack stack--gap-4">
+    <ui-segmented
+      label="Chọn thẻ để ôn"
+      [options]="store.scopeOptions"
+      [value]="store.scope$()"
+      (valueChange)="store.setScope($event)"
+    />
+    <div class="row-between">
+      <div class="row row--gap-3">
+        <span>{{store.availableCards$().length}} thẻ phù hợp</span
+        ><label class="row row--gap-2"
+          ><input
+            type="checkbox"
+            uiCheckbox
+            #mix
+            [checked]="store.shuffle$()"
+            (change)="store.setShuffle(mix.checked)"
+          />Trộn thẻ</label
         >
-          <ui-icon name="chevron-left" size="sm" /> Thẻ trước
-        </button>
-        <button
-          uiButton
-          type="button"
-          [disabled]="progress.isPending()"
-          (click)="progress.run({cardId: card.id, starred: !card.starred})"
-        >
-          <ui-icon name="star" size="sm" /> {{ card.starred ? 'Bỏ đánh dấu' :
-          'Đánh dấu' }}
-        </button>
-        <button
-          uiButton
-          type="button"
-          [disabled]="progress.isPending()"
-          (click)="index.set(index() + 1); revealed.set(false)"
-        >
-          Thẻ sau <ui-icon name="chevron-right" size="sm" />
-        </button>
       </div>
-      } @else {
-      <p>Đã xem hết bộ thẻ.</p>
-      <div class="flashcards__actions">
-        <button uiButton size="sm" type="button" (click)="round.set(null)">
-          Kết thúc
-        </button>
-      </div>
-      }
+      <button
+        uiButton
+        variant="primary"
+        [disabled]="!store.availableCards$().length"
+        (click)="store.start()"
+      >
+        <ui-icon name="play" size="sm" />Bắt đầu ôn
+      </button>
     </div>
   </div>
-  } @else if (managing()) {
+</ui-section-card>
+} @else {
+<ui-section-card [title]="store.selectedDeckName$()">
   <div class="flashcards__list">
     <div class="flashcards__list-header">
       <div class="flashcards__list-title">
         <h3>Quản lý thẻ</h3>
         <span class="flashcards__meta"
-          >{{ cards.value()?.length ?? 0 }} thẻ</span
+          >{{ store.cards$()?.length ?? 0 }} thẻ</span
         >
       </div>
       <div class="flashcards__actions">
@@ -253,7 +156,7 @@
           uiButton
           variant="ghost"
           type="button"
-          (click)="editingDeck.set(true); creatingDeck.set(false); deckName.set((decks.value() ?? [])[deck.selectedIndex - 1]?.name ?? '')"
+          (click)="store.setEditingDeck(true); store.setCreatingDeck(false); store.setDeckName(store.selectedDeckName$())"
         >
           Đổi tên bộ
         </button>
@@ -261,7 +164,7 @@
           uiButton
           variant="danger-ghost"
           type="button"
-          (click)="deleteDeck()"
+          (click)="store.deleteDeck()"
         >
           Xóa bộ
         </button>
@@ -269,31 +172,31 @@
           uiButton
           variant="ghost"
           type="button"
-          (click)="managing.set(false)"
+          (click)="store.setManaging(false)"
         >
           Đóng quản lý
         </button>
         <button
           uiButton
           type="button"
-          (click)="addingMany.set(false); editingCard.set(0); prompt.set(''); answer.set('')"
+          (click)="store.setAddingMany(false); store.setEditingCard(0); store.setPrompt(''); store.setAnswer('')"
         >
           <ui-icon name="plus" size="sm" /> Thêm thẻ
         </button>
         <button
           uiButton
           type="button"
-          (click)="editingCard.set(null); addingMany.set(true)"
+          (click)="store.setEditingCard(null); store.setAddingMany(true)"
         >
           <ui-icon name="layers" size="sm" /> Thêm nhiều thẻ
         </button>
       </div>
     </div>
-    @if (addingMany()) {
+    @if (store.addingMany$()) {
     <div class="flashcards__editor">
       <h3>Thêm nhiều thẻ</h3>
       <p>Mỗi thẻ gồm câu hỏi và đáp án. Điền cả hai mặt trước khi lưu.</p>
-      @for (draft of drafts(); track draft.key; let i = $index) {
+      @for (draft of store.drafts$(); track draft.key; let i = $index) {
       <div class="flashcards__filters">
         <span>{{ i + 1 }}</span>
         <label
@@ -302,7 +205,7 @@
             #q
             [value]="draft.prompt"
             maxlength="4000"
-            (input)="updateDraft(draft.key, 'prompt', q.value)"
+            (input)="store.updateDraft(draft.key, 'prompt', q.value)"
           ></textarea>
         </label>
         <label
@@ -311,10 +214,10 @@
             #a
             [value]="draft.answer"
             maxlength="40000"
-            (input)="updateDraft(draft.key, 'answer', a.value)"
+            (input)="store.updateDraft(draft.key, 'answer', a.value)"
           ></textarea>
         </label>
-        <button uiButton type="button" (click)="removeDraft(draft.key)">
+        <button uiButton type="button" (click)="store.removeDraft(draft.key)">
           Xóa
         </button>
       </div>
@@ -323,40 +226,40 @@
         <button
           uiButton
           type="button"
-          (click)="addDraft()"
-          [disabled]="drafts().length >= 100"
+          (click)="store.addDraft()"
+          [disabled]="store.drafts$().length >= 100"
         >
           Thêm thẻ
         </button>
         <button
           uiButton
           type="button"
-          (click)="submitDrafts()"
-          [disabled]="saveMany.isPending()"
+          (click)="store.submitDrafts()"
+          [disabled]="store.saveManyPending$()"
         >
           Lưu các thẻ
         </button>
         <button
           uiButton
           type="button"
-          (click)="addingMany.set(false)"
-          [disabled]="saveMany.isPending()"
+          (click)="store.setAddingMany(false)"
+          [disabled]="store.saveManyPending$()"
         >
           Hủy
         </button>
       </div>
     </div>
-    } @if (editingCard() !== null) {
+    } @if (store.editingCard$() !== null) {
     <div class="flashcards__editor">
-      <h3>{{ editingCard() ? 'Chỉnh sửa thẻ' : 'Thêm thẻ' }}</h3>
+      <h3>{{ store.editingCard$() ? 'Chỉnh sửa thẻ' : 'Thêm thẻ' }}</h3>
       <div class="flashcards__fields">
         <label
           >Câu hỏi
           <textarea
             uiTextarea
             #question
-            [value]="prompt()"
-            (input)="prompt.set(question.value)"
+            [value]="store.prompt$()"
+            (input)="store.setPrompt(question.value)"
             maxlength="4000"
           ></textarea>
         </label>
@@ -365,8 +268,8 @@
           <textarea
             uiTextarea
             #response
-            [value]="answer()"
-            (input)="answer.set(response.value)"
+            [value]="store.answer$()"
+            (input)="store.setAnswer(response.value)"
             maxlength="40000"
           ></textarea>
         </label>
@@ -376,17 +279,17 @@
           uiButton
           variant="primary"
           type="button"
-          [disabled]="!prompt().trim() || !answer().trim() || saveCard.isPending()"
-          (click)="saveCard.run({id: editingCard(), prompt: prompt().trim(), answer: answer().trim()})"
+          [disabled]="!store.prompt$().trim() || !store.answer$().trim() || store.saveCardPending$()"
+          (click)="store.runSaveCard({id: store.editingCard$(), prompt: store.prompt$().trim(), answer: store.answer$().trim()})"
         >
           Lưu thẻ
         </button>
-        <button uiButton type="button" (click)="editingCard.set(null)">
+        <button uiButton type="button" (click)="store.setEditingCard(null)">
           Hủy
         </button>
       </div>
     </div>
-    } @for (card of cards.value() ?? []; track card.id; let i = $index) {
+    } @for (card of store.cards$() ?? []; track card.id; let i = $index) {
     <div class="flashcards__row">
       <span class="flashcards__number">{{ i + 1 }}</span>
       <div class="flashcards__content">
@@ -399,7 +302,7 @@
           variant="ghost"
           size="sm"
           type="button"
-          (click)="editCard(card)"
+          (click)="store.editCard(card)"
         >
           Sửa
         </button>
@@ -408,7 +311,7 @@
           variant="danger-ghost"
           size="sm"
           type="button"
-          (click)="deleteCard(card)"
+          (click)="store.deleteCard(card)"
         >
           Xóa
         </button>
@@ -420,54 +323,5 @@
     </p>
     }
   </div>
-  } }
-</section>
-<section class="flashcards__decks" aria-labelledby="personal-decks-title">
-  <div class="flashcards__list-header">
-    <h2 id="personal-decks-title">Bộ thẻ của tôi</h2>
-    @if (deckId()) {
-    <button
-      uiButton
-      variant="ghost"
-      type="button"
-      (click)="managing.set(!managing())"
-    >
-      {{ managing() ? 'Đóng quản lý' : 'Quản lý bộ đã chọn' }}
-    </button>
-    }
-  </div>
-  @if (decks.isLoading()) {
-  <p class="flashcards__meta" role="status">Đang tải bộ thẻ…</p>
-  } @else {
-  <div class="flashcards__deck-grid">
-    @for (item of decks.value() ?? []; track item.id) {
-    <article uiCard class="flashcards__deck-item">
-      <h3>{{ item.name }}</h3>
-      <p class="flashcards__meta">{{ item.cardCount }} thẻ</p>
-      <div class="flashcards__actions">
-        <button
-          uiButton
-          variant="ghost"
-          type="button"
-          (click)="selectDeck(item.id)"
-        >
-          Chọn để ôn <ui-icon name="chevron-right" size="sm" />
-        </button>
-        <button
-          uiButton
-          variant="ghost"
-          type="button"
-          (click)="selectDeck(item.id, true)"
-        >
-          Quản lý
-        </button>
-      </div>
-    </article>
-    } @empty { @if (!decks.error()) {
-    <p class="flashcards__meta">
-      Chưa có bộ thẻ. Chọn “Tạo bộ thẻ” để bắt đầu.
-    </p>
-    } }
-  </div>
-  }
-</section>
+</ui-section-card>
+} } }

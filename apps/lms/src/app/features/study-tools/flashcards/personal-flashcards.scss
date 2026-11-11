@@ -1,5 +1,4 @@
 @use 'ui';
-@use './flip-card';
 
 .flashcards {
   &__card {
@@ -204,7 +203,7 @@
 
 .flashcards__deck-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 16rem), 1fr));
+  grid-template-columns: minmax(0, 1fr);
   gap: ui.space(4);
 }
 
@@ -218,5 +217,21 @@
 
   .flashcards__actions {
     flex-wrap: wrap;
+  }
+}
+
+:host {
+  display: block;
+  @include ui.stack(5);
+}
+.flashcards__deck-item {
+  padding: 0;
+}
+.flashcards__deck-item--selected {
+  border-color: ui.color(primary);
+}
+@include ui.bp(md) {
+  .flashcards__deck-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }

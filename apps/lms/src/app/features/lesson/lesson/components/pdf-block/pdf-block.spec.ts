@@ -176,6 +176,21 @@ describe('PdfBlock', () => {
     expect(text()).toContain('Trang 3/5');
   });
 
+  it('closes the expanded reader with Escape and restores focus to its button', async () => {
+    const { click, el, button, fixture } = await render();
+    await click('Toàn màn hình');
+    const dialog = el.querySelector<HTMLElement>('[role="dialog"]');
+    expect(dialog?.tabIndex).toBe(-1);
+    const stage = el.querySelector<HTMLElement>('.pdf__stage');
+    stage?.dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }),
+    );
+    fixture.detectChanges();
+    await flush();
+    expect(el.querySelector('[role="dialog"]')).toBeNull();
+    expect(document.activeElement).toBe(button('Toàn màn hình'));
+  });
+
   it('zooms in and out within its limits and redraws the page', async () => {
     const { button, click, text } = await render();
     expect(button('Thu nhỏ').disabled).toBe(true);
