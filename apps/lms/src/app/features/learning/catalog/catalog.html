@@ -40,7 +40,7 @@
       </option>
       }
     </select>
-    } @if (store.modules$().length) {
+    } @if (store.modules$().length || store.hasUnclassifiedModule$()) {
     <select
       uiSelect
       size="sm"
@@ -56,6 +56,13 @@
         [selected]="option.id === store.filters$().moduleId"
       >
         {{ option.name }}
+      </option>
+      } @if (store.hasUnclassifiedModule$()) {
+      <option
+        value="unclassified"
+        [selected]="store.filters$().moduleId === 'unclassified'"
+      >
+        Chưa phân loại phân hệ
       </option>
       }
     </select>

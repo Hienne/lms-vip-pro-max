@@ -148,19 +148,26 @@ describe('assessment report integration', () => {
       ]);
     });
 
-    it('reads courses from the server search, narrowed by the unit', async () => {
+    it('loads courses under the picked unit and team without a typed query', async () => {
       const spy = vi.spyOn(TestBed.inject(MockBackend), 'handle');
       const store = await open('/reports/results?orgId=1');
       expect(store.pickers.options$.courseId()).toContainEqual({
         id: 1,
         name: 'Tổng quan hệ thống Core Banking',
       });
-      store.pickers.search('courseId', 'change');
+      store.pickers.pick('teamId', store.pickers.options$.teamId()[0]);
       await settle();
-      expect(
-        spy.mock.calls.filter(([e]) => e === learning.groups).at(-1)?.[1].query,
-      ).toMatchObject({ groupBy: 'course', orgId: '1', q: 'change' });
-      expect(store.pickers.options$.courseId().map((c) => c.id)).toEqual([2]);
+      const request = spy.mock.calls
+        .filter(
+          ([e, r]) => e === learning.groups && r.query['groupBy'] === 'course',
+        )
+        .at(-1)?.[1].query;
+      expect(request).toMatchObject({
+        groupBy: 'course',
+        orgId: '1',
+        teamId: '7',
+      });
+      expect(request).not.toHaveProperty('q');
     });
 
     it('lists the quizzes of the picked course and clears the children of a changed parent', async () => {
@@ -354,12 +361,55 @@ describe('assessment report integration', () => {
     expect(store.scoreComparison$()).toEqual([]);
     const element = harness.routeNativeElement as HTMLElement;
     expect(element.textContent).toContain('Chưa có điểm đã chấm');
-    expect(element.querySelector('ui-donut-chart')).toBeNull();
+    expect(
+      element.querySelector(
+        'ui-donut-chart[label="Số học viên đã đạt và chưa ghi nhận đạt"]',
+      ),
+    ).toBeNull();
     expect(
       [...element.querySelectorAll('ui-stat-strip .stat__value')].filter(
         (el) => el.textContent?.trim() === '—',
       ),
     ).toHaveLength(2);
+  });
+  it('keeps assessment rows available when the scope summary fails', async () => {
+    const backend = TestBed.inject(MockBackend);
+    const handle = backend.handle.bind(backend);
+    vi.spyOn(backend, 'handle').mockImplementation((endpoint, request) =>
+      endpoint === api.overview
+        ? {
+            status: 500,
+            body: envelopeError(
+              'CORE-INTERNAL_ERROR',
+              'Không tải được tổng hợp',
+              'Summary unavailable',
+            ),
+          }
+        : handle(endpoint, request),
+    );
+    const store = await open('/reports/results');
+    expect(store.rows$().length).toBeGreaterThan(0);
+    expect(store.error$()).toBeUndefined();
+  });
+  it('applies a local calendar month as a half-open date range and clears it', async () => {
+    const store = await open('/reports/results');
+    store.selectPeriod('month');
+    await settle();
+    const now = new Date();
+    expect(store.filters$().from).toBe(
+      new Date(now.getFullYear(), now.getMonth(), 1).toISOString(),
+    );
+    expect(store.filters$().to).toBe(
+      new Date(
+        now.getFullYear(),
+        now.getMonth(),
+        now.getDate() + 1,
+      ).toISOString(),
+    );
+    store.selectPeriod('all');
+    await settle();
+    expect(store.filters$().from).toBeUndefined();
+    expect(store.filters$().to).toBeUndefined();
   });
   it('applies the filters to the overview charts and resets both the form and the results', async () => {
     const store = await open('/reports');
@@ -391,6 +441,43 @@ describe('assessment report integration', () => {
       (spy.mock.calls as [unknown, { query: Record<string, string> }][])
         .filter(([e]) => e === endpoint)
         .at(-1)?.[1].query;
+
+    it.each([
+      ['program', 'programId'],
+      ['team', 'teamId'],
+    ] as const)(
+      'loads %s groups and drills into the matching learners',
+      async (view, key) => {
+        const spy = vi.spyOn(TestBed.inject(MockBackend), 'handle');
+        const store = await open(`/reports/progress?view=${view}`);
+        expect(lastQuery(spy, learning.groups)).toMatchObject({
+          groupBy: view,
+        });
+        const group = store.progress.groups$().find((row) => row.drill);
+        expect(group).toBeDefined();
+        expect(group?.drill?.[key]).toBe(group?.id);
+        expect(group?.drill?.['view']).toBe('learners');
+      },
+    );
+
+    it('preserves program scope through the learner view and CSV export', async () => {
+      const spy = vi.spyOn(TestBed.inject(MockBackend), 'handle');
+      const store = await open('/reports/progress?view=program&programId=1');
+      expect(lastQuery(spy, learning.groups)).toMatchObject({
+        groupBy: 'program',
+        programId: '1',
+      });
+      store.selectView('learners');
+      await settle();
+      expect(lastQuery(spy, learning.enrollments)).toMatchObject({
+        programId: '1',
+      });
+      store.exportCsv();
+      await settle();
+      expect(lastQuery(spy, learning.exportEnrollments)).toMatchObject({
+        programId: '1',
+      });
+    });
 
     it('sends the chosen page size to the progress groups and keeps it across views, apart from the other tabs', async () => {
       const store = await open('/reports/progress');

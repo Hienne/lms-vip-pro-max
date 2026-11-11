@@ -15,6 +15,7 @@ import { provideEnvelopeHttpClient } from '../../../core/http/http.testing';
 import { SessionStore } from '../../../core/session/session.store';
 import { FakeSessionStore } from '../../../core/session/session.testing';
 import { ChatRoomStore } from './chat-room.store';
+import { RoomGamesStore } from './room-games.store';
 
 describe('ChatRoomStore', () => {
   let store: ChatRoomStore;
@@ -36,6 +37,7 @@ describe('ChatRoomStore', () => {
         provideEnvelopeHttpClient(),
         { provide: SessionStore, useClass: FakeSessionStore },
         ChatRoomStore,
+        RoomGamesStore,
       ],
     });
     vi.spyOn(TestBed.inject(EndpointClient), 'connect').mockImplementation(
@@ -65,7 +67,7 @@ describe('ChatRoomStore', () => {
     vi.useRealTimers();
   });
 
-  async function connect(): Promise<void> {
+  async function openSocket(): Promise<void> {
     store.join({ name: 'An', color: 'teal' });
     await settle();
     http.expectOne('/api/v1/chat-room/tickets').flush(
@@ -76,6 +78,9 @@ describe('ChatRoomStore', () => {
     );
     await settle();
     observer.opened();
+  }
+  async function connect(): Promise<void> {
+    await openSocket();
     observer.message({
       type: 'welcome',
       id: 'a',
@@ -89,7 +94,7 @@ describe('ChatRoomStore', () => {
       type: 'join',
       name: 'An',
       color: 'teal',
-      dice: true,
+      roomGames: true,
       gestures: true,
       interactions: true,
     });
@@ -141,6 +146,31 @@ describe('ChatRoomStore', () => {
     );
     await settle();
   });
+  it('explains when the socket opens but the server closes before admitting the player', async () => {
+    await openSocket();
+    expect(store.status$()).toBe('joining');
+    observer.closed(1011);
+    expect(store.status$()).toBe('offline');
+    expect(store.connectionIssue$()).toContain('trước khi xác nhận vào phòng');
+    expect(store.connectionIssue$()).toContain('1011');
+    expect(store.isConnecting$()).toBe(false);
+  });
+  it('keeps the room online when game storage is unavailable', async () => {
+    await connect();
+    observer.message({ type: 'wallet', balance: 50 });
+    observer.message({
+      type: 'error',
+      scope: 'games',
+      message: 'Ví chưa khả dụng.',
+    });
+    expect(store.online$()).toBe(true);
+    expect(store.gamesIssue$()).toBe('Ví chưa khả dụng.');
+    expect(store.connectionIssue$()).toBe('');
+    expect(store.games.balance$()).toBeNull();
+    store.send('Phòng vẫn mở');
+    expect(send).toHaveBeenCalledWith({ type: 'chat', text: 'Phòng vẫn mở' });
+    expect(store.gamesIssue$()).toBe('Ví chưa khả dụng.');
+  });
   it('stops retries and ignores stale callbacks after leaving', async () => {
     await connect();
     vi.useFakeTimers();
@@ -183,17 +213,14 @@ describe('ChatRoomStore', () => {
     expect(store.speech$()).toEqual({});
     expect(store.announcement$()).toBe('');
   });
-  it('opens chat explicitly, closes it after send, and changes view without reconnecting', async () => {
+  it('opens chat explicitly, closes it after send, and resumes movement', async () => {
     store.openChat();
     expect(store.chatOpen$()).toBe(false);
     await connect();
-    expect(store.viewMode$()).toBe('3d');
     store.openChat();
     expect(store.canvas$().chatting).toBe(true);
     store.send('Xin chào');
     expect(store.chatOpen$()).toBe(false);
-    store.changeViewMode('2d');
-    expect(store.viewMode$()).toBe('2d');
     expect(store.online$()).toBe(true);
     store.move({ x: 446, y: 656, facing: 'east' });
     expect(send).toHaveBeenCalledWith({

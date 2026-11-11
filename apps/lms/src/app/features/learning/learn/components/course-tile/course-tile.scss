@@ -2,13 +2,11 @@
 
 :host {
   display: block;
-  height: 100%;
 }
 
 .course-tile {
   display: flex;
   flex-direction: column;
-  height: 100%;
   overflow: hidden;
   color: inherit;
   text-decoration: none;
@@ -38,7 +36,6 @@
 
   &__body {
     display: flex;
-    flex: 1;
     flex-direction: column;
     gap: ui.space(2);
     padding: ui.space(4);
@@ -74,7 +71,6 @@
 
   &__foot {
     @include ui.stack(2);
-    margin-top: auto;
     padding-top: ui.space(2);
   }
 

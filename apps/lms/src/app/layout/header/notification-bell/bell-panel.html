@@ -1,50 +1,64 @@
 <div class="bell">
-  @if (isLoading$()) {
-  <span uiSkeleton variant="text" class="bell__line"></span>
-  } @else if (isEmpty$()) {
-  <p class="bell__empty">Không có thông báo mới.</p>
-  } @else { @if (showReminders() && dueTotal$() > 0) {
-  <section class="bell__group" aria-label="Nhắc hạn">
-    <h3 class="bell__heading">Nhắc hạn ({{ dueTotal$() }})</h3>
-    <ul class="bell__list">
-      @for (reminder of dueReminders$(); track reminder.id) {
-      <li>
-        <a
-          class="bell__item"
-          routerLink="/notifications"
-          (click)="navigated.emit()"
-        >
-          <span class="bell__title">Khóa học được giao sắp đến hạn</span>
+  @if (failed()) {
+  <div class="bell__item">
+    <p class="bell__empty">Chưa tải được đầy đủ thông báo.</p>
+    <button uiButton variant="ghost" size="sm" type="button" (click)="retry()">
+      Thử lại
+    </button>
+  </div>
+  } @if (rows().length) {
+  <ul class="bell__list" aria-label="Thông báo gần đây">
+    @for (row of rows(); track row.item ? 'reminder-' + row.item.id :
+    'question-' + row.question?.id) {
+    <li>
+      @if (row.item; as item) {
+      <div class="bell__item" [class.bell__item--unread]="item.unread">
+        <div class="bell__content">
           <span class="bell__meta"
-            >Nhắc {{ reminder.scheduledAt | fmtRelative }}</span
+            >{{ item.unread ? 'Chưa đọc' : 'Đã đọc' }}</span
           >
-        </a>
-      </li>
-      }
-    </ul>
-  </section>
-  } @if (showQuestions() && questionTotal$() > 0) {
-  <section class="bell__group" aria-label="Câu hỏi chưa trả lời">
-    <h3 class="bell__heading">Câu hỏi chưa trả lời ({{ questionTotal$() }})</h3>
-    <ul class="bell__list">
-      @for (question of questions$(); track question.id) {
-      <li>
-        <a
-          class="bell__item"
-          routerLink="/notifications"
-          (click)="navigated.emit()"
+          <app-reminder-item
+            [reminder]="item.reminder"
+            [overdue]="item.isOverdue"
+          />
+        </div>
+        @if (item.unread) {
+        <button
+          uiIconButton
+          size="sm"
+          type="button"
+          label="Đánh dấu đã đọc"
+          [disabled]="inbox.isMarking$()"
+          (click)="inbox.markRead(item.id)"
         >
-          <span class="bell__title">{{ question.text }}</span>
+          <ui-icon name="check" />
+        </button>
+        }
+      </div>
+      } @else if (row.question; as question) {
+      <a
+        class="bell__item bell__item--unread"
+        routerLink="/notifications"
+        (click)="navigated.emit()"
+      >
+        <span class="bell__content">
+          <span class="bell__meta">Chờ trả lời</span>
+          <span>{{ question.text }}</span>
           <span class="bell__meta"
             >{{ question.authorName ?? 'Học viên' }} · {{ question.lessonTitle
             }}</span
           >
-        </a>
-      </li>
+        </span>
+      </a>
       }
-    </ul>
-  </section>
-  } }
+    </li>
+    }
+  </ul>
+  } @else if (loading()) {
+  <span uiSkeleton variant="text" class="bell__line"></span>
+  } @else if (!failed()) {
+  <p class="bell__empty">Bạn chưa có thông báo nào.</p>
+  }
   <a class="bell__all" routerLink="/notifications" (click)="navigated.emit()"
     >Xem tất cả thông báo</a
   >

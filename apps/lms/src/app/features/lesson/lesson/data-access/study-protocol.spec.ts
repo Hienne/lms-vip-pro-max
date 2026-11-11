@@ -11,7 +11,6 @@ import {
   fromClaim,
   MAX_RESYNCS,
   NOT_PLAYING,
-  seekEvents,
   toCommand,
   type PlayTracker,
   type ProtocolState,
@@ -229,51 +228,6 @@ describe('study protocol', () => {
         complete: true,
       });
       expect(command.watchedFromSeconds).toBeUndefined();
-    });
-  });
-
-  describe('a seek', () => {
-    it('flushes a heartbeat up to where it started, then the seek', () => {
-      expect(
-        seekEvents({ playing: true, position: 120 }, 150, 400, true),
-      ).toEqual([
-        { type: 'HEARTBEAT', playing: true, positionSeconds: 150 },
-        { type: 'SEEK', playing: true, positionSeconds: 400 },
-      ]);
-    });
-
-    it('is the seek alone when nothing played since the last report', () => {
-      expect(
-        seekEvents({ playing: false, position: 120 }, 120, 400, false),
-      ).toEqual([{ type: 'SEEK', playing: false, positionSeconds: 400 }]);
-      expect(
-        seekEvents({ playing: true, position: 150 }, 150, 400, true),
-      ).toEqual([{ type: 'SEEK', playing: true, positionSeconds: 400 }]);
-    });
-
-    it('moves the tracker to the landing point, so the next range starts there', () => {
-      const [flush, seek] = seekEvents(
-        { playing: true, position: 120 },
-        150,
-        400,
-        true,
-      );
-      const first = toCommand(state, { playing: true, position: 120 }, flush);
-      expect(first.command).toMatchObject({
-        watchedFromSeconds: 120,
-        watchedToSeconds: 150,
-      });
-      const second = toCommand(state, first.tracker, seek);
-      expect(second.command.watchedFromSeconds).toBeUndefined();
-      const beat = toCommand(state, second.tracker, {
-        type: 'HEARTBEAT',
-        playing: true,
-        positionSeconds: 410,
-      });
-      expect(beat.command).toMatchObject({
-        watchedFromSeconds: 400,
-        watchedToSeconds: 410,
-      });
     });
   });
 

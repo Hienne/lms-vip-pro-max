@@ -115,9 +115,7 @@ describe('LearningProgress', () => {
     it('turns the overdue number to danger only while it is above zero', () => {
       const overdue = kpi('Đang quá hạn')!.querySelector('.stat__value')!;
       expect(Number(overdue.textContent)).toBeGreaterThan(0);
-      expect(overdue.classList.contains('stat__value--danger')).toBe(
-        true,
-      );
+      expect(overdue.classList.contains('stat__value--danger')).toBe(true);
       expect(
         kpi('Tổng số khóa')!
           .querySelector('.stat__value')!
@@ -165,7 +163,9 @@ describe('LearningProgress', () => {
 
     it('ends the counts with the server average quiz score', () => {
       expect(
-        kpi('Điểm thi trung bình')!.querySelector('.stat__value')!.textContent?.trim(),
+        kpi('Điểm thi trung bình')!
+          .querySelector('.stat__value')!
+          .textContent?.trim(),
       ).toBe('65,5%');
       expect(
         Array.from(el.querySelectorAll('ui-stat .stat__label')).at(-1)
@@ -173,17 +173,15 @@ describe('LearningProgress', () => {
       ).toBe('Điểm thi trung bình');
     });
 
-    it('keeps the server best scores and missing scores in the row details', async () => {
-      const scores: string[] = [];
-      for (const row of rows()) {
-        row.querySelector<HTMLButtonElement>('button[aria-expanded]')!.click();
-        await settle();
-        const detail = el.querySelector('.learning-progress__detail')!;
-        expect(detail.textContent).toContain('Điểm cao nhất');
-        scores.push(
-          detail.querySelector('dl > div:last-child dd')!.textContent!.trim(),
-        );
-      }
+    it('shows dates and server scores directly in each course row', () => {
+      const scores = rows().map((row) => {
+        expect(row.querySelector('button[aria-expanded]')).toBeNull();
+        expect(row.querySelector('td[data-label="Bắt đầu"]')).toBeTruthy();
+        expect(row.querySelector('td[data-label="Hoàn thành"]')).toBeTruthy();
+        return row
+          .querySelector('td[data-label="Điểm thi cao nhất"] span > span')
+          ?.textContent?.trim();
+      });
       expect(scores).toContain('40%');
       expect(scores).toContain('—');
     });
@@ -212,7 +210,7 @@ describe('LearningProgress', () => {
       expect(TestBed.inject(Router).url).toContain('sort=title,asc');
     });
 
-    it('still sorts by dates that moved into the row details', async () => {
+    it('sorts by the learning dates', async () => {
       const select = el.querySelector<HTMLSelectElement>(
         '.learning-progress__sort select',
       )!;
@@ -223,46 +221,6 @@ describe('LearningProgress', () => {
         'startedAt,desc',
       );
       expect(TestBed.inject(Router).url).toContain('sort=startedAt,desc');
-    });
-
-    it('opens one accessible detail row at a time without another course request', async () => {
-      const triggers = rows().map(
-        (row) => row.querySelector<HTMLButtonElement>('button[aria-expanded]')!,
-      );
-      const count = calls(learnerEndpoints.myCourses).length;
-      expect(el.querySelector('.learning-progress__detail')).toBeNull();
-      triggers[0].click();
-      await settle();
-      const detail = el.querySelector<HTMLElement>(
-        '.learning-progress__detail',
-      )!;
-      expect(triggers[0].getAttribute('aria-expanded')).toBe('true');
-      expect(triggers[0].getAttribute('aria-controls')).toBe(detail.id);
-      expect(detail.getAttribute('role')).toBe('region');
-      expect(detail.textContent).toContain('Bắt đầu');
-      expect(detail.textContent).toContain('Hoàn thành');
-      expect(detail.querySelector('a')?.getAttribute('href')).toBe(
-        rows()[0].querySelector('a')?.getAttribute('href'),
-      );
-      triggers[1].click();
-      await settle();
-      expect(el.querySelectorAll('.learning-progress__detail')).toHaveLength(1);
-      expect(triggers[0].getAttribute('aria-expanded')).toBe('false');
-      expect(triggers[0].getAttribute('aria-controls')).toBeNull();
-      triggers[1].click();
-      await settle();
-      expect(el.querySelector('.learning-progress__detail')).toBeNull();
-      expect(calls(learnerEndpoints.myCourses)).toHaveLength(count);
-    });
-
-    it('closes the row details when the table filters change', async () => {
-      rows()[0]
-        .querySelector<HTMLButtonElement>('button[aria-expanded]')!
-        .click();
-      await settle();
-      el.querySelector<HTMLInputElement>('input[type=checkbox]')!.click();
-      await settle();
-      expect(el.querySelector('.learning-progress__detail')).toBeNull();
     });
 
     it('filters by the overdue flag and starts again at the first page', async () => {
@@ -330,6 +288,8 @@ describe('LearningProgress', () => {
         'Danh sách khóa học',
       );
       expect(el.querySelectorAll('[role="tabpanel"][inert]')).toHaveLength(2);
+      expect(activePanel()?.querySelector('#progress-rhythm')).toBeNull();
+      expect(activePanel()?.querySelector('#progress-competency')).toBeNull();
     });
 
     it('restores the tab from the URL and preserves course filters on a tab change', async () => {
@@ -375,6 +335,9 @@ describe('LearningProgress', () => {
       expect(el.querySelector('#progress-competency')?.tagName).toBe('H2');
       expect(card().textContent).toContain('Năng lực theo nhóm kiến thức');
       expect(card().querySelector('select, [role="combobox"]')).toBeNull();
+      const panel = card().closest('[uiTabPanel]');
+      expect(panel?.querySelector('#progress-rhythm')).toBeTruthy();
+      expect(panel?.querySelector('#progress-weekly')).toBeTruthy();
       const after = (a: Element, b: Element) =>
         !!(a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING);
       expect(after(el.querySelector('app-progress-counts')!, card())).toBe(

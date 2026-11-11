@@ -110,26 +110,45 @@ describe('Saved', () => {
     });
 
     it('renders the list in the selected tab only, not a second copy in the other', async () => {
-      const links = () => el.querySelectorAll('a.saved__open').length;
+      const links = () =>
+        el.querySelectorAll('.saved__row .saved__choose').length;
       expect(links()).toBe(2);
       await press(tab('Đánh dấu'));
       expect(links()).toBe(1);
     });
 
     it('says where each row is: its lesson, the page or second, and how long ago', () => {
-      const [video, pdf] = rows().map((row) => row.querySelector('small')!);
-      expect(video.textContent).toMatch(/· Video 4:10 · .+/);
-      expect(pdf.textContent).toMatch(/· Trang 5 · .+/);
+      const [video, pdf] = rows();
+      expect(video.textContent).toMatch(/Video 4:10/);
+      expect(pdf.textContent).toMatch(/Trang 5/);
       expect(el.querySelector('.saved__icon')).toBeNull();
     });
 
-    it('opens the lesson at the spot: the block, and the page or the second', () => {
-      const [video, pdf] = rows().map(
-        (row) =>
-          row.querySelector<HTMLAnchorElement>('a')!.getAttribute('href')!,
+    it('opens the video block without a time jump and PDF notes at their saved page', async () => {
+      let link = el.querySelector(
+        '.saved__layout ui-section-card:last-child a',
+      )!;
+      expect(link.getAttribute('href')).toMatch(/\?block=\d+$/);
+      await press(rows()[1].querySelector('button.saved__choose'));
+      link = el.querySelector('.saved__layout ui-section-card:last-child a')!;
+      expect(link.getAttribute('href')).toMatch(/\?block=\d+&page=5$/);
+    });
+
+    it('searches saved text and resets the selected detail to a visible note', async () => {
+      const search = el.querySelector<HTMLInputElement>('ui-search input')!;
+      search.value = 'CCCD';
+      search.dispatchEvent(new Event('input'));
+      search.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter' }));
+      await settle();
+      expect(titles()).toEqual(['Đổi CCCD → cập nhật CIF']);
+      expect(el.querySelector('.saved__content')?.textContent).toContain(
+        'CCCD',
       );
-      expect(video).toMatch(/^\/lesson\/1\/\d+\?block=\d+&t=250$/);
-      expect(pdf).toMatch(/^\/lesson\/1\/\d+\?block=\d+&page=5$/);
+      search.value = 'không tồn tại';
+      search.dispatchEvent(new Event('input'));
+      search.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter' }));
+      await settle();
+      expect(rows()).toHaveLength(0);
     });
 
     it('shows the bookmarks on their tab, by their label', async () => {
@@ -146,16 +165,22 @@ describe('Saved', () => {
 
     it('deletes a note after the learner confirms, and the counts follow', async () => {
       await press(
-        el.querySelector('button[aria-label="Xóa Kiểm soát maker-checker"]'),
+        el.querySelector(
+          'button[aria-label="Thao tác với Kiểm soát maker-checker"]',
+        ),
       );
+      await press(document.querySelector('[role="menuitem"]'));
       expect(dialog()!.textContent).toContain('Xóa ghi chú?');
       await press(inDialog('Hủy'));
       expect(calls(personalEndpoints.deleteNote).length).toBe(0);
       expect(titles().length).toBe(2);
 
       await press(
-        el.querySelector('button[aria-label="Xóa Kiểm soát maker-checker"]'),
+        el.querySelector(
+          'button[aria-label="Thao tác với Kiểm soát maker-checker"]',
+        ),
       );
+      if (!dialog()) await press(document.querySelector('[role="menuitem"]'));
       await press(inDialog('Xóa'));
       expect(calls(personalEndpoints.deleteNote).length).toBe(1);
       expect(titles()).toEqual(['Đổi CCCD → cập nhật CIF']);
@@ -164,7 +189,8 @@ describe('Saved', () => {
 
     it('removes a bookmark through its own endpoint', async () => {
       await press(tab('Đánh dấu'));
-      await press(rows()[0].querySelector('button'));
+      await press(rows()[0].querySelector('ui-menu button'));
+      await press(document.querySelector('[role="menuitem"]'));
       expect(dialog()!.textContent).toContain('Bỏ đánh dấu?');
       await press(inDialog('Bỏ đánh dấu'));
       expect(calls(personalEndpoints.deleteBookmark).length).toBe(1);
@@ -222,9 +248,32 @@ describe('Saved', () => {
         page: '1',
       });
 
-      await press(rows()[0].querySelector('button'));
+      await press(rows()[0].querySelector('ui-menu button'));
+      await press(document.querySelector('[role="menuitem"]'));
       await press(inDialog('Xóa'));
       expect(rows().length).toBe(20);
+      expect(el.querySelector('nav[aria-label="Phân trang"]')).toBeNull();
+    });
+
+    it('stops requesting later pages if the server repeats page zero', async () => {
+      const original = real();
+      handle.mockImplementation((endpoint, request) =>
+        endpoint === personalEndpoints.saved
+          ? original(endpoint, {
+              ...request,
+              query: { ...request.query, page: '0' },
+            })
+          : original(endpoint, request),
+      );
+      await press(tab('Đánh dấu'));
+      handle.mockClear();
+      await press(tab('Ghi chú'));
+      expect(
+        calls(personalEndpoints.saved).map(
+          ([, request]) => request.query['page'],
+        ),
+      ).toEqual(['0', '1']);
+      expect(rows()).toHaveLength(20);
       expect(el.querySelector('nav[aria-label="Phân trang"]')).toBeNull();
     });
   });

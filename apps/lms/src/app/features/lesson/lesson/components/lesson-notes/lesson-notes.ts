@@ -55,6 +55,7 @@ import { anchorText } from '../../../../../shared/learning/anchor';
 export class LessonNotes {
   /** Where a new note goes, in words: "Trang 3", "Video 1:15" or "bài học". */
   readonly anchorLabel = input.required<string>();
+  readonly activeBlockId = input<number>();
   readonly notes = input.required<readonly LessonNoteView[]>();
   readonly bookmarks = input.required<readonly LessonBookmarkView[]>();
   readonly loading = input(false);

@@ -221,3 +221,5 @@ export { Stat, type StatTone } from './lib/molecules/stat-strip/stat';
 export { ListRow, type ListRowTone } from './lib/molecules/list-row/list-row';
 export { DateInput } from './lib/molecules/date-input/date-input';
 export type { DateInputKind } from './lib/molecules/date-input/date-format';
+
+export { HorizontalBarChart } from './lib/organisms/charts/horizontal-bar-chart';

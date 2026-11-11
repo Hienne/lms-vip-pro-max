@@ -72,7 +72,7 @@ describe('CommunityContent', () => {
     const body = page
       .el()
       .querySelector<HTMLTextAreaElement>('app-markdown-editor textarea')!;
-    body.value = 'Kiểm tra số thread đang chờ connection trước khi tăng pool.';
+    body.value = 'hay';
     body.dispatchEvent(new Event('input'));
     await page.settle();
     await page.click('Đăng câu trả lời');
@@ -86,6 +86,9 @@ describe('CommunityContent', () => {
     );
     expect(page.bodies(communityEndpoints.publishContent)).toHaveLength(1);
     expect(page.text()).toContain('3 câu trả lời');
+    expect(body.value).toBe('');
+    expect(body.getAttribute('aria-invalid')).not.toBe('true');
+    expect(page.text()).not.toContain('Nội dung cần ít nhất 20 ký tự để đăng.');
   });
 
   it('lays out a lesson learned by its incident sections', async () => {

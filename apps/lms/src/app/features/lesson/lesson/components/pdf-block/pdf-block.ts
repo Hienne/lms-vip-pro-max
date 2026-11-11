@@ -1,6 +1,9 @@
+import { CdkTrapFocus } from '@angular/cdk/a11y';
 import {
+  afterRenderEffect,
   Component,
   computed,
+  DOCUMENT,
   effect,
   ElementRef,
   inject,
@@ -9,9 +12,10 @@ import {
   signal,
   untracked,
   viewChild,
+  viewChildren,
 } from '@angular/core';
 import { Button, Icon, IconButton, Skeleton } from '@lms/ui';
-import { PdfEngine, type PdfFile } from './pdf-engine';
+import { PdfEngine, type PdfFile, type PdfRender } from './pdf-engine';
 
 /** The learner has to stay on a page this long before it counts as read. */
 export const PDF_PAGE_DWELL_MS = 1000;
@@ -25,22 +29,29 @@ export interface BlockJump {
   readonly seq: number;
 }
 
-/** Width used when the column cannot be measured (before layout). */
-const FALLBACK_WIDTH = 800;
+const MAX_PAGE_WIDTH = 960;
+const PAGE_OVERSCAN = 1;
+
+interface PageDraw {
+  readonly canvas: HTMLCanvasElement;
+  readonly render: PdfRender;
+}
 
 /**
- * A `pdf` block: pdf.js draws one page at a time on a canvas. It tells where the learner is
+ * A continuous reader with canvases for the pages near the viewport. It tells where the learner is
  * (`pageChange`, at once) and reports the page shown after a second on it (`pageShown`); it shows
  * the page a `jump` asks for and reports the bookmark button. The store decides what to do.
  */
 @Component({
   selector: 'app-pdf-block',
-  imports: [Button, Icon, IconButton, Skeleton],
+  imports: [Button, CdkTrapFocus, Icon, IconButton, Skeleton],
   templateUrl: './pdf-block.html',
   styleUrl: './pdf-block.scss',
+  host: { '(document:fullscreenchange)': 'fullscreenChanged()' },
 })
 export class PdfBlock {
   private readonly engine = inject(PdfEngine);
+  private readonly document = inject(DOCUMENT);
 
   readonly src = input.required<string>();
   /** The page the server remembers; the block opens there. */
@@ -79,10 +90,17 @@ export class PdfBlock {
   protected readonly loading$ = computed(
     () => this.state.file() === null && !this.state.failed(),
   );
-  protected readonly canPrev$ = computed(() => this.state.page() > 1);
-  protected readonly canNext$ = computed(
-    () => this.state.page() < this.pageCount$(),
+  private readonly nativeFullscreen = signal(false);
+  protected readonly expanded = signal(false);
+  protected readonly fullscreen = computed(
+    () => this.nativeFullscreen() || this.expanded(),
   );
+  protected readonly pageRatios = computed(
+    () => this.state.file()?.pageRatios ?? [],
+  );
+  private readonly width = signal(MAX_PAGE_WIDTH);
+  protected readonly pageWidth = computed(() => this.width() * this.zoom$());
+  protected readonly visiblePages = signal({ first: 1, last: 1 });
   protected readonly canZoomOut$ = computed(
     () => this.state.zoom() > PDF_ZOOMS[0],
   );
@@ -92,8 +110,26 @@ export class PdfBlock {
   /** The block reopened on a page the learner had reached before; a block opened at a jump says nothing. */
   protected readonly resumedAt$ = this.state.resumed.asReadonly();
 
-  private readonly canvas = viewChild<ElementRef<HTMLCanvasElement>>('canvas');
   private readonly root = viewChild<ElementRef<HTMLElement>>('root');
+  private readonly fullscreenButton =
+    viewChild<ElementRef<HTMLButtonElement>>('fullscreenButton');
+  private readonly stage = viewChild<ElementRef<HTMLElement>>('stage');
+  private readonly pages = viewChildren<ElementRef<HTMLElement>>('sheet');
+  private readonly canvases =
+    viewChildren<ElementRef<HTMLCanvasElement>>('canvas');
+  private readonly rendered = signal<ReadonlySet<number>>(new Set());
+  private readonly readingPageReady = computed(() =>
+    this.rendered().has(this.state.page()),
+  );
+  private readonly scrollTarget = signal<{
+    page: number;
+    offset: number;
+  } | null>(null);
+  private readonly draws = new Map<number, PageDraw>();
+  private drawFile: PdfFile | null = null;
+  private drawWidth = 0;
+  private jumpDone: BlockJump | null = null;
+  private restoredTop: number | null = null;
 
   /** Opens the file when the URL is known, and lets it go when the block goes away. */
   private readonly open = effect((onCleanup) => {
@@ -104,6 +140,7 @@ export class PdfBlock {
       this.state.file.set(null);
       this.state.failed.set(false);
       this.state.resumed.set(null);
+      this.jumpDone = null;
     });
     this.engine.open(url).then(
       (file) => {
@@ -111,13 +148,12 @@ export class PdfBlock {
         opened = file;
         const jump = untracked(this.jump);
         const start = untracked(this.startPage);
-        this.state.page.set(
-          this.clamp(jump ? jump.value : start, file.pageCount),
-        );
+        this.jumpDone = jump;
+        this.state.file.set(file);
+        this.moveTo(this.clamp(jump ? jump.value : start, file.pageCount));
         this.state.resumed.set(
           !jump && start > 1 ? this.clamp(start, file.pageCount) : null,
         );
-        this.state.file.set(file);
       },
       () => {
         if (alive) this.state.failed.set(true);
@@ -125,33 +161,58 @@ export class PdfBlock {
     );
     onCleanup(() => {
       alive = false;
+      this.clearDraws();
       opened?.destroy();
     });
   });
 
-  /** Draws the shown page; a newer page or zoom drops the one still being drawn. */
-  private readonly draw = effect((onCleanup) => {
+  /** Keep the reading position when zoom or fullscreen changes the page dimensions. */
+  private readonly measure = afterRenderEffect((onCleanup) => {
+    const stage = this.stage()?.nativeElement;
+    if (!stage) return;
+    const resize = () => {
+      const width = Math.min(MAX_PAGE_WIDTH, stage.clientWidth);
+      if (width > 0 && width !== this.width()) {
+        if (!this.scrollTarget())
+          this.moveTo(this.page$(), this.pageOffset(stage));
+        this.width.set(width);
+      } else if (!this.scrollTarget()) {
+        this.updateVisiblePages(stage);
+      }
+    };
+    untracked(resize);
+    if (typeof ResizeObserver === 'undefined') return;
+    const observer = new ResizeObserver(resize);
+    observer.observe(stage);
+    onCleanup(() => observer.disconnect());
+  });
+
+  private readonly restoreScroll = afterRenderEffect(() => {
+    const target = this.scrollTarget();
+    const stage = this.stage()?.nativeElement;
+    if (!target || !stage) return;
+    const page = untracked(() => this.pages()[target.page - 1]?.nativeElement);
+    if (!page) return;
+    stage.scrollTop = page.offsetTop + page.offsetHeight * target.offset;
+    this.restoredTop = stage.scrollTop;
+    this.scrollTarget.set(null);
+    untracked(() => this.updateVisiblePages(stage));
+  });
+
+  private readonly draw = afterRenderEffect(() => {
     const file = this.state.file();
-    const page = this.state.page();
-    const zoom = this.state.zoom();
-    const canvas = this.canvas()?.nativeElement;
-    if (!file || !canvas) return;
-    // The column's width, less the stage's border; the stage itself is hidden while loading.
-    const width = untracked(
-      () => (this.root()?.nativeElement.clientWidth || FALLBACK_WIDTH) - 2,
-    );
-    const render = file.render(page, canvas, width, zoom);
-    render.done.catch(() => {
-      // A cancelled draw rejects; a real failure leaves the old page, which the learner can retry.
-    });
-    onCleanup(() => render.cancel());
+    const width = this.pageWidth();
+    const canvases = this.canvases();
+    if (!file) return;
+    untracked(() => this.drawPages(file, width, canvases));
   });
 
   /** A jump moves to its page once the file is open; an earlier one is taken when it opens. */
   private readonly follow = effect(() => {
     const jump = this.jump();
-    if (jump && untracked(this.state.file)) {
-      this.state.page.set(this.clamp(jump.value));
+    if (jump && jump !== this.jumpDone && untracked(this.state.file)) {
+      this.jumpDone = jump;
+      untracked(() => this.moveTo(this.clamp(jump.value)));
     }
   });
 
@@ -164,7 +225,7 @@ export class PdfBlock {
   /** A page counts as shown after the dwell time on it. */
   private readonly report = effect((onCleanup) => {
     const page = this.state.page();
-    if (!this.state.file()) return;
+    if (!this.readingPageReady()) return;
     const timer = setTimeout(
       () => untracked(() => this.pageShown.emit(page)),
       PDF_PAGE_DWELL_MS,
@@ -172,11 +233,54 @@ export class PdfBlock {
     onCleanup(() => clearTimeout(timer));
   });
 
-  protected go(step: 1 | -1): void {
-    this.state.page.update((page) => this.clamp(page + step));
+  protected scrolled(): void {
+    const stage = this.stage()?.nativeElement;
+    if (!stage || this.scrollTarget()) return;
+    const moved = stage.scrollTop !== this.restoredTop;
+    this.restoredTop = null;
+    this.updateVisiblePages(stage, moved);
+  }
+
+  protected async toggleFullscreen(): Promise<void> {
+    const root = this.root()?.nativeElement;
+    if (!root) return;
+    if (this.expanded()) {
+      this.closeExpanded();
+      return;
+    }
+    if (this.document.fullscreenElement === root) {
+      await this.document.exitFullscreen();
+      return;
+    }
+    try {
+      await root.requestFullscreen();
+    } catch {
+      // Embedded browsers and some mobile browsers disallow element fullscreen.
+      this.expanded.set(true);
+    }
+    this.stage()?.nativeElement.focus({ preventScroll: true });
+  }
+
+  protected fullscreenChanged(): void {
+    const active =
+      this.document.fullscreenElement === this.root()?.nativeElement;
+    if (this.nativeFullscreen() && !active) this.focusFullscreenButton();
+    this.nativeFullscreen.set(active);
+  }
+
+  protected closeExpanded(): void {
+    if (!this.expanded()) return;
+    this.expanded.set(false);
+    this.focusFullscreenButton();
+  }
+
+  private focusFullscreenButton(): void {
+    this.fullscreenButton()?.nativeElement.focus({ preventScroll: true });
   }
 
   protected zoom(step: 1 | -1): void {
+    const stage = this.stage()?.nativeElement;
+    this.moveTo(this.page$(), stage ? this.pageOffset(stage) : 0);
     this.state.zoom.update((zoom) => {
       const index = PDF_ZOOMS.findIndex((z) => z === zoom) + step;
       return PDF_ZOOMS[Math.min(Math.max(index, 0), PDF_ZOOMS.length - 1)];
@@ -189,6 +293,105 @@ export class PdfBlock {
 
   protected retried(): void {
     this.retry.emit();
+  }
+
+  private moveTo(page: number, offset = 0): void {
+    this.state.page.set(page);
+    this.scrollTarget.set({ page, offset });
+    this.setVisiblePages(page, page);
+  }
+
+  private pageOffset(stage: HTMLElement): number {
+    const page = this.pages()[this.page$() - 1]?.nativeElement;
+    return page?.offsetHeight
+      ? Math.min(
+          1,
+          Math.max(0, (stage.scrollTop - page.offsetTop) / page.offsetHeight),
+        )
+      : 0;
+  }
+
+  private updateVisiblePages(stage: HTMLElement, trackPage = false): void {
+    if (!stage.clientHeight || !this.pages().length) return;
+    const top = stage.scrollTop;
+    const bottom = top + stage.clientHeight;
+    this.setVisiblePages(this.pageAt(top), this.pageAt(bottom));
+    if (trackPage) {
+      // At the bottom, a short last page may never reach the reading line.
+      const atEnd = top > 0 && bottom >= stage.scrollHeight - 1;
+      const readingLine = top + Math.min(stage.clientHeight / 3, 120);
+      this.state.page.set(atEnd ? this.pageCount$() : this.pageAt(readingLine));
+    }
+  }
+
+  private pageAt(offset: number): number {
+    const pages = this.pages();
+    let first = 0;
+    let last = pages.length - 1;
+    while (first < last) {
+      const middle = Math.floor((first + last) / 2);
+      const page = pages[middle].nativeElement;
+      if (offset < page.offsetTop + page.offsetHeight) last = middle;
+      else first = middle + 1;
+    }
+    return first + 1;
+  }
+
+  private setVisiblePages(first: number, last: number): void {
+    const range = {
+      first: this.clamp(first - PAGE_OVERSCAN),
+      last: this.clamp(last + PAGE_OVERSCAN),
+    };
+    const previous = this.visiblePages();
+    if (range.first !== previous.first || range.last !== previous.last) {
+      this.visiblePages.set(range);
+    }
+  }
+
+  private drawPages(
+    file: PdfFile,
+    width: number,
+    refs: readonly ElementRef<HTMLCanvasElement>[],
+  ): void {
+    if (this.drawFile !== file || this.drawWidth !== width) this.clearDraws();
+    this.drawFile = file;
+    this.drawWidth = width;
+    const canvases = new Map(
+      refs.map(
+        ({ nativeElement }) =>
+          [Number(nativeElement.dataset['page']), nativeElement] as const,
+      ),
+    );
+    for (const [page, draw] of this.draws) {
+      if (canvases.get(page) === draw.canvas) continue;
+      draw.render.cancel();
+      this.draws.delete(page);
+      this.rendered.update(
+        (pages) => new Set([...pages].filter((id) => id !== page)),
+      );
+    }
+    for (const [page, canvas] of canvases) {
+      if (this.draws.has(page)) continue;
+      const render = file.render(page, canvas, width, 1);
+      const draw = { canvas, render };
+      this.draws.set(page, draw);
+      void render.done.then(
+        () => {
+          if (this.draws.get(page) === draw) {
+            this.rendered.update((pages) => new Set(pages).add(page));
+          }
+        },
+        () => {
+          if (this.draws.get(page) === draw) this.state.failed.set(true);
+        },
+      );
+    }
+  }
+
+  private clearDraws(): void {
+    for (const { render } of this.draws.values()) render.cancel();
+    this.draws.clear();
+    this.rendered.set(new Set());
   }
 
   private clamp(page: number, count = this.pageCount$()): number {

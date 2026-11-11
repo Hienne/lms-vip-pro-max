@@ -1,6 +1,6 @@
-<a class="review-detail__back" routerLink="/community/reviews"
-  >← Review kiến trúc</a
->
+<ui-breadcrumb
+  [items]="[{label: 'Review kiến trúc', href: '/community/reviews'}, {label: 'Chi tiết review'}]"
+/>
 <ui-page-header [title]="store.title$()">
   <div slot="actions" class="review-detail__header-actions">
     @if (store.detail$(); as detail) { @if (detail.capabilities.canEditDraft) {
@@ -155,6 +155,13 @@
           Phiên bản {{ revision.revisionNo }} · {{ revision.publishedAt |
           fmtDatetime }}
         </p>
+        @if (store.canComment$()) {
+        <div class="review-detail__feedback">
+          <a uiButton size="sm" href="#review-feedback"
+            ><ui-icon name="message-square" size="sm" />Góp ý</a
+          >
+        </div>
+        }
       </article>
       <h2>Góp ý theo phiên bản {{ revision.revisionNo }}</h2>
       <ui-segmented
@@ -236,7 +243,11 @@
         (pageChange)="store.threadPage($event)"
       />
       } } @if (store.canComment$()) {
-      <form class="review-detail__composer" [formRoot]="composer">
+      <form
+        id="review-feedback"
+        class="review-detail__composer"
+        [formRoot]="composer"
+      >
         <h2>Góp ý vào phiên bản {{ revision.revisionNo }}</h2>
         <ui-field label="Mục được góp ý"
           ><select uiSelect [formField]="composer.section">

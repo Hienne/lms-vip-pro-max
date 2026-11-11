@@ -4,7 +4,7 @@ import { PdfEngine, type PdfFile, type PdfRender } from './pdf-engine';
 
 interface Drawn {
   readonly page: number;
-  readonly zoom: number;
+  readonly width: number;
   cancelled: boolean;
 }
 
@@ -20,8 +20,9 @@ class FakeEngine {
     if (this.fail) return Promise.reject(new Error('network'));
     return Promise.resolve({
       pageCount: this.pages,
-      render: (page, _canvas, _width, zoom): PdfRender => {
-        const drawn: Drawn = { page, zoom, cancelled: false };
+      pageRatios: Array.from({ length: this.pages }, () => 1.5),
+      render: (page, _canvas, width): PdfRender => {
+        const drawn: Drawn = { page, width, cancelled: false };
         this.drawn.push(drawn);
         return {
           done: Promise.resolve(),
@@ -90,6 +91,27 @@ describe('PdfBlock', () => {
         fixture.detectChanges();
       },
       retries: () => retries,
+      scrollTo: async (page: number) => {
+        const stage = el.querySelector<HTMLElement>('.pdf__stage')!;
+        Object.defineProperties(stage, {
+          clientHeight: { value: 600, configurable: true },
+          scrollHeight: { value: engine.pages * 1000, configurable: true },
+        });
+        el.querySelectorAll('.pdf__page').forEach((page, index) => {
+          Object.defineProperties(page, {
+            offsetTop: { value: index * 1000, configurable: true },
+            offsetHeight: { value: 1000, configurable: true },
+          });
+        });
+        stage.scrollTop = Math.min(
+          (page - 1) * 1000 + 1,
+          stage.scrollHeight - stage.clientHeight,
+        );
+        stage.dispatchEvent(new Event('scroll'));
+        fixture.detectChanges();
+        await flush();
+        fixture.detectChanges();
+      },
       click: async (label: string) => {
         button(label).click();
         fixture.detectChanges();
@@ -102,13 +124,13 @@ describe('PdfBlock', () => {
   it('opens the content URL and draws the first page, with "Trang p/n"', async () => {
     const { text } = await render();
     expect(engine.opened).toEqual(['/api/v1/learning-assets/9/content']);
-    expect(engine.drawn.map((d) => d.page)).toEqual([1]);
+    expect(engine.drawn.map((d) => d.page)).toEqual([1, 2]);
     expect(text()).toContain('Trang 1/5');
   });
 
   it('opens at the page the server remembers and says so', async () => {
     const { text } = await render(3);
-    expect(engine.drawn[0].page).toBe(3);
+    expect(engine.drawn.map((d) => d.page)).toContain(3);
     expect(text()).toContain('Trang 3/5');
     expect(text()).toContain('Đã mở lại tại trang 3.');
   });
@@ -120,26 +142,53 @@ describe('PdfBlock', () => {
     expect(first.text()).not.toContain('Đã mở lại');
   });
 
-  it('moves with "Trang trước" and "Trang sau", disabled at the ends', async () => {
-    const { button, click, text } = await render();
-    expect(button('Trang trước').disabled).toBe(true);
-    await click('Trang sau');
-    await click('Trang sau');
+  it('shows every page in one scroll area without page buttons', async () => {
+    const { button, el, scrollTo, text } = await render();
+    expect(button('Trang trước')).toBeNull();
+    expect(button('Trang sau')).toBeNull();
+    expect(el.querySelectorAll('.pdf__page')).toHaveLength(5);
+    await scrollTo(3);
     expect(text()).toContain('Trang 3/5');
-    expect(engine.drawn.at(-1)?.page).toBe(3);
-    await click('Trang trước');
+    expect(el.querySelector('canvas[data-page="3"]')).not.toBeNull();
+    await scrollTo(2);
     expect(text()).toContain('Trang 2/5');
-
-    for (let i = 0; i < 4; i++) await click('Trang sau');
+    await scrollTo(5);
     expect(text()).toContain('Trang 5/5');
-    expect(button('Trang sau').disabled).toBe(true);
   });
 
-  it('drops the page still being drawn when the learner moves on', async () => {
-    const { click } = await render();
-    await click('Trang sau');
+  it('releases the canvases that are far from the viewport', async () => {
+    const { scrollTo } = await render();
+    await scrollTo(5);
     expect(engine.drawn[0].cancelled).toBe(true);
-    expect(engine.drawn[1].cancelled).toBe(false);
+    expect(engine.drawn.at(-1)).toMatchObject({ page: 5, cancelled: false });
+  });
+
+  it('expands the reader and keeps the same page when native fullscreen is unavailable', async () => {
+    const { click, el, scrollTo, text } = await render();
+    await scrollTo(3);
+    await click('Toàn màn hình');
+    expect(
+      el.querySelector('[role="dialog"][aria-modal="true"]'),
+    ).not.toBeNull();
+    expect(text()).toContain('Trang 3/5');
+    await click('Thoát toàn màn hình');
+    expect(el.querySelector('[role="dialog"]')).toBeNull();
+    expect(text()).toContain('Trang 3/5');
+  });
+
+  it('closes the expanded reader with Escape and restores focus to its button', async () => {
+    const { click, el, button, fixture } = await render();
+    await click('Toàn màn hình');
+    const dialog = el.querySelector<HTMLElement>('[role="dialog"]');
+    expect(dialog?.tabIndex).toBe(-1);
+    const stage = el.querySelector<HTMLElement>('.pdf__stage');
+    stage?.dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }),
+    );
+    fixture.detectChanges();
+    await flush();
+    expect(el.querySelector('[role="dialog"]')).toBeNull();
+    expect(document.activeElement).toBe(button('Toàn màn hình'));
   });
 
   it('zooms in and out within its limits and redraws the page', async () => {
@@ -148,7 +197,9 @@ describe('PdfBlock', () => {
     expect(text()).toContain('100%');
     await click('Phóng to');
     expect(text()).toContain('125%');
-    expect(engine.drawn.at(-1)).toMatchObject({ page: 1, zoom: 1.25 });
+    expect(
+      engine.drawn.some(({ page, width }) => page === 1 && width === 1200),
+    ).toBe(true);
     for (let i = 0; i < 4; i++) await click('Phóng to');
     expect(text()).toContain('300%');
     expect(button('Phóng to').disabled).toBe(true);
@@ -157,35 +208,35 @@ describe('PdfBlock', () => {
   });
 
   it('reports a page only after the learner stays on it for a second', async () => {
-    const { click, shown } = await render();
+    const { scrollTo, shown } = await render();
     vi.advanceTimersByTime(PDF_PAGE_DWELL_MS - 1);
     expect(shown).toEqual([]);
     vi.advanceTimersByTime(1);
     expect(shown).toEqual([1]);
 
-    await click('Trang sau');
+    await scrollTo(2);
     vi.advanceTimersByTime(300);
-    await click('Trang sau');
+    await scrollTo(3);
     vi.advanceTimersByTime(PDF_PAGE_DWELL_MS);
     expect(shown).toEqual([1, 3]);
   });
 
   it('tells every page at once, with no dwell, starting with the one it opens on', async () => {
-    const { click, changes, shown } = await render(3);
+    const { scrollTo, changes, shown } = await render(3);
     expect(changes).toEqual([3]);
-    await click('Trang sau');
-    await click('Trang trước');
+    await scrollTo(4);
+    await scrollTo(3);
     expect(changes).toEqual([3, 4, 3]);
     expect(shown).toEqual([]);
   });
 
   it('shows the page a jump asks for, again when the same page is asked twice', async () => {
-    const { set, click, text, changes } = await render();
+    const { set, scrollTo, el, text, changes } = await render();
     await set('jump', { value: 4, seq: 1 });
     expect(text()).toContain('Trang 4/5');
-    expect(engine.drawn.at(-1)?.page).toBe(4);
+    expect(el.querySelector('canvas[data-page="4"]')).not.toBeNull();
 
-    await click('Trang trước');
+    await scrollTo(3);
     expect(text()).toContain('Trang 3/5');
     await set('jump', { value: 4, seq: 2 });
     expect(text()).toContain('Trang 4/5');
@@ -202,7 +253,7 @@ describe('PdfBlock', () => {
     fixture.detectChanges();
     await flush();
     fixture.detectChanges();
-    expect(engine.drawn.map((d) => d.page)).toEqual([4]);
+    expect(engine.drawn.map((d) => d.page)).toEqual([3, 4, 5]);
   });
 
   it('says nothing about resuming when it opens at a jump, whatever page the server remembers', async () => {
@@ -219,11 +270,11 @@ describe('PdfBlock', () => {
   });
 
   it('bookmarks the page on screen from a toggle button that shows and waits', async () => {
-    const { button, click, set, bookmarks } = await render();
+    const { button, click, scrollTo, set, bookmarks } = await render();
     expect(button('Đánh dấu trang này').getAttribute('aria-pressed')).toBe(
       'false',
     );
-    await click('Trang sau');
+    await scrollTo(2);
     await click('Đánh dấu trang này');
     expect(bookmarks).toEqual([2]);
 

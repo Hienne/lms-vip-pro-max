@@ -80,14 +80,14 @@ describe('NotificationsStore', () => {
 
   it('asks for nothing when the user has no COURSE_LEARNING function', async () => {
     const store = await open('quantri', '000002');
-    expect(calls(learnerEndpoints.reminders)).toHaveLength(0);
+    expect(calls(learnerEndpoints.reminderInbox)).toHaveLength(0);
     expect(store.items$()).toEqual([]);
     expect(store.loadError$()).toBeUndefined();
   });
 
   it('reads a 403 as an empty list, not an error', async () => {
     handle.mockImplementation((endpoint, request) =>
-      endpoint === learnerEndpoints.reminders
+      endpoint === learnerEndpoints.reminderInbox
         ? backendRefusal('accessDenied')
         : original(endpoint, request),
     );
@@ -98,7 +98,7 @@ describe('NotificationsStore', () => {
 
   it('keeps any other failure as an error that retry reads again', async () => {
     handle.mockImplementation((endpoint, request) =>
-      endpoint === learnerEndpoints.reminders
+      endpoint === learnerEndpoints.reminderInbox
         ? backendRefusal('internalError')
         : original(endpoint, request),
     );
@@ -110,15 +110,18 @@ describe('NotificationsStore', () => {
     expect(store.count$()).toBe(3);
   });
 
-  it('removes a read reminder after the reload and tells the bell once', async () => {
+  it('keeps a read reminder in the inbox and tells the bell once', async () => {
     const store = await open();
     const changed = TestBed.inject(RemindersChanged);
     const [first, ...rest] = ids(store);
     store.markRead(first);
     await settle();
-    expect(ids(store)).toEqual(rest);
+    expect(ids(store)).toEqual([...rest, first]);
+    expect(store.unreadCount$()).toBe(rest.length);
+    store.selectFilter('read');
+    expect(store.visibleItems$().map((item) => item.id)).toEqual([first]);
     expect(changed.version()).toBe(1);
-    expect(calls(learnerEndpoints.reminders)).toHaveLength(2);
+    expect(calls(learnerEndpoints.reminderInbox)).toHaveLength(2);
   });
 
   it('marks every shown reminder in order, reloads once and tells the bell', async () => {
@@ -132,8 +135,9 @@ describe('NotificationsStore', () => {
         ([, r]) => r.params['reminderId'],
       ),
     ).toEqual(shown.map(String));
-    expect(store.items$()).toEqual([]);
-    expect(calls(learnerEndpoints.reminders)).toHaveLength(2);
+    expect(ids(store)).toEqual(shown);
+    expect(store.unreadCount$()).toBe(0);
+    expect(calls(learnerEndpoints.reminderInbox)).toHaveLength(2);
     expect(changed.version()).toBe(1);
   });
 
@@ -149,7 +153,8 @@ describe('NotificationsStore', () => {
     store.markAllRead();
     await settle();
     expect(calls(learnerEndpoints.markReminderRead)).toHaveLength(2);
-    expect(ids(store)).toEqual(shown.slice(1));
+    expect(ids(store)).toEqual([...shown.slice(1), shown[0]]);
+    expect(store.unreadCount$()).toBe(shown.length - 1);
     expect(TestBed.inject(RemindersChanged).version()).toBe(1);
   });
 });

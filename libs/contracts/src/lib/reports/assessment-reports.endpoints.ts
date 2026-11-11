@@ -24,6 +24,19 @@ export const assessmentReportEndpoints = {
     query: AssessmentReportFilterSchema,
     response: AssessmentReportOverviewSchema,
   }),
+  quizOptions: defineEndpoint({
+    method: 'get',
+    path: '/api/v1/reports/assessment/quiz-options',
+    query: AssessmentReportFilterSchema.pick({
+      orgId: true,
+      teamId: true,
+      courseId: true,
+      quizId: true,
+    }),
+    response: z.array(
+      z.object({ id: z.number().int().positive(), name: z.string() }),
+    ),
+  }),
   results: defineEndpoint({
     method: 'get',
     path: '/api/v1/reports/assessment/results',

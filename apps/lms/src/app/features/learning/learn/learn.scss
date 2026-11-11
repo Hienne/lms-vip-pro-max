@@ -34,11 +34,23 @@
     padding: ui.space(5);
   }
 
+  &__scroll {
+    max-block-size: min(34rem, 70vh);
+    overflow: auto;
+    padding: ui.space(1);
+    margin: calc(-1 * #{ui.space(1)});
+
+    &:focus-visible {
+      @include ui.focus-ring;
+    }
+  }
+
   // As many columns as cards of about 20rem fit: one on a phone, two beside the rail from about
   // 1280 px, as in the mockup.
   &__grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(min(100%, 20rem), 1fr));
+    align-items: start;
     gap: ui.space(4);
     margin: 0;
     padding: 0;

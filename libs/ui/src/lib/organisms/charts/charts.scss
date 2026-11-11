@@ -86,6 +86,17 @@
   flex: 1;
   min-width: 160px;
 }
+.chart-view__center-value {
+  fill: ui.color(text);
+  font-family: ui.font(sans);
+  font-size: ui.text-size(2xl);
+  font-weight: ui.weight(semibold);
+}
+.chart-view__center-label {
+  fill: ui.color(text-muted);
+  font-family: ui.font(sans);
+  font-size: ui.text-size(xs);
+}
 .chart-view__part {
   @include ui.row(2);
   flex-wrap: nowrap;

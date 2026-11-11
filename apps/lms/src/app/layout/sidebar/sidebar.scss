@@ -173,8 +173,7 @@
     }
   }
 
-  &__design-link,
-  &__room-link {
+  &__design-link {
     @include ui.text(xs);
     flex: 1 1 auto;
     display: flex;
@@ -190,13 +189,6 @@
 
     &:focus-visible {
       outline-color: ui.color(nav-indicator);
-    }
-  }
-
-  &__room-link {
-    flex-basis: 100%;
-    &[aria-current='page'] {
-      color: ui.color(nav-strong);
     }
   }
 

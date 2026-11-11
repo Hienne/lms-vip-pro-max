@@ -12,6 +12,7 @@ import {
   OpenDraftCommandSchema,
   PublishCommandSchema,
   PublishableContentSchema,
+  PublishableAnswerSchema,
   PublishableQuestionSchema,
   SaveContentDraftCommandSchema,
   SetBookmarkCommandSchema,
@@ -934,7 +935,9 @@ export class CommunityBackend {
     const rules =
       doc.kind === 'question'
         ? PublishableQuestionSchema
-        : PublishableContentSchema;
+        : doc.kind === 'answer'
+          ? PublishableAnswerSchema
+          : PublishableContentSchema;
     const lesson = draft.context?.lessonLearned;
     const lessonOk =
       doc.kind !== 'lesson_learned' ||

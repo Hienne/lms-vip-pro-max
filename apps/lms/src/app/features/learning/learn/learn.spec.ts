@@ -5,6 +5,7 @@ import {
   courseEndpoints,
   learnerEndpoints,
   learnerQuizEndpoints,
+  type CourseCard,
 } from '@lms/contracts';
 import { backendRefusal, envelopeOk } from '@lms/mocks';
 import type { MockInstance } from 'vitest';
@@ -218,7 +219,7 @@ describe('Learn', () => {
           ([e, r]) =>
             e === learnerEndpoints.myCourses &&
             r.query['learningStatus'] === 'not_started' &&
-            r.query['size'] === '6',
+            r.query['size'] === '50',
         ),
       ).toBe(true);
       tab('Bắt buộc').click();
@@ -242,6 +243,54 @@ describe('Learn', () => {
 
     it('keeps the tabs on one scrolling row instead of wrapping them', () => {
       expect(el.querySelector('.tabs')!.classList).not.toContain('tabs--wrap');
+    });
+
+    it('collects subsequent server pages inside the selected tab scroll region', async () => {
+      const backend = TestBed.inject(MockBackend);
+      let sample: CourseCard | undefined;
+      handle.mockImplementation((endpoint, request) => {
+        const reply = MockBackend.prototype.handle.call(
+          backend,
+          endpoint,
+          request,
+        );
+        if (
+          endpoint !== learnerEndpoints.myCourses ||
+          request.query['requirement'] !== 'mandatory' ||
+          !reply ||
+          !('body' in reply)
+        ) {
+          return reply;
+        }
+        const { items } = reply.body.data as { items: CourseCard[] };
+        sample ??= items[0];
+        const course = sample;
+        if (!course) return reply;
+        const page = Number(request.query['page']);
+        return {
+          status: 200,
+          body: envelopeOk({
+            items: Array.from({ length: page === 0 ? 50 : 1 }, (_, index) => {
+              const id = page * 50 + index + 1;
+              return {
+                ...course,
+                courseId: id,
+                code: `SAMPLE-${id}`,
+                coverAssetId: null,
+              };
+            }),
+            page,
+            size: 50,
+            totalElements: 51,
+            totalPages: 2,
+          }),
+        };
+      });
+      tab('Bắt buộc').click();
+      await settle();
+      const region = el.querySelector('.learn__scroll');
+      expect(region?.querySelectorAll('app-course-tile')).toHaveLength(51);
+      expect(region?.querySelector('a[href="/course/51"]')).toBeTruthy();
     });
 
     it('links "Xem tất cả" to the assigned catalogue', () => {
@@ -401,7 +450,11 @@ describe('Learn', () => {
 
   describe('the points figure', () => {
     const reward = () => el.querySelector('.learn-hero__reward');
-    const shown = () => reward()?.textContent?.replace(/\s+/g, ' ').trim();
+    const shown = () =>
+      reward()
+        ?.querySelector(':scope > span')
+        ?.textContent?.replace(/\s+/g, ' ')
+        .trim();
 
     /** Answers the points read with fixed figures, the rest as the mock does. */
     function answerPoints(data: unknown) {

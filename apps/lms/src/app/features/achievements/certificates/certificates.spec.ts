@@ -130,11 +130,13 @@ describe('Certificates', () => {
       );
     });
 
-    it('has no tile, badge or card grid, and no empty state', () => {
-      expect(
-        el.querySelector('.badge, [uiBadge], ui-mai, ui-empty'),
-      ).toBeNull();
-      expect(el.querySelector('[uiCard], .card')).toBeNull();
+    it('shows a certificate document preview without decorative badges', () => {
+      expect(el.querySelector('.badge, [uiBadge], ui-empty')).toBeNull();
+      expect(el.querySelectorAll('.certificates__preview')).toHaveLength(1);
+      expect(el.querySelector('.certificates__preview ui-mai')).not.toBeNull();
+      expect(el.querySelector('.certificate__name')?.textContent).toContain(
+        'Học viên',
+      );
       expect(text()).not.toContain('Đã cấp');
     });
   });

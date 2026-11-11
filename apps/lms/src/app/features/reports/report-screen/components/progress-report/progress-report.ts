@@ -1,7 +1,8 @@
 import { Component, inject } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import {
-  Card,
+  HorizontalBarChart,
+  SectionCard,
   DataTable,
   DataTableCell,
   Empty,
@@ -11,9 +12,11 @@ import {
   FmtDatetimePipe,
   FmtNumPipe,
   FmtPctPipe,
-  Segmented,
+  Select,
   Spinner,
   TablePrimary,
+  Stat,
+  StatStrip,
   type DataTableColumn,
   type SegmentedOption,
 } from '@lms/ui';
@@ -35,8 +38,11 @@ const COUNT_COLUMNS: readonly DataTableColumn[] = [
 @Component({
   selector: 'app-progress-report',
   imports: [
+    Stat,
+    StatStrip,
     RouterLink,
-    Card,
+    HorizontalBarChart,
+    SectionCard,
     DataTable,
     DataTableCell,
     Empty,
@@ -46,7 +52,7 @@ const COUNT_COLUMNS: readonly DataTableColumn[] = [
     FmtDatetimePipe,
     FmtNumPipe,
     FmtPctPipe,
-    Segmented,
+    Select,
     Spinner,
     TablePrimary,
   ],
@@ -59,11 +65,17 @@ export class ProgressReport {
   protected readonly views: readonly SegmentedOption<ProgressView>[] = [
     { value: 'course', label: 'Theo khóa học' },
     { value: 'org', label: 'Theo đơn vị' },
+    { value: 'program', label: 'Theo chương trình' },
+    { value: 'team', label: 'Theo phòng / nhóm' },
     { value: 'learners', label: 'Theo học viên' },
   ];
   protected readonly groupColumns: readonly DataTableColumn[] = [
     { key: 'name', label: 'Tên', sortable: false },
-    ...COUNT_COLUMNS,
+    ...COUNT_COLUMNS.filter((c) =>
+      ['enrollments', 'completionRate', 'averageProgress', 'overdue'].includes(
+        c.key,
+      ),
+    ),
   ];
   /** The sortable columns are the server's sort keys. */
   protected readonly learnerColumns: readonly DataTableColumn[] = [

@@ -59,6 +59,18 @@ describe('ContentRow', () => {
     expect(el.querySelector('.content-row__stats')?.textContent).toContain('3');
     expect(el.querySelector('app-content-thumbnail')).toBeNull();
   });
+  it.each(['question', 'article'] as const)(
+    'uses the helpful icon and label on a %s',
+    (kind) => {
+      const el = render(card({ kind }));
+      const stats = el.querySelector('.content-row__stats');
+      expect(stats?.querySelector('ui-icon')?.getAttribute('name')).toBe(
+        'thumbs-up',
+      );
+      expect(stats?.textContent).toContain('Hữu ích');
+      expect(stats?.textContent).not.toContain('điểm');
+    },
+  );
 
   it('shows one resolution badge on an active question', () => {
     const el = render(card({ resolutionStatus: 'solved' }));

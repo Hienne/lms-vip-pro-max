@@ -1,53 +1,44 @@
 import {
   Component,
   DestroyRef,
-  effect,
+  DOCUMENT,
   ElementRef,
   inject,
   input,
   output,
   signal,
-  untracked,
   viewChild,
 } from '@angular/core';
 import type { TranscriptLine, VideoChapter } from '@lms/contracts';
-import { Button, Icon } from '@lms/ui';
+import { Button, Icon, IconButton } from '@lms/ui';
 import { interval, type Subscription } from 'rxjs';
 import { clock } from '../../../../../shared/learning/anchor';
-import type { BlockJump } from '../pdf-block/pdf-block';
 import { VideoChapters } from './components/video-chapters/video-chapters';
 import { VideoTranscript } from './components/video-transcript/video-transcript';
 
 /** A playing video reports its range this often; the heartbeat keeps the media cookie alive. */
-export const VIDEO_BEAT_MS = 10_000;
-
-export interface VideoSeek {
-  readonly from: number;
-  readonly to: number;
-  readonly playing: boolean;
-}
+export const VIDEO_BEAT_MS = 20_000;
 
 /**
- * A `video` block: the native player on the block's content URL. It only reports what the learner
- * does (play, pause, a beat every 10 s while playing, seeks, the whole second it is at); the store
- * decides what to send. A `jump` moves the player, which then reports it as a seek.
+ * A video with playback controls that expose no seek actions. The server's resume position
+ * and restarting a finished video are the only deliberate changes to currentTime.
  */
 @Component({
   selector: 'app-video-block',
-  imports: [Button, Icon, VideoChapters, VideoTranscript],
+  imports: [Button, Icon, IconButton, VideoChapters, VideoTranscript],
   templateUrl: './video-block.html',
   styleUrl: './video-block.scss',
+  host: { '(document:fullscreenchange)': 'fullscreenChanged()' },
 })
 export class VideoBlock {
   readonly src = input.required<string>();
   /** Where the video resumes, in seconds; it never starts by itself. */
   readonly startAt = input(0);
+  readonly completed = input(false);
   readonly title = input('');
-  /** Moves the player to this second; a new object is a new request, even for the same second. */
-  readonly jump = input<BlockJump | null>(null);
-  /** The chapters of the video, in time order; a click on one moves the player. */
+  /** The chapters of the video, in time order. */
   readonly chapters = input<readonly VideoChapter[]>([]);
-  /** The timed lines of the video, in time order; a click on one moves the player. */
+  /** The timed lines of the video, in time order. */
   readonly transcript = input<readonly TranscriptLine[]>([]);
   /** The second the player is at is bookmarked. */
   readonly bookmarked = input(false);
@@ -57,7 +48,6 @@ export class VideoBlock {
   readonly played = output<number>();
   readonly paused = output<number>();
   readonly beat = output<number>();
-  readonly jumped = output<VideoSeek>();
   /** The whole second the player is at, each time it changes. */
   readonly secondChange = output<number>();
   /** "Đánh dấu mốc": the whole second to turn on or off. */
@@ -67,48 +57,102 @@ export class VideoBlock {
 
   protected readonly failed = signal(false);
   protected readonly second = signal(0);
+  protected readonly duration = signal(0);
+  protected readonly playing = signal(false);
+  protected readonly muted = signal(false);
+  protected readonly fullscreen = signal(false);
   protected readonly clock = clock;
 
+  private readonly document = inject(DOCUMENT);
+  protected readonly fullscreenAvailable = this.document.fullscreenEnabled;
+  private readonly stage = viewChild<ElementRef<HTMLElement>>('stage');
   private readonly player = viewChild<ElementRef<HTMLVideoElement>>('player');
   private beating: Subscription | undefined;
-  /** The last position this component knows, the start of the next seek. */
+  /** The last position reached by normal playback or resume. */
   private last = 0;
   /** The jump to `startAt` is not something the learner did, so it is not reported. */
-  private restoring = false;
+  private restoringTo: number | null = null;
   /** The player knows its length, so it can be moved. */
   private ready = false;
-  /** The last jump carried out, so a retry's new metadata does not repeat it. */
-  private jumpDone: BlockJump | null = null;
-
-  /** A jump moves the player at once, or when its metadata arrives. */
-  private readonly follow = effect(() => {
-    const jump = this.jump();
-    if (jump && untracked(() => this.ready)) this.moveTo(jump);
-  });
-
   constructor() {
     inject(DestroyRef).onDestroy(() => this.stopBeat());
   }
 
   protected loaded(): void {
     this.ready = true;
-    const jump = this.jump();
-    if (jump && jump !== this.jumpDone) return this.moveTo(jump);
     const video = this.player()?.nativeElement;
-    const start = this.startAt();
-    if (!video || start <= 0 || video.currentTime >= start) return;
-    this.restoring = true;
-    video.currentTime = start;
-    this.last = start;
-    this.seen(start);
+    if (!video) return;
+    const duration = video.duration;
+    this.duration.set(Number.isFinite(duration) ? duration : 0);
+    const saved = Math.max(0, this.startAt());
+    const atEnd = Number.isFinite(duration) && saved >= duration - 0.01;
+    // A completed video left at the end should be ready to replay. Incomplete videos
+    // still resume at their saved time, even if the learner skipped to the end.
+    const start =
+      atEnd && this.completed()
+        ? 0
+        : Number.isFinite(duration)
+          ? Math.min(saved, duration)
+          : saved;
+    this.last = video.currentTime;
+    if (start <= 0 || video.currentTime >= start) {
+      this.seen(this.last);
+      return;
+    }
+    this.setPosition(video, start);
+  }
+
+  protected async togglePlayback(): Promise<void> {
+    const video = this.player()?.nativeElement;
+    if (!video) return;
+    if (!video.paused) {
+      video.pause();
+      return;
+    }
+    if (video.ended) this.setPosition(video, 0);
+    try {
+      await video.play();
+    } catch (error) {
+      if (!(error instanceof DOMException) || error.name !== 'AbortError')
+        this.loadFailed();
+    }
+  }
+
+  protected toggleMute(): void {
+    const video = this.player()?.nativeElement;
+    if (video) video.muted = !video.muted;
+  }
+
+  protected volumeChanged(): void {
+    this.muted.set(this.player()?.nativeElement.muted ?? false);
+  }
+
+  protected async toggleFullscreen(): Promise<void> {
+    const stage = this.stage()?.nativeElement;
+    if (!stage) return;
+    try {
+      if (this.document.fullscreenElement === stage)
+        await this.document.exitFullscreen();
+      else await stage.requestFullscreen();
+    } catch {
+      // Playback remains available inline when the browser blocks fullscreen.
+    }
+  }
+
+  protected fullscreenChanged(): void {
+    this.fullscreen.set(
+      this.document.fullscreenElement === this.stage()?.nativeElement,
+    );
   }
 
   protected play(): void {
-    const position = this.position();
+    const position = this.currentPosition() ?? this.position();
+    this.playing.set(true);
     this.last = position;
     this.played.emit(position);
     this.stopBeat();
     this.beating = interval(VIDEO_BEAT_MS).subscribe(() => {
+      if (this.player()?.nativeElement.seeking) return;
       this.last = this.position();
       this.beat.emit(this.last);
     });
@@ -116,14 +160,16 @@ export class VideoBlock {
 
   protected pause(): void {
     this.stopBeat();
+    this.playing.set(false);
     // The native player emits pause before ended when it reaches the end.
     if (this.player()?.nativeElement.ended) return;
-    this.last = this.position();
+    this.last = this.currentPosition() ?? this.position();
     this.paused.emit(this.last);
   }
 
   protected ended(): void {
     this.stopBeat();
+    this.playing.set(false);
     const duration = this.player()?.nativeElement.duration;
     this.last =
       duration !== undefined && Number.isFinite(duration)
@@ -134,19 +180,20 @@ export class VideoBlock {
   }
 
   protected seeking(): void {
-    const to = this.position();
-    if (this.restoring) {
-      this.restoring = false;
+    const video = this.player()?.nativeElement;
+    if (!video) return;
+    const to = video.currentTime;
+    const restoringTo = this.restoringTo;
+    this.restoringTo = null;
+    if (restoringTo !== null && Math.abs(to - restoringTo) < 0.01) {
       return;
     }
-    const playing = !this.player()?.nativeElement.paused;
-    this.jumped.emit({ from: this.last, to, playing });
-    this.last = to;
-    this.seen(to);
+    if (Math.abs(to - this.last) >= 0.01) this.setPosition(video, this.last);
   }
 
   protected tick(): void {
-    if (this.player()?.nativeElement.seeking) return;
+    const video = this.player()?.nativeElement;
+    if (!video || video.seeking || video.ended) return;
     this.last = this.position();
     this.seen(this.last);
   }
@@ -161,21 +208,34 @@ export class VideoBlock {
   }
 
   /** Where the video is now; the page reads it when the block is closed. */
-  currentPosition(): number {
-    return this.player()?.nativeElement.currentTime ?? this.last;
+  currentPosition(): number | undefined {
+    if (!this.ready) return undefined;
+    const video = this.player()?.nativeElement;
+    // Keep the final duration reported by ended(), including a fractional tail.
+    return !video || video.ended || video.seeking
+      ? this.last
+      : video.currentTime;
   }
 
-  /** A chapter or transcript line moves the player, which reports it as a seek like any other. */
-  protected seekTo(second: number): void {
-    const video = this.player()?.nativeElement;
-    if (video) video.currentTime = second;
+  protected loadStarted(): void {
+    this.ready = false;
+    this.restoringTo = null;
+    this.stopBeat();
+    this.playing.set(false);
+    this.duration.set(0);
   }
 
-  private moveTo(jump: BlockJump): void {
-    const video = this.player()?.nativeElement;
-    if (!video) return;
-    this.jumpDone = jump;
-    video.currentTime = jump.value;
+  protected loadFailed(): void {
+    if (this.beating) this.pause();
+    this.ready = false;
+    this.failed.set(true);
+  }
+
+  private setPosition(video: HTMLVideoElement, position: number): void {
+    this.restoringTo = position;
+    this.last = position;
+    video.currentTime = position;
+    this.seen(position);
   }
 
   /** Tells the page when the player enters another whole second. */
@@ -187,7 +247,7 @@ export class VideoBlock {
   }
 
   private position(): number {
-    return this.currentPosition();
+    return this.player()?.nativeElement.currentTime ?? this.last;
   }
 
   private stopBeat(): void {

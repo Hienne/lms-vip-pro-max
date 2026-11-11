@@ -1,9 +1,5 @@
 <form class="room-join" [formRoot]="joinForm">
-  <ui-field
-    label="Tên hiển thị"
-    required
-    hint="Tên xuất hiện trên đầu nhân vật. Tối đa 24 ký tự."
-  >
+  <ui-field label="Tên hiển thị" required>
     <input
       uiInput
       [formField]="joinForm.name"

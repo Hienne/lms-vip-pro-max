@@ -171,6 +171,7 @@ describe('AppShell', () => {
         '/community/articles',
         '/community/reviews',
         '/community/me',
+        '/chat-room',
       ],
     ],
     [
@@ -194,6 +195,7 @@ describe('AppShell', () => {
         '/community/articles',
         '/community/reviews',
         '/community/me',
+        '/chat-room',
       ],
     ],
   ] as const)(
@@ -202,6 +204,13 @@ describe('AppShell', () => {
       signInAs(role);
       const el = await open(url);
       expect(hrefs(el)).toEqual([...expected]);
+      const roomLink = el.querySelector(
+        'app-sidebar ul[aria-label="Cộng đồng"] a[href="/chat-room"]',
+      );
+      expect(roomLink?.textContent?.trim()).toBe('Giải trí');
+      expect(
+        el.querySelectorAll('app-sidebar a[href="/chat-room"]'),
+      ).toHaveLength(1);
     },
   );
 
@@ -247,6 +256,11 @@ describe('AppShell', () => {
       '/community/me',
       '/chat-room',
     ]);
+    expect(
+      el
+        .querySelector('#learner-nav-community a[href="/chat-room"]')
+        ?.textContent?.trim(),
+    ).toBe('Giải trí');
     expect(nav?.querySelector('a[href="/profile"]')).toBeNull();
   });
 
@@ -519,7 +533,7 @@ describe('AppShell', () => {
       const el = await open('/learn');
       toggle(el)?.click();
       TestBed.tick();
-      expect(hrefs(el)).toHaveLength(16);
+      expect(hrefs(el)).toHaveLength(17);
       expect(
         el.querySelector('nav a[href="/progress"]')?.textContent?.trim(),
       ).toBe('Tiến độ học tập');
@@ -564,7 +578,12 @@ describe('AppShell', () => {
       expect(button?.getAttribute('aria-expanded')).toBe('false');
 
       await openDrawer(el);
-      expect(dialog()?.querySelectorAll('nav a')).toHaveLength(16);
+      expect(dialog()?.querySelectorAll('nav a')).toHaveLength(17);
+      expect(
+        dialog()
+          ?.querySelector('ul[aria-label="Cộng đồng"] a[href="/chat-room"]')
+          ?.textContent?.trim(),
+      ).toBe('Giải trí');
       expect(dialog()?.querySelector('.sidebar__toggle')).toBeNull();
       expect(button?.getAttribute('aria-expanded')).toBe('true');
     });
@@ -665,6 +684,46 @@ describe('AppShell', () => {
       );
       expect(all?.textContent).toContain('Xem tất cả thông báo');
       expect(router.url).toBe('/learn');
+    });
+
+    it('shows at most 20 notifications, unread first, and keeps a marked item in the dropdown', async () => {
+      signInAs('learner');
+      const el = await open('/learn');
+      el.querySelector<HTMLButtonElement>(
+        'app-notification-bell button',
+      )!.click();
+      TestBed.tick();
+      const rows = Array.from({ length: 22 }, (_, index) => ({
+        id: index + 1,
+        rowVersion: 0,
+        kind: 'BADGE_EARNED',
+        subject: `Huy hiệu ${index + 1}`,
+        status: index === 0 || index === 21 ? 'pending' : 'sent',
+      }));
+      const http = TestBed.inject(HttpTestingController);
+      http
+        .expectOne('/api/v1/me/learning/reminders/inbox')
+        .flush(envelopeOk(rows));
+      TestBed.tick();
+      const list = () =>
+        Array.from(document.querySelectorAll('.bell__list > li'));
+      expect(list()).toHaveLength(20);
+      expect(list()[0].textContent).toContain('Chưa đọc');
+      expect(list()[1].textContent).toContain('Chưa đọc');
+      expect(list()[2].textContent).toContain('Đã đọc');
+      list()[0].querySelector<HTMLButtonElement>('button')!.click();
+      TestBed.tick();
+      http
+        .expectOne('/api/v1/me/learning/reminders/22/read')
+        .flush(envelopeOk({ ...rows[21], status: 'sent', rowVersion: 1 }));
+      TestBed.tick();
+      expect(
+        list().filter((row) => row.textContent?.includes('Chưa đọc')),
+      ).toHaveLength(1);
+      expect(list()[1].textContent).toContain('Huy hiệu 22');
+      expect(list()[1].textContent).toContain('Đã đọc');
+      expect(router.url).toBe('/learn');
+      expect(document.querySelector('.bell__list')).not.toBeNull();
     });
 
     it('reloads the counts after a navigation', async () => {

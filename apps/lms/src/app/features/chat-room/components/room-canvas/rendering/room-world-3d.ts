@@ -3,6 +3,7 @@ import type { RoomArea, RoomMap, RoomFurniture } from '@lms/contracts';
 import { inRoomArea } from '../../../data-access/chat-room.model';
 
 export const WORLD_SCALE = 80;
+export const CHAIR_SEAT_TOP = 0.485;
 
 /** Shared geometry/materials keep the procedural classroom small and avoid external assets. */
 export class RoomWorld3D {
@@ -190,11 +191,22 @@ export class RoomWorld3D {
     if (map.diceArea)
       this.drawArea(
         map.diceArea,
-        'Bàn Tài/Xỉu',
+        'Bàn Trên/Dưới',
         ['#e4c89e', '#a66c38', '#6b411e'],
         0.5,
         310,
       );
+    map.caroTables?.forEach((table, index) => {
+      const desk = map.objects[table.desk];
+      if (!desk) return;
+      this.drawArea(
+        { x: desk.x - 24, y: desk.y - 24, w: desk.w + 48, h: 215 },
+        `Caro ${index + 1}`,
+        ['#c4dadb', '#649395', '#355f61'],
+        0.5,
+        350,
+      );
+    });
   }
 
   showInterior(camera: THREE.Vector3): void {
@@ -368,6 +380,14 @@ export class RoomWorld3D {
         this.showDice();
         return;
       }
+      if (this.map.caroTables?.some((table) => table.desk === index)) {
+        this.box(group, 0, 0.84, 0, 0.7, 0.03, 0.7, 0xf6e3bf);
+        for (let line = -3; line <= 3; line++) {
+          this.box(group, line * 0.09, 0.857, 0, 0.009, 0.004, 0.54, 0x7e6852);
+          this.box(group, 0, 0.857, line * 0.09, 0.54, 0.004, 0.009, 0x7e6852);
+        }
+        return;
+      }
       this.box(group, -0.57, 0.84, -0.02, 0.32, 0.035, 0.37, 0x699083);
       this.box(group, 0.23, 0.845, 0, 0.53, 0.028, 0.36, 0xfffbed);
       this.box(group, 0.23, 0.864, 0, 0.012, 0.01, 0.34, 0xb9bda6);
@@ -385,8 +405,30 @@ export class RoomWorld3D {
       this.box(group, 0.73, 0.85, -0.03, 0.025, 0.025, 0.3, 0xaf783e);
     } else if (o.kind === 'chair') {
       group.userData['chair'] = index;
-      this.box(group, 0, 0.44, 0, w, 0.09, d, 0x8cae91);
-      this.box(group, 0, 0.73, d / 2 - 0.04, w, 0.54, 0.075, 0x789f80);
+      const caro = this.map.caroTables?.some((table) =>
+        table.chairs.includes(index),
+      );
+      const cushionHeight = 0.09;
+      this.box(
+        group,
+        0,
+        CHAIR_SEAT_TOP - cushionHeight / 2,
+        0,
+        w,
+        cushionHeight,
+        d,
+        caro ? 0x83b1b1 : 0x8cae91,
+      );
+      this.box(
+        group,
+        0,
+        caro ? 0.64 : 0.73,
+        d / 2 - 0.04,
+        w,
+        caro ? 0.36 : 0.54,
+        0.075,
+        caro ? 0x608d90 : 0x789f80,
+      );
       for (const x of [-w / 2 + 0.06, w / 2 - 0.06])
         for (const z of [-d / 2 + 0.06, d / 2 - 0.06])
           this.box(group, x, 0.21, z, 0.045, 0.42, 0.045, 0x5b7566);
@@ -405,7 +447,7 @@ export class RoomWorld3D {
       ctx.fillStyle = '#edf3e7';
       ctx.textAlign = 'center';
       ctx.font = '64px sans-serif';
-      ctx.fillText('Phòng học chung', 512, 122);
+      ctx.fillText('Giải trí', 512, 122);
       ctx.font = '25px sans-serif';
       ctx.fillText('Core Banking Academy', 512, 174);
       const texture = new THREE.CanvasTexture(canvas);

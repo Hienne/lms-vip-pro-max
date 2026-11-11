@@ -162,3 +162,11 @@
     }
   }
 }
+
+.review-detail__feedback {
+  display: flex;
+  align-items: center;
+  gap: ui.space(2);
+  padding-top: ui.space(4);
+  border-top: 1px solid ui.color(border);
+}

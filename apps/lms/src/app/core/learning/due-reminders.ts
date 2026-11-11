@@ -9,9 +9,10 @@ import type { EndpointClient } from '../http/endpoint-client';
  */
 export function dueReminders(
   client: EndpointClient,
+  inbox = false,
 ): Observable<LearningReminder[]> {
   return client
-    .call(learnerEndpoints.reminders)
+    .call(inbox ? learnerEndpoints.reminderInbox : learnerEndpoints.reminders)
     .pipe(
       catchError((error: unknown) =>
         toAppError(error).kind === 'forbidden'

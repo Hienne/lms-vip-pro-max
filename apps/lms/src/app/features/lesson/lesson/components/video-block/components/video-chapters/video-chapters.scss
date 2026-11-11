@@ -7,11 +7,13 @@
   list-style: none;
 
   &__item {
+    @include ui.text(sm, muted);
     @include ui.num;
+    display: inline-block;
+    padding: ui.space(1) ui.space(2);
     border-radius: ui.radius(control);
 
     &[aria-current='true'] {
-      border-color: ui.color(primary);
       background: ui.color(primary-subtle);
       color: ui.color(primary);
     }

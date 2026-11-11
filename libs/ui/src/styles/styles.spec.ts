@@ -23,6 +23,17 @@ const LIGHT_PROPERTIES = [
   '--breakpoint-md',
   '--breakpoint-lg',
   '--breakpoint-xl',
+  '--color-certificate-paper',
+  '--color-certificate-teal',
+  '--color-certificate-gold',
+  '--color-certificate-gold-ink',
+  '--color-certificate-ink',
+  '--color-certificate-caption',
+  '--color-certificate-gallery-bg',
+  '--color-certificate-gallery-text',
+  '--color-certificate-gallery-muted',
+  '--color-certificate-gallery-border',
+  '--color-certificate-gallery-action',
   '--color-primary',
   '--color-primary-hover',
   '--color-primary-strong',
@@ -77,6 +88,7 @@ const LIGHT_PROPERTIES = [
   '--color-chart-4',
   '--color-chart-5',
   '--color-chart-grid',
+  '--font-certificate',
   '--font-sans',
   '--font-mono',
   '--font-display',
@@ -367,8 +379,8 @@ describe('global stylesheet', () => {
       );
     const light = declared(':root');
     const print = declared(':root:root:root:root');
-    const colours = [...light.keys()].filter(
-      (name) => /^--(color|shadow)-/.test(name),
+    const colours = [...light.keys()].filter((name) =>
+      /^--(color|shadow)-/.test(name),
     );
     expect(colours.length).toBeGreaterThan(40);
     for (const name of colours) {
@@ -630,7 +642,11 @@ describe('colour contrast', () => {
       );
       expect(unresolved).toEqual([]);
       const failures = pairs
-        .map(({ pair, fg, bg, min }) => ({ pair, ratio: contrast(fg, bg), min }))
+        .map(({ pair, fg, bg, min }) => ({
+          pair,
+          ratio: contrast(fg, bg),
+          min,
+        }))
         .filter(({ ratio, min }) => ratio < min);
       expect(failures).toEqual([]);
     },

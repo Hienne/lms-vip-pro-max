@@ -11,7 +11,6 @@ import {
   FmtPctPipe,
   FmtRelativePipe,
   Icon,
-  IconButton,
   PageHeader,
   Pagination,
   Progress,
@@ -60,7 +59,6 @@ import {
     FmtPctPipe,
     FmtRelativePipe,
     Icon,
-    IconButton,
     PageHeader,
     Pagination,
     Progress,
@@ -128,6 +126,8 @@ export class LearningProgress {
     },
     { key: 'status', label: 'Trạng thái', sortable: false },
     { key: 'dueAt', label: 'Hạn hoàn thành' },
+    { key: 'startedAt', label: 'Bắt đầu' },
+    { key: 'completedAt', label: 'Hoàn thành' },
     { key: 'lastAccessAt', label: 'Truy cập gần nhất' },
   ];
   protected readonly sortOptions = [

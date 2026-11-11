@@ -11,7 +11,7 @@ import {
 import { RoomAvatar3D } from './room-avatar-3d';
 import { RoomWorld3D, WORLD_SCALE } from './room-world-3d';
 
-/** The 3D view shares the map, footprint and movement protocol with Phaser. */
+/** Third-person room renderer with server-authoritative approaches and seating. */
 export class RoomOrbit {
   private readonly scene = new THREE.Scene();
   private readonly camera = new THREE.PerspectiveCamera(47, 1, 0.04, 70);
@@ -30,9 +30,11 @@ export class RoomOrbit {
   ).matches;
   private readonly coarse = matchMedia('(pointer: coarse)').matches;
   private position: { x: number; y: number };
+  private cameraAnchor: { x: number; y: number };
   private facing: RoomFacing = 'north';
   private yaw = 0;
   private elevation = 0.65;
+  private seatView = 0;
   private portrait = false;
   private touch = { x: 0, y: 0 };
   private drag?: { id: number; x: number; y: number };
@@ -43,6 +45,8 @@ export class RoomOrbit {
   private frame = 0;
   private active = true;
   private seat?: number;
+  private approaching = false;
+  private smoothLocalPosition = false;
 
   constructor(
     private map: RoomMap,
@@ -52,6 +56,7 @@ export class RoomOrbit {
     private failed: (message: string) => void,
   ) {
     this.position = { ...map.spawn };
+    this.cameraAnchor = { ...map.spawn };
     this.world = new RoomWorld3D(map);
     this.scene.add(this.world.root);
     this.scene.background = new THREE.Color(0xdce8df);
@@ -136,8 +141,25 @@ export class RoomOrbit {
 
   setPortrait(portrait: boolean): void {
     this.portrait = portrait;
-    this.yaw = facingYaw(this.facing) + (portrait ? Math.PI : 0);
+    this.yaw = facingYaw(this.facing);
     this.elevation = portrait ? 0.23 : 0.65;
+    if (!portrait) return;
+
+    const chair =
+      this.seat === undefined ? undefined : this.map.objects[this.seat];
+    if (!chair) {
+      this.yaw += Math.PI;
+      return;
+    }
+    // Look from the aisle so the neighboring chair does not hide the legs.
+    const chairToRight = this.map.objects.some(
+      (object) =>
+        object.kind === 'chair' &&
+        object.y === chair.y &&
+        object.x > chair.x &&
+        object.x - chair.x < 2 * chair.w,
+    );
+    this.yaw += (chairToRight ? -1 : 1) * Math.PI * 0.54;
   }
   private resize(): void {
     const width = Math.max(1, this.mount.clientWidth),
@@ -209,7 +231,7 @@ export class RoomOrbit {
   };
   private readonly contextLost = (event: Event): void => {
     event.preventDefault();
-    this.failed('Mất ngữ cảnh 3D. Hãy thử lại hoặc chuyển sang bản đồ 2D.');
+    this.failed('Mất ngữ cảnh 3D. Hãy tải lại trang để khôi phục phòng.');
   };
   private synchronize(view: RoomCanvasState): void {
     if (view === this.previousView) return;
@@ -220,11 +242,26 @@ export class RoomOrbit {
       this.blur();
     }
     const self = view.players.find((player) => player.id === view.me);
-    if (view.me !== previous?.me || this.seat !== self?.seat) {
+    const playerChanged = view.me !== previous?.me;
+    const seatChanged = this.seat !== self?.seat;
+    if (self && (self.approaching || this.approaching || seatChanged)) {
+      this.smoothLocalPosition = true;
+    }
+    if (self && (self.approaching || this.approaching)) {
+      this.position = { x: self.x, y: self.y };
+      this.facing = self.facing ?? this.facing;
+      this.lastPosition = { ...this.position, facing: this.facing };
+    }
+    this.approaching = self?.approaching === true;
+    if (playerChanged || seatChanged) {
       this.seat = self?.seat;
       this.position = self ? { x: self.x, y: self.y } : { ...this.map.spawn };
       this.facing = self?.facing ?? 'north';
-      if (view.me !== previous?.me) this.setPortrait(this.portrait);
+      if (playerChanged) {
+        this.cameraAnchor = { ...this.position };
+        this.smoothLocalPosition = false;
+        this.setPortrait(this.portrait);
+      }
       this.lastPosition = { x: -1, y: -1, facing: '' };
     }
     if (view.correction && view.correction !== previous?.correction)
@@ -279,6 +316,7 @@ export class RoomOrbit {
     if (
       view.online &&
       !view.chatting &&
+      !this.approaching &&
       !document.hidden &&
       this.seat === undefined &&
       !localPose.highFive
@@ -331,31 +369,46 @@ export class RoomOrbit {
         id === view.me
           ? localPose
           : gesturePose(view.gestures[id], now, this.reducedMotion),
-        id === view.me ? walking : undefined,
+        id === view.me ? walking || this.approaching : undefined,
+        id === view.me && this.smoothLocalPosition,
       ),
     );
-    this.placeCamera();
+    this.placeCamera(delta, self?.seated ? self.target : this.position);
     this.renderer.render(this.scene, this.camera);
   };
 
-  private placeCamera(): void {
-    const x = this.position.x / WORLD_SCALE;
-    const z = this.position.y / WORLD_SCALE;
-    const sin = Math.sin(this.yaw);
-    const cos = Math.cos(this.yaw);
-    const radius = this.portrait ? 2.25 : 7.8;
+  private placeCamera(delta: number, focus: { x: number; y: number }): void {
+    const follow = this.smoothLocalPosition ? 1 - Math.exp(-delta / 190) : 1;
+    this.cameraAnchor.x += (focus.x - this.cameraAnchor.x) * follow;
+    this.cameraAnchor.y += (focus.y - this.cameraAnchor.y) * follow;
+    if (
+      !this.approaching &&
+      Math.hypot(focus.x - this.cameraAnchor.x, focus.y - this.cameraAnchor.y) <
+        0.5
+    ) {
+      this.smoothLocalPosition = false;
+    }
+    const x = this.cameraAnchor.x / WORLD_SCALE;
+    const z = this.cameraAnchor.y / WORLD_SCALE;
+    const seated = this.seat !== undefined;
+    const seatView = Number(seated && !this.portrait);
+    this.seatView = this.reducedMotion
+      ? seatView
+      : this.seatView +
+        (seatView - this.seatView) * (1 - Math.exp(-delta / 230));
+    const yaw = this.yaw + (this.seatView * Math.PI) / 3;
+    const sin = Math.sin(yaw);
+    const cos = Math.cos(yaw);
+    const radius = this.portrait ? 2.25 : 7.8 - this.seatView * 1.6;
     const horizontal = radius * Math.cos(this.elevation);
-    const ahead = this.portrait ? 0 : 2.9;
+    const ahead = this.portrait ? 0 : 2.9 - this.seatView * 2;
+    const targetHeight = this.portrait ? (seated ? 0.68 : 0.56) : 1.04;
     this.camera.position.set(
       x + sin * horizontal,
       (this.portrait ? 0.68 : 1.12) + radius * Math.sin(this.elevation),
       z + cos * horizontal,
     );
-    this.camera.lookAt(
-      x - sin * ahead,
-      this.portrait ? 0.56 : 1.04,
-      z - cos * ahead,
-    );
+    this.camera.lookAt(x - sin * ahead, targetHeight, z - cos * ahead);
     this.world.showInterior(this.camera.position);
   }
   destroy(): void {

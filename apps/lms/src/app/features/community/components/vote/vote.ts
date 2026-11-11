@@ -1,5 +1,5 @@
 import { Component, computed, input, output } from '@angular/core';
-import { Button, FmtNumPipe, Icon, IconButton } from '@lms/ui';
+import { Button, FmtNumPipe, Icon } from '@lms/ui';
 
 export type VoteValue = -1 | 0 | 1;
 
@@ -10,13 +10,13 @@ export type VoteValue = -1 | 0 | 1;
  */
 @Component({
   selector: 'app-vote',
-  imports: [Button, FmtNumPipe, Icon, IconButton],
+  imports: [Button, FmtNumPipe, Icon],
   templateUrl: './vote.html',
   styleUrl: './vote.scss',
 })
 export class Vote {
   readonly score = input.required<number>();
-  readonly mode = input<'helpful' | 'score'>('helpful');
+
   readonly myVote = input<number>(0);
   readonly canVote = input(true);
   readonly busy = input(false);

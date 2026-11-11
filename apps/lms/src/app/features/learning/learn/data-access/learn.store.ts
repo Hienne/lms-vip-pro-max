@@ -6,6 +6,7 @@ import {
   type MyCoursesQuery,
 } from '@lms/contracts';
 import { NOW } from '@lms/ui';
+import { EMPTY, expand, filter, reduce } from 'rxjs';
 import { serverData } from '../../../../core/data-access/server-data';
 import { EndpointClient } from '../../../../core/http/endpoint-client';
 import { dueReminders } from '../../../../core/learning/due-reminders';
@@ -30,8 +31,7 @@ export const LEARN_TABS: readonly LearnTab[] = [
   'assigned',
 ];
 
-/** How many courses the tab grid, the due list and the reminders show. */
-export const GRID_SIZE = 6;
+const COURSES_PAGE_SIZE = 50;
 export const DUE_SHOWN = 5;
 export const REMINDERS_SHOWN = 3;
 /** How many in-progress courses are read to pick the one to resume. */
@@ -42,21 +42,18 @@ const TAB_QUERY: Record<LearnTab, MyCoursesQuery> = {
   in_progress: {
     learningStatus: 'in_progress',
     sort: 'lastAccessAt,desc',
-    size: GRID_SIZE,
   },
   not_started: {
     learningStatus: 'not_started',
     sort: 'dueAt,asc',
-    size: GRID_SIZE,
   },
   completed: {
     learningStatus: 'completed',
     sort: 'completedAt,desc',
-    size: GRID_SIZE,
   },
-  mandatory: { requirement: 'mandatory', sort: 'dueAt,asc', size: GRID_SIZE },
+  mandatory: { requirement: 'mandatory', sort: 'dueAt,asc' },
   // Courses with an active assignment, not the courses the learner enrolled in themselves.
-  assigned: { assigned: true, sort: 'dueAt,asc', size: GRID_SIZE },
+  assigned: { assigned: true, sort: 'dueAt,asc' },
 };
 
 export interface ContinueView {
@@ -156,13 +153,33 @@ export class LearnStore {
 
   private readonly coursesData = serverData(
     (query: MyCoursesQuery) =>
-      this.client.call(learnerEndpoints.myCourses, { query }),
-    { params: () => TAB_QUERY[this.state.tab()] },
+      this.client.call(learnerEndpoints.myCourses, { query }).pipe(
+        expand((result, index) =>
+          result.page === (query.page ?? 0) + index &&
+          result.page + 1 < result.totalPages
+            ? this.client.call(learnerEndpoints.myCourses, {
+                query: { ...query, page: result.page + 1 },
+              })
+            : EMPTY,
+        ),
+        filter((result, index) => result.page === (query.page ?? 0) + index),
+        reduce((courses, result) => {
+          courses.push(...result.items);
+          return courses;
+        }, [] as CourseCard[]),
+      ),
+    {
+      params: () => ({
+        ...TAB_QUERY[this.state.tab()],
+        page: 0,
+        size: COURSES_PAGE_SIZE,
+      }),
+    },
   );
 
   /** The covers of the tab's cards, read once each while the page lives. */
   private readonly covers = coverPreviews(this.client, this.injector, () =>
-    (this.coursesData.value()?.items ?? []).map((card) => card.coverAssetId),
+    (this.coursesData.value() ?? []).map((card) => card.coverAssetId),
   );
 
   private readonly dueData = serverData(() =>
@@ -261,7 +278,7 @@ export class LearnStore {
   readonly isCoursesLoading$ = this.coursesData.isLoading;
 
   readonly courses$ = computed((): readonly CourseCardView[] =>
-    (this.coursesData.value()?.items ?? []).map((card) =>
+    (this.coursesData.value() ?? []).map((card) =>
       toCourseCardView(card, this.coverOf(card)),
     ),
   );

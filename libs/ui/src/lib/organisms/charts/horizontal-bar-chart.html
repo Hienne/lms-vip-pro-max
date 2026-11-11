@@ -1,0 +1,18 @@
+<figure [attr.aria-label]="label()" class="comparison">
+  @for (bar of bars(); track $index) {
+  <div class="comparison__row">
+    <span class="comparison__label">{{bar.label}}</span>
+    <div class="comparison__track" aria-hidden="true">
+      <span
+        [class.comparison__fill--danger]="danger()"
+        class="comparison__fill"
+        [style.width.%]="bar.width"
+      ></span>
+    </div>
+    <strong
+      >{{unit() === '%' ? (bar.value | fmtPct:1) : (bar.value | fmtNum) +
+      unit()}}</strong
+    >
+  </div>
+  }
+</figure>

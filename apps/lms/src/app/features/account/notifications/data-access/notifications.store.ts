@@ -1,8 +1,16 @@
-import { computed, inject, Injectable } from '@angular/core';
+import { Dialog } from '@angular/cdk/dialog';
+import {
+  computed,
+  DestroyRef,
+  inject,
+  Injectable,
+  linkedSignal,
+  signal,
+} from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { learnerEndpoints, type LearningReminder } from '@lms/contracts';
-import { NOW } from '@lms/ui';
-import { concatMap, finalize, from, toArray } from 'rxjs';
-import { invalidation } from '../../../../core/data-access/invalidation';
+import { confirm, NOW } from '@lms/ui';
+import { concatMap, filter, finalize, from, toArray } from 'rxjs';
 import { serverData } from '../../../../core/data-access/server-data';
 import { serverMutation } from '../../../../core/data-access/server-mutation';
 import { EndpointClient } from '../../../../core/http/endpoint-client';
@@ -18,15 +26,17 @@ export interface ReminderItem {
   readonly isOverdue: boolean;
   /** A badge or level notice rather than a deadline reminder: it links to the profile and is never overdue. */
   readonly isNotice: boolean;
+  readonly unread: boolean;
 }
+
+type InboxFilter = 'all' | 'unread' | 'read';
 
 const time = (value: string | null | undefined): number =>
   value ? new Date(value).getTime() : Number.POSITIVE_INFINITY;
 
 /**
- * The learner's due deadline reminders (SPEC-learning-reminders) and the notices of a badge or a level they earned. The server decides which are
- * due; reading one sets it to `sent`, so it leaves the list after the reload. Only a learner has
- * reminders: anyone else is not asked, and a 403 reads as an empty list.
+ * The learner's inbox, including the reminders and notices already read. The server owns their
+ * status. Only a learner has reminders: a 403 reads as an empty list.
  */
 @Injectable()
 export class NotificationsStore {
@@ -34,9 +44,9 @@ export class NotificationsStore {
   private readonly session = inject(SessionStore);
   private readonly changed = inject(RemindersChanged);
   private readonly now = inject(NOW);
-
-  /** Reloads the list after a read, here and (through `RemindersChanged`) in the shell. */
-  private readonly reads = invalidation();
+  private readonly dialog = inject(Dialog);
+  private readonly destroyRef = inject(DestroyRef);
+  private readonly inboxFilter = signal<InboxFilter>('all');
 
   private readonly canLearn = computed(() =>
     this.session.menus$().includes('COURSE_LEARNING'),
@@ -44,19 +54,44 @@ export class NotificationsStore {
 
   /** Idle (`undefined` params) for a user without the learner function. */
   private readonly remindersData = serverData(
-    (_: { readonly learner: true }) => dueReminders(this.client),
+    (_: { readonly learner: true }) => dueReminders(this.client, true),
     {
       params: () => (this.canLearn() ? { learner: true as const } : undefined),
-      reloadOn: this.reads,
+      reloadOn: this.changed,
     },
   );
+
+  private readonly readUpdates = linkedSignal(() => {
+    this.remindersData.value();
+    return new Map<number, LearningReminder>();
+  });
 
   private readonly readOne = serverMutation(
     (reminderId: number) =>
       this.client.call(learnerEndpoints.markReminderRead, {
         params: { reminderId },
       }),
-    { errors: 'toast', invalidates: [this.reads, this.changed] },
+    {
+      errors: 'toast',
+      onSuccess: (reminder) => {
+        this.readUpdates.update((rows) =>
+          new Map(rows).set(reminder.id, reminder),
+        );
+      },
+      invalidates: this.changed,
+    },
+  );
+
+  private readonly removeOne = serverMutation(
+    (reminderId: number) =>
+      this.client.call(learnerEndpoints.deleteReminder, {
+        params: { reminderId },
+      }),
+    {
+      errors: 'toast',
+      success: () => 'Đã xóa thông báo',
+      invalidates: this.changed,
+    },
   );
 
   /**
@@ -73,7 +108,6 @@ export class NotificationsStore {
         ),
         toArray(),
         finalize(() => {
-          this.reads.bump();
           this.changed.bump();
         }),
       ),
@@ -84,13 +118,19 @@ export class NotificationsStore {
   readonly isLoading$ = this.remindersData.isLoading;
   readonly loadError$ = this.remindersData.error;
   readonly isMarking$ = computed(
-    () => this.readOne.isPending() || this.readAll.isPending(),
+    () =>
+      this.readOne.isPending() ||
+      this.readAll.isPending() ||
+      this.removeOne.isPending(),
   );
 
   readonly items$ = computed((): readonly ReminderItem[] => {
     if (!this.canLearn()) return [];
     const now = this.now();
-    const all = this.remindersData.value() ?? [];
+    const updates = this.readUpdates();
+    const all = (this.remindersData.value() ?? [])
+      .map((reminder) => updates.get(reminder.id) ?? reminder)
+      .filter((reminder) => reminder.status !== 'cancelled');
     const notices = all.filter((reminder) => reminder.kind !== 'DEADLINE');
     const deadlines = all.filter((reminder) => reminder.kind === 'DEADLINE');
     return [
@@ -98,17 +138,35 @@ export class NotificationsStore {
       ...deadlines.sort(
         (a, b) => time(a.dueAtSnapshot) - time(b.dueAtSnapshot) || a.id - b.id,
       ),
-    ].map((reminder) => {
-      const isNotice = reminder.kind !== 'DEADLINE';
-      return {
-        id: reminder.id,
-        reminder,
-        isNotice,
-        isOverdue: !isNotice && isReminderOverdue(reminder, now),
-      };
-    });
+    ]
+      .map((reminder) => {
+        const isNotice = reminder.kind !== 'DEADLINE';
+        return {
+          id: reminder.id,
+          reminder,
+          isNotice,
+          isOverdue: !isNotice && isReminderOverdue(reminder, now),
+          unread: reminder.status === 'pending',
+        };
+      })
+      .sort((a, b) => Number(b.unread) - Number(a.unread));
   });
   readonly count$ = computed(() => this.items$().length);
+  readonly inboxFilter$ = this.inboxFilter.asReadonly();
+  private readonly unreadItems = computed(() =>
+    this.items$().filter((item) => item.unread),
+  );
+  readonly unreadCount$ = computed(() => this.unreadItems().length);
+  readonly visibleItems$ = computed(() => {
+    switch (this.inboxFilter()) {
+      case 'unread':
+        return this.unreadItems();
+      case 'read':
+        return this.items$().filter((item) => !item.unread);
+      default:
+        return this.items$();
+    }
+  });
   readonly canLearn$ = this.canLearn;
   /** Whoever manages courses also gets the questions learners ask on them. */
   readonly canManage$ = computed(() =>
@@ -123,12 +181,42 @@ export class NotificationsStore {
   );
 
   // Commands
+  selectFilter(value: string): void {
+    if (value === 'all' || value === 'unread' || value === 'read')
+      this.inboxFilter.set(value);
+  }
+
   markRead(reminderId: number): void {
-    this.readOne.run(reminderId);
+    if (
+      !this.isMarking$() &&
+      this.unreadItems().some((item) => item.id === reminderId)
+    ) {
+      this.readOne.run(reminderId);
+    }
   }
 
   markAllRead(): void {
-    this.readAll.run(this.items$().map((item) => item.id));
+    const ids = this.unreadItems().map((item) => item.id);
+    if (ids.length && !this.isMarking$()) this.readAll.run(ids);
+  }
+
+  deleteReminder(reminderId: number): void {
+    if (this.isMarking$()) return;
+    confirm(this.dialog, {
+      title: 'Xóa thông báo?',
+      message: 'Thông báo này sẽ bị xóa khỏi hộp thư của bạn.',
+      confirmLabel: 'Xóa thông báo',
+      tone: 'danger',
+    })
+      .pipe(filter(Boolean), takeUntilDestroyed(this.destroyRef))
+      .subscribe(() => {
+        if (
+          !this.isMarking$() &&
+          this.items$().some((item) => item.id === reminderId)
+        ) {
+          this.removeOne.run(reminderId);
+        }
+      });
   }
 
   retry(): void {

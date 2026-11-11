@@ -14,6 +14,8 @@ import {
 import {
   Alert,
   DonutChart,
+  SectionCard,
+  HorizontalBarChart,
   Button,
   Card,
   DataTable,
@@ -127,12 +129,14 @@ const filterSchema = z
 @Component({
   selector: 'app-report-screen',
   imports: [
+    HorizontalBarChart,
     DateInput,
     ReportPicker,
     ProgressReport,
     Checkbox,
     Tooltip,
     DonutChart,
+    SectionCard,
     RouterLink,
     FormField,
     FormRoot,
@@ -168,21 +172,17 @@ export class ReportScreen {
     { key: 'passRate', label: 'Đạt (%)', sortable: false },
     { key: 'averageScore', label: 'Điểm TB (%)', sortable: false },
   ];
-  /**
-   * "Tình trạng học viên" needs a quiz, so its course and quiz pickers lead the form; elsewhere
-   * the pickers set the scope under "Phạm vi & điều kiện chi tiết".
-   */
-  protected readonly leadPickers = computed(() =>
-    this.store.dimension$() === 'learners'
-      ? [PICKERS.courseId, PICKERS.quizId]
-      : [],
-  );
   protected readonly scopePickers = computed(() =>
-    this.store.dimension$() === 'learners'
-      ? [PICKERS.orgId, PICKERS.teamId]
-      : this.store.progress$()
-        ? [PICKERS.orgId, PICKERS.teamId, PICKERS.courseId]
-        : [PICKERS.orgId, PICKERS.teamId, PICKERS.courseId, PICKERS.quizId],
+    this.store.progress$()
+      ? [PICKERS.orgId, PICKERS.teamId, PICKERS.courseId]
+      : [PICKERS.orgId, PICKERS.teamId, PICKERS.courseId, PICKERS.quizId],
+  );
+  protected readonly hasExtraFilters = computed(
+    () =>
+      this.store.progress$() ||
+      ['results', 'learners', 'competency'].includes(
+        this.store.dimension$() ?? '',
+      ),
   );
   /** The detailed filters stay open while one of them says a link's id is not found. */
   protected readonly scopeHasError = computed(() =>
@@ -224,6 +224,7 @@ export class ReportScreen {
       learningStatus: LearningStatusSchema.optional().parse(
         f.learningStatus || undefined,
       ),
+      programId: this.store.filters$().programId,
       overdue: f.overdue || undefined,
       view: this.store.filters$().view,
     });

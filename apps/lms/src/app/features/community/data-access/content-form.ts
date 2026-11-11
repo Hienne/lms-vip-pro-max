@@ -198,7 +198,12 @@ export type RuleToggle = boolean | (() => boolean);
  */
 export function publishRules(
   path: SchemaPathTree<ContentFormValue>,
-  options: { tags: RuleToggle; lesson: RuleToggle; title?: RuleToggle },
+  options: {
+    tags: RuleToggle;
+    lesson: RuleToggle;
+    title?: RuleToggle;
+    bodyMin?: number | (() => number);
+  },
 ): void {
   // An answer has no title field: the server's title is made from the question's.
   when(path, options.title ?? true, (p) =>
@@ -215,10 +220,13 @@ export function publishRules(
     message: `Tiêu đề tối đa ${L.title.max} ký tự.`,
   });
   validate(path.bodyMarkdown, ({ value }) =>
-    value().trim().length < L.body.min
+    value().trim().length <
+    (typeof options.bodyMin === 'function'
+      ? options.bodyMin()
+      : (options.bodyMin ?? L.body.min))
       ? {
           kind: 'publishBody',
-          message: `Nội dung cần ít nhất ${L.body.min} ký tự để đăng.`,
+          message: `Nội dung cần ít nhất ${typeof options.bodyMin === 'function' ? options.bodyMin() : (options.bodyMin ?? L.body.min)} ký tự để đăng.`,
         }
       : value().length > L.body.max
         ? {

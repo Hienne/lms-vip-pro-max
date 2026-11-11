@@ -15,14 +15,14 @@ function render(inputs: Record<string, unknown>) {
 }
 
 describe('Vote', () => {
-  it('keeps both voting directions in compact question mode', () => {
+  it('uses the same helpful controls for negative scores', () => {
     const { el, up, down, sent } = render({
       score: -2,
       myVote: -1,
-      mode: 'score',
     });
     expect(el.querySelectorAll('button')).toHaveLength(2);
-    expect(el.textContent).toContain('-2 điểm');
+    expect(el.querySelector('.vote__score')?.textContent).toContain('-2');
+    expect(up.textContent).toContain('Hữu ích');
     up.click();
     down.click();
     expect(sent).toEqual([1, 0]);
@@ -59,7 +59,9 @@ describe('Vote', () => {
 
   it('shows the selected helpful label and can switch away from a downvote', () => {
     const selected = render({ score: 4, myVote: 1 });
-    expect(selected.up.textContent).toContain('Đã thấy hữu ích');
+    expect(selected.up.textContent).toContain('Hữu ích');
+    expect(selected.up.textContent).not.toContain('Đã thấy');
+    expect(selected.up.getAttribute('aria-pressed')).toBe('true');
     const downvoted = render({ score: -2, myVote: -1 });
     expect(downvoted.down.getAttribute('aria-pressed')).toBe('true');
     downvoted.up.click();

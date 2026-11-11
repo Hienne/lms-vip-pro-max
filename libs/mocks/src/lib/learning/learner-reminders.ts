@@ -13,7 +13,7 @@ interface Owned {
 
 /**
  * The learners' deadline reminders: the backend lists only `pending` ones whose `scheduledAt` has
- * passed, and reading one sets it to `sent` (it never comes back).
+ * passed in the bell feed. The inbox also includes rows marked as read.
  */
 export class LearnerReminders {
   private readonly rows: Owned[];
@@ -50,7 +50,7 @@ export class LearnerReminders {
     const row = this.rows.find((candidate) => candidate.reminder.id === id);
     if (!row) return refuse('resourceNotFound');
     if (row.userId !== userId) return refuse('accessDenied');
-    if (!row.reminder.sentAt) {
+    if (row.reminder.status === 'pending' && !row.reminder.sentAt) {
       const stamp = new Date().toISOString();
       row.reminder = {
         ...row.reminder,
@@ -73,6 +73,28 @@ export class LearnerReminders {
           new Date(row.reminder.scheduledAt ?? 0).getTime() <= now,
       )
       .map((row) => ({ ...row.reminder }));
+  }
+
+  inbox(userId: string): LearningReminder[] {
+    const read = this.rows
+      .filter((row) => row.userId === userId && row.reminder.status === 'sent')
+      .map((row) => ({ ...row.reminder }));
+    return [...this.due(userId), ...read];
+  }
+
+  delete(userId: string, id: number): LearningReminder {
+    const row = this.rows.find((candidate) => candidate.reminder.id === id);
+    if (!row) return refuse('resourceNotFound');
+    if (row.userId !== userId) return refuse('accessDenied');
+    if (row.reminder.status !== 'cancelled') {
+      row.reminder = {
+        ...row.reminder,
+        status: 'cancelled',
+        updateTime: new Date().toISOString(),
+        rowVersion: row.reminder.rowVersion + 1,
+      };
+    }
+    return { ...row.reminder };
   }
 
   /** Sets the caller's reminder to `sent`; another user's is refused, an unknown id is not found. */

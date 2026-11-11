@@ -1,0 +1,202 @@
+@use 'ui';
+
+:host {
+  display: block;
+  container-type: inline-size;
+}
+
+.certificate {
+  position: relative;
+  isolation: isolate;
+  display: grid;
+  align-items: center;
+  min-inline-size: 0;
+  // Keep landscape proportions when there is room and grow with the content on a phone.
+  min-block-size: calc(100cqi * 2 / 3);
+  padding: clamp(1.5rem, 5cqi, 3.5rem) clamp(1.25rem, 7cqi, 4.5rem);
+  background: ui.color(certificate-paper);
+  color: ui.color(certificate-navy);
+  text-align: center;
+
+  &::after {
+    content: '';
+    position: absolute;
+    inset: clamp(0.25rem, 1.3cqi, 0.75rem);
+    border: 1px solid ui.color(certificate-gold);
+    pointer-events: none;
+  }
+
+  &__corner {
+    position: absolute;
+    z-index: -1;
+    inset: 0 auto auto 0;
+    inline-size: 32%;
+    pointer-events: none;
+
+    &--end {
+      inset: auto 0 0 auto;
+      transform: rotate(180deg);
+    }
+  }
+
+  &__ribbon {
+    fill: ui.color(certificate-navy);
+  }
+
+  &__trim {
+    fill: ui.color(certificate-gold);
+  }
+
+  &__content {
+    display: grid;
+    justify-items: center;
+    min-inline-size: 0;
+    gap: clamp(0.25rem, 1.1cqi, 0.75rem);
+    overflow-wrap: anywhere;
+  }
+
+  &__brand {
+    font-size: clamp(0.75rem, 1.7cqi, 1rem);
+  }
+
+  &__crest {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: ui.space(3);
+    margin-block-end: ui.space(1);
+
+    &::before,
+    &::after {
+      content: '';
+      inline-size: clamp(1.5rem, 10cqi, 6rem);
+      border-block-start: 1px solid ui.color(certificate-gold);
+    }
+  }
+
+  &__academy {
+    font-weight: ui.weight(semibold);
+  }
+
+  &__heading,
+  &__name,
+  &__course {
+    line-height: ui.leading(tight);
+  }
+
+  &__heading {
+    // prettier-ignore
+    font-family: ui.font(certificate); // design-drift-allow: own-font Serif title for the printable certificate.
+    margin: ui.space(1) 0 0;
+    font-size: clamp(1.4rem, 5.3cqi, 3.5rem);
+    font-weight: ui.weight(semibold);
+  }
+
+  &__lead {
+    font-size: clamp(0.75rem, 1.9cqi, 1.125rem);
+  }
+
+  &__name {
+    max-inline-size: 100%;
+    padding-block-end: ui.space(1);
+    border-block-end: 1px solid ui.color(certificate-gold);
+    font-size: clamp(1.4rem, 5.2cqi, 3.5rem);
+    font-style: italic;
+  }
+
+  &__course {
+    max-inline-size: 54ch;
+    font-size: clamp(1rem, 2.7cqi, 1.75rem);
+  }
+
+  &__seal {
+    display: grid;
+    place-items: center;
+    margin-block-start: ui.space(1);
+    color: ui.color(certificate-gold-ink);
+  }
+
+  &__facts {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: ui.space(2);
+    inline-size: 100%;
+    font-size: clamp(0.75rem, 1.65cqi, 1rem);
+
+    > div {
+      min-inline-size: 0;
+      padding-block-start: ui.space(1);
+      border-block-start: 1px solid ui.color(certificate-gold);
+    }
+
+    dt {
+      color: ui.color(certificate-caption);
+    }
+
+    dd {
+      margin: 0;
+      font-weight: ui.weight(semibold);
+    }
+  }
+
+  &__code {
+    font-variant-numeric: tabular-nums;
+  }
+
+  p,
+  dl {
+    margin: 0;
+  }
+
+  &--preview {
+    padding: 5cqi 7cqi;
+
+    .certificate__content {
+      gap: 0.8cqi;
+    }
+
+    .certificate__crest,
+    .certificate__seal {
+      margin: 0;
+    }
+
+    .certificate__heading {
+      font-size: 5.4cqi;
+    }
+
+    .certificate__name {
+      font-size: 5.8cqi;
+    }
+
+    .certificate__course {
+      font-size: 3.5cqi;
+    }
+
+    .certificate__brand,
+    .certificate__lead,
+    .certificate__facts {
+      font-size: 2.45cqi;
+    }
+  }
+}
+
+@include ui.bp-below(sm) {
+  .certificate:not(.certificate--preview) .certificate__facts {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+
+    > :last-child {
+      grid-column: 1 / -1;
+    }
+  }
+}
+
+@media print {
+  :host {
+    break-inside: avoid;
+  }
+
+  .certificate {
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+}

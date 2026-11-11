@@ -141,10 +141,10 @@ describe('Certificate', () => {
     it('prints the server name, course, date, score and code', () => {
       const t = text(document());
       expect(t).toContain('Học viên tiền gửi Demo');
-      expect(t).toMatch(/đã hoàn thành khóa đào tạo .+ \([A-Z0-9-]+\)/);
+      expect(t).toContain('Đã hoàn thành khóa đào tạo');
       expect(t).toMatch(/Ngày hoàn thành\d{2}\/\d{2}\/\d{4}/);
       expect(t).toMatch(/Mã xác thựcCBA-[A-Z0-9-]+-000004-1/);
-      expect(t).toMatch(/kết quả bài kiểm tra \d+(,\d+)?%\./);
+      expect(t).toMatch(/Kết quả bài kiểm tra \d+(,\d+)?%/);
     });
   });
 
@@ -164,15 +164,21 @@ describe('Certificate', () => {
         document().querySelectorAll('p, h2, dt, dd'),
       ).map((node) => text(node));
       expect(blocks).toEqual([
-        'Core Banking Academy · Ban QL&PT Core Banking',
+        'Core Banking Academy',
+        'Ban QL&PT Core Banking',
         'Chứng nhận hoàn thành',
-        'Chứng nhận',
+        'Trao cho',
         'Học viên tiền gửi Demo',
-        'đã hoàn thành khóa đào tạo Văn hóa và quy chế làm việc (FE-DEMO-C4) với kết quả bài kiểm tra 90%.',
+        'Đã hoàn thành khóa đào tạo',
+        'Văn hóa và quy chế làm việc',
+        'FE-DEMO-C4',
+        'Kết quả bài kiểm tra 90%',
         'Ngày hoàn thành',
         '27/10/2026',
         'Mã xác thực',
         'CBA-FE-DEMO-C4-000004-1',
+        'Đơn vị cấp',
+        'Ban QL&PT Core Banking',
       ]);
       expect(document().querySelector('ui-mai')).not.toBeNull();
     });
@@ -192,21 +198,19 @@ describe('Certificate', () => {
       serve(certificate({ bestScorePercent: null }));
       await open('/certificate/12');
       expect(text(document())).not.toContain('kết quả');
-      expect(text(document())).toContain('(FE-DEMO-C4).');
+      expect(text(document())).toContain('FE-DEMO-C4');
 
       serve(certificate({ bestScorePercent: 87.5 }));
       await harness.navigateByUrl('/certificate/13');
       await settle();
-      expect(text(document())).toContain('với kết quả bài kiểm tra 87,5%.');
+      expect(text(document())).toContain('Kết quả bài kiểm tra 87,5%');
     });
 
     it('shows the course code alone when the revision has no title', async () => {
       serve(certificate({ courseTitle: null }));
       await open('/certificate/12');
       expect(el.querySelector('h1')?.textContent).toBe('FE-DEMO-C4');
-      expect(text(document())).toContain(
-        'đã hoàn thành khóa đào tạo FE-DEMO-C4 với kết quả',
-      );
+      expect(text(document())).toContain('FE-DEMO-C4');
       expect(text(document())).not.toContain('(FE-DEMO-C4)');
     });
   });

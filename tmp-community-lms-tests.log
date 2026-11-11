@@ -1753,7 +1753,7 @@ ERROR TypeError: Receiver must be an instance of class URL
     at formatRaw (node:internal/util/inspect:1169:9)
     at formatValue (node:internal/util/inspect:925:10)
 
-stderr | src/app/features/lesson/lesson/lesson.spec.ts > Lesson > a lesson with several blocks > goes through the blocks with "Khối tiếp theo" and "Khối trước", then on to the next lesson
+stderr | src/app/features/lesson/lesson/lesson.spec.ts > Lesson > a lesson with several blocks > goes through the blocks with "Nội dung tiếp theo" and "Nội dung trước", then on to the next lesson
 ERROR TypeError: Receiver must be an instance of class URL
     at get href (node:internal/url:1005:10)
     at isURL (node:internal/util/inspect:208:23)

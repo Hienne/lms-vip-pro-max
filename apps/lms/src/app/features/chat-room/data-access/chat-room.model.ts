@@ -1,7 +1,7 @@
 import type {
   RoomArea,
   RoomChat,
-  RoomDiceState,
+  RoomDiceResult,
   RoomGesture,
   RoomHighFive,
   RoomPlayer,
@@ -39,7 +39,6 @@ export interface RoomInvitationView {
   readonly name: string;
   readonly incoming: boolean;
 }
-export type RoomViewMode = '3d' | '2d';
 
 /** Immutable input of the non-Angular game renderer. World coordinates are pixels, not CSS sizes. */
 export interface RoomCanvasState {
@@ -47,7 +46,7 @@ export interface RoomCanvasState {
   readonly me: string;
   readonly players: readonly RoomPlayer[];
   readonly chatting: boolean;
-  readonly dice?: RoomDiceState['result'];
+  readonly dice?: RoomDiceResult;
   readonly speech: Readonly<Record<string, RoomSpeech>>;
   readonly gestures: Readonly<Record<string, TimedRoomGesture>>;
   readonly correction: { readonly x: number; readonly y: number } | null;

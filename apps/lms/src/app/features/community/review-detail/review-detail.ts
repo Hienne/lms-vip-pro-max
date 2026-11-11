@@ -17,6 +17,8 @@ import { RouterLink } from '@angular/router';
 import {
   Alert,
   Badge,
+  Breadcrumb,
+  Icon,
   Button,
   Empty,
   ErrorState,
@@ -46,6 +48,8 @@ import { ReviewDetailStore } from './data-access/review-detail.store';
   imports: [
     Alert,
     Badge,
+    Breadcrumb,
+    Icon,
     Button,
     Empty,
     ErrorState,

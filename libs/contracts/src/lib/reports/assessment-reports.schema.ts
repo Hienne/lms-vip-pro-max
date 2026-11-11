@@ -82,7 +82,8 @@ export const AssessmentReportResultRowSchema = z.object({
   submitType: z.string().nullable(),
   startedAt: BackendDateTimeSchema,
   submittedAt: BackendDateTimeSchema.nullable(),
-  correctCount: z.number().int(),
+  /** Ungraded attempts have no correct-answer count yet. */
+  correctCount: z.number().int().nullable(),
   totalQuestions: z.number().int(),
   scorePercent: z.number().nullable(),
   passed: z.boolean().nullable(),

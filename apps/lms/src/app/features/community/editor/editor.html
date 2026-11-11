@@ -203,6 +203,7 @@
       <div class="editor__field">
         <span class="editor__label">Nội dung</span>
         <app-markdown-editor
+          [bodyMin]="isAnswer() ? 1 : 20"
           label="Nội dung"
           [formField]="editorForm.bodyMarkdown"
         />

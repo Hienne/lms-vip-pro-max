@@ -28,16 +28,52 @@
   <a uiButton variant="primary" routerLink="/learn">Xem khóa học của tôi</a>
 </ui-empty>
 } @else {
+<div class="certificates__toolbar">
+  <ui-search
+    width="100%"
+    label="Tìm chứng nhận"
+    placeholder="Tìm khóa học hoặc mã chứng nhận…"
+    [value]="store.search$()"
+    (searched)="store.setSearch($event)"
+  /><select
+    uiSelect
+    #sort
+    aria-label="Sắp xếp chứng nhận"
+    [value]="store.sort$()"
+    (change)="store.setSort(sort.value)"
+  >
+    <option value="newest">Mới nhất</option>
+    <option value="oldest">Cũ nhất</option>
+  </select>
+</div>
+<p class="certificates__count" role="status">
+  {{ store.rows$().length }} chứng nhận
+</p>
 <ul class="certificates__list" aria-label="Chứng nhận của tôi">
   @for (row of store.rows$(); track row.id) {
   <li class="certificates__row">
+    <app-certificate-sheet
+      class="certificates__preview"
+      [document]="row"
+      [preview]="true"
+    />
     <a class="certificates__title" [routerLink]="row.link">{{ row.title }}</a>
     <span class="certificates__meta"
       >{{ row.code }} · Hoàn thành {{ row.completedAt | fmtDate }}@if (row.score
       !== null) { · Điểm {{ row.score | fmtPct: 2 }}}</span
     >
-    <span class="certificates__code">{{ row.verificationCode }}</span>
+    <span class="certificates__code sr-only">{{ row.verificationCode }}</span>
+    <a
+      uiButton
+      variant="secondary"
+      [routerLink]="row.link"
+      [attr.aria-label]="'Xem chứng nhận ' + row.title"
+      >Xem chứng nhận</a
+    >
   </li>
+  } @empty {
+  <li>Không tìm thấy chứng nhận phù hợp. Thử đổi từ khóa tìm kiếm.</li>
   }
 </ul>
+
 }

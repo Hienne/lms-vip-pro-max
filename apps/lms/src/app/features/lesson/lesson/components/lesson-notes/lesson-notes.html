@@ -27,7 +27,8 @@
   @for (note of notes(); track note.id) {
   <li class="notes__item">
     <div class="notes__head">
-      @if (note.anchor.type === 'none') {
+      @if (note.anchor.type === 'none' || (note.anchor.type === 'video' &&
+      note.anchor.blockId === activeBlockId())) {
       <span class="notes__anchor">{{ anchorText(note.anchor) }}</span>
       } @else {
       <button
@@ -62,6 +63,10 @@
 <ul class="notes__list" aria-label="Đánh dấu của bài học">
   @for (bookmark of bookmarks(); track bookmark.id) {
   <li class="notes__item">
+    @if (bookmark.anchor.type === 'video' && bookmark.anchor.blockId ===
+    activeBlockId()) {
+    <span class="notes__anchor">{{ anchorText(bookmark.anchor) }}</span>
+    } @else {
     <button
       type="button"
       class="notes__anchor notes__anchor--link"
@@ -69,7 +74,7 @@
     >
       {{ anchorText(bookmark.anchor) }}
     </button>
-    @if (bookmark.label) {
+    } @if (bookmark.label) {
     <p class="notes__text">{{ bookmark.label }}</p>
     }
   </li>

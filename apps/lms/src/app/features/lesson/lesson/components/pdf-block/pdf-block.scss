@@ -3,9 +3,21 @@
 .pdf {
   @include ui.stack(3);
 
+  &:fullscreen,
+  &--expanded {
+    padding: ui.space(3);
+    background: ui.color(surface);
+  }
+
+  &--expanded {
+    position: fixed;
+    z-index: ui.z(modal);
+    inset: 0;
+  }
+
   &__bar {
     @include ui.row(2);
-    flex-wrap: nowrap;
+    flex-wrap: wrap;
   }
 
   &__spacer {
@@ -27,17 +39,37 @@
   }
 
   &__stage {
+    position: relative;
+    max-height: 65dvh;
+    min-height: 0;
     overflow: auto;
+    overscroll-behavior: contain;
+    scrollbar-gutter: stable;
     border: 1px solid ui.color(border);
     border-radius: ui.radius(control);
     background: ui.color(surface-sunken);
   }
 
+  &:fullscreen &__stage,
+  &--expanded &__stage {
+    flex: 1;
+    max-height: none;
+  }
+
+  &__pages {
+    @include ui.stack(2);
+    width: max-content;
+    min-width: 100%;
+  }
+
+  &__page {
+    margin-inline: auto;
+    overflow: hidden;
+    background: ui.color(surface);
+  }
+
   &__canvas {
     display: block;
-    max-width: 100%;
-    margin-inline: auto;
-    height: auto;
   }
 
   &__loading {

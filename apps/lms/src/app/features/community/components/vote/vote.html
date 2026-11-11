@@ -1,24 +1,3 @@
-@if (mode() === 'score') {
-<button
-  uiIconButton
-  [label]="upLabel()"
-  [attr.aria-pressed]="myVote() === 1"
-  [disabled]="!canVote() || busy()"
-  (click)="cast(1)"
->
-  <ui-icon name="arrow-up" size="sm" />
-</button>
-<span class="vote__points" aria-live="polite">{{ score() | fmtNum }} điểm</span>
-<button
-  uiIconButton
-  [label]="downLabel()"
-  [attr.aria-pressed]="myVote() === -1"
-  [disabled]="!canVote() || busy()"
-  (click)="cast(-1)"
->
-  <ui-icon name="chevron-down" size="sm" />
-</button>
-} @else {
 <button
   uiButton
   size="sm"
@@ -29,19 +8,19 @@
   (click)="cast(1)"
 >
   <ui-icon name="thumbs-up" size="sm" />
-  {{ myVote() === 1 ? 'Đã thấy hữu ích' : 'Hữu ích' }}
+  Hữu ích
   <span class="vote__score" aria-live="polite">
     {{ score() | fmtNum }}<span class="sr-only"> điểm bình chọn</span>
   </span>
 </button>
 <button
-  uiIconButton
+  uiButton
+  size="sm"
   class="vote__unhelpful"
-  [label]="downLabel()"
+  [attr.aria-label]="downLabel()"
   [attr.aria-pressed]="myVote() === -1"
   [disabled]="!canVote() || busy()"
   (click)="cast(-1)"
 >
   <ui-icon name="thumbs-down" size="sm" />
 </button>
-}
