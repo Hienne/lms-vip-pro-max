@@ -1,9 +1,7 @@
 import { computed, inject, Injectable, signal } from '@angular/core';
-import { Router } from '@angular/router';
 import {
   assessmentV1Endpoints,
   courseJobEndpoints,
-  courseJobReviewPath,
   MAX_PAGE_SIZE,
   organizationEndpoints,
   trainingCatalogEndpoints,
@@ -33,7 +31,6 @@ export class StartCourseStore {
   private readonly client = inject(EndpointClient);
   private readonly session = inject(SessionStore);
   private readonly tracker = inject(CourseJobTrackerStore);
-  private readonly router = inject(Router);
   private readonly access = inject(CourseJobAccess);
 
   /** Whether the form asks for a unit. */
@@ -105,10 +102,5 @@ export class StartCourseStore {
   start(request: StartCourseRequest, done: (job: CourseJob) => void): void {
     this.done = done;
     this.starting.run(request);
-  }
-
-  /** Opens the review screen of a job. */
-  open(job: CourseJob): void {
-    void this.router.navigateByUrl(courseJobReviewPath(job.jobId));
   }
 }

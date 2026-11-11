@@ -8,7 +8,8 @@ import {
 } from '@angular/core';
 import { Dialog } from '@angular/cdk/dialog';
 import { form, FormRoot, submit } from '@angular/forms/signals';
-import { RouterLink } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
+import { courseJobReviewPath } from '@lms/contracts';
 import {
   Alert,
   AlertAction,
@@ -90,12 +91,17 @@ export class CourseEditor implements HasUnsavedChanges {
   protected readonly store = inject(CourseEditorStore);
   protected readonly steps = EDITOR_STEPS;
   private readonly dialog = inject(Dialog);
+  private readonly router = inject(Router);
   /** "Tạo bằng AI" is offered to instructors and admins on a new course only. */
   protected readonly canGenerate = inject(CourseJobAccess).canGenerate$;
 
-  /** Opens the start form; the job then runs in the background and the owl follows it. */
-  protected generateWithAi(): void {
-    void startCourseWithAi(this.dialog);
+  /**
+   * Opens the start form, then the review screen of the queued job. Temporary: the course form
+   * replaces both (.scratch/ai-course-in-form).
+   */
+  protected async generateWithAi(): Promise<void> {
+    const job = await startCourseWithAi(this.dialog);
+    if (job) await this.router.navigateByUrl(courseJobReviewPath(job.jobId));
   }
 
   private readonly model = linkedSignal(() => {

@@ -1,3 +1,4 @@
+import { Dialog } from '@angular/cdk/dialog';
 import { TestBed } from '@angular/core/testing';
 import { Router } from '@angular/router';
 import {
@@ -7,6 +8,7 @@ import {
   programAssessmentEndpoints,
   MEDIA_PROCESSING_UNAVAILABLE_CODE,
   type AnyEndpoint,
+  type CourseJob,
   type CreateCourseCommand,
   type SaveDraftCommand,
 } from '@lms/contracts';
@@ -1838,6 +1840,38 @@ describe('CourseEditor', () => {
       expect(screen.callsTo(courseEndpoints.createCourse)).toBe(0);
       expect(screen.callsTo(assessmentV1Endpoints.courseQuizList)).toBe(0);
       expect(kept).not.toHaveBeenCalled();
+    });
+
+    describe('"Tạo bằng AI" (stopgap before the form owns the flow)', () => {
+      const openDialogReturning = (job: CourseJob | undefined) =>
+        vi
+          .spyOn(TestBed.inject(Dialog), 'open')
+          .mockReturnValue({ closed: of(job) } as never);
+
+      it('goes to the review screen of the job the dialog returns', async () => {
+        openDialogReturning({ jobId: 7 } as CourseJob);
+        await screen.open('/admin/courses/new');
+        const navigate = vi
+          .spyOn(TestBed.inject(Router), 'navigateByUrl')
+          .mockResolvedValue(true);
+        await screen.click(screen.button('Tạo bằng AI'));
+        await vi.waitFor(() =>
+          expect(navigate).toHaveBeenCalledWith('/admin/courses/ai-drafts/7'),
+        );
+      });
+
+      it('stays on the form when the dialog is cancelled', async () => {
+        openDialogReturning(undefined);
+        await screen.open('/admin/courses/new');
+        const navigate = vi
+          .spyOn(TestBed.inject(Router), 'navigateByUrl')
+          .mockResolvedValue(true);
+        await screen.click(screen.button('Tạo bằng AI'));
+        await vi.waitFor(() =>
+          expect(screen.text()).toContain('Tạo khóa học mới'),
+        );
+        expect(navigate).not.toHaveBeenCalled();
+      });
     });
 
     it('stays on an empty first step on "Tiếp tục", lists it and focuses its first error', async () => {
