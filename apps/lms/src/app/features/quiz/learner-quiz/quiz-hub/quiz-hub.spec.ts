@@ -38,7 +38,7 @@ describe('QuizHub', () => {
     expect(el.querySelector('h1')?.textContent).toBe('Bài kiểm tra');
     expect(calls(learnerQuizEndpoints.courseQuizzes).length).toBeGreaterThan(0);
     const links = Array.from(
-      el.querySelectorAll<HTMLAnchorElement>('.hub__row .hub__title'),
+      el.querySelectorAll<HTMLAnchorElement>('.hub__hero .hub__title, .hub__row .hub__title'),
     ).map((a) => a.getAttribute('href'));
     expect(links).toContain('/quiz/1');
     expect(links).toContain('/quiz/2');
@@ -52,7 +52,24 @@ describe('QuizHub', () => {
     const primary = el.querySelectorAll<HTMLAnchorElement>('.btn--primary');
     expect(primary.length).toBe(1);
     expect(primary[0].getAttribute('href')).toMatch(/^\/quiz\/\d+$/);
-    expect(el.querySelectorAll('.hub__row a.btn').length).toBeGreaterThan(1);
+    expect(primary[0].closest('.hub__hero')).toBeTruthy();
+    expect(
+      el.querySelectorAll('.hub__hero a.btn, .hub__row a.btn').length,
+    ).toBeGreaterThan(1);
+    expect(el.querySelectorAll('.hub__row a.btn--primary').length).toBe(0);
+  });
+
+  it('shows the progress numbers above the quizzes', async () => {
+    await open();
+    const labels = Array.from(el.querySelectorAll('.hub__stat dt')).map((n) =>
+      n.textContent?.trim(),
+    );
+    expect(labels).toEqual([
+      'Đã đạt',
+      'Đang làm',
+      'Điểm cao nhất trung bình',
+      'Lượt thi còn lại',
+    ]);
   });
 
   it('says there are no attempts yet before the learner has taken any', async () => {

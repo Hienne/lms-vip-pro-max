@@ -16,6 +16,45 @@
   &__loading {
     @include ui.stack(4);
   }
+  &__stats {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: ui.space(3);
+    margin: 0;
+    @include ui.bp(md) {
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+  }
+  &__stat {
+    min-width: 0;
+    dt {
+      @include ui.text(sm, muted);
+    }
+    dd {
+      @include ui.num;
+      margin: ui.space(1) 0 0;
+      font-size: ui.text-size(xl);
+      font-weight: ui.weight(semibold);
+    }
+  }
+  &__hero {
+    @include ui.row-between(5);
+    align-items: flex-start;
+    @include ui.bp(md) {
+      flex-wrap: nowrap;
+      align-items: center;
+    }
+  }
+  &__eyebrow {
+    @include ui.text(sm, muted);
+    margin: 0 0 ui.space(1);
+    font-weight: ui.weight(semibold);
+  }
+  &__hero-title {
+    margin: 0 0 ui.space(1);
+    font-size: ui.text-size(xl);
+    font-weight: ui.weight(semibold);
+  }
   &__section-head {
     @include ui.row(3);
     margin-block-end: ui.space(4);

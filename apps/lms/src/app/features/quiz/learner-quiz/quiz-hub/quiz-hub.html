@@ -29,16 +29,83 @@
   <div uiSkeleton variant="block"></div>
 </div>
 } @else {
+@if (store.quizzes$().length) {
+<dl class="hub__stats" aria-label="Tiến độ bài kiểm tra">
+  <div uiCard padded class="hub__stat">
+    <dt>Đã đạt</dt>
+    <dd>{{ store.stats$().passed }}/{{ store.stats$().total }}</dd>
+  </div>
+  <div uiCard padded class="hub__stat">
+    <dt>Đang làm</dt>
+    <dd>{{ store.stats$().resuming }}</dd>
+  </div>
+  <div uiCard padded class="hub__stat">
+    <dt>Điểm cao nhất trung bình</dt>
+    <dd>
+      {{ store.stats$().averageScore === null ? '—' :
+      (store.stats$().averageScore | fmtScore) + '%' }}
+    </dd>
+  </div>
+  <div uiCard padded class="hub__stat">
+    <dt>Lượt thi còn lại</dt>
+    <dd>{{ store.stats$().attemptsLeft }}</dd>
+  </div>
+</dl>
+}
+
+@if (store.primary$(); as next) {
+<section aria-labelledby="hub-next">
+  <article uiCard padded class="hub__hero">
+    <div class="hub__main">
+      <p class="hub__eyebrow">{{ next.resuming ? 'Đang làm dở' : 'Bài nên làm tiếp' }}</p>
+      <h2 id="hub-next" class="hub__hero-title">
+        <a class="hub__title" [routerLink]="['/quiz', next.quizId]"
+          >{{ next.title }}</a
+        >
+      </h2>
+      <p class="hub__meta">{{ next.courseTitle }}</p>
+      <dl class="hub__facts">
+        <div>
+          <dt>Điểm đạt</dt>
+          <dd>≥ {{ next.passPercent }}%</dd>
+        </div>
+        <div>
+          <dt>Còn</dt>
+          <dd>{{ next.attemptsLeft }} lượt thi</dd>
+        </div>
+        @if (next.bestScore !== null) {
+        <div>
+          <dt>Cao nhất</dt>
+          <dd>{{ next.bestScore | fmtScore }}%</dd>
+        </div>
+        }
+      </dl>
+    </div>
+    <a
+      uiButton
+      variant="primary"
+      [routerLink]="['/quiz', next.quizId]"
+      [attr.aria-label]="(next.resuming ? 'Tiếp tục' : 'Vào thi') + ': ' + next.title"
+    >
+      {{ next.resuming ? 'Tiếp tục làm bài' : 'Vào thi' }}
+      <ui-icon name="arrow-right" size="sm" />
+    </a>
+  </article>
+</section>
+}
+
 <section aria-labelledby="hub-open">
   <div class="hub__section-head">
-    <h2 id="hub-open" class="hub__heading">Trong khóa đang học</h2>
+    <h2 id="hub-open" class="hub__heading">
+      {{ store.primary$() ? 'Các bài khác' : 'Trong khóa đang học' }}
+    </h2>
     @if (store.quizzes$().length) {
-    <span class="hub__meta">{{ store.quizzes$().length }} bài</span>
+    <span class="hub__meta">{{ store.others$().length }} bài</span>
     }
   </div>
-  @if (store.quizzes$().length) {
+  @if (store.others$().length) {
   <ul class="hub__list">
-    @for (quiz of store.quizzes$(); track quiz.quizId) {
+    @for (quiz of store.others$(); track quiz.quizId) {
     <li class="hub__item">
       <article uiCard padded class="hub__row">
         <div class="hub__main">
@@ -75,7 +142,7 @@
         </div>
         <a
           uiButton
-          [variant]="store.primaryQuizId$() === quiz.quizId ? 'primary' : 'secondary'"
+          variant="secondary"
           [routerLink]="['/quiz', quiz.quizId]"
           [attr.aria-label]="(!quiz.canStart ? 'Xem thông tin' : quiz.resuming ? 'Tiếp tục' : 'Vào thi') + ': ' + quiz.title"
         >
@@ -87,13 +154,15 @@
     </li>
     }
   </ul>
-  } @else {
+  } @else if (!store.quizzes$().length) {
   <ui-empty
     title="Chưa có bài kiểm tra nào đang mở"
     description="Bài kiểm tra nằm trong từng khóa học. Mở một khóa bạn đang học để xem."
   >
     <a uiButton routerLink="/catalog">Xem danh mục khóa học</a>
   </ui-empty>
+  } @else {
+  <p class="hub__meta">Không còn bài nào khác.</p>
   }
 </section>
 

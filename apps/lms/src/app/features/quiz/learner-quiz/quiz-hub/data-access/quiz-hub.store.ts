@@ -146,6 +146,35 @@ export class QuizHubStore {
       this.quizzes$().find((quiz) => quiz.resuming || quiz.canStart)?.quizId,
   );
 
+  /** The quiz to do next: the one the learner is in the middle of, else the first they can start. */
+  readonly primary$ = computed(
+    () => this.quizzes$().find((quiz) => quiz.quizId === this.primaryQuizId$()),
+  );
+
+  /** The other quizzes, listed under the primary one. */
+  readonly others$ = computed(() =>
+    this.quizzes$().filter((quiz) => quiz.quizId !== this.primaryQuizId$()),
+  );
+
+  /** Progress over the listed quizzes: passed, being taken, mean best score, attempts left. */
+  readonly stats$ = computed(() => {
+    const quizzes = this.quizzes$();
+    const scores = quizzes
+      .map((quiz) => quiz.bestScore)
+      .filter((score): score is number => score !== null);
+    return {
+      total: quizzes.length,
+      passed: quizzes.filter((quiz) => quiz.passed).length,
+      resuming: quizzes.filter((quiz) => quiz.resuming).length,
+      averageScore: scores.length
+        ? scores.reduce((sum, score) => sum + score, 0) / scores.length
+        : null,
+      attemptsLeft: quizzes
+        .filter((quiz) => !quiz.passed)
+        .reduce((sum, quiz) => sum + quiz.attemptsLeft, 0),
+    };
+  });
+
   /** Attempts grouped by quiz, the quiz tried most recently first. */
   readonly groups$ = computed((): readonly AttemptGroup[] => {
     const groups = new Map<number, MyAttemptRow[]>();
