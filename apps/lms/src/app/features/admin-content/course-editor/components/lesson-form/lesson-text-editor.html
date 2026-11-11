@@ -1,0 +1,42 @@
+<div
+  uiCard
+  class="lesson-text-editor"
+  [class.lesson-text-editor--invalid]="invalid()"
+>
+  <div
+    class="lesson-text-editor__toolbar"
+    role="group"
+    aria-label="Định dạng nội dung"
+  >
+    @for (tool of tools; track tool.command) {
+    <button
+      uiButton
+      type="button"
+      size="sm"
+      variant="ghost"
+      [disabled]="disabled()"
+      [attr.aria-pressed]="tool.command === 'undo' || tool.command === 'redo' ? null : selected().has(tool.command)"
+      (mousedown)="$event.preventDefault()"
+      (click)="formatText(tool)"
+    >
+      {{ tool.label }}
+    </button>
+    }
+  </div>
+  <div
+    #editor
+    class="lesson-text-editor__body lesson-html"
+    role="textbox"
+    aria-label="Nội dung bài học"
+    aria-multiline="true"
+    [attr.aria-invalid]="invalid() || null"
+    [attr.contenteditable]="!disabled()"
+    [attr.tabindex]="disabled() ? -1 : 0"
+    (input)="capture()"
+    (keyup)="rememberSelection()"
+    (mouseup)="rememberSelection()"
+    (blur)="blurred()"
+    (paste)="paste($event)"
+    (drop)="$event.preventDefault()"
+  ></div>
+</div>

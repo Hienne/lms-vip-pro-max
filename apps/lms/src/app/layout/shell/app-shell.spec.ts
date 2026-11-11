@@ -164,9 +164,7 @@ describe('AppShell', () => {
         '/admin/questions',
         '/admin/quizzes',
         '/reports',
-        '/knowledge',
         '/assistant',
-        '/issues',
         '/community/questions',
         '/community/articles',
         '/community/reviews',
@@ -207,7 +205,7 @@ describe('AppShell', () => {
       const roomLink = el.querySelector(
         'app-sidebar ul[aria-label="Cộng đồng"] a[href="/chat-room"]',
       );
-      expect(roomLink?.textContent?.trim()).toBe('Giải trí');
+      expect(roomLink?.textContent?.trim()).toBe('Giờ ra chơi');
       expect(
         el.querySelectorAll('app-sidebar a[href="/chat-room"]'),
       ).toHaveLength(1);
@@ -260,7 +258,7 @@ describe('AppShell', () => {
       el
         .querySelector('#learner-nav-community a[href="/chat-room"]')
         ?.textContent?.trim(),
-    ).toBe('Giải trí');
+    ).toBe('Giờ ra chơi');
     expect(nav?.querySelector('a[href="/profile"]')).toBeNull();
   });
 
@@ -533,7 +531,7 @@ describe('AppShell', () => {
       const el = await open('/learn');
       toggle(el)?.click();
       TestBed.tick();
-      expect(hrefs(el)).toHaveLength(17);
+      expect(hrefs(el)).toHaveLength(15);
       expect(
         el.querySelector('nav a[href="/progress"]')?.textContent?.trim(),
       ).toBe('Tiến độ học tập');
@@ -578,12 +576,12 @@ describe('AppShell', () => {
       expect(button?.getAttribute('aria-expanded')).toBe('false');
 
       await openDrawer(el);
-      expect(dialog()?.querySelectorAll('nav a')).toHaveLength(17);
+      expect(dialog()?.querySelectorAll('nav a')).toHaveLength(15);
       expect(
         dialog()
           ?.querySelector('ul[aria-label="Cộng đồng"] a[href="/chat-room"]')
           ?.textContent?.trim(),
-      ).toBe('Giải trí');
+      ).toBe('Giờ ra chơi');
       expect(dialog()?.querySelector('.sidebar__toggle')).toBeNull();
       expect(button?.getAttribute('aria-expanded')).toBe('true');
     });

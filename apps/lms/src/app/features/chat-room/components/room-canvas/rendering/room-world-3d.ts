@@ -200,7 +200,7 @@ export class RoomWorld3D {
       const desk = map.objects[table.desk];
       if (!desk) return;
       this.drawArea(
-        { x: desk.x - 24, y: desk.y - 24, w: desk.w + 48, h: 215 },
+        { x: desk.x - 24, y: desk.y - 82, w: desk.w + 48, h: 273 },
         `Caro ${index + 1}`,
         ['#c4dadb', '#649395', '#355f61'],
         0.5,
@@ -405,6 +405,7 @@ export class RoomWorld3D {
       this.box(group, 0.73, 0.85, -0.03, 0.025, 0.025, 0.3, 0xaf783e);
     } else if (o.kind === 'chair') {
       group.userData['chair'] = index;
+      if (o.facing === 'south') group.rotation.y = Math.PI;
       const caro = this.map.caroTables?.some((table) =>
         table.chairs.includes(index),
       );
@@ -447,7 +448,7 @@ export class RoomWorld3D {
       ctx.fillStyle = '#edf3e7';
       ctx.textAlign = 'center';
       ctx.font = '64px sans-serif';
-      ctx.fillText('Giải trí', 512, 122);
+      ctx.fillText('Giờ ra chơi', 512, 122);
       ctx.font = '25px sans-serif';
       ctx.fillText('Core Banking Academy', 512, 174);
       const texture = new THREE.CanvasTexture(canvas);

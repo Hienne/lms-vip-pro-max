@@ -40,6 +40,8 @@ export class ChatRoom {
   private readonly composer = viewChild(RoomComposer);
   private readonly canvas = viewChild(RoomCanvas);
   private readonly gamePanel = viewChild<ElementRef<HTMLElement>>('gamePanel');
+  private readonly chatLog = viewChild<ElementRef<HTMLElement>>('chatLog');
+  private followChat = true;
   constructor() {
     afterRenderEffect(() =>
       this.gamePanel()?.nativeElement.focus({ preventScroll: true }),
@@ -53,6 +55,16 @@ export class ChatRoom {
         }
       });
     });
+    afterRenderEffect(() => {
+      const log = this.chatLog()?.nativeElement;
+      const messages = this.store.messages$();
+      if (!log || messages.length === 0) this.followChat = true;
+      if (log && this.followChat) log.scrollTop = log.scrollHeight;
+    });
+  }
+  protected trackChatScroll(event: Event): void {
+    const log = event.currentTarget as HTMLElement;
+    this.followChat = log.scrollHeight - log.scrollTop - log.clientHeight < 16;
   }
   protected shortcut(event: KeyboardEvent): void {
     if (event.isComposing) return;
@@ -82,8 +94,7 @@ export class ChatRoom {
     }
     if (event.key === 'Escape' && this.store.chatOpen$()) {
       event.preventDefault();
-      this.store.closeChat();
-      this.canvas()?.focusRoom();
+      this.closeChat();
     }
     if (
       event.key === 'Enter' &&
@@ -93,6 +104,10 @@ export class ChatRoom {
       event.preventDefault();
       this.store.openChat();
     }
+  }
+  protected closeChat(): void {
+    this.store.closeChat();
+    this.canvas()?.focusRoom();
   }
   protected closeGame(): void {
     this.games.close();

@@ -1,0 +1,45 @@
+@use 'ui';
+
+.lesson-html {
+  line-height: ui.leading(relaxed);
+  overflow-wrap: anywhere;
+
+  :is(p, div, h2, h3, h4, ul, ol, blockquote, pre)
+    + :is(p, div, h2, h3, h4, ul, ol, blockquote, pre) {
+    margin-block-start: ui.space(2);
+  }
+
+  h2,
+  h3,
+  h4 {
+    font-weight: ui.weight(medium);
+  }
+
+  h2 {
+    font-size: ui.text-size(lg);
+  }
+  h3 {
+    font-size: ui.text-size(md);
+  }
+  ul,
+  ol {
+    padding-inline-start: ui.space(6);
+  }
+  ul {
+    list-style: disc;
+  }
+  ol {
+    list-style: decimal;
+  }
+  blockquote {
+    padding-inline-start: ui.space(3);
+    border-inline-start: 1px solid ui.color(border-strong);
+  }
+  pre {
+    white-space: pre-wrap;
+  }
+  a {
+    color: ui.color(primary);
+    text-decoration: underline;
+  }
+}

@@ -599,7 +599,7 @@ export const SCREEN_TABLE = {
   open: [
     {
       path: 'chat-room',
-      title: 'Giải trí',
+      title: 'Giờ ra chơi',
       mockupPage: 'chatRoom',
       layout: 'workspace',
       load: () =>

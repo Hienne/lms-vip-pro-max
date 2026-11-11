@@ -896,7 +896,7 @@ export class LearningBackend {
                     ...stamp,
                   },
                   assets: block.assets.flatMap((use, ai) => {
-                    const asset = this.assets.find((a) => a.id === use.assetId);
+                    const asset = this.library.asset(use.assetId);
                     return asset
                       ? [
                           {

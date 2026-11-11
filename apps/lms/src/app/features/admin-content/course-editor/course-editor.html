@@ -88,9 +88,21 @@
     {{ steps[step].label }}</button
   >{{ last ? '.' : ',' }} }
 </ui-alert>
+} @if (store.isCreate$() && !store.ownerOrgId$()) {
+<ui-alert tone="danger" class="course-editor__notice">
+  Tài khoản chưa thuộc đơn vị sở hữu khóa học. Hãy cập nhật đơn vị của tài khoản
+  rồi thử lại.
+</ui-alert>
 } @if (store.saveError$(); as error) {
 <ui-alert tone="danger" class="course-editor__notice">
-  {{ error.title ? error.title + ': ' : '' }}{{ error.message }}
+  {{ error.title ? error.title + ': ' : '' }}{{ error.message }} @if
+  (error.fieldErrors?.length) {
+  <ul>
+    @for (field of error.fieldErrors; track $index) {
+    <li>{{ field.message }}</li>
+    }
+  </ul>
+  }
 </ui-alert>
 }
 
@@ -144,7 +156,7 @@
     uiButton
     type="submit"
     form="course-editor-form"
-    [disabled]="store.isSaving$() || store.pendingUploads$() > 0"
+    [disabled]="store.isSaving$() || store.pendingUploads$() > 0 || (store.isCreate$() && !store.ownerOrgId$())"
   >
     <ui-icon name="archive" size="sm" />Lưu nháp
   </button>
@@ -152,7 +164,7 @@
   <button
     uiButton
     variant="primary"
-    [disabled]="continueBlocked()"
+    [disabled]="continueBlocked() || store.isSaving$() || (store.isCreate$() && !store.ownerOrgId$())"
     (click)="continue()"
   >
     Tiếp tục<ui-icon name="chevron-right" size="sm" />
@@ -161,7 +173,7 @@
   <button
     uiButton
     variant="primary"
-    [disabled]="store.isSaving$() || store.pendingUploads$() > 0"
+    [disabled]="store.isSaving$() || store.pendingUploads$() > 0 || (store.isCreate$() && !store.ownerOrgId$())"
     (click)="publish()"
   >
     <ui-icon name="check" size="sm" />Xuất bản khóa học
@@ -172,7 +184,8 @@
 
 <ng-template
   [uiDrawer]="!!editingLesson()"
-  uiDrawerTitle="Sửa bài học"
+  uiDrawerSize="lg"
+  uiDrawerTitle="Soạn bài học"
   [uiDrawerFooter]="footer"
   [uiDrawerGuard]="store.lessonUploading$()"
   (uiDrawerCloseRequest)="askToCloseLesson()"

@@ -1,4 +1,5 @@
 @use 'control';
+@use 'ui';
 
 // Dropdown: ported from the mockup's `.select` (components.css). Applied by `uiSelect`.
 // The mockup's arrow is an inline SVG with a hard-coded colour; here it is drawn with two
@@ -7,8 +8,9 @@
   .select {
     @include control.control;
 
-    padding-right: 36px;
+    padding-inline: ui.space(3) ui.space(10);
     appearance: none;
+    cursor: pointer;
     background-image:
       linear-gradient(
         to bottom left,
@@ -32,6 +34,56 @@
 
     &--sm {
       @include control.control-sm;
+    }
+  }
+
+  @supports (appearance: base-select) and selector(::picker(select)) {
+    .select:not([multiple]) {
+      appearance: base-select;
+      align-items: center;
+      gap: ui.space(2);
+      padding-inline-end: ui.space(3);
+      background-image: none;
+
+      &::picker-icon {
+        color: ui.color(text-muted);
+      }
+
+      &::picker(select) {
+        appearance: base-select;
+        min-inline-size: anchor-size(width);
+        max-inline-size: min(32rem, calc(100dvw - #{ui.space(8)}));
+        max-block-size: min(24rem, 55dvh);
+        padding: ui.space(1);
+        margin-block: ui.space(1);
+        border: 1px solid ui.color(border);
+        border-radius: ui.radius(card);
+        background: ui.color(surface);
+        color: ui.color(text);
+        box-shadow: ui.shadow(md);
+      }
+
+      option {
+        padding: ui.space(2) ui.space(3);
+        border-radius: ui.radius(field);
+        color: ui.color(text);
+        white-space: normal;
+        overflow-wrap: anywhere;
+
+        &:checked {
+          background: ui.color(primary-subtle);
+          color: ui.color(primary);
+        }
+
+        &:hover:not(:disabled),
+        &:focus-visible {
+          background: ui.color(surface-2);
+        }
+
+        &:disabled {
+          color: ui.color(text-muted);
+        }
+      }
     }
   }
 }

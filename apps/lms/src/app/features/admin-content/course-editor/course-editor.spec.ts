@@ -266,16 +266,17 @@ describe('CourseEditor', () => {
     await screen.click(addLesson[1]);
 
     const drawer = screen.drawer()!;
-    expect(screen.text(drawer)).toContain('Sửa bài học');
+    expect(screen.text(drawer)).toContain('Soạn bài học');
     await screen.type(
       screen.field('Tên bài học', drawer) as HTMLInputElement,
       'Phân quyền theo vai trò',
     );
-    await screen.click(screen.button('Văn bản / Markdown', drawer));
-    await screen.type(
-      screen.field('Nội dung', drawer) as HTMLTextAreaElement,
-      '## Vai trò',
-    );
+    await screen.click(screen.button('Văn bản', drawer));
+    const editor = drawer.querySelector<HTMLElement>(
+      '[contenteditable="true"]',
+    )!;
+    editor.innerHTML = '<h2>Vai trò</h2><p><strong>Phân quyền</strong></p>';
+    editor.dispatchEvent(new Event('input', { bubbles: true }));
     await screen.click(screen.button('Lưu', drawer));
 
     expect(screen.drawer()).toBeNull();
@@ -295,9 +296,9 @@ describe('CourseEditor', () => {
           blocks: [
             {
               blockType: 'text',
-              title: 'Văn bản / Markdown',
-              body: '## Vai trò',
-              bodyFormat: 'markdown',
+              title: 'Văn bản',
+              body: '<h2>Vai trò</h2><p><strong>Phân quyền</strong></p>',
+              bodyFormat: 'html',
               completionMode: 'manual',
               isRequired: true,
               assets: [],
@@ -1816,7 +1817,12 @@ describe('CourseEditor', () => {
         screen.field('Tên bài học', drawer) as HTMLInputElement,
         'Bài đầu tiên',
       );
-      await screen.click(screen.button('Văn bản / Markdown', drawer));
+      await screen.click(screen.button('Văn bản', drawer));
+      const editor = drawer.querySelector<HTMLElement>(
+        '[contenteditable="true"]',
+      )!;
+      editor.textContent = 'Nội dung bài đầu tiên.';
+      editor.dispatchEvent(new Event('input', { bubbles: true }));
       await screen.click(screen.button('Lưu', drawer));
     }
 
@@ -1873,6 +1879,36 @@ describe('CourseEditor', () => {
       expect(currentStep()).toContain('Nội dung khóa học');
       expect(screen.text(document.body)).toContain('Đã lưu nháp');
       expect(screen.text()).not.toContain('Còn thông tin chưa hợp lệ');
+    });
+
+    it('clears a module from another field before submitting the new program', async () => {
+      await screen.open('/admin/courses/new');
+      await fillBasics();
+      await screen.choose(
+        screen.field('Phân hệ nghiệp vụ') as HTMLSelectElement,
+        '7',
+      );
+      expect(
+        (screen.field('Phân hệ nghiệp vụ') as HTMLSelectElement).value,
+      ).toBe('7');
+
+      await screen.choose(
+        screen.field('Chương trình') as HTMLSelectElement,
+        '2',
+      );
+      expect(
+        (screen.field('Phân hệ nghiệp vụ') as HTMLSelectElement).value,
+      ).toBe('');
+      await screen.click(screen.button('Tiếp tục'));
+
+      expect(screen.lastCall(courseEndpoints.createCourse)?.body).toMatchObject(
+        {
+          draft: { programId: 2 },
+        },
+      );
+      const body = screen.lastCall(courseEndpoints.createCourse)
+        ?.body as CreateCourseCommand;
+      expect(body.draft).not.toHaveProperty('moduleId');
     });
 
     it('stays on the first step with the code error when "Tiếp tục" meets a taken code', async () => {
@@ -2538,7 +2574,7 @@ describe('CourseEditor', () => {
         const title = screen.field('Tên bài học', drawer) as HTMLInputElement;
         title.value = 'Bài thứ hai';
         title.dispatchEvent(new Event('input', { bubbles: true }));
-        await click(screen.button('Văn bản / Markdown', drawer));
+        await click(screen.button('Văn bản', drawer));
         await click(screen.button('Lưu', drawer));
       }
 

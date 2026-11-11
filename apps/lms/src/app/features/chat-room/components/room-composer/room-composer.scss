@@ -2,7 +2,7 @@
 .room-composer {
   @include ui.row(2);
   align-items: start;
-  padding: ui.space(4);
+  padding: ui.space(2);
   flex-wrap: wrap;
   ui-field {
     flex: 1;

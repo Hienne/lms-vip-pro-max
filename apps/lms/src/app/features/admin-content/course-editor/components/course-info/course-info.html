@@ -16,10 +16,11 @@
         <select
           uiSelect
           [formField]="draft().programId"
-          (change)="programPicked.emit(draft().programId().value())"
+          (change)="pickProgram($event)"
         >
           <option value="" [selected]="!draft().programId().value()">
-            — Chọn chương trình —
+            {{ store.programsLoading$() ? 'Đang tải chương trình…' : 'Chọn
+            chương trình' }}
           </option>
           @for (program of programs(); track program.id) {
           <option
@@ -30,6 +31,20 @@
           </option>
           }
         </select>
+        @if (store.programsError$()) {
+        <button
+          uiButton
+          type="button"
+          size="sm"
+          (click)="store.retryPrograms()"
+        >
+          Tải lại chương trình
+        </button>
+        } @else if (!store.programsLoading$() && !programs().length) {
+        <span class="course-info__note"
+          >Đơn vị chưa có chương trình đào tạo để chọn.</span
+        >
+        }
       </ui-field>
       <ui-field
         label="Phân hệ nghiệp vụ"
@@ -48,6 +63,11 @@
           </option>
           }
         </select>
+        @if (store.modulesError$()) {
+        <button uiButton type="button" size="sm" (click)="store.retryModules()">
+          Tải lại phân hệ
+        </button>
+        }
       </ui-field>
       @if (create()) {
       <ui-field

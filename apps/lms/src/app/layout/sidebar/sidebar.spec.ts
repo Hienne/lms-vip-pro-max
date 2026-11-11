@@ -68,7 +68,11 @@ describe('Sidebar', () => {
       .queryAll(By.css('.sidebar__link'))
       .map((link) => link.injector.get(Tooltip).text());
 
-    expect(text).toEqual(['Khóa học', 'Kho tri thức · Sắp ra mắt', 'Giải trí']);
+    expect(text).toEqual([
+      'Khóa học',
+      'Kho tri thức · Sắp ra mắt',
+      'Giờ ra chơi',
+    ]);
   });
 
   it('shows the design-system link only with dev tools', () => {
@@ -100,7 +104,7 @@ describe('Sidebar', () => {
     const link = el.querySelector(
       'ul[aria-label="Cộng đồng"] a[href="/chat-room"]',
     );
-    expect(link?.textContent?.trim()).toBe('Giải trí');
+    expect(link?.textContent?.trim()).toBe('Giờ ra chơi');
     expect(link?.getAttribute('aria-current')).toBe('page');
     expect(el.querySelector('.sidebar__footer')).toBeNull();
   });
