@@ -28,10 +28,14 @@ export const VIDEO_BEAT_MS = 20_000;
   imports: [Button, Icon, IconButton, VideoChapters, VideoTranscript],
   templateUrl: './video-block.html',
   styleUrl: './video-block.scss',
-  host: { '(document:fullscreenchange)': 'fullscreenChanged()' },
+  host: {
+    '(document:fullscreenchange)': 'fullscreenChanged()',
+    '[class.video-block--wide]': 'wide()',
+  },
 })
 export class VideoBlock {
   readonly src = input.required<string>();
+  readonly wide = input(false);
   /** Where the video resumes, in seconds; it never starts by itself. */
   readonly startAt = input(0);
   readonly completed = input(false);

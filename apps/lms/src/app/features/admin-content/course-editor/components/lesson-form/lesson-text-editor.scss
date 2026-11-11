@@ -38,4 +38,18 @@ app-lesson-text-editor {
       pointer-events: none;
     }
   }
+
+  &__status,
+  &__error {
+    @include ui.text(sm, muted);
+    margin: ui.space(2) ui.space(3);
+  }
+
+  &__error {
+    color: ui.color(danger);
+  }
+  &__source {
+    border: 0;
+    @include ui.mono;
+  }
 }

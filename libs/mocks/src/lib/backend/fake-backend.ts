@@ -1,4 +1,9 @@
 import {
+  assessmentV1Endpoints,
+  courseEndpoints,
+  CourseExamCommandSchema,
+  CourseDetailSchema,
+  QuizDetailV1Schema,
   adminOrgEndpoints,
   AgentCommandSchema,
   type ConversationContext,
@@ -385,6 +390,8 @@ export class FakeBackend {
 
   /** Answers one call, or `undefined` when `endpoint` is not the backend's. */
   handle(endpoint: AnyEndpoint, request: FakeRequest): FakeReply | undefined {
+    if (endpoint === assessmentV1Endpoints.saveCourseExam)
+      return this.saveCourseExam(request);
     const authoring = this.authoring;
     if (authoring.answers(endpoint)) {
       try {
@@ -423,6 +430,93 @@ export class FakeBackend {
   }
 
   // ---- mock-only endpoints: role CRUD, learning tabs, nav counts ----------------------------
+
+  private saveCourseExam(request: FakeRequest): FakeReply {
+    const parsed = CourseExamCommandSchema.safeParse(request.body);
+    const invalid = () => ({
+      status: 200,
+      body: envelopeError(
+        'CORE-VALIDATION_FAILED',
+        'Không thể lưu bài thi',
+        'Kiểm tra cấu hình khóa học và bộ câu hỏi đã chọn.',
+      ),
+    });
+    if (!parsed.success) return invalid();
+    const command = parsed.data;
+    const undoCourse = this.learning.checkpointCourseWrites();
+    const undoQuiz = this.authoring.checkpointExamWrites();
+    let committed = false;
+    const call = (
+      endpoint: AnyEndpoint,
+      body: unknown,
+      params: FakeRequest['params'] = {},
+      query: FakeRequest['query'] = {},
+    ) => this.handle(endpoint, { ...request, body, params, query });
+    const data = (reply: FakeReply | undefined) =>
+      reply &&
+      typeof reply.body === 'object' &&
+      reply.body !== null &&
+      'data' in reply.body
+        ? reply.body.data
+        : undefined;
+    try {
+      const savedReply = command.courseId
+        ? call(courseEndpoints.saveDraft, command.draft, {
+            courseId: String(command.courseId),
+            revisionId: String(command.revisionId),
+          })
+        : call(courseEndpoints.createCourse, command.course);
+      if (!data(savedReply)) return savedReply ?? invalid();
+      const saved = CourseDetailSchema.parse(data(savedReply));
+      const quizReply = command.quizId
+        ? call(
+            assessmentV1Endpoints.updateQuiz,
+            { ...command.quiz, courseId: saved.course.id },
+            { id: String(command.quizId) },
+            { expectedVersion: String(command.expectedQuizVersion) },
+          )
+        : call(assessmentV1Endpoints.createQuiz, {
+            ...command.quiz,
+            courseId: saved.course.id,
+          });
+      if (!data(quizReply)) return quizReply ?? invalid();
+      const quiz = QuizDetailV1Schema.parse(data(quizReply));
+      const poolReply = call(
+        assessmentV1Endpoints.replacePool,
+        command.pool,
+        { id: String(quiz.quiz.id) },
+        { expectedVersion: String(quiz.quiz.rowVersion) },
+      );
+      if (!data(poolReply)) return poolReply ?? invalid();
+      const pooled = QuizDetailV1Schema.parse(data(poolReply));
+      if (
+        pooled.activePoolSize < command.quiz.questionCount ||
+        (command.quiz.selectionMode === 'FIXED' &&
+          command.pool.items.length !== command.quiz.questionCount)
+      )
+        return invalid();
+      const draft = command.draft ?? command.course?.draft;
+      const linkedReply = call(
+        courseEndpoints.saveDraft,
+        {
+          ...draft,
+          expectedVersion: saved.revision.rowVersion,
+          finalQuizId: quiz.quiz.id,
+        },
+        {
+          courseId: String(saved.course.id),
+          revisionId: String(saved.revision.id),
+        },
+      );
+      committed = !!data(linkedReply);
+      return linkedReply ?? invalid();
+    } finally {
+      if (!committed) {
+        undoCourse();
+        undoQuiz();
+      }
+    }
+  }
 
   /** A mock refusal: HTTP 200 with the `ERROR` envelope, as the backend answers a business rule. */
   private refuseMock(body: Envelope): never {

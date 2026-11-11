@@ -17,7 +17,12 @@ import { Field } from './field';
 @Component({
   imports: [Field, Input, Select, Textarea, Checkbox, FormField],
   template: `
-    <ui-field label="Tên khóa học" required hint="Tối đa 120 ký tự.">
+    <ui-field
+      label="Tên khóa học"
+      required
+      hint="Tối đa 120 ký tự."
+      [showErrors]="validationVisible()"
+    >
       <input uiInput [formField]="f.title" />
     </ui-field>
     <ui-field label="Email">
@@ -46,6 +51,7 @@ import { Field } from './field';
   `,
 })
 class Host {
+  readonly validationVisible = signal<boolean | undefined>(undefined);
   readonly model = signal({
     title: '',
     email: 'sai-dinh-dang',
@@ -87,6 +93,18 @@ const controlOf = (field: Element) =>
   field.querySelector('input, select, textarea') as HTMLElement;
 
 describe('Field', () => {
+  it('can defer blur feedback until the form requests validation', async () => {
+    const { fixture, fields, host } = await render();
+    host.validationVisible.set(false);
+    host.f.title().markAsTouched();
+    await fixture.whenStable();
+    expect(fields[0].querySelector('.field__error')).toBeNull();
+    expect(controlOf(fields[0]).getAttribute('aria-invalid')).not.toBe('true');
+    host.validationVisible.set(true);
+    await fixture.whenStable();
+    expect(fields[0].textContent).toContain('Tên khóa học là bắt buộc.');
+    expect(controlOf(fields[0]).getAttribute('aria-invalid')).toBe('true');
+  });
   it('shows a visible label associated with the control', async () => {
     const { fields } = await render();
     for (const field of fields) {

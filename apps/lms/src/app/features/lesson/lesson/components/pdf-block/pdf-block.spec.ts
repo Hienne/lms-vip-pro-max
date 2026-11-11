@@ -55,6 +55,21 @@ describe('PdfBlock', () => {
   });
   afterEach(() => vi.useRealTimers());
 
+  it('keeps page buttons and scrolling in sync without jumping outside the document', async () => {
+    const reader = await render();
+    expect(reader.button('Trang trước').disabled).toBe(true);
+    await reader.click('Trang tiếp theo');
+    expect(reader.text()).toContain('Trang 2/5');
+    await reader.scrollTo(4);
+    expect(reader.text()).toContain('Trang 4/5');
+    await reader.click('Trang tiếp theo');
+    expect(reader.text()).toContain('Trang 5/5');
+    expect(reader.button('Trang tiếp theo').disabled).toBe(true);
+    await reader.click('Trang trước');
+    expect(reader.text()).toContain('Trang 4/5');
+    expect(reader.changes.at(-1)).toBe(4);
+  });
+
   async function render(startPage = 1) {
     const fixture = TestBed.createComponent(PdfBlock);
     fixture.componentRef.setInput('src', '/api/v1/learning-assets/9/content');
@@ -142,10 +157,10 @@ describe('PdfBlock', () => {
     expect(first.text()).not.toContain('Đã mở lại');
   });
 
-  it('shows every page in one scroll area without page buttons', async () => {
+  it('shows every page in one scroll area alongside page buttons', async () => {
     const { button, el, scrollTo, text } = await render();
-    expect(button('Trang trước')).toBeNull();
-    expect(button('Trang sau')).toBeNull();
+    expect(button('Trang trước').disabled).toBe(true);
+    expect(button('Trang tiếp theo').disabled).toBe(false);
     expect(el.querySelectorAll('.pdf__page')).toHaveLength(5);
     await scrollTo(3);
     expect(text()).toContain('Trang 3/5');

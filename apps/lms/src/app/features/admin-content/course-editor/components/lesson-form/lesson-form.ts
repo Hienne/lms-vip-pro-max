@@ -6,6 +6,7 @@ import {
   input,
   linkedSignal,
   output,
+  signal,
 } from '@angular/core';
 import {
   applyEach,
@@ -66,6 +67,8 @@ import {
   type UploadEntry,
 } from '../../data-access/upload-entry';
 import { firstValueFrom } from 'rxjs';
+import { lessonImageIds } from '../../../../../shared/content/markdown/lesson-html';
+import { DOCUMENT } from '@angular/core';
 
 /** A block as the form edits it: process steps as one line each, "Tiêu đề | Mô tả". */
 type BlockFormValue = Omit<BlockValue, 'steps' | 'bodyFormat'> & {
@@ -153,6 +156,9 @@ export class LessonForm {
   protected readonly store = inject(CourseEditorStore);
   protected readonly library = inject(AssetLibraryStore);
   private readonly dialog = inject(Dialog);
+  private readonly document = inject(DOCUMENT);
+  private readonly inlineUploads = signal<ReadonlySet<string>>(new Set());
+  readonly inlineUploading$ = computed(() => this.inlineUploads().size > 0);
   /** Files chosen in this editor, by block key. */
   protected readonly uploads = this.store.uploads$;
   /** Uploads a reload stopped, by the index of their block in this lesson. */
@@ -192,6 +198,14 @@ export class LessonForm {
       maxLength(path.blocks, COURSE_LIMITS.items, {
         message: `Tối đa ${COURSE_LIMITS.items} khối mỗi bài.`,
       });
+      validate(path.blocks, () =>
+        this.inlineUploads().size
+          ? {
+              kind: 'upload',
+              message: 'Chờ tải ảnh trong nội dung hoàn tất trước khi lưu bài.',
+            }
+          : undefined,
+      );
       applyEach(path.blocks, (block) => {
         required(block.title, { message: 'Nhập tiêu đề khối.' });
         validate(block.title, ({ value }) =>
@@ -302,6 +316,7 @@ export class LessonForm {
       ...value,
       blocks: value.blocks.filter((_, i) => i !== index),
     }));
+    this.inlineUploading(key, false);
   }
 
   /** A file from the dropzone or a picker; with `resuming` it continues the interrupted upload. */
@@ -335,6 +350,41 @@ export class LessonForm {
     input.value = '';
   }
 
+  protected imageAdded(key: string, asset: AssetValue): void {
+    this.model.update((value) => ({
+      ...value,
+      blocks: value.blocks.map((block) =>
+        block.key === key
+          ? {
+              ...block,
+              assets: [
+                ...block.assets.filter(
+                  (existing) => existing.assetId !== asset.assetId,
+                ),
+                asset,
+              ],
+            }
+          : block,
+      ),
+    }));
+  }
+
+  protected inlineUploading(key: string, pending: boolean): void {
+    this.inlineUploads.update((keys) => {
+      if (keys.has(key) === pending) return keys;
+      const next = new Set(keys);
+      if (pending) next.add(key);
+      else next.delete(key);
+      return next;
+    });
+  }
+
+  protected prepareExam(): void {
+    if (this.inlineUploading$() || this.store.lessonUploading$()) return;
+    this.apply();
+    this.store.goToStep(2);
+  }
+
   /** A file picked from the library goes to the block like a finished upload. */
   protected useLibraryAsset(asset: LibraryAsset): void {
     const target = this.library.target$();
@@ -358,7 +408,14 @@ export class LessonForm {
         ...block,
         ...(block.blockType === 'text' ? { bodyFormat } : {}),
         title: block.title.trim(),
-        assets: files[block.key] ?? block.assets,
+        assets:
+          block.blockType === 'text'
+            ? block.assets.filter((asset) =>
+                lessonImageIds(block.body, this.document).includes(
+                  asset.assetId,
+                ),
+              )
+            : (files[block.key] ?? block.assets),
         steps: block.blockType === 'process' ? toSteps(stepsText) : [],
       })),
     });

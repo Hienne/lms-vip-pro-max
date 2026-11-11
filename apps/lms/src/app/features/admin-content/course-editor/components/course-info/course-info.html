@@ -1,6 +1,6 @@
 <div class="course-info">
   <section class="course-info__form" aria-label="Thông tin cơ bản">
-    <ui-field label="Tên khóa học" required>
+    <ui-field [showErrors]="showErrors()" label="Tên khóa học" required>
       <input
         uiInput
         [formField]="draft().title"
@@ -9,6 +9,7 @@
     </ui-field>
     <div class="course-info__pair">
       <ui-field
+        [showErrors]="showErrors()"
         label="Chương trình"
         required
         [hint]="draft().programId().disabled() ? programLockedHint : ''"
@@ -47,6 +48,7 @@
         }
       </ui-field>
       <ui-field
+        [showErrors]="showErrors()"
         label="Phân hệ nghiệp vụ"
         [hint]="draft().programId().value() ? '' : 'Chọn chương trình trước.'"
       >
@@ -71,6 +73,7 @@
       </ui-field>
       @if (create()) {
       <ui-field
+        [showErrors]="showErrors()"
         label="Mã khóa học"
         required
         hint="Duy nhất trong hệ thống, không đổi sau khi tạo."
@@ -78,11 +81,15 @@
         <input uiInput [formField]="draft().code" />
       </ui-field>
       } @else {
-      <ui-field label="Mã khóa học" hint="Mã không đổi sau khi tạo.">
+      <ui-field
+        [showErrors]="showErrors()"
+        label="Mã khóa học"
+        hint="Mã không đổi sau khi tạo."
+      >
         <input uiInput [value]="draft().code().value()" readonly />
       </ui-field>
       }
-      <ui-field label="Mức độ">
+      <ui-field [showErrors]="showErrors()" label="Mức độ" required>
         <select uiSelect [formField]="draft().level">
           <option value="" [selected]="!draft().level().value()">
             Chưa chọn
@@ -128,7 +135,7 @@
       </div>
     </fieldset>
 
-    <ui-field label="Mô tả ngắn">
+    <ui-field [showErrors]="showErrors()" label="Mô tả ngắn">
       <textarea uiTextarea rows="3" [formField]="draft().summary"></textarea>
     </ui-field>
 

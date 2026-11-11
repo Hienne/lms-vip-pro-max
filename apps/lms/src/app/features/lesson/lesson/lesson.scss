@@ -116,6 +116,7 @@
     }
 
     &--focus {
+      max-width: none;
       @include ui.bp(lg) {
         grid-template-columns: minmax(0, 1fr);
       }
@@ -127,6 +128,11 @@
     @include ui.stack(5);
     min-width: 0;
     max-width: 62rem;
+  }
+
+  &__layout--focus &__main {
+    width: 100%;
+    max-width: none;
   }
 
   // The compact block picker: below `lg`, and in focus mode, where "Mục lục" (which lists the

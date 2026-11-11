@@ -182,9 +182,16 @@
           </button>
         </p>
         } @else { @switch (active.detail.block.blockType) { @case ('text') {
-        <app-text-block [block]="active.detail.block" />
+        <app-text-block
+          [wide]="store.focus$()"
+          [block]="active.detail.block"
+          [assets]="active.detail.assets"
+          [mediaReady]="store.phase$() === 'ready'"
+          [imageQuery]="{ blockId: active.id, enrollmentId: store.card$()?.enrollmentId ?? undefined }"
+        />
         } @case ('video') { @if (store.contentUrl$(); as src) {
         <app-video-block
+          [wide]="store.focus$()"
           [src]="src"
           [startAt]="store.resume$()?.lastVideoPositionSeconds ?? 0"
           [completed]="store.resume$()?.status === 'completed'"
@@ -243,11 +250,11 @@
       <nav class="lesson__stepbar" aria-label="Chuyển khối và bài học">
         @if (store.prevBlockId$(); as previous) {
         <button uiButton (click)="store.selectBlock(previous)">
-          <ui-icon name="arrow-left" size="sm" />Nội dung trước
+          <ui-icon name="arrow-left" size="sm" />Quay lại
         </button>
         } @else if (store.prevLessonLink$(); as link) {
         <a uiButton [routerLink]="link">
-          <ui-icon name="arrow-left" size="sm" />Bài trước
+          <ui-icon name="arrow-left" size="sm" />Quay lại
         </a>
         } @let done = store.completion$();
         <p class="lesson__state" aria-live="polite">
@@ -264,11 +271,11 @@
           [disabled]="!store.canAdvance$()"
           (click)="store.advance()"
         >
-          @if (store.nextBlockId$()) { Nội dung tiếp theo<ui-icon
+          @if (store.nextBlockId$()) { Tiếp theo<ui-icon
             name="arrow-right"
             size="sm"
           />
-          } @else if (store.nextLessonLink$()) { Bài tiếp theo<ui-icon
+          } @else if (store.nextLessonLink$()) { Tiếp theo<ui-icon
             name="arrow-right"
             size="sm"
           />

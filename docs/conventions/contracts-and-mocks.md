@@ -1,5 +1,17 @@
 # Contracts, zod and the in-app mock API
 
+The course editor authors its final exam inline through
+`assessmentV1Endpoints.saveCourseExam` (`POST /api/v1/course-exams`). A new course sends
+`{ course, quiz, pool }`; an existing draft sends `{ courseId, revisionId, draft, quiz, pool }`
+and, when editing an exam, `quizId` plus `expectedQuizVersion`. `draft.expectedVersion`
+protects the revision. `quiz.courseId` can be omitted: the server supplies the saved course ID.
+`pool.items` contains the selected program-bank `questionId`, `sortNo` and optional `points` overrides.
+The real backend atomically saves the course/draft, exam configuration, selected pool and
+`finalQuizId`, returning the existing `CourseDetail` envelope. Failed scope, version or question
+validation rolls everything back. Deploy that backend endpoint together with this FE change;
+this addition needs no SQL migration. The dev mock checkpoints both in-memory stores to model
+rollback. Publishing the course publishes its saved DRAFT final exam without replacing its pool.
+
 Question Excel import on `/admin/questions` uses the program selected outside the drawer.
 `programAssessmentEndpoints.importQuestions` calls the existing multipart endpoint
 `POST /api/v1/questions/import?programId&dryRun&overwrite`, part `file`, without `courseId`.

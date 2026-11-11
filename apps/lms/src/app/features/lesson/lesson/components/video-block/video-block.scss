@@ -1,5 +1,9 @@
 @use 'ui';
 
+:host(.video-block--wide) .video__stage:not(:fullscreen) .video__player {
+  max-height: none;
+}
+
 .video {
   &__stage:fullscreen {
     @include ui.stack(2);

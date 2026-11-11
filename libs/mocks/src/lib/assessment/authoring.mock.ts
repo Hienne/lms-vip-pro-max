@@ -85,6 +85,15 @@ export class AssessmentAuthoringMock {
   ) {}
   private nextId = 1000;
 
+  checkpointExamWrites(): () => void {
+    const quizzes = structuredClone(this.quizzes);
+    const nextId = this.nextId;
+    return () => {
+      this.quizzes = quizzes;
+      this.nextId = nextId;
+    };
+  }
+
   /** The status of a quiz, for the learning service's publish check; `undefined` when it is gone. */
   quizStatus(quizId: number): string | undefined {
     return this.quizzes.find((q) => q.quiz.id === quizId)?.quiz.status;

@@ -32,6 +32,7 @@ export function courseDraftSchema(
     message: `Tên khóa học tối đa ${COURSE_LIMITS.title} ký tự.`,
   });
   required(path.programId, { message: 'Chọn chương trình.' });
+  required(path.level, { message: 'Chọn mức độ khóa học.' });
   // The exam's pool comes from this program's bank, so the program cannot move under it.
   disabled(path.programId, {
     when: ({ valueOf }) =>

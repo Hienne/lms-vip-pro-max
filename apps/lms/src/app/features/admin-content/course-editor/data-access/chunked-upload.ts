@@ -496,7 +496,9 @@ export function chunkedUpload(
           requestId: uploadId,
           ownerOrgId,
           originalName: file.name,
-          mimeType: file.type || 'application/octet-stream',
+          mimeType: /\.mp4$/i.test(file.name)
+            ? 'video/mp4'
+            : file.type || 'application/octet-stream',
           sizeBytes: file.size,
           checksumSha256,
         },

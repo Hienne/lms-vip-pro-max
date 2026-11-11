@@ -22,6 +22,15 @@ const TAGS = new Set([
   's',
   'strike',
   'a',
+  'img',
+  'table',
+  'caption',
+  'thead',
+  'tbody',
+  'tfoot',
+  'tr',
+  'th',
+  'td',
 ]);
 const DROP = new Set([
   'script',
@@ -32,7 +41,6 @@ const DROP = new Set([
   'embed',
   'svg',
   'math',
-  'img',
   'audio',
   'video',
   'source',
@@ -48,7 +56,9 @@ export function cleanLessonHtml(
   template.innerHTML = source;
   const result = document.createElement('div');
   appendClean(template.content, result, document, openLinksExternally);
-  return result.textContent?.trim() ? result.innerHTML : '';
+  return result.textContent?.trim() || result.querySelector('img,table')
+    ? result.innerHTML
+    : '';
 }
 
 function appendClean(
@@ -68,6 +78,19 @@ function appendClean(
       continue;
     }
     const clean = document.createElement(node.localName);
+    if (node.localName === 'img') {
+      const id = lessonImageId(node);
+      if (id === null) continue;
+      clean.setAttribute('data-asset-id', String(id));
+      clean.setAttribute('alt', node.getAttribute('alt')?.slice(0, 255) ?? '');
+    }
+    if (node.localName === 'th' || node.localName === 'td') {
+      for (const attribute of ['colspan', 'rowspan']) {
+        const span = Number(node.getAttribute(attribute));
+        if (Number.isInteger(span) && span > 1 && span <= 100)
+          clean.setAttribute(attribute, String(span));
+      }
+    }
     const href = node.getAttribute('href');
     if (node.localName === 'a' && href && /^https?:\/\//i.test(href.trim())) {
       clean.setAttribute('href', href.trim());
@@ -79,6 +102,30 @@ function appendClean(
     appendClean(node, clean, document, openLinksExternally);
     target.append(clean);
   }
+}
+
+export function lessonImageId(image: Element): number | null {
+  const stored = image.getAttribute('data-asset-id');
+  const path = image
+    .getAttribute('src')
+    ?.match(/^\/api\/v1\/learning-assets\/(\d+)\/content$/);
+  const id = Number(stored ?? path?.[1]);
+  return Number.isSafeInteger(id) && id > 0 ? id : null;
+}
+
+export function lessonImageIds(
+  source: string,
+  document: Document,
+): readonly number[] {
+  const template = document.createElement('template');
+  template.innerHTML = source;
+  return [
+    ...new Set(
+      Array.from(template.content.querySelectorAll('img'))
+        .map(lessonImageId)
+        .filter((id): id is number => id !== null),
+    ),
+  ];
 }
 
 /** Existing Markdown and plain blocks keep their stored format until the author edits them. */

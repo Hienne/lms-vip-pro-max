@@ -418,7 +418,7 @@ export interface DraftCheck {
 function finalExamCheck(
   exam: Pick<QuizSummary, 'status' | 'selectionMode'> | undefined,
 ): DraftCheck {
-  const withCourse = exam?.status === 'DRAFT' && exam.selectionMode !== 'FIXED';
+  const withCourse = exam?.status === 'DRAFT';
   return withCourse
     ? {
         label: 'Bài kiểm tra cuối khóa sẽ được xuất bản cùng khóa học',
@@ -465,6 +465,7 @@ export function draftChecks(
       optional: true,
     },
     ...(finalQuizId ? [finalExamCheck(finalQuiz)] : []),
+    { label: 'Đã chọn mức độ khóa học', ok: !!value.level, step: 0 },
   ];
 }
 

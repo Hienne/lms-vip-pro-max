@@ -113,6 +113,7 @@
     <app-course-info
       [draft]="courseForm"
       [create]="store.isCreate$()"
+      [showErrors]="validationRequested()[0]"
       [editable]="store.isDraft$()"
       [ownerName]="store.ownerName$()"
       [programs]="store.programs$()"
@@ -156,7 +157,7 @@
     uiButton
     type="submit"
     form="course-editor-form"
-    [disabled]="store.isSaving$() || store.pendingUploads$() > 0 || (store.isCreate$() && !store.ownerOrgId$())"
+    [disabled]="store.examEditing$() || store.isSaving$() || store.pendingUploads$() > 0 || (store.isCreate$() && !store.ownerOrgId$())"
   >
     <ui-icon name="archive" size="sm" />Lưu nháp
   </button>
@@ -187,7 +188,7 @@
   uiDrawerSize="lg"
   uiDrawerTitle="Soạn bài học"
   [uiDrawerFooter]="footer"
-  [uiDrawerGuard]="store.lessonUploading$()"
+  [uiDrawerGuard]="store.lessonUploading$() || inlineUploading()"
   (uiDrawerCloseRequest)="askToCloseLesson()"
   (uiDrawerDismiss)="store.closeLesson()"
 >
@@ -200,6 +201,7 @@
     formId="lesson-form"
     submitLabel="Lưu"
     cancelLabel="Hủy"
+    [saving]="inlineUploading()"
     (cancel)="close()"
   />
 </ng-template>

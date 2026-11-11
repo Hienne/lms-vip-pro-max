@@ -1,5 +1,10 @@
 <form id="lesson-form" class="lesson-form" [formRoot]="lessonForm">
-  @if (lessonForm().touched() && missingFiles().length) {
+  @if (lessonForm.blocks().touched() && lessonForm.blocks().errors().length) {
+  <ui-alert tone="danger">
+    @for (error of lessonForm.blocks().errors(); track $index) { {{
+    error.message }} }
+  </ui-alert>
+  } @if (lessonForm().touched() && missingFiles().length) {
   <ui-alert tone="danger">
     Khối "{{ missingFiles()[0].title }}" chưa có tệp: tải tệp lên hoặc xóa khối.
   </ui-alert>
@@ -58,8 +63,15 @@
   </ui-alert>
   } @else if (!quizOptions().length) {
   <ui-alert tone="info" [announce]="false">
-    Khóa học chưa có bài kiểm tra. Tạo bài kiểm tra cho khóa học ở màn Bài kiểm
-    tra rồi quay lại chọn.
+    Khóa học chưa có bài kiểm tra. Soạn bài thi ở bước Bài thi & điều kiện, rồi
+    quay lại chọn cho bài học. @if (store.canCreateQuiz$()) {
+    <button uiButton size="sm" type="button" (click)="prepareExam()">
+      <ui-icon name="plus" size="sm" />Soạn bài kiểm tra cùng khóa học
+    </button>
+    <button uiButton size="sm" type="button" (click)="store.reloadQuizzes()">
+      Tải lại danh sách
+    </button>
+    }
   </ui-alert>
   } } } @else {
   <section class="lesson-form__blocks" aria-label="Khối nội dung">
@@ -188,23 +200,34 @@
             Hủy
           </button>
         </div>
-        } }
+        } } @if (!files()[block().value().key]?.length ||
+        block().value().blockType === 'attachment') {
         <label
           uiDropzone
           [accept]="acceptOf(block().value().blockType)"
           (files)="choose(block().value(), i, $event)"
         >
           <ui-icon name="upload" />
-          <div class="lesson-form__drop-title">
-            {{ files()[block().value().key]?.length && block().value().blockType
-            !== 'attachment' ? 'Thay tệp' : 'Kéo thả hoặc chọn tệp' }}
-          </div>
+          <div class="lesson-form__drop-title">Kéo thả hoặc chọn tệp</div>
           <div class="lesson-form__drop-hint">
             {{ uploadHintOf(block().value().blockType) }}
           </div>
           <input type="file" hidden />
         </label>
+        }
         <div class="lesson-form__row-actions">
+          @if (files()[block().value().key]?.length && block().value().blockType
+          !== 'attachment') {
+          <button
+            uiIconButton
+            size="sm"
+            type="button"
+            label="Thay tệp"
+            (click)="again.click()"
+          >
+            <ui-icon name="refresh-cw" size="sm" />
+          </button>
+          }
           <button
             uiButton
             type="button"
@@ -234,26 +257,14 @@
         <app-lesson-text-editor
           [formField]="block.body"
           [format]="block.bodyFormat().value()"
+          [ownerOrgId]="store.ownerOrgId$()"
+          [assets]="block.assets().value()"
+          (imageAdded)="imageAdded(block().value().key, $event)"
+          (uploadingChange)="inlineUploading(block().value().key, $event)"
           (valueChange)="block.bodyFormat().value.set('html')"
         />
       </ui-field>
-      <div
-        class="lesson-form__row-actions"
-        role="group"
-        aria-label="Thêm media sau nội dung"
-      >
-        @for (type of mediaBlocks; track type) {
-        <button
-          uiButton
-          type="button"
-          size="sm"
-          (click)="addBlock(type, i + 1)"
-        >
-          <ui-icon [name]="blockTypes[type].icon" size="sm" />Thêm {{
-          blockTypes[type].label }}
-        </button>
-        }
-      </div>
+
       } @case ('process') {
       <ui-field label="Các bước (mỗi dòng: Tiêu đề | Mô tả)">
         <textarea uiTextarea rows="5" [formField]="block.stepsText"></textarea>
