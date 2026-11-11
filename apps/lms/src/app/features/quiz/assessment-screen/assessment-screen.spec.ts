@@ -552,7 +552,7 @@ describe('AssessmentScreen (admin)', () => {
     await open('/admin/questions?programId=2');
     store().setQuestionFilter('questionType', 'MULTIPLE');
     await settle();
-    const kpis = [...el.querySelectorAll('ui-kpi')].map((k) =>
+    const kpis = [...el.querySelectorAll('ui-stat')].map((k) =>
       k.textContent?.replace(/\s+/g, ' ').trim(),
     );
     expect(kpis).toHaveLength(4);

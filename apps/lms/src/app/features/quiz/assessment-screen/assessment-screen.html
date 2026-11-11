@@ -43,30 +43,15 @@
   </div>
 </ui-page-header>
 @if (store.routeScreen$() === 'questions' && store.selectedProgramId$()) {
-<div class="assessment__kpis">
-  <ui-kpi
-    icon="circle-help"
-    label="Đang sử dụng"
-    [value]="store.summary$().active ?? '—'"
-  />
-  <ui-kpi
-    icon="circle-check"
-    label="Một đáp án đúng"
-    [value]="store.summary$().single ?? '—'"
-  />
-  <ui-kpi
-    icon="list"
-    tone="info"
+<ui-stat-strip aria-label="Số câu hỏi trong ngân hàng">
+  <ui-stat label="Đang sử dụng" [value]="store.summary$().active ?? '—'" />
+  <ui-stat label="Một đáp án đúng" [value]="store.summary$().single ?? '—'" />
+  <ui-stat
     label="Nhiều đáp án đúng"
     [value]="store.summary$().multiple ?? '—'"
   />
-  <ui-kpi
-    icon="archive"
-    tone="warning"
-    label="Ngưng sử dụng"
-    [value]="store.summary$().inactive ?? '—'"
-  />
-</div>
+  <ui-stat label="Ngưng sử dụng" [value]="store.summary$().inactive ?? '—'" />
+</ui-stat-strip>
 } @if (store.routeScreen$() !== 'config' || store.isNewQuiz$()) {
 <section uiCard padded class="stack assessment__section">
   <div class="assessment__scope">
@@ -196,7 +181,7 @@
   </p>
   } @if (store.routeScreen$() === 'questions' && store.selectedProgramId$()) {
   <div class="assessment__filters">
-    <div class="row row--gap-3">
+    <div class="row assessment__filter-row">
       <ui-search
         label="Tìm câu hỏi"
         placeholder="Mã hoặc nội dung…"
@@ -205,6 +190,8 @@
       />
       <select
         uiSelect
+        size="sm"
+        class="assessment__filter"
         aria-label="Lọc loại câu hỏi"
         [value]="store.questionFilters$().questionType"
         (change)="store.setQuestionFilter('questionType',$any($event.target).value)"
@@ -215,6 +202,8 @@
       </select>
       <select
         uiSelect
+        size="sm"
+        class="assessment__filter"
         aria-label="Lọc độ khó"
         [value]="store.questionFilters$().difficulty"
         (change)="store.setQuestionFilter('difficulty',$any($event.target).value)"
@@ -226,6 +215,8 @@
       </select>
       <select
         uiSelect
+        size="sm"
+        class="assessment__filter"
         aria-label="Lọc nhóm kiến thức"
         [value]="store.questionFilters$().competencyId"
         (change)="store.setQuestionFilter('competencyId',$any($event.target).value)"
@@ -238,6 +229,8 @@
 
       <select
         uiSelect
+        size="sm"
+        class="assessment__filter"
         aria-label="Lọc trạng thái"
         [value]="store.questionFilters$().status"
         (change)="store.setQuestionFilter('status',$any($event.target).value)"
@@ -247,7 +240,7 @@
         <option value="INACTIVE">Ngưng sử dụng</option>
       </select>
     </div>
-    <span class="assessment__result-count"
+    <span class="assessment__result-count" aria-live="polite"
       >{{store.questions$()?.totalElements ?? 0}} kết quả</span
     >
   </div>
@@ -277,31 +270,40 @@
 } @else { @switch (store.routeScreen$()) { @case ('questions') {
 <section uiCard>
   @if(store.selectedIds$().length){
-  <div class="assessment__bulk">
-    <strong>Đã chọn {{store.selectedIds$().length}}</strong
-    ><button
-      uiButton
-      size="sm"
-      [disabled]="store.isBulkSaving$()"
-      (click)="store.bulkQuestions('ACTIVE')"
+  <div
+    class="assessment__bulk"
+    role="region"
+    aria-label="Thao tác với câu hỏi đã chọn"
+  >
+    <span class="assessment__bulk-count"
+      >Đã chọn {{store.selectedIds$().length}} câu hỏi</span
     >
-      Đang dùng</button
-    ><button
-      uiButton
-      size="sm"
-      [disabled]="store.isBulkSaving$()"
-      (click)="store.bulkQuestions('INACTIVE')"
-    >
-      Ngưng sử dụng</button
-    ><button
-      uiButton
-      size="sm"
-      variant="danger-ghost"
-      [disabled]="store.isBulkSaving$()"
-      (click)="store.bulkQuestions('delete')"
-    >
-      Xóa
-    </button>
+    <div class="row">
+      <button
+        uiButton
+        size="sm"
+        [disabled]="store.isBulkSaving$()"
+        (click)="store.bulkQuestions('ACTIVE')"
+      >
+        Chuyển sang đang dùng
+      </button>
+      <button
+        uiButton
+        size="sm"
+        [disabled]="store.isBulkSaving$()"
+        (click)="store.bulkQuestions('INACTIVE')"
+      >
+        Ngưng sử dụng
+      </button>
+      <button
+        uiButton
+        size="sm"
+        [disabled]="store.isBulkSaving$()"
+        (click)="store.bulkQuestions('delete')"
+      >
+        <ui-icon name="trash-2" size="sm" /> Xóa
+      </button>
+    </div>
   </div>
   }
   <ui-data-table

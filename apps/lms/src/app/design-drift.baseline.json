@@ -258,11 +258,6 @@
     "own-radius": 2,
     "own-shadow": 2
   },
-  "apps/lms/src/app/features/quiz/assessment-screen/assessment-screen.scss": {
-    "own-radius": 1,
-    "subtle-fill": 1,
-    "text-xs": 2
-  },
   "apps/lms/src/app/features/quiz/learner-quiz/quiz-attempts/quiz-attempts.scss": {
     "text-xs": 1
   },
