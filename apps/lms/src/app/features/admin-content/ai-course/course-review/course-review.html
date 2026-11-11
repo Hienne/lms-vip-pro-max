@@ -244,7 +244,11 @@ item.lesson.key) {
     <summary>Ghi chú nguồn ({{ item.lesson.sourceNotes?.length }})</summary>
     <ul>
       @for (note of item.lesson.sourceNotes ?? []; track $index) {
-      <li>{{ note.note }}</li>
+      <li>
+        {{ note.note }} @if (note.page || note.lineStart) {
+        <span class="course-review__meta">{{ where(note) }}</span>
+        }
+      </li>
       }
     </ul>
   </details>

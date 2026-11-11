@@ -89,6 +89,24 @@ export class CourseReview {
     { value: 'rejected', label: 'Loại' },
   ];
 
+  /** Where in the source a note came from, e.g. "trang 3, dòng 10–24". */
+  protected where(note: {
+    readonly page?: number | null;
+    readonly lineStart?: number | null;
+    readonly lineEnd?: number | null;
+  }): string {
+    const parts: string[] = [];
+    if (note.page) parts.push(`trang ${note.page}`);
+    if (note.lineStart) {
+      parts.push(
+        note.lineEnd && note.lineEnd !== note.lineStart
+          ? `dòng ${note.lineStart}–${note.lineEnd}`
+          : `dòng ${note.lineStart}`,
+      );
+    }
+    return `(${parts.join(', ')})`;
+  }
+
   protected value(event: Event): string {
     return (event.target as HTMLInputElement | HTMLTextAreaElement).value;
   }

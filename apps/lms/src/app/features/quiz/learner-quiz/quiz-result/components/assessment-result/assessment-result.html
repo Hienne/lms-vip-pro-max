@@ -120,8 +120,9 @@
         } @if (explainable()) { @let ai = explanations().get(item.displayOrder);
         @if (ai?.status === 'done') {
         <ui-alert tone="info" class="result__ai"
-          ><strong>Trợ lý giải thích:</strong> {{ ai?.text }} @if
-          (ai?.citations?.length) {
+          ><strong>Trợ lý giải thích:</strong>
+          <app-markdown [source]="ai?.text ?? ''" /> @if (ai?.citations?.length)
+          {
           <span class="result__muted">
             Nguồn: @for (citation of ai?.citations; track citation.n) { @if
             (citation.lesson; as lesson) {

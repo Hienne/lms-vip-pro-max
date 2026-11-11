@@ -37,7 +37,12 @@ export const GeneratedBlockSchema = z.discriminatedUnion('type', [
 export type GeneratedBlock = z.infer<typeof GeneratedBlockSchema>;
 
 /** Where in the source a lesson came from, so the author can check it. */
-export const SourceNoteSchema = z.object({ note: z.string() });
+export const SourceNoteSchema = z.object({
+  note: z.string(),
+  page: z.number().int().nullish(),
+  lineStart: z.number().int().nullish(),
+  lineEnd: z.number().int().nullish(),
+});
 
 /** `pending`, `running`, `done` or `failed`; the server owns the value. */
 export const GeneratedLessonSchema = z.object({

@@ -1,6 +1,7 @@
 import { Component, computed, input, output } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import type { LearnerAttemptResult, LearnerSubmitType } from '@lms/contracts';
+import { Markdown } from '../../../../../../shared/content/markdown/markdown';
 import type { QuestionExplanation } from '../../data-access/quiz-explain.store';
 import {
   Alert,
@@ -43,6 +44,7 @@ const AUTO_SUBMIT: readonly (LearnerSubmitType | null)[] = [
     FmtDatetimePipe,
     FmtScorePipe,
     Icon,
+    Markdown,
     OptionCard,
     PageHeader,
     Progress,
