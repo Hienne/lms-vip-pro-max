@@ -235,6 +235,15 @@ export const SCREEN_TABLE = {
             ).then((m) => m.CourseEditor),
         },
         {
+          path: 'admin/courses/ai-drafts/:jobId',
+          title: 'Rà soát khóa học do AI tạo',
+          mockupPage: 'courseWizard',
+          load: () =>
+            import(
+              '../../features/admin-content/ai-course/course-review/course-review'
+            ).then((m) => m.CourseReview),
+        },
+        {
           path: 'admin/courses/:id/edit',
           title: 'Sửa khóa học',
           mockupPage: 'courseWizard',

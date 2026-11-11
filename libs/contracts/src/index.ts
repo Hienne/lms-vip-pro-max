@@ -59,6 +59,8 @@ export * from './lib/assistant-conversations/conversation.schema';
 export * from './lib/assistant-conversations/conversation.endpoints';
 export * from './lib/assistant-course/course-job.schema';
 export * from './lib/assistant-course/course-job.endpoints';
+export * from './lib/assistant-course/course-content.schema';
+export * from './lib/assistant-course/course-content.endpoints';
 export * from './lib/community/community.schema';
 export * from './lib/community/community.endpoints';
 

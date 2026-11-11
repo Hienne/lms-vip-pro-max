@@ -1297,6 +1297,23 @@ export const MIGRATION_ENTRIES = [
     },
   },
   {
+    id: 'route-admin-courses-ai-drafts-jobid',
+    notes:
+      '2026-11-11: màn mới, không có trong mockup. Rà soát khóa học do trợ lý AI tạo từ một tài liệu: tiến độ, dàn ý sửa được rồi "Duyệt dàn ý" (sau đó khóa), từng bài với "Tạo lại bài này", câu hỏi đề xuất chấp nhận/loại, rồi "Tạo bản nháp" (chỉ khi mọi bài đã viết xong) và "Mở bản nháp". Máy chủ quyết định mọi trạng thái; màn hỏi lại mỗi 3 giây khi trợ lý còn đang viết. Chưa đối chiếu trình duyệt.',
+    kind: 'route',
+    mockupSource: 'src/pages/admin-content.js · courseWizard',
+    target: 'admin/courses/ai-drafts/:jobId',
+    checklist: ['B.3'],
+    status: 'in-progress',
+    owner: 'longnvse',
+    verify: {
+      lightDark: 'todo',
+      widths: 'todo',
+      keyboard: 'todo',
+      errorStates: 'todo',
+    },
+  },
+  {
     id: 'route-admin-courses-id-edit',
     notes:
       '2026-11-03: bốn bước (Thông tin cơ bản, Nội dung khóa học, Bài thi & điều kiện, Đối tượng & xuất bản); bước 3 là điều kiện hoàn thành và điểm thưởng, bước 4 là danh sách kiểm tra và tóm tắt. Đọc ?step= một lần khi mở. Bước 3 có thêm "Bài kiểm tra cuối khóa" (course-final-exam): chọn bài thi loại Thi cuối khóa của khóa, ghi chú "· Nháp"/"· Đã đóng" khi chưa xuất bản; bước 4 có thêm dòng khuyến nghị và dòng bắt buộc "đã xuất bản" khi đã chọn. Máy chủ quyết định khi xuất bản. Đã đối chiếu trình duyệt 2026-11-03. 2026-11-04 (course-publish-targets): bước 4 có thêm "Giao khóa học" (chọn đối tượng bằng bộ chọn dùng chung với Giao học & hạn, mỗi dòng có Bắt đầu và Hạn hoàn thành, công tắc nhắc trước hạn 3 ngày) và "Chia sẻ cho đơn vị khác" (đơn vị sở hữu và đơn vị đã chia sẻ được chọn sẵn, khóa); xuất bản gửi cả hai trong cùng lệnh, hoặc cả hai hoặc không gì, và dòng bị từ chối được đánh dấu bằng thông báo của máy chủ. Đã đối chiếu trình duyệt 2026-11-04 (375/768/1280 px, sáng/tối, bàn phím, dòng bị từ chối).',
