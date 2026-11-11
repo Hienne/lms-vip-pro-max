@@ -36,6 +36,12 @@ export const RoomMovementSchema = z.object({
 });
 export type RoomMovement = z.infer<typeof RoomMovementSchema>;
 
+const RoomApproachSchema = z.object({
+  points: z.array(z.object({ x: z.number(), y: z.number() })).min(2),
+  speed: z.number().positive(),
+});
+export type RoomApproach = z.infer<typeof RoomApproachSchema>;
+
 export const RoomPlayerSchema = RoomIdentitySchema.extend({
   id: z.string(),
   x: z.number(),
@@ -43,6 +49,7 @@ export const RoomPlayerSchema = RoomIdentitySchema.extend({
   facing: RoomFacingSchema.optional(),
   seat: z.int().nonnegative().optional(),
   approaching: z.boolean().optional(),
+  route: RoomApproachSchema.optional(),
 });
 export type RoomPlayer = z.infer<typeof RoomPlayerSchema>;
 
@@ -98,6 +105,7 @@ export const RoomMapSchema = z.object({
       y: z.number(),
       w: z.number().positive(),
       h: z.number().positive(),
+      facing: z.enum(['north', 'south']).nullish(),
     }),
   ),
 });
@@ -183,6 +191,8 @@ const RoomCaroStateSchema = z.object({
     .max(CARO_MAX_CELLS - 1)
     .optional(),
   timedOut: z.boolean().optional(),
+  timeout: z.enum(['turn', 'away']).optional(),
+  waitingForReturn: z.boolean().optional(),
   expiresAt: z.int().positive(),
   serverTime: z.int().positive(),
   result: z.enum(['X', 'O', 'draw']).optional(),
@@ -281,8 +291,7 @@ export const RoomEventSchema = z.discriminatedUnion('type', [
     players: z.array(RoomPlayerSchema),
     gestures: z.boolean().optional(),
     interactions: z.boolean().optional(),
-    // Older servers may send this field; clients never retain or display it.
-    history: z.array(RoomChatSchema).optional(),
+    history: z.array(RoomChatSchema).max(50).optional(),
   }),
   z.object({ type: z.literal('joined'), player: RoomPlayerSchema }),
   z.object({ type: z.literal('left'), id: z.string(), name: z.string() }),
@@ -294,6 +303,7 @@ export const RoomEventSchema = z.discriminatedUnion('type', [
     facing: RoomFacingSchema.optional(),
     seat: z.int().nonnegative().nullish(),
     approaching: z.boolean().optional(),
+    route: RoomApproachSchema.optional(),
   }),
   z.object({ type: z.literal('correction'), x: z.number(), y: z.number() }),
   RoomChatSchema.extend({ type: z.literal('chat') }),

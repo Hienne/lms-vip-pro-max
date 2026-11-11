@@ -343,7 +343,7 @@ export class CourseEditorStore {
       this.client.call(trainingCatalogEndpoints.listPrograms, {
         query: { ownerOrgId, size: 100 },
       }),
-    { params: () => this.orgId() },
+    { params: () => this.ownerOrgId$() },
   );
 
   private readonly fieldId = computed(() => {
@@ -584,6 +584,9 @@ export class CourseEditorStore {
       : undefined;
   });
   readonly programs$ = computed(() => this.programsData.value()?.items ?? []);
+  readonly programsLoading$ = this.programsData.isLoading;
+  readonly programsError$ = this.programsData.error;
+  readonly modulesError$ = this.modulesData.error;
   readonly modules$ = computed(() =>
     this.fieldId() ? (this.modulesData.value()?.items ?? []) : [],
   );
@@ -899,6 +902,7 @@ export class CourseEditorStore {
    * when that is done), so the later steps always have a course to attach to.
    */
   continue(draft: CourseDraftValue): boolean {
+    if (this.isSaving$()) return false;
     const step = this.state.step();
     const check = this.state.stepChecks()[step];
     check?.touch();
@@ -992,6 +996,7 @@ export class CourseEditorStore {
 
   /** The first save of a new course: it is created with the whole draft in one call. */
   create(value: CourseDraftValue): void {
+    if (this.isSaving$()) return;
     const command = this.createCommand(value);
     if (command) this.createMutation.run(command);
   }
@@ -1021,6 +1026,7 @@ export class CourseEditorStore {
 
   /** Publishing a course that is not stored yet creates it first, then publishes it. */
   createAndPublish(value: CourseDraftValue): void {
+    if (this.isSaving$()) return;
     const command = this.createCommand(value);
     const targets = this.targetsToPublish();
     if (!command || !targets) return;
@@ -1213,6 +1219,14 @@ export class CourseEditorStore {
 
   retryLoad(): void {
     this.courseData.reload();
+  }
+
+  retryPrograms(): void {
+    this.programsData.reload();
+  }
+
+  retryModules(): void {
+    this.modulesData.reload();
   }
 
   /** Reads the course's quizzes again (after a failed read, or a quiz made elsewhere). */

@@ -8,6 +8,7 @@ import {
 import {
   chatRoomEndpoints,
   chatRoomSocket,
+  type RoomChat,
   type RoomCommand,
   type RoomEvent,
   type RoomGesture,
@@ -46,6 +47,7 @@ type ConnectionStatus =
   | 'reconnecting';
 type SocketFailure = number | 'join-timeout' | 'heartbeat-timeout';
 const SPEECH_DURATION_MS = 5500;
+const CHAT_HISTORY_LENGTH = 50;
 
 @Injectable()
 export class ChatRoomStore {
@@ -60,6 +62,7 @@ export class ChatRoomStore {
     ready: signal(false),
     status: signal<ConnectionStatus>('offline'),
     players: signal<readonly RoomPlayer[]>([]),
+    messages: signal<readonly RoomChat[]>([]),
     me: signal(''),
     speech: signal<Readonly<Record<string, RoomSpeech>>>({}),
     gestures: signal<Readonly<Record<string, TimedRoomGesture>>>({}),
@@ -108,6 +111,7 @@ export class ChatRoomStore {
   readonly status$ = this.state.status.asReadonly();
   readonly players$ = this.state.players.asReadonly();
   readonly speech$ = this.state.speech.asReadonly();
+  readonly messages$ = this.state.messages.asReadonly();
   readonly gesturesEnabled$ = this.state.gesturesEnabled.asReadonly();
   readonly interactionsEnabled$ = this.state.interactionsEnabled.asReadonly();
   readonly invitation$ = computed<RoomInvitationView | null>(() => {
@@ -165,12 +169,6 @@ export class ChatRoomStore {
         reconnecting: 'Đang kết nối lại…',
       })[this.status$()],
   );
-  readonly announcement$ = computed(() => {
-    const speech = Object.values(this.speech$()).sort(
-      (a, b) => b.expiresAt - a.expiresAt,
-    )[0];
-    return speech ? `${speech.name}: ${speech.text}` : '';
-  });
   readonly canvas$ = computed<RoomCanvasState>(() => ({
     online: this.online$(),
     me: this.me$(),
@@ -330,6 +328,7 @@ export class ChatRoomStore {
     this.setEntered(false);
     this.setStatus('offline');
     this.setPlayers([]);
+    this.state.messages.set([]);
     this.games.reset();
     this.clearSpeech();
     this.clearGestures();
@@ -388,6 +387,7 @@ export class ChatRoomStore {
         this.attempts = 0;
         this.setMe(event.id);
         this.setPlayers(event.players);
+        this.state.messages.set(event.history ?? this.messages$());
         this.clearSpeech();
         this.clearGestures();
         this.state.gesturesEnabled.set(event.gestures === true);
@@ -424,6 +424,10 @@ export class ChatRoomStore {
                   y: event.y,
                   facing: event.facing ?? p.facing,
                   approaching: event.approaching ?? p.approaching,
+                  route:
+                    event.approaching === false
+                      ? undefined
+                      : (event.route ?? p.route),
                   seat:
                     event.seat === undefined
                       ? p.seat
@@ -443,6 +447,9 @@ export class ChatRoomStore {
         this.setCorrection({ x: event.x, y: event.y });
         break;
       case 'chat':
+        this.state.messages.update((messages) =>
+          [...messages, event].slice(-CHAT_HISTORY_LENGTH),
+        );
         this.setSpeech({
           ...this.speech$(),
           [event.playerId]: {

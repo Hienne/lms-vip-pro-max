@@ -66,8 +66,8 @@
     <h3 class="lesson-form__heading">
       Khối nội dung ({{ lessonForm.blocks().value().length }})
     </h3>
-    @for (block of lessonForm.blocks; track block; let i = $index; let last =
-    $last) {
+    @for (block of lessonForm.blocks; track block().value().key; let i = $index;
+    let last = $last) {
     <div class="lesson-form__block">
       <div class="lesson-form__block-head">
         <span class="lesson-form__block-type">
@@ -230,9 +230,30 @@
         />
       </div>
       } @switch (block().value().blockType) { @case ('text') {
-      <ui-field label="Nội dung (Markdown: ## tiêu đề, **đậm**, - danh sách)">
-        <textarea uiTextarea rows="6" [formField]="block.body"></textarea>
+      <ui-field label="Nội dung bài học">
+        <app-lesson-text-editor
+          [formField]="block.body"
+          [format]="block.bodyFormat().value()"
+          (valueChange)="block.bodyFormat().value.set('html')"
+        />
       </ui-field>
+      <div
+        class="lesson-form__row-actions"
+        role="group"
+        aria-label="Thêm media sau nội dung"
+      >
+        @for (type of mediaBlocks; track type) {
+        <button
+          uiButton
+          type="button"
+          size="sm"
+          (click)="addBlock(type, i + 1)"
+        >
+          <ui-icon [name]="blockTypes[type].icon" size="sm" />Thêm {{
+          blockTypes[type].label }}
+        </button>
+        }
+      </div>
       } @case ('process') {
       <ui-field label="Các bước (mỗi dòng: Tiêu đề | Mô tả)">
         <textarea uiTextarea rows="5" [formField]="block.stepsText"></textarea>

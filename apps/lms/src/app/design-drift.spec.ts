@@ -119,7 +119,7 @@ function countIn(text: string, kind: 'scss' | 'html'): Record<string, number> {
   const lines = text
     .replace(/\/\*[\s\S]*?\*\//g, (block) => block.replace(/[^\n]/g, ' '))
     .replace(/<!--[\s\S]*?-->/g, (block) => block.replace(/[^\n]/g, ' '))
-    .split('\n');
+    .split(/\r?\n/);
   const counts: Record<string, number> = {};
   for (const raw of lines) {
     const allowed = ALLOW.exec(raw)?.[1];

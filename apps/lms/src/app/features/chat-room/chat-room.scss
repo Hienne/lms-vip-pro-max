@@ -30,7 +30,7 @@
   &__world {
     position: relative;
     display: grid;
-    grid-template-rows: minmax(0, 1fr) auto auto;
+    grid-template-rows: minmax(0, 1fr) auto;
     flex: 1;
     min-height: 0;
     min-width: 0;
@@ -38,9 +38,12 @@
     border-radius: ui.radius(card);
     overflow: hidden;
     background: ui.color(surface);
+    app-room-canvas {
+      grid-area: 1 / 1;
+    }
   }
   &__footer {
-    @include ui.row-between(3);
+    grid-area: 2 / 1;
     padding: ui.space(1) ui.space(3);
     border-top: 1px solid ui.color(border);
   }
@@ -51,13 +54,54 @@
       display: none;
     }
   }
-  &__composer {
-    border-top: 1px solid ui.color(border);
+  &__return {
+    margin: 0 0 ui.space(2);
+  }
+  &__chat {
+    grid-area: 1 / 1;
+    align-self: end;
+    z-index: 1;
+    width: min(ui.layout(panel), calc(100% - 2 * ui.space(3)));
+    margin: ui.space(3);
+    max-height: calc(100% - 2 * ui.space(3));
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    border: 1px solid ui.color(border);
+    background: color-mix(in srgb, ui.color(surface) 50%, transparent);
+    @media (pointer: coarse) {
+      &:not(&--typing) {
+        max-width: calc(100% - 3 * ui.layout(touch) - 3 * ui.space(4));
+      }
+    }
+  }
+  &__chat-header {
+    @include ui.row-between(2);
+    padding: ui.space(1) ui.space(2);
+    flex-wrap: wrap;
+  }
+  &__chat-log {
+    max-height: min(18dvh, 3 * ui.space(10));
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    ul {
+      margin: 0;
+      padding: 0 ui.space(2) ui.space(1);
+      list-style: none;
+    }
+    li {
+      overflow-wrap: anywhere;
+      padding-block: ui.space(1);
+    }
+    strong {
+      margin-inline-end: ui.space(1);
+    }
   }
   &__dice-entry,
   &__game {
     position: absolute;
-    z-index: 1;
+    z-index: 2;
     right: ui.space(3);
     top: calc(ui.space(3) + 2 * ui.layout(control-sm) + ui.space(2));
     @include ui.bp(md) {

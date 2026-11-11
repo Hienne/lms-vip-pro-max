@@ -91,6 +91,14 @@ export class AssetLibrary {
 
   constructor(private readonly deps: AssetLibraryDeps) {}
 
+  asset(id: number): LearningAsset | undefined {
+    if (this.deleted.has(id)) return undefined;
+    return (
+      this.deps.assets.find((asset) => asset.id === id) ??
+      this.deps.seeded.find((asset) => asset.id === id)
+    );
+  }
+
   entries(): [AnyEndpoint, Handler][] {
     return [
       [assetEndpoints.listAssets, (r) => this.list(r)],
@@ -346,10 +354,8 @@ export class AssetLibrary {
   private content(request: FakeRequest): FakeReply {
     const userId = this.deps.callerId(request);
     const assetId = Number(request.params['assetId']);
-    const asset = [...this.deps.seeded, ...this.deps.assets].find(
-      (a) => a.id === assetId,
-    );
-    if (!asset || this.deleted.has(assetId)) return refuse('learningNotFound');
+    const asset = this.asset(assetId);
+    if (!asset) return refuse('learningNotFound');
     if (
       this.deps.coverOfVisibleCourse(assetId) === false &&
       asset.uploadedBy !== userId

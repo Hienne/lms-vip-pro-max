@@ -71,6 +71,7 @@ export class RoomCaro {
     () =>
       this.table().playing === true &&
       !this.state()?.result &&
+      !this.state()?.waitingForReturn &&
       this.turn() === this.state()?.piece &&
       this.seconds() > 0,
   );
@@ -81,12 +82,12 @@ export class RoomCaro {
   protected readonly challengeForm = form(
     this.challenge,
     (path) => {
-      required(path.stake, { message: 'Nhập mức cược.' });
+      required(path.stake, { message: 'Nhập số CPoint bạn muốn góp.' });
       min(path.stake, this.minimumStake, {
-        message: `Mức cược tối thiểu là ${this.minimumStake} CPoint mỗi bên.`,
+        message: `Mỗi bạn góp ít nhất ${this.minimumStake} CPoint mỗi bên.`,
       });
       max(path.stake, () => Math.min(this.balance(), ROOM_MAX_STAKE), {
-        message: 'Mức cược vượt giới hạn hoặc số dư CPoint.',
+        message: 'Số CPoint góp vượt giới hạn hoặc số dư của bạn.',
       });
       validate(path.stake, ({ value }) => {
         const stake = value();

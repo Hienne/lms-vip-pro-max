@@ -419,7 +419,12 @@ describe('CourseReview step 4: assignment rows and shares', () => {
         screen.field('Tên bài học', drawer) as HTMLInputElement,
         'Bài đầu tiên',
       );
-      await screen.click(screen.button('Văn bản / Markdown', drawer));
+      await screen.click(screen.button('Văn bản', drawer));
+      const editor = drawer.querySelector<HTMLElement>(
+        '[contenteditable="true"]',
+      )!;
+      editor.textContent = 'Nội dung bài đầu tiên.';
+      editor.dispatchEvent(new Event('input', { bubbles: true }));
       await screen.click(screen.button('Lưu', drawer));
       await screen.click(
         Array.from(

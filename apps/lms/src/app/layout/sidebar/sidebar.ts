@@ -12,7 +12,7 @@ const ENTERTAINMENT_LINK: MenuItem = {
   code: 'COMMUNITY',
   href: '/chat-room',
   icon: 'message-square',
-  label: 'Giải trí',
+  label: 'Giờ ra chơi',
   section: 'Cộng đồng',
   upcoming: false,
 };

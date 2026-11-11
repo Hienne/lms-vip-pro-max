@@ -3,6 +3,7 @@ import type {
   BlockDetail,
   BlockInput,
   BlockType,
+  BodyFormat,
   CompletionMode,
   CourseDetail,
   CourseLevel,
@@ -40,8 +41,9 @@ export interface BlockValue {
   readonly key: string;
   readonly blockType: BlockType;
   readonly title: string;
-  /** Markdown for a text block, the caption of an image. */
+  /** Formatted content for a text block, or the caption of an image. */
   readonly body: string;
+  readonly bodyFormat?: BodyFormat;
   readonly completionMode: CompletionMode;
   readonly completionThreshold: number | null;
   readonly isRequired: boolean;
@@ -98,7 +100,7 @@ export const BLOCK_TYPES: Readonly<
 > = {
   video: { icon: 'video', label: 'Video' },
   pdf: { icon: 'file-text', label: 'Tài liệu PDF' },
-  text: { icon: 'file', label: 'Văn bản / Markdown' },
+  text: { icon: 'file', label: 'Văn bản' },
   process: { icon: 'workflow', label: 'Quy trình từng bước' },
   image: { icon: 'image', label: 'Hình ảnh' },
   attachment: { icon: 'paperclip', label: 'Tệp đính kèm' },
@@ -191,6 +193,9 @@ function toBlockValue({ block, assets, steps }: BlockDetail): BlockValue {
     blockType: block.blockType,
     title: block.title,
     body: block.blockType === 'image' ? (caption ?? '') : (block.body ?? ''),
+    ...(block.blockType === 'text' && block.bodyFormat
+      ? { bodyFormat: block.bodyFormat }
+      : {}),
     completionMode: block.completionMode,
     completionThreshold: block.completionThreshold ?? null,
     isRequired: block.isRequired ?? true,
@@ -272,7 +277,7 @@ function toBlockInput(block: BlockValue): BlockInput {
     blockType: block.blockType,
     title: block.title.trim(),
     ...(block.blockType === 'text' && text
-      ? { body: text, bodyFormat: 'markdown' as const }
+      ? { body: text, bodyFormat: block.bodyFormat ?? 'markdown' }
       : {}),
     completionMode: block.completionMode,
     ...(block.completionThreshold
@@ -373,6 +378,20 @@ export function lessonProblem(lesson: LessonValue): string | null {
     return lesson.quizId ? null : 'Chưa chọn bài kiểm tra';
   }
   if (!lesson.blocks.length) return 'Thiếu nội dung';
+  if (
+    lesson.blocks.some(
+      (block) => block.blockType === 'text' && !block.body.trim(),
+    )
+  ) {
+    return 'Khối văn bản chưa có nội dung';
+  }
+  if (
+    lesson.blocks.some(
+      (block) => block.blockType === 'process' && !block.steps.length,
+    )
+  ) {
+    return 'Khối quy trình chưa có bước';
+  }
   const missing = lesson.blocks.find(
     (b) =>
       b.blockType !== 'attachment' &&

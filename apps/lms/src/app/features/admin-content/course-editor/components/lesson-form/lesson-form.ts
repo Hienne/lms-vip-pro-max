@@ -17,11 +17,13 @@ import {
   min,
   required,
   submit,
+  validate,
 } from '@angular/forms/signals';
 import {
   BlockTypeSchema,
   COURSE_LIMITS,
   type BlockType,
+  type BodyFormat,
   type LibraryAsset,
   type QuizSummary,
 } from '@lms/contracts';
@@ -40,6 +42,7 @@ import {
   UploadItem,
 } from '@lms/ui';
 import { AssetLibrary } from '../asset-library/asset-library';
+import { LessonTextEditor } from './lesson-text-editor';
 import { AssetLibraryStore } from '../asset-library/data-access/asset-library.store';
 import {
   BLOCK_TYPES,
@@ -65,7 +68,10 @@ import {
 import { firstValueFrom } from 'rxjs';
 
 /** A block as the form edits it: process steps as one line each, "Tiêu đề | Mô tả". */
-type BlockFormValue = Omit<BlockValue, 'steps'> & { stepsText: string };
+type BlockFormValue = Omit<BlockValue, 'steps' | 'bodyFormat'> & {
+  bodyFormat: BodyFormat;
+  stepsText: string;
+};
 type LessonFormValue = Omit<LessonValue, 'blocks' | 'quizId'> & {
   /** The chosen quiz's id as the select holds it; empty when none. */
   quizId: string;
@@ -77,6 +83,7 @@ const toFormValue = (lesson: LessonValue): LessonFormValue => ({
   quizId: lesson.quizId === null ? '' : String(lesson.quizId),
   blocks: lesson.blocks.map(({ steps, ...block }) => ({
     ...block,
+    bodyFormat: block.bodyFormat ?? 'markdown',
     stepsText: steps
       .map((s) => (s.description ? `${s.title} | ${s.description}` : s.title))
       .join('\n'),
@@ -130,6 +137,7 @@ const quizLabel = (quiz: QuizSummary): string =>
     Icon,
     IconButton,
     Input,
+    LessonTextEditor,
     Select,
     Textarea,
     UploadItem,
@@ -153,6 +161,12 @@ export class LessonForm {
   protected readonly isCancellable = isCancellable;
   protected readonly blockTypes = BLOCK_TYPES;
   protected readonly addable = BlockTypeSchema.options;
+  protected readonly mediaBlocks = [
+    'image',
+    'video',
+    'pdf',
+    'attachment',
+  ] as const;
   protected readonly acceptOf = acceptOf;
   protected readonly uploadHintOf = uploadHintOf;
   protected readonly holdsFile = (type: BlockType) => !!FILE_USAGE[type];
@@ -162,6 +176,11 @@ export class LessonForm {
     this.model,
     (path) => {
       required(path.title, { message: 'Nhập tên bài học.' });
+      validate(path.title, ({ value }) =>
+        value() && !value().trim()
+          ? { kind: 'blank', message: 'Nhập tên bài học.' }
+          : undefined,
+      );
       maxLength(path.title, COURSE_LIMITS.title, {
         message: `Tên bài học tối đa ${COURSE_LIMITS.title} ký tự.`,
       });
@@ -170,8 +189,16 @@ export class LessonForm {
       max(path.minutes, COURSE_LIMITS.lessonSeconds / 60, {
         message: 'Thời lượng tối đa 24 giờ.',
       });
+      maxLength(path.blocks, COURSE_LIMITS.items, {
+        message: `Tối đa ${COURSE_LIMITS.items} khối mỗi bài.`,
+      });
       applyEach(path.blocks, (block) => {
         required(block.title, { message: 'Nhập tiêu đề khối.' });
+        validate(block.title, ({ value }) =>
+          value() && !value().trim()
+            ? { kind: 'blank', message: 'Nhập tiêu đề khối.' }
+            : undefined,
+        );
         maxLength(block.title, COURSE_LIMITS.title, {
           message: `Tiêu đề khối tối đa ${COURSE_LIMITS.title} ký tự.`,
         });
@@ -232,11 +259,18 @@ export class LessonForm {
     return submit(this.lessonForm);
   }
 
-  protected addBlock(type: BlockType): void {
+  protected addBlock(
+    type: BlockType,
+    index = this.model().blocks.length,
+  ): void {
     const { steps: _steps, ...block } = newBlock(type);
     this.model.update((value) => ({
       ...value,
-      blocks: [...value.blocks, { ...block, stepsText: '' }],
+      blocks: [
+        ...value.blocks.slice(0, index),
+        { ...block, bodyFormat: 'markdown', stepsText: '' },
+        ...value.blocks.slice(index),
+      ],
     }));
   }
 
@@ -320,8 +354,9 @@ export class LessonForm {
           ? Number(value.quizId)
           : null,
       title: value.title.trim(),
-      blocks: value.blocks.map(({ stepsText, ...block }) => ({
+      blocks: value.blocks.map(({ stepsText, bodyFormat, ...block }) => ({
         ...block,
+        ...(block.blockType === 'text' ? { bodyFormat } : {}),
         title: block.title.trim(),
         assets: files[block.key] ?? block.assets,
         steps: block.blockType === 'process' ? toSteps(stepsText) : [],
