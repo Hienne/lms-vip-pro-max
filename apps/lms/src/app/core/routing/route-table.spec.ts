@@ -137,6 +137,19 @@ describe('route table', () => {
     expect(paths.filter((path, i) => paths.indexOf(path) !== i)).toEqual([]);
   });
 
+  it('forwards old knowledge and incident URLs to guarded community screens', async () => {
+    expect(
+      router.config.find((route) => route.path === 'knowledge')?.redirectTo,
+    ).toBe('community/questions');
+    expect(
+      router.config.find((route) => route.path === 'issues')?.redirectTo,
+    ).toBe('community/articles?type=lesson');
+    await harness.navigateByUrl('/knowledge');
+    expect(router.url).toBe('/login?next=%2Fknowledge');
+    await harness.navigateByUrl('/issues');
+    expect(router.url).toBe('/login?next=%2Fissues');
+  });
+
   it('starts every menu on a screen without a route parameter', () => {
     const entries = FUNCTION_CODES.map(
       (menu) => menuGroup(menu).screens[0].path,
