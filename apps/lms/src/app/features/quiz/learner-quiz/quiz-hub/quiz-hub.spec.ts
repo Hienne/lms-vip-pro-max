@@ -21,10 +21,10 @@ describe('QuizHub', () => {
     handle = provideLearnerQuizSpec();
   });
 
-  async function open() {
+  async function open(url = '/quiz') {
     signInAsLearner();
     harness = await RouterTestingHarness.create();
-    await harness.navigateByUrl('/quiz');
+    await harness.navigateByUrl(url);
     await settle();
     el = harness.routeNativeElement as HTMLElement;
   }
@@ -33,74 +33,76 @@ describe('QuizHub', () => {
   const calls = (endpoint: unknown) =>
     handle.mock.calls.filter(([e]) => e === endpoint);
 
-  it('lists the quizzes of the courses in progress, each linking to its intro', async () => {
+  const navItems = () =>
+    Array.from(el.querySelectorAll<HTMLAnchorElement>('.hub__nav-item'));
+  const detailTitle = () =>
+    el.querySelector<HTMLAnchorElement>('.hub__detail-title a');
+
+  it('lists every quiz on the left and opens the first one on the right', async () => {
     await open();
     expect(el.querySelector('h1')?.textContent).toBe('Bài kiểm tra');
     expect(calls(learnerQuizEndpoints.courseQuizzes).length).toBeGreaterThan(0);
-    const links = Array.from(
-      el.querySelectorAll<HTMLAnchorElement>(
-        '.hub__hero .hub__title, .hub__tile .hub__title',
-      ),
-    ).map((a) => a.getAttribute('href'));
-    expect(links).toContain('/quiz/1');
-    expect(links).toContain('/quiz/2');
-    const passMark = el.querySelector('.hub__facts div');
-    expect(passMark?.querySelector('dt')?.textContent).toBe('Điểm đạt');
-    expect(passMark?.querySelector('dd')?.textContent).toContain('≥ 70%');
+    const items = navItems();
+    expect(items.length).toBeGreaterThan(1);
+    expect(items[0].getAttribute('aria-current')).toBe('true');
+    expect(items[0].getAttribute('href')).toMatch(/^\/quiz\?bai=\d+$/);
+    expect(detailTitle()?.getAttribute('href')).toMatch(/^\/quiz\/\d+$/);
+    const labels = Array.from(el.querySelectorAll('.stat__label')).map((n) =>
+      n.textContent?.trim(),
+    );
+    expect(labels).toEqual([
+      'Điểm đạt',
+      'Cao nhất',
+      'Lượt đã làm',
+      'Lượt còn lại',
+    ]);
+    expect(el.querySelector('.hub__stats')?.textContent).toContain('≥ 70');
   });
 
-  it('emphasizes one available quiz while keeping every action on its intro', async () => {
+  it('puts the one primary action on the selected quiz, on its intro', async () => {
     await open();
     const primary = el.querySelectorAll<HTMLAnchorElement>('.btn--primary');
     expect(primary.length).toBe(1);
-    expect(primary[0].getAttribute('href')).toMatch(/^\/quiz\/\d+$/);
-    expect(primary[0].closest('.hub__hero')).toBeTruthy();
-    expect(
-      el.querySelectorAll('.hub__hero a.btn, .hub__tile a.btn').length,
-    ).toBeGreaterThan(1);
-    expect(el.querySelectorAll('.hub__tile a.btn--primary').length).toBe(0);
+    expect(primary[0].closest('.hub__detail')).toBeTruthy();
+    expect(primary[0].getAttribute('href')).toBe(
+      detailTitle()?.getAttribute('href'),
+    );
   });
 
-  it('says there are no attempts yet before the learner has taken any', async () => {
+  it('says the selected quiz has no attempts before the learner has taken any', async () => {
     await open();
-    expect(text()).toContain('Chưa có lần thi nào');
+    expect(text()).toContain('Bạn chưa làm bài này lần nào');
     expect(
       el.querySelector<HTMLButtonElement>('button[disabled]')?.textContent,
     ).toContain('Tải CSV');
   });
 
-  it('lists the attempts of every quiz in one table, with a link to each quiz history', async () => {
+  it('shows only the attempts of the quiz picked in the URL', async () => {
     signInAsLearner();
     await takeAttempt(1);
     await takeAttempt(1);
     await takeAttempt(2);
-    await open();
-    expect(el.querySelectorAll('.hub__history table').length).toBe(1);
-    expect(el.querySelectorAll('.hub__attempt').length).toBe(3);
-    expect(el.querySelector('table')?.textContent).toContain('Thời gian nộp');
-    expect(el.querySelectorAll('thead th[scope="col"]').length).toBe(6);
+    await open('/quiz?bai=1');
+    expect(detailTitle()?.getAttribute('href')).toBe('/quiz/1');
+    expect(el.querySelectorAll('.hub__attempt').length).toBe(2);
+    expect(el.querySelectorAll('thead th[scope="col"]').length).toBe(5);
+    const detail = el.querySelector<HTMLAnchorElement>(
+      '.hub__attempt a[aria-label^="Chi tiết lượt"]',
+    );
+    expect(detail?.getAttribute('href')).toMatch(/^\/quiz\/1\/result\/\d+$/);
+    const quiz1 = navItems().find((a) => a.href.endsWith('bai=1'))!;
+    expect(quiz1.getAttribute('aria-current')).toBe('true');
+    expect(quiz1.textContent).toContain('2 lượt đã làm');
     expect(
-      el.querySelector('.hub__attempt a.btn')?.getAttribute('href'),
-    ).toMatch(/^\/quiz\/\d+\/result\/\d+$/);
-    const links = Array.from(el.querySelectorAll('.hub__history-links a')).map(
-      (a) => a.getAttribute('href'),
-    );
-    expect(links).toEqual(
-      expect.arrayContaining(['/quiz/1/attempts', '/quiz/2/attempts']),
-    );
-    expect(text()).toContain('Xem cả 2 lượt thi');
+      navItems().find((a) => a.href.endsWith('bai=2'))?.textContent,
+    ).toContain('1 lượt đã làm');
   });
 
-  it('shows the newest attempts and links to the full history of a quiz', async () => {
-    signInAsLearner();
-    for (let i = 0; i < 5; i++) await takeAttempt(1);
-    await open();
-    expect(el.querySelectorAll('.hub__attempt').length).toBe(5);
-    expect(
-      Array.from(el.querySelectorAll('.hub__history-links a'))
-        .find((a) => a.textContent?.includes('Xem cả 5 lượt thi'))
-        ?.getAttribute('href'),
-    ).toBe('/quiz/1/attempts');
+  it('keeps the filter in the URL and says when it leaves no quiz', async () => {
+    await open('/quiz?loc=passed');
+    expect(navItems().length).toBe(0);
+    expect(text()).toContain('Không có bài nào trong mục này');
+    expect(el.querySelector('.hub__detail')).toBeNull();
   });
 
   it('downloads the CSV the server builds, named for the history', async () => {

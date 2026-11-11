@@ -16,10 +16,8 @@ import { blockReasonText } from '../../../../../shared/quiz/quiz-block-reason';
 const COURSES_SHOWN = 10;
 /** The server's page maximum: one request holds the history the hub groups. */
 const ATTEMPTS_SHOWN = 100;
-/** Attempts shown under each quiz before the link to its full history. */
-export const ATTEMPTS_PER_QUIZ = 3;
-/** Attempts the one history table shows before the per-quiz links. */
-export const RECENT_ATTEMPTS = 10;
+/** Attempts the selected quiz's table shows before the link to its full history. */
+export const ATTEMPTS_PER_QUIZ = 10;
 
 export interface CourseQuizzes {
   readonly courseId: number;
@@ -45,8 +43,58 @@ export interface AttemptGroup {
   readonly quizId: number;
   readonly title: string;
   readonly attemptCount: number;
-  /** Newest first, at most {@link ATTEMPTS_PER_QUIZ}. */
+  /** Every attempt the hub loaded for the quiz, newest first. */
   readonly recent: readonly MyAttemptRow[];
+}
+
+/**
+ * A quiz in the hub's list: what the course card says about it when the quiz belongs to a course in
+ * progress (`null` fields otherwise), and the attempts the learner made on it.
+ */
+export interface QuizEntry {
+  readonly quizId: number;
+  readonly title: string;
+  readonly courseTitle: string | null;
+  readonly passPercent: number | null;
+  readonly attemptsLeft: number | null;
+  readonly bestScore: number | null;
+  readonly passed: boolean;
+  readonly canStart: boolean;
+  readonly resuming: boolean;
+  readonly blockText: string | null;
+  /** Newest first. */
+  readonly attempts: readonly MyAttemptRow[];
+  /** When the latest attempt started or was submitted; `null` before any attempt. */
+  readonly lastAt: string | null;
+}
+
+export const QUIZ_FILTERS = ['all', 'open', 'passed', 'failed'] as const;
+export type QuizFilter = (typeof QUIZ_FILTERS)[number];
+
+/** `open`: can be taken or resumed now. `failed`: tried and not passed yet. */
+function matches(entry: QuizEntry, filter: QuizFilter): boolean {
+  switch (filter) {
+    case 'all':
+      return true;
+    case 'open':
+      return entry.canStart || entry.resuming;
+    case 'passed':
+      return entry.passed;
+    case 'failed':
+      return !entry.passed && entry.attempts.length > 0;
+  }
+}
+
+function lastAt(rows: readonly MyAttemptRow[]): string | null {
+  const [latest] = rows;
+  return latest ? (latest.submittedAt ?? latest.startedAt) : null;
+}
+
+function bestOf(rows: readonly MyAttemptRow[]): number | null {
+  const scores = rows
+    .map((row) => row.scorePercent)
+    .filter((score): score is number => score !== null);
+  return scores.length ? Math.max(...scores) : null;
 }
 
 /**
@@ -142,27 +190,6 @@ export class QuizHubStore {
     ),
   );
 
-  /** Emphasize one available row action without changing server eligibility or order. */
-  readonly primaryQuizId$ = computed(
-    () =>
-      this.quizzes$().find((quiz) => quiz.resuming || quiz.canStart)?.quizId,
-  );
-
-  /** The quiz to do next: the one the learner is in the middle of, else the first they can start. */
-  readonly primary$ = computed(
-    () => this.quizzes$().find((quiz) => quiz.quizId === this.primaryQuizId$()),
-  );
-
-  /** The other quizzes, listed under the primary one. */
-  readonly others$ = computed(() =>
-    this.quizzes$().filter((quiz) => quiz.quizId !== this.primaryQuizId$()),
-  );
-
-  /** The newest attempts across every quiz, shown in one table. */
-  readonly recentAttempts$ = computed((): readonly MyAttemptRow[] =>
-    (this.attemptsData.value()?.items ?? []).slice(0, RECENT_ATTEMPTS),
-  );
-
   /** Attempts grouped by quiz, the quiz tried most recently first. */
   readonly groups$ = computed((): readonly AttemptGroup[] => {
     const groups = new Map<number, MyAttemptRow[]>();
@@ -171,15 +198,75 @@ export class QuizHubStore {
       if (rows) rows.push(row);
       else groups.set(row.quizId, [row]);
     }
-    return [...groups.entries()].map(([quizId, rows]) => {
+    return [...groups.entries()].map(([quizId, rows]) => ({
+      quizId,
+      title: rows[0].quizTitle,
+      attemptCount: rows.length,
+      recent: rows,
+    }));
+  });
+
+  /**
+   * One entry per quiz the learner can see here: every quiz of the courses in progress, then the
+   * quizzes they only have attempts on. A quiz they can take or resume comes first; the rest keep
+   * the order of their latest attempt.
+   */
+  readonly entries$ = computed((): readonly QuizEntry[] => {
+    const attempts = new Map(this.groups$().map((g) => [g.quizId, g.recent]));
+    const open = this.quizzes$().map((quiz): QuizEntry => {
+      const rows = attempts.get(quiz.quizId) ?? [];
       return {
-        quizId,
-        title: rows[0].quizTitle,
-        attemptCount: rows.length,
-        recent: rows.slice(0, ATTEMPTS_PER_QUIZ),
+        ...quiz,
+        courseTitle: quiz.courseTitle,
+        attempts: rows,
+        lastAt: lastAt(rows),
       };
     });
+    const known = new Set(open.map((entry) => entry.quizId));
+    const historyOnly = this.groups$()
+      .filter((group) => !known.has(group.quizId))
+      .map(
+        (group): QuizEntry => ({
+          quizId: group.quizId,
+          title: group.title,
+          courseTitle: null,
+          passPercent: null,
+          attemptsLeft: null,
+          bestScore: bestOf(group.recent),
+          passed: group.recent.some((row) => row.passed === true),
+          canStart: false,
+          resuming: false,
+          blockText: null,
+          attempts: group.recent,
+          lastAt: lastAt(group.recent),
+        }),
+      );
+    const actionable = (entry: QuizEntry) => entry.resuming || entry.canStart;
+    return [
+      ...open.filter(actionable),
+      ...[...open.filter((entry) => !actionable(entry)), ...historyOnly].sort(
+        (a, b) => (b.lastAt ?? '').localeCompare(a.lastAt ?? ''),
+      ),
+    ];
   });
+
+  /** How many entries each filter holds, for the filter labels. */
+  readonly filterCounts$ = computed(
+    (): Readonly<Record<QuizFilter, number>> => {
+      const entries = this.entries$();
+      return Object.fromEntries(
+        QUIZ_FILTERS.map((filter) => [
+          filter,
+          entries.filter((entry) => matches(entry, filter)).length,
+        ]),
+      ) as Record<QuizFilter, number>;
+    },
+  );
+
+  /** The entries one filter keeps, in the order of {@link entries$}. */
+  filtered(filter: QuizFilter): readonly QuizEntry[] {
+    return this.entries$().filter((entry) => matches(entry, filter));
+  }
 
   retry(): void {
     this.quizzesData.reload();
