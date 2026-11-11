@@ -365,6 +365,10 @@ export class FakeBackend {
     [agentEndpoints.cancelAction, (r) => this.cancelAction(r)],
     [answerFeedbackEndpoints.rate, (r) => this.rateAnswer(r)],
     [conversationEndpoints.list, (r) => this.listConversations(r)],
+    [
+      conversationEndpoints.latestForLesson,
+      (r) => this.latestConversationOfLesson(r),
+    ],
     [conversationEndpoints.detail, (r) => this.getConversation(r)],
     [conversationEndpoints.rename, (r) => this.renameConversation(r)],
     [conversationEndpoints.remove, (r) => this.removeConversation(r)],
@@ -976,6 +980,16 @@ export class FakeBackend {
       totalElements: rows.length,
       totalPages: Math.ceil(rows.length / query.size),
     });
+  }
+
+  private latestConversationOfLesson(request: FakeRequest): FakeReply {
+    const user = this.caller(request);
+    return ok(
+      this.book.latestForLesson(
+        user.userId,
+        Number(request.query['lessonId']),
+      ),
+    );
   }
 
   private getConversation(request: FakeRequest): FakeReply {

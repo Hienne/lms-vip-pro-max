@@ -175,6 +175,17 @@ export class ConversationBook {
       .map(summaryOf);
   }
 
+  /** The owner's most recently used conversation opened from this lesson. */
+  latestForLesson(
+    ownerId: string,
+    lessonId: number,
+  ): ConversationSummary | null {
+    return (
+      this.list(ownerId, '').find((row) => row.context?.lessonId === lessonId) ??
+      null
+    );
+  }
+
   get(ownerId: string, id: number): ConversationDetail | undefined {
     const row = this.find(ownerId, id);
     if (!row) return undefined;

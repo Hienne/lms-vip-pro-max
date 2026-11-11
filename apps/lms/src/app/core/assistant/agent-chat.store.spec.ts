@@ -48,6 +48,8 @@ const cancelUrl = (id: string) =>
 const KEY = (userId: string) => `lms.agent-chat.v2.${userId}`;
 const LEGACY_KEY = (userId: string) => `lms.agent-chat.v1.${userId}`;
 const detailUrl = (id: number) => `/api/v1/assistant/conversations/${id}`;
+const latestUrl = (lessonId: number) =>
+  `/api/v1/assistant/conversations/latest?lessonId=${lessonId}`;
 
 const storedTurn = (
   id: number,
@@ -527,6 +529,8 @@ describe('AgentChatStore', () => {
     it('opens the panel on a new conversation and sends the lesson with the question and the skill', async () => {
       store.askAboutLesson(lesson, 'Tóm tắt bài này', 'tom_tat_bai');
       await settle();
+      backend.expectOne(latestUrl(9)).flush(envelopeOk(null));
+      await settle();
 
       expect(store.isOpen$()).toBe(true);
       expect(store.lesson$()).toEqual(lesson);
@@ -543,6 +547,8 @@ describe('AgentChatStore', () => {
     it('sends the lesson with every later question of the conversation', async () => {
       store.askAboutLesson(lesson, 'Bài này nói gì?');
       await settle();
+      backend.expectOne(latestUrl(9)).flush(envelopeOk(null));
+      await settle();
       finish(backend.expectOne(STREAM), [conversation(11), done('x')]);
       await settle();
 
@@ -558,8 +564,10 @@ describe('AgentChatStore', () => {
       await settle();
     });
 
-    it('continues the conversation already open on the same lesson, and starts a new one for another lesson', async () => {
+    it('continues the conversation already open on the same lesson without asking the server again', async () => {
       store.askAboutLesson(lesson, 'Bài này nói gì?');
+      await settle();
+      backend.expectOne(latestUrl(9)).flush(envelopeOk(null));
       await settle();
       finish(backend.expectOne(STREAM), [conversation(11), done('x')]);
       await settle();
@@ -574,10 +582,14 @@ describe('AgentChatStore', () => {
     it('starts a new conversation for a different lesson and drops the lesson when the chat is cleared', async () => {
       store.askAboutLesson(lesson, 'Bài này nói gì?');
       await settle();
+      backend.expectOne(latestUrl(9)).flush(envelopeOk(null));
+      await settle();
       finish(backend.expectOne(STREAM), [conversation(11), done('x')]);
       await settle();
 
       store.askAboutLesson({ ...lesson, lessonId: 10 }, 'Bài này nói gì?');
+      await settle();
+      backend.expectOne(latestUrl(10)).flush(envelopeOk(null));
       await settle();
       const request = backend.expectOne(STREAM);
       expect(lastBody(request)).toEqual({
@@ -589,6 +601,60 @@ describe('AgentChatStore', () => {
 
       store.clear();
       expect(store.lesson$()).toBeNull();
+    });
+
+    it('continues the latest conversation of the lesson from the server, as after a reload', async () => {
+      store.askAboutLesson(lesson, 'Tóm tắt bài này', 'tom_tat_bai');
+      await settle();
+      backend.expectOne(latestUrl(9)).flush(
+        envelopeOk({
+          id: 30,
+          title: 'Bài này nói gì?',
+          lastActivityTime: '2026-11-11T09:00:00Z',
+          createTime: '2026-11-11T09:00:00Z',
+          context: lesson,
+        }),
+      );
+      await settle();
+      backend.expectOne(detailUrl(30)).flush(
+        envelopeOk({
+          id: 30,
+          title: 'Bài này nói gì?',
+          lastActivityTime: '2026-11-11T09:00:00Z',
+          createTime: '2026-11-11T09:00:00Z',
+          context: lesson,
+          turns: [storedTurn(1)],
+        }),
+      );
+      await settle();
+
+      expect(store.turns$()).toHaveLength(2);
+      const request = backend.expectOne(STREAM);
+      expect(lastBody(request)).toEqual({
+        conversationId: 30,
+        message: 'Tóm tắt bài này',
+        skill: 'tom_tat_bai',
+        context,
+      });
+      finish(request, [done('x')]);
+      await settle();
+    });
+
+    it('still asks in a new conversation when the lookup fails', async () => {
+      store.askAboutLesson(lesson, 'Bài này nói gì?');
+      await settle();
+      backend
+        .expectOne(latestUrl(9))
+        .flush(null, { status: 500, statusText: 'Server Error' });
+      await settle();
+
+      const request = backend.expectOne(STREAM);
+      expect(lastBody(request)).toEqual({
+        message: 'Bài này nói gì?',
+        context,
+      });
+      finish(request, [conversation(31), done('x')]);
+      await settle();
     });
 
     it('shows the lesson label again when the saved conversation is reopened', async () => {

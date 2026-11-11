@@ -80,6 +80,26 @@ describe('FakeBackend saved conversations', () => {
     ).toMatchObject(context);
   });
 
+  it('finds the latest conversation of a lesson, only for its owner, or null', () => {
+    const token = login('hocvien');
+    const lessonOf = (lessonId: number) =>
+      call(conversationEndpoints.latestForLesson, token, {
+        query: { lessonId: String(lessonId) },
+      }).body.data;
+    const context = { courseId: 5, revisionId: 50, lessonId: 9 };
+    const first = conversationOf(
+      call(agentEndpoints.stream, token, { body: { message: 'Một', context } }),
+    );
+
+    expect(ConversationSummarySchema.parse(lessonOf(9)).id).toBe(first);
+    expect(lessonOf(10)).toBeNull();
+    expect(
+      call(conversationEndpoints.latestForLesson, login('quantri'), {
+        query: { lessonId: '9' },
+      }).body.data,
+    ).toBeNull();
+  });
+
   it('lists a conversation from either assistant, titled by its first question', () => {
     const token = login('hocvien');
     ask(token, 'Xin chào trợ lý');

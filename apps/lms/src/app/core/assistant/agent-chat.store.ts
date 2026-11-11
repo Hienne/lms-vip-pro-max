@@ -23,7 +23,7 @@ import {
   type LessonContext,
   type PendingAction,
 } from '@lms/contracts';
-import { finalize, Subscription } from 'rxjs';
+import { finalize, of, Subscription, switchMap } from 'rxjs';
 import { CourseJobTrackerStore } from '../course-jobs/course-job-tracker.store';
 import { DocumentTrackerStore } from '../knowledge/document-tracker.store';
 import { toAppError } from '../errors/app-error';
@@ -308,30 +308,57 @@ export class AgentChatStore {
   }
 
   /**
-   * Opens the panel on a new conversation about a lesson and asks `question` in it (the server
-   * checks the user may read the lesson). The conversation already open on this lesson continues;
-   * any other, or one about nothing, stays in the history. Ignored while an answer is on its way.
+   * Opens the panel on the user's latest conversation about this lesson, read from the server, or on
+   * a new one when there is none, and asks `question` in it (the server checks the user may read the
+   * lesson). The conversation already open on this lesson continues without a lookup; any other,
+   * or one about nothing, stays in the history. Ignored while an answer is on its way or the
+   * conversation is still being found.
    */
   askAboutLesson(
     lesson: ConversationContext,
     question: string,
     skill?: AgentSkill,
   ): void {
-    if (this.isAnswering$()) return;
+    if (this.isAnswering$() || this.state.opening()) return;
     const open = this.state.lesson();
     if (
-      open?.lessonId !== lesson.lessonId ||
-      open.revisionId !== lesson.revisionId
+      open?.lessonId === lesson.lessonId &&
+      open.revisionId === lesson.revisionId
     ) {
-      this.loading?.unsubscribe();
-      this.state.opening.set(false);
-      this.setTurns([]);
-      this.setConversationId(null);
-      this.state.history.set(false);
-      this.state.lesson.set(lesson);
+      this.setOpen(true);
+      this.ask(question, skill);
+      return;
     }
+    this.loading?.unsubscribe();
+    this.setTurns([]);
+    this.setConversationId(null);
+    this.state.history.set(false);
+    this.state.lesson.set(lesson);
     this.setOpen(true);
-    this.ask(question, skill);
+    this.state.opening.set(true);
+    const userId = this.userId();
+    const askHere = () => {
+      this.state.opening.set(false);
+      this.ask(question, skill);
+    };
+    this.loading = this.conversations
+      .latestForLesson(lesson.lessonId)
+      .pipe(
+        switchMap((latest) =>
+          latest ? this.conversations.detail(latest.id) : of(null),
+        ),
+      )
+      .subscribe({
+        next: this.sameUser(userId, (detail) => {
+          if (detail) {
+            this.setTurns(detail.turns.map(turnFromStored));
+            this.setConversationId(detail.id);
+          }
+          askHere();
+        }),
+        // Not finding the old conversation must not stop the question: it starts a new one.
+        error: this.sameUser(userId, askHere),
+      });
   }
 
   /**
