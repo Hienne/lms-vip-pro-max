@@ -17,6 +17,7 @@ import {
   Textarea,
 } from '@lms/ui';
 import { AccessRequestsStore } from '../../data-access/access-requests.store';
+import { copyText } from '../../../../../core/browser/secure-context';
 
 export interface ResetPasswordData {
   readonly request: AccessRequest;
@@ -143,10 +144,9 @@ export class ResetPasswordDialog {
   }
 
   protected async copy(password: string): Promise<void> {
-    try {
-      await navigator.clipboard.writeText(password);
+    if (await copyText(password)) {
       this.copied.set(true);
-    } catch {
+    } else {
       // The clipboard can be blocked; the password stays visible to read out.
       this.revealed.set(true);
     }
