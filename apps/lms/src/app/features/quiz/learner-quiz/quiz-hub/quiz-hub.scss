@@ -15,7 +15,10 @@
   &__loading {
     @include ui.stack(4);
   }
+  // The host is a flex column, so the filter stretches by default; keep it as wide as its options.
   &__filter {
+    align-self: flex-start;
+    width: fit-content;
     max-width: 100%;
     overflow-x: auto;
   }
