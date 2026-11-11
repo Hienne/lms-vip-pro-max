@@ -1,5 +1,7 @@
 import { TestBed } from '@angular/core/testing';
 import type { LessonBlock } from '@lms/contracts';
+import { of } from 'rxjs';
+import { EndpointClient } from '../../../../../core/http/endpoint-client';
 import { TextBlock } from './text-block';
 
 const block = (over: Partial<LessonBlock>): LessonBlock => ({
@@ -27,6 +29,29 @@ function render(value: LessonBlock): HTMLElement {
 }
 
 describe('TextBlock', () => {
+  const readImage = vi.fn(() => of(new Blob([], { type: 'image/png' })));
+
+  beforeEach(() => {
+    readImage.mockClear();
+    TestBed.configureTestingModule({
+      providers: [{ provide: EndpointClient, useValue: { call: readImage } }],
+    });
+  });
+
+  it('keeps table structure and removes executable or unlinked image content', () => {
+    const root = render(
+      block({
+        bodyFormat: 'html',
+        body: '<table><tbody><tr><td colspan="2" onclick="alert(1)">Dữ liệu</td></tr></tbody></table><img data-asset-id="42" src="https://tracker.invalid/pixel"><script>alert(1)</script>',
+      }),
+    );
+    expect(root.querySelector('td')?.getAttribute('colspan')).toBe('2');
+    expect(root.querySelector('td')?.hasAttribute('onclick')).toBe(false);
+    expect(root.querySelector('script')).toBeNull();
+    expect(root.querySelector('img')?.hasAttribute('src')).toBe(false);
+    expect(readImage).not.toHaveBeenCalled();
+  });
+
   it('steps its headings down under the block title', () => {
     const root = render(block({ body: '## Ý chính' }));
     expect(

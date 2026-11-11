@@ -42,4 +42,37 @@
     color: ui.color(primary);
     text-decoration: underline;
   }
+  img {
+    display: block;
+    max-width: 100%;
+    height: auto;
+    margin-block: ui.space(3);
+  }
+  table {
+    border-collapse: collapse;
+    width: 100%;
+    table-layout: fixed;
+    margin-block: ui.space(3);
+  }
+  th,
+  td {
+    border: 1px solid ui.color(border-strong);
+    padding: ui.space(2);
+    min-width: 0;
+    vertical-align: top;
+  }
+  th {
+    background: ui.color(surface-2);
+    font-weight: ui.weight(semibold);
+  }
+  caption {
+    padding: ui.space(2);
+    text-align: left;
+  }
+  pre {
+    @include ui.mono;
+    padding: ui.space(3);
+    background: ui.color(surface-2);
+    border: 1px solid ui.color(border);
+  }
 }

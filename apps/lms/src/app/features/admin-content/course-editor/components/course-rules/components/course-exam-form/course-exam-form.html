@@ -1,4 +1,9 @@
-<div class="course-exam-form">
+<fieldset
+  class="course-exam-form"
+  [disabled]="busy()"
+  (keydown.enter)="enter($event)"
+>
+  <legend class="sr-only">Thiết lập bài kiểm tra cuối khóa</legend>
   <ui-field label="Tên bài thi" required>
     <input
       uiInput
@@ -16,12 +21,16 @@
       />
     </ui-field>
     <ui-field label="Số câu mỗi lượt" required>
+      @if (fixed()) {
+      <input uiInput type="number" [value]="selectedIds().length" readonly />
+      } @else {
       <input
         uiInput
         type="number"
         [formField]="examForm.questionCount"
         (keydown.enter)="save($event)"
       />
+      }
     </ui-field>
     <ui-field label="Điểm đạt (%)" required>
       <input
@@ -32,6 +41,123 @@
       />
     </ui-field>
   </div>
+  <section class="stack" aria-label="Chọn câu hỏi">
+    <h3>Bộ câu hỏi</h3>
+    <ui-field label="Cách lấy câu hỏi">
+      <select uiSelect [formField]="examForm.selectionMode">
+        <option value="RANDOM_POOL">
+          Lấy ngẫu nhiên từ bộ câu hỏi đã chọn
+        </option>
+        <option value="FIXED">Cố định các câu đã chọn</option>
+      </select>
+    </ui-field>
+    <div class="row row--gap-2">
+      <input
+        uiInput
+        type="search"
+        aria-label="Tìm câu hỏi cho bài thi"
+        placeholder="Tìm mã hoặc nội dung câu hỏi"
+        [value]="search()"
+        (input)="setSearch($event)"
+      />
+      <button
+        uiButton
+        type="button"
+        size="sm"
+        (click)="selectPage()"
+        [disabled]="busy() || questionsLoading()"
+      >
+        Chọn trang này
+      </button>
+      <button
+        uiButton
+        type="button"
+        size="sm"
+        (click)="clearSelection()"
+        [disabled]="busy()"
+      >
+        Bỏ chọn tất cả
+      </button>
+    </div>
+    <p>
+      Đã chọn {{ selectedIds().length }} câu. {{ fixed() ? 'Đề sử dụng toàn bộ
+      các câu đã chọn.' : 'Mỗi lượt lấy ngẫu nhiên số câu đã cấu hình từ bộ
+      này.' }}
+    </p>
+    @if (questionsLoading()) {
+    <p role="status">Đang tải ngân hàng câu hỏi…</p>
+    } @else if (questionsError(); as failure) {
+    <ui-alert tone="danger"
+      >{{ failure.message }}<button
+        uiButton
+        type="button"
+        size="sm"
+        (click)="retryQuestions.emit()"
+      >
+        Tải lại câu hỏi
+      </button></ui-alert
+    >
+    } @else {
+    <fieldset class="course-exam-form__pool" [disabled]="busy()">
+      <legend class="sr-only">Các câu hỏi của bài kiểm tra</legend>
+      @for (question of rows(); track question.id) {
+      <label class="course-exam-form__question">
+        <input
+          uiCheckbox
+          type="checkbox"
+          [checked]="selected().has(question.id)"
+          (change)="selectQuestion(question.id, $event)"
+        />
+        <span
+          ><strong>{{ question.code }}</strong
+          ><span>{{ question.contentPreview }}</span></span
+        >
+      </label>
+      } @empty {
+      <p>Không có câu hỏi phù hợp trong chương trình.</p>
+      }
+    </fieldset>
+    @if (pages() > 1) {
+    <div class="row row--gap-2">
+      <button
+        uiButton
+        type="button"
+        size="sm"
+        [disabled]="currentPage() === 0"
+        (click)="page.set(currentPage() - 1)"
+      >
+        Trang câu hỏi trước
+      </button>
+      <span>Trang {{ currentPage() + 1 }}/{{ pages() }}</span>
+      <button
+        uiButton
+        type="button"
+        size="sm"
+        [disabled]="currentPage() + 1 >= pages()"
+        (click)="page.set(currentPage() + 1)"
+      >
+        Trang câu hỏi sau
+      </button>
+    </div>
+    } } @if (examForm.questionIds().touched()) { @for (failure of
+    examForm.questionIds().errors(); track $index) {
+    <ui-alert tone="danger">{{ failure.message }}</ui-alert>
+    } }
+    <label class="row row--gap-2"
+      ><input
+        uiCheckbox
+        type="checkbox"
+        [formField]="examForm.shuffleQuestions"
+      />Trộn thứ tự câu hỏi</label
+    >
+    <label class="row row--gap-2"
+      ><input
+        uiCheckbox
+        type="checkbox"
+        [formField]="examForm.shuffleOptions"
+      />Trộn thứ tự phương án</label
+    >
+  </section>
   <section class="stack" aria-labelledby="course-exam-retake">
     <h3 id="course-exam-retake">Thi lại</h3>
     <div class="course-exam-form__numbers">
@@ -69,6 +195,56 @@
       Cho phép thi lại sau khi đạt
     </label>
   </section>
+  <details class="course-exam-form__advanced">
+    <summary>Cấu hình nâng cao: lịch thi, chấm điểm và đáp án</summary>
+    <div class="stack">
+      <ui-field label="Mô tả bài kiểm tra">
+        <textarea
+          uiTextarea
+          rows="3"
+          [formField]="examForm.description"
+        ></textarea>
+      </ui-field>
+      <div class="course-exam-form__numbers">
+        <ui-field label="Mở đề" hint="Để trống nếu không giới hạn."
+          ><input uiInput type="datetime-local" [formField]="examForm.openAt"
+        /></ui-field>
+        <ui-field label="Đóng đề" hint="Để trống nếu không giới hạn."
+          ><input uiInput type="datetime-local" [formField]="examForm.closeAt"
+        /></ui-field>
+        <ui-field label="Quyền xem đáp án và giải thích"
+          ><select uiSelect [formField]="examForm.reviewPolicy">
+            <option value="AFTER_SUBMIT">Ngay sau khi nộp bài</option>
+            <option value="AFTER_PASS">Chỉ khi đã đạt</option>
+            <option value="AFTER_CLOSE">Sau khi đóng đề</option>
+            <option value="NEVER">Không cho xem</option>
+          </select></ui-field
+        >
+        <ui-field label="Chấm câu nhiều đáp án"
+          ><select uiSelect [formField]="examForm.scoringMode">
+            <option value="ALL_OR_NOTHING">Đúng toàn bộ mới có điểm</option>
+            <option value="PARTIAL">Chấm điểm từng phần</option>
+          </select></ui-field
+        >
+        <ui-field label="Điểm cuối của bài kiểm tra"
+          ><select uiSelect [formField]="examForm.scoreMethod">
+            <option value="BEST">Điểm cao nhất</option>
+            <option value="LAST">Lượt gần nhất</option>
+          </select></ui-field
+        >
+        <ui-field label="Gia hạn nộp bài (giây)"
+          ><input uiInput type="number" [formField]="examForm.graceSeconds"
+        /></ui-field>
+      </div>
+      <label class="row row--gap-2"
+        ><input
+          uiCheckbox
+          type="checkbox"
+          [formField]="examForm.requireLessonsCompleted"
+        />Yêu cầu hoàn thành các bài học trước khi thi</label
+      >
+    </div>
+  </details>
   @if (error(); as failure) {
   <ui-alert tone="danger">{{ failure.message }}</ui-alert>
   }
@@ -86,4 +262,4 @@
       Hủy
     </button>
   </div>
-</div>
+</fieldset>

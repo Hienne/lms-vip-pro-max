@@ -70,6 +70,7 @@ export class CourseInfo {
   readonly draft = input.required<FieldTree<CourseDraftValue>>();
   /** A course being created: its code is typed here, and the owner is shown beside it. */
   readonly create = input(false);
+  readonly showErrors = input(false);
   /** False on a published revision: the objectives cannot be added or removed. */
   readonly editable = input(true);
   readonly ownerName = input('');

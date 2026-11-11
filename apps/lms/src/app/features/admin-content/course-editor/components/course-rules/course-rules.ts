@@ -1,5 +1,11 @@
-import { Component, computed, inject, input } from '@angular/core';
-import { RouterLink } from '@angular/router';
+import {
+  Component,
+  computed,
+  inject,
+  input,
+  linkedSignal,
+  untracked,
+} from '@angular/core';
 import { FormField, type FieldTree } from '@angular/forms/signals';
 import type { QuizSummary } from '@lms/contracts';
 import {
@@ -52,7 +58,6 @@ const QUIZ_STATUS_LABEL: Record<QuizSummary['status'], string> = {
     Icon,
     Input,
     QuestionImport,
-    RouterLink,
     Select,
   ],
   providers: [
@@ -79,6 +84,15 @@ export class CourseRules {
 
   protected readonly store = inject(CourseEditorStore);
   protected readonly exam = inject(CourseExamStore);
+  protected readonly canAuthor = computed(() => {
+    const f = this.draft();
+    return [f.title, f.code, f.programId, f.level].every(
+      (field) => !field().invalid(),
+    );
+  });
+  constructor() {
+    this.exam.registerDraft(computed(() => this.draft()().value()));
+  }
 
   /** The course's final exams to pick from; a quiz that is not published says so. */
   protected readonly examOptions = computed(() => {
@@ -102,9 +116,13 @@ export class CourseRules {
   });
 
   /** The form's starting values for a new exam. */
-  protected readonly newExam = computed(() =>
-    newExamValue(this.draft().title().value(), this.exam.activeBank$()),
-  );
+  protected readonly newExam = linkedSignal({
+    source: this.exam.formOpen$,
+    computation: () =>
+      untracked(() =>
+        newExamValue(this.draft().title().value(), this.exam.activeBank$()),
+      ),
+  });
 
   protected readonly statusLabel = QUIZ_STATUS_LABEL;
 

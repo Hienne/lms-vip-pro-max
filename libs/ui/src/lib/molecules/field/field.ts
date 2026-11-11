@@ -41,6 +41,8 @@ export class Field {
   readonly label = input.required<string>();
   readonly required = input(false, { transform: booleanAttribute });
   readonly hint = input('');
+  /** Override blur-based feedback for forms that validate only after an explicit action. */
+  readonly showErrors = input<boolean | undefined>(undefined);
 
   private readonly generatedId = `ui-field-${nextId++}`;
   private readonly formField = contentChild(FormField);
@@ -61,7 +63,7 @@ export class Field {
   protected readonly hintId = computed(() => `${this.controlId()}-hint`);
   private readonly messages = computed(() => {
     const state = this.formField()?.state();
-    if (!state?.touched()) return [];
+    if (!state || !(this.showErrors() ?? state.touched())) return [];
     return state
       .errors()
       .map((error) => error.message)

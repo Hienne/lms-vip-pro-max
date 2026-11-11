@@ -32,7 +32,10 @@
   }
 }
 ui-stat-strip {
-  display: block;
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0, 1fr);
+  grid-template-columns: none;
   margin-bottom: ui.space(6);
 }
 .assessment__result-count {

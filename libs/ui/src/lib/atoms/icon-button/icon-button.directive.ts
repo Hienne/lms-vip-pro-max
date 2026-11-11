@@ -28,7 +28,9 @@ export type IconButtonSize = 'md' | 'sm';
     '[attr.type]': 'type',
     '[attr.aria-label]': 'label()',
   },
-  hostDirectives: [{ directive: Tooltip, inputs: ['uiTooltip: label'] }],
+  hostDirectives: [
+    { directive: Tooltip, inputs: ['uiTooltip: label', 'tooltipDisabled'] },
+  ],
 })
 export class IconButton {
   /** `button` on a native button, none on a link. */

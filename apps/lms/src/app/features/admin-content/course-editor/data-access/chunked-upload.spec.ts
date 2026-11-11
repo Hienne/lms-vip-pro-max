@@ -170,6 +170,17 @@ describe('chunkedUpload', () => {
       ]);
     });
 
+    it.each(['', 'application/octet-stream', 'video/x-m4v'])(
+      'normalizes browser MIME %s for an MP4 filename',
+      async (type) => {
+        await run(upload(fileOf(100, 'VIDEO.MP4', type)), POLL_MS * 3);
+        expect(called(assetEndpoints.startUpload)[0][1].body).toMatchObject({
+          mimeType: 'video/mp4',
+        });
+        expect(last()).toMatchObject({ type: 'ready' });
+      },
+    );
+
     it('hashes the file once and reuses its slice hashes for the parts', async () => {
       await run(upload(file()), POLL_MS * 3);
       expect(hasher.hashed).toEqual([PART * 2 + 5]);
