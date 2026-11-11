@@ -18,7 +18,7 @@ import {
   Spinner,
   Textarea,
 } from '@lms/ui';
-import { defer, type Observable } from 'rxjs';
+import { firstValueFrom } from 'rxjs';
 import {
   UPLOAD_ACCEPT,
   uploadProblem,
@@ -139,21 +139,19 @@ export class StartCourseDialog {
 }
 
 /**
- * Opens the start form. The observable is cold, opens on subscribe and emits once with the queued
- * job, or completes without a value when the dialog is dismissed.
+ * Opens the start form. Resolves with the queued job, or `undefined` when the dialog is dismissed.
  */
 export function startCourseWithAi(
   dialog: Dialog,
-): Observable<CourseJob | undefined> {
-  return defer(() =>
-    dialog
-      .open<CourseJob, unknown, StartCourseDialog>(StartCourseDialog, {
-        role: 'dialog',
-        ariaModal: true,
-        ariaLabelledBy: 'start-course-title',
-        backdropClass: 'dialog-backdrop',
-        panelClass: 'dialog-pane',
-      })
-      .closed.pipe(),
+): Promise<CourseJob | undefined> {
+  return firstValueFrom(
+    dialog.open<CourseJob, unknown, StartCourseDialog>(StartCourseDialog, {
+      role: 'dialog',
+      ariaModal: true,
+      ariaLabelledBy: 'start-course-title',
+      backdropClass: 'dialog-backdrop',
+      panelClass: 'dialog-pane',
+    }).closed,
+    { defaultValue: undefined },
   );
 }

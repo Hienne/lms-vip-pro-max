@@ -23,6 +23,7 @@ import { serverData } from '../../../../../core/data-access/server-data';
 import { serverMutation } from '../../../../../core/data-access/server-mutation';
 import { EndpointClient } from '../../../../../core/http/endpoint-client';
 import { NetworkStore } from '../../../../../core/network/network.store';
+import { pollWhileVisible } from '../../../../../core/polling/poll-while-visible';
 
 /** How often a job that is still being written is asked about. */
 export const REVIEW_POLL_INTERVAL_MS = 3000;
@@ -122,8 +123,9 @@ export class CourseReviewStore {
 
   private readonly pollTimer = effect((onCleanup) => {
     if (!this.working() || this.network.offline$()) return;
-    const timer = setInterval(() => this.polls.bump(), REVIEW_POLL_INTERVAL_MS);
-    onCleanup(() => clearInterval(timer));
+    onCleanup(
+      pollWhileVisible(REVIEW_POLL_INTERVAL_MS, () => this.polls.bump()),
+    );
   });
 
   // ---- the outline the author edits ---------------------------------------------------------

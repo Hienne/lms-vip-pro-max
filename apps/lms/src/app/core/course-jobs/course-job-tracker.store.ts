@@ -17,6 +17,7 @@ import { invalidation } from '../data-access/invalidation';
 import { serverData } from '../data-access/server-data';
 import { EndpointClient } from '../http/endpoint-client';
 import { NetworkStore } from '../network/network.store';
+import { pollWhileVisible } from '../polling/poll-while-visible';
 import { SessionStore } from '../session/session.store';
 import { CourseJobAccess } from './course-job-access';
 
@@ -104,8 +105,9 @@ export class CourseJobTrackerStore {
 
   private readonly pollTimer = effect((onCleanup) => {
     if (!this.shouldPoll()) return;
-    const timer = setInterval(() => this.polls.bump(), COURSE_POLL_INTERVAL_MS);
-    onCleanup(() => clearInterval(timer));
+    onCleanup(
+      pollWhileVisible(COURSE_POLL_INTERVAL_MS, () => this.polls.bump()),
+    );
   });
 
   private readonly noticeTimer = effect((onCleanup) => {

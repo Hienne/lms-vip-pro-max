@@ -95,7 +95,7 @@ export class CourseEditor implements HasUnsavedChanges {
 
   /** Opens the start form; the job then runs in the background and the owl follows it. */
   protected generateWithAi(): void {
-    startCourseWithAi(this.dialog).subscribe();
+    void startCourseWithAi(this.dialog);
   }
 
   private readonly model = linkedSignal(() => {
