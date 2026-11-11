@@ -6,6 +6,10 @@ import type { Citation } from '@lms/contracts';
  * type is read from the extension.
  */
 function locationParts(citation: Citation): string[] {
+  // A lesson has no pages: it is placed by its chapter and lesson.
+  if (citation.lesson) {
+    return [citation.lesson.chapterTitle, citation.lesson.lessonTitle];
+  }
   const { page, lineStart, lineEnd, fileName } = citation;
   const range =
     lineStart === lineEnd ? `${lineStart}` : `${lineStart}–${lineEnd}`;
@@ -13,7 +17,7 @@ function locationParts(citation: Citation): string[] {
   return [/\.docx$/i.test(fileName) ? `đoạn ${range}` : `dòng ${range}`];
 }
 
-/** `trang 3 · dòng 13–27` */
+/** `trang 3 · dòng 13–27`, or `Chương 1 · Lãi suất` for a lesson */
 export function citationLocation(citation: Citation): string {
   return locationParts(citation).join(' · ');
 }

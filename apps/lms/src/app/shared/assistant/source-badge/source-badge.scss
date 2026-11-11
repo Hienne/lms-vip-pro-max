@@ -26,4 +26,11 @@
     overflow-wrap: anywhere;
     white-space: pre-wrap;
   }
+
+  &__open {
+    @include ui.text(sm, secondary);
+    display: inline-block;
+    margin-top: ui.space(3);
+    color: ui.color(primary);
+  }
 }

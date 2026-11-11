@@ -1,5 +1,6 @@
 import { Component, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
+import type { DocumentScope } from '@lms/contracts';
 import type { Upload } from '../../data-access/assistant.model';
 import { DocumentUpload } from './document-upload';
 
@@ -7,12 +8,16 @@ import { DocumentUpload } from './document-upload';
   imports: [DocumentUpload],
   template: `<app-document-upload
     [uploads]="uploads()"
+    [canShareGlobally]="admin()"
+    [(scope)]="scope"
     (files)="added.push($event)"
     (dismiss)="dismissed.push($event)"
   />`,
 })
 class Host {
   readonly uploads = signal<readonly Upload[]>([]);
+  readonly admin = signal(false);
+  readonly scope = signal<DocumentScope>('unit');
   readonly added: File[][] = [];
   readonly dismissed: number[] = [];
 }
@@ -22,6 +27,7 @@ const upload = (over: Partial<Upload>): Upload => ({
   file: new File(['x'], 'a.md'),
   name: 'a.md',
   size: 2048,
+  scope: 'unit',
   state: 'waiting',
   error: null,
   ...over,
@@ -59,6 +65,30 @@ describe('DocumentUpload', () => {
     Object.defineProperty(input, 'files', { value: [chosen] });
     input.dispatchEvent(new Event('change', { bubbles: true }));
     expect(host.added).toEqual([[chosen]]);
+  });
+
+  const scopeLabels = () =>
+    Array.from(el.querySelectorAll('[role="option"]')).map((o) =>
+      o.textContent?.trim(),
+    );
+
+  it('asks who may find the document, without the whole-system choice for anyone but an admin', () => {
+    expect(text()).toContain('Ai tìm thấy tài liệu này');
+    expect(scopeLabels()).toEqual(['Chỉ mình tôi', 'Đơn vị của tôi']);
+    expect(host.scope()).toBe('unit');
+  });
+
+  it('offers the whole system to an admin and reports the choice', () => {
+    host.admin.set(true);
+    fixture.detectChanges();
+    expect(scopeLabels()).toEqual([
+      'Chỉ mình tôi',
+      'Đơn vị của tôi',
+      'Toàn hệ thống',
+    ]);
+    (el.querySelectorAll('[role="option"]')[2] as HTMLElement).click();
+    fixture.detectChanges();
+    expect(host.scope()).toBe('global');
   });
 
   it('lists nothing when the queue is empty', () => {

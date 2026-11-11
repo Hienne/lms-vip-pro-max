@@ -15,7 +15,7 @@ import { z } from 'zod';
  * rest are new with the backend's `/api/v1/knowledge`.
  */
 export const knowledgeEndpoints = {
-  /** Everyone's documents, newest first; `mine` and `status` narrow the list. */
+  /** The documents the caller may read, newest first; `mine` and `status` narrow the list. */
   documents: defineEndpoint({
     method: 'get',
     path: '/api/v1/knowledge/documents',
@@ -29,13 +29,23 @@ export const knowledgeEndpoints = {
     params: z.object({ documentId: z.number().int() }),
     response: KnowledgeDocumentSchema,
   }),
-  /** Uploads a `.pdf`, `.md` or `.docx`; it answers 201 with the document `queued`. */
+  /** Uploads a `.pdf`, `.md` or `.docx` with its scope; it answers 201 with the document `queued`. */
   uploadDocument: defineEndpoint({
     method: 'post',
     path: '/api/v1/knowledge/documents',
     encoding: 'multipart',
     body: UploadDocumentCommandSchema,
     response: KnowledgeDocumentSchema,
+  }),
+  /**
+   * Removes a document with its file and chunks. The owner may; an admin may remove a global
+   * document or a unit document in their scope. 403 otherwise, not found when it cannot be read.
+   */
+  deleteDocument: defineEndpoint({
+    method: 'delete',
+    path: '/api/v1/knowledge/documents/{documentId}',
+    params: z.object({ documentId: z.number().int() }),
+    response: z.null(),
   }),
   /** One complete answer with its citations (the stream's non-incremental twin). */
   ask: defineEndpoint({

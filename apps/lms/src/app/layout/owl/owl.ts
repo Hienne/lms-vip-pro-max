@@ -6,9 +6,12 @@ import {
   AGENT_LAUNCHER_ID,
   AGENT_PANEL_ID,
 } from '../../core/assistant/agent-launcher';
-import { DocumentTrackerStore } from '../../core/knowledge/document-tracker.store';
+import { BackgroundJobsStore } from '../../core/background/background-jobs.store';
 import { ShellInsets } from '../shell-insets';
 import { OwlFace } from './owl-face/owl-face';
+
+const capitalised = (text: string): string =>
+  text.charAt(0).toLocaleUpperCase('vi') + text.slice(1);
 
 /**
  * The owl in the corner of every app page: it chews while the user's uploads are being processed,
@@ -30,7 +33,7 @@ import { OwlFace } from './owl-face/owl-face';
   styleUrl: './owl.scss',
 })
 export class Owl {
-  private readonly tracker = inject(DocumentTrackerStore);
+  private readonly jobs = inject(BackgroundJobsStore);
   private readonly chat = inject(AgentChatStore);
   private readonly router = inject(Router);
   /** Height of a bar pinned to the bottom of the page; the owl rises above it. */
@@ -45,13 +48,8 @@ export class Owl {
    */
   readonly quiet = input(false);
 
-  protected readonly state = this.tracker.owlState$;
-  protected readonly finished = computed(
-    () => this.tracker.lastFinished$()?.document ?? null,
-  );
-  protected readonly pendingCount = computed(
-    () => this.tracker.pending$().length,
-  );
+  protected readonly state = this.jobs.state$;
+  protected readonly notice = this.jobs.notice$;
 
   protected readonly launcherId = AGENT_LAUNCHER_ID;
   protected readonly panelId = AGENT_PANEL_ID;
@@ -60,11 +58,7 @@ export class Owl {
     () => this.available() && this.chat.isOpen$(),
   );
 
-  private readonly processing = computed(() =>
-    this.state() === 'processing'
-      ? `đang xử lý ${this.pendingCount()} tài liệu`
-      : null,
-  );
+  private readonly processing = computed(() => this.jobs.pendingText$());
   protected readonly label = computed(() => {
     const processing = this.processing();
     if (!this.available())
@@ -77,21 +71,12 @@ export class Owl {
     if (this.panelOpen()) return '';
     const processing = this.processing();
     if (!this.available())
-      return processing
-        ? `Đang xử lý ${this.pendingCount()} tài liệu`
-        : 'Trợ lý AI';
+      return processing ? capitalised(processing) : 'Trợ lý AI';
     return this.label();
   });
 
-  /** What a screen reader hears when the state changes; it names no count, so it speaks once. */
-  protected readonly announcement = computed(() => {
-    const document = this.finished();
-    if (this.state() === 'processing') return 'Đang xử lý tài liệu.';
-    if (!document) return '';
-    return this.state() === 'done'
-      ? `Đã xử lý xong tài liệu ${document.fileName}.`
-      : `Không xử lý được tài liệu ${document.fileName}.`;
-  });
+  /** What a screen reader hears when the state changes. */
+  protected readonly announcement = this.jobs.announcement$;
 
   /** The owl button: the panel for a user who has the assistant, the assistant screen otherwise. */
   protected activate(): void {
@@ -99,12 +84,13 @@ export class Owl {
     else this.open();
   }
 
+  /** Follows the notice's link: the course review screen, or the assistant for a document. */
   protected open(): void {
-    void this.router.navigateByUrl('/assistant');
+    void this.router.navigateByUrl(this.notice()?.href ?? '/assistant');
     this.dismiss();
   }
 
   protected dismiss(): void {
-    this.tracker.dismiss();
+    this.jobs.dismiss();
   }
 }

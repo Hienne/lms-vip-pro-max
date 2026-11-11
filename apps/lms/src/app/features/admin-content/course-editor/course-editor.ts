@@ -6,6 +6,7 @@ import {
   untracked,
   viewChild,
 } from '@angular/core';
+import { Dialog } from '@angular/cdk/dialog';
 import { form, FormRoot, submit } from '@angular/forms/signals';
 import { RouterLink } from '@angular/router';
 import {
@@ -22,9 +23,11 @@ import {
   Stepper,
   PageHeader,
 } from '@lms/ui';
+import { CourseJobAccess } from '../../../core/course-jobs/course-job-access';
 import type { HasUnsavedChanges } from '../../../core/routing/unsaved-changes.guard';
 import { BottomBar } from '../../../layout/shell-insets';
 import { CatalogStatus } from '../../../shared/status/catalog-status';
+import { startCourseWithAi } from '../ai-course/start-course-dialog/start-course-dialog';
 import { CourseInfo } from './components/course-info/course-info';
 import { CourseOutline } from './components/course-outline/course-outline';
 import { CourseReview } from './components/course-review/course-review';
@@ -86,6 +89,14 @@ const fingerprint = (value: CourseDraftValue) =>
 export class CourseEditor implements HasUnsavedChanges {
   protected readonly store = inject(CourseEditorStore);
   protected readonly steps = EDITOR_STEPS;
+  private readonly dialog = inject(Dialog);
+  /** "Tạo bằng AI" is offered to instructors and admins on a new course only. */
+  protected readonly canGenerate = inject(CourseJobAccess).canGenerate$;
+
+  /** Opens the start form; the job then runs in the background and the owl follows it. */
+  protected generateWithAi(): void {
+    void startCourseWithAi(this.dialog);
+  }
 
   private readonly model = linkedSignal(() => {
     const detail = this.store.course$();

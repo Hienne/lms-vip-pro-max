@@ -44,6 +44,8 @@ export const PublishCourseCommandSchema = z.object({
     .array(z.number().int().positive())
     .max(PUBLISH_LIMITS.shares)
     .optional(),
+  /** Must be true to publish a revision with AI-generated content; the server refuses it otherwise. */
+  reviewConfirmed: z.boolean().optional(),
 });
 export type PublishCourseCommand = z.infer<typeof PublishCourseCommandSchema>;
 

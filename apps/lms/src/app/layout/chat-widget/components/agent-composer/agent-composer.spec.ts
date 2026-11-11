@@ -8,14 +8,18 @@ import { AgentComposer } from './agent-composer';
   template: `<app-agent-composer
     [answering]="answering()"
     [offline]="offline()"
+    [canAttach]="canAttach()"
     (ask)="asked.push($event)"
+    (askWithFile)="attached.push($event)"
     (stop)="stopped = stopped + 1"
   />`,
 })
 class Host {
   readonly answering = signal(false);
   readonly offline = signal(false);
+  readonly canAttach = signal(false);
   readonly asked: string[] = [];
+  readonly attached: { message: string; file: File }[] = [];
   stopped = 0;
 }
 
@@ -131,5 +135,55 @@ describe('AgentComposer', () => {
     await type('Không gửi được');
     await press({});
     expect(host.asked).toEqual([]);
+  });
+  describe('attaching a file to build a course from', () => {
+    const attach = async (
+      fixture: { whenStable(): Promise<unknown> },
+      el: HTMLElement,
+      file: File,
+    ) => {
+      const input = el.querySelector<HTMLInputElement>('input[type="file"]')!;
+      Object.defineProperty(input, 'files', {
+        value: { item: () => file, length: 1 },
+        configurable: true,
+      });
+      input.dispatchEvent(new Event('change'));
+      await fixture.whenStable();
+    };
+
+    it('offers no paperclip to someone who cannot generate a course', async () => {
+      const { el } = await setup();
+      expect(el.querySelector('input[type="file"]')).toBeNull();
+    });
+
+    it('sends the message with the picked file, then forgets the file', async () => {
+      const { fixture, el, type, press, host } = await setup();
+      host.canAttach.set(true);
+      await fixture.whenStable();
+      const file = new File(['x'], 'quy-trinh.md');
+      await attach(fixture, el, file);
+      expect(el.textContent).toContain('quy-trinh.md');
+
+      await type('Tạo khóa học cho giao dịch viên');
+      await press({});
+
+      expect(host.attached).toEqual([
+        { message: 'Tạo khóa học cho giao dịch viên', file },
+      ]);
+      expect(host.asked).toEqual([]);
+      expect(el.textContent).not.toContain('quy-trinh.md');
+    });
+
+    it('refuses a file type the server would not read', async () => {
+      const { fixture, el, host } = await setup();
+      host.canAttach.set(true);
+      await fixture.whenStable();
+      await attach(fixture, el, new File(['x'], 'anh.png'));
+
+      expect(el.querySelector('[role="alert"]')?.textContent).toContain(
+        '.pdf, .md hoặc .docx',
+      );
+      expect(el.textContent).not.toContain('anh.png');
+    });
   });
 });

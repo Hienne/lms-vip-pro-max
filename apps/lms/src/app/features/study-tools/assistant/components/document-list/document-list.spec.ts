@@ -13,6 +13,8 @@ import { DocumentList } from './document-list';
     [pageSize]="20"
     [loading]="loading()"
     [failed]="failed()"
+    [canRemove]="canRemove"
+    (remove)="removed.push($event.id)"
     (pageChange)="pages.push($event)"
     (retry)="retries = retries + 1"
   />`,
@@ -26,6 +28,9 @@ class Host {
   readonly loading = signal(false);
   readonly failed = signal(false);
   readonly pages: number[] = [];
+  readonly removed: number[] = [];
+  readonly canRemove = (d: KnowledgeDocument) =>
+    d.uploadedBy.userId === '000005';
   retries = 0;
 }
 
@@ -53,6 +58,25 @@ describe('DocumentList', () => {
     );
     expect(rows()[0].textContent).toContain(first.uploadedBy.fullName);
     expect(rows()[0].querySelector('.badge')).not.toBeNull();
+  });
+
+  it('says who can find each document', () => {
+    const scopes = rows().map((row) =>
+      row.querySelector('.doc__meta')?.textContent?.replace(/\s+/g, ' '),
+    );
+    expect(scopes[0]).toContain('Đơn vị của tôi');
+    expect(scopes[1]).toContain('Đơn vị của tôi');
+    expect(scopes[2]).toContain('Toàn hệ thống');
+  });
+
+  it('offers delete only where allowed and reports which document', () => {
+    const buttons = rows().map((row) => row.querySelector('button'));
+    expect(buttons[0]).toBeNull();
+    expect(buttons[1]?.getAttribute('aria-label')).toBe(
+      `Xoá ${knowledgeDocumentFixtures[1].fileName}`,
+    );
+    buttons[1]?.click();
+    expect(host.removed).toEqual([knowledgeDocumentFixtures[1].id]);
   });
 
   it.each([

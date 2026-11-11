@@ -222,3 +222,33 @@ describe('choose', () => {
     await vi.waitFor(() => expect(confirmed.results).toEqual([true]));
   });
 });
+
+describe('confirm with an acknowledgement', () => {
+  it('keeps the confirm button off until the statement is ticked', async () => {
+    const { open, results } = setup();
+    open({ ...OPTIONS, acknowledge: 'Tôi đã rà soát nội dung' });
+    await settle();
+
+    const confirmButton = button('Xóa')!;
+    expect(confirmButton.disabled).toBe(true);
+    const tick = document.querySelector<HTMLInputElement>(
+      'input[type="checkbox"]',
+    )!;
+    tick.click();
+    await settle();
+
+    expect(confirmButton.disabled).toBe(false);
+    confirmButton.click();
+    await settle();
+    expect(results).toEqual([true]);
+  });
+
+  it('shows no checkbox when there is nothing to acknowledge', async () => {
+    const { open } = setup();
+    open();
+    await settle();
+
+    expect(document.querySelector('input[type="checkbox"]')).toBeNull();
+    expect(button('Xóa')!.disabled).toBe(false);
+  });
+});

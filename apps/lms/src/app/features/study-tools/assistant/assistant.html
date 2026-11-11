@@ -1,6 +1,37 @@
+@if (store.historyBeside$()) {
+<aside
+  id="assistant-history"
+  class="history"
+  aria-labelledby="assistant-history-title"
+>
+  <header class="history__bar">
+    <h2 id="assistant-history-title" class="history__title">Hội thoại</h2>
+  </header>
+  <div class="history__body">
+    <ng-container [ngTemplateOutlet]="conversations" />
+  </div>
+</aside>
+}
+
 <section class="chat" aria-labelledby="assistant-title">
   <header class="chat__bar">
-    <h1 id="assistant-title" class="chat__title">Trợ lý AI tra cứu tài liệu</h1>
+    <div class="chat__heading">
+      <button
+        uiButton
+        type="button"
+        variant="ghost"
+        size="sm"
+        class="chat__toggle"
+        [attr.aria-controls]="store.historyOpen$() ? 'assistant-history' : null"
+        [attr.aria-expanded]="store.historyOpen$()"
+        (click)="store.toggleHistory()"
+      >
+        <ui-icon name="history" size="sm" />Hội thoại
+      </button>
+      <h1 id="assistant-title" class="chat__title">
+        Trợ lý AI tra cứu tài liệu
+      </h1>
+    </div>
     <button
       uiButton
       type="button"
@@ -19,7 +50,11 @@
     <app-chat-log
       class="chat__thread"
       [turns]="store.turns$()"
+      [ratingId]="store.ratingId$()"
+      [ratingFailedId]="store.ratingFailedId$()"
       (retry)="store.retry($event)"
+      (asked)="store.ask($event)"
+      (rated)="store.rate($event.turnId, $event.command)"
     />
   </div>
   <div class="chat__composer">
@@ -65,9 +100,41 @@
   </div>
 </ng-template>
 
+<ng-template
+  [uiDrawer]="store.historyInDrawer$()"
+  uiDrawerTitle="Hội thoại"
+  (uiDrawerDismiss)="store.closeHistory()"
+>
+  <div id="assistant-history" class="history__drawer">
+    <ng-container [ngTemplateOutlet]="conversations" />
+  </div>
+</ng-template>
+
+<ng-template #conversations>
+  <app-conversation-list
+    [items]="history.items$()"
+    [activeId]="store.conversationId$()"
+    [loading]="history.isLoading$()"
+    [failed]="!!history.loadError$()"
+    [searching]="history.query$() !== ''"
+    [openError]="store.openError$()"
+    [busy]="store.isAnswering$() || store.isOpening$() || history.isChanging$()"
+    (searched)="history.setQuery($event)"
+    (created)="store.newConversation()"
+    (opened)="store.openConversation($event)"
+    (renamed)="history.rename($event.id, $event.title)"
+    (removed)="history.remove($event)"
+    (removedAll)="history.removeAll()"
+    (retried)="history.retryLoad()"
+  />
+</ng-template>
+
 <ng-template #documents>
   <app-document-upload
     [uploads]="store.uploads$()"
+    [canShareGlobally]="store.canShareGlobally$()"
+    [scope]="store.uploadScope$()"
+    (scopeChange)="store.setUploadScope($event)"
     (files)="store.addFiles($event)"
     (dismiss)="store.dismissUpload($event)"
   />
@@ -78,6 +145,8 @@
     [pageSize]="pageSize"
     [loading]="store.isLoading$()"
     [failed]="!!store.loadError$()"
+    [canRemove]="store.canRemove"
+    (remove)="store.removeDocument($event)"
     (pageChange)="store.setPage($event)"
     (retry)="store.retryLoad()"
   />

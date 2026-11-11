@@ -17,6 +17,12 @@
 
   // A `p` is capped at 72ch by the base styles, which would stop it growing and leave the save
   // state and the focus toggle next to it instead of at the bar's right edge.
+  // Shortcuts to the quick assistant; on a phone only the icon fits.
+  &__ask {
+    flex: none;
+    white-space: nowrap;
+  }
+
   &__where {
     @include ui.text(sm, muted);
     @include ui.grow;

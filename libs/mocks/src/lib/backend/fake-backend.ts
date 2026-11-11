@@ -1,9 +1,15 @@
 import {
   adminOrgEndpoints,
   AgentCommandSchema,
+  type ConversationContext,
+  RenameConversationCommandSchema,
   agentEndpoints,
+  conversationEndpoints,
+  answerFeedbackEndpoints,
+  RateAnswerCommandSchema,
   authV1Endpoints,
   identityEndpoints,
+  DocumentScopeSchema,
   knowledgeEndpoints,
   learnerEndpoints,
   organizationEndpoints,
@@ -56,14 +62,22 @@ import {
   AGENT_PROFILE_INVALID,
   AGENT_PROFILE_NOT_OFFERED,
   AGENT_PROFILE_UNCHANGED,
+  AGENT_COURSE_ADMIN_FORM,
+  AGENT_COURSE_ATTACH_FIRST,
+  AGENT_COURSE_CARD_TITLE,
+  AGENT_COURSE_FOR_INSTRUCTORS,
+  AGENT_COURSE_STARTED,
+  agentTextEvents,
   AGENT_SCREEN_REFUSED,
   agentActionEvents,
   agentAiErrorEvents,
   agentDocumentEvents,
+  agentLessonEvents,
   agentNavigateEvents,
   agentNotFoundEvents,
   agentRefusedEvents,
 } from '../assistant-agent/agent.fixtures';
+import { ConversationBook } from '../assistant-agent/conversation-book';
 import { envelopeError, envelopeOk } from '../envelope';
 import { CommunityBackend } from '../community/community.backend';
 import { LearningBackend } from '../learning/learning.backend';
@@ -81,6 +95,7 @@ import {
   AssessmentAuthoringMock,
   type CourseOwnership,
 } from '../assessment/authoring.mock';
+import { CourseJobMock } from '../assistant-course/course-job.mock';
 import { LearnerQuizMock } from '../assessment/learner-quiz.mock';
 import { learningReportHandlers } from '../reports/learning-report.handlers';
 import {
@@ -175,9 +190,12 @@ type Handler = (request: FakeRequest) => FakeReply;
 /** How long the backend keeps a proposed action waiting for its confirmation. */
 const ACTION_TTL_MS = 10 * 60_000;
 
+/** The roles that may generate a course; the others are refused like the real server does. */
+const COURSE_JOB_ROLES = ['INSTRUCTOR', 'ADMIN', 'SUPER_ADMIN'];
+
 interface PendingProposal {
   readonly userId: string;
-  readonly action: Extract<PendingAction, { tool: 'update_profile' }>;
+  readonly action: PendingAction;
   readonly expiresAt: number;
 }
 
@@ -188,6 +206,18 @@ const fold = (text: string): string =>
     .join('')
     .replace(/đ/g, 'd')
     .toLowerCase();
+
+/** The stream with the stored turn named on its `done` line, as the backend writes it. */
+function withTurnId<E extends { readonly type: string }>(
+  events: readonly E[],
+  turnId: number | undefined,
+): E[] {
+  return events.map((event) =>
+    event.type === 'done' && turnId !== undefined
+      ? { ...event, turnId }
+      : event,
+  );
+}
 
 const PROFILE_FIELDS = [
   { marker: 'chuc danh', field: 'positionName', label: 'Chức danh' },
@@ -212,6 +242,7 @@ export class FakeBackend {
       this.learning.courseOwnership(courseId),
   );
   private readonly learnerQuiz = new LearnerQuizMock();
+  private readonly courseJobs = new CourseJobMock();
   private orgs: Mutable<SeedOrg>[] = SEED_ORGS.map((o) => ({ ...o }));
   private teams: Mutable<SeedTeam>[] = SEED_TEAMS.map((t) => ({ ...t }));
   private users: DbUser[] = SEED_USERS.map((u, index) => ({
@@ -244,6 +275,7 @@ export class FakeBackend {
   /** Changes the assistant proposed and nobody has confirmed, by action id (the backend keeps them in memory too). */
   private pendingActions = new Map<string, PendingProposal>();
   private nextActionSeq = 1;
+  private book = new ConversationBook();
 
   /** Lowers the row limit of the progress export, to see the refusal without 10,000 rows. */
   limitProgressExport(rows: number): void {
@@ -325,11 +357,18 @@ export class FakeBackend {
     [knowledgeEndpoints.documents, (r) => this.listDocuments(r)],
     [knowledgeEndpoints.document, (r) => this.getDocument(r)],
     [knowledgeEndpoints.uploadDocument, (r) => this.uploadDocument(r)],
+    [knowledgeEndpoints.deleteDocument, (r) => this.deleteDocument(r)],
     [knowledgeEndpoints.ask, (r) => this.ask(r)],
     [knowledgeEndpoints.askStream, (r) => this.askStream(r)],
     [agentEndpoints.stream, (r) => this.agentStream(r)],
     [agentEndpoints.confirmAction, (r) => this.confirmAction(r)],
     [agentEndpoints.cancelAction, (r) => this.cancelAction(r)],
+    [answerFeedbackEndpoints.rate, (r) => this.rateAnswer(r)],
+    [conversationEndpoints.list, (r) => this.listConversations(r)],
+    [conversationEndpoints.detail, (r) => this.getConversation(r)],
+    [conversationEndpoints.rename, (r) => this.renameConversation(r)],
+    [conversationEndpoints.remove, (r) => this.removeConversation(r)],
+    [conversationEndpoints.removeAll, (r) => this.removeAllConversations(r)],
   ]);
 
   /** True for the endpoints this backend answers; the others are not the backend's. */
@@ -339,6 +378,7 @@ export class FakeBackend {
       this.authoring.answers(endpoint) ||
       this.assessment.answers(endpoint) ||
       this.learnerQuiz.answers(endpoint) ||
+      this.courseJobs.answers(endpoint) ||
       learningReportHandlers.has(endpoint)
     );
   }
@@ -349,6 +389,18 @@ export class FakeBackend {
     if (authoring.answers(endpoint)) {
       try {
         return authoring.handle(endpoint, request);
+      } catch (error) {
+        if (error instanceof Refused) return error.reply;
+        throw error;
+      }
+    }
+    if (this.courseJobs.answers(endpoint)) {
+      try {
+        const user = this.caller(request);
+        if (!this.hasRole(user.userId, COURSE_JOB_ROLES)) {
+          return refuse('accessDenied');
+        }
+        return this.courseJobs.handle(endpoint, request, user.userId);
       } catch (error) {
         if (error instanceof Refused) return error.reply;
         throw error;
@@ -490,6 +542,7 @@ export class FakeBackend {
     this.advanceDocuments();
     const rows = this.documents.filter(
       (d) =>
+        this.canReadDocument(actor, d) &&
         (request.query['mine'] !== 'true' ||
           d.uploadedBy.userId === actor.userId) &&
         (statuses.length === 0 || statuses.includes(d.status)),
@@ -498,12 +551,40 @@ export class FakeBackend {
   }
 
   private getDocument(request: FakeRequest): FakeReply {
-    this.actor(request);
+    const actor = this.actor(request);
     this.advanceDocuments();
     const document = this.documents.find(
       (d) => d.id === Number(request.params['documentId']),
     );
-    return document ? ok({ ...document }) : refuse('resourceNotFound');
+    return document && this.canReadDocument(actor, document)
+      ? ok({ ...document })
+      : refuse('resourceNotFound');
+  }
+
+  /** Personal documents belong to their uploader; the mock has one unit, so unit ones are open. */
+  private canReadDocument(actor: DbUser, document: KnowledgeDocument): boolean {
+    return (
+      document.scope !== 'personal' ||
+      document.uploadedBy.userId === actor.userId
+    );
+  }
+
+  private deleteDocument(request: FakeRequest): FakeReply {
+    const actor = this.actor(request);
+    const index = this.documents.findIndex(
+      (d) => d.id === Number(request.params['documentId']),
+    );
+    const document = this.documents[index];
+    if (!document || !this.canReadDocument(actor, document)) {
+      return refuse('resourceNotFound');
+    }
+    const admin = this.hasRole(actor.userId, ['ADMIN', 'SUPER_ADMIN']);
+    if (document.uploadedBy.userId !== actor.userId && !admin) {
+      return refuse('accessDenied');
+    }
+    this.documents.splice(index, 1);
+    this.pendingDocuments.delete(document.id);
+    return ok(null);
   }
 
   private uploadDocument(request: FakeRequest): FakeReply {
@@ -517,6 +598,17 @@ export class FakeBackend {
       return invalid('Cần chọn một tệp.');
     }
     const upload = file as File;
+    const requested =
+      body instanceof FormData
+        ? body.get('scope')
+        : (body as { scope?: unknown } | null)?.scope;
+    const scope = DocumentScopeSchema.catch('unit').parse(requested ?? 'unit');
+    if (
+      scope === 'global' &&
+      !this.hasRole(actor.userId, ['ADMIN', 'SUPER_ADMIN'])
+    ) {
+      return refuse('accessDenied');
+    }
     if (!/\.(pdf|md|docx)$/i.test(upload.name)) {
       return refuse('fileTypeUnsupported');
     }
@@ -527,6 +619,8 @@ export class FakeBackend {
       fileName: upload.name,
       mimeType: upload.type || 'application/octet-stream',
       sizeBytes: upload.size,
+      scope,
+      scopeOrgId: scope === 'unit' ? 1 : null,
       status: 'queued',
       errorMessage: null,
       pageCount: null,
@@ -559,13 +653,48 @@ export class FakeBackend {
   }
 
   private askStream(request: FakeRequest): FakeReply {
-    this.actor(request);
-    const found = !this.questionOf(request).toLowerCase().includes('không có');
+    const user = this.actor(request);
+    const question = this.questionOf(request);
+    const found = !question.toLowerCase().includes('không có');
+    const answer = found
+      ? knowledgeStreamFixture
+      : knowledgeNotFoundStreamFixture;
+    const conversation = this.conversationEvent(user, request, question);
+    const turnId = this.book.record(
+      user.userId,
+      conversation.conversationId,
+      'KNOWLEDGE',
+      question,
+      answer,
+    );
     return {
       status: 200,
       body: envelopeOk(null),
-      events: found ? knowledgeStreamFixture : knowledgeNotFoundStreamFixture,
+      events: [conversation, ...withTurnId(answer, turnId)],
     };
+  }
+
+  /** The first line of an AI stream: the conversation asked about, or a new one. */
+  private conversationEvent(
+    user: DbUser,
+    request: FakeRequest,
+    question: string,
+    context?: ConversationContext,
+  ) {
+    const named = (request.body as { conversationId?: unknown } | null)
+      ?.conversationId;
+    const conversationId = this.book.open(
+      user.userId,
+      typeof named === 'number' && Number.isInteger(named) && named > 0
+        ? named
+        : null,
+      question,
+      context,
+    );
+    if (conversationId === undefined) {
+      return refuse('assistantConversationNotFound');
+    }
+    return { type: 'conversation' as const, conversationId };
   }
 
   // ---- quick assistant: scripted turns and confirmed actions ---------------------------------
@@ -573,16 +702,42 @@ export class FakeBackend {
   private agentStream(request: FakeRequest): FakeReply {
     const user = this.caller(request);
     const parsed = AgentCommandSchema.safeParse(request.body);
-    const last = parsed.success ? parsed.data.messages.at(-1) : undefined;
-    const text = last?.content.trim() ?? '';
-    if (!last || text.length < 1 || text.length > 500) {
+    if (!parsed.success) {
       return invalid('Tin nhắn phải từ 1 đến 500 ký tự.');
     }
 
+    const lesson = parsed.data.context;
+    // The label is the course and lesson title the app sends nowhere: the mock names them by id.
+    const label = lesson
+      ? `Khóa ${lesson.courseId} › Bài ${lesson.lessonId}`
+      : undefined;
+    const conversation = this.conversationEvent(
+      user,
+      request,
+      parsed.data.message,
+      lesson && label ? { ...lesson, label } : undefined,
+    );
+    const turn =
+      lesson && label
+        ? agentLessonEvents(lesson, label, parsed.data.skill === 'tom_tat_bai')
+        : parsed.data.skill === 'tao_khoa_hoc'
+          ? this.courseTurn(
+              user,
+              parsed.data.message,
+              parsed.data.attachmentDocumentId,
+            )
+          : this.scriptedTurn(user, parsed.data.message);
+    const turnId = this.book.record(
+      user.userId,
+      conversation.conversationId,
+      'AGENT',
+      parsed.data.message,
+      turn,
+    );
     return {
       status: 200,
       body: envelopeOk(null),
-      events: this.scriptedTurn(user, text),
+      events: [conversation, ...withTurnId(turn, turnId)],
     };
   }
 
@@ -603,6 +758,57 @@ export class FakeBackend {
     if (folded.includes('loi ai')) return agentAiErrorEvents;
     if (folded.includes('khong co trong tai lieu')) return agentNotFoundEvents;
     return agentDocumentEvents;
+  }
+
+  /**
+   * The `tao_khoa_hoc` skill: a learner is told it is for instructors; without a file the user is
+   * asked to attach one; otherwise a card lists the inputs (the mock takes the question as the
+   * target learners and picks a programme and competency, where the real tool looks them up by the
+   * names the user gave).
+   */
+  private courseTurn(
+    user: DbUser,
+    text: string,
+    attachmentDocumentId: number | undefined,
+  ) {
+    if (!this.hasRole(user.userId, COURSE_JOB_ROLES)) {
+      return agentTextEvents(AGENT_COURSE_FOR_INSTRUCTORS);
+    }
+    if (this.hasRole(user.userId, ['ADMIN', 'SUPER_ADMIN'])) {
+      return agentRefusedEvents('start_course_job', AGENT_COURSE_ADMIN_FORM);
+    }
+    const document = this.documents.find((d) => d.id === attachmentDocumentId);
+    if (!document) {
+      return agentRefusedEvents('start_course_job', AGENT_COURSE_ATTACH_FIRST);
+    }
+    const action: PendingProposal['action'] = {
+      id: `agent-action-${this.nextActionSeq++}`,
+      tool: 'start_course_job',
+      title: AGENT_COURSE_CARD_TITLE,
+      changes: [
+        {
+          field: 'targetLearners',
+          label: 'Đối tượng học viên',
+          from: null,
+          to: text.slice(0, 500),
+        },
+        { field: 'level', label: 'Trình độ', from: null, to: 'Cơ bản' },
+        { field: 'chapters', label: 'Số chương', from: null, to: '3' },
+        {
+          field: 'file',
+          label: 'Tài liệu nguồn',
+          from: null,
+          to: document.fileName,
+        },
+      ],
+      expiresAt: new Date(Date.now() + ACTION_TTL_MS).toISOString(),
+    };
+    this.pendingActions.set(action.id, {
+      userId: user.userId,
+      action,
+      expiresAt: Date.now() + ACTION_TTL_MS,
+    });
+    return agentActionEvents(action);
   }
 
   /** "đổi chức danh … thành <giá trị>": a card, or the words the tool would give back. */
@@ -675,11 +881,62 @@ export class FakeBackend {
     const user = this.caller(request);
     const pending = this.pendingOf(request, user);
     this.pendingActions.delete(pending.action.id);
+    if (pending.action.tool === 'start_course_job') {
+      const fileName =
+        pending.action.changes.find((c) => c.field === 'file')?.to ??
+        'tai-lieu.md';
+      const job = this.courseJobs.queue(
+        user.userId,
+        {
+          targetLearners:
+            pending.action.changes.find((c) => c.field === 'targetLearners')
+              ?.to ?? 'Học viên',
+          level: 'BEGINNER',
+          chapters: 3,
+          programmeId: 1,
+          competencyId: 1,
+        },
+        fileName,
+      );
+      this.book.settle(
+        user.userId,
+        pending.action.id,
+        'confirmed',
+        AGENT_COURSE_STARTED,
+      );
+      return ok({
+        actionId: pending.action.id,
+        tool: pending.action.tool,
+        message: AGENT_COURSE_STARTED,
+        data: {
+          jobId: job.jobId,
+          path: `/admin/courses/ai-drafts/${job.jobId}`,
+        },
+      });
+    }
     const changes = pending.action.changes;
-    if (changes.some((c) => (user[c.field] ?? null) !== c.from)) {
+    if (
+      changes.some(
+        (c) => (user[c.field as ProfileChange['field']] ?? null) !== c.from,
+      )
+    ) {
+      this.book.settle(
+        user.userId,
+        pending.action.id,
+        'failed',
+        BACKEND_RESPONSES.assistantActionStale.message,
+      );
       return refuse('assistantActionStale');
     }
-    for (const c of changes) user[c.field] = c.to as string;
+    for (const c of changes) {
+      user[c.field as ProfileChange['field']] = c.to as string;
+    }
+    this.book.settle(
+      user.userId,
+      pending.action.id,
+      'confirmed',
+      'Đã cập nhật hồ sơ.',
+    );
     return ok({
       actionId: pending.action.id,
       tool: pending.action.tool,
@@ -690,7 +947,77 @@ export class FakeBackend {
 
   private cancelAction(request: FakeRequest): FakeReply {
     const user = this.caller(request);
-    this.pendingActions.delete(this.pendingOf(request, user).action.id);
+    const id = this.pendingOf(request, user).action.id;
+    this.pendingActions.delete(id);
+    this.book.settle(user.userId, id, 'cancelled', null);
+    return ok(null);
+  }
+
+  // ---- saved conversations ---------------------------------------------------------------------
+
+  private conversationIdOf(request: FakeRequest): number {
+    const id = Number(request.params['conversationId']);
+    return Number.isInteger(id) ? id : 0;
+  }
+
+  private listConversations(request: FakeRequest): FakeReply {
+    const user = this.caller(request);
+    const query = this.pageQuery(
+      request,
+      ['lastActivityTime'],
+      'lastActivityTime,desc',
+    );
+    const rows = this.book.list(user.userId, request.query['q'] ?? '');
+    const start = query.page * query.size;
+    return ok({
+      items: rows.slice(start, start + query.size),
+      page: query.page,
+      size: query.size,
+      totalElements: rows.length,
+      totalPages: Math.ceil(rows.length / query.size),
+    });
+  }
+
+  private getConversation(request: FakeRequest): FakeReply {
+    const user = this.caller(request);
+    const found = this.book.get(user.userId, this.conversationIdOf(request));
+    return found ? ok(found) : refuse('assistantConversationNotFound');
+  }
+
+  private renameConversation(request: FakeRequest): FakeReply {
+    const user = this.caller(request);
+    const parsed = RenameConversationCommandSchema.safeParse(request.body);
+    if (!parsed.success)
+      return invalid('Tên hội thoại phải từ 1 đến 80 ký tự.');
+    const renamed = this.book.rename(
+      user.userId,
+      this.conversationIdOf(request),
+      parsed.data.title,
+    );
+    return renamed ? ok(renamed) : refuse('assistantConversationNotFound');
+  }
+
+  private removeConversation(request: FakeRequest): FakeReply {
+    const user = this.caller(request);
+    return this.book.remove(user.userId, this.conversationIdOf(request))
+      ? ok(null)
+      : refuse('assistantConversationNotFound');
+  }
+
+  private rateAnswer(request: FakeRequest): FakeReply {
+    const user = this.caller(request);
+    const parsed = RateAnswerCommandSchema.safeParse(request.body);
+    if (!parsed.success) return invalid('Đánh giá không hợp lệ.');
+    if (parsed.data.reasonCode && parsed.data.helpful) {
+      return invalid('Chỉ đánh giá chưa tốt mới có lý do.');
+    }
+    const turnId = Number(request.params['turnId']);
+    const saved = this.book.rate(user.userId, turnId, parsed.data);
+    return saved ? ok(saved) : refuse('assistantTurnNotFound');
+  }
+
+  private removeAllConversations(request: FakeRequest): FakeReply {
+    this.book.removeAll(this.caller(request).userId);
     return ok(null);
   }
 

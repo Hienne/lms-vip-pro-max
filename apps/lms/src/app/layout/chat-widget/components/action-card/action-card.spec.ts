@@ -103,6 +103,7 @@ describe('ActionCard', () => {
       card({
         pending: {
           ...card().pending,
+          tool: 'update_profile',
           changes: [
             ...card().pending.changes,
             {
@@ -112,7 +113,7 @@ describe('ActionCard', () => {
               to: 'moi@example.test',
             },
           ],
-        },
+        } as ActionCard['pending'],
       }),
     );
     expect(el.querySelector('h3')?.textContent).toBe('Cập nhật hồ sơ cá nhân?');

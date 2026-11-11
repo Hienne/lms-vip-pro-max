@@ -1,3 +1,4 @@
+import { AgentChatStore } from '../../../core/assistant/agent-chat.store';
 import { TestBed } from '@angular/core/testing';
 import { provideRouter, Router } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
@@ -155,6 +156,29 @@ describe('Lesson', () => {
       ).toBe('Bài 3/3');
       expect(el.querySelector('.lesson__where-full')?.textContent).toContain(
         'Phân hệ Thanh toán liên ngân hàng',
+      );
+    });
+
+    it('offers to ask the assistant about this lesson or to summarise it, naming the lesson to the store', () => {
+      const ask = vi
+        .spyOn(TestBed.inject(AgentChatStore), 'askAboutLesson')
+        .mockImplementation(() => undefined);
+      const lesson = {
+        courseId: COURSE,
+        revisionId: detail.content.revision.id,
+        lessonId: lessons()[2].lesson.id,
+        label: expect.stringContaining('Tổng kết') as unknown as string,
+      };
+
+      button('Hỏi về bài này')?.click();
+      button('Tóm tắt bài này')?.click();
+
+      expect(ask).toHaveBeenNthCalledWith(1, lesson, 'Bài này nói gì?');
+      expect(ask).toHaveBeenNthCalledWith(
+        2,
+        lesson,
+        'Tóm tắt bài này',
+        'tom_tat_bai',
       );
     });
 

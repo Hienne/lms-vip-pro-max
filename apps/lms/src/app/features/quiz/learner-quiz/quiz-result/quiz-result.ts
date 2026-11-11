@@ -2,13 +2,14 @@ import { Component, inject } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { Button, Empty, ErrorState, Skeleton } from '@lms/ui';
 import { AssessmentResult } from './components/assessment-result/assessment-result';
+import { QuizExplainStore } from './data-access/quiz-explain.store';
 import { QuizResultStore } from './data-access/quiz-result.store';
 
 /** `quiz/:id/result/:attemptId`: loads the graded attempt and hands it to the result view. */
 @Component({
   selector: 'app-quiz-result',
   imports: [AssessmentResult, Button, Empty, ErrorState, RouterLink, Skeleton],
-  providers: [QuizResultStore],
+  providers: [QuizResultStore, QuizExplainStore],
   template: `
     @if (store.loadError$(); as error) {
       <ui-error-state
@@ -31,6 +32,10 @@ import { QuizResultStore } from './data-access/quiz-result.store';
         [canRetry]="store.canRetry$()"
         [reviewOpen]="store.reviewOpen$()"
         (reviewOpenChange)="store.setReviewOpen($event)"
+        [explainable]="explainer.available$()"
+        [explanations]="explainer.all$()"
+        [explainBusy]="explainer.working$() !== null"
+        (explain)="explainer.explain(result.attemptId, $event)"
       />
     } @else {
       <div class="result__loading" aria-busy="true">
@@ -43,4 +48,5 @@ import { QuizResultStore } from './data-access/quiz-result.store';
 })
 export class QuizResult {
   protected readonly store = inject(QuizResultStore);
+  protected readonly explainer = inject(QuizExplainStore);
 }

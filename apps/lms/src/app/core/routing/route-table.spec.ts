@@ -86,6 +86,7 @@ describe('route table', () => {
         'admin/catalog',
         'admin/courses',
         'admin/courses/new',
+        'admin/courses/ai-drafts/:jobId',
         'admin/courses/:id/edit',
         'admin/lessons',
         'admin/questions',

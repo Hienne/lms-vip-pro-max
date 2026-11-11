@@ -15,6 +15,15 @@
     }
   }
 
+  &__suggestions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: ui.space(2);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
   &__who {
     @include ui.text(sm, muted);
     font-weight: ui.weight(medium);

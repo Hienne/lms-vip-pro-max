@@ -16,5 +16,6 @@ export * from './lib/learning/video-notes.fixtures';
 export * from './lib/learning/learning.backend';
 export * from './lib/knowledge/knowledge.fixtures';
 export * from './lib/assistant-agent/agent.fixtures';
+export * from './lib/assistant-course/course-job.mock';
 export * from './lib/community/community.fixtures';
 export * from './lib/community/community.backend';

@@ -13,4 +13,7 @@
   <p class="source__file">{{ citation().fileName }}</p>
   <p class="source__where">{{ location() }}</p>
   <p class="source__quote">{{ citation().snippet }}</p>
+  @if (citation().lesson; as lesson) {
+  <a class="source__open" [routerLink]="lesson.url">Mở bài học</a>
+  }
 </ng-template>

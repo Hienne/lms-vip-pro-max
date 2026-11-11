@@ -1,0 +1,135 @@
+<div class="history__bar">
+  <ui-search
+    class="history__search"
+    label="Tìm hội thoại theo tên"
+    placeholder="Tìm theo tên…"
+    width="100%"
+    (searched)="searched.emit($event)"
+  />
+  <button
+    uiButton
+    type="button"
+    size="sm"
+    [disabled]="busy()"
+    (click)="created.emit()"
+  >
+    <ui-icon name="plus" size="sm" />Hội thoại mới
+  </button>
+</div>
+
+@if (openError(); as error) {
+<ui-alert tone="danger" class="history__alert">{{ error }}</ui-alert>
+} @if (failed()) {
+<ui-alert tone="danger" class="history__alert"
+  >Chưa tải được danh sách hội thoại.
+  <button
+    uiAlertAction
+    uiButton
+    type="button"
+    variant="ghost"
+    size="sm"
+    (click)="retried.emit()"
+  >
+    Thử lại
+  </button>
+</ui-alert>
+} @else if (loading()) {
+<div class="history__loading" aria-busy="true">
+  <div uiSkeleton variant="block"></div>
+  <div uiSkeleton variant="block"></div>
+  <div uiSkeleton variant="block"></div>
+</div>
+} @else if (showEmpty()) {
+<ui-empty
+  variant="inline"
+  [title]="searching() ? 'Không có hội thoại nào khớp.' : 'Chưa có hội thoại nào.'"
+  [description]="searching() ? '' : 'Hãy đặt một câu hỏi cho trợ lý.'"
+/>
+}
+
+<ul
+  #list
+  uiList
+  class="history__list"
+  tabindex="-1"
+  aria-label="Hội thoại đã lưu"
+>
+  @for (conversation of items(); track conversation.id) {
+  <li
+    uiListItem
+    class="history__row"
+    [class.history__row--active]="conversation.id === activeId()"
+  >
+    @if (editingId() === conversation.id) {
+    <input
+      #editor
+      uiInput
+      class="history__editor"
+      type="text"
+      maxlength="80"
+      aria-label="Tên mới của hội thoại"
+      [value]="conversation.title"
+      (keydown.enter)="saveRename(conversation, editor.value)"
+      (keydown.escape)="$event.stopPropagation(); cancelRename()"
+    />
+    <button
+      uiIconButton
+      size="sm"
+      label="Lưu tên"
+      (click)="saveRename(conversation, editor.value)"
+    >
+      <ui-icon name="check" size="sm" />
+    </button>
+    <button uiIconButton size="sm" label="Huỷ đổi tên" (click)="cancelRename()">
+      <ui-icon name="x" size="sm" />
+    </button>
+    } @else {
+    <button
+      type="button"
+      class="history__open"
+      [disabled]="busy()"
+      [attr.aria-current]="conversation.id === activeId() ? 'true' : null"
+      (click)="opened.emit(conversation.id)"
+    >
+      <span class="history__title">{{ conversation.title }}</span>
+      <span class="history__time"
+        >{{ conversation.lastActivityTime | fmtRelative }}</span
+      >
+    </button>
+    <button
+      uiIconButton
+      size="sm"
+      [label]="'Đổi tên hội thoại ' + conversation.title"
+      [disabled]="busy()"
+      (click)="startRename(conversation)"
+    >
+      <ui-icon name="pen-line" size="sm" />
+    </button>
+    <button
+      uiIconButton
+      size="sm"
+      [label]="'Xoá hội thoại ' + conversation.title"
+      [disabled]="busy()"
+      (click)="removed.emit(conversation)"
+    >
+      <ui-icon name="trash-2" size="sm" />
+    </button>
+    }
+  </li>
+  }
+</ul>
+
+@if (items().length > 0 && !searching()) {
+<div class="history__foot">
+  <button
+    uiButton
+    type="button"
+    variant="ghost"
+    size="sm"
+    [disabled]="busy()"
+    (click)="removedAll.emit()"
+  >
+    <ui-icon name="trash-2" size="sm" />Xoá tất cả hội thoại
+  </button>
+</div>
+}

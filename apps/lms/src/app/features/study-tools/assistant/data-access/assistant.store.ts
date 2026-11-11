@@ -1,37 +1,57 @@
+import { Dialog } from '@angular/cdk/dialog';
 import { BreakpointObserver } from '@angular/cdk/layout';
 import {
   computed,
   DestroyRef,
+  effect,
   inject,
   Injectable,
   linkedSignal,
   signal,
+  untracked,
 } from '@angular/core';
 import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
-import { type ChatStreamEvent, knowledgeEndpoints } from '@lms/contracts';
-import { Toaster } from '@lms/ui';
+import {
+  answerFeedbackEndpoints,
+  type AskCommand,
+  type ChatStreamEvent,
+  type DocumentScope,
+  type KnowledgeDocument,
+  knowledgeEndpoints,
+  type RateAnswerCommand,
+} from '@lms/contracts';
+import { confirm, Toaster } from '@lms/ui';
 import {
   catchError,
   concatMap,
   EMPTY,
+  filter,
+  finalize,
   map,
   Subject,
   type Subscription,
   tap,
 } from 'rxjs';
+import { ConversationsStore } from '../../../../core/assistant/conversations.store';
 import { invalidation } from '../../../../core/data-access/invalidation';
 import { serverData } from '../../../../core/data-access/server-data';
 import { toAppError } from '../../../../core/errors/app-error';
 import { EndpointClient } from '../../../../core/http/endpoint-client';
 import { DocumentTrackerStore } from '../../../../core/knowledge/document-tracker.store';
 import { NetworkStore } from '../../../../core/network/network.store';
+import { SessionStore } from '../../../../core/session/session.store';
+import { AssistantViewStorage } from './assistant-view.storage';
 import type { Answer, Turn, Upload } from './assistant.model';
+import { turnFromStored } from './stored-turns';
 import { uploadProblem } from './upload-rules';
 
 export const DOCUMENTS_PAGE_SIZE = 20;
 
 /** From the `md` breakpoint the documents panel sits beside the chat; below it, it is a drawer. */
 export const PANEL_BESIDE_QUERY = '(min-width: 720px)';
+
+/** From here the conversation list is a column beside the chat; below it, a drawer. */
+export const HISTORY_BESIDE_QUERY = '(min-width: 1100px)';
 
 export const OFFLINE_MESSAGE =
   'Mất kết nối — không gửi được câu hỏi. Thử lại khi có mạng.';
@@ -57,9 +77,16 @@ export class AssistantStore {
   private readonly tracker = inject(DocumentTrackerStore);
   private readonly network = inject(NetworkStore);
   private readonly toaster = inject(Toaster);
+  private readonly dialog = inject(Dialog);
   private readonly breakpoints = inject(BreakpointObserver);
+  private readonly conversations = inject(ConversationsStore);
+  private readonly session = inject(SessionStore);
+  private readonly viewStorage = inject(AssistantViewStorage);
+  private readonly destroyRef = inject(DestroyRef);
 
   private nextId = 1;
+  /** The saved conversation being read back, if any. */
+  private loading: Subscription | null = null;
 
   /** Whether the viewport is wide enough for the panel beside the chat (an input, not state). */
   private readonly wide = toSignal(
@@ -68,12 +95,34 @@ export class AssistantStore {
       .pipe(map((result) => result.matches)),
     { initialValue: this.breakpoints.isMatched(PANEL_BESIDE_QUERY) },
   );
+  private readonly historyWide = toSignal(
+    this.breakpoints
+      .observe(HISTORY_BESIDE_QUERY)
+      .pipe(map((result) => result.matches)),
+    { initialValue: this.breakpoints.isMatched(HISTORY_BESIDE_QUERY) },
+  );
   private streaming: Subscription | null = null;
 
   private readonly state = {
     turns: signal<readonly Turn[]>([]),
+    /** The server conversation the next question continues; null starts a new one. */
+    conversationId: signal<number | null>(null),
     answeringId: signal<number | null>(null),
+    /** The turn whose rating is on its way, and the one whose last rating did not save. */
+    ratingId: signal<number | null>(null),
+    ratingFailedId: signal<number | null>(null),
+    /** A saved conversation is being read from the server. */
+    opening: signal(false),
+    /** Why the last attempt to open a saved conversation failed; null when it did not. */
+    openError: signal<string | null>(null),
+    /** Open beside the chat on a wide screen, a closed drawer on a narrow one, until toggled. */
+    historyOpen: linkedSignal<boolean, boolean>({
+      source: () => this.historyWide(),
+      computation: (wide) => wide,
+    }),
     uploads: signal<readonly Upload[]>([]),
+    /** Who finds the next uploaded files; "my unit" until the user picks another. */
+    uploadScope: signal<DocumentScope>('unit'),
     page: signal(1),
     /** Open beside the chat on a wide screen, closed (a drawer) on a narrow one, until toggled. */
     panelOpen: linkedSignal<boolean, boolean>({
@@ -101,9 +150,30 @@ export class AssistantStore {
 
   readonly turns$ = this.state.turns.asReadonly();
   readonly isAnswering$ = computed(() => this.state.answeringId() !== null);
+  readonly ratingId$ = this.state.ratingId.asReadonly();
+  readonly ratingFailedId$ = this.state.ratingFailedId.asReadonly();
   readonly uploads$ = this.state.uploads.asReadonly();
+  readonly uploadScope$ = this.state.uploadScope.asReadonly();
+  /** Admins may share a document with the whole system; the server refuses it for anyone else. */
+  readonly canShareGlobally$ = computed(() =>
+    (this.session.user$()?.grants ?? []).some((grant) =>
+      ['ADMIN', 'SUPER_ADMIN'].includes(grant.roleCode),
+    ),
+  );
   readonly page$ = this.state.page.asReadonly();
   readonly panelOpen$ = this.state.panelOpen.asReadonly();
+  readonly conversationId$ = this.state.conversationId.asReadonly();
+  readonly isOpening$ = this.state.opening.asReadonly();
+  readonly openError$ = this.state.openError.asReadonly();
+  readonly historyOpen$ = this.state.historyOpen.asReadonly();
+  /** The conversation list is a column beside the chat. */
+  readonly historyBeside$ = computed(
+    () => this.historyWide() && this.historyOpen$(),
+  );
+  /** The conversation list is a drawer over the chat. */
+  readonly historyInDrawer$ = computed(
+    () => !this.historyWide() && this.historyOpen$(),
+  );
   /** The panel is a column beside the chat. */
   readonly panelBeside$ = computed(() => this.wide() && this.panelOpen$());
   /** The panel is a drawer over the chat. */
@@ -138,7 +208,33 @@ export class AssistantStore {
         takeUntilDestroyed(),
       )
       .subscribe();
-    inject(DestroyRef).onDestroy(() => this.streaming?.unsubscribe());
+    inject(DestroyRef).onDestroy(() => {
+      this.streaming?.unsubscribe();
+      this.loading?.unsubscribe();
+    });
+
+    // The page shows the list, so it is read from now on; a deleted conversation may be the open one.
+    this.conversations.watch();
+    this.conversations.removed
+      .pipe(takeUntilDestroyed())
+      .subscribe((removed) => {
+        const open = this.state.conversationId();
+        if (removed === 'all' || (open !== null && removed === open)) {
+          this.stop();
+          this.loading?.unsubscribe();
+          this.setTurns([]);
+          this.state.conversationId.set(null);
+        }
+      });
+    // A reload keeps the open conversation: its id is the tab's, its turns are read from the server.
+    const userId = this.session.user$()?.userId;
+    const saved = userId ? this.viewStorage.read(userId) : null;
+    if (saved !== null) this.read(saved, false);
+    effect(() => {
+      const id = this.state.conversationId();
+      const user = this.session.user$()?.userId;
+      if (user) untracked(() => this.viewStorage.write(user, id));
+    });
   }
 
   setTurns(turns: readonly Turn[]): void {
@@ -147,6 +243,10 @@ export class AssistantStore {
 
   setAnsweringId(id: number | null): void {
     this.state.answeringId.set(id);
+  }
+
+  setUploadScope(scope: DocumentScope): void {
+    this.state.uploadScope.set(scope);
   }
 
   setUploads(uploads: readonly Upload[]): void {
@@ -200,6 +300,47 @@ export class AssistantStore {
     this.answer(turnId, turn.question);
   }
 
+  /**
+   * Sends the user's thumbs for a finished answer, replacing an earlier one. The turn keeps the
+   * server's saved copy, so a failure leaves the earlier choice showing.
+   */
+  rate(turnId: number, command: RateAnswerCommand): void {
+    const serverTurnId = this.turns$().find(
+      (turn) => turn.id === turnId,
+    )?.serverTurnId;
+    if (serverTurnId === undefined || this.state.ratingId() !== null) return;
+    if (this.network.offline$()) {
+      this.state.ratingFailedId.set(turnId);
+      return;
+    }
+    this.state.ratingFailedId.set(null);
+    this.state.ratingId.set(turnId);
+    const userId = this.session.user$()?.userId;
+    const sameUser = () => this.session.user$()?.userId === userId;
+    this.client
+      .call(answerFeedbackEndpoints.rate, {
+        params: { turnId: serverTurnId },
+        body: command,
+      })
+      .pipe(
+        finalize(() => this.state.ratingId.set(null)),
+        takeUntilDestroyed(this.destroyRef),
+      )
+      .subscribe({
+        next: (feedback) => {
+          if (!sameUser()) return;
+          this.setTurns(
+            this.turns$().map((turn) =>
+              turn.id === turnId ? { ...turn, feedback } : turn,
+            ),
+          );
+        },
+        error: () => {
+          if (sameUser()) this.state.ratingFailedId.set(turnId);
+        },
+      });
+  }
+
   private answer(id: number, question: string): void {
     this.setAnsweringId(id);
     if (this.network.offline$()) {
@@ -207,7 +348,7 @@ export class AssistantStore {
       return;
     }
     this.streaming = this.client
-      .stream(knowledgeEndpoints.askStream, { body: { question } })
+      .stream(knowledgeEndpoints.askStream, { body: this.commandFor(question) })
       .subscribe({
         next: (event) => this.apply(id, event),
         error: (error: unknown) => {
@@ -224,8 +365,71 @@ export class AssistantStore {
       });
   }
 
+  /** The question and the conversation it continues; the server holds the earlier turns. */
+  private commandFor(question: string): AskCommand {
+    const conversationId = this.state.conversationId();
+    return conversationId === null
+      ? { question }
+      : { question, conversationId };
+  }
+
+  /** Starts over: the next question opens a new conversation. Refused while an answer is on its way. */
+  newConversation(): void {
+    if (this.isAnswering$()) return;
+    this.loading?.unsubscribe();
+    this.state.opening.set(false);
+    this.state.openError.set(null);
+    this.setTurns([]);
+    this.state.conversationId.set(null);
+    if (!this.historyWide()) this.state.historyOpen.set(false);
+  }
+
+  // ---- saved conversations ---------------------------------------------------------------------
+
+  toggleHistory(): void {
+    this.state.historyOpen.set(!this.historyOpen$());
+  }
+
+  closeHistory(): void {
+    this.state.historyOpen.set(false);
+  }
+
+  /** Reopens a saved conversation; refused while an answer is on its way. */
+  openConversation(id: number): void {
+    if (this.isAnswering$()) return;
+    this.state.openError.set(null);
+    this.read(id, true);
+  }
+
+  /** Reads a conversation from the server; a restore after a reload fails quietly, an open says why. */
+  private read(id: number, announce: boolean): void {
+    this.loading?.unsubscribe();
+    this.state.opening.set(true);
+    this.loading = this.conversations.detail(id).subscribe({
+      next: (detail) => {
+        this.state.opening.set(false);
+        // A question asked while this was loading is newer than what was saved.
+        if (this.isAnswering$()) return;
+        this.setTurns(detail.turns.map(turnFromStored));
+        this.nextId = Math.max(0, ...detail.turns.map((t) => t.id)) + 1;
+        this.state.conversationId.set(detail.id);
+        if (!this.historyWide()) this.state.historyOpen.set(false);
+      },
+      error: (error: unknown) => {
+        this.state.opening.set(false);
+        if (announce) this.state.openError.set(toAppError(error).message);
+        else this.state.conversationId.set(null);
+      },
+    });
+  }
+
   private apply(id: number, event: ChatStreamEvent): void {
     switch (event.type) {
+      case 'conversation':
+        this.state.conversationId.set(event.conversationId);
+        // The list shows a new conversation as soon as it exists.
+        this.conversations.touch();
+        break;
       case 'retrieved':
         this.patchAnswer(id, { status: 'composing', retrieved: event.count });
         break;
@@ -240,7 +444,20 @@ export class AssistantStore {
           text: event.answer,
           citations: event.citations,
         });
+        this.setTurns(
+          this.turns$().map((turn) =>
+            turn.id === id
+              ? {
+                  ...turn,
+                  serverTurnId: event.turnId,
+                  feedback: null,
+                  suggestions: event.suggestions ?? [],
+                }
+              : turn,
+          ),
+        );
         this.setAnsweringId(null);
+        this.conversations.touch();
         break;
       case 'error':
         this.fail(id, event.message);
@@ -251,6 +468,7 @@ export class AssistantStore {
   private fail(id: number, error: string): void {
     this.patchAnswer(id, { status: 'error', error });
     this.setAnsweringId(null);
+    this.conversations.touch();
   }
 
   private patchAnswer(
@@ -283,6 +501,7 @@ export class AssistantStore {
         file,
         name: file.name,
         size: file.size,
+        scope: this.uploadScope$(),
         state: problem ? 'error' : 'waiting',
         error: problem,
       };
@@ -302,10 +521,51 @@ export class AssistantStore {
     this.documentsData.reload();
   }
 
+  /** Shown on a row: the owner, or an admin for a document that is not personal. The server decides. */
+  readonly canRemove = (document: KnowledgeDocument): boolean =>
+    document.uploadedBy.userId === this.session.user$()?.userId ||
+    (document.scope !== 'personal' && this.canShareGlobally$());
+
+  /** Deletes a document after the user agrees; nothing is sent otherwise. */
+  removeDocument(document: KnowledgeDocument): void {
+    confirm(this.dialog, {
+      title: 'Xoá tài liệu này?',
+      message: `“${document.fileName}” sẽ bị xoá khỏi kho và trợ lý không còn trả lời từ tài liệu này, không khôi phục được.`,
+      confirmLabel: 'Xoá',
+      tone: 'danger',
+    })
+      .pipe(
+        filter(Boolean),
+        concatMap(() =>
+          this.client
+            .call(knowledgeEndpoints.deleteDocument, {
+              params: { documentId: document.id },
+            })
+            .pipe(
+              tap(() => {
+                this.changes.bump();
+                this.toaster.success(`Đã xoá ${document.fileName}`);
+              }),
+              catchError((error: unknown) => {
+                this.toaster.error(
+                  'Không xoá được tài liệu',
+                  toAppError(error).message,
+                );
+                return EMPTY;
+              }),
+            ),
+        ),
+        takeUntilDestroyed(this.destroyRef),
+      )
+      .subscribe();
+  }
+
   private send(upload: Upload) {
     this.patchUpload(upload.id, { state: 'uploading' });
     return this.client
-      .call(knowledgeEndpoints.uploadDocument, { body: { file: upload.file } })
+      .call(knowledgeEndpoints.uploadDocument, {
+        body: { file: upload.file, scope: upload.scope },
+      })
       .pipe(
         tap((document) => {
           this.tracker.track(document);

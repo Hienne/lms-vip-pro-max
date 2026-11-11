@@ -1,0 +1,119 @@
+<form [formRoot]="startForm">
+  <div class="start-course__header">
+    <h2 class="start-course__title" id="start-course-title">
+      Tạo khóa học bằng AI
+    </h2>
+    <button
+      type="button"
+      uiIconButton
+      label="Đóng hộp thoại"
+      (click)="cancel()"
+    >
+      <ui-icon name="x" />
+    </button>
+  </div>
+  <div class="start-course__body">
+    <p class="start-course__intro">
+      Tải lên một tài liệu (.pdf, .docx hoặc .md, tối đa 20 MB). Trợ lý viết dàn
+      ý để bạn duyệt trước, rồi mới viết từng bài. Bản nháp luôn cần bạn rà soát
+      trước khi xuất bản.
+    </p>
+    <ui-field label="Tài liệu nguồn" required>
+      <div class="start-course__file">
+        <input
+          #picker
+          type="file"
+          class="sr-only"
+          tabindex="-1"
+          [accept]="accept"
+          (change)="pick($event)"
+        />
+        <button
+          type="button"
+          uiButton
+          variant="secondary"
+          size="sm"
+          (click)="picker.click()"
+        >
+          <ui-icon name="paperclip" size="sm" />Chọn tệp
+        </button>
+        @if (file(); as chosen) {
+        <span class="start-course__file-name">{{ chosen.name }}</span>
+        }
+      </div>
+    </ui-field>
+    @if (fileProblem(); as problem) {
+    <ui-alert tone="danger">{{ problem }}</ui-alert>
+    }
+    <ui-field label="Đối tượng học viên" required>
+      <textarea
+        uiTextarea
+        rows="2"
+        placeholder="Ví dụ: giao dịch viên mới vào làm"
+        [formField]="startForm.targetLearners"
+      ></textarea>
+    </ui-field>
+    <div class="start-course__pair">
+      <ui-field label="Trình độ" required>
+        <select uiSelect [formField]="startForm.level">
+          @for (option of levels; track option.value) {
+          <option [value]="option.value">{{ option.label }}</option>
+          }
+        </select>
+      </ui-field>
+      <ui-field label="Số chương" hint="Hoặc nhập thời lượng bên cạnh">
+        <input uiInput inputmode="numeric" [formField]="startForm.chapters" />
+      </ui-field>
+    </div>
+    <ui-field label="Thời lượng mong muốn (phút)">
+      <input
+        uiInput
+        inputmode="numeric"
+        [formField]="startForm.durationMinutes"
+      />
+    </ui-field>
+    @if (picksUnit()) {
+    <ui-field label="Đơn vị sở hữu khóa học" required>
+      <select
+        uiSelect
+        [formField]="startForm.ownerOrgId"
+        (change)="unitPicked()"
+      >
+        <option value="">— Chọn đơn vị —</option>
+        @for (unit of units(); track unit.id) {
+        <option [value]="unit.id">{{ unit.name }}</option>
+        }
+      </select>
+    </ui-field>
+    }
+    <div class="start-course__pair">
+      <ui-field label="Chương trình đào tạo" required>
+        <select uiSelect [formField]="startForm.programmeId">
+          <option value="">— Chọn chương trình —</option>
+          @for (programme of programmes(); track programme.id) {
+          <option [value]="programme.id">{{ programme.name }}</option>
+          }
+        </select>
+      </ui-field>
+      <ui-field label="Năng lực của câu hỏi" required>
+        <select uiSelect [formField]="startForm.competencyId">
+          <option value="">— Chọn năng lực —</option>
+          @for (competency of competencies(); track competency.id) {
+          <option [value]="competency.id">{{ competency.name }}</option>
+          }
+        </select>
+      </ui-field>
+    </div>
+    @if (error(); as problem) {
+    <ui-alert tone="danger">{{ problem.message }}</ui-alert>
+    }
+  </div>
+  <div class="start-course__footer">
+    <button type="button" uiButton variant="ghost" (click)="cancel()">
+      Hủy
+    </button>
+    <button type="submit" uiButton variant="primary" [disabled]="!canStart()">
+      @if (starting()) {<span uiSpinner label="Đang gửi"></span>}Bắt đầu tạo
+    </button>
+  </div>
+</form>

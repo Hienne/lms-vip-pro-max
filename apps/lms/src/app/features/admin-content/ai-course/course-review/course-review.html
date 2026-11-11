@@ -1,0 +1,330 @@
+<ui-page-header
+  title="Rà soát khóa học do AI tạo"
+  description="Duyệt dàn ý, xem từng bài và câu hỏi đề xuất, rồi tạo bản nháp để chỉnh sửa trong trình soạn khóa học."
+>
+  <div slot="actions">
+    <a uiButton variant="secondary" routerLink="/admin/courses"
+      >Về danh sách khóa học</a
+    >
+  </div>
+</ui-page-header>
+
+@if (store.error$(); as error) {
+<ui-error-state
+  title="Không tải được công việc tạo khóa học"
+  [message]="error.message"
+  (retry)="store.reload()"
+/>
+} @else if (store.content$(); as content) {
+
+<ui-section-card title="Tiến độ">
+  <div class="course-review__progress">
+    <ui-progress
+      [value]="content.progress"
+      label="Tiến độ tạo khóa học"
+      [tone]="content.status === 'failed' ? 'danger' : undefined"
+    />
+    <p class="course-review__status" aria-live="polite">
+      @if (content.status === 'queued' || content.status === 'running') {
+      <span uiSpinner label="Đang xử lý"></span>
+      }{{ stepText() }} ({{ content.progress }}%)
+    </p>
+  </div>
+  @if (content.status === 'failed') {
+  <ui-alert tone="danger" heading="Có bước bị lỗi">
+    {{ content.error || 'Trợ lý chưa viết được một bước.' }} @for (item of
+    store.failedLessons$(); track item.lesson.key) {
+    <span class="course-review__failed-line"
+      >{{ item.lesson.title || item.lesson.key }}: {{ item.lesson.error ||
+      'không viết được' }}</span
+    >
+    }
+    <button
+      uiAlertAction
+      uiButton
+      size="sm"
+      variant="secondary"
+      type="button"
+      [disabled]="store.isActing$()"
+      (click)="store.retry()"
+    >
+      Thử lại
+    </button>
+  </ui-alert>
+  } @if (store.actionError$(); as problem) {
+  <ui-alert tone="danger">{{ problem.message }}</ui-alert>
+  }
+</ui-section-card>
+
+@if (content.outline && store.outline$(); as outline) {
+<ui-section-card title="Dàn ý">
+  @if (store.editable$()) {
+  <p class="course-review__hint">
+    Sửa tên chương, tên bài, thời lượng và mục tiêu nếu cần. Sau khi duyệt, dàn
+    ý bị khóa và trợ lý bắt đầu viết các bài.
+  </p>
+  <ui-field label="Tên khóa học" required>
+    <input
+      uiInput
+      [value]="outline.title"
+      (input)="store.setOutlineTitle(value($event))"
+    />
+  </ui-field>
+  <ui-field label="Mô tả" required>
+    <textarea
+      uiTextarea
+      rows="3"
+      [value]="outline.summary"
+      (input)="store.setOutlineSummary(value($event))"
+    ></textarea>
+  </ui-field>
+  @for (chapter of outline.chapters; track $index; let c = $index) {
+  <section
+    class="course-review__chapter"
+    [attr.aria-label]="'Chương ' + (c + 1)"
+  >
+    <div class="course-review__row">
+      <ui-field [label]="'Chương ' + (c + 1)" required>
+        <input
+          uiInput
+          [value]="chapter.title"
+          (input)="store.setChapterTitle(c, value($event))"
+        />
+      </ui-field>
+      <button
+        uiButton
+        variant="ghost"
+        size="sm"
+        type="button"
+        [disabled]="outline.chapters.length === 1"
+        (click)="store.removeChapter(c)"
+      >
+        Bỏ chương này
+      </button>
+    </div>
+    @for (lesson of chapter.lessons; track $index; let l = $index) {
+    <div class="course-review__lesson-edit">
+      <ui-field [label]="'Bài ' + (c + 1) + '.' + (l + 1)" required>
+        <input
+          uiInput
+          [value]="lesson.title"
+          (input)="store.setLessonTitle(c, l, value($event))"
+        />
+      </ui-field>
+      <ui-field label="Thời lượng (phút)" required>
+        <input
+          uiInput
+          inputmode="numeric"
+          [value]="lesson.estimatedMinutes"
+          (input)="store.setLessonMinutes(c, l, value($event))"
+        />
+      </ui-field>
+      <ui-field label="Mục tiêu (mỗi dòng một mục)">
+        <textarea
+          uiTextarea
+          rows="2"
+          [value]="lines(lesson.objectives)"
+          (input)="store.setLessonObjectives(c, l, value($event))"
+        ></textarea>
+      </ui-field>
+      <button
+        uiButton
+        variant="ghost"
+        size="sm"
+        type="button"
+        [disabled]="chapter.lessons.length === 1"
+        (click)="store.removeLesson(c, l)"
+      >
+        Bỏ bài này
+      </button>
+    </div>
+    }
+    <button
+      uiButton
+      variant="secondary"
+      size="sm"
+      type="button"
+      [disabled]="chapter.lessons.length >= 10"
+      (click)="store.addLesson(c)"
+    >
+      <ui-icon name="plus" size="sm" />Thêm bài
+    </button>
+  </section>
+  }
+  <div class="course-review__actions">
+    <button
+      uiButton
+      variant="secondary"
+      type="button"
+      [disabled]="!store.dirty$() || !store.outlineValid$() || store.isActing$()"
+      (click)="store.saveOutline()"
+    >
+      Lưu dàn ý
+    </button>
+    <button
+      uiButton
+      variant="primary"
+      type="button"
+      [disabled]="!store.outlineValid$() || store.isActing$()"
+      (click)="store.approveOutline()"
+    >
+      Duyệt dàn ý
+    </button>
+  </div>
+  } @else {
+  <p class="course-review__hint">
+    <ui-icon name="lock" size="sm" />Dàn ý đã được duyệt và không sửa được nữa.
+  </p>
+  <h3 class="course-review__outline-title">{{ outline.title }}</h3>
+  <p>{{ outline.summary }}</p>
+  <ol class="course-review__outline">
+    @for (chapter of outline.chapters; track $index) {
+    <li>
+      <strong>{{ chapter.title }}</strong>
+      <ul>
+        @for (lesson of chapter.lessons; track $index) {
+        <li>{{ lesson.title }} · {{ lesson.estimatedMinutes }} phút</li>
+        }
+      </ul>
+    </li>
+    }
+  </ol>
+  }
+</ui-section-card>
+} @else if (content.status === 'waiting_approval' || content.status ===
+'running' || content.status === 'queued') {
+<ui-section-card title="Dàn ý">
+  <p class="course-review__hint">
+    <span uiSpinner label="Đang viết"></span>Trợ lý đang viết dàn ý.
+  </p>
+</ui-section-card>
+} @if (content.outlineLocked) { @for (item of store.lessons$(); track
+item.lesson.key) {
+<ui-section-card
+  [title]="'Bài ' + item.lesson.key + ': ' + (item.lesson.title || '')"
+>
+  <div slot="action">
+    <button
+      uiButton
+      variant="secondary"
+      size="sm"
+      type="button"
+      [disabled]="store.isActing$() || store.isWorking(item.lesson)"
+      (click)="store.regenerate(item.lesson.key)"
+    >
+      <ui-icon name="refresh-cw" size="sm" />Tạo lại bài này
+    </button>
+  </div>
+  @if (store.isWorking(item.lesson)) {
+  <p class="course-review__hint" role="status">
+    <span uiSpinner label="Đang viết bài"></span>Đang viết bài này…
+  </p>
+  } @else if (item.lesson.status === 'failed') {
+  <ui-alert tone="danger"
+    >{{ item.lesson.error || 'Trợ lý chưa viết được bài này.' }}</ui-alert
+  >
+  } @else { @for (block of item.lesson.blocks ?? []; track $index) {
+  <div class="course-review__block">
+    <h3>{{ block.title }}</h3>
+    @if (block.type === 'text') {
+    <app-markdown [source]="block.body" [nested]="true" />
+    } @else {
+    <ol class="course-review__steps">
+      @for (step of block.steps; track $index) {
+      <li>
+        <strong>{{ step.title }}</strong>
+        @if (step.description) {<span> — {{ step.description }}</span>}
+      </li>
+      }
+    </ol>
+    }
+  </div>
+  } @if (item.lesson.sourceNotes?.length) {
+  <details class="course-review__notes">
+    <summary>Ghi chú nguồn ({{ item.lesson.sourceNotes?.length }})</summary>
+    <ul>
+      @for (note of item.lesson.sourceNotes ?? []; track $index) {
+      <li>
+        {{ note.note }} @if (note.page || note.lineStart) {
+        <span class="course-review__meta">{{ where(note) }}</span>
+        }
+      </li>
+      }
+    </ul>
+  </details>
+  } @if (item.questions?.questions?.length) {
+  <div class="course-review__questions">
+    <h3>Câu hỏi đề xuất</h3>
+    @for (question of item.questions?.questions ?? []; track $index; let q =
+    $index) {
+    <article
+      uiCard
+      class="course-review__question"
+      [attr.data-decision]="question.decision ?? 'pending'"
+    >
+      <p class="course-review__question-text">
+        {{ question.content }}
+        <span class="course-review__meta"
+          >{{ difficulty(question.difficulty) }}</span
+        >
+      </p>
+      <ul class="course-review__options">
+        @for (option of question.options; track $index) {
+        <li>
+          {{ option.content }}@if (option.correct) {<strong> · Đúng</strong>}
+        </li>
+        }
+      </ul>
+      @if (question.explanation) {
+      <p class="course-review__meta">Giải thích: {{ question.explanation }}</p>
+      }
+      <div class="course-review__row">
+        @for (d of decisions; track d.value) {
+        <button
+          uiButton
+          size="sm"
+          type="button"
+          [variant]="question.decision === d.value ? 'primary' : 'secondary'"
+          [attr.aria-pressed]="question.decision === d.value"
+          [disabled]="store.isActing$()"
+          (click)="decide(item.lesson.key, q, question.decision, d.value)"
+        >
+          {{ d.label }}
+        </button>
+        }
+      </div>
+    </article>
+    }
+  </div>
+  } }
+</ui-section-card>
+}
+
+<ui-section-card title="Bản nháp khóa học">
+  @if (store.draftId$(); as draftId) {
+  <p>Bản nháp đã được tạo. Hãy rà soát và chỉnh sửa trước khi xuất bản.</p>
+  <a
+    uiButton
+    variant="primary"
+    [routerLink]="['/admin/courses', draftId, 'edit']"
+    >Mở bản nháp</a
+  >
+  } @else {
+  <p class="course-review__hint">
+    Chỉ tạo được bản nháp khi mọi bài học đã viết xong. Chỉ các câu hỏi bạn chấp
+    nhận được đưa vào ngân hàng câu hỏi.
+  </p>
+  <button
+    uiButton
+    variant="primary"
+    type="button"
+    [disabled]="!store.canDraft$() || store.isActing$()"
+    (click)="store.createDraft()"
+  >
+    Tạo bản nháp
+  </button>
+  }
+</ui-section-card>
+} } @else {
+<div uiSkeleton variant="block" class="course-review__placeholder"></div>
+}

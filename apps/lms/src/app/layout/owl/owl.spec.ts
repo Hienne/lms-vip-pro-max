@@ -4,10 +4,10 @@ import { Router } from '@angular/router';
 import type { KnowledgeDocument } from '@lms/contracts';
 import { knowledgeDocumentFixtures } from '@lms/mocks';
 import {
-  type FinishedDocument,
-  DocumentTrackerStore,
-  type OwlState,
-} from '../../core/knowledge/document-tracker.store';
+  BackgroundJobsStore,
+  type BackgroundNotice,
+} from '../../core/background/background-jobs.store';
+import type { OwlState } from '../../core/knowledge/document-tracker.store';
 import { AgentChatStore } from '../../core/assistant/agent-chat.store';
 import { AGENT_LAUNCHER_ID } from '../../core/assistant/agent-launcher';
 import { ShellInsets } from '../shell-insets';
@@ -26,12 +26,13 @@ const failed: KnowledgeDocument = {
   errorMessage: 'Tài liệu không có nội dung văn bản.',
 };
 
-/** The tracker's selectors as plain signals, so a test sets the state the owl reads. */
+/** The background-jobs selectors as plain signals, so a test sets the state the owl reads. */
 class FakeTracker {
-  readonly pending$ = signal<readonly KnowledgeDocument[]>([]);
-  readonly lastFinished$ = signal<FinishedDocument | null>(null);
-  readonly owlState$ = signal<OwlState>('idle');
-  readonly dismiss = vi.fn(() => this.lastFinished$.set(null));
+  readonly pendingText$ = signal<string | null>(null);
+  readonly notice$ = signal<BackgroundNotice | null>(null);
+  readonly state$ = signal<OwlState>('idle');
+  readonly announcement$ = signal('');
+  readonly dismiss = vi.fn(() => this.notice$.set(null));
 }
 
 /** The chat store's launcher side as plain signals; a user without the assistant keeps the old owl. */
@@ -63,7 +64,7 @@ describe('Owl', () => {
     navigate = vi.fn(() => Promise.resolve(true));
     TestBed.configureTestingModule({
       providers: [
-        { provide: DocumentTrackerStore, useValue: tracker },
+        { provide: BackgroundJobsStore, useValue: tracker },
         { provide: AgentChatStore, useValue: chat },
         { provide: Router, useValue: { navigateByUrl: navigate } },
       ],
@@ -82,9 +83,32 @@ describe('Owl', () => {
     pending: KnowledgeDocument[] = [],
     finished: KnowledgeDocument | null = null,
   ) => {
-    tracker.pending$.set(pending);
-    tracker.lastFinished$.set(finished ? { document: finished, at: 0 } : null);
-    tracker.owlState$.set(state);
+    tracker.pendingText$.set(
+      pending.length > 0 ? `đang xử lý ${pending.length} tài liệu` : null,
+    );
+    const ok = finished?.status === 'ready';
+    tracker.notice$.set(
+      finished
+        ? {
+            kind: 'document',
+            fileName: finished.fileName,
+            ok,
+            href: '/assistant',
+            action: ok ? 'Mở trợ lý' : 'Xem chi tiết',
+            at: 0,
+          }
+        : null,
+    );
+    tracker.state$.set(state);
+    tracker.announcement$.set(
+      state === 'processing'
+        ? 'Đang xử lý tài liệu.'
+        : finished
+          ? ok
+            ? `Đã xử lý xong tài liệu ${finished.fileName}.`
+            : `Không xử lý được tài liệu ${finished.fileName}.`
+          : '',
+    );
     fixture.detectChanges();
   };
 
@@ -160,6 +184,25 @@ describe('Owl', () => {
     expect(tracker.dismiss).toHaveBeenCalled();
     fixture.detectChanges();
     expect(bubble()).toBeNull();
+  });
+
+  it('says a course is ready and takes the link to its review screen', () => {
+    tracker.notice$.set({
+      kind: 'course',
+      fileName: 'quy-trinh.md',
+      ok: true,
+      href: '/admin/courses/ai-drafts/5',
+      action: 'Rà soát',
+      at: 0,
+    });
+    tracker.state$.set('done');
+    fixture.detectChanges();
+
+    expect(bubble()?.textContent).toContain('quy-trinh.md');
+    expect(bubble()?.textContent).toContain('Rà soát');
+    (el.querySelector('.owl__link') as HTMLButtonElement).click();
+    expect(navigate).toHaveBeenCalledWith('/admin/courses/ai-drafts/5');
+    expect(tracker.dismiss).toHaveBeenCalled();
   });
 
   it('opens the assistant from the bubble link as well', () => {

@@ -5,13 +5,12 @@
 <div class="message">
   <span class="message__who">Trợ lý</span>
   @let answer = turn().answer; @let view = content(); @if (answer.text) {
-  <p class="message__answer">
-    @for (part of view.parts; track $index) { @if (part.kind === 'text') {
-    <span class="message__run">{{ part.text }}</span>
-    } @else {
-    <app-source-badge [citation]="part.citation" />
-    } }
-  </p>
+  <app-assistant-markdown
+    class="message__answer"
+    [text]="answer.text"
+    [citations]="answer.citations"
+    [badges]="true"
+  />
   } @else if (answer.status === 'searching') {
   <p class="message__progress">
     <span uiSpinner label="Đang tìm"></span>Đang tìm trong tài liệu…
@@ -40,6 +39,19 @@
     <button uiLinkButton type="button" (click)="retry.emit(turn().id)">
       Thử lại
     </button>
+  </p>
+  } @if (answer.status === 'done' && answer.text && turn().serverTurnId) {
+  <app-answer-feedback
+    class="message__feedback"
+    [value]="turn().feedback ?? null"
+    [saving]="ratingBusy()"
+    [failed]="ratingFailed()"
+    (rated)="rated.emit({ turnId: turn().id, command: $event })"
+  />
+  } @if (answer.action; as action) {
+  <p class="message__note">
+    Đề xuất “{{ action.title }}”: {{ actionStatus[action.status] }}{{
+    action.message ? '. ' + action.message : '' }}
   </p>
   }
 </div>

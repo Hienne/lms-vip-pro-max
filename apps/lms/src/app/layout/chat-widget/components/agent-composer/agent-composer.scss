@@ -27,6 +27,24 @@
     }
   }
 
+  &__attach {
+    @include ui.row(2);
+    align-items: center;
+  }
+
+  &__file {
+    @include ui.row(1);
+    @include ui.text(sm);
+    align-items: center;
+    min-width: 0;
+  }
+
+  &__file-name {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
   &__note {
     @include ui.text(xs, muted);
     margin: 0;

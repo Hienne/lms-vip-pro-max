@@ -1,5 +1,9 @@
 @let state = card(); @switch (state.status) { @case ('confirmed') {
-<p class="action-card__result">{{ state.message }}</p>
+<p class="action-card__result">
+  {{ state.message }} @if (state.link; as link) {
+  <a class="action-card__link" [routerLink]="link.path">{{ link.label }}</a>
+  }
+</p>
 } @case ('cancelled') {
 <p class="action-card__result">{{ state.message }}</p>
 } @case ('expired') {
@@ -13,7 +17,13 @@
 } @default {
 <section class="action-card" [attr.aria-label]="question()">
   <h3 class="action-card__title">{{ question() }}</h3>
-  @for (change of state.pending.changes; track change.field) {
+  @for (change of state.pending.changes; track change.field) { @if
+  (state.pending.tool === 'start_course_job') {
+  <div class="change change--set">
+    <p class="change__label">{{ change.label }}</p>
+    <p class="change__to">{{ change.to }}</p>
+  </div>
+  } @else {
   <div class="change">
     @if (several()) {
     <p class="change__label">{{ change.label }}</p>
@@ -25,7 +35,7 @@
       <dd class="change__to">{{ change.to ?? '(trống)' }}</dd>
     </dl>
   </div>
-  } @if (state.message) {
+  } } @if (state.message) {
   <p class="action-card__result action-card__result--error">
     {{ state.message }}
   </p>

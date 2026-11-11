@@ -34,6 +34,10 @@
   }
 
   &__answer {
+    display: block;
+  }
+
+  &__answer {
     line-height: ui.leading(relaxed);
   }
 
@@ -77,6 +81,12 @@
     @include ui.text(sm, muted);
     margin: 0;
     line-height: ui.leading(relaxed);
+  }
+
+  &__tools {
+    @include ui.row(1);
+    flex-wrap: wrap;
+    align-items: flex-start;
   }
 
   &__note {

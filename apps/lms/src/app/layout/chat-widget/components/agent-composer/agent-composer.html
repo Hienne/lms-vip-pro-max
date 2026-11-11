@@ -8,7 +8,9 @@
       class="composer__box"
       rows="1"
       autocomplete="off"
-      placeholder="Nhập câu hỏi…"
+      [placeholder]="
+        file() ? 'Bạn muốn tạo khóa học thế nào?' : 'Nhập câu hỏi…'
+      "
       [formField]="composerForm.message"
       (keydown.enter)="send($event)"
     ></textarea>
@@ -35,7 +37,42 @@
     </button>
     }
   </div>
-  @if (offline()) {
+  @if (canAttach()) {
+  <div class="composer__attach">
+    <input
+      #picker
+      type="file"
+      class="sr-only"
+      tabindex="-1"
+      [accept]="accept"
+      (change)="pick($event)"
+    />
+    <button
+      uiIconButton
+      size="sm"
+      label="Đính kèm tài liệu để tạo khóa học"
+      [disabled]="answering() || offline()"
+      (click)="picker.click()"
+    >
+      <ui-icon name="paperclip" size="sm" />
+    </button>
+    @if (file(); as attached) {
+    <span class="composer__file">
+      <span class="composer__file-name">{{ attached.name }}</span>
+      <button
+        uiIconButton
+        size="sm"
+        label="Bỏ tệp đính kèm"
+        (click)="removeFile()"
+      >
+        <ui-icon name="x" size="sm" />
+      </button>
+    </span>
+    }
+  </div>
+  @if (fileProblem(); as problem) {
+  <p class="composer__note composer__note--error" role="alert">{{ problem }}</p>
+  } } @if (offline()) {
   <p class="composer__note composer__note--error">Mất kết nối.</p>
   } @else if (counting()) {
   <p class="composer__note" [class.composer__note--error]="tooLong()">

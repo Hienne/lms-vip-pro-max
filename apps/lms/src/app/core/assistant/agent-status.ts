@@ -3,6 +3,8 @@ export function toolStatusText(toolName: string | null): string {
   switch (toolName) {
     case 'search_documents':
       return 'Đang tìm trong tài liệu…';
+    case 'search_community':
+      return 'Đang tìm trong cộng đồng…';
     case 'open_screen':
       return 'Đang mở màn hình…';
     case 'update_profile':

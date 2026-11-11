@@ -33,6 +33,16 @@ export const AGENT_PROFILE_INVALID = {
   positionName: 'Chức danh dài tối đa 255 ký tự.',
 } as const;
 
+export const AGENT_COURSE_FOR_INSTRUCTORS =
+  'Tính năng tạo khóa học bằng AI dành cho giảng viên.';
+export const AGENT_COURSE_ADMIN_FORM =
+  'Quản trị viên cần chọn đơn vị sở hữu khóa học: hãy mở Khóa học mới rồi bấm "Tạo bằng AI".';
+export const AGENT_COURSE_ATTACH_FIRST =
+  'Hãy đính kèm một tệp .pdf, .docx hoặc .md bằng nút ghim ở ô soạn tin rồi gửi lại yêu cầu.';
+export const AGENT_COURSE_CARD_TITLE = 'Tạo khóa học bằng AI';
+export const AGENT_COURSE_STARTED =
+  'Đã bắt đầu tạo khóa học. Mở màn hình rà soát để theo dõi.';
+
 /** A turn that ends in words only, as the model would say them. */
 export function agentTextEvents(text: string): readonly AgentStreamEvent[] {
   return [
@@ -56,6 +66,47 @@ export const agentDocumentEvents: readonly AgentStreamEvent[] = [
     citations: knowledgeAnswerFixture.citations,
   },
 ];
+
+/** The answer of a conversation opened from a lesson: one source, the lesson itself. */
+export function agentLessonEvents(
+  lesson: { courseId: number; revisionId: number; lessonId: number },
+  label: string,
+  summarise: boolean,
+): readonly AgentStreamEvent[] {
+  const text = summarise
+    ? 'Bài này có hai ý chính: khái niệm và cách áp dụng [1].'
+    : 'Bài này giới thiệu khái niệm và cách áp dụng vào nghiệp vụ [1].';
+  const [courseTitle = label, lessonTitle = label] = label.split(' › ');
+  return [
+    { type: 'tool', name: summarise ? 'read_lesson' : 'search_courses' },
+    { type: 'delta', text },
+    {
+      type: 'done',
+      answer: text,
+      citations: [
+        {
+          n: 1,
+          documentId: 0,
+          fileName: label,
+          page: null,
+          lineStart: 0,
+          lineEnd: 0,
+          snippet: 'Nội dung bài học được trích từ khóa học.',
+          lesson: {
+            courseId: lesson.courseId,
+            courseTitle,
+            revisionId: lesson.revisionId,
+            chapterTitle: 'Chương 1',
+            lessonId: lesson.lessonId,
+            lessonTitle,
+            blockId: 1,
+            url: `/lesson/${lesson.courseId}/${lesson.lessonId}`,
+          },
+        },
+      ],
+    },
+  ];
+}
 
 export const agentNotFoundEvents: readonly AgentStreamEvent[] = [
   { type: 'tool', name: 'search_documents' },
@@ -91,9 +142,16 @@ export function agentActionEvents(
   action: PendingAction,
 ): readonly AgentStreamEvent[] {
   return [
-    { type: 'tool', name: 'update_profile' },
+    { type: 'tool', name: action.tool },
     { type: 'action_required', action },
-    { type: 'done', answer: AGENT_PROFILE_CARD_TEXT, citations: [] },
+    {
+      type: 'done',
+      answer:
+        action.tool === 'update_profile'
+          ? AGENT_PROFILE_CARD_TEXT
+          : 'Vui lòng kiểm tra và xác nhận để bắt đầu tạo khóa học.',
+      citations: [],
+    },
   ];
 }
 

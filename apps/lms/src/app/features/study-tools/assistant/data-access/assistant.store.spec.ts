@@ -6,12 +6,14 @@ import { ErrorHandler } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import type { ChatStreamEvent, KnowledgeDocument } from '@lms/contracts';
 import {
+  BACKEND_RESPONSES,
   backendRefusal,
   envelopeOk,
   KNOWLEDGE_NOT_FOUND_ANSWER,
   knowledgeDocumentFixtures,
   knowledgeNotFoundStreamFixture,
   knowledgeStreamFixture,
+  seedMe,
 } from '@lms/mocks';
 import {
   parseAppConfig,
@@ -204,6 +206,36 @@ describe('AssistantStore', () => {
         .forEach((r) => r.flush(page([queued])));
     });
 
+    it('sends the scope chosen before the file was added, my unit by default', async () => {
+      await loadDocuments();
+      store.addFiles([file('a.md')]);
+      store.setUploadScope('personal');
+      store.addFiles([file('b.md')]);
+      await settle();
+      const first = upload();
+      expect((first[0].request.body as FormData).get('scope')).toBe('unit');
+      first[0].flush(envelopeOk(queued));
+      await settle();
+      const second = upload();
+      expect((second[0].request.body as FormData).get('scope')).toBe(
+        'personal',
+      );
+      second[0].flush(envelopeOk(queued));
+      await settle();
+      listRequests().forEach((r) => !r.cancelled && r.flush(page([queued])));
+    });
+
+    it('offers the whole system to admins only', async () => {
+      await loadDocuments();
+      const session = TestBed.inject(
+        SessionStore,
+      ) as unknown as FakeSessionStore;
+      session.apply(seedMe('000004'));
+      expect(store.canShareGlobally$()).toBe(false);
+      session.apply(seedMe('000002'));
+      expect(store.canShareGlobally$()).toBe(true);
+    });
+
     it('goes back to the first page and reloads the list once a file is in', async () => {
       await loadDocuments();
       store.setPage(3);
@@ -238,6 +270,81 @@ describe('AssistantStore', () => {
       });
       expect(upload()).toHaveLength(1);
       upload()[0]?.flush(envelopeOk(queued));
+    });
+  });
+
+  describe('removing a document', () => {
+    const del = () =>
+      backend.match((r) => r.url === `${LIST}/99` && r.method === 'DELETE');
+
+    async function confirmDialog(label: string): Promise<void> {
+      await vi.waitFor(() =>
+        expect(document.querySelector('[role="alertdialog"]')).not.toBeNull(),
+      );
+      Array.from(
+        document.querySelectorAll<HTMLButtonElement>(
+          '[role="alertdialog"] button',
+        ),
+      )
+        .find((b) => b.textContent?.trim() === label)
+        ?.click();
+      await settle();
+    }
+
+    afterEach(() => {
+      document
+        .querySelectorAll('.cdk-overlay-container')
+        .forEach((c) => (c.innerHTML = ''));
+    });
+
+    it('lets the owner remove a document, and an admin one that is not personal', async () => {
+      await loadDocuments();
+      const session = TestBed.inject(
+        SessionStore,
+      ) as unknown as FakeSessionStore;
+      session.apply(seedMe('000005'));
+      const mine = {
+        ...queued,
+        uploadedBy: { userId: '000005', fullName: 'A' },
+      };
+      expect(store.canRemove(mine)).toBe(true);
+      expect(
+        store.canRemove({
+          ...mine,
+          uploadedBy: { userId: '000004', fullName: 'B' },
+        }),
+      ).toBe(false);
+      session.apply(seedMe('000002'));
+      expect(store.canRemove({ ...queued, scope: 'unit' })).toBe(true);
+      expect(store.canRemove({ ...queued, scope: 'personal' })).toBe(false);
+    });
+
+    it('asks first, deletes only after Xoá, then reloads the list', async () => {
+      await loadDocuments();
+      store.removeDocument(queued);
+      await confirmDialog('Hủy');
+      expect(del()).toEqual([]);
+
+      store.removeDocument(queued);
+      await confirmDialog('Xoá');
+      const [request] = del();
+      request.flush(envelopeOk(null));
+      await settle();
+      const [reload] = listRequests();
+      reload.flush(page([]));
+    });
+
+    it('keeps the list and says so when the server refuses', async () => {
+      await loadDocuments();
+      store.removeDocument(queued);
+      await confirmDialog('Xoá');
+      const refusal = backendRefusal('accessDenied');
+      del()[0].flush(refusal.body, {
+        status: refusal.status,
+        statusText: 'OK',
+      });
+      await settle();
+      expect(listRequests()).toEqual([]);
     });
   });
 
@@ -369,6 +476,37 @@ describe('AssistantStore', () => {
       expect(store.turns$()[0].answer.status).toBe('done');
     });
 
+    it('sends the conversation id the first line named with the next question, and starts over on request', async () => {
+      await loadDocuments();
+      store.ask('Hỏi một');
+      const first = stream();
+      expect(
+        (first.request.body as { conversationId?: number }).conversationId,
+      ).toBeUndefined();
+      finish(first, [
+        { type: 'conversation', conversationId: 9 },
+        ...knowledgeStreamFixture,
+      ]);
+      await settle();
+
+      store.ask('Còn ngoại lệ?');
+      const second = stream();
+      expect(second.request.body).toEqual({
+        question: 'Còn ngoại lệ?',
+        conversationId: 9,
+      });
+      finish(second, knowledgeNotFoundStreamFixture);
+      await settle();
+
+      store.newConversation();
+      expect(store.turns$()).toEqual([]);
+      store.ask('Chuyện khác');
+      const third = stream();
+      expect(third.request.body).toEqual({ question: 'Chuyện khác' });
+      finish(third, knowledgeNotFoundStreamFixture);
+      await settle();
+    });
+
     it('shows an error event sent in the middle of the stream', async () => {
       await loadDocuments();
       store.ask('Hỏi');
@@ -385,6 +523,24 @@ describe('AssistantStore', () => {
         status: 'error',
         error: 'Mô hình không phản hồi.',
       });
+    });
+
+    it('shows the hourly limit’s message with the wait', async () => {
+      await loadDocuments();
+      store.ask('Hỏi');
+      finish(stream(), [
+        {
+          type: 'error',
+          messageCode: BACKEND_RESPONSES.assistantRateLimited.code,
+          message: BACKEND_RESPONSES.assistantRateLimited.message,
+        },
+      ]);
+      await settle();
+      expect(store.turns$()[0].answer).toMatchObject({
+        status: 'error',
+        error: 'Bạn đã hỏi nhiều, thử lại sau 57 phút.',
+      });
+      expect(store.isAnswering$()).toBe(false);
     });
 
     it('reports a stream that ends without a final line as cut off', async () => {

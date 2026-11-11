@@ -959,6 +959,49 @@ describe('FakeBackend', () => {
       expect(names).toContain('chung.md');
     });
 
+    it('keeps a personal document to its uploader and lets only admins share with everyone', () => {
+      const instructor = login('giangvien');
+      const created = call(knowledgeEndpoints.uploadDocument, instructor, {
+        body: { file: file('rieng.md'), scope: 'personal' },
+      });
+      const document = created.body.data as KnowledgeDocument;
+      expect(document.scope).toBe('personal');
+      const names = (token: string) =>
+        items(call(knowledgeEndpoints.documents, token)).map((d) => d.fileName);
+      expect(names(instructor)).toContain('rieng.md');
+      expect(names(login('hocvien'))).not.toContain('rieng.md');
+      expect(
+        code(
+          call(knowledgeEndpoints.uploadDocument, instructor, {
+            body: { file: file('chung.md'), scope: 'global' },
+          }),
+        ),
+      ).toBe('CORE-ACCESS_DENIED');
+      const shared = call(knowledgeEndpoints.uploadDocument, login('quantri'), {
+        body: { file: file('chung.md'), scope: 'global' },
+      });
+      expect((shared.body.data as KnowledgeDocument).scope).toBe('global');
+    });
+
+    it('deletes a document for its owner, refuses another learner and hides it afterwards', () => {
+      const owner = login('giangvien');
+      const document = call(knowledgeEndpoints.uploadDocument, owner, {
+        body: { file: file('xoa.md') },
+      }).body.data as KnowledgeDocument;
+      const params = { documentId: String(document.id) };
+      expect(
+        code(
+          call(knowledgeEndpoints.deleteDocument, login('hocvien'), { params }),
+        ),
+      ).toBe('CORE-ACCESS_DENIED');
+      expect(
+        call(knowledgeEndpoints.deleteDocument, owner, { params }).status,
+      ).toBe(200);
+      expect(code(call(knowledgeEndpoints.document, owner, { params }))).toBe(
+        'CORE-RESOURCE_NOT_FOUND',
+      );
+    });
+
     it('refuses an unsupported, empty or oversized file with the backend codes', () => {
       const token = login('giangvien');
       const upload = (body: unknown) =>
@@ -1003,6 +1046,7 @@ describe('FakeBackend', () => {
         body: { question: 'EOD là gì?' },
       });
       expect(stream.events?.map((e) => (e as { type: string }).type)).toEqual([
+        'conversation',
         'retrieved',
         'delta',
         'delta',
@@ -1041,10 +1085,13 @@ describe('FakeBackend', () => {
   describe('the quick assistant', () => {
     const turn = (token: string | null, content: string) =>
       call(agentEndpoints.stream, token, {
-        body: { messages: [{ role: 'user', content }] },
+        body: { message: content },
       });
     const events = (reply: FakeReply) =>
-      (reply.events ?? []).map((e) => AgentStreamEventSchema.parse(e));
+      (reply.events ?? [])
+        .map((e) => AgentStreamEventSchema.parse(e))
+        // The opening `conversation` line has its own test; the rest read what follows it.
+        .filter((e) => e.type !== 'conversation');
     const types = (reply: FakeReply) => events(reply).map((e) => e.type);
     const actionOf = (reply: FakeReply) => {
       const event = events(reply).find((e) => e.type === 'action_required');
@@ -1076,6 +1123,7 @@ describe('FakeBackend', () => {
         type: 'done',
         answer: 'Không tìm thấy thông tin này trong tài liệu.',
         citations: [],
+        turnId: expect.any(Number),
       });
     });
 
@@ -1097,6 +1145,7 @@ describe('FakeBackend', () => {
           type: 'done',
           answer: 'Đã mở trang Quản lý người dùng.',
           citations: [],
+          turnId: expect.any(Number),
         },
       ]);
     });
@@ -1110,6 +1159,7 @@ describe('FakeBackend', () => {
         answer:
           'Bạn không có quyền mở màn hình này hoặc màn hình không tồn tại.',
         citations: [],
+        turnId: expect.any(Number),
       });
     });
 
@@ -1281,22 +1331,18 @@ describe('FakeBackend', () => {
 
     it('refuses an invalid command before streaming and needs a signed-in user', () => {
       const token = login('hocvien');
-      const bad = (messages: unknown) =>
-        code(call(agentEndpoints.stream, token, { body: { messages } }));
-      expect(bad([])).toBe('CORE-VALIDATION_FAILED');
-      expect(bad([{ role: 'assistant', content: 'x' }])).toBe(
-        'CORE-VALIDATION_FAILED',
-      );
-      expect(bad([{ role: 'user', content: '  ' }])).toBe(
-        'CORE-VALIDATION_FAILED',
-      );
-      expect(bad([{ role: 'user', content: 'x'.repeat(501) }])).toBe(
+      const bad = (body: unknown) =>
+        code(call(agentEndpoints.stream, token, { body }));
+      expect(bad({})).toBe('CORE-VALIDATION_FAILED');
+      expect(bad({ message: '  ' })).toBe('CORE-VALIDATION_FAILED');
+      expect(bad({ message: 'x'.repeat(501) })).toBe('CORE-VALIDATION_FAILED');
+      expect(bad({ conversationId: 0, message: 'x' })).toBe(
         'CORE-VALIDATION_FAILED',
       );
       for (const endpoint of Object.values(agentEndpoints)) {
         const reply = call(endpoint, null, {
           params: { actionId: 'a' },
-          body: { messages: [{ role: 'user', content: 'a' }] },
+          body: { message: 'a' },
         });
         expect(reply.status, endpoint.path).toBe(401);
       }

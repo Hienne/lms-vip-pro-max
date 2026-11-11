@@ -67,14 +67,7 @@ describe('the Postman collection against the fake backend', () => {
           token,
           params: {},
           query: {},
-          body: {
-            messages: [
-              {
-                role: 'user',
-                content: 'Đổi chức danh của tôi thành Chuyên viên cao cấp',
-              },
-            ],
-          },
+          body: { message: 'Đổi chức danh của tôi thành Chuyên viên cao cấp' },
         });
         const card = again?.events?.find(
           (e) => (e as { type: string }).type === 'action_required',

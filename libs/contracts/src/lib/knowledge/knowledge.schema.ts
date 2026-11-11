@@ -12,11 +12,22 @@ export const DocumentStatusSchema = z.enum([
 ]);
 export type DocumentStatus = z.infer<typeof DocumentStatusSchema>;
 
+/**
+ * Who finds a document: `personal` only its uploader, `unit` the uploader's unit and its child
+ * units, `global` everyone. Only admins may upload `global`.
+ */
+export const DocumentScopeSchema = z.enum(['personal', 'unit', 'global']);
+export type DocumentScope = z.infer<typeof DocumentScopeSchema>;
+
 export const KnowledgeDocumentSchema = z.object({
   id: z.number().int(),
   fileName: z.string(),
   mimeType: z.string(),
   sizeBytes: z.number().int().nonnegative(),
+  /** Documents saved before scopes existed are `global`, which is also what an older server implies. */
+  scope: DocumentScopeSchema.default('global'),
+  /** The unit of a `unit` document; null otherwise. */
+  scopeOrgId: z.number().int().nullish(),
   status: DocumentStatusSchema,
   errorMessage: z.string().nullable(),
   pageCount: z.number().int().nullable(),
@@ -36,17 +47,36 @@ export const DocumentListQuerySchema = z.object({
 });
 export type DocumentListQuery = z.infer<typeof DocumentListQuerySchema>;
 
-export const UploadDocumentCommandSchema = z.object({ file: z.file() });
+/** `scope` defaults to `unit` on the server when left out. */
+export const UploadDocumentCommandSchema = z.object({
+  file: z.file(),
+  scope: DocumentScopeSchema.optional(),
+});
 export type UploadDocumentCommand = z.infer<typeof UploadDocumentCommandSchema>;
 
-/** One question; the backend answers each on its own and keeps no conversation. */
+/** One question; `conversationId` (stream only) names the conversation it continues. */
 export const MAX_QUESTION_LENGTH = 300;
 export const AskCommandSchema = z.object({
   question: z.string().trim().min(1).max(MAX_QUESTION_LENGTH),
+  conversationId: z.number().int().positive().nullish(),
 });
 export type AskCommand = z.infer<typeof AskCommandSchema>;
 
 /** Built by the backend from the chunk's metadata, never read out of the model's text. */
+/** Where a lesson source is read in the app; only course content has it. */
+export const LessonCitationSchema = z.object({
+  courseId: z.number().int().positive(),
+  courseTitle: z.string(),
+  revisionId: z.number().int().positive(),
+  chapterTitle: z.string(),
+  lessonId: z.number().int().positive(),
+  lessonTitle: z.string(),
+  blockId: z.number().int().positive(),
+  /** `/lesson/{courseId}/{lessonId}`. */
+  url: z.string().startsWith('/'),
+});
+export type LessonCitation = z.infer<typeof LessonCitationSchema>;
+
 export const CitationSchema = z.object({
   n: z.number().int().positive(),
   documentId: z.number().int(),
@@ -56,6 +86,8 @@ export const CitationSchema = z.object({
   lineStart: z.number().int(),
   lineEnd: z.number().int(),
   snippet: z.string(),
+  /** Set when the source is a lesson of a course; `documentId` is then 0. */
+  lesson: LessonCitationSchema.optional(),
 });
 export type Citation = z.infer<typeof CitationSchema>;
 
@@ -68,6 +100,11 @@ export type ChatAnswer = z.infer<typeof ChatAnswerSchema>;
 
 /** One line of the NDJSON stream. */
 export const ChatStreamEventSchema = z.discriminatedUnion('type', [
+  /** The first line of every stream: the conversation this turn is stored in. */
+  z.object({
+    type: z.literal('conversation'),
+    conversationId: z.number().int().positive(),
+  }),
   z.object({ type: z.literal('retrieved'), count: z.number().int() }),
   z.object({ type: z.literal('delta'), text: z.string() }),
   z.object({
@@ -76,6 +113,10 @@ export const ChatStreamEventSchema = z.discriminatedUnion('type', [
     /** The final text: what the deltas added up to, or the fixed sentence when nothing was found. */
     answer: z.string(),
     citations: z.array(CitationSchema),
+    /** The stored turn, which the user may rate; absent when the server could not store it. */
+    turnId: z.number().int().positive().optional(),
+    /** Up to three follow-up questions; absent when the model offered none. */
+    suggestions: z.array(z.string()).optional(),
   }),
   z.object({
     type: z.literal('error'),

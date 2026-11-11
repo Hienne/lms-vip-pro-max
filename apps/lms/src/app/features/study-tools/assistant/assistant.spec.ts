@@ -10,6 +10,7 @@ import {
   knowledgeDocumentFixtures,
   knowledgeStreamFixture,
 } from '@lms/mocks';
+import type { StoredTurn } from '@lms/contracts';
 import { createAppRoutes } from '../../../app.routes';
 import {
   parseAppConfig,
@@ -87,7 +88,7 @@ describe('Assistant', () => {
 
   it('is a page of its own with the title, the greeting and the shared documents', async () => {
     await open();
-    expect(el.querySelector('h1')?.textContent).toBe(
+    expect(el.querySelector('h1')?.textContent?.trim()).toBe(
       'Trợ lý AI tra cứu tài liệu',
     );
     expect(text()).toContain(
@@ -101,7 +102,7 @@ describe('Assistant', () => {
 
   it('is open to a learner as well as an instructor', async () => {
     await open('000001');
-    expect(el.querySelector('h1')?.textContent).toBe(
+    expect(el.querySelector('h1')?.textContent?.trim()).toBe(
       'Trợ lý AI tra cứu tài liệu',
     );
   });
@@ -143,8 +144,95 @@ describe('Assistant', () => {
     expect(input.value).toBe('');
   });
 
+  it('rates a finished answer, and the thumbs show the server’s saved choice', async () => {
+    await open();
+    const input = el.querySelector(
+      'input#assistant-question',
+    ) as HTMLInputElement;
+    input.value = 'EOD là gì?';
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+    await settle();
+    el.querySelector('form')?.dispatchEvent(new Event('submit'));
+    await settle();
+    expect(el.querySelector('app-answer-feedback')).toBeNull();
+
+    backend
+      .expectOne(STREAM)
+      .flush(
+        knowledgeStreamFixture
+          .map((e) =>
+            JSON.stringify(e.type === 'done' ? { ...e, turnId: 41 } : e),
+          )
+          .join('\n'),
+        { headers: { 'Content-Type': 'application/x-ndjson' } },
+      );
+    await settle();
+    const up = el.querySelector<HTMLButtonElement>(
+      'app-answer-feedback button[aria-label="Câu trả lời hữu ích"]',
+    );
+    expect(up?.getAttribute('aria-pressed')).toBe('false');
+
+    up?.click();
+    await settle();
+    const request = backend.expectOne('/api/v1/assistant/turns/41/feedback');
+    expect(request.request.method).toBe('PUT');
+    expect(request.request.body).toEqual({ helpful: true });
+    request.flush(envelopeOk({ helpful: true, reasonCode: null, note: null }));
+    await settle();
+    expect(
+      el
+        .querySelector(
+          'app-answer-feedback button[aria-label="Câu trả lời hữu ích"]',
+        )
+        ?.getAttribute('aria-pressed'),
+    ).toBe('true');
+  });
+
+  it('offers follow-ups under the newest answer, asks one on click, and drops them with the next question', async () => {
+    await open();
+    const input = el.querySelector(
+      'input#assistant-question',
+    ) as HTMLInputElement;
+    input.value = 'EOD là gì?';
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+    await settle();
+    el.querySelector('form')?.dispatchEvent(new Event('submit'));
+    await settle();
+    expect(el.querySelector('.log__suggestions')).toBeNull();
+
+    backend
+      .expectOne(STREAM)
+      .flush(
+        knowledgeStreamFixture
+          .map((e) =>
+            JSON.stringify(
+              e.type === 'done' ? { ...e, suggestions: ['Còn ngoại lệ?'] } : e,
+            ),
+          )
+          .join('\n'),
+        { headers: { 'Content-Type': 'application/x-ndjson' } },
+      );
+    await settle();
+    const chips = el.querySelectorAll<HTMLButtonElement>(
+      '.log__suggestions button',
+    );
+    expect(Array.from(chips).map((b) => b.textContent?.trim())).toEqual([
+      'Còn ngoại lệ?',
+    ]);
+
+    chips[0].click();
+    await settle();
+    expect(el.querySelector('.log__suggestions')).toBeNull();
+    expect(backend.expectOne(STREAM).request.body).toMatchObject({
+      question: 'Còn ngoại lệ?',
+    });
+  });
+
   describe('documents panel', () => {
-    const toggle = () => el.querySelector('.chat__toggle') as HTMLButtonElement;
+    const toggle = () =>
+      Array.from(el.querySelectorAll<HTMLButtonElement>('.chat__toggle')).find(
+        (b) => b.textContent?.includes('Tài liệu'),
+      ) as HTMLButtonElement;
     const dialog = () => document.querySelector<HTMLElement>('[role="dialog"]');
 
     afterEach(() =>
@@ -212,6 +300,129 @@ describe('Assistant', () => {
       await vi.waitFor(() => expect(dialog()).toBeNull());
       expect(toggle().getAttribute('aria-expanded')).toBe('false');
       await vi.waitFor(() => expect(document.activeElement).toBe(toggle()));
+    });
+  });
+  describe('saved conversations', () => {
+    const LIST_CONVERSATIONS = '/api/v1/assistant/conversations';
+    const summary = {
+      id: 7,
+      title: 'Quy trình EOD',
+      lastActivityTime: '2026-11-10T09:00:00Z',
+      createTime: '2026-11-10T09:00:00Z',
+    };
+    const storedTurn: StoredTurn = {
+      id: 1,
+      surface: 'AGENT',
+      question: 'EOD là gì?',
+      answer: 'Chạy EOD phải đối chiếu số dư.',
+      citations: [],
+      toolNames: [],
+      navigation: null,
+      actionId: 'a1',
+      action: {
+        id: 'a1',
+        tool: 'update_profile',
+        title: 'Cập nhật hồ sơ cá nhân',
+        changes: [],
+        status: 'expired',
+        expiresAt: '2026-11-10T09:10:00Z',
+        message: null,
+      },
+      feedback: null,
+      status: 'done',
+      createTime: '2026-11-10T09:00:00Z',
+    };
+
+    const flushList = (items: readonly (typeof summary)[]) =>
+      backend
+        .expectOne((r) => r.url === LIST_CONVERSATIONS && r.method === 'GET')
+        .flush(
+          envelopeOk({
+            items,
+            page: 0,
+            size: 50,
+            totalElements: items.length,
+            totalPages: 1,
+          }),
+        );
+
+    afterEach(() =>
+      document
+        .querySelectorAll('.cdk-overlay-container')
+        .forEach((c) => (c.innerHTML = '')),
+    );
+
+    it('lists the saved conversations in a column beside the chat on a wide screen', async () => {
+      await open();
+      flushList([summary]);
+      await settle();
+
+      const aside = el.querySelector('aside#assistant-history');
+      expect(aside?.getAttribute('aria-labelledby')).toBe(
+        'assistant-history-title',
+      );
+      expect(aside?.querySelector('.history__title')?.textContent).toBe(
+        'Hội thoại',
+      );
+      expect(aside?.textContent).toContain('Quy trình EOD');
+      expect(el.classList).toContain('assistant--history');
+    });
+
+    it('is a closed drawer on a narrow screen that the Hội thoại button opens', async () => {
+      breakpoints.wide.next(false);
+      await open();
+      expect(el.querySelector('aside')).toBeNull();
+      const toggle = Array.from(
+        el.querySelectorAll<HTMLButtonElement>('.chat__toggle'),
+      ).find((b) => b.textContent?.includes('Hội thoại')) as HTMLButtonElement;
+      expect(toggle.getAttribute('aria-expanded')).toBe('false');
+
+      toggle.click();
+      await settle();
+      flushList([summary]);
+      await vi.waitFor(() =>
+        expect(
+          document.querySelector('[role="dialog"]')?.textContent,
+        ).toContain('Quy trình EOD'),
+      );
+    });
+
+    it('reopens a saved conversation with its answer and the state of its card, and a reload keeps it open', async () => {
+      await open();
+      flushList([summary]);
+      await settle();
+
+      el.querySelector<HTMLButtonElement>('.history__open')?.click();
+      await settle();
+      backend
+        .expectOne('/api/v1/assistant/conversations/7')
+        .flush(envelopeOk({ ...summary, turns: [storedTurn] }));
+      await settle();
+
+      expect(text()).toContain('EOD là gì?');
+      expect(text()).toContain('Chạy EOD phải đối chiếu số dư.');
+      expect(text()).toContain('Đề xuất “Cập nhật hồ sơ cá nhân”: đã hết hạn');
+      expect(sessionStorage.getItem('lms.assistant-page.v1.000005')).toBe('7');
+    });
+
+    it('starts a new conversation from the list, forgetting the open one', async () => {
+      await open();
+      flushList([summary]);
+      await settle();
+      el.querySelector<HTMLButtonElement>('.history__open')?.click();
+      await settle();
+      backend
+        .expectOne('/api/v1/assistant/conversations/7')
+        .flush(envelopeOk({ ...summary, turns: [storedTurn] }));
+      await settle();
+
+      Array.from(el.querySelectorAll<HTMLButtonElement>('.history__bar button'))
+        .find((b) => b.textContent?.includes('Hội thoại mới'))
+        ?.click();
+      await settle();
+
+      expect(el.querySelector('app-chat-message')).toBeNull();
+      expect(sessionStorage.getItem('lms.assistant-page.v1.000005')).toBeNull();
     });
   });
 });

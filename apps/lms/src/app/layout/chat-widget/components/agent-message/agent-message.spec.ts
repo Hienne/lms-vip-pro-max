@@ -1,6 +1,7 @@
 import { Component, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
+import { Toaster } from '@lms/ui';
 import { knowledgeAnswerFixture } from '@lms/mocks';
 import type {
   AgentReply,
@@ -28,10 +29,14 @@ const turn = (patch: Partial<AgentReply> = {}): AgentTurn => ({
 @Component({
   selector: 'app-host',
   imports: [AgentMessage],
-  template: `<app-agent-message [turn]="turn()" />`,
+  template: `<app-agent-message
+    [turn]="turn()"
+    (retried)="retried.push($event)"
+  />`,
 })
 class Host {
   readonly turn = signal(turn());
+  readonly retried: number[] = [];
 }
 
 describe('AgentMessage', () => {
@@ -76,6 +81,13 @@ describe('AgentMessage', () => {
     ).toContain('Đang chuẩn bị thay đổi…');
   });
 
+  it('says the Community search is running', async () => {
+    const { text } = await render(
+      turn({ status: 'working', toolName: 'search_community' }),
+    );
+    expect(text()).toContain('Đang tìm trong cộng đồng…');
+  });
+
   it('says the answer is being written until its first text arrives', async () => {
     const { el, text } = await render(
       turn({ status: 'composing', toolName: 'search_documents' }),
@@ -104,7 +116,7 @@ describe('AgentMessage', () => {
       }),
     );
     const marks = el.querySelectorAll<HTMLButtonElement>(
-      '.message__answer .message__cite',
+      '.message__answer .md__cite',
     );
     expect(marks).toHaveLength(2);
     expect(marks[0].textContent?.trim()).toBe('1');
@@ -154,7 +166,7 @@ describe('AgentMessage', () => {
       }),
     );
     document.body.appendChild(el);
-    el.querySelectorAll<HTMLButtonElement>('.message__cite')[1].click();
+    el.querySelectorAll<HTMLButtonElement>('.md__cite')[1].click();
     expect(document.activeElement?.id).toBe('agent-source-1-2');
     el.remove();
   });
@@ -208,5 +220,53 @@ describe('AgentMessage', () => {
     );
     expect(el.querySelector('img')).toBeNull();
     expect(el.textContent).toContain('<img src=x onerror=alert(1)> [9]');
+  });
+
+  it('copies the answer text, without the source list, and says so', async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, 'clipboard', {
+      value: { writeText },
+      configurable: true,
+    });
+    const { el, fixture } = await render(
+      turn({
+        text: knowledgeAnswerFixture.answer,
+        citations: knowledgeAnswerFixture.citations,
+      }),
+    );
+    const success = vi.spyOn(TestBed.inject(Toaster), 'success');
+    const button = el.querySelector<HTMLButtonElement>(
+      'button[aria-label="Sao chép câu trả lời"]',
+    );
+    button?.click();
+    await fixture.whenStable();
+    expect(writeText).toHaveBeenCalledExactlyOnceWith(
+      knowledgeAnswerFixture.answer,
+    );
+    expect(success).toHaveBeenCalledWith('Đã sao chép');
+  });
+
+  it('offers no copy while the reply is still streaming', async () => {
+    const { el } = await render(
+      turn({ status: 'composing', text: 'Đang viết' }),
+    );
+    expect(
+      el.querySelector('button[aria-label="Sao chép câu trả lời"]'),
+    ).toBeNull();
+  });
+
+  it('offers Thử lại on a stopped or errored reply, off while another reply streams', async () => {
+    for (const status of ['stopped', 'error'] as const) {
+      TestBed.resetTestingModule();
+      const { el, fixture } = await render(
+        turn({ status, text: 'Một nửa', error: 'Lỗi' }),
+      );
+      const retry = [...el.querySelectorAll('button')].find(
+        (b) => b.textContent?.trim() === 'Thử lại',
+      );
+      expect(retry).toBeDefined();
+      retry?.click();
+      expect(fixture.componentInstance.retried).toEqual([1]);
+    }
   });
 });
