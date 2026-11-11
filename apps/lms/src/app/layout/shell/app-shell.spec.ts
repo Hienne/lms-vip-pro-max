@@ -429,11 +429,21 @@ describe('AppShell', () => {
       expect(panel(el)).toBeNull();
     });
 
-    it('is not on focus or bare routes', async () => {
+    it('opens on a focus route (a lesson) without the owl', async () => {
       signInAs('learner');
       TestBed.inject(AgentChatStore).open();
       const focus = await open('/lesson/c1/l1');
-      expect(focus.querySelector('app-chat-widget')).toBeNull();
+      expect(panel(focus)).not.toBeNull();
+      expect(focus.querySelector('app-owl')).toBeNull();
+    });
+
+    it('stays closed on a focus route until a lesson button opens it', async () => {
+      signInAs('learner');
+      const focus = await open('/lesson/c1/l1');
+      expect(panel(focus)).toBeNull();
+      TestBed.inject(AgentChatStore).open();
+      TestBed.tick();
+      expect(panel(focus)).not.toBeNull();
     });
 
     it('opens and closes from the owl, and Escape hands focus back to it', async () => {

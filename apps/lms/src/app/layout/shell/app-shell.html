@@ -61,7 +61,9 @@ store.learnerNav$();
 <app-upload-panel [besideToolbar]="devToolbar() !== null" />
 @if (!store.fillsViewport$()) {
 <app-chat-widget [besideToolbar]="devToolbar() !== null" />
-} }
+} } @else if (chrome === 'focus' && user) {
+<app-chat-widget [besideToolbar]="devToolbar() !== null" />
+}
 
 <ng-template
   [uiDrawer]="store.navOpen$()"
