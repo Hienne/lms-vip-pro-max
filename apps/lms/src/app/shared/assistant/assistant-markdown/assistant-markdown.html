@@ -2,7 +2,7 @@
   @for (piece of pieces; track $index) { @switch (piece.kind) { @case ('code') {
   <code>{{ piece.text }}</code>
   } @case ('link') {
-  <a class="md__link" [routerLink]="piece.href">{{ piece.text }}</a>
+  <a class="md__link" [routerLink]="linkTree(piece.href)">{{ piece.text }}</a>
   } @case ('source') { @if (badges()) {
   <app-source-badge [citation]="piece.citation" />
   } @else {

@@ -83,6 +83,17 @@ describe('AssistantMarkdown', () => {
     expect(el.textContent).toContain('Ngoài');
   });
 
+  it('keeps the query string of an in-app link (a Community post opens in the app)', async () => {
+    const { el } = await render(
+      '[Bài & phí](/community/contents/6?revisionId=6)',
+    );
+    const link = el.querySelector('a');
+    expect(link?.getAttribute('href')).toBe(
+      '/community/contents/6?revisionId=6',
+    );
+    expect(link?.textContent).toBe('Bài & phí');
+  });
+
   it('renders hostile input as inert text', async () => {
     const { el } = await render(
       [

@@ -19,7 +19,7 @@
       <p class="sources__where">{{ item.location }}</p>
       <p class="sources__quote">{{ item.citation.snippet }}</p>
       @if (item.citation.lesson; as lesson) {
-      <a class="sources__open" [routerLink]="lesson.url">Mở bài học</a>
+      <a class="sources__open" [routerLink]="linkTree(lesson.url)">Mở bài học</a>
       }
     </ng-template>
   </li>
