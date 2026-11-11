@@ -1,5 +1,5 @@
 <ui-page-header
-  title="Cấu hình gamification"
+  title="Cấu hình điểm thưởng"
   description="XP, cấp độ và lịch ngày làm việc của chuỗi ngày học. Mỗi lần lưu tạo một phiên bản mới và được ghi nhật ký."
 />
 
@@ -15,7 +15,7 @@
 } @else {
 <section uiCard class="gamification-admin__card">
   <ui-tabs
-    label="Cấu hình gamification"
+    label="Cấu hình điểm thưởng"
     [tabs]="store.tabs"
     [selected]="store.tab$()"
     (selectedChange)="store.selectTab($event)"
