@@ -84,18 +84,18 @@ describe('QuizHub', () => {
     await takeAttempt(2);
     await open('/quiz?bai=1');
     expect(detailTitle()?.getAttribute('href')).toBe('/quiz/1');
-    expect(el.querySelectorAll('.hub__attempt').length).toBe(2);
+    expect(el.querySelectorAll('.hub__history tbody tr').length).toBe(2);
     expect(el.querySelectorAll('thead th[scope="col"]').length).toBe(5);
     const detail = el.querySelector<HTMLAnchorElement>(
-      '.hub__attempt a[aria-label^="Chi tiết lượt"]',
+      'tbody a[aria-label^="Chi tiết lượt"]',
     );
     expect(detail?.getAttribute('href')).toMatch(/^\/quiz\/1\/result\/\d+$/);
     const quiz1 = navItems().find((a) => a.href.endsWith('bai=1'))!;
     expect(quiz1.getAttribute('aria-current')).toBe('true');
-    expect(quiz1.textContent).toContain('2 lượt đã làm');
+    expect(quiz1.textContent).toContain('· 2 lượt');
     expect(
       navItems().find((a) => a.href.endsWith('bai=2'))?.textContent,
-    ).toContain('1 lượt đã làm');
+    ).toContain('· 1 lượt');
   });
 
   it('keeps the filter in the URL and says when it leaves no quiz', async () => {

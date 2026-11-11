@@ -39,22 +39,12 @@
       top: ui.space(4);
     }
   }
-  &__nav-list {
-    margin: 0;
-    padding: 0;
-    list-style: none;
-    li + li {
-      border-block-start: 1px solid ui.color(border);
-    }
+  &__count {
+    @include ui.num;
+    @include ui.text(sm, muted);
   }
+  // A row of `uiList`; the current quiz is tinted, its title in the brand colour, with a chevron.
   &__nav-item {
-    display: block;
-    padding: ui.space(3) ui.space(4);
-    color: inherit;
-    text-decoration: none;
-    &:hover {
-      background: ui.color(surface-2);
-    }
     &:focus-visible {
       @include ui.focus-ring;
     }
@@ -63,13 +53,12 @@
       background: ui.color(primary-subtle); // design-drift-allow: subtle-fill the selected quiz is the list's current row
     }
   }
-  &__nav-head {
-    display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    gap: ui.space(2);
+  &__nav-text {
+    @include ui.grow;
+    min-width: 0;
   }
   &__nav-title {
+    display: block;
     font-weight: ui.weight(medium);
     overflow-wrap: anywhere;
   }
@@ -78,10 +67,22 @@
     font-weight: ui.weight(semibold);
   }
   &__nav-meta {
+    @include ui.row(2);
     @include ui.num;
     @include ui.text(sm, muted);
-    display: block;
     margin-block-start: ui.space(1);
+  }
+  &__nav-chevron {
+    flex: none;
+    color: ui.color(text-muted);
+    visibility: hidden;
+  }
+  &__nav-item:hover &__nav-chevron {
+    visibility: visible;
+  }
+  &__nav-item--current &__nav-chevron {
+    color: ui.color(primary);
+    visibility: visible;
   }
   &__nav-empty {
     @include ui.text(sm, muted);
@@ -110,10 +111,6 @@
     font-size: ui.text-size(xl);
     font-weight: ui.weight(semibold);
   }
-  &__detail-foot {
-    padding: ui.space(3) ui.space(5);
-    border-block-start: 1px solid ui.color(border);
-  }
   &__history {
     min-width: 0;
   }
@@ -135,23 +132,6 @@
     overflow-wrap: anywhere;
   }
 
-  &__attempts {
-    th,
-    td {
-      vertical-align: middle;
-    }
-  }
-  &__number {
-    @include ui.num;
-    @include ui.bp(md) {
-      text-align: right;
-    }
-  }
-  &__actions {
-    @include ui.bp(md) {
-      text-align: right;
-    }
-  }
   &__timestamp {
     @include ui.num;
     @include ui.text(xs, muted);
