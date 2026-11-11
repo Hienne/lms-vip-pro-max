@@ -38,7 +38,9 @@ describe('QuizHub', () => {
     expect(el.querySelector('h1')?.textContent).toBe('Bài kiểm tra');
     expect(calls(learnerQuizEndpoints.courseQuizzes).length).toBeGreaterThan(0);
     const links = Array.from(
-      el.querySelectorAll<HTMLAnchorElement>('.hub__hero .hub__title, .hub__row .hub__title'),
+      el.querySelectorAll<HTMLAnchorElement>(
+        '.hub__hero .hub__title, .hub__tile .hub__title',
+      ),
     ).map((a) => a.getAttribute('href'));
     expect(links).toContain('/quiz/1');
     expect(links).toContain('/quiz/2');
@@ -54,22 +56,9 @@ describe('QuizHub', () => {
     expect(primary[0].getAttribute('href')).toMatch(/^\/quiz\/\d+$/);
     expect(primary[0].closest('.hub__hero')).toBeTruthy();
     expect(
-      el.querySelectorAll('.hub__hero a.btn, .hub__row a.btn').length,
+      el.querySelectorAll('.hub__hero a.btn, .hub__tile a.btn').length,
     ).toBeGreaterThan(1);
-    expect(el.querySelectorAll('.hub__row a.btn--primary').length).toBe(0);
-  });
-
-  it('shows the progress numbers above the quizzes', async () => {
-    await open();
-    const labels = Array.from(el.querySelectorAll('.hub__stat dt')).map((n) =>
-      n.textContent?.trim(),
-    );
-    expect(labels).toEqual([
-      'Đã đạt',
-      'Đang làm',
-      'Điểm cao nhất trung bình',
-      'Lượt thi còn lại',
-    ]);
+    expect(el.querySelectorAll('.hub__tile a.btn--primary').length).toBe(0);
   });
 
   it('says there are no attempts yet before the learner has taken any', async () => {
@@ -80,39 +69,35 @@ describe('QuizHub', () => {
     ).toContain('Tải CSV');
   });
 
-  it('groups the attempts by quiz, with the count and no best score of its own', async () => {
+  it('lists the attempts of every quiz in one table, with a link to each quiz history', async () => {
     signInAsLearner();
     await takeAttempt(1);
     await takeAttempt(1);
     await takeAttempt(2);
     await open();
-    const groups = Array.from(el.querySelectorAll('.hub__group'));
-    expect(groups.length).toBe(2);
-    const quiz1 = groups.find((g) => g.textContent?.includes('Luyện tập'))!;
-    expect(quiz1.querySelector('.hub__group-head')?.textContent).toContain(
-      '2 lượt',
-    );
-    expect(quiz1.querySelector('.hub__group-head')?.textContent).not.toMatch(
-      /cao nhất/i,
-    );
-    expect(quiz1.querySelectorAll('.hub__attempt').length).toBe(2);
-    expect(quiz1.querySelector('table')?.textContent).toContain(
-      'Thời gian nộp',
-    );
-    expect(quiz1.querySelectorAll('thead th[scope="col"]').length).toBe(5);
+    expect(el.querySelectorAll('.hub__history table').length).toBe(1);
+    expect(el.querySelectorAll('.hub__attempt').length).toBe(3);
+    expect(el.querySelector('table')?.textContent).toContain('Thời gian nộp');
+    expect(el.querySelectorAll('thead th[scope="col"]').length).toBe(6);
     expect(
-      quiz1.querySelector('.hub__attempt a')?.getAttribute('href'),
-    ).toMatch(/^\/quiz\/1\/result\/\d+$/);
+      el.querySelector('.hub__attempt a.btn')?.getAttribute('href'),
+    ).toMatch(/^\/quiz\/\d+\/result\/\d+$/);
+    const links = Array.from(el.querySelectorAll('.hub__history-links a')).map(
+      (a) => a.getAttribute('href'),
+    );
+    expect(links).toEqual(
+      expect.arrayContaining(['/quiz/1/attempts', '/quiz/2/attempts']),
+    );
+    expect(text()).toContain('Xem cả 2 lượt thi');
   });
 
-  it('shows the few latest attempts and links to the full history past that', async () => {
+  it('shows the newest attempts and links to the full history of a quiz', async () => {
     signInAsLearner();
     for (let i = 0; i < 5; i++) await takeAttempt(1);
     await open();
-    const group = el.querySelector('.hub__group')!;
-    expect(group.querySelectorAll('.hub__attempt').length).toBe(3);
+    expect(el.querySelectorAll('.hub__attempt').length).toBe(5);
     expect(
-      Array.from(group.querySelectorAll('a'))
+      Array.from(el.querySelectorAll('.hub__history-links a'))
         .find((a) => a.textContent?.includes('Xem cả 5 lượt thi'))
         ?.getAttribute('href'),
     ).toBe('/quiz/1/attempts');

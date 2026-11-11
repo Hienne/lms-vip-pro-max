@@ -16,26 +16,30 @@
   &__loading {
     @include ui.stack(4);
   }
-  &__stats {
+  &__grid {
     display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(16rem, 1fr));
     gap: ui.space(3);
     margin: 0;
-    @include ui.bp(md) {
-      grid-template-columns: repeat(4, minmax(0, 1fr));
-    }
+    padding: 0;
+    list-style: none;
   }
-  &__stat {
-    min-width: 0;
-    dt {
-      @include ui.text(sm, muted);
-    }
-    dd {
-      @include ui.num;
-      margin: ui.space(1) 0 0;
-      font-size: ui.text-size(xl);
-      font-weight: ui.weight(semibold);
-    }
+  &__tile {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+  }
+  &__tile-foot {
+    @include ui.row-between(2);
+    margin-block-start: auto;
+    padding-block-start: ui.space(4);
+  }
+  &__history-links {
+    @include ui.stack(1);
+    margin: 0;
+    padding: ui.space(3) ui.space(5);
+    list-style: none;
+    border-block-start: 1px solid ui.color(border);
   }
   &__hero {
     @include ui.row-between(5);
@@ -64,20 +68,8 @@
     font-size: ui.text-size(lg);
     font-weight: ui.weight(semibold);
   }
-  &__list,
   &__history {
-    @include ui.stack(4);
-    margin: 0;
-    padding: 0;
-    list-style: none;
-  }
-  &__row {
-    @include ui.row-between(5);
-    align-items: flex-start;
-    @include ui.bp(md) {
-      flex-wrap: nowrap;
-      align-items: center;
-    }
+    min-width: 0;
   }
   &__item {
     max-width: none;
@@ -130,12 +122,6 @@
     @include ui.text(sm, muted);
     margin: ui.space(3) 0 0;
   }
-  &__group {
-    min-width: 0;
-  }
-  &__group-head h3 {
-    margin: 0;
-  }
   &__attempts {
     table-layout: fixed;
     th,
@@ -144,7 +130,7 @@
       white-space: normal;
     }
     // Keep the submitted date readable while other columns share the row.
-    th:nth-child(2) {
+    th:nth-child(3) {
       width: 30%;
     }
   }
@@ -169,9 +155,5 @@
   &__score {
     @include ui.num;
     font-weight: ui.weight(semibold);
-  }
-  &__group-footer {
-    padding: ui.space(3) ui.space(5);
-    border-block-start: 1px solid ui.color(border);
   }
 }

@@ -18,6 +18,8 @@ const COURSES_SHOWN = 10;
 const ATTEMPTS_SHOWN = 100;
 /** Attempts shown under each quiz before the link to its full history. */
 export const ATTEMPTS_PER_QUIZ = 3;
+/** Attempts the one history table shows before the per-quiz links. */
+export const RECENT_ATTEMPTS = 10;
 
 export interface CourseQuizzes {
   readonly courseId: number;
@@ -156,24 +158,10 @@ export class QuizHubStore {
     this.quizzes$().filter((quiz) => quiz.quizId !== this.primaryQuizId$()),
   );
 
-  /** Progress over the listed quizzes: passed, being taken, mean best score, attempts left. */
-  readonly stats$ = computed(() => {
-    const quizzes = this.quizzes$();
-    const scores = quizzes
-      .map((quiz) => quiz.bestScore)
-      .filter((score): score is number => score !== null);
-    return {
-      total: quizzes.length,
-      passed: quizzes.filter((quiz) => quiz.passed).length,
-      resuming: quizzes.filter((quiz) => quiz.resuming).length,
-      averageScore: scores.length
-        ? scores.reduce((sum, score) => sum + score, 0) / scores.length
-        : null,
-      attemptsLeft: quizzes
-        .filter((quiz) => !quiz.passed)
-        .reduce((sum, quiz) => sum + quiz.attemptsLeft, 0),
-    };
-  });
+  /** The newest attempts across every quiz, shown in one table. */
+  readonly recentAttempts$ = computed((): readonly MyAttemptRow[] =>
+    (this.attemptsData.value()?.items ?? []).slice(0, RECENT_ATTEMPTS),
+  );
 
   /** Attempts grouped by quiz, the quiz tried most recently first. */
   readonly groups$ = computed((): readonly AttemptGroup[] => {
