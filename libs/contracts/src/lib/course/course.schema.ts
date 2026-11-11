@@ -115,6 +115,11 @@ export const CourseRevisionSchema = z.object({
   coverColor: z.string().nullish(),
   publishedAt: BackendDateTimeSchema.nullish(),
   publishedBy: z.string().nullish(),
+  /** The content was written by the AI course generation: publishing needs the author's review confirmation. */
+  aiGenerated: z.boolean().optional(),
+  /** Who confirmed the review when the revision was published, and when. */
+  reviewConfirmedBy: z.string().nullish(),
+  reviewConfirmedAt: BackendDateTimeSchema.nullish(),
   /** Send it as `expectedVersion` to save or publish this revision. */
   rowVersion: z.number().int(),
   createTime: BackendDateTimeSchema.nullish(),

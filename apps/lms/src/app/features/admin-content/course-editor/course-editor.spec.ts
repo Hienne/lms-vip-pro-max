@@ -886,6 +886,79 @@ describe('CourseEditor', () => {
     });
   });
 
+  describe('a draft with AI-generated content', () => {
+    const original = (endpoint: AnyEndpoint, request: FakeRequest): FakeReply =>
+      MockBackend.prototype.handle.call(
+        TestBed.inject(MockBackend),
+        endpoint,
+        request,
+      ) as FakeReply;
+
+    /** Course 6 as the server would send it when its draft was written by the AI generation. */
+    const aiGenerated = () =>
+      screen.calls.mockImplementation((endpoint, request) => {
+        const reply = original(endpoint, request);
+        if (endpoint !== courseEndpoints.getCourse) return reply;
+        const body = reply.body as {
+          data: { revision: Record<string, unknown> };
+        };
+        body.data.revision['aiGenerated'] = true;
+        return reply;
+      });
+
+    const tick = () =>
+      screen
+        .alertDialog()!
+        .querySelector<HTMLInputElement>('input[type="checkbox"]')!;
+
+    it('says so in the editor', async () => {
+      aiGenerated();
+      await screen.open('/admin/courses/6/edit');
+
+      expect(screen.text()).toContain('Có nội dung do AI tạo');
+    });
+
+    it('says nothing for a course the AI did not write', async () => {
+      await screen.open('/admin/courses/6/edit');
+
+      expect(screen.text()).not.toContain('Có nội dung do AI tạo');
+    });
+
+    it('cannot be published until the review is ticked, and then sends the confirmation', async () => {
+      aiGenerated();
+      await screen.open('/admin/courses/6/edit');
+      await step('Đối tượng & xuất bản');
+
+      await screen.click(screen.button('Xuất bản khóa học'));
+      const dialog = screen.alertDialog()!;
+      expect(dialog.textContent).toContain('Tôi đã rà soát nội dung');
+      expect(screen.button('Xuất bản', dialog)!.disabled).toBe(true);
+
+      await screen.click(tick());
+      expect(screen.button('Xuất bản', dialog)!.disabled).toBe(false);
+      await screen.click(screen.button('Xuất bản', dialog));
+
+      expect(screen.lastCall(courseEndpoints.publish)?.body).toEqual({
+        expectedVersion: 1,
+        reviewConfirmed: true,
+      });
+    });
+
+    it('is not asked for a course the AI did not write', async () => {
+      await screen.open('/admin/courses/6/edit');
+      await step('Đối tượng & xuất bản');
+
+      await screen.click(screen.button('Xuất bản khóa học'));
+
+      expect(
+        screen.alertDialog()!.querySelector('input[type="checkbox"]'),
+      ).toBeNull();
+      expect(screen.button('Xuất bản', screen.alertDialog()!)!.disabled).toBe(
+        false,
+      );
+    });
+  });
+
   it('saves then publishes after confirming, and goes back to the list', async () => {
     await screen.open('/admin/courses/6/edit');
     await step('Đối tượng & xuất bản');

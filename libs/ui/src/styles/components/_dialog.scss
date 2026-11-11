@@ -47,6 +47,14 @@
       font-size: var(--text-sm);
     }
 
+    &__acknowledge {
+      display: flex;
+      gap: var(--spacing-2);
+      align-items: flex-start;
+      padding: 0 var(--spacing-6);
+      font-size: var(--text-sm);
+    }
+
     &__footer {
       display: flex;
       flex-wrap: wrap;

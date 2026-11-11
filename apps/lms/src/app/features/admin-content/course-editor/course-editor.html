@@ -45,7 +45,17 @@
   </div>
 </ui-page-header>
 
-@if (!store.isDraft$()) {
+@if (store.course$()?.revision?.aiGenerated) {
+<ui-alert
+  tone="info"
+  heading="Có nội dung do AI tạo"
+  [announce]="false"
+  class="course-editor__notice"
+>
+  Đọc lại từng bài và câu hỏi trước khi xuất bản. Khi xuất bản, bạn sẽ được yêu
+  cầu xác nhận đã rà soát nội dung.
+</ui-alert>
+} @if (!store.isDraft$()) {
 <ui-alert tone="info" [announce]="false" class="course-editor__notice">
   Đây là bản đang xuất bản. Mở bản nháp để sửa; học viên vẫn học bản hiện tại
   cho đến khi bạn xuất bản lại.

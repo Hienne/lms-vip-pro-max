@@ -173,6 +173,8 @@ type PublishInput = {
   readonly targets: PublishTargets;
   /** The draft exam the publish brings along: the wizard's, still a draft. */
   readonly exam?: { readonly id: number; readonly title: string };
+  /** The author ticked "Tôi đã rà soát nội dung" for a revision with AI-generated content. */
+  readonly reviewConfirmed?: boolean;
 } & (
   | { readonly kind: 'save'; readonly command: SaveDraftCommand }
   | { readonly kind: 'create'; readonly command: CreateCourseCommand }
@@ -1000,6 +1002,8 @@ export class CourseEditorStore {
     const targets = this.targetsToPublish();
     if (!revision || !targets) return;
     const exam = this.examToPublish(command.finalQuizId);
+    // Content the AI wrote is only published after the author says they reviewed it.
+    const reviewConfirmed = revision.aiGenerated === true;
     this.confirmPublish(
       targets,
       () =>
@@ -1008,8 +1012,10 @@ export class CourseEditorStore {
           command: { ...command, expectedVersion: revision.rowVersion },
           targets,
           exam,
+          ...(reviewConfirmed ? { reviewConfirmed } : {}),
         }),
       exam?.title,
+      reviewConfirmed,
     );
   }
 
@@ -1580,6 +1586,7 @@ export class CourseEditorStore {
     targets: PublishTargets,
     publish: () => void,
     examTitle?: string,
+    requireReview = false,
   ): void {
     const counts =
       targets.rows.length || targets.shareOrgIds.length
@@ -1594,6 +1601,7 @@ export class CourseEditorStore {
       }`,
       confirmLabel: 'Xuất bản',
       tone: 'primary',
+      ...(requireReview ? { acknowledge: 'Tôi đã rà soát nội dung' } : {}),
     })
       .pipe(filter(Boolean), takeUntilDestroyed(this.destroyRef))
       .subscribe(publish);
@@ -1680,7 +1688,11 @@ export class CourseEditorStore {
           courseId: saved.course.id,
           revisionId: saved.revision.id,
         },
-        body: toPublishCommand(saved.revision.rowVersion, input.targets),
+        body: toPublishCommand(
+          saved.revision.rowVersion,
+          input.targets,
+          input.reviewConfirmed,
+        ),
       })
       .pipe(
         catchError((error: unknown) => {
