@@ -368,6 +368,46 @@ describe('AgentChatStore', () => {
       expect(lastReply()?.status).toBe('stopped');
     });
 
+    it('tells the server to cancel the turn of the open conversation, then drops the stream', async () => {
+      store.ask('Một');
+      await settle();
+      const request = backend.expectOne(STREAM);
+      request.event({
+        type: 3,
+        loaded: 1,
+        partialText: JSON.stringify(conversation(7)) + '\n',
+      } as never);
+      await settle();
+
+      store.stop();
+
+      const cancel = backend.expectOne('/api/v1/assistant/agent/7/cancel');
+      expect(cancel.request.method).toBe('POST');
+      cancel.flush(null);
+      expect(request.cancelled).toBe(true);
+      expect(lastReply()?.status).toBe('stopped');
+    });
+
+    it('stops locally even when the cancel call fails', async () => {
+      store.ask('Một');
+      await settle();
+      const request = backend.expectOne(STREAM);
+      request.event({
+        type: 3,
+        loaded: 1,
+        partialText: JSON.stringify(conversation(7)) + '\n',
+      } as never);
+      await settle();
+
+      store.stop();
+      backend
+        .expectOne('/api/v1/assistant/agent/7/cancel')
+        .flush(null, { status: 500, statusText: 'Server Error' });
+
+      expect(lastReply()?.status).toBe('stopped');
+      expect(store.isAnswering$()).toBe(false);
+    });
+
     it('stops the answer and keeps what has arrived', async () => {
       store.ask('Một');
       await settle();

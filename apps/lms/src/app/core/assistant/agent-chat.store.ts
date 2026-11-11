@@ -420,6 +420,13 @@ export class AgentChatStore {
   stop(): void {
     const id = this.state.answeringId();
     if (id === null) return;
+    // The server holds the turn until the model call ends, so tell it to let go; a failure changes nothing here.
+    const conversationId = this.state.conversationId();
+    if (conversationId !== null) {
+      this.client
+        .call(agentEndpoints.cancelTurn, { params: { conversationId } })
+        .subscribe({ error: () => undefined });
+    }
     this.dropStream();
     this.patchReply(id, { status: 'stopped' });
     this.setAnsweringId(null);

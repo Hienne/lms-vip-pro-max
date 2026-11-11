@@ -181,6 +181,7 @@ describe('agent endpoints', () => {
   it('registers the stream and the two action calls under /api/v1/assistant/agent', () => {
     expect(Object.keys(agentEndpoints)).toEqual([
       'stream',
+      'cancelTurn',
       'confirmAction',
       'cancelAction',
     ]);

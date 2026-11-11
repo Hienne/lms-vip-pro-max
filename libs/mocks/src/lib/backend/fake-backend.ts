@@ -361,6 +361,7 @@ export class FakeBackend {
     [knowledgeEndpoints.ask, (r) => this.ask(r)],
     [knowledgeEndpoints.askStream, (r) => this.askStream(r)],
     [agentEndpoints.stream, (r) => this.agentStream(r)],
+    [agentEndpoints.cancelTurn, (r) => this.cancelTurn(r)],
     [agentEndpoints.confirmAction, (r) => this.confirmAction(r)],
     [agentEndpoints.cancelAction, (r) => this.cancelAction(r)],
     [answerFeedbackEndpoints.rate, (r) => this.rateAnswer(r)],
@@ -947,6 +948,12 @@ export class FakeBackend {
       message: 'Đã cập nhật hồ sơ.',
       data: this.meOf(user),
     });
+  }
+
+  /** Nothing runs long in the mock, so there is nothing to stop; the caller still has to be signed in. */
+  private cancelTurn(request: FakeRequest): FakeReply {
+    this.caller(request);
+    return ok(null);
   }
 
   private cancelAction(request: FakeRequest): FakeReply {

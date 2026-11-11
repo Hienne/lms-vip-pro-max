@@ -16,6 +16,13 @@ export const agentEndpoints = {
     responseType: 'ndjson',
     response: AgentStreamEventSchema,
   }),
+  /** Stops the caller's running turn of a conversation and frees it for the next question at once. */
+  cancelTurn: defineEndpoint({
+    method: 'post',
+    path: '/api/v1/assistant/agent/{conversationId}/cancel',
+    params: z.object({ conversationId: z.number().int() }),
+    response: z.unknown(),
+  }),
   /** Runs a pending action as the signed-in user. */
   confirmAction: defineEndpoint({
     method: 'post',
