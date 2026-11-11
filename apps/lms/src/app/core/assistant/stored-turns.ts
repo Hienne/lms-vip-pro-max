@@ -7,17 +7,8 @@ export const STORED_ERROR_MESSAGE =
 
 /** A stored card as the panel's card: the same fields, the status being the server's today. */
 function cardOf(action: StoredAction): ActionCard {
-  return {
-    pending: {
-      id: action.id,
-      tool: action.tool,
-      title: action.title,
-      changes: action.changes,
-      expiresAt: action.expiresAt,
-    },
-    status: action.status,
-    message: action.message,
-  };
+  const { status, message, ...pending } = action;
+  return { pending, status, message };
 }
 
 /**

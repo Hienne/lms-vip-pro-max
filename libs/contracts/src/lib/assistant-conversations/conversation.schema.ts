@@ -62,6 +62,15 @@ export const StoredActionSchema = z.discriminatedUnion('tool', [
     /** The result shown after confirming, or why the tool refused; null while there is none. */
     message: z.string().nullable(),
   }),
+  z.object({
+    id: z.string(),
+    tool: z.literal('start_course_job'),
+    title: z.string(),
+    changes: z.array(ProfileChangeSchema.extend({ field: z.string() })),
+    status: StoredActionStatusSchema,
+    expiresAt: z.iso.datetime(),
+    message: z.string().nullable(),
+  }),
 ]);
 export type StoredAction = z.infer<typeof StoredActionSchema>;
 

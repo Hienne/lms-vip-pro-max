@@ -23,7 +23,17 @@
   "
 >
   <div slot="actions" class="course-editor__head-state">
-    @if (store.course$()) {
+    @if (!editing && canGenerate()) {
+    <button
+      type="button"
+      uiButton
+      variant="secondary"
+      size="sm"
+      (click)="generateWithAi()"
+    >
+      <ui-icon name="sparkles" size="sm" />Tạo bằng AI
+    </button>
+    } @if (store.course$()) {
     <app-catalog-status [status]="store.status$()" />
     }
     <span class="course-editor__saved" aria-live="polite">

@@ -18,6 +18,10 @@ import {
 import { AGENT_MESSAGE_MAX_LENGTH } from '@lms/contracts';
 import { Icon, IconButton, Textarea } from '@lms/ui';
 import {
+  UPLOAD_ACCEPT,
+  uploadProblem,
+} from '../../../../core/knowledge/upload-rules';
+import {
   AgentComposerSchema,
   COUNTER_FROM,
   type AgentComposerValue,
@@ -27,6 +31,8 @@ import {
  * The message box of the quick assistant: one line that grows as the user types, with the send
  * button inside it. `Enter` sends, `Shift+Enter` starts a new line (and an `Enter` that confirms an
  * input-method composition does neither). While a reply is on its way the button stops it instead.
+ * An instructor or admin (`canAttach`) can also attach one file, which the message then asks the
+ * assistant to build a course from.
  */
 @Component({
   selector: 'app-agent-composer',
@@ -37,7 +43,10 @@ import {
 export class AgentComposer {
   readonly answering = input(false);
   readonly offline = input(false);
+  /** Offers the paperclip: only for people who may generate a course. */
+  readonly canAttach = input(false);
   readonly ask = output<string>();
+  readonly askWithFile = output<{ message: string; file: File }>();
   readonly stop = output<void>();
 
   private readonly box =
@@ -57,12 +66,20 @@ export class AgentComposer {
       submission: {
         action: async () => {
           if (this.answering() || this.offline()) return;
-          this.ask.emit(this.model().message.trim());
+          const message = this.model().message.trim();
+          const file = this.file();
+          if (file) this.askWithFile.emit({ message, file });
+          else this.ask.emit(message);
+          this.file.set(null);
           this.composerForm().reset({ message: '' });
         },
       },
     },
   );
+
+  protected readonly accept = UPLOAD_ACCEPT;
+  protected readonly file = signal<File | null>(null);
+  protected readonly fileProblem = signal<string | null>(null);
 
   protected readonly limit = AGENT_MESSAGE_MAX_LENGTH;
   protected readonly length = computed(() => this.model().message.length);
@@ -71,6 +88,21 @@ export class AgentComposer {
   protected readonly canSend = computed(
     () => this.model().message.trim().length > 0 && !this.offline(),
   );
+
+  protected pick(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const picked = input.files?.item(0) ?? null;
+    input.value = '';
+    if (!picked) return;
+    const problem = uploadProblem(picked);
+    this.fileProblem.set(problem);
+    this.file.set(problem ? null : picked);
+  }
+
+  protected removeFile(): void {
+    this.file.set(null);
+    this.fileProblem.set(null);
+  }
 
   /** Puts the cursor in the box, as the panel does when it opens. */
   focus(): void {

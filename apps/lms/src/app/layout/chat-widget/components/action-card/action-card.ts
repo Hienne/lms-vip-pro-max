@@ -1,4 +1,5 @@
 import { Component, computed, input, output } from '@angular/core';
+import { RouterLink } from '@angular/router';
 import { Button, Spinner } from '@lms/ui';
 import type { ActionCard as ActionCardState } from '../../../../core/assistant/agent-chat.model';
 
@@ -10,7 +11,7 @@ import type { ActionCard as ActionCardState } from '../../../../core/assistant/a
  */
 @Component({
   selector: 'app-action-card',
-  imports: [Button, Spinner],
+  imports: [Button, RouterLink, Spinner],
   templateUrl: './action-card.html',
   styleUrl: './action-card.scss',
 })
@@ -29,7 +30,8 @@ export class ActionCard {
   /** One field names itself in the question; several are asked by the server's title. */
   protected readonly question = computed(() => {
     const { title, changes } = this.card().pending;
-    if (changes.length > 1) return `${title}?`;
+    if (changes.length > 1 || this.card().pending.tool === 'start_course_job')
+      return `${title}?`;
     const label = changes[0].label;
     return `Đổi ${label.charAt(0).toLocaleLowerCase('vi') + label.slice(1)}?`;
   });

@@ -128,6 +128,11 @@ describe('AppShell', () => {
           }),
         ),
       );
+    // An instructor's or admin's tracker asks for their course generations; there are none.
+    backend
+      .match((r) => r.url === '/api/v1/assistant/course-jobs')
+      .filter((r) => !r.cancelled)
+      .forEach((r) => r.flush(envelopeOk([])));
   }
 
   async function open(url: string, counts?: Counts) {

@@ -13,6 +13,8 @@ export const AgentSkillSchema = z.enum([
   /** Only with a lesson `context`: the server ignores it elsewhere. */
   'tom_tat_bai',
   'tro_chuyen',
+  /** Only for instructors and admins, with a file attached in the composer. */
+  'tao_khoa_hoc',
 ]);
 export type AgentSkill = z.infer<typeof AgentSkillSchema>;
 
@@ -35,6 +37,8 @@ export const AgentCommandSchema = z.object({
   skill: AgentSkillSchema.optional(),
   /** The lesson being studied; sent with every question of a conversation opened from it. */
   context: LessonContextSchema.optional(),
+  /** A personal document the user just uploaded, for `tao_khoa_hoc`; the server checks it is theirs. */
+  attachmentDocumentId: z.number().int().positive().optional(),
 });
 export type AgentCommand = z.infer<typeof AgentCommandSchema>;
 
@@ -56,6 +60,14 @@ export const PendingActionSchema = z.discriminatedUnion('tool', [
     tool: z.literal('update_profile'),
     title: z.string(),
     changes: z.array(ProfileChangeSchema).min(1),
+    expiresAt: z.iso.datetime(),
+  }),
+  /** Starts a course generation; the card lists the inputs the user is confirming. */
+  z.object({
+    id: z.string(),
+    tool: z.literal('start_course_job'),
+    title: z.string(),
+    changes: z.array(ProfileChangeSchema.extend({ field: z.string() })).min(1),
     expiresAt: z.iso.datetime(),
   }),
 ]);
@@ -101,6 +113,16 @@ export const ActionResultSchema = z.discriminatedUnion('tool', [
     tool: z.literal('update_profile'),
     message: z.string(),
     data: MeSchema,
+  }),
+  /** The job that was started and the review screen where the user follows it. */
+  z.object({
+    actionId: z.string(),
+    tool: z.literal('start_course_job'),
+    message: z.string(),
+    data: z.object({
+      jobId: z.number().int(),
+      path: z.string().startsWith('/'),
+    }),
   }),
 ]);
 export type ActionResult = z.infer<typeof ActionResultSchema>;

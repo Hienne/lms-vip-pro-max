@@ -62,6 +62,12 @@ import {
   AGENT_PROFILE_INVALID,
   AGENT_PROFILE_NOT_OFFERED,
   AGENT_PROFILE_UNCHANGED,
+  AGENT_COURSE_ADMIN_FORM,
+  AGENT_COURSE_ATTACH_FIRST,
+  AGENT_COURSE_CARD_TITLE,
+  AGENT_COURSE_FOR_INSTRUCTORS,
+  AGENT_COURSE_STARTED,
+  agentTextEvents,
   AGENT_SCREEN_REFUSED,
   agentActionEvents,
   agentAiErrorEvents,
@@ -89,6 +95,7 @@ import {
   AssessmentAuthoringMock,
   type CourseOwnership,
 } from '../assessment/authoring.mock';
+import { CourseJobMock } from '../assistant-course/course-job.mock';
 import { LearnerQuizMock } from '../assessment/learner-quiz.mock';
 import { learningReportHandlers } from '../reports/learning-report.handlers';
 import {
@@ -183,9 +190,12 @@ type Handler = (request: FakeRequest) => FakeReply;
 /** How long the backend keeps a proposed action waiting for its confirmation. */
 const ACTION_TTL_MS = 10 * 60_000;
 
+/** The roles that may generate a course; the others are refused like the real server does. */
+const COURSE_JOB_ROLES = ['INSTRUCTOR', 'ADMIN', 'SUPER_ADMIN'];
+
 interface PendingProposal {
   readonly userId: string;
-  readonly action: Extract<PendingAction, { tool: 'update_profile' }>;
+  readonly action: PendingAction;
   readonly expiresAt: number;
 }
 
@@ -232,6 +242,7 @@ export class FakeBackend {
       this.learning.courseOwnership(courseId),
   );
   private readonly learnerQuiz = new LearnerQuizMock();
+  private readonly courseJobs = new CourseJobMock();
   private orgs: Mutable<SeedOrg>[] = SEED_ORGS.map((o) => ({ ...o }));
   private teams: Mutable<SeedTeam>[] = SEED_TEAMS.map((t) => ({ ...t }));
   private users: DbUser[] = SEED_USERS.map((u, index) => ({
@@ -367,6 +378,7 @@ export class FakeBackend {
       this.authoring.answers(endpoint) ||
       this.assessment.answers(endpoint) ||
       this.learnerQuiz.answers(endpoint) ||
+      this.courseJobs.answers(endpoint) ||
       learningReportHandlers.has(endpoint)
     );
   }
@@ -377,6 +389,18 @@ export class FakeBackend {
     if (authoring.answers(endpoint)) {
       try {
         return authoring.handle(endpoint, request);
+      } catch (error) {
+        if (error instanceof Refused) return error.reply;
+        throw error;
+      }
+    }
+    if (this.courseJobs.answers(endpoint)) {
+      try {
+        const user = this.caller(request);
+        if (!this.hasRole(user.userId, COURSE_JOB_ROLES)) {
+          return refuse('accessDenied');
+        }
+        return this.courseJobs.handle(endpoint, request, user.userId);
       } catch (error) {
         if (error instanceof Refused) return error.reply;
         throw error;
@@ -696,7 +720,13 @@ export class FakeBackend {
     const turn =
       lesson && label
         ? agentLessonEvents(lesson, label, parsed.data.skill === 'tom_tat_bai')
-        : this.scriptedTurn(user, parsed.data.message);
+        : parsed.data.skill === 'tao_khoa_hoc'
+          ? this.courseTurn(
+              user,
+              parsed.data.message,
+              parsed.data.attachmentDocumentId,
+            )
+          : this.scriptedTurn(user, parsed.data.message);
     const turnId = this.book.record(
       user.userId,
       conversation.conversationId,
@@ -728,6 +758,57 @@ export class FakeBackend {
     if (folded.includes('loi ai')) return agentAiErrorEvents;
     if (folded.includes('khong co trong tai lieu')) return agentNotFoundEvents;
     return agentDocumentEvents;
+  }
+
+  /**
+   * The `tao_khoa_hoc` skill: a learner is told it is for instructors; without a file the user is
+   * asked to attach one; otherwise a card lists the inputs (the mock takes the question as the
+   * target learners and picks a programme and competency, where the real tool looks them up by the
+   * names the user gave).
+   */
+  private courseTurn(
+    user: DbUser,
+    text: string,
+    attachmentDocumentId: number | undefined,
+  ) {
+    if (!this.hasRole(user.userId, COURSE_JOB_ROLES)) {
+      return agentTextEvents(AGENT_COURSE_FOR_INSTRUCTORS);
+    }
+    if (this.hasRole(user.userId, ['ADMIN', 'SUPER_ADMIN'])) {
+      return agentRefusedEvents('start_course_job', AGENT_COURSE_ADMIN_FORM);
+    }
+    const document = this.documents.find((d) => d.id === attachmentDocumentId);
+    if (!document) {
+      return agentRefusedEvents('start_course_job', AGENT_COURSE_ATTACH_FIRST);
+    }
+    const action: PendingProposal['action'] = {
+      id: `agent-action-${this.nextActionSeq++}`,
+      tool: 'start_course_job',
+      title: AGENT_COURSE_CARD_TITLE,
+      changes: [
+        {
+          field: 'targetLearners',
+          label: 'Đối tượng học viên',
+          from: null,
+          to: text.slice(0, 500),
+        },
+        { field: 'level', label: 'Trình độ', from: null, to: 'Cơ bản' },
+        { field: 'chapters', label: 'Số chương', from: null, to: '3' },
+        {
+          field: 'file',
+          label: 'Tài liệu nguồn',
+          from: null,
+          to: document.fileName,
+        },
+      ],
+      expiresAt: new Date(Date.now() + ACTION_TTL_MS).toISOString(),
+    };
+    this.pendingActions.set(action.id, {
+      userId: user.userId,
+      action,
+      expiresAt: Date.now() + ACTION_TTL_MS,
+    });
+    return agentActionEvents(action);
   }
 
   /** "đổi chức danh … thành <giá trị>": a card, or the words the tool would give back. */
@@ -800,8 +881,45 @@ export class FakeBackend {
     const user = this.caller(request);
     const pending = this.pendingOf(request, user);
     this.pendingActions.delete(pending.action.id);
+    if (pending.action.tool === 'start_course_job') {
+      const fileName =
+        pending.action.changes.find((c) => c.field === 'file')?.to ??
+        'tai-lieu.md';
+      const job = this.courseJobs.queue(
+        user.userId,
+        {
+          targetLearners:
+            pending.action.changes.find((c) => c.field === 'targetLearners')
+              ?.to ?? 'Học viên',
+          level: 'BEGINNER',
+          chapters: 3,
+          programmeId: 1,
+          competencyId: 1,
+        },
+        fileName,
+      );
+      this.book.settle(
+        user.userId,
+        pending.action.id,
+        'confirmed',
+        AGENT_COURSE_STARTED,
+      );
+      return ok({
+        actionId: pending.action.id,
+        tool: pending.action.tool,
+        message: AGENT_COURSE_STARTED,
+        data: {
+          jobId: job.jobId,
+          path: `/admin/courses/ai-drafts/${job.jobId}`,
+        },
+      });
+    }
     const changes = pending.action.changes;
-    if (changes.some((c) => (user[c.field] ?? null) !== c.from)) {
+    if (
+      changes.some(
+        (c) => (user[c.field as ProfileChange['field']] ?? null) !== c.from,
+      )
+    ) {
       this.book.settle(
         user.userId,
         pending.action.id,
@@ -810,7 +928,9 @@ export class FakeBackend {
       );
       return refuse('assistantActionStale');
     }
-    for (const c of changes) user[c.field] = c.to as string;
+    for (const c of changes) {
+      user[c.field as ProfileChange['field']] = c.to as string;
+    }
     this.book.settle(
       user.userId,
       pending.action.id,

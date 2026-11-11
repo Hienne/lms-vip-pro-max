@@ -1,3 +1,4 @@
+import { CourseJobAccess } from '../../core/course-jobs/course-job-access';
 import { Component, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { provideRouter, Router } from '@angular/router';
@@ -103,6 +104,7 @@ describe('ChatWidget', () => {
       providers: [
         provideRouter([{ path: '**', component: Blank }]),
         { provide: AgentChatStore, useValue: fake.store },
+        { provide: CourseJobAccess, useValue: { canGenerate$: signal(false) } },
         { provide: ConversationsStore, useValue: fake.history },
       ],
     });

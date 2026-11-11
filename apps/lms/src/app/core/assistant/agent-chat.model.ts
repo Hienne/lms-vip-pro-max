@@ -38,11 +38,14 @@ export const ActionCardSchema = z.object({
   pending: PendingActionSchema,
   status: ActionCardStatusSchema,
   message: z.string().nullable(),
+  /** Where the confirmed action leads, for example the review screen of a course job. */
+  link: z.object({ path: z.string(), label: z.string() }).nullish(),
 });
 export interface ActionCard {
   readonly pending: PendingAction;
   readonly status: ActionCardStatus;
   readonly message: string | null;
+  readonly link?: { readonly path: string; readonly label: string } | null;
 }
 
 export const AgentReplySchema = z.object({

@@ -1,0 +1,68 @@
+@use 'ui';
+
+:host {
+  display: block;
+  width: min(34rem, calc(100vw - #{ui.space(8)}));
+  max-height: calc(100vh - #{ui.space(8)});
+  overflow: auto;
+  // prettier-ignore
+  border-radius: ui.radius(card); // design-drift-allow: own-radius the dialog panel itself, like every CDK dialog host
+  background: ui.color(surface);
+  color: ui.color(text);
+  // prettier-ignore
+  box-shadow: ui.shadow(lg); // design-drift-allow: own-shadow the dialog panel floats as an overlay
+}
+
+.start-course {
+  &__header {
+    display: flex;
+    gap: ui.space(3);
+    align-items: flex-start;
+    padding: ui.space(6) ui.space(6) 0;
+  }
+
+  &__title {
+    flex: 1;
+    align-self: center;
+    margin: 0;
+    font-size: ui.text-size(lg);
+    font-weight: ui.weight(semibold);
+  }
+
+  &__body {
+    @include ui.stack(4);
+    padding: ui.space(4) ui.space(6);
+  }
+
+  &__intro {
+    margin: 0;
+    @include ui.text(sm, secondary);
+  }
+
+  &__pair {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: ui.space(3);
+  }
+
+  &__file {
+    @include ui.row(2);
+    align-items: center;
+    min-width: 0;
+  }
+
+  &__file-name {
+    @include ui.text(sm);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  &__footer {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: ui.space(2);
+    padding: 0 ui.space(6) ui.space(6);
+  }
+}

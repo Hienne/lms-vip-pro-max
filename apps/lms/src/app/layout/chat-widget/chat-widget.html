@@ -140,7 +140,9 @@
     <app-agent-composer
       [answering]="store.isAnswering$()"
       [offline]="store.isOffline$()"
+      [canAttach]="canAttach()"
       (ask)="store.ask($event)"
+      (askWithFile)="store.askWithFile($event.message, $event.file)"
       (stop)="store.stop()"
     />
   </div>

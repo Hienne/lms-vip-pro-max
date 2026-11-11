@@ -13,6 +13,8 @@ import { Router } from '@angular/router';
 import {
   agentEndpoints,
   answerFeedbackEndpoints,
+  knowledgeEndpoints,
+  type KnowledgeDocument,
   type RateAnswerCommand,
   type AgentCommand,
   type AgentSkill,
@@ -22,6 +24,8 @@ import {
   type PendingAction,
 } from '@lms/contracts';
 import { finalize, Subscription } from 'rxjs';
+import { CourseJobTrackerStore } from '../course-jobs/course-job-tracker.store';
+import { DocumentTrackerStore } from '../knowledge/document-tracker.store';
 import { toAppError } from '../errors/app-error';
 import { EndpointClient } from '../http/endpoint-client';
 import { NetworkStore } from '../network/network.store';
@@ -67,6 +71,8 @@ export class AgentChatStore {
   private readonly network = inject(NetworkStore);
   private readonly storage = inject(AgentChatStorage);
   private readonly conversations = inject(ConversationsStore);
+  private readonly courseJobs = inject(CourseJobTrackerStore);
+  private readonly documents = inject(DocumentTrackerStore);
   private readonly router = inject(Router);
   private readonly destroyRef = inject(DestroyRef);
 
@@ -250,12 +256,55 @@ export class AgentChatStore {
   // ---- conversation ----------------------------------------------------------------------------
 
   /** Asks one question; ignored while another answer is on its way. */
-  ask(rawQuestion: string, skill?: AgentSkill): void {
+  ask(
+    rawQuestion: string,
+    skill?: AgentSkill,
+    attachmentDocumentId?: number,
+  ): void {
     const question = rawQuestion.trim();
     if (!question || this.isAnswering$()) return;
     const id = Math.max(0, ...this.turns$().map((t) => t.id)) + 1;
     this.setTurns([...this.turns$(), { id, question, reply: WAITING }]);
-    this.stream(id, question, skill);
+    this.stream(id, question, skill, attachmentDocumentId);
+  }
+
+  /**
+   * Asks the `tao_khoa_hoc` skill about a file the user attached: the file is uploaded as their
+   * own personal document first, then the question goes with its id. The server decides who may
+   * use the skill and whether the file is theirs; a refusal of either shows as the reply.
+   */
+  askWithFile(rawQuestion: string, file: File): void {
+    const question = rawQuestion.trim();
+    if (!question || this.isAnswering$()) return;
+    const id = Math.max(0, ...this.turns$().map((t) => t.id)) + 1;
+    this.setTurns([...this.turns$(), { id, question, reply: WAITING }]);
+    this.setAnsweringId(id);
+    if (this.network.offline$()) {
+      this.fail(id, OFFLINE_MESSAGE);
+      return;
+    }
+    const userId = this.userId();
+    const subscription = new Subscription();
+    this.streaming = subscription;
+    subscription.add(
+      this.client
+        .call(knowledgeEndpoints.uploadDocument, {
+          body: { file, scope: 'personal' },
+        })
+        .subscribe({
+          next: this.sameUser(userId, (document: KnowledgeDocument) => {
+            this.documents.track(document);
+            this.stream(id, question, 'tao_khoa_hoc', document.id);
+          }),
+          error: this.sameUser(userId, (error: unknown) => {
+            const app = toAppError(error);
+            this.fail(
+              id,
+              app.kind === 'offline' ? OFFLINE_MESSAGE : app.message,
+            );
+          }),
+        }),
+    );
   }
 
   /**
@@ -298,8 +347,13 @@ export class AgentChatStore {
     this.stream(turnId, turn.question);
   }
 
-  private stream(id: number, question: string, skill?: AgentSkill): void {
-    const command = this.commandFor(question, skill);
+  private stream(
+    id: number,
+    question: string,
+    skill?: AgentSkill,
+    attachmentDocumentId?: number,
+  ): void {
+    const command = this.commandFor(question, skill, attachmentDocumentId);
     this.setAnsweringId(id);
     if (this.network.offline$()) {
       this.fail(id, OFFLINE_MESSAGE);
@@ -470,11 +524,20 @@ export class AgentChatStore {
       )
       .subscribe({
         next: this.sameUser(userId, (result) => {
-          this.session.apply(result.data);
-          this.patchCard(turnId, {
-            status: 'confirmed',
-            message: result.message,
-          });
+          if (result.tool === 'update_profile') {
+            this.session.apply(result.data);
+            this.patchCard(turnId, {
+              status: 'confirmed',
+              message: result.message,
+            });
+          } else {
+            this.courseJobs.trackById(result.data.jobId);
+            this.patchCard(turnId, {
+              status: 'confirmed',
+              message: result.message,
+              link: { path: result.data.path, label: 'Mở màn hình rà soát' },
+            });
+          }
         }),
         error: this.sameUser(userId, (error: unknown) =>
           this.refused(turnId, error),
@@ -634,7 +697,11 @@ export class AgentChatStore {
   // ---- history and storage ---------------------------------------------------------------------
 
   /** The question and the conversation it continues; the server holds the earlier turns. */
-  private commandFor(question: string, skill?: AgentSkill): AgentCommand {
+  private commandFor(
+    question: string,
+    skill?: AgentSkill,
+    attachmentDocumentId?: number,
+  ): AgentCommand {
     const conversationId = this.state.conversationId();
     const lesson = this.state.lesson();
     const context: LessonContext | undefined = lesson
@@ -648,6 +715,7 @@ export class AgentChatStore {
       message: question,
       ...(skill ? { skill } : {}),
       ...(context ? { context } : {}),
+      ...(attachmentDocumentId ? { attachmentDocumentId } : {}),
     };
     return conversationId === null ? base : { ...base, conversationId };
   }

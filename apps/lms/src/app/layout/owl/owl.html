@@ -1,13 +1,15 @@
-@let doc = finished();
+@let doc = notice();
 <p class="sr-only" aria-live="polite">{{ announcement() }}</p>
 @if (!quiet()) { @if (doc && !panelOpen()) {
 <div class="owl__bubble">
   <p class="owl__text">
-    @if (doc.status === 'ready') { Đã xử lý xong tài liệu
-    <strong>{{ doc.fileName }}</strong> } @else { Không xử lý được tài liệu
-    <strong>{{ doc.fileName }}</strong>. }
+    @if (doc.kind === 'course') { @if (doc.ok) { Khóa học từ
+    <strong>{{ doc.fileName }}</strong> đã sẵn sàng để rà soát. } @else { Không
+    tạo được khóa học từ <strong>{{ doc.fileName }}</strong>. } } @else if
+    (doc.ok) { Đã xử lý xong tài liệu <strong>{{ doc.fileName }}</strong> }
+    @else { Không xử lý được tài liệu <strong>{{ doc.fileName }}</strong>. }
     <button type="button" class="owl__link" (click)="open()">
-      {{ doc.status === 'ready' ? 'Mở trợ lý' : 'Xem chi tiết' }}
+      {{ doc.action }}
     </button>
   </p>
   <button

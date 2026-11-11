@@ -26,6 +26,12 @@
       color: ui.color(danger);
     }
   }
+
+  &__link {
+    margin-inline-start: ui.space(1);
+    color: ui.color(primary);
+    font-weight: ui.weight(medium);
+  }
 }
 
 .change {
@@ -61,5 +67,12 @@
 
   &__to {
     font-weight: ui.weight(semibold);
+  }
+
+  // A value the user is confirming, with no earlier value to compare with.
+  &--set &__to {
+    @include ui.text(sm);
+    margin: 0;
+    overflow-wrap: anywhere;
   }
 }

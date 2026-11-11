@@ -24,6 +24,7 @@ import { AgentChatStore } from '../../core/assistant/agent-chat.store';
 import { ConversationsStore } from '../../core/assistant/conversations.store';
 import { ConversationList } from '../../shared/assistant/conversation-list/conversation-list';
 import { suggestionsFor } from '../../core/assistant/agent-suggestions';
+import { CourseJobAccess } from '../../core/course-jobs/course-job-access';
 import { AgentComposer } from './components/agent-composer/agent-composer';
 import { OwlFace } from '../owl/owl-face/owl-face';
 import { AgentMessage } from './components/agent-message/agent-message';
@@ -94,6 +95,7 @@ export class ChatWidget {
   protected readonly isEmpty = computed(() => this.store.turns$().length === 0);
 
   private readonly composer = viewChild(AgentComposer);
+  protected readonly canAttach = inject(CourseJobAccess).canGenerate$;
   private readonly log = viewChild<ElementRef<HTMLElement>>('log');
   /** Whether the user is at the end of the log, so streamed text keeps it in view. */
   private following = true;

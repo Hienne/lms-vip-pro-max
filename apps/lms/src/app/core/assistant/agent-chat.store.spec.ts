@@ -17,9 +17,12 @@ import {
   BACKEND_RESPONSES,
   backendRefusal,
   envelopeOk,
+  knowledgeDocumentFixtures,
   seedMe,
 } from '@lms/mocks';
 import { parseAppConfig, provideAppConfig } from '../config/app-config';
+import { CourseJobTrackerStore } from '../course-jobs/course-job-tracker.store';
+import { DocumentTrackerStore } from '../knowledge/document-tracker.store';
 import { testAppConfig } from '../config/app-config.testing';
 import { provideEnvelopeHttpClient } from '../http/http.testing';
 import { NetworkStore } from '../network/network.store';
@@ -108,6 +111,7 @@ describe('AgentChatStore', () => {
   let backend: HttpTestingController;
   let store: AgentChatStore;
   let router: Router;
+  const trackById = vi.fn();
 
   function setup(userId: string | null = '000004'): void {
     TestBed.resetTestingModule();
@@ -118,6 +122,9 @@ describe('AgentChatStore', () => {
         provideRouter([]),
         { provide: SessionStore, useClass: FakeSessionStore },
         { provide: ErrorHandler, useValue: { handleError: () => undefined } },
+        // The background trackers poll the server on their own; this spec is about the chat.
+        { provide: CourseJobTrackerStore, useValue: { trackById } },
+        { provide: DocumentTrackerStore, useValue: { track: vi.fn() } },
       ],
     });
     backend = TestBed.inject(HttpTestingController);
@@ -739,6 +746,46 @@ describe('AgentChatStore', () => {
     });
   });
 
+  describe('a file attached to a course request', () => {
+    it('uploads it as a personal document, then asks the course skill with its id', async () => {
+      store.askWithFile('Tạo khóa học từ tệp này', new File(['x'], 'q.md'));
+      await settle();
+      const upload = backend.expectOne('/api/v1/knowledge/documents');
+      expect((upload.request.body as FormData).get('scope')).toBe('personal');
+      upload.flush(
+        envelopeOk({
+          ...knowledgeDocumentFixtures[0],
+          id: 77,
+          status: 'queued',
+        }),
+      );
+      await settle();
+
+      const stream = backend.expectOne(STREAM);
+      expect(stream.request.body).toMatchObject({
+        message: 'Tạo khóa học từ tệp này',
+        skill: 'tao_khoa_hoc',
+        attachmentDocumentId: 77,
+      });
+      finish(stream, [done('Còn thiếu: chương trình đào tạo.')]);
+      await settle();
+      expect(lastReply()?.text).toBe('Còn thiếu: chương trình đào tạo.');
+    });
+
+    it('shows the upload refusal as the reply and asks nothing', async () => {
+      store.askWithFile('Tạo khóa học', new File(['x'], 'q.md'));
+      await settle();
+      const refusal = backendRefusal('fileTooLarge');
+      backend
+        .expectOne('/api/v1/knowledge/documents')
+        .flush(refusal.body, { status: refusal.status, statusText: 'x' });
+      await settle();
+
+      backend.expectNone(STREAM);
+      expect(lastReply()?.status).toBe('error');
+    });
+  });
+
   describe('navigation', () => {
     it('opens a screen that is in the user’s own menu', async () => {
       await converse(
@@ -803,6 +850,42 @@ describe('AgentChatStore', () => {
       store.confirm(turnId());
       await settle();
       backend.expectNone(confirmUrl('a1'));
+    });
+
+    it('confirms a card that starts a course, follows the job in the background and links to its review screen', async () => {
+      const startCourse = {
+        id: 'c1',
+        tool: 'start_course_job' as const,
+        title: 'Tạo khóa học bằng AI',
+        changes: [
+          {
+            field: 'level',
+            label: 'Trình độ',
+            from: null,
+            to: 'Cơ bản',
+          },
+        ],
+        expiresAt: new Date(Date.now() + 60_000).toISOString(),
+      };
+      await converse('Tạo khóa học', agentActionEvents(startCourse));
+      store.confirm(turnId());
+      await settle();
+      backend.expectOne(confirmUrl('c1')).flush(
+        envelopeOk({
+          actionId: 'c1',
+          tool: 'start_course_job',
+          message: 'Đã bắt đầu tạo khóa học.',
+          data: { jobId: 11, path: '/admin/courses/ai-drafts/11' },
+        }),
+      );
+      await settle();
+
+      expect(card()).toMatchObject({
+        status: 'confirmed',
+        link: { path: '/admin/courses/ai-drafts/11' },
+      });
+      expect(trackById).toHaveBeenCalledWith(11);
+      expect(fakeSession().apply).not.toHaveBeenCalled();
     });
 
     it('shows a card as expired when the server no longer has the action', async () => {

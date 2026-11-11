@@ -33,6 +33,16 @@ export const AGENT_PROFILE_INVALID = {
   positionName: 'Chức danh dài tối đa 255 ký tự.',
 } as const;
 
+export const AGENT_COURSE_FOR_INSTRUCTORS =
+  'Tính năng tạo khóa học bằng AI dành cho giảng viên.';
+export const AGENT_COURSE_ADMIN_FORM =
+  'Quản trị viên cần chọn đơn vị sở hữu khóa học: hãy mở Khóa học mới rồi bấm "Tạo bằng AI".';
+export const AGENT_COURSE_ATTACH_FIRST =
+  'Hãy đính kèm một tệp .pdf, .docx hoặc .md bằng nút ghim ở ô soạn tin rồi gửi lại yêu cầu.';
+export const AGENT_COURSE_CARD_TITLE = 'Tạo khóa học bằng AI';
+export const AGENT_COURSE_STARTED =
+  'Đã bắt đầu tạo khóa học. Mở màn hình rà soát để theo dõi.';
+
 /** A turn that ends in words only, as the model would say them. */
 export function agentTextEvents(text: string): readonly AgentStreamEvent[] {
   return [
@@ -132,9 +142,16 @@ export function agentActionEvents(
   action: PendingAction,
 ): readonly AgentStreamEvent[] {
   return [
-    { type: 'tool', name: 'update_profile' },
+    { type: 'tool', name: action.tool },
     { type: 'action_required', action },
-    { type: 'done', answer: AGENT_PROFILE_CARD_TEXT, citations: [] },
+    {
+      type: 'done',
+      answer:
+        action.tool === 'update_profile'
+          ? AGENT_PROFILE_CARD_TEXT
+          : 'Vui lòng kiểm tra và xác nhận để bắt đầu tạo khóa học.',
+      citations: [],
+    },
   ];
 }
 
