@@ -24,6 +24,7 @@ import { AgentChatStore } from '../../core/assistant/agent-chat.store';
 import { ConversationsStore } from '../../core/assistant/conversations.store';
 import { ConversationList } from '../../shared/assistant/conversation-list/conversation-list';
 import { suggestionsFor } from '../../core/assistant/agent-suggestions';
+import { BackgroundJobsStore } from '../../core/background/background-jobs.store';
 import { CourseJobAccess } from '../../core/course-jobs/course-job-access';
 import { AgentComposer } from './components/agent-composer/agent-composer';
 import { OwlFace } from '../owl/owl-face/owl-face';
@@ -68,6 +69,7 @@ export class ChatWidget {
   private readonly document = inject(DOCUMENT);
   private readonly injector = inject(Injector);
   private readonly router = inject(Router);
+  private readonly background = inject(BackgroundJobsStore);
   private readonly navigated = toSignal(
     this.router.events.pipe(filter((event) => event instanceof NavigationEnd)),
     { initialValue: null },
@@ -91,6 +93,14 @@ export class ChatWidget {
     return last?.reply.status === 'done' && !this.store.isAnswering$()
       ? (last.suggestions ?? [])
       : [];
+  });
+  /**
+   * A course generation that failed, kept here until dismissed: the owl hides while this panel is
+   * open, so the panel shows the same notice.
+   */
+  protected readonly failure = computed(() => {
+    const notice = this.background.notice$();
+    return notice?.kind === 'course' && !notice.ok ? notice : null;
   });
   protected readonly isEmpty = computed(() => this.store.turns$().length === 0);
 
@@ -124,6 +134,16 @@ export class ChatWidget {
       const log = untracked(() => this.log())?.nativeElement;
       if (log && this.following) log.scrollTop = log.scrollHeight;
     });
+  }
+
+  protected openFailure(): void {
+    const href = this.failure()?.href;
+    if (href) void this.router.navigateByUrl(href);
+    this.background.dismiss();
+  }
+
+  protected dismissFailure(): void {
+    this.background.dismiss();
   }
 
   protected trackScroll(): void {

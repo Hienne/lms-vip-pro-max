@@ -24,6 +24,15 @@ export const courseJobEndpoints = {
     path: '/api/v1/assistant/course-jobs',
     response: z.array(CourseJobSummarySchema),
   }),
+  /**
+   * The caller's running jobs plus the ones that failed or were stopped in the last days, each
+   * with its `courseId`: what the app reads on start so a reload keeps progress and failure notices.
+   */
+  active: defineEndpoint({
+    method: 'get',
+    path: '/api/v1/assistant/course-jobs/active',
+    response: z.array(CourseJobSummarySchema),
+  }),
   get: defineEndpoint({
     method: 'get',
     path: '/api/v1/assistant/course-jobs/{jobId}',

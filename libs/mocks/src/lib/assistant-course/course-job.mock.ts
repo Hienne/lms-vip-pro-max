@@ -177,6 +177,23 @@ export class CourseJobMock {
       mine.forEach((entry) => this.advance(entry));
       return ok(mine.map((entry) => this.summary(entry.job)));
     }
+    if (endpoint === courseJobEndpoints.active) {
+      const mine = this.jobs.filter((entry) => entry.owner === owner);
+      mine.forEach((entry) => this.advance(entry));
+      return ok(
+        mine
+          .filter((entry) =>
+            [
+              'queued',
+              'running',
+              'waiting_approval',
+              'failed',
+              'stopped',
+            ].includes(entry.job.status),
+          )
+          .map((entry) => this.summary(entry.job)),
+      );
+    }
     const entry = this.jobs.find(
       (item) =>
         item.owner === owner &&

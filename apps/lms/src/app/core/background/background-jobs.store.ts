@@ -74,8 +74,8 @@ export class BackgroundJobsStore {
           kind: 'course',
           fileName: course.job.sourceFileName ?? 'tài liệu nguồn',
           ok: !failed,
-          href: this.courses.pathOf(course.job.jobId),
-          action: failed ? 'Xem chi tiết' : 'Rà soát',
+          href: this.courses.pathOf(course.job),
+          action: failed ? 'Mở khóa học' : 'Rà soát',
           at: course.at,
         }
       : null;
