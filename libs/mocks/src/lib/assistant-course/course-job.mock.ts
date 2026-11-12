@@ -271,7 +271,7 @@ export class CourseJobMock {
     return ok(this.queue(owner, inputs, name));
   }
 
-  /** The review calls: read, edit and approve the outline, redo a lesson, decide, retry, draft. */
+  /** The review calls: read, edit and approve the outline, redo a lesson, decide, retry. */
   private review(
     endpoint: AnyEndpoint,
     request: FakeRequest,
@@ -343,35 +343,13 @@ export class CourseJobMock {
       );
       return ok(this.content(entry));
     }
-    if (endpoint === courseContentEndpoints.retry) {
-      const failed = generation.lessons.filter((lesson) => lesson.failed);
-      if (failed.length === 0) {
-        return refuse('NOTHING_FAILED', 'Không có bước nào bị lỗi.');
-      }
-      this.reopen(entry, failed);
-      return ok(this.content(entry));
+    // retry
+    const failed = generation.lessons.filter((lesson) => lesson.failed);
+    if (failed.length === 0) {
+      return refuse('NOTHING_FAILED', 'Không có bước nào bị lỗi.');
     }
-    // createDraft
-    const ready =
-      generation.locked &&
-      generation.lessons.length > 0 &&
-      generation.lessons.every(
-        (lesson) => lesson.ticks >= DONE_TICKS && !lesson.failed,
-      );
-    if (!ready) {
-      return refuse(
-        'STEP_NOT_READY',
-        'Cần viết xong mọi bài học trước khi tạo bản nháp.',
-      );
-    }
-    entry.job = {
-      ...entry.job,
-      status: 'completed',
-      step: 'draft',
-      progress: 100,
-      createdDraftId: entry.job.createdDraftId ?? 100 + entry.job.jobId,
-    };
-    return ok(entry.job);
+    this.reopen(entry, failed);
+    return ok(this.content(entry));
   }
 
   /** The lessons are written again; the others and the questions stay. */

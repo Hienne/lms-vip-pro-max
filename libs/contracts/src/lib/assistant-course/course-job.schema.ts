@@ -96,6 +96,6 @@ export const CourseJobSummarySchema = z.object({
 });
 export type CourseJobSummary = z.infer<typeof CourseJobSummarySchema>;
 
-/** The screen where an author follows a job, reviews it and asks for the draft. */
+/** The old link to a job: it leads to the job's course in the editor (or says the job is from the old flow). */
 export const courseJobReviewPath = (jobId: number): string =>
   `/admin/courses/ai-drafts/${jobId}`;

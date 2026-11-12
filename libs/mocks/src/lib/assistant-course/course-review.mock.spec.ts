@@ -67,12 +67,9 @@ describe('CourseJobMock review flow', () => {
     ).toContain('OUTLINE_LOCKED');
   });
 
-  it('writes the lessons after approval and offers the draft only when all are done', () => {
+  it('writes the lessons after approval and writes the failed ones again on retry', () => {
     until((c) => c.status === 'waiting_approval');
     call(courseContentEndpoints.approveOutline);
-    expect(errorCode(call(courseContentEndpoints.createDraft))).toContain(
-      'STEP_NOT_READY',
-    );
 
     const failed = until((c) => c.status === 'failed');
     expect(failed.lessons.filter((l) => l.status === 'failed')).toHaveLength(1);
@@ -83,11 +80,6 @@ describe('CourseJobMock review flow', () => {
     call(courseContentEndpoints.retry);
     const ready = until((c) => c.status === 'waiting_approval');
     expect(ready.lessons.every((l) => l.status === 'done')).toBe(true);
-
-    const draft = data(call(courseContentEndpoints.createDraft)) as {
-      createdDraftId: number;
-    };
-    expect(draft.createdDraftId).toBeGreaterThan(0);
   });
 
   it('keeps a question decision and rewrites only the lesson asked for', () => {

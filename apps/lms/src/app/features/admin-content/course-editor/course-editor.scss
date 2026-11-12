@@ -22,7 +22,7 @@
   }
 
   &__ai-problem {
-    @include ui.text(xs, muted);
+    @include ui.text(sm, muted);
   }
 
   &__saved {
