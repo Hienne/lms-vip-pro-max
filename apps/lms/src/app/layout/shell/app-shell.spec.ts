@@ -176,7 +176,7 @@ describe('AppShell', () => {
     ],
     [
       'admin',
-      '/admin/system',
+      '/admin/gamification',
       [
         '/admin/courses',
         '/admin/catalog',

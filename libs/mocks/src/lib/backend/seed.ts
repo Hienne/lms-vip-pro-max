@@ -308,7 +308,7 @@ export const SEED_FUNCTIONS: readonly FunctionInfo[] = [
     id: 14,
     code: 'SYSTEM_AUDIT',
     name: 'Nhật ký hệ thống',
-    routePattern: '/admin/system',
+    routePattern: '/admin/gamification',
     parentFunctionId: null,
     sortNo: 140,
   },
