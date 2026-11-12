@@ -67,6 +67,18 @@ export const agentDocumentEvents: readonly AgentStreamEvent[] = [
   },
 ];
 
+/** A document answer with a follow-up that asks for a profile change: read-only, as the server marks it. */
+export const agentDocumentSuggestionEvents: readonly AgentStreamEvent[] =
+  agentDocumentEvents.map((event) =>
+    event.type === 'done'
+      ? {
+          ...event,
+          suggestions: ['Đổi chức danh của tôi thành Chuyên viên chính'],
+          suggestionsReadOnly: true,
+        }
+      : event,
+  );
+
 /** The answer of a conversation opened from a lesson: one source, the lesson itself. */
 export function agentLessonEvents(
   lesson: { courseId: number; revisionId: number; lessonId: number },

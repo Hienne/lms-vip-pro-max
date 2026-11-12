@@ -109,6 +109,11 @@ export const AgentStreamEventSchema = z.discriminatedUnion('type', [
     turnId: z.number().int().positive().optional(),
     /** Up to three follow-up questions; absent when the model offered none. */
     suggestions: z.array(z.string()).optional(),
+    /**
+     * The turn read shared content (documents, courses, Community): the suggestions are read-only,
+     * so a clicked one is sent with the Q&A skill, which has no acting tool. Absent when false.
+     */
+    suggestionsReadOnly: z.boolean().optional(),
   }),
   z.object({
     type: z.literal('error'),

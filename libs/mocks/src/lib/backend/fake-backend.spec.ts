@@ -1186,6 +1186,23 @@ describe('FakeBackend', () => {
       expect(meOf(token).user.positionName).toBe(before);
     });
 
+    it('answers a read-only suggestion sent with the Q&A skill instead of proposing the change', () => {
+      const token = login('hocvien');
+      const suggested = events(turn(token, 'một câu hỏi, gợi ý')).at(-1);
+      expect(suggested).toMatchObject({
+        suggestionsReadOnly: true,
+        suggestions: ['Đổi chức danh của tôi thành Chuyên viên chính'],
+      });
+      const reply = call(agentEndpoints.stream, token, {
+        body: {
+          message: 'Đổi chức danh của tôi thành Chuyên viên chính',
+          skill: 'qa_tai_lieu',
+        },
+      });
+      expect(types(reply)).not.toContain('action_required');
+      expect(types(reply).at(-1)).toBe('done');
+    });
+
     it('proposes the email and the full name too, and refuses a value the profile rules reject', () => {
       const token = login('hocvien');
       expect(

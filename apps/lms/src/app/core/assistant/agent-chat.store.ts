@@ -661,6 +661,7 @@ export class AgentChatStore {
                   serverTurnId: event.turnId,
                   feedback: null,
                   suggestions: event.suggestions ?? [],
+                  suggestionsReadOnly: event.suggestionsReadOnly ?? false,
                 }
               : turn,
           ),

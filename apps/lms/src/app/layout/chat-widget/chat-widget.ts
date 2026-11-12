@@ -95,6 +95,13 @@ export class ChatWidget {
       : [];
   });
   /**
+   * A follow-up from a turn that read shared content is sent with the Q&A skill: its tools only
+   * read, so text planted in a document cannot reach a profile change or a screen through a button.
+   */
+  protected readonly followUpSkill = computed<AgentSkill | undefined>(() =>
+    this.store.turns$().at(-1)?.suggestionsReadOnly ? 'qa_tai_lieu' : undefined,
+  );
+  /**
    * A course generation that failed, kept here until dismissed: the owl hides while this panel is
    * open, so the panel shows the same notice.
    */

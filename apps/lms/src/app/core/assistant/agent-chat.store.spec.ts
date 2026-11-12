@@ -1295,6 +1295,20 @@ describe('AgentChatStore', () => {
       expect(store.turns$()[0].suggestions).toEqual(['Còn gì nữa?', 'Ví dụ?']);
     });
 
+    it('keeps the read-only flag of the suggestions, and has none by default', async () => {
+      await converse('Câu hỏi', [
+        conversation(7),
+        {
+          type: 'done',
+          answer: 'Xong.',
+          citations: [],
+          suggestions: ['Đổi email của tôi'],
+          suggestionsReadOnly: true,
+        },
+      ]);
+      expect(store.turns$()[0].suggestionsReadOnly).toBe(true);
+    });
+
     it('has none when the done line carried none', async () => {
       await converse('Câu hỏi', [
         conversation(7),

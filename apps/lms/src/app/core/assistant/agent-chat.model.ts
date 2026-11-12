@@ -70,6 +70,8 @@ export const AgentTurnSchema = z.object({
   feedback: FeedbackSchema.nullable().optional(),
   /** Follow-up questions the server offered with this answer. */
   suggestions: z.array(z.string()).optional(),
+  /** The suggestions come from a turn that read shared content: sent with the Q&A skill. */
+  suggestionsReadOnly: z.boolean().optional(),
 });
 export type AgentTurn = z.infer<typeof AgentTurnSchema>;
 

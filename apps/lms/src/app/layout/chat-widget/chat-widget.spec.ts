@@ -392,6 +392,23 @@ describe('ChatWidget', () => {
     expect(buttons()).toHaveLength(0);
   });
 
+  it('sends a follow-up from a turn that read shared content with the Q&A skill', async () => {
+    const { fixture, el, store, turns } = await render();
+    turns.set([
+      {
+        ...turn(1, 'Một'),
+        suggestions: ['Đổi chức danh của tôi'],
+        suggestionsReadOnly: true,
+      },
+    ]);
+    await fixture.whenStable();
+    el.querySelector<HTMLButtonElement>('.chat__suggestion')?.click();
+    expect(store.ask).toHaveBeenCalledWith(
+      'Đổi chức danh của tôi',
+      'qa_tai_lieu',
+    );
+  });
+
   it('shows each turn in order and hides the empty line', async () => {
     const { fixture, el, turns } = await render();
     turns.set([turn(1, 'Trả lời một'), turn(2, 'Trả lời hai')]);

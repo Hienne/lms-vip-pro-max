@@ -177,6 +177,19 @@ describe('follow-up suggestions and skill hints', () => {
     }
   });
 
+  it('accepts the read-only flag on an agent done line and refuses a non-boolean', () => {
+    const line = { ...doneAgent, suggestions: ['Đổi email?'] };
+    expect(
+      AgentStreamEventSchema.safeParse({ ...line, suggestionsReadOnly: true })
+        .success,
+    ).toBe(true);
+    expect(AgentStreamEventSchema.safeParse(line).success).toBe(true);
+    expect(
+      AgentStreamEventSchema.safeParse({ ...line, suggestionsReadOnly: 'yes' })
+        .success,
+    ).toBe(false);
+  });
+
   it('accepts a command with a known skill and refuses an unknown one', () => {
     expect(
       AgentCommandSchema.safeParse({ message: 'Mở', skill: 'dieu_huong' })

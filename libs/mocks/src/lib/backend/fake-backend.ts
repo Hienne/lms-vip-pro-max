@@ -72,6 +72,7 @@ import {
   agentActionEvents,
   agentAiErrorEvents,
   agentDocumentEvents,
+  agentDocumentSuggestionEvents,
   agentLessonEvents,
   agentNavigateEvents,
   agentNotFoundEvents,
@@ -731,7 +732,7 @@ export class FakeBackend {
               parsed.data.message,
               parsed.data.attachmentDocumentId,
             )
-          : this.scriptedTurn(user, parsed.data.message);
+          : this.scriptedTurn(user, parsed.data.message, parsed.data.skill);
     const turnId = this.book.record(
       user.userId,
       conversation.conversationId,
@@ -747,9 +748,12 @@ export class FakeBackend {
   }
 
   /** First match wins; see `agent.fixtures.ts` for what each reply says. */
-  private scriptedTurn(user: DbUser, text: string) {
+  private scriptedTurn(user: DbUser, text: string, skill?: string) {
     const folded = fold(text);
-    if (folded.includes('mo trang') || folded.includes('mo man hinh')) {
+    // The Q&A skill has no acting tool (the server's rule for a clicked read-only suggestion).
+    const acts = skill !== 'qa_tai_lieu';
+    if (folded.includes('goi y')) return agentDocumentSuggestionEvents;
+    if (acts && (folded.includes('mo trang') || folded.includes('mo man hinh'))) {
       const screen = this.functionsOf(user.userId)
         .filter((f) => f.routePattern && !f.routePattern.includes(':'))
         .filter((f) => folded.includes(fold(f.name)))
@@ -758,7 +762,7 @@ export class FakeBackend {
         ? agentNavigateEvents(screen.routePattern as string, screen.name)
         : agentRefusedEvents('open_screen', AGENT_SCREEN_REFUSED);
     }
-    const profile = this.profileTurn(user, text, folded);
+    const profile = acts ? this.profileTurn(user, text, folded) : null;
     if (profile) return profile;
     if (folded.includes('loi ai')) return agentAiErrorEvents;
     if (folded.includes('khong co trong tai lieu')) return agentNotFoundEvents;
