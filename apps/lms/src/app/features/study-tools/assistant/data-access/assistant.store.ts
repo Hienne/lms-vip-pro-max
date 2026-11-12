@@ -1,4 +1,3 @@
-import { Dialog } from '@angular/cdk/dialog';
 import { BreakpointObserver } from '@angular/cdk/layout';
 import {
   computed,
@@ -15,50 +14,25 @@ import {
   answerFeedbackEndpoints,
   type AskCommand,
   type ChatStreamEvent,
-  type DocumentScope,
-  type KnowledgeDocument,
   knowledgeEndpoints,
   type RateAnswerCommand,
 } from '@lms/contracts';
-import { confirm, Toaster } from '@lms/ui';
-import {
-  catchError,
-  concatMap,
-  EMPTY,
-  filter,
-  finalize,
-  map,
-  Subject,
-  type Subscription,
-  tap,
-} from 'rxjs';
+import { finalize, map, type Subscription } from 'rxjs';
 import { ConversationsStore } from '../../../../core/assistant/conversations.store';
-import { invalidation } from '../../../../core/data-access/invalidation';
-import { serverData } from '../../../../core/data-access/server-data';
+import { SourceViewerStore } from '../../../../core/assistant/source-viewer.store';
 import { toAppError } from '../../../../core/errors/app-error';
 import { EndpointClient } from '../../../../core/http/endpoint-client';
-import { DocumentTrackerStore } from '../../../../core/knowledge/document-tracker.store';
 import { NetworkStore } from '../../../../core/network/network.store';
 import { SessionStore } from '../../../../core/session/session.store';
 import { AssistantViewStorage } from './assistant-view.storage';
-import type { Answer, Turn, Upload } from './assistant.model';
+import type { Answer, Turn } from './assistant.model';
 import { turnFromStored } from './stored-turns';
-import { uploadProblem } from './upload-rules';
-
-export const DOCUMENTS_PAGE_SIZE = 20;
-
-/** How often the list is read again while a replacement file is being indexed. */
-export const REPLACEMENT_POLL_MS = 5000;
-
-const isReplacing = (document: KnowledgeDocument): boolean =>
-  document.replacement?.status === 'queued' ||
-  document.replacement?.status === 'processing';
-
-/** From the `md` breakpoint the documents panel sits beside the chat; below it, it is a drawer. */
-export const PANEL_BESIDE_QUERY = '(min-width: 720px)';
 
 /** From here the conversation list is a column beside the chat; below it, a drawer. */
 export const HISTORY_BESIDE_QUERY = '(min-width: 1100px)';
+
+/** From here an opened source is a pane beside the chat; below it, the shell's drawer. */
+export const SOURCE_BESIDE_QUERY = '(min-width: 1280px)';
 
 export const OFFLINE_MESSAGE =
   'Mất kết nối — không gửi được câu hỏi. Thử lại khi có mạng.';
@@ -74,17 +48,14 @@ const SEARCHING: Answer = {
 };
 
 /**
- * The assistant screen: the chat (kept in the browser, one question at a time), the shared
- * documents (upload queue, server-paged list) and whether the documents panel is open. Retrieval,
- * answers, citations and document status are all the server's; this store only shows them.
+ * The assistant screen: the chat (kept in the browser, one question at a time), the saved
+ * conversations beside it, and where an opened source shows. Retrieval, answers and citations are
+ * all the server's; this store only shows them. The documents are `KnowledgeDocumentsStore`'s.
  */
 @Injectable()
 export class AssistantStore {
   private readonly client = inject(EndpointClient);
-  private readonly tracker = inject(DocumentTrackerStore);
   private readonly network = inject(NetworkStore);
-  private readonly toaster = inject(Toaster);
-  private readonly dialog = inject(Dialog);
   private readonly breakpoints = inject(BreakpointObserver);
   private readonly conversations = inject(ConversationsStore);
   private readonly session = inject(SessionStore);
@@ -95,19 +66,19 @@ export class AssistantStore {
   /** The saved conversation being read back, if any. */
   private loading: Subscription | null = null;
 
-  /** Whether the viewport is wide enough for the panel beside the chat (an input, not state). */
-  private readonly wide = toSignal(
-    this.breakpoints
-      .observe(PANEL_BESIDE_QUERY)
-      .pipe(map((result) => result.matches)),
-    { initialValue: this.breakpoints.isMatched(PANEL_BESIDE_QUERY) },
-  );
   private readonly historyWide = toSignal(
     this.breakpoints
       .observe(HISTORY_BESIDE_QUERY)
       .pipe(map((result) => result.matches)),
     { initialValue: this.breakpoints.isMatched(HISTORY_BESIDE_QUERY) },
   );
+  private readonly sourceWide = toSignal(
+    this.breakpoints
+      .observe(SOURCE_BESIDE_QUERY)
+      .pipe(map((result) => result.matches)),
+    { initialValue: this.breakpoints.isMatched(SOURCE_BESIDE_QUERY) },
+  );
+  private readonly viewer = inject(SourceViewerStore);
   private streaming: Subscription | null = null;
 
   private readonly state = {
@@ -127,61 +98,12 @@ export class AssistantStore {
       source: () => this.historyWide(),
       computation: (wide) => wide,
     }),
-    uploads: signal<readonly Upload[]>([]),
-    /** Who finds the next uploaded files; "my unit" until the user picks another. */
-    uploadScope: signal<DocumentScope>('unit'),
-    /** The name typed for the next single file; empty keeps the file name. */
-    uploadTitle: signal(''),
-    /** A document the list points at (the one an upload repeated). */
-    highlightId: signal<number | null>(null),
-    page: signal(1),
-    /** Open beside the chat on a wide screen, closed (a drawer) on a narrow one, until toggled. */
-    panelOpen: linkedSignal<boolean, boolean>({
-      source: () => this.wide(),
-      computation: (wide) => wide,
-    }),
   };
-
-  private readonly changes = invalidation();
-
-  private readonly documentsData = serverData(
-    (page: number) =>
-      this.client.call(knowledgeEndpoints.documents, {
-        query: { page: page - 1, size: DOCUMENTS_PAGE_SIZE },
-      }),
-    {
-      params: () => this.state.page(),
-      reloadOn: [this.tracker.finished, this.changes],
-    },
-  );
-
-  private readonly duplicatesData = serverData(
-    () => this.client.call(knowledgeEndpoints.duplicateDocuments),
-    { reloadOn: [this.tracker.finished, this.changes] },
-  );
-
-  // Uploads are a queue with a result per file, so they are not a `serverMutation`: one file at a
-  // time (`concatMap`), a refusal stays on that file's row instead of a toast, and the rest go on.
-  private readonly uploadQueue = new Subject<Upload>();
 
   readonly turns$ = this.state.turns.asReadonly();
   readonly isAnswering$ = computed(() => this.state.answeringId() !== null);
   readonly ratingId$ = this.state.ratingId.asReadonly();
   readonly ratingFailedId$ = this.state.ratingFailedId.asReadonly();
-  readonly uploads$ = this.state.uploads.asReadonly();
-  readonly uploadScope$ = this.state.uploadScope.asReadonly();
-  readonly uploadTitle$ = this.state.uploadTitle.asReadonly();
-  readonly highlightId$ = this.state.highlightId.asReadonly();
-  /** The caller's documents that share a file, for the "Tài liệu trùng" view. */
-  readonly duplicates$ = computed(() => this.duplicatesData.value() ?? []);
-  /** Admins may share a document with the whole system; the server refuses it for anyone else. */
-  readonly canShareGlobally$ = computed(() =>
-    (this.session.user$()?.grants ?? []).some((grant) =>
-      ['ADMIN', 'SUPER_ADMIN'].includes(grant.roleCode),
-    ),
-  );
-  readonly page$ = this.state.page.asReadonly();
-  readonly panelOpen$ = this.state.panelOpen.asReadonly();
   readonly conversationId$ = this.state.conversationId.asReadonly();
   readonly isOpening$ = this.state.opening.asReadonly();
   readonly openError$ = this.state.openError.asReadonly();
@@ -194,16 +116,10 @@ export class AssistantStore {
   readonly historyInDrawer$ = computed(
     () => !this.historyWide() && this.historyOpen$(),
   );
-  /** The panel is a column beside the chat. */
-  readonly panelBeside$ = computed(() => this.wide() && this.panelOpen$());
-  /** The panel is a drawer over the chat. */
-  readonly panelInDrawer$ = computed(() => !this.wide() && this.panelOpen$());
-  readonly documents$ = computed(() => this.documentsData.value()?.items ?? []);
-  readonly totalDocuments$ = computed(
-    () => this.documentsData.value()?.totalElements ?? 0,
+  /** An opened source is a pane beside the chat (on a narrow screen it is the shell's drawer). */
+  readonly sourceBeside$ = computed(
+    () => this.sourceWide() && this.viewer.citation$() !== null,
   );
-  readonly isLoading$ = this.documentsData.isLoading;
-  readonly loadError$ = this.documentsData.error;
   /** What a screen reader hears about the answer in progress; the streamed text itself is silent. */
   readonly announcement$ = computed(() => {
     const answer = this.turns$().at(-1)?.answer;
@@ -222,24 +138,15 @@ export class AssistantStore {
   });
 
   constructor() {
-    this.uploadQueue
-      .pipe(
-        concatMap((upload) => this.send(upload)),
-        takeUntilDestroyed(),
-      )
-      .subscribe();
     inject(DestroyRef).onDestroy(() => {
       this.streaming?.unsubscribe();
       this.loading?.unsubscribe();
+      // The shell's drawer shows sources again, and a source left open does not follow the user.
+      this.viewer.setDocked(false);
+      this.viewer.close();
     });
-
-    // A replacement is indexed in the background and the document stays `ready`, so the tracker does not
-    // see it: read the list again until none is left.
-    effect((onCleanup) => {
-      if (!this.documents$().some(isReplacing)) return;
-      const timer = setTimeout(() => this.changes.bump(), REPLACEMENT_POLL_MS);
-      onCleanup(() => clearTimeout(timer));
-    });
+    // On a wide screen the page frames an opened source itself.
+    effect(() => this.viewer.setDocked(this.sourceWide()));
 
     // The page shows the list, so it is read from now on; a deleted conversation may be the open one.
     this.conversations.watch();
@@ -271,42 +178,6 @@ export class AssistantStore {
 
   setAnsweringId(id: number | null): void {
     this.state.answeringId.set(id);
-  }
-
-  setUploadScope(scope: DocumentScope): void {
-    this.state.uploadScope.set(scope);
-  }
-
-  setUploadTitle(title: string): void {
-    this.state.uploadTitle.set(title);
-  }
-
-  /** Points the list at a document, which is shown from the first page (newest first). */
-  showDocument(id: number): void {
-    this.setPage(1);
-    this.state.highlightId.set(id);
-  }
-
-  setUploads(uploads: readonly Upload[]): void {
-    this.state.uploads.set(uploads);
-  }
-
-  setPage(page: number): void {
-    this.state.page.set(page);
-  }
-
-  setPanelOpen(open: boolean): void {
-    this.state.panelOpen.set(open);
-  }
-
-  // ---- documents panel -------------------------------------------------------------------------
-
-  togglePanel(): void {
-    this.setPanelOpen(!this.panelOpen$());
-  }
-
-  closePanel(): void {
-    this.setPanelOpen(false);
   }
 
   // ---- chat ------------------------------------------------------------------------------------
@@ -526,188 +397,6 @@ export class AssistantStore {
             }
           : turn,
       ),
-    );
-  }
-
-  // ---- documents -------------------------------------------------------------------------------
-
-  /** Checks each file, then uploads the good ones one after another. */
-  addFiles(files: readonly File[]): void {
-    // A name typed beforehand belongs to one file; several files keep their own names.
-    const title = files.length === 1 ? this.uploadTitle$().trim() : '';
-    if (files.length === 1) this.state.uploadTitle.set('');
-    const added: Upload[] = files.map((file) => {
-      const problem = uploadProblem(file);
-      return {
-        id: this.nextId++,
-        file,
-        name: file.name,
-        size: file.size,
-        scope: this.uploadScope$(),
-        ...(title ? { title } : {}),
-        state: problem ? 'error' : 'waiting',
-        error: problem,
-      };
-    });
-    this.setUploads([...this.uploads$(), ...added]);
-    added
-      .filter((u) => u.state === 'waiting')
-      .forEach((u) => this.uploadQueue.next(u));
-  }
-
-  /** Removes a refused file from the list. */
-  dismissUpload(id: number): void {
-    this.setUploads(this.uploads$().filter((u) => u.id !== id));
-  }
-
-  retryLoad(): void {
-    this.documentsData.reload();
-  }
-
-  /** Shown on a row: the owner, or an admin for a document that is not personal. The server decides. */
-  readonly canRemove = (document: KnowledgeDocument): boolean =>
-    document.uploadedBy.userId === this.session.user$()?.userId ||
-    (document.scope !== 'personal' && this.canShareGlobally$());
-
-  /** Shown on a row: who may rename or replace is who may delete. The server decides. */
-  readonly canEdit = this.canRemove;
-
-  /** Renames a document; the list and the next citations show the new title. */
-  renameDocument(document: KnowledgeDocument, title: string): void {
-    this.client
-      .call(knowledgeEndpoints.renameDocument, {
-        params: { documentId: document.id },
-        body: { title },
-      })
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe({
-        next: () => {
-          this.changes.bump();
-          this.toaster.success('Đã đổi tên tài liệu');
-        },
-        error: (error: unknown) =>
-          this.toaster.error(
-            'Không đổi được tên tài liệu',
-            toAppError(error).message,
-          ),
-      });
-  }
-
-  /**
-   * Sends a file to replace a ready document. The old version keeps answering until the new one is
-   * indexed; a refused or failed replacement leaves it in place and the row says why.
-   */
-  replaceDocument(document: KnowledgeDocument, file: File): void {
-    const problem = uploadProblem(file);
-    if (problem) {
-      this.toaster.error('Không thay được bản mới', problem);
-      return;
-    }
-    this.client
-      .call(knowledgeEndpoints.replaceDocument, {
-        params: { documentId: document.id },
-        body: { file },
-      })
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe({
-        next: (replaced) => {
-          this.changes.bump();
-          if (replaced.duplicate) {
-            this.toaster.info(
-              'Tệp này giống bản hiện tại',
-              'Không có gì thay đổi.',
-            );
-          } else {
-            this.toaster.success(
-              `Đã gửi bản mới của ${replaced.title}`,
-              'Bản cũ vẫn trả lời cho tới khi bản mới xử lý xong.',
-            );
-          }
-        },
-        error: (error: unknown) =>
-          this.toaster.error(
-            'Không thay được bản mới',
-            toAppError(error).message,
-          ),
-      });
-  }
-
-  /** Deletes a document after the user agrees; nothing is sent otherwise. */
-  removeDocument(document: KnowledgeDocument): void {
-    confirm(this.dialog, {
-      title: 'Xoá tài liệu này?',
-      message: `“${document.title}” sẽ bị xoá khỏi kho và trợ lý không còn trả lời từ tài liệu này, không khôi phục được.`,
-      confirmLabel: 'Xoá',
-      tone: 'danger',
-    })
-      .pipe(
-        filter(Boolean),
-        concatMap(() =>
-          this.client
-            .call(knowledgeEndpoints.deleteDocument, {
-              params: { documentId: document.id },
-            })
-            .pipe(
-              tap(() => {
-                this.changes.bump();
-                this.toaster.success(`Đã xoá ${document.title}`);
-              }),
-              catchError((error: unknown) => {
-                this.toaster.error(
-                  'Không xoá được tài liệu',
-                  toAppError(error).message,
-                );
-                return EMPTY;
-              }),
-            ),
-        ),
-        takeUntilDestroyed(this.destroyRef),
-      )
-      .subscribe();
-  }
-
-  private send(upload: Upload) {
-    this.patchUpload(upload.id, { state: 'uploading' });
-    return this.client
-      .call(knowledgeEndpoints.uploadDocument, {
-        body: {
-          file: upload.file,
-          scope: upload.scope,
-          ...(upload.title ? { title: upload.title } : {}),
-        },
-      })
-      .pipe(
-        tap((document) => {
-          if (document.duplicate) {
-            // Nothing was created: say so on the file's row and point at the document that is there.
-            this.patchUpload(upload.id, {
-              state: 'duplicate',
-              existing: { id: document.id, title: document.title },
-            });
-            return;
-          }
-          this.tracker.track(document);
-          this.setUploads(this.uploads$().filter((u) => u.id !== upload.id));
-          this.setPage(1);
-          this.changes.bump();
-          this.toaster.success(
-            `Đã tải lên ${document.title}`,
-            'Tài liệu đang được xử lý, bạn có thể làm việc khác trong lúc chờ.',
-          );
-        }),
-        catchError((error: unknown) => {
-          this.patchUpload(upload.id, {
-            state: 'error',
-            error: toAppError(error).message,
-          });
-          return EMPTY;
-        }),
-      );
-  }
-
-  private patchUpload(id: number, patch: Partial<Upload>): void {
-    this.setUploads(
-      this.uploads$().map((u) => (u.id === id ? { ...u, ...patch } : u)),
     );
   }
 }

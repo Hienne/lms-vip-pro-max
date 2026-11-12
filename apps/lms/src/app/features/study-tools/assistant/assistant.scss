@@ -9,19 +9,19 @@
   min-height: 0;
 }
 
-:host(.assistant--panel) {
-  grid-template-columns: minmax(0, 1fr) ui.layout(panel);
-}
-
 :host(.assistant--history) {
   grid-template-columns: ui.layout(panel) minmax(0, 1fr);
 }
 
-:host(.assistant--history.assistant--panel) {
-  grid-template-columns: ui.layout(panel) minmax(0, 1fr) ui.layout(panel);
+:host(.assistant--source) {
+  grid-template-columns: minmax(0, 1fr) ui.layout(assistant);
 }
 
-// Shared by the two bars so their bottom borders line up.
+:host(.assistant--history.assistant--source) {
+  grid-template-columns: ui.layout(panel) minmax(0, 1fr) ui.layout(assistant);
+}
+
+// Shared by the bars so their bottom borders line up.
 %bar {
   display: flex;
   align-items: center;
@@ -57,9 +57,7 @@
   &__title {
     @include ui.text(lg);
     margin: 0;
-    font-family: ui.font(sans);
     font-weight: ui.weight(semibold);
-    letter-spacing: normal;
   }
 
   &__toggle {
@@ -102,9 +100,26 @@
     margin-inline: auto;
   }
 
+  // What the next question searches; read-only until the server can narrow it.
+  &__scope,
   &__note {
-    @include ui.text(xs, muted);
+    display: flex;
+    gap: ui.space(2);
+    align-items: flex-start;
     margin: 0;
+
+    ui-icon {
+      flex: none;
+      margin-block-start: 0.15em;
+    }
+  }
+
+  &__scope {
+    @include ui.text(sm, secondary);
+  }
+
+  &__note {
+    @include ui.text(sm, muted);
   }
 }
 
@@ -133,7 +148,8 @@
   }
 }
 
-.panel {
+// The source a citation opened, beside the chat on a wide screen.
+.source {
   display: grid;
   grid-template-rows: auto minmax(0, 1fr);
   min-height: 0;
@@ -142,26 +158,19 @@
 
   &__bar {
     @extend %bar;
+    justify-content: space-between;
   }
 
   &__title {
     @include ui.text(md);
     margin: 0;
-    font-family: ui.font(sans);
+    min-width: 0;
     font-weight: ui.weight(semibold);
-  }
-
-  &__count {
-    @include ui.text(sm, muted);
-    @include ui.num;
-  }
-
-  &__body,
-  &__drawer {
-    @include ui.stack(5);
+    overflow-wrap: anywhere;
   }
 
   &__body {
+    min-height: 0;
     overflow-y: auto;
     overscroll-behavior: contain;
     padding: ui.space(4);

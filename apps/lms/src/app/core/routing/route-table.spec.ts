@@ -78,6 +78,7 @@ describe('route table', () => {
         'flashcards',
         'admin/flashcards',
         'assistant',
+        'assistant/tai-lieu',
         'chat-room',
         'notifications',
         'instructor',

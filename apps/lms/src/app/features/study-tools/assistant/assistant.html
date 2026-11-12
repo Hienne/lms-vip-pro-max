@@ -32,19 +32,9 @@
         Trợ lý AI tra cứu tài liệu
       </h1>
     </div>
-    <button
-      uiButton
-      type="button"
-      variant="ghost"
-      size="sm"
-      class="chat__toggle"
-      [attr.aria-controls]="store.panelOpen$() ? 'assistant-documents' : null"
-      [attr.aria-expanded]="store.panelOpen$()"
-      (click)="store.togglePanel()"
-    >
-      <ui-icon name="panel-right" size="sm" />Tài liệu
-      <span class="chat__count">{{ store.totalDocuments$() }}</span>
-    </button>
+    <a uiButton variant="ghost" size="sm" routerLink="tai-lieu">
+      <ui-icon name="library" size="sm" />Quản lý tài liệu
+    </a>
   </header>
   <div class="chat__scroll">
     <app-chat-log
@@ -59,46 +49,52 @@
   </div>
   <div class="chat__composer">
     <div class="chat__dock">
+      <p class="chat__scope">
+        <ui-icon name="library" size="sm" />
+        <span
+          >Tra trong: <strong>Tất cả tài liệu</strong>&nbsp;<span
+            class="chat__count"
+            >({{ documents.totalDocuments$() }})</span
+          ></span
+        >
+      </p>
       <app-ask-form
         [answering]="store.isAnswering$()"
         (ask)="store.ask($event)"
         (stop)="store.stop()"
       />
       <p class="chat__note">
-        Trợ lý chỉ trả lời từ các tài liệu trong kho. Hãy đối chiếu với tài liệu
-        gốc trước khi áp dụng.
+        <ui-icon name="info" size="sm" />
+        <span
+          >Trợ lý chỉ trả lời từ các tài liệu trong kho. Hãy đối chiếu với tài
+          liệu gốc trước khi áp dụng.</span
+        >
       </p>
     </div>
   </div>
 </section>
 
-@if (store.panelBeside$()) {
-<aside
-  id="assistant-documents"
-  class="panel"
-  aria-labelledby="assistant-documents-title"
->
-  <header class="panel__bar">
-    <h2 id="assistant-documents-title" class="panel__title">
-      Tài liệu trong kho
+@if (store.sourceBeside$()) {
+<aside class="source" aria-labelledby="assistant-source-title">
+  <header class="source__bar">
+    <h2 id="assistant-source-title" class="source__title">
+      {{ viewer.citation$()?.fileName }}
     </h2>
-    <span class="panel__count">{{ store.totalDocuments$() }}</span>
+    <button
+      uiIconButton
+      type="button"
+      size="sm"
+      label="Đóng nguồn"
+      (click)="viewer.close()"
+    >
+      <ui-icon name="x" size="sm" />
+    </button>
   </header>
-  <div class="panel__body">
-    <ng-container [ngTemplateOutlet]="documents" />
+  <div class="source__body">
+    <app-source-text />
   </div>
 </aside>
 }
-
-<ng-template
-  [uiDrawer]="store.panelInDrawer$()"
-  uiDrawerTitle="Tài liệu trong kho"
-  (uiDrawerDismiss)="store.closePanel()"
->
-  <div id="assistant-documents" class="panel__drawer">
-    <ng-container [ngTemplateOutlet]="documents" />
-  </div>
-</ng-template>
 
 <ng-template
   [uiDrawer]="store.historyInDrawer$()"
@@ -129,37 +125,4 @@
   />
 </ng-template>
 
-<ng-template #documents>
-  <app-document-upload
-    [uploads]="store.uploads$()"
-    [canShareGlobally]="store.canShareGlobally$()"
-    [scope]="store.uploadScope$()"
-    (scopeChange)="store.setUploadScope($event)"
-    [title]="store.uploadTitle$()"
-    (titleChange)="store.setUploadTitle($event)"
-    (files)="store.addFiles($event)"
-    (dismiss)="store.dismissUpload($event)"
-    (showExisting)="store.showDocument($event)"
-  />
-  <app-document-list
-    [documents]="store.documents$()"
-    [total]="store.totalDocuments$()"
-    [page]="store.page$()"
-    [pageSize]="pageSize"
-    [loading]="store.isLoading$()"
-    [failed]="!!store.loadError$()"
-    [canRemove]="store.canRemove"
-    [canEdit]="store.canEdit"
-    [highlightId]="store.highlightId$()"
-    (remove)="store.removeDocument($event)"
-    (renamed)="store.renameDocument($event.document, $event.title)"
-    (replaced)="store.replaceDocument($event.document, $event.file)"
-    (pageChange)="store.setPage($event)"
-    (retry)="store.retryLoad()"
-  />
-  <app-duplicate-documents
-    [groups]="store.duplicates$()"
-    (remove)="store.removeDocument($event)"
-  />
-</ng-template>
 <p class="sr-only" role="status">{{ store.announcement$() }}</p>

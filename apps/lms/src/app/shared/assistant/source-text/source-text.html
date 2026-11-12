@@ -1,0 +1,51 @@
+@switch (store.status$()) { @case ('loading') {
+<p class="viewer__note" role="status">Đang tải tài liệu…</p>
+} @case ('gone') {
+<p class="viewer__note" role="alert">Tài liệu này đã bị xoá</p>
+} @case ('failed') {
+<p class="viewer__note" role="alert">Chưa tải được văn bản của tài liệu.</p>
+<button uiButton size="sm" (click)="store.retry()">Thử lại</button>
+} @case ('ready') { @if (store.text$(); as text) { @if (citedPath()) {
+<p class="viewer__path">{{ citedPath() }}</p>
+} @if (text.hasMoreBefore) {
+<button
+  uiButton
+  size="sm"
+  class="viewer__more"
+  aria-label="Xem thêm phần phía trước"
+  [busy]="store.loadingMore$()"
+  (click)="store.more()"
+>
+  Xem thêm
+</button>
+}
+<div class="viewer__text">
+  @for (block of blocks(); track block.chunk.chunkId) {
+  <section
+    uiCard
+    padded
+    class="chunk"
+    [variant]="block.cited ? 'tint' : 'default'"
+    [class.chunk--cited]="block.cited"
+    [attr.aria-current]="block.cited ? 'true' : null"
+  >
+    @if (block.heading) {
+    <h3 class="chunk__heading">{{ block.heading }}</h3>
+    }
+    <p class="chunk__where">{{ block.location }}</p>
+    <p class="chunk__text">{{ block.chunk.text }}</p>
+  </section>
+  }
+</div>
+@if (text.hasMoreAfter) {
+<button
+  uiButton
+  size="sm"
+  class="viewer__more"
+  aria-label="Xem thêm phần phía sau"
+  [busy]="store.loadingMore$()"
+  (click)="store.more()"
+>
+  Xem thêm
+</button>
+} } } }

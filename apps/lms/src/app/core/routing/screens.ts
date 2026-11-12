@@ -458,6 +458,15 @@ export const SCREEN_TABLE = {
               (m) => m.Assistant,
             ),
         },
+        {
+          path: 'assistant/tai-lieu',
+          title: 'Tài liệu của trợ lý',
+          mockupPage: 'assistant',
+          load: () =>
+            import(
+              '../../features/study-tools/assistant/documents/assistant-documents'
+            ).then((m) => m.AssistantDocuments),
+        },
       ],
     },
     COMMUNITY: {
