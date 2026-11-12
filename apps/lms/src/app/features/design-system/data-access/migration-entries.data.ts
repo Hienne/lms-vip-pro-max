@@ -655,7 +655,7 @@ export const MIGRATION_ENTRIES = [
     kind: 'component',
     mockupSource: 'charts.js (Radar, bars, .chart-legend)',
     level: 'organism',
-    targets: ['RadarChart', 'BarChart', 'DonutChart'],
+    targets: ['RadarChart', 'BarChart', 'HorizontalBarChart', 'DonutChart'],
     checklist: ['H'],
     status: 'todo',
   },

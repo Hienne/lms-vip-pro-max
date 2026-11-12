@@ -1,6 +1,6 @@
 import { afterRenderEffect, Component, computed, inject } from '@angular/core';
 import type { TextChunk } from '@lms/contracts';
-import { Button, DrawerOutlet } from '@lms/ui';
+import { Button, Card, DrawerOutlet } from '@lms/ui';
 import { SourceViewerStore } from '../../../core/assistant/source-viewer.store';
 import { citationLocation } from '../citation-label';
 
@@ -11,7 +11,7 @@ import { citationLocation } from '../citation-label';
  */
 @Component({
   selector: 'app-source-viewer',
-  imports: [Button, DrawerOutlet],
+  imports: [Button, Card, DrawerOutlet],
   templateUrl: './source-viewer.html',
   styleUrl: './source-viewer.scss',
 })

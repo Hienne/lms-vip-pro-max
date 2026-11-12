@@ -28,7 +28,10 @@
   <div class="viewer__text">
     @for (block of blocks(); track block.chunk.chunkId) {
     <section
+      uiCard
+      padded
       class="chunk"
+      [variant]="block.cited ? 'tint' : 'default'"
       [class.chunk--cited]="block.cited"
       [attr.aria-current]="block.cited ? 'true' : null"
     >

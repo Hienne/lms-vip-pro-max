@@ -23,17 +23,8 @@
   }
 }
 
+// The surface is the Card atom (tinted for the cited passage); this only lays out its text.
 .chunk {
-  padding: ui.space(3);
-  border: 1px solid ui.color(border);
-  border-radius: ui.radius(control);
-
-  // The cited passage: a filled surface and a stronger border, not a colour stripe.
-  &--cited {
-    background: ui.color(primary-subtle);
-    border-color: ui.color(primary);
-  }
-
   &__heading {
     @include ui.text(sm, secondary);
     font-weight: ui.weight(semibold);
@@ -41,7 +32,7 @@
   }
 
   &__where {
-    @include ui.text(xs, muted);
+    @include ui.text(sm, muted);
   }
 
   &__text {
