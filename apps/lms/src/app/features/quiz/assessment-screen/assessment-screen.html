@@ -54,7 +54,10 @@
 </ui-stat-strip>
 } @if (store.routeScreen$() !== 'config' || store.isNewQuiz$()) {
 <section uiCard padded class="stack assessment__section">
-  <div class="assessment__scope">
+  <div
+    class="assessment__scope"
+    [class.assessment__scope--quizzes]="store.routeScreen$() === 'quizzes'"
+  >
     @if (store.routeScreen$() === 'questions') {
     <ui-search
       label="Tìm chương trình"
@@ -125,12 +128,6 @@
       </select>
     </ui-field>
     }
-    <ui-search
-      label="Tìm khóa học quản lý"
-      placeholder="Tìm khóa học…"
-      [value]="store.courseSearch$()"
-      (searched)="store.searchCourses($event)"
-    />
     <ui-field label="Khóa học">
       <select
         uiSelect
@@ -155,6 +152,13 @@
         }
       </select>
     </ui-field>
+    <ui-search
+      width="100%"
+      label="Tìm khóa học quản lý"
+      placeholder="Tìm khóa học…"
+      [value]="store.courseSearch$()"
+      (searched)="store.searchCourses($event)"
+    />
     @if ((store.courses$()?.totalPages ?? 0) > 1) {
     <button
       uiButton
@@ -527,10 +531,10 @@
     (cancel)="store.cancelQuestion()"
 /></ng-template>
 } @case ('quizzes') {
-<p class="assessment__count">
-  {{store.quizTotal$()}} bài kiểm tra · {{store.selectedCourseTitle$()}}
-</p>
-<section uiCard>
+<ui-section-card title="Danh sách bài kiểm tra" flush>
+  <span slot="action" class="assessment__result-count">
+    {{store.quizTotal$()}} bài kiểm tra · {{store.selectedCourseTitle$()}}
+  </span>
   <ui-data-table
     caption="Bài kiểm tra"
     [columns]="quizColumns"
@@ -556,8 +560,9 @@
         [queryParams]="{courseId:row.courseId}"
         ><ui-icon name="settings" size="sm" /></a
     ></ng-template>
+    <ui-empty slot="empty" title="Chưa có bài kiểm tra trong khóa học này" />
   </ui-data-table>
-</section>
+</ui-section-card>
 } @case ('config') { @if(store.quizSaveError$();as error){<ui-alert
   tone="danger"
   >{{error.message}}@if(store.partialSave$()){

@@ -27,6 +27,7 @@ import {
   Input,
   PageHeader,
   Search,
+  SectionCard,
   Select,
   Spinner,
   Stat,
@@ -225,6 +226,7 @@ function quizValue(
     QuestionImport,
     QuizAttemptGrant,
     Search,
+    SectionCard,
     Select,
     Spinner,
     Stat,
@@ -275,13 +277,50 @@ export class AssessmentScreen {
     { key: 'actions', label: '', sortable: false, kind: 'actions' },
   ];
   protected readonly quizColumns: readonly DataTableColumn[] = [
-    { key: 'title', label: 'Bài kiểm tra', sortable: false },
-    { key: 'questionCount', label: 'Số câu', sortable: false },
-    { key: 'timeLimitMinutes', label: 'Phút', sortable: false },
-    { key: 'gradedAttempts', label: 'Lượt đã chấm', sortable: false },
-    { key: 'passedAttempts', label: 'Lượt đạt', sortable: false },
-    { key: 'status', label: 'Trạng thái', sortable: false },
-    { key: 'actions', label: '', sortable: false, kind: 'actions' },
+    { nowrap: true, key: 'title', label: 'Bài kiểm tra', sortable: false },
+    {
+      width: '5rem',
+      nowrap: true,
+      key: 'questionCount',
+      label: 'Số câu',
+      sortable: false,
+    },
+    {
+      width: '5rem',
+      nowrap: true,
+      key: 'timeLimitMinutes',
+      label: 'Phút',
+      sortable: false,
+    },
+    {
+      width: '9rem',
+      nowrap: true,
+      key: 'gradedAttempts',
+      label: 'Lượt đã chấm',
+      sortable: false,
+    },
+    {
+      width: '7rem',
+      nowrap: true,
+      key: 'passedAttempts',
+      label: 'Lượt đạt',
+      sortable: false,
+    },
+    {
+      width: '10rem',
+      nowrap: true,
+      key: 'status',
+      label: 'Trạng thái',
+      sortable: false,
+    },
+    {
+      width: '4rem',
+      nowrap: true,
+      key: 'actions',
+      label: '',
+      sortable: false,
+      kind: 'actions',
+    },
   ];
   private readonly questionModel = linkedSignal(() => {
     this.store.editorOpen$();

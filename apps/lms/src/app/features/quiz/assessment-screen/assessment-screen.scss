@@ -26,9 +26,15 @@
       max-width: ui.layout(narrow);
     }
   }
-  &__count {
-    @include ui.text(sm, muted);
-    margin-bottom: ui.space(3);
+  &__scope--quizzes {
+    max-width: none;
+    gap: ui.space(5);
+    > * {
+      min-width: 0;
+    }
+    @include ui.bp(md) {
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr) minmax(0, 1fr);
+    }
   }
 }
 ui-stat-strip {
