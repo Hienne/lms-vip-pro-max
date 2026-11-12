@@ -1,0 +1,34 @@
+@use 'ui';
+
+:host {
+  @include ui.page(content);
+  @include ui.stack(5);
+}
+
+.docs-page {
+  // Upload beside the list from lg up; stacked below that, upload first.
+  &__split {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: ui.space(5);
+    align-items: start;
+
+    @include ui.bp(lg) {
+      grid-template-columns: 22rem minmax(0, 1fr);
+    }
+  }
+
+  &__upload,
+  &__list {
+    min-width: 0;
+  }
+
+  &__body {
+    @include ui.stack(5);
+  }
+
+  &__count {
+    @include ui.num;
+    @include ui.text(sm, muted);
+  }
+}

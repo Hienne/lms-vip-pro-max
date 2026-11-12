@@ -1,0 +1,59 @@
+<ui-page-header
+  title="Tài liệu của trợ lý"
+  description="Trợ lý AI chỉ trả lời từ các tài liệu ở đây. Tài liệu mới được xử lý trong vài phút trước khi tra cứu được."
+>
+  <ui-breadcrumb slot="breadcrumb" [items]="crumbs" />
+</ui-page-header>
+
+<div class="docs-page__split">
+  <ui-section-card
+    class="docs-page__upload"
+    title="Tải tài liệu lên"
+    headingId="assistant-upload-title"
+  >
+    <app-document-upload
+      [uploads]="store.uploads$()"
+      [canShareGlobally]="store.canShareGlobally$()"
+      [scope]="store.uploadScope$()"
+      (scopeChange)="store.setUploadScope($event)"
+      [title]="store.uploadTitle$()"
+      (titleChange)="store.setUploadTitle($event)"
+      (files)="store.addFiles($event)"
+      (dismiss)="store.dismissUpload($event)"
+      (showExisting)="store.showDocument($event)"
+    />
+  </ui-section-card>
+
+  <ui-section-card
+    id="assistant-documents"
+    class="docs-page__list"
+    title="Tài liệu trong kho"
+    headingId="assistant-documents-title"
+  >
+    <span slot="action" class="docs-page__count"
+      >{{ store.totalDocuments$() }} tài liệu</span
+    >
+    <div class="docs-page__body">
+      <app-document-list
+        [documents]="store.documents$()"
+        [total]="store.totalDocuments$()"
+        [page]="store.page$()"
+        [pageSize]="pageSize"
+        [loading]="store.isLoading$()"
+        [failed]="!!store.loadError$()"
+        [canRemove]="store.canRemove"
+        [canEdit]="store.canEdit"
+        [highlightId]="store.highlightId$()"
+        (remove)="store.removeDocument($event)"
+        (renamed)="store.renameDocument($event.document, $event.title)"
+        (replaced)="store.replaceDocument($event.document, $event.file)"
+        (pageChange)="store.setPage($event)"
+        (retry)="store.retryLoad()"
+      />
+      <app-duplicate-documents
+        [groups]="store.duplicates$()"
+        (remove)="store.removeDocument($event)"
+      />
+    </div>
+  </ui-section-card>
+</div>

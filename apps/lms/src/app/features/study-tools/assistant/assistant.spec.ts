@@ -18,6 +18,7 @@ import {
 } from '../../../core/config/app-config';
 import { testAppConfig } from '../../../core/config/app-config.testing';
 import { provideEnvelopeHttpClient } from '../../../core/http/http.testing';
+import { SourceViewerStore } from '../../../core/assistant/source-viewer.store';
 import { SessionStore } from '../../../core/session/session.store';
 import {
   FakeSessionStore,
@@ -86,7 +87,7 @@ describe('Assistant', () => {
 
   const text = () => el.textContent?.replace(/\s+/g, ' ') ?? '';
 
-  it('is a page of its own with the title, the greeting and the shared documents', async () => {
+  it('is a page of its own with the title, the greeting and what it searches', async () => {
     await open();
     expect(el.querySelector('h1')?.textContent?.trim()).toBe(
       'Trợ lý AI tra cứu tài liệu',
@@ -95,9 +96,18 @@ describe('Assistant', () => {
       'Xin chào! Hãy hỏi mình bất kỳ điều gì về nội dung tài liệu trong kho.',
     );
     expect(text()).toContain('Trợ lý chỉ trả lời từ các tài liệu trong kho.');
-    expect(el.querySelectorAll('app-document-list li')).toHaveLength(
-      knowledgeDocumentFixtures.length,
+    expect(
+      el
+        .querySelector('.chat__scope')
+        ?.textContent?.replace(/\s+/g, ' ')
+        .trim(),
+    ).toBe(`Tra trong: Tất cả tài liệu (${knowledgeDocumentFixtures.length})`);
+    // The documents are managed on a page of their own.
+    expect(el.querySelector('app-document-list')).toBeNull();
+    const manage = Array.from(el.querySelectorAll('a')).find((a) =>
+      a.textContent?.includes('Quản lý tài liệu'),
     );
+    expect(manage?.getAttribute('href')).toBe('/assistant/tai-lieu');
   });
 
   it('is open to a learner as well as an instructor', async () => {
@@ -228,12 +238,8 @@ describe('Assistant', () => {
     });
   });
 
-  describe('documents panel', () => {
-    const toggle = () =>
-      Array.from(el.querySelectorAll<HTMLButtonElement>('.chat__toggle')).find(
-        (b) => b.textContent?.includes('Tài liệu'),
-      ) as HTMLButtonElement;
-    const dialog = () => document.querySelector<HTMLElement>('[role="dialog"]');
+  describe('sources', () => {
+    const TEXT = '/api/v1/knowledge/documents/1/text';
 
     afterEach(() =>
       document
@@ -241,67 +247,98 @@ describe('Assistant', () => {
         .forEach((c) => (c.innerHTML = '')),
     );
 
-    it('sits beside the chat on a wide screen, and the toggle hides and shows it', async () => {
+    async function askAndAnswer(): Promise<void> {
+      const input = el.querySelector(
+        'input#assistant-question',
+      ) as HTMLInputElement;
+      input.value = 'Quy trình EOD gồm những bước nào?';
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+      await settle();
+      el.querySelector('form')?.dispatchEvent(new Event('submit'));
+      await settle();
+      backend
+        .expectOne(STREAM)
+        .flush(
+          knowledgeStreamFixture.map((e) => JSON.stringify(e)).join('\n'),
+          {
+            headers: { 'Content-Type': 'application/x-ndjson' },
+          },
+        );
+      await settle();
+    }
+    const sourceRows = () =>
+      Array.from(el.querySelectorAll<HTMLButtonElement>('.sources .source'));
+
+    it('lists the sources under the answer and opens one in a pane beside the chat', async () => {
       await open();
-      const panel = () => el.querySelector('aside#assistant-documents');
-      expect(panel()?.getAttribute('aria-labelledby')).toBe(
-        'assistant-documents-title',
-      );
-      expect(panel()?.querySelector('h2')?.textContent?.trim()).toBe(
-        'Tài liệu trong kho',
-      );
-      expect(toggle().getAttribute('aria-expanded')).toBe('true');
-      expect(toggle().getAttribute('aria-controls')).toBe(
-        'assistant-documents',
-      );
-      expect(toggle().textContent).toContain(
-        `Tài liệu ${knowledgeDocumentFixtures.length}`,
-      );
+      await askAndAnswer();
+      expect(sourceRows()).toHaveLength(2);
+      expect(el.querySelector('aside.source')).toBeNull();
 
-      toggle().click();
+      sourceRows()[0].click();
       await settle();
-      expect(panel()).toBeNull();
-      expect(toggle().getAttribute('aria-expanded')).toBe('false');
-      expect(el.classList).not.toContain('assistant--panel');
+      const pane = el.querySelector('aside.source');
+      expect(pane?.querySelector('h2')?.textContent?.trim()).toBe(
+        'Quy-trinh-EOD.pdf',
+      );
+      expect(el.classList).toContain('assistant--source');
+      expect(backend.match((r) => r.url === TEXT)).toHaveLength(1);
+      expect(TestBed.inject(SourceViewerStore).docked$()).toBe(true);
 
-      toggle().click();
+      (
+        pane?.querySelector(
+          'button[aria-label="Đóng nguồn"]',
+        ) as HTMLButtonElement
+      ).click();
       await settle();
-      expect(panel()).not.toBeNull();
-      expect(el.classList).toContain('assistant--panel');
+      expect(el.querySelector('aside.source')).toBeNull();
     });
 
-    it('is a closed drawer on a narrow screen that Escape closes, giving focus back', async () => {
+    it('leaves a source to the shell’s drawer on a narrower screen', async () => {
       breakpoints.wide.next(false);
       await open();
-      expect(el.querySelector('aside')).toBeNull();
-      expect(dialog()).toBeNull();
-      expect(toggle().getAttribute('aria-expanded')).toBe('false');
-
-      toggle().focus();
-      toggle().click();
+      await askAndAnswer();
+      sourceRows()[0].click();
       await settle();
-      await vi.waitFor(() => expect(dialog()).not.toBeNull());
-      expect(toggle().getAttribute('aria-expanded')).toBe('true');
-      expect(dialog()?.textContent).toContain('Tài liệu trong kho');
-      expect(
-        dialog()?.querySelector('#assistant-documents app-document-list'),
-      ).not.toBeNull();
-      expect(dialog()?.querySelector('label.drop')).not.toBeNull();
+      // The drawer is the shell's (`app-source-viewer`), which this harness does not render.
+      const viewer = TestBed.inject(SourceViewerStore);
+      expect(viewer.citation$()?.fileName).toBe('Quy-trinh-EOD.pdf');
+      expect(viewer.docked$()).toBe(false);
+      expect(el.querySelector('aside.source')).toBeNull();
+    });
+  });
 
-      dialog()?.dispatchEvent(
-        new KeyboardEvent('keydown', {
-          key: 'Escape',
-          code: 'Escape',
-          keyCode: 27,
-          bubbles: true,
+  describe('documents page', () => {
+    it('manages the documents on /assistant/tai-lieu, with the upload and the list', async () => {
+      fakeSession().user.set(seedProfile('000005'));
+      harness = await RouterTestingHarness.create();
+      await harness.navigateByUrl('/assistant/tai-lieu');
+      await settle();
+      screenList()[0].flush(
+        envelopeOk({
+          items: knowledgeDocumentFixtures,
+          page: 0,
+          size: 20,
+          totalElements: knowledgeDocumentFixtures.length,
+          totalPages: 1,
         }),
       );
       await settle();
-      await vi.waitFor(() => expect(dialog()).toBeNull());
-      expect(toggle().getAttribute('aria-expanded')).toBe('false');
-      await vi.waitFor(() => expect(document.activeElement).toBe(toggle()));
+      el = harness.routeNativeElement as HTMLElement;
+      expect(el.querySelector('h1')?.textContent?.trim()).toBe(
+        'Tài liệu của trợ lý',
+      );
+      expect(el.querySelector('label.drop')).not.toBeNull();
+      expect(el.querySelectorAll('app-document-list li')).toHaveLength(
+        knowledgeDocumentFixtures.length,
+      );
+      expect(text()).toContain(`${knowledgeDocumentFixtures.length} tài liệu`);
+      expect(el.querySelector('ui-breadcrumb a')?.getAttribute('href')).toBe(
+        '/assistant',
+      );
     });
   });
+
   describe('saved conversations', () => {
     const LIST_CONVERSATIONS = '/api/v1/assistant/conversations';
     const summary = {

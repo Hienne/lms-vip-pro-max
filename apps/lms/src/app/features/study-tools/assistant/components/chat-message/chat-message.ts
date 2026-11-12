@@ -1,11 +1,24 @@
-import { Component, computed, input, output } from '@angular/core';
+import { NgTemplateOutlet } from '@angular/common';
+import { Component, inject, input, output } from '@angular/core';
+import { RouterLink } from '@angular/router';
 import type { RateAnswerCommand, StoredActionStatus } from '@lms/contracts';
-import { LinkButton, Spinner } from '@lms/ui';
+import {
+  Badge,
+  Card,
+  Icon,
+  LinkButton,
+  List,
+  ListItem,
+  Spinner,
+} from '@lms/ui';
+import { SourceViewerStore } from '../../../../../core/assistant/source-viewer.store';
 import type { Turn } from '../../data-access/assistant.model';
-import { answerParts } from '../../../../../shared/assistant/answer-parts';
 import { AnswerFeedback } from '../../../../../shared/assistant/answer-feedback/answer-feedback';
 import { AssistantMarkdown } from '../../../../../shared/assistant/assistant-markdown/assistant-markdown';
-import { SourceBadge } from '../../../../../shared/assistant/source-badge/source-badge';
+import {
+  citationLocation,
+  citationName,
+} from '../../../../../shared/assistant/citation-label';
 
 /** Where a change the quick assistant proposed ended, in words. */
 const ACTION_STATUS: Record<StoredActionStatus, string> = {
@@ -16,14 +29,23 @@ const ACTION_STATUS: Record<StoredActionStatus, string> = {
   failed: 'không thực hiện được',
 };
 
-/** One question and the answer to it, in whatever state the answer is. */
+/**
+ * One question and the answer to it, in whatever state the answer is. A finished answer lists its
+ * sources as numbered rows (file and page) that open the cited passage.
+ */
 @Component({
   selector: 'app-chat-message',
   imports: [
     AnswerFeedback,
     AssistantMarkdown,
+    Badge,
+    Card,
+    Icon,
     LinkButton,
-    SourceBadge,
+    List,
+    ListItem,
+    NgTemplateOutlet,
+    RouterLink,
     Spinner,
   ],
   templateUrl: './chat-message.html',
@@ -42,9 +64,8 @@ export class ChatMessage {
 
   protected readonly actionStatus = ACTION_STATUS;
 
-  /** The answer's text with its markers as source badges, and the sources no marker points at. */
-  protected readonly content = computed(() => {
-    const { text, citations } = this.turn().answer;
-    return answerParts(text, citations);
-  });
+  /** Opens a source in the page's source pane, or the shell's drawer on a narrow screen. */
+  protected readonly viewer = inject(SourceViewerStore);
+  protected readonly location = citationLocation;
+  protected readonly name = citationName;
 }

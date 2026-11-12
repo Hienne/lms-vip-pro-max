@@ -276,10 +276,6 @@
   "apps/lms/src/app/features/study-tools/assistant/assistant.html": {
     "own-h1": 1
   },
-  "apps/lms/src/app/features/study-tools/assistant/assistant.scss": {
-    "own-font": 4,
-    "text-xs": 1
-  },
   "apps/lms/src/app/features/study-tools/assistant/components/chat-message/chat-message.scss": {
     "own-radius": 1
   },

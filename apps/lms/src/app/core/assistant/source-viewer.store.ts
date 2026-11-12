@@ -37,6 +37,8 @@ export class SourceViewerStore {
     text: signal<DocumentText | null>(null),
     span: signal(FIRST_SPAN),
     loadingMore: signal(false),
+    /** A page shows the source in a pane of its own, so the shell's drawer stays shut. */
+    docked: signal(false),
   };
   /** Bumped by every request so an answer for an earlier one is dropped. */
   private ticket = 0;
@@ -45,6 +47,7 @@ export class SourceViewerStore {
   readonly status$ = this.state.status.asReadonly();
   readonly text$ = this.state.text.asReadonly();
   readonly loadingMore$ = this.state.loadingMore.asReadonly();
+  readonly docked$ = this.state.docked.asReadonly();
 
   /** The chunk to highlight: the one the server centred the text on. */
   readonly citedChunkId$ = computed(
@@ -68,6 +71,11 @@ export class SourceViewerStore {
 
   retry(): void {
     if (this.state.citation()) this.load(false);
+  }
+
+  /** Set by a page that frames the source itself; cleared when it leaves. */
+  setDocked(docked: boolean): void {
+    this.state.docked.set(docked);
   }
 
   close(): void {
