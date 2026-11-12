@@ -1,7 +1,7 @@
 @use 'ui';
 
 :host {
-  display: block;
+  display: grid; // fills the grid cell so the card stretches to the row height
 }
 
 .course-tile {
@@ -37,6 +37,7 @@
   &__body {
     display: flex;
     flex-direction: column;
+    flex: 1; // the foot sits at the bottom, so progress bars line up across a row
     gap: ui.space(2);
     padding: ui.space(4);
   }
@@ -71,6 +72,7 @@
 
   &__foot {
     @include ui.stack(2);
+    margin-block-start: auto;
     padding-top: ui.space(2);
   }
 

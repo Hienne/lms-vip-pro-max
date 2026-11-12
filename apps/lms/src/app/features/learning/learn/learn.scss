@@ -50,13 +50,14 @@
   &__grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(min(100%, 20rem), 1fr));
-    align-items: start;
+    align-items: stretch; // cards in a row share one height, with or without a cover
     gap: ui.space(4);
     margin: 0;
     padding: 0;
     list-style: none;
 
     li {
+      display: grid;
       min-width: 0;
     }
   }
