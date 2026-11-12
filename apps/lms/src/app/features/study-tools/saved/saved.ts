@@ -2,42 +2,46 @@ import { Component, inject } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import {
   Button,
-  SectionCard,
-  Search,
-  Select,
-  List,
-  ListItem,
-  Menu,
   Empty,
   ErrorState,
   FmtRelativePipe,
   Icon,
+  List,
+  ListItem,
+  Menu,
   PageHeader,
-  Pagination,
-  Tabs,
-  TabPanel,
+  Search,
+  SectionCard,
+  Segmented,
+  type SegmentedOption,
+  Select,
+  Skeleton,
 } from '@lms/ui';
-import { SAVED_PAGE_SIZE, SavedStore } from './data-access/saved.store';
+import { type SavedKindFilter, SavedStore } from './data-access/saved.store';
+
+/**
+ * "Đã lưu & ghi chú" (`/saved`): the lessons the learner kept notes or bookmarks on, grouped by
+ * course, and the selected lesson's page of notes and bookmarks in the order they sit in its files.
+ * Each entry opens the lesson at its PDF page or video block.
+ */
 @Component({
   selector: 'app-saved',
   imports: [
     Button,
-    SectionCard,
-    Search,
-    Select,
-    List,
-    ListItem,
-    Menu,
     Empty,
     ErrorState,
     FmtRelativePipe,
     Icon,
-
+    List,
+    ListItem,
+    Menu,
     PageHeader,
-    Pagination,
-    Tabs,
     RouterLink,
-    TabPanel,
+    Search,
+    SectionCard,
+    Segmented,
+    Select,
+    Skeleton,
   ],
   providers: [SavedStore],
   templateUrl: './saved.html',
@@ -45,6 +49,11 @@ import { SAVED_PAGE_SIZE, SavedStore } from './data-access/saved.store';
 })
 export class Saved {
   protected readonly store = inject(SavedStore);
+  protected readonly kinds: readonly SegmentedOption<SavedKindFilter>[] = [
+    { value: 'all', label: 'Tất cả' },
+    { value: 'note', label: 'Ghi chú' },
+    { value: 'bookmark', label: 'Đánh dấu' },
+  ];
   protected readonly actions = [
     {
       kind: 'item',
@@ -54,5 +63,4 @@ export class Saved {
       tone: 'danger',
     },
   ] as const;
-  protected readonly pageSize = SAVED_PAGE_SIZE;
 }

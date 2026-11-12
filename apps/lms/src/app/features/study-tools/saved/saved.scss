@@ -1,62 +1,164 @@
 @use 'ui';
+
 :host {
   @include ui.page(wide);
+  @include ui.stack(5);
   min-width: 0;
 }
+
 .saved {
-  &__toolbar {
+  &__loading {
+    @include ui.stack(4);
+  }
+
+  // The search spans the page; below lg the lesson picker stands in for the index.
+  &__tools {
     display: grid;
     grid-template-columns: minmax(0, 1fr);
     gap: ui.space(3);
-    @include ui.bp(md) {
-      grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) minmax(0, 1fr);
-      align-items: center;
-    }
-    margin-bottom: ui.space(5);
-    > select {
-      max-width: 100%;
-    }
   }
-  &__layout {
-    display: grid;
-    gap: ui.space(5);
-    margin-top: ui.space(4);
+  &__picker {
+    max-width: 100%;
     @include ui.bp(lg) {
-      grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
-      align-items: start;
+      display: none;
     }
   }
-  &__groups {
-    @include ui.stack(4);
-    margin-top: ui.space(4);
+
+  // Two columns from lg up: the index, then the lesson's page. Below lg only the page shows.
+  &__split {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: ui.space(5);
+    align-items: start;
+    @include ui.bp(lg) {
+      grid-template-columns: 20rem minmax(0, 1fr);
+    }
   }
-  &__row {
-    display: flex;
-    align-items: center;
+
+  // The index.
+  &__index {
+    display: none;
     min-width: 0;
-    padding-right: ui.space(3);
+    @include ui.bp(lg) {
+      display: block;
+      position: sticky;
+      top: ui.space(4);
+    }
   }
-  &__choose {
-    flex: 1;
-    min-width: 0;
-    text-align: start;
-    justify-content: flex-start;
-    &[aria-pressed='true'] {
+  &__count {
+    @include ui.num;
+    @include ui.text(sm, muted);
+  }
+  &__course {
+    @include ui.text(sm, muted);
+    margin: 0;
+    padding: ui.space(3) ui.space(5) ui.space(1);
+    font-weight: ui.weight(regular);
+    border-top: 1px solid ui.color(border);
+    &:first-child {
+      border-top: 0;
+    }
+  }
+  &__lesson {
+    align-items: baseline;
+    &:focus-visible {
+      @include ui.focus-ring;
+    }
+    &--current,
+    &--current:hover {
       background: ui.color(surface-2);
     }
   }
-  &__body {
-    flex: 1;
-    align-items: flex-start;
-    @include ui.stack(1);
+  &__lesson-title {
+    @include ui.grow;
     min-width: 0;
     overflow-wrap: anywhere;
   }
-  &__content {
+  &__lesson--current &__lesson-title {
+    color: ui.color(primary);
+    font-weight: ui.weight(medium);
+  }
+  &__lesson-count {
+    @include ui.num;
+    @include ui.text(sm, muted);
+  }
+
+  // The lesson's page.
+  &__sheet {
+    min-width: 0;
+  }
+  &__sheet-tools {
+    @include ui.row-between(3);
+    padding: ui.space(3) ui.space(5);
+    border-bottom: 1px solid ui.color(border);
+  }
+  &__meta {
+    @include ui.text(sm, muted);
+    margin: 0;
+    overflow-wrap: anywhere;
+  }
+
+  // An entry: where it sits, what it says, then its menu. Below md the place goes above the text.
+  &__entry {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: start;
+    gap: ui.space(1) ui.space(4);
+    padding-inline-end: ui.space(3);
+    @include ui.bp(md) {
+      grid-template-columns: 7rem minmax(0, 1fr) auto;
+    }
+    > ui-menu {
+      grid-row: 1;
+      grid-column: 2;
+      @include ui.bp(md) {
+        grid-column: 3;
+      }
+    }
+  }
+  &__where {
+    @include ui.row(1);
+    @include ui.num;
+    @include ui.text(sm);
+    color: ui.color(primary);
+    font-weight: ui.weight(medium);
+    text-decoration: none;
+    white-space: nowrap;
+    &:hover {
+      text-decoration: underline;
+    }
+    &:focus-visible {
+      @include ui.focus-ring;
+    }
+  }
+  &__body {
+    @include ui.stack(1);
+    min-width: 0;
+    grid-column: 1;
+    @include ui.bp(md) {
+      grid-row: 1;
+      grid-column: 2;
+    }
+  }
+  &__text {
+    margin: 0;
     white-space: pre-wrap;
     overflow-wrap: anywhere;
   }
-  &__status {
-    padding: ui.space(5);
+  &__label {
+    @include ui.row(2);
+    margin: 0;
+    color: ui.color(text-secondary);
+    overflow-wrap: anywhere;
+  }
+  &__time {
+    @include ui.num;
+    @include ui.text(sm, muted);
+  }
+
+  &__none {
+    @include ui.text(sm, muted);
+    margin: 0;
+    padding: ui.space(4) ui.space(5);
   }
 }
