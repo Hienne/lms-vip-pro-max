@@ -1,5 +1,9 @@
 import { Component, inject } from '@angular/core';
-import { form, FormField, validateStandardSchema } from '@angular/forms/signals';
+import {
+  form,
+  FormField,
+  validateStandardSchema,
+} from '@angular/forms/signals';
 import {
   Alert,
   Button,

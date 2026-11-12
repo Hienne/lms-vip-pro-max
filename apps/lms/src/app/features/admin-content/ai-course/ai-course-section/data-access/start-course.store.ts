@@ -13,7 +13,10 @@ import { CourseJobTrackerStore } from '../../../../../core/course-jobs/course-jo
 import { serverData } from '../../../../../core/data-access/server-data';
 import { serverMutation } from '../../../../../core/data-access/server-mutation';
 import { EndpointClient } from '../../../../../core/http/endpoint-client';
-import { UPLOAD_ACCEPT, uploadProblem } from '../../../../../core/knowledge/upload-rules';
+import {
+  UPLOAD_ACCEPT,
+  uploadProblem,
+} from '../../../../../core/knowledge/upload-rules';
 import {
   EMPTY_START_COURSE_FORM,
   StartCourseFormSchema,
@@ -77,7 +80,10 @@ export class StartCourseStore {
       ...value,
       targetLearners: fields.targetLearners ?? value.targetLearners,
       level: fields.level ?? value.level,
-      chapters: fields.chapters === undefined ? value.chapters : String(fields.chapters),
+      chapters:
+        fields.chapters === undefined
+          ? value.chapters
+          : String(fields.chapters),
       durationMinutes:
         fields.durationMinutes === undefined
           ? value.durationMinutes

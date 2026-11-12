@@ -1854,7 +1854,8 @@ describe('CourseEditor', () => {
         )!;
         Object.defineProperty(input, 'files', {
           value: {
-            item: () => new File(['# Quy trình'], name, { type: 'text/markdown' }),
+            item: () =>
+              new File(['# Quy trình'], name, { type: 'text/markdown' }),
             length: 1,
           },
           configurable: true,
@@ -1963,7 +1964,9 @@ describe('CourseEditor', () => {
       it('shows an empty form when it is opened directly', async () => {
         await screen.open('/admin/courses/new');
 
-        expect((screen.field('Tên khóa học') as HTMLInputElement).value).toBe('');
+        expect((screen.field('Tên khóa học') as HTMLInputElement).value).toBe(
+          '',
+        );
         expect(
           (screen.field('Đối tượng học viên') as HTMLTextAreaElement).value,
         ).toBe('');
