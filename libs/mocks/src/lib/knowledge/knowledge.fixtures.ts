@@ -13,6 +13,7 @@ export const knowledgeDocumentFixtures: readonly KnowledgeDocument[] = [
   {
     id: 3,
     fileName: 'Checklist-van-hanh-cuoi-thang.md',
+    title: 'Checklist-van-hanh-cuoi-thang.md',
     mimeType: 'text/markdown',
     sizeBytes: 1129,
     scope: 'unit',
@@ -28,6 +29,7 @@ export const knowledgeDocumentFixtures: readonly KnowledgeDocument[] = [
   {
     id: 2,
     fileName: 'Quy-trinh-ECR.docx',
+    title: 'Quy-trinh-ECR.docx',
     mimeType:
       'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
     sizeBytes: 4039,
@@ -44,6 +46,7 @@ export const knowledgeDocumentFixtures: readonly KnowledgeDocument[] = [
   {
     id: 1,
     fileName: 'Quy-trinh-EOD.pdf',
+    title: 'Quy-trinh-EOD.pdf',
     mimeType: 'application/pdf',
     sizeBytes: 182_400,
     scope: 'global',

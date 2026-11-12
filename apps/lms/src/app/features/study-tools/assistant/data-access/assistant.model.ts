@@ -57,6 +57,10 @@ export interface Upload {
   readonly size: number;
   /** Who may find the document, chosen before the file was added. */
   readonly scope: DocumentScope;
-  readonly state: 'waiting' | 'uploading' | 'error';
+  /** The name the user gave this file; the server uses the file name when it is empty. */
+  readonly title?: string;
+  /** `duplicate`: the caller already has this file in that scope; `existing` is that document. */
+  readonly state: 'waiting' | 'uploading' | 'error' | 'duplicate';
   readonly error: string | null;
+  readonly existing?: { readonly id: number; readonly title: string };
 }

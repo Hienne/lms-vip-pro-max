@@ -3,6 +3,7 @@ import {
   type TestRequest,
 } from '@angular/common/http/testing';
 import { ErrorHandler } from '@angular/core';
+import { Toaster } from '@lms/ui';
 import { TestBed } from '@angular/core/testing';
 import type { ChatStreamEvent, KnowledgeDocument } from '@lms/contracts';
 import {
@@ -30,9 +31,11 @@ import {
   AssistantStore,
   DOCUMENTS_PAGE_SIZE,
   OFFLINE_MESSAGE,
+  REPLACEMENT_POLL_MS,
 } from './assistant.store';
 
 const LIST = '/api/v1/knowledge/documents';
+const DUPLICATES = `${LIST}/duplicates`;
 const STREAM = '/api/v1/knowledge/chat/stream';
 
 const page = (items: readonly KnowledgeDocument[], totalElements = 45) =>
@@ -84,7 +87,13 @@ describe('AssistantStore', () => {
     store = TestBed.inject(AssistantStore);
   });
 
-  afterEach(() => backend.verify());
+  afterEach(() => {
+    // The "Tài liệu trùng" read follows every change of the list; it is not what these specs are about.
+    backend
+      .match((r) => r.url === DUPLICATES)
+      .forEach((r) => !r.cancelled && r.flush(envelopeOk([])));
+    backend.verify();
+  });
 
   async function settle(): Promise<void> {
     TestBed.tick();
@@ -270,6 +279,139 @@ describe('AssistantStore', () => {
       });
       expect(upload()).toHaveLength(1);
       upload()[0]?.flush(envelopeOk(queued));
+    });
+  });
+
+  describe('names, duplicates and replacement files', () => {
+    const upload = (): TestRequest[] =>
+      backend.match((r) => r.url === LIST && r.method === 'POST');
+    const toasts = () => TestBed.inject(Toaster);
+
+    it('sends the title typed for a single file and then clears it, but not for several files', async () => {
+      await loadDocuments();
+      store.setUploadTitle('  Quy trình EOD  ');
+      store.addFiles([file('a.md')]);
+      expect(store.uploadTitle$()).toBe('');
+      store.setUploadTitle('Không dùng');
+      store.addFiles([file('b.md'), file('c.md')]);
+      await settle();
+      const first = upload();
+      expect((first[0].request.body as FormData).get('title')).toBe(
+        'Quy trình EOD',
+      );
+      first[0].flush(envelopeOk(queued));
+      await settle();
+      const second = upload();
+      expect((second[0].request.body as FormData).get('title')).toBeNull();
+      second[0].flush(envelopeOk(queued));
+      await settle();
+      const third = upload();
+      third[0].flush(envelopeOk(queued));
+      await settle();
+      listRequests().forEach((r) => !r.cancelled && r.flush(page([queued])));
+    });
+
+    it('says "already uploaded" on the file’s row, creates and tracks nothing, and can point at the document', async () => {
+      await loadDocuments();
+      const track = vi.spyOn(TestBed.inject(DocumentTrackerStore), 'track');
+      const success = vi.spyOn(toasts(), 'success');
+      store.addFiles([file('a.md')]);
+      await settle();
+      upload()[0].flush(
+        envelopeOk({ ...queued, id: 7, title: 'Đã có', duplicate: true }),
+      );
+      await settle();
+
+      expect(store.uploads$()).toMatchObject([
+        {
+          name: 'a.md',
+          state: 'duplicate',
+          existing: { id: 7, title: 'Đã có' },
+        },
+      ]);
+      expect(track).not.toHaveBeenCalled();
+      expect(success).not.toHaveBeenCalled();
+      store.setPage(3);
+      store.showDocument(7);
+      expect(store.highlightId$()).toBe(7);
+      expect(store.page$()).toBe(1);
+      await settle();
+      listRequests().forEach((r) => !r.cancelled && r.flush(page([queued])));
+    });
+
+    it('renames a document and reloads the list', async () => {
+      await loadDocuments();
+      store.renameDocument(queued, 'Tên mới');
+      const [request] = backend.match(
+        (r) => r.url === `${LIST}/99` && r.method === 'PATCH',
+      );
+      expect(request.request.body).toEqual({ title: 'Tên mới' });
+      request.flush(envelopeOk({ ...queued, title: 'Tên mới' }));
+      await settle();
+      const [reload] = listRequests();
+      reload.flush(page([{ ...queued, title: 'Tên mới' }]));
+    });
+
+    it('sends a replacement file for a ready document and reads the list again', async () => {
+      await loadDocuments();
+      store.replaceDocument(queued, file('moi.pdf'));
+      const [request] = backend.match(
+        (r) => r.url === `${LIST}/99/file` && r.method === 'PUT',
+      );
+      expect((request.request.body as FormData).get('file')).toBeInstanceOf(
+        File,
+      );
+      request.flush(
+        envelopeOk({
+          ...queued,
+          status: 'ready',
+          replacement: {
+            status: 'queued',
+            fileName: 'moi.pdf',
+            errorMessage: null,
+          },
+        }),
+      );
+      await settle();
+      const [reload] = listRequests();
+      reload.flush(page([queued]));
+    });
+
+    it('refuses a replacement of the wrong type without sending anything', async () => {
+      await loadDocuments();
+      const error = vi.spyOn(toasts(), 'error');
+      store.replaceDocument(queued, file('anh.png'));
+      expect(error).toHaveBeenCalled();
+      expect(backend.match((r) => r.url === `${LIST}/99/file`)).toEqual([]);
+    });
+
+    it('reads the list again every few seconds while a replacement is being indexed, and stops after', async () => {
+      vi.useFakeTimers();
+      try {
+        await loadDocuments([
+          {
+            ...queued,
+            status: 'ready',
+            replacement: {
+              status: 'processing',
+              fileName: 'moi.pdf',
+              errorMessage: null,
+            },
+          },
+        ]);
+        expect(listRequests()).toEqual([]);
+        await vi.advanceTimersByTimeAsync(REPLACEMENT_POLL_MS);
+        await settle();
+        const [again] = listRequests();
+        expect(again).toBeDefined();
+        again.flush(page([{ ...queued, status: 'ready', replacement: null }]));
+        await settle();
+        await vi.advanceTimersByTimeAsync(REPLACEMENT_POLL_MS * 2);
+        await settle();
+        expect(listRequests()).toEqual([]);
+      } finally {
+        vi.useRealTimers();
+      }
     });
   });
 

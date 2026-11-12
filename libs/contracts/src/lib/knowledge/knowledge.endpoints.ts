@@ -7,7 +7,10 @@ import {
   DocumentListQuerySchema,
   DocumentTextQuerySchema,
   DocumentTextSchema,
+  DuplicateGroupSchema,
   KnowledgeDocumentSchema,
+  RenameDocumentCommandSchema,
+  ReplaceDocumentCommandSchema,
   UploadDocumentCommandSchema,
 } from './knowledge.schema';
 import { z } from 'zod';
@@ -43,12 +46,45 @@ export const knowledgeEndpoints = {
     query: DocumentTextQuerySchema,
     response: DocumentTextSchema,
   }),
-  /** Uploads a `.pdf`, `.md` or `.docx` with its scope; it answers 201 with the document `queued`. */
+  /**
+   * The caller's documents sharing a file checksum in one scope, newest first. Nothing is deleted by
+   * asking; each unwanted copy goes through `deleteDocument`.
+   */
+  duplicateDocuments: defineEndpoint({
+    method: 'get',
+    path: '/api/v1/knowledge/documents/duplicates',
+    response: z.array(DuplicateGroupSchema),
+  }),
+  /**
+   * Uploads a `.pdf`, `.md` or `.docx` with its scope and an optional title; it answers 201 with
+   * the document `queued`, or 200 with the caller's existing document and `duplicate: true` when the
+   * same file is already there in that scope (nothing is created).
+   */
   uploadDocument: defineEndpoint({
     method: 'post',
     path: '/api/v1/knowledge/documents',
     encoding: 'multipart',
     body: UploadDocumentCommandSchema,
+    response: KnowledgeDocumentSchema,
+  }),
+  /** Renames a document (its title, not its file); the owner, or an admin in scope. */
+  renameDocument: defineEndpoint({
+    method: 'patch',
+    path: '/api/v1/knowledge/documents/{documentId}',
+    params: z.object({ documentId: z.number().int() }),
+    body: RenameDocumentCommandSchema,
+    response: KnowledgeDocumentSchema,
+  }),
+  /**
+   * Queues a new file for a ready document: the id stays and the old version answers until the new one
+   * is indexed; a failed one leaves the old version and shows the reason in `replacement`.
+   */
+  replaceDocument: defineEndpoint({
+    method: 'put',
+    path: '/api/v1/knowledge/documents/{documentId}/file',
+    params: z.object({ documentId: z.number().int() }),
+    encoding: 'multipart',
+    body: ReplaceDocumentCommandSchema,
     response: KnowledgeDocumentSchema,
   }),
   /**

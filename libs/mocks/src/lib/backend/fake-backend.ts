@@ -271,6 +271,8 @@ export class FakeBackend {
     knowledgeDocumentFixtures.map((d) => ({ ...d }));
   /** Uploaded documents still moving to `ready`: one step per read, like the worker over time. */
   private pendingDocuments = new Set<number>();
+  /** Replacement files still being indexed: queued, processing, then swapped in, one step per read. */
+  private pendingReplacements = new Map<number, string>();
   private nextDocumentId =
     Math.max(...knowledgeDocumentFixtures.map((d) => d.id)) + 1;
 
@@ -361,6 +363,9 @@ export class FakeBackend {
     [knowledgeEndpoints.documentText, (r) => this.documentText(r)],
     [knowledgeEndpoints.uploadDocument, (r) => this.uploadDocument(r)],
     [knowledgeEndpoints.deleteDocument, (r) => this.deleteDocument(r)],
+    [knowledgeEndpoints.renameDocument, (r) => this.renameDocument(r)],
+    [knowledgeEndpoints.replaceDocument, (r) => this.replaceDocument(r)],
+    [knowledgeEndpoints.duplicateDocuments, (r) => this.duplicateDocuments(r)],
     [knowledgeEndpoints.ask, (r) => this.ask(r)],
     [knowledgeEndpoints.askStream, (r) => this.askStream(r)],
     [agentEndpoints.stream, (r) => this.agentStream(r)],
@@ -534,6 +539,22 @@ export class FakeBackend {
         this.pendingDocuments.delete(id);
       }
     }
+    for (const [id, fileName] of [...this.pendingReplacements]) {
+      const document = this.documents.find((d) => d.id === id);
+      if (!document?.replacement) {
+        this.pendingReplacements.delete(id);
+      } else if (document.replacement.status === 'queued') {
+        document.replacement = {
+          ...document.replacement,
+          status: 'processing',
+        };
+      } else {
+        document.fileName = fileName;
+        document.replacement = null;
+        document.processedAt = new Date().toISOString();
+        this.pendingReplacements.delete(id);
+      }
+    }
   }
 
   private listDocuments(request: FakeRequest): FakeReply {
@@ -589,7 +610,7 @@ export class FakeBackend {
     const to = Math.min(chunks.length - 1, centre + span);
     return ok({
       documentId: id,
-      fileName: document.fileName,
+      fileName: document.title,
       aroundChunkId: chunks[centre].chunkId,
       chunks: chunks.slice(from, to + 1),
       hasMoreBefore: from > 0,
@@ -620,7 +641,95 @@ export class FakeBackend {
     }
     this.documents.splice(index, 1);
     this.pendingDocuments.delete(document.id);
+    this.pendingReplacements.delete(document.id);
     return ok(null);
+  }
+
+  /** The owner or an admin may change a document; anyone else who can read it is refused. */
+  private editableDocument(request: FakeRequest): Mutable<KnowledgeDocument> {
+    const actor = this.actor(request);
+    this.advanceDocuments();
+    const document = this.documents.find(
+      (d) => d.id === Number(request.params['documentId']),
+    );
+    if (!document || !this.canReadDocument(actor, document)) {
+      return refuse('resourceNotFound');
+    }
+    const admin = this.hasRole(actor.userId, ['ADMIN', 'SUPER_ADMIN']);
+    if (document.uploadedBy.userId !== actor.userId && !admin) {
+      return refuse('accessDenied');
+    }
+    return document;
+  }
+
+  private renameDocument(request: FakeRequest): FakeReply {
+    const document = this.editableDocument(request);
+    const title = (request.body as { title?: unknown } | null)?.title;
+    if (
+      typeof title !== 'string' ||
+      !title.trim() ||
+      title.trim().length > 255
+    ) {
+      return invalid('Tên tài liệu phải có từ 1 đến 255 ký tự.');
+    }
+    document.title = title.trim();
+    return ok({ ...document });
+  }
+
+  private replaceDocument(request: FakeRequest): FakeReply {
+    const document = this.editableDocument(request);
+    const body = request.body;
+    const file =
+      body instanceof FormData
+        ? body.get('file')
+        : (body as { file?: unknown } | null)?.file;
+    if (!(file instanceof Blob) || !(file as File).name) {
+      return invalid('Cần chọn một tệp.');
+    }
+    const upload = file as File;
+    if (document.status !== 'ready') {
+      return invalid('Tài liệu chưa sẵn sàng để thay bản mới.');
+    }
+    if (document.replacement && document.replacement.status !== 'failed') {
+      return invalid('Tài liệu đang có bản thay thế chưa xử lý xong.');
+    }
+    if (!/\.(pdf|md|docx)$/i.test(upload.name)) {
+      return refuse('fileTypeUnsupported');
+    }
+    if (upload.size === 0) return refuse('fileInvalid');
+    if (upload.size > 20 * 1024 * 1024) return refuse('fileTooLarge');
+    if (
+      upload.name === document.fileName &&
+      upload.size === document.sizeBytes
+    ) {
+      return ok({ ...document, duplicate: true });
+    }
+    document.replacement = {
+      status: 'queued',
+      fileName: upload.name,
+      errorMessage: null,
+    };
+    this.pendingReplacements.set(document.id, upload.name);
+    return ok({ ...document });
+  }
+
+  /** The caller's own documents with the same name and size in one scope: the mock's stand-in for a checksum. */
+  private duplicateDocuments(request: FakeRequest): FakeReply {
+    const actor = this.actor(request);
+    const groups = new Map<string, Mutable<KnowledgeDocument>[]>();
+    for (const document of this.documents) {
+      if (document.uploadedBy.userId !== actor.userId) continue;
+      const key = `${document.fileName}|${document.sizeBytes}|${document.scope}`;
+      groups.set(key, [...(groups.get(key) ?? []), document]);
+    }
+    return ok(
+      [...groups.entries()]
+        .filter(([, documents]) => documents.length > 1)
+        .map(([key, documents]) => ({
+          checksum: key,
+          documents: documents.map((d) => ({ ...d })),
+        })),
+    );
   }
 
   private uploadDocument(request: FakeRequest): FakeReply {
@@ -650,9 +759,24 @@ export class FakeBackend {
     }
     if (upload.size === 0) return refuse('fileInvalid');
     if (upload.size > 20 * 1024 * 1024) return refuse('fileTooLarge');
+    const existing = this.documents.find(
+      (d) =>
+        d.uploadedBy.userId === actor.userId &&
+        d.scope === scope &&
+        d.status !== 'failed' &&
+        d.fileName === upload.name &&
+        d.sizeBytes === upload.size,
+    );
+    if (existing) return ok({ ...existing, duplicate: true });
+    const title =
+      body instanceof FormData
+        ? body.get('title')
+        : (body as { title?: unknown } | null)?.title;
     const document: Mutable<KnowledgeDocument> = {
       id: this.nextDocumentId++,
       fileName: upload.name,
+      title:
+        typeof title === 'string' && title.trim() ? title.trim() : upload.name,
       mimeType: upload.type || 'application/octet-stream',
       sizeBytes: upload.size,
       scope,
