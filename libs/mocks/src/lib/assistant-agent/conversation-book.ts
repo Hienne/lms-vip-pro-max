@@ -142,6 +142,7 @@ export class ConversationBook {
       helpful,
       reasonCode: helpful ? null : (command.reasonCode ?? null),
       note: command.note?.trim() || null,
+      shared: !helpful && command.share === true,
     };
     return turn.feedback;
   }

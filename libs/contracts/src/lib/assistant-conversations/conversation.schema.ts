@@ -91,6 +91,8 @@ export const FeedbackSchema = z.object({
   helpful: z.boolean(),
   reasonCode: FeedbackReasonSchema.nullable(),
   note: z.string().nullable(),
+  /** True while the question and answer are shared with the development team (opt-in, thumbs-down only). */
+  shared: z.boolean().optional(),
 });
 export type Feedback = z.infer<typeof FeedbackSchema>;
 
@@ -99,6 +101,8 @@ export const RateAnswerCommandSchema = z.object({
   helpful: z.boolean(),
   reasonCode: FeedbackReasonSchema.optional(),
   note: z.string().max(FEEDBACK_NOTE_MAX_LENGTH).optional(),
+  /** Thumbs-down only: send this turn's question and answer to the development team. Left out means no. */
+  share: z.boolean().optional(),
 });
 export type RateAnswerCommand = z.infer<typeof RateAnswerCommandSchema>;
 

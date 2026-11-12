@@ -5,7 +5,7 @@ import {
   type FeedbackReason,
   type RateAnswerCommand,
 } from '@lms/contracts';
-import { Button, Icon, IconButton, Textarea } from '@lms/ui';
+import { Button, Checkbox, Icon, IconButton, Textarea } from '@lms/ui';
 
 /** The reasons a user can give for a thumbs-down, in the order they are offered. */
 export const FEEDBACK_REASONS: readonly {
@@ -27,7 +27,7 @@ export const FEEDBACK_REASONS: readonly {
  */
 @Component({
   selector: 'app-answer-feedback',
-  imports: [Button, Icon, IconButton, Textarea],
+  imports: [Button, Checkbox, Icon, IconButton, Textarea],
   templateUrl: './answer-feedback.html',
   styleUrl: './answer-feedback.scss',
 })
@@ -45,6 +45,8 @@ export class AnswerFeedback {
   protected readonly noteMax = FEEDBACK_NOTE_MAX_LENGTH;
   protected readonly picking = signal(false);
   protected readonly reason = signal<FeedbackReason | null>(null);
+  /** The opt-in to send the turn to the development team; off unless the saved feedback says otherwise. */
+  protected readonly share = signal(false);
   protected readonly helpful = computed(() => this.value()?.helpful === true);
   protected readonly unhelpful = computed(
     () => this.value()?.helpful === false,
@@ -62,6 +64,7 @@ export class AnswerFeedback {
       return;
     }
     this.reason.set(this.value()?.reasonCode ?? null);
+    this.share.set(this.value()?.shared === true);
     this.picking.set(true);
   }
 
@@ -77,6 +80,7 @@ export class AnswerFeedback {
       helpful: false,
       ...(reasonCode ? { reasonCode } : {}),
       ...(text ? { note: text } : {}),
+      ...(this.share() ? { share: true } : {}),
     });
   }
 

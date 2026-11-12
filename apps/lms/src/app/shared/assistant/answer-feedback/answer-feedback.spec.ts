@@ -135,6 +135,46 @@ describe('AnswerFeedback', () => {
     );
   });
 
+  it('offers a share tick that is off by default and sends nothing extra when left off', async () => {
+    const { fixture, el, host } = await render();
+    named(el, 'Câu trả lời chưa tốt')?.click();
+    await fixture.whenStable();
+    const tick = el.querySelector<HTMLInputElement>('input[type="checkbox"]');
+    expect(tick?.checked).toBe(false);
+    expect(el.querySelector('.feedback__share')?.textContent).toContain(
+      'Gửi kèm câu hỏi và câu trả lời cho đội phát triển',
+    );
+    text(el, 'Gửi đánh giá')?.click();
+    expect(host.sent).toEqual([{ helpful: false }]);
+  });
+
+  it('sends share when the tick is on, and shows it ticked when the saved feedback is shared', async () => {
+    const { fixture, el, host } = await render();
+    named(el, 'Câu trả lời chưa tốt')?.click();
+    await fixture.whenStable();
+    el.querySelector<HTMLInputElement>('input[type="checkbox"]')?.click();
+    await fixture.whenStable();
+    text(el, 'Gửi đánh giá')?.click();
+    expect(host.sent).toEqual([{ helpful: false, share: true }]);
+
+    host.value.set({
+      helpful: false,
+      reasonCode: null,
+      note: null,
+      shared: true,
+    });
+    await fixture.whenStable();
+    named(el, 'Câu trả lời chưa tốt')?.click();
+    await fixture.whenStable();
+    expect(
+      el.querySelector<HTMLInputElement>('input[type="checkbox"]')?.checked,
+    ).toBe(true);
+    el.querySelector<HTMLInputElement>('input[type="checkbox"]')?.click();
+    await fixture.whenStable();
+    text(el, 'Gửi đánh giá')?.click();
+    expect(host.sent.at(-1)).toEqual({ helpful: false });
+  });
+
   it('holds the buttons while saving and says when saving failed', async () => {
     const { fixture, el, host } = await render();
     host.saving.set(true);

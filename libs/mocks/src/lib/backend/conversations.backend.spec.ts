@@ -256,6 +256,13 @@ describe('FakeBackend saved conversations', () => {
         helpful: false,
         reasonCode: 'outdated',
         note: 'Số liệu cũ',
+        shared: false,
+      });
+      expect(
+        rate(token, turnId, { helpful: false, share: true }).body.data,
+      ).toMatchObject({ shared: true });
+      expect(rate(token, turnId, { helpful: false }).body.data).toMatchObject({
+        shared: false,
       });
       rate(token, turnId, { helpful: true });
 
@@ -266,7 +273,11 @@ describe('FakeBackend saved conversations', () => {
         helpful: true,
         reasonCode: null,
         note: null,
+        shared: false,
       });
+      expect(code(rate(token, turnId, { helpful: true, share: true }))).toBe(
+        'CORE-VALIDATION_FAILED',
+      );
     });
 
     it('answers a turn of someone else like one that does not exist', () => {

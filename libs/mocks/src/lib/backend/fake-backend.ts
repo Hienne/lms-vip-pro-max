@@ -1190,6 +1190,9 @@ export class FakeBackend {
     if (parsed.data.reasonCode && parsed.data.helpful) {
       return invalid('Chỉ đánh giá chưa tốt mới có lý do.');
     }
+    if (parsed.data.share && parsed.data.helpful) {
+      return invalid('Chỉ đánh giá chưa tốt mới gửi kèm được.');
+    }
     const turnId = Number(request.params['turnId']);
     const saved = this.book.rate(user.userId, turnId, parsed.data);
     return saved ? ok(saved) : refuse('assistantTurnNotFound');
