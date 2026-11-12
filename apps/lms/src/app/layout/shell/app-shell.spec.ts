@@ -94,6 +94,7 @@ describe('AppShell', () => {
           r.url === '/api/v1/me/flashcard-decks' ||
           r.url === '/api/v1/training-catalog/programs' ||
           r.url === '/api/v1/orgs' ||
+          r.url === '/api/v1/competencies' ||
           r.url.startsWith('/api/v1/reports/assessment/'),
       )
       .filter((r) => !r.cancelled)
