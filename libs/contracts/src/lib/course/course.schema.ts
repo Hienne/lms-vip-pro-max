@@ -164,6 +164,14 @@ export const CourseChapterSchema = z.object({
 });
 export type CourseChapter = z.infer<typeof CourseChapterSchema>;
 
+export const LessonAiStateSchema = z.enum([
+  'pending',
+  'writing',
+  'written',
+  'user_edited',
+]);
+export type LessonAiState = z.infer<typeof LessonAiStateSchema>;
+
 export const CourseLessonSchema = z.object({
   id: z.number().int(),
   chapterId: z.number().int(),
@@ -178,6 +186,8 @@ export const CourseLessonSchema = z.object({
   rowVersion: z.number().int(),
   createTime: BackendDateTimeSchema.nullish(),
   updateTime: BackendDateTimeSchema.nullish(),
+  /** Set for a lesson the AI manages; read-only, the server keeps it (a save never sends it). */
+  aiState: LessonAiStateSchema.nullish(),
 });
 export type CourseLesson = z.infer<typeof CourseLessonSchema>;
 

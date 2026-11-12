@@ -8,6 +8,12 @@ import type {
   AgentTurn,
 } from '../../../../core/assistant/agent-chat.model';
 import { AgentMessage } from './agent-message';
+import {
+  parseAppConfig,
+  provideAppConfig,
+} from '../../../../core/config/app-config';
+import { testAppConfig } from '../../../../core/config/app-config.testing';
+import { provideEnvelopeHttpClient } from '../../../../core/http/http.testing';
 
 const reply = (patch: Partial<AgentReply> = {}): AgentReply => ({
   status: 'done',
@@ -41,7 +47,13 @@ class Host {
 
 describe('AgentMessage', () => {
   async function render(value: AgentTurn) {
-    TestBed.configureTestingModule({ providers: [provideRouter([])] });
+    TestBed.configureTestingModule({
+      providers: [
+        provideRouter([]),
+        provideAppConfig(parseAppConfig(testAppConfig())),
+        provideEnvelopeHttpClient(),
+      ],
+    });
     const fixture = TestBed.createComponent(Host);
     fixture.componentInstance.turn.set(value);
     await fixture.whenStable();
@@ -156,6 +168,27 @@ describe('AgentMessage', () => {
     );
     await fixture.whenStable();
     expect(el.querySelectorAll('app-agent-sources li')).toHaveLength(2);
+  });
+
+  it('labels a finished reply with grounded false as "Chưa có nguồn", and no other', async () => {
+    const { fixture, el } = await render(
+      turn({ text: 'CIF là mã khách hàng.', grounded: false }),
+    );
+    expect(el.querySelector('.message__no-source')?.textContent?.trim()).toBe(
+      'Chưa có nguồn',
+    );
+    fixture.componentInstance.turn.set(
+      turn({
+        text: 'CIF là mã khách hàng.',
+        status: 'composing',
+        grounded: false,
+      }),
+    );
+    await fixture.whenStable();
+    expect(el.querySelector('.message__no-source')).toBeNull();
+    fixture.componentInstance.turn.set(turn({ text: 'CIF là mã khách hàng.' }));
+    await fixture.whenStable();
+    expect(el.querySelector('.message__no-source')).toBeNull();
   });
 
   it('moves focus from a number in the answer to its line in the source list', async () => {

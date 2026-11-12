@@ -43,6 +43,11 @@
     overflow-wrap: anywhere;
   }
 
+  &__section {
+    @include ui.text(sm, secondary);
+    overflow-wrap: anywhere;
+  }
+
   &__where {
     @include ui.text(sm, muted);
   }
@@ -61,5 +66,14 @@
     display: inline-block;
     margin-top: ui.space(3);
     color: ui.color(primary);
+    padding: 0;
+    background: none;
+    border: 0;
+    cursor: pointer;
+    text-decoration: underline;
+
+    &:focus-visible {
+      @include ui.focus-ring;
+    }
   }
 }

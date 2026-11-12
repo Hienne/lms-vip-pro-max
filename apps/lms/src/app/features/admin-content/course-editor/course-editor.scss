@@ -21,6 +21,10 @@
     @include ui.row(3);
   }
 
+  &__ai-problem {
+    @include ui.text(sm, muted);
+  }
+
   &__saved {
     @include ui.row(1);
     @include ui.text(xs, muted);
@@ -71,4 +75,8 @@
   &__spacer {
     flex: 1 1 auto;
   }
+}
+
+.course-editor__rewrite {
+  margin-right: auto;
 }

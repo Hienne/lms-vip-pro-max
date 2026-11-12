@@ -3,6 +3,12 @@ import { TestBed } from '@angular/core/testing';
 import { knowledgeAnswerFixture } from '@lms/mocks';
 import type { Answer, Turn } from '../../data-access/assistant.model';
 import { ChatMessage } from './chat-message';
+import {
+  parseAppConfig,
+  provideAppConfig,
+} from '../../../../../core/config/app-config';
+import { testAppConfig } from '../../../../../core/config/app-config.testing';
+import { provideEnvelopeHttpClient } from '../../../../../core/http/http.testing';
 
 const answer = (over: Partial<Answer>): Answer => ({
   status: 'done',
@@ -31,6 +37,14 @@ class Host {
 }
 
 describe('ChatMessage', () => {
+  beforeEach(() =>
+    TestBed.configureTestingModule({
+      providers: [
+        provideAppConfig(parseAppConfig(testAppConfig())),
+        provideEnvelopeHttpClient(),
+      ],
+    }),
+  );
   let host: Host;
   let el: HTMLElement;
   let fixture: ReturnType<typeof TestBed.createComponent<Host>>;
@@ -118,6 +132,28 @@ describe('ChatMessage', () => {
     expect(row.querySelectorAll('li app-source-badge')).toHaveLength(2);
     expect(el.querySelector('.message__answer app-source-badge')).toBeNull();
     expect(text()).not.toContain('Nguồn');
+  });
+
+  it('labels an answer that used documents but marks none as "Chưa có nguồn"', () => {
+    show({
+      status: 'done',
+      text: 'Chạy EOD phải đối chiếu số dư sổ cái trước.',
+      found: true,
+      grounded: false,
+    });
+    expect(el.querySelector('.message__no-source')?.textContent?.trim()).toBe(
+      'Chưa có nguồn',
+    );
+    expect(el.querySelector('app-source-badge')).toBeNull();
+  });
+
+  it('shows no label on a grounded answer, on one still streaming, or on a not-found one', () => {
+    show({ status: 'done', text: 'Đã có nguồn [1].', found: true });
+    expect(el.querySelector('.message__no-source')).toBeNull();
+    show({ status: 'composing', text: 'Đang viết', grounded: false });
+    expect(el.querySelector('.message__no-source')).toBeNull();
+    show({ status: 'done', text: 'Không tìm thấy.', found: false });
+    expect(el.querySelector('.message__no-source')).toBeNull();
   });
 
   it('shows no sources when the answer has no citations', () => {

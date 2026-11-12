@@ -9,6 +9,7 @@ import {
   type CourseJobInputs,
   type CourseJobStatus,
   type CourseOutline,
+  type ProposalState,
   type QuestionDecision,
 } from '@lms/contracts';
 import type { FakeReply, FakeRequest } from '../backend/fake-backend';
@@ -56,7 +57,7 @@ interface MockGeneration {
   outline: CourseOutline;
   locked: boolean;
   lessons: MockLesson[];
-  decisions: Map<string, QuestionDecision>;
+  decisions: Map<string, ProposalState>;
 }
 
 interface MockJob {
@@ -146,6 +147,8 @@ export class CourseJobMock {
       ownerOrgId: inputs.ownerOrgId ?? 1,
       source: { documentId: null, fileName, status: 'ready' },
       createdDraftId: null,
+      courseId: 200 + this.nextId,
+      revisionId: 300 + this.nextId,
       steps: [
         {
           kind: 'summarise_sections',
@@ -174,6 +177,23 @@ export class CourseJobMock {
       mine.forEach((entry) => this.advance(entry));
       return ok(mine.map((entry) => this.summary(entry.job)));
     }
+    if (endpoint === courseJobEndpoints.active) {
+      const mine = this.jobs.filter((entry) => entry.owner === owner);
+      mine.forEach((entry) => this.advance(entry));
+      return ok(
+        mine
+          .filter((entry) =>
+            [
+              'queued',
+              'running',
+              'waiting_approval',
+              'failed',
+              'stopped',
+            ].includes(entry.job.status),
+          )
+          .map((entry) => this.summary(entry.job)),
+      );
+    }
     const entry = this.jobs.find(
       (item) =>
         item.owner === owner &&
@@ -190,6 +210,17 @@ export class CourseJobMock {
         return refuse('CORE-VALIDATION_FAILED', 'Công việc này đã kết thúc.');
       }
       entry.job = { ...entry.job, status: 'cancelled' };
+      return ok(entry.job);
+    }
+    if (endpoint === courseJobEndpoints.stop) {
+      if (
+        ['completed', 'failed', 'cancelled', 'stopped'].includes(
+          entry.job.status,
+        )
+      ) {
+        return refuse('JOB_FINISHED', 'Công việc này đã kết thúc.');
+      }
+      entry.job = { ...entry.job, status: 'stopped' };
       return ok(entry.job);
     }
     this.jobs = this.jobs.filter((item) => item !== entry);
@@ -240,7 +271,7 @@ export class CourseJobMock {
     return ok(this.queue(owner, inputs, name));
   }
 
-  /** The review calls: read, edit and approve the outline, redo a lesson, decide, retry, draft. */
+  /** The review calls: read, edit and approve the outline, redo a lesson, decide, retry. */
   private review(
     endpoint: AnyEndpoint,
     request: FakeRequest,
@@ -296,38 +327,29 @@ export class CourseJobMock {
       if (!decision) {
         return refuse('CORE-VALIDATION_FAILED', 'Chọn một quyết định.');
       }
-      generation.decisions.set(`${key}/${request.params['index']}`, decision);
-      return ok(this.content(entry));
-    }
-    if (endpoint === courseContentEndpoints.retry) {
-      const failed = generation.lessons.filter((lesson) => lesson.failed);
-      if (failed.length === 0) {
-        return refuse('NOTHING_FAILED', 'Không có bước nào bị lỗi.');
+      const place = `${key}/${request.params['index']}`;
+      if (generation.decisions.get(place) === 'added') {
+        return decision === 'accepted'
+          ? ok(this.content(entry))
+          : refuse(
+              'QUESTION_ALREADY_ADDED',
+              'Câu hỏi này đã được thêm vào ngân hàng câu hỏi.',
+            );
       }
-      this.reopen(entry, failed);
+      // Accepting writes the question to the bank at once, as the server does.
+      generation.decisions.set(
+        place,
+        decision === 'accepted' ? 'added' : decision,
+      );
       return ok(this.content(entry));
     }
-    // createDraft
-    const ready =
-      generation.locked &&
-      generation.lessons.length > 0 &&
-      generation.lessons.every(
-        (lesson) => lesson.ticks >= DONE_TICKS && !lesson.failed,
-      );
-    if (!ready) {
-      return refuse(
-        'STEP_NOT_READY',
-        'Cần viết xong mọi bài học trước khi tạo bản nháp.',
-      );
+    // retry
+    const failed = generation.lessons.filter((lesson) => lesson.failed);
+    if (failed.length === 0) {
+      return refuse('NOTHING_FAILED', 'Không có bước nào bị lỗi.');
     }
-    entry.job = {
-      ...entry.job,
-      status: 'completed',
-      step: 'draft',
-      progress: 100,
-      createdDraftId: entry.job.createdDraftId ?? 100 + entry.job.jobId,
-    };
-    return ok(entry.job);
+    this.reopen(entry, failed);
+    return ok(this.content(entry));
   }
 
   /** The lessons are written again; the others and the questions stay. */
@@ -485,6 +507,7 @@ export class CourseJobMock {
       sourceFileName: job.source?.fileName ?? null,
       createdDraftId: job.createdDraftId ?? null,
       createTime: job.createTime,
+      courseId: job.courseId ?? null,
     };
   }
 }

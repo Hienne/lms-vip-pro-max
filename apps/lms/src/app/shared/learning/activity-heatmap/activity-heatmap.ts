@@ -61,20 +61,30 @@ export class ActivityHeatmap {
 
   private readonly now = inject(NOW);
   private readonly today = new Intl.DateTimeFormat('en-CA', {
-    timeZone: 'Asia/Ho_Chi_Minh', year: 'numeric', month: '2-digit', day: '2-digit',
+    timeZone: 'Asia/Ho_Chi_Minh',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
   }).format(this.now());
 
-  protected readonly firstWeekday = computed(() => this.days().length ? weekdayOf(this.days()[0].date) : 0);
+  protected readonly firstWeekday = computed(() =>
+    this.days().length ? weekdayOf(this.days()[0].date) : 0,
+  );
 
   protected readonly months = computed(() => {
     const days = this.days();
     if (!days.length) return [];
     const first = new Date(days[0].date + 'T00:00:00Z');
     const start = first.getTime() - weekdayOf(days[0].date) * 86400000;
-    return days.filter((day, index) => index === 0 || day.date.endsWith('-01')).map((day) => {
-      const date = new Date(day.date + 'T00:00:00Z');
-      return { label: 'T' + (date.getUTCMonth() + 1), column: Math.floor((date.getTime() - start) / 604800000) + 1 };
-    });
+    return days
+      .filter((day, index) => index === 0 || day.date.endsWith('-01'))
+      .map((day) => {
+        const date = new Date(day.date + 'T00:00:00Z');
+        return {
+          label: 'T' + (date.getUTCMonth() + 1),
+          column: Math.floor((date.getTime() - start) / 604800000) + 1,
+        };
+      });
   });
 
   /** Seven rows, Monday first; each holds that weekday of every week, oldest first. */

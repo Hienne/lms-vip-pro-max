@@ -47,6 +47,13 @@ import { uploadProblem } from './upload-rules';
 
 export const DOCUMENTS_PAGE_SIZE = 20;
 
+/** How often the list is read again while a replacement file is being indexed. */
+export const REPLACEMENT_POLL_MS = 5000;
+
+const isReplacing = (document: KnowledgeDocument): boolean =>
+  document.replacement?.status === 'queued' ||
+  document.replacement?.status === 'processing';
+
 /** From the `md` breakpoint the documents panel sits beside the chat; below it, it is a drawer. */
 export const PANEL_BESIDE_QUERY = '(min-width: 720px)';
 
@@ -123,6 +130,10 @@ export class AssistantStore {
     uploads: signal<readonly Upload[]>([]),
     /** Who finds the next uploaded files; "my unit" until the user picks another. */
     uploadScope: signal<DocumentScope>('unit'),
+    /** The name typed for the next single file; empty keeps the file name. */
+    uploadTitle: signal(''),
+    /** A document the list points at (the one an upload repeated). */
+    highlightId: signal<number | null>(null),
     page: signal(1),
     /** Open beside the chat on a wide screen, closed (a drawer) on a narrow one, until toggled. */
     panelOpen: linkedSignal<boolean, boolean>({
@@ -144,6 +155,11 @@ export class AssistantStore {
     },
   );
 
+  private readonly duplicatesData = serverData(
+    () => this.client.call(knowledgeEndpoints.duplicateDocuments),
+    { reloadOn: [this.tracker.finished, this.changes] },
+  );
+
   // Uploads are a queue with a result per file, so they are not a `serverMutation`: one file at a
   // time (`concatMap`), a refusal stays on that file's row instead of a toast, and the rest go on.
   private readonly uploadQueue = new Subject<Upload>();
@@ -154,6 +170,10 @@ export class AssistantStore {
   readonly ratingFailedId$ = this.state.ratingFailedId.asReadonly();
   readonly uploads$ = this.state.uploads.asReadonly();
   readonly uploadScope$ = this.state.uploadScope.asReadonly();
+  readonly uploadTitle$ = this.state.uploadTitle.asReadonly();
+  readonly highlightId$ = this.state.highlightId.asReadonly();
+  /** The caller's documents that share a file, for the "Tài liệu trùng" view. */
+  readonly duplicates$ = computed(() => this.duplicatesData.value() ?? []);
   /** Admins may share a document with the whole system; the server refuses it for anyone else. */
   readonly canShareGlobally$ = computed(() =>
     (this.session.user$()?.grants ?? []).some((grant) =>
@@ -213,6 +233,14 @@ export class AssistantStore {
       this.loading?.unsubscribe();
     });
 
+    // A replacement is indexed in the background and the document stays `ready`, so the tracker does not
+    // see it: read the list again until none is left.
+    effect((onCleanup) => {
+      if (!this.documents$().some(isReplacing)) return;
+      const timer = setTimeout(() => this.changes.bump(), REPLACEMENT_POLL_MS);
+      onCleanup(() => clearTimeout(timer));
+    });
+
     // The page shows the list, so it is read from now on; a deleted conversation may be the open one.
     this.conversations.watch();
     this.conversations.removed
@@ -247,6 +275,16 @@ export class AssistantStore {
 
   setUploadScope(scope: DocumentScope): void {
     this.state.uploadScope.set(scope);
+  }
+
+  setUploadTitle(title: string): void {
+    this.state.uploadTitle.set(title);
+  }
+
+  /** Points the list at a document, which is shown from the first page (newest first). */
+  showDocument(id: number): void {
+    this.setPage(1);
+    this.state.highlightId.set(id);
   }
 
   setUploads(uploads: readonly Upload[]): void {
@@ -443,6 +481,7 @@ export class AssistantStore {
           // The server's final text wins over what was streamed (a "not found" is always its fixed sentence).
           text: event.answer,
           citations: event.citations,
+          grounded: event.grounded,
         });
         this.setTurns(
           this.turns$().map((turn) =>
@@ -494,6 +533,9 @@ export class AssistantStore {
 
   /** Checks each file, then uploads the good ones one after another. */
   addFiles(files: readonly File[]): void {
+    // A name typed beforehand belongs to one file; several files keep their own names.
+    const title = files.length === 1 ? this.uploadTitle$().trim() : '';
+    if (files.length === 1) this.state.uploadTitle.set('');
     const added: Upload[] = files.map((file) => {
       const problem = uploadProblem(file);
       return {
@@ -502,6 +544,7 @@ export class AssistantStore {
         name: file.name,
         size: file.size,
         scope: this.uploadScope$(),
+        ...(title ? { title } : {}),
         state: problem ? 'error' : 'waiting',
         error: problem,
       };
@@ -526,11 +569,74 @@ export class AssistantStore {
     document.uploadedBy.userId === this.session.user$()?.userId ||
     (document.scope !== 'personal' && this.canShareGlobally$());
 
+  /** Shown on a row: who may rename or replace is who may delete. The server decides. */
+  readonly canEdit = this.canRemove;
+
+  /** Renames a document; the list and the next citations show the new title. */
+  renameDocument(document: KnowledgeDocument, title: string): void {
+    this.client
+      .call(knowledgeEndpoints.renameDocument, {
+        params: { documentId: document.id },
+        body: { title },
+      })
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: () => {
+          this.changes.bump();
+          this.toaster.success('Đã đổi tên tài liệu');
+        },
+        error: (error: unknown) =>
+          this.toaster.error(
+            'Không đổi được tên tài liệu',
+            toAppError(error).message,
+          ),
+      });
+  }
+
+  /**
+   * Sends a file to replace a ready document. The old version keeps answering until the new one is
+   * indexed; a refused or failed replacement leaves it in place and the row says why.
+   */
+  replaceDocument(document: KnowledgeDocument, file: File): void {
+    const problem = uploadProblem(file);
+    if (problem) {
+      this.toaster.error('Không thay được bản mới', problem);
+      return;
+    }
+    this.client
+      .call(knowledgeEndpoints.replaceDocument, {
+        params: { documentId: document.id },
+        body: { file },
+      })
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (replaced) => {
+          this.changes.bump();
+          if (replaced.duplicate) {
+            this.toaster.info(
+              'Tệp này giống bản hiện tại',
+              'Không có gì thay đổi.',
+            );
+          } else {
+            this.toaster.success(
+              `Đã gửi bản mới của ${replaced.title}`,
+              'Bản cũ vẫn trả lời cho tới khi bản mới xử lý xong.',
+            );
+          }
+        },
+        error: (error: unknown) =>
+          this.toaster.error(
+            'Không thay được bản mới',
+            toAppError(error).message,
+          ),
+      });
+  }
+
   /** Deletes a document after the user agrees; nothing is sent otherwise. */
   removeDocument(document: KnowledgeDocument): void {
     confirm(this.dialog, {
       title: 'Xoá tài liệu này?',
-      message: `“${document.fileName}” sẽ bị xoá khỏi kho và trợ lý không còn trả lời từ tài liệu này, không khôi phục được.`,
+      message: `“${document.title}” sẽ bị xoá khỏi kho và trợ lý không còn trả lời từ tài liệu này, không khôi phục được.`,
       confirmLabel: 'Xoá',
       tone: 'danger',
     })
@@ -544,7 +650,7 @@ export class AssistantStore {
             .pipe(
               tap(() => {
                 this.changes.bump();
-                this.toaster.success(`Đã xoá ${document.fileName}`);
+                this.toaster.success(`Đã xoá ${document.title}`);
               }),
               catchError((error: unknown) => {
                 this.toaster.error(
@@ -564,16 +670,28 @@ export class AssistantStore {
     this.patchUpload(upload.id, { state: 'uploading' });
     return this.client
       .call(knowledgeEndpoints.uploadDocument, {
-        body: { file: upload.file, scope: upload.scope },
+        body: {
+          file: upload.file,
+          scope: upload.scope,
+          ...(upload.title ? { title: upload.title } : {}),
+        },
       })
       .pipe(
         tap((document) => {
+          if (document.duplicate) {
+            // Nothing was created: say so on the file's row and point at the document that is there.
+            this.patchUpload(upload.id, {
+              state: 'duplicate',
+              existing: { id: document.id, title: document.title },
+            });
+            return;
+          }
           this.tracker.track(document);
           this.setUploads(this.uploads$().filter((u) => u.id !== upload.id));
           this.setPage(1);
           this.changes.bump();
           this.toaster.success(
-            `Đã tải lên ${document.fileName}`,
+            `Đã tải lên ${document.title}`,
             'Tài liệu đang được xử lý, bạn có thể làm việc khác trong lúc chờ.',
           );
         }),

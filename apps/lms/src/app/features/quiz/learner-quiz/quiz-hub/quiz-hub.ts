@@ -109,16 +109,41 @@ export class QuizHub {
   });
 
   protected readonly attemptColumns: readonly DataTableColumn[] = [
-    { key: 'attemptNo', label: 'Lượt thi', sortable: false, width: '8rem', nowrap: true },
-    { key: 'submittedAt', label: 'Thời gian nộp', sortable: false, nowrap: true },
-    { key: 'score', label: 'Điểm', sortable: false, width: '6rem', nowrap: true },
-    { key: 'result', label: 'Kết quả', sortable: false, width: '9rem', nowrap: true },
+    {
+      key: 'attemptNo',
+      label: 'Lượt thi',
+      sortable: false,
+      width: '8rem',
+      nowrap: true,
+    },
+    {
+      key: 'submittedAt',
+      label: 'Thời gian nộp',
+      sortable: false,
+      nowrap: true,
+    },
+    {
+      key: 'score',
+      label: 'Điểm',
+      sortable: false,
+      width: '6rem',
+      nowrap: true,
+    },
+    {
+      key: 'result',
+      label: 'Kết quả',
+      sortable: false,
+      width: '9rem',
+      nowrap: true,
+    },
     { key: 'actions', label: 'Thao tác', kind: 'actions', width: '6rem' },
   ];
 
   protected readonly pageSize = signal(ATTEMPTS_PER_QUIZ);
   /** The history page, kept per quiz: picking another quiz starts at its page 1. */
-  private readonly pageOf = signal<{ quizId?: number; page: number }>({ page: 1 });
+  private readonly pageOf = signal<{ quizId?: number; page: number }>({
+    page: 1,
+  });
   protected readonly page = computed(() =>
     this.pageOf().quizId === this.selected()?.quizId ? this.pageOf().page : 1,
   );

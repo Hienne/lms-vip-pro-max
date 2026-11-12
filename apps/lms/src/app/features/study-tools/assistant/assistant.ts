@@ -7,6 +7,7 @@ import { AskForm } from './components/ask-form/ask-form';
 import { ChatLog } from './components/chat-log/chat-log';
 import { DocumentList } from './components/document-list/document-list';
 import { DocumentUpload } from './components/document-upload/document-upload';
+import { DuplicateDocuments } from './components/duplicate-documents/duplicate-documents';
 import {
   AssistantStore,
   DOCUMENTS_PAGE_SIZE,
@@ -28,6 +29,7 @@ import {
     DocumentList,
     DocumentUpload,
     DrawerOutlet,
+    DuplicateDocuments,
     Icon,
     NgTemplateOutlet,
   ],

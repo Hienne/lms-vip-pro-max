@@ -240,12 +240,12 @@ export const SCREEN_TABLE = {
         },
         {
           path: 'admin/courses/ai-drafts/:jobId',
-          title: 'Rà soát khóa học do AI tạo',
+          title: 'Công việc tạo khóa học',
           mockupPage: 'courseWizard',
           load: () =>
             import(
-              '../../features/admin-content/ai-course/course-review/course-review'
-            ).then((m) => m.CourseReview),
+              '../../features/admin-content/ai-course/legacy-course-job/legacy-course-job'
+            ).then((m) => m.LegacyCourseJob),
         },
         {
           path: 'admin/courses/:id/edit',

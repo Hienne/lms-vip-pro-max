@@ -35,7 +35,10 @@ class FakeCourses {
   } | null>(null);
   readonly progress$ = signal<number | null>(null);
   readonly dismiss = vi.fn();
-  pathOf = (id: number) => `/admin/courses/ai-drafts/${id}`;
+  pathOf = (job: CourseJobSummary) =>
+    job.courseId == null
+      ? `/admin/courses/ai-drafts/${job.jobId}`
+      : `/admin/courses/${job.courseId}/edit?step=1`;
 }
 
 describe('BackgroundJobsStore', () => {
@@ -111,6 +114,19 @@ describe('BackgroundJobsStore', () => {
     expect(store.announcement$()).toBe(
       'Không tạo được khóa học từ quy-trinh.md.',
     );
+  });
+
+  it('opens a failed course at its form, step 2', () => {
+    courses.lastFinished$.set({
+      job: { ...running, status: 'failed', error: 'Lỗi', courseId: 9 },
+      at: 9,
+    });
+
+    expect(store.notice$()).toMatchObject({
+      ok: false,
+      href: '/admin/courses/9/edit?step=1',
+      action: 'Mở khóa học',
+    });
   });
 
   it('dismisses every source', () => {

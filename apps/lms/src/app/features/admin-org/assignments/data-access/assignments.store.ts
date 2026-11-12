@@ -26,6 +26,7 @@ import { serverMutation } from '../../../../core/data-access/server-mutation';
 import { EndpointClient } from '../../../../core/http/endpoint-client';
 import { SessionStore } from '../../../../core/session/session.store';
 import { courseCatalogStatus } from '../../../../shared/status/catalog-status';
+import { randomId } from '../../../../core/browser/secure-context';
 
 export const ASSIGNMENTS_PAGE_SIZE = 10;
 
@@ -83,7 +84,7 @@ const idParam = (value: string | null): number | undefined => {
   return value && Number.isInteger(id) && id > 0 ? id : undefined;
 };
 
-const newIdempotencyKey = (): string => `assign-${crypto.randomUUID()}`;
+const newIdempotencyKey = (): string => `assign-${randomId()}`;
 
 /**
  * Course assignment (the mockup's `assignments`): an org's assignments across courses or of one

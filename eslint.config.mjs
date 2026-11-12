@@ -64,6 +64,27 @@ export default [
     },
   },
   {
+    // Plain-HTTP deploys have no secure context: use randomId() and copyText() from
+    // core/browser/secure-context. Mocks run in tests and the dev mock API only.
+    files: ['apps/**/*.ts', 'libs/ui/**/*.ts', 'libs/contracts/**/*.ts'],
+    ignores: ['apps/lms/src/app/core/browser/secure-context.ts'],
+    rules: {
+      'no-restricted-properties': [
+        'error',
+        {
+          object: 'crypto',
+          property: 'randomUUID',
+          message: 'Use randomId() from core/browser/secure-context.',
+        },
+        {
+          object: 'navigator',
+          property: 'clipboard',
+          message: 'Use copyText() from core/browser/secure-context.',
+        },
+      ],
+    },
+  },
+  {
     // Core reaches features only through a lazy `import()` (angular.md §4); the rule does not
     // look at dynamic imports. A later block replaces the rule's options, so the Lucide path is
     // repeated.

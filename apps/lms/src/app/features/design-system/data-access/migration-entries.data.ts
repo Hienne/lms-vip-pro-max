@@ -655,7 +655,7 @@ export const MIGRATION_ENTRIES = [
     kind: 'component',
     mockupSource: 'charts.js (Radar, bars, .chart-legend)',
     level: 'organism',
-    targets: ['RadarChart', 'BarChart', 'DonutChart'],
+    targets: ['RadarChart', 'BarChart', 'HorizontalBarChart', 'DonutChart'],
     checklist: ['H'],
     status: 'todo',
   },
@@ -1299,7 +1299,7 @@ export const MIGRATION_ENTRIES = [
   {
     id: 'route-admin-courses-ai-drafts-jobid',
     notes:
-      '2026-11-11: màn mới, không có trong mockup. Rà soát khóa học do trợ lý AI tạo từ một tài liệu: tiến độ, dàn ý sửa được rồi "Duyệt dàn ý" (sau đó khóa), từng bài với "Tạo lại bài này", câu hỏi đề xuất chấp nhận/loại, rồi "Tạo bản nháp" (chỉ khi mọi bài đã viết xong) và "Mở bản nháp". Máy chủ quyết định mọi trạng thái; màn hỏi lại mỗi 3 giây khi trợ lý còn đang viết. Chưa đối chiếu trình duyệt.',
+      '2026-11-12: không còn màn rà soát riêng. Đường dẫn cũ chỉ để các liên kết đã gửi còn dùng được: chuyển tới trình soạn khóa học của khóa nháp mà job đã tạo; job cũ không có khóa học thì hiện "Job này thuộc luồng cũ". Chưa đối chiếu trình duyệt.',
     kind: 'route',
     mockupSource: 'src/pages/admin-content.js · courseWizard',
     target: 'admin/courses/ai-drafts/:jobId',

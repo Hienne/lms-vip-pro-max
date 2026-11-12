@@ -21,6 +21,7 @@ import { NetBanner } from '../net-banner/net-banner';
 import { Owl } from '../owl/owl';
 import { Sidebar } from '../sidebar/sidebar';
 import { UploadPanel } from '../upload-panel/upload-panel';
+import { SourceViewer } from '../../shared/assistant/source-viewer/source-viewer';
 import { ShellInsets } from '../shell-insets';
 import { ShellStore } from './data-access/shell.store';
 
@@ -41,6 +42,7 @@ import { ShellStore } from './data-access/shell.store';
     Owl,
     ChatWidget,
     UploadPanel,
+    SourceViewer,
   ],
   host: {
     '(window:beforeunload)': 'warnBeforeUnload($event)',

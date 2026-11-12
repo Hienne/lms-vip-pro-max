@@ -5,7 +5,6 @@ import {
   CourseOutlineSchema,
   DecideQuestionCommandSchema,
 } from './course-content.schema';
-import { CourseJobSchema } from './course-job.schema';
 
 const jobParams = z.object({ jobId: z.number().int() });
 const lessonParams = jobParams.extend({ key: z.string() });
@@ -56,12 +55,5 @@ export const courseContentEndpoints = {
     path: `${base}/retry`,
     params: jobParams,
     response: CourseContentSchema,
-  }),
-  /** Needs every lesson done; the course is a draft the author still reviews and publishes. */
-  createDraft: defineEndpoint({
-    method: 'post',
-    path: `${base}/draft`,
-    params: jobParams,
-    response: CourseJobSchema,
   }),
 } as const;

@@ -7,6 +7,10 @@ import { AgentChatStore } from '../../core/assistant/agent-chat.store';
 import { ConversationsStore } from '../../core/assistant/conversations.store';
 import { AGENT_LAUNCHER_ID } from '../../core/assistant/agent-launcher';
 import type { AgentTurn } from '../../core/assistant/agent-chat.model';
+import {
+  BackgroundJobsStore,
+  type BackgroundNotice,
+} from '../../core/background/background-jobs.store';
 import { ChatWidget } from './chat-widget';
 
 const turn = (id: number, text: string): AgentTurn => ({
@@ -98,7 +102,12 @@ class Host {}
 class Blank {}
 
 describe('ChatWidget', () => {
+  const notice = signal<BackgroundNotice | null>(null);
+  const background = { notice$: notice, dismiss: vi.fn() };
+
   async function render() {
+    notice.set(null);
+    background.dismiss.mockClear();
     const fake = fakeStore();
     TestBed.configureTestingModule({
       providers: [
@@ -106,6 +115,7 @@ describe('ChatWidget', () => {
         { provide: AgentChatStore, useValue: fake.store },
         { provide: CourseJobAccess, useValue: { canGenerate$: signal(false) } },
         { provide: ConversationsStore, useValue: fake.history },
+        { provide: BackgroundJobsStore, useValue: background },
       ],
     });
     const fixture = TestBed.createComponent(Host);
@@ -132,6 +142,44 @@ describe('ChatWidget', () => {
       ...el.querySelectorAll('.chat__header button, .chat__header a'),
     ].map((control) => control.getAttribute('aria-label'));
     expect(header).toEqual(['Lịch sử hội thoại', 'Mở rộng', 'Đóng']);
+  });
+
+  it('keeps a failed course notice in the panel until it is dismissed', async () => {
+    const { fixture, el } = await render();
+    expect(el.querySelector('.chat__notice')).toBeNull();
+
+    notice.set({
+      kind: 'course',
+      fileName: 'quy-trinh.md',
+      ok: false,
+      href: '/admin/courses/9/edit?step=1',
+      action: 'Mở khóa học',
+      at: 1,
+    });
+    await fixture.whenStable();
+    const banner = el.querySelector<HTMLElement>('.chat__notice');
+    expect(banner?.getAttribute('role')).toBe('alert');
+    expect(banner?.textContent).toContain('Không tạo được khóa học');
+
+    banner
+      ?.querySelector<HTMLButtonElement>('button[aria-label="Đóng thông báo"]')
+      ?.click();
+    expect(background.dismiss).toHaveBeenCalled();
+  });
+
+  it('shows no course notice for a document or a finished course', async () => {
+    const { fixture, el } = await render();
+    notice.set({
+      kind: 'course',
+      fileName: 'a.md',
+      ok: true,
+      href: '/x',
+      action: 'Rà soát',
+      at: 1,
+    });
+    await fixture.whenStable();
+
+    expect(el.querySelector('.chat__notice')).toBeNull();
   });
 
   it('names the lesson a conversation is about and opens it with questions about that lesson', async () => {
@@ -342,6 +390,23 @@ describe('ChatWidget', () => {
     answering.set(true);
     await fixture.whenStable();
     expect(buttons()).toHaveLength(0);
+  });
+
+  it('sends a follow-up from a turn that read shared content with the Q&A skill', async () => {
+    const { fixture, el, store, turns } = await render();
+    turns.set([
+      {
+        ...turn(1, 'Một'),
+        suggestions: ['Đổi chức danh của tôi'],
+        suggestionsReadOnly: true,
+      },
+    ]);
+    await fixture.whenStable();
+    el.querySelector<HTMLButtonElement>('.chat__suggestion')?.click();
+    expect(store.ask).toHaveBeenCalledWith(
+      'Đổi chức danh của tôi',
+      'qa_tai_lieu',
+    );
   });
 
   it('shows each turn in order and hides the empty line', async () => {

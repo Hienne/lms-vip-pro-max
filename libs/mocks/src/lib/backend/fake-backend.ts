@@ -77,6 +77,7 @@ import {
   agentActionEvents,
   agentAiErrorEvents,
   agentDocumentEvents,
+  agentDocumentSuggestionEvents,
   agentLessonEvents,
   agentNavigateEvents,
   agentNotFoundEvents,
@@ -90,6 +91,7 @@ import { learnerPointsFixtures } from '../learning/learning.fixtures';
 import {
   knowledgeAnswerFixture,
   knowledgeDocumentFixtures,
+  knowledgeDocumentTextFixtures,
   knowledgeNotFoundFixture,
   knowledgeNotFoundStreamFixture,
   knowledgeStreamFixture,
@@ -274,6 +276,8 @@ export class FakeBackend {
     knowledgeDocumentFixtures.map((d) => ({ ...d }));
   /** Uploaded documents still moving to `ready`: one step per read, like the worker over time. */
   private pendingDocuments = new Set<number>();
+  /** Replacement files still being indexed: queued, processing, then swapped in, one step per read. */
+  private pendingReplacements = new Map<number, string>();
   private nextDocumentId =
     Math.max(...knowledgeDocumentFixtures.map((d) => d.id)) + 1;
 
@@ -361,15 +365,24 @@ export class FakeBackend {
     [shellEndpoints.navCounts, (r) => this.navCounts(r)],
     [knowledgeEndpoints.documents, (r) => this.listDocuments(r)],
     [knowledgeEndpoints.document, (r) => this.getDocument(r)],
+    [knowledgeEndpoints.documentText, (r) => this.documentText(r)],
     [knowledgeEndpoints.uploadDocument, (r) => this.uploadDocument(r)],
     [knowledgeEndpoints.deleteDocument, (r) => this.deleteDocument(r)],
+    [knowledgeEndpoints.renameDocument, (r) => this.renameDocument(r)],
+    [knowledgeEndpoints.replaceDocument, (r) => this.replaceDocument(r)],
+    [knowledgeEndpoints.duplicateDocuments, (r) => this.duplicateDocuments(r)],
     [knowledgeEndpoints.ask, (r) => this.ask(r)],
     [knowledgeEndpoints.askStream, (r) => this.askStream(r)],
     [agentEndpoints.stream, (r) => this.agentStream(r)],
+    [agentEndpoints.cancelTurn, (r) => this.cancelTurn(r)],
     [agentEndpoints.confirmAction, (r) => this.confirmAction(r)],
     [agentEndpoints.cancelAction, (r) => this.cancelAction(r)],
     [answerFeedbackEndpoints.rate, (r) => this.rateAnswer(r)],
     [conversationEndpoints.list, (r) => this.listConversations(r)],
+    [
+      conversationEndpoints.latestForLesson,
+      (r) => this.latestConversationOfLesson(r),
+    ],
     [conversationEndpoints.detail, (r) => this.getConversation(r)],
     [conversationEndpoints.rename, (r) => this.renameConversation(r)],
     [conversationEndpoints.remove, (r) => this.removeConversation(r)],
@@ -620,6 +633,22 @@ export class FakeBackend {
         this.pendingDocuments.delete(id);
       }
     }
+    for (const [id, fileName] of [...this.pendingReplacements]) {
+      const document = this.documents.find((d) => d.id === id);
+      if (!document?.replacement) {
+        this.pendingReplacements.delete(id);
+      } else if (document.replacement.status === 'queued') {
+        document.replacement = {
+          ...document.replacement,
+          status: 'processing',
+        };
+      } else {
+        document.fileName = fileName;
+        document.replacement = null;
+        document.processedAt = new Date().toISOString();
+        this.pendingReplacements.delete(id);
+      }
+    }
   }
 
   private listDocuments(request: FakeRequest): FakeReply {
@@ -655,6 +684,34 @@ export class FakeBackend {
       : refuse('resourceNotFound');
   }
 
+  /** The chunks around the cited one; a document the caller cannot read is not found, like a deleted one. */
+  private documentText(request: FakeRequest): FakeReply {
+    const actor = this.actor(request);
+    const id = Number(request.params['documentId']);
+    const document = this.documents.find((d) => d.id === id);
+    const chunks = knowledgeDocumentTextFixtures[id];
+    if (!document || !chunks || !this.canReadDocument(actor, document)) {
+      return refuse('resourceNotFound');
+    }
+    const span = Number(request.query['span'] ?? 2);
+    const around = request.query['around'];
+    const centre =
+      around === undefined
+        ? 0
+        : chunks.findIndex((c) => c.chunkId === Number(around));
+    if (centre < 0) return refuse('resourceNotFound');
+    const from = Math.max(0, centre - span);
+    const to = Math.min(chunks.length - 1, centre + span);
+    return ok({
+      documentId: id,
+      fileName: document.title,
+      aroundChunkId: chunks[centre].chunkId,
+      chunks: chunks.slice(from, to + 1),
+      hasMoreBefore: from > 0,
+      hasMoreAfter: to < chunks.length - 1,
+    });
+  }
+
   /** Personal documents belong to their uploader; the mock has one unit, so unit ones are open. */
   private canReadDocument(actor: DbUser, document: KnowledgeDocument): boolean {
     return (
@@ -678,7 +735,95 @@ export class FakeBackend {
     }
     this.documents.splice(index, 1);
     this.pendingDocuments.delete(document.id);
+    this.pendingReplacements.delete(document.id);
     return ok(null);
+  }
+
+  /** The owner or an admin may change a document; anyone else who can read it is refused. */
+  private editableDocument(request: FakeRequest): Mutable<KnowledgeDocument> {
+    const actor = this.actor(request);
+    this.advanceDocuments();
+    const document = this.documents.find(
+      (d) => d.id === Number(request.params['documentId']),
+    );
+    if (!document || !this.canReadDocument(actor, document)) {
+      return refuse('resourceNotFound');
+    }
+    const admin = this.hasRole(actor.userId, ['ADMIN', 'SUPER_ADMIN']);
+    if (document.uploadedBy.userId !== actor.userId && !admin) {
+      return refuse('accessDenied');
+    }
+    return document;
+  }
+
+  private renameDocument(request: FakeRequest): FakeReply {
+    const document = this.editableDocument(request);
+    const title = (request.body as { title?: unknown } | null)?.title;
+    if (
+      typeof title !== 'string' ||
+      !title.trim() ||
+      title.trim().length > 255
+    ) {
+      return invalid('Tên tài liệu phải có từ 1 đến 255 ký tự.');
+    }
+    document.title = title.trim();
+    return ok({ ...document });
+  }
+
+  private replaceDocument(request: FakeRequest): FakeReply {
+    const document = this.editableDocument(request);
+    const body = request.body;
+    const file =
+      body instanceof FormData
+        ? body.get('file')
+        : (body as { file?: unknown } | null)?.file;
+    if (!(file instanceof Blob) || !(file as File).name) {
+      return invalid('Cần chọn một tệp.');
+    }
+    const upload = file as File;
+    if (document.status !== 'ready') {
+      return invalid('Tài liệu chưa sẵn sàng để thay bản mới.');
+    }
+    if (document.replacement && document.replacement.status !== 'failed') {
+      return invalid('Tài liệu đang có bản thay thế chưa xử lý xong.');
+    }
+    if (!/\.(pdf|md|docx)$/i.test(upload.name)) {
+      return refuse('fileTypeUnsupported');
+    }
+    if (upload.size === 0) return refuse('fileInvalid');
+    if (upload.size > 20 * 1024 * 1024) return refuse('fileTooLarge');
+    if (
+      upload.name === document.fileName &&
+      upload.size === document.sizeBytes
+    ) {
+      return ok({ ...document, duplicate: true });
+    }
+    document.replacement = {
+      status: 'queued',
+      fileName: upload.name,
+      errorMessage: null,
+    };
+    this.pendingReplacements.set(document.id, upload.name);
+    return ok({ ...document });
+  }
+
+  /** The caller's own documents with the same name and size in one scope: the mock's stand-in for a checksum. */
+  private duplicateDocuments(request: FakeRequest): FakeReply {
+    const actor = this.actor(request);
+    const groups = new Map<string, Mutable<KnowledgeDocument>[]>();
+    for (const document of this.documents) {
+      if (document.uploadedBy.userId !== actor.userId) continue;
+      const key = `${document.fileName}|${document.sizeBytes}|${document.scope}`;
+      groups.set(key, [...(groups.get(key) ?? []), document]);
+    }
+    return ok(
+      [...groups.entries()]
+        .filter(([, documents]) => documents.length > 1)
+        .map(([key, documents]) => ({
+          checksum: key,
+          documents: documents.map((d) => ({ ...d })),
+        })),
+    );
   }
 
   private uploadDocument(request: FakeRequest): FakeReply {
@@ -708,9 +853,24 @@ export class FakeBackend {
     }
     if (upload.size === 0) return refuse('fileInvalid');
     if (upload.size > 20 * 1024 * 1024) return refuse('fileTooLarge');
+    const existing = this.documents.find(
+      (d) =>
+        d.uploadedBy.userId === actor.userId &&
+        d.scope === scope &&
+        d.status !== 'failed' &&
+        d.fileName === upload.name &&
+        d.sizeBytes === upload.size,
+    );
+    if (existing) return ok({ ...existing, duplicate: true });
+    const title =
+      body instanceof FormData
+        ? body.get('title')
+        : (body as { title?: unknown } | null)?.title;
     const document: Mutable<KnowledgeDocument> = {
       id: this.nextDocumentId++,
       fileName: upload.name,
+      title:
+        typeof title === 'string' && title.trim() ? title.trim() : upload.name,
       mimeType: upload.type || 'application/octet-stream',
       sizeBytes: upload.size,
       scope,
@@ -820,7 +980,7 @@ export class FakeBackend {
               parsed.data.message,
               parsed.data.attachmentDocumentId,
             )
-          : this.scriptedTurn(user, parsed.data.message);
+          : this.scriptedTurn(user, parsed.data.message, parsed.data.skill);
     const turnId = this.book.record(
       user.userId,
       conversation.conversationId,
@@ -836,9 +996,15 @@ export class FakeBackend {
   }
 
   /** First match wins; see `agent.fixtures.ts` for what each reply says. */
-  private scriptedTurn(user: DbUser, text: string) {
+  private scriptedTurn(user: DbUser, text: string, skill?: string) {
     const folded = fold(text);
-    if (folded.includes('mo trang') || folded.includes('mo man hinh')) {
+    // The Q&A skill has no acting tool (the server's rule for a clicked read-only suggestion).
+    const acts = skill !== 'qa_tai_lieu';
+    if (folded.includes('goi y')) return agentDocumentSuggestionEvents;
+    if (
+      acts &&
+      (folded.includes('mo trang') || folded.includes('mo man hinh'))
+    ) {
       const screen = this.functionsOf(user.userId)
         .filter((f) => f.routePattern && !f.routePattern.includes(':'))
         .filter((f) => folded.includes(fold(f.name)))
@@ -847,7 +1013,7 @@ export class FakeBackend {
         ? agentNavigateEvents(screen.routePattern as string, screen.name)
         : agentRefusedEvents('open_screen', AGENT_SCREEN_REFUSED);
     }
-    const profile = this.profileTurn(user, text, folded);
+    const profile = acts ? this.profileTurn(user, text, folded) : null;
     if (profile) return profile;
     if (folded.includes('loi ai')) return agentAiErrorEvents;
     if (folded.includes('khong co trong tai lieu')) return agentNotFoundEvents;
@@ -1039,6 +1205,12 @@ export class FakeBackend {
     });
   }
 
+  /** Nothing runs long in the mock, so there is nothing to stop; the caller still has to be signed in. */
+  private cancelTurn(request: FakeRequest): FakeReply {
+    this.caller(request);
+    return ok(null);
+  }
+
   private cancelAction(request: FakeRequest): FakeReply {
     const user = this.caller(request);
     const id = this.pendingOf(request, user).action.id;
@@ -1070,6 +1242,13 @@ export class FakeBackend {
       totalElements: rows.length,
       totalPages: Math.ceil(rows.length / query.size),
     });
+  }
+
+  private latestConversationOfLesson(request: FakeRequest): FakeReply {
+    const user = this.caller(request);
+    return ok(
+      this.book.latestForLesson(user.userId, Number(request.query['lessonId'])),
+    );
   }
 
   private getConversation(request: FakeRequest): FakeReply {
@@ -1104,6 +1283,9 @@ export class FakeBackend {
     if (!parsed.success) return invalid('Đánh giá không hợp lệ.');
     if (parsed.data.reasonCode && parsed.data.helpful) {
       return invalid('Chỉ đánh giá chưa tốt mới có lý do.');
+    }
+    if (parsed.data.share && parsed.data.helpful) {
+      return invalid('Chỉ đánh giá chưa tốt mới gửi kèm được.');
     }
     const turnId = Number(request.params['turnId']);
     const saved = this.book.rate(user.userId, turnId, parsed.data);

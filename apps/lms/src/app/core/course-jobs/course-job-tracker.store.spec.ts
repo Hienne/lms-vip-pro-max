@@ -18,7 +18,7 @@ import {
   CourseJobTrackerStore,
 } from './course-job-tracker.store';
 
-const LIST = '/api/v1/assistant/course-jobs';
+const LIST = '/api/v1/assistant/course-jobs/active';
 
 const job = (patch: Partial<CourseJobSummary> = {}): CourseJobSummary => ({
   jobId: 7,
@@ -29,6 +29,7 @@ const job = (patch: Partial<CourseJobSummary> = {}): CourseJobSummary => ({
   sourceFileName: 'quy-trinh.md',
   createdDraftId: null,
   createTime: new Date().toISOString(),
+  courseId: 9,
   ...patch,
 });
 
@@ -106,7 +107,7 @@ describe('CourseJobTrackerStore', () => {
     expect(store.lastFinished$()?.job.status).toBe('waiting_approval');
   });
 
-  it('stops polling once nothing runs and drops the notice after a while', async () => {
+  it('stops polling once nothing runs; a failure notice stays, a finished one goes after a while', async () => {
     const store = await start(job());
     vi.advanceTimersByTime(COURSE_POLL_INTERVAL_MS);
     await settle();
@@ -114,12 +115,59 @@ describe('CourseJobTrackerStore', () => {
     await settle();
     expect(store.lastFinished$()?.job.status).toBe('failed');
 
-    vi.advanceTimersByTime(COURSE_NOTICE_MS);
+    vi.advanceTimersByTime(COURSE_NOTICE_MS * 6);
     await settle();
+    expect(store.lastFinished$()?.job.status).toBe('failed');
+    store.dismiss();
     expect(store.lastFinished$()).toBeNull();
     vi.advanceTimersByTime(COURSE_POLL_INTERVAL_MS * 3);
     await settle();
     expect(requests()).toHaveLength(0);
+  });
+
+  it('shows a failure from before the reload until it is dismissed, then not again', async () => {
+    const failed = job({
+      jobId: 4,
+      status: 'failed',
+      error: 'Lỗi.',
+      step: 'outline',
+    });
+    const store = await start(failed);
+
+    expect(store.live$()).toEqual([]);
+    expect(store.lastFinished$()?.job.jobId).toBe(4);
+    expect(store.pathOf(failed)).toBe('/admin/courses/9/edit?step=1');
+    vi.advanceTimersByTime(COURSE_NOTICE_MS * 6);
+    await settle();
+    expect(store.lastFinished$()?.job.jobId).toBe(4);
+
+    store.dismiss();
+    expect(store.lastFinished$()).toBeNull();
+    TestBed.resetTestingModule();
+  });
+
+  it('does not bring back a failure that was dismissed before the reload', async () => {
+    const failed = job({ jobId: 4, status: 'failed', error: 'Lỗi.' });
+    const first = await start(failed);
+    first.dismiss();
+    first.trackById(21);
+    await settle();
+    requests()[0].flush(envelopeOk([failed, job({ jobId: 21 })]));
+    await settle();
+
+    expect(first.lastFinished$()).toBeNull();
+  });
+
+  it('ignores a stopped job on start and opens a failed question step at step 3', async () => {
+    const store = await start(job({ jobId: 5, status: 'stopped' }));
+
+    expect(store.lastFinished$()).toBeNull();
+    expect(
+      store.pathOf(job({ status: 'failed', step: 'questions', courseId: 12 })),
+    ).toBe('/admin/courses/12/edit?step=2');
+    expect(store.pathOf(job({ courseId: null }))).toBe(
+      '/admin/courses/ai-drafts/7',
+    );
   });
 
   it('tracks a job that a confirmed card started and asks for it at once', async () => {

@@ -45,14 +45,37 @@
     font-weight: ui.weight(medium);
   }
 
-  &__remove {
+  &--highlight {
+    outline: 2px solid ui.color(primary);
+    outline-offset: 2px;
+  }
+
+  &__edit {
+    @include ui.row(2);
+    flex-wrap: nowrap;
+    grid-column: 1 / -1;
+  }
+
+  &__editor {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+
+  &__actions {
+    @include ui.row(1);
+    flex-wrap: nowrap;
     grid-column: 3;
     grid-row: 1;
   }
 
   &__meta,
+  &__note,
   &__error {
     @include ui.text(sm, muted);
     grid-column: 1 / -1;
+  }
+
+  &__error {
+    color: ui.color(danger);
   }
 }

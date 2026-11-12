@@ -61,6 +61,13 @@
     resize: vertical;
   }
 
+  &__share {
+    @include ui.text(sm);
+    display: flex;
+    gap: ui.space(2);
+    align-items: center;
+  }
+
   &__actions {
     display: flex;
     flex-wrap: wrap;

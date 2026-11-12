@@ -1,0 +1,90 @@
+@if (store.hasJob$()) {
+<ui-section-card title="Câu hỏi AI đề xuất">
+  @if (store.failure$(); as message) {
+  <ui-alert tone="danger" heading="AI không đề xuất được câu hỏi">
+    {{ message }}
+    <button
+      uiAlertAction
+      uiButton
+      size="sm"
+      variant="primary"
+      type="button"
+      [disabled]="store.isBusy$()"
+      (click)="store.retry()"
+    >
+      Thử lại
+    </button>
+  </ui-alert>
+  } @if (store.error$(); as error) {
+  <ui-alert tone="danger">
+    Không tải được câu hỏi đề xuất: {{ error.message }}
+  </ui-alert>
+  } @if (store.proposing$()) {
+  <p class="proposed-questions__hint" role="status">
+    <span uiSpinner label="Đang soạn"></span>AI đang đề xuất câu hỏi cho các bài
+    học.
+  </p>
+  } @for (lesson of store.lessons$(); track lesson.key) {
+  <section
+    class="proposed-questions__lesson"
+    [attr.aria-label]="lesson.heading"
+  >
+    <h3 class="proposed-questions__heading">{{ lesson.heading }}</h3>
+    @for (proposal of lesson.proposals; track proposal.index) {
+    <article uiCard class="proposed-questions__question">
+      <p class="proposed-questions__text">
+        {{ proposal.question.content }}
+        <span class="proposed-questions__meta"
+          >{{ difficulty(proposal.question.difficulty) }}</span
+        >
+      </p>
+      <ul class="proposed-questions__options">
+        @for (option of proposal.question.options; track $index) {
+        <li>
+          {{ option.content }}@if (option.correct) {<strong> · Đúng</strong>}
+        </li>
+        }
+      </ul>
+      @if (proposal.question.explanation) {
+      <p class="proposed-questions__meta">
+        Giải thích: {{ proposal.question.explanation }}
+      </p>
+      } @if (proposal.added) {
+      <p class="proposed-questions__added">
+        Đã thêm vào ngân hàng câu hỏi của khóa học.
+      </p>
+      } @else {
+      <div class="proposed-questions__actions">
+        <button
+          uiButton
+          size="sm"
+          variant="primary"
+          type="button"
+          [disabled]="store.isBusy$()"
+          (click)="store.accept(lesson.key, proposal.index)"
+        >
+          Chấp nhận
+        </button>
+        <button
+          uiButton
+          size="sm"
+          variant="secondary"
+          type="button"
+          [disabled]="store.isBusy$()"
+          (click)="store.reject(lesson.key, proposal.index)"
+        >
+          Từ chối
+        </button>
+      </div>
+      }
+    </article>
+    }
+  </section>
+  } @empty { @if (!store.proposing$() && !store.failure$() &&
+  !store.isLoading$()) {
+  <p class="proposed-questions__hint">
+    Chưa có câu hỏi nào được đề xuất cho khóa học này.
+  </p>
+  } }
+</ui-section-card>
+}

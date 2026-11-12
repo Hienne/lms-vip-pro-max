@@ -275,6 +275,10 @@
   </aside>
 </div>
 
+@if (ai()) {
+<app-ai-course-section class="course-info__ai" />
+}
+
 <ng-template
   [uiDrawer]="library.target$() !== null"
   uiDrawerTitle="Thư viện tài nguyên"

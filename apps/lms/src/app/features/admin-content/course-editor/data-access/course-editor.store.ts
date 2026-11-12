@@ -1249,6 +1249,11 @@ export class CourseEditorStore {
     this.modulesData.reload();
   }
 
+  /** Reads the course again, keeping what is on screen meanwhile (the AI wrote into it). */
+  reloadCourse(): void {
+    this.courseData.reload();
+  }
+
   /** Reads the course's quizzes again (after a failed read, or a quiz made elsewhere). */
   reloadQuizzes(): void {
     this.quizzesData.reload();
@@ -1759,8 +1764,16 @@ export class CourseEditorStore {
     created: CourseDetail,
     step: number = this.state.step(),
   ): void {
+    this.moveToCourse(created.course.id, step);
+  }
+
+  /**
+   * Continues as the edit screen of a course that exists now (made here, or by an AI job started
+   * from this page): leaving does not ask, and `/new` leaves no history entry.
+   */
+  moveToCourse(courseId: number, step: number): void {
     this.setLeft(true);
-    void this.router.navigate(['/admin/courses', created.course.id, 'edit'], {
+    void this.router.navigate(['/admin/courses', courseId, 'edit'], {
       replaceUrl: true,
       queryParams: { step },
     });

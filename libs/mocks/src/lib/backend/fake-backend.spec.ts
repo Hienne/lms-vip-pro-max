@@ -1002,6 +1002,111 @@ describe('FakeBackend', () => {
       );
     });
 
+    it('answers the same file again with the existing document marked duplicate, for its uploader only', () => {
+      const owner = login('giangvien');
+      const first = call(knowledgeEndpoints.uploadDocument, owner, {
+        body: { file: file('lap.md') },
+      });
+      expect(first.status).toBe(201);
+      const again = call(knowledgeEndpoints.uploadDocument, owner, {
+        body: { file: file('lap.md') },
+      });
+      expect(again.status).toBe(200);
+      expect(again.body.data).toMatchObject({
+        id: (first.body.data as KnowledgeDocument).id,
+        duplicate: true,
+      });
+      // Another user's identical file is a document of their own.
+      const other = call(knowledgeEndpoints.uploadDocument, login('quantri'), {
+        body: { file: file('lap.md') },
+      });
+      expect(other.status).toBe(201);
+    });
+
+    it('titles a document with the file name unless one is given, and renames it for the owner or an admin only', () => {
+      const owner = login('giangvien');
+      const plain = call(knowledgeEndpoints.uploadDocument, owner, {
+        body: { file: file('a.md') },
+      }).body.data as KnowledgeDocument;
+      expect(plain.title).toBe('a.md');
+      const named = call(knowledgeEndpoints.uploadDocument, owner, {
+        body: { file: file('b.md'), title: ' Quy trình ' },
+      }).body.data as KnowledgeDocument;
+      expect(named.title).toBe('Quy trình');
+
+      const params = { documentId: String(plain.id) };
+      expect(
+        code(
+          call(knowledgeEndpoints.renameDocument, login('hocvien'), {
+            params,
+            body: { title: 'Của tôi' },
+          }),
+        ),
+      ).toBe('CORE-ACCESS_DENIED');
+      expect(
+        code(
+          call(knowledgeEndpoints.renameDocument, owner, {
+            params,
+            body: { title: '  ' },
+          }),
+        ),
+      ).toBe('CORE-VALIDATION_FAILED');
+      const renamed = call(knowledgeEndpoints.renameDocument, owner, {
+        params,
+        body: { title: 'Tên mới' },
+      });
+      expect(renamed.body.data).toMatchObject({
+        title: 'Tên mới',
+        fileName: 'a.md',
+      });
+    });
+
+    it('replaces a ready document: the id and the old file stay until the new one is done, then the file name changes', () => {
+      const owner = login('giangvien');
+      const document = call(knowledgeEndpoints.uploadDocument, owner, {
+        body: { file: file('cu.md') },
+      }).body.data as KnowledgeDocument;
+      const params = { documentId: String(document.id) };
+      const read = () =>
+        call(knowledgeEndpoints.document, owner, { params }).body
+          .data as KnowledgeDocument;
+      const replace = (name: string, content?: string) =>
+        call(knowledgeEndpoints.replaceDocument, owner, {
+          params,
+          body: { file: file(name, content) },
+        });
+      // Still being processed: nothing to keep answering yet.
+      expect(code(replace('moi.md'))).toBe('CORE-VALIDATION_FAILED');
+      read();
+      expect(read().status).toBe('ready');
+
+      const queued = replace('moi.md').body.data as KnowledgeDocument;
+      expect(queued).toMatchObject({
+        id: document.id,
+        fileName: 'cu.md',
+        replacement: { status: 'queued', fileName: 'moi.md' },
+      });
+      expect(code(replace('nua.md'))).toBe('CORE-VALIDATION_FAILED');
+      expect(read()).toMatchObject({
+        fileName: 'moi.md',
+        status: 'ready',
+        replacement: null,
+      });
+    });
+
+    it('lists no group of repeated documents while uploads are refused as duplicates', () => {
+      const owner = login('giangvien');
+      call(knowledgeEndpoints.uploadDocument, owner, {
+        body: { file: file('trung.md'), scope: 'personal' },
+      });
+      call(knowledgeEndpoints.uploadDocument, owner, {
+        body: { file: file('trung.md'), scope: 'personal' },
+      });
+      expect(
+        call(knowledgeEndpoints.duplicateDocuments, owner).body.data,
+      ).toEqual([]);
+    });
+
     it('refuses an unsupported, empty or oversized file with the backend codes', () => {
       const token = login('giangvien');
       const upload = (body: unknown) =>
@@ -1184,6 +1289,23 @@ describe('FakeBackend', () => {
         ],
       });
       expect(meOf(token).user.positionName).toBe(before);
+    });
+
+    it('answers a read-only suggestion sent with the Q&A skill instead of proposing the change', () => {
+      const token = login('hocvien');
+      const suggested = events(turn(token, 'một câu hỏi, gợi ý')).at(-1);
+      expect(suggested).toMatchObject({
+        suggestionsReadOnly: true,
+        suggestions: ['Đổi chức danh của tôi thành Chuyên viên chính'],
+      });
+      const reply = call(agentEndpoints.stream, token, {
+        body: {
+          message: 'Đổi chức danh của tôi thành Chuyên viên chính',
+          skill: 'qa_tai_lieu',
+        },
+      });
+      expect(types(reply)).not.toContain('action_required');
+      expect(types(reply).at(-1)).toBe('done');
     });
 
     it('proposes the email and the full name too, and refuses a value the profile rules reject', () => {

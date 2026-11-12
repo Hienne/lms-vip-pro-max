@@ -5,10 +5,22 @@ import type { ActionCard, AgentTurn } from './agent-chat.model';
 export const STORED_ERROR_MESSAGE =
   'Lượt này chưa trả lời được. Bạn thử lại nhé.';
 
+/** What an answered card says when the server kept no text (rows from before it stored one). */
+const OUTCOME_DEFAULTS: Partial<Record<StoredAction['status'], string>> = {
+  confirmed: 'Đã áp dụng thay đổi.',
+  cancelled: 'Đã huỷ thay đổi',
+  expired: 'Đề xuất đã hết hạn',
+  failed: 'Không thực hiện được thay đổi.',
+};
+
 /** A stored card as the panel's card: the same fields, the status being the server's today. */
 function cardOf(action: StoredAction): ActionCard {
   const { status, message, ...pending } = action;
-  return { pending, status, message };
+  return {
+    pending,
+    status,
+    message: message?.trim() ? message : (OUTCOME_DEFAULTS[status] ?? null),
+  };
 }
 
 /**
@@ -32,6 +44,7 @@ export function turnFromStored(turn: StoredTurn): AgentTurn {
       toolName: null,
       text: turn.answer ?? '',
       citations: turn.citations,
+      grounded: turn.grounded,
       navigatedTo: turn.navigation,
       action: turn.action ? cardOf(turn.action) : null,
       error: turn.status === 'error' ? STORED_ERROR_MESSAGE : null,

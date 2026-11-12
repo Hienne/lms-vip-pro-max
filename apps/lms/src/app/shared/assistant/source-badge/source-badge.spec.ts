@@ -2,7 +2,14 @@ import { OverlayContainer } from '@angular/cdk/overlay';
 import { Component } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import type { Citation } from '@lms/contracts';
+import { SourceViewerStore } from '../../../core/assistant/source-viewer.store';
 import { SourceBadge } from './source-badge';
+import {
+  parseAppConfig,
+  provideAppConfig,
+} from '../../../core/config/app-config';
+import { testAppConfig } from '../../../core/config/app-config.testing';
+import { provideEnvelopeHttpClient } from '../../../core/http/http.testing';
 
 const docx: Citation = {
   n: 2,
@@ -19,10 +26,18 @@ const docx: Citation = {
   template: `<app-source-badge [citation]="citation" />`,
 })
 class Host {
-  readonly citation = docx;
+  citation: Citation = docx;
 }
 
 describe('SourceBadge', () => {
+  beforeEach(() =>
+    TestBed.configureTestingModule({
+      providers: [
+        provideAppConfig(parseAppConfig(testAppConfig())),
+        provideEnvelopeHttpClient(),
+      ],
+    }),
+  );
   afterEach(() => {
     TestBed.inject(OverlayContainer).ngOnDestroy();
     document.body.innerHTML = '';
@@ -80,6 +95,42 @@ describe('SourceBadge', () => {
     expect(badge.getAttribute('aria-controls')).toBe(dialog.id);
   });
 
+  it('shows the section path above the place, and no line for a chunk without one', async () => {
+    const { badge, panel, settle } = await render();
+    badge.click();
+    await settle();
+    expect(panel()?.querySelector('.source__section')).toBeNull();
+    badge.click();
+    await settle();
+
+    const withSection = TestBed.createComponent(Host);
+    withSection.componentInstance.citation = {
+      ...docx,
+      sectionPath: 'Quy định ECR › Phê duyệt',
+      snippet: 'Phê duyệt của Trưởng ban.',
+    };
+    document.body.appendChild(withSection.nativeElement);
+    withSection.detectChanges();
+    await withSection.whenStable();
+    (withSection.nativeElement as HTMLElement).querySelector('button')?.click();
+    withSection.detectChanges();
+    await withSection.whenStable();
+    const dialog = panel() as HTMLElement;
+    expect(dialog.querySelector('.source__section')?.textContent).toBe(
+      'Quy định ECR › Phê duyệt',
+    );
+    expect(dialog.querySelector('.source__quote')?.textContent).toBe(
+      'Phê duyệt của Trưởng ban.',
+    );
+    const order = [...dialog.querySelectorAll('p')].map((p) => p.className);
+    expect(order).toEqual([
+      'source__file',
+      'source__section',
+      'source__where',
+      'source__quote',
+    ]);
+  });
+
   it('closes with Escape and gives focus back to the badge', async () => {
     const { badge, panel, settle } = await render();
     badge.focus();
@@ -101,6 +152,23 @@ describe('SourceBadge', () => {
     expect(panel()).not.toBeNull();
     badge.click();
     await settle();
+    expect(panel()).toBeNull();
+  });
+
+  it('offers "Xem trong tài liệu" for a document source, which opens the viewer and closes the popover', async () => {
+    const { badge, panel, settle } = await render();
+    const open = vi
+      .spyOn(TestBed.inject(SourceViewerStore), 'open')
+      .mockImplementation(() => undefined);
+    badge.click();
+    await settle();
+    const view = [...(panel()?.querySelectorAll('button') ?? [])].find((b) =>
+      b.textContent?.includes('Xem trong tài liệu'),
+    );
+    view?.click();
+    await settle();
+
+    expect(open).toHaveBeenCalledWith(docx);
     expect(panel()).toBeNull();
   });
 });

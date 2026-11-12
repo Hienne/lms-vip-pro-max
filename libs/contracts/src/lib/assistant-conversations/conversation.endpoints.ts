@@ -32,6 +32,13 @@ export const conversationEndpoints = {
     query: ConversationListQuerySchema,
     response: PageSchema(ConversationSummarySchema),
   }),
+  /** The caller's latest conversation opened from a lesson, or `null` when there is none. */
+  latestForLesson: defineEndpoint({
+    method: 'get',
+    path: '/api/v1/assistant/conversations/latest',
+    query: z.object({ lessonId: z.number().int() }),
+    response: ConversationSummarySchema.nullable(),
+  }),
   /** One conversation with every turn, citations and card states as stored. */
   detail: defineEndpoint({
     method: 'get',

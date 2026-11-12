@@ -12,6 +12,14 @@
   }
 }
 
+.title {
+  @include ui.stack(2);
+
+  &__label {
+    @include ui.text(sm, muted);
+  }
+}
+
 .drop {
   // Compact enough for the documents panel; the dashed edge still says "drop here".
   padding: ui.space(5) ui.space(4);
@@ -42,6 +50,18 @@
       flex: 1 1 auto;
       min-width: 0;
     }
+  }
+
+  &__duplicate {
+    @include ui.row(2);
+    flex-wrap: nowrap;
+  }
+
+  &__notice {
+    @include ui.text(sm);
+    flex: 1 1 auto;
+    min-width: 0;
+    margin: 0;
   }
 
   &__row {

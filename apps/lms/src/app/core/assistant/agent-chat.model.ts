@@ -54,6 +54,8 @@ export const AgentReplySchema = z.object({
   toolName: z.string().nullable(),
   text: z.string(),
   citations: z.array(CitationSchema),
+  /** False: the answer used documents and marks no source, so the panel labels it. Absent means true. */
+  grounded: z.boolean().optional(),
   navigatedTo: z.object({ path: z.string(), title: z.string() }).nullable(),
   action: ActionCardSchema.nullable(),
   error: z.string().nullable(),
@@ -70,6 +72,8 @@ export const AgentTurnSchema = z.object({
   feedback: FeedbackSchema.nullable().optional(),
   /** Follow-up questions the server offered with this answer. */
   suggestions: z.array(z.string()).optional(),
+  /** The suggestions come from a turn that read shared content: sent with the Q&A skill. */
+  suggestionsReadOnly: z.boolean().optional(),
 });
 export type AgentTurn = z.infer<typeof AgentTurnSchema>;
 

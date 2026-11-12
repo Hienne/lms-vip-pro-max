@@ -16,6 +16,7 @@ import {
   createFields,
   type DraftFields,
 } from '../../data-access/content-authoring';
+import { randomId } from '../../../../core/browser/secure-context';
 
 /** How long the title must rest before similar questions are looked up. */
 const SUGGEST_DELAY_MS = 400;
@@ -34,7 +35,7 @@ export class AskStore {
   private readonly changes = inject(CommunityChanges);
   private readonly router = inject(Router);
 
-  private readonly clientRequestId = crypto.randomUUID();
+  private readonly clientRequestId = randomId();
 
   private readonly state = {
     title: signal(''),

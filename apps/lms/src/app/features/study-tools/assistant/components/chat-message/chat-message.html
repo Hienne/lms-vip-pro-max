@@ -40,6 +40,8 @@
       Thử lại
     </button>
   </p>
+  } @if (answer.status === 'done' && answer.text && answer.grounded === false) {
+  <p class="message__note message__no-source">Chưa có nguồn</p>
   } @if (answer.status === 'done' && answer.text && turn().serverTurnId) {
   <app-answer-feedback
     class="message__feedback"

@@ -80,6 +80,26 @@ describe('FakeBackend saved conversations', () => {
     ).toMatchObject(context);
   });
 
+  it('finds the latest conversation of a lesson, only for its owner, or null', () => {
+    const token = login('hocvien');
+    const lessonOf = (lessonId: number) =>
+      call(conversationEndpoints.latestForLesson, token, {
+        query: { lessonId: String(lessonId) },
+      }).body.data;
+    const context = { courseId: 5, revisionId: 50, lessonId: 9 };
+    const first = conversationOf(
+      call(agentEndpoints.stream, token, { body: { message: 'Một', context } }),
+    );
+
+    expect(ConversationSummarySchema.parse(lessonOf(9)).id).toBe(first);
+    expect(lessonOf(10)).toBeNull();
+    expect(
+      call(conversationEndpoints.latestForLesson, login('quantri'), {
+        query: { lessonId: '9' },
+      }).body.data,
+    ).toBeNull();
+  });
+
   it('lists a conversation from either assistant, titled by its first question', () => {
     const token = login('hocvien');
     ask(token, 'Xin chào trợ lý');
@@ -236,6 +256,13 @@ describe('FakeBackend saved conversations', () => {
         helpful: false,
         reasonCode: 'outdated',
         note: 'Số liệu cũ',
+        shared: false,
+      });
+      expect(
+        rate(token, turnId, { helpful: false, share: true }).body.data,
+      ).toMatchObject({ shared: true });
+      expect(rate(token, turnId, { helpful: false }).body.data).toMatchObject({
+        shared: false,
       });
       rate(token, turnId, { helpful: true });
 
@@ -246,7 +273,11 @@ describe('FakeBackend saved conversations', () => {
         helpful: true,
         reasonCode: null,
         note: null,
+        shared: false,
       });
+      expect(code(rate(token, turnId, { helpful: true, share: true }))).toBe(
+        'CORE-VALIDATION_FAILED',
+      );
     });
 
     it('answers a turn of someone else like one that does not exist', () => {

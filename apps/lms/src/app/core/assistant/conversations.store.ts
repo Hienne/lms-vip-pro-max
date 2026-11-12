@@ -135,6 +135,13 @@ export class ConversationsStore {
     });
   }
 
+  /** The caller's latest conversation opened from this lesson, or `null` when there is none. */
+  latestForLesson(lessonId: number): Observable<ConversationSummary | null> {
+    return this.client.call(conversationEndpoints.latestForLesson, {
+      query: { lessonId },
+    });
+  }
+
   rename(id: number, title: string): void {
     this.renameMutation.run({ id, title });
   }

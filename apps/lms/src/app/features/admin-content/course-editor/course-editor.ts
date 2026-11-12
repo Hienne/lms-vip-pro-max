@@ -1,3 +1,4 @@
+import { Dialog } from '@angular/cdk/dialog';
 import {
   Component,
   afterNextRender,
@@ -9,14 +10,15 @@ import {
   untracked,
   viewChild,
 } from '@angular/core';
-import { Dialog } from '@angular/cdk/dialog';
 import { form, FormRoot, submit } from '@angular/forms/signals';
-import { RouterLink } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
+import { courseJobReviewPath, type CourseDetail } from '@lms/contracts';
 import {
   Alert,
   AlertAction,
   Breadcrumb,
   Button,
+  confirm,
   DrawerOutlet,
   ErrorState,
   FormActions,
@@ -26,11 +28,14 @@ import {
   Stepper,
   PageHeader,
 } from '@lms/ui';
+import { CourseFormPrefillStore } from '../../../core/assistant/course-form-prefill.store';
 import { CourseJobAccess } from '../../../core/course-jobs/course-job-access';
 import type { HasUnsavedChanges } from '../../../core/routing/unsaved-changes.guard';
 import { BottomBar } from '../../../layout/shell-insets';
 import { CatalogStatus } from '../../../shared/status/catalog-status';
-import { startCourseWithAi } from '../ai-course/start-course-dialog/start-course-dialog';
+import { StartCourseStore } from '../ai-course/ai-course-section/data-access/start-course.store';
+import { firstValueFrom } from 'rxjs';
+import { CourseAiStatus } from './components/course-ai-status/course-ai-status';
 import { CourseInfo } from './components/course-info/course-info';
 import { CourseOutline } from './components/course-outline/course-outline';
 import { CourseReview } from './components/course-review/course-review';
@@ -38,6 +43,7 @@ import { CourseRules } from './components/course-rules/course-rules';
 import { LessonForm } from './components/lesson-form/lesson-form';
 import {
   emptyDraftValue,
+  mergeLive,
   toDraftValue,
   toSaveDraftCommand,
   withAsset,
@@ -45,6 +51,7 @@ import {
   type LessonValue,
 } from './course-draft';
 import { courseCodeSchema, courseDraftSchema } from './course-draft.schema';
+import { CourseAiJobStore } from './data-access/course-ai-job.store';
 import {
   COVER_KEY,
   CourseEditorStore,
@@ -70,6 +77,7 @@ const fingerprint = (value: CourseDraftValue) =>
     Breadcrumb,
     Button,
     CatalogStatus,
+    CourseAiStatus,
     CourseInfo,
     CourseOutline,
     CourseReview,
@@ -85,13 +93,14 @@ const fingerprint = (value: CourseDraftValue) =>
     Spinner,
     Stepper,
   ],
-  providers: [CourseEditorStore],
+  providers: [CourseEditorStore, CourseAiJobStore, StartCourseStore],
   templateUrl: './course-editor.html',
   styleUrl: './course-editor.scss',
 })
 export class CourseEditor implements HasUnsavedChanges {
   protected readonly store = inject(CourseEditorStore);
   protected readonly steps = EDITOR_STEPS;
+  private readonly router = inject(Router);
   private readonly dialog = inject(Dialog);
   private readonly injector = inject(Injector);
   protected readonly validationRequested = signal<readonly boolean[]>([
@@ -99,17 +108,70 @@ export class CourseEditor implements HasUnsavedChanges {
     false,
     false,
   ]);
+  protected readonly ai = inject(CourseAiJobStore);
+  private readonly starter = inject(StartCourseStore);
+  private readonly chatPrefill = inject(CourseFormPrefillStore);
   /** "Tạo bằng AI" is offered to instructors and admins on a new course only. */
   protected readonly canGenerate = inject(CourseJobAccess).canGenerate$;
+  protected readonly generating = this.starter.isStarting$;
 
-  /** Opens the start form; the job then runs in the background and the owl follows it. */
+  /**
+   * Why "Tạo bằng AI" is not available yet: step 1's own fields first, then the AI section's.
+   * Null when the button may be pressed.
+   */
+  protected readonly aiProblem = computed((): string | null => {
+    if (this.stepFields()[0].some((field) => field().invalid())) {
+      return 'Hoàn thành thông tin cơ bản của khóa học ở trên';
+    }
+    return this.starter.problem$();
+  });
+
+  /**
+   * Starts the job: the server creates it together with the draft course, and the editor moves
+   * to step 2 of that course, where the outline appears as it is written.
+   */
   protected generateWithAi(): void {
-    void startCourseWithAi(this.dialog);
+    if (this.aiProblem() !== null) return;
+    const value = this.draftValue();
+    this.starter.start(
+      {
+        title: value.title,
+        description: value.summary,
+        programmeId: Number(value.programId),
+      },
+      (job) => {
+        if (job.courseId == null) {
+          // A job made without a course (an older server): the review screen still shows it.
+          void this.router.navigateByUrl(courseJobReviewPath(job.jobId));
+          return;
+        }
+        this.store.moveToCourse(job.courseId, 1);
+      },
+    );
   }
 
-  private readonly model = linkedSignal(() => {
-    const detail = this.store.course$();
-    return detail ? toDraftValue(detail) : emptyDraftValue();
+  /**
+   * The form's value. It follows the server's draft; while the AI writes into the course the
+   * draft is read again every few seconds, and an edit in progress must survive that, so the
+   * lessons the author did not touch are taken from the server and the rest stays as typed.
+   */
+  private readonly model = linkedSignal<
+    CourseDetail | undefined,
+    CourseDraftValue
+  >({
+    source: () => this.store.course$(),
+    computation: (detail, previous) => {
+      if (!detail) return emptyDraftValue();
+      const fresh = toDraftValue(detail);
+      const before = previous?.source;
+      const followsAi =
+        !!before &&
+        before.course.id === detail.course.id &&
+        untracked(() => this.ai.job$()) !== undefined;
+      return followsAi
+        ? mergeLive(toDraftValue(before), previous.value, fresh)
+        : fresh;
+    },
   });
   protected readonly courseForm = form(
     this.model,
@@ -143,6 +205,20 @@ export class CourseEditor implements HasUnsavedChanges {
       ? { ...value, coverAssetId: cover.asset.assetId }
       : value;
   });
+
+  /**
+   * A new course opened by the chat (`open_course_form`) starts with what the user said and the
+   * file they attached. The hand-over is read once and cleared; it is taken on every open so a
+   * prefill is never left for a later one, but only a new course for a role that may generate
+   * uses it.
+   */
+  private applyChatPrefill(): void {
+    const prefill = this.chatPrefill.take();
+    if (!prefill || !this.store.isCreate$() || !this.canGenerate()) return;
+    const title = prefill.fields.title?.trim();
+    if (title) this.model.update((value) => ({ ...value, title }));
+    this.starter.applyPrefill(prefill.fields, prefill.file);
+  }
 
   /** Create mode shows the form at once; edit mode waits for the course to be read. */
   protected readonly ready = computed(
@@ -207,6 +283,7 @@ export class CourseEditor implements HasUnsavedChanges {
   );
 
   constructor() {
+    this.applyChatPrefill();
     this.store.registerBlockPositions(this.blockPositions);
     this.store.registerAssetAttacher((blockKey, asset) =>
       this.model.update((value) => ({
@@ -366,6 +443,32 @@ export class CourseEditor implements HasUnsavedChanges {
       ),
     }));
     this.store.closeLesson();
+    // A lesson edited while the AI writes is saved at once, so the job finds it already the author's.
+    if (this.ai.running$()) this.store.save(this.command());
+  }
+
+  /** Whether the open lesson can be rewritten by the AI. */
+  protected readonly canRewrite = computed(() => {
+    const target = this.store.editingLesson$();
+    return !!target && this.ai.canRewrite(target.chapter, target.lesson);
+  });
+
+  /** "Viết lại bằng AI": only this lesson is written again; the drawer closes, the edit in it is dropped. */
+  protected async rewriteWithAi(): Promise<void> {
+    const target = this.store.editingLesson$();
+    if (!target) return;
+    const confirmed = await firstValueFrom(
+      confirm(this.dialog, {
+        title: 'Viết lại bài này bằng AI?',
+        message:
+          'Nội dung hiện tại của bài, kể cả phần bạn đã sửa, sẽ được thay bằng bản AI viết lại. Các bài khác giữ nguyên.',
+        confirmLabel: 'Viết lại',
+        tone: 'danger',
+      }),
+    );
+    if (!confirmed) return;
+    this.store.closeLesson();
+    this.ai.rewrite(target.chapter, target.lesson);
   }
 
   private command() {

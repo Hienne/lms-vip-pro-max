@@ -4,6 +4,7 @@
   type="button"
   class="source"
   [attr.aria-label]="name()"
+  #popover="uiPopover"
   [uiPopover]="details"
   [popoverLabel]="name()"
 >
@@ -11,9 +12,20 @@
 </button>
 <ng-template #details>
   <p class="source__file">{{ citation().fileName }}</p>
+  @if (citation().sectionPath) {
+  <p class="source__section">{{ citation().sectionPath }}</p>
+  }
   <p class="source__where">{{ location() }}</p>
   <p class="source__quote">{{ citation().snippet }}</p>
   @if (citation().lesson; as lesson) {
   <a class="source__open" [routerLink]="lesson.url">Mở bài học</a>
+  } @else {
+  <button
+    type="button"
+    class="source__open"
+    (click)="popover.close(); viewer.open(citation())"
+  >
+    Xem trong tài liệu
+  </button>
   }
 </ng-template>

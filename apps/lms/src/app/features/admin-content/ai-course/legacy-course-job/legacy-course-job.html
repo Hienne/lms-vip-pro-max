@@ -1,0 +1,27 @@
+<ui-page-header title="Công việc tạo khóa học" />
+
+@if (store.error$(); as error) {
+<ui-error-state
+  title="Không tải được công việc tạo khóa học"
+  [message]="error.message"
+  (retry)="store.reload()"
+>
+  <a uiButton variant="secondary" routerLink="/admin/courses"
+    >Về danh sách khóa học</a
+  >
+</ui-error-state>
+} @else if (store.isLegacy$()) {
+<ui-error-state
+  tone="warning"
+  icon="info"
+  title="Job này thuộc luồng cũ"
+  message='Công việc này được tạo trước khi khóa học nháp đi cùng công việc, nên không còn màn rà soát riêng. Tạo lại khóa học bằng mục "Tạo bằng AI" trong trình soạn khóa học.'
+  [retryable]="false"
+>
+  <a uiButton variant="secondary" routerLink="/admin/courses"
+    >Về danh sách khóa học</a
+  >
+</ui-error-state>
+} @else {
+<div uiSkeleton variant="block"></div>
+}

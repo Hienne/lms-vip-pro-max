@@ -135,8 +135,11 @@
     [canShareGlobally]="store.canShareGlobally$()"
     [scope]="store.uploadScope$()"
     (scopeChange)="store.setUploadScope($event)"
+    [title]="store.uploadTitle$()"
+    (titleChange)="store.setUploadTitle($event)"
     (files)="store.addFiles($event)"
     (dismiss)="store.dismissUpload($event)"
+    (showExisting)="store.showDocument($event)"
   />
   <app-document-list
     [documents]="store.documents$()"
@@ -146,9 +149,17 @@
     [loading]="store.isLoading$()"
     [failed]="!!store.loadError$()"
     [canRemove]="store.canRemove"
+    [canEdit]="store.canEdit"
+    [highlightId]="store.highlightId$()"
     (remove)="store.removeDocument($event)"
+    (renamed)="store.renameDocument($event.document, $event.title)"
+    (replaced)="store.replaceDocument($event.document, $event.file)"
     (pageChange)="store.setPage($event)"
     (retry)="store.retryLoad()"
+  />
+  <app-duplicate-documents
+    [groups]="store.duplicates$()"
+    (remove)="store.removeDocument($event)"
   />
 </ng-template>
 <p class="sr-only" role="status">{{ store.announcement$() }}</p>

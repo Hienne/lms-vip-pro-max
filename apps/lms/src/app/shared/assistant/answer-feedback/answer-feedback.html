@@ -56,6 +56,16 @@
     [maxLength]="noteMax"
     [value]="value()?.note ?? ''"
   ></textarea>
+  <label class="feedback__share">
+    <input
+      type="checkbox"
+      uiCheckbox
+      [checked]="share()"
+      (change)="share.set(shareBox.checked)"
+      #shareBox
+    />
+    Gửi kèm câu hỏi và câu trả lời cho đội phát triển
+  </label>
   <div class="feedback__actions">
     <button uiButton type="button" size="sm" (click)="send(note.value)">
       Gửi đánh giá

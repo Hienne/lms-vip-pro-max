@@ -38,6 +38,12 @@ describe('agent stream events', () => {
     { type: 'tool', name: 'search_documents' },
     { type: 'delta', text: 'CIF là' },
     { type: 'navigate', path: '/admin/users', title: 'Quản lý người dùng' },
+    {
+      type: 'navigate',
+      path: '/admin/courses/new',
+      title: 'Khóa học mới',
+      prefill: { title: 'Khóa thử', level: 'BEGINNER', chapters: 3 },
+    },
     { type: 'action_required', action },
     { type: 'done', answer: 'Xong.', citations: [citation] },
     {
@@ -61,6 +67,12 @@ describe('agent stream events', () => {
   it.each([
     { type: 'navigate', path: 'admin/users', title: 'x' },
     { type: 'navigate', path: 'https://evil.example', title: 'x' },
+    {
+      type: 'navigate',
+      path: '/admin/courses/new',
+      title: 'x',
+      prefill: { level: 'EXPERT' },
+    },
     { type: 'retrieved', count: 1 },
     { type: 'done', answer: 'x' },
   ])('rejects %j', (event) => {
@@ -165,6 +177,30 @@ describe('follow-up suggestions and skill hints', () => {
     }
   });
 
+  it('keeps grounded on a done line of both assistants, and a line without it stays valid', () => {
+    for (const schema of [AgentStreamEventSchema, ChatStreamEventSchema]) {
+      const base = schema === AgentStreamEventSchema ? doneAgent : doneChat;
+      expect(schema.parse({ ...base, grounded: false })).toMatchObject({
+        grounded: false,
+      });
+      expect(schema.parse(base)).not.toHaveProperty('grounded');
+      expect(schema.safeParse({ ...base, grounded: 'no' }).success).toBe(false);
+    }
+  });
+
+  it('accepts the read-only flag on an agent done line and refuses a non-boolean', () => {
+    const line = { ...doneAgent, suggestions: ['Đổi email?'] };
+    expect(
+      AgentStreamEventSchema.safeParse({ ...line, suggestionsReadOnly: true })
+        .success,
+    ).toBe(true);
+    expect(AgentStreamEventSchema.safeParse(line).success).toBe(true);
+    expect(
+      AgentStreamEventSchema.safeParse({ ...line, suggestionsReadOnly: 'yes' })
+        .success,
+    ).toBe(false);
+  });
+
   it('accepts a command with a known skill and refuses an unknown one', () => {
     expect(
       AgentCommandSchema.safeParse({ message: 'Mở', skill: 'dieu_huong' })
@@ -181,6 +217,7 @@ describe('agent endpoints', () => {
   it('registers the stream and the two action calls under /api/v1/assistant/agent', () => {
     expect(Object.keys(agentEndpoints)).toEqual([
       'stream',
+      'cancelTurn',
       'confirmAction',
       'cancelAction',
     ]);

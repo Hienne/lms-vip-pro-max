@@ -74,6 +74,7 @@ export class ConversationBook {
     const now = new Date().toISOString();
     let answer: string | null = null;
     let citations: StoredTurn['citations'] = [];
+    let grounded: StoredTurn['grounded'];
     let navigation: StoredTurn['navigation'] = null;
     let action: StoredAction | null = null;
     let status: StoredTurn['status'] = 'done';
@@ -96,6 +97,7 @@ export class ConversationBook {
         case 'done':
           answer = event.answer;
           citations = event.citations;
+          grounded = event.grounded;
           break;
         case 'error':
           status = 'error';
@@ -117,6 +119,7 @@ export class ConversationBook {
       action,
       feedback: null,
       status,
+      ...(grounded === undefined ? {} : { grounded }),
       createTime: now,
     });
     row.lastActivityTime = now;
@@ -139,6 +142,7 @@ export class ConversationBook {
       helpful,
       reasonCode: helpful ? null : (command.reasonCode ?? null),
       note: command.note?.trim() || null,
+      shared: !helpful && command.share === true,
     };
     return turn.feedback;
   }
@@ -173,6 +177,18 @@ export class ConversationBook {
           b.lastActivityTime.localeCompare(a.lastActivityTime) || b.id - a.id,
       )
       .map(summaryOf);
+  }
+
+  /** The owner's most recently used conversation opened from this lesson. */
+  latestForLesson(
+    ownerId: string,
+    lessonId: number,
+  ): ConversationSummary | null {
+    return (
+      this.list(ownerId, '').find(
+        (row) => row.context?.lessonId === lessonId,
+      ) ?? null
+    );
   }
 
   get(ownerId: string, id: number): ConversationDetail | undefined {

@@ -3,6 +3,12 @@ import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import type { Citation } from '@lms/contracts';
 import { AssistantMarkdown } from './assistant-markdown';
+import {
+  parseAppConfig,
+  provideAppConfig,
+} from '../../../core/config/app-config';
+import { testAppConfig } from '../../../core/config/app-config.testing';
+import { provideEnvelopeHttpClient } from '../../../core/http/http.testing';
 
 const citation: Citation = {
   n: 1,
@@ -36,7 +42,13 @@ describe('AssistantMarkdown', () => {
     text: string,
     patch: { citations?: readonly Citation[]; badges?: boolean } = {},
   ) {
-    TestBed.configureTestingModule({ providers: [provideRouter([])] });
+    TestBed.configureTestingModule({
+      providers: [
+        provideRouter([]),
+        provideAppConfig(parseAppConfig(testAppConfig())),
+        provideEnvelopeHttpClient(),
+      ],
+    });
     const fixture = TestBed.createComponent(Host);
     fixture.componentInstance.text.set(text);
     if (patch.citations)
@@ -81,6 +93,17 @@ describe('AssistantMarkdown', () => {
     expect(links).toHaveLength(1);
     expect(links[0].getAttribute('href')).toBe('/community/posts/3');
     expect(el.textContent).toContain('Ngoài');
+  });
+
+  it('keeps the query string of an in-app link (a Community post opens in the app)', async () => {
+    const { el } = await render(
+      '[Bài & phí](/community/contents/6?revisionId=6)',
+    );
+    const link = el.querySelector('a');
+    expect(link?.getAttribute('href')).toBe(
+      '/community/contents/6?revisionId=6',
+    );
+    expect(link?.textContent).toBe('Bài & phí');
   });
 
   it('renders hostile input as inert text', async () => {

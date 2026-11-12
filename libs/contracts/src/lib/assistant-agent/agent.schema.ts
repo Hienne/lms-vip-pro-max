@@ -73,6 +73,16 @@ export const PendingActionSchema = z.discriminatedUnion('tool', [
 ]);
 export type PendingAction = z.infer<typeof PendingActionSchema>;
 
+/** What the chat heard for the new-course form: only what the user said, so every field may be missing. */
+export const CourseFormPrefillSchema = z.object({
+  title: z.string().optional(),
+  targetLearners: z.string().optional(),
+  level: z.enum(['BEGINNER', 'INTERMEDIATE', 'ADVANCED']).optional(),
+  chapters: z.number().int().optional(),
+  durationMinutes: z.number().int().optional(),
+});
+export type CourseFormPrefill = z.infer<typeof CourseFormPrefillSchema>;
+
 /** One line of the NDJSON stream. `tool.name` stays a string so a tool added later still parses. */
 export const AgentStreamEventSchema = z.discriminatedUnion('type', [
   /** The first line of every stream: the conversation this turn is stored in. */
@@ -86,6 +96,8 @@ export const AgentStreamEventSchema = z.discriminatedUnion('type', [
     type: z.literal('navigate'),
     path: z.string().startsWith('/'),
     title: z.string(),
+    /** What the screen may open with (`open_course_form`); every field is optional and checked again by the form. */
+    prefill: CourseFormPrefillSchema.optional(),
   }),
   z.object({ type: z.literal('action_required'), action: PendingActionSchema }),
   z.object({
@@ -97,6 +109,16 @@ export const AgentStreamEventSchema = z.discriminatedUnion('type', [
     turnId: z.number().int().positive().optional(),
     /** Up to three follow-up questions; absent when the model offered none. */
     suggestions: z.array(z.string()).optional(),
+    /**
+     * The turn read shared content (documents, courses, Community): the suggestions are read-only,
+     * so a clicked one is sent with the Q&A skill, which has no acting tool. Absent when false.
+     */
+    suggestionsReadOnly: z.boolean().optional(),
+    /**
+     * False when the answer used retrieved content and marked none of it: it has no sources and the app labels it
+     * "Chưa có nguồn". Absent means true.
+     */
+    grounded: z.boolean().optional(),
   }),
   z.object({
     type: z.literal('error'),

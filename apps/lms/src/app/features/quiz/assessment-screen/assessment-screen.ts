@@ -46,6 +46,7 @@ import { AssessmentScreenStore } from './data-access/assessment-screen.store';
 import { QuizAttemptGrant } from './components/quiz-attempt-grant/quiz-attempt-grant';
 import { QuestionImport } from '../../../shared/quiz/question-import/question-import';
 import { QUESTION_IMPORT_HOST } from '../../../shared/quiz/question-import/data-access/question-import.host';
+import { randomId } from '../../../core/browser/secure-context';
 
 const questionSchema = SaveQuestionSchema.omit({
   domainId: true,
@@ -472,7 +473,7 @@ export class AssessmentScreen {
   protected addOption(): void {
     this.questionModel.update((q) => ({
       ...q,
-      options: [...q.options, { id: crypto.randomUUID(), text: '' }],
+      options: [...q.options, { id: randomId(), text: '' }],
     }));
   }
   protected removeOption(id: string): void {

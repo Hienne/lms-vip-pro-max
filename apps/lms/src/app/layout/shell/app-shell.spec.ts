@@ -39,6 +39,11 @@ describe('AppShell', () => {
   let storage: Map<string, string>;
 
   beforeEach(() => {
+    // The learner home behind /learn is a page of tabs, and @angular/aria warns in dev mode with
+    // `console.warn('%o', element)` for each panel. Node's util.inspect throws on a jsdom element
+    // there, and Angular's error handler logs that throw again in a loop until the test times out.
+    // No test here is about the tab panels, so the warning is dropped.
+    vi.spyOn(console, 'warn').mockImplementation(() => undefined);
     storage = new Map();
     TestBed.configureTestingModule({
       providers: [
@@ -89,6 +94,7 @@ describe('AppShell', () => {
           r.url === '/api/v1/me/flashcard-decks' ||
           r.url === '/api/v1/training-catalog/programs' ||
           r.url === '/api/v1/orgs' ||
+          r.url === '/api/v1/competencies' ||
           r.url.startsWith('/api/v1/reports/assessment/'),
       )
       .filter((r) => !r.cancelled)
@@ -113,6 +119,11 @@ describe('AppShell', () => {
           }),
         ),
       );
+    // The assistant screen also lists the user's duplicate documents; there are none.
+    backend
+      .match((r) => r.url === '/api/v1/knowledge/documents/duplicates')
+      .filter((r) => !r.cancelled)
+      .forEach((r) => r.flush(envelopeOk([])));
     // The owl's tracker asks for the user's unfinished uploads; there are none.
     backend
       .match((r) => r.url === '/api/v1/knowledge/documents')
@@ -130,7 +141,11 @@ describe('AppShell', () => {
       );
     // An instructor's or admin's tracker asks for their course generations; there are none.
     backend
-      .match((r) => r.url === '/api/v1/assistant/course-jobs')
+      .match(
+        (r) =>
+          r.url === '/api/v1/assistant/course-jobs' ||
+          r.url === '/api/v1/assistant/course-jobs/active',
+      )
       .filter((r) => !r.cancelled)
       .forEach((r) => r.flush(envelopeOk([])));
   }
@@ -427,11 +442,21 @@ describe('AppShell', () => {
       expect(panel(el)).toBeNull();
     });
 
-    it('is not on focus or bare routes', async () => {
+    it('opens on a focus route (a lesson) without the owl', async () => {
       signInAs('learner');
       TestBed.inject(AgentChatStore).open();
       const focus = await open('/lesson/c1/l1');
-      expect(focus.querySelector('app-chat-widget')).toBeNull();
+      expect(panel(focus)).not.toBeNull();
+      expect(focus.querySelector('app-owl')).toBeNull();
+    });
+
+    it('stays closed on a focus route until a lesson button opens it', async () => {
+      signInAs('learner');
+      const focus = await open('/lesson/c1/l1');
+      expect(panel(focus)).toBeNull();
+      TestBed.inject(AgentChatStore).open();
+      TestBed.tick();
+      expect(panel(focus)).not.toBeNull();
     });
 
     it('opens and closes from the owl, and Escape hands focus back to it', async () => {

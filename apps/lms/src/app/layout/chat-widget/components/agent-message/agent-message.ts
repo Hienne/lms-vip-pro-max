@@ -9,6 +9,7 @@ import { ActionCard } from '../action-card/action-card';
 import { AgentSources, agentSourceId } from '../agent-sources/agent-sources';
 import { AnswerFeedback } from '../../../../shared/assistant/answer-feedback/answer-feedback';
 import { AssistantMarkdown } from '../../../../shared/assistant/assistant-markdown/assistant-markdown';
+import { copyText } from '../../../../core/browser/secure-context';
 
 const COMPOSING = 'Đang soạn câu trả lời…';
 
@@ -75,10 +76,9 @@ export class AgentMessage {
 
   /** Puts the answer text, without its source list, on the clipboard. */
   protected async copy(): Promise<void> {
-    try {
-      await navigator.clipboard.writeText(this.turn().reply.text);
+    if (await copyText(this.turn().reply.text)) {
       this.toaster.success('Đã sao chép');
-    } catch {
+    } else {
       this.toaster.error('Không sao chép được câu trả lời');
     }
   }

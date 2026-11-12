@@ -186,7 +186,7 @@ Mobile-first, four steps: `sm` 640px · `md` 720px · `lg` 1100px · `xl` 1280px
 
 | Mockup query | Step | Notes                                             |
 | ------------ | ---- | ------------------------------------------------- |
-| ≤ 640        | `sm` | `.hide-sm`                          |
+| ≤ 640        | `sm` | `.hide-sm`                                        |
 | ≤ 720        | `md` | grids collapse, tables → cards, form grid         |
 | ≤ 900        | `md` | quiz layout, assignment row (nearest step is 720) |
 | ≤ 1000       | `lg` | instructor inbox (nearest step is 1100)           |

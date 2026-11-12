@@ -6,6 +6,10 @@
   >
 </p>
 
+@if (lockReason(); as reason) {
+<p id="outline-lock" class="course-outline__lock" role="note">{{ reason }}</p>
+}
+
 <div class="course-outline">
   @for (chapter of draft().chapters; track chapter; let ci = $index) {
   <section uiCard [attr.aria-label]="'Chương ' + (ci + 1)">
@@ -22,7 +26,9 @@
         uiIconButton
         type="button"
         variant="danger"
+        aria-describedby="outline-lock"
         [label]="'Xóa chương ' + (ci + 1)"
+        [disabled]="lockReason() !== null"
         (click)="removeChapter(ci)"
       >
         <ui-icon name="trash-2" size="sm" />
@@ -36,7 +42,7 @@
     <div uiCardBody class="stack">
       @if (!chapter().value().lessons.length) {
       <p class="course-outline__empty">Chương chưa có bài học.</p>
-      } @else if (editable()) {
+      } @else if (editable() && !lockReason()) {
       <div
         uiSortableList
         [label]="'Bài học của chương ' + (ci + 1)"
@@ -48,7 +54,7 @@
           <div class="course-outline__lesson">
             <ng-container
               [ngTemplateOutlet]="lessonText"
-              [ngTemplateOutletContext]="{ $implicit: lesson }"
+              [ngTemplateOutletContext]="{ $implicit: lesson, ci: ci, li: li }"
             />
             @if (uploadOf(lesson); as upload) { @if (upload.failed) {
             <button
@@ -78,7 +84,10 @@
               uiIconButton
               type="button"
               size="sm"
-              label="Sửa bài học"
+              [label]="
+                ai.isWriting(ci, li) ? 'AI đang viết bài này' : 'Sửa bài học'
+              "
+              [disabled]="ai.isWriting(ci, li)"
               (click)="editLesson.emit({ chapter: ci, lesson: li })"
             >
               <ui-icon name="pen-line" size="sm" />
@@ -102,23 +111,38 @@
         class="course-outline__lessons"
         [attr.aria-label]="'Bài học của chương ' + (ci + 1)"
       >
-        @for (lesson of chapter().value().lessons; track lesson.key) {
+        @for (lesson of chapter().value().lessons; track lesson.key; let li =
+        $index) {
         <li class="course-outline__lesson">
           <ng-container
             [ngTemplateOutlet]="lessonText"
-            [ngTemplateOutletContext]="{ $implicit: lesson }"
+            [ngTemplateOutletContext]="{ $implicit: lesson, ci: ci, li: li }"
           />
+          @if (editable()) {
+          <button
+            uiIconButton
+            type="button"
+            size="sm"
+            [label]="
+              ai.isWriting(ci, li) ? 'AI đang viết bài này' : 'Sửa bài học'
+            "
+            [disabled]="ai.isWriting(ci, li)"
+            (click)="editLesson.emit({ chapter: ci, lesson: li })"
+          >
+            <ui-icon name="pen-line" size="sm" />
+          </button>
+          }
         </li>
         }
       </ol>
-      } @if (editable()) {
+      } @if (editable() && !lockReason()) {
       <button uiLinkButton type="button" (click)="addLesson(ci)">
         <ui-icon name="plus" size="sm" />Thêm bài học
       </button>
       }
     </div>
   </section>
-  } @if (editable()) {
+  } @if (editable() && !lockReason()) {
   <button
     uiButton
     type="button"
@@ -130,7 +154,7 @@
   }
 </div>
 
-<ng-template #lessonText let-lesson>
+<ng-template #lessonText let-lesson let-ci="ci" let-li="li">
   <div class="course-outline__lesson-text">
     <div class="course-outline__lesson-title">{{ lesson.title }}</div>
     <div class="course-outline__lesson-meta">
@@ -142,7 +166,9 @@
       <span>{{ lesson.minutes }} phút</span>
     </div>
   </div>
-  @if (problemOf(lesson); as problem) { @if (!uploadOf(lesson)) {
+  @if (stateOf(ci, li); as state) {
+  <span uiBadge [tone]="state.tone">{{ state.label }}</span>
+  } @if (problemOf(lesson); as problem) { @if (!uploadOf(lesson)) {
   <span uiBadge tone="warning">{{ problem }}</span>
   } }
 </ng-template>

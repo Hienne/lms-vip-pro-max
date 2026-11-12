@@ -53,7 +53,9 @@
     }
     &--current,
     &--current:hover {
-      background: ui.color(primary-subtle); // design-drift-allow: subtle-fill the selected quiz is the list's current row
+      background: ui.color(
+        primary-subtle
+      ); // design-drift-allow: subtle-fill the selected quiz is the list's current row
     }
   }
   &__nav-text {

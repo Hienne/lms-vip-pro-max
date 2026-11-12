@@ -33,6 +33,7 @@ import {
   createFields,
   type DraftFields,
 } from '../../data-access/content-authoring';
+import { randomId } from '../../../../core/browser/secure-context';
 
 /** Answers shown on one question; the server orders them accepted first, then by score. */
 const ANSWER_PAGE = 50;
@@ -76,7 +77,7 @@ export class ContentStore {
 
   private readonly state = {
     /** One id per answer composer, so a retried send does not post twice. */
-    answerRequestId: signal(crypto.randomUUID()),
+    answerRequestId: signal(randomId()),
     /** The content views are counted once per visit. */
     viewed: signal<number | undefined>(undefined),
     /** Counts the answers posted from this page, so the composer clears after each. */
@@ -316,7 +317,7 @@ export class ContentStore {
             },
       invalidates: [this.refresh, this.changes.contents],
       onSuccess: (answer) => {
-        this.state.answerRequestId.set(crypto.randomUUID());
+        this.state.answerRequestId.set(randomId());
         this.state.answersPosted.update((n) => n + 1);
         if (answer.draftRevision && !answer.publishedRevision) {
           void this.router.navigate([

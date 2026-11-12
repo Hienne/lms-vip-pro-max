@@ -53,7 +53,24 @@
     </button>
   </header>
   <p class="sr-only" aria-live="polite">{{ store.announcement$() }}</p>
-  @if (store.isHistoryOpen$()) {
+  @if (failure(); as failed) {
+  <div class="chat__notice" role="alert">
+    <p>
+      Không tạo được khóa học từ <strong>{{ failed.fileName }}</strong>.
+      <button type="button" class="chat__notice-link" (click)="openFailure()">
+        {{ failed.action }}
+      </button>
+    </p>
+    <button
+      uiIconButton
+      size="sm"
+      label="Đóng thông báo"
+      (click)="dismissFailure()"
+    >
+      <ui-icon name="x" size="sm" />
+    </button>
+  </div>
+  } @if (store.isHistoryOpen$()) {
   <div class="chat__history">
     <app-conversation-list
       [items]="history.items$()"
@@ -127,7 +144,7 @@
           type="button"
           class="chat__suggestion"
           [disabled]="store.isOffline$()"
-          (click)="suggest(question)"
+          (click)="suggest(question, followUpSkill())"
         >
           {{ question }}
         </button>

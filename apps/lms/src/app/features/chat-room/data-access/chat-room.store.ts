@@ -38,6 +38,7 @@ import type {
 } from './chat-room.model';
 import { inRoomArea } from './chat-room.model';
 import { RoomGamesStore } from './room-games.store';
+import { copyText } from '../../../core/browser/secure-context';
 
 type ConnectionStatus =
   | 'offline'
@@ -340,12 +341,11 @@ export class ChatRoomStore {
     this.state.gamesIssue.set('');
   }
   async share(): Promise<void> {
-    try {
-      await navigator.clipboard.writeText(`${location.origin}/chat-room`);
+    if (await copyText(`${location.origin}/chat-room`)) {
       this.setCopied(true);
       clearTimeout(this.copyTimer);
       this.copyTimer = setTimeout(() => this.setCopied(false), 2500);
-    } catch {
+    } else {
       this.setError(
         'Không sao chép được. Hãy sao chép địa chỉ trên trình duyệt.',
       );

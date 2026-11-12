@@ -1,6 +1,6 @@
 import { NgTemplateOutlet } from '@angular/common';
-import { Component, computed, input, output } from '@angular/core';
-import { RouterLink } from '@angular/router';
+import { Component, computed, inject, input, output } from '@angular/core';
+import { Router, RouterLink, type UrlTree } from '@angular/router';
 import type { Citation } from '@lms/contracts';
 import { answerParts } from '../answer-parts';
 import { citationName } from '../citation-label';
@@ -55,6 +55,12 @@ export class AssistantMarkdown {
   /** Draw each source as a badge with a popover instead of a number button. */
   readonly badges = input(false);
   readonly sourceSelected = output<number>();
+  private readonly router = inject(Router);
+
+  /** A link with a query string is a `UrlTree`: a string would encode `?` and `=` into the path. */
+  protected linkTree(href: string): UrlTree {
+    return this.router.parseUrl(href);
+  }
 
   protected readonly blocks = computed<View[]>(() => {
     const citations = this.citations();
