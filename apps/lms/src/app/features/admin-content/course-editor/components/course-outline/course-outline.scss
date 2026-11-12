@@ -15,6 +15,11 @@
     }
   }
 
+  &__lock {
+    @include ui.text(sm, muted);
+    margin: 0 0 ui.space(4);
+  }
+
   &__chapter {
     @include ui.row(3);
     flex-wrap: nowrap;

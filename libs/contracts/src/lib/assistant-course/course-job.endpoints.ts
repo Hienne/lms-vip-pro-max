@@ -36,6 +36,16 @@ export const courseJobEndpoints = {
     params: jobParams,
     response: CourseJobSchema,
   }),
+  /**
+   * Stops a job that has not finished (status `stopped`): written lessons stay, the others become
+   * empty `pending` lessons the author fills by hand.
+   */
+  stop: defineEndpoint({
+    method: 'post',
+    path: '/api/v1/assistant/course-jobs/{jobId}/stop',
+    params: jobParams,
+    response: CourseJobSchema,
+  }),
   remove: defineEndpoint({
     method: 'delete',
     path: '/api/v1/assistant/course-jobs/{jobId}',

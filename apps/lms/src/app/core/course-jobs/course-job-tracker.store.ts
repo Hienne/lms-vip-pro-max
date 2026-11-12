@@ -46,6 +46,7 @@ const summaryOf = (job: CourseJob): CourseJobSummary => ({
   sourceFileName: job.source?.fileName ?? null,
   createdDraftId: job.createdDraftId ?? null,
   createTime: job.createTime,
+  courseId: job.courseId ?? null,
 });
 
 /**

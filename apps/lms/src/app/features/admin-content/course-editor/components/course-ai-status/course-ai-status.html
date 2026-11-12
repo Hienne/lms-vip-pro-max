@@ -1,0 +1,51 @@
+@if (failure(); as failed) {
+<ui-alert tone="danger" [heading]="failed.heading">
+  {{ failed.message }}
+  <button
+    uiButton
+    size="sm"
+    variant="primary"
+    uiAlertAction
+    type="button"
+    [disabled]="ai.isBusy$()"
+    (click)="ai.retry()"
+  >
+    Thử lại
+  </button>
+</ui-alert>
+} @else if (ai.statusLine$(); as line) {
+<div class="course-ai-status" role="status">
+  @if (ai.running$()) {
+  <span uiSpinner></span>
+  }
+  <span class="course-ai-status__line">{{ line }}</span>
+  @if (ai.phase$() === 'approval') { @if (unsaved()) {
+  <span id="ai-approve-hint" class="course-ai-status__hint"
+    >Lưu nháp các thay đổi trước khi duyệt</span
+  >
+  }
+  <button
+    uiButton
+    size="sm"
+    variant="primary"
+    type="button"
+    aria-describedby="ai-approve-hint"
+    [disabled]="approveBlocked()"
+    (click)="ai.approve()"
+  >
+    <ui-icon name="check" size="sm" />Duyệt dàn ý và viết bài
+  </button>
+  } @if (ai.running$()) {
+  <button
+    uiButton
+    size="sm"
+    variant="secondary"
+    type="button"
+    [disabled]="ai.isBusy$()"
+    (click)="stop()"
+  >
+    Dừng tạo bằng AI
+  </button>
+  }
+</div>
+}

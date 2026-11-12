@@ -348,6 +348,54 @@ function toDraftContent(value: CourseDraftValue): DraftContent {
   };
 }
 
+/** Whether two drafts would be saved as the same thing (row keys do not count). */
+export function sameDraft(a: CourseDraftValue, b: CourseDraftValue): boolean {
+  return (
+    a.code === b.code &&
+    JSON.stringify(toDraftContent(a)) === JSON.stringify(toDraftContent(b))
+  );
+}
+
+const shapeOf = (value: CourseDraftValue): string =>
+  JSON.stringify(value.chapters.map((c) => c.lessons.length));
+
+const lessonContent = (lesson: LessonValue): string =>
+  JSON.stringify(
+    toDraftContent({
+      ...emptyDraftValue(),
+      chapters: [{ key: '', title: '', lessons: [lesson] }],
+    }),
+  );
+
+/**
+ * The form after the server's draft was read again while the AI writes into it. A form the author
+ * has not touched takes the server's draft. A touched one keeps everything the author typed and
+ * takes the server's version of each lesson the author did not touch, so a lesson the AI has
+ * just written appears while an edit in progress is never replaced. `saved` is the previous
+ * server draft, `form` the form as it is, `fresh` the draft just read.
+ */
+export function mergeLive(
+  saved: CourseDraftValue,
+  form: CourseDraftValue,
+  fresh: CourseDraftValue,
+): CourseDraftValue {
+  if (sameDraft(saved, form)) return fresh;
+  if (shapeOf(saved) !== shapeOf(form) || shapeOf(form) !== shapeOf(fresh)) {
+    return form;
+  }
+  return {
+    ...form,
+    chapters: form.chapters.map((chapter, ci) => ({
+      ...chapter,
+      lessons: chapter.lessons.map((lesson, li) =>
+        lessonContent(lesson) === lessonContent(saved.chapters[ci].lessons[li])
+          ? fresh.chapters[ci].lessons[li]
+          : lesson,
+      ),
+    })),
+  };
+}
+
 /** The whole tree as the save command spells it. */
 export function toSaveDraftCommand(
   value: CourseDraftValue,

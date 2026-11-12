@@ -50,6 +50,35 @@ describe('CourseJobMock', () => {
     expect(progress[2].status).toBe('waiting_approval');
   });
 
+  it('lists the course of each job and stops a running job once', () => {
+    const mock = new CourseJobMock();
+    const started = mock.handle(courseJobEndpoints.start, request(form()), 'a');
+    const job = CourseJobSchema.parse(
+      (started?.body as { data: unknown }).data,
+    );
+
+    const listed = mock.handle(courseJobEndpoints.list, request(), 'a');
+    const rows = (listed?.body as { data: { courseId: number }[] }).data;
+    expect(rows[0].courseId).toBe(job.courseId);
+
+    const params = { jobId: String(job.jobId) };
+    const stopped = mock.handle(
+      courseJobEndpoints.stop,
+      request(null, params),
+      'a',
+    );
+    expect(
+      CourseJobSchema.parse((stopped?.body as { data: unknown }).data).status,
+    ).toBe('stopped');
+
+    const again = mock.handle(
+      courseJobEndpoints.stop,
+      request(null, params),
+      'a',
+    );
+    expect(JSON.stringify(again?.body)).toContain('JOB_FINISHED');
+  });
+
   it('refuses a start without chapters or a duration', () => {
     const mock = new CourseJobMock();
 

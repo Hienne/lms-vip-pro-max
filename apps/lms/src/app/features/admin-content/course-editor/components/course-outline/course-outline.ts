@@ -29,6 +29,11 @@ import {
   type SortableMove,
 } from '@lms/ui';
 import { firstValueFrom } from 'rxjs';
+import type { LessonAiState } from '@lms/contracts';
+import {
+  CourseAiJobStore,
+  lessonPlace,
+} from '../../data-access/course-ai-job.store';
 import type { LessonTarget } from '../../data-access/course-editor.store';
 import {
   isBusy,
@@ -46,6 +51,15 @@ import {
   type CourseDraftValue,
   type LessonValue,
 } from '../../course-draft';
+
+const AI_STATES: Readonly<
+  Record<LessonAiState, { label: string; tone: 'neutral' | 'info' | 'success' }>
+> = {
+  pending: { label: 'Chờ AI', tone: 'neutral' },
+  writing: { label: 'AI đang viết', tone: 'info' },
+  written: { label: 'AI đã viết', tone: 'success' },
+  user_edited: { label: 'Bạn đã sửa', tone: 'neutral' },
+};
 
 /**
  * Step 2 of the editor: chapters and their lessons. Chapters are renamed in place, lessons are
@@ -87,6 +101,21 @@ export class CourseOutline {
 
   private readonly dialog = inject(Dialog);
   private readonly injector = inject(Injector);
+  protected readonly ai = inject(CourseAiJobStore);
+
+  /** Why the structure cannot change now (the AI is writing the lessons); null when it can. */
+  protected readonly lockReason = this.ai.structureLock$;
+
+  /** What the AI is doing with a lesson, as the row says it; undefined for a lesson of the author's. */
+  protected readonly stateOf = (
+    chapter: number,
+    lesson: number,
+  ): { label: string; tone: 'neutral' | 'info' | 'success' } | undefined => {
+    const state: LessonAiState | undefined = this.ai
+      .lessonStates$()
+      .get(lessonPlace(chapter, lesson));
+    return state ? AI_STATES[state] : undefined;
+  };
 
   /** Block labels by type, keyed loosely for the lesson template's untyped context. */
   protected readonly blockLabels: Readonly<Record<string, string>> =

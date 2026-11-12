@@ -91,6 +91,8 @@ export const CourseJobSummarySchema = z.object({
   sourceFileName: z.string().nullish(),
   createdDraftId: z.number().int().nullish(),
   createTime: z.iso.datetime({ offset: true }),
+  /** The draft course the job fills; the course editor finds its job by this. */
+  courseId: z.number().int().nullish(),
 });
 export type CourseJobSummary = z.infer<typeof CourseJobSummarySchema>;
 

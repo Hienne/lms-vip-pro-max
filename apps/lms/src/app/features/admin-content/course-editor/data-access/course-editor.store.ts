@@ -1215,6 +1215,11 @@ export class CourseEditorStore {
     this.courseData.reload();
   }
 
+  /** Reads the course again, keeping what is on screen meanwhile (the AI wrote into it). */
+  reloadCourse(): void {
+    this.courseData.reload();
+  }
+
   /** Reads the course's quizzes again (after a failed read, or a quiz made elsewhere). */
   reloadQuizzes(): void {
     this.quizzesData.reload();

@@ -35,9 +35,9 @@
     >
       <ui-icon name="sparkles" size="sm" />Tạo bằng AI
     </button>
-    <span id="ai-problem" class="course-editor__ai-problem">{{
-      aiProblem()
-    }}</span>
+    <span id="ai-problem" class="course-editor__ai-problem"
+      >{{ aiProblem() }}</span
+    >
     } @if (store.course$()) {
     <app-catalog-status [status]="store.status$()" />
     }
@@ -97,6 +97,8 @@
 <ui-alert tone="danger" class="course-editor__notice">
   {{ error.title ? error.title + ': ' : '' }}{{ error.message }}
 </ui-alert>
+} @if (store.step$() === 1) {
+<app-course-ai-status [unsaved]="dirty()" />
 }
 
 <form id="course-editor-form" [formRoot]="courseForm">
@@ -189,6 +191,17 @@
   }
 </ng-template>
 <ng-template #footer let-close="close">
+  @if (canRewrite()) {
+  <button
+    uiButton
+    type="button"
+    variant="secondary"
+    class="course-editor__rewrite"
+    (click)="rewriteWithAi()"
+  >
+    <ui-icon name="sparkles" size="sm" />Viết lại bằng AI
+  </button>
+  }
   <ui-form-actions
     formId="lesson-form"
     submitLabel="Lưu"

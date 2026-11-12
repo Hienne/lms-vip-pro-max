@@ -4,11 +4,13 @@ import {
   draftChecks,
   emptyDraftValue,
   lessonProblem,
+  mergeLive,
   newBlock,
   newLesson,
   toCreateCourseCommand,
   toDraftValue,
   toSaveDraftCommand,
+  type CourseDraftValue,
   type LessonValue,
 } from './course-draft';
 
@@ -336,5 +338,56 @@ describe('course draft', () => {
         chapters: [],
       });
     });
+  });
+});
+
+describe('mergeLive', () => {
+  const eod = courseDetailFixtures.find((d) => d.course.code === 'VH-301')!;
+  const saved = toDraftValue(eod);
+  const lessonAt = (value: CourseDraftValue, chapter: number, lesson: number) =>
+    value.chapters[chapter].lessons[lesson];
+  const retitled = (
+    value: CourseDraftValue,
+    chapter: number,
+    lesson: number,
+    title: string,
+  ): CourseDraftValue => ({
+    ...value,
+    chapters: value.chapters.map((c, ci) =>
+      ci === chapter
+        ? {
+            ...c,
+            lessons: c.lessons.map((l, li) =>
+              li === lesson ? { ...l, title } : l,
+            ),
+          }
+        : c,
+    ),
+  });
+
+  it('takes the server draft when the author changed nothing', () => {
+    const fresh = retitled(toDraftValue(eod), 0, 0, 'AI vừa viết');
+
+    expect(mergeLive(saved, toDraftValue(eod), fresh)).toBe(fresh);
+  });
+
+  it('keeps a lesson the author edited and takes the others from the server', () => {
+    const form = retitled(toDraftValue(eod), 0, 0, 'Bài tôi sửa');
+    let fresh = retitled(toDraftValue(eod), 0, 0, 'AI ghi đè');
+    fresh = retitled(fresh, 0, 1, 'AI vừa viết bài 2');
+
+    const merged = mergeLive(saved, form, fresh);
+
+    expect(lessonAt(merged, 0, 0).title).toBe('Bài tôi sửa');
+    expect(lessonAt(merged, 0, 1).title).toBe('AI vừa viết bài 2');
+  });
+
+  it('keeps the whole form when the structure differs', () => {
+    const form = {
+      ...toDraftValue(eod),
+      chapters: toDraftValue(eod).chapters.slice(1),
+    };
+
+    expect(mergeLive(saved, form, toDraftValue(eod))).toBe(form);
   });
 });

@@ -194,6 +194,17 @@ export class CourseJobMock {
       entry.job = { ...entry.job, status: 'cancelled' };
       return ok(entry.job);
     }
+    if (endpoint === courseJobEndpoints.stop) {
+      if (
+        ['completed', 'failed', 'cancelled', 'stopped'].includes(
+          entry.job.status,
+        )
+      ) {
+        return refuse('JOB_FINISHED', 'Công việc này đã kết thúc.');
+      }
+      entry.job = { ...entry.job, status: 'stopped' };
+      return ok(entry.job);
+    }
     this.jobs = this.jobs.filter((item) => item !== entry);
     return ok(null);
   }
@@ -487,6 +498,7 @@ export class CourseJobMock {
       sourceFileName: job.source?.fileName ?? null,
       createdDraftId: job.createdDraftId ?? null,
       createTime: job.createTime,
+      courseId: job.courseId ?? null,
     };
   }
 }
