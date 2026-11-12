@@ -1,6 +1,12 @@
 <header class="drawer__header">
   <h2 class="drawer__title" [id]="data.titleId">{{ data.title() }}</h2>
-  <button uiIconButton label="Đóng" [disabled]="data.busy()" (click)="close()">
+  <button
+    uiIconButton
+    label="Đóng"
+    [tooltipDisabled]="true"
+    [disabled]="data.busy()"
+    (click)="close()"
+  >
     <ui-icon name="x" />
   </button>
 </header>

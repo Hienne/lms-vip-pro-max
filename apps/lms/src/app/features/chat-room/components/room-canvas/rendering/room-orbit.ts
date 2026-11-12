@@ -175,7 +175,8 @@ export class RoomOrbit {
       this.view().chatting ||
       event.isComposing ||
       ['INPUT', 'TEXTAREA', 'SELECT', 'BUTTON'].includes(target.tagName) ||
-      target.isContentEditable
+      target.isContentEditable ||
+      target.closest?.('[role="log"]')
     )
       return;
     if (
@@ -282,6 +283,7 @@ export class RoomOrbit {
         this.actors.set(player.id, actor);
       }
       const seat = seatCenter(this.map, player.seat);
+      actor.follow(player.approaching ? player.route : undefined);
       actor.seated = !!seat;
       if (player.id === view.me && !seat) return;
       actor.target = {
@@ -373,12 +375,20 @@ export class RoomOrbit {
         id === view.me && this.smoothLocalPosition,
       ),
     );
-    this.placeCamera(delta, self?.seated ? self.target : this.position);
+    const focus = self?.seated
+      ? self.target
+      : this.approaching && self
+        ? {
+            x: self.root.position.x * WORLD_SCALE,
+            y: self.root.position.z * WORLD_SCALE,
+          }
+        : this.position;
+    this.placeCamera(delta, focus);
     this.renderer.render(this.scene, this.camera);
   };
 
   private placeCamera(delta: number, focus: { x: number; y: number }): void {
-    const follow = this.smoothLocalPosition ? 1 - Math.exp(-delta / 190) : 1;
+    const follow = this.smoothLocalPosition ? 1 - Math.exp(-delta / 95) : 1;
     this.cameraAnchor.x += (focus.x - this.cameraAnchor.x) * follow;
     this.cameraAnchor.y += (focus.y - this.cameraAnchor.y) * follow;
     if (

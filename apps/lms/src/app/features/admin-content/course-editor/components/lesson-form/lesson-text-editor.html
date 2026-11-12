@@ -1,0 +1,137 @@
+<div
+  uiCard
+  class="lesson-text-editor"
+  [class.lesson-text-editor--invalid]="invalid()"
+>
+  <div
+    class="lesson-text-editor__toolbar"
+    role="group"
+    aria-label="Định dạng nội dung"
+  >
+    <button
+      uiButton
+      type="button"
+      size="sm"
+      variant="secondary"
+      [disabled]="disabled() || media.pending$()"
+      [attr.aria-pressed]="sourceMode()"
+      (click)="toggleSource()"
+    >
+      {{ sourceMode() ? 'Soạn thảo' : 'Mã HTML' }}
+    </button>
+    @if (!sourceMode()) { @for (tool of tools; track tool.command) {
+    <button
+      uiButton
+      type="button"
+      size="sm"
+      variant="ghost"
+      [disabled]="disabled()"
+      [attr.aria-pressed]="tool.command === 'undo' || tool.command === 'redo' ? null : selected().has(tool.command)"
+      (mousedown)="$event.preventDefault()"
+      (click)="formatText(tool)"
+    >
+      {{ tool.label }}
+    </button>
+    }
+    <button
+      uiButton
+      type="button"
+      size="sm"
+      variant="ghost"
+      [disabled]="disabled() || media.pending$()"
+      (mousedown)="$event.preventDefault()"
+      (click)="imagePicker.click()"
+    >
+      Chèn ảnh
+    </button>
+    <button
+      uiButton
+      type="button"
+      size="sm"
+      variant="ghost"
+      [disabled]="disabled()"
+      (mousedown)="$event.preventDefault()"
+      (click)="insertTable()"
+    >
+      Chèn bảng
+    </button>
+    @if (inTable()) {
+    <button
+      uiButton
+      type="button"
+      size="sm"
+      variant="ghost"
+      [disabled]="disabled()"
+      (mousedown)="$event.preventDefault()"
+      (click)="extendTable(false)"
+    >
+      Thêm hàng
+    </button>
+    <button
+      uiButton
+      type="button"
+      size="sm"
+      variant="ghost"
+      [disabled]="disabled()"
+      (mousedown)="$event.preventDefault()"
+      (click)="extendTable(true)"
+    >
+      Thêm cột
+    </button>
+    }
+    <button
+      uiButton
+      type="button"
+      size="sm"
+      variant="ghost"
+      [disabled]="disabled()"
+      (mousedown)="$event.preventDefault()"
+      (click)="insertCode()"
+    >
+      Đoạn mã
+    </button>
+    }
+  </div>
+  <input
+    #imagePicker
+    type="file"
+    accept="image/png,image/jpeg,image/webp"
+    multiple
+    hidden
+    (change)="pickedImages($event)"
+  />
+  @if (media.pending$()) {
+  <p class="lesson-text-editor__status" role="status">Đang tải và xử lý ảnh…</p>
+  } @if (media.error$()) {
+  <p class="lesson-text-editor__error" role="alert">{{ media.error$() }}</p>
+  } @if (sourceMode()) {
+  <textarea
+    uiTextarea
+    class="lesson-text-editor__source"
+    rows="12"
+    aria-label="Mã HTML bài học"
+    [value]="sourceText()"
+    [disabled]="disabled()"
+    (input)="sourceChanged($event)"
+  ></textarea>
+  }
+  <div
+    #editor
+    class="lesson-text-editor__body lesson-html"
+    role="textbox"
+    aria-label="Nội dung bài học"
+    aria-multiline="true"
+    [hidden]="sourceMode()"
+    [appLessonImages]="value()"
+    [imageAssets]="imageIds()"
+    [attr.aria-invalid]="invalid() || null"
+    [attr.contenteditable]="!disabled()"
+    [attr.tabindex]="disabled() ? -1 : 0"
+    (input)="capture()"
+    (keyup)="rememberSelection()"
+    (mouseup)="rememberSelection()"
+    (blur)="blurred()"
+    (paste)="paste($event)"
+    (drop)="$event.preventDefault()"
+  ></div>
+</div>

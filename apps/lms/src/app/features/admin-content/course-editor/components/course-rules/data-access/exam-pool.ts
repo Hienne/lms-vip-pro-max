@@ -5,12 +5,16 @@ import {
 } from '@lms/contracts';
 import { EMPTY, expand, map, reduce, switchMap, type Observable } from 'rxjs';
 import type { EndpointClient } from '../../../../../../core/http/endpoint-client';
-import { POOL_PAGE_SIZE, POOL_PAGES } from './course-exam.model';
+import {
+  POOL_PAGE_SIZE,
+  POOL_PAGES,
+  type ExamQuestion,
+} from './course-exam.model';
 
 /** The course whose program bank fills the pool; the course path is how its managers may read it. */
 export interface ExamPoolSource {
   readonly programId: number;
-  readonly courseId: number;
+  readonly courseId?: number;
 }
 
 /**
@@ -46,10 +50,10 @@ export function syncExamPool(
     );
 }
 
-function activeQuestionIds(
+export function activeBankQuestions(
   client: EndpointClient,
   source: ExamPoolSource,
-): Observable<number[]> {
+): Observable<ExamQuestion[]> {
   const read = (page: number) =>
     client.call(programAssessmentEndpoints.questions, {
       query: {
@@ -66,7 +70,16 @@ function activeQuestionIds(
         ? read(result.page + 1)
         : EMPTY,
     ),
-    map((result) => result.items.map((item) => item.id)),
-    reduce((all, ids) => [...all, ...ids], [] as number[]),
+    map((result) => result.items),
+    reduce((all, items) => [...all, ...items], [] as ExamQuestion[]),
+  );
+}
+
+function activeQuestionIds(
+  client: EndpointClient,
+  source: ExamPoolSource,
+): Observable<number[]> {
+  return activeBankQuestions(client, source).pipe(
+    map((items) => items.map((item) => item.id)),
   );
 }

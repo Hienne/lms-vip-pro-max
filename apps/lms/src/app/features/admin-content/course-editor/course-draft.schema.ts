@@ -16,15 +16,23 @@ import type { CourseDraftValue } from './course-draft';
 export const PROGRAM_LOCKED_HINT =
   'Gỡ bài thi cuối khóa ở bước 3 để đổi chương trình.';
 
+function requiredText(path: SchemaPath<string>, message: string): void {
+  required(path, { message });
+  validate(path, ({ value }) =>
+    value() && !value().trim() ? { kind: 'blank', message } : undefined,
+  );
+}
+
 /** What the editor checks before a save; the server checks the rest on save and on publish. */
 export function courseDraftSchema(
   path: SchemaPathTree<CourseDraftValue>,
 ): void {
-  required(path.title, { message: 'Nhập tên khóa học.' });
+  requiredText(path.title, 'Nhập tên khóa học.');
   maxLength(path.title, COURSE_LIMITS.title, {
     message: `Tên khóa học tối đa ${COURSE_LIMITS.title} ký tự.`,
   });
   required(path.programId, { message: 'Chọn chương trình.' });
+  required(path.level, { message: 'Chọn mức độ khóa học.' });
   // The exam's pool comes from this program's bank, so the program cannot move under it.
   disabled(path.programId, {
     when: ({ valueOf }) =>
@@ -32,6 +40,9 @@ export function courseDraftSchema(
   });
   maxLength(path.summary, COURSE_LIMITS.summary, {
     message: `Mô tả tối đa ${COURSE_LIMITS.summary} ký tự.`,
+  });
+  maxLength(path.objectives, COURSE_LIMITS.items, {
+    message: `Tối đa ${COURSE_LIMITS.items} mục tiêu đầu ra.`,
   });
   applyEach(path.objectives, (objective) => {
     maxLength(objective, COURSE_LIMITS.objective, {
@@ -43,10 +54,16 @@ export function courseDraftSchema(
   max(path.rewardPoints, COURSE_LIMITS.rewardPoints, {
     message: `Điểm thưởng tối đa ${COURSE_LIMITS.rewardPoints}.`,
   });
+  maxLength(path.chapters, COURSE_LIMITS.items, {
+    message: `Tối đa ${COURSE_LIMITS.items} chương mỗi khóa.`,
+  });
   applyEach(path.chapters, (chapter) => {
-    required(chapter.title, { message: 'Nhập tên chương.' });
+    requiredText(chapter.title, 'Nhập tên chương.');
     maxLength(chapter.title, COURSE_LIMITS.title, {
       message: `Tên chương tối đa ${COURSE_LIMITS.title} ký tự.`,
+    });
+    maxLength(chapter.lessons, COURSE_LIMITS.items, {
+      message: `Tối đa ${COURSE_LIMITS.items} bài mỗi chương.`,
     });
   });
 }
@@ -59,7 +76,7 @@ export function courseCodeSchema(
   path: SchemaPath<string>,
   taken: () => string | null,
 ): void {
-  required(path, { message: 'Nhập mã khóa học.' });
+  requiredText(path, 'Nhập mã khóa học.');
   maxLength(path, COURSE_LIMITS.code, {
     message: `Mã tối đa ${COURSE_LIMITS.code} ký tự.`,
   });

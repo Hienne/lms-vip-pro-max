@@ -1,9 +1,12 @@
 import { Dialog } from '@angular/cdk/dialog';
 import {
   Component,
+  afterNextRender,
+  Injector,
   computed,
   inject,
   linkedSignal,
+  signal,
   untracked,
   viewChild,
 } from '@angular/core';
@@ -99,6 +102,12 @@ export class CourseEditor implements HasUnsavedChanges {
   protected readonly steps = EDITOR_STEPS;
   private readonly router = inject(Router);
   private readonly dialog = inject(Dialog);
+  private readonly injector = inject(Injector);
+  protected readonly validationRequested = signal<readonly boolean[]>([
+    false,
+    false,
+    false,
+  ]);
   protected readonly ai = inject(CourseAiJobStore);
   private readonly starter = inject(StartCourseStore);
   private readonly chatPrefill = inject(CourseFormPrefillStore);
@@ -174,8 +183,10 @@ export class CourseEditor implements HasUnsavedChanges {
     },
     {
       submission: {
+        onInvalid: () => this.showInvalidStep(),
         action: async () => {
-          if (this.store.pendingUploads$()) return;
+          if (this.store.pendingUploads$() || this.store.examEditing$()) return;
+          this.validationRequested.set([true, true, true]);
           if (this.store.isCreate$()) this.store.create(this.draftValue());
           else this.store.save(this.command());
         },
@@ -233,7 +244,7 @@ export class CourseEditor implements HasUnsavedChanges {
   private readonly stepFields = () => {
     const f = this.courseForm;
     return [
-      [f.title, f.programId, f.code, f.summary, f.objectives],
+      [f.title, f.programId, f.code, f.level, f.summary, f.objectives],
       [f.chapters],
       [f.rewardPoints],
     ];
@@ -242,13 +253,16 @@ export class CourseEditor implements HasUnsavedChanges {
   /** "Tiếp tục" on step 1 of a new course creates the course and moves to its URL: the cover must be done. */
   protected readonly continueBlocked = computed(
     () =>
-      this.store.isCreate$() &&
-      this.store.step$() === 0 &&
-      this.store.coverUploading$(),
+      this.store.examEditing$() ||
+      (this.store.isCreate$() &&
+        this.store.step$() === 0 &&
+        this.store.coverUploading$()),
   );
 
   /** Why saving waits: a block saved now would have no asset. */
   protected readonly uploadHint = computed(() => {
+    if (this.store.examEditing$())
+      return 'Lưu bài kiểm tra hoặc Hủy trước khi chuyển bước.';
     const pending = this.store.pendingUploads$();
     if (this.continueBlocked()) return 'Ảnh bìa đang tải lên';
     return pending ? `Còn ${pending} tệp đang tải` : '';
@@ -308,10 +322,15 @@ export class CourseEditor implements HasUnsavedChanges {
       this.store.save(this.command());
     });
     this.store.registerStepChecks(
-      this.stepFields().map((fields) => ({
+      this.stepFields().map((fields, index) => ({
         invalid: () => fields.some((field) => field().invalid()),
-        touched: () => fields.some((field) => field().touched()),
-        touch: () => fields.forEach((field) => field().markAsTouched()),
+        touched: () => this.validationRequested()[index],
+        touch: () => {
+          this.validationRequested.update((steps) =>
+            steps.map((shown, step) => step === index || shown),
+          );
+          fields.forEach((field) => field().markAsTouched());
+        },
       })),
     );
   }
@@ -322,6 +341,9 @@ export class CourseEditor implements HasUnsavedChanges {
    * form the author is typing in (the form's own files already include the finished upload).
    */
   private readonly lessonForm = viewChild(LessonForm);
+  protected readonly inlineUploading = computed(
+    () => this.lessonForm()?.inlineUploading$() ?? false,
+  );
 
   protected readonly editingLesson = computed((): LessonValue | undefined => {
     const target = this.store.editingLesson$();
@@ -333,7 +355,11 @@ export class CourseEditor implements HasUnsavedChanges {
   /** Unsaved edits, or files still uploading (leaving stops them): one question for both. */
   hasUnsavedChanges(): boolean {
     return (
-      !this.store.left$() && (this.dirty() || this.store.pendingUploads$() > 0)
+      !this.store.left$() &&
+      (this.dirty() ||
+        this.store.pendingUploads$() > 0 ||
+        this.store.examEditing$() ||
+        this.inlineUploading())
     );
   }
 
@@ -356,11 +382,32 @@ export class CourseEditor implements HasUnsavedChanges {
   }
 
   protected publish(): void {
-    if (this.store.pendingUploads$()) return;
-    void submit(this.courseForm, async () =>
-      this.store.isCreate$()
-        ? this.store.createAndPublish(this.draftValue())
-        : this.store.publish(this.command()),
+    if (this.store.pendingUploads$() || this.store.examEditing$()) return;
+    this.validationRequested.set([true, true, true]);
+    void submit(this.courseForm, {
+      onInvalid: () => this.showInvalidStep(),
+      action: async () =>
+        this.store.isCreate$()
+          ? this.store.createAndPublish(this.draftValue())
+          : this.store.publish(this.command()),
+    });
+  }
+
+  private showInvalidStep(): void {
+    this.validationRequested.set([true, true, true]);
+    const index = this.stepFields().findIndex((fields) =>
+      fields.some((field) => field().invalid()),
+    );
+    if (index < 0) return;
+    this.store.goToStep(index);
+    afterNextRender(
+      () =>
+        this.stepFields()
+          [index].find((field) => field().invalid())?.()
+          .errorSummary()[0]
+          ?.fieldTree()
+          .focusBoundControl(),
+      { injector: this.injector },
     );
   }
 
@@ -372,6 +419,10 @@ export class CourseEditor implements HasUnsavedChanges {
 
   /** Esc, the backdrop or a close button while a file begun here uploads: ask what to do first. */
   protected askToCloseLesson(): void {
+    if (this.inlineUploading()) {
+      void this.lessonForm()?.save();
+      return;
+    }
     this.store.askToCloseLesson(() => this.lessonForm()?.save());
   }
 

@@ -2,7 +2,7 @@
 
 :host {
   @include ui.page(content);
-  @include ui.stack(6);
+  @include ui.stack(5);
 }
 
 .hub {
@@ -12,49 +12,112 @@
     align-items: center;
     gap: ui.space(2);
   }
-
   &__loading {
     @include ui.stack(4);
   }
-  &__section-head {
-    @include ui.row(3);
-    margin-block-end: ui.space(4);
+  // The host is a flex column, so the filter stretches by default; keep it as wide as its options.
+  &__filter {
+    align-self: flex-start;
+    width: fit-content;
+    max-width: 100%;
+    overflow-x: auto;
   }
-  &__heading {
-    margin: 0;
-    font-size: ui.text-size(lg);
+
+  // Two columns from lg up: the quiz list, then the selected quiz. Stacked below that.
+  &__split {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: ui.space(5);
+    align-items: start;
+    @include ui.bp(lg) {
+      grid-template-columns: 20rem minmax(0, 1fr);
+    }
+  }
+
+  // The quiz list.
+  &__nav {
+    min-width: 0;
+    @include ui.bp(lg) {
+      position: sticky;
+      top: ui.space(4);
+    }
+  }
+  &__count {
+    @include ui.num;
+    @include ui.text(sm, muted);
+  }
+  // A row of `uiList`; the current quiz is tinted, its title in the brand colour, with a chevron.
+  &__nav-item {
+    &:focus-visible {
+      @include ui.focus-ring;
+    }
+    &--current,
+    &--current:hover {
+      background: ui.color(primary-subtle); // design-drift-allow: subtle-fill the selected quiz is the list's current row
+    }
+  }
+  &__nav-text {
+    @include ui.grow;
+    min-width: 0;
+  }
+  &__nav-title {
+    display: block;
+    font-weight: ui.weight(medium);
+    overflow-wrap: anywhere;
+  }
+  &__nav-item--current &__nav-title {
+    color: ui.color(primary);
     font-weight: ui.weight(semibold);
   }
-  &__list,
-  &__history {
-    @include ui.stack(4);
-    margin: 0;
-    padding: 0;
-    list-style: none;
+  &__nav-meta {
+    @include ui.row(2);
+    @include ui.num;
+    @include ui.text(sm, muted);
+    margin-block-start: ui.space(1);
   }
-  &__row {
-    @include ui.row-between(5);
+  &__nav-chevron {
+    flex: none;
+    color: ui.color(text-muted);
+    visibility: hidden;
+  }
+  &__nav-item:hover &__nav-chevron {
+    visibility: visible;
+  }
+  &__nav-item--current &__nav-chevron {
+    color: ui.color(primary);
+    visibility: visible;
+  }
+  &__nav-empty {
+    @include ui.text(sm, muted);
+    margin: 0;
+    padding: ui.space(4);
+  }
+
+  // The selected quiz.
+  &__detail {
+    @include ui.stack(4);
+    min-width: 0;
+  }
+  &__detail-head {
+    @include ui.row-between(4);
     align-items: flex-start;
     @include ui.bp(md) {
       flex-wrap: nowrap;
       align-items: center;
     }
   }
-  &__item {
-    max-width: none;
+  &__detail-text {
+    min-width: 0;
   }
-  &__main {
-    @include ui.grow;
-    flex-basis: 100%;
-    @include ui.bp(md) {
-      flex-basis: auto;
-    }
-  }
-  &__quiz-heading {
+  &__detail-title {
     margin: 0 0 ui.space(1);
-    font-size: ui.text-size(md);
+    font-size: ui.text-size(xl);
     font-weight: ui.weight(semibold);
   }
+  &__history {
+    min-width: 0;
+  }
+
   &__title {
     color: ui.color(primary);
     text-decoration: none;
@@ -71,58 +134,11 @@
     margin: 0;
     overflow-wrap: anywhere;
   }
-  &__facts {
-    @include ui.row(4);
-    @include ui.text(sm);
-    margin: ui.space(4) 0 0;
-    div {
-      @include ui.row(1);
-    }
-    dt {
-      color: ui.color(text-secondary);
-    }
-    dd {
-      @include ui.num;
-      margin: 0;
-      font-weight: ui.weight(semibold);
-    }
-  }
-  &__block-reason {
-    @include ui.text(sm, muted);
-    margin: ui.space(3) 0 0;
-  }
-  &__group {
-    min-width: 0;
-  }
-  &__group-head h3 {
-    margin: 0;
-  }
-  &__attempts {
-    table-layout: fixed;
-    th,
-    td {
-      overflow-wrap: anywhere;
-      white-space: normal;
-    }
-    // Keep the submitted date readable while other columns share the row.
-    th:nth-child(2) {
-      width: 30%;
-    }
-  }
-  &__number {
-    @include ui.num;
-    @include ui.bp(md) {
-      text-align: right;
-    }
-  }
-  &__actions {
-    @include ui.bp(md) {
-      text-align: right;
-    }
-  }
+
   &__timestamp {
     @include ui.num;
     @include ui.text(xs, muted);
+    white-space: nowrap;
   }
   &__attempt-no {
     @include ui.num;
@@ -130,9 +146,5 @@
   &__score {
     @include ui.num;
     font-weight: ui.weight(semibold);
-  }
-  &__group-footer {
-    padding: ui.space(3) ui.space(5);
-    border-block-start: 1px solid ui.color(border);
   }
 }

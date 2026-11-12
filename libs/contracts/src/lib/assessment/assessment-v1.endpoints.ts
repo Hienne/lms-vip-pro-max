@@ -1,4 +1,9 @@
 import { z } from 'zod';
+import {
+  CourseDetailSchema,
+  CreateCourseCommandSchema,
+  SaveDraftCommandSchema,
+} from '../course/course.schema';
 import { defineEndpoint } from '../http/endpoint';
 import { PageQuerySchema, PageSchema } from '../http/page';
 import { XLSX_MIME_TYPE } from '../organization/organization.schema';
@@ -24,7 +29,28 @@ import {
 } from './assessment-v1.schema';
 
 /** The backend's quiz authoring endpoints the app calls (/api/v1/quizzes). */
+export const CourseExamCommandSchema = z.object({
+  courseId: z.number().int().positive().optional(),
+  revisionId: z.number().int().positive().optional(),
+  course: CreateCourseCommandSchema.optional(),
+  draft: SaveDraftCommandSchema.optional(),
+  quizId: z.number().int().positive().optional(),
+  expectedQuizVersion: z.number().int().nonnegative().optional(),
+  quiz: QuizRequestV1Schema.omit({ courseId: true }).extend({
+    courseId: z.number().int().positive().optional(),
+  }),
+  pool: QuizPoolRequestV1Schema,
+});
+export type CourseExamCommand = z.infer<typeof CourseExamCommandSchema>;
+
 export const assessmentV1Endpoints = {
+  /** Atomic course draft, final exam, selected pool and completion link. */
+  saveCourseExam: defineEndpoint({
+    method: 'post',
+    path: '/api/v1/course-exams',
+    body: CourseExamCommandSchema,
+    response: CourseDetailSchema,
+  }),
   /** Authoring options from the shared competency catalogue, not a mock assessment-options API. */
   competencies: defineEndpoint({
     method: 'get',

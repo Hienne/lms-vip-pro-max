@@ -240,8 +240,10 @@ describe('course draft', () => {
         { id: 2, status: 'DRAFT', selectionMode: 'FIXED' },
       ]);
       expect(find(draft, 'Đã cấu hình bài kiểm tra cuối khóa')?.ok).toBe(true);
-      expect(find(draft, 'Bài kiểm tra cuối khóa đã xuất bản')).toMatchObject({
-        ok: false,
+      expect(
+        find(draft, 'Bài kiểm tra cuối khóa sẽ được xuất bản cùng khóa học'),
+      ).toMatchObject({
+        ok: true,
         step: 2,
       });
       expect(find(draft, 'Bài kiểm tra cuối khóa đã xuất bản')?.optional).toBe(
@@ -274,17 +276,17 @@ describe('course draft', () => {
       );
     });
 
-    it.each([
-      ['a closed exam', 'CLOSED', 'RANDOM_POOL'],
-      ['a draft exam the author filled by hand', 'DRAFT', 'FIXED'],
-    ] as const)('still blocks %s', (_, status, selectionMode) => {
-      const chosen = { ...toDraftValue(eod), finalQuizId: '2' };
-      const checks = draftChecks(chosen, [{ id: 2, status, selectionMode }]);
+    it.each([['a closed exam', 'CLOSED', 'RANDOM_POOL']] as const)(
+      'still blocks %s',
+      (_, status, selectionMode) => {
+        const chosen = { ...toDraftValue(eod), finalQuizId: '2' };
+        const checks = draftChecks(chosen, [{ id: 2, status, selectionMode }]);
 
-      expect(
-        checks.find((c) => c.label === 'Bài kiểm tra cuối khóa đã xuất bản'),
-      ).toMatchObject({ ok: false, step: 2 });
-    });
+        expect(
+          checks.find((c) => c.label === 'Bài kiểm tra cuối khóa đã xuất bản'),
+        ).toMatchObject({ ok: false, step: 2 });
+      },
+    );
   });
 
   describe('a course that is not stored yet', () => {

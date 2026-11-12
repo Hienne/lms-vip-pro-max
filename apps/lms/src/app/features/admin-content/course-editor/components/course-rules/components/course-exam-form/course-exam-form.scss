@@ -1,11 +1,42 @@
 @use 'ui';
 
 .course-exam-form {
+  min-width: 0;
+  border: 0;
+  padding: 0;
   @include ui.stack(4);
 
   &__numbers {
     display: grid;
     gap: ui.space(4);
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  &__pool {
+    max-height: 26rem;
+    overflow: auto;
+    border: 1px solid ui.color(border);
+    padding: ui.space(3);
+  }
+
+  &__question {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: ui.space(2);
+    padding-block: ui.space(2);
+    border-bottom: 1px solid ui.color(border);
+    cursor: pointer;
+
+    > span {
+      @include ui.stack(1);
+      overflow-wrap: anywhere;
+    }
+  }
+
+  &__advanced {
+    summary {
+      cursor: pointer;
+      padding-block: ui.space(3);
+    }
   }
 }

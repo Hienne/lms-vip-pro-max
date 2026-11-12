@@ -6,6 +6,7 @@ import {
   input,
   linkedSignal,
   output,
+  signal,
 } from '@angular/core';
 import {
   applyEach,
@@ -17,11 +18,13 @@ import {
   min,
   required,
   submit,
+  validate,
 } from '@angular/forms/signals';
 import {
   BlockTypeSchema,
   COURSE_LIMITS,
   type BlockType,
+  type BodyFormat,
   type LibraryAsset,
   type QuizSummary,
 } from '@lms/contracts';
@@ -40,6 +43,7 @@ import {
   UploadItem,
 } from '@lms/ui';
 import { AssetLibrary } from '../asset-library/asset-library';
+import { LessonTextEditor } from './lesson-text-editor';
 import { AssetLibraryStore } from '../asset-library/data-access/asset-library.store';
 import {
   BLOCK_TYPES,
@@ -63,9 +67,14 @@ import {
   type UploadEntry,
 } from '../../data-access/upload-entry';
 import { firstValueFrom } from 'rxjs';
+import { lessonImageIds } from '../../../../../shared/content/markdown/lesson-html';
+import { DOCUMENT } from '@angular/core';
 
 /** A block as the form edits it: process steps as one line each, "Tiêu đề | Mô tả". */
-type BlockFormValue = Omit<BlockValue, 'steps'> & { stepsText: string };
+type BlockFormValue = Omit<BlockValue, 'steps' | 'bodyFormat'> & {
+  bodyFormat: BodyFormat;
+  stepsText: string;
+};
 type LessonFormValue = Omit<LessonValue, 'blocks' | 'quizId'> & {
   /** The chosen quiz's id as the select holds it; empty when none. */
   quizId: string;
@@ -77,6 +86,7 @@ const toFormValue = (lesson: LessonValue): LessonFormValue => ({
   quizId: lesson.quizId === null ? '' : String(lesson.quizId),
   blocks: lesson.blocks.map(({ steps, ...block }) => ({
     ...block,
+    bodyFormat: block.bodyFormat ?? 'markdown',
     stepsText: steps
       .map((s) => (s.description ? `${s.title} | ${s.description}` : s.title))
       .join('\n'),
@@ -130,6 +140,7 @@ const quizLabel = (quiz: QuizSummary): string =>
     Icon,
     IconButton,
     Input,
+    LessonTextEditor,
     Select,
     Textarea,
     UploadItem,
@@ -145,6 +156,9 @@ export class LessonForm {
   protected readonly store = inject(CourseEditorStore);
   protected readonly library = inject(AssetLibraryStore);
   private readonly dialog = inject(Dialog);
+  private readonly document = inject(DOCUMENT);
+  private readonly inlineUploads = signal<ReadonlySet<string>>(new Set());
+  readonly inlineUploading$ = computed(() => this.inlineUploads().size > 0);
   /** Files chosen in this editor, by block key. */
   protected readonly uploads = this.store.uploads$;
   /** Uploads a reload stopped, by the index of their block in this lesson. */
@@ -153,6 +167,12 @@ export class LessonForm {
   protected readonly isCancellable = isCancellable;
   protected readonly blockTypes = BLOCK_TYPES;
   protected readonly addable = BlockTypeSchema.options;
+  protected readonly mediaBlocks = [
+    'image',
+    'video',
+    'pdf',
+    'attachment',
+  ] as const;
   protected readonly acceptOf = acceptOf;
   protected readonly uploadHintOf = uploadHintOf;
   protected readonly holdsFile = (type: BlockType) => !!FILE_USAGE[type];
@@ -162,6 +182,11 @@ export class LessonForm {
     this.model,
     (path) => {
       required(path.title, { message: 'Nhập tên bài học.' });
+      validate(path.title, ({ value }) =>
+        value() && !value().trim()
+          ? { kind: 'blank', message: 'Nhập tên bài học.' }
+          : undefined,
+      );
       maxLength(path.title, COURSE_LIMITS.title, {
         message: `Tên bài học tối đa ${COURSE_LIMITS.title} ký tự.`,
       });
@@ -170,8 +195,24 @@ export class LessonForm {
       max(path.minutes, COURSE_LIMITS.lessonSeconds / 60, {
         message: 'Thời lượng tối đa 24 giờ.',
       });
+      maxLength(path.blocks, COURSE_LIMITS.items, {
+        message: `Tối đa ${COURSE_LIMITS.items} khối mỗi bài.`,
+      });
+      validate(path.blocks, () =>
+        this.inlineUploads().size
+          ? {
+              kind: 'upload',
+              message: 'Chờ tải ảnh trong nội dung hoàn tất trước khi lưu bài.',
+            }
+          : undefined,
+      );
       applyEach(path.blocks, (block) => {
         required(block.title, { message: 'Nhập tiêu đề khối.' });
+        validate(block.title, ({ value }) =>
+          value() && !value().trim()
+            ? { kind: 'blank', message: 'Nhập tiêu đề khối.' }
+            : undefined,
+        );
         maxLength(block.title, COURSE_LIMITS.title, {
           message: `Tiêu đề khối tối đa ${COURSE_LIMITS.title} ký tự.`,
         });
@@ -232,11 +273,18 @@ export class LessonForm {
     return submit(this.lessonForm);
   }
 
-  protected addBlock(type: BlockType): void {
+  protected addBlock(
+    type: BlockType,
+    index = this.model().blocks.length,
+  ): void {
     const { steps: _steps, ...block } = newBlock(type);
     this.model.update((value) => ({
       ...value,
-      blocks: [...value.blocks, { ...block, stepsText: '' }],
+      blocks: [
+        ...value.blocks.slice(0, index),
+        { ...block, bodyFormat: 'markdown', stepsText: '' },
+        ...value.blocks.slice(index),
+      ],
     }));
   }
 
@@ -268,6 +316,7 @@ export class LessonForm {
       ...value,
       blocks: value.blocks.filter((_, i) => i !== index),
     }));
+    this.inlineUploading(key, false);
   }
 
   /** A file from the dropzone or a picker; with `resuming` it continues the interrupted upload. */
@@ -301,6 +350,41 @@ export class LessonForm {
     input.value = '';
   }
 
+  protected imageAdded(key: string, asset: AssetValue): void {
+    this.model.update((value) => ({
+      ...value,
+      blocks: value.blocks.map((block) =>
+        block.key === key
+          ? {
+              ...block,
+              assets: [
+                ...block.assets.filter(
+                  (existing) => existing.assetId !== asset.assetId,
+                ),
+                asset,
+              ],
+            }
+          : block,
+      ),
+    }));
+  }
+
+  protected inlineUploading(key: string, pending: boolean): void {
+    this.inlineUploads.update((keys) => {
+      if (keys.has(key) === pending) return keys;
+      const next = new Set(keys);
+      if (pending) next.add(key);
+      else next.delete(key);
+      return next;
+    });
+  }
+
+  protected prepareExam(): void {
+    if (this.inlineUploading$() || this.store.lessonUploading$()) return;
+    this.apply();
+    this.store.goToStep(2);
+  }
+
   /** A file picked from the library goes to the block like a finished upload. */
   protected useLibraryAsset(asset: LibraryAsset): void {
     const target = this.library.target$();
@@ -320,10 +404,18 @@ export class LessonForm {
           ? Number(value.quizId)
           : null,
       title: value.title.trim(),
-      blocks: value.blocks.map(({ stepsText, ...block }) => ({
+      blocks: value.blocks.map(({ stepsText, bodyFormat, ...block }) => ({
         ...block,
+        ...(block.blockType === 'text' ? { bodyFormat } : {}),
         title: block.title.trim(),
-        assets: files[block.key] ?? block.assets,
+        assets:
+          block.blockType === 'text'
+            ? block.assets.filter((asset) =>
+                lessonImageIds(block.body, this.document).includes(
+                  asset.assetId,
+                ),
+              )
+            : (files[block.key] ?? block.assets),
         steps: block.blockType === 'process' ? toSteps(stepsText) : [],
       })),
     });

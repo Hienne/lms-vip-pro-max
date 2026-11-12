@@ -149,19 +149,24 @@ describe('menu catalog', () => {
       ).toEqual([...UPCOMING].sort());
     });
 
-    it('carries the flag on the sidebar of a user', () => {
+    it('omits retired knowledge and issue destinations from navigation while keeping their grants', () => {
       const nav = navOf([
         fn(1, 'COURSE_LEARNING', 1),
         fn(2, 'KNOWLEDGE_HUB', 2),
+        fn(3, 'ISSUE_HUB', 3),
+        fn(4, 'COMMUNITY', 4),
       ]);
       const byCode = Object.fromEntries(
         nav.flatMap((s) => s.items).map((i) => [i.code, i.upcoming]),
       );
       expect(byCode).toEqual({
         COURSE_LEARNING: false,
-        KNOWLEDGE_HUB: true,
+        COMMUNITY: false,
         PROFILE: false,
       });
+      expect(
+        knownFunctions([fn(2, 'KNOWLEDGE_HUB', 2), fn(3, 'ISSUE_HUB', 3)]),
+      ).toHaveLength(2);
     });
   });
 

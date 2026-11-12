@@ -1,5 +1,17 @@
 # Contracts, zod and the in-app mock API
 
+The course editor authors its final exam inline through
+`assessmentV1Endpoints.saveCourseExam` (`POST /api/v1/course-exams`). A new course sends
+`{ course, quiz, pool }`; an existing draft sends `{ courseId, revisionId, draft, quiz, pool }`
+and, when editing an exam, `quizId` plus `expectedQuizVersion`. `draft.expectedVersion`
+protects the revision. `quiz.courseId` can be omitted: the server supplies the saved course ID.
+`pool.items` contains the selected program-bank `questionId`, `sortNo` and optional `points` overrides.
+The real backend atomically saves the course/draft, exam configuration, selected pool and
+`finalQuizId`, returning the existing `CourseDetail` envelope. Failed scope, version or question
+validation rolls everything back. Deploy that backend endpoint together with this FE change;
+this addition needs no SQL migration. The dev mock checkpoints both in-memory stores to model
+rollback. Publishing the course publishes its saved DRAFT final exam without replacing its pool.
+
 Question Excel import on `/admin/questions` uses the program selected outside the drawer.
 `programAssessmentEndpoints.importQuestions` calls the existing multipart endpoint
 `POST /api/v1/questions/import?programId&dryRun&overwrite`, part `file`, without `courseId`.
@@ -659,7 +671,7 @@ creation and runtime parsing; the route's `ChatRoomStore` owns presence, transie
 reconnection. A new connection always obtains a fresh ticket through `serverMutation`, so bearer/session
 expiry handling stays on the existing HTTP path. No JWT is sent in the socket URL.
 
-The `/chat-room` screen is in the signed-in `open` screen table. It appears as “Giải trí” in the
+The `/chat-room` screen is in the signed-in `open` screen table. It appears as “Giờ ra chơi” in the
 “Cộng đồng” menu in both the learner header and the staff sidebar. It uses the existing shell, Signal Forms
 and `@lms/ui`. Three.js is loaded when
 the canvas mounts. World coordinates and colours belong to the renderer, while Angular controls
@@ -677,21 +689,20 @@ The join form sends an optional `avatar` style and opts in to seating and high f
 accepted high-five event for paired animation. The server owns chair occupancy and validates the
 recipient, expiry and reach of every high-five invitation.
 
-There is no chat sidebar or chat log. Enter or the mobile-friendly "Nhắn tin" button opens the
-composer immediately above the instructions; sending or Escape closes it. Only active overhead
-bubbles (5.5 seconds) are held in the store and expired by per-player timers. Welcome history from
-older servers is ignored. The updated backend does not retain messages and sends an empty compatibility
-`history` field, so late arrivals/reconnects cannot receive previous speech.
+The chat overlay shows the last 50 messages of the current room session, including `welcome.history`.
+The server clears the history when the room empties. Enter or “Nhắn tin” opens the overlay composer.
+Sending or Escape closes it. Overhead bubbles expire after 5.5 seconds.
 
 The client opts in to the CPoint wallet, shared dice rounds and Caro with `roomGames: true` on join.
 `RoomGamesStore` owns game panel state and consumes socket events through `ChatRoomStore`.
 The 3D view marks `diceArea` for the 30-second Trên/Dưới rounds. The server settles bets, publishes
 the same result and history to viewers and sends each account its own wallet. Caro uses a server-owned
 50 × 50 board. Its three room tables start from their seats and use `caro-table` to report occupancy.
-New matches require a stake of at least 10 CPoint per player. State events still accept the stake
-from existing matches.
-The board view starts in the center and supports panning without sending moves. Position updates
-include `approaching` while the server walks a player toward an interaction target.
+The two chairs at each table face each other. Each player contributes at least 10 CPoint. The backend
+keeps matches and timers in memory and records only the final wallet transfer. The turn deadline
+continues while a player is away. The absent player forfeits if the turn expires before they return.
+The board view starts in the center and supports panning without sending moves. On an automatic approach,
+the server sends a route and speed for frame-by-frame rendering and confirms arrival.
 
 Deploy the matching `corebanking-academy` module and configure WebSocket upgrade for
 `/api/v1/chat-room/socket` on the FE reverse proxy. The development `/api` proxy enables WebSocket.

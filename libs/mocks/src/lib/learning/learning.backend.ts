@@ -136,6 +136,15 @@ interface CourseRecord {
  * assignments and learning groups. Progress and due dates are fixed fixtures, never computed.
  */
 export class LearningBackend {
+  /** Rollback point for the atomic course/exam authoring endpoint in the development backend. */
+  checkpointCourseWrites(): () => void {
+    const courses = structuredClone(this.courses);
+    const nextId = this.nextId;
+    return () => {
+      this.courses = courses;
+      this.nextId = nextId;
+    };
+  }
   private nextId = 5000;
   private fields: Mutable<TrainingField>[] = trainingFieldFixtures.map((f) => ({
     ...f,
@@ -896,7 +905,7 @@ export class LearningBackend {
                     ...stamp,
                   },
                   assets: block.assets.flatMap((use, ai) => {
-                    const asset = this.assets.find((a) => a.id === use.assetId);
+                    const asset = this.library.asset(use.assetId);
                     return asset
                       ? [
                           {

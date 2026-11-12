@@ -1,0 +1,1 @@
+[@analogjs/vite-plugin-angular]: Unable to resolve tsconfig at D:\SCH\lms-vip-pro-max\libs\ui\tsconfig.app.json or D:\SCH\lms-vip-pro-max\tsconfig.app.json. This causes compilation issues. Check the path or set the "tsconfig" property with an absolute path.

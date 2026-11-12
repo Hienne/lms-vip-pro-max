@@ -43,9 +43,13 @@ export interface Screen {
   readonly guestOnly?: boolean;
   /** The migrated component; absent means the route placeholder. */
   readonly load?: ScreenLoad;
+  /** Retired destinations forward to the existing screen that owns their content. */
+  readonly redirectTo?: string;
 }
 
 export interface MenuNav {
+  /** Retain server function codes and old URLs without showing a duplicate destination. */
+  readonly hidden?: boolean;
   readonly icon: IconName;
   readonly section: string;
   /** Count shown beside the label; the shell fills it from the server's nav counts. */
@@ -416,7 +420,7 @@ export const SCREEN_TABLE = {
       screens: [
         {
           path: 'admin/gamification',
-          title: 'Cấu hình gamification',
+          title: 'Cấu hình điểm thưởng',
           mockupPage: 'gamificationAdmin',
           load: () =>
             import(
@@ -431,12 +435,13 @@ export const SCREEN_TABLE = {
       ],
     },
     KNOWLEDGE_HUB: {
-      nav: { icon: 'graduation-cap', section: 'Công cụ học' },
+      nav: { icon: 'graduation-cap', section: 'Cộng đồng', hidden: true },
       screens: [
         {
           path: 'knowledge',
           title: 'Kho tri thức',
           mockupPage: 'knowledge',
+          redirectTo: 'community/questions',
         },
       ],
     },
@@ -575,12 +580,13 @@ export const SCREEN_TABLE = {
       ],
     },
     ISSUE_HUB: {
-      nav: { icon: 'message-square', section: 'Công cụ học' },
+      nav: { icon: 'message-square', section: 'Cộng đồng', hidden: true },
       screens: [
         {
           path: 'issues',
           title: 'Tra cứu sự cố',
           mockupPage: 'issues',
+          redirectTo: 'community/articles?type=lesson',
         },
       ],
     },
@@ -593,7 +599,7 @@ export const SCREEN_TABLE = {
   open: [
     {
       path: 'chat-room',
-      title: 'Giải trí',
+      title: 'Giờ ra chơi',
       mockupPage: 'chatRoom',
       layout: 'workspace',
       load: () =>

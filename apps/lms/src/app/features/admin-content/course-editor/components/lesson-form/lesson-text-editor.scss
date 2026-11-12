@@ -1,0 +1,55 @@
+@use 'ui';
+
+app-lesson-text-editor {
+  display: block;
+  min-width: 0;
+}
+
+.lesson-text-editor {
+  overflow: clip;
+
+  &:focus-within {
+    border-color: ui.color(primary);
+  }
+
+  &--invalid {
+    border-color: ui.color(danger);
+  }
+
+  &__toolbar {
+    @include ui.row(1);
+    padding: ui.space(1);
+    border-bottom: 1px solid ui.color(border);
+    background: ui.color(surface-2);
+
+    button[aria-pressed='true'] {
+      background: ui.color(surface);
+      color: ui.color(primary);
+    }
+  }
+
+  &__body {
+    min-height: 12rem;
+    padding: ui.space(3);
+
+    &:empty::before {
+      content: 'Nhập nội dung bài học…';
+      color: ui.color(text-muted);
+      pointer-events: none;
+    }
+  }
+
+  &__status,
+  &__error {
+    @include ui.text(sm, muted);
+    margin: ui.space(2) ui.space(3);
+  }
+
+  &__error {
+    color: ui.color(danger);
+  }
+  &__source {
+    border: 0;
+    @include ui.mono;
+  }
+}

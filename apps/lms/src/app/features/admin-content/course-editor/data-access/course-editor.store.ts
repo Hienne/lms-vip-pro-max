@@ -97,7 +97,6 @@ import {
   type PublishTargets,
 } from './publish-targets';
 import { Sha256Hasher } from './sha256-hasher';
-import { syncExamPool } from '../components/course-rules/data-access/exam-pool';
 import {
   hashingStatus,
   isBusy,
@@ -285,6 +284,8 @@ export class CourseEditorStore {
     left: signal(false),
     /** The course code the server refused as taken, so the code field can say so. */
     takenCode: signal<string | null>(null),
+    examSaving: signal(false),
+    examEditing: signal(false),
     /** The program whose field lists the modules; follows the course until the author picks. */
     programId: linkedSignal<number | undefined>(
       () => this.courseData.value()?.revision.programId ?? undefined,
@@ -343,7 +344,7 @@ export class CourseEditorStore {
       this.client.call(trainingCatalogEndpoints.listPrograms, {
         query: { ownerOrgId, size: 100 },
       }),
-    { params: () => this.orgId() },
+    { params: () => this.ownerOrgId$() },
   );
 
   private readonly fieldId = computed(() => {
@@ -507,6 +508,7 @@ export class CourseEditorStore {
 
   // Selectors
   readonly step$ = this.state.step.asReadonly();
+  readonly examEditing$ = this.state.examEditing.asReadonly();
   readonly visited$ = this.state.visited.asReadonly();
   /** The stepper's steps, each completed only while visited, valid and not open. */
   readonly steps$ = computed((): readonly StepperItem[] => {
@@ -541,7 +543,7 @@ export class CourseEditorStore {
   readonly isCreate$ = computed(
     () => this.route.snapshot.data['mode'] === 'create',
   );
-  /** Whether the user may open the quiz screen to author the course's final exam. */
+  /** Whether the user may author the course's final exam inline. */
   readonly canCreateQuiz$ = computed(() =>
     this.session.menus$().includes('QUIZ_MANAGEMENT'),
   );
@@ -584,6 +586,9 @@ export class CourseEditorStore {
       : undefined;
   });
   readonly programs$ = computed(() => this.programsData.value()?.items ?? []);
+  readonly programsLoading$ = this.programsData.isLoading;
+  readonly programsError$ = this.programsData.error;
+  readonly modulesError$ = this.modulesData.error;
   readonly modules$ = computed(() =>
     this.fieldId() ? (this.modulesData.value()?.items ?? []) : [],
   );
@@ -591,6 +596,7 @@ export class CourseEditorStore {
   readonly isOpeningDraft$ = this.openDraftMutation.isPending;
   readonly isSaving$ = computed(
     () =>
+      this.state.examSaving() ||
       this.saveMutation.isPending() ||
       this.createMutation.isPending() ||
       this.createAndContinueMutation.isPending() ||
@@ -846,6 +852,7 @@ export class CourseEditorStore {
 
   // Commands
   goToStep(step: number): void {
+    if (this.state.examSaving() || this.state.examEditing()) return;
     const target = Math.max(0, Math.min(EDITOR_STEPS.length - 1, step));
     this.setStep(target);
     if (!this.state.visited().includes(target)) {
@@ -861,6 +868,22 @@ export class CourseEditorStore {
   /** The page hands over how a newly made final exam joins the draft (the form's field, then a save). */
   registerExamAttacher(attach: (quizId: number) => void): void {
     this.setExamAttacher(attach);
+  }
+
+  setExamSaving(saving: boolean): void {
+    this.state.examSaving.set(saving);
+  }
+
+  setExamEditing(editing: boolean): void {
+    this.state.examEditing.set(editing);
+  }
+
+  acceptExamCourse(saved: CourseDetail): void {
+    if (this.isCreate$()) this.moveToEditor(saved, 2);
+    else {
+      this.changes.bump();
+      this.quizzesData.reload();
+    }
   }
 
   /**
@@ -899,6 +922,7 @@ export class CourseEditorStore {
    * when that is done), so the later steps always have a course to attach to.
    */
   continue(draft: CourseDraftValue): boolean {
+    if (this.isSaving$() || this.examEditing$()) return false;
     const step = this.state.step();
     const check = this.state.stepChecks()[step];
     check?.touch();
@@ -992,6 +1016,7 @@ export class CourseEditorStore {
 
   /** The first save of a new course: it is created with the whole draft in one call. */
   create(value: CourseDraftValue): void {
+    if (this.isSaving$()) return;
     const command = this.createCommand(value);
     if (command) this.createMutation.run(command);
   }
@@ -1021,6 +1046,7 @@ export class CourseEditorStore {
 
   /** Publishing a course that is not stored yet creates it first, then publishes it. */
   createAndPublish(value: CourseDraftValue): void {
+    if (this.isSaving$()) return;
     const command = this.createCommand(value);
     const targets = this.targetsToPublish();
     if (!command || !targets) return;
@@ -1215,6 +1241,14 @@ export class CourseEditorStore {
     this.courseData.reload();
   }
 
+  retryPrograms(): void {
+    this.programsData.reload();
+  }
+
+  retryModules(): void {
+    this.modulesData.reload();
+  }
+
   /** Reads the course again, keeping what is on screen meanwhile (the AI wrote into it). */
   reloadCourse(): void {
     this.courseData.reload();
@@ -1233,7 +1267,7 @@ export class CourseEditorStore {
     const message =
       rule && !rule.extensions.includes(extension)
         ? `Sai định dạng: chỉ chấp nhận ${rule.extensions.join(', ').toUpperCase()}.`
-        : rule && file.size > rule.maxMb * 1024 * 1024
+        : rule && file.size > rule.maxMb * 1_000_000
           ? `Tệp vượt giới hạn ${rule.maxMb} MB.`
           : undefined;
     if (message === undefined) return false;
@@ -1647,7 +1681,6 @@ export class CourseEditorStore {
       ?.items.find((quiz) => quiz.id === finalQuizId);
     return exam &&
       exam.status === 'DRAFT' &&
-      exam.selectionMode !== 'FIXED' &&
       exam.id !== this.state.publishedExamId()
       ? { id: exam.id, title: exam.title }
       : undefined;
@@ -1664,26 +1697,25 @@ export class CourseEditorStore {
     const exam = input.exam;
     const programId = saved.revision.programId;
     if (input.kind !== 'save' || !exam || !programId) return of(null);
-    return syncExamPool(this.client, exam.id, {
-      programId,
-      courseId: saved.course.id,
-    }).pipe(
-      switchMap((pool) =>
-        this.client.call(assessmentV1Endpoints.publishQuiz, {
-          params: { id: exam.id },
-          body: { expectedVersion: pool.quiz.rowVersion },
+    return this.client
+      .call(assessmentV1Endpoints.quiz, { params: { id: exam.id } })
+      .pipe(
+        switchMap((pool) =>
+          this.client.call(assessmentV1Endpoints.publishQuiz, {
+            params: { id: exam.id },
+            body: { expectedVersion: pool.quiz.rowVersion },
+          }),
+        ),
+        tap(() => this.setPublishedExamId(exam.id)),
+        catchError((error: unknown) => {
+          this.setExamPublishError(toAppError(error));
+          this.setFailureShown(true);
+          this.goToStep(2);
+          this.changes.bump();
+          this.quizzesData.reload();
+          return throwError(() => error);
         }),
-      ),
-      tap(() => this.setPublishedExamId(exam.id)),
-      catchError((error: unknown) => {
-        this.setExamPublishError(toAppError(error));
-        this.setFailureShown(true);
-        this.goToStep(2);
-        this.changes.bump();
-        this.quizzesData.reload();
-        return throwError(() => error);
-      }),
-    );
+      );
   }
 
   private publishCourse(input: PublishInput, saved: CourseDetail) {

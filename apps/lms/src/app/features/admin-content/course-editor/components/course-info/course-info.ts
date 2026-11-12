@@ -72,6 +72,7 @@ export class CourseInfo {
   readonly draft = input.required<FieldTree<CourseDraftValue>>();
   /** A course being created: its code is typed here, and the owner is shown beside it. */
   readonly create = input(false);
+  readonly showErrors = input(false);
   /** False on a published revision: the objectives cannot be added or removed. */
   readonly editable = input(true);
   readonly ownerName = input('');
@@ -94,6 +95,19 @@ export class CourseInfo {
   protected readonly programLockedHint = PROGRAM_LOCKED_HINT;
   protected readonly itemState = itemState;
   protected readonly isCancellable = isCancellable;
+
+  protected pickProgram(event: Event): void {
+    const value = (event.target as HTMLSelectElement).value;
+    const fieldId = this.programs().find(
+      (program) => String(program.id) === value,
+    )?.fieldId;
+    const module = this.modules().find(
+      (item) => String(item.id) === this.draft().moduleId().value(),
+    );
+    if (!module || module.fieldId !== fieldId)
+      this.draft().moduleId().value.set('');
+    this.programPicked.emit(value);
+  }
 
   protected readonly cover = this.store.coverPreview(() => this.coverAssetId());
   protected readonly coverSrc = computed(() => coverSrc(this.cover()));

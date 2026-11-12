@@ -56,7 +56,9 @@ describe('ChatRoomStore', () => {
         speed: 190,
         radius: 12,
         spawn: { x: 560, y: 656 },
-        objects: [],
+        objects: [
+          { kind: 'desk', x: 550, y: 300, w: 170, h: 68, facing: null },
+        ],
       }),
     );
     await settle();
@@ -188,7 +190,7 @@ describe('ChatRoomStore', () => {
     expect(store.status$()).toBe('offline');
     http.expectNone('/api/v1/chat-room/tickets');
   });
-  it('expires speech instead of keeping a chat log and ignores welcome history', async () => {
+  it('expires speech bubbles and keeps a bounded chat log until leaving', async () => {
     await connect();
     vi.useFakeTimers();
     const chat = {
@@ -197,13 +199,14 @@ describe('ChatRoomStore', () => {
       playerId: 'a',
       name: 'An',
       color: 'teal' as const,
-      text: 'Chỉ người đang ở đây đọc được',
+      text: 'Chào cả phòng',
       at: '2026-11-06T13:00:00Z',
     };
     observer.message(chat);
     expect(store.speech$()['a'].text).toBe(chat.text);
     await vi.advanceTimersByTimeAsync(5501);
     expect(store.speech$()).toEqual({});
+    expect(store.messages$()).toEqual([chat]);
     observer.message({
       type: 'welcome',
       id: 'new',
@@ -211,7 +214,14 @@ describe('ChatRoomStore', () => {
       history: [chat],
     });
     expect(store.speech$()).toEqual({});
-    expect(store.announcement$()).toBe('');
+    expect(store.messages$()).toEqual([chat]);
+    for (let i = 0; i < 51; i++) {
+      observer.message({ ...chat, id: String(i) });
+    }
+    expect(store.messages$()).toHaveLength(50);
+    expect(store.messages$()[0].id).toBe('1');
+    store.leave();
+    expect(store.messages$()).toEqual([]);
   });
   it('opens chat explicitly, closes it after send, and resumes movement', async () => {
     store.openChat();
