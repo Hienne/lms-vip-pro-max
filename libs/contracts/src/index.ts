@@ -71,3 +71,4 @@ export * from './lib/chat-room/chat-room.endpoints';
 export * from './lib/assessment/flashcard.endpoints';
 
 export * from './lib/assessment/personal-flashcard.endpoints';
+export * from './lib/scorm/scorm.endpoints';

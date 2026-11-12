@@ -1,5 +1,14 @@
 # Contracts, zod and the in-app mock API
 
+SCORM lecture endpoints live in `lib/scorm/scorm.endpoints.ts` and are real backend contracts.
+`/admin/lessons` imports a ZIP to a draft package and previews it; `/scorm` lists published lectures
+available to the learner; `/scorm/:id` launches and renders server progress. These are independent
+lectures and do not change existing course completion or certificates. `lessonLocation` is an opaque
+SCO bookmark, never a locally calculated page or percentage. Score/status come from the authenticated
+progress endpoint; iframe messages only trigger a refresh after checking exact source and origin.
+Executable packages must use the backend's separate SCORM player origin; embedding on the LMS origin
+is refused. Deploy the SCORM SQL upgrade and configure both origins before using this feature.
+
 The course editor authors its final exam inline through
 `assessmentV1Endpoints.saveCourseExam` (`POST /api/v1/course-exams`). A new course sends
 `{ course, quiz, pool }`; an existing draft sends `{ courseId, revisionId, draft, quiz, pool }`

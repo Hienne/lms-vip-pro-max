@@ -1,0 +1,92 @@
+<ui-page-header
+  [title]="store.package$()?.title ?? 'Bài giảng SCORM'"
+  [description]="store.preview$() ? 'Xem thử bài giảng — kết quả không tính vào học viên.' : 'Học, làm bài kiểm tra và tiếp tục từ vị trí đã lưu.'"
+>
+  <div slot="actions">
+    <a uiButton [routerLink]="store.backLink$()"
+      ><ui-icon name="arrow-left" size="sm" />Về thư viện</a
+    >
+  </div>
+</ui-page-header>
+@if(store.package$();as item){@for(warning of item.warnings;track
+warning){<ui-alert tone="warning">{{warning}}</ui-alert>}}
+@if(store.packageError$();as error){<ui-alert tone="danger"
+  >{{error.message}}</ui-alert
+>} @if(store.launchError$();as error){<ui-alert tone="danger"
+  >{{error.message}}<button
+    uiButton
+    type="button"
+    size="sm"
+    (click)="store.open()"
+  >
+    Mở lại
+  </button></ui-alert
+>} @if(store.saveState$()==='error' || store.saveState$()==='expired'){
+<ui-alert tone="danger"
+  >{{store.saveState$()==='expired' ? 'Phiên bài giảng đã hết hạn. Mở lại để học
+  tiếp từ lần lưu thành công gần nhất.' : 'Chưa lưu được tiến độ. Dùng nút Thử
+  lưu lại trong bài giảng trước khi thoát.'}}
+  @if(store.saveState$()==='expired'){<button
+    uiButton
+    type="button"
+    (click)="store.open()"
+  >
+    Mở lại bài giảng</button
+  >} </ui-alert
+>}
+<ui-section-card title="Kết quả trên LMS">
+  @if(store.progress$();as progress){
+  <dl class="scorm-player__result">
+    <div>
+      <dt>Trạng thái</dt>
+      <dd>{{status[progress.lessonStatus]}}</dd>
+    </div>
+    <div>
+      <dt>Điểm</dt>
+      <dd>
+        {{progress.scoreRaw ?? '—'}}@if(progress.scoreMax!==null){ /
+        {{progress.scoreMax}}}
+      </dd>
+    </div>
+    <div>
+      <dt>Vị trí học tiếp</dt>
+      <dd>
+        {{progress.lessonLocation || 'Chưa có vị trí được bài giảng gửi về'}}
+      </dd>
+    </div>
+    <div>
+      <dt>Lưu gần nhất</dt>
+      <dd>
+        {{progress.updateTime ? (progress.updateTime | fmtDatetime) : 'Chưa
+        học'}}
+      </dd>
+    </div>
+  </dl>
+  } @if(store.progressError$();as error){<ui-alert tone="danger"
+    >{{error.message}}<button
+      uiButton
+      type="button"
+      size="sm"
+      (click)="store.retryProgress()"
+    >
+      Tải lại kết quả
+    </button></ui-alert
+  >}
+  <p role="status">
+    {{store.saveState$()==='saving' ? 'Đang lưu tiến độ…' :
+    store.saveState$()==='saved' ? 'Tiến độ được lưu khi bài giảng gửi cập
+    nhật.' : 'Tiến độ chưa được lưu đầy đủ.'}}
+  </p>
+</ui-section-card>
+@if(store.launching$()){
+<div uiSkeleton variant="block" class="scorm-player__loading"></div>
+} @if(store.url$();as url){<iframe
+  #frame
+  class="scorm-player__frame"
+  [src]="url"
+  title="Trình phát bài giảng SCORM"
+  sandbox="allow-scripts allow-same-origin allow-forms"
+  allow="fullscreen"
+  referrerpolicy="no-referrer"
+></iframe
+>}
