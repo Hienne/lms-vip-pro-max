@@ -28,6 +28,7 @@ const LIGHT_PROPERTIES = [
   '--color-certificate-gold',
   '--color-certificate-gold-ink',
   '--color-certificate-ink',
+  '--color-certificate-navy',
   '--color-certificate-caption',
   '--color-certificate-gallery-bg',
   '--color-certificate-gallery-text',
