@@ -119,6 +119,11 @@ describe('AppShell', () => {
           }),
         ),
       );
+    // The assistant screen also lists the user's duplicate documents; there are none.
+    backend
+      .match((r) => r.url === '/api/v1/knowledge/documents/duplicates')
+      .filter((r) => !r.cancelled)
+      .forEach((r) => r.flush(envelopeOk([])));
     // The owl's tracker asks for the user's unfinished uploads; there are none.
     backend
       .match((r) => r.url === '/api/v1/knowledge/documents')
@@ -186,7 +191,7 @@ describe('AppShell', () => {
     ],
     [
       'admin',
-      '/admin/gamification',
+      '/admin/system',
       [
         '/admin/courses',
         '/admin/catalog',
