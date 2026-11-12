@@ -122,6 +122,15 @@ export const SCREEN_TABLE = {
             ),
         },
         {
+          path: 'scorm',
+          title: 'Bài giảng SCORM',
+          mockupPage: 'lessons',
+          load: () =>
+            import('../../features/scorm/scorm-library/scorm-library').then(
+              (m) => m.ScormLibrary,
+            ),
+        },
+        {
           path: 'lesson/:courseId/:lessonId',
           title: 'Bài học',
           mockupPage: 'lesson',
@@ -265,6 +274,10 @@ export const SCREEN_TABLE = {
           path: 'admin/lessons',
           title: 'Quản lý bài giảng',
           mockupPage: 'lessons',
+          load: () =>
+            import('../../features/scorm/scorm-library/scorm-library').then(
+              (m) => m.ScormLibrary,
+            ),
         },
       ],
     },
@@ -768,6 +781,15 @@ export const SCREEN_TABLE = {
       load: () =>
         import('../../features/account/notifications/notifications').then(
           (m) => m.Notifications,
+        ),
+    },
+    {
+      path: 'scorm/:id',
+      title: 'Học bài giảng SCORM',
+      mockupPage: 'lesson',
+      load: () =>
+        import('../../features/scorm/scorm-player/scorm-player').then(
+          (m) => m.ScormPlayer,
         ),
     },
     {

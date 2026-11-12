@@ -96,6 +96,104 @@ describe('ReportScreen', () => {
     ).toBeNull();
   });
 
+  describe('assessment report selection', () => {
+    const reportType = (root: HTMLElement) => {
+      const select = root.querySelector<HTMLSelectElement>(
+        '#assessment-report-type',
+      );
+      if (!select) throw new Error('Assessment report selector missing');
+      return select;
+    };
+
+    it.each(['results', 'learners', 'competency', 'questions'])(
+      'selects the current type when opening %s directly',
+      async (type) => {
+        const { root } = await open(`/reports/${type}`);
+        const select = reportType(root);
+        expect(select?.value).toBe(type);
+        expect(select?.disabled).toBe(false);
+        expect(Array.from(select?.options ?? []).map((o) => o.value)).toEqual([
+          'results',
+          'learners',
+          'competency',
+          'questions',
+        ]);
+      },
+    );
+
+    it('switches all report types, preserving scope and resetting pagination', async () => {
+      const { root, store } = await open('/reports/results?courseId=1&page=2');
+      for (const type of ['competency', 'questions', 'learners', 'results']) {
+        const select = reportType(root);
+        select.value = type;
+        select.dispatchEvent(new Event('change', { bubbles: true }));
+        await settle();
+        expect(store.dimension$()).toBe(type);
+        expect(store.filters$().courseId).toBe(1);
+        expect(store.page$()).toBe(1);
+        expect(reportType(root)?.value).toBe(type);
+      }
+    });
+
+    it.each([
+      '/reports/learners',
+      '/reports/results?userId=000099',
+      '/reports/results?courseId=9999',
+    ])(
+      'allows switching from a missing or empty selection on %s',
+      async (path) => {
+        const { root, store } = await open(path);
+        const select = reportType(root);
+        expect(select).not.toBeNull();
+        select.value = 'questions';
+        select.dispatchEvent(new Event('change', { bubbles: true }));
+        await settle();
+        expect(store.dimension$()).toBe('questions');
+        expect(reportType(root)?.value).toBe('questions');
+      },
+    );
+
+    it.each(['error', 'null'])(
+      'keeps the selector usable when the report API returns %s',
+      async (reply) => {
+        const backend = TestBed.inject(MockBackend);
+        const handle = backend.handle.bind(backend);
+        vi.spyOn(backend, 'handle').mockImplementation((endpoint, request) =>
+          endpoint === api.results
+            ? {
+                status: reply === 'error' ? 500 : 200,
+                body:
+                  reply === 'null'
+                    ? envelopeOk(null)
+                    : envelopeError(
+                        'CORE-INTERNAL_ERROR',
+                        'Lỗi',
+                        'Không tải được báo cáo.',
+                      ),
+              }
+            : handle(endpoint, request),
+        );
+        const { root, store } = await open('/reports/results');
+        expect(root.querySelector('ui-error-state')).not.toBeNull();
+        const select = reportType(root);
+        expect(select?.disabled).toBe(false);
+        select.value = 'competency';
+        select.dispatchEvent(new Event('change', { bubbles: true }));
+        await settle();
+        expect(store.dimension$()).toBe('competency');
+        expect(reportType(root)?.value).toBe('competency');
+      },
+    );
+
+    it('does not repeat report requests once filters have settled', async () => {
+      const spy = vi.spyOn(TestBed.inject(MockBackend), 'handle');
+      await open('/reports/results?orgId=1&courseId=1&quizId=1');
+      const count = spy.mock.calls.length;
+      await settle();
+      expect(spy.mock.calls.length).toBe(count);
+    });
+  });
+
   it('runs "Tình trạng học viên" from the pickers alone', async () => {
     const spy = vi.spyOn(TestBed.inject(MockBackend), 'handle');
     const { root, store, labels, text } = await open('/reports/learners');
@@ -271,6 +369,56 @@ describe('ReportScreen', () => {
   });
 
   describe('Tiến độ & hoàn thành', () => {
+    it('shows a failed summary with retry without hiding the progress rows', async () => {
+      const backend = TestBed.inject(MockBackend);
+      const handle = backend.handle.bind(backend);
+      let failed = true;
+      vi.spyOn(backend, 'handle').mockImplementation((endpoint, request) =>
+        endpoint === learning.summary && failed
+          ? {
+              status: 500,
+              body: envelopeError(
+                'CORE-INTERNAL_ERROR',
+                'Lỗi',
+                'Không tải được tổng hợp học tập.',
+              ),
+            }
+          : handle(endpoint, request),
+      );
+      const { root, store, text } = await open('/reports/progress');
+      expect(
+        root.querySelector('app-progress-report ui-error-state'),
+      ).not.toBeNull();
+      expect(text()).toContain('Tổng quan hệ thống Core Banking');
+      failed = false;
+      store.retryLearning();
+      await settle();
+      expect(
+        root.querySelector('app-progress-report ui-error-state'),
+      ).toBeNull();
+      expect(store.learning$()).toBeDefined();
+    });
+
+    it('shows scope loading failures rather than an empty progress report', async () => {
+      const backend = TestBed.inject(MockBackend);
+      const handle = backend.handle.bind(backend);
+      vi.spyOn(backend, 'handle').mockImplementation((endpoint, request) =>
+        endpoint === learning.groups
+          ? {
+              status: 500,
+              body: envelopeError(
+                'CORE-INTERNAL_ERROR',
+                'Lỗi',
+                'Không tải được phạm vi báo cáo.',
+              ),
+            }
+          : handle(endpoint, request),
+      );
+      const { root, text } = await open('/reports/progress?orgId=1');
+      expect(root.querySelector('ui-error-state')).not.toBeNull();
+      expect(text()).toContain('Không tải được phạm vi báo cáo.');
+    });
+
     it('filters by unit, team, course, status, overdue and enrolment dates', async () => {
       const { labels } = await open('/reports/progress');
       expect(labels()).toEqual(

@@ -1,0 +1,12 @@
+@use 'ui';
+:host {
+  @include ui.page(wide);
+  @include ui.stack(6);
+}
+.scorm-library__upload {
+  @include ui.row(3);
+  flex-wrap: wrap;
+}
+.scorm-library__filters {
+  padding: ui.space(4);
+}

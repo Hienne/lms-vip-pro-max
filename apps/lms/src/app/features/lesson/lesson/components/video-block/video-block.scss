@@ -1,15 +1,22 @@
 @use 'ui';
 
-:host(.video-block--wide) .video__stage:not(:fullscreen) .video__player {
-  max-height: none;
-}
-
 .video {
   &__stage:fullscreen {
-    @include ui.stack(2);
-    justify-content: center;
+    display: grid;
+    grid-template-rows: minmax(0, 1fr) auto;
+    gap: ui.space(2);
     padding: ui.space(3);
     background: ui.color(surface);
+
+    .video__player {
+      min-height: 0;
+      height: 100%;
+      max-height: none;
+    }
+
+    .video__controls {
+      margin-top: 0;
+    }
   }
 
   &__controls {
@@ -26,7 +33,9 @@
   &__player {
     display: block;
     width: 100%;
+    height: auto;
     max-height: 70dvh;
+    object-fit: contain;
     border-radius: ui.radius(control);
     background: ui.color(black);
   }

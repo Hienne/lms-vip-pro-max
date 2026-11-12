@@ -32,6 +32,26 @@
 </nav>
 <div class="row-between">
   <div class="row row--gap-3">
+    @if (store.dimension$()) {
+    <label class="row row--gap-2" for="assessment-report-type"
+      >Loại báo cáo</label
+    >
+    <select
+      uiSelect
+      id="assessment-report-type"
+      #assessment
+      (change)="store.selectAssessment(assessment.value)"
+    >
+      @for (option of store.assessmentViews$(); track option.value) {
+      <option
+        [value]="option.value"
+        [selected]="option.value === store.dimension$()"
+      >
+        {{option.label}}
+      </option>
+      }
+    </select>
+    }
     <button
       uiButton
       variant="secondary"
@@ -180,6 +200,8 @@
 </section>
 @if (store.unsupported$()) {
 <ui-alert>Không có báo cáo này. Chọn một báo cáo ở trên.</ui-alert>
+} @else if (store.pickers.error$(); as error) {
+<ui-error-state [message]="error.message" (retry)="store.retry()" />
 } @else if (store.needsQuiz$()) {
 <ui-empty
   title="Chọn bài kiểm tra để xem học viên"
@@ -386,22 +408,11 @@
 <p class="row" role="status"><span uiSpinner></span>Đang tải báo cáo…</p>
 } @else if (store.error$(); as error) {
 <ui-error-state [message]="error.message" (retry)="store.retry()" />
-} @else if (store.dimension$()) {
-<label class="row row--gap-2"
-  >Loại báo cáo<select
-    uiSelect
-    #assessment
-    [value]="store.dimension$()"
-    (change)="store.selectAssessment(assessment.value)"
-  >
-    @for (option of store.assessmentViews$(); track option.value) {
-    <option [value]="option.value">{{option.label}}</option>
-    }
-  </select></label
->
-@if (store.dimension$() === 'results') { @if (store.examError$(); as error)
-{<ui-error-state [message]="error.message" (retry)="store.retry()" />} @else if
-(store.examLoading$()) {
+} @else if (store.dimension$()) { @if (store.dimension$() === 'results') { @if
+(store.examError$(); as error) {<ui-error-state
+  [message]="error.message"
+  (retry)="store.retry()"
+/>} @else if (store.examLoading$()) {
 <p role="status">Đang tải tổng hợp kết quả thi…</p>
 } @if (store.overview$(); as summary) {
 <ui-stat-strip aria-label="Kết quả thi trong phạm vi đã chọn"

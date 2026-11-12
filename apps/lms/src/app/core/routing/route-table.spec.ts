@@ -62,6 +62,8 @@ describe('route table', () => {
         'change-password',
         'profile',
         'learn',
+        'scorm',
+        'scorm/:id',
         'catalog',
         'course/:id',
         'lesson/:courseId/:lessonId',
