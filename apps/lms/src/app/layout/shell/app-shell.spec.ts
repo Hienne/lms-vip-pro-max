@@ -39,6 +39,11 @@ describe('AppShell', () => {
   let storage: Map<string, string>;
 
   beforeEach(() => {
+    // The learner home behind /learn is a page of tabs, and @angular/aria warns in dev mode with
+    // `console.warn('%o', element)` for each panel. Node's util.inspect throws on a jsdom element
+    // there, and Angular's error handler logs that throw again in a loop until the test times out.
+    // No test here is about the tab panels, so the warning is dropped.
+    vi.spyOn(console, 'warn').mockImplementation(() => undefined);
     storage = new Map();
     TestBed.configureTestingModule({
       providers: [
@@ -130,7 +135,11 @@ describe('AppShell', () => {
       );
     // An instructor's or admin's tracker asks for their course generations; there are none.
     backend
-      .match((r) => r.url === '/api/v1/assistant/course-jobs')
+      .match(
+        (r) =>
+          r.url === '/api/v1/assistant/course-jobs' ||
+          r.url === '/api/v1/assistant/course-jobs/active',
+      )
       .filter((r) => !r.cancelled)
       .forEach((r) => r.flush(envelopeOk([])));
   }
