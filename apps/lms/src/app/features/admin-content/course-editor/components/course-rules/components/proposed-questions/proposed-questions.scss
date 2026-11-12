@@ -1,0 +1,54 @@
+@use 'ui';
+
+:host {
+  display: block;
+  grid-column: 1 / -1;
+}
+
+.proposed-questions {
+  &__hint {
+    @include ui.row(2);
+    @include ui.text(sm, muted);
+    margin: 0;
+  }
+
+  &__lesson {
+    @include ui.stack(3);
+    margin-block-start: ui.space(4);
+  }
+
+  &__heading {
+    @include ui.text(lg);
+    margin: 0;
+    font-weight: ui.weight(semibold);
+  }
+
+  &__question {
+    @include ui.stack(2);
+    padding: ui.space(3) ui.space(4);
+  }
+
+  &__text {
+    margin: 0;
+    font-weight: ui.weight(medium);
+  }
+
+  &__options {
+    margin: 0;
+    padding-inline-start: ui.space(5);
+  }
+
+  &__meta {
+    @include ui.text(sm, muted);
+    margin: 0;
+  }
+
+  &__added {
+    @include ui.text(sm, muted);
+    margin: 0;
+  }
+
+  &__actions {
+    @include ui.row(2);
+  }
+}

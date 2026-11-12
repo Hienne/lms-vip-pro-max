@@ -17,6 +17,7 @@ import { CourseEditorStore } from '../../data-access/course-editor.store';
 import { QuestionImport } from '../../../../../shared/quiz/question-import/question-import';
 import { QUESTION_IMPORT_HOST } from '../../../../../shared/quiz/question-import/data-access/question-import.host';
 import { CourseExamForm } from './components/course-exam-form/course-exam-form';
+import { ProposedQuestions } from './components/proposed-questions/proposed-questions';
 import { newExamValue } from './data-access/course-exam.model';
 import { CourseExamStore } from './data-access/course-exam.store';
 
@@ -33,7 +34,7 @@ const QUIZ_STATUS_LABEL: Record<QuizSummary['status'], string> = {
 };
 
 /**
- * Step 3 of the editor: the course's final exam and the reward for completing it. Completion
+ * Step 3 of the editor: the questions the AI proposed (for a course it started), the course's final exam and the reward for completing it. Completion
  * itself is measured by the server: every required lesson, a video watched past its threshold, a
  * PDF read to its last page, and the final exam when one is chosen. The card shows the exam in one
  * of three states: none, one the wizard manages (random pool over the program's bank) and one the
@@ -51,6 +52,7 @@ const QUIZ_STATUS_LABEL: Record<QuizSummary['status'], string> = {
     FormField,
     Icon,
     Input,
+    ProposedQuestions,
     QuestionImport,
     RouterLink,
     Select,

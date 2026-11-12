@@ -107,14 +107,14 @@ describe('CourseJobMock review flow', () => {
         ),
       ),
     );
-    expect(decided.questions[0].questions?.[0].decision).toBe('accepted');
+    expect(decided.questions[0].questions?.[0].decision).toBe('added');
 
     const again = CourseContentSchema.parse(
       data(call(courseContentEndpoints.regenerateLesson, { key: 'c1l2' })),
     );
     expect(again.lessons.find((l) => l.key === 'c1l2')?.status).toBe('pending');
     expect(again.lessons.find((l) => l.key === 'c1l1')?.status).toBe('done');
-    expect(again.questions[0].questions?.[0].decision).toBe('accepted');
+    expect(again.questions[0].questions?.[0].decision).toBe('added');
   });
 
   it('refuses a stranger and an unknown job', () => {

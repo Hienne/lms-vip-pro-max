@@ -9,6 +9,7 @@ import {
   type CourseJobInputs,
   type CourseJobStatus,
   type CourseOutline,
+  type ProposalState,
   type QuestionDecision,
 } from '@lms/contracts';
 import type { FakeReply, FakeRequest } from '../backend/fake-backend';
@@ -56,7 +57,7 @@ interface MockGeneration {
   outline: CourseOutline;
   locked: boolean;
   lessons: MockLesson[];
-  decisions: Map<string, QuestionDecision>;
+  decisions: Map<string, ProposalState>;
 }
 
 interface MockJob {
@@ -309,7 +310,20 @@ export class CourseJobMock {
       if (!decision) {
         return refuse('CORE-VALIDATION_FAILED', 'Chọn một quyết định.');
       }
-      generation.decisions.set(`${key}/${request.params['index']}`, decision);
+      const place = `${key}/${request.params['index']}`;
+      if (generation.decisions.get(place) === 'added') {
+        return decision === 'accepted'
+          ? ok(this.content(entry))
+          : refuse(
+              'QUESTION_ALREADY_ADDED',
+              'Câu hỏi này đã được thêm vào ngân hàng câu hỏi.',
+            );
+      }
+      // Accepting writes the question to the bank at once, as the server does.
+      generation.decisions.set(
+        place,
+        decision === 'accepted' ? 'added' : decision,
+      );
       return ok(this.content(entry));
     }
     if (endpoint === courseContentEndpoints.retry) {

@@ -62,13 +62,23 @@ export const QuestionDecisionSchema = z.enum([
 ]);
 export type QuestionDecision = z.infer<typeof QuestionDecisionSchema>;
 
+/**
+ * What the server says about a proposal: the author's decision, or `added` once an accepted
+ * question is in the question bank (it stays listed, and cannot be rejected here).
+ */
+export const ProposalStateSchema = z.enum([
+  ...QuestionDecisionSchema.options,
+  'added',
+]);
+export type ProposalState = z.infer<typeof ProposalStateSchema>;
+
 export const ProposedQuestionSchema = z.object({
   type: z.enum(['SINGLE', 'MULTIPLE']),
   content: z.string(),
   explanation: z.string().nullish(),
   difficulty: z.enum(['EASY', 'MEDIUM', 'HARD']),
   options: z.array(z.object({ content: z.string(), correct: z.boolean() })),
-  decision: QuestionDecisionSchema.nullish(),
+  decision: ProposalStateSchema.nullish(),
 });
 export type ProposedQuestion = z.infer<typeof ProposedQuestionSchema>;
 
