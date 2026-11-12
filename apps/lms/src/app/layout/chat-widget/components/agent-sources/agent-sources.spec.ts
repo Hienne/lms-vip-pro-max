@@ -57,4 +57,16 @@ describe('AgentSources', () => {
       knowledgeAnswerFixture.citations[0].snippet,
     );
   });
+
+  it('shows the section path in the popover when the chunk has one', async () => {
+    const [first] = knowledgeAnswerFixture.citations;
+    const { fixture, lines } = await render([
+      { ...first, sectionPath: 'Quy trình EOD › Đóng sổ' },
+    ]);
+    lines()[0].click();
+    await fixture.whenStable();
+    expect(document.body.querySelector('.sources__section')?.textContent).toBe(
+      'Quy trình EOD › Đóng sổ',
+    );
+  });
 });

@@ -85,7 +85,10 @@ export const CitationSchema = z.object({
   page: z.number().int().nullable(),
   lineStart: z.number().int(),
   lineEnd: z.number().int(),
+  /** The sentence (or two) of the chunk that supports the citing sentence. */
   snippet: z.string(),
+  /** Headings of the chunk joined with ›; empty or absent before the first heading. */
+  sectionPath: z.string().optional(),
   /** Set when the source is a lesson of a course; `documentId` is then 0. */
   lesson: LessonCitationSchema.optional(),
 });

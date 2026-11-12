@@ -43,6 +43,11 @@
     overflow-wrap: anywhere;
   }
 
+  &__section {
+    @include ui.text(sm, secondary);
+    overflow-wrap: anywhere;
+  }
+
   &__where {
     @include ui.text(sm, muted);
   }

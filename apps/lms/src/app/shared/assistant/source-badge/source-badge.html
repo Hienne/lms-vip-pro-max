@@ -11,6 +11,9 @@
 </button>
 <ng-template #details>
   <p class="source__file">{{ citation().fileName }}</p>
+  @if (citation().sectionPath) {
+  <p class="source__section">{{ citation().sectionPath }}</p>
+  }
   <p class="source__where">{{ location() }}</p>
   <p class="source__quote">{{ citation().snippet }}</p>
   @if (citation().lesson; as lesson) {

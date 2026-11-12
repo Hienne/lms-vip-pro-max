@@ -19,7 +19,7 @@ const docx: Citation = {
   template: `<app-source-badge [citation]="citation" />`,
 })
 class Host {
-  readonly citation = docx;
+  citation: Citation = docx;
 }
 
 describe('SourceBadge', () => {
@@ -78,6 +78,42 @@ describe('SourceBadge', () => {
     );
     expect(badge.getAttribute('aria-expanded')).toBe('true');
     expect(badge.getAttribute('aria-controls')).toBe(dialog.id);
+  });
+
+  it('shows the section path above the place, and no line for a chunk without one', async () => {
+    const { badge, panel, settle } = await render();
+    badge.click();
+    await settle();
+    expect(panel()?.querySelector('.source__section')).toBeNull();
+    badge.click();
+    await settle();
+
+    const withSection = TestBed.createComponent(Host);
+    withSection.componentInstance.citation = {
+      ...docx,
+      sectionPath: 'Quy định ECR › Phê duyệt',
+      snippet: 'Phê duyệt của Trưởng ban.',
+    };
+    document.body.appendChild(withSection.nativeElement);
+    withSection.detectChanges();
+    await withSection.whenStable();
+    (withSection.nativeElement as HTMLElement).querySelector('button')?.click();
+    withSection.detectChanges();
+    await withSection.whenStable();
+    const dialog = panel() as HTMLElement;
+    expect(dialog.querySelector('.source__section')?.textContent).toBe(
+      'Quy định ECR › Phê duyệt',
+    );
+    expect(dialog.querySelector('.source__quote')?.textContent).toBe(
+      'Phê duyệt của Trưởng ban.',
+    );
+    const order = [...dialog.querySelectorAll('p')].map((p) => p.className);
+    expect(order).toEqual([
+      'source__file',
+      'source__section',
+      'source__where',
+      'source__quote',
+    ]);
   });
 
   it('closes with Escape and gives focus back to the badge', async () => {
