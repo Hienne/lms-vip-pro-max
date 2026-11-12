@@ -73,6 +73,16 @@ export const PendingActionSchema = z.discriminatedUnion('tool', [
 ]);
 export type PendingAction = z.infer<typeof PendingActionSchema>;
 
+/** What the chat heard for the new-course form: only what the user said, so every field may be missing. */
+export const CourseFormPrefillSchema = z.object({
+  title: z.string().optional(),
+  targetLearners: z.string().optional(),
+  level: z.enum(['BEGINNER', 'INTERMEDIATE', 'ADVANCED']).optional(),
+  chapters: z.number().int().optional(),
+  durationMinutes: z.number().int().optional(),
+});
+export type CourseFormPrefill = z.infer<typeof CourseFormPrefillSchema>;
+
 /** One line of the NDJSON stream. `tool.name` stays a string so a tool added later still parses. */
 export const AgentStreamEventSchema = z.discriminatedUnion('type', [
   /** The first line of every stream: the conversation this turn is stored in. */
@@ -86,6 +96,8 @@ export const AgentStreamEventSchema = z.discriminatedUnion('type', [
     type: z.literal('navigate'),
     path: z.string().startsWith('/'),
     title: z.string(),
+    /** What the screen may open with (`open_course_form`); every field is optional and checked again by the form. */
+    prefill: CourseFormPrefillSchema.optional(),
   }),
   z.object({ type: z.literal('action_required'), action: PendingActionSchema }),
   z.object({

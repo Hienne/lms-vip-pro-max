@@ -5,6 +5,7 @@ import {
   assetEndpoints,
   courseEndpoints,
   courseJobEndpoints,
+  knowledgeEndpoints,
   programAssessmentEndpoints,
   MEDIA_PROCESSING_UNAVAILABLE_CODE,
   type AnyEndpoint,
@@ -26,6 +27,7 @@ import { fakeSession } from '../../../core/session/session.testing';
 import { setUpAdminScreen } from '../../../core/dev/mock-api/admin-screen.testing';
 import { MockBackend } from '../../../core/dev/mock-api/mock-api.interceptor';
 import { DEFAULT_COURSE_COVER } from '../../../shared/course/course-card';
+import { CourseFormPrefillStore } from '../../../core/assistant/course-form-prefill.store';
 import { CourseEditor } from './course-editor';
 import { POLL_MS, SERVER_RETRY_MS } from './data-access/chunked-upload';
 import { digestOf, FakeHasher } from './data-access/fake-hasher.testing';
@@ -1930,6 +1932,42 @@ describe('CourseEditor', () => {
           ),
         );
         expect(screen.callsTo(courseEndpoints.createCourse)).toBe(0);
+      });
+
+      it('opens filled in from the chat: title, what was said and the kept file, with nothing uploaded', async () => {
+        TestBed.inject(CourseFormPrefillStore).set({
+          file: new File(['# Quy trình'], 'quy-trinh.md', {
+            type: 'text/markdown',
+          }),
+          fields: {
+            title: '[TEST-AI] Khóa thử',
+            targetLearners: 'Giao dịch viên mới',
+            chapters: 3,
+          },
+        });
+        await screen.open('/admin/courses/new');
+
+        expect((screen.field('Tên khóa học') as HTMLInputElement).value).toBe(
+          '[TEST-AI] Khóa thử',
+        );
+        expect(
+          (screen.field('Đối tượng học viên') as HTMLTextAreaElement).value,
+        ).toBe('Giao dịch viên mới');
+        expect((screen.field('Số chương') as HTMLInputElement).value).toBe('3');
+        expect(aiProblem()).not.toBe('Chọn tệp nguồn');
+        expect(screen.text()).toContain('quy-trinh.md');
+        expect(screen.callsTo(courseJobEndpoints.start)).toBe(0);
+        expect(screen.callsTo(knowledgeEndpoints.uploadDocument)).toBe(0);
+      });
+
+      it('shows an empty form when it is opened directly', async () => {
+        await screen.open('/admin/courses/new');
+
+        expect((screen.field('Tên khóa học') as HTMLInputElement).value).toBe('');
+        expect(
+          (screen.field('Đối tượng học viên') as HTMLTextAreaElement).value,
+        ).toBe('');
+        expect(aiProblem()).toContain('thông tin cơ bản');
       });
 
       it('offers no free text for the programme or the competency', async () => {

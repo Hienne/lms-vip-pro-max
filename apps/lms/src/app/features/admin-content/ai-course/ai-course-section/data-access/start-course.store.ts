@@ -4,6 +4,7 @@ import {
   courseJobEndpoints,
   MAX_PAGE_SIZE,
   organizationEndpoints,
+  type CourseFormPrefill,
   type CourseJob,
   type CourseJobInputs,
 } from '@lms/contracts';
@@ -66,6 +67,24 @@ export class StartCourseStore {
 
   readonly units$ = computed(() => this.unitsData.value()?.items ?? []);
   readonly competencies$ = computed(() => this.competenciesData.value() ?? []);
+
+  /**
+   * Fills the section with what the chat heard and the file it kept (`open_course_form`). Only
+   * what the user said is set; the file goes through the same rules as a picked one.
+   */
+  applyPrefill(fields: CourseFormPrefill, file: File | null): void {
+    this.model.update((value) => ({
+      ...value,
+      targetLearners: fields.targetLearners ?? value.targetLearners,
+      level: fields.level ?? value.level,
+      chapters: fields.chapters === undefined ? value.chapters : String(fields.chapters),
+      durationMinutes:
+        fields.durationMinutes === undefined
+          ? value.durationMinutes
+          : String(fields.durationMinutes),
+    }));
+    this.chooseFile(file);
+  }
 
   /** A file picked in the section: kept when the upload rules accept it, else the problem is shown. */
   chooseFile(picked: File | null): void {

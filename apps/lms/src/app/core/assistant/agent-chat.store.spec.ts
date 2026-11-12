@@ -22,7 +22,6 @@ import {
 } from '@lms/mocks';
 import { parseAppConfig, provideAppConfig } from '../config/app-config';
 import { CourseJobTrackerStore } from '../course-jobs/course-job-tracker.store';
-import { DocumentTrackerStore } from '../knowledge/document-tracker.store';
 import { testAppConfig } from '../config/app-config.testing';
 import { provideEnvelopeHttpClient } from '../http/http.testing';
 import { NetworkStore } from '../network/network.store';
@@ -32,6 +31,7 @@ import {
   FakeSessionStore,
   seedProfile,
 } from '../session/session.testing';
+import { CourseFormPrefillStore } from './course-form-prefill.store';
 import { ConversationsStore } from './conversations.store';
 import {
   AgentChatStore,
@@ -126,7 +126,6 @@ describe('AgentChatStore', () => {
         { provide: ErrorHandler, useValue: { handleError: () => undefined } },
         // The background trackers poll the server on their own; this spec is about the chat.
         { provide: CourseJobTrackerStore, useValue: { trackById } },
-        { provide: DocumentTrackerStore, useValue: { track: vi.fn() } },
       ],
     });
     backend = TestBed.inject(HttpTestingController);
@@ -853,42 +852,53 @@ describe('AgentChatStore', () => {
   });
 
   describe('a file attached to a course request', () => {
-    it('uploads it as a personal document, then asks the course skill with its id', async () => {
-      store.askWithFile('Tạo khóa học từ tệp này', new File(['x'], 'q.md'));
-      await settle();
-      const upload = backend.expectOne('/api/v1/knowledge/documents');
-      expect((upload.request.body as FormData).get('scope')).toBe('personal');
-      upload.flush(
-        envelopeOk({
-          ...knowledgeDocumentFixtures[0],
-          id: 77,
-          status: 'queued',
-        }),
+    const FORM_PATH = '/profile';
+
+    it('uploads nothing: it asks the course skill and keeps the file for the form the server opens', async () => {
+      const prefill = TestBed.inject(CourseFormPrefillStore);
+      const file = new File(['x'], 'q.md');
+      store.askWithFile(
+        'Tạo khóa học từ tài liệu này, tên khóa học: [TEST-AI] Khóa thử',
+        file,
       );
       await settle();
 
+      backend.expectNone('/api/v1/knowledge/documents');
       const stream = backend.expectOne(STREAM);
-      expect(stream.request.body).toMatchObject({
-        message: 'Tạo khóa học từ tệp này',
-        skill: 'tao_khoa_hoc',
-        attachmentDocumentId: 77,
-      });
-      finish(stream, [done('Còn thiếu: chương trình đào tạo.')]);
+      expect(stream.request.body).toMatchObject({ skill: 'tao_khoa_hoc' });
+      expect(
+        (stream.request.body as Record<string, unknown>)[
+          'attachmentDocumentId'
+        ],
+      ).toBeUndefined();
+      finish(stream, [
+        { type: 'tool', name: 'open_course_form' },
+        {
+          type: 'navigate',
+          path: FORM_PATH,
+          title: 'Khóa học mới',
+          prefill: { title: '[TEST-AI] Khóa thử' },
+        },
+        done('Đã mở form.'),
+      ]);
       await settle();
-      expect(lastReply()?.text).toBe('Còn thiếu: chương trình đào tạo.');
+
+      expect(router.navigateByUrl).toHaveBeenCalledWith(FORM_PATH);
+      const handed = prefill.take();
+      expect(handed?.file).toBe(file);
+      expect(handed?.fields).toEqual({ title: '[TEST-AI] Khóa thử' });
+      expect(prefill.take()).toBeNull();
     });
 
-    it('shows the upload refusal as the reply and asks nothing', async () => {
+    it('does not keep the file when the answer is not a navigation', async () => {
+      const prefill = TestBed.inject(CourseFormPrefillStore);
       store.askWithFile('Tạo khóa học', new File(['x'], 'q.md'));
       await settle();
-      const refusal = backendRefusal('fileTooLarge');
-      backend
-        .expectOne('/api/v1/knowledge/documents')
-        .flush(refusal.body, { status: refusal.status, statusText: 'x' });
+      finish(backend.expectOne(STREAM), [done('Bạn cần chọn chương trình.')]);
       await settle();
+      await converse('mở trang hồ sơ', agentNavigateEvents('/profile', 'Hồ sơ'));
 
-      backend.expectNone(STREAM);
-      expect(lastReply()?.status).toBe('error');
+      expect(prefill.take()).toBeNull();
     });
   });
 

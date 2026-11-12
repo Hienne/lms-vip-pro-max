@@ -38,6 +38,12 @@ describe('agent stream events', () => {
     { type: 'tool', name: 'search_documents' },
     { type: 'delta', text: 'CIF là' },
     { type: 'navigate', path: '/admin/users', title: 'Quản lý người dùng' },
+    {
+      type: 'navigate',
+      path: '/admin/courses/new',
+      title: 'Khóa học mới',
+      prefill: { title: 'Khóa thử', level: 'BEGINNER', chapters: 3 },
+    },
     { type: 'action_required', action },
     { type: 'done', answer: 'Xong.', citations: [citation] },
     {
@@ -61,6 +67,12 @@ describe('agent stream events', () => {
   it.each([
     { type: 'navigate', path: 'admin/users', title: 'x' },
     { type: 'navigate', path: 'https://evil.example', title: 'x' },
+    {
+      type: 'navigate',
+      path: '/admin/courses/new',
+      title: 'x',
+      prefill: { level: 'EXPERT' },
+    },
     { type: 'retrieved', count: 1 },
     { type: 'done', answer: 'x' },
   ])('rejects %j', (event) => {

@@ -25,6 +25,7 @@ import {
   Stepper,
   PageHeader,
 } from '@lms/ui';
+import { CourseFormPrefillStore } from '../../../core/assistant/course-form-prefill.store';
 import { CourseJobAccess } from '../../../core/course-jobs/course-job-access';
 import type { HasUnsavedChanges } from '../../../core/routing/unsaved-changes.guard';
 import { BottomBar } from '../../../layout/shell-insets';
@@ -100,6 +101,7 @@ export class CourseEditor implements HasUnsavedChanges {
   private readonly dialog = inject(Dialog);
   protected readonly ai = inject(CourseAiJobStore);
   private readonly starter = inject(StartCourseStore);
+  private readonly chatPrefill = inject(CourseFormPrefillStore);
   /** "Tạo bằng AI" is offered to instructors and admins on a new course only. */
   protected readonly canGenerate = inject(CourseJobAccess).canGenerate$;
   protected readonly generating = this.starter.isStarting$;
@@ -193,6 +195,20 @@ export class CourseEditor implements HasUnsavedChanges {
       : value;
   });
 
+  /**
+   * A new course opened by the chat (`open_course_form`) starts with what the user said and the
+   * file they attached. The hand-over is read once and cleared; it is taken on every open so a
+   * prefill is never left for a later one, but only a new course for a role that may generate
+   * uses it.
+   */
+  private applyChatPrefill(): void {
+    const prefill = this.chatPrefill.take();
+    if (!prefill || !this.store.isCreate$() || !this.canGenerate()) return;
+    const title = prefill.fields.title?.trim();
+    if (title) this.model.update((value) => ({ ...value, title }));
+    this.starter.applyPrefill(prefill.fields, prefill.file);
+  }
+
   /** Create mode shows the form at once; edit mode waits for the course to be read. */
   protected readonly ready = computed(
     () => this.store.isCreate$() || !!this.store.course$(),
@@ -253,6 +269,7 @@ export class CourseEditor implements HasUnsavedChanges {
   );
 
   constructor() {
+    this.applyChatPrefill();
     this.store.registerBlockPositions(this.blockPositions);
     this.store.registerAssetAttacher((blockKey, asset) =>
       this.model.update((value) => ({

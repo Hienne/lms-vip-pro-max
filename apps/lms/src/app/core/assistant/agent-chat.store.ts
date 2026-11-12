@@ -13,19 +13,18 @@ import { Router } from '@angular/router';
 import {
   agentEndpoints,
   answerFeedbackEndpoints,
-  knowledgeEndpoints,
-  type KnowledgeDocument,
   type RateAnswerCommand,
   type AgentCommand,
   type AgentSkill,
   type AgentStreamEvent,
+  type CourseFormPrefill,
   type ConversationContext,
   type LessonContext,
   type PendingAction,
 } from '@lms/contracts';
 import { finalize, of, Subscription, switchMap } from 'rxjs';
+import { activeHref } from '../menu/menu-catalog';
 import { CourseJobTrackerStore } from '../course-jobs/course-job-tracker.store';
-import { DocumentTrackerStore } from '../knowledge/document-tracker.store';
 import { toAppError } from '../errors/app-error';
 import { EndpointClient } from '../http/endpoint-client';
 import { NetworkStore } from '../network/network.store';
@@ -33,6 +32,7 @@ import { SessionStore } from '../session/session.store';
 import type { ActionCard, AgentReply, AgentTurn } from './agent-chat.model';
 import { AgentChatStorage } from './agent-chat.storage';
 import { ConversationsStore } from './conversations.store';
+import { CourseFormPrefillStore } from './course-form-prefill.store';
 import { turnFromStored } from './stored-turns';
 import { toolStatusText } from './agent-status';
 
@@ -72,7 +72,7 @@ export class AgentChatStore {
   private readonly storage = inject(AgentChatStorage);
   private readonly conversations = inject(ConversationsStore);
   private readonly courseJobs = inject(CourseJobTrackerStore);
-  private readonly documents = inject(DocumentTrackerStore);
+  private readonly prefill = inject(CourseFormPrefillStore);
   private readonly router = inject(Router);
   private readonly destroyRef = inject(DestroyRef);
 
@@ -82,6 +82,8 @@ export class AgentChatStore {
   /** The saved conversation being read back, if any. */
   private loading: Subscription | null = null;
   private lastUserId: string | undefined;
+  /** The file attached to the question on its way; it goes to the course form, never to the server. */
+  private attachedFile: File | null = null;
 
   private readonly userId = computed(() => this.session.user$()?.userId);
 
@@ -269,42 +271,14 @@ export class AgentChatStore {
   }
 
   /**
-   * Asks the `tao_khoa_hoc` skill about a file the user attached: the file is uploaded as their
-   * own personal document first, then the question goes with its id. The server decides who may
-   * use the skill and whether the file is theirs; a refusal of either shows as the reply.
+   * Asks the `tao_khoa_hoc` skill with a file the user attached. The file is not uploaded: it is
+   * kept for the course form, which the server's `open_course_form` navigation opens, and the
+   * form uploads it only when "Tạo bằng AI" is pressed.
    */
   askWithFile(rawQuestion: string, file: File): void {
-    const question = rawQuestion.trim();
-    if (!question || this.isAnswering$()) return;
-    const id = Math.max(0, ...this.turns$().map((t) => t.id)) + 1;
-    this.setTurns([...this.turns$(), { id, question, reply: WAITING }]);
-    this.setAnsweringId(id);
-    if (this.network.offline$()) {
-      this.fail(id, OFFLINE_MESSAGE);
-      return;
-    }
-    const userId = this.userId();
-    const subscription = new Subscription();
-    this.streaming = subscription;
-    subscription.add(
-      this.client
-        .call(knowledgeEndpoints.uploadDocument, {
-          body: { file, scope: 'personal' },
-        })
-        .subscribe({
-          next: this.sameUser(userId, (document: KnowledgeDocument) => {
-            this.documents.track(document);
-            this.stream(id, question, 'tao_khoa_hoc', document.id);
-          }),
-          error: this.sameUser(userId, (error: unknown) => {
-            const app = toAppError(error);
-            this.fail(
-              id,
-              app.kind === 'offline' ? OFFLINE_MESSAGE : app.message,
-            );
-          }),
-        }),
-    );
+    if (!rawQuestion.trim() || this.isAnswering$()) return;
+    this.attachedFile = file;
+    this.ask(rawQuestion, 'tao_khoa_hoc');
   }
 
   /**
@@ -420,6 +394,7 @@ export class AgentChatStore {
   stop(): void {
     const id = this.state.answeringId();
     if (id === null) return;
+    this.attachedFile = null;
     // The server holds the turn until the model call ends, so tell it to let go; a failure changes nothing here.
     const conversationId = this.state.conversationId();
     if (conversationId !== null) {
@@ -664,7 +639,7 @@ export class AgentChatStore {
         }));
         break;
       case 'navigate':
-        this.navigate(id, event.path, event.title);
+        this.navigate(id, event.path, event.title, event.prefill);
         break;
       case 'action_required':
         this.patchReply(id, {
@@ -698,18 +673,31 @@ export class AgentChatStore {
     }
   }
 
-  /** Only a screen in the user's own menu opens; the route guard still applies on top. */
-  private navigate(id: number, path: string, title: string): void {
-    const inMenu = (this.session.user$()?.nav ?? []).some((section) =>
-      section.items.some((item) => item.href === path),
-    );
+  /**
+   * Only a screen under the user's own menu opens; the route guard still applies on top. A course
+   * form opened by the chat gets the attached file and the fields the user said, through the
+   * prefill store.
+   */
+  private navigate(
+    id: number,
+    path: string,
+    title: string,
+    said?: CourseFormPrefill,
+  ): void {
+    const inMenu = activeHref(this.session.user$()?.nav ?? [], path) !== null;
     if (!inMenu) {
       this.dropStream();
       this.fail(id, GENERIC_ERROR);
       return;
     }
     this.patchReply(id, { navigatedTo: { path, title } });
-    void this.router.navigateByUrl(path);
+    if (said || this.attachedFile) {
+      this.prefill.set({ file: this.attachedFile, fields: said ?? {} });
+    }
+    this.attachedFile = null;
+    void Promise.resolve(this.router.navigateByUrl(path)).then((opened) => {
+      if (opened === false) this.prefill.clear();
+    });
   }
 
   private fail(id: number, error: string): void {
@@ -719,6 +707,7 @@ export class AgentChatStore {
 
   /** Turn `id` no longer streams; a newer turn that is still answering keeps the composer locked. */
   private answered(id: number): void {
+    this.attachedFile = null;
     if (this.state.answeringId() === id) this.setAnsweringId(null);
     this.conversations.touch();
   }
