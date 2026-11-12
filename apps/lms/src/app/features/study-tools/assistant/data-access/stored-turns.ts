@@ -26,6 +26,7 @@ export function turnFromStored(turn: StoredTurn): Turn {
       retrieved: null,
       found: null,
       citations: turn.citations,
+      grounded: turn.grounded,
       error: turn.status === 'error' ? STORED_ERROR_MESSAGE : null,
       action: turn.action
         ? {

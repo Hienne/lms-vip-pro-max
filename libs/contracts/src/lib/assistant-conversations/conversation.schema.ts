@@ -117,6 +117,8 @@ export const StoredTurnSchema = z.object({
   /** The user's own thumbs on this answer; null until they give one. */
   feedback: FeedbackSchema.nullable(),
   status: StoredTurnStatusSchema,
+  /** False when the answer used documents but marked no source; absent means true. */
+  grounded: z.boolean().optional(),
   createTime: z.iso.datetime(),
 });
 export type StoredTurn = z.infer<typeof StoredTurnSchema>;

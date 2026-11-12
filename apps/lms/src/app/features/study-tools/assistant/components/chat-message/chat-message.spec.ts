@@ -120,6 +120,28 @@ describe('ChatMessage', () => {
     expect(text()).not.toContain('Nguồn');
   });
 
+  it('labels an answer that used documents but marks none as "Chưa có nguồn"', () => {
+    show({
+      status: 'done',
+      text: 'Chạy EOD phải đối chiếu số dư sổ cái trước.',
+      found: true,
+      grounded: false,
+    });
+    expect(el.querySelector('.message__no-source')?.textContent?.trim()).toBe(
+      'Chưa có nguồn',
+    );
+    expect(el.querySelector('app-source-badge')).toBeNull();
+  });
+
+  it('shows no label on a grounded answer, on one still streaming, or on a not-found one', () => {
+    show({ status: 'done', text: 'Đã có nguồn [1].', found: true });
+    expect(el.querySelector('.message__no-source')).toBeNull();
+    show({ status: 'composing', text: 'Đang viết', grounded: false });
+    expect(el.querySelector('.message__no-source')).toBeNull();
+    show({ status: 'done', text: 'Không tìm thấy.', found: false });
+    expect(el.querySelector('.message__no-source')).toBeNull();
+  });
+
   it('shows no sources when the answer has no citations', () => {
     show({ status: 'done', text: 'Không tìm thấy.', found: false });
     expect(el.querySelector('app-source-badge')).toBeNull();

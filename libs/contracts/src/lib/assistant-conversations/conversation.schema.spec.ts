@@ -55,6 +55,13 @@ describe('StoredTurnSchema', () => {
     }
   });
 
+  it('keeps grounded false on a stored turn and parses one without it', () => {
+    expect(StoredTurnSchema.parse({ ...turn, grounded: false })).toMatchObject({
+      grounded: false,
+    });
+    expect(StoredTurnSchema.parse(turn)).not.toHaveProperty('grounded');
+  });
+
   it('accepts a turn without an answer or a card', () => {
     const parsed = StoredTurnSchema.safeParse({
       ...turn,

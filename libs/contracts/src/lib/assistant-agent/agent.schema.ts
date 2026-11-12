@@ -114,6 +114,11 @@ export const AgentStreamEventSchema = z.discriminatedUnion('type', [
      * so a clicked one is sent with the Q&A skill, which has no acting tool. Absent when false.
      */
     suggestionsReadOnly: z.boolean().optional(),
+    /**
+     * False when the answer used retrieved content and marked none of it: it has no sources and the app labels it
+     * "Chưa có nguồn". Absent means true.
+     */
+    grounded: z.boolean().optional(),
   }),
   z.object({
     type: z.literal('error'),

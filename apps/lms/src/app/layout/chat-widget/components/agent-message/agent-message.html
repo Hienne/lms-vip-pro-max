@@ -39,6 +39,8 @@
   />
   } @if (sourcesShown()) {
   <app-agent-sources [turnId]="turn().id" [citations]="reply.citations" />
+  } @if (reply.status === 'done' && reply.text && reply.grounded === false) {
+  <p class="message__note message__no-source">Chưa có nguồn</p>
   } @if (reply.status === 'done' && reply.text) {
   <div class="message__tools">
     <button

@@ -95,6 +95,8 @@ export const ChatAnswerSchema = z.object({
   answer: z.string(),
   found: z.boolean(),
   citations: z.array(CitationSchema),
+  /** False when the answer used the documents and marked none of them; absent means true. */
+  grounded: z.boolean().optional(),
 });
 export type ChatAnswer = z.infer<typeof ChatAnswerSchema>;
 
@@ -117,6 +119,11 @@ export const ChatStreamEventSchema = z.discriminatedUnion('type', [
     turnId: z.number().int().positive().optional(),
     /** Up to three follow-up questions; absent when the model offered none. */
     suggestions: z.array(z.string()).optional(),
+    /**
+     * False when the answer used retrieved content and marked none of it: it has no sources and the app labels it
+     * "Chưa có nguồn". Absent means true.
+     */
+    grounded: z.boolean().optional(),
   }),
   z.object({
     type: z.literal('error'),

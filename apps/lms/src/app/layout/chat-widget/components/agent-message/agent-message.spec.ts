@@ -158,6 +158,27 @@ describe('AgentMessage', () => {
     expect(el.querySelectorAll('app-agent-sources li')).toHaveLength(2);
   });
 
+  it('labels a finished reply with grounded false as "Chưa có nguồn", and no other', async () => {
+    const { fixture, el } = await render(
+      turn({ text: 'CIF là mã khách hàng.', grounded: false }),
+    );
+    expect(el.querySelector('.message__no-source')?.textContent?.trim()).toBe(
+      'Chưa có nguồn',
+    );
+    fixture.componentInstance.turn.set(
+      turn({
+        text: 'CIF là mã khách hàng.',
+        status: 'composing',
+        grounded: false,
+      }),
+    );
+    await fixture.whenStable();
+    expect(el.querySelector('.message__no-source')).toBeNull();
+    fixture.componentInstance.turn.set(turn({ text: 'CIF là mã khách hàng.' }));
+    await fixture.whenStable();
+    expect(el.querySelector('.message__no-source')).toBeNull();
+  });
+
   it('moves focus from a number in the answer to its line in the source list', async () => {
     const { el } = await render(
       turn({

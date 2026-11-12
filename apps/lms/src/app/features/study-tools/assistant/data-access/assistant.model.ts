@@ -28,6 +28,8 @@ export interface Answer {
   readonly retrieved: number | null;
   readonly found: boolean | null;
   readonly citations: readonly Citation[];
+  /** False: the answer used documents and marks no source, so the page labels it. Absent means true. */
+  readonly grounded?: boolean;
   /** What went wrong, in Vietnamese, when `status` is `error`. */
   readonly error: string | null;
   /** Only on a reopened turn that proposed a change in the quick assistant. */

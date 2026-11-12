@@ -443,6 +443,7 @@ export class AssistantStore {
           // The server's final text wins over what was streamed (a "not found" is always its fixed sentence).
           text: event.answer,
           citations: event.citations,
+          grounded: event.grounded,
         });
         this.setTurns(
           this.turns$().map((turn) =>

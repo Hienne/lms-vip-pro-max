@@ -44,6 +44,7 @@ export function turnFromStored(turn: StoredTurn): AgentTurn {
       toolName: null,
       text: turn.answer ?? '',
       citations: turn.citations,
+      grounded: turn.grounded,
       navigatedTo: turn.navigation,
       action: turn.action ? cardOf(turn.action) : null,
       error: turn.status === 'error' ? STORED_ERROR_MESSAGE : null,

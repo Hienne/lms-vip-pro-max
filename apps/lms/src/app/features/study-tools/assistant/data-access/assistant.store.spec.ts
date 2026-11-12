@@ -401,6 +401,24 @@ describe('AssistantStore', () => {
       });
     });
 
+    it('keeps grounded false from the done line and has none otherwise', async () => {
+      await loadDocuments();
+      store.ask('CIF là gì?');
+      finish(stream(), [
+        { type: 'retrieved', count: 2 },
+        { type: 'delta', text: 'CIF là mã khách hàng.' },
+        {
+          type: 'done',
+          found: true,
+          answer: 'CIF là mã khách hàng.',
+          citations: [],
+          grounded: false,
+        },
+      ]);
+      await settle();
+      expect(store.turns$()[0].answer.grounded).toBe(false);
+    });
+
     it("replaces the streamed text with the server's final answer", async () => {
       await loadDocuments();
       store.ask('Giá vàng hôm nay?');

@@ -177,6 +177,17 @@ describe('follow-up suggestions and skill hints', () => {
     }
   });
 
+  it('keeps grounded on a done line of both assistants, and a line without it stays valid', () => {
+    for (const schema of [AgentStreamEventSchema, ChatStreamEventSchema]) {
+      const base = schema === AgentStreamEventSchema ? doneAgent : doneChat;
+      expect(schema.parse({ ...base, grounded: false })).toMatchObject({
+        grounded: false,
+      });
+      expect(schema.parse(base)).not.toHaveProperty('grounded');
+      expect(schema.safeParse({ ...base, grounded: 'no' }).success).toBe(false);
+    }
+  });
+
   it('accepts the read-only flag on an agent done line and refuses a non-boolean', () => {
     const line = { ...doneAgent, suggestions: ['Đổi email?'] };
     expect(

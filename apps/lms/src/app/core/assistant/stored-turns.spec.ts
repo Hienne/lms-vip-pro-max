@@ -32,6 +32,19 @@ function turnWith(
 const messageOf = (turn: StoredTurn) =>
   turnFromStored(turn).reply.action?.message;
 
+describe('turnFromStored: an answer with no source', () => {
+  it('carries grounded false, so the label shows again after reopening', () => {
+    const stored = { ...turnWith('pending', null), grounded: false };
+    expect(turnFromStored(stored).reply.grounded).toBe(false);
+  });
+
+  it('leaves grounded unset on a normal turn', () => {
+    expect(
+      turnFromStored(turnWith('pending', null)).reply.grounded,
+    ).toBeUndefined();
+  });
+});
+
 describe('turnFromStored: the card outcome after a reload', () => {
   it('keeps the message the server stored', () => {
     expect(messageOf(turnWith('cancelled', 'Đã huỷ thay đổi'))).toBe(
@@ -42,9 +55,7 @@ describe('turnFromStored: the card outcome after a reload', () => {
   it('falls back to default copy per status when an old row has no message', () => {
     expect(messageOf(turnWith('cancelled', null))).toBe('Đã huỷ thay đổi');
     expect(messageOf(turnWith('expired', null))).toBe('Đề xuất đã hết hạn');
-    expect(messageOf(turnWith('confirmed', null))).toBe(
-      'Đã áp dụng thay đổi.',
-    );
+    expect(messageOf(turnWith('confirmed', null))).toBe('Đã áp dụng thay đổi.');
     expect(messageOf(turnWith('failed', ''))).toBe(
       'Không thực hiện được thay đổi.',
     );

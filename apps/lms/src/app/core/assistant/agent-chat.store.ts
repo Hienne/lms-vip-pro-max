@@ -652,6 +652,7 @@ export class AgentChatStore {
           // The server's final text wins over what was streamed.
           text: event.answer,
           citations: event.citations,
+          grounded: event.grounded,
         });
         this.setTurns(
           this.turns$().map((turn) =>

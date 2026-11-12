@@ -54,6 +54,8 @@ export const AgentReplySchema = z.object({
   toolName: z.string().nullable(),
   text: z.string(),
   citations: z.array(CitationSchema),
+  /** False: the answer used documents and marks no source, so the panel labels it. Absent means true. */
+  grounded: z.boolean().optional(),
   navigatedTo: z.object({ path: z.string(), title: z.string() }).nullable(),
   action: ActionCardSchema.nullable(),
   error: z.string().nullable(),

@@ -896,7 +896,10 @@ describe('AgentChatStore', () => {
       await settle();
       finish(backend.expectOne(STREAM), [done('Bạn cần chọn chương trình.')]);
       await settle();
-      await converse('mở trang hồ sơ', agentNavigateEvents('/profile', 'Hồ sơ'));
+      await converse(
+        'mở trang hồ sơ',
+        agentNavigateEvents('/profile', 'Hồ sơ'),
+      );
 
       expect(prefill.take()).toBeNull();
     });
@@ -1307,6 +1310,14 @@ describe('AgentChatStore', () => {
         },
       ]);
       expect(store.turns$()[0].suggestionsReadOnly).toBe(true);
+    });
+
+    it('keeps grounded false from the done line, and has none otherwise', async () => {
+      await converse('Câu hỏi', [
+        conversation(7),
+        { type: 'done', answer: 'Xong.', citations: [], grounded: false },
+      ]);
+      expect(store.turns$()[0].reply.grounded).toBe(false);
     });
 
     it('has none when the done line carried none', async () => {
