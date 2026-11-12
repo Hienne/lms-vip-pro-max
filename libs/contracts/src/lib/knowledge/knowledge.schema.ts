@@ -89,10 +89,47 @@ export const CitationSchema = z.object({
   snippet: z.string(),
   /** Headings of the chunk joined with ›; empty or absent before the first heading. */
   sectionPath: z.string().optional(),
+  /** The cited chunk, which the source viewer opens; absent for a lesson and for turns saved before it existed. */
+  chunkId: z.number().int().positive().optional(),
   /** Set when the source is a lesson of a course; `documentId` is then 0. */
   lesson: LessonCitationSchema.optional(),
 });
 export type Citation = z.infer<typeof CitationSchema>;
+
+/** One chunk of a document's extracted text with where it sits. */
+export const TextChunkSchema = z.object({
+  chunkId: z.number().int().positive(),
+  chunkIndex: z.number().int().nonnegative(),
+  /** Headings joined with ›; empty before the first heading. */
+  sectionPath: z.string(),
+  /** Null for `.md` and `.docx`, which have no pages. */
+  page: z.number().int().nullable(),
+  lineStart: z.number().int(),
+  lineEnd: z.number().int(),
+  text: z.string(),
+});
+export type TextChunk = z.infer<typeof TextChunkSchema>;
+
+/**
+ * The extracted text around a cited chunk, in reading order, for the source viewer. The original
+ * file is never served. `hasMoreBefore` / `hasMoreAfter` say whether a larger `span` shows more.
+ */
+export const DocumentTextSchema = z.object({
+  documentId: z.number().int(),
+  fileName: z.string(),
+  aroundChunkId: z.number().int().positive(),
+  chunks: z.array(TextChunkSchema),
+  hasMoreBefore: z.boolean(),
+  hasMoreAfter: z.boolean(),
+});
+export type DocumentText = z.infer<typeof DocumentTextSchema>;
+
+/** `around` is the cited chunk (the start of the document when left out); `span` chunks on each side, 0..20, 2 by default. */
+export const DocumentTextQuerySchema = z.object({
+  around: z.number().int().positive().optional(),
+  span: z.number().int().min(0).max(20).optional(),
+});
+export type DocumentTextQuery = z.infer<typeof DocumentTextQuerySchema>;
 
 export const ChatAnswerSchema = z.object({
   answer: z.string(),

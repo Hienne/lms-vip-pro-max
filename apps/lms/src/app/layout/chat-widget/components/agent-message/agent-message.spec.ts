@@ -8,6 +8,12 @@ import type {
   AgentTurn,
 } from '../../../../core/assistant/agent-chat.model';
 import { AgentMessage } from './agent-message';
+import {
+  parseAppConfig,
+  provideAppConfig,
+} from '../../../../core/config/app-config';
+import { testAppConfig } from '../../../../core/config/app-config.testing';
+import { provideEnvelopeHttpClient } from '../../../../core/http/http.testing';
 
 const reply = (patch: Partial<AgentReply> = {}): AgentReply => ({
   status: 'done',
@@ -41,7 +47,13 @@ class Host {
 
 describe('AgentMessage', () => {
   async function render(value: AgentTurn) {
-    TestBed.configureTestingModule({ providers: [provideRouter([])] });
+    TestBed.configureTestingModule({
+      providers: [
+        provideRouter([]),
+        provideAppConfig(parseAppConfig(testAppConfig())),
+        provideEnvelopeHttpClient(),
+      ],
+    });
     const fixture = TestBed.createComponent(Host);
     fixture.componentInstance.turn.set(value);
     await fixture.whenStable();

@@ -5,6 +5,8 @@ import {
   ChatAnswerSchema,
   ChatStreamEventSchema,
   DocumentListQuerySchema,
+  DocumentTextQuerySchema,
+  DocumentTextSchema,
   KnowledgeDocumentSchema,
   UploadDocumentCommandSchema,
 } from './knowledge.schema';
@@ -28,6 +30,18 @@ export const knowledgeEndpoints = {
     path: '/api/v1/knowledge/documents/{documentId}',
     params: z.object({ documentId: z.number().int() }),
     response: KnowledgeDocumentSchema,
+  }),
+  /**
+   * The extracted text of the chunk `around` and `span` neighbours each side, for the source viewer.
+   * Not found when the caller cannot search the document (as for a deleted one); the original file
+   * has no endpoint.
+   */
+  documentText: defineEndpoint({
+    method: 'get',
+    path: '/api/v1/knowledge/documents/{documentId}/text',
+    params: z.object({ documentId: z.number().int() }),
+    query: DocumentTextQuerySchema,
+    response: DocumentTextSchema,
   }),
   /** Uploads a `.pdf`, `.md` or `.docx` with its scope; it answers 201 with the document `queued`. */
   uploadDocument: defineEndpoint({

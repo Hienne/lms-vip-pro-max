@@ -1,0 +1,52 @@
+@use 'ui';
+
+// The body of the drawer, rendered in the dialog from this component's template.
+.viewer {
+  &__note {
+    @include ui.text(sm, secondary);
+  }
+
+  &__path {
+    @include ui.text(sm, secondary);
+    margin-bottom: ui.space(3);
+    overflow-wrap: anywhere;
+  }
+
+  &__text {
+    display: grid;
+    gap: ui.space(3);
+    margin-block: ui.space(3);
+  }
+
+  &__more {
+    width: 100%;
+  }
+}
+
+.chunk {
+  padding: ui.space(3);
+  border: 1px solid ui.color(border);
+  border-radius: ui.radius(control);
+
+  // The cited passage: a filled surface and a stronger border, not a colour stripe.
+  &--cited {
+    background: ui.color(primary-subtle);
+    border-color: ui.color(primary);
+  }
+
+  &__heading {
+    @include ui.text(sm, secondary);
+    font-weight: ui.weight(semibold);
+    overflow-wrap: anywhere;
+  }
+
+  &__where {
+    @include ui.text(xs, muted);
+  }
+
+  &__text {
+    margin-top: ui.space(2);
+    overflow-wrap: anywhere;
+    white-space: pre-wrap;
+  }
+}

@@ -2,7 +2,14 @@ import { OverlayContainer } from '@angular/cdk/overlay';
 import { Component } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import type { Citation } from '@lms/contracts';
+import { SourceViewerStore } from '../../../core/assistant/source-viewer.store';
 import { SourceBadge } from './source-badge';
+import {
+  parseAppConfig,
+  provideAppConfig,
+} from '../../../core/config/app-config';
+import { testAppConfig } from '../../../core/config/app-config.testing';
+import { provideEnvelopeHttpClient } from '../../../core/http/http.testing';
 
 const docx: Citation = {
   n: 2,
@@ -23,6 +30,14 @@ class Host {
 }
 
 describe('SourceBadge', () => {
+  beforeEach(() =>
+    TestBed.configureTestingModule({
+      providers: [
+        provideAppConfig(parseAppConfig(testAppConfig())),
+        provideEnvelopeHttpClient(),
+      ],
+    }),
+  );
   afterEach(() => {
     TestBed.inject(OverlayContainer).ngOnDestroy();
     document.body.innerHTML = '';
@@ -137,6 +152,23 @@ describe('SourceBadge', () => {
     expect(panel()).not.toBeNull();
     badge.click();
     await settle();
+    expect(panel()).toBeNull();
+  });
+
+  it('offers "Xem trong tài liệu" for a document source, which opens the viewer and closes the popover', async () => {
+    const { badge, panel, settle } = await render();
+    const open = vi
+      .spyOn(TestBed.inject(SourceViewerStore), 'open')
+      .mockImplementation(() => undefined);
+    badge.click();
+    await settle();
+    const view = [...(panel()?.querySelectorAll('button') ?? [])].find((b) =>
+      b.textContent?.includes('Xem trong tài liệu'),
+    );
+    view?.click();
+    await settle();
+
+    expect(open).toHaveBeenCalledWith(docx);
     expect(panel()).toBeNull();
   });
 });

@@ -3,6 +3,12 @@ import { TestBed } from '@angular/core/testing';
 import { knowledgeAnswerFixture } from '@lms/mocks';
 import type { Answer, Turn } from '../../data-access/assistant.model';
 import { ChatMessage } from './chat-message';
+import {
+  parseAppConfig,
+  provideAppConfig,
+} from '../../../../../core/config/app-config';
+import { testAppConfig } from '../../../../../core/config/app-config.testing';
+import { provideEnvelopeHttpClient } from '../../../../../core/http/http.testing';
 
 const answer = (over: Partial<Answer>): Answer => ({
   status: 'done',
@@ -31,6 +37,14 @@ class Host {
 }
 
 describe('ChatMessage', () => {
+  beforeEach(() =>
+    TestBed.configureTestingModule({
+      providers: [
+        provideAppConfig(parseAppConfig(testAppConfig())),
+        provideEnvelopeHttpClient(),
+      ],
+    }),
+  );
   let host: Host;
   let el: HTMLElement;
   let fixture: ReturnType<typeof TestBed.createComponent<Host>>;

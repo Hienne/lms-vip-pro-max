@@ -6,6 +6,7 @@
       class="sources__item"
       [id]="item.id"
       [attr.aria-label]="item.name"
+      #popover="uiPopover"
       [uiPopover]="details"
       [popoverLabel]="item.name"
     >
@@ -22,7 +23,17 @@
       <p class="sources__where">{{ item.location }}</p>
       <p class="sources__quote">{{ item.citation.snippet }}</p>
       @if (item.citation.lesson; as lesson) {
-      <a class="sources__open" [routerLink]="linkTree(lesson.url)">Mở bài học</a>
+      <a class="sources__open" [routerLink]="linkTree(lesson.url)"
+        >Mở bài học</a
+      >
+      } @else {
+      <button
+        type="button"
+        class="sources__open"
+        (click)="popover.close(); viewer.open(item.citation)"
+      >
+        Xem trong tài liệu
+      </button>
       }
     </ng-template>
   </li>

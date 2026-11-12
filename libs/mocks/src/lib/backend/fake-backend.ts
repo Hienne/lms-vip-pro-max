@@ -86,6 +86,7 @@ import { learnerPointsFixtures } from '../learning/learning.fixtures';
 import {
   knowledgeAnswerFixture,
   knowledgeDocumentFixtures,
+  knowledgeDocumentTextFixtures,
   knowledgeNotFoundFixture,
   knowledgeNotFoundStreamFixture,
   knowledgeStreamFixture,
@@ -357,6 +358,7 @@ export class FakeBackend {
     [shellEndpoints.navCounts, (r) => this.navCounts(r)],
     [knowledgeEndpoints.documents, (r) => this.listDocuments(r)],
     [knowledgeEndpoints.document, (r) => this.getDocument(r)],
+    [knowledgeEndpoints.documentText, (r) => this.documentText(r)],
     [knowledgeEndpoints.uploadDocument, (r) => this.uploadDocument(r)],
     [knowledgeEndpoints.deleteDocument, (r) => this.deleteDocument(r)],
     [knowledgeEndpoints.ask, (r) => this.ask(r)],
@@ -567,6 +569,34 @@ export class FakeBackend {
       : refuse('resourceNotFound');
   }
 
+  /** The chunks around the cited one; a document the caller cannot read is not found, like a deleted one. */
+  private documentText(request: FakeRequest): FakeReply {
+    const actor = this.actor(request);
+    const id = Number(request.params['documentId']);
+    const document = this.documents.find((d) => d.id === id);
+    const chunks = knowledgeDocumentTextFixtures[id];
+    if (!document || !chunks || !this.canReadDocument(actor, document)) {
+      return refuse('resourceNotFound');
+    }
+    const span = Number(request.query['span'] ?? 2);
+    const around = request.query['around'];
+    const centre =
+      around === undefined
+        ? 0
+        : chunks.findIndex((c) => c.chunkId === Number(around));
+    if (centre < 0) return refuse('resourceNotFound');
+    const from = Math.max(0, centre - span);
+    const to = Math.min(chunks.length - 1, centre + span);
+    return ok({
+      documentId: id,
+      fileName: document.fileName,
+      aroundChunkId: chunks[centre].chunkId,
+      chunks: chunks.slice(from, to + 1),
+      hasMoreBefore: from > 0,
+      hasMoreAfter: to < chunks.length - 1,
+    });
+  }
+
   /** Personal documents belong to their uploader; the mock has one unit, so unit ones are open. */
   private canReadDocument(actor: DbUser, document: KnowledgeDocument): boolean {
     return (
@@ -753,7 +783,10 @@ export class FakeBackend {
     // The Q&A skill has no acting tool (the server's rule for a clicked read-only suggestion).
     const acts = skill !== 'qa_tai_lieu';
     if (folded.includes('goi y')) return agentDocumentSuggestionEvents;
-    if (acts && (folded.includes('mo trang') || folded.includes('mo man hinh'))) {
+    if (
+      acts &&
+      (folded.includes('mo trang') || folded.includes('mo man hinh'))
+    ) {
       const screen = this.functionsOf(user.userId)
         .filter((f) => f.routePattern && !f.routePattern.includes(':'))
         .filter((f) => folded.includes(fold(f.name)))
@@ -996,10 +1029,7 @@ export class FakeBackend {
   private latestConversationOfLesson(request: FakeRequest): FakeReply {
     const user = this.caller(request);
     return ok(
-      this.book.latestForLesson(
-        user.userId,
-        Number(request.query['lessonId']),
-      ),
+      this.book.latestForLesson(user.userId, Number(request.query['lessonId'])),
     );
   }
 

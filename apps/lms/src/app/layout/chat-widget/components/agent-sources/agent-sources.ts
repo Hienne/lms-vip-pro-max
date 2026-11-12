@@ -1,6 +1,7 @@
 import { Component, computed, inject, input } from '@angular/core';
 import type { Citation } from '@lms/contracts';
 import { Router, RouterLink, type UrlTree } from '@angular/router';
+import { SourceViewerStore } from '../../../../core/assistant/source-viewer.store';
 import { Popover } from '@lms/ui';
 import {
   citationLocation,
@@ -26,6 +27,7 @@ export class AgentSources {
   readonly turnId = input.required<number>();
   readonly citations = input.required<readonly Citation[]>();
   private readonly router = inject(Router);
+  protected readonly viewer = inject(SourceViewerStore);
 
   /** A link with a query string is a `UrlTree`: a string would encode `?` and `=` into the path. */
   protected linkTree(url: string): UrlTree {
