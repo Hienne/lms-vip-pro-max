@@ -73,6 +73,14 @@ describe('Course', () => {
     Array.from(el.querySelectorAll<HTMLElement>('button, a')).find((node) =>
       node.textContent?.includes(label),
     );
+  /** The text of the figure in the status strip whose label is `label`. */
+  const stat = (label: string) =>
+    Array.from(el.querySelectorAll('ui-stat'))
+      .find(
+        (node) =>
+          node.querySelector('.stat__label')?.textContent?.trim() === label,
+      )
+      ?.textContent?.replace(/\s+/g, ' ');
   const calls = (endpoint: unknown) =>
     handle.mock.calls.filter(([e]) => e === endpoint);
 
@@ -132,7 +140,7 @@ describe('Course', () => {
         (a) => a.textContent?.trim() === 'Làm bài',
       );
       expect(start?.getAttribute('href')).toBe('/quiz/2');
-      const rows = section.querySelectorAll('.course__quizzes li');
+      const rows = section.querySelectorAll('ul > li:not(.course__final)');
       expect(rows.length).toBe(1);
       expect(rows[0].textContent).toContain('Luyện tập');
       expect(calls(learnerQuizEndpoints.courseQuizzes).length).toBe(1);
@@ -146,12 +154,25 @@ describe('Course', () => {
       expect(states).toContain('in_progress');
     });
 
-    it('states the completion condition and the lessons done out of the required ones', () => {
-      expect(text()).toContain('Mục tiêu đầu ra');
-      expect(text()).toContain(
-        'Chưa có thông tin đánh giá điều kiện hoàn thành.',
-      );
-      expect(text()).toMatch(/\d+\/\d+ bài bắt buộc đã hoàn thành/);
+    it('puts the progress in the status strip under the title, once, and the lessons done on the outline', () => {
+      const strip = el.querySelector('[aria-label="Tình trạng hoàn thành"]')!;
+      expect(strip.querySelector('ui-stat-strip')).not.toBeNull();
+      expect(stat('Tiến độ bài bắt buộc')).toContain('62%');
+      expect(stat('Tiến độ bài bắt buộc')).toContain('Chưa hoàn thành khóa');
+      expect(text().match(/62%/g)).toHaveLength(1);
+      expect(
+        el.querySelector('[aria-labelledby="course-outline"] .course__tally')
+          ?.textContent,
+      ).toMatch(/\d+\/\d+ bài đã học/);
+      expect(text()).not.toContain('Điều kiện hoàn thành');
+    });
+
+    it('keeps the introduction last and folded once the learner is enrolled', () => {
+      const intro = el.querySelector('[aria-labelledby="course-intro"]')!;
+      expect(intro.querySelector('details')?.open).toBe(false);
+      expect(intro.textContent).toContain('Mục tiêu đầu ra');
+      const main = el.querySelector('.course__main')!;
+      expect(main.lastElementChild).toBe(intro);
     });
 
     it('does not warn about a deadline that is still ahead', () => {
@@ -251,10 +272,14 @@ describe('Course', () => {
       return reply;
     });
     await open(1);
-    expect(text()).toContain('100%');
-    expect(text()).toContain('Chưa hoàn thành khóa');
-    expect(text()).toContain('Bài bắt buộc: 2/2');
-    expect(text()).toContain('Bài thi cuối khóa: Chưa đạt');
+    expect(stat('Tiến độ bài bắt buộc')).toContain('100%');
+    expect(stat('Tiến độ bài bắt buộc')).toContain('Chưa hoàn thành khóa');
+    expect(stat('Bài bắt buộc')).toContain('2/2');
+    expect(stat('Bài bắt buộc')).toContain('Đã đủ');
+    expect(stat('Bài thi cuối khóa')).toContain('Chưa đạt');
+    expect(
+      el.querySelector('ui-stat .stat__value--danger')?.textContent,
+    ).toContain('Chưa đạt');
     expect(action('Đến bài thi cuối khóa')?.getAttribute('href')).toBe(
       '/quiz/2',
     );
@@ -407,6 +432,7 @@ describe('Course', () => {
       expect(text()).not.toContain('Khóa học đã quá hạn');
       expect(text().match(/Quá hạn/g)).toHaveLength(1);
       expect(el.querySelector('.due-date--highlight')).not.toBeNull();
+      expect(stat('Hạn hoàn thành')).toContain('Quá hạn');
     });
   });
 
@@ -446,7 +472,15 @@ describe('Course', () => {
       expect(outline.querySelectorAll('.outline__state')).toHaveLength(0);
       expect(text()).not.toContain('bài bắt buộc đã hoàn thành');
       expect(el.querySelector('[aria-labelledby="course-quizzes"]')).toBeNull();
+      expect(el.querySelector('ui-stat-strip')).toBeNull();
       expect(calls(learnerEndpoints.course).length).toBe(1);
+    });
+
+    it('opens on the introduction, unfolded, before the outline', () => {
+      const intro = el.querySelector('[aria-labelledby="course-intro"]')!;
+      expect(intro.querySelector('details')).toBeNull();
+      expect(intro.textContent).toContain('Mục tiêu đầu ra');
+      expect(el.querySelector('.course__main')?.firstElementChild).toBe(intro);
     });
 
     it('enrols, then shows the outline and the start action without leaving the page', async () => {
@@ -553,10 +587,36 @@ describe('Course', () => {
     });
   });
 
+  describe('the summary of the course', () => {
+    it('shows the revision summary in the introduction', async () => {
+      const backend = TestBed.inject(MockBackend);
+      handle.mockImplementation((endpoint, request) => {
+        const reply = MockBackend.prototype.handle.call(
+          backend,
+          endpoint,
+          request,
+        ) as {
+          body: { data: { content: { revision: Record<string, unknown> } } };
+        };
+        if (endpoint === learnerEndpoints.course) {
+          reply.body.data.content.revision['summary'] = 'Tóm tắt khóa học.';
+        }
+        return reply as never;
+      });
+      await open(7);
+      expect(
+        el.querySelector('[aria-labelledby="course-intro"] .course__summary')
+          ?.textContent,
+      ).toBe('Tóm tắt khóa học.');
+    });
+  });
+
   describe('a mandatory course nobody assigned', () => {
     it('explains that it must be assigned and shows no button', async () => {
       await open(3);
-      expect(text()).toContain('Khóa học bắt buộc này cần được giao để học.');
+      expect(el.querySelector('ui-alert')?.textContent).toContain(
+        'Khóa học bắt buộc này cần được giao để học.',
+      );
       expect(action('Đăng ký học')).toBeUndefined();
       expect(action('Bắt đầu học')).toBeUndefined();
     });
