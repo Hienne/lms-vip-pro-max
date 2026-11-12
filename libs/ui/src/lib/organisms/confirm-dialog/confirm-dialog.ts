@@ -29,9 +29,9 @@ export type ConfirmOptions = {
 
 type ConfirmData = Required<Omit<ConfirmOptions, 'acknowledge'>> &
   Pick<ConfirmOptions, 'acknowledge'> & {
-  titleId: string;
-  messageId: string;
-};
+    titleId: string;
+    messageId: string;
+  };
 
 let nextId = 0;
 
