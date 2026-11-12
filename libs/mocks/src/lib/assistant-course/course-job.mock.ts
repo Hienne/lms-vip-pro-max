@@ -146,6 +146,8 @@ export class CourseJobMock {
       ownerOrgId: inputs.ownerOrgId ?? 1,
       source: { documentId: null, fileName, status: 'ready' },
       createdDraftId: null,
+      courseId: 200 + this.nextId,
+      revisionId: 300 + this.nextId,
       steps: [
         {
           kind: 'summarise_sections',

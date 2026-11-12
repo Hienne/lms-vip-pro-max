@@ -1,14 +1,13 @@
-import { Dialog } from '@angular/cdk/dialog';
 import { TestBed } from '@angular/core/testing';
 import { Router } from '@angular/router';
 import {
   assessmentV1Endpoints,
   assetEndpoints,
   courseEndpoints,
+  courseJobEndpoints,
   programAssessmentEndpoints,
   MEDIA_PROCESSING_UNAVAILABLE_CODE,
   type AnyEndpoint,
-  type CourseJob,
   type CreateCourseCommand,
   type SaveDraftCommand,
 } from '@lms/contracts';
@@ -1842,35 +1841,102 @@ describe('CourseEditor', () => {
       expect(kept).not.toHaveBeenCalled();
     });
 
-    describe('"Tạo bằng AI" (stopgap before the form owns the flow)', () => {
-      const openDialogReturning = (job: CourseJob | undefined) =>
-        vi
-          .spyOn(TestBed.inject(Dialog), 'open')
-          .mockReturnValue({ closed: of(job) } as never);
+    describe('"Tạo bằng AI" on step 1', () => {
+      const aiButton = () => screen.button('Tạo bằng AI') as HTMLButtonElement;
+      const aiProblem = () =>
+        screen.el.querySelector('#ai-problem')?.textContent?.trim();
 
-      it('goes to the review screen of the job the dialog returns', async () => {
-        openDialogReturning({ jobId: 7 } as CourseJob);
-        await screen.open('/admin/courses/new');
-        const navigate = vi
-          .spyOn(TestBed.inject(Router), 'navigateByUrl')
-          .mockResolvedValue(true);
-        await screen.click(screen.button('Tạo bằng AI'));
-        await vi.waitFor(() =>
-          expect(navigate).toHaveBeenCalledWith('/admin/courses/ai-drafts/7'),
+      const pickSource = async (name = 'quy-trinh.md') => {
+        const input = screen.el.querySelector<HTMLInputElement>(
+          '.ai-section__file input[type="file"]',
+        )!;
+        Object.defineProperty(input, 'files', {
+          value: {
+            item: () => new File(['# Quy trình'], name, { type: 'text/markdown' }),
+            length: 1,
+          },
+          configurable: true,
+        });
+        input.dispatchEvent(new Event('change'));
+        await screen.settle();
+      };
+
+      const fillAi = async () => {
+        await screen.type(
+          screen.field('Đối tượng học viên') as HTMLTextAreaElement,
+          'Giao dịch viên mới',
         );
+        await screen.type(screen.field('Số chương') as HTMLInputElement, '3');
+        const competency = screen.field(
+          'Năng lực của câu hỏi',
+        ) as HTMLSelectElement;
+        await vi.waitFor(() =>
+          expect(competency.options.length).toBeGreaterThan(1),
+        );
+        const unit = screen.field(
+          'Đơn vị sở hữu khóa học',
+        ) as HTMLSelectElement | null;
+        if (unit) {
+          await vi.waitFor(() =>
+            expect(unit.options.length).toBeGreaterThan(1),
+          );
+          unit.value = unit.options[1].value;
+          unit.dispatchEvent(new Event('input'));
+          unit.dispatchEvent(new Event('change'));
+          await screen.settle();
+        }
+        competency.value = competency.options[1].value;
+        competency.dispatchEvent(new Event('input'));
+        competency.dispatchEvent(new Event('change'));
+        await screen.settle();
+      };
+
+      it('stays disabled and says why, until step 1 and the AI fields are valid', async () => {
+        await screen.open('/admin/courses/new');
+
+        expect(aiButton().disabled).toBe(true);
+        expect(aiProblem()).toContain('thông tin cơ bản');
+
+        await fillBasics();
+        expect(aiButton().disabled).toBe(true);
+        expect(aiProblem()).toBe('Chọn tệp nguồn');
+
+        await pickSource();
+        expect(aiProblem()).toBe('Nhập đối tượng học viên');
+
+        await fillAi();
+        expect(aiProblem()).toBe('');
+        expect(aiButton().disabled).toBe(false);
       });
 
-      it('stays on the form when the dialog is cancelled', async () => {
-        openDialogReturning(undefined);
-        await screen.open('/admin/courses/new');
+      it('creates the job and moves to step 2 of the course it made', async () => {
         const navigate = vi
-          .spyOn(TestBed.inject(Router), 'navigateByUrl')
+          .spyOn(TestBed.inject(Router), 'navigate')
           .mockResolvedValue(true);
-        await screen.click(screen.button('Tạo bằng AI'));
+        await screen.open('/admin/courses/new');
+        await fillBasics();
+        await pickSource();
+        await fillAi();
+
+        await screen.click(aiButton());
+
         await vi.waitFor(() =>
-          expect(screen.text()).toContain('Tạo khóa học mới'),
+          expect(screen.callsTo(courseJobEndpoints.start)).toBe(1),
         );
-        expect(navigate).not.toHaveBeenCalled();
+        await vi.waitFor(() =>
+          expect(navigate).toHaveBeenCalledWith(
+            ['/admin/courses', expect.any(Number), 'edit'],
+            { replaceUrl: true, queryParams: { step: 1 } },
+          ),
+        );
+        expect(screen.callsTo(courseEndpoints.createCourse)).toBe(0);
+      });
+
+      it('offers no free text for the programme or the competency', async () => {
+        await screen.open('/admin/courses/new');
+
+        expect(screen.field('Năng lực của câu hỏi')?.tagName).toBe('SELECT');
+        expect(screen.field('Chương trình')?.tagName).toBe('SELECT');
       });
     });
 

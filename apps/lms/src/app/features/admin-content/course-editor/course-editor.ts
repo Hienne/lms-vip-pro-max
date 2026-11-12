@@ -6,7 +6,6 @@ import {
   untracked,
   viewChild,
 } from '@angular/core';
-import { Dialog } from '@angular/cdk/dialog';
 import { form, FormRoot, submit } from '@angular/forms/signals';
 import { Router, RouterLink } from '@angular/router';
 import { courseJobReviewPath } from '@lms/contracts';
@@ -28,7 +27,7 @@ import { CourseJobAccess } from '../../../core/course-jobs/course-job-access';
 import type { HasUnsavedChanges } from '../../../core/routing/unsaved-changes.guard';
 import { BottomBar } from '../../../layout/shell-insets';
 import { CatalogStatus } from '../../../shared/status/catalog-status';
-import { startCourseWithAi } from '../ai-course/start-course-dialog/start-course-dialog';
+import { StartCourseStore } from '../ai-course/ai-course-section/data-access/start-course.store';
 import { CourseInfo } from './components/course-info/course-info';
 import { CourseOutline } from './components/course-outline/course-outline';
 import { CourseReview } from './components/course-review/course-review';
@@ -83,25 +82,52 @@ const fingerprint = (value: CourseDraftValue) =>
     Spinner,
     Stepper,
   ],
-  providers: [CourseEditorStore],
+  providers: [CourseEditorStore, StartCourseStore],
   templateUrl: './course-editor.html',
   styleUrl: './course-editor.scss',
 })
 export class CourseEditor implements HasUnsavedChanges {
   protected readonly store = inject(CourseEditorStore);
   protected readonly steps = EDITOR_STEPS;
-  private readonly dialog = inject(Dialog);
   private readonly router = inject(Router);
+  private readonly starter = inject(StartCourseStore);
   /** "Tạo bằng AI" is offered to instructors and admins on a new course only. */
   protected readonly canGenerate = inject(CourseJobAccess).canGenerate$;
+  protected readonly generating = this.starter.isStarting$;
 
   /**
-   * Opens the start form, then the review screen of the queued job. Temporary: the course form
-   * replaces both (.scratch/ai-course-in-form).
+   * Why "Tạo bằng AI" is not available yet: step 1's own fields first, then the AI section's.
+   * Null when the button may be pressed.
    */
-  protected async generateWithAi(): Promise<void> {
-    const job = await startCourseWithAi(this.dialog);
-    if (job) await this.router.navigateByUrl(courseJobReviewPath(job.jobId));
+  protected readonly aiProblem = computed((): string | null => {
+    if (this.stepFields()[0].some((field) => field().invalid())) {
+      return 'Hoàn thành thông tin cơ bản của khóa học ở trên';
+    }
+    return this.starter.problem$();
+  });
+
+  /**
+   * Starts the job: the server creates it together with the draft course, and the editor moves
+   * to step 2 of that course, where the outline appears as it is written.
+   */
+  protected generateWithAi(): void {
+    if (this.aiProblem() !== null) return;
+    const value = this.draftValue();
+    this.starter.start(
+      {
+        title: value.title,
+        description: value.summary,
+        programmeId: Number(value.programId),
+      },
+      (job) => {
+        if (job.courseId == null) {
+          // A job made without a course (an older server): the review screen still shows it.
+          void this.router.navigateByUrl(courseJobReviewPath(job.jobId));
+          return;
+        }
+        this.store.moveToCourse(job.courseId, 1);
+      },
+    );
   }
 
   private readonly model = linkedSignal(() => {

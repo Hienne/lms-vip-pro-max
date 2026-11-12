@@ -15,6 +15,7 @@ export const CourseJobStatusSchema = z.enum([
   'completed',
   'failed',
   'cancelled',
+  'stopped',
 ]);
 export type CourseJobStatus = z.infer<typeof CourseJobStatusSchema>;
 
@@ -36,6 +37,9 @@ export const CourseJobInputsSchema = z.object({
   programmeId: z.number().int().positive(),
   competencyId: z.number().int().positive(),
   ownerOrgId: z.number().int().positive().nullish(),
+  /** The draft course's name and description from step 1; the job fills a description only when empty. */
+  title: z.string().trim().max(255).nullish(),
+  description: z.string().trim().max(30000).nullish(),
 });
 export type CourseJobInputs = z.infer<typeof CourseJobInputsSchema>;
 
@@ -69,6 +73,9 @@ export const CourseJobSchema = z.object({
   ownerOrgId: z.number().int(),
   source: CourseJobSourceSchema.nullish(),
   createdDraftId: z.number().int().nullish(),
+  /** The draft course the job created with itself and fills; null for a job made before that. */
+  courseId: z.number().int().nullish(),
+  revisionId: z.number().int().nullish(),
   steps: z.array(CourseJobStepSchema),
   createTime: z.iso.datetime({ offset: true }),
   updateTime: z.iso.datetime({ offset: true }),

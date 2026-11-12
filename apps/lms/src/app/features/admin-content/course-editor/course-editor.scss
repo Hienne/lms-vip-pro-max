@@ -21,6 +21,10 @@
     @include ui.row(3);
   }
 
+  &__ai-problem {
+    @include ui.text(xs, muted);
+  }
+
   &__saved {
     @include ui.row(1);
     @include ui.text(xs, muted);

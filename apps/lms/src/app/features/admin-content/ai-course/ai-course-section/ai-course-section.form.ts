@@ -11,7 +11,7 @@ const whole = (min: number, max: number, message: string) =>
     );
 
 /**
- * What the start form collects as text; the dialog turns it into the job inputs. The server
+ * What the "Tạo bằng AI" section collects (the programme is step 1's own field) as text; the dialog turns it into the job inputs. The server
  * checks the same limits again, and decides the unit of an instructor's course.
  */
 export const StartCourseFormSchema = z.object({
@@ -23,7 +23,6 @@ export const StartCourseFormSchema = z.object({
   level: z.enum(['BEGINNER', 'INTERMEDIATE', 'ADVANCED']),
   chapters: whole(1, 20, 'Số chương từ 1 đến 20'),
   durationMinutes: whole(15, 1200, 'Thời lượng từ 15 đến 1200 phút'),
-  programmeId: z.string().min(1, 'Chọn chương trình đào tạo'),
   competencyId: z.string().min(1, 'Chọn năng lực'),
   ownerOrgId: z.string(),
 });
@@ -34,7 +33,6 @@ export const EMPTY_START_COURSE_FORM: StartCourseFormValue = {
   level: 'BEGINNER',
   chapters: '',
   durationMinutes: '',
-  programmeId: '',
   competencyId: '',
   ownerOrgId: '',
 };

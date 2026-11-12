@@ -7,7 +7,7 @@ function turnWith(
 ): StoredTurn {
   return {
     id: 1,
-    surface: 'agent',
+    surface: 'AGENT',
     question: 'Đổi chức danh',
     answer: 'Mình đã chuẩn bị thay đổi.',
     citations: [],
