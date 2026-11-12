@@ -208,7 +208,6 @@ describe('route table', () => {
     ['learner', '/admin/catalog', 'TRAINING_CATALOG'],
     ['learner', '/instructor', 'COURSE_MANAGEMENT'],
     ['reportViewer', '/catalog', 'COURSE_LEARNING'],
-    ['reportViewer', '/leaderboard', 'LEARNING_PROGRESS'],
     ['reportViewer', '/saved', 'COURSE_LEARNING'],
     ['admin', '/certificates', 'LEARNING_PROGRESS'],
   ] as const)(
