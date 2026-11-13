@@ -167,12 +167,14 @@ describe('Course', () => {
       expect(text()).not.toContain('Điều kiện hoàn thành');
     });
 
-    it('keeps the introduction last and folded once the learner is enrolled', () => {
+    it('puts the introduction, open, after the outline and quizzes once the learner is enrolled', () => {
       const intro = el.querySelector('[aria-labelledby="course-intro"]')!;
-      expect(intro.querySelector('details')?.open).toBe(false);
+      expect(intro.querySelector('details')).toBeNull();
       expect(intro.textContent).toContain('Mục tiêu đầu ra');
-      const main = el.querySelector('.course__main')!;
-      expect(main.lastElementChild).toBe(intro);
+      const layout = el.querySelector('.course__layout')!;
+      expect(layout.classList).toContain('course__layout--intro');
+      expect(layout.lastElementChild).toBe(intro);
+      expect(intro.classList).toContain('course__side');
     });
 
     it('does not warn about a deadline that is still ahead', () => {
@@ -334,16 +336,14 @@ describe('Course', () => {
       await open(1);
     }
 
-    it('keeps the revision cover in the collapsible overview, read with no block', async () => {
+    it('keeps the revision cover in the introduction panel, read with no block', async () => {
       await openWithCover(true);
       const image = el.querySelector<HTMLImageElement>('.course__cover');
       expect(image?.getAttribute('src')).toBe('blob:cover');
       expect(image?.alt).toBe('');
-      const overview =
-        el.querySelector<HTMLDetailsElement>('.course__overview');
-      expect(overview?.querySelector('img')).toBe(image);
-      expect(overview?.open).toBe(false);
-      expect(el.querySelector('.course__side .course__cover')).toBeNull();
+      expect(el.querySelector('[aria-labelledby="course-intro"] img')).toBe(
+        image,
+      );
       expect(calls(courseEndpoints.getAssetContent)[0][1].params).toEqual({
         assetId: '77',
       });
@@ -352,7 +352,9 @@ describe('Course', () => {
     it('shows nothing while the server refuses the file, not even an empty box', async () => {
       await openWithCover(false);
       expect(el.querySelector('.course__cover')).toBeNull();
-      expect(el.querySelector('.course__overview img')).toBeNull();
+      expect(
+        el.querySelector('[aria-labelledby="course-intro"] img'),
+      ).toBeNull();
       expect(heading()).toBe('Tổng quan hệ thống Core Banking');
     });
   });
@@ -407,6 +409,14 @@ describe('Course', () => {
       expect(action('Bắt đầu học')).toBeUndefined();
     });
 
+    it('shows the completion date in place of the deadline, never the date twice', async () => {
+      const done = finished();
+      await open(done.courseId);
+      expect(stat('Hạn hoàn thành')).toBeUndefined();
+      expect(stat('Ngày hoàn thành')).toMatch(/\d{2}\/\d{2}\/\d{4}/);
+      expect(stat('Tiến độ bài bắt buộc')).toContain('Đã hoàn thành khóa');
+    });
+
     it('is offered nowhere on a course still in progress', async () => {
       await open(1);
       expect(text()).not.toContain('Xem chứng nhận');
@@ -431,8 +441,10 @@ describe('Course', () => {
       await open(4);
       expect(text()).not.toContain('Khóa học đã quá hạn');
       expect(text().match(/Quá hạn/g)).toHaveLength(1);
-      expect(el.querySelector('.due-date--highlight')).not.toBeNull();
-      expect(stat('Hạn hoàn thành')).toContain('Quá hạn');
+      expect(stat('Hạn hoàn thành')).toMatch(/Quá hạn \d+ ngày/);
+      expect(
+        el.querySelector('ui-stat .stat__value--danger')?.textContent,
+      ).toMatch(/\d{2}\/\d{2}\/\d{4}/);
     });
   });
 
@@ -480,7 +492,9 @@ describe('Course', () => {
       const intro = el.querySelector('[aria-labelledby="course-intro"]')!;
       expect(intro.querySelector('details')).toBeNull();
       expect(intro.textContent).toContain('Mục tiêu đầu ra');
-      expect(el.querySelector('.course__main')?.firstElementChild).toBe(intro);
+      expect(el.querySelector('.course__layout')?.firstElementChild).toBe(
+        intro,
+      );
     });
 
     it('enrols, then shows the outline and the start action without leaving the page', async () => {
