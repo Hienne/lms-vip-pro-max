@@ -25,10 +25,35 @@
     margin-bottom: ui.space(6);
   }
 
-  // One column: the outline, the quizzes and the introduction read top to bottom at reading width.
+  // The outline and quizzes on the left; the introduction beside them from `lg`, under them
+  // (enrolled) or above them (not enrolled) on a narrower screen, in the template's order.
+  &__layout {
+    display: grid;
+    gap: ui.space(6);
+    align-items: start;
+
+    @include ui.bp(lg) {
+      &--intro {
+        grid-template-columns: minmax(0, 1fr) 22rem;
+      }
+    }
+  }
+
   &__main {
     @include ui.stack(6);
-    max-width: ui.layout(reading);
+    min-width: 0;
+
+    @include ui.bp(lg) {
+      grid-row: 1;
+      grid-column: 1;
+    }
+  }
+
+  &__side {
+    @include ui.bp(lg) {
+      grid-row: 1;
+      grid-column: 2;
+    }
   }
 
   &__tally {
@@ -52,22 +77,6 @@
   &__quiz {
     @include ui.grow;
     min-width: 0;
-  }
-
-  &__overview {
-    > summary {
-      color: ui.color(primary);
-      cursor: pointer;
-      font-weight: ui.weight(medium);
-
-      &:focus-visible {
-        @include ui.focus-ring;
-      }
-    }
-
-    &[open] > summary {
-      margin-bottom: ui.space(4);
-    }
   }
 
   &__intro {
@@ -105,7 +114,7 @@
 
   &__reward {
     @include ui.text(sm, accent);
-    margin: ui.space(4) 0 0;
+    margin: 0;
     font-weight: ui.weight(medium);
   }
 
@@ -123,7 +132,6 @@
   }
 
   &__skeleton-body {
-    max-width: ui.layout(reading);
     height: 18rem;
   }
 

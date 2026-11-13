@@ -104,116 +104,124 @@
       [tone]="exam.failed ? 'danger' : 'default'"
       [note]="exam.note"
     />
-    } @if (card.dueAt) {
+    } @if (card.learningStatus === 'completed' && card.completedAt) {
+    <ui-stat
+      label="Ngày hoàn thành"
+      [value]="card.completedAt | fmtDate"
+      [note]="card.dueAt ? 'Hạn ' + (card.dueAt | fmtDate) : undefined"
+    />
+    } @else if (card.learningStatus !== 'completed' && card.dueAt) { @let days =
+    card.dueAt | fmtDaysLeft;
     <ui-stat
       label="Hạn hoàn thành"
       [value]="card.dueAt | fmtDate"
-      [tone]="card.overdue && card.learningStatus !== 'completed' ? 'danger' : 'default'"
-    >
-      <app-due-date
-        slot="note"
-        highlight
-        relativeOnly
-        [dueAt]="card.dueAt"
-        [done]="card.learningStatus === 'completed'"
-      />
-    </ui-stat>
+      [tone]="card.overdue ? 'danger' : 'default'"
+      [note]="
+        days === null
+          ? undefined
+          : days < 0
+            ? 'Quá hạn ' + -days + ' ngày'
+            : 'Còn ' + days + ' ngày'
+      "
+    />
     }
   </ui-stat-strip>
 </section>
 }
 
-<div class="course__main">
+<div class="course__layout" [class.course__layout--intro]="hasIntro()">
   @if (store.view$() !== 'enrolled') {
-  <ng-container *ngTemplateOutlet="intro; context: { collapsed: false }" />
+  <ng-container *ngTemplateOutlet="intro" />
   }
 
-  <ui-section-card title="Nội dung khóa học" headingId="course-outline" flush>
-    @if (store.view$() === 'enrolled') {
-    <span slot="action" class="course__tally"
-      >{{ store.lessonTally$().done }}/{{ store.lessonTally$().total }} bài đã
-      học</span
-    >
-    }
-    <app-course-outline class="course__outline" [chapters]="store.outline$()" />
-  </ui-section-card>
-
-  @if (store.view$() === 'enrolled') { @if (store.quizError$(); as error) {
-  <ui-section-card title="Bài kiểm tra" headingId="course-quizzes">
-    <ui-error-state
-      title="Không tải được bài kiểm tra"
-      [message]="error.message"
-      (retry)="store.retryQuizzes()"
-    />
-  </ui-section-card>
-  } @else if (store.quizzesLoading$()) {
-  <div
-    uiSkeleton
-    variant="block"
-    class="course__skeleton-quizzes"
-    aria-busy="true"
-    aria-label="Đang tải bài kiểm tra"
-  ></div>
-  } @else if (store.finalExam$() || store.otherQuizzes$().length) {
-  <ui-section-card title="Bài kiểm tra" headingId="course-quizzes" flush>
-    @if (store.requiredQuizCount$() && card.learningStatus !== 'completed') {
-    <p class="course__quiz-rule">
-      Để hoàn thành khóa, cần đạt điểm yêu cầu của {{ store.requiredQuizCount$()
-      }} bài kiểm tra bắt buộc.
-    </p>
-    }
-    <ul uiList>
-      @if (store.finalExam$(); as exam) {
-      <li uiListItem class="course__final">
-        <app-quiz-card class="course__quiz" [card]="exam" />
-      </li>
-      } @for (quiz of store.otherQuizzes$(); track quiz.quiz.id) {
-      <li uiListItem>
-        <app-quiz-card class="course__quiz" [card]="quiz" />
-      </li>
+  <div class="course__main">
+    <ui-section-card title="Nội dung khóa học" headingId="course-outline" flush>
+      @if (store.view$() === 'enrolled') {
+      <span slot="action" class="course__tally"
+        >{{ store.lessonTally$().done }}/{{ store.lessonTally$().total }} bài đã
+        học</span
+      >
       }
-    </ul>
-  </ui-section-card>
-  }
-  <ng-container *ngTemplateOutlet="intro; context: { collapsed: true }" />
+      <app-course-outline
+        class="course__outline"
+        [chapters]="store.outline$()"
+      />
+    </ui-section-card>
+
+    @if (store.view$() === 'enrolled') { @if (store.quizError$(); as error) {
+    <ui-section-card title="Bài kiểm tra" headingId="course-quizzes">
+      <ui-error-state
+        title="Không tải được bài kiểm tra"
+        [message]="error.message"
+        (retry)="store.retryQuizzes()"
+      />
+    </ui-section-card>
+    } @else if (store.quizzesLoading$()) {
+    <div
+      uiSkeleton
+      variant="block"
+      class="course__skeleton-quizzes"
+      aria-busy="true"
+      aria-label="Đang tải bài kiểm tra"
+    ></div>
+    } @else if (store.finalExam$() || store.otherQuizzes$().length) {
+    <ui-section-card title="Bài kiểm tra" headingId="course-quizzes" flush>
+      @if (store.requiredQuizCount$() && card.learningStatus !== 'completed') {
+      <p class="course__quiz-rule">
+        Để hoàn thành khóa, cần đạt điểm yêu cầu của {{
+        store.requiredQuizCount$() }} bài kiểm tra bắt buộc.
+      </p>
+      }
+      <ul uiList>
+        @if (store.finalExam$(); as exam) {
+        <li uiListItem class="course__final">
+          <app-quiz-card class="course__quiz" [card]="exam" />
+        </li>
+        } @for (quiz of store.otherQuizzes$(); track quiz.quiz.id) {
+        <li uiListItem>
+          <app-quiz-card class="course__quiz" [card]="quiz" />
+        </li>
+        }
+      </ul>
+    </ui-section-card>
+    } }
+  </div>
+
+  @if (store.view$() === 'enrolled') {
+  <ng-container *ngTemplateOutlet="intro" />
   }
 </div>
 
-<ng-template #intro let-collapsed="collapsed">
-  @if (summary() || coverSrc() || objectives().length || rewardPoints() > 0) {
-  <ui-section-card title="Giới thiệu khóa học" headingId="course-intro">
-    @if (collapsed) {
-    <details class="course__overview">
-      <summary>Xem tóm tắt và mục tiêu</summary>
-      <ng-container *ngTemplateOutlet="introBody" />
-    </details>
-    } @else {
-    <ng-container *ngTemplateOutlet="introBody" />
-    } @if (rewardPoints() > 0) {
-    <p class="course__reward">
-      +{{ rewardPoints() }} điểm thưởng khi hoàn thành
-    </p>
-    }
+<ng-template #intro>
+  @if (hasIntro()) {
+  <ui-section-card
+    title="Giới thiệu khóa học"
+    headingId="course-intro"
+    class="course__side"
+  >
+    <div class="course__intro">
+      @if (coverSrc(); as src) {
+      <img class="course__cover" [src]="src" alt="" />
+      } @if (summary(); as summary) {
+      <p class="course__summary">{{ summary }}</p>
+      } @if (objectives().length) {
+      <section aria-labelledby="course-objectives">
+        <h3 id="course-objectives" class="course__subheading">
+          Mục tiêu đầu ra
+        </h3>
+        <ul class="course__objectives">
+          @for (objective of objectives(); track objective.id) {
+          <li>{{ objective.description }}</li>
+          }
+        </ul>
+      </section>
+      } @if (rewardPoints() > 0) {
+      <p class="course__reward">
+        +{{ rewardPoints() }} điểm thưởng khi hoàn thành
+      </p>
+      }
+    </div>
   </ui-section-card>
   }
-</ng-template>
-
-<ng-template #introBody>
-  <div class="course__intro">
-    @if (coverSrc(); as src) {
-    <img class="course__cover" [src]="src" alt="" />
-    } @if (summary(); as summary) {
-    <p class="course__summary">{{ summary }}</p>
-    } @if (objectives().length) {
-    <section aria-labelledby="course-objectives">
-      <h3 id="course-objectives" class="course__subheading">Mục tiêu đầu ra</h3>
-      <ul class="course__objectives">
-        @for (objective of objectives(); track objective.id) {
-        <li>{{ objective.description }}</li>
-        }
-      </ul>
-    </section>
-    }
-  </div>
 </ng-template>
 } }

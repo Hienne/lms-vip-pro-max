@@ -8,6 +8,7 @@ import {
   Empty,
   ErrorState,
   FmtDatePipe,
+  FmtDaysLeftPipe,
   FmtMinutesPipe,
   List,
   ListItem,
@@ -49,6 +50,7 @@ const ONE_DECIMAL = new Intl.NumberFormat('vi-VN', {
     Empty,
     ErrorState,
     FmtDatePipe,
+    FmtDaysLeftPipe,
     FmtMinutesPipe,
     List,
     ListItem,
@@ -145,6 +147,15 @@ export class Course {
       note: pass == null ? undefined : `Điểm đạt ≥ ${pass}%`,
     };
   });
+
+  /** The introduction panel has something to show. */
+  protected readonly hasIntro = computed(
+    () =>
+      !!this.summary() ||
+      !!this.coverSrc() ||
+      this.objectives().length > 0 ||
+      this.rewardPoints() > 0,
+  );
 
   protected readonly summary = computed(
     () => this.store.content$()?.revision.summary?.trim() || '',
