@@ -252,7 +252,9 @@ describe('AgentMessage', () => {
       turn({ text: '<img src=x onerror=alert(1)> [9]' }),
     );
     expect(el.querySelector('img')).toBeNull();
-    expect(el.textContent).toContain('<img src=x onerror=alert(1)> [9]');
+    expect(el.textContent).toContain('<img src=x onerror=alert(1)>');
+    // A marker with no source behind it is dropped, never shown as text.
+    expect(el.textContent).not.toContain('[9]');
   });
 
   it('copies the answer text, without the source list, and says so', async () => {

@@ -45,9 +45,16 @@ describe('answerParts', () => {
     ]);
   });
 
-  it('leaves a number with no citation as it was written', () => {
+  it('drops a number with no citation, so no marker opens nothing', () => {
     expect(shape('A [1] B [9] C [1, 9]', [citation(1)])).toEqual({
-      parts: ['A ', 1, ' B [9] C ', 1, '[9]'],
+      parts: ['A ', 1, ' B C ', 1],
+      unmarked: [],
+    });
+  });
+
+  it('drops the literal placeholder the model copied from its instructions', () => {
+    expect(shape('Xem [n]. Ý khác [N]', [])).toEqual({
+      parts: ['Xem. Ý khác'],
       unmarked: [],
     });
   });
