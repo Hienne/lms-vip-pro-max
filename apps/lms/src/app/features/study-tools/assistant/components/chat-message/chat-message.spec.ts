@@ -111,7 +111,7 @@ describe('ChatMessage', () => {
     expect(el.querySelector('details')).toBeNull();
   });
 
-  it('keeps a marker with no citation as plain text', () => {
+  it('drops a marker with no citation instead of printing it', () => {
     show({
       status: 'done',
       text: 'Đối chiếu sổ cái [1], rồi khóa ngày [7].',
@@ -119,7 +119,8 @@ describe('ChatMessage', () => {
       citations: [knowledgeAnswerFixture.citations[0]],
     });
     expect(badges().map((b) => b.textContent?.trim())).toEqual(['1']);
-    expect(text()).toContain('rồi khóa ngày [7].');
+    expect(text()).toContain('rồi khóa ngày.');
+    expect(text()).not.toContain('[7]');
   });
 
   const sourceRows = () =>
@@ -188,10 +189,11 @@ describe('ChatMessage', () => {
     expect(el.querySelector('.sources')).toBeNull();
   });
 
-  it('keeps markers as text while the answer streams', () => {
+  it('shows no marker as text while the answer streams, before its sources arrive', () => {
     show({ status: 'composing', retrieved: 2, text: 'khóa ngày [1].' });
     expect(el.querySelector('app-source-badge')).toBeNull();
-    expect(text()).toContain('khóa ngày [1].');
+    expect(text()).toContain('khóa ngày.');
+    expect(text()).not.toContain('[1]');
   });
 
   it('marks a stopped answer and offers to ask again', () => {

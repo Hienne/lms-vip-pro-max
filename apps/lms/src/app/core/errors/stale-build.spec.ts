@@ -5,10 +5,12 @@ import {
   isStaleBuildError,
   offerReloadOnStaleNavigation,
   PAGE_LOCATION,
+} from './stale-build';
+import {
   RELOAD_LABEL,
   STALE_BUILD_TITLE,
   StaleBuild,
-} from './stale-build';
+} from './stale-build-offer';
 
 describe('stale build recovery', () => {
   const reload = vi.fn();
@@ -52,13 +54,14 @@ describe('stale build recovery', () => {
     expect(reload).toHaveBeenCalledOnce();
   });
 
-  it('a navigation that fails on a stale chunk offers the reload, any other does not', () => {
+  it('a navigation that fails on a stale chunk offers the reload, any other does not', async () => {
     const offerReload = vi.spyOn(TestBed.inject(StaleBuild), 'offerReload');
     const failed = (error: unknown) => new NavigationError(1, '/x', error);
 
     TestBed.runInInjectionContext(() =>
       offerReloadOnStaleNavigation(failed(new Error('guard threw'))),
     );
+    await Promise.resolve();
     expect(offerReload).not.toHaveBeenCalled();
 
     TestBed.runInInjectionContext(() =>
@@ -68,6 +71,6 @@ describe('stale build recovery', () => {
         ),
       ),
     );
-    expect(offerReload).toHaveBeenCalledOnce();
+    await vi.waitFor(() => expect(offerReload).toHaveBeenCalledOnce());
   });
 });

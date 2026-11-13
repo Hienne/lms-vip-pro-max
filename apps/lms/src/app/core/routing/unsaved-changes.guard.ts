@@ -1,14 +1,21 @@
 import { inject, Injectable } from '@angular/core';
-import type { CanDeactivateFn } from '@angular/router';
+import { Router, type CanDeactivateFn } from '@angular/router';
 import { type Observable, of } from 'rxjs';
-import { SessionStore } from '../session/session.store';
 
 /** A routed component with a form implements this to be asked about before it is left. */
 export interface HasUnsavedChanges {
   hasUnsavedChanges(): boolean;
   /** What the question says instead of the default, when the page has a more specific reason. */
   leaveMessage?(): string | undefined;
+  /**
+   * True when the page keeps its draft through `KeptDrafts` and offers it back: leaving it because
+   * the session ended then needs no question.
+   */
+  keepsItsDraft?(): boolean;
 }
+
+/** Navigation state `SessionExpiry` sets on its way to sign-in. */
+export const SESSION_ENDED_STATE = 'sessionEnded';
 
 export function hasUnsavedChanges(page: unknown): boolean {
   return (
@@ -37,12 +44,17 @@ export class LeavePrompt {
 
 /**
  * Asks before leaving a page whose component reports unsaved changes (the mockup's `guardFn`);
- * pages without the method leave freely. Once the session has ended the page is left without asking:
- * `SessionExpiry` has kept its draft. `beforeunload` for reload and tab close is the shell's job.
+ * pages without the method leave freely. When `SessionExpiry` leaves a page that keeps its draft, it
+ * is left without asking: the draft is offered back after sign-in. Every other page, and a normal
+ * sign-out, still asks. `beforeunload` for reload and tab close is the shell's job.
  */
-export const unsavedChangesGuard: CanDeactivateFn<unknown> = (page) =>
-  hasUnsavedChanges(page) && inject(SessionStore).isSignedIn$()
-    ? inject(LeavePrompt).ask(
-        (page as Partial<HasUnsavedChanges>).leaveMessage?.(),
-      )
-    : true;
+export const unsavedChangesGuard: CanDeactivateFn<unknown> = (page) => {
+  if (!hasUnsavedChanges(page)) return true;
+  const unsaved = page as HasUnsavedChanges;
+  const sessionEnded =
+    inject(Router).currentNavigation()?.extras.state?.[SESSION_ENDED_STATE] ===
+    true;
+  return sessionEnded && unsaved.keepsItsDraft?.() === true
+    ? true
+    : inject(LeavePrompt).ask(unsaved.leaveMessage?.());
+};

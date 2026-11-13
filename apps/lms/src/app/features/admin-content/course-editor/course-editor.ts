@@ -3,8 +3,8 @@ import {
   Component,
   afterNextRender,
   Injector,
+  afterRenderEffect,
   computed,
-  effect,
   inject,
   linkedSignal,
   signal,
@@ -239,12 +239,18 @@ export class CourseEditor implements HasUnsavedChanges {
         this.keptDrafts.keep(this.store.keptDraftKey$(), this.draftValue());
       }
     });
-    let checked = false;
-    effect(() => {
-      if (checked || !this.ready()) return;
-      checked = true;
-      untracked(() => this.offerKeptDraft());
-    });
+  }
+
+  /** Once the page is ready (edit mode reads the course first), a kept draft is offered back once. */
+  private keptDraftChecked = false;
+  private readonly offerKeptDraftWhenReady = afterRenderEffect(() => {
+    if (this.keptDraftChecked || !this.ready()) return;
+    this.keptDraftChecked = true;
+    untracked(() => this.offerKeptDraft());
+  });
+
+  keepsItsDraft(): boolean {
+    return true;
   }
 
   private offerKeptDraft(): void {

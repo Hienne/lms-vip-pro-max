@@ -9,14 +9,22 @@ import {
   seedProfile,
 } from '../session/session.testing';
 import { SessionStore } from '../session/session.store';
-import { LeavePrompt, unsavedChangesGuard } from './unsaved-changes.guard';
+import {
+  LeavePrompt,
+  SESSION_ENDED_STATE,
+  unsavedChangesGuard,
+} from './unsaved-changes.guard';
 
 let dirty = false;
+let keepsDraft = false;
 
 @Component({ template: '<h1>Form</h1>' })
 class Form {
   hasUnsavedChanges(): boolean {
     return dirty;
+  }
+  keepsItsDraft(): boolean {
+    return keepsDraft;
   }
 }
 
@@ -33,6 +41,7 @@ describe('unsavedChangesGuard', () => {
 
   beforeEach(async () => {
     dirty = false;
+    keepsDraft = false;
     ask.mockReset();
     TestBed.configureTestingModule({
       providers: [
@@ -72,13 +81,38 @@ describe('unsavedChangesGuard', () => {
     expect(ask).not.toHaveBeenCalled();
   });
 
-  it('leaves without asking once the session has ended, since the draft is kept', async () => {
+  const endSession = () =>
+    router.navigate(['/elsewhere'], {
+      state: { [SESSION_ENDED_STATE]: true },
+    });
+
+  it('leaves without asking when the session ends on a page that keeps its draft', async () => {
     await harness.navigateByUrl('/form');
     dirty = true;
-    fakeSession().user.set(null);
-    await harness.navigateByUrl('/elsewhere');
+    keepsDraft = true;
+    await endSession();
     expect(ask).not.toHaveBeenCalled();
     expect(router.url).toBe('/elsewhere');
+  });
+
+  it('still asks when the session ends on a page that does not keep its draft', async () => {
+    await harness.navigateByUrl('/form');
+    dirty = true;
+    ask.mockReturnValue(of(false));
+    await endSession();
+    expect(ask).toHaveBeenCalledOnce();
+    expect(router.url).toBe('/form');
+  });
+
+  it('still asks on an ordinary navigation after signing out', async () => {
+    await harness.navigateByUrl('/form');
+    dirty = true;
+    keepsDraft = true;
+    fakeSession().user.set(null);
+    ask.mockReturnValue(of(false));
+    await harness.navigateByUrl('/elsewhere');
+    expect(ask).toHaveBeenCalledOnce();
+    expect(router.url).toBe('/form');
   });
 
   it('stays when the user chooses to stay', async () => {

@@ -1,13 +1,12 @@
 import { DOCUMENT } from '@angular/common';
 import {
   inject,
-  Injectable,
   InjectionToken,
+  Injector,
   provideEnvironmentInitializer,
   type EnvironmentProviders,
 } from '@angular/core';
 import type { NavigationError } from '@angular/router';
-import { Toaster } from '@lms/ui';
 
 /** The page's own reload and full-page navigation, replaceable in specs. */
 export interface PageLocation {
@@ -41,43 +40,31 @@ export function isStaleBuildError(error: unknown): boolean {
   return STALE_CHUNK.test(message);
 }
 
-export const STALE_BUILD_TITLE = 'Đã có phiên bản mới. Tải lại trang?';
-export const RELOAD_LABEL = 'Tải lại';
-
 /**
- * A tab opened before a deploy asks for chunks that no longer exist. Instead of a silent dead
- * click, the user is offered a reload, once per page.
+ * Offers the reload. `StaleBuild` and the UI toaster are loaded only on this path, so they stay
+ * out of the initial bundle (as `SessionExpiry` does). A chunk of the new build loads fine: only
+ * the old build's chunks are gone.
  */
-@Injectable({ providedIn: 'root' })
-export class StaleBuild {
-  private readonly toaster = inject(Toaster);
-  private readonly location = inject(PAGE_LOCATION);
-  private offered = false;
-
-  offerReload(): void {
-    if (this.offered) return;
-    this.offered = true;
-    this.toaster.offer(STALE_BUILD_TITLE, {
-      label: RELOAD_LABEL,
-      run: () => this.location.reload(),
-    });
-  }
+export function offerReload(injector: Injector): void {
+  void import('./stale-build-offer').then(({ StaleBuild }) =>
+    injector.get(StaleBuild).offerReload(),
+  );
 }
 
 /** For `withNavigationErrorHandler`: a lazy route of the old build offers the reload. */
 export function offerReloadOnStaleNavigation(error: NavigationError): void {
-  if (isStaleBuildError(error.error)) inject(StaleBuild).offerReload();
+  if (isStaleBuildError(error.error)) offerReload(inject(Injector));
 }
 
-/** Vite's own signal that a preload of the old build failed. */
+/** Vite's own signal that a preload of the old build failed (the dev server and Vite builds). */
 export function provideStaleBuildRecovery(): EnvironmentProviders {
   return provideEnvironmentInitializer(() => {
-    const staleBuild = inject(StaleBuild);
+    const injector = inject(Injector);
     inject(DOCUMENT).defaultView?.addEventListener(
       'vite:preloadError',
       (event) => {
         event.preventDefault();
-        staleBuild.offerReload();
+        offerReload(injector);
       },
     );
   });

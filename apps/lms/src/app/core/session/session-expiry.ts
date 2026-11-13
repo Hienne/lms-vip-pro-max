@@ -3,6 +3,7 @@ import { Router } from '@angular/router';
 import { Toaster } from '@lms/ui';
 import { SESSION_EXPIRED_MESSAGE } from '../errors/app-error';
 import { returnToParams } from '../routing/return-to';
+import { SESSION_ENDED_STATE } from '../routing/unsaved-changes.guard';
 import { KeptDrafts } from './kept-drafts';
 import { SessionStore } from './session.store';
 
@@ -26,6 +27,9 @@ export class SessionExpiry {
     this.drafts.keepAll();
     this.session.expire();
     this.toaster.info(SESSION_EXPIRED_MESSAGE);
-    void this.router.navigate(['/login'], { queryParams });
+    void this.router.navigate(['/login'], {
+      queryParams,
+      state: { [SESSION_ENDED_STATE]: true },
+    });
   }
 }

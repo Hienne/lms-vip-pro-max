@@ -1,5 +1,5 @@
 import { ErrorHandler, inject, Injector, type Provider } from '@angular/core';
-import { isStaleBuildError, StaleBuild } from './stale-build';
+import { isStaleBuildError, offerReload } from './stale-build';
 
 /**
  * Reports unexpected errors; never swallows them. Swap the sink for telemetry later. A lazy chunk
@@ -10,7 +10,7 @@ class AppErrorHandler implements ErrorHandler {
 
   handleError(error: unknown): void {
     console.error('Unexpected error', error);
-    if (isStaleBuildError(error)) this.injector.get(StaleBuild).offerReload();
+    if (isStaleBuildError(error)) offerReload(this.injector);
   }
 }
 
