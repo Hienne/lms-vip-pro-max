@@ -11,6 +11,15 @@
     <div class="toast__title">{{ toast.title }}</div>
     @if (toast.message) {
     <div class="toast__msg">{{ toast.message }}</div>
+    } @if (toast.action; as action) {
+    <button
+      uiLinkButton
+      type="button"
+      class="toast__action"
+      (click)="toaster.act(toast.id)"
+    >
+      {{ action.label }}
+    </button>
     }
   </div>
   <button

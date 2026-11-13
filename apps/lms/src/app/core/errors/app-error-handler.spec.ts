@@ -1,6 +1,7 @@
 import { ErrorHandler } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { provideAppErrorHandler } from './app-error-handler';
+import { StaleBuild } from './stale-build';
 
 describe('global error handler', () => {
   afterEach(() => vi.restoreAllMocks());
@@ -16,5 +17,21 @@ describe('global error handler', () => {
 
     expect(report).toHaveBeenCalledOnce();
     expect(report.mock.calls[0]).toContain(failure);
+  });
+
+  it('offers a reload when a chunk of an older build is gone', () => {
+    vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    TestBed.configureTestingModule({ providers: [provideAppErrorHandler()] });
+    const offerReload = vi.spyOn(TestBed.inject(StaleBuild), 'offerReload');
+
+    TestBed.inject(ErrorHandler).handleError(new Error('boom'));
+    expect(offerReload).not.toHaveBeenCalled();
+
+    TestBed.inject(ErrorHandler).handleError(
+      new TypeError(
+        'Failed to fetch dynamically imported module: /chunk-ABC.js',
+      ),
+    );
+    expect(offerReload).toHaveBeenCalledOnce();
   });
 });
