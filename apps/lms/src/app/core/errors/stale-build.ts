@@ -1,6 +1,7 @@
 import { DOCUMENT } from '@angular/common';
 import {
   inject,
+  Injectable,
   InjectionToken,
   Injector,
   provideEnvironmentInitializer,
@@ -8,19 +9,24 @@ import {
 } from '@angular/core';
 import type { NavigationError } from '@angular/router';
 
-/** The page's own reload and full-page navigation, replaceable in specs. */
+export const STALE_BUILD_TITLE = 'Đã có phiên bản mới. Tải lại trang?';
+export const RELOAD_LABEL = 'Tải lại';
+
+/** The page's own reload, full-page navigation and native confirm, replaceable in specs. */
 export interface PageLocation {
   reload(): void;
   assign(url: string): void;
+  confirm(message: string): boolean;
 }
 
 export const PAGE_LOCATION = new InjectionToken<PageLocation>('PAGE_LOCATION', {
   providedIn: 'root',
   factory: () => {
-    const location = inject(DOCUMENT).defaultView?.location;
+    const view = inject(DOCUMENT).defaultView;
     return {
-      reload: () => location?.reload(),
-      assign: (url: string) => location?.assign(url),
+      reload: () => view?.location.reload(),
+      assign: (url: string) => view?.location.assign(url),
+      confirm: (message: string) => view?.confirm(message) ?? false,
     };
   },
 });
@@ -41,14 +47,30 @@ export function isStaleBuildError(error: unknown): boolean {
 }
 
 /**
- * Offers the reload. `StaleBuild` and the UI toaster are loaded only on this path, so they stay
- * out of the initial bundle (as `SessionExpiry` does). A chunk of the new build loads fine: only
- * the old build's chunks are gone.
+ * Offers the reload once per page. `StaleBuild` and the UI toaster are loaded only on this path,
+ * so they stay out of the initial bundle. That chunk is itself a chunk of the old build, so it is
+ * often gone too: the native confirm then asks instead. The flag lives here, in the initial
+ * bundle, so a failed import can never offer again (its error would reach `AppErrorHandler`).
  */
+@Injectable({ providedIn: 'root' })
+export class ReloadOffer {
+  private readonly location = inject(PAGE_LOCATION);
+  private offered = false;
+
+  offer(injector: Injector): void {
+    if (this.offered) return;
+    this.offered = true;
+    import('./stale-build-offer').then(
+      ({ StaleBuild }) => injector.get(StaleBuild).offerReload(),
+      () => {
+        if (this.location.confirm(STALE_BUILD_TITLE)) this.location.reload();
+      },
+    );
+  }
+}
+
 export function offerReload(injector: Injector): void {
-  void import('./stale-build-offer').then(({ StaleBuild }) =>
-    injector.get(StaleBuild).offerReload(),
-  );
+  injector.get(ReloadOffer).offer(injector);
 }
 
 /** For `withNavigationErrorHandler`: a lazy route of the old build offers the reload. */

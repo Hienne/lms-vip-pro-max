@@ -1,16 +1,16 @@
+import { Injector } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { NavigationError } from '@angular/router';
 import { Toaster } from '@lms/ui';
 import {
   isStaleBuildError,
+  offerReload,
   offerReloadOnStaleNavigation,
   PAGE_LOCATION,
-} from './stale-build';
-import {
   RELOAD_LABEL,
   STALE_BUILD_TITLE,
-  StaleBuild,
-} from './stale-build-offer';
+} from './stale-build';
+import { StaleBuild } from './stale-build-offer';
 
 describe('stale build recovery', () => {
   const reload = vi.fn();
@@ -19,7 +19,10 @@ describe('stale build recovery', () => {
     reload.mockReset();
     TestBed.configureTestingModule({
       providers: [
-        { provide: PAGE_LOCATION, useValue: { reload, assign: vi.fn() } },
+        {
+          provide: PAGE_LOCATION,
+          useValue: { reload, assign: vi.fn(), confirm: vi.fn() },
+        },
       ],
     });
   });
@@ -39,13 +42,15 @@ describe('stale build recovery', () => {
     expect(isStaleBuildError(undefined)).toBe(false);
   });
 
-  it('offers the reload once, and the action reloads the page', () => {
+  it('offers the reload once, and the action reloads the page', async () => {
     const toaster = TestBed.inject(Toaster);
-    const staleBuild = TestBed.inject(StaleBuild);
+    const injector = TestBed.inject(Injector);
 
-    staleBuild.offerReload();
-    staleBuild.offerReload();
+    offerReload(injector);
+    offerReload(injector);
 
+    await vi.waitFor(() => expect(toaster.toasts()).toHaveLength(1));
+    await Promise.resolve();
     expect(toaster.toasts()).toHaveLength(1);
     const [toast] = toaster.toasts();
     expect(toast.title).toBe(STALE_BUILD_TITLE);
