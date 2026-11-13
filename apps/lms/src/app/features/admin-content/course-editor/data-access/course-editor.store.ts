@@ -316,6 +316,11 @@ export class CourseEditorStore {
     ),
   );
 
+  /** Where this page's unsaved draft is kept when the session ends: per user and course. */
+  readonly keptDraftKey$ = computed(
+    () => `course:${this.userId() ?? ''}:${this.courseId() ?? 'new'}`,
+  );
+
   private readonly orgId = computed(() => this.session.user$()?.org?.id);
   private readonly userId = computed(() => this.session.user$()?.userId);
 

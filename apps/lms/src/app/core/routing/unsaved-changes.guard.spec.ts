@@ -3,6 +3,12 @@ import { TestBed } from '@angular/core/testing';
 import { provideRouter, Router } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
 import { of } from 'rxjs';
+import {
+  fakeSession,
+  FakeSessionStore,
+  seedProfile,
+} from '../session/session.testing';
+import { SessionStore } from '../session/session.store';
 import { LeavePrompt, unsavedChangesGuard } from './unsaved-changes.guard';
 
 let dirty = false;
@@ -43,8 +49,10 @@ describe('unsavedChangesGuard', () => {
           },
           { path: 'elsewhere', component: Elsewhere },
         ]),
+        { provide: SessionStore, useClass: FakeSessionStore },
       ],
     });
+    fakeSession().user.set(seedProfile('000004'));
     TestBed.inject(LeavePrompt).use(ask);
     router = TestBed.inject(Router);
     harness = await RouterTestingHarness.create();
@@ -62,6 +70,15 @@ describe('unsavedChangesGuard', () => {
     await harness.navigateByUrl('/elsewhere');
     expect(router.url).toBe('/elsewhere');
     expect(ask).not.toHaveBeenCalled();
+  });
+
+  it('leaves without asking once the session has ended, since the draft is kept', async () => {
+    await harness.navigateByUrl('/form');
+    dirty = true;
+    fakeSession().user.set(null);
+    await harness.navigateByUrl('/elsewhere');
+    expect(ask).not.toHaveBeenCalled();
+    expect(router.url).toBe('/elsewhere');
   });
 
   it('stays when the user chooses to stay', async () => {

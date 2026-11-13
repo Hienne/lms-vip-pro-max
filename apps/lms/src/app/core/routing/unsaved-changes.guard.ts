@@ -1,6 +1,7 @@
 import { inject, Injectable } from '@angular/core';
 import type { CanDeactivateFn } from '@angular/router';
 import { type Observable, of } from 'rxjs';
+import { SessionStore } from '../session/session.store';
 
 /** A routed component with a form implements this to be asked about before it is left. */
 export interface HasUnsavedChanges {
@@ -36,10 +37,11 @@ export class LeavePrompt {
 
 /**
  * Asks before leaving a page whose component reports unsaved changes (the mockup's `guardFn`);
- * pages without the method leave freely. `beforeunload` for reload and tab close is the shell's job.
+ * pages without the method leave freely. Once the session has ended the page is left without asking:
+ * `SessionExpiry` has kept its draft. `beforeunload` for reload and tab close is the shell's job.
  */
 export const unsavedChangesGuard: CanDeactivateFn<unknown> = (page) =>
-  hasUnsavedChanges(page)
+  hasUnsavedChanges(page) && inject(SessionStore).isSignedIn$()
     ? inject(LeavePrompt).ask(
         (page as Partial<HasUnsavedChanges>).leaveMessage?.(),
       )
