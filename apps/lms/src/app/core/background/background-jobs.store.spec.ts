@@ -129,6 +129,23 @@ describe('BackgroundJobsStore', () => {
     });
   });
 
+  it.each([
+    ['ready', true, '/assistant', 'Mở trợ lý'],
+    ['failed', false, '/assistant?tai-lieu=1', 'Xem chi tiết'],
+  ] as const)(
+    'points a %s document at the assistant, a failure at its documents drawer',
+    (status, ok, href, action) => {
+      documents.lastFinished$.set({ document: { ...document, status }, at: 5 });
+
+      expect(store.notice$()).toMatchObject({
+        kind: 'document',
+        ok,
+        href,
+        action,
+      });
+    },
+  );
+
   it('dismisses every source', () => {
     store.dismiss();
 

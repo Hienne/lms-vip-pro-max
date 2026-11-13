@@ -1522,6 +1522,15 @@ export const MIGRATION_ENTRIES = [
     status: 'todo',
   },
   {
+    // The old documents page; it now opens the documents drawer on /assistant.
+    id: 'route-assistant-documents',
+    kind: 'route',
+    mockupSource: null,
+    target: 'assistant/tai-lieu',
+    checklist: [],
+    status: 'todo',
+  },
+  {
     id: 'route-change-password',
     kind: 'route',
     mockupSource: null,

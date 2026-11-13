@@ -100,9 +100,27 @@
     margin-inline: auto;
   }
 
-  // What the next question searches; read-only until the server can narrow it.
-  &__scope,
+  // What the next question searches (it cannot be narrowed until the server can); opens the documents.
+  &__scope {
+    @include ui.text(sm, secondary);
+    display: flex;
+    flex-wrap: wrap;
+    gap: ui.space(1) ui.space(3);
+    align-items: center;
+  }
+
+  // The ghost button's padding would push the icon off the column's edge.
+  &__scope-open {
+    margin-inline-start: calc(-1 * #{ui.space(2)});
+    font-weight: ui.weight(regular);
+  }
+
+  &__processing {
+    @include ui.num;
+  }
+
   &__note {
+    @include ui.text(sm, muted);
     display: flex;
     gap: ui.space(2);
     align-items: flex-start;
@@ -113,13 +131,35 @@
       margin-block-start: 0.15em;
     }
   }
+}
 
-  &__scope {
-    @include ui.text(sm, secondary);
+// The documents drawer: upload first, then what is in the store, then the copies uploaded twice.
+.docs {
+  @include ui.stack(5);
+
+  &__intro {
+    @include ui.text(sm, muted);
+    margin: 0;
   }
 
-  &__note {
+  &__stock {
+    @include ui.stack(2);
+    min-width: 0;
+  }
+
+  &__title {
+    @include ui.text(md);
+    display: flex;
+    gap: ui.space(2);
+    align-items: baseline;
+    margin: 0;
+    font-weight: ui.weight(semibold);
+  }
+
+  &__count {
+    @include ui.num;
     @include ui.text(sm, muted);
+    font-weight: ui.weight(regular);
   }
 }
 

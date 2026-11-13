@@ -472,13 +472,12 @@ export const SCREEN_TABLE = {
             ),
         },
         {
+          // The documents open in a drawer on the chat; the old page's URL opens that drawer.
           path: 'assistant/tai-lieu',
           title: 'Tài liệu của trợ lý',
           mockupPage: 'assistant',
-          load: () =>
-            import(
-              '../../features/study-tools/assistant/documents/assistant-documents'
-            ).then((m) => m.AssistantDocuments),
+          // Absolute: a relative redirect keeps the old URL's query and drops this one.
+          redirectTo: '/assistant?tai-lieu=1',
         },
       ],
     },
