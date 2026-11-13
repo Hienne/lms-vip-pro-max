@@ -284,3 +284,36 @@ export const RescheduleAssignmentCommandSchema = z.object({
 export type RescheduleAssignmentCommand = z.infer<
   typeof RescheduleAssignmentCommandSchema
 >;
+
+/** Server eligibility for one learner; zero percent alone never implies an untouched enrollment. */
+export const RevisionChangePreviewSchema = z.object({
+  enrollmentId: z.number().int().positive(),
+  expectedVersion: z.number().int().nonnegative(),
+  currentRevisionId: z.number().int().positive(),
+  currentRevisionNo: z.number().int().positive(),
+  targetRevisionId: z.number().int().positive().nullable(),
+  targetRevisionNo: z.number().int().positive().nullable(),
+  learningStatus: z.string(),
+  activeObligations: z.number().int().nonnegative(),
+  impactToken: z.string().min(1).max(64),
+  canTransfer: z.boolean(),
+  canRelearn: z.boolean(),
+  blockReason: z.string().nullable(),
+});
+export const RevisionChangeCommandSchema = z.object({
+  impactToken: z.string().min(1).max(64),
+  enrollmentId: z.number().int().positive(),
+  expectedVersion: z.number().int().nonnegative(),
+  targetRevisionId: z.number().int().positive(),
+  mode: z.enum(['transfer_unstarted', 'relearn']),
+  reason: z.string().trim().min(1).max(2000),
+  dueAt: z.iso.datetime({ offset: true }).nullable().optional(),
+  idempotencyKey: z.string().min(1).max(100),
+});
+export type RevisionChangeCommand = z.infer<typeof RevisionChangeCommandSchema>;
+export const RevisionChangeResultSchema = z.object({
+  previousEnrollmentId: z.number().int().positive(),
+  enrollmentId: z.number().int().positive(),
+  assignmentId: z.number().int().positive(),
+  revisionId: z.number().int().positive(),
+});

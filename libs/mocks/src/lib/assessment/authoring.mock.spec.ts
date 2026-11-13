@@ -70,15 +70,9 @@ describe('quiz authoring rules on the mock backend', () => {
     return { status: envelope.status, code: envelope.messageCode };
   };
 
-  it('refuses a second FINAL_EXAM for a course that already has one', () => {
+  it('allows a separate final exam generation without replacing the existing exam', () => {
     const reply = call(api.createQuiz, { body: request(1, 'FINAL_EXAM') });
-    expect(refusal(reply)).toEqual({
-      status: 'ERROR',
-      code: 'ASSESSMENT-DUPLICATE',
-    });
-    expect(EnvelopeSchema.parse(reply.body).message).toBe(
-      'Khóa học đã có bài thi cuối khóa.',
-    );
+    expect(refusal(reply).status).toBe('SUCCESS');
   });
 
   it('allows a practice quiz next to the final exam', () => {
@@ -86,13 +80,13 @@ describe('quiz authoring rules on the mock backend', () => {
     expect(refusal(reply).status).toBe('SUCCESS');
   });
 
-  it('refuses turning another quiz of the course into a second FINAL_EXAM', () => {
+  it('allows an independent final exam alongside another generation', () => {
     const reply = call(api.updateQuiz, {
       params: { id: '1' },
       query: { expectedVersion: '0' },
       body: request(1, 'FINAL_EXAM'),
     });
-    expect(refusal(reply).code).toBe('ASSESSMENT-DUPLICATE');
+    expect(refusal(reply).status).toBe('SUCCESS');
   });
 
   it('lets the existing final exam be updated as itself', () => {

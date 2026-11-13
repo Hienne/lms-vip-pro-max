@@ -134,7 +134,7 @@ export class CourseRules {
 
   /**
    * "Gỡ khỏi khóa học": the course stops requiring the exam once the draft is saved. The quiz
-   * itself stays (one final exam per course), so it can be attached again.
+   * itself stays unchanged and can be attached again; other revisions keep their own selection.
    */
   protected detach(): void {
     this.draft().finalQuizId().value.set('');

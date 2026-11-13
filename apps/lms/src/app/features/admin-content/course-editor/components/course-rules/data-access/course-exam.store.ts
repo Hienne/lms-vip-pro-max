@@ -81,8 +81,12 @@ export class CourseExamStore {
       reloadOn: this.bankChanges,
     },
   );
-  readonly exam$ = computed((): QuizSummary | undefined =>
-    this.editor.quizzes$().find((q) => q.quizType === 'FINAL_EXAM'),
+  readonly exam$ = computed(
+    (): QuizSummary | undefined =>
+      this.editor
+        .quizzes$()
+        .find((q) => q.id === Number(this.draft()?.finalQuizId)) ??
+      this.editor.quizzes$().find((q) => q.quizType === 'FINAL_EXAM'),
   );
   private readonly detailData = serverData(
     (id: number) =>
@@ -183,7 +187,13 @@ export class CourseExamStore {
   }
   update(value: ExamFormValue): void {
     const detail = this.detailData.value();
-    if (detail) this.saveMutation.run({ value, detail });
+    if (detail) {
+      // Published exams are immutable. Saving an edit creates and attaches a separate draft exam.
+      this.saveMutation.run({
+        value,
+        detail,
+      });
+    }
   }
   retryEdit(): void {
     this.detailData.reload();
@@ -234,7 +244,7 @@ export class CourseExamStore {
             draft: toSaveDraftCommand(draft, course.revision.rowVersion),
           }
         : { course: toCreateCourseCommand(draft, draft.code, ownerOrgId) }),
-      ...(detail
+      ...(detail?.quiz.status === 'DRAFT'
         ? {
             quizId: detail.quiz.id,
             expectedQuizVersion: detail.quiz.rowVersion,

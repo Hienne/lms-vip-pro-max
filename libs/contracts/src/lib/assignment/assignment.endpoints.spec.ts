@@ -18,6 +18,16 @@ describe('assignment endpoints', () => {
         e.path,
       ]),
     ).toEqual([
+      [
+        'revisionChangePreview',
+        'get',
+        '/api/v1/learning-assignments/recipients/{recipientId}/revision-change',
+      ],
+      [
+        'changeRevision',
+        'post',
+        '/api/v1/learning-assignments/recipients/{recipientId}/revision-change',
+      ],
       ['courseAssignments', 'get', '/api/v1/courses/{courseId}/assignments'],
       ['assignCourse', 'post', '/api/v1/courses/{courseId}/assignments'],
       ['getAssignment', 'get', '/api/v1/learning-assignments/{assignmentId}'],

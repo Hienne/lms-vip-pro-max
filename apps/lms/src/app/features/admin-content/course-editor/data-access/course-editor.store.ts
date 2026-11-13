@@ -1687,7 +1687,7 @@ export class CourseEditorStore {
         : '';
     confirm(this.dialog, {
       title: 'Xuất bản khóa học?',
-      message: `Bản nháp được lưu rồi xuất bản. Học viên được giao thấy nội dung mới ngay, tiến độ đã có được giữ.${counts}${
+      message: `Bản nháp được lưu rồi xuất bản. Lượt giao và lần học đã có giữ nguyên phiên bản, tiến độ và kết quả. Phiên bản mới áp dụng cho lần học mới. Muốn chuyển người chưa bắt đầu hoặc giao học lại, thực hiện riêng tại màn Giao khóa học.${counts}${
         examTitle
           ? ` Bài thi cuối khóa “${examTitle}” sẽ được xuất bản cùng khóa học.`
           : ''

@@ -1220,7 +1220,7 @@ describe('CourseEditor', () => {
         });
       });
 
-      it('summarises an exam the wizard manages, with "Sửa" and the advanced settings', async () => {
+      it('summarises a published exam and offers a separate new version', async () => {
         listQuizzes('PUBLISHED', 'RANDOM_POOL');
         await screen.open('/admin/courses/6/edit');
         await step('Bài thi & điều kiện');
@@ -1234,7 +1234,7 @@ describe('CourseEditor', () => {
         expect(card).toContain('2 câu');
         expect(card).toContain('80%');
         expect(card).toContain('Đã xuất bản');
-        expect(button('Sửa')).toBeTruthy();
+        expect(button('Tạo bản bài thi mới')).toBeTruthy();
         const advanced = Array.from(screen.el.querySelectorAll('a')).find((a) =>
           a.textContent?.includes('Cấu hình nâng cao'),
         );
@@ -1247,7 +1247,7 @@ describe('CourseEditor', () => {
         await step('Bài thi & điều kiện');
         await screen.click(button('Gắn lại bài thi'));
 
-        expect(button('Sửa')).toBeTruthy();
+        expect(button('Tạo bản bài thi mới')).toBeTruthy();
         expect(screen.text()).not.toContain('chỉnh được ở màn Bài kiểm tra');
       });
 
@@ -1256,11 +1256,11 @@ describe('CourseEditor', () => {
         await screen.open('/admin/courses/6/edit');
         await step('Bài thi & điều kiện');
         await screen.choose(exam(), '2');
-        expect(button('Sửa')).toBeTruthy();
+        expect(button('Tạo bản bài thi mới')).toBeTruthy();
 
         await screen.click(button('Gỡ khỏi khóa học'));
         expect(exam().value).toBe('');
-        expect(button('Sửa')).toBeUndefined();
+        expect(button('Tạo bản bài thi mới')).toBeUndefined();
         expect(screen.text()).toContain(
           'Khóa học không yêu cầu bài thi. Bài thi “Thi cuối khóa: Tổng quan hệ thống Core Banking” vẫn được giữ',
         );
@@ -1415,6 +1415,25 @@ describe('CourseEditor', () => {
           expect(command.quiz.courseId).toBeUndefined();
           expect(screen.url()).toMatch(/\/admin\/courses\/\d+\/edit\?step=2/);
           expect(exam().value).not.toBe('');
+        });
+
+        it('creates a separate quiz when changing a published exam', async () => {
+          listQuizzes('PUBLISHED', 'FIXED');
+          await screen.open('/admin/courses/6/edit');
+          await step('Bài thi & điều kiện');
+          await screen.click(button('Gắn lại bài thi'));
+          await screen.click(button('Tạo bản bài thi mới'));
+          await screen.click(button('Tạo đề mới và gắn vào bản nháp'));
+          const command = screen.lastCall(
+            assessmentV1Endpoints.saveCourseExam,
+          )?.body;
+          expect(command).toBeDefined();
+          expect(command).not.toHaveProperty('quizId');
+          expect(command).not.toHaveProperty('expectedQuizVersion');
+          expect(command).toMatchObject({
+            courseId: 6,
+            quiz: { selectionMode: 'FIXED' },
+          });
         });
 
         it('retains the form on a refused atomic save and never retries a partial pool write', async () => {
