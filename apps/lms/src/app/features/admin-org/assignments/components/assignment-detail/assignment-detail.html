@@ -77,7 +77,17 @@
               >{{ row.recipient.userId }}</span
             >
           </span>
-          @if (row.active) { @if (store.revokingId$() !== row.recipient.id) {
+          @if (row.active) {
+          <button
+            uiButton
+            size="sm"
+            type="button"
+            [disabled]="store.revisionSaving$()"
+            (click)="store.startRevisionChange(row.recipient.id)"
+          >
+            Phiên bản / học lại
+          </button>
+          @if (store.revokingId$() !== row.recipient.id) {
           <button
             uiButton
             size="sm"
@@ -94,7 +104,83 @@
           </span>
           }
         </div>
-        @if (!row.active && row.recipient.revokeReason) {
+        @if (store.revisionRecipientId$() === row.recipient.id) {
+        <ui-section-card title="Thay đổi lần học">
+          @if (store.revisionLoading$()) {
+          <p>Đang kiểm tra phiên bản và các nghĩa vụ liên quan…</p>
+          } @if (store.revisionError$(); as error) {
+          <ui-alert tone="danger">{{ error.message }}</ui-alert>
+          <button uiButton type="button" (click)="store.retryRevisionPreview()">
+            Kiểm tra lại
+          </button>
+          } @if (store.revisionPreview$(); as preview) {
+          <p>
+            Phiên bản đang học: {{ preview.currentRevisionNo }}. Phiên bản mới
+            nhất: {{ preview.targetRevisionNo ?? 'Chưa có' }}.
+          </p>
+          <p>
+            Một học viên được chọn, có {{ preview.activeObligations }} nghĩa vụ
+            giao đang hiệu lực. Không chuyển điểm hoặc tiến độ sang lần học mới.
+          </p>
+          @if (preview.blockReason) {
+          <p>{{ preview.blockReason }}</p>
+          } @if (preview.canTransfer || preview.canRelearn) {
+          <form [formRoot]="revisionForm">
+            <ui-field label="Cách xử lý"
+              ><select uiSelect [formField]="revisionForm.mode">
+                <option
+                  value="transfer_unstarted"
+                  [disabled]="!preview.canTransfer"
+                >
+                  Chuyển người chưa bắt đầu
+                </option>
+                <option value="relearn" [disabled]="!preview.canRelearn">
+                  Tạo đợt học lại riêng
+                </option>
+              </select></ui-field
+            >
+            @if (revisionForm.mode().value() === 'transfer_unstarted') {
+            <p>
+              Giữ lịch và yêu cầu của các lượt giao. Lần học chưa bắt đầu được
+              thay bằng lần học mới; lịch sử chuyển được lưu.
+            </p>
+            } @else {
+            <p>
+              Tạo lần học và đợt giao mới từ đầu, mở học ngay. Lần học dở cũ
+              cùng các nghĩa vụ của nó sẽ được đóng; kết quả đã hoàn thành và
+              chứng nhận cũ được giữ.
+            </p>
+            <ui-field
+              label="Hạn hoàn thành mới"
+              hint="Để trống nếu không đặt hạn."
+              ><input
+                uiInput
+                type="datetime-local"
+                [formField]="revisionForm.dueAt"
+            /></ui-field>
+            }
+            <ui-field label="Lý do" required>
+              <textarea
+                uiTextarea
+                [formField]="revisionForm.reason"
+                rows="2"
+              ></textarea>
+            </ui-field>
+            <button uiButton type="submit" [disabled]="store.revisionSaving$()">
+              Xác nhận thay đổi
+            </button>
+          </form>
+          } }
+          <button
+            uiButton
+            type="button"
+            [disabled]="store.revisionSaving$()"
+            (click)="store.cancelRevisionChange()"
+          >
+            Hủy
+          </button>
+        </ui-section-card>
+        } @if (!row.active && row.recipient.revokeReason) {
         <p class="assignment-detail__reason">
           {{ row.recipient.revokeReason }}
         </p>

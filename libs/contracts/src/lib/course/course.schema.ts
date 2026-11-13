@@ -20,7 +20,7 @@ export type CourseLevel = z.infer<typeof CourseLevelSchema>;
 export const RequirementSchema = z.enum(['mandatory', 'optional']);
 export type Requirement = z.infer<typeof RequirementSchema>;
 
-export const LessonTypeSchema = z.enum(['content', 'quiz']);
+export const LessonTypeSchema = z.enum(['content', 'quiz', 'scorm']);
 export type LessonType = z.infer<typeof LessonTypeSchema>;
 
 export const BlockTypeSchema = z.enum([
@@ -183,6 +183,7 @@ export const CourseLessonSchema = z.object({
   sourceLessonId: z.number().int().nullish(),
   /** The quiz a `quiz` lesson opens (a quiz of the same course); null for a content lesson. */
   quizId: z.number().int().nullish(),
+  scormPackageId: z.number().int().positive().nullish(),
   rowVersion: z.number().int(),
   createTime: BackendDateTimeSchema.nullish(),
   updateTime: BackendDateTimeSchema.nullish(),
@@ -485,6 +486,7 @@ export const LessonInputSchema = z.object({
   isRequired: z.boolean().optional(),
   /** Only for a `quiz` lesson; a draft may leave it empty, publishing needs it. */
   quizId: z.number().int().positive().nullish(),
+  scormPackageId: z.number().int().positive().nullish(),
   blocks: z.array(BlockInputSchema).max(COURSE_LIMITS.items),
 });
 export type LessonInput = z.infer<typeof LessonInputSchema>;

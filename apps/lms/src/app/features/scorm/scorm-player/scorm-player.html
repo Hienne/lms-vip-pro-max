@@ -4,7 +4,8 @@
 >
   <div slot="actions">
     <a uiButton [routerLink]="store.backLink$()"
-      ><ui-icon name="arrow-left" size="sm" />Về thư viện</a
+      ><ui-icon name="arrow-left" size="sm" />{{ store.courseContext$() ? 'Về
+      khóa học' : 'Về thư viện' }}</a
     >
   </div>
 </ui-page-header>

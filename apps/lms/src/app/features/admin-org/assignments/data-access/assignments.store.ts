@@ -11,6 +11,7 @@ import {
   courseEndpoints,
   identityEndpoints,
   MAX_PAGE_SIZE,
+  type RevisionChangeCommand,
   type AssignCourseCommand,
   type AssignmentSummary,
   type CourseCard,
@@ -119,6 +120,8 @@ export class AssignmentsStore {
         : null,
     ),
     viewingId: signal<number | null>(null),
+    revisionRecipientId: signal<number | null>(null),
+    revisionKey: signal(''),
     revokingId: signal<number | null>(null),
     reschedulingId: signal<number | null>(null),
     withdrawingId: signal<number | null>(null),
@@ -173,6 +176,85 @@ export class AssignmentsStore {
       reloadOn: this.assignmentChanges,
     },
   );
+
+  private readonly revisionPreviewData = serverData(
+    (recipientId: number) =>
+      this.client.call(assignmentEndpoints.revisionChangePreview, {
+        params: { recipientId },
+      }),
+    {
+      params: () => this.state.revisionRecipientId() ?? undefined,
+      reloadOn: this.assignmentChanges,
+    },
+  );
+  private readonly revisionMutation = serverMutation(
+    (input: { recipientId: number; body: RevisionChangeCommand }) =>
+      this.client.call(assignmentEndpoints.changeRevision, {
+        params: { recipientId: input.recipientId },
+        body: input.body,
+      }),
+    {
+      errors: 'alert',
+      success: () => 'Đã cập nhật lần học; lịch sử cũ được giữ nguyên.',
+      onSuccess: (result) => {
+        this.setRevisionRecipientId(null);
+        this.setViewingId(result.assignmentId);
+      },
+      invalidates: this.assignmentChanges,
+    },
+  );
+  readonly revisionRecipientId$ = this.state.revisionRecipientId.asReadonly();
+  readonly revisionPreview$ = this.revisionPreviewData.value;
+  readonly revisionLoading$ = this.revisionPreviewData.isLoading;
+  readonly revisionError$ = computed(
+    () => this.revisionPreviewData.error() ?? this.revisionMutation.error(),
+  );
+  readonly revisionSaving$ = this.revisionMutation.isPending;
+  private setRevisionRecipientId(id: number | null): void {
+    this.state.revisionRecipientId.set(id);
+  }
+  private setRevisionKey(key: string): void {
+    this.state.revisionKey.set(key);
+  }
+  startRevisionChange(id: number): void {
+    this.revisionMutation.reset();
+    this.setRevisionKey(newIdempotencyKey());
+    this.setRevisionRecipientId(id);
+  }
+  cancelRevisionChange(): void {
+    this.setRevisionRecipientId(null);
+  }
+  retryRevisionPreview(): void {
+    this.revisionMutation.reset();
+    this.revisionPreviewData.reload();
+  }
+  changeRevision(
+    mode: RevisionChangeCommand['mode'],
+    reason: string,
+    dueAt: string | null,
+  ): void {
+    const recipientId = this.state.revisionRecipientId(),
+      preview = this.revisionPreviewData.value();
+    if (
+      !recipientId ||
+      !preview?.targetRevisionId ||
+      this.revisionMutation.isPending()
+    )
+      return;
+    this.revisionMutation.run({
+      recipientId,
+      body: {
+        impactToken: preview.impactToken,
+        enrollmentId: preview.enrollmentId,
+        expectedVersion: preview.expectedVersion,
+        targetRevisionId: preview.targetRevisionId,
+        mode,
+        reason,
+        dueAt,
+        idempotencyKey: this.state.revisionKey(),
+      },
+    });
+  }
 
   private readonly detailData = serverData(
     (assignmentId: number) =>
@@ -526,11 +608,13 @@ export class AssignmentsStore {
   }
 
   view(assignmentId: number): void {
+    this.cancelRevisionChange();
     this.setRevokingId(null);
     this.setViewingId(assignmentId);
   }
 
   closeView(): void {
+    this.cancelRevisionChange();
     this.setRevokingId(null);
     this.setViewingId(null);
   }

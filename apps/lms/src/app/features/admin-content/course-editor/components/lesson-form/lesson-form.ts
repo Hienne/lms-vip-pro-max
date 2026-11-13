@@ -10,6 +10,7 @@ import {
 } from '@angular/core';
 import {
   applyEach,
+  applyWhenValue,
   form,
   FormField,
   FormRoot,
@@ -75,14 +76,19 @@ type BlockFormValue = Omit<BlockValue, 'steps' | 'bodyFormat'> & {
   bodyFormat: BodyFormat;
   stepsText: string;
 };
-type LessonFormValue = Omit<LessonValue, 'blocks' | 'quizId'> & {
+type LessonFormValue = Omit<
+  LessonValue,
+  'blocks' | 'quizId' | 'scormPackageId'
+> & {
   /** The chosen quiz's id as the select holds it; empty when none. */
   quizId: string;
+  scormPackageId: string;
   blocks: BlockFormValue[];
 };
 
 const toFormValue = (lesson: LessonValue): LessonFormValue => ({
   ...lesson,
+  scormPackageId: lesson.scormPackageId ? String(lesson.scormPackageId) : '',
   quizId: lesson.quizId === null ? '' : String(lesson.quizId),
   blocks: lesson.blocks.map(({ steps, ...block }) => ({
     ...block,
@@ -181,6 +187,11 @@ export class LessonForm {
   protected readonly lessonForm = form(
     this.model,
     (path) => {
+      validate(path.scormPackageId, ({ value }) =>
+        this.model().lessonType === 'scorm' && !value()
+          ? { kind: 'required', message: 'Chọn gói SCORM cho bài học.' }
+          : undefined,
+      );
       required(path.title, { message: 'Nhập tên bài học.' });
       validate(path.title, ({ value }) =>
         value() && !value().trim()
@@ -206,20 +217,26 @@ export class LessonForm {
             }
           : undefined,
       );
-      applyEach(path.blocks, (block) => {
-        required(block.title, { message: 'Nhập tiêu đề khối.' });
-        validate(block.title, ({ value }) =>
-          value() && !value().trim()
-            ? { kind: 'blank', message: 'Nhập tiêu đề khối.' }
-            : undefined,
-        );
-        maxLength(block.title, COURSE_LIMITS.title, {
-          message: `Tiêu đề khối tối đa ${COURSE_LIMITS.title} ký tự.`,
-        });
-        maxLength(block.body, COURSE_LIMITS.body, {
-          message: `Nội dung tối đa ${COURSE_LIMITS.body} ký tự.`,
-        });
-      });
+      applyWhenValue(
+        path,
+        (value) => value.lessonType === 'content',
+        (content) => {
+          applyEach(content.blocks, (block) => {
+            required(block.title, { message: 'Nhập tiêu đề khối.' });
+            validate(block.title, ({ value }) =>
+              value() && !value().trim()
+                ? { kind: 'blank', message: 'Nhập tiêu đề khối.' }
+                : undefined,
+            );
+            maxLength(block.title, COURSE_LIMITS.title, {
+              message: `Tiêu đề khối tối đa ${COURSE_LIMITS.title} ký tự.`,
+            });
+            maxLength(block.body, COURSE_LIMITS.body, {
+              message: `Nội dung tối đa ${COURSE_LIMITS.body} ký tự.`,
+            });
+          });
+        },
+      );
     },
     { submission: { action: async () => this.apply() } },
   );
@@ -236,6 +253,14 @@ export class LessonForm {
   });
 
   /** The course's quizzes to pick from; the chosen one stays listed even when it is no longer there. */
+  protected readonly missingScormOption = computed(() => {
+    const chosen = this.model().scormPackageId;
+    return (
+      chosen !== '' &&
+      !this.store.scormPackages$().some((item) => String(item.id) === chosen)
+    );
+  });
+
   protected readonly quizOptions = computed(() => {
     const options = this.store
       .quizzes$()
@@ -257,7 +282,7 @@ export class LessonForm {
    * cannot be saved. A block whose file is still uploading is saved; the asset joins it when done.
    */
   protected readonly missingFiles = computed(() =>
-    this.model().lessonType === 'quiz'
+    this.model().lessonType !== 'content'
       ? []
       : this.model().blocks.filter(
           (b) =>
@@ -403,21 +428,27 @@ export class LessonForm {
         value.lessonType === 'quiz' && value.quizId
           ? Number(value.quizId)
           : null,
+      scormPackageId:
+        value.lessonType === 'scorm' && value.scormPackageId
+          ? Number(value.scormPackageId)
+          : null,
       title: value.title.trim(),
-      blocks: value.blocks.map(({ stepsText, bodyFormat, ...block }) => ({
-        ...block,
-        ...(block.blockType === 'text' ? { bodyFormat } : {}),
-        title: block.title.trim(),
-        assets:
-          block.blockType === 'text'
-            ? block.assets.filter((asset) =>
-                lessonImageIds(block.body, this.document).includes(
-                  asset.assetId,
-                ),
-              )
-            : (files[block.key] ?? block.assets),
-        steps: block.blockType === 'process' ? toSteps(stepsText) : [],
-      })),
+      blocks: (value.lessonType === 'content' ? value.blocks : []).map(
+        ({ stepsText, bodyFormat, ...block }) => ({
+          ...block,
+          ...(block.blockType === 'text' ? { bodyFormat } : {}),
+          title: block.title.trim(),
+          assets:
+            block.blockType === 'text'
+              ? block.assets.filter((asset) =>
+                  lessonImageIds(block.body, this.document).includes(
+                    asset.assetId,
+                  ),
+                )
+              : (files[block.key] ?? block.assets),
+          steps: block.blockType === 'process' ? toSteps(stepsText) : [],
+        }),
+      ),
     });
   }
 }

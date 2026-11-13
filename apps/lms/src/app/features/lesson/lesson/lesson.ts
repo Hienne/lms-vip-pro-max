@@ -21,6 +21,7 @@ import {
   TabPanel,
   Tabs,
   PageHeader,
+  SectionCard,
 } from '@lms/ui';
 import { QuizCard } from '../../../shared/quiz/quiz-card/quiz-card';
 import { AttachmentBlock } from './components/attachment-block/attachment-block';
@@ -41,6 +42,7 @@ import { LessonStore } from './data-access/lesson.store';
 @Component({
   selector: 'app-lesson',
   imports: [
+    SectionCard,
     PageHeader,
     AttachmentBlock,
     BlockList,

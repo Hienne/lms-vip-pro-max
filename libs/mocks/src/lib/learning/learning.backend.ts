@@ -818,6 +818,7 @@ export class LearningBackend {
       lessons: c.lessons.map((l) => ({
         title: l.lesson.title,
         lessonType: l.lesson.lessonType,
+        scormPackageId: l.lesson.scormPackageId ?? null,
         ...(l.lesson.quizId ? { quizId: l.lesson.quizId } : {}),
         estimatedDurationSeconds: l.lesson.estimatedDurationSeconds ?? 0,
         isRequired: l.lesson.isRequired ?? true,
@@ -879,6 +880,7 @@ export class LearningBackend {
                 title: lesson.title,
                 lessonType: lesson.lessonType,
                 quizId: lesson.quizId ?? null,
+                scormPackageId: lesson.scormPackageId ?? null,
                 estimatedDurationSeconds: lesson.estimatedDurationSeconds,
                 isRequired: lesson.isRequired ?? true,
                 sortNo: li + 1,

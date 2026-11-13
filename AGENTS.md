@@ -87,3 +87,7 @@ drift baseline, the
 angular.md §14 checklist passes, any UI change contains nothing that
 `docs/conventions/visual-design.md` lists, and any converted screen passes the verify
 step in `docs/migration/mockup-to-angular.md`. Report what was verified and how.
+
+## Shared database rule
+
+The shared development PostgreSQL database is `appdb`, schema `learning_hub`. The backend connects with the PostgreSQL role `dev_user`. Angular must never connect to PostgreSQL directly or contain database credentials; all data access goes through the backend API. For database/schema work, make changes in the backend repository and preserve `dev_user` access.

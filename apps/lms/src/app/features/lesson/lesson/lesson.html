@@ -142,7 +142,22 @@
         (retry)="store.retry()"
       />
 
-      @if (store.view$() === 'quiz') {
+      @if (store.view$() === 'scorm') {
+      <ui-section-card title="Bài giảng SCORM 1.2">
+        <p>
+          Học nội dung tương tác và tiếp tục từ vị trí đã lưu. Kết quả được ghi
+          vào lần học của khóa này.
+        </p>
+        <a
+          uiButton
+          variant="primary"
+          [routerLink]="['/scorm', store.scormPackageId$()]"
+          [queryParams]="store.scormContext$()"
+          >Mở bài giảng SCORM</a
+        >
+      </ui-section-card>
+      <ng-container [ngTemplateOutlet]="lessonSteps" />
+      } @else if (store.view$() === 'quiz') {
       <section class="lesson__quiz" aria-labelledby="lesson-quiz">
         <h2 id="lesson-quiz" class="lesson__block-title">Bài kiểm tra</h2>
         @if (store.quiz$(); as card) {

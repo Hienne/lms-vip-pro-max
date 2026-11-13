@@ -78,7 +78,7 @@
       >
       } @if (exam.formOpen$()) { @if (exam.editValue$(); as stored) {
       <app-course-exam-form
-        submitLabel="Lưu thay đổi"
+        [submitLabel]="quiz.status === 'DRAFT' ? 'Lưu thay đổi' : 'Tạo đề mới và gắn vào bản nháp'"
         [value]="stored"
         [questions]="exam.questions$()"
         [questionsLoading]="exam.questionsLoading$()"
@@ -104,7 +104,8 @@
       <div class="row row--gap-2">
         @if (store.canCreateQuiz$()) {
         <button uiButton size="sm" type="button" (click)="exam.openForm()">
-          Sửa bài kiểm tra
+          {{ quiz.status === 'DRAFT' ? 'Sửa bài kiểm tra' : 'Tạo bản bài thi
+          mới' }}
         </button>
         }
         <button
