@@ -11,8 +11,13 @@ import {
   FmtDatePipe,
   FmtPctPipe,
   Icon,
+  IconButton,
+  Menu,
+  type MenuEntry,
   Progress,
   Skeleton,
+  Stat,
+  StatStrip,
   TabPanel,
   Tabs,
   PageHeader,
@@ -48,10 +53,12 @@ import { LessonStore } from './data-access/lesson.store';
     FmtDatePipe,
     FmtPctPipe,
     Icon,
+    IconButton,
     ImageBlock,
     LessonFeedback,
     LessonNotes,
     LessonOutline,
+    Menu,
     NgTemplateOutlet,
     PdfBlock,
     ProcessBlock,
@@ -60,6 +67,8 @@ import { LessonStore } from './data-access/lesson.store';
     RouterLink,
     SessionAlert,
     Skeleton,
+    Stat,
+    StatStrip,
     TabPanel,
     Tabs,
     TextBlock,
@@ -97,6 +106,23 @@ export class Lesson {
   protected readonly canAsk = computed(
     () => this.agent.available$() && this.assistContext() !== null,
   );
+
+  /** The assistant menu in the bar: one trigger for both shortcuts, so the bar fits a phone. */
+  protected readonly assistEntries: readonly MenuEntry<'ask' | 'summarise'>[] =
+    [
+      { kind: 'item', value: 'ask', label: 'Hỏi về bài này', icon: 'sparkles' },
+      {
+        kind: 'item',
+        value: 'summarise',
+        label: 'Tóm tắt bài này',
+        icon: 'file-text',
+      },
+    ];
+
+  protected assist(choice: 'ask' | 'summarise'): void {
+    if (choice === 'ask') this.askAssistant();
+    else this.summarise();
+  }
 
   /** Opens the quick chat on this lesson; the server checks the user may read it. */
   protected askAssistant(): void {

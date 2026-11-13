@@ -1,39 +1,35 @@
-<section class="feedback" aria-labelledby="feedback-title">
-  <h2 class="feedback__heading">
-    <button
-      type="button"
-      class="feedback__toggle"
-      aria-controls="feedback-body"
-      [attr.aria-expanded]="open()"
-      (click)="expanded.set(!expanded())"
-    >
-      <span class="feedback__label">
-        <span id="feedback-title" class="feedback__title"
-          >Đánh giá &amp; trao đổi</span
-        >
-        @if (!error() && !loading()) {
-        <span class="feedback__summary">
-          @if (rating(); as summary) {
-          <ui-stars [value]="summary.average" [count]="summary.count" />
-          } @else {
-          <span>Chưa có đánh giá</span>
-          }
-          <span class="feedback__counts"
-            >{{ commentTotal() }} nhận xét · {{ questions().length }} câu
-            hỏi</span
-          >
-        </span>
-        }
-      </span>
-      <ui-icon
-        class="feedback__chevron"
-        [name]="open() ? 'chevron-up' : 'chevron-down'"
-        size="sm"
-      />
-    </button>
-  </h2>
+<ui-section-card
+  class="feedback"
+  title="Đánh giá &amp; trao đổi"
+  headingId="feedback-title"
+>
+  <button
+    slot="action"
+    uiButton
+    variant="ghost"
+    size="sm"
+    type="button"
+    class="feedback__toggle"
+    aria-controls="feedback-body"
+    [attr.aria-expanded]="open()"
+    (click)="expanded.set(!expanded())"
+  >
+    {{ open() ? 'Thu gọn' : 'Mở' }}
+    <ui-icon [name]="open() ? 'chevron-up' : 'chevron-down'" size="sm" />
+  </button>
 
-  @if (open()) {
+  @if (!error() && !loading()) {
+  <p class="feedback__summary">
+    @if (rating(); as summary) {
+    <ui-stars [value]="summary.average" [count]="summary.count" />
+    } @else {
+    <span>Chưa có đánh giá</span>
+    }
+    <span
+      >· {{ commentTotal() }} nhận xét · {{ questions().length }} câu hỏi</span
+    >
+  </p>
+  } @if (open()) {
   <div id="feedback-body" class="feedback__body">
     @if (error(); as failure) {
     <ui-error-state
@@ -181,4 +177,4 @@
     }
   </div>
   }
-</section>
+</ui-section-card>

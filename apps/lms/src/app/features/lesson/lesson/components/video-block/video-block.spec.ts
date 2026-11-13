@@ -305,7 +305,7 @@ describe('VideoBlock', () => {
       expect(details(probe).open).toBe(false);
       expect(
         probe.el.querySelector('.transcript__summary')?.textContent?.trim(),
-      ).toBe('Transcript (3 đoạn)');
+      ).toBe('Lời thoại (3 đoạn)');
     });
 
     it('lists each line as "time text"', () => {

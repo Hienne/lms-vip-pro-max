@@ -150,16 +150,37 @@ describe('Lesson', () => {
   describe('a text lesson', () => {
     beforeEach(() => open(lessonUrl(2)));
 
-    it('names the lesson position in the bar for a phone, beside the course and chapter', () => {
+    it('names the course in the bar, the chapter beside it from md, and the position under the title only', () => {
+      const where = el.querySelector('.lesson__where');
+      expect(where?.textContent).toContain('Phân hệ Thanh toán liên ngân hàng');
       expect(
-        el.querySelector('.lesson__where-short')?.textContent?.trim(),
-      ).toBe('Bài 3/3');
-      expect(el.querySelector('.lesson__where-full')?.textContent).toContain(
-        'Phân hệ Thanh toán liên ngân hàng',
+        where?.querySelector('.lesson__where-chapter')?.textContent,
+      ).toContain('Thanh toán và đối soát');
+      expect(el.querySelector('.lesson__bar')?.textContent).not.toContain(
+        'Bài 3/3',
+      );
+      expect(el.querySelector('ui-page-header')?.textContent).toContain(
+        'Bài 3/3',
       );
     });
 
-    it('offers to ask the assistant about this lesson or to summarise it, naming the lesson to the store', () => {
+    it('offers one way out per width: an icon with its name on a phone, a labelled button from md', () => {
+      const exits = Array.from(
+        el.querySelectorAll<HTMLAnchorElement>('.lesson__exit'),
+      );
+      expect(exits.map((a) => a.getAttribute('href'))).toEqual([
+        `/course/${COURSE}`,
+        `/course/${COURSE}`,
+      ]);
+      expect(
+        el.querySelector('.lesson__exit--compact')?.getAttribute('aria-label'),
+      ).toBe('Thoát');
+      expect(el.querySelector('.lesson__exit--full')?.textContent).toContain(
+        'Thoát',
+      );
+    });
+
+    it('offers to ask the assistant about this lesson or to summarise it from one menu, naming the lesson to the store', async () => {
       const ask = vi
         .spyOn(TestBed.inject(AgentChatStore), 'askAboutLesson')
         .mockImplementation(() => undefined);
@@ -169,9 +190,22 @@ describe('Lesson', () => {
         lessonId: lessons()[2].lesson.id,
         label: expect.stringContaining('Tổng kết') as unknown as string,
       };
+      const choose = async (label: string) => {
+        el.querySelector<HTMLButtonElement>(
+          '.lesson__assist--full button',
+        )!.click();
+        await settle();
+        Array.from(
+          document.body.querySelectorAll<HTMLElement>('[role="menuitem"]'),
+        )
+          .find((item) => item.textContent?.includes(label))!
+          .click();
+        await settle();
+      };
 
-      button('Hỏi về bài này')?.click();
-      button('Tóm tắt bài này')?.click();
+      expect(button('Hỏi về bài này')).toBeUndefined();
+      await choose('Hỏi về bài này');
+      await choose('Tóm tắt bài này');
 
       expect(ask).toHaveBeenNthCalledWith(1, lesson, 'Bài này nói gì?');
       expect(ask).toHaveBeenNthCalledWith(
@@ -269,12 +303,75 @@ describe('Lesson', () => {
       expect(primaries()).toEqual(['Về khóa học']);
     });
 
+    it('says what completes the block at the top of its card, and names it to the step bar', () => {
+      const block = el.querySelector('.lesson__block')!;
+      const state = block.querySelector('.lesson__block-head .lesson__state');
+      expect(state?.id).toBe('lesson-block-state');
+      expect(state?.getAttribute('aria-live')).toBe('polite');
+      expect(
+        el.querySelector('.lesson__advance')?.getAttribute('aria-describedby'),
+      ).toBe('lesson-block-state');
+      expect(el.querySelector('.lesson__stepbar .lesson__state')).toBeNull();
+    });
+
     it('offers the previous lesson and no next one at the last lesson', () => {
-      const previous = button('Bài trước') as HTMLAnchorElement;
+      const previous =
+        el.querySelector<HTMLAnchorElement>('.lesson__stepbar a')!;
+      expect(previous.textContent).toContain('Quay lại');
       expect(previous.getAttribute('href')).toBe(
         `/lesson/${COURSE}/${lessons()[1].lesson.id}`,
       );
-      expect(button('Bài tiếp theo')).toBeUndefined();
+      expect(button('Tiếp theo')).toBeUndefined();
+    });
+
+    it('falls back to the course percentage when the server sent no completion evaluation', () => {
+      const line = el
+        .querySelector('.lesson__course-line')
+        ?.textContent?.replace(/\s+/g, ' ');
+      expect(line).toMatch(/Tiến độ khóa học \d+%/);
+      expect(el.querySelector('ui-stat-strip')).toBeNull();
+    });
+  });
+
+  describe('what the course still needs', () => {
+    it('counts the required lessons and names the final exam, under the title and in the side panel', async () => {
+      handle.mockImplementation((endpoint, request) => {
+        const reply = real()(endpoint, request);
+        if (endpoint !== learnerEndpoints.enrollment || !reply) return reply;
+        const body = reply.body as { data: EnrollmentDetail };
+        return {
+          ...reply,
+          body: {
+            ...body,
+            data: {
+              ...body.data,
+              completion: {
+                completedRequiredLessons: 1,
+                requiredLessons: 3,
+                lessonsSatisfied: false,
+                finalQuizId: 2,
+                finalExamStatus: 'NOT_TAKEN',
+                allSatisfied: false,
+              },
+            },
+          },
+        } as FakeReply;
+      });
+      await open(lessonUrl(2));
+
+      expect(
+        el
+          .querySelector('.lesson__course-line')
+          ?.textContent?.replace(/\s+/g, ' ')
+          .trim(),
+      ).toBe('Khóa học: 1/3 bài bắt buộc đã xong · Bài thi cuối: Chưa thi');
+      const stats = Array.from(
+        el.querySelectorAll('.lesson__side ui-stat'),
+      ).map((s) => s.textContent?.replace(/\s+/g, ' ').trim());
+      expect(stats).toEqual([
+        expect.stringContaining('1/3'),
+        expect.stringContaining('Chưa thi'),
+      ]);
     });
   });
 
@@ -299,6 +396,16 @@ describe('Lesson', () => {
       );
       expect(player()?.autoplay).toBe(false);
       expect(text()).toMatch(/Đã xem \d+% · cần \d+%/);
+    });
+
+    it('shows how far a video is watched, as the server measured it, until it completes', () => {
+      const head = el.querySelector('.lesson__block-head')!;
+      expect(head.querySelector('.lesson__state')?.textContent).toMatch(
+        /Đã xem \d+%/,
+      );
+      expect(
+        head.querySelector('ui-progress')?.getAttribute('aria-label'),
+      ).toMatch(/^Đã xem \d+% video$/);
     });
 
     it('sends PLAY when the learner plays and PAUSE when they pause', async () => {
@@ -386,7 +493,7 @@ describe('Lesson', () => {
         '0:00 · Giới thiệu',
         '0:12 · Khái niệm chính',
       ]);
-      expect(text()).toContain('Transcript (2 đoạn)');
+      expect(text()).toContain('Lời thoại (2 đoạn)');
 
       expect(
         el.querySelector('button.chapters__item, button.transcript__line'),
@@ -582,7 +689,7 @@ describe('Lesson', () => {
       const primaries = Array.from(
         el.querySelectorAll('.lesson__stepbar .btn--primary'),
       ).map((b) => b.textContent?.trim());
-      expect(primaries).toEqual(['Nội dung tiếp theo']);
+      expect(primaries).toEqual(['Tiếp theo']);
     });
 
     it('says nothing about completion on a block that completes on open', async () => {
@@ -618,15 +725,21 @@ describe('Lesson', () => {
       ).toEqual(['CLOSE', 'OPEN']);
     });
 
-    it('goes through the blocks with "Nội dung tiếp theo" and "Nội dung trước", then on to the next lesson', async () => {
-      expect(button('Nội dung trước')).toBeUndefined();
+    it('goes through the blocks with "Tiếp theo" and "Quay lại", then on to the next lesson', async () => {
+      const back = () =>
+        el.querySelector<HTMLElement>(
+          '.lesson__stepbar button:not(.lesson__advance)',
+        );
+      const advance = () =>
+        el.querySelector<HTMLButtonElement>('.lesson__advance')!;
+      expect(back()).toBeNull();
       for (let i = 0; i < 3; i++) {
-        button('Nội dung tiếp theo')!.click();
+        advance().click();
         await settle();
       }
-      expect(button('Nội dung tiếp theo')).toBeUndefined();
-      expect(button('Nội dung trước')).toBeTruthy();
-      button('Bài tiếp theo')!.click();
+      expect(back()?.textContent).toContain('Quay lại');
+      expect(el.querySelector('#lesson-block-select')).not.toBeNull();
+      advance().click();
       await settle();
       expect(TestBed.inject(Router).url).toMatch(
         new RegExp(`^/lesson/${COURSE}/${lessons()[2].lesson.id}(?:\\?|$)`),
@@ -650,6 +763,11 @@ describe('Lesson', () => {
 
       expect(text()).toContain('Bài học đang mở ở nơi khác');
       expect(calls(learnerEndpoints.saveProgress).length).toBe(0);
+      expect(
+        Array.from(el.querySelectorAll('.btn--primary')).map((b) =>
+          b.textContent?.trim(),
+        ),
+      ).toEqual(['Học trên thiết bị này']);
 
       button('Học trên thiết bị này')!.click();
       await settle();
